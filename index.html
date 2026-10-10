@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PokeCraft</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- In-world HUD -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="prompt"></div>
+    <div id="clock"></div>
+    <div id="party-mini"></div>
+    <div id="cubes"></div>
+    <div id="hotbar"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Title / starter selection -->
+  <div id="title" class="overlay">
+    <div class="panel">
+      <h1>Poke<span>Craft</span></h1>
+      <p class="tag">Build. Explore. Catch them in cubes.</p>
+      <div id="title-buttons"></div>
+      <div id="starter-pick" class="hidden">
+        <h2>Choose your first partner</h2>
+        <div id="starters"></div>
+      </div>
+      <div class="controls">
+        <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint · <b>Mouse</b> look<br>
+        <b>Left click</b> break block / battle creature · <b>Right click</b> place block<br>
+        <b>1–8</b> or <b>wheel</b> pick block · <b>E</b> battle targeted creature · <b>P</b> team
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="overlay hidden">
+    <div class="panel">
+      <h2>Paused</h2>
+      <p>Click anywhere to resume</p>
+      <div class="controls">
+        <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
+        <b>Left click</b> break / battle · <b>Right click</b> place<br>
+        <b>1–8</b> / <b>wheel</b> pick block · <b>E</b> battle · <b>P</b> team
+      </div>
+    </div>
+  </div>
+
+  <!-- Team & storage -->
+  <div id="party" class="overlay hidden">
+    <div class="panel wide">
+      <h2>Your Team</h2>
+      <div id="party-list" class="mon-list"></div>
+      <h3>Storage Box</h3>
+      <div id="box-list" class="mon-list"></div>
+      <p class="hint">Press <b>P</b> or <b>Esc</b> to close</p>
+    </div>
+  </div>
+
+  <!-- Battle -->
+  <div id="battle" class="hidden">
+    <div id="b-wild" class="bcard"></div>
+    <div id="b-ally" class="bcard"></div>
+    <div id="b-box">
+      <div id="b-log"></div>
+      <div id="b-actions"></div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
