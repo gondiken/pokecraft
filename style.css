@@ -15,6 +15,10 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   background: #87ceeb;
   color: var(--text);
   font-family: 'VT323', ui-monospace, monospace;
@@ -22,7 +26,8 @@ html, body {
   user-select: none;
 }
 
-#game { display: block; width: 100vw; height: 100vh; }
+#game { display: block; width: 100vw; height: 100vh; touch-action: none; }
+.panel { touch-action: pan-y; }
 
 .hidden { display: none !important; }
 
@@ -197,3 +202,61 @@ button.primary { background: #3b6fd8; }
 }
 
 body.in-battle #hud { display: none; }
+
+/* ---------- touch controls ---------- */
+.touch-only { display: none; }
+body.touch .touch-only { display: block; }
+body.touch span.touch-only { display: inline; }
+body.touch .desktop-only { display: none; }
+
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 5; touch-action: none; }
+#touch > * { pointer-events: auto; }
+body.in-battle #touch { display: none; }
+
+#joystick {
+  position: absolute; left: calc(28px + env(safe-area-inset-left)); bottom: 90px;
+  width: 150px; height: 150px; border-radius: 50%;
+  background: rgba(0,0,0,.25); border: 3px solid rgba(255,255,255,.35);
+  display: flex; align-items: center; justify-content: center; touch-action: none;
+}
+#joy-knob {
+  width: 62px; height: 62px; border-radius: 50%; pointer-events: none;
+  background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.8);
+}
+
+#touch-buttons {
+  position: absolute; right: calc(20px + env(safe-area-inset-right)); bottom: 90px;
+  display: grid; grid-template-columns: 84px 84px; grid-template-rows: auto 84px 84px; gap: 12px;
+  pointer-events: none;
+}
+#touch-buttons button, #touch-top button {
+  pointer-events: auto; touch-action: none;
+  background: rgba(20,22,30,.55); border: 3px solid rgba(255,255,255,.45); color: #fff;
+  font-size: 10px; padding: 0; box-shadow: none;
+}
+#touch-buttons button { width: 84px; height: 84px; border-radius: 50%; }
+#touch-buttons button:active, #touch-buttons button.down { background: rgba(255,255,255,.35); }
+#btn-act {
+  grid-column: span 2; height: 64px !important; width: auto !important; border-radius: 12px !important;
+  background: rgba(59,111,216,.85) !important; font-size: 12px !important;
+}
+#btn-jump { grid-column: 2; grid-row: 3; }
+#btn-place { grid-column: 2; grid-row: 2; }
+#btn-break { grid-column: 1; grid-row: 3; }
+
+#touch-top { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+#touch-top button { height: 48px; min-width: 64px; padding: 0 14px; border-radius: 10px; }
+
+body.touch #hotbar { bottom: calc(10px + env(safe-area-inset-bottom)); }
+body.touch .slot { width: 44px; height: 44px; }
+body.touch #cubes { bottom: 64px; }
+body.touch #prompt { top: calc(50% + 24px); }
+body.touch #b-actions button { font-size: 12px; padding: 12px; }
+body.touch #b-log { font-size: 24px; }
+body.touch .mon .btns button { font-size: 10px; padding: 10px 12px; }
+#party-close { font-size: 12px; }
+
+@media (max-width: 900px) {
+  body.touch #topright { transform: scale(.85); transform-origin: top right; }
+  body.touch #party-mini { transform: scale(.85); transform-origin: top left; }
+}

@@ -69,8 +69,8 @@ export class Npc {
   }
 
   get title() {
-    if (this.kind === 'healer') return `${this.name} · click or E to heal your team`;
-    return `${this.name} (${this.gym.def.name}) · click or E to challenge`;
+    if (this.kind === 'healer') return `${this.name} · heals your team`;
+    return `${this.name} (${this.gym.def.name})`;
   }
 }
 

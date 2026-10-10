@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#14161e">
   <title>PokeCraft</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +33,21 @@
     <div id="hotbar"></div>
   </div>
 
+  <!-- Touch controls (tablets and phones) -->
+  <div id="touch" class="hidden">
+    <div id="joystick"><div id="joy-knob"></div></div>
+    <div id="touch-top">
+      <button id="btn-team">Team</button>
+      <button id="btn-pause">II</button>
+    </div>
+    <div id="touch-buttons">
+      <button id="btn-act" class="hidden"></button>
+      <button id="btn-break">Break</button>
+      <button id="btn-place">Place</button>
+      <button id="btn-jump">Jump</button>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <!-- Title / starter selection -->
@@ -41,10 +60,16 @@
         <h2>Choose your first partner</h2>
         <div id="starters"></div>
       </div>
-      <div class="controls">
+      <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint · <b>Mouse</b> look<br>
         <b>Left click</b> break block / battle creature · <b>Right click</b> place block<br>
         <b>1–9</b> or <b>wheel</b> pick block · <b>E</b> battle creature / talk to people · <b>P</b> team<br>
+        Beat all 8 Gym Leaders to collect every badge!
+      </div>
+      <div class="controls touch-only">
+        <b>Left stick</b> walk (push all the way to run) · <b>Drag</b> right side to look<br>
+        <b>Tap</b> a creature to battle it, or a person to talk<br>
+        <b>Break</b> / <b>Place</b> blocks at the crosshair · tap the bar to pick a block<br>
         Beat all 8 Gym Leaders to collect every badge!
       </div>
     </div>
@@ -54,8 +79,8 @@
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <h2>Paused</h2>
-      <p>Click anywhere to resume</p>
-      <div class="controls">
+      <p><span class="desktop-only">Click</span><span class="touch-only">Tap</span> anywhere to resume</p>
+      <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
         <b>1–9</b> / <b>wheel</b> pick block · <b>E</b> battle / talk · <b>P</b> team
@@ -71,7 +96,7 @@
       <div id="party-list" class="mon-list"></div>
       <h3>Storage Box</h3>
       <div id="box-list" class="mon-list"></div>
-      <p class="hint">Press <b>P</b> or <b>Esc</b> to close</p>
+      <p class="hint"><button id="party-close" class="primary">Close</button><span class="desktop-only"> or press <b>P</b> / <b>Esc</b></span></p>
     </div>
   </div>
 

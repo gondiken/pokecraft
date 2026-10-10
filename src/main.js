@@ -7,6 +7,7 @@ import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } 
 import { Battle } from './battle.js';
 import { NpcManager } from './npc.js';
 import { GYMS } from './gyms.js';
+import { TouchControls } from './touch.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -195,19 +196,78 @@ function begin() {
   titleEl.classList.add('hidden');
   hudEl.classList.remove('hidden');
   game.ui.renderHud();
-  lockPointer();
+  if (touchMode) {
+    document.getElementById('touch').classList.remove('hidden');
+    goFullscreen();
+  }
+  resume();
   save();
 }
 
 /* --------------------------------- input --------------------------------- */
 
 let locked = false;
+// Touch mode: on-screen controls instead of pointer lock. Turns on for touch screens,
+// or the first time someone touches the screen.
+let touchMode = false;
 
-function lockPointer() {
+function setTouchMode(on) {
+  if (touchMode === on) return;
+  touchMode = on;
+  document.body.classList.toggle('touch', on);
+  document.getElementById('touch').classList.toggle('hidden', !on || !game.started);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, on ? 1.5 : 2));
+}
+
+function goFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req || document.fullscreenElement || document.webkitFullscreenElement) return;
+  try {
+    const r = req.call(el);
+    if (r && r.catch) r.catch(() => {});
+  } catch { /* not allowed here; the game works without it */ }
+}
+
+// True while the player is walking around (not paused, in a menu or in a battle).
+function playing() {
+  if (!game.started || game.inBattle || game.ui.panelOpen) return false;
+  return touchMode ? pauseEl.classList.contains('hidden') : locked;
+}
+
+function resume() {
+  if (touchMode) { pauseEl.classList.add('hidden'); return; }
   try {
     const r = canvas.requestPointerLock();
     if (r && r.catch) r.catch(() => pauseEl.classList.remove('hidden'));
   } catch { pauseEl.classList.remove('hidden'); }
+}
+
+// After a menu or battle: touch players carry on straight away, mouse players click to re-lock.
+function afterOverlay() {
+  if (touchMode) pauseEl.classList.add('hidden');
+  else pauseEl.classList.remove('hidden');
+}
+
+function pause() {
+  if (locked) document.exitPointerLock();
+  game.player.keys = {};
+  game.touch.reset();
+  pauseEl.classList.remove('hidden');
+}
+
+function toggleTeam() {
+  if (game.inBattle) return;
+  if (game.ui.panelOpen) {
+    game.ui.closePanel();
+    afterOverlay();
+  } else {
+    game.player.keys = {};
+    game.touch.reset();
+    game.ui.openPanel();
+    if (locked) document.exitPointerLock();
+    pauseEl.classList.add('hidden');
+  }
 }
 
 document.addEventListener('pointerlockchange', () => {
@@ -219,9 +279,13 @@ document.addEventListener('pointerlockchange', () => {
   }
 });
 
-pauseEl.addEventListener('click', lockPointer);
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') setTouchMode(true); }, true);
+if (window.matchMedia('(pointer: coarse)').matches) setTouchMode(true);
+
+pauseEl.addEventListener('click', resume);
+document.getElementById('party-close').addEventListener('click', toggleTeam);
 canvas.addEventListener('click', () => {
-  if (game.started && !locked && !game.inBattle && !game.ui.panelOpen) lockPointer();
+  if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();
 });
 
 document.addEventListener('mousemove', e => {
@@ -232,28 +296,17 @@ document.addEventListener('keydown', e => {
   if (!game.started) return;
   if (e.code === 'KeyP' || e.code === 'Tab' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
-    if (game.inBattle) return;
-    if (game.ui.panelOpen) {
-      game.ui.closePanel();
-      pauseEl.classList.remove('hidden');
-    } else {
-      game.ui.openPanel();
-      if (locked) document.exitPointerLock();
-      pauseEl.classList.add('hidden');
-    }
+    toggleTeam();
     return;
   }
-  if (!locked || game.inBattle) return;
+  if (!playing()) return;
   if (e.code === 'Space') e.preventDefault();
   game.player.keys[e.code] = true;
   if (e.code.startsWith('Digit')) {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < HOTBAR.length) { game.selected = n; game.ui.renderHud(); }
   }
-  if (e.code === 'KeyE') {
-    if (target.npc) talkTo(target.npc);
-    else if (target.wild) startBattle({ wild: target.wild });
-  }
+  if (e.code === 'KeyE') interact();
 });
 
 document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.code] = false; });
@@ -268,31 +321,71 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 
 document.addEventListener('mousedown', e => {
   if (!locked || game.inBattle) return;
-  const world = game.world;
   if (e.button === 0) {
-    if (target.npc) { talkTo(target.npc); return; }
-    if (target.wild) { startBattle({ wild: target.wild }); return; }
-    const hit = target.block;
-    if (!hit || hit.y === 0) return;
-    world.set(hit.x, hit.y, hit.z, B.AIR);
-    // Water flows into the hole if it borders water.
-    for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
-      if (world.get(hit.x + dx, hit.y + dy, hit.z + dz) === B.WATER) { world.set(hit.x, hit.y, hit.z, B.WATER); break; }
-    }
-    if (hit.id === B.LEAVES && Math.random() < 0.1) {
-      game.cubes++;
-      game.ui.renderHud();
-      game.ui.toast('You found a Capture Cube in the leaves!');
-    }
+    if (!interact()) breakBlock();
   } else if (e.button === 2) {
-    const hit = target.block;
-    if (!hit) return;
-    const x = hit.x + hit.normal[0], y = hit.y + hit.normal[1], z = hit.z + hit.normal[2];
-    const cur = world.get(x, y, z);
-    if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
-    if (game.player.overlapsBlock(x, y, z)) return;
-    world.set(x, y, z, HOTBAR[game.selected]);
+    placeBlock();
   }
+});
+
+// Battle the targeted creature or talk to the targeted person. Returns false if nothing is targeted.
+function interact() {
+  if (target.npc) { talkTo(target.npc); return true; }
+  if (target.wild) { startBattle({ wild: target.wild }); return true; }
+  return false;
+}
+
+function breakBlock() {
+  const world = game.world;
+  const hit = target.block;
+  if (!hit || hit.y === 0) return;
+  world.set(hit.x, hit.y, hit.z, B.AIR);
+  // Water flows into the hole if it borders water.
+  for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
+    if (world.get(hit.x + dx, hit.y + dy, hit.z + dz) === B.WATER) { world.set(hit.x, hit.y, hit.z, B.WATER); break; }
+  }
+  if (hit.id === B.LEAVES && Math.random() < 0.1) {
+    game.cubes++;
+    game.ui.renderHud();
+    game.ui.toast('You found a Capture Cube in the leaves!');
+  }
+}
+
+function placeBlock() {
+  const world = game.world;
+  const hit = target.block;
+  if (!hit) return;
+  const x = hit.x + hit.normal[0], y = hit.y + hit.normal[1], z = hit.z + hit.normal[2];
+  const cur = world.get(x, y, z);
+  if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
+  if (game.player.overlapsBlock(x, y, z)) return;
+  world.set(x, y, z, HOTBAR[game.selected]);
+}
+
+// Tapping the screen: battle or talk to whatever creature or person is under the finger.
+const tapRay = new THREE.Raycaster();
+function tapAt(x, y) {
+  if (!playing()) return;
+  tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
+  const { origin, direction } = tapRay.ray;
+  const reach = REACH + 4;
+  const npc = game.npcs.pick(origin, direction, reach);
+  const wild = game.creatures.pick(origin, direction, reach);
+  const block = raycastVoxel(game.world, origin, direction, reach);
+  const wall = block ? block.t : Infinity;
+  if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
+  else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
+}
+
+game.touch = new TouchControls(game, canvas, {
+  canPlay: playing,
+  jump: down => { game.player.keys.Space = down && playing(); },
+  breakBlock: () => { if (playing()) breakBlock(); },
+  place: () => { if (playing()) placeBlock(); },
+  interact: () => { if (playing()) interact(); },
+  team: toggleTeam,
+  pause,
+  tapAt,
 });
 
 /* -------------------------------- battles -------------------------------- */
@@ -340,6 +433,7 @@ function startBattle(opts) {
   pauseEl.classList.add('hidden');
   document.body.classList.add('in-battle');
   game.player.keys = {};
+  game.touch.reset();
   highlight.visible = false;
   game.ui.setPrompt('');
   if (locked) document.exitPointerLock();
@@ -374,7 +468,7 @@ game.onBattleEnd = (result, opts) => {
   }
   game.ui.renderHud();
   save();
-  pauseEl.classList.remove('hidden');
+  afterOverlay();
 };
 
 /* ------------------------------- main loop ------------------------------- */
@@ -444,9 +538,12 @@ function updateTarget() {
     highlight.visible = true;
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
-  game.ui.setPrompt(target.npc ? target.npc.title
-    : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · click or E to battle`
+  const how = touchMode ? 'tap' : 'click or E';
+  game.ui.setPrompt(target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
+    : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : '');
+  game.touch.setAction(target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
+    : target.wild ? `Battle ${target.wild.species.name}!` : '');
 }
 
 function frame(now) {
@@ -461,7 +558,8 @@ function frame(now) {
     camera.lookAt(WORLD_W / 2, 14, WORLD_D / 2);
     game.creatures.update(dt, new THREE.Vector3(WORLD_W / 2, 0, WORLD_D / 2), game.spawnPoint);
   } else {
-    if (locked && !game.inBattle) p.update(dt);
+    p.joy = game.touch.joy;
+    if (playing()) p.update(dt);
     if (p.pos.y < -20) { p.pos.copy(game.spawnPoint); p.vel.set(0, 0, 0); }
     game.world.updateDirty();
     game.creatures.update(dt, p.pos, game.spawnPoint, game.night);

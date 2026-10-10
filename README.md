@@ -19,6 +19,15 @@ Then open <http://localhost:8000> in a desktop browser.
 
 The game is fully static, so it also works on GitHub Pages: enable Pages for the branch and open the URL.
 
+### On a tablet
+
+The game works on iPads and Android tablets with touch controls, which turn on automatically. You can get it onto a tablet in two ways:
+
+- **GitHub Pages** (easiest): enable Pages for this repo and open the URL on the tablet.
+- **From your computer**: start the server with `python3 -m http.server 8000`, find your computer's local IP address (for example `192.168.1.20`), and open `http://192.168.1.20:8000` on the tablet. Both devices must be on the same Wi-Fi.
+
+On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experience.
+
 ## Controls
 
 | Input | Action |
@@ -33,6 +42,18 @@ The game is fully static, so it also works on GitHub Pages: enable Pages for the
 | E | Battle the targeted creature, or talk to a person |
 | P / Tab | Team & storage screen |
 | Esc | Pause |
+
+On a tablet:
+
+| Touch | Action |
+| --- | --- |
+| Left joystick | Walk (push all the way to run) |
+| Drag on the right side | Look around |
+| Tap a creature or person | Battle it, or talk to them |
+| Battle / Challenge / Heal button | Same as tapping the creature or person under the crosshair |
+| Break / Place / Jump buttons | Break or place a block at the crosshair, jump or swim up |
+| Tap the hotbar | Pick a block |
+| Team / II buttons | Team screen / pause |
 
 ## Features
 
@@ -78,5 +99,6 @@ The top-right corner shows your badges and points you to the next gym. Gyms get 
 | `src/creatures.js` | Wild creature spawning and wandering AI |
 | `src/battle.js` | Battle flow, animations, catching |
 | `src/ui.js` | HUD, team screen, creature portraits |
+| `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, buttons |
 
 All creatures, names and art are original. To add a creature, add an entry to `SPECIES` in `src/species.js` and list it in a biome in `SPAWNS`. To change a gym, edit its entry in `src/gyms.js`.

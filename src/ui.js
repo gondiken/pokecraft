@@ -54,7 +54,10 @@ export class UI {
 
   buildHotbar() {
     this.slots = HOTBAR.map((id, i) => {
-      const slot = el('div', { class: 'slot', title: BLOCKS[id].name }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1));
+      const slot = el('div', {
+        class: 'slot', title: BLOCKS[id].name,
+        onpointerdown: e => { e.preventDefault(); this.game.selected = i; this.renderHud(); },
+      }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1));
       this.hotbar.append(slot);
       return slot;
     });

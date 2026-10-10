@@ -80,8 +80,16 @@ export class Player {
 
   update(dt) {
     const k = this.keys;
-    const f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
-    const s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
+    let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
+    let s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
+    // Touch joystick: analog speed, and pushing it all the way sprints.
+    let analog = 1, stickSprint = false;
+    const j = this.joy;
+    if (j && Math.hypot(j.x, j.y) > 0.15) {
+      f = -j.y; s = j.x;
+      analog = Math.min(1, Math.hypot(j.x, j.y));
+      stickSprint = analog > 0.95;
+    }
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let wx = -sin * f + cos * s;
     let wz = -cos * f - sin * s;
@@ -89,7 +97,7 @@ export class Player {
     if (len > 0) { wx /= len; wz /= len; }
 
     const water = this.inWater;
-    let speed = k.ShiftLeft || k.ShiftRight ? 6.2 : 4.3;
+    let speed = (k.ShiftLeft || k.ShiftRight || stickSprint ? 6.2 : 4.3) * analog;
     if (water) speed *= 0.55;
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
