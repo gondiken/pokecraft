@@ -6,13 +6,23 @@ export const TILE = 16;
 export const T = {
   GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
   LOG_SIDE: 6, LOG_TOP: 7, LEAVES: 8, PLANKS: 9, COBBLE: 10,
+  SNOW: 11, SNOW_SIDE: 12, BRICK: 13, WOOL0: 14,
 };
-export const TILE_COUNT = 11;
+
+// Coloured "wool" blocks, one per creature type, used for gym roofs and carpets.
+export const WOOL_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost'];
+const WOOL_RGB = {
+  normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
+  rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
+};
+export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length;
 
 export const B = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
-  LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9,
+  LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9, SNOW: 10, BRICK: 11,
 };
+// Block id of each type's wool block.
+export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
 export const BLOCKS = {
@@ -25,9 +35,12 @@ export const BLOCKS = {
   [B.LEAVES]: { name: 'Leaves', ...all(T.LEAVES) },
   [B.PLANKS]: { name: 'Planks', ...all(T.PLANKS) },
   [B.COBBLE]: { name: 'Cobblestone', ...all(T.COBBLE) },
+  [B.SNOW]: { name: 'Snow', top: T.SNOW, side: T.SNOW_SIDE, bottom: T.STONE },
+  [B.BRICK]: { name: 'Brick', ...all(T.BRICK) },
 };
+WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
-export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.LEAVES, B.SAND];
+export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.LEAVES, B.SAND, B.BRICK];
 
 // Blocks that hide the faces of their neighbours.
 export const isOccluder = id => id !== B.AIR && id !== B.WATER && id !== B.LEAVES;
@@ -121,6 +134,22 @@ export function drawAtlas() {
     const mortar = d2 - d1 < 1.1;
     put(T.COBBLE, x, y, shade([122, 122, 122], mortar ? 0.55 : best * (1 + (rand() - 0.5) * 0.15)));
   });
+
+  noisy(T.SNOW, [240, 246, 250], 0.06);
+  const snowEdge = Array.from({ length: TILE }, () => 3 + ((rand() * 3) | 0));
+  each((x, y) => put(T.SNOW_SIDE, x, y,
+    y < snowEdge[x] ? shade([240, 246, 250], 1 + (rand() - 0.5) * 0.06) : shade(STONE, 1 + (rand() - 0.5) * 0.22)));
+
+  each((x, y) => {
+    const row = Math.floor(y / 4);
+    const mortar = y % 4 === 3 || (x + (row % 2) * 4) % 8 === 0;
+    put(T.BRICK, x, y, mortar ? [200, 196, 186] : shade([160, 70, 50], 1 + (rand() - 0.5) * 0.2));
+  });
+
+  WOOL_TYPES.forEach((t, i) => each((x, y) => {
+    const f = (1 + (rand() - 0.5) * 0.12) * ((x + y) % 4 === 0 ? 0.92 : 1);
+    put(T.WOOL0 + i, x, y, shade(WOOL_RGB[t], f));
+  }));
 
   return c;
 }

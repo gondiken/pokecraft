@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
-  xpForLevel, buildModel, tintModel, disposeModel,
+  xpForLevel, buildModel, tintModel, disposeModel, makeCreature,
 } from './species.js';
+import { B, isSolid } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 
 const PARTY_MAX = 6;
@@ -23,6 +24,20 @@ export class Battle {
   }
 
   get ally() { return this.game.party[this.allyIdx]; }
+  get foe() { return this.foes[this.foeIdx]; }
+  get foeLabel() { return this.trainer ? 'Foe' : 'Wild'; }
+
+  // Standing height at (x, z), searching down from fromY so creatures stay inside buildings.
+  groundBelow(x, z, fromY) {
+    const world = this.game.world;
+    const xi = Math.floor(x), zi = Math.floor(z);
+    for (let y = Math.floor(fromY) + 1; y >= 0; y--) {
+      const id = world.get(xi, y, zi);
+      if (id === B.WATER) return y + 0.55;
+      if (isSolid(id)) return y + 1;
+    }
+    return fromY;
+  }
 
   say(text, ms = 1300) {
     this.log.textContent = text;
@@ -80,12 +95,13 @@ export class Battle {
         };
       });
       const canSwitch = g.party.some((c, i) => i !== this.allyIdx && c.hp > 0);
+      const trainer = !!this.trainer;
       const choice = await this.choose([
         ...moves,
         { row: [
-          { label: `Cube x${g.cubes}`, value: { kind: 'catch' }, disabled: g.cubes <= 0, cls: 'primary' },
+          { label: trainer ? 'Cube' : `Cube x${g.cubes}`, value: { kind: 'catch' }, disabled: trainer || g.cubes <= 0, cls: 'primary' },
           { label: 'Switch', value: { kind: 'switch' }, disabled: !canSwitch },
-          { label: 'Run', value: { kind: 'run' } },
+          { label: 'Run', value: { kind: 'run' }, disabled: trainer },
         ] },
       ]);
       if (choice.kind !== 'switch') return choice;
@@ -110,12 +126,13 @@ export class Battle {
     const g = this.game;
     if (this.allyModel) { g.scene.remove(this.allyModel); disposeModel(this.allyModel); }
     const p = g.player.pos;
-    const w = this.wild.pos;
-    const dir = new THREE.Vector3(w.x - p.x, 0, w.z - p.z).normalize();
+    const w = this.foePos;
+    const dir = new THREE.Vector3(w.x - p.x, 0, w.z - p.z);
+    const gap = dir.length();
+    dir.normalize();
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
-    const pos = p.clone().addScaledVector(dir, 2.6).addScaledVector(right, 1.3);
-    const gy = g.creatures.groundY(pos.x, pos.z, SPECIES[this.ally.species]);
-    pos.y = gy ?? p.y;
+    const pos = p.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, 1.5);
+    pos.y = this.groundBelow(pos.x, pos.z, p.y + 1);
     const model = buildModel(this.ally.species);
     model.position.copy(pos);
     model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
@@ -125,7 +142,44 @@ export class Battle {
     return tween(300, t => model.scale.setScalar(easeOut(t)));
   }
 
-  modelOf(side) { return side === 'ally' ? this.allyModel : this.wild.model; }
+  // Back the player away so both creatures fit on screen.
+  stepBack(from, want = 5) {
+    const p = this.game.player;
+    const dir = new THREE.Vector3(p.pos.x - from.x, 0, p.pos.z - from.z);
+    if (dir.lengthSq() < 0.01) dir.set(1, 0, 0);
+    dir.normalize();
+    for (let i = 0; i < 40 && Math.hypot(p.pos.x - from.x, p.pos.z - from.z) < want; i++) {
+      const next = p.pos.clone().addScaledVector(dir, 0.1);
+      if (p.collides(next)) break;
+      p.pos.copy(next);
+    }
+  }
+
+  modelOf(side) { return side === 'ally' ? this.allyModel : this.foeModel; }
+
+  // Trainer battles: put the trainer's current creature between them and the player.
+  async sendOutFoe() {
+    const g = this.game;
+    const npc = this.trainer;
+    if (this.foeModel) { g.scene.remove(this.foeModel); disposeModel(this.foeModel); }
+    const p = g.player.pos;
+    const dir = new THREE.Vector3(p.x - npc.pos.x, 0, p.z - npc.pos.z);
+    const dist = dir.length();
+    dir.normalize();
+    const pos = npc.pos.clone().addScaledVector(dir, Math.min(2.2, dist * 0.4));
+    pos.y = this.groundBelow(pos.x, pos.z, npc.pos.y + 0.5);
+    const model = buildModel(this.foe.species);
+    model.position.copy(pos);
+    model.rotation.y = Math.atan2(p.x - pos.x, p.z - pos.z);
+    model.scale.setScalar(0.01);
+    g.scene.add(model);
+    this.foeModel = model;
+    this.foePos = pos;
+    this.refresh();
+    this.say(`${npc.name} sent out ${nameOf(this.foe)}!`, 1200);
+    await tween(300, t => model.scale.setScalar(easeOut(t)));
+    await wait(900);
+  }
 
   async lunge(side) {
     const a = this.modelOf(side), b = this.modelOf(side === 'ally' ? 'foe' : 'ally');
@@ -148,20 +202,40 @@ export class Battle {
 
   /* ------------------------------ battle flow ------------------------------ */
 
-  async start(wild) {
+  // opts is { wild } for a wild creature, or { trainer, team, intro } for a trainer battle.
+  async start(opts) {
     const g = this.game;
     this.active = true;
-    this.wild = wild;
-    this.foe = wild.data;
-    wild.frozen = true;
-    wild.face(g.player.pos);
-    g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
+    this.wild = opts.wild || null;
+    this.trainer = opts.trainer || null;
+    this.foeModel = null;
+    this.foeIdx = 0;
     this.allyIdx = g.party.findIndex(c => c.hp > 0);
     this.root.classList.remove('hidden');
-    this.refresh();
     this.actions.replaceChildren();
 
-    await this.say(`A wild ${nameOf(this.foe)} appeared!`);
+    if (this.wild) {
+      const wild = this.wild;
+      this.foes = [wild.data];
+      wild.frozen = true;
+      wild.face(g.player.pos);
+      this.foeModel = wild.model;
+      this.foePos = wild.pos;
+      this.stepBack(wild.pos, 4.5);
+      g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
+      this.refresh();
+      await this.say(`A wild ${nameOf(this.foe)} appeared!`);
+    } else {
+      const npc = this.trainer;
+      this.foes = opts.team.map(([species, level]) => makeCreature(species, level));
+      this.stepBack(npc.pos, 5.5);
+      g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2, npc.pos.z));
+      this.foePos = npc.pos;
+      this.refresh();
+      for (const line of opts.intro || []) await this.say(`${npc.name}: ${line}`, 2400);
+      await this.say(`${npc.name} wants to battle! (${this.foes.length} creatures)`, 1600);
+      await this.sendOutFoe();
+    }
     await this.placeAlly();
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
 
@@ -175,10 +249,15 @@ export class Battle {
       g.scene.remove(m); disposeModel(m);
       this.allyModel = null;
     }
-    if (result === 'caught' || result === 'won') g.creatures.remove(wild);
-    else wild.frozen = false;
+    if (this.wild) {
+      if (result === 'caught' || result === 'won') g.creatures.remove(this.wild);
+      else this.wild.frozen = false;
+    } else if (this.foeModel) {
+      g.scene.remove(this.foeModel); disposeModel(this.foeModel);
+    }
+    this.foeModel = null;
     this.active = false;
-    g.onBattleEnd(result);
+    g.onBattleEnd(result, opts);
   }
 
   async turn() {
@@ -218,7 +297,7 @@ export class Battle {
       : [['foe', foeMove], ['ally', action.move]];
     for (const [side, move] of order) {
       await this.useMove(side, move);
-      if (this.foe.hp <= 0) return this.win();
+      if (this.foe.hp <= 0) return this.foeFainted();
       if (this.ally.hp <= 0) return this.allyFainted();
     }
     return null;
@@ -241,7 +320,7 @@ export class Battle {
     const atk = side === 'ally' ? this.ally : this.foe;
     const def = side === 'ally' ? this.foe : this.ally;
     const mv = MOVES[moveId];
-    const who = side === 'foe' ? `Wild ${nameOf(atk)}` : nameOf(atk);
+    const who = side === 'foe' ? `${this.foeLabel} ${nameOf(atk)}` : nameOf(atk);
     this.say(`${who} used ${mv.name}!`, 700);
     await this.lunge(side);
     await wait(150);
@@ -258,7 +337,8 @@ export class Battle {
     this.refresh();
     await wait(450);
     if (crit > 1) await this.say('A critical hit!', 900);
-    if (eff > 1) await this.say("It's super effective!", 1000);
+    if (eff === 0) await this.say(`It doesn't affect ${nameOf(def)}...`, 1100);
+    else if (eff > 1) await this.say("It's super effective!", 1000);
     else if (eff < 1) await this.say("It's not very effective...", 1000);
   }
 
@@ -268,11 +348,26 @@ export class Battle {
     model.visible = false;
   }
 
-  async win() {
+  async foeFainted() {
     const g = this.game;
-    await this.faintModel(this.wild.model);
-    await this.say(`Wild ${nameOf(this.foe)} fainted!`);
-    const xp = Math.floor((SPECIES[this.foe.species].baseXp * this.foe.level) / 5);
+    await this.faintModel(this.foeModel);
+    await this.say(`${this.foeLabel} ${nameOf(this.foe)} fainted!`);
+    const xp = Math.floor((SPECIES[this.foe.species].baseXp * this.foe.level) / 5 * (this.trainer ? 1.5 : 1));
+    await this.giveXp(xp);
+    if (this.trainer && this.foeIdx < this.foes.length - 1) {
+      this.foeIdx++;
+      await this.sendOutFoe();
+      return null;
+    }
+    if (!this.trainer && Math.random() < 0.5) {
+      g.cubes++;
+      await this.say('You found a Capture Cube!', 1000);
+    }
+    return 'won';
+  }
+
+  // The active creature gets full XP; the rest of the healthy team shares half.
+  async giveXp(xp) {
     await this.say(`${nameOf(this.ally)} gained ${xp} XP!`, 1000);
     const { msgs, evolved } = gainXp(this.ally, xp);
     this.refresh();
@@ -280,11 +375,11 @@ export class Battle {
       if (evolved && m.includes('evolved into')) await this.evolveAnimation();
       await this.say(m, 1400);
     }
-    if (Math.random() < 0.5) {
-      g.cubes++;
-      await this.say('You found a Capture Cube!', 1000);
-    }
-    return 'won';
+    const others = this.game.party.filter((c, i) => i !== this.allyIdx && c.hp > 0);
+    if (!others.length) return;
+    const share = Math.max(1, Math.floor(xp / 2));
+    await this.say(`The rest of your team gained ${share} XP.`, 1000);
+    for (const c of others) for (const m of gainXp(c, share).msgs) await this.say(m, 1300);
   }
 
   async evolveAnimation() {
@@ -301,6 +396,7 @@ export class Battle {
     await this.faintModel(this.allyModel);
     await this.say(`${nameOf(this.ally)} fainted!`);
     if (!this.game.party.some(c => c.hp > 0)) {
+      if (this.trainer) await this.say(`You lost to ${this.trainer.name}...`);
       await this.say('Your whole team is worn out...');
       await this.say('You hurry back to your starting point to rest.');
       return 'lost';
@@ -315,10 +411,10 @@ export class Battle {
 
   async throwCube() {
     const g = this.game;
-    const target = this.wild.model;
+    const target = this.foeModel;
     const cube = makeCubeMesh();
     const from = g.player.eyePos.add(new THREE.Vector3(0, -0.3, 0));
-    const to = this.wild.pos.clone().add(new THREE.Vector3(0, 0.6, 0));
+    const to = this.foePos.clone().add(new THREE.Vector3(0, 0.6, 0));
     g.scene.add(cube);
     this.say('You threw a Capture Cube!', 700);
     await tween(550, t => {
@@ -329,7 +425,7 @@ export class Battle {
     tintModel(target, 0xffffff);
     await tween(300, t => target.scale.setScalar(1 - t));
     target.visible = false;
-    const ground = this.wild.pos.y + 0.15;
+    const ground = this.foePos.y + 0.15;
     await tween(250, t => { cube.position.y = to.y + (ground - to.y) * t; cube.rotation.set(0, 0, 0); });
 
     const st = statsFor(this.foe);

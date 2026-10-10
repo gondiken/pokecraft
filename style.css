@@ -101,9 +101,19 @@ button.primary { background: #3b6fd8; }
 }
 #prompt:empty { display: none; }
 
-#clock {
-  position: fixed; top: 12px; right: 12px; background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 20px;
+#topright {
+  position: fixed; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
 }
+#clock, #guide { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 20px; }
+#badges { display: flex; gap: 3px; background: rgba(0,0,0,.45); padding: 4px 6px; }
+.badge {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
+  transform: rotate(45deg); margin: 2px;
+}
+.badge.got { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,.6); }
+#badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.badge-card { display: flex; align-items: center; gap: 8px; background: #2a2e3d; padding: 4px 10px 4px 6px; font-size: 18px; }
+.badge-card.missing { opacity: .45; }
 
 #hotbar {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);

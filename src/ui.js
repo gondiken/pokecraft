@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { HOTBAR, BLOCKS, drawBlockIcon } from './blocks.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
+import { GYMS } from './gyms.js';
 
 let portraitRenderer = null;
 const portraitCache = new Map();
@@ -45,6 +46,8 @@ export class UI {
     this.toastBox = document.getElementById('toast');
     this.promptEl = document.getElementById('prompt');
     this.clock = document.getElementById('clock');
+    this.guide = document.getElementById('guide');
+    this.badgeRow = document.getElementById('badges');
     this.partyPanel = document.getElementById('party');
     this.buildHotbar();
   }
@@ -61,6 +64,11 @@ export class UI {
     const g = this.game;
     this.slots.forEach((s, i) => s.classList.toggle('sel', i === g.selected));
     this.cubes.textContent = `Capture Cubes: ${g.cubes}`;
+    const key = g.badges.join();
+    if (this.badgeKey !== key) {
+      this.badgeKey = key;
+      this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
+    }
     this.partyMini.replaceChildren(...g.party.map((c, i) => {
       const st = statsFor(c);
       const frac = c.hp / st.maxHp;
@@ -72,6 +80,17 @@ export class UI {
 
   setPrompt(text) {
     if (this.promptEl.textContent !== text) this.promptEl.textContent = text;
+  }
+
+  badgeIcon(gym, got) {
+    return el('div', {
+      class: `badge${got ? ' got' : ''}`, title: got ? gym.badge : `${gym.badge} (not earned yet)`,
+      style: got ? `background:${TYPE_COLORS[gym.type]}` : '',
+    });
+  }
+
+  setGuide(text) {
+    if (this.guide.textContent !== text) this.guide.textContent = text;
   }
 
   setClock(text) {
@@ -112,6 +131,11 @@ export class UI {
 
   refreshPanel() {
     const g = this.game;
+    document.getElementById('badge-list').replaceChildren(...GYMS.map(gym => {
+      const got = g.badges.includes(gym.id);
+      return el('div', { class: `badge-card${got ? '' : ' missing'}` }, this.badgeIcon(gym, got),
+        got ? gym.badge : `${gym.name} (${gym.type})`);
+    }));
     document.getElementById('party-list').replaceChildren(...g.party.map((c, i) => this.monCard(c, i, true)));
     const box = document.getElementById('box-list');
     box.replaceChildren(...(g.box.length

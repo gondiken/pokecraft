@@ -19,7 +19,11 @@
   <div id="hud" class="hidden">
     <div id="crosshair"></div>
     <div id="prompt"></div>
-    <div id="clock"></div>
+    <div id="topright">
+      <div id="clock"></div>
+      <div id="badges"></div>
+      <div id="guide"></div>
+    </div>
     <div id="party-mini"></div>
     <div id="cubes"></div>
     <div id="hotbar"></div>
@@ -40,7 +44,8 @@
       <div class="controls">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint · <b>Mouse</b> look<br>
         <b>Left click</b> break block / battle creature · <b>Right click</b> place block<br>
-        <b>1–8</b> or <b>wheel</b> pick block · <b>E</b> battle targeted creature · <b>P</b> team
+        <b>1–9</b> or <b>wheel</b> pick block · <b>E</b> battle creature / talk to people · <b>P</b> team<br>
+        Beat all 8 Gym Leaders to collect every badge!
       </div>
     </div>
   </div>
@@ -53,7 +58,7 @@
       <div class="controls">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
-        <b>1–8</b> / <b>wheel</b> pick block · <b>E</b> battle · <b>P</b> team
+        <b>1–9</b> / <b>wheel</b> pick block · <b>E</b> battle / talk · <b>P</b> team
       </div>
     </div>
   </div>
@@ -62,6 +67,7 @@
   <div id="party" class="overlay hidden">
     <div class="panel wide">
       <h2>Your Team</h2>
+      <div id="badge-list"></div>
       <div id="party-list" class="mon-list"></div>
       <h3>Storage Box</h3>
       <div id="box-list" class="mon-list"></div>

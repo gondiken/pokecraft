@@ -1,9 +1,10 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
-import { B, BLOCKS, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
+import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
+import { GYMS } from './gyms.js';
 
-export const WORLD_W = 128;
-export const WORLD_D = 128;
+export const WORLD_W = 192;
+export const WORLD_D = 192;
 export const WORLD_H = 48;
 export const CHUNK = 16;
 export const WATER_LEVEL = 12;
@@ -56,6 +57,7 @@ export class World {
     this.edits = new Map();
     this.dirty = new Set();
     this.meshes = new Map();
+    this.gyms = [];
   }
 
   index(x, y, z) { return x + WORLD_W * (z + WORLD_D * y); }
@@ -103,10 +105,11 @@ export class World {
         const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
         const beach = h <= WATER_LEVEL + 1;
         const rocky = h >= 25;
+        const snowy = h >= 29;
         for (let y = 0; y <= Math.max(h, WATER_LEVEL); y++) {
           let id;
           if (y > h) id = B.WATER;
-          else if (y === h) id = beach ? B.SAND : rocky ? B.STONE : B.GRASS;
+          else if (y === h) id = beach ? B.SAND : snowy ? B.SNOW : rocky ? B.STONE : B.GRASS;
           else if (y > h - 4) id = beach ? B.SAND : rocky ? B.STONE : B.DIRT;
           else id = B.STONE;
           this.data[this.index(x, y, z)] = id;
@@ -123,6 +126,102 @@ export class World {
         this.placeTree(x, s.y + 1, z);
       }
     }
+    this.placeGyms();
+  }
+
+  // Gyms sit on a spiral around the middle of the map, each one further out than the last.
+  placeGyms() {
+    const cx = WORLD_W / 2, cz = WORLD_D / 2;
+    const offset = hash2(1, 2, this.seed) * Math.PI * 2;
+    this.gyms = GYMS.map((def, i) => {
+      const angle = offset + i * 2.4;
+      const r = 20 + i * 9;
+      const x = Math.round(cx + Math.cos(angle) * r);
+      const z = Math.round(cz + Math.sin(angle) * r);
+      // The door faces the middle of the map, along whichever axis is closer.
+      const dx = cx - x, dz = cz - z;
+      const front = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];
+      const floor = Math.max(WATER_LEVEL + 1, Math.min(this.terrainHeight(x, z), 26));
+      this.buildGym(x, floor, z, front, def.type);
+      const at = d => [x + front[0] * d + 0.5, z + front[1] * d + 0.5];
+      const [lx, lz] = at(-4), [tx, tz] = at(1);
+      return {
+        def, x, z, y: floor + 1, front,
+        leaderPos: [lx, floor + 1, lz], trainerPos: [tx + front[1] * 2, floor + 1, tz + front[0] * 2],
+      };
+    });
+  }
+
+  buildGym(x0, fy, z0, front, type) {
+    const R = 6; // half-size of the building
+    const wool = WOOL[type];
+    // Clear nearby trees so nothing hangs over the building or blocks the door.
+    for (let dx = -R - 5; dx <= R + 5; dx++) {
+      for (let dz = -R - 5; dz <= R + 5; dz++) {
+        for (let y = 1; y < WORLD_H; y++) {
+          const id = this.get(x0 + dx, y, z0 + dz);
+          if (id === B.LOG || id === B.LEAVES) this.set(x0 + dx, y, z0 + dz, B.AIR, false);
+        }
+      }
+    }
+    // Slope the surrounding ground towards the gym so it is never buried in a hill or stuck on a cliff.
+    const M = R + 9;
+    for (let dx = -M; dx <= M; dx++) {
+      for (let dz = -M; dz <= M; dz++) {
+        const x = x0 + dx, z = z0 + dz;
+        const slope = Math.max(Math.abs(dx), Math.abs(dz)) - (R + 2);
+        if (slope <= 0 || !this.inBounds(x, 0, z)) continue;
+        const s = this.surface(x, z);
+        const top = fy + slope, bottom = fy - slope;
+        if (s.y > top) {
+          for (let y = top + 1; y <= s.y; y++) this.set(x, y, z, B.AIR, false);
+          if (isSolid(this.get(x, top, z))) this.set(x, top, z, top >= 29 ? B.SNOW : B.GRASS, false);
+        } else if (s.y < bottom && s.id !== B.WATER) {
+          for (let y = s.y; y < bottom; y++) this.set(x, y, z, B.DIRT, false);
+          this.set(x, bottom, z, B.GRASS, false);
+        }
+      }
+    }
+    for (let dx = -R - 2; dx <= R + 2; dx++) {
+      for (let dz = -R - 2; dz <= R + 2; dz++) {
+        const x = x0 + dx, z = z0 + dz;
+        if (!this.inBounds(x, 0, z)) continue;
+        // Solid foundation and a cleared space above.
+        for (let y = 1; y < fy; y++) if (!isSolid(this.get(x, y, z))) this.set(x, y, z, B.STONE, false);
+        for (let y = fy + 1; y < WORLD_H; y++) this.set(x, y, z, B.AIR, false);
+        const inside = Math.abs(dx) <= R && Math.abs(dz) <= R;
+        if (!inside) { this.set(x, fy, z, B.GRASS, false); continue; }
+        const edge = Math.abs(dx) === R || Math.abs(dz) === R;
+        const corner = Math.abs(dx) === R && Math.abs(dz) === R;
+        // Carpet runs from the door to the leader.
+        const along = front[0] ? dz : dx;
+        this.set(x, fy, z, !edge && along === 0 ? wool : B.PLANKS, false);
+        if (edge) for (let y = fy + 1; y <= fy + 5; y++) this.set(x, y, z, corner ? B.COBBLE : B.BRICK, false);
+        // Stepped roof in the gym's colour.
+        this.set(x, fy + 6, z, wool, false);
+        if (Math.abs(dx) <= R - 2 && Math.abs(dz) <= R - 2) this.set(x, fy + 7, z, wool, false);
+      }
+    }
+    // Doorway (3 wide, 3 tall) with a cobble path leading out.
+    for (let s = -1; s <= 1; s++) {
+      for (let d = R; d <= R + 2; d++) {
+        const x = x0 + front[0] * d + (front[0] ? 0 : s);
+        const z = z0 + front[1] * d + (front[1] ? 0 : s);
+        if (d === R) for (let y = fy + 1; y <= fy + 3; y++) this.set(x, y, z, B.AIR, false);
+        if (d > R) this.set(x, fy, z, B.COBBLE, false);
+      }
+    }
+    // Pillars of the gym's colour beside the door.
+    for (const s of [-2, 2]) {
+      const x = x0 + front[0] * (R + 1) + (front[0] ? 0 : s);
+      const z = z0 + front[1] * (R + 1) + (front[1] ? 0 : s);
+      for (let y = fy + 1; y <= fy + 3; y++) this.set(x, y, z, wool, false);
+    }
+  }
+
+  // The gym whose building contains (x, z), if any.
+  gymAt(x, z) {
+    return this.gyms.find(g => Math.abs(x - g.x - 0.5) <= 6.5 && Math.abs(z - g.z - 0.5) <= 6.5) || null;
   }
 
   placeTree(x, y, z) {

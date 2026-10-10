@@ -44,13 +44,14 @@ export class CreatureManager {
     const s = this.world.surface(x, z);
     if (s.id === B.WATER) return 'water';
     if (s.id === B.SAND) return 'beach';
+    if (s.id === B.SNOW) return 'snow';
     if (s.id === B.STONE || s.y >= 24) return 'mountain';
     if (s.id !== B.GRASS) return null;
     return this.world.forestAt(x, z) ? 'forest' : 'plains';
   }
 
-  pickSpecies(biome) {
-    const table = SPAWNS[biome];
+  pickSpecies(biome, night) {
+    const table = SPAWNS[biome].filter(([, , when]) => !when || (when === 'night') === night);
     const total = table.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
     for (const [id, w] of table) if ((r -= w) < 0) return id;
@@ -62,12 +63,17 @@ export class CreatureManager {
     const xi = Math.floor(x), zi = Math.floor(z);
     if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
     const s = this.world.surface(xi, zi);
-    if (s.id === B.LEAVES || s.id === B.LOG) return sp.flies ? s.y + 1 : null;
-    if (s.id === B.WATER) return sp.swims || sp.flies ? WATER_LEVEL + 0.55 : null;
+    const airborne = sp.flies || sp.floats;
+    if (s.id === B.LEAVES || s.id === B.LOG) return airborne ? s.y + 1 : null;
+    if (s.id === B.WATER) return sp.swims || airborne ? WATER_LEVEL + 0.55 : null;
+    // Gyms and other buildings: only walk on natural ground.
+    if (s.id !== B.GRASS && s.id !== B.DIRT && s.id !== B.SAND && s.id !== B.STONE && s.id !== B.SNOW && s.id !== B.COBBLE) {
+      return airborne ? s.y + 1 : null;
+    }
     return s.y + 1;
   }
 
-  trySpawn(center, spawnPoint) {
+  trySpawn(center, spawnPoint, night) {
     const angle = Math.random() * Math.PI * 2;
     const dist = 14 + Math.random() * 22;
     const x = Math.floor(center.x + Math.cos(angle) * dist);
@@ -75,14 +81,14 @@ export class CreatureManager {
     if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
     const biome = this.biomeAt(x, z);
     if (!biome) return;
-    const species = this.pickSpecies(biome);
+    const species = this.pickSpecies(biome, night);
     const sp = SPECIES[species];
     const y = this.groundY(x + 0.5, z + 0.5, sp);
     if (y === null) return;
     // Further from the spawn point = tougher creatures.
     const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
     const rare = sp.baseXp > 100 ? 3 : 0;
-    const level = Math.min(40, Math.max(2, Math.floor(2 + far / 16 + rare + Math.random() * 2)));
+    const level = Math.min(40, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3)));
     const model = buildModel(species);
     const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
     model.position.copy(wild.pos);
@@ -96,11 +102,11 @@ export class CreatureManager {
     disposeModel(wild.model);
   }
 
-  update(dt, playerPos, spawnPoint) {
+  update(dt, playerPos, spawnPoint, night = false) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 0.6;
-      if (this.list.length < MAX_WILD) this.trySpawn(playerPos, spawnPoint);
+      if (this.list.length < MAX_WILD) this.trySpawn(playerPos, spawnPoint, night);
       for (const w of this.list) {
         if (!w.frozen && w.pos.distanceTo(playerPos) > 60) { this.remove(w); break; }
       }
@@ -126,7 +132,7 @@ export class CreatureManager {
       const nx = w.pos.x + Math.sin(w.heading) * speed * dt;
       const nz = w.pos.z + Math.cos(w.heading) * speed * dt;
       const gy = this.groundY(nx, nz, sp);
-      if (gy !== null && (sp.flies || gy - w.pos.y <= 1.1)) { w.pos.x = nx; w.pos.z = nz; }
+      if (gy !== null && (sp.flies || sp.floats || gy - w.pos.y <= 1.1)) { w.pos.x = nx; w.pos.z = nz; }
       else w.heading += Math.PI * (0.5 + Math.random());
     }
     let target = this.groundY(w.pos.x, w.pos.z, sp) ?? w.pos.y;

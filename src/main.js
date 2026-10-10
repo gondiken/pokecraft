@@ -5,10 +5,13 @@ import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
 import { Battle } from './battle.js';
+import { NpcManager } from './npc.js';
+import { GYMS } from './gyms.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 
-const SAVE_KEY = 'pokecraft-save-v1';
+const SAVE_KEY = 'pokecraft-save-v2';
+const OLD_SAVE_KEY = 'pokecraft-save-v1';
 const DAY_LENGTH = 480; // seconds for a full day/night cycle
 const REACH = 6;
 
@@ -64,17 +67,25 @@ window.addEventListener('resize', () => {
 const game = {
   scene, camera,
   world: null, player: null, creatures: null,
-  party: [], box: [], cubes: 10, selected: 0,
+  party: [], box: [], cubes: 10, selected: 0, badges: [], beaten: [],
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
 };
 
 game.creatures = new CreatureManager(scene, null);
+game.npcs = new NpcManager(scene);
 game.ui = new UI(game, atlas);
 game.battle = new Battle(game);
 
 function loadSave() {
-  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { return null; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (saved) return saved;
+    // Saves from before gyms: the map got bigger, so keep the team but start in a fresh world.
+    const old = JSON.parse(localStorage.getItem(OLD_SAVE_KEY));
+    if (old) return { party: old.party, box: old.box, cubes: old.cubes, time: old.time };
+  } catch { /* unreadable save: start fresh */ }
+  return null;
 }
 
 function save() {
@@ -83,6 +94,7 @@ function save() {
     const p = game.player;
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       seed: game.world.seed, edits: [...game.world.edits], party: game.party, box: game.box, cubes: game.cubes,
+      badges: game.badges, beaten: game.beaten,
       pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
     }));
   } catch { /* storage unavailable: progress just won't persist */ }
@@ -98,6 +110,7 @@ function createWorld(seed, edits) {
   game.player = new Player(world);
   game.creatures.setWorld(world);
   game.spawnPoint.copy(findSpawn(world));
+  game.npcs.populate(world, game.spawnPoint);
 }
 
 function findSpawn(world) {
@@ -153,12 +166,15 @@ function startNew(starterId) {
   game.box = [];
   game.cubes = 10;
   game.time = 0.05;
+  game.badges = [];
+  game.beaten = [];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
   p.yaw = 0; p.pitch = 0;
   begin();
   game.ui.toast(`${SPECIES[starterId].name} joined your team!`);
   game.ui.toast('Find wild creatures and click them to battle.');
+  game.ui.toast('Healer Hana is right next to you if your team gets tired.');
 }
 
 function continueGame(saved) {
@@ -166,6 +182,8 @@ function continueGame(saved) {
   game.box = saved.box || [];
   game.cubes = saved.cubes ?? 10;
   game.time = saved.time ?? 0.05;
+  game.badges = saved.badges || [];
+  game.beaten = saved.beaten || [];
   const p = game.player;
   if (saved.pos) p.pos.set(...saved.pos); else p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
@@ -232,7 +250,10 @@ document.addEventListener('keydown', e => {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < HOTBAR.length) { game.selected = n; game.ui.renderHud(); }
   }
-  if (e.code === 'KeyE' && target.wild) startBattle(target.wild);
+  if (e.code === 'KeyE') {
+    if (target.npc) talkTo(target.npc);
+    else if (target.wild) startBattle({ wild: target.wild });
+  }
 });
 
 document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.code] = false; });
@@ -249,7 +270,8 @@ document.addEventListener('mousedown', e => {
   if (!locked || game.inBattle) return;
   const world = game.world;
   if (e.button === 0) {
-    if (target.wild) { startBattle(target.wild); return; }
+    if (target.npc) { talkTo(target.npc); return; }
+    if (target.wild) { startBattle({ wild: target.wild }); return; }
     const hit = target.block;
     if (!hit || hit.y === 0) return;
     world.set(hit.x, hit.y, hit.z, B.AIR);
@@ -275,28 +297,80 @@ document.addEventListener('mousedown', e => {
 
 /* -------------------------------- battles -------------------------------- */
 
-function startBattle(wild) {
+function healTeam() {
+  for (const c of game.party) c.hp = statsFor(c).maxHp;
+  game.ui.renderHud();
+}
+
+function talkTo(npc) {
+  const ui = game.ui;
+  if (npc.kind === 'healer') {
+    healTeam();
+    ui.toast(`${npc.name}: Your team is fully healed. Good luck out there!`);
+    return;
+  }
+  const gym = npc.gym.def;
+  const trainerKey = `${gym.id}:trainer`;
+  if (npc.kind === 'trainer') {
+    if (game.beaten.includes(trainerKey)) {
+      ui.toast(`${npc.name}: You already beat me! ${gym.leader.name} is waiting at the back.`);
+      return;
+    }
+    startBattle({ trainer: npc, team: gym.trainerTeam, intro: [`You want to see ${gym.leader.name}? Get past me first!`] });
+    return;
+  }
+  if (!game.beaten.includes(trainerKey)) {
+    ui.toast(`${npc.name}: Beat ${gym.trainer.name} first, then come back to me!`);
+    return;
+  }
+  const rematch = game.badges.includes(gym.id);
+  startBattle({
+    trainer: npc, team: gym.leaderTeam,
+    intro: rematch ? ['Back for a rematch? I have been training too!'] : gym.intro,
+  });
+}
+
+function startBattle(opts) {
   if (game.inBattle) return;
   if (!game.party.some(c => c.hp > 0)) {
     game.ui.toast('Your team is too tired to battle. Let them rest a moment.');
     return;
   }
   game.inBattle = true;
+  pauseEl.classList.add('hidden');
   document.body.classList.add('in-battle');
   game.player.keys = {};
   highlight.visible = false;
   game.ui.setPrompt('');
   if (locked) document.exitPointerLock();
-  game.battle.start(wild);
+  game.battle.start(opts);
 }
 
-game.onBattleEnd = result => {
+game.onBattleEnd = (result, opts) => {
   game.inBattle = false;
   document.body.classList.remove('in-battle');
   if (result === 'lost') {
-    for (const c of game.party) c.hp = statsFor(c).maxHp;
+    healTeam();
     game.player.pos.copy(game.spawnPoint);
     game.player.vel.set(0, 0, 0);
+  }
+  const npc = opts.trainer;
+  if (result === 'won' && npc) {
+    const gym = npc.gym.def;
+    if (npc.kind === 'trainer') {
+      game.beaten.push(`${gym.id}:trainer`);
+      game.cubes += 2;
+      game.ui.toast(`${npc.name}: Nice battle! ${gym.leader.name} is waiting at the back.`);
+      game.ui.toast('You got 2 Capture Cubes.');
+    } else if (!game.badges.includes(gym.id)) {
+      game.badges.push(gym.id);
+      game.cubes += 5;
+      game.ui.toast(`${npc.name}: ${gym.lose}`);
+      game.ui.toast(`You earned the ${gym.badge}! (${game.badges.length}/${GYMS.length}) +5 Capture Cubes`);
+      if (game.badges.length === GYMS.length) game.ui.toast('You collected every badge. You are the PokeCraft Champion!');
+    } else {
+      game.ui.toast(`${npc.name}: You are as strong as ever!`);
+    }
   }
   game.ui.renderHud();
   save();
@@ -305,7 +379,8 @@ game.onBattleEnd = result => {
 
 /* ------------------------------- main loop ------------------------------- */
 
-const target = { wild: null, block: null };
+const target = { wild: null, npc: null, block: null };
+let currentGym = null;
 let regenTimer = 0;
 let saveTimer = 0;
 let hudTimer = 0;
@@ -331,22 +406,47 @@ function updateSky(dt) {
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
   game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}`);
+  game.night = light < 0.3;
+}
+
+// Points the player towards the next gym they haven't beaten yet.
+function updateGuide() {
+  const p = game.player.pos;
+  const next = game.world.gyms.find(g => !game.badges.includes(g.def.id));
+  if (!next) { game.ui.setGuide('All badges collected!'); return; }
+  const dx = next.x + 0.5 - p.x, dz = next.z + 0.5 - p.z;
+  const dist = Math.round(Math.hypot(dx, dz));
+  // Angle of the gym relative to where the player is looking.
+  let rel = Math.atan2(-dx, -dz) - game.player.yaw;
+  rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+  const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
+  const arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
+  game.ui.setGuide(dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`);
+
+  const inside = game.world.gymAt(p.x, p.z);
+  if (inside !== currentGym) {
+    currentGym = inside;
+    if (inside) game.ui.toast(`Welcome to the ${inside.def.name}! (${inside.def.type} type)`);
+  }
 }
 
 function updateTarget() {
   const origin = game.player.eyePos;
   const dir = game.player.forward;
   const hitWild = game.creatures.pick(origin, dir, REACH + 1);
+  const hitNpc = game.npcs.pick(origin, dir, REACH + 1);
   const hitBlock = raycastVoxel(game.world, origin, dir, REACH);
-  target.wild = hitWild && (!hitBlock || hitWild.dist < hitBlock.t) ? hitWild.wild : null;
-  target.block = target.wild ? null : hitBlock;
+  const blockDist = hitBlock ? hitBlock.t : Infinity;
+  target.npc = hitNpc && hitNpc.dist < blockDist && (!hitWild || hitNpc.dist < hitWild.dist) ? hitNpc.npc : null;
+  target.wild = !target.npc && hitWild && hitWild.dist < blockDist ? hitWild.wild : null;
+  target.block = target.wild || target.npc ? null : hitBlock;
   if (target.block) {
     highlight.visible = true;
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
-  game.ui.setPrompt(target.wild
-    ? `${target.wild.species.name} Lv${target.wild.data.level} · click or E to battle`
-    : '');
+  game.ui.setPrompt(target.npc ? target.npc.title
+    : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · click or E to battle`
+      : '');
 }
 
 function frame(now) {
@@ -364,8 +464,10 @@ function frame(now) {
     if (locked && !game.inBattle) p.update(dt);
     if (p.pos.y < -20) { p.pos.copy(game.spawnPoint); p.vel.set(0, 0, 0); }
     game.world.updateDirty();
-    game.creatures.update(dt, p.pos, game.spawnPoint);
+    game.creatures.update(dt, p.pos, game.spawnPoint, game.night);
+    game.npcs.update(dt, p.pos);
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
+    if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
 
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);
@@ -381,7 +483,7 @@ function frame(now) {
       }
     }
     hudTimer += dt;
-    if (hudTimer > 1) { hudTimer = 0; game.ui.renderHud(); }
+    if (hudTimer > 0.5) { hudTimer = 0; game.ui.renderHud(); updateGuide(); }
     saveTimer += dt;
     if (saveTimer > 15) { saveTimer = 0; save(); }
   }
@@ -398,3 +500,4 @@ requestAnimationFrame(frame);
 
 // Exposed for debugging from the browser console.
 window.pokecraft = game;
+game.talkTo = talkTo;
