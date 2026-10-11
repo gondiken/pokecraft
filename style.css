@@ -279,3 +279,16 @@ button.small { font-size: 9px; padding: 8px 10px; }
 .acct-msg.error, #cloud-status.error { color: #ff8a80; }
 #cloud-status { color: var(--muted); font-size: 18px; margin: -6px 0 6px; }
 button.link { background: none; border: none; box-shadow: none; color: var(--muted); text-decoration: underline; }
+
+/* ---------- play together ---------- */
+#mp {
+  margin: 10px auto; max-width: 420px; padding: 10px 14px; background: #2a2e3d; border: 3px solid #1b1d26;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 19px;
+}
+#mp h3 { margin: 0 0 4px; color: var(--accent); }
+.mp-code { font-family: 'Press Start 2P', monospace; font-size: 28px; letter-spacing: 6px; color: var(--accent); margin: 4px 0; }
+.mp-code-input { text-transform: uppercase; letter-spacing: 4px; text-align: center; }
+.mp-who { color: var(--text); }
+.mp-or { color: var(--muted); font-size: 17px; text-align: center; }
+#mp-hud { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 18px; }
+#mp-hud:empty { display: none; }

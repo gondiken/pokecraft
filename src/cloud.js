@@ -11,6 +11,7 @@ function getClient() {
   clientPromise ??= import('@supabase/supabase-js')
     .then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      realtime: { params: { eventsPerSecond: 20 } },
     }))
     .catch(() => null);
   return clientPromise;
@@ -104,4 +105,29 @@ export async function saveCloud(save) {
   const { error } = await client.from('saves').upsert({ user_id: user.id, data: save });
   if (error) throw new Error(friendly(error));
   return true;
+}
+
+// A live channel for playing together. Returns { send, on, close } or null if it can't connect.
+// Every event name must be listed up front, because Supabase needs them before subscribing.
+export async function realtimeChannel(name, events) {
+  const client = await getClient();
+  if (!client) return null;
+  const ch = client.channel(name, { config: { broadcast: { self: false } } });
+  const handlers = {};
+  for (const event of events) ch.on('broadcast', { event }, ({ payload }) => handlers[event]?.(payload));
+  const status = await new Promise(resolve => {
+    const timer = setTimeout(() => resolve('TIMED_OUT'), 10000);
+    ch.subscribe(s => {
+      if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
+        clearTimeout(timer);
+        resolve(s);
+      }
+    });
+  });
+  if (status !== 'SUBSCRIBED') { client.removeChannel(ch); return null; }
+  return {
+    send: (event, payload) => ch.send({ type: 'broadcast', event, payload }),
+    on: (event, fn) => { handlers[event] = fn; },
+    close: () => client.removeChannel(ch),
+  };
 }

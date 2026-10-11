@@ -9,6 +9,7 @@ import { NpcManager } from './npc.js';
 import { GYMS } from './gyms.js';
 import { TouchControls } from './touch.js';
 import * as cloud from './cloud.js';
+import { Multiplayer, cleanCode } from './multiplayer.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -95,10 +96,13 @@ function loadSave() {
 
 function snapshot() {
   const p = game.player;
-  return {
-    seed: game.world.seed, edits: [...game.world.edits], party: game.party, box: game.box, cubes: game.cubes,
-    badges: game.badges, beaten: game.beaten,
+  // While visiting someone else's world, keep saving your own world and position, not theirs.
+  const home = game.homeWorld ?? {
+    seed: game.world.seed, edits: [...game.world.edits],
     pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
+  };
+  return {
+    ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     savedAt: Date.now(),
   };
 }
@@ -466,6 +470,7 @@ document.addEventListener('mousemove', e => {
 
 document.addEventListener('keydown', e => {
   if (!game.started) return;
+  if (e.target instanceof HTMLInputElement) return; // typing a name or code, not playing
   if (e.code === 'KeyP' || e.code === 'Tab' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
     toggleTeam();
@@ -516,6 +521,7 @@ function breakBlock() {
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
     if (world.get(hit.x + dx, hit.y + dy, hit.z + dz) === B.WATER) { world.set(hit.x, hit.y, hit.z, B.WATER); break; }
   }
+  game.mp.sendBlock(hit.x, hit.y, hit.z, world.get(hit.x, hit.y, hit.z));
   if (hit.id === B.LEAVES && Math.random() < 0.1) {
     game.cubes++;
     game.ui.renderHud();
@@ -532,6 +538,7 @@ function placeBlock() {
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, HOTBAR[game.selected]);
+  game.mp.sendBlock(x, y, z, HOTBAR[game.selected]);
 }
 
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.
@@ -737,6 +744,7 @@ function frame(now) {
     game.world.updateDirty();
     game.creatures.update(dt, p.pos, game.spawnPoint, game.night);
     game.npcs.update(dt, p.pos);
+    game.mp.update(dt);
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
     if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
 
@@ -754,7 +762,16 @@ function frame(now) {
       }
     }
     hudTimer += dt;
-    if (hudTimer > 0.5) { hudTimer = 0; game.ui.renderHud(); updateGuide(); }
+    if (hudTimer > 0.5) {
+      hudTimer = 0;
+      game.ui.renderHud();
+      updateGuide();
+      const hud = document.getElementById('mp-hud');
+      const mp = game.mp;
+      const text = mp.role === 'host' ? `👥 Sharing · code ${mp.code} · ${mp.players.length + 1} playing`
+        : mp.role === 'guest' ? `👥 In ${mp.hostName || 'a friend'}'s world · ${mp.players.length + 1} playing` : '';
+      if (hud.textContent !== text) hud.textContent = text;
+    }
     saveTimer += dt;
     if (saveTimer > 15) { saveTimer = 0; save(); }
     cloudTimer += dt;
@@ -767,6 +784,128 @@ function frame(now) {
 
 window.addEventListener('beforeunload', () => save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
+
+/* ----------------------------- play together ----------------------------- */
+
+const NAME_KEY = 'pokecraft-name';
+const mpBox = document.getElementById('mp');
+let mpMessage = { text: '', error: false };
+
+game.mp = new Multiplayer(game, {
+  toast: text => { game.ui.toast(text); renderMp(); },
+  // Joining: swap in the host's world, keeping your own team, badges and items.
+  loadWorld: data => {
+    const p = game.player;
+    game.homeWorld = {
+      seed: game.world.seed, edits: [...game.world.edits],
+      pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
+    };
+    createWorld(data.seed, data.edits);
+    game.time = data.time;
+    const np = game.player;
+    np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
+    for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
+    game.ui.renderHud();
+  },
+  ended: reason => {
+    if (reason !== 'host-left') return;
+    game.ui.toast('The host left, so you are going back to your own world.');
+    setTimeout(goHome, 2500);
+  },
+});
+
+function playerName() {
+  let name = '';
+  try { name = localStorage.getItem(NAME_KEY) || ''; } catch { /* ignore */ }
+  return name || game.user?.email?.split('@')[0] || '';
+}
+
+// Leave someone else's world: save your own progress, then reload into your own world.
+async function goHome() {
+  save();
+  await pushCloud();
+  game.mp.close();
+  // Keep homeWorld set: the save that runs while the page unloads must still save your own world.
+  location.reload();
+}
+
+function setMpMessage(text, error = false) {
+  mpMessage = { text, error };
+  renderMp();
+}
+
+function renderMp() {
+  const mp = game.mp;
+  const msg = mpMessage.text && el('div', { class: `acct-msg${mpMessage.error ? ' error' : ''}` }, mpMessage.text);
+  const others = mp.players;
+  const who = others.length ? `Playing with: ${others.join(', ')}` : 'Nobody else is here yet.';
+  if (mp.role === 'host') {
+    mpBox.replaceChildren(
+      el('h3', {}, 'Play together'),
+      el('div', {}, 'Your world code is'),
+      el('div', { class: 'mp-code' }, mp.code),
+      el('div', {}, 'The other player picks "Join a world" and types this code.'),
+      el('div', { class: 'mp-who' }, who),
+      el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
+      msg);
+    return;
+  }
+  if (mp.role === 'guest') {
+    mpBox.replaceChildren(
+      el('h3', {}, 'Play together'),
+      el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
+      el('div', { class: 'mp-who' }, who),
+      el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
+      el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),
+      msg);
+    return;
+  }
+  if (mp.role === 'joining') {
+    mpBox.replaceChildren(el('h3', {}, 'Play together'), el('div', {}, 'Joining...'));
+    return;
+  }
+  const name = el('input', { type: 'text', placeholder: 'Your name', maxlength: 16, value: playerName() });
+  const code = el('input', { type: 'text', placeholder: 'World code', maxlength: 5, class: 'mp-code-input' });
+  code.addEventListener('input', () => { code.value = cleanCode(code.value); });
+  const checkName = () => {
+    const n = name.value.trim();
+    if (!n) { setMpMessage('Type your name first, so the other player knows who you are.', true); return null; }
+    try { localStorage.setItem(NAME_KEY, n); } catch { /* ignore */ }
+    return n;
+  };
+  const host = async () => {
+    const n = checkName(); if (!n) return;
+    setMpMessage('Connecting...');
+    const res = await mp.host(n);
+    setMpMessage(res.error || '', !!res.error);
+  };
+  const join = async () => {
+    const n = checkName(); if (!n) return;
+    if (code.value.length !== 5) { setMpMessage('Type the 5-letter world code first.', true); return; }
+    save();
+    mpMessage = { text: '', error: false };
+    const pending = mp.join(code.value, n);
+    renderMp();
+    const res = await pending;
+    if (res.error) { setMpMessage(res.error, true); return; }
+    setMpMessage(`Welcome to ${res.hostName}'s world! Tap or click outside this box to play.`);
+  };
+  mpBox.replaceChildren(
+    el('h3', {}, 'Play together'),
+    el('div', { class: 'acct-form' },
+      name,
+      el('div', { class: 'acct-btns' }, el('button', { class: 'small primary', onclick: host }, 'Share my world')),
+      el('div', { class: 'mp-or' }, 'or join someone else'),
+      code,
+      el('div', { class: 'acct-btns' }, el('button', { class: 'small', onclick: join }, 'Join a world'))),
+    msg);
+}
+
+// Clicks inside the box shouldn't count as "click anywhere to resume".
+mpBox.addEventListener('click', e => e.stopPropagation());
+mpBox.addEventListener('pointerdown', e => e.stopPropagation());
+new MutationObserver(() => { if (!pauseEl.classList.contains('hidden')) renderMp(); })
+  .observe(pauseEl, { attributes: true, attributeFilter: ['class'] });
 
 showTitle();
 requestAnimationFrame(frame);

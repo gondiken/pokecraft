@@ -32,6 +32,7 @@
       <div id="clock"></div>
       <div id="badges"></div>
       <div id="guide"></div>
+      <div id="mp-hud"></div>
     </div>
     <div id="party-mini"></div>
     <div id="cubes"></div>
@@ -85,8 +86,10 @@
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <h2>Paused</h2>
-      <p><span class="desktop-only">Click</span><span class="touch-only">Tap</span> anywhere to resume</p>
+      <p><button id="resume" class="primary">Resume</button></p>
+      <p class="hint"><span class="desktop-only">Or click</span><span class="touch-only">Or tap</span> anywhere outside the boxes</p>
       <div id="cloud-status"></div>
+      <div id="mp"></div>
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>

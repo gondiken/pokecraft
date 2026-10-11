@@ -130,6 +130,19 @@ If the save server can't be reached, the game still works and saves on the devic
 
 - **Authentication → URL Configuration**: Site URL and Redirect URLs must include the game's address (for example `https://gondiken.github.io/pokecraft/`), or email links won't return to the game.
 
+## Play together
+
+Two or more people can play in the same world at the same time, each on their own device.
+
+1. The player whose world you want to use pauses the game, types their name and presses **Share my world**. A 5-letter code appears.
+2. The other player pauses their game, types their name and the code, and presses **Join a world**.
+
+You see each other walking around with name tags, with each player's lead creature following them. Blocks that anyone places or breaks show up for everyone. Each player keeps their own team, badges and Capture Cubes, and has their own battles and wild creatures. Building in the shared world is saved in the host's world.
+
+A visitor's own world is untouched. **Go back to my world** returns them to it, and that happens automatically if the host stops sharing or leaves. The connection uses Supabase Realtime. Neither player needs to be signed in, but both need an internet connection.
+
+For testing on one computer, add `?mp=local` to the address. Tabs in the same browser then connect to each other directly, without the server.
+
 ## Code layout
 
 | File | Purpose |
@@ -145,6 +158,7 @@ If the save server can't be reached, the game still works and saves on the devic
 | `src/battle.js` | Battle flow, animations, catching |
 | `src/ui.js` | HUD, team screen, creature portraits |
 | `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, buttons |
-| `src/cloud.js` | Accounts and online saves (Supabase) |
+| `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
+| `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
 
 All creatures, names and art are original. To add a creature, add an entry to `SPECIES` in `src/species.js` and list it in a biome in `SPAWNS`. To change a gym, edit its entry in `src/gyms.js`.
