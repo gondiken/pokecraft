@@ -143,6 +143,10 @@ A visitor's own world is untouched. **Go back to my world** returns them to it, 
 
 For testing on one computer, add `?mp=local` to the address. Tabs in the same browser then connect to each other directly, without the server.
 
+## Tests
+
+Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test`. See `CLAUDE.md` for details.
+
 ## Code layout
 
 | File | Purpose |

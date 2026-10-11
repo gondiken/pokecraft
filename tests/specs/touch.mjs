@@ -1,0 +1,45 @@
+// Tablet controls on an emulated iPad: joystick + drag-look (multi-touch), buttons, team screen, pause.
+import { devices } from 'playwright';
+import { openGame } from '../helpers.mjs';
+
+export default async function ({ browser, base, t }) {
+  const page = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
+  await page.tap('text=New Game');
+  await page.tap('.starter >> nth=0');
+  await page.waitForTimeout(1500);
+  t.ok(await page.evaluate(() => document.body.classList.contains('touch')), 'touch mode turns on');
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+  const center = sel => page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
+  const before = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z, yaw: window.pokecraft.player.yaw }));
+  const joy = await center('#joystick');
+  await touch('touchStart', [[joy[0], joy[1], 1]]);
+  await touch('touchMove', [[joy[0], joy[1] - 60, 1], [700, 300, 2]]);
+  for (let i = 1; i <= 10; i++) { await touch('touchMove', [[joy[0], joy[1] - 60, 1], [700 - i * 15, 300, 2]]); await page.waitForTimeout(60); }
+  await page.waitForTimeout(600);
+  await touch('touchEnd', []);
+  const after = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z, yaw: window.pokecraft.player.yaw }));
+  t.ok(Math.hypot(after.x - before.x, after.z - before.z) > 0.5, 'joystick walks');
+  t.ok(Math.abs(after.yaw - before.yaw) > 0.1, 'dragging the right side looks around (at the same time)');
+  await page.tap('.slot >> nth=4');
+  t.ok(await page.evaluate(() => window.pokecraft.selected === 4), 'tapping the hotbar picks a block');
+  await page.evaluate(() => { window.pokecraft.player.pitch = -1.2; });
+  await page.waitForTimeout(300);
+  await page.tap('#btn-break');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => window.pokecraft.world.edits.size > 0), 'Break button breaks a block');
+  await page.tap('#btn-team');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => window.pokecraft.ui.panelOpen), 'Team button opens the team screen');
+  await page.tap('#party-close');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'Close button closes it');
+  await page.tap('#btn-pause');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !document.getElementById('pause').classList.contains('hidden')), 'pause button pauses (and the tap does not instantly unpause)');
+  await page.tap('#resume');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'Resume button resumes');
+  t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
+  await page.context().close();
+}
