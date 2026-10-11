@@ -37,8 +37,8 @@ this file is for working on the code.
 | `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens, accounts UI, play-together UI |
 | `src/world.js` | Seeded terrain, trees, gym buildings (`placeGyms`/`buildGym`), chunk meshing, voxel raycast |
 | `src/blocks.js` | Block ids, procedurally drawn texture atlas, per-type "wool" roof blocks |
-| `src/species.js` | Types + effectiveness chart, moves, all 60 species (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
-| `src/gyms.js` | The 14 gyms in difficulty order (teams, leader/trainer names, dialogue) |
+| `src/species.js` | Types + effectiveness chart, moves, all 66 species (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/gyms.js` | The 16 gyms in difficulty order (teams, leader/trainer names, dialogue) |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome + day/night tables) and wandering |
 | `src/npc.js` | Blocky people (trainers, leaders, Healer Hana, other players' avatars) |

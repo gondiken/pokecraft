@@ -6,6 +6,7 @@ export const TYPE_COLORS = {
   ice: '#9fe0f0', bug: '#b5c84a', ghost: '#a48ad0',
   mind: '#f584b8', metal: '#b8c4cf', toxic: '#b36ad6', pixie: '#ffb8e6', drake: '#7f6cf0',
   rainbow: 'linear-gradient(90deg,#ff7a7a,#ffd36b,#8fe388,#7ab8ff,#c99bff)',
+  cosmic: 'linear-gradient(90deg,#8e9bff,#e7c6ff)', sound: '#4fd8c4',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -14,18 +15,21 @@ const EFFECTIVENESS = {
   fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5 },
   water: { fire: 2, rock: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
   grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5 },
-  electric: { water: 2, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
+  electric: { water: 2, sound: 2, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5 },
   ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5 },
   bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5 },
-  ghost: { ghost: 2, mind: 2, rainbow: 2, normal: 0 },
+  ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
   // New types
-  mind: { toxic: 2, drake: 2, mind: 0.5, metal: 0.5 },
+  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5 },
   toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, metal: 0 },
   pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5 },
   drake: { drake: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
+  // Cosmic beats sound, sound beats mind, mind beats cosmic.
+  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5 },
+  sound: { ice: 2, bug: 2, mind: 2, metal: 0.5, sound: 0.5, cosmic: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -62,16 +66,22 @@ export const MOVES = {
   drakeroar: { name: 'Drake Roar', type: 'drake', power: 80, acc: 0.9 },
   prismray: { name: 'Prism Ray', type: 'rainbow', power: 45, acc: 1 },
   rainbowburst: { name: 'Rainbow Burst', type: 'rainbow', power: 80, acc: 0.9 },
+  starshard: { name: 'Star Shard', type: 'cosmic', power: 40, acc: 1 },
+  cometcrash: { name: 'Comet Crash', type: 'cosmic', power: 75, acc: 0.9 },
+  echoping: { name: 'Echo Ping', type: 'sound', power: 40, acc: 1 },
+  bassblast: { name: 'Bass Blast', type: 'sound', power: 75, acc: 0.9 },
 };
 
 // Standard learnset for a type: a weak move at first, a strong one at 13, and normal moves for coverage.
 const T1 = {
   fire: 'ember', water: 'bubble', grass: 'leafcut', electric: 'spark', rock: 'pebbleshot', ice: 'icebreath', bug: 'bugbite',
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
+  cosmic: 'starshard', sound: 'echoping',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
+  cosmic: 'cometcrash', sound: 'bassblast',
 };
 function L(type, extra = []) {
   const base = type === 'normal'
@@ -440,6 +450,42 @@ export const SPECIES = {
     base: { hp: 60, atk: 70, def: 55, spd: 95 }, baseXp: 120, catchRate: 0.2, learn: L('rainbow'), flies: true,
     model: { shape: 'bird', scale: 0.9, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['rainbow'] },
   },
+
+  /* ------------------------------ cosmic -------------------------- */
+  starmite: {
+    name: 'Starmite', type: 'cosmic', desc: 'Fell from the sky as a shooting star. It glows brighter at night.',
+    base: { hp: 45, atk: 50, def: 45, spd: 60 }, baseXp: 66, catchRate: 0.4, learn: L('cosmic'), floats: true,
+    evolve: { level: 22, into: 'galaxor' },
+    model: { shape: 'blob', scale: 0.6, body: 0x2e3478, accent: 0xffe680, dark: 0x181c48, belly: 0x6a72d0, extras: ['antenna', 'stars'] },
+  },
+  galaxor: {
+    name: 'Galaxor', type: 'cosmic', desc: 'A whole galaxy swirls inside its body. It hums softly to the stars.',
+    base: { hp: 80, atk: 90, def: 75, spd: 85 }, baseXp: 165, catchRate: 0.12, learn: L('cosmic'),
+    model: { shape: 'biped', scale: 1.15, body: 0x2e3478, accent: 0xffe680, dark: 0x181c48, belly: 0x8a7ae0, extras: ['starHead', 'stars'] },
+  },
+  moonhop: {
+    name: 'Moonhop', type: 'cosmic', desc: 'A bunny that bounces so high it once landed on the moon.',
+    base: { hp: 55, atk: 60, def: 50, spd: 80 }, baseXp: 90, catchRate: 0.35, learn: L('cosmic', [[10, 'quickjab']]),
+    model: { shape: 'quad', scale: 0.75, body: 0xdfe2f4, accent: 0x9aa6ff, dark: 0x6a6f90, belly: 0xf6f7ff, extras: ['longEars', 'puffTail', 'stars'] },
+  },
+
+  /* ------------------------------ sound --------------------------- */
+  echobat: {
+    name: 'Echobat', type: 'sound', desc: 'Finds its way in the dark by listening to its own squeaks.',
+    base: { hp: 45, atk: 55, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.4, learn: L('sound'), flies: true,
+    evolve: { level: 22, into: 'boomwing' },
+    model: { shape: 'bird', scale: 0.7, body: 0x2f8f86, accent: 0xffd84a, dark: 0x1f4f4a, belly: 0x8fe8d8, extras: ['batEars'] },
+  },
+  boomwing: {
+    name: 'Boomwing', type: 'sound', desc: 'When it flaps its huge wings, you can hear a drum roll for miles.',
+    base: { hp: 75, atk: 90, def: 70, spd: 95 }, baseXp: 160, catchRate: 0.12, learn: L('sound'), flies: true,
+    model: { shape: 'bird', scale: 1.2, body: 0x1f7a72, accent: 0xffd84a, dark: 0x123a36, belly: 0x8fe8d8, extras: ['batEars', 'notes'] },
+  },
+  drumbo: {
+    name: 'Drumbo', type: 'sound', desc: 'Drums on its round belly to make friends. Everyone dances along.',
+    base: { hp: 70, atk: 65, def: 65, spd: 40 }, baseXp: 95, catchRate: 0.35, learn: L('sound'),
+    model: { shape: 'biped', scale: 0.9, body: 0xe0a050, accent: 0x4fd8c4, dark: 0x8a5a2a, belly: 0xf6e0b0, extras: ['drum', 'notes'] },
+  },
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -449,21 +495,25 @@ export const SPAWNS = {
   plains: [['fluffin', 5], ['zapple', 3], ['sproutle', 2], ['emberpup', 1], ['hopsy', 4], ['chirpit', 4, 'day'],
     ['ampup', 2], ['beetlet', 2, 'day'], ['voltwing', 1], ['sparkitten', 1], ['bounceroo', 0.3],
     ['wispurr', 3, 'night'], ['snoozle', 2, 'night'], ['glowbug', 2, 'night'],
-    ['thinkit', 2], ['owlucid', 2, 'night'], ['twinklet', 2, 'day'], ['sludgy', 1], ['prismkit', 0.25, 'day'], ['rainwing', 0.2, 'day']],
+    ['thinkit', 2], ['owlucid', 2, 'night'], ['twinklet', 2, 'day'], ['sludgy', 1], ['prismkit', 0.25, 'day'], ['rainwing', 0.2, 'day'],
+    ['moonhop', 2, 'night'], ['starmite', 1.5, 'night'], ['drumbo', 1.5]],
   forest: [['sproutle', 4], ['thornox', 2], ['fluffin', 1], ['zapple', 1], ['budling', 3], ['mossloth', 2],
     ['beetlet', 3], ['flutterby', 3, 'day'], ['chirpit', 2, 'day'], ['hornbeetle', 0.4], ['bloomora', 0.3],
     ['wispurr', 3, 'night'], ['glowbug', 3, 'night'], ['phantomaw', 0.4, 'night'],
     ['sludgy', 3], ['hissyfang', 2], ['gloopor', 0.3], ['twinklet', 2, 'day'], ['petalfae', 3, 'day'],
-    ['owlucid', 3, 'night'], ['starbelle', 0.3, 'night'], ['prismkit', 0.25, 'day']],
+    ['owlucid', 3, 'night'], ['starbelle', 0.3, 'night'], ['prismkit', 0.25, 'day'],
+    ['echobat', 2, 'night'], ['drumbo', 1]],
   beach: [['bubbuck', 4], ['emberpup', 2], ['zapple', 1], ['shellby', 4], ['gullop', 3], ['sparkitten', 2],
-    ['clanklet', 1], ['rainwing', 0.3, 'day']],
+    ['clanklet', 1], ['rainwing', 0.3, 'day'], ['drumbo', 1]],
   water: [['bubbuck', 2], ['ripplet', 3], ['joltail', 2], ['shellby', 1], ['gullop', 1], ['torrentide', 0.3]],
   mountain: [['pebblor', 5], ['flarehawk', 2], ['zapple', 1], ['magmole', 3], ['cragtusk', 2], ['geodrake', 2],
     ['monolor', 0.4], ['pyrolynx', 0.3], ['snoozle', 2, 'night'],
     ['clanklet', 3], ['ironhorn', 2], ['mechanox', 0.3], ['thinkit', 1], ['cerebrix', 0.2],
-    ['scalekin', 1], ['scalewing', 0.1], ['skywyrm', 0.15], ['rainwing', 0.2, 'day']],
+    ['scalekin', 1], ['scalewing', 0.1], ['skywyrm', 0.15], ['rainwing', 0.2, 'day'],
+    ['starmite', 2, 'night'], ['galaxor', 0.2, 'night'], ['echobat', 2], ['boomwing', 0.2]],
   snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['geodrake', 1], ['glacieron', 0.5], ['wispurr', 1, 'night'],
-    ['ironhorn', 1], ['scalekin', 1.5], ['skywyrm', 0.3], ['prismkit', 0.2, 'day']],
+    ['ironhorn', 1], ['scalekin', 1.5], ['skywyrm', 0.3], ['prismkit', 0.2, 'day'],
+    ['moonhop', 2, 'night'], ['starmite', 1, 'night']],
 };
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
@@ -838,6 +888,11 @@ function buildBiped(root, m, parts) {
     }
     box(head, 0.12, 0.3, 0.12, m.accent, 0, 0.3, 0);
   }
+  if (has('drum')) {
+    box(root, 0.6, 0.42, 0.14, m.accent, 0, 0.8, 0.36);
+    box(root, 0.5, 0.32, 0.02, 0xfdf6e8, 0, 0.8, 0.44);
+    for (const y of [0.6, 1.0]) box(root, 0.64, 0.05, 0.16, 0xffffff, 0, y, 0.36);
+  }
   if (has('tail')) {
     const t = box(root, 0.2, 0.2, 0.7, m.body, 0, 0.45, -0.55);
     t.rotation.x = 0.5;
@@ -871,6 +926,12 @@ function buildBird(root, m, parts) {
   if (has('owl')) {
     for (const s of [-1, 1]) box(head, 0.08, 0.16, 0.06, m.dark, s * 0.13, 0.22, 0);
     for (const s of [-1, 1]) box(head, 0.14, 0.14, 0.02, m.accent, s * 0.09, 0.05, 0.172);
+  } else if (has('batEars')) {
+    for (const s of [-1, 1]) {
+      const ear = box(head, 0.14, 0.32, 0.06, m.dark, s * 0.13, 0.28, -0.02);
+      ear.rotation.z = -s * 0.25;
+      box(ear, 0.07, 0.2, 0.02, m.belly, 0, -0.02, 0.035);
+    }
   } else {
     box(head, 0.08, 0.2, 0.22, m.accent, 0, 0.22, -0.08);
   }
@@ -982,6 +1043,27 @@ export function buildModel(species) {
       if (o.isMesh && !o.userData.eye) parts.rainbow.push({ mat: o.material, offset: (i++ * 0.13) % 1 });
     });
     for (const r of parts.rainbow) r.mat.color.setHSL(r.offset, 0.75, 0.62);
+  }
+  if (m.extras.includes('stars') || m.extras.includes('notes')) {
+    const bb = new THREE.Box3().setFromObject(root);
+    const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
+    // Little glowing stars floating around the body.
+    if (m.extras.includes('stars')) {
+      for (let k = 0; k < 6; k++) {
+        const a = k * 2.4;
+        glow(box(root, 0.08, 0.08, 0.08, m.accent, c.x + Math.cos(a) * (size.x / 2 + 0.12),
+          bb.min.y + size.y * (0.3 + 0.12 * (k % 4)), c.z + Math.sin(a) * (size.z / 2 + 0.12)), m.accent);
+      }
+    }
+    // Two music notes above the head.
+    if (m.extras.includes('notes')) {
+      for (const [dx, dy] of [[-0.22, 0.12], [0.2, 0.26]]) {
+        const note = pivot(root, c.x + dx, bb.max.y + dy, c.z);
+        glow(box(note, 0.12, 0.09, 0.05, m.accent, 0, 0, 0), m.accent);
+        box(note, 0.03, 0.22, 0.03, m.accent, 0.045, 0.11, 0);
+        box(note, 0.08, 0.04, 0.03, m.accent, 0.08, 0.2, 0);
+      }
+    }
   }
   if (parts.float) {
     group.traverse(o => {

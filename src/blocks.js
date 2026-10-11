@@ -12,13 +12,13 @@ export const T = {
 // Coloured "wool" blocks, one per creature type, used for gym roofs and carpets.
 export const WOOL_TYPES = [
   'normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost',
-  'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow',
+  'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound',
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
   rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
-  rainbow: [255, 255, 255],
+  rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180],
 };
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length;
 
@@ -154,7 +154,9 @@ export function drawAtlas() {
   const STRIPES = [[230, 70, 70], [245, 150, 50], [245, 220, 60], [90, 200, 90], [70, 140, 230], [150, 90, 210]];
   WOOL_TYPES.forEach((t, i) => each((x, y) => {
     const f = (1 + (rand() - 0.5) * 0.12) * ((x + y) % 4 === 0 ? 0.92 : 1);
-    const base = t === 'rainbow' ? STRIPES[Math.floor((x + y) / 6) % STRIPES.length] : WOOL_RGB[t];
+    const base = t === 'rainbow' ? STRIPES[Math.floor((x + y) / 6) % STRIPES.length]
+      : t === 'cosmic' && (x * 7 + y * 13) % 23 === 0 ? [255, 236, 150] // a sky full of stars
+        : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
 

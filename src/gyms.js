@@ -66,6 +66,15 @@ export const GYMS = [
     lose: 'Shocking! You win the Volt Badge.',
   },
   {
+    id: 'sound', type: 'sound', name: 'Echo Gym', badge: 'Echo Badge',
+    leader: { name: 'Leader Melody', colors: { shirt: 0x4fd8c4, pants: 0x2a2a3a, hair: 0xff6aa8, skin: 0xe8b98a } },
+    trainer: { name: 'Drummer Jojo', colors: { shirt: 0xf0a020, pants: 0x3a3a50, hair: 0x1a1a1a, skin: 0xc68a5a } },
+    trainerTeam: [['echobat', 17], ['drumbo', 17]],
+    leaderTeam: [['drumbo', 18], ['echobat', 19], ['boomwing', 20]],
+    intro: ['Welcome to the Echo Gym! Can you hear the beat?', "My team is loud and proud. Let's make some noise!"],
+    lose: 'What a performance! The Echo Badge is yours.',
+  },
+  {
     id: 'metal', type: 'metal', name: 'Iron Gym', badge: 'Iron Badge',
     leader: { name: 'Leader Forge', colors: { shirt: 0x8a96a2, pants: 0x3a424a, hair: 0x1a1a1a, skin: 0xd9a066 } },
     trainer: { name: 'Mechanic Rosa', colors: { shirt: 0x3a6ab0, pants: 0x2a2a3a, hair: 0xb04a2a, skin: 0xf2c79a } },
@@ -100,6 +109,15 @@ export const GYMS = [
     leaderTeam: [['snowpaw', 23], ['geodrake', 24], ['glacieron', 25]],
     intro: ['Brrr... welcome to the Frost Gym.', 'Only the coolest trainers make it past me!'],
     lose: 'You thawed my icy heart. Take the Frost Badge!',
+  },
+  {
+    id: 'cosmic', type: 'cosmic', name: 'Comet Gym', badge: 'Comet Badge',
+    leader: { name: 'Leader Nova', colors: { shirt: 0x2e3478, pants: 0x181c48, hair: 0xffe680, skin: 0xf2d0b0 } },
+    trainer: { name: 'Stargazer Orin', colors: { shirt: 0x8a7ae0, pants: 0x2a2a4a, hair: 0x7a4a2a, skin: 0xe8b98a } },
+    trainerTeam: [['starmite', 23], ['moonhop', 23]],
+    leaderTeam: [['moonhop', 24], ['starmite', 25], ['galaxor', 26]],
+    intro: ['Welcome to the Comet Gym, where the stars come out to play.', 'My cosmic creatures came from far, far away!'],
+    lose: 'You are a real superstar! Take the Comet Badge.',
   },
   {
     id: 'ghost', type: 'ghost', name: 'Phantom Gym', badge: 'Phantom Badge',

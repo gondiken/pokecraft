@@ -4,7 +4,7 @@ import { openGame, newGame, playBattle } from '../helpers.mjs';
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   await newGame(page, 1);
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 14), '14 gyms are placed');
+  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 16), '16 gyms are placed');
   await page.evaluate(async () => {
     const g = window.pokecraft;
     const { makeCreature } = await import('/src/species.js');

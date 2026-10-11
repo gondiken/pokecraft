@@ -2,7 +2,7 @@
 
 A browser game that mixes a Minecraft-style voxel world with creature collecting.
 Explore a procedurally generated block world, build and dig, battle and catch
-wild creatures in Capture Cubes, and beat all 14 Gym Leaders to collect every badge.
+wild creatures in Capture Cubes, and beat all 16 Gym Leaders to collect every badge.
 
 Built with plain JavaScript and [three.js](https://threejs.org/). There is no build step.
 
@@ -58,9 +58,9 @@ On a tablet:
 ## Features
 
 - **Voxel world**: a 192×192 terrain with hills, snowy peaks, lakes, beaches and forests, plus a day/night cycle. Break and place 9 block types.
-- **60 original creatures** across 15 types (see below). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, Clanklet roam the mountains, and ghost-type creatures only come out at night.
+- **66 original creatures** across 17 types (see below). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, Clanklet roam the mountains, and ghost and cosmic creatures only come out at night.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
-- **Evolution**: 18 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Scalekin → Scalewing and Prismkit → Spectrion.
+- **Evolution**: 20 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Scalekin → Scalewing and Prismkit → Spectrion.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
@@ -77,21 +77,25 @@ Creatures farther from the starting point are higher level. Your team slowly reg
 | Fire | Grass, ice, bug, metal | |
 | Water | Fire, rock | |
 | Grass | Water, rock | |
-| Electric | Water | |
+| Electric | Water, sound | |
 | Rock | Fire, electric, ice, bug | |
 | Ice | Grass, bug, drake | |
 | Bug | Grass, mind | |
-| Ghost | Ghost, mind, rainbow | Can't hit normal creatures |
-| Mind | Toxic, drake | Psychic powers |
+| Ghost | Ghost, mind, rainbow, cosmic | Can't hit normal creatures |
+| Mind | Toxic, drake, cosmic | Psychic powers |
 | Metal | Ice, rock, pixie | Very tough; toxic attacks don't affect it |
 | Toxic | Grass, pixie | Can't hurt metal |
 | Pixie | Drake, ghost | Drake attacks don't affect it |
 | Drake | Drake | Powerful dragons, resist fire, water, grass and electric |
 | Rainbow | Ghost, toxic, mind | Very rare |
+| Cosmic | Rock, drake, sound | Stars and space; come out at night |
+| Sound | Ice, bug, mind | Loud and musical |
+
+Cosmic beats sound, sound beats mind, and mind beats cosmic.
 
 ## Gyms and badges
 
-There are 14 gyms scattered around the map, one for each type except normal. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
+There are 16 gyms scattered around the map, one for each type except normal. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |
@@ -102,15 +106,17 @@ There are 14 gyms scattered around the map, one for each type except normal. Eac
 | 5 | Twinkle Gym | Pixie | Leader Luma | 14–15 |
 | 6 | Grove Gym | Grass | Leader Fern | 15–17 |
 | 7 | Volt Gym | Electric | Leader Sparky | 17–19 |
-| 8 | Iron Gym | Metal | Leader Forge | 19–21 |
-| 9 | Mystic Gym | Mind | Leader Sage | 20–22 |
-| 10 | Blaze Gym | Fire | Leader Cinder | 22–24 |
-| 11 | Frost Gym | Ice | Leader Yuki | 23–25 |
-| 12 | Phantom Gym | Ghost | Leader Raven | 25–27 |
-| 13 | Scale Gym | Drake | Leader Wyvern | 26–28 |
-| 14 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
+| 8 | Echo Gym | Sound | Leader Melody | 18–20 |
+| 9 | Iron Gym | Metal | Leader Forge | 19–21 |
+| 10 | Mystic Gym | Mind | Leader Sage | 20–22 |
+| 11 | Blaze Gym | Fire | Leader Cinder | 22–24 |
+| 12 | Frost Gym | Ice | Leader Yuki | 23–25 |
+| 13 | Comet Gym | Cosmic | Leader Nova | 24–26 |
+| 14 | Phantom Gym | Ghost | Leader Raven | 25–27 |
+| 15 | Scale Gym | Drake | Leader Wyvern | 26–28 |
+| 16 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
 
-Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 14 to become the Champion.
+Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 16 to become the Champion.
 
 The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
