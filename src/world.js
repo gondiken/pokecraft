@@ -129,15 +129,30 @@ export class World {
     this.placeGyms();
   }
 
-  // Gyms sit on a spiral around the middle of the map, each one further out than the last.
+  // Gyms are scattered around the map, well apart from each other. The closest one to the
+  // middle (where you start) gets the first gym, the next closest the second, and so on.
+  gymSpots(count) {
+    const cx = WORLD_W / 2, cz = WORLD_D / 2;
+    const margin = 16;
+    for (let minGap = 36; minGap > 14; minGap -= 3) {
+      const spots = [];
+      for (let i = 0; i < 4000 && spots.length < count; i++) {
+        const x = Math.floor(margin + hash2(i, 11, this.seed) * (WORLD_W - margin * 2));
+        const z = Math.floor(margin + hash2(i, 23, this.seed) * (WORLD_D - margin * 2));
+        if (Math.hypot(x - cx, z - cz) < 18) continue;
+        if (spots.some(([sx, sz]) => Math.hypot(x - sx, z - sz) < minGap)) continue;
+        spots.push([x, z]);
+      }
+      if (spots.length === count) return spots.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cz) - Math.hypot(b[0] - cx, b[1] - cz));
+    }
+    throw new Error('No room for the gyms');
+  }
+
   placeGyms() {
     const cx = WORLD_W / 2, cz = WORLD_D / 2;
-    const offset = hash2(1, 2, this.seed) * Math.PI * 2;
+    const spots = this.gymSpots(GYMS.length);
     this.gyms = GYMS.map((def, i) => {
-      const angle = offset + i * 2.4;
-      const r = 20 + i * 9;
-      const x = Math.round(cx + Math.cos(angle) * r);
-      const z = Math.round(cz + Math.sin(angle) * r);
+      const [x, z] = spots[i];
       // The door faces the middle of the map, along whichever axis is closer.
       const dx = cx - x, dz = cz - z;
       const front = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];

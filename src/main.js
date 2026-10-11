@@ -190,6 +190,8 @@ function continueGame(saved) {
   game.beaten = saved.beaten || [];
   const p = game.player;
   if (saved.pos) p.pos.set(...saved.pos); else p.pos.copy(game.spawnPoint);
+  // Buildings can move between versions; never start inside a wall.
+  if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
   begin();
 }

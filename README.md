@@ -2,7 +2,7 @@
 
 A browser game that mixes a Minecraft-style voxel world with creature collecting.
 Explore a procedurally generated block world, build and dig, battle and catch
-wild creatures in Capture Cubes, and beat all 8 Gym Leaders to collect every badge.
+wild creatures in Capture Cubes, and beat all 14 Gym Leaders to collect every badge.
 
 Built with plain JavaScript and [three.js](https://threejs.org/). There is no build step.
 
@@ -91,20 +91,28 @@ Creatures farther from the starting point are higher level. Your team slowly reg
 
 ## Gyms and badges
 
-There are 8 gyms around the map, one for each type except normal. Each gym is a brick building with a roof in its type's colour.
+There are 14 gyms scattered around the map, one for each type except normal. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
-1. **Boulder Gym** (rock): Leader Rocco
-2. **Hive Gym** (bug): Leader Mantis
-3. **Tide Gym** (water): Leader Marina
-4. **Grove Gym** (grass): Leader Fern
-5. **Volt Gym** (electric): Leader Sparky
-6. **Blaze Gym** (fire): Leader Cinder
-7. **Frost Gym** (ice): Leader Yuki
-8. **Phantom Gym** (ghost): Leader Raven
+| # | Gym | Type | Leader | Leader's levels |
+| --- | --- | --- | --- | --- |
+| 1 | Boulder Gym | Rock | Leader Rocco | 6–8 |
+| 2 | Hive Gym | Bug | Leader Mantis | 8–10 |
+| 3 | Swamp Gym | Toxic | Leader Venna | 10–12 |
+| 4 | Tide Gym | Water | Leader Marina | 12–14 |
+| 5 | Twinkle Gym | Pixie | Leader Luma | 14–15 |
+| 6 | Grove Gym | Grass | Leader Fern | 15–17 |
+| 7 | Volt Gym | Electric | Leader Sparky | 17–19 |
+| 8 | Iron Gym | Metal | Leader Forge | 19–21 |
+| 9 | Mystic Gym | Mind | Leader Sage | 20–22 |
+| 10 | Blaze Gym | Fire | Leader Cinder | 22–24 |
+| 11 | Frost Gym | Ice | Leader Yuki | 23–25 |
+| 12 | Phantom Gym | Ghost | Leader Raven | 25–27 |
+| 13 | Scale Gym | Drake | Leader Wyvern | 26–28 |
+| 14 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
 
-Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 8 to become the Champion.
+Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 14 to become the Champion.
 
-The top-right corner shows your badges and points you to the next gym. Gyms get harder in order, so catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
+The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
 ## Code layout
 
