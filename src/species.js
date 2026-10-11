@@ -4,19 +4,28 @@ import * as THREE from 'three';
 export const TYPE_COLORS = {
   normal: '#c6c59a', fire: '#f2914a', water: '#7aa4f5', grass: '#8fd166', electric: '#f7d84a', rock: '#c9b45a',
   ice: '#9fe0f0', bug: '#b5c84a', ghost: '#a48ad0',
+  mind: '#f584b8', metal: '#b8c4cf', toxic: '#b36ad6', pixie: '#ffb8e6', drake: '#7f6cf0',
+  rainbow: 'linear-gradient(90deg,#ff7a7a,#ffd36b,#8fe388,#7ab8ff,#c99bff)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
-  normal: { rock: 0.5, ghost: 0 },
-  fire: { grass: 2, ice: 2, bug: 2, fire: 0.5, water: 0.5, rock: 0.5 },
-  water: { fire: 2, rock: 2, water: 0.5, grass: 0.5 },
-  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5 },
-  electric: { water: 2, electric: 0.5, grass: 0.5, rock: 0.5 },
-  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5 },
-  ice: { grass: 2, bug: 2, fire: 0.5, water: 0.5, ice: 0.5 },
-  bug: { grass: 2, ghost: 0.5, fire: 0.5, rock: 0.5 },
-  ghost: { ghost: 2, normal: 0 },
+  normal: { rock: 0.5, metal: 0.5, ghost: 0 },
+  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5 },
+  water: { fire: 2, rock: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
+  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5 },
+  electric: { water: 2, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
+  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5 },
+  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5 },
+  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5 },
+  ghost: { ghost: 2, mind: 2, rainbow: 2, normal: 0 },
+  // New types
+  mind: { toxic: 2, drake: 2, mind: 0.5, metal: 0.5 },
+  metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5 },
+  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, metal: 0 },
+  pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5 },
+  drake: { drake: 2, metal: 0.5, pixie: 0 },
+  rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -41,11 +50,29 @@ export const MOVES = {
   stingbarrage: { name: 'Sting Barrage', type: 'bug', power: 75, acc: 0.9 },
   shadowsneak: { name: 'Shadow Sneak', type: 'ghost', power: 40, acc: 1, priority: 1 },
   phantomstrike: { name: 'Phantom Strike', type: 'ghost', power: 75, acc: 0.9 },
+  mindpulse: { name: 'Mind Pulse', type: 'mind', power: 40, acc: 1 },
+  brainwave: { name: 'Brain Wave', type: 'mind', power: 75, acc: 0.9 },
+  clank: { name: 'Clank', type: 'metal', power: 40, acc: 1 },
+  ironbash: { name: 'Iron Bash', type: 'metal', power: 75, acc: 0.9 },
+  sludgespit: { name: 'Sludge Spit', type: 'toxic', power: 40, acc: 1 },
+  toxiccloud: { name: 'Toxic Cloud', type: 'toxic', power: 75, acc: 0.9 },
+  pixiedust: { name: 'Pixie Dust', type: 'pixie', power: 40, acc: 1 },
+  moonbeam: { name: 'Moonbeam', type: 'pixie', power: 75, acc: 0.9 },
+  scaleswipe: { name: 'Scale Swipe', type: 'drake', power: 40, acc: 1 },
+  drakeroar: { name: 'Drake Roar', type: 'drake', power: 80, acc: 0.9 },
+  prismray: { name: 'Prism Ray', type: 'rainbow', power: 45, acc: 1 },
+  rainbowburst: { name: 'Rainbow Burst', type: 'rainbow', power: 80, acc: 0.9 },
 };
 
 // Standard learnset for a type: a weak move at first, a strong one at 13, and normal moves for coverage.
-const T1 = { fire: 'ember', water: 'bubble', grass: 'leafcut', electric: 'spark', rock: 'pebbleshot', ice: 'icebreath', bug: 'bugbite', ghost: 'shadowsneak' };
-const T2 = { fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage', ghost: 'phantomstrike' };
+const T1 = {
+  fire: 'ember', water: 'bubble', grass: 'leafcut', electric: 'spark', rock: 'pebbleshot', ice: 'icebreath', bug: 'bugbite',
+  ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
+};
+const T2 = {
+  fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
+  ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
+};
 function L(type, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [12, 'bodyslam'], [24, 'hyperstrike']]
@@ -305,6 +332,114 @@ export const SPECIES = {
     base: { hp: 60, atk: 50, def: 65, spd: 30 }, baseXp: 85, catchRate: 0.35, learn: L('ghost'), floats: true,
     model: { shape: 'blob', scale: 0.9, body: 0x9a8ac0, accent: 0xe0d8ff, dark: 0x4a3a6a, belly: 0xd8d0f0, extras: ['ghost', 'sleepy'] },
   },
+
+  /* ------------------------------ mind ---------------------------- */
+  thinkit: {
+    name: 'Thinkit', type: 'mind', desc: 'Its big brain glows when it is solving a puzzle.',
+    base: { hp: 40, atk: 58, def: 42, spd: 62 }, baseXp: 66, catchRate: 0.4, learn: L('mind'),
+    evolve: { level: 20, into: 'cerebrix' },
+    model: { shape: 'blob', scale: 0.7, body: 0xf3a6c8, accent: 0xff6fae, dark: 0x8a3a64, belly: 0xffe0ee, extras: ['brain', 'gem'] },
+  },
+  cerebrix: {
+    name: 'Cerebrix', type: 'mind', desc: 'Can move boulders just by thinking about them.',
+    base: { hp: 70, atk: 98, def: 65, spd: 92 }, baseXp: 165, catchRate: 0.12, learn: L('mind'),
+    model: { shape: 'biped', scale: 1.1, body: 0xd97ab0, accent: 0xff6fae, dark: 0x6a2a50, belly: 0xffd0e6, extras: ['brain', 'gem'] },
+  },
+  owlucid: {
+    name: 'Owlucid', type: 'mind', desc: 'A wise owl that always seems to know what you will do next.',
+    base: { hp: 55, atk: 65, def: 55, spd: 75 }, baseXp: 95, catchRate: 0.35, learn: L('mind'), flies: true,
+    model: { shape: 'bird', scale: 0.85, body: 0x8a6ab0, accent: 0xffd84a, dark: 0x4a3a6a, belly: 0xe8dcf8, extras: ['owl'] },
+  },
+
+  /* ------------------------------ metal --------------------------- */
+  clanklet: {
+    name: 'Clanklet', type: 'metal', desc: 'A tiny robot that collects lost screws and bolts.',
+    base: { hp: 45, atk: 50, def: 70, spd: 35 }, baseXp: 66, catchRate: 0.4, learn: L('metal', [[10, 'spark']]),
+    evolve: { level: 22, into: 'mechanox' },
+    model: { shape: 'blob', scale: 0.7, body: 0xaab4be, accent: 0x4ad0ff, dark: 0x5a646e, belly: 0xd8dee4, extras: ['robot'] },
+  },
+  mechanox: {
+    name: 'Mechanox', type: 'metal', desc: 'A giant robot guardian with armour no attack can dent.',
+    base: { hp: 75, atk: 95, def: 120, spd: 40 }, baseXp: 170, catchRate: 0.1, learn: L('metal', [[10, 'spark']]),
+    model: { shape: 'biped', scale: 1.25, body: 0x8a96a2, accent: 0x4ad0ff, dark: 0x4a545e, belly: 0xc8d0d8, extras: ['robot'] },
+  },
+  ironhorn: {
+    name: 'Ironhorn', type: 'metal', desc: 'A rhino with skin of iron. It charges straight through walls.',
+    base: { hp: 70, atk: 80, def: 95, spd: 35 }, baseXp: 115, catchRate: 0.25, learn: L('metal', [[16, 'rockslam']]),
+    model: { shape: 'quad', scale: 1.05, body: 0x9aa6b2, accent: 0xe0e6ec, dark: 0x5a646e, belly: 0xb8c2cc, extras: ['rhinoHorn', 'ears'] },
+  },
+
+  /* ------------------------------ toxic --------------------------- */
+  sludgy: {
+    name: 'Sludgy', type: 'toxic', desc: 'A gooey blob. Do not let it hug you, it is very sticky.',
+    base: { hp: 55, atk: 50, def: 50, spd: 30 }, baseXp: 62, catchRate: 0.45, learn: L('toxic'),
+    evolve: { level: 20, into: 'gloopor' },
+    model: { shape: 'blob', scale: 0.75, body: 0x9a5ac0, accent: 0xc8ff5a, dark: 0x4a2a6a, belly: 0xc89ae0, extras: ['slime'] },
+  },
+  gloopor: {
+    name: 'Gloopor', type: 'toxic', desc: 'A huge pile of goo with a crown of bubbles. Flowers wilt near it.',
+    base: { hp: 95, atk: 85, def: 75, spd: 45 }, baseXp: 160, catchRate: 0.12, learn: L('toxic'),
+    model: { shape: 'blob', scale: 1.35, body: 0x7a3aa0, accent: 0xc8ff5a, dark: 0x3a1a5a, belly: 0xb07ad0, extras: ['slime', 'bubbles'] },
+  },
+  hissyfang: {
+    name: 'Hissyfang', type: 'toxic', desc: 'A grumpy snake with glowing green fangs.',
+    base: { hp: 50, atk: 75, def: 50, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('toxic'),
+    model: { shape: 'serpent', scale: 0.9, body: 0x6a3a8a, accent: 0xa8f040, dark: 0x2a1a3a, belly: 0xc8a8e0, extras: ['fangs', 'spikes'] },
+  },
+
+  /* ------------------------------ pixie --------------------------- */
+  twinklet: {
+    name: 'Twinklet', type: 'pixie', desc: 'A tiny sprite that sprinkles glitter wherever it flies.',
+    base: { hp: 45, atk: 45, def: 50, spd: 65 }, baseXp: 64, catchRate: 0.4, learn: L('pixie'), floats: true,
+    evolve: { level: 18, into: 'starbelle' },
+    model: { shape: 'blob', scale: 0.6, body: 0xffd0ec, accent: 0xfff0a0, dark: 0xc06aa0, belly: 0xffffff, extras: ['pixieWings', 'gem'] },
+  },
+  starbelle: {
+    name: 'Starbelle', type: 'pixie', desc: 'Dances under the moon. Its wand can grant small wishes.',
+    base: { hp: 75, atk: 80, def: 75, spd: 85 }, baseXp: 155, catchRate: 0.12, learn: L('pixie'),
+    model: { shape: 'biped', scale: 0.95, body: 0xffb8e6, accent: 0xfff0a0, dark: 0xd070b0, belly: 0xffe8f6, extras: ['pixieWings', 'starHead'] },
+  },
+  petalfae: {
+    name: 'Petalfae', type: 'pixie', desc: 'Hides inside flowers and giggles at people walking by.',
+    base: { hp: 45, atk: 55, def: 45, spd: 85 }, baseXp: 85, catchRate: 0.35, learn: L('pixie', [[10, 'leafcut']]), flies: true,
+    model: { shape: 'bug', scale: 0.75, body: 0x7ac06a, accent: 0xffa8d8, dark: 0x3a6a3a, belly: 0xa8e098, extras: ['wings'] },
+  },
+
+  /* ------------------------------ drake --------------------------- */
+  scalekin: {
+    name: 'Scalekin', type: 'drake', desc: 'A baby drake. It practises roaring but only manages a squeak.',
+    base: { hp: 45, atk: 65, def: 50, spd: 50 }, baseXp: 70, catchRate: 0.3, learn: L('drake'),
+    evolve: { level: 24, into: 'scalewing' },
+    model: { shape: 'quad', scale: 0.8, body: 0x6a7ae0, accent: 0xffd84a, dark: 0x2a3a8a, belly: 0xc8d0ff, extras: ['dragonHorns', 'spikes', 'smallWings'] },
+  },
+  scalewing: {
+    name: 'Scalewing', type: 'drake', desc: 'A mighty drake. Its wings stir up storms when it takes off.',
+    base: { hp: 90, atk: 110, def: 85, spd: 85 }, baseXp: 185, catchRate: 0.08, learn: L('drake'),
+    model: { shape: 'quad', scale: 1.45, body: 0x4a5ac8, accent: 0xffd84a, dark: 0x1a2a6a, belly: 0xb0c0ff, extras: ['dragonHorns', 'spikes', 'bigWings'] },
+  },
+  skywyrm: {
+    name: 'Skywyrm', type: 'drake', desc: 'A legendary sky serpent said to live above the clouds.',
+    base: { hp: 80, atk: 100, def: 80, spd: 100 }, baseXp: 180, catchRate: 0.08, learn: L('drake'), flies: true,
+    model: { shape: 'serpent', scale: 1.3, body: 0x3ab0a0, accent: 0xffd84a, dark: 0x1a5a50, belly: 0xc0f0e8, extras: ['whiskers', 'spikes', 'dragonHorns'] },
+  },
+
+  /* ----------------------------- rainbow -------------------------- */
+  prismkit: {
+    name: 'Prismkit', type: 'rainbow', desc: 'A very rare kitten whose fur shimmers in every colour.',
+    base: { hp: 50, atk: 60, def: 50, spd: 75 }, baseXp: 90, catchRate: 0.25, learn: L('rainbow'),
+    evolve: { level: 25, into: 'spectrion' },
+    model: { shape: 'quad', scale: 0.7, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['ears', 'fluffyTail', 'whiskers', 'rainbow'] },
+  },
+  spectrion: {
+    name: 'Spectrion', type: 'rainbow', desc: 'Legends say a rainbow appears in the sky wherever it runs.',
+    base: { hp: 85, atk: 100, def: 80, spd: 105 }, baseXp: 190, catchRate: 0.06, learn: L('rainbow'),
+    model: { shape: 'quad', scale: 1.3, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['ears', 'fluffyTail', 'mane', 'rainbow'] },
+  },
+  rainwing: {
+    name: 'Rainwing', type: 'rainbow', desc: 'A shy bird that only comes out when the sun is shining.',
+    base: { hp: 60, atk: 70, def: 55, spd: 95 }, baseXp: 120, catchRate: 0.2, learn: L('rainbow'), flies: true,
+    model: { shape: 'bird', scale: 0.9, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['rainbow'] },
+  },
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -313,15 +448,22 @@ export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
 export const SPAWNS = {
   plains: [['fluffin', 5], ['zapple', 3], ['sproutle', 2], ['emberpup', 1], ['hopsy', 4], ['chirpit', 4, 'day'],
     ['ampup', 2], ['beetlet', 2, 'day'], ['voltwing', 1], ['sparkitten', 1], ['bounceroo', 0.3],
-    ['wispurr', 3, 'night'], ['snoozle', 2, 'night'], ['glowbug', 2, 'night']],
+    ['wispurr', 3, 'night'], ['snoozle', 2, 'night'], ['glowbug', 2, 'night'],
+    ['thinkit', 2], ['owlucid', 2, 'night'], ['twinklet', 2, 'day'], ['sludgy', 1], ['prismkit', 0.25, 'day'], ['rainwing', 0.2, 'day']],
   forest: [['sproutle', 4], ['thornox', 2], ['fluffin', 1], ['zapple', 1], ['budling', 3], ['mossloth', 2],
     ['beetlet', 3], ['flutterby', 3, 'day'], ['chirpit', 2, 'day'], ['hornbeetle', 0.4], ['bloomora', 0.3],
-    ['wispurr', 3, 'night'], ['glowbug', 3, 'night'], ['phantomaw', 0.4, 'night']],
-  beach: [['bubbuck', 4], ['emberpup', 2], ['zapple', 1], ['shellby', 4], ['gullop', 3], ['sparkitten', 2]],
+    ['wispurr', 3, 'night'], ['glowbug', 3, 'night'], ['phantomaw', 0.4, 'night'],
+    ['sludgy', 3], ['hissyfang', 2], ['gloopor', 0.3], ['twinklet', 2, 'day'], ['petalfae', 3, 'day'],
+    ['owlucid', 3, 'night'], ['starbelle', 0.3, 'night'], ['prismkit', 0.25, 'day']],
+  beach: [['bubbuck', 4], ['emberpup', 2], ['zapple', 1], ['shellby', 4], ['gullop', 3], ['sparkitten', 2],
+    ['clanklet', 1], ['rainwing', 0.3, 'day']],
   water: [['bubbuck', 2], ['ripplet', 3], ['joltail', 2], ['shellby', 1], ['gullop', 1], ['torrentide', 0.3]],
   mountain: [['pebblor', 5], ['flarehawk', 2], ['zapple', 1], ['magmole', 3], ['cragtusk', 2], ['geodrake', 2],
-    ['monolor', 0.4], ['pyrolynx', 0.3], ['snoozle', 2, 'night']],
-  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['geodrake', 1], ['glacieron', 0.5], ['wispurr', 1, 'night']],
+    ['monolor', 0.4], ['pyrolynx', 0.3], ['snoozle', 2, 'night'],
+    ['clanklet', 3], ['ironhorn', 2], ['mechanox', 0.3], ['thinkit', 1], ['cerebrix', 0.2],
+    ['scalekin', 1], ['scalewing', 0.1], ['skywyrm', 0.15], ['rainwing', 0.2, 'day']],
+  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['geodrake', 1], ['glacieron', 0.5], ['wispurr', 1, 'night'],
+    ['ironhorn', 1], ['scalekin', 1.5], ['skywyrm', 0.3], ['prismkit', 0.2, 'day']],
 };
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
@@ -401,11 +543,11 @@ function pivot(parent, x, y, z) {
 function eyes(parent, y, z, spread, size = 0.13, closed = false) {
   for (const s of [-1, 1]) {
     if (closed) {
-      box(parent, size * 1.1, 0.03, 0.03, 0x222222, s * spread, y - 0.02, z + 0.01);
+      box(parent, size * 1.1, 0.03, 0.03, 0x222222, s * spread, y - 0.02, z + 0.01).userData.eye = true;
       continue;
     }
-    box(parent, size, size * 1.15, 0.04, 0xffffff, s * spread, y, z);
-    box(parent, size * 0.55, size * 0.7, 0.03, 0x111111, s * spread + s * size * 0.12, y - 0.01, z + 0.03);
+    box(parent, size, size * 1.15, 0.04, 0xffffff, s * spread, y, z).userData.eye = true;
+    box(parent, size * 0.55, size * 0.7, 0.03, 0x111111, s * spread + s * size * 0.12, y - 0.01, z + 0.03).userData.eye = true;
   }
 }
 
@@ -418,6 +560,29 @@ function zigzag(parent, color, x, y, z, size = 1) {
   box(parent, 0.1 * size, 0.22 * size, 0.08 * size, color, x, y, z);
   box(parent, 0.1 * size, 0.08 * size, 0.22 * size, color, x, y + 0.13 * size, z - 0.07 * size);
   box(parent, 0.1 * size, 0.22 * size, 0.08 * size, color, x, y + 0.25 * size, z - 0.15 * size);
+}
+
+// A pair of flat wings on pivots so they can flap.
+// Upright wings (pixies) stand in the x-y plane; others are flat and raised by `lift` radians.
+function addWings(parts, parent, m, x, y, z, w, d, color, tipColor, { lift = 0, upright = false } = {}) {
+  parts.wings = parts.wings || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(parent, s * x, y, z);
+    if (upright) {
+      box(g, w, d, 0.04, color, s * w / 2, d / 3, 0);
+      if (tipColor !== undefined) box(g, w * 0.6, d * 0.5, 0.03, tipColor, s * w * 0.4, -d * 0.25, 0.01);
+    } else {
+      box(g, w, 0.05, d, color, s * w / 2, 0, 0);
+      if (tipColor !== undefined) box(g, w * 0.45, 0.04, d * 0.7, tipColor, s * w * 0.85, 0.01, -d * 0.1);
+    }
+    g.rotation.z = s * lift;
+    parts.wings.push({ g, s, lift });
+  }
+}
+
+// Glowing gem on the forehead.
+function gem(parent, m, y, z) {
+  return glow(box(parent, 0.12, 0.12, 0.05, m.accent, 0, y, z), m.accent);
 }
 
 function buildQuad(root, m, parts) {
@@ -468,6 +633,19 @@ function buildQuad(root, m, parts) {
       h.rotation.z = -s * 0.45;
     }
   }
+  if (has('rhinoHorn')) {
+    const h = box(head, 0.12, 0.34, 0.12, m.accent, 0, 0.08, 0.42);
+    h.rotation.x = 0.5;
+    box(head, 0.08, 0.16, 0.08, m.accent, 0, 0.26, 0.28);
+  }
+  if (has('dragonHorns')) {
+    for (const s of [-1, 1]) {
+      const h = box(head, 0.08, 0.3, 0.08, m.accent, s * 0.16, 0.32, -0.12);
+      h.rotation.x = -0.6;
+    }
+  }
+  if (has('smallWings')) addWings(parts, root, m, 0.3, bodyY + 0.25, 0.05, 0.4, 0.32, m.dark, m.accent, { lift: 0.6 });
+  if (has('bigWings')) addWings(parts, root, m, 0.3, bodyY + 0.3, 0, 0.95, 0.65, m.dark, m.accent, { lift: 0.55 });
   if (has('tusks')) {
     for (const s of [-1, 1]) {
       const t = box(head, 0.07, 0.24, 0.07, m.accent, s * 0.16, -0.08, 0.46);
@@ -579,6 +757,27 @@ function buildBlob(root, m, parts) {
       h.rotation.z = -s * 0.35;
     }
   }
+  if (has('brain')) {
+    for (const [x, z, w] of [[-0.16, 0, 0.3], [0.16, 0, 0.3], [0, -0.12, 0.34], [0, 0.12, 0.3]]) box(bodyGroup, w, 0.18, w, m.accent, x, 0.8, z);
+  }
+  if (has('gem')) gem(bodyGroup, m, 0.66, 0.37);
+  if (has('robot')) {
+    box(bodyGroup, 0.5, 0.16, 0.03, 0x1a2a3a, 0, 0.5, 0.365);
+    for (const sx of [-0.12, 0.12]) glow(box(bodyGroup, 0.12, 0.07, 0.02, m.accent, sx, 0.5, 0.38), m.accent);
+    box(bodyGroup, 0.04, 0.26, 0.04, m.dark, 0, 0.85, 0);
+    parts.tip = glow(box(bodyGroup, 0.1, 0.1, 0.1, 0xff4a4a, 0, 1.0, 0), 0x880000);
+    for (const [x, y] of [[-0.3, 0.2], [0.3, 0.2], [-0.3, 0.6], [0.3, 0.6]]) box(bodyGroup, 0.05, 0.05, 0.03, m.dark, x, y, 0.365);
+  }
+  if (has('slime')) {
+    for (const [x, z, h] of [[-0.3, 0.3, 0.18], [0.28, 0.32, 0.24], [0.1, 0.36, 0.14], [-0.2, -0.34, 0.2]]) {
+      box(bodyGroup, 0.12, h, 0.08, m.body, x, 0.12 + h / 2 - 0.1, z);
+    }
+    box(bodyGroup, 0.86, 0.12, 0.86, m.body, 0, 0.08, 0);
+  }
+  if (has('bubbles')) {
+    for (const [x, z, sz] of [[-0.2, 0.05, 0.16], [0.18, -0.05, 0.2], [0, 0.18, 0.12]]) glow(box(bodyGroup, sz, sz, sz, m.accent, x, 0.82 + sz / 2, z), 0x446600);
+  }
+  if (has('pixieWings')) addWings(parts, bodyGroup, m, 0.2, 0.55, -0.38, 0.45, 0.5, m.accent, m.dark, { upright: true });
   if (ghost) parts.float = true;
 }
 
@@ -617,6 +816,21 @@ function buildBiped(root, m, parts) {
   if (has('spikes')) {
     for (const [x, y] of [[-0.25, 1.25], [0.25, 1.25], [0, 1.3]]) box(root, 0.14, 0.2, 0.14, m.dark, x, y, -0.24);
   }
+  if (has('brain')) {
+    for (const [x, z, w] of [[-0.12, 0, 0.24], [0.12, 0, 0.24], [0, -0.1, 0.28]]) box(head, w, 0.16, w, m.accent, x, 0.27, z);
+  }
+  if (has('gem')) gem(head, m, 0.12, 0.25);
+  if (has('robot')) {
+    box(head, 0.44, 0.12, 0.03, 0x1a2a3a, 0, 0.04, 0.24);
+    glow(box(head, 0.36, 0.05, 0.02, m.accent, 0, 0.04, 0.255), m.accent);
+    box(head, 0.04, 0.22, 0.04, m.dark, 0.16, 0.3, 0);
+    parts.tip = glow(box(head, 0.09, 0.09, 0.09, 0xff4a4a, 0.16, 0.44, 0), 0x880000);
+    glow(box(root, 0.24, 0.24, 0.04, m.accent, 0, 0.92, 0.33), m.accent);
+  }
+  if (has('pixieWings')) addWings(parts, root, m, 0.15, 1.05, -0.33, 0.55, 0.6, m.accent, m.dark, { upright: true });
+  if (has('starHead')) {
+    for (const [x, y] of [[0, 0.36], [-0.14, 0.28], [0.14, 0.28]]) glow(box(head, 0.12, 0.12, 0.06, m.accent, x, y, 0), 0x666600);
+  }
   if (has('crystal')) {
     for (const s of [-1, 1]) {
       const c = box(root, 0.16, 0.42, 0.16, m.accent, s * 0.42, 1.38, -0.05);
@@ -654,7 +868,12 @@ function buildBird(root, m, parts) {
   box(head, 0.36, 0.34, 0.34, m.body, 0, 0, 0);
   box(head, 0.12, 0.1, 0.18, m.accent, 0, -0.04, 0.24);
   eyes(head, 0.05, 0.175, 0.1, 0.1);
-  box(head, 0.08, 0.2, 0.22, m.accent, 0, 0.22, -0.08);
+  if (has('owl')) {
+    for (const s of [-1, 1]) box(head, 0.08, 0.16, 0.06, m.dark, s * 0.13, 0.22, 0);
+    for (const s of [-1, 1]) box(head, 0.14, 0.14, 0.02, m.accent, s * 0.09, 0.05, 0.172);
+  } else {
+    box(head, 0.08, 0.2, 0.22, m.accent, 0, 0.22, -0.08);
+  }
   parts.wings = [];
   for (const s of [-1, 1]) {
     const w = pivot(bodyGroup, s * 0.23, 0.8, 0);
@@ -698,6 +917,11 @@ function buildSerpent(root, m, parts) {
     w.rotation.z = s * 0.3;
   }
   if (has('bolt')) zigzag(head, m.accent, 0, 0.24, 0.05);
+  if (has('fangs')) for (const s of [-1, 1]) glow(box(head, 0.05, 0.12, 0.05, m.accent, s * 0.1, -0.24, 0.24), 0x335500);
+  if (has('dragonHorns')) for (const s of [-1, 1]) {
+    const h = box(head, 0.08, 0.3, 0.08, m.accent, s * 0.15, 0.3, -0.15);
+    h.rotation.x = -0.6;
+  }
   if (has('spikes')) for (const s of [-1, 1]) box(head, 0.08, 0.22, 0.08, m.accent, s * 0.14, 0.3, -0.1);
 }
 
@@ -750,6 +974,15 @@ export function buildModel(species) {
   group.add(root);
   const parts = { root };
   ({ quad: buildQuad, blob: buildBlob, biped: buildBiped, bird: buildBird, serpent: buildSerpent, bug: buildBug })[m.shape](root, m, parts);
+  if (m.extras.includes('rainbow')) {
+    // Each block gets its own colour from the rainbow; animateModel makes the colours flow.
+    parts.rainbow = [];
+    let i = 0;
+    group.traverse(o => {
+      if (o.isMesh && !o.userData.eye) parts.rainbow.push({ mat: o.material, offset: (i++ * 0.13) % 1 });
+    });
+    for (const r of parts.rainbow) r.mat.color.setHSL(r.offset, 0.75, 0.62);
+  }
   if (parts.float) {
     group.traverse(o => {
       if (o.isMesh) { o.material.transparent = true; o.material.opacity = 0.82; }
@@ -781,8 +1014,9 @@ export function animateModel(group, t, moving) {
     }
   }
   for (const s of p.segments || []) s.g.position.x = Math.sin(t * (moving ? 8 : 3) - s.i * 0.9) * (moving ? 0.14 : 0.05) * s.i * 0.5;
-  for (const w of p.wings || []) w.g.rotation.z = w.s * Math.sin(t * (moving ? 14 : 4)) * (moving ? 0.7 : 0.25);
+  for (const w of p.wings || []) w.g.rotation.z = w.s * ((w.lift || 0) + Math.sin(t * (moving ? 14 : 4)) * (moving ? 0.7 : 0.25));
   if (p.tip) p.tip.material.emissive.setScalar(0.4 + 0.4 * Math.abs(Math.sin(t * 5)));
+  for (const r of p.rainbow || []) r.mat.color.setHSL((r.offset + t * 0.15) % 1, 0.75, 0.62);
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
 }
 

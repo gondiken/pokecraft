@@ -75,6 +75,9 @@ const game = {
 
 game.creatures = new CreatureManager(scene, null);
 game.npcs = new NpcManager(scene);
+game.creatures.onSpawn = wild => {
+  if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
+};
 game.ui = new UI(game, atlas);
 game.battle = new Battle(game);
 

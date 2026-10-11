@@ -94,6 +94,7 @@ export class CreatureManager {
     model.position.copy(wild.pos);
     this.scene.add(model);
     this.list.push(wild);
+    this.onSpawn?.(wild);
   }
 
   remove(wild) {

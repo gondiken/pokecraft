@@ -58,8 +58,9 @@ On a tablet:
 ## Features
 
 - **Voxel world**: a 192×192 terrain with hills, snowy peaks, lakes, beaches and forests, plus a day/night cycle. Break and place 9 block types.
-- **42 original creatures** across 9 types (normal, fire, water, grass, electric, rock, ice, bug, ghost). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, and ghost-type creatures only come out at night.
-- **Evolution**: 12 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Beetlet → Hornbeetle and Wispurr → Phantomaw.
+- **60 original creatures** across 15 types (see below). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, Clanklet roam the mountains, and ghost-type creatures only come out at night.
+- **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
+- **Evolution**: 18 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Scalekin → Scalewing and Prismkit → Spectrion.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
@@ -67,6 +68,26 @@ On a tablet:
 - **Auto-save** to `localStorage`. This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
+
+## Types
+
+| Type | Strong against | Notes |
+| --- | --- | --- |
+| Normal | — | Can't hit ghosts at all |
+| Fire | Grass, ice, bug, metal | |
+| Water | Fire, rock | |
+| Grass | Water, rock | |
+| Electric | Water | |
+| Rock | Fire, electric, ice, bug | |
+| Ice | Grass, bug, drake | |
+| Bug | Grass, mind | |
+| Ghost | Ghost, mind, rainbow | Can't hit normal creatures |
+| Mind | Toxic, drake | Psychic powers |
+| Metal | Ice, rock, pixie | Very tough; toxic attacks don't affect it |
+| Toxic | Grass, pixie | Can't hurt metal |
+| Pixie | Drake, ghost | Drake attacks don't affect it |
+| Drake | Drake | Powerful dragons, resist fire, water, grass and electric |
+| Rainbow | Ghost, toxic, mind | Very rare |
 
 ## Gyms and badges
 
