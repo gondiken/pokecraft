@@ -21,9 +21,14 @@ this file is for working on the code.
 - No build step: plain ES modules in `src/`, served as static files (`python3 -m http.server`).
   CDN libraries are pinned in the import map in `index.html` (three@0.160.0 from unpkg,
   @supabase/supabase-js@2.117.2 from jsdelivr).
-- **Live site:** GitHub Pages serves the branch `claude/clever-ritchie-etj0nq` (root folder) at
-  https://gondiken.github.io/pokecraft/. Pushing to that branch updates the site in ~1–2 minutes.
-  It is currently the repo's only branch.
+- **Branches:** `main` is the real branch. `claude/clever-ritchie-etj0nq` was the first working
+  branch and is kept identical to `main`. **The owner wants them kept in sync:** after finishing
+  work on any `claude/...` session branch, also push the same commit to `main`
+  (`git push origin HEAD:main`), and to `claude/clever-ritchie-etj0nq` while it still exists.
+  Only fast-forward; never force-push `main`.
+- **Live site:** GitHub Pages at https://gondiken.github.io/pokecraft/ (root folder). It updates
+  ~1–2 minutes after a push to the branch Pages is set to (being moved from
+  `claude/clever-ritchie-etj0nq` to `main`; both are identical, so either works).
 
 ## Code map
 
