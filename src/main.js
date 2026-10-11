@@ -191,6 +191,25 @@ function renderAccount(mode = 'idle', message = '', isError = false) {
       msg);
     return;
   }
+  if (mode === 'newPassword') {
+    const pw = el('input', { type: 'password', placeholder: 'New password (6+ characters)', autocomplete: 'new-password' });
+    const setIt = async () => {
+      if (pw.value.length < 6) { renderAccount('newPassword', 'The password needs at least 6 characters.', true); return; }
+      box.querySelectorAll('button,input').forEach(b => { b.disabled = true; });
+      const res = await cloud.setNewPassword(pw.value);
+      if (res.error) { renderAccount('newPassword', res.error, true); return; }
+      game.user = res.user;
+      renderAccount('idle', 'Password changed! You are signed in.');
+      await syncFromCloud();
+    };
+    box.replaceChildren(
+      el('div', {}, 'Choose a new password'),
+      el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); setIt(); } },
+        pw, el('div', { class: 'acct-btns' }, el('button', { class: 'small primary', type: 'submit' }, 'Save password'))),
+      msg);
+    pw.focus();
+    return;
+  }
   const email = el('input', { type: 'email', placeholder: 'Email', autocomplete: 'email', value: typedEmail });
   email.addEventListener('input', () => { typedEmail = email.value; });
   const password = el('input', { type: 'password', placeholder: 'Password (6+ characters)', autocomplete: 'current-password' });
@@ -208,19 +227,45 @@ function renderAccount(mode = 'idle', message = '', isError = false) {
     await syncFromCloud();
     renderAccount('idle', cloudState.text, cloudState.error);
   };
+  const forgot = async () => {
+    const address = email.value.trim();
+    if (!address) { renderAccount('form', 'Type your email first, then press "Forgot password?".', true); return; }
+    const res = await cloud.sendPasswordReset(address);
+    renderAccount('form', res.error || `We sent a link to ${address}. Open it on this device to choose a new password.`, !!res.error);
+  };
+  const google = async () => {
+    renderAccount('form', 'Opening Google...');
+    const res = await cloud.signInWithGoogle(); // on success the page goes to Google
+    if (res.error) renderAccount('form', res.error, true);
+  };
   box.replaceChildren(
     el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); go(false); } },
       email, password,
       el('div', { class: 'acct-btns' },
         el('button', { class: 'small primary', type: 'submit' }, 'Sign in'),
         el('button', { class: 'small', type: 'button', onclick: () => go(true) }, 'Create account'),
-        el('button', { class: 'small', type: 'button', onclick: () => renderAccount('idle') }, 'Cancel'))),
+        el('button', { class: 'small', type: 'button', onclick: () => renderAccount('idle') }, 'Cancel')),
+      el('div', { class: 'acct-btns' },
+        el('button', { class: 'small link', type: 'button', onclick: forgot }, 'Forgot password?'))),
+    el('div', { class: 'acct-or' }, 'or'),
+    el('button', { class: 'small google', type: 'button', onclick: google }, 'Continue with Google'),
     msg);
   (typedEmail ? password : email).focus();
 }
 
 async function initAccount() {
+  // Opened from a "reset password" email: ask for the new password straight away.
+  let recovering = false;
+  cloud.onAuthChange((event, user) => {
+    if (event !== 'PASSWORD_RECOVERY') return;
+    recovering = true;
+    game.user = user;
+    if (game.started) pause();
+    titleEl.classList.remove('hidden');
+    renderAccount('newPassword');
+  });
   game.user = await cloud.currentUser();
+  if (recovering) return; // the new-password form is showing; don't replace it
   renderAccount();
   renderCloudStatus();
   if (game.user) {

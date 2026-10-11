@@ -23,6 +23,8 @@ function friendly(error) {
   if (/email not confirmed/i.test(msg)) return 'Check your email and click the confirmation link first.';
   if (/already registered|already been registered/i.test(msg)) return 'That email already has an account. Try "Sign in" instead.';
   if (/password should be at least/i.test(msg)) return 'The password needs at least 6 characters.';
+  if (/provider is not enabled|unsupported provider/i.test(msg)) return "Google sign-in isn't switched on yet. Use email and password for now.";
+  if (/same as the old|different from the old/i.test(msg)) return 'Pick a password that is different from your old one.';
   if (/rate limit|too many/i.test(msg)) return 'Too many tries. Please wait a few minutes.';
   if (/fetch|network|failed to load/i.test(msg)) return "Can't reach the save server. Check the internet connection.";
   return msg || 'Something went wrong.';
@@ -52,10 +54,41 @@ export async function signIn(email, password) {
 export async function signUp(email, password) {
   const client = await getClient();
   if (!client) return { error: "Can't reach the save server." };
-  const redirect = location.origin + location.pathname;
-  const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: redirect } });
+  const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: backHere() } });
   if (error) return { error: friendly(error) };
   return { user: data.user, needsConfirm: !data.session };
+}
+
+// Where Supabase sends people back to after Google sign-in or an email link.
+const backHere = () => location.origin + location.pathname;
+
+// Leaves the page for Google's sign-in screen; Supabase brings the player back here signed in.
+export async function signInWithGoogle() {
+  const client = await getClient();
+  if (!client) return { error: "Can't reach the save server." };
+  const { error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: backHere() } });
+  return error ? { error: friendly(error) } : {};
+}
+
+// Emails a link that brings the player back here to choose a new password.
+export async function sendPasswordReset(email) {
+  const client = await getClient();
+  if (!client) return { error: "Can't reach the save server." };
+  const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: backHere() });
+  return error ? { error: friendly(error) } : {};
+}
+
+export async function setNewPassword(password) {
+  const client = await getClient();
+  if (!client) return { error: "Can't reach the save server." };
+  const { data, error } = await client.auth.updateUser({ password });
+  return error ? { error: friendly(error) } : { user: data.user };
+}
+
+// Calls fn(event, user) on sign-in changes, including 'PASSWORD_RECOVERY' after a reset link.
+export async function onAuthChange(fn) {
+  const client = await getClient();
+  client?.auth.onAuthStateChange((event, session) => fn(event, session?.user ?? null));
 }
 
 export async function signOut() {

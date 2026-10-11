@@ -278,3 +278,6 @@ button.small { font-size: 9px; padding: 8px 10px; }
 .acct-msg { color: var(--text); }
 .acct-msg.error, #cloud-status.error { color: #ff8a80; }
 #cloud-status { color: var(--muted); font-size: 18px; margin: -6px 0 6px; }
+button.link { background: none; border: none; box-shadow: none; color: var(--muted); text-decoration: underline; }
+button.google { background: #fff; color: #222; }
+.acct-or { font-size: 16px; }
