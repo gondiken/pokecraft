@@ -12,6 +12,7 @@ import * as cloud from './cloud.js';
 import { Multiplayer, cleanCode } from './multiplayer.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
+import { sound } from './sound.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
 const OLD_SAVE_KEY = 'pokecraft-save-v1';
@@ -483,6 +484,10 @@ document.addEventListener('pointerlockerror', () => {
 });
 
 pauseEl.addEventListener('click', resume);
+const soundBtn = document.getElementById('sound-btn');
+const showSound = () => { soundBtn.textContent = sound.on ? '🔊 Sound on' : '🔇 Sound off'; };
+soundBtn.addEventListener('click', e => { e.stopPropagation(); sound.setOn(!sound.on); showSound(); });
+showSound();
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
@@ -548,9 +553,11 @@ function breakBlock() {
     if (world.get(hit.x + dx, hit.y + dy, hit.z + dz) === B.WATER) { world.set(hit.x, hit.y, hit.z, B.WATER); break; }
   }
   game.mp.sendBlock(hit.x, hit.y, hit.z, world.get(hit.x, hit.y, hit.z));
+  sound.play('break');
   if (hit.id === B.LEAVES && Math.random() < 0.1) {
     game.cubes++;
     game.ui.renderHud();
+    sound.play('cube');
     game.ui.toast('You found a Capture Cube in the leaves!');
   }
 }
@@ -565,6 +572,7 @@ function placeBlock() {
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, HOTBAR[game.selected]);
   game.mp.sendBlock(x, y, z, HOTBAR[game.selected]);
+  sound.play('place');
 }
 
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.
@@ -604,6 +612,7 @@ function talkTo(npc) {
   const ui = game.ui;
   if (npc.kind === 'healer') {
     healTeam();
+    sound.play('heal');
     ui.toast(`${npc.name}: Your team is fully healed. Good luck out there!`);
     return;
   }
@@ -649,6 +658,7 @@ game.onBattleEnd = (result, opts) => {
   game.inBattle = false;
   document.body.classList.remove('in-battle');
   if (result === 'lost') {
+    sound.play('lose');
     healTeam();
     game.player.pos.copy(game.spawnPoint);
     game.player.vel.set(0, 0, 0);
@@ -658,16 +668,19 @@ game.onBattleEnd = (result, opts) => {
     const gym = npc.gym.def;
     if (npc.kind === 'trainer') {
       game.beaten.push(`${gym.id}:trainer`);
+      sound.play('win');
       game.cubes += 2;
       game.ui.toast(`${npc.name}: Nice battle! ${gym.leader.name} is waiting at the back.`);
       game.ui.toast('You got 2 Capture Cubes.');
     } else if (!game.badges.includes(gym.id)) {
       game.badges.push(gym.id);
+      sound.play('badge');
       game.cubes += 5;
       game.ui.toast(`${npc.name}: ${gym.lose}`);
       game.ui.toast(`You earned the ${gym.badge}! (${game.badges.length}/${GYMS.length}) +5 Capture Cubes`);
       if (game.badges.length === GYMS.length) game.ui.toast('You collected every badge. You are the PokeCraft Champion!');
     } else {
+      sound.play('win');
       game.ui.toast(`${npc.name}: You are as strong as ever!`);
     }
   }
@@ -939,4 +952,5 @@ initAccount();
 
 // Exposed for debugging from the browser console.
 window.pokecraft = game;
+game.sound = sound;
 game.talkTo = talkTo;

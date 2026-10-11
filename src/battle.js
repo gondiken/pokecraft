@@ -6,6 +6,7 @@ import {
 } from './species.js';
 import { B, isSolid } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
+import { sound } from './sound.js';
 
 const PARTY_MAX = 6;
 
@@ -213,6 +214,7 @@ export class Battle {
     this.allyIdx = g.party.findIndex(c => c.hp > 0);
     this.root.classList.remove('hidden');
     this.actions.replaceChildren();
+    sound.play('battle');
 
     if (this.wild) {
       const wild = this.wild;
@@ -330,7 +332,7 @@ export class Battle {
     this.say(`${who} used ${mv.name}!`, 700);
     await this.lunge(side);
     await wait(150);
-    if (Math.random() > mv.acc) { await this.say('But it missed!', 1000); return; }
+    if (Math.random() > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
 
     const as = statsFor(atk), ds = statsFor(def);
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
@@ -339,6 +341,7 @@ export class Battle {
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * as.atk / ds.def) / 50) + 2;
     const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + Math.random() * 0.15)));
     def.hp = Math.max(0, def.hp - dmg);
+    sound.play(eff > 1 ? 'super' : 'hit');
     this.flash(side === 'ally' ? 'foe' : 'ally');
     this.refresh();
     await wait(450);
@@ -349,6 +352,7 @@ export class Battle {
   }
 
   async faintModel(model) {
+    sound.play('faint');
     const y = model.position.y;
     await tween(450, t => { model.scale.setScalar(1 - t * 0.9); model.position.y = y - t * 0.3; });
     model.visible = false;
@@ -378,14 +382,20 @@ export class Battle {
     const { msgs, evolved } = gainXp(this.ally, xp);
     this.refresh();
     for (const m of msgs) {
-      if (evolved && m.includes('evolved into')) await this.evolveAnimation();
+      if (m.includes(' grew to ')) sound.play('levelup');
+      if (evolved && m.includes('evolved into')) { sound.play('evolve'); await this.evolveAnimation(); }
       await this.say(m, 1400);
     }
     const others = this.game.party.filter((c, i) => i !== this.allyIdx && c.hp > 0);
     if (!others.length) return;
     const share = Math.max(1, Math.floor(xp / 2));
     await this.say(`The rest of your team gained ${share} XP.`, 1000);
-    for (const c of others) for (const m of gainXp(c, share).msgs) await this.say(m, 1300);
+    for (const c of others) {
+      for (const m of gainXp(c, share).msgs) {
+        if (m.includes(' grew to ')) sound.play('levelup');
+        await this.say(m, 1300);
+      }
+    }
   }
 
   async evolveAnimation() {
@@ -422,6 +432,7 @@ export class Battle {
     const from = g.player.eyePos.add(new THREE.Vector3(0, -0.3, 0));
     const to = this.foePos.clone().add(new THREE.Vector3(0, 0.6, 0));
     g.scene.add(cube);
+    sound.play('cube');
     this.say('You threw a Capture Cube!', 700);
     await tween(550, t => {
       cube.position.lerpVectors(from, to, t);
@@ -443,12 +454,14 @@ export class Battle {
     let caught = true;
     for (let i = 0; i < 3; i++) {
       this.log.textContent = '.'.repeat(i + 1);
+      sound.play('wobble');
       await tween(400, t => { cube.rotation.z = Math.sin(t * Math.PI * 2) * 0.5; });
       await wait(250);
       if (Math.random() > shakeOk) { caught = false; break; }
     }
 
     if (caught) {
+      sound.play('caught');
       g.scene.remove(cube);
       tintModel(target, null);
       await this.say(`Gotcha! ${nameOf(this.foe)} was caught!`, 1600);
@@ -462,6 +475,7 @@ export class Battle {
       return true;
     }
 
+    sound.play('escape');
     g.scene.remove(cube);
     target.visible = true;
     tintModel(target, null);
