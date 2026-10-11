@@ -41,7 +41,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | 1–9 / mouse wheel | Pick a block from the hotbar |
 | E | Battle the targeted creature, or talk to a person |
 | P / Tab | Team & storage screen |
-| Esc | Pause |
+| Esc | Pause (Resume, Main menu, Play together) |
 
 On a tablet:
 

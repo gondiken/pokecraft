@@ -308,6 +308,8 @@ function showTitle() {
   const saved = loadSave();
   createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits);
   const buttons = document.getElementById('title-buttons');
+  buttons.classList.remove('hidden');
+  document.getElementById('starter-pick').classList.add('hidden');
   const newGame = () => {
     if (saved && !confirm('Start a new world? Your current save will be overwritten.')) return;
     if (saved) createWorld((Math.random() * 1e9) | 0);
@@ -417,8 +419,9 @@ function resume() {
 
 // After a menu or battle: touch players carry on straight away, mouse players click to re-lock.
 function afterOverlay() {
-  if (touchMode) pauseEl.classList.add('hidden');
-  else pauseEl.classList.remove('hidden');
+  // Touch: carry on straight away. Mouse: try to take the mouse back (works right after a click
+  // or key press); if the browser says no, the pause screen asks for a click.
+  resume();
 }
 
 function pause() {
@@ -427,6 +430,23 @@ function pause() {
   game.player.keys = {};
   game.touch.reset();
   pauseEl.classList.remove('hidden');
+}
+
+// Pause menu -> title screen (Continue / New Game / Sign in).
+async function goToMenu() {
+  if (game.mp.role === 'guest') { await goHome(); return; } // reloads into your own world's title screen
+  save(true);
+  game.mp.close();
+  game.started = false;
+  if (locked) document.exitPointerLock();
+  game.player.keys = {};
+  game.touch.reset();
+  pauseEl.classList.add('hidden');
+  hudEl.classList.add('hidden');
+  document.getElementById('touch').classList.add('hidden');
+  titleEl.classList.remove('hidden');
+  showTitle();
+  renderAccount();
 }
 
 function toggleTeam() {
@@ -458,7 +478,13 @@ document.addEventListener('pointerlockchange', () => {
 window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') setTouchMode(true); }, true);
 if (window.matchMedia('(pointer: coarse)').matches) setTouchMode(true);
 
+document.addEventListener('pointerlockerror', () => {
+  if (game.started && !game.inBattle && !game.ui.panelOpen) pauseEl.classList.remove('hidden');
+});
+
 pauseEl.addEventListener('click', resume);
+document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
+game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
 canvas.addEventListener('click', () => {
   if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();

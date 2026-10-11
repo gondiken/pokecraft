@@ -242,6 +242,12 @@ export class Battle {
     let result = null;
     while (!result) result = await this.turn();
 
+    // With a mouse, the browser only gives the mouse back to the game after a click, so end on a
+    // button instead of making the player click through a pause screen.
+    if (!g.isTouch()) {
+      await this.choose([{ label: 'Continue exploring', value: true, cls: 'wide primary' }]);
+    }
+
     this.root.classList.add('hidden');
     if (this.allyModel) {
       const m = this.allyModel;
