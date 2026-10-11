@@ -58,11 +58,16 @@ export default async function ({ browser, base, t }) {
     const { makeCreature } = await import('/src/species.js');
     g.party = [makeCreature('zapple', 18), makeCreature('grovebeast', 18)];
     g.party[1].hp = 1;
-    // Stand right in front of Dad.
-    const s = g.spawnPoint;
-    g.player.pos.set(s.x + 2.5, s.y, s.z);
   });
-  await A.evaluate(() => { const g = window.pokecraft; g.player.pos.copy(g.spawnPoint); });
+  // Both stand on a little stone platform high in the air, so nothing is in the way.
+  const stand = (page, dx) => page.evaluate(dx => {
+    const g = window.pokecraft, s = g.spawnPoint, y = 42;
+    for (let x = -2; x <= 5; x++) for (let z = -2; z <= 2; z++) g.world.set(Math.floor(s.x) + x, y, Math.floor(s.z) + z, 3);
+    g.player.pos.set(Math.floor(s.x) + 0.5 + dx, y + 1, Math.floor(s.z) + 0.5);
+    g.player.vel.set(0, 0, 0);
+  }, dx);
+  await stand(A, 0);
+  await stand(B, 3);
   await A.waitForTimeout(1500);
   await A.evaluate(() => {
     const g = window.pokecraft;

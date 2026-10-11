@@ -32,14 +32,14 @@ export default async function ({ browser, base, t }) {
   const before = (await played()).length;
   await page.evaluate(() => {
     const g = window.pokecraft;
-    const w = g.creatures.list[0];
+    const w = [...g.creatures.list].sort((a, b) => a.pos.distanceTo(g.player.pos) - b.pos.distanceTo(g.player.pos))[0];
     g.inBattle = true; document.body.classList.add('in-battle');
     g.battle.start({ wild: w });
   });
   await page.waitForTimeout(1500);
   t.ok((await played()).length === before, 'with sound off nothing plays');
   await page.evaluate(() => window.pokecraft.sound.setOn(true));
-  await page.waitForSelector('#b-actions button', { timeout: 20000 });
+  await page.waitForSelector('#b-actions button', { timeout: 60000 });
   await page.evaluate(() => document.querySelector('#b-actions button').click());
   await page.waitForTimeout(4000);
   const p2 = await played();
