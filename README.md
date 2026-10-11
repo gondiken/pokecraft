@@ -119,7 +119,6 @@ The top-right corner shows your badges and points you to the next gym. Catch cre
 Sign in on the title screen to keep your progress online and continue on another device. Accounts and saves use [Supabase](https://supabase.com) (project `pokecraft`).
 
 - **Create account** sends a confirmation email. After clicking the link, sign in with the same email and password. Each device only needs to sign in once.
-- **Continue with Google** signs in with a Google account (needs Google set up in Supabase, see below).
 - **Forgot password?** emails a link; opening it brings you back to the game to choose a new password.
 - The game saves online every minute, after every battle, when you pause, and when you leave the page. It always saves on the device too, so it keeps working offline.
 - When you sign in, the game loads whichever save is newer: the one online or the one on this device.
@@ -129,8 +128,7 @@ If the save server can't be reached, the game still works and saves on the devic
 
 ### Supabase setup
 
-- **Authentication → URL Configuration**: Site URL and Redirect URLs must include the game's address (for example `https://gondiken.github.io/pokecraft/`), or email links and Google sign-in won't return to the game.
-- **Authentication → Sign In / Providers → Google**: needs a Google OAuth client ID and secret from Google Cloud Console, with `https://vsaawuqtjjhmclacbfxv.supabase.co/auth/v1/callback` as the authorized redirect URI.
+- **Authentication → URL Configuration**: Site URL and Redirect URLs must include the game's address (for example `https://gondiken.github.io/pokecraft/`), or email links won't return to the game.
 
 ## Code layout
 

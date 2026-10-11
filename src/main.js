@@ -233,11 +233,6 @@ function renderAccount(mode = 'idle', message = '', isError = false) {
     const res = await cloud.sendPasswordReset(address);
     renderAccount('form', res.error || `We sent a link to ${address}. Open it on this device to choose a new password.`, !!res.error);
   };
-  const google = async () => {
-    renderAccount('form', 'Opening Google...');
-    const res = await cloud.signInWithGoogle(); // on success the page goes to Google
-    if (res.error) renderAccount('form', res.error, true);
-  };
   box.replaceChildren(
     el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); go(false); } },
       email, password,
@@ -247,8 +242,6 @@ function renderAccount(mode = 'idle', message = '', isError = false) {
         el('button', { class: 'small', type: 'button', onclick: () => renderAccount('idle') }, 'Cancel')),
       el('div', { class: 'acct-btns' },
         el('button', { class: 'small link', type: 'button', onclick: forgot }, 'Forgot password?'))),
-    el('div', { class: 'acct-or' }, 'or'),
-    el('button', { class: 'small google', type: 'button', onclick: google }, 'Continue with Google'),
     msg);
   (typedEmail ? password : email).focus();
 }

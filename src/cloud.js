@@ -23,7 +23,6 @@ function friendly(error) {
   if (/email not confirmed/i.test(msg)) return 'Check your email and click the confirmation link first.';
   if (/already registered|already been registered/i.test(msg)) return 'That email already has an account. Try "Sign in" instead.';
   if (/password should be at least/i.test(msg)) return 'The password needs at least 6 characters.';
-  if (/provider is not enabled|unsupported provider/i.test(msg)) return "Google sign-in isn't switched on yet. Use email and password for now.";
   if (/same as the old|different from the old/i.test(msg)) return 'Pick a password that is different from your old one.';
   if (/rate limit|too many/i.test(msg)) return 'Too many tries. Please wait a few minutes.';
   if (/fetch|network|failed to load/i.test(msg)) return "Can't reach the save server. Check the internet connection.";
@@ -59,16 +58,8 @@ export async function signUp(email, password) {
   return { user: data.user, needsConfirm: !data.session };
 }
 
-// Where Supabase sends people back to after Google sign-in or an email link.
+// Where Supabase sends people back to after they click a link in an email.
 const backHere = () => location.origin + location.pathname;
-
-// Leaves the page for Google's sign-in screen; Supabase brings the player back here signed in.
-export async function signInWithGoogle() {
-  const client = await getClient();
-  if (!client) return { error: "Can't reach the save server." };
-  const { error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: backHere() } });
-  return error ? { error: friendly(error) } : {};
-}
 
 // Emails a link that brings the player back here to choose a new password.
 export async function sendPasswordReset(email) {
