@@ -260,3 +260,21 @@ body.touch .mon .btns button { font-size: 10px; padding: 10px 12px; }
   body.touch #topright { transform: scale(.85); transform-origin: top right; }
   body.touch #party-mini { transform: scale(.85); transform-origin: top left; }
 }
+
+/* ---------- accounts ---------- */
+#account {
+  margin: 0 auto 6px; max-width: 460px; font-size: 19px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+#account b { color: var(--text); font-weight: normal; }
+button.small { font-size: 9px; padding: 8px 10px; }
+.acct-form { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.acct-form input {
+  font-family: 'VT323', monospace; font-size: 22px; padding: 6px 10px; width: 100%;
+  background: #12141b; color: var(--text); border: 2px solid #555; user-select: text; -webkit-user-select: text;
+}
+.acct-form input:focus { outline: none; border-color: var(--accent); }
+.acct-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.acct-msg { color: var(--text); }
+.acct-msg.error, #cloud-status.error { color: #ff8a80; }
+#cloud-status { color: var(--muted); font-size: 18px; margin: -6px 0 6px; }

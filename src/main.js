@@ -8,6 +8,7 @@ import { Battle } from './battle.js';
 import { NpcManager } from './npc.js';
 import { GYMS } from './gyms.js';
 import { TouchControls } from './touch.js';
+import * as cloud from './cloud.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -92,16 +93,140 @@ function loadSave() {
   return null;
 }
 
-function save() {
+function snapshot() {
+  const p = game.player;
+  return {
+    seed: game.world.seed, edits: [...game.world.edits], party: game.party, box: game.box, cubes: game.cubes,
+    badges: game.badges, beaten: game.beaten,
+    pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
+    savedAt: Date.now(),
+  };
+}
+
+// Saves to this device, and (when signed in) online. `important` uploads right away
+// instead of waiting for the next regular cloud save.
+function save(important = false) {
   if (!game.started) return;
+  const data = snapshot();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
+  pendingCloud = data;
+  if (important) pushCloud();
+}
+
+/* ------------------------------ cloud saves ------------------------------ */
+
+let pendingCloud = null; // newest save not yet uploaded
+let cloudBusy = false;
+const cloudState = { text: '', error: false };
+
+async function pushCloud() {
+  if (!game.user || !pendingCloud || cloudBusy) return;
+  const data = pendingCloud;
+  pendingCloud = null;
+  cloudBusy = true;
   try {
-    const p = game.player;
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      seed: game.world.seed, edits: [...game.world.edits], party: game.party, box: game.box, cubes: game.cubes,
-      badges: game.badges, beaten: game.beaten,
-      pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
-    }));
-  } catch { /* storage unavailable: progress just won't persist */ }
+    await cloud.saveCloud(data);
+    const t = new Date();
+    setCloudState(`Saved online at ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`);
+  } catch (e) {
+    pendingCloud ??= data; // retry with the next cloud save
+    setCloudState(`Couldn't save online: ${e.message} Progress is still saved on this device.`, true);
+  }
+  cloudBusy = false;
+}
+
+function setCloudState(text, error = false) {
+  cloudState.text = text;
+  cloudState.error = error;
+  renderCloudStatus();
+}
+
+function renderCloudStatus() {
+  const box = document.getElementById('cloud-status');
+  const text = game.user ? (cloudState.text || `Signed in as ${game.user.email}`)
+    : 'Not signed in: progress is only saved on this device.';
+  box.textContent = text;
+  box.classList.toggle('error', game.user && cloudState.error);
+}
+
+// After signing in: use whichever save is newer, the one online or the one on this device.
+async function syncFromCloud() {
+  try {
+    const online = await cloud.loadCloud();
+    const local = loadSave();
+    if (online && (!local || (online.savedAt || 0) > (local.savedAt || 0))) {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(online)); } catch { /* storage unavailable */ }
+      if (!game.started) showTitle();
+      setCloudState('Loaded your online save.');
+    } else if (local && local.seed !== undefined) {
+      await cloud.saveCloud(local);
+      setCloudState('Your progress is saved online.');
+    }
+  } catch (e) {
+    setCloudState(`Couldn't reach your online save: ${e.message}`, true);
+  }
+}
+
+let typedEmail = ''; // kept across re-renders so a typo doesn't mean retyping everything
+
+function renderAccount(mode = 'idle', message = '', isError = false) {
+  const box = document.getElementById('account');
+  const msg = message && el('div', { class: `acct-msg${isError ? ' error' : ''}` }, message);
+  if (game.user) {
+    box.replaceChildren(
+      el('div', {}, '☁ Signed in as ', el('b', {}, game.user.email), ' · your game saves online'),
+      el('button', { class: 'small', onclick: async () => {
+        await cloud.signOut();
+        game.user = null;
+        renderAccount('idle', 'Signed out. Progress is still saved on this device.');
+        renderCloudStatus();
+      } }, 'Sign out'),
+      msg);
+    return;
+  }
+  if (mode !== 'form') {
+    box.replaceChildren(
+      el('div', {}, 'Want to play on another device too?'),
+      el('button', { class: 'small', onclick: () => renderAccount('form') }, 'Sign in / Create account'),
+      msg);
+    return;
+  }
+  const email = el('input', { type: 'email', placeholder: 'Email', autocomplete: 'email', value: typedEmail });
+  email.addEventListener('input', () => { typedEmail = email.value; });
+  const password = el('input', { type: 'password', placeholder: 'Password (6+ characters)', autocomplete: 'current-password' });
+  const go = async create => {
+    if (!email.value || !password.value) { renderAccount('form', 'Enter an email and a password.', true); return; }
+    box.querySelectorAll('button,input').forEach(b => { b.disabled = true; });
+    const res = create ? await cloud.signUp(email.value.trim(), password.value) : await cloud.signIn(email.value.trim(), password.value);
+    if (res.error) { renderAccount('form', res.error, true); return; }
+    if (res.needsConfirm) {
+      renderAccount('idle', `Almost done! We sent an email to ${email.value.trim()}. Click the link in it, then sign in here.`);
+      return;
+    }
+    game.user = res.user;
+    renderAccount('idle', 'Signed in! Syncing your save...');
+    await syncFromCloud();
+    renderAccount('idle', cloudState.text, cloudState.error);
+  };
+  box.replaceChildren(
+    el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); go(false); } },
+      email, password,
+      el('div', { class: 'acct-btns' },
+        el('button', { class: 'small primary', type: 'submit' }, 'Sign in'),
+        el('button', { class: 'small', type: 'button', onclick: () => go(true) }, 'Create account'),
+        el('button', { class: 'small', type: 'button', onclick: () => renderAccount('idle') }, 'Cancel'))),
+    msg);
+  (typedEmail ? password : email).focus();
+}
+
+async function initAccount() {
+  game.user = await cloud.currentUser();
+  renderAccount();
+  renderCloudStatus();
+  if (game.user) {
+    await syncFromCloud();
+    renderAccount('idle', cloudState.error ? cloudState.text : '', cloudState.error);
+  }
 }
 
 function createWorld(seed, edits) {
@@ -206,7 +331,7 @@ function begin() {
     goFullscreen();
   }
   resume();
-  save();
+  save(true);
 }
 
 /* --------------------------------- input --------------------------------- */
@@ -255,6 +380,7 @@ function afterOverlay() {
 }
 
 function pause() {
+  save(true);
   if (locked) document.exitPointerLock();
   game.player.keys = {};
   game.touch.reset();
@@ -280,7 +406,10 @@ document.addEventListener('pointerlockchange', () => {
   if (locked) pauseEl.classList.add('hidden');
   else {
     game.player.keys = {};
-    if (game.started && !game.inBattle && !game.ui.panelOpen) pauseEl.classList.remove('hidden');
+    if (game.started && !game.inBattle && !game.ui.panelOpen) {
+      pauseEl.classList.remove('hidden');
+      save(true);
+    }
   }
 });
 
@@ -472,7 +601,7 @@ game.onBattleEnd = (result, opts) => {
     }
   }
   game.ui.renderHud();
-  save();
+  save(true);
   afterOverlay();
 };
 
@@ -482,6 +611,7 @@ const target = { wild: null, npc: null, block: null };
 let currentGym = null;
 let regenTimer = 0;
 let saveTimer = 0;
+let cloudTimer = 0;
 let hudTimer = 0;
 let last = performance.now();
 
@@ -589,17 +719,20 @@ function frame(now) {
     if (hudTimer > 0.5) { hudTimer = 0; game.ui.renderHud(); updateGuide(); }
     saveTimer += dt;
     if (saveTimer > 15) { saveTimer = 0; save(); }
+    cloudTimer += dt;
+    if (cloudTimer > 60) { cloudTimer = 0; pushCloud(); }
   }
 
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
-window.addEventListener('beforeunload', save);
-document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+window.addEventListener('beforeunload', () => save());
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
 
 showTitle();
 requestAnimationFrame(frame);
+initAccount();
 
 // Exposed for debugging from the browser console.
 window.pokecraft = game;

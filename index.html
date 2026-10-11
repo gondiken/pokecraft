@@ -13,7 +13,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm"
+      }
+    }
   </script>
 </head>
 <body>
@@ -56,6 +61,7 @@
       <h1>Poke<span>Craft</span></h1>
       <p class="tag">Build. Explore. Catch them in cubes.</p>
       <div id="title-buttons"></div>
+      <div id="account"></div>
       <div id="starter-pick" class="hidden">
         <h2>Choose your first partner</h2>
         <div id="starters"></div>
@@ -80,6 +86,7 @@
     <div class="panel">
       <h2>Paused</h2>
       <p><span class="desktop-only">Click</span><span class="touch-only">Tap</span> anywhere to resume</p>
+      <div id="cloud-status"></div>
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>

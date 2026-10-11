@@ -65,7 +65,7 @@ On a tablet:
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
-- **Auto-save** to `localStorage`. This saves your world edits, team, badges, cubes and position.
+- **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
 
@@ -114,6 +114,17 @@ Inside each gym is an apprentice trainer you must beat before the Gym Leader wil
 
 The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
+## Online saves
+
+Sign in on the title screen to keep your progress online and continue on another device. Accounts and saves use [Supabase](https://supabase.com) (project `pokecraft`).
+
+- **Create account** sends a confirmation email. After clicking the link, sign in with the same email and password. Each device only needs to sign in once.
+- The game saves online every minute, after every battle, when you pause, and when you leave the page. It always saves on the device too, so it keeps working offline.
+- When you sign in, the game loads whichever save is newer: the one online or the one on this device.
+- Each player can only read and write their own save. This is enforced by Row Level Security in the database, so the project URL and publishable key in `src/cloud.js` are safe to be public.
+
+If the save server can't be reached, the game still works and saves on the device only.
+
 ## Code layout
 
 | File | Purpose |
@@ -129,5 +140,6 @@ The top-right corner shows your badges and points you to the next gym. Catch cre
 | `src/battle.js` | Battle flow, animations, catching |
 | `src/ui.js` | HUD, team screen, creature portraits |
 | `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, buttons |
+| `src/cloud.js` | Accounts and online saves (Supabase) |
 
 All creatures, names and art are original. To add a creature, add an entry to `SPECIES` in `src/species.js` and list it in a biome in `SPAWNS`. To change a gym, edit its entry in `src/gyms.js`.
