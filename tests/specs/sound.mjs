@@ -7,20 +7,16 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0);
   const played = () => page.evaluate(() => [...window.pokecraft.sound.played]);
   const lookDown = () => page.evaluate(() => { const p = window.pokecraft.player; p.pitch = -0.75; p.keys = {}; });  // aim a little ahead, not under our feet
-  // With the mouse captured, moving it turns the camera, so move it into place before aiming.
-  await page.mouse.move(550, 380);
-  await page.waitForTimeout(500);
-  await lookDown();
-  await page.waitForTimeout(1500);
-  await page.mouse.click(550, 380);
-  await page.waitForFunction(() => window.pokecraft.world.edits.size > 0, null, { timeout: 10000 }).catch(() => {});
-  // Software rendering is slow: give the crosshair target time to catch up, and retry.
-  for (let i = 0; i < 5 && !(await played()).includes('place'); i++) {
+  // Mouse input under pointer lock is covered by battle-and-menu; here, use the game's own
+  // break/place actions. Software rendering is slow, so wait for the crosshair to find a block.
+  for (let i = 0; i < 8 && !(await played()).includes('place'); i++) {
     await lookDown();
-    await page.waitForTimeout(1500);
-    await page.mouse.click(550, 380, { button: 'right' });
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => {
+      const g = window.pokecraft;
+      if (g.sound.played.includes('break')) g.placeBlock(); else g.breakBlock();
+    });
   }
-  await page.waitForTimeout(500);
   const p1 = await played();
   t.ok(p1.includes('break') && p1.includes('place'), `breaking and placing blocks make sounds (${p1.join(', ')})`);
   t.ok(await page.evaluate(() => {

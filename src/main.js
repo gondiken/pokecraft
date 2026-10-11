@@ -992,3 +992,5 @@ window.pokecraft = game;
 game.sound = sound;
 game.talkTo = talkTo;
 game.interact = interact;
+game.breakBlock = breakBlock;
+game.placeBlock = placeBlock;
