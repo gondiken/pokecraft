@@ -530,13 +530,15 @@ export function statsFor(c) {
 
 export const nameOf = c => SPECIES[c.species].name;
 
-export function makeCreature(species, level) {
+// knownMoves: keep these moves (for copies of an existing creature) instead of the usual ones.
+export function makeCreature(species, level, knownMoves) {
   const sp = SPECIES[species];
   const moves = sp.learn.filter(([l]) => l <= level).map(([, m]) => m);
+  const keep = (knownMoves || []).filter(m => MOVES[m]);
   const c = {
     uid: Math.random().toString(36).slice(2, 10),
     species, level, xp: xpForLevel(level), hp: 0,
-    moves: [...new Set(moves)].slice(-4),
+    moves: keep.length ? [...new Set(keep)].slice(0, 4) : [...new Set(moves)].slice(-4),
   };
   c.hp = statsFor(c).maxHp;
   return c;

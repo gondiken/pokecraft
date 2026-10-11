@@ -65,6 +65,7 @@ On a tablet:
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
+- **Sound effects**: soft, short sounds for building, battles, catching and badges. Turn them off with the **Sound** button on the pause screen.
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
@@ -145,6 +146,8 @@ Two or more people can play in the same world at the same time, each on their ow
 
 You see each other walking around with name tags, with each player's lead creature following them. Blocks that anyone places or breaks show up for everyone. Each player keeps their own team, badges and Capture Cubes, and has their own battles and wild creatures. Building in the shared world is saved in the host's world.
 
+**Battle each other**: look at (or tap) another player and click or press **E** to ask for a battle. They get a **Battle!** / **Not now** question (or press **Y** / **N**). Both teams fight at full HP, nobody's creatures get hurt or lost, and there is no XP. The winner gets **3 Capture Cubes**. **Give up** ends the battle early.
+
 A visitor's own world is untouched. **Go back to my world** returns them to it, and that happens automatically if the host stops sharing or leaves. The connection uses Supabase Realtime. Neither player needs to be signed in, but both need an internet connection.
 
 For testing on one computer, add `?mp=local` to the address. Tabs in the same browser then connect to each other directly, without the server.
@@ -170,5 +173,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, buttons |
 | `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
 | `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
+| `src/duel.js` | Battles between players: asking, answering, swapping each turn's choices |
+| `src/sound.js` | Small sound effects made with Web Audio (no sound files) |
 
 All creatures, names and art are original. To add a creature, add an entry to `SPECIES` in `src/species.js` and list it in a biome in `SPAWNS`. To change a gym, edit its entry in `src/gyms.js`.

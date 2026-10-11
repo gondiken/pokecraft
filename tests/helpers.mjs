@@ -43,6 +43,29 @@ export async function openGame(browser, base, { query = '', contextOptions = {},
   return page;
 }
 
+// Two players in separate browsers. The test relays messages between them in place of Supabase
+// Realtime (?mp=local + a BroadcastChannel stand-in), because many test environments block WebSockets.
+export async function openPair(browser, base) {
+  const pages = {};
+  const relay = other => async ctx => {
+    await ctx.exposeBinding('__relaySend', async (_s, ch, data) => {
+      await pages[other]?.evaluate(([ch, data]) => window.__relayRecv(ch, data), [ch, data]).catch(() => {});
+    });
+    await ctx.addInitScript(() => {
+      const chans = {};
+      window.__relayRecv = (name, data) => (chans[name] || []).forEach(c => c.onmessage?.({ data }));
+      window.BroadcastChannel = class {
+        constructor(name) { this.name = name; (chans[name] ||= []).push(this); }
+        postMessage(data) { window.__relaySend(this.name, data); }
+        close() { chans[this.name] = (chans[this.name] || []).filter(c => c !== this); }
+      };
+    });
+  };
+  pages.A = await openGame(browser, base, { query: '?mp=local', setup: relay('B') });
+  pages.B = await openGame(browser, base, { query: '?mp=local', setup: relay('A') });
+  return [pages.A, pages.B];
+}
+
 // Real mouse click at the centre of an element (catches overlays that block clicks).
 export async function click(page, selector) {
   const box = await page.locator(selector).first().boundingBox();

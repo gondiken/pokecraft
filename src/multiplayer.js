@@ -1,5 +1,6 @@
 // Play together: one player hosts their world and shares a code; others join and everyone
-// sees each other move and build live. Teams, battles and wild creatures stay per player.
+// sees each other move and build live. Teams and wild creatures stay per player; players can
+// challenge each other to battles (see duel.js).
 import * as THREE from 'three';
 import { buildPerson } from './npc.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
@@ -11,7 +12,7 @@ const GONE_AFTER = 8;     // seconds without news before a player counts as gone
 const JOIN_TIMEOUT = 12;  // seconds to wait for the host to send their world
 const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
-const EVENTS = ['hello', 'world', 'state', 'block', 'bye'];
+const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [
   { shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
@@ -77,6 +78,7 @@ class Avatar {
     this.isHost = !!info.host;
     this.model = buildPerson(OUTFITS[hash(info.id) % OUTFITS.length]);
     this.model.add(nameTag(info.name));
+    this.model.userData.avatar = this;
     this.pos = new THREE.Vector3(info.x, info.y, info.z);
     this.target = this.pos.clone();
     this.yaw = info.yaw || 0;
@@ -94,6 +96,9 @@ class Avatar {
     this.heard = 0;
     if (info.lead !== this.leadSpecies) this.setLead(info.lead);
   }
+
+  // The lead creature hides while this player is in a battle with you (their creature is out).
+  set dueling(on) { if (this.lead) this.lead.visible = !on; }
 
   setLead(species) {
     if (this.lead) { this.scene.remove(this.lead); disposeModel(this.lead); this.lead = null; }
@@ -155,6 +160,7 @@ export class Multiplayer {
     this.t = null;
     this.others = new Map();
     this.sendTimer = 0;
+    this.raycaster = new THREE.Raycaster();
   }
 
   get active() { return this.role === 'host' || this.role === 'guest'; }
@@ -225,6 +231,27 @@ export class Multiplayer {
       this.game.world.set(p.x, p.y, p.z, p.b);
     });
     t.on('bye', p => this.removePlayer(p.id, true));
+    t.on('duel', p => {
+      if (this.active && p.to === this.id && p.from !== this.id) this.hooks.duel?.(p);
+    });
+  }
+
+  sendDuel(to, data) {
+    if (this.active) this.t.send('duel', { ...data, from: this.id, to, name: this.name });
+  }
+
+  // The other player under a ray (for challenging them), like NpcManager.pick.
+  pick(origin, dir, maxDist) {
+    if (!this.others.size) return null;
+    this.raycaster.set(origin, dir);
+    this.raycaster.far = maxDist;
+    const meshes = [];
+    for (const a of this.others.values()) a.model.traverse(o => { if (o.isMesh) meshes.push(o); }); // not the name tag sprite
+    const hits = this.raycaster.intersectObjects(meshes, false);
+    if (!hits.length) return null;
+    let o = hits[0].object;
+    while (o && !o.userData.avatar) o = o.parent;
+    return o ? { player: o.userData.avatar, dist: hits[0].distance } : null;
   }
 
   sendWorld(to) {
@@ -260,6 +287,7 @@ export class Multiplayer {
     if (!a) return;
     a.dispose();
     this.others.delete(id);
+    this.hooks.left?.(id);
     this.hooks.toast(`${a.name} ${said ? 'left' : 'lost connection'}.`);
     if (a.isHost && this.role === 'guest') this.hooks.ended('host-left');
   }

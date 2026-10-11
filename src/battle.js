@@ -4,7 +4,7 @@ import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
   xpForLevel, buildModel, tintModel, disposeModel, makeCreature,
 } from './species.js';
-import { B, isSolid } from './blocks.js';
+import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 import { sound } from './sound.js';
 
@@ -24,9 +24,9 @@ export class Battle {
     this.active = false;
   }
 
-  get ally() { return this.game.party[this.allyIdx]; }
+  get ally() { return this.allies[this.allyIdx]; }
   get foe() { return this.foes[this.foeIdx]; }
-  get foeLabel() { return this.trainer ? 'Foe' : 'Wild'; }
+  get foeLabel() { return this.duel ? `${this.duel.name}'s` : this.trainer ? 'Foe' : 'Wild'; }
 
   // Standing height at (x, z), searching down from fromY so creatures stay inside buildings.
   groundBelow(x, z, fromY) {
@@ -95,14 +95,15 @@ export class Battle {
           style: `background:${TYPE_COLORS[mv.type]};color:#111`,
         };
       });
-      const canSwitch = g.party.some((c, i) => i !== this.allyIdx && c.hp > 0);
+      const canSwitch = this.allies.some((c, i) => i !== this.allyIdx && c.hp > 0);
       const trainer = !!this.trainer;
+      const duel = !!this.duel;
       const choice = await this.choose([
         ...moves,
         { row: [
           { label: trainer ? 'Cube' : `Cube x${g.cubes}`, value: { kind: 'catch' }, disabled: trainer || g.cubes <= 0, cls: 'primary' },
           { label: 'Switch', value: { kind: 'switch' }, disabled: !canSwitch },
-          { label: 'Run', value: { kind: 'run' }, disabled: trainer },
+          duel ? { label: 'Give up', value: { kind: 'giveup' } } : { label: 'Run', value: { kind: 'run' }, disabled: trainer },
         ] },
       ]);
       if (choice.kind !== 'switch') return choice;
@@ -113,7 +114,7 @@ export class Battle {
 
   async pickPartyMember(allowBack) {
     this.log.textContent = 'Choose a creature.';
-    const opts = this.game.party.map((c, i) => ({
+    const opts = this.allies.map((c, i) => ({
       label: `${nameOf(c)} Lv${c.level}`, sub: `HP ${c.hp}/${statsFor(c).maxHp}`,
       value: i, disabled: c.hp <= 0 || i === this.allyIdx,
     }));
@@ -203,15 +204,22 @@ export class Battle {
 
   /* ------------------------------ battle flow ------------------------------ */
 
-  // opts is { wild } for a wild creature, or { trainer, team, intro } for a trainer battle.
+  // opts is { wild } for a wild creature, { trainer, team, intro } for a trainer battle, or
+  // { duel } for a battle with another player (see duel.js).
   async start(opts) {
     const g = this.game;
     this.active = true;
     this.wild = opts.wild || null;
-    this.trainer = opts.trainer || null;
+    this.duel = opts.duel || null;
+    // In a battle between players both sides use the same random numbers, so they agree on every turn.
+    this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
+    this.trainer = opts.trainer || (this.duel && { name: this.duel.name, pos: this.duel.pos });
     this.foeModel = null;
     this.foeIdx = 0;
-    this.allyIdx = g.party.findIndex(c => c.hp > 0);
+    // Battles between players use full-HP copies of each team, so nobody's real team gets hurt.
+    const copy = c => makeCreature(c.species, Math.max(1, Math.min(60, c.level | 0)), c.moves);
+    this.allies = this.duel ? g.party.map(copy) : g.party;
+    this.allyIdx = this.allies.findIndex(c => c.hp > 0);
     this.root.classList.remove('hidden');
     this.actions.replaceChildren();
     sound.play('battle');
@@ -229,13 +237,13 @@ export class Battle {
       await this.say(`A wild ${nameOf(this.foe)} appeared!`);
     } else {
       const npc = this.trainer;
-      this.foes = opts.team.map(([species, level]) => makeCreature(species, level));
+      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level]) => makeCreature(species, level));
       this.stepBack(npc.pos, 5.5);
       g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2, npc.pos.z));
       this.foePos = npc.pos;
       this.refresh();
       for (const line of opts.intro || []) await this.say(`${npc.name}: ${line}`, 2400);
-      await this.say(`${npc.name} wants to battle! (${this.foes.length} creatures)`, 1600);
+      await this.say(this.duel ? `Battle with ${npc.name}! (${this.foes.length} creatures)` : `${npc.name} wants to battle! (${this.foes.length} creatures)`, 1600);
       await this.sendOutFoe();
     }
     await this.placeAlly();
@@ -269,6 +277,7 @@ export class Battle {
   }
 
   async turn() {
+    if (this.duel) return this.duelTurn();
     const action = await this.chooseAction();
     const g = this.game;
 
@@ -311,6 +320,57 @@ export class Battle {
     return null;
   }
 
+  // A turn against another player: both choose, swap choices, then both play out the same turn.
+  async duelTurn() {
+    const d = this.duel;
+    const mine = await this.chooseAction();
+    d.send(mine);
+    if (mine.kind === 'giveup') { await this.say('You gave up. Good try!'); return 'gaveup'; }
+    this.log.textContent = `Waiting for ${d.name}...`;
+    const theirs = await d.next();
+    if (theirs.kind === 'left') { await this.say(`${d.name} had to go, so the battle is over.`); return 'ended'; }
+    if (theirs.kind === 'giveup') { await this.say(`${d.name} gave up! You win!`); return 'won'; }
+
+    // Switching happens before anyone attacks.
+    if (mine.kind === 'switch') {
+      await this.say(`Come back, ${nameOf(this.ally)}!`, 800);
+      this.allyIdx = mine.idx;
+      this.refresh();
+      await this.placeAlly();
+      await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    }
+    if (theirs.kind === 'switch') {
+      this.foeIdx = this.foeIndex(theirs.idx);
+      await this.sendOutFoe();
+    }
+    const attacks = [];
+    if (mine.kind === 'move') attacks.push(['ally', mine.move]);
+    if (theirs.kind === 'move') {
+      if (!MOVES[theirs.move]) theirs.move = 'tackle'; // from a different game version
+      attacks.push(['foe', theirs.move]);
+    }
+    if (attacks.length === 2) {
+      // Priority moves first, then the faster creature. A tie is broken by the shared random
+      // numbers, seen from the challenger's side so both players get the same answer.
+      const diff = (MOVES[mine.move].priority || 0) - (MOVES[theirs.move].priority || 0) ||
+        statsFor(this.ally).spd - statsFor(this.foe).spd;
+      const challengerFirst = diff === 0 ? this.rng() < 0.5 : null;
+      const meFirst = diff !== 0 ? diff > 0 : challengerFirst === d.first;
+      if (!meFirst) attacks.reverse();
+    }
+    for (const [side, move] of attacks) {
+      await this.useMove(side, move);
+      if (this.foe.hp <= 0) return this.foeFainted();
+      if (this.ally.hp <= 0) return this.allyFainted();
+    }
+    return null;
+  }
+
+  // The other player's choice of creature, or their first healthy one if it doesn't make sense.
+  foeIndex(idx) {
+    return this.foes[idx]?.hp > 0 ? idx : this.foes.findIndex(c => c.hp > 0);
+  }
+
   async foeTurn() {
     await this.useMove('foe', this.pickFoeMove());
     return this.ally.hp <= 0 ? this.allyFainted() : null;
@@ -332,14 +392,14 @@ export class Battle {
     this.say(`${who} used ${mv.name}!`, 700);
     await this.lunge(side);
     await wait(150);
-    if (Math.random() > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
+    if (this.rng() > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
 
     const as = statsFor(atk), ds = statsFor(def);
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
-    const crit = Math.random() < 1 / 16 ? 1.5 : 1;
+    const crit = this.rng() < 1 / 16 ? 1.5 : 1;
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * as.atk / ds.def) / 50) + 2;
-    const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + Math.random() * 0.15)));
+    const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + this.rng() * 0.15)));
     def.hp = Math.max(0, def.hp - dmg);
     sound.play(eff > 1 ? 'super' : 'hit');
     this.flash(side === 'ally' ? 'foe' : 'ally');
@@ -362,6 +422,17 @@ export class Battle {
     const g = this.game;
     await this.faintModel(this.foeModel);
     await this.say(`${this.foeLabel} ${nameOf(this.foe)} fainted!`);
+    if (this.duel) {
+      const d = this.duel;
+      if (!this.foes.some(c => c.hp > 0)) { await this.say(`You beat ${d.name}! Great battle!`); return 'won'; }
+      this.log.textContent = `Waiting for ${d.name} to choose a creature...`;
+      const next = await d.next();
+      if (next.kind === 'left') { await this.say(`${d.name} had to go, so the battle is over.`); return 'ended'; }
+      if (next.kind === 'giveup') { await this.say(`${d.name} gave up! You win!`); return 'won'; }
+      this.foeIdx = this.foeIndex(next.idx);
+      await this.sendOutFoe();
+      return null;
+    }
     const xp = Math.floor((SPECIES[this.foe.species].baseXp * this.foe.level) / 5 * (this.trainer ? 1.5 : 1));
     await this.giveXp(xp);
     if (this.trainer && this.foeIdx < this.foes.length - 1) {
@@ -411,6 +482,10 @@ export class Battle {
   async allyFainted() {
     await this.faintModel(this.allyModel);
     await this.say(`${nameOf(this.ally)} fainted!`);
+    if (this.duel && !this.allies.some(c => c.hp > 0)) {
+      await this.say(`${this.duel.name} won this time. Your team is fine, and you can battle again!`, 2000);
+      return 'lost';
+    }
     if (!this.game.party.some(c => c.hp > 0)) {
       if (this.trainer) await this.say(`You lost to ${this.trainer.name}...`);
       await this.say('Your whole team is worn out...');
@@ -418,6 +493,7 @@ export class Battle {
       return 'lost';
     }
     const idx = await this.pickPartyMember(false);
+    this.duel?.send({ kind: 'next', idx });
     this.allyIdx = idx;
     this.refresh();
     await this.placeAlly();

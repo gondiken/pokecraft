@@ -1,26 +1,8 @@
-// Play together, with two separate browsers. The test relays messages between them in place of
-// Supabase Realtime (?mp=local + a BroadcastChannel stand-in), because many test environments
-// block WebSockets.
-import { openGame, newGame, click, pause } from '../helpers.mjs';
+// Play together, with two separate browsers (see openPair).
+import { openPair, newGame, click, pause } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
-  const pages = {};
-  const relay = (me, other) => async ctx => {
-    await ctx.exposeBinding('__relaySend', async (_s, ch, data) => {
-      await pages[other]?.evaluate(([ch, data]) => window.__relayRecv(ch, data), [ch, data]).catch(() => {});
-    });
-    await ctx.addInitScript(() => {
-      const chans = {};
-      window.__relayRecv = (name, data) => (chans[name] || []).forEach(c => c.onmessage?.({ data }));
-      window.BroadcastChannel = class {
-        constructor(name) { this.name = name; (chans[name] ||= []).push(this); }
-        postMessage(data) { window.__relaySend(this.name, data); }
-        close() { chans[this.name] = (chans[this.name] || []).filter(c => c !== this); }
-      };
-    });
-  };
-  const A = pages.A = await openGame(browser, base, { query: '?mp=local', setup: relay('A', 'B') });
-  const B = pages.B = await openGame(browser, base, { query: '?mp=local', setup: relay('B', 'A') });
+  const [A, B] = await openPair(browser, base);
   await newGame(A, 0); await pause(A);
   await newGame(B, 1); await pause(B);
   const seedA = await A.evaluate(() => window.pokecraft.world.seed);

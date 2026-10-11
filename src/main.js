@@ -10,6 +10,7 @@ import { GYMS } from './gyms.js';
 import { TouchControls } from './touch.js';
 import * as cloud from './cloud.js';
 import { Multiplayer, cleanCode } from './multiplayer.js';
+import { Duels } from './duel.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
@@ -502,6 +503,10 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('keydown', e => {
   if (!game.started) return;
   if (e.target instanceof HTMLInputElement) return; // typing a name or code, not playing
+  if (game.duels.incoming && (e.code === 'KeyY' || e.code === 'KeyN')) {
+    if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
+    return;
+  }
   if (e.code === 'KeyP' || e.code === 'Tab' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
     toggleTeam();
@@ -536,8 +541,9 @@ document.addEventListener('mousedown', e => {
   }
 });
 
-// Battle the targeted creature or talk to the targeted person. Returns false if nothing is targeted.
+// Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
 function interact() {
+  if (target.player) { game.duels.challenge(target.player); return true; }
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   return false;
@@ -584,9 +590,11 @@ function tapAt(x, y) {
   const reach = REACH + 4;
   const npc = game.npcs.pick(origin, direction, reach);
   const wild = game.creatures.pick(origin, direction, reach);
+  const other = game.mp.pick(origin, direction, reach);
   const block = raycastVoxel(game.world, origin, direction, reach);
   const wall = block ? block.t : Infinity;
-  if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
+  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) game.duels.challenge(other.player);
+  else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
 }
 
@@ -639,7 +647,7 @@ function talkTo(npc) {
 
 function startBattle(opts) {
   if (game.inBattle) return;
-  if (!game.party.some(c => c.hp > 0)) {
+  if (!opts.duel && !game.party.some(c => c.hp > 0)) {
     game.ui.toast('Your team is too tired to battle. Let them rest a moment.');
     return;
   }
@@ -657,6 +665,23 @@ function startBattle(opts) {
 game.onBattleEnd = (result, opts) => {
   game.inBattle = false;
   document.body.classList.remove('in-battle');
+  if (opts.duel) {
+    // Battles between players: nobody's team gets hurt, and the winner gets 3 Capture Cubes.
+    const name = opts.duel.name;
+    game.duels.finish();
+    game.duels.lastResult = result;
+    if (result === 'won') {
+      game.cubes += 3;
+      sound.play('win');
+      game.ui.toast(`You won the battle with ${name}! +3 Capture Cubes`);
+    } else if (result === 'lost' || result === 'gaveup') {
+      game.ui.toast(`${name} won this time. Good battle!`);
+    }
+    game.ui.renderHud();
+    save(true);
+    afterOverlay();
+    return;
+  }
   if (result === 'lost') {
     sound.play('lose');
     healTeam();
@@ -691,7 +716,7 @@ game.onBattleEnd = (result, opts) => {
 
 /* ------------------------------- main loop ------------------------------- */
 
-const target = { wild: null, npc: null, block: null };
+const target = { wild: null, npc: null, player: null, block: null };
 let currentGym = null;
 let regenTimer = 0;
 let saveTimer = 0;
@@ -748,20 +773,25 @@ function updateTarget() {
   const dir = game.player.forward;
   const hitWild = game.creatures.pick(origin, dir, REACH + 1);
   const hitNpc = game.npcs.pick(origin, dir, REACH + 1);
+  const hitPlayer = game.mp.pick(origin, dir, REACH + 1);
   const hitBlock = raycastVoxel(game.world, origin, dir, REACH);
   const blockDist = hitBlock ? hitBlock.t : Infinity;
-  target.npc = hitNpc && hitNpc.dist < blockDist && (!hitWild || hitNpc.dist < hitWild.dist) ? hitNpc.npc : null;
-  target.wild = !target.npc && hitWild && hitWild.dist < blockDist ? hitWild.wild : null;
-  target.block = target.wild || target.npc ? null : hitBlock;
+  target.player = hitPlayer && hitPlayer.dist < blockDist && (!hitNpc || hitPlayer.dist < hitNpc.dist)
+    && (!hitWild || hitPlayer.dist < hitWild.dist) ? hitPlayer.player : null;
+  target.npc = !target.player && hitNpc && hitNpc.dist < blockDist && (!hitWild || hitNpc.dist < hitWild.dist) ? hitNpc.npc : null;
+  target.wild = !target.player && !target.npc && hitWild && hitWild.dist < blockDist ? hitWild.wild : null;
+  target.block = target.wild || target.npc || target.player ? null : hitBlock;
   if (target.block) {
     highlight.visible = true;
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
-  game.ui.setPrompt(target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
+  game.ui.setPrompt(target.player ? `${target.player.name} · ${how} to ask for a battle`
+    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : '');
-  game.touch.setAction(target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
+  game.touch.setAction(target.player ? `Battle ${target.player.name}!`
+    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!` : '');
 }
 
@@ -846,11 +876,18 @@ game.mp = new Multiplayer(game, {
     for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
     game.ui.renderHud();
   },
+  duel: p => game.duels.onMessage(p),
+  left: id => game.duels.left(id),
   ended: reason => {
     if (reason !== 'host-left') return;
     game.ui.toast('The host left, so you are going back to your own world.');
     setTimeout(goHome, 2500);
   },
+});
+
+game.duels = new Duels(game, {
+  start: duel => startBattle({ duel }),
+  toast: text => game.ui.toast(text),
 });
 
 function playerName() {
@@ -954,3 +991,4 @@ initAccount();
 window.pokecraft = game;
 game.sound = sound;
 game.talkTo = talkTo;
+game.interact = interact;

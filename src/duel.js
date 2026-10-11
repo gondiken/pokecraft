@@ -1,0 +1,131 @@
+// Battles between players in the same world. One player challenges, the other says yes or no.
+// Each side battles with full-HP copies of both teams, so nobody's real team is hurt, and the
+// winner gets Capture Cubes. Both browsers work out every turn themselves: they swap only the
+// chosen actions and share a random seed, so they always agree on what happened.
+import { sound } from './sound.js';
+
+const ANSWER_TIME = 30; // seconds to answer a challenge
+
+const newId = () => Math.random().toString(36).slice(2, 10);
+const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves] }));
+
+export class Duels {
+  // hooks: { start(duel), toast(text) }
+  constructor(game, hooks) {
+    this.game = game;
+    this.hooks = hooks;
+    this.asking = null;   // { id, to, name, timer } while waiting for an answer
+    this.incoming = null; // { id, from, name, team, seed, timer } while deciding
+    this.current = null;  // the battle being played
+    this.box = document.getElementById('duel-ask');
+    document.getElementById('duel-yes').addEventListener('click', e => { e.stopPropagation(); this.accept(); });
+    document.getElementById('duel-no').addEventListener('click', e => { e.stopPropagation(); this.decline(); });
+  }
+
+  get mp() { return this.game.mp; }
+
+  challenge(avatar) {
+    const g = this.game;
+    if (this.asking) { this.hooks.toast(`Still waiting for ${this.asking.name} to answer.`); return; }
+    if (this.incoming || this.current || g.inBattle) return;
+    if (!g.party.length) return;
+    const id = newId();
+    const seed = (Math.random() * 2 ** 31) | 0;
+    this.asking = {
+      id, seed, to: avatar.id, name: avatar.name,
+      timer: setTimeout(() => {
+        this.mp.sendDuel(avatar.id, { type: 'cancel', id });
+        this.asking = null;
+        this.hooks.toast(`${avatar.name} didn't answer. Try again later!`);
+      }, ANSWER_TIME * 1000),
+    };
+    this.mp.sendDuel(avatar.id, { type: 'ask', id, seed, team: teamOf(g.party) });
+    this.hooks.toast(`You asked ${avatar.name} for a battle. Waiting for an answer...`);
+  }
+
+  onMessage(p) {
+    const g = this.game;
+    if (p.type === 'ask') {
+      if (!g.started || g.inBattle || this.current || this.incoming || this.asking || !g.party.length) {
+        this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
+        return;
+      }
+      this.incoming = { id: p.id, from: p.from, name: p.name, team: p.team, seed: p.seed,
+        timer: setTimeout(() => this.decline(), ANSWER_TIME * 1000) };
+      document.getElementById('duel-text').textContent = `${p.name} wants to have a creature battle with you!`;
+      this.box.classList.remove('hidden');
+      sound.play('ask');
+    } else if (p.type === 'cancel' && this.incoming?.id === p.id) {
+      this.closeAsk();
+    } else if (p.type === 'no' && this.asking?.id === p.id) {
+      clearTimeout(this.asking.timer);
+      this.asking = null;
+      this.hooks.toast(p.busy ? `${p.name} is busy right now. Try again soon!` : `${p.name} doesn't want to battle right now.`);
+    } else if (p.type === 'yes' && this.asking?.id === p.id) {
+      const a = this.asking;
+      clearTimeout(a.timer);
+      this.asking = null;
+      if (g.inBattle) { this.mp.sendDuel(p.from, { type: 'act', id: p.id, n: 0, action: { kind: 'left' } }); return; }
+      this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: p.team, first: true });
+    } else if (p.type === 'act' && this.current?.id === p.id) {
+      const d = this.current;
+      d.inbox[p.n] = p.action;
+      d.wake?.();
+    }
+  }
+
+  accept() {
+    const inc = this.incoming;
+    if (!inc) return;
+    this.closeAsk();
+    if (this.game.inBattle || !this.mp.others.has(inc.from)) return;
+    this.mp.sendDuel(inc.from, { type: 'yes', id: inc.id, team: teamOf(this.game.party) });
+    this.begin({ id: inc.id, seed: inc.seed, opp: inc.from, name: inc.name, team: inc.team, first: false });
+  }
+
+  decline() {
+    const inc = this.incoming;
+    if (!inc) return;
+    this.closeAsk();
+    this.mp.sendDuel(inc.from, { type: 'no', id: inc.id });
+  }
+
+  closeAsk() {
+    if (this.incoming) clearTimeout(this.incoming.timer);
+    this.incoming = null;
+    this.box.classList.add('hidden');
+  }
+
+  begin(info) {
+    const avatar = this.mp.others.get(info.opp);
+    if (!avatar) return;
+    const d = this.current = {
+      ...info, avatar, pos: avatar.pos.clone(), sent: 0, got: 0, inbox: [], wake: null,
+      send: action => this.mp.sendDuel(info.opp, { type: 'act', id: info.id, n: d.sent++, action }),
+      // The other player's next action, in order. { kind: 'left' } if they leave the world.
+      next: () => new Promise(resolve => {
+        const check = () => {
+          if (d.inbox[d.got] !== undefined) { d.wake = null; clearInterval(timer); resolve(d.inbox[d.got++]); return; }
+          if (!this.mp.others.has(info.opp)) { d.wake = null; clearInterval(timer); resolve({ kind: 'left' }); }
+        };
+        const timer = setInterval(check, 500);
+        d.wake = check;
+        check();
+      }),
+    };
+    avatar.dueling = true;
+    this.hooks.start(d);
+  }
+
+  finish() {
+    if (this.current?.avatar) this.current.avatar.dueling = false;
+    this.current = null;
+  }
+
+  // The other player left the world.
+  left(id) {
+    if (this.incoming?.from === id) this.closeAsk();
+    if (this.asking?.to === id) { clearTimeout(this.asking.timer); this.asking = null; }
+    this.current?.wake?.();
+  }
+}
