@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
 import { GYMS, TOWER } from './gyms.js';
+import { carveCaves } from './caves.js';
 
 export const WORLD_W = 224;
 export const WORLD_D = 224;
@@ -74,6 +75,15 @@ function groundOf(biome, h) {
 
 function newBuffers() { return { pos: [], uv: [], col: [], idx: [] }; }
 
+// Block light: glowing blocks (lamps, crystals, glowcaps) light the cells around them. Each chunk
+// stamps the glow blocks within 4 blocks of it into this buffer (24 x 48 x 24), reused every build.
+const LIGHT_R = 4, LIGHT_N = CHUNK + LIGHT_R * 2;
+const lightBuf = new Float32Array(LIGHT_N * WORLD_H * LIGHT_N);
+const GLOWS = new Uint8Array(256);
+for (const id of Object.keys(BLOCKS)) if (BLOCKS[id].glow) GLOWS[id] = 1;
+const OCCLUDERS = new Uint8Array(256);
+for (let id = 1; id < 256; id++) OCCLUDERS[id] = isOccluder(id) ? 1 : 0;
+
 export class World {
   constructor(seed, scene, materials) {
     this.seed = seed;
@@ -85,6 +95,11 @@ export class World {
     this.meshes = new Map();
     this.gyms = [];
     this.tower = null;
+    this.ground = new Uint8Array(WORLD_W * WORLD_D); // natural ground height of each column
+    this.top = new Uint8Array(WORLD_W * WORLD_D); // highest block that blocks the sky (see computeTop)
+    this.topReady = false;
+    this.litCol = new Uint8Array(WORLD_W * WORLD_D); // 1 under gym and tower roofs: always bright
+    this.caves = null;
   }
 
   index(x, y, z) { return x + WORLD_W * (z + WORLD_D * y); }
@@ -107,16 +122,60 @@ export class World {
   set(x, y, z, id, record = true) {
     if (!this.inBounds(x, y, z)) return;
     const i = this.index(x, y, z);
+    const old = this.data[i];
     this.data[i] = id;
+    if (this.topReady) this.updateTop(x, y, z, id);
     if (!record) return;
     this.edits.set(i, id);
     const cx = x >> 4, cz = z >> 4;
+    // Glowing blocks light up to 4 blocks around them, so the chunks near them change too.
+    if (GLOWS[old] || GLOWS[id]) {
+      for (let a = (x - LIGHT_R) >> 4; a <= (x + LIGHT_R) >> 4; a++) {
+        for (let b = (z - LIGHT_R) >> 4; b <= (z + LIGHT_R) >> 4; b++) this.dirty.add(`${a},${b}`);
+      }
+    }
     this.dirty.add(`${cx},${cz}`);
     if ((x & 15) === 0) this.dirty.add(`${cx - 1},${cz}`);
     if ((x & 15) === 15) this.dirty.add(`${cx + 1},${cz}`);
     if ((z & 15) === 0) this.dirty.add(`${cx},${cz - 1}`);
     if ((z & 15) === 15) this.dirty.add(`${cx},${cz + 1}`);
   }
+
+  // Highest sky-blocking block of every column (leaves, glass and water let light through).
+  computeTop() {
+    const { data, top } = this;
+    const layer = WORLD_W * WORLD_D;
+    for (let c = 0; c < layer; c++) {
+      let y = WORLD_H - 1;
+      while (y > 0 && !OCCLUDERS[data[c + layer * y]]) y--;
+      top[c] = y;
+    }
+    this.topReady = true;
+  }
+
+  updateTop(x, y, z, id) {
+    const c = x + z * WORLD_W;
+    if (OCCLUDERS[id]) { if (y > this.top[c]) this.top[c] = y; return; }
+    if (y !== this.top[c]) return;
+    const layer = WORLD_W * WORLD_D;
+    let t = y - 1;
+    while (t > 0 && !OCCLUDERS[this.data[c + layer * t]]) t--;
+    this.top[c] = t;
+  }
+
+  // How much daylight reaches a cell (0.06..1): full under open sky, dimmer the deeper it is
+  // below the natural ground and under cover. Houses above the natural ground stay bright.
+  skyAt(x, y, z) {
+    if (x < 0 || z < 0 || x >= WORLD_W || z >= WORLD_D) return 1;
+    if (!this.topReady) this.computeTop();
+    const c = x + z * WORLD_W;
+    if (y > this.top[c] || this.litCol[c]) return 1;
+    const d = this.ground[c] - y;
+    return d <= 0 ? 1 : Math.max(0.06, 1 - 0.2 * d);
+  }
+
+  // Is this position (a player's or creature's feet) in the dark, under cover and below ground?
+  underground(pos) { return this.skyAt(Math.floor(pos.x), Math.floor(pos.y + 1.6), Math.floor(pos.z)) < 0.5; }
 
   terrainHeight(x, z) {
     const n = fbm(x / 56, z / 56, this.seed, 4);
@@ -164,11 +223,12 @@ export class World {
     return 'plains';
   }
 
-  generate() {
+  generate({ caves = true } = {}) {
     const biomes = new Array(WORLD_W * WORLD_D);
     for (let x = 0; x < WORLD_W; x++) {
       for (let z = 0; z < WORLD_D; z++) {
         const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
+        this.ground[x + z * WORLD_W] = h;
         const biome = biomes[x + z * WORLD_W] = this.biome(x, z);
         const [top, under] = groundOf(biome, h);
         // Gravel patches on mountainsides.
@@ -187,6 +247,8 @@ export class World {
         }
       }
     }
+    // Caves under the hills (before the plants, so trees only grow where there is still ground).
+    this.caves = caves ? carveCaves(this) : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
     for (let x = 3; x < WORLD_W - 3; x++) {
       for (let z = 3; z < WORLD_D - 3; z++) {
@@ -267,6 +329,14 @@ export class World {
         leaderPos: [lx, floor + 1, lz], trainerPos: [tx + front[1] * 2, floor + 1, tz + front[0] * 2],
       };
     });
+    for (const g of this.gyms) this.markLit(g.x, g.z);
+  }
+
+  // Gym and tower footprints stay bright even where the floor is below the natural ground.
+  markLit(x0, z0) {
+    for (let x = Math.max(0, x0 - 8); x <= Math.min(WORLD_W - 1, x0 + 8); x++) {
+      for (let z = Math.max(0, z0 - 8); z <= Math.min(WORLD_D - 1, z0 + 8); z++) this.litCol[x + z * WORLD_W] = 1;
+    }
   }
 
   buildGym(x0, fy, z0, front, type) {
@@ -343,9 +413,9 @@ export class World {
   }
 
   // The Champion's Tower stands near the middle of the map, clear of every gym.
-  towerSpot() {
+  towerSpot(gyms = this.gyms) {
     const cx = WORLD_W / 2, cz = WORLD_D / 2, off = hash2(3, 77, this.seed) * Math.PI * 2;
-    const clear = (x, z, gap) => this.gyms.every(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z)) >= gap);
+    const clear = (x, z, gap) => gyms.every(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z)) >= gap);
     const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
     for (const gap of [26, 23]) {
       for (const needDry of [true, false]) {
@@ -362,7 +432,7 @@ export class World {
     let best = [cx, cz], bestGap = -1;
     for (let x = 18; x < WORLD_W - 18; x += 4) {
       for (let z = 18; z < WORLD_D - 18; z += 4) {
-        const gap = Math.min(...this.gyms.map(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z))));
+        const gap = Math.min(...gyms.map(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z))));
         if (gap > bestGap) { bestGap = gap; best = [x, z]; }
       }
     }
@@ -379,6 +449,7 @@ export class World {
     const side = [front[1], front[0]];
     const posOf = ([d, s]) => [x + front[0] * d + side[0] * s + 0.5, floor + 1, z + front[1] * d + side[1] * s + 0.5];
     this.tower = { def: TOWER, tower: true, x, z, y: floor + 1, front, people: TOWER.people.map(p => ({ ...p, pos: posOf(p.at) })) };
+    this.markLit(x, z);
   }
 
   // The tower: stone walls 11 high, a rainbow roof with battlements and a crystal spire.
@@ -494,6 +565,7 @@ export class World {
   }
 
   applyEdits(edits) {
+    this.topReady = false;
     for (const [i, id] of edits) {
       this.data[i] = id;
       this.edits.set(i, id);
@@ -510,6 +582,7 @@ export class World {
   }
 
   buildAll() {
+    this.computeTop();
     for (let cx = 0; cx < WORLD_W / CHUNK; cx++)
       for (let cz = 0; cz < WORLD_D / CHUNK; cz++) this.buildChunk(cx, cz);
     this.dirty.clear();
@@ -523,15 +596,54 @@ export class World {
     this.dirty.clear();
   }
 
-  addFace(buf, x, y, z, face, tile, topScale = 1) {
+  // sky and blk: the light in the cell the face looks into, packed as r = shade x sky, g = shade x block light.
+  addFace(buf, x, y, z, face, tile, topScale = 1, sky = 1, blk = 1) {
     const ndx = buf.pos.length / 3;
-    const s = face.shade;
+    const s = face.shade, r = s * sky, g = s * blk;
     for (const [cx, cy, cz, u, v] of face.corners) {
       buf.pos.push(x + cx, y + (cy ? topScale : 0), z + cz);
       buf.uv.push((tile + (u ? 0.999 : 0.001)) / TILE_COUNT, v);
-      buf.col.push(s, s, s);
+      buf.col.push(r, g, s);
     }
     buf.idx.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
+  }
+
+  // Fills lightBuf with the block light of every glow block within 4 blocks of the chunk at (x0, z0).
+  stampLight(x0, z0) {
+    lightBuf.fill(0);
+    const { data } = this;
+    for (let y = 0; y < WORLD_H; y++) {
+      for (let z = Math.max(0, z0 - LIGHT_R); z < Math.min(WORLD_D, z0 + CHUNK + LIGHT_R); z++) {
+        const row = WORLD_W * (z + WORLD_D * y);
+        for (let x = Math.max(0, x0 - LIGHT_R); x < Math.min(WORLD_W, x0 + CHUNK + LIGHT_R); x++) {
+          if (!GLOWS[data[row + x]]) continue;
+          for (let dy = -LIGHT_R; dy <= LIGHT_R; dy++) {
+            const yy = y + dy;
+            if (yy < 0 || yy >= WORLD_H) continue;
+            const ry = LIGHT_R - Math.abs(dy);
+            for (let dz = -ry; dz <= ry; dz++) {
+              const lz = z + dz - z0 + LIGHT_R;
+              if (lz < 0 || lz >= LIGHT_N) continue;
+              const rx = ry - Math.abs(dz);
+              for (let dx = -rx; dx <= rx; dx++) {
+                const lx = x + dx - x0 + LIGHT_R;
+                if (lx < 0 || lx >= LIGHT_N) continue;
+                const v = 0.9 - 0.18 * (Math.abs(dx) + Math.abs(dy) + Math.abs(dz));
+                const li = (yy * LIGHT_N + lz) * LIGHT_N + lx;
+                if (v > lightBuf[li]) lightBuf[li] = v;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  lightAt(x, y, z, x0, z0) {
+    if (y < 0 || y >= WORLD_H) return 0;
+    const lx = x - x0 + LIGHT_R, lz = z - z0 + LIGHT_R;
+    if (lx < 0 || lz < 0 || lx >= LIGHT_N || lz >= LIGHT_N) return 0;
+    return lightBuf[(y * LIGHT_N + lz) * LIGHT_N + lx];
   }
 
   buildChunk(cx, cz) {
@@ -539,6 +651,7 @@ export class World {
     const water = newBuffers();
     const glow = newBuffers(); // blocks that light up at night
     const x0 = cx * CHUNK, z0 = cz * CHUNK;
+    this.stampLight(x0, z0);
     for (let y = 0; y < WORLD_H; y++) {
       for (let z = z0; z < z0 + CHUNK; z++) {
         for (let x = x0; x < x0 + CHUNK; x++) {
@@ -550,7 +663,7 @@ export class World {
               const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
               if (n !== B.AIR) continue;
               if (f.kind === 'bottom') continue;
-              this.addFace(water, x, y, z, f, BLOCKS[id].side, surfaceTop ? 0.88 : 1);
+              this.addFace(water, x, y, z, f, BLOCKS[id].side, surfaceTop ? 0.88 : 1, this.skyAt(x + f.dir[0], y + f.dir[1], z + f.dir[2]), this.lightAt(x + f.dir[0], y + f.dir[1], z + f.dir[2], x0, z0));
             }
             continue;
           }
@@ -560,7 +673,11 @@ export class World {
             const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
             if (isOccluder(n)) continue;
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
-            this.addFace(def.glow ? glow : solid, x, y, z, f, tile);
+            if (def.glow) this.addFace(glow, x, y, z, f, tile);
+            else {
+              const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];
+              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0));
+            }
           }
         }
       }

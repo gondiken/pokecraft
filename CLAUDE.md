@@ -36,6 +36,7 @@ this file is for working on the code.
 | --- | --- |
 | `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens, accounts UI, play-together UI |
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
+| `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–36, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves, all 102 normal species (6 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly) |
@@ -62,6 +63,16 @@ Key ideas:
 - `window.pokecraft` is the global `game` object (handy in tests and the console):
   `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`, `weather`.
   Weather is not saved (restarts clear on load); the host sends its phase to visitors, who never run the timer.
+- **Caves** (`caves.js`) are carved in `World.generate()` right after the terrain loop and before the plants,
+  from the seed only, and only below `ground - 3` (3-block roof), so the surface, gyms, tower and
+  old saves' builds stay as they were; only the 6-8 entrance holes break the surface. Keep-out:
+  map edges, shores, gyms/tower (18 blocks), the start. `world.ground` = natural height per column,
+  `world.top` = highest sky-blocking block, `world.skyAt()` / `underground()` say how dark a place is.
+  Use `generate({ caves: false })` in tests to compare. **Lighting is baked into vertex colours:**
+  r = shade x sky light, g = shade x block light (lamps, crystals, glowcaps), b = shade; the
+  patched solid/water materials mix them in the shader. Day/night brightness is `caveLight.uLit`
+  (not `materials.solid.color` any more) and `caveLight.uLantern` is the player's own light. Cave
+  creatures come from `SPAWNS.cave` (`wild.cave`); chests are `B.CHEST` -> `B.CHEST_OPEN` (+3 cubes).
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and

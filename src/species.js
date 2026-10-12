@@ -759,6 +759,10 @@ export const SPAWNS = {
     ['boomwing', 0.3], ['rainwing', 0.4, 'day'], ['auroraptor', 0.1, 'day'],
     ['starmite', 3, 'night'], ['meteorb', 3, 'night'], ['galaxor', 0.3, 'night'], ['comethorn', 0.3, 'night'],
     ['lunaroo', 0.3, 'night']],
+  // Caves under the hills: rock, metal and ghost creatures, bats and glowing bugs.
+  cave: [['echobat', 4], ['pebblor', 3], ['cragling', 3], ['magmole', 2], ['quartzle', 2], ['nutlet', 2],
+    ['clanklet', 1], ['sporelet', 2], ['glowbug', 2], ['wispurr', 2], ['shadeling', 1.5], ['geodrake', 0.5],
+    ['starmite', 0.5, 'night'], ['fungrump', 0.2], ['monolor', 0.2], ['lumimoth', 0.2], ['boomwing', 0.15], ['phantomaw', 0.1]],
 };
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);

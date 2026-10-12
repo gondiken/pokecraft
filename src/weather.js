@@ -172,6 +172,7 @@ export class Weather {
   get day() { return Math.sin(this.game.time * Math.PI * 2) > 0.15; }
 
   kindAt(biome) {
+    if (biome === 'cave') return 'clear';
     if (this.forced) return this.forced;
     if (this.phase === 'clear') {
       const t = this.game.time;
