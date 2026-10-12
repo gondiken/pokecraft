@@ -1112,9 +1112,9 @@ function lantern(root, m, parts) {
   parts.tip = glow(box(l, 0.14, 0.16, 0.14, m.accent, 0, 0.28, 0), m.accent);
   const tail = pivot(l, 0, 0.26, -0.04);
   swing(parts, tail, 'z', 0.3, 3);
-  seeB(box(tail, 0.3, 0.14, 0.3, m.belly, 0, -0.02, -0.02), 0.8);
-  seeB(box(tail, 0.2, 0.14, 0.2, m.belly, 0, -0.14, -0.08), 0.65);
-  seeB(box(tail, 0.12, 0.12, 0.12, m.belly, 0, -0.25, -0.15), 0.5);
+  seeB(box(tail, 0.4, 0.16, 0.4, m.belly, 0, -0.03, -0.02), 0.85);
+  seeB(box(tail, 0.28, 0.16, 0.28, m.belly, 0, -0.17, -0.08), 0.7);
+  seeB(box(tail, 0.16, 0.14, 0.16, m.belly, 0, -0.3, -0.16), 0.55);
 }
 
 // A paper crane folded from one sheet, with a glowing wish on its forehead.
@@ -1122,33 +1122,35 @@ function crane(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
   parts.bounce = body;
   parts.hover = true;
-  box(body, 0.3, 0.25, 0.7, m.body, 0, 0.5, 0);
+  box(body, 0.32, 0.26, 0.7, m.body, 0, 0.5, 0);
   const ridge = box(body, 0.22, 0.22, 0.72, m.belly, 0, 0.6, 0);
   ridge.rotation.z = Math.PI / 4;
+  box(body, 0.34, 0.05, 0.4, m.accent, 0, 0.4, 0.05);
   const neck = pivot(body, 0, 0.55, 0.3);
-  neck.rotation.x = 0.55;
-  box(neck, 0.12, 0.55, 0.12, m.body, 0, 0.27, 0);
-  box(neck, 0.04, 0.5, 0.14, m.dark, 0, 0.27, 0);
-  const head = pivot(neck, 0, 0.55, 0);
-  head.rotation.x = -0.5;
+  neck.rotation.x = 0.4;
+  box(neck, 0.13, 0.7, 0.13, m.body, 0, 0.35, 0);
+  box(neck, 0.04, 0.65, 0.15, m.dark, 0, 0.35, 0);
+  const head = pivot(neck, 0, 0.72, 0);
+  head.rotation.x = -0.4;
   parts.head = head;
-  box(head, 0.2, 0.18, 0.2, m.body, 0, 0.04, 0.02);
-  box(head, 0.09, 0.09, 0.22, m.dark, 0, -0.01, 0.2);
-  eyes(head, 0.06, 0.125, 0.06, 0.07);
-  glow(box(head, 0.08, 0.08, 0.04, m.accent, 0, 0.17, 0.1), m.accent);
+  box(head, 0.24, 0.22, 0.24, m.body, 0, 0.05, 0.02);
+  box(head, 0.1, 0.1, 0.3, m.dark, 0, -0.02, 0.24);
+  eyes(head, 0.07, 0.15, 0.07, 0.08);
+  glow(box(head, 0.09, 0.09, 0.05, m.accent, 0, 0.2, 0.1), m.accent);
   const tail = pivot(body, 0, 0.5, -0.32);
   tail.rotation.x = 0.55;
-  box(tail, 0.1, 0.1, 0.4, m.body, 0, 0, -0.2);
-  box(tail, 0.04, 0.12, 0.4, m.dark, 0, 0, -0.2);
+  box(tail, 0.1, 0.1, 0.42, m.body, 0, 0, -0.21);
+  box(tail, 0.04, 0.12, 0.42, m.accent, 0, 0, -0.21);
   parts.wings = parts.wings || [];
   for (const s of [-1, 1]) {
-    const g = pivot(body, s * 0.14, 0.55, 0.0);
-    box(g, 0.45, 0.03, 0.5, m.body, s * 0.225, 0, 0);
-    box(g, 0.35, 0.03, 0.3, m.belly, s * 0.62, 0, -0.1);
-    box(g, 0.2, 0.03, 0.14, m.body, s * 0.88, 0, -0.18);
-    for (const [x, z, d] of [[0.2, 0, 0.5], [0.55, -0.1, 0.3]]) box(g, 0.04, 0.035, d, m.dark, s * x, 0.005, z);
-    g.rotation.z = s * 0.2;
-    parts.wings.push({ g, s, lift: 0.2 });
+    const g = pivot(body, s * 0.15, 0.58, 0.0);
+    box(g, 0.34, 0.03, 0.66, m.body, s * 0.17, 0, -0.05);
+    box(g, 0.26, 0.03, 0.5, m.belly, s * 0.45, 0, -0.12);
+    box(g, 0.16, 0.03, 0.26, m.body, s * 0.64, 0, -0.2);
+    box(g, 0.04, 0.035, 0.66, m.accent, s * 0.17, 0.005, -0.05);
+    box(g, 0.04, 0.035, 0.46, m.accent, s * 0.45, 0.005, -0.12);
+    g.rotation.z = s * 0.55;
+    parts.wings.push({ g, s, lift: 0.55 });
   }
 }
 
@@ -1165,6 +1167,7 @@ function windup(root, m, parts) {
   box(body, 0.07, 0.07, 0.04, 0x111111, 0, 0.4, 0.61);
   box(body, 0.1, 0.03, 0.03, 0x2a2a2a, 0, 0.3, 0.52);
   eyes(body, 0.56, 0.36, 0.14, 0.13);
+  for (const s of [-1, 1]) for (const dy of [-0.02, 0.04]) box(body, 0.2, 0.015, 0.015, 0x2a2a2a, s * 0.2, 0.36 + dy, 0.55);
   for (const s of [-1, 1]) {
     const e = pivot(body, s * 0.22, 0.74, 0.12);
     box(e, 0.22, 0.2, 0.04, m.belly, 0, 0, 0);

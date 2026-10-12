@@ -812,7 +812,7 @@ export const SPECIES = {
   origrane: {
     name: 'Origrane', type: 'mind', desc: 'A paper bird folded by a wish. It thinks so hard that its forehead glows.',
     base: { hp: 50, atk: 70, def: 50, spd: 85 }, baseXp: 100, catchRate: 0.3, learn: L('mind', 'grass'), flies: true,
-    model: { shape: 'crane', scale: 0.9, body: 0xfff8f0, accent: 0xf06a9a, dark: 0xd0c8c0, belly: 0xf6e8e0, extras: [] },
+    model: { shape: 'crane', scale: 1.3, body: 0xfff8f0, accent: 0xf06a9a, dark: 0xd0c8c0, belly: 0xf6e8e0, extras: [] },
   },
   tickatin: {
     name: 'Tickatin', type: 'metal', desc: 'A tin wind-up mouse. When its key stops turning, it sits down for a little nap.',
