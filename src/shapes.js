@@ -1343,7 +1343,246 @@ const SHAPES_A = { plushie, candle, jelly, bonsai, bulbfly, geode, globe };
 /* ==== end of T4b group A shapes ==== */
 
 /* ==== T4b group B shapes ==== */
-const SHAPES_B = {};
+const seeB = (mesh, opacity) => { mesh.material.transparent = true; mesh.material.opacity = opacity; mesh.material.depthWrite = false; return mesh; };
+
+// A snail: soft foot, two wiggly eye stalks and a swirly shell on its back.
+function snail(root, m, parts) {
+  box(root, 0.36, 0.14, 0.7, m.body, 0, 0.07, -0.15);
+  box(root, 0.26, 0.1, 0.25, m.body, 0, 0.05, -0.6);
+  box(root, 0.14, 0.07, 0.2, m.body, 0, 0.04, -0.78);
+  box(root, 0.3, 0.03, 0.9, m.belly, 0, 0.015, -0.1);
+  const front = pivot(root, 0, 0.07, 0.2);
+  box(front, 0.36, 0.14, 0.3, m.body, 0, 0, 0.12);
+  swing(parts, front, 'x', 0.08, 3);
+  box(root, 0.26, 0.4, 0.26, m.body, 0, 0.3, 0.38);
+  const head = pivot(root, 0, 0.5, 0.4);
+  parts.head = head;
+  box(head, 0.32, 0.26, 0.3, m.body, 0, 0.06, 0.02);
+  box(head, 0.2, 0.12, 0.04, m.belly, 0, -0.02, 0.17);
+  eyes(head, 0.1, 0.18, 0.09, 0.1);
+  box(head, 0.14, 0.04, 0.03, 0x2a2a2a, 0, -0.04, 0.2);
+  for (const s of [-1, 1]) box(head, 0.06, 0.05, 0.03, 0xff9aa8, s * 0.15, 0.0, 0.18);
+  [[-1, 0], [1, 2]].forEach(([s, ph]) => {
+    const st = pivot(head, s * 0.1, 0.19, 0.0);
+    box(st, 0.04, 0.3, 0.04, m.body, 0, 0.15, 0);
+    box(st, 0.12, 0.12, 0.12, 0xffffff, 0, 0.34, 0).userData.eye = true;
+    box(st, 0.06, 0.07, 0.04, 0x111111, 0, 0.34, 0.07).userData.eye = true;
+    swing(parts, st, s > 0 ? 'x' : 'z', 0.25, 1.4, ph);
+  });
+  // spiral shell: a round core with a dark swirl drawn on both sides
+  const shell = pivot(root, 0, 0.5, -0.12);
+  swing(parts, shell, 'z', 0.05, 1.3);
+  box(shell, 0.34, 0.66, 0.5, m.accent);
+  box(shell, 0.34, 0.5, 0.66, m.accent);
+  box(shell, 0.34, 0.58, 0.58, m.accent);
+  const N = 22;
+  for (let k = 0; k < N; k++) {
+    const a = k * 0.5, r = 0.31 * (1 - k / (N + 3));
+    for (const s of [-1, 1]) box(shell, 0.04, 0.09, 0.09, m.dark, s * 0.18, Math.sin(a) * r, Math.cos(a) * r);
+  }
+  box(shell, 0.4, 0.04, 0.4, m.dark, 0, -0.34, -0.02);
+}
+
+// A friendly paper lantern with a ghost inside. It sways and glows.
+function lantern(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const sway = pivot(body, 0, 0.9, 0);
+  swing(parts, sway, 'z', 0.12, 1.5);
+  const l = pivot(sway, 0, -0.9, 0);
+  const paper = (w, h, d, y) => { const b = box(l, w, h, d, m.body, 0, y, 0); glow(b, m.accent); b.material.emissiveIntensity = 0.35; return b; };
+  paper(0.5, 0.1, 0.5, 0.43);
+  paper(0.64, 0.4, 0.64, 0.68);
+  paper(0.5, 0.1, 0.5, 0.93);
+  box(l, 0.52, 0.07, 0.52, m.dark, 0, 0.36, 0);
+  box(l, 0.52, 0.07, 0.52, m.dark, 0, 1.0, 0);
+  for (const y of [0.5, 0.86]) box(l, 0.67, 0.035, 0.67, m.dark, 0, y, 0);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(l, 0.04, 0.4, 0.04, m.dark, sx * 0.33, 0.68, sz * 0.33);
+  box(l, 0.04, 0.2, 0.04, m.dark, -0.17, 1.14, 0);
+  box(l, 0.04, 0.2, 0.04, m.dark, 0.17, 1.14, 0);
+  box(l, 0.38, 0.04, 0.04, m.dark, 0, 1.25, 0);
+  eyes(l, 0.74, 0.325, 0.13, 0.13);
+  box(l, 0.1, 0.12, 0.03, 0x4a2a5a, 0, 0.6, 0.325);
+  for (const s of [-1, 1]) box(l, 0.07, 0.05, 0.03, 0xff9a8a, s * 0.23, 0.64, 0.325);
+  for (const s of [-1, 1]) box(l, 0.12, 0.1, 0.12, m.belly, s * 0.38, 0.62, 0.08);
+  parts.tip = glow(box(l, 0.14, 0.16, 0.14, m.accent, 0, 0.28, 0), m.accent);
+  const tail = pivot(l, 0, 0.26, -0.04);
+  swing(parts, tail, 'z', 0.3, 3);
+  seeB(box(tail, 0.4, 0.16, 0.4, m.belly, 0, -0.03, -0.02), 0.85);
+  seeB(box(tail, 0.28, 0.16, 0.28, m.belly, 0, -0.17, -0.08), 0.7);
+  seeB(box(tail, 0.16, 0.14, 0.16, m.belly, 0, -0.3, -0.16), 0.55);
+}
+
+// A paper crane folded from one sheet, with a glowing wish on its forehead.
+function crane(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  // chunky diamond body: a box turned 45 degrees, with a pink fold line along the top and bottom
+  const d1 = box(body, 0.36, 0.36, 0.9, m.body, 0, 0.5, 0);
+  d1.rotation.z = Math.PI / 4;
+  const d2 = box(body, 0.2, 0.2, 0.96, m.belly, 0, 0.5, 0);
+  d2.rotation.z = 0;
+  box(body, 0.06, 0.06, 0.94, m.accent, 0, 0.77, 0);
+  box(body, 0.06, 0.06, 0.94, m.accent, 0, 0.23, 0);
+  for (const s of [-1, 1]) box(body, 0.05, 0.05, 0.94, m.dark, s * 0.26, 0.5, 0);
+  // long neck with a pointed beak
+  const neck = pivot(body, 0, 0.6, 0.38);
+  neck.rotation.x = 0.4;
+  box(neck, 0.16, 0.75, 0.16, m.body, 0, 0.37, 0);
+  box(neck, 0.05, 0.7, 0.19, m.accent, 0, 0.37, 0);
+  const head = pivot(neck, 0, 0.78, 0);
+  head.rotation.x = -0.4;
+  parts.head = head;
+  box(head, 0.26, 0.24, 0.26, m.body, 0, 0.05, 0.02);
+  box(head, 0.12, 0.12, 0.3, m.accent, 0, -0.02, 0.26);
+  box(head, 0.06, 0.06, 0.14, m.accent, 0, -0.03, 0.46);
+  eyes(head, 0.08, 0.155, 0.07, 0.09);
+  glow(box(head, 0.1, 0.1, 0.05, m.accent, 0, 0.22, 0.1), m.accent);
+  // pointed tail
+  const tail = pivot(body, 0, 0.5, -0.42);
+  tail.rotation.x = 0.55;
+  box(tail, 0.14, 0.14, 0.4, m.body, 0, 0, -0.2);
+  box(tail, 0.08, 0.08, 0.2, m.accent, 0, 0, -0.45);
+  box(tail, 0.04, 0.16, 0.5, m.dark, 0, 0, -0.25);
+  // big flat triangular wings: wide at the body, pointed at the tip
+  parts.wings = parts.wings || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * 0.2, 0.6, 0.0);
+    box(g, 0.34, 0.04, 0.75, m.belly, s * 0.17, 0, 0);
+    box(g, 0.3, 0.04, 0.62, m.belly, s * 0.47, 0, -0.1);
+    box(g, 0.24, 0.04, 0.36, m.belly, s * 0.74, 0, -0.2);
+    box(g, 0.14, 0.04, 0.16, m.accent, s * 0.93, 0, -0.28);
+    box(g, 0.7, 0.05, 0.05, m.accent, s * 0.4, 0.01, 0.37);
+    box(g, 0.34, 0.05, 0.05, m.accent, s * 0.78, 0.01, 0.1);
+    box(g, 0.05, 0.05, 0.75, m.dark, s * 0.02, 0.01, 0);
+    box(g, 0.05, 0.05, 0.55, m.dark, s * 0.34, 0.01, -0.12);
+    g.rotation.z = s * 0.5;
+    parts.wings.push({ g, s, lift: 0.5 });
+  }
+}
+
+// A tin wind-up mouse on little wheels, with a key in its back.
+function windup(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.5, 0.3, 0.7, m.body, 0, 0.38, 0);
+  box(body, 0.4, 0.16, 0.55, m.body, 0, 0.6, -0.03);
+  box(body, 0.52, 0.07, 0.72, m.accent, 0, 0.42, 0);
+  for (const s of [-1, 1]) for (const z of [-0.2, 0, 0.2]) box(body, 0.03, 0.05, 0.05, m.belly, s * 0.26, 0.5, z);
+  box(body, 0.26, 0.2, 0.18, m.belly, 0, 0.4, 0.43);
+  box(body, 0.14, 0.12, 0.1, m.belly, 0, 0.38, 0.55);
+  box(body, 0.07, 0.07, 0.04, 0x111111, 0, 0.4, 0.61);
+  box(body, 0.1, 0.03, 0.03, 0x2a2a2a, 0, 0.3, 0.52);
+  eyes(body, 0.56, 0.36, 0.14, 0.13);
+  for (const s of [-1, 1]) for (const dy of [-0.02, 0.04]) box(body, 0.2, 0.015, 0.015, 0x2a2a2a, s * 0.2, 0.36 + dy, 0.55);
+  for (const s of [-1, 1]) {
+    const e = pivot(body, s * 0.22, 0.74, 0.12);
+    box(e, 0.22, 0.2, 0.04, m.belly, 0, 0, 0);
+    box(e, 0.16, 0.26, 0.04, m.belly, 0, 0, 0);
+    box(e, 0.13, 0.15, 0.05, m.accent, 0, 0, 0.02);
+  }
+  for (const [x, z] of [[-0.3, 0.22], [0.3, 0.22], [-0.3, -0.22], [0.3, -0.22]]) {
+    const w = pivot(body, x, 0.15, z);
+    box(w, 0.08, 0.3, 0.2, m.dark);
+    box(w, 0.08, 0.2, 0.3, m.dark);
+    box(w, 0.1, 0.1, 0.1, m.belly, 0, 0.1, 0.1);
+    spin(parts, w, 'x', 6);
+  }
+  const key = pivot(body, 0, 0.5, -0.36);
+  box(key, 0.05, 0.05, 0.14, m.belly, 0, 0, -0.07);
+  const loops = pivot(key, 0, 0, -0.16);
+  box(loops, 0.26, 0.05, 0.04, m.belly);
+  for (const s of [-1, 1]) box(loops, 0.08, 0.16, 0.04, m.belly, s * 0.14, 0, 0);
+  spin(parts, loops, 'z', 2.5);
+  const tail = pivot(body, 0, 0.3, -0.38);
+  swing(parts, tail, 'y', 0.4, 3);
+  for (let k = 0; k < 6; k++) box(tail, 0.06, 0.06, 0.06, m.belly, Math.cos(k * 1.4) * 0.07, Math.sin(k * 1.4) * 0.07 + k * 0.02, -0.04 - k * 0.07);
+}
+
+// A jug-shaped pitcher plant full of goo, with a leaf lid that burps.
+function pitcher(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  for (const [w, y] of [[0.4, 0.25], [0.46, 0.4], [0.52, 0.6], [0.58, 0.8]]) {
+    box(body, w, 0.22, w, m.body, 0, y, 0);
+    for (const s of [-1, 1]) for (const z of [-0.1, 0.1]) box(body, 0.03, 0.21, 0.05, m.accent, s * (w / 2 + 0.005), y, z);
+  }
+  box(body, 0.68, 0.06, 0.08, m.accent, 0, 0.93, 0.3);
+  box(body, 0.68, 0.06, 0.08, m.accent, 0, 0.93, -0.3);
+  for (const s of [-1, 1]) box(body, 0.08, 0.06, 0.68, m.accent, s * 0.3, 0.93, 0);
+  glow(box(body, 0.54, 0.04, 0.54, m.belly, 0, 0.92, 0), m.belly);
+  const bub = pivot(body, 0, 0.96, 0);
+  swing(parts, bub, 'y', 0.6, 1.5);
+  glow(box(bub, 0.1, 0.1, 0.1, m.belly, 0.1, 0.06, 0.05), m.belly);
+  glow(box(bub, 0.07, 0.07, 0.07, m.belly, -0.12, 0.12, -0.05), m.belly);
+  const hinge = pivot(body, 0, 0.96, -0.3);
+  hinge.rotation.x = -0.55;
+  const lid = pivot(hinge, 0, 0, 0);
+  swing(parts, lid, 'x', 0.25, 2);
+  box(lid, 0.6, 0.04, 0.55, m.accent, 0, 0, 0.27);
+  box(lid, 0.46, 0.04, 0.12, m.accent, 0, 0, 0.58);
+  box(lid, 0.05, 0.05, 0.55, m.dark, 0, 0.02, 0.28);
+  eyes(body, 0.72, 0.295, 0.12, 0.14);
+  box(body, 0.26, 0.05, 0.03, 0x2a2a2a, 0, 0.53, 0.265);
+  for (const s of [-1, 1]) box(body, 0.04, 0.07, 0.03, 0x2a2a2a, s * 0.14, 0.56, 0.265);
+  for (const s of [-1, 1]) box(body, 0.08, 0.06, 0.03, 0xff9aa8, s * 0.21, 0.63, 0.295);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const a = pivot(body, s * 0.33, 0.66, 0);
+    box(a, 0.1, 0.32, 0.05, m.dark, s * 0.05, -0.15, 0);
+    box(a, 0.12, 0.1, 0.07, m.body, s * 0.07, -0.34, 0);
+    parts.arms.push({ g: a, phase });
+  }
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const l = pivot(body, s * 0.13, 0.2, 0.08);
+    box(l, 0.13, 0.2, 0.16, m.dark, 0, -0.1, 0.02);
+    box(l, 0.17, 0.05, 0.22, m.body, 0, -0.18, 0.05);
+    parts.legs.push({ g: l, phase });
+  }
+  box(body, 0.14, 0.16, 0.14, m.dark, 0, 0.08, -0.15);
+}
+
+// A porcelain teacup with pixie wings and a curl of steam.
+function teacup(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  box(body, 0.9, 0.05, 0.9, m.body, 0, 0.03, 0);
+  for (const s of [-1, 1]) {
+    box(body, 0.92, 0.03, 0.04, m.accent, 0, 0.065, s * 0.45);
+    box(body, 0.04, 0.03, 0.92, m.accent, s * 0.45, 0.065, 0);
+  }
+  box(body, 0.34, 0.06, 0.34, m.accent, 0, 0.1, 0);
+  box(body, 0.4, 0.14, 0.4, m.body, 0, 0.2, 0);
+  box(body, 0.5, 0.18, 0.5, m.body, 0, 0.36, 0);
+  box(body, 0.58, 0.2, 0.58, m.body, 0, 0.55, 0);
+  box(body, 0.66, 0.06, 0.07, m.accent, 0, 0.67, 0.295);
+  box(body, 0.66, 0.06, 0.07, m.accent, 0, 0.67, -0.295);
+  for (const s of [-1, 1]) box(body, 0.07, 0.06, 0.66, m.accent, s * 0.295, 0.67, 0);
+  box(body, 0.54, 0.03, 0.54, m.dark, 0, 0.66, 0);
+  for (const s of [-1, 1]) for (const z of [-0.12, 0.12]) {
+    box(body, 0.02, 0.05, 0.05, m.accent, s * 0.3, 0.52, z - 0.03);
+    box(body, 0.02, 0.05, 0.05, m.accent, s * 0.3, 0.52, z + 0.03);
+    box(body, 0.02, 0.05, 0.05, m.accent, s * 0.3, 0.47, z);
+  }
+  box(body, 0.14, 0.05, 0.06, m.body, 0.37, 0.52, 0);
+  box(body, 0.05, 0.22, 0.06, m.body, 0.44, 0.42, 0);
+  box(body, 0.14, 0.05, 0.06, m.body, 0.37, 0.31, 0);
+  eyes(body, 0.55, 0.3, 0.12, 0.12);
+  box(body, 0.1, 0.04, 0.03, 0x2a2a2a, 0, 0.42, 0.27);
+  for (const s of [-1, 1]) box(body, 0.09, 0.06, 0.03, m.accent, s * 0.2, 0.47, 0.295);
+  addWings(parts, body, m, 0.2, 0.5, -0.3, 0.32, 0.5, m.belly, m.accent, { upright: true });
+  for (const [x, ph] of [[-0.1, 0], [0.12, 2]]) {
+    const st = pivot(body, x, 0.7, 0);
+    swing(parts, st, 'z', 0.25, 2, ph);
+    [0.1, 0.09, 0.07].forEach((sz, i) => seeB(box(st, sz, sz, sz, 0xffffff, (i % 2 ? 1 : -1) * 0.03, 0.1 + i * 0.12, 0), 0.6 - i * 0.12));
+  }
+}
+
+const SHAPES_B = { snail, lantern, crane, windup, pitcher, teacup };
 /* ==== end of T4b group B shapes ==== */
 
 /* ==== T4b group C shapes ==== */

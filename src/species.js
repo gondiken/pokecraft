@@ -834,6 +834,36 @@ export const SPECIES = {
   /* ==== end of T4b group A ==== */
 
   /* ==== T4b group B (bug ghost mind metal toxic pixie): builder B only ==== */
+  twirlshell: {
+    name: 'Twirlshell', type: 'bug', desc: 'A snail with a swirly shell. It is never in a hurry and leaves a shiny trail.',
+    base: { hp: 55, atk: 55, def: 95, spd: 25 }, baseXp: 85, catchRate: 0.4, learn: L('bug', 'toxic', [[15, 'hunker']]),
+    model: { shape: 'snail', scale: 0.85, body: 0xb8d86a, accent: 0xffa040, dark: 0x6a4a2a, belly: 0xe0f0a0, extras: [] },
+  },
+  lanterboo: {
+    name: 'Lanterboo', type: 'ghost', desc: 'A friendly paper lantern with a little ghost inside. It lights the way for lost travellers.',
+    base: { hp: 50, atk: 65, def: 50, spd: 75 }, baseXp: 95, catchRate: 0.3, learn: L('ghost', 'fire'), floats: true,
+    model: { shape: 'lantern', scale: 0.8, body: 0xffe0a0, accent: 0xffa84a, dark: 0x5a3a6a, belly: 0xfff4d8, extras: [] },
+  },
+  origrane: {
+    name: 'Origrane', type: 'mind', desc: 'A paper bird folded by a wish. It thinks so hard that its forehead glows.',
+    base: { hp: 50, atk: 70, def: 50, spd: 85 }, baseXp: 100, catchRate: 0.3, learn: L('mind', 'grass'), flies: true,
+    model: { shape: 'crane', scale: 1.15, body: 0xfff4f4, accent: 0xf0386a, dark: 0xd8708f, belly: 0xffd0dc, extras: [] },
+  },
+  tickatin: {
+    name: 'Tickatin', type: 'metal', desc: 'A tin wind-up mouse. When its key stops turning, it sits down for a little nap.',
+    base: { hp: 55, atk: 70, def: 85, spd: 45 }, baseXp: 100, catchRate: 0.3, learn: L('metal', 'electric'),
+    model: { shape: 'windup', scale: 0.8, body: 0x6ab0e0, accent: 0xe04a4a, dark: 0x5a6070, belly: 0xd8dde4, extras: [] },
+  },
+  gurglepot: {
+    name: 'Gurglepot', type: 'toxic', desc: 'A jug-shaped plant full of bubbly goo. It burps loudly, then says sorry.',
+    base: { hp: 70, atk: 70, def: 65, spd: 35 }, baseXp: 95, catchRate: 0.35, learn: L('toxic', 'grass'),
+    model: { shape: 'pitcher', scale: 0.9, body: 0x7ac04a, accent: 0xd04a7a, dark: 0x3a6a2a, belly: 0xb06ad6, extras: [] },
+  },
+  cuppix: {
+    name: 'Cuppix', type: 'pixie', desc: 'A teacup with fairy wings. It sloshes warm tea at anyone who is mean.',
+    base: { hp: 55, atk: 55, def: 60, spd: 70 }, baseXp: 95, catchRate: 0.35, learn: L('pixie', 'fire'), floats: true,
+    model: { shape: 'teacup', scale: 0.75, body: 0xfff6fa, accent: 0xff8ac8, dark: 0x8a5a3a, belly: 0xffd8ec, extras: [] },
+  },
   /* ==== end of T4b group B ==== */
 
   /* ==== T4b group C (drake rainbow cosmic sound bone alien): builder C only ==== */
@@ -1003,6 +1033,13 @@ const SEVENTH_A = {
 };
 
 const SEVENTH_B = {
+  forest: [['twirlshell', 1], ['lanterboo', 0.8, 'night'], ['gurglepot', 0.6]],
+  swamp: [['twirlshell', 1], ['lanterboo', 1, 'night'], ['gurglepot', 1.2]],
+  cave: [['lanterboo', 0.6], ['tickatin', 0.6]],
+  plains: [['origrane', 0.6, 'day']],
+  meadow: [['origrane', 0.8, 'day'], ['cuppix', 1, 'day']],
+  mountain: [['origrane', 0.4], ['tickatin', 1]],
+  beach: [['tickatin', 0.4]],
 };
 
 const SEVENTH_C = {
