@@ -83,7 +83,9 @@ export default async function ({ browser, base, t }) {
   // 2. An old Champion keeps the title and the tower; the arrow points at the new gyms.
   page = await openWithSave(browser, base, oldSave(true));
   await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(3500);
+  // The HUD (arrow, level bonus) refreshes from the game loop, which is slow under load.
+  await page.waitForFunction(() => document.getElementById('guide').textContent && window.pokecraft.creatures.levelBonus,
+    null, { timeout: 90000, polling: 500 }).catch(() => {});
   const champ = await page.evaluate(() => {
     const g = window.pokecraft;
     return {

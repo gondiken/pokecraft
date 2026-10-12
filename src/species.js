@@ -1110,6 +1110,9 @@ export function makeCreature(species, level, knownMoves) {
     species, level, xp: xpForLevel(level), hp: 0,
     moves: keep.length ? [...new Set(keep)].slice(0, 4) : [...new Set(moves)].slice(-4),
   };
+  // A damaging move goes first (wild and trainer creatures, and the first button, use it most).
+  const hit = c.moves.findIndex(m => MOVES[m].power > 0);
+  if (!keep.length && hit > 0) [c.moves[0], c.moves[hit]] = [c.moves[hit], c.moves[0]];
   c.learned = keep.length ? [...c.moves] : [...new Set(moves)]; // moves already offered (see gainXp)
   c.hp = statsFor(c).maxHp;
   return c;
