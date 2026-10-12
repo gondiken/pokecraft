@@ -38,6 +38,7 @@ this file is for working on the code.
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
 | `src/blocks.js` | Block ids (wool is 20–36, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves, all 102 species (6 per type; the `roster` test checks this) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly) |
 | `src/gyms.js` | The 16 gyms in difficulty order (teams, leader/trainer names, dialogue) |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome + day/night tables) and wandering |
@@ -66,8 +67,10 @@ Key ideas:
   saves made with another size (no `size` = the old 192×192 map). The map is 224×224.
   The same object is upserted to Supabase when signed in; whichever has the newer `savedAt` wins.
 - Adding a creature: add to `SPECIES` (use `L(type)` for a standard learnset) and to a biome in
-  `SPAWNS`; the model is built from `shape` (`quad`/`blob`/`biped`/`bird`/`serpent`/`bug`) plus
-  `extras`. Adding a type: `TYPE_COLORS`, `EFFECTIVENESS`, two moves + `T1`/`T2`, a wool colour in
+  `SPAWNS`; the model is built from `shape` (the six in species.js or one in `SHAPES` in shapes.js)
+  plus `extras`. **The owner wants creatures to look unique:** a new family should get its own body
+  shape (write a new builder in shapes.js), not a recolour of another type's creature. Evolutions
+  may share their family's shape. The `roster` spec requires at least 3 shapes per type. Adding a type: `TYPE_COLORS`, `EFFECTIVENESS`, two moves + `T1`/`T2`, a wool colour in
   `blocks.js` if it gets a gym. Remember the README tables.
 - Pointer lock: with a mouse the browser only lets the game capture the mouse after a click.
   That's why battles end with a "Continue exploring" button and the pause screen exists.

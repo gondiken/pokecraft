@@ -69,6 +69,7 @@ export class CreatureManager {
     const s = this.world.surface(xi, zi);
     const airborne = sp.flies || sp.floats;
     if (s.id === B.WATER) return sp.swims || airborne ? WATER_LEVEL + 0.55 : null;
+    if (sp.waterOnly) return null; // fish stay in the water
     // Only walk on natural ground (not trees, cacti, gyms or other buildings).
     if (!GROUND.has(s.id)) return airborne ? s.y + 1 : null;
     return s.y + 1;
