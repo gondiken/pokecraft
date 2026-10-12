@@ -42,6 +42,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | B | Blocks screen: choose which blocks are in your hotbar |
 | E | Battle the targeted creature, or talk to a person |
 | P / Tab | Team & storage screen |
+| C | Creature Book: every creature you've seen and caught |
 | Esc | Pause (Resume, Main menu, Play together) |
 
 On a tablet:
@@ -54,7 +55,7 @@ On a tablet:
 | Battle / Challenge / Heal button | Same as tapping the creature or person under the crosshair |
 | Break / Place / Jump buttons | Break or place a block at the crosshair, jump or swim up |
 | Tap the hotbar | Pick a block (tap the picked one again to change it) |
-| Team / Blocks / II buttons | Team screen / Blocks screen / pause |
+| Team / Blocks / Book / II buttons | Team screen / Blocks screen / Creature Book / pause |
 
 ## Features
 
@@ -67,6 +68,7 @@ On a tablet:
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
+- **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 

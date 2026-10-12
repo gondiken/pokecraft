@@ -40,6 +40,7 @@ this file is for working on the code.
 | `src/species.js` | Types + effectiveness chart, moves, all 102 species (6 per type; the `roster` test checks this) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly) |
 | `src/gyms.js` | The 16 gyms in difficulty order (teams, leader/trainer names, dialogue) |
+| `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome + day/night tables) and wandering |
 | `src/npc.js` | Blocky people (trainers, leaders, Healer Hana, other players' avatars) |
@@ -72,6 +73,7 @@ Key ideas:
   shape (write a new builder in shapes.js), not a recolour of another type's creature. Evolutions
   may share their family's shape. The `roster` spec requires at least 3 shapes per type. Adding a type: `TYPE_COLORS`, `EFFECTIVENESS`, two moves + `T1`/`T2`, a wool colour in
   `blocks.js` if it gets a gym. Remember the README tables.
+- Saves also have `seen` / `caught` (species id lists for the Creature Book). `Battle.refresh()` marks seen, a catch marks caught, and `snapshot()`/`Book.open()` call `book.syncTeam()` (team + box = caught), which covers evolution and old saves.
 - Pointer lock: with a mouse the browser only lets the game capture the mouse after a click.
   That's why battles end with a "Continue exploring" button and the pause screen exists.
 
@@ -107,7 +109,7 @@ node run.mjs gym touch                     # just some
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `book` (Creature Book), `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays

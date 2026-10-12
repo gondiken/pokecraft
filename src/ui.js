@@ -9,8 +9,8 @@ let portraitRenderer = null;
 const portraitCache = new Map();
 
 // Renders a creature model to a small image (cached per species).
-export function portrait(species, w = 140, h = 120) {
-  const key = `${species}:${w}x${h}`;
+export function portrait(species, w = 140, h = 120, silhouette = false) {
+  const key = `${species}:${w}x${h}${silhouette ? ':s' : ''}`;
   if (portraitCache.has(key)) return portraitCache.get(key);
   if (!portraitRenderer) {
     portraitRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -22,6 +22,7 @@ export function portrait(species, w = 140, h = 120) {
   sun.position.set(2, 4, 3);
   scene.add(sun);
   const model = buildModel(species);
+  if (silhouette) model.traverse(o => { if (o.isMesh) { o.material.dispose(); o.material = new THREE.MeshBasicMaterial({ color: 0x0d0f16 }); } });
   scene.add(model);
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
@@ -50,6 +51,7 @@ export class UI {
     this.badgeRow = document.getElementById('badges');
     this.partyPanel = document.getElementById('party');
     this.blocksPanel = document.getElementById('blocks');
+    this.bookPanel = document.getElementById('book');
     this.slots = [];
   }
 
@@ -163,9 +165,10 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden'); }
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden'); }
 
   openPanel(which = 'team') {
+    if (which === 'book') { this.game.book.open(); return; }
     if (which === 'blocks') {
       this.renderBlocks();
       this.blocksPanel.classList.remove('hidden');
@@ -178,5 +181,6 @@ export class UI {
   closePanel() {
     this.partyPanel.classList.add('hidden');
     this.blocksPanel.classList.add('hidden');
+    this.bookPanel.classList.add('hidden');
   }
 }

@@ -310,3 +310,51 @@ button.link { background: none; border: none; box-shadow: none; color: var(--mut
 }
 #block-list button.sel { outline: 3px solid var(--accent); }
 #block-list canvas { width: 48px; height: 48px; image-rendering: pixelated; }
+
+/* ---------- creature book ---------- */
+#book-count { font-size: 12px; text-align: center; margin: 4px 0 14px; color: var(--accent); }
+#book-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+#book-filters button { font-size: 9px; text-transform: uppercase; color: #14161e; padding: 7px 8px; background: #c8ccd8; }
+#book-filters button.sel { border-color: var(--accent); }
+body.touch #book-filters button { font-size: 11px; min-height: 44px; padding: 8px 10px; }
+#book-typeinfo { font-size: 20px; color: var(--muted); margin: 0 0 10px; }
+#book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+.book-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #2a2e3d; box-shadow: none; border: 3px solid #1b1d26; padding: 6px 4px 0;
+  font-family: 'VT323', monospace; font-size: 18px; color: var(--text); overflow: hidden;
+}
+.book-card img { display: block; width: 96px; height: 82px; background: transparent; }
+.book-card .book-num { color: var(--muted); font-size: 16px; }
+.book-card .book-name { line-height: 1; min-height: 18px; }
+.book-card .book-bar { align-self: stretch; height: 6px; margin: 4px -4px 0; background: #555a6b; }
+.book-card.caught { border-color: var(--accent); }
+.book-card.caught::after {
+  content: ''; position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 50%;
+  background: linear-gradient(#e03c3c 0 45%, #1b1d26 45% 55%, #f4f4f4 55%); border: 2px solid #1b1d26;
+}
+.book-card.unseen { background: #3a4058; opacity: .8; }
+#book-top { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+#book-top button { min-height: 44px; min-width: 44px; }
+#book-top .book-num { margin-left: auto; font-size: 24px; color: var(--muted); }
+#book-detail { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 700px) { #book-detail { grid-template-columns: 1fr; } }
+.book-pic { text-align: center; background: #2a2e3d; padding: 10px; }
+.book-pic img { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.book-title { font-size: 14px; color: var(--text); margin: 8px 0; }
+.book-info p { font-size: 22px; margin: 0 0 8px; }
+.book-info .book-note { font-size: 16px; color: var(--muted); margin: 4px 0 0; }
+.book-info h3 { margin: 14px 0 6px; }
+.chip { display: inline-block; padding: 2px 8px; font-size: 18px; color: #14161e; text-transform: uppercase; border: 2px solid #1b1d26; }
+.chip.plain { background: #3a4058; color: var(--text); text-transform: none; }
+.book-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.book-evo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.book-arrow { font-size: 18px; color: var(--muted); }
+.book-stage { display: flex; flex-direction: column; align-items: center; background: #2a2e3d; box-shadow: none; font-family: 'VT323', monospace; font-size: 18px; min-height: 44px; padding: 4px; }
+.book-stage.here { border-color: var(--accent); }
+.book-stage img { width: 70px; height: 60px; }
+.book-moves { display: flex; flex-direction: column; gap: 4px; }
+.book-move { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 20px; }
+.book-move .lv { width: 70px; white-space: nowrap; color: var(--muted); }
+.book-move .mn { min-width: 110px; }
+.book-move .mp { color: var(--muted); }

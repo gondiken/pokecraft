@@ -9,7 +9,7 @@ function capture(el, id) {
 }
 
 export class TouchControls {
-  // actions: { canPlay(), jump(down), breakBlock(), place(), interact(), team(), blocks(), pause(), tapAt(x, y) }
+  // actions: { canPlay(), jump(down), breakBlock(), place(), interact(), team(), blocks(), book(), pause(), tapAt(x, y) }
   constructor(game, canvas, actions) {
     this.game = game;
     this.actions = actions;
@@ -25,6 +25,7 @@ export class TouchControls {
     this.tap('btn-act', () => actions.interact());
     this.tap('btn-team', () => actions.team());
     this.tap('btn-blocks', () => actions.blocks());
+    this.tap('btn-book', () => actions.book());
     this.tap('btn-pause', () => actions.pause());
     this.actBtn = document.getElementById('btn-act');
   }

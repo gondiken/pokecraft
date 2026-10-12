@@ -67,6 +67,7 @@ export class Battle {
   }
 
   refresh() {
+    this.game.book?.markSeen(this.foe.species);
     this.card(this.wildCard, this.foe, false);
     this.card(this.allyCard, this.ally, true);
   }
@@ -547,6 +548,7 @@ export class Battle {
 
     if (caught) {
       sound.play('caught');
+      g.book?.markCaught(this.foe.species);
       g.scene.remove(cube);
       tintModel(target, null);
       await this.say(`Gotcha! ${nameOf(this.foe)} was caught!`, 1600);
