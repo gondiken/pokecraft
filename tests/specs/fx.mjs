@@ -170,6 +170,58 @@ export default async function ({ browser, base, t }) {
   t.ok(label1.includes('Effects on') && label2.includes('Effects off') && stored[0] === false && stored[1] === 'off' && stored2[0] === true && stored2[1] === 'on',
     `pause screen button turns effects off and on (${label1} / ${label2} / ${stored} / ${stored2})`);
 
+  // 6. Every type and every signature move has its own recipe and sound.
+  const cover = await page.evaluate(async () => {
+    const S = await import('/src/species.js');
+    const R = await import('/src/fxrecipes.js');
+    const { sound } = await import('/src/sound.js');
+    const types = ['normal', ...Object.keys(S.TYPE_COLORS)];
+    const sigs = Object.entries(S.MOVES).filter(([, m]) => m.sig).map(([id]) => id);
+    const names = types.map(t => `fx:${t}`);
+    for (const n of names) sound.play(n);
+    return {
+      noTravel: types.filter(t => !R.TRAVEL[t]), noImpact: types.filter(t => !R.IMPACT[t]), noColors: types.filter(t => !R.FX_COLORS[t]),
+      noSig: sigs.filter(id => !R.SIG[id]), noSound: names.filter(n => !sound.has(n)), soundErrors: sound.errors.slice(), count: types.length, sigCount: sigs.length,
+    };
+  });
+  t.ok(!cover.noTravel.length && !cover.noImpact.length && !cover.noColors.length,
+    `all ${cover.count} types have a travel, impact and colours (missing ${cover.noTravel} ${cover.noImpact} ${cover.noColors})`);
+  t.ok(!cover.noSig.length && cover.sigCount === 7, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
+  t.ok(!cover.noSound.length && !cover.soundErrors.length, `every type has a quiet fx sound that plays without errors (missing ${cover.noSound} ${cover.soundErrors})`);
+
+  // 7. Contact sheet: a frozen frame of some attacks, saved as pictures and as one sheet.
+  // (PC_FX_ALL=1 also saves every type and signature move, for looking at them by hand.)
+  const SHEET = ['fire', 'water', 'electric', 'grass', 'ice', 'ghost', 'rainbow', 'alien'];
+  const shots = SHEET.map(n => ({ name: n, type: n, p: n === 'rainbow' || n === 'alien' ? 0.7 : 0.55 }));
+  if (process.env.PC_FX_ALL) {
+    const all = await page.evaluate(() => [...window.H.types.filter(x => !['fire', 'water', 'electric', 'grass', 'ice', 'ghost', 'rainbow', 'alien'].includes(x)), ...window.H.sigs]);
+    for (const n of all) shots.push({ name: n, type: n, p: 0.55 });
+    for (const n of [...SHEET, ...all]) shots.push({ name: `${n}-impact`, type: n, p: 0.45, impact: true });
+  }
+  const files = [];
+  const clip = await page.evaluate(() => ({ x: Math.round(innerWidth * 0.1), y: Math.round(innerHeight * 0.2), width: Math.round(innerWidth * 0.8), height: Math.round(innerHeight * 0.6) }));
+  for (const s of shots) {
+    await page.evaluate(({ type, p, impact }) => {
+      const g = window.pokecraft, H = window.H, b = g.battle, fx = g.fx;
+      fx.hold = p;
+      if (impact) fx.impact(H.sigs.includes(type) ? window.pokecraft_types?.[type] || 'normal' : type, b.spot('foe'), { big: H.sigs.includes(type) });
+      else fx.attack(H.sigs.includes(type) ? type : H.firstMove[type], b.spot('ally'), b.spot('foe'));
+    }, s);
+    await page.evaluate(() => window.H.frames(2));
+    const file = path.join(SHOTS, `fx-${s.name}.png`);
+    await page.screenshot({ path: file, clip });
+    files.push({ name: s.name, file });
+    await page.evaluate(() => { const fx = window.pokecraft.fx; fx.clear(); fx.hold = null; });
+  }
+  const sheetFiles = files.filter(f => SHEET.includes(f.name));
+  const html = '<body style="margin:0;background:#222;font:16px sans-serif;color:#fff"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px">'
+    + sheetFiles.map(f => `<figure style="margin:0"><img style="width:100%" src="data:image/png;base64,${fs.readFileSync(f.file).toString('base64')}"><figcaption>${f.name}</figcaption></figure>`).join('') + '</div></body>';
+  const sheet = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  await sheet.setContent(html);
+  await sheet.screenshot({ path: path.join(SHOTS, 'fx-sheet.png'), fullPage: true });
+  await sheet.close();
+  t.ok(files.length >= SHEET.length && fs.existsSync(path.join(SHOTS, 'fx-sheet.png')), `contact sheet saved (${files.length} pictures)`);
+
   // 5c. Frame time with the heaviest effects held (software WebGL is noisy: the strict budget is above).
   const frameTime = () => page.evaluate(async () => {
     const d = [];
