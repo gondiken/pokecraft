@@ -41,7 +41,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | --- | --- | --- |
 | 1 ✅ | T1 Creature Book · T2 Weather · T5 Final boss | Mostly separate files (UI / new weather module / gyms + world placement) |
 | 2 ✅ | T6 More moves · T3 Caves | Battle + species moves vs. world generation + cave spawns |
-| 3 | T4 Shiny + a 7th creature per type | Builds on caves (cave spawns) and new moves (learnsets) |
+| 3 | T4a Bone + Alien types (with gyms) → T4b a 7th creature per type | T4b needs T4a's types, so they run one after the other |
 | 4 | T7 Attack animations | Needs the final move list; big enough for its own session |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
@@ -124,25 +124,22 @@ Underground caves to explore.
   caves under gyms/spawn/water, old-save heights unchanged (the `map` spec still passes), cave
   creatures spawn underground, caves are darker than the surface, and frame time is still OK.
 
-## T4 · Shiny creatures + a 7th creature for every type (size: L)
+## T4 · New types + a 7th creature for every type (size: L)
 
-- **Shiny**: a very rare version of any creature (about 1 in 300 encounters). Different colours
-  (a golden or alternate palette) plus a sparkle effect on its model, a sparkle sound, and a
-  toast ("✨ A shiny Zapple!"). Saved on the creature (`shiny: true`); shown in the team screen,
-  battle cards and the Creature Book (T1, if merged: "shiny seen/caught").
-- **One new creature for each of the 17 types** (102 → 119; update the `roster` spec to 7 per
-  type). The owner asked for creative, unique ones, especially for tricky types like ghost and
-  cosmic. Each needs its **own body shape** in `src/shapes.js` (no recolours; see CLAUDE.md), an
-  original name (no Pokémon names), a short child-friendly description, stats, a learnset, and
-  a place to live (cave ones in the T3 `cave` table). Some ideas to start from: a ghost
-  lantern that floats, a cosmic black-hole puff that swirls, a sound jukebox crab, a mind
-  origami crane, a metal wind-up toy, a toxic pitcher plant, a pixie teacup, a drake made of
-  clouds, a rainbow chameleon that shifts colour, an ice snow-globe, a fire candle, a water
-  jellyfish, a grass bonsai turtle, an electric light-bulb firefly, a rock geode, a normal
-  patchwork plushie, a bug snail with a spiral shell.
-- **Done when:** roster spec at 7 per type and ≥3 shapes per type passes; screenshots of all 17
-  reviewed; shiny chance can be forced in a spec and the shiny flag survives save/load; shiny
-  creatures look clearly different.
+Changed by the owner (2026-10-12): **shiny creatures are cancelled.** Instead:
+
+- **T4a:** two new types, **Bone** (skeletons, skulls, fossils; friendly, not scary) and **Alien**,
+  six creatures each with their own body shapes, a **gym for each**, and the Champion's Tower now
+  needs all 18 badges. The map may grow if the new gyms need room (old saves must still line up).
+- **T4b:** one new creature for each of the 19 types, each with its **own body shape** in
+  `src/shapes.js` (no recolours), an original name, a short child-friendly description, stats, a
+  learnset and a place to live. Ideas: a ghost lantern that floats, a cosmic black-hole puff, a
+  sound jukebox crab, a mind origami crane, a metal wind-up toy, a toxic pitcher plant, a pixie
+  teacup, a cloud drake, a rainbow chameleon, an ice snow-globe, a fire candle, a water jellyfish,
+  a grass bonsai turtle, an electric light-bulb firefly, a rock geode, a normal patchwork plushie,
+  a bug snail with a spiral shell.
+- **Done when:** roster spec at 7 per type and ≥3 shapes per type passes; screenshots of all new
+  creatures reviewed.
 
 ## T5 · Final boss (size: M)
 
