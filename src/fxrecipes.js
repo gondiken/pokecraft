@@ -449,7 +449,7 @@ IMPACT.mind = (k, from, to, { big }) => {
 
 TRAVEL.metal = k => {
   const N = 12;
-  const pts = k.points({ n: N, tex: 'dot', size: 0.24, glow: true, colors: [0xe8eef4, 0xaab8c8, 0xffffff] });
+  const pts = k.points({ n: N, tex: 'star', size: 0.34, glow: true, colors: [0xe8eef4, 0xaab8c8, 0xffffff] });
   const s = k.seeds(N, 2);
   return {
     dur: 330,
@@ -576,7 +576,7 @@ TRAVEL.drake = k => {
         r.position.copy(A);
         C.copy(A).add(k.dir);
         r.lookAt(C);
-        r.scale.setScalar(0.25 + t * 0.9 + i * 0.1);
+        r.scale.setScalar(0.25 + t * 0.6 + i * 0.08);
         r.material.opacity = 0.95 - t * 0.5;
       });
     },
@@ -869,7 +869,7 @@ SIG.royaltide = (k, from, to) => {
     step(p) {
       const g = Math.min(1, p / 0.25), t = k.ease(clamp01((p - 0.1) / 0.8));
       k.at(t, A, 0);
-      const h = Math.max(0.01, 0.9 * g), fy = feetOf(from);
+      const h = Math.max(0.01, 0.7 * g), fy = feetOf(from);
       C.set(A.x + k.dir.x, fy, A.z + k.dir.z);
       wall.position.set(A.x, fy + h / 2, A.z);
       wall.lookAt(C.x, fy + h / 2, C.z);
@@ -877,7 +877,7 @@ SIG.royaltide = (k, from, to) => {
       crest.position.set(A.x, fy + h, A.z);
       crest.lookAt(C.x, fy + h, C.z);
       crest.scale.set(1.8, 0.12, 0.4);
-      wall.material.opacity = 0.75 * fadeOut(p, 0.8);
+      wall.material.opacity = 0.55 * fadeOut(p, 0.8);
       crest.material.opacity = 0.8 * fadeOut(p, 0.8);
       for (let i = 0; i < 14; i++) {
         const w = (s[i * 2] - 0.5) * 1.6;
@@ -901,10 +901,10 @@ SIG.rootslam = (k, from, to) => {
       const g = clamp01((p - 0.1) / 0.4), ground = feetOf(to);
       for (let i = 0; i < V; i++) {
         const v = vines[i], ang = (i / V) * 6.283 + s[i * 3], rad = i === 0 ? 0 : to.r * (0.5 + s[i * 3 + 1] * 0.6);
-        const h = Math.max(0.01, (to.top - ground + 0.5) * g * (0.8 + s[i * 3 + 2] * 0.5));
+        const h = Math.max(0.01, (to.top - ground) * 0.75 * g * (0.8 + s[i * 3 + 2] * 0.5));
         v.position.set(to.pos.x + Math.cos(ang) * rad, ground + h / 2, to.pos.z + Math.sin(ang) * rad);
         v.rotation.set(Math.sin(ang) * 0.3 * g, 0, Math.cos(ang) * 0.3 * g);
-        v.scale.set(0.2, h, 0.2);
+        v.scale.set(0.14, h, 0.14);
         v.material.opacity = fadeOut(p, 0.8);
       }
       const l = clamp01((p - 0.3) / 0.7);
@@ -941,7 +941,7 @@ SIG.zenithray = (k, from, to) => {
 SIG.rattledance = (k, from, to) => {
   const N = 5;
   const bones = [];
-  for (let i = 0; i < N; i++) bones.push(k.sprite('bone', { color: 0xf2ead4, size: 0.75 }));
+  for (let i = 0; i < N; i++) bones.push(k.sprite('bone', { color: 0xf2ead4, size: 0.5 }));
   return {
     dur: 700,
     step(p) {
@@ -1015,12 +1015,12 @@ SIG.bigbong = (k, from, to) => {
       flatRing.rotation.set(-Math.PI / 2, 0, 0);
       flatRing.position.copy(from.pos);
       flatRing.scale.setScalar(0.4 + e * 2.6);
-      flatRing.material.opacity = 0.9 * (1 - e);
+      flatRing.material.opacity = 1 - e * 0.7;
       upRing.position.copy(from.pos);
       A.copy(from.pos).add(k.side);
       upRing.lookAt(A);
       upRing.scale.setScalar(0.3 + e * 2.0);
-      upRing.material.opacity = 0.9 * (1 - e);
+      upRing.material.opacity = 1 - e * 0.7;
       for (let i = 0; i < N; i++) {
         const q = clamp01(p * 1.3 - (i / N) * 0.3);
         if (q <= 0) { notes.hide(i); continue; }

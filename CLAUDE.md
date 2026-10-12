@@ -51,6 +51,8 @@ this file is for working on the code.
 | `src/multiplayer.js` | Play together: share code, avatars, block sync |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
 | `src/weather.js` | Weather: shared phase (clear/rain/storm/rainbow), per-biome kind (snow, sandstorm, fog, stars), particles, rainbow arc, lightning, spawn boosts (`game.weather.set(kind)` / `skip()` / `info()` for tests) |
+| `src/fx.js` | Battle effects (`game.fx`: `attack`/`impact`/`status`/`aura`/`clear`, `hold` freezes them for screenshots in tests). Time-based and closed form, shared textures, never touches `battle.rng`, budgets: 6 live effects, 300 points, 12 draw calls |
+| `src/fxrecipes.js` | `TRAVEL` / `IMPACT` per type, `SIG` per signature move, `FX_COLORS`; a recipe is `(k, from, to, opts) => ({ dur, step(p) })` |
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
@@ -97,7 +99,7 @@ Key ideas:
   plus `extras`. **The owner wants creatures to look unique:** a new family should get its own body
   shape (write a new builder in shapes.js), not a recolour of another type's creature. Evolutions
   may share their family's shape. The `roster` spec requires at least 3 shapes per type. Adding a type: `TYPE_COLORS`, `EFFECTIVENESS`, two moves + `T1`/`T2`, a wool colour in
-  `blocks.js` if it gets a gym. Remember the README tables.
+  `blocks.js` if it gets a gym. Also add `TRAVEL` / `IMPACT` / `FX_COLORS` entries in `fxrecipes.js` and an `fx:<type>` sound in `sound.js` (the `fx` spec checks both). A new signature move needs a `SIG` entry. Remember the README tables.
 - Saves also have `seen` / `caught` (species id lists for the Creature Book). `Battle.refresh()` marks seen, a catch marks caught, and `snapshot()`/`Book.open()` call `book.syncTeam()` (team + box = caught), which covers evolution and old saves.
 - Moves (`MOVES` in species.js): `fx.kind` is heal / raise / lower / flinch / sleep / multi / recoil; `sure`, `priority`,
   `sig` are flags. Ids are saved, names are display only. Per-battle stat steps and sleep live in `battle.modMap`
@@ -141,7 +143,7 @@ node run.mjs gym touch                     # just some
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `old-saves` (gyms 17–18 and old saves), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `old-saves` (gyms 17–18 and old saves), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
