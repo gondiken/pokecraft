@@ -98,9 +98,10 @@ export default async function ({ browser, base, t }) {
     w.updateDirty();
     const glowing = [...w.meshes.get(`${x >> 4},${z >> 4}`)].some(m => m.material.color && !m.material.alphaTest && !m.material.transparent);
     g.time = 0.75; // night
-    await new Promise(r => setTimeout(r, 1500));
     // The glow material is never dimmed; everything else is dimmed by caveLight.uLit (see caves.js).
+    // Wait for the game loop to draw a night frame (slow under load).
     const { caveLight } = await import('/src/caves.js');
+    for (let i = 0; i < 120 && caveLight.uLit.value >= 0.6; i++) await new Promise(r => setTimeout(r, 500));
     return { glowing, bright: w.materials.glow.color.r, dim: caveLight.uLit.value };
   });
   t.ok(placed.glowing && placed.bright === 1 && placed.dim < 0.6, `lamps stay bright at night while the rest gets darker (${placed.bright} vs ${placed.dim.toFixed(2)})`);
