@@ -1053,6 +1053,8 @@ function seeThroughA(mesh, opacity) {
 // A see-through ball (the three crossed boxes of `ball`).
 function glassBallA(parent, r, color, opacity, x, y, z) {
   const g = ball(parent, r, color, x, y, z);
+  box(g, r * 1.9, r * 1.6, r * 1.9, color).rotation.y = Math.PI / 4;
+  box(g, r * 1.6, r * 1.9, r * 1.6, color).rotation.y = Math.PI / 4;
   g.children.forEach(c => seeThroughA(c, opacity));
   return g;
 }
@@ -1164,7 +1166,7 @@ function jelly(root, m, parts) {
   seeThroughA(box(body, 0.66, 0.18, 0.66, m.body, 0, 0.74, 0), 0.6);
   seeThroughA(box(body, 0.4, 0.1, 0.4, m.body, 0, 0.88, 0), 0.6);
   // glowing clover inside the dome
-  for (const [x, z] of [[-0.14, 0], [0.14, 0], [0, -0.14], [0, 0.14]]) glow(box(body, 0.1, 0.1, 0.1, m.accent, x, 0.55, z), m.accent);
+  for (const [x, z] of [[-0.16, 0], [0.16, 0], [0, -0.16], [0, 0.16]]) glow(box(body, 0.1, 0.1, 0.1, m.accent, x, 0.62, z), m.accent);
   // frilly rim
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4;
@@ -1178,11 +1180,11 @@ function jelly(root, m, parts) {
   for (let k = 0; k < 6; k++) {
     const a = k * Math.PI / 3 + 0.3;
     const t = pivot(body, Math.sin(a) * 0.3, 0.34, Math.cos(a) * 0.3);
-    box(t, 0.07, 0.2, 0.07, m.body, 0, -0.1, 0);
-    box(t, 0.055, 0.16, 0.055, m.body, 0, -0.28, 0);
-    box(t, 0.04, 0.12, 0.04, m.belly, 0, -0.42, 0);
-    glow(box(t, 0.06, 0.06, 0.06, m.accent, 0, -0.51, 0), m.accent);
-    swing(parts, t, k % 2 ? 'x' : 'z', 0.35, 2.5, k);
+    box(t, 0.1, 0.18, 0.03, m.accent, 0, -0.09, 0).rotation.y = a;
+    box(t, 0.08, 0.16, 0.03, m.belly, 0, -0.26, 0).rotation.y = a;
+    box(t, 0.06, 0.14, 0.03, m.accent, 0, -0.41, 0).rotation.y = a;
+    glow(box(t, 0.07, 0.07, 0.07, 0xfff0ff, 0, -0.51, 0), 0xff8ad8);
+    swing(parts, t, k % 2 ? 'x' : 'z', 0.4, 2.5, k);
   }
 }
 
@@ -1244,17 +1246,17 @@ function bulbfly(root, m, parts) {
   box(body, 0.28, 0.26, 0.36, m.body, 0, 0.45, 0.06);
   box(body, 0.3, 0.06, 0.12, m.accent, 0, 0.45, 0.06);
   // metal screw base
-  [0.3, 0.26, 0.3].forEach((w, i) => box(body, w, w, 0.05, m.dark, 0, 0.45, -0.17 - i * 0.055));
+  [0.32, 0.28, 0.32].forEach((w, i) => box(body, w, w, 0.06, i === 1 ? 0x606070 : 0xd0d0e0, 0, 0.45, -0.2 - i * 0.065));
   // glass bulb with a glowing filament and blinking core
-  const bulb = pivot(body, 0, 0.45, -0.52);
-  glassBallA(bulb, 0.26, m.belly, 0.5, 0, 0, 0);
-  const fil = pivot(bulb, 0, -0.1, 0.04);
-  zigzag(fil, m.accent, 0, 0, 0, 0.9);
+  const bulb = pivot(body, 0, 0.45, -0.66);
+  glassBallA(bulb, 0.3, 0xd8ecff, 0.3, 0, 0, 0).children.forEach(c => c.material.emissive.setHex(0x303818));
+  const fil = pivot(bulb, 0, -0.2, 0.08);
+  zigzag(fil, m.accent, 0, 0, 0, 1.6);
   fil.children.forEach(c => glow(c, m.accent));
-  parts.tip = glow(box(bulb, 0.12, 0.12, 0.12, 0xfff8a0, 0, 0.12, -0.02), 0xfff8a0);
+  parts.tip = glow(box(bulb, 0.16, 0.16, 0.16, 0xfff8a0, 0, 0.1, -0.02), 0xfff8a0);
   // two pairs of pale wings
-  addWings(parts, body, m, 0.14, 0.6, 0.12, 0.5, 0.28, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
-  addWings(parts, body, m, 0.12, 0.6, -0.1, 0.4, 0.24, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
+  addWings(parts, body, m, 0.14, 0.6, 0.16, 0.5, 0.26, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
+  addWings(parts, body, m, 0.12, 0.6, -0.02, 0.4, 0.22, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
   // six tiny legs
   for (const s of [-1, 1]) for (const z of [0.18, 0.06, -0.06]) {
     const lg = box(body, 0.03, 0.2, 0.03, m.body, s * 0.13, 0.3, z);
@@ -1273,29 +1275,33 @@ function geode(root, m, parts) {
     parts.legs.push({ g: leg, phase });
   }
   // lower half
-  box(body, 0.8, 0.35, 0.8, m.body, 0, 0.275, 0);
+  box(body, 0.72, 0.2, 0.72, m.body, 0, 0.2, 0);
+  box(body, 0.8, 0.18, 0.8, m.body, 0, 0.36, 0);
   box(body, 0.2, 0.15, 0.2, 0xa89888, -0.3, 0.22, 0.3);
   box(body, 0.18, 0.2, 0.18, m.dark, 0.32, 0.3, -0.3);
+  box(body, 0.14, 0.1, 0.14, 0xb8a898, 0.28, 0.2, 0.34);
   box(body, 0.7, 0.04, 0.7, m.belly, 0, 0.46, 0);
-  eyes(body, 0.37, 0.405, 0.15, 0.11);
-  box(body, 0.14, 0.04, 0.02, m.dark, 0, 0.26, 0.405);
-  for (const s of [-1, 1]) box(body, 0.07, 0.04, 0.02, 0xd09090, s * 0.27, 0.28, 0.405);
+  eyes(body, 0.38, 0.405, 0.14, 0.11);
+  box(body, 0.14, 0.04, 0.02, m.dark, 0, 0.29, 0.405);
+  for (const s of [-1, 1]) box(body, 0.07, 0.04, 0.02, 0xd09090, s * 0.27, 0.31, 0.405);
   // crystals on the floor
-  [[-0.22, -0.1, 0.3, 0.2], [-0.1, 0.1, 0.22, -0.15], [0.12, 0, 0.34, 0.1], [0.25, 0.15, 0.2, -0.3], [0.2, -0.2, 0.26, 0.25], [-0.2, 0.2, 0.16, 0.3], [0, -0.22, 0.28, -0.1]].forEach(([x, z, h, tilt]) => {
-    const c = glow(box(body, 0.08, h, 0.08, m.accent, x, 0.47 + h / 2 - 0.02, z), m.accent);
+  [[-0.22, -0.1, 0.4, 0.2], [-0.1, 0.1, 0.3, -0.15], [0.12, 0, 0.46, 0.1], [0.25, 0.15, 0.28, -0.3], [0.2, -0.2, 0.36, 0.25], [-0.2, 0.2, 0.22, 0.3], [0, -0.22, 0.38, -0.1]].forEach(([x, z, h, tilt]) => {
+    const c = glow(box(body, 0.11, h, 0.11, m.accent, x, 0.47 + h / 2 - 0.02, z), m.accent);
     c.rotation.z = tilt;
   });
   // the lid, hinged at the back
   const hinge = pivot(body, 0, 0.45, -0.4);
-  hinge.rotation.x = -0.4;
+  hinge.rotation.x = -0.5;
   const lid = pivot(hinge, 0, 0, 0);
   swing(parts, lid, 'x', 0.2, 1.5);
-  box(lid, 0.8, 0.32, 0.8, m.body, 0, 0.16, 0.4);
-  box(lid, 0.2, 0.14, 0.2, 0xa89888, 0.22, 0.34, 0.3);
-  box(lid, 0.22, 0.16, 0.2, m.dark, -0.25, 0.3, 0.55);
+  box(lid, 0.8, 0.16, 0.8, m.body, 0, 0.08, 0.4);
+  box(lid, 0.68, 0.14, 0.68, m.body, 0, 0.23, 0.4);
+  box(lid, 0.46, 0.1, 0.46, m.body, 0, 0.35, 0.4);
+  box(lid, 0.2, 0.14, 0.2, 0xa89888, 0.22, 0.3, 0.3);
+  box(lid, 0.22, 0.16, 0.2, m.dark, -0.25, 0.26, 0.55);
   box(lid, 0.7, 0.03, 0.7, m.belly, 0, 0.0, 0.4);
   [[-0.22, 0.25, 0.2, 0.2], [0, 0.35, 0.26, -0.15], [0.22, 0.25, 0.2, 0.25], [-0.1, 0.6, 0.16, 0.1], [0.12, 0.55, 0.18, -0.2], [0.0, 0.2, 0.14, 0.3]].forEach(([x, z, h, tilt]) => {
-    const c = glow(box(lid, 0.08, h, 0.08, m.accent, x, -h / 2 + 0.01, z), m.accent);
+    const c = glow(box(lid, 0.1, h, 0.1, m.accent, x, -h / 2 + 0.01, z), m.accent);
     c.rotation.z = tilt;
   });
 }
@@ -1310,23 +1316,25 @@ function globe(root, m, parts) {
     box(leg, 0.16, 0.11, 0.2, m.dark, 0, -0.055, 0.02);
     parts.legs.push({ g: leg, phase });
   }
-  box(body, 0.7, 0.28, 0.7, m.body, 0, 0.25, 0);
-  box(body, 0.74, 0.05, 0.74, 0xd8b040, 0, 0.4, 0);
-  box(body, 0.74, 0.04, 0.74, 0xd8b040, 0, 0.14, 0);
-  eyes(body, 0.29, 0.355, 0.15, 0.11);
-  for (const s of [-1, 1]) box(body, 0.08, 0.05, 0.02, 0xff9a9a, s * 0.26, 0.21, 0.355);
-  box(body, 0.12, 0.04, 0.02, 0xf6e6d0, 0, 0.2, 0.355);
+  box(body, 0.78, 0.12, 0.78, m.body, 0, 0.16, 0);
+  box(body, 0.66, 0.18, 0.66, m.body, 0, 0.31, 0);
+  box(body, 0.7, 0.05, 0.7, 0xd8b040, 0, 0.43, 0);
+  box(body, 0.8, 0.03, 0.8, 0xd8b040, 0, 0.1, 0);
+  eyes(body, 0.32, 0.335, 0.14, 0.1);
+  for (const s of [-1, 1]) box(body, 0.08, 0.05, 0.02, 0xff9a9a, s * 0.25, 0.25, 0.335);
+  box(body, 0.12, 0.04, 0.02, 0xf6e6d0, 0, 0.24, 0.335);
   // the glass ball with a snowy scene inside
-  box(body, 0.5, 0.12, 0.5, m.accent, 0, 0.49, 0);
-  box(body, 0.05, 0.1, 0.05, 0x6a4a2a, 0, 0.6, 0);
-  box(body, 0.22, 0.12, 0.22, 0x3a8a4a, 0, 0.68, 0);
-  box(body, 0.14, 0.1, 0.14, 0x3a8a4a, 0, 0.78, 0);
-  box(body, 0.06, 0.06, 0.06, m.accent, 0, 0.85, 0);
-  glassBallA(body, 0.38, m.belly, 0.28, 0, 0.83, 0);
-  const snow = pivot(body, 0, 0.83, 0);
+  box(body, 0.56, 0.12, 0.56, 0xe6f2ff, 0, 0.52, 0);
+  box(body, 0.06, 0.1, 0.06, 0x6a4a2a, 0, 0.63, 0);
+  box(body, 0.28, 0.12, 0.28, 0x2f8a4a, 0, 0.7, 0);
+  box(body, 0.2, 0.12, 0.2, 0x2f8a4a, 0, 0.81, 0);
+  box(body, 0.1, 0.1, 0.1, 0x2f8a4a, 0, 0.91, 0);
+  box(body, 0.07, 0.05, 0.07, 0xffffff, 0, 0.98, 0);
+  glassBallA(body, 0.42, 0xbfe4ff, 0.2, 0, 0.88, 0);
+  const snow = pivot(body, 0, 0.88, 0);
   for (let k = 0; k < 10; k++) {
-    const a = k * 2.4, r = 0.12 + (k % 4) * 0.045;
-    box(snow, 0.045, 0.045, 0.045, 0xffffff, Math.cos(a) * r, -0.2 + (k * 0.047) % 0.5, Math.sin(a) * r);
+    const a = k * 2.4, r = 0.16 + (k % 4) * 0.05;
+    box(snow, 0.05, 0.05, 0.05, 0xdaeeff, Math.cos(a) * r, -0.2 + (k * 0.047) % 0.5, Math.sin(a) * r);
   }
   spin(parts, snow, 'y', 1.2);
 }
