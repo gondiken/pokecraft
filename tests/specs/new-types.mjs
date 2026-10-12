@@ -50,7 +50,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await playBattle(page), 'Echo Gym leader battle finishes');
   t.ok(await page.evaluate(() => window.pokecraft.badges.includes('sound')), 'Echo Badge awarded');
   const shown = await page.evaluate(() => [...document.querySelectorAll('#badges > *')].length);
-  t.ok(shown === 16, `HUD shows 16 badge slots (${shown})`);
+  t.ok(shown === 18, `HUD shows 18 badge slots (${shown})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

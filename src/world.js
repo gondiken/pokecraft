@@ -1,7 +1,7 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
 import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
-import { GYMS, TOWER } from './gyms.js';
+import { GYMS, TOWER, ORIGINAL_GYMS } from './gyms.js';
 import { carveCaves } from './caves.js';
 
 export const WORLD_W = 224;
@@ -250,6 +250,8 @@ export class World {
     // Caves under the hills (before the plants, so trees only grow where there is still ground).
     const solid = caves ? this.data.slice() : null;
     this.caves = caves ? carveCaves(this) : null;
+    // Gyms 17+ get their spots from the terrain alone; no cave may be under (or open into) them.
+    if (caves) for (const [x, z] of this.extraGymSpots()) this.fillCavesNear(solid, x, z, 18);
     const carved = caves ? this.data.slice() : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
     for (let x = 3; x < WORLD_W - 3; x++) {
@@ -275,6 +277,7 @@ export class World {
     }
     this.placeGyms();
     this.placeTower();
+    this.placeExtraGyms();
     if (caves) this.fillCavesNearStart(solid, carved);
   }
 
@@ -296,22 +299,28 @@ export class World {
   // No caves under the start: undo what the carving changed within 10 blocks of it (solid = the
   // world before carving, carved = right after; anything changed since, like a gym, stays).
   fillCavesNearStart(solid, carved) {
-    const [sx, sz] = this.startColumn(), R = 10;
-    for (let x = Math.max(0, sx - R); x <= Math.min(WORLD_W - 1, sx + R); x++) {
-      for (let z = Math.max(0, sz - R); z <= Math.min(WORLD_D - 1, sz + R); z++) {
+    const [sx, sz] = this.startColumn();
+    this.fillCavesNear(solid, sx, sz, 10, carved);
+  }
+
+  // Undoes the caves within R blocks (a square) of (x0, z0). With `carved` (the world right after
+  // carving), cells changed since then stay; without it everything in the box goes back to solid.
+  fillCavesNear(solid, x0, z0, R, carved = null) {
+    for (let x = Math.max(0, x0 - R); x <= Math.min(WORLD_W - 1, x0 + R); x++) {
+      for (let z = Math.max(0, z0 - R); z <= Math.min(WORLD_D - 1, z0 + R); z++) {
         for (let y = 0; y < WORLD_H; y++) {
           const i = this.index(x, y, z);
-          if (solid[i] !== carved[i] && this.data[i] === carved[i]) this.data[i] = solid[i];
+          if (carved ? solid[i] !== carved[i] && this.data[i] === carved[i] : true) this.data[i] = solid[i];
         }
         this.caves.opened.delete(x + z * WORLD_W);
       }
     }
-    const far = ([x, , z]) => Math.max(Math.abs(x - sx), Math.abs(z - sz)) > R;
+    const far = ([x, , z]) => Math.max(Math.abs(x - x0), Math.abs(z - z0)) > R;
     const c = this.caves;
     c.floors = c.floors.filter(far);
     c.crystals = c.crystals.filter(far);
     c.chests = c.chests.filter(far);
-    c.entrances = c.entrances.filter(([x, z]) => Math.max(Math.abs(x - sx), Math.abs(z - sz)) > R);
+    c.entrances = c.entrances.filter(([x, z]) => Math.max(Math.abs(x - x0), Math.abs(z - z0)) > R);
   }
 
   // A tall, pointy snowy-forest tree.
@@ -352,23 +361,60 @@ export class World {
   }
 
   placeGyms() {
-    const cx = WORLD_W / 2, cz = WORLD_D / 2;
-    const spots = this.gymSpots(GYMS.length);
-    this.gyms = GYMS.map((def, i) => {
-      const [x, z] = spots[i];
-      // The door faces the middle of the map, along whichever axis is closer.
-      const dx = cx - x, dz = cz - z;
-      const front = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];
-      const floor = Math.max(WATER_LEVEL + 1, Math.min(this.terrainHeight(x, z), 26));
-      this.buildGym(x, floor, z, front, def.type);
-      const at = d => [x + front[0] * d + 0.5, z + front[1] * d + 0.5];
-      const [lx, lz] = at(-4), [tx, tz] = at(1);
-      return {
-        def, x, z, y: floor + 1, front,
-        leaderPos: [lx, floor + 1, lz], trainerPos: [tx + front[1] * 2, floor + 1, tz + front[0] * 2],
-      };
-    });
+    const spots = this.gymSpots(ORIGINAL_GYMS);
+    this.gyms = GYMS.slice(0, ORIGINAL_GYMS).map((def, i) => this.placeGym(def, spots[i][0], spots[i][1]));
     for (const g of this.gyms) this.markLit(g.x, g.z);
+  }
+
+  // Gyms 17+ go to the dry spots furthest from every other gym and the tower (terrain only, so the
+  // spots are the same with or without caves). Never changes where gyms 1-16 or the tower are.
+  extraGymSpots() {
+    if (this.extraSpots) return this.extraSpots;
+    const cx = WORLD_W / 2, cz = WORLD_D / 2;
+    const taken = this.gymSpots(ORIGINAL_GYMS).map(([x, z]) => ({ x, z }));
+    const [tx, tz] = this.towerSpot(taken);
+    const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
+    const spots = [];
+    for (let k = ORIGINAL_GYMS; k < GYMS.length; k++) {
+      for (const needDry of [true, false]) {
+        let best = null, bestScore = -1;
+        for (let x = 16; x < WORLD_W - 16; x += 2) {
+          for (let z = 16; z < WORLD_D - 16; z += 2) {
+            if (Math.hypot(x - cx, z - cz) < 40 || (needDry && !dry(x, z))) continue;
+            let score = Math.max(Math.abs(x - tx), Math.abs(z - tz));
+            for (const t of taken) score = Math.min(score, Math.hypot(x - t.x, z - t.z));
+            for (const [sx, sz] of spots) score = Math.min(score, Math.hypot(x - sx, z - sz));
+            if (score > bestScore) { bestScore = score; best = [x, z]; }
+          }
+        }
+        if (best) { spots.push(best); break; }
+      }
+    }
+    return (this.extraSpots = spots);
+  }
+
+  placeExtraGyms() {
+    const spots = this.extraGymSpots();
+    GYMS.slice(ORIGINAL_GYMS).forEach((def, i) => {
+      const g = this.placeGym(def, spots[i][0], spots[i][1]);
+      this.gyms.push(g);
+      this.markLit(g.x, g.z);
+    });
+  }
+
+  placeGym(def, x, z) {
+    const cx = WORLD_W / 2, cz = WORLD_D / 2;
+    // The door faces the middle of the map, along whichever axis is closer.
+    const dx = cx - x, dz = cz - z;
+    const front = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];
+    const floor = Math.max(WATER_LEVEL + 1, Math.min(this.terrainHeight(x, z), 26));
+    this.buildGym(x, floor, z, front, def.type);
+    const at = d => [x + front[0] * d + 0.5, z + front[1] * d + 0.5];
+    const [lx, lz] = at(-4), [tx, tz] = at(1);
+    return {
+      def, x, z, y: floor + 1, front,
+      leaderPos: [lx, floor + 1, lz], trainerPos: [tx + front[1] * 2, floor + 1, tz + front[0] * 2],
+    };
   }
 
   // Gym and tower footprints stay bright even where the floor is below the natural ground.
@@ -444,6 +490,36 @@ export class World {
       const z = z0 + front[1] * (R + 1) + (front[1] ? 0 : s);
       for (let y = fy + 1; y <= fy + 3; y++) this.set(x, y, z, wool, false);
     }
+    if (type === 'bone') this.decorateFossilGym(x0, fy, z0, front);
+    if (type === 'alien') this.decorateSaucerGym(x0, fy, z0, front);
+  }
+
+  // Fossil Gym: bone-white pillars on the roof corners and a bony arch over the door.
+  decorateFossilGym(x0, fy, z0, front) {
+    const bone = WOOL.bone;
+    for (const sx of [-4, 4]) for (const sz of [-4, 4]) {
+      for (let y = fy + 8; y <= fy + 10; y++) this.set(x0 + sx, y, z0 + sz, bone, false);
+      this.set(x0 + sx, fy + 11, z0 + sz, B.STONE_BRICKS, false);
+    }
+    for (let s = -2; s <= 2; s++) {
+      const x = x0 + front[0] * 7 + (front[0] ? 0 : s), z = z0 + front[1] * 7 + (front[1] ? 0 : s);
+      this.set(x, fy + 4, z, bone, false);
+      if (Math.abs(s) === 2) this.set(x, fy + 5, z, bone, false);
+    }
+  }
+
+  // Saucer Gym: a glass dome with a lamp inside and an antenna on the roof.
+  decorateSaucerGym(x0, fy, z0) {
+    const wool = WOOL.alien;
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      if (Math.abs(dx) === 2 || Math.abs(dz) === 2) this.set(x0 + dx, fy + 8, z0 + dz, B.GLASS, false);
+      else if (dx || dz) this.set(x0 + dx, fy + 9, z0 + dz, B.GLASS, false);
+    }
+    this.set(x0, fy + 8, z0, B.LAMP, false);
+    this.set(x0, fy + 9, z0, B.GLASS, false);
+    this.set(x0, fy + 10, z0, B.GLASS, false);
+    for (let y = fy + 11; y <= fy + 13; y++) this.set(x0, y, z0, wool, false);
+    this.set(x0, fy + 14, z0, B.LAMP, false);
   }
 
   // The gym whose building contains (x, z), if any.

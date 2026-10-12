@@ -12,13 +12,13 @@ export const T = {
 // Coloured "wool" blocks, one per creature type, used for gym roofs and carpets.
 export const WOOL_TYPES = [
   'normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost',
-  'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound',
+  'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien',
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
   rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
-  rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180],
+  rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -33,7 +33,7 @@ export const B = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
   LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9, SNOW: 10, BRICK: 11,
   ICE: 12, GRAVEL: 13, SANDSTONE: 14, CACTUS: 15, MUD: 16, PINE_LOG: 17, PINE_LEAVES: 18, FLOWER_BUSH: 19,
-  // 20-36 are the wool blocks.
+  // 20-38 are the wool blocks.
   CRYSTAL: 40, GLASS: 41, STONE_BRICKS: 42, LAMP: 43, COAL_ORE: 44, GOLD_ORE: 45,
   GLOWCAP: 46, CHEST: 47, CHEST_OPEN: 48,
 };
@@ -192,7 +192,9 @@ export function drawAtlas() {
     const f = (1 + (rand() - 0.5) * 0.12) * ((x + y) % 4 === 0 ? 0.92 : 1);
     const base = t === 'rainbow' ? STRIPES[Math.floor((x + y) / 6) % STRIPES.length]
       : t === 'cosmic' && (x * 7 + y * 13) % 23 === 0 ? [255, 236, 150] // a sky full of stars
-        : WOOL_RGB[t];
+        : t === 'bone' && (x * 5 + y * 3) % 19 === 0 ? [150, 140, 120] // little cracks
+          : t === 'alien' && (x * 11 + y * 7) % 17 === 0 ? [170, 110, 230] // purple dots
+            : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
 

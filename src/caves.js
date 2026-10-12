@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
-import { GYMS } from './gyms.js';
+import { ORIGINAL_GYMS } from './gyms.js';
 
 function hash3(x, y, z, seed) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 1274126177) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);
@@ -34,7 +34,8 @@ function keepOutMask(world) {
       mark(x - 2, z - 2, x + 2, z + 2);
     }
   }
-  const spots = world.gymSpots(GYMS.length);
+  // Only the original gyms (never re-run the spot search with another count); gyms 17+ are filled in afterwards.
+  const spots = world.gymSpots(ORIGINAL_GYMS);
   for (const [x, z] of spots) mark(x - 18, z - 18, x + 18, z + 18);
   const [tx, tz] = world.towerSpot(spots.map(([x, z]) => ({ x, z })));
   mark(tx - 18, tz - 18, tx + 18, tz + 18);
