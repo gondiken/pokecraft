@@ -663,6 +663,54 @@ function butterfly(root, m, parts) {
   }
 }
 
+// A proud four-legged sky guardian: crystal crown, flowing mane, two pairs of wings, a spinning
+// halo and a star-tipped tail.
+function guardian(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  box(body, 0.7, 0.6, 1.1, m.body, 0, 0.9, 0);
+  box(body, 0.5, 0.1, 0.9, m.belly, 0, 0.62, 0);
+  box(body, 0.72, 0.12, 0.5, m.dark, 0, 1.22, -0.1); // saddle stripe
+  box(body, 0.3, 0.4, 0.2, m.dark, 0, 1.0, -0.6); // rump
+  parts.legs = [];
+  for (const [z, phase] of [[0.4, 0], [-0.4, Math.PI]]) {
+    for (const s of [-1, 1]) {
+      const leg = pivot(root, s * 0.25, 0.65, z);
+      box(leg, 0.2, 0.5, 0.22, m.body, 0, -0.25, 0);
+      box(leg, 0.24, 0.12, 0.28, m.accent, 0, -0.6, 0.03);
+      parts.legs.push({ g: leg, phase: s > 0 ? phase : phase + Math.PI });
+    }
+  }
+  // Head with a crystal crown.
+  const head = pivot(root, 0, 1.45, 0.62);
+  parts.head = head;
+  box(head, 0.42, 0.4, 0.42, m.body, 0, 0, 0);
+  box(head, 0.3, 0.2, 0.26, m.belly, 0, -0.1, 0.28); // muzzle
+  eyes(head, 0.06, 0.215, 0.12, 0.11);
+  gem(head, m, 0.2, 0.215);
+  for (let i = 0; i < 5; i++) {
+    const h = i === 2 ? 0.36 : i % 2 ? 0.22 : 0.28;
+    glow(box(head, 0.07, h, 0.07, m.accent, (i - 2) * 0.09, 0.2 + h / 2, -0.02), m.accent);
+  }
+  for (const s of [-1, 1]) box(head, 0.08, 0.2, 0.08, m.dark, s * 0.17, 0.3, -0.14).rotation.z = -s * 0.3; // ears
+  // Mane flowing down the neck.
+  box(body, 0.34, 0.3, 0.3, m.dark, 0, 1.3, 0.45); // neck
+  for (let i = 0; i < 4; i++) box(body, 0.2 - i * 0.02, 0.22, 0.2, i % 2 ? m.accent : m.dark, 0, 1.5 - i * 0.12, 0.3 - i * 0.2);
+  // Two pairs of wings: a big upper pair and a smaller lower pair.
+  addWings(parts, body, m, 0.34, 1.25, 0.05, 1.1, 0.6, m.body, m.accent, { lift: 0.3 });
+  addWings(parts, body, m, 0.34, 1.12, -0.3, 0.7, 0.4, m.dark, m.accent, { lift: 0.15 });
+  // A spinning halo above the head.
+  const halo = pivot(root, 0, 2.0, 0.62);
+  for (const [w, d, x, z] of [[0.6, 0.06, 0, 0.27], [0.6, 0.06, 0, -0.27], [0.06, 0.6, 0.27, 0], [0.06, 0.6, -0.27, 0]]) {
+    glow(box(halo, w, 0.05, d, m.accent, x, 0, z), m.accent);
+  }
+  (parts.spin ||= []).push({ g: halo, axis: 'y', speed: 1.5 });
+  // Tail of three boxes ending in a glowing star.
+  const tail = pivot(root, 0, 1.0, -0.55);
+  parts.tail = tail;
+  for (let i = 0; i < 3; i++) box(tail, 0.18 - i * 0.03, 0.18 - i * 0.03, 0.34, i % 2 ? m.accent : m.body, 0, i * 0.1, -0.17 - i * 0.3);
+  parts.tip = glow(box(tail, 0.26, 0.26, 0.26, m.accent, 0, 0.34, -1.1), m.accent);
+}
+
 export const SHAPES = {
-  butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
+  guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
 };

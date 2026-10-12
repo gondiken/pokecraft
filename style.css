@@ -310,3 +310,25 @@ button.link { background: none; border: none; box-shadow: none; color: var(--mut
 }
 #block-list button.sel { outline: 3px solid var(--accent); }
 #block-list canvas { width: 48px; height: 48px; image-rendering: pixelated; }
+
+/* Champion */
+#champion-title {
+  background: rgba(0,0,0,.45); padding: 4px 10px; color: #ffd84a; font-family: 'Press Start 2P', monospace;
+  font-size: 11px; text-shadow: 0 0 8px rgba(255,216,74,.7);
+}
+#celebrate {
+  position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px;
+}
+#celebrate .big {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(18px, 5vw, 40px); color: #ffd84a; line-height: 1.4;
+  text-shadow: 3px 3px 0 #6a4ac8, 0 0 20px rgba(255,216,74,.8);
+}
+#celebrate .small { font-size: clamp(20px, 4vw, 30px); margin-top: 14px; text-shadow: 2px 2px 0 #000; }
+#celebrate span {
+  position: absolute; top: 0; width: 10px; height: 14px; animation: confetti-fall 3.5s linear infinite;
+}
+@keyframes confetti-fall {
+  from { transform: translateY(-10vh) rotate(0deg); }
+  to { transform: translateY(110vh) rotate(720deg); }
+}

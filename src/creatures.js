@@ -33,6 +33,7 @@ export class CreatureManager {
     this.world = world;
     this.list = [];
     this.spawnTimer = 0;
+    this.levelBonus = 0; // wild creatures get stronger after all 16 badges
     this.notes = [];
     this.weather = null; // set by main.js: boosts spawn weights (see weights)
     this.raycaster = new THREE.Raycaster();
@@ -99,7 +100,7 @@ export class CreatureManager {
     // Further from the spawn point = tougher creatures.
     const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
     const rare = sp.baseXp > 100 ? 3 : 0;
-    const level = Math.min(40, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3)));
+    const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus));
     const model = buildModel(species);
     const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
     wild.when = when;

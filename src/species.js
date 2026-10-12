@@ -695,6 +695,15 @@ export const SPECIES = {
     base: { hp: 85, atk: 85, def: 100, spd: 50 }, baseXp: 160, catchRate: 0.12, learn: L('sound'),
     model: { shape: 'armadillo', scale: 1.15, body: 0xc0a040, accent: 0xffe080, dark: 0x6a5020, belly: 0xf0e0a0, extras: ['notes'] },
   },
+
+  /* legendary: one of a kind, never wild, never catchable */
+  zenithar: {
+    name: 'Zenithar', type: 'rainbow', legendary: true,
+    desc: "A one-of-a-kind guardian. It lives at the top of the Champion's Tower.",
+    base: { hp: 110, atk: 112, def: 100, spd: 100 }, baseXp: 250, catchRate: 0, flies: true,
+    learn: [[1, 'prismray'], [1, 'starshard'], [30, 'rainbowburst'], [35, 'cometcrash'], [40, 'moonbeam'], [45, 'hyperstrike']],
+    model: { shape: 'guardian', scale: 1.2, body: 0xfffaf0, accent: 0xffd84a, dark: 0x6a4ac8, belly: 0xffffff, extras: ['stars'] },
+  },
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];

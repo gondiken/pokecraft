@@ -1,7 +1,7 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
 import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
-import { GYMS } from './gyms.js';
+import { GYMS, TOWER } from './gyms.js';
 
 export const WORLD_W = 224;
 export const WORLD_D = 224;
@@ -84,6 +84,7 @@ export class World {
     this.dirty = new Set();
     this.meshes = new Map();
     this.gyms = [];
+    this.tower = null;
   }
 
   index(x, y, z) { return x + WORLD_W * (z + WORLD_D * y); }
@@ -209,6 +210,7 @@ export class World {
       }
     }
     this.placeGyms();
+    this.placeTower();
   }
 
   // A tall, pointy snowy-forest tree.
@@ -338,6 +340,141 @@ export class World {
   // The gym whose building contains (x, z), if any.
   gymAt(x, z) {
     return this.gyms.find(g => Math.abs(x - g.x - 0.5) <= 6.5 && Math.abs(z - g.z - 0.5) <= 6.5) || null;
+  }
+
+  // The Champion's Tower stands near the middle of the map, clear of every gym.
+  towerSpot() {
+    const cx = WORLD_W / 2, cz = WORLD_D / 2, off = hash2(3, 77, this.seed) * Math.PI * 2;
+    const clear = (x, z, gap) => this.gyms.every(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z)) >= gap);
+    const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
+    for (const gap of [26, 23]) {
+      for (const needDry of [true, false]) {
+        for (let r = 18; r <= 80; r += 2) {
+          for (let k = 0; k < 24; k++) {
+            const a = off + k * Math.PI / 12, x = Math.floor(cx + Math.cos(a) * r), z = Math.floor(cz + Math.sin(a) * r);
+            if (x < 18 || z < 18 || x >= WORLD_W - 18 || z >= WORLD_D - 18) continue;
+            if (clear(x, z, gap) && (!needDry || dry(x, z))) return [x, z];
+          }
+        }
+      }
+    }
+    // Last resort (never expected): the grid spot furthest from every gym.
+    let best = [cx, cz], bestGap = -1;
+    for (let x = 18; x < WORLD_W - 18; x += 4) {
+      for (let z = 18; z < WORLD_D - 18; z += 4) {
+        const gap = Math.min(...this.gyms.map(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z))));
+        if (gap > bestGap) { bestGap = gap; best = [x, z]; }
+      }
+    }
+    return best;
+  }
+
+  placeTower() {
+    const cx = WORLD_W / 2, cz = WORLD_D / 2;
+    const [x, z] = this.towerSpot();
+    const dx = cx - x, dz = cz - z;
+    const front = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz) || 1];
+    const floor = Math.max(WATER_LEVEL + 1, Math.min(this.terrainHeight(x, z), 24));
+    this.buildTower(x, floor, z, front);
+    const side = [front[1], front[0]];
+    const posOf = ([d, s]) => [x + front[0] * d + side[0] * s + 0.5, floor + 1, z + front[1] * d + side[1] * s + 0.5];
+    this.tower = { def: TOWER, tower: true, x, z, y: floor + 1, front, people: TOWER.people.map(p => ({ ...p, pos: posOf(p.at) })) };
+  }
+
+  // The tower: stone walls 11 high, a rainbow roof with battlements and a crystal spire.
+  buildTower(x0, fy, z0, front) {
+    const R = 6;
+    const rainbow = WOOL.rainbow;
+    const side = [front[1], front[0]];
+    for (let dx = -R - 5; dx <= R + 5; dx++) {
+      for (let dz = -R - 5; dz <= R + 5; dz++) {
+        for (let y = 1; y < WORLD_H; y++) {
+          const id = this.get(x0 + dx, y, z0 + dz);
+          if (PLANTS.has(id)) this.set(x0 + dx, y, z0 + dz, B.AIR, false);
+        }
+      }
+    }
+    // Slope the ground towards the tower (but never into a gym's own ground).
+    const M = R + 9;
+    for (let dx = -M; dx <= M; dx++) {
+      for (let dz = -M; dz <= M; dz++) {
+        const x = x0 + dx, z = z0 + dz;
+        const slope = Math.max(Math.abs(dx), Math.abs(dz)) - (R + 2);
+        if (slope <= 0 || !this.inBounds(x, 0, z)) continue;
+        if (this.gyms.some(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z)) <= R + 3)) continue;
+        const s = this.surface(x, z);
+        const top = fy + slope, bottom = fy - slope;
+        if (s.y > top) {
+          for (let y = top + 1; y <= s.y; y++) this.set(x, y, z, B.AIR, false);
+          if (isSolid(this.get(x, top, z))) this.set(x, top, z, groundOf(this.biome(x, z), top)[0], false);
+        } else if (s.y < bottom && s.id !== B.WATER) {
+          const [topId, under] = groundOf(this.biome(x, z), bottom);
+          for (let y = s.y; y < bottom; y++) this.set(x, y, z, under, false);
+          this.set(x, bottom, z, topId, false);
+        }
+      }
+    }
+    for (let dx = -R - 2; dx <= R + 2; dx++) {
+      for (let dz = -R - 2; dz <= R + 2; dz++) {
+        const x = x0 + dx, z = z0 + dz;
+        if (!this.inBounds(x, 0, z)) continue;
+        for (let y = 1; y < fy; y++) if (!isSolid(this.get(x, y, z))) this.set(x, y, z, B.STONE, false);
+        for (let y = fy + 1; y < WORLD_H; y++) this.set(x, y, z, B.AIR, false);
+        const inside = Math.abs(dx) <= R && Math.abs(dz) <= R;
+        if (!inside) { this.set(x, fy, z, B.STONE_BRICKS, false); continue; }
+        const d = dx * front[0] + dz * front[1], s = dx * side[0] + dz * side[1];
+        const edge = Math.abs(dx) === R || Math.abs(dz) === R;
+        const corner = Math.abs(dx) === R && Math.abs(dz) === R;
+        // Floor, a rainbow carpet from the door and a rainbow square under the champion.
+        const carpet = !edge && ((s === 0 && d >= -4) || (d >= -5 && d <= -3 && Math.abs(s) <= 1));
+        this.set(x, fy, z, carpet ? rainbow : B.PLANKS, false);
+        if (edge) {
+          const top = corner ? fy + 14 : fy + 11;
+          const along = Math.abs(d) === R ? s : d;
+          for (let y = fy + 1; y <= top; y++) {
+            const window = !corner && Math.abs(along) === 3 && [3, 4, 7, 8].includes(y - fy);
+            this.set(x, y, z, window ? B.GLASS : B.STONE_BRICKS, false);
+          }
+          if (corner) this.set(x, fy + 15, z, B.LAMP, false);
+          else if (along === 0 && d !== R) this.set(x, fy + 6, z, B.LAMP, false);
+        }
+        // Rainbow roof, battlements, and a stepped crown.
+        this.set(x, fy + 12, z, rainbow, false);
+        if (edge && (dx + dz) % 2 === 0) this.set(x, fy + 13, z, B.STONE_BRICKS, false);
+        if (Math.abs(dx) <= R - 2 && Math.abs(dz) <= R - 2) this.set(x, fy + 13, z, rainbow, false);
+        if (Math.abs(dx) <= R - 4 && Math.abs(dz) <= R - 4) this.set(x, fy + 14, z, rainbow, false);
+        if (dx === 0 && dz === 0) for (let y = fy + 15; y <= fy + 17; y++) this.set(x, y, z, B.CRYSTAL, false);
+      }
+    }
+    // Doorway (3 wide, 4 tall) with a stone path.
+    for (let s = -1; s <= 1; s++) {
+      for (let d = R; d <= R + 4; d++) {
+        const x = x0 + front[0] * d + side[0] * s, z = z0 + front[1] * d + side[1] * s;
+        if (d === R) for (let y = fy + 1; y <= fy + 4; y++) this.set(x, y, z, B.AIR, false);
+        else {
+          for (let y = fy - 1; y < fy; y++) if (!isSolid(this.get(x, y, z))) this.set(x, y, z, B.STONE, false);
+          for (let y = fy + 1; y <= fy + 4; y++) this.set(x, y, z, B.AIR, false);
+        }
+        if (d > R) this.set(x, fy, z, B.STONE_BRICKS, false);
+      }
+    }
+    // Rainbow pillars with a lamp on top beside the door.
+    for (const s of [-2, 2]) {
+      const x = x0 + front[0] * (R + 1) + side[0] * s, z = z0 + front[1] * (R + 1) + side[1] * s;
+      for (let y = fy + 1; y <= fy + 4; y++) this.set(x, y, z, rainbow, false);
+      this.set(x, fy + 5, z, B.LAMP, false);
+    }
+    // Two crystal columns beside the champion.
+    for (const s of [-2, 2]) {
+      const x = x0 - front[0] * 5 + side[0] * s, z = z0 - front[1] * 5 + side[1] * s;
+      for (let y = fy + 1; y <= fy + 2; y++) this.set(x, y, z, B.CRYSTAL, false);
+    }
+  }
+
+  // The tower, if (x, z) is inside its walls.
+  towerAt(x, z) {
+    const t = this.tower;
+    return t && Math.abs(x - t.x - 0.5) <= 6.5 && Math.abs(z - t.z - 0.5) <= 6.5 ? t : null;
   }
 
   placeTree(x, y, z) {

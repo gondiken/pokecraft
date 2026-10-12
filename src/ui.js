@@ -48,6 +48,8 @@ export class UI {
     this.clock = document.getElementById('clock');
     this.guide = document.getElementById('guide');
     this.badgeRow = document.getElementById('badges');
+    this.titleEl = el('div', { id: 'champion-title', class: 'hidden' }, '★ Champion ★');
+    this.badgeRow.after(this.titleEl);
     this.partyPanel = document.getElementById('party');
     this.blocksPanel = document.getElementById('blocks');
     this.slots = [];
@@ -87,6 +89,7 @@ export class UI {
       this.badgeKey = key;
       this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
     }
+    this.titleEl.classList.toggle('hidden', !g.champion);
     this.partyMini.replaceChildren(...g.party.map((c, i) => {
       const st = statsFor(c);
       const frac = c.hp / st.maxHp;
@@ -105,6 +108,21 @@ export class UI {
       class: `badge${got ? ' got' : ''}`, title: got ? gym.badge : `${gym.badge} (not earned yet)`,
       style: got ? `background:${TYPE_COLORS[gym.type]}` : '',
     });
+  }
+
+  // Confetti and a big message when the player becomes Champion.
+  celebrate() {
+    document.getElementById('celebrate')?.remove();
+    const colors = ['#ff5a5a', '#ffa23a', '#ffd84a', '#5ad85a', '#4aa8ff', '#a06aff'];
+    const confetti = Array.from({ length: 40 }, () => el('span', {
+      style: `left:${Math.random() * 100}%;animation-delay:${(Math.random() * 3).toFixed(2)}s;background:${colors[Math.floor(Math.random() * colors.length)]}`,
+    }));
+    const box = el('div', { id: 'celebrate' },
+      el('div', { class: 'big' }, 'You are the Champion!'),
+      el('div', { class: 'small' }, 'Your team is the best in the world!'),
+      ...confetti);
+    document.body.append(box);
+    setTimeout(() => box.remove(), 7000);
   }
 
   setGuide(text) {
