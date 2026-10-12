@@ -8,6 +8,8 @@ const VOLUME = 0.18;
 let ctx = null;
 let master = null;
 let noiseBuf = null;
+let longNoise = null; // 2 s of noise for thunder and the rain/wind loop
+let amb = null; // the looping ambience: { src, filter, gain }
 let scale = 1; // quieter for far-away sounds
 
 function audio() {
@@ -21,6 +23,9 @@ function audio() {
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  longNoise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const l = longNoise.getChannelData(0);
+  for (let i = 0; i < l.length; i++) l[i] = Math.random() * 2 - 1;
   return ctx;
 }
 
@@ -75,6 +80,29 @@ const CRIES = {
   gongolin: () => bell(110, 0, 1.6, 0.45),
 };
 
+// A slow rumble of low noise (thunder).
+function rumble({ at = 0, len = 1.8, vol = 0.35 } = {}) {
+  const t = ctx.currentTime + at;
+  const s = ctx.createBufferSource();
+  s.buffer = longNoise;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 150;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol * scale, t + 0.15);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  s.connect(f).connect(g).connect(master);
+  s.start(t);
+  s.stop(t + len + 0.02);
+}
+
+const AMBIENCE = {
+  rain: { type: 'lowpass', freq: 1200, q: 0.7, level: 0.10 },
+  storm: { type: 'lowpass', freq: 900, q: 0.7, level: 0.15 },
+  wind: { type: 'bandpass', freq: 400, q: 0.7, level: 0.06 },
+};
+
 const SOUNDS = {
   break: () => { noise({ freq: 500, len: 0.09, vol: 0.6 }); noise({ at: 0.04, freq: 300, len: 0.07, vol: 0.4 }); },
   place: () => { noise({ freq: 1200, len: 0.04, vol: 0.35, q: 2 }); tone(180, { len: 0.06, vol: 0.25 }); },
@@ -94,6 +122,10 @@ const SOUNDS = {
   lose: () => notes([392, 349, 294], 0.14, { len: 0.2, type: 'triangle', vol: 0.3 }),
   heal: () => notes([659, 880, 1175], 0.08, { len: 0.18, vol: 0.3 }),
   ask: () => notes([784, 988], 0.1, { len: 0.12, type: 'triangle', vol: 0.3 }),
+  // Weather.
+  thunder: () => { rumble(); rumble({ at: 0.4, vol: 0.2 }); },
+  rainbow: () => notes([784, 988, 1175, 1568], 0.09, { len: 0.18, type: 'triangle', vol: 0.25 }),
+  star: () => notes([1568, 2093], 0.12, { len: 0.2, vol: 0.18 }),
   // Sound-type moves.
   echoping: () => [0, 0.16, 0.32, 0.48].forEach((at, i) => tone(1320, { at, len: 0.12, vol: 0.3 * 0.55 ** i })),
   bassblast: () => {
@@ -119,6 +151,8 @@ export const sound = {
   on: loadOn(),
   played: [], // names of the last few sounds (handy for tests)
   errors: [], // sound problems are swallowed so they never break the game; tests check this
+  ambient: null, // 'rain' | 'storm' | 'wind' | null: the quiet looping weather sound that should play
+  ambientLevel: 0, // the volume actually applied (0 when sound is off)
 
   play(name) {
     if (!this.on || !SOUNDS[name]) return;
@@ -151,12 +185,39 @@ export const sound = {
     this.on = on;
     try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* ignore */ }
     if (on) { unlock(); this.play('cube'); }
+    this.applyAmbience();
+  },
+
+  // Rain, storm or wind loop (weather.js). level overrides the usual volume.
+  setAmbience(name, level) {
+    this.ambient = name && AMBIENCE[name] ? name : null;
+    this.ambientWanted = this.ambient ? (level ?? AMBIENCE[name].level) : 0;
+    this.applyAmbience();
+  },
+
+  applyAmbience() {
+    this.ambientLevel = this.on ? this.ambientWanted || 0 : 0;
+    try {
+      const a = this.ambient || amb ? audio() : null;
+      if (!a || a.state !== 'running') return;
+      if (!amb) {
+        const src = a.createBufferSource(), filter = a.createBiquadFilter(), gain = a.createGain();
+        src.buffer = longNoise; src.loop = true;
+        gain.gain.value = 0;
+        src.connect(filter).connect(gain).connect(master);
+        src.start();
+        amb = { src, filter, gain };
+      }
+      const cfg = AMBIENCE[this.ambient];
+      if (cfg) { amb.filter.type = cfg.type; amb.filter.frequency.value = cfg.freq; amb.filter.Q.value = cfg.q; }
+      amb.gain.gain.setTargetAtTime(this.ambientLevel, a.currentTime, 0.8);
+    } catch (e) { this.errors.push(`ambience: ${e.message}`); }
   },
 };
 
 function unlock() {
   if (!sound.on) return;
   const a = audio();
-  if (a && a.state !== 'running') a.resume().catch(() => {});
+  if (a && a.state !== 'running') a.resume().then(() => sound.applyAmbience()).catch(() => {});
 }
 for (const ev of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(ev, unlock, { capture: true, passive: true });

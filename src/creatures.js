@@ -34,6 +34,7 @@ export class CreatureManager {
     this.list = [];
     this.spawnTimer = 0;
     this.notes = [];
+    this.weather = null; // set by main.js: boosts spawn weights (see weights)
     this.raycaster = new THREE.Raycaster();
   }
 
@@ -51,13 +52,20 @@ export class CreatureManager {
     return this.world.biome(x, z);
   }
 
+  // Spawn table entries with their weights, after the weather's boosts: [[entry, weight], ...]
+  weights(biome, night) {
+    const wx = this.weather;
+    return SPAWNS[biome].filter(([, , when]) => !when || (when === 'night') === night)
+      .map(e => [e, e[1] * (wx ? wx.boost(biome, SPECIES[e[0]].type) : 1)]);
+  }
+
   // Returns [species, when] where when is 'day', 'night' or undefined (any time).
   pickEntry(biome, night) {
-    const table = SPAWNS[biome].filter(([, , when]) => !when || (when === 'night') === night);
+    const table = this.weights(biome, night);
     const total = table.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
-    for (const e of table) if ((r -= e[1]) < 0) return [e[0], e[2]];
-    return [table[0][0], table[0][2]];
+    for (const [e, w] of table) if ((r -= w) < 0) return [e[0], e[2]];
+    return [table[0][0][0], table[0][0][2]];
   }
 
   pickSpecies(biome, night) { return this.pickEntry(biome, night)[0]; }

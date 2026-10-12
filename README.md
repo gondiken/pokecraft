@@ -68,6 +68,7 @@ On a tablet:
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
+- **Weather** changes every few minutes and depends on where you are: rain, thunderstorms, snow in cold places, sandstorms in the desert, misty swamp mornings, shooting stars on clear nights, and a rainbow after rain. Each kind brings out more of some creatures: storms bring electric ones, rain water ones, snow ice ones, and rainbows make rainbow creatures much easier to find.
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
@@ -176,6 +177,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
 | `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
 | `src/duel.js` | Battles between players: asking, answering, swapping each turn's choices |
+| `src/weather.js` | Weather: rain, storms, snow, sandstorms, fog, rainbows, and the creature spawn boosts they bring |
 | `src/sound.js` | Small sound effects made with Web Audio (no sound files) |
 
 All creatures, names and art are original. To add a creature, add an entry to `SPECIES` in `src/species.js` and list it in a biome in `SPAWNS`. To change a gym, edit its entry in `src/gyms.js`.

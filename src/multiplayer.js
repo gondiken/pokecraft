@@ -213,8 +213,8 @@ export class Multiplayer {
       this.parts[p.part] = p;
       if (this.parts.filter(Boolean).length < p.parts) return;
       const edits = this.parts.flatMap(x => x.edits);
-      const { seed, time, hostPos, hostName, size } = p;
-      this.gotWorld({ seed, time, hostPos, hostName, edits, size });
+      const { seed, time, hostPos, hostName, size, weather } = p;
+      this.gotWorld({ seed, time, hostPos, hostName, edits, size, weather });
     });
     t.on('state', p => {
       if (!this.active || p.id === this.id) return;
@@ -226,6 +226,7 @@ export class Multiplayer {
       }
       a.update(p);
       if (p.host && this.role === 'guest' && typeof p.time === 'number') this.game.time = p.time;
+      if (p.host && this.role === 'guest' && p.weather) this.game.weather?.apply(p.weather);
     });
     t.on('block', p => {
       if (!this.active || p.id === this.id) return;
@@ -262,7 +263,7 @@ export class Multiplayer {
     const p = g.player.pos;
     for (let i = 0; i < parts; i++) {
       this.t.send('world', {
-        to, part: i, parts, seed: g.world.seed, time: g.time, hostName: this.name, size: [WORLD_W, WORLD_D],
+        to, part: i, parts, seed: g.world.seed, time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
         hostPos: [p.x, p.y, p.z], edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
       });
     }
@@ -276,6 +277,7 @@ export class Multiplayer {
       x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +g.player.yaw.toFixed(2),
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
+      weather: this.role === 'host' ? g.weather?.state() : undefined,
     });
   }
 
