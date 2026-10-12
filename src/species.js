@@ -805,7 +805,7 @@ export const SPECIES = {
   nimbrake: {
     name: 'Nimbrake', type: 'drake', desc: 'A drake made of fluffy clouds. When it sneezes, tiny lightning bolts come out.',
     base: { hp: 60, atk: 80, def: 60, spd: 75 }, baseXp: 110, catchRate: 0.2, learn: L('drake', 'electric'), flies: true,
-    model: { shape: 'nimbus', scale: 1.0, body: 0xf4f8ff, accent: 0xffe060, dark: 0x6a7aa0, belly: 0xc8d8f0, extras: [] },
+    model: { shape: 'nimbus', scale: 0.85, body: 0xf4f8ff, accent: 0xffe060, dark: 0x6a7aa0, belly: 0xc8d8f0, extras: [] },
   },
   chromacurl: {
     name: 'Chromacurl', type: 'rainbow', desc: 'A curly-tailed lizard whose colours slowly change. It is very hard to spot!',
