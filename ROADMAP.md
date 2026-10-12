@@ -43,6 +43,8 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 2 ✅ | T6 More moves · T3 Caves | Battle + species moves vs. world generation + cave spawns |
 | 3 | T4a Bone + Alien types (with gyms) → T4b a 7th creature per type | T4b needs T4a's types, so they run one after the other |
 | 4 | T7 Attack animations | Needs the final move list; big enough for its own session |
+| 5a | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
+| 5b | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -200,6 +202,51 @@ with special ones for signature moves:
   missing.
 - **Done when:** every move type has an effect (a spec calls each and checks objects are added
   and cleaned up), no slowdown on the slow renderer, screenshots reviewed.
+
+---
+
+## Wave 5 (owner request, 2026-10-12)
+
+The owner's words, summarised: Bone creatures should only live in caves, and the Bone gym should be in
+a cave too. Caves are too small to notice: make them much bigger and worth exploring (maybe another gym
+in a cave). Four more types: **Sky, Slime, Light, Paper**, each with about as many creatures as the
+others (7, with proper evolutions), some with their own moves and attack animations, and their own
+gyms in fitting places (be creative: a Sky gym floating high up that you reach by building blocks to
+climb; an Alien gym that only shows at night). The paper crane (Origrane, now mind) moves to Paper,
+so Mind needs a new 7th creature. The map may grow if needed, but **existing games must not be lost**.
+
+### T8 · Bigger caves + cave gyms (size: L)
+- Caves much larger and explorable: long tunnels, big caverns, several levels if the height allows,
+  more and easier-to-spot entrances (marked, e.g. a stone arch or a lamp), still under the surface only
+  (terrain heights unchanged) and away from gyms on the surface, the tower and the start.
+- The **Fossil Gym moves into a big cave cavern**, with a clear, lit way in; the guide arrow leads
+  there. Old saves keep their Bone badge; the old surface building simply isn't generated any more.
+- **Bone creatures only spawn in caves** (remove them from surface tables; the weather test rows for
+  bone move to caves or go).
+- Done when: caves are big (spec: cave air per world several times today's, a cavern ≥ N blocks),
+  entrances visible, the Fossil gym is underground and reachable on several seeds, bone spawns only in
+  caves, old saves load fine.
+
+### T9 · Four new types: Sky, Slime, Light, Paper (size: L)
+- Types with colours, a balanced effectiveness row/column, 4 moves each plus a few signature moves,
+  weather boosts where natural (Sky: windy/clear days, Light: daytime/rainbow, Slime: rain/swamp,
+  Paper: wind?). 7 creatures per type (two or three evolving families + a single), each family with
+  its **own body shape**. Origrane becomes Paper (with its family/evolution if fitting); Mind gets a new
+  7th creature with its own shape. Spawns in fitting biomes (Sky: peaks/mountains, Slime: swamps and
+  caves, Light: meadows/day, Paper: forests/plains?).
+- Done when: roster at 7 per type over 23 types, screenshots reviewed, Book filters work.
+
+### T10 · Four new gyms with special access (size: L)
+- A gym per new type in a fitting place: **Sky gym floating high** (reach it by building up; a hint
+  sign/toast), **Slime gym** maybe in a swamp or a second cave gym, **Light gym** on a sunny hill,
+  **Paper gym** e.g. a paper-lantern house. **Alien gym only appears (or opens) at night.**
+- Champion needs all badges (22). Grow the map only if needed, keeping old saves' edits and existing
+  gyms in place (see T4a's approach: extra spots, never move the original gyms).
+- Done when: gym spec beats every new gym, old-saves spec passes, special access works (sky gym
+  reachable only by climbing; alien gym only at night).
+
+### T11 · Attack effects for the new types (size: M)
+- `fxrecipes.js` travel/impact for sky, slime, light, paper, and the new signature moves; sounds.
 
 ---
 
