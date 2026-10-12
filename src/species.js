@@ -173,7 +173,6 @@ const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
-  normal: 'bodyslam', // only used when normal is a creature's second type (Rattlepup, Howlbone)
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
@@ -818,13 +817,13 @@ export const SPECIES = {
   },
   rattlepup: {
     name: 'Rattlepup', type: 'bone', desc: 'A skeleton puppy. It wags its bony tail so hard that it rattles.',
-    base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 66, catchRate: 0.4, learn: L('bone', 'normal'),
+    base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 66, catchRate: 0.4, learn: L('bone', 'fire'),
     evolve: { level: 22, into: 'howlbone' },
     model: { shape: 'bonedog', scale: 0.85, body: 0xf4ecd8, accent: 0xe04a4a, dark: 0x4a3a30, belly: 0xd8ccb0, extras: [] },
   },
   howlbone: {
     name: 'Howlbone', type: 'bone', desc: 'A loyal skeleton hound. It guards old ruins and howls a song at the moon.',
-    base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('bone', 'normal', [[30, 'rattledance']]),
+    base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('bone', 'fire', [[30, 'rattledance']]),
     model: { shape: 'bonedog', scale: 1.3, body: 0xe6dcc4, accent: 0x4a7ae0, dark: 0x2a2228, belly: 0xcfc2a4, extras: ['bandana', 'spines'] },
   },
   dinobit: {
