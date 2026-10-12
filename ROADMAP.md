@@ -5,6 +5,9 @@ can pick it up without the conversation that produced it. Read `CLAUDE.md` first
 owner's preferences (original names only, child-friendly text, iPad support, easy gyms), the
 branch rules and the test gotchas.
 
+**Status (2026-10-12):** waves 1 and 2 are done and merged (T1, T2, T3, T5, T6). Next: wave 3 (T4),
+then wave 4 (T7). Plans for finished tasks are in `plans/`.
+
 ## How to run this (multi-agent)
 
 The owner wants tasks run by subagents rather than one at a time by hand:
@@ -27,13 +30,17 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 - **Testing in parallel is slow.** The browser tests use software WebGL (~1–2 fps). Let builders
   run only their own specs; the orchestrator runs the full suite once per wave after merging.
   Each worktree needs `cd tests && npm install` (or a symlinked `node_modules`).
+- Lessons from waves 1–2: give the orchestrator's full-suite run the machine to itself (parallel
+  browser tests make `pvp` and `battle-and-menu` time out); check a test's condition right after
+  waiting for it, not after a slow screenshot (the game keeps running at 1–2 fps); merges between
+  waves were only small "keep both" conflicts in `main.js`, `sound.js`, `style.css`, `CLAUDE.md`.
 - Every new spec must avoid world-dependent flakiness (see the platform trick in
   `tests/specs/pvp.mjs` and `sound.mjs`: build a stone platform high in the air and stand on it).
 
 | Wave | Tasks | Why together |
 | --- | --- | --- |
-| 1 | T1 Creature Book · T2 Weather · T5 Final boss | Mostly separate files (UI / new weather module / gyms + world placement) |
-| 2 | T6 More moves · T3 Caves | Battle + species moves vs. world generation + cave spawns |
+| 1 ✅ | T1 Creature Book · T2 Weather · T5 Final boss | Mostly separate files (UI / new weather module / gyms + world placement) |
+| 2 ✅ | T6 More moves · T3 Caves | Battle + species moves vs. world generation + cave spawns |
 | 3 | T4 Shiny + a 7th creature per type | Builds on caves (cave spawns) and new moves (learnsets) |
 | 4 | T7 Attack animations | Needs the final move list; big enough for its own session |
 
@@ -42,6 +49,8 @@ T3 (caves) and T7 (animations) are the largest; each could take a session of its
 ---
 
 ## T1 · Creature Book (size: M)
+
+**Done** (plan in `plans/T1.md`).
 
 A book of every creature that fills in as you play. **No rewards**: filling it in is the fun.
 
@@ -63,6 +72,8 @@ A book of every creature that fills in as you play. **No rewards**: filling it i
   with touch.
 
 ## T2 · Weather (size: M–L)
+
+**Done** (plan in `plans/T2.md`).
 
 Changing weather that changes what you find.
 
@@ -91,6 +102,8 @@ Changing weather that changes what you find.
   particles exist, the rainbow appears after rain, and visitors get the host's weather.
 
 ## T3 · Caves (size: L)
+
+**Done** (plan in `plans/T3.md`).
 
 Underground caves to explore.
 
@@ -133,6 +146,8 @@ Underground caves to explore.
 
 ## T5 · Final boss (size: M)
 
+**Done** (plan in `plans/T5.md`).
+
 A much harder final battle after all 16 badges.
 
 - A special place (for example a **Champion's Tower** or a floating sky arena near the middle
@@ -150,6 +165,8 @@ A much harder final battle after all 16 badges.
   team can beat the guards and the champion, the win is saved.
 
 ## T6 · More attack types (size: L)
+
+**Done** (plan in `plans/T6.md`).
 
 The moves get repetitive (Quick Jab, Body Slam...). Today there are 36 moves: two per type plus
 a few normal ones, and most creatures use the standard `L(type)` learnset.

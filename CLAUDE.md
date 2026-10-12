@@ -151,7 +151,8 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `map
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). Read it before starting new features.
+  and the backlog). Waves 1–2 (T1, T2, T3, T5, T6) are done; next is T4, then T7. Read it before
+  starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
   the owner was asked to delete them under Authentication → Users.
