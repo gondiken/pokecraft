@@ -6,6 +6,7 @@ import { devices } from 'playwright';
 import { openGame, newGame, click, pause, playBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
+// (The attack sounds 'fx:<type>' need no entry here: a colon can never be in a move id.)
 // Sound effects that are not move sounds: a move with one of these ids would play the wrong noise.
 const RESERVED_SOUNDS = ['break', 'place', 'cube', 'battle', 'hit', 'super', 'miss', 'faint', 'wobble', 'caught', 'escape', 'levelup',
   'evolve', 'win', 'badge', 'lose', 'heal', 'ask', 'thunder', 'rainbow', 'star', 'boss', 'bossloop', 'powerup', 'champion', 'statup', 'statdown', 'snooze'];

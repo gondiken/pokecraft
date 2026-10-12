@@ -15,6 +15,7 @@ import { Duels } from './duel.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
+import { Fx } from './fx.js';
 import { Weather } from './weather.js';
 import { caveLight, patchMaterial } from './caves.js';
 
@@ -103,6 +104,7 @@ game.creatures.onSpawn = wild => {
   if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
 };
 game.ui = new UI(game, atlas);
+game.fx = new Fx(scene);
 game.battle = new Battle(game);
 game.weather = new Weather(game, {
   toast: t => { if (game.started && !game.inBattle) game.ui.toast(t); },
@@ -483,6 +485,7 @@ async function goToMenu() {
   if (game.mp.role === 'guest') { await goHome(); return; } // reloads into your own world's title screen
   save(true);
   game.mp.close();
+  game.fx.clear();
   game.started = false;
   game.weather.reset();
   if (locked) document.exitPointerLock();
@@ -540,6 +543,10 @@ const soundBtn = document.getElementById('sound-btn');
 const showSound = () => { soundBtn.textContent = sound.on ? '🔊 Sound on' : '🔇 Sound off'; };
 soundBtn.addEventListener('click', e => { e.stopPropagation(); sound.setOn(!sound.on); showSound(); });
 showSound();
+const fxBtn = document.getElementById('fx-btn');
+const showFx = () => { fxBtn.textContent = game.fx.on ? '✨ Effects on' : '✨ Effects off'; };
+fxBtn.addEventListener('click', e => { e.stopPropagation(); game.fx.setOn(!game.fx.on); showFx(); });
+showFx();
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
@@ -1016,6 +1023,7 @@ function frame(now) {
     if (cloudTimer > 60) { cloudTimer = 0; pushCloud(); }
   }
 
+  game.fx.update(now);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }

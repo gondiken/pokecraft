@@ -150,6 +150,8 @@ const SOUNDS = {
   shriek: () => { tone(1500, { len: 0.22, type: 'triangle', vol: 0.25, slide: 700 }); tone(1800, { at: 0.08, len: 0.18, type: 'triangle', vol: 0.18, slide: -500 }); },
   lullaby: () => notes([659, 587, 523, 440], 0.16, { len: 0.28, type: 'triangle', vol: 0.22 }),
   bigbong: () => bell(98, 0, 1.8, 0.45),
+  // Attack animation sounds, one per type: 'fx:<type>' (the names can never clash with a move id).
+  'fx:normal': () => noise({ freq: 1200, len: 0.14, vol: 0.25, q: 0.8 }),
   // Move effects in battle.
   statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
@@ -166,6 +168,8 @@ export const sound = {
   errors: [], // sound problems are swallowed so they never break the game; tests check this
   ambient: null, // 'rain' | 'storm' | 'wind' | null: the quiet looping weather sound that should play
   ambientLevel: 0, // the volume actually applied (0 when sound is off)
+
+  has(name) { return !!SOUNDS[name]; },
 
   play(name) {
     if (!this.on || !SOUNDS[name]) return;

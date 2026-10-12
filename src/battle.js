@@ -193,6 +193,16 @@ export class Battle {
 
   modelOf(side) { return side === 'ally' ? this.allyModel : this.foeModel; }
 
+  // Where a creature is, for the attack animations (null when it has no model on screen).
+  spot(side) {
+    const m = this.modelOf(side);
+    if (!m || !m.parent || !m.visible) return null;
+    const box = new THREE.Box3().setFromObject(m);
+    if (box.isEmpty()) return null;
+    const pos = box.getCenter(new THREE.Vector3());
+    return { pos, top: box.max.y, r: Math.max(0.3, (box.max.x - box.min.x) / 2) };
+  }
+
   // Trainer battles: put the trainer's current creature between them and the player.
   async sendOutFoe() {
     const g = this.game;
@@ -244,6 +254,7 @@ export class Battle {
   // { duel } for a battle with another player (see duel.js).
   async start(opts) {
     const g = this.game;
+    g.fx?.clear();
     this.active = true;
     this.wild = opts.wild || null;
     this.duel = opts.duel || null;
@@ -295,6 +306,7 @@ export class Battle {
 
     let result = null;
     while (!result) result = await this.turn();
+    g.fx?.clear();
     clearInterval(this.music);
     this.music = null;
 
@@ -474,14 +486,17 @@ export class Battle {
     const mv = MOVES[moveId];
     const who = this.labelOf(side);
     const ma = this.mods(atk), md = this.mods(def);
+    const fx = this.game.fx; // attack animations (never draw random numbers, never block)
     // A flinched or sleepy creature loses its move.
     if (ma.flinch) {
       ma.flinch = false;
+      fx?.status('flinch', this.spot(side));
       await this.say(`${who} flinched and couldn't move!`, 1100);
       return;
     }
     if (ma.sleep) {
       sound.play('snooze');
+      fx?.status('sleep', this.spot(side));
       await this.say(`${who} is fast asleep... Zzz`, 1100);
       ma.sleep = false;
       this.refresh();
@@ -489,16 +504,16 @@ export class Battle {
       return;
     }
     this.say(`${who} used ${mv.name}!`, 700);
-    sound.play(moveId); // only some moves (like sound-type ones) have their own sound
+    sound.play(sound.has(moveId) ? moveId : `fx:${mv.type}`); // sound-type moves have their own sound
     await this.lunge(side);
     await wait(150);
     const hit = this.rng(); // draw 1: always, even for moves that never miss
-    if (!mv.sure && hit > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
-    if (!mv.power) { await this.applyFx(side, mv, { first }); return; }
+    if (!mv.sure && hit > mv.acc) { sound.play('miss'); fx?.status('miss', this.spot(side === 'ally' ? 'foe' : 'ally'), { from: this.spot(side) }); await this.say('But it missed!', 1000); return; }
+    if (!mv.power) { fx?.aura(mv.type, this.spot(side)); await this.applyFx(side, mv, { first }); return; }
 
-    const fx = mv.fx;
+    const mfx = mv.fx;
     let hits = 1;
-    if (fx?.kind === 'multi') hits = fx.min + Math.floor(this.rng() * (fx.max - fx.min + 1)); // draw 2
+    if (mfx?.kind === 'multi') hits = mfx.min + Math.floor(this.rng() * (mfx.max - mfx.min + 1)); // draw 2
     const as = statsFor(atk), ds = statsFor(def);
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
@@ -510,6 +525,7 @@ export class Battle {
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
     let done = 0;
+    await fx?.attack(moveId, this.spot(side), this.spot(side === 'ally' ? 'foe' : 'ally'));
     for (let i = 0; i < hits && def.hp > 0; i++) {
       const hpBefore = def.hp;
       def.hp = Math.max(0, def.hp - dmg);
@@ -517,6 +533,7 @@ export class Battle {
       done++;
       sound.play(eff > 1 ? 'super' : 'hit');
       this.flash(side === 'ally' ? 'foe' : 'ally');
+      fx?.impact(mv.type, this.spot(side === 'ally' ? 'foe' : 'ally'), { big: !!mv.sig });
       this.refresh();
       await wait(hits > 1 ? 300 : 450);
     }
@@ -528,15 +545,16 @@ export class Battle {
     if (hits > 1 && eff > 0) await this.say(`Hit ${done} times!`, 900);
 
     // draw 5: only moves with a "chance" effect, and always drawn so both players stay in step
-    if (fx?.chance) {
+    if (mfx?.chance) {
       const roll = this.rng();
-      if (roll < fx.chance && eff > 0 && (fx.kind === 'raise' || def.hp > 0)) await this.applyFx(side, mv, { quiet: true, first });
+      if (roll < mfx.chance && eff > 0 && (mfx.kind === 'raise' || def.hp > 0)) await this.applyFx(side, mv, { quiet: true, first });
     }
-    if (fx?.kind === 'recoil' && dealt > 0) {
-      const loss = Math.max(1, Math.floor(dealt * fx.amount));
+    if (mfx?.kind === 'recoil' && dealt > 0) {
+      const loss = Math.max(1, Math.floor(dealt * mfx.amount));
       const was = atk.hp;
       atk.hp = Math.max(1, atk.hp - loss); // recoil never knocks anyone out
       if (atk.hp < was) {
+        fx?.status('recoil', this.spot(side));
         this.refresh();
         await this.say(`${who} is hurt by the crash!`, 1000);
       }
@@ -549,7 +567,7 @@ export class Battle {
   // The extra effect of a move: healing, stat changes, sleep or flinch. `quiet` (a side effect of an
   // attack) skips messages that would only say "nothing happened".
   async applyFx(side, mv, { quiet = false, first = false } = {}) {
-    const fx = mv.fx;
+    const fx = mv.fx, vis = this.game.fx;
     const user = side === 'ally' ? this.ally : this.foe;
     const target = side === 'ally' ? this.foe : this.ally;
     const userSide = side, targetSide = side === 'ally' ? 'foe' : 'ally';
@@ -560,6 +578,7 @@ export class Battle {
       user.hp = Math.min(max, user.hp + Math.floor(max * fx.amount));
       this.mods(user).healed++;
       sound.play('heal');
+      vis?.status('heal', this.spot(userSide));
       this.refresh();
       await this.say(`${uWho} got some HP back!`, 1200);
     } else if (fx.kind === 'raise' || fx.kind === 'lower') {
@@ -574,6 +593,7 @@ export class Battle {
       }
       m[fx.stat] += up ? 1 : -1;
       sound.play(up ? 'statup' : 'statdown');
+      vis?.status(up ? 'up' : 'down', this.spot(up ? userSide : targetSide), { stat: fx.stat });
       this.refresh();
       await this.say(`${w}'s ${STAT_NAMES[fx.stat]} went ${up ? 'up' : 'down'}!`, 1200);
     } else if (fx.kind === 'flinch') {
@@ -584,6 +604,7 @@ export class Battle {
       if (m.sleep) { if (!quiet) await this.say(`But ${tWho} is already asleep!`, 1100); return; }
       m.sleep = true;
       sound.play('snooze');
+      vis?.status('sleep', this.spot(targetSide));
       this.refresh();
       await this.say(`${tWho} fell asleep! Zzz`, 1300);
     }
@@ -594,6 +615,7 @@ export class Battle {
     this.poweredUp = true;
     c.boost = 1.25;
     sound.play('powerup');
+    this.game.fx?.status('power', this.spot('foe'));
     for (let i = 0; i < 4; i++) {
       tintModel(this.foeModel, 0xffd84a); await wait(90);
       tintModel(this.foeModel, null); await wait(90);
