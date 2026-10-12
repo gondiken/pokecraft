@@ -122,6 +122,9 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save
 
 ## Open items
 
+- **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
+  and the backlog). Read it before starting new features.
+
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
   the owner was asked to delete them under Authentication → Users.
 - The real Supabase Realtime path for play-together hasn't been exercised by automated tests
