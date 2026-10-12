@@ -802,6 +802,36 @@ export const SPECIES = {
   /* ==== end of T4b group B ==== */
 
   /* ==== T4b group C (drake rainbow cosmic sound bone alien): builder C only ==== */
+  nimbrake: {
+    name: 'Nimbrake', type: 'drake', desc: 'A drake made of fluffy clouds. When it sneezes, tiny lightning bolts come out.',
+    base: { hp: 60, atk: 80, def: 60, spd: 75 }, baseXp: 110, catchRate: 0.2, learn: L('drake', 'electric'), flies: true,
+    model: { shape: 'nimbus', scale: 1.0, body: 0xf4f8ff, accent: 0xffe060, dark: 0x6a7aa0, belly: 0xc8d8f0, extras: [] },
+  },
+  chromacurl: {
+    name: 'Chromacurl', type: 'rainbow', desc: 'A curly-tailed lizard whose colours slowly change. It is very hard to spot!',
+    base: { hp: 55, atk: 70, def: 60, spd: 85 }, baseXp: 110, catchRate: 0.2, learn: L('rainbow', 'bug'),
+    model: { shape: 'chameleon', scale: 0.85, body: 0x6ad06a, accent: 0xffd84a, dark: 0x2a6a3a, belly: 0xd8f0a0, extras: [] },
+  },
+  voidle: {
+    name: 'Voidle', type: 'cosmic', desc: 'A soft little black hole. It pulls in socks and crumbs, but always gives them back.',
+    base: { hp: 50, atk: 65, def: 60, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('cosmic', 'ghost'), floats: true,
+    model: { shape: 'blackhole', scale: 0.8, body: 0x2a1a4a, accent: 0xb08aff, dark: 0x120a20, belly: 0x4a2a7a, extras: [] },
+  },
+  clawdio: {
+    name: 'Clawdio', type: 'sound', desc: 'A crab with a jukebox shell. It snaps its claws to the beat of its own songs.',
+    base: { hp: 60, atk: 70, def: 80, spd: 45 }, baseXp: 100, catchRate: 0.3, learn: L('sound', 'water'),
+    model: { shape: 'jukebox', scale: 0.85, body: 0xd0603a, accent: 0x4ae0d0, dark: 0x5a2a1a, belly: 0xffd890, extras: ['notes'] },
+  },
+  finnibone: {
+    name: 'Finnibone', type: 'bone', desc: 'A fish skeleton that swims through sand as if it were water. It loves a splashy race.',
+    base: { hp: 50, atk: 70, def: 55, spd: 75 }, baseXp: 95, catchRate: 0.35, learn: L('bone', 'water'), floats: true,
+    model: { shape: 'fishbone', scale: 0.85, body: 0xf2ead6, accent: 0x7fe0ff, dark: 0x3a3040, belly: 0xe0d6bc, extras: [] },
+  },
+  zorbit: {
+    name: 'Zorbit', type: 'alien', desc: 'A space hamster rolling around in a glass ball. It came to Earth to find the best snacks.',
+    base: { hp: 50, atk: 60, def: 70, spd: 80 }, baseXp: 100, catchRate: 0.3, learn: L('alien', 'cosmic'),
+    model: { shape: 'zorb', scale: 0.8, body: 0x9de07a, accent: 0xc08cff, dark: 0x3a6a2a, belly: 0xd8f0ff, extras: [] },
+  },
   /* ==== end of T4b group C ==== */
 
   /* legendary: one of a kind, never wild, never catchable */
@@ -960,6 +990,15 @@ const SEVENTH_B = {
 };
 
 const SEVENTH_C = {
+  mountain: [['nimbrake', 0.3], ['voidle', 0.5, 'night']],
+  peak: [['nimbrake', 0.3], ['voidle', 0.3, 'night']],
+  forest: [['chromacurl', 0.25, 'day']],
+  meadow: [['chromacurl', 0.2, 'day']],
+  snow: [['voidle', 0.4, 'night']],
+  desert: [['voidle', 0.4, 'night'], ['finnibone', 1.2], ['zorbit', 0.6]],
+  beach: [['clawdio', 1.2], ['finnibone', 0.6]],
+  cave: [['clawdio', 0.3], ['finnibone', 0.6]],
+  plains: [['zorbit', 0.6, 'night']],
 };
 
 for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
