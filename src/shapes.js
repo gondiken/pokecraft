@@ -1122,35 +1122,47 @@ function crane(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
   parts.bounce = body;
   parts.hover = true;
-  box(body, 0.32, 0.26, 0.7, m.body, 0, 0.5, 0);
-  const ridge = box(body, 0.22, 0.22, 0.72, m.belly, 0, 0.6, 0);
-  ridge.rotation.z = Math.PI / 4;
-  box(body, 0.34, 0.05, 0.4, m.accent, 0, 0.4, 0.05);
-  const neck = pivot(body, 0, 0.55, 0.3);
+  // chunky diamond body: a box turned 45 degrees, with a pink fold line along the top and bottom
+  const d1 = box(body, 0.36, 0.36, 0.9, m.body, 0, 0.5, 0);
+  d1.rotation.z = Math.PI / 4;
+  const d2 = box(body, 0.2, 0.2, 0.96, m.belly, 0, 0.5, 0);
+  d2.rotation.z = 0;
+  box(body, 0.06, 0.06, 0.94, m.accent, 0, 0.77, 0);
+  box(body, 0.06, 0.06, 0.94, m.accent, 0, 0.23, 0);
+  for (const s of [-1, 1]) box(body, 0.05, 0.05, 0.94, m.dark, s * 0.26, 0.5, 0);
+  // long neck with a pointed beak
+  const neck = pivot(body, 0, 0.6, 0.38);
   neck.rotation.x = 0.4;
-  box(neck, 0.13, 0.7, 0.13, m.body, 0, 0.35, 0);
-  box(neck, 0.04, 0.65, 0.15, m.dark, 0, 0.35, 0);
-  const head = pivot(neck, 0, 0.72, 0);
+  box(neck, 0.16, 0.75, 0.16, m.body, 0, 0.37, 0);
+  box(neck, 0.05, 0.7, 0.19, m.accent, 0, 0.37, 0);
+  const head = pivot(neck, 0, 0.78, 0);
   head.rotation.x = -0.4;
   parts.head = head;
-  box(head, 0.24, 0.22, 0.24, m.body, 0, 0.05, 0.02);
-  box(head, 0.1, 0.1, 0.3, m.dark, 0, -0.02, 0.24);
-  eyes(head, 0.07, 0.15, 0.07, 0.08);
-  glow(box(head, 0.09, 0.09, 0.05, m.accent, 0, 0.2, 0.1), m.accent);
-  const tail = pivot(body, 0, 0.5, -0.32);
+  box(head, 0.26, 0.24, 0.26, m.body, 0, 0.05, 0.02);
+  box(head, 0.12, 0.12, 0.3, m.accent, 0, -0.02, 0.26);
+  box(head, 0.06, 0.06, 0.14, m.accent, 0, -0.03, 0.46);
+  eyes(head, 0.08, 0.155, 0.07, 0.09);
+  glow(box(head, 0.1, 0.1, 0.05, m.accent, 0, 0.22, 0.1), m.accent);
+  // pointed tail
+  const tail = pivot(body, 0, 0.5, -0.42);
   tail.rotation.x = 0.55;
-  box(tail, 0.1, 0.1, 0.42, m.body, 0, 0, -0.21);
-  box(tail, 0.04, 0.12, 0.42, m.accent, 0, 0, -0.21);
+  box(tail, 0.14, 0.14, 0.4, m.body, 0, 0, -0.2);
+  box(tail, 0.08, 0.08, 0.2, m.accent, 0, 0, -0.45);
+  box(tail, 0.04, 0.16, 0.5, m.dark, 0, 0, -0.25);
+  // big flat triangular wings: wide at the body, pointed at the tip
   parts.wings = parts.wings || [];
   for (const s of [-1, 1]) {
-    const g = pivot(body, s * 0.15, 0.58, 0.0);
-    box(g, 0.34, 0.03, 0.66, m.body, s * 0.17, 0, -0.05);
-    box(g, 0.26, 0.03, 0.5, m.belly, s * 0.45, 0, -0.12);
-    box(g, 0.16, 0.03, 0.26, m.body, s * 0.64, 0, -0.2);
-    box(g, 0.04, 0.035, 0.66, m.accent, s * 0.17, 0.005, -0.05);
-    box(g, 0.04, 0.035, 0.46, m.accent, s * 0.45, 0.005, -0.12);
-    g.rotation.z = s * 0.55;
-    parts.wings.push({ g, s, lift: 0.55 });
+    const g = pivot(body, s * 0.2, 0.6, 0.0);
+    box(g, 0.34, 0.04, 0.75, m.belly, s * 0.17, 0, 0);
+    box(g, 0.3, 0.04, 0.62, m.belly, s * 0.47, 0, -0.1);
+    box(g, 0.24, 0.04, 0.36, m.belly, s * 0.74, 0, -0.2);
+    box(g, 0.14, 0.04, 0.16, m.accent, s * 0.93, 0, -0.28);
+    box(g, 0.7, 0.05, 0.05, m.accent, s * 0.4, 0.01, 0.37);
+    box(g, 0.34, 0.05, 0.05, m.accent, s * 0.78, 0.01, 0.1);
+    box(g, 0.05, 0.05, 0.75, m.dark, s * 0.02, 0.01, 0);
+    box(g, 0.05, 0.05, 0.55, m.dark, s * 0.34, 0.01, -0.12);
+    g.rotation.z = s * 0.5;
+    parts.wings.push({ g, s, lift: 0.5 });
   }
 }
 
