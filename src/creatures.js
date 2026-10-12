@@ -5,6 +5,9 @@ import { WORLD_W, WORLD_D, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
 
 const MAX_WILD = 16;
+const SING_RANGE = 18;
+const NOTE_HEAD = new THREE.BoxGeometry(0.18, 0.14, 0.04);
+const NOTE_STEM = new THREE.BoxGeometry(0.04, 0.34, 0.04).translate(0.07, 0.17, 0);
 const GROUND = new Set([B.GRASS, B.DIRT, B.SAND, B.STONE, B.SNOW, B.COBBLE, B.ICE, B.GRAVEL, B.MUD, B.SANDSTONE]);
 
 export class Wild {
@@ -30,6 +33,7 @@ export class CreatureManager {
     this.world = world;
     this.list = [];
     this.spawnTimer = 0;
+    this.notes = [];
     this.raycaster = new THREE.Raycaster();
   }
 
@@ -119,11 +123,45 @@ export class CreatureManager {
     for (const w of this.list) {
       this.updateOne(w, dt);
       // Sound-type creatures sing now and then, so you can hear them before you see them.
-      if (w.species.type === 'sound' && !w.frozen && (w.songTimer = (w.songTimer ?? Math.random() * 6) - dt) <= 0) {
-        w.songTimer = 7 + Math.random() * 8;
-        if (w.pos.distanceTo(playerPos) < 14) this.onSing?.(w);
+      if (w.species.type === 'sound' && !w.frozen && (w.songTimer = (w.songTimer ?? Math.random() * 3) - dt) <= 0) {
+        w.songTimer = 5 + Math.random() * 4;
+        const d = w.pos.distanceTo(playerPos);
+        if (d < SING_RANGE) {
+          this.showNotes(w);
+          this.onSing?.(w, Math.min(1, 1 - 0.4 * (d - 6) / (SING_RANGE - 6))); // full volume up close
+        }
       }
     }
+    this.updateNotes(dt);
+  }
+
+  // Little glowing music notes that float up from a singing creature.
+  showNotes(w) {
+    for (let i = 0; i < 3; i++) {
+      const note = new THREE.Group();
+      const mat = new THREE.MeshBasicMaterial({ color: [0x4fd8c4, 0xffd84a, 0xff8ac8][i], transparent: true });
+      note.add(new THREE.Mesh(NOTE_HEAD, mat), new THREE.Mesh(NOTE_STEM, mat));
+      note.position.set(w.pos.x + (i - 1) * 0.35, w.pos.y + 1.2, w.pos.z);
+      this.scene.add(note);
+      this.notes.push({ note, mat, t: -i * 0.25, x: (i - 1) * 0.35 });
+    }
+  }
+
+  updateNotes(dt) {
+    for (const n of this.notes) {
+      n.t += dt;
+      const k = Math.max(0, n.t) / 2;
+      n.note.position.y += dt * 0.7;
+      n.note.position.x += Math.sin(n.t * 5) * dt * 0.4;
+      n.note.lookAt(n.note.position.x, n.note.position.y, n.note.position.z + 1);
+      n.note.visible = n.t >= 0;
+      n.mat.opacity = 1 - k;
+    }
+    for (const n of this.notes.filter(n => n.t >= 2)) {
+      this.scene.remove(n.note);
+      n.mat.dispose();
+    }
+    this.notes = this.notes.filter(n => n.t < 2);
   }
 
   updateOne(w, dt) {

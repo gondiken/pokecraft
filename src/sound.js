@@ -67,7 +67,7 @@ const drum = (f, at = 0, vol = 0.4) => { tone(f, { at, len: 0.18, vol, slide: -f
 
 // Sound-type creatures each have their own little tune (a "cry").
 const CRIES = {
-  echobat: () => [1568, 1976, 1568].forEach((f, i) => tone(f, { at: i * 0.07, len: 0.05, vol: 0.18, type: 'square', slide: 300 })),
+  echobat: () => [1175, 1568, 1319, 1760].forEach((f, i) => tone(f, { at: i * 0.09, len: 0.08, vol: 0.4, type: 'triangle', slide: 250 })),
   boomwing: () => { for (let i = 0; i < 6; i++) drum(150 - i * 8, i * 0.06, 0.25 + i * 0.03); bell(392, 0.4, 0.6, 0.2); },
   drumbo: () => { drum(196, 0); drum(147, 0.14); drum(196, 0.28); },
   bongorilla: () => { drum(110, 0, 0.5); drum(110, 0.12, 0.5); drum(147, 0.3, 0.5); drum(98, 0.42, 0.55); },
@@ -129,8 +129,9 @@ export const sound = {
     try { SOUNDS[name](); } catch (e) { this.errors.push(`${name}: ${e.message}`); }
   },
 
-  // A creature's own tune (only sound-type creatures have one). quiet is for wild ones nearby.
-  cry(species, type, quiet = false) {
+  // A creature's own tune (only sound-type creatures have one). volume (0..1) is lower for wild
+  // ones further away.
+  cry(species, type, volume = 1) {
     if (type !== 'sound') return;
     const name = `cry:${species}`;
     if (!this.on) return;
@@ -138,7 +139,7 @@ export const sound = {
     if (this.played.length > 30) this.played.shift();
     const a = audio();
     if (!a || a.state !== 'running') return;
-    scale = quiet ? 0.45 : 1;
+    scale = volume;
     try {
       if (CRIES[species]) CRIES[species]();
       else notes([523, 659, 784].map(f => f * (1 + (species.length % 5) / 10)), 0.09, { len: 0.14, type: 'triangle', vol: 0.3 });

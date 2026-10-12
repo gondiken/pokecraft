@@ -83,10 +83,16 @@ export default async function ({ browser, base, t }) {
     w.songTimer = 0;
     g.creatures.list.push(w);
     g.sound.played.length = 0;
+    let volume = null, notes = 0;
+    const onSing = g.creatures.onSing;
+    g.creatures.onSing = (wild, v) => { volume = v; notes = g.creatures.notes.length; onSing(wild, v); };
     await new Promise(r => setTimeout(r, 2500));
-    return [...g.sound.played];
+    g.creatures.onSing = onSing;
+    return { played: [...g.sound.played], volume, notes };
   });
-  t.ok(sang.includes('cry:gongolin'), `a wild sound-type creature nearby sings (${sang.join(', ')})`);
+  t.ok(sang.played.includes('cry:gongolin'), `a wild sound-type creature nearby sings (${sang.played.join(', ')})`);
+  t.ok(sang.volume === 1, `up close it sings at full volume (${sang.volume})`);
+  t.ok(sang.notes >= 3, 'music notes float up from it while it sings');
   t.ok(await page.evaluate(() => {
     const s = window.pokecraft.sound;
     for (const n of ['bassblast', 'echoping', 'hit', 'badge']) s.play(n);
