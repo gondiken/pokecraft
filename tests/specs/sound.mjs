@@ -7,6 +7,13 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0);
   const played = () => page.evaluate(() => [...window.pokecraft.sound.played]);
   const lookDown = () => page.evaluate(() => { const p = window.pokecraft.player; p.pitch = -0.75; p.keys = {}; });  // aim a little ahead, not under our feet
+  // Stand on a stone platform high in the air, so nothing else (people, creatures, plants) is in the way.
+  await page.evaluate(() => {
+    const g = window.pokecraft, s = g.spawnPoint, y = 42;
+    for (let x = -4; x <= 4; x++) for (let z = -4; z <= 4; z++) g.world.set(Math.floor(s.x) + x, y, Math.floor(s.z) + z, 3);
+    g.player.pos.set(Math.floor(s.x) + 0.5, y + 1, Math.floor(s.z) + 0.5);
+    g.player.vel.set(0, 0, 0);
+  });
   // Mouse input under pointer lock is covered by battle-and-menu; here, use the game's own
   // break/place actions. Software rendering is slow, so wait for the crosshair to find a block.
   for (let i = 0; i < 8 && !(await played()).includes('place'); i++) {
