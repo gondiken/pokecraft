@@ -94,7 +94,7 @@ export async function playBattle(page, prefer) {
     if (!(await page.evaluate(() => window.pokecraft.inBattle))) return true;
     await page.evaluate(pref => {
       const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')];
-      (bs.find(b => pref && b.textContent.startsWith(pref)) || bs[0])?.click();
+      (bs.find(b => pref && b.textContent.startsWith(pref)) || bs.find(b => b.querySelector('small')?.textContent.includes('power ')) || bs[0])?.click();
     }, prefer);
     await page.waitForTimeout(700);
   }

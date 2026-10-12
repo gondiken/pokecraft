@@ -16,7 +16,7 @@ async function playDuel(pages, avoid = 'Give up') {
       busy = true;
       await page.evaluate(avoid => {
         const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')].filter(b => !b.textContent.startsWith(avoid));
-        bs[0]?.click();
+        (bs.find(b => b.querySelector('small')?.textContent.includes('power ')) || bs[0])?.click();
       }, avoid);
     }
     if (!busy) return true;
@@ -51,12 +51,12 @@ export default async function ({ browser, base, t }) {
   await A.evaluate(async () => {
     const g = window.pokecraft;
     const { makeCreature } = await import('/src/species.js');
-    g.party = [makeCreature('blazehound', 18), makeCreature('ampup', 16)];
+    g.party = [makeCreature('blazehound', 18, ['infernodash', 'flameburst']), makeCreature('ampup', 16, ['staticsnap', 'spark'])];
   });
   await B.evaluate(async () => {
     const g = window.pokecraft;
     const { makeCreature } = await import('/src/species.js');
-    g.party = [makeCreature('zapple', 18), makeCreature('grovebeast', 18)];
+    g.party = [makeCreature('zapple', 18, ['seedvolley', 'spark']), makeCreature('grovebeast', 18, ['bigbong', 'vinelash'])];
     g.party[1].hp = 1;
   });
   // Both stand on a little stone platform high in the air, so nothing is in the way.
@@ -97,8 +97,9 @@ export default async function ({ browser, base, t }) {
   const resB = await B.evaluate(() => window.pokecraft.duels.lastResult);
   t.ok([resA, resB].sort().join() === 'lost,won', `one player wins, the other loses (Dad: ${resA}, Kid: ${resB})`);
   const [W, L, cubesW, cubesL] = resA === 'won' ? [A, B, cubesA, cubesB] : [B, A, cubesB, cubesA];
-  const hp = page => page.evaluate(() => ({ mine: window.pokecraft.battle.allies.map(c => c.hp), theirs: window.pokecraft.battle.foes.map(c => c.hp) }));
+  const hp = page => page.evaluate(() => ({ mine: window.pokecraft.battle.allies.map(c => c.hp), theirs: window.pokecraft.battle.foes.map(c => c.hp), log: window.pokecraft.battle.history.length }));
   const hA = await hp(A), hB = await hp(B);
+  t.ok(hA.log > 5 && hA.log === hB.log, `both browsers logged the same number of battle lines (${hA.log} / ${hB.log})`);
   t.ok(JSON.stringify(hA.mine) === JSON.stringify(hB.theirs) && JSON.stringify(hA.theirs) === JSON.stringify(hB.mine),
     `both browsers agree on every creature's HP (${JSON.stringify(hA)} / ${JSON.stringify(hB)})`);
   t.ok(await cubes(W) === cubesW + 3 && await cubes(L) === cubesL, 'the winner gets 3 Capture Cubes, the other player loses none');

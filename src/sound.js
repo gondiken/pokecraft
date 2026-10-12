@@ -146,6 +146,13 @@ const SOUNDS = {
     o.start(t); lfo.start(t); o.stop(t + 0.65); lfo.stop(t + 0.65);
     drum(80, 0, 0.4);
   },
+  shriek: () => { tone(1500, { len: 0.22, type: 'triangle', vol: 0.25, slide: 700 }); tone(1800, { at: 0.08, len: 0.18, type: 'triangle', vol: 0.18, slide: -500 }); },
+  lullaby: () => notes([659, 587, 523, 440], 0.16, { len: 0.28, type: 'triangle', vol: 0.22 }),
+  bigbong: () => bell(98, 0, 1.8, 0.45),
+  // Move effects in battle.
+  statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
+  statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
+  snooze: () => notes([440, 392, 330], 0.14, { len: 0.2, type: 'triangle', vol: 0.18 }),
 };
 
 function loadOn() {
