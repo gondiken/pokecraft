@@ -291,9 +291,9 @@ export default async function ({ browser, base, t }) {
   t.ok(labels.some(l => l.includes('puts the foe to sleep')) && labels.some(l => l.includes('heals you')) && labels.some(l => l.includes('power 75')),
     `move buttons show what each move does (${labels.join(' | ')})`);
   await click(page, '#b-actions button >> nth=0'); // Lullaby
-  await page.waitForSelector('#b-wild .b-tags .zzz', { timeout: 60000 });
+  const zzz = await page.waitForSelector('#b-wild .b-tags .zzz', { timeout: 60000 }).then(() => true, () => false);
+  t.ok(zzz, 'the sleeping creature shows a Zzz tag');
   await page.screenshot({ path: path.join(SHOTS, 'moves-log-effect.png') });
-  t.ok(await page.evaluate(() => !!document.querySelector('#b-wild .b-tags .zzz')), 'the sleeping creature shows a Zzz tag');
   await playBattle(page);
 
   // 4. The Book lists the effects.

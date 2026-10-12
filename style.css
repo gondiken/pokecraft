@@ -277,6 +277,13 @@ body.touch #cubes { bottom: 64px; }
 body.touch #prompt { top: calc(50% + 24px); }
 body.touch #b-actions button { font-size: 12px; padding: 12px; }
 body.touch #b-log { font-size: 24px; }
+/* bigger touch buttons need a taller box so Cube / Switch / Run stay visible */
+@media (min-width: 701px) {
+  body.touch #b-box { height: 260px; }
+  body.touch #b-ally { bottom: 288px; }
+  body.touch #battle.asking #b-box { height: 360px; }
+  body.touch #battle.asking #b-ally { bottom: 388px; }
+}
 body.touch .mon .btns button { font-size: 10px; padding: 10px 12px; }
 #party-close { font-size: 12px; }
 
