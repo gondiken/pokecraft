@@ -1,5 +1,5 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
-import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness } from './species.js';
+import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness, moveInfo } from './species.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -281,8 +281,8 @@ export class Book {
       const m = MOVES[move];
       if (!m) return null;
       return el('div', { class: 'book-move' },
-        el('span', { class: 'lv' }, `Lv ${level}`), el('span', { class: 'mn' }, m.name), chip(m.type),
-        el('span', { class: 'mp' }, [m.power ? `power ${m.power}` : '', m.priority ? 'goes first' : ''].filter(Boolean).join(' · ')));
+        el('span', { class: 'lv' }, `Lv ${level}`), el('span', { class: 'mn' }, (m.sig ? '★ ' : '') + m.name), chip(m.type),
+        el('span', { class: 'mp' }, moveInfo(move).text));
     }).filter(Boolean);
     out.append(el('div', { class: 'book-moves' }, ...rows));
     return out;

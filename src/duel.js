@@ -5,6 +5,7 @@
 import { sound } from './sound.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
+const VERSION = 2; // bump when the battle rules change, so players on different versions don't battle
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves] }));
@@ -39,13 +40,14 @@ export class Duels {
         this.hooks.toast(`${avatar.name} didn't answer. Try again later!`);
       }, ANSWER_TIME * 1000),
     };
-    this.mp.sendDuel(avatar.id, { type: 'ask', id, seed, team: teamOf(g.party) });
+    this.mp.sendDuel(avatar.id, { type: 'ask', v: VERSION, id, seed, team: teamOf(g.party) });
     this.hooks.toast(`You asked ${avatar.name} for a battle. Waiting for an answer...`);
   }
 
   onMessage(p) {
     const g = this.game;
     if (p.type === 'ask') {
+      if (p.v !== VERSION) { this.mp.sendDuel(p.from, { type: 'no', id: p.id, old: true }); return; } // the asker has an older game
       if (!g.started || g.inBattle || this.current || this.incoming || this.asking || !g.party.length) {
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
@@ -65,6 +67,11 @@ export class Duels {
       const a = this.asking;
       clearTimeout(a.timer);
       this.asking = null;
+      if (p.v !== VERSION) { // the other game is older: the moves would not match, so don't start
+        this.mp.sendDuel(p.from, { type: 'act', id: p.id, n: 0, action: { kind: 'left' } });
+        this.hooks.toast(`${p.name} needs to reload the game to battle (it was updated).`);
+        return;
+      }
       if (g.inBattle) { this.mp.sendDuel(p.from, { type: 'act', id: p.id, n: 0, action: { kind: 'left' } }); return; }
       this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: p.team, first: true });
     } else if (p.type === 'act' && this.current?.id === p.id) {
@@ -79,7 +86,7 @@ export class Duels {
     if (!inc) return;
     this.closeAsk();
     if (this.game.inBattle || !this.mp.others.has(inc.from)) return;
-    this.mp.sendDuel(inc.from, { type: 'yes', id: inc.id, team: teamOf(this.game.party) });
+    this.mp.sendDuel(inc.from, { type: 'yes', v: VERSION, id: inc.id, team: teamOf(this.game.party) });
     this.begin({ id: inc.id, seed: inc.seed, opp: inc.from, name: inc.name, team: inc.team, first: false });
   }
 

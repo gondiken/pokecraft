@@ -38,7 +38,7 @@ this file is for working on the code.
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–36, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
-| `src/species.js` | Types + effectiveness chart, moves, all 102 normal species (6 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/species.js` | Types + effectiveness chart, moves (77, with `fx`; `moveInfo(id)` gives the button/Book words), all 102 normal species (6 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly) |
 | `src/gyms.js` | The 16 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
@@ -86,13 +86,20 @@ Key ideas:
   Edits are indexed by map size, so saves record `size: [W, D]`; `convertEdits` moves edits from
   saves made with another size (no `size` = the old 192×192 map). The map is 224×224.
   The same object is upserted to Supabase when signed in; whichever has the newer `savedAt` wins.
-- Adding a creature: add to `SPECIES` (use `L(type)` for a standard learnset) and to a biome in
+- Adding a creature: add to `SPECIES` (use `learn: L(type, secondType)` for a standard learnset: own-type moves plus a second type's) and to a biome in
   `SPAWNS`; the model is built from `shape` (the six in species.js or one in `SHAPES` in shapes.js)
   plus `extras`. **The owner wants creatures to look unique:** a new family should get its own body
   shape (write a new builder in shapes.js), not a recolour of another type's creature. Evolutions
   may share their family's shape. The `roster` spec requires at least 3 shapes per type. Adding a type: `TYPE_COLORS`, `EFFECTIVENESS`, two moves + `T1`/`T2`, a wool colour in
   `blocks.js` if it gets a gym. Remember the README tables.
 - Saves also have `seen` / `caught` (species id lists for the Creature Book). `Battle.refresh()` marks seen, a catch marks caught, and `snapshot()`/`Book.open()` call `book.syncTeam()` (team + box = caught), which covers evolution and old saves.
+- Moves (`MOVES` in species.js): `fx.kind` is heal / raise / lower / flinch / sleep / multi / recoil; `sure`, `priority`,
+  `sig` are flags. Ids are saved, names are display only. Per-battle stat steps and sleep live in `battle.modMap`
+  (never saved, cleared when a creature comes in). `c.learned` lists moves already offered; `gainXp(c, xp, { ask: true })`
+  returns `{ learn }` messages for `Battle.askForget` (full move list), and also offers one older move per level-up
+  (old saves: `OLD_MOVE_IDS` count as offered). Duel draw order in `useMove`: hit, number of hits (multi), crit, damage
+  roll, effect chance (moves with `chance`); nothing may branch on `side` before a draw. `duel.js` `VERSION` must be
+  bumped when battle rules change. Never name a move like a sound effect in `sound.js` (`useMove` plays `sound.play(moveId)`).
 - Pointer lock: with a mouse the browser only lets the game capture the mouse after a click.
   That's why battles end with a "Continue exploring" button and the pause screen exists.
 

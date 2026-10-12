@@ -66,7 +66,8 @@ On a tablet:
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 46 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
-- **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, switching and running away. Your whole team shares the XP.
+- **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, move effects (see **Moves** below), switching and running away. Your whole team shares the XP.
+- **Moves**: 77 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
 - **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against.
@@ -75,6 +76,23 @@ On a tablet:
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
+
+## Moves
+
+Every move has one small effect at most. The battle buttons say what a move does.
+
+| Move effect | What it does |
+| --- | --- |
+| Heals you | Gets back half of your HP (Rest Up, Sap Sip, Shimmer) |
+| Raises your attack / defence | One step up, up to 3 steps (Pump Up, Hunker Down, Deep Focus, Iron Wall) |
+| Lowers the foe's attack / slows the foe | One step down (Grumble, Silk Wrap, Chill Wind...). "May" means it only sometimes works |
+| May make the foe flinch | If you move first, the foe may lose its move |
+| Puts the foe to sleep | The foe skips one move (Lullaby, Sweet Dreams, Big Bong). Sleepy creatures are easier to catch |
+| Hits 2 to 4 times | Several small hits (Seed Volley, Rivet Shot, Meteor Shower) |
+| Hurts you a little too | A big hit with a little recoil. It never knocks you out (Inferno Dash, Drake Charge) |
+| Never misses | Always hits (Mind Trick, Color Splash and the special moves) |
+
+Stat changes and sleep go away when a creature is switched out. A few creatures learn a **special move** (Blazehound, Tidalord, Grovebeast and Gongolin at Lv 30, Zenithar at Lv 45). Some moves were renamed to original names (Bump, Belly Bash, Cinder, Bubble Pop, Zap, Blaze Burst, Snow Storm, Nibble, Shadow Dash). Player battles need both players to have the latest version of the game.
 
 ## Types
 

@@ -62,7 +62,7 @@ export default async function ({ browser, base, t }) {
     const g = window.pokecraft;
     const { makeCreature } = await import('/src/species.js');
     g.inBattle = false;
-    g.party = [makeCreature('echobat', 20)];
+    g.party = [makeCreature('echobat', 20, ['echoping', 'bassblast'])];
     g.sound.played.length = 0;
     const p = g.player.pos;
     g.inBattle = true;

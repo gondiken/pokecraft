@@ -2,13 +2,17 @@
 import * as THREE from 'three';
 import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
-  xpForLevel, buildModel, tintModel, disposeModel, makeCreature,
+  xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo,
 } from './species.js';
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 import { sound } from './sound.js';
 
 const PARTY_MAX = 6;
+
+// Stat changes: +1 / -1 per use, at most 3 either way. Gentle: +3 is x1.75, -3 is x0.57.
+const stage = s => (s >= 0 ? (4 + s) / 4 : 4 / (4 - s));
+const STAT_NAMES = { atk: 'attack', def: 'defence', spd: 'speed' };
 
 export class Battle {
   constructor(game) {
@@ -19,6 +23,8 @@ export class Battle {
     this.wildCard = document.getElementById('b-wild');
     this.allyCard = document.getElementById('b-ally');
     this.skip = null;
+    this.history = [];
+    this.modMap = new Map();
     this.log.addEventListener('click', () => this.skip?.());
     this.allyModel = null;
     this.active = false;
@@ -42,8 +48,19 @@ export class Battle {
 
   cry(c) { sound.cry(c.species, SPECIES[c.species].type); }
 
+  // Changes in a creature during one battle (stat steps, sleep). Never saved; cleared when it comes in.
+  mods(c) {
+    let m = this.modMap.get(c);
+    if (!m) this.modMap.set(c, m = { atk: 0, def: 0, spd: 0, sleep: false, flinch: false, healed: 0 });
+    return m;
+  }
+
+  speedOf(c) { return Math.floor(statsFor(c).spd * stage(this.mods(c).spd)); }
+
   say(text, ms = 1300) {
     this.log.textContent = text;
+    this.history.push(text);
+    if (this.history.length > 60) this.history.shift();
     return new Promise(resolve => {
       const timer = setTimeout(done, ms);
       function done() { clearTimeout(timer); resolve(); }
@@ -63,7 +80,19 @@ export class Battle {
       el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })),
       showNumbers && el('div', { class: 'hpnum' }, `${c.hp} / ${st.maxHp}`),
       showNumbers && el('div', { class: 'xpbar' }, el('div', { style: `width:${Math.max(0, Math.min(1, xpFrac)) * 100}%` })),
+      this.tagsFor(c),
     ].filter(Boolean));
+  }
+
+  // Little tags under the HP bar: ATK ↑2, DEF ↓, SPD ↑, Zzz.
+  tagsFor(c) {
+    const m = this.mods(c);
+    const tags = [];
+    for (const [k, label] of [['atk', 'ATK'], ['def', 'DEF'], ['spd', 'SPD']]) {
+      if (m[k]) tags.push(el('span', { class: m[k] > 0 ? 'up' : 'down' }, `${label} ${m[k] > 0 ? '↑' : '↓'}${Math.abs(m[k]) > 1 ? Math.abs(m[k]) : ''}`));
+    }
+    if (m.sleep) tags.push(el('span', { class: 'zzz' }, 'Zzz'));
+    return tags.length ? el('div', { class: 'b-tags' }, ...tags) : null;
   }
 
   refresh() {
@@ -76,6 +105,7 @@ export class Battle {
     return new Promise(resolve => {
       this.actions.replaceChildren(...buttons.map(b => {
         if (b.row) return el('div', { class: 'row3' }, ...b.row.map(r => this.button(r, resolve)));
+        if (b.info) return el('div', { class: 'b-info wide' }, ...b.info);
         return this.button(b, resolve);
       }));
     });
@@ -94,7 +124,7 @@ export class Battle {
       const moves = this.ally.moves.map(id => {
         const mv = MOVES[id];
         return {
-          label: mv.name, sub: `${mv.type} · power ${mv.power}`, value: { kind: 'move', move: id },
+          label: mv.name, sub: `${mv.type} · ${moveInfo(id).text}`, value: { kind: 'move', move: id },
           style: `background:${TYPE_COLORS[mv.type]};color:#111`,
         };
       });
@@ -127,8 +157,9 @@ export class Battle {
 
   /* ------------------------------ 3D staging ------------------------------ */
 
-  placeAlly() {
+  placeAlly(keepMods = false) {
     const g = this.game;
+    if (!keepMods) this.modMap.delete(this.ally); // a creature coming in starts fresh
     if (this.allyModel) { g.scene.remove(this.allyModel); disposeModel(this.allyModel); }
     const p = g.player.pos;
     const w = this.foePos;
@@ -166,6 +197,7 @@ export class Battle {
   async sendOutFoe() {
     const g = this.game;
     const npc = this.trainer;
+    this.modMap.delete(this.foe);
     if (this.foeModel) { g.scene.remove(this.foeModel); disposeModel(this.foeModel); }
     const p = g.player.pos;
     const dir = new THREE.Vector3(p.x - npc.pos.x, 0, p.z - npc.pos.z);
@@ -219,6 +251,8 @@ export class Battle {
     this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
     this.boss = !!opts.boss;
     this.poweredUp = false;
+    this.modMap = new Map();
+    this.history = [];
     this.xpBoost = opts.xpBoost || 1;
     this.trainer = opts.trainer || (this.duel && { name: this.duel.name, pos: this.duel.pos });
     this.foeModel = null;
@@ -321,15 +355,17 @@ export class Battle {
     // Both sides attack; priority moves first, then the faster creature.
     const foeMove = this.pickFoeMove();
     const allyFirst = (MOVES[action.move].priority || 0) - (MOVES[foeMove].priority || 0) ||
-      statsFor(this.ally).spd - statsFor(this.foe).spd || Math.random() - 0.5;
+      this.speedOf(this.ally) - this.speedOf(this.foe) || Math.random() - 0.5;
     const order = allyFirst > 0
       ? [['ally', action.move], ['foe', foeMove]]
       : [['foe', foeMove], ['ally', action.move]];
-    for (const [side, move] of order) {
-      await this.useMove(side, move);
+    this.clearFlinch();
+    for (const [i, [side, move]] of order.entries()) {
+      await this.useMove(side, move, { first: i === 0 });
       if (this.foe.hp <= 0) return this.foeFainted();
       if (this.ally.hp <= 0) return this.allyFainted();
     }
+    this.clearFlinch();
     return null;
   }
 
@@ -367,17 +403,24 @@ export class Battle {
       // Priority moves first, then the faster creature. A tie is broken by the shared random
       // numbers, seen from the challenger's side so both players get the same answer.
       const diff = (MOVES[mine.move].priority || 0) - (MOVES[theirs.move].priority || 0) ||
-        statsFor(this.ally).spd - statsFor(this.foe).spd;
+        this.speedOf(this.ally) - this.speedOf(this.foe);
       const challengerFirst = diff === 0 ? this.rng() < 0.5 : null;
       const meFirst = diff !== 0 ? diff > 0 : challengerFirst === d.first;
       if (!meFirst) attacks.reverse();
     }
-    for (const [side, move] of attacks) {
-      await this.useMove(side, move);
+    this.clearFlinch();
+    for (const [i, [side, move]] of attacks.entries()) {
+      await this.useMove(side, move, { first: i === 0 && attacks.length === 2 });
       if (this.foe.hp <= 0) return this.foeFainted();
       if (this.ally.hp <= 0) return this.allyFainted();
     }
+    this.clearFlinch();
     return null;
+  }
+
+  clearFlinch() {
+    this.mods(this.ally).flinch = false;
+    this.mods(this.foe).flinch = false;
   }
 
   // The other player's choice of creature, or their first healthy one if it doesn't make sense.
@@ -390,45 +433,160 @@ export class Battle {
     return this.ally.hp <= 0 ? this.allyFainted() : null;
   }
 
+  // Wild and trainer creatures mostly pick a good attack, sometimes something else. (Not used in
+  // player battles, so plain Math.random is fine here.)
   pickFoeMove() {
-    const moves = this.foe.moves;
-    const allyType = SPECIES[this.ally.species].type;
-    const good = moves.filter(m => effectiveness(MOVES[m].type, allyType) > 1);
-    if (good.length && Math.random() < 0.5) return good[Math.floor(Math.random() * good.length)];
-    return moves[Math.floor(Math.random() * moves.length)];
+    const foe = this.foe, ally = this.ally;
+    const fm = this.mods(foe), am = this.mods(ally);
+    const allyType = SPECIES[ally.species].type, foeType = SPECIES[foe.species].type;
+    const score = id => {
+      const mv = MOVES[id];
+      if (mv.power > 0) {
+        const eff = effectiveness(mv.type, allyType);
+        if (eff === 0) return 0;
+        const stab = mv.type === foeType ? 1.5 : 1;
+        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1);
+      }
+      const fx = mv.fx;
+      if (fx.kind === 'heal') return foe.hp < statsFor(foe).maxHp * 0.45 && fm.healed < 1 ? 120 : 0;
+      if (fx.kind === 'raise') return fm[fx.stat] < 2 && foe.hp > statsFor(foe).maxHp * 0.6 ? 45 : 0;
+      if (fx.kind === 'lower') return am[fx.stat] > -2 ? 40 : 0;
+      if (fx.kind === 'sleep') return am.sleep ? 0 : 55;
+      return 0;
+    };
+    const scored = foe.moves.map(id => [id, score(id)]);
+    if (Math.random() < 0.5) {
+      const best = Math.max(...scored.map(s => s[1]));
+      const top = scored.filter(s => s[1] === best);
+      return top[Math.floor(Math.random() * top.length)][0];
+    }
+    const ok = scored.filter(s => s[1] > 0);
+    const pool = ok.length ? ok : scored;
+    return pool[Math.floor(Math.random() * pool.length)][0];
   }
 
-  async useMove(side, moveId) {
+  // One creature uses a move. The random numbers are drawn in a fixed order (hit, number of hits,
+  // critical, damage roll, effect chance) and never depend on which side is moving, because in a
+  // player battle both browsers must draw exactly the same numbers.
+  async useMove(side, moveId, { first = false } = {}) {
     const atk = side === 'ally' ? this.ally : this.foe;
     const def = side === 'ally' ? this.foe : this.ally;
     const mv = MOVES[moveId];
-    const who = side === 'foe' ? `${this.foeLabel} ${nameOf(atk)}` : nameOf(atk);
+    const who = this.labelOf(side);
+    const ma = this.mods(atk), md = this.mods(def);
+    // A flinched or sleepy creature loses its move.
+    if (ma.flinch) {
+      ma.flinch = false;
+      await this.say(`${who} flinched and couldn't move!`, 1100);
+      return;
+    }
+    if (ma.sleep) {
+      sound.play('snooze');
+      await this.say(`${who} is fast asleep... Zzz`, 1100);
+      ma.sleep = false;
+      this.refresh();
+      await this.say(`${who} woke up!`, 900);
+      return;
+    }
     this.say(`${who} used ${mv.name}!`, 700);
     sound.play(moveId); // only some moves (like sound-type ones) have their own sound
     await this.lunge(side);
     await wait(150);
-    if (this.rng() > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
+    const hit = this.rng(); // draw 1: always, even for moves that never miss
+    if (!mv.sure && hit > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
+    if (!mv.power) { await this.applyFx(side, mv, { first }); return; }
 
+    const fx = mv.fx;
+    let hits = 1;
+    if (fx?.kind === 'multi') hits = fx.min + Math.floor(this.rng() * (fx.max - fx.min + 1)); // draw 2
     const as = statsFor(atk), ds = statsFor(def);
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
     const crit = this.rng() < 1 / 16 ? 1.5 : 1;
-    const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * as.atk * (atk.boost || 1) / ds.def) / 50) + 2;
+    const atkPower = as.atk * stage(ma.atk) * (atk.boost || 1), defPower = ds.def * stage(md.def);
+    const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * atkPower / defPower) / 50) + 2;
     const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + this.rng() * 0.15)));
-    const hpBefore = def.hp;
-    def.hp = Math.max(0, def.hp - dmg);
+    const hpStart = def.hp;
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
-    if (bossLast && def.hp <= 0 && hpBefore > statsFor(def).maxHp / 2) def.hp = 1;
-    sound.play(eff > 1 ? 'super' : 'hit');
-    this.flash(side === 'ally' ? 'foe' : 'ally');
-    this.refresh();
-    await wait(450);
+    let done = 0;
+    for (let i = 0; i < hits && def.hp > 0; i++) {
+      const hpBefore = def.hp;
+      def.hp = Math.max(0, def.hp - dmg);
+      if (bossLast && def.hp <= 0 && hpBefore > statsFor(def).maxHp / 2) def.hp = 1;
+      done++;
+      sound.play(eff > 1 ? 'super' : 'hit');
+      this.flash(side === 'ally' ? 'foe' : 'ally');
+      this.refresh();
+      await wait(hits > 1 ? 300 : 450);
+    }
+    const dealt = hpStart - def.hp;
     if (crit > 1) await this.say('A critical hit!', 900);
     if (eff === 0) await this.say(`It doesn't affect ${nameOf(def)}...`, 1100);
     else if (eff > 1) await this.say("It's super effective!", 1000);
     else if (eff < 1) await this.say("It's not very effective...", 1000);
+    if (hits > 1 && eff > 0) await this.say(`Hit ${done} times!`, 900);
+
+    // draw 5: only moves with a "chance" effect, and always drawn so both players stay in step
+    if (fx?.chance) {
+      const roll = this.rng();
+      if (roll < fx.chance && eff > 0 && (fx.kind === 'raise' || def.hp > 0)) await this.applyFx(side, mv, { quiet: true, first });
+    }
+    if (fx?.kind === 'recoil' && dealt > 0) {
+      const loss = Math.max(1, Math.floor(dealt * fx.amount));
+      const was = atk.hp;
+      atk.hp = Math.max(1, atk.hp - loss); // recoil never knocks anyone out
+      if (atk.hp < was) {
+        this.refresh();
+        await this.say(`${who} is hurt by the crash!`, 1000);
+      }
+    }
     if (bossLast && def.hp > 0 && def.hp <= statsFor(def).maxHp / 2) await this.powerUp(def);
+  }
+
+  labelOf(side) { return side === 'foe' ? `${this.foeLabel} ${nameOf(this.foe)}` : nameOf(this.ally); }
+
+  // The extra effect of a move: healing, stat changes, sleep or flinch. `quiet` (a side effect of an
+  // attack) skips messages that would only say "nothing happened".
+  async applyFx(side, mv, { quiet = false, first = false } = {}) {
+    const fx = mv.fx;
+    const user = side === 'ally' ? this.ally : this.foe;
+    const target = side === 'ally' ? this.foe : this.ally;
+    const userSide = side, targetSide = side === 'ally' ? 'foe' : 'ally';
+    const uWho = this.labelOf(userSide), tWho = this.labelOf(targetSide);
+    if (fx.kind === 'heal') {
+      const max = statsFor(user).maxHp;
+      if (user.hp >= max) { await this.say(`${uWho}'s HP is already full!`, 1100); return; }
+      user.hp = Math.min(max, user.hp + Math.floor(max * fx.amount));
+      this.mods(user).healed++;
+      sound.play('heal');
+      this.refresh();
+      await this.say(`${uWho} got some HP back!`, 1200);
+    } else if (fx.kind === 'raise' || fx.kind === 'lower') {
+      const up = fx.kind === 'raise';
+      const c = up ? user : target;
+      const m = this.mods(c);
+      const w = up ? uWho : tWho;
+      const edge = up ? m[fx.stat] >= 3 : m[fx.stat] <= -3;
+      if (edge) {
+        if (!quiet) await this.say(`${w}'s ${STAT_NAMES[fx.stat]} can't go any ${up ? 'higher' : 'lower'}!`, 1100);
+        return;
+      }
+      m[fx.stat] += up ? 1 : -1;
+      sound.play(up ? 'statup' : 'statdown');
+      this.refresh();
+      await this.say(`${w}'s ${STAT_NAMES[fx.stat]} went ${up ? 'up' : 'down'}!`, 1200);
+    } else if (fx.kind === 'flinch') {
+      // Only works if the user moved first this turn (the other creature has not moved yet).
+      if (first) this.mods(target).flinch = true;
+    } else if (fx.kind === 'sleep') {
+      const m = this.mods(target);
+      if (m.sleep) { if (!quiet) await this.say(`But ${tWho} is already asleep!`, 1100); return; }
+      m.sleep = true;
+      sound.play('snooze');
+      this.refresh();
+      await this.say(`${tWho} fell asleep! Zzz`, 1300);
+    }
   }
 
   // The champion's last creature glows and hits harder.
@@ -484,9 +642,10 @@ export class Battle {
   // The active creature gets full XP; the rest of the healthy team shares half.
   async giveXp(xp) {
     await this.say(`${nameOf(this.ally)} gained ${xp} XP!`, 1000);
-    const { msgs, evolved } = gainXp(this.ally, xp);
+    const { msgs, evolved } = gainXp(this.ally, xp, { ask: true });
     this.refresh();
     for (const m of msgs) {
+      if (m.learn) { await this.askForget(this.ally, m.learn); continue; }
       if (m.includes(' grew to ')) sound.play('levelup');
       if (evolved && m.includes('evolved into')) { sound.play('evolve'); await this.evolveAnimation(); }
       await this.say(m, 1400);
@@ -496,11 +655,44 @@ export class Battle {
     const share = Math.max(1, Math.floor(xp / 2));
     await this.say(`The rest of your team gained ${share} XP.`, 1000);
     for (const c of others) {
-      for (const m of gainXp(c, share).msgs) {
+      for (const m of gainXp(c, share, { ask: true }).msgs) {
+        if (m.learn) { await this.askForget(c, m.learn); continue; }
         if (m.includes(' grew to ')) sound.play('levelup');
         await this.say(m, 1300);
       }
     }
+  }
+
+  // "Learn X? Forget which move?" A creature with four moves can learn a fifth only by forgetting one.
+  async askForget(c, id) {
+    const mv = MOVES[id];
+    const name = nameOf(c);
+    this.say(`${name} wants to learn ${mv.name}! Pick a move to forget.`, 60000);
+    sound.play('ask');
+    const info = [
+      el('b', {}, mv.name),
+      el('span', { class: 'type', style: `background:${TYPE_COLORS[mv.type]}` }, mv.type),
+      el('span', { class: 'txt' }, moveInfo(id).text),
+    ];
+    const buttons = [{ info }];
+    c.moves.forEach((old, i) => {
+      const om = MOVES[old];
+      buttons.push({
+        label: `Forget ${om.name}`, sub: `${om.type} · ${moveInfo(old).text}`, value: i,
+        style: `background:${TYPE_COLORS[om.type]};color:#111`,
+      });
+    });
+    buttons.push({ label: `Don't learn ${mv.name}`, value: null, cls: 'wide' });
+    this.root.classList.add('asking');
+    const pick = await this.choose(buttons);
+    this.root.classList.remove('asking');
+    this.skip?.();
+    if (!c.learned.includes(id)) c.learned.push(id);
+    if (pick === null) { await this.say(`${name} did not learn ${mv.name}.`, 1400); return; }
+    const forgot = MOVES[c.moves[pick]].name;
+    c.moves[pick] = id;
+    sound.play('levelup');
+    await this.say(`1, 2 and... poof! ${name} forgot ${forgot} and learned ${mv.name}!`, 2200);
   }
 
   async evolveAnimation() {
@@ -509,7 +701,7 @@ export class Battle {
       tintModel(old, 0xffffff); await wait(120);
       tintModel(old, null); await wait(120);
     }
-    await this.placeAlly();
+    await this.placeAlly(true);
     this.refresh();
   }
 
@@ -559,7 +751,8 @@ export class Battle {
     const st = statsFor(this.foe);
     const hpFactor = 1 - (2 / 3) * (this.foe.hp / st.maxHp);
     const levelFactor = Math.max(0.5, 1 - (this.foe.level - 5) * 0.02);
-    const p = Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2));
+    const sleepy = this.mods(this.foe).sleep ? 1.5 : 1; // a sleeping creature is easier to catch
+    const p = Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2 * sleepy));
     const shakeOk = Math.cbrt(p);
 
     let caught = true;
