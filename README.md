@@ -57,7 +57,7 @@ On a tablet:
 
 ## Features
 
-- **Voxel world**: a 192×192 terrain with hills, snowy peaks, lakes, beaches and forests, plus a day/night cycle. Break and place 9 block types.
+- **Voxel world**: a 224×224 terrain with hills, snowy peaks, lakes, beaches and forests, plus a day/night cycle. Break and place 9 block types.
 - **102 original creatures**, 6 for each of the 17 types (see below). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, Clanklet roam the mountains, and ghost and cosmic creatures only come out at night.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 46 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.

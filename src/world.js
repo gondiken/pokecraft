@@ -3,11 +3,25 @@ import * as THREE from 'three';
 import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
 import { GYMS } from './gyms.js';
 
-export const WORLD_W = 192;
-export const WORLD_D = 192;
+export const WORLD_W = 224;
+export const WORLD_D = 224;
+const OLD_SIZE = [192, 192]; // saves from before the map grew don't record their size
 export const WORLD_H = 48;
 export const CHUNK = 16;
 export const WATER_LEVEL = 12;
+
+// Block edits are stored by index, which depends on the map size. Converts edits saved with a
+// different map size (terrain is the same at the same x, y, z, so they land in the same places).
+export function convertEdits(edits, size = OLD_SIZE) {
+  const [w, d] = size;
+  if (w === WORLD_W && d === WORLD_D) return edits;
+  const out = [];
+  for (const [i, id] of edits) {
+    const x = i % w, z = Math.floor(i / w) % d, y = Math.floor(i / (w * d));
+    if (x < WORLD_W && z < WORLD_D && y < WORLD_H) out.push([x + WORLD_W * (z + WORLD_D * y), id]);
+  }
+  return out;
+}
 
 function hash2(x, z, seed) {
   let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);

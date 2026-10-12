@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { buildPerson } from './npc.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { isSolid } from './blocks.js';
+import { WORLD_W, WORLD_D } from './world.js';
 import { realtimeChannel } from './cloud.js';
 
 const SEND_EVERY = 0.2;   // seconds between position updates (5 per second)
@@ -212,8 +213,8 @@ export class Multiplayer {
       this.parts[p.part] = p;
       if (this.parts.filter(Boolean).length < p.parts) return;
       const edits = this.parts.flatMap(x => x.edits);
-      const { seed, time, hostPos, hostName } = p;
-      this.gotWorld({ seed, time, hostPos, hostName, edits });
+      const { seed, time, hostPos, hostName, size } = p;
+      this.gotWorld({ seed, time, hostPos, hostName, edits, size });
     });
     t.on('state', p => {
       if (!this.active || p.id === this.id) return;
@@ -261,7 +262,7 @@ export class Multiplayer {
     const p = g.player.pos;
     for (let i = 0; i < parts; i++) {
       this.t.send('world', {
-        to, part: i, parts, seed: g.world.seed, time: g.time, hostName: this.name,
+        to, part: i, parts, seed: g.world.seed, time: g.time, hostName: this.name, size: [WORLD_W, WORLD_D],
         hostPos: [p.x, p.y, p.z], edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
       });
     }

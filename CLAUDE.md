@@ -57,6 +57,8 @@ Key ideas:
   `placeGyms`/`gymSpots` moves gyms in existing saves (`continueGame` moves the player to spawn
   if they would start inside a wall).
 - Save format: localStorage key `pokecraft-save-v2` (v1 saves are migrated: team kept, new world).
+  Edits are indexed by map size, so saves record `size: [W, D]`; `convertEdits` moves edits from
+  saves made with another size (no `size` = the old 192×192 map). The map is 224×224.
   The same object is upserted to Supabase when signed in; whichever has the newer `savedAt` wins.
 - Adding a creature: add to `SPECIES` (use `L(type)` for a standard learnset) and to a biome in
   `SPAWNS`; the model is built from `shape` (`quad`/`blob`/`biped`/`bird`/`serpent`/`bug`) plus
@@ -98,7 +100,7 @@ PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save t
 ```
 
 Specs: `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
-and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
+and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save migration), `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
   messages between two browsers itself (`?mp=local` swaps Supabase Realtime for a

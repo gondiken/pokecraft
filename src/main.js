@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { B, HOTBAR, drawAtlas } from './blocks.js';
-import { World, WORLD_W, WORLD_D, raycastVoxel } from './world.js';
+import { World, WORLD_W, WORLD_D, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
@@ -101,7 +101,7 @@ function snapshot() {
   const p = game.player;
   // While visiting someone else's world, keep saving your own world and position, not theirs.
   const home = game.homeWorld ?? {
-    seed: game.world.seed, edits: [...game.world.edits],
+    seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
     pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
   };
   return {
@@ -274,11 +274,12 @@ async function initAccount() {
   }
 }
 
-function createWorld(seed, edits) {
+// size: the map size the edits were saved with (missing in saves from before the map grew).
+function createWorld(seed, edits, size) {
   if (game.world) game.world.dispose();
   const world = new World(seed, scene, materials);
   world.generate();
-  if (edits) world.applyEdits(edits);
+  if (edits) world.applyEdits(convertEdits(edits, size));
   world.buildAll();
   game.world = world;
   game.player = new Player(world);
@@ -309,7 +310,7 @@ const hudEl = document.getElementById('hud');
 
 function showTitle() {
   const saved = loadSave();
-  createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits);
+  createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits, saved?.size);
   const buttons = document.getElementById('title-buttons');
   buttons.classList.remove('hidden');
   document.getElementById('starter-pick').classList.add('hidden');
@@ -867,10 +868,10 @@ game.mp = new Multiplayer(game, {
   loadWorld: data => {
     const p = game.player;
     game.homeWorld = {
-      seed: game.world.seed, edits: [...game.world.edits],
+      seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
       pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
     };
-    createWorld(data.seed, data.edits);
+    createWorld(data.seed, data.edits, data.size);
     game.time = data.time;
     const np = game.player;
     np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
