@@ -711,6 +711,337 @@ function guardian(root, m, parts) {
   parts.tip = glow(box(tail, 0.26, 0.26, 0.26, m.accent, 0, 0.34, -1.1), m.accent);
 }
 
+/* ------------------------------------------------------------------ */
+/* Bone and Alien shapes                                                */
+/* ------------------------------------------------------------------ */
+
+// Two glowing pupils in dark square sockets (skulls).
+function sockets(parent, m, y, z, spread, w = 0.17, h = 0.19) {
+  for (const s of [-1, 1]) {
+    box(parent, w, h, 0.05, m.dark, s * spread, y, z);
+    glow(box(parent, w * 0.5, h * 0.5, 0.04, m.accent, s * spread + s * 0.01, y - 0.01, z + 0.03), m.accent).userData.eye = true;
+  }
+}
+
+// A flattened round disc (an octagon from above): three crossed boxes.
+function disc(parent, r, h, color, x = 0, y = 0, z = 0) {
+  const g = pivot(parent, x, y, z);
+  box(g, r * 2, h, r * 1.4, color);
+  box(g, r * 1.4, h, r * 2, color);
+  const d = box(g, r * 1.5, h, r * 1.5, color);
+  d.rotation.y = Math.PI / 4;
+  return g;
+}
+
+// A happy skull that hops around clacking its jaw.
+function skull(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  // little bone feet
+  for (const s of [-1, 1]) {
+    box(body, 0.14, 0.1, 0.3, m.belly, s * 0.2, 0.06, 0.05);
+    box(body, 0.2, 0.1, 0.1, m.belly, s * 0.2, 0.07, 0.2);
+    box(body, 0.2, 0.1, 0.1, m.belly, s * 0.2, 0.07, -0.1);
+  }
+  // cranium and face plate
+  ball(body, 0.4, m.body, 0, 0.66, 0);
+  box(body, 0.5, 0.1, 0.5, m.body, 0, 1.06, 0);
+  box(body, 0.62, 0.46, 0.06, m.belly, 0, 0.62, 0.36);
+  sockets(body, m, 0.68, 0.4, 0.17);
+  box(body, 0.09, 0.09, 0.05, m.dark, 0, 0.5, 0.4); // nose
+  box(body, 0.05, 0.06, 0.05, m.dark, 0, 0.45, 0.4);
+  for (const s of [-1, 1]) box(body, 0.1, 0.06, 0.03, 0xffa0a8, s * 0.3, 0.52, 0.4); // blush
+  // upper teeth + clacking jaw
+  for (const x of [-0.18, -0.06, 0.06, 0.18]) box(body, 0.09, 0.08, 0.06, 0xffffff, x, 0.4, 0.37);
+  const jaw = pivot(body, 0, 0.36, 0.12);
+  box(jaw, 0.52, 0.12, 0.42, m.belly, 0, -0.04, 0.2);
+  for (const x of [-0.18, -0.06, 0.06, 0.18]) box(jaw, 0.09, 0.08, 0.06, 0xffffff, x, 0.04, 0.4);
+  swing(parts, jaw, 'x', 0.25, 6);
+  parts.head = body;
+  if (has(m, 'crown')) {
+    for (const [x, h] of [[-0.2, 0.2], [0, 0.3], [0.2, 0.2]]) box(body, 0.1, h, 0.1, m.accent, x, 1.1 + h / 2, 0);
+    box(body, 0.46, 0.08, 0.34, m.accent, 0, 1.12, 0);
+    gem(body, m, 1.14, 0.2).material.emissive.set(0xff5a7a);
+  }
+  if (has(m, 'horns')) {
+    for (const s of [-1, 1]) {
+      box(body, 0.12, 0.3, 0.12, m.belly, s * 0.45, 0.98, 0).rotation.z = -s * 0.3;
+      box(body, 0.1, 0.22, 0.1, m.belly, s * 0.58, 1.22, 0).rotation.z = s * 0.2;
+    }
+  }
+}
+
+// A skeleton puppy: ribs, bony legs, a collar and a wagging tail.
+function bonedog(root, m, parts) {
+  box(root, 0.1, 0.1, 0.9, m.body, 0, 0.82, 0); // spine
+  box(root, 0.4, 0.24, 0.2, m.body, 0, 0.78, -0.5); // hips
+  box(root, 0.4, 0.24, 0.2, m.body, 0, 0.78, 0.46); // shoulders
+  for (const z of [0.22, 0.02, -0.18]) {
+    for (const s of [-1, 1]) box(root, 0.05, 0.3, 0.07, m.body, s * 0.19, 0.66, z);
+    box(root, 0.43, 0.05, 0.07, m.body, 0, 0.5, z);
+  }
+  parts.legs = [];
+  for (const [sx, sz, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(root, sx * 0.17, 0.72, sz * 0.46);
+    box(leg, 0.1, 0.5, 0.1, m.body, 0, -0.25, 0);
+    box(leg, 0.16, 0.12, 0.16, m.belly, 0, -0.04, 0); // knee knob
+    box(leg, 0.16, 0.08, 0.24, m.belly, 0, -0.5, 0.05); // paw
+    parts.legs.push({ g: leg, phase });
+  }
+  const head = pivot(root, 0, 0.98, 0.62);
+  parts.head = head;
+  box(head, 0.44, 0.4, 0.42, m.body);
+  box(head, 0.28, 0.2, 0.26, m.belly, 0, -0.1, 0.3); // snout
+  box(head, 0.1, 0.07, 0.04, m.dark, 0, -0.02, 0.44); // nose
+  box(head, 0.2, 0.05, 0.03, 0xff8a9a, 0, -0.17, 0.4); // tongue
+  sockets(head, m, 0.08, 0.22, 0.12, 0.15, 0.17);
+  for (const s of [-1, 1]) {
+    box(head, 0.1, 0.22, 0.1, m.body, s * 0.17, 0.3, -0.08).rotation.z = -s * 0.25;
+    box(head, 0.06, 0.12, 0.06, m.dark, s * 0.17, 0.3, -0.04).rotation.z = -s * 0.25;
+  }
+  // collar and tag
+  box(root, 0.3, 0.1, 0.3, m.accent, 0, 0.86, 0.55);
+  box(root, 0.1, 0.12, 0.04, 0xffd84a, 0, 0.76, 0.7);
+  // wagging tail: bone segments and a knob
+  const tail = pivot(root, 0, 0.84, -0.58);
+  parts.tail = tail;
+  for (let i = 0; i < 3; i++) box(tail, 0.09 - i * 0.015, 0.09 - i * 0.015, 0.2, m.body, 0, i * 0.07, -0.1 - i * 0.2).rotation.x = 0.35;
+  box(tail, 0.14, 0.14, 0.14, m.belly, 0, 0.26, -0.7);
+  if (has(m, 'bandana')) {
+    box(root, 0.36, 0.1, 0.34, m.accent, 0, 0.88, 0.55);
+    const t = box(root, 0.22, 0.22, 0.05, m.accent, 0, 0.74, 0.7);
+    t.rotation.z = Math.PI / 4;
+  }
+  if (has(m, 'spines')) {
+    for (let i = 0; i < 5; i++) box(root, 0.07, 0.16, 0.07, m.belly, 0, 0.95, 0.35 - i * 0.2);
+  }
+}
+
+// A fossil dinosaur skeleton on two legs, with a chomping jaw and a long tail.
+function dino(root, m, parts) {
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(root, s * 0.22, 0.72, -0.05);
+    box(leg, 0.22, 0.7, 0.24, m.body, 0, -0.36, 0);
+    box(leg, 0.28, 0.2, 0.3, m.belly, 0, -0.04, 0); // knee
+    for (const dx of [-0.08, 0, 0.08]) box(leg, 0.06, 0.07, 0.2, m.belly, dx, -0.68, 0.14); // toes
+    parts.legs.push({ g: leg, phase });
+  }
+  // body: tilted spine, ribs and a solid chest
+  const trunk = pivot(root, 0, 0.9, 0);
+  trunk.rotation.x = -0.18;
+  box(trunk, 0.12, 0.12, 1.0, m.body, 0, 0.18, 0);
+  box(trunk, 0.34, 0.26, 0.7, m.dark, 0, -0.02, 0.05);
+  for (let i = 0; i < 4; i++) {
+    for (const s of [-1, 1]) box(trunk, 0.05, 0.4, 0.07, m.belly, s * 0.19, 0.0, 0.3 - i * 0.2);
+  }
+  box(trunk, 0.4, 0.22, 0.28, m.body, 0, 0.0, -0.4); // hips
+  // two tiny arms
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(root, s * 0.24, 1.0, 0.36);
+    box(arm, 0.08, 0.24, 0.08, m.body, 0, -0.1, 0.04).rotation.x = -0.3;
+    for (const dx of [-0.03, 0.03]) box(arm, 0.03, 0.08, 0.03, m.belly, dx, -0.24, 0.1);
+    parts.arms.push({ g: arm, phase });
+  }
+  // neck and the big friendly skull
+  box(root, 0.22, 0.4, 0.22, m.body, 0, 1.2, 0.5).rotation.x = 0.35;
+  const head = pivot(root, 0, 1.45, 0.62);
+  parts.head = head;
+  box(head, 0.42, 0.34, 0.5, m.body, 0, 0.03, 0.05);
+  box(head, 0.34, 0.2, 0.34, m.body, 0, -0.02, 0.4);
+  sockets(head, m, 0.1, 0.2, 0.14, 0.14, 0.14);
+  box(head, 0.06, 0.05, 0.03, m.dark, -0.07, 0.03, 0.58);
+  box(head, 0.06, 0.05, 0.03, m.dark, 0.07, 0.03, 0.58);
+  for (const x of [-0.12, 0, 0.12]) box(head, 0.06, 0.07, 0.05, 0xffffff, x, -0.14, 0.55);
+  const jaw = pivot(head, 0, -0.16, 0.12);
+  box(jaw, 0.3, 0.08, 0.5, m.belly, 0, -0.02, 0.22);
+  for (const x of [-0.1, 0.1]) box(jaw, 0.06, 0.07, 0.05, 0xffffff, x, 0.04, 0.46);
+  swing(parts, jaw, 'x', 0.18, 2.2);
+  // long tail
+  const tail = pivot(root, 0, 0.88, -0.5);
+  parts.tail = tail;
+  for (let i = 0; i < 5; i++) {
+    const w = 0.24 - i * 0.04;
+    box(tail, w, w * 0.8, 0.32, i % 2 ? m.belly : m.body, 0, -i * 0.05, -0.16 - i * 0.3);
+  }
+  if (has(m, 'shell')) {
+    for (const [x, y, h] of [[-0.18, 0.3, 0.16], [0, 0.32, 0.24], [0.18, 0.3, 0.14]]) box(head, 0.14, h, 0.14, 0xffffff, x, y, -0.02);
+    box(head, 0.44, 0.08, 0.38, 0xffffff, 0, 0.22, 0);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      box(root, 0.18, k % 2 ? 0.2 : 0.3, 0.1, 0xffffff, Math.cos(a) * 0.5, 0.2 + (k % 2 ? 0 : 0.05), Math.sin(a) * 0.45 - 0.05).rotation.y = -a;
+    }
+  }
+  if (has(m, 'plates')) {
+    for (let i = 0; i < 4; i++) {
+      const pl = box(trunk, 0.1, 0.3 - Math.abs(i - 1.2) * 0.04, 0.2, m.accent, 0, 0.38, 0.3 - i * 0.28);
+      pl.rotation.z = i % 2 ? 0.2 : -0.2;
+    }
+    for (let i = 0; i < 4; i++) box(tail, 0.07, 0.15 - i * 0.025, 0.18, m.accent, 0, 0.1 - i * 0.05, -0.2 - i * 0.3);
+  }
+}
+
+// A cute flying saucer with a pilot in a glass bubble.
+function ufo(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  disc(body, 0.36, 0.12, m.dark, 0, 0.34, 0);
+  disc(body, 0.5, 0.14, m.body, 0, 0.46, 0);
+  box(body, 0.5, 0.05, 0.5, m.dark, 0, 0.55, 0);
+  const ring = pivot(body, 0, 0.46, 0);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    glow(box(ring, 0.1, 0.09, 0.1, m.accent, Math.cos(a) * 0.52, 0, Math.sin(a) * 0.52), m.accent);
+  }
+  spin(parts, ring, 'y', 2);
+  // the pilot
+  const pilot = pivot(body, 0, 0.68, 0);
+  box(pilot, 0.22, 0.2, 0.2, m.belly, 0, 0, 0);
+  box(pilot, 0.18, 0.12, 0.16, m.belly, 0, -0.14, 0);
+  eyes(pilot, 0.02, 0.105, 0.06, 0.08);
+  box(pilot, 0.07, 0.025, 0.02, 0x2a2a2a, 0, -0.07, 0.105);
+  for (const s of [-1, 1]) {
+    box(pilot, 0.025, 0.12, 0.025, m.belly, s * 0.07, 0.15, 0);
+    glow(box(pilot, 0.06, 0.06, 0.06, m.accent, s * 0.07, 0.22, 0), m.accent);
+  }
+  swing(parts, pilot, 'z', 0.1, 2);
+  // glass bubble
+  for (const [w, h, y] of [[0.52, 0.3, 0.7], [0.36, 0.1, 0.9]]) {
+    const g = box(body, w, h, w, 0xcfeeff, 0, y, 0);
+    g.material.transparent = true;
+    g.material.opacity = 0.42;
+    g.material.depthWrite = false;
+  }
+  // landing legs
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2 + 0.5;
+    const hold = pivot(body, 0, 0.3, 0);
+    hold.rotation.y = a;
+    box(hold, 0.06, 0.22, 0.06, m.dark, 0, -0.06, 0.28).rotation.x = 0.3;
+    box(hold, 0.14, 0.04, 0.14, m.dark, 0, -0.18, 0.33);
+  }
+  if (has(m, 'beam')) {
+    for (const [w, y, op] of [[0.5, 0.18, 0.4], [0.72, -0.02, 0.32], [0.94, -0.22, 0.24]]) {
+      const b = glow(box(body, w, 0.2, w, m.accent, 0, y, 0), m.accent);
+      b.material.transparent = true;
+      b.material.opacity = op;
+      b.material.depthWrite = false;
+    }
+  }
+  if (has(m, 'fins')) {
+    for (const s of [-1, 1]) {
+      box(body, 0.06, 0.34, 0.3, m.accent, s * 0.22, 0.58, -0.5).rotation.z = s * 0.25;
+    }
+    box(body, 0.1, 0.1, 0.18, m.accent, 0, 0.5, -0.56);
+  }
+}
+
+// A small three-eyed visitor from space.
+function visitor(root, m, parts) {
+  parts.legs = [];
+  for (const [s, phase] of [[-1, Math.PI], [1, 0]]) {
+    const leg = pivot(root, s * 0.12, 0.34, 0);
+    box(leg, 0.14, 0.34, 0.16, m.dark, 0, -0.17, 0);
+    box(leg, 0.18, 0.07, 0.26, m.dark, 0, -0.32, 0.05);
+    parts.legs.push({ g: leg, phase });
+  }
+  box(root, 0.4, 0.4, 0.3, m.body, 0, 0.54, 0);
+  box(root, 0.3, 0.26, 0.04, m.belly, 0, 0.56, 0.16);
+  box(root, 0.42, 0.07, 0.32, m.accent, 0, 0.42, 0);
+  glow(box(root, 0.1, 0.1, 0.04, m.accent, 0, 0.58, 0.19), m.accent); // badge
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(root, s * 0.27, 0.7, 0);
+    box(arm, 0.1, 0.32, 0.12, m.body, 0, -0.14, 0);
+    for (const dx of [-0.035, 0, 0.035]) box(arm, 0.03, 0.1, 0.04, m.body, dx, -0.34, 0.02);
+    if (s === 1 && has(m, 'raygun')) {
+      box(arm, 0.1, 0.12, 0.3, m.dark, 0, -0.3, 0.18);
+      glow(box(arm, 0.12, 0.12, 0.12, 0xbfefff, 0, -0.3, 0.38), 0xbfefff);
+    }
+    parts.arms.push({ g: arm, phase });
+  }
+  if (has(m, 'cape')) {
+    box(root, 0.46, 0.6, 0.05, m.accent, 0, 0.5, -0.19);
+    box(root, 0.5, 0.1, 0.32, m.accent, 0, 0.78, -0.02);
+  }
+  const head = pivot(root, 0, 1.08, 0);
+  parts.head = head;
+  box(head, 0.62, 0.5, 0.5, m.body);
+  box(head, 0.5, 0.18, 0.04, m.belly, 0, -0.16, 0.26);
+  for (const s of [-1, 1]) {
+    box(head, 0.14, 0.16, 0.04, 0xffffff, s * 0.17, 0.0, 0.26).userData.eye = true;
+    box(head, 0.08, 0.1, 0.03, 0x111111, s * 0.17 + s * 0.01, -0.01, 0.285).userData.eye = true;
+  }
+  box(head, 0.14, 0.16, 0.04, 0xffffff, 0, 0.14, 0.26).userData.eye = true; // the third eye
+  box(head, 0.08, 0.1, 0.03, 0x111111, 0, 0.14, 0.285).userData.eye = true;
+  box(head, 0.2, 0.04, 0.03, 0x2a2a2a, 0, -0.14, 0.285);
+  box(head, 0.05, 0.04, 0.03, 0x2a2a2a, -0.12, -0.12, 0.285);
+  box(head, 0.05, 0.04, 0.03, 0x2a2a2a, 0.12, -0.12, 0.285);
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const ant = pivot(head, s * 0.18, 0.25, 0);
+    box(ant, 0.04, 0.3, 0.04, m.dark, 0, 0.15, 0);
+    glow(box(ant, 0.12, 0.12, 0.12, m.accent, 0, 0.34, 0), m.accent);
+    swing(parts, ant, 'z', 0.25, 3, phase);
+  }
+  if (has(m, 'helmet')) {
+    const g = box(head, 0.78, 0.7, 0.7, 0xcfeeff, 0, 0.05, 0);
+    g.material.transparent = true;
+    g.material.opacity = 0.28;
+    g.material.depthWrite = false;
+    box(head, 0.82, 0.06, 0.74, m.accent, 0, -0.3, 0);
+  }
+}
+
+// A wobbly space pod standing on three legs, with eyes on stalks.
+function tripod(root, m, parts) {
+  const long = has(m, 'long');
+  const len = long ? 1.0 : 0.32;
+  const tilt = -0.5;
+  const hipY = len * Math.cos(-tilt) + 0.04;
+  const podY = hipY + (long ? 0.3 : 0.26);
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (let k = 0; k < 3; k++) {
+    const hold = pivot(body, 0, hipY, 0);
+    hold.rotation.y = (k / 3) * Math.PI * 2;
+    const hip = pivot(hold, 0, 0, 0.08);
+    const shin = pivot(hip, 0, 0, 0);
+    shin.rotation.x = tilt;
+    box(shin, 0.1, len, 0.1, m.dark, 0, -len / 2, 0);
+    box(shin, 0.18, 0.06, 0.24, m.dark, 0, -len, 0.05);
+    if (long) box(shin, 0.16, 0.12, 0.16, m.accent, 0, -len * 0.5, 0);
+    parts.legs.push({ g: hip, phase: k * 2.1 });
+  }
+  // pod with glowing spots
+  const r = long ? 0.3 : 0.34;
+  ball(body, r, m.body, 0, podY, 0);
+  box(body, r * 1.4, 0.07, r * 1.4, m.dark, 0, podY - r * 0.9, 0);
+  for (const [x, y] of [[-0.45, 0.35], [0.4, 0.5], [0.0, 0.1], [-0.5, -0.2], [0.5, -0.1]]) {
+    glow(box(body, 0.1, 0.1, 0.04, m.accent, x * r, podY + y * r, r + 0.01), m.accent);
+  }
+  for (const s of [-1, 1]) for (const [y, z] of [[0.3, 0.1], [-0.25, -0.2]]) glow(box(body, 0.04, 0.1, 0.1, m.accent, s * (r + 0.01), podY + y * r, z * r), m.accent);
+  box(body, 0.24, 0.04, 0.03, 0x2a2a2a, 0, podY - r * 0.5, r + 0.01); // smile
+  box(body, 0.05, 0.04, 0.03, 0x2a2a2a, -0.13, podY - r * 0.42, r + 0.01);
+  box(body, 0.05, 0.04, 0.03, 0x2a2a2a, 0.13, podY - r * 0.42, r + 0.01);
+  // two eye stalks
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const st = pivot(body, s * 0.13, podY + r * 0.85, 0);
+    box(st, 0.04, 0.3, 0.04, m.belly, 0, 0.15, 0);
+    box(st, 0.17, 0.18, 0.04, 0xffffff, 0, 0.36, 0.06).userData.eye = true;
+    box(st, 0.09, 0.11, 0.03, 0x111111, 0, 0.36, 0.09).userData.eye = true;
+    box(st, 0.17, 0.18, 0.12, m.belly, 0, 0.36, -0.04);
+    swing(parts, st, 'z', 0.25, 2.5, phase);
+  }
+  if (long) {
+    box(body, 0.03, 0.2, 0.03, m.dark, 0, podY + r + 0.1, -0.1);
+    glow(box(body, 0.09, 0.09, 0.09, m.accent, 0, podY + r + 0.24, -0.1), m.accent);
+  }
+}
+
 export const SHAPES = {
+  skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
 };

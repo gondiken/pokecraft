@@ -8,29 +8,33 @@ export const TYPE_COLORS = {
   mind: '#f584b8', metal: '#b8c4cf', toxic: '#b36ad6', pixie: '#ffb8e6', drake: '#7f6cf0',
   rainbow: 'linear-gradient(90deg,#ff7a7a,#ffd36b,#8fe388,#7ab8ff,#c99bff)',
   cosmic: 'linear-gradient(90deg,#8e9bff,#e7c6ff)', sound: '#4fd8c4',
+  bone: '#e9e0c9', alien: 'linear-gradient(90deg,#8dff6a,#b98cff)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
-  normal: { rock: 0.5, metal: 0.5, ghost: 0 },
+  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5 },
   fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5 },
-  water: { fire: 2, rock: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
+  water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
   grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5 },
-  electric: { water: 2, sound: 2, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5 },
   ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5 },
   bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5 },
   ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
   // New types
-  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5 },
+  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5 },
-  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, metal: 0 },
+  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0 },
   pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5 },
-  drake: { drake: 2, metal: 0.5, pixie: 0 },
+  drake: { drake: 2, bone: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
   // Cosmic beats sound, sound beats mind, mind beats cosmic.
-  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5 },
-  sound: { ice: 2, bug: 2, mind: 2, metal: 0.5, sound: 0.5, cosmic: 0.5 },
+  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5 },
+  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5 },
+  // Bone and Alien: skeletons are not scared of ghosts or aliens; aliens love normal creatures' surprise.
+  bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
+  alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -117,6 +121,16 @@ export const MOVES = {
   shriek: mv('Shriek', 'sound', 55, 1, { fx: { kind: 'flinch', chance: 0.3 } }),
   bassblast: mv('Bass Blast', 'sound', 75, 0.9),
   lullaby: mv('Lullaby', 'sound', 0, 0.75, { fx: { kind: 'sleep' } }),
+  bonebonk: mv('Bone Bonk', 'bone', 40, 1),
+  bonetoss: mv('Bone Toss', 'bone', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  fossilcrush: mv('Fossil Crush', 'bone', 75, 0.9),
+  dinostomp: mv('Dino Stomp', 'bone', 95, 0.85, { fx: { kind: 'flinch', chance: 0.2 } }),
+  rattledance: mv('Rattle Dance', 'bone', 80, 1, { fx: { kind: 'raise', stat: 'atk', chance: 0.5 }, sig: true }),
+  beepbeam: mv('Beep Beam', 'alien', 40, 1),
+  tractorbeam: mv('Tractor Beam', 'alien', 55, 1, { fx: { kind: 'lower', stat: 'spd', chance: 0.5 } }),
+  ufoblast: mv('UFO Blast', 'alien', 75, 0.9),
+  gravityflip: mv('Gravity Flip', 'alien', 90, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
+  mothership: mv('Mothership', 'alien', 90, 1, { sure: true, sig: true }),
   bigbong: mv('Big Bong', 'sound', 85, 0.9, { fx: { kind: 'sleep', chance: 0.3 }, sig: true }),
 };
 
@@ -148,26 +162,26 @@ export function moveInfo(id) {
 const T1 = {
   fire: 'ember', water: 'bubble', grass: 'leafcut', electric: 'spark', rock: 'pebbleshot', ice: 'icebreath', bug: 'bugbite',
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
-  cosmic: 'starshard', sound: 'echoping',
+  cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
-  cosmic: 'cometcrash', sound: 'bassblast',
+  cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
-  pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek',
+  pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
   ice: 'glacierslam', bug: 'silkwrap', ghost: 'gloomwave', mind: 'deepfocus', metal: 'ironwall', toxic: 'stinkbomb',
-  pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby',
+  pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
 };
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
-  ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup' };
+  ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup' };
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -789,6 +803,75 @@ export const SPECIES = {
     learn: [[1, 'prismray'], [1, 'starshard'], [30, 'rainbowburst'], [35, 'cometcrash'], [40, 'moonbeam'], [45, 'zenithray']],
     model: { shape: 'guardian', scale: 1.2, body: 0xfffaf0, accent: 0xffd84a, dark: 0x6a4ac8, belly: 0xffffff, extras: ['stars'] },
   },
+  /* ------------------------------ bone ---------------------------- */
+  skullop: {
+    name: 'Skullop', type: 'bone', desc: 'A happy little skull that hops around clacking its jaw, as if it is always laughing.',
+    base: { hp: 45, atk: 55, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('bone', 'ghost'),
+    evolve: { level: 22, into: 'skullossal' },
+    model: { shape: 'skull', scale: 0.75, body: 0xf2ead6, accent: 0x7fe0ff, dark: 0x3a3040, belly: 0xe0d6bc, extras: [] },
+  },
+  skullossal: {
+    name: 'Skullossal', type: 'bone', desc: 'A giant skull with a bony crown. It rolls down hills and giggles all the way.',
+    base: { hp: 80, atk: 95, def: 95, spd: 60 }, baseXp: 160, catchRate: 0.12, learn: L('bone', 'ghost'),
+    model: { shape: 'skull', scale: 1.25, body: 0xe8dcc0, accent: 0xffb84a, dark: 0x2a2030, belly: 0xd8ccb0, extras: ['crown', 'horns'] },
+  },
+  rattlepup: {
+    name: 'Rattlepup', type: 'bone', desc: 'A skeleton puppy. It wags its bony tail so hard that it rattles.',
+    base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 66, catchRate: 0.4, learn: L('bone', 'fire'),
+    evolve: { level: 22, into: 'howlbone' },
+    model: { shape: 'bonedog', scale: 0.85, body: 0xf4ecd8, accent: 0xe04a4a, dark: 0x4a3a30, belly: 0xd8ccb0, extras: [] },
+  },
+  howlbone: {
+    name: 'Howlbone', type: 'bone', desc: 'A loyal skeleton hound. It guards old ruins and howls a song at the moon.',
+    base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('bone', 'fire', [[30, 'rattledance']]),
+    model: { shape: 'bonedog', scale: 1.3, body: 0xe6dcc4, accent: 0x4a7ae0, dark: 0x2a2228, belly: 0xcfc2a4, extras: ['bandana', 'spines'] },
+  },
+  dinobit: {
+    name: 'Dinobit', type: 'bone', desc: 'A tiny fossil dino that hatched from a stone egg. It still wears a bit of the shell.',
+    base: { hp: 55, atk: 60, def: 65, spd: 40 }, baseXp: 70, catchRate: 0.4, learn: L('bone', 'rock'),
+    evolve: { level: 24, into: 'stompasaur' },
+    model: { shape: 'dino', scale: 0.8, body: 0xeee2c4, accent: 0x8ad06a, dark: 0x5a4a36, belly: 0xffffff, extras: ['shell'] },
+  },
+  stompasaur: {
+    name: 'Stompasaur', type: 'bone', desc: 'A huge dinosaur skeleton from long, long ago. It stomps gently so nobody gets scared.',
+    base: { hp: 95, atk: 105, def: 90, spd: 50 }, baseXp: 170, catchRate: 0.1, learn: L('bone', 'rock'),
+    model: { shape: 'dino', scale: 1.35, body: 0xe0d0aa, accent: 0xc0703a, dark: 0x3a2e22, belly: 0xf0e6d0, extras: ['plates'] },
+  },
+
+  /* ------------------------------ alien --------------------------- */
+  saucerling: {
+    name: 'Saucerling', type: 'alien', desc: 'A tiny flying saucer. A shy green pilot peeks out of the glass bubble.',
+    base: { hp: 45, atk: 50, def: 50, spd: 70 }, baseXp: 66, catchRate: 0.4, learn: L('alien', 'electric'), flies: true,
+    evolve: { level: 22, into: 'ufomax' },
+    model: { shape: 'ufo', scale: 0.75, body: 0xc8d0dc, accent: 0x7dff6a, dark: 0x6a7080, belly: 0x8de060, extras: [] },
+  },
+  ufomax: {
+    name: 'Ufomax', type: 'alien', desc: 'A big saucer with a gentle beam. It lifts lost toys back to their owners.',
+    base: { hp: 75, atk: 90, def: 80, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('alien', 'electric', [[30, 'mothership']]), flies: true,
+    model: { shape: 'ufo', scale: 1.3, body: 0xb0b8c8, accent: 0xff6ad8, dark: 0x4a5060, belly: 0xa070e0, extras: ['beam', 'fins'] },
+  },
+  blipling: {
+    name: 'Blipling', type: 'alien', desc: "A little visitor from space with three eyes. It says 'blip!' to say hello.",
+    base: { hp: 45, atk: 55, def: 45, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('alien', 'mind'),
+    evolve: { level: 22, into: 'blipstar' },
+    model: { shape: 'visitor', scale: 0.75, body: 0x8de060, accent: 0xc08cff, dark: 0x3a6a2a, belly: 0xd8ffc0, extras: [] },
+  },
+  blipstar: {
+    name: 'Blipstar', type: 'alien', desc: 'It leads little visitors on trips across the stars. Its ray gun only blows bubbles.',
+    base: { hp: 80, atk: 95, def: 70, spd: 90 }, baseXp: 160, catchRate: 0.12, learn: L('alien', 'mind'),
+    model: { shape: 'visitor', scale: 1.15, body: 0x6ac850, accent: 0xb070ff, dark: 0x2a5a20, belly: 0xc8f8b0, extras: ['helmet', 'cape', 'raygun'] },
+  },
+  podlet: {
+    name: 'Podlet', type: 'alien', desc: 'A wobbly space pod that landed in a crater. Its eyes pop up on stalks to look around.',
+    base: { hp: 55, atk: 50, def: 65, spd: 40 }, baseXp: 66, catchRate: 0.4, learn: L('alien', 'toxic'),
+    evolve: { level: 24, into: 'tallipod' },
+    model: { shape: 'tripod', scale: 0.75, body: 0xa070e0, accent: 0x7dff6a, dark: 0x5a3a8a, belly: 0xd8c0ff, extras: ['stubby'] },
+  },
+  tallipod: {
+    name: 'Tallipod', type: 'alien', desc: 'It walks on three long legs to peek over the trees. It collects shiny pebbles.',
+    base: { hp: 90, atk: 90, def: 85, spd: 75 }, baseXp: 165, catchRate: 0.12, learn: L('alien', 'toxic'),
+    model: { shape: 'tripod', scale: 1.1, body: 0x8a5ad0, accent: 0x9dff7a, dark: 0x4a2a7a, belly: 0xc8b0f0, extras: ['long'] },
+  },
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -802,12 +885,14 @@ export const SPAWNS = {
     ['thundapple', 0.2], ['beetlet', 2, 'day'], ['thinkit', 2], ['dreamlet', 1.5, 'night'], ['owlucid', 1, 'night'],
     ['wispurr', 3, 'night'], ['snoozle', 2, 'night'], ['shadeling', 1, 'night'], ['glowbug', 2, 'night'],
     ['moonhop', 2, 'night'], ['starmite', 1, 'night'], ['drumbo', 1.5], ['sludgy', 1],
-    ['prismkit', 0.25, 'day'], ['rainwing', 0.2, 'day']],
+    ['prismkit', 0.25, 'day'], ['rainwing', 0.2, 'day'],
+    ['saucerling', 1, 'night'], ['blipling', 0.8, 'night'], ['rattlepup', 0.8, 'night']],
   meadow: [['twinklet', 3, 'day'], ['pompet', 3, 'day'], ['petalfae', 3, 'day'], ['budling', 3], ['flutterby', 3, 'day'],
     ['dinglet', 2.5], ['hopsy', 2], ['fluffin', 2], ['chirpit', 2, 'day'], ['beetlet', 1], ['bloomora', 0.3],
     ['blossprite', 0.3, 'day'], ['pomperina', 0.2, 'day'], ['starbelle', 0.2, 'night'], ['monarchwing', 0.3, 'day'],
     ['glowbug', 2, 'night'], ['lumimoth', 0.3, 'night'], ['moonhop', 2, 'night'], ['dreamlet', 2, 'night'],
-    ['woolumph', 0.2], ['prismkit', 0.3, 'day'], ['rainwing', 0.3, 'day'], ['auroraptor', 0.05, 'day']],
+    ['woolumph', 0.2], ['prismkit', 0.3, 'day'], ['rainwing', 0.3, 'day'], ['auroraptor', 0.05, 'day'],
+    ['blipling', 1.5, 'night'], ['blipstar', 0.2, 'night']],
   forest: [['sproutle', 4], ['thornox', 2], ['budling', 2], ['mossloth', 2], ['beetlet', 3], ['flutterby', 2, 'day'],
     ['hornbeetle', 0.4], ['chirpit', 1, 'day'], ['sludgy', 2], ['sporelet', 3], ['hissyfang', 1], ['fungrump', 0.3],
     ['twinklet', 1, 'day'], ['petalfae', 1, 'day'], ['wispurr', 3, 'night'], ['phantomaw', 0.4, 'night'],
@@ -816,24 +901,30 @@ export const SPAWNS = {
   swamp: [['sludgy', 4], ['gloopor', 0.4], ['hissyfang', 3], ['venomamba', 0.2], ['sporelet', 2], ['fungrump', 0.3],
     ['bubbuck', 2], ['shellby', 2], ['ripplet', 1], ['joltail', 1], ['beetlet', 2], ['mossloth', 1],
     ['glowbug', 2, 'night'], ['lumimoth', 0.3, 'night'], ['wispurr', 2, 'night'], ['snoozle', 1, 'night'],
-    ['slumbergeist', 0.2, 'night'], ['echobat', 1, 'night']],
+    ['slumbergeist', 0.2, 'night'], ['echobat', 1, 'night'],
+    ['skullop', 1.5, 'night'], ['rattlepup', 1, 'night']],
   beach: [['bubbuck', 4], ['shellby', 4], ['gullop', 3], ['emberpup', 2], ['sparkitten', 2], ['zapple', 1],
-    ['clanklet', 1], ['dinglet', 1], ['gongolin', 0.3], ['rainwing', 0.3, 'day']],
+    ['clanklet', 1], ['dinglet', 1], ['gongolin', 0.3], ['rainwing', 0.3, 'day'],
+    ['dinobit', 0.8]],
   water: [['bubbuck', 2], ['ripplet', 3], ['joltail', 2], ['shellby', 1], ['gullop', 1], ['torrentide', 0.3],
     ['shimmerfin', 0.5], ['spectrafin', 0.08]],
   desert: [['magmole', 3], ['sparkitten', 3], ['emberpup', 2], ['cragling', 3], ['pebblor', 2], ['zapple', 2],
     ['ampup', 2], ['nutlet', 2], ['clanklet', 1], ['hissyfang', 1], ['flarehawk', 1], ['voltwing', 1],
     ['pyrolynx', 0.3], ['cragtusk', 0.5], ['thundapple', 0.2], ['venomamba', 0.2],
-    ['wispurr', 1, 'night'], ['starmite', 1, 'night'], ['meteorb', 1, 'night']],
+    ['wispurr', 1, 'night'], ['starmite', 1, 'night'], ['meteorb', 1, 'night'],
+    ['rattlepup', 2], ['dinobit', 2], ['podlet', 1.5], ['skullop', 1.5, 'night'], ['saucerling', 0.8, 'night'], ['howlbone', 0.2],
+    ['stompasaur', 0.15], ['skullossal', 0.15, 'night'], ['tallipod', 0.2, 'night']],
   mountain: [['pebblor', 4], ['magmole', 2], ['cragtusk', 2], ['geodrake', 2], ['cragling', 2], ['quartzle', 2],
     ['monolor', 0.4], ['flarehawk', 2], ['voltwing', 1], ['clanklet', 3], ['ironhorn', 2], ['nutlet', 2],
     ['mechanox', 0.3], ['titanox', 0.2], ['rivetron', 0.2], ['thinkit', 1], ['cerebrix', 0.2], ['visionelk', 0.3],
     ['scalekin', 1], ['wyvlet', 1], ['wyrmlet', 0.5], ['scalewing', 0.1], ['stormwyvern', 0.1], ['skywyrm', 0.1],
     ['echobat', 2], ['boomwing', 0.2], ['snoozle', 1, 'night'],
-    ['starmite', 2, 'night'], ['meteorb', 2, 'night'], ['galaxor', 0.2, 'night']],
+    ['starmite', 2, 'night'], ['meteorb', 2, 'night'], ['galaxor', 0.2, 'night'],
+    ['dinobit', 1], ['saucerling', 1, 'night'], ['podlet', 1, 'night'], ['tallipod', 0.15, 'night']],
   snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['blizzbear', 0.4], ['emperice', 0.4], ['glacieron', 0.5],
     ['geodrake', 1], ['ironhorn', 1], ['scalekin', 1], ['quartzle', 1], ['skywyrm', 0.2], ['prismkit', 0.2, 'day'],
-    ['wispurr', 1, 'night'], ['moonhop', 1.5, 'night'], ['starmite', 2, 'night'], ['meteorb', 1.5, 'night']],
+    ['wispurr', 1, 'night'], ['moonhop', 1.5, 'night'], ['starmite', 2, 'night'], ['meteorb', 1.5, 'night'],
+    ['blipling', 1, 'night']],
   taiga: [['frostling', 3], ['snowpaw', 3], ['waddlice', 2], ['blizzbear', 0.3], ['emperice', 0.3], ['glacieron', 0.2],
     ['fluffin', 1], ['woolumph', 0.3], ['hopsy', 1], ['owlucid', 2, 'night'], ['sageowl', 0.2, 'night'],
     ['wispurr', 2, 'night'], ['duskmare', 0.2, 'night'], ['phantomaw', 0.2, 'night'], ['echobat', 1, 'night'],
@@ -843,11 +934,13 @@ export const SPAWNS = {
     ['glacieron', 0.4], ['rivetron', 0.3], ['titanox', 0.2], ['monolor', 0.3], ['cerebrix', 0.2], ['visionelk', 0.3],
     ['boomwing', 0.3], ['rainwing', 0.4, 'day'], ['auroraptor', 0.1, 'day'],
     ['starmite', 3, 'night'], ['meteorb', 3, 'night'], ['galaxor', 0.3, 'night'], ['comethorn', 0.3, 'night'],
-    ['lunaroo', 0.3, 'night']],
+    ['lunaroo', 0.3, 'night'],
+    ['saucerling', 1, 'night'], ['blipling', 0.8, 'night'], ['ufomax', 0.2, 'night']],
   // Caves under the hills: rock, metal and ghost creatures, bats and glowing bugs.
   cave: [['echobat', 4], ['pebblor', 3], ['cragling', 3], ['magmole', 2], ['quartzle', 2], ['nutlet', 2],
     ['clanklet', 1], ['sporelet', 2], ['glowbug', 2], ['wispurr', 2], ['shadeling', 1.5], ['geodrake', 0.5],
-    ['starmite', 0.5, 'night'], ['fungrump', 0.2], ['monolor', 0.2], ['lumimoth', 0.2], ['boomwing', 0.15], ['phantomaw', 0.1]],
+    ['starmite', 0.5, 'night'], ['fungrump', 0.2], ['monolor', 0.2], ['lumimoth', 0.2], ['boomwing', 0.15], ['phantomaw', 0.1],
+    ['skullop', 2], ['dinobit', 1.5], ['rattlepup', 1], ['podlet', 0.5], ['skullossal', 0.15], ['stompasaur', 0.1]],
 };
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);

@@ -61,18 +61,18 @@ On a tablet:
 
 - **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): follow a hole in a hillside down into the dark, where star crystals and glowing mushrooms light the way, small underground lakes lie hidden, and rock, metal and ghost creatures live. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
 - **25 building blocks**, including glass, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
-- **102 original creatures**, 6 for each of the 17 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, and cosmic ones come out at night, most of all on the high peaks. Ghosts also only come out at night.
+- **114 original creatures**, 6 for each of the 19 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) dig around the desert and caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night.
 - **Champion's Tower**: a final challenge after all 16 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
-- **Evolution**: 46 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
+- **Evolution**: 52 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, move effects (see **Moves** below), switching and running away. Your whole team shares the XP.
-- **Moves**: 77 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
+- **Moves**: 87 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
 - **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
-- **Weather** changes every few minutes and depends on where you are: rain, thunderstorms, snow in cold places, sandstorms in the desert, misty swamp mornings, shooting stars on clear nights, and a rainbow after rain. Each kind brings out more of some creatures: storms bring electric ones, rain water ones, snow ice ones, and rainbows make rainbow creatures much easier to find.
+- **Weather** changes every few minutes and depends on where you are: rain, thunderstorms, snow in cold places, sandstorms in the desert (bones peek out of the sand), misty swamp mornings, shooting stars on clear nights, and a rainbow after rain. Each kind brings out more of some creatures: storms bring electric ones, rain water ones, snow ice ones, and rainbows make rainbow creatures much easier to find, and shooting stars bring aliens as well as cosmic creatures.
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
@@ -98,25 +98,27 @@ Stat changes and sleep go away when a creature is switched out. A few creatures 
 
 | Type | Strong against | Notes |
 | --- | --- | --- |
-| Normal | — | Can't hit ghosts at all |
+| Normal | — | Can't hit ghosts at all; bones bounce its bonks, and aliens surprise it |
 | Fire | Grass, ice, bug, metal | |
-| Water | Fire, rock | |
+| Water | Fire, rock, bone | Soggy bones |
 | Grass | Water, rock | |
-| Electric | Water, sound | |
+| Electric | Water, sound, alien | Zaps break space gadgets, but bones don't carry zaps |
 | Rock | Fire, electric, ice, bug | |
 | Ice | Grass, bug, drake | |
 | Bug | Grass, mind | |
 | Ghost | Ghost, mind, rainbow, cosmic | Can't hit normal creatures |
 | Mind | Toxic, drake, cosmic | Psychic powers |
 | Metal | Ice, rock, pixie | Very tough; toxic attacks don't affect it |
-| Toxic | Grass, pixie | Can't hurt metal |
+| Toxic | Grass, pixie | Can't hurt metal; bones have no tummy to upset |
 | Pixie | Drake, ghost | Drake attacks don't affect it |
-| Drake | Drake | Powerful dragons, resist fire, water, grass and electric |
+| Drake | Drake, bone | Powerful dragons, resist fire, water, grass and electric; they love chewing bones |
 | Rainbow | Ghost, toxic, mind | Very rare |
 | Cosmic | Rock, drake, sound | Stars and space; come out at night |
-| Sound | Ice, bug, mind | Loud and musical |
+| Sound | Ice, bug, mind, alien | Loud and musical; alien ears are super sensitive |
+| Bone | Ghost, electric, alien | Skeletons aren't scared of ghosts, a bone bonk breaks a battery, and aliens have never seen a skeleton. Weak to water and drake |
+| Alien | Normal, metal, toxic | Ordinary creatures have never seen a spaceship, tractor beams lift metal, and aliens slurp up goo for science. Weak to bone, electric and sound |
 
-Cosmic beats sound, sound beats mind, and mind beats cosmic.
+Cosmic beats sound, sound beats mind, and mind beats cosmic. Mind and cosmic attacks are weak against aliens (space is their home).
 
 ## Gyms and badges
 
