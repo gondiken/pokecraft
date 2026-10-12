@@ -61,6 +61,7 @@ On a tablet:
 - **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals.
 - **24 building blocks**, including glass, stone bricks, lamps (they glow at night), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
 - **102 original creatures**, 6 for each of the 17 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, and cosmic ones come out at night, most of all on the high peaks. Ghosts also only come out at night.
+- **Champion's Tower**: a final challenge after all 16 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 46 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
@@ -119,9 +120,20 @@ There are 16 gyms scattered around the map, one for each type except normal. Eac
 | 15 | Scale Gym | Drake | Leader Wyvern | 26–28 |
 | 16 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
 
-Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 16 to become the Champion.
+Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 16 to open the Champion's Tower.
 
 The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
+
+## Champion's Tower
+
+After you collect all 16 badges, the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
+
+- **Nurse Poppy** heals your team. **Coach Dex** trains you with 3 creatures at your best level and gives **double XP** (and 1 Capture Cube) every time.
+- **Guard Bram** (Lv 34–36) and **Guard Opal** (Lv 36–38) must be beaten first, one after the other.
+- **Champion Solenne** has 6 creatures (Lv 40–45). Her last one is **Zenithar**, a one-of-a-kind rainbow guardian. It can't be caught, and it **powers up** when it is down to half its health!
+- If you win, you become the **Champion**: you get 20 Capture Cubes, a gold "Champion" title on the screen, and the win is saved. You can challenge Solenne again any time (her creatures are 3 levels stronger).
+- If you lose, you wake up at the start, with a hint. Heal with Nurse Poppy and train with Coach Dex, then try again.
+- After 16 badges, wild creatures are also 10 levels stronger, so there is always something to train against.
 
 ## Online saves
 
@@ -167,7 +179,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/blocks.js` | Block definitions and the procedurally drawn pixel-art texture atlas |
 | `src/player.js` | First-person movement and collision |
 | `src/species.js` | Types, moves, species data, stats/XP, blocky creature models |
-| `src/gyms.js` | Gym, leader and trainer data |
+| `src/gyms.js` | Gym, leader and trainer data, and the Champion's Tower |
 | `src/npc.js` | Blocky people: trainers, leaders and the healer |
 | `src/creatures.js` | Wild creature spawning and wandering AI |
 | `src/battle.js` | Battle flow, animations, catching |

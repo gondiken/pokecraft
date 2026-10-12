@@ -6,32 +6,37 @@ export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   const r = await page.evaluate(async () => {
     const S = await import('/src/species.js');
-    const ids = Object.keys(S.SPECIES);
+    const allIds = Object.keys(S.SPECIES);
+    // One-of-a-kind legendary creatures (never wild) are checked separately.
+    const legendary = allIds.filter(id => S.SPECIES[id].legendary);
+    const ids = allIds.filter(id => !S.SPECIES[id].legendary);
     const byType = {};
     for (const id of ids) (byType[S.SPECIES[id].type] ||= []).push(id);
     const spawns = new Set(Object.values(S.SPAWNS).flat().map(e => e[0]));
     const badModels = [];
-    for (const id of ids) {
+    for (const id of allIds) {
       try {
         const model = S.buildModel(id);
         for (let t = 0; t < 3; t += 0.5) S.animateModel(model, t, t > 1.5); // standing, then walking
         S.disposeModel(model);
       } catch (e) { badModels.push(`${id}: ${e.message}`); }
     }
-    const names = ids.map(id => S.SPECIES[id].name);
+    const names = allIds.map(id => S.SPECIES[id].name);
     return {
       count: ids.length,
       sizes: Object.fromEntries(Object.entries(byType).map(([t, l]) => [t, l.length])),
       types: Object.keys(S.TYPE_COLORS),
       notFound: ids.filter(id => !spawns.has(id) && !ids.some(o => S.SPECIES[o].evolve?.into === id && spawns.has(o))),
       badSpawns: [...spawns].filter(id => !S.SPECIES[id]),
-      badEvolve: ids.filter(id => S.SPECIES[id].evolve && S.SPECIES[id].evolve.into in S.SPECIES === false),
-      crossType: ids.filter(id => S.SPECIES[id].evolve && S.SPECIES[S.SPECIES[id].evolve.into]?.type !== S.SPECIES[id].type),
+      badEvolve: allIds.filter(id => S.SPECIES[id].evolve && S.SPECIES[id].evolve.into in S.SPECIES === false),
+      crossType: allIds.filter(id => S.SPECIES[id].evolve && S.SPECIES[S.SPECIES[id].evolve.into]?.type !== S.SPECIES[id].type),
       dupNames: names.filter((n, i) => names.indexOf(n) !== i),
-      noMoves: ids.filter(id => S.makeCreature(id, 5).moves.length === 0),
+      noMoves: allIds.filter(id => S.makeCreature(id, 5).moves.length === 0),
       // Each type's six creatures shouldn't all share one body shape.
       samey: Object.entries(byType).filter(([, l]) => new Set(l.map(id => S.SPECIES[id].model.shape)).size < 3).map(([t]) => t),
       badModels,
+      legendaryWild: legendary.filter(id => spawns.has(id)),
+      legendary,
     };
   });
   const sizes = Object.values(r.sizes);
@@ -45,6 +50,7 @@ export default async function ({ browser, base, t }) {
   t.ok(!r.noMoves.length, `every creature knows moves at level 5 ${r.noMoves.join(', ')}`);
   t.ok(!r.samey.length, `every type has at least 3 different body shapes ${r.samey.join(', ')}`);
   t.ok(!r.badModels.length, `every creature has a model that animates ${r.badModels.join('; ')}`);
+  t.ok(r.legendary.length > 0 && !r.legendaryWild.length, `legendary creatures (${r.legendary.join(', ')}) never spawn in the wild`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

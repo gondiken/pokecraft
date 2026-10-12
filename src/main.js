@@ -6,7 +6,7 @@ import { CreatureManager } from './creatures.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
 import { Battle } from './battle.js';
 import { NpcManager } from './npc.js';
-import { GYMS } from './gyms.js';
+import { GYMS, TOWER } from './gyms.js';
 import { TouchControls } from './touch.js';
 import * as cloud from './cloud.js';
 import { Multiplayer, cleanCode } from './multiplayer.js';
@@ -75,7 +75,7 @@ window.addEventListener('resize', () => {
 const game = {
   scene, camera,
   world: null, player: null, creatures: null,
-  party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [],
+  party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
 };
@@ -117,6 +117,7 @@ function snapshot() {
   return {
     ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
+    champion: game.champion,
     savedAt: Date.now(),
   };
 }
@@ -356,6 +357,7 @@ function startNew(starterId) {
   game.time = 0.05;
   game.badges = [];
   game.beaten = [];
+  game.champion = false;
   game.hotbar = [...HOTBAR];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
@@ -373,6 +375,7 @@ function continueGame(saved) {
   game.time = saved.time ?? 0.05;
   game.badges = saved.badges || [];
   game.beaten = saved.beaten || [];
+  game.champion = !!saved.champion;
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
   game.hotbar = HOTBAR.map((id, i) => (BLOCKS[saved.hotbar?.[i]] && PLACEABLE.includes(saved.hotbar[i]) ? saved.hotbar[i] : id));
   const p = game.player;
@@ -649,6 +652,7 @@ function talkTo(npc) {
     ui.toast(`${npc.name}: Your team is fully healed. Good luck out there!`);
     return;
   }
+  if (npc.kind === 'tower') { talkTower(npc); return; }
   const gym = npc.gym.def;
   const trainerKey = `${gym.id}:trainer`;
   if (npc.kind === 'trainer') {
@@ -668,6 +672,67 @@ function talkTo(npc) {
     trainer: npc, team: gym.leaderTeam,
     intro: rematch ? ['Back for a rematch? I have been training too!'] : gym.intro,
   });
+}
+
+// People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for 16 badges.
+function talkTower(npc) {
+  const ui = game.ui;
+  if (game.badges.length < GYMS.length) {
+    ui.toast(`${npc.name}: ${TOWER.locked(game.badges.length)}`);
+    return;
+  }
+  const p = game.world.tower.people.find(q => q.role === npc.role);
+  if (npc.role === 'coach') {
+    const top = Math.max(...game.party.map(c => c.level));
+    const lv = Math.max(25, Math.min(44, top));
+    const ids = p.teams[Math.floor(Math.random() * p.teams.length)];
+    startBattle({ trainer: npc, team: ids.map((id, i) => [id, i === 0 ? lv - 1 : lv]), intro: p.intro, xpBoost: 2 });
+    return;
+  }
+  if (npc.role === 'guard1' || npc.role === 'guard2') {
+    if (game.beaten.includes(`tower:${npc.role}`)) {
+      ui.toast(`${npc.name}: You already beat me! Go on up.`);
+      return;
+    }
+    if (npc.role === 'guard2' && !game.beaten.includes('tower:guard1')) {
+      ui.toast(`${npc.name}: Beat Guard Bram first, then come back to me!`);
+      return;
+    }
+    startBattle({ trainer: npc, team: p.team, intro: p.intro });
+    return;
+  }
+  if (!game.beaten.includes('tower:guard2')) {
+    ui.toast(`${npc.name}: Beat my guards first, then come back!`);
+    return;
+  }
+  const team = p.team.map(([s, l]) => [s, Math.min(50, l + (game.champion ? 3 : 0))]);
+  startBattle({ trainer: npc, team, intro: game.champion ? p.rematch : p.intro, boss: true });
+}
+
+// Rewards after beating someone in the tower.
+function towerWon(npc) {
+  const ui = game.ui;
+  const p = game.world.tower.people.find(q => q.role === npc.role);
+  if (npc.role === 'coach') {
+    sound.play('win');
+    game.cubes += 1;
+    ui.toast(`${npc.name}: ${p.win}`);
+  } else if (npc.role === 'champion') {
+    const first = !game.champion;
+    game.champion = true;
+    sound.play('champion');
+    game.cubes += first ? 20 : 5;
+    ui.toast(`${npc.name}: ${p.lose}`);
+    ui.toast(first ? 'You are the Champion! +20 Capture Cubes' : 'Another win! +5 Capture Cubes');
+    if (first) ui.celebrate();
+  } else {
+    const key = `tower:${npc.role}`;
+    if (!game.beaten.includes(key)) game.beaten.push(key);
+    sound.play('win');
+    game.cubes += 3;
+    ui.toast(`${npc.name}: ${p.lose}`);
+    ui.toast('You got 3 Capture Cubes.');
+  }
 }
 
 function startBattle(opts) {
@@ -712,9 +777,11 @@ game.onBattleEnd = (result, opts) => {
     healTeam();
     game.player.pos.copy(game.spawnPoint);
     game.player.vel.set(0, 0, 0);
+    if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
   }
   const npc = opts.trainer;
-  if (result === 'won' && npc) {
+  if (result === 'won' && npc?.kind === 'tower') towerWon(npc);
+  else if (result === 'won' && npc) {
     const gym = npc.gym.def;
     if (npc.kind === 'trainer') {
       game.beaten.push(`${gym.id}:trainer`);
@@ -728,7 +795,7 @@ game.onBattleEnd = (result, opts) => {
       game.cubes += 5;
       game.ui.toast(`${npc.name}: ${gym.lose}`);
       game.ui.toast(`You earned the ${gym.badge}! (${game.badges.length}/${GYMS.length}) +5 Capture Cubes`);
-      if (game.badges.length === GYMS.length) game.ui.toast('You collected every badge. You are the PokeCraft Champion!');
+      if (game.badges.length === GYMS.length) game.ui.toast('You collected every badge! The Champion\'s Tower is open. Follow the arrow!');
     } else {
       sound.play('win');
       game.ui.toast(`${npc.name}: You are as strong as ever!`);
@@ -775,8 +842,20 @@ function updateSky(dt) {
 // Points the player towards the next gym they haven't beaten yet.
 function updateGuide() {
   const p = game.player.pos;
-  const next = game.world.gyms.find(g => !game.badges.includes(g.def.id));
-  if (!next) { game.ui.setGuide('All badges collected!'); return; }
+  let next = game.world.gyms.find(g => !game.badges.includes(g.def.id));
+  if (!next && !game.champion && game.world.tower) next = game.world.tower;
+  if (!next) game.ui.setGuide('★ Champion! ★');
+  else updateArrow(p, next);
+
+  const inside = game.world.gymAt(p.x, p.z) || game.world.towerAt(p.x, p.z);
+  if (inside !== currentGym) {
+    currentGym = inside;
+    if (inside?.tower) game.ui.toast("Welcome to the Champion's Tower!");
+    else if (inside) game.ui.toast(`Welcome to the ${inside.def.name}! (${inside.def.type} type)`);
+  }
+}
+
+function updateArrow(p, next) {
   const dx = next.x + 0.5 - p.x, dz = next.z + 0.5 - p.z;
   const dist = Math.round(Math.hypot(dx, dz));
   // Angle of the gym relative to where the player is looking.
@@ -785,12 +864,6 @@ function updateGuide() {
   const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
   const arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
   game.ui.setGuide(dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`);
-
-  const inside = game.world.gymAt(p.x, p.z);
-  if (inside !== currentGym) {
-    currentGym = inside;
-    if (inside) game.ui.toast(`Welcome to the ${inside.def.name}! (${inside.def.type} type)`);
-  }
 }
 
 function updateTarget() {
@@ -860,6 +933,7 @@ function frame(now) {
       hudTimer = 0;
       game.ui.renderHud();
       updateGuide();
+      game.creatures.levelBonus = game.badges.length >= GYMS.length ? 10 : 0;
       const hud = document.getElementById('mp-hud');
       const mp = game.mp;
       const text = mp.role === 'host' ? `👥 Sharing · code ${mp.code} · ${mp.players.length + 1} playing`

@@ -216,6 +216,9 @@ export class Battle {
     this.duel = opts.duel || null;
     // In a battle between players both sides use the same random numbers, so they agree on every turn.
     this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
+    this.boss = !!opts.boss;
+    this.poweredUp = false;
+    this.xpBoost = opts.xpBoost || 1;
     this.trainer = opts.trainer || (this.duel && { name: this.duel.name, pos: this.duel.pos });
     this.foeModel = null;
     this.foeIdx = 0;
@@ -225,7 +228,8 @@ export class Battle {
     this.allyIdx = this.allies.findIndex(c => c.hp > 0);
     this.root.classList.remove('hidden');
     this.actions.replaceChildren();
-    sound.play('battle');
+    sound.play(this.boss ? 'boss' : 'battle');
+    if (this.boss) this.music = setInterval(() => sound.play('bossloop'), 6400);
 
     if (this.wild) {
       const wild = this.wild;
@@ -256,6 +260,8 @@ export class Battle {
 
     let result = null;
     while (!result) result = await this.turn();
+    clearInterval(this.music);
+    this.music = null;
 
     // With a mouse, the browser only gives the mouse back to the game after a click, so end on a
     // button instead of making the player click through a pause screen.
@@ -406,9 +412,13 @@ export class Battle {
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
     const crit = this.rng() < 1 / 16 ? 1.5 : 1;
-    const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * as.atk / ds.def) / 50) + 2;
+    const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * as.atk * (atk.boost || 1) / ds.def) / 50) + 2;
     const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + this.rng() * 0.15)));
+    const hpBefore = def.hp;
     def.hp = Math.max(0, def.hp - dmg);
+    // The champion's last creature hangs on once and powers up at half HP.
+    const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
+    if (bossLast && def.hp <= 0 && hpBefore > statsFor(def).maxHp / 2) def.hp = 1;
     sound.play(eff > 1 ? 'super' : 'hit');
     this.flash(side === 'ally' ? 'foe' : 'ally');
     this.refresh();
@@ -417,6 +427,21 @@ export class Battle {
     if (eff === 0) await this.say(`It doesn't affect ${nameOf(def)}...`, 1100);
     else if (eff > 1) await this.say("It's super effective!", 1000);
     else if (eff < 1) await this.say("It's not very effective...", 1000);
+    if (bossLast && def.hp > 0 && def.hp <= statsFor(def).maxHp / 2) await this.powerUp(def);
+  }
+
+  // The champion's last creature glows and hits harder.
+  async powerUp(c) {
+    this.poweredUp = true;
+    c.boost = 1.25;
+    sound.play('powerup');
+    for (let i = 0; i < 4; i++) {
+      tintModel(this.foeModel, 0xffd84a); await wait(90);
+      tintModel(this.foeModel, null); await wait(90);
+    }
+    tintModel(this.foeModel, 0x806000);
+    await this.say(`${nameOf(c)} is glowing with rainbow light!`, 1600);
+    await this.say('It powered up! Its attacks are stronger now!', 1600);
   }
 
   async faintModel(model) {
@@ -441,7 +466,7 @@ export class Battle {
       await this.sendOutFoe();
       return null;
     }
-    const xp = Math.floor((SPECIES[this.foe.species].baseXp * this.foe.level) / 5 * (this.trainer ? 1.5 : 1));
+    const xp = Math.floor((SPECIES[this.foe.species].baseXp * this.foe.level) / 5 * (this.trainer ? 1.5 : 1) * this.xpBoost);
     await this.giveXp(xp);
     if (this.trainer && this.foeIdx < this.foes.length - 1) {
       this.foeIdx++;

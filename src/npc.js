@@ -101,6 +101,18 @@ export class NpcManager {
         pos: gym.trainerPos, heading: facing, hat: gym.def.trainer.colors.pants,
       }));
     }
+    // The Champion's Tower: nurse, coach, two guards and the champion.
+    if (world.tower) {
+      const [fx, fz] = world.tower.front;
+      for (const p of world.tower.people) {
+        const npc = new Npc({
+          kind: p.kind || 'tower', name: p.name, gym: p.kind ? null : world.tower, colors: p.colors,
+          pos: p.pos, heading: Math.atan2(fx, fz), hat: p.hat, cape: p.cape,
+        });
+        npc.role = p.role;
+        this.add(npc);
+      }
+    }
     // The healer waits next to where you start.
     const hx = Math.floor(spawnPoint.x) + 3, hz = Math.floor(spawnPoint.z);
     const s = world.surface(hx, hz);

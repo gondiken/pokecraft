@@ -94,6 +94,11 @@ const SOUNDS = {
   lose: () => notes([392, 349, 294], 0.14, { len: 0.2, type: 'triangle', vol: 0.3 }),
   heal: () => notes([659, 880, 1175], 0.08, { len: 0.18, vol: 0.3 }),
   ask: () => notes([784, 988], 0.1, { len: 0.12, type: 'triangle', vol: 0.3 }),
+  // The Champion's Tower.
+  boss: () => notes([220, 262, 330, 262, 196], 0.16, { len: 0.24, type: 'triangle', vol: 0.3 }),
+  bossloop: () => notes([110, 131, 165, 131], 0.4, { len: 0.35, vol: 0.12 }),
+  powerup: () => { tone(300, { len: 0.6, slide: 900, type: 'triangle', vol: 0.25 }); [784, 988, 1175].forEach((f, i) => tone(f, { at: 0.5 + i * 0.12, len: 0.2, type: 'triangle', vol: 0.3 })); },
+  champion: () => notes([523, 659, 784, 1047, 784, 1047, 1319, 1568], 0.13, { len: 0.26, type: 'triangle', vol: 0.32 }),
   // Sound-type moves.
   echoping: () => [0, 0.16, 0.32, 0.48].forEach((at, i) => tone(1320, { at, len: 0.12, vol: 0.3 * 0.55 ** i })),
   bassblast: () => {

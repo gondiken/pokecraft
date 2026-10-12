@@ -148,4 +148,39 @@ export const GYMS = [
   },
 ];
 
+// The Champion's Tower: opens after all 16 badges. `at` = [steps toward the door, steps sideways]
+// from the tower's centre (see World.placeTower).
+export const TOWER = {
+  id: 'tower', name: "Champion's Tower",
+  locked: n => `Only trainers with all 16 badges may battle here. You have ${n}. Keep going, you can do it!`,
+  people: [
+    { role: 'nurse', kind: 'healer', name: 'Nurse Poppy', at: [4, -4], hat: 0xffffff,
+      colors: { shirt: 0xa8e0f6, pants: 0xffffff, hair: 0x6a3a2a, skin: 0xe8b98a } },
+    { role: 'coach', name: 'Coach Dex', at: [4, 4], hat: 0x2a6ac8,
+      colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
+      teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
+        ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw']],
+      intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
+    { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
+      colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
+      team: [['titanox', 34], ['venomamba', 35], ['boomwing', 36]],
+      intro: ['Halt! Only the strongest trainers may see the Champion.', 'Show me what you can do!'],
+      lose: 'You are strong! Go on, Guard Opal is next.' },
+    { role: 'guard2', name: 'Guard Opal', at: [-1, -2], hat: 0xb08ae0,
+      colors: { shirt: 0x7a5ab0, pants: 0x2a2a3a, hair: 0xf0e0a0, skin: 0xf2d0b0 },
+      team: [['duskmare', 36], ['pomperina', 37], ['thunderwolf', 38]],
+      intro: ['You beat Bram? Impressive!', 'I am the last guard. The Champion is right behind me.'],
+      lose: 'Wonderful! The Champion is waiting for you.' },
+    { role: 'champion', name: 'Champion Solenne', at: [-4, 0], cape: 0xffd84a,
+      colors: { shirt: 0xf8f4ff, pants: 0x6a4ac8, hair: 0xffd84a, skin: 0xf2d0b0 },
+      team: [['glacieron', 40], ['tidalord', 41], ['pyrolynx', 41], ['sageowl', 42], ['stormwyvern', 43], ['zenithar', 45]],
+      intro: ['So you are the trainer with all 16 badges!',
+        'I am Solenne. Zenithar and I have guarded this tower for many years.',
+        'Show me how much you and your team have grown. Give it everything!'],
+      rematch: ['Back again? Zenithar and I have trained even harder!'],
+      lose: 'Amazing... you and your team are the best. You are the new Champion!',
+      hint: 'So close! Heal with Nurse Poppy and train with Coach Dex, then try again.' },
+  ],
+};
+
 export const gymById = id => GYMS.find(g => g.id === id);
