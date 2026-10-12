@@ -1042,7 +1042,296 @@ function tripod(root, m, parts) {
 }
 
 /* ==== T4b group A shapes ==== */
-const SHAPES_A = {};
+// See-through material helper for the glass and jelly parts.
+function seeThroughA(mesh, opacity) {
+  mesh.material.transparent = true;
+  mesh.material.opacity = opacity;
+  mesh.material.depthWrite = false;
+  return mesh;
+}
+
+// A see-through ball (the three crossed boxes of `ball`).
+function glassBallA(parent, r, color, opacity, x, y, z) {
+  const g = ball(parent, r, color, x, y, z);
+  g.children.forEach(c => seeThroughA(c, opacity));
+  return g;
+}
+
+// Little dashes around a rectangle on a front face: stitches.
+function stitchA(parent, cx, cy, z, w, h, color) {
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) box(parent, 0.05, 0.015, 0.012, color, cx + (k - 1) * w * 0.3, cy + s * h / 2, z);
+    for (let k = 0; k < 2; k++) box(parent, 0.015, 0.05, 0.012, color, cx + s * w / 2, cy + (k - 0.5) * h * 0.5, z);
+  }
+}
+
+// A patchwork teddy with one floppy ear and button eyes.
+function plushie(root, m, parts) {
+  const fur = m.body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(root, s * 0.16, 0.26, 0);
+    box(leg, 0.2, 0.26, 0.24, fur, 0, -0.13, 0.02);
+    box(leg, 0.16, 0.04, 0.12, m.belly, 0, -0.24, 0.1);
+    if (s > 0) {
+      box(leg, 0.21, 0.12, 0.25, m.accent, 0, -0.1, 0.02);
+      stitchA(leg, 0, -0.1, 0.148, 0.2, 0.12, m.dark);
+    }
+    parts.legs.push({ g: leg, phase });
+  }
+  // body with a pink tummy patch edged in stitches
+  box(root, 0.5, 0.5, 0.4, fur, 0, 0.5, 0);
+  box(root, 0.3, 0.28, 0.02, m.belly, 0, 0.47, 0.205);
+  stitchA(root, 0, 0.47, 0.218, 0.3, 0.28, m.dark);
+  box(root, 0.03, 0.03, 0.03, m.dark, 0, 0.47, 0.22); // a button
+  box(root, 0.03, 0.1, 0.07, 0xffffff, 0.26, 0.3, 0.05); // cloth tag on the hip
+  box(root, 0.16, 0.16, 0.12, fur, 0, 0.34, -0.25); // round tail
+  // head
+  const head = pivot(root, 0, 0.78, 0);
+  parts.head = head;
+  box(head, 0.6, 0.5, 0.5, fur, 0, 0.25, 0);
+  box(head, 0.04, 0.02, 0.5, m.dark, 0, 0.51, 0); // seam strip
+  box(head, 0.2, 0.12, 0.02, m.accent, 0.17, 0.43, 0.255);
+  stitchA(head, 0.17, 0.43, 0.266, 0.2, 0.12, m.dark);
+  box(head, 0.26, 0.16, 0.1, 0xf6e2c0, 0, 0.17, 0.28);
+  box(head, 0.1, 0.07, 0.04, m.dark, 0, 0.22, 0.33);
+  for (const s of [-1, 1]) {
+    // button eyes: dark square with four tiny light dots
+    box(head, 0.13, 0.13, 0.03, m.dark, s * 0.16, 0.3, 0.26).userData.eye = true;
+    for (const [dx, dy] of [[-0.02, -0.02], [0.02, -0.02], [-0.02, 0.02], [0.02, 0.02]]) {
+      box(head, 0.025, 0.025, 0.02, 0xfff4e0, s * 0.16 + dx, 0.3 + dy, 0.28).userData.eye = true;
+    }
+  }
+  // stitched V smile
+  box(head, 0.08, 0.03, 0.03, m.dark, -0.09, 0.07, 0.26).rotation.z = -0.5;
+  box(head, 0.08, 0.03, 0.03, m.dark, 0.09, 0.07, 0.26).rotation.z = 0.5;
+  box(head, 0.08, 0.03, 0.03, m.dark, 0, 0.04, 0.26);
+  // one upright round ear, one floppy ear
+  box(head, 0.2, 0.2, 0.1, fur, 0.23, 0.56, 0);
+  box(head, 0.11, 0.11, 0.04, m.belly, 0.23, 0.56, 0.05);
+  const ear = pivot(head, -0.25, 0.5, 0);
+  box(ear, 0.2, 0.22, 0.1, fur, -0.1, 0.0, 0);
+  box(ear, 0.12, 0.12, 0.04, m.accent, -0.1, -0.02, 0.05);
+  swing(parts, ear, 'z', 0.3, 2);
+  // stubby arms
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(root, s * 0.32, 0.7, 0);
+    box(arm, 0.16, 0.3, 0.18, fur, 0, -0.12, 0.02);
+    parts.arms.push({ g: arm, phase });
+  }
+}
+
+// A little candle on a brass dish, with a flickering flame.
+function candle(root, m, parts) {
+  // brass dish with a ring handle (stays on the ground)
+  box(root, 0.8, 0.08, 0.8, 0xd0a040, 0, 0.04, 0);
+  box(root, 0.7, 0.03, 0.7, 0xb08828, 0, 0.095, 0);
+  box(root, 0.16, 0.03, 0.03, 0xd0a040, 0.5, 0.06, 0.1);
+  box(root, 0.16, 0.03, 0.03, 0xd0a040, 0.5, 0.06, -0.1);
+  box(root, 0.03, 0.03, 0.23, 0xd0a040, 0.58, 0.06, 0);
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.44, 0.68, 0.44, m.body, 0, 0.45, 0);
+  box(body, 0.4, 0.66, 0.4, m.body, 0, 0.45, 0).rotation.y = Math.PI / 4;
+  box(body, 0.52, 0.06, 0.52, m.belly, 0, 0.8, 0); // melted lip
+  box(body, 0.34, 0.02, 0.34, 0xffd890, 0, 0.835, 0);
+  // drips of different lengths
+  for (const [x, z, len] of [[-0.2, 0.235, 0.3], [0.2, 0.235, 0.2], [-0.235, 0.05, 0.36], [0.235, -0.08, 0.26], [0.1, -0.235, 0.32]]) {
+    const side = Math.abs(x) > 0.22;
+    box(body, side ? 0.05 : 0.07, len, side ? 0.08 : 0.05, m.belly, x, 0.8 - len / 2, z);
+  }
+  // face plate with a friendly face
+  box(body, 0.3, 0.3, 0.04, 0xffe6c0, 0, 0.5, 0.31);
+  eyes(body, 0.56, 0.335, 0.07, 0.09);
+  for (const s of [-1, 1]) box(body, 0.07, 0.04, 0.02, 0xff9a9a, s * 0.11, 0.47, 0.335);
+  box(body, 0.1, 0.035, 0.02, 0x7a3a2a, 0, 0.44, 0.335);
+  // wick and flame
+  box(body, 0.04, 0.14, 0.04, m.dark, 0, 0.9, 0);
+  const flame = pivot(body, 0, 0.97, 0);
+  parts.tip = glow(box(flame, 0.16, 0.24, 0.16, m.accent, 0, 0.12, 0), m.accent);
+  glow(box(flame, 0.08, 0.14, 0.1, 0xfff6c0, 0, 0.08, 0.04), 0xfff6c0);
+  glow(box(flame, 0.07, 0.1, 0.07, m.accent, 0, 0.28, 0), m.accent);
+  swing(parts, flame, 'z', 0.2, 7);
+}
+
+// A flat see-through jellyfish dome with long ribbon tentacles.
+function jelly(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  seeThroughA(box(body, 0.9, 0.3, 0.9, m.body, 0, 0.5, 0), 0.6);
+  seeThroughA(box(body, 0.66, 0.18, 0.66, m.body, 0, 0.74, 0), 0.6);
+  seeThroughA(box(body, 0.4, 0.1, 0.4, m.body, 0, 0.88, 0), 0.6);
+  // glowing clover inside the dome
+  for (const [x, z] of [[-0.14, 0], [0.14, 0], [0, -0.14], [0, 0.14]]) glow(box(body, 0.1, 0.1, 0.1, m.accent, x, 0.55, z), m.accent);
+  // frilly rim
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4;
+    box(body, 0.17, 0.08, 0.17, m.belly, Math.sin(a) * 0.43, 0.33, Math.cos(a) * 0.43);
+  }
+  // face on the front of the dome
+  eyes(body, 0.52, 0.46, 0.14, 0.12);
+  for (const s of [-1, 1]) box(body, 0.08, 0.05, 0.02, m.accent, s * 0.26, 0.43, 0.46);
+  box(body, 0.12, 0.04, 0.02, m.dark, 0, 0.42, 0.46);
+  // six ribbon tentacles
+  for (let k = 0; k < 6; k++) {
+    const a = k * Math.PI / 3 + 0.3;
+    const t = pivot(body, Math.sin(a) * 0.3, 0.34, Math.cos(a) * 0.3);
+    box(t, 0.07, 0.2, 0.07, m.body, 0, -0.1, 0);
+    box(t, 0.055, 0.16, 0.055, m.body, 0, -0.28, 0);
+    box(t, 0.04, 0.12, 0.04, m.belly, 0, -0.42, 0);
+    glow(box(t, 0.06, 0.06, 0.06, m.accent, 0, -0.51, 0), m.accent);
+    swing(parts, t, k % 2 ? 'x' : 'z', 0.35, 2.5, k);
+  }
+}
+
+// A tortoise whose shell is a flowerpot with a little bonsai tree.
+function bonsai(root, m, parts) {
+  parts.legs = [];
+  for (const [sx, sz, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(root, sx * 0.27, 0.22, sz * 0.3);
+    box(leg, 0.2, 0.22, 0.2, m.body, 0, -0.11, 0);
+    box(leg, 0.2, 0.05, 0.1, 0xe8e0b0, 0, -0.2, 0.08);
+    parts.legs.push({ g: leg, phase });
+  }
+  // flowerpot shell
+  box(root, 0.8, 0.35, 0.9, m.belly, 0, 0.38, 0);
+  box(root, 0.82, 0.06, 0.92, 0xa04a28, 0, 0.3, 0);
+  box(root, 0.9, 0.08, 1.0, m.belly, 0, 0.59, 0);
+  box(root, 0.76, 0.03, 0.86, 0x4a3020, 0, 0.64, 0);
+  // head on a short neck
+  const head = pivot(root, 0, 0.36, 0.5);
+  parts.head = head;
+  box(head, 0.18, 0.18, 0.2, m.body, 0, -0.02, -0.04);
+  box(head, 0.3, 0.28, 0.32, m.body, 0, 0.04, 0.12);
+  eyes(head, 0.1, 0.285, 0.08, 0.09);
+  box(head, 0.1, 0.035, 0.02, m.dark, 0, -0.02, 0.285);
+  for (const s of [-1, 1]) box(head, 0.06, 0.04, 0.02, 0xff9a9a, s * 0.12, 0.0, 0.285);
+  const tail = pivot(root, 0, 0.3, -0.5);
+  parts.tail = tail;
+  box(tail, 0.1, 0.1, 0.14, m.body, 0, 0, -0.05);
+  // the tree
+  const tree = pivot(root, 0, 0.66, -0.05);
+  box(tree, 0.1, 0.18, 0.1, m.dark, 0, 0.09, 0);
+  box(tree, 0.1, 0.16, 0.1, m.dark, 0.06, 0.25, 0);
+  box(tree, 0.1, 0.16, 0.1, m.dark, -0.02, 0.4, 0);
+  for (const [x, y, z, w, d] of [[-0.15, 0.22, 0.04, 0.44, 0.36], [0.15, 0.38, -0.05, 0.4, 0.34], [0, 0.54, 0, 0.3, 0.28]]) {
+    box(tree, w, 0.1, d, 0x4a9a3a, x, y, z);
+    box(tree, w * 0.8, 0.06, d * 0.8, 0x62b84c, x, y + 0.07, z);
+  }
+  for (const [x, y, z] of [[-0.32, 0.26, 0.12], [0.3, 0.42, 0.08], [0.1, 0.6, 0.08], [-0.1, 0.62, -0.06]]) box(tree, 0.08, 0.08, 0.08, m.accent, x, y, z);
+  swing(parts, tree, 'z', 0.06, 1.2);
+}
+
+// A firefly with a light bulb for a tail.
+function bulbfly(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const head = pivot(body, 0, 0.45, 0.4);
+  parts.head = head;
+  ball(head, 0.17, m.body);
+  eyes(head, 0.02, 0.18, 0.09, 0.13);
+  box(head, 0.09, 0.035, 0.02, m.accent, 0, -0.09, 0.18);
+  for (const s of [-1, 1]) {
+    const an = pivot(head, s * 0.07, 0.14, 0.05);
+    an.rotation.z = -s * 0.35;
+    box(an, 0.025, 0.24, 0.025, m.dark, 0, 0.12, 0);
+    glow(box(an, 0.07, 0.07, 0.07, m.accent, 0, 0.26, 0), m.accent);
+  }
+  // thorax with a yellow stripe
+  box(body, 0.28, 0.26, 0.36, m.body, 0, 0.45, 0.06);
+  box(body, 0.3, 0.06, 0.12, m.accent, 0, 0.45, 0.06);
+  // metal screw base
+  [0.3, 0.26, 0.3].forEach((w, i) => box(body, w, w, 0.05, m.dark, 0, 0.45, -0.17 - i * 0.055));
+  // glass bulb with a glowing filament and blinking core
+  const bulb = pivot(body, 0, 0.45, -0.52);
+  glassBallA(bulb, 0.26, m.belly, 0.5, 0, 0, 0);
+  const fil = pivot(bulb, 0, -0.1, 0.04);
+  zigzag(fil, m.accent, 0, 0, 0, 0.9);
+  fil.children.forEach(c => glow(c, m.accent));
+  parts.tip = glow(box(bulb, 0.12, 0.12, 0.12, 0xfff8a0, 0, 0.12, -0.02), 0xfff8a0);
+  // two pairs of pale wings
+  addWings(parts, body, m, 0.14, 0.6, 0.12, 0.5, 0.28, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
+  addWings(parts, body, m, 0.12, 0.6, -0.1, 0.4, 0.24, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
+  // six tiny legs
+  for (const s of [-1, 1]) for (const z of [0.18, 0.06, -0.06]) {
+    const lg = box(body, 0.03, 0.2, 0.03, m.body, s * 0.13, 0.3, z);
+    lg.rotation.z = s * 0.4;
+  }
+}
+
+// A rock that opens like a clam to show glowing purple crystals.
+function geode(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.22, 0.12, 0.15);
+    box(leg, 0.2, 0.12, 0.24, m.dark, 0, -0.06, 0.02);
+    parts.legs.push({ g: leg, phase });
+  }
+  // lower half
+  box(body, 0.8, 0.35, 0.8, m.body, 0, 0.275, 0);
+  box(body, 0.2, 0.15, 0.2, 0xa89888, -0.3, 0.22, 0.3);
+  box(body, 0.18, 0.2, 0.18, m.dark, 0.32, 0.3, -0.3);
+  box(body, 0.7, 0.04, 0.7, m.belly, 0, 0.46, 0);
+  eyes(body, 0.37, 0.405, 0.15, 0.11);
+  box(body, 0.14, 0.04, 0.02, m.dark, 0, 0.26, 0.405);
+  for (const s of [-1, 1]) box(body, 0.07, 0.04, 0.02, 0xd09090, s * 0.27, 0.28, 0.405);
+  // crystals on the floor
+  [[-0.22, -0.1, 0.3, 0.2], [-0.1, 0.1, 0.22, -0.15], [0.12, 0, 0.34, 0.1], [0.25, 0.15, 0.2, -0.3], [0.2, -0.2, 0.26, 0.25], [-0.2, 0.2, 0.16, 0.3], [0, -0.22, 0.28, -0.1]].forEach(([x, z, h, tilt]) => {
+    const c = glow(box(body, 0.08, h, 0.08, m.accent, x, 0.47 + h / 2 - 0.02, z), m.accent);
+    c.rotation.z = tilt;
+  });
+  // the lid, hinged at the back
+  const hinge = pivot(body, 0, 0.45, -0.4);
+  hinge.rotation.x = -0.4;
+  const lid = pivot(hinge, 0, 0, 0);
+  swing(parts, lid, 'x', 0.2, 1.5);
+  box(lid, 0.8, 0.32, 0.8, m.body, 0, 0.16, 0.4);
+  box(lid, 0.2, 0.14, 0.2, 0xa89888, 0.22, 0.34, 0.3);
+  box(lid, 0.22, 0.16, 0.2, m.dark, -0.25, 0.3, 0.55);
+  box(lid, 0.7, 0.03, 0.7, m.belly, 0, 0.0, 0.4);
+  [[-0.22, 0.25, 0.2, 0.2], [0, 0.35, 0.26, -0.15], [0.22, 0.25, 0.2, 0.25], [-0.1, 0.6, 0.16, 0.1], [0.12, 0.55, 0.18, -0.2], [0.0, 0.2, 0.14, 0.3]].forEach(([x, z, h, tilt]) => {
+    const c = glow(box(lid, 0.08, h, 0.08, m.accent, x, -h / 2 + 0.01, z), m.accent);
+    c.rotation.z = tilt;
+  });
+}
+
+// A hopping snow globe with a face on its wooden base.
+function globe(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.2, 0.11, 0.05);
+    box(leg, 0.16, 0.11, 0.2, m.dark, 0, -0.055, 0.02);
+    parts.legs.push({ g: leg, phase });
+  }
+  box(body, 0.7, 0.28, 0.7, m.body, 0, 0.25, 0);
+  box(body, 0.74, 0.05, 0.74, 0xd8b040, 0, 0.4, 0);
+  box(body, 0.74, 0.04, 0.74, 0xd8b040, 0, 0.14, 0);
+  eyes(body, 0.29, 0.355, 0.15, 0.11);
+  for (const s of [-1, 1]) box(body, 0.08, 0.05, 0.02, 0xff9a9a, s * 0.26, 0.21, 0.355);
+  box(body, 0.12, 0.04, 0.02, 0xf6e6d0, 0, 0.2, 0.355);
+  // the glass ball with a snowy scene inside
+  box(body, 0.5, 0.12, 0.5, m.accent, 0, 0.49, 0);
+  box(body, 0.05, 0.1, 0.05, 0x6a4a2a, 0, 0.6, 0);
+  box(body, 0.22, 0.12, 0.22, 0x3a8a4a, 0, 0.68, 0);
+  box(body, 0.14, 0.1, 0.14, 0x3a8a4a, 0, 0.78, 0);
+  box(body, 0.06, 0.06, 0.06, m.accent, 0, 0.85, 0);
+  glassBallA(body, 0.38, m.belly, 0.28, 0, 0.83, 0);
+  const snow = pivot(body, 0, 0.83, 0);
+  for (let k = 0; k < 10; k++) {
+    const a = k * 2.4, r = 0.12 + (k % 4) * 0.045;
+    box(snow, 0.045, 0.045, 0.045, 0xffffff, Math.cos(a) * r, -0.2 + (k * 0.047) % 0.5, Math.sin(a) * r);
+  }
+  spin(parts, snow, 'y', 1.2);
+}
+
+const SHAPES_A = { plushie, candle, jelly, bonsai, bulbfly, geode, globe };
 /* ==== end of T4b group A shapes ==== */
 
 /* ==== T4b group B shapes ==== */

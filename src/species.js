@@ -796,6 +796,41 @@ export const SPECIES = {
   },
 
   /* ==== T4b group A (normal fire water grass electric rock ice): builder A only ==== */
+  stitchums: {
+    name: 'Stitchums', type: 'normal', desc: 'A patchwork teddy that came to life. Every patch is a hug it got from a friend.',
+    base: { hp: 70, atk: 60, def: 60, spd: 50 }, baseXp: 85, catchRate: 0.4, learn: L('normal', 'pixie'),
+    model: { shape: 'plushie', scale: 0.85, body: 0xc89a6a, accent: 0x7ac0e8, dark: 0x5a3a2a, belly: 0xf2c4d4, extras: [] },
+  },
+  waxwobble: {
+    name: 'Waxwobble', type: 'fire', desc: 'A little candle that waddles around at night. Its flame flickers when it giggles.',
+    base: { hp: 50, atk: 75, def: 50, spd: 65 }, baseXp: 90, catchRate: 0.35, learn: L('fire', 'ghost'),
+    model: { shape: 'candle', scale: 0.8, body: 0xfff0d8, accent: 0xffb030, dark: 0x8a5a2a, belly: 0xffe6b8, extras: [] },
+  },
+  jellume: {
+    name: 'Jellume', type: 'water', desc: 'A glowing jellyfish that bobs along the waves. Its tickly tentacles give tiny zaps.',
+    base: { hp: 60, atk: 55, def: 65, spd: 60 }, baseXp: 90, catchRate: 0.35, learn: L('water', 'electric'), swims: true, waterOnly: true,
+    model: { shape: 'jelly', scale: 0.85, body: 0x9ad8ff, accent: 0xff8ad8, dark: 0x4a7ab0, belly: 0xd8f2ff, extras: [] },
+  },
+  bonzoise: {
+    name: 'Bonzoise', type: 'grass', desc: 'A slow tortoise with a tiny tree growing in its flowerpot shell. It trims the leaves itself.',
+    base: { hp: 75, atk: 60, def: 85, spd: 25 }, baseXp: 95, catchRate: 0.35, learn: L('grass', 'water', [[15, 'hunker']]),
+    model: { shape: 'bonsai', scale: 0.9, body: 0x8ab86a, accent: 0xff9ac0, dark: 0x5a3a20, belly: 0xc8683a, extras: [] },
+  },
+  wattwink: {
+    name: 'Wattwink', type: 'electric', desc: 'A firefly whose tail is a light bulb. It blinks to say hello on warm nights.',
+    base: { hp: 45, atk: 60, def: 45, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'bug'), flies: true,
+    model: { shape: 'bulbfly', scale: 0.75, body: 0x3a3a5a, accent: 0xfff27a, dark: 0x8a8a98, belly: 0xfff8d0, extras: [] },
+  },
+  amethump: {
+    name: 'Amethump', type: 'rock', desc: 'It looks like a plain round rock, until it opens up to show the purple crystals inside.',
+    base: { hp: 55, atk: 70, def: 100, spd: 25 }, baseXp: 100, catchRate: 0.3, learn: L('rock', 'mind'),
+    model: { shape: 'geode', scale: 0.85, body: 0x8a7a6a, accent: 0xc080ff, dark: 0x4a3a3a, belly: 0x6a4a8a, extras: [] },
+  },
+  flurrydome: {
+    name: 'Flurrydome', type: 'ice', desc: 'A snow globe that hops about. Shake it gently and it fills with dancing snow.',
+    base: { hp: 65, atk: 60, def: 80, spd: 40 }, baseXp: 95, catchRate: 0.35, learn: L('ice', 'rainbow', [[30, 'lullaby']]),
+    model: { shape: 'globe', scale: 0.85, body: 0x6a4a3a, accent: 0xffffff, dark: 0x3a2a1a, belly: 0xdff6ff, extras: [] },
+  },
   /* ==== end of T4b group A ==== */
 
   /* ==== T4b group B (bug ghost mind metal toxic pixie): builder B only ==== */
@@ -954,6 +989,17 @@ export const SPAWNS = {
 
 // T4b: each type's 7th creature. Kept per group so three builders never edit the same lines.
 const SEVENTH_A = {
+  plains: [['stitchums', 1.2], ['wattwink', 0.8, 'night']],
+  meadow: [['stitchums', 0.8, 'day'], ['wattwink', 1, 'night']],
+  cave: [['waxwobble', 1], ['amethump', 1.5]],
+  desert: [['waxwobble', 0.6, 'night']],
+  water: [['jellume', 1.2]],
+  forest: [['bonzoise', 1]],
+  swamp: [['bonzoise', 0.8], ['wattwink', 0.6, 'night']],
+  mountain: [['amethump', 1]],
+  snow: [['flurrydome', 1]],
+  taiga: [['flurrydome', 0.8]],
+  peak: [['flurrydome', 0.4]],
 };
 
 const SEVENTH_B = {
