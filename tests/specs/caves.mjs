@@ -6,7 +6,7 @@ import path from 'node:path';
 import { openGame, newGame, pause, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
-const SEEDS = [1, 4242, 99, 123456, 777];
+const SEEDS = [1, 4242, 99, 123456, 777, 294331207]; // 294331207: the start is far from the middle
 
 export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -44,7 +44,8 @@ export default async function ({ browser, base, t }) {
       const a = new World(seed, null, null); a.generate({ caves: false });
       const b = new World(seed, null, null); b.generate();
       const near = (x, z, p, r) => Math.max(Math.abs(x - p.x), Math.abs(z - p.z)) <= r;
-      const bad = { gym: 0, tower: 0, middle: 0, water: 0, edge: 0 };
+      const bad = { gym: 0, tower: 0, middle: 0, start: 0, water: 0, edge: 0 };
+      const [sx, sz] = b.startColumn();
       let changed = 0;
       for (let i = 0; i < a.data.length; i++) {
         if (a.data[i] === b.data[i]) continue;
@@ -53,6 +54,7 @@ export default async function ({ browser, base, t }) {
         if (b.gyms.some(g => near(x, z, g, 14))) bad.gym++;
         if (near(x, z, b.tower, 14)) bad.tower++;
         if (near(x, z, { x: WORLD_W / 2, z: WORLD_D / 2 }, 6)) bad.middle++;
+        if (near(x, z, { x: sx, z: sz }, 8)) bad.start++;
         if (b.ground[x + z * WORLD_W] <= WATER_LEVEL + 2) bad.water++;
         if (x < 3 || z < 3 || x >= WORLD_W - 3 || z >= WORLD_D - 3) bad.edge++;
       }
@@ -82,7 +84,7 @@ export default async function ({ browser, base, t }) {
   for (const k of keep) {
     const total = Object.values(k.bad).reduce((a, b) => a + b, 0);
     t.ok(total === 0 && k.surfaceDiff === 0 && k.same && k.opened < 600 && k.holeAt === k.entrances && k.entrances >= 3,
-      `seed ${k.seed}: ${k.changed} blocks changed, none near gyms/tower/middle/water/edges; gyms and tower in place; ${k.holeAt} of ${k.entrances} entrances have a hole; surface same outside ${k.opened} hole columns (${k.strict} columns differ near holes)`);
+      `seed ${k.seed}: ${k.changed} blocks changed, none near gyms/tower/middle/start/water/edges; gyms and tower in place; ${k.holeAt} of ${k.entrances} entrances have a hole; surface same outside ${k.opened} hole columns (${k.strict} columns differ near holes)`);
   }
 
   // The live game: nothing changed around where you start.
@@ -151,7 +153,8 @@ export default async function ({ browser, base, t }) {
     g.player.yaw = 0.5; g.player.pitch = 0.05;
     g.player.vel.set(0, 0, 0);
   });
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(async () => (await import('/src/caves.js')).caveLight.uLantern.value < 0.03,
+    null, { timeout: 90000, polling: 250 }).catch(() => {});
   const surfaceLum = await luminance();
   // Into a cave, facing a wall without anything glowing nearby.
   const wall = await page.evaluate(() => {
@@ -177,7 +180,12 @@ export default async function ({ browser, base, t }) {
     return null;
   });
   t.ok(wall, 'found a dark spot in a cave');
-  await page.waitForTimeout(1500);
+  // The darkness fades in over game time; at 1-2 fps that can take a while, so wait for it.
+  const faded = up => page.waitForFunction(async up => {
+    const { caveLight } = await import('/src/caves.js');
+    return up ? caveLight.uLantern.value > 0.72 : caveLight.uLantern.value < 0.03;
+  }, up, { timeout: 90000, polling: 250 }).catch(() => {});
+  await faded(true);
   const caveLum = await luminance();
   t.ok(caveLum.off < surfaceLum.off * 0.5, `a cave is darker than the surface (${caveLum.off.toFixed(1)} vs ${surfaceLum.off.toFixed(1)})`);
   t.ok(caveLum.on > caveLum.off + 3 && caveLum.on > 4, `the lead creature's light helps (${caveLum.off.toFixed(1)} -> ${caveLum.on.toFixed(1)})`);
@@ -194,16 +202,25 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(faces.dark > 50, `cave chunk faces carry dark sky light (${faces.dark} of ${faces.total})`);
 
-  // 5. Frame time: a cave is not much slower than the surface.
-  const frames = () => page.evaluate(() => new Promise(resolve => {
-    const ts = [];
-    const step = now => { ts.push(now); if (ts.length < 16) requestAnimationFrame(step); else resolve((ts[15] - ts[0]) / 15); };
-    requestAnimationFrame(step);
-  }));
-  const caveFrame = await frames();
+  // 5. Frame time: a cave is not much slower to draw than the surface. Timing the game loop is too
+  // noisy on the software renderer, so time direct renders here and compare the medians.
+  const renderMs = () => page.evaluate(() => {
+    const g = window.pokecraft, ts = [];
+    g.camera.position.copy(g.player.eyePos);
+    g.camera.rotation.set(g.player.pitch, g.player.yaw, 0);
+    g.renderer.render(g.scene, g.camera);
+    for (let i = 0; i < 7; i++) {
+      const t0 = performance.now();
+      g.renderer.render(g.scene, g.camera);
+      g.renderer.getContext().finish();
+      ts.push(performance.now() - t0);
+    }
+    return ts.sort((a, b) => a - b)[3];
+  });
+  const caveFrame = await renderMs();
   await page.evaluate(() => { const g = window.pokecraft, s = g.spawnPoint; g.player.pos.copy(s); g.player.vel.set(0, 0, 0); });
-  await page.waitForTimeout(1500);
-  const surfFrame = await frames();
+  await faded(false);
+  const surfFrame = await renderMs();
   t.ok(caveFrame <= surfFrame * 1.5 + 50, `frame time: cave ${Math.round(caveFrame)} ms, surface ${Math.round(surfFrame)} ms`);
 
   // Rebuilding the world with caves is not much slower, and a cave chunk builds quickly.
@@ -258,10 +275,14 @@ export default async function ({ browser, base, t }) {
   // 7. Treasure chest: opens for 3 cubes, becomes an open chest, and stays open after a reload.
   const chest = await page.evaluate(async () => {
     const g = window.pokecraft, w = g.world;
-    const [cx, cy, cz] = w.caves.chests[0];
-    let spot = null;
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      if (w.get(cx + dx, cy, cz + dz) === 0 && w.isSolid(cx + dx, cy - 1, cz + dz) && w.get(cx + dx, cy + 1, cz + dz) === 0) { spot = [dx, dz]; break; }
+    // Use the first chest with room to stand next to it (worlds are random).
+    let spot = null, cx, cy, cz;
+    for (const [i, c] of w.caves.chests.entries()) {
+      [cx, cy, cz] = c;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (w.get(cx + dx, cy, cz + dz) === 0 && w.isSolid(cx + dx, cy - 1, cz + dz) && w.get(cx + dx, cy + 1, cz + dz) === 0) { spot = [dx, dz]; break; }
+      }
+      if (spot) { g.testChest = i; break; }
     }
     if (!spot) return { error: 'no spot' };
     g.creatures.trySpawnCave = () => {}; // no visitors while testing
@@ -274,7 +295,7 @@ export default async function ({ browser, base, t }) {
   t.ok(!chest.error && chest.id === 47, 'a treasure chest is waiting in a cave');
   await page.waitForTimeout(2500);
   const opened = await page.evaluate(() => {
-    const g = window.pokecraft, [x, y, z] = g.world.caves.chests[0];
+    const g = window.pokecraft, [x, y, z] = g.world.caves.chests[g.testChest];
     const hadTarget = g.world.get(x, y, z);
     g.interact();
     const i = g.world.index(x, y, z);
@@ -286,11 +307,10 @@ export default async function ({ browser, base, t }) {
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
   await page.click('#title-buttons button:has-text("Continue")');
   await page.waitForTimeout(1500);
-  const after = await page.evaluate(() => {
+  const after = await page.evaluate(([x, y, z]) => {
     const g = window.pokecraft;
-    const [x, y, z] = g.world.caves.chests[0];
     return { id: g.world.get(x, y, z), cubes: g.cubes };
-  });
+  }, chest.chest);
   t.ok(after.id === 48, 'the chest is still open after saving and reloading');
 
   // 8. Screenshots.
@@ -307,6 +327,7 @@ export default async function ({ browser, base, t }) {
   const ent = await page.evaluate(async () => {
     const g = window.pokecraft, w = g.world, { raycastVoxel } = await import('/src/world.js');
     const THREE_V = g.player.pos.constructor;
+    let fallback = null; // a nearby spot even if something blocks the view (worlds are random)
     for (const [ex, ez] of w.caves.entrances) {
       let best = null;
       for (let a = 0; a < 16; a++) {
@@ -318,6 +339,7 @@ export default async function ({ browser, base, t }) {
           const eye = new THREE_V(x + 0.5, s.y + 1 + 1.62, z + 0.5);
           const tgt = new THREE_V(ex + 0.5, w.surface(ex, ez).y + 0.5, ez + 0.5);
           const dir = tgt.clone().sub(eye); const dist = dir.length(); dir.normalize();
+          fallback ??= { x, z, y: s.y, tgt: [tgt.x, tgt.y, tgt.z], ex, ez };
           const hit = raycastVoxel(w, eye, dir, dist - 1.5);
           if (!hit && (!best || s.y < best.y)) best = { x, z, y: s.y, tgt: [tgt.x, tgt.y, tgt.z] };
         }
@@ -327,6 +349,12 @@ export default async function ({ browser, base, t }) {
         g.player.lookAt({ x: best.tgt[0], y: best.tgt[1], z: best.tgt[2] });
         return { at: [best.x, best.y, best.z], entrance: [ex, ez] };
       }
+    }
+    if (fallback) {
+      const b = fallback;
+      g.player.pos.set(b.x + 0.5, b.y + 1, b.z + 0.5); g.player.vel.set(0, 0, 0);
+      g.player.lookAt({ x: b.tgt[0], y: b.tgt[1], z: b.tgt[2] });
+      return { at: [b.x, b.y, b.z], entrance: [b.ex, b.ez] };
     }
     return null;
   });

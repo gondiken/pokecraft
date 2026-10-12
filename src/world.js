@@ -248,7 +248,9 @@ export class World {
       }
     }
     // Caves under the hills (before the plants, so trees only grow where there is still ground).
+    const solid = caves ? this.data.slice() : null;
     this.caves = caves ? carveCaves(this) : null;
+    const carved = caves ? this.data.slice() : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
     for (let x = 3; x < WORLD_W - 3; x++) {
       for (let z = 3; z < WORLD_D - 3; z++) {
@@ -273,6 +275,43 @@ export class World {
     }
     this.placeGyms();
     this.placeTower();
+    if (caves) this.fillCavesNearStart(solid, carved);
+  }
+
+  // Where a new player starts (same search as findSpawn in main.js): the first grass going outwards
+  // from the middle. Plants, gyms and the tower cover grass, so it is only known once they are in.
+  startColumn() {
+    const cx = WORLD_W >> 1, cz = WORLD_D >> 1;
+    for (let r = 0; r < 60; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dz = -r; dz <= r; dz++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+          if (this.surface(cx + dx, cz + dz).id === B.GRASS) return [cx + dx, cz + dz];
+        }
+      }
+    }
+    return [cx, cz];
+  }
+
+  // No caves under the start: undo what the carving changed within 10 blocks of it (solid = the
+  // world before carving, carved = right after; anything changed since, like a gym, stays).
+  fillCavesNearStart(solid, carved) {
+    const [sx, sz] = this.startColumn(), R = 10;
+    for (let x = Math.max(0, sx - R); x <= Math.min(WORLD_W - 1, sx + R); x++) {
+      for (let z = Math.max(0, sz - R); z <= Math.min(WORLD_D - 1, sz + R); z++) {
+        for (let y = 0; y < WORLD_H; y++) {
+          const i = this.index(x, y, z);
+          if (solid[i] !== carved[i] && this.data[i] === carved[i]) this.data[i] = solid[i];
+        }
+        this.caves.opened.delete(x + z * WORLD_W);
+      }
+    }
+    const far = ([x, , z]) => Math.max(Math.abs(x - sx), Math.abs(z - sz)) > R;
+    const c = this.caves;
+    c.floors = c.floors.filter(far);
+    c.crystals = c.crystals.filter(far);
+    c.chests = c.chests.filter(far);
+    c.entrances = c.entrances.filter(([x, z]) => Math.max(Math.abs(x - sx), Math.abs(z - sz)) > R);
   }
 
   // A tall, pointy snowy-forest tree.
