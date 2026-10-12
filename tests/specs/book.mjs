@@ -77,7 +77,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await visible('#book') && await page.evaluate(() => document.pointerLockElement === null), 'C opens the book and frees the mouse');
 
   // 6
-  const total = await page.evaluate(async () => Object.keys((await import('/src/species.js')).SPECIES).length);
+  const total = await page.evaluate(async () => Object.values((await import('/src/species.js')).SPECIES).filter(sp => !sp.legendary).length);
   const counts = await page.evaluate(() => ({ s: window.pokecraft.book.seen.size, c: window.pokecraft.book.caught.size, txt: document.getElementById('book-count').textContent }));
   t.ok(counts.txt === `Seen ${counts.s} / ${total} · Caught ${counts.c} / ${total}`, `the counters match (${counts.txt})`);
 

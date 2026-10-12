@@ -3,7 +3,11 @@ import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness } from './species.js
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
-export const bookOrder = () => Object.keys(SPECIES);
+// One-of-a-kind legendaries (never wild, never caught) go last and are not part of the totals.
+export const bookOrder = () => {
+  const ids = Object.keys(SPECIES);
+  return [...ids.filter(id => !SPECIES[id].legendary), ...ids.filter(id => SPECIES[id].legendary)];
+};
 export const TYPES = () => Object.keys(TYPE_COLORS);
 export const BIOME_NAMES = {
   plains: 'Plains', meadow: 'Flower meadows', forest: 'Forests', swamp: 'Swamps', beach: 'Beaches', water: 'Lakes and sea',
@@ -122,7 +126,10 @@ export class Book {
     return { seen: order.filter(id => this.seen.has(id)), caught: order.filter(id => this.caught.has(id)) };
   }
 
-  counts() { return { seen: this.seen.size, caught: this.caught.size, total: bookOrder().length }; }
+  counts() {
+    const ids = bookOrder().filter(id => !SPECIES[id].legendary);
+    return { seen: ids.filter(id => this.seen.has(id)).length, caught: ids.filter(id => this.caught.has(id)).length, total: ids.length };
+  }
 
   get isOpen() { return !this.panel.classList.contains('hidden'); }
 

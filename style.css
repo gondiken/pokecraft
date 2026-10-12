@@ -351,9 +351,10 @@ body.touch #book-filters button { font-size: 11px; min-height: 44px; padding: 8p
 .book-card .book-bar { align-self: stretch; height: 6px; margin: 4px -4px 0; background: #555a6b; }
 .book-card.caught { border-color: var(--accent); }
 .book-card.caught::after {
-  content: ''; position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 50%;
-  background: linear-gradient(#e03c3c 0 45%, #1b1d26 45% 55%, #f4f4f4 55%); border: 2px solid #1b1d26;
+  content: ''; position: absolute; top: 5px; right: 5px; width: 11px; height: 11px; transform: rotate(45deg);
+  background: linear-gradient(135deg, #8fe3ff, #3a8ad8); border: 2px solid #1b1d26;
 }
+#book .panel { background: rgb(20, 22, 30); }
 .book-card.unseen { background: #3a4058; opacity: .8; }
 #book-top { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
 #book-top button { min-height: 44px; min-width: 44px; }
