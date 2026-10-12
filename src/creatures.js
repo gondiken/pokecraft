@@ -33,7 +33,7 @@ export class CreatureManager {
     this.world = world;
     this.list = [];
     this.spawnTimer = 0;
-    this.levelBonus = 0; // wild creatures get stronger after all 16 badges
+    this.levelBonus = 0; // wild creatures get stronger after 16 badges (or the Champion title)
     this.notes = [];
     this.weather = null; // set by main.js: boosts spawn weights (see weights)
     this.raycaster = new THREE.Raycaster();

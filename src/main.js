@@ -7,7 +7,7 @@ import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } 
 import { Battle } from './battle.js';
 import { Book } from './book.js';
 import { NpcManager } from './npc.js';
-import { GYMS, TOWER } from './gyms.js';
+import { GYMS, TOWER, ORIGINAL_GYMS } from './gyms.js';
 import { TouchControls } from './touch.js';
 import * as cloud from './cloud.js';
 import { Multiplayer, cleanCode } from './multiplayer.js';
@@ -403,6 +403,11 @@ function continueGame(saved) {
   if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
   begin();
+  // Old players with the first 16 badges: tell them about the two new gyms.
+  const old = GYMS.slice(0, ORIGINAL_GYMS);
+  if (old.every(g => game.badges.includes(g.id)) && !GYMS.every(g => game.badges.includes(g.id))) {
+    game.ui.toast('New gyms have appeared: the Fossil Gym and the Saucer Gym! Follow the arrow.');
+  }
 }
 
 function begin() {
@@ -714,10 +719,10 @@ function talkTo(npc) {
   });
 }
 
-// People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for 16 badges.
+// People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for every badge (old champions keep their access).
 function talkTower(npc) {
   const ui = game.ui;
-  if (game.badges.length < GYMS.length) {
+  if (game.badges.length < GYMS.length && !game.champion) {
     ui.toast(`${npc.name}: ${TOWER.locked(game.badges.length)}`);
     return;
   }
@@ -835,7 +840,10 @@ game.onBattleEnd = (result, opts) => {
       game.cubes += 5;
       game.ui.toast(`${npc.name}: ${gym.lose}`);
       game.ui.toast(`You earned the ${gym.badge}! (${game.badges.length}/${GYMS.length}) +5 Capture Cubes`);
-      if (game.badges.length === GYMS.length) game.ui.toast('You collected every badge! The Champion\'s Tower is open. Follow the arrow!');
+      if (game.badges.length === GYMS.length) {
+        game.ui.toast(game.champion ? 'You collected every badge! Champion Solenne would love a rematch.'
+          : 'You collected every badge! The Champion\'s Tower is open. Follow the arrow!');
+      }
     } else {
       sound.play('win');
       game.ui.toast(`${npc.name}: You are as strong as ever!`);
@@ -995,7 +1003,7 @@ function frame(now) {
       hudTimer = 0;
       game.ui.renderHud();
       updateGuide();
-      game.creatures.levelBonus = game.badges.length >= GYMS.length ? 10 : 0;
+      game.creatures.levelBonus = game.badges.length >= ORIGINAL_GYMS || game.champion ? 10 : 0;
       const hud = document.getElementById('mp-hud');
       const mp = game.mp;
       const text = mp.role === 'host' ? `👥 Sharing · code ${mp.code} · ${mp.players.length + 1} playing`

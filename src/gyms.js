@@ -146,20 +146,42 @@ export const GYMS = [
     intro: ['Welcome to the Prism Gym, the very last challenge.', 'Only a true champion can shine brighter than a rainbow!'],
     lose: 'You shine brighter than every colour of the rainbow! The Prism Badge is yours.',
   },
+  {
+    id: 'bone', type: 'bone', name: 'Fossil Gym', badge: 'Fossil Badge',
+    leader: { name: 'Leader Digby', colors: { shirt: 0xc8a86a, pants: 0x5a4630, hair: 0xd8d8d8, skin: 0xe8b98a } },
+    trainer: { name: 'Fossil Fan Pia', colors: { shirt: 0xe0d8c0, pants: 0x6a5a40, hair: 0x8a4a2a, skin: 0xf2c79a } },
+    trainerTeam: [['rattlepup', 27], ['skullop', 28]],
+    leaderTeam: [['skullop', 28], ['dinobit', 29], ['howlbone', 30]],
+    intro: ['Welcome to the Fossil Gym! Mind the bones, they are very old.', 'My bony buddies may rattle, but they never fall apart!'],
+    lose: 'You dug up a win! The Fossil Badge is yours.',
+  },
+  {
+    id: 'alien', type: 'alien', name: 'Saucer Gym', badge: 'Saucer Badge',
+    leader: { name: 'Leader Zeeb', colors: { shirt: 0x8de060, pants: 0x4a2a7a, hair: 0xc08cff, skin: 0xf2d0b0 } },
+    trainer: { name: 'Skywatcher Rin', colors: { shirt: 0x3a3a5a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a } },
+    trainerTeam: [['blipling', 28], ['saucerling', 28]],
+    leaderTeam: [['podlet', 29], ['blipstar', 30], ['ufomax', 31]],
+    intro: ['Beep boop! Welcome to the Saucer Gym.', "My friends came from very far away. Let's give them a warm welcome!"],
+    lose: 'Out of this world! The Saucer Badge is yours.',
+  },
 ];
 
-// The Champion's Tower: opens after all 16 badges. `at` = [steps toward the door, steps sideways]
+// The first 16 gyms get their spots from World.gymSpots(ORIGINAL_GYMS); later ones from
+// World.extraGymSpots(). Never change this number: it would move every gym in old worlds.
+export const ORIGINAL_GYMS = 16;
+
+// The Champion's Tower: opens after all 18 badges. `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).
 export const TOWER = {
   id: 'tower', name: "Champion's Tower",
-  locked: n => `Only trainers with all 16 badges may battle here. You have ${n}. Keep going, you can do it!`,
+  locked: n => `Only trainers with all ${GYMS.length} badges may battle here. You have ${n}. Keep going, you can do it!`,
   people: [
     { role: 'nurse', kind: 'healer', name: 'Nurse Poppy', at: [4, -4], hat: 0xffffff,
       colors: { shirt: 0xa8e0f6, pants: 0xffffff, hair: 0x6a3a2a, skin: 0xe8b98a } },
     { role: 'coach', name: 'Coach Dex', at: [4, 4], hat: 0x2a6ac8,
       colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
-        ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw']],
+        ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur']],
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
@@ -174,7 +196,7 @@ export const TOWER = {
     { role: 'champion', name: 'Champion Solenne', at: [-4, 0], cape: 0xffd84a,
       colors: { shirt: 0xf8f4ff, pants: 0x6a4ac8, hair: 0xffd84a, skin: 0xf2d0b0 },
       team: [['glacieron', 40], ['tidalord', 41], ['pyrolynx', 41], ['sageowl', 42], ['stormwyvern', 43], ['zenithar', 45]],
-      intro: ['So you are the trainer with all 16 badges!',
+      intro: [`So you are the trainer with all ${GYMS.length} badges!`,
         'I am Solenne. Zenithar and I have guarded this tower for many years.',
         'Show me how much you and your team have grown. Give it everything!'],
       rematch: ['Back again? Zenithar and I have trained even harder!'],
