@@ -52,6 +52,29 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(Object.values(spawned).every(Boolean), 'a creature can spawn in every biome, day and night');
 
+  // Standing still on the highest peak from day into night: night creatures (cosmic ones) must
+  // show up, and day-only creatures must leave (they used to stay forever, blocking new ones).
+  const night = await page.evaluate(() => {
+    const g = window.pokecraft, w = g.world, cm = g.creatures;
+    let best = null, peaks = 0, n = 0;
+    for (let x = 20; x < 204; x += 2) for (let z = 20; z < 204; z += 2) {
+      const h = w.terrainHeight(x, z);
+      n++; if (w.biome(x, z) === 'peak') peaks++;
+      if ((!best || h > best.h) && !w.gyms.some(gy => Math.hypot(gy.x - x, gy.z - z) < 20)) best = { x, z, h };
+    }
+    g.player.pos.set(best.x + 0.5, w.surface(best.x, best.z).y + 1, best.z + 0.5);
+    for (let i = 0; i < 1800; i++) cm.update(0.1, g.player.pos, g.spawnPoint, false);
+    for (let i = 0; i < 1800; i++) cm.update(0.1, g.player.pos, g.spawnPoint, true);
+    return {
+      cosmic: cm.list.filter(c => c.species.type === 'cosmic').length,
+      dayOnly: cm.list.filter(c => c.when === 'day' && c.pos.distanceTo(g.player.pos) > 10).length,
+      peakShare: peaks / n,
+    };
+  });
+  t.ok(night.cosmic >= 1, `after dark on a peak, cosmic creatures appear (${night.cosmic} of 16)`);
+  t.ok(night.dayOnly === 0, 'day-only creatures leave when night falls');
+  t.ok(night.peakShare > 0.015, `peaks are a few percent of this map (${(night.peakShare * 100).toFixed(1)}%)`);
+
   // The Blocks panel: B opens it, picking a block puts it in the selected hotbar slot.
   await pause(page);
   await page.keyboard.press('b');

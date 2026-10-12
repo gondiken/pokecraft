@@ -14,6 +14,7 @@ export class Wild {
     this.pos = pos;
     this.heading = Math.random() * Math.PI * 2;
     this.mode = 'idle';
+    this.life = 60 + Math.random() * 60; // seconds before it wanders off (see CreatureManager.update)
     this.timer = Math.random() * 2;
     this.t = Math.random() * 10;
     this.frozen = false;
@@ -46,13 +47,16 @@ export class CreatureManager {
     return this.world.biome(x, z);
   }
 
-  pickSpecies(biome, night) {
+  // Returns [species, when] where when is 'day', 'night' or undefined (any time).
+  pickEntry(biome, night) {
     const table = SPAWNS[biome].filter(([, , when]) => !when || (when === 'night') === night);
     const total = table.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
-    for (const [id, w] of table) if ((r -= w) < 0) return id;
-    return table[0][0];
+    for (const e of table) if ((r -= e[1]) < 0) return [e[0], e[2]];
+    return [table[0][0], table[0][2]];
   }
+
+  pickSpecies(biome, night) { return this.pickEntry(biome, night)[0]; }
 
   // Ground height a creature should stand at for column (x, z), or null if not walkable.
   groundY(x, z, sp) {
@@ -68,13 +72,14 @@ export class CreatureManager {
 
   trySpawn(center, spawnPoint, night) {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 14 + Math.random() * 22;
+    // Some close by (so a small place like a peak gets its own creatures), most a bit further out.
+    const dist = Math.random() < 0.4 ? 9 + Math.random() * 8 : 14 + Math.random() * 22;
     const x = Math.floor(center.x + Math.cos(angle) * dist);
     const z = Math.floor(center.z + Math.sin(angle) * dist);
     if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
     const biome = this.biomeAt(x, z);
     if (!biome) return;
-    const species = this.pickSpecies(biome, night);
+    const [species, when] = this.pickEntry(biome, night);
     const sp = SPECIES[species];
     const y = this.groundY(x + 0.5, z + 0.5, sp);
     if (y === null) return;
@@ -84,6 +89,7 @@ export class CreatureManager {
     const level = Math.min(40, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3)));
     const model = buildModel(species);
     const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
+    wild.when = when;
     model.position.copy(wild.pos);
     this.scene.add(model);
     this.list.push(wild);
@@ -101,8 +107,13 @@ export class CreatureManager {
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 0.6;
       if (this.list.length < MAX_WILD) this.trySpawn(playerPos, spawnPoint, night);
+      // Creatures wander off: when far away, after a while, or (for day- or night-only ones) when
+      // the time of day changes. Never right next to the player, so nobody vanishes in front of you.
       for (const w of this.list) {
-        if (!w.frozen && w.pos.distanceTo(playerPos) > 60) { this.remove(w); break; }
+        if (w.frozen) continue;
+        const d = w.pos.distanceTo(playerPos);
+        const wrongTime = w.when && (w.when === 'night') !== night;
+        if (d > 60 || (d > 10 && (w.life <= 0 || wrongTime))) { this.remove(w); break; }
       }
     }
     for (const w of this.list) {
@@ -117,6 +128,7 @@ export class CreatureManager {
 
   updateOne(w, dt) {
     w.t += dt;
+    w.life -= dt;
     const sp = w.species;
     if (w.frozen) {
       animateModel(w.model, w.t, false);

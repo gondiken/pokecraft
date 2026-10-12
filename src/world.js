@@ -125,6 +125,21 @@ export class World {
 
   forestAt(x, z) { return fbm(x / 36, z / 36, this.seed + 33, 2) > 0.56; }
 
+  // Height thresholds for mountains, snow and peaks, from this map's own heights, so every map
+  // gets some high places (flat maps have lower peaks). Never below the usual hill height.
+  highGround() {
+    if (this.high) return this.high;
+    const hs = [];
+    for (let x = 2; x < WORLD_W; x += 4) for (let z = 2; z < WORLD_D; z += 4) hs.push(Math.min(this.terrainHeight(x, z), WORLD_H - 10));
+    hs.sort((a, b) => a - b);
+    const at = share => hs[Math.floor(hs.length * (1 - share))];
+    const peak = Math.max(19, at(0.03));
+    const snow = Math.min(peak - 1, Math.max(18, at(0.05)));
+    const mountain = Math.min(snow - 1, Math.max(17, at(0.11)));
+    this.high = { peak, snow, mountain };
+    return this.high;
+  }
+
   // Climate: how warm and how wet a place is (0..1). Together with height they pick the biome.
   warmth(x, z) { return fbm(x / 55 + 300, z / 55 + 300, this.seed + 55, 3); }
   wetness(x, z) { return fbm(x / 50 + 700, z / 50 + 700, this.seed + 77, 3); }
@@ -133,10 +148,11 @@ export class World {
   // peak, snow, mountain, beach, swamp, taiga (snowy pine forest), desert, forest, meadow or plains.
   biome(x, z) {
     const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
-    // Only a few percent of the land is this high.
-    if (h >= 25) return 'peak';
-    if (h >= 23) return 'snow';
-    if (h >= 21) return 'mountain';
+    // The highest ground of this map: about 3% peaks, 2% snow and 6% mountains.
+    const high = this.highGround();
+    if (h >= high.peak) return 'peak';
+    if (h >= high.snow) return 'snow';
+    if (h >= high.mountain) return 'mountain';
     const warm = this.warmth(x, z), wet = this.wetness(x, z);
     if (warm < 0.37) return 'taiga';
     if (wet > 0.58 && h <= WATER_LEVEL + 3) return 'swamp';

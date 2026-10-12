@@ -53,7 +53,9 @@ Key ideas:
 - `window.pokecraft` is the global `game` object (handy in tests and the console):
   `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`.
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
-  saves' builds to line up (heights are low: mountain starts at 21, peak at 25, ~1–7% of land).
+  saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
+  percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
+  day/night-only ones leave when the time changes, so the 16-creature cap never freezes the mix.
   `SPAWNS` has a table per biome (the `blocks` and `roster` specs check coverage and placement rules).
 - The world is **deterministic from its seed**; a save stores the seed plus the list of player
   block edits (`world.edits`, index → block id). Gyms are generated, not saved, so changing
