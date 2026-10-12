@@ -5,6 +5,7 @@ import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
 import { Battle } from './battle.js';
+import { Book } from './book.js';
 import { NpcManager } from './npc.js';
 import { GYMS, TOWER } from './gyms.js';
 import { TouchControls } from './touch.js';
@@ -102,6 +103,7 @@ game.weather = new Weather(game, {
   changed: () => { if (game.mp?.role === 'host') game.mp.sendState(); },
 });
 game.creatures.weather = game.weather;
+game.book = new Book(game);
 
 function loadSave() {
   try {
@@ -115,6 +117,7 @@ function loadSave() {
 }
 
 function snapshot() {
+  game.book.syncTeam();
   const p = game.player;
   // While visiting someone else's world, keep saving your own world and position, not theirs.
   const home = game.homeWorld ?? {
@@ -125,6 +128,7 @@ function snapshot() {
     ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
+    ...game.book.toSave(),
     savedAt: Date.now(),
   };
 }
@@ -360,6 +364,7 @@ function showStarters() {
 function startNew(starterId) {
   game.party = [makeCreature(starterId, 6)];
   game.box = [];
+  game.book.reset(); game.book.syncTeam();
   game.cubes = 10;
   game.time = 0.05;
   game.badges = [];
@@ -378,6 +383,7 @@ function startNew(starterId) {
 function continueGame(saved) {
   game.party = saved.party || [];
   game.box = saved.box || [];
+  game.book.load(saved);
   game.cubes = saved.cubes ?? 10;
   game.time = saved.time ?? 0.05;
   game.badges = saved.badges || [];
@@ -495,6 +501,7 @@ function togglePanel(which = 'team') {
 }
 const toggleTeam = () => togglePanel('team');
 const toggleBlocks = () => togglePanel('blocks');
+const toggleBook = () => togglePanel('book');
 game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
 game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
 
@@ -526,6 +533,7 @@ document.getElementById('menu').addEventListener('click', e => { e.stopPropagati
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
 document.getElementById('blocks-close').addEventListener('click', toggleBlocks);
+document.getElementById('book-close').addEventListener('click', toggleBook);
 canvas.addEventListener('click', () => {
   if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();
 });
@@ -541,9 +549,9 @@ document.addEventListener('keydown', e => {
     if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
     return;
   }
-  if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || (e.code === 'Escape' && game.ui.panelOpen)) {
+  if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
-    togglePanel(e.code === 'KeyB' ? 'blocks' : 'team');
+    togglePanel(e.code === 'KeyB' ? 'blocks' : e.code === 'KeyC' ? 'book' : 'team');
     return;
   }
   if (!playing()) return;
@@ -642,6 +650,7 @@ game.touch = new TouchControls(game, canvas, {
   interact: () => { if (playing()) interact(); },
   team: toggleTeam,
   blocks: toggleBlocks,
+  book: toggleBook,
   pause,
   tapAt,
 });
