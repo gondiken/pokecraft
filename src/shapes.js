@@ -1041,7 +1041,20 @@ function tripod(root, m, parts) {
   }
 }
 
+/* ==== T4b group A shapes ==== */
+const SHAPES_A = {};
+/* ==== end of T4b group A shapes ==== */
+
+/* ==== T4b group B shapes ==== */
+const SHAPES_B = {};
+/* ==== end of T4b group B shapes ==== */
+
+/* ==== T4b group C shapes ==== */
+const SHAPES_C = {};
+/* ==== end of T4b group C shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
+  ...SHAPES_A, ...SHAPES_B, ...SHAPES_C,
 };

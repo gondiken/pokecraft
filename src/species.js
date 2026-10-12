@@ -795,6 +795,15 @@ export const SPECIES = {
     model: { shape: 'armadillo', scale: 1.15, body: 0xc0a040, accent: 0xffe080, dark: 0x6a5020, belly: 0xf0e0a0, extras: ['notes'] },
   },
 
+  /* ==== T4b group A (normal fire water grass electric rock ice): builder A only ==== */
+  /* ==== end of T4b group A ==== */
+
+  /* ==== T4b group B (bug ghost mind metal toxic pixie): builder B only ==== */
+  /* ==== end of T4b group B ==== */
+
+  /* ==== T4b group C (drake rainbow cosmic sound bone alien): builder C only ==== */
+  /* ==== end of T4b group C ==== */
+
   /* legendary: one of a kind, never wild, never catchable */
   zenithar: {
     name: 'Zenithar', type: 'rainbow', legendary: true,
@@ -942,6 +951,18 @@ export const SPAWNS = {
     ['starmite', 0.5, 'night'], ['fungrump', 0.2], ['monolor', 0.2], ['lumimoth', 0.2], ['boomwing', 0.15], ['phantomaw', 0.1],
     ['skullop', 2], ['dinobit', 1.5], ['rattlepup', 1], ['podlet', 0.5], ['skullossal', 0.15], ['stompasaur', 0.1]],
 };
+
+// T4b: each type's 7th creature. Kept per group so three builders never edit the same lines.
+const SEVENTH_A = {
+};
+
+const SEVENTH_B = {
+};
+
+const SEVENTH_C = {
+};
+
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

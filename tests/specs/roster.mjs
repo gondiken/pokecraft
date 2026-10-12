@@ -42,7 +42,7 @@ export default async function ({ browser, base, t }) {
   const sizes = Object.values(r.sizes);
   t.ok(r.types.every(t => r.sizes[t]) && new Set(sizes).size === 1,
     `every type has the same number of creatures (${JSON.stringify(r.sizes)})`);
-  t.ok(r.count === r.types.length * 6, `${r.count} creatures, 6 per type`);
+  t.ok(r.count === r.types.length * 7, `${r.count} creatures, 7 per type`);
   t.ok(!r.notFound.length, `every creature can be caught, or evolved from one that can ${r.notFound.join(', ')}`);
   t.ok(!r.badSpawns.length, `spawn tables only list real creatures ${r.badSpawns.join(', ')}`);
   t.ok(!r.badEvolve.length && !r.crossType.length, `evolutions are real and keep their type ${[...r.badEvolve, ...r.crossType].join(', ')}`);
