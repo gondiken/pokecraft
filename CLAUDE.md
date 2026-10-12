@@ -38,8 +38,8 @@ this file is for working on the code.
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
-| `src/species.js` | Types + effectiveness chart, moves (87, with `fx`; `moveInfo(id)` gives the button/Book words), all 114 normal species (6 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
-| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly) |
+| `src/species.js` | Types + effectiveness chart, moves (87, with `fx`; `moveInfo(id)` gives the button/Book words), all 133 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
 | `src/gyms.js` | The 18 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
@@ -54,6 +54,7 @@ this file is for working on the code.
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
+- **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
   (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 18 badges (old Champions keep access: `game.champion`). `beaten` gains
@@ -156,7 +157,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `map
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (T4a, the Bone and Alien types and gyms, is done; T4b is the 7th creature per type) (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). Waves 1–2 (T1, T2, T3, T5, T6) are done; next is T4, then T7. Read it before
+  and the backlog). Waves 1–2 (T1, T2, T3, T5, T6) and T4a are done; T4b (7th creatures) is in progress, then T7. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;

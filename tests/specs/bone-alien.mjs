@@ -1,4 +1,4 @@
-// Bone and Alien types: six creatures each, spawns, learnsets, the type chart, new body shapes and
+// Bone and Alien types: six creatures each from T4a (plus T4b's 7th of each type), spawns, learnsets, the type chart, new body shapes and
 // moves, and a portrait grid (tests/screenshots/new-creatures.png + creature-<id>.png).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,10 +17,12 @@ export default async function ({ browser, base, t }) {
     const out = { types: {}, bad: [] };
     for (const type of ['bone', 'alien']) {
       const mons = Object.entries(S.SPECIES).filter(([, s]) => s.type === type).map(([id]) => id);
-      const olderShapes = new Set(Object.values(S.SPECIES).filter(s => s.type !== type && s.type !== (type === 'bone' ? 'alien' : 'bone')).map(s => s.model.shape));
-      const shapes = new Set(mons.map(id => S.SPECIES[id].model.shape));
+      const own = mons.filter(id => ids.includes(id)); // T4a's six per type (T4b adds a 7th)
+      const olderShapes = new Set(Object.entries(S.SPECIES).filter(([id]) => !ids.includes(id)).map(([, s]) => s.model.shape));
+      const shapes = new Set(own.map(id => S.SPECIES[id].model.shape));
       out.types[type] = {
         mons,
+        own: own.length,
         reachable: mons.every(id => spawners.has(id) || mons.some(o => S.SPECIES[o].evolve?.into === id && spawners.has(o))),
         moves: Object.values(S.MOVES).filter(m => m.type === type).length,
         knows: mons.every(id => S.makeCreature(id, 20).moves.some(m => S.MOVES[m].type === type)),
@@ -49,7 +51,7 @@ export default async function ({ browser, base, t }) {
   }, IDS);
   for (const type of ['bone', 'alien']) {
     const i = r.types[type];
-    t.ok(i.mons.length === 6, `${type}: 6 creatures (${i.mons.join(', ')})`);
+    t.ok(i.mons.length === 7 && i.own === 6, `${type}: 7 creatures, 6 of them T4a's (${i.mons.join(', ')})`);
     t.ok(i.reachable, `${type}: every creature spawns or evolves from one that does`);
     t.ok(i.moves >= 4 && i.knows, `${type}: ${i.moves} moves, every creature knows one at Lv 20`);
     t.ok(i.shapes === 3 && !i.sharedShapes.length, `${type}: 3 own body shapes ${i.sharedShapes.join(', ')}`);
@@ -60,7 +62,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.evolve.length === 6, `6 evolutions (${r.evolve.join(', ')})`);
   t.ok(r.bonetoss.includes('hits 2 to 4 times'), `Bone Toss text: ${r.bonetoss}`);
   t.ok(r.sig.every(Boolean), 'Howlbone and Ufomax learn their special moves at 30');
-  t.ok(r.count === 114, `${r.count} normal species`);
+  t.ok(r.count === 133, `${r.count} normal species`);
 
   // Portrait grid: 4 columns x 3 rows, and a close-up of each.
   const shots = await page.evaluate(async ids => {

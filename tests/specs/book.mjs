@@ -88,7 +88,7 @@ export default async function ({ browser, base, t }) {
     const cards = [...document.querySelectorAll('.book-card')];
     return { n: cards.length, all: cards.every(c => SPECIES[c.dataset.species].type === 'fire'), info: document.getElementById('book-typeinfo')?.textContent };
   });
-  t.ok(fire.n === 6 && fire.all, `the Fire filter shows the 6 fire creatures (${fire.info})`);
+  t.ok(fire.n === 7 && fire.all, `the Fire filter shows the 7 fire creatures (${fire.info})`);
   await page.evaluate(() => document.querySelector('.book-filter[data-filter="all"]').click());
 
   // 8
