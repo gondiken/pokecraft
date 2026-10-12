@@ -63,8 +63,8 @@ IMPACT.normal = (k, from, to, { big }) => {
       }
       puff.fade(1 - p);
       star.position.copy(to.pos);
-      star.scale.setScalar(Math.max(0.01, (p < 0.3 ? p / 0.3 * 1.2 : 1.2 - (p - 0.3) * 1.2) * m));
-      star.material.opacity = fadeOut(p, 0.7);
+      star.scale.setScalar(Math.max(0.01, (p < 0.25 ? p / 0.25 * 0.8 : 0.8 - (p - 0.25) * 1.0) * m));
+      star.material.opacity = fadeOut(p, 0.5);
     },
   };
 };
@@ -243,7 +243,7 @@ TRAVEL.rock = k => {
         const t = trailT(p, i, N, 0.3), r = rocks[i];
         if (t < 0) { r.visible = false; continue; }
         r.visible = true;
-        k.at(t, A, 1.2);
+        k.at(t, A, 0.7);
         r.position.set(A.x + k.side.x * (s[i * 3] - 0.5) * 0.5, A.y + (s[i * 3 + 1] - 0.5) * 0.3, A.z + k.side.z * (s[i * 3] - 0.5) * 0.5);
         r.rotation.set(t * 9 + i, t * 7, t * 5);
         r.scale.setScalar(0.2 + s[i * 3 + 2] * 0.12);
@@ -315,7 +315,7 @@ IMPACT.ice = (k, from, to, { big }) => {
         const sh = shards[i];
         sh.position.set(to.pos.x + Math.cos(ang) * d, to.pos.y + Math.sin(i * 3) * 0.3, to.pos.z + Math.sin(ang) * d);
         sh.material.rotation = p * 6 + i;
-        sh.scale.setScalar(0.55 * m);
+        sh.scale.setScalar(0.4 * m);
         sh.material.opacity = fadeOut(p, 0.5);
       }
       for (let i = 0; i < FN; i++) {
@@ -366,18 +366,18 @@ IMPACT.bug = (k, from, to, { big }) => {
 /* -------------------------------- ghost -------------------------------- */
 
 TRAVEL.ghost = k => {
-  const shadow = k.sprite('dot', { color: 0x2a1a44, size: 1.1, opacity: 0.85 });
+  const shadow = k.sprite('soft', { color: 0x2a1a44, size: 1.1, opacity: 0.85 });
   const wisps = k.points({ n: 8, tex: 'dot', size: 0.3, glow: true, colors: [0xb08aff, 0x7a5ac0] });
   return {
     dur: 450,
     step(p) {
-      k.at(k.ease(p), A, 1.5);
+      k.at(k.ease(p), A, 0.9);
       shadow.position.copy(A);
       shadow.scale.setScalar(1.0 + 0.2 * Math.sin(p * 20));
       for (let i = 0; i < 8; i++) {
         const t = p - (i + 1) * 0.045;
         if (t < 0) { wisps.hide(i); continue; }
-        k.at(k.ease(t), B, 1.5);
+        k.at(k.ease(t), B, 0.9);
         wisps.set(i, B.x + Math.sin(i * 2 + p * 12) * 0.15, B.y + Math.cos(i) * 0.15, B.z);
       }
       wisps.fade(fadeOut(p, 0.8));

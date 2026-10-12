@@ -24,10 +24,11 @@ const wave = t => Math.sin(Math.PI * t);
 
 // 8x8 pixel pictures ('#' = solid). Drawn white so colours can tint them.
 const BITMAPS = {
+  dot: ['..####..', '.######.', '########', '########', '########', '########', '.######.', '..####..'],
   star: ['...##...', '...##...', '..####..', '########', '########', '..####..', '...##...', '...##...'],
   leaf: ['.....###', '...#####', '..######', '.#######', '.######.', '######..', '#####...', '##......'],
   bubble: ['..####..', '.#....#.', '#..#...#', '#.#....#', '#......#', '#......#', '.#....#.', '..####..'],
-  shard: ['...##...', '..####..', '..####..', '.######.', '.######.', '..####..', '..####..', '...##...'],
+  shard: ['...##...', '...##...', '..####..', '..####..', '..####..', '...##...', '...##...', '...##...'],
   note: ['....####', '....#..#', '....#...', '....#...', '....#...', '..###...', '.####...', '..##....'],
   bone: ['........', '##....##', '########', '##....##', '........', '........', '........', '........'],
   skull: ['..####..', '.######.', '########', '##.##.##', '##.##.##', '########', '.#.##.#.', '..#..#..'],
@@ -43,19 +44,25 @@ const TEXTURES = {};
 function texture(name) {
   if (TEXTURES[name]) return TEXTURES[name];
   const c = document.createElement('canvas');
-  c.width = c.height = 32;
+  c.width = c.height = 40;
   const g = c.getContext('2d');
-  if (name === 'dot') {
-    const grad = g.createRadialGradient(16, 16, 1, 16, 16, 15);
+  if (name === 'soft') {
+    const grad = g.createRadialGradient(20, 20, 1, 20, 20, 19);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
     grad.addColorStop(0.45, 'rgba(255,255,255,0.8)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = grad;
-    g.fillRect(0, 0, 32, 32);
+    g.fillRect(0, 0, 40, 40);
   } else {
+    // White pixels with a dark outline: tinted by the particle colour, but still readable on a bright sky.
     const rows = BITMAPS[name] || BITMAPS.star;
+    const on = (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8 && rows[y][x] === '#';
+    g.fillStyle = 'rgba(25,20,50,0.8)';
+    for (let y = -1; y <= 8; y++) for (let x = -1; x <= 8; x++) {
+      if (!on(x, y) && (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1))) g.fillRect((x + 1) * 4, (y + 1) * 4, 4, 4);
+    }
     g.fillStyle = '#fff';
-    rows.forEach((row, y) => { for (let x = 0; x < 8; x++) if (row[x] === '#') g.fillRect(x * 4, y * 4, 4, 4); });
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (on(x, y)) g.fillRect((x + 1) * 4, (y + 1) * 4, 4, 4);
   }
   const t = new THREE.CanvasTexture(c);
   t.magFilter = t.minFilter = THREE.NearestFilter;
@@ -196,9 +203,10 @@ export class Fx {
       fx.root.add(obj);
       return obj;
     };
-    const base = (glow, opacity) => ({
+    const base = (_glow, opacity) => ({
       transparent: true, depthWrite: false, depthTest: false, fog: false, opacity,
-      blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending,
+      // Additive blending turns bright colours white on a daytime sky, so "glow" only means "bright" here.
+      blending: THREE.NormalBlending,
     });
     return {
       dir, side, dist,
@@ -326,7 +334,7 @@ const STATUS = {
     };
   },
   miss(k, from, to) {
-    const pts = k.points({ n: 5, tex: 'puff', size: 0.55, colors: [0xdad8d0, 0xb8b6ae] });
+    const pts = k.points({ n: 5, tex: 'puff', size: 0.75, colors: [0xdad8d0, 0xb8b6ae] });
     const sd = from === to ? new THREE.Vector3(1, 0, 0) : k.side;
     return {
       dur: 550,

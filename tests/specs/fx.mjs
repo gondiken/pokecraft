@@ -25,6 +25,7 @@ const startWeakBattle = (page, { species, level, moves }) => page.evaluate(async
   wild.data.hp = 1;
   g.creatures.list.push(wild);
   g.scene.add(wild.model); // the game adds a wild creature's model when it spawns
+  wild.model.position.copy(wild.pos); // ...and places it
   g.inBattle = true; document.body.classList.add('in-battle');
   document.getElementById('pause').classList.add('hidden');
   g.battle.start({ wild });
