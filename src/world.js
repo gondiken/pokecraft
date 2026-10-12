@@ -60,6 +60,18 @@ const FACES = [
   { dir: [0, 0, 1], shade: 0.45, kind: 'side', corners: [[0, 0, 1, 0, 0], [1, 0, 1, 1, 0], [0, 1, 1, 0, 1], [1, 1, 1, 1, 1]] },
 ];
 
+// Trees and other plants, cleared away where gyms are built.
+const PLANTS = new Set([B.LOG, B.LEAVES, B.PINE_LOG, B.PINE_LEAVES, B.CACTUS, B.FLOWER_BUSH, B.CRYSTAL]);
+
+// The top block and the blocks just under it, for each biome.
+function groundOf(biome, h) {
+  return {
+    peak: [B.SNOW, B.STONE], snow: [B.SNOW, B.STONE], mountain: [B.STONE, B.STONE],
+    beach: [B.SAND, B.SAND], swamp: [B.MUD, B.DIRT], taiga: [h <= WATER_LEVEL + 1 ? B.GRAVEL : B.SNOW, B.DIRT],
+    desert: [B.SAND, B.SANDSTONE],
+  }[biome] || [B.GRASS, B.DIRT];
+}
+
 function newBuffers() { return { pos: [], uv: [], col: [], idx: [] }; }
 
 export class World {
@@ -113,34 +125,92 @@ export class World {
 
   forestAt(x, z) { return fbm(x / 36, z / 36, this.seed + 33, 2) > 0.56; }
 
+  // Climate: how warm and how wet a place is (0..1). Together with height they pick the biome.
+  warmth(x, z) { return fbm(x / 55 + 300, z / 55 + 300, this.seed + 55, 3); }
+  wetness(x, z) { return fbm(x / 50 + 700, z / 50 + 700, this.seed + 77, 3); }
+
+  // The biome at (x, z), from the natural terrain (player building doesn't change it):
+  // peak, snow, mountain, beach, swamp, taiga (snowy pine forest), desert, forest, meadow or plains.
+  biome(x, z) {
+    const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
+    // Only a few percent of the land is this high.
+    if (h >= 25) return 'peak';
+    if (h >= 23) return 'snow';
+    if (h >= 21) return 'mountain';
+    const warm = this.warmth(x, z), wet = this.wetness(x, z);
+    if (warm < 0.37) return 'taiga';
+    if (wet > 0.58 && h <= WATER_LEVEL + 3) return 'swamp';
+    if (h <= WATER_LEVEL + 1) return 'beach';
+    if (warm > 0.57 && wet < 0.48) return 'desert';
+    if (this.forestAt(x, z)) return 'forest';
+    if (fbm(x / 30 + 900, z / 30 + 900, this.seed + 91, 2) > 0.58) return 'meadow';
+    return 'plains';
+  }
+
   generate() {
+    const biomes = new Array(WORLD_W * WORLD_D);
     for (let x = 0; x < WORLD_W; x++) {
       for (let z = 0; z < WORLD_D; z++) {
         const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
-        const beach = h <= WATER_LEVEL + 1;
-        const rocky = h >= 25;
-        const snowy = h >= 29;
+        const biome = biomes[x + z * WORLD_W] = this.biome(x, z);
+        const [top, under] = groundOf(biome, h);
+        // Gravel patches on mountainsides.
+        const gravel = biome === 'mountain' && fbm(x / 9, z / 9, this.seed + 21, 2) > 0.66;
         for (let y = 0; y <= Math.max(h, WATER_LEVEL); y++) {
           let id;
-          if (y > h) id = B.WATER;
-          else if (y === h) id = beach ? B.SAND : snowy ? B.SNOW : rocky ? B.STONE : B.GRASS;
-          else if (y > h - 4) id = beach ? B.SAND : rocky ? B.STONE : B.DIRT;
-          else id = B.STONE;
+          if (y > h) id = biome === 'taiga' && y === WATER_LEVEL ? B.ICE : B.WATER; // frozen lakes
+          else if (y === h) id = gravel ? B.GRAVEL : top;
+          else if (y > h - 4) id = under;
+          else {
+            // Ore hidden in the rock: dig (or look at cliffs) to find it.
+            const r = hash2(x * 7 + y, z * 13 - y * 3, this.seed + 404);
+            id = r < 0.004 ? B.GOLD_ORE : r < 0.02 ? B.COAL_ORE : B.STONE;
+          }
           this.data[this.index(x, y, z)] = id;
         }
       }
     }
-    // Trees
+    // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
     for (let x = 3; x < WORLD_W - 3; x++) {
       for (let z = 3; z < WORLD_D - 3; z++) {
-        const chance = this.forestAt(x, z) ? 0.05 : 0.004;
-        if (hash2(x, z, this.seed + 99) >= chance) continue;
+        const r = hash2(x, z, this.seed + 99);
+        const biome = biomes[x + z * WORLD_W];
         const s = this.surface(x, z);
-        if (s.id !== B.GRASS) continue;
-        this.placeTree(x, s.y + 1, z);
+        const y = s.y + 1;
+        if (biome === 'desert') {
+          if (r < 0.012 && s.id === B.SAND) for (let i = 0; i < 1 + Math.floor(r * 250); i++) this.set(x, y + i, z, B.CACTUS, false);
+        } else if (biome === 'taiga') {
+          if (r < 0.04 && s.id === B.SNOW) this.placePine(x, y, z);
+        } else if (biome === 'peak') {
+          if (r < 0.02 && s.id === B.SNOW) for (let i = 0; i < 1 + Math.floor(r * 100); i++) this.set(x, y + i, z, B.CRYSTAL, false);
+        } else if (biome === 'swamp') {
+          if (r < 0.025 && s.id === B.MUD) this.placeTree(x, y, z);
+        } else if (s.id === B.GRASS) {
+          const chance = biome === 'forest' ? 0.05 : biome === 'meadow' ? 0.002 : 0.004;
+          if (r < chance) this.placeTree(x, y, z);
+          else if (biome === 'meadow' ? r > 0.93 : r > 0.997) this.set(x, y, z, B.FLOWER_BUSH, false);
+        }
       }
     }
     this.placeGyms();
+  }
+
+  // A tall, pointy snowy-forest tree.
+  placePine(x, y, z) {
+    const trunk = 5 + Math.floor(hash2(x, z, this.seed + 6) * 3);
+    for (let i = 0; i < trunk; i++) this.set(x, y + i, z, B.PINE_LOG, false);
+    const top = y + trunk;
+    this.set(x, top, z, B.PINE_LEAVES, false);
+    for (let dy = -4; dy < 0; dy++) {
+      const r = dy <= -3 ? 2 : 1;
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dz = -r; dz <= r; dz++) {
+          if ((dx || dz) && Math.abs(dx) + Math.abs(dz) <= r + (r === 2 ? 1 : 0) && this.get(x + dx, top + dy, z + dz) === B.AIR) {
+            this.set(x + dx, top + dy, z + dz, B.PINE_LEAVES, false);
+          }
+        }
+      }
+    }
   }
 
   // Gyms are scattered around the map, well apart from each other. The closest one to the
@@ -189,7 +259,7 @@ export class World {
       for (let dz = -R - 5; dz <= R + 5; dz++) {
         for (let y = 1; y < WORLD_H; y++) {
           const id = this.get(x0 + dx, y, z0 + dz);
-          if (id === B.LOG || id === B.LEAVES) this.set(x0 + dx, y, z0 + dz, B.AIR, false);
+          if (PLANTS.has(id)) this.set(x0 + dx, y, z0 + dz, B.AIR, false);
         }
       }
     }
@@ -204,10 +274,11 @@ export class World {
         const top = fy + slope, bottom = fy - slope;
         if (s.y > top) {
           for (let y = top + 1; y <= s.y; y++) this.set(x, y, z, B.AIR, false);
-          if (isSolid(this.get(x, top, z))) this.set(x, top, z, top >= 29 ? B.SNOW : B.GRASS, false);
+          if (isSolid(this.get(x, top, z))) this.set(x, top, z, groundOf(this.biome(x, z), top)[0], false);
         } else if (s.y < bottom && s.id !== B.WATER) {
-          for (let y = s.y; y < bottom; y++) this.set(x, y, z, B.DIRT, false);
-          this.set(x, bottom, z, B.GRASS, false);
+          const [topId, under] = groundOf(this.biome(x, z), bottom);
+          for (let y = s.y; y < bottom; y++) this.set(x, y, z, under, false);
+          this.set(x, bottom, z, topId, false);
         }
       }
     }
@@ -219,7 +290,7 @@ export class World {
         for (let y = 1; y < fy; y++) if (!isSolid(this.get(x, y, z))) this.set(x, y, z, B.STONE, false);
         for (let y = fy + 1; y < WORLD_H; y++) this.set(x, y, z, B.AIR, false);
         const inside = Math.abs(dx) <= R && Math.abs(dz) <= R;
-        if (!inside) { this.set(x, fy, z, B.GRASS, false); continue; }
+        if (!inside) { this.set(x, fy, z, groundOf(this.biome(x, z), fy)[0], false); continue; }
         const edge = Math.abs(dx) === R || Math.abs(dz) === R;
         const corner = Math.abs(dx) === R && Math.abs(dz) === R;
         // Carpet runs from the door to the leader.
@@ -313,6 +384,7 @@ export class World {
   buildChunk(cx, cz) {
     const solid = newBuffers();
     const water = newBuffers();
+    const glow = newBuffers(); // blocks that light up at night
     const x0 = cx * CHUNK, z0 = cz * CHUNK;
     for (let y = 0; y < WORLD_H; y++) {
       for (let z = z0; z < z0 + CHUNK; z++) {
@@ -335,7 +407,7 @@ export class World {
             const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
             if (isOccluder(n)) continue;
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
-            this.addFace(solid, x, y, z, f, tile);
+            this.addFace(def.glow ? glow : solid, x, y, z, f, tile);
           }
         }
       }
@@ -346,7 +418,7 @@ export class World {
       for (const m of old) { this.scene.remove(m); m.geometry.dispose(); }
     }
     const meshes = [];
-    for (const [buf, mat] of [[solid, this.materials.solid], [water, this.materials.water]]) {
+    for (const [buf, mat] of [[solid, this.materials.solid], [water, this.materials.water], [glow, this.materials.glow]]) {
       if (!buf.idx.length) continue;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(buf.pos, 3));

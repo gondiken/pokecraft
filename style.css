@@ -301,3 +301,12 @@ button.link { background: none; border: none; box-shadow: none; color: var(--mut
 .mp-or { color: var(--muted); font-size: 17px; text-align: center; }
 #mp-hud { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 18px; }
 #mp-hud:empty { display: none; }
+
+/* ---------- choosing blocks ---------- */
+#block-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+#block-list button {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px;
+  font-family: 'VT323', monospace; font-size: 18px; background: #2a2e3d;
+}
+#block-list button.sel { outline: 3px solid var(--accent); }
+#block-list canvas { width: 48px; height: 48px; image-rendering: pixelated; }

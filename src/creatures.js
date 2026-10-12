@@ -5,6 +5,7 @@ import { WORLD_W, WORLD_D, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
 
 const MAX_WILD = 16;
+const GROUND = new Set([B.GRASS, B.DIRT, B.SAND, B.STONE, B.SNOW, B.COBBLE, B.ICE, B.GRAVEL, B.MUD, B.SANDSTONE]);
 
 export class Wild {
   constructor(data, model, pos) {
@@ -41,13 +42,8 @@ export class CreatureManager {
   }
 
   biomeAt(x, z) {
-    const s = this.world.surface(x, z);
-    if (s.id === B.WATER) return 'water';
-    if (s.id === B.SAND) return 'beach';
-    if (s.id === B.SNOW) return 'snow';
-    if (s.id === B.STONE || s.y >= 24) return 'mountain';
-    if (s.id !== B.GRASS) return null;
-    return this.world.forestAt(x, z) ? 'forest' : 'plains';
+    if (this.world.surface(x, z).id === B.WATER) return 'water';
+    return this.world.biome(x, z);
   }
 
   pickSpecies(biome, night) {
@@ -64,12 +60,9 @@ export class CreatureManager {
     if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
     const s = this.world.surface(xi, zi);
     const airborne = sp.flies || sp.floats;
-    if (s.id === B.LEAVES || s.id === B.LOG) return airborne ? s.y + 1 : null;
     if (s.id === B.WATER) return sp.swims || airborne ? WATER_LEVEL + 0.55 : null;
-    // Gyms and other buildings: only walk on natural ground.
-    if (s.id !== B.GRASS && s.id !== B.DIRT && s.id !== B.SAND && s.id !== B.STONE && s.id !== B.SNOW && s.id !== B.COBBLE) {
-      return airborne ? s.y + 1 : null;
-    }
+    // Only walk on natural ground (not trees, cacti, gyms or other buildings).
+    if (!GROUND.has(s.id)) return airborne ? s.y + 1 : null;
     return s.y + 1;
   }
 

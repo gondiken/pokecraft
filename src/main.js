@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { B, HOTBAR, drawAtlas } from './blocks.js';
+import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas } from './blocks.js';
 import { World, WORLD_W, WORLD_D, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
@@ -49,7 +49,10 @@ texture.generateMipmaps = false;
 texture.colorSpace = THREE.SRGBColorSpace;
 
 const materials = {
-  solid: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true }),
+  // alphaTest: glass has see-through pixels.
+  solid: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true, alphaTest: 0.5 }),
+  // Lamps and star crystals keep their full brightness at night.
+  glow: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true }),
   water: new THREE.MeshBasicMaterial({
     map: texture, vertexColors: true, transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide,
   }),
@@ -72,7 +75,7 @@ window.addEventListener('resize', () => {
 const game = {
   scene, camera,
   world: null, player: null, creatures: null,
-  party: [], box: [], cubes: 10, selected: 0, badges: [], beaten: [],
+  party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [],
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
 };
@@ -106,6 +109,7 @@ function snapshot() {
   };
   return {
     ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
+    hotbar: game.hotbar,
     savedAt: Date.now(),
   };
 }
@@ -345,6 +349,7 @@ function startNew(starterId) {
   game.time = 0.05;
   game.badges = [];
   game.beaten = [];
+  game.hotbar = [...HOTBAR];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
   p.yaw = 0; p.pitch = 0;
@@ -361,6 +366,8 @@ function continueGame(saved) {
   game.time = saved.time ?? 0.05;
   game.badges = saved.badges || [];
   game.beaten = saved.beaten || [];
+  // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
+  game.hotbar = HOTBAR.map((id, i) => (BLOCKS[saved.hotbar?.[i]] && PLACEABLE.includes(saved.hotbar[i]) ? saved.hotbar[i] : id));
   const p = game.player;
   if (saved.pos) p.pos.set(...saved.pos); else p.pos.copy(game.spawnPoint);
   // Buildings can move between versions; never start inside a wall.
@@ -453,7 +460,8 @@ async function goToMenu() {
   renderAccount();
 }
 
-function toggleTeam() {
+// The team panel (P) and the Blocks panel (B): the same key or button opens and closes them.
+function togglePanel(which = 'team') {
   if (game.inBattle) return;
   if (game.ui.panelOpen) {
     game.ui.closePanel();
@@ -461,11 +469,15 @@ function toggleTeam() {
   } else {
     game.player.keys = {};
     game.touch.reset();
-    game.ui.openPanel();
+    game.ui.openPanel(which);
     if (locked) document.exitPointerLock();
     pauseEl.classList.add('hidden');
   }
 }
+const toggleTeam = () => togglePanel('team');
+const toggleBlocks = () => togglePanel('blocks');
+game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
+game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
 
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
@@ -494,6 +506,7 @@ showSound();
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
+document.getElementById('blocks-close').addEventListener('click', toggleBlocks);
 canvas.addEventListener('click', () => {
   if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();
 });
@@ -509,9 +522,9 @@ document.addEventListener('keydown', e => {
     if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
     return;
   }
-  if (e.code === 'KeyP' || e.code === 'Tab' || (e.code === 'Escape' && game.ui.panelOpen)) {
+  if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
-    toggleTeam();
+    togglePanel(e.code === 'KeyB' ? 'blocks' : 'team');
     return;
   }
   if (!playing()) return;
@@ -519,7 +532,7 @@ document.addEventListener('keydown', e => {
   game.player.keys[e.code] = true;
   if (e.code.startsWith('Digit')) {
     const n = Number(e.code.slice(5)) - 1;
-    if (n >= 0 && n < HOTBAR.length) { game.selected = n; game.ui.renderHud(); }
+    if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
   if (e.code === 'KeyE') interact();
 });
@@ -528,7 +541,7 @@ document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.co
 
 document.addEventListener('wheel', e => {
   if (!locked || game.inBattle) return;
-  game.selected = (game.selected + (e.deltaY > 0 ? 1 : -1) + HOTBAR.length) % HOTBAR.length;
+  game.selected = (game.selected + (e.deltaY > 0 ? 1 : -1) + game.hotbar.length) % game.hotbar.length;
   game.ui.renderHud();
 }, { passive: true });
 
@@ -562,11 +575,13 @@ function breakBlock() {
   }
   game.mp.sendBlock(hit.x, hit.y, hit.z, world.get(hit.x, hit.y, hit.z));
   sound.play('break');
-  if (hit.id === B.LEAVES && Math.random() < 0.1) {
+  // Leaves and gold ore sometimes hide a Capture Cube.
+  const find = hit.id === B.LEAVES ? 0.1 : hit.id === B.GOLD_ORE ? 0.35 : 0;
+  if (Math.random() < find) {
     game.cubes++;
     game.ui.renderHud();
     sound.play('cube');
-    game.ui.toast('You found a Capture Cube in the leaves!');
+    game.ui.toast(hit.id === B.GOLD_ORE ? 'You found a Capture Cube in the gold!' : 'You found a Capture Cube in the leaves!');
   }
 }
 
@@ -578,8 +593,8 @@ function placeBlock() {
   const cur = world.get(x, y, z);
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   if (game.player.overlapsBlock(x, y, z)) return;
-  world.set(x, y, z, HOTBAR[game.selected]);
-  game.mp.sendBlock(x, y, z, HOTBAR[game.selected]);
+  world.set(x, y, z, game.hotbar[game.selected]);
+  game.mp.sendBlock(x, y, z, game.hotbar[game.selected]);
   sound.play('place');
 }
 
@@ -607,6 +622,7 @@ game.touch = new TouchControls(game, canvas, {
   place: () => { if (playing()) placeBlock(); },
   interact: () => { if (playing()) interact(); },
   team: toggleTeam,
+  blocks: toggleBlocks,
   pause,
   tapAt,
 });

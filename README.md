@@ -39,6 +39,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | Left click | Break block, battle the creature under the crosshair, or talk to a person |
 | Right click | Place the selected block |
 | 1–9 / mouse wheel | Pick a block from the hotbar |
+| B | Blocks screen: choose which blocks are in your hotbar |
 | E | Battle the targeted creature, or talk to a person |
 | P / Tab | Team & storage screen |
 | Esc | Pause (Resume, Main menu, Play together) |
@@ -52,13 +53,14 @@ On a tablet:
 | Tap a creature or person | Battle it, or talk to them |
 | Battle / Challenge / Heal button | Same as tapping the creature or person under the crosshair |
 | Break / Place / Jump buttons | Break or place a block at the crosshair, jump or swim up |
-| Tap the hotbar | Pick a block |
-| Team / II buttons | Team screen / pause |
+| Tap the hotbar | Pick a block (tap the picked one again to change it) |
+| Team / Blocks / II buttons | Team screen / Blocks screen / pause |
 
 ## Features
 
-- **Voxel world**: a 224×224 terrain with hills, snowy peaks, lakes, beaches and forests, plus a day/night cycle. Break and place 9 block types.
-- **102 original creatures**, 6 for each of the 17 types (see below). Each lives in its own biome: Fluffin graze the plains, Frostling hop around the snowy peaks, Ripplet swim in lakes, Clanklet roam the mountains, and ghost and cosmic creatures only come out at night.
+- **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals.
+- **24 building blocks**, including glass, stone bricks, lamps (they glow at night), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
+- **102 original creatures**, 6 for each of the 17 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, and cosmic ones come out at night, most of all on the high peaks. Ghosts also only come out at night.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 46 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.

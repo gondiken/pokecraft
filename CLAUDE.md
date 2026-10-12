@@ -35,8 +35,8 @@ this file is for working on the code.
 | File | What it does |
 | --- | --- |
 | `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens, accounts UI, play-together UI |
-| `src/world.js` | Seeded terrain, trees, gym buildings (`placeGyms`/`buildGym`), chunk meshing, voxel raycast |
-| `src/blocks.js` | Block ids, procedurally drawn texture atlas, per-type "wool" roof blocks |
+| `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
+| `src/blocks.js` | Block ids (wool is 20–36, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves, all 102 species (6 per type; the `roster` test checks this) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/gyms.js` | The 16 gyms in difficulty order (teams, leader/trainer names, dialogue) |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
@@ -52,6 +52,9 @@ this file is for working on the code.
 Key ideas:
 - `window.pokecraft` is the global `game` object (handy in tests and the console):
   `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`.
+- Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
+  saves' builds to line up (heights are low: mountain starts at 21, peak at 25, ~1–7% of land).
+  `SPAWNS` has a table per biome (the `blocks` and `roster` specs check coverage and placement rules).
 - The world is **deterministic from its seed**; a save stores the seed plus the list of player
   block edits (`world.edits`, index → block id). Gyms are generated, not saved, so changing
   `placeGyms`/`gymSpots` moves gyms in existing saves (`continueGame` moves the player to spawn
@@ -100,7 +103,7 @@ PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save t
 ```
 
 Specs: `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
-and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save migration), `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
+and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
   messages between two browsers itself (`?mp=local` swaps Supabase Realtime for a

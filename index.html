@@ -46,6 +46,7 @@
     <div id="joystick"><div id="joy-knob"></div></div>
     <div id="touch-top">
       <button id="btn-team">Team</button>
+      <button id="btn-blocks">Blocks</button>
       <button id="btn-pause">II</button>
     </div>
     <div id="touch-buttons">
@@ -79,13 +80,13 @@
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint · <b>Mouse</b> look<br>
         <b>Left click</b> break block / battle creature · <b>Right click</b> place block<br>
-        <b>1–9</b> or <b>wheel</b> pick block · <b>E</b> battle creature / talk to people · <b>P</b> team<br>
+        <b>1–9</b> or <b>wheel</b> pick block · <b>B</b> choose blocks · <b>E</b> battle creature / talk to people · <b>P</b> team<br>
         Beat all 16 Gym Leaders to collect every badge!
       </div>
       <div class="controls touch-only">
         <b>Left stick</b> walk (push all the way to run) · <b>Drag</b> right side to look<br>
         <b>Tap</b> a creature to battle it, or a person to talk<br>
-        <b>Break</b> / <b>Place</b> blocks at the crosshair · tap the bar to pick a block<br>
+        <b>Break</b> / <b>Place</b> blocks at the crosshair · tap the bar to pick a block (tap it again, or <b>Blocks</b>, to change it)<br>
         Beat all 16 Gym Leaders to collect every badge!
       </div>
     </div>
@@ -102,7 +103,7 @@
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
-        <b>1–9</b> / <b>wheel</b> pick block · <b>E</b> battle / talk · <b>P</b> team
+        <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> battle / talk · <b>P</b> team
       </div>
     </div>
   </div>
@@ -116,6 +117,16 @@
       <h3>Storage Box</h3>
       <div id="box-list" class="mon-list"></div>
       <p class="hint"><button id="party-close" class="primary">Close</button><span class="desktop-only"> or press <b>P</b> / <b>Esc</b></span></p>
+    </div>
+  </div>
+
+  <!-- Choosing blocks for the hotbar -->
+  <div id="blocks" class="overlay hidden">
+    <div class="panel wide">
+      <h2>Blocks</h2>
+      <p class="hint">Pick a block for slot <b id="blocks-slot"></b> of your hotbar.</p>
+      <div id="block-list"></div>
+      <p class="hint"><button id="blocks-close" class="primary">Close</button><span class="desktop-only"> or press <b>B</b> / <b>Esc</b></span></p>
     </div>
   </div>
 

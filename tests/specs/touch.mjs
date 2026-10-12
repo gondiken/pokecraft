@@ -34,6 +34,19 @@ export default async function ({ browser, base, t }) {
   await page.tap('#party-close');
   await page.waitForTimeout(300);
   t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'Close button closes it');
+  // Tapping the selected hotbar slot again opens the Blocks panel; picking a block fills that slot.
+  await page.tap('#hotbar .slot.sel');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => !document.getElementById('blocks').classList.contains('hidden')), 'tapping the selected hotbar slot again opens the Blocks panel');
+  await page.tap('#block-list button:has-text("Lamp")');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen && document.querySelector('#hotbar .slot.sel').title === 'Lamp'), 'picking Lamp fills the slot and closes the panel');
+  await page.tap('#btn-blocks');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => !document.getElementById('blocks').classList.contains('hidden')), 'Blocks button opens the Blocks panel');
+  await page.tap('#blocks-close');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'its Close button closes it');
   await page.tap('#btn-pause');
   await page.waitForTimeout(300);
   t.ok(await page.evaluate(() => !document.getElementById('pause').classList.contains('hidden')), 'pause button pauses (and the tap does not instantly unpause)');

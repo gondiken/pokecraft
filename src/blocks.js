@@ -20,11 +20,20 @@ const WOOL_RGB = {
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180],
 };
-export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length;
+// More tiles after the wool ones.
+const MORE_TILES = [
+  'ICE', 'GRAVEL', 'SANDSTONE', 'SANDSTONE_TOP', 'CACTUS_SIDE', 'CACTUS_TOP', 'MUD', 'PINE_SIDE', 'PINE_LEAVES',
+  'FLOWERS', 'CRYSTAL', 'GLASS', 'STONE_BRICKS', 'LAMP', 'COAL_ORE', 'GOLD_ORE',
+];
+MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
+export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
 
 export const B = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
   LOG: 6, LEAVES: 7, PLANKS: 8, COBBLE: 9, SNOW: 10, BRICK: 11,
+  ICE: 12, GRAVEL: 13, SANDSTONE: 14, CACTUS: 15, MUD: 16, PINE_LOG: 17, PINE_LEAVES: 18, FLOWER_BUSH: 19,
+  // 20-36 are the wool blocks.
+  CRYSTAL: 40, GLASS: 41, STONE_BRICKS: 42, LAMP: 43, COAL_ORE: 44, GOLD_ORE: 45,
 };
 // Block id of each type's wool block.
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, 20 + i]));
@@ -42,13 +51,35 @@ export const BLOCKS = {
   [B.COBBLE]: { name: 'Cobblestone', ...all(T.COBBLE) },
   [B.SNOW]: { name: 'Snow', top: T.SNOW, side: T.SNOW_SIDE, bottom: T.STONE },
   [B.BRICK]: { name: 'Brick', ...all(T.BRICK) },
+  [B.ICE]: { name: 'Ice', ...all(T.ICE) },
+  [B.GRAVEL]: { name: 'Gravel', ...all(T.GRAVEL) },
+  [B.SANDSTONE]: { name: 'Sandstone', top: T.SANDSTONE_TOP, side: T.SANDSTONE, bottom: T.SANDSTONE_TOP },
+  [B.CACTUS]: { name: 'Cactus', top: T.CACTUS_TOP, side: T.CACTUS_SIDE, bottom: T.CACTUS_TOP },
+  [B.MUD]: { name: 'Mud', ...all(T.MUD) },
+  [B.PINE_LOG]: { name: 'Pine Log', top: T.LOG_TOP, side: T.PINE_SIDE, bottom: T.LOG_TOP },
+  [B.PINE_LEAVES]: { name: 'Pine Leaves', ...all(T.PINE_LEAVES) },
+  [B.FLOWER_BUSH]: { name: 'Flower Bush', ...all(T.FLOWERS) },
+  [B.CRYSTAL]: { name: 'Star Crystal', ...all(T.CRYSTAL), glow: true },
+  [B.GLASS]: { name: 'Glass', ...all(T.GLASS) },
+  [B.STONE_BRICKS]: { name: 'Stone Bricks', ...all(T.STONE_BRICKS) },
+  [B.LAMP]: { name: 'Lamp', ...all(T.LAMP), glow: true },
+  [B.COAL_ORE]: { name: 'Coal Ore', ...all(T.COAL_ORE) },
+  [B.GOLD_ORE]: { name: 'Gold Ore', ...all(T.GOLD_ORE) },
 };
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
-export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.LEAVES, B.SAND, B.BRICK];
+// The starting hotbar. Players can swap any slot for another block in the Blocks panel.
+export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.GLASS, B.BRICK, B.LAMP];
+// Every block players can build with (the Blocks panel), in a sensible order.
+export const PLACEABLE = [
+  B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONE_BRICKS, B.BRICK, B.PLANKS, B.LOG, B.PINE_LOG,
+  B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.CACTUS, B.SAND, B.SANDSTONE, B.GRAVEL, B.MUD, B.SNOW,
+  B.ICE, B.GLASS, B.LAMP, B.CRYSTAL, B.COAL_ORE, B.GOLD_ORE,
+];
 
-// Blocks that hide the faces of their neighbours.
-export const isOccluder = id => id !== B.AIR && id !== B.WATER && id !== B.LEAVES;
+// Blocks you can see through, so they don't hide the faces of their neighbours.
+const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS]);
+export const isOccluder = id => !SEE_THROUGH.has(id);
 // Blocks the player and creatures collide with.
 export const isSolid = id => id !== B.AIR && id !== B.WATER;
 
@@ -159,6 +190,52 @@ export function drawAtlas() {
         : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
+
+  // Ice: pale blue with white cracks.
+  each((x, y) => put(T.ICE, x, y, (x * 3 + y * 5) % 17 === 0 || x === y ? [235, 248, 255] : shade([150, 200, 240], 1 + (rand() - 0.5) * 0.08)));
+  each((x, y) => {
+    const r = rand();
+    put(T.GRAVEL, x, y, shade(r < 0.3 ? [150, 140, 130] : r < 0.6 ? [110, 104, 100] : [128, 120, 112], 1 + (rand() - 0.5) * 0.2));
+  });
+  const SANDSTONE = [214, 196, 140];
+  each((x, y) => put(T.SANDSTONE, x, y, shade(SANDSTONE, (y % 5 === 4 ? 0.82 : 1) * (1 + (rand() - 0.5) * 0.08))));
+  noisy(T.SANDSTONE_TOP, SANDSTONE, 0.1);
+  each((x, y) => put(T.CACTUS_SIDE, x, y, x % 5 === 2 && y % 3 === 0 ? [230, 230, 200] : shade([60, 140, 60], (x % 5 === 0 ? 0.8 : 1) * (1 + (rand() - 0.5) * 0.12))));
+  each((x, y) => put(T.CACTUS_TOP, x, y, shade([80, 160, 70], Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)) > 6 ? 0.8 : 1)));
+  each((x, y) => put(T.MUD, x, y, shade([92, 70, 54], 1 + (rand() - 0.5) * 0.25 + (rand() < 0.08 ? -0.25 : 0))));
+  each((x, y) => put(T.PINE_SIDE, x, y, shade([72, 52, 34], (x % 3 === 0 ? 0.75 : 1) * (1 + (rand() - 0.5) * 0.2))));
+  each((x, y) => put(T.PINE_LEAVES, x, y, rand() < 0.15 ? [16, 50, 30] : shade([36, 96, 60], 1 + (rand() - 0.5) * 0.4)));
+  const PETALS = [[240, 80, 90], [250, 210, 60], [180, 120, 240], [255, 255, 255]];
+  each((x, y) => {
+    const flower = (x % 5 === 2 && y % 5 === 1) || (x % 5 === 4 && y % 5 === 3);
+    put(T.FLOWERS, x, y, flower ? PETALS[(x * 3 + y) % PETALS.length] : shade([70, 150, 50], 1 + (rand() - 0.5) * 0.4));
+  });
+  each((x, y) => {
+    const facet = (x + y) % 8 < 4 ? 1.1 : 0.85;
+    put(T.CRYSTAL, x, y, (x * 7 + y * 3) % 19 === 0 ? [255, 250, 200] : shade([150, 120, 240], facet * (1 + (rand() - 0.5) * 0.1)));
+  });
+  // Glass: a frame with a see-through middle (and a little shine).
+  g.clearRect(T.GLASS * TILE, 0, TILE, TILE);
+  each((x, y) => {
+    if (x === 0 || y === 0 || x === 15 || y === 15) put(T.GLASS, x, y, [200, 225, 235]);
+    else if ((x === 3 && y > 2 && y < 7) || (x === 4 && y > 3 && y < 6)) put(T.GLASS, x, y, [240, 250, 255]);
+  });
+  each((x, y) => {
+    const mortar = y % 8 === 7 || (x + (Math.floor(y / 8) % 2) * 8) % 16 === 15;
+    put(T.STONE_BRICKS, x, y, mortar ? [90, 90, 90] : shade([140, 140, 140], 1 + (rand() - 0.5) * 0.12));
+  });
+  each((x, y) => {
+    const frame = x < 2 || y < 2 || x > 13 || y > 13;
+    put(T.LAMP, x, y, frame ? [110, 80, 50] : shade([255, 220, 120], (x + y) % 6 === 0 ? 0.9 : 1));
+  });
+  const ore = (tile, col) => {
+    each((x, y) => put(tile, x, y, shade(STONE, 1 + (rand() - 0.5) * 0.22)));
+    for (const [x, y] of [[3, 3], [9, 2], [6, 7], [12, 9], [2, 11], [8, 12]]) {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) put(tile, x + dx, y + dy, shade(col, 1 + (rand() - 0.5) * 0.2));
+    }
+  };
+  ore(T.COAL_ORE, [40, 40, 40]);
+  ore(T.GOLD_ORE, [250, 210, 60]);
 
   return c;
 }

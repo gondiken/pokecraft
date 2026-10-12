@@ -1,6 +1,6 @@
 // HUD, toasts, team screen and creature portraits.
 import * as THREE from 'three';
-import { HOTBAR, BLOCKS, drawBlockIcon } from './blocks.js';
+import { BLOCKS, PLACEABLE, drawBlockIcon } from './blocks.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
@@ -49,22 +49,37 @@ export class UI {
     this.guide = document.getElementById('guide');
     this.badgeRow = document.getElementById('badges');
     this.partyPanel = document.getElementById('party');
-    this.buildHotbar();
+    this.blocksPanel = document.getElementById('blocks');
+    this.slots = [];
   }
 
+  // The hotbar shows game.hotbar. Tapping the selected slot again opens the Blocks panel.
   buildHotbar() {
-    this.slots = HOTBAR.map((id, i) => {
-      const slot = el('div', {
-        class: 'slot', title: BLOCKS[id].name,
-        onpointerdown: e => { e.preventDefault(); this.game.selected = i; this.renderHud(); },
-      }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1));
-      this.hotbar.append(slot);
-      return slot;
-    });
+    const g = this.game;
+    this.hotbarKey = g.hotbar.join();
+    this.slots = g.hotbar.map((id, i) => el('div', {
+      class: 'slot', title: BLOCKS[id].name,
+      onpointerdown: e => {
+        e.preventDefault();
+        if (g.selected === i && g.started && !g.inBattle) g.openBlocks?.();
+        else { g.selected = i; this.renderHud(); }
+      },
+    }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1)));
+    this.hotbar.replaceChildren(...this.slots);
+  }
+
+  renderBlocks() {
+    const g = this.game;
+    document.getElementById('blocks-slot').textContent = g.selected + 1;
+    document.getElementById('block-list').replaceChildren(...PLACEABLE.map(id => el('button', {
+      class: id === g.hotbar[g.selected] ? 'sel' : '', title: BLOCKS[id].name,
+      onclick: () => { g.hotbar[g.selected] = id; this.renderHud(); g.closeBlocks?.(); },
+    }, drawBlockIcon(this.atlas, id), BLOCKS[id].name)));
   }
 
   renderHud() {
     const g = this.game;
+    if (this.hotbarKey !== g.hotbar.join()) this.buildHotbar();
     this.slots.forEach((s, i) => s.classList.toggle('sel', i === g.selected));
     this.cubes.textContent = `Capture Cubes: ${g.cubes}`;
     const key = g.badges.join();
@@ -147,12 +162,21 @@ export class UI {
     this.renderHud();
   }
 
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden'); }
+  // The team panel or the Blocks panel.
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden'); }
 
-  openPanel() {
-    this.refreshPanel();
-    this.partyPanel.classList.remove('hidden');
+  openPanel(which = 'team') {
+    if (which === 'blocks') {
+      this.renderBlocks();
+      this.blocksPanel.classList.remove('hidden');
+    } else {
+      this.refreshPanel();
+      this.partyPanel.classList.remove('hidden');
+    }
   }
 
-  closePanel() { this.partyPanel.classList.add('hidden'); }
+  closePanel() {
+    this.partyPanel.classList.add('hidden');
+    this.blocksPanel.classList.add('hidden');
+  }
 }
