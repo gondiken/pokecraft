@@ -8,6 +8,7 @@ const VOLUME = 0.18;
 let ctx = null;
 let master = null;
 let noiseBuf = null;
+let scale = 1; // quieter for far-away sounds
 
 function audio() {
   if (ctx) return ctx;
@@ -32,7 +33,7 @@ function tone(freq, { at = 0, len = 0.12, type = 'sine', vol = 0.5, slide = 0 } 
   o.frequency.setValueAtTime(freq, t);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + len);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(vol * scale, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + len);
   o.connect(g).connect(master);
   o.start(t);
@@ -49,7 +50,7 @@ function noise({ at = 0, len = 0.08, freq = 800, vol = 0.5, q = 1 } = {}) {
   f.frequency.value = freq;
   f.Q.value = q;
   const g = ctx.createGain();
-  g.gain.setValueAtTime(vol, t);
+  g.gain.setValueAtTime(vol * scale, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + len);
   s.connect(f).connect(g).connect(master);
   s.start(t);
@@ -57,6 +58,22 @@ function noise({ at = 0, len = 0.08, freq = 800, vol = 0.5, q = 1 } = {}) {
 }
 
 const notes = (list, gap, opts) => list.forEach((f, i) => tone(f, { at: i * gap, ...opts }));
+
+// A bell or gong: a few ringing overtones that fade slowly.
+const bell = (f, at = 0, len = 0.9, vol = 0.3) => [[1, 1], [2.01, 0.4], [2.76, 0.25]]
+  .forEach(([k, v]) => tone(f * k, { at, len: len / k ** 0.3, vol: vol * v }));
+// A drum: a quick low thump with a slap of noise.
+const drum = (f, at = 0, vol = 0.4) => { tone(f, { at, len: 0.18, vol, slide: -f * 0.4 }); noise({ at, freq: 400, len: 0.05, vol: vol * 0.6 }); };
+
+// Sound-type creatures each have their own little tune (a "cry").
+const CRIES = {
+  echobat: () => [1568, 1976, 1568].forEach((f, i) => tone(f, { at: i * 0.07, len: 0.05, vol: 0.18, type: 'square', slide: 300 })),
+  boomwing: () => { for (let i = 0; i < 6; i++) drum(150 - i * 8, i * 0.06, 0.25 + i * 0.03); bell(392, 0.4, 0.6, 0.2); },
+  drumbo: () => { drum(196, 0); drum(147, 0.14); drum(196, 0.28); },
+  bongorilla: () => { drum(110, 0, 0.5); drum(110, 0.12, 0.5); drum(147, 0.3, 0.5); drum(98, 0.42, 0.55); },
+  dinglet: () => { bell(1047, 0, 0.6, 0.25); bell(1319, 0.15, 0.7, 0.2); },
+  gongolin: () => bell(110, 0, 1.6, 0.45),
+};
 
 const SOUNDS = {
   break: () => { noise({ freq: 500, len: 0.09, vol: 0.6 }); noise({ at: 0.04, freq: 300, len: 0.07, vol: 0.4 }); },
@@ -77,6 +94,21 @@ const SOUNDS = {
   lose: () => notes([392, 349, 294], 0.14, { len: 0.2, type: 'triangle', vol: 0.3 }),
   heal: () => notes([659, 880, 1175], 0.08, { len: 0.18, vol: 0.3 }),
   ask: () => notes([784, 988], 0.1, { len: 0.12, type: 'triangle', vol: 0.3 }),
+  // Sound-type moves.
+  echoping: () => [0, 0.16, 0.32, 0.48].forEach((at, i) => tone(1320, { at, len: 0.12, vol: 0.3 * 0.55 ** i })),
+  bassblast: () => {
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    const lfo = ctx.createOscillator(), depth = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.6);
+    f.type = 'lowpass'; f.frequency.value = 400;
+    lfo.frequency.value = 7; depth.gain.value = 300; // the "wub-wub"
+    lfo.connect(depth).connect(f.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6 * scale, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(f).connect(g).connect(master);
+    o.start(t); lfo.start(t); o.stop(t + 0.65); lfo.stop(t + 0.65);
+    drum(80, 0, 0.4);
+  },
 };
 
 function loadOn() {
@@ -86,6 +118,7 @@ function loadOn() {
 export const sound = {
   on: loadOn(),
   played: [], // names of the last few sounds (handy for tests)
+  errors: [], // sound problems are swallowed so they never break the game; tests check this
 
   play(name) {
     if (!this.on || !SOUNDS[name]) return;
@@ -93,7 +126,24 @@ export const sound = {
     if (this.played.length > 30) this.played.shift();
     const a = audio();
     if (!a || a.state !== 'running') return;
-    try { SOUNDS[name](); } catch { /* sound is a nice-to-have; never break the game */ }
+    try { SOUNDS[name](); } catch (e) { this.errors.push(`${name}: ${e.message}`); }
+  },
+
+  // A creature's own tune (only sound-type creatures have one). quiet is for wild ones nearby.
+  cry(species, type, quiet = false) {
+    if (type !== 'sound') return;
+    const name = `cry:${species}`;
+    if (!this.on) return;
+    this.played.push(name);
+    if (this.played.length > 30) this.played.shift();
+    const a = audio();
+    if (!a || a.state !== 'running') return;
+    scale = quiet ? 0.45 : 1;
+    try {
+      if (CRIES[species]) CRIES[species]();
+      else notes([523, 659, 784].map(f => f * (1 + (species.length % 5) / 10)), 0.09, { len: 0.14, type: 'triangle', vol: 0.3 });
+    } catch (e) { this.errors.push(`${name}: ${e.message}`); }
+    scale = 1;
   },
 
   setOn(on) {

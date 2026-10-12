@@ -79,6 +79,7 @@ const game = {
 
 game.creatures = new CreatureManager(scene, null);
 game.npcs = new NpcManager(scene);
+game.creatures.onSing = wild => { if (game.started && !game.inBattle) sound.cry(wild.data.species, 'sound', true); };
 game.creatures.onSpawn = wild => {
   if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
 };

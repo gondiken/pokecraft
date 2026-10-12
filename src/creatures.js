@@ -112,7 +112,14 @@ export class CreatureManager {
         if (!w.frozen && w.pos.distanceTo(playerPos) > 60) { this.remove(w); break; }
       }
     }
-    for (const w of this.list) this.updateOne(w, dt);
+    for (const w of this.list) {
+      this.updateOne(w, dt);
+      // Sound-type creatures sing now and then, so you can hear them before you see them.
+      if (w.species.type === 'sound' && !w.frozen && (w.songTimer = (w.songTimer ?? Math.random() * 6) - dt) <= 0) {
+        w.songTimer = 7 + Math.random() * 8;
+        if (w.pos.distanceTo(playerPos) < 14) this.onSing?.(w);
+      }
+    }
   }
 
   updateOne(w, dt) {

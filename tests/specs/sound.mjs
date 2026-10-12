@@ -44,6 +44,48 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(4000);
   const p2 = await played();
   t.ok(p2.includes('hit') || p2.includes('super') || p2.includes('miss'), `battle moves make sounds (${p2.slice(before).join(', ')})`);
+  await page.evaluate(() => document.querySelector('#b-actions button:last-child')?.click()); // Run
+  await page.waitForFunction(() => !window.pokecraft.inBattle, null, { timeout: 60000 }).catch(() => {});
+  if (await page.evaluate(() => window.pokecraft.inBattle)) {
+    await page.evaluate(() => { window.pokecraft.battle.active = false; });
+  }
+
+  // Sound-type creatures: their own tunes in battle, special move sounds, and singing in the wild.
+  await page.evaluate(async () => {
+    const g = window.pokecraft;
+    const { makeCreature } = await import('/src/species.js');
+    g.inBattle = false;
+    g.party = [makeCreature('echobat', 20)];
+    g.sound.played.length = 0;
+    const p = g.player.pos;
+    g.inBattle = true;
+    g.battle.start({ trainer: { name: 'Tester', pos: p.clone().setX(p.x + 4) }, team: [['dinglet', 5]] });
+  });
+  await page.waitForFunction(() => [...document.querySelectorAll('#b-actions button')].some(b => b.textContent.startsWith('Echo Ping')), null, { timeout: 60000 });
+  await page.evaluate(() => [...document.querySelectorAll('#b-actions button')].find(b => b.textContent.startsWith('Echo Ping')).click());
+  await page.waitForTimeout(3000);
+  const p3 = await played();
+  t.ok(p3.includes('cry:dinglet') && p3.includes('cry:echobat'), `sound-type creatures play their own tune when they come out (${p3.join(', ')})`);
+  t.ok(p3.includes('echoping'), 'Echo Ping has its own sound');
+  const sang = await page.evaluate(async () => {
+    const g = window.pokecraft;
+    const { Wild } = await import('/src/creatures.js');
+    const { makeCreature, buildModel } = await import('/src/species.js');
+    g.inBattle = false;
+    const w = new Wild(makeCreature('gongolin', 5), buildModel('gongolin'), g.player.pos.clone().setX(g.player.pos.x + 3));
+    w.songTimer = 0;
+    g.creatures.list.push(w);
+    g.sound.played.length = 0;
+    await new Promise(r => setTimeout(r, 2500));
+    return [...g.sound.played];
+  });
+  t.ok(sang.includes('cry:gongolin'), `a wild sound-type creature nearby sings (${sang.join(', ')})`);
+  t.ok(await page.evaluate(() => {
+    const s = window.pokecraft.sound;
+    for (const n of ['bassblast', 'echoping', 'hit', 'badge']) s.play(n);
+    for (const id of ['echobat', 'boomwing', 'drumbo', 'bongorilla', 'dinglet', 'gongolin']) s.cry(id, 'sound');
+    return s.errors.length === 0;
+  }), `all sounds play without errors ${await page.evaluate(() => window.pokecraft.sound.errors.join('; '))}`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

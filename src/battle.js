@@ -40,6 +40,8 @@ export class Battle {
     return fromY;
   }
 
+  cry(c) { sound.cry(c.species, SPECIES[c.species].type); }
+
   say(text, ms = 1300) {
     this.log.textContent = text;
     return new Promise(resolve => {
@@ -179,6 +181,7 @@ export class Battle {
     this.foePos = pos;
     this.refresh();
     this.say(`${npc.name} sent out ${nameOf(this.foe)}!`, 1200);
+    this.cry(this.foe);
     await tween(300, t => model.scale.setScalar(easeOut(t)));
     await wait(900);
   }
@@ -234,6 +237,7 @@ export class Battle {
       this.stepBack(wild.pos, 4.5);
       g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
       this.refresh();
+      this.cry(this.foe);
       await this.say(`A wild ${nameOf(this.foe)} appeared!`);
     } else {
       const npc = this.trainer;
@@ -247,6 +251,7 @@ export class Battle {
       await this.sendOutFoe();
     }
     await this.placeAlly();
+    this.cry(this.ally);
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
 
     let result = null;
@@ -301,7 +306,8 @@ export class Battle {
       this.allyIdx = action.idx;
       this.refresh();
       await this.placeAlly();
-      await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+      this.cry(this.ally);
+    await this.say(`Go, ${nameOf(this.ally)}!`, 900);
       return this.foeTurn();
     }
 
@@ -337,7 +343,8 @@ export class Battle {
       this.allyIdx = mine.idx;
       this.refresh();
       await this.placeAlly();
-      await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+      this.cry(this.ally);
+    await this.say(`Go, ${nameOf(this.ally)}!`, 900);
     }
     if (theirs.kind === 'switch') {
       this.foeIdx = this.foeIndex(theirs.idx);
@@ -390,6 +397,7 @@ export class Battle {
     const mv = MOVES[moveId];
     const who = side === 'foe' ? `${this.foeLabel} ${nameOf(atk)}` : nameOf(atk);
     this.say(`${who} used ${mv.name}!`, 700);
+    sound.play(moveId); // only some moves (like sound-type ones) have their own sound
     await this.lunge(side);
     await wait(150);
     if (this.rng() > mv.acc) { sound.play('miss'); await this.say('But it missed!', 1000); return; }
@@ -497,6 +505,7 @@ export class Battle {
     this.allyIdx = idx;
     this.refresh();
     await this.placeAlly();
+    this.cry(this.ally);
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
     return null;
   }
