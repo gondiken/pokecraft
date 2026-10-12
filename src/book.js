@@ -11,7 +11,7 @@ export const bookOrder = () => {
 export const TYPES = () => Object.keys(TYPE_COLORS);
 export const BIOME_NAMES = {
   plains: 'Plains', meadow: 'Flower meadows', forest: 'Forests', swamp: 'Swamps', beach: 'Beaches', water: 'Lakes and sea',
-  desert: 'Deserts', mountain: 'Mountains', snow: 'Snowy hills', taiga: 'Snowy forests', peak: 'Mountain peaks',
+  desert: 'Deserts', mountain: 'Mountains', snow: 'Snowy hills', taiga: 'Snowy forests', peak: 'Mountain peaks', cave: 'Caves',
 };
 const biomeName = b => BIOME_NAMES[b] || (b.charAt(0).toUpperCase() + b.slice(1));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);

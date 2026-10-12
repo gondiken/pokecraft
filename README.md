@@ -59,8 +59,8 @@ On a tablet:
 
 ## Features
 
-- **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals.
-- **24 building blocks**, including glass, stone bricks, lamps (they glow at night), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
+- **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): follow a hole in a hillside down into the dark, where star crystals and glowing mushrooms light the way, small underground lakes lie hidden, and rock, metal and ghost creatures live. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
+- **25 building blocks**, including glass, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
 - **102 original creatures**, 6 for each of the 17 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, and cosmic ones come out at night, most of all on the high peaks. Ghosts also only come out at night.
 - **Champion's Tower**: a final challenge after all 16 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
@@ -191,6 +191,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
 | `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
 | `src/duel.js` | Battles between players: asking, answering, swapping each turn's choices |
+| `src/caves.js` | Caves: tunnels carved from the world seed, glowing decorations, treasure chests, and the darkness/light shader |
 | `src/weather.js` | Weather: rain, storms, snow, sandstorms, fog, rainbows, and the creature spawn boosts they bring |
 | `src/sound.js` | Small sound effects made with Web Audio (no sound files) |
 

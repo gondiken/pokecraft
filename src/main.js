@@ -16,6 +16,7 @@ import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
 import { Weather } from './weather.js';
+import { caveLight, patchMaterial } from './caves.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
 const OLD_SAVE_KEY = 'pokecraft-save-v1';
@@ -61,6 +62,10 @@ const materials = {
   }),
 };
 
+// Darkness under cover: vertex colours carry the sky and block light, the shader mixes them (see caves.js).
+patchMaterial(materials.solid);
+patchMaterial(materials.water);
+
 const highlight = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004)),
   new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }));
@@ -81,6 +86,7 @@ const game = {
   party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
+  renderer, underground: false,
 };
 
 game.creatures = new CreatureManager(scene, null);
@@ -588,6 +594,7 @@ function interact() {
   if (target.player) { game.duels.challenge(target.player); return true; }
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
+  if (target.block?.id === B.CHEST) { openChest(target.block); return true; }
   return false;
 }
 
@@ -595,6 +602,7 @@ function breakBlock() {
   const world = game.world;
   const hit = target.block;
   if (!hit || hit.y === 0) return;
+  if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
   world.set(hit.x, hit.y, hit.z, B.AIR);
   // Water flows into the hole if it borders water.
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
@@ -610,6 +618,19 @@ function breakBlock() {
     sound.play('cube');
     game.ui.toast(hit.id === B.GOLD_ORE ? 'You found a Capture Cube in the gold!' : 'You found a Capture Cube in the leaves!');
   }
+}
+
+// A treasure chest from the caves: opens (for everyone playing together) and gives 3 Capture Cubes.
+function openChest(hit) {
+  const world = game.world;
+  if (world.get(hit.x, hit.y, hit.z) !== B.CHEST) return;
+  world.set(hit.x, hit.y, hit.z, B.CHEST_OPEN);
+  game.mp.sendBlock(hit.x, hit.y, hit.z, B.CHEST_OPEN);
+  game.cubes += 3;
+  game.ui.renderHud();
+  sound.play('cube');
+  game.ui.toast('Treasure! You found 3 Capture Cubes.');
+  save();
 }
 
 function placeBlock() {
@@ -640,6 +661,7 @@ function tapAt(x, y) {
   if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) game.duels.challenge(other.player);
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
+  else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
 }
 
 game.touch = new TouchControls(game, canvas, {
@@ -833,6 +855,8 @@ let saveTimer = 0;
 let cloudTimer = 0;
 let hudTimer = 0;
 let last = performance.now();
+let underFade = 0; // 0 on the surface, 1 underground (eased)
+const CAVE_DARK = new THREE.Color(0x07080c);
 
 function smoothstep(a, b, x) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -847,17 +871,30 @@ function updateSky(dt) {
   const wx = game.weather.sky(light);
   scene.background.copy(NIGHT_SKY).lerp(DAY_SKY, light).lerp(wx.tint, wx.amount);
   if (wx.flash) scene.background.lerp(FLASH, wx.flash * 0.7);
+  // Under cover and below the ground it is dark, and the lead creature glows to light the way.
+  const under = game.world.underground(game.player.pos);
+  if (under && !game.underground) {
+    game.underground = true;
+    if (!game.toldDark) {
+      game.toldDark = true;
+      const lead = game.party[0] && SPECIES[game.party[0].species];
+      game.ui.toast(`It's dark down here! ${lead ? lead.name : 'Your friend'} glows to light the way.`);
+    }
+  } else if (!under) game.underground = false;
+  underFade += ((under ? 1 : 0) - underFade) * Math.min(1, dt * 1.5);
+  scene.background.lerp(CAVE_DARK, underFade);
   scene.fog.color.copy(scene.background);
-  scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar;
+  scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar + (40 - wx.fogFar) * underFade;
   const lit = Math.min(1, brightness * wx.dim + wx.flash * 0.4);
-  materials.solid.color.setScalar(lit);
-  materials.water.color.setScalar(lit);
-  hemi.intensity = 0.35 + 1.0 * light;
-  sun.intensity = 0.1 + 1.1 * light;
+  caveLight.uLit.value = lit;
+  caveLight.uLantern.value = 0.75 * underFade;
+  caveLight.uPlayer.value.copy(game.player.eyePos);
+  hemi.intensity = (0.35 + 1.0 * light) * (1 - 0.6 * underFade);
+  sun.intensity = (0.1 + 1.1 * light) * (1 - 0.6 * underFade);
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
-  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}`);
+  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`);
   game.night = light < 0.3;
 }
 
@@ -909,10 +946,12 @@ function updateTarget() {
   game.ui.setPrompt(target.player ? `${target.player.name} · ${how} to ask for a battle`
     : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
+      : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : '');
   game.touch.setAction(target.player ? `Battle ${target.player.name}!`
     : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
-    : target.wild ? `Battle ${target.wild.species.name}!` : '');
+    : target.wild ? `Battle ${target.wild.species.name}!`
+      : target.block?.id === B.CHEST ? 'Open chest!' : '');
 }
 
 function frame(now) {
@@ -925,7 +964,7 @@ function frame(now) {
     const t = now / 1000 * 0.05;
     camera.position.set(WORLD_W / 2 + Math.cos(t) * 45, 40, WORLD_D / 2 + Math.sin(t) * 45);
     camera.lookAt(WORLD_W / 2, 14, WORLD_D / 2);
-    game.creatures.update(dt, new THREE.Vector3(WORLD_W / 2, 0, WORLD_D / 2), game.spawnPoint);
+    game.creatures.update(dt, new THREE.Vector3(WORLD_W / 2, 0, WORLD_D / 2), game.spawnPoint, false, false);
   } else {
     p.joy = game.touch.joy;
     if (playing()) p.update(dt);

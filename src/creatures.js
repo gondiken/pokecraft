@@ -1,7 +1,7 @@
 // Wild creatures roaming the world: spawning, wandering AI and targeting.
 import * as THREE from 'three';
-import { B } from './blocks.js';
-import { WORLD_W, WORLD_D, WATER_LEVEL } from './world.js';
+import { B, isSolid } from './blocks.js';
+import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
 
 const MAX_WILD = 16;
@@ -110,23 +110,73 @@ export class CreatureManager {
     this.onSpawn?.(wild);
   }
 
+  // Cave creatures: a standing place underground near the player (air with floor below and room above).
+  trySpawnCave(center, spawnPoint, night = false) {
+    const world = this.world;
+    const angle = Math.random() * Math.PI * 2, dist = 5 + Math.random() * 13;
+    const x = Math.floor(center.x + Math.cos(angle) * dist), z = Math.floor(center.z + Math.sin(angle) * dist);
+    if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
+    const y0 = Math.floor(center.y) + Math.floor(Math.random() * 11) - 5;
+    const ground = world.ground[x + z * WORLD_W];
+    for (let y = Math.min(y0 + 4, WORLD_H - 3); y >= Math.max(1, y0 - 6); y--) {
+      if (world.get(x, y, z) !== B.AIR || world.get(x, y + 1, z) !== B.AIR) continue;
+      const below = world.get(x, y - 1, z);
+      if (below === B.AIR || below === B.WATER || !isSolid(below)) continue;
+      if (world.skyAt(x, y, z) >= 0.5 || y >= ground - 2) continue;
+      const [species, when] = this.pickEntry('cave', night);
+      const sp = SPECIES[species];
+      if (sp.waterOnly) return;
+      const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
+      const rare = sp.baseXp > 100 ? 3 : 0;
+      const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus) + 3);
+      const model = buildModel(species);
+      const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
+      wild.when = when;
+      wild.cave = true;
+      model.position.copy(wild.pos);
+      this.scene.add(model);
+      this.list.push(wild);
+      this.onSpawn?.(wild);
+      return;
+    }
+  }
+
+  // Where a cave creature may stand at (x, z), near height fromY: { y, ceiling } or null.
+  caveGroundY(x, z, fromY) {
+    const world = this.world;
+    const xi = Math.floor(x), zi = Math.floor(z);
+    if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
+    const ground = world.ground[xi + zi * WORLD_W];
+    for (let y = Math.floor(fromY) + 1; y >= Math.floor(fromY) - 3; y--) {
+      if (!isSolid(world.get(xi, y - 1, zi)) || world.get(xi, y, zi) !== B.AIR || isSolid(world.get(xi, y + 1, zi))) continue;
+      if (y >= ground - 1) return null;
+      let ceiling = y + 6;
+      for (let k = 1; k <= 6; k++) if (isSolid(world.get(xi, y + k, zi))) { ceiling = y + k; break; }
+      return { y, ceiling };
+    }
+    return null;
+  }
+
   remove(wild) {
     this.list = this.list.filter(w => w !== wild);
     this.scene.remove(wild.model);
     disposeModel(wild.model);
   }
 
-  update(dt, playerPos, spawnPoint, night = false) {
+  update(dt, playerPos, spawnPoint, night = false, under = this.world.underground(playerPos)) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 0.6;
-      if (this.list.length < MAX_WILD) this.trySpawn(playerPos, spawnPoint, night);
+      if (this.list.length < MAX_WILD) {
+        if (under) for (let i = 0; i < 4; i++) this.trySpawnCave(playerPos, spawnPoint, night);
+        else this.trySpawn(playerPos, spawnPoint, night);
+      }
       // Creatures wander off: when far away, after a while, or (for day- or night-only ones) when
       // the time of day changes. Never right next to the player, so nobody vanishes in front of you.
       for (const w of this.list) {
         if (w.frozen) continue;
         const d = w.pos.distanceTo(playerPos);
-        const wrongTime = w.when && (w.when === 'night') !== night;
+        const wrongTime = (w.when && (w.when === 'night') !== night) || !!w.cave !== under;
         if (d > 60 || (d > 10 && (w.life <= 0 || wrongTime))) { this.remove(w); break; }
       }
     }
@@ -192,12 +242,21 @@ export class CreatureManager {
       const speed = sp.flies ? 2.2 : 1.3;
       const nx = w.pos.x + Math.sin(w.heading) * speed * dt;
       const nz = w.pos.z + Math.cos(w.heading) * speed * dt;
-      const gy = this.groundY(nx, nz, sp);
+      const cave = w.cave ? this.caveGroundY(nx, nz, w.pos.y) : null;
+      const gy = w.cave ? cave && cave.y : this.groundY(nx, nz, sp);
       if (gy !== null && (sp.flies || sp.floats || gy - w.pos.y <= 1.1)) { w.pos.x = nx; w.pos.z = nz; }
       else w.heading += Math.PI * (0.5 + Math.random());
     }
-    let target = this.groundY(w.pos.x, w.pos.z, sp) ?? w.pos.y;
-    if (sp.flies) target += 1.2 + Math.sin(w.t * 1.5) * 0.25;
+    let target;
+    if (w.cave) {
+      const here = this.caveGroundY(w.pos.x, w.pos.z, w.pos.y);
+      target = here ? here.y : w.pos.y;
+      if (here && (sp.flies || sp.floats)) target = Math.min(here.y + 1.2, here.ceiling - 1);
+      if (here && sp.flies) target += Math.sin(w.t * 1.5) * 0.15;
+    } else {
+      target = this.groundY(w.pos.x, w.pos.z, sp) ?? w.pos.y;
+      if (sp.flies) target += 1.2 + Math.sin(w.t * 1.5) * 0.25;
+    }
     w.pos.y += (target - w.pos.y) * Math.min(1, dt * 10);
     w.model.position.copy(w.pos);
     w.model.rotation.y = w.heading;

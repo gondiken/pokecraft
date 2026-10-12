@@ -24,6 +24,7 @@ const WOOL_RGB = {
 const MORE_TILES = [
   'ICE', 'GRAVEL', 'SANDSTONE', 'SANDSTONE_TOP', 'CACTUS_SIDE', 'CACTUS_TOP', 'MUD', 'PINE_SIDE', 'PINE_LEAVES',
   'FLOWERS', 'CRYSTAL', 'GLASS', 'STONE_BRICKS', 'LAMP', 'COAL_ORE', 'GOLD_ORE',
+  'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -34,6 +35,7 @@ export const B = {
   ICE: 12, GRAVEL: 13, SANDSTONE: 14, CACTUS: 15, MUD: 16, PINE_LOG: 17, PINE_LEAVES: 18, FLOWER_BUSH: 19,
   // 20-36 are the wool blocks.
   CRYSTAL: 40, GLASS: 41, STONE_BRICKS: 42, LAMP: 43, COAL_ORE: 44, GOLD_ORE: 45,
+  GLOWCAP: 46, CHEST: 47, CHEST_OPEN: 48,
 };
 // Block id of each type's wool block.
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, 20 + i]));
@@ -65,6 +67,9 @@ export const BLOCKS = {
   [B.LAMP]: { name: 'Lamp', ...all(T.LAMP), glow: true },
   [B.COAL_ORE]: { name: 'Coal Ore', ...all(T.COAL_ORE) },
   [B.GOLD_ORE]: { name: 'Gold Ore', ...all(T.GOLD_ORE) },
+  [B.GLOWCAP]: { name: 'Glowcap', ...all(T.GLOWCAP), glow: true },
+  [B.CHEST]: { name: 'Treasure Chest', top: T.CHEST_TOP, side: T.CHEST_SIDE, bottom: T.CHEST_TOP },
+  [B.CHEST_OPEN]: { name: 'Open Chest', top: T.CHEST_OPEN_TOP, side: T.CHEST_SIDE, bottom: T.CHEST_TOP },
 };
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
@@ -74,7 +79,7 @@ export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.GL
 export const PLACEABLE = [
   B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONE_BRICKS, B.BRICK, B.PLANKS, B.LOG, B.PINE_LOG,
   B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.CACTUS, B.SAND, B.SANDSTONE, B.GRAVEL, B.MUD, B.SNOW,
-  B.ICE, B.GLASS, B.LAMP, B.CRYSTAL, B.COAL_ORE, B.GOLD_ORE,
+  B.ICE, B.GLASS, B.LAMP, B.CRYSTAL, B.GLOWCAP, B.COAL_ORE, B.GOLD_ORE,
 ];
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
@@ -236,6 +241,20 @@ export function drawAtlas() {
   };
   ore(T.COAL_ORE, [40, 40, 40]);
   ore(T.GOLD_ORE, [250, 210, 60]);
+  // Glowcap: a teal-blue mushroom cap with pale glowing spots.
+  each((x, y) => {
+    const spot = (x * 5 + y * 3) % 11 === 0 || (x * 3 + y * 7) % 13 === 0;
+    put(T.GLOWCAP, x, y, spot ? [225, 255, 245] : shade([40, 150, 170], 1 + (rand() - 0.5) * 0.25 + (y % 4 === 3 ? -0.12 : 0)));
+  });
+  // Treasure chest: planks with a gold band and lock; the top is a lid (or dark inside when open).
+  each((x, y) => {
+    const band = y >= 6 && y <= 8;
+    const lock = x >= 6 && x <= 9 && y >= 5 && y <= 10;
+    const edgeLine = x === 0 || x === 15 || y === 0 || y === 15;
+    put(T.CHEST_SIDE, x, y, lock ? [250, 215, 70] : band ? [214, 170, 50] : edgeLine ? [90, 56, 30] : shade([150, 98, 52], (y % 5 === 4 ? 0.8 : 1) * (1 + (rand() - 0.5) * 0.1)));
+    put(T.CHEST_TOP, x, y, edgeLine ? [90, 56, 30] : x === 7 || x === 8 ? [214, 170, 50] : shade([164, 108, 58], 1 + (rand() - 0.5) * 0.1));
+    put(T.CHEST_OPEN_TOP, x, y, edgeLine || x === 1 || x === 14 || y === 1 || y === 14 ? [120, 76, 40] : shade([34, 24, 20], 1 + (rand() - 0.5) * 0.3));
+  });
 
   return c;
 }

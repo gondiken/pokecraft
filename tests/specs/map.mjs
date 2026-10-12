@@ -21,6 +21,21 @@ export default async function ({ browser, base, t }) {
     return { W: WORLD_W, D: WORLD_D, ms: Math.round(performance.now() - t0) };
   });
   t.ok(W === 224 && D === 224, `the map is ${W}x${D} (generating it takes ${ms} ms here)`);
+  // Caves must never change the terrain: heights are the same as ever (checksum for seed 4242), and
+  // the surface is the same as a world without caves except at the cave entrances.
+  const terrain = await page.evaluate(async () => {
+    const { WORLD_W, WORLD_D, World } = await import('/src/world.js');
+    const a = new World(4242, null, null); a.generate({ caves: false });
+    const b = new World(4242, null, null); b.generate();
+    let sum = 0, diff = 0;
+    for (let x = 0; x < WORLD_W; x += 3) for (let z = 0; z < WORLD_D; z += 3) sum += b.terrainHeight(x, z) * ((x * 7 + z) % 13 + 1);
+    const near = new Uint8Array(WORLD_W * WORLD_D);
+    for (const c of b.caves.opened) for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) near[(c % WORLD_W) + dx + (Math.floor(c / WORLD_W) + dz) * WORLD_W] = 1;
+    for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) if (a.surface(x, z).y !== b.surface(x, z).y && !near[x + z * WORLD_W]) diff++;
+    return { sum, diff, holes: b.caves.opened.size };
+  });
+  t.ok(terrain.sum === 596409, `terrain heights are unchanged (checksum ${terrain.sum})`);
+  t.ok(terrain.diff === 0 && terrain.holes < 600, `with caves the surface is the same except around ${terrain.holes} entrance columns`);
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForTimeout(1500);
   t.ok(await page.evaluate(() => window.pokecraft.world.get(100, 30, 100) === 11), "an old save's block is still in the same place");
