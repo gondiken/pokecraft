@@ -19,17 +19,17 @@ export default async function ({ browser, base, t }) {
         wool: !!WOOL[type], color: !!S.TYPE_COLORS[type] };
     }
     out.triangle = [S.effectiveness('cosmic', 'sound'), S.effectiveness('sound', 'mind'), S.effectiveness('mind', 'cosmic')];
-    out.evolves = S.SPECIES.starmite.evolve?.into === 'galaxor' && S.SPECIES.echobat.evolve?.into === 'boomwing';
+    out.evolves = S.SPECIES.moonhop.evolve?.into === 'lunaroo' && S.SPECIES.drumbo.evolve?.into === 'bongorilla';
     return out;
   });
   for (const type of ['cosmic', 'sound']) {
     const i = info[type];
-    t.ok(i.mons.length === 3, `${type}: 3 creatures (${i.mons.join(', ')})`);
+    t.ok(i.mons.length === 6, `${type}: 6 creatures (${i.mons.join(', ')})`);
     t.ok(i.everySpawns && i.learn && i.moves === 2, `${type}: all spawn in the wild and learn ${type} moves`);
     t.ok(i.gym && i.teams && i.wool && i.color, `${type}: has the ${i.gym} with a wool roof`);
   }
   t.ok(info.triangle.every(x => x === 2), 'cosmic > sound > mind > cosmic');
-  t.ok(info.evolves, 'Starmite and Echobat evolve');
+  t.ok(info.evolves, 'Moonhop and Drumbo evolve');
 
   // Win at the Echo Gym with a strong team.
   await newGame(page, 0);
