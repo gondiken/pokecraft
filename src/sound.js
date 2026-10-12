@@ -78,6 +78,7 @@ const CRIES = {
   bongorilla: () => { drum(110, 0, 0.5); drum(110, 0.12, 0.5); drum(147, 0.3, 0.5); drum(98, 0.42, 0.55); },
   dinglet: () => { bell(1047, 0, 0.6, 0.25); bell(1319, 0.15, 0.7, 0.2); },
   gongolin: () => bell(110, 0, 1.6, 0.45),
+  clawdio: () => { noise({ freq: 3000, len: 0.03, vol: 0.3, q: 2 }); [523, 659, 587, 784].forEach((f, i) => tone(f, { at: 0.05 + i * 0.1, len: 0.1, vol: 0.3, type: 'square' })); },
 };
 
 // A slow rumble of low noise (thunder).

@@ -1586,7 +1586,249 @@ const SHAPES_B = { snail, lantern, crane, windup, pitcher, teacup };
 /* ==== end of T4b group B shapes ==== */
 
 /* ==== T4b group C shapes ==== */
-const SHAPES_C = {};
+// A drake made of fluffy cloud puffs, with whiskers and a lightning tail tip.
+function nimbus(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  const head = pivot(b, 0, 1.3, 0.78);
+  parts.head = head;
+  box(head, 0.38, 0.32, 0.4, m.body);
+  box(head, 0.28, 0.17, 0.22, m.body, 0, -0.06, 0.28);
+  box(head, 0.2, 0.03, 0.04, m.dark, 0, -0.12, 0.39);
+  box(head, 0.1, 0.06, 0.03, 0xffa0a8, -0.17, -0.06, 0.2);
+  box(head, 0.1, 0.06, 0.03, 0xffa0a8, 0.17, -0.06, 0.2);
+  eyes(head, 0.06, 0.205, 0.1, 0.11);
+  box(head, 0.2, 0.1, 0.2, m.body, 0, 0.2, 0.0);
+  for (const s of [-1, 1]) {
+    box(head, 0.07, 0.3, 0.07, m.dark, s * 0.13, 0.3, -0.12).rotation.x = -0.7;
+    const wh = pivot(head, s * 0.14, -0.06, 0.1);
+    box(wh, 0.04, 0.04, 0.4, m.accent, s * 0.1, 0, -0.1).rotation.y = s * -0.3;
+    glow(box(wh, 0.07, 0.07, 0.07, m.accent, s * 0.15, 0, -0.3), m.accent);
+    swing(parts, wh, 'y', 0.3, 2.5, s);
+  }
+  parts.segments = [];
+  const n = 6;
+  for (let i = 1; i <= n; i++) {
+    const r = 0.27 - i * 0.02;
+    const seg = pivot(b, 0, [0, 1.0, 0.72, 0.44, 0.36, 0.52, 0.72][i], 0.6 - i * 0.3);
+    ball(seg, r, i % 2 ? m.body : m.belly);
+    ball(seg, r * 0.65, m.body, r * 0.75, r * 0.45, 0.04);
+    ball(seg, r * 0.6, m.belly, -r * 0.75, r * 0.2, -0.04);
+    ball(seg, r * 0.5, m.dark, 0, -r * 0.85, 0);
+    parts.segments.push({ g: seg, i, x0: 0 });
+    if (i === n) {
+      const tip = pivot(seg, 0, 0, -0.18);
+      parts.tail = tip;
+      [[0, 0, 0, 0.1, 0.22, 0.08], [0, 0.13, -0.07, 0.1, 0.08, 0.22], [0, 0.25, -0.15, 0.1, 0.22, 0.08]].forEach(([x, y, z, w, h, d], k) => {
+        const bx = glow(box(tip, w, h, d, m.accent, x, y, z - 0.05), m.accent);
+        if (k === 0) parts.tip = bx;
+      });
+    }
+  }
+  for (const s of [-1, 1]) {
+    const paw = ball(b, 0.09, m.body, s * 0.27, 0.92, 0.5);
+    swing(parts, paw, 'x', 0.3, 3, s);
+  }
+}
+
+// A lizard with turret eyes and a curled tail; the whole body slowly changes colour.
+function chameleon(root, m, parts) {
+  const bodyG = pivot(root, 0, 0, 0);
+  box(bodyG, 0.36, 0.4, 0.7, m.body, 0, 0.5, 0);
+  box(bodyG, 0.3, 0.2, 0.5, m.belly, 0, 0.36, 0.04);
+  box(bodyG, 0.1, 0.1, 0.12, m.accent, 0.19, 0.55, 0.05);
+  box(bodyG, 0.1, 0.1, 0.12, m.accent, -0.19, 0.5, -0.12);
+  for (let i = 0; i < 5; i++) box(bodyG, 0.06, 0.1 + (i % 2) * 0.05, 0.1, m.belly, 0, 0.74 + (i % 2) * 0.02, 0.26 - i * 0.14);
+  const head = pivot(root, 0, 0.68, 0.4);
+  parts.head = head;
+  box(head, 0.3, 0.28, 0.36, m.body, 0, 0, 0.1);
+  box(head, 0.12, 0.2, 0.3, m.belly, 0, 0.2, -0.04).rotation.x = 0.3;
+  box(head, 0.08, 0.12, 0.2, m.accent, 0, 0.3, -0.12).rotation.x = 0.5;
+  box(head, 0.22, 0.1, 0.1, m.belly, 0, -0.06, 0.3);
+  box(head, 0.1, 0.03, 0.03, 0x2a2a2a, 0, -0.08, 0.355).userData.eye = true;
+  for (const s of [-1, 1]) box(head, 0.04, 0.04, 0.03, 0x2a2a2a, s * 0.07, -0.06, 0.355).userData.eye = true;
+  const eyeSpeed = [1.3, 1.9];
+  [-1, 1].forEach((s, k) => {
+    const e = pivot(head, s * 0.18, 0.08, 0.14);
+    const eb = ball(e, 0.09, 0xf4f0d0, s * 0.03, 0, 0.02);
+    eb.children.forEach(c => { c.userData.eye = true; });
+    box(e, 0.06, 0.07, 0.03, 0x111111, s * 0.03, 0, 0.11).userData.eye = true;
+    swing(parts, e, 'y', 0.5, eyeSpeed[k], k * 2);
+  });
+  parts.legs = [];
+  for (const [sx, z, ph] of [[-1, 0.22, 0], [1, 0.22, Math.PI], [-1, -0.22, Math.PI], [1, -0.22, 0]]) {
+    const leg = pivot(root, sx * 0.22, 0.4, z);
+    box(leg, 0.1, 0.24, 0.12, m.body, sx * 0.03, -0.1, 0);
+    box(leg, 0.2, 0.06, 0.16, m.dark, sx * 0.02, -0.24, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tail = pivot(root, 0, 0.5, -0.35);
+  parts.tail = tail;
+  const cy = -0.1, cz = -0.32;
+  for (let k = 0; k < 8; k++) {
+    const rad = 0.4 - k * 0.035, phi = 1.2 + k * 0.85, sz = 0.19 - k * 0.016;
+    box(tail, sz, sz, sz * 1.2, k % 3 === 2 ? m.accent : m.body, 0, cy + Math.cos(phi) * rad, cz + Math.sin(phi) * rad).rotation.x = -phi + 1.57;
+  }
+  parts.rainbow = [];
+  root.traverse(o => {
+    if (!o.isMesh || o.userData.eye) return;
+    const c = o.material.color.getHex();
+    const offset = (c === m.belly || c === m.accent) ? 0.36 : 0.30;
+    parts.rainbow.push({ mat: o.material, offset });
+    o.material.color.setHSL(offset, 0.75, 0.62);
+  });
+}
+
+// A soft dark puff with a glowing galaxy swirl behind it.
+function blackhole(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  const sw = pivot(b, 0, 0.55, -0.2);
+  spin(parts, sw, 'z', 1.5);
+  for (let arm = 0; arm < 3; arm++) for (let j = 0; j < 9; j++) {
+    const a = arm * 2.094 + j * 0.36, r = 0.34 + j * 0.075, sz = 0.21 - j * 0.014;
+    glow(box(sw, sz, sz, 0.08, m.accent, Math.cos(a) * r, Math.sin(a) * r, 0), m.accent);
+  }
+  const sp = pivot(b, 0, 0.55, -0.2);
+  spin(parts, sp, 'z', 3);
+  for (let k = 0; k < 4; k++) {
+    const r = 0.6 + (k % 2) * 0.25;
+    glow(box(sp, 0.08, 0.08, 0.08, 0xffffff, Math.cos(k * 1.57 + 0.5) * r, Math.sin(k * 1.57 + 0.5) * r, 0), 0xffffff);
+  }
+  ball(b, 0.32, m.body, 0, 0.55, 0);
+  for (let k = 0; k < 6; k++) {
+    const a = k * 1.05;
+    box(b, 0.12, 0.12, 0.12, m.belly, Math.cos(a) * 0.34, 0.55 + Math.sin(a) * 0.34, -0.05);
+  }
+  const face = pivot(b, 0, 0.55, 0);
+  parts.head = face;
+  box(face, 0.5, 0.3, 0.04, m.belly, 0, -0.02, 0.29);
+  eyes(face, 0.05, 0.32, 0.14, 0.17);
+  for (const s of [-1, 1]) box(face, 0.05, 0.05, 0.03, 0xffffff, s * 0.14 + 0.02, 0.1, 0.35).userData.eye = true;
+  box(face, 0.08, 0.08, 0.03, m.dark, 0, -0.12, 0.33);
+}
+
+// A crab with a jukebox for a shell, a spinning record and snapping claws.
+function jukebox(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  box(b, 0.7, 0.5, 0.45, m.body, 0, 0.5, 0);
+  box(b, 0.56, 0.16, 0.45, m.body, 0, 0.83, 0);
+  box(b, 0.4, 0.14, 0.45, m.body, 0, 0.97, 0);
+  glow(box(b, 0.62, 0.05, 0.03, m.accent, 0, 0.66, 0.235), m.accent);
+  glow(box(b, 0.5, 0.05, 0.03, 0xff6ad8, 0, 0.82, 0.235), 0xff6ad8);
+  glow(box(b, 0.36, 0.05, 0.03, 0xffe060, 0, 0.97, 0.235), 0xffe060);
+  box(b, 0.5, 0.26, 0.03, m.belly, 0, 0.44, 0.235);
+  for (let i = -2; i <= 2; i++) box(b, 0.03, 0.1, 0.03, m.dark, i * 0.09, 0.5, 0.25);
+  box(b, 0.14, 0.03, 0.03, m.dark, 0, 0.35, 0.25);
+  for (const s of [-1, 1]) box(b, 0.04, 0.05, 0.03, m.dark, s * 0.09, 0.37, 0.25);
+  const rec = pivot(b, 0, 1.06, 0);
+  spin(parts, rec, 'y', 3);
+  box(rec, 0.36, 0.04, 0.26, 0x2a2a30);
+  box(rec, 0.26, 0.04, 0.36, 0x2a2a30);
+  box(rec, 0.28, 0.04, 0.28, 0x2a2a30).rotation.y = Math.PI / 4;
+  glow(box(rec, 0.12, 0.06, 0.12, m.accent, 0, 0.01, 0), m.accent);
+  for (const s of [-1, 1]) {
+    const st = pivot(b, s * 0.3, 0.9, 0.08);
+    box(st, 0.05, 0.3, 0.05, m.dark, 0, 0.15, 0);
+    box(st, 0.16, 0.16, 0.16, 0xf4f0d0, 0, 0.34, 0.02).userData.eye = true;
+    box(st, 0.08, 0.1, 0.03, 0x111111, s * 0.01, 0.34, 0.11).userData.eye = true;
+    swing(parts, st, 'z', 0.12, 2, s);
+  }
+  parts.arms = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(b, s * 0.42, 0.5, 0.1);
+    box(arm, 0.09, 0.09, 0.3, m.body, s * 0.04, 0, 0.15).rotation.y = s * -0.2;
+    const claw = pivot(arm, s * 0.1, 0, 0.32);
+    box(claw, 0.18, 0.08, 0.26, m.dark, 0, -0.06, 0.12);
+    const up = pivot(claw, 0, 0, 0);
+    box(up, 0.18, 0.08, 0.26, m.body, 0, 0.04, 0.12);
+    swing(parts, up, 'x', 0.3, 4, ph);
+    parts.arms.push({ g: arm, phase: ph });
+  }
+  parts.legs = [];
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+    const leg = pivot(b, s * 0.33, 0.26, -0.14 + k * 0.14);
+    box(leg, 0.22, 0.05, 0.05, m.dark, s * 0.11, -0.05, 0).rotation.z = -s * 0.4;
+    box(leg, 0.05, 0.16, 0.05, m.dark, s * 0.23, -0.15, 0);
+    parts.legs.push({ g: leg, phase: (k % 2) * Math.PI, side: true });
+  }
+}
+
+// A friendly fish skeleton with a skull face, ribs and a V tail.
+function fishbone(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  const head = pivot(b, 0, 0.5, 0.62);
+  parts.head = head;
+  box(head, 0.34, 0.3, 0.32, m.body);
+  box(head, 0.24, 0.14, 0.2, m.body, 0, -0.07, 0.24);
+  sockets(head, m, 0.04, 0.165, 0.1, 0.12, 0.13);
+  box(head, 0.22, 0.03, 0.04, m.dark, 0, -0.12, 0.35);
+  for (const x of [-0.08, 0, 0.08]) box(head, 0.05, 0.06, 0.04, 0xffffff, x, -0.09, 0.355);
+  box(head, 0.2, 0.08, 0.2, m.belly, 0, -0.17, 0.2);
+  parts.segments = [];
+  for (let i = 1; i <= 5; i++) {
+    const v = pivot(b, 0, 0.5, 0.34 - i * 0.24);
+    box(v, 0.1, 0.1, 0.14, m.body);
+    const f = 1 - i * 0.13;
+    for (const s of [-1, 1]) {
+      box(v, 0.05, 0.16 * f, 0.05, m.body, s * 0.09 * f, -0.08 * f, 0).rotation.z = s * 0.5;
+      box(v, 0.05, 0.16 * f, 0.05, m.belly, s * 0.17 * f, -0.22 * f, 0).rotation.z = -s * 0.3;
+    }
+    if (i <= 4) box(v, 0.03, 0.18, 0.05, m.belly, 0, 0.14, 0).rotation.x = -0.3;
+    parts.segments.push({ g: v, i, x0: 0 });
+  }
+  const tail = pivot(b, 0, 0.5, -0.95);
+  parts.tail = tail;
+  box(tail, 0.05, 0.05, 0.3, m.body, 0, 0, -0.05);
+  for (const s of [-1, 1]) {
+    box(tail, 0.05, 0.42, 0.05, m.body, 0, s * 0.2, -0.12).rotation.x = s * 0.55;
+    box(tail, 0.04, 0.3, 0.04, m.belly, 0, s * 0.1, -0.06).rotation.x = s * 1.0;
+  }
+}
+
+// A glass ball with crossing bands that rolls, and a one-eyed alien hamster inside.
+function zorb(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  const al = pivot(b, 0, 0.4, 0);
+  al.scale.setScalar(1.2);
+  ball(al, 0.2, m.body, 0, 0.02, 0);
+  box(al, 0.2, 0.2, 0.04, m.belly, 0, -0.04, 0.17);
+  box(al, 0.17, 0.19, 0.04, 0xffffff, 0, 0.04, 0.19).userData.eye = true;
+  box(al, 0.09, 0.11, 0.03, 0x111111, 0, 0.04, 0.22).userData.eye = true;
+  box(al, 0.04, 0.04, 0.03, 0xffffff, 0.02, 0.07, 0.235).userData.eye = true;
+  box(al, 0.1, 0.03, 0.03, m.dark, 0, -0.08, 0.2);
+  parts.legs = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const an = pivot(al, s * 0.1, 0.17, 0);
+    box(an, 0.03, 0.17, 0.03, m.dark, 0, 0.08, 0);
+    glow(box(an, 0.07, 0.07, 0.07, m.accent, 0, 0.19, 0), m.accent);
+    swing(parts, an, 'z', 0.35, 3, ph);
+    const lg = pivot(al, s * 0.08, -0.15, 0.02);
+    box(lg, 0.07, 0.1, 0.09, m.dark, 0, -0.04, 0.02);
+    parts.legs.push({ g: lg, phase: ph });
+  }
+  const shell = ball(b, 0.43, m.belly, 0, 0.45, 0);
+  for (const w of [[0.86, 0.64, 0.64], [0.64, 0.86, 0.64]]) box(shell, w[0], w[1], w[2], m.belly).rotation.y = Math.PI / 4;
+  const band = pivot(b, 0, 0.45, 0);
+  spin(parts, band, 'x', 2);
+  for (const rz of [0, Math.PI / 2]) {
+    const ring = pivot(band, 0, 0, 0);
+    ring.rotation.z = rz;
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4, r = 0.43;
+      const bd = glow(box(ring, 0.06, 0.07, 0.33, m.accent, 0, Math.cos(a) * r, Math.sin(a) * r), m.accent);
+      bd.rotation.x = a;
+    }
+  }
+  shell.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0.13; c.material.depthWrite = false; });
+}
+
+const SHAPES_C = { nimbus, chameleon, blackhole, jukebox, fishbone, zorb };
 /* ==== end of T4b group C shapes ==== */
 
 export const SHAPES = {
