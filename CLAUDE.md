@@ -48,11 +48,13 @@ this file is for working on the code.
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
 | `src/multiplayer.js` | Play together: share code, avatars, block sync |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
+| `src/weather.js` | Weather: shared phase (clear/rain/storm/rainbow), per-biome kind (snow, sandstorm, fog, stars), particles, rainbow arc, lightning, spawn boosts (`game.weather.set(kind)` / `skip()` / `info()` for tests) |
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
 - `window.pokecraft` is the global `game` object (handy in tests and the console):
-  `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`.
+  `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`, `weather`.
+  Weather is not saved (restarts clear on load); the host sends its phase to visitors, who never run the timer.
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
@@ -108,7 +110,7 @@ PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save t
 ```
 
 Specs: `battle-and-menu`, `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
-and `pvp` (two browsers, via `openPair`), `new-types`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
+and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
   messages between two browsers itself (`?mp=local` swaps Supabase Realtime for a

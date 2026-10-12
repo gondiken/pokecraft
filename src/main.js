@@ -14,6 +14,7 @@ import { Duels } from './duel.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
+import { Weather } from './weather.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
 const OLD_SAVE_KEY = 'pokecraft-save-v1';
@@ -30,6 +31,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 const scene = new THREE.Scene();
 const DAY_SKY = new THREE.Color(0x8fd3ff);
 const NIGHT_SKY = new THREE.Color(0x0b1030);
+const FLASH = new THREE.Color(0xe8eeff);
 scene.background = DAY_SKY.clone();
 scene.fog = new THREE.Fog(DAY_SKY.clone(), 40, 100);
 
@@ -95,6 +97,11 @@ game.creatures.onSpawn = wild => {
 };
 game.ui = new UI(game, atlas);
 game.battle = new Battle(game);
+game.weather = new Weather(game, {
+  toast: t => { if (game.started && !game.inBattle) game.ui.toast(t); },
+  changed: () => { if (game.mp?.role === 'host') game.mp.sendState(); },
+});
+game.creatures.weather = game.weather;
 
 function loadSave() {
   try {
@@ -385,6 +392,7 @@ function continueGame(saved) {
 
 function begin() {
   game.started = true;
+  game.weather.reset();
   titleEl.classList.add('hidden');
   hudEl.classList.remove('hidden');
   game.ui.renderHud();
@@ -456,6 +464,7 @@ async function goToMenu() {
   save(true);
   game.mp.close();
   game.started = false;
+  game.weather.reset();
   if (locked) document.exitPointerLock();
   game.player.keys = {};
   game.touch.reset();
@@ -759,16 +768,20 @@ function updateSky(dt) {
   const elevation = Math.sin(game.time * Math.PI * 2);
   const light = smoothstep(-0.2, 0.25, elevation);
   const brightness = 0.25 + 0.75 * light;
-  scene.background.copy(NIGHT_SKY).lerp(DAY_SKY, light);
+  const wx = game.weather.sky(light);
+  scene.background.copy(NIGHT_SKY).lerp(DAY_SKY, light).lerp(wx.tint, wx.amount);
+  if (wx.flash) scene.background.lerp(FLASH, wx.flash * 0.7);
   scene.fog.color.copy(scene.background);
-  materials.solid.color.setScalar(brightness);
-  materials.water.color.setScalar(brightness);
+  scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar;
+  const lit = Math.min(1, brightness * wx.dim + wx.flash * 0.4);
+  materials.solid.color.setScalar(lit);
+  materials.water.color.setScalar(lit);
   hemi.intensity = 0.35 + 1.0 * light;
   sun.intensity = 0.1 + 1.1 * light;
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
-  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}`);
+  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}`);
   game.night = light < 0.3;
 }
 
@@ -845,6 +858,7 @@ function frame(now) {
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);
     if (!game.inBattle) updateTarget();
+    game.weather.update(dt, now);
     updateSky(dt);
 
     regenTimer += dt;
@@ -896,6 +910,7 @@ game.mp = new Multiplayer(game, {
     };
     createWorld(data.seed, data.edits, data.size);
     game.time = data.time;
+    if (data.weather) game.weather.apply(data.weather);
     const np = game.player;
     np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
     for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
