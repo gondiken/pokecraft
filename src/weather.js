@@ -13,8 +13,8 @@ export const BOOSTS = {
   rain: { water: 3, grass: 1.5, fire: 0.5 },
   storm: { electric: 4, water: 2, fire: 0.5 },
   snow: { ice: 3 },
-  sandstorm: { rock: 2.5, fire: 1.5, bone: 1.5 },
-  fog: { ghost: 3, toxic: 2, bone: 2.5 },
+  sandstorm: { rock: 2.5, fire: 1.5 },
+  fog: { ghost: 3, toxic: 2 },
   stars: { cosmic: 2, alien: 1.5 },
   rainbow: { rainbow: 10 },
 };

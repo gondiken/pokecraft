@@ -46,6 +46,11 @@ export default async function ({ browser, base, t }) {
     out.bonetoss = S.moveInfo('bonetoss').text;
     out.sig = [S.makeCreature('howlbone', 31).moves.includes('rattledance') || S.SPECIES.howlbone.learn.some(([l, m]) => l === 30 && m === 'rattledance'),
       S.SPECIES.ufomax.learn.some(([l, m]) => l === 30 && m === 'mothership')];
+    const boneIn = Object.entries(S.SPAWNS).map(([b, l]) => [b, l.filter(e => S.SPECIES[e[0]].type === 'bone')]);
+    out.boneSurface = boneIn.filter(([b, l]) => b !== 'cave' && l.length).map(([b]) => b);
+    const cave = S.SPAWNS.cave, total = cave.reduce((a, e) => a + e[1], 0);
+    out.caveBone = boneIn.find(([b]) => b === 'cave')[1].length;
+    out.caveShare = cave.filter(e => S.SPECIES[e[0]].type === 'bone').reduce((a, e) => a + e[1], 0) / total;
     out.count = Object.values(S.SPECIES).filter(s => !s.legendary).length;
     return out;
   }, IDS);
@@ -57,6 +62,8 @@ export default async function ({ browser, base, t }) {
     t.ok(i.shapes === 3 && !i.sharedShapes.length, `${type}: 3 own body shapes ${i.sharedShapes.join(', ')}`);
     t.ok(i.color, `${type}: has a type colour`);
   }
+  t.ok(!r.boneSurface.length, `bone creatures spawn only in caves (surface: ${r.boneSurface.join(', ') || 'none'})`);
+  t.ok(r.caveBone >= 5 && r.caveShare >= 0.2, `caves have ${r.caveBone} bone entries, ${(r.caveShare * 100).toFixed(0)}% of the table`);
   t.ok(!r.chart.length, `type chart ${r.chart.join('; ')}`);
   t.ok(!r.bad.length, `all 12 models build and animate ${r.bad.join('; ')}`);
   t.ok(r.evolve.length === 6, `6 evolutions (${r.evolve.join(', ')})`);
