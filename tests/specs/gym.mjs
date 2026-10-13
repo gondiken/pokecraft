@@ -77,6 +77,10 @@ export default async function ({ browser, base, t }) {
 
   // The two newest gyms (needs the Bone and Alien creatures): trainer, then leader, for both.
   for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer']]) {
+    if (id === 'alien') { // the Saucer people only come at night
+      await page.evaluate(() => { window.pokecraft.time = 0.75; });
+      await page.waitForFunction(() => window.pokecraft.night, null, { timeout: 60000, polling: 300 });
+    }
     await page.evaluate(async gid => {
       const g = window.pokecraft;
       const { makeCreature } = await import('/src/species.js');
