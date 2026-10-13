@@ -58,7 +58,8 @@ export default async function ({ browser, base, t }) {
   t.ok(msg.includes('at night') && /about \d+ minute/.test(msg), `the toast says when night comes (${msg})`);
   const arrowDay = await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
-    g.badges = GYMS.filter(x => x.id !== 'alien').map(x => x.id);
+    g.badges = GYMS.filter(x => x.id !== 'alien' && x.id !== 'light').map(x => x.id); // Saucer and Sunbeam left
+    g.player.pos.copy(g.spawnPoint); // away from the Saucer Gym itself
     g.updateGuide();
     return document.getElementById('guide').textContent;
   });
@@ -125,8 +126,10 @@ export default async function ({ browser, base, t }) {
     const g = window.pokecraft, w = g.world;
     const gym = w.gyms.find(x => x.def.id === 'sky'), [fx, fz] = gym.front;
     g.badges = (await import('/src/gyms.js')).GYMS.filter(x => x.id !== 'sky').map(x => x.id);
+    const { WORLD_W } = await import('/src/world.js');
     const out = {};
-    const onGround = (x, z) => g.player.pos.set(x + 0.5, w.surface(Math.round(x), Math.round(z)).y + 1, z + 0.5);
+    // The natural ground (w.surface would find the island's top).
+    const onGround = (x, z) => g.player.pos.set(x + 0.5, w.ground[Math.round(x) + Math.round(z) * WORLD_W] + 1, z + 0.5);
     // Far away.
     onGround(gym.x - fx * 40, gym.z - fz * 40);
     g.updateGuide();
@@ -136,11 +139,13 @@ export default async function ({ browser, base, t }) {
     g.updateGuide();
     out.under = document.getElementById('guide').textContent;
     out.target = g.guideTarget; out.pad = gym.pad;
+    await new Promise(r => setTimeout(r, 50)); // let the toast observer run
     out.toasts = window.__toasts.join(' | ');
     window.__toasts.length = 0;
     // On the pad.
     g.player.pos.set(gym.pad[0] + 0.5, gym.pad[1] + 1, gym.pad[2] + 0.5);
     g.updateGuide();
+    await new Promise(r => setTimeout(r, 50));
     out.padToasts = window.__toasts.join(' | ');
     // On the island.
     g.player.pos.set(gym.x + 0.5, gym.y, gym.z + 0.5);
@@ -196,7 +201,7 @@ export default async function ({ browser, base, t }) {
     await pad.waitForTimeout(1000);
     const m = await pad.evaluate(() => {
       const r = document.getElementById('badges').getBoundingClientRect();
-      const hud = document.getElementById('badges').parentElement.getBoundingClientRect();
+      const hud = r;
       const others = [...document.querySelectorAll('#btn-break, #btn-place, #btn-jump, #btn-team, #btn-blocks, #btn-book, #btn-pause, #joystick')]
         .filter(e => e.offsetParent).map(e => e.getBoundingClientRect());
       const hit = others.some(o => !(o.right < hud.left || o.left > hud.right || o.bottom < hud.top || o.top > hud.bottom));

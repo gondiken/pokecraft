@@ -924,6 +924,7 @@ function updateSky(dt) {
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
   game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`);
   game.night = light < 0.3;
+  game.npcs.setNight(game.night); // the Saucer Gym's people come and go with the night
 }
 
 // Minutes of real time until it gets dark (0 if it already is).
