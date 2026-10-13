@@ -1016,6 +1016,44 @@ export const SPECIES = {
   /* ==== end of T9 slime ==== */
 
   /* ==== T9 light: builder LIGHT only ==== */
+  sunnykit: {
+    name: 'Sunnykit', type: 'light', desc: 'A fox kit with a little sun on its tail. It naps in sunny spots all day long.',
+    base: { hp: 40, atk: 55, def: 40, spd: 70 }, baseXp: 62, catchRate: 0.45, learn: L('light', 'fire'),
+    evolve: { level: 20, into: 'solvixen' },
+    model: { shape: 'sunfox', scale: 0.75, body: 0xffb84a, accent: 0xfff27a, dark: 0x8a4a1a, belly: 0xfff0d0, extras: [] },
+  },
+  solvixen: {
+    name: 'Solvixen', type: 'light', desc: 'A proud fox with a mane of sunbeams. It lights the way at dawn.',
+    base: { hp: 70, atk: 90, def: 60, spd: 100 }, baseXp: 155, catchRate: 0.15, learn: L('light', 'fire'),
+    model: { shape: 'sunfox', scale: 1.25, body: 0xff9a2a, accent: 0xffe060, dark: 0x6a3010, belly: 0xfff4d8, extras: ['mane'] },
+  },
+  beacub: {
+    name: 'Beacub', type: 'light', desc: 'A little lighthouse on two feet. Its lamp blinks hello to passing boats.',
+    base: { hp: 55, atk: 45, def: 65, spd: 40 }, baseXp: 66, catchRate: 0.4, learn: L('light', 'water'),
+    evolve: { level: 24, into: 'lumitower' },
+    model: { shape: 'lighthouse', scale: 0.75, body: 0xffffff, accent: 0xe04a4a, dark: 0x3a3a4a, belly: 0xfff6a0, extras: [] },
+  },
+  lumitower: {
+    name: 'Lumitower', type: 'light', desc: 'A tall lighthouse creature. Its turning light guides lost travellers home.',
+    base: { hp: 90, atk: 85, def: 100, spd: 50 }, baseXp: 170, catchRate: 0.1, learn: L('light', 'water', [[30, 'beaconbeam']]),
+    model: { shape: 'lighthouse', scale: 1.25, body: 0xf4f4f4, accent: 0x3a7ae0, dark: 0x2a2a3a, belly: 0xfff6a0, extras: ['beam', 'gallery'] },
+  },
+  dawnchick: {
+    name: 'Dawnchick', type: 'light', desc: 'A fluffy chick with a sunrise on its head. It peeps to wake the sun up.',
+    base: { hp: 45, atk: 55, def: 40, spd: 60 }, baseXp: 62, catchRate: 0.45, learn: L('light', 'sound'),
+    evolve: { level: 22, into: 'sunrooster' },
+    model: { shape: 'rooster', scale: 0.7, body: 0xffe07a, accent: 0xff8a3a, dark: 0x8a5a1a, belly: 0xfff6d0, extras: [] },
+  },
+  sunrooster: {
+    name: 'Sunrooster', type: 'light', desc: 'It crows at sunrise and the whole sky lights up. Its tail feathers shine like rays.',
+    base: { hp: 80, atk: 95, def: 65, spd: 85 }, baseXp: 160, catchRate: 0.12, learn: L('light', 'sound'),
+    model: { shape: 'rooster', scale: 1.2, body: 0xfff0d8, accent: 0xff6a2a, dark: 0x8a3a10, belly: 0xffe0a0, extras: ['tailfan'] },
+  },
+  glitterbop: {
+    name: 'Glitterbop', type: 'light', desc: 'A dancing mirror ball. It throws little spots of light everywhere it bops.',
+    base: { hp: 55, atk: 65, def: 60, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('light', 'rainbow'), floats: true,
+    model: { shape: 'mirrorball', scale: 0.85, body: 0xd8e0e8, accent: 0xff8ad8, dark: 0x4a5060, belly: 0x7ad8ff, extras: [] },
+  },
   /* ==== end of T9 light ==== */
 
   /* ==== T9 paper (+ Puzzlet, mind): builder PAPER only ==== */
@@ -1170,6 +1208,11 @@ const SPAWN_SLIME = {
 };
 
 const SPAWN_LIGHT = {
+  meadow: [['sunnykit', 1.5, 'day'], ['dawnchick', 1.2, 'day'], ['glitterbop', 0.8], ['solvixen', 0.2, 'day'], ['sunrooster', 0.2, 'day']],
+  plains: [['dawnchick', 1.2, 'day'], ['sunnykit', 0.8, 'day'], ['sunrooster', 0.15, 'day']],
+  beach: [['beacub', 1.5], ['lumitower', 0.2]],
+  cave: [['beacub', 0.6], ['glitterbop', 0.6]],
+  desert: [['sunnykit', 0.8, 'day']],
 };
 
 // Origrane (Paper, moved here from Mind) keeps its old spots; Puzzlet takes them over in Mind.
