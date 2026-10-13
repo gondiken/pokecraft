@@ -406,10 +406,17 @@ function continueGame(saved) {
   if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
   begin();
-  // Old players with the first 16 badges: tell them about the two new gyms.
+  // Old players with the first 16 badges: tell them about the gyms they have not seen yet.
   const old = GYMS.slice(0, ORIGINAL_GYMS);
-  if (old.every(g => game.badges.includes(g.id)) && !GYMS.every(g => game.badges.includes(g.id))) {
-    game.ui.toast('New gyms have appeared: the Fossil Gym and the Saucer Gym! Follow the arrow.');
+  if (old.every(g => game.badges.includes(g.id))) {
+    const missing = GYMS.slice(ORIGINAL_GYMS).filter(g => !game.badges.includes(g.id));
+    if (missing.length && missing.length <= 4) {
+      const names = missing.map(g => g.name.replace(/ Gym$/, ' Gym'));
+      const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+      game.ui.toast(`New gyms have appeared: the ${list}! Follow the arrow.`);
+    } else if (missing.length) {
+      game.ui.toast(`${missing.length} new gyms have appeared! Follow the arrow to find them.`);
+    }
   }
   // Players who haven't beaten the Fossil Gym yet: it moved into a cave.
   if (!game.badges.includes('bone') && !saved.toldCaveGym) {
@@ -711,6 +718,7 @@ function talkTo(npc) {
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
   const gym = npc.gym.def;
+  if (gym.night && !game.night) { ui.toast(nightGymClosed(gym)); return; }
   const trainerKey = `${gym.id}:trainer`;
   if (npc.kind === 'trainer') {
     if (game.beaten.includes(trainerKey)) {
@@ -918,25 +926,72 @@ function updateSky(dt) {
   game.night = light < 0.3;
 }
 
+// Minutes of real time until it gets dark (0 if it already is).
+function minutesToNight() {
+  if (game.night) return 0;
+  const lightAt = t => smoothstep(-0.2, 0.25, Math.sin(t * Math.PI * 2));
+  let t = game.time, steps = 0;
+  while (lightAt(t) >= 0.3 && steps < 600) { t = (t + 0.002) % 1; steps++; }
+  return Math.max(1, Math.ceil(steps * 0.002 * DAY_LENGTH / 60));
+}
+
+function nightGymClosed(def) {
+  const m = minutesToNight();
+  return `The ${def.name} is empty... the aliens only visit at night! Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
+}
+
+let skyToldNear = false, skyToldPad = false;
+
 // Points the player towards the next gym they haven't beaten yet.
 function updateGuide() {
   const p = game.player.pos;
-  let next = game.world.gyms.find(g => !game.badges.includes(g.def.id));
+  game.npcs.setNight(game.night);
+  const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
+  let next = unbeaten[0];
+  let nightNote = '';
+  if (next?.def.night && !game.night) {
+    const other = unbeaten.find(g => !g.def.night);
+    if (other) { next = other; nightNote = ` · ${unbeaten[0].def.name} opens at night ☾`; }
+    else nightNote = ' (opens at night ☾)';
+  }
   if (!next && !game.champion && game.world.tower) next = game.world.tower;
   if (!next) game.ui.setGuide('★ Champion! ★');
-  else updateArrow(p, next);
+  else updateArrow(p, next, nightNote);
+
+  // Cloud Gym hints: it floats above the ground, so tell the player to build up.
+  const sky = game.world.gyms.find(g => g.sky && !game.badges.includes(g.def.id));
+  if (sky) {
+    const h = Math.hypot(sky.x + 0.5 - p.x, sky.z + 0.5 - p.z);
+    if (h > 24) skyToldNear = false;
+    else if (h <= 14 && p.y < sky.y - 1 && !skyToldNear) {
+      skyToldNear = true;
+      game.ui.toast(`The ${sky.def.name} floats high in the sky! Build a tower of blocks on the blue pad and jump across.`);
+    }
+    if (!skyToldPad && sky.pad && Math.hypot(p.x - (sky.pad[0] + 0.5), p.z - (sky.pad[2] + 0.5)) < 2 && p.y < sky.y - 1) {
+      skyToldPad = true;
+      game.ui.toast('Tip: look down, jump and place a block under you. Keep going up!');
+    }
+  }
 
   const inside = game.world.gymAt(p.x, p.z, p.y) || game.world.towerAt(p.x, p.z);
   if (inside !== currentGym) {
     currentGym = inside;
     if (inside?.tower) game.ui.toast("Welcome to the Champion's Tower!");
+    else if (inside?.def.night && !game.night) game.ui.toast(nightGymClosed(inside.def));
     else if (inside) game.ui.toast(`Welcome to the ${inside.def.name}! (${inside.def.type} type)`);
   }
 }
 
-function updateArrow(p, next) {
+function updateArrow(p, next, note = '') {
   let tx = next.x + 0.5, tz = next.z + 0.5, where = '';
   const cave = next.cave;
+  let above = false, onIsland = false;
+  if (next.sky) {
+    const h = Math.hypot(tx - p.x, tz - p.z);
+    onIsland = p.y >= next.y - 1 && h < 12;
+    above = h < 14 && p.y < next.y - 1;
+    if (above && next.pad) { tx = next.pad[0] + 0.5; tz = next.pad[2] + 0.5; }
+  }
   if (cave) {
     const [mx, , mz] = cave.mouth;
     const [fx, fz] = next.front;
@@ -961,8 +1016,11 @@ function updateArrow(p, next) {
   let text;
   if (where === 'out') text = dist < 6 ? `The ${next.def.name} is down these stairs!` : `Next: ${next.def.name} (in a cave) ${arrow} ${dist}m`;
   else if (where === 'in') text = Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z) < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ↓ ${Math.round(Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z))}m`;
-  else text = dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`;
-  game.ui.setGuide(text);
+  else if (next.sky) {
+    text = above ? `The ${next.def.name} is right above you! ⬆`
+      : onIsland ? `${next.def.name} is here!` : `Next: ${next.def.name} (up in the sky!) ${arrow} ${dist}m`;
+  } else text = dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`;
+  game.ui.setGuide(text + note);
 }
 
 function updateTarget() {

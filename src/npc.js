@@ -78,12 +78,26 @@ export class NpcManager {
   constructor(scene) {
     this.scene = scene;
     this.list = [];
+    this.saucers = [];
+    this.night = null;
     this.raycaster = new THREE.Raycaster();
   }
 
   clear() {
     for (const n of this.list) { this.scene.remove(n.model); disposeModel(n.model); }
     this.list = [];
+    for (const s of this.saucers) { this.scene.remove(s.group); disposeModel(s.group); }
+    this.saucers = [];
+    this.night = null;
+  }
+
+  // Gyms with `night: true` (the Saucer Gym) only have their people (and a flying saucer) at night.
+  setNight(night) {
+    night = !!night;
+    if (night === this.night) return;
+    this.night = night;
+    for (const n of this.list) if (n.gym?.def?.night) n.model.visible = night;
+    for (const s of this.saucers) { s.night = night; if (night) s.group.visible = true; }
   }
 
   populate(world, spawnPoint) {
@@ -100,6 +114,7 @@ export class NpcManager {
         kind: 'trainer', name: gym.def.trainer.name, gym, colors: gym.def.trainer.colors,
         pos: gym.trainerPos, heading: facing, hat: gym.def.trainer.colors.pants,
       }));
+      if (gym.def.night) this.addSaucer(gym);
     }
     // The Champion's Tower: nurse, coach, two guards and the champion.
     if (world.tower) {
@@ -123,7 +138,36 @@ export class NpcManager {
     }));
   }
 
+  // A flying saucer (a few Three.js meshes, not blocks) that hovers above a night gym.
+  addSaucer(gym) {
+    const group = new THREE.Group();
+    const green = new THREE.MeshLambertMaterial({ color: 0x4acb7a });
+    const dark = new THREE.MeshLambertMaterial({ color: 0x2a8a55 });
+    const glass = new THREE.MeshLambertMaterial({ color: 0xbff4ff, transparent: true, opacity: 0.65 });
+    const glow = new THREE.MeshBasicMaterial({ color: 0xffe94a });
+    const beam = new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.16, depthWrite: false });
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.5, 20), green);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.18, 20), dark);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.4, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), glass);
+    dome.position.y = 0.25;
+    const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.2, 0.3), glow, 8);
+    const m = new THREE.Matrix4();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      m.makeTranslation(Math.cos(a) * 2.7, -0.2, Math.sin(a) * 2.7);
+      lights.setMatrixAt(i, m);
+    }
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 2.6, 1, 14, 1, true), beam);
+    group.add(disc, rim, dome, lights, cone);
+    const base = new THREE.Vector3(gym.x + 0.5, gym.y + 14, gym.z + 0.5);
+    group.position.set(base.x, base.y + 40, base.z);
+    group.visible = false;
+    this.scene.add(group);
+    this.saucers.push({ group, cone, base, rise: 40, night: false, t: Math.random() * 6 });
+  }
+
   add(npc) {
+    if (npc.gym?.def?.night && this.night !== true) npc.model.visible = false;
     npc.model.position.copy(npc.pos);
     npc.model.rotation.y = npc.heading;
     this.scene.add(npc.model);
@@ -131,6 +175,18 @@ export class NpcManager {
   }
 
   update(dt, playerPos) {
+    for (const s of this.saucers) {
+      s.t += dt;
+      // Glide down in about 4 seconds at night, rise again at dawn.
+      s.rise = Math.max(0, Math.min(40, s.rise + (s.night ? -10 : 10) * dt));
+      s.group.visible = s.rise < 40;
+      s.group.position.set(s.base.x, s.base.y + s.rise + Math.sin(s.t * 0.8) * 0.4, s.base.z);
+      s.group.rotation.y += dt * 0.4;
+      // The beam reaches down to the gym door level.
+      const h = Math.max(1, s.rise + 12);
+      s.cone.scale.y = h; s.cone.position.y = -h / 2;
+      s.cone.visible = s.rise < 1;
+    }
     for (const n of this.list) {
       n.t += dt;
       const p = n.model.userData.parts;
@@ -149,7 +205,7 @@ export class NpcManager {
   pick(origin, dir, maxDist) {
     this.raycaster.set(origin, dir);
     this.raycaster.far = maxDist;
-    const hits = this.raycaster.intersectObjects(this.list.map(n => n.model), true);
+    const hits = this.raycaster.intersectObjects(this.list.filter(n => n.model.visible).map(n => n.model), true);
     if (!hits.length) return null;
     let o = hits[0].object;
     while (o && !o.userData.npc) o = o.parent;
