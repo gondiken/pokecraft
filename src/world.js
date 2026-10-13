@@ -1000,6 +1000,14 @@ export class World {
   decorateSlimeGym(x0, fy, z0, front, cave = false) {
     const R = 6, slime = WOOL.slime;
     const put = (d, s, y, id) => { const [x, z] = this.gymCol(x0, z0, front, d, s); if (this.get(x, y, z) === B.AIR) this.set(x, y, z, id, false); };
+    // Goo running down the walls from the roof: 1-4 blocks of slime on every wall column.
+    for (let a = -R + 1; a <= R - 1; a++) {
+      for (const [d, s] of [[-R, a], [R, a], [a, -R], [a, R]]) {
+        const [x, z] = this.gymCol(x0, z0, front, d, s);
+        const len = 1 + Math.floor(hash2(x, z, this.seed + 628) * 4);
+        for (let y = fy + 5; y > fy + 5 - len; y--) if (this.get(x, y, z) === B.BRICK) this.set(x, y, z, slime, false);
+      }
+    }
     const n = 4 + Math.floor(hash2(x0, z0, this.seed + 624) * 3);
     for (let k = 0; k < n; k++) {
       const d = Math.floor(hash2(x0 + k, z0, this.seed + 625) * 7) - 3, s = Math.floor(hash2(x0, z0 + k, this.seed + 626) * 7) - 3;
@@ -1084,8 +1092,10 @@ export class World {
       for (let y = WORLD_H - 1; y > 0; y--) if (this.get(x, y, z) !== B.AIR) return y;
       return 0;
     };
-    // The pad is flat, at the height of its inner middle block (build the tower there: stand at py + 1).
-    const [px, pz] = col(11, 0), py = surf(px, pz);
+    // The pad is flat, at the height of its highest block (build the tower on its inner middle block: stand at py + 1).
+    const [px, pz] = col(11, 0);
+    let py = 0;
+    for (let d = 11; d <= 12; d++) for (let s = -1; s <= 1; s++) { const [x, z] = col(d, s); py = Math.max(py, this.ground[x + z * Wd]); }
     for (let d = 11; d <= 12; d++) for (let s = -1; s <= 1; s++) {
       const [x, z] = col(d, s), top = surf(x, z);
       for (let y = top + 1; y < py; y++) this.set(x, y, z, B.DIRT, false);

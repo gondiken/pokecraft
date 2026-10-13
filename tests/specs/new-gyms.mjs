@@ -197,28 +197,50 @@ export default async function ({ browser, base, t }) {
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForTimeout(1500);
   await page.evaluate(() => { const g = window.pokecraft; g.creatures.clear(); g.creatures.trySpawnCave = () => {}; g.time = 0.25; });
-  for (const [id, file, up] of [['light', 'gym-light', 6], ['paper', 'gym-paper', 6], ['sky', 'gym-sky', -1]]) {
-    await page.evaluate(([gid, up]) => {
-      const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === gid), [fx, fz] = gym.front;
-      const px = gym.x + fx * 22, pz = gym.z + fz * 22, y = gym.y + up;
-      for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) g.world.set(px + x, y, pz + z, 3);
-      g.player.pos.set(px + 0.5, y + 1, pz + 0.5);
+  // The camera: the first spot (front first, then turning to the sides; nearer or higher if needed) from which the
+  // door and the roof can both be seen. Surface and sky gyms: on a small stone platform; the Goo Gym: on the cavern floor.
+  const aim = gid => page.evaluate(async gid => {
+    const g = window.pokecraft, w = g.world, { raycastVoxel } = await import('/src/world.js');
+    const gym = w.gyms.find(x => x.def.id === gid), [fx, fz] = gym.front;
+    const V = g.player.pos.constructor;
+    const clear = (eye, x, y, z) => {
+      const tgt = new V(x, y, z), d = tgt.clone().sub(eye), dist = d.length();
+      return !raycastVoxel(w, eye, d.normalize(), dist - 1.5);
+    };
+    const free = (x, y, z) => [0, 1, 2].every(k => w.get(x, y + k, z) === 0);
+    const base = Math.atan2(fz, fx), cave = !!gym.cave;
+    const rings = cave ? [[12, 0], [11, 0], [13, 0], [10, 0]] : [[22, 6], [22, 10], [18, 8], [26, 12], [16, 12]];
+    const turns = cave ? [0.6, -0.6, 0.8, -0.8, 0.4, -0.4, 0] : [0, 0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1, -1];
+    for (const [r, up] of rings) for (const turn of turns) {
+      const a = base + turn, x = Math.floor(gym.x + 0.5 + Math.cos(a) * r), z = Math.floor(gym.z + 0.5 + Math.sin(a) * r), y = gym.y + up;
+      if (cave ? !(free(x, y, z) && w.get(x, y - 1, z) !== 0) : ![-2, -1, 0, 1, 2].every(a2 => [-2, -1, 0, 1, 2].every(b2 => free(x + a2, y + 1, z + b2)))) continue;
+      const eye = new V(x + 0.5, y + (cave ? 0 : 1) + 1.62, z + 0.5);
+      const top = cave ? [gym.x + fx * 7 + 0.5, gym.y + 4.5, gym.z + fz * 7 + 0.5] : [gym.x + 0.5, gym.y + 7.5, gym.z + 0.5];
+      if (!clear(eye, gym.x + fx * 7 + 0.5, gym.y + 1.5, gym.z + fz * 7 + 0.5) || !clear(eye, ...top)) continue;
+      if (!cave) for (let a2 = -2; a2 <= 2; a2++) for (let b2 = -2; b2 <= 2; b2++) if (w.get(x + a2, y, z + b2) === 0) w.set(x + a2, y, z + b2, 3);
+      g.player.pos.set(x + 0.5, y + (cave ? 0 : 1), z + 0.5);
       g.player.vel.set(0, 0, 0);
-      g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 6, z: gym.z + 0.5 });
-    }, [id, up]);
+      g.player.lookAt({ x: gym.x + 0.5, y: gym.y + (cave ? 2 : 4), z: gym.z + 0.5 });
+      return { r, up, turn };
+    }
+    return null;
+  }, gid);
+  for (const [id, file] of [['light', 'gym-light'], ['paper', 'gym-paper'], ['sky', 'gym-sky']]) {
+    t.ok(await aim(id), `found a clear view of the ${id} gym`);
     await page.waitForTimeout(4500);
     await page.screenshot({ path: SHOTS + file + '.png' });
   }
-  // The Goo Gym's cavern from the back corner (puddles, glowcaps, goo dripping from the roof), lamps lit.
-  const goo = await page.evaluate(() => {
+  // The Goo Gym's cavern (puddles, glowcaps, goo dripping from the roof), lamps lit.
+  t.ok(await page.evaluate(() => !!window.pokecraft.world.gyms.find(x => x.def.id === 'slime').cave), 'the Goo Gym stands in a cave on seed 1');
+  // From the stairs, 14 blocks out from the middle, looking down at the door (like the Fossil Gym's picture).
+  t.ok(await page.evaluate(() => {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'slime'), [fx, fz] = gym.front;
-    if (!gym.cave) return null;
-    g.player.pos.set(gym.x - fx * 10 - fz * 7 + 0.5, gym.y, gym.z - fz * 10 + fx * 7 + 0.5);
+    const d = 14, tread = gym.y - 1 + Math.floor((d - 9) / gym.cave.spot.rise);
+    g.player.pos.set(gym.x + fx * d + 0.5, tread + 1, gym.z + fz * d + 0.5);
     g.player.vel.set(0, 0, 0);
-    g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 1, z: gym.z + 0.5 });
-    return true;
-  });
-  t.ok(goo, 'the Goo Gym stands in a cave on seed 1');
+    g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 2, z: gym.z + 0.5 });
+    return g.world.get(gym.x + fx * d, tread, gym.z + fz * d) !== 0;
+  }), 'a view of the Goo Gym from its stairs');
   await page.waitForTimeout(4500);
   await page.screenshot({ path: SHOTS + 'gym-slime.png' });
 
