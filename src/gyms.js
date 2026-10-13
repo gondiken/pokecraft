@@ -156,13 +156,49 @@ export const GYMS = [
     lose: 'You dug up a win! The Fossil Badge is yours.',
   },
   {
-    id: 'alien', type: 'alien', name: 'Saucer Gym', badge: 'Saucer Badge',
+    id: 'alien', type: 'alien', name: 'Saucer Gym', badge: 'Saucer Badge', night: true,
     leader: { name: 'Leader Zeeb', colors: { shirt: 0x8de060, pants: 0x4a2a7a, hair: 0xc08cff, skin: 0xf2d0b0 } },
     trainer: { name: 'Skywatcher Rin', colors: { shirt: 0x3a3a5a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a } },
     trainerTeam: [['blipling', 28], ['saucerling', 28]],
     leaderTeam: [['podlet', 29], ['blipstar', 30], ['ufomax', 31]],
-    intro: ['Beep boop! Welcome to the Saucer Gym.', "My friends came from very far away. Let's give them a warm welcome!"],
+    intro: ['Beep boop! You found us under the stars. Welcome to the Saucer Gym.', "My friends came from very far away. Let's give them a warm welcome!"],
     lose: 'Out of this world! The Saucer Badge is yours.',
+  },
+  {
+    id: 'light', type: 'light', name: 'Sunbeam Gym', badge: 'Sunbeam Badge', spot: { biomes: ['meadow', 'plains'], minGround: 15 },
+    leader: { name: 'Leader Lumi', colors: { shirt: 0xffe27a, pants: 0xffffff, hair: 0xf0a030, skin: 0xf2d0b0 } },
+    trainer: { name: 'Sun Seeker Ray', colors: { shirt: 0xfff6c0, pants: 0x6a8ac8, hair: 0x7a4a2a, skin: 0xe8b98a } },
+    trainerTeam: [['dawnchick', 29], ['sunnykit', 29]],
+    leaderTeam: [['glitterbop', 30], ['solvixen', 31], ['lumitower', 32]],
+    intro: ['Welcome to the Sunbeam Gym! Sunglasses on!', 'My light creatures shine bright. Can you keep up?'],
+    lose: 'What a dazzling battle! The Sunbeam Badge is yours.',
+  },
+  {
+    id: 'paper', type: 'paper', name: 'Origami Gym', badge: 'Origami Badge', spot: { biomes: ['plains', 'forest', 'meadow'] },
+    leader: { name: 'Leader Kami', colors: { shirt: 0xf8f4ff, pants: 0x2a4a8a, hair: 0x1a1a1a, skin: 0xf2d0b0 } },
+    trainer: { name: 'Craft Kid Pip', colors: { shirt: 0xf0386a, pants: 0x3a3a5a, hair: 0x5a3a1a, skin: 0xe8b98a } },
+    trainerTeam: [['hopfold', 29], ['darto', 30]],
+    leaderTeam: [['pagelet', 30], ['origrane', 31], ['frogami', 32]],
+    intro: ['Welcome to the Origami Gym! Please mind the paper walls.', 'Fold, flip, fly! My paper friends are full of surprises.'],
+    lose: 'You folded us flat! Take the Origami Badge.',
+  },
+  {
+    id: 'slime', type: 'slime', name: 'Goo Gym', badge: 'Goo Badge', place: 'cave', cave: { theme: 'slime' }, spot: { biomes: ['swamp', 'forest'] },
+    leader: { name: 'Leader Gelda', colors: { shirt: 0x7ad85a, pants: 0x2a6a4a, hair: 0xb4f56a, skin: 0xe8c8a8 } },
+    trainer: { name: 'Puddle Jumper Max', colors: { shirt: 0x52d08a, pants: 0x4a3a2a, hair: 0x2a1a10, skin: 0xc68a5a } },
+    trainerTeam: [['goopup', 30], ['wobblock', 30]],
+    leaderTeam: [['gumbear', 31], ['jigglestack', 32], ['slimperor', 33]],
+    intro: ['Welcome to the Goo Gym, deep under the hill! It is a bit sticky in here.', 'My slimy team will wobble you right over!'],
+    lose: 'Splat! You win. The Goo Badge is yours.',
+  },
+  {
+    id: 'sky', type: 'sky', name: 'Cloud Gym', badge: 'Cloud Badge', place: 'sky',
+    leader: { name: 'Leader Wren', colors: { shirt: 0x8fd0ff, pants: 0xffffff, hair: 0xf0f0f0, skin: 0xf2d0b0 } },
+    trainer: { name: 'Kite Flyer Lou', colors: { shirt: 0xf0a030, pants: 0x3a5a8a, hair: 0x3a2a1a, skin: 0xd9a066 } },
+    trainerTeam: [['kiteling', 30], ['balloony', 31]],
+    leaderTeam: [['skyfin', 31], ['pinwhirl', 32], ['kitegale', 33]],
+    intro: ['You climbed all the way up here? Welcome to the Cloud Gym!', 'Up in the clouds my sky creatures fly free. Ready to soar?'],
+    lose: 'You blew us away! Take the Cloud Badge.',
   },
 ];
 
@@ -171,6 +207,8 @@ export const GYMS = [
 export const ORIGINAL_GYMS = 16;
 // Gyms 17-18 (Fossil, Saucer) were the first two extra gyms; their spots (and the caves around them) never change.
 export const LEGACY_EXTRA_GYMS = 2;
+// Gyms 17-18 take extraGymSpots(); gyms 19+ (T10) take newGymSpots(). Never change either (nor this number).
+export const EXTRA_GYMS_END = 18;
 // The Fossil Gym is the only cave gym of T8: its cavern is kept clear when the big caves are carved.
 // Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
 export const LEGACY_CAVE_GYMS = 1;
@@ -186,7 +224,8 @@ export const TOWER = {
     { role: 'coach', name: 'Coach Dex', at: [4, 4], hat: 0x2a6ac8,
       colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
-        ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur']],
+        ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur'],
+        ['kitegale', 'slimperor', 'frogami']],
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
