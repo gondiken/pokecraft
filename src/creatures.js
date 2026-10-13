@@ -163,7 +163,7 @@ export class CreatureManager {
     disposeModel(wild.model);
   }
 
-  update(dt, playerPos, spawnPoint, night = false, under = this.world.underground(playerPos)) {
+  update(dt, playerPos, spawnPoint, night = false, under = this.world.underground(playerPos) || this.world.inLitRoom(playerPos)) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 0.6;

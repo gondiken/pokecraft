@@ -171,6 +171,9 @@ export const GYMS = [
 export const ORIGINAL_GYMS = 16;
 // Gyms 17-18 (Fossil, Saucer) were the first two extra gyms; their spots (and the caves around them) never change.
 export const LEGACY_EXTRA_GYMS = 2;
+// The Fossil Gym is the only cave gym of T8: its cavern is kept clear when the big caves are carved.
+// Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
+export const LEGACY_CAVE_GYMS = 1;
 
 // The Champion's Tower: opens after all 18 badges. `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).

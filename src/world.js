@@ -1,7 +1,7 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
 import { B, BLOCKS, WOOL, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
-import { GYMS, TOWER, ORIGINAL_GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
+import { GYMS, TOWER, ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves, planStairs, buildStairs } from './caves.js';
 
 export const WORLD_W = 224;
@@ -263,7 +263,7 @@ export class World {
     if (caves) for (const [x, z] of this.extraGymSpots().slice(0, LEGACY_EXTRA_GYMS)) this.fillCavesNear(solid, x, z, 18);
     if (caves && bigCaves) carveBigCaves(this);
     this.litRooms = [];
-    if (caveGyms) this.carveGymRooms();
+    if (caveGyms) this.carveGymRooms(solid);
     const carved = caves ? this.data.slice() : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
     for (let x = 3; x < WORLD_W - 3; x++) {
@@ -466,7 +466,7 @@ export class World {
       const cands = [];
       for (let x = 20; x <= Wd - 20; x += 2) for (let z = 20; z <= D - 20; z += 2) {
         if (Math.hypot(x - cx, z - cz) < 28) continue;
-        if (boxSum(PA, x, z, 9) || boxSum(PM, x, z, 13)) continue;
+        if (boxSum(PA, x, z, 9) || boxSum(PM, x, z, 12)) continue;
         let m = 99;
         for (let a = -8; a <= 8; a++) for (let b = -8; b <= 8; b++) m = Math.min(m, ground[(x + a) + (z + b) * Wd]);
         cands.push({ x, z, m: Math.min(m, 18) });
@@ -497,8 +497,16 @@ export class World {
 
   // Carves the cavern, the stairway with its arch, the lamps and the pillars for every cave gym
   // (before the plants and the buildings; also when there are no caves).
-  carveGymRooms() {
-    for (const spot of this.caveGymSpots()) if (spot) this.carveGymRoom(spot);
+  carveGymRooms(solid = null) {
+    this.caveGymSpots().forEach((spot, i) => {
+      if (!spot) return;
+      // The first cave gym's spot was kept free of caves; later ones clear the caves around them.
+      if (solid && this.caves && i >= LEGACY_CAVE_GYMS) {
+        this.fillCavesNear(solid, spot.x, spot.z, 15);
+        for (const h of this.caves.halls || []) if (h.mouth && Math.max(Math.abs(h.mouth[0] - spot.x), Math.abs(h.mouth[2] - spot.z)) <= 15) h.mouth = null;
+      }
+      this.carveGymRoom(spot);
+    });
   }
 
   carveGymRoom(spot) {
@@ -540,8 +548,8 @@ export class World {
     if (c) {
       const far = ([x, , z]) => Math.max(Math.abs(x - x0), Math.abs(z - z0)) > RC + 1;
       c.floors = c.floors.filter(far); c.crystals = c.crystals.filter(far); c.chests = c.chests.filter(far);
+      c.chests = c.chests.filter(([x, y, z]) => this.get(x, y, z) === B.CHEST); // none lost under the stairs
       for (const col of r.opened) c.opened.add(col);
-      c.entrances.push([r.mouth[0], r.mouth[2]]);
       c.glow += glow;
       for (const col of r.marks) c.marks?.add(col);
     }

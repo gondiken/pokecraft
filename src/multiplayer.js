@@ -13,6 +13,8 @@ const GONE_AFTER = 8;     // seconds without news before a player counts as gone
 const JOIN_TIMEOUT = 12;  // seconds to wait for the host to send their world
 const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
+// Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave).
+export const WORLD_VERSION = 2;
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [
@@ -195,6 +197,10 @@ export class Multiplayer {
       this.t.send('hello', { id: this.id, name });
     });
     this.gotWorld = null;
+    if (world?.wrongVersion) {
+      this.close();
+      return { error: 'Your friend has a newer game. Please reload the page!' };
+    }
     if (!world) {
       this.close();
       return { error: `No world found with code ${this.code}. Check the code, and that the other player is hosting.` };
@@ -210,6 +216,7 @@ export class Multiplayer {
     t.on('hello', p => { if (this.role === 'host') this.sendWorld(p.id); });
     t.on('world', p => {
       if (this.role !== 'joining' || p.to !== this.id || !this.gotWorld) return;
+      if ((p.wv || 1) !== WORLD_VERSION) { this.gotWorld({ wrongVersion: true }); return; }
       this.parts[p.part] = p;
       if (this.parts.filter(Boolean).length < p.parts) return;
       const edits = this.parts.flatMap(x => x.edits);
@@ -263,7 +270,7 @@ export class Multiplayer {
     const p = g.player.pos;
     for (let i = 0; i < parts; i++) {
       this.t.send('world', {
-        to, part: i, parts, seed: g.world.seed, time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
+        to, wv: WORLD_VERSION, part: i, parts, seed: g.world.seed, time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
         hostPos: [p.x, p.y, p.z], edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
       });
     }

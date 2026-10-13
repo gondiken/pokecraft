@@ -136,6 +136,7 @@ function snapshot() {
     ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
+    toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
   };
@@ -409,6 +410,10 @@ function continueGame(saved) {
   const old = GYMS.slice(0, ORIGINAL_GYMS);
   if (old.every(g => game.badges.includes(g.id)) && !GYMS.every(g => game.badges.includes(g.id))) {
     game.ui.toast('New gyms have appeared: the Fossil Gym and the Saucer Gym! Follow the arrow.');
+  }
+  // Players who haven't beaten the Fossil Gym yet: it moved into a cave.
+  if (!game.badges.includes('bone') && !saved.toldCaveGym) {
+    game.ui.toast('The Fossil Gym moved into a big cave! Follow the arrow to the stairs.');
   }
 }
 
@@ -921,7 +926,7 @@ function updateGuide() {
   if (!next) game.ui.setGuide('★ Champion! ★');
   else updateArrow(p, next);
 
-  const inside = game.world.gymAt(p.x, p.z) || game.world.towerAt(p.x, p.z);
+  const inside = game.world.gymAt(p.x, p.z, p.y) || game.world.towerAt(p.x, p.z);
   if (inside !== currentGym) {
     currentGym = inside;
     if (inside?.tower) game.ui.toast("Welcome to the Champion's Tower!");
@@ -930,14 +935,34 @@ function updateGuide() {
 }
 
 function updateArrow(p, next) {
-  const dx = next.x + 0.5 - p.x, dz = next.z + 0.5 - p.z;
+  let tx = next.x + 0.5, tz = next.z + 0.5, where = '';
+  const cave = next.cave;
+  if (cave) {
+    const [mx, , mz] = cave.mouth;
+    const [fx, fz] = next.front;
+    // On the way in: close to the line from the arch to the door and below the hill, or in the cavern.
+    const along = (p.x - (mx + 0.5)) * -fx + (p.z - (mz + 0.5)) * -fz; // distance from the arch towards the gym
+    const total = Math.abs(mx - next.x) + Math.abs(mz - next.z);
+    const across = Math.abs((p.x - next.x - 0.5) * fz) + Math.abs((p.z - next.z - 0.5) * fx);
+    const ground = game.world.ground[Math.floor(p.x) + Math.floor(p.z) * WORLD_W] ?? 99;
+    const onTheWay = along >= -1 && along <= total + 1 && across <= 3 && p.y < ground + 1;
+    const inCavern = Math.max(Math.abs(p.x - next.x - 0.5), Math.abs(p.z - next.z - 0.5)) <= 14 && p.y < next.y + 9;
+    if (onTheWay || inCavern) where = 'in';
+    else { tx = mx + 0.5; tz = mz + 0.5; where = 'out'; }
+  }
+  game.guideTarget = [tx, tz];
+  const dx = tx - p.x, dz = tz - p.z;
   const dist = Math.round(Math.hypot(dx, dz));
-  // Angle of the gym relative to where the player is looking.
+  // Angle of the target relative to where the player is looking.
   let rel = Math.atan2(-dx, -dz) - game.player.yaw;
   rel = Math.atan2(Math.sin(rel), Math.cos(rel));
   const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
   const arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
-  game.ui.setGuide(dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`);
+  let text;
+  if (where === 'out') text = dist < 6 ? `The ${next.def.name} is down these stairs!` : `Next: ${next.def.name} (in a cave) ${arrow} ${dist}m`;
+  else if (where === 'in') text = Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z) < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ↓ ${Math.round(Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z))}m`;
+  else text = dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`;
+  game.ui.setGuide(text);
 }
 
 function updateTarget() {

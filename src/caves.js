@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { B, WOOL, isSolid, mulberry32 } from './blocks.js';
 import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
-import { ORIGINAL_GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
+import { ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS } from './gyms.js';
 
 function hash3(x, y, z, seed) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 1274126177) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);
@@ -253,7 +253,7 @@ const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 // Plans a straight stairway: from floor height fy at distance d0 from (x, z), one step up every
 // `rise` blocks, until the walking surface reaches the ground. Fails if any of the 5 columns
 // across (s = -2..2) is blocked (mask) or off the map. Returns the shortest of the tried directions.
-export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS) {
+export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS, blockedCell = null) {
   const Wd = WORLD_W, D = WORLD_D;
   let best = null;
   for (const dir of dirs) {
@@ -266,6 +266,7 @@ export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS) {
         const cx = x + dir[0] * d + (dir[0] ? 0 : s), cz = z + dir[1] * d + (dir[1] ? 0 : s);
         if (cx < 2 || cz < 2 || cx >= Wd - 2 || cz >= D - 2 || mask[cx + cz * Wd]) { bad = true; break; }
         if (s === 0) g = ground[cx + cz * Wd];
+        if (blockedCell && s >= -1 && s <= 1) for (let y = tread; y <= tread + 4; y++) if (blockedCell(cx, y, cz)) bad = true;
       }
       if (bad) break;
       if (mouth < 0 && tread + 4 >= g) mouth = d;
@@ -328,6 +329,11 @@ export function carveBigCaves(world) {
   for (const [x, z] of world.extraGymSpots().slice(0, LEGACY_EXTRA_GYMS)) {
     for (let a = Math.max(0, x - 18); a <= Math.min(Wd - 1, x + 18); a++) for (let b = Math.max(0, z - 18); b <= Math.min(D - 1, z + 18); b++) keep[a + b * Wd] = 1;
   }
+  // The Fossil Gym's cavern (and the walk to its stairs) is left alone.
+  for (const sp of world.caveGymSpots().slice(0, LEGACY_CAVE_GYMS)) {
+    if (!sp) continue;
+    for (let a = Math.max(0, sp.x - 17); a <= Math.min(Wd - 1, sp.x + 17); a++) for (let b = Math.max(0, sp.z - 17); b <= Math.min(D - 1, sp.z + 17); b++) keep[a + b * Wd] = 1;
+  }
   const idx = (x, y, z) => x + Wd * (z + D * y);
   const carved = [];
   const SKIP = new Set([B.CHEST, B.CHEST_OPEN, B.GLOWCAP, B.CRYSTAL, B.LAMP]);
@@ -368,12 +374,18 @@ export function carveBigCaves(world) {
   // 1. Halls.
   const halls = [];
   const THEMES = ['crystal', 'lake', 'glow', 'fossil'];
-  for (let tries = 0; tries < 4000 && halls.length < 8; tries++) {
+  for (let tries = 0; tries < 12000 && halls.length < 8; tries++) {
+    const need = tries < 4000 ? 0.5 : tries < 8000 ? 0.2 : 0.04; // how much of the hall must be free of keep-out columns
     const x = 8 + Math.floor(rand() * (Wd - 16)), z = 8 + Math.floor(rand() * (D - 16));
     const c = x + z * Wd;
     if (keep[c] || ground[c] < 17) continue;
     if (halls.some(h => Math.hypot(h.x - x, h.z - z) < 34)) continue;
     const rx = 10 + rand() * 5, rz = 10 + rand() * 5;
+    let clear = true; // the whole hall must fit: no keep-out column inside it
+    for (let a = Math.floor(-rx); a <= rx && clear; a++) for (let b = Math.floor(-rz); b <= rz; b++) {
+      if ((a / rx) ** 2 + (b / rz) ** 2 < need && (x + a < 1 || z + b < 1 || x + a >= Wd - 1 || z + b >= D - 1 || keep[x + a + (z + b) * Wd])) { clear = false; break; }
+    }
+    if (!clear) continue;
     halls.push({ x, z, rx, rz, theme: THEMES[halls.length % 4], mouth: null });
   }
   for (const h of halls) {
@@ -395,10 +407,15 @@ export function carveBigCaves(world) {
       tunnel(cur.x + 0.5, 5, cur.z + 0.5, next.x + 0.5, next.z + 0.5, 2.6, 400);
       cur = next;
     }
+    // A second way in: every hall also joins its nearest other hall (the other way round).
+    for (const h of halls) {
+      const o = halls.filter(q => q !== h).sort((p, q) => Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z))[0];
+      tunnel(o.x + 0.5, 5, o.z + 0.5, h.x + 0.5, h.z + 0.5, 2.6, 400);
+    }
   }
   // 3. Wide tunnels.
-  for (let n = 0; n < 40; n++) {
-    let col = null;
+  for (let n = 0; n < 56; n++) {
+    let col = n < 24 && halls.length ? [halls[n % halls.length].x, halls[n % halls.length].z] : null; // some leave a hall
     for (let i = 0; i < 400 && !col; i++) {
       const x = 5 + Math.floor(rand() * (Wd - 10)), z = 5 + Math.floor(rand() * (D - 10));
       if (!keep[x + z * Wd] && ground[x + z * Wd] >= WATER_LEVEL + 5) col = [x, z];
@@ -492,12 +509,13 @@ export function carveBigCaves(world) {
   }
 
   // 6. Stairways to the surface (up to 6 halls), then 7. lamp posts at the old holes.
+  const noChest = (x, y, z) => { const id = data[idx(x, y, z)]; return id === B.CHEST || id === B.CHEST_OPEN; };
   const entrances = [], opened = new Set(), marks = new Set();
   let stairCount = 0;
   for (const h of halls) {
     if (stairCount >= 6) break;
-    const d0 = dir => Math.floor(dir[0] ? h.rx : h.rz) - 3;
-    const plan = planStairs(ground, keep, h.x, h.z, 2, d0, 2) || planStairs(ground, keep, h.x, h.z, 2, d0, 1);
+    const d0 = dir => Math.floor((dir[0] ? h.rx : h.rz) * 0.45);
+    const plan = planStairs(ground, keep, h.x, h.z, 2, d0, 2, DIRS, noChest) || planStairs(ground, keep, h.x, h.z, 2, d0, 1, DIRS, noChest);
     if (!plan) continue;
     const r = buildStairs(world, plan, h.x, h.z);
     h.mouth = r.mouth; h.dir = plan.dir;

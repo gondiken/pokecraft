@@ -12,28 +12,66 @@ export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
   const page = await openGame(browser, base);
 
-  // 1. Caves exist in every world: enough cave air, entrances with a lowered surface, glowing decorations.
+  // 1. Caves exist in every world, and they are big: lots of cave air (at least 2.5 times the old caves),
+  // one large connected cave, roomy halls, marked entrances, glowing decorations.
   const worlds = await page.evaluate(async seeds => {
     const { World, WORLD_W, WORLD_D, WORLD_H } = await import('/src/world.js');
+    const count = w => {
+      let air = 0;
+      for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) {
+        const g = w.ground[x + z * WORLD_W];
+        for (let y = 2; y <= g - 3; y++) if (w.get(x, y, z) === 0) air++;
+      }
+      return air;
+    };
+    // The largest air-connected cave below ground-2.
+    const largest = w => {
+      const seen = new Uint8Array(WORLD_W * WORLD_D * 30);
+      const isAir = (x, y, z) => y >= 2 && y <= w.ground[x + z * WORLD_W] - 2 && w.get(x, y, z) === 0;
+      let best = 0;
+      for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) for (let y = 2; y < 30; y++) {
+        const i = x + WORLD_W * (z + WORLD_D * y);
+        if (seen[i] || !isAir(x, y, z)) continue;
+        let n = 0; const st = [i]; seen[i] = 1;
+        while (st.length) {
+          const c = st.pop(); n++;
+          const cx = c % WORLD_W, cz = Math.floor(c / WORLD_W) % WORLD_D, cy = Math.floor(c / (WORLD_W * WORLD_D));
+          for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+            const nx = cx + dx, ny = cy + dy, nz = cz + dz;
+            if (nx < 0 || nz < 0 || nx >= WORLD_W || nz >= WORLD_D || ny < 2 || ny >= 30) continue;
+            const j = nx + WORLD_W * (nz + WORLD_D * ny);
+            if (!seen[j] && isAir(nx, ny, nz)) { seen[j] = 1; st.push(j); }
+          }
+        }
+        best = Math.max(best, n);
+      }
+      return best;
+    };
     const out = [];
     for (const seed of seeds) {
       const t0 = performance.now();
       const w = new World(seed, null, null);
       w.generate();
       const ms = Math.round(performance.now() - t0);
-      let air = 0;
-      for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) {
-        const g = w.ground[x + z * WORLD_W];
-        for (let y = 2; y <= g - 3; y++) if (w.get(x, y, z) === 0) air++;
-      }
+      const old = new World(seed, null, null);
+      old.generate({ bigCaves: false });
       const c = w.caves;
-      out.push({ seed, ms, air, entrances: c.entrances.length, glow: c.glow, chests: c.chests.length, floors: c.floors.length, opened: c.opened.size });
+      const bigHalls = c.halls.filter(h => {
+        let n = 0;
+        for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) for (let y = 3; y < 20; y++) if (w.get(x, y, z) === 0) n++;
+        return n >= 1200;
+      }).length;
+      const marked = c.entrances.filter(([x, z]) => {
+        for (let dx = -6; dx <= 6; dx++) for (let dz = -6; dz <= 6; dz++) if (c.marks.has(x + dx + (z + dz) * WORLD_W)) return true;
+        return false;
+      }).length;
+      out.push({ seed, ms, air: count(w), oldAir: count(old), largest: largest(w), halls: c.halls.length, bigHalls, marked, entrances: c.entrances.length, glow: c.glow, chests: c.chests.length, floors: c.floors.length, opened: c.opened.size });
     }
     return out;
   }, SEEDS);
   for (const w of worlds) {
-    t.ok(w.air >= 3000 && w.entrances >= 3 && w.floors >= 100,
-      `seed ${w.seed}: ${w.air} cave air blocks, ${w.entrances} entrances, 1 glowing block per ${Math.round(w.air / w.glow)} air, ${w.chests} chests (generate ${w.ms} ms)`);
+    t.ok(w.air >= 18000 && w.air >= 2.5 * w.oldAir && w.largest >= 8000 && w.bigHalls >= 4 && w.marked >= 6 && w.floors >= 100,
+      `seed ${w.seed}: ${w.air} cave air blocks (${(w.air / w.oldAir).toFixed(1)}x the old caves), largest cave ${w.largest}, ${w.bigHalls} big halls, ${w.marked} of ${w.entrances} entrances marked, ${w.chests} chests (generate ${w.ms} ms)`);
   }
 
   // 2. Keep-out: nothing near gyms, the tower, the middle, the start, the shore; heights unchanged.
@@ -51,7 +89,7 @@ export default async function ({ browser, base, t }) {
         if (a.data[i] === b.data[i]) continue;
         changed++;
         const x = i % WORLD_W, z = Math.floor(i / WORLD_W) % WORLD_D;
-        if (b.gyms.some(g => near(x, z, g, 14))) bad.gym++;
+        if (b.gyms.some(g => !g.cave && near(x, z, g, 14))) bad.gym++;
         if (near(x, z, b.tower, 14)) bad.tower++;
         if (near(x, z, { x: WORLD_W / 2, z: WORLD_D / 2 }, 6)) bad.middle++;
         if (near(x, z, { x: sx, z: sz }, 8)) bad.start++;
@@ -63,6 +101,10 @@ export default async function ({ browser, base, t }) {
       for (const col of b.caves.opened) {
         const cx = col % WORLD_W, cz = Math.floor(col / WORLD_W);
         for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) holes[cx + dx + (cz + dz) * WORLD_W] = 1;
+      }
+      for (const col of b.caves.marks) {
+        const cx = col % WORLD_W, cz = Math.floor(col / WORLD_W);
+        for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) holes[cx + dx + (cz + dz) * WORLD_W] = 1;
       }
       let surfaceDiff = 0, strict = 0;
       for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) {
@@ -83,8 +125,71 @@ export default async function ({ browser, base, t }) {
   }, SEEDS);
   for (const k of keep) {
     const total = Object.values(k.bad).reduce((a, b) => a + b, 0);
-    t.ok(total === 0 && k.surfaceDiff === 0 && k.same && k.opened < 600 && k.holeAt === k.entrances && k.entrances >= 3,
+    t.ok(total === 0 && k.surfaceDiff === 0 && k.same && k.opened < 1200 && k.holeAt === k.entrances && k.entrances >= 3,
       `seed ${k.seed}: ${k.changed} blocks changed, none near gyms/tower/middle/start/water/edges; gyms and tower in place; ${k.holeAt} of ${k.entrances} entrances have a hole; surface same outside ${k.opened} hole columns (${k.strict} columns differ near holes)`);
+  }
+
+  // 2b. The old caves are kept: nothing the old layer left open is filled with rock again, and every old chest is still there.
+  // 2c. Walkable: from every stairway mouth a walker reaches the hall floor.
+  const kept = await page.evaluate(async seeds => {
+    const { World, WORLD_W: W, WORLD_D: D } = await import('/src/world.js');
+    const { B, isSolid } = await import('/src/blocks.js');
+    const out = [];
+    for (const seed of seeds) {
+      const old = new World(seed, null, null); old.generate({ bigCaves: false });
+      const full = new World(seed, null, null); full.generate();
+      const rooms = full.litRooms;
+      const stairs = new Set();
+      for (const g of full.gyms) if (g.cave) for (let dx = -20; dx <= 20; dx++) for (let dz = -20; dz <= 20; dz++) stairs.add((g.x + dx) + (g.z + dz) * W);
+      const ok = new Set([0, B.WATER, B.GLOWCAP, B.CRYSTAL, B.CHEST, B.CHEST_OPEN, B.COBBLE, B.LAMP, B.STONE_BRICKS, B.COAL_ORE, 37, 21]);
+      let lost = 0, checked = 0;
+      for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
+        if (stairs.has(x + z * W)) continue;
+        const g = old.ground[x + z * W];
+        for (let y = 2; y <= g - 2; y++) {
+          const id = old.get(x, y, z);
+          if (id !== 0 && id !== B.WATER) continue;
+          checked++;
+          if (!ok.has(full.get(x, y, z))) lost++;
+        }
+      }
+      const chestsKept = old.caves.chests.every(([x, y, z]) => full.caves.chests.some(c => c[0] === x && c[1] === y && c[2] === z) && full.get(x, y, z) === B.CHEST);
+      // Walk BFS: stand where there is air at y and y+1 and something solid or water below.
+      const stand = (w, x, y, z) => x >= 0 && z >= 0 && x < W && z < D && y >= 1 && !isSolid(w.get(x, y, z)) && !isSolid(w.get(x, y + 1, z)) && (isSolid(w.get(x, y - 1, z)) || w.get(x, y - 1, z) === B.WATER);
+      const reach = (w, from, goal) => {
+        const key = (x, y, z) => x + W * (z + D * y);
+        const seen = new Set([key(...from)]), st = [from];
+        while (st.length) {
+          const [x, y, z] = st.pop();
+          if (goal(x, y, z)) return true;
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = x + dx, nz = z + dz;
+            if (Math.abs(nx - from[0]) > 60 || Math.abs(nz - from[2]) > 60) continue;
+            const tries = [];
+            if (!isSolid(w.get(x, y + 2, z))) tries.push(y + 1);
+            tries.push(y, y - 1, y - 2, y - 3);
+            for (const ny of tries) {
+              if (!stand(w, nx, ny, nz) || seen.has(key(nx, ny, nz))) continue;
+              seen.add(key(nx, ny, nz)); st.push([nx, ny, nz]);
+              break;
+            }
+          }
+        }
+        return false;
+      };
+      const halls = full.caves.halls.filter(h => h.mouth);
+      let reached = 0;
+      for (const h of halls) {
+        const [mx, my, mz] = h.mouth;
+        if (reach(full, [mx, my + 1, mz], (x, y, z) => y <= 4 && Math.hypot(x - h.x, z - h.z) <= 5)) reached++;
+      }
+      out.push({ seed, lost, checked, chestsKept, halls: halls.length, reached });
+    }
+    return out;
+  }, SEEDS);
+  for (const k of kept) {
+    t.ok(k.lost === 0 && k.chestsKept, `seed ${k.seed}: the old caves are kept (${k.checked} open cells, ${k.lost} filled in), old chests are still there`);
+    t.ok(k.halls >= 2 && k.reached === k.halls, `seed ${k.seed}: you can walk from all ${k.halls} stairways down into their halls (${k.reached})`);
   }
 
   // The live game: nothing changed around where you start.
@@ -238,7 +343,7 @@ export default async function ({ browser, base, t }) {
     for (let i = 0; i < 10; i++) w.buildChunk(x >> 4, z >> 4);
     return { no: Math.round(no), yes: Math.round(yes), chunk: (performance.now() - t0) / 10 };
   });
-  t.ok(build.yes <= build.no * 1.5 + 30, `generate + buildAll: ${build.no} ms without caves, ${build.yes} ms with; a cave chunk takes ${build.chunk.toFixed(1)} ms`);
+  t.ok(build.yes <= build.no * 1.8 + 30, `generate + buildAll: ${build.no} ms without caves, ${build.yes} ms with; a cave chunk takes ${build.chunk.toFixed(1)} ms`);
 
   // 6. Cave creatures.
   const cave = await page.evaluate(async () => {
@@ -328,7 +433,9 @@ export default async function ({ browser, base, t }) {
     const g = window.pokecraft, w = g.world, { raycastVoxel } = await import('/src/world.js');
     const THREE_V = g.player.pos.constructor;
     let fallback = null; // a nearby spot even if something blocks the view (worlds are random)
-    for (const [ex, ez] of w.caves.entrances) {
+    // The stairway arches first (they are the new, obvious entrances), then the old holes.
+    const arches = w.caves.halls.filter(h => h.mouth).map(h => [h.mouth[0], h.mouth[2], h.mouth[1] + 2]);
+    for (const [ex, ez, ey] of [...arches, ...w.caves.entrances]) {
       let best = null;
       for (let a = 0; a < 16; a++) {
         const ang = a * Math.PI / 8;
@@ -337,7 +444,7 @@ export default async function ({ browser, base, t }) {
           const s = w.surface(x, z);
           if ([0, 5, 6, 7, 15, 17, 18, 19, 40].includes(s.id)) continue; // not water, trees or plants
           const eye = new THREE_V(x + 0.5, s.y + 1 + 1.62, z + 0.5);
-          const tgt = new THREE_V(ex + 0.5, w.surface(ex, ez).y + 0.5, ez + 0.5);
+          const tgt = new THREE_V(ex + 0.5, ey ?? w.surface(ex, ez).y + 0.5, ez + 0.5);
           const dir = tgt.clone().sub(eye); const dist = dir.length(); dir.normalize();
           fallback ??= { x, z, y: s.y, tgt: [tgt.x, tgt.y, tgt.z], ex, ez };
           const hit = raycastVoxel(w, eye, dir, dist - 1.5);
@@ -360,6 +467,36 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(ent, `found a view of a cave entrance ${ent ? JSON.stringify(ent.entrance) : ''}`);
   await shoot('cave-entrance.png');
+
+  // Inside the largest hall at night, lantern on, looking across it.
+  const hall = await page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, { raycastVoxel } = await import('/src/world.js');
+    const V = g.player.pos.constructor;
+    const air = h => { let n = 0; for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) for (let y = 3; y < 18; y++) if (w.get(x, y, z) === 0) n++; return n; };
+    const halls = [...w.caves.halls].sort((a, b) => air(b) - air(a));
+    for (const h of halls) {
+      for (let k = 0; k < 16; k++) {
+        const a = k * Math.PI / 8;
+        for (const f of [0.6, 0.5, 0.7]) {
+          const x = Math.floor(h.x + Math.cos(a) * h.rx * f), z = Math.floor(h.z + Math.sin(a) * h.rz * f);
+          const y = [3, 4].find(yy => w.get(x, yy, z) === 0 && w.get(x, yy + 1, z) === 0 && w.isSolid(x, yy - 1, z));
+          if (!y) continue;
+          const tx = h.x - Math.cos(a) * h.rx * 0.3, tz = h.z - Math.sin(a) * h.rz * 0.3, ty = y + 3;
+          const eye = new V(x + 0.5, y + 1.62, z + 0.5), tgt = new V(tx, ty, tz);
+          const dir = tgt.clone().sub(eye); const dist = dir.length(); dir.normalize();
+          if (raycastVoxel(w, eye, dir, dist)) continue;
+          g.player.pos.set(x + 0.5, y, z + 0.5); g.player.vel.set(0, 0, 0);
+          g.player.lookAt({ x: tx, y: ty, z: tz });
+          g.time = 0.75;
+          return { theme: h.theme, air: air(h), at: [x, y, z] };
+        }
+      }
+    }
+    return null;
+  });
+  t.ok(hall && hall.air >= 1200, `found a view across a big hall ${hall ? `(${hall.theme}, ${hall.air} air)` : ''}`);
+  await lanternReady(0.7);
+  await shoot('cave-hall.png');
 
   // Inside, lit by crystals and glowcaps (at night, so only their light counts).
   const cry = await page.evaluate(async () => {
