@@ -56,7 +56,7 @@ this file is for working on the code.
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
-- **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects in `fxrecipes.js` (and `fx:` sounds) are simple fallbacks until T11. See `plans/T9.md`.
+- **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects are in `fxrecipes.js` (T11). See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
@@ -71,7 +71,7 @@ Key ideas:
   `extraGymSpots()` (furthest dry spots, terrain only). **Never change either or call `gymSpots` with another count**
   (it would move every gym in old worlds); caves are filled within 18 blocks of the extra gyms before the plants
   (`fillCavesNear`), and `generate()` places the 16 gyms, the tower, then the extras so nothing old moves. `GYMS` is
-  appended to, never reordered. Next up: T4b adds a 7th creature to every type (see `ROADMAP.md`).
+  appended to, never reordered.
 - **Caves** (`caves.js`) are carved in `World.generate()` right after the terrain loop and before the plants,
   from the seed only, and only below `ground - 3` (3-block roof), so the surface, gyms, tower and
   old saves' builds stay as they were; only the 6-8 entrance holes break the surface. Keep-out:
@@ -193,8 +193,8 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 
 ## Open items
 
-- **Next work is planned in `ROADMAP.md`** (T4a, the Bone and Alien types and gyms, is done; T4b is the 7th creature per type) (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). Waves 1–2 (T1, T2, T3, T5, T6) and T4a are done; T4b (7th creatures) is in progress, then T7. Read it before
+- **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
+  and the backlog). All waves (T1–T11) are done; next is the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;

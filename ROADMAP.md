@@ -5,8 +5,8 @@ can pick it up without the conversation that produced it. Read `CLAUDE.md` first
 owner's preferences (original names only, child-friendly text, iPad support, easy gyms), the
 branch rules and the test gotchas.
 
-**Status (2026-10-12):** waves 1 and 2 are done and merged (T1, T2, T3, T5, T6). Next: wave 3 (T4),
-then wave 4 (T7). Plans for finished tasks are in `plans/`.
+**Status (2026-10-13):** all five waves are done and merged (T1–T11; T4 became Bone/Alien types +
+7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -41,10 +41,10 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | --- | --- | --- |
 | 1 ✅ | T1 Creature Book · T2 Weather · T5 Final boss | Mostly separate files (UI / new weather module / gyms + world placement) |
 | 2 ✅ | T6 More moves · T3 Caves | Battle + species moves vs. world generation + cave spawns |
-| 3 | T4a Bone + Alien types (with gyms) → T4b a 7th creature per type | T4b needs T4a's types, so they run one after the other |
-| 4 | T7 Attack animations | Needs the final move list; big enough for its own session |
-| 5a | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
-| 5b | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
+| 3 ✅ | T4a Bone + Alien types (with gyms) → T4b a 7th creature per type | T4b needs T4a's types, so they run one after the other |
+| 4 ✅ | T7 Attack animations | Needs the final move list; big enough for its own session |
+| 5a ✅ | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
+| 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -128,6 +128,8 @@ Underground caves to explore.
 
 ## T4 · New types + a 7th creature for every type (size: L)
 
+**Done** (plans `plans/T4a.md`, `plans/T4b.md`).
+
 Changed by the owner (2026-10-12): **shiny creatures are cancelled.** Instead:
 
 - **T4a:** two new types, **Bone** (skeletons, skulls, fossils; friendly, not scary) and **Alien**,
@@ -188,6 +190,8 @@ a few normal ones, and most creatures use the standard `L(type)` learnset.
 
 ## T7 · Attack animations (size: L, its own session is fine)
 
+**Done** (plan in `plans/T7.md`).
+
 Today a hit only flashes the target red. Give each move a little animation, at least per type,
 with special ones for signature moves:
 
@@ -215,7 +219,7 @@ gyms in fitting places (be creative: a Sky gym floating high up that you reach b
 climb; an Alien gym that only shows at night). The paper crane (Origrane, now mind) moves to Paper,
 so Mind needs a new 7th creature. The map may grow if needed, but **existing games must not be lost**.
 
-### T8 · Bigger caves + cave gyms (size: L)
+### T8 · Bigger caves + cave gyms (size: L) ✅ done (plans/T8.md)
 - Caves much larger and explorable: long tunnels, big caverns, several levels if the height allows,
   more and easier-to-spot entrances (marked, e.g. a stone arch or a lamp), still under the surface only
   (terrain heights unchanged) and away from gyms on the surface, the tower and the start.
@@ -227,7 +231,7 @@ so Mind needs a new 7th creature. The map may grow if needed, but **existing gam
   entrances visible, the Fossil gym is underground and reachable on several seeds, bone spawns only in
   caves, old saves load fine.
 
-### T9 · Four new types: Sky, Slime, Light, Paper (size: L)
+### T9 · Four new types: Sky, Slime, Light, Paper (size: L) ✅ done (plans/T9.md)
 - Types with colours, a balanced effectiveness row/column, 4 moves each plus a few signature moves,
   weather boosts where natural (Sky: windy/clear days, Light: daytime/rainbow, Slime: rain/swamp,
   Paper: wind?). 7 creatures per type (two or three evolving families + a single), each family with
@@ -245,7 +249,7 @@ so Mind needs a new 7th creature. The map may grow if needed, but **existing gam
 - Done when: gym spec beats every new gym, old-saves spec passes, special access works (sky gym
   reachable only by climbing; alien gym only at night).
 
-### T11 · Attack effects for the new types (size: M)
+### T11 · Attack effects for the new types (size: M) ✅ done
 - `fxrecipes.js` travel/impact for sky, slime, light, paper, and the new signature moves; sounds.
 
 ---
