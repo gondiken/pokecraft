@@ -1838,9 +1838,12 @@ const SHAPES_SKY = {};
 /* ==== T9 slime shapes ==== */
 // Goo helper: makes a part see-through and soft.
 function gooSlime(mesh, opacity = 0.8) {
-  mesh.material.transparent = true;
-  mesh.material.opacity = opacity;
-  mesh.material.depthWrite = false;
+  mesh.traverse(o => {
+    if (!o.isMesh) return;
+    o.material.transparent = true;
+    o.material.opacity = opacity;
+    o.material.depthWrite = false;
+  });
   return mesh;
 }
 
@@ -1907,14 +1910,14 @@ function drip(root, m, parts) {
   parts.bounce = body;
   gooSlime(disc(body, 0.62, 0.03, m.body, 0, 0.015, 0), 0.5);
   gooBoxSlime(body, 0.92, 0.2, 0.84, m.body, 0, 0.1, 0, 0.82);
-  gooBoxSlime(body, 0.76, 0.3, 0.7, m.body, 0, 0.33, 0, 0.8);
-  gooBoxSlime(body, 0.54, 0.24, 0.5, m.body, 0, 0.58, 0, 0.8);
-  gooBoxSlime(body, 0.34, 0.2, 0.32, m.body, 0, 0.78, 0, 0.82);
+  gooBoxSlime(body, 0.74, 0.3, 0.68, m.body, 0, 0.33, 0, 0.8);
+  gooBoxSlime(body, 0.46, 0.26, 0.44, m.body, 0, 0.59, 0, 0.8);
+  gooBoxSlime(body, 0.26, 0.24, 0.26, m.body, 0, 0.8, 0, 0.82);
   // the curl
-  gooBoxSlime(body, 0.18, 0.16, 0.18, m.body, 0, 0.94, 0.02, 0.85);
-  gooBoxSlime(body, 0.14, 0.12, 0.16, m.body, 0, 1.04, 0.12, 0.85);
-  gooBoxSlime(body, 0.1, 0.12, 0.12, m.body, 0, 0.96, 0.22, 0.85);
-  glow(box(body, 0.05, 0.05, 0.05, m.accent, 0, 0.9, 0.24), m.accent);
+  gooBoxSlime(body, 0.16, 0.2, 0.16, m.body, 0, 1.02, 0, 0.85);
+  gooBoxSlime(body, 0.12, 0.14, 0.16, m.body, 0, 1.17, 0.1, 0.85);
+  gooBoxSlime(body, 0.1, 0.14, 0.12, m.body, 0, 1.08, 0.2, 0.85);
+  glow(box(body, 0.06, 0.06, 0.06, m.accent, 0, 1.0, 0.22), m.accent);
   // shine and sparkly bubbles inside
   box(body, 0.06, 0.26, 0.02, 0xffffff, -0.28, 0.4, 0.36);
   box(body, 0.06, 0.06, 0.02, 0xffffff, -0.28, 0.56, 0.36);
@@ -1935,7 +1938,7 @@ function drip(root, m, parts) {
     swing(parts, d, 'z', 0.25, 2.2, ph);
   }
   if (has(m, 'crown')) {
-    const c = pivot(body, 0, 0.8, 0);
+    const c = pivot(body, 0, 0.74, 0);
     box(c, 0.38, 0.08, 0.36, m.accent, 0, 0, 0);
     for (const [x, z, h] of [[-0.14, 0.12, 0.14], [0.14, 0.12, 0.14], [0, 0.14, 0.2], [-0.14, -0.12, 0.12], [0.14, -0.12, 0.12]]) {
       box(c, 0.07, h, 0.07, m.accent, x, h / 2 + 0.04, z);
@@ -1944,11 +1947,11 @@ function drip(root, m, parts) {
     glow(box(c, 0.08, 0.08, 0.04, 0x4ad0ff, 0, 0, 0.19), 0x4ad0ff);
   }
   if (has(m, 'cape')) {
-    const c = pivot(body, 0, 0.7, -0.3);
+    const c = pivot(body, 0, 0.62, -0.32);
     swing(parts, c, 'x', 0.1, 1.6);
     gooBoxSlime(c, 0.74, 0.46, 0.05, m.accent, 0, -0.25, -0.04, 0.85);
     gooBoxSlime(c, 0.6, 0.2, 0.05, m.accent, 0, -0.56, -0.04, 0.85);
-    box(c, 0.84, 0.07, 0.08, 0xffffff, 0, 0.0, -0.02);
+    box(c, 0.5, 0.07, 0.08, 0xffffff, 0, 0.0, -0.02);
     for (const x of [-0.2, 0, 0.2]) box(c, 0.06, 0.06, 0.03, 0xffffff, x, -0.3, -0.08);
   }
 }

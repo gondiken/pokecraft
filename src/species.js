@@ -1167,7 +1167,7 @@ const SPAWN_SKY = {
 };
 
 const SPAWN_SLIME = {
-  swamp: [['dripple', 1.5], ['goopup', 1.2], ['wobblock', 1], ['gumbear', 0.6], ['slimperor', 0.2], ['slimehound', 0.2], ['jigglestack', 0.15]],
+  swamp: [['dripple', 1.2], ['goopup', 1], ['wobblock', 0.8], ['gumbear', 0.4], ['slimperor', 0.15], ['slimehound', 0.15], ['jigglestack', 0.12]],
   // modest cave weights: bone creatures already fill about a quarter of the cave table
   cave: [['wobblock', 0.7], ['dripple', 0.6], ['gumbear', 0.3], ['jigglestack', 0.12], ['slimperor', 0.06]],
   forest: [['goopup', 0.8, 'night'], ['dripple', 0.6, 'night']],
