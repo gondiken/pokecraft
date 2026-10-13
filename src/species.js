@@ -1019,6 +1019,44 @@ export const SPECIES = {
   /* ==== end of T9 light ==== */
 
   /* ==== T9 paper (+ Puzzlet, mind): builder PAPER only ==== */
+  darto: {
+    name: 'Darto', type: 'paper', desc: 'A paper plane that folded itself. It loves gliding off high places.',
+    base: { hp: 40, atk: 55, def: 35, spd: 80 }, baseXp: 62, catchRate: 0.45, learn: L('paper', 'sky'), flies: true,
+    evolve: { level: 22, into: 'jetfold' },
+    model: { shape: 'paperplane', scale: 0.8, body: 0xffffff, accent: 0x7ab8ff, dark: 0x8a9ab0, belly: 0xf0f4ff, extras: [] },
+  },
+  jetfold: {
+    name: 'Jetfold', type: 'paper', desc: 'A sleek paper jet with sharp folds. It can glide all the way across a lake.',
+    base: { hp: 65, atk: 90, def: 55, spd: 115 }, baseXp: 160, catchRate: 0.12, learn: L('paper', 'sky'), flies: true,
+    model: { shape: 'paperplane', scale: 1.2, body: 0xfff0d0, accent: 0xe04a4a, dark: 0x8a6a4a, belly: 0xffffff, extras: ['jet'] },
+  },
+  hopfold: {
+    name: 'Hopfold', type: 'paper', desc: 'A little folded frog. It hops in the rain and never gets soggy. Well, hardly ever.',
+    base: { hp: 50, atk: 55, def: 45, spd: 65 }, baseXp: 64, catchRate: 0.45, learn: L('paper', 'grass'),
+    evolve: { level: 20, into: 'frogami' },
+    model: { shape: 'origamifrog', scale: 0.75, body: 0x6ad06a, accent: 0xd8f0a0, dark: 0x2a6a2a, belly: 0xffffff, extras: [] },
+  },
+  frogami: {
+    name: 'Frogami', type: 'paper', desc: 'A big folded frog with patterned paper. It can jump over a house.',
+    base: { hp: 80, atk: 90, def: 70, spd: 90 }, baseXp: 155, catchRate: 0.15, learn: L('paper', 'grass'),
+    model: { shape: 'origamifrog', scale: 1.15, body: 0x4ab8e0, accent: 0xffd84a, dark: 0x1a4a7a, belly: 0xfff6e0, extras: ['pattern'] },
+  },
+  pagelet: {
+    name: 'Pagelet', type: 'paper', desc: 'A tiny storybook. It whispers the beginning of a story, then forgets the rest.',
+    base: { hp: 55, atk: 45, def: 65, spd: 40 }, baseXp: 64, catchRate: 0.45, learn: L('paper', 'pixie'),
+    evolve: { level: 24, into: 'grandtome' },
+    model: { shape: 'book', scale: 0.75, body: 0xd04a4a, accent: 0xffd84a, dark: 0x5a1a1a, belly: 0xfff8e8, extras: [] },
+  },
+  grandtome: {
+    name: 'Grandtome', type: 'paper', desc: 'A huge old storybook with a golden clasp. Every page tells a fairy tale.',
+    base: { hp: 95, atk: 85, def: 100, spd: 50 }, baseXp: 170, catchRate: 0.1, learn: L('paper', 'pixie'),
+    model: { shape: 'book', scale: 1.25, body: 0x4a3a8a, accent: 0xffd84a, dark: 0x2a1a4a, belly: 0xfff8e8, extras: ['clasp'] },
+  },
+  puzzlet: {
+    name: 'Puzzlet', type: 'mind', desc: 'A jigsaw piece that thinks very hard. It is always looking for the friend it fits with.',
+    base: { hp: 60, atk: 65, def: 65, spd: 60 }, baseXp: 100, catchRate: 0.3, learn: L('mind', 'paper'),
+    model: { shape: 'puzzle', scale: 0.85, body: 0xb08aff, accent: 0xff8ad8, dark: 0x4a2a8a, belly: 0xe8d8ff, extras: [] },
+  },
   /* ==== end of T9 paper ==== */
 };
 
@@ -1136,9 +1174,11 @@ const SPAWN_LIGHT = {
 
 // Origrane (Paper, moved here from Mind) keeps its old spots; Puzzlet takes them over in Mind.
 const SPAWN_PAPER = {
-  plains: [['origrane', 0.6, 'day']],
-  forest: [['origrane', 0.4, 'day']],
-  meadow: [['origrane', 0.8, 'day']],
+  plains: [['origrane', 0.6, 'day'], ['darto', 1.2, 'day'], ['hopfold', 1], ['pagelet', 0.8], ['jetfold', 0.15, 'day'], ['frogami', 0.2], ['grandtome', 0.15], ['puzzlet', 0.6, 'day']],
+  forest: [['origrane', 0.4, 'day'], ['pagelet', 1.2], ['hopfold', 1], ['grandtome', 0.2]],
+  meadow: [['origrane', 0.8, 'day'], ['hopfold', 0.8], ['darto', 0.8, 'day'], ['puzzlet', 0.8, 'day']],
+  mountain: [['darto', 0.8], ['jetfold', 0.2], ['puzzlet', 0.4]],
+  taiga: [['pagelet', 0.6, 'night']],
 };
 
 for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);

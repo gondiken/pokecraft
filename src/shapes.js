@@ -1844,7 +1844,159 @@ const SHAPES_LIGHT = {};
 /* ==== end of T9 light shapes ==== */
 
 /* ==== T9 paper shapes ==== */
-const SHAPES_PAPER = {};
+// A folded paper plane: keel, swept wings with fold lines, a friendly face on the nose.
+function paperplane(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const jet = m.extras.includes('jet');
+  box(body, 0.24, 0.26, 0.8, m.body, 0, 0.5, -0.1);
+  box(body, 0.06, 0.06, 0.82, m.accent, 0, 0.66, -0.1);
+  box(body, 0.06, 0.06, 0.82, m.accent, 0, 0.34, -0.1);
+  const head = pivot(body, 0, 0.5, 0.36);
+  parts.head = head;
+  box(head, 0.32, 0.3, 0.26, m.body, 0, 0, 0);
+  box(head, 0.1, 0.1, 0.22, m.accent, 0, -0.07, 0.23);
+  box(head, 0.04, 0.3, 0.04, m.dark, 0, 0, 0.14);
+  eyes(head, 0.06, 0.135, 0.08, 0.1);
+  box(head, 0.12, 0.03, 0.03, m.dark, 0, -0.1, 0.14);
+  // wings: wide at the back, tapering toward the nose; fold lines along the edges
+  parts.wings = parts.wings || [];
+  const wing = (z, s, scale, lift) => {
+    const g = pivot(body, s * 0.1, 0.52, z);
+    box(g, 0.5 * scale, 0.03, 0.7 * scale, m.body, s * 0.25 * scale, 0, -0.05);
+    box(g, 0.4 * scale, 0.03, 0.5 * scale, m.belly, s * 0.62 * scale, 0, -0.15 * scale);
+    box(g, 0.24 * scale, 0.03, 0.26 * scale, m.body, s * 0.92 * scale, 0, -0.26 * scale);
+    box(g, 0.9 * scale, 0.04, 0.04, m.accent, s * 0.5 * scale, 0.01, 0.3 * scale);
+    box(g, 0.04, 0.04, 0.6 * scale, m.dark, s * 0.18 * scale, 0.02, -0.05);
+    g.rotation.z = s * lift;
+    parts.wings.push({ g, s, lift });
+  };
+  for (const s of [-1, 1]) wing(-0.05, s, 0.9, 0.18);
+  box(body, 0.04, 0.3, 0.3, m.accent, 0, 0.72, -0.4);
+  if (jet) {
+    for (const s of [-1, 1]) wing(-0.4, s, 0.55, 0.12);
+    for (const s of [-1, 1]) box(body, 0.03, 0.27, 0.5, m.accent, s * 0.125, 0.5, -0.1);
+    box(body, 0.26, 0.2, 0.1, m.dark, 0, 0.5, -0.55);
+    glow(box(body, 0.12, 0.12, 0.08, 0xffb040, 0, 0.5, -0.62), 0xff9020);
+  }
+}
+
+// A folded origami frog: diamond body, crease down the back, strong folded back legs.
+function origamifrog(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const pattern = m.extras.includes('pattern');
+  const d = box(body, 0.6, 0.34, 0.6, m.body, 0, 0.38, -0.05);
+  d.rotation.y = Math.PI / 4;
+  const top = box(body, 0.4, 0.14, 0.4, m.belly, 0, 0.58, -0.05);
+  top.rotation.y = Math.PI / 4;
+  box(body, 0.05, 0.05, 0.8, m.accent, 0, 0.66, -0.05);
+  box(body, 0.05, 0.05, 0.8, m.dark, 0, 0.21, -0.05);
+  if (pattern) {
+    for (const [x, z] of [[-0.18, -0.2], [0.16, -0.12], [-0.1, 0.05], [0.2, 0.08]]) box(body, 0.1, 0.03, 0.1, m.accent, x, 0.67, z).rotation.y = Math.PI / 4;
+    for (const s of [-1, 1]) box(body, 0.03, 0.12, 0.12, m.accent, s * 0.3, 0.45, -0.05);
+  }
+  const head = pivot(body, 0, 0.45, 0.3);
+  parts.head = head;
+  box(head, 0.44, 0.26, 0.28, m.body, 0, 0, 0);
+  box(head, 0.44, 0.04, 0.04, m.accent, 0, 0.14, 0.12);
+  for (const s of [-1, 1]) box(head, 0.16, 0.14, 0.16, m.belly, s * 0.13, 0.19, 0.0);
+  eyes(head, 0.2, 0.085, 0.13, 0.11);
+  box(head, 0.3, 0.035, 0.03, m.dark, 0, -0.06, 0.145);
+  for (const s of [-1, 1]) box(head, 0.04, 0.05, 0.03, m.dark, s * 0.17, -0.04, 0.145);
+  parts.legs = parts.legs || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * 0.33, 0.3, -0.2);
+    const th = box(g, 0.14, 0.34, 0.3, m.body, s * 0.04, 0, -0.04);
+    th.rotation.x = -0.4;
+    box(g, 0.12, 0.05, 0.36, m.accent, s * 0.04, -0.18, 0.08);
+    box(g, 0.2, 0.05, 0.3, m.belly, s * 0.05, -0.3, 0.2);
+    parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : 0.4 });
+    const f = pivot(body, s * 0.2, 0.28, 0.4);
+    box(f, 0.1, 0.3, 0.1, m.body, 0, -0.12, 0);
+    box(f, 0.16, 0.04, 0.2, m.belly, 0, -0.28, 0.05);
+    parts.legs.push({ g: f, side: 0, phase: s > 0 ? 3 : 3.4 });
+  }
+  parts.wobble = parts.wobble || [];
+  parts.wobble.push({ g: head, axis: 'z', speed: 1.8, phase: 0, amp: 0.05 });
+}
+
+// A talking storybook that opens and closes like a mouth, with a page that flutters.
+function book(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const grand = m.extras.includes('clasp');
+  box(body, 0.72, 0.06, 0.62, m.body, 0, 0.3, 0);
+  box(body, 0.72, 0.66, 0.1, m.body, 0, 0.6, -0.3);
+  box(body, 0.74, 0.05, 0.12, m.accent, 0, 0.8, -0.3);
+  box(body, 0.74, 0.05, 0.12, m.accent, 0, 0.4, -0.3);
+  box(body, 0.64, 0.5, 0.5, m.belly, 0, 0.58, 0.0);
+  for (const y of [0.45, 0.58, 0.71]) box(body, 0.65, 0.015, 0.51, 0xe0d4b8, 0, y, 0.0);
+  eyes(body, 0.62, 0.255, 0.14, 0.13);
+  box(body, 0.26, 0.04, 0.03, m.dark, 0, 0.47, 0.255);
+  for (const s of [-1, 1]) box(body, 0.1, 0.05, 0.03, 0xff9aa8, s * 0.24, 0.5, 0.255);
+  const lid = pivot(body, 0, 0.88, -0.25);
+  box(lid, 0.72, 0.06, 0.62, m.body, 0, 0, 0.31);
+  box(lid, 0.6, 0.02, 0.5, m.accent, 0, 0.035, 0.31);
+  parts.wobble = parts.wobble || [];
+  parts.wobble.push({ g: lid, axis: 'x', speed: 2.2, phase: 0, amp: 0.1 });
+  const page = pivot(body, 0.15, 0.93, 0.0);
+  box(page, 0.3, 0.02, 0.36, m.belly, 0.15, 0.03, 0);
+  box(page, 0.2, 0.02, 0.02, 0xc0b498, 0.15, 0.045, 0.06);
+  parts.wobble.push({ g: page, axis: 'z', speed: 5, phase: 1, amp: 0.35 });
+  parts.legs = parts.legs || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * 0.2, 0.3, 0.05);
+    box(g, 0.14, 0.2, 0.14, m.dark, 0, -0.1, 0);
+    box(g, 0.2, 0.05, 0.26, m.dark, 0, -0.22, 0.05);
+    parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : Math.PI });
+  }
+  if (grand) {
+    for (const [x, z] of [[-0.36, 0.3], [0.36, 0.3], [-0.36, -0.3], [0.36, -0.3]]) box(body, 0.06, 0.06, 0.06, m.accent, x, 0.3, z);
+    box(lid, 0.1, 0.12, 0.04, m.accent, 0, -0.04, 0.63);
+    const rib = pivot(body, 0.08, 0.45, 0.26);
+    box(rib, 0.07, 0.2, 0.02, 0xe04a4a, 0, -0.1, 0);
+    box(rib, 0.035, 0.05, 0.02, 0xe04a4a, -0.02, -0.22, 0);
+    box(rib, 0.035, 0.05, 0.02, 0xe04a4a, 0.02, -0.22, 0);
+    parts.wobble.push({ g: rib, axis: 'z', speed: 3, phase: 0, amp: 0.15 });
+  }
+}
+
+// A jigsaw piece with knobs and dents that sways as it thinks, with a spinning idea sparkle.
+function puzzle(root, m, parts) {
+  const outer = pivot(root, 0, 0, 0);
+  parts.bounce = outer;
+  const sway = pivot(outer, 0, 0.62, 0);
+  parts.wobble = parts.wobble || [];
+  parts.wobble.push({ g: sway, axis: 'z', speed: 1.6, phase: 0, amp: 0.12 });
+  box(sway, 0.7, 0.7, 0.18, m.body, 0, 0, 0);
+  box(sway, 0.7, 0.04, 0.2, m.dark, 0, 0.33, 0);
+  box(sway, 0.04, 0.7, 0.2, m.dark, -0.33, 0, 0);
+  box(sway, 0.1, 0.12, 0.18, m.body, 0.12, 0.4, 0);
+  box(sway, 0.26, 0.2, 0.18, m.body, 0.12, 0.52, 0);
+  box(sway, 0.12, 0.1, 0.18, m.body, 0.4, -0.1, 0);
+  box(sway, 0.2, 0.26, 0.18, m.body, 0.52, -0.1, 0);
+  box(sway, 0.1, 0.22, 0.2, m.dark, -0.32, 0.12, 0);
+  box(sway, 0.22, 0.1, 0.2, m.dark, -0.1, -0.32, 0);
+  eyes(sway, 0.1, 0.095, 0.15, 0.15);
+  box(sway, 0.2, 0.035, 0.03, m.dark, 0, -0.13, 0.1);
+  box(sway, 0.07, 0.07, 0.03, m.accent, 0.22, -0.02, 0.1);
+  box(sway, 0.07, 0.07, 0.03, m.accent, -0.22, -0.02, 0.1);
+  for (const s of [-1, 1]) {
+    box(outer, 0.18, 0.14, 0.2, m.accent, s * 0.2, 0.07, 0.04);
+    box(outer, 0.1, 0.12, 0.1, m.accent, s * 0.2, 0.2, 0.0);
+  }
+  const idea = pivot(sway, 0.0, 0.88, 0);
+  parts.spin = parts.spin || [];
+  parts.spin.push({ g: idea, axis: 'y', speed: 2.5 });
+  glow(box(idea, 0.12, 0.12, 0.12, m.accent, 0, 0, 0), m.accent);
+  glow(box(idea, 0.06, 0.2, 0.06, m.accent, 0, 0, 0), m.accent);
+  glow(box(idea, 0.2, 0.06, 0.06, m.accent, 0, 0, 0), m.accent);
+  glow(box(idea, 0.06, 0.06, 0.2, m.accent, 0, 0, 0), m.accent);
+}
+
+const SHAPES_PAPER = { paperplane, origamifrog, book, puzzle };
 /* ==== end of T9 paper shapes ==== */
 
 export const SHAPES = {
