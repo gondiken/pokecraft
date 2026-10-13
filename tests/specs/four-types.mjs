@@ -109,7 +109,7 @@ export default async function ({ browser, base, t }) {
         if (typeof SH.SHAPES[shape] !== 'function') bad(`${id}: no SHAPES.${shape} builder`);
         const sameShape = ids.filter(o => S.SPECIES[o].model.shape === shape);
         if (isNew && sameShape.some(o => fam(o) !== fam(id))) bad(`${id}: shape ${shape} is shared by two families`);
-        if (isNew && all.some(([o, os]) => os.model.shape === shape && !ids.includes(o))) bad(`${id}: shape ${shape} is used by an older species`);
+        if (isNew && all.some(([o, os]) => os.model.shape === shape && o !== id && !ids.includes(o))) bad(`${id}: shape ${shape} is used by an older species`);
         if (names.filter(nm => nm === s.name.toLowerCase()).length !== 1) bad(`${id}: name ${s.name} is not unique`);
         if (!s.desc || s.desc.length > 110) bad(`${id}: desc is ${s.desc?.length} characters`);
         if (!spawned.has(id) && !evolvesInto.has(id)) bad(`${id}: not reachable from SPAWNS`);

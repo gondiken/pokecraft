@@ -1872,7 +1872,7 @@ function paperplane(root, m, parts) {
     g.rotation.z = s * lift;
     parts.wings.push({ g, s, lift });
   };
-  for (const s of [-1, 1]) wing(-0.05, s, 1, 0.18);
+  for (const s of [-1, 1]) wing(-0.05, s, 0.9, 0.18);
   box(body, 0.04, 0.3, 0.3, m.accent, 0, 0.72, -0.4);
   if (jet) {
     for (const s of [-1, 1]) wing(-0.4, s, 0.55, 0.12);
