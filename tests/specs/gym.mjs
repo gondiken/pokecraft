@@ -75,8 +75,8 @@ export default async function ({ browser, base, t }) {
   const s = await page.evaluate(() => ({ badges: window.pokecraft.badges, beaten: window.pokecraft.beaten }));
   t.ok(s.badges.includes('rock') && s.beaten.includes('rock:trainer'), 'Boulder Badge awarded');
 
-  // Gyms 17-22 (the Saucer Gym's people only come at night, so it is night for it): trainer, then leader.
-  for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer'], ['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {
+  // The two newest gyms (needs the Bone and Alien creatures): trainer, then leader, for both.
+  for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer']]) {
     await page.evaluate(async gid => {
       const g = window.pokecraft;
       const { makeCreature } = await import('/src/species.js');

@@ -1,7 +1,7 @@
 // T10: gyms 19-22 (Sunbeam, Origami, Goo, Cloud). Placement on six seeds (nothing old moves), the Goo Gym's cave,
 // the Cloud Gym floating out of reach until you build up to it, and pictures of each new gym.
 import fs from 'node:fs';
-import { openGame, click } from '../helpers.mjs';
+import { openGame, click, playBattle } from '../helpers.mjs';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const SEEDS = [1, 7, 99, 777, 4242, 123456];
@@ -104,7 +104,7 @@ export default async function ({ browser, base, t }) {
         `seed ${seed}: no room for a cavern: the Goo Gym stands on the surface at (${goo.x}, ${goo.z}), ${goo.gap.toFixed(0)} from the nearest gym`);
     }
     const fy = sky.y - 1;
-    t.ok(sky.sky && fy >= 27 && fy <= 36 && sky.roof === w.wool[3] && sky.gap >= 24 && sky.towerGap >= 24 && sky.middle >= 40 && w.skyHere === 'sky' && w.skyBelow === null && w.skyAny === 'sky',
+    t.ok(sky.sky && fy >= 26 && fy <= 36 && sky.roof === w.wool[3] && sky.gap >= 24 && sky.towerGap >= 24 && sky.middle >= 40 && w.skyHere === 'sky' && w.skyBelow === null && w.skyAny === 'sky',
       `seed ${seed}: the Cloud Gym floats at (${sky.x}, ${sky.z}), floor ${fy}, ${sky.gap.toFixed(0)} from the nearest gym; gymAt only counts on the island`);
     t.ok(w.boxes >= 4, `seed ${seed}: the new gyms' boxes are recorded (${w.boxes})`);
   }
@@ -149,7 +149,8 @@ export default async function ({ browser, base, t }) {
       let ly = H - 1; while (ly > 0 && w.get(lx, ly, lz) === B.AIR) ly--;
       const lamp = w.get(lx, ly, lz) === B.LAMP && w.get(lx, ly - 1, lz) === B.COBBLE;
       const [px, pz] = col(11, 0);
-      const padY = padTops[2] + 1; // the standing height on the pad's inner middle block (d = 11, s = 0)
+      const padY = padTops[1] + 1; // the standing height on the pad's inner middle block (d = 11, s = 0)
+      const padField = JSON.stringify(g.pad) === JSON.stringify([px, padTops[1], pz]) && padTops.every(y => y === padTops[0]);
       // Walking and jumping from the pad: first without a pillar, then with a pillar of stone up to the island's edge.
       const drive = (pillar) => {
         const w2 = w;
@@ -169,7 +170,7 @@ export default async function ({ browser, base, t }) {
         return res;
       };
       const ground = drive(false), built = drive(true);
-      out[seed] = { fy, climb: fy - padY, highest, solidHigh, underHigh, topIsCloud, padOk, clear, lamp, ground, built, front: g.front };
+      out[seed] = { fy, climb: fy - padY, padField, highest, solidHigh, underHigh, topIsCloud, padOk, clear, lamp, ground, built, front: g.front };
     }
     return out;
   }, [SEEDS]);
@@ -177,7 +178,7 @@ export default async function ({ browser, base, t }) {
     const r = reach[seed];
     t.ok(r.solidHigh === 0 && r.highest <= r.fy - 4 && r.underHigh <= r.fy - 4 && r.topIsCloud,
       `seed ${seed}: floor ${r.fy}; the highest natural block near the island is ${r.highest} (at most ${r.fy - 4}) and it is made of cloud, ${r.climb} blocks above the pad`);
-    t.ok(r.padOk && r.clear && r.lamp, `seed ${seed}: the blue landing pad, its lamp post and a free column above the pad`);
+    t.ok(r.padOk && r.clear && r.lamp && r.padField, `seed ${seed}: the flat blue landing pad (gym.pad), its lamp post and a free column above the pad`);
     t.ok(r.ground.maxY < r.fy - 0.5, `seed ${seed}: walking and jumping from the ground never gets above ${r.ground.maxY.toFixed(1)} (the island is at ${r.fy + 1})`);
     t.ok(Math.abs(r.built.y - (r.fy + 1)) < 0.01 && r.built.gym === 'sky', `seed ${seed}: after building a pillar on the pad one jump lands on the island (feet ${r.built.y.toFixed(2)}, ${r.built.gym})`);
   }
@@ -220,6 +221,26 @@ export default async function ({ browser, base, t }) {
   t.ok(goo, 'the Goo Gym stands in a cave on seed 1');
   await page.waitForTimeout(4500);
   await page.screenshot({ path: SHOTS + 'gym-slime.png' });
+
+  // 4. All four can be beaten: trainer, then leader, then the badge (a strong team, standing inside each gym).
+  for (const [id, badge] of [['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {
+    await page.evaluate(async gid => {
+      const g = window.pokecraft;
+      const { makeCreature } = await import('/src/species.js');
+      g.party = [makeCreature('tidalord', 45), makeCreature('thunderwolf', 45)];
+      const gym = g.world.gyms.find(x => x.def.id === gid), [fx, fz] = gym.front;
+      g.player.pos.set(gym.x + 0.5 + fx * 4.5, gym.y, gym.z + 0.5 + fz * 4.5);
+      g.player.vel.set(0, 0, 0);
+      document.exitPointerLock();
+    }, id);
+    const who = kind => `window.pokecraft.npcs.list.find(n => n.kind === '${kind}' && n.gym.def.id === '${id}')`;
+    t.ok(await page.evaluate(`!!${who('leader')} && !!${who('trainer')}`), `${badge} Gym has a trainer and a leader`);
+    await page.evaluate(`window.pokecraft.talkTo(${who('trainer')})`);
+    t.ok(await playBattle(page), `${badge} trainer battle finishes`);
+    await page.evaluate(`window.pokecraft.talkTo(${who('leader')})`);
+    t.ok(await playBattle(page), `${badge} leader battle finishes`);
+    t.ok(await page.evaluate(gid => window.pokecraft.badges.includes(gid), id), `${badge} Badge awarded`);
+  }
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

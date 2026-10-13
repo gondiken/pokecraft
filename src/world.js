@@ -1073,17 +1073,20 @@ export class World {
       for (let y = WORLD_H - 1; y > 0; y--) if (this.get(x, y, z) !== B.AIR) return y;
       return 0;
     };
+    // The pad is flat, at the height of its inner middle block (build the tower there: stand at py + 1).
+    const [px, pz] = col(11, 0), py = surf(px, pz);
     for (let d = 11; d <= 12; d++) for (let s = -1; s <= 1; s++) {
-      const [x, z] = col(d, s);
-      this.set(x, surf(x, z), z, WOOL.sky, false);
+      const [x, z] = col(d, s), top = surf(x, z);
+      for (let y = top + 1; y < py; y++) this.set(x, y, z, B.DIRT, false);
+      for (let y = py + 1; y <= top; y++) this.set(x, y, z, B.AIR, false);
+      this.set(x, py, z, WOOL.sky, false);
     }
     const [lx, lz] = col(11, 3), ly = surf(lx, lz);
     this.set(lx, ly + 1, lz, B.COBBLE, false); this.set(lx, ly + 2, lz, B.COBBLE, false); this.set(lx, ly + 3, lz, B.LAMP, false);
-    const [px, pz] = col(11, 0), py = surf(px, pz) + 1;
     const at = d => [x0 + front[0] * d + 0.5, z0 + front[1] * d + 0.5];
     const [lpx, lpz] = at(-4), [tx, tz] = at(1);
     return {
-      def, x: x0, z: z0, y: fy + 1, front, sky: true, pad: [px + 0.5, py, pz + 0.5],
+      def, x: x0, z: z0, y: fy + 1, front, sky: true, pad: [px, py, pz],
       leaderPos: [lpx, fy + 1, lpz], trainerPos: [tx + front[1] * 2, fy + 1, tz + front[0] * 2],
     };
   }
