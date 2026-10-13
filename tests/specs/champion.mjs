@@ -33,6 +33,7 @@ export default async function ({ browser, base, t }) {
   // 1. Every world has a tower, clear of the gyms, and gyms did not move.
   const worlds = await page.evaluate(async () => {
     const { World, WATER_LEVEL } = await import('/src/world.js');
+    const { WOOL } = await import('/src/blocks.js');
     const out = [];
     for (const seed of [1, 7, 42, 4242, 99999, 123456, 2024, 31337]) {
       const w = new World(seed, null, null);
@@ -45,7 +46,7 @@ export default async function ({ browser, base, t }) {
         middle: Math.hypot(tw.x - 112, tw.z - 112),
         back: w.get(tw.x - 6 * fx, tw.y, tw.z - 6 * fz), spire: w.get(tw.x, tw.y + 14, tw.z),
         dry: tw.y - 1 > WATER_LEVEL,
-        corners: w.gyms.every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6))),
+        corners: w.gyms.every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6)) || (g.def.id === 'alien' && w.get(g.x + 6, g.y, g.z + 6) === WOOL.metal)), // the Saucer's corners are metal
         pos: w.gyms.map(g => [g.x, g.z]),
       });
     }
