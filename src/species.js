@@ -1013,6 +1013,44 @@ export const SPECIES = {
   /* ==== end of T9 sky ==== */
 
   /* ==== T9 slime: builder SLIME only ==== */
+  wobblock: {
+    name: 'Wobblock', type: 'slime', desc: 'A wobbly jelly cube. You can see a lost marble floating inside it.',
+    base: { hp: 55, atk: 45, def: 70, spd: 35 }, baseXp: 64, catchRate: 0.45, learn: L('slime', 'pixie'),
+    evolve: { level: 22, into: 'jigglestack' },
+    model: { shape: 'gelcube', scale: 0.75, body: 0x8af0b0, accent: 0xff5a7a, dark: 0x2a7a5a, belly: 0xd8ffe8, extras: [] },
+  },
+  jigglestack: {
+    name: 'Jigglestack', type: 'slime', desc: 'Three jelly cubes stacked up like a tower. Each one jiggles to its own beat.',
+    base: { hp: 90, atk: 80, def: 105, spd: 45 }, baseXp: 160, catchRate: 0.12, learn: L('slime', 'pixie'),
+    model: { shape: 'gelcube', scale: 1.1, body: 0xb08aff, accent: 0xffd84a, dark: 0x4a2a8a, belly: 0xf0e0ff, extras: ['stack'] },
+  },
+  dripple: {
+    name: 'Dripple', type: 'slime', desc: 'A drop of slime with a curly top. It leaves a sparkly, sticky trail.',
+    base: { hp: 50, atk: 55, def: 50, spd: 55 }, baseXp: 64, catchRate: 0.45, learn: L('slime', 'water'),
+    evolve: { level: 24, into: 'slimperor' },
+    model: { shape: 'drip', scale: 0.75, body: 0x9cf06a, accent: 0xff8ad8, dark: 0x3a7a2a, belly: 0xe0ffc0, extras: [] },
+  },
+  slimperor: {
+    name: 'Slimperor', type: 'slime', desc: 'The king of all slimes. It wears a crown and a cape made of goo, and loves bubble baths.',
+    base: { hp: 95, atk: 95, def: 85, spd: 55 }, baseXp: 170, catchRate: 0.1, learn: L('slime', 'water', [[30, 'megasplat']]),
+    model: { shape: 'drip', scale: 1.3, body: 0x6ad0a0, accent: 0xffd84a, dark: 0x1a5a4a, belly: 0xc0f0e0, extras: ['crown', 'cape'] },
+  },
+  goopup: {
+    name: 'Goopup', type: 'slime', desc: 'A gooey puppy. It drips a little when it wags, so watch your shoes!',
+    base: { hp: 50, atk: 60, def: 45, spd: 65 }, baseXp: 66, catchRate: 0.4, learn: L('slime', 'toxic'),
+    evolve: { level: 22, into: 'slimehound' },
+    model: { shape: 'slimedog', scale: 0.8, body: 0x7ae070, accent: 0xc07af0, dark: 0x2a6a2a, belly: 0xd0ffc8, extras: [] },
+  },
+  slimehound: {
+    name: 'Slimehound', type: 'slime', desc: 'A big slime dog that bounces instead of running. It can squeeze under any door.',
+    base: { hp: 80, atk: 100, def: 70, spd: 90 }, baseXp: 165, catchRate: 0.12, learn: L('slime', 'toxic'),
+    model: { shape: 'slimedog', scale: 1.25, body: 0x4ac8a0, accent: 0xffd84a, dark: 0x1a5a4a, belly: 0xc0f0e0, extras: ['spikes'] },
+  },
+  gumbear: {
+    name: 'Gumbear', type: 'slime', desc: 'A jelly bear that smells like strawberries. It wobbles when it walks.',
+    base: { hp: 70, atk: 70, def: 65, spd: 45 }, baseXp: 95, catchRate: 0.35, learn: L('slime', 'normal'),
+    model: { shape: 'gummy', scale: 0.85, body: 0xff6a7a, accent: 0xffd8e0, dark: 0x8a2a3a, belly: 0xffb0c0, extras: [] },
+  },
   /* ==== end of T9 slime ==== */
 
   /* ==== T9 light: builder LIGHT only ==== */
@@ -1129,6 +1167,11 @@ const SPAWN_SKY = {
 };
 
 const SPAWN_SLIME = {
+  swamp: [['dripple', 1.5], ['goopup', 1.2], ['wobblock', 1], ['gumbear', 0.6], ['slimperor', 0.2], ['slimehound', 0.2], ['jigglestack', 0.15]],
+  // modest cave weights: bone creatures already fill about a quarter of the cave table
+  cave: [['wobblock', 0.7], ['dripple', 0.6], ['gumbear', 0.3], ['jigglestack', 0.12], ['slimperor', 0.06]],
+  forest: [['goopup', 0.8, 'night'], ['dripple', 0.6, 'night']],
+  meadow: [['gumbear', 0.6, 'day']],
 };
 
 const SPAWN_LIGHT = {
