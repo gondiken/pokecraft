@@ -1832,7 +1832,239 @@ const SHAPES_C = { nimbus, chameleon, blackhole, jukebox, fishbone, zorb };
 /* ==== end of T4b group C shapes ==== */
 
 /* ==== T9 sky shapes ==== */
-const SHAPES_SKY = {};
+// Sky: kite (Kiteling, Kitegale), balloon (Balloony, Zeppeluff), skywhale (Skyfin, Whaloft), pinwheel (Pinwhirl).
+
+// A hanging ribbon: nested pivots that each sway a bit later than the one above, so it waves.
+function ribbonSky(parent, parts, m, x, y, n, len, phase = 0, amp = 0.2) {
+  let g = pivot(parent, x, y, -0.03);
+  for (let i = 0; i < n; i++) {
+    box(g, 0.03, len, 0.03, m.dark, 0, -len / 2, 0);
+    const bowColor = i % 2 ? m.body : m.accent;
+    const bow = pivot(g, 0, -len, 0);
+    for (const s of [-1, 1]) box(bow, 0.13, 0.1, 0.03, bowColor, s * 0.07, 0, 0).rotation.z = s * 0.45;
+    box(bow, 0.05, 0.05, 0.04, m.dark, 0, 0, 0.005);
+    swing(parts, g, 'x', amp, 2.4, phase + i * 0.7);
+    swing(parts, g, 'z', amp * 1.3, 2.0, phase + i * 0.9 + 1);
+    g = bow;
+  }
+}
+
+// A rounded envelope made of layers (each a square plus a turned, smaller one = an octagon).
+// layers: [y, height, width]; stripes: [x offsets] of colour bands that follow the shape.
+function roundSky(parent, color, layers, z = 0, stripeColor, stripes = []) {
+  for (const [y, h, w] of layers) {
+    box(parent, w * 0.88, h, w * 0.88, color, 0, y, z);
+    box(parent, w, h, w * 0.8, color, 0, y, z);
+    box(parent, w * 0.8, h, w, color, 0, y, z);
+    for (const x of stripes) {
+      box(parent, 0.1, h, w + 0.02, stripeColor, x * w / 0.88, y, z);
+      box(parent, w + 0.02, h, 0.1, stripeColor, 0, y, z + x * w / 0.88);
+    }
+  }
+}
+
+// A flat diamond kite with a ribbon tail. Kitegale is a dragon kite with a head, whiskers and wing flaps.
+function kite(root, m, parts) {
+  const dragon = has(m, 'dragon');
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  const d = pivot(b, 0, 1.05, 0);
+  // Four panels: a rotated square tiled by four smaller ones.
+  for (const [x, y, c] of [[0, 0.2475, m.body], [0, -0.2475, m.body], [-0.2475, 0, m.accent], [0.2475, 0, m.accent]]) {
+    box(d, 0.35, 0.35, 0.06, c, x, y, 0).rotation.z = Math.PI / 4;
+  }
+  box(d, 0.04, 1.2, 0.03, m.dark, 0, 0, -0.045);
+  box(d, 1.2, 0.04, 0.03, m.dark, 0, 0, -0.045);
+  ribbonSky(d, parts, m, 0, -0.5, 5, 0.15);
+  for (const s of [-1, 1]) {
+    const arm = pivot(d, s * 0.5, -0.02, 0.04);
+    box(arm, 0.12, 0.12, 0.12, m.dark, s * 0.04, 0, 0);
+    box(arm, 0.07, 0.07, 0.07, m.belly, s * 0.1, 0, 0);
+    (parts.arms ||= []).push({ g: arm, phase: s * 1.5 });
+  }
+  if (!dragon) {
+    box(d, 0.34, 0.34, 0.03, m.belly, 0, 0, 0.045).rotation.z = Math.PI / 4;
+    eyes(d, 0.05, 0.07, 0.085, 0.1);
+    mouth(d, -0.09, 0.07, 0.1);
+    for (const s of [-1, 1]) box(d, 0.07, 0.05, 0.02, 0xff9ab0, s * 0.15, -0.045, 0.07);
+  } else {
+    box(d, 0.3, 0.3, 0.03, m.belly, 0, -0.02, 0.045).rotation.z = Math.PI / 4;
+    const head = pivot(d, 0, 0.1, 0.2);
+    parts.head = head;
+    box(head, 0.36, 0.3, 0.34, m.body);
+    box(head, 0.26, 0.15, 0.22, m.belly, 0, -0.09, 0.24);
+    box(head, 0.05, 0.05, 0.03, m.dark, -0.06, -0.03, 0.355);
+    box(head, 0.05, 0.05, 0.03, m.dark, 0.06, -0.03, 0.355);
+    eyes(head, 0.07, 0.175, 0.095, 0.11);
+    mouth(head, -0.15, 0.355, 0.16);
+    box(head, 0.08, 0.1, 0.1, m.accent, 0, 0.23, -0.05);
+    for (const s of [-1, 1]) {
+      box(head, 0.06, 0.24, 0.06, m.accent, s * 0.12, 0.25, -0.08).rotation.z = -s * 0.35;
+      for (const k of [0, 1]) {
+        const w = pivot(head, s * 0.13, -0.1 - k * 0.04, 0.3);
+        box(w, 0.04, 0.03, 0.34, m.accent, s * 0.04, 0, 0.15).rotation.y = s * (0.35 + k * 0.2);
+        swing(parts, w, 'y', 0.25, 2.2, s + k);
+      }
+      ribbonSky(d, parts, m, s * 0.37, -0.2, 3, 0.15, s * 1.3, 0.25);
+    }
+    addWings(parts, d, m, 0.4, -0.05, -0.08, 0.3, 0.22, m.accent, m.belly, { upright: true, lift: 0.3 });
+  }
+}
+
+// A hot-air balloon with a picnic basket and little feet. Zeppeluff is a fluffy blimp with a propeller.
+function balloon(root, m, parts) {
+  const blimp = has(m, 'blimp');
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  if (!blimp) {
+    const env = pivot(b, 0, 1.3, 0);
+    roundSky(env, m.body, [[0.4, 0.1, 0.32], [0.3, 0.1, 0.58], [0.05, 0.4, 0.88], [-0.22, 0.14, 0.7], [-0.36, 0.12, 0.5]], 0, m.accent, [-0.27, 0.27]);
+    box(env, 0.36, 0.1, 0.36, m.dark, 0, -0.47, 0);
+    box(env, 0.2, 0.05, 0.2, m.dark, 0, 0.47, 0);
+    eyes(env, 0.1, 0.455, 0.12, 0.12);
+    mouth(env, -0.07, 0.455, 0.14);
+    for (const s of [-1, 1]) box(env, 0.08, 0.06, 0.02, 0xff9ab0, s * 0.19, -0.02, 0.455);
+    parts.tip = glow(box(b, 0.14, 0.2, 0.14, 0xffb030, 0, 0.74, 0), 0xffb030);
+    box(b, 0.34, 0.22, 0.3, m.belly, 0, 0.42, 0);
+    box(b, 0.38, 0.05, 0.34, m.dark, 0, 0.55, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      box(b, 0.025, 0.34, 0.025, m.dark, sx * 0.16, 0.71, sz * 0.12).rotation.z = -sx * 0.1;
+    }
+    parts.legs = [];
+    for (const s of [-1, 1]) {
+      const leg = pivot(b, s * 0.09, 0.3, 0.02);
+      box(leg, 0.09, 0.22, 0.1, m.dark, 0, -0.11, 0);
+      box(leg, 0.13, 0.05, 0.17, m.dark, 0, -0.24, 0.03);
+      parts.legs.push({ g: leg, phase: s > 0 ? 0 : Math.PI });
+    }
+  } else {
+    const env = pivot(b, 0, 1.0, 0);
+    for (const [z, w] of [[-0.95, 0.3], [-0.78, 0.52], [-0.55, 0.72], [-0.25, 0.86], [0.1, 0.9], [0.4, 0.84], [0.65, 0.72], [0.85, 0.66]]) {
+      box(env, w, w * 0.8, 0.32, m.body, 0, 0, z);
+      box(env, w * 0.8, w, 0.32, m.body, 0, 0, z);
+      box(env, w * 0.9, w * 0.9, 0.32, m.body, 0, 0, z);
+    }
+    box(env, 0.14, 0.05, 1.5, m.accent, 0, 0.455, -0.1);
+    for (const sx of [-1, 1]) box(env, 0.05, 0.14, 1.3, m.accent, sx * 0.455, 0.05, -0.05);
+    eyes(env, 0.07, 1.015, 0.13, 0.13);
+    mouth(env, -0.1, 1.015, 0.16);
+    for (const s of [-1, 1]) box(env, 0.09, 0.06, 0.02, 0xff9ab0, s * 0.22, -0.04, 1.015);
+    for (const [w, h, d, y, z] of [[0.06, 0.6, 0.4, 0.3, -1.0], [0.8, 0.06, 0.4, 0.0, -1.0]]) box(env, w, h, d, m.dark, 0, y, z);
+    const prop = pivot(env, 0, 0.0, -1.2);
+    box(prop, 0.12, 0.12, 0.1, m.dark);
+    box(prop, 0.8, 0.09, 0.03, m.accent);
+    box(prop, 0.09, 0.8, 0.03, m.accent);
+    spin(parts, prop, 'z', 11);
+    box(b, 0.5, 0.2, 0.34, m.belly, 0, 0.5, 0.05);
+    box(b, 0.54, 0.05, 0.38, m.dark, 0, 0.62, 0.05);
+    for (const s of [-1, 0, 1]) glow(box(b, 0.1, 0.09, 0.03, 0xfff0a0, s * 0.15, 0.52, 0.23), 0xfff0a0);
+    parts.tip = glow(box(b, 0.12, 0.12, 0.12, 0xffb030, 0, 0.5, 0.42), 0xffb030);
+    parts.legs = [];
+    for (const s of [-1, 1]) {
+      const leg = pivot(b, s * 0.14, 0.4, 0.05);
+      box(leg, 0.09, 0.3, 0.1, m.dark, 0, -0.15, 0);
+      box(leg, 0.14, 0.05, 0.18, m.dark, 0, -0.33, 0.03);
+      parts.legs.push({ g: leg, phase: s > 0 ? 0 : Math.PI });
+    }
+  }
+}
+
+// A whale that swims through the sky: flippers, tail flukes and a blowhole that spouts little clouds.
+function skywhale(root, m, parts) {
+  const b = pivot(root, 0, 0, 0);
+  parts.bounce = b;
+  parts.hover = true;
+  box(b, 0.8, 0.64, 1.0, m.body, 0, 0.62, 0);
+  box(b, 0.7, 0.74, 0.9, m.body, 0, 0.62, 0);
+  box(b, 0.78, 0.6, 0.3, m.body, 0, 0.6, 0.6);
+  box(b, 0.72, 0.22, 1.0, m.belly, 0, 0.34, 0.05);
+  box(b, 0.66, 0.24, 0.3, m.belly, 0, 0.36, 0.6);
+  for (const z of [-0.3, -0.1, 0.1, 0.3]) for (const s of [-1, 1]) box(b, 0.02, 0.16, 0.03, 0xa8c8e8, s * 0.365, 0.32, z);
+  eyes(b, 0.72, 0.755, 0.25, 0.15);
+  for (const s of [-1, 1]) {
+    box(b, 0.1, 0.07, 0.03, 0xff9ab0, s * 0.33, 0.53, 0.76);
+    box(b, 0.04, 0.05, 0.03, m.dark, s * 0.19, 0.5, 0.76);
+  }
+  mouth(b, 0.46, 0.76, 0.34);
+  addWings(parts, b, m, 0.4, 0.4, 0.15, 0.48, 0.26, m.dark, m.body, { lift: 0.2 });
+  const tail = pivot(b, 0, 0.62, -0.5);
+  parts.tail = tail;
+  tail.rotation.x = 0.3;
+  box(tail, 0.5, 0.45, 0.35, m.body, 0, 0, -0.2);
+  box(tail, 0.3, 0.3, 0.3, m.body, 0, 0.04, -0.45);
+  const fl = pivot(tail, 0, 0.06, -0.62);
+  swing(parts, fl, 'x', 0.4, 2.6);
+  for (const s of [-1, 1]) {
+    box(fl, 0.42, 0.06, 0.28, m.body, s * 0.22, 0, -0.1).rotation.y = -s * 0.4;
+    box(fl, 0.16, 0.05, 0.16, m.belly, s * 0.42, 0, -0.17);
+  }
+  box(b, 0.1, 0.04, 0.1, m.dark, 0, 0.995, 0.25);
+  let pv = pivot(b, 0, 1.0, 0.25);
+  for (const [s, dx, dy] of [[0.18, 0.0, 0.1], [0.24, 0.07, 0.2], [0.28, -0.06, 0.24]]) {
+    ball(pv, s / 2, 0xffffff, 0, 0.08, 0);
+    swing(parts, pv, 'z', 0.5, 3.1, dx * 20);
+    swing(parts, pv, 'x', 0.3, 2.3, dy * 9);
+    const nx = pivot(pv, dx, dy, 0);
+    pv = nx;
+  }
+  if (has(m, 'clouds')) {
+    for (const s of [-1, 1]) {
+      ball(b, 0.2, 0xffffff, s * 0.42, 0.28, -0.15);
+      ball(b, 0.22, 0xffffff, s * 0.4, 0.3, 0.3);
+      ball(b, 0.17, 0xf0f8ff, s * 0.5, 0.2, 0.05);
+      ball(b, 0.15, 0xffffff, s * 0.2, 1.0, -0.2);
+    }
+    ball(b, 0.26, 0xffffff, 0, 1.0, -0.2);
+    ball(b, 0.18, 0xf0f8ff, 0, 1.18, -0.2);
+  }
+}
+
+// A pinwheel flower: a spinning four-colour wheel with a smiling hub, on a sway-y stem with leaf feet.
+function pinwheel(root, m, parts) {
+  const sway = pivot(root, 0, 0, 0);
+  swing(parts, sway, 'z', 0.07, 2.2);
+  box(sway, 0.3, 0.62, 0.26, m.body, 0, 0.55, -0.02);
+  box(sway, 0.2, 0.3, 0.2, m.body, 0, 0.95, -0.05);
+  box(sway, 0.18, 0.2, 0.02, 0x9ae080, 0, 0.5, 0.125);
+  parts.legs = [];
+  for (const s of [-1, 1]) {
+    const leg = pivot(sway, s * 0.1, 0.2, 0);
+    box(leg, 0.1, 0.18, 0.1, m.body, 0, -0.09, 0);
+    box(leg, 0.2, 0.05, 0.3, 0x8ae070, s * 0.02, -0.18, 0.06);
+    box(leg, 0.12, 0.04, 0.12, m.dark, s * 0.02, -0.17, 0.2);
+    parts.legs.push({ g: leg, phase: s > 0 ? 0 : Math.PI });
+  }
+  parts.arms = [];
+  for (const s of [-1, 1]) {
+    const arm = pivot(sway, s * 0.17, 0.72, 0);
+    box(arm, 0.28, 0.05, 0.14, 0x8ae070, s * 0.14, -0.04, 0).rotation.z = -s * 0.35;
+    parts.arms.push({ g: arm, phase: s * 1.5 });
+  }
+  const wheel = pivot(sway, 0, 1.2, 0.0);
+  const blades = pivot(wheel, 0, 0, 0);
+  const cols = [m.accent, m.belly, 0xffd84a, 0xffffff];
+  for (let k = 0; k < 4; k++) {
+    const bl = pivot(blades, 0, 0, 0);
+    bl.rotation.z = k * Math.PI / 2;
+    const c = cols[k];
+    const dk = new THREE.Color(c).multiplyScalar(0.8).getHex();
+    [[0.56, 0.14], [0.42, 0.14], [0.28, 0.14], [0.14, 0.12]].forEach(([w, h], r) => {
+      box(bl, w, h, 0.05, c, 0.03 + w / 2, 0.02 + r * 0.14 + h / 2, 0);
+      box(bl, w * 0.55, h, 0.03, dk, 0.03 + w * 0.6, 0.02 + r * 0.14 + h / 2, 0.04);
+    });
+  }
+  spin(parts, blades, 'z', 2.4);
+  const hub = pivot(wheel, 0, 0, 0.04);
+  ball(hub, 0.2, 0xfffbe8);
+  box(hub, 0.44, 0.44, 0.03, m.dark, 0, 0, -0.1);
+  eyes(hub, 0.04, 0.205, 0.08, 0.1);
+  mouth(hub, -0.09, 0.205, 0.1);
+  for (const s of [-1, 1]) box(hub, 0.06, 0.04, 0.02, 0xff9ab0, s * 0.15, -0.04, 0.2);
+}
+
+const SHAPES_SKY = { kite, balloon, skywhale, pinwheel };
 /* ==== end of T9 sky shapes ==== */
 
 /* ==== T9 slime shapes ==== */
