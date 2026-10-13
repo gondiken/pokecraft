@@ -5,6 +5,7 @@
 import { sound } from './sound.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
+const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
 const VERSION = 5; // bump when the battle rules change, so players on different versions don't battle
 
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -18,6 +19,7 @@ export class Duels {
     this.asking = null;   // { id, to, name, timer } while waiting for an answer
     this.incoming = null; // { id, from, name, team, seed, timer } while deciding
     this.current = null;  // the battle being played
+    this.waitTime = WAIT_TIME; // tests make this shorter
     this.box = document.getElementById('duel-ask');
     document.getElementById('duel-yes').addEventListener('click', e => { e.stopPropagation(); this.accept(); });
     document.getElementById('duel-no').addEventListener('click', e => { e.stopPropagation(); this.decline(); });
@@ -85,7 +87,8 @@ export class Duels {
     const inc = this.incoming;
     if (!inc) return;
     this.closeAsk();
-    if (this.game.inBattle || !this.mp.others.has(inc.from)) return;
+    if (!this.mp.others.has(inc.from)) return;
+    if (this.game.inBattle) { this.mp.sendDuel(inc.from, { type: 'no', id: inc.id, busy: true }); return; }
     this.mp.sendDuel(inc.from, { type: 'yes', v: VERSION, id: inc.id, team: teamOf(this.game.party) });
     this.begin({ id: inc.id, seed: inc.seed, opp: inc.from, name: inc.name, team: inc.team, first: false });
   }
@@ -109,14 +112,23 @@ export class Duels {
     const d = this.current = {
       ...info, avatar, pos: avatar.pos.clone(), sent: 0, got: 0, inbox: [], wake: null,
       send: action => this.mp.sendDuel(info.opp, { type: 'act', id: info.id, n: d.sent++, action }),
-      // The other player's next action, in order. { kind: 'left' } if they leave the world.
+      // The other player's next action, in order. { kind: 'left' } if they leave the world, and
+      // { kind: 'left', quiet: true } if they don't answer for waitTime seconds (we tell them too).
       next: () => new Promise(resolve => {
+        const since = performance.now();
+        const done = value => { d.wake = null; d.stop = null; clearInterval(timer); resolve(value); };
         const check = () => {
-          if (d.inbox[d.got] !== undefined) { d.wake = null; clearInterval(timer); resolve(d.inbox[d.got++]); return; }
-          if (!this.mp.others.has(info.opp)) { d.wake = null; clearInterval(timer); resolve({ kind: 'left' }); }
+          if (d.inbox[d.got] !== undefined) { done(d.inbox[d.got++]); return; }
+          if (!this.mp.others.has(info.opp)) { done({ kind: 'left' }); return; }
+          if (performance.now() - since > this.waitTime * 1000) {
+            d.send({ kind: 'left' });
+            done({ kind: 'left', quiet: true });
+          }
         };
         const timer = setInterval(check, 500);
         d.wake = check;
+        // Stop waiting (we gave up): the promise is simply never resolved.
+        d.stop = () => { d.wake = null; d.stop = null; clearInterval(timer); };
         check();
       }),
     };
@@ -125,8 +137,25 @@ export class Duels {
   }
 
   finish() {
+    this.current?.stop?.();
     if (this.current?.avatar) this.current.avatar.dueling = false;
     this.current = null;
+  }
+
+  // Any other battle is starting: say "busy" to an invite and stop asking someone.
+  busy() {
+    const inc = this.incoming;
+    if (inc) { this.closeAsk(); this.mp.sendDuel(inc.from, { type: 'no', id: inc.id, busy: true }); }
+    const a = this.asking;
+    if (a) { clearTimeout(a.timer); this.asking = null; this.mp.sendDuel(a.to, { type: 'cancel', id: a.id }); }
+  }
+
+  // Back to the title screen or leaving play-together: stop every timer and close the invite box.
+  reset() {
+    if (this.asking) clearTimeout(this.asking.timer);
+    this.asking = null;
+    this.closeAsk();
+    this.finish();
   }
 
   // The other player left the world.

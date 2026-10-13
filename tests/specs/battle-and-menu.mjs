@@ -1,5 +1,5 @@
 // Wild battle with mouse clicks, catching, then Esc -> Main menu -> New Game / Continue.
-import { openGame, newGame, click, pause, playBattle } from '../helpers.mjs';
+import { openGame, newGame, click, pause } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
@@ -25,12 +25,13 @@ export default async function ({ browser, base, t }) {
     await page.waitForTimeout(800);
     const labels = await page.$$eval('#b-actions button:not([disabled])', bs => bs.map(b => b.textContent));
     if (!labels.length) continue;
-    if (labels[0].startsWith('Continue exploring')) sawContinue = true;
+    if (labels[0].startsWith('Continue exploring')) sawContinue = labels[0];
     await click(page, '#b-actions button:not([disabled])');
   }
   await page.waitForTimeout(1200);
   const after = await state();
   t.ok(sawContinue, 'battle ends with a "Continue exploring" button');
+  t.ok(sawContinue && sawContinue.includes('You won!'), `the button says what happened (${sawContinue})`);
   t.ok(after.locked && !after.pause, 'after the battle you are straight back in the game (no pause screen)');
 
   // Catching: battle another creature and throw cubes until caught.
@@ -42,8 +43,25 @@ export default async function ({ browser, base, t }) {
     g.inBattle = true; document.body.classList.add('in-battle'); document.exitPointerLock();
     g.battle.start({ wild: w });
   });
-  await playBattle(page, 'Cube');
+  // Throw cubes until the "Continue exploring" button shows, then press Enter instead of clicking.
+  let label = '';
+  for (let i = 0; i < 200 && !label; i++) {
+    label = await page.evaluate(() => {
+      const c = document.querySelector('#b-actions button.continue');
+      if (c) return c.textContent;
+      const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')];
+      (bs.find(b => b.textContent.startsWith('Cube')) || bs[0])?.click();
+      return '';
+    });
+    if (!label) await page.waitForTimeout(700);
+  }
   t.ok(await page.evaluate(n => window.pokecraft.party.length > n, teamBefore), 'throwing Capture Cubes catches a creature');
+  t.ok(label.includes('You caught'), `the button says what was caught (${label})`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !window.pokecraft.inBattle, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  const afterKey = await state();
+  t.ok(afterKey.locked && !afterKey.pause, 'pressing Enter continues, straight back in the game');
 
   // Pause -> Main menu -> New Game -> Continue.
   await pause(page);

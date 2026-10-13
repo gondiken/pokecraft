@@ -15,6 +15,8 @@ export class TouchControls {
     this.actions = actions;
     this.joy = { x: 0, y: 0 };
     this.lookId = null;
+    this.joyId = null;
+    this.held = [];
 
     this.setupJoystick();
     this.setupLook(canvas);
@@ -44,6 +46,7 @@ export class TouchControls {
 
   hold(id, fn) {
     const el = document.getElementById(id);
+    this.held.push(el);
     el.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
       capture(el, e.pointerId);
@@ -58,7 +61,7 @@ export class TouchControls {
   setupJoystick() {
     const base = document.getElementById('joystick');
     const knob = document.getElementById('joy-knob');
-    let id = null, cx = 0, cy = 0;
+    let cx = 0, cy = 0;
     const set = (x, y) => {
       this.joy.x = x; this.joy.y = y;
       knob.style.transform = `translate(${x * JOY_RADIUS}px, ${y * JOY_RADIUS}px)`;
@@ -71,17 +74,18 @@ export class TouchControls {
     };
     base.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
-      if (id !== null) return;
-      id = e.pointerId;
-      capture(base, id);
+      if (this.joyId !== null) return;
+      this.joyId = e.pointerId;
+      capture(base, e.pointerId);
       const r = base.getBoundingClientRect();
       cx = r.left + r.width / 2; cy = r.top + r.height / 2;
       move(e);
     });
-    base.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
-    const end = e => { if (e.pointerId === id) { id = null; set(0, 0); } };
+    base.addEventListener('pointermove', e => { if (e.pointerId === this.joyId) move(e); });
+    const end = e => { if (e.pointerId === this.joyId) { this.joyId = null; set(0, 0); } };
     base.addEventListener('pointerup', end);
     base.addEventListener('pointercancel', end);
+    base.addEventListener('lostpointercapture', end);
   }
 
   setupLook(canvas) {
@@ -114,9 +118,12 @@ export class TouchControls {
     this.actBtn.classList.toggle('hidden', !label);
   }
 
+  // Forget every finger (a battle or menu started while the joystick or Jump was held).
   reset() {
     this.joy.x = this.joy.y = 0;
     document.getElementById('joy-knob').style.transform = '';
     this.lookId = null;
+    this.joyId = null;
+    for (const el of this.held) el.classList.remove('down');
   }
 }

@@ -1,6 +1,8 @@
 // Battles between two players in the same world: asking, saying no, a full battle (both
 // browsers must agree on every turn), giving up, the 3-cube prize, and nobody's team getting hurt.
-import { openPair, newGame, click, pause } from '../helpers.mjs';
+// T12: an open team screen or Book closes when the battle starts, "Give up" while waiting, a
+// player who stops answering, an invite during another battle ("busy"), and duels.reset().
+import { openPair, newGame, click, pause, playBattle } from '../helpers.mjs';
 
 const inBattle = page => page.evaluate(() => window.pokecraft.inBattle);
 const askShown = page => page.evaluate(() => !document.getElementById('duel-ask').classList.contains('hidden'));
@@ -87,11 +89,21 @@ export default async function ({ browser, base, t }) {
   t.ok(await waitFor(A, () => !window.pokecraft.duels.asking), 'saying "Not now" tells the asker');
   t.ok(!(await inBattle(A)) && !(await inBattle(B)) && !(await askShown(B)), 'nobody is in a battle after "Not now"');
 
-  // Asking again and saying yes, then a full battle.
+  // Asking again and saying yes, then a full battle. The kid has the team screen open (the invite
+  // is drawn above it) and Dad has the Book open while waiting: both close when the battle starts.
+  await B.keyboard.press('p');
   await A.evaluate(() => window.pokecraft.interact());
+  await A.keyboard.press('c');
+  t.ok(await B.evaluate(() => window.pokecraft.ui.panelOpen) && await A.evaluate(() => window.pokecraft.ui.panelOpen), 'the kid has the team screen open, Dad the Book');
   await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
   await click(B, '#duel-yes');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'saying "Battle!" starts the battle for both players');
+  t.ok(!(await B.evaluate(() => window.pokecraft.ui.panelOpen)) && !(await A.evaluate(() => window.pokecraft.ui.panelOpen)),
+    'the team screen and the Book close when the battle starts');
+  // A panel opened over a battle anyway can always be closed with its key.
+  await B.evaluate(() => window.pokecraft.ui.openPanel('team'));
+  await B.keyboard.press('p');
+  t.ok(!(await B.evaluate(() => window.pokecraft.ui.panelOpen)), 'P closes a team screen left open over a battle');
   t.ok(await playDuel([A, B]), 'the battle finishes');
   const resA = await A.evaluate(() => window.pokecraft.duels.lastResult);
   const resB = await B.evaluate(() => window.pokecraft.duels.lastResult);
@@ -118,6 +130,63 @@ export default async function ({ browser, base, t }) {
   const cubesNow = await cubes(A);
   t.ok(await A.evaluate(() => window.pokecraft.duels.lastResult) === 'won' && cubesNow === (resA === 'won' ? cubesA + 6 : cubesA + 3),
     'when the other player gives up you win 3 cubes');
+
+  // Giving up while waiting for the other player.
+  const startDuel = async () => {
+    await challenge();
+    await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+    await B.keyboard.press('y');
+    return await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B);
+  };
+  const waiting = page => waitFor(page, () => document.getElementById('b-log').textContent.startsWith('Waiting for')
+    && [...document.querySelectorAll('#b-actions button')].some(b => b.textContent === 'Give up'), 30000);
+  const pickMove = page => page.evaluate(() => document.querySelector('#b-actions button:not([disabled])').click());
+  t.ok(await startDuel(), 'another battle starts');
+  await waitFor(A, () => !!document.querySelector('#b-actions button small'), 30000);
+  await pickMove(A);
+  t.ok(await waiting(A), 'while waiting for the other player there is a "Give up" button');
+  await A.evaluate(() => [...document.querySelectorAll('#b-actions button')].find(b => b.textContent === 'Give up').click());
+  t.ok(await playDuel([A]) && await A.evaluate(() => window.pokecraft.duels.lastResult) === 'gaveup', 'pressing it ends the battle (you gave up)');
+  t.ok(await playDuel([B]) && await B.evaluate(() => window.pokecraft.duels.lastResult) === 'won', 'and the other player wins');
+
+  // The other player stops answering (here after 3 seconds instead of 90).
+  await A.evaluate(() => { window.pokecraft.duels.waitTime = 3; });
+  t.ok(await startDuel(), 'a third battle starts');
+  await waitFor(A, () => !!document.querySelector('#b-actions button small'), 30000);
+  await pickMove(A);
+  const said = await A.evaluate(() => new Promise(resolve => {
+    const log = document.getElementById('b-log');
+    const ob = new MutationObserver(() => { if (log.textContent.includes('stopped answering')) { ob.disconnect(); resolve(true); } });
+    ob.observe(log, { childList: true, characterData: true, subtree: true });
+    setTimeout(() => resolve(false), 30000);
+  }));
+  t.ok(said, 'when the other player stops answering the battle says so');
+  t.ok(await playDuel([A]) && await A.evaluate(() => window.pokecraft.duels.lastResult) === 'ended', 'and ends');
+  t.ok(await playDuel([B]) && await B.evaluate(() => window.pokecraft.duels.lastResult) === 'ended', "the other player's battle ends too");
+  await A.evaluate(() => { window.pokecraft.duels.waitTime = 90; });
+
+  // An invite that arrives during another battle is answered "busy" and closed.
+  await challenge();
+  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await B.evaluate(async () => {
+    const g = window.pokecraft;
+    const S = await import('/src/species.js');
+    const { Wild } = await import('/src/creatures.js');
+    const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
+    wild.data.hp = 1;
+    g.creatures.list.push(wild);
+    g.startBattle({ wild });
+  });
+  t.ok(await inBattle(B) && !(await askShown(B)), 'starting another battle closes the invite');
+  t.ok(await waitFor(A, () => !window.pokecraft.duels.asking), 'and tells the asker the other player is busy');
+  t.ok(await playBattle(B), 'the other battle still works');
+
+  // Leaving play-together stops waiting for an answer (no "didn't answer" later on the title screen).
+  await challenge();
+  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await A.evaluate(() => window.pokecraft.mp.close());
+  t.ok(await A.evaluate(() => !window.pokecraft.duels.asking && !window.pokecraft.duels.incoming), 'closing play-together resets the battle invites');
+  t.ok(await waitFor(B, () => document.getElementById('duel-ask').classList.contains('hidden')), "and the other player's invite box closes");
   t.ok(!A.errors.length && !B.errors.length, `no page errors ${[...A.errors, ...B.errors].join('; ')}`);
   await A.context().close(); await B.context().close();
 }

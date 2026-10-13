@@ -513,7 +513,7 @@ async function goToMenu() {
 
 // The team panel (P) and the Blocks panel (B): the same key or button opens and closes them.
 function togglePanel(which = 'team') {
-  if (game.inBattle) return;
+  if (game.inBattle) { game.ui.closePanel(); return; } // a panel left open over a battle can always be closed
   if (game.ui.panelOpen) {
     game.ui.closePanel();
     afterOverlay();
@@ -577,6 +577,12 @@ document.addEventListener('keydown', e => {
   if (e.target instanceof HTMLInputElement) return; // typing a name or code, not playing
   if (game.duels.incoming && (e.code === 'KeyY' || e.code === 'KeyN')) {
     if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
+    return;
+  }
+  // "Continue exploring" after a battle: a key press works too (and lets the game take the mouse back).
+  if (game.inBattle && (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyE')) {
+    const btn = document.querySelector('#b-actions button.continue');
+    if (btn) { e.preventDefault(); btn.click(); }
     return;
   }
   if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || (e.code === 'Escape' && game.ui.panelOpen)) {
@@ -807,6 +813,10 @@ function startBattle(opts) {
     return;
   }
   game.inBattle = true;
+  // Close anything that could cover the battle (the team screen, Blocks, the Book), and answer
+  // "busy" to a battle invite that is still showing.
+  game.ui.closePanel();
+  if (!opts.duel) game.duels.busy();
   pauseEl.classList.add('hidden');
   document.body.classList.add('in-battle');
   game.player.keys = {};
@@ -820,6 +830,7 @@ function startBattle(opts) {
 game.onBattleEnd = (result, opts) => {
   game.inBattle = false;
   document.body.classList.remove('in-battle');
+  if (game.hostLeft) setTimeout(goHome, 2500); // the host left during the battle
   if (opts.duel) {
     // Battles between players: nobody's team gets hurt, and the winner gets 3 Capture Cubes.
     const name = opts.duel.name;
@@ -1144,6 +1155,8 @@ game.mp = new Multiplayer(game, {
   left: id => game.duels.left(id),
   ended: reason => {
     if (reason !== 'host-left') return;
+    game.hostLeft = true;
+    if (game.inBattle) { game.ui.toast('The host left. You will go back to your own world after this battle.'); return; }
     game.ui.toast('The host left, so you are going back to your own world.');
     setTimeout(goHome, 2500);
   },
@@ -1255,7 +1268,9 @@ initAccount();
 window.pokecraft = game;
 game.sound = sound;
 game.updateGuide = updateGuide;
+game.save = save;
 game.talkTo = talkTo;
+game.startBattle = startBattle;
 game.interact = interact;
 game.breakBlock = breakBlock;
 game.placeBlock = placeBlock;

@@ -312,8 +312,9 @@ export class Battle {
 
     // With a mouse, the browser only gives the mouse back to the game after a click, so end on a
     // button instead of making the player click through a pause screen.
+    // Enter, Space or E press it too (main.js), which also lets the game take the mouse back.
     if (!g.isTouch()) {
-      await this.choose([{ label: 'Continue exploring', value: true, cls: 'wide primary' }]);
+      await this.choose([{ label: 'Continue exploring', sub: this.endText(result), value: true, cls: 'wide primary continue' }]);
     }
 
     this.root.classList.add('hidden');
@@ -332,6 +333,16 @@ export class Battle {
     this.foeModel = null;
     this.active = false;
     g.onBattleEnd(result, opts);
+  }
+
+  // A few words on the "Continue exploring" button about how the battle ended.
+  endText(result) {
+    if (result === 'caught') return `You caught ${nameOf(this.foe)}!`;
+    if (result === 'won') return this.trainer ? `You beat ${this.trainer.name}!` : 'You won!';
+    if (result === 'ran') return 'You got away.';
+    if (result === 'lost') return this.duel ? `${this.duel.name} won this time.` : 'Your team is resting at the start.';
+    if (result === 'gaveup') return 'You gave up.';
+    return '';
   }
 
   async turn() {
@@ -381,15 +392,32 @@ export class Battle {
     return null;
   }
 
+  // Waits for the other player's next action, with a "Give up" button in case they stop answering.
+  // Returns their action, or { kind: 'me-giveup' } if we gave up while waiting.
+  async waitForThem(text) {
+    const d = this.duel;
+    this.log.textContent = text;
+    const quit = this.choose([{ label: 'Give up', value: { kind: 'me-giveup' }, cls: 'wide' }]);
+    const action = await Promise.race([d.next(), quit]);
+    if (action.kind === 'me-giveup') { d.stop?.(); d.send({ kind: 'giveup' }); }
+    else this.actions.replaceChildren();
+    return action;
+  }
+
+  leftText(action) {
+    const name = this.duel.name;
+    return action.quiet ? `${name} stopped answering, so the battle is over.` : `${name} had to go, so the battle is over.`;
+  }
+
   // A turn against another player: both choose, swap choices, then both play out the same turn.
   async duelTurn() {
     const d = this.duel;
     const mine = await this.chooseAction();
     d.send(mine);
     if (mine.kind === 'giveup') { await this.say('You gave up. Good try!'); return 'gaveup'; }
-    this.log.textContent = `Waiting for ${d.name}...`;
-    const theirs = await d.next();
-    if (theirs.kind === 'left') { await this.say(`${d.name} had to go, so the battle is over.`); return 'ended'; }
+    const theirs = await this.waitForThem(`Waiting for ${d.name}...`);
+    if (theirs.kind === 'me-giveup') { await this.say('You gave up. Good try!'); return 'gaveup'; }
+    if (theirs.kind === 'left') { await this.say(this.leftText(theirs)); return 'ended'; }
     if (theirs.kind === 'giveup') { await this.say(`${d.name} gave up! You win!`); return 'won'; }
 
     // Switching happens before anyone attacks.
@@ -639,9 +667,9 @@ export class Battle {
     if (this.duel) {
       const d = this.duel;
       if (!this.foes.some(c => c.hp > 0)) { await this.say(`You beat ${d.name}! Great battle!`); return 'won'; }
-      this.log.textContent = `Waiting for ${d.name} to choose a creature...`;
-      const next = await d.next();
-      if (next.kind === 'left') { await this.say(`${d.name} had to go, so the battle is over.`); return 'ended'; }
+      const next = await this.waitForThem(`Waiting for ${d.name} to choose a creature...`);
+      if (next.kind === 'me-giveup') { await this.say('You gave up. Good try!'); return 'gaveup'; }
+      if (next.kind === 'left') { await this.say(this.leftText(next)); return 'ended'; }
       if (next.kind === 'giveup') { await this.say(`${d.name} gave up! You win!`); return 'won'; }
       this.foeIdx = this.foeIndex(next.idx);
       await this.sendOutFoe();

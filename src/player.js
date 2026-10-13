@@ -10,6 +10,7 @@ export class Player {
     this.yaw = 0;
     this.pitch = 0;
     this.onGround = false;
+    this.hitWall = false; // walked into a block sideways last frame
     this.keys = {};
     this.halfW = 0.3;
     this.height = 1.8;
@@ -71,6 +72,7 @@ export class Player {
         ? Math.floor(next[axis] + hw) - hw - 0.001
         : Math.floor(next[axis] - hw) + 1 + hw + 0.001;
       this.vel[axis] = 0;
+      this.hitWall = true;
     }
   }
 
@@ -105,12 +107,16 @@ export class Player {
     if (water) {
       this.vel.y = Math.max(this.vel.y - 9 * dt, -2.5);
       if (k.Space) this.vel.y = Math.min(this.vel.y + 22 * dt, 3.4);
+      // Swimming into a bank with jump held: a push big enough to climb out onto a bank
+      // 1 block above the water (not 2), like Minecraft.
+      if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
     } else {
       this.vel.y = Math.max(this.vel.y - 28 * dt, -19);
       if (k.Space && this.onGround) this.vel.y = 8.6;
     }
 
     this.onGround = false;
+    this.hitWall = false;
     this.moveAxis('x', this.vel.x * dt);
     this.moveAxis('z', this.vel.z * dt);
     this.moveAxis('y', this.vel.y * dt);

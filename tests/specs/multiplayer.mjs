@@ -1,5 +1,5 @@
 // Play together, with two separate browsers (see openPair).
-import { openPair, newGame, click, pause } from '../helpers.mjs';
+import { openPair, newGame, click, pause, playBattle } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const [A, B] = await openPair(browser, base);
@@ -29,9 +29,22 @@ export default async function ({ browser, base, t }) {
   t.ok(await A.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y + 1, z) === 9, spot), 'visitor\'s block appears for the host');
   t.ok(await B.evaluate(s => JSON.parse(localStorage.getItem('pokecraft-save-v2')).seed === s, seedB), 'visitor\'s own saved world is untouched');
 
+  // The visitor is in a battle when the host stops: they go home only after the battle.
+  await B.evaluate(async () => {
+    const g = window.pokecraft;
+    const S = await import('/src/species.js');
+    const { Wild } = await import('/src/creatures.js');
+    const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
+    wild.data.hp = 1;
+    g.creatures.list.push(wild);
+    g.startBattle({ wild });
+  });
   await A.evaluate(() => { document.exitPointerLock(); document.getElementById('pause').classList.remove('hidden'); });
   await A.waitForTimeout(400);
   await click(A, '#mp button:has-text("Stop sharing")');
+  await B.waitForTimeout(5000);
+  t.ok(await B.evaluate(() => window.pokecraft.inBattle && window.pokecraft.hostLeft), 'the visitor is not sent home in the middle of a battle');
+  await playBattle(B);
   await B.waitForTimeout(5000);
   await B.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 20000 });
   await B.waitForTimeout(1000);

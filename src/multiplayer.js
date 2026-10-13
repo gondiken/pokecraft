@@ -314,6 +314,7 @@ export class Multiplayer {
   }
 
   close() {
+    this.game.duels?.reset();
     if (this.t) {
       if (this.active) this.t.send('bye', { id: this.id });
       // Give the goodbye a moment to go out before closing.

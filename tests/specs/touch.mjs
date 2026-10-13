@@ -21,6 +21,23 @@ export default async function ({ browser, base, t }) {
   const after = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z, yaw: window.pokecraft.player.yaw }));
   t.ok(Math.hypot(after.x - before.x, after.z - before.z) > 0.5, 'joystick walks');
   t.ok(Math.abs(after.yaw - before.yaw) > 0.1, 'dragging the right side looks around (at the same time)');
+  // A battle (or menu) starting while the joystick and Jump are held resets them, so the next touch works.
+  const jump = await center('#btn-jump');
+  await touch('touchStart', [[joy[0], joy[1], 3], [jump[0], jump[1], 4]]);
+  await page.waitForTimeout(200);
+  t.ok(await page.evaluate(() => window.pokecraft.touch.joyId !== null && document.getElementById('btn-jump').classList.contains('down')), 'holding the joystick and Jump');
+  await page.evaluate(() => window.pokecraft.touch.reset());
+  t.ok(await page.evaluate(() => window.pokecraft.touch.joyId === null && !document.getElementById('btn-jump').classList.contains('down')), 'reset forgets the joystick finger and the Jump button');
+  await touch('touchEnd', []);
+  await page.evaluate(() => { const g = window.pokecraft; g.touch.joyId = 999; }); // as if a finger's "up" got lost
+  await page.evaluate(() => window.pokecraft.touch.reset());
+  const b2 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
+  await touch('touchStart', [[joy[0], joy[1], 5]]);
+  for (let i = 0; i < 6; i++) { await touch('touchMove', [[joy[0], joy[1] - 60, 5]]); await page.waitForTimeout(100); }
+  await page.waitForTimeout(600);
+  await touch('touchEnd', []);
+  const a2 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
+  t.ok(Math.hypot(a2.x - b2.x, a2.z - b2.z) > 0.3, 'after a reset the joystick walks again');
   await page.tap('.slot >> nth=4');
   t.ok(await page.evaluate(() => window.pokecraft.selected === 4), 'tapping the hotbar picks a block');
   await page.evaluate(() => { window.pokecraft.player.pitch = -1.2; });
