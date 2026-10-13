@@ -156,7 +156,7 @@ export const GYMS = [
     lose: 'You dug up a win! The Fossil Badge is yours.',
   },
   {
-    id: 'alien', type: 'alien', name: 'Saucer Gym', badge: 'Saucer Badge', night: true,
+    id: 'alien', type: 'alien', name: 'Saucer Gym', badge: 'Saucer Badge', night: true, place: 'sky',
     leader: { name: 'Leader Zeeb', colors: { shirt: 0x8de060, pants: 0x4a2a7a, hair: 0xc08cff, skin: 0xf2d0b0 } },
     trainer: { name: 'Skywatcher Rin', colors: { shirt: 0x3a3a5a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a } },
     trainerTeam: [['blipling', 28], ['saucerling', 28]],

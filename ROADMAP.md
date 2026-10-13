@@ -344,7 +344,7 @@ Gym; and the Saucer Gym should float in the sky like the Cloud Gym, still only o
   by day and mention the night gyms, and the HUD toast in `main.js` too.
 - **Comet Gym at night:** only the flag and text. Its building and spot don't change. Old saves:
   a beaten trainer stays beaten, badges are kept.
-- **The Saucer Gym in the sky:** keep its x/z from `extraGymSpots()`. That list is also an input to
+- **The Saucer Gym in the sky: ✅ done (2026-10-13)**, see CLAUDE.md ("The Saucer Gym floats"); measured over seeds 1–300: hills > 23 near the spot on about 1 map in 4, fallback = island at 35 and the hills under it cut down. Keep its x/z from `extraGymSpots()`. That list is also an input to
   the cave masks and `newGymSpots()`, so keeping it means no other gym, cave or the tower moves.
   - Build it like the Cloud Gym (`placeSkyGym`: cloud island with lamps underneath, sky building,
     landing pad + lamp post in front of the door, one jump from a pillar on the pad). Use a

@@ -13,8 +13,9 @@ const GONE_AFTER = 8;     // seconds without news before a player counts as gone
 const JOIN_TIMEOUT = 12;  // seconds to wait for the host to send their world
 const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
-// Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms).
-export const WORLD_VERSION = 3;
+// Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
+// 4: the Saucer Gym floats in the sky).
+export const WORLD_VERSION = 4;
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [

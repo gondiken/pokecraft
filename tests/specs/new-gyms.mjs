@@ -111,16 +111,17 @@ export default async function ({ browser, base, t }) {
   const fb = worlds[GOO_FALLBACK_SEED];
   t.ok(fb.n === 22 && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
 
-  // 2. The Cloud Gym is out of reach until you build up to it.
+  // 2. The Cloud Gym and (wave 6) the Saucer Gym are out of reach until you build up to them.
   const reach = await page.evaluate(async ([seeds]) => {
     const { World, WORLD_W: W, WORLD_D: D, WORLD_H: H } = await import('/src/world.js');
     const { Player } = await import('/src/player.js');
     const { B, WOOL, isSolid } = await import('/src/blocks.js');
     const out = {};
-    for (const seed of seeds) {
+    for (const seed of seeds) for (const gid of ['sky', 'alien']) {
       const w = new World(seed, null, null);
       w.generate();
-      const g = w.gyms[21], fy = g.y - 1, [fx, fz] = g.front;
+      const g = w.gyms.find(x => x.def.id === gid), fy = g.y - 1, [fx, fz] = g.front;
+      const top = gid === 'sky' ? B.CLOUD : WOOL.metal, padWool = gid === 'sky' ? WOOL.sky : WOOL.alien;
       const col = (d, s) => [g.x + fx * d + (fx ? 0 : s), g.z + fz * d + (fz ? 0 : s)];
       // Natural blocks: nothing solid at fy-3 or higher outside the island (r > 11) within 16, and the island is cloud on top.
       let highest = 0, solidHigh = 0;
@@ -134,7 +135,7 @@ export default async function ({ browser, base, t }) {
         if (a * a + b * b > 121) continue;
         for (let y = fy - 4; y >= 0; y--) if (isSolid(w.get(g.x + a, y, g.z + b))) { underHigh = Math.max(underHigh, y); break; }
       }
-      const topIsCloud = w.get(g.x + 9, fy, g.z) === B.CLOUD && w.get(g.x, fy, g.z + 9) === B.CLOUD && w.get(g.x, fy + 1, g.z + 9) === B.AIR;
+      const topIsCloud = w.get(g.x + 9, fy, g.z) === top && w.get(g.x, fy, g.z + 9) === top && w.get(g.x, fy + 1, g.z + 9) === B.AIR;
       // The pad: sky wool on the ground, a lamp post, nothing solid above it up to the island's roof.
       let padOk = true, clear = true;
       const padTops = [];
@@ -142,7 +143,7 @@ export default async function ({ browser, base, t }) {
         const [x, z] = col(d, s);
         let y = H - 1; while (y > 0 && w.get(x, y, z) === B.AIR) y--;
         padTops.push(y);
-        if (w.get(x, y, z) !== WOOL.sky) padOk = false;
+        if (w.get(x, y, z) !== padWool) padOk = false;
         for (let k = y + 1; k <= fy + 4; k++) if (w.get(x, k, z) !== B.AIR) clear = false;
       }
       const [lx, lz] = col(11, 3);
@@ -170,17 +171,17 @@ export default async function ({ browser, base, t }) {
         return res;
       };
       const ground = drive(false), built = drive(true);
-      out[seed] = { fy, climb: fy - padY, padField, highest, solidHigh, underHigh, topIsCloud, padOk, clear, lamp, ground, built, front: g.front };
+      out[seed + ':' + gid] = { gid, fy, climb: fy - padY, padField, highest, solidHigh, underHigh, topIsCloud, padOk, clear, lamp, ground, built, front: g.front };
     }
     return out;
   }, [SEEDS]);
-  for (const seed of SEEDS) {
-    const r = reach[seed];
-    t.ok(r.solidHigh === 0 && r.highest <= r.fy - 4 && r.underHigh <= r.fy - 4 && r.topIsCloud,
-      `seed ${seed}: floor ${r.fy}; the highest natural block near the island is ${r.highest} (at most ${r.fy - 4}) and it is made of cloud, ${r.climb} blocks above the pad`);
-    t.ok(r.padOk && r.clear && r.lamp && r.padField, `seed ${seed}: the flat blue landing pad (gym.pad), its lamp post and a free column above the pad`);
-    t.ok(r.ground.maxY < r.fy - 0.5, `seed ${seed}: walking and jumping from the ground never gets above ${r.ground.maxY.toFixed(1)} (the island is at ${r.fy + 1})`);
-    t.ok(Math.abs(r.built.y - (r.fy + 1)) < 0.01 && r.built.gym === 'sky', `seed ${seed}: after building a pillar on the pad one jump lands on the island (feet ${r.built.y.toFixed(2)}, ${r.built.gym})`);
+  for (const seed of SEEDS) for (const gid of ['sky', 'alien']) {
+    const r = reach[seed + ':' + gid], name = gid === 'sky' ? 'Cloud' : 'Saucer';
+    t.ok(r.solidHigh === 0 && r.highest <= r.fy - 4 && r.underHigh <= r.fy - 4 && r.topIsCloud && r.fy <= 35 + (gid === 'sky'),
+      `seed ${seed}: ${name} Gym floor ${r.fy}; the highest natural block near the island is ${r.highest} (at most ${r.fy - 4}) and its top is ${gid === 'sky' ? 'cloud' : 'metal'}, ${r.climb} blocks above the pad`);
+    t.ok(r.padOk && r.clear && r.lamp && r.padField && r.climb >= 4, `seed ${seed}: the ${name} Gym's flat ${gid === 'sky' ? 'blue' : 'green'} landing pad (gym.pad), its lamp post and a free column above the pad`);
+    t.ok(r.ground.maxY < r.fy - 0.5, `seed ${seed}: ${name} Gym: walking and jumping from the ground never gets above ${r.ground.maxY.toFixed(1)} (the island is at ${r.fy + 1})`);
+    t.ok(Math.abs(r.built.y - (r.fy + 1)) < 0.01 && r.built.gym === gid, `seed ${seed}: ${name} Gym: after building a pillar on the pad one jump lands on the island (feet ${r.built.y.toFixed(2)}, ${r.built.gym})`);
   }
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

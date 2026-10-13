@@ -941,7 +941,7 @@ function nightGymClosed(def) {
   return `The ${def.name} is empty... the aliens only visit at night! Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
 }
 
-let skyToldNear = false, skyToldPad = false;
+let skyToldNear = false, skyToldPad = false, skyNearest = null;
 
 // Points the player towards the next gym they haven't beaten yet.
 function updateGuide() {
@@ -959,14 +959,16 @@ function updateGuide() {
   if (!next) game.ui.setGuide('★ Champion! ★');
   else updateArrow(p, next, nightNote);
 
-  // Cloud Gym hints: it floats above the ground, so tell the player to build up.
-  const sky = game.world.gyms.find(g => g.sky && !game.badges.includes(g.def.id));
+  // Sky gym hints (Cloud and Saucer): they float above the ground, so tell the player to build up.
+  const dist = g => Math.hypot(g.x + 0.5 - p.x, g.z + 0.5 - p.z);
+  const sky = game.world.gyms.filter(g => g.sky && !game.badges.includes(g.def.id)).sort((a, b) => dist(a) - dist(b))[0];
+  if (sky !== skyNearest) { skyNearest = sky; skyToldNear = skyToldPad = false; }
   if (sky) {
     const h = Math.hypot(sky.x + 0.5 - p.x, sky.z + 0.5 - p.z);
     if (h > 24) skyToldNear = false;
     else if (h <= 14 && p.y < sky.y - 1 && !skyToldNear) {
       skyToldNear = true;
-      game.ui.toast(`The ${sky.def.name} floats high in the sky! Build a tower of blocks on the blue pad and jump across.`);
+      game.ui.toast(`The ${sky.def.name} floats high in the sky! Build a tower of blocks on the ${sky.padColor || 'blue'} pad and jump across.`);
     }
     if (!skyToldPad && sky.pad && Math.hypot(p.x - (sky.pad[0] + 0.5), p.z - (sky.pad[2] + 0.5)) < 2 && p.y < sky.y - 1) {
       skyToldPad = true;

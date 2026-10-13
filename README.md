@@ -128,7 +128,7 @@ Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, pa
 
 ## Gyms and badges
 
-There are 22 gyms scattered around the map, one for each type except normal. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the aliens of the **Saucer Gym only visit at night**, and the **Cloud Gym floats high in the sky**: find the blue pad on the ground below it, build a tower of blocks on it and jump across. Each gym is a building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
+There are 22 gyms scattered around the map, one for each type except normal. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the **Cloud Gym** and the **Saucer Gym float high in the sky**: find the blue (Cloud) or green (Saucer) pad on the ground below, build a tower of blocks on it and jump across. The aliens of the Saucer Gym only visit at night (their flying saucer lands on the roof). Each gym is a building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |

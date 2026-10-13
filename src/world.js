@@ -752,10 +752,38 @@ export class World {
     const spots = this.extraGymSpots();
     GYMS.slice(ORIGINAL_GYMS, EXTRA_GYMS_END).forEach((def, i) => {
       if (def.place === 'cave') return; // placed by placeCaveGyms
-      const g = this.placeGym(def, spots[i][0], spots[i][1]);
+      const [x, z] = spots[i];
+      let g;
+      if (def.place === 'sky') {
+        // The Saucer Gym (wave 6): a floating saucer island above its old spot (same x, z, so nothing else moves).
+        // Everything it changes is inside its box (the old building's 18-block box), like the T10 gyms.
+        g = this.placeSkyGym({ def, x, z, fy: this.saucerFloor(x, z) }, 'saucer');
+        this.newGymBoxes.push({ x0: x - 18, x1: x + 18, z0: z - 18, z1: z + 18, y0: 0, y1: WORLD_H - 1 });
+      } else g = this.placeGym(def, x, z);
       this.gyms.push(g);
       this.markLit(g.x, g.z);
     });
+  }
+
+  // The Saucer Gym's floor: 12 above the highest ground within 14, like the Cloud Gym, but at most 35 (so the
+  // roof fits under the sky). Its spot was picked for being far away, not low, so on hilly maps (about 1 in 4)
+  // the hills under it are cut down to 5 below the floor (within 13) and the plants within 16 cleared; the
+  // island always floats.
+  saucerFloor(x0, z0) {
+    let maxG = 0;
+    for (let a = -14; a <= 14; a++) for (let b = -14; b <= 14; b++) maxG = Math.max(maxG, this.ground[(x0 + a) + (z0 + b) * WORLD_W]);
+    const fy = Math.min(35, maxG + 12);
+    if (maxG + 12 <= 35) return fy;
+    const cap = fy - 5;
+    for (let a = -16; a <= 16; a++) for (let b = -16; b <= 16; b++) {
+      const x = x0 + a, z = z0 + b;
+      for (let y = 1; y < WORLD_H; y++) if (PLANTS.has(this.get(x, y, z))) this.set(x, y, z, B.AIR, false);
+      if (Math.abs(a) > 13 || Math.abs(b) > 13 || this.ground[x + z * WORLD_W] <= cap) continue;
+      for (let y = cap + 1; y < WORLD_H; y++) this.set(x, y, z, B.AIR, false);
+      if (isSolid(this.get(x, cap, z))) this.set(x, cap, z, groundOf(this.biome(x, z), cap)[0], false);
+      this.ground[x + z * WORLD_W] = cap; // the landing pad and the darkness checks see the lower hill
+    }
+    return fy;
   }
 
   placeGym(def, x, z, opts = {}) {
@@ -1063,7 +1091,8 @@ export class World {
 
   // The Cloud Gym: a floating island of cloud blocks with the building on it, a landing pad on the ground
   // beside it (build a tower of blocks next to the pad and jump across) and a lamp post by the pad.
-  placeSkyGym(spot) {
+  // theme 'saucer' (the Saucer Gym): the same shape and pad, but a metal saucer with lights and a green pad.
+  placeSkyGym(spot, theme = 'cloud') {
     const { def, x: x0, z: z0, fy } = spot;
     const R = 6, Wd = WORLD_W;
     const cx = WORLD_W / 2, cz = WORLD_D / 2;
@@ -1076,17 +1105,29 @@ export class World {
       for (let y = 1; y < WORLD_H; y++) if (PLANTS.has(this.get(x, y, z))) this.set(x, y, z, B.AIR, false);
     }
     // The island.
-    const cloud = (x, y, z) => { if (this.get(x, y, z) === B.AIR) this.set(x, y, z, B.CLOUD, false); };
+    const saucer = theme === 'saucer';
+    const put = (x, y, z, id) => { if (this.get(x, y, z) === B.AIR) this.set(x, y, z, id, false); };
     for (let a = -11; a <= 11; a++) for (let b = -11; b <= 11; b++) {
       const r2 = a * a + b * b, x = x0 + a, z = z0 + b;
+      if (saucer) {
+        // A smooth metal disc with a green rim, narrowing underneath.
+        if (r2 <= 110) put(x, fy, z, r2 > 81 ? WOOL.alien : WOOL.metal);
+        if (r2 <= 81) put(x, fy - 1, z, B.STONE_BRICKS);
+        if (r2 <= 42) put(x, fy - 2, z, B.STONE_BRICKS);
+        if (r2 <= 12) put(x, fy - 3, z, r2 <= 2 ? B.LAMP : B.STONE_BRICKS);
+        continue;
+      }
       const h = hash2(x, z, this.seed + 631);
-      if (r2 <= 110) cloud(x, fy, z);
-      if (r2 <= 81 || (r2 <= 110 && h < 0.3)) cloud(x, fy - 1, z);
-      if (r2 <= 49 || (r2 <= 81 && h < 0.25)) cloud(x, fy - 2, z);
-      if (r2 <= 16 || (r2 <= 42 && h < 0.2)) cloud(x, fy - 3, z);
+      if (r2 <= 110) put(x, fy, z, B.CLOUD);
+      if (r2 <= 81 || (r2 <= 110 && h < 0.3)) put(x, fy - 1, z, B.CLOUD);
+      if (r2 <= 49 || (r2 <= 81 && h < 0.25)) put(x, fy - 2, z, B.CLOUD);
+      if (r2 <= 16 || (r2 <= 42 && h < 0.2)) put(x, fy - 3, z, B.CLOUD);
     }
     for (const sa of [-6, 6]) for (const sb of [-6, 6]) this.set(x0 + sa, fy - 1, z0 + sb, B.LAMP, false);
-    this.buildSkyGym(x0, fy, z0, front);
+    // The saucer's ring of lights round its rim.
+    if (saucer) for (const [a, b] of [[9, 0], [-9, 0], [0, 9], [0, -9]]) this.set(x0 + a, fy - 1, z0 + b, B.LAMP, false);
+    if (saucer) this.buildSaucerGym(x0, fy, z0, front);
+    else this.buildSkyGym(x0, fy, z0, front);
     // Landing pad on the ground, a lamp post beside it.
     const surf = (x, z) => {
       for (let y = WORLD_H - 1; y > 0; y--) if (this.get(x, y, z) !== B.AIR) return y;
@@ -1100,14 +1141,14 @@ export class World {
       const [x, z] = col(d, s), top = surf(x, z);
       for (let y = top + 1; y < py; y++) this.set(x, y, z, B.DIRT, false);
       for (let y = py + 1; y <= top; y++) this.set(x, y, z, B.AIR, false);
-      this.set(x, py, z, WOOL.sky, false);
+      this.set(x, py, z, saucer ? WOOL.alien : WOOL.sky, false);
     }
     const [lx, lz] = col(11, 3), ly = surf(lx, lz);
     this.set(lx, ly + 1, lz, B.COBBLE, false); this.set(lx, ly + 2, lz, B.COBBLE, false); this.set(lx, ly + 3, lz, B.LAMP, false);
     const at = d => [x0 + front[0] * d + 0.5, z0 + front[1] * d + 0.5];
     const [lpx, lpz] = at(-4), [tx, tz] = at(1);
     return {
-      def, x: x0, z: z0, y: fy + 1, front, sky: true, pad: [px, py, pz],
+      def, x: x0, z: z0, y: fy + 1, front, sky: true, pad: [px, py, pz], padColor: saucer ? 'green' : 'blue',
       leaderPos: [lpx, fy + 1, lpz], trainerPos: [tx + front[1] * 2, fy + 1, tz + front[0] * 2],
     };
   }
@@ -1137,6 +1178,32 @@ export class World {
     for (let y = fy + 8; y <= fy + 10; y++) put(0, 0, y, wool);
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let y = fy + 11; y <= fy + 12; y++) put(a, b, y, B.CLOUD);
     for (const s of [-1, 1]) for (let k = 1; k <= 3; k++) put(0, s * (R + k), fy + 3, B.CLOUD);
+  }
+
+  // The building on the saucer: alien-green walls with a glass band, metal corners and floor, and an
+  // antenna with a light on the roof (the flying saucer itself hovers above it at night).
+  buildSaucerGym(x0, fy, z0, front) {
+    const R = 6, wool = WOOL.alien, metal = WOOL.metal;
+    for (let dx = -R; dx <= R; dx++) for (let dz = -R; dz <= R; dz++) {
+      const x = x0 + dx, z = z0 + dz;
+      const edge = Math.abs(dx) === R || Math.abs(dz) === R;
+      const corner = Math.abs(dx) === R && Math.abs(dz) === R;
+      const along = front[0] ? dz : dx;
+      this.set(x, fy, z, !edge && along === 0 ? wool : metal, false);
+      for (let y = fy + 1; y <= fy + 5; y++) this.set(x, y, z, !edge ? B.AIR : corner ? metal : y === fy + 2 || y === fy + 3 ? B.GLASS : wool, false);
+      this.set(x, fy + 6, z, wool, false);
+      if (Math.abs(dx) <= R - 2 && Math.abs(dz) <= R - 2) this.set(x, fy + 7, z, wool, false);
+    }
+    const put = (d, s, y, id) => { const [x, z] = this.gymCol(x0, z0, front, d, s); this.set(x, y, z, id, false); };
+    // Doorway, metal path and pillars.
+    for (let s = -1; s <= 1; s++) {
+      for (let y = fy + 1; y <= fy + 3; y++) put(R, s, y, B.AIR);
+      put(R + 1, s, fy, metal); put(R + 2, s, fy, metal);
+    }
+    for (const s of [-2, 2]) for (let y = fy + 1; y <= fy + 3; y++) put(R + 1, s, y, wool);
+    // Antenna with a light on the roof.
+    for (let y = fy + 8; y <= fy + 9; y++) put(0, 0, y, metal);
+    put(0, 0, fy + 10, B.LAMP);
   }
 
   // The gym whose building contains (x, z), if any.

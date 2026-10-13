@@ -110,6 +110,12 @@ Key ideas:
   in front of the door plus a lamp post; build a pillar on the pad's inner middle block up to `fy - 1` and one jump
   lands on the island. Gym object: `sky: true`, `pad: [x, y, z]` (the pad block; stand at y + 1), `y = fy + 1`;
   `gymAt(x, z, y)` only matches it at `y >= g.y - 1`. `def.night` (Saucer Gym) is handled in `npc.js`/`main.js`.
+- **The Saucer Gym floats (wave 6):** its def has `place: 'sky'`; `placeExtraGyms` builds it with `placeSkyGym(spot, 'saucer')`
+  (metal saucer island, `buildSaucerGym`, green `WOOL.alien` pad, `gym.padColor`) at its unchanged `extraGymSpots()` x/z, so no
+  other gym, cave or the tower moves. Floor from `saucerFloor()`: `min(35, maxG + 12)`; when capped (hills > 23 near it, about 1
+  map in 4) the hills within 13 are cut to `fy - 5` (`world.ground` too) and plants within 16 cleared. Its ±18 box (all y) is
+  in `world.newGymBoxes`, so `old-saves` `SUM22`/`SURF` were re-measured (old code with that box left out = new code).
+  The sky hints in `updateGuide` follow the nearest unbeaten sky gym. `WORLD_VERSION` is 4.
   **`world.newGymBoxes`**: the only places T10 may change the world (surface gyms ±21 all y, the Goo cavern ±16 and its
   stairs ±6, the Cloud Gym ±16); everything outside is block-for-block the T8 world (`old-saves` `SUM22`).
   `generate()` adds: `fillNewGymCaves` (R 18) for surface spots after `carveBigCaves`, the Goo cavern in `carveGymRooms`
@@ -178,7 +184,7 @@ node run.mjs gym touch                     # just some
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud Gym's climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
