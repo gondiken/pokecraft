@@ -92,9 +92,9 @@ export default async function ({ browser, base, t }) {
     t.ok(JSON.stringify(w.old) === JSON.stringify(o.gyms) && JSON.stringify(w.tower) === JSON.stringify(o.tower) && JSON.stringify(w.fossil) === JSON.stringify(o.fossil),
       `seed ${seed}: gyms 1-18, the tower and the Fossil Gym are where they were before the new gyms`);
     const [light, paper, goo, sky] = w.news;
-    t.ok(!light.cave && !light.sky && light.roof === w.wool[0] && light.corner === 9 && light.gap >= 30 && light.towerGap >= 30 && light.caveGap >= 32 && light.middle >= 40 && ['meadow', 'plains'].includes(light.biome),
+    t.ok(!light.cave && !light.sky && light.roof === w.wool[0] && light.corner === 9 && light.gap >= 26 && light.towerGap >= 26 && light.caveGap >= 32 && light.middle >= 40 && ['meadow', 'plains'].includes(light.biome),
       `seed ${seed}: the Sunbeam Gym stands in a ${light.biome} at (${light.x}, ${light.z}), ${light.gap.toFixed(0)} from the nearest gym, with a light-wool roof and cobble corners`);
-    t.ok(!paper.cave && !paper.sky && paper.roof === w.wool[1] && paper.corner === 6 && paper.gap >= 30 && paper.towerGap >= 30 && paper.caveGap >= 32 && paper.middle >= 40,
+    t.ok(!paper.cave && !paper.sky && paper.roof === w.wool[1] && paper.corner === 6 && paper.gap >= 26 && paper.towerGap >= 26 && paper.caveGap >= 32 && paper.middle >= 40,
       `seed ${seed}: the Origami Gym stands at (${paper.x}, ${paper.z}), ${paper.gap.toFixed(0)} from the nearest gym, with a paper roof and log corners`);
     if (goo.cave) {
       t.ok(w.gooWalk && w.gooLit && w.gooHere === 'slime' && w.gooHill === null && goo.y === 3,

@@ -19,10 +19,10 @@ const SUM = { 1: 1681420519, 4242: 3236083087 };
 // FNV-1a of the surface height of every column outside the new holes, arches, lamp posts and the old Fossil box,
 // measured with the old code too (identical): the hills look the same.
 // T10 (gyms 19-22) also leaves out world.newGymBoxes (the boxes the four new gyms may change), so this number changed.
-const SURF = { 1: 1046438172, 4242: 2000852807 };
+const SURF = { 1: 3133854853, 4242: 22474769 };
 // T10: FNV-1a of every block of the full world outside world.newGymBoxes, measured with the T8 code (boxes from the
 // new code) and with the new code: identical. Without the new gyms ({ newGyms: false }) SUM above still holds.
-const SUM22 = { 1: 1904314088, 4242: 1675511629 };
+const SUM22 = { 1: 1992405012, 4242: 3581462821 };
 
 // A save from before the two gyms: `badges` = the first 16 gym ids; the Champion title is optional.
 function oldSave(champion) {

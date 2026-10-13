@@ -265,9 +265,10 @@ export class World {
     if (caves && bigCaves) carveBigCaves(this);
     this.litRooms = [];
     this.newGymBoxes = [];
-    // T10: no cave may be under (or open into) the new surface and sky gyms (before the cave rooms, so it never touches them).
+    // T10: no cave may be under (or open into) the new surface gyms (before the cave rooms, so it never touches them).
+    // The Cloud Gym floats high above the caves, so they stay as they are under it.
     const newSpots = newGyms ? this.newGymSpots() : [];
-    if (caves) for (const sp of newSpots) if (sp.place !== 'cave') this.fillNewGymCaves(solid, sp.x, sp.z, sp.place === 'sky' ? 16 : 18);
+    if (caves) for (const sp of newSpots) if (sp.place === 'surface') this.fillNewGymCaves(solid, sp.x, sp.z, 18);
     if (caveGyms) this.carveGymRooms(solid, newSpots);
     const carved = caves ? this.data.slice() : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
@@ -566,11 +567,22 @@ export class World {
       for (let a = -14; a <= 14; a++) for (let b = -14; b <= 14; b++) m = Math.max(m, ground[(x + a) + (z + b) * Wd]);
       return m;
     };
-    // From strict to relaxed: the first stage that finds a spot wins. `biome` 2 = the centre and the four corners of the
-    // yard have the right biome, 1 = the centre only; `min` = the least distance to any other gym (the tower counts as Chebyshev).
+    // How much of the land around (x, z) (25 points within 12 blocks) has one of the def's biomes, 0 if the centre has not.
+    const biomes = def.spot?.biomes;
+    const share = (x, z) => {
+      if (!biomes) return 1;
+      if (!biomes.includes(this.biome(x, z))) return 0;
+      let n = 0;
+      for (let a = -12; a <= 12; a += 6) for (let b = -12; b <= 12; b += 6) if (biomes.includes(this.biome(x + a, z + b))) n++;
+      return n / 25;
+    };
+    // From strict to relaxed: the first stage that finds a spot wins. `biome` = the least share of the right biomes
+    // around (0 = any); `hill`: the def's minGround counts; `min` = the least distance to any other gym (the tower counts as Chebyshev).
     const stages = sky
       ? [{ dry: true, cap: 22, min: 30 }, { dry: true, cap: 22, min: 0 }, { dry: false, cap: 22, min: 0 }, { dry: false, cap: 99, min: 0 }]
-      : [{ biome: 2, dry: true, min: 30 }, { biome: 1, dry: true, min: 30 }, { biome: 0, dry: true, min: 30 }, { biome: 0, dry: true, min: 0 }, { biome: 0, dry: false, min: 0 }];
+      : [{ biome: 0.8, hill: true, dry: true, min: 30 }, { biome: 0.8, hill: true, dry: true, min: 26 }, { biome: 0.6, hill: true, dry: true, min: 26 },
+        { biome: 0.6, dry: true, min: 26 }, { biome: 0.01, hill: true, dry: true, min: 26 }, { biome: 0, dry: true, min: 26 }, { biome: 0, dry: true, min: 0 },
+        { biome: 0, dry: false, min: 0 }];
     for (const st of stages) {
       let best = null, bestScore = st.min - 0.001;
       for (let x = 20; x <= Wd - 20; x += 2) {
@@ -586,9 +598,8 @@ export class World {
           for (const t of pts) score = Math.min(score, Math.hypot(x - t.x, z - t.z));
           if (score <= bestScore) continue;
           if (!sky && st.biome && def.spot) {
-            const pts5 = st.biome === 2 ? [[0, 0], [9, 9], [-9, 9], [9, -9], [-9, -9]] : [[0, 0]];
-            if (def.spot.biomes && !pts5.every(([a, b]) => def.spot.biomes.includes(this.biome(x + a, z + b)))) continue;
-            if (def.spot.minGround && ground[x + z * Wd] < def.spot.minGround) continue;
+            if (st.hill && def.spot.minGround && ground[x + z * Wd] < def.spot.minGround) continue;
+            if (share(x, z) < st.biome) continue;
           }
           if (sky && maxG(x, z) > st.cap) continue;
           best = [x, z]; bestScore = score;
@@ -621,7 +632,7 @@ export class World {
         this.markLit(x, z);
       } else {
         g = this.placeGym(def, x, z);
-        this.newGymBoxes.push(all(x, z, 18));
+        this.newGymBoxes.push(all(x, z, 21)); // the cave fill (18) plus room for trees growing where a hole was filled
         this.markLit(g.x, g.z);
       }
       this.gyms.push(g);
@@ -639,7 +650,7 @@ export class World {
     const carveOne = (spot, fill) => {
       // The first cave gym's spot was kept free of caves; later ones clear the caves around them.
       if (solid && this.caves && fill) {
-        if (spot.fresh) this.fillNewGymCaves(solid, spot.x, spot.z, 15);
+        if (spot.fresh) this.fillNewGymCaves(solid, spot.x, spot.z, 10); // T10: only around the building, so the cavern may open into the caves
         else {
           this.fillCavesNear(solid, spot.x, spot.z, 15);
           for (const h of this.caves.halls || []) if (h.mouth && Math.max(Math.abs(h.mouth[0] - spot.x), Math.abs(h.mouth[2] - spot.z)) <= 15) h.mouth = null;

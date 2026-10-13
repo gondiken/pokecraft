@@ -20,7 +20,7 @@ const WOOL_RGB = {
   rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
-  sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 249, 205], paper: [250, 248, 240],
+  sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 228, 110], paper: [250, 248, 240],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
