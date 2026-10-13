@@ -147,12 +147,12 @@ export const GYMS = [
     lose: 'You shine brighter than every colour of the rainbow! The Prism Badge is yours.',
   },
   {
-    id: 'bone', type: 'bone', name: 'Fossil Gym', badge: 'Fossil Badge',
+    id: 'bone', type: 'bone', name: 'Fossil Gym', badge: 'Fossil Badge', place: 'cave',
     leader: { name: 'Leader Digby', colors: { shirt: 0xc8a86a, pants: 0x5a4630, hair: 0xd8d8d8, skin: 0xe8b98a } },
     trainer: { name: 'Fossil Fan Pia', colors: { shirt: 0xe0d8c0, pants: 0x6a5a40, hair: 0x8a4a2a, skin: 0xf2c79a } },
     trainerTeam: [['rattlepup', 27], ['skullop', 28]],
     leaderTeam: [['skullop', 28], ['dinobit', 29], ['howlbone', 30]],
-    intro: ['Welcome to the Fossil Gym! Mind the bones, they are very old.', 'My bony buddies may rattle, but they never fall apart!'],
+    intro: ['Welcome to the Fossil Gym, deep under the hill! Mind the bones, they are very old.', 'My bony buddies may rattle, but they never fall apart!'],
     lose: 'You dug up a win! The Fossil Badge is yours.',
   },
   {
@@ -169,6 +169,11 @@ export const GYMS = [
 // The first 16 gyms get their spots from World.gymSpots(ORIGINAL_GYMS); later ones from
 // World.extraGymSpots(). Never change this number: it would move every gym in old worlds.
 export const ORIGINAL_GYMS = 16;
+// Gyms 17-18 (Fossil, Saucer) were the first two extra gyms; their spots (and the caves around them) never change.
+export const LEGACY_EXTRA_GYMS = 2;
+// The Fossil Gym is the only cave gym of T8: its cavern is kept clear when the big caves are carved.
+// Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
+export const LEGACY_CAVE_GYMS = 1;
 
 // The Champion's Tower: opens after all 18 badges. `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).

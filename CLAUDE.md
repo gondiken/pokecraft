@@ -36,7 +36,7 @@ this file is for working on the code.
 | --- | --- |
 | `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens, accounts UI, play-together UI |
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
-| `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests) and the light shader (`caveLight`, `patchMaterial`) |
+| `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests), `carveBigCaves(world)` (second layer: halls, wide tunnels, lit stairways, lamp posts), `planStairs`/`buildStairs` (also used by the cave gym) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves (107, with `fx`; `moveInfo(id)` gives the button/Book words), all 161 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
@@ -82,6 +82,23 @@ Key ideas:
   patched solid/water materials mix them in the shader. Day/night brightness is `caveLight.uLit`
   (not `materials.solid.color` any more) and `caveLight.uLantern` is the player's own light. Cave
   creatures come from `SPAWNS.cave` (`wild.cave`); chests are `B.CHEST` -> `B.CHEST_OPEN` (+3 cubes).
+- **Caves layer 2 and the cave gym (T8, `plans/T8.md`):** `carveBigCaves` runs right after `carveCaves` (which is never
+  changed) and the two legacy `fillCavesNear` calls; own rand `mulberry32(seed ^ 0xb16ca7e)`, only ever adds air. Up to 8 halls
+  (themes crystal / lake / glow / fossil, lamp posts inside), hall tunnels, wide tunnels, up to 6 lit stairways
+  (stone-brick arch + 2 lamps at the mouth, 1 step per 2 blocks) and lamp posts beside the old entrances. It adds
+  `caves.halls` (`{ x, z, rx, rz, theme, mouth, dir }`) and `caves.marks` (arch/lamp-post columns; the tests allow the
+  surface to differ there). Keep-out = the v1 mask + both legacy extra spots (18) + the Fossil cavern (17).
+  **`generate({ caves, bigCaves = caves, caveGyms = true })`** order: terrain, v1 caves, legacy fills, big caves,
+  `carveGymRooms`, plants, gyms 1-16, tower, `placeExtraGyms` (skips `place: 'cave'`), `placeCaveGyms`; then `gyms` is sorted into
+  `GYMS` order. A gym def with `place: 'cave'` (the Fossil Gym; T10 may add more) gets a spot from `caveGymSpots()`
+  (terrain only, 17x17 building in a 25-wide round cavern at floor y = 2, stairway straight out of the door, `front` = the
+  stairs direction), a cavern + stairs + arch + lamp ring (`carveGymRoom`), a building from `buildGym(..., { cave: true })`,
+  and a bright box in `world.litRooms` (`skyAt`/`inLitRoom`). **Never change the cave-gym mask, candidate order or `fy`:**
+  it would move the gym in existing worlds. If a map has no room (about 1 seed in 100, e.g. 122) the gym is built on its
+  reserved surface spot (the old Fossil spot is still reserved by `extraGymSpots`, so the Saucer spot never moves).
+  Later cave gyms clear the caves around them (`fillCavesNear`) instead of changing the carve mask. `gymAt(x, z, y)` only
+  matches a cave gym at its own height; `game.guideTarget` / `game.updateGuide()` are for tests; the multiplayer `world`
+  message carries `wv` (`WORLD_VERSION`, bump it when blocks change for the same seed).
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and

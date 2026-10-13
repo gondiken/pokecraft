@@ -59,7 +59,7 @@ On a tablet:
 
 ## Features
 
-- **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): follow a hole in a hillside down into the dark, where star crystals and glowing mushrooms light the way, small underground lakes lie hidden, and rock, metal and ghost creatures live. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
+- **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): look for a **stone arch with two lamps** on a hill, and walk down its stairs into big, lit caves with huge halls (crystal halls, glowing mushroom halls, underground lakes and a giant fossil with a ribcage), wide tunnels to explore, and lamp posts at the old small holes so you can spot them at night. Star crystals and glowing mushrooms light the way, and rock, metal, ghost and bone creatures live down there. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
 - **25 building blocks**, including glass, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
 - **161 original creatures**, 7 for each of the 23 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) live only in caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night. **Sky** creatures (kites, balloons, sky whales) float over the mountain tops, **Slime** creatures wobble around swamps and caves, **Light** creatures (sun foxes, lighthouses) love sunny meadows and beaches, and **Paper** creatures (paper planes, origami frogs, storybooks) wander plains and forests.
 - Every type also has one rare creature that never evolves, like Lanterboo the lantern ghost, Clawdio the jukebox crab or Chromacurl, a lizard that slowly changes colour.
@@ -128,7 +128,7 @@ Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, pa
 
 ## Gyms and badges
 
-There are 18 gyms scattered around the map, one for each type except normal. The last two, the Fossil Gym and the Saucer Gym, are far out in the corners of the map. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
+There are 18 gyms scattered around the map, one for each type except normal. The last two are far from the start: the Saucer Gym is out on the map, and the **Fossil Gym is deep inside a cave**: follow the arrow to the stone arch with the bone-white blocks and walk down the stairs. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |
@@ -148,7 +148,7 @@ There are 18 gyms scattered around the map, one for each type except normal. The
 | 14 | Phantom Gym | Ghost | Leader Raven | 25–27 |
 | 15 | Scale Gym | Drake | Leader Wyvern | 26–28 |
 | 16 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
-| 17 | Fossil Gym | Bone | Leader Digby | 28–30 |
+| 17 | Fossil Gym (in a cave) | Bone | Leader Digby | 28–30 |
 | 18 | Saucer Gym | Alien | Leader Zeeb | 29–31 |
 
 Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 18 to open the Champion's Tower.
@@ -220,7 +220,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
 | `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
 | `src/duel.js` | Battles between players: asking, answering, swapping each turn's choices |
-| `src/caves.js` | Caves: tunnels carved from the world seed, glowing decorations, treasure chests, and the darkness/light shader |
+| `src/caves.js` | Caves: tunnels carved from the world seed, the second layer of big halls, wide tunnels and lit stairways (`carveBigCaves`), the stairway planner/builder, glowing decorations, treasure chests, and the darkness/light shader |
 | `src/weather.js` | Weather: rain, storms, snow, sandstorms, fog, rainbows, and the creature spawn boosts they bring |
 | `src/fx.js`, `src/fxrecipes.js` | Battle attack animations (engine and one recipe per type / signature move) |
 | `src/sound.js` | Small sound effects made with Web Audio (no sound files) |

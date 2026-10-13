@@ -1,9 +1,9 @@
 // Caves: tunnels carved under the hills from the world seed, glowing decorations, treasure
 // chests, and the light shader that makes everything under cover dark.
 import * as THREE from 'three';
-import { B, isSolid, mulberry32 } from './blocks.js';
+import { B, WOOL, isSolid, mulberry32 } from './blocks.js';
 import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
-import { ORIGINAL_GYMS } from './gyms.js';
+import { ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS } from './gyms.js';
 
 function hash3(x, y, z, seed) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 1274126177) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);
@@ -15,7 +15,7 @@ function hash3(x, y, z, seed) {
 const NEIGHBOURS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 
 // Columns where no cave may ever be carved: map edges, shores, gyms, the tower and the start.
-function keepOutMask(world) {
+export function keepOutMask(world) {
   const Wd = WORLD_W, D = WORLD_D;
   const keep = new Uint8Array(Wd * D);
   const mark = (x0, z0, x1, z1) => {
@@ -244,6 +244,351 @@ export function carveCaves(world) {
   const floorsLeft = floors.filter(([x, y, z]) => data[idx(x, y, z)] === B.AIR && at(x, y + 1, z) === B.AIR);
 
   return { air: air.length, entrances, opened, floors: floorsLeft, crystals, chests, glow };
+}
+
+/* ------------------------------ the big cave layer (T8) ------------------------------ */
+
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+// Plans a straight stairway: from floor height fy at distance d0 from (x, z), one step up every
+// `rise` blocks, until the walking surface reaches the ground. Fails if any of the 5 columns
+// across (s = -2..2) is blocked (mask) or off the map. Returns the shortest of the tried directions.
+export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS, blockedCell = null) {
+  const Wd = WORLD_W, D = WORLD_D;
+  let best = null;
+  for (const dir of dirs) {
+    const start = typeof d0 === 'function' ? d0(dir) : d0;
+    let mouth = -1, end = -1;
+    for (let d = start; d <= start + 90; d++) {
+      const tread = fy + Math.floor((d - start) / rise);
+      let bad = false, g = 0;
+      for (let s = -2; s <= 2; s++) {
+        const cx = x + dir[0] * d + (dir[0] ? 0 : s), cz = z + dir[1] * d + (dir[1] ? 0 : s);
+        if (cx < 2 || cz < 2 || cx >= Wd - 2 || cz >= D - 2 || mask[cx + cz * Wd]) { bad = true; break; }
+        if (s === 0) g = ground[cx + cz * Wd];
+        if (blockedCell && s >= -1 && s <= 1) for (let y = tread; y <= tread + 4; y++) if (blockedCell(cx, y, cz)) bad = true;
+      }
+      if (bad) break;
+      if (mouth < 0 && tread + 4 >= g) mouth = d;
+      if (tread >= g - 1) { end = d; break; }
+    }
+    if (end >= 0 && (!best || end - start < best.len)) best = { dir, d0: start, rise, fy, mouth, end, len: end - start };
+  }
+  return best;
+}
+
+// Builds a planned stairway (cobble treads, 4 blocks of headroom, lamps in the walls, an arch at
+// the mouth). Returns the mouth cell and the surface columns it opened or decorated.
+export function buildStairs(world, plan, x, z, { lintel = B.STONE_BRICKS, pillarExtra = null } = {}) {
+  const Wd = WORLD_W;
+  const { dir, d0, rise, fy, mouth, end } = plan;
+  const opened = [], marks = [];
+  const col = (d, s) => [x + dir[0] * d + (dir[0] ? 0 : s), z + dir[1] * d + (dir[1] ? 0 : s)];
+  for (let d = d0; d <= end; d++) {
+    const tread = fy + Math.floor((d - d0) / rise);
+    for (let s = -1; s <= 1; s++) {
+      const [cx, cz] = col(d, s);
+      world.set(cx, tread, cz, B.COBBLE, false);
+      for (let y = tread + 1; y <= tread + 4; y++) world.set(cx, y, cz, B.AIR, false);
+      if (tread + 4 >= world.ground[cx + cz * Wd]) opened.push(cx + cz * Wd);
+    }
+    if ((d - d0) % 6 === 3) {
+      for (const s of [-2, 2]) {
+        const [cx, cz] = col(d, s);
+        if (isSolid(world.get(cx, tread + 2, cz)) && world.get(cx, tread + 2, cz) !== B.LAMP) world.set(cx, tread + 2, cz, B.LAMP, false);
+      }
+    }
+  }
+  const tread = fy + Math.floor((mouth - d0) / rise);
+  for (const s of [-2, 2]) {
+    const [cx, cz] = col(mouth, s);
+    for (let y = tread + 1; y <= tread + 5; y++) world.set(cx, y, cz, B.STONE_BRICKS, false);
+    world.set(cx, tread + 6, cz, B.LAMP, false);
+    if (pillarExtra) world.set(cx, tread + 3, cz, pillarExtra, false);
+    marks.push(cx + cz * Wd);
+  }
+  for (let s = -2; s <= 2; s++) {
+    const [cx, cz] = col(mouth, s);
+    world.set(cx, tread + 5, cz, s === 0 ? lintel : B.STONE_BRICKS, false);
+    marks.push(cx + cz * Wd);
+  }
+  const [mx, mz] = col(mouth, 0);
+  return { mouth: [mx, tread, mz], opened, marks };
+}
+
+// A second, much bigger cave layer on top of carveCaves (which is never changed): big halls with
+// themes, wide tunnels, lit stairways up to the surface and lamp posts at the old holes. Only
+// ever adds air, from the seed alone, with its own random stream. Merges into world.caves.
+export function carveBigCaves(world) {
+  const Wd = WORLD_W, D = WORLD_D;
+  const seed = world.seed;
+  const rand = mulberry32(seed ^ 0xb16ca7e);
+  const { data, ground } = world;
+  const cv = world.caves;
+  const keep = keepOutMask(world);
+  for (const [x, z] of world.extraGymSpots().slice(0, LEGACY_EXTRA_GYMS)) {
+    for (let a = Math.max(0, x - 18); a <= Math.min(Wd - 1, x + 18); a++) for (let b = Math.max(0, z - 18); b <= Math.min(D - 1, z + 18); b++) keep[a + b * Wd] = 1;
+  }
+  // The Fossil Gym's cavern (and the walk to its stairs) is left alone.
+  for (const sp of world.caveGymSpots().slice(0, LEGACY_CAVE_GYMS)) {
+    if (!sp) continue;
+    for (let a = Math.max(0, sp.x - 17); a <= Math.min(Wd - 1, sp.x + 17); a++) for (let b = Math.max(0, sp.z - 17); b <= Math.min(D - 1, sp.z + 17); b++) keep[a + b * Wd] = 1;
+  }
+  const idx = (x, y, z) => x + Wd * (z + D * y);
+  const carved = [];
+  const SKIP = new Set([B.CHEST, B.CHEST_OPEN, B.GLOWCAP, B.CRYSTAL, B.LAMP]);
+  const carve = (x, y, z, floorY = 3) => {
+    if (x < 1 || z < 1 || x >= Wd - 1 || z >= D - 1 || y < floorY) return;
+    const c = x + z * Wd;
+    if (keep[c] || y > ground[c] - 3) return;
+    const i = idx(x, y, z), id = data[i];
+    if (id === B.AIR || id === B.WATER || SKIP.has(id)) return;
+    data[i] = B.AIR;
+    carved.push(i);
+  };
+  const ball = (cx, cy, cz, r) => {
+    const sy = 1.25, ry = Math.ceil(r / sy);
+    for (let x = Math.floor(cx - r); x <= Math.floor(cx + r); x++) for (let z = Math.floor(cz - r); z <= Math.floor(cz + r); z++) {
+      for (let y = Math.floor(cy - ry); y <= Math.floor(cy + ry); y++) {
+        const dx = x + 0.5 - cx, dy = (y + 0.5 - cy) * sy, dz = z + 0.5 - cz;
+        if (dx * dx + dy * dy + dz * dz <= r * r) carve(x, y, z);
+      }
+    }
+  };
+  const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // A steered tunnel from (x, y, z) towards (tx, tz).
+  const tunnel = (x, y, z, tx, tz, base, maxSteps) => {
+    let yaw = Math.atan2(tz - z, tx - x);
+    for (let s = 0; s < maxSteps; s++) {
+      if (Math.hypot(tx - x, tz - z) < 2) break;
+      yaw += wrap(Math.atan2(tz - z, tx - x) - yaw) * 0.15 + (rand() - 0.5) * 0.5;
+      x += Math.cos(yaw); z += Math.sin(yaw);
+      if (x < 3 || z < 3 || x >= Wd - 3 || z >= D - 3) break;
+      const g = ground[Math.floor(x) + Math.floor(z) * Wd];
+      y += (rand() - 0.5) * 0.6;
+      y = Math.min(Math.max(y, 4.5), Math.max(4.5, g - 5));
+      ball(x, y, z, base + 0.5 * Math.sin(s * 0.2));
+    }
+  };
+
+  // 1. Halls.
+  const halls = [];
+  const THEMES = ['crystal', 'lake', 'glow', 'fossil'];
+  for (let tries = 0; tries < 12000 && halls.length < 8; tries++) {
+    const need = tries < 4000 ? 0.5 : tries < 8000 ? 0.2 : 0.04; // how much of the hall must be free of keep-out columns
+    const x = 8 + Math.floor(rand() * (Wd - 16)), z = 8 + Math.floor(rand() * (D - 16));
+    const c = x + z * Wd;
+    if (keep[c] || ground[c] < 17) continue;
+    if (halls.some(h => Math.hypot(h.x - x, h.z - z) < 34)) continue;
+    const rx = 10 + rand() * 5, rz = 10 + rand() * 5;
+    let clear = true; // the whole hall must fit: no keep-out column inside it
+    for (let a = Math.floor(-rx); a <= rx && clear; a++) for (let b = Math.floor(-rz); b <= rz; b++) {
+      if ((a / rx) ** 2 + (b / rz) ** 2 < need && (x + a < 1 || z + b < 1 || x + a >= Wd - 1 || z + b >= D - 1 || keep[x + a + (z + b) * Wd])) { clear = false; break; }
+    }
+    if (!clear) continue;
+    halls.push({ x, z, rx, rz, theme: THEMES[halls.length % 4], mouth: null });
+  }
+  for (const h of halls) {
+    for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) {
+      const d2 = ((x - h.x) / h.rx) ** 2 + ((z - h.z) / h.rz) ** 2;
+      if (d2 >= 1 || x < 1 || z < 1 || x >= Wd || z >= D) continue;
+      const top = Math.min(ground[x + z * Wd] - 3, 3 + Math.floor(9 * Math.sqrt(1 - d2)));
+      for (let y = 3; y <= top; y++) carve(x, y, z);
+    }
+  }
+  // 2. Hall tunnels, nearest neighbour first.
+  if (halls.length > 1) {
+    const left = halls.slice(1);
+    let cur = halls[0];
+    while (left.length) {
+      let bi = 0;
+      for (let i = 1; i < left.length; i++) if (Math.hypot(left[i].x - cur.x, left[i].z - cur.z) < Math.hypot(left[bi].x - cur.x, left[bi].z - cur.z)) bi = i;
+      const next = left.splice(bi, 1)[0];
+      tunnel(cur.x + 0.5, 5, cur.z + 0.5, next.x + 0.5, next.z + 0.5, 2.6, 400);
+      cur = next;
+    }
+    // A second way in: every hall also joins its nearest other hall (the other way round).
+    for (const h of halls) {
+      const o = halls.filter(q => q !== h).sort((p, q) => Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z))[0];
+      tunnel(o.x + 0.5, 5, o.z + 0.5, h.x + 0.5, h.z + 0.5, 2.6, 400);
+    }
+  }
+  // 3. Wide tunnels.
+  for (let n = 0; n < 56; n++) {
+    let col = n < 24 && halls.length ? [halls[n % halls.length].x, halls[n % halls.length].z] : null; // some leave a hall
+    for (let i = 0; i < 400 && !col; i++) {
+      const x = 5 + Math.floor(rand() * (Wd - 10)), z = 5 + Math.floor(rand() * (D - 10));
+      if (!keep[x + z * Wd] && ground[x + z * Wd] >= WATER_LEVEL + 5) col = [x, z];
+    }
+    if (!col) continue;
+    const a = rand() * Math.PI * 2;
+    tunnel(col[0] + 0.5, 5, col[1] + 0.5, col[0] + 0.5 + Math.cos(a) * 60, col[1] + 0.5 + Math.sin(a) * 60, 2.3, 120);
+  }
+
+  // 5. Decoration of the new cells (own hash seeds, v1 is never re-decided).
+  const cellOf = i => [i % Wd, Math.floor(i / (Wd * D)), Math.floor(i / Wd) % D];
+  const at = (x, y, z) => (x < 0 || z < 0 || y < 0 || x >= Wd || z >= D || y >= WORLD_H ? B.STONE : data[idx(x, y, z)]);
+  const solidRock = id => id === B.STONE || id === B.DIRT || id === B.COAL_ORE || id === B.GOLD_ORE;
+  const air = carved.filter(i => data[i] === B.AIR);
+  const crystals = [];
+  let glow = 0;
+  for (const i of air) {
+    const [x, y, z] = cellOf(i);
+    for (const [dx, dy, dz] of NEIGHBOURS) {
+      const nx = x + dx, ny = y + dy, nz = z + dz;
+      if (ny < 1 || at(nx, ny, nz) !== B.STONE) continue;
+      const r = hash3(nx, ny, nz, seed + 605);
+      if (r < 0.012) data[idx(nx, ny, nz)] = B.GOLD_ORE;
+      else if (r < 0.06) data[idx(nx, ny, nz)] = B.COAL_ORE;
+    }
+  }
+  for (const i of air) {
+    const [x, y, z] = cellOf(i);
+    if (data[i] !== B.AIR) continue;
+    const g = ground[x + z * Wd];
+    const above = at(x, y + 1, z), below = at(x, y - 1, z);
+    if (isSolid(above) && g - y >= 4 && hash3(x, y, z, seed + 606) < 0.012) {
+      data[idx(x, y + 1, z)] = B.CRYSTAL; crystals.push([x, y + 1, z]); glow++;
+      continue;
+    }
+    if (isSolid(below) && solidRock(below) && g - y >= 4) {
+      const r = hash3(x, y, z, seed + 607);
+      if (r < 0.006) {
+        const h = 1 + (hash3(x, y, z, seed + 608) < 0.5 ? 1 : 0);
+        for (let k = 0; k < h; k++) if (at(x, y + k, z) === B.AIR) { data[idx(x, y + k, z)] = B.CRYSTAL; glow++; }
+        crystals.push([x, y, z]);
+      } else if (r < 0.006 + 0.012) { data[i] = B.GLOWCAP; glow++; }
+    }
+  }
+
+  // 4. Themes.
+  const bone = WOOL.bone;
+  const setAir = (x, y, z, id) => { if (x >= 0 && z >= 0 && x < Wd && z < D && at(x, y, z) === B.AIR) data[idx(x, y, z)] = id; };
+  for (const h of halls) {
+    const inside = (x, z, f) => ((x - h.x) / h.rx) ** 2 + ((z - h.z) / h.rz) ** 2 < f;
+    if (h.theme === 'lake') {
+      for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) {
+        if (!inside(x, z, 0.36) || keep[x + z * Wd] || at(x, 3, z) !== B.AIR) continue;
+        for (let y = 1; y <= 2; y++) if (isSolid(at(x, y, z))) data[idx(x, y, z)] = B.WATER;
+      }
+    } else if (h.theme === 'crystal') {
+      for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) {
+        if (!inside(x, z, 1)) continue;
+        for (let y = 4; y < 14; y++) {
+          if (at(x, y, z) === B.AIR && isSolid(at(x, y + 1, z)) && hash3(x, y, z, seed + 609) < 0.06) { data[idx(x, y + 1, z)] = B.CRYSTAL; crystals.push([x, y + 1, z]); glow++; break; }
+        }
+      }
+      for (let n = 0, k = 3 + Math.floor(rand() * 3); n < k; n++) {
+        const a = rand() * Math.PI * 2, r = rand() * 0.6;
+        const x = Math.floor(h.x + Math.cos(a) * r * h.rx), z = Math.floor(h.z + Math.sin(a) * r * h.rz);
+        const hh = 2 + Math.floor(rand() * 2);
+        if (at(x, 2, z) !== B.STONE) continue;
+        for (let y = 3; y < 3 + hh; y++) setAir(x, y, z, B.CRYSTAL);
+        crystals.push([x, 3, z]); glow++;
+      }
+    } else if (h.theme === 'glow') {
+      for (let x = Math.floor(h.x - h.rx); x <= h.x + h.rx; x++) for (let z = Math.floor(h.z - h.rz); z <= h.z + h.rz; z++) {
+        if (!inside(x, z, 1) || at(x, 2, z) !== B.STONE || at(x, 3, z) !== B.AIR) continue;
+        if (hash3(x, 3, z, seed + 610) < 0.12) { data[idx(x, 3, z)] = B.GLOWCAP; glow++; }
+      }
+    } else {
+      // A friendly ribcage (5 arches) and a skull with two dark eyes.
+      for (let k = -2; k <= 2; k++) {
+        const z = h.z + k * 3;
+        for (let a = 0; a <= 20; a++) {
+          const t = a / 20 * Math.PI;
+          setAir(Math.round(h.x + Math.cos(t) * 6.5), 3 + Math.round(Math.sin(t) * 5), z, bone);
+        }
+      }
+      for (let z = h.z - 6; z <= h.z + 6; z++) setAir(h.x, 8, z, bone);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = 0; dy < 3; dy++) for (let dz = 0; dz < 3; dz++) {
+        const eye = dz === 0 && dy === 1 && dx !== 0;
+        setAir(h.x + dx, 3 + dy, h.z + 8 + dz, eye ? B.COAL_ORE : bone);
+      }
+    }
+  }
+
+  // Lamp posts in every hall, so a child can find the way across it.
+  for (const h of halls) {
+    const ph = rand() * Math.PI;
+    for (let k = 0; k < 8; k++) {
+      const a = ph + k * Math.PI / 4;
+      const f = k % 2 ? 0.7 : 0.4;
+      const x = Math.floor(h.x + Math.cos(a) * h.rx * f), z = Math.floor(h.z + Math.sin(a) * h.rz * f);
+      if (at(x, 2, z) === B.STONE && at(x, 3, z) === B.AIR && at(x, 4, z) === B.AIR && at(x, 5, z) === B.AIR) {
+        data[idx(x, 3, z)] = B.STONE_BRICKS; data[idx(x, 4, z)] = B.LAMP; glow++;
+      }
+    }
+  }
+
+  // 6. Stairways to the surface (up to 6 halls), then 7. lamp posts at the old holes.
+  const noChest = (x, y, z) => { const id = data[idx(x, y, z)]; return id === B.CHEST || id === B.CHEST_OPEN; };
+  const entrances = [], opened = new Set(), marks = new Set();
+  let stairCount = 0;
+  for (const h of halls) {
+    if (stairCount >= 6) break;
+    const d0 = dir => Math.floor((dir[0] ? h.rx : h.rz) * 0.45);
+    const plan = planStairs(ground, keep, h.x, h.z, 2, d0, 2, DIRS, noChest) || planStairs(ground, keep, h.x, h.z, 2, d0, 1, DIRS, noChest);
+    if (!plan) continue;
+    const r = buildStairs(world, plan, h.x, h.z);
+    h.mouth = r.mouth; h.dir = plan.dir;
+    entrances.push([r.mouth[0], r.mouth[2]]);
+    for (const c of r.opened) opened.add(c);
+    for (const c of r.marks) marks.add(c);
+    stairCount++;
+  }
+  for (const [ex, ez] of cv.entrances) {
+    let best = null;
+    for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) {
+      const x = ex + dx, z = ez + dz, c = x + z * Wd;
+      if (x < 2 || z < 2 || x >= Wd - 2 || z >= D - 2 || keep[c] || cv.opened.has(c) || opened.has(c)) continue;
+      const s = world.surface(x, z);
+      if (s.y <= WATER_LEVEL || s.id === B.WATER || s.id === B.AIR) continue;
+      if (!best || s.y > best.y) best = { x, z, y: s.y };
+    }
+    if (!best) continue;
+    world.set(best.x, best.y + 1, best.z, B.COBBLE, false);
+    world.set(best.x, best.y + 2, best.z, B.COBBLE, false);
+    world.set(best.x, best.y + 3, best.z, B.LAMP, false);
+    marks.add(best.x + best.z * Wd);
+  }
+
+  // 8. Floors and chests.
+  const standing = (x, y, z) => data[idx(x, y, z)] === B.AIR && ground[x + z * Wd] - y >= 5 && y >= 3
+    && isSolid(at(x, y - 1, z)) && at(x, y - 1, z) !== B.CRYSTAL && at(x, y - 1, z) !== B.GLOWCAP
+    && at(x, y + 1, z) === B.AIR && at(x, y + 2, z) === B.AIR;
+  const floorsAll = [];
+  for (const i of air) { const [x, y, z] = cellOf(i); if (standing(x, y, z)) floorsAll.push([x, y, z]); }
+  for (let i = floorsAll.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [floorsAll[i], floorsAll[j]] = [floorsAll[j], floorsAll[i]]; }
+  const chests = [];
+  const allChests = () => [...cv.chests, ...chests];
+  for (const [x, y, z] of floorsAll) {
+    if (chests.length >= 6) break;
+    if (ground[x + z * Wd] - y < 6) continue;
+    if (allChests().some(([cx, , cz]) => Math.hypot(cx - x, cz - z) < 24)) continue;
+    let cap = null;
+    for (const [dx, dz] of DIRS) {
+      if (at(x + dx, y, z + dz) === B.AIR && isSolid(at(x + dx, y - 1, z + dz))) { cap = [x + dx, y, z + dz]; break; }
+    }
+    if (!cap) continue;
+    data[idx(x, y, z)] = B.CHEST;
+    data[idx(cap[0], cap[1], cap[2])] = B.GLOWCAP;
+    glow++;
+    chests.push([x, y, z]);
+  }
+  const newFloors = floorsAll.filter(([x, y, z]) => data[idx(x, y, z)] === B.AIR && at(x, y + 1, z) === B.AIR).slice(0, 200);
+  const oldFloors = cv.floors.filter(([x, y, z]) => standing(x, y, z));
+
+  cv.air += air.filter(i => data[i] === B.AIR).length;
+  cv.entrances.push(...entrances);
+  for (const c of opened) cv.opened.add(c);
+  cv.floors = [...newFloors, ...oldFloors].slice(0, 300);
+  cv.crystals.push(...crystals);
+  cv.chests.push(...chests);
+  cv.glow += glow;
+  cv.halls = halls;
+  cv.marks = marks;
+  return cv;
 }
 
 /* ------------------------------ the light shader ------------------------------ */
