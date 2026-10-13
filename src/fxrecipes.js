@@ -1032,50 +1032,388 @@ SIG.bigbong = (k, from, to) => {
   };
 };
 
-/* ==== T9 fallbacks: T11 replaces these ==== */
+/* ======================= the four newer types: sky, slime, light, paper ======================= */
 
 Object.assign(FX_COLORS, {
   sky: [0x8fd0ff, 0xffffff, 0xd8f0ff], slime: [0x9cf06a, 0x52d08a, 0xe0ffc0],
   light: [0xfff6c0, 0xffffff, 0xffd84a], paper: [0xffffff, 0xcfe0f7, 0xf0386a],
 });
 
-const simpleTravelT9 = colors => k => {
-  const N = 6;
-  const pts = k.points({ n: N, tex: 'dot', size: 0.32, glow: true, colors });
+const easeOut = t => 1 - (1 - t) * (1 - t);
+// Lay a flat ring/disc on the ground.
+const lay = (m, x, y, z, s) => { m.rotation.set(-Math.PI / 2, 0, 0); m.position.set(x, y, z); m.scale.setScalar(Math.max(0.01, s)); };
+// A droplet thrown out at angle `ang`: where it is after `q` (0..1) of its flight (closed form, with gravity). Result in A.
+const spray = (to, ang, out, vy, q) => {
+  const sec = q * 0.55, o = out * easeOut(q);
+  return A.set(to.pos.x + Math.cos(ang) * o, to.pos.y + vy * sec - 7 * sec * sec, to.pos.z + Math.sin(ang) * o);
+};
+// A soft halo sprite (kept under half opacity, so it never blinds).
+const halo = (sp, x, y, z, size, op) => { sp.position.set(x, y, z); sp.scale.setScalar(Math.max(0.01, size)); sp.material.opacity = Math.max(0, op); };
+
+/* --------------------------------- sky --------------------------------- */
+
+// Gusts: three curved streaks of wind with a few leaves caught in them.
+TRAVEL.sky = k => {
+  const R = 3, L = 7;
+  const wind = k.points({ n: R * L, tex: 'streak', size: 0.42, colors: [0xffffff, 0xcfe8ff, 0xa8d4ff] });
+  const leaves = k.points({ n: R, tex: 'leaf', size: 0.3, colors: [0x7bd35a, 0xb8f090] });
+  const s = k.seeds(R, 1);
   return {
-    dur: 380,
+    dur: 420,
     step(p) {
-      for (let i = 0; i < N; i++) {
-        const t = trailT(p, i, N, 0.3);
-        if (t < 0) pts.hide(i); else { k.at(t, A, 0.15); pts.set(i, A.x, A.y, A.z); }
+      for (let r = 0; r < R; r++) {
+        const base = (r - 1) * 0.42, ph = s[r] * 6;
+        for (let j = 0; j < L; j++) {
+          const t = trailT(p, j, L, 0.5 + r * 0.05);
+          if (t < 0) { wind.hide(r * L + j); continue; }
+          k.at(t, A, 0.2 + r * 0.15);
+          const w = base + Math.sin(t * 7 + ph) * 0.3 * (1 - t * 0.4);
+          wind.set(r * L + j, A.x + k.side.x * w, A.y + (r - 1) * 0.28 + Math.cos(t * 6 + ph) * 0.12, A.z + k.side.z * w);
+        }
+        const lt = trailT(p, 2, 6, 0.4);
+        if (lt < 0) leaves.hide(r); else {
+          k.at(lt, A, 0.5);
+          const w = Math.sin(lt * 14 + r * 2) * 0.35;
+          leaves.set(r, A.x + k.side.x * w, A.y + Math.cos(lt * 12 + r) * 0.3, A.z + k.side.z * w);
+        }
       }
+      wind.fade(fadeOut(p, 0.8));
     },
   };
 };
 
-const simpleImpactT9 = colors => (k, from, to, { big }) => {
-  const N = 8, m = big ? 1.5 : 1;
-  const puff = k.points({ n: N, tex: 'puff', size: 0.5 * m, colors });
+// A little tornado spins up round the target (n points from the feet to above the head).
+const tornado = (k, to, n, m, pts, p) => {
+  for (let i = 0; i < n; i++) {
+    const h = i / n, ang = h * 14 + p * 9, rad = (to.r * 0.4 + 0.15 + h * to.r * 0.9) * (0.4 + 0.6 * k.ease(p)) * m;
+    pts.set(i, to.pos.x + Math.cos(ang) * rad, feetOf(to) + 0.1 + h * (to.top - feetOf(to) + 0.5) * m, to.pos.z + Math.sin(ang) * rad);
+  }
+};
+
+IMPACT.sky = (k, from, to, { big }) => {
+  const N = big ? 30 : 20, m = big ? 1.3 : 1;
+  const pts = k.points({ n: N, tex: 'puff', size: 0.42 * m, colors: [0xffffff, 0xd8f0ff, 0xa8d4ff] });
+  const ring = k.mesh('ring', { color: 0xdff2ff, opacity: 0.7 });
+  return {
+    dur: 400,
+    step(p) {
+      tornado(k, to, N, m, pts, p);
+      pts.fade(fadeOut(p, 0.5));
+      lay(ring, to.pos.x, feetOf(to) + 0.08, to.pos.z, (to.r + 0.2 + p * 0.9) * m);
+      ring.material.opacity = 0.7 * (1 - p);
+    },
+  };
+};
+
+// Jet Stream: a fast wind tunnel (rings rushing along the path, air streaks inside) that ends in a twister.
+SIG.jetstream = (k, from, to) => {
+  const R = 5, N = 30, T = 14;
+  const rings = [];
+  for (let i = 0; i < R; i++) rings.push(k.mesh('ring', { color: i % 2 ? 0xcfe8ff : 0xffffff, opacity: 0.8 }));
+  const air = k.points({ n: N, tex: 'streak', size: 0.45, colors: [0xffffff, 0xa8d4ff, 0xd8f0ff] });
+  const twist = k.points({ n: T, tex: 'puff', size: 0.45, colors: [0xffffff, 0xd8f0ff] });
   const s = k.seeds(N, 2);
   return {
-    dur: 360,
+    dur: 650,
     step(p) {
-      for (let i = 0; i < N; i++) {
-        const ang = (i / N) * 6.283 + s[i * 2], d = (to.r * 0.5 + 0.1 + s[i * 2 + 1] * 0.5) * k.ease(p) * m;
-        puff.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + p * 0.3, to.pos.z + Math.sin(ang) * d);
+      const run = clamp01(p / 0.7), fo = fadeOut(p, 0.75);
+      k.at(1, C, 0);
+      for (let i = 0; i < R; i++) {
+        const t = clamp01(run * 1.5 - i * 0.14), r = rings[i];
+        r.visible = t > 0 && t < 1;
+        k.at(t, A, 0.1);
+        r.position.copy(A);
+        r.lookAt(C);
+        r.scale.setScalar(0.35 + 0.6 * t + (i % 2) * 0.1);
+        r.material.opacity = 0.8 * Math.sin(Math.PI * t);
       }
-      puff.fade(1 - p);
+      for (let i = 0; i < N; i++) {
+        const t = trailT(run, i, N, 0.8);
+        if (t < 0) { air.hide(i); continue; }
+        const a = s[i * 2] * 6.283 + t * 8, rad = 0.2 + s[i * 2 + 1] * 0.55 * (0.5 + t * 0.5);
+        k.at(t, A, 0.1);
+        air.set(i, A.x + k.side.x * Math.cos(a) * rad, A.y + Math.sin(a) * rad, A.z + k.side.z * Math.cos(a) * rad);
+      }
+      air.fade(fo);
+      const q = clamp01((p - 0.55) / 0.45);
+      if (q <= 0) { for (let i = 0; i < T; i++) twist.hide(i); } else tornado(k, to, T, 1.1, twist, q);
+      twist.fade(fadeOut(q, 0.4));
     },
   };
 };
 
-for (const t of ['sky', 'slime', 'light', 'paper']) {
-  TRAVEL[t] = simpleTravelT9(FX_COLORS[t]);
-  IMPACT[t] = simpleImpactT9(FX_COLORS[t]);
-}
-SIG.jetstream = TRAVEL.sky;
-SIG.megasplat = TRAVEL.slime;
-SIG.beaconbeam = TRAVEL.light;
-SIG.thousandcranes = TRAVEL.paper;
+/* -------------------------------- slime -------------------------------- */
 
-/* ==== end of T9 fallbacks ==== */
+// Goo blobs lobbed in an arc, dripping as they go.
+TRAVEL.slime = k => {
+  const B_N = 4, D_N = 12;
+  const blobs = k.points({ n: B_N, tex: 'dot', size: 0.6, colors: [0x7be04a, 0x9cf06a, 0x52d08a] });
+  const drips = k.points({ n: D_N, tex: 'drop', size: 0.26, colors: [0x9cf06a, 0x52d08a] });
+  const s = k.seeds(D_N, 2);
+  return {
+    dur: 430,
+    step(p) {
+      for (let i = 0; i < B_N; i++) {
+        const t = trailT(p, i, B_N, 0.3);
+        if (t < 0) { blobs.hide(i); continue; }
+        k.at(t, A, 0.7);
+        const w = (i - 1.5) * 0.1;
+        blobs.set(i, A.x + k.side.x * w, A.y + Math.sin(p * 30 + i * 2) * 0.05, A.z + k.side.z * w);
+      }
+      blobs.material.size = 0.6 + 0.08 * Math.sin(p * 40);
+      for (let i = 0; i < D_N; i++) {
+        const t = trailT(p, i * 0.7, D_N, 0.55);
+        if (t < 0) { drips.hide(i); continue; }
+        k.at(t, A, 0.7);
+        const fall = (p - t) * (0.8 + s[i * 2] * 1.5) + 0.05;
+        drips.set(i, A.x + (s[i * 2 + 1] - 0.5) * 0.3, A.y - Math.max(0, fall) * 0.9, A.z + (s[i * 2] - 0.5) * 0.2);
+      }
+      drips.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Splat: a goo star pops on the target, drops fly out and fall, a puddle spreads.
+const splat = (to, p, parts, m) => {
+  const { pop, dots, drops, pud, s } = parts;
+  const sc = (p < 0.2 ? easeOut(p / 0.2) : 1 - (p - 0.2) * 0.25) * m;
+  pop.position.copy(to.pos);
+  pop.scale.setScalar(Math.max(0.01, (to.r * 1.2 + 0.3) * sc));
+  pop.material.opacity = 0.75 * fadeOut(p, 0.55);
+  const nD = dots.n, nR = drops.n;
+  for (let i = 0; i < nD; i++) {
+    const ang = s[i * 3] * 6.283, out = (0.35 + s[i * 3 + 1] * 0.9) * (to.r + 0.3) * m;
+    spray(to, ang, out, 1.5 + s[i * 3 + 2] * 1.5, p);
+    dots.set(i, A.x, A.y, A.z);
+  }
+  dots.fade(fadeOut(p, 0.6));
+  for (let i = 0; i < nR; i++) {
+    const j = nD + i, ang = s[j * 3] * 6.283, q = clamp01(p * 1.2 - 0.15), out = (0.2 + s[j * 3 + 1] * 0.5) * (to.r + 0.1) * m;
+    if (q <= 0) { drops.hide(i); continue; }
+    drops.set(i, to.pos.x + Math.cos(ang) * out, to.top - 0.1 - q * (to.top - feetOf(to)) * (0.5 + s[j * 3 + 2] * 0.5), to.pos.z + Math.sin(ang) * out);
+  }
+  drops.fade(fadeOut(p, 0.7));
+  lay(pud, to.pos.x, feetOf(to) + 0.06, to.pos.z, (to.r * 0.5 + easeOut(clamp01(p * 1.5)) * (to.r + 0.4)) * m);
+  pud.material.opacity = 0.65 * fadeOut(p, 0.5);
+};
+
+const splatParts = (k, nD, nR, size) => ({
+  pop: k.sprite('splat', { color: 0x7be04a, size: 0.1, opacity: 0.9 }),
+  dots: k.points({ n: nD, tex: 'dot', size, colors: [0x7be04a, 0x9cf06a, 0x52d08a] }),
+  drops: k.points({ n: nR, tex: 'drop', size: size * 0.8, colors: [0x9cf06a, 0x52d08a] }),
+  pud: k.mesh('disc', { color: 0x6ad04a, opacity: 0.65 }),
+  s: k.seeds(nD + nR, 3),
+});
+
+IMPACT.slime = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1;
+  const parts = splatParts(k, big ? 24 : 14, 6, 0.3 * m);
+  return { dur: 420, step(p) { splat(to, p, parts, m); } };
+};
+
+// Mega Splat: one huge blob arcs in, then bursts into a big splash with drips and a puddle.
+SIG.megasplat = (k, from, to) => {
+  const blob = k.sprite('dot', { color: 0x7be04a, size: 0.1 });
+  const parts = splatParts(k, 40, 10, 0.34);
+  return {
+    dur: 700,
+    step(p) {
+      const fly = clamp01(p / 0.4);
+      k.at(fly, A, 1.4);
+      blob.position.copy(A);
+      blob.scale.setScalar(fly >= 1 ? 0.01 : 0.8 + fly * 0.9 + 0.1 * Math.sin(p * 40));
+      splat(to, clamp01((p - 0.4) / 0.6), parts, 1.4);
+      if (fly < 1) { parts.pop.material.opacity = 0; parts.pud.material.opacity = 0; }
+    },
+  };
+};
+
+/* -------------------------------- light -------------------------------- */
+
+// A bright ray with sparkles and a soft glowing head.
+TRAVEL.light = k => {
+  const core = k.mesh('box', { color: 0xffffff, opacity: 0.9 });
+  const glow = k.mesh('box', { color: 0xffe680, opacity: 0.35 });
+  const head = k.sprite('soft', { color: 0xfff3a0, size: 0.1, opacity: 0.55 });
+  const N = 10;
+  const sparks = k.points({ n: N, tex: 'star', size: 0.3, colors: [0xffffff, 0xffe680, 0xfff6c0] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 400,
+    step(p) {
+      const grow = clamp01(p / 0.55), fade = fadeOut(p, 0.6);
+      k.at(0, A, 0); k.at(1, B, 0);
+      C.copy(B);
+      const len = A.distanceTo(B) * grow;
+      for (const [m, th, op] of [[core, 0.08, 0.9], [glow, 0.26, 0.35]]) {
+        m.position.set(A.x + (B.x - A.x) * grow / 2, A.y + (B.y - A.y) * grow / 2, A.z + (B.z - A.z) * grow / 2);
+        m.lookAt(C);
+        m.scale.set(th, th, Math.max(0.01, len));
+        m.material.opacity = op * fade;
+      }
+      k.at(grow, A, 0);
+      halo(head, A.x, A.y, A.z, 0.7 + 0.1 * Math.sin(p * 30), 0.55 * fade);
+      for (let i = 0; i < N; i++) {
+        if (grow <= 0.05) { sparks.hide(i); continue; }
+        k.at(s[i * 2] * grow, A, 0);
+        sparks.set(i, A.x + (s[i * 2 + 1] - 0.5) * 0.5, A.y + Math.sin(p * 20 + i * 3) * 0.25, A.z + (s[i * 2] - 0.5) * 0.3);
+      }
+      sparks.fade(fade);
+    },
+  };
+};
+
+IMPACT.light = (k, from, to, { big }) => {
+  const N = big ? 12 : 8, m = big ? 1.4 : 1;
+  const glo = k.sprite('soft', { color: 0xfff3a0, size: 0.1, opacity: 0.5 });
+  const rays = k.points({ n: N, tex: 'star', size: 0.34 * m, colors: [0xffffff, 0xffe680] });
+  return {
+    dur: 400,
+    step(p) {
+      halo(glo, to.pos.x, to.pos.y, to.pos.z, (to.r * 2 + 0.5) * m * (0.6 + 0.6 * k.ease(p)), 0.5 * Math.sin(Math.PI * clamp01(p * 1.1)));
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + 0.4, d = (to.r * 0.5 + 0.2 + 0.9 * k.ease(p)) * m;
+        rays.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.9, to.pos.z + Math.sin(ang * 2) * 0.2);
+      }
+      rays.fade(fadeOut(p, 0.4));
+    },
+  };
+};
+
+// Beacon Beam: like a lighthouse, a wide beam turns round and settles on the target.
+SIG.beaconbeam = (k, from, to) => {
+  const cones = [k.mesh('cone', { color: 0xfff0a0, opacity: 0.32 }), k.mesh('cone', { color: 0xfff0a0, opacity: 0.2 }), k.mesh('cone', { color: 0xffffff, opacity: 0.3 })];
+  const lamp = k.sprite('soft', { color: 0xfff3a0, size: 0.1, opacity: 0.55 });
+  const tgt = k.sprite('soft', { color: 0xfff3a0, size: 0.1, opacity: 0.5 });
+  const N = 14;
+  const sparks = k.points({ n: N, tex: 'star', size: 0.28, colors: [0xffffff, 0xffe680] });
+  const s = k.seeds(N, 1);
+  const ox = from.pos.x, oy = from.pos.y + 0.2, oz = from.pos.z;
+  const baseAng = Math.atan2(to.pos.z - oz, to.pos.x - ox);
+  const len = Math.max(2, Math.hypot(to.pos.x - ox, to.pos.z - oz));
+  return {
+    dur: 700,
+    step(p) {
+      const sweep = (1 - k.ease(clamp01(p / 0.7))) * 2.4, fo = fadeOut(p, 0.75), on = clamp01(p / 0.08);
+      for (let i = 0; i < 3; i++) {
+        // 0 = the main beam; 1 = a faint twin on the far side of the lamp; 2 = a narrow bright core
+        const ang = baseAng + sweep + (i === 1 ? Math.PI : 0), L = i === 1 ? len * 0.7 : len;
+        const c = cones[i];
+        c.position.set(ox + Math.cos(ang) * L, oy + (i === 1 ? 0 : to.pos.y - oy), oz + Math.sin(ang) * L);
+        c.lookAt(B.set(ox, oy, oz));
+        const w = i === 2 ? 0.14 : i === 1 ? 0.5 : 0.55;
+        c.scale.set(w, w, L);
+        c.material.opacity = [0.32, 0.18, 0.3][i] * fo * on;
+      }
+      halo(lamp, ox, oy, oz, 0.9 + 0.1 * Math.sin(p * 25), 0.55 * fo * on);
+      const hit = clamp01((p - 0.55) / 0.3);
+      halo(tgt, to.pos.x, to.pos.y, to.pos.z, (to.r * 2 + 0.4) * (0.5 + hit * 0.5), 0.5 * Math.sin(Math.PI * hit) * fo);
+      for (let i = 0; i < N; i++) {
+        if (p < 0.1) { sparks.hide(i); continue; }
+        const t = s[i], ang = baseAng + sweep * (0.4 + 0.6 * t);
+        sparks.set(i, ox + Math.cos(ang) * t * len, oy + (to.pos.y - oy) * t + Math.sin(p * 18 + i) * 0.2, oz + Math.sin(ang) * t * len);
+      }
+      sparks.fade(fo);
+    },
+  };
+};
+
+/* -------------------------------- paper -------------------------------- */
+
+const CONFETTI = [0xf0386a, 0x4aa8ff, 0xffd84a, 0x6bdc7a, 0xffffff];
+
+// Paper planes sailing along with a stream of confetti.
+TRAVEL.paper = k => {
+  const P = 4, N = 14;
+  const planes = [];
+  for (let i = 0; i < P; i++) planes.push(k.sprite('plane', { color: i % 2 ? 0xcfe0f7 : 0xffffff, size: 0.62 }));
+  const bits = k.points({ n: N, tex: 'square', size: 0.2, colors: CONFETTI });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 430,
+    step(p) {
+      for (let i = 0; i < P; i++) {
+        const t = trailT(p, i, P, 0.35), pl = planes[i];
+        pl.visible = t >= 0;
+        if (t < 0) continue;
+        k.at(t, A, 0.3 + i * 0.1);
+        const w = (i - 1.5) * 0.28 + Math.sin(t * 9 + i) * 0.12;
+        pl.position.set(A.x + k.side.x * w, A.y + Math.cos(t * 8 + i) * 0.12, A.z + k.side.z * w);
+        pl.material.rotation = Math.sin(t * 9 + i) * 0.35;
+      }
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.55);
+        if (t < 0) { bits.hide(i); continue; }
+        k.at(t, A, 0.3);
+        const w = (s[i * 2] - 0.5) * 0.8;
+        bits.set(i, A.x + k.side.x * w, A.y + (s[i * 2 + 1] - 0.5) * 0.5 - (p - t) * 1.2, A.z + k.side.z * w);
+      }
+      bits.material.size = 0.2 + 0.06 * Math.sin(p * 40);
+      bits.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Confetti burst: coloured squares pop up and flutter down.
+const confetti = (to, pts, n, p, s, m) => {
+  for (let i = 0; i < n; i++) {
+    const ang = s[i * 3] * 6.283, out = (0.3 + s[i * 3 + 1] * 0.9) * (to.r + 0.4) * m * easeOut(p), sec = p * 0.55;
+    pts.set(i, to.pos.x + Math.cos(ang) * out + Math.sin(p * 12 + i) * 0.08,
+      to.pos.y + (2 + s[i * 3 + 2] * 1.6) * sec - 4.5 * sec * sec, to.pos.z + Math.sin(ang) * out);
+  }
+  pts.material.size = 0.22 * m * (0.7 + 0.3 * Math.abs(Math.cos(p * 14)));
+  pts.fade(fadeOut(p, 0.6));
+};
+
+IMPACT.paper = (k, from, to, { big }) => {
+  const N = big ? 36 : 24, m = big ? 1.3 : 1;
+  const bits = k.points({ n: N, tex: 'square', size: 0.22 * m, colors: CONFETTI });
+  const sheets = k.points({ n: 4, tex: 'square', size: 0.5 * m, colors: [0xffffff, 0xeaf0fa] });
+  const s = k.seeds(N, 3);
+  return {
+    dur: 420,
+    step(p) {
+      confetti(to, bits, N, p, s, m);
+      for (let i = 0; i < 4; i++) {
+        const ang = i * 1.57 + 0.6, d = (to.r + 0.15) * k.ease(p);
+        sheets.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.3 + p * 0.6 - p * p * 0.9, to.pos.z + Math.sin(ang) * d);
+      }
+      sheets.material.size = 0.5 * m * (0.5 + 0.5 * Math.abs(Math.cos(p * 9)));
+      sheets.fade(fadeOut(p, 0.5));
+    },
+  };
+};
+
+// Thousand Cranes: a flock of little paper cranes flies in a V, circles the target and bursts into confetti.
+SIG.thousandcranes = (k, from, to) => {
+  const N = 24, F = 14, cols = [0xffffff, 0xf0386a, 0xcfe0f7, 0xffd84a];
+  const up = k.points({ n: N, tex: 'craneup', size: 0.42, colors: cols });
+  const down = k.points({ n: N, tex: 'cranedown', size: 0.42, colors: cols });
+  const bits = k.points({ n: F, tex: 'square', size: 0.22, colors: CONFETTI });
+  const s = k.seeds(F, 3);
+  return {
+    dur: 700,
+    step(p) {
+      const fly = clamp01(p / 0.55), circ = clamp01((p - 0.45) / 0.55);
+      for (let i = 0; i < N; i++) {
+        const row = Math.floor((i + 1) / 2), sgn = i % 2 ? 1 : -1, t = clamp01(fly * 1.25 - row * 0.05);
+        let x, y, z;
+        if (circ <= 0 || t < 1) {
+          k.at(t, A, 0.9);
+          const spread = row * 0.17 * (1 - fly * 0.35);
+          x = A.x + k.side.x * sgn * spread; y = A.y + Math.sin(p * 20 + i) * 0.06; z = A.z + k.side.z * sgn * spread;
+        } else {
+          const ang = (i / N) * 6.283 + circ * 5, rad = (to.r + 0.7) * (1 - circ * 0.4);
+          x = to.pos.x + Math.cos(ang) * rad; y = to.pos.y + 0.3 + circ * 0.5 + Math.sin(i) * 0.3; z = to.pos.z + Math.sin(ang) * rad;
+        }
+        if ((Math.floor(p * 22 + i * 0.5) & 1) === 0) { up.set(i, x, y, z); down.hide(i); } else { down.set(i, x, y, z); up.hide(i); }
+      }
+      const fo = fadeOut(p, 0.8);
+      up.fade(fo); down.fade(fo);
+      const q = clamp01((p - 0.6) / 0.4);
+      if (q <= 0) { for (let i = 0; i < F; i++) bits.hide(i); } else confetti(to, bits, F, q, s, 1.1);
+    },
+  };
+};
+
+/* ==== end of the four newer types ==== */
