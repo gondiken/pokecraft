@@ -96,6 +96,75 @@ export default async function ({ browser, base, t }) {
   await setTime(page, 0.25, false);
   t.ok(await page.evaluate(`!${who('leader', 'alien')}.model.visible`), 'the people go away again at dawn');
 
+  // 2b. The Comet Gym is a night gym too (T14): by day it is empty, says the stargazers come at night,
+  // and the arrow skips it; at night its people (with star hats) battle as usual.
+  t.ok(await page.evaluate(async () => {
+    const { GYMS } = await import('/src/gyms.js');
+    const c = GYMS.find(g => g.id === 'cosmic'), a = GYMS.find(g => g.id === 'alien');
+    return c.night === true && !c.saucer && a.saucer === true && GYMS.filter(g => g.night).map(g => g.id).join() === 'cosmic,alien';
+  }), 'the Comet and Saucer Gyms are night gyms; only the Saucer Gym has a saucer');
+  t.ok(await page.evaluate(`${who('leader', 'cosmic')}.model.visible === false && ${who('trainer', 'cosmic')}.model.visible === false`), 'the Comet Gym people are hidden by day');
+  await stand('cosmic');
+  await clearToasts(page);
+  await page.evaluate(`window.pokecraft.talkTo(${who('trainer', 'cosmic')})`);
+  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), 'the Comet trainer does not battle by day');
+  msg = await toasts(page);
+  t.ok(msg.includes('stargazers only come out at night') && /about \d+ minute/.test(msg), `the Comet toast says when night comes (${msg})`);
+  const comet = await page.evaluate(async () => {
+    const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
+    const keep = g.badges;
+    const gym = g.world.gyms.find(x => x.def.id === 'cosmic');
+    // Walking into the gym by day.
+    g.player.pos.copy(g.spawnPoint); g.updateGuide();
+    window.__toasts.length = 0;
+    g.player.pos.set(gym.x + 0.5, gym.y, gym.z + 0.5); g.updateGuide();
+    await new Promise(r => setTimeout(r, 50));
+    const inside = window.__toasts.join(' | ');
+    // The arrow with Comet, Saucer and Sunbeam left.
+    g.badges = GYMS.filter(x => !['cosmic', 'alien', 'light'].includes(x.id)).map(x => x.id);
+    g.player.pos.copy(g.spawnPoint);
+    g.updateGuide();
+    const arrow = document.getElementById('guide').textContent;
+    // Only Comet left: the arrow points at it and says it opens at night.
+    g.badges = GYMS.filter(x => x.id !== 'cosmic').map(x => x.id);
+    g.updateGuide();
+    const last = document.getElementById('guide').textContent;
+    g.badges = keep;
+    return { inside, arrow, last };
+  });
+  t.ok(comet.inside.includes('Comet Gym is empty') && comet.inside.includes('stargazers'), `walking in by day says it is empty (${comet.inside})`);
+  t.ok(comet.arrow.includes('Sunbeam Gym') && comet.arrow.includes('Comet Gym and Saucer Gym open at night'), `the arrow skips both night gyms and names them (${comet.arrow})`);
+  t.ok(comet.last.includes('Comet Gym') && comet.last.includes('opens at night'), `with only the Comet Gym left the arrow points at it (${comet.last})`);
+  await setTime(page, 0.75, true);
+  t.ok(await page.evaluate(`${who('leader', 'cosmic')}.model.visible && ${who('trainer', 'cosmic')}.model.visible`), 'the Comet Gym people are there at night');
+  t.ok(await page.evaluate(() => window.pokecraft.npcs.saucers.length === 1), 'still just the one saucer (over the Saucer Gym)');
+  await stand('cosmic');
+  await page.evaluate(`window.pokecraft.talkTo(${who('trainer', 'cosmic')})`);
+  t.ok(await playBattle(page), 'Comet trainer battle finishes at night');
+  await page.evaluate(`window.pokecraft.talkTo(${who('leader', 'cosmic')})`);
+  t.ok(await playBattle(page), 'Comet leader battle finishes at night');
+  t.ok(await page.evaluate(() => window.pokecraft.badges.includes('cosmic')), 'Comet Badge awarded at night');
+
+  // Close-ups of the people: the aliens (green and purple skin, antennae, big eyes) and a star hat.
+  for (const [id, kind] of [['alien', 'leader'], ['alien', 'trainer'], ['cosmic', 'trainer']]) {
+    await page.evaluate(([gid, k]) => {
+      const g = window.pokecraft, n = g.npcs.list.find(x => x.kind === k && x.gym?.def.id === gid);
+      const gym = n.gym, [fx, fz] = gym.front;
+      g.player.pos.set(n.pos.x + fx * 2.2, n.pos.y, n.pos.z + fz * 2.2);
+      g.player.vel.set(0, 0, 0);
+      g.player.lookAt({ x: n.pos.x, y: n.pos.y + 1.6, z: n.pos.z });
+    }, [id, kind]);
+    await page.waitForTimeout(3500);
+    await page.screenshot({ path: SHOTS + `people-${id}-${kind}.png` });
+  }
+  t.ok(await page.evaluate(() => {
+    const n = window.pokecraft.npcs.list.find(x => x.kind === 'leader' && x.gym?.def.id === 'alien');
+    const colors = []; n.model.traverse(o => { if (o.isMesh) colors.push(o.material.color.getHex()); });
+    return colors.includes(0x8fe07a) && !colors.includes(0xf2d0b0);
+  }), 'Leader Zeeb has green alien skin');
+  await setTime(page, 0.25, false);
+  t.ok(await page.evaluate(`!${who('leader', 'cosmic')}.model.visible`), 'the Comet people go away again at dawn');
+
   // 3. The four new gyms: trainer, then leader, badge.
   for (const [id, badge] of [['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {
     if (id === 'sky') {

@@ -47,7 +47,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 4 ✅ | T7 Attack animations | Needs the final move list; big enough for its own session |
 | 5a ✅ | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
 | 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
-| 6a | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
+| 6a ✅ | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
 | 6b | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 | 7a | T16 Bigger map, treasure blocks, protected gyms · T17 Three new types (Cozy, Treasure, Cyber) | World generation vs. species/shapes/fx data |
 | 7b | T18 Homes (Doormat, home types, meter, preview) | Needs T16's blocks and T17's creatures |
@@ -269,7 +269,7 @@ loading with their team, badges and builds, and runs the full suite before mergi
 planned change to an existing world was the Saucer Gym moving into the sky (done 2026-10-13); the
 rest of wave 6 changes no world blocks.
 
-### T12 · Bug fixes (size: M)
+### T12 · Bug fixes (size: M) ✅ done
 
 Found by the owner while playing and by reading the code (2026-10-13). Each fix gets a check in
 a spec (the duel ones in `pvp`, the touch ones in `touch`, water in a new small `water` spec or `blocks`).
@@ -315,7 +315,7 @@ a spec (the duel ones in `pvp`, the touch ones in `touch`, water in a new small 
 Done when: each item above has a passing check, and `pvp`, `multiplayer`, `touch`,
 `battle-and-menu` and the new water check pass twice in a row.
 
-### T13 · Storage box: let creatures go, sort and filter (size: S–M)
+### T13 · Storage box: let creatures go, sort and filter (size: S–M) ✅ done
 
 The box (team panel, `ui.js` `refreshPanel` / `monCard`) is one long unsorted list and has no
 way to remove creatures.
@@ -324,7 +324,7 @@ way to remove creatures.
   be emptied). It asks first, in big, kid-friendly words: "Say goodbye to Flicker (Lv 12)? It goes back
   to the wild." with "Yes, let it go" / "Keep it". Can't be undone. The Creature Book keeps it as
   caught (the Book's `caught` list is never shrunk). Show a short toast afterwards.
-- **Sort:** buttons for Newest (default, the current order), Level, Name and Type. The sort is only for
+- **Sort:** buttons for Newest (default; shows the newest catch first, i.e. the box order reversed), Level, Name and Type. The sort is only for
   showing; `game.box` keeps its order, so saves don't change. Remember the choice in
   localStorage (per device, like sound on/off).
 - **Filter by type:** a row of type chips (only the types that are in the box, with a count), plus
@@ -336,7 +336,7 @@ way to remove creatures.
   the box, still caught in the Book, the save no longer has it), sorts and filters (the right
   cards in the right order, "To team" moves the right creature), and works with touch.
 
-### T14 · Night gyms: the Comet Gym at night, alien-looking Saucer people (size: S–M)
+### T14 · Night gyms: the Comet Gym at night, alien-looking Saucer people (size: S–M) ✅ done
 
 Owner's requests: the Comet (Cosmic) Gym should only have its people at night, like the Saucer
 Gym; and the Saucer people should look like aliens. (The Saucer Gym already floats in the sky:

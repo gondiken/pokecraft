@@ -10,7 +10,9 @@ function box(parent, w, h, d, color, x, y, z) {
 }
 
 // A blocky, Minecraft-style person. Faces +Z.
-export function buildPerson(c, { cape = null, hat = null } = {}) {
+// look: 'alien' (no hair, big black eyes, antennae with glowing tips in the hair colour) or
+// 'star' (a little yellow star on top of the head or hat).
+export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
   const group = new THREE.Group();
   const parts = { legs: [], arms: [] };
   for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
@@ -34,13 +36,31 @@ export function buildPerson(c, { cape = null, hat = null } = {}) {
   const head = new THREE.Group();
   head.position.set(0, 1.47, 0);
   box(head, 0.5, 0.5, 0.5, c.skin, 0, 0.25, 0);
-  box(head, 0.52, 0.14, 0.52, c.hair, 0, 0.46, 0);
-  box(head, 0.52, 0.35, 0.12, c.hair, 0, 0.3, -0.21);
-  for (const s of [-1, 1]) {
-    box(head, 0.1, 0.06, 0.02, 0xffffff, s * 0.12, 0.28, 0.255);
-    box(head, 0.05, 0.06, 0.02, 0x2a2a6a, s * 0.1, 0.28, 0.262);
+  if (look === 'alien') {
+    for (const s of [-1, 1]) {
+      box(head, 0.16, 0.18, 0.02, 0x101018, s * 0.12, 0.28, 0.255);
+      box(head, 0.05, 0.05, 0.02, 0xffffff, s * 0.09, 0.32, 0.262);
+      const stalk = box(head, 0.04, 0.3, 0.04, c.skin, s * 0.13, 0.62, 0);
+      stalk.rotation.z = -s * 0.25;
+      box(head, 0.1, 0.1, 0.1, c.hair, s * 0.18, 0.78, 0);
+    }
+    box(head, 0.12, 0.03, 0.02, 0x2a5a2a, 0, 0.11, 0.255);
+  } else {
+    box(head, 0.52, 0.14, 0.52, c.hair, 0, 0.46, 0);
+    box(head, 0.52, 0.35, 0.12, c.hair, 0, 0.3, -0.21);
+    for (const s of [-1, 1]) {
+      box(head, 0.1, 0.06, 0.02, 0xffffff, s * 0.12, 0.28, 0.255);
+      box(head, 0.05, 0.06, 0.02, 0x2a2a6a, s * 0.1, 0.28, 0.262);
+    }
+    box(head, 0.16, 0.04, 0.02, 0x8a4a3a, 0, 0.14, 0.255);
   }
-  box(head, 0.16, 0.04, 0.02, 0x8a4a3a, 0, 0.14, 0.255);
+  if (look === 'star') {
+    const y = hat ? 0.82 : 0.62;
+    box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);
+    box(head, 0.08, 0.24, 0.06, 0xffe94a, 0, y, 0);
+    const d = box(head, 0.12, 0.12, 0.05, 0xfff6a0, 0, y, 0);
+    d.rotation.z = Math.PI / 4;
+  }
   if (hat) {
     box(head, 0.58, 0.08, 0.62, hat, 0, 0.54, 0.03);
     box(head, 0.5, 0.16, 0.5, hat, 0, 0.64, 0);
@@ -56,14 +76,14 @@ export function buildPerson(c, { cape = null, hat = null } = {}) {
 }
 
 export class Npc {
-  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape }) {
+  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look }) {
     this.kind = kind;
     this.name = name;
     this.gym = gym;
     this.pos = new THREE.Vector3(...pos);
     this.homeHeading = heading;
     this.heading = heading;
-    this.model = buildPerson(colors, { hat, cape });
+    this.model = buildPerson(colors, { hat, cape, look });
     this.model.userData.npc = this;
     this.t = Math.random() * 10;
   }
@@ -91,7 +111,8 @@ export class NpcManager {
     this.night = null;
   }
 
-  // Gyms with `night: true` (the Saucer Gym) only have their people (and a flying saucer) at night.
+  // Gyms with `night: true` (Comet, Saucer) only have their people at night; `saucer: true` also
+  // brings a flying saucer.
   setNight(night) {
     night = !!night;
     if (night === this.night) return;
@@ -106,15 +127,16 @@ export class NpcManager {
       const [fx, fz] = gym.front;
       const facing = Math.atan2(fx, fz);
       const typeColor = new THREE.Color(gym.def.leader.colors.shirt).getHex();
+      const { leader, trainer } = gym.def;
       this.add(new Npc({
-        kind: 'leader', name: gym.def.leader.name, gym, colors: gym.def.leader.colors,
-        pos: gym.leaderPos, heading: facing, cape: typeColor,
+        kind: 'leader', name: leader.name, gym, colors: leader.colors,
+        pos: gym.leaderPos, heading: facing, cape: typeColor, look: leader.look,
       }));
       this.add(new Npc({
-        kind: 'trainer', name: gym.def.trainer.name, gym, colors: gym.def.trainer.colors,
-        pos: gym.trainerPos, heading: facing, hat: gym.def.trainer.colors.pants,
+        kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
+        pos: gym.trainerPos, heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants,
       }));
-      if (gym.def.night) this.addSaucer(gym);
+      if (gym.def.saucer) this.addSaucer(gym);
     }
     // The Champion's Tower: nurse, coach, two guards and the champion.
     if (world.tower) {

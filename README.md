@@ -33,7 +33,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | Input | Action |
 | --- | --- |
 | WASD | Move |
-| Space | Jump / swim up |
+| Space | Jump / swim up (swim into a bank and hold it to climb out) |
 | Shift | Sprint |
 | Mouse | Look |
 | Left click | Break block, battle the creature under the crosshair, or talk to a person |
@@ -70,7 +70,7 @@ On a tablet:
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, move effects (see **Moves** below), switching and running away. Your whole team shares the XP.
 - **Moves**: 107 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
-- **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
+- **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box, where you can sort them (newest, level, name, type), show one type at a time, or let a creature go back to the wild (the Creature Book still remembers it).
 - **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against.
 - **Attack animations**: every type has its own little animation (fire embers, water bubbles, sparks, music notes, rattling bones...), the eleven signature moves have special ones, and moves that heal, boost, lower or put to sleep show it too. Turn them off with **Effects** on the pause screen if your device feels slow.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
@@ -128,7 +128,7 @@ Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, pa
 
 ## Gyms and badges
 
-There are 22 gyms scattered around the map, one for each type except normal. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the **Cloud Gym** and the **Saucer Gym float high in the sky**: find the blue (Cloud) or green (Saucer) pad on the ground below, build a tower of blocks on it and jump across. The aliens of the Saucer Gym only visit at night (their flying saucer lands on the roof). Each gym is a building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
+There are 22 gyms scattered around the map, one for each type except normal. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the **Cloud Gym** and the **Saucer Gym float high in the sky**: find the blue (Cloud) or green (Saucer) pad on the ground below, build a tower of blocks on it and jump across. Two gyms only open at night: the stargazers of the **Comet Gym** (with star hats) and the aliens of the **Saucer Gym** (green and purple, with antennae; their flying saucer lands on the roof). By day the arrow skips them and tells you they open at night. Each gym is a building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |
@@ -144,7 +144,7 @@ There are 22 gyms scattered around the map, one for each type except normal. The
 | 10 | Mystic Gym | Mind | Leader Sage | 20–22 |
 | 11 | Blaze Gym | Fire | Leader Cinder | 22–24 |
 | 12 | Frost Gym | Ice | Leader Yuki | 23–25 |
-| 13 | Comet Gym | Cosmic | Leader Nova | 24–26 |
+| 13 | Comet Gym (only at night) | Cosmic | Leader Nova | 24–26 |
 | 14 | Phantom Gym | Ghost | Leader Raven | 25–27 |
 | 15 | Scale Gym | Drake | Leader Wyvern | 26–28 |
 | 16 | Prism Gym | Rainbow | Leader Aurora | 27–30 |

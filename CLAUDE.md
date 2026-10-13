@@ -109,7 +109,7 @@ Key ideas:
   (r 10.5, lamps underneath) with the gym (`buildSkyGym`), a flat sky-wool **landing pad** on the ground at `d = 11..12`
   in front of the door plus a lamp post; build a pillar on the pad's inner middle block up to `fy - 1` and one jump
   lands on the island. Gym object: `sky: true`, `pad: [x, y, z]` (the pad block; stand at y + 1), `y = fy + 1`;
-  `gymAt(x, z, y)` only matches it at `y >= g.y - 1`. `def.night` (Saucer Gym) is handled in `npc.js`/`main.js`.
+  `gymAt(x, z, y)` only matches it at `y >= g.y - 1`. `def.night` (Comet and Saucer Gyms: people only at night, per-gym `def.nightText` for the closed toast; the arrow skips them by day and names them) and `def.saucer` (only the Saucer Gym: the flying saucer) are handled in `npc.js`/`main.js`. A person def may have `look: 'alien'` (antennae, big eyes, no hair/hat) or `look: 'star'` (star hat), drawn by `buildPerson`.
 - **The Saucer Gym floats (wave 6):** its def has `place: 'sky'`; `placeExtraGyms` builds it with `placeSkyGym(spot, 'saucer')`
   (metal saucer island, `buildSaucerGym`, green `WOOL.alien` pad, `gym.padColor`) at its unchanged `extraGymSpots()` x/z, so no
   other gym, cave or the tower moves. Floor from `saucerFloor()`: `min(35, maxG + 12)`; when capped (hills > 23 near it, about 1
@@ -184,7 +184,7 @@ node run.mjs gym touch                     # just some
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
@@ -200,7 +200,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11) are done; next is wave 6 (T12–T15: bug fixes, storage box, night gyms, cleanup), then wave 7 (T16–T19: bigger map, homes, Cozy/Treasure/Cyber types and gyms), then the backlog. Read it before
+  and the backlog). All waves (T1–T11) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; next is T15 (cleanup), then wave 7 (T16–T19: bigger map, homes, Cozy/Treasure/Cyber types and gyms), then the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;

@@ -935,7 +935,7 @@ function updateSky(dt) {
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
   game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`);
   game.night = light < 0.3;
-  game.npcs.setNight(game.night); // the Saucer Gym's people come and go with the night
+  game.npcs.setNight(game.night); // the night gyms' people (Comet, Saucer) come and go with the night
 }
 
 // Minutes of real time until it gets dark (0 if it already is).
@@ -949,7 +949,7 @@ function minutesToNight() {
 
 function nightGymClosed(def) {
   const m = minutesToNight();
-  return `The ${def.name} is empty... the aliens only visit at night! Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
+  return `The ${def.name} is empty... ${def.nightText || 'come back at night!'} Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
 }
 
 let skyToldNear = false, skyToldPad = false, skyNearest = null;
@@ -961,10 +961,14 @@ function updateGuide() {
   const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
   let next = unbeaten[0];
   let nightNote = '';
+  // By day the arrow skips the night gyms (Comet, Saucer) and mentions the ones it skipped.
   if (next?.def.night && !game.night) {
     const other = unbeaten.find(g => !g.def.night);
-    if (other) { next = other; nightNote = ` · ${unbeaten[0].def.name} opens at night ☾`; }
-    else nightNote = ' (opens at night ☾)';
+    if (other) {
+      const skipped = unbeaten.slice(0, unbeaten.indexOf(other)).map(g => g.def.name);
+      next = other;
+      nightNote = ` · ${skipped.join(' and ')} ${skipped.length > 1 ? 'open' : 'opens'} at night ☾`;
+    } else nightNote = ' (opens at night ☾)';
   }
   if (!next && !game.champion && game.world.tower) next = game.world.tower;
   if (!next) game.ui.setGuide('★ Champion! ★');
