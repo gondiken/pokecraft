@@ -382,10 +382,6 @@ the save format. The `old-saves` and `caves` checksums must not change.
     the suite, and has `--skip`.
   - Optionally a "fast" group (roster, seventh, four-types, bone-alien, icon, blocks, map) that can
     run first.
-  - A `PC_GPU=1` switch in `helpers.mjs` for the owner's laptop: a visible Chromium that uses the
-    real graphics card instead of SwiftShader (about 60 fps instead of 1–2). It only helps on a
-    machine with a GPU and a screen (cloud sessions have neither). Run the full suite once with it
-    and fix anything that only worked because the game was slow.
   - Specs that fail late in a long run under load (`moves`, `pvp`, `sound`, `touch`, `weather`
     on 2026-10-13, all passed alone) get looked at: waits that depend on frame rate should wait
     for a condition instead.
