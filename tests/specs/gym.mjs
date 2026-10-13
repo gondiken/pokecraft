@@ -4,7 +4,7 @@ import { openGame, newGame, playBattle } from '../helpers.mjs';
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   await newGame(page, 1);
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 18), '18 gyms are placed');
+  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 22), '22 gyms are placed');
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return window.pokecraft.world.gyms.every((g, i) => g.def === GYMS[i]);
@@ -75,8 +75,8 @@ export default async function ({ browser, base, t }) {
   const s = await page.evaluate(() => ({ badges: window.pokecraft.badges, beaten: window.pokecraft.beaten }));
   t.ok(s.badges.includes('rock') && s.beaten.includes('rock:trainer'), 'Boulder Badge awarded');
 
-  // The two newest gyms (needs the Bone and Alien creatures): trainer, then leader, for both.
-  for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer']]) {
+  // Gyms 17-22 (the Saucer Gym's people only come at night, so it is night for it): trainer, then leader.
+  for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer'], ['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {
     await page.evaluate(async gid => {
       const g = window.pokecraft;
       const { makeCreature } = await import('/src/species.js');

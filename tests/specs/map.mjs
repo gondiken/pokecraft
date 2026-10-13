@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForTimeout(1500);
   t.ok(await page.evaluate(() => window.pokecraft.world.get(100, 30, 100) === 11), "an old save's block is still in the same place");
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 18), 'all 18 gyms fit');
+  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 22), 'all 22 gyms fit');
   await page.evaluate(() => document.exitPointerLock());
   await page.waitForTimeout(800);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')));
