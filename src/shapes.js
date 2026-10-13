@@ -2068,7 +2068,229 @@ const SHAPES_SKY = { kite, balloon, skywhale, pinwheel };
 /* ==== end of T9 sky shapes ==== */
 
 /* ==== T9 slime shapes ==== */
-const SHAPES_SLIME = {};
+// Goo helper: makes a part see-through and soft.
+function gooSlime(mesh, opacity = 0.8) {
+  mesh.traverse(o => {
+    if (!o.isMesh) return;
+    o.material.transparent = true;
+    o.material.opacity = opacity;
+    o.material.depthWrite = false;
+  });
+  return mesh;
+}
+
+// A see-through goo box.
+function gooBoxSlime(parent, w, h, d, color, x, y, z, opacity = 0.8) {
+  return gooSlime(box(parent, w, h, d, color, x, y, z), opacity);
+}
+
+// A see-through round goo lump.
+function gooBallSlime(parent, r, color, x, y, z, opacity = 0.8) {
+  const g = ball(parent, r, color, x, y, z);
+  box(g, r * 1.9, r * 1.6, r * 1.9, color).rotation.y = Math.PI / 4;
+  g.children.forEach(c => gooSlime(c, opacity));
+  return g;
+}
+
+// A shiny cherry (red ball with a little stem).
+function cherrySlime(parent, color, x, y, z, s = 1) {
+  ball(parent, 0.09 * s, color, x, y + 0.09 * s, z);
+  box(parent, 0.02 * s, 0.14 * s, 0.02 * s, 0x2a6a2a, x, y + 0.22 * s, z).rotation.z = 0.3;
+  box(parent, 0.04 * s, 0.03 * s, 0.03 * s, 0xffffff, x - 0.03 * s, y + 0.13 * s, z + 0.06 * s);
+}
+
+// A jelly cube with a marble inside (stack = three of them in a tower).
+function gelcube(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const stack = has(m, 'stack');
+  const tiers = stack
+    ? [{ s: 0.7, y: 0, face: false, marble: m.belly }, { s: 0.52, y: 0.7, face: true, marble: m.accent }, { s: 0.36, y: 1.22, face: false, marble: m.dark }]
+    : [{ s: 0.62, y: 0.02, face: true, marble: m.accent }];
+  tiers.forEach((t, i) => {
+    const g = pivot(body, 0, t.y, 0);
+    swing(parts, g, 'z', 0.1, 2.4 + i * 0.7, i * 1.7);
+    swing(parts, g, 'x', 0.07, 3.1 + i * 0.5, i * 0.9);
+    const h = t.s / 2;
+    gooBoxSlime(g, t.s, t.s, t.s, m.body, 0, h, 0, 0.72);
+    gooBoxSlime(g, t.s * 0.82, t.s * 1.04, t.s * 0.82, m.body, 0, h, 0, 0.45);
+    // marble inside
+    ball(g, t.s * 0.17, t.marble, t.s * 0.12, h * 0.8, -t.s * 0.05);
+    box(g, t.s * 0.06, t.s * 0.06, t.s * 0.06, 0xffffff, t.s * 0.14, h * 0.8 + t.s * 0.1, t.s * 0.04);
+    // shine
+    box(g, t.s * 0.05, t.s * 0.28, 0.02, 0xffffff, -t.s * 0.36, h * 1.2, t.s / 2 + 0.01);
+    box(g, t.s * 0.05, t.s * 0.05, 0.02, 0xffffff, -t.s * 0.36, h * 1.75, t.s / 2 + 0.01);
+    if (t.face) {
+      eyes(g, h * 1.15, t.s / 2 + 0.02, t.s * 0.22, t.s * 0.24);
+      box(g, t.s * 0.22, 0.04, 0.03, m.dark, 0, h * 0.78, t.s / 2 + 0.02);
+      box(g, t.s * 0.08, 0.04, 0.03, m.dark, -t.s * 0.14, h * 0.82, t.s / 2 + 0.02);
+      box(g, t.s * 0.08, 0.04, 0.03, m.dark, t.s * 0.14, h * 0.82, t.s / 2 + 0.02);
+      for (const s of [-1, 1]) box(g, t.s * 0.14, t.s * 0.08, 0.02, m.accent, s * t.s * 0.36, h * 0.92, t.s / 2 + 0.02);
+    }
+  });
+  const top = tiers[tiers.length - 1];
+  const topPivot = pivot(body, 0, top.y + top.s, 0);
+  swing(parts, topPivot, 'z', 0.1, 2.4 + (tiers.length - 1) * 0.7, (tiers.length - 1) * 1.7);
+  cherrySlime(topPivot, m.accent, 0, 0, 0, stack ? 0.8 : 1);
+  // wobbly puddle under the cube
+  gooSlime(disc(body, stack ? 0.5 : 0.45, 0.03, m.body, 0, 0.015, 0), 0.5);
+}
+
+// A drop of slime with a curly tip, a puddle, a sliding drip and (for the king) a crown and cape.
+function drip(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  gooSlime(disc(body, 0.62, 0.03, m.body, 0, 0.015, 0), 0.5);
+  gooBoxSlime(body, 0.92, 0.2, 0.84, m.body, 0, 0.1, 0, 0.82);
+  gooBoxSlime(body, 0.74, 0.3, 0.68, m.body, 0, 0.33, 0, 0.8);
+  gooBoxSlime(body, 0.46, 0.26, 0.44, m.body, 0, 0.59, 0, 0.8);
+  gooBoxSlime(body, 0.26, 0.24, 0.26, m.body, 0, 0.8, 0, 0.82);
+  // the curl
+  gooBoxSlime(body, 0.16, 0.2, 0.16, m.body, 0, 1.02, 0, 0.85);
+  gooBoxSlime(body, 0.12, 0.14, 0.16, m.body, 0, 1.17, 0.1, 0.85);
+  gooBoxSlime(body, 0.1, 0.14, 0.12, m.body, 0, 1.08, 0.2, 0.85);
+  glow(box(body, 0.06, 0.06, 0.06, m.accent, 0, 1.0, 0.22), m.accent);
+  // shine and sparkly bubbles inside
+  box(body, 0.06, 0.26, 0.02, 0xffffff, -0.28, 0.4, 0.36);
+  box(body, 0.06, 0.06, 0.02, 0xffffff, -0.28, 0.56, 0.36);
+  for (const [x, y, z, s] of [[0.18, 0.2, -0.1, 0.1], [-0.12, 0.45, -0.1, 0.07], [0.1, 0.62, 0, 0.06]]) {
+    box(body, s, s, s, m.belly, x, y, z);
+  }
+  // face: low and wide
+  eyes(body, 0.38, 0.36, 0.17, 0.16);
+  for (const s of [-1, 1]) box(body, 0.14, 0.08, 0.02, m.accent, s * 0.3, 0.26, 0.36);
+  box(body, 0.2, 0.04, 0.03, m.dark, 0, 0.23, 0.36);
+  box(body, 0.06, 0.04, 0.03, m.dark, -0.12, 0.26, 0.36);
+  box(body, 0.06, 0.04, 0.03, m.dark, 0.12, 0.26, 0.36);
+  // a drip sliding down the side
+  for (const [s, ph] of [[1, 0], [-1, 2.2]]) {
+    const d = pivot(body, s * 0.4, 0.5, 0.05);
+    gooBoxSlime(d, 0.07, 0.22, 0.07, m.body, s * 0.04, -0.1, 0, 0.8);
+    gooBoxSlime(d, 0.1, 0.1, 0.1, m.accent, s * 0.04, -0.26, 0, 0.85);
+    swing(parts, d, 'z', 0.25, 2.2, ph);
+  }
+  if (has(m, 'crown')) {
+    const c = pivot(body, 0, 0.74, 0);
+    box(c, 0.38, 0.08, 0.36, m.accent, 0, 0, 0);
+    for (const [x, z, h] of [[-0.14, 0.12, 0.14], [0.14, 0.12, 0.14], [0, 0.14, 0.2], [-0.14, -0.12, 0.12], [0.14, -0.12, 0.12]]) {
+      box(c, 0.07, h, 0.07, m.accent, x, h / 2 + 0.04, z);
+      glow(box(c, 0.06, 0.06, 0.06, 0xff4a6a, x, h + 0.07, z), 0xff4a6a);
+    }
+    glow(box(c, 0.08, 0.08, 0.04, 0x4ad0ff, 0, 0, 0.19), 0x4ad0ff);
+  }
+  if (has(m, 'cape')) {
+    const c = pivot(body, 0, 0.62, -0.32);
+    swing(parts, c, 'x', 0.1, 1.6);
+    gooBoxSlime(c, 0.74, 0.46, 0.05, m.accent, 0, -0.25, -0.04, 0.85);
+    gooBoxSlime(c, 0.6, 0.2, 0.05, m.accent, 0, -0.56, -0.04, 0.85);
+    box(c, 0.5, 0.07, 0.08, 0xffffff, 0, 0.0, -0.02);
+    for (const x of [-0.2, 0, 0.2]) box(c, 0.06, 0.06, 0.03, 0xffffff, x, -0.3, -0.08);
+  }
+}
+
+// A melty goo puppy (the grown-up one has soft spikes and big ears).
+function slimedog(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  const spiky = has(m, 'spikes');
+  gooBoxSlime(body, 0.5, 0.38, 0.84, m.body, 0, 0.52, -0.02, 0.8);
+  gooBoxSlime(body, 0.42, 0.3, 0.7, m.body, 0, 0.55, -0.02, 0.5);
+  for (const [x, y, z, s] of [[-0.1, 0.78, -0.15, 0.2], [0.12, 0.8, 0.1, 0.18], [0, 0.76, -0.32, 0.16]]) gooBallSlime(body, s / 2, m.body, x, y, z, 0.8);
+  // the belly shows a little bubble
+  box(body, 0.1, 0.1, 0.1, m.belly, 0.05, 0.5, -0.1);
+  box(body, 0.06, 0.06, 0.06, m.belly, -0.1, 0.58, 0.12);
+  // head
+  const head = pivot(body, 0, 0.72, 0.5);
+  parts.head = head;
+  gooBoxSlime(head, 0.5, 0.42, 0.42, m.body, 0, 0, 0, 0.85);
+  gooBoxSlime(head, 0.3, 0.2, 0.2, m.belly, 0, -0.1, 0.28, 0.9);
+  box(head, 0.12, 0.08, 0.06, m.dark, 0, -0.02, 0.4);
+  eyes(head, 0.08, 0.22, 0.14, 0.14);
+  // tongue
+  box(head, 0.1, 0.03, 0.14, m.accent, 0, -0.22, 0.34);
+  box(head, 0.1, 0.05, 0.05, m.accent, 0, -0.2, 0.42);
+  // floppy ears
+  for (const s of [-1, 1]) {
+    const e = pivot(head, s * (spiky ? 0.3 : 0.27), 0.2, 0);
+    const ew = spiky ? 0.16 : 0.12, eh = spiky ? 0.34 : 0.24;
+    gooBoxSlime(e, ew, eh, 0.2, m.body, s * 0.04, -eh / 2, 0, 0.85);
+    gooBoxSlime(e, ew * 0.8, 0.1, 0.2, m.body, s * 0.07, -eh - 0.03, 0, 0.85);
+    swing(parts, e, 'z', 0.18, 2.6, s);
+  }
+  // legs that melt into puddle feet
+  parts.legs = [];
+  [[-0.2, 0.3, 0], [0.2, 0.3, Math.PI], [-0.2, -0.3, Math.PI], [0.2, -0.3, 0]].forEach(([x, z, phase]) => {
+    const leg = pivot(body, x, 0.36, z);
+    gooBoxSlime(leg, 0.16, 0.3, 0.16, m.body, 0, -0.17, 0, 0.85);
+    gooSlime(disc(leg, 0.15, 0.06, m.body, 0, -0.33, 0), 0.8);
+    parts.legs.push({ g: leg, phase });
+  });
+  // drippy tail
+  const tail = pivot(body, 0, 0.62, -0.45);
+  parts.tail = tail;
+  gooBoxSlime(tail, 0.12, 0.12, 0.2, m.body, 0, 0.04, -0.1, 0.85);
+  gooBallSlime(tail, 0.1, m.body, 0, 0.1, -0.24, 0.85);
+  box(tail, 0.05, 0.1, 0.05, m.body, 0, -0.03, -0.24);
+  // drips under the belly
+  for (const [x, z, ph] of [[-0.05, 0.1, 0], [0.08, -0.15, 2]]) {
+    const d = pivot(body, x, 0.34, z);
+    gooBoxSlime(d, 0.05, 0.14, 0.05, m.body, 0, -0.07, 0, 0.85);
+    gooBoxSlime(d, 0.08, 0.08, 0.08, m.body, 0, -0.17, 0, 0.9);
+    swing(parts, d, 'x', 0.3, 2.8, ph);
+  }
+  if (spiky) {
+    for (let k = 0; k < 4; k++) {
+      const sp = pivot(body, 0, 0.74, 0.3 - k * 0.22);
+      gooBoxSlime(sp, 0.1, 0.2 - k * 0.02, 0.1, m.accent, 0, 0.12, 0, 0.9);
+      box(sp, 0.05, 0.08, 0.05, m.accent, 0, 0.26 - k * 0.02, 0);
+      swing(parts, sp, 'z', 0.12, 2 + k * 0.4, k);
+    }
+  }
+}
+
+// A jelly bear made of strawberry gummy.
+function gummy(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  // belly and head
+  gooBallSlime(body, 0.32, m.body, 0, 0.55, 0, 0.82);
+  gooBoxSlime(body, 0.5, 0.4, 0.5, m.belly, 0, 0.52, 0.08, 0.5);
+  const head = pivot(body, 0, 1.0, 0.02);
+  parts.head = head;
+  gooBallSlime(head, 0.28, m.body, 0, 0, 0, 0.82);
+  gooBoxSlime(head, 0.26, 0.2, 0.18, m.belly, 0, -0.08, 0.24, 0.9);
+  box(head, 0.1, 0.07, 0.05, m.dark, 0, -0.01, 0.34);
+  box(head, 0.12, 0.03, 0.03, m.dark, 0, -0.13, 0.34);
+  box(head, 0.04, 0.05, 0.03, m.dark, -0.07, -0.11, 0.34);
+  box(head, 0.04, 0.05, 0.03, m.dark, 0.07, -0.11, 0.34);
+  eyes(head, 0.1, 0.25, 0.13, 0.12);
+  for (const s of [-1, 1]) {
+    box(head, 0.1, 0.06, 0.02, 0xff2a4a, s * 0.2, -0.05, 0.27);
+    gooBallSlime(head, 0.1, m.body, s * 0.22, 0.28, -0.02, 0.85);
+    ball(head, 0.05, m.belly, s * 0.22, 0.28, 0.07);
+  }
+  // shine
+  box(head, 0.05, 0.14, 0.02, 0xffffff, -0.17, 0.12, 0.27);
+  box(body, 0.05, 0.16, 0.02, 0xffffff, -0.2, 0.62, 0.3);
+  // arms
+  parts.arms = [];
+  for (const s of [-1, 1]) {
+    const arm = pivot(body, s * 0.36, 0.7, 0);
+    gooBoxSlime(arm, 0.14, 0.3, 0.14, m.body, s * 0.04, -0.12, 0.02, 0.85);
+    gooBallSlime(arm, 0.09, m.body, s * 0.04, -0.28, 0.02, 0.85);
+    parts.arms.push({ g: arm, phase: s > 0 ? 0 : Math.PI });
+  }
+  // legs
+  parts.legs = [];
+  for (const s of [-1, 1]) {
+    const leg = pivot(body, s * 0.18, 0.28, 0);
+    gooBoxSlime(leg, 0.18, 0.22, 0.2, m.body, 0, -0.1, 0.02, 0.85);
+    gooBoxSlime(leg, 0.2, 0.08, 0.28, m.body, 0, -0.24, 0.05, 0.85);
+    parts.legs.push({ g: leg, phase: s > 0 ? 0 : Math.PI });
+  }
+  swing(parts, body, 'z', 0.06, 3);
+}
+
+const SHAPES_SLIME = { gelcube, drip, slimedog, gummy };
 /* ==== end of T9 slime shapes ==== */
 
 /* ==== T9 light shapes ==== */
