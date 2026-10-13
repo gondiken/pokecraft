@@ -219,7 +219,7 @@ function L(type, second, extra = []) {
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
     : [[1, 'tackle'], [1, T1[type]], [7, 'quickjab'], [10, T3[type]], [13, T2[type]], [19, T3[second]],
        [23, UTIL[type] || 'bodyslam'], [28, T4[type]]];
-  return [...base, ...extra].sort((a, b) => a[0] - b[0]);
+  return [...base, ...extra].filter(([, m]) => m).sort((a, b) => a[0] - b[0]); // no slot for a type = no move
 }
 
 export const SPECIES = {
@@ -1086,7 +1086,7 @@ export const SPECIES = {
   },
   gumbear: {
     name: 'Gumbear', type: 'slime', desc: 'A jelly bear that smells like strawberries. It wobbles when it walks.',
-    base: { hp: 70, atk: 70, def: 65, spd: 45 }, baseXp: 95, catchRate: 0.35, learn: L('slime', 'normal'),
+    base: { hp: 70, atk: 70, def: 65, spd: 45 }, baseXp: 95, catchRate: 0.35, learn: L('slime', 'pixie'),
     model: { shape: 'gummy', scale: 0.85, body: 0xff6a7a, accent: 0xffd8e0, dark: 0x8a2a3a, belly: 0xffb0c0, extras: [] },
   },
   /* ==== end of T9 slime ==== */
