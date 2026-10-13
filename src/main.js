@@ -1193,6 +1193,7 @@ initAccount();
 // Exposed for debugging from the browser console.
 window.pokecraft = game;
 game.sound = sound;
+game.updateGuide = updateGuide;
 game.talkTo = talkTo;
 game.interact = interact;
 game.breakBlock = breakBlock;
