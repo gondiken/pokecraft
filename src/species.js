@@ -1010,6 +1010,44 @@ export const SPECIES = {
   },
 
   /* ==== T9 sky: builder SKY only ==== */
+  kiteling: {
+    name: 'Kiteling', type: 'sky', desc: 'A little diamond kite with a ribbon tail. It giggles when the wind tickles it.',
+    base: { hp: 40, atk: 50, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('sky', 'electric'), flies: true,
+    evolve: { level: 22, into: 'kitegale' },
+    model: { shape: 'kite', scale: 0.75, body: 0x6ab8ff, accent: 0xffd84a, dark: 0x2a4a80, belly: 0xffffff, extras: [] },
+  },
+  kitegale: {
+    name: 'Kitegale', type: 'sky', desc: 'A grand dragon kite. It dances in the strongest winds and never gets its string tangled.',
+    base: { hp: 70, atk: 90, def: 60, spd: 110 }, baseXp: 160, catchRate: 0.12, learn: L('sky', 'electric', [[30, 'jetstream']]), flies: true,
+    model: { shape: 'kite', scale: 1.2, body: 0xe04a4a, accent: 0xffc23d, dark: 0x5a1a1a, belly: 0xfff0d0, extras: ['dragon'] },
+  },
+  balloony: {
+    name: 'Balloony', type: 'sky', desc: 'A tiny hot-air balloon with a picnic basket for feet. It puffs warm air to float higher.',
+    base: { hp: 55, atk: 45, def: 50, spd: 45 }, baseXp: 64, catchRate: 0.45, learn: L('sky', 'fire'), floats: true,
+    evolve: { level: 22, into: 'zeppeluff' },
+    model: { shape: 'balloon', scale: 0.8, body: 0xff9a4a, accent: 0xffffff, dark: 0x8a4a2a, belly: 0xc8a060, extras: [] },
+  },
+  zeppeluff: {
+    name: 'Zeppeluff', type: 'sky', desc: 'A big, fluffy airship. Its little propeller hums a happy tune as it drifts over the hills.',
+    base: { hp: 95, atk: 80, def: 80, spd: 60 }, baseXp: 160, catchRate: 0.12, learn: L('sky', 'fire'), floats: true,
+    model: { shape: 'balloon', scale: 1.1, body: 0xb8a0ff, accent: 0xffe08a, dark: 0x4a3a7a, belly: 0xc8a060, extras: ['blimp'] },
+  },
+  skyfin: {
+    name: 'Skyfin', type: 'sky', desc: 'A baby whale that swims through the clouds. It blows puffs of cloud from its blowhole.',
+    base: { hp: 60, atk: 55, def: 50, spd: 55 }, baseXp: 66, catchRate: 0.4, learn: L('sky', 'water'), flies: true,
+    evolve: { level: 24, into: 'whaloft' },
+    model: { shape: 'skywhale', scale: 0.8, body: 0x7ab8e8, accent: 0xffffff, dark: 0x2a4a7a, belly: 0xe8f4ff, extras: [] },
+  },
+  whaloft: {
+    name: 'Whaloft', type: 'sky', desc: 'A huge whale that sails across the sky. Its song can be heard above the mountains.',
+    base: { hp: 110, atk: 90, def: 80, spd: 55 }, baseXp: 170, catchRate: 0.1, learn: L('sky', 'water'), flies: true,
+    model: { shape: 'skywhale', scale: 1.05, body: 0x4a7ac8, accent: 0xffffff, dark: 0x1a2a5a, belly: 0xd8ecff, extras: ['clouds'] },
+  },
+  pinwhirl: {
+    name: 'Pinwhirl', type: 'sky', desc: 'A pinwheel flower that spins in the breeze. The faster it spins, the happier it is.',
+    base: { hp: 55, atk: 70, def: 55, spd: 80 }, baseXp: 100, catchRate: 0.3, learn: L('sky', 'grass'),
+    model: { shape: 'pinwheel', scale: 0.9, body: 0x6ac850, accent: 0xff6a8a, dark: 0x2a5a2a, belly: 0x6ab8ff, extras: [] },
+  },
   /* ==== end of T9 sky ==== */
 
   /* ==== T9 slime: builder SLIME only ==== */
@@ -1126,6 +1164,10 @@ const SEVENTH_C = {
 
 // T9: Sky, Slime, Light, Paper. One object per type so four builders never edit the same lines.
 const SPAWN_SKY = {
+  peak: [['kiteling', 1.2, 'day'], ['balloony', 1], ['skyfin', 1], ['pinwhirl', 0.8], ['kitegale', 0.2, 'day'], ['zeppeluff', 0.2], ['whaloft', 0.15]],
+  mountain: [['kiteling', 1.2, 'day'], ['balloony', 1, 'day'], ['pinwhirl', 1], ['skyfin', 0.8], ['kitegale', 0.15, 'day']],
+  plains: [['kiteling', 0.8, 'day'], ['pinwhirl', 0.6, 'day'], ['balloony', 0.6, 'day']],
+  beach: [['kiteling', 0.8, 'day'], ['skyfin', 0.6]],
 };
 
 const SPAWN_SLIME = {
