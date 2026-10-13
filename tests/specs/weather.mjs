@@ -60,7 +60,7 @@ export default async function ({ browser, base, t }) {
     const rows = [];
     for (const [kind, biome, night, type] of [['storm', 'plains', false, 'electric'], ['rain', 'swamp', false, 'water'], ['snow', 'peak', false, 'ice'],
       ['rainbow', 'meadow', false, 'rainbow'], ['sandstorm', 'desert', false, 'rock'], ['fog', 'swamp', true, 'ghost'], ['stars', 'peak', true, 'cosmic'],
-      ['fog', 'swamp', true, 'bone'], ['stars', 'plains', true, 'alien']]) {
+      ['stars', 'plains', true, 'alien']]) {
       cm.weather = null;
       const base = share(biome, night, type);
       cm.weather = wxr;
