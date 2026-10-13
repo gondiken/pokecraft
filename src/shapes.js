@@ -1840,7 +1840,217 @@ const SHAPES_SLIME = {};
 /* ==== end of T9 slime shapes ==== */
 
 /* ==== T9 light shapes ==== */
-const SHAPES_LIGHT = {};
+const seeLight = (mesh, opacity) => { mesh.material.transparent = true; mesh.material.opacity = opacity; mesh.material.depthWrite = false; return mesh; };
+
+// A fox with a little sun on the end of its tail (Solvixen also gets a spinning sunray mane).
+function sunfoxLight(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.46, 0.4, 0.8, m.body, 0, 0.5, 0);
+  box(body, 0.34, 0.2, 0.62, m.belly, 0, 0.36, 0.02);
+  parts.legs = [];
+  for (const [x, z, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(body, x * 0.15, 0.32, z * 0.26);
+    box(leg, 0.13, 0.32, 0.14, m.dark, 0, -0.16, 0);
+    box(leg, 0.15, 0.05, 0.18, m.belly, 0, -0.3, 0.02);
+    parts.legs.push({ g: leg, phase });
+  }
+  const head = pivot(body, 0, 0.72, 0.4);
+  parts.head = head;
+  box(head, 0.42, 0.34, 0.36, m.body, 0, 0, 0.04);
+  box(head, 0.26, 0.17, 0.2, m.belly, 0, -0.08, 0.26);
+  box(head, 0.09, 0.07, 0.05, 0x2a2a2a, 0, -0.03, 0.37);
+  box(head, 0.1, 0.03, 0.03, 0x2a2a2a, 0, -0.14, 0.36);
+  eyes(head, 0.06, 0.225, 0.12, 0.11);
+  for (const s of [-1, 1]) {
+    box(head, 0.06, 0.04, 0.02, 0xff9a9a, s * 0.19, -0.05, 0.225);
+    box(head, 0.12, 0.2, 0.08, m.body, s * 0.14, 0.26, 0);
+    box(head, 0.06, 0.13, 0.05, m.dark, s * 0.14, 0.24, 0.035);
+  }
+  glow(box(head, 0.1, 0.1, 0.04, m.accent, 0, 0.2, 0.185), m.accent);
+  if (has(m, 'mane')) {
+    const ring = pivot(body, 0, 0.74, 0.34);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      const ray = glow(box(ring, 0.12, 0.24, 0.1, m.accent, 0, 0, 0), m.accent);
+      ray.position.set(Math.sin(a) * 0.36, Math.cos(a) * 0.36, -0.12);
+      ray.rotation.z = -a;
+    }
+    spin(parts, ring, 'z', 0.5);
+  }
+  const tail = pivot(body, 0, 0.58, -0.4);
+  parts.tail = tail;
+  const long = has(m, 'mane') ? 1.05 : 1;
+  box(tail, 0.2, 0.2, 0.4 * long, m.body, 0, 0.08, -0.2 * long);
+  box(tail, 0.12, 0.12, 0.12, m.belly, 0, 0.08, -0.46 * long);
+  const sun = pivot(tail, 0, 0.1, -0.58 * long);
+  glow(box(sun, 0.22, 0.22, 0.22, m.accent, 0, 0, 0), m.accent);
+  glow(box(sun, 0.12, 0.12, 0.24, 0xffffff, 0, 0, 0), 0xffffff);
+  for (let k = 0; k < 6; k++) {
+    const a = k * Math.PI / 3;
+    const ray = glow(box(sun, 0.07, 0.16, 0.07, m.accent, 0, 0, 0), m.accent);
+    ray.position.set(Math.sin(a) * 0.2, Math.cos(a) * 0.2, 0);
+    ray.rotation.z = -a;
+  }
+  spin(parts, sun, 'z', 1.6);
+}
+
+// A little lighthouse on two feet, with a lamp and a turning beam.
+function lighthouseLight(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const big = has(m, 'beam');
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.17, 0.14, 0.04);
+    box(leg, 0.2, 0.14, 0.3, m.dark, 0, -0.07, 0.05);
+    parts.legs.push({ g: leg, phase });
+  }
+  const rows = [[0.7, m.body], [0.62, m.accent], [0.54, m.body], [0.47, m.accent]];
+  let y = 0.14;
+  const ys = [];
+  for (const [w, c] of rows) { box(body, w, 0.24, w, c, 0, y + 0.12, 0); ys.push(y + 0.12); y += 0.24; }
+  eyes(body, ys[1] + 0.03, 0.315, 0.12, 0.12);
+  for (const s of [-1, 1]) box(body, 0.07, 0.05, 0.02, 0xff9a9a, s * 0.21, ys[1] - 0.06, 0.315);
+  box(body, 0.14, 0.04, 0.02, 0x2a2a2a, 0, ys[1] - 0.08, 0.315);
+  if (has(m, 'gallery')) {
+    box(body, 0.14, 0.26, 0.04, m.dark, 0, 0.27, 0.355);
+    box(body, 0.78, 0.05, 0.78, m.dark, 0, y + 0.02, 0);
+    for (const s of [-1, 1]) { box(body, 0.78, 0.12, 0.04, m.dark, 0, y + 0.1, s * 0.37); box(body, 0.04, 0.12, 0.78, m.dark, s * 0.37, y + 0.1, 0); }
+  } else box(body, 0.58, 0.05, 0.58, m.dark, 0, y + 0.02, 0);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(body, s * 0.36, 0.5, 0.0);
+    box(arm, 0.1, 0.3, 0.12, m.body, s * 0.04, -0.12, 0);
+    parts.arms.push({ g: arm, phase });
+  }
+  const top = y + 0.05;
+  seeLight(box(body, 0.4, 0.34, 0.4, 0xdff6ff, 0, top + 0.17, 0), 0.35);
+  parts.tip = glow(box(body, 0.2, 0.2, 0.2, m.belly, 0, top + 0.17, 0), m.belly);
+  box(body, 0.5, 0.07, 0.5, m.dark, 0, top + 0.37, 0);
+  box(body, 0.34, 0.1, 0.34, m.dark, 0, top + 0.45, 0);
+  box(body, 0.1, 0.1, 0.1, m.dark, 0, top + 0.55, 0);
+  const beam = pivot(body, 0, top + 0.17, 0);
+  const len = big ? 1.0 : 0.8;
+  glow(seeLight(box(beam, 0.12, 0.12, len * 2, m.belly, 0, 0, 0), 0.6), m.belly);
+  glow(seeLight(box(beam, 0.07, 0.07, len * 2, 0xffffff, 0, 0, 0), 0.5), 0xffffff);
+  spin(parts, beam, 'y', 1.8);
+}
+
+// A fluffy chick (Sunrooster: a grown-up rooster) with a half-sun comb.
+function roosterLight(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const big = has(m, 'tailfan');
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.14, 0.3, 0.02);
+    box(leg, 0.06, 0.3, 0.06, m.accent, 0, -0.15, 0);
+    for (const t of [-1, 0, 1]) box(leg, 0.04, 0.04, 0.16, m.accent, t * 0.06, -0.29, 0.06).rotation.y = t * 0.3;
+    parts.legs.push({ g: leg, phase });
+  }
+  box(body, 0.62, 0.5, 0.66, m.body, 0, 0.55, 0);
+  box(body, 0.5, 0.2, 0.5, m.belly, 0, 0.4, 0.1);
+  box(body, 0.5, 0.2, 0.3, m.body, 0, 0.88, 0.05);
+  const head = pivot(body, 0, 0.98, 0.18);
+  parts.head = head;
+  box(head, 0.4, 0.36, 0.38, m.body, 0, 0.1, 0.05);
+  eyes(head, 0.14, 0.245, 0.12, 0.12);
+  for (const s of [-1, 1]) box(head, 0.07, 0.05, 0.02, 0xff9a9a, s * 0.19, 0.04, 0.245);
+  box(head, 0.16, 0.08, 0.14, m.accent, 0, 0.06, 0.3);
+  box(head, 0.12, 0.06, 0.12, m.accent, 0, 0.0, 0.3);
+  box(head, 0.06, 0.12, 0.05, 0xe03a3a, 0, -0.08, 0.28);
+  // half-sun comb: a glowing semi-disc with rays that sway
+  const sunCol = big ? 0xff8a2a : 0xffc84a;
+  const comb = pivot(head, 0, 0.28, 0.02);
+  glow(box(comb, 0.3, 0.08, 0.12, sunCol, 0, 0.04, 0), sunCol);
+  glow(box(comb, 0.2, 0.08, 0.12, 0xffe680, 0, 0.12, 0), 0xffe680);
+  const rays = pivot(comb, 0, 0.14, 0);
+  for (let k = 0; k < 5; k++) {
+    const d = k - 2;
+    const r = glow(box(rays, 0.06, 0.14, 0.06, sunCol, d * 0.13, 0.04 - Math.abs(d) * 0.03, 0), sunCol);
+    r.rotation.z = -d * 0.4;
+  }
+  swing(parts, rays, 'z', 0.1, 3);
+  parts.wings = [];
+  for (const s of [-1, 1]) {
+    const w = pivot(body, s * 0.33, 0.62, 0);
+    box(w, 0.1, 0.34, 0.4, m.body, s * 0.05, -0.12, 0);
+    box(w, 0.08, 0.14, 0.34, m.belly, s * 0.07, -0.3, 0);
+    parts.wings.push({ g: w, s, lift: 0 });
+  }
+  if (!big) {
+    box(body, 0.24, 0.3, 0.14, m.body, 0, 0.68, -0.38).rotation.x = -0.4;
+    box(body, 0.12, 0.2, 0.1, m.belly, 0, 0.8, -0.44).rotation.x = -0.4;
+  } else {
+    const fan = pivot(body, 0, 0.7, -0.34);
+    fan.rotation.x = -0.5;
+    const cols = [0xe03a2a, 0xff6a2a, 0xffa030, 0xffc84a, 0xffe680];
+    cols.forEach((c, k) => {
+      const lean = pivot(fan, 0, 0, 0);
+      lean.rotation.z = (k - 2) * 0.42;
+      const f = pivot(lean, 0, 0, 0);
+      glow(box(f, 0.14, 0.7, 0.07, c, 0, 0.36, 0), c);
+      glow(box(f, 0.08, 0.14, 0.08, 0xfff6c0, 0, 0.72, 0), 0xfff6c0);
+      swing(parts, f, 'x', 0.12, 2 + k * 0.3, k);
+    });
+  }
+}
+
+// A disco mirror ball: spinning tiles, a face that stays put, a dancing little body.
+function mirrorballLight(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const ballG = pivot(body, 0, 0.55, 0);
+  box(body, 0.05, 0.14, 0.05, m.dark, 0, 1.03, 0);
+  box(body, 0.16, 0.04, 0.04, m.dark, 0, 1.1, 0);
+  const greys = [0xd8e0e8, 0xf0f4f8, 0xbcc8d4, 0xe4eaf0];
+  const spots = [0xff8ad8, 0x7ad8ff, 0xffe07a];
+  box(ballG, 0.5, 0.5, 0.5, 0x8a94a4, 0, 0, 0);
+  let n = 0;
+  for (const [y, r, count] of [[0.3, 0.3, 8], [0.1, 0.37, 10], [-0.1, 0.37, 10], [-0.3, 0.3, 8]]) {
+    for (let k = 0; k < count; k++) {
+      const a = k * Math.PI * 2 / count + (y === 0 ? 0 : 0.3);
+      const lit = (n % 4) === 2;
+      const tile = box(ballG, 0.2, 0.22, 0.07, lit ? spots[n % 3] : greys[n % 4], Math.sin(a) * r, y, Math.cos(a) * r);
+      tile.rotation.y = a;
+      if (lit) glow(tile, spots[n % 3]);
+      n++;
+    }
+  }
+  box(ballG, 0.3, 0.07, 0.3, greys[1], 0, 0.42, 0);
+  box(ballG, 0.3, 0.07, 0.3, greys[2], 0, -0.42, 0);
+  spin(parts, ballG, 'y', 0.9);
+  // sparkles circling the ball
+  const sp = pivot(body, 0, 0.55, 0);
+  for (const [x, y, z, c] of [[0.52, 0.3, 0.1, 0xffffff], [-0.52, -0.1, 0.1, 0xffe07a], [0.0, 0.55, 0.3, 0x7ad8ff]]) {
+    glow(box(sp, 0.07, 0.07, 0.07, c, x, y, z), c);
+  }
+  swing(parts, sp, 'y', 0.9, 2.2);
+  // face, on its own so it does not spin
+  const face = pivot(body, 0, 0.55, 0.4);
+  box(face, 0.34, 0.26, 0.05, 0xf4f4fa, 0, 0, 0.02);
+  eyes(face, 0.05, 0.06, 0.08, 0.1);
+  for (const s of [-1, 1]) box(face, 0.06, 0.04, 0.02, 0xff9ad8, s * 0.14, -0.04, 0.055);
+  box(face, 0.14, 0.05, 0.02, 0x2a2a2a, 0, -0.06, 0.055);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const a = pivot(body, s * 0.5, 0.5, 0.05);
+    box(a, 0.1, 0.3, 0.1, m.dark, s * 0.05, -0.1, 0.03);
+    box(a, 0.12, 0.1, 0.12, greys[1], s * 0.06, -0.28, 0.03);
+    parts.arms.push({ g: a, phase });
+  }
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const l = pivot(body, s * 0.14, 0.2, 0);
+    box(l, 0.1, 0.2, 0.1, m.dark, 0, -0.1, 0);
+    box(l, 0.16, 0.05, 0.22, m.accent, 0, -0.2, 0.04);
+    parts.legs.push({ g: l, phase });
+  }
+}
+
+const SHAPES_LIGHT = { sunfox: sunfoxLight, lighthouse: lighthouseLight, rooster: roosterLight, mirrorball: mirrorballLight };
 /* ==== end of T9 light shapes ==== */
 
 /* ==== T9 paper shapes ==== */
