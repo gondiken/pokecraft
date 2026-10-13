@@ -200,7 +200,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11) are done; next is wave 6 (T12–T15: bug fixes, storage box, night gyms, cleanup), then the backlog. Read it before
+  and the backlog). All waves (T1–T11) are done; next is wave 6 (T12–T15: bug fixes, storage box, night gyms, cleanup), then wave 7 (T16–T19: bigger map, homes, Cozy/Treasure/Cyber types and gyms), then the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
