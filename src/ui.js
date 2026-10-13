@@ -5,6 +5,10 @@ import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, 
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
 
+const BOX_SORT_KEY = 'pokecraft-box-sort';
+const BOX_SORTS = [['newest', 'Newest'], ['level', 'Level'], ['name', 'Name'], ['type', 'Type']];
+const TYPE_ORDER = Object.keys(TYPE_COLORS);
+
 let portraitRenderer = null;
 const portraitCache = new Map();
 
@@ -55,6 +59,14 @@ export class UI {
     this.blocksPanel = document.getElementById('blocks');
     this.bookPanel = document.getElementById('book');
     this.slots = [];
+    // Storage box view: the sort is remembered on this device, the type filter is not.
+    // Both are only for showing: game.box keeps its order, so saves don't change.
+    this.boxSort = 'newest';
+    try { const v = localStorage.getItem(BOX_SORT_KEY); if (BOX_SORTS.some(([k]) => k === v)) this.boxSort = v; } catch { /* ignore */ }
+    this.boxType = 'all';
+    this.confirmBox = document.getElementById('box-confirm');
+    document.getElementById('box-confirm-no').addEventListener('click', e => { e.stopPropagation(); this.closeConfirm(); });
+    document.getElementById('box-confirm-yes').addEventListener('click', e => { e.stopPropagation(); this.confirmYes?.(); });
   }
 
   // The hotbar shows game.hotbar. Tapping the selected slot again opens the Blocks panel.
@@ -151,8 +163,10 @@ export class UI {
     if (inParty) {
       if (i > 0) btns.push(el('button', { onclick: () => { g.party.unshift(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'Make lead'));
       if (g.party.length > 1) btns.push(el('button', { onclick: () => { g.box.push(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'To box'));
-    } else if (g.party.length < 6) {
-      btns.push(el('button', { onclick: () => { g.party.push(...g.box.splice(i, 1)); this.refreshPanel(); } }, 'To team'));
+    } else {
+      // i is the real index in game.box (the box view may be sorted or filtered).
+      if (g.party.length < 6) btns.push(el('button', { onclick: () => { g.party.push(...g.box.splice(i, 1)); this.refreshPanel(); } }, 'To team'));
+      btns.push(el('button', { class: 'letgo', onclick: () => this.askLetGo(c) }, 'Let go'));
     }
     return el('div', { class: `mon${inParty && i === 0 ? ' lead' : ''}` },
       el('div', { class: 'top' },
@@ -175,11 +189,74 @@ export class UI {
         got ? gym.badge : `${gym.name} (${gym.type})`);
     }));
     document.getElementById('party-list').replaceChildren(...g.party.map((c, i) => this.monCard(c, i, true)));
-    const box = document.getElementById('box-list');
-    box.replaceChildren(...(g.box.length
-      ? g.box.map((c, i) => this.monCard(c, i, false))
-      : [el('div', { class: 'empty' }, 'Empty. Catch more than 6 creatures and the extras land here.')]));
+    this.renderBox();
     this.renderHud();
+  }
+
+  // The storage box: sort buttons, type chips (only types in the box, with a count) and the cards.
+  renderBox() {
+    const g = this.game;
+    const counts = {};
+    for (const c of g.box) { const ty = SPECIES[c.species].type; counts[ty] = (counts[ty] || 0) + 1; }
+    if (this.boxType !== 'all' && !counts[this.boxType]) this.boxType = 'all';
+    document.getElementById('box-title').textContent = g.box.length ? `Storage Box (${g.box.length})` : 'Storage Box';
+    const tools = document.getElementById('box-tools');
+    if (g.box.length > 1) {
+      const sortBtn = ([key, label]) => el('button', {
+        class: key === this.boxSort ? 'sel' : '', 'data-sort': key,
+        onclick: () => {
+          this.boxSort = key;
+          try { localStorage.setItem(BOX_SORT_KEY, key); } catch { /* ignore */ }
+          this.renderBox();
+        },
+      }, label);
+      const chip = (type, label, color) => el('button', {
+        class: `chip${type === this.boxType ? ' sel' : ''}`, 'data-type': type, style: `background:${color}`,
+        onclick: () => { this.boxType = type; this.renderBox(); },
+      }, label);
+      tools.replaceChildren(
+        el('div', { class: 'row' }, el('span', { class: 'lbl' }, 'Sort:'), ...BOX_SORTS.map(sortBtn)),
+        el('div', { class: 'row' }, chip('all', `All ${g.box.length}`, '#c8ccd8'),
+          ...TYPE_ORDER.filter(ty => counts[ty]).map(ty => chip(ty, `${ty} ${counts[ty]}`, TYPE_COLORS[ty]))));
+    } else tools.replaceChildren();
+
+    let list = g.box.map((c, i) => ({ c, i, sp: SPECIES[c.species] }));
+    if (this.boxType !== 'all') list = list.filter(e => e.sp.type === this.boxType);
+    const byName = (a, b) => a.sp.name.localeCompare(b.sp.name);
+    const sorts = {
+      newest: (a, b) => b.i - a.i,
+      level: (a, b) => b.c.level - a.c.level || byName(a, b),
+      name: (a, b) => byName(a, b) || b.c.level - a.c.level,
+      type: (a, b) => TYPE_ORDER.indexOf(a.sp.type) - TYPE_ORDER.indexOf(b.sp.type) || b.c.level - a.c.level || byName(a, b),
+    };
+    list.sort(sorts[this.boxSort] || sorts.newest);
+    document.getElementById('box-list').replaceChildren(...(list.length
+      ? list.map(e => this.monCard(e.c, e.i, false))
+      : [el('div', { class: 'empty' }, 'Empty. Catch more than 6 creatures and the extras land here.')]));
+  }
+
+  // "Let go" on a box card: ask first, in big friendly words. The Creature Book keeps it as caught.
+  askLetGo(c) {
+    const name = SPECIES[c.species].name;
+    document.getElementById('box-confirm-text').replaceChildren(
+      el('img', { src: portrait(c.species, 100, 86), width: 100, height: 86, alt: '' }),
+      `Say goodbye to ${name} (Lv ${c.level})? It goes back to the wild.`);
+    this.confirmYes = () => {
+      const g = this.game;
+      const i = g.box.indexOf(c);
+      this.closeConfirm();
+      if (i < 0) return;
+      g.box.splice(i, 1);
+      this.toast(`Bye bye, ${name}! It went back to the wild.`);
+      this.refreshPanel();
+      g.save?.();
+    };
+    this.confirmBox.classList.remove('hidden');
+  }
+
+  closeConfirm() {
+    this.confirmYes = null;
+    this.confirmBox.classList.add('hidden');
   }
 
   // The team panel or the Blocks panel.
@@ -197,6 +274,7 @@ export class UI {
   }
 
   closePanel() {
+    this.closeConfirm();
     this.partyPanel.classList.add('hidden');
     this.blocksPanel.classList.add('hidden');
     this.bookPanel.classList.add('hidden');

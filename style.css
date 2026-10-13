@@ -285,6 +285,23 @@ body.touch #b-log { font-size: 24px; }
   body.touch #battle.asking #b-ally { bottom: 388px; }
 }
 body.touch .mon .btns button { font-size: 10px; padding: 10px 12px; }
+/* storage box: sort buttons, type chips and the "let it go?" question */
+#box-tools { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+#box-tools .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#box-tools .lbl { color: var(--muted); font-size: 20px; margin-right: 2px; }
+#box-tools button { font-size: 9px; padding: 7px 9px; }
+#box-tools button.sel { border-color: var(--accent); }
+#box-tools .chip { color: #14161e; text-transform: uppercase; }
+body.touch #box-tools button { font-size: 11px; min-height: 44px; padding: 8px 12px; }
+.mon .btns button.letgo { background: #8a3a3a; }
+#box-confirm {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 22; text-align: center;
+  background: #1b1d26; border: 4px solid var(--accent); padding: 18px 22px; font-size: 26px;
+  width: min(460px, calc(100vw - 32px)); box-shadow: 0 6px 0 rgba(0,0,0,.4);
+}
+#box-confirm img { display: block; margin: 0 auto 6px; }
+#box-confirm p { margin: 14px 0 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#box-confirm button { font-size: 12px; min-height: 48px; padding: 10px 14px; }
 #party-close { font-size: 12px; }
 
 @media (max-width: 900px) {
