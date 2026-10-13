@@ -168,7 +168,7 @@ export default async function ({ browser, base, t }) {
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p18 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
   t.ok(p18.toasts.includes('New gyms have appeared') && p18.toasts.includes('Sunbeam Gym') && p18.toasts.includes('Cloud Gym'),
-    `the 18-badge player is told about the new gyms (${p18.toasts})`);
+    `the 18-badge player is told about the new gyms`);
   t.ok(p18.guide.includes('Sunbeam Gym'), `the arrow points at the Sunbeam Gym (${p18.guide})`);
   await page.evaluate(() => {
     const g = window.pokecraft, tw = g.world.tower, [fx, fz] = tw.front;
