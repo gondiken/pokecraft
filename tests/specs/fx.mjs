@@ -186,7 +186,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(!cover.noTravel.length && !cover.noImpact.length && !cover.noColors.length,
     `all ${cover.count} types have a travel, impact and colours (missing ${cover.noTravel} ${cover.noImpact} ${cover.noColors})`);
-  t.ok(!cover.noSig.length && cover.sigCount === 7, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
+  t.ok(!cover.noSig.length && cover.sigCount === 11, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
   t.ok(!cover.noSound.length && !cover.soundErrors.length, `every type has a quiet fx sound that plays without errors (missing ${cover.noSound} ${cover.soundErrors})`);
 
   // 7. Contact sheet: a frozen frame of some attacks, saved as pictures and as one sheet.

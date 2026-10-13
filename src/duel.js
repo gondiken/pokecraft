@@ -5,7 +5,7 @@
 import { sound } from './sound.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
-const VERSION = 4; // bump when the battle rules change, so players on different versions don't battle
+const VERSION = 5; // bump when the battle rules change, so players on different versions don't battle
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves] }));

@@ -1,4 +1,4 @@
-// T4b: each type's 7th creature (19 in all). Run one group with T4B_GROUP=A|B|C, or all of them.
+// T4b: each type's 7th creature (19 in all; Puzzlet is Mind's, Origrane moved to Paper in T9). Run one group with T4B_GROUP=A|B|C, or all of them.
 // Checks data, spawns, moves, the model (size, idle animation) and saves portraits to
 // tests/screenshots/seventh-creatures[-X].png and creature-<id>.png.
 import fs from 'node:fs';
@@ -7,7 +7,7 @@ import { openGame, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const GROUPS = { A: ['stitchums', 'waxwobble', 'jellume', 'bonzoise', 'wattwink', 'amethump', 'flurrydome'],
-  B: ['twirlshell', 'lanterboo', 'origrane', 'tickatin', 'gurglepot', 'cuppix'],
+  B: ['twirlshell', 'lanterboo', 'puzzlet', 'tickatin', 'gurglepot', 'cuppix'],
   C: ['nimbrake', 'chromacurl', 'voidle', 'clawdio', 'finnibone', 'zorbit'] };
 const OLD_SHAPES = ['quad', 'blob', 'biped', 'bird', 'serpent', 'bug', 'guardian', 'butterfly', 'moth', 'star', 'robe', 'hopper',
   'planet', 'comet', 'cloud', 'tall', 'squid', 'bat', 'drum', 'ape', 'bell', 'armadillo', 'wyvern', 'fish', 'nut', 'drone', 'wisp',
@@ -97,7 +97,7 @@ export default async function ({ browser, base, t }) {
         S.disposeModel(m);
       } catch (e) { bad(id, `model failed: ${e.message}`); }
     }
-    out.fullTypes = full ? Object.keys(S.TYPE_COLORS) : null;
+    out.fullTypes = full ? ['normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost', 'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien'] : null;
     return out;
   }, { ids, OLD_SHAPES, full: !group });
 
@@ -105,7 +105,7 @@ export default async function ({ browser, base, t }) {
     t.ok(false, `species exist (missing: ${r.missing.join(', ')})`);
   } else {
     t.ok(new Set(r.types).size === r.types.length, `one creature per type (${r.types.join(', ')})`);
-    if (r.fullTypes) t.ok(r.fullTypes.length === 19 && r.fullTypes.every(x => r.types.includes(x)), `all 19 types covered (${r.fullTypes.length} in TYPE_COLORS)`);
+    if (r.fullTypes) t.ok(r.fullTypes.length === 19 && r.fullTypes.every(x => r.types.includes(x)), `all 19 types covered (${r.fullTypes.length} original types)`);
     t.ok(!r.problems.length, `all ${ids.length} creatures pass the checks ${r.problems.join('; ')}`);
     if (ids.includes('chromacurl')) t.ok(r.hue > 0.1, `Chromacurl changes colour (hue moved ${r.hue?.toFixed(2)})`);
   }

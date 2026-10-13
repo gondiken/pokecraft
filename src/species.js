@@ -9,32 +9,40 @@ export const TYPE_COLORS = {
   rainbow: 'linear-gradient(90deg,#ff7a7a,#ffd36b,#8fe388,#7ab8ff,#c99bff)',
   cosmic: 'linear-gradient(90deg,#8e9bff,#e7c6ff)', sound: '#4fd8c4',
   bone: '#e9e0c9', alien: 'linear-gradient(90deg,#8dff6a,#b98cff)',
+  sky: 'linear-gradient(180deg,#8fd0ff,#e8f6ff)', slime: 'linear-gradient(180deg,#b4f56a,#52d08a)',
+  light: 'radial-gradient(circle,#ffffff 20%,#ffe27a)',
+  paper: 'repeating-linear-gradient(180deg,#fffdf6 0 4px,#cfe0f7 4px 5px)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
-  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5 },
-  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5 },
+  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5 },
+  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2 },
   water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
-  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5 },
-  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5 },
-  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5 },
-  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5 },
-  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5 },
+  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5 },
+  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5 },
+  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2 },
+  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5 },
   ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
   // New types
   mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5 },
-  metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5 },
-  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0 },
-  pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5 },
+  metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5, paper: 2 },
+  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2 },
+  pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5, light: 0.5 },
   drake: { drake: 2, bone: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
   // Cosmic beats sound, sound beats mind, mind beats cosmic.
-  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5 },
+  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5, light: 2 },
   sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5 },
   // Bone and Alien: skeletons are not scared of ghosts or aliens; aliens love normal creatures' surprise.
   bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
+  // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
+  sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
+  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5 },
+  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5 },
+  paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -132,6 +140,26 @@ export const MOVES = {
   gravityflip: mv('Gravity Flip', 'alien', 90, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
   mothership: mv('Mothership', 'alien', 90, 1, { sure: true, sig: true }),
   bigbong: mv('Big Bong', 'sound', 85, 0.9, { fx: { kind: 'sleep', chance: 0.3 }, sig: true }),
+  breezepuff: mv('Breeze Puff', 'sky', 40, 1),
+  swoop: mv('Swoop', 'sky', 50, 1, { priority: 1 }),
+  cloudburst: mv('Cloud Burst', 'sky', 75, 0.9),
+  tornadospin: mv('Tornado Spin', 'sky', 95, 0.85, { fx: { kind: 'flinch', chance: 0.2 } }),
+  jetstream: mv('Jet Stream', 'sky', 80, 1, { priority: 1, sig: true }),
+  slimeshot: mv('Slime Shot', 'slime', 40, 1),
+  stickygoo: mv('Sticky Goo', 'slime', 55, 1, { fx: { kind: 'lower', stat: 'spd', chance: 0.5 } }),
+  slimeslam: mv('Slime Slam', 'slime', 75, 0.9),
+  goopatch: mv('Goo Patch', 'slime', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
+  megasplat: mv('Mega Splat', 'slime', 90, 0.95, { fx: { kind: 'lower', stat: 'spd', chance: 0.3 }, sig: true }),
+  glint: mv('Glint', 'light', 40, 1),
+  flashbulb: mv('Flash Bulb', 'light', 55, 1, { fx: { kind: 'flinch', chance: 0.3 } }),
+  sunbeam: mv('Sunbeam', 'light', 75, 0.9),
+  sunburst: mv('Sun Burst', 'light', 100, 0.85),
+  beaconbeam: mv('Beacon Beam', 'light', 90, 1, { sure: true, sig: true }),
+  paperflick: mv('Paper Flick', 'paper', 40, 1),
+  confetti: mv('Confetti', 'paper', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  foldslam: mv('Fold Slam', 'paper', 75, 0.9),
+  inksplat: mv('Ink Splat', 'paper', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
+  thousandcranes: mv('Thousand Cranes', 'paper', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
 };
 
 // Short, kid-friendly words for what a move does. Used on battle buttons, the forget prompt and the Book.
@@ -163,25 +191,29 @@ const T1 = {
   fire: 'ember', water: 'bubble', grass: 'leafcut', electric: 'spark', rock: 'pebbleshot', ice: 'icebreath', bug: 'bugbite',
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
   cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
+  sky: 'breezepuff', slime: 'slimeshot', light: 'glint', paper: 'paperflick',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
   cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
+  sky: 'cloudburst', slime: 'slimeslam', light: 'sunbeam', paper: 'foldslam',
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
+  sky: 'swoop', slime: 'stickygoo', light: 'flashbulb', paper: 'confetti',
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
   ice: 'glacierslam', bug: 'silkwrap', ghost: 'gloomwave', mind: 'deepfocus', metal: 'ironwall', toxic: 'stinkbomb',
   pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
+  sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
 };
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
-  ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup' };
+  ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -845,8 +877,8 @@ export const SPECIES = {
     model: { shape: 'lantern', scale: 0.8, body: 0xffe0a0, accent: 0xffa84a, dark: 0x5a3a6a, belly: 0xfff4d8, extras: [] },
   },
   origrane: {
-    name: 'Origrane', type: 'mind', desc: 'A paper bird folded by a wish. It thinks so hard that its forehead glows.',
-    base: { hp: 50, atk: 70, def: 50, spd: 85 }, baseXp: 100, catchRate: 0.3, learn: L('mind', 'grass'), flies: true,
+    name: 'Origrane', type: 'paper', desc: 'A paper bird folded by a wish. It thinks so hard that its forehead glows.',
+    base: { hp: 50, atk: 70, def: 50, spd: 85 }, baseXp: 100, catchRate: 0.3, learn: L('paper', 'mind', [[30, 'thousandcranes']]), flies: true,
     model: { shape: 'crane', scale: 1.15, body: 0xfff4f4, accent: 0xf0386a, dark: 0xd8708f, belly: 0xffd0dc, extras: [] },
   },
   tickatin: {
@@ -976,6 +1008,18 @@ export const SPECIES = {
     base: { hp: 90, atk: 90, def: 85, spd: 75 }, baseXp: 165, catchRate: 0.12, learn: L('alien', 'toxic'),
     model: { shape: 'tripod', scale: 1.1, body: 0x8a5ad0, accent: 0x9dff7a, dark: 0x4a2a7a, belly: 0xc8b0f0, extras: ['long'] },
   },
+
+  /* ==== T9 sky: builder SKY only ==== */
+  /* ==== end of T9 sky ==== */
+
+  /* ==== T9 slime: builder SLIME only ==== */
+  /* ==== end of T9 slime ==== */
+
+  /* ==== T9 light: builder LIGHT only ==== */
+  /* ==== end of T9 light ==== */
+
+  /* ==== T9 paper (+ Puzzlet, mind): builder PAPER only ==== */
+  /* ==== end of T9 paper ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1063,9 +1107,8 @@ const SEVENTH_B = {
   forest: [['twirlshell', 1], ['lanterboo', 0.8, 'night'], ['gurglepot', 0.6]],
   swamp: [['twirlshell', 1], ['lanterboo', 1, 'night'], ['gurglepot', 1.2]],
   cave: [['lanterboo', 0.6], ['tickatin', 0.6]],
-  plains: [['origrane', 0.6, 'day']],
-  meadow: [['origrane', 0.8, 'day'], ['cuppix', 1, 'day']],
-  mountain: [['origrane', 0.4], ['tickatin', 1]],
+  meadow: [['cuppix', 1, 'day']],
+  mountain: [['tickatin', 1]],
   beach: [['tickatin', 0.4]],
 };
 
@@ -1081,7 +1124,24 @@ const SEVENTH_C = {
   plains: [['zorbit', 0.6, 'night']],
 };
 
-for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+// T9: Sky, Slime, Light, Paper. One object per type so four builders never edit the same lines.
+const SPAWN_SKY = {
+};
+
+const SPAWN_SLIME = {
+};
+
+const SPAWN_LIGHT = {
+};
+
+// Origrane (Paper, moved here from Mind) keeps its old spots; Puzzlet takes them over in Mind.
+const SPAWN_PAPER = {
+  plains: [['origrane', 0.6, 'day']],
+  forest: [['origrane', 0.4, 'day']],
+  meadow: [['origrane', 0.8, 'day']],
+};
+
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

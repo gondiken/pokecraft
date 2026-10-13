@@ -170,6 +170,11 @@ const SOUNDS = {
   'fx:sound': () => notes([880, 1175], 0.1, { len: 0.14, vol: 0.2 }),
   'fx:bone': () => { tone(800, { len: 0.05, type: 'square', vol: 0.1 }); tone(600, { at: 0.09, len: 0.05, type: 'square', vol: 0.1 }); },
   'fx:alien': () => tone(700, { len: 0.34, vol: 0.2, slide: -250 }),
+  // T9 placeholders (T11 replaces these)
+  'fx:sky': () => noise({ freq: 800, len: 0.3, vol: 0.18, q: 0.5 }),
+  'fx:slime': () => tone(180, { len: 0.22, vol: 0.25, slide: 120 }),
+  'fx:light': () => notes([1320, 1760], 0.06, { len: 0.12, type: 'triangle', vol: 0.18 }),
+  'fx:paper': () => { noise({ freq: 6000, len: 0.04, vol: 0.18, q: 1 }); noise({ at: 0.08, freq: 6000, len: 0.04, vol: 0.18, q: 1 }); },
   // Move effects in battle.
   statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),

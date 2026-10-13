@@ -61,20 +61,20 @@ On a tablet:
 
 - **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): follow a hole in a hillside down into the dark, where star crystals and glowing mushrooms light the way, small underground lakes lie hidden, and rock, metal and ghost creatures live. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
 - **25 building blocks**, including glass, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
-- **133 original creatures**, 7 for each of the 19 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) live only in caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night.
+- **161 original creatures**, 7 for each of the 23 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) live only in caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night. **Sky** creatures (kites, balloons, sky whales) float over the mountain tops, **Slime** creatures wobble around swamps and caves, **Light** creatures (sun foxes, lighthouses) love sunny meadows and beaches, and **Paper** creatures (paper planes, origami frogs, storybooks) wander plains and forests.
 - Every type also has one rare creature that never evolves, like Lanterboo the lantern ghost, Clawdio the jukebox crab or Chromacurl, a lizard that slowly changes colour.
 - **Champion's Tower**: a final challenge after all 18 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 52 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, move effects (see **Moves** below), switching and running away. Your whole team shares the XP.
-- **Moves**: 87 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
+- **Moves**: 107 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
 - **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box.
 - **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against.
-- **Attack animations**: every type has its own little animation (fire embers, water bubbles, sparks, music notes, rattling bones...), the seven signature moves have special ones, and moves that heal, boost, lower or put to sleep show it too. Turn them off with **Effects** on the pause screen if your device feels slow.
+- **Attack animations**: every type has its own little animation (fire embers, water bubbles, sparks, music notes, rattling bones...), the eleven signature moves have special ones, and moves that heal, boost, lower or put to sleep show it too. Turn them off with **Effects** on the pause screen if your device feels slow.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
-- **Weather** changes every few minutes and depends on where you are: rain, thunderstorms, snow in cold places, sandstorms in the desert (bones peek out of the sand), misty swamp mornings, shooting stars on clear nights, and a rainbow after rain. Each kind brings out more of some creatures: storms bring electric ones, rain water ones, snow ice ones, and rainbows make rainbow creatures much easier to find, and shooting stars bring aliens as well as cosmic creatures.
+- **Weather** changes every few minutes and depends on where you are: rain, thunderstorms, snow in cold places, sandstorms in the desert (bones peek out of the sand), misty swamp mornings, shooting stars on clear nights, and a rainbow after rain. Each kind brings out more of some creatures: storms bring electric ones, rain water ones, snow ice ones, and rainbows make rainbow creatures much easier to find, and shooting stars bring aliens as well as cosmic creatures. Slime creatures love rain, paper creatures hide indoors when it rains or storms, sky creatures ride the storm winds, and light and sky creatures visit the rainbow.
 - **Auto-save** to this device, plus **online saves** when you sign in (see below). This saves your world edits, team, badges, cubes and position.
 
 Creatures farther from the starting point are higher level. Your team slowly regains HP outside of battle.
@@ -85,16 +85,16 @@ Every move has one small effect at most. The battle buttons say what a move does
 
 | Move effect | What it does |
 | --- | --- |
-| Heals you | Gets back half of your HP (Rest Up, Sap Sip, Shimmer) |
+| Heals you | Gets back half of your HP (Rest Up, Sap Sip, Shimmer, Goo Patch) |
 | Raises your attack / defence | One step up, up to 3 steps (Pump Up, Hunker Down, Deep Focus, Iron Wall) |
-| Lowers the foe's attack / slows the foe | One step down (Grumble, Silk Wrap, Chill Wind...). "May" means it only sometimes works |
+| Lowers the foe's attack / slows the foe | One step down (Grumble, Silk Wrap, Chill Wind, Ink Splat...). "May" means it only sometimes works |
 | May make the foe flinch | If you move first, the foe may lose its move |
 | Puts the foe to sleep | The foe skips one move (Lullaby, Sweet Dreams, Big Bong). Sleepy creatures are easier to catch |
-| Hits 2 to 4 times | Several small hits (Seed Volley, Rivet Shot, Meteor Shower) |
+| Hits 2 to 4 times | Several small hits (Seed Volley, Rivet Shot, Meteor Shower, Confetti) |
 | Hurts you a little too | A big hit with a little recoil. It never knocks you out (Inferno Dash, Drake Charge) |
 | Never misses | Always hits (Mind Trick, Color Splash and the special moves) |
 
-Stat changes and sleep go away when a creature is switched out. A few creatures learn a **special move** (Blazehound, Tidalord, Grovebeast and Gongolin at Lv 30, Zenithar at Lv 45). Some moves were renamed to original names (Bump, Belly Bash, Cinder, Bubble Pop, Zap, Blaze Burst, Snow Storm, Nibble, Shadow Dash). Player battles need both players to have the latest version of the game.
+Stat changes and sleep go away when a creature is switched out. A few creatures learn a **special move** (Blazehound, Tidalord, Grovebeast, Gongolin, Kitegale, Slimperor, Lumitower and Origrane at Lv 30, Zenithar at Lv 45). Some moves were renamed to original names (Bump, Belly Bash, Cinder, Bubble Pop, Zap, Blaze Burst, Snow Storm, Nibble, Shadow Dash). Player battles need both players to have the latest version of the game.
 
 ## Types
 
@@ -119,8 +119,12 @@ Stat changes and sleep go away when a creature is switched out. A few creatures 
 | Sound | Ice, bug, mind, alien | Loud and musical; alien ears are super sensitive |
 | Bone | Ghost, electric, alien | Skeletons aren't scared of ghosts, a bone bonk breaks a battery, and aliens have never seen a skeleton. Weak to water and drake |
 | Alien | Normal, metal, toxic | Ordinary creatures have never seen a spaceship, tractor beams lift metal, and aliens slurp up goo for science. Weak to bone, electric and sound |
+| Sky | Fire, paper, pixie | Wind blows out flames and blows paper and little pixies away. Weak to electric, ice and slime (sticky goo glues wings) |
+| Slime | Metal, sky, sound | Goo gunks up gears, glues wings and muffles sound. Weak to grass, light (sunshine dries it up) and paper (like a paper towel) |
+| Light | Ghost, slime, cosmic | Light chases away ghosts, dries up slime and outshines the stars. Weak to toxic (smog), cosmic (black holes gobble light) and paper (a lampshade) |
+| Paper | Rock, slime, light | Paper covers rock, soaks up slime and blocks the light. Weak to fire, metal (scissors) and sky (wind) |
 
-Cosmic beats sound, sound beats mind, and mind beats cosmic. Mind and cosmic attacks are weak against aliens (space is their home).
+Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, paper beats light, light beats slime, and slime beats sky. Mind and cosmic attacks are weak against aliens (space is their home).
 
 ## Gyms and badges
 

@@ -60,7 +60,8 @@ export default async function ({ browser, base, t }) {
     const rows = [];
     for (const [kind, biome, night, type] of [['storm', 'plains', false, 'electric'], ['rain', 'swamp', false, 'water'], ['snow', 'peak', false, 'ice'],
       ['rainbow', 'meadow', false, 'rainbow'], ['sandstorm', 'desert', false, 'rock'], ['fog', 'swamp', true, 'ghost'], ['stars', 'peak', true, 'cosmic'],
-      ['stars', 'plains', true, 'alien']]) {
+      ['stars', 'plains', true, 'alien'],
+      ['rain', 'swamp', false, 'slime'], ['rainbow', 'meadow', false, 'light'], ['storm', 'peak', false, 'sky']]) {
       cm.weather = null;
       const base = share(biome, night, type);
       cm.weather = wxr;
@@ -71,7 +72,7 @@ export default async function ({ browser, base, t }) {
     return rows;
   });
   const need = { storm: 2, rain: 1.8, snow: 1.5, rainbow: 5, sandstorm: 1.5, fog: 1.5, stars: 1.3 };
-  const needType = { bone: 1.2, alien: 1.2 }; // the new types get smaller boosts
+  const needType = { bone: 1.2, alien: 1.2, slime: 1.2, light: 1.2, sky: 1.2 }; // the new types get smaller boosts
   for (const r of mix) {
     const ratio = r.boosted / r.base;
     t.ok(r.base > 0 && ratio >= (needType[r.type] ?? need[r.kind]) && (r.kind !== 'rainbow' || r.boosted >= 0.05),

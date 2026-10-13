@@ -10,13 +10,13 @@ export const KINDS = ['clear', 'rain', 'storm', 'snow', 'sandstorm', 'fog', 'sta
 
 // kind -> creature type -> spawn weight multiplier (missing = 1; always above 0).
 export const BOOSTS = {
-  rain: { water: 3, grass: 1.5, fire: 0.5 },
-  storm: { electric: 4, water: 2, fire: 0.5 },
+  rain: { water: 3, grass: 1.5, fire: 0.5, slime: 2.5, paper: 0.5 }, // slime loves rain; paper hides indoors
+  storm: { electric: 4, water: 2, fire: 0.5, sky: 1.5, paper: 0.5 }, // sky creatures ride the storm winds
   snow: { ice: 3 },
   sandstorm: { rock: 2.5, fire: 1.5 },
   fog: { ghost: 3, toxic: 2 },
   stars: { cosmic: 2, alien: 1.5 },
-  rainbow: { rainbow: 10 },
+  rainbow: { rainbow: 10, light: 2, sky: 1.5 }, // sunshine after rain; flyers visit the rainbow
 };
 
 const COLD = new Set(['taiga', 'snow', 'peak']);

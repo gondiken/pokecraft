@@ -89,7 +89,15 @@ export default async function ({ browser, base, t }) {
     return { n: cards.length, all: cards.every(c => SPECIES[c.dataset.species].type === 'fire'), info: document.getElementById('book-typeinfo')?.textContent };
   });
   t.ok(fire.n === 7 && fire.all, `the Fire filter shows the 7 fire creatures (${fire.info})`);
+  await page.evaluate(() => document.querySelector('.book-filter[data-filter="paper"]').click());
+  const paper = await page.evaluate(async () => {
+    const { SPECIES } = await import('/src/species.js');
+    const cards = [...document.querySelectorAll('.book-card')];
+    return { n: cards.length, all: cards.every(c => SPECIES[c.dataset.species].type === 'paper') };
+  });
+  t.ok(paper.n === 7 && paper.all, `the Paper filter shows the 7 paper creatures (${paper.n})`);
   await page.evaluate(() => document.querySelector('.book-filter[data-filter="all"]').click());
+  t.ok(await page.evaluate(() => document.querySelectorAll('.book-filter').length === 24), '24 filter buttons (23 types and All)');
 
   // 8
   await page.evaluate(() => { const b = window.pokecraft.book; b.markCaught('wispurr'); b.showDetail('emberpup'); });
@@ -181,6 +189,10 @@ export default async function ({ browser, base, t }) {
   t.ok(await p3.evaluate(() => window.pokecraft.book.isOpen), 'the Book button opens the book');
   await p3.waitForFunction(() => [...document.querySelectorAll('#book-grid img')].every(i => i.src.startsWith('data:')), null, { timeout: 120000 });
   await p3.screenshot({ path: path.join(SHOTS, 'book-ipad.png') });
+  t.ok(await p3.evaluate(() => {
+    const f = [...document.querySelectorAll('.book-filter')];
+    return f.length === 24 && f.every(b => b.getBoundingClientRect().right <= window.innerWidth + 1) && document.documentElement.scrollWidth <= window.innerWidth + 1;
+  }), 'the 24 filter buttons wrap inside the iPad screen');
   await p3.tap('.book-card >> nth=0');
   await p3.waitForTimeout(400);
   t.ok(await p3.evaluate(() => !!document.getElementById('book-detail')), 'tapping a card opens its page');
