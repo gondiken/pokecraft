@@ -6,7 +6,8 @@ owner's preferences (original names only, child-friendly text, iPad support, eas
 branch rules and the test gotchas.
 
 **Status (2026-10-13):** all five waves are done and merged (T1–T11; T4 became Bone/Alien types +
-7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: the backlog below.
+7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: **wave 6**
+(housekeeping, bug fixes and small owner requests, T12–T15), then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -45,6 +46,8 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 4 ✅ | T7 Attack animations | Needs the final move list; big enough for its own session |
 | 5a ✅ | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
 | 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
+| 6a | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, Saucer in the sky) | Input/overlays vs. team-panel UI vs. world + NPCs |
+| 6b | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -251,6 +254,162 @@ so Mind needs a new 7th creature. The map may grow if needed, but **existing gam
 
 ### T11 · Attack effects for the new types (size: M) ✅ done
 - `fxrecipes.js` travel/impact for sky, slime, light, paper, and the new signature moves; sounds.
+
+---
+
+## Wave 6 · Housekeeping, bug fixes and small requests
+
+The owner asked for a wave that is mostly cleanup. **The first rule of this wave: do not break
+anything that works.** Every task keeps worlds deterministic from the seed, keeps old saves
+loading with their team, badges and builds, and runs the full suite before merging. The only
+planned change to an existing world is T14 (the Saucer Gym moves up into the sky, at the same x/z).
+
+### T12 · Bug fixes (size: M)
+
+Found by the owner while playing and by reading the code (2026-10-13). Each fix gets a check in
+a spec (the duel ones in `pvp`, the touch ones in `touch`, water in a new small `water` spec or `blocks`).
+
+1. **Stuck on the team screen after accepting a duel (owner's report, high).** On the iPad, the
+   son had the team screen open, a duel invite arrived (`#duel-ask` z-index 25 is drawn above the
+   panel's 20) and he tapped "Battle!". `Duels.accept()` (duel.js) only checks `inBattle`, and
+   `startBattle()` (main.js) never closes the panel. Then `togglePanel` returns early because
+   `game.inBattle` is true, the full-screen panel covers the battle buttons, and `body.in-battle`
+   hides the touch Pause button. Nothing works until a reload. The challenger's side has the same
+   bug (they open the team screen or Book while waiting for "yes").
+   Fix: `startBattle` closes any open panel/Book first (`game.ui.closePanel()`); as a safety net,
+   the panel's Close button and Esc/P/B/C always close a panel, even in a battle.
+2. **A duel waits forever if the other player stops answering (high).** "Waiting for X..." has
+   no way out; `d.next()` only gives up when the other player leaves the world. Add a "Give up"
+   button while waiting, and treat no answer for ~90 s as the other player leaving.
+3. **Accepting an invite during another battle drops it silently (medium).** The invite box stays
+   on top of a wild battle; tapping "Battle!" just closes it and the challenger sees "didn't
+   answer" 30 s later. Starting any battle closes the invite and answers "busy".
+4. **A guest is sent home in the middle of a battle when the host leaves (medium).** `ended('host-left')`
+   reloads after 2.5 s even mid gym-leader fight. Wait until the battle is over.
+5. **The joystick can stop working after a battle starts while it is held (medium, check on a
+   real iPad).** `touch.reset()` never clears the joystick's pointer id, so later touches are
+   ignored. Reset it there (and on `lostpointercapture`); also clear the jump button's pressed look.
+6. **"X didn't answer" can pop up on the title screen (low).** Going to the main menu leaves the
+   duel timers running. Add `duels.reset()`, called from `goToMenu` and `mp.close`.
+7. **Can't climb out of water onto land (owner's report).** In `player.js`, the player only floats
+   with the feet ~0.5 above the water, and jumping needs `onGround`, so a bank one block higher
+   than the water can't be climbed; the owner had to dig two blocks to get out. Fix like
+   Minecraft: while in water with jump held and walking into a block, give an upward push big
+   enough to step onto a bank 1 block above the water (not 2). This uses the same jump key and
+   touch jump button. Spec: start in water next to a 1-high bank, hold forward + jump, end on land.
+8. **"Continue exploring" after battles (owner's question).** On tablets this button is already
+   skipped (`battle.js`: only shown when `!g.isTouch()`). With a mouse it is needed: browsers only
+   let a page take the mouse (pointer lock) right after a click or key press, and battles end
+   with animations, not a click. Without the button you would land on the pause screen and need a
+   click anyway, so it is the same one click, just clearer. **Plan: keep it on desktop, but make it
+   quicker**: Enter, Space or E also press it (a key press lets the game take the mouse back), and
+   the button says what happened (for example "Continue exploring (you caught Flicker!)"). Ask the
+   owner if they would rather skip it on desktop too and accept the pause screen.
+9. **Anything else found while fixing** goes in the plan as its own numbered item, with a spec check.
+
+Done when: each item above has a passing check, and `pvp`, `multiplayer`, `touch`,
+`battle-and-menu` and the new water check pass twice in a row.
+
+### T13 · Storage box: let creatures go, sort and filter (size: S–M)
+
+The box (team panel, `ui.js` `refreshPanel` / `monCard`) is one long unsorted list and has no
+way to remove creatures.
+
+- **Let go:** a "Let go" button on box cards only (never on team cards, so the team can't
+  be emptied). It asks first, in big, kid-friendly words: "Say goodbye to Flicker (Lv 12)? It goes back
+  to the wild." with "Yes, let it go" / "Keep it". Can't be undone. The Creature Book keeps it as
+  caught (the Book's `caught` list is never shrunk). Show a short toast afterwards.
+- **Sort:** buttons for Newest (default, the current order), Level, Name and Type. The sort is only for
+  showing; `game.box` keeps its order, so saves don't change. Remember the choice in
+  localStorage (per device, like sound on/off).
+- **Filter by type:** a row of type chips (only the types that are in the box, with a count), plus
+  "All". Text stays short; chips are big enough for a child's finger on an iPad.
+- Box count in the heading ("Box (37)"). Cards keep their "To team" button (index must be the
+  real `game.box` index, not the sorted position; this is the easy bug to make).
+- Duels and multiplayer are not affected (the box is never sent).
+- Done when: a spec (extend `book` or a new `box` spec) lets a creature go (it's gone from
+  the box, still caught in the Book, the save no longer has it), sorts and filters (the right
+  cards in the right order, "To team" moves the right creature), and works with touch.
+
+### T14 · Night gyms: the Comet Gym at night, the Saucer Gym in the sky (size: M–L)
+
+Owner's requests: the Comet (Cosmic) Gym should only have its people at night, like the Saucer
+Gym; and the Saucer Gym should float in the sky like the Cloud Gym, still only open at night.
+
+- **Night flag vs. saucer:** today `def.night` means both "people only at night" and "has a
+  flying saucer" (`npc.js` `populate`). Split it: `night: true` for both gyms, `saucer: true`
+  only for the Saucer Gym. The closed-by-day message is per gym (`def.nightText`): Saucer "the
+  aliens only visit at night!", Comet something like "the stargazers only come out at night!".
+  Check the guide arrow (`updateGuide`) with two night gyms: it should point to the next open gym
+  by day and mention the night gyms, and the HUD toast in `main.js` too.
+- **Comet Gym at night:** only the flag and text. Its building and spot don't change. Old saves:
+  a beaten trainer stays beaten, badges are kept.
+- **The Saucer Gym in the sky:** keep its x/z from `extraGymSpots()`. That list is also an input to
+  the cave masks and `newGymSpots()`, so keeping it means no other gym, cave or the tower moves.
+  - Build it like the Cloud Gym (`placeSkyGym`: cloud island with lamps underneath, sky building,
+    landing pad + lamp post in front of the door, one jump from a pillar on the pad). Use a
+    metal/dark island or a saucer-shaped platform instead of cloud blocks if it reads better;
+    planner decides with screenshots.
+  - The surface building is no longer built: the ground there goes back to normal terrain and
+    plants. **This is the only change to old worlds in this wave.** List it in the plan, and keep it
+    inside one box around the spot (like `newGymBoxes`); `old-saves` checks that everything outside
+    that box is block-for-block the same, and its checksum is updated on purpose.
+  - Height: `fy = min(36, maxG + 12)` like the Cloud Gym. The Saucer spot was picked as "far from
+    everything", not "low ground", so the planner must measure over many seeds (for example
+    1–300) how often the hills near it are too high for an island below `WORLD_H` (48), and pick
+    a fallback (a lower island or keep it on the surface). Never move the x/z.
+  - Old saves that were standing inside the old building: `continueGame` already moves a player
+    who would start inside a wall to spawn; also handle someone saved on the old floor (they just
+    fall a little, which is fine). Bump `WORLD_VERSION` (multiplayer `wv`).
+  - The flying saucer hovers over the island and lands on it at night; the "up in the sky" arrow
+    hint and pad/near-gym hints (`skyToldNear`/`skyToldPad`) work for both sky gyms (today they
+    use `.find(g => g.sky)`).
+- **The Saucer people look like aliens.** Today Skywatcher Rin and Leader Zeeb are normal blocky
+  people in alien colours (normal skin). Give night-gym NPCs an optional look in `gyms.js`
+  (green/purple skin, antennae, big eyes) in `npc.js`. Comet people could get a star hat. Small and
+  optional; ask the owner.
+- Done when: `new-gyms-access` checks the Comet Gym by day (closed, toast) and by night (battles
+  work), the Saucer Gym is in the sky, climbable from its pad, empty by day and battle-able at
+  night; `old-saves` passes with only the Saucer box changed; `gym`, `new-gyms`, `champion` and
+  `multiplayer` pass. Update README (gym list) and CLAUDE.md (night/sky gyms).
+
+### T15 · Cleanup and faster tests (size: M, after 6a is merged)
+
+Only behaviour-free changes. Each step is its own commit, and the full suite runs at the end. **Never
+touch** world generation order, random draws, spot/mask code (`gymSpots`, `extraGymSpots`,
+`caveGymSpot`, `pickSpot`, `carveCaves`, `carveBigCaves`, `fillCavesNear` vs `fillNewGymCaves`) or
+the save format. The `old-saves` and `caves` checksums must not change.
+
+- **Dead code:** `cloudAvailable()` (cloud.js), `gymById` (gyms.js), `World.inNewGymBox()` (keep
+  the `newGymBoxes` array, tests use it); `export`s that are only used inside their own file.
+- **Game-loop work:** `npcs.pick()` raycasts every NPC model in the world every frame (22 gyms +
+  tower). Only test NPCs within reach first. The same applies to the multiplayer avatar pick. Stop allocating new
+  `Vector3`s in `player.eyePos`/`forward` each call; cache `#mp-hud`; drop the duplicate
+  `npcs.setNight()` call in `updateGuide()` (`updateSky` already does it every frame).
+- **Split big files without changing code:** move gym placement out of `world.js` (~900 lines, into
+  `gymplace.js` attached to `World.prototype`); move accounts UI, the guide and the play-together UI
+  out of `main.js`. Move code only, don't rewrite it; checksums prove nothing changed.
+- **Small helpers:** the two identical `dry()` helpers in world.js can be one (not the third one in
+  `pickSpot`, which reads the `ground` array and behaves differently at the map edge).
+- **Tests:**
+  - Shared helpers in `tests/helpers.mjs` (seed-a-save init script, `platform()`,
+    `startWeakBattle`, `waitFor`).
+  - Replace fixed `waitForTimeout` sleeps with `waitForFunction` (old-saves, new-gyms-access,
+    multiplayer, champion, sound, weather).
+  - `run.mjs` prints each spec's time, gives each spec a timeout so one hung spec can't stall
+    the suite, and has `--skip`.
+  - Optionally a "fast" group (roster, seventh, four-types, bone-alien, icon, blocks, map) that can
+    run first.
+  - Specs that fail late in a long run under load (`moves`, `pvp`, `sound`, `touch`, `weather`
+    on 2026-10-13, all passed alone) get looked at: waits that depend on frame rate should wait
+    for a condition instead.
+- **Docs:** CLAUDE.md test list (add `caves`, `moves`, `seventh`, `bone-alien`, `new-gyms-access`,
+  plus T12–T14's specs), the Pages note ("being moved" to `main` is done), `.gitignore` duplicate
+  lines. Optional: a simple way to make browsers fetch new versions after an update (the owner
+  saw the old 18-gym version on the iPad after the T10 release), for example a version string
+  on the script URLs in `index.html`, without a build step.
+- Done when: the full suite passes (alone, once, each flaky spec retried once at most), the
+  `old-saves`/`caves` checksums are unchanged, and the suite is no slower than before.
 
 ---
 
