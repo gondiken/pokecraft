@@ -303,8 +303,8 @@ a spec (the duel ones in `pvp`, the touch ones in `touch`, water in a new small 
    with animations, not a click. Without the button you would land on the pause screen and need a
    click anyway, so it is the same one click, just clearer. **Plan: keep it on desktop, but make it
    quicker**: Enter, Space or E also press it (a key press lets the game take the mouse back), and
-   the button says what happened (for example "Continue exploring (you caught Flicker!)"). Ask the
-   owner if they would rather skip it on desktop too and accept the pause screen.
+   the button says what happened (for example "Continue exploring (you caught Flicker!)").
+   **Owner decided (2026-10-13): keep the button on desktop.**
 9. **Anything else found while fixing** goes in the plan as its own numbered item, with a spec check.
 
 Done when: each item above has a passing check, and `pvp`, `multiplayer`, `touch`,
@@ -366,8 +366,8 @@ Gym; and the Saucer Gym should float in the sky like the Cloud Gym, still only o
     use `.find(g => g.sky)`).
 - **The Saucer people look like aliens.** Today Skywatcher Rin and Leader Zeeb are normal blocky
   people in alien colours (normal skin). Give night-gym NPCs an optional look in `gyms.js`
-  (green/purple skin, antennae, big eyes) in `npc.js`. Comet people could get a star hat. Small and
-  optional; ask the owner.
+  (green/purple skin, antennae, big eyes) in `npc.js`. Comet people could get a star hat.
+  **Owner decided (2026-10-13): yes, the Saucer people get the alien look.**
 - Done when: `new-gyms-access` checks the Comet Gym by day (closed, toast) and by night (battles
   work), the Saucer Gym is in the sky, climbable from its pad, empty by day and battle-able at
   night; `old-saves` passes with only the Saucer box changed; `gym`, `new-gyms`, `champion` and
