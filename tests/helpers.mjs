@@ -88,9 +88,10 @@ export async function pause(page) {
   await page.waitForTimeout(500);
 }
 
-// Clicks the first enabled battle button until the battle is over (or gives up).
+// Clicks the first enabled battle button until the battle is over (or gives up). Attack
+// animations make battles slower on the software renderer, so allow a few minutes.
 export async function playBattle(page, prefer) {
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 300; i++) {
     if (!(await page.evaluate(() => window.pokecraft.inBattle))) return true;
     await page.evaluate(pref => {
       const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')];
