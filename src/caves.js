@@ -508,6 +508,19 @@ export function carveBigCaves(world) {
     }
   }
 
+  // Lamp posts in every hall, so a child can find the way across it.
+  for (const h of halls) {
+    const ph = rand() * Math.PI;
+    for (let k = 0; k < 8; k++) {
+      const a = ph + k * Math.PI / 4;
+      const f = k % 2 ? 0.7 : 0.4;
+      const x = Math.floor(h.x + Math.cos(a) * h.rx * f), z = Math.floor(h.z + Math.sin(a) * h.rz * f);
+      if (at(x, 2, z) === B.STONE && at(x, 3, z) === B.AIR && at(x, 4, z) === B.AIR && at(x, 5, z) === B.AIR) {
+        data[idx(x, 3, z)] = B.STONE_BRICKS; data[idx(x, 4, z)] = B.LAMP; glow++;
+      }
+    }
+  }
+
   // 6. Stairways to the surface (up to 6 halls), then 7. lamp posts at the old holes.
   const noChest = (x, y, z) => { const id = data[idx(x, y, z)]; return id === B.CHEST || id === B.CHEST_OPEN; };
   const entrances = [], opened = new Set(), marks = new Set();
