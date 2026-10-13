@@ -236,7 +236,7 @@ so Mind needs a new 7th creature. The map may grow if needed, but **existing gam
   caves, Light: meadows/day, Paper: forests/plains?).
 - Done when: roster at 7 per type over 23 types, screenshots reviewed, Book filters work.
 
-### T10 · Four new gyms with special access (size: L)
+### T10 · Four new gyms with special access (size: L) ✅ done (plans/T10.md)
 - A gym per new type in a fitting place: **Sky gym floating high** (reach it by building up; a hint
   sign/toast), **Slime gym** maybe in a swamp or a second cave gym, **Light gym** on a sunny hill,
   **Paper gym** e.g. a paper-lantern house. **Alien gym only appears (or opens) at night.**

@@ -40,7 +40,7 @@ this file is for working on the code.
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves (107, with `fx`; `moveInfo(id)` gives the button/Book words), all 161 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
-| `src/gyms.js` | The 18 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
+| `src/gyms.js` | The 22 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome + day/night tables) and wandering |
@@ -60,7 +60,7 @@ Key ideas:
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
-  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 18 badges (old Champions keep access: `game.champion`). `beaten` gains
+  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 22 badges (old Champions keep access: `game.champion`). `beaten` gains
   `tower:guard1` / `tower:guard2`; the save has an optional boolean `champion`. Boss battles pass `boss: true`
   (Zenithar hangs on once and powers up at half HP); the coach passes `xpBoost: 2`. After 16 badges (or the Champion title)
   `creatures.levelBonus` is 10 (wild creatures get +10 levels).
@@ -99,6 +99,23 @@ Key ideas:
   Later cave gyms clear the caves around them (`fillCavesNear`) instead of changing the carve mask. `gymAt(x, z, y)` only
   matches a cave gym at its own height; `game.guideTarget` / `game.updateGuide()` are for tests; the multiplayer `world`
   message carries `wv` (`WORLD_VERSION`, bump it when blocks change for the same seed).
+- **Gyms 19-22 (T10, `plans/T10.md`): Sunbeam (light), Origami (paper), Goo (slime, the second cave gym), Cloud (sky).**
+  Their spots come from `newGymSpots()` (cached, terrain only; `EXTRA_GYMS_END = 18`: gyms 17-18 keep `extraGymSpots()`,
+  which loops only up to it). Cave defs after 18 first (`caveGymSpot(def, A, M)` with T8's `caveMasks()` plus earlier
+  cave gyms ±26 and their stairs ±3; `null` = surface fallback with `def.spot`, e.g. seed 22, about 15% of maps), then
+  `pickSpot` in `GYMS` order (stages from strict to relaxed: share of `def.spot.biomes` within 12 blocks, `minGround`,
+  dry, distance ≥ 30/26 to every gym and the tower; ≥ 32 from cave gyms and 18 from their stairs). `place: 'sky'`
+  (the Cloud Gym): any dry spot whose ground within 14 is ≤ 22, floor `fy = min(36, maxG + 12)`; a `B.CLOUD` island
+  (r 10.5, lamps underneath) with the gym (`buildSkyGym`), a flat sky-wool **landing pad** on the ground at `d = 11..12`
+  in front of the door plus a lamp post; build a pillar on the pad's inner middle block up to `fy - 1` and one jump
+  lands on the island. Gym object: `sky: true`, `pad: [x, y, z]` (the pad block; stand at y + 1), `y = fy + 1`;
+  `gymAt(x, z, y)` only matches it at `y >= g.y - 1`. `def.night` (Saucer Gym) is handled in `npc.js`/`main.js`.
+  **`world.newGymBoxes`**: the only places T10 may change the world (surface gyms ±21 all y, the Goo cavern ±16 and its
+  stairs ±6, the Cloud Gym ±16); everything outside is block-for-block the T8 world (`old-saves` `SUM22`).
+  `generate()` adds: `fillNewGymCaves` (R 18) for surface spots after `carveBigCaves`, the Goo cavern in `carveGymRooms`
+  (fills caves only within 10 so its cavern may open into the caves), `placeNewGyms()` after `placeCaveGyms`;
+  `generate({ newGyms: false })` leaves them out (tests). Wool ids: sky 49, slime 50, light 51, paper 52 (not 20 + i),
+  `B.CLOUD = 53` (placeable). Coach Dex has a 7th team. Never change the spot rules: it would move these gyms.
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
@@ -161,7 +178,7 @@ node run.mjs gym touch                     # just some
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `old-saves` (gyms 17–18 and old saves), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud Gym's climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays

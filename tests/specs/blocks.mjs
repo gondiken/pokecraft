@@ -4,7 +4,7 @@ import { openGame, newGame, pause, click } from '../helpers.mjs';
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   const r = await page.evaluate(async () => {
-    const { B, BLOCKS, PLACEABLE, TILE_COUNT } = await import('/src/blocks.js');
+    const { B, BLOCKS, PLACEABLE, TILE_COUNT, WOOL, isSolid } = await import('/src/blocks.js');
     const { World } = await import('/src/world.js');
     const { SPAWNS, SPECIES } = await import('/src/species.js');
     const tiles = PLACEABLE.every(id => BLOCKS[id] && ['top', 'side', 'bottom'].every(k => BLOCKS[id][k] < TILE_COUNT));
@@ -22,6 +22,9 @@ export default async function ({ browser, base, t }) {
     const where = type => Object.entries(SPAWNS).flatMap(([b, l]) => l.filter(e => SPECIES[e[0]].type === type).map(e => [b, e[2]]));
     return {
       count: PLACEABLE.length, tiles,
+      cloud: B.CLOUD === 53 && PLACEABLE.includes(B.CLOUD) && BLOCKS[B.CLOUD].name === 'Cloud' && isSolid(B.CLOUD),
+      wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52)),
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),
@@ -32,6 +35,9 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(r.count >= 24 && r.tiles, `${r.count} blocks to build with, each with its own textures`);
+  t.ok(r.cloud, 'Cloud blocks (53) can be built with');
+  t.ok(JSON.stringify(r.wool) === JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
+    `the four new wool blocks are 49-52 and have names (${r.wool.map(w => w.join(' ')).join(', ')})`);
   const want = ['beach', 'desert', 'forest', 'meadow', 'mountain', 'peak', 'plains', 'snow', 'swamp', 'taiga'];
   t.ok(want.every(b => r.biomes.includes(b)), `worlds have all the biomes (${r.biomes.join(', ')})`);
   t.ok(!r.missing.length, `natural blocks appear in the world (cacti, pines, ice, crystals, ores...) ${r.missing.join(', ')}`);

@@ -1,4 +1,4 @@
-// The Champion's Tower: placement in every world, refusing before 18 badges, guards, coach,
+// The Champion's Tower: placement in every world, refusing before 22 badges, guards, coach,
 // the champion with Zenithar (powers up at half HP), saving, reloading and the rematch.
 import fs from 'node:fs';
 import { openGame, newGame, click } from '../helpers.mjs';
@@ -45,14 +45,14 @@ export default async function ({ browser, base, t }) {
         middle: Math.hypot(tw.x - 112, tw.z - 112),
         back: w.get(tw.x - 6 * fx, tw.y, tw.z - 6 * fz), spire: w.get(tw.x, tw.y + 14, tw.z),
         dry: tw.y - 1 > WATER_LEVEL,
-        corners: w.gyms.every(g => w.get(g.x + 6, g.y, g.z + 6) === 9),
+        corners: w.gyms.every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6))),
         pos: w.gyms.map(g => [g.x, g.z]),
       });
     }
     return out;
   });
   for (const w of worlds) {
-    t.ok(w.ok && w.gyms === 18 && w.gap >= 23 && w.middle >= 17 && w.back === 42 && w.spire === 40 && w.dry && w.corners,
+    t.ok(w.ok && w.gyms === 22 && w.gap >= 23 && w.middle >= 17 && w.back === 42 && w.spire === 40 && w.dry && w.corners,
       `seed ${w.seed}: tower placed (gap ${w.gap}, ${w.middle.toFixed(0)} from the middle)`);
   }
   for (const seed of [1, 4242]) {
@@ -85,11 +85,11 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(4500);
   await page.screenshot({ path: SHOTS + 'tower.png' });
 
-  // 3. Before 18 badges everyone in the tower refuses politely (the nurse still heals).
+  // 3. Before 22 badges everyone in the tower refuses politely (the nurse still heals).
   await page.evaluate(async () => {
     const g = window.pokecraft;
     const { GYMS } = await import('/src/gyms.js');
-    g.badges = GYMS.slice(0, 17).map(x => x.id);
+    g.badges = GYMS.slice(0, 21).map(x => x.id);
     const tw = g.world.tower, [fx, fz] = tw.front;
     g.player.pos.set(tw.x + 0.5 + fx * 3, tw.y, tw.z + 0.5 + fz * 3);
     g.player.vel.set(0, 0, 0);
@@ -98,9 +98,9 @@ export default async function ({ browser, base, t }) {
   const person = role => `window.pokecraft.npcs.list.find(n => n.role === '${role}')`;
   for (const role of ['guard1', 'coach', 'champion']) {
     await page.evaluate(`window.pokecraft.talkTo(${person(role)})`);
-    t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), `${role} refuses with 17 badges`);
+    t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), `${role} refuses with 21 badges`);
   }
-  t.ok((await page.locator('#toast').innerText()).includes('18 badges'), 'the refusal says how many badges are needed');
+  t.ok((await page.locator('#toast').innerText()).includes('22 badges'), 'the refusal says how many badges are needed');
 
   // 4. Nurse Poppy heals the team.
   await page.evaluate(`(() => { const g = window.pokecraft; g.party.forEach(c => { c.hp = 1; }); g.talkTo(${person('nurse')}); })()`);
@@ -109,7 +109,7 @@ export default async function ({ browser, base, t }) {
     return window.pokecraft.party.every(c => c.hp === statsFor(c).maxHp);
   }), 'Nurse Poppy heals the team');
 
-  // 5. With all 18 badges and a strong team: guards in order, then the champion.
+  // 5. With all 22 badges and a strong team: guards in order, then the champion.
   await page.evaluate(async () => {
     const g = window.pokecraft;
     const { GYMS } = await import('/src/gyms.js');

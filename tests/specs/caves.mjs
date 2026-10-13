@@ -54,7 +54,7 @@ export default async function ({ browser, base, t }) {
       w.generate();
       const ms = Math.round(performance.now() - t0);
       const old = new World(seed, null, null);
-      old.generate({ bigCaves: false });
+      old.generate({ bigCaves: false, newGyms: false }); // the old caves as they were (T10's gyms fill some caves in)
       const c = w.caves;
       const bigHalls = c.halls.filter(h => {
         let n = 0;
@@ -89,7 +89,7 @@ export default async function ({ browser, base, t }) {
         if (a.data[i] === b.data[i]) continue;
         changed++;
         const x = i % WORLD_W, z = Math.floor(i / WORLD_W) % WORLD_D;
-        if (b.gyms.some(g => !g.cave && near(x, z, g, 14))) bad.gym++;
+        if (b.gyms.some(g => !g.cave && !g.sky && near(x, z, g, 14))) bad.gym++; // the Cloud Gym floats above the caves
         if (near(x, z, b.tower, 14)) bad.tower++;
         if (near(x, z, { x: WORLD_W / 2, z: WORLD_D / 2 }, 6)) bad.middle++;
         if (near(x, z, { x: sx, z: sz }, 8)) bad.start++;

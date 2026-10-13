@@ -13,18 +13,20 @@ export const T = {
 export const WOOL_TYPES = [
   'normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost',
   'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien',
+  'sky', 'slime', 'light', 'paper', // T10 gyms: ids 49-52 (see WOOL below)
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
   rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
+  sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 228, 110], paper: [250, 248, 240],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
   'ICE', 'GRAVEL', 'SANDSTONE', 'SANDSTONE_TOP', 'CACTUS_SIDE', 'CACTUS_TOP', 'MUD', 'PINE_SIDE', 'PINE_LEAVES',
   'FLOWERS', 'CRYSTAL', 'GLASS', 'STONE_BRICKS', 'LAMP', 'COAL_ORE', 'GOLD_ORE',
-  'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP',
+  'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP', 'CLOUD',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -36,9 +38,13 @@ export const B = {
   // 20-38 are the wool blocks.
   CRYSTAL: 40, GLASS: 41, STONE_BRICKS: 42, LAMP: 43, COAL_ORE: 44, GOLD_ORE: 45,
   GLOWCAP: 46, CHEST: 47, CHEST_OPEN: 48,
+  // 49-52 are the sky / slime / light / paper wool blocks.
+  CLOUD: 53,
 };
 // Block id of each type's wool block.
-export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, 20 + i]));
+// The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52 };
+export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
 export const BLOCKS = {
@@ -71,6 +77,7 @@ export const BLOCKS = {
   [B.CHEST]: { name: 'Treasure Chest', top: T.CHEST_TOP, side: T.CHEST_SIDE, bottom: T.CHEST_TOP },
   [B.CHEST_OPEN]: { name: 'Open Chest', top: T.CHEST_OPEN_TOP, side: T.CHEST_SIDE, bottom: T.CHEST_TOP },
 };
+BLOCKS[B.CLOUD] = { name: 'Cloud', ...all(T.CLOUD) };
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
 // The starting hotbar. Players can swap any slot for another block in the Blocks panel.
@@ -79,7 +86,7 @@ export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.GL
 export const PLACEABLE = [
   B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONE_BRICKS, B.BRICK, B.PLANKS, B.LOG, B.PINE_LOG,
   B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.CACTUS, B.SAND, B.SANDSTONE, B.GRAVEL, B.MUD, B.SNOW,
-  B.ICE, B.GLASS, B.LAMP, B.CRYSTAL, B.GLOWCAP, B.COAL_ORE, B.GOLD_ORE,
+  B.ICE, B.GLASS, B.CLOUD, B.LAMP, B.CRYSTAL, B.GLOWCAP, B.COAL_ORE, B.GOLD_ORE,
 ];
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
@@ -187,6 +194,16 @@ export function drawAtlas() {
     put(T.BRICK, x, y, mortar ? [200, 196, 186] : shade([160, 70, 50], 1 + (rand() - 0.5) * 0.2));
   });
 
+  // Slime bubbles: round, with a darker rim, a pale middle and a shine.
+  const SLIME_BUBBLE = (x, y) => {
+    for (const [bx, by, r] of [[4, 5, 3.2], [11, 10, 2.6], [12, 3, 1.8]]) {
+      const d = Math.hypot(x - bx, y - by);
+      if (d > r) continue;
+      if (d > r - 1) return [70, 165, 80];
+      return x === bx - 1 && y === by - 1 ? [235, 255, 225] : [175, 245, 150];
+    }
+    return null;
+  };
   const STRIPES = [[230, 70, 70], [245, 150, 50], [245, 220, 60], [90, 200, 90], [70, 140, 230], [150, 90, 210]];
   WOOL_TYPES.forEach((t, i) => each((x, y) => {
     const f = (1 + (rand() - 0.5) * 0.12) * ((x + y) % 4 === 0 ? 0.92 : 1);
@@ -194,9 +211,19 @@ export function drawAtlas() {
       : t === 'cosmic' && (x * 7 + y * 13) % 23 === 0 ? [255, 236, 150] // a sky full of stars
         : t === 'bone' && (x * 5 + y * 3) % 19 === 0 ? [150, 140, 120] // little cracks
           : t === 'alien' && (x * 11 + y * 7) % 17 === 0 ? [170, 110, 230] // purple dots
-            : WOOL_RGB[t];
+            : t === 'sky' && (x * 5 + y * 9) % 14 === 0 ? [255, 255, 255] // little clouds
+              : t === 'slime' && SLIME_BUBBLE(x, y) ? SLIME_BUBBLE(x, y) // round bubbles
+                : t === 'light' && (x * 7 + y * 5) % 9 === 0 ? [255, 255, 255] // sparkles
+                  : t === 'paper' && y % 4 === 0 ? [205, 225, 245] // pale blue lines
+                    : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
+
+  // Cloud: soft white with faint grey puffs.
+  each((x, y) => {
+    const puff = ((x - 4) ** 2 + (y - 4) ** 2 < 7) || ((x - 11) ** 2 + (y - 9) ** 2 < 10) || ((x - 5) ** 2 + (y - 13) ** 2 < 5);
+    put(T.CLOUD, x, y, shade(puff ? [226, 232, 242] : [250, 252, 255], 1 + (rand() - 0.5) * 0.04));
+  });
 
   // Ice: pale blue with white cracks.
   each((x, y) => put(T.ICE, x, y, (x * 3 + y * 5) % 17 === 0 || x === y ? [235, 248, 255] : shade([150, 200, 240], 1 + (rand() - 0.5) * 0.08)));
