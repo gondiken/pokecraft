@@ -46,7 +46,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 4 ✅ | T7 Attack animations | Needs the final move list; big enough for its own session |
 | 5a ✅ | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
 | 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
-| 6a | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, Saucer in the sky) | Input/overlays vs. team-panel UI vs. world + NPCs |
+| 6a | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
 | 6b | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
@@ -262,7 +262,8 @@ so Mind needs a new 7th creature. The map may grow if needed, but **existing gam
 The owner asked for a wave that is mostly cleanup. **The first rule of this wave: do not break
 anything that works.** Every task keeps worlds deterministic from the seed, keeps old saves
 loading with their team, badges and builds, and runs the full suite before merging. The only
-planned change to an existing world is T14 (the Saucer Gym moves up into the sky, at the same x/z).
+planned change to an existing world was the Saucer Gym moving into the sky (done 2026-10-13); the
+rest of wave 6 changes no world blocks.
 
 ### T12 · Bug fixes (size: M)
 
@@ -331,47 +332,28 @@ way to remove creatures.
   the box, still caught in the Book, the save no longer has it), sorts and filters (the right
   cards in the right order, "To team" moves the right creature), and works with touch.
 
-### T14 · Night gyms: the Comet Gym at night, the Saucer Gym in the sky (size: M–L)
+### T14 · Night gyms: the Comet Gym at night, alien-looking Saucer people (size: S–M)
 
 Owner's requests: the Comet (Cosmic) Gym should only have its people at night, like the Saucer
-Gym; and the Saucer Gym should float in the sky like the Cloud Gym, still only open at night.
+Gym; and the Saucer people should look like aliens. (The Saucer Gym already floats in the sky:
+done on 2026-10-13, see CLAUDE.md "The Saucer Gym floats". Don't change it here.)
 
 - **Night flag vs. saucer:** today `def.night` means both "people only at night" and "has a
   flying saucer" (`npc.js` `populate`). Split it: `night: true` for both gyms, `saucer: true`
   only for the Saucer Gym. The closed-by-day message is per gym (`def.nightText`): Saucer "the
   aliens only visit at night!", Comet something like "the stargazers only come out at night!".
-  Check the guide arrow (`updateGuide`) with two night gyms: it should point to the next open gym
-  by day and mention the night gyms, and the HUD toast in `main.js` too.
-- **Comet Gym at night:** only the flag and text. Its building and spot don't change. Old saves:
-  a beaten trainer stays beaten, badges are kept.
-- **The Saucer Gym in the sky: ✅ done (2026-10-13)**, see CLAUDE.md ("The Saucer Gym floats"); measured over seeds 1–300: hills > 23 near the spot on about 1 map in 4, fallback = island at 35 and the hills under it cut down. Keep its x/z from `extraGymSpots()`. That list is also an input to
-  the cave masks and `newGymSpots()`, so keeping it means no other gym, cave or the tower moves.
-  - Build it like the Cloud Gym (`placeSkyGym`: cloud island with lamps underneath, sky building,
-    landing pad + lamp post in front of the door, one jump from a pillar on the pad). Use a
-    metal/dark island or a saucer-shaped platform instead of cloud blocks if it reads better;
-    planner decides with screenshots.
-  - The surface building is no longer built: the ground there goes back to normal terrain and
-    plants. **This is the only change to old worlds in this wave.** List it in the plan, and keep it
-    inside one box around the spot (like `newGymBoxes`); `old-saves` checks that everything outside
-    that box is block-for-block the same, and its checksum is updated on purpose.
-  - Height: `fy = min(36, maxG + 12)` like the Cloud Gym. The Saucer spot was picked as "far from
-    everything", not "low ground", so the planner must measure over many seeds (for example
-    1–300) how often the hills near it are too high for an island below `WORLD_H` (48), and pick
-    a fallback (a lower island or keep it on the surface). Never move the x/z.
-  - Old saves that were standing inside the old building: `continueGame` already moves a player
-    who would start inside a wall to spawn; also handle someone saved on the old floor (they just
-    fall a little, which is fine). Bump `WORLD_VERSION` (multiplayer `wv`).
-  - The flying saucer hovers over the island and lands on it at night; the "up in the sky" arrow
-    hint and pad/near-gym hints (`skyToldNear`/`skyToldPad`) work for both sky gyms (today they
-    use `.find(g => g.sky)`).
-- **The Saucer people look like aliens.** Today Skywatcher Rin and Leader Zeeb are normal blocky
-  people in alien colours (normal skin). Give night-gym NPCs an optional look in `gyms.js`
-  (green/purple skin, antennae, big eyes) in `npc.js`. Comet people could get a star hat.
-  **Owner decided (2026-10-13): yes, the Saucer people get the alien look.**
-- Done when: `new-gyms-access` checks the Comet Gym by day (closed, toast) and by night (battles
-  work), the Saucer Gym is in the sky, climbable from its pad, empty by day and battle-able at
-  night; `old-saves` passes with only the Saucer box changed; `gym`, `new-gyms`, `champion` and
-  `multiplayer` pass. Update README (gym list) and CLAUDE.md (night/sky gyms).
+  Check the guide arrow (`updateGuide`) with two night gyms: by day it should point to the next
+  open gym and mention the night gyms. The "welcome / closed" toast in `main.js` too.
+- **Comet Gym at night:** only the flag and text. Its building and spot don't change (no world
+  change, no `WORLD_VERSION` bump). Old saves: a beaten trainer stays beaten, badges are kept.
+- **The Saucer people look like aliens (owner said yes, 2026-10-13).** Today Skywatcher Rin and
+  Leader Zeeb are normal blocky people in alien colours (normal skin). Add an optional look in
+  `gyms.js` (for example `look: 'alien'`) that `npc.js` draws: green or purple skin, antennae,
+  big eyes. Comet people could get a star hat (small, optional).
+- Done when: `new-gyms-access` checks the Comet Gym by day (closed, toast, arrow skips it) and by
+  night (battles work), and the Saucer Gym still works (empty by day, battles at night); a
+  screenshot shows the alien look; `gym`, `new-gyms`, `old-saves` and `champion` pass. Update
+  README (gym list) and CLAUDE.md (night gyms).
 
 ### T15 · Cleanup and faster tests (size: M, after 6a is merged)
 
@@ -400,6 +382,10 @@ the save format. The `old-saves` and `caves` checksums must not change.
     the suite, and has `--skip`.
   - Optionally a "fast" group (roster, seventh, four-types, bone-alien, icon, blocks, map) that can
     run first.
+  - A `PC_GPU=1` switch in `helpers.mjs` for the owner's laptop: a visible Chromium that uses the
+    real graphics card instead of SwiftShader (about 60 fps instead of 1–2). It only helps on a
+    machine with a GPU and a screen (cloud sessions have neither). Run the full suite once with it
+    and fix anything that only worked because the game was slow.
   - Specs that fail late in a long run under load (`moves`, `pvp`, `sound`, `touch`, `weather`
     on 2026-10-13, all passed alone) get looked at: waits that depend on frame rate should wait
     for a condition instead.
