@@ -533,25 +533,23 @@ export class World {
     for (const [x, z] of this.extraGymSpots()) pts.push({ x, z }); // the reserved bone spot and the Saucer Gym
     const caveItems = []; // cave gyms so far: { x, z, cells } (cells = the stairway)
     for (const sp of this.caveGymSpots()) if (sp) caveItems.push({ x: sp.x, z: sp.z, cells: this.stairCells(sp) });
+    // Cave gyms first (they need the most room; the others keep away from them), then the rest in GYMS order.
+    const defs = GYMS.slice(EXTRA_GYMS_END), found = new Map();
     let masks = null;
-    const extraMarks = []; // [x, z, r] for the cave search
+    for (const def of defs) {
+      if (def.place !== 'cave') continue;
+      if (!masks) masks = this.caveMasks();
+      const M = masks.M.slice();
+      for (const it of caveItems) { this.markBox(M, it.x, it.z, 26); for (const [cx, cz] of it.cells) this.markBox(M, cx, cz, 3); }
+      const spot = this.caveGymSpot(def, masks.A, M);
+      if (!spot) continue;
+      found.set(def, { ...spot, place: 'cave', fresh: true });
+      caveItems.push({ x: spot.x, z: spot.z, cells: this.stairCells(spot) });
+    }
     const out = [];
-    for (const def of GYMS.slice(EXTRA_GYMS_END)) {
-      let spot = null;
-      if (def.place === 'cave') {
-        if (!masks) masks = this.caveMasks();
-        const M = masks.M.slice();
-        for (const it of caveItems) { this.markBox(M, it.x, it.z, 26); for (const [cx, cz] of it.cells) this.markBox(M, cx, cz, 3); }
-        for (const [x, z, r] of extraMarks) this.markBox(M, x, z, r);
-        const found = this.caveGymSpot(def, masks.A, M);
-        if (found) {
-          spot = { ...found, place: 'cave', fresh: true };
-          caveItems.push({ x: spot.x, z: spot.z, cells: this.stairCells(spot) });
-        }
-      }
-      if (!spot) spot = { ...this.pickSpot(def, pts, tower, caveItems), def };
+    for (const def of defs) {
+      const spot = found.get(def) || { ...this.pickSpot(def, pts, tower, caveItems), def };
       pts.push({ x: spot.x, z: spot.z });
-      if (spot.place !== 'cave') extraMarks.push([spot.x, spot.z, 20]);
       out.push(spot);
     }
     return (this.newSpots = out);
@@ -568,12 +566,13 @@ export class World {
       for (let a = -14; a <= 14; a++) for (let b = -14; b <= 14; b++) m = Math.max(m, ground[(x + a) + (z + b) * Wd]);
       return m;
     };
-    const stages = [
-      { biome: true, dry: true, cap: 22 }, { biome: false, dry: true, cap: 22 },
-      { biome: false, dry: false, cap: 22 }, { biome: false, dry: false, cap: 99 },
-    ];
+    // From strict to relaxed: the first stage that finds a spot wins. `biome` 2 = the centre and the four corners of the
+    // yard have the right biome, 1 = the centre only; `min` = the least distance to any other gym (the tower counts as Chebyshev).
+    const stages = sky
+      ? [{ dry: true, cap: 22, min: 30 }, { dry: true, cap: 22, min: 0 }, { dry: false, cap: 22, min: 0 }, { dry: false, cap: 99, min: 0 }]
+      : [{ biome: 2, dry: true, min: 30 }, { biome: 1, dry: true, min: 30 }, { biome: 0, dry: true, min: 30 }, { biome: 0, dry: true, min: 0 }, { biome: 0, dry: false, min: 0 }];
     for (const st of stages) {
-      let best = null, bestScore = -1;
+      let best = null, bestScore = st.min - 0.001;
       for (let x = 20; x <= Wd - 20; x += 2) {
         for (let z = 20; z <= D - 20; z += 2) {
           if (Math.hypot(x - cx, z - cz) < 40 || (st.dry && !dry(x, z))) continue;
@@ -587,7 +586,8 @@ export class World {
           for (const t of pts) score = Math.min(score, Math.hypot(x - t.x, z - t.z));
           if (score <= bestScore) continue;
           if (!sky && st.biome && def.spot) {
-            if (def.spot.biomes && !def.spot.biomes.includes(this.biome(x, z))) continue;
+            const pts5 = st.biome === 2 ? [[0, 0], [9, 9], [-9, 9], [9, -9], [-9, -9]] : [[0, 0]];
+            if (def.spot.biomes && !pts5.every(([a, b]) => def.spot.biomes.includes(this.biome(x + a, z + b)))) continue;
             if (def.spot.minGround && ground[x + z * Wd] < def.spot.minGround) continue;
           }
           if (sky && maxG(x, z) > st.cap) continue;
@@ -975,8 +975,8 @@ export class World {
     put(0, 0, fy + 10, paper);
     for (let s = -1; s <= 1; s++) put(0, s, fy + 11, paper); // body
     put(0, -2, fy + 12, paper); // tail
-    put(0, 2, fy + 12, paper); put(0, 3, fy + 13, paper); // neck and head
-    for (const d of [-2, -1, 1, 2]) put(d, 0, fy + 12, paper); // wings
+    put(0, 2, fy + 12, paper); put(0, 3, fy + 13, paper); put(0, 4, fy + 13, paper); // neck, head and beak
+    for (const d of [-2, -1, 1, 2]) put(d, 0, fy + 12 + (Math.abs(d) === 2 ? 1 : 0), paper); // wings, tips raised
     // Paper lanterns on posts just outside the corners.
     for (const d of [-R - 1, R + 1]) for (const s of [-R - 1, R + 1]) {
       for (let y = fy + 1; y <= fy + 3; y++) put(d, s, y, B.LOG);
@@ -1015,11 +1015,12 @@ export class World {
     // Puddles
     const puddles = 6 + Math.floor(hash2(x0, z0, this.seed + 621) * 3);
     for (let k = 0; k < puddles; k++) {
-      const px = x0 + Math.floor((hash2(k, 1, this.seed + 621) - 0.5) * 2 * (RC - 3)), pz = z0 + Math.floor((hash2(k, 2, this.seed + 621) - 0.5) * 2 * (RC - 3));
-      const r = 1.2 + hash2(k, 3, this.seed + 621) * 1.6;
-      for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) {
+      const ang = (k + hash2(k, 1, this.seed + 621) * 0.6) * Math.PI * 2 / puddles, rad = 9.5 + hash2(k, 2, this.seed + 621) * 2;
+      const px = x0 + Math.round(Math.cos(ang) * rad), pz = z0 + Math.round(Math.sin(ang) * rad);
+      const r = 2.2 + hash2(k, 3, this.seed + 621) * 1.4;
+      for (let a = -4; a <= 4; a++) for (let b = -4; b <= 4; b++) {
         const x = px + a, z = pz + b;
-        if (a * a + b * b > r * r + 0.5 * hash2(x, z, this.seed + 622) || !free(x, z)) continue;
+        if (a * a + b * b > r * r + 1.5 * hash2(x, z, this.seed + 622) || !free(x, z)) continue;
         if (this.get(x, fy, z) === B.STONE && this.get(x, fy + 1, z) === B.AIR) this.set(x, fy, z, slime, false);
       }
     }

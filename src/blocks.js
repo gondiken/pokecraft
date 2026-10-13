@@ -20,7 +20,7 @@ const WOOL_RGB = {
   rock: [160, 130, 80], ice: [150, 220, 235], bug: [140, 170, 30], ghost: [110, 80, 160],
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
-  sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 240, 170], paper: [250, 248, 240],
+  sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 249, 205], paper: [250, 248, 240],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -194,6 +194,16 @@ export function drawAtlas() {
     put(T.BRICK, x, y, mortar ? [200, 196, 186] : shade([160, 70, 50], 1 + (rand() - 0.5) * 0.2));
   });
 
+  // Slime bubbles: round, with a darker rim, a pale middle and a shine.
+  const SLIME_BUBBLE = (x, y) => {
+    for (const [bx, by, r] of [[4, 5, 3.2], [11, 10, 2.6], [12, 3, 1.8]]) {
+      const d = Math.hypot(x - bx, y - by);
+      if (d > r) continue;
+      if (d > r - 1) return [70, 165, 80];
+      return x === bx - 1 && y === by - 1 ? [235, 255, 225] : [175, 245, 150];
+    }
+    return null;
+  };
   const STRIPES = [[230, 70, 70], [245, 150, 50], [245, 220, 60], [90, 200, 90], [70, 140, 230], [150, 90, 210]];
   WOOL_TYPES.forEach((t, i) => each((x, y) => {
     const f = (1 + (rand() - 0.5) * 0.12) * ((x + y) % 4 === 0 ? 0.92 : 1);
@@ -202,8 +212,8 @@ export function drawAtlas() {
         : t === 'bone' && (x * 5 + y * 3) % 19 === 0 ? [150, 140, 120] // little cracks
           : t === 'alien' && (x * 11 + y * 7) % 17 === 0 ? [170, 110, 230] // purple dots
             : t === 'sky' && (x * 5 + y * 9) % 14 === 0 ? [255, 255, 255] // little clouds
-              : t === 'slime' && ((x - 4) ** 2 + (y - 5) ** 2 < 5 || (x - 11) ** 2 + (y - 10) ** 2 < 4) ? [70, 160, 70] // bubbles
-                : t === 'light' && (x * 7 + y * 5) % 13 === 0 ? [255, 255, 255] // sparkles
+              : t === 'slime' && SLIME_BUBBLE(x, y) ? SLIME_BUBBLE(x, y) // round bubbles
+                : t === 'light' && (x * 7 + y * 5) % 9 === 0 ? [255, 255, 255] // sparkles
                   : t === 'paper' && y % 4 === 0 ? [205, 225, 245] // pale blue lines
                     : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
