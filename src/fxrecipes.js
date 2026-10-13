@@ -1031,3 +1031,51 @@ SIG.bigbong = (k, from, to) => {
     },
   };
 };
+
+/* ==== T9 fallbacks: T11 replaces these ==== */
+
+Object.assign(FX_COLORS, {
+  sky: [0x8fd0ff, 0xffffff, 0xd8f0ff], slime: [0x9cf06a, 0x52d08a, 0xe0ffc0],
+  light: [0xfff6c0, 0xffffff, 0xffd84a], paper: [0xffffff, 0xcfe0f7, 0xf0386a],
+});
+
+const simpleTravelT9 = colors => k => {
+  const N = 6;
+  const pts = k.points({ n: N, tex: 'dot', size: 0.32, glow: true, colors });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.3);
+        if (t < 0) pts.hide(i); else { k.at(t, A, 0.15); pts.set(i, A.x, A.y, A.z); }
+      }
+    },
+  };
+};
+
+const simpleImpactT9 = colors => (k, from, to, { big }) => {
+  const N = 8, m = big ? 1.5 : 1;
+  const puff = k.points({ n: N, tex: 'puff', size: 0.5 * m, colors });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 360,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i * 2], d = (to.r * 0.5 + 0.1 + s[i * 2 + 1] * 0.5) * k.ease(p) * m;
+        puff.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + p * 0.3, to.pos.z + Math.sin(ang) * d);
+      }
+      puff.fade(1 - p);
+    },
+  };
+};
+
+for (const t of ['sky', 'slime', 'light', 'paper']) {
+  TRAVEL[t] = simpleTravelT9(FX_COLORS[t]);
+  IMPACT[t] = simpleImpactT9(FX_COLORS[t]);
+}
+SIG.jetstream = TRAVEL.sky;
+SIG.megasplat = TRAVEL.slime;
+SIG.beaconbeam = TRAVEL.light;
+SIG.thousandcranes = TRAVEL.paper;
+
+/* ==== end of T9 fallbacks ==== */

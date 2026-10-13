@@ -10,7 +10,7 @@ this file is for working on the code.
   friendly and readable by a child; error messages should say what to do next.
 - **No Pokémon names or exact Pokémon terms.** All creatures, moves and gym names are original.
   Types that came from Pokémon were renamed: Poison → **Toxic**, Fairy → **Pixie**,
-  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own).
+  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 23 types in all: **Sky**, **Slime**, **Light** and **Paper** are our own too).
 - Gym difficulty should stay on the easy side; the owner already asked once for easier gyms.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
@@ -38,8 +38,8 @@ this file is for working on the code.
 | `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
-| `src/species.js` | Types + effectiveness chart, moves (87, with `fx`; `moveInfo(id)` gives the button/Book words), all 133 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
-| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
+| `src/species.js` | Types + effectiveness chart, moves (107, with `fx`; `moveInfo(id)` gives the button/Book words), all 161 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
 | `src/gyms.js` | The 18 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
@@ -56,6 +56,7 @@ this file is for working on the code.
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
+- **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects in `fxrecipes.js` (and `fx:` sounds) are simple fallbacks until T11. See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
@@ -144,7 +145,7 @@ PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save t
 ```
 
 Specs: `old-saves` (gyms 17–18 and old saves), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
-and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
+and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
   messages between two browsers itself (`?mp=local` swaps Supabase Realtime for a

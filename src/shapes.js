@@ -1831,8 +1831,25 @@ function zorb(root, m, parts) {
 const SHAPES_C = { nimbus, chameleon, blackhole, jukebox, fishbone, zorb };
 /* ==== end of T4b group C shapes ==== */
 
+/* ==== T9 sky shapes ==== */
+const SHAPES_SKY = {};
+/* ==== end of T9 sky shapes ==== */
+
+/* ==== T9 slime shapes ==== */
+const SHAPES_SLIME = {};
+/* ==== end of T9 slime shapes ==== */
+
+/* ==== T9 light shapes ==== */
+const SHAPES_LIGHT = {};
+/* ==== end of T9 light shapes ==== */
+
+/* ==== T9 paper shapes ==== */
+const SHAPES_PAPER = {};
+/* ==== end of T9 paper shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
   ...SHAPES_A, ...SHAPES_B, ...SHAPES_C,
+  ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
 };
