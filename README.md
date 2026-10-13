@@ -2,7 +2,7 @@
 
 A browser game that mixes a Minecraft-style voxel world with creature collecting.
 Explore a procedurally generated block world, build and dig, battle and catch
-wild creatures in Capture Cubes, and beat all 18 Gym Leaders to collect every badge.
+wild creatures in Capture Cubes, and beat all 22 Gym Leaders to collect every badge.
 
 Built with plain JavaScript and [three.js](https://threejs.org/). There is no build step.
 
@@ -60,10 +60,10 @@ On a tablet:
 ## Features
 
 - **Voxel world**: a 224×224 terrain with a day/night cycle and 11 kinds of places (biomes): plains, flower meadows, forests, swamps, beaches, lakes, deserts with cacti, snowy pine forests with frozen lakes, mountains, snowfields and high peaks with glowing star crystals. Under the hills there are also **caves** (a 12th kind of place): look for a **stone arch with two lamps** on a hill, and walk down its stairs into big, lit caves with huge halls (crystal halls, glowing mushroom halls, underground lakes and a giant fossil with a ribcage), wide tunnels to explore, and lamp posts at the old small holes so you can spot them at night. Star crystals and glowing mushrooms light the way, and rock, metal, ghost and bone creatures live down there. Your lead creature glows to light your way underground, and **treasure chests** hide 3 Capture Cubes each.
-- **25 building blocks**, including glass, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
+- **26 building blocks**, including glass, fluffy cloud blocks, stone bricks, lamps (they glow and light up the ground around them at night), Glowcap mushrooms (they glow too), ice, sandstone, cactus and flower bushes. Press **B** (or tap the picked hotbar slot again) to choose which 9 are in your hotbar. Dig into rock to find coal and gold ore; gold sometimes hides a Capture Cube.
 - **161 original creatures**, 7 for each of the 23 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) live only in caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night. **Sky** creatures (kites, balloons, sky whales) float over the mountain tops, **Slime** creatures wobble around swamps and caves, **Light** creatures (sun foxes, lighthouses) love sunny meadows and beaches, and **Paper** creatures (paper planes, origami frogs, storybooks) wander plains and forests.
 - Every type also has one rare creature that never evolves, like Lanterboo the lantern ghost, Clawdio the jukebox crab or Chromacurl, a lizard that slowly changes colour.
-- **Champion's Tower**: a final challenge after all 18 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
+- **Champion's Tower**: a final challenge after all 22 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 52 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
@@ -128,7 +128,7 @@ Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, pa
 
 ## Gyms and badges
 
-There are 18 gyms scattered around the map, one for each type except normal. The last two are far from the start: the Saucer Gym is out on the map, and the **Fossil Gym is deep inside a cave**: follow the arrow to the stone arch with the bone-white blocks and walk down the stairs. Each gym is a brick building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
+There are 22 gyms scattered around the map, one for each type except normal. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the aliens of the **Saucer Gym only visit at night**, and the **Cloud Gym floats high in the sky**: find the blue pad on the ground below it, build a tower of blocks on it and jump across. Each gym is a building with a roof in its type's colour. The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |
@@ -149,15 +149,19 @@ There are 18 gyms scattered around the map, one for each type except normal. The
 | 15 | Scale Gym | Drake | Leader Wyvern | 26–28 |
 | 16 | Prism Gym | Rainbow | Leader Aurora | 27–30 |
 | 17 | Fossil Gym (in a cave) | Bone | Leader Digby | 28–30 |
-| 18 | Saucer Gym | Alien | Leader Zeeb | 29–31 |
+| 18 | Saucer Gym (only at night) | Alien | Leader Zeeb | 29–31 |
+| 19 | Sunbeam Gym (a lighthouse house on a sunny hill) | Light | Leader Lumi | 30–32 |
+| 20 | Origami Gym (a paper lantern house) | Paper | Leader Kami | 30–32 |
+| 21 | Goo Gym (in a cave) | Slime | Leader Gelda | 31–33 |
+| 22 | Cloud Gym (floating in the sky: build a tower of blocks to reach it) | Sky | Leader Wren | 31–33 |
 
-Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 18 to open the Champion's Tower.
+Inside each gym is an apprentice trainer you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 22 to open the Champion's Tower.
 
 The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
 ## Champion's Tower
 
-After you collect all 18 badges, the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
+After you collect all 22 badges, the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
 
 - **Nurse Poppy** heals your team. **Coach Dex** trains you with 3 creatures at your best level and gives **double XP** (and 1 Capture Cube) every time.
 - **Guard Bram** (Lv 34–36) and **Guard Opal** (Lv 36–38) must be beaten first, one after the other.
@@ -165,7 +169,7 @@ After you collect all 18 badges, the **Champion's Tower** opens. It is a tall st
 - If you win, you become the **Champion**: you get 20 Capture Cubes, a gold "Champion" title on the screen, and the win is saved. You can challenge Solenne again any time (her creatures are 3 levels stronger).
 - If you lose, you wake up at the start, with a hint. Heal with Nurse Poppy and train with Coach Dex, then try again.
 - After 16 badges, wild creatures are also 10 levels stronger, so there is always something to train against.
-- Players who were already Champion before the two new gyms keep their title and can still use the tower.
+- Players who were already Champion before the newer gyms keep their title and can still use the tower.
 
 ## Online saves
 
