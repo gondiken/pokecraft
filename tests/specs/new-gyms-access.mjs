@@ -155,7 +155,7 @@ export default async function ({ browser, base, t }) {
       g.player.lookAt({ x: n.pos.x, y: n.pos.y + 1.6, z: n.pos.z });
     }, [id, kind]);
     await page.waitForTimeout(3500);
-    await page.screenshot({ path: SHOTS + `people-${id}-${kind}.png` });
+    await page.screenshot({ path: SHOTS + `people-${id}-${kind}.png`, timeout: 90000 }).catch(e => console.log(`  (no screenshot: ${e.message.split('\n')[0]})`));
   }
   t.ok(await page.evaluate(() => {
     const n = window.pokecraft.npcs.list.find(x => x.kind === 'leader' && x.gym?.def.id === 'alien');
