@@ -9,14 +9,14 @@ import { Book } from './book.js';
 import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS } from './gyms.js';
 import { TouchControls } from './touch.js';
-import * as cloud from './cloud.js';
-import { Multiplayer, cleanCode } from './multiplayer.js';
-import { Duels } from './duel.js';
+import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
 import { Fx } from './fx.js';
 import { Weather } from './weather.js';
+import { createGuide } from './guide.js';
+import { createAccounts } from './accounts.js';
 import { caveLight, patchMaterial } from './caves.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -148,163 +148,14 @@ function save(important = false) {
   if (!game.started) return;
   const data = snapshot();
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
-  pendingCloud = data;
+  accounts.queue(data);
   if (important) pushCloud();
 }
 
 /* ------------------------------ cloud saves ------------------------------ */
 
-let pendingCloud = null; // newest save not yet uploaded
-let cloudBusy = false;
-const cloudState = { text: '', error: false };
-
-async function pushCloud() {
-  if (!game.user || !pendingCloud || cloudBusy) return;
-  const data = pendingCloud;
-  pendingCloud = null;
-  cloudBusy = true;
-  try {
-    await cloud.saveCloud(data);
-    const t = new Date();
-    setCloudState(`Saved online at ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`);
-  } catch (e) {
-    pendingCloud ??= data; // retry with the next cloud save
-    setCloudState(`Couldn't save online: ${e.message} Progress is still saved on this device.`, true);
-  }
-  cloudBusy = false;
-}
-
-function setCloudState(text, error = false) {
-  cloudState.text = text;
-  cloudState.error = error;
-  renderCloudStatus();
-}
-
-function renderCloudStatus() {
-  const box = document.getElementById('cloud-status');
-  const text = game.user ? (cloudState.text || `Signed in as ${game.user.email}`)
-    : 'Not signed in: progress is only saved on this device.';
-  box.textContent = text;
-  box.classList.toggle('error', game.user && cloudState.error);
-}
-
-// After signing in: use whichever save is newer, the one online or the one on this device.
-async function syncFromCloud() {
-  try {
-    const online = await cloud.loadCloud();
-    const local = loadSave();
-    if (online && (!local || (online.savedAt || 0) > (local.savedAt || 0))) {
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(online)); } catch { /* storage unavailable */ }
-      if (!game.started) showTitle();
-      setCloudState('Loaded your online save.');
-    } else if (local && local.seed !== undefined) {
-      await cloud.saveCloud(local);
-      setCloudState('Your progress is saved online.');
-    }
-  } catch (e) {
-    setCloudState(`Couldn't reach your online save: ${e.message}`, true);
-  }
-}
-
-let typedEmail = ''; // kept across re-renders so a typo doesn't mean retyping everything
-
-function renderAccount(mode = 'idle', message = '', isError = false) {
-  const box = document.getElementById('account');
-  const msg = message && el('div', { class: `acct-msg${isError ? ' error' : ''}` }, message);
-  if (game.user) {
-    box.replaceChildren(
-      el('div', {}, '☁ Signed in as ', el('b', {}, game.user.email), ' · your game saves online'),
-      el('button', { class: 'small', onclick: async () => {
-        await cloud.signOut();
-        game.user = null;
-        renderAccount('idle', 'Signed out. Progress is still saved on this device.');
-        renderCloudStatus();
-      } }, 'Sign out'),
-      msg);
-    return;
-  }
-  if (mode !== 'form') {
-    box.replaceChildren(
-      el('div', {}, 'Want to play on another device too?'),
-      el('button', { class: 'small', onclick: () => renderAccount('form') }, 'Sign in / Create account'),
-      msg);
-    return;
-  }
-  if (mode === 'newPassword') {
-    const pw = el('input', { type: 'password', placeholder: 'New password (6+ characters)', autocomplete: 'new-password' });
-    const setIt = async () => {
-      if (pw.value.length < 6) { renderAccount('newPassword', 'The password needs at least 6 characters.', true); return; }
-      box.querySelectorAll('button,input').forEach(b => { b.disabled = true; });
-      const res = await cloud.setNewPassword(pw.value);
-      if (res.error) { renderAccount('newPassword', res.error, true); return; }
-      game.user = res.user;
-      renderAccount('idle', 'Password changed! You are signed in.');
-      await syncFromCloud();
-    };
-    box.replaceChildren(
-      el('div', {}, 'Choose a new password'),
-      el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); setIt(); } },
-        pw, el('div', { class: 'acct-btns' }, el('button', { class: 'small primary', type: 'submit' }, 'Save password'))),
-      msg);
-    pw.focus();
-    return;
-  }
-  const email = el('input', { type: 'email', placeholder: 'Email', autocomplete: 'email', value: typedEmail });
-  email.addEventListener('input', () => { typedEmail = email.value; });
-  const password = el('input', { type: 'password', placeholder: 'Password (6+ characters)', autocomplete: 'current-password' });
-  const go = async create => {
-    if (!email.value || !password.value) { renderAccount('form', 'Enter an email and a password.', true); return; }
-    box.querySelectorAll('button,input').forEach(b => { b.disabled = true; });
-    const res = create ? await cloud.signUp(email.value.trim(), password.value) : await cloud.signIn(email.value.trim(), password.value);
-    if (res.error) { renderAccount('form', res.error, true); return; }
-    if (res.needsConfirm) {
-      renderAccount('idle', `Almost done! We sent an email to ${email.value.trim()}. Click the link in it, then sign in here.`);
-      return;
-    }
-    game.user = res.user;
-    renderAccount('idle', 'Signed in! Syncing your save...');
-    await syncFromCloud();
-    renderAccount('idle', cloudState.text, cloudState.error);
-  };
-  const forgot = async () => {
-    const address = email.value.trim();
-    if (!address) { renderAccount('form', 'Type your email first, then press "Forgot password?".', true); return; }
-    const res = await cloud.sendPasswordReset(address);
-    renderAccount('form', res.error || `We sent a link to ${address}. Open it on this device to choose a new password.`, !!res.error);
-  };
-  box.replaceChildren(
-    el('form', { class: 'acct-form', onsubmit: e => { e.preventDefault(); go(false); } },
-      email, password,
-      el('div', { class: 'acct-btns' },
-        el('button', { class: 'small primary', type: 'submit' }, 'Sign in'),
-        el('button', { class: 'small', type: 'button', onclick: () => go(true) }, 'Create account'),
-        el('button', { class: 'small', type: 'button', onclick: () => renderAccount('idle') }, 'Cancel')),
-      el('div', { class: 'acct-btns' },
-        el('button', { class: 'small link', type: 'button', onclick: forgot }, 'Forgot password?'))),
-    msg);
-  (typedEmail ? password : email).focus();
-}
-
-async function initAccount() {
-  // Opened from a "reset password" email: ask for the new password straight away.
-  let recovering = false;
-  cloud.onAuthChange((event, user) => {
-    if (event !== 'PASSWORD_RECOVERY') return;
-    recovering = true;
-    game.user = user;
-    if (game.started) pause();
-    titleEl.classList.remove('hidden');
-    renderAccount('newPassword');
-  });
-  game.user = await cloud.currentUser();
-  if (recovering) return; // the new-password form is showing; don't replace it
-  renderAccount();
-  renderCloudStatus();
-  if (game.user) {
-    await syncFromCloud();
-    renderAccount('idle', cloudState.error ? cloudState.text : '', cloudState.error);
-  }
-}
+const accounts = createAccounts(game, { loadSave, saveKey: SAVE_KEY, showTitle, pause });
+const { pushCloud, renderAccount, initAccount } = accounts;
 
 // size: the map size the edits were saved with (missing in saves from before the map grew).
 function createWorld(seed, edits, size) {
@@ -888,7 +739,6 @@ game.onBattleEnd = (result, opts) => {
 /* ------------------------------- main loop ------------------------------- */
 
 const target = { wild: null, npc: null, player: null, block: null };
-let currentGym = null;
 let regenTimer = 0;
 let saveTimer = 0;
 let cloudTimer = 0;
@@ -938,108 +788,8 @@ function updateSky(dt) {
   game.npcs.setNight(game.night); // the night gyms' people (Comet, Saucer) come and go with the night
 }
 
-// Minutes of real time until it gets dark (0 if it already is).
-function minutesToNight() {
-  if (game.night) return 0;
-  const lightAt = t => smoothstep(-0.2, 0.25, Math.sin(t * Math.PI * 2));
-  let t = game.time, steps = 0;
-  while (lightAt(t) >= 0.3 && steps < 600) { t = (t + 0.002) % 1; steps++; }
-  return Math.max(1, Math.ceil(steps * 0.002 * DAY_LENGTH / 60));
-}
-
-function nightGymClosed(def) {
-  const m = minutesToNight();
-  return `The ${def.name} is empty... ${def.nightText || 'come back at night!'} Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
-}
-
 let mpHud = null;
-let skyToldNear = false, skyToldPad = false, skyNearest = null;
-
-// Points the player towards the next gym they haven't beaten yet.
-function updateGuide() {
-  const p = game.player.pos;
-  const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
-  let next = unbeaten[0];
-  let nightNote = '';
-  // By day the arrow skips the night gyms (Comet, Saucer) and mentions the ones it skipped.
-  if (next?.def.night && !game.night) {
-    const other = unbeaten.find(g => !g.def.night);
-    if (other) {
-      const skipped = unbeaten.slice(0, unbeaten.indexOf(other)).map(g => g.def.name);
-      next = other;
-      nightNote = ` · ${skipped.join(' and ')} ${skipped.length > 1 ? 'open' : 'opens'} at night ☾`;
-    } else nightNote = ' (opens at night ☾)';
-  }
-  if (!next && !game.champion && game.world.tower) next = game.world.tower;
-  if (!next) game.ui.setGuide('★ Champion! ★');
-  else updateArrow(p, next, nightNote);
-
-  // Sky gym hints (Cloud and Saucer): they float above the ground, so tell the player to build up.
-  const dist = g => Math.hypot(g.x + 0.5 - p.x, g.z + 0.5 - p.z);
-  const sky = game.world.gyms.filter(g => g.sky && !game.badges.includes(g.def.id)).sort((a, b) => dist(a) - dist(b))[0];
-  if (sky !== skyNearest) { skyNearest = sky; skyToldNear = skyToldPad = false; }
-  if (sky) {
-    const h = Math.hypot(sky.x + 0.5 - p.x, sky.z + 0.5 - p.z);
-    if (h > 24) skyToldNear = false;
-    else if (h <= 14 && p.y < sky.y - 1 && !skyToldNear) {
-      skyToldNear = true;
-      game.ui.toast(`The ${sky.def.name} floats high in the sky! Build a tower of blocks on the ${sky.padColor || 'blue'} pad and jump across.`);
-    }
-    if (!skyToldPad && sky.pad && Math.hypot(p.x - (sky.pad[0] + 0.5), p.z - (sky.pad[2] + 0.5)) < 2 && p.y < sky.y - 1) {
-      skyToldPad = true;
-      game.ui.toast('Tip: look down, jump and place a block under you. Keep going up!');
-    }
-  }
-
-  const inside = game.world.gymAt(p.x, p.z, p.y) || game.world.towerAt(p.x, p.z);
-  if (inside !== currentGym) {
-    currentGym = inside;
-    if (inside?.tower) game.ui.toast("Welcome to the Champion's Tower!");
-    else if (inside?.def.night && !game.night) game.ui.toast(nightGymClosed(inside.def));
-    else if (inside) game.ui.toast(`Welcome to the ${inside.def.name}! (${inside.def.type} type)`);
-  }
-}
-
-function updateArrow(p, next, note = '') {
-  let tx = next.x + 0.5, tz = next.z + 0.5, where = '';
-  const cave = next.cave;
-  let above = false, onIsland = false;
-  if (next.sky) {
-    const h = Math.hypot(tx - p.x, tz - p.z);
-    onIsland = p.y >= next.y - 1 && h < 12;
-    above = h < 14 && p.y < next.y - 1;
-    if (above && next.pad) { tx = next.pad[0] + 0.5; tz = next.pad[2] + 0.5; }
-  }
-  if (cave) {
-    const [mx, , mz] = cave.mouth;
-    const [fx, fz] = next.front;
-    // On the way in: close to the line from the arch to the door and below the hill, or in the cavern.
-    const along = (p.x - (mx + 0.5)) * -fx + (p.z - (mz + 0.5)) * -fz; // distance from the arch towards the gym
-    const total = Math.abs(mx - next.x) + Math.abs(mz - next.z);
-    const across = Math.abs((p.x - next.x - 0.5) * fz) + Math.abs((p.z - next.z - 0.5) * fx);
-    const ground = game.world.ground[Math.floor(p.x) + Math.floor(p.z) * WORLD_W] ?? 99;
-    const onTheWay = along >= -1 && along <= total + 1 && across <= 3 && p.y < ground + 1;
-    const inCavern = Math.max(Math.abs(p.x - next.x - 0.5), Math.abs(p.z - next.z - 0.5)) <= 14 && p.y < next.y + 9;
-    if (onTheWay || inCavern) where = 'in';
-    else { tx = mx + 0.5; tz = mz + 0.5; where = 'out'; }
-  }
-  game.guideTarget = [tx, tz];
-  const dx = tx - p.x, dz = tz - p.z;
-  const dist = Math.round(Math.hypot(dx, dz));
-  // Angle of the target relative to where the player is looking.
-  let rel = Math.atan2(-dx, -dz) - game.player.yaw;
-  rel = Math.atan2(Math.sin(rel), Math.cos(rel));
-  const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
-  const arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
-  let text;
-  if (where === 'out') text = dist < 6 ? `The ${next.def.name} is down these stairs!` : `Next: ${next.def.name} (in a cave) ${arrow} ${dist}m`;
-  else if (where === 'in') text = Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z) < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ↓ ${Math.round(Math.hypot(next.x + 0.5 - p.x, next.z + 0.5 - p.z))}m`;
-  else if (next.sky) {
-    text = above ? `The ${next.def.name} is right above you! ⬆`
-      : onIsland ? `${next.def.name} is here!` : `Next: ${next.def.name} (up in the sky!) ${arrow} ${dist}m`;
-  } else text = dist < 8 ? `${next.def.name} is here!` : `Next: ${next.def.name} ${arrow} ${dist}m`;
-  game.ui.setGuide(text + note);
-}
+const { updateGuide, nightGymClosed } = createGuide(game, { dayLength: DAY_LENGTH, smoothstep });
 
 function updateTarget() {
   const origin = game.player.eyePos;
@@ -1134,135 +884,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 
 /* ----------------------------- play together ----------------------------- */
 
-const NAME_KEY = 'pokecraft-name';
-const mpBox = document.getElementById('mp');
-let mpMessage = { text: '', error: false };
-
-game.mp = new Multiplayer(game, {
-  toast: text => { game.ui.toast(text); renderMp(); },
-  // Joining: swap in the host's world, keeping your own team, badges and items.
-  loadWorld: data => {
-    const p = game.player;
-    game.homeWorld = {
-      seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
-      pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
-    };
-    createWorld(data.seed, data.edits, data.size);
-    game.time = data.time;
-    if (data.weather) game.weather.apply(data.weather);
-    const np = game.player;
-    np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
-    for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
-    game.ui.renderHud();
-  },
-  duel: p => game.duels.onMessage(p),
-  left: id => game.duels.left(id),
-  ended: reason => {
-    if (reason !== 'host-left') return;
-    game.hostLeft = true;
-    if (game.inBattle) { game.ui.toast('The host left. You will go back to your own world after this battle.'); return; }
-    game.ui.toast('The host left, so you are going back to your own world.');
-    setTimeout(goHome, 2500);
-  },
-});
-
-game.duels = new Duels(game, {
-  start: duel => startBattle({ duel }),
-  toast: text => game.ui.toast(text),
-});
-
-function playerName() {
-  let name = '';
-  try { name = localStorage.getItem(NAME_KEY) || ''; } catch { /* ignore */ }
-  return name || game.user?.email?.split('@')[0] || '';
-}
-
-// Leave someone else's world: save your own progress, then reload into your own world.
-async function goHome() {
-  save();
-  await pushCloud();
-  game.mp.close();
-  // Keep homeWorld set: the save that runs while the page unloads must still save your own world.
-  location.reload();
-}
-
-function setMpMessage(text, error = false) {
-  mpMessage = { text, error };
-  renderMp();
-}
-
-function renderMp() {
-  const mp = game.mp;
-  const msg = mpMessage.text && el('div', { class: `acct-msg${mpMessage.error ? ' error' : ''}` }, mpMessage.text);
-  const others = mp.players;
-  const who = others.length ? `Playing with: ${others.join(', ')}` : 'Nobody else is here yet.';
-  if (mp.role === 'host') {
-    mpBox.replaceChildren(
-      el('h3', {}, 'Play together'),
-      el('div', {}, 'Your world code is'),
-      el('div', { class: 'mp-code' }, mp.code),
-      el('div', {}, 'The other player picks "Join a world" and types this code.'),
-      el('div', { class: 'mp-who' }, who),
-      el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
-      msg);
-    return;
-  }
-  if (mp.role === 'guest') {
-    mpBox.replaceChildren(
-      el('h3', {}, 'Play together'),
-      el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
-      el('div', { class: 'mp-who' }, who),
-      el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
-      el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),
-      msg);
-    return;
-  }
-  if (mp.role === 'joining') {
-    mpBox.replaceChildren(el('h3', {}, 'Play together'), el('div', {}, 'Joining...'));
-    return;
-  }
-  const name = el('input', { type: 'text', placeholder: 'Your name', maxlength: 16, value: playerName() });
-  const code = el('input', { type: 'text', placeholder: 'World code', maxlength: 5, class: 'mp-code-input' });
-  code.addEventListener('input', () => { code.value = cleanCode(code.value); });
-  const checkName = () => {
-    const n = name.value.trim();
-    if (!n) { setMpMessage('Type your name first, so the other player knows who you are.', true); return null; }
-    try { localStorage.setItem(NAME_KEY, n); } catch { /* ignore */ }
-    return n;
-  };
-  const host = async () => {
-    const n = checkName(); if (!n) return;
-    setMpMessage('Connecting...');
-    const res = await mp.host(n);
-    setMpMessage(res.error || '', !!res.error);
-  };
-  const join = async () => {
-    const n = checkName(); if (!n) return;
-    if (code.value.length !== 5) { setMpMessage('Type the 5-letter world code first.', true); return; }
-    save();
-    mpMessage = { text: '', error: false };
-    const pending = mp.join(code.value, n);
-    renderMp();
-    const res = await pending;
-    if (res.error) { setMpMessage(res.error, true); return; }
-    setMpMessage(`Welcome to ${res.hostName}'s world! Tap or click outside this box to play.`);
-  };
-  mpBox.replaceChildren(
-    el('h3', {}, 'Play together'),
-    el('div', { class: 'acct-form' },
-      name,
-      el('div', { class: 'acct-btns' }, el('button', { class: 'small primary', onclick: host }, 'Share my world')),
-      el('div', { class: 'mp-or' }, 'or join someone else'),
-      code,
-      el('div', { class: 'acct-btns' }, el('button', { class: 'small', onclick: join }, 'Join a world'))),
-    msg);
-}
-
-// Clicks inside the box shouldn't count as "click anywhere to resume".
-mpBox.addEventListener('click', e => e.stopPropagation());
-mpBox.addEventListener('pointerdown', e => e.stopPropagation());
-new MutationObserver(() => { if (!pauseEl.classList.contains('hidden')) renderMp(); })
-  .observe(pauseEl, { attributes: true, attributeFilter: ['class'] });
+const { goHome } = createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl });
 
 showTitle();
 requestAnimationFrame(frame);
