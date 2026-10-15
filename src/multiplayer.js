@@ -15,7 +15,7 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky).
-const WORLD_VERSION = 4;
+const WORLD_VERSION = 5;
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [
@@ -238,6 +238,7 @@ export class Multiplayer {
     });
     t.on('block', p => {
       if (!this.active || p.id === this.id) return;
+      if (!this.game.world.editAllowed(p.x, p.y, p.z, p.b)) return; // gyms stay whole (T17)
       this.game.world.set(p.x, p.y, p.z, p.b);
     });
     t.on('bye', p => this.removePlayer(p.id, true));

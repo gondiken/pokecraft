@@ -5,16 +5,18 @@ import { GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves } from './caves.js';
 import { installGymPlacement } from './gymplace.js';
 
-export const WORLD_W = 224;
-export const WORLD_D = 224;
-const OLD_SIZE = [192, 192]; // saves from before the map grew don't record their size
+export const WORLD_W = 288; // the map since T17 (array stride of every World the game makes)
+export const WORLD_D = 288;
+export const OLD_W = 224, OLD_D = 224; // the map before T17: generated exactly as before, never changes
+export const MID_X = 112, MID_Z = 112; // the old middle: the start search, gym doors and the title fly-over use it
+const NO_SIZE = [192, 192]; // saves from before the map grew don't record their size
 export const WORLD_H = 48;
 const CHUNK = 16;
 export const WATER_LEVEL = 12;
 
 // Block edits are stored by index, which depends on the map size. Converts edits saved with a
 // different map size (terrain is the same at the same x, y, z, so they land in the same places).
-export function convertEdits(edits, size = OLD_SIZE) {
+export function convertEdits(edits, size = NO_SIZE) {
   const [w, d] = size;
   if (w === WORLD_W && d === WORLD_D) return edits;
   const out = [];
@@ -86,28 +88,32 @@ const OCCLUDERS = new Uint8Array(256);
 for (let id = 1; id < 256; id++) OCCLUDERS[id] = isOccluder(id) ? 1 : 0;
 
 export class World {
-  constructor(seed, scene, materials) {
+  // size: [W, D]. The game's world is WORLD_W x WORLD_D; generate() also makes the old 224 x 224 map in its own
+  // World (T17), and tests may ask for one directly.
+  constructor(seed, scene, materials, [W, D] = [WORLD_W, WORLD_D]) {
     this.seed = seed;
     this.scene = scene;
     this.materials = materials;
-    this.data = new Uint8Array(WORLD_W * WORLD_D * WORLD_H);
+    this.W = W;
+    this.D = D;
+    this.data = new Uint8Array(W * D * WORLD_H);
     this.edits = new Map();
     this.dirty = new Set();
     this.meshes = new Map();
     this.gyms = [];
     this.tower = null;
-    this.ground = new Uint8Array(WORLD_W * WORLD_D); // natural ground height of each column
-    this.top = new Uint8Array(WORLD_W * WORLD_D); // highest block that blocks the sky (see computeTop)
+    this.ground = new Uint8Array(W * D); // natural ground height of each column
+    this.top = new Uint8Array(W * D); // highest block that blocks the sky (see computeTop)
     this.topReady = false;
-    this.litCol = new Uint8Array(WORLD_W * WORLD_D); // 1 under gym and tower roofs: always bright
+    this.litCol = new Uint8Array(W * D); // 1 under gym and tower roofs: always bright
     this.caves = null;
     this.litRooms = []; // boxes that are always bright (cave gym rooms): { x0, x1, z0, z1, y0, y1 }
   }
 
-  index(x, y, z) { return x + WORLD_W * (z + WORLD_D * y); }
+  index(x, y, z) { return x + this.W * (z + this.D * y); }
 
   inBounds(x, y, z) {
-    return x >= 0 && z >= 0 && y >= 0 && x < WORLD_W && z < WORLD_D && y < WORLD_H;
+    return x >= 0 && z >= 0 && y >= 0 && x < this.W && z < this.D && y < WORLD_H;
   }
 
   get(x, y, z) {
@@ -117,12 +123,13 @@ export class World {
 
   // Collision query; the world edges and floor act as walls.
   isSolid(x, y, z) {
-    if (x < 0 || z < 0 || x >= WORLD_W || z >= WORLD_D || y < 0) return true;
+    if (x < 0 || z < 0 || x >= this.W || z >= this.D || y < 0) return true;
     return isSolid(this.get(x, y, z));
   }
 
   set(x, y, z, id, record = true) {
     if (!this.inBounds(x, y, z)) return;
+    if (this.guardOld && x < OLD_W && z < OLD_D) throw new Error(`T17: write into the old area at ${x},${y},${z}`);
     const i = this.index(x, y, z);
     const old = this.data[i];
     this.data[i] = id;
@@ -146,7 +153,7 @@ export class World {
   // Highest sky-blocking block of every column (leaves, glass and water let light through).
   computeTop() {
     const { data, top } = this;
-    const layer = WORLD_W * WORLD_D;
+    const layer = this.W * this.D;
     for (let c = 0; c < layer; c++) {
       let y = WORLD_H - 1;
       while (y > 0 && !OCCLUDERS[data[c + layer * y]]) y--;
@@ -156,10 +163,10 @@ export class World {
   }
 
   updateTop(x, y, z, id) {
-    const c = x + z * WORLD_W;
+    const c = x + z * this.W;
     if (OCCLUDERS[id]) { if (y > this.top[c]) this.top[c] = y; return; }
     if (y !== this.top[c]) return;
-    const layer = WORLD_W * WORLD_D;
+    const layer = this.W * this.D;
     let t = y - 1;
     while (t > 0 && !OCCLUDERS[this.data[c + layer * t]]) t--;
     this.top[c] = t;
@@ -168,9 +175,9 @@ export class World {
   // How much daylight reaches a cell (0.06..1): full under open sky, dimmer the deeper it is
   // below the natural ground and under cover. Houses above the natural ground stay bright.
   skyAt(x, y, z) {
-    if (x < 0 || z < 0 || x >= WORLD_W || z >= WORLD_D) return 1;
+    if (x < 0 || z < 0 || x >= this.W || z >= this.D) return 1;
     if (!this.topReady) this.computeTop();
-    const c = x + z * WORLD_W;
+    const c = x + z * this.W;
     if (y > this.top[c] || this.litCol[c]) return 1;
     for (const r of this.litRooms) if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1 && y >= r.y0 && y <= r.y1) return 1;
     const d = this.ground[c] - y;
@@ -199,7 +206,8 @@ export class World {
   highGround() {
     if (this.high) return this.high;
     const hs = [];
-    for (let x = 2; x < WORLD_W; x += 4) for (let z = 2; z < WORLD_D; z += 4) hs.push(Math.min(this.terrainHeight(x, z), WORLD_H - 10));
+    // pinned to the old 224 x 224 area (T17), or the biomes of old worlds would shift
+    for (let x = 2; x < OLD_W; x += 4) for (let z = 2; z < OLD_D; z += 4) hs.push(Math.min(this.terrainHeight(x, z), WORLD_H - 10));
     hs.sort((a, b) => a - b);
     const at = share => hs[Math.floor(hs.length * (1 - share))];
     const peak = Math.max(19, at(0.03));
@@ -232,32 +240,105 @@ export class World {
     return 'plains';
   }
 
-  // caves: the old caves; bigCaves: the second, bigger cave layer; caveGyms: gyms that live in caves (tests only).
-  // newGyms: the T10 gyms (19+); off only for tests that compare with the world before them.
-  generate({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true } = {}) {
-    const biomes = new Array(WORLD_W * WORLD_D);
-    for (let x = 0; x < WORLD_W; x++) {
-      for (let z = 0; z < WORLD_D; z++) {
-        const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
-        this.ground[x + z * WORLD_W] = h;
-        const biome = biomes[x + z * WORLD_W] = this.biome(x, z);
-        const [top, under] = groundOf(biome, h);
-        // Gravel patches on mountainsides.
-        const gravel = biome === 'mountain' && fbm(x / 9, z / 9, this.seed + 21, 2) > 0.66;
-        for (let y = 0; y <= Math.max(h, WATER_LEVEL); y++) {
-          let id;
-          if (y > h) id = biome === 'taiga' && y === WATER_LEVEL ? B.ICE : B.WATER; // frozen lakes
-          else if (y === h) id = gravel ? B.GRAVEL : top;
-          else if (y > h - 4) id = under;
-          else {
-            // Ore hidden in the rock: dig (or look at cliffs) to find it.
-            const r = hash2(x * 7 + y, z * 13 - y * 3, this.seed + 404);
-            id = r < 0.004 ? B.GOLD_ORE : r < 0.02 ? B.COAL_ORE : B.STONE;
-          }
-          this.data[this.index(x, y, z)] = id;
-        }
+  // One terrain column: ground height, the blocks from the bottom up to the ground (or the water), its biome.
+  fillColumn(x, z) {
+    const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
+    this.ground[x + z * this.W] = h;
+    const biome = this.biome(x, z);
+    const [top, under] = groundOf(biome, h);
+    // Gravel patches on mountainsides.
+    const gravel = biome === 'mountain' && fbm(x / 9, z / 9, this.seed + 21, 2) > 0.66;
+    for (let y = 0; y <= Math.max(h, WATER_LEVEL); y++) {
+      let id;
+      if (y > h) id = biome === 'taiga' && y === WATER_LEVEL ? B.ICE : B.WATER; // frozen lakes
+      else if (y === h) id = gravel ? B.GRAVEL : top;
+      else if (y > h - 4) id = under;
+      else {
+        // Ore hidden in the rock: dig (or look at cliffs) to find it.
+        const r = hash2(x * 7 + y, z * 13 - y * 3, this.seed + 404);
+        id = r < 0.004 ? B.GOLD_ORE : r < 0.02 ? B.COAL_ORE : B.STONE;
+      }
+      this.data[this.index(x, y, z)] = id;
+    }
+    return biome;
+  }
+
+  // Plants at one column: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
+  // wide = false: no trees or pines (their crowns reach 2 columns sideways; used next to the old map's edge).
+  plantAt(x, z, biome, wide = true) {
+    const r = hash2(x, z, this.seed + 99);
+    const s = this.surface(x, z);
+    const y = s.y + 1;
+    if (biome === 'desert') {
+      if (r < 0.012 && s.id === B.SAND) for (let i = 0; i < 1 + Math.floor(r * 250); i++) this.set(x, y + i, z, B.CACTUS, false);
+    } else if (biome === 'taiga') {
+      if (wide && r < 0.04 && s.id === B.SNOW) this.placePine(x, y, z);
+    } else if (biome === 'peak') {
+      if (r < 0.02 && s.id === B.SNOW) for (let i = 0; i < 1 + Math.floor(r * 100); i++) this.set(x, y + i, z, B.CRYSTAL, false);
+    } else if (biome === 'swamp') {
+      if (wide && r < 0.025 && s.id === B.MUD) this.placeTree(x, y, z);
+    } else if (s.id === B.GRASS) {
+      const chance = biome === 'forest' ? 0.05 : biome === 'meadow' ? 0.002 : 0.004;
+      if (r < chance) { if (wide) this.placeTree(x, y, z); }
+      else if (biome === 'meadow' ? r > 0.93 : r > 0.997) this.set(x, y, z, B.FLOWER_BUSH, false);
+    }
+  }
+
+  // The game's world: the old 224 x 224 map is generated exactly as before in its own World and copied in,
+  // then the new land (east and south of it) gets terrain, plants and the slot gyms. Nothing old can move.
+  generate(opts = {}) {
+    if (this.W === OLD_W && this.D === OLD_D) return this.generateArea(opts); // the old map itself (tests)
+    const old = new World(this.seed, null, null, [OLD_W, OLD_D]);
+    old.generateArea(opts);
+    this.adoptOld(old);
+    this.guardOld = true; // set() throws if anything writes into the old area from here on
+    try {
+      this.generateNewLand();
+      if (opts.slotGyms !== false) this.placeSlotGyms();
+    } finally { this.guardOld = false; }
+    this.gyms.sort((a, b) => GYMS.indexOf(a.def) - GYMS.indexOf(b.def));
+  }
+
+  // Copies a finished old-size World into this (bigger) one, row by row, and takes over its bookkeeping.
+  adoptOld(old) {
+    const { W } = this;
+    for (let y = 0; y < WORLD_H; y++) {
+      for (let z = 0; z < OLD_D; z++) this.data.set(old.data.subarray(OLD_W * (z + OLD_D * y), OLD_W * (z + OLD_D * y + 1)), this.index(0, y, z));
+    }
+    for (let z = 0; z < OLD_D; z++) {
+      this.ground.set(old.ground.subarray(z * OLD_W, (z + 1) * OLD_W), z * W);
+      this.litCol.set(old.litCol.subarray(z * OLD_W, (z + 1) * OLD_W), z * W);
+    }
+    const remap = i => (i % OLD_W) + Math.floor(i / OLD_W) * W;
+    if (old.caves) {
+      old.caves.opened = new Set([...old.caves.opened].map(remap));
+      if (old.caves.marks) old.caves.marks = new Set([...old.caves.marks].map(remap));
+    }
+    for (const k of ['caves', 'gyms', 'tower', 'litRooms', 'newGymBoxes', 'high', 'extraSpots', 'caveSpots', 'newSpots']) this[k] = old[k];
+  }
+
+  // Terrain and plants for every column outside the old area, from the same noise and the same rules (biome()
+  // keeps using the old area's height thresholds). Writes only outside the old area. No caves here.
+  generateNewLand() {
+    const { W, D } = this;
+    const biomes = new Array(W * D);
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (x >= OLD_W || z >= OLD_D) biomes[x + z * W] = this.fillColumn(x, z);
+    for (let x = 3; x < W - 3; x++) {
+      for (let z = 3; z < D - 3; z++) {
+        if (x < OLD_W && z < OLD_D) continue;
+        // Crowns are 2 wide: trunks start 2 columns past the seam, so a tree never reaches into the old map.
+        this.plantAt(x, z, biomes[x + z * W], !(x < OLD_W + 2 && z < OLD_D + 2));
       }
     }
+  }
+
+  // caves: the old caves; bigCaves: the second, bigger cave layer; caveGyms: gyms that live in caves (tests only).
+  // newGyms: the T10 gyms (19+); off only for tests that compare with the world before them.
+  // Generates a World of the old size (224 x 224) in full; the game's world calls it on its old-size twin.
+  generateArea({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true } = {}) {
+    const { W, D } = this;
+    const biomes = new Array(W * D);
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) biomes[x + z * W] = this.fillColumn(x, z);
     // Caves under the hills (before the plants, so trees only grow where there is still ground).
     const solid = caves ? this.data.slice() : null;
     this.caves = caves ? carveCaves(this) : null;
@@ -273,26 +354,8 @@ export class World {
     if (caveGyms) this.carveGymRooms(solid, newSpots);
     const carved = caves ? this.data.slice() : null;
     // Plants: trees, pines, cacti, flower bushes and star crystals, depending on the biome.
-    for (let x = 3; x < WORLD_W - 3; x++) {
-      for (let z = 3; z < WORLD_D - 3; z++) {
-        const r = hash2(x, z, this.seed + 99);
-        const biome = biomes[x + z * WORLD_W];
-        const s = this.surface(x, z);
-        const y = s.y + 1;
-        if (biome === 'desert') {
-          if (r < 0.012 && s.id === B.SAND) for (let i = 0; i < 1 + Math.floor(r * 250); i++) this.set(x, y + i, z, B.CACTUS, false);
-        } else if (biome === 'taiga') {
-          if (r < 0.04 && s.id === B.SNOW) this.placePine(x, y, z);
-        } else if (biome === 'peak') {
-          if (r < 0.02 && s.id === B.SNOW) for (let i = 0; i < 1 + Math.floor(r * 100); i++) this.set(x, y + i, z, B.CRYSTAL, false);
-        } else if (biome === 'swamp') {
-          if (r < 0.025 && s.id === B.MUD) this.placeTree(x, y, z);
-        } else if (s.id === B.GRASS) {
-          const chance = biome === 'forest' ? 0.05 : biome === 'meadow' ? 0.002 : 0.004;
-          if (r < chance) this.placeTree(x, y, z);
-          else if (biome === 'meadow' ? r > 0.93 : r > 0.997) this.set(x, y, z, B.FLOWER_BUSH, false);
-        }
-      }
+    for (let x = 3; x < W - 3; x++) {
+      for (let z = 3; z < D - 3; z++) this.plantAt(x, z, biomes[x + z * W]);
     }
     this.placeGyms();
     this.placeTower();
@@ -306,7 +369,7 @@ export class World {
   // Where a new player starts (same search as findSpawn in main.js): the first grass going outwards
   // from the middle. Plants, gyms and the tower cover grass, so it is only known once they are in.
   startColumn() {
-    const cx = WORLD_W >> 1, cz = WORLD_D >> 1;
+    const cx = MID_X, cz = MID_Z; // pinned: the old middle (T17)
     for (let r = 0; r < 60; r++) {
       for (let dx = -r; dx <= r; dx++) {
         for (let dz = -r; dz <= r; dz++) {
@@ -328,13 +391,13 @@ export class World {
   // Undoes the caves within R blocks (a square) of (x0, z0). With `carved` (the world right after
   // carving), cells changed since then stay; without it everything in the box goes back to solid.
   fillCavesNear(solid, x0, z0, R, carved = null) {
-    for (let x = Math.max(0, x0 - R); x <= Math.min(WORLD_W - 1, x0 + R); x++) {
-      for (let z = Math.max(0, z0 - R); z <= Math.min(WORLD_D - 1, z0 + R); z++) {
+    for (let x = Math.max(0, x0 - R); x <= Math.min(this.W - 1, x0 + R); x++) {
+      for (let z = Math.max(0, z0 - R); z <= Math.min(this.D - 1, z0 + R); z++) {
         for (let y = 0; y < WORLD_H; y++) {
           const i = this.index(x, y, z);
           if (carved ? solid[i] !== carved[i] && this.data[i] === carved[i] : true) this.data[i] = solid[i];
         }
-        this.caves.opened.delete(x + z * WORLD_W);
+        this.caves.opened.delete(x + z * this.W);
       }
     }
     const far = ([x, , z]) => Math.max(Math.abs(x - x0), Math.abs(z - z0)) > R;
@@ -379,11 +442,39 @@ export class World {
     for (let i = 0; i < trunk; i++) this.set(x, y + i, z, B.LOG, false);
   }
 
+  // Edits that would change a protected gym cell are dropped, so an old save with a hole dug into a gym gets
+  // its gym back (T17), and a host's world sent to a guest is cleaned the same way.
   applyEdits(edits) {
     this.topReady = false;
+    const { W, D } = this;
     for (const [i, id] of edits) {
+      if (!this.editAllowed(i % W, Math.floor(i / (W * D)), Math.floor(i / W) % D, id)) continue;
       this.data[i] = id;
       this.edits.set(i, id);
+    }
+  }
+
+  // The gym (or the tower) whose protected box holds this cell, or null. Every gym object has `protect` boxes.
+  protectedAt(x, y, z) {
+    const inside = g => g.protect?.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1);
+    for (const g of this.gyms) if (inside(g)) return g;
+    return this.tower && inside(this.tower) ? this.tower : null;
+  }
+
+  // May this cell become `id`? One rule for the player, touch, visitors and saved edits. Opening a chest is not
+  // breaking it (cave chests; T23's key chests).
+  editAllowed(x, y, z, id) {
+    return !this.protectedAt(x, y, z) || (this.get(x, y, z) === B.CHEST && id === B.CHEST_OPEN);
+  }
+
+  // Hides the chunks past the fog (they are fog-coloured there anyway): fewer draw calls on the big map.
+  cull(pos, far) {
+    const r = (far + 12) ** 2;
+    for (const [key, list] of this.meshes) {
+      const comma = key.indexOf(',');
+      const dx = Number(key.slice(0, comma)) * CHUNK + CHUNK / 2 - pos.x, dz = Number(key.slice(comma + 1)) * CHUNK + CHUNK / 2 - pos.z;
+      const vis = dx * dx + dz * dz < r;
+      for (const m of list) m.visible = vis;
     }
   }
 
@@ -398,15 +489,15 @@ export class World {
 
   buildAll() {
     this.computeTop();
-    for (let cx = 0; cx < WORLD_W / CHUNK; cx++)
-      for (let cz = 0; cz < WORLD_D / CHUNK; cz++) this.buildChunk(cx, cz);
+    for (let cx = 0; cx < this.W / CHUNK; cx++)
+      for (let cz = 0; cz < this.D / CHUNK; cz++) this.buildChunk(cx, cz);
     this.dirty.clear();
   }
 
   updateDirty() {
     for (const key of this.dirty) {
       const [cx, cz] = key.split(',').map(Number);
-      if (cx >= 0 && cz >= 0 && cx < WORLD_W / CHUNK && cz < WORLD_D / CHUNK) this.buildChunk(cx, cz);
+      if (cx >= 0 && cz >= 0 && cx < this.W / CHUNK && cz < this.D / CHUNK) this.buildChunk(cx, cz);
     }
     this.dirty.clear();
   }
@@ -428,9 +519,9 @@ export class World {
     lightBuf.fill(0);
     const { data } = this;
     for (let y = 0; y < WORLD_H; y++) {
-      for (let z = Math.max(0, z0 - LIGHT_R); z < Math.min(WORLD_D, z0 + CHUNK + LIGHT_R); z++) {
-        const row = WORLD_W * (z + WORLD_D * y);
-        for (let x = Math.max(0, x0 - LIGHT_R); x < Math.min(WORLD_W, x0 + CHUNK + LIGHT_R); x++) {
+      for (let z = Math.max(0, z0 - LIGHT_R); z < Math.min(this.D, z0 + CHUNK + LIGHT_R); z++) {
+        const row = this.W * (z + this.D * y);
+        for (let x = Math.max(0, x0 - LIGHT_R); x < Math.min(this.W, x0 + CHUNK + LIGHT_R); x++) {
           if (!GLOWS[data[row + x]]) continue;
           for (let dy = -LIGHT_R; dy <= LIGHT_R; dy++) {
             const yy = y + dy;

@@ -91,7 +91,7 @@ export default async function ({ browser, base, t }) {
         const x = i % WORLD_W, z = Math.floor(i / WORLD_W) % WORLD_D;
         if (b.gyms.some(g => !g.cave && !g.sky && near(x, z, g, 14))) bad.gym++; // the Cloud Gym floats above the caves
         if (near(x, z, b.tower, 14)) bad.tower++;
-        if (near(x, z, { x: WORLD_W / 2, z: WORLD_D / 2 }, 6)) bad.middle++;
+        if (near(x, z, { x: 112, z: 112 }, 6)) bad.middle++;
         if (near(x, z, { x: sx, z: sz }, 8)) bad.start++;
         if (b.ground[x + z * WORLD_W] <= WATER_LEVEL + 2) bad.water++;
         if (x < 3 || z < 3 || x >= WORLD_W - 3 || z >= WORLD_D - 3) bad.edge++;
@@ -353,7 +353,7 @@ export default async function ({ browser, base, t }) {
     cm.clear();
     const spawned = [];
     const prev = cm.onSpawn;
-    cm.onSpawn = wd => { spawned.push({ cave: wd.cave, species: wd.data.species, y: wd.pos.y, ground: w.ground[Math.floor(wd.pos.x) + Math.floor(wd.pos.z) * 224] }); };
+    cm.onSpawn = wd => { spawned.push({ cave: wd.cave, species: wd.data.species, y: wd.pos.y, ground: w.ground[Math.floor(wd.pos.x) + Math.floor(wd.pos.z) * 288] }); };
     for (let i = 0; i < 600; i++) cm.update(0.1, g.player.pos, g.spawnPoint, false);
     cm.onSpawn = prev;
     const allowed = new Set(SPAWNS.cave.map(e => e[0]));
@@ -362,7 +362,7 @@ export default async function ({ browser, base, t }) {
     return {
       spawned: spawned.length, allCave: spawned.every(s => s.cave === true && allowed.has(s.species) && s.y < s.ground - 2),
       alive: cm.list.length, mid,
-      stillUnder: cm.list.every(wd => wd.cave && wd.pos.y < w.ground[Math.floor(wd.pos.x) + Math.floor(wd.pos.z) * 224]),
+      stillUnder: cm.list.every(wd => wd.cave && wd.pos.y < w.ground[Math.floor(wd.pos.x) + Math.floor(wd.pos.z) * 288]),
       species: [...new Set(spawned.map(s => s.species))].join(','),
     };
   });
@@ -508,7 +508,7 @@ export default async function ({ browser, base, t }) {
         const d = Math.hypot(dx, dz);
         if (d < 2.5 || d > 4.2) continue;
         if (w.get(x, y, z) !== 0 || w.get(x, y + 1, z) !== 0 || w.get(x, y + 2, z) !== 0 || !w.isSolid(x, y - 1, z)) continue;
-        if (w.ground[x + z * 224] - y < 6) continue;
+        if (w.ground[x + z * 288] - y < 6) continue;
         const eye = new V(x + 0.5, y + 1.62, z + 0.5), tgt = new V(cx + 0.5, cy + 0.5, cz + 0.5);
         const dir = tgt.clone().sub(eye); const dist = dir.length(); dir.normalize();
         if (raycastVoxel(w, eye, dir, dist - 1)) continue;

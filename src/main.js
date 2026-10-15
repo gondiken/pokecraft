@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas } from './blocks.js';
-import { World, WORLD_W, WORLD_D, raycastVoxel, convertEdits } from './world.js';
+import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
@@ -173,7 +173,7 @@ function createWorld(seed, edits, size) {
 }
 
 function findSpawn(world) {
-  const cx = WORLD_W >> 1, cz = WORLD_D >> 1;
+  const cx = MID_X, cz = MID_Z; // the old middle (T17: the map grew, the start did not move)
   for (let r = 0; r < 60; r++) {
     for (let dx = -r; dx <= r; dx++) {
       for (let dz = -r; dz <= r; dz++) {
@@ -480,11 +480,20 @@ function interact() {
   return false;
 }
 
-function breakBlock() {
+// Gyms can't be broken into or built in (T17). One short toast, at most every 2 seconds.
+let wallToastAt = 0;
+function wallToast(text) {
+  const t = performance.now();
+  if (t - wallToastAt < 2000) return;
+  wallToastAt = t;
+  game.ui.toast(text);
+}
+
+function breakBlock(hit = target.block) {
   const world = game.world;
-  const hit = target.block;
   if (!hit || hit.y === 0) return;
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
+  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast('Gym walls are too strong to break!'); return; }
   world.set(hit.x, hit.y, hit.z, B.AIR);
   // Water flows into the hole if it borders water.
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
@@ -515,13 +524,13 @@ function openChest(hit) {
   save();
 }
 
-function placeBlock() {
+function placeBlock(hit = target.block) {
   const world = game.world;
-  const hit = target.block;
   if (!hit) return;
   const x = hit.x + hit.normal[0], y = hit.y + hit.normal[1], z = hit.z + hit.normal[2];
   const cur = world.get(x, y, z);
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
+  if (!world.editAllowed(x, y, z, game.hotbar[game.selected])) { wallToast("You can't build inside a gym!"); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, game.hotbar[game.selected]);
   game.mp.sendBlock(x, y, z, game.hotbar[game.selected]);
@@ -831,9 +840,9 @@ function frame(now) {
   if (!game.started) {
     // Slow fly-over for the title screen.
     const t = now / 1000 * 0.05;
-    camera.position.set(WORLD_W / 2 + Math.cos(t) * 45, 40, WORLD_D / 2 + Math.sin(t) * 45);
-    camera.lookAt(WORLD_W / 2, 14, WORLD_D / 2);
-    game.creatures.update(dt, new THREE.Vector3(WORLD_W / 2, 0, WORLD_D / 2), game.spawnPoint, false, false);
+    camera.position.set(MID_X + Math.cos(t) * 45, 40, MID_Z + Math.sin(t) * 45);
+    camera.lookAt(MID_X, 14, MID_Z);
+    game.creatures.update(dt, new THREE.Vector3(MID_X, 0, MID_Z), game.spawnPoint, false, false);
   } else {
     p.joy = game.touch.joy;
     if (playing()) p.update(dt);
@@ -878,6 +887,7 @@ function frame(now) {
   }
 
   game.fx.update(now);
+  game.world?.cull(camera.position, scene.fog.far);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }

@@ -38,7 +38,7 @@ export default async function ({ browser, base, t }) {
       const caveGap = g => { const c = gy.filter(o => o !== g && o.cave); return c.length ? Math.min(...c.map(o => cheb(g, [o.x, o.z]))) : 99; };
       const info = g => ({
         id: g.def.id, x: g.x, z: g.z, y: g.y, cave: !!g.cave, sky: !!g.sky,
-        gap: euclid(g), towerGap: cheb(g, tower), caveGap: caveGap(g), middle: Math.hypot(g.x - W / 2, g.z - D / 2),
+        gap: euclid(g), towerGap: cheb(g, tower), caveGap: caveGap(g), middle: Math.hypot(g.x - 112, g.z - 112),
         roof: w.get(g.x + 5, g.y + 5, g.z + 5), corner: w.get(g.x + 6, g.y, g.z + 6), biome: w.biome(g.x, g.z),
       });
       const rec = {
