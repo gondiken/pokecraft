@@ -15,13 +15,16 @@ export class Player {
     this.halfW = 0.3;
     this.height = 1.8;
     this.eye = 1.62;
+    this._eye = new THREE.Vector3();
+    this._fwd = new THREE.Vector3();
   }
 
-  get eyePos() { return new THREE.Vector3(this.pos.x, this.pos.y + this.eye, this.pos.z); }
+  // Shared vectors, refilled on every read: copy or clone them to keep a value.
+  get eyePos() { return this._eye.set(this.pos.x, this.pos.y + this.eye, this.pos.z); }
 
   get forward() {
     const cp = Math.cos(this.pitch);
-    return new THREE.Vector3(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp);
+    return this._fwd.set(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp);
   }
 
   look(dx, dy) {

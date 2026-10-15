@@ -15,7 +15,7 @@ function hash3(x, y, z, seed) {
 const NEIGHBOURS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 
 // Columns where no cave may ever be carved: map edges, shores, gyms, the tower and the start.
-export function keepOutMask(world) {
+function keepOutMask(world) {
   const Wd = WORLD_W, D = WORLD_D;
   const keep = new Uint8Array(Wd * D);
   const mark = (x0, z0, x1, z1) => {

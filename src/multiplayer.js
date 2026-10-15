@@ -15,7 +15,7 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky).
-export const WORLD_VERSION = 4;
+const WORLD_VERSION = 4;
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [
@@ -29,7 +29,7 @@ const OUTFITS = [
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const hash = s => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-export function makeCode() {
+function makeCode() {
   return Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 }
 
@@ -256,7 +256,8 @@ export class Multiplayer {
     this.raycaster.set(origin, dir);
     this.raycaster.far = maxDist;
     const meshes = [];
-    for (const a of this.others.values()) a.model.traverse(o => { if (o.isMesh) meshes.push(o); }); // not the name tag sprite
+    const reach = maxDist + 3;
+    for (const a of this.others.values()) if (a.pos.distanceToSquared(origin) < reach * reach) a.model.traverse(o => { if (o.isMesh) meshes.push(o); }); // not the name tag sprite
     const hits = this.raycaster.intersectObjects(meshes, false);
     if (!hits.length) return null;
     let o = hits[0].object;

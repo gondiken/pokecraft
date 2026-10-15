@@ -952,12 +952,12 @@ function nightGymClosed(def) {
   return `The ${def.name} is empty... ${def.nightText || 'come back at night!'} Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
 }
 
+let mpHud = null;
 let skyToldNear = false, skyToldPad = false, skyNearest = null;
 
 // Points the player towards the next gym they haven't beaten yet.
 function updateGuide() {
   const p = game.player.pos;
-  game.npcs.setNight(game.night);
   const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
   let next = unbeaten[0];
   let nightNote = '';
@@ -1112,7 +1112,7 @@ function frame(now) {
       game.ui.renderHud();
       updateGuide();
       game.creatures.levelBonus = game.badges.length >= ORIGINAL_GYMS || game.champion ? 10 : 0;
-      const hud = document.getElementById('mp-hud');
+      const hud = mpHud || (mpHud = document.getElementById('mp-hud'));
       const mp = game.mp;
       const text = mp.role === 'host' ? `👥 Sharing · code ${mp.code} · ${mp.players.length + 1} playing`
         : mp.role === 'guest' ? `👥 In ${mp.hostName || 'a friend'}'s world · ${mp.players.length + 1} playing` : '';

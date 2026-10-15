@@ -782,7 +782,7 @@ export class Battle {
     const g = this.game;
     const target = this.foeModel;
     const cube = makeCubeMesh();
-    const from = g.player.eyePos.add(new THREE.Vector3(0, -0.3, 0));
+    const from = g.player.eyePos.clone().add(new THREE.Vector3(0, -0.3, 0));
     const to = this.foePos.clone().add(new THREE.Vector3(0, 0.6, 0));
     g.scene.add(cube);
     sound.play('cube');

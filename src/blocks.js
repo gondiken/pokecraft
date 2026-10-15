@@ -1,6 +1,6 @@
 // Block definitions and the procedurally drawn pixel-art texture atlas.
 
-export const TILE = 16;
+const TILE = 16;
 
 // Tile indices inside the atlas (a single row of 16x16 tiles).
 export const T = {
@@ -10,7 +10,7 @@ export const T = {
 };
 
 // Coloured "wool" blocks, one per creature type, used for gym roofs and carpets.
-export const WOOL_TYPES = [
+const WOOL_TYPES = [
   'normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost',
   'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien',
   'sky', 'slime', 'light', 'paper', // T10 gyms: ids 49-52 (see WOOL below)

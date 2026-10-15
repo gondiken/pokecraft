@@ -251,4 +251,3 @@ export const TOWER = {
   ],
 };
 
-export const gymById = id => GYMS.find(g => g.id === id);

@@ -75,7 +75,7 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
   return group;
 }
 
-export class Npc {
+class Npc {
   constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look }) {
     this.kind = kind;
     this.name = name;
@@ -227,7 +227,9 @@ export class NpcManager {
   pick(origin, dir, maxDist) {
     this.raycaster.set(origin, dir);
     this.raycaster.far = maxDist;
-    const hits = this.raycaster.intersectObjects(this.list.filter(n => n.model.visible).map(n => n.model), true);
+    // Only people within reach (plus their body size) are worth testing.
+    const reach = maxDist + 3;
+    const hits = this.raycaster.intersectObjects(this.list.filter(n => n.model.visible && n.pos.distanceToSquared(origin) < reach * reach).map(n => n.model), true);
     if (!hits.length) return null;
     let o = hits[0].object;
     while (o && !o.userData.npc) o = o.parent;

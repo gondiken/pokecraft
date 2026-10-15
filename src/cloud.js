@@ -30,10 +30,6 @@ function friendly(error) {
   return msg || 'Something went wrong.';
 }
 
-export async function cloudAvailable() {
-  return !!(await getClient());
-}
-
 export async function currentUser() {
   const client = await getClient();
   if (!client) return null;

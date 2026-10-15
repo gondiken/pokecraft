@@ -4,12 +4,12 @@ import { portrait } from './ui.js';
 import { el } from './util.js';
 
 // One-of-a-kind legendaries (never wild, never caught) go last and are not part of the totals.
-export const bookOrder = () => {
+const bookOrder = () => {
   const ids = Object.keys(SPECIES);
   return [...ids.filter(id => !SPECIES[id].legendary), ...ids.filter(id => SPECIES[id].legendary)];
 };
 export const TYPES = () => Object.keys(TYPE_COLORS);
-export const BIOME_NAMES = {
+const BIOME_NAMES = {
   plains: 'Plains', meadow: 'Flower meadows', forest: 'Forests', swamp: 'Swamps', beach: 'Beaches', water: 'Lakes and sea',
   desert: 'Deserts', mountain: 'Mountains', snow: 'Snowy hills', taiga: 'Snowy forests', peak: 'Mountain peaks', cave: 'Caves',
 };
@@ -34,12 +34,12 @@ export function spawnInfo(id) {
   return out;
 }
 
-export function evolvesFrom(id) {
+function evolvesFrom(id) {
   for (const [from, s] of Object.entries(SPECIES)) if (s.evolve?.into === id) return { from, level: s.evolve.level };
   return null;
 }
 
-export function evolutionChain(id) {
+function evolutionChain(id) {
   let root = id;
   for (let i = 0; i < 5; i++) { const p = evolvesFrom(root); if (!p) break; root = p.from; }
   const chain = [];
@@ -52,7 +52,7 @@ export function evolutionChain(id) {
   return chain;
 }
 
-export function typeMatchups(type) {
+function typeMatchups(type) {
   const all = TYPES();
   return {
     strong: all.filter(d => effectiveness(type, d) > 1),
@@ -62,7 +62,7 @@ export function typeMatchups(type) {
   };
 }
 
-export function learnList(id) {
+function learnList(id) {
   const seen = new Set();
   const out = [];
   for (const [level, move] of SPECIES[id].learn || []) {

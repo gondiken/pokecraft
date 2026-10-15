@@ -9,7 +9,7 @@ import { sound } from './sound.js';
 export const KINDS = ['clear', 'rain', 'storm', 'snow', 'sandstorm', 'fog', 'stars', 'rainbow'];
 
 // kind -> creature type -> spawn weight multiplier (missing = 1; always above 0).
-export const BOOSTS = {
+const BOOSTS = {
   rain: { water: 3, grass: 1.5, fire: 0.5, slime: 2.5, paper: 0.5 }, // slime loves rain; paper hides indoors
   storm: { electric: 4, water: 2, fire: 0.5, sky: 1.5, paper: 0.5 }, // sky creatures ride the storm winds
   snow: { ice: 3 },

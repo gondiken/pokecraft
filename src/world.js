@@ -8,7 +8,7 @@ export const WORLD_W = 224;
 export const WORLD_D = 224;
 const OLD_SIZE = [192, 192]; // saves from before the map grew don't record their size
 export const WORLD_H = 48;
-export const CHUNK = 16;
+const CHUNK = 16;
 export const WATER_LEVEL = 12;
 
 // Block edits are stored by index, which depends on the map size. Converts edits saved with a
@@ -387,6 +387,11 @@ export class World {
     for (const g of this.gyms) this.markLit(g.x, g.z);
   }
 
+  // Is the spot (and the four corners 6 blocks around it) above the water, by terrain alone?
+  dryAt(x, z) {
+    return [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
+  }
+
   // Gyms 17+ go to the dry spots furthest from every other gym and the tower (terrain only, so the
   // spots are the same with or without caves). Never changes where gyms 1-16 or the tower are.
   extraGymSpots() {
@@ -394,7 +399,7 @@ export class World {
     const cx = WORLD_W / 2, cz = WORLD_D / 2;
     const taken = this.gymSpots(ORIGINAL_GYMS).map(([x, z]) => ({ x, z }));
     const [tx, tz] = this.towerSpot(taken);
-    const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
+    const dry = (x, z) => this.dryAt(x, z);
     const spots = [];
     // Only the two legacy extra gyms (17-18) live here; gyms 19+ use newGymSpots().
     for (let k = ORIGINAL_GYMS; k < EXTRA_GYMS_END; k++) {
@@ -637,11 +642,6 @@ export class World {
       }
       this.gyms.push(g);
     }
-  }
-
-  // Is the column (x, z) inside one of the new gyms' boxes (where T10 may change the world)?
-  inNewGymBox(x, z, y = 0) {
-    return (this.newGymBoxes || []).some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && y >= b.y0 && y <= b.y1);
   }
 
   // Carves the cavern, the stairway with its arch, the lamps and the pillars for every cave gym
@@ -1218,7 +1218,7 @@ export class World {
   towerSpot(gyms = this.gyms) {
     const cx = WORLD_W / 2, cz = WORLD_D / 2, off = hash2(3, 77, this.seed) * Math.PI * 2;
     const clear = (x, z, gap) => gyms.every(g => Math.max(Math.abs(x - g.x), Math.abs(z - g.z)) >= gap);
-    const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([dx, dz]) => this.terrainHeight(x + dx, z + dz) > WATER_LEVEL);
+    const dry = (x, z) => this.dryAt(x, z);
     for (const gap of [26, 23]) {
       for (const needDry of [true, false]) {
         for (let r = 18; r <= 80; r += 2) {
