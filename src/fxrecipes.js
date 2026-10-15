@@ -1417,3 +1417,13 @@ SIG.thousandcranes = (k, from, to) => {
 };
 
 /* ==== end of the four newer types ==== */
+
+/* ==== T18: time, camo, cyber (fallbacks: the normal effects until the real ones are written) ==== */
+Object.assign(FX_COLORS, {
+  time: [0xffc25a, 0xfff0c0, 0x8a5a2a], camo: [0x6aa84a, 0xb8d890, 0x4a6a3a], cyber: [0x5af0ff, 0x2a7aff, 0xffffff],
+});
+for (const t of ['time', 'camo', 'cyber']) { TRAVEL[t] = TRAVEL.normal; IMPACT[t] = IMPACT.normal; }
+SIG.wakeupcall = SIG.blazedash;
+SIG.statueslam = SIG.rootslam;
+SIG.megabyte = SIG.zenithray;
+/* ==== end of T18 ==== */

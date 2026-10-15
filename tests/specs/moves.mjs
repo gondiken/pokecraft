@@ -9,7 +9,7 @@ const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 // (The attack sounds 'fx:<type>' need no entry here: a colon can never be in a move id.)
 // Sound effects that are not move sounds: a move with one of these ids would play the wrong noise.
 const RESERVED_SOUNDS = ['break', 'place', 'cube', 'battle', 'hit', 'super', 'miss', 'faint', 'wobble', 'caught', 'escape', 'levelup',
-  'evolve', 'win', 'badge', 'lose', 'heal', 'ask', 'thunder', 'rainbow', 'star', 'boss', 'bossloop', 'powerup', 'champion', 'statup', 'statdown', 'snooze'];
+  'evolve', 'win', 'badge', 'lose', 'heal', 'ask', 'thunder', 'rainbow', 'star', 'boss', 'bossloop', 'powerup', 'champion', 'statup', 'statdown', 'snooze', 'ticktock', 'popout'];
 
 
 // The forget prompt, with the mouse (tap = false) or a finger (tap = true).

@@ -24,7 +24,7 @@ export default async function ({ browser, base, t }) {
       count: PLACEABLE.length, tiles,
       cloud: B.CLOUD === 53 && PLACEABLE.includes(B.CLOUD) && BLOCKS[B.CLOUD].name === 'Cloud' && isSolid(B.CLOUD),
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
-      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52)),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56)),
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),
