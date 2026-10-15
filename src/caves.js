@@ -2,7 +2,7 @@
 // chests, and the light shader that makes everything under cover dark.
 import * as THREE from 'three';
 import { B, WOOL, isSolid, mulberry32 } from './blocks.js';
-import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
+import { OLD_W, OLD_D, WORLD_H, WATER_LEVEL } from './world.js';
 import { ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS } from './gyms.js';
 
 function hash3(x, y, z, seed) {
@@ -14,9 +14,16 @@ function hash3(x, y, z, seed) {
 
 const NEIGHBOURS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 
+// The cave carvers and gym-spot searches index arrays and search "the whole map" at once, so they only ever
+// run on the old 224 x 224 World that generate() makes first (T17); the big world gets their results copied in.
+export function legacyOnly(world) {
+  if (world.W !== OLD_W || world.D !== OLD_D) throw new Error('This only runs on the old 224 x 224 map (T17)');
+}
+
 // Columns where no cave may ever be carved: map edges, shores, gyms, the tower and the start.
 function keepOutMask(world) {
-  const Wd = WORLD_W, D = WORLD_D;
+  legacyOnly(world);
+  const Wd = world.W, D = world.D;
   const keep = new Uint8Array(Wd * D);
   const mark = (x0, z0, x1, z1) => {
     for (let x = Math.max(0, x0); x <= Math.min(Wd - 1, x1); x++) for (let z = Math.max(0, z0); z <= Math.min(D - 1, z1); z++) keep[x + z * Wd] = 1;
@@ -56,7 +63,7 @@ function keepOutMask(world) {
 // Carves the caves into a freshly generated (terrain only) world. Everything is a function of the
 // seed. Returns { air, entrances, opened, floors, crystals, chests, glow }.
 export function carveCaves(world) {
-  const Wd = WORLD_W, D = WORLD_D;
+  const Wd = world.W, D = world.D;
   const seed = world.seed;
   const rand = mulberry32(seed ^ 0x5eed);
   const { data, ground } = world;
@@ -253,8 +260,9 @@ const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 // Plans a straight stairway: from floor height fy at distance d0 from (x, z), one step up every
 // `rise` blocks, until the walking surface reaches the ground. Fails if any of the 5 columns
 // across (s = -2..2) is blocked (mask) or off the map. Returns the shortest of the tried directions.
-export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS, blockedCell = null) {
-  const Wd = WORLD_W, D = WORLD_D;
+export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS, blockedCell = null, size) {
+  if (!size) throw new Error('planStairs needs the map size [W, D]');
+  const [Wd, D] = size;
   let best = null;
   for (const dir of dirs) {
     const start = typeof d0 === 'function' ? d0(dir) : d0;
@@ -280,7 +288,7 @@ export function planStairs(ground, mask, x, z, fy, d0, rise, dirs = DIRS, blocke
 // Builds a planned stairway (cobble treads, 4 blocks of headroom, lamps in the walls, an arch at
 // the mouth). Returns the mouth cell and the surface columns it opened or decorated.
 export function buildStairs(world, plan, x, z, { lintel = B.STONE_BRICKS, pillarExtra = null } = {}) {
-  const Wd = WORLD_W;
+  const Wd = world.W;
   const { dir, d0, rise, fy, mouth, end } = plan;
   const opened = [], marks = [];
   const col = (d, s) => [x + dir[0] * d + (dir[0] ? 0 : s), z + dir[1] * d + (dir[1] ? 0 : s)];
@@ -320,7 +328,7 @@ export function buildStairs(world, plan, x, z, { lintel = B.STONE_BRICKS, pillar
 // themes, wide tunnels, lit stairways up to the surface and lamp posts at the old holes. Only
 // ever adds air, from the seed alone, with its own random stream. Merges into world.caves.
 export function carveBigCaves(world) {
-  const Wd = WORLD_W, D = WORLD_D;
+  const Wd = world.W, D = world.D;
   const seed = world.seed;
   const rand = mulberry32(seed ^ 0xb16ca7e);
   const { data, ground } = world;
@@ -528,7 +536,7 @@ export function carveBigCaves(world) {
   for (const h of halls) {
     if (stairCount >= 6) break;
     const d0 = dir => Math.floor((dir[0] ? h.rx : h.rz) * 0.45);
-    const plan = planStairs(ground, keep, h.x, h.z, 2, d0, 2, DIRS, noChest) || planStairs(ground, keep, h.x, h.z, 2, d0, 1, DIRS, noChest);
+    const plan = planStairs(ground, keep, h.x, h.z, 2, d0, 2, DIRS, noChest, [Wd, D]) || planStairs(ground, keep, h.x, h.z, 2, d0, 1, DIRS, noChest, [Wd, D]);
     if (!plan) continue;
     const r = buildStairs(world, plan, h.x, h.z);
     h.mouth = r.mouth; h.dir = plan.dir;
