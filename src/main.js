@@ -17,6 +17,7 @@ import { Fx } from './fx.js';
 import { Weather } from './weather.js';
 import { createGuide } from './guide.js';
 import { createAccounts } from './accounts.js';
+import { goldenHour, condOf } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -35,6 +36,7 @@ const scene = new THREE.Scene();
 const DAY_SKY = new THREE.Color(0x8fd3ff);
 const NIGHT_SKY = new THREE.Color(0x0b1030);
 const FLASH = new THREE.Color(0xe8eeff);
+const GOLDEN_SKY = new THREE.Color(0xffa060); // sunrise and sunset
 scene.background = DAY_SKY.clone();
 scene.fog = new THREE.Fog(DAY_SKY.clone(), 40, 100);
 
@@ -102,7 +104,12 @@ game.creatures.onSing = (wild, volume) => {
 };
 game.creatures.onSpawn = wild => {
   if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
+  const tip = condOf(wild.when)?.toast; // e.g. a Cyber creature
+  if (game.started && tip) game.ui.toast(tip);
 };
+// Spawn conditions look at the time of day and at the other players (see spawnrules.js).
+game.creatures.env = { time: () => game.time, friends: () => (game.mp?.active ? [...game.mp.others.values()].map(a => a.pos) : []) };
+game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
 game.ui = new UI(game, atlas);
 game.fx = new Fx(scene);
 game.battle = new Battle(game);
@@ -548,7 +555,7 @@ function tapAt(x, y) {
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { game.player.keys.Space = down && playing(); },
-  breakBlock: () => { if (playing()) breakBlock(); },
+  breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
   place: () => { if (playing()) placeBlock(); },
   interact: () => { if (playing()) interact(); },
   team: toggleTeam,
@@ -758,7 +765,9 @@ function updateSky(dt) {
   const light = smoothstep(-0.2, 0.25, elevation);
   const brightness = 0.25 + 0.75 * light;
   const wx = game.weather.sky(light);
-  scene.background.copy(NIGHT_SKY).lerp(DAY_SKY, light).lerp(wx.tint, wx.amount);
+  scene.background.copy(NIGHT_SKY).lerp(DAY_SKY, light);
+  scene.background.lerp(GOLDEN_SKY, 0.55 * (1 - smoothstep(0.35, 0.6, Math.abs(elevation)))); // orange around sunrise and sunset
+  scene.background.lerp(wx.tint, wx.amount);
   if (wx.flash) scene.background.lerp(FLASH, wx.flash * 0.7);
   // Under cover and below the ground it is dark, and the lead creature glows to light the way.
   const under = game.world.underground(game.player.pos);
@@ -770,6 +779,10 @@ function updateSky(dt) {
       game.ui.toast(`It's dark down here! ${lead ? lead.name : 'Your friend'} glows to light the way.`);
     }
   } else if (!under) game.underground = false;
+  // A soft tick-tock when the golden hour starts (no text).
+  const gh = under ? null : goldenHour(game.time);
+  if (gh && gh !== game.golden && game.started && !game.inBattle) sound.play('ticktock');
+  game.golden = gh;
   underFade += ((under ? 1 : 0) - underFade) * Math.min(1, dt * 1.5);
   scene.background.lerp(CAVE_DARK, underFade);
   scene.fog.color.copy(scene.background);
@@ -804,8 +817,14 @@ function updateTarget() {
   target.npc = !target.player && hitNpc && hitNpc.dist < blockDist && (!hitWild || hitNpc.dist < hitWild.dist) ? hitNpc.npc : null;
   target.wild = !target.player && !target.npc && hitWild && hitWild.dist < blockDist ? hitWild.wild : null;
   target.block = target.wild || target.npc || target.player ? null : hitBlock;
-  if (target.block) {
+  const dis = target.wild?.disguise; // a disguised creature gets the same outline as a real block (no tell)
+  if (dis) {
     highlight.visible = true;
+    highlight.scale.setScalar(target.wild.size);
+    highlight.position.set(target.wild.pos.x, target.wild.pos.y + target.wild.size / 2, target.wild.pos.z);
+  } else if (target.block) {
+    highlight.visible = true;
+    highlight.scale.setScalar(1);
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
