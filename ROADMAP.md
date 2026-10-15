@@ -5,9 +5,9 @@ can pick it up without the conversation that produced it. Read `CLAUDE.md` first
 owner's preferences (original names only, child-friendly text, iPad support, easy gyms), the
 branch rules and the test gotchas.
 
-**Status (2026-10-15):** waves 1–5 and wave 6a (T12–T14) are done and merged (T4 became Bone/Alien
-types + 7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: **T15**
-(cleanup, wave 6b), then **wave 7** (bigger map and Time/Camo/Cyber types and gyms, T16–T19), then
+**Status (2026-10-15):** waves 1–6 (T1–T15) are done and merged (T4 became Bone/Alien
+types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busting version string).
+Plans for every task are in `plans/`. Next: **wave 7** (bigger map and Time/Camo/Cyber types and gyms, T16–T19), then
 **wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
 
 ## How to run this (multi-agent)
