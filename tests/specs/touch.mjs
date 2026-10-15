@@ -34,7 +34,8 @@ export default async function ({ browser, base, t }) {
   const b2 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
   await touch('touchStart', [[joy[0], joy[1], 5]]);
   for (let i = 0; i < 6; i++) { await touch('touchMove', [[joy[0], joy[1] - 60, 5]]); await page.waitForTimeout(100); }
-  await page.waitForTimeout(600);
+  // Hold until the player has moved (walking runs on frames, which are slow under load), at most 20 s.
+  await page.waitForFunction(b => Math.hypot(window.pokecraft.player.pos.x - b.x, window.pokecraft.player.pos.z - b.z) > 0.3, b2, { timeout: 20000, polling: 100 }).catch(() => {});
   await touch('touchEnd', []);
   const a2 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
   t.ok(Math.hypot(a2.x - b2.x, a2.z - b2.z) > 0.3, 'after a reset the joystick walks again');

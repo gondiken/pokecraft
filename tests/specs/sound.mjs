@@ -46,7 +46,8 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(1500);
   t.ok((await played()).length === before, 'with sound off nothing plays');
   await page.evaluate(() => window.pokecraft.sound.setOn(true));
-  await page.waitForSelector('#b-actions button', { timeout: 60000 });
+  // The battle intro runs on frames, which can be very slow late in a long run: allow plenty of time.
+  await page.waitForSelector('#b-actions button', { timeout: 180000 });
   await page.evaluate(() => document.querySelector('#b-actions button').click());
   await page.waitForTimeout(4000);
   const p2 = await played();
