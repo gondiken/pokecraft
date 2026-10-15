@@ -5,10 +5,10 @@ can pick it up without the conversation that produced it. Read `CLAUDE.md` first
 owner's preferences (original names only, child-friendly text, iPad support, easy gyms), the
 branch rules and the test gotchas.
 
-**Status (2026-10-13):** all five waves are done and merged (T1–T11; T4 became Bone/Alien types +
-7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: **wave 6**
-(housekeeping, bug fixes and small owner requests, T12–T15), then **wave 7** (homes and three
-new types: Cozy, Treasure, Cyber, T16–T19), then the backlog below.
+**Status (2026-10-15):** waves 1–5 and wave 6a (T12–T14) are done and merged (T4 became Bone/Alien
+types + 7th creatures, shiny was cancelled). Plans for every task are in `plans/`. Next: **T15**
+(cleanup, wave 6b), then **wave 7** (bigger map and Time/Camo/Cyber types and gyms, T16–T19), then
+**wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -49,9 +49,11 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
 | 6a ✅ | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
 | 6b | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
-| 7a | T16 Bigger map, treasure blocks, protected gyms · T17 Three new types (Cozy, Treasure, Cyber) | World generation vs. species/shapes/fx data |
-| 7b | T18 Homes (Doormat, home types, meter, preview) | Needs T16's blocks and T17's creatures |
-| 7c | T19 Three new gyms + a stronger Tower | Needs T16's new land and T18's homes (the Cozy Gym lives in a home) |
+| 7a | T16 Guide cleanup · T17 Bigger map + protected gyms · T18 Time, Camo, Cyber types | Guide/UI vs. world generation vs. species data |
+| 7b | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
+| 8a | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
+| 8b | T22 Homes | Needs 8a |
+| 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -399,28 +401,74 @@ the save format. The `old-saves` and `caves` checksums must not change.
 
 ---
 
-## Wave 7 · Homes and three new types: Cozy, Treasure, Cyber
+## Waves 7 and 8 · Five new types: Time, Camo, Cyber, then Cozy and Treasure
 
-Agreed with the owner on 2026-10-13 (a long design talk; this section is the result, so the
-conversation isn't needed). Two creature types are found **only near a home the player builds**
-(Cozy, Treasure), one **only when two players play together** (Cyber). Each type gets a gym, the
-map grows to make room, and the Champion's Tower needs all 25 badges.
+Agreed with the owner on 2026-10-13 to 2026-10-15 (a long design talk; this section is the
+result, so the conversation isn't needed). Each new type has **its own special way to be found**
+and its own gym. **Wave 7** adds the three types that mostly extend what the game already does
+(Time, Camo, Cyber). **Wave 8** adds the two that bring whole new systems (homes, minable treasure
+blocks): Cozy and Treasure. After wave 7 there are 26 types and 25 gyms; after wave 8, 28 and 27.
 
 **Written before T15 (cleanup) lands:** T15 moves code between files (gym placement out of
-`world.js`, UI out of `main.js`) and adds test helpers. Names below describe *what* to change, not
-where it lives today; planners read the code as it is after wave 6.
+`world.js`, the guide and other UI out of `main.js`) and adds test helpers. Names below describe
+*what* to change, not where it lives today; planners read the code as it is when they start.
 
-**Rules for the whole wave** (on top of CLAUDE.md):
+**Rules for both waves** (on top of CLAUDE.md):
 - **Old worlds stay as they are.** The old 224×224 area is block-for-block the same as before
-  (`old-saves` proves it, and its checksums only change where a task says so). No old gym, cave,
-  the tower or a build moves. New content (gyms) goes **only in the new land**.
+  (`old-saves` proves it; its checksums only change where a task says so). No old gym, cave, the
+  tower or a build moves. New gyms go **only in the new land** (T17).
 - **Keep it simple, keep it object-oriented.** The owner pushed back on special cases ("too many
-  exceptions"). Prefer one general rule or one general class with data-driven variants over
-  one-off code paths. Homes in particular must be built so wave 8 can add Grass/Rock/... homes as
-  data only (see T18).
+  exceptions"). Prefer one general rule, or one general class with data-driven variants, over
+  one-off code paths. Things that must stay open for later: gym access (T16), creature spawn
+  conditions (T18), homes (T22: wave 9 may add Grass/Rock/... homes as data only).
+- **7 creatures per new type, like every other type: three families that evolve once, plus one
+  that doesn't.** Every family gets its **own body shape**. The owner wants variety: no more
+  frogs, turtles, owls, crabs, chicks (the game has plenty); living objects are welcome. Names
+  are proposals; the planner checks they are original.
+- **Gyms: 2 trainers + a leader**, like every other gym. Each new gym is harder than the last,
+  the last ones quite hard. Levels in release order: **Time 31–33, Camo 34–36, Cyber 37–40
+  (4 creatures)**, then **Cozy 41–43, Treasure 44–46**. (Open: the owner may prefer Cozy and
+  Treasure to sit lower; ask before T23.)
+- **The Champion's Tower needs every badge** (25 after wave 7, 27 after wave 8), with **no
+  exception for players who were already Champion** (today old Champions keep access; the
+  owner decided to drop that). Old saves keep their badges and Champion title. The Tower's
+  people get stronger in each wave so it stays harder than the last gym (about 42–45 after wave
+  7, about 48–50 after wave 8).
 - Original names only, short child-friendly text, works on iPad (touch) as well as desktop.
 
-### T16 · Bigger map, treasure blocks, protected gyms (size: L)
+| Wave | Tasks | Why together |
+| --- | --- | --- |
+| 7a | T16 Guide cleanup (gym access objects) · T17 Bigger map + protected gyms · T18 Three new types (Time, Camo, Cyber) | Guide/UI vs. world generation vs. species/shapes/fx/spawns |
+| 7b | T19 Clock Tower, Hidden Hill and Firewall Maze gyms + Tower at 25 | Needs T16's access objects, T17's new land and T18's types |
+| 8a | T20 Treasure blocks · T21 Two new types (Cozy, Treasure) | World/blocks vs. species data |
+| 8b | T22 Homes (Doormat, home types, meter, preview) | Needs T20's blocks and T21's creatures |
+| 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22's homes (the Cozy Gym lives in one) |
+
+---
+
+## Wave 7 · Time, Camo, Cyber
+
+### T16 · Guide cleanup: gym access objects (size: M, first)
+
+Today the guide (arrow, hints, welcome and "closed" toasts) is one function with a growing list of
+special cases: night gyms, sky gyms (Cloud, Saucer), cave gyms (Fossil, Goo). Every new gym kind
+adds another `if`. Before adding three more gyms, turn it into **one small object per kind of
+access**, so the guide itself has no gym-specific code:
+- Each gym gets an **access** object built from its def. It answers the same few questions:
+  *where should the arrow point* (given the player's position), *what hint to show* (on the way,
+  when near), *is it open now* and *what to say when it's closed*.
+- Keep **where** (surface, cave, sky; later hidden, home, ...) and **when** (always, night only;
+  later by time of day) as separate small pieces, combined per gym, so the Saucer Gym is simply
+  "sky + night", not its own case.
+- The guide asks the next unbeaten gym's access object and shows the answer. Nothing else.
+- **Behaviour stays exactly the same** for all 22 gyms and the tower (arrow targets, texts, the
+  sky pad tips, the cave stairway path, the night note). This is a refactor.
+
+Done when: the guide has no gym-kind checks left, `new-gyms`, `new-gyms-access`, `gym`,
+`champion` and `old-saves` pass unchanged, and a test-only access kind can be added without
+touching the guide.
+
+### T17 · Bigger map and protected gyms (size: L)
 
 **1. The map grows to 288×288: 64 new blocks on the east (+x) and south (+z) sides.**
 - The old map keeps its coordinates (x, z 0–223), so builds and edits line up. Saves already
@@ -431,86 +479,188 @@ where it lives today; planners read the code as it is after wave 6.
   using exactly the old 224×224 area** for old content, or biomes and gyms in old worlds would
   shift. The planner lists every such place. The new land gets its own pass (biomes from the same
   rules, plants, small caves optional) that only writes outside the old area.
+- **New gyms (T19, T23) are placed only in the new land**, so they can never land on old builds.
+  The planner reserves room for 5 gyms there (3 now, 2 in wave 8) so wave 8 never moves wave 7's.
 - The **start point stays where it is** (today it is the middle of the map, which would move).
-- The map edge: whatever happens at today's edge (water, cliffs) now happens at the new edge; the
-  seam at x/z = 224 should look natural (no wall, no step). Check screenshots on a few seeds.
+- The seam at x/z = 224 should look natural (no wall, no step); whatever happens at today's edge
+  (water, cliffs) now happens at the new edge. Check screenshots on a few seeds.
 - **Measure load time and memory** on the slow renderer and with an iPad-sized viewport before
   and after (the owner's son plays on an iPad). If it gets much slower, say so in the plan.
 - Bump `WORLD_VERSION`; multiplayer guests get the bigger world.
 
-**2. Three treasure blocks you can only mine: Sunstone (warm shining gold), Ruby (red), Sapphire (blue).**
-- New blocks with their own names and textures, clearly different from Gold Ore and Star
-  Crystal (those stay as they are, free in the Blocks panel).
-- Found in the world: in cave walls and deep under hills, rare. Old areas may get them only
-  underground in stone (no visible surface change); the planner decides whether old worlds get
-  them at all or only the new land plus caves, and updates the `old-saves` checksum on purpose.
+**2. Gyms can't be broken into.** One rule for every gym (all 22 today plus the new ones):
+blocks inside a gym's building/area can't be broken, and blocks can't be placed there. Building
+*outside* a gym stays allowed (the Cloud/Saucer pads need pillars; wave 8's Treasure roof key
+needs a way up). Each gym's protected box comes from the same place as its other data (cave gyms
+include their cavern, sky gyms their island). A short toast: "Gym walls are too strong to break!"
+
+Done when: `map` and `old-saves` pass (old area unchanged), a new spec checks the seam, the start
+point and gym protection (break/place inside fails, outside works), load time noted in the plan.
+
+### T18 · Three new types: Time, Camo, Cyber (size: L)
+
+Like T9: type colours, effectiveness, moves (own moves + a few signature moves with `fx`, using
+the existing effect kinds only), `TRAVEL`/`IMPACT`/`FX_COLORS` and an `fx:<type>` sound, wool
+colours (gym roofs), README tables, Book filters. Roster: 23 → 26 types × 7. **No new battle
+mechanics** (the owner said no to "scan"/"copy-paste" ideas).
+
+**Spawn conditions as data.** Each new type has its own way to be found. Express these as a
+small set of spawn conditions on the spawn entries (like today's `day`/`night`), not as code
+paths per type: a time window (Time), a disguise (Camo), "two players close together" (Cyber).
+The spawn tests and roster spec allow types with no plain biome spawns via that same data.
+
+#### ⏰ Time: clocks and hourglasses, only at sunrise and sunset
+- **Found only in two short "golden hour" windows a day: dawn and dusk, about 1 minute each**
+  (a full day is 8 minutes). Dawn and dusk have different creatures. When a window opens, the
+  sky is already orange and a soft *tick-tock* sound plays (no text).
+
+| Family | Before | After evolving | When |
+| --- | --- | --- | --- |
+| 1 | **Flipsand**: a little hourglass that flips itself over to move | **Sandtimer**: a tall hourglass with arms, sand swirling inside | dawn |
+| 2 | **Pendulo**: a metronome hopping on one leg, ticking side to side | **Grandtock**: a big grandfather clock that walks slowly | dusk |
+| 3 | **Ringaling**: an alarm clock with two bells for ears | **Clangalarm**: a huge alarm clock that stomps on hammer legs | dawn |
+| Single | **Twilorb**: a slowly spinning ball, half sun and half moon | | dusk |
+
+- Moves (existing effect kinds): **Rewind** (heal), **Snooze** (sleep), **Fast Forward** (priority).
+- Matchups: strong vs **Metal** (rust), **Paper** (old paper crumbles), **Slime** (dries up);
+  weak to **Cosmic** (space bends time) and **Bug** (a bug in the clockwork).
+
+#### 🍃 Camo: things that look exactly like a block
+- **They look exactly like the local block** (leaves in forests, sand on beaches and deserts,
+  stone in mountains and caves, snow in snowy places) and **never move**. After a while they
+  quietly leave, so they don't pile up.
+- **The only tell: a blink, about twice a minute.** No wiggle, no sound, no marker. Looking
+  straight at one shows its name tag (as for any creature). Hit or tap it to battle; it pops out
+  into its real shape.
+- **It's a creature drawn as a block, not a world block:** it never changes the world, nothing is
+  saved or sent to the other player. One rule for the whole type ("Camo creatures wear a
+  disguise"); wave 7's Hidden Hill Gym trainers use the same rule.
+
+| Family | Before | After evolving | Disguise |
+| --- | --- | --- | --- |
+| 1 | **Bushling**: a leaf block with a sleepy face | **Topiphant**: a big hedge trimmed into an elephant | leaves (forests) |
+| 2 | **Castlet**: a sand block with a tiny flag on top | **Fortsand**: a walking sandcastle with towers | sand (beaches, deserts) |
+| 3 | **Cubble**: a cobblestone with a hidden mouth | **Statuo**: a stone statue that only moves when you're not looking | stone (mountains, caves) |
+| Single | **Igloop**: a snow block that's secretly a tiny igloo with a door | | snow |
+
+- Evolved forms are bigger (2×2 blocks).
+- Matchups: strong vs **Bug** (sneaks up on it) and **Mind** (can't read where it is); weak to
+  **Light** (gets spotted) and **Sound** (an echo finds it); resists **Normal**.
+
+#### 💻 Cyber: pixels, screens and glitches, only when playing together
+- **Found only when two players are in the same world and within ~30 blocks of each other**,
+  and even then uncommon (about 1 in 15 spawns, at most one at a time). Each player has their own
+  wild creatures, as today.
+
+| Family | Before | After evolving |
+| --- | --- | --- |
+| 1 | **Pixbit**: a pixel blob | **Pixbit 2.0** |
+| 2 | **Clickit**: a mouse cursor with legs | **Clickit 2.0** |
+| 3 | **Wifly**: a butterfly with Wi-Fi wings | **Wifly 2.0** |
+| Single | **Error 404**: a small glitchy ghost | |
+
+- Evolutions keep the name and add "2.0" (the owner likes this); 1.0 looks blockier, 2.0 sharper.
+- Matchups: strong vs **Metal**, **Mind**, **Paper** ("going paperless"); weak to **Water**
+  (shorts out) and **Bug** (computer bugs!); resists **Electric**. (Wave 8 adds Cozy beats Cyber
+  and Cyber beats Treasure.)
+
+Done when: roster (26 × 7), fx and sound specs pass; screenshots of all 21 creatures reviewed
+(Camo both disguised and popped out); the type chart has the matchups; a spec covers each spawn
+condition (a Time creature only in its window, a Camo creature as a still block that blinks and
+starts a battle when hit, a Cyber creature only with two players close, via `openPair`).
+
+### T19 · Three new gyms and the Tower at 25 badges (size: L)
+
+All three are in T17's new land, protected by T17's rule, and plug into T16's access objects
+(no new checks in the guide). Each has 2 trainers, a leader, a badge, a wool roof colour and
+dialogue, like the other gyms.
+
+- **Time: the Clock Tower (31–33).** A tall tower with a **giant clock face** on the front showing
+  the game's time. Its floors' doors open at **different times of day**: trainer 1's floor in the
+  morning, trainer 2's in the afternoon, the leader at the top at night. Climbing it takes one
+  in-game day; the big clock shows when the next door opens. (Optional: a huge sundial outside
+  whose shadow points to the open door.) Access = surface + "open by time of day" (a T16 piece).
+- **Camo: the Hidden Hill (34–36).** From outside it looks like a **natural grassy hill** made of
+  the same blocks as the land around it, with a couple of trees on top. The only giveaway is a
+  **door hidden behind a bush**. Inside it's a normal gym; the 2 trainers stand **disguised as
+  stone pillars** with the same blink rule as wild Camo creatures; the leader waits at the back.
+  **The guide arrow leads to the area but fades out about 20 blocks away**, with "It's hidden
+  somewhere around here…" (a "hidden" access kind in T16's system).
+- **Cyber: the Firewall Maze (37–40, 4 creatures).** Three rooms, each a maze of **red and blue
+  laser walls** (floor to ceiling, glowing). Stepping on a red switch turns red walls off and blue
+  walls on, and the other way round. Each room is a bit harder; trainer 1 after room 1, trainer 2
+  after room 2, the leader in the "server room" after room 3. No punishment: walls only block, and
+  a **reset button** at each room's door puts the room back. An optional co-op shortcut switch
+  needs one player to stand on it while the other walks through (never required). T17's
+  protection makes the walls unbreakable and stops building over them.
+- **Champion's Tower:** needs **all 25 badges**, no exception for old Champions; its people get
+  stronger (about levels 42–45).
+
+Done when: the gym spec beats all three (the Clock Tower's doors open at their times, the Hidden
+Hill found and its disguised trainers battled, the maze solved with switches), the Tower refuses
+with 22 badges and battles with 25, and `old-saves`, `champion`, `new-gyms`, `multiplayer` pass.
+README (gyms, types) and CLAUDE.md updated.
+
+---
+
+## Wave 8 · Cozy and Treasure: homes and treasure blocks
+
+Two types found **only near a home the player builds**. Both need new systems (homes, blocks you
+can only mine), so they have their own wave after wave 7.
+
+### T20 · Treasure blocks you can only mine (size: M)
+
+- **Three new blocks: Sunstone (warm shining gold), Ruby (red), Sapphire (blue)**, with their own
+  names and textures, clearly different from Gold Ore and Star Crystal (those stay free in the
+  Blocks panel, as today).
+- Found in the world: in cave walls and deep under hills, rare. The planner decides whether old
+  worlds get them underground in stone (no visible surface change, `old-saves` checksum updated
+  on purpose) or only the new land plus its caves.
 - **You collect the block itself:** breaking one adds 1 to your count; placing one uses 1. The
   Blocks panel shows them with a count ("Ruby ×3") and greys them out at 0. All other blocks stay
-  unlimited. Counts are saved per player (new optional save field; old saves start at 0).
-- Fix found during the design talk: breaking a **placed** Gold Ore can give a Capture Cube, so
-  place-and-break farms cubes. Only natural (not player-placed) gold ore should give cubes.
+  unlimited. Counts are saved per player (new optional save field; old saves start at 0). Built
+  as a general "limited block" property, so more can be added later.
+- **Fix:** breaking a **placed** Gold Ore can give a Capture Cube, so place-and-break farms cubes.
+  Only natural gold ore should give cubes. (Small; may be done earlier as a bug fix.)
 
-**3. Gyms can't be broken into.** One rule for every gym (all 22 today plus T19's): blocks inside
-a gym's building/area can't be broken, and blocks can't be placed there. Building *outside* a gym
-stays allowed (the Cloud/Saucer pads need pillars; T19's Treasure roof key needs a way up). The
-planner defines each gym's protected box (cave gyms include their cavern; sky gyms their
-island) and shows a short toast ("Gym walls are too strong to break!").
+Done when: a spec mines, places, saves and loads treasure blocks (count goes up and down, greyed
+at 0), placed gold ore never gives cubes, `old-saves` passes.
 
-Done when: `map` and `old-saves` pass (old area unchanged apart from planned treasure blocks), a
-new spec checks the seam, the start point, treasure-block counts (mine, place, save, load) and
-gym protection (break/place inside fails, outside works), load time noted in the plan.
+### T21 · Two new types: Cozy and Treasure (size: L)
 
-### T17 · Three new types: Cozy, Treasure, Cyber (size: L)
+Like T18 (colours, effectiveness, moves, fx, sound, wool, README, Book). Roster: 26 → 28 types.
 
-Like T9: type colours, effectiveness, moves (own moves + a few signature moves with `fx`),
-`TRAVEL`/`IMPACT`/`FX_COLORS` and an `fx:<type>` sound, wool colours (for gym roofs), README
-tables, Book filters. **7 creatures per type, like every other type: three families that evolve
-once, plus one that doesn't.** Every family gets its **own body shape** (new builders in
-`shapes.js`); the roster spec's rules apply (23 → 26 types).
-
-The owner's naming notes: the Treasure type's creatures are what the owner calls "shiny
-creatures", but "shiny" is a Pokémon term, so the **type is named Treasure**; creatures should
-sparkle all the time (a small twinkle effect on the model, cheap on the slow renderer).
+The owner calls the Treasure creatures "shiny creatures", but "shiny" is a Pokémon term, so the
+**type is named Treasure**; its creatures **sparkle all the time** (a small twinkle on the model,
+cheap on the slow renderer) and are **rare**.
 
 | Type | Family 1 | Family 2 | Family 3 | Single |
 | --- | --- | --- | --- | --- |
 | **Cozy** (no teapots: soft, sleepy, warm) | Snugbun (bunny rolled in a blanket) → Quiltbun (quilt cape) | Purrmit (kitten in a mitten) → Knitcat (cat in a knitted sweater) | Pillowool (sheep made of pillows) → Dozeram (sleepy ram, pillow horns) | Snoozebear (bear in pyjamas and slippers) |
-| **Treasure** (gold/gem colours, always sparkling, not always animals) | Coinlet (a rolling gold coin) → Kingcoin (coin stack with a crown) | Crystafox (crystal fur) → Prismfox (fur that throws rainbows) | Ringlet (floating ring, gem eye) → Crownguard (walking crown, gem armour) | Chandelia (floating glittering chandelier) |
-| **Cyber** (pixels, screens, glitches) | Pixbit (pixel blob) → Pixbit 2.0 | Clickit (mouse cursor with legs) → Clickit 2.0 | Wifly (butterfly with Wi-Fi wings) → Wifly 2.0 | Error 404 (small glitchy ghost) |
+| **Treasure** (gold/gem colours, sparkling, not always animals) | Coinlet (a rolling gold coin) → Kingcoin (coin stack with a crown) | Crystafox (crystal fur) → Prismfox (fur that throws rainbows) | Ringlet (floating ring, gem eye) → Crownguard (walking crown, gem armour) | Chandelia (floating glittering chandelier) |
 
-Names are proposals; the planner checks they are original. Cyber evolutions keep the name and add
-"2.0" (the owner likes this); the 1.0 model can look blockier, 2.0 sharper.
+**Matchups the owner approved:**
+- Triangle with wave 7's Cyber: **Cozy beats Cyber** (put the screens away and cuddle), **Cyber
+  beats Treasure** (a hacker cracks the safe), **Treasure beats Cozy** (bling outshines a blanket).
+- Cozy: strong vs **Ice** (warms it up) and **Ghost** (nothing is scary at home); weak to **Bug**
+  (moths eat wool) and **Toxic**; resists **Ice**.
+- Treasure: strong vs **Drake** (distracted by gold) and **Pixie**; weak to **Slime** (gunk) and
+  **Toxic** (tarnish); resists **Normal**.
 
-**Matchups the owner approved** (the planner balances the rest of the rows/columns):
-- Triangle: **Cozy beats Cyber** (put the screens away and cuddle), **Cyber beats Treasure** (a
-  hacker cracks the safe), **Treasure beats Cozy** (bling outshines a blanket).
-- Cyber: strong vs Metal, Mind, Paper ("going paperless"); weak to Water (shorts out) and Bug
-  (computer bugs!); resists Electric.
-- Cozy: strong vs Ice (warms it up) and Ghost (nothing is scary at home); weak to Bug (moths eat
-  wool) and Toxic; resists Ice.
-- Treasure: strong vs Drake (distracted by gold) and Pixie; weak to Slime (gunk) and Toxic
-  (tarnish); resists Normal.
-- No special battle mechanics for these types (the owner said no to "scan"/"copy-paste").
+**Where they appear:** never in biome tables; only near a finished home of that type (T22), as a
+spawn condition in T18's system ("near a home of type X"). At most one at a time per home. Cozy
+a bit more often in the evening and with 5 hearts. Treasure rare even at a treasure home (roughly
+one every few in-game days; planner tunes).
 
-**Where they appear** (the spawn rules; T18 provides the homes):
-- **Cozy / Treasure: never in biome tables.** Only near a finished home of that type (T18). At
-  most one at a time per home. Cozy a bit more often in the evening. Treasure is **rare** even at
-  a treasure home (roughly one every few in-game days; planner tunes).
-- **Cyber: only when two players are in the same world and within ~30 blocks of each other**, and
-  even then uncommon (about 1 in 15 spawns, at most one at a time). Each player has their own wild
-  creatures, as today.
-- The spawn tests and the roster spec must allow types with no biome spawns (the planner adds a
-  clear list of "special-spawn" types rather than special-casing them one by one).
+Done when: roster (28 × 7), fx and sound specs pass, screenshots of all 14 creatures reviewed,
+matchups in the type chart.
 
-Done when: roster (26 types × 7), fx and sound specs pass, screenshots of all 21 creatures
-reviewed, matchups in the type chart, spawns covered by a spec (cyber with `openPair`).
-
-### T18 · Homes: Doormat, home types, meter, preview (size: L)
+### T22 · Homes: Doormat, home types, meter, preview (size: L)
 
 **The design (owner-approved):**
 - **Doormat:** a new free block. **One per player** (placing a new one moves your home). In
   play-together each player can have one; homes and their creatures work for everyone, but the
-  Cozy Gym (T19) only moves into the **world owner's** home.
+  Cozy Gym (T23) only moves into the **world owner's** home.
 - **"What kind of home?"** The first time you stand on a new Doormat it asks, with big pictures
   (Cozy, Treasure; more types later). One type per home; change it any time on the Doormat.
 - **What counts as a home** (any type), checked around the Doormat:
@@ -521,8 +671,8 @@ reviewed, matchups in the type chart, spawns covered by a spec (cyber with `open
   of these 5** inside (each is a heart on the meter): a **Bed** (new block), a **Fireplace** (new
   block, glows and flickers), a **Rug** (4+ wool on the floor), a **Lamp**, **2+ Glass** in the
   walls. 5 hearts = cozy creatures come more often.
-- **Treasure home:** a home with at least **10 treasure blocks** (T16's Sunstone/Ruby/Sapphire)
-  in its walls or floor; a gem counter on the meter ("6/10").
+- **Treasure home:** a home with at least **10 treasure blocks** (T20) in its walls or floor; a
+  gem counter on the meter ("6/10").
 - **Guidance without lots of text** (the owner asked for this):
   - Standing on the Doormat shows a row of **icons** (walls, roof, size: tick or cross; then the
     type's features as pictures that light up, with hearts or a gem counter).
@@ -530,10 +680,10 @@ reviewed, matchups in the type chart, spawns covered by a spec (cyber with `open
     its floor outline. You see where to put a block.
   - A **"Show me a house" button** opens a small panel with a **slowly spinning 3D model** of an
     example home of the chosen type (drag to turn, pinch/scroll to zoom). Features you are still
-    missing **blink** on the model. (No ghost blocks in the world; the owner said no. No example
-    house built in the world either.)
+    missing **blink** on the model. (No ghost blocks in the world and no example house built in
+    the world; the owner said no to both.)
 
-**Object-oriented, so wave 8 can add homes as data only** (the owner wants Grass, Rock, ...
+**Object-oriented, so a later wave can add homes as data only** (the owner wants Grass, Rock, ...
 homes later):
 - **`Home`** (one class for every type): finds the room around the Doormat and checks floor,
   walls, roof and door. Produces a **room report** (wall blocks, floor blocks, inside blocks,
@@ -545,7 +695,7 @@ homes later):
   blocks (on the floor / in the walls / inside)", "at least half the walls are these blocks".
 - The meter, red glow, preview and spawning only read the chosen `HomeType`; none of them has
   type-specific code. Adding a type = one new `HomeType` entry (+ its picture).
-- Wave 8 note: types that already live in the wild would come *more often* (or rarer ones) at
+- Later note: types that already live in the wild would come *more often* (or rarer ones) at
   their home; decide then.
 
 **Save:** the Doormat is a normal block edit; the chosen home type is saved per player (optional
@@ -557,50 +707,37 @@ the other specs), checks every rule (too small, open roof, no door, two gaps, no
 test-only extra `HomeType` works with no other code changes; touch spec covers the chooser and
 the preview; screenshots of the meter, red glow and spinning model reviewed.
 
-### T19 · Three new gyms and a stronger Tower (size: L)
+### T23 · Cozy and Treasure gyms and the Tower at 27 badges (size: L)
 
-Order and levels (each harder than the last; the last ones quite hard): **Cozy 31–33,
-Treasure 34–36, Cyber 37–40 (4 creatures)**. Each has an assistant/trainers and a leader, badge,
-wool roof colour, dialogue, guide-arrow support, like the other gyms. Treasure and Cyber are built
-**only in T16's new land** (so they can never land on old builds or gyms); all T16 protection
-rules apply.
+Both plug into T16's access objects ("home" and "keys" access kinds); Treasure is in T17's new
+land (its reserved spot) and protected by T17's rule.
 
-- **Cozy Gym: the leader moves in.** No building. Once the world owner has a finished cozy home
-  **and has caught 3 cozy creatures**, the leader and their assistant knock on the door and move
-  in: they stand inside the home and battle like any gym (assistant first). If the home stops
+- **Cozy Gym: the leader moves in (41–43).** No building. Once the world owner has a finished cozy
+  home **and has caught 3 cozy creatures**, the leader and their assistant knock on the door and
+  move in: they stand inside the home and battle like any gym (assistant first, then leader; the
+  gym has 2 trainers like the others, so the planner places the second one too). If the home stops
   being cozy (someone breaks the bed), they say "Brr, it's chilly in here, can you fix it?" and
-  won't battle until it's cozy again. If the Doormat moves, they move with it. The guide arrow
-  points home once they have moved in, and before that says what to do (build a cozy home /
-  catch 3 cozy creatures). This is `gymMovesIn` on the Cozy `HomeType` (T18), not a special case
-  in the gym list.
-- **Treasure Gym: three golden keys.** A vault building with a locked vault door; the leader is
-  inside. Three **Key Chests** (one new block, a gold chest that gives a key when opened, like
-  the cave chests) hidden in three places that need three different skills:
+  won't battle until it's cozy again. If the Doormat moves, they move with it. The guide points
+  home once they have moved in, and before that says what to do (build a cozy home / catch 3 cozy
+  creatures). This is `gymMovesIn` on the Cozy `HomeType`, not a special case in the gym list.
+- **Treasure Gym: three golden keys (44–46).** A vault building with a locked vault door; the
+  leader and trainers are inside. Three **Key Chests** (one new block, a gold chest that gives a
+  key when opened, like the cave chests) hidden in three places that need three different skills:
   1. **Dig:** a gold **X** on the ground near the gym; the chest is about 10 blocks down through
      stone.
   2. **Build:** on the **roof** of the tall vault (about 14 up); you build your own way up from
      outside (the roof itself is protected, so you can't dig through it).
   3. **Explore:** in a cave near the gym, at the end of a tunnel.
-  Keys are **per player** (a Key Chest opened by one player still gives the other player their key).
-  **A subtle key compass:** near the gym only, a small key icon on the HUD glints faster as you get
-  closer to a key you haven't found. No map and no other hints (the owner said so). It shouldn't
-  be easy, but never "lost": all three within ~40 blocks of the gym.
-- **Cyber Gym: the firewall maze.** Three rooms, each a maze of **red and blue laser walls**
-  (floor to ceiling, glowing). Stepping on a red switch turns red walls off and blue walls on, and
-  the other way round. Each room is a bit harder; a trainer at each exit, the leader in the
-  middle "server room". No punishment: walls only block, and a **reset button** at each room's
-  door puts the room back. An optional co-op shortcut switch that needs one player to stand on
-  it while the other walks through (never required; solo play must work). T16's protection makes
-  the walls unbreakable and stops building over them.
-- **Champion's Tower:** needs **all 25 badges**, with **no exception** for players who were
-  already Champion with 22 (the owner decided; today old Champions keep access). Guards, coach and
-  Champion get stronger so the Tower is harder than the Cyber Gym (about levels 42–45). Old saves
-  keep their badges and Champion title.
+  Keys are **per player** (a Key Chest opened by one player still gives the other player theirs).
+  **A subtle key compass:** near the gym only, a small key icon on the HUD glints faster as you
+  get closer to a key you haven't found. No map and no other hints (the owner said so). Not easy,
+  but never "lost": all three within ~40 blocks of the gym. No mimic chests.
+- **Champion's Tower:** needs **all 27 badges**; its people get stronger (about levels 48–50).
 
-Done when: the gym spec beats all three new gyms (the Cozy Gym in a test home, the three keys
-found and the vault opened, the maze solved with switches), the Tower refuses with 22 badges and
-battles with 25, `old-saves`, `champion`, `new-gyms`, `multiplayer` pass. README (gyms, homes,
-types) and CLAUDE.md updated.
+Done when: the gym spec beats both (the Cozy Gym in a test home, including the "chilly" refusal;
+the three keys found and the vault opened), the Tower refuses with 25 badges and battles with 27,
+and `old-saves`, `champion`, `new-gyms`, `multiplayer` pass. README (gyms, homes, types) and
+CLAUDE.md updated.
 
 ---
 
