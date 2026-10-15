@@ -1,5 +1,7 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness, moveInfo } from './species.js';
+import { BLOCKS } from './blocks.js';
+import { condOf } from './spawnrules.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -31,6 +33,18 @@ export function spawnInfo(id) {
       } else out.push({ biome, name: biomeName(biome), when: when || null, rarity });
     }
   }
+  // Found in every biome under one condition (Cyber creatures): one row instead of a dozen.
+  const biomes = Object.keys(SPAWNS);
+  for (const when of new Set(out.map(o => o.when))) {
+    const rows = out.filter(o => o.when === when);
+    if (rows.length < biomes.length || !biomes.every(b => rows.some(r => r.biome === b))) continue;
+    const rank2 = r => ['rare', 'sometimes', 'common'].indexOf(r);
+    const best = rows.reduce((a, r) => (rank2(r.rarity) > rank2(a) ? r.rarity : a), 'rare');
+    const at = out.findIndex(o => o.when === when);
+    for (let i = out.length - 1; i >= 0; i--) if (out[i].when === when) out.splice(i, 1);
+    out.splice(at, 0, { biome: null, name: 'Anywhere', when, rarity: best });
+  }
+  for (const o of out) o.words = condOf(o.when)?.text ?? o.when;
   return out;
 }
 
@@ -248,7 +262,7 @@ export class Book {
     const info = spawnInfo(id);
     if (info.length) {
       out.append(el('div', { class: 'book-chips' }, ...info.map(s =>
-        el('span', { class: 'chip plain' }, [s.name, s.when, s.rarity].filter(Boolean).join(' · ')))));
+        el('span', { class: 'chip plain' }, [s.name, s.words, s.rarity].filter(Boolean).join(' · ')))));
     } else {
       out.append(el('p', {}, 'Not found in the wild.'));
       const from = evolvesFrom(id);
@@ -257,6 +271,8 @@ export class Book {
         out.append(el('p', {}, `Train a ${nm} to Lv ${from.level} to get one.`));
       }
     }
+    const d = SPECIES[id].disguise;
+    if (d) out.append(el('p', {}, `Hides as a ${BLOCKS[d.blocks[0]].name.toLowerCase()} block. Watch for a blink!`));
     return out;
   }
 
