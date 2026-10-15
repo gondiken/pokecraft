@@ -279,6 +279,7 @@ export class Battle {
 
     if (this.wild) {
       const wild = this.wild;
+      const was = wild.reveal?.(); // a Camo creature pops out of its block (before its model is used below)
       this.foes = [wild.data];
       wild.frozen = true;
       wild.face(g.player.pos);
@@ -288,7 +289,7 @@ export class Battle {
       g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
       this.refresh();
       this.cry(this.foe);
-      await this.say(`A wild ${nameOf(this.foe)} appeared!`);
+      await this.say(was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
     } else {
       const npc = this.trainer;
       this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level]) => makeCreature(species, level));

@@ -97,7 +97,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(paper.n === 7 && paper.all, `the Paper filter shows the 7 paper creatures (${paper.n})`);
   await page.evaluate(() => document.querySelector('.book-filter[data-filter="all"]').click());
-  t.ok(await page.evaluate(() => document.querySelectorAll('.book-filter').length === 24), '24 filter buttons (23 types and All)');
+  t.ok(await page.evaluate(() => document.querySelectorAll('.book-filter').length === 27), '27 filter buttons (26 types and All)');
 
   // 8
   await page.evaluate(() => { const b = window.pokecraft.book; b.markCaught('wispurr'); b.showDetail('emberpup'); });
@@ -188,8 +188,8 @@ export default async function ({ browser, base, t }) {
   await p3.screenshot({ path: path.join(SHOTS, 'book-ipad.png') });
   t.ok(await p3.evaluate(() => {
     const f = [...document.querySelectorAll('.book-filter')];
-    return f.length === 24 && f.every(b => b.getBoundingClientRect().right <= window.innerWidth + 1) && document.documentElement.scrollWidth <= window.innerWidth + 1;
-  }), 'the 24 filter buttons wrap inside the iPad screen');
+    return f.length === 27 && f.every(b => b.getBoundingClientRect().right <= window.innerWidth + 1) && document.documentElement.scrollWidth <= window.innerWidth + 1;
+  }), 'the 27 filter buttons wrap inside the iPad screen');
   await p3.tap('.book-card >> nth=0');
   await p3.waitForTimeout(400);
   t.ok(await p3.evaluate(() => !!document.getElementById('book-detail')), 'tapping a card opens its page');

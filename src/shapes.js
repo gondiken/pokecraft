@@ -2663,9 +2663,61 @@ function puzzle(root, m, parts) {
 const SHAPES_PAPER = { paperplane, origamifrog, book, puzzle };
 /* ==== end of T9 paper shapes ==== */
 
+/* ==== T18 time shapes (placeholders: builder A replaces them with the real ones) ==== */
+// A coloured box with a face, a belly patch and a gentle sway, scaled by the recipe.
+const plainBodyTime = (root, m, parts, w, h) => {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
+  box(body, w * 0.7, h * 0.4, 0.02, m.belly, 0, h * 0.3 + 0.05, w / 2 + 0.01);
+  box(body, w * 0.5, 0.08, w * 0.5, m.accent, 0, h + 0.08, 0);
+  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
+  swing(parts, body, 'z', 0.08, 1.4);
+};
+const hourglass = (root, m, parts) => plainBodyTime(root, m, parts, 0.6, 0.8);
+const pendulum = (root, m, parts) => plainBodyTime(root, m, parts, 0.6, 0.8);
+const alarmclock = (root, m, parts) => plainBodyTime(root, m, parts, 0.7, 0.7);
+const sunmoon = (root, m, parts) => { parts.hover = true; plainBodyTime(root, m, parts, 0.7, 0.7); };
+const SHAPES_TIME = { hourglass, pendulum, alarmclock, sunmoon };
+/* ==== end of T18 time shapes ==== */
+
+/* ==== T18 camo shapes (placeholders) ==== */
+const plainBodyCamo = (root, m, parts, w, h) => {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
+  box(body, w * 0.5, h * 0.25, 0.02, m.belly, 0, h * 0.25 + 0.05, w / 2 + 0.01);
+  box(body, w * 0.4, 0.1, w * 0.4, m.accent, 0, h + 0.1, 0);
+  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
+  swing(parts, body, 'x', 0.05, 1.2);
+};
+const bushblock = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
+const sandcastle = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
+const stonecube = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
+const igloo = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.7);
+const SHAPES_CAMO = { bushblock, sandcastle, stonecube, igloo };
+/* ==== end of T18 camo shapes ==== */
+
+/* ==== T18 cyber shapes (placeholders) ==== */
+const plainBodyCyber = (root, m, parts, w, h) => {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
+  glow(box(body, w * 1.05, 0.06, w * 1.05, m.accent, 0, h + 0.05, 0), m.accent);
+  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
+  swing(parts, body, 'z', 0.06, 2);
+};
+const pixelblob = (root, m, parts) => plainBodyCyber(root, m, parts, 0.7, 0.7);
+const cursor = (root, m, parts) => plainBodyCyber(root, m, parts, 0.6, 0.9);
+const wifiwing = (root, m, parts) => plainBodyCyber(root, m, parts, 0.6, 0.6);
+const glitchghost = (root, m, parts) => { parts.hover = true; plainBodyCyber(root, m, parts, 0.7, 0.8); };
+const SHAPES_CYBER = { pixelblob, cursor, wifiwing, glitchghost };
+/* ==== end of T18 cyber shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
   ...SHAPES_A, ...SHAPES_B, ...SHAPES_C,
   ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
+  ...SHAPES_TIME, ...SHAPES_CAMO, ...SHAPES_CYBER,
 };

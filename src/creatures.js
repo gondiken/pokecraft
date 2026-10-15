@@ -1,8 +1,11 @@
 // Wild creatures roaming the world: spawning, wandering AI and targeting.
 import * as THREE from 'three';
-import { B, isSolid } from './blocks.js';
+import { B, BLOCKS, isSolid } from './blocks.js';
 import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
+import { condOf, condOk, goldenHour, TOGETHER_RANGE } from './spawnrules.js';
+import { Disguise } from './disguise.js';
+import { sound } from './sound.js';
 
 const MAX_WILD = 16;
 const SING_RANGE = 18;
@@ -21,9 +24,27 @@ export class Wild {
     this.timer = Math.random() * 2;
     this.t = Math.random() * 10;
     this.frozen = false;
+    this.disguise = null; // Camo creatures wear one until they are hit (see CreatureManager.spawnAt)
+    this.popT = -1;
     model.userData.wild = this;
   }
   get species() { return SPECIES[this.data.species]; }
+  // Camo creatures never walk, not even after they pop out.
+  get still() { return !!this.species.disguise; }
+  // Drops the disguise and pops out of it. Returns the block's name, or null if there was no disguise.
+  reveal() {
+    const d = this.disguise;
+    if (!d) return null;
+    const name = BLOCKS[d.block].name;
+    d.dispose();
+    this.disguise = null;
+    const root = this.model.userData.parts.root;
+    root.visible = true;
+    root.scale.setScalar(0.3);
+    this.popT = 0;
+    sound.play('popout');
+    return name;
+  }
   face(target) { this.heading = Math.atan2(target.x - this.pos.x, target.z - this.pos.z); }
 }
 
@@ -36,6 +57,9 @@ export class CreatureManager {
     this.levelBonus = 0; // wild creatures get stronger after 16 badges (or the Champion title)
     this.notes = [];
     this.weather = null; // set by main.js: boosts spawn weights (see weights)
+    this.env = null; // set by main.js: { time: () => game.time, friends: () => [positions of other players] }
+    this.viewer = null; // the player's position, for blinks
+    this.onBump = null; // main.js: the player walked into a disguised creature
     this.raycaster = new THREE.Raycaster();
   }
 
@@ -53,23 +77,56 @@ export class CreatureManager {
     return this.world.biome(x, z);
   }
 
-  // Spawn table entries with their weights, after the weather's boosts: [[entry, weight], ...]
-  weights(biome, night) {
+  // Turns the old boolean `night` argument into a context.
+  static asCtx(x) { return typeof x === 'object' && x ? x : { night: !!x }; }
+
+  // What spawn conditions look at: time of day, the golden hour, other players close by.
+  context(playerPos, night = false, under = false) {
+    const env = this.env;
+    return {
+      night, under,
+      golden: under || !env ? null : goldenHour(env.time()),
+      friendsNear: !!env && env.friends().some(p => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) <= TOGETHER_RANGE),
+    };
+  }
+
+  count(cond) { return this.list.filter(w => w.when === cond).length; }
+
+  // Spawn table entries with their weights, after the weather's boosts: [[entry, weight], ...].
+  // Conditions with a `share` (dawn, dusk, together) are not here: pickEntry draws them separately.
+  weights(biome, ctx) {
+    ctx = CreatureManager.asCtx(ctx);
     const wx = this.weather;
-    return SPAWNS[biome].filter(([, , when]) => !when || (when === 'night') === night)
+    return SPAWNS[biome].filter(([, , when]) => condOk(when, ctx) && !condOf(when)?.share)
       .map(e => [e, e[1] * (wx ? wx.boost(biome, SPECIES[e[0]].type) : 1)]);
   }
 
-  // Returns [species, when] where when is 'day', 'night' or undefined (any time).
-  pickEntry(biome, night) {
-    const table = this.weights(biome, night);
+  pickFrom(table) {
     const total = table.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
     for (const [e, w] of table) if ((r -= w) < 0) return [e[0], e[2]];
     return [table[0][0][0], table[0][0][2]];
   }
 
-  pickSpecies(biome, night) { return this.pickEntry(biome, night)[0]; }
+  // Returns [species, when] where when is a condition name ('day', 'night', 'dawn', ...) or undefined (any time).
+  pickEntry(biome, ctx) {
+    ctx = CreatureManager.asCtx(ctx);
+    const wx = this.weather;
+    const done = new Set();
+    for (const e of SPAWNS[biome]) {
+      const cond = e[2];
+      const def = condOf(cond);
+      if (!def?.share || done.has(cond)) continue;
+      done.add(cond);
+      if (!condOk(cond, ctx) || this.count(cond) >= (def.max ?? Infinity)) continue;
+      if (Math.random() >= def.share) continue;
+      const table = SPAWNS[biome].filter(x => x[2] === cond).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
+      return this.pickFrom(table);
+    }
+    return this.pickFrom(this.weights(biome, ctx));
+  }
+
+  pickSpecies(biome, ctx) { return this.pickEntry(biome, ctx)[0]; }
 
   // Ground height a creature should stand at for column (x, z), or null if not walkable.
   groundY(x, z, sp) {
@@ -85,6 +142,7 @@ export class CreatureManager {
   }
 
   trySpawn(center, spawnPoint, night) {
+    const ctx = CreatureManager.asCtx(night);
     const angle = Math.random() * Math.PI * 2;
     // Some close by (so a small place like a peak gets its own creatures), most a bit further out.
     const dist = Math.random() < 0.4 ? 9 + Math.random() * 8 : 14 + Math.random() * 22;
@@ -93,7 +151,7 @@ export class CreatureManager {
     if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
     const biome = this.biomeAt(x, z);
     if (!biome) return;
-    const [species, when] = this.pickEntry(biome, night);
+    const [species, when] = this.pickEntry(biome, ctx);
     const sp = SPECIES[species];
     const y = this.groundY(x + 0.5, z + 0.5, sp);
     if (y === null) return;
@@ -101,13 +159,40 @@ export class CreatureManager {
     const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
     const rare = sp.baseXp > 100 ? 3 : 0;
     const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus));
+    this.spawnAt(species, x, y, z, { when, level });
+  }
+
+  // Puts a creature at the world cell (x, y, z) (y = the standing height, an integer for Camo creatures).
+  // Camo creatures (species.disguise) are dressed as the local block: no spawn (null) if there is no room
+  // for it or the block is not around. Never changes the world. Returns the Wild, or null.
+  spawnAt(species, x, y, z, { when, cave = false, level = 5 } = {}) {
+    const d = SPECIES[species].disguise;
+    const size = d ? d.size || 1 : 0;
+    let block = null;
+    if (d) {
+      x = Math.floor(x); y = Math.round(y); z = Math.floor(z);
+      if (!Disguise.fits(this.world, x, y, z, size, size)) return null;
+      block = Disguise.pick(this.world, x, y, z, d.blocks);
+      if (block === null) return null;
+    }
     const model = buildModel(species);
-    const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
+    const pos = d ? new THREE.Vector3(x + size / 2, y, z + size / 2) : new THREE.Vector3(x + 0.5, y, z + 0.5);
+    const wild = new Wild(makeCreature(species, level), model, pos);
     wild.when = when;
-    model.position.copy(wild.pos);
+    if (cave) wild.cave = true;
+    if (d) {
+      wild.heading = 0;
+      wild.size = size;
+      wild.disguise = new Disguise(this.world, block, { w: size });
+      wild.disguise.setLight(x, y, z);
+      model.add(wild.disguise.group);
+      model.userData.parts.root.visible = false;
+    }
+    model.position.copy(pos);
     this.scene.add(model);
     this.list.push(wild);
     this.onSpawn?.(wild);
+    return wild;
   }
 
   // Cave creatures: a standing place underground near the player (air with floor below and room above).
@@ -123,20 +208,13 @@ export class CreatureManager {
       const below = world.get(x, y - 1, z);
       if (below === B.AIR || below === B.WATER || !isSolid(below)) continue;
       if (world.skyAt(x, y, z) >= 0.5 || y >= ground - 2) continue;
-      const [species, when] = this.pickEntry('cave', night);
+      const [species, when] = this.pickEntry('cave', CreatureManager.asCtx(night));
       const sp = SPECIES[species];
       if (sp.waterOnly) return;
       const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
       const rare = sp.baseXp > 100 ? 3 : 0;
       const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus) + 3);
-      const model = buildModel(species);
-      const wild = new Wild(makeCreature(species, level), model, new THREE.Vector3(x + 0.5, y, z + 0.5));
-      wild.when = when;
-      wild.cave = true;
-      model.position.copy(wild.pos);
-      this.scene.add(model);
-      this.list.push(wild);
-      this.onSpawn?.(wild);
+      this.spawnAt(species, x, y, z, { when, cave: true, level });
       return;
     }
   }
@@ -159,29 +237,37 @@ export class CreatureManager {
 
   remove(wild) {
     this.list = this.list.filter(w => w !== wild);
+    wild.disguise?.dispose(); // first: disposeModel would free the world's shared block material
     this.scene.remove(wild.model);
     disposeModel(wild.model);
   }
 
   update(dt, playerPos, spawnPoint, night = false, under = this.world.underground(playerPos) || this.world.inLitRoom(playerPos)) {
+    this.viewer = playerPos;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 0.6;
+      const ctx = this.context(playerPos, night, under);
       if (this.list.length < MAX_WILD) {
-        if (under) for (let i = 0; i < 4; i++) this.trySpawnCave(playerPos, spawnPoint, night);
-        else this.trySpawn(playerPos, spawnPoint, night);
+        if (under) for (let i = 0; i < 4; i++) this.trySpawnCave(playerPos, spawnPoint, ctx);
+        else this.trySpawn(playerPos, spawnPoint, ctx);
       }
       // Creatures wander off: when far away, after a while, or (for day- or night-only ones) when
       // the time of day changes. Never right next to the player, so nobody vanishes in front of you.
       for (const w of this.list) {
         if (w.frozen) continue;
         const d = w.pos.distanceTo(playerPos);
-        const wrongTime = (w.when && (w.when === 'night') !== night) || !!w.cave !== under;
+        const wrongTime = !condOk(w.when, ctx) || !!w.cave !== under;
         if (d > 60 || (d > 10 && (w.life <= 0 || wrongTime))) { this.remove(w); break; }
       }
     }
-    for (const w of this.list) {
+    for (const w of [...this.list]) {
       this.updateOne(w, dt);
+      // Walking into a disguised creature finds it (otherwise you could walk through a "block").
+      if (w.disguise && !w.frozen && this.onBump) {
+        const half = w.size / 2 + 0.4, dy = playerPos.y - w.pos.y;
+        if (Math.abs(playerPos.x - w.pos.x) < half && Math.abs(playerPos.z - w.pos.z) < half && dy >= 0 && dy < w.size + 1) this.onBump(w);
+      }
       // Sound-type creatures sing now and then, so you can hear them before you see them.
       if (w.species.type === 'sound' && !w.frozen && (w.songTimer = (w.songTimer ?? Math.random() * 3) - dt) <= 0) {
         w.songTimer = 5 + Math.random() * 4;
@@ -228,7 +314,18 @@ export class CreatureManager {
     w.t += dt;
     w.life -= dt;
     const sp = w.species;
-    if (w.frozen) {
+    if (w.popT >= 0) { // the little pop when a Camo creature jumps out of its disguise
+      w.popT += dt;
+      const k = Math.min(1, w.popT / 0.3);
+      w.model.userData.parts.root.scale.setScalar(k < 0.7 ? 0.3 + (1.1 - 0.3) * (k / 0.7) : 1.1 - 0.1 * ((k - 0.7) / 0.3));
+      if (k >= 1) w.popT = -1;
+    }
+    if (w.disguise) { // a block: only blinks
+      w.disguise.update(dt, this.viewer);
+      w.model.rotation.y = 0;
+      return;
+    }
+    if (w.frozen || w.still) { // battling, or a Camo creature idling in place
       animateModel(w.model, w.t, false);
       w.model.rotation.y = w.heading;
       return;
@@ -267,7 +364,9 @@ export class CreatureManager {
   pick(origin, dir, maxDist) {
     this.raycaster.set(origin, dir);
     this.raycaster.far = maxDist;
-    const hits = this.raycaster.intersectObjects(this.list.map(w => w.model), true);
+    // Raycasts ignore `visible`, so skip hidden parts (a disguised creature's real model, closed-eye sets).
+    const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+    const hits = this.raycaster.intersectObjects(this.list.map(w => w.model), true).filter(h => shown(h.object));
     if (!hits.length) return null;
     let o = hits[0].object;
     while (o && !o.userData.wild) o = o.parent;

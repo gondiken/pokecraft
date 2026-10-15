@@ -175,6 +175,14 @@ const SOUNDS = {
   'fx:slime': () => { tone(220, { len: 0.12, vol: 0.22, slide: 260 }); tone(300, { at: 0.13, len: 0.1, vol: 0.18, slide: -200 }); },
   'fx:light': () => { notes([1320, 1760, 2349], 0.07, { len: 0.14, type: 'triangle', vol: 0.14 }); },
   'fx:paper': () => { noise({ freq: 4500, len: 0.05, vol: 0.14, q: 1 }); noise({ at: 0.07, freq: 6500, len: 0.06, vol: 0.14, q: 0.8 }); noise({ at: 0.16, freq: 5500, len: 0.1, vol: 0.1, q: 0.6 }); },
+  // T18: Time, Camo and Cyber.
+  'fx:time': () => { tone(1600, { len: 0.03, type: 'square', vol: 0.1 }); tone(1200, { at: 0.13, len: 0.03, type: 'square', vol: 0.1 }); },
+  'fx:camo': () => { noise({ freq: 3000, len: 0.18, vol: 0.12, q: 0.6 }); tone(400, { at: 0.16, len: 0.06, vol: 0.2, slide: 300 }); },
+  'fx:cyber': () => notes([880, 1320, 660], 0.05, { len: 0.04, type: 'square', vol: 0.08 }),
+  // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
+  ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
+  // A camo creature pops out of its disguise.
+  popout: () => { noise({ freq: 1500, len: 0.08, vol: 0.25, q: 1 }); tone(300, { len: 0.12, vol: 0.25, slide: 500, type: 'triangle' }); },
   // Move effects in battle.
   statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),

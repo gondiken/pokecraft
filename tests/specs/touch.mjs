@@ -71,6 +71,44 @@ export default async function ({ browser, base, t }) {
   await page.tap('#resume');
   await page.waitForTimeout(300);
   t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'Resume button resumes');
+  // T18: a Camo creature is a block that blinks: tapping it, or the Break button while looking at it, starts a battle.
+  const camoSetup = () => page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world;
+    const { B } = await import('/src/blocks.js');
+    const sx = Math.floor(g.spawnPoint.x), sz = Math.floor(g.spawnPoint.z), y = 42;
+    g.weather.set('clear'); g.time = 0.25; g.creatures.clear(); g.creatures.spawnTimer = 1e9;
+    for (let x = -4; x <= 6; x++) for (let z = -4; z <= 4; z++) { for (let h = y; h <= y + 4; h++) w.set(sx + x, h, sz + z, B.AIR); w.set(sx + x, y, sz + z, B.GRASS); }
+    for (const [a, b] of [[2, 1], [4, 1], [3, 1], [2, -1], [4, -1], [3, -1], [3, 2]]) w.set(sx + a, y + 1, sz + b, B.LEAVES);
+    w.updateDirty();
+    g.creatures.spawnAt('bushling', sx + 3, y + 1, sz, { level: 5 });
+    g.player.pos.set(sx + 0.5, y + 1, sz + 0.5);
+    g.player.vel.set(0, 0, 0);
+    g.player.lookAt({ x: sx + 3.5, y: y + 1.5, z: sz + 0.5 });
+    return !!g.creatures.list[0]?.disguise;
+  });
+  const endBattle = async () => {
+    await page.waitForSelector('#b-actions button', { timeout: 180000 });
+    await page.evaluate(() => document.querySelector('#b-actions button:last-child').click()); // Run
+    await page.waitForFunction(() => !window.pokecraft.inBattle, null, { timeout: 120000 }).catch(() => {});
+    if (await page.evaluate(() => window.pokecraft.inBattle)) await page.evaluate(() => { window.pokecraft.battle.active = false; window.pokecraft.inBattle = false; document.body.classList.remove('in-battle'); document.getElementById('battle').classList.add('hidden'); });
+  };
+  t.ok(await camoSetup(), 'a disguised Bushling stands in front of the player');
+  await page.waitForFunction(() => document.getElementById('prompt').textContent.includes('Bushling'), null, { timeout: 60000 }).catch(() => {});
+  const spot = await page.evaluate(() => {
+    const g = window.pokecraft, THREE_V = g.player.eyePos.constructor;
+    const w = g.creatures.list[0];
+    const v = new THREE_V(w.pos.x, w.pos.y + 0.5, w.pos.z).project(g.camera);
+    return [(v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight];
+  });
+  await page.touchscreen.tap(spot[0], spot[1]);
+  t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'tapping a disguised Camo creature starts a battle');
+  t.ok(await page.evaluate(() => window.pokecraft.creatures.list[0].disguise === null), 'and it pops out of its block');
+  await endBattle();
+  await camoSetup();
+  await page.waitForFunction(() => document.getElementById('prompt').textContent.includes('Bushling'), null, { timeout: 60000 }).catch(() => {});
+  await page.tap('#btn-break');
+  t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the Break button on a disguised creature battles it (and breaks no block)');
+  await endBattle();
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

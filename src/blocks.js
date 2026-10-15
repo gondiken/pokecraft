@@ -14,6 +14,7 @@ const WOOL_TYPES = [
   'normal', 'fire', 'water', 'grass', 'electric', 'rock', 'ice', 'bug', 'ghost',
   'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien',
   'sky', 'slime', 'light', 'paper', // T10 gyms: ids 49-52 (see WOOL below)
+  'time', 'camo', 'cyber', // T18: ids 54-56
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -21,6 +22,7 @@ const WOOL_RGB = {
   mind: [235, 120, 175], metal: [170, 180, 190], toxic: [140, 70, 180], pixie: [255, 175, 220], drake: [95, 90, 220],
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
   sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 228, 110], paper: [250, 248, 240],
+  time: [222, 170, 80], camo: [110, 150, 80], cyber: [40, 52, 80],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -40,10 +42,11 @@ export const B = {
   GLOWCAP: 46, CHEST: 47, CHEST_OPEN: 48,
   // 49-52 are the sky / slime / light / paper wool blocks.
   CLOUD: 53,
+  // 54-56 are the time / camo / cyber wool blocks.
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -215,7 +218,11 @@ export function drawAtlas() {
               : t === 'slime' && SLIME_BUBBLE(x, y) ? SLIME_BUBBLE(x, y) // round bubbles
                 : t === 'light' && (x * 7 + y * 5) % 9 === 0 ? [255, 255, 255] // sparkles
                   : t === 'paper' && y % 4 === 0 ? [205, 225, 245] // pale blue lines
-                    : WOOL_RGB[t];
+                    : t === 'time' && (x === 0 || y === 0 || x === 15 || y === 15) && (x + y) % 4 === 0 ? [150, 100, 40] // clock ticks
+                      : t === 'camo' && (x * 3 + y * 7) % 11 < 3 ? [70, 105, 55] // blotches
+                        : t === 'camo' && (x * 5 + y * 2) % 13 === 0 ? [150, 130, 90]
+                          : t === 'cyber' && (x % 4 === 0 || y % 4 === 0) ? [80, 220, 255] // glowing grid
+                            : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
 

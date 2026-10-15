@@ -1,5 +1,6 @@
 // Creature data (types, moves, species), stat/XP math and blocky 3D models.
 import * as THREE from 'three';
+import { B } from './blocks.js';
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap } from './shapes.js';
 
 export const TYPE_COLORS = {
@@ -12,37 +13,45 @@ export const TYPE_COLORS = {
   sky: 'linear-gradient(180deg,#8fd0ff,#e8f6ff)', slime: 'linear-gradient(180deg,#b4f56a,#52d08a)',
   light: 'radial-gradient(circle,#ffffff 20%,#ffe27a)',
   paper: 'repeating-linear-gradient(180deg,#fffdf6 0 4px,#cfe0f7 4px 5px)',
+  time: 'linear-gradient(180deg,#ffe08a,#ff9a5a)',
+  camo: 'radial-gradient(circle at 30% 35%,#5f8f45 22%,transparent 23%),radial-gradient(circle at 72% 68%,#8a7a4a 20%,transparent 21%),#a8c07a',
+  cyber: 'repeating-linear-gradient(90deg,#8ff4ff 0 6px,#5ab8ff 6px 7px)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
-  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5 },
+  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5 },
   fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2 },
-  water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5 },
-  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5 },
-  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5 },
+  water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2 },
+  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5 },
   ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2 },
-  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5 },
+  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2 },
   ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
   // New types
-  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5 },
+  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5, camo: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5, paper: 2 },
   toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2 },
   pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5, light: 0.5 },
   drake: { drake: 2, bone: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
   // Cosmic beats sound, sound beats mind, mind beats cosmic.
-  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5, light: 2 },
-  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5 },
+  cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5, light: 2, time: 2 },
+  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5, camo: 2 },
   // Bone and Alien: skeletons are not scared of ghosts or aliens; aliens love normal creatures' surprise.
   bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
   sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
   slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5 },
-  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5 },
+  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
+  // Time, Camo, Cyber: time rusts metal, crumbles old paper and dries up slime; camo sneaks up on bugs and
+  // minds can't find it; cyber hacks metal and minds and goes paperless.
+  time: { metal: 2, paper: 2, slime: 2, time: 0.5, cosmic: 0.5, ghost: 0.5 },
+  camo: { bug: 2, mind: 2, camo: 0.5, light: 0.5, metal: 0.5 },
+  cyber: { metal: 2, mind: 2, paper: 2, cyber: 0.5, grass: 0.5, water: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -160,6 +169,22 @@ export const MOVES = {
   foldslam: mv('Fold Slam', 'paper', 75, 0.9),
   inksplat: mv('Ink Splat', 'paper', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
   thousandcranes: mv('Thousand Cranes', 'paper', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
+  secondhand: mv('Second Hand', 'time', 40, 1),
+  fastforward: mv('Fast Forward', 'time', 50, 1, { priority: 1 }),
+  hourstrike: mv('Hour Strike', 'time', 75, 0.9),
+  rewind: mv('Rewind', 'time', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
+  snoozebutton: mv('Snooze', 'time', 0, 0.75, { fx: { kind: 'sleep' } }), // id is not 'snooze': that is a sound effect
+  wakeupcall: mv('Wake-Up Call', 'time', 90, 1, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  peekaboo: mv('Peekaboo', 'camo', 40, 1),
+  surprise: mv('Surprise!', 'camo', 55, 1, { fx: { kind: 'flinch', chance: 0.3 } }),
+  blendbash: mv('Blend Bash', 'camo', 75, 0.9),
+  lielow: mv('Lie Low', 'camo', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
+  statueslam: mv('Statue Slam', 'camo', 90, 1, { sure: true, sig: true }),
+  pixelpop: mv('Pixel Pop', 'cyber', 40, 1),
+  rapidclick: mv('Rapid Click', 'cyber', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  glitchbeam: mv('Glitch Beam', 'cyber', 75, 0.9),
+  firewall: mv('Firewall', 'cyber', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
+  megabyte: mv('Mega Byte', 'cyber', 90, 0.95, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
 };
 
 // Short, kid-friendly words for what a move does. Used on battle buttons, the forget prompt and the Book.
@@ -192,28 +217,33 @@ const T1 = {
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
   cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
   sky: 'breezepuff', slime: 'slimeshot', light: 'glint', paper: 'paperflick',
+  time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
   cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
   sky: 'cloudburst', slime: 'slimeslam', light: 'sunbeam', paper: 'foldslam',
+  time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam',
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
   sky: 'swoop', slime: 'stickygoo', light: 'flashbulb', paper: 'confetti',
+  time: 'fastforward', camo: 'surprise', cyber: 'rapidclick',
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
   ice: 'glacierslam', bug: 'silkwrap', ghost: 'gloomwave', mind: 'deepfocus', metal: 'ironwall', toxic: 'stinkbomb',
   pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
+  time: 'rewind', camo: 'lielow', cyber: 'firewall',
 };
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
   ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };
+const SNZ = [[16, 'snoozebutton']]; // Time creatures can learn Snooze
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -1172,6 +1202,133 @@ export const SPECIES = {
     model: { shape: 'puzzle', scale: 0.85, body: 0xb08aff, accent: 0xff8ad8, dark: 0x4a2a8a, belly: 0xe8d8ff, extras: [] },
   },
   /* ==== end of T9 paper ==== */
+  /* ==== T18 time ==== */
+  flipsand: {
+    name: 'Flipsand', type: 'time', desc: "A little hourglass that walks by flipping itself over. Its sand never runs out.",
+    base: { hp: 50, atk: 45, def: 60, spd: 55 }, baseXp: 64, catchRate: 0.45, learn: L('time', 'rock'),
+    evolve: { level: 22, into: 'sandtimer' },
+    model: { shape: 'hourglass', scale: 0.75, body: 0x8a5a2a, accent: 0xffd27a, dark: 0x4a2a10, belly: 0xd8f4ff, extras: [] },
+  },
+  sandtimer: {
+    name: 'Sandtimer', type: 'time', desc: "A tall hourglass with strong arms. When it gets excited, the sand inside swirls round and round.",
+    base: { hp: 85, atk: 80, def: 100, spd: 75 }, baseXp: 165, catchRate: 0.12, learn: L('time', 'rock'),
+    model: { shape: 'hourglass', scale: 1.25, body: 0x6a3a1a, accent: 0xffc04a, dark: 0x3a1a08, belly: 0xd8f4ff, extras: ['arms'] },
+  },
+  pendulo: {
+    name: 'Pendulo', type: 'time', desc: "A metronome that hops on one leg. Tick, tock, tick, tock: it never loses the beat.",
+    base: { hp: 45, atk: 55, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('time', 'sound', SNZ),
+    evolve: { level: 24, into: 'grandtock' },
+    model: { shape: 'pendulum', scale: 0.8, body: 0xc8804a, accent: 0xffd84a, dark: 0x5a2a10, belly: 0xfff0d0, extras: [] },
+  },
+  grandtock: {
+    name: 'Grandtock', type: 'time', desc: "A big grandfather clock that walks very slowly. It bongs once for every new friend.",
+    base: { hp: 100, atk: 85, def: 105, spd: 45 }, baseXp: 170, catchRate: 0.1, learn: L('time', 'sound', SNZ),
+    model: { shape: 'pendulum', scale: 1.35, body: 0x6a3a1a, accent: 0xffd84a, dark: 0x2a1408, belly: 0xfff6e0, extras: ['grand'] },
+  },
+  ringaling: {
+    name: 'Ringaling', type: 'time', desc: "A little alarm clock with two bells for ears. It rings when it is hungry, and that is often!",
+    base: { hp: 50, atk: 60, def: 45, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('time', 'metal', SNZ),
+    evolve: { level: 22, into: 'clangalarm' },
+    model: { shape: 'alarmclock', scale: 0.75, body: 0xe04a4a, accent: 0xffd84a, dark: 0x5a1a1a, belly: 0xffffff, extras: [] },
+  },
+  clangalarm: {
+    name: 'Clangalarm', type: 'time', desc: "A huge alarm clock that stomps on hammer legs. Nobody sleeps in when it is around.",
+    base: { hp: 90, atk: 105, def: 80, spd: 60 }, baseXp: 165, catchRate: 0.12, learn: L('time', 'metal', [...SNZ, [30, 'wakeupcall']]),
+    model: { shape: 'alarmclock', scale: 1.3, body: 0x4a7ae0, accent: 0xffd84a, dark: 0x1a2a5a, belly: 0xffffff, extras: ['hammers'] },
+  },
+  twilorb: {
+    name: 'Twilorb', type: 'time', desc: "A slowly spinning ball, half sun and half moon. It only wakes up when day and night meet.",
+    base: { hp: 65, atk: 65, def: 60, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('time', 'cosmic', SNZ), floats: true,
+    model: { shape: 'sunmoon', scale: 0.85, body: 0xffc23d, accent: 0x3a4a8a, dark: 0x1a1a3a, belly: 0xfff6c0, extras: [] },
+  },
+  /* ==== end of T18 time ==== */
+  /* ==== T18 camo ==== */
+  bushling: {
+    name: 'Bushling', type: 'camo', desc: "A leaf block with a sleepy face. It sits very still in the forest and blinks when nobody is looking.",
+    base: { hp: 60, atk: 50, def: 70, spd: 35 }, baseXp: 64, catchRate: 0.45, learn: L('camo', 'grass'),
+    evolve: { level: 22, into: 'topiphant' },
+    disguise: { blocks: [B.LEAVES, B.PINE_LEAVES] },
+    model: { shape: 'bushblock', scale: 0.75, body: 0x4a9a3a, accent: 0x7ac85a, dark: 0x1a4a1a, belly: 0x6ab04a, extras: [] },
+  },
+  topiphant: {
+    name: 'Topiphant', type: 'camo', desc: "A big hedge trimmed into an elephant. When it sneezes, leaves fly everywhere.",
+    base: { hp: 110, atk: 90, def: 110, spd: 40 }, baseXp: 170, catchRate: 0.1, learn: L('camo', 'grass'),
+    disguise: { blocks: [B.LEAVES, B.PINE_LEAVES], size: 2 },
+    model: { shape: 'bushblock', scale: 1.4, body: 0x3a8a3a, accent: 0x6ac050, dark: 0x1a3a1a, belly: 0x5aa040, extras: ['elephant'] },
+  },
+  castlet: {
+    name: 'Castlet', type: 'camo', desc: "A sand block with a tiny flag on top. Waves make it giggle, but they also make it smaller.",
+    base: { hp: 50, atk: 50, def: 75, spd: 40 }, baseXp: 64, catchRate: 0.45, learn: L('camo', 'water'),
+    evolve: { level: 22, into: 'fortsand' },
+    disguise: { blocks: [B.SAND, B.SANDSTONE] },
+    model: { shape: 'sandcastle', scale: 0.75, body: 0xe8d090, accent: 0xd04a4a, dark: 0x8a6a3a, belly: 0xf4e4b0, extras: [] },
+  },
+  fortsand: {
+    name: 'Fortsand', type: 'camo', desc: "A walking sandcastle with towers and a little gate. Crabs like to visit its windows.",
+    base: { hp: 85, atk: 85, def: 125, spd: 45 }, baseXp: 165, catchRate: 0.12, learn: L('camo', 'water'),
+    disguise: { blocks: [B.SAND, B.SANDSTONE], size: 2 },
+    model: { shape: 'sandcastle', scale: 1.35, body: 0xe0c880, accent: 0x4a8ae0, dark: 0x7a5a2a, belly: 0xf0dca0, extras: ['towers'] },
+  },
+  cubble: {
+    name: 'Cubble', type: 'camo', desc: "A cobblestone with a hidden mouth. It waits very still for snacks to roll past.",
+    base: { hp: 55, atk: 60, def: 70, spd: 30 }, baseXp: 64, catchRate: 0.45, learn: L('camo', 'rock'),
+    evolve: { level: 24, into: 'statuo' },
+    disguise: { blocks: [B.STONE, B.COBBLE, B.GRAVEL] },
+    model: { shape: 'stonecube', scale: 0.75, body: 0x8a8a8a, accent: 0xb0b0b0, dark: 0x3a3a3a, belly: 0x5a2a2a, extras: [] },
+  },
+  statuo: {
+    name: 'Statuo', type: 'camo', desc: "A stone statue that only moves when you are not looking. Turn around and it is a bit closer!",
+    base: { hp: 90, atk: 100, def: 110, spd: 40 }, baseXp: 170, catchRate: 0.1, learn: L('camo', 'rock', [[30, 'statueslam']]),
+    disguise: { blocks: [B.STONE, B.COBBLE, B.GRAVEL], size: 2 },
+    model: { shape: 'stonecube', scale: 1.4, body: 0xa8a49a, accent: 0xd8d4c8, dark: 0x4a4840, belly: 0x6a6458, extras: ['statue'] },
+  },
+  igloop: {
+    name: 'Igloop', type: 'camo', desc: "A snow block that is secretly a tiny igloo. Peek through its little door to see it smile.",
+    base: { hp: 70, atk: 55, def: 80, spd: 50 }, baseXp: 100, catchRate: 0.3, learn: L('camo', 'ice'),
+    disguise: { blocks: [B.SNOW] },
+    model: { shape: 'igloo', scale: 0.8, body: 0xf4f8ff, accent: 0xa8d8f0, dark: 0x3a5a7a, belly: 0x2a3a5a, extras: [] },
+  },
+  /* ==== end of T18 camo ==== */
+  /* ==== T18 cyber ==== */
+  pixbit: {
+    name: 'Pixbit', type: 'cyber', desc: "A blob made of chunky pixels. It hops from screen to screen and leaves a little sparkle.",
+    base: { hp: 45, atk: 55, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'electric'),
+    evolve: { level: 22, into: 'pixbit2' },
+    model: { shape: 'pixelblob', scale: 0.75, body: 0x5ae0ff, accent: 0xff6ad8, dark: 0x1a3a6a, belly: 0xb0f8ff, extras: [] },
+  },
+  pixbit2: {
+    name: 'Pixbit 2.0', type: 'cyber', desc: "An upgraded Pixbit with sharp, shiny pixels. It changes colour faster than you can blink.",
+    base: { hp: 75, atk: 95, def: 65, spd: 115 }, baseXp: 165, catchRate: 0.12, learn: L('cyber', 'electric', [[30, 'megabyte']]),
+    model: { shape: 'pixelblob', scale: 1.2, body: 0x7a5aff, accent: 0x5af0ff, dark: 0x1a1a5a, belly: 0xd8d0ff, extras: ['v2'] },
+  },
+  clickit: {
+    name: 'Clickit', type: 'cyber', desc: "A mouse pointer with legs. It taps on everything just to see what happens.",
+    base: { hp: 45, atk: 60, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'metal'),
+    evolve: { level: 22, into: 'clickit2' },
+    model: { shape: 'cursor', scale: 0.8, body: 0xffffff, accent: 0x1a1a1a, dark: 0x3a3a3a, belly: 0xe0e0e0, extras: [] },
+  },
+  clickit2: {
+    name: 'Clickit 2.0', type: 'cyber', desc: "A sleek, speedy pointer. It double-clicks so fast that it makes a little breeze.",
+    base: { hp: 75, atk: 100, def: 70, spd: 105 }, baseXp: 165, catchRate: 0.12, learn: L('cyber', 'metal'),
+    model: { shape: 'cursor', scale: 1.25, body: 0xd8f0ff, accent: 0x2a7aff, dark: 0x0a1a3a, belly: 0xffffff, extras: ['v2'] },
+  },
+  wifly: {
+    name: 'Wifly', type: 'cyber', desc: "A butterfly with Wi-Fi wings. The closer friends play, the brighter its signal bars glow.",
+    base: { hp: 45, atk: 50, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'sky'), flies: true,
+    evolve: { level: 24, into: 'wifly2' },
+    model: { shape: 'wifiwing', scale: 0.75, body: 0x4a4a6a, accent: 0x5af0a0, dark: 0x1a1a2a, belly: 0xa0ffd0, extras: [] },
+  },
+  wifly2: {
+    name: 'Wifly 2.0', type: 'cyber', desc: "Its wings shine with full signal bars. It carries messages between friends playing together.",
+    base: { hp: 75, atk: 85, def: 65, spd: 115 }, baseXp: 170, catchRate: 0.1, learn: L('cyber', 'sky'), flies: true,
+    model: { shape: 'wifiwing', scale: 1.2, body: 0x2a2a4a, accent: 0x5af0ff, dark: 0x0a0a1a, belly: 0xd0fff8, extras: ['v2'] },
+  },
+  error404: {
+    name: 'Error 404', type: 'cyber', desc: "A small glitchy ghost that can never be found... except when two friends play close together.",
+    base: { hp: 60, atk: 75, def: 55, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('cyber', 'ghost'), floats: true,
+    model: { shape: 'glitchghost', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
+  },
+  /* ==== end of T18 cyber ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1309,7 +1466,36 @@ const SPAWN_PAPER = {
   taiga: [['pagelet', 0.6, 'night']],
 };
 
-for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+// T18: Time creatures come out only in the golden hour (dawn or dusk), each in its own window.
+const SPAWN_TIME = {
+  plains:   [['ringaling', 1.5, 'dawn'], ['flipsand', 0.8, 'dawn'], ['clangalarm', 0.15, 'dawn'], ['pendulo', 1.2, 'dusk'], ['twilorb', 0.6, 'dusk'], ['grandtock', 0.15, 'dusk']],
+  meadow:   [['ringaling', 1.5, 'dawn'], ['clangalarm', 0.2, 'dawn'], ['twilorb', 1, 'dusk'], ['pendulo', 0.8, 'dusk']],
+  forest:   [['ringaling', 1, 'dawn'], ['pendulo', 1.5, 'dusk'], ['grandtock', 0.2, 'dusk']],
+  swamp:    [['ringaling', 0.8, 'dawn'], ['pendulo', 1, 'dusk']],
+  beach:    [['flipsand', 1.2, 'dawn'], ['sandtimer', 0.15, 'dawn'], ['twilorb', 1, 'dusk']],
+  desert:   [['flipsand', 1.5, 'dawn'], ['sandtimer', 0.2, 'dawn'], ['twilorb', 1, 'dusk'], ['pendulo', 0.6, 'dusk']],
+  mountain: [['ringaling', 1, 'dawn'], ['flipsand', 0.6, 'dawn'], ['twilorb', 1.2, 'dusk'], ['pendulo', 0.6, 'dusk']],
+  snow:     [['ringaling', 0.8, 'dawn'], ['pendulo', 1, 'dusk']],
+  taiga:    [['ringaling', 1, 'dawn'], ['pendulo', 1.2, 'dusk'], ['grandtock', 0.15, 'dusk']],
+  peak:     [['flipsand', 0.6, 'dawn'], ['ringaling', 0.6, 'dawn'], ['twilorb', 1.5, 'dusk'], ['grandtock', 0.1, 'dusk']],
+};
+// Camo creatures wear a disguise (species.disguise): plain entries, any time of day.
+const SPAWN_CAMO = {
+  forest: [['bushling', 1.2], ['topiphant', 0.15]],
+  taiga: [['bushling', 0.8], ['topiphant', 0.1], ['igloop', 0.6]],
+  beach: [['castlet', 1.2], ['fortsand', 0.15]],
+  desert: [['castlet', 1], ['fortsand', 0.15]],
+  mountain: [['cubble', 1.2], ['statuo', 0.15]],
+  peak: [['cubble', 0.6]],
+  cave: [['cubble', 1], ['statuo', 0.1]],
+  snow: [['igloop', 1.2]],
+};
+// Cyber creatures: anywhere, but only with a friend close by (the 'together' condition).
+const CYBER = [['pixbit', 1, 'together'], ['clickit', 1, 'together'], ['wifly', 1, 'together'], ['error404', 0.6, 'together'],
+  ['pixbit2', 0.12, 'together'], ['clickit2', 0.12, 'together'], ['wifly2', 0.1, 'together']];
+const SPAWN_CYBER = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, CYBER]));
+
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

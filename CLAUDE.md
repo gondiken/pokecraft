@@ -10,7 +10,7 @@ this file is for working on the code.
   friendly and readable by a child; error messages should say what to do next.
 - **No Pokémon names or exact Pokémon terms.** All creatures, moves and gym names are original.
   Types that came from Pokémon were renamed: Poison → **Toxic**, Fairy → **Pixie**,
-  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 23 types in all: **Sky**, **Slime**, **Light** and **Paper** are our own too).
+  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 26 types in all: **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo** and **Cyber** are our own too).
 - Gym difficulty should stay on the easy side; the owner already asked once for easier gyms.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
@@ -43,12 +43,14 @@ this file is for working on the code.
 | `src/gymplace.js` | Gym and tower placement and buildings (`gymSpots`, `placeGyms`, `buildGym`, `pickSpot`, `placeTower`...): a class whose methods `installGymPlacement(World)` copies onto `World.prototype` (moved out of `world.js` in T15, code unchanged) |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests), `carveBigCaves(world)` (second layer: halls, wide tunnels, lit stairways, lamp posts), `planStairs`/`buildStairs` (also used by the cave gym) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
-| `src/species.js` | Types + effectiveness chart, moves (107, with `fx`; `moveInfo(id)` gives the button/Book words), all 161 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
-| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
+| `src/species.js` | Types + effectiveness chart, moves (123, with `fx`; `moveInfo(id)` gives the button/Book words), all 182 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
+| `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the T18 shapes hourglass, pendulum, alarmclock, sunmoon, bushblock, sandcastle, stonecube, igloo, pixelblob, cursor, wifiwing, glitchghost; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
 | `src/gyms.js` | The 22 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
-| `src/creatures.js` | Wild creature spawning (biome + day/night tables) and wandering |
+| `src/creatures.js` | Wild creature spawning (biome tables + spawn conditions), wandering, Camo disguises (`spawnAt`, `Wild.reveal`) |
+| `src/spawnrules.js` | Spawn conditions as data: day/night, dawn/dusk golden hour, together; `goldenHour`, `condOf`, `condOk`, `CONDITIONS` |
+| `src/disguise.js` | `Disguise`: a creature or person drawn as a world block that blinks; used by Camo creatures (T19: Hidden Hill trainers) |
 | `src/npc.js` | Blocky people (trainers, leaders, Healer Hana, other players' avatars) |
 | `src/ui.js` | HUD, team screen, creature portraits |
 | `src/touch.js` | Tablet controls (joystick, drag-to-look, tap-to-interact, buttons) |
@@ -61,6 +63,20 @@ this file is for working on the code.
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 
 Key ideas:
+- **Spawn conditions (T18):** the third entry of a `SPAWNS` entry names a condition in `CONDITIONS` (`spawnrules.js`); conditions with
+  `share` (dawn/dusk 0.4, together 1/15) take that share of spawn attempts when true, `max` caps how many are alive at once, and
+  creatures leave when their condition stops being true (`condOk` in `CreatureManager.update`). `creatures.env` (set in `main.js`)
+  gives the time and the other players' positions; `creatures.context()` builds what conditions look at. A new way to be found
+  (T21: `home:<type>`) is one more `CONDITIONS` entry plus a field in `context()`. The golden hour is 1 minute around sunrise
+  (04:30-07:30 on the HUD clock) and sunset (16:30-19:30); the sky turns orange around them and `ticktock` plays when one starts.
+  The Book words each condition with `text` and shows one "Anywhere" row for Cyber creatures.
+  **Camo creatures** have `disguise: { blocks, size }` in `SPECIES`: `creatures.spawnAt(species, x, y, z)` dresses them as the most
+  common of those blocks nearby (`Disguise.pick`, no spawn if there is none or no room: `Disguise.fits`), they never walk (`Wild.still`),
+  blink about twice a minute, show the normal name tag and block outline when looked at, and start a battle when hit, tapped, or
+  walked into (`creatures.onBump`); `Wild.reveal()` (called by `Battle.start`) pops them out. **Never call `disposeModel` on a
+  disguised model without `disguise.dispose()` first** (it would free the shared world material; `CreatureManager.remove` does
+  it right). A disguise never changes the world, is never saved or sent. Wool ids: time 54, camo 55, cyber 56; the next free
+  block id is 57.
 - **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects are in `fxrecipes.js` (T11). See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
@@ -204,7 +220,7 @@ node run.mjs --skip champion               # everything but some (a spec that ha
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `access` (T16: golden guide replay in `tests/fixtures/guide-golden.json`, a test-only access kind, guide has no kind checks), `caves` (T3/T8 caves and cave gyms), `moves` (T6 moves and the forget prompt), `seventh` (7th creatures), `bone-alien`, `new-gyms-access` (T14 night gyms, alien look), `water` (T12), `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `big-map` (T17: old area identical, seam, start, slots, gym protection), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `spawn-rules` (T18: conditions, golden hour, Camo disguises, Cyber with two players), `three-types` (T18 species, moves, chart, models), `access` (T16: golden guide replay in `tests/fixtures/guide-golden.json`, a test-only access kind, guide has no kind checks), `caves` (T3/T8 caves and cave gyms), `moves` (T6 moves and the forget prompt), `seventh` (7th creatures), `bone-alien`, `new-gyms-access` (T14 night gyms, alien look), `water` (T12), `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `big-map` (T17: old area identical, seam, start, slots, gym protection), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Shared helpers are in `tests/helpers.mjs` (`openGame`, `openPair`, `seedSave`, `continueGame`, `platform`, `startWeakBattle`, `waitFor`, `playBattle`): prefer `waitFor`/`waitForFunction` to fixed sleeps. Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
