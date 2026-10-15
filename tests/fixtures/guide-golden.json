@@ -1,0 +1,7792 @@
+[
+ {
+  "label": "1/day champion",
+  "guide": "★ Champion! ★",
+  "toasts": []
+ },
+ {
+  "label": "1/day rock spawn",
+  "guide": "Next: Boulder Gym ← 30m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rock front40",
+  "guide": "Next: Boulder Gym ← 40m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rock front12",
+  "guide": "Next: Boulder Gym ← 12m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "1/day rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bug spawn",
+  "guide": "Next: Hive Gym ↙ 47m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bug front40",
+  "guide": "Next: Hive Gym ↓ 40m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bug front12",
+  "guide": "Next: Hive Gym ↓ 12m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "1/day bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day toxic spawn",
+  "guide": "Next: Swamp Gym ↑ 59m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day toxic front40",
+  "guide": "Next: Swamp Gym ↑ 40m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day toxic front12",
+  "guide": "Next: Swamp Gym ↑ 12m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "1/day toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day water spawn",
+  "guide": "Next: Tide Gym ↑ 60m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day water front40",
+  "guide": "Next: Tide Gym ↑ 40m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day water front12",
+  "guide": "Next: Tide Gym ↑ 12m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "1/day water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day pixie spawn",
+  "guide": "Next: Twinkle Gym ↘ 62m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day pixie front40",
+  "guide": "Next: Twinkle Gym → 40m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day pixie front12",
+  "guide": "Next: Twinkle Gym → 12m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "1/day pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day grass spawn",
+  "guide": "Next: Grove Gym ↓ 68m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day grass front40",
+  "guide": "Next: Grove Gym ↓ 40m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day grass front12",
+  "guide": "Next: Grove Gym ↓ 12m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "1/day grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day electric spawn",
+  "guide": "Next: Volt Gym → 73m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day electric front40",
+  "guide": "Next: Volt Gym → 40m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/day electric front12",
+  "guide": "Next: Volt Gym → 12m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "1/day electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sound spawn",
+  "guide": "Next: Echo Gym ← 75m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sound front40",
+  "guide": "Next: Echo Gym ← 40m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sound front12",
+  "guide": "Next: Echo Gym ← 12m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "1/day sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day metal spawn",
+  "guide": "Next: Iron Gym ← 86m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day metal front40",
+  "guide": "Next: Iron Gym ← 40m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day metal front12",
+  "guide": "Next: Iron Gym ← 12m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "1/day metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day mind spawn",
+  "guide": "Next: Mystic Gym ↗ 94m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day mind front40",
+  "guide": "Next: Mystic Gym → 40m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day mind front12",
+  "guide": "Next: Mystic Gym → 12m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "1/day mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day fire spawn",
+  "guide": "Next: Blaze Gym ↑ 96m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day fire front40",
+  "guide": "Next: Blaze Gym ↑ 40m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "1/day fire front12",
+  "guide": "Next: Blaze Gym ↑ 12m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "1/day fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ice spawn",
+  "guide": "Next: Frost Gym ↖ 98m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "1/day ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day cosmic spawn",
+  "guide": "Next: Phantom Gym ↘ 108m · Comet Gym opens at night ☾",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day cosmic front40",
+  "guide": "Next: Phantom Gym → 130m · Comet Gym opens at night ☾",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day cosmic front12",
+  "guide": "Next: Phantom Gym → 125m · Comet Gym opens at night ☾",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day cosmic front6",
+  "guide": "Next: Phantom Gym → 124m · Comet Gym opens at night ☾",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "1/day cosmic centre",
+  "guide": "Next: Phantom Gym → 124m · Comet Gym opens at night ☾",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ghost spawn",
+  "guide": "Next: Phantom Gym ↘ 108m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ghost front40",
+  "guide": "Next: Phantom Gym ↓ 40m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ghost front12",
+  "guide": "Next: Phantom Gym ↓ 12m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "1/day ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day drake spawn",
+  "guide": "Next: Scale Gym ↙ 117m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day drake front40",
+  "guide": "Next: Scale Gym ← 40m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day drake front12",
+  "guide": "Next: Scale Gym ← 12m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "1/day drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rainbow spawn",
+  "guide": "Next: Prism Gym ↖ 127m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rainbow front40",
+  "guide": "Next: Prism Gym ← 40m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rainbow front12",
+  "guide": "Next: Prism Gym ← 12m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "1/day rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone spawn",
+  "guide": "Next: Fossil Gym (in a cave) ↖ 113m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone front40",
+  "guide": "Next: Fossil Gym (in a cave) → 11m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone front12",
+  "guide": "Next: Fossil Gym (in a cave) ← 15m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone front6",
+  "guide": "Next: Fossil Gym (in a cave) ← 21m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "1/day bone mouth",
+  "guide": "The Fossil Gym is down these stairs!",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone out30",
+  "guide": "Next: Fossil Gym (in a cave) ← 30m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone stairs",
+  "guide": "Next: Fossil Gym ↓ 16m",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone d10",
+  "guide": "Next: Fossil Gym ↓ 10m",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day bone hill",
+  "guide": "Next: Fossil Gym (in a cave) ← 27m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien spawn",
+  "guide": "Next: Sunbeam Gym ↓ 67m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien front40",
+  "guide": "Next: Sunbeam Gym ↓ 13m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien front12",
+  "guide": "Next: Sunbeam Gym ↑ 16m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "1/day alien front6",
+  "guide": "Next: Sunbeam Gym ↑ 22m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "1/day alien centre",
+  "guide": "Next: Sunbeam Gym ↑ 28m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien behind4",
+  "guide": "Next: Sunbeam Gym ↑ 32m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien pad",
+  "guide": "Next: Sunbeam Gym ↑ 17m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien island",
+  "guide": "Next: Sunbeam Gym ↑ 28m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "1/day alien h13",
+  "guide": "Next: Sunbeam Gym ↑ 16m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day alien h26",
+  "guide": "Sunbeam Gym is here! · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "1/day alien behind4b",
+  "guide": "Next: Sunbeam Gym ↑ 32m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "1/day light spawn",
+  "guide": "Next: Sunbeam Gym ↓ 67m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day light front40",
+  "guide": "Next: Sunbeam Gym ↓ 40m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day light front12",
+  "guide": "Next: Sunbeam Gym ↓ 12m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "1/day light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day paper spawn",
+  "guide": "Next: Origami Gym ↓ 99m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day paper front40",
+  "guide": "Next: Origami Gym ↓ 40m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day paper front12",
+  "guide": "Next: Origami Gym ↓ 12m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "1/day paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime spawn",
+  "guide": "Next: Goo Gym (in a cave) ↗ 97m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime front40",
+  "guide": "Next: Goo Gym (in a cave) ↓ 13m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime front12",
+  "guide": "Next: Goo Gym (in a cave) ↑ 15m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime front6",
+  "guide": "Next: Goo Gym (in a cave) ↑ 21m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "1/day slime mouth",
+  "guide": "The Goo Gym is down these stairs!",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime out30",
+  "guide": "Next: Goo Gym (in a cave) ↑ 30m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime stairs",
+  "guide": "Next: Goo Gym ↓ 16m",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime d10",
+  "guide": "Next: Goo Gym ↓ 10m",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day slime hill",
+  "guide": "Next: Goo Gym (in a cave) ↑ 27m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) ↗ 40m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) → 40m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "1/day sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/day sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/day sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) → 26m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/day skip cosmic+alien+light",
+  "guide": "Next: Sunbeam Gym ↓ 67m · Comet Gym and Saucer Gym open at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day skip alien+light",
+  "guide": "Next: Sunbeam Gym ↓ 67m · Saucer Gym opens at night ☾",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day skip cosmic+alien",
+  "guide": "Next: Comet Gym ↙ 103m (opens at night ☾)",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day skip cosmic",
+  "guide": "Next: Comet Gym ↙ 103m (opens at night ☾)",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 95m (opens at night ☾)",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day tower spawn",
+  "guide": "Next: Champion's Tower ↘ 18m",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "1/day tower spawn again",
+  "guide": "Next: Champion's Tower ↘ 18m",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/day talk cosmic",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "1/day talk alien",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "1/night champion",
+  "guide": "★ Champion! ★",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rock spawn",
+  "guide": "Next: Boulder Gym ← 30m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rock front40",
+  "guide": "Next: Boulder Gym ← 40m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rock front12",
+  "guide": "Next: Boulder Gym ← 12m",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "1/night rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   84.5,
+   101.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bug spawn",
+  "guide": "Next: Hive Gym ↙ 47m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bug front40",
+  "guide": "Next: Hive Gym ↓ 40m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bug front12",
+  "guide": "Next: Hive Gym ↓ 12m",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "1/night bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   87.5,
+   152.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night toxic spawn",
+  "guide": "Next: Swamp Gym ↑ 59m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night toxic front40",
+  "guide": "Next: Swamp Gym ↑ 40m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night toxic front12",
+  "guide": "Next: Swamp Gym ↑ 12m",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "1/night toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   91.5,
+   57.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night water spawn",
+  "guide": "Next: Tide Gym ↑ 60m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night water front40",
+  "guide": "Next: Tide Gym ↑ 40m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night water front12",
+  "guide": "Next: Tide Gym ↑ 12m",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "1/night water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   130.5,
+   55.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night pixie spawn",
+  "guide": "Next: Twinkle Gym ↘ 62m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night pixie front40",
+  "guide": "Next: Twinkle Gym → 40m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night pixie front12",
+  "guide": "Next: Twinkle Gym → 12m",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "1/night pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   168.5,
+   138.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night grass spawn",
+  "guide": "Next: Grove Gym ↓ 68m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night grass front40",
+  "guide": "Next: Grove Gym ↓ 40m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night grass front12",
+  "guide": "Next: Grove Gym ↓ 12m",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "1/night grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   129.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night electric spawn",
+  "guide": "Next: Volt Gym → 73m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night electric front40",
+  "guide": "Next: Volt Gym → 40m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/night electric front12",
+  "guide": "Next: Volt Gym → 12m",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "1/night electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   182.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sound spawn",
+  "guide": "Next: Echo Gym ← 75m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sound front40",
+  "guide": "Next: Echo Gym ← 40m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sound front12",
+  "guide": "Next: Echo Gym ← 12m",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "1/night sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   40.5,
+   92.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night metal spawn",
+  "guide": "Next: Iron Gym ← 86m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night metal front40",
+  "guide": "Next: Iron Gym ← 40m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night metal front12",
+  "guide": "Next: Iron Gym ← 12m",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "1/night metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   27.5,
+   127.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night mind spawn",
+  "guide": "Next: Mystic Gym ↗ 94m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night mind front40",
+  "guide": "Next: Mystic Gym → 40m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night mind front12",
+  "guide": "Next: Mystic Gym → 12m",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "1/night mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   185.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night fire spawn",
+  "guide": "Next: Blaze Gym ↑ 96m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night fire front40",
+  "guide": "Next: Blaze Gym ↑ 40m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "1/night fire front12",
+  "guide": "Next: Blaze Gym ↑ 12m",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "1/night fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   136.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ice spawn",
+  "guide": "Next: Frost Gym ↖ 98m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "1/night ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   56.5,
+   31.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night cosmic spawn",
+  "guide": "Next: Comet Gym ↙ 103m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night cosmic front40",
+  "guide": "Next: Comet Gym ↓ 40m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night cosmic front12",
+  "guide": "Next: Comet Gym ↓ 12m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night cosmic front6",
+  "guide": "Comet Gym is here!",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": [
+   "Welcome to the Comet Gym! (cosmic type)"
+  ]
+ },
+ {
+  "label": "1/night cosmic centre",
+  "guide": "Comet Gym is here!",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ghost spawn",
+  "guide": "Next: Phantom Gym ↘ 108m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ghost front40",
+  "guide": "Next: Phantom Gym ↓ 40m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ghost front12",
+  "guide": "Next: Phantom Gym ↓ 12m",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "1/night ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   178.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night drake spawn",
+  "guide": "Next: Scale Gym ↙ 117m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night drake front40",
+  "guide": "Next: Scale Gym ← 40m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night drake front12",
+  "guide": "Next: Scale Gym ← 12m",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "1/night drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   18.5,
+   181.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rainbow spawn",
+  "guide": "Next: Prism Gym ↖ 127m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rainbow front40",
+  "guide": "Next: Prism Gym ← 40m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rainbow front12",
+  "guide": "Next: Prism Gym ← 12m",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "1/night rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   20.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone spawn",
+  "guide": "Next: Fossil Gym (in a cave) ↖ 113m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone front40",
+  "guide": "Next: Fossil Gym (in a cave) → 11m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone front12",
+  "guide": "Next: Fossil Gym (in a cave) ← 15m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone front6",
+  "guide": "Next: Fossil Gym (in a cave) ← 21m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "1/night bone mouth",
+  "guide": "The Fossil Gym is down these stairs!",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone out30",
+  "guide": "Next: Fossil Gym (in a cave) ← 30m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone stairs",
+  "guide": "Next: Fossil Gym ↓ 16m",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone d10",
+  "guide": "Next: Fossil Gym ↓ 10m",
+  "target": [
+   40.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night bone hill",
+  "guide": "Next: Fossil Gym (in a cave) ← 27m",
+  "target": [
+   13.5,
+   58.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien spawn",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 95m",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien front40",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 40m",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien front12",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   96.5,
+   195.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "1/night alien front6",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "1/night alien centre",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien behind4",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien pad",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   96.5,
+   195.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien island",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "1/night alien h13",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   96.5,
+   195.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night alien h26",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 26m",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "1/night alien behind4b",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "1/night light spawn",
+  "guide": "Next: Sunbeam Gym ↓ 67m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night light front40",
+  "guide": "Next: Sunbeam Gym ↓ 40m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night light front12",
+  "guide": "Next: Sunbeam Gym ↓ 12m",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "1/night light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   100.5,
+   178.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night paper spawn",
+  "guide": "Next: Origami Gym ↓ 99m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night paper front40",
+  "guide": "Next: Origami Gym ↓ 40m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night paper front12",
+  "guide": "Next: Origami Gym ↓ 12m",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "1/night paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   148.5,
+   204.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime spawn",
+  "guide": "Next: Goo Gym (in a cave) ↗ 97m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime front40",
+  "guide": "Next: Goo Gym (in a cave) ↓ 13m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime front12",
+  "guide": "Next: Goo Gym (in a cave) ↑ 15m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime front6",
+  "guide": "Next: Goo Gym (in a cave) ↑ 21m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "1/night slime mouth",
+  "guide": "The Goo Gym is down these stairs!",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime out30",
+  "guide": "Next: Goo Gym (in a cave) ↑ 30m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime stairs",
+  "guide": "Next: Goo Gym ↓ 16m",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime d10",
+  "guide": "Next: Goo Gym ↓ 10m",
+  "target": [
+   158.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night slime hill",
+  "guide": "Next: Goo Gym (in a cave) ↑ 27m",
+  "target": [
+   158.5,
+   27.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) ↗ 40m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) → 40m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "1/night sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/night sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/night sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   135.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) → 26m",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   146.5,
+   90.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "1/night skip cosmic+alien+light",
+  "guide": "Next: Comet Gym ↙ 103m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night skip alien+light",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 95m",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night skip cosmic+alien",
+  "guide": "Next: Comet Gym ↙ 103m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night skip cosmic",
+  "guide": "Next: Comet Gym ↙ 103m",
+  "target": [
+   54.5,
+   197.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) ↓ 95m",
+  "target": [
+   96.5,
+   206.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night tower spawn",
+  "guide": "Next: Champion's Tower ↘ 18m",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "1/night tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "1/night tower spawn again",
+  "guide": "Next: Champion's Tower ↘ 18m",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day champion",
+  "guide": "★ Champion! ★",
+  "target": [
+   125.5,
+   124.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rock spawn",
+  "guide": "Next: Boulder Gym ↘ 30m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rock front40",
+  "guide": "Next: Boulder Gym ↓ 40m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rock front12",
+  "guide": "Next: Boulder Gym ↓ 12m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "22/day rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bug spawn",
+  "guide": "Next: Hive Gym ↗ 37m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bug front40",
+  "guide": "Next: Hive Gym ↑ 40m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bug front12",
+  "guide": "Next: Hive Gym ↑ 12m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "22/day bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day toxic spawn",
+  "guide": "Next: Swamp Gym ↙ 39m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day toxic front40",
+  "guide": "Next: Swamp Gym ↓ 40m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day toxic front12",
+  "guide": "Next: Swamp Gym ↓ 12m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "22/day toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day water spawn",
+  "guide": "Next: Tide Gym ↑ 61m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day water front40",
+  "guide": "Next: Tide Gym ↑ 40m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day water front12",
+  "guide": "Next: Tide Gym ↑ 12m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "22/day water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day pixie spawn",
+  "guide": "Next: Twinkle Gym ← 61m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day pixie front40",
+  "guide": "Next: Twinkle Gym ← 40m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day pixie front12",
+  "guide": "Next: Twinkle Gym ← 12m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "22/day pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day grass spawn",
+  "guide": "Next: Grove Gym → 61m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day grass front40",
+  "guide": "Next: Grove Gym → 40m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day grass front12",
+  "guide": "Next: Grove Gym → 12m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "22/day grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day electric spawn",
+  "guide": "Next: Volt Gym ↘ 74m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day electric front40",
+  "guide": "Next: Volt Gym → 40m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day electric front12",
+  "guide": "Next: Volt Gym → 12m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "22/day electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sound spawn",
+  "guide": "Next: Echo Gym ↑ 82m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sound front40",
+  "guide": "Next: Echo Gym ↑ 40m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sound front12",
+  "guide": "Next: Echo Gym ↑ 12m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "22/day sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day metal spawn",
+  "guide": "Next: Iron Gym ↓ 85m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day metal front40",
+  "guide": "Next: Iron Gym ↓ 40m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day metal front12",
+  "guide": "Next: Iron Gym ↓ 12m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "22/day metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day mind spawn",
+  "guide": "Next: Mystic Gym ↓ 91m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day mind front40",
+  "guide": "Next: Mystic Gym ↓ 40m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day mind front12",
+  "guide": "Next: Mystic Gym ↓ 12m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "22/day mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day fire spawn",
+  "guide": "Next: Blaze Gym → 94m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day fire front40",
+  "guide": "Next: Blaze Gym → 40m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day fire front12",
+  "guide": "Next: Blaze Gym → 12m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "22/day fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ice spawn",
+  "guide": "Next: Frost Gym ↖ 98m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "22/day ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day cosmic spawn",
+  "guide": "Next: Phantom Gym ↙ 105m · Comet Gym opens at night ☾",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day cosmic front40",
+  "guide": "Next: Phantom Gym ↙ 180m · Comet Gym opens at night ☾",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day cosmic front12",
+  "guide": "Next: Phantom Gym ↙ 200m · Comet Gym opens at night ☾",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day cosmic front6",
+  "guide": "Next: Phantom Gym ↙ 204m · Comet Gym opens at night ☾",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "22/day cosmic centre",
+  "guide": "Next: Phantom Gym ↙ 209m · Comet Gym opens at night ☾",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ghost spawn",
+  "guide": "Next: Phantom Gym ↙ 105m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ghost front40",
+  "guide": "Next: Phantom Gym ← 40m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ghost front12",
+  "guide": "Next: Phantom Gym ← 12m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "22/day ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day drake spawn",
+  "guide": "Next: Scale Gym ↘ 114m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day drake front40",
+  "guide": "Next: Scale Gym ↓ 40m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day drake front12",
+  "guide": "Next: Scale Gym ↓ 12m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "22/day drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rainbow spawn",
+  "guide": "Next: Prism Gym ↖ 115m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rainbow front40",
+  "guide": "Next: Prism Gym ← 40m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rainbow front12",
+  "guide": "Next: Prism Gym ← 12m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "22/day rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone spawn",
+  "guide": "Next: Fossil Gym (in a cave) ↖ 45m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone front40",
+  "guide": "Next: Fossil Gym (in a cave) → 13m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone front12",
+  "guide": "Next: Fossil Gym (in a cave) ← 15m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone front6",
+  "guide": "Next: Fossil Gym (in a cave) ← 21m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "22/day bone mouth",
+  "guide": "The Fossil Gym is down these stairs!",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone out30",
+  "guide": "Next: Fossil Gym (in a cave) ← 30m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone stairs",
+  "guide": "Next: Fossil Gym ↓ 16m",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone d10",
+  "guide": "Next: Fossil Gym ↓ 10m",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day bone hill",
+  "guide": "Next: Fossil Gym (in a cave) ← 27m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien spawn",
+  "guide": "Next: Sunbeam Gym ← 44m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien front40",
+  "guide": "Next: Sunbeam Gym ← 99m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien front12",
+  "guide": "Next: Sunbeam Gym ← 126m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "22/day alien front6",
+  "guide": "Next: Sunbeam Gym ← 132m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "22/day alien centre",
+  "guide": "Next: Sunbeam Gym ← 138m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien behind4",
+  "guide": "Next: Sunbeam Gym ← 142m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien pad",
+  "guide": "Next: Sunbeam Gym ← 127m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien island",
+  "guide": "Next: Sunbeam Gym ← 138m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "22/day alien h13",
+  "guide": "Next: Sunbeam Gym ← 125m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien h26",
+  "guide": "Next: Sunbeam Gym ← 113m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day alien behind4b",
+  "guide": "Next: Sunbeam Gym ← 142m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "22/day light spawn",
+  "guide": "Next: Sunbeam Gym ← 44m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day light front40",
+  "guide": "Next: Sunbeam Gym ← 40m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day light front12",
+  "guide": "Next: Sunbeam Gym ← 12m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "22/day light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day paper spawn",
+  "guide": "Next: Origami Gym ↗ 130m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day paper front40",
+  "guide": "Next: Origami Gym ↑ 40m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day paper front12",
+  "guide": "Next: Origami Gym ↑ 12m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "22/day paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day slime spawn",
+  "guide": "Next: Goo Gym ← 97m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day slime front40",
+  "guide": "Next: Goo Gym ← 40m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day slime front12",
+  "guide": "Next: Goo Gym ← 12m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day slime front6",
+  "guide": "Goo Gym is here!",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "22/day slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) → 63m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) → 40m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "22/day sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "22/day sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/day sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/day sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) → 26m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/day skip cosmic+alien+light",
+  "guide": "Next: Sunbeam Gym ← 44m · Comet Gym and Saucer Gym open at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day skip alien+light",
+  "guide": "Next: Sunbeam Gym ← 44m · Saucer Gym opens at night ☾",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day skip cosmic+alien",
+  "guide": "Next: Comet Gym ↗ 104m (opens at night ☾)",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day skip cosmic",
+  "guide": "Next: Comet Gym ↗ 104m (opens at night ☾)",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) → 101m (opens at night ☾)",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day tower spawn",
+  "guide": "Next: Champion's Tower ↙ 18m",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "22/day tower spawn again",
+  "guide": "Next: Champion's Tower ↙ 18m",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/day talk cosmic",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "22/day talk alien",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "22/night champion",
+  "guide": "★ Champion! ★",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rock spawn",
+  "guide": "Next: Boulder Gym ↘ 30m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rock front40",
+  "guide": "Next: Boulder Gym ↓ 40m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rock front12",
+  "guide": "Next: Boulder Gym ↓ 12m",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "22/night rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   131.5,
+   135.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bug spawn",
+  "guide": "Next: Hive Gym ↗ 37m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bug front40",
+  "guide": "Next: Hive Gym ↑ 40m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bug front12",
+  "guide": "Next: Hive Gym ↑ 12m",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "22/night bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   135.5,
+   83.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night toxic spawn",
+  "guide": "Next: Swamp Gym ↙ 39m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night toxic front40",
+  "guide": "Next: Swamp Gym ↓ 40m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night toxic front12",
+  "guide": "Next: Swamp Gym ↓ 12m",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "22/night toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   97.5,
+   148.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night water spawn",
+  "guide": "Next: Tide Gym ↑ 61m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night water front40",
+  "guide": "Next: Tide Gym ↑ 40m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night water front12",
+  "guide": "Next: Tide Gym ↑ 12m",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "22/night water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   103.5,
+   52.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night pixie spawn",
+  "guide": "Next: Twinkle Gym ← 61m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night pixie front40",
+  "guide": "Next: Twinkle Gym ← 40m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night pixie front12",
+  "guide": "Next: Twinkle Gym ← 12m",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "22/night pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   51.5,
+   106.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night grass spawn",
+  "guide": "Next: Grove Gym → 61m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night grass front40",
+  "guide": "Next: Grove Gym → 40m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night grass front12",
+  "guide": "Next: Grove Gym → 12m",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "22/night grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   172.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night electric spawn",
+  "guide": "Next: Volt Gym ↘ 74m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night electric front40",
+  "guide": "Next: Volt Gym → 40m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night electric front12",
+  "guide": "Next: Volt Gym → 12m",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "22/night electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   166.5,
+   163.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sound spawn",
+  "guide": "Next: Echo Gym ↑ 82m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sound front40",
+  "guide": "Next: Echo Gym ↑ 40m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sound front12",
+  "guide": "Next: Echo Gym ↑ 12m",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "22/night sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   139.5,
+   35.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night metal spawn",
+  "guide": "Next: Iron Gym ↓ 85m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night metal front40",
+  "guide": "Next: Iron Gym ↓ 40m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night metal front12",
+  "guide": "Next: Iron Gym ↓ 12m",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "22/night metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   126.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night mind spawn",
+  "guide": "Next: Mystic Gym ↓ 91m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night mind front40",
+  "guide": "Next: Mystic Gym ↓ 40m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night mind front12",
+  "guide": "Next: Mystic Gym ↓ 12m",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "22/night mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   87.5,
+   200.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night fire spawn",
+  "guide": "Next: Blaze Gym → 94m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night fire front40",
+  "guide": "Next: Blaze Gym → 40m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night fire front12",
+  "guide": "Next: Blaze Gym → 12m",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "22/night fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   204.5,
+   95.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ice spawn",
+  "guide": "Next: Frost Gym ↖ 98m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "22/night ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   68.5,
+   24.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night cosmic spawn",
+  "guide": "Next: Comet Gym ↗ 104m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night cosmic front40",
+  "guide": "Next: Comet Gym → 40m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night cosmic front12",
+  "guide": "Next: Comet Gym → 12m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night cosmic front6",
+  "guide": "Comet Gym is here!",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": [
+   "Welcome to the Comet Gym! (cosmic type)"
+  ]
+ },
+ {
+  "label": "22/night cosmic centre",
+  "guide": "Comet Gym is here!",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ghost spawn",
+  "guide": "Next: Phantom Gym ↙ 105m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ghost front40",
+  "guide": "Next: Phantom Gym ← 40m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ghost front12",
+  "guide": "Next: Phantom Gym ← 12m",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "22/night ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   31.5,
+   179.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night drake spawn",
+  "guide": "Next: Scale Gym ↘ 114m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night drake front40",
+  "guide": "Next: Scale Gym ↓ 40m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night drake front12",
+  "guide": "Next: Scale Gym ↓ 12m",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "22/night drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   189.5,
+   196.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rainbow spawn",
+  "guide": "Next: Prism Gym ↖ 115m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rainbow front40",
+  "guide": "Next: Prism Gym ← 40m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rainbow front12",
+  "guide": "Next: Prism Gym ← 12m",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "22/night rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   21.5,
+   42.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone spawn",
+  "guide": "Next: Fossil Gym (in a cave) ↖ 45m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone front40",
+  "guide": "Next: Fossil Gym (in a cave) → 13m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone front12",
+  "guide": "Next: Fossil Gym (in a cave) ← 15m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone front6",
+  "guide": "Next: Fossil Gym (in a cave) ← 21m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "22/night bone mouth",
+  "guide": "The Fossil Gym is down these stairs!",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone out30",
+  "guide": "Next: Fossil Gym (in a cave) ← 30m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone stairs",
+  "guide": "Next: Fossil Gym ↓ 16m",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone d10",
+  "guide": "Next: Fossil Gym ↓ 10m",
+  "target": [
+   104.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night bone hill",
+  "guide": "Next: Fossil Gym (in a cave) ← 27m",
+  "target": [
+   77.5,
+   84.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien spawn",
+  "guide": "Next: Saucer Gym (up in the sky!) → 101m",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien front40",
+  "guide": "Next: Saucer Gym (up in the sky!) → 40m",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien front12",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   195.5,
+   150.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "22/night alien front6",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "22/night alien centre",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien behind4",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien pad",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   195.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien island",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "22/night alien h13",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   195.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien h26",
+  "guide": "Next: Saucer Gym (up in the sky!) → 26m",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night alien behind4b",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "22/night light spawn",
+  "guide": "Next: Sunbeam Gym ← 44m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night light front40",
+  "guide": "Next: Sunbeam Gym ← 40m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night light front12",
+  "guide": "Next: Sunbeam Gym ← 12m",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "22/night light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   70.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night paper spawn",
+  "guide": "Next: Origami Gym ↗ 130m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night paper front40",
+  "guide": "Next: Origami Gym ↑ 40m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night paper front12",
+  "guide": "Next: Origami Gym ↑ 12m",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "22/night paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night slime spawn",
+  "guide": "Next: Goo Gym ← 97m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night slime front40",
+  "guide": "Next: Goo Gym ← 40m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night slime front12",
+  "guide": "Next: Goo Gym ← 12m",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night slime front6",
+  "guide": "Goo Gym is here!",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "22/night slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   20.5,
+   82.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) → 63m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) → 40m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "22/night sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "22/night sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/night sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/night sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   159.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) → 26m",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   170.5,
+   88.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "22/night skip cosmic+alien+light",
+  "guide": "Next: Comet Gym ↗ 104m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night skip alien+light",
+  "guide": "Next: Saucer Gym (up in the sky!) → 101m",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night skip cosmic+alien",
+  "guide": "Next: Comet Gym ↗ 104m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night skip cosmic",
+  "guide": "Next: Comet Gym ↗ 104m",
+  "target": [
+   192.5,
+   46.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) → 101m",
+  "target": [
+   206.5,
+   150.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night tower spawn",
+  "guide": "Next: Champion's Tower ↙ 18m",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "22/night tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "22/night tower spawn again",
+  "guide": "Next: Champion's Tower ↙ 18m",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day champion",
+  "guide": "★ Champion! ★",
+  "target": [
+   97.5,
+   122.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rock spawn",
+  "guide": "Next: Boulder Gym ↑ 22m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rock front40",
+  "guide": "Next: Boulder Gym ↑ 40m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rock front12",
+  "guide": "Next: Boulder Gym ↑ 12m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "122/day rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bug spawn",
+  "guide": "Next: Hive Gym ↘ 24m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bug front40",
+  "guide": "Next: Hive Gym → 40m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bug front12",
+  "guide": "Next: Hive Gym → 12m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "122/day bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day toxic spawn",
+  "guide": "Next: Swamp Gym ↙ 31m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day toxic front40",
+  "guide": "Next: Swamp Gym ↓ 40m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day toxic front12",
+  "guide": "Next: Swamp Gym ↓ 12m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "122/day toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day water spawn",
+  "guide": "Next: Tide Gym ↖ 56m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day water front40",
+  "guide": "Next: Tide Gym ← 40m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day water front12",
+  "guide": "Next: Tide Gym ← 12m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "122/day water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day pixie spawn",
+  "guide": "Next: Twinkle Gym ↓ 61m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day pixie front40",
+  "guide": "Next: Twinkle Gym ↓ 40m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "122/day pixie front12",
+  "guide": "Next: Twinkle Gym ↓ 12m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "122/day pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day grass spawn",
+  "guide": "Next: Grove Gym ↑ 64m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day grass front40",
+  "guide": "Next: Grove Gym ↑ 40m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "122/day grass front12",
+  "guide": "Next: Grove Gym ↑ 12m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "122/day grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day electric spawn",
+  "guide": "Next: Volt Gym ↙ 70m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day electric front40",
+  "guide": "Next: Volt Gym ↓ 40m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day electric front12",
+  "guide": "Next: Volt Gym ↓ 12m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "122/day electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sound spawn",
+  "guide": "Next: Echo Gym ← 75m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sound front40",
+  "guide": "Next: Echo Gym ← 40m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sound front12",
+  "guide": "Next: Echo Gym ← 12m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "122/day sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day metal spawn",
+  "guide": "Next: Iron Gym → 85m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day metal front40",
+  "guide": "Next: Iron Gym → 40m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day metal front12",
+  "guide": "Next: Iron Gym → 12m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "122/day metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day mind spawn",
+  "guide": "Next: Mystic Gym → 90m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day mind front40",
+  "guide": "Next: Mystic Gym → 40m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day mind front12",
+  "guide": "Next: Mystic Gym → 12m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "122/day mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day fire spawn",
+  "guide": "Next: Blaze Gym ↓ 92m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day fire front40",
+  "guide": "Next: Blaze Gym ↓ 40m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day fire front12",
+  "guide": "Next: Blaze Gym ↓ 12m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "122/day fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ice spawn",
+  "guide": "Next: Frost Gym ↖ 101m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "122/day ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day cosmic spawn",
+  "guide": "Next: Phantom Gym ↗ 104m · Comet Gym opens at night ☾",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day cosmic front40",
+  "guide": "Next: Phantom Gym ↑ 127m · Comet Gym opens at night ☾",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day cosmic front12",
+  "guide": "Next: Phantom Gym ↑ 155m · Comet Gym opens at night ☾",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day cosmic front6",
+  "guide": "Next: Phantom Gym ↑ 161m · Comet Gym opens at night ☾",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "122/day cosmic centre",
+  "guide": "Next: Phantom Gym ↑ 167m · Comet Gym opens at night ☾",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ghost spawn",
+  "guide": "Next: Phantom Gym ↗ 104m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ghost front40",
+  "guide": "Next: Phantom Gym ↑ 40m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ghost front12",
+  "guide": "Next: Phantom Gym ↑ 12m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "122/day ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day drake spawn",
+  "guide": "Next: Scale Gym ↙ 107m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day drake front40",
+  "guide": "Next: Scale Gym ← 40m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "122/day drake front12",
+  "guide": "Next: Scale Gym ← 12m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "122/day drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rainbow spawn",
+  "guide": "Next: Prism Gym ↗ 108m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rainbow front40",
+  "guide": "Next: Prism Gym → 40m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rainbow front12",
+  "guide": "Next: Prism Gym → 12m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "122/day rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bone spawn",
+  "guide": "Next: Fossil Gym ↖ 136m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bone front40",
+  "guide": "Next: Fossil Gym ↑ 40m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bone front12",
+  "guide": "Next: Fossil Gym ↑ 12m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day bone front6",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "122/day bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien spawn",
+  "guide": "Next: Sunbeam Gym ↑ 92m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien front40",
+  "guide": "Next: Sunbeam Gym ↗ 52m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien front12",
+  "guide": "Next: Sunbeam Gym ↗ 76m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "122/day alien front6",
+  "guide": "Next: Sunbeam Gym ↗ 81m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "122/day alien centre",
+  "guide": "Next: Sunbeam Gym ↗ 87m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien behind4",
+  "guide": "Next: Sunbeam Gym → 91m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien pad",
+  "guide": "Next: Sunbeam Gym ↗ 77m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien island",
+  "guide": "Next: Sunbeam Gym ↗ 87m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "122/day alien h13",
+  "guide": "Next: Sunbeam Gym ↗ 75m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day alien h26",
+  "guide": "Next: Sunbeam Gym ↗ 64m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "122/day alien behind4b",
+  "guide": "Next: Sunbeam Gym → 91m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ]
+ },
+ {
+  "label": "122/day light spawn",
+  "guide": "Next: Sunbeam Gym ↑ 92m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day light front40",
+  "guide": "Next: Sunbeam Gym ↑ 40m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day light front12",
+  "guide": "Next: Sunbeam Gym ↑ 12m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "122/day light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day paper spawn",
+  "guide": "Next: Origami Gym ↗ 103m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day paper front40",
+  "guide": "Next: Origami Gym → 40m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day paper front12",
+  "guide": "Next: Origami Gym → 12m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "122/day paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day slime spawn",
+  "guide": "Next: Goo Gym ↖ 74m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day slime front40",
+  "guide": "Next: Goo Gym ↑ 40m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "122/day slime front12",
+  "guide": "Next: Goo Gym ↑ 12m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day slime front6",
+  "guide": "Goo Gym is here!",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "122/day slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) ↘ 65m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) ↓ 40m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "122/day sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/day sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/day sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) ↓ 26m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/day skip cosmic+alien+light",
+  "guide": "Next: Sunbeam Gym ↑ 92m · Comet Gym and Saucer Gym open at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day skip alien+light",
+  "guide": "Next: Sunbeam Gym ↑ 92m · Saucer Gym opens at night ☾",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day skip cosmic+alien",
+  "guide": "Next: Comet Gym ↘ 101m (opens at night ☾)",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day skip cosmic",
+  "guide": "Next: Comet Gym ↘ 101m (opens at night ☾)",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) ↖ 96m (opens at night ☾)",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day tower spawn",
+  "guide": "Next: Champion's Tower ↑ 51m",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "122/day tower spawn again",
+  "guide": "Next: Champion's Tower ↑ 51m",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/day talk cosmic",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Comet Gym is empty... the stargazers only come out at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "122/day talk alien",
+  "guide": "",
+  "target": null,
+  "toasts": [
+   "The Saucer Gym is empty... the aliens only visit at night! Night comes in about 3 minutes."
+  ],
+  "battle": false
+ },
+ {
+  "label": "122/night champion",
+  "guide": "★ Champion! ★",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rock spawn",
+  "guide": "Next: Boulder Gym ↑ 22m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rock front40",
+  "guide": "Next: Boulder Gym ↑ 40m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rock front12",
+  "guide": "Next: Boulder Gym ↑ 12m",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rock front6",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "122/night rock centre",
+  "guide": "Boulder Gym is here!",
+  "target": [
+   119.5,
+   91.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bug spawn",
+  "guide": "Next: Hive Gym ↘ 24m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bug front40",
+  "guide": "Next: Hive Gym → 40m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bug front12",
+  "guide": "Next: Hive Gym → 12m",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bug front6",
+  "guide": "Hive Gym is here!",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "122/night bug centre",
+  "guide": "Hive Gym is here!",
+  "target": [
+   131.5,
+   126.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night toxic spawn",
+  "guide": "Next: Swamp Gym ↙ 31m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night toxic front40",
+  "guide": "Next: Swamp Gym ↓ 40m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night toxic front12",
+  "guide": "Next: Swamp Gym ↓ 12m",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night toxic front6",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": [
+   "Welcome to the Swamp Gym! (toxic type)"
+  ]
+ },
+ {
+  "label": "122/night toxic centre",
+  "guide": "Swamp Gym is here!",
+  "target": [
+   93.5,
+   137.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night water spawn",
+  "guide": "Next: Tide Gym ↖ 56m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night water front40",
+  "guide": "Next: Tide Gym ← 40m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night water front12",
+  "guide": "Next: Tide Gym ← 12m",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night water front6",
+  "guide": "Tide Gym is here!",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "122/night water centre",
+  "guide": "Tide Gym is here!",
+  "target": [
+   61.5,
+   89.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night pixie spawn",
+  "guide": "Next: Twinkle Gym ↓ 61m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night pixie front40",
+  "guide": "Next: Twinkle Gym ↓ 40m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": [
+   "Welcome to the Hive Gym! (bug type)"
+  ]
+ },
+ {
+  "label": "122/night pixie front12",
+  "guide": "Next: Twinkle Gym ↓ 12m",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night pixie front6",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": [
+   "Welcome to the Twinkle Gym! (pixie type)"
+  ]
+ },
+ {
+  "label": "122/night pixie centre",
+  "guide": "Twinkle Gym is here!",
+  "target": [
+   127.5,
+   171.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night grass spawn",
+  "guide": "Next: Grove Gym ↑ 64m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night grass front40",
+  "guide": "Next: Grove Gym ↑ 40m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": [
+   "Welcome to the Boulder Gym! (rock type)"
+  ]
+ },
+ {
+  "label": "122/night grass front12",
+  "guide": "Next: Grove Gym ↑ 12m",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night grass front6",
+  "guide": "Grove Gym is here!",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": [
+   "Welcome to the Grove Gym! (grass type)"
+  ]
+ },
+ {
+  "label": "122/night grass centre",
+  "guide": "Grove Gym is here!",
+  "target": [
+   123.5,
+   49.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night electric spawn",
+  "guide": "Next: Volt Gym ↙ 70m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night electric front40",
+  "guide": "Next: Volt Gym ↓ 40m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night electric front12",
+  "guide": "Next: Volt Gym ↓ 12m",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night electric front6",
+  "guide": "Volt Gym is here!",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "122/night electric centre",
+  "guide": "Volt Gym is here!",
+  "target": [
+   66.5,
+   165.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sound spawn",
+  "guide": "Next: Echo Gym ← 75m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sound front40",
+  "guide": "Next: Echo Gym ← 40m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sound front12",
+  "guide": "Next: Echo Gym ← 12m",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sound front6",
+  "guide": "Echo Gym is here!",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": [
+   "Welcome to the Echo Gym! (sound type)"
+  ]
+ },
+ {
+  "label": "122/night sound centre",
+  "guide": "Echo Gym is here!",
+  "target": [
+   38.5,
+   125.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night metal spawn",
+  "guide": "Next: Iron Gym → 85m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night metal front40",
+  "guide": "Next: Iron Gym → 40m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night metal front12",
+  "guide": "Next: Iron Gym → 12m",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night metal front6",
+  "guide": "Iron Gym is here!",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": [
+   "Welcome to the Iron Gym! (metal type)"
+  ]
+ },
+ {
+  "label": "122/night metal centre",
+  "guide": "Iron Gym is here!",
+  "target": [
+   195.5,
+   94.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night mind spawn",
+  "guide": "Next: Mystic Gym → 90m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night mind front40",
+  "guide": "Next: Mystic Gym → 40m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night mind front12",
+  "guide": "Next: Mystic Gym → 12m",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night mind front6",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": [
+   "Welcome to the Mystic Gym! (mind type)"
+  ]
+ },
+ {
+  "label": "122/night mind centre",
+  "guide": "Mystic Gym is here!",
+  "target": [
+   196.5,
+   143.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night fire spawn",
+  "guide": "Next: Blaze Gym ↓ 92m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night fire front40",
+  "guide": "Next: Blaze Gym ↓ 40m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night fire front12",
+  "guide": "Next: Blaze Gym ↓ 12m",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night fire front6",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": [
+   "Welcome to the Blaze Gym! (fire type)"
+  ]
+ },
+ {
+  "label": "122/night fire centre",
+  "guide": "Blaze Gym is here!",
+  "target": [
+   88.5,
+   201.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ice spawn",
+  "guide": "Next: Frost Gym ↖ 101m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ice front40",
+  "guide": "Next: Frost Gym ↑ 40m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ice front12",
+  "guide": "Next: Frost Gym ↑ 12m",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ice front6",
+  "guide": "Frost Gym is here!",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": [
+   "Welcome to the Frost Gym! (ice type)"
+  ]
+ },
+ {
+  "label": "122/night ice centre",
+  "guide": "Frost Gym is here!",
+  "target": [
+   65.5,
+   23.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night cosmic spawn",
+  "guide": "Next: Comet Gym ↘ 101m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night cosmic front40",
+  "guide": "Next: Comet Gym ↓ 40m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night cosmic front12",
+  "guide": "Next: Comet Gym ↓ 12m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night cosmic front6",
+  "guide": "Comet Gym is here!",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": [
+   "Welcome to the Comet Gym! (cosmic type)"
+  ]
+ },
+ {
+  "label": "122/night cosmic centre",
+  "guide": "Comet Gym is here!",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ghost spawn",
+  "guide": "Next: Phantom Gym ↗ 104m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ghost front40",
+  "guide": "Next: Phantom Gym ↑ 40m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ghost front12",
+  "guide": "Next: Phantom Gym ↑ 12m",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night ghost front6",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": [
+   "Welcome to the Phantom Gym! (ghost type)"
+  ]
+ },
+ {
+  "label": "122/night ghost centre",
+  "guide": "Phantom Gym is here!",
+  "target": [
+   158.5,
+   19.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night drake spawn",
+  "guide": "Next: Scale Gym ↙ 107m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night drake front40",
+  "guide": "Next: Scale Gym ← 40m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": [
+   "Welcome to the Volt Gym! (electric type)"
+  ]
+ },
+ {
+  "label": "122/night drake front12",
+  "guide": "Next: Scale Gym ← 12m",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night drake front6",
+  "guide": "Scale Gym is here!",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": [
+   "Welcome to the Scale Gym! (drake type)"
+  ]
+ },
+ {
+  "label": "122/night drake centre",
+  "guide": "Scale Gym is here!",
+  "target": [
+   20.5,
+   167.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rainbow spawn",
+  "guide": "Next: Prism Gym ↗ 108m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rainbow front40",
+  "guide": "Next: Prism Gym → 40m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rainbow front12",
+  "guide": "Next: Prism Gym → 12m",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night rainbow front6",
+  "guide": "Prism Gym is here!",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": [
+   "Welcome to the Prism Gym! (rainbow type)"
+  ]
+ },
+ {
+  "label": "122/night rainbow centre",
+  "guide": "Prism Gym is here!",
+  "target": [
+   191.5,
+   38.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bone spawn",
+  "guide": "Next: Fossil Gym ↖ 136m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bone front40",
+  "guide": "Next: Fossil Gym ↑ 40m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bone front12",
+  "guide": "Next: Fossil Gym ↑ 12m",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night bone front6",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": [
+   "Welcome to the Fossil Gym! (bone type)"
+  ]
+ },
+ {
+  "label": "122/night bone centre",
+  "guide": "Fossil Gym is here!",
+  "target": [
+   16.5,
+   16.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien spawn",
+  "guide": "Next: Saucer Gym (up in the sky!) ↖ 96m",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien front40",
+  "guide": "Next: Saucer Gym (up in the sky!) ← 40m",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien front12",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   47.5,
+   54.5
+  ],
+  "toasts": [
+   "The Saucer Gym floats high in the sky! Build a tower of blocks on the green pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "122/night alien front6",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "122/night alien centre",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien behind4",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien pad",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   47.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien island",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "122/night alien h13",
+  "guide": "The Saucer Gym is right above you! ⬆",
+  "target": [
+   47.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night alien h26",
+  "guide": "Next: Saucer Gym (up in the sky!) ← 26m",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "122/night alien behind4b",
+  "guide": "Saucer Gym is here!",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Saucer Gym! (alien type)"
+  ]
+ },
+ {
+  "label": "122/night light spawn",
+  "guide": "Next: Sunbeam Gym ↑ 92m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night light front40",
+  "guide": "Next: Sunbeam Gym ↑ 40m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night light front12",
+  "guide": "Next: Sunbeam Gym ↑ 12m",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night light front6",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": [
+   "Welcome to the Sunbeam Gym! (light type)"
+  ]
+ },
+ {
+  "label": "122/night light centre",
+  "guide": "Sunbeam Gym is here!",
+  "target": [
+   116.5,
+   20.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night paper spawn",
+  "guide": "Next: Origami Gym ↗ 103m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night paper front40",
+  "guide": "Next: Origami Gym → 40m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night paper front12",
+  "guide": "Next: Origami Gym → 12m",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night paper front6",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": [
+   "Welcome to the Origami Gym! (paper type)"
+  ]
+ },
+ {
+  "label": "122/night paper centre",
+  "guide": "Origami Gym is here!",
+  "target": [
+   204.5,
+   66.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night slime spawn",
+  "guide": "Next: Goo Gym ↖ 74m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night slime front40",
+  "guide": "Next: Goo Gym ↑ 40m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Tide Gym! (water type)"
+  ]
+ },
+ {
+  "label": "122/night slime front12",
+  "guide": "Next: Goo Gym ↑ 12m",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night slime front6",
+  "guide": "Goo Gym is here!",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": [
+   "Welcome to the Goo Gym! (slime type)"
+  ]
+ },
+ {
+  "label": "122/night slime centre",
+  "guide": "Goo Gym is here!",
+  "target": [
+   66.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky spawn",
+  "guide": "Next: Cloud Gym (up in the sky!) ↘ 65m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky front40",
+  "guide": "Next: Cloud Gym (up in the sky!) ↓ 40m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky front12",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": [
+   "The Cloud Gym floats high in the sky! Build a tower of blocks on the blue pad and jump across.",
+   "Tip: look down, jump and place a block under you. Keep going up!"
+  ]
+ },
+ {
+  "label": "122/night sky front6",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/night sky centre",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky behind4",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky pad",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky island",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/night sky h13",
+  "guide": "The Cloud Gym is right above you! ⬆",
+  "target": [
+   156.5,
+   149.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky h26",
+  "guide": "Next: Cloud Gym (up in the sky!) ↓ 26m",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night sky behind4b",
+  "guide": "Cloud Gym is here!",
+  "target": [
+   156.5,
+   160.5
+  ],
+  "toasts": [
+   "Welcome to the Cloud Gym! (sky type)"
+  ]
+ },
+ {
+  "label": "122/night skip cosmic+alien+light",
+  "guide": "Next: Comet Gym ↘ 101m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night skip alien+light",
+  "guide": "Next: Saucer Gym (up in the sky!) ↖ 96m",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night skip cosmic+alien",
+  "guide": "Next: Comet Gym ↘ 101m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night skip cosmic",
+  "guide": "Next: Comet Gym ↘ 101m",
+  "target": [
+   183.5,
+   184.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night skip alien",
+  "guide": "Next: Saucer Gym (up in the sky!) ↖ 96m",
+  "target": [
+   36.5,
+   54.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night tower spawn",
+  "guide": "Next: Champion's Tower ↑ 51m",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": []
+ },
+ {
+  "label": "122/night tower centre",
+  "guide": "Champion's Tower is here!",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": [
+   "Welcome to the Champion's Tower!"
+  ]
+ },
+ {
+  "label": "122/night tower spawn again",
+  "guide": "Next: Champion's Tower ↑ 51m",
+  "target": [
+   96.5,
+   64.5
+  ],
+  "toasts": []
+ }
+]
