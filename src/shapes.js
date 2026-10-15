@@ -2663,54 +2663,617 @@ function puzzle(root, m, parts) {
 const SHAPES_PAPER = { paperplane, origamifrog, book, puzzle };
 /* ==== end of T9 paper shapes ==== */
 
-/* ==== T18 time shapes (placeholders: builder A replaces them with the real ones) ==== */
-// A coloured box with a face, a belly patch and a gentle sway, scaled by the recipe.
-const plainBodyTime = (root, m, parts, w, h) => {
+/* ==== T18 time shapes ==== */
+const glassTime = mesh => { mesh.material.transparent = true; mesh.material.opacity = 0.5; return mesh; };
+// A round-ish (octagon) flat plate: two crossed flat boxes.
+const octTime = (parent, d, thick, color, x, y, z) => {
+  box(parent, d, d * 0.42, thick, color, x, y, z);
+  box(parent, d * 0.42, d, thick, color, x, y, z);
+  const a = box(parent, d * 0.8, d * 0.8, thick, color, x, y, z);
+  a.rotation.z = Math.PI / 4;
+};
+// A clock dial: plate, 12 tick marks and two hands that turn (minute fast, hour slow).
+function dialTime(parent, parts, m, x, y, z, r, color = 0xffffff) {
+  octTime(parent, r * 2, 0.04, color, x, y, z);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, big = i % 3 === 0;
+    const t = box(parent, big ? 0.045 : 0.03, big ? r * 0.2 : r * 0.12, 0.03, m.dark, x + Math.sin(a) * r * 0.82, y + Math.cos(a) * r * 0.82, z + 0.025);
+    t.rotation.z = -a;
+  }
+  const hour = pivot(parent, x, y, z + 0.05), minute = pivot(parent, x, y, z + 0.07);
+  box(hour, 0.05, r * 0.45, 0.025, m.dark, 0, r * 0.2, 0);
+  box(minute, 0.035, r * 0.68, 0.025, m.dark, 0, r * 0.3, 0);
+  box(parent, 0.07, 0.07, 0.04, m.accent, x, y, z + 0.08);
+  parts.spin = parts.spin || [];
+  parts.spin.push({ g: hour, axis: 'z', speed: -0.15 }, { g: minute, axis: 'z', speed: -1.3 });
+}
+
+// Two wooden plates, thin pillars and two glass bulbs of sand; it rocks on the spot as if about to flip.
+function hourglass(root, m, parts) {
+  const big = has(m, 'arms');
   const body = pivot(root, 0, 0, 0);
   parts.bounce = body;
-  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
-  box(body, w * 0.7, h * 0.4, 0.02, m.belly, 0, h * 0.3 + 0.05, w / 2 + 0.01);
-  box(body, w * 0.5, 0.08, w * 0.5, m.accent, 0, h + 0.08, 0);
-  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
-  swing(parts, body, 'z', 0.08, 1.4);
-};
-const hourglass = (root, m, parts) => plainBodyTime(root, m, parts, 0.6, 0.8);
-const pendulum = (root, m, parts) => plainBodyTime(root, m, parts, 0.6, 0.8);
-const alarmclock = (root, m, parts) => plainBodyTime(root, m, parts, 0.7, 0.7);
-const sunmoon = (root, m, parts) => { parts.hover = true; plainBodyTime(root, m, parts, 0.7, 0.7); };
+  const rock = pivot(body, 0, 0, 0);
+  swing(parts, rock, 'z', 0.22, 1.3);
+  const o = 0.14;
+  const sand = m.accent, wood = m.body;
+  box(rock, 0.96, 0.1, 0.96, wood, 0, o + 0.05, 0);
+  box(rock, 0.96, 0.1, 0.96, wood, 0, o + 1.25, 0);
+  box(rock, 1.02, 0.04, 1.02, m.dark, 0, o + 0.12, 0);
+  box(rock, 1.02, 0.04, 1.02, m.dark, 0, o + 1.18, 0);
+  for (const [x, z] of [[-0.43, 0.0], [0.43, 0.0], [0, -0.42]]) box(rock, 0.08, 1.2, 0.08, wood, x, o + 0.65, z);
+  // lower and upper bulbs: three stacked boxes each, narrowing to the neck
+  const lower = [[0.74, 0.22, 0.24], [0.54, 0.44, 0.2], [0.3, 0.6, 0.12]];
+  for (const [w, y, h] of lower) {
+    glassTime(box(rock, w, h, w, m.belly, 0, o + y, 0));
+    glassTime(box(rock, w, h, w, m.belly, 0, o + 1.3 - y, 0));
+  }
+  box(rock, 0.1, 0.1, 0.1, m.belly, 0, o + 0.65, 0);
+  // sand: a pile below, a smaller heap above and a thin stream through the neck
+  box(rock, 0.6, 0.2, 0.6, sand, 0, o + 0.21, 0);
+  box(rock, 0.36, 0.12, 0.36, sand, 0, o + 0.36, 0);
+  box(rock, 0.46, 0.16, 0.46, sand, 0, o + 0.98, 0);
+  swing(parts, rock, 'x', 0.04, 0.9);
+  box(rock, 0.05, 0.32, 0.05, sand, 0, o + 0.5, 0);
+  // face on the lower glass
+  eyes(rock, o + 0.43, 0.285, 0.14, 0.12);
+  box(rock, 0.14, 0.04, 0.03, m.dark, 0, o + 0.3, 0.375);
+  // little walking feet
+  parts.legs = parts.legs || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * 0.26, o, 0.28);
+    box(g, 0.2, 0.14, 0.26, m.dark, 0, -0.07, 0.03);
+    parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : Math.PI });
+  }
+  if (big) {
+    rock.scale.y = 1.05;
+    parts.arms = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const arm = pivot(rock, s * 0.56, o + 0.8, 0.04);
+      box(arm, 0.14, 0.5, 0.16, wood, 0, -0.22, 0);
+      box(arm, 0.22, 0.2, 0.22, m.dark, 0, -0.52, 0.02);
+      parts.arms.push({ g: arm, phase });
+    }
+    // a swirl of sand in the upper bulb
+    for (let k = 0; k < 4; k++) {
+      const sw = pivot(rock, 0, o + 1.0 + (k % 2) * 0.07, 0);
+      glow(box(sw, 0.07, 0.07, 0.07, sand, 0.2 + (k % 2) * 0.05, 0, 0), sand);
+      sw.rotation.y = k * 1.57;
+      spin(parts, sw, 'y', 2.4 + (k % 2) * 0.8);
+    }
+  }
+}
+
+// A metronome on one hopping leg with a ticking pendulum; the evolved one is a tall grandfather clock.
+function pendulum(root, m, parts) {
+  const grand = has(m, 'grand');
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = parts.legs || [];
+  if (!grand) {
+    const leg = pivot(body, 0, 0.3, 0.02);
+    box(leg, 0.14, 0.3, 0.14, m.dark, 0, -0.15, 0);
+    box(leg, 0.3, 0.06, 0.42, m.dark, 0, -0.3, 0.07);
+    parts.legs.push({ g: leg, side: 0, phase: 0 });
+    box(body, 0.8, 0.36, 0.7, m.body, 0, 0.48, 0);
+    box(body, 0.62, 0.34, 0.54, m.body, 0, 0.83, 0);
+    box(body, 0.44, 0.32, 0.38, m.body, 0, 1.16, 0);
+    for (const [y, w, d] of [[0.31, 0.82, 0.72], [0.66, 0.64, 0.56], [0.99, 0.46, 0.4]]) box(body, w, 0.045, d, m.accent, 0, y, 0);
+    box(body, 0.46, 0.08, 0.32, m.accent, 0, 1.34, 0);
+    box(body, 0.6, 0.3, 0.03, m.belly, 0, 0.48, 0.355);
+    eyes(body, 0.52, 0.375, 0.15, 0.12);
+    box(body, 0.14, 0.04, 0.03, m.dark, 0, 0.4, 0.38);
+    // the slot on the upper part, and the pendulum rod that ticks across it
+    box(body, 0.08, 0.6, 0.03, m.dark, 0, 0.92, 0.275);
+    const arm = pivot(body, 0, 0.7, 0.3);
+    box(arm, 0.04, 0.8, 0.04, m.accent, 0, 0.4, 0);
+    box(arm, 0.17, 0.14, 0.08, m.accent, 0, 0.62, 0);
+    box(arm, 0.08, 0.08, 0.07, m.dark, 0, 0.0, 0);
+    swing(parts, arm, 'z', 0.45, 3.2);
+    return;
+  }
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * 0.26, 0.2, 0.05);
+    box(g, 0.2, 0.2, 0.34, m.dark, 0, -0.1, 0.04);
+    parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : Math.PI });
+  }
+  box(body, 0.92, 0.12, 0.74, m.dark, 0, 0.26, 0);
+  box(body, 0.74, 0.8, 0.6, m.body, 0, 0.72, 0);
+  box(body, 0.78, 0.04, 0.64, m.accent, 0, 1.14, 0);
+  // glass door with the pendulum swinging behind it
+  box(body, 0.54, 0.64, 0.03, m.dark, 0, 0.72, 0.305);
+  glassTime(box(body, 0.46, 0.56, 0.03, m.belly, 0, 0.72, 0.32));
+  const arm = pivot(body, 0, 0.98, 0.25);
+  box(arm, 0.04, 0.46, 0.03, m.accent, 0, -0.23, 0);
+  box(arm, 0.18, 0.18, 0.04, m.accent, 0, -0.47, 0);
+  swing(parts, arm, 'z', 0.5, 2.4);
+  // the clock head with a round dial, eyes above it
+  box(body, 0.84, 0.6, 0.66, m.body, 0, 1.44, 0);
+  box(body, 0.96, 0.1, 0.78, m.dark, 0, 1.79, 0);
+  dialTime(body, parts, m, 0, 1.36, 0.33, 0.22, m.belly);
+  eyes(body, 1.66, 0.34, 0.2, 0.12);
+  box(body, 0.14, 0.12, 0.03, m.accent, 0, 1.9, 0.0);
+}
+
+// A round alarm clock with a dial face, two ringing bells for ears and a little hammer between them.
+function alarmclock(root, m, parts) {
+  const big = has(m, 'hammers');
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const cy = 0.66;
+  const shell = ball(body, 0.44, m.body, 0, cy, 0);
+  shell.scale.z = 0.72;
+  const rim = ball(body, 0.47, m.dark, 0, cy, -0.04);
+  rim.scale.z = 0.6;
+  dialTime(body, parts, m, 0, cy, 0.31, 0.3, m.belly);
+  eyes(body, cy + 0.15, 0.36, 0.1, 0.1);
+  box(body, 0.16, 0.035, 0.03, m.dark, 0, cy - 0.2, 0.355);
+  // two bells on tilted stems that shake while ringing
+  const br = big ? 0.22 : 0.17;
+  for (const [s, ph] of [[-1, 0], [1, 1.6]]) {
+    const stem = pivot(body, s * 0.3, cy + 0.38, 0);
+    stem.rotation.z = -s * 0.6;
+    box(stem, 0.06, 0.1, 0.06, m.dark, 0, 0.05, 0);
+    const bell = pivot(stem, 0, 0.1, 0);
+    ball(bell, br, m.accent, 0, br * 0.85, 0);
+    box(bell, br * 0.5, br * 0.4, br * 0.5, m.dark, 0, br * 1.9, 0);
+    swing(parts, bell, 'z', 0.28, 11, ph);
+  }
+  const ham = pivot(body, 0, cy + 0.45, 0);
+  box(ham, 0.05, 0.22, 0.05, m.dark, 0, 0.11, 0);
+  box(ham, 0.16, 0.08, 0.1, m.dark, 0, 0.24, 0);
+  swing(parts, ham, 'z', 0.5, 11, 3);
+  parts.legs = parts.legs || [];
+  for (const s of [-1, 1]) {
+    const g = pivot(body, s * (big ? 0.26 : 0.2), big ? 0.42 : 0.28, 0.05);
+    if (big) {
+      box(g, 0.09, 0.36, 0.09, m.dark, 0, -0.18, 0);
+      box(g, 0.34, 0.16, 0.24, m.accent, 0, -0.38, 0.02);
+    } else {
+      box(g, 0.16, 0.2, 0.18, m.dark, 0, -0.1, 0);
+      box(g, 0.22, 0.06, 0.3, m.dark, 0, -0.26, 0.05);
+    }
+    parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : Math.PI });
+  }
+  if (big) {
+    // a carry handle over the top
+    box(body, 0.06, 0.2, 0.06, m.accent, -0.2, cy + 0.56, 0);
+    box(body, 0.06, 0.2, 0.06, m.accent, 0.2, cy + 0.56, 0);
+    box(body, 0.46, 0.06, 0.06, m.accent, 0, cy + 0.68, 0);
+  }
+}
+
+// A ball that is half sunny day and half starry night, turning slowly, with a sleepy face that does not.
+function sunmoon(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const cy = 0.55;
+  const ballG = pivot(body, 0, cy, 0);
+  spin(parts, ballG, 'y', 0.5);
+  for (const s of [-1, 1]) {
+    const c = s < 0 ? m.body : m.accent;
+    box(ballG, 0.4, 0.62, 0.62, c, s * 0.2, 0, 0);
+    box(ballG, 0.36, 0.8, 0.46, c, s * 0.2, 0, 0);
+    box(ballG, 0.36, 0.46, 0.8, c, s * 0.2, 0, 0);
+    box(ballG, 0.14, 0.5, 0.5, c, s * 0.42, 0, 0);
+  }
+  // rays on the sun side
+  for (let k = 0; k < 7; k++) {
+    const a = Math.PI / 2 + (k / 6) * Math.PI;
+    const ray = box(ballG, 0.26, 0.08, 0.08, 0xfff0a0, Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0);
+    ray.rotation.z = a;
+    glow(ray, 0xffc23d);
+  }
+  // stars on the moon side
+  for (const [x, y, z] of [[0.42, 0.18, 0.2], [0.36, -0.2, -0.28], [0.48, 0.0, -0.14], [0.3, 0.3, -0.2]]) glow(box(ballG, 0.08, 0.08, 0.08, 0xfff6c0, x, y, z), 0xfff6c0);
+  // the face stays put in front
+  const face = pivot(body, 0, cy, 0.58);
+  box(face, 0.44, 0.3, 0.04, m.belly, 0, 0, 0);
+  box(face, 0.13, 0.14, 0.04, 0xffffff, -0.1, 0.04, 0.03).userData.eye = true;
+  box(face, 0.07, 0.09, 0.03, 0x111111, -0.09, 0.03, 0.06).userData.eye = true;
+  box(face, 0.15, 0.035, 0.03, 0x222222, 0.1, 0.03, 0.04).userData.eye = true;
+  box(face, 0.1, 0.035, 0.03, m.dark, 0, -0.1, 0.04);
+  box(face, 0.06, 0.06, 0.03, 0xff9a7a, -0.17, -0.08, 0.03);
+  box(face, 0.06, 0.06, 0.03, 0xff9a7a, 0.17, -0.08, 0.03);
+  swing(parts, face, 'z', 0.06, 1.5);
+}
 const SHAPES_TIME = { hourglass, pendulum, alarmclock, sunmoon };
 /* ==== end of T18 time shapes ==== */
 
-/* ==== T18 camo shapes (placeholders) ==== */
-const plainBodyCamo = (root, m, parts, w, h) => {
+/* ==== T18 camo shapes ==== */
+// A cube of leaves with lighter clumps, a sleepy face and a twig; the evolved one is a hedge elephant.
+function bushblock(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
   parts.bounce = body;
-  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
-  box(body, w * 0.5, h * 0.25, 0.02, m.belly, 0, h * 0.25 + 0.05, w / 2 + 0.01);
-  box(body, w * 0.4, 0.1, w * 0.4, m.accent, 0, h + 0.1, 0);
-  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
-  swing(parts, body, 'x', 0.05, 1.2);
-};
-const bushblock = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
-const sandcastle = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
-const stonecube = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.8);
-const igloo = (root, m, parts) => plainBodyCamo(root, m, parts, 0.8, 0.7);
+  if (!has(m, 'elephant')) {
+    box(body, 0.82, 0.74, 0.82, m.body, 0, 0.5, 0);
+    for (const [x, y, z, s] of [[-0.3, 0.8, 0.2, 0.28], [0.3, 0.82, -0.1, 0.3], [0, 0.88, 0.3, 0.22], [-0.42, 0.55, -0.1, 0.24], [0.43, 0.6, 0.2, 0.26],
+      [-0.2, 0.9, -0.25, 0.26], [0.22, 0.28, 0.4, 0.2], [-0.35, 0.3, 0.4, 0.22], [0.1, 0.5, -0.43, 0.26]]) box(body, s, s * 0.8, s, m.accent, x, y, z);
+    box(body, 0.5, 0.26, 0.03, m.belly, 0, 0.4, 0.415);
+    for (const s of [-1, 1]) {
+      box(body, 0.14, 0.15, 0.04, 0xffffff, s * 0.17, 0.55, 0.42).userData.eye = true;
+      box(body, 0.08, 0.09, 0.03, 0x111111, s * 0.17 + s * 0.015, 0.53, 0.45).userData.eye = true;
+      const lid = pivot(body, s * 0.17, 0.63, 0.46);
+      box(lid, 0.19, 0.1, 0.04, m.dark, 0, -0.04, 0);
+      swing(parts, lid, 'x', 0.45, 0.9, s > 0 ? 0 : 0.5);
+    }
+    box(body, 0.12, 0.03, 0.03, m.dark, 0, 0.4, 0.44);
+    for (const s of [-1, 1]) box(body, 0.2, 0.12, 0.26, m.dark, s * 0.24, 0.06, 0.12);
+    box(body, 0.05, 0.28, 0.05, 0x6a4a2a, 0.05, 1.01, 0);
+    box(body, 0.14, 0.04, 0.09, m.accent, 0.14, 1.12, 0);
+    box(body, 0.12, 0.04, 0.08, m.accent, -0.04, 1.06, 0);
+    return;
+  }
+  // hedge elephant
+  box(body, 0.92, 0.8, 0.9, m.body, 0, 0.95, -0.2);
+  for (const [x, y, z, s] of [[-0.3, 1.4, -0.3, 0.3], [0.28, 1.4, 0.0, 0.3], [0.0, 1.42, -0.5, 0.28], [-0.5, 1.0, -0.1, 0.26], [0.5, 1.1, -0.4, 0.26], [-0.45, 1.2, -0.45, 0.24]]) box(body, s, s * 0.8, s, m.accent, x, y, z);
+  parts.legs = parts.legs || [];
+  for (const [x, z, ph] of [[-0.3, 0.2, 0], [0.3, 0.2, Math.PI], [-0.3, -0.5, Math.PI], [0.3, -0.5, 0]]) {
+    const g = pivot(body, x, 0.55, z);
+    box(g, 0.28, 0.55, 0.28, m.dark, 0, -0.27, 0);
+    parts.legs.push({ g, side: 0, phase: ph });
+  }
+  const head = pivot(body, 0, 1.2, 0.55);
+  parts.head = head;
+  box(head, 0.76, 0.7, 0.56, m.body, 0, 0, 0);
+  box(head, 0.26, 0.24, 0.26, m.accent, -0.2, 0.42, -0.1);
+  box(head, 0.28, 0.2, 0.26, m.accent, 0.18, 0.4, 0.0);
+  eyes(head, 0.1, 0.285, 0.22, 0.12);
+  for (const s of [-1, 1]) {
+    const ear = pivot(head, s * 0.4, 0.1, -0.05);
+    box(ear, 0.07, 0.62, 0.5, m.accent, s * 0.2, 0, 0);
+    box(ear, 0.05, 0.4, 0.34, m.belly, s * 0.22, -0.02, 0);
+    swing(parts, ear, 'y', 0.3, 2.2, s > 0 ? 0 : Math.PI);
+    box(head, 0.08, 0.18, 0.08, 0xfff6e0, s * 0.22, -0.2, 0.31);
+    box(head, 0.14, 0.14, 0.06, 0xffffff, s * 0.22, -0.31, 0.31);
+  }
+  let parent = pivot(head, 0, -0.1, 0.3);
+  for (let k = 0; k < 4; k++) {
+    const w = 0.22 - k * 0.03;
+    box(parent, w, 0.24, w, m.body, 0, -0.1, 0.0);
+    const next = pivot(parent, 0, -0.2, 0.0);
+    swing(parts, next, 'x', 0.1 + k * 0.04, 1.7, 0);
+    parent = next;
+  }
+  box(body, 0.1, 0.18, 0.1, m.accent, 0, 1.0, -0.68);
+}
+
+// A block of sand with towers on the corners (the evolved one is a whole walking castle) and a flapping flag.
+function sandcastle(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const keep = has(m, 'towers');
+  const flag = (parent, x, y, z, ph) => {
+    box(parent, 0.04, 0.4, 0.04, 0x8a6a3a, x, y + 0.2, z);
+    const f = pivot(parent, x, y + 0.34, z);
+    box(f, 0.3, 0.17, 0.03, m.accent, 0.17, 0, 0);
+    swing(parts, f, 'y', 0.4, 4.5, ph);
+  };
+  parts.legs = parts.legs || [];
+  if (!keep) {
+    box(body, 0.84, 0.72, 0.84, m.body, 0, 0.5, 0);
+    box(body, 0.86, 0.05, 0.86, m.dark, 0, 0.3, 0);
+    box(body, 0.86, 0.04, 0.86, m.belly, 0, 0.68, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(body, 0.2, 0.2, 0.2, m.body, sx * 0.32, 0.96, sz * 0.32);
+    for (const [x, z] of [[0, 0.32], [0, -0.32], [0.32, 0], [-0.32, 0]]) box(body, 0.18, 0.12, 0.18, m.body, x, 0.93, z);
+    flag(body, 0, 0.86, 0, 0);
+    box(body, 0.5, 0.32, 0.03, m.belly, 0, 0.5, 0.43);
+    eyes(body, 0.56, 0.45, 0.14, 0.12);
+    box(body, 0.2, 0.04, 0.03, m.dark, 0, 0.4, 0.45);
+    for (const s of [-1, 1]) {
+      const g = pivot(body, s * 0.22, 0.16, 0.12);
+      box(g, 0.2, 0.16, 0.26, m.dark, 0, -0.07, 0.04);
+      parts.legs.push({ g, side: 0, phase: s > 0 ? 0 : Math.PI });
+    }
+    return;
+  }
+  box(body, 1.04, 0.8, 0.92, m.body, 0, 0.62, 0);
+  box(body, 1.06, 0.05, 0.94, m.dark, 0, 0.4, 0);
+  box(body, 1.06, 0.04, 0.94, m.belly, 0, 0.86, 0);
+  for (const [i, [sx, sz]] of [[-1, -1], [1, -1], [-1, 1], [1, 1]].entries()) {
+    const tx = sx * 0.55, tz = sz * 0.47;
+    box(body, 0.32, 1.08, 0.32, m.body, tx, 0.74, tz);
+    box(body, 0.38, 0.1, 0.38, m.belly, tx, 1.3, tz);
+    for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(body, 0.1, 0.1, 0.1, m.body, tx + dx * 0.14, 1.4, tz + dz * 0.14);
+    box(body, 0.1, 0.16, 0.03, m.dark, tx, 0.95, tz + sz * 0.165);
+    if (i === 0 || i === 3) flag(body, tx, 1.35, tz, i);
+    const g = pivot(body, tx * 0.8, 0.26, tz * 0.8);
+    box(g, 0.22, 0.26, 0.22, m.dark, 0, -0.1, 0);
+    parts.legs.push({ g, side: 0, phase: i % 3 === 0 ? 0 : Math.PI });
+  }
+  // gate with an arch, and the face above it
+  box(body, 0.34, 0.34, 0.05, m.dark, 0, 0.58, 0.465);
+  box(body, 0.24, 0.1, 0.05, m.dark, 0, 0.8, 0.465);
+  box(body, 0.04, 0.34, 0.06, m.accent, 0, 0.58, 0.47);
+  box(body, 0.66, 0.2, 0.03, m.belly, 0, 1.03, 0.465);
+  eyes(body, 1.04, 0.485, 0.17, 0.13);
+}
+
+// A cobblestone cube with a hidden mouth that opens; the evolved one is a stern statue on a plinth.
+function stonecube(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  if (!has(m, 'statue')) {
+    box(body, 0.84, 0.8, 0.84, m.body, 0, 0.52, 0);
+    for (const [x, y, z, w, h, c] of [[-0.3, 0.86, 0.43, 0.24, 0.12, m.accent], [0.3, 0.52, 0.43, 0.24, 0.12, m.accent], [0.3, 0.9, 0.2, 0.28, 0.06, m.accent],
+      [-0.43, 0.6, -0.1, 0.03, 0.26, m.accent], [-0.43, 0.8, 0.2, 0.03, 0.2, m.dark], [0.43, 0.7, 0.0, 0.03, 0.28, m.accent], [-0.2, 0.92, -0.2, 0.3, 0.06, m.dark],
+      [0.0, 0.5, -0.43, 0.3, 0.26, m.accent]]) {
+      box(body, w, h, w < 0.05 ? 0.28 : 0.03, c, x, y, z);
+    }
+    // the hidden mouth: a dark slit with teeth, and a lower jaw that swings open
+    box(body, 0.62, 0.14, 0.04, m.belly, 0, 0.36, 0.425);
+    for (const x of [-0.2, 0, 0.2]) box(body, 0.07, 0.07, 0.03, 0xf0f0e0, x, 0.4, 0.45);
+    const jaw = pivot(body, 0, 0.3, 0.42);
+    box(jaw, 0.66, 0.1, 0.07, m.body, 0, -0.04, 0);
+    for (const x of [-0.1, 0.1]) box(jaw, 0.06, 0.06, 0.03, 0xf0f0e0, x, 0.03, 0.04);
+    swing(parts, jaw, 'x', 0.4, 1.5);
+    eyes(body, 0.72, 0.43, 0.2, 0.1);
+    for (const s of [-1, 1]) box(body, 0.16, 0.03, 0.03, m.dark, s * 0.2, 0.82, 0.43);
+    for (const s of [-1, 1]) box(body, 0.22, 0.14, 0.28, m.dark, s * 0.24, 0.07, 0.1);
+    return;
+  }
+  // statue on a plinth
+  box(body, 1.0, 0.24, 0.84, m.dark, 0, 0.12, 0);
+  box(body, 1.04, 0.05, 0.88, m.accent, 0, 0.26, 0);
+  box(body, 0.52, 0.32, 0.36, m.body, 0, 0.44, 0);
+  box(body, 0.66, 0.54, 0.44, m.body, 0, 0.87, 0);
+  box(body, 0.72, 0.12, 0.46, m.accent, 0, 1.14, 0);
+  box(body, 0.5, 0.06, 0.04, m.dark, 0, 0.74, 0.225);
+  const head = pivot(body, 0, 1.4, 0);
+  swing(parts, head, 'y', 0.3, 0.6);
+  box(head, 0.46, 0.44, 0.42, m.body, 0, 0, 0);
+  box(head, 0.5, 0.1, 0.46, m.accent, 0, 0.24, 0);
+  box(head, 0.46, 0.06, 0.05, m.dark, 0, 0.1, 0.215);
+  eyes(head, 0.02, 0.215, 0.11, 0.1);
+  box(head, 0.18, 0.04, 0.03, m.dark, 0, -0.14, 0.22);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const pose = pivot(body, s * 0.42, 1.08, 0);
+    pose.rotation.z = s * 0.35;
+    const arm = pivot(pose, 0, 0, 0);
+    box(arm, 0.18, 0.52, 0.2, m.body, s * 0.03, -0.24, 0.04);
+    box(arm, 0.2, 0.16, 0.22, m.accent, s * 0.03, -0.54, 0.06);
+    parts.arms.push({ g: arm, phase });
+  }
+  // cracks and a patch of moss
+  for (const [x, y, z, h, r] of [[-0.2, 0.9, 0.225, 0.28, 0.3], [0.15, 0.55, 0.19, 0.2, -0.4], [0.3, 1.38, 0.2, 0.18, 0.2]]) box(body, 0.03, h, 0.03, m.belly, x, y, z).rotation.z = r;
+  box(body, 0.26, 0.05, 0.22, 0x5a9a3a, -0.3, 1.2, 0.05);
+  box(body, 0.2, 0.04, 0.18, 0x5a9a3a, 0.32, 0.26, 0.25);
+}
+
+// A snow cube with a stepped dome, ice-brick lines, a dark doorway and a smile looking out of it.
+function igloo(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.92, 0.56, 0.92, m.body, 0, 0.34, 0);
+  box(body, 0.78, 0.22, 0.78, m.body, 0, 0.73, 0);
+  box(body, 0.58, 0.2, 0.58, m.body, 0, 0.94, 0);
+  box(body, 0.34, 0.16, 0.34, m.body, 0, 1.12, 0);
+  box(body, 0.1, 0.1, 0.1, m.accent, 0, 1.24, 0);
+  // brick lines
+  for (const y of [0.24, 0.44]) box(body, 0.94, 0.03, 0.94, m.accent, 0, y, 0);
+  for (const y of [0.66, 0.84]) box(body, 0.8, 0.03, 0.8, m.accent, 0, y, 0);
+  for (const x of [-0.3, 0.1, 0.4]) box(body, 0.03, 0.2, 0.94, m.accent, x, 0.34, 0);
+  // doorway with the face inside
+  box(body, 0.46, 0.4, 0.05, m.belly, 0, 0.3, 0.465);
+  box(body, 0.34, 0.12, 0.05, m.belly, 0, 0.56, 0.465);
+  box(body, 0.5, 0.05, 0.07, m.accent, 0, 0.115, 0.48);
+  eyes(body, 0.36, 0.5, 0.09, 0.09);
+  box(body, 0.08, 0.035, 0.03, 0xffffff, -0.08, 0.2, 0.5);
+  box(body, 0.2, 0.04, 0.03, 0xffffff, 0, 0.2, 0.5);
+  box(body, 0.08, 0.035, 0.03, 0xffffff, 0.08, 0.2, 0.5);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(body, s * 0.52, 0.4, 0.12);
+    box(arm, 0.1, 0.24, 0.1, m.accent, s * 0.03, -0.1, 0);
+    box(arm, 0.2, 0.2, 0.2, 0xd04a4a, s * 0.04, -0.25, 0.02);
+    parts.arms.push({ g: arm, phase });
+  }
+  for (const s of [-1, 1]) box(body, 0.22, 0.1, 0.26, m.dark, s * 0.26, 0.05, 0.14);
+}
 const SHAPES_CAMO = { bushblock, sandcastle, stonecube, igloo };
 /* ==== end of T18 camo shapes ==== */
 
-/* ==== T18 cyber shapes (placeholders) ==== */
-const plainBodyCyber = (root, m, parts, w, h) => {
+/* ==== T18 cyber shapes ==== */
+// A blob of chunky 0.26 cubes with stair-stepped corners and loose pixels above (the 2.0 is a crisp glowing diamond).
+function pixelblob(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
   parts.bounce = body;
-  box(body, w, h, w, m.body, 0, h / 2 + 0.05, 0);
-  glow(box(body, w * 1.05, 0.06, w * 1.05, m.accent, 0, h + 0.05, 0), m.accent);
-  eyes(body, h * 0.7 + 0.05, w / 2 + 0.02, w * 0.2, 0.12);
-  swing(parts, body, 'z', 0.06, 2);
-};
-const pixelblob = (root, m, parts) => plainBodyCyber(root, m, parts, 0.7, 0.7);
-const cursor = (root, m, parts) => plainBodyCyber(root, m, parts, 0.6, 0.9);
-const wifiwing = (root, m, parts) => plainBodyCyber(root, m, parts, 0.6, 0.6);
-const glitchghost = (root, m, parts) => { parts.hover = true; plainBodyCyber(root, m, parts, 0.7, 0.8); };
+  if (has(m, 'v2')) {
+    // sharper and thinner: a framed core, a glowing diamond crest, tilted spikes and orbiting pixels
+    box(body, 0.62, 0.5, 0.46, m.body, 0, 0.45, 0);
+    const crest = box(body, 0.36, 0.36, 0.4, m.belly, 0, 0.88, 0);
+    crest.rotation.z = Math.PI / 4;
+    glow(box(body, 0.14, 0.14, 0.14, m.accent, 0, 1.2, 0), m.accent).rotation.set(0, 0.6, Math.PI / 4);
+    for (const x of [-0.2, 0.2]) {
+      const sp = box(body, 0.05, 0.3, 0.05, m.accent, x, 0.82, -0.05);
+      sp.rotation.z = -Math.sign(x) * 0.5;
+      glow(sp, m.accent);
+    }
+    for (const y of [0.2, 0.7]) glow(box(body, 0.66, 0.04, 0.05, m.accent, 0, y, 0.24), m.accent);
+    for (const x of [-0.32, 0.32]) glow(box(body, 0.04, 0.54, 0.05, m.accent, x, 0.45, 0.24), m.accent);
+    box(body, 0.46, 0.2, 0.04, m.dark, 0, 0.5, 0.245);
+    for (const s of [-1, 1]) glow(box(body, 0.1, 0.1, 0.03, m.accent, s * 0.1, 0.51, 0.27), m.accent).userData.eye = true;
+    box(body, 0.16, 0.035, 0.03, m.accent, 0, 0.34, 0.255);
+    for (const [i, h] of [0.9, 1.05, 0.78].entries()) {
+      const orb = pivot(body, 0, h, 0);
+      glow(box(orb, 0.1, 0.1, 0.1, i === 1 ? m.belly : m.accent, 0.58 - i * 0.04, 0, 0), m.accent);
+      orb.rotation.y = i * 2.1;
+      spin(parts, orb, 'y', 2.2 - i * 0.5);
+    }
+    for (const s of [-1, 1]) box(body, 0.2, 0.12, 0.26, m.accent, s * 0.2, 0.1, 0.1);
+    return;
+  }
+  const c = 0.26, lift = 0.1;
+  for (let ix = 0; ix < 4; ix++) for (let iy = 0; iy < 3; iy++) for (let iz = 0; iz < 3; iz++) {
+    if (iy === 2 && (ix === 0 || ix === 3)) continue;
+    if (iy === 0 && (ix === 0 || ix === 3) && iz === 0) continue;
+    const pick = (ix + iy * 2 + iz) % 5, col = pick === 0 ? m.belly : pick === 3 ? m.accent : m.body;
+    box(body, c * 0.96, c * 0.96, c * 0.96, col, (ix - 1.5) * c, lift + c / 2 + iy * c, (iz - 1) * c);
+  }
+  const fz = c * 1.5 + 0.01, ey = lift + c * 2.5;
+  for (const s of [-1, 1]) {
+    box(body, 0.16, 0.16, 0.03, 0x111111, s * c * 0.5, ey, fz);
+    box(body, 0.06, 0.06, 0.03, 0xffffff, s * c * 0.5 + s * 0.03, ey + 0.03, fz + 0.02);
+  }
+  for (const [x, y] of [[-1.5, 1.5], [-0.5, 1.0], [0.5, 1.0], [1.5, 1.5]]) box(body, 0.1, 0.1, 0.03, m.dark, x * c, lift + c * y * 0.8 + 0.02, fz);
+  for (const [i, x] of [-0.4, 0.05, 0.4].entries()) {
+    const px = pivot(body, x, 1.0 + (i % 2) * 0.1, (i - 1) * 0.1);
+    glow(box(px, 0.1, 0.1, 0.1, i === 1 ? m.body : m.accent, 0, 0.12, 0), i === 1 ? m.body : m.accent);
+    swing(parts, px, 'z', 0.7, 1.8 + i * 0.6, i * 1.7);
+  }
+}
+
+// The classic mouse pointer built from stair-stepped blocks over a black outline, on two legs and a tail.
+function cursor(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const v2 = has(m, 'v2');
+  const click = pivot(body, 0, 0.05, 0);
+  swing(parts, click, 'x', 0.2, 2.6);
+  parts.legs = parts.legs || [];
+  parts.arms = [];
+  if (!v2) {
+    const s = 0.14, rows = ['#.....', '##....', '###...', '####..', '#####.', '######', '..##..', '..##..', '..##..'];
+    const base = 0.0;
+    const cell = (r, c) => rows[r]?.[c] === '#';
+    const cx = c => (c - 2.5) * s, cy = r => base + (rows.length - r - 0.5) * s;
+    for (let r = -1; r <= rows.length; r++) for (let c = -1; c <= 6; c++) {
+      if (cell(r, c)) box(click, s * 0.99, s * 0.99, 0.12, m.body, cx(c), cy(r), 0);
+      else if ([[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]].some(([dr, dc]) => cell(r + dr, c + dc))) box(click, s * 0.99, s * 0.99, 0.14, m.dark, cx(c), cy(r), -0.04);
+    }
+    const eyeY = cy(3.2);
+    const ep = pivot(click, -0.12, eyeY, 0.065);
+    eyes(ep, 0, 0, 0.09, 0.1);
+    box(ep, 0.12, 0.035, 0.03, 0x222222, 0, -0.13, 0);
+    for (const sd of [-1, 1]) {
+      const g = pivot(click, sd * 0.3, cy(5.5), 0.0);
+      box(g, 0.1, 0.42, 0.1, m.dark, 0, -0.21, 0);
+      box(g, 0.16, 0.05, 0.22, m.dark, 0, -0.4, 0.04);
+      parts.legs.push({ g, side: 0, phase: sd > 0 ? 0 : Math.PI });
+      const arm = pivot(click, sd * 0.5, cy(4), 0.0);
+      box(arm, 0.09, 0.26, 0.09, m.dark, 0, -0.1, 0);
+      box(arm, 0.14, 0.12, 0.14, 0xffffff, 0, -0.26, 0);
+      parts.arms.push({ g: arm, phase: sd > 0 ? 0 : Math.PI });
+    }
+    return;
+  }
+  // 2.0: thin slabs, a glowing outline, a sharp tip and a pointing glove
+  const H = 1.0, W = 0.6, x0 = -0.3, y0 = 0.42;
+  for (let i = 0; i < 10; i++) {
+    const w = ((i + 1) / 10) * W;
+    box(click, w, H / 10 * 0.98, 0.07, m.body, x0 + w / 2, y0 + H - (i + 0.5) * (H / 10), 0);
+  }
+  glow(box(click, 0.045, H, 0.1, m.accent, x0 - 0.01, y0 + H / 2, 0), m.accent);
+  glow(box(click, W + 0.05, 0.045, 0.1, m.accent, x0 + W / 2, y0, 0), m.accent);
+  const hy = box(click, 0.045, Math.hypot(W, H), 0.1, m.accent, x0 + W / 2, y0 + H / 2, 0);
+  hy.rotation.z = Math.atan2(W, H);
+  glow(hy, m.accent);
+  glow(box(click, 0.1, 0.1, 0.1, 0xffffff, x0, y0 + H + 0.02, 0), 0xffffff).rotation.z = Math.PI / 4;
+  const tail = box(click, 0.12, 0.45, 0.07, m.body, 0.04, y0 - 0.12, 0);
+  tail.rotation.z = 0.3;
+  const tl = box(click, 0.04, 0.45, 0.09, m.accent, 0.12, y0 - 0.12, 0);
+  tl.rotation.z = 0.3;
+  glow(tl, m.accent);
+  const ep = pivot(click, -0.14, y0 + H * 0.62, 0.05);
+  eyes(ep, 0, 0, 0.07, 0.09);
+  box(ep, 0.1, 0.03, 0.03, 0x222222, 0.0, -0.12, 0);
+  for (const sd of [-1, 1]) {
+    const g = pivot(click, sd * 0.16, y0 - 0.04, 0.0);
+    box(g, 0.06, 0.34, 0.06, m.dark, 0, -0.17, 0);
+    box(g, 0.1, 0.04, 0.2, m.accent, 0, -0.34, 0.04);
+    parts.legs.push({ g, side: 0, phase: sd > 0 ? 0 : Math.PI });
+  }
+  const arm1 = pivot(click, -0.46, y0 + 0.5, 0.0);
+  box(arm1, 0.06, 0.26, 0.06, m.dark, 0, -0.1, 0);
+  box(arm1, 0.14, 0.12, 0.12, m.belly, 0, -0.26, 0);
+  parts.arms.push({ g: arm1, phase: 0 });
+  // the glove: palm, a pointing finger and three knuckles
+  const arm2 = pivot(click, 0.34, y0 + 0.3, 0.0);
+  box(arm2, 0.06, 0.26, 0.06, m.dark, 0, -0.1, 0);
+  box(arm2, 0.18, 0.14, 0.14, 0xffffff, 0, -0.28, 0);
+  box(arm2, 0.05, 0.2, 0.06, 0xffffff, -0.04, -0.1, 0);
+  for (const x of [-0.02, 0.04, 0.09]) box(arm2, 0.05, 0.05, 0.14, m.accent, x, -0.34, 0.04);
+  parts.arms.push({ g: arm2, phase: Math.PI });
+}
+
+// A little round bug whose wings are Wi-Fi symbols: nested arcs of glowing bars.
+function wifiwing(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const v2 = has(m, 'v2');
+  const cy = 0.55;
+  ball(body, 0.3, m.body, 0, cy, 0);
+  box(body, 0.34, 0.22, 0.03, m.belly, 0, cy - 0.08, 0.3);
+  eyes(body, cy + 0.08, 0.31, 0.1, 0.12);
+  box(body, 0.1, 0.035, 0.03, m.dark, 0, cy - 0.12, 0.33);
+  for (const s of [-1, 1]) {
+    const an = pivot(body, s * 0.1, cy + 0.3, 0.05);
+    an.rotation.z = -s * 0.4;
+    box(an, 0.035, 0.34, 0.035, m.dark, 0, 0.17, 0);
+    glow(box(an, 0.09, 0.09, 0.09, m.accent, 0, 0.36, 0), m.accent);
+    swing(parts, an, 'x', 0.2, 2.5, s);
+    box(body, 0.1, 0.18, 0.1, m.dark, s * 0.15, 0.09, 0.05);
+  }
+  const wingColor = v2 ? 0x5af0ff : 0x5af0a0;
+  const arcWing = (s, z, y, radii, rot, ph0) => {
+    parts.wings = parts.wings || [];
+    const g = pivot(body, s * 0.3, y, z);
+    for (const [k, r] of radii.entries()) {
+      const arc = pivot(g, 0, 0, 0);
+      const n = 3 + k * 2, span = 0.5 + k * 0.1;
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / (n - 1) - 0.5) * span * Math.PI;
+        const piece = box(arc, 0.07, (r * span * Math.PI) / (n - 1) * 1.1, 0.05, wingColor, s * Math.cos(a) * r, Math.sin(a) * r, 0);
+        piece.rotation.z = s > 0 ? a : Math.PI - a;
+        glow(piece, wingColor);
+      }
+      swing(parts, arc, 'x', 0.3, 3.5, ph0 + k * 1.1);
+    }
+    glow(box(g, 0.1, 0.1, 0.06, wingColor, 0, 0, 0), wingColor);
+    parts.wings.push({ g, s, lift: 0.25 });
+  };
+  if (!v2) {
+    for (const s of [-1, 1]) arcWing(s, -0.05, cy + 0.05, [0.24, 0.44, 0.64], 0.35, s);
+  } else {
+    for (const s of [-1, 1]) {
+      arcWing(s, -0.08, cy + 0.14, [0.22, 0.4, 0.58], 0.6, s);
+      arcWing(s, 0.0, cy - 0.12, [0.2, 0.34], -0.4, s + 2);
+    }
+    for (const [i, h] of [0.14, 0.24, 0.34].entries()) glow(box(body, 0.07, h, 0.07, m.accent, -0.12 + i * 0.12, cy + 0.3 + h / 2, -0.12), m.accent);
+  }
+}
+
+// A glitchy little ghost made of jittering slices, with a magenta and a cyan copy peeking out.
+function glitchghost(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  const slabs = [];
+  for (let k = 0; k < 4; k++) {
+    const s = pivot(body, 0, 0.32 + k * 0.22, 0);
+    box(s, 0.72 - (k === 3 ? 0.1 : 0), 0.22, 0.5, m.body, 0, 0, 0);
+    swing(parts, s, 'y', 0.1, 6 + k * 2.3, k * 1.9);
+    slabs.push(s);
+  }
+  // wavy bottom
+  for (const [i, x] of [-0.27, -0.09, 0.09, 0.27].entries()) box(body, 0.16, 0.12 + (i % 2) * 0.06, 0.46, m.body, x, 0.2 - (i % 2) * 0.03, 0);
+  // glitch copies
+  glow(box(slabs[1], 0.14, 0.22, 0.46, m.accent, -0.43, 0, 0.02), m.accent);
+  glow(box(slabs[2], 0.14, 0.22, 0.46, m.belly, 0.43, 0, -0.02), m.belly);
+  glow(box(slabs[0], 0.12, 0.2, 0.44, m.belly, 0.42, 0, 0.0), m.belly);
+  glow(box(slabs[3], 0.1, 0.2, 0.44, m.accent, -0.38, 0, 0.0), m.accent);
+  // two black square eyes and an "o" mouth
+  for (const s of [-1, 1]) {
+    box(slabs[3], 0.15, 0.15, 0.04, 0x111111, s * 0.16, 0.0, 0.26).userData.eye = true;
+    box(slabs[3], 0.05, 0.05, 0.03, 0xffffff, s * 0.16 + 0.03, 0.03, 0.29).userData.eye = true;
+  }
+  for (const [x, y, w, h] of [[0, 0.06, 0.12, 0.04], [0, -0.06, 0.12, 0.04], [-0.06, 0, 0.04, 0.1], [0.06, 0, 0.04, 0.1]]) box(slabs[2], w, h, 0.03, m.dark, x, y, 0.26);
+  // a tiny belly label: four dots
+  for (const x of [-0.12, -0.04, 0.04, 0.12]) glow(box(slabs[1], 0.05, 0.05, 0.03, m.belly, x, -0.02, 0.26), m.belly);
+}
 const SHAPES_CYBER = { pixelblob, cursor, wifiwing, glitchghost };
 /* ==== end of T18 cyber shapes ==== */
 
