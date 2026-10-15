@@ -1418,12 +1418,273 @@ SIG.thousandcranes = (k, from, to) => {
 
 /* ==== end of the four newer types ==== */
 
-/* ==== T18: time, camo, cyber (fallbacks: the normal effects until the real ones are written) ==== */
+/* ==== T18: time, camo, cyber ==== */
 Object.assign(FX_COLORS, {
   time: [0xffc25a, 0xfff0c0, 0x8a5a2a], camo: [0x6aa84a, 0xb8d890, 0x4a6a3a], cyber: [0x5af0ff, 0x2a7aff, 0xffffff],
 });
-for (const t of ['time', 'camo', 'cyber']) { TRAVEL[t] = TRAVEL.normal; IMPACT[t] = IMPACT.normal; }
-SIG.wakeupcall = SIG.blazedash;
-SIG.statueslam = SIG.rootslam;
-SIG.megabyte = SIG.zenithray;
+
+const snap = (v, g) => Math.round(v / g) * g;
+// A spot on a screen-facing plane (the target's "side" direction and up) around a centre.
+const planeAt = (out, c, side, x, y) => out.set(c.x + side.x * x, c.y + y, c.z + side.z * x);
+// A box lying along the horizontal direction `side` (for the cyber jaws).
+const turnTo = (m, side) => { m.rotation.y = Math.atan2(-side.z, side.x); };
+
+/* -------------------------------- time -------------------------------- */
+
+// A little clock face (12 ticks, a minute hand that spins four turns) arcs over, trailed by gear dots.
+TRAVEL.time = k => {
+  const ring = k.points({ n: 12, tex: 'square', size: 0.13, glow: true, colors: [0xffe9a0, 0xffc25a] });
+  const hands = k.points({ n: 6, tex: 'dot', size: 0.17, colors: [0x8a5a2a, 0x5a3a18] });
+  const N = 6;
+  const gears = k.points({ n: N, tex: 'gear', size: 0.26, colors: [0xffc25a, 0xd89a3a, 0xfff0c0] });
+  const R = 0.38;
+  return {
+    dur: 420,
+    step(p) {
+      k.at(p, A, 0.8);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * 6.283;
+        planeAt(B, A, k.side, Math.sin(a) * R, Math.cos(a) * R);
+        ring.set(i, B.x, B.y, B.z);
+      }
+      const minute = p * 4 * 6.283, hour = minute / 12;
+      for (let i = 0; i < 6; i++) {
+        const long = i < 4, a = long ? minute : hour, d = long ? (i + 1) * 0.085 : (i - 3) * 0.07;
+        planeAt(B, A, k.side, Math.sin(a) * d, Math.cos(a) * d);
+        hands.set(i, B.x, B.y, B.z);
+      }
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.5);
+        if (t < 0.02 || i === 0) { gears.hide(i); continue; }
+        k.at(t, C, 0.8);
+        gears.set(i, C.x, C.y + Math.sin(p * 20 + i) * 0.05 - 0.05, C.z);
+      }
+      ring.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+
+// A ring of 12 tick marks spreads out while one clock hand sweeps a full circle.
+IMPACT.time = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1;
+  const ticks = k.points({ n: 12, tex: 'square', size: 0.16 * m, glow: true, colors: [0xffc25a, 0xfff0c0] });
+  const hand = k.points({ n: 5, tex: 'dot', size: 0.2 * m, glow: true, colors: [0xfff0c0, 0xffc25a] });
+  return {
+    dur: 400,
+    step(p) {
+      const rad = (to.r * 0.7 + 0.2) * (0.5 + k.ease(p) * 0.9) * m;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * 6.283;
+        planeAt(B, to.pos, k.side, Math.sin(a) * rad, Math.cos(a) * rad);
+        ticks.set(i, B.x, B.y, B.z);
+      }
+      const a = p * 6.283;
+      for (let i = 0; i < 5; i++) {
+        const d = (rad * (i + 1)) / 5;
+        planeAt(B, to.pos, k.side, Math.sin(a) * d, Math.cos(a) * d);
+        hand.set(i, B.x, B.y, B.z);
+      }
+      ticks.fade(fadeOut(p, 0.5));
+      hand.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// Wake-Up Call: a big alarm clock shakes above the target, RIIING, with "!" marks and two shock rings.
+SIG.wakeupcall = (k, from, to) => {
+  const clock = k.sprite('clock', { color: 0xffc25a, size: 0.1, glow: true });
+  const bangs = [0, 1, 2].map(i => k.sprite('bang', { color: i === 1 ? 0xfff0c0 : 0xffe14a, size: 0.1, glow: true }));
+  const rings = [0, 1].map(i => k.mesh('ring', { color: i ? 0xfff0c0 : 0xffc25a, glow: true }));
+  const ground = feetOf(to);
+  return {
+    dur: 650,
+    step(p) {
+      const grow = clamp01(p / 0.15), sz = 0.9 + to.r * 0.4;
+      const shake = p > 0.12 ? Math.sin(p * 90) * 0.12 : 0;
+      clock.position.set(to.pos.x + k.side.x * shake * 0.4, to.top + 0.9 + (1 - k.ease(grow)) * 1.5, to.pos.z + k.side.z * shake * 0.4);
+      clock.scale.setScalar(Math.max(0.01, sz * (0.5 + 0.5 * grow)));
+      clock.material.rotation = shake;
+      clock.material.opacity = fadeOut(p, 0.8);
+      for (let i = 0; i < 3; i++) {
+        const q = clamp01((p - 0.2 - i * 0.08) / 0.3), a = (i - 1) * 0.8;
+        planeAt(B, clock.position, k.side, Math.sin(a) * sz * 0.8, Math.cos(a) * sz * 0.5 + 0.1);
+        bangs[i].position.copy(B);
+        bangs[i].scale.setScalar(Math.max(0.01, 0.6 * Math.sin(Math.PI * q)));
+        bangs[i].material.opacity = q > 0 && q < 1 ? 1 : 0;
+      }
+      for (let i = 0; i < 2; i++) {
+        const q = clamp01((p - 0.25 - i * 0.2) / 0.5);
+        lay(rings[i], to.pos.x, ground + 0.06, to.pos.z, Math.max(0.01, (to.r + 0.3) * (0.4 + q * 2.4)));
+        rings[i].material.opacity = q > 0 ? 0.8 * (1 - q) : 0;
+      }
+    },
+  };
+};
+
+/* -------------------------------- camo -------------------------------- */
+
+// Leaves and block bits come out of nowhere: invisible at first, they only show up near the target.
+TRAVEL.camo = k => {
+  const N = 9;
+  const leaves = k.points({ n: N, tex: 'leaf', size: 0.3, colors: [0x6aa84a, 0x8cc86a, 0x4a6a3a] });
+  const bits = k.points({ n: N, tex: 'square', size: 0.2, colors: [0xb8d890, 0x8a7a4a, 0x7a8a5a] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 400,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.35);
+        if (t < 0) { leaves.hide(i); bits.hide(i); continue; }
+        k.at(t, A, 0.25);
+        const w = Math.sin(t * 12 + i * 2) * 0.16, h = (s[i * 2] - 0.5) * 0.3;
+        leaves.set(i, A.x + k.side.x * w, A.y + h, A.z + k.side.z * w);
+        bits.set(i, A.x - k.side.x * w * 0.8, A.y - h + 0.05, A.z - k.side.z * w * 0.8);
+      }
+      const vis = clamp01((p - 0.4) / 0.3) * fadeOut(p, 0.9);
+      leaves.fade(vis);
+      bits.fade(vis);
+    },
+  };
+};
+
+// A "poof": leaves and puffs pop out all round.
+IMPACT.camo = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1;
+  const leaves = k.points({ n: 4, tex: 'leaf', size: 0.36 * m, colors: [0x6aa84a, 0x8cc86a] });
+  const puffs = k.points({ n: 4, tex: 'puff', size: 0.55 * m, colors: [0xcfe0b0, 0xb8d890] });
+  const s = k.seeds(8, 2);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * 6.283 + s[i * 2] * 0.5, d = (to.r * 0.6 + 0.15 + s[i * 2 + 1] * 0.4) * k.ease(p) * m;
+        (i % 2 ? puffs : leaves).set(i >> 1, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + p * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      leaves.fade(fadeOut(p, 0.5));
+      puffs.fade(1 - p);
+    },
+  };
+};
+
+// Statue Slam: a big grey stone block falls from three blocks up, dust rings out and chips fly.
+SIG.statueslam = (k, from, to) => {
+  const stone = k.mesh('box', { color: 0x9a968c });
+  const band = k.mesh('box', { color: 0x6a665c });
+  const dust = k.points({ n: 8, tex: 'puff', size: 0.6, colors: [0xd8d4c8, 0xb0aca0] });
+  const chips = k.points({ n: 4, tex: 'shard', size: 0.3, colors: [0x8a867c, 0xb0aca0] });
+  const s = k.seeds(8, 2), ground = feetOf(to);
+  const size = Math.max(0.9, to.r * 1.6);
+  return {
+    dur: 650,
+    step(p) {
+      const f = clamp01(p / 0.45), y0 = to.top + 3, y1 = ground + size / 2 + 0.05;
+      const y = lerp(y0, y1, f * f);
+      const squash = p > 0.45 ? 1 - Math.max(0, 0.15 - (p - 0.45) * 0.4) : 1;
+      stone.position.set(to.pos.x, y, to.pos.z);
+      stone.scale.set(size, size * squash, size);
+      band.position.set(to.pos.x, y, to.pos.z);
+      band.scale.set(size * 1.04, size * squash * 0.3, size * 1.04);
+      stone.material.opacity = band.material.opacity = fadeOut(p, 0.8);
+      const d = clamp01((p - 0.45) / 0.55);
+      for (let i = 0; i < 8; i++) {
+        if (d <= 0) { dust.hide(i); continue; }
+        const ang = (i / 8) * 6.283 + s[i * 2], rad = (to.r + 0.2 + s[i * 2 + 1] * 0.4) * k.ease(d);
+        dust.set(i, to.pos.x + Math.cos(ang) * rad, ground + 0.15 + d * 0.4, to.pos.z + Math.sin(ang) * rad);
+      }
+      dust.fade(1 - d);
+      for (let i = 0; i < 4; i++) {
+        if (d <= 0) { chips.hide(i); continue; }
+        const ang = i * 1.7 + s[i * 2] * 2, far = 0.9 * d * (1 + s[i * 2 + 1]);
+        chips.set(i, to.pos.x + Math.cos(ang) * far, ground + 0.2 + Math.sin(d * Math.PI) * (0.9 + s[i * 2 + 1]), to.pos.z + Math.sin(ang) * far);
+      }
+      chips.fade(fadeOut(d, 0.6));
+    },
+  };
+};
+
+/* -------------------------------- cyber -------------------------------- */
+
+// A stream of pixels that jumps in steps on a coarse grid, like a low frame rate.
+TRAVEL.cyber = k => {
+  const N = 10;
+  const px = k.points({ n: N, tex: 'square', size: 0.2, glow: true, colors: [0x5af0ff, 0x2a7aff, 0xffffff, 0x5af0ff] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 400,
+    step(p) {
+      const q = Math.floor(p * 8) / 8;
+      for (let i = 0; i < N; i++) {
+        const t = trailT(q, i, N, 0.4);
+        if (t < 0) { px.hide(i); continue; }
+        k.at(t, A, 0.2);
+        const w = snap((s[i * 2] - 0.5) * 0.4, 0.15);
+        px.set(i, snap(A.x + k.side.x * w, 0.15), snap(A.y + (s[i * 2 + 1] - 0.5) * 0.3, 0.15), snap(A.z + k.side.z * w, 0.15));
+      }
+      px.fade(fadeOut(p, 0.9));
+    },
+  };
+};
+
+// A glitch: three streaks jump sideways every sixth of the effect while pixels scatter on the grid.
+IMPACT.cyber = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1;
+  const streaks = [0x5af0ff, 0xff4ad8, 0xffffff].map(c => k.sprite('streak', { color: c, size: 0.1, glow: true }));
+  const px = k.points({ n: 8, tex: 'square', size: 0.2 * m, glow: true, colors: [0x5af0ff, 0x2a7aff, 0xffffff] });
+  const s = k.seeds(24, 2);
+  return {
+    dur: 380,
+    step(p) {
+      const step = Math.min(5, Math.floor(p * 6));
+      for (let i = 0; i < 3; i++) {
+        const off = (s[(step * 3 + i) % 24] - 0.5) * 1.1 * m;
+        streaks[i].position.set(to.pos.x + k.side.x * off, to.pos.y + (i - 1) * 0.28 * m, to.pos.z + k.side.z * off);
+        streaks[i].scale.set((1.0 + s[(step * 3 + i + 7) % 24]) * m * (to.r + 0.4), 0.3 * m, 1);
+        streaks[i].material.opacity = fadeOut(p, 0.7);
+      }
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * 6.283 + s[i * 2], d = (to.r * 0.5 + 0.2 + s[i * 2 + 1] * 0.5) * k.ease(p) * m;
+        px.set(i, snap(to.pos.x + Math.cos(ang) * d, 0.15), snap(to.pos.y + 0.1 + s[i * 2 + 1] * 0.4, 0.15), snap(to.pos.z + Math.sin(ang) * d, 0.15));
+      }
+      px.fade(fadeOut(p, 0.5));
+    },
+  };
+};
+
+// Mega Byte: a pixel mouth opens over the target and chomps shut twice, then pixels burst out.
+SIG.megabyte = (k, from, to) => {
+  const jaws = [0, 1].map(r => k.mesh('box', { color: r ? 0x2a7aff : 0x5af0ff, glow: true }));
+  const teeth = k.points({ n: 10, tex: 'square', size: 0.3, glow: true, colors: [0xffffff, 0xd8fbff] });
+  const burst = k.points({ n: 14, tex: 'square', size: 0.24, glow: true, colors: [0x5af0ff, 0x2a7aff, 0xffffff] });
+  const s = k.seeds(14, 3);
+  const w = Math.max(0.3, to.r * 0.6), mid = (to.pos.y + to.top) / 2, reach = (to.top - to.pos.y + 0.4) * 0.75;
+  return {
+    dur: 700,
+    step(p) {
+      const q = clamp01((p - 0.2) / 0.5);
+      const open = p < 0.2 ? k.ease(p / 0.2) : 0.5 + 0.5 * Math.cos(q * 4 * Math.PI);
+      const gap = 0.05 + open * reach, shown = p <= 0.72;
+      for (let r = 0; r < 2; r++) {
+        const dy = (r ? -1 : 1) * (gap + w * 0.3);
+        planeAt(jaws[r].position, to.pos, k.side, 0, mid - to.pos.y + dy + (r ? -1 : 1) * w * 0.12);
+        turnTo(jaws[r], k.side);
+        jaws[r].scale.set(w * 5.4, w * 0.45, w * 0.9);
+        jaws[r].material.opacity = shown ? clamp01(p / 0.1) : 0;
+        for (let i = 0; i < 5; i++) {
+          const x = (i - 2) * w * 1.05;
+          if (!shown) { teeth.hide(r * 5 + i); continue; }
+          planeAt(B, to.pos, k.side, x, mid - to.pos.y + dy - (r ? -1 : 1) * w * 0.28);
+          teeth.set(r * 5 + i, B.x, B.y, B.z);
+        }
+      }
+      teeth.fade(clamp01(p / 0.1));
+      const b = clamp01((p - 0.7) / 0.3);
+      for (let i = 0; i < 14; i++) {
+        if (b <= 0) { burst.hide(i); continue; }
+        const ang = s[i * 3] * 6.283, d = (0.3 + s[i * 3 + 1]) * (to.r + 0.4) * k.ease(b);
+        burst.set(i, snap(to.pos.x + Math.cos(ang) * d, 0.15), snap(mid + (s[i * 3 + 2] - 0.5) * 1.4 * k.ease(b), 0.15), snap(to.pos.z + Math.sin(ang) * d, 0.15));
+      }
+      burst.fade(1 - b);
+    },
+  };
+};
 /* ==== end of T18 ==== */
