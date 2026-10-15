@@ -16,6 +16,7 @@ import { sound } from './sound.js';
 import { Fx } from './fx.js';
 import { Weather } from './weather.js';
 import { createGuide } from './guide.js';
+import { createAccess } from './access.js';
 import { createAccounts } from './accounts.js';
 import { caveLight, patchMaterial } from './caves.js';
 
@@ -575,7 +576,8 @@ function talkTo(npc) {
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
   const gym = npc.gym.def;
-  if (gym.night && !game.night) { ui.toast(nightGymClosed(gym)); return; }
+  const closed = game.access.of(npc.gym).closedText(npc);
+  if (closed) { ui.toast(closed); return; }
   const trainerKey = `${gym.id}:trainer`;
   if (npc.kind === 'trainer') {
     if (game.beaten.includes(trainerKey)) {
@@ -789,7 +791,8 @@ function updateSky(dt) {
 }
 
 let mpHud = null;
-const { updateGuide, nightGymClosed } = createGuide(game, { dayLength: DAY_LENGTH, smoothstep });
+game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
+const { updateGuide } = createGuide(game);
 
 function updateTarget() {
   const origin = game.player.eyePos;
