@@ -1,6 +1,4 @@
 tests/node_modules/
-tests/node_modules
-tests/screenshots/
 tests/package-lock.json
-.claude/worktrees/
 tests/screenshots/
+.claude/worktrees/

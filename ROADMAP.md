@@ -48,7 +48,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 5a ✅ | T8 Bigger caves + cave gyms · T9 Four new types (creatures) | World/caves vs. species/shapes data |
 | 5b ✅ | T10 Four new gyms + special access · T11 Effects for the new types | Need T8's world and T9's types |
 | 6a ✅ | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
-| 6b | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
+| 6b ✅ | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 | 7a | T16 Guide cleanup · T17 Bigger map + protected gyms · T18 Time, Camo, Cyber types | Guide/UI vs. world generation vs. species data |
 | 7b | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
 | 8a | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |

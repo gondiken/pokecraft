@@ -27,15 +27,19 @@ this file is for working on the code.
   (`git push origin HEAD:main`), and to `claude/clever-ritchie-etj0nq` while it still exists.
   Only fast-forward; never force-push `main`.
 - **Live site:** GitHub Pages at https://gondiken.github.io/pokecraft/ (root folder). It updates
-  ~1–2 minutes after a push to the branch Pages is set to (being moved from
-  `claude/clever-ritchie-etj0nq` to `main`; both are identical, so either works).
+  ~1–2 minutes after a push to `main` (Pages is set to `main`; `claude/clever-ritchie-etj0nq` is
+  kept identical).
 
 ## Code map
 
 | File | What it does |
 | --- | --- |
-| `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens, accounts UI, play-together UI |
-| `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, gym buildings (`placeGyms`/`buildGym`), chunk meshing (solid / water / glowing), voxel raycast |
+| `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens |
+| `src/accounts.js` | `createAccounts(game, deps)`: sign-in box on the title screen, online save upload/download (moved out of `main.js` in T15) |
+| `src/playtogether.js` | `createPlayTogether(game, deps)`: share/join box, visitor `loadWorld`, `goHome`, wires `Multiplayer` and `Duels` (T15) |
+| `src/guide.js` | `createGuide(game, deps)`: guide arrow, night-gym closed message, "Welcome to the ..." toasts (T15) |
+| `src/world.js` | Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, `generate()`, chunk meshing (solid / water / glowing), voxel raycast |
+| `src/gymplace.js` | Gym and tower placement and buildings (`gymSpots`, `placeGyms`, `buildGym`, `pickSpot`, `placeTower`...): a class whose methods `installGymPlacement(World)` copies onto `World.prototype` (moved out of `world.js` in T15, code unchanged) |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests), `carveBigCaves(world)` (second layer: halls, wide tunnels, lit stairways, lamp posts), `planStairs`/`buildStairs` (also used by the cave gym) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves (107, with `fx`; `moveInfo(id)` gives the button/Book words), all 161 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
@@ -179,13 +183,15 @@ Key ideas:
 Browser tests live in `tests/` (Playwright + software WebGL):
 
 ```bash
-cd tests && npm install && npm test        # all specs
+cd tests && npm install && npm test        # all specs, quick ones first, each spec's time printed
 node run.mjs gym touch                     # just some
+node run.mjs --fast                        # only the quick group (roster, seventh, four-types, bone-alien, icon, blocks, map)
+node run.mjs --skip champion               # everything but some (a spec that hangs is stopped after 15-30 minutes)
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
-and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Gotchas learned the hard way:
+Specs: `caves` (T3/T8 caves and cave gyms), `moves` (T6 moves and the forget prompt), `seventh` (7th creatures), `bone-alien`, `new-gyms-access` (T14 night gyms, alien look), `water` (T12), `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Shared helpers are in `tests/helpers.mjs` (`openGame`, `openPair`, `seedSave`, `continueGame`, `platform`, `startWeakBattle`, `waitFor`, `playBattle`): prefer `waitFor`/`waitForFunction` to fixed sleeps. Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays
   messages between two browsers itself (`?mp=local` swaps Supabase Realtime for a
@@ -200,7 +206,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; next is T15 (cleanup), then wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) and wave 8 (T20–T23: homes, Cozy/Treasure types and gyms), then the backlog. Read it before
+  and the backlog). All waves (T1–T11) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) is done; next is wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) and wave 8 (T20–T23: homes, Cozy/Treasure types and gyms), then the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
