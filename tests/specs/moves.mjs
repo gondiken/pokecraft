@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
-import { openGame, newGame, click, pause, playBattle, ROOT } from '../helpers.mjs';
+import { openGame, newGame, click, pause, playBattle, platform, startWeakBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 // (The attack sounds 'fx:<type>' need no entry here: a colon can never be in a move id.)
@@ -11,29 +11,6 @@ const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const RESERVED_SOUNDS = ['break', 'place', 'cube', 'battle', 'hit', 'super', 'miss', 'faint', 'wobble', 'caught', 'escape', 'levelup',
   'evolve', 'win', 'badge', 'lose', 'heal', 'ask', 'thunder', 'rainbow', 'star', 'boss', 'bossloop', 'powerup', 'champion', 'statup', 'statdown', 'snooze'];
 
-// A stone platform high in the air, so nothing else is in the way.
-const platform = page => page.evaluate(() => {
-  const g = window.pokecraft, s = g.spawnPoint, y = 42;
-  for (let x = -4; x <= 6; x++) for (let z = -4; z <= 4; z++) g.world.set(Math.floor(s.x) + x, y, Math.floor(s.z) + z, 3);
-  g.player.pos.set(Math.floor(s.x) + 0.5, y + 1, Math.floor(s.z) + 0.5);
-  g.player.vel.set(0, 0, 0);
-});
-
-// Starts a wild battle against a level-2 Fluffin with 1 HP, for a party of one.
-const startWeakBattle = (page, { species, level, moves, xpToNext }) => page.evaluate(async ({ species, level, moves, xpToNext }) => {
-  const g = window.pokecraft;
-  const S = await import('/src/species.js');
-  const { Wild } = await import('/src/creatures.js');
-  const c = S.makeCreature(species, level, moves);
-  if (xpToNext) c.xp = S.xpForLevel(level + 1) - 1;
-  g.party = [c];
-  const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
-  wild.data.hp = 1;
-  g.creatures.list.push(wild);
-  g.inBattle = true; document.body.classList.add('in-battle');
-  document.getElementById('pause').classList.add('hidden'); // like startBattle() in main.js
-  g.battle.start({ wild });
-}, { species, level, moves, xpToNext });
 
 // The forget prompt, with the mouse (tap = false) or a finger (tap = true).
 async function forgetPrompt(page, t, { tap, label, shot, forget }) {

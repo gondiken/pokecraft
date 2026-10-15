@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
-import { openGame, newGame, click, pause, playBattle, ROOT } from '../helpers.mjs';
+import { openGame, newGame, click, pause, playBattle, seedSave, ROOT, continueGame } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 
@@ -165,12 +165,9 @@ export default async function ({ browser, base, t }) {
     cubes: 7, badges: [], beaten: [], savedAt: 1,
   };
   const p2 = await openGame(browser, base, {
-    setup: ctx => ctx.addInitScript(save => {
-      if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pokecraft-save-v2', save); sessionStorage.setItem('seeded', '1'); }
-    }, JSON.stringify(old)),
+    setup: seedSave(old),
   });
-  await click(p2, '#title-buttons button:has-text("Continue")');
-  await p2.waitForTimeout(1500);
+  await continueGame(p2);
   const b2 = await p2.evaluate(() => ({ c: [...window.pokecraft.book.caught].sort(), s: [...window.pokecraft.book.seen].sort() }));
   t.ok(JSON.stringify(b2.c) === '["frostling","zapple"]' && JSON.stringify(b2.s) === '["frostling","zapple"]', 'old saves get their team marked seen and caught');
   await pause(p2);

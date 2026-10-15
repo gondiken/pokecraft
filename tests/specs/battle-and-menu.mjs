@@ -1,5 +1,5 @@
 // Wild battle with mouse clicks, catching, then Esc -> Main menu -> New Game / Continue.
-import { openGame, newGame, click, pause } from '../helpers.mjs';
+import { openGame, newGame, click, pause, continueGame } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
@@ -76,8 +76,7 @@ export default async function ({ browser, base, t }) {
   await pause(page);
   await click(page, '#menu');
   await page.waitForTimeout(2500);
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(1500);
+  await continueGame(page);
   t.ok(await page.evaluate(() => window.pokecraft.started && window.pokecraft.party[0].species === 'sproutle'), 'Continue from the menu resumes the save');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

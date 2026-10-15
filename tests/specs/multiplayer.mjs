@@ -1,5 +1,5 @@
 // Play together, with two separate browsers (see openPair).
-import { openPair, newGame, click, pause, playBattle } from '../helpers.mjs';
+import { openPair, newGame, click, pause, playBattle, continueGame } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const [A, B] = await openPair(browser, base);
@@ -48,8 +48,7 @@ export default async function ({ browser, base, t }) {
   await B.waitForTimeout(5000);
   await B.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 20000 });
   await B.waitForTimeout(1000);
-  await click(B, '#title-buttons button:has-text("Continue")');
-  await B.waitForTimeout(1500);
+  await continueGame(B);
   t.ok(await B.evaluate(s => window.pokecraft.world.seed === s && window.pokecraft.party[0].species === 'sproutle', seedB), 'when the host stops, the visitor goes home with their own world and team');
   t.ok(!A.errors.length && !B.errors.length, `no page errors ${[...A.errors, ...B.errors].join('; ')}`);
   await A.context().close(); await B.context().close();

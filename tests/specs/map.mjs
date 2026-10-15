@@ -1,5 +1,5 @@
 // The bigger map, and old saves (made when the map was 192x192) keeping their building.
-import { openGame, click } from '../helpers.mjs';
+import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   // An old save: a brick placed at (100, 30, 100), stored by its index in the old 192x192 map.
@@ -10,9 +10,7 @@ export default async function ({ browser, base, t }) {
     box: [], cubes: 7, badges: [], beaten: [], savedAt: 1,
   };
   const page = await openGame(browser, base, {
-    setup: ctx => ctx.addInitScript(save => {
-      if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pokecraft-save-v2', save); sessionStorage.setItem('seeded', '1'); }
-    }, JSON.stringify(old)),
+    setup: seedSave(old),
   });
   const { W, D, ms } = await page.evaluate(async () => {
     const { WORLD_W, WORLD_D, World } = await import('/src/world.js');
@@ -36,8 +34,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(terrain.sum === 596409, `terrain heights are unchanged (checksum ${terrain.sum})`);
   t.ok(terrain.diff === 0 && terrain.holes < 600, `with caves the surface is the same except around ${terrain.holes} entrance columns`);
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(1500);
+  await continueGame(page);
   t.ok(await page.evaluate(() => window.pokecraft.world.get(100, 30, 100) === 11), "an old save's block is still in the same place");
   t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 22), 'all 22 gyms fit');
   await page.evaluate(() => document.exitPointerLock());

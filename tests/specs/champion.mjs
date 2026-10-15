@@ -1,7 +1,7 @@
 // The Champion's Tower: placement in every world, refusing before 22 badges, guards, coach,
 // the champion with Zenithar (powers up at half HP), saving, reloading and the rematch.
 import fs from 'node:fs';
-import { openGame, newGame, click } from '../helpers.mjs';
+import { openGame, newGame, click, continueGame } from '../helpers.mjs';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 // Gym positions recorded BEFORE the tower was added: gyms must never move in existing saves.
@@ -181,8 +181,7 @@ export default async function ({ browser, base, t }) {
   t.ok(saved.champion === true && saved.beaten.includes('tower:guard1') && saved.beaten.includes('tower:guard2'), 'the win is in the save');
   await page.reload();
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(2500);
+  await continueGame(page);
   t.ok(await page.evaluate(() => window.pokecraft.champion && !document.querySelector('#champion-title').classList.contains('hidden')), 'still the Champion after a reload');
   // The HUD refreshes every 0.5 game seconds, which takes a while with software rendering.
   const guided = await page.waitForFunction(() => document.getElementById('guide').textContent.includes('Champion'), null, { timeout: 40000 }).then(() => true, () => false);

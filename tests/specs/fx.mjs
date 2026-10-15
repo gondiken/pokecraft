@@ -3,33 +3,11 @@
 // and can be switched off from the pause screen.
 import fs from 'node:fs';
 import path from 'node:path';
-import { openGame, newGame, click, pause, playBattle, ROOT } from '../helpers.mjs';
+import { openGame, newGame, click, pause, playBattle, platform as platformAt, startWeakBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 
-const platform = page => page.evaluate(() => {
-  const g = window.pokecraft, s = g.spawnPoint, y = 42;
-  for (let x = -4; x <= 6; x++) for (let z = -4; z <= 4; z++) g.world.set(Math.floor(s.x) + x, y, Math.floor(s.z) + z, 3);
-  g.player.pos.set(Math.floor(s.x) + 0.5, y + 1, Math.floor(s.z) + 0.5);
-  g.player.vel.set(0, 0, 0);
-  g.time = 0.25; // daytime
-});
-
-// A weak wild battle (copied from moves.mjs): thunderwolf against a 1-HP fluffin.
-const startWeakBattle = (page, { species, level, moves }) => page.evaluate(async ({ species, level, moves }) => {
-  const g = window.pokecraft;
-  const S = await import('/src/species.js');
-  const { Wild } = await import('/src/creatures.js');
-  g.party = [S.makeCreature(species, level, moves)];
-  const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
-  wild.data.hp = 1;
-  g.creatures.list.push(wild);
-  g.scene.add(wild.model); // the game adds a wild creature's model when it spawns
-  wild.model.position.copy(wild.pos); // ...and places it
-  g.inBattle = true; document.body.classList.add('in-battle');
-  document.getElementById('pause').classList.add('hidden');
-  g.battle.start({ wild });
-}, { species, level, moves });
+const platform = page => platformAt(page, { day: true });
 
 // Helpers that live in the page.
 const installHelpers = page => page.evaluate(async () => {

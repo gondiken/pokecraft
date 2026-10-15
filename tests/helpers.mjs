@@ -102,6 +102,49 @@ export async function playBattle(page, prefer) {
   return false;
 }
 
+// A new-browser init script that puts a save in localStorage once (use as openGame's setup option).
+export const seedSave = save => ctx => ctx.addInitScript(json => {
+  if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pokecraft-save-v2', json); sessionStorage.setItem('seeded', '1'); }
+}, typeof save === 'string' ? save : JSON.stringify(save));
+
+// A small stone platform high in the air, so nothing else is in the way. day: also set the time to noon-ish.
+export const platform = (page, { day = false } = {}) => page.evaluate(day => {
+  const g = window.pokecraft, s = g.spawnPoint, y = 42;
+  for (let x = -4; x <= 6; x++) for (let z = -4; z <= 4; z++) g.world.set(Math.floor(s.x) + x, y, Math.floor(s.z) + z, 3);
+  g.player.pos.set(Math.floor(s.x) + 0.5, y + 1, Math.floor(s.z) + 0.5);
+  g.player.vel.set(0, 0, 0);
+  if (day) g.time = 0.25;
+}, day);
+
+// Starts a wild battle against a level-2 Fluffin with 1 HP, for a party of one.
+export const startWeakBattle = (page, { species, level, moves, xpToNext }) => page.evaluate(async ({ species, level, moves, xpToNext }) => {
+  const g = window.pokecraft;
+  const S = await import('/src/species.js');
+  const { Wild } = await import('/src/creatures.js');
+  const c = S.makeCreature(species, level, moves);
+  if (xpToNext) c.xp = S.xpForLevel(level + 1) - 1;
+  g.party = [c];
+  const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
+  wild.data.hp = 1;
+  g.creatures.list.push(wild);
+  g.scene.add(wild.model); // the game adds a wild creature's model when it spawns...
+  wild.model.position.copy(wild.pos); // ...and places it
+  g.inBattle = true; document.body.classList.add('in-battle');
+  document.getElementById('pause').classList.add('hidden'); // like startBattle() in main.js
+  g.battle.start({ wild });
+}, { species, level, moves, xpToNext });
+
+// Title screen -> Continue; returns once the game is running (no fixed sleep).
+export async function continueGame(page) {
+  await click(page, '#title-buttons button:has-text("Continue")');
+  await page.waitForFunction(() => window.pokecraft.started, null, { timeout: 30000, polling: 100 });
+  await page.waitForTimeout(300);
+}
+
+// Waits until fn (run in the page, with arg) returns something truthy. Use instead of a fixed sleep:
+// the software renderer is slow and its speed changes with the load.
+export const waitFor = (page, fn, arg, timeout = 30000) => page.waitForFunction(fn, arg, { timeout, polling: 100 });
+
 export class Checks {
   constructor(name) { this.name = name; this.results = []; }
   ok(cond, label) { this.results.push({ pass: !!cond, label }); console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${label}`); }

@@ -1,7 +1,7 @@
 // T10: gyms 19-22 (Sunbeam, Origami, Goo, Cloud). Placement on six seeds (nothing old moves), the Goo Gym's cave,
 // the Cloud Gym floating out of reach until you build up to it, and pictures of each new gym.
 import fs from 'node:fs';
-import { openGame, click, playBattle } from '../helpers.mjs';
+import { openGame, click, playBattle, seedSave, continueGame } from '../helpers.mjs';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const SEEDS = [1, 7, 99, 777, 4242, 123456];
@@ -193,10 +193,9 @@ export default async function ({ browser, base, t }) {
     box: [], cubes: 12, badges: [], beaten: [], champion: false, savedAt: 1, toldCaveGym: true,
   };
   page = await openGame(browser, base, {
-    setup: ctx => ctx.addInitScript(json => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pokecraft-save-v2', json); sessionStorage.setItem('seeded', '1'); } }, JSON.stringify(save)),
+    setup: seedSave(save),
   });
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(1500);
+  await continueGame(page);
   await page.evaluate(() => { const g = window.pokecraft; g.creatures.clear(); g.creatures.trySpawnCave = () => {}; g.time = 0.25; });
   // The camera: the first spot (front first, then turning to the sides; nearer or higher if needed) from which the
   // door and the roof can both be seen. Surface and sky gyms: on a small stone platform; the Goo Gym: on the cavern floor.

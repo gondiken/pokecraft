@@ -2,7 +2,7 @@
 // tower stay where they were, the rest of the world is block-for-block the same, old badges and the
 // Champion title survive, and the tower asks for 22 badges only from players who are not Champion yet.
 import fs from 'node:fs';
-import { openGame, click } from '../helpers.mjs';
+import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 // Where gyms 1-16 were recorded before the Fossil and Saucer gyms existed (same list as the champion spec).
@@ -40,13 +40,15 @@ function oldSave(champion) {
 // Opens the game with a save in place and remembers every toast that appears.
 function openWithSave(browser, base, save) {
   return openGame(browser, base, {
-    setup: ctx => ctx.addInitScript(json => {
-      if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pokecraft-save-v2', json); sessionStorage.setItem('seeded', '1'); }
-      window.__toasts = [];
-      new MutationObserver(ms => {
-        for (const m of ms) for (const n of m.addedNodes) if (n.textContent) window.__toasts.push(n.textContent);
-      }).observe(document, { childList: true, subtree: true });
-    }, JSON.stringify(save)),
+    setup: async ctx => {
+      await seedSave(save)(ctx);
+      await ctx.addInitScript(() => {
+        window.__toasts = [];
+        new MutationObserver(ms => {
+          for (const m of ms) for (const n of m.addedNodes) if (n.textContent) window.__toasts.push(n.textContent);
+        }).observe(document, { childList: true, subtree: true });
+      });
+    },
   });
 }
 
@@ -147,8 +149,7 @@ export default async function ({ browser, base, t }) {
 
   // 3. An old 16-badge player who is not Champion yet needs all 22.
   page = await openWithSave(browser, base, oldSave(false));
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(2500);
+  await continueGame(page);
   await page.evaluate(() => {
     const g = window.pokecraft, tw = g.world.tower, [fx, fz] = tw.front;
     g.player.pos.set(tw.x + 0.5 + fx * 3, tw.y, tw.z + 0.5 + fz * 3);
@@ -169,8 +170,7 @@ export default async function ({ browser, base, t }) {
 
   // 3b. Someone who already has the Fossil Badge is not told that the gym moved.
   page = await openWithSave(browser, base, { ...oldSave(false), badges: [...oldSave(false).badges, 'bone'] });
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(2500);
+  await continueGame(page);
   t.ok(!(await page.evaluate(() => window.__toasts.join(' | '))).includes('moved into a big cave'), 'no cave toast for a player who already has the Fossil Badge');
   await page.context().close();
 
@@ -195,8 +195,7 @@ export default async function ({ browser, base, t }) {
 
   // 3d. An old Champion with 18 badges keeps the title and Coach Dex.
   page = await openWithSave(browser, base, { ...save18, champion: true, beaten: ['tower:guard1', 'tower:guard2'] });
-  await click(page, '#title-buttons button:has-text("Continue")');
-  await page.waitForTimeout(2500);
+  await continueGame(page);
   const coach18 = await page.evaluate(() => {
     const g = window.pokecraft, tw = g.world.tower, [fx, fz] = tw.front;
     g.player.pos.set(tw.x + 0.5 + fx * 3, tw.y, tw.z + 0.5 + fz * 3);

@@ -1,7 +1,7 @@
 // Online saves against the REAL Supabase project. Skipped unless both are set:
 //   PC_TEST_EMAIL / PC_TEST_PASSWORD  - a confirmed test account (see CLAUDE.md for how to make one)
 // Needs network access to *.supabase.co and cdn.jsdelivr.net.
-import { openGame, newGame, click } from '../helpers.mjs';
+import { openGame, newGame, click, continueGame } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const email = process.env.PC_TEST_EMAIL, password = process.env.PC_TEST_PASSWORD;
@@ -23,8 +23,7 @@ export default async function ({ browser, base, t }) {
   t.ok(/Saved online/.test(await d1.textContent('#cloud-status')), 'pausing saves online');
   const d2 = await openGame(browser, base, { online: true });
   await signIn(d2);
-  await click(d2, '#title-buttons button:has-text("Continue")');
-  await d2.waitForTimeout(1500);
+  await continueGame(d2);
   t.ok(await d2.evaluate(m => window.pokecraft.cubes === m, marker), 'a second device continues the same save');
   await d1.context().close(); await d2.context().close();
 }
