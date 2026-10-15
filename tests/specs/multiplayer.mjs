@@ -28,6 +28,16 @@ export default async function ({ browser, base, t }) {
   await A.waitForTimeout(800);
   t.ok(await A.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y + 1, z) === 9, spot), 'visitor\'s block appears for the host');
   t.ok(await B.evaluate(s => JSON.parse(localStorage.getItem('pokecraft-save-v2')).seed === s, seedB), 'visitor\'s own saved world is untouched');
+  // T17: the visitor gets the whole 288 x 288 world, and a forged "block" message can't open a gym wall.
+  t.ok(await B.evaluate(() => { const w = window.pokecraft.world; return w.W === 288 && w.D === 288 && w.get(250, 1, 250) !== 0; }), 'the visitor gets the bigger world, new land included');
+  const wall = await B.evaluate(() => {
+    const g = window.pokecraft, w = g.world, gym = w.gyms.find(x => !x.cave && !x.sky);
+    for (let y = gym.y; y <= gym.y + 5; y++) for (let a = -6; a <= 6; a++) for (const b of [-6, 6]) if (w.get(gym.x + a, y, gym.z + b) !== 0) return [gym.x + a, y, gym.z + b];
+    return null;
+  });
+  await A.evaluate(([x, y, z]) => { window.pokecraft.mp.sendBlock(x, y, z, 0); }, wall);
+  await B.waitForTimeout(1500);
+  t.ok(wall && await B.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z) !== 0, wall), 'a block message that would break a gym wall is ignored by the visitor');
 
   // The visitor is in a battle when the host stops: they go home only after the battle.
   await B.evaluate(async () => {
