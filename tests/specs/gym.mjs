@@ -114,7 +114,7 @@ export default async function ({ browser, base, t }) {
     const ox = Math.round(mx - fx * 30), oz = Math.round(mz - fz * 30);
     out.far = at(ox, oz, w.surface(ox, oz).y + 1);
     out.mouth = [mx, mz];
-    out.near = at(mx, mz, w.ground[mx + mz * 224] + 1);
+    out.near = at(mx, mz, w.ground[mx + mz * 288] + 1);
     // down the stairs
     const d = 16, tread = gym.y - 1 + Math.floor((d - 9) / gym.cave.spot.rise);
     out.stairs = at(gym.x + fx * d, gym.z + fz * d, tread + 1);

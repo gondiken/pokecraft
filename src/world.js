@@ -442,11 +442,39 @@ export class World {
     for (let i = 0; i < trunk; i++) this.set(x, y + i, z, B.LOG, false);
   }
 
+  // Edits that would change a protected gym cell are dropped, so an old save with a hole dug into a gym gets
+  // its gym back (T17), and a host's world sent to a guest is cleaned the same way.
   applyEdits(edits) {
     this.topReady = false;
+    const { W, D } = this;
     for (const [i, id] of edits) {
+      if (!this.editAllowed(i % W, Math.floor(i / (W * D)), Math.floor(i / W) % D, id)) continue;
       this.data[i] = id;
       this.edits.set(i, id);
+    }
+  }
+
+  // The gym (or the tower) whose protected box holds this cell, or null. Every gym object has `protect` boxes.
+  protectedAt(x, y, z) {
+    const inside = g => g.protect?.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1);
+    for (const g of this.gyms) if (inside(g)) return g;
+    return this.tower && inside(this.tower) ? this.tower : null;
+  }
+
+  // May this cell become `id`? One rule for the player, touch, visitors and saved edits. Opening a chest is not
+  // breaking it (cave chests; T23's key chests).
+  editAllowed(x, y, z, id) {
+    return !this.protectedAt(x, y, z) || (this.get(x, y, z) === B.CHEST && id === B.CHEST_OPEN);
+  }
+
+  // Hides the chunks past the fog (they are fog-coloured there anyway): fewer draw calls on the big map.
+  cull(pos, far) {
+    const r = (far + 12) ** 2;
+    for (const [key, list] of this.meshes) {
+      const comma = key.indexOf(',');
+      const dx = Number(key.slice(0, comma)) * CHUNK + CHUNK / 2 - pos.x, dz = Number(key.slice(comma + 1)) * CHUNK + CHUNK / 2 - pos.z;
+      const vis = dx * dx + dz * dz < r;
+      for (const m of list) m.visible = vis;
     }
   }
 

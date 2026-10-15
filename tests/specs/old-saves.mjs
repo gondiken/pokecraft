@@ -66,17 +66,17 @@ export default async function ({ browser, base, t }) {
       plain.generate({ bigCaves: false, caveGyms: false, newGyms: false });
       const spots = plain.extraGymSpots();
       let h = 2166136261;
-      for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) { // the old 224 x 224 area (T17), indexed with the big map's stride
         if (spots.some(([sx, sz]) => Math.abs(x - sx) <= 18 && Math.abs(z - sz) <= 18)) continue;
         h = Math.imul(h ^ plain.data[x + W * (z + D * y)], 16777619) >>> 0;
       }
       let terrain = 0;
-      for (let x = 0; x < W; x += 3) for (let z = 0; z < D; z += 3) terrain += plain.terrainHeight(x, z) * ((x * 7 + z) % 13 + 1);
+      for (let x = 0; x < 224; x += 3) for (let z = 0; z < 224; z += 3) terrain += plain.terrainHeight(x, z) * ((x * 7 + z) % 13 + 1);
       const w = new World(seed, null, null);
       w.generate();
       const inBox = (x, z, y) => w.newGymBoxes.some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && y >= b.y0 && y <= b.y1);
       let h22 = 2166136261;
-      for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) {
         if (!inBox(x, z, y)) h22 = Math.imul(h22 ^ w.data[x + W * (z + D * y)], 16777619) >>> 0;
       }
       const skip = new Uint8Array(W * D);
@@ -84,9 +84,9 @@ export default async function ({ browser, base, t }) {
       for (const c of w.caves.opened) box(c % W, Math.floor(c / W), 4);
       for (const c of w.caves.marks) box(c % W, Math.floor(c / W), 3);
       box(spots[0][0], spots[0][1], 18);
-      for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (inBox(x, z, 0)) skip[x + z * W] = 1;
+      for (let x = 0; x < 224; x++) for (let z = 0; z < 224; z++) if (inBox(x, z, 0)) skip[x + z * W] = 1;
       let surf = 2166136261;
-      for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (!skip[x + z * W]) surf = Math.imul(surf ^ w.surface(x, z).y, 16777619) >>> 0;
+      for (let x = 0; x < 224; x++) for (let z = 0; z < 224; z++) if (!skip[x + z * W]) surf = Math.imul(surf ^ w.surface(x, z).y, 16777619) >>> 0;
       const extra = w.gyms.slice(16, 18);
       const others = [...w.gyms.slice(0, 16).map(g => [g.x, g.z]), [w.tower.x, w.tower.z]];
       const gapOf = g => Math.min(...others.map(([x, z]) => Math.hypot(g.x - x, g.z - z)));
@@ -94,7 +94,7 @@ export default async function ({ browser, base, t }) {
         n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky'][i]),
         old: w.gyms.slice(0, 16).map(g => [g.x, g.z]), reserved: spots[0], saucer: [extra[1].x, extra[1].z], h, h22, terrain, surf,
         types: extra.map(g => g.def.type), cave: extra.map(g => !!g.cave),
-        gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - W / 2, g.z - D / 2)),
+        gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - 112, g.z - 112)),
         roofs: extra.map(g => w.get(g.x + 5, g.y + 5, g.z + 5)),
         wool: [WOOL.bone, WOOL.alien],
       };
