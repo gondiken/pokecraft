@@ -4,7 +4,7 @@ import { openGame, newGame, playBattle } from '../helpers.mjs';
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   await newGame(page, 1);
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 22), '22 gyms are placed');
+  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 25), '25 gyms are placed');
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return window.pokecraft.world.gyms.every((g, i) => g.def === GYMS[i]);
@@ -100,6 +100,42 @@ export default async function ({ browser, base, t }) {
     t.ok(await playBattle(page), `${badge} leader battle finishes`);
     t.ok(await page.evaluate(gid => window.pokecraft.badges.includes(gid), id), `${badge} Badge awarded`);
   }
+
+  // T19: the three newest gyms have two trainers each (index 0 keeps the old beaten key, the second gets `:trainer2`);
+  // the leader asks for both. The Firewall Maze's talkTo does not depend on its rooms, so its whole flow is fought here.
+  const two = await page.evaluate(async () => {
+    const g = window.pokecraft, { trainersOf, trainerKey } = await import('/src/gyms.js');
+    return ['time', 'camo', 'cyber'].map(id => {
+      const gym = g.world.gyms.find(x => x.def.id === id);
+      const tr = g.npcs.list.filter(n => n.kind === 'trainer' && n.gym === gym);
+      return { id, n: tr.length, idx: tr.map(n => n.index), defs: trainersOf(gym.def).length, keys: [trainerKey(gym.def, 0), trainerKey(gym.def, 1)], pos: gym.trainerPositions.length, protect: !!gym.protect?.length, area: !!gym.area };
+    });
+  });
+  for (const x of two) {
+    t.ok(x.n === 2 && x.idx.join() === '0,1' && x.defs === 2 && x.pos === 2 && x.protect && x.area && x.keys[0] === `${x.id}:trainer` && x.keys[1] === `${x.id}:trainer2`,
+      `${x.id}: two trainers (keys ${x.keys.join(', ')}), two positions, protected, with an area`);
+  }
+  await page.evaluate(async () => {
+    const g = window.pokecraft, { makeCreature } = await import('/src/species.js');
+    g.party = [makeCreature('tidalord', 50), makeCreature('thunderwolf', 50), makeCreature('grovebeast', 50)];
+    const gym = g.world.gyms.find(x => x.def.id === 'cyber');
+    const [fx, fz] = gym.front;
+    g.player.pos.set(gym.x + 0.5 + fx * 4.5, gym.y, gym.z + 0.5 + fz * 4.5);
+    document.exitPointerLock();
+  });
+  const cy = (kind, i = 0) => `window.pokecraft.npcs.list.find(n => n.kind === '${kind}' && n.gym.def.id === 'cyber' && n.index === ${i})`;
+  await page.evaluate(`window.pokecraft.talkTo(${cy('trainer')})`);
+  t.ok(await playBattle(page), 'Coder Kit battle finishes');
+  await page.evaluate(`window.pokecraft.talkTo(${cy('leader')})`);
+  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('Beat Gamer Zed first'), 'Leader Ada asks for the second trainer too');
+  await page.evaluate(`window.pokecraft.talkTo(${cy('trainer', 1)})`);
+  t.ok(await playBattle(page), 'Gamer Zed battle finishes');
+  t.ok(await page.evaluate(() => ['cyber:trainer', 'cyber:trainer2'].every(k => window.pokecraft.beaten.includes(k))), 'both Firewall Maze trainers are remembered');
+  await page.evaluate(`window.pokecraft.talkTo(${cy('trainer', 1)})`);
+  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('waiting in the server room'), 'a beaten trainer says where the leader is');
+  await page.evaluate(`window.pokecraft.talkTo(${cy('leader')})`);
+  t.ok(await playBattle(page), 'Leader Ada battle finishes');
+  t.ok(await page.evaluate(() => window.pokecraft.badges.includes('cyber')), 'Circuit Badge awarded');
 
   // The arrow: on the hill it points at the stairs, down the stairs it points at the gym.
   const guide = await page.evaluate(async () => {

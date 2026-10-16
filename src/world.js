@@ -83,7 +83,8 @@ function newBuffers() { return { pos: [], uv: [], col: [], idx: [] }; }
 const LIGHT_R = 4, LIGHT_N = CHUNK + LIGHT_R * 2;
 const lightBuf = new Float32Array(LIGHT_N * WORLD_H * LIGHT_N);
 const GLOWS = new Uint8Array(256);
-for (const id of Object.keys(BLOCKS)) if (BLOCKS[id].glow) GLOWS[id] = 1;
+// `noLight` blocks (T19 lasers) are drawn bright at night but do not light the cells around them.
+for (const id of Object.keys(BLOCKS)) if (BLOCKS[id].glow && !BLOCKS[id].noLight) GLOWS[id] = 1;
 const OCCLUDERS = new Uint8Array(256);
 for (let id = 1; id < 256; id++) OCCLUDERS[id] = isOccluder(id) ? 1 : 0;
 
@@ -136,6 +137,21 @@ export class World {
     if (this.topReady) this.updateTop(x, y, z, id);
     if (!record) return;
     this.edits.set(i, id);
+    this.markDirty(x, z, old, id);
+  }
+
+  // Changes a block for this player only (T19 doors and lasers): redrawn, but never an edit, never saved or sent.
+  setLive(x, y, z, id) {
+    if (!this.inBounds(x, y, z)) return;
+    const i = this.index(x, y, z), old = this.data[i];
+    if (old === id) return;
+    this.data[i] = id;
+    if (this.topReady) this.updateTop(x, y, z, id);
+    this.markDirty(x, z, old, id);
+  }
+
+  // Marks the chunks that must be redrawn when (x, z) changes from block `old` to `id`.
+  markDirty(x, z, old, id) {
     const cx = x >> 4, cz = z >> 4;
     // Glowing blocks light up to 4 blocks around them, so the chunks near them change too.
     if (GLOWS[old] || GLOWS[id]) {

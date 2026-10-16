@@ -23,6 +23,9 @@ export default async function ({ browser, base, t }) {
     return {
       count: PLACEABLE.length, tiles,
       cloud: B.CLOUD === 53 && PLACEABLE.includes(B.CLOUD) && BLOCKS[B.CLOUD].name === 'Cloud' && isSolid(B.CLOUD),
+      gymBlocks: ['LASER_RED', 'LASER_BLUE', 'LASER_FRIEND', 'SWITCH_RED', 'SWITCH_BLUE', 'FRIEND_PAD', 'RESET_BUTTON', 'CLOCK_DOOR'].map((k, i) => ({
+        id: B[k] === 57 + i, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT),
+        noLight: !!BLOCKS[B[k]].noLight, glow: !!BLOCKS[B[k]].glow, wallText: !!BLOCKS[B[k]].wallText })),
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
       woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56)),
       biomes: [...biomes].sort(),
@@ -36,6 +39,8 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(r.count >= 24 && r.tiles, `${r.count} blocks to build with, each with its own textures`);
   t.ok(r.cloud, 'Cloud blocks (53) can be built with');
+  t.ok(r.gymBlocks.every(b => b.id && b.def && !b.placeable && b.tiles), 'the T19 gym blocks 57-64 exist, have tiles and cannot be built with');
+  t.ok(r.gymBlocks.slice(0, 3).every(b => b.glow && b.noLight && b.wallText) && r.gymBlocks[7].wallText, 'lasers glow without lighting their surroundings; lasers and the clock door have a wall text');
   t.ok(JSON.stringify(r.wool) === JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
     `the four new wool blocks are 49-52 and have names (${r.wool.map(w => w.join(' ')).join(', ')})`);
   const want = ['beach', 'desert', 'forest', 'meadow', 'mountain', 'peak', 'plains', 'snow', 'swamp', 'taiga'];

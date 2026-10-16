@@ -5,7 +5,7 @@ export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   const info = await page.evaluate(async () => {
     const S = await import('/src/species.js');
-    const { GYMS } = await import('/src/gyms.js');
+    const { GYMS, trainersOf } = await import('/src/gyms.js');
     const { WOOL } = await import('/src/blocks.js');
     const out = {};
     for (const type of ['cosmic', 'sound']) {
@@ -13,7 +13,7 @@ export default async function ({ browser, base, t }) {
       const spawns = Object.values(S.SPAWNS).flat().map(e => e[0]);
       const moves = Object.values(S.MOVES).filter(m => m.type === type).length;
       const gym = GYMS.find(g => g.type === type);
-      const teams = gym ? [...gym.trainerTeam, ...gym.leaderTeam].every(([id, l]) => S.SPECIES[id] && l > 0) : false;
+      const teams = gym ? [...trainersOf(gym).flatMap(x => x.team), ...gym.leaderTeam].every(([id, l]) => S.SPECIES[id] && l > 0) : false;
       const learn = mons.every(id => S.makeCreature(id, 20).moves.some(m => S.MOVES[m].type === type));
       out[type] = { mons, everySpawns: mons.every(id => spawns.includes(id)), moves, gym: gym?.name, teams, learn,
         wool: !!WOOL[type], color: !!S.TYPE_COLORS[type] };
@@ -53,7 +53,7 @@ export default async function ({ browser, base, t }) {
     const { GYMS } = await import('/src/gyms.js');
     return { want: GYMS.length, shown: [...document.querySelectorAll('#badges > *')].length, h: document.getElementById('badges').getBoundingClientRect().height };
   });
-  t.ok(hud.want === 22 && hud.shown === hud.want, `HUD shows ${hud.want} badge slots (${hud.shown})`);
+  t.ok(hud.want === 25 && hud.shown === hud.want, `HUD shows ${hud.want} badge slots (${hud.shown})`);
   t.ok(hud.h <= 90, `the badge box is at most 90px high (${Math.round(hud.h)})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

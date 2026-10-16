@@ -7,7 +7,7 @@ import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } 
 import { Battle } from './battle.js';
 import { Book } from './book.js';
 import { NpcManager } from './npc.js';
-import { GYMS, TOWER, ORIGINAL_GYMS } from './gyms.js';
+import { GYMS, TOWER, ORIGINAL_GYMS, trainersOf, trainerKey } from './gyms.js';
 import { TouchControls } from './touch.js';
 import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
@@ -17,6 +17,7 @@ import { Fx } from './fx.js';
 import { Weather } from './weather.js';
 import { createGuide } from './guide.js';
 import { createAccess } from './access.js';
+import { createGymLive } from './gymlive.js';
 import { createAccounts } from './accounts.js';
 import { goldenHour, condOf } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
@@ -177,6 +178,7 @@ function createWorld(seed, edits, size) {
   game.creatures.setWorld(world);
   game.spawnPoint.copy(findSpawn(world));
   game.npcs.populate(world, game.spawnPoint);
+  game.gymLive.reset(world);
 }
 
 function findSpawn(world) {
@@ -483,6 +485,7 @@ function interact() {
   if (target.player) { game.duels.challenge(target.player); return true; }
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
+  if (target.block && game.gymLive.hit(target.block)) return true;
   if (target.block?.id === B.CHEST) { openChest(target.block); return true; }
   return false;
 }
@@ -500,7 +503,7 @@ function breakBlock(hit = target.block) {
   const world = game.world;
   if (!hit || hit.y === 0) return;
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
-  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast('Gym walls are too strong to break!'); return; }
+  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || 'Gym walls are too strong to break!'); return; }
   world.set(hit.x, hit.y, hit.z, B.AIR);
   // Water flows into the hole if it borders water.
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
@@ -559,6 +562,7 @@ function tapAt(x, y) {
   if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) game.duels.challenge(other.player);
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
+  else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
   else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
 }
 
@@ -594,17 +598,19 @@ function talkTo(npc) {
   const gym = npc.gym.def;
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
-  const trainerKey = `${gym.id}:trainer`;
+  const list = trainersOf(gym), where = gym.leaderWhere || 'at the back';
   if (npc.kind === 'trainer') {
-    if (game.beaten.includes(trainerKey)) {
-      ui.toast(`${npc.name}: You already beat me! ${gym.leader.name} is waiting at the back.`);
+    const i = npc.index || 0;
+    if (game.beaten.includes(trainerKey(gym, i))) {
+      ui.toast(`${npc.name}: You already beat me! ${gym.leader.name} is waiting ${where}.`);
       return;
     }
-    startBattle({ trainer: npc, team: gym.trainerTeam, intro: [`You want to see ${gym.leader.name}? Get past me first!`] });
+    startBattle({ trainer: npc, team: list[i].team, intro: list[i].intro || [`You want to see ${gym.leader.name}? Get past me first!`] });
     return;
   }
-  if (!game.beaten.includes(trainerKey)) {
-    ui.toast(`${npc.name}: Beat ${gym.trainer.name} first, then come back to me!`);
+  const todo = list.filter((p, i) => !game.beaten.includes(trainerKey(gym, i))).map(p => p.name);
+  if (todo.length) {
+    ui.toast(`${npc.name}: Beat ${todo.join(' and ')} first, then come back to me!`);
     return;
   }
   const rematch = game.badges.includes(gym.id);
@@ -614,17 +620,17 @@ function talkTo(npc) {
   });
 }
 
-// People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for every badge (old champions keep their access).
+// People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for every badge (since T19 also old Champions).
 function talkTower(npc) {
   const ui = game.ui;
-  if (game.badges.length < GYMS.length && !game.champion) {
-    ui.toast(`${npc.name}: ${TOWER.locked(game.badges.length)}`);
+  if (game.badges.length < GYMS.length) {
+    ui.toast(`${npc.name}: ${TOWER.locked(game.badges.length, game.champion)}`);
     return;
   }
   const p = game.world.tower.people.find(q => q.role === npc.role);
   if (npc.role === 'coach') {
     const top = Math.max(...game.party.map(c => c.level));
-    const lv = Math.max(25, Math.min(44, top));
+    const lv = Math.max(25, Math.min(47, top));
     const ids = p.teams[Math.floor(Math.random() * p.teams.length)];
     startBattle({ trainer: npc, team: ids.map((id, i) => [id, i === 0 ? lv - 1 : lv]), intro: p.intro, xpBoost: 2 });
     return;
@@ -729,10 +735,10 @@ game.onBattleEnd = (result, opts) => {
   else if (result === 'won' && npc) {
     const gym = npc.gym.def;
     if (npc.kind === 'trainer') {
-      game.beaten.push(`${gym.id}:trainer`);
+      game.beaten.push(trainerKey(gym, npc.index || 0));
       sound.play('win');
       game.cubes += 2;
-      game.ui.toast(`${npc.name}: Nice battle! ${gym.leader.name} is waiting at the back.`);
+      game.ui.toast(`${npc.name}: Nice battle! ${gym.leader.name} is waiting ${gym.leaderWhere || 'at the back'}.`);
       game.ui.toast('You got 2 Capture Cubes.');
     } else if (!game.badges.includes(gym.id)) {
       game.badges.push(gym.id);
@@ -814,6 +820,7 @@ function updateSky(dt) {
 
 let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
+game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
 function updateTarget() {
@@ -844,11 +851,12 @@ function updateTarget() {
     : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
-      : '');
+      : (target.block && game.gymLive.prompt(target.block, how)) || '');
   game.touch.setAction(target.player ? `Battle ${target.player.name}!`
     : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
-      : target.block?.id === B.CHEST ? 'Open chest!' : '');
+      : target.block?.id === B.CHEST ? 'Open chest!'
+      : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || '');
 }
 
 function frame(now) {
@@ -865,6 +873,11 @@ function frame(now) {
   } else {
     p.joy = game.touch.joy;
     if (playing()) p.update(dt);
+    game.gymLive.update(dt);
+    if (p.onGround) {
+      const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
+      game.gymLive.stand(fx, fy, fz, game.world.get(fx, fy, fz));
+    }
     if (p.pos.y < -20) { p.pos.copy(game.spawnPoint); p.vel.set(0, 0, 0); }
     game.world.updateDirty();
     game.creatures.update(dt, p.pos, game.spawnPoint, game.night);

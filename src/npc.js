@@ -1,6 +1,7 @@
 // People in the world: gym trainers, gym leaders and the healer.
 import * as THREE from 'three';
 import { disposeModel } from './species.js';
+import { trainersOf } from './gyms.js';
 
 function box(parent, w, h, d, color, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
@@ -76,8 +77,10 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
 }
 
 class Npc {
-  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look }) {
+  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look, index = 0, def = null }) {
     this.kind = kind;
+    this.index = index; // which trainer of the gym (T19: gyms may have two)
+    this.def = def; // the person's entry in the gym def (`opens`, `disguise`...)
     this.name = name;
     this.gym = gym;
     this.pos = new THREE.Vector3(...pos);
@@ -127,15 +130,16 @@ export class NpcManager {
       const [fx, fz] = gym.front;
       const facing = Math.atan2(fx, fz);
       const typeColor = new THREE.Color(gym.def.leader.colors.shirt).getHex();
-      const { leader, trainer } = gym.def;
+      const { leader } = gym.def;
       this.add(new Npc({
         kind: 'leader', name: leader.name, gym, colors: leader.colors,
-        pos: gym.leaderPos, heading: facing, cape: typeColor, look: leader.look,
+        pos: gym.leaderPos, heading: facing, cape: typeColor, look: leader.look, def: leader,
       }));
-      this.add(new Npc({
+      const spots = gym.trainerPositions || [gym.trainerPos];
+      trainersOf(gym.def).forEach((trainer, i) => this.add(new Npc({
         kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-        pos: gym.trainerPos, heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants,
-      }));
+        pos: spots[i], heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+      })));
       if (gym.def.saucer) this.addSaucer(gym);
     }
     // The Champion's Tower: nurse, coach, two guards and the champion.

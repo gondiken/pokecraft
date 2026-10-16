@@ -202,7 +202,58 @@ export const GYMS = [
     intro: ['You climbed all the way up here? Welcome to the Cloud Gym!', 'Up in the clouds my sky creatures fly free. Ready to soar?'],
     lose: 'You blew us away! Take the Cloud Badge.',
   },
+  // ---- T19: the three slot gyms (slots 0-2 of the new land). Two trainers each, in `trainers`. ----
+  {
+    id: 'time', type: 'time', name: 'Clock Tower', badge: 'Chime Badge', slot: 0, build: 'clockTower', live: 'clock',
+    access: { when: 'clock' }, leaderWhere: 'at the top of the tower',
+    welcome: 'Welcome to the Clock Tower! Climb the stairs outside. A door opens when the big hand reaches its colour.',
+    leader: { name: 'Leader Tikka', opens: 'night', colors: { shirt: 0xdeaa50, pants: 0x3a2a4a, hair: 0x2a1a10, skin: 0xe8b98a } },
+    trainers: [
+      { name: 'Early Bird Ana', opens: 'morning', colors: { shirt: 0xffe27a, pants: 0x5a6a8a, hair: 0xb04a2a, skin: 0xf2c79a },
+        team: [['ringaling', 31], ['tickatin', 31]], intro: ['Good morning! My door is only open in the morning. Ready?'] },
+      { name: 'Tea Time Theo', opens: 'afternoon', colors: { shirt: 0xf08a3a, pants: 0x2a3a5a, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['pendulo', 32], ['twilorb', 32]], intro: ["Tick, tock, it is battle o'clock!"] },
+    ],
+    leaderTeam: [['sandtimer', 32], ['grandtock', 33], ['clangalarm', 33]],
+    intro: ['You climbed my tower from morning to night. Welcome!', 'My clocks never stop. Can you keep up with them?'],
+    lose: 'Right on time! The Chime Badge is yours.',
+  },
+  {
+    id: 'camo', type: 'camo', name: 'Hidden Hill', badge: 'Hideout Badge', slot: 1, build: 'hiddenHill',
+    access: { where: 'hidden' }, leaderWhere: 'at the back',
+    welcome: 'You found the Hidden Hill! Something here is watching you...',
+    leader: { name: 'Leader Sylva', colors: { shirt: 0x6e9650, pants: 0x4a3a2a, hair: 0x2a4a1a, skin: 0xe8b98a } },
+    trainers: [
+      { name: 'Ranger Ollie', disguise: 'stone', colors: { shirt: 0x5a7a3a, pants: 0x6a5a40, hair: 0x7a4a2a, skin: 0xf2c79a },
+        team: [['cubble', 34], ['castlet', 34]], intro: ['Ha! You spotted me. I was a stone pillar!'] },
+      { name: 'Hider Juno', disguise: 'stone', colors: { shirt: 0x8a9a6a, pants: 0x3a4a2a, hair: 0xe0c060, skin: 0xd9a066 },
+        team: [['bushling', 35], ['chromacurl', 35]], intro: ['Oh no, you found me! Nobody ever finds me!'] },
+    ],
+    leaderTeam: [['fortsand', 35], ['topiphant', 36], ['statuo', 36]],
+    intro: ['You found my hideout! Not many trainers do.', 'My team is very good at hiding. Can you find their weak spots?'],
+    lose: 'You see everything! The Hideout Badge is yours.',
+  },
+  {
+    id: 'cyber', type: 'cyber', name: 'Firewall Maze', badge: 'Circuit Badge', slot: 2, build: 'firewallMaze', live: 'maze',
+    leaderWhere: 'in the server room',
+    welcome: 'Welcome to the Firewall Maze! Step on a switch to turn off the lasers of its colour.',
+    leader: { name: 'Leader Ada', colors: { shirt: 0x283450, pants: 0x101828, hair: 0x5af0ff, skin: 0xf2d0b0 } },
+    trainers: [
+      { name: 'Coder Kit', colors: { shirt: 0x2a7aff, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
+        team: [['clickit', 37], ['pixbit', 37], ['ampup', 38]], intro: ['You got through the first firewall? Nice hacking!'] },
+      { name: 'Gamer Zed', colors: { shirt: 0x8ff4ff, pants: 0x3a2a5a, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['error404', 38], ['wifly', 38], ['clickit2', 38]], intro: ['Two firewalls down! But can you beat my high score?'] },
+    ],
+    leaderTeam: [['error404', 39], ['wifly2', 39], ['clickit2', 40], ['pixbit2', 40]],
+    intro: ['Welcome to the server room! You beat every firewall.', 'Now let us see if your team can beat my upgrades!'],
+    lose: 'System beaten! The Circuit Badge is yours.',
+  },
 ];
+
+// Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).
+export const trainersOf = def => def.trainers || [{ ...def.trainer, team: def.trainerTeam }];
+// Beaten keys: the first trainer keeps the old key, so old saves keep their progress.
+export const trainerKey = (def, i) => (i ? `${def.id}:trainer${i + 1}` : `${def.id}:trainer`);
 
 // The first 16 gyms get their spots from World.gymSpots(ORIGINAL_GYMS); later ones from
 // World.extraGymSpots(). Never change this number: it would move every gym in old worlds.
@@ -215,11 +266,13 @@ export const EXTRA_GYMS_END = 18;
 // Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
 export const LEGACY_CAVE_GYMS = 1;
 
-// The Champion's Tower: opens after all 18 badges. `at` = [steps toward the door, steps sideways]
+// The Champion's Tower: opens after all badges (25). `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).
 export const TOWER = {
   id: 'tower', name: "Champion's Tower",
-  locked: n => `Only trainers with all ${GYMS.length} badges may battle here. You have ${n}. Keep going, you can do it!`,
+  locked: (n, champion) => (champion
+    ? `Welcome back, Champion! New gyms have opened. Bring all ${GYMS.length} badges and we can battle again. You have ${n}.`
+    : `Only trainers with all ${GYMS.length} badges may battle here. You have ${n}. Keep going, you can do it!`),
   people: [
     { role: 'nurse', kind: 'healer', name: 'Nurse Poppy', at: [4, -4], hat: 0xffffff,
       colors: { shirt: 0xa8e0f6, pants: 0xffffff, hair: 0x6a3a2a, skin: 0xe8b98a } },
@@ -227,21 +280,21 @@ export const TOWER = {
       colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
         ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur'],
-        ['kitegale', 'slimperor', 'frogami']],
+        ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2']],
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
-      team: [['titanox', 34], ['venomamba', 35], ['boomwing', 36]],
+      team: [['titanox', 41], ['venomamba', 42], ['boomwing', 43]],
       intro: ['Halt! Only the strongest trainers may see the Champion.', 'Show me what you can do!'],
       lose: 'You are strong! Go on, Guard Opal is next.' },
     { role: 'guard2', name: 'Guard Opal', at: [-1, -2], hat: 0xb08ae0,
       colors: { shirt: 0x7a5ab0, pants: 0x2a2a3a, hair: 0xf0e0a0, skin: 0xf2d0b0 },
-      team: [['duskmare', 36], ['pomperina', 37], ['thunderwolf', 38]],
+      team: [['duskmare', 42], ['pomperina', 43], ['thunderwolf', 44]],
       intro: ['You beat Bram? Impressive!', 'I am the last guard. The Champion is right behind me.'],
       lose: 'Wonderful! The Champion is waiting for you.' },
     { role: 'champion', name: 'Champion Solenne', at: [-4, 0], cape: 0xffd84a,
       colors: { shirt: 0xf8f4ff, pants: 0x6a4ac8, hair: 0xffd84a, skin: 0xf2d0b0 },
-      team: [['glacieron', 40], ['tidalord', 41], ['pyrolynx', 41], ['sageowl', 42], ['stormwyvern', 43], ['zenithar', 45]],
+      team: [['glacieron', 43], ['tidalord', 44], ['pyrolynx', 44], ['sageowl', 44], ['stormwyvern', 45], ['zenithar', 47]],
       intro: [`So you are the trainer with all ${GYMS.length} badges!`,
         'I am Solenne. Zenithar and I have guarded this tower for many years.',
         'Show me how much you and your team have grown. Give it everything!'],

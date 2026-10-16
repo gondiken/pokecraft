@@ -91,7 +91,7 @@ export class Disguise {
           const d = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
           if (d > 4) continue;
           const id = this.world.get(x + dx, y + dy, z + dz);
-          if (id && BLOCKS[id]?.glow) best = Math.max(best, 0.9 - 0.18 * d);
+          if (id && BLOCKS[id]?.glow && !BLOCKS[id].noLight) best = Math.max(best, 0.9 - 0.18 * d);
         }
       }
     }

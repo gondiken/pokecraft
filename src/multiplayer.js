@@ -14,8 +14,8 @@ const JOIN_TIMEOUT = 12;  // seconds to wait for the host to send their world
 const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
-// 4: the Saucer Gym floats in the sky).
-const WORLD_VERSION = 5;
+// 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
+const WORLD_VERSION = 6;
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
 
 const OUTFITS = [

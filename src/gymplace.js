@@ -4,7 +4,14 @@
 import { B, WOOL, isSolid } from './blocks.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS, EXTRA_GYMS_END } from './gyms.js';
 import { planStairs, buildStairs, legacyOnly } from './caves.js';
+import { buildClockTower } from './clocktower.js';
+import { buildHiddenHill } from './hiddenhill.js';
+import { buildFirewallMaze } from './firewall.js';
 import { OLD_W, OLD_D, MID_X, MID_Z, WORLD_H, WATER_LEVEL, hash2, groundOf, PLANTS } from './world.js';
+
+// Builders of the slot gyms (T19), by `def.build`: (world, def, slot) => gym object. Each writes only inside slot.box and
+// returns { def, x, z, y, front, leaderPos, trainerPos, trainerPositions, protect, area, ... }.
+const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill, firewallMaze: buildFirewallMaze };
 
 // Slot boxes of the new land (T17): the 5 places where gyms 23+ go. Never change these numbers.
 export const SLOT_R = 24, SLOT_GAP = 56;
@@ -192,7 +199,7 @@ class GymPlacement {
     const caveItems = []; // cave gyms so far: { x, z, cells } (cells = the stairway)
     for (const sp of this.caveGymSpots()) if (sp) caveItems.push({ x: sp.x, z: sp.z, cells: this.stairCells(sp) });
     // Cave gyms first (they need the most room; the others keep away from them), then the rest in GYMS order.
-    const defs = GYMS.slice(EXTRA_GYMS_END), found = new Map();
+    const defs = GYMS.slice(EXTRA_GYMS_END).filter(d => d.slot == null), found = new Map(); // slot gyms (T17/T19) live in the new land
     let masks = null;
     for (const def of defs) {
       if (def.place !== 'cave') continue;
@@ -896,16 +903,61 @@ class GymPlacement {
     return (this.slots = picked.map(({ x, z }, k) => ({ k, x, z, box: pbox(x, z, SLOT_R, 0, WORLD_H - 1) })));
   }
 
-  // Places the gyms whose def has a `slot` (none until T19) in their slot of the new land. A slot gym may change
-  // blocks only inside its slot box. def.build names a builder method; otherwise it is a normal surface gym.
+  // Places the gyms whose def has a `slot` in their slot of the new land. A slot gym may change blocks only inside
+  // its slot box. def.build names a builder in SLOT_BUILDERS; otherwise it is a normal surface gym.
   placeSlotGyms() {
     const slots = this.newLandSlots();
     for (const def of GYMS) {
       if (def.slot == null) continue;
       const s = slots[def.slot];
-      const g = def.build ? this[def.build](def, s) : this.placeGym(def, s.x, s.z);
+      const b = SLOT_BUILDERS[def.build];
+      const g = b ? b(this, def, s) : this.placeGym(def, s.x, s.z);
       g.slot = s;
       this.gyms.push(g);
+    }
+  }
+
+  // Step-0 stand-in for the slot gym builders: the plain gym of its type with a second trainer beside the first, so
+  // the gym can be battled (and is protected) until its real building exists.
+  stubSlotGym(def, slot) {
+    const g = this.placeGym(def, slot.x, slot.z);
+    const [tx, , tz] = g.trainerPos, f = g.front;
+    g.trainerPositions = [g.trainerPos, [tx - f[1] * 4, g.trainerPos[1], tz - f[0] * 4]]; // the other side of the door line
+    g.area = { x0: g.x - 6, x1: g.x + 6, z0: g.z - 6, z1: g.z + 6, y0: g.y - 1, y1: g.y + 7 };
+    this.markLit(g.x, g.z);
+    return g;
+  }
+
+  // Levels the ground to `fy` under a rectangle (+ pad) and slopes the land around it (1 block per block, 9 blocks
+  // out), never outside `box`; clears plants within rect + 5 (inside box). rect and box are { x0, x1, z0, z1 } in world
+  // x/z, inclusive. Plain terrain only: the caller builds on it. (Generalised from buildGym, which is unchanged.)
+  levelSite(rect, fy, box, pad = 2) {
+    const inBox = (x, z) => x >= box.x0 && x <= box.x1 && z >= box.z0 && z <= box.z1 && this.inBounds(x, 0, z);
+    for (let x = rect.x0 - 5; x <= rect.x1 + 5; x++) for (let z = rect.z0 - 5; z <= rect.z1 + 5; z++) {
+      if (!inBox(x, z)) continue;
+      for (let y = 1; y < WORLD_H; y++) if (PLANTS.has(this.get(x, y, z))) this.set(x, y, z, B.AIR, false);
+    }
+    const reach = pad + 9;
+    for (let x = rect.x0 - reach; x <= rect.x1 + reach; x++) for (let z = rect.z0 - reach; z <= rect.z1 + reach; z++) {
+      if (!inBox(x, z)) continue;
+      const out = Math.max(rect.x0 - x, x - rect.x1, rect.z0 - z, z - rect.z1, 0); // Chebyshev distance outside rect
+      const slope = out - pad;
+      if (slope <= 0) { // the flat part: solid foundation, cleared air above, the biome's ground on top
+        for (let y = 1; y < fy; y++) if (!isSolid(this.get(x, y, z))) this.set(x, y, z, B.STONE, false);
+        for (let y = fy + 1; y < WORLD_H; y++) this.set(x, y, z, B.AIR, false);
+        this.set(x, fy, z, groundOf(this.biome(x, z), fy)[0], false);
+        continue;
+      }
+      const s = this.surface(x, z);
+      const top = fy + slope, bottom = fy - slope;
+      if (s.y > top) {
+        for (let y = top + 1; y <= s.y; y++) this.set(x, y, z, B.AIR, false);
+        if (isSolid(this.get(x, top, z))) this.set(x, top, z, groundOf(this.biome(x, z), top)[0], false);
+      } else if (s.y < bottom && s.id !== B.WATER) {
+        const [topId, under] = groundOf(this.biome(x, z), bottom);
+        for (let y = s.y; y < bottom; y++) this.set(x, y, z, under, false);
+        this.set(x, bottom, z, topId, false);
+      }
     }
   }
 

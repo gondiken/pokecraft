@@ -53,7 +53,7 @@ export function createGuide(game) {
       const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
       arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
     }
-    game.ui.setGuide(aim.text(arrow, dist) + note);
+    game.ui.setGuide(aim.text(arrow, dist) + acc(next).status() + note);
   }
 
   return { updateGuide };

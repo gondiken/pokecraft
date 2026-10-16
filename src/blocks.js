@@ -29,6 +29,7 @@ const MORE_TILES = [
   'ICE', 'GRAVEL', 'SANDSTONE', 'SANDSTONE_TOP', 'CACTUS_SIDE', 'CACTUS_TOP', 'MUD', 'PINE_SIDE', 'PINE_LEAVES',
   'FLOWERS', 'CRYSTAL', 'GLASS', 'STONE_BRICKS', 'LAMP', 'COAL_ORE', 'GOLD_ORE',
   'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP', 'CLOUD',
+  'LASER_RED', 'LASER_BLUE', 'LASER_FRIEND', 'SWITCH_RED_TOP', 'SWITCH_BLUE_TOP', 'FRIEND_PAD_TOP', 'RESET_BUTTON', 'CLOCK_DOOR', // T19
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -43,6 +44,8 @@ export const B = {
   // 49-52 are the sky / slime / light / paper wool blocks.
   CLOUD: 53,
   // 54-56 are the time / camo / cyber wool blocks.
+  // 57-64: T19 gym blocks (lasers, switches, reset button, clock door). Next free id: 65.
+  LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -81,6 +84,17 @@ export const BLOCKS = {
   [B.CHEST_OPEN]: { name: 'Open Chest', top: T.CHEST_OPEN_TOP, side: T.CHEST_SIDE, bottom: T.CHEST_TOP },
 };
 BLOCKS[B.CLOUD] = { name: 'Cloud', ...all(T.CLOUD) };
+// T19 gym blocks: none can be placed. `noLight` = drawn bright at night but lights nothing around it (lasers flip often);
+// `wallText` = what the toast says when someone tries to break it.
+const LASER_TEXT = "Lasers can't be broken. Find the switch!";
+BLOCKS[B.LASER_RED] = { name: 'Red Laser', ...all(T.LASER_RED), glow: true, noLight: true, wallText: LASER_TEXT };
+BLOCKS[B.LASER_BLUE] = { name: 'Blue Laser', ...all(T.LASER_BLUE), glow: true, noLight: true, wallText: LASER_TEXT };
+BLOCKS[B.LASER_FRIEND] = { name: 'Friend Laser', ...all(T.LASER_FRIEND), glow: true, noLight: true, wallText: 'A friend can open this one!' };
+BLOCKS[B.SWITCH_RED] = { name: 'Red Switch', top: T.SWITCH_RED_TOP, side: T.STONE_BRICKS, bottom: T.STONE_BRICKS };
+BLOCKS[B.SWITCH_BLUE] = { name: 'Blue Switch', top: T.SWITCH_BLUE_TOP, side: T.STONE_BRICKS, bottom: T.STONE_BRICKS };
+BLOCKS[B.FRIEND_PAD] = { name: 'Friend Pad', top: T.FRIEND_PAD_TOP, side: T.STONE_BRICKS, bottom: T.STONE_BRICKS };
+BLOCKS[B.RESET_BUTTON] = { name: 'Reset Button', ...all(T.RESET_BUTTON) };
+BLOCKS[B.CLOCK_DOOR] = { name: 'Clock Door', ...all(T.CLOCK_DOOR), wallText: 'This door opens at its time. Look at the big clock!' };
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
 // The starting hotbar. Players can swap any slot for another block in the Blocks panel.
@@ -290,6 +304,35 @@ export function drawAtlas() {
     put(T.CHEST_SIDE, x, y, lock ? [250, 215, 70] : band ? [214, 170, 50] : edgeLine ? [90, 56, 30] : shade([150, 98, 52], (y % 5 === 4 ? 0.8 : 1) * (1 + (rand() - 0.5) * 0.1)));
     put(T.CHEST_TOP, x, y, edgeLine ? [90, 56, 30] : x === 7 || x === 8 ? [214, 170, 50] : shade([164, 108, 58], 1 + (rand() - 0.5) * 0.1));
     put(T.CHEST_OPEN_TOP, x, y, edgeLine || x === 1 || x === 14 || y === 1 || y === 14 ? [120, 76, 40] : shade([34, 24, 20], 1 + (rand() - 0.5) * 0.3));
+  });
+
+  // T19 gym blocks. Lasers: three thin bright beams with dark gaps.
+  const laser = (tile, base, dark, beam) => each((x, y) => put(tile, x, y, [1, 2, 3].some(k => Math.abs(y - (k * 4 - 2)) < 1)
+    ? beam : (x + y) % 5 === 0 ? shade(base, 0.8) : y % 4 === 0 || y % 4 === 3 ? dark : base));
+  laser(T.LASER_RED, [255, 60, 60], [120, 16, 24], [255, 235, 230]);
+  laser(T.LASER_BLUE, [60, 110, 255], [18, 30, 120], [225, 238, 255]);
+  laser(T.LASER_FRIEND, [190, 90, 255], [70, 24, 120], [245, 230, 255]);
+  // Switches and the friend pad: a dark plate with a big round button (or a white ring).
+  const plate = (tile, plateCol, fn) => each((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5), edgeLine = x === 0 || y === 0 || x === 15 || y === 15;
+    put(tile, x, y, edgeLine ? [30, 30, 38] : fn(d) || shade(plateCol, 1 + (rand() - 0.5) * 0.1));
+  });
+  plate(T.SWITCH_RED_TOP, [48, 48, 58], d => (d < 3 ? [255, 70, 70] : d < 5.2 ? [150, 24, 30] : null));
+  plate(T.SWITCH_BLUE_TOP, [48, 48, 58], d => (d < 3 ? [70, 120, 255] : d < 5.2 ? [24, 40, 150] : null));
+  plate(T.FRIEND_PAD_TOP, [110, 60, 170], d => (d > 3.2 && d < 5 ? [255, 255, 255] : null));
+  // Reset button: a green face with a white round arrow.
+  each((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5), edgeLine = x === 0 || y === 0 || x === 15 || y === 15;
+    const ring = d > 3 && d < 5 && !(x > 7 && y < 7); // a ring with a gap at the upper right
+    const head = (x === 9 || x === 10) && y >= 3 && y <= 5 || (x >= 8 && x <= 11 && y === 5 && d < 6);
+    put(T.RESET_BUTTON, x, y, edgeLine ? [20, 80, 40] : ring || head ? [255, 255, 255] : shade([50, 180, 90], 1 + (rand() - 0.5) * 0.08));
+  });
+  // Clock door: brass planks with a small clock dial.
+  each((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    const hand = (x === 8 && y >= 4 && y <= 8) || (y === 8 && x >= 8 && x <= 10);
+    const col = d < 1.8 && !hand ? [60, 40, 20] : hand ? [50, 30, 14] : d < 4.2 ? [250, 240, 205] : d < 5.2 ? [110, 72, 30] : shade([214, 170, 80], (y % 4 === 3 ? 0.78 : 1) * (1 + (rand() - 0.5) * 0.08));
+    put(T.CLOCK_DOOR, x, y, col);
   });
 
   return c;

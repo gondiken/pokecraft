@@ -2,6 +2,13 @@
 // piece each, combined per gym. The guide only talks to these objects. Add a kind by adding an entry to WHERE
 // or WHEN; a gym picks one with def.access = { where, when } (else from how it was placed and def.night).
 import { WORLD_W } from './world.js';
+import { trainersOf, trainerKey } from './gyms.js';
+import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
+
+// Is p inside the box {x0, x1, y0, y1, z0, z1} (inclusive block coordinates)?
+const inBox = (b, p) => p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y < b.y1 + 1;
+// How far away the Hidden Hill's arrow stops (T19).
+export const HIDE_R = 20;
 
 // where-pieces: (g, game, deps) => { aim(p), tips?(p, told), contains?(p), welcome?() }
 // aim(p) gives the arrow target and the guide text; no `x` means no arrow.
@@ -71,6 +78,16 @@ export const WHERE = {
   }),
 };
 
+// Hidden gyms (T19 Hidden Hill): far away the normal arrow; within HIDE_R blocks it fades out (no `x`) and the
+// player has to look around.
+WHERE.hidden = g => ({
+  aim(p) {
+    const x = g.x + 0.5, z = g.z + 0.5;
+    if (Math.hypot(x - p.x, z - p.z) > HIDE_R) return { x, z, text: (arrow, dist) => `Next: ${g.def.name} ${arrow} ${dist}m` };
+    return { text: () => (inBox(g.area, p) ? `${g.def.name} is here!` : "It's hidden somewhere around here…") };
+  },
+});
+
 // Minutes of real time until it gets dark (0 if it already is).
 function minutesToNight(game, { dayLength, smoothstep }) {
   if (game.night) return 0;
@@ -85,14 +102,34 @@ function nightClosed(game, deps, def) {
   return `The ${def.name} is empty... ${def.nightText || 'come back at night!'} Night comes in about ${m} minute${m === 1 ? '' : 's'}.`;
 }
 
-// when-pieces: (g, game, deps) => { wait(), closedText(npc) }
+// when-pieces: (g, game, deps) => { wait(), closedText(npc), status?() }
 // wait(): a phrase ("at night ☾") when the arrow should skip this gym for now, else null.
+// status(): optional words the guide adds after its text (the Clock Tower says which door is open).
 // closedText(npc): what to say when it is closed (walk-in toast without npc, talking passes the npc), else null.
 export const WHEN = {
   always: () => ({ wait: () => null, closedText: () => null }),
   night: (g, game, deps) => ({
     wait: () => (game.night ? null : 'at night ☾'),
     closedText: () => (game.night ? null : nightClosed(game, deps, g.def)),
+  }),
+  // Clock Tower: every person has a door window (`opens` in their def). The arrow never skips this gym.
+  clock: (g, game, deps) => ({
+    wait: () => null,
+    closedText: npc => {
+      const opens = npc?.def?.opens;
+      if (!opens || windowAt(game.time) === opens) return null;
+      const w = WINDOWS[opens], m = minutesUntil(opens, game.time, deps.dayLength);
+      return `${npc.name}: My door opens ${w.when}, when the big hand reaches ${w.color}. About ${m} minute${m === 1 ? '' : 's'}!`;
+    },
+    status: () => {
+      const todo = trainersOf(g.def).filter((p, i) => !game.beaten.includes(trainerKey(g.def, i)));
+      const who = todo[0] || (game.badges.includes(g.def.id) ? null : g.def.leader);
+      if (!who?.opens) return '';
+      const w = WINDOWS[who.opens];
+      if (windowAt(game.time) === who.opens) return ` · the ${w.color} door is open!`;
+      const m = minutesUntil(who.opens, game.time, deps.dayLength);
+      return ` · the ${w.color} door opens in ${m} min`;
+    },
   }),
 };
 
@@ -112,10 +149,11 @@ export function createAccess(game, deps) {
       gym: g, name: g.def.name, where, when,
       aim: p => w.aim(p),
       tips: w.tips ? (p, told) => w.tips(p, told) : null,
-      contains: w.contains || (p => (g.tower ? game.world.towerAt(p.x, p.z) : game.world.gymAt(p.x, p.z, p.y)) === g),
-      welcome: w.welcome || (() => (g.tower ? "Welcome to the Champion's Tower!" : `Welcome to the ${g.def.name}! (${g.def.type} type)`)),
+      contains: w.contains || (p => (g.area ? inBox(g.area, p) : (g.tower ? game.world.towerAt(p.x, p.z) : game.world.gymAt(p.x, p.z, p.y)) === g)),
+      welcome: w.welcome || (() => (g.tower ? "Welcome to the Champion's Tower!" : g.def.welcome || `Welcome to the ${g.def.name}! (${g.def.type} type)`)),
       wait: () => t.wait(),
       closedText: npc => t.closedText(npc),
+      status: () => (t.status ? t.status() : ''),
       isOpen: npc => !t.closedText(npc),
     };
     cache.set(g, a);

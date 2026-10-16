@@ -45,13 +45,16 @@ this file is for working on the code.
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks |
 | `src/species.js` | Types + effectiveness chart, moves (123, with `fx`; `moveInfo(id)` gives the button/Book words), all 182 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the T18 shapes hourglass, pendulum, alarmclock, sunmoon, bushblock, sandcastle, stonecube, igloo, pixelblob, cursor, wifiwing, glitchghost; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
-| `src/gyms.js` | The 22 gyms in difficulty order (teams, leader/trainer names, dialogue) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
+| `src/gyms.js` | The 25 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome tables + spawn conditions), wandering, Camo disguises (`spawnAt`, `Wild.reveal`) |
 | `src/spawnrules.js` | Spawn conditions as data: day/night, dawn/dusk golden hour, together; `goldenHour`, `condOf`, `condOk`, `CONDITIONS` |
 | `src/disguise.js` | `Disguise`: a creature or person drawn as a world block that blinks; used by Camo creatures (T19: Hidden Hill trainers) |
-| `src/npc.js` | Blocky people (trainers, leaders, Healer Hana, other players' avatars) |
+| `src/npc.js` | Blocky people (trainers, leaders, Healer Hana, other players' avatars); an Npc has `index` (which trainer of its gym) and `def` (its entry in the gym def) |
+| `src/gymlive.js` | `createGymLive(game)` (`game.gymLive`): live gym parts for defs with `def.live` (`reset`, `update`, `stand`, `hit`, `prompt`, `of`) and `LiveCells` (a door/laser never turns solid inside the player); they change blocks only with `world.setLive` (T19) |
+| `src/daytime.js` | The Clock Tower's door windows (`WINDOWS`, `windowAt(t)`, `minutesUntil`) by `game.time` (T19) |
+| `src/clocktower.js`, `src/hiddenhill.js`, `src/firewall.js` | T19 slot gyms: `buildClockTower` / `buildHiddenHill` / `buildFirewallMaze(world, def, slot)` (+ `ClockLive`, `MazeLive`); registered in `SLOT_BUILDERS` (gymplace.js) |
 | `src/ui.js` | HUD, team screen, creature portraits |
 | `src/touch.js` | Tablet controls (joystick, drag-to-look, tap-to-interact, buttons) |
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
@@ -76,12 +79,12 @@ Key ideas:
   walked into (`creatures.onBump`); `Wild.reveal()` (called by `Battle.start`) pops them out. **Never call `disposeModel` on a
   disguised model without `disguise.dispose()` first** (it would free the shared world material; `CreatureManager.remove` does
   it right). A disguise never changes the world, is never saved or sent. Wool ids: time 54, camo 55, cyber 56; the next free
-  block id is 57.
+  block id is 65 (57-64 are the T19 gym blocks).
 - **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects are in `fxrecipes.js` (T11). See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
-  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 22 badges (old Champions keep access: `game.champion`). `beaten` gains
+  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 25 badges (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
   `tower:guard1` / `tower:guard2`; the save has an optional boolean `champion`. Boss battles pass `boss: true`
   (Zenithar hangs on once and powers up at half HP); the coach passes `xpBoost: 2`. After 16 badges (or the Champion title)
   `creatures.levelBonus` is 10 (wild creatures get +10 levels).
@@ -151,11 +154,26 @@ Key ideas:
   **New land** = x or z >= 224: terrain, plants (no trees within 2 of the seam) and no caves, written only by `generateNewLand()` (`guardOld`
   makes `set()` throw inside the old area). **`newLandSlots()`** = 5 gym spots in the new land (49x49 boxes, terrain only, never change the
   rules; `SLOT_R`/`SLOT_GAP`): slots 0-2 T19 (Time, Camo, Cyber), 3 T23 Cozy (spare), 4 T23 Treasure. A def with `slot` is placed by `placeSlotGyms()`
-  (`def.build` names a builder); a slot gym changes blocks only inside its box. `generate({ slotGyms: false })` leaves them out.
+  (`def.build` names a builder in `SLOT_BUILDERS`, gymplace.js; a def without one is a plain surface gym); a slot gym changes blocks only inside its box.
+  `newGymSpots()` skips defs with `slot`. `generate({ slotGyms: false })` leaves them out.
   **Gym protection:** every gym object and `world.tower` has `protect: [{x0,x1,y0,y1,z0,z1}]` (surface/tower ±7, cave ±13 up to fy+13, sky
   island ±10 from fy-3; the sky pad and pillar are outside). `world.editAllowed(x, y, z, id)` is the one rule (opening a chest is allowed): used by
   `breakBlock`/`placeBlock` (main.js, toasts), visitors' `block` messages and `applyEdits` (old saves lose edits inside gyms). A new gym builder
-  must set `protect`. `World.cull` hides chunks past the fog (draw calls). `WORLD_VERSION` is 5.
+  must set `protect`. `World.cull` hides chunks past the fog (draw calls). `WORLD_VERSION` is 6 (T19).
+- **Gyms 23-25 (T19, `plans/T19.md`): Clock Tower (time), Hidden Hill (camo), Firewall Maze (cyber), slots 0-2 of the new land.**
+  Step 0 (shared parts): `GYMS` defs with `slot`, `build`, `live`, `access`, `welcome`, `leaderWhere` and **`trainers: [{ name, colors, team, intro?, opens?, disguise? }]`**
+  (two per gym; the 22 old gyms keep `trainer` + `trainerTeam`: use `trainersOf(def)` / `trainerKey(def, i)`, the first trainer keeps the key
+  `<id>:trainer`, the second is `<id>:trainer2`). A gym object may have `trainerPositions` (one per trainer) and `area` (a box that counts as
+  "inside" for the welcome toast; `access.contains` uses it). **Slot builders** live in their own files and are registered in `SLOT_BUILDERS`
+  (gymplace.js): `(world, def, slot) => gym object`, write only inside `slot.box`, set `protect`/`area`/`trainerPositions`; until a gym's real
+  building exists its file is a stub calling `world.stubSlotGym(def, slot)` (plain gym + second trainer). `world.levelSite(rect, fy, box, pad)`
+  levels and slopes the ground for a builder. **Live blocks:** `world.setLive(x, y, z, id)` redraws a block for this player only (never an
+  edit, never saved or sent; `markDirty` is the shared dirty-marking); doors and lasers use it through `game.gymLive` / `LiveCells`
+  (a door or laser never turns solid inside the player). New blocks 57-64 (`LASER_RED/BLUE/FRIEND`, `SWITCH_RED/BLUE`, `FRIEND_PAD`,
+  `RESET_BUTTON`, `CLOCK_DOOR`): not placeable; `noLight` = glow material but lights nothing around it; `wallText` = the toast for breaking it
+  (`breakBlock`). Access: `WHEN.clock` (door windows from `daytime.js`; never skipped by the arrow), `WHERE.hidden` (arrow stops 20 blocks away),
+  an optional `status()` that the guide appends, `def.welcome`. **No T19 access piece may define `tips`** (the access golden fixture would
+  change). Specs: `clock-tower`, `hidden-hill`, `firewall-maze` (added by the builders), `gym`/`big-map` cover the shared parts.
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
