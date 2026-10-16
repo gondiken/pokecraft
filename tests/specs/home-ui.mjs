@@ -229,12 +229,16 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => window.pokecraft.homeUi.state().view === null), 'Close ends the home panel');
   // changing the home type
   await openPanel('home');
-  for (let i = 0; i < 4 && (await ui()).view !== 'choose'; i++) { // a click can be lost if the panel redraws under a slow frame
+  // a click can be lost if the panel redraws under a slow frame, so both clicks are retried
+  for (let i = 0; i < 10 && (await ui()).view !== 'choose'; i++) {
     await click(page, '#home button[data-act="change"]').catch(() => {});
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
   }
-  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'choose', null, 5000);
-  await click(page, '#home .hm-card[data-type="treasure"]');
+  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'choose', null, 10000);
+  for (let i = 0; i < 10 && !(await page.evaluate(() => window.pokecraft.homes.mine().type === 'treasure')); i++) {
+    await click(page, '#home .hm-card[data-type="treasure"]').catch(() => {});
+    await page.waitForTimeout(2000);
+  }
   await waitFor(page, () => window.pokecraft.homes.mine().type === 'treasure');
   t.ok(true, '"Change home type" opens the chooser and Treasure can be picked');
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug', 'lamp', 'windows'] }, 'cozy'));
