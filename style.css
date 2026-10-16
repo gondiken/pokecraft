@@ -110,6 +110,14 @@ button.primary { background: #3b6fd8; }
   position: fixed; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
 }
 #clock, #guide { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 20px; }
+#key-compass { display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,.45); padding: 2px 8px; --glint: 3s; }
+#key-compass.hidden { display: none; }
+#key-compass svg { filter: drop-shadow(0 0 2px rgba(255,210,58,.6)); animation: key-glint var(--glint) ease-in-out infinite; }
+#key-compass .shine { animation: key-shine var(--glint) ease-in-out infinite; }
+#key-compass .pip { width: 8px; height: 8px; border: 2px solid rgba(255,210,58,.5); transform: rotate(45deg); margin: 0 2px; }
+#key-compass .pip.got { background: #ffd23a; border-color: #fff; }
+@keyframes key-glint { 0%, 70%, 100% { filter: drop-shadow(0 0 2px rgba(255,210,58,.4)) brightness(.8); } 85% { filter: drop-shadow(0 0 8px #fff) brightness(1.6); } }
+@keyframes key-shine { 0%, 70%, 100% { opacity: .2; } 85% { opacity: 1; } }
 #badges { display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: 200px; gap: 3px; background: rgba(0,0,0,.45); padding: 4px 6px; }
 .badge {
   width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);

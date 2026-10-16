@@ -190,6 +190,8 @@ const SOUNDS = {
   popout: () => { noise({ freq: 1500, len: 0.08, vol: 0.25, q: 1 }); tone(300, { len: 0.12, vol: 0.25, slide: 500, type: 'triangle' }); },
   // T19 Firewall Maze: a switch flips the lasers (quick rising blip).
   laserflip: () => { tone(500, { len: 0.1, vol: 0.2, slide: 900, type: 'square' }); tone(1000, { at: 0.09, len: 0.06, vol: 0.12, type: 'square' }); },
+  // T23: a golden key chest opens (short rising sparkle).
+  keyfound: () => notes([1047, 1319, 1568, 2093], 0.07, { len: 0.2, type: 'sine', vol: 0.22 }),
   // Move effects in battle.
   statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),

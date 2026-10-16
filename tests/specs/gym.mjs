@@ -141,6 +141,29 @@ export default async function ({ browser, base, t }) {
   t.ok(await playBattle(page), 'Leader Ada battle finishes');
   t.ok(await page.evaluate(() => window.pokecraft.badges.includes('cyber')), 'Circuit Badge awarded');
 
+  // T23 Treasure Vault: locked until the three golden keys are found; then it is a normal gym with two trainers (the full checks
+  // are in treasure-vault.mjs).
+  const tv = await page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, gym = w.gyms.find(x => x.def.id === 'treasure'), [fx, fz] = gym.front;
+    document.getElementById('toast').replaceChildren();
+    g.player.pos.set(gym.x + 0.5 + fx * 9, gym.fy + 1, gym.z + 0.5 + fz * 9);
+    g.updateGuide();
+    const locked = document.getElementById('toast').innerText;
+    const shut = gym.door.every(([x, y, z]) => w.get(x, y, z) === 74);
+    for (const k of gym.keys) g.gymLive.hit({ x: k.chest[0], y: k.chest[1], z: k.chest[2], id: w.get(...k.chest) });
+    g.gymLive.update(0.3);
+    return { locked, shut, open: gym.door.every(([x, y, z]) => w.get(x, y, z) === 0), keys: g.keys.length };
+  });
+  t.ok(tv.locked.includes('Treasure Vault is locked') && tv.shut, `the Treasure Vault is locked at first (${tv.locked.replace(/\n/g, ' ')})`);
+  t.ok(tv.keys === 3 && tv.open, 'with the three keys the vault door is open');
+  const vt = (kind, i = 0) => `window.pokecraft.npcs.list.find(n => n.kind === '${kind}' && n.gym.def.id === 'treasure' && n.index === ${i})`;
+  await page.evaluate(() => document.exitPointerLock());
+  for (const [kind, i] of [['trainer', 0], ['trainer', 1], ['leader', 0]]) {
+    await page.evaluate(`window.pokecraft.talkTo(${vt(kind, i)})`);
+    t.ok(await playBattle(page), `Treasure Vault ${kind} ${i} battle finishes`);
+  }
+  t.ok(await page.evaluate(() => window.pokecraft.badges.includes('treasure')), 'Jackpot Badge awarded');
+
   // The arrow: on the hill it points at the stairs, down the stairs it points at the gym.
   const guide = await page.evaluate(async () => {
     const g = window.pokecraft, w = g.world, { GYMS } = await import('/src/gyms.js');

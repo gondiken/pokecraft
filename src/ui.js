@@ -53,6 +53,7 @@ export class UI {
     this.promptEl = document.getElementById('prompt');
     this.clock = document.getElementById('clock');
     this.guide = document.getElementById('guide');
+    this.keyCompass = document.getElementById('key-compass');
     this.badgeRow = document.getElementById('badges');
     this.titleEl = el('div', { id: 'champion-title', class: 'hidden' }, '★ Champion ★');
     this.badgeRow.after(this.titleEl);
@@ -154,6 +155,19 @@ export class UI {
 
   setGuide(text) {
     if (this.guide.textContent !== text) this.guide.textContent = text;
+  }
+
+  // T23 key compass: null hides it; otherwise { period, found } (seconds per glint, keys found so far).
+  setKeyCompass(state) {
+    const c = this.keyCompass;
+    if (!c) return;
+    if (!state) { if (this.keyShown !== null) { c.classList.add('hidden'); this.keyShown = null; } return; }
+    const tag = `${Math.round(state.period * 10)}/${state.found}`;
+    if (tag === this.keyShown) return;
+    this.keyShown = tag;
+    c.classList.remove('hidden');
+    c.style.setProperty('--glint', `${(Math.round(state.period * 10) / 10).toFixed(1)}s`);
+    c.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('got', i < state.found));
   }
 
   setClock(text) {

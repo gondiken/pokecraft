@@ -39,6 +39,13 @@ export default async function ({ browser, base, t }) {
   await B.waitForTimeout(1500);
   t.ok(wall && await B.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z) !== 0, wall), 'a block message that would break a gym wall is ignored by the visitor');
 
+  // T23 Treasure Vault: golden keys and opened chests belong to each player; nothing is sent.
+  const vaultChest = P => P.evaluate(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'treasure'); return { id: g.world.get(...gym.keys[0].chest), keys: g.keys.length }; });
+  await A.evaluate(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'treasure'), [x, y, z] = gym.keys[0].chest; g.gymLive.hit({ x, y, z, id: g.world.get(x, y, z) }); g.gymLive.update(0.3); });
+  await B.waitForTimeout(1500);
+  const [vA, vB] = [await vaultChest(A), await vaultChest(B)];
+  t.ok(vA.id === 48 && vA.keys === 1 && vB.id === 73 && vB.keys === 0, `the host opened the dig chest: it is still closed for the visitor (host ${vA.id}/${vA.keys} keys, visitor ${vB.id}/${vB.keys} keys)`);
+
   // T19 Firewall Maze: a friend standing on a friend pad opens the purple lane for the other player (positions only, no new
   // message). Switches stay per player: the host's red switch leaves the visitor's lasers alone.
   const fwSetup = async () => { const { B } = await import('/src/blocks.js'); window.fwB = B; };

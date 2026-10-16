@@ -222,6 +222,18 @@ Key ideas:
   Blocks `KEY_CHEST` 73 (glow, noLight) and `VAULT_DOOR` 74 (not placeable, `wallText`); next free block id is 75. Save field `keys` (`game.keys`, strings
   `'<gymId>:<key>'`, per player, `loadKeys` drops unknown ones). `breakBlock` calls `gymLive.hit` first (touch break button). `WORLD_VERSION` is 9.
   Tower: needs all 27 badges; guards 47-50, Champion 49-52 (Zenithar 52), rematch cap 55, Coach Dex up to level 50 (9th team).
+- **Treasure Vault (T23, `src/treasurevault.js`, slot 4):** `buildTreasureVault` (13x13, 15 high, `fy = clamp(terrainHeight, WATER_LEVEL + 1, 24)`, door `d = 6` towards the middle,
+  roof layer `fy + 14`) writes only inside the slot box (guarded `put`) and returns `door` (9 cells), `lights` (3, `fy + 4`), `keys: [{ id: 'dig', chest, mark, spot }, { id: 'build', chest },
+  { id: 'explore', chest, mouth, side }]` (order = `def.keys`), `protect` = vault box + 1-cell boxes round the dig and explore chests (the X, the shaft and the tunnel stay open, the roof is
+  protected: build a pillar at Cheb 7). **Dig:** first of `DIG_SPOTS` (d, s) whose 5x5 is dry and within +-6 of `fy` (else the first, water -> sand), a gold X (treasure wool, 9 on the
+  diagonals), the chest `DIG_DEPTH` 10 below the middle, shaft cells below each column's own ground forced solid. **Explore:** mouth `(d 12, s 18 * side)` (`side` = away from the X),
+  runs along -d to d -13 (steps down; a step-down cell is 3 high so it can be walked), 6 cells towards the middle, a 5x5x3 chamber with the chest; the tube rule turns every non-solid
+  neighbour into stone (only below the sky for the first cells). Plants within the X area and along the tunnel are cleared. `VaultLive` (`LIVE.vault`) holds no state: everything is
+  drawn from `game.keys` with `LiveCells`/`setLive` every 0.25 s (chest `KEY_CHEST` -> `CHEST_OPEN`, lights `COBBLE` -> treasure wool, door `VAULT_DOOR` -> `AIR` at 3 keys); `hit` opens a
+  chest (push key, sound `keyfound`, `game.save()`), `prompt` words chest/door. **Key compass:** `ui.setKeyCompass(null | { period, found })` (`#key-compass` in `#topright`, CSS var
+  `--glint`); `VaultLive.updateCompass` shows it within 40 blocks (Chebyshev) of the vault while a key is missing, `period = clamp(0.3 + dist / 12, 0.35, 3)` to the nearest missing chest;
+  `gymLive.of('treasure').compass` = `{ shown, period }` for tests. Spec `treasure-vault` (screenshots `t23-*.png`; BFS walks for tunnel and roof, save/load of `keys` through fresh
+  browsers, because a reload saves the old state on `beforeunload`).
 - **Treasure blocks (T20, spec `treasure`):** Sunstone 65, Ruby 66, Sapphire 67 (`TREASURE`), `glow` + `noLight` (they glint in
   dark caves without lighting them). **Limited blocks:** a block def with `limited: true` is only placeable while
   `game.blockCounts[id] > 0` (`isLimited`): breaking one adds 1 (placed or natural), placing uses 1; the hotbar slot and the

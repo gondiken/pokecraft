@@ -96,7 +96,7 @@ export default async function ({ browser, base, t }) {
   t.ok(sang.notes >= 3, 'music notes float up from it while it sings');
   t.ok(await page.evaluate(() => {
     const s = window.pokecraft.sound;
-    for (const n of ['bassblast', 'echoping', 'hit', 'badge']) s.play(n);
+    for (const n of ['bassblast', 'echoping', 'hit', 'badge', 'keyfound']) s.play(n);
     for (const id of ['echobat', 'boomwing', 'drumbo', 'bongorilla', 'dinglet', 'gongolin']) s.cry(id, 'sound');
     return s.errors.length === 0;
   }), `all sounds play without errors ${await page.evaluate(() => window.pokecraft.sound.errors.join('; '))}`);
