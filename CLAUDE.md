@@ -174,6 +174,14 @@ Key ideas:
   (`breakBlock`). Access: `WHEN.clock` (door windows from `daytime.js`; never skipped by the arrow), `WHERE.hidden` (arrow stops 20 blocks away),
   an optional `status()` that the guide appends, `def.welcome`. **No T19 access piece may define `tips`** (the access golden fixture would
   change). Specs: `clock-tower`, `hidden-hill`, `firewall-maze` (added by the builders), `gym`/`big-map` cover the shared parts.
+- **Hidden Hill (T19, `src/hiddenhill.js`, slot 1):** a radius-18, 12-high hill made of each column's own biome blocks (never lowers land), a 14x14 room
+  inside (camo-wool roof), a 1-wide tunnel to a cut face and a leaf hedge + flower bush at d = 17 hiding it. The door faces away from the start,
+  or the next side when the land in front of that side climbs more than 4 blocks (terrain only, so deterministic); a 5-wide ramp (1 block per block)
+  joins the cut to the land. `protect[0]` is ONE box holding room and tunnel (big-map's "2 outside protect[0]" test needs that). Gym object extras:
+  `door`, `bush`, `plants`. **Disguised people:** a trainer def with `disguise: 'stone'` is dressed by `NpcManager.disguiseAs` (a 1x2 `Disguise`, the person's
+  meshes hidden); `NpcManager.reveal(npc)` (talk/hit/bump, `talkTo` toasts "That stone pillar was ..."), `undisguise(beaten)` (in `begin()` and after a
+  visitor's world loads) and `onBump` (only fires while `playing()`: pointer locked). `NpcManager.clear()` disposes disguises before the models.
+  Spec `hidden-hill` (screenshots `t19-hill-*.png`).
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
