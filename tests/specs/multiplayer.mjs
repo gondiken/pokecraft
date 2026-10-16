@@ -53,7 +53,7 @@ export default async function ({ browser, base, t }) {
   await A.waitForFunction(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'cyber'); return gym.rooms[0].friend.every(([x, y, z]) => g.world.get(x, y, z) === 0); }, null, { timeout: 60000, polling: 200 }).catch(() => {});
   t.ok((await friendIds(A)).every(id => id === 0), 'the visitor on a friend pad opens the friend lane for the host');
   t.ok((await friendIds(B)).every(id => id === 59), 'it stays closed for the visitor on their own pad (only a friend opens it)');
-  await A.evaluate(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'cyber'), [sx, sz] = [...gym.rooms[0].switches.keys()][0].split(',').map(Number); g.gymLive.stand(sx, gym.fy, sz, g.world.get(sx, gym.fy, sz)); });
+  await A.evaluate(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'cyber'), [sx, , sz] = [...gym.rooms[0].switches.keys()][0].split(',').map(Number); g.gymLive.stand(sx, gym.fy, sz, g.world.get(sx, gym.fy, sz)); });
   const redNow = P => P.evaluate(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'cyber'); return gym.rooms[0].red.map(([x, y, z]) => g.world.get(x, y, z)); });
   const [redA, redB] = [await redNow(A), await redNow(B)];
   t.ok(redA.every(id => id === 0) && redB.every(id => id === 57), `the host's red switch leaves the visitor's lasers alone (host ${redA}, visitor ${redB})`);
