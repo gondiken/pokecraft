@@ -5,11 +5,11 @@ can pick it up without the conversation that produced it. Read `CLAUDE.md` first
 owner's preferences (original names only, child-friendly text, iPad support, easy gyms), the
 branch rules and the test gotchas.
 
-**Status (2026-10-15):** waves 1–6 (T1–T15) are done and merged (T4 became Bone/Alien
+**Status (2026-10-16):** waves 1–6 (T1–T15) are done and merged (T4 became Bone/Alien
 types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busting version string).
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
-Next: **wave 7b** (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25), then
-**wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
+Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
+Next: **wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -51,7 +51,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 6a ✅ | T12 Bug fixes · T13 Storage box · T14 Night gyms (Comet at night, alien look; Saucer in the sky ✅) | Input/overlays vs. team-panel UI vs. world + NPCs |
 | 6b ✅ | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 | 7a ✅ | T16 Guide cleanup · T17 Bigger map + protected gyms · T18 Time, Camo, Cyber types | Guide/UI vs. world generation vs. species data |
-| 7b | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
+| 7b ✅ | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
 | 8a | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
 | 8b | T22 Homes | Needs 8a |
 | 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
@@ -440,7 +440,7 @@ blocks): Cozy and Treasure. After wave 7 there are 26 types and 25 gyms; after w
 | Wave | Tasks | Why together |
 | --- | --- | --- |
 | 7a | T16 Guide cleanup (gym access objects) · T17 Bigger map + protected gyms · T18 Three new types (Time, Camo, Cyber) | Guide/UI vs. world generation vs. species/shapes/fx/spawns |
-| 7b | T19 Clock Tower, Hidden Hill and Firewall Maze gyms + Tower at 25 | Needs T16's access objects, T17's new land and T18's types |
+| 7b ✅ | T19 Clock Tower, Hidden Hill and Firewall Maze gyms + Tower at 25 | Needs T16's access objects, T17's new land and T18's types |
 | 8a | T20 Treasure blocks · T21 Two new types (Cozy, Treasure) | World/blocks vs. species data |
 | 8b | T22 Homes (Doormat, home types, meter, preview) | Needs T20's blocks and T21's creatures |
 | 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22's homes (the Cozy Gym lives in one) |
