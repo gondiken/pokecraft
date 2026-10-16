@@ -15,10 +15,11 @@ export default async function ({ browser, base, t }) {
   // 1. Caves exist in every world, and they are big: lots of cave air (at least 2.5 times the old caves),
   // one large connected cave, roomy halls, marked entrances, glowing decorations.
   const worlds = await page.evaluate(async seeds => {
-    const { World, WORLD_W, WORLD_D, WORLD_H } = await import('/src/world.js');
+    const { World, WORLD_W, WORLD_D, WORLD_H, OLD_W, OLD_D } = await import('/src/world.js');
+    // Caves are only in the old 224 area (the new land's gyms, like the Hidden Hill, have rooms under raised ground).
     const count = w => {
       let air = 0;
-      for (let x = 0; x < WORLD_W; x++) for (let z = 0; z < WORLD_D; z++) {
+      for (let x = 0; x < OLD_W; x++) for (let z = 0; z < OLD_D; z++) {
         const g = w.ground[x + z * WORLD_W];
         for (let y = 2; y <= g - 3; y++) if (w.get(x, y, z) === 0) air++;
       }

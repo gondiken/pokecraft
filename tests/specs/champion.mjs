@@ -46,7 +46,7 @@ export default async function ({ browser, base, t }) {
         middle: Math.hypot(tw.x - 112, tw.z - 112),
         back: w.get(tw.x - 6 * fx, tw.y, tw.z - 6 * fz), spire: w.get(tw.x, tw.y + 14, tw.z),
         dry: tw.y - 1 > WATER_LEVEL,
-        corners: w.gyms.every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6)) || (g.def.id === 'alien' && w.get(g.x + 6, g.y, g.z + 6) === WOOL.metal)), // the Saucer's corners are metal
+        corners: w.gyms.filter(g => g.def.slot == null).every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6)) || (g.def.id === 'alien' && w.get(g.x + 6, g.y, g.z + 6) === WOOL.metal)), // the Saucer's corners are metal
         pos: w.gyms.map(g => [g.x, g.z]),
       });
     }
