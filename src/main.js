@@ -112,6 +112,7 @@ game.creatures.onSpawn = wild => {
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
 game.creatures.env = { time: () => game.time, friends: () => (game.mp?.active ? [...game.mp.others.values()].map(a => a.pos) : []) };
 game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
+game.npcs.onBump = npc => { if (playing()) talkTo(npc); }; // walked into a disguised trainer (Hidden Hill)
 game.ui = new UI(game, atlas);
 game.fx = new Fx(scene);
 game.battle = new Battle(game);
@@ -295,6 +296,7 @@ function begin() {
     document.getElementById('touch').classList.remove('hidden');
     goFullscreen();
   }
+  game.npcs.undisguise(key => game.beaten.includes(key)); // beaten Hidden Hill trainers stay revealed
   resume();
   save(true);
 }
@@ -598,6 +600,7 @@ function talkTo(npc) {
   const gym = npc.gym.def;
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
+  if (npc.disguise && game.npcs.reveal(npc)) ui.toast(`That stone pillar was ${npc.name}!`);
   const list = trainersOf(gym), where = gym.leaderWhere || 'at the back';
   if (npc.kind === 'trainer') {
     const i = npc.index || 0;
@@ -841,6 +844,10 @@ function updateTarget() {
     highlight.visible = true;
     highlight.scale.setScalar(target.wild.size);
     highlight.position.set(target.wild.pos.x, target.wild.pos.y + target.wild.size / 2, target.wild.pos.z);
+  } else if (target.npc?.disguise) { // a disguised trainer is outlined like the stone it pretends to be
+    highlight.visible = true;
+    highlight.scale.set(1, 2, 1);
+    highlight.position.set(target.npc.pos.x, target.npc.pos.y + 1, target.npc.pos.z);
   } else if (target.block) {
     highlight.visible = true;
     highlight.scale.setScalar(1);

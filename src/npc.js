@@ -1,7 +1,10 @@
 // People in the world: gym trainers, gym leaders and the healer.
 import * as THREE from 'three';
 import { disposeModel } from './species.js';
-import { trainersOf } from './gyms.js';
+import { trainersOf, trainerKey } from './gyms.js';
+import { Disguise } from './disguise.js';
+import { B } from './blocks.js';
+import { sound } from './sound.js';
 
 function box(parent, w, h, d, color, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
@@ -89,6 +92,8 @@ class Npc {
     this.model = buildPerson(colors, { hat, cape, look });
     this.model.userData.npc = this;
     this.t = Math.random() * 10;
+    this.disguise = null; // T19: Hidden Hill trainers stand about as a stone pillar until found (NpcManager.disguiseAs)
+    this.popT = -1;
   }
 
   get title() {
@@ -104,10 +109,47 @@ export class NpcManager {
     this.saucers = [];
     this.night = null;
     this.raycaster = new THREE.Raycaster();
+    this.onBump = null; // main.js: the player walked into a disguised trainer
+  }
+
+  // Dresses a person as a 1x2 block of `block` (T18's Disguise, the same rule as Camo creatures): the person is
+  // hidden, the block blinks now and then. Only the disguise is shown; nothing in the world changes.
+  disguiseAs(npc, world, block = B.STONE) {
+    const d = new Disguise(world, block, { w: 1, h: 2 });
+    d.setLight(Math.floor(npc.pos.x), Math.floor(npc.pos.y), Math.floor(npc.pos.z));
+    for (const c of npc.model.children) c.visible = false;
+    npc.model.add(d.group);
+    npc.disguise = d;
+    npc.heading = npc.homeHeading = 0;
+    npc.model.rotation.y = 0;
+  }
+
+  // Pops a disguised person out (0.3 s). Returns true if it was disguised.
+  reveal(npc) {
+    if (!npc.disguise) return false;
+    npc.disguise.dispose();
+    npc.disguise = null;
+    for (const c of npc.model.children) c.visible = true;
+    npc.model.scale.setScalar(0.3);
+    npc.popT = 0;
+    sound.play('popout');
+    return true;
+  }
+
+  // Beaten trainers stay revealed: `beaten(key)` says whether a trainer key is in the beaten list.
+  undisguise(beaten) {
+    for (const n of this.list) {
+      if (!n.disguise) continue;
+      if (beaten(trainerKey(n.gym.def, n.index || 0))) {
+        n.disguise.dispose();
+        n.disguise = null;
+        for (const c of n.model.children) c.visible = true;
+      }
+    }
   }
 
   clear() {
-    for (const n of this.list) { this.scene.remove(n.model); disposeModel(n.model); }
+    for (const n of this.list) { n.disguise?.dispose(); this.scene.remove(n.model); disposeModel(n.model); } // a disguise uses the world's shared material: dispose it first
     this.list = [];
     for (const s of this.saucers) { this.scene.remove(s.group); disposeModel(s.group); }
     this.saucers = [];
@@ -136,10 +178,14 @@ export class NpcManager {
         pos: gym.leaderPos, heading: facing, cape: typeColor, look: leader.look, def: leader,
       }));
       const spots = gym.trainerPositions || [gym.trainerPos];
-      trainersOf(gym.def).forEach((trainer, i) => this.add(new Npc({
-        kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-        pos: spots[i], heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
-      })));
+      trainersOf(gym.def).forEach((trainer, i) => {
+        const npc = new Npc({
+          kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
+          pos: spots[i], heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+        });
+        this.add(npc);
+        if (trainer.disguise === 'stone') this.disguiseAs(npc, world, B.STONE);
+      });
       if (gym.def.saucer) this.addSaucer(gym);
     }
     // The Champion's Tower: nurse, coach, two guards and the champion.
@@ -215,6 +261,18 @@ export class NpcManager {
     }
     for (const n of this.list) {
       n.t += dt;
+      if (n.disguise) { // a stone pillar: it only blinks, and walking into it finds it
+        n.disguise.update(dt, playerPos);
+        const dy = playerPos.y - n.pos.y;
+        if (this.onBump && Math.abs(playerPos.x - n.pos.x) < 0.9 && Math.abs(playerPos.z - n.pos.z) < 0.9 && dy >= -0.1 && dy < 3) this.onBump(n);
+        continue;
+      }
+      if (n.popT >= 0) { // the little pop when a person jumps out of a disguise
+        n.popT += dt;
+        const k = Math.min(1, n.popT / 0.3);
+        n.model.scale.setScalar(k < 0.6 ? 0.3 + 0.8 * (k / 0.6) : 1.1 - 0.1 * ((k - 0.6) / 0.4));
+        if (k >= 1) { n.popT = -1; n.model.scale.setScalar(1); }
+      }
       const p = n.model.userData.parts;
       const near = n.pos.distanceTo(playerPos) < 7;
       // Turn to face the player when they come close.

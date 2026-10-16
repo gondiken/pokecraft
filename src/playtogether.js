@@ -22,6 +22,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
       };
       createWorld(data.seed, data.edits, data.size);
+      game.npcs.undisguise(key => game.beaten.includes(key));
       game.time = data.time;
       if (data.weather) game.weather.apply(data.weather);
       const np = game.player;
