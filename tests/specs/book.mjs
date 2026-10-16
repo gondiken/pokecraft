@@ -150,14 +150,59 @@ export default async function ({ browser, base, t }) {
   await page.screenshot({ path: path.join(SHOTS, 'book-list.png') });
   t.ok(await visible('#book-grid'), 'the list fills in with pictures');
 
-  // 11
+  // 11: wiki links between the team screen and the Book
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('p');
+  await page.waitForTimeout(400);
+  const lead = await g(() => window.pokecraft.party[0].species);
+  await page.evaluate(() => document.querySelector('#party-list .mon .wlink.nm').click());
+  await page.waitForTimeout(300);
+  const w1 = await page.evaluate(() => ({ book: window.pokecraft.book.isOpen, team: !document.getElementById('party').classList.contains('hidden'),
+    page: window.pokecraft.book.page, back: document.getElementById('book-back')?.textContent, yours: document.querySelector('.book-yours')?.textContent || '' }));
+  t.ok(w1.book && !w1.team && w1.page === lead && w1.back === '‹ Team', `a team creature's name opens its Book page (${w1.page}, ${w1.back})`);
+  t.ok(w1.yours.includes('In your team: Lv'), `its page says which ones are yours (${w1.yours})`);
+  const mv = await page.evaluate(() => { const b = document.querySelector('.book-move button.wlink'); b.click(); return b.dataset.move; });
+  await page.waitForTimeout(300);
+  const w2 = await page.evaluate(() => ({ move: document.querySelector('.book-move-page')?.dataset.move, learners: [...document.querySelectorAll('.book-learners .book-stage')].map(b => b.dataset.species) }));
+  t.ok(w2.move === mv && w2.learners.includes(lead), `a move name opens the move's page with who learns it (${mv}: ${w2.learners.length} known)`);
+  await page.waitForFunction(() => [...document.querySelectorAll('#book-detail img')].every(i => i.src.startsWith('data:')), null, { timeout: 60000 });
+  await page.screenshot({ path: path.join(SHOTS, 'book-move.png') });
+  await page.evaluate(() => document.querySelector('.book-movepic .wlink-chip').click());
+  await page.waitForTimeout(300);
+  const w3 = await page.evaluate(() => ({ filter: window.pokecraft.book.filter, list: !!document.getElementById('book-grid'), match: !!document.getElementById('book-typematch') }));
+  t.ok(w3.list && w3.match && w3.filter !== 'all', `a type chip opens that type's list with its strengths (${w3.filter})`);
+  await page.evaluate(() => document.getElementById('book-back').click());
+  await page.waitForTimeout(200);
+  t.ok(await page.evaluate(m => document.querySelector('.book-move-page')?.dataset.move === m, mv), 'Back returns to the move page');
+  await page.evaluate(() => document.getElementById('book-back').click());
+  await page.waitForTimeout(200);
+  t.ok(await page.evaluate(s => window.pokecraft.book.page === s, lead), 'Back again returns to the creature');
+  await page.evaluate(() => document.getElementById('book-back').click());
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !window.pokecraft.book.isOpen && !document.getElementById('party').classList.contains('hidden')), '‹ Team returns to the team screen');
+  await page.evaluate(() => document.querySelector('#party-list .mon .moves button').click());
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !!document.querySelector('.book-move-page')), 'a move on a team card opens its Book page');
+  await page.evaluate(() => document.querySelector('.book-learners .book-stage')?.click());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.getElementById('book-to-team')?.click() ?? window.pokecraft.book.toTeam());
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => !window.pokecraft.book.isOpen && window.pokecraft.ui.panelOpen), 'the team screen opens again from the Book');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('c');
+  await page.waitForTimeout(300);
+  t.ok(await page.evaluate(() => window.pokecraft.book.isOpen && document.getElementById('book-back')?.textContent !== '‹ Team'), 'opening the Book with C forgets the way back to the team');
+
+  // 12
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
   t.ok(!(await visible('#book')) && await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'Esc closes the book');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
-  // 12: old saves
+  // 13: old saves
   const old = {
     seed: 4242, edits: [], pos: [100.5, 31, 102.5], yaw: 0, pitch: 0, time: 0.2, size: [224, 224],
     party: [{ uid: 'a', species: 'zapple', level: 8, xp: 307, hp: 20, moves: ['tackle', 'spark'] }],
@@ -176,7 +221,7 @@ export default async function ({ browser, base, t }) {
   t.ok(!p2.errors.length, `no page errors ${p2.errors.join('; ')}`);
   await p2.context().close();
 
-  // 13: iPad
+  // 14: iPad
   const p3 = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
   await p3.tap('text=New Game');
   await p3.tap('.starter >> nth=0');

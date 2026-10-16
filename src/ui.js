@@ -4,6 +4,7 @@ import { BLOCKS, PLACEABLE, drawBlockIcon } from './blocks.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
+import { typeLink } from './book.js';
 
 const BOX_SORT_KEY = 'pokecraft-box-sort';
 const BOX_SORTS = [['newest', 'Newest'], ['level', 'Level'], ['name', 'Name'], ['type', 'Type']];
@@ -170,14 +171,15 @@ export class UI {
     }
     return el('div', { class: `mon${inParty && i === 0 ? ' lead' : ''}` },
       el('div', { class: 'top' },
-        el('img', { src: portrait(c.species, 70, 60), width: 70, height: 60, alt: '' }),
+        el('button', { class: 'wlink pic', 'data-species': c.species, title: `${sp.name} in the Creature Book`, onclick: () => this.openBook({ species: c.species }) },
+          el('img', { src: portrait(c.species, 70, 60), width: 70, height: 60, alt: sp.name })),
         el('div', { style: 'flex:1;margin-left:8px' },
-          el('div', { class: 'nm' }, sp.name),
-          el('div', {}, el('span', { class: 'type', style: `background:${TYPE_COLORS[sp.type]}` }, sp.type), ` Lv${c.level}`))),
+          el('button', { class: 'wlink nm', 'data-species': c.species, onclick: () => this.openBook({ species: c.species }) }, sp.name),
+          el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`))),
       el('div', {}, `HP ${c.hp}/${st.maxHp} · ATK ${st.atk} · DEF ${st.def} · SPD ${st.spd}`),
       el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })),
       el('div', { class: 'xpbar' }, el('div', { style: `width:${Math.max(0, Math.min(1, xpFrac)) * 100}%` })),
-      el('div', { class: 'moves' }, ...c.moves.map(m => el('span', { style: `background:${TYPE_COLORS[MOVES[m].type]}` }, MOVES[m].name))),
+      el('div', { class: 'moves' }, ...c.moves.map(m => el('button', { 'data-move': m, style: `background:${TYPE_COLORS[MOVES[m].type]}`, onclick: () => this.openBook({ move: m }) }, MOVES[m].name))),
       btns.length > 0 && el('div', { class: 'btns' }, ...btns));
   }
 
@@ -259,6 +261,21 @@ export class UI {
     this.confirmBox.classList.add('hidden');
   }
 
+  // Wiki links on the team screen: jump to a Creature Book page; its Back button comes back here.
+  openBook(at) {
+    this.teamScroll = this.partyPanel.querySelector('.panel')?.scrollTop || 0;
+    this.closeConfirm();
+    this.partyPanel.classList.add('hidden');
+    this.game.book.open({ ...at, from: 'team' });
+  }
+
+  backToTeam() {
+    this.openPanel('team');
+    const panel = this.partyPanel.querySelector('.panel');
+    if (panel && this.teamScroll != null) panel.scrollTop = this.teamScroll;
+    this.teamScroll = null;
+  }
+
   // The team panel or the Blocks panel.
   get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden'); }
 
@@ -275,6 +292,7 @@ export class UI {
 
   closePanel() {
     this.closeConfirm();
+    this.teamScroll = null;
     this.partyPanel.classList.add('hidden');
     this.blocksPanel.classList.add('hidden');
     this.bookPanel.classList.add('hidden');

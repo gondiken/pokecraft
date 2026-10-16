@@ -46,7 +46,7 @@ this file is for working on the code.
 | `src/species.js` | Types + effectiveness chart, moves (123, with `fx`; `moveInfo(id)` gives the button/Book words), all 182 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the T18 shapes hourglass, pendulum, alarmclock, sunmoon, bushblock, sandcastle, stonecube, igloo, pixelblob, cursor, wifiwing, glitchghost; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
 | `src/gyms.js` | The 25 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
-| `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + detail pages, spawn/evolution/type-matchup helpers |
+| `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + creature + move pages, spawn/evolution/type-matchup helpers; wiki links (T19.5): `go(view)`/`back()` trail, `open({ species, move, type, from: 'team' })`, `typeLink`; the team screen links in via `ui.openBook` / `ui.backToTeam` |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome tables + spawn conditions), wandering, Camo disguises (`spawnAt`, `Wild.reveal`) |
 | `src/spawnrules.js` | Spawn conditions as data: day/night, dawn/dusk golden hour, together; `goldenHour`, `condOf`, `condOk`, `CONDITIONS` |
@@ -269,7 +269,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; next is wave 8 (T20–T23: homes, Cozy/Treasure types and gyms), then the backlog. Read it before
+  and the backlog). All waves (T1–T11), wave 7.5 (T19.5: Book wiki links) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; next is wave 8 (T20–T23: homes, Cozy/Treasure types and gyms), then the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;

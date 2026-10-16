@@ -89,21 +89,29 @@ function learnList(id) {
 
 const chip = type => el('span', { class: 'chip', style: `background:${TYPE_COLORS[type] || '#888'}` }, type);
 
+// Wiki links: a type chip that opens that type's list, a move name that opens the move's page.
+export const typeLink = (type, go) => el('button', {
+  class: 'chip wlink-chip', 'data-type': type, style: `background:${TYPE_COLORS[type] || '#888'}`,
+  onclick: e => { e.stopPropagation(); go(type); },
+}, type);
+const TRAIL_MAX = 30;
+
 export class Book {
   constructor(game) {
     this.game = game;
     this.seen = new Set();
     this.caught = new Set();
     this.filter = 'all';
-    this.page = null;
+    this.page = null; // the species page shown, or null
+    this.view = { kind: 'list' }; // what is shown: { kind: 'list' } | { kind: 'species', id } | { kind: 'move', id }
+    this.trail = []; // pages Back returns to (newest last); { kind: 'team' } means "back to the team screen"
     this.panel = document.getElementById('book');
     this.countEl = document.getElementById('book-count');
     this.body = document.getElementById('book-body');
     this.renderId = 0;
-    this.listScroll = 0;
   }
 
-  reset() { this.seen.clear(); this.caught.clear(); this.page = null; }
+  reset() { this.seen.clear(); this.caught.clear(); this.page = null; this.view = { kind: 'list' }; this.trail = []; this.filter = 'all'; }
 
   load(saved) {
     this.reset();
@@ -147,15 +155,70 @@ export class Book {
 
   get isOpen() { return !this.panel.classList.contains('hidden'); }
 
-  open() {
+  // open() shows the last page; open({ species | move | type, from: 'team' }) jumps to a page, and
+  // with from: 'team' the Back button returns to the team screen.
+  open(at = null) {
     this.syncTeam();
-    this.rerender();
+    this.trail = this.trail.filter(p => p.kind !== 'team');
+    if (at) {
+      this.trail = at.from === 'team' ? [{ kind: 'team' }] : [];
+      if (at.type) this.filter = at.type;
+      this.view = at.species && SPECIES[at.species] ? { kind: 'species', id: at.species }
+        : at.move && MOVES[at.move] ? { kind: 'move', id: at.move } : { kind: 'list' };
+    }
     this.panel.classList.remove('hidden');
+    this.render(this.view, at ? 0 : null);
   }
 
   close() { this.panel.classList.add('hidden'); }
 
-  rerender() { if (this.page) this.showDetail(this.page, true); else this.showList(); }
+  rerender() { this.render(this.view, null); }
+
+  // Go to a page; Back comes back here (with the same scroll). replace = browse without a new Back step.
+  go(view, replace = false) {
+    if (!replace && (view.kind !== this.view.kind || view.id !== this.view.id)) this.remember();
+    this.render(view, 0);
+  }
+
+  remember() {
+    if (!this.isOpen) return;
+    this.trail.push({ ...this.view, filter: this.filter, scroll: this.scroller.scrollTop });
+    if (this.trail.length > TRAIL_MAX) this.trail.splice(this.trail[0].kind === 'team' ? 1 : 0, 1);
+  }
+
+  back() {
+    const prev = this.trail.pop();
+    if (!prev) { this.go({ kind: 'list' }, true); return; }
+    if (prev.kind === 'team') { this.close(); this.game.ui?.backToTeam(); return; }
+    if (prev.filter) this.filter = prev.filter;
+    this.render(prev, prev.scroll || 0);
+  }
+
+  // scroll: a number to scroll to, or null to keep the scroll where it is.
+  render(view, scroll) {
+    const keep = this.scroller.scrollTop;
+    this.view = { kind: view.kind, id: view.id };
+    this.page = view.kind === 'species' ? view.id : null;
+    this.renderId++;
+    this.updateCount();
+    if (view.kind === 'species' && SPECIES[view.id]) this.renderSpecies(view.id);
+    else if (view.kind === 'move' && MOVES[view.id]) this.renderMove(view.id);
+    else { this.view = { kind: 'list' }; this.page = null; this.renderList(); }
+    this.scroller.scrollTop = scroll ?? keep;
+  }
+
+  showList() { this.go({ kind: 'list' }); }
+  showDetail(id) { if (SPECIES[id]) this.go({ kind: 'species', id }); }
+  showMove(id) { if (MOVES[id]) this.go({ kind: 'move', id }); }
+  showType(type) {
+    if (!TYPE_COLORS[type]) return;
+    if (this.view.kind !== 'list' || this.filter !== type) this.remember();
+    this.filter = type;
+    this.render({ kind: 'list' }, 0);
+  }
+
+  // Close the Book and open the team screen (from the "Yours" line on a page).
+  toTeam() { this.close(); this.trail = []; this.game.ui?.backToTeam(); }
 
   updateCount() {
     const c = this.counts();
@@ -188,23 +251,33 @@ export class Book {
     return img;
   }
 
-  showList() {
-    this.page = null;
-    const renderId = ++this.renderId;
-    this.updateCount();
+  typeLink(type) { return typeLink(type, t => this.showType(t)); }
+
+  // The top row: Back (to the last page, or to the team screen) and, on species pages, ‹ › and the number.
+  topBar(...rest) {
+    const last = this.trail[this.trail.length - 1];
+    const label = last?.kind === 'team' ? '‹ Team' : '‹ Back';
+    return el('div', { id: 'book-top' }, el('button', { id: 'book-back', onclick: () => this.back() }, label), ...rest);
+  }
+
+  renderList() {
+    const renderId = this.renderId;
     const queue = [];
     const filters = el('div', { id: 'book-filters' },
       ...['all', ...TYPES()].map(f => el('button', {
         class: 'book-filter' + (this.filter === f ? ' sel' : ''), 'data-filter': f,
         style: f === 'all' ? '' : `background:${TYPE_COLORS[f]}`,
-        onclick: () => { this.filter = f; this.listScroll = 0; this.showList(); },
+        onclick: () => { this.filter = f; this.render({ kind: 'list' }, 0); },
       }, f)));
     const ids = this.visibleIds();
-    const parts = [filters];
+    const parts = [];
+    if (this.trail.length) parts.push(this.topBar());
+    parts.push(filters);
     if (this.filter !== 'all') {
       const mine = bookOrder().filter(id => SPECIES[id].type === this.filter);
       const s = mine.filter(id => this.seen.has(id)).length, c = mine.filter(id => this.caught.has(id)).length;
       parts.push(el('p', { id: 'book-typeinfo' }, `${cap(this.filter)}: ${s} seen · ${c} caught (of ${mine.length})`));
+      parts.push(this.matchupSection(this.filter, 'book-typematch'));
     }
     parts.push(el('div', { id: 'book-grid' }, ...ids.map(id => {
       const state = this.caught.has(id) ? 'caught' : this.seen.has(id) ? 'seen' : 'unseen';
@@ -217,32 +290,25 @@ export class Book {
     })));
     this.body.replaceChildren(...parts);
     this.fillImages(queue, renderId);
-    this.scroller.scrollTop = this.listScroll;
   }
 
-  showDetail(id, keepScroll = false) {
-    if (!SPECIES[id]) return;
-    if (this.page === null) this.listScroll = this.scroller.scrollTop;
-    const scroll = this.scroller.scrollTop;
-    this.page = id;
-    const renderId = ++this.renderId;
-    this.updateCount();
+  renderSpecies(id) {
+    const renderId = this.renderId;
     const queue = [];
     const sp = SPECIES[id];
     const caught = this.caught.has(id), seen = this.seen.has(id);
     const ids = this.visibleIds();
     const at = ids.indexOf(id);
-    const go = d => { if (ids.length) this.showDetail(ids[(Math.max(at, 0) + d + ids.length) % ids.length]); };
+    const step = d => { if (ids.length) this.go({ kind: 'species', id: ids[(Math.max(at, 0) + d + ids.length) % ids.length] }, true); };
 
-    const top = el('div', { id: 'book-top' },
-      el('button', { id: 'book-back', onclick: () => this.showList() }, '‹ Back'),
-      el('button', { id: 'book-prev', onclick: () => go(-1) }, '‹'),
-      el('button', { id: 'book-next', onclick: () => go(1) }, '›'),
+    const top = this.topBar(
+      el('button', { id: 'book-prev', onclick: () => step(-1) }, '‹'),
+      el('button', { id: 'book-next', onclick: () => step(1) }, '›'),
       el('span', { class: 'book-num' }, num(id)));
 
     const left = el('div', { class: 'book-pic' }, this.picture(id, 220, 188, queue, seen ? sp.name : ''),
       el('h3', { class: 'book-title' }, seen ? sp.name : '???'));
-    if (seen) left.append(chip(sp.type));
+    if (seen) left.append(this.typeLink(sp.type));
     const info = el('div', { class: 'book-info' });
     if (!seen) {
       info.append(el('p', {}, "You haven't met this creature yet. Keep exploring!"));
@@ -250,11 +316,53 @@ export class Book {
       info.append(el('p', {}, 'Catch one to fill in this page!'));
     } else {
       info.append(el('p', { class: 'book-desc' }, sp.desc));
+      const yours = this.yoursSection(id);
+      if (yours) info.append(yours);
       info.append(this.livesSection(id), this.evolutionSection(id, queue), this.movesSection(id), this.matchupSection(sp.type));
     }
     this.body.replaceChildren(top, el('div', { id: 'book-detail' }, left, info));
     this.fillImages(queue, renderId);
-    this.scroller.scrollTop = keepScroll ? scroll : 0;
+  }
+
+  // A move's page: its type and what it does, and the creatures you know that learn it.
+  renderMove(id) {
+    const renderId = this.renderId;
+    const queue = [];
+    const m = MOVES[id];
+    const learners = [];
+    for (const sid of bookOrder()) {
+      const l = learnList(sid).find(x => x.move === id);
+      if (l) learners.push({ id: sid, level: l.level });
+    }
+    const known = learners.filter(l => this.seen.has(l.id));
+    const hidden = learners.length - known.length;
+    const info = el('div', { class: 'book-info' },
+      el('p', {}, cap(moveInfo(id).text || 'a move') + '.'),
+      m.acc != null && el('p', { class: 'book-note' }, m.sure || m.acc >= 1 ? 'Always hits.' : `Hits ${Math.round(m.acc * 100)} times out of 100.`),
+      el('h3', {}, 'Who learns it'));
+    if (known.length) {
+      info.append(el('div', { class: 'book-evo book-learners' }, ...known.map(l =>
+        el('button', { class: 'book-stage', 'data-species': l.id, onclick: () => this.showDetail(l.id) },
+          this.picture(l.id, 70, 60, queue), el('span', {}, SPECIES[l.id].name), el('span', { class: 'book-lv' }, `Lv ${l.level}`)))));
+    }
+    if (hidden) info.append(el('p', { class: 'book-note' }, known.length
+      ? `…and ${hidden} more you haven't met yet.` : `${hidden} creature${hidden === 1 ? '' : 's'} you haven't met yet.`));
+    if (!learners.length) info.append(el('p', {}, 'No creature learns it by training.'));
+    const left = el('div', { class: 'book-pic book-movepic', style: `border-color:${TYPE_COLORS[m.type] || '#888'}` },
+      el('h3', { class: 'book-title' }, (m.sig ? '★ ' : '') + m.name), this.typeLink(m.type));
+    this.body.replaceChildren(this.topBar(), el('div', { id: 'book-detail', class: 'book-move-page', 'data-move': id }, left, info));
+    this.fillImages(queue, renderId);
+  }
+
+  // "Yours": the levels of this creature in your team and box, with a link to the team screen.
+  yoursSection(id) {
+    const g = this.game;
+    const lv = list => (list || []).filter(c => c.species === id).map(c => `Lv ${c.level}`);
+    const team = lv(g.party), box = lv(g.box);
+    if (!team.length && !box.length) return null;
+    const words = [team.length && `In your team: ${team.join(', ')}`, box.length && `In your box: ${box.join(', ')}`].filter(Boolean).join(' · ');
+    return el('div', { class: 'book-sec book-yours' }, el('h3', {}, 'Yours'),
+      el('p', {}, words, ' ', el('button', { class: 'wlink', id: 'book-to-team', onclick: () => this.toTeam() }, 'See your team')));
   }
 
   livesSection(id) {
@@ -267,8 +375,10 @@ export class Book {
       out.append(el('p', {}, 'Not found in the wild.'));
       const from = evolvesFrom(id);
       if (from) {
-        const nm = this.seen.has(from.from) ? SPECIES[from.from].name : '???';
-        out.append(el('p', {}, `Train a ${nm} to Lv ${from.level} to get one.`));
+        const known = this.seen.has(from.from);
+        out.append(el('p', {}, 'Train a ', known
+          ? el('button', { class: 'wlink', 'data-species': from.from, onclick: () => this.showDetail(from.from) }, SPECIES[from.from].name)
+          : '???', ` to Lv ${from.level} to get one.`));
       }
     }
     const d = SPECIES[id].disguise;
@@ -297,19 +407,21 @@ export class Book {
       const m = MOVES[move];
       if (!m) return null;
       return el('div', { class: 'book-move' },
-        el('span', { class: 'lv' }, `Lv ${level}`), el('span', { class: 'mn' }, (m.sig ? '★ ' : '') + m.name), chip(m.type),
+        el('span', { class: 'lv' }, `Lv ${level}`),
+        el('button', { class: 'wlink mn', 'data-move': move, onclick: () => this.showMove(move) }, (m.sig ? '★ ' : '') + m.name),
+        this.typeLink(m.type),
         el('span', { class: 'mp' }, moveInfo(move).text));
     }).filter(Boolean);
     out.append(el('div', { class: 'book-moves' }, ...rows));
     return out;
   }
 
-  matchupSection(type) {
+  matchupSection(type, id = null) {
     const m = typeMatchups(type);
-    const out = el('div', { class: 'book-sec' });
+    const out = el('div', { class: 'book-sec', id });
     const add = (title, list, note) => {
       if (!list.length) return;
-      out.append(el('h3', {}, title), el('div', { class: 'book-chips' }, ...list.map(chip)), el('p', { class: 'book-note' }, note));
+      out.append(el('h3', {}, title), el('div', { class: 'book-chips' }, ...list.map(t => this.typeLink(t))), el('p', { class: 'book-note' }, note));
     };
     add('Strong against', m.strong, 'for its own type of attacks');
     add('Weak against', m.weak, 'attacks of these types hurt it more');

@@ -173,7 +173,8 @@ button.primary { background: #3b6fd8; }
 .mon .top { display: flex; justify-content: space-between; align-items: center; }
 .mon .nm { font-family: 'Press Start 2P', monospace; font-size: 11px; }
 .mon .moves { display: flex; flex-wrap: wrap; gap: 4px; }
-.mon .moves span { font-size: 15px; padding: 0 5px; color: #111; }
+.mon .moves button { font-family: 'VT323', monospace; font-size: 17px; padding: 1px 6px; color: #111; box-shadow: none; border: 2px solid #1b1d26; }
+body.touch .mon .moves button { font-size: 19px; min-height: 36px; padding: 4px 8px; }
 .mon .btns { display: flex; gap: 6px; margin-top: 4px; }
 .mon .btns button { font-size: 8px; padding: 6px 8px; }
 .empty { color: var(--muted); }
@@ -419,3 +420,23 @@ body.touch #book-filters button { font-size: 11px; min-height: 44px; padding: 8p
 .book-move .lv { width: 70px; white-space: nowrap; color: var(--muted); }
 .book-move .mn { min-width: 110px; }
 .book-move .mp { color: var(--muted); }
+
+/* ---------- wiki links (team screen <-> Creature Book) ---------- */
+button.wlink {
+  background: none; border: none; box-shadow: none; padding: 0; color: inherit; font: inherit; text-align: left;
+  text-decoration: underline dotted; text-underline-offset: 4px;
+}
+button.wlink:hover { color: var(--accent); filter: none; }
+button.wlink.pic { text-decoration: none; line-height: 0; }
+.mon .wlink.nm { font-family: 'Press Start 2P', monospace; font-size: 12px; display: block; margin-bottom: 4px; }
+.book-info button.wlink { color: var(--accent); }
+button.chip.wlink-chip { font-family: 'VT323', monospace; box-shadow: none; padding: 2px 8px; font-size: 18px; color: #14161e; }
+.mon button.chip.wlink-chip { font-size: 16px; padding: 0 6px; }
+body.touch button.chip.wlink-chip { min-height: 36px; }
+body.touch .book-move button.wlink { min-height: 40px; }
+.book-learners .book-lv { color: var(--muted); font-size: 16px; }
+.book-movepic { border: 4px solid; padding: 20px 10px; }
+.book-movepic .book-title { font-size: 13px; }
+#book-typematch { margin: -4px 0 12px; }
+#book-typematch h3 { margin-top: 6px; }
+#book-typematch .book-note { font-size: 16px; color: var(--muted); margin: 4px 0 0; }

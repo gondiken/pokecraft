@@ -9,6 +9,7 @@ branch rules and the test gotchas.
 types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busting version string).
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
+Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
 Next: **wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
 
 ## How to run this (multi-agent)
@@ -52,6 +53,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 6b ✅ | T15 Cleanup + faster tests | Touches every file, so it runs alone after 6a is merged |
 | 7a ✅ | T16 Guide cleanup · T17 Bigger map + protected gyms · T18 Time, Camo, Cyber types | Guide/UI vs. world generation vs. species data |
 | 7b ✅ | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
+| 7.5 ✅ | T19.5 Book wiki links | Small UI task (book.js, ui.js) between waves 7 and 8 |
 | 8a | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
 | 8b | T22 Homes | Needs 8a |
 | 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
@@ -441,6 +443,7 @@ blocks): Cozy and Treasure. After wave 7 there are 26 types and 25 gyms; after w
 | --- | --- | --- |
 | 7a | T16 Guide cleanup (gym access objects) · T17 Bigger map + protected gyms · T18 Three new types (Time, Camo, Cyber) | Guide/UI vs. world generation vs. species/shapes/fx/spawns |
 | 7b ✅ | T19 Clock Tower, Hidden Hill and Firewall Maze gyms + Tower at 25 | Needs T16's access objects, T17's new land and T18's types |
+| 7.5 ✅ | T19.5 Book wiki links | Small UI task (book.js, ui.js) between waves 7 and 8 |
 | 8a | T20 Treasure blocks · T21 Two new types (Cozy, Treasure) | World/blocks vs. species data |
 | 8b | T22 Homes (Doormat, home types, meter, preview) | Needs T20's blocks and T21's creatures |
 | 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22's homes (the Cozy Gym lives in one) |
@@ -739,6 +742,21 @@ Done when: the gym spec beats both (the Cozy Gym in a test home, including the "
 the three keys found and the vault opened), the Tower refuses with 25 badges and battles with 27,
 and `old-saves`, `champion`, `new-gyms`, `multiplayer` pass. README (gyms, homes, types) and
 CLAUDE.md updated.
+
+---
+
+## T19.5 · Creature Book wiki links (size: S)
+
+**Done** (wave 7.5; no separate plan).
+
+- Team and box cards: the creature's name and picture open its Book page, its type chip opens that type's list,
+  each move opens the move's page. The Book's Back button then says **‹ Team** and returns there (same scroll).
+- Book pages link to each other: move names (move page: what it does, how often it hits, the creatures you have
+  seen that learn it and at which level), type chips (the type's list with its strengths and weaknesses),
+  "Train a ... to Lv N" names, and a **Yours** line (levels in team and box, "See your team").
+- `book.go(view)` / `back()` keep a trail of pages (with scroll); ‹ › on a creature page browse without adding
+  Back steps. `book.open({ species | move | type, from: 'team' })`; `ui.openBook(at)` / `ui.backToTeam()`.
+- Spec: `book` step 11.
 
 ---
 
