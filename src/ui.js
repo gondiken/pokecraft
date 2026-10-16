@@ -293,6 +293,7 @@ export class UI {
   get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
 
   openPanel(which = 'team') {
+    this.setPrompt(''); // the prompt line would show through the panel
     if (which === 'book') { this.game.book.open(); return; }
     if (which === 'home') { // T22: homeUi.open() fills #home-body
       this.homePanel.classList.remove('hidden');
