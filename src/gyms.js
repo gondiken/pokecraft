@@ -248,6 +248,38 @@ export const GYMS = [
     intro: ['Welcome to the server room! You beat every firewall.', 'Now let us see if your team can beat my upgrades!'],
     lose: 'System beaten! The Circuit Badge is yours.',
   },
+  {
+    id: 'cozy', type: 'cozy', name: 'Cozy Gym', badge: 'Snuggle Badge', place: 'home', live: 'home',
+    access: { where: 'home', when: 'home' }, moveIn: { caught: 3 }, leaderWhere: 'by the fire',
+    welcome: "Welcome to the Cozy Gym! It's so warm in here.",
+    leader: { name: 'Leader Maple', colors: { shirt: 0xc8504a, pants: 0x6a4a3a, hair: 0x8a4a2a, skin: 0xf2c79a } },
+    trainers: [
+      { name: 'Knitter Bea', colors: { shirt: 0xf0a8c0, pants: 0x5a6a9a, hair: 0xe0c060, skin: 0xe8b98a },
+        team: [['snugbun', 41], ['purrmit', 41], ['pillowlamb', 42]], intro: ['Thank you for the lovely home! Shall we battle?'] },
+      { name: 'Sleepy Sam', colors: { shirt: 0x7ab8e8, pants: 0xffffff, hair: 0x3a2a1a, skin: 0xc68a5a },
+        team: [['pillowlamb', 42], ['snoozebear', 42], ['knitcat', 42]], intro: ['*Yawn*... oh! A battle? I am awake now!'] },
+    ],
+    leaderTeam: [['snoozebear', 42], ['quiltbun', 43], ['knitcat', 43], ['dozeram', 43]],
+    intro: ['You built us a real home. Thank you!', 'Now let us see how strong a cozy team can be!'],
+    lose: 'Warm and strong! The Snuggle Badge is yours.',
+    chilly: "Brr, it's chilly in here! Can you fix it?",
+  },
+  {
+    id: 'treasure', type: 'treasure', name: 'Treasure Vault', badge: 'Jackpot Badge', slot: 4, build: 'treasureVault',
+    live: 'vault', access: { when: 'keys' }, keys: ['dig', 'build', 'explore'], leaderWhere: 'at the back of the vault',
+    welcome: 'You opened the Treasure Vault! Everything here sparkles.',
+    locked: 'The Treasure Vault is locked! Find the 3 golden keys hidden around it.',
+    leader: { name: 'Leader Goldie', colors: { shirt: 0xffd23a, pants: 0x6a3a8a, hair: 0x1a1a1a, skin: 0xe8b98a } },
+    trainers: [
+      { name: 'Banker Penny', colors: { shirt: 0x3a6a4a, pants: 0x2a2a3a, hair: 0xb04a2a, skin: 0xf2d0b0 },
+        team: [['coinlet', 44], ['ringlet', 44], ['crystafox', 45]], intro: ['Every coin counts! Let us battle for it.'] },
+      { name: 'Miner Jem', colors: { shirt: 0xd08a3a, pants: 0x4a4a5a, hair: 0x5a3a1a, skin: 0xc68a5a },
+        team: [['crystafox', 45], ['lustrelle', 45], ['kingcoin', 45]], intro: ['I dug up these gems myself. They are tough!'] },
+    ],
+    leaderTeam: [['lustrelle', 45], ['kingcoin', 46], ['prismfox', 46], ['crownguard', 46]],
+    intro: ['You found all three golden keys!', 'My treasures are the strongest of all. Ready?'],
+    lose: 'What a treasure of a trainer! The Jackpot Badge is yours.',
+  },
 ];
 
 // Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).
@@ -266,7 +298,7 @@ export const EXTRA_GYMS_END = 18;
 // Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
 export const LEGACY_CAVE_GYMS = 1;
 
-// The Champion's Tower: opens after all badges (25). `at` = [steps toward the door, steps sideways]
+// The Champion's Tower: opens after all badges (27). `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).
 export const TOWER = {
   id: 'tower', name: "Champion's Tower",
@@ -280,21 +312,21 @@ export const TOWER = {
       colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
         ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur'],
-        ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2']],
+        ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2'], ['knitcat', 'kingcoin', 'clangalarm']],
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
-      team: [['titanox', 41], ['venomamba', 42], ['boomwing', 43]],
+      team: [['titanox', 47], ['venomamba', 48], ['boomwing', 49]],
       intro: ['Halt! Only the strongest trainers may see the Champion.', 'Show me what you can do!'],
       lose: 'You are strong! Go on, Guard Opal is next.' },
     { role: 'guard2', name: 'Guard Opal', at: [-1, -2], hat: 0xb08ae0,
       colors: { shirt: 0x7a5ab0, pants: 0x2a2a3a, hair: 0xf0e0a0, skin: 0xf2d0b0 },
-      team: [['duskmare', 42], ['pomperina', 43], ['thunderwolf', 44]],
+      team: [['duskmare', 48], ['pomperina', 49], ['thunderwolf', 50]],
       intro: ['You beat Bram? Impressive!', 'I am the last guard. The Champion is right behind me.'],
       lose: 'Wonderful! The Champion is waiting for you.' },
     { role: 'champion', name: 'Champion Solenne', at: [-4, 0], cape: 0xffd84a,
       colors: { shirt: 0xf8f4ff, pants: 0x6a4ac8, hair: 0xffd84a, skin: 0xf2d0b0 },
-      team: [['glacieron', 43], ['tidalord', 44], ['pyrolynx', 44], ['sageowl', 44], ['stormwyvern', 45], ['zenithar', 47]],
+      team: [['glacieron', 49], ['tidalord', 50], ['pyrolynx', 50], ['sageowl', 50], ['stormwyvern', 50], ['zenithar', 52]],
       intro: [`So you are the trainer with all ${GYMS.length} badges!`,
         'I am Solenne. Zenithar and I have guarded this tower for many years.',
         'Show me how much you and your team have grown. Give it everything!'],

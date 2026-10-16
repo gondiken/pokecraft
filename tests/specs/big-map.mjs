@@ -31,7 +31,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
-        gyms: w.gyms.length === o.gyms.length + 3 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
+        gyms: w.gyms.length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
         tower: w.tower.x === o.tower.x && w.tower.z === o.tower.z && w.tower.y === o.tower.y,
         caves: sameSet(w.caves.opened, o.caves.opened) && sameSet(w.caves.marks, o.caves.marks),
       };
@@ -55,7 +55,7 @@ export default async function ({ browser, base, t }) {
       for (let i = 0; i < got.length; i++) for (let j = i + 1; j < got.length; j++) apart = Math.min(apart, Math.max(Math.abs(got[i].x - got[j].x), Math.abs(got[i].z - got[j].z)));
       // T19: the three slot gyms (slots 0-2) change nothing outside their boxes, and are protected with an area.
       const bare = new World(seed, null, null); bare.generate({ slotGyms: false });
-      const boxes = got.slice(0, 3).map(s => s.box);
+      const boxes = [0, 1, 2, 4].map(i => got[i].box); // slot 3 is spare
       let outsideDiff = 0;
       for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < 288; z++) for (let x = 0; x < 288; x++) {
         if (boxes.some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1)) continue;
@@ -77,8 +77,8 @@ export default async function ({ browser, base, t }) {
         placed: w.gyms.length,
       };
       // 5. Protection data.
-      const res = { all: w.gyms.every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
-      for (const g of w.gyms) {
+      const res = { all: w.gyms.filter(g => !g.home).every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
+      for (const g of w.gyms.filter(g => !g.home)) {
         const wall = g.sky ? w.protectedAt(g.x, g.y - 1, g.z) === g : w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g;
         const b = g.protect[0];
         const out2 = w.protectedAt(b.x1 + 2, (b.y0 + b.y1) >> 1, g.z) !== g && w.protectedAt(g.x, (b.y0 + b.y1) >> 1, b.z1 + 2) !== g;
@@ -110,10 +110,10 @@ export default async function ({ browser, base, t }) {
     t.ok(m.biomes >= 3 && m.plants > 20, `seed ${seed}: the new land has ${m.biomes} biomes and ${m.plants} plants`);
     const sl = r.slots[seed];
     t.ok(sl.fixture && sl.same && sl.n === 5 && sl.inside && sl.apart >= 56, `seed ${seed}: 5 gym slots in the new land as always (${JSON.stringify(SLOTS[seed])}), at least ${sl.apart} apart`);
-    t.ok(sl.placed === 25, `seed ${seed}: 25 gyms are placed (${sl.placed})`);
+    t.ok(sl.placed === 27, `seed ${seed}: 27 gyms are placed (${sl.placed})`);
     const sg = r.slotGyms[seed];
-    t.ok(sg.bareGyms === 22 && sg.n === 3 && sg.ids === 'time,camo,cyber' && sg.protect && sg.k && sg.inBox && sg.outsideDiff === 0,
-      `seed ${seed}: the Clock Tower, Hidden Hill and Firewall Maze are in slots 0-2, protected, and change nothing outside their boxes (${sg.outsideDiff} cells differ)`);
+    t.ok(sg.bareGyms === 22 && sg.n === 4 && sg.ids === 'time,camo,cyber,treasure' && sg.protect && sg.k && sg.inBox && sg.outsideDiff === 0,
+      `seed ${seed}: the Clock Tower, Hidden Hill and Firewall Maze are in slots 0-2 and the Treasure Vault in slot 4, protected, and change nothing outside their boxes (${sg.outsideDiff} cells differ)`);
     const p = r.prot[seed];
     t.ok(p.all && p.walls.every(Boolean) && p.tower, `seed ${seed}: every gym and the tower have a protected box that holds their walls or island`);
     t.ok(p.outside.every(Boolean), `seed ${seed}: cells 2 outside a box are not protected`);

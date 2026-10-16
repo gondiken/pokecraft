@@ -2,7 +2,7 @@
 
 A browser game that mixes a Minecraft-style voxel world with creature collecting.
 Explore a procedurally generated block world, build and dig, battle and catch
-wild creatures in Capture Cubes, and beat all 25 Gym Leaders to collect every badge.
+wild creatures in Capture Cubes, and beat all 27 Gym Leaders to collect every badge.
 
 Built with plain JavaScript and [three.js](https://threejs.org/). There is no build step.
 
@@ -66,7 +66,7 @@ On a tablet:
 - **196 original creatures**, 7 for each of the 28 types (see below). Each lives where it fits: pixies in flower meadows, toxic creatures in swamps, fire and rock ones in the desert, ice ones only in snowy places, cosmic ones come out at night, most of all on the high peaks, and **Bone** creatures (skulls, skeleton dogs, fossil dinos) live only in caves. **Alien** creatures (flying saucers, three-eyed visitors, space pods) drop in at night. Ghosts also only come out at night. **Sky** creatures (kites, balloons, sky whales) float over the mountain tops, **Slime** creatures wobble around swamps and caves, **Light** creatures (sun foxes, lighthouses) love sunny meadows and beaches, and **Paper** creatures (paper planes, origami frogs, storybooks) wander plains and forests. Three types have their own special way to be found: **Time** creatures (hourglasses, metronomes, alarm clocks) only come out for a minute at sunrise and sunset, when the sky turns orange and you hear a soft tick-tock. **Camo** creatures look exactly like a block (leaves, sand, stone or snow) and never move: watch for a blink, then hit or tap the block. **Cyber** creatures (pixel blobs, mouse pointers, Wi-Fi butterflies) only appear when two friends play together close by. **Cozy** creatures (blanket bunnies, mitten kittens, pillow sheep) and **Treasure** creatures (rolling coins, crystal foxes, gem rings, which sparkle all the time) only visit a home you build for them (see **Homes**).
 - **Homes**: put a **Doormat** in the floor (Blocks panel), stand on it and pick a home type. A home needs a floor from 8x8 up to 20x20, closed walls at least 3 high with **one door, 1 or 2 wide and 2 high**, and a full roof; the Doormat goes inside, by the door. **Cozy home**: half of the wall blocks are wood, plus 3 of Bed, Fireplace, a Rug (4 wool blocks on the floor), a Lamp and 2 Windows (glass); all 5 hearts means more visitors. **Treasure home**: 10 gems (Sunstone, Ruby, Sapphire) in the walls or floor. The meter shows what is missing and the red gaps glow in the walls and roof; **Show me a house** spins an example. When it is ready, cozy or treasure creatures may come to visit (treasure ones rarely!). One home per player: a new Doormat moves your home (the old one turns into Planks). New blocks: **Doormat**, **Bed**, **Fireplace** (it flickers and lights the room) and eight wool colours for rugs.
 - Every type also has one rare creature that never evolves, like Lanterboo the lantern ghost, Clawdio the jukebox crab or Chromacurl, a lizard that slowly changes colour.
-- **Champion's Tower**: a final challenge after all 25 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
+- **Champion's Tower**: a final challenge after all 27 badges, with guards, a coach, Champion Solenne and the legendary Zenithar.
 - **Rainbow creatures** are the rarest of all. They only appear in daytime, their colours shimmer, and a message tells you when one is nearby.
 - **Evolution**: 67 creatures evolve when they reach a certain level, for example Ampup → Thunderwolf, Moonhop → Lunaroo and Drumbo → Bongorilla.
 - **Starter choice**: Emberpup (fire), Sproutle (grass) or Bubbuck (water). Each one evolves at level 16.
@@ -136,7 +136,7 @@ Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, pa
 
 ## Gyms and badges
 
-There are 25 gyms scattered around the map, one for each type except normal (Cozy and Treasure gyms are coming). The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the **Cloud Gym** and the **Saucer Gym float high in the sky**: find the blue (Cloud) or green (Saucer) pad on the ground below, build a tower of blocks on it and jump across. Two gyms only open at night: the stargazers of the **Comet Gym** (with star hats) and the aliens of the **Saucer Gym** (green and purple, with antennae; their flying saucer lands on the roof). By day the arrow skips them and tells you they open at night. The three newest gyms are in the new land (east and south of the old map) and each has its own trick: the **Clock Tower** has doors that only open at certain times of the day (look at the big 24-hour clock on its front), the **Hidden Hill** is a hill with no arrow once you get close (look for a door behind a bush; its trainers hide as stone pillars), and the **Firewall Maze** has three rooms of laser walls (step on a switch to turn off the lasers of its colour, press the green reset button if you get mixed up, and a friend can open the purple lanes by standing on a friend pad). Each gym is a building with a roof in its type's colour. **Gym walls are too strong to break, and you can't build inside a gym** (building next to one is fine). The closer a gym is to the start, the easier it is:
+There are 27 gyms, one for each type except normal. 25 are scattered around the map; the **Cozy Gym** has no building (it moves into your home) and the **Treasure Vault** is locked until you find its keys. The later ones are special: the **Fossil Gym** and the **Goo Gym are deep inside caves** (follow the arrow to the stone arch and walk down the stairs), the **Cloud Gym** and the **Saucer Gym float high in the sky**: find the blue (Cloud) or green (Saucer) pad on the ground below, build a tower of blocks on it and jump across. Two gyms only open at night: the stargazers of the **Comet Gym** (with star hats) and the aliens of the **Saucer Gym** (green and purple, with antennae; their flying saucer lands on the roof). By day the arrow skips them and tells you they open at night. The three newest gyms are in the new land (east and south of the old map) and each has its own trick: the **Clock Tower** has doors that only open at certain times of the day (look at the big 24-hour clock on its front), the **Hidden Hill** is a hill with no arrow once you get close (look for a door behind a bush; its trainers hide as stone pillars), and the **Firewall Maze** has three rooms of laser walls (step on a switch to turn off the lasers of its colour, press the green reset button if you get mixed up, and a friend can open the purple lanes by standing on a friend pad). Each gym is a building with a roof in its type's colour. **Gym walls are too strong to break, and you can't build inside a gym** (building next to one is fine). The closer a gym is to the start, the easier it is:
 
 | # | Gym | Type | Leader | Leader's levels |
 | --- | --- | --- | --- | --- |
@@ -165,18 +165,20 @@ There are 25 gyms scattered around the map, one for each type except normal (Coz
 | 23 | Clock Tower (doors open by time of day) | Time | Leader Tikka | 32–33 |
 | 24 | Hidden Hill (find it yourself!) | Camo | Leader Sylva | 35–36 |
 | 25 | Firewall Maze (three laser rooms) | Cyber | Leader Ada | 39–40 |
+| 26 | Cozy Gym (moves into your cozy home) | Cozy | Leader Maple | 42–43 |
+| 27 | Treasure Vault (three golden keys) | Treasure | Leader Goldie | 45–46 |
 
-Inside each gym is one apprentice trainer (two in the three newest gyms) you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 25 to open the Champion's Tower.
+Inside each gym is one apprentice trainer (two in the five newest gyms) you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 27 to open the Champion's Tower.
 
 The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
 ## Champion's Tower
 
-After you collect all 25 badges, the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
+After you collect all 27 badges, the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
 
 - **Nurse Poppy** heals your team. **Coach Dex** trains you with 3 creatures at your best level and gives **double XP** (and 1 Capture Cube) every time.
-- **Guard Bram** (Lv 41–43) and **Guard Opal** (Lv 42–44) must be beaten first, one after the other.
-- **Champion Solenne** has 6 creatures (Lv 43–47). Her last one is **Zenithar**, a one-of-a-kind rainbow guardian. It can't be caught, and it **powers up** when it is down to half its health!
+- **Guard Bram** (Lv 47–49) and **Guard Opal** (Lv 48–50) must be beaten first, one after the other.
+- **Champion Solenne** has 6 creatures (Lv 49–52). Her last one is **Zenithar**, a one-of-a-kind rainbow guardian. It can't be caught, and it **powers up** when it is down to half its health!
 - If you win, you become the **Champion**: you get 20 Capture Cubes, a gold "Champion" title on the screen, and the win is saved. You can challenge Solenne again any time (her creatures are 3 levels stronger).
 - If you lose, you wake up at the start, with a hint. Heal with Nurse Poppy and train with Coach Dex, then try again.
 - After 16 badges, wild creatures are also 10 levels stronger, so there is always something to train against.
@@ -230,6 +232,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/npc.js` | Blocky people: trainers, leaders and the healer |
 | `src/gymlive.js`, `src/daytime.js` | Parts of a gym that change while you play (the Clock Tower's doors, the Firewall Maze's lasers) and the Clock Tower's times of day |
 | `src/clocktower.js`, `src/hiddenhill.js`, `src/firewall.js` | The Clock Tower, Hidden Hill and Firewall Maze gyms (building and live parts) |
+| `src/homegym.js`, `src/treasurevault.js` | The Cozy Gym (moves into your home) and the Treasure Vault (golden keys) |
 | `src/creatures.js` | Wild creature spawning and wandering AI |
 | `src/homes.js`, `src/roomfinder.js`, `src/hometypes.js`, `src/homeui.js` | Homes: who owns which Doormat, the room finder, the Cozy / Treasure home types, and the meter, red gaps and preview |
 | `src/battle.js` | Battle flow, animations, catching |

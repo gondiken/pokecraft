@@ -34,6 +34,7 @@ const MORE_TILES = [
   'LASER_RED', 'LASER_BLUE', 'LASER_FRIEND', 'SWITCH_RED_TOP', 'SWITCH_BLUE_TOP', 'FRIEND_PAD_TOP', 'RESET_BUTTON', 'CLOCK_DOOR', // T19
   'SUNSTONE', 'RUBY', 'SAPPHIRE', // T20 treasure blocks
   'DOORMAT_TOP', 'DOORMAT_SIDE', 'BED_TOP', 'BED_SIDE', 'FIREPLACE', 'FIREPLACE_TOP', // T22 home blocks
+  'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -50,10 +51,11 @@ export const B = {
   // 54-56 are the time / camo / cyber wool blocks, 68-69 the cozy / treasure ones (T21).
   // 57-64: T19 gym blocks (lasers, switches, reset button, clock door).
   LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
-  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). (Next free id: 73, see below.)
+  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). (Next free id: 75, see below.)
   SUNSTONE: 65, RUBY: 66, SAPPHIRE: 67,
-  // 70-72: T22 home blocks. Next free id: 73.
+  // 70-72: T22 home blocks. 73-74: T23 Treasure Vault blocks (not placeable). Next free id: 75.
   DOORMAT: 70, BED: 71, FIREPLACE: 72,
+  KEY_CHEST: 73, VAULT_DOOR: 74,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -112,6 +114,10 @@ BLOCKS[B.SAPPHIRE] = { name: 'Sapphire', ...all(T.SAPPHIRE), glow: true, noLight
 BLOCKS[B.DOORMAT] = { name: 'Doormat', top: T.DOORMAT_TOP, side: T.DOORMAT_SIDE, bottom: T.DOORMAT_SIDE };
 BLOCKS[B.BED] = { name: 'Bed', top: T.BED_TOP, side: T.BED_SIDE, bottom: T.PLANKS };
 BLOCKS[B.FIREPLACE] = { name: 'Fireplace', top: T.FIREPLACE_TOP, side: T.FIREPLACE, bottom: T.STONE_BRICKS, glow: true };
+// T23 Treasure Vault blocks: not placeable. The key chest glints in the dark without lighting anything; an opened one is
+// drawn as CHEST_OPEN (live, per player). The vault door stays until you have all three golden keys.
+BLOCKS[B.KEY_CHEST] = { name: 'Golden Key Chest', top: T.KEY_CHEST_TOP, side: T.KEY_CHEST_SIDE, bottom: T.KEY_CHEST_TOP, glow: true, noLight: true, wallText: 'Open it! Click or tap the chest.' };
+BLOCKS[B.VAULT_DOOR] = { name: 'Vault Door', ...all(T.VAULT_DOOR), wallText: 'The vault is locked. Find the 3 golden keys!' };
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
@@ -329,6 +335,28 @@ export function drawAtlas() {
     put(T.CHEST_SIDE, x, y, lock ? [250, 215, 70] : band ? [214, 170, 50] : edgeLine ? [90, 56, 30] : shade([150, 98, 52], (y % 5 === 4 ? 0.8 : 1) * (1 + (rand() - 0.5) * 0.1)));
     put(T.CHEST_TOP, x, y, edgeLine ? [90, 56, 30] : x === 7 || x === 8 ? [214, 170, 50] : shade([164, 108, 58], 1 + (rand() - 0.5) * 0.1));
     put(T.CHEST_OPEN_TOP, x, y, edgeLine || x === 1 || x === 14 || y === 1 || y === 14 ? [120, 76, 40] : shade([34, 24, 20], 1 + (rand() - 0.5) * 0.3));
+  });
+
+  // T23 Golden Key Chest: gold planks, a dark keyhole and a white glint; the lid has a gold key shape.
+  each((x, y) => {
+    const edgeLine = x === 0 || x === 15 || y === 0 || y === 15;
+    const hole = (x === 7 || x === 8) && y >= 6 && y <= 9;
+    const glint = x === 11 && y === 3;
+    const band = y >= 6 && y <= 8;
+    put(T.KEY_CHEST_SIDE, x, y, glint ? [255, 255, 255] : hole ? [40, 28, 12] : edgeLine ? [120, 84, 20] : band ? [255, 226, 110] : shade([232, 186, 56], (y % 5 === 4 ? 0.82 : 1) * (1 + (rand() - 0.5) * 0.08)));
+    const ring = (x - 5) ** 2 + (y - 7.5) ** 2 <= 6.5 && (x - 5) ** 2 + (y - 7.5) ** 2 >= 2.2;
+    const shaft = y === 7 && x >= 6 && x <= 12 || y === 8 && x >= 6 && x <= 12;
+    const teeth = (x === 11 || x === 13) && (y === 9 || y === 10);
+    put(T.KEY_CHEST_TOP, x, y, edgeLine ? [120, 84, 20] : ring || shaft || teeth ? [255, 240, 150] : shade([232, 186, 56], 1 + (rand() - 0.5) * 0.08));
+  });
+  // T23 Vault Door: heavy grey metal, gold rivets, a round gold wheel and three keyholes in a row.
+  each((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    const rivet = (x === 1 || x === 14) && (y === 1 || y === 14) || (x === 1 || x === 14 || y === 1 || y === 14) && (x + y) % 4 === 0 && x > 0 && y > 0 && x < 15 && y < 15;
+    const keyhole = y >= 12 && y <= 13 && (x === 3 || x === 7 || x === 12);
+    put(T.VAULT_DOOR, x, y, rivet ? [255, 214, 70] : keyhole ? [20, 20, 26]
+      : d < 2 ? [255, 226, 110] : d < 3.2 ? [150, 110, 30] : d < 5.4 ? [236, 190, 60] : d < 6.4 ? [90, 94, 104]
+      : shade([142, 150, 162], (x === 0 || y === 0 || x === 15 || y === 15 ? 0.7 : 1) * (1 + (rand() - 0.5) * 0.06)));
   });
 
   // T19 gym blocks. Lasers: three thin bright beams with dark gaps.

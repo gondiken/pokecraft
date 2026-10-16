@@ -7,11 +7,12 @@ import { planStairs, buildStairs, legacyOnly } from './caves.js';
 import { buildClockTower } from './clocktower.js';
 import { buildHiddenHill } from './hiddenhill.js';
 import { buildFirewallMaze } from './firewall.js';
+import { buildTreasureVault } from './treasurevault.js';
 import { OLD_W, OLD_D, MID_X, MID_Z, WORLD_H, WATER_LEVEL, hash2, groundOf, PLANTS } from './world.js';
 
 // Builders of the slot gyms (T19), by `def.build`: (world, def, slot) => gym object. Each writes only inside slot.box and
 // returns { def, x, z, y, front, leaderPos, trainerPos, trainerPositions, protect, area, ... }.
-const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill, firewallMaze: buildFirewallMaze };
+const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill, firewallMaze: buildFirewallMaze, treasureVault: buildTreasureVault };
 
 // Slot boxes of the new land (T17): the 5 places where gyms 23+ go. Never change these numbers.
 export const SLOT_R = 24, SLOT_GAP = 56;
@@ -199,7 +200,7 @@ class GymPlacement {
     const caveItems = []; // cave gyms so far: { x, z, cells } (cells = the stairway)
     for (const sp of this.caveGymSpots()) if (sp) caveItems.push({ x: sp.x, z: sp.z, cells: this.stairCells(sp) });
     // Cave gyms first (they need the most room; the others keep away from them), then the rest in GYMS order.
-    const defs = GYMS.slice(EXTRA_GYMS_END).filter(d => d.slot == null), found = new Map(); // slot gyms (T17/T19) live in the new land
+    const defs = GYMS.slice(EXTRA_GYMS_END).filter(d => d.slot == null && d.place !== 'home'), found = new Map(); // slot gyms (T17/T19) live in the new land, home gyms (T23) have no building
     let masks = null;
     for (const def of defs) {
       if (def.place !== 'cave') continue;
@@ -879,7 +880,7 @@ class GymPlacement {
   // The gym whose building contains (x, z), if any.
   // Cave gyms only count when y (feet) is in the building's height, not on the hill above it.
   gymAt(x, z, y) {
-    return this.gyms.find(g => Math.abs(x - g.x - 0.5) <= 6.5 && Math.abs(z - g.z - 0.5) <= 6.5
+    return this.gyms.find(g => g.x != null && Math.abs(x - g.x - 0.5) <= 6.5 && Math.abs(z - g.z - 0.5) <= 6.5
       && (!g.cave || y === undefined || (y >= g.y - 1 && y <= g.y + 6))
       && (!g.sky || y === undefined || y >= g.y - 1)) || null;
   }
@@ -910,11 +911,12 @@ class GymPlacement {
     return (this.slots = picked.map(({ x, z }, k) => ({ k, x, z, box: pbox(x, z, SLOT_R, 0, WORLD_H - 1) })));
   }
 
-  // Places the gyms whose def has a `slot` in their slot of the new land. A slot gym may change blocks only inside
+  // Places the new-land gyms: those whose def has a `slot` go in their slot of the new land. A slot gym may change blocks only inside
   // its slot box. def.build names a builder in SLOT_BUILDERS; otherwise it is a normal surface gym.
   placeSlotGyms() {
     const slots = this.newLandSlots();
     for (const def of GYMS) {
+      if (def.place === 'home') { this.gyms.push(this.homeGym(def)); continue; } // T23: lives in a player's home
       if (def.slot == null) continue;
       const s = slots[def.slot];
       const b = SLOT_BUILDERS[def.build];
@@ -923,6 +925,10 @@ class GymPlacement {
       this.gyms.push(g);
     }
   }
+
+  // A gym that has no building: its people move into a player's home (T23 Cozy Gym, see homegym.js). It writes
+  // nothing to the world; x/y/z stay null and it has no protected box (the home is the player's own build).
+  homeGym(def) { return { def, home: true, x: null, y: null, z: null, front: [0, 1], protect: [], leaderPos: null, trainerPositions: [] }; }
 
   // Step-0 stand-in for the slot gym builders: the plain gym of its type with a second trainer beside the first, so
   // the gym can be battled (and is protected) until its real building exists.

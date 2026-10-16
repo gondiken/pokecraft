@@ -6,6 +6,8 @@ import { Disguise } from './disguise.js';
 import { B } from './blocks.js';
 import { sound } from './sound.js';
 
+const AWAY = [0, -64, 0]; // where people who are not here yet are parked (T23)
+
 function box(parent, w, h, d, color, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
   m.position.set(x, y, z);
@@ -94,6 +96,7 @@ class Npc {
     this.t = Math.random() * 10;
     this.disguise = null; // T19: Hidden Hill trainers stand about as a stone pillar until found (NpcManager.disguiseAs)
     this.popT = -1;
+    this.away = false; // T23: not here (yet): a home gym's people before they move in (hidden, not pickable)
   }
 
   get title() {
@@ -162,7 +165,7 @@ export class NpcManager {
     night = !!night;
     if (night === this.night) return;
     this.night = night;
-    for (const n of this.list) if (n.gym?.def?.night) n.model.visible = night;
+    for (const n of this.list) if (n.gym?.def?.night && !n.away) n.model.visible = night;
     for (const s of this.saucers) { s.night = night; if (night) s.group.visible = true; }
   }
 
@@ -173,17 +176,21 @@ export class NpcManager {
       const facing = Math.atan2(fx, fz);
       const typeColor = new THREE.Color(gym.def.leader.colors.shirt).getHex();
       const { leader } = gym.def;
+      const none = !gym.leaderPos; // T23: a gym with no building yet; its people are away until placeAt
       this.add(new Npc({
         kind: 'leader', name: leader.name, gym, colors: leader.colors,
-        pos: gym.leaderPos, heading: gym.leaderHeading ?? facing, cape: typeColor, look: leader.look, def: leader,
+        pos: gym.leaderPos || AWAY, heading: gym.leaderHeading ?? facing, cape: typeColor, look: leader.look, def: leader,
       }));
+      const leaderNpc = this.list[this.list.length - 1];
+      if (none) this.sendAway(leaderNpc);
       const spots = gym.trainerPositions || [gym.trainerPos];
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i], heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
+        if (none) this.sendAway(npc);
         if (trainer.disguise === 'stone') this.disguiseAs(npc, world, B.STONE);
       });
       if (gym.def.saucer) this.addSaucer(gym);
@@ -238,6 +245,22 @@ export class NpcManager {
     this.saucers.push({ group, cone, base, rise: 40, night: false, t: Math.random() * 6 });
   }
 
+  // T23: puts a person (usually one that was away) at [x, y, z] facing `heading`.
+  placeAt(npc, [x, y, z], heading = npc.homeHeading) {
+    npc.pos.set(x, y, z);
+    npc.model.position.copy(npc.pos);
+    npc.homeHeading = npc.heading = heading;
+    npc.model.rotation.y = heading;
+    npc.away = false;
+    npc.model.visible = !(npc.gym?.def?.night && this.night !== true);
+  }
+
+  // T23: takes a person away (hidden, not pickable, does not move).
+  sendAway(npc) {
+    npc.away = true;
+    npc.model.visible = false;
+  }
+
   add(npc) {
     if (npc.gym?.def?.night && this.night !== true) npc.model.visible = false;
     npc.model.position.copy(npc.pos);
@@ -260,6 +283,7 @@ export class NpcManager {
       s.cone.visible = s.rise < 1;
     }
     for (const n of this.list) {
+      if (n.away) continue;
       n.t += dt;
       if (n.disguise) { // a stone pillar: it only blinks, and walking into it finds it
         n.disguise.update(dt, playerPos);
@@ -291,7 +315,7 @@ export class NpcManager {
     this.raycaster.far = maxDist;
     // Only people within reach (plus their body size) are worth testing.
     const reach = maxDist + 3;
-    const hits = this.raycaster.intersectObjects(this.list.filter(n => n.model.visible && n.pos.distanceToSquared(origin) < reach * reach).map(n => n.model), true);
+    const hits = this.raycaster.intersectObjects(this.list.filter(n => !n.away && n.model.visible && n.pos.distanceToSquared(origin) < reach * reach).map(n => n.model), true);
     if (!hits.length) return null;
     let o = hits[0].object;
     while (o && !o.userData.npc) o = o.parent;
