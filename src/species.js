@@ -1,7 +1,7 @@
 // Creature data (types, moves, species), stat/XP math and blocky 3D models.
 import * as THREE from 'three';
 import { B } from './blocks.js';
-import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap } from './shapes.js';
+import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
 
 export const TYPE_COLORS = {
   normal: '#c6c59a', fire: '#f2914a', water: '#7aa4f5', grass: '#8fd166', electric: '#f7d84a', rock: '#c9b45a',
@@ -16,23 +16,25 @@ export const TYPE_COLORS = {
   time: 'linear-gradient(180deg,#ffe08a,#ff9a5a)',
   camo: 'radial-gradient(circle at 30% 35%,#5f8f45 22%,transparent 23%),radial-gradient(circle at 72% 68%,#8a7a4a 20%,transparent 21%),#a8c07a',
   cyber: 'repeating-linear-gradient(90deg,#8ff4ff 0 6px,#5ab8ff 6px 7px)',
+  cozy: 'repeating-linear-gradient(45deg,#ffb48a 0 6px,#ffd8b8 6px 12px)',
+  treasure: 'linear-gradient(135deg,#fff3a8,#ffd23a 45%,#ffb020 55%,#fff0a0)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
-  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5 },
+  normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5, treasure: 0.5 },
   fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2 },
   water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2 },
   grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5 },
   electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5 },
-  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2 },
-  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2 },
+  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5 },
+  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2 },
   ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
   // New types
   mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5, camo: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5, paper: 2 },
-  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2 },
+  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2, cozy: 2, treasure: 2 },
   pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5, light: 0.5 },
   drake: { drake: 2, bone: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
@@ -44,14 +46,19 @@ const EFFECTIVENESS = {
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
   sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
-  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5 },
+  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2 },
   light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
   // Time, Camo, Cyber: time rusts metal, crumbles old paper and dries up slime; camo sneaks up on bugs and
   // minds can't find it; cyber hacks metal and minds and goes paperless.
   time: { metal: 2, paper: 2, slime: 2, time: 0.5, cosmic: 0.5, ghost: 0.5 },
   camo: { bug: 2, mind: 2, camo: 0.5, light: 0.5, metal: 0.5 },
-  cyber: { metal: 2, mind: 2, paper: 2, cyber: 0.5, grass: 0.5, water: 0.5 },
+  cyber: { metal: 2, mind: 2, paper: 2, cyber: 0.5, grass: 0.5, water: 0.5, treasure: 2 },
+  // Cozy and Treasure: cozy warms up ice, nothing is scary at home, and you put the screens away to cuddle;
+  // treasure distracts drakes and pixies with gold and outshines a blanket.
+  // Cozy beats cyber, cyber beats treasure, treasure beats cozy.
+  cozy: { ice: 2, ghost: 2, cyber: 2, cozy: 0.5 },
+  treasure: { drake: 2, pixie: 2, cozy: 2, treasure: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -185,6 +192,17 @@ export const MOVES = {
   glitchbeam: mv('Glitch Beam', 'cyber', 75, 0.9),
   firewall: mv('Firewall', 'cyber', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
   megabyte: mv('Mega Byte', 'cyber', 90, 0.95, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
+  snuggle: mv('Snuggle', 'cozy', 40, 1),
+  pillowfight: mv('Pillow Fight', 'cozy', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  warmhug: mv('Warm Hug', 'cozy', 75, 0.9),
+  hotcocoa: mv('Hot Cocoa', 'cozy', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
+  bedtimestory: mv('Bedtime Story', 'cozy', 0, 0.75, { fx: { kind: 'sleep' } }),
+  lightsout: mv('Lights Out', 'cozy', 85, 0.9, { fx: { kind: 'sleep', chance: 0.3 }, sig: true }),
+  coinflip: mv('Coin Flip', 'treasure', 40, 1),
+  gemtoss: mv('Gem Toss', 'treasure', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  goldrush: mv('Gold Rush', 'treasure', 75, 0.9),
+  bling: mv('Bling!', 'treasure', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
+  crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
 };
 
 // Short, kid-friendly words for what a move does. Used on battle buttons, the forget prompt and the Book.
@@ -217,33 +235,34 @@ const T1 = {
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
   cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
   sky: 'breezepuff', slime: 'slimeshot', light: 'glint', paper: 'paperflick',
-  time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop',
+  time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop', cozy: 'snuggle', treasure: 'coinflip',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
   cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
   sky: 'cloudburst', slime: 'slimeslam', light: 'sunbeam', paper: 'foldslam',
-  time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam',
+  time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam', cozy: 'warmhug', treasure: 'goldrush',
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
   sky: 'swoop', slime: 'stickygoo', light: 'flashbulb', paper: 'confetti',
-  time: 'fastforward', camo: 'surprise', cyber: 'rapidclick',
+  time: 'fastforward', camo: 'surprise', cyber: 'rapidclick', cozy: 'pillowfight', treasure: 'gemtoss',
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
   ice: 'glacierslam', bug: 'silkwrap', ghost: 'gloomwave', mind: 'deepfocus', metal: 'ironwall', toxic: 'stinkbomb',
   pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
-  time: 'rewind', camo: 'lielow', cyber: 'firewall',
+  time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling',
 };
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
   ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };
 const SNZ = [[16, 'snoozebutton']]; // Time creatures can learn Snooze
+const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -1329,6 +1348,86 @@ export const SPECIES = {
     model: { shape: 'glitchghost', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
   },
   /* ==== end of T18 cyber ==== */
+  /* ==== T21 cozy ==== */
+  snugbun: {
+    name: 'Snugbun', type: 'cozy', desc: "A little bunny rolled up in a blanket. It only pokes out its ears when it feels safe.",
+    base: { hp: 55, atk: 45, def: 55, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('cozy', 'pixie'),
+    evolve: { level: 22, into: 'quiltbun' },
+    model: { shape: 'blanketbun', scale: 0.75, body: 0x8ab8e8, accent: 0xffd0e0, dark: 0x3a3040, belly: 0xfff4e8, extras: [] },
+  },
+  quiltbun: {
+    name: 'Quiltbun', type: 'cozy', desc: "It wears a patchwork quilt as a cape. Every patch is from a friend it has hugged.",
+    base: { hp: 90, atk: 75, def: 90, spd: 85 }, baseXp: 165, catchRate: 0.12, learn: L('cozy', 'pixie'),
+    model: { shape: 'blanketbun', scale: 1.25, body: 0xe8a0b8, accent: 0xffe08a, dark: 0x4a3040, belly: 0xfff6ee, extras: ['quilt'] },
+  },
+  purrmit: {
+    name: 'Purrmit', type: 'cozy', desc: "A kitten curled up inside a warm mitten. It purrs so loudly that the whole mitten wiggles.",
+    base: { hp: 50, atk: 55, def: 45, spd: 65 }, baseXp: 64, catchRate: 0.45, learn: L('cozy', 'fire'),
+    evolve: { level: 22, into: 'knitcat' },
+    model: { shape: 'mittencat', scale: 0.75, body: 0xe05a5a, accent: 0xffffff, dark: 0x4a2a2a, belly: 0xffc890, extras: [] },
+  },
+  knitcat: {
+    name: 'Knitcat', type: 'cozy', desc: "A cat in a knitted sweater. If you pull a loose thread, it will chase it for hours.",
+    base: { hp: 80, atk: 95, def: 70, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('cozy', 'fire'),
+    model: { shape: 'mittencat', scale: 1.2, body: 0x5a8ae0, accent: 0xfff0d0, dark: 0x2a2a4a, belly: 0xa8a8a8, extras: ['sweater'] },
+  },
+  pillowlamb: {
+    name: 'Pillowlamb', type: 'cozy', desc: "A sheep made of soft pillows. Lean on it and you will be asleep in a minute.",
+    base: { hp: 65, atk: 45, def: 65, spd: 40 }, baseXp: 64, catchRate: 0.45, learn: L('cozy', 'mind', BTS),
+    evolve: { level: 24, into: 'dozeram' },
+    model: { shape: 'pillowsheep', scale: 0.8, body: 0xfff8f0, accent: 0xb8d8ff, dark: 0x3a3a4a, belly: 0xf0d8c0, extras: [] },
+  },
+  dozeram: {
+    name: 'Dozeram', type: 'cozy', desc: "A sleepy ram with pillow horns. Its head-bonks are soft, but nobody stays awake after one.",
+    base: { hp: 105, atk: 90, def: 105, spd: 45 }, baseXp: 170, catchRate: 0.1, learn: L('cozy', 'mind', [...BTS, [30, 'lightsout']]),
+    model: { shape: 'pillowsheep', scale: 1.25, body: 0xf4eaff, accent: 0xc8a8ff, dark: 0x3a3050, belly: 0xe8d0b8, extras: ['ram'] },
+  },
+  snoozebear: {
+    name: 'Snoozebear', type: 'cozy', desc: "A bear in pyjamas and fluffy slippers. It shuffles from bed to fireplace and back again.",
+    base: { hp: 85, atk: 65, def: 70, spd: 35 }, baseXp: 100, catchRate: 0.3, learn: L('cozy', 'ice', BTS),
+    model: { shape: 'pajamabear', scale: 0.95, body: 0x7ab8e8, accent: 0xffffff, dark: 0x3a2a1a, belly: 0xa0704a, extras: [] },
+  },
+  /* ==== end of T21 cozy ==== */
+  /* ==== T21 treasure ==== */
+  coinlet: {
+    name: 'Coinlet', type: 'treasure', desc: "A gold coin that rolls everywhere. Heads means happy, tails means very happy.",
+    base: { hp: 45, atk: 55, def: 60, spd: 55 }, baseXp: 64, catchRate: 0.45, learn: L('treasure', 'rock'),
+    evolve: { level: 22, into: 'kingcoin' },
+    model: { shape: 'coin', scale: 0.7, body: 0xffcf3a, accent: 0xfff0a0, dark: 0x8a5a10, belly: 0xffe680, extras: [] },
+  },
+  kingcoin: {
+    name: 'Kingcoin', type: 'treasure', desc: "A tall stack of coins wearing a tiny crown. It jingles proudly with every step.",
+    base: { hp: 80, atk: 90, def: 105, spd: 65 }, baseXp: 165, catchRate: 0.12, learn: L('treasure', 'rock'),
+    model: { shape: 'coin', scale: 1.25, body: 0xffc02a, accent: 0xe0303a, dark: 0x7a4a08, belly: 0xffe680, extras: ['stack'] },
+  },
+  crystafox: {
+    name: 'Crystafox', type: 'treasure', desc: "A fox with fur made of clear crystal. It tinkles softly when it runs.",
+    base: { hp: 45, atk: 60, def: 40, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('treasure', 'light'),
+    evolve: { level: 22, into: 'prismfox' },
+    model: { shape: 'crystalfox', scale: 0.8, body: 0xa8e8ff, accent: 0xffffff, dark: 0x2a4a6a, belly: 0xe8f8ff, extras: [] },
+  },
+  prismfox: {
+    name: 'Prismfox', type: 'treasure', desc: "Its crystal fur throws little rainbows all around. It loves sunny windows.",
+    base: { hp: 70, atk: 100, def: 65, spd: 110 }, baseXp: 165, catchRate: 0.12, learn: L('treasure', 'light'),
+    model: { shape: 'crystalfox', scale: 1.25, body: 0xd8c8ff, accent: 0xffffff, dark: 0x3a2a6a, belly: 0xf4f0ff, extras: ['prism'] },
+  },
+  ringlet: {
+    name: 'Ringlet', type: 'treasure', desc: "A floating gold ring with a gem for an eye. It spins slowly while it watches you.",
+    base: { hp: 50, atk: 50, def: 55, spd: 60 }, baseXp: 64, catchRate: 0.45, floats: true, learn: L('treasure', 'metal'),
+    evolve: { level: 24, into: 'crownguard' },
+    model: { shape: 'gemring', scale: 0.75, body: 0xffd23a, accent: 0x3ac8ff, dark: 0x7a5a10, belly: 0xffffff, extras: [] },
+  },
+  crownguard: {
+    name: 'Crownguard', type: 'treasure', desc: "A walking crown in shiny gem armour. It guards treasure and shares it with friends.",
+    base: { hp: 95, atk: 95, def: 115, spd: 40 }, baseXp: 170, catchRate: 0.1, learn: L('treasure', 'metal', [[30, 'crownjewel']]),
+    model: { shape: 'gemring', scale: 1.35, body: 0xffc83a, accent: 0xe0304a, dark: 0x6a4a08, belly: 0x4a8aff, extras: ['crown'] },
+  },
+  lustrelle: {
+    name: 'Lustrelle', type: 'treasure', desc: "A floating chandelier covered in glittering gems. Its little candles never go out.",
+    base: { hp: 60, atk: 70, def: 55, spd: 75 }, baseXp: 100, catchRate: 0.3, floats: true, learn: L('treasure', 'fire'),
+    model: { shape: 'chandelier', scale: 0.9, body: 0xffd23a, accent: 0xffb030, dark: 0x6a4a10, belly: 0xfff4e0, extras: [] },
+  },
+  /* ==== end of T21 treasure ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1495,7 +1594,14 @@ const CYBER = [['pixbit', 1, 'together'], ['clickit', 1, 'together'], ['wifly', 
   ['pixbit2', 0.12, 'together'], ['clickit2', 0.12, 'together'], ['wifly2', 0.1, 'together']];
 const SPAWN_CYBER = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, CYBER]));
 
-for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+// T21: Cozy and Treasure creatures only come to a finished home of their type (the 'home:<type>' condition; T22).
+const HOME = [['snugbun', 1, 'home:cozy'], ['purrmit', 1, 'home:cozy'], ['pillowlamb', 1, 'home:cozy'], ['snoozebear', 0.6, 'home:cozy'],
+  ['quiltbun', 0.15, 'home:cozy'], ['knitcat', 0.15, 'home:cozy'], ['dozeram', 0.12, 'home:cozy'],
+  ['coinlet', 0.4, 'home:treasure'], ['crystafox', 0.4, 'home:treasure'], ['ringlet', 0.4, 'home:treasure'], ['lustrelle', 0.3, 'home:treasure'],
+  ['kingcoin', 0.08, 'home:treasure'], ['prismfox', 0.08, 'home:treasure'], ['crownguard', 0.06, 'home:treasure']];
+const SPAWN_HOME = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, HOME]));
+
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 
@@ -2028,6 +2134,23 @@ export function buildModel(species) {
       if (o.isMesh) { o.material.transparent = true; o.material.opacity = 0.82; }
     });
   }
+  // Treasure creatures sparkle all the time: three glints twinkle in turn at spots around the body.
+  if (sp.type === 'treasure') {
+    const bb = new THREE.Box3().setFromObject(root);
+    const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
+    parts.sparkle = [];
+    for (let k = 0; k < 3; k++) {
+      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: new THREE.Color(0xfff2b0), side: THREE.DoubleSide });
+      const g = new THREE.Mesh(sparkleGeometry(0.16), mat);
+      const spots = [0, 1, 2].map(j => {
+        const a = k * 2.1 + j * 2.4, h = 0.3 + 0.25 * ((k + j * 2) % 3);
+        return new THREE.Vector3(c.x + Math.sin(a) * (size.x / 2 + 0.04), bb.min.y + size.y * h, c.z + Math.cos(a) * (size.z / 2 + 0.04));
+      });
+      g.position.copy(spots[0]);
+      root.add(g);
+      parts.sparkle.push({ g, spots, phase: k * 0.55, period: 1.5 + k * 0.3 });
+    }
+  }
   root.scale.setScalar(m.scale);
   group.userData.parts = parts;
   group.userData.species = species;
@@ -2060,6 +2183,16 @@ export function animateModel(group, t, moving) {
   for (const w of p.wings || []) w.g.rotation.z = w.s * ((w.lift || 0) + Math.sin(t * (moving ? 14 : 4)) * (moving ? 0.7 : 0.25));
   if (p.tip) p.tip.material.emissive.setScalar(0.4 + 0.4 * Math.abs(Math.sin(t * 5)));
   for (const r of p.rainbow || []) r.mat.color.setHSL((r.offset + t * 0.15) % 1, 0.75, 0.62);
+  for (const s of p.sparkle || []) {
+    const u = (t + s.phase) / s.period, n = Math.floor(u);
+    const k = ((u - n) * s.period) / 0.45; // each twinkle lasts 0.45 s of its period
+    const a = k < 1 ? Math.sin(k * Math.PI) : 0;
+    s.g.visible = a > 0.03;
+    if (!s.g.visible) continue;
+    s.g.position.copy(s.spots[((n % 3) + 3) % 3]);
+    s.g.scale.setScalar(a);
+    s.g.rotation.z = k * 0.8;
+  }
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
 }
 

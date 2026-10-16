@@ -19,7 +19,7 @@ import { createGuide } from './guide.js';
 import { createAccess } from './access.js';
 import { createGymLive } from './gymlive.js';
 import { createAccounts } from './accounts.js';
-import { goldenHour, condOf } from './spawnrules.js';
+import { goldenHour, condToast } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
 
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -107,7 +107,7 @@ game.creatures.onSing = (wild, volume) => {
 };
 game.creatures.onSpawn = wild => {
   if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
-  const tip = condOf(wild.when)?.toast; // e.g. a Cyber creature
+  const tip = condToast(wild.when); // e.g. a Cyber creature, or a visitor at a home
   if (game.started && tip) game.ui.toast(tip);
 };
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).

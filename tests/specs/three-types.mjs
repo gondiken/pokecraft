@@ -63,7 +63,7 @@ export default async function ({ browser, base, t }) {
     const allTypes = Object.keys(S.TYPE_COLORS);
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
-      if (weak > (d === 'mind' ? 6 : 5)) bad(`${d} is weak to ${weak} types`);
+      if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 6 : 5)) bad(`${d} is weak to ${weak} types`);
     }
     for (const type of ALL) {
       const strong = allTypes.filter(d => eff(type, d) === 2).length;

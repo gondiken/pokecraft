@@ -15,6 +15,7 @@ const WOOL_TYPES = [
   'mind', 'metal', 'toxic', 'pixie', 'drake', 'rainbow', 'cosmic', 'sound', 'bone', 'alien',
   'sky', 'slime', 'light', 'paper', // T10 gyms: ids 49-52 (see WOOL below)
   'time', 'camo', 'cyber', // T18: ids 54-56
+  'cozy', 'treasure', // T21: ids 68-69
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -23,6 +24,7 @@ const WOOL_RGB = {
   rainbow: [255, 255, 255], cosmic: [48, 50, 130], sound: [60, 200, 180], bone: [236, 228, 205], alien: [140, 225, 90],
   sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 228, 110], paper: [250, 248, 240],
   time: [222, 170, 80], camo: [110, 150, 80], cyber: [40, 52, 80],
+  cozy: [200, 110, 90], treasure: [230, 185, 60],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -44,15 +46,15 @@ export const B = {
   GLOWCAP: 46, CHEST: 47, CHEST_OPEN: 48,
   // 49-52 are the sky / slime / light / paper wool blocks.
   CLOUD: 53,
-  // 54-56 are the time / camo / cyber wool blocks.
+  // 54-56 are the time / camo / cyber wool blocks, 68-69 the cozy / treasure ones (T21).
   // 57-64: T19 gym blocks (lasers, switches, reset button, clock door).
   LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
-  // 65-67: T20 treasure blocks (limited: you mine them to have them). Next free id: 68.
+  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). Next free id: 70.
   SUNSTONE: 65, RUBY: 66, SAPPHIRE: 67,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -247,7 +249,9 @@ export function drawAtlas() {
                       : t === 'camo' && (x * 3 + y * 7) % 11 < 3 ? [70, 105, 55] // blotches
                         : t === 'camo' && (x * 5 + y * 2) % 13 === 0 ? [150, 130, 90]
                           : t === 'cyber' && (x % 4 === 0 || y % 4 === 0) ? [80, 220, 255] // glowing grid
-                            : WOOL_RGB[t];
+                            : t === 'cozy' ? (x % 8 < 2 && y % 8 < 2 ? [150, 70, 60] : x % 8 < 2 || y % 8 < 2 ? [240, 200, 150] : WOOL_RGB[t]) // blanket plaid
+                              : t === 'treasure' ? (x === 0 || y === 0 ? [255, 230, 140] : (x * 5 + y * 3) % 17 === 0 ? [230, 60, 80] : (x * 3 + y * 7) % 19 === 0 ? [80, 140, 240] : WOOL_RGB[t]) // gold with gems
+                                : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
 

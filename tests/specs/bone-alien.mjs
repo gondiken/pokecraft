@@ -48,7 +48,7 @@ export default async function ({ browser, base, t }) {
       S.SPECIES.ufomax.learn.some(([l, m]) => l === 30 && m === 'mothership')];
     const boneIn = Object.entries(S.SPAWNS).map(([b, l]) => [b, l.filter(e => S.SPECIES[e[0]].type === 'bone')]);
     out.boneSurface = boneIn.filter(([b, l]) => b !== 'cave' && l.length).map(([b]) => b);
-    const cave = S.SPAWNS.cave, total = cave.reduce((a, e) => a + e[1], 0);
+    const cave = S.SPAWNS.cave.filter(e => !String(e[2] || '').startsWith('home:')), total = cave.reduce((a, e) => a + e[1], 0); // home visitors (T21) never compete with the biome's creatures
     out.caveBone = boneIn.find(([b]) => b === 'cave')[1].length;
     out.caveShare = cave.filter(e => S.SPECIES[e[0]].type === 'bone').reduce((a, e) => a + e[1], 0) / total;
     out.count = Object.values(S.SPECIES).filter(s => !s.legendary).length;
@@ -69,7 +69,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.evolve.length === 6, `6 evolutions (${r.evolve.join(', ')})`);
   t.ok(r.bonetoss.includes('hits 2 to 4 times'), `Bone Toss text: ${r.bonetoss}`);
   t.ok(r.sig.every(Boolean), 'Howlbone and Ufomax learn their special moves at 30');
-  t.ok(r.count === 182, `${r.count} normal species`);
+  t.ok(r.count === 196, `${r.count} normal species`);
 
   // Portrait grid: 4 columns x 3 rows, and a close-up of each.
   const shots = await page.evaluate(async ids => {
