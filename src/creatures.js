@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { B, BLOCKS, isSolid } from './blocks.js';
 import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
-import { condOf, condOk, goldenHour, TOGETHER_RANGE } from './spawnrules.js';
+import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
 import { Disguise } from './disguise.js';
 import { sound } from './sound.js';
 
@@ -86,6 +86,8 @@ export class CreatureManager {
     return {
       night, under,
       golden: under || !env ? null : goldenHour(env.time()),
+      evening: !!env && isEvening(env.time()),
+      homes: under || !env?.homes ? [] : env.homes().filter(h => Math.hypot(h.x - playerPos.x, h.z - playerPos.z) <= HOME_RANGE),
       friendsNear: !!env && env.friends().some(p => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) <= TOGETHER_RANGE),
     };
   }
@@ -119,7 +121,8 @@ export class CreatureManager {
       if (!def?.share || done.has(cond)) continue;
       done.add(cond);
       if (!condOk(cond, ctx) || this.count(cond) >= (def.max ?? Infinity)) continue;
-      if (Math.random() >= def.share) continue;
+      const share = typeof def.share === 'function' ? def.share(ctx, cond.split(':')[1]) : def.share;
+      if (Math.random() >= share) continue;
       const table = SPAWNS[biome].filter(x => x[2] === cond).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
       return this.pickFrom(table);
     }
@@ -152,14 +155,24 @@ export class CreatureManager {
     const biome = this.biomeAt(x, z);
     if (!biome) return;
     const [species, when] = this.pickEntry(biome, ctx);
+    // A condition with a `place` (near a home) says where the creature appears.
+    const place = condOf(when)?.place;
+    if (place) {
+      const at = place(ctx, when.split(':')[1]);
+      if (at) this.spawnAt(species, at.x, at.y, at.z, { when, level: this.wildLevel(at.x, at.z, spawnPoint, SPECIES[species]) });
+      return;
+    }
     const sp = SPECIES[species];
     const y = this.groundY(x + 0.5, z + 0.5, sp);
     if (y === null) return;
-    // Further from the spawn point = tougher creatures.
+    this.spawnAt(species, x, y, z, { when, level: this.wildLevel(x, z, spawnPoint, sp) });
+  }
+
+  // Further from the spawn point = tougher creatures (extra: cave creatures get +3).
+  wildLevel(x, z, spawnPoint, sp, extra = 0) {
     const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
     const rare = sp.baseXp > 100 ? 3 : 0;
-    const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus));
-    this.spawnAt(species, x, y, z, { when, level });
+    return Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus) + extra);
   }
 
   // Puts a creature at the world cell (x, y, z) (y = the standing height, an integer for Camo creatures).
@@ -211,10 +224,7 @@ export class CreatureManager {
       const [species, when] = this.pickEntry('cave', CreatureManager.asCtx(night));
       const sp = SPECIES[species];
       if (sp.waterOnly) return;
-      const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
-      const rare = sp.baseXp > 100 ? 3 : 0;
-      const level = Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus) + 3);
-      this.spawnAt(species, x, y, z, { when, cave: true, level });
+      this.spawnAt(species, x, y, z, { when, cave: true, level: this.wildLevel(x, z, spawnPoint, sp, 3) });
       return;
     }
   }

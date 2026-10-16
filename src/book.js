@@ -1,7 +1,7 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness, moveInfo } from './species.js';
 import { BLOCKS } from './blocks.js';
-import { condOf } from './spawnrules.js';
+import { condOf, condText } from './spawnrules.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -35,6 +35,15 @@ export function spawnInfo(id) {
   }
   // Found in every biome under one condition (Cyber creatures): one row instead of a dozen.
   const biomes = Object.keys(SPAWNS);
+  // Found at a home (T21): one row, whatever the biome.
+  for (const when of new Set(out.map(o => o.when))) {
+    if (!condOf(when)?.place) continue;
+    const rows = out.filter(o => o.when === when);
+    const best = rows.reduce((a, r) => (rank(r.rarity) > rank(a) ? r.rarity : a), 'rare');
+    const at = out.findIndex(o => o.when === when);
+    for (let i = out.length - 1; i >= 0; i--) if (out[i].when === when) out.splice(i, 1);
+    out.splice(at, 0, { biome: null, name: cap(condText(when)), when, rarity: best, words: null });
+  }
   for (const when of new Set(out.map(o => o.when))) {
     const rows = out.filter(o => o.when === when);
     if (rows.length < biomes.length || !biomes.every(b => rows.some(r => r.biome === b))) continue;
@@ -44,7 +53,7 @@ export function spawnInfo(id) {
     for (let i = out.length - 1; i >= 0; i--) if (out[i].when === when) out.splice(i, 1);
     out.splice(at, 0, { biome: null, name: 'Anywhere', when, rarity: best });
   }
-  for (const o of out) o.words = condOf(o.when)?.text ?? o.when;
+  for (const o of out) if (o.words === undefined) o.words = condText(o.when) ?? o.when;
   return out;
 }
 

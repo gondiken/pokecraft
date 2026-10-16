@@ -27,7 +27,7 @@ export default async function ({ browser, base, t }) {
         id: B[k] === 57 + i, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT),
         noLight: !!BLOCKS[B[k]].noLight, glow: !!BLOCKS[B[k]].glow, wallText: !!BLOCKS[B[k]].wallText })),
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
-      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56)),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69)),
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),

@@ -179,6 +179,9 @@ const SOUNDS = {
   'fx:time': () => { tone(1600, { len: 0.03, type: 'square', vol: 0.1 }); tone(1200, { at: 0.13, len: 0.03, type: 'square', vol: 0.1 }); },
   'fx:camo': () => { noise({ freq: 3000, len: 0.18, vol: 0.12, q: 0.6 }); tone(400, { at: 0.16, len: 0.06, vol: 0.2, slide: 300 }); },
   'fx:cyber': () => notes([880, 1320, 660], 0.05, { len: 0.04, type: 'square', vol: 0.08 }),
+  // T21: Cozy (a soft, warm two-note "mmm") and Treasure (a little coin jingle).
+  'fx:cozy': () => notes([523, 659], 0.12, { len: 0.2, type: 'triangle', vol: 0.14 }),
+  'fx:treasure': () => { bell(1760, 0, 0.25, 0.14); bell(2349, 0.08, 0.3, 0.12); bell(2637, 0.16, 0.35, 0.1); },
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.

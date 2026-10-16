@@ -6,7 +6,7 @@ import { sound } from './sound.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
-const VERSION = 6; // bump when the battle rules change, so players on different versions don't battle
+const VERSION = 7; // bump when the battle rules change, so players on different versions don't battle
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves] }));

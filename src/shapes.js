@@ -3277,10 +3277,507 @@ function glitchghost(root, m, parts) {
 const SHAPES_CYBER = { pixelblob, cursor, wifiwing, glitchghost };
 /* ==== end of T18 cyber shapes ==== */
 
+/* ==== T21 cozy shapes ==== */
+// Snugbun: a bunny rolled up in a blanket like a burrito, with its head and long ears poking out of the front.
+// Quiltbun: the bunny stands up in a patchwork quilt cape.
+function blanketbun(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body; // breathing
+  if (has(m, 'quilt')) {
+    parts.legs = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const leg = pivot(body, s * 0.14, 0.34, 0);
+      box(leg, 0.17, 0.26, 0.19, m.belly, 0, -0.13, 0);
+      box(leg, 0.19, 0.08, 0.3, m.belly, 0, -0.3, 0.06);
+      parts.legs.push({ g: leg, phase });
+    }
+    box(body, 0.52, 0.5, 0.36, m.belly, 0, 0.58, 0);
+    box(body, 0.3, 0.3, 0.02, 0xffffff, 0, 0.52, 0.19);
+    for (const s of [-1, 1]) box(body, 0.09, 0.14, 0.03, 0xe03060, s * 0.05, 0.54, 0.2).rotation.z = s * Math.PI / 6; // a little heart
+    parts.arms = [];
+    for (const [s, phase] of [[-1, Math.PI], [1, 0]]) {
+      const arm = pivot(body, s * 0.33, 0.8, 0.03);
+      box(arm, 0.12, 0.34, 0.13, m.belly, 0, -0.15, 0);
+      parts.arms.push({ g: arm, phase });
+    }
+    const head = pivot(body, 0, 1.1, 0.03);
+    parts.head = head;
+    box(head, 0.54, 0.44, 0.46, m.belly, 0, 0, 0);
+    eyes(head, 0.04, 0.235, 0.12, 0.12);
+    box(head, 0.09, 0.07, 0.04, 0xff8aa0, 0, -0.06, 0.24);
+    mouth(head, -0.13, 0.235, 0.1);
+    for (const s of [-1, 1]) box(head, 0.1, 0.07, 0.03, 0xffb0c0, s * 0.2, -0.07, 0.235);
+    for (const [i, s] of [-1, 1].entries()) {
+      const ear = pivot(head, s * 0.15, 0.2, 0);
+      box(ear, 0.13, 0.56, 0.07, m.belly, 0, 0.28, 0);
+      box(ear, 0.07, 0.44, 0.02, m.accent, 0, 0.27, 0.04);
+      swing(parts, ear, 'x', 0.14, 1.4, i * 1.9);
+    }
+    // the patchwork quilt cape: a 3x3 grid of squares hanging from the shoulders
+    const cape = pivot(body, 0, 0.9, -0.2);
+    cape.rotation.x = 0.1;
+    const q = 0.34;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      box(cape, q * 0.96, 0.27, 0.05, (i + j) % 2 ? m.body : m.accent, (i - 1) * q, -(j + 0.5) * 0.28, 0);
+    }
+    for (const s of [-1, 1]) box(cape, 0.1, 0.1, 0.03, 0xe03060, 0, -0.42, 0.03).rotation.z = s * Math.PI / 4;
+    box(cape, 0.06, 0.06, 0.03, 0xe03060, 0, -0.46, 0.03);
+    box(body, 0.24, 0.08, 0.1, m.accent, 0, 0.86, 0.12); // clasp ribbon
+    swing(parts, cape, 'x', 0.1, 2, 0.5);
+    return;
+  }
+  // the blanket roll lies along x with rounded ends and two bands
+  const roll = pivot(body, 0, 0.26, -0.1);
+  box(roll, 0.76, 0.46, 0.46, m.body, 0, 0, 0);
+  for (const s of [-1, 1]) box(roll, 0.06, 0.36, 0.36, m.body, s * 0.4, 0, 0);
+  for (const x of [-0.26, 0.28]) box(roll, 0.08, 0.48, 0.48, m.accent, x, 0, 0);
+  box(roll, 0.76, 0.04, 0.5, 0xffffff, 0, 0.16, 0.0).scale.set(1, 1, 0.96);
+  // two tiny feet at the back
+  for (const s of [-1, 1]) box(body, 0.12, 0.1, 0.16, m.belly, s * 0.12 - 0.15, 0.09, -0.4);
+  // the bunny's head peeks out of the front
+  const head = pivot(body, 0.12, 0.55, 0.2);
+  parts.head = head;
+  box(head, 0.42, 0.38, 0.38, m.belly, 0, 0, 0);
+  eyes(head, 0.04, 0.195, 0.1, 0.1, true);
+  box(head, 0.08, 0.06, 0.04, 0xff8aa0, 0, -0.05, 0.2);
+  for (const s of [-1, 1]) box(head, 0.09, 0.06, 0.03, 0xffb0c0, s * 0.16, -0.06, 0.195);
+  for (const [i, s] of [-1, 1].entries()) {
+    const ear = pivot(head, s * 0.12, 0.17, -0.02);
+    box(ear, 0.11, 0.5, 0.06, m.belly, 0, 0.25, 0);
+    box(ear, 0.06, 0.38, 0.02, m.accent, 0, 0.24, 0.035);
+    ear.rotation.z = -s * 0.1;
+    swing(parts, ear, 'x', 0.2, 1.3, i * 2.2);
+  }
+}
+
+// Purrmit: a big knitted mitten lying with its cuff towards you and a kitten peeking out of it.
+// Knitcat: a cat on four legs in a knitted sweater, chasing a loose thread.
+function mittencat(root, m, parts) {
+  if (has(m, 'sweater')) {
+    const body = pivot(root, 0, 0, 0);
+    parts.legs = [];
+    for (const [sx, sz, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+      const leg = pivot(body, sx * 0.18, 0.4, sz * 0.28);
+      box(leg, 0.13, 0.4, 0.13, m.belly, 0, -0.2, 0);
+      box(leg, 0.15, 0.08, 0.2, 0xffffff, 0, -0.36, 0.03);
+      if (sz > 0) box(leg, 0.17, 0.08, 0.17, m.accent, 0, -0.02, 0); // sweater cuffs
+      parts.legs.push({ g: leg, phase });
+    }
+    box(body, 0.5, 0.42, 0.84, m.body, 0, 0.6, 0);
+    box(body, 0.52, 0.44, 0.1, m.accent, 0, 0.6, -0.4); // hem
+    for (const x of [-0.2, 0, 0.2]) box(body, 0.05, 0.43, 0.84, m.accent, x, 0.605, 0).scale.set(1, 1, 1.0);
+    box(body, 0.3, 0.2, 0.2, m.accent, 0, 0.78, 0.42); // turtleneck
+    const head = pivot(body, 0, 0.9, 0.55);
+    parts.head = head;
+    box(head, 0.36, 0.3, 0.3, m.belly, 0, 0, 0);
+    eyes(head, 0.03, 0.155, 0.09, 0.1);
+    box(head, 0.07, 0.05, 0.03, 0xff8aa0, 0, -0.04, 0.16);
+    mouth(head, -0.09, 0.155, 0.08);
+    for (const s of [-1, 1]) {
+      box(head, 0.1, 0.1, 0.06, m.belly, s * 0.13, 0.18, 0).rotation.z = Math.PI / 4;
+      for (const dy of [-0.02, 0.03]) box(head, 0.18, 0.015, 0.015, 0xffffff, s * 0.27, -0.05 + dy, 0.12).rotation.z = s * dy * 4;
+    }
+    const tail = pivot(body, 0, 0.66, -0.42);
+    parts.tail = tail;
+    box(tail, 0.09, 0.09, 0.5, m.belly, 0, 0.1, -0.25).rotation.x = 0.5;
+    box(tail, 0.1, 0.1, 0.12, m.accent, 0, 0.3, -0.45);
+    // a loose thread from the hem to a ball of yarn at its front feet
+    box(body, 0.025, 0.4, 0.025, m.body, -0.2, 0.22, -0.46);
+    box(body, 0.025, 0.025, 0.96, m.body, -0.2, 0.02, 0.02);
+    box(body, 0.54, 0.025, 0.025, m.body, 0.08, 0.02, 0.5);
+    ball(body, 0.1, m.body, 0.38, 0.1, 0.5);
+    box(body, 0.2, 0.02, 0.02, m.accent, 0.38, 0.1, 0.61);
+    return;
+  }
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  swing(parts, body, 'z', 0.08, 5); // purring: the whole mitten wiggles
+  box(body, 0.5, 0.4, 0.66, m.body, 0, 0.22, -0.1); // palm
+  box(body, 0.2, 0.36, 0.34, m.body, 0.34, 0.32, -0.12).rotation.z = -0.4; // thumb
+  for (const z of [-0.36, -0.22, -0.08, 0.06]) box(body, 0.52, 0.04, 0.06, m.accent, 0, 0.42, z); // knitted rows
+  // fluffy cuff round the opening
+  box(body, 0.6, 0.09, 0.16, m.accent, 0, 0.46, 0.25);
+  box(body, 0.6, 0.09, 0.16, m.accent, 0, 0.0 + 0.04, 0.25);
+  for (const s of [-1, 1]) box(body, 0.1, 0.4, 0.16, m.accent, s * 0.26, 0.25, 0.25);
+  // the kitten
+  const head = pivot(body, 0, 0.26, 0.3);
+  parts.head = head;
+  box(head, 0.38, 0.3, 0.26, m.belly, 0, 0, 0);
+  eyes(head, 0.03, 0.135, 0.09, 0.1);
+  box(head, 0.07, 0.05, 0.03, 0xff8aa0, 0, -0.04, 0.14);
+  for (const s of [-1, 1]) {
+    box(head, 0.11, 0.11, 0.06, m.belly, s * 0.14, 0.19, 0).rotation.z = Math.PI / 4;
+    box(head, 0.05, 0.05, 0.03, 0xffb0c0, s * 0.14, 0.18, 0.035).rotation.z = Math.PI / 4;
+    for (const dy of [-0.02, 0.03]) box(head, 0.16, 0.015, 0.015, 0xffffff, s * 0.26, -0.05 + dy, 0.1).rotation.z = s * dy * 4;
+  }
+  const tail = pivot(body, -0.3, 0.28, 0.24);
+  parts.tail = tail;
+  box(tail, 0.08, 0.34, 0.08, m.belly, 0, 0.17, 0).rotation.z = 0.3;
+}
+
+// Pillowlamb: a sheep made of stacked square pillows. Dozeram: a ram with long bed pillows and curled pillow horns.
+function pillowsheep(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const ram = has(m, 'ram');
+  const legH = ram ? 0.42 : 0.3;
+  parts.legs = [];
+  for (const [sx, sz, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(body, sx * (ram ? 0.26 : 0.19), legH, sz * (ram ? 0.4 : 0.26));
+    box(leg, 0.14, legH, 0.14, m.dark, 0, -legH / 2, 0);
+    box(leg, 0.17, 0.07, 0.2, m.dark, 0, -legH + 0.035, 0.02);
+    parts.legs.push({ g: leg, phase });
+  }
+  const pillow = (w, h, d, x, y, z, rz, ry) => {
+    const p = pivot(body, x, y, z);
+    p.rotation.set(0, ry, rz);
+    box(p, w, h, d, m.body, 0, 0, 0);
+    box(p, w * 0.22, h + 0.01, d + 0.01, m.accent, w * 0.2, 0, 0); // pillowcase stripe
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(p, 0.07, 0.07, 0.07, m.body, sx * (w / 2 + 0.01), 0, sz * (d / 2 + 0.01));
+    return p;
+  };
+  if (ram) {
+    pillow(0.7, 0.54, 0.46, 0, legH + 0.3, -0.4, 0.05, 0.04);
+    pillow(0.74, 0.58, 0.48, 0, legH + 0.32, 0, -0.04, -0.03);
+    pillow(0.7, 0.54, 0.46, 0, legH + 0.3, 0.4, 0.05, 0.05);
+  } else {
+    for (const [z, rz, ry] of [[-0.24, 0.07, 0.05], [0.24, -0.06, -0.06]]) {
+      pillow(0.5, 0.26, 0.46, 0, legH + 0.15, z, rz, ry);
+      pillow(0.46, 0.26, 0.44, 0.01, legH + 0.4, z * 0.9, -rz, -ry);
+    }
+  }
+  const head = pivot(body, 0, ram ? legH + 0.55 : legH + 0.3, ram ? 0.74 : 0.58);
+  parts.head = head;
+  if (ram) {
+    box(head, 0.5, 0.44, 0.42, m.belly, 0, 0, 0);
+    box(head, 0.26, 0.2, 0.1, m.belly, 0, -0.1, 0.24);
+    eyes(head, 0.06, 0.215, 0.11, 0.11, true);
+    box(head, 0.08, 0.05, 0.03, 0x4a3a3a, 0, -0.08, 0.3);
+    for (const s of [-1, 1]) {
+      const horn = pivot(head, s * 0.3, 0.1, 0);
+      for (let k = 0; k < 4; k++) {
+        const a = k * 1.1;
+        const piece = box(horn, 0.19 - k * 0.02, 0.12, 0.19 - k * 0.02, k % 2 ? m.accent : m.body, s * (0.08 + 0.18 * Math.sin(a)), 0.06 + 0.15 * (1 - Math.cos(a)), 0);
+        piece.rotation.z = -s * a * 0.5;
+      }
+      box(head, 0.12, 0.2, 0.07, m.belly, s * 0.3, -0.08, 0.02).rotation.z = s * 0.5; // floppy ears
+    }
+    box(body, 0.22, 0.22, 0.2, m.body, 0, legH + 0.45, -0.72); // tail tuft
+  } else {
+    box(head, 0.4, 0.32, 0.3, m.belly, 0, 0, 0);
+    eyes(head, 0.04, 0.155, 0.09, 0.1, true);
+    box(head, 0.08, 0.05, 0.03, 0x4a3a3a, 0, -0.06, 0.16);
+    for (const s of [-1, 1]) box(head, 0.12, 0.22, 0.07, m.belly, s * 0.26, 0.0, 0).rotation.z = s * 0.5; // floppy ears
+    box(body, 0.2, 0.2, 0.18, m.body, 0, legH + 0.35, -0.5); // tail tuft
+  }
+  // a sleepy "z" floats above the head
+  const z = pivot(head, ram ? 0.0 : 0.05, ram ? 0.6 : 0.4, 0);
+  glow(box(z, 0.14, 0.04, 0.04, m.accent, 0, 0.1, 0), m.accent);
+  glow(box(z, 0.14, 0.04, 0.04, m.accent, 0, -0.04, 0), m.accent);
+  glow(box(z, 0.04, 0.16, 0.04, m.accent, 0, 0.03, 0), m.accent).rotation.z = 0.9;
+  swing(parts, z, 'z', 0.25, 2);
+}
+
+// Snoozebear: a bear in stripy pyjamas, fluffy slippers and a nightcap.
+function pajamabear(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.16, 0.32, 0);
+    box(leg, 0.18, 0.22, 0.2, m.body, 0, -0.1, 0);
+    box(leg, 0.22, 0.13, 0.32, 0xffb8d0, 0, -0.25, 0.05); // slipper
+    ball(leg, 0.05, 0xffffff, 0, -0.17, 0.17); // pom
+    parts.legs.push({ g: leg, phase });
+  }
+  box(body, 0.56, 0.56, 0.42, m.body, 0, 0.6, 0);
+  for (const x of [-0.2, 0.2]) box(body, 0.07, 0.57, 0.43, m.accent, x, 0.6, 0);
+  box(body, 0.09, 0.57, 0.43, m.accent, 0, 0.6, 0);
+  for (const y of [0.74, 0.6, 0.46]) box(body, 0.06, 0.06, 0.03, m.dark, 0, y, 0.22);
+  parts.arms = [];
+  for (const [s, phase] of [[-1, Math.PI], [1, 0]]) {
+    const arm = pivot(body, s * 0.36, 0.82, 0.02);
+    box(arm, 0.15, 0.38, 0.15, m.body, 0, -0.16, 0);
+    box(arm, 0.16, 0.06, 0.16, m.accent, 0, -0.34, 0);
+    box(arm, 0.15, 0.1, 0.15, m.belly, 0, -0.41, 0);
+    parts.arms.push({ g: arm, phase });
+  }
+  const head = pivot(body, 0, 1.12, 0.03);
+  parts.head = head;
+  swing(parts, head, 'z', 0.08, 1.2);
+  ball(head, 0.27, m.belly, 0, 0, 0);
+  for (const s of [-1, 1]) {
+    ball(head, 0.09, m.belly, s * 0.22, 0.2, -0.02);
+    ball(head, 0.045, 0xe8b8a0, s * 0.22, 0.2, 0.05);
+  }
+  box(head, 0.22, 0.15, 0.08, 0xf0d0a8, 0, -0.08, 0.26); // muzzle
+  box(head, 0.08, 0.06, 0.04, m.dark, 0, -0.03, 0.3);
+  eyes(head, 0.06, 0.275, 0.1, 0.1, true);
+  // nightcap leaning back with a pom-pom
+  const cap = pivot(head, 0, 0.2, -0.02);
+  cap.rotation.x = -0.15;
+  box(cap, 0.5, 0.1, 0.5, m.accent, 0, 0.0, 0);
+  box(cap, 0.42, 0.14, 0.42, m.body, 0, 0.12, -0.03);
+  box(cap, 0.32, 0.14, 0.32, m.body, 0, 0.25, -0.1);
+  box(cap, 0.2, 0.14, 0.2, m.body, 0, 0.36, -0.2);
+  ball(cap, 0.07, m.accent, 0, 0.38, -0.34);
+  swing(parts, cap, 'z', 0.1, 1.8);
+}
+const SHAPES_COZY = { blanketbun, mittencat, pillowsheep, pajamabear };
+/* ==== end of T21 cozy shapes ==== */
+
+/* ==== T21 treasure shapes ==== */
+// A twinkle: two crossed flat four-pointed stars (one mesh, 16 triangles).
+export function sparkleGeometry(r) {
+  const q = r * 0.16, pos = [];
+  const tips = [[r, 0], [0, r], [-r, 0], [0, -r]], ins = [[q, q], [-q, q], [-q, -q], [q, -q]];
+  for (const plane of [(a, b) => [a, b, 0], (a, b) => [0, b, a]]) {
+    for (let i = 0; i < 4; i++) {
+      pos.push(...plane(0, 0), ...plane(...ins[(i + 3) % 4]), ...plane(...tips[i]),
+               ...plane(0, 0), ...plane(...tips[i]), ...plane(...ins[i]));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+// Glow, but only a little (crystals catch the light rather than make it).
+const weakGlowTreasure = (mesh, color, k = 0.35) => {
+  glow(mesh, color);
+  mesh.material.emissive.multiplyScalar(k);
+  return mesh;
+};
+// An octagon of two crossed boxes.
+const octagonTreasure = (parent, w, h, d, color, x = 0, y = 0, z = 0, flat = false) => {
+  const g = pivot(parent, x, y, z);
+  const cut = 0.72;
+  if (flat) { // lying down: w x w, d high
+    box(g, w, h, w * cut, color, 0, 0, 0);
+    box(g, w * cut, h, w, color, 0, 0, 0);
+  } else { // standing, facing +z
+    box(g, w * cut, w, d, color, 0, 0, 0);
+    box(g, w, w * cut, d, color, 0, 0, 0);
+  }
+  return g;
+};
+
+// Coinlet: a gold coin standing on its edge, rocking from side to side. Kingcoin: a stack of coins with a crown.
+function coin(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  if (has(m, 'stack')) {
+    parts.legs = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const leg = pivot(body, s * 0.2, 0.34, 0);
+      box(leg, 0.15, 0.3, 0.15, m.body, 0, -0.15, 0);
+      box(leg, 0.19, 0.07, 0.26, m.dark, 0, -0.31, 0.04);
+      parts.legs.push({ g: leg, phase });
+    }
+    parts.arms = [];
+    for (const [s, phase] of [[-1, Math.PI], [1, 0]]) {
+      const arm = pivot(body, s * 0.52, 0.8, 0);
+      box(arm, 0.09, 0.34, 0.09, m.body, 0, -0.15, 0);
+      box(arm, 0.12, 0.1, 0.12, m.belly, 0, -0.34, 0);
+      parts.arms.push({ g: arm, phase });
+    }
+    for (let i = 0; i < 4; i++) {
+      const y = 0.38 + i * 0.16, x = i % 2 ? 0.04 : -0.04;
+      octagonTreasure(body, 0.92, 0.15, 0, i % 2 ? m.belly : m.body, x, y, 0, true);
+    }
+    eyes(body, 0.38 + 3 * 0.16 + 0.005, 0.465, 0.13, 0.1);
+    box(body, 0.14, 0.03, 0.03, m.dark, 0, 0.38 + 2 * 0.16 + 0.1, 0.47);
+    // the top coin spins slowly, wearing a small crown
+    const top = pivot(body, 0, 0.38 + 4 * 0.16, 0);
+    octagonTreasure(top, 0.92, 0.15, 0, m.body, 0, 0, 0, true);
+    box(top, 0.4, 0.1, 0.3, m.belly, 0, 0.12, 0);
+    for (const x of [-0.15, 0, 0.15]) box(top, 0.08, 0.14, 0.08, m.belly, x, 0.24, 0);
+    glow(box(top, 0.09, 0.09, 0.05, m.accent, 0, 0.12, 0.16), m.accent);
+    spin(parts, top, 'y', 0.9);
+    return;
+  }
+  const disc = pivot(body, 0, 0.47, 0);
+  swing(parts, disc, 'z', 0.25, 1.8);
+  octagonTreasure(disc, 0.88, 0, 0.1, m.accent, 0, 0, -0.03); // rim, a little bigger and behind
+  octagonTreasure(disc, 0.8, 0, 0.14, m.body, 0, 0, 0.02);
+  octagonTreasure(disc, 0.6, 0, 0.02, m.belly, 0, 0, 0.1); // lighter face
+  eyes(disc, 0.08, 0.125, 0.12, 0.13);
+  box(disc, 0.05, 0.04, 0.03, m.dark, -0.11, -0.1, 0.125);
+  box(disc, 0.05, 0.04, 0.03, m.dark, 0.11, -0.1, 0.125);
+  box(disc, 0.17, 0.04, 0.03, m.dark, 0, -0.14, 0.125);
+  glow(box(disc, 0.05, 0.3, 0.02, 0xffffff, -0.28, 0.2, 0.13), 0xffffff).rotation.z = -0.7; // shine
+  // an embossed star on the back
+  for (const r of [0, Math.PI / 4]) {
+    for (const [w, h] of [[0.26, 0.07], [0.07, 0.26]]) box(disc, w, h, 0.02, m.accent, 0, 0, -0.1).rotation.z = r;
+  }
+  for (const s of [-1, 1]) box(body, 0.16, 0.1, 0.2, m.dark, s * 0.18, 0.05, 0.04); // little feet
+}
+
+// Crystafox: a fox with crystal fur and spikes. Prismfox: bigger, with a fan of shards and spinning rainbows.
+function crystalfox(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  const prism = has(m, 'prism');
+  parts.legs = [];
+  for (const [sx, sz, phase] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(body, sx * 0.14, 0.36, sz * 0.27);
+    box(leg, 0.1, 0.36, 0.1, m.body, 0, -0.18, 0);
+    box(leg, 0.13, 0.07, 0.17, m.belly, 0, -0.33, 0.03);
+    parts.legs.push({ g: leg, phase });
+  }
+  box(body, 0.4, 0.34, 0.82, m.body, 0, 0.53, 0);
+  box(body, 0.3, 0.2, 0.7, m.belly, 0, 0.42, 0);
+  const spikes = prism ? 6 : 5;
+  for (let k = 0; k < spikes; k++) {
+    const z = -0.32 + k * (0.64 / (spikes - 1));
+    const sp = weakGlowTreasure(box(body, 0.1, 0.24 + (k % 2) * 0.06, 0.1, m.accent, (k % 2 ? 0.05 : -0.05), 0.76, z), m.accent);
+    sp.rotation.set(0.7, 0.4, 0.7);
+  }
+  const head = pivot(body, 0, 0.78, 0.5);
+  parts.head = head;
+  box(head, 0.32, 0.3, 0.28, m.body, 0, 0, 0);
+  box(head, 0.2, 0.15, 0.14, m.belly, 0, -0.06, 0.2);
+  box(head, 0.12, 0.1, 0.1, m.belly, 0, -0.07, 0.3);
+  box(head, 0.07, 0.06, 0.05, m.dark, 0, -0.03, 0.36);
+  eyes(head, 0.06, 0.145, 0.09, 0.09);
+  for (const s of [-1, 1]) {
+    box(head, 0.12, 0.2, 0.07, m.body, s * 0.1, 0.24, -0.02);
+    weakGlowTreasure(box(head, 0.08, 0.14, 0.06, m.accent, s * 0.1, 0.38, -0.02), m.accent).rotation.z = -s * 0.15;
+  }
+  if (prism) {
+    box(body, 0.34, 0.1, 0.1, m.accent, 0, 0.66, 0.3);
+    const chest = glow(box(body, 0.17, 0.17, 0.09, m.accent, 0, 0.5, 0.42), 0xb0d8ff);
+    chest.rotation.z = Math.PI / 4;
+    // the rainbows it throws
+    const ring = pivot(body, 0, 0.95, -0.1);
+    [0xff6a6a, 0xffb84a, 0xffe84a, 0x6ad86a, 0x6aa8ff].forEach((c, i) => {
+      const a = (i / 5) * Math.PI * 2;
+      glow(box(ring, 0.1, 0.1, 0.1, c, Math.cos(a) * 0.5, Math.sin(a * 2) * 0.05, Math.sin(a) * 0.5), c);
+    });
+    spin(parts, ring, 'y', 1.4);
+  }
+  const tail = pivot(body, 0, 0.62, -0.42);
+  parts.tail = tail;
+  if (prism) {
+    for (let k = 0; k < 5; k++) {
+      const shard = pivot(tail, 0, 0, 0);
+      shard.rotation.set(-0.7, 0, (k - 2) * 0.38);
+      weakGlowTreasure(box(shard, 0.1, 0.55 - Math.abs(k - 2) * 0.05, 0.1, k % 2 ? m.accent : m.body, 0, 0.3, 0), m.accent, 0.2).rotation.y = 0.6;
+    }
+  } else {
+    for (const [y, z, s] of [[0.04, -0.14, 0.16], [0.12, -0.34, 0.2], [0.2, -0.56, 0.14]]) {
+      const c = box(tail, s, s, s * 1.8, m.body, 0, y, z);
+      c.rotation.set(0.5, 0.6, 0.5);
+    }
+    weakGlowTreasure(box(tail, 0.1, 0.1, 0.1, m.accent, 0, 0.26, -0.7), m.accent).rotation.set(0.6, 0.6, 0.6);
+  }
+}
+
+// Ringlet: a floating gold ring with a gem eye. Crownguard: a walking crown in gem armour.
+function gemring(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  if (has(m, 'crown')) {
+    parts.legs = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const leg = pivot(body, s * 0.28, 0.38, 0);
+      box(leg, 0.2, 0.38, 0.22, m.body, 0, -0.19, 0);
+      box(leg, 0.24, 0.08, 0.32, m.dark, 0, -0.34, 0.05);
+      parts.legs.push({ g: leg, phase });
+    }
+    const y0 = 0.38, h = 0.46, yc = y0 + h / 2;
+    box(body, 1.0, h, 0.1, m.body, 0, yc, 0.4);
+    box(body, 1.0, h, 0.1, m.body, 0, yc, -0.4);
+    for (const s of [-1, 1]) box(body, 0.1, h, 0.9, m.body, s * 0.45, yc, 0);
+    box(body, 0.84, 0.1, 0.7, 0x8a1a3a, 0, y0 + h - 0.05, 0); // velvet cushion
+    for (const z of [0.4, -0.4]) {
+      for (let i = 0; i < 5; i++) {
+        const x = -0.4 + i * 0.2, ph = i % 2 ? 0.2 : 0.32;
+        box(body, 0.14, ph, 0.1, m.body, x, y0 + h + ph / 2, z);
+        if (z > 0) glow(box(body, 0.09, 0.09, 0.09, i % 2 ? m.accent : m.belly, x, y0 + h + ph + 0.04, z), i % 2 ? m.accent : m.belly);
+      }
+    }
+    for (const s of [-1, 1]) for (const z of [0.4, -0.4]) box(body, 0.1, 0.26, 0.1, m.body, s * 0.45, y0 + h + 0.13, z * 0.9);
+    // gem armour on the front band
+    for (const [x, c] of [[-0.3, m.accent], [0, m.belly], [0.3, m.accent]]) {
+      const g = glow(box(body, 0.2, 0.2, 0.08, c, x, yc - 0.06, 0.47), c);
+      g.rotation.z = Math.PI / 4;
+    }
+    eyes(body, yc + 0.12, 0.455, 0.16, 0.1);
+    parts.arms = [];
+    for (const [s, phase] of [[-1, Math.PI], [1, 0]]) {
+      const arm = pivot(body, s * 0.58, 0.72, 0.05);
+      box(arm, 0.12, 0.4, 0.12, m.body, 0, -0.18, 0);
+      box(arm, 0.14, 0.1, 0.14, m.dark, 0, -0.4, 0);
+      if (s > 0) {
+        ball(arm, 0.17, m.belly, 0.08, -0.32, 0.14);
+        glow(box(arm, 0.08, 0.08, 0.04, m.accent, 0.08, -0.32, 0.31), m.accent);
+      }
+      parts.arms.push({ g: arm, phase });
+    }
+    return;
+  }
+  parts.hover = true;
+  const ring = pivot(body, 0, 0.5, 0);
+  swing(parts, ring, 'y', 0.4, 1.1);
+  const R = 0.38;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const seg = box(ring, 0.29, 0.13, 0.18, i % 2 ? m.body : 0xe8b428, Math.cos(a) * R, Math.sin(a) * R, 0);
+    seg.rotation.z = a + Math.PI / 2;
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    glow(box(ring, 0.07, 0.07, 0.07, m.belly, Math.cos(a) * (R + 0.08), Math.sin(a) * (R + 0.08), 0.1), m.belly).material.emissive.multiplyScalar(0.3);
+  }
+  const eye = glow(box(ring, 0.28, 0.28, 0.14, m.accent, 0, R, 0), m.accent);
+  eye.rotation.z = Math.PI / 4;
+  box(ring, 0.1, 0.16, 0.03, m.dark, 0, R - 0.01, 0.08);
+  box(ring, 0.05, 0.05, 0.03, 0xffffff, 0.04, R + 0.05, 0.1);
+  for (const s of [-1, 1]) box(ring, 0.07, 0.07, 0.03, 0xffffff, s * 0.16, -R + 0.0, 0.1); // smiling dots on the bottom of the ring
+}
+
+// Lustrelle: a floating gold chandelier with a spinning ring of flickering candles and a smiling medallion.
+function chandelier(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.hover = true;
+  box(body, 0.1, 0.95, 0.1, m.body, 0, 0.65, 0); // stem
+  ball(body, 0.09, m.body, 0, 1.17, 0);
+  box(body, 0.04, 0.12, 0.04, m.body, 0, 1.3, 0);
+  weakGlowTreasure(box(body, 0.12, 0.26, 0.12, 0xbfefff, 0, 0.1, 0), 0xbfefff, 0.5).rotation.y = Math.PI / 4;
+  const ring = pivot(body, 0, 0.98, 0);
+  spin(parts, ring, 'y', 0.4);
+  for (let k = 0; k < 6; k++) {
+    const arm = pivot(ring, 0, 0, 0);
+    arm.rotation.y = (k / 6) * Math.PI * 2;
+    box(arm, 0.4, 0.06, 0.06, m.body, 0.2, 0, 0);
+    box(arm, 0.16, 0.08, 0.16, m.body, 0.4, 0.03, 0);
+    box(arm, 0.09, 0.2, 0.09, m.belly, 0.4, 0.17, 0);
+    const flame = pivot(arm, 0.4, 0.27, 0);
+    glow(box(flame, 0.07, 0.13, 0.07, m.accent, 0, 0.06, 0), m.accent);
+    swing(parts, flame, 'z', 0.15, 9, k);
+    const drop = pivot(ring, 0, 0, 0);
+    drop.rotation.y = ((k + 0.5) / 6) * Math.PI * 2;
+    weakGlowTreasure(box(drop, 0.08, 0.2, 0.08, 0xbfefff, 0.3, -0.14, 0), 0xbfefff, 0.6).rotation.y = Math.PI / 4;
+    box(drop, 0.02, 0.1, 0.02, m.body, 0.3, -0.02, 0);
+  }
+  // the face on a round gold medallion in front of the stem
+  const med = pivot(body, 0, 0.55, 0.17);
+  ball(med, 0.22, m.body, 0, 0, 0);
+  box(med, 0.34, 0.3, 0.04, m.belly, 0, 0, 0.215);
+  eyes(med, 0.05, 0.225, 0.09, 0.1);
+  mouth(med, -0.09, 0.225, 0.11);
+  swing(parts, med, 'z', 0.05, 1.4);
+}
+const SHAPES_TREASURE = { coin, crystalfox, gemring, chandelier };
+/* ==== end of T21 treasure shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
   ...SHAPES_A, ...SHAPES_B, ...SHAPES_C,
   ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
   ...SHAPES_TIME, ...SHAPES_CAMO, ...SHAPES_CYBER,
+  ...SHAPES_COZY, ...SHAPES_TREASURE,
 };

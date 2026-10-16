@@ -1688,3 +1688,195 @@ SIG.megabyte = (k, from, to) => {
   };
 };
 /* ==== end of T18 ==== */
+
+/* ==== T21: cozy, treasure ==== */
+Object.assign(FX_COLORS, {
+  cozy: [0xffa080, 0xfff0d8, 0xe0607a], treasure: [0xffd23a, 0xfff6c0, 0xe0304a, 0x3a8aff],
+});
+
+const wave21 = t => Math.sin(Math.PI * t);
+
+/* -------------------------------- cozy -------------------------------- */
+
+// Warm puffs drift over in a gentle wave with three little hearts.
+TRAVEL.cozy = k => {
+  const N = 6;
+  const puffs = k.points({ n: N, tex: 'puff', size: 0.42, colors: [0xffd8b8, 0xfff0d8, 0xffb48a] });
+  const hearts = k.points({ n: 3, tex: 'heart', size: 0.3, glow: true, colors: [0xe0607a, 0xff8aa0, 0xffb0c0] });
+  return {
+    dur: 420,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.4);
+        if (t < 0) { puffs.hide(i); continue; }
+        k.at(t, A, 0.3);
+        const w = Math.sin(t * 9 + i) * 0.12;
+        puffs.set(i, A.x + k.side.x * w, A.y + Math.cos(t * 7 + i) * 0.08, A.z + k.side.z * w);
+      }
+      puffs.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 3; i++) {
+        const t = trailT(p, i * 2, N, 0.4);
+        if (t < 0) { hearts.hide(i); continue; }
+        k.at(t, A, 0.5);
+        const w = Math.sin(t * 8 + i * 2) * 0.18;
+        hearts.set(i, A.x + k.side.x * w, A.y + 0.12, A.z + k.side.z * w);
+      }
+      hearts.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Eight hearts ring out and float up, over a soft cushion of puff.
+IMPACT.cozy = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const hearts = k.points({ n: N, tex: 'heart', size: 0.34 * m, glow: true, colors: [0xe0607a, 0xff8aa0, 0xffb0c0, 0xffa080] });
+  const cushion = k.points({ n: 5, tex: 'puff', size: 0.7 * m, colors: [0xfff0d8, 0xffd8b8] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i * 2] * 0.5, d = (to.r * 0.4 + 0.15 + s[i * 2 + 1] * 0.2) * k.ease(p) * m;
+        hearts.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + k.ease(p) * (0.5 + s[i * 2 + 1] * 0.4), to.pos.z + Math.sin(ang) * d);
+      }
+      hearts.fade(fadeOut(p, 0.5));
+      for (let i = 0; i < 5; i++) {
+        const ang = (i / 5) * 6.283, d = to.r * 0.5 * k.ease(p);
+        cushion.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y - 0.05 + p * 0.15, to.pos.z + Math.sin(ang) * d);
+      }
+      cushion.fade(fadeOut(p, 0.3) * 0.9);
+    },
+  };
+};
+
+// Lights Out: a dark blue blanket grows over the target, a pale moon rises above it and three z drift up.
+SIG.lightsout = (k, from, to) => {
+  const blanket = k.mesh('disc', { color: 0x1a2a6a, opacity: 0.5 });
+  const moon = k.sprite('dot', { color: 0xfff6c8, size: 0.1, glow: true });
+  const zs = [0, 1, 2].map(() => k.sprite('z', { color: 0xdfe8ff, size: 0.1, glow: true }));
+  const stars = k.points({ n: 6, tex: 'star', size: 0.2, glow: true, colors: [0xfff6c8, 0xffffff] });
+  const s = k.seeds(6, 2);
+  return {
+    dur: 650,
+    step(p) {
+      const g = k.ease(clamp01(p / 0.45)), top = to.top + 0.05;
+      blanket.rotation.set(-Math.PI / 2, 0, 0);
+      blanket.position.set(to.pos.x, lerp(top + 0.8, top, g), to.pos.z);
+      blanket.scale.setScalar(Math.max(0.01, (to.r + 0.35) * g));
+      blanket.material.opacity = 0.5 * fadeOut(p, 0.75) * clamp01(p / 0.1);
+      const up = clamp01((p - 0.25) / 0.5);
+      moon.position.set(to.pos.x + k.side.x * 0.5, top + 0.5 + up * 0.5, to.pos.z + k.side.z * 0.5);
+      moon.scale.setScalar(Math.max(0.01, 0.55 * k.ease(up)));
+      moon.material.opacity = fadeOut(p, 0.8) * (up > 0 ? 1 : 0);
+      for (let i = 0; i < 3; i++) {
+        const q = clamp01((p - 0.3 - i * 0.1) / 0.5);
+        zs[i].position.set(to.pos.x - k.side.x * (0.2 + i * 0.15), top + 0.1 + q * 0.7, to.pos.z - k.side.z * (0.2 + i * 0.15));
+        zs[i].scale.setScalar(Math.max(0.01, (0.25 + i * 0.08) * (q > 0 ? 1 : 0)));
+        zs[i].material.opacity = q > 0 ? wave21(q) : 0;
+      }
+      for (let i = 0; i < 6; i++) {
+        if (up <= 0) { stars.hide(i); continue; }
+        const ang = s[i * 2] * 6.283, d = to.r + 0.3 + s[i * 2 + 1] * 0.4;
+        stars.set(i, to.pos.x + Math.cos(ang) * d, top + 0.2 + s[i * 2 + 1] * 0.8, to.pos.z + Math.sin(ang) * d);
+      }
+      stars.fade(fadeOut(p, 0.7) * wave21(clamp01(up)));
+    },
+  };
+};
+
+/* ------------------------------- treasure ------------------------------- */
+
+// Gold coins spin along the arc (a coin turning: its size flips) with a few star glints.
+TRAVEL.treasure = k => {
+  const N = 8;
+  const coins = k.points({ n: N, tex: 'coin', size: 0.3, glow: true, colors: [0xffd23a, 0xfff0a0, 0xffb020] });
+  const glints = k.points({ n: 4, tex: 'star', size: 0.22, glow: true, colors: [0xffffff, 0xfff6c0] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 420,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.4);
+        if (t < 0) { coins.hide(i); continue; }
+        k.at(t, A, 0.5);
+        coins.set(i, A.x + (s[i * 2] - 0.5) * 0.2, A.y + (s[i * 2 + 1] - 0.5) * 0.2, A.z);
+      }
+      coins.material.size = 0.1 + 0.26 * Math.abs(Math.sin(p * 20));
+      coins.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 4; i++) {
+        const t = trailT(p, i * 2 + 0.5, N, 0.4);
+        if (t < 0) { glints.hide(i); continue; }
+        k.at(t, A, 0.5);
+        glints.set(i, A.x + Math.sin(p * 14 + i * 2) * 0.22, A.y + Math.cos(p * 11 + i) * 0.18, A.z);
+      }
+      glints.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Ten gems burst up and fall back on a parabola, with four star twinkles.
+IMPACT.treasure = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10;
+  const gems = k.points({ n: N, tex: 'gem', size: 0.3 * m, glow: true, colors: [0xe0304a, 0x3a8aff, 0xffd23a] });
+  const stars = k.points({ n: 4, tex: 'star', size: 0.26 * m, glow: true, colors: [0xffffff, 0xfff6c0] });
+  const s = k.seeds(N, 3);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = s[i * 3] * 6.283, v = (0.3 + s[i * 3 + 1] * 0.5) * m, up = (1.6 + s[i * 3 + 2] * 1.2) * m;
+        const t = p * 0.55;
+        gems.set(i, to.pos.x + Math.cos(ang) * v * p * 1.5, to.pos.y + 0.1 + up * t * 1.2 - 9 * t * t, to.pos.z + Math.sin(ang) * v * p * 1.5);
+      }
+      gems.fade(fadeOut(p, 0.6));
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * 6.283 + 0.7, d = (to.r * 0.5 + 0.2) * m;
+        const tw = wave21(clamp01(p * 1.4 - i * 0.12));
+        if (tw <= 0.02) { stars.hide(i); continue; }
+        stars.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.15 + (i % 2) * 0.35, to.pos.z + Math.sin(ang) * d);
+      }
+      stars.fade(0.95);
+    },
+  };
+};
+
+// Crown Jewel: a big gem drops onto the target, a gold ring spreads at its feet and five stars flash in a crown shape.
+SIG.crownjewel = (k, from, to) => {
+  const jewel = k.sprite('gem', { color: 0xe0304a, size: 0.1, glow: true });
+  const shine = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  const ring = k.mesh('ring', { color: 0xffd23a, opacity: 0.8 });
+  const crown = [0, 1, 2, 3, 4].map(() => k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true }));
+  const sparks = k.points({ n: 12, tex: 'coin', size: 0.24, glow: true, colors: [0xffd23a, 0xfff0a0] });
+  const s = k.seeds(12, 2);
+  const feet = feetOf(to);
+  return {
+    dur: 650,
+    step(p) {
+      const d = clamp01(p / 0.45), drop = d * d, hit = clamp01((p - 0.45) / 0.55);
+      const y = lerp(to.pos.y + 2.5, to.pos.y + 0.1, drop);
+      jewel.position.set(to.pos.x, y, to.pos.z);
+      jewel.scale.setScalar(Math.max(0.01, p < 0.5 ? 0.9 : 0.9 * (1 - clamp01((p - 0.5) / 0.15))));
+      jewel.material.opacity = p < 0.5 ? clamp01(p / 0.08) : 1 - clamp01((p - 0.5) / 0.15);
+      shine.position.set(to.pos.x + 0.12, y + 0.1, to.pos.z);
+      shine.scale.setScalar(Math.max(0.01, 0.4 * (1 + Math.sin(p * 40) * 0.3) * (p < 0.5 ? 1 : 0)));
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, (to.r * 0.5 + k.ease(hit) * 1.2) * (hit > 0 ? 1 : 0)));
+      ring.material.opacity = hit > 0 ? 0.8 * (1 - hit) : 0;
+      for (let i = 0; i < 5; i++) {
+        const x = (i - 2) * 0.32, h = 0.2 + (i % 2 === 0 ? 0.28 : 0) + (i === 2 ? 0.15 : 0);
+        const f = clamp01((hit - 0.1 - i * 0.05) / 0.3);
+        planeAt(crown[i].position, to.pos, k.side, x, to.top - to.pos.y + 0.3 + h);
+        crown[i].scale.setScalar(Math.max(0.01, 0.38 * wave21(f)));
+        crown[i].material.opacity = f > 0 && f < 1 ? 1 : 0;
+      }
+      for (let i = 0; i < 12; i++) {
+        if (hit <= 0) { sparks.hide(i); continue; }
+        const ang = s[i * 2] * 6.283, dd = (to.r + 0.2 + s[i * 2 + 1] * 0.6) * k.ease(hit);
+        sparks.set(i, to.pos.x + Math.cos(ang) * dd, feet + 0.2 + s[i * 2 + 1] * 0.9 * k.ease(hit), to.pos.z + Math.sin(ang) * dd);
+      }
+      sparks.fade(1 - hit);
+    },
+  };
+};
+/* ==== end of T21 ==== */
