@@ -1,5 +1,5 @@
 // T10 access and UI: the Saucer Gym only has its people at night, the Cloud Gym's hints, the four new gyms'
-// battles, the 25-badge HUD (desktop and iPad) and the badge count for the tower.
+// battles, the 27-badge HUD (desktop and iPad) and the badge count for the tower.
 // (Placement and the Cloud Gym's geometry are checked in new-gyms.mjs.)
 import fs from 'node:fs';
 import { devices } from 'playwright';
@@ -29,7 +29,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 1);
   await recordToasts(page);
   await page.evaluate(() => { const g = window.pokecraft; g.creatures.clear(); document.exitPointerLock(); });
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 25), '25 gyms are placed');
+  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), '27 gyms are placed');
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return GYMS.find(g => g.id === 'alien').night === true && GYMS.slice(18, 22).map(g => g.id).join() === 'light,paper,slime,sky';
@@ -50,7 +50,7 @@ export default async function ({ browser, base, t }) {
   await setTime(page, 0.25, false);
   await stand('alien');
   t.ok(await page.evaluate(`${who('leader', 'alien')}.model.visible === false && ${who('trainer', 'alien')}.model.visible === false`), 'the Saucer Gym people are hidden by day');
-  t.ok(await page.evaluate(`window.pokecraft.npcs.list.filter(n => n.gym && !n.gym.def.night).every(n => n.model.visible)`), "other gyms' people are not hidden");
+  t.ok(await page.evaluate(`window.pokecraft.npcs.list.filter(n => n.gym && !n.gym.def.night && !n.away).every(n => n.model.visible)`), "other gyms' people are not hidden");
   await clearToasts(page);
   await page.evaluate(`window.pokecraft.talkTo(${who('trainer', 'alien')})`);
   t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), 'the Saucer trainer does not battle by day');
@@ -168,7 +168,7 @@ export default async function ({ browser, base, t }) {
   // 3. The four new gyms: trainer, then leader, badge.
   for (const [id, badge] of [['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {
     if (id === 'sky') {
-      // Pretend the other 24 are done so the Cloud Gym is the 25th badge.
+      // Pretend the other 26 are done so the Cloud Gym is the 27th badge.
       await page.evaluate(async () => {
         const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
         g.badges = GYMS.filter(x => x.id !== 'sky').map(x => x.id);
@@ -186,8 +186,8 @@ export default async function ({ browser, base, t }) {
     t.ok(await page.evaluate(gid => window.pokecraft.badges.includes(gid), id), `${badge} Badge awarded`);
   }
   msg = await toasts(page);
-  t.ok(await page.evaluate(() => window.pokecraft.badges.length === 25) && msg.includes('(25/25)') && msg.includes('Tower is open'),
-    `the 25th badge says the Champion's Tower is open`);
+  t.ok(await page.evaluate(() => window.pokecraft.badges.length === 27) && msg.includes('(27/27)') && msg.includes('Tower is open'),
+    `the 27th badge says the Champion's Tower is open`);
 
   // 4. Cloud Gym hints.
   await clearToasts(page);
@@ -240,7 +240,7 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(4500);
   await page.screenshot({ path: SHOTS + 'gym-sky-ground.png' });
 
-  // 5. The badge HUD with 25 diamonds, on desktop.
+  // 5. The badge HUD with 27 diamonds, on desktop.
   await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     g.badges = GYMS.map(x => x.id);
@@ -251,7 +251,7 @@ export default async function ({ browser, base, t }) {
     const r = document.getElementById('badges').getBoundingClientRect();
     return { n: document.querySelectorAll('#badges > *').length, got: document.querySelectorAll('#badges > .got').length, h: r.height, w: r.width, right: r.right, vw: innerWidth };
   });
-  t.ok(desk.n === 25 && desk.got === 25 && desk.h <= 90 && desk.right <= desk.vw, `desktop: 25 badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
+  t.ok(desk.n === 27 && desk.got === 27 && desk.h <= 90 && desk.right <= desk.vw, `desktop: 27 badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
   await page.screenshot({ path: SHOTS + 'badges-25-desktop.png' });
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
@@ -276,7 +276,7 @@ export default async function ({ browser, base, t }) {
       const hit = others.some(o => !(o.right < hud.left || o.left > hud.right || o.bottom < hud.top || o.top > hud.bottom));
       return { n: document.querySelectorAll('#badges > *').length, h: r.height, right: r.right, vw: innerWidth, hit };
     });
-    t.ok(m.n === 25 && m.h <= 90 && m.right <= m.vw && !m.hit, `iPad ${name}: 25 badges fit (${Math.round(m.h)}px high) and the touch buttons are clear`);
+    t.ok(m.n === 27 && m.h <= 90 && m.right <= m.vw && !m.hit, `iPad ${name}: 27 badges fit (${Math.round(m.h)}px high) and the touch buttons are clear`);
     await pad.screenshot({ path: SHOTS + `badges-25-ipad-${name}.png` });
     t.ok(!pad.errors.length, `iPad ${name}: no page errors ${pad.errors.join('; ')}`);
     await pad.context().close();

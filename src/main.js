@@ -92,6 +92,7 @@ const game = {
   scene, camera,
   world: null, player: null, creatures: null,
   party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
+  keys: [], // T23 golden keys found ('<gymId>:<key>'), per player like badges
   blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
@@ -154,6 +155,7 @@ function snapshot() {
     hotbar: game.hotbar,
     champion: game.champion,
     blockCounts: game.blockCounts,
+    keys: game.keys,
     toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
@@ -251,6 +253,7 @@ function startNew(starterId) {
   game.beaten = [];
   game.champion = false;
   game.blockCounts = {};
+  game.keys = [];
   game.playerId = game.playerId || randomId();
   game.homes.load([], game.playerId);
   game.hotbar = [...HOTBAR];
@@ -273,6 +276,7 @@ function continueGame(saved) {
   game.beaten = saved.beaten || [];
   game.champion = !!saved.champion;
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
+  game.keys = loadKeys(saved.keys); // old saves have none
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
@@ -300,6 +304,12 @@ function continueGame(saved) {
   if (!game.badges.includes('bone') && !saved.toldCaveGym) {
     game.ui.toast('The Fossil Gym moved into a big cave! Follow the arrow to the stairs.');
   }
+}
+
+// Golden keys from a save (T23): only '<gymId>:<key>' strings that a gym def names, each once.
+const ALL_KEYS = new Set(GYMS.flatMap(def => (def.keys || []).map(k => `${def.id}:${k}`)));
+function loadKeys(saved) {
+  return [...new Set(Array.isArray(saved) ? saved : [])].filter(k => typeof k === 'string' && ALL_KEYS.has(k));
 }
 
 // Limited blocks from a save: only known limited ids with a whole count above 0.
@@ -539,6 +549,7 @@ function wallToast(text) {
 function breakBlock(hit = target.block) {
   const world = game.world;
   if (!hit || hit.y === 0) return;
+  if (game.gymLive.hit(hit)) return; // T23: key chests open, reset buttons press (the touch break button comes here)
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
   if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || 'Gym walls are too strong to break!'); return; }
   // Natural blocks have no edit yet; a placed block does (T20: so placed gold ore and leaves never give cubes).
@@ -682,7 +693,7 @@ function talkTower(npc) {
   const p = game.world.tower.people.find(q => q.role === npc.role);
   if (npc.role === 'coach') {
     const top = Math.max(...game.party.map(c => c.level));
-    const lv = Math.max(25, Math.min(47, top));
+    const lv = Math.max(25, Math.min(50, top));
     const ids = p.teams[Math.floor(Math.random() * p.teams.length)];
     startBattle({ trainer: npc, team: ids.map((id, i) => [id, i === 0 ? lv - 1 : lv]), intro: p.intro, xpBoost: 2 });
     return;
@@ -703,7 +714,7 @@ function talkTower(npc) {
     ui.toast(`${npc.name}: Beat my guards first, then come back!`);
     return;
   }
-  const team = p.team.map(([s, l]) => [s, Math.min(50, l + (game.champion ? 3 : 0))]);
+  const team = p.team.map(([s, l]) => [s, Math.min(55, l + (game.champion ? 3 : 0))]);
   startBattle({ trainer: npc, team, intro: game.champion ? p.rematch : p.intro, boss: true });
 }
 

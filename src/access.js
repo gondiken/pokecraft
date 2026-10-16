@@ -4,6 +4,7 @@
 import { WORLD_W } from './world.js';
 import { trainersOf, trainerKey } from './gyms.js';
 import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
+import { homeGymState } from './homegym.js';
 
 // Is p inside the box {x0, x1, y0, y1, z0, z1} (inclusive block coordinates)?
 const inBox = (b, p) => p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y < b.y1 + 1;
@@ -88,6 +89,33 @@ WHERE.hidden = g => ({
   },
 });
 
+// Home gyms (T23 Cozy Gym): no building. Until it moves in the arrow says what to do next (build a home, make it cozy,
+// catch 3 cozy creatures) and points at your home; afterwards at the home itself. No `tips` (the golden fixture).
+WHERE.home = (g, game) => {
+  const contains = p => { // inside the home the gym moved into
+    const s = homeGymState(game, g), r = s.home?.report;
+    if (!s.movedIn || !r?.inside) return false;
+    const x = Math.floor(p.x), z = Math.floor(p.z);
+    return Math.abs(p.y - (r.f + 1)) < 3 && r.inside.some(([a, b]) => a === x && b === z);
+  };
+  return {
+    contains,
+    aim(p) {
+      const s = homeGymState(game, g), h = s.home, n = g.def.name;
+      const at = h && { x: h.x + 0.5, z: h.z + 0.5 };
+      if (!s.movedIn) {
+        if (!s.owner) return { text: () => `Next: ${n} · it moves into your friend's cozy home` };
+        if (!h) return { text: () => `Next: ${n} · build a cozy home! Put a Doormat in the floor.` };
+        if (!s.ofType) return { ...at, text: (a, d) => `Next: ${n} · make your home a ${s.type.name} ${a} ${d}m` };
+        if (!s.ready) return { ...at, text: (a, d) => `Next: ${n} · make your home cozy ${a} ${d}m` };
+        return { ...at, text: (a, d) => `Next: ${n} · catch ${s.need} cozy creatures (${Math.min(s.caught, s.need)}/${s.need}) ${a} ${d}m` };
+      }
+      const here = contains(p);
+      return { ...at, text: (a, d) => (here || d < 4 ? `${n} is here!` : `Next: ${n} (at home) ${a} ${d}m`) + (s.ready ? '' : " · it's chilly, fix your home!") };
+    },
+  };
+};
+
 // Minutes of real time until it gets dark (0 if it already is).
 function minutesToNight(game, { dayLength, smoothstep }) {
   if (game.night) return 0;
@@ -131,6 +159,24 @@ export const WHEN = {
       return ` · the ${w.color} door opens in ${m} min`;
     },
   }),
+};
+
+// Home gym (Cozy): never skipped by the arrow; while the home it moved into is not cozy its people say "Brr".
+WHEN.home = (g, game) => ({
+  wait: () => null,
+  closedText: npc => (homeGymState(game, g).movedIn && !homeGymState(game, g).ready ? (npc ? `${npc.name}: ` : '') + g.def.chilly : null),
+  status: () => '',
+});
+
+// Key gym (Treasure Vault): locked until every key in def.keys is in game.keys ('<gymId>:<key>'). The walk-in toast says
+// "locked"; people inside are never asked (npc given), the door keeps you out.
+WHEN.keys = (g, game) => {
+  const have = () => (g.def.keys || []).filter(k => game.keys?.includes(`${g.def.id}:${k}`)).length;
+  return {
+    wait: () => null,
+    closedText: npc => (npc || have() >= g.def.keys.length ? null : g.def.locked),
+    status: () => (have() < g.def.keys.length ? ` · golden keys ${have()}/${g.def.keys.length}` : ''),
+  };
 };
 
 // deps = { dayLength, smoothstep }, the same ones the sky uses.

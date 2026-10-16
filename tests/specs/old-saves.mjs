@@ -1,6 +1,6 @@
 // Gyms 17-18 (Fossil, Saucer) must not disturb old worlds or old saves: the first 16 gyms and the
 // tower stay where they were, the rest of the world is block-for-block the same, old badges and the
-// Champion title survive, and the tower asks for all 25 badges (since T19 also from old Champions, who keep the title).
+// Champion title survive, and the tower asks for all 27 badges (since T19 also from old Champions, who keep the title).
 import fs from 'node:fs';
 import { GYMS } from '../../src/gyms.js';
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
@@ -94,7 +94,7 @@ export default async function ({ browser, base, t }) {
       const others = [...w.gyms.slice(0, 16).map(g => [g.x, g.z]), [w.tower.x, w.tower.z]];
       const gapOf = g => Math.min(...others.map(([x, z]) => Math.hypot(g.x - x, g.z - z)));
       out[seed] = {
-        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber'][i]),
+        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure'][i]),
         old: w.gyms.slice(0, 16).map(g => [g.x, g.z]), reserved: spots[0], saucer: [extra[1].x, extra[1].z], h, h22, terrain, surf,
         types: extra.map(g => g.def.type), cave: extra.map(g => !!g.cave),
         gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - 112, g.z - 112)),
@@ -106,7 +106,7 @@ export default async function ({ browser, base, t }) {
   }, [1, 4242]);
   for (const seed of [1, 4242]) {
     const w = worlds[seed];
-    t.ok(w.n === 25 && w.order && JSON.stringify(w.old) === JSON.stringify(OLD_GYMS[seed]), `seed ${seed}: 25 gyms in order; gyms 1-16 are where they always were`);
+    t.ok(w.n === 27 && w.order && JSON.stringify(w.old) === JSON.stringify(OLD_GYMS[seed]), `seed ${seed}: 27 gyms in order; gyms 1-16 are where they always were`);
     t.ok(JSON.stringify(w.reserved) === JSON.stringify(EXTRA[seed][0]) && JSON.stringify(w.saucer) === JSON.stringify(EXTRA[seed][1]), `seed ${seed}: the Saucer Gym stays at ${JSON.stringify(w.saucer)} (the old Fossil spot ${JSON.stringify(w.reserved)} is only reserved now)`);
     t.ok(w.h === SUM[seed] && (seed !== 4242 || w.terrain === 596409), `seed ${seed}: without the new caves and the cave gym every block outside the two legacy boxes is unchanged (checksum ${w.h}, terrain ${w.terrain})`);
     t.ok(w.h22 === SUM22[seed], `seed ${seed}: with the four new gyms every block outside their boxes is unchanged (checksum ${w.h22})`);
@@ -133,7 +133,7 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(champ.badges === 16 && champ.champion, 'the old Champion keeps 16 badges and the title');
-  t.ok(champ.icons === 25 && champ.lit === 16 && champ.title, `badge HUD has ${champ.icons} icons with ${champ.lit} lit, and the Champion title shows`);
+  t.ok(champ.icons === 27 && champ.lit === 16 && champ.title, `badge HUD has ${champ.icons} icons with ${champ.lit} lit, and the Champion title shows`);
   t.ok(champ.guide.includes('Fossil Gym'), `the arrow leads to the Fossil Gym (${champ.guide})`);
   t.ok(/new gyms have appeared/i.test(champ.toasts), 'a toast tells the player about the new gyms');
   t.ok(champ.toasts.includes('The Fossil Gym moved into a big cave'), 'a toast says the Fossil Gym moved into a cave');
@@ -146,12 +146,12 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'coach'));
     return { battle: g.inBattle, toast: document.querySelector('#toast').innerText };
   });
-  t.ok(!coach.battle && coach.toast.includes('Welcome back, Champion') && coach.toast.includes('25') && coach.toast.includes('You have 16'),
+  t.ok(!coach.battle && coach.toast.includes('Welcome back, Champion') && coach.toast.includes('27') && coach.toast.includes('You have 16'),
     `since T19 Coach Dex refuses an old Champion with 16 badges, kindly (${coach.toast})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
-  // 3. An old 16-badge player who is not Champion yet needs all 25.
+  // 3. An old 16-badge player who is not Champion yet needs all 27.
   page = await openWithSave(browser, base, oldSave(false));
   await continueGame(page);
   await page.evaluate(() => {
@@ -161,7 +161,7 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
   });
   t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), 'Guard Bram refuses with 16 badges');
-  t.ok((await page.locator('#toast').innerText()).includes('25 badges'), 'the refusal asks for 25 badges');
+  t.ok((await page.locator('#toast').innerText()).includes('27 badges'), 'the refusal asks for 27 badges');
   const open = await page.evaluate(async () => {
     const g = window.pokecraft;
     const { GYMS } = await import('/src/gyms.js');
@@ -169,7 +169,7 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
     return g.inBattle;
   });
-  t.ok(open, 'with all 25 badges Guard Bram battles');
+  t.ok(open, 'with all 27 badges Guard Bram battles');
   await page.context().close();
 
   // 3b. Someone who already has the Fossil Badge is not told that the gym moved.
@@ -178,13 +178,13 @@ export default async function ({ browser, base, t }) {
   t.ok(!(await page.evaluate(() => window.__toasts.join(' | '))).includes('moved into a big cave'), 'no cave toast for a player who already has the Fossil Badge');
   await page.context().close();
 
-  // 3c. A player with the first 18 badges (not Champion) is told about the newest gyms and needs 25.
+  // 3c. A player with the first 18 badges (not Champion) is told about the newest gyms and needs 27.
   const save18 = { ...oldSave(false), badges: [...oldSave(false).badges, 'bone', 'alien'] };
   page = await openWithSave(browser, base, save18);
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p18 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p18.toasts.includes('7 new gyms have appeared'), `the 18-badge player is told about the 7 new gyms (${p18.toasts})`);
+  t.ok(p18.toasts.includes('9 new gyms have appeared'), `the 18-badge player is told about the 9 new gyms (${p18.toasts})`);
   t.ok(p18.guide.includes('Sunbeam Gym'), `the arrow points at the Sunbeam Gym (${p18.guide})`);
   await page.evaluate(() => {
     const g = window.pokecraft, tw = g.world.tower, [fx, fz] = tw.front;
@@ -192,11 +192,11 @@ export default async function ({ browser, base, t }) {
     document.exitPointerLock();
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
   });
-  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('25 badges'),
-    'Guard Bram refuses the 18-badge player and asks for 25 badges');
+  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('27 badges'),
+    'Guard Bram refuses the 18-badge player and asks for 27 badges');
   await page.context().close();
 
-  // 3d. An old Champion with 18 badges keeps the title, but the whole tower waits for 25 badges (T19).
+  // 3d. An old Champion with 18 badges keeps the title, but the whole tower waits for 27 badges (T19).
   page = await openWithSave(browser, base, { ...save18, champion: true, beaten: ['tower:guard1', 'tower:guard2'] });
   await continueGame(page);
   const coach18 = await page.evaluate(() => {
@@ -206,17 +206,27 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'coach'));
     return { champion: g.champion, battle: g.inBattle, toast: document.querySelector('#toast').innerText };
   });
-  t.ok(coach18.champion && !coach18.battle && coach18.toast.includes('Welcome back, Champion'), 'an 18-badge Champion keeps the title, but Coach Dex waits for 25 badges');
+  t.ok(coach18.champion && !coach18.battle && coach18.toast.includes('Welcome back, Champion'), 'an 18-badge Champion keeps the title, but Coach Dex waits for 27 badges');
   await page.context().close();
 
-  // 3e. A player with the first 22 badges is told about the three newest gyms by name, and the arrow leads to the first.
+  // 3e. A player with the first 22 badges is told how many new gyms there are (5), and the arrow leads to the first.
   const save22 = { ...oldSave(false), badges: GYMS.slice(0, 22).map(x => x.id) };
   page = await openWithSave(browser, base, save22);
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p22 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p22.toasts.includes('New gyms have appeared: the Clock Tower, Hidden Hill and Firewall Maze! Follow the arrow.'), `the 22-badge player is told about the three new gyms (${p22.toasts})`);
+  t.ok(p22.toasts.includes('5 new gyms have appeared! Follow the arrow to find them.'), `the 22-badge player is told about the 5 new gyms (${p22.toasts})`);
   t.ok(p22.guide.includes('Clock Tower'), `the arrow points at the Clock Tower (${p22.guide})`);
+  await page.context().close();
+
+  // 3f. A player with the first 25 badges is told about the Cozy Gym and the Treasure Vault by name (T23); the arrow says what to do next.
+  page = await openWithSave(browser, base, { ...oldSave(false), badges: GYMS.slice(0, 25).map(x => x.id) });
+  await click(page, '#title-buttons button:has-text("Continue")');
+  await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
+  const p25 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
+  t.ok(p25.toasts.includes('New gyms have appeared: the Cozy Gym and Treasure Vault! Follow the arrow.'), `the 25-badge player is told about the Cozy Gym and Treasure Vault (${p25.toasts})`);
+  t.ok(p25.guide.includes('Cozy Gym') && p25.guide.includes('build a cozy home'), `the guide says to build a cozy home (${p25.guide})`);
+  t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
   // 4. Pictures: the Saucer Gym from a stone platform 22 blocks out from its door; the Fossil Gym's cavern

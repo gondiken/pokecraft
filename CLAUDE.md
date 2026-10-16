@@ -49,7 +49,7 @@ this file is for working on the code.
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks; `limited` blocks (T20: `TREASURE`, `isLimited`) |
 | `src/species.js` | Types + effectiveness chart, moves (134, with `fx`; `moveInfo(id)` gives the button/Book words), all 196 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the T18 shapes hourglass, pendulum, alarmclock, sunmoon, bushblock, sandcastle, stonecube, igloo, pixelblob, cursor, wifiwing, glitchghost; the T21 shapes blanketbun, mittencat, pillowsheep, pajamabear (Cozy), coin, crystalfox, gemring, chandelier (Treasure) and `sparkleGeometry`; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
-| `src/gyms.js` | The 25 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
+| `src/gyms.js` | The 27 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + creature + move pages, spawn/evolution/type-matchup helpers; wiki links (T19.5): `go(view)`/`back()` trail, `open({ species, move, type, from: 'team' })`, `typeLink`; the team screen links in via `ui.openBook` / `ui.backToTeam` |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome tables + spawn conditions), wandering, Camo disguises (`spawnAt`, `Wild.reveal`) |
@@ -59,6 +59,8 @@ this file is for working on the code.
 | `src/gymlive.js` | `createGymLive(game)` (`game.gymLive`): live gym parts for defs with `def.live` (`reset`, `update`, `stand`, `hit`, `prompt`, `of`) and `LiveCells` (a door/laser never turns solid inside the player); they change blocks only with `world.setLive` (T19) |
 | `src/daytime.js` | The Clock Tower's door windows (`WINDOWS`, `windowAt(t)`, `minutesUntil`) by `game.time` (T19) |
 | `src/clocktower.js`, `src/hiddenhill.js`, `src/firewall.js` | T19 slot gyms: `buildClockTower` / `buildHiddenHill` / `buildFirewallMaze(world, def, slot)` (+ `ClockLive`, `MazeLive`); registered in `SLOT_BUILDERS` (gymplace.js) |
+| `src/homegym.js` | T23 Cozy Gym: `homeGymState(game, g)` (pure, used by `WHERE.home`/`WHEN.home`), `homeTypeFor`, `caughtOfType`, `HomeLive` (`LIVE.home`) |
+| `src/treasurevault.js` | T23 Treasure Vault: `buildTreasureVault(world, def, slot)` (slot 4), `VaultLive` (`LIVE.vault`) |
 | `src/ui.js` | HUD, team screen, creature portraits |
 | `src/touch.js` | Tablet controls (joystick, drag-to-look, tap-to-interact, buttons) |
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
@@ -94,7 +96,7 @@ Key ideas:
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
-  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 25 badges (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
+  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 27 badges (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
   `tower:guard1` / `tower:guard2`; the save has an optional boolean `champion`. Boss battles pass `boss: true`
   (Zenithar hangs on once and powers up at half HP); the coach passes `xpBoost: 2`. After 16 badges (or the Champion title)
   `creatures.levelBonus` is 10 (wild creatures get +10 levels).
@@ -212,6 +214,14 @@ Key ideas:
   `owner`; `WORLD_VERSION` is 8. Visitors: `spawnPlaced` in `creatures.js` (surface and cave spawners), `wild.indoor` creatures walk with `caveGroundY(...,
   underOnly = false)` and are not removed for being above/below ground; underground homes count too. `HomeType.gymMovesIn`, `home.standSpots(2)`,
   `homes.worldOwnerHome()` and `onChange` are for T23.
+- **Gyms 26-27 (T23 step 0, `plans/T23.md`): Cozy Gym and Treasure Vault.** `place: 'home'` gyms (the Cozy Gym) have no building:
+  `placeSlotGyms` pushes `homeGym(def)` = `{ def, home: true, x/y/z: null, protect: [], leaderPos: null }` (tests filter `!g.home`; `gymAt` skips `x == null`;
+  `newGymSpots` skips them). Their people are `Npc.away` (hidden, parked at y -64, not pickable, not updated) until `npcs.placeAt(npc, [x, y, z], heading)`;
+  `npcs.sendAway(npc)` takes them away again. `WHERE.home`, `WHEN.home`, `WHEN.keys` are in `access.js` (no `tips`). `HomeType.gymMovesIn` names the gym id;
+  `def.moveIn.caught` = cozy kinds in the Book. The Treasure Vault is slot 4 (`def.build: 'treasureVault'`, `def.keys`, `live: 'vault'`); slot 3 stays spare.
+  Blocks `KEY_CHEST` 73 (glow, noLight) and `VAULT_DOOR` 74 (not placeable, `wallText`); next free block id is 75. Save field `keys` (`game.keys`, strings
+  `'<gymId>:<key>'`, per player, `loadKeys` drops unknown ones). `breakBlock` calls `gymLive.hit` first (touch break button). `WORLD_VERSION` is 9.
+  Tower: needs all 27 badges; guards 47-50, Champion 49-52 (Zenithar 52), rematch cap 55, Coach Dex up to level 50 (9th team).
 - **Treasure blocks (T20, spec `treasure`):** Sunstone 65, Ruby 66, Sapphire 67 (`TREASURE`), `glow` + `noLight` (they glint in
   dark caves without lighting them). **Limited blocks:** a block def with `limited: true` is only placeable while
   `game.blockCounts[id] > 0` (`isLimited`): breaking one adds 1 (placed or natural), placing uses 1; the hotbar slot and the

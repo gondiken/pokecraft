@@ -88,7 +88,7 @@ export default async function ({ browser, base, t }) {
   }, [SEEDS, GOO_FALLBACK_SEED]);
   for (const seed of SEEDS) {
     const w = worlds[seed], o = OLD[seed];
-    t.ok(w.n === 25 && w.order, `seed ${seed}: 25 gyms in GYMS order`);
+    t.ok(w.n === 27 && w.order, `seed ${seed}: 27 gyms in GYMS order`);
     t.ok(JSON.stringify(w.old) === JSON.stringify(o.gyms) && JSON.stringify(w.tower) === JSON.stringify(o.tower) && JSON.stringify(w.fossil) === JSON.stringify(o.fossil),
       `seed ${seed}: gyms 1-18, the tower and the Fossil Gym are where they were before the new gyms`);
     const [light, paper, goo, sky] = w.news;
@@ -109,7 +109,7 @@ export default async function ({ browser, base, t }) {
     t.ok(w.boxes >= 4, `seed ${seed}: the new gyms' boxes are recorded (${w.boxes})`);
   }
   const fb = worlds[GOO_FALLBACK_SEED];
-  t.ok(fb.n === 25 && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
+  t.ok(fb.n === 27 && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
 
   // 2. The Cloud Gym and (wave 6) the Saucer Gym are out of reach until you build up to them.
   const reach = await page.evaluate(async ([seeds]) => {
