@@ -182,6 +182,13 @@ Key ideas:
   meshes hidden); `NpcManager.reveal(npc)` (talk/hit/bump, `talkTo` toasts "That stone pillar was ..."), `undisguise(beaten)` (in `begin()` and after a
   visitor's world loads) and `onBump` (only fires while `playing()`: pointer locked). `NpcManager.clear()` disposes disguises before the models.
   Spec `hidden-hill` (screenshots `t19-hill-*.png`).
+  **Firewall Maze (`src/firewall.js`):** 37x25 cyber-wool building (`buildFirewallMaze`, door towards the middle like the other gyms); `ROOMS` = three 11x9
+  laser grids (legend in the file; `solveRoom` is the BFS the spec re-runs: fewest presses 1/2/3, no trap, friend lane solves with 0), `ROOM_AT`
+  grid -> local (d, s), `mazeCol(gym, d, s)` local -> world; gym object `rooms[k] = { red, blue, friend, switches, pads, reset, box }`, `fy`.
+  `MazeLive` (`def.live: 'maze'`): per-player phase per room (stepping on `SWITCH_RED` -> red off/blue on, `SWITCH_BLUE` back), reset button
+  (`hit`/`prompt`), friend lane open while another player (`game.mp.others` positions) stands on a pad; everything via `LiveCells` (never turns on
+  inside you) and `setLive`. Sound `laserflip`. `LiveCells` is in `src/livecells.js` (re-exported by `gymlive.js`): **gym files must import it from
+  `livecells.js`**, because `gymlive.js` imports them (a cycle breaks `LIVE = { maze: MazeLive }`).
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
   saves' builds to line up. Heights are low, so mountain/snow/peak use each map's own height
   percentiles (`highGround()`: ~6% / 2% / 3–5%). Wild creatures wander off after a while and
