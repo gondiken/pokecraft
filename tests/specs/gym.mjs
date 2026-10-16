@@ -117,7 +117,7 @@ export default async function ({ browser, base, t }) {
   }
   await page.evaluate(async () => {
     const g = window.pokecraft, { makeCreature } = await import('/src/species.js');
-    g.party = [makeCreature('tidalord', 50), makeCreature('thunderwolf', 50), makeCreature('grovebeast', 50)];
+    g.party = [makeCreature('tidalord', 70), makeCreature('thunderwolf', 70), makeCreature('grovebeast', 70)];
     const gym = g.world.gyms.find(x => x.def.id === 'cyber');
     const [fx, fz] = gym.front;
     g.player.pos.set(gym.x + 0.5 + fx * 4.5, gym.y, gym.z + 0.5 + fz * 4.5);
@@ -133,6 +133,10 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => ['cyber:trainer', 'cyber:trainer2'].every(k => window.pokecraft.beaten.includes(k))), 'both Firewall Maze trainers are remembered');
   await page.evaluate(`window.pokecraft.talkTo(${cy('trainer', 1)})`);
   t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('waiting in the server room'), 'a beaten trainer says where the leader is');
+  await page.evaluate(async () => { // like a visit to Healer Hana before the leader
+    const { statsFor } = await import('/src/species.js');
+    for (const c of window.pokecraft.party) c.hp = statsFor(c).maxHp;
+  });
   await page.evaluate(`window.pokecraft.talkTo(${cy('leader')})`);
   t.ok(await playBattle(page), 'Leader Ada battle finishes');
   t.ok(await page.evaluate(() => window.pokecraft.badges.includes('cyber')), 'Circuit Badge awarded');
