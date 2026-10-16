@@ -33,6 +33,7 @@ const MORE_TILES = [
   'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP', 'CLOUD',
   'LASER_RED', 'LASER_BLUE', 'LASER_FRIEND', 'SWITCH_RED_TOP', 'SWITCH_BLUE_TOP', 'FRIEND_PAD_TOP', 'RESET_BUTTON', 'CLOCK_DOOR', // T19
   'SUNSTONE', 'RUBY', 'SAPPHIRE', // T20 treasure blocks
+  'DOORMAT_TOP', 'DOORMAT_SIDE', 'BED_TOP', 'BED_SIDE', 'FIREPLACE', 'FIREPLACE_TOP', // T22 home blocks
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -49,8 +50,10 @@ export const B = {
   // 54-56 are the time / camo / cyber wool blocks, 68-69 the cozy / treasure ones (T21).
   // 57-64: T19 gym blocks (lasers, switches, reset button, clock door).
   LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
-  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). Next free id: 70.
+  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). (Next free id: 73, see below.)
   SUNSTONE: 65, RUBY: 66, SAPPHIRE: 67,
+  // 70-72: T22 home blocks. Next free id: 73.
+  DOORMAT: 70, BED: 71, FIREPLACE: 72,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -105,6 +108,10 @@ BLOCKS[B.CLOCK_DOOR] = { name: 'Clock Door', ...all(T.CLOCK_DOOR), wallText: 'Th
 BLOCKS[B.SUNSTONE] = { name: 'Sunstone', ...all(T.SUNSTONE), glow: true, noLight: true, limited: true };
 BLOCKS[B.RUBY] = { name: 'Ruby', ...all(T.RUBY), glow: true, noLight: true, limited: true };
 BLOCKS[B.SAPPHIRE] = { name: 'Sapphire', ...all(T.SAPPHIRE), glow: true, noLight: true, limited: true };
+// T22 home blocks: full cubes. The Fireplace lights its room like a lamp and shows its fire on all four sides.
+BLOCKS[B.DOORMAT] = { name: 'Doormat', top: T.DOORMAT_TOP, side: T.DOORMAT_SIDE, bottom: T.DOORMAT_SIDE };
+BLOCKS[B.BED] = { name: 'Bed', top: T.BED_TOP, side: T.BED_SIDE, bottom: T.PLANKS };
+BLOCKS[B.FIREPLACE] = { name: 'Fireplace', top: T.FIREPLACE_TOP, side: T.FIREPLACE, bottom: T.STONE_BRICKS, glow: true };
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
@@ -118,6 +125,9 @@ export const PLACEABLE = [
   B.ICE, B.GLASS, B.CLOUD, B.LAMP, B.CRYSTAL, B.GLOWCAP, B.COAL_ORE, B.GOLD_ORE,
   B.SUNSTONE, B.RUBY, B.SAPPHIRE, // limited: only as many as you have mined
 ];
+// T22: home blocks, then eight wool colours as rugs (any wool counts as a rug). Added after the others so nothing moves.
+PLACEABLE.splice(PLACEABLE.indexOf(B.LAMP) + 1, 0, B.DOORMAT, B.BED, B.FIREPLACE);
+PLACEABLE.push(WOOL.cozy, WOOL.normal, WOOL.fire, WOOL.water, WOOL.grass, WOOL.electric, WOOL.pixie, WOOL.treasure);
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
 const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS]);
@@ -370,7 +380,60 @@ export function drawAtlas() {
     return 6 - Math.max(a, b);
   }, [50, 110, 235], [20, 40, 140]);
 
+  // T22 home blocks. Doormat: coir brown with a dark border and a small heart; Bed: pillow + quilt; Fireplace: stone
+  // bricks around a dark opening with logs and flames (4 flame frames, see flickerFire).
+  const COIR = [170, 120, 70];
+  each((x, y) => {
+    const border = x < 2 || y < 2 || x > 13 || y > 13;
+    const heart = [[6, 6], [9, 6], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8],
+      [6, 9], [7, 9], [8, 9], [9, 9], [7, 10], [8, 10]].some(([hx, hy]) => hx === x && hy === y);
+    put(T.DOORMAT_TOP, x, y, heart ? [92, 40, 40] : border ? shade([110, 72, 40], 1 + (rand() - 0.5) * 0.2) : shade(COIR, 1 + (rand() - 0.5) * 0.3));
+    put(T.DOORMAT_SIDE, x, y, shade(y % 3 === 1 ? [140, 96, 54] : COIR, 1 + (rand() - 0.5) * 0.2));
+  });
+  each((x, y) => {
+    const pillow = y <= 4, seam = pillow && (y === 4 || x === 0 || x === 15 || y === 0);
+    const diamond = !pillow && (Math.abs((x % 6) - 3) + Math.abs(((y - 5) % 6) - 3)) === 2;
+    put(T.BED_TOP, x, y, pillow ? (seam ? [200, 200, 205] : shade([245, 245, 240], 1 + (rand() - 0.5) * 0.04))
+      : diamond ? [226, 100, 108] : shade([200, 60, 70], 1 + (rand() - 0.5) * 0.08));
+    const frame = y >= 11;
+    put(T.BED_SIDE, x, y, frame ? shade([160, 120, 70], (y === 11 ? 0.7 : 1) * (1 + (rand() - 0.5) * 0.1))
+      : y === 4 || y === 5 ? [240, 240, 235] : shade([200, 60, 70], 1 + (rand() - 0.5) * 0.08));
+  });
+  const brick = (tile, x, y) => {
+    const mortar = y % 8 === 7 || (x + (Math.floor(y / 8) % 2) * 8) % 16 === 15;
+    put(tile, x, y, mortar ? [90, 90, 90] : shade([140, 140, 140], 1 + (rand() - 0.5) * 0.12));
+  };
+  each((x, y) => {
+    const hole = x >= 6 && x <= 9 && y >= 6 && y <= 9;
+    if (hole) put(T.FIREPLACE_TOP, x, y, [30, 28, 28]); else brick(T.FIREPLACE_TOP, x, y);
+  });
+  const drawFire = k => {
+    const r = mulberry32(700 + k * 31);
+    each((x, y) => {
+      const inside = x >= 3 && x <= 12 && y >= 5 && (y >= 8 || (x >= 5 && x <= 10 && y >= 6) || (x >= 4 && x <= 11 && y >= 7));
+      if (!inside) { brick(T.FIREPLACE, x, y); return; }
+      if (y >= 14) { put(T.FIREPLACE, x, y, shade([100, 62, 32], y === 14 ? 1 : 0.8)); return; }
+      const h = 5 + Math.sin(x * 1.3 + k * 1.7) * 1.6 + r() * 1.6 - Math.abs(x - 7.5) * 0.45; // flame height from the logs up
+      const up = 13 - y; // 0 at the log line
+      const flame = up < h * (k === 3 ? 0.85 : 1);
+      put(T.FIREPLACE, x, y, flame ? (up < h * 0.35 ? [255, 235, 120] : up < h * 0.7 ? [255, 170, 40] : [235, 90, 30]) : [34, 28, 26]);
+    });
+  };
+  const fireFrames = [];
+  for (let k = 0; k < 4; k++) {
+    drawFire(k);
+    fireFrames.push(g.getImageData(T.FIREPLACE * TILE, 0, TILE, TILE));
+  }
+  g.putImageData(fireFrames[0], T.FIREPLACE * TILE, 0);
+  c.fireFrames = fireFrames;
+
   return c;
+}
+
+// T22: shows flame frame k % 4 of the Fireplace in the atlas (the caller sets texture.needsUpdate).
+export function flickerFire(atlas, k) {
+  const f = atlas.fireFrames;
+  if (f) atlas.getContext('2d').putImageData(f[((k % 4) + 4) % 4], T.FIREPLACE * TILE, 0);
 }
 
 // Small isometric-ish icon for a block, used by the hotbar.

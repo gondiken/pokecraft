@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, isLimited } from './blocks.js';
+import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, flickerFire, isLimited } from './blocks.js';
 import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
@@ -21,7 +21,10 @@ import { createGymLive } from './gymlive.js';
 import { createAccounts } from './accounts.js';
 import { goldenHour, condToast } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
+import { HomeManager } from './homes.js';
+import { createHomeUi } from './homeui.js';
 
+const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
 const OLD_SAVE_KEY = 'pokecraft-save-v1';
 const DAY_LENGTH = 480; // seconds for a full day/night cycle
@@ -111,10 +114,12 @@ game.creatures.onSpawn = wild => {
   if (game.started && tip) game.ui.toast(tip);
 };
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
-game.creatures.env = { time: () => game.time, friends: () => (game.mp?.active ? [...game.mp.others.values()].map(a => a.pos) : []) };
+game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].map(a => a.pos) : []) };
 game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
 game.npcs.onBump = npc => { if (playing()) talkTo(npc); }; // walked into a disguised trainer (Hidden Hill)
+game.homes = new HomeManager(game); // T22
 game.ui = new UI(game, atlas);
+game.homeUi = createHomeUi(game, { atlas, texture });
 game.fx = new Fx(scene);
 game.battle = new Battle(game);
 game.weather = new Weather(game, {
@@ -142,9 +147,10 @@ function snapshot() {
   const home = game.homeWorld ?? {
     seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
     pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
+    homes: game.homes.toSave(), // T22
   };
   return {
-    ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
+    ...home, playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
     blockCounts: game.blockCounts,
@@ -182,6 +188,7 @@ function createWorld(seed, edits, size) {
   game.spawnPoint.copy(findSpawn(world));
   game.npcs.populate(world, game.spawnPoint);
   game.gymLive.reset(world);
+  game.homes.reset(world);
 }
 
 function findSpawn(world) {
@@ -244,6 +251,8 @@ function startNew(starterId) {
   game.beaten = [];
   game.champion = false;
   game.blockCounts = {};
+  game.playerId = game.playerId || randomId();
+  game.homes.load([], game.playerId);
   game.hotbar = [...HOTBAR];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
@@ -264,6 +273,8 @@ function continueGame(saved) {
   game.beaten = saved.beaten || [];
   game.champion = !!saved.champion;
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
+  game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
+  game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
   game.hotbar = HOTBAR.map((id, i) => (BLOCKS[saved.hotbar?.[i]] && PLACEABLE.includes(saved.hotbar[i]) ? saved.hotbar[i] : id));
   const p = game.player;
@@ -284,6 +295,7 @@ function continueGame(saved) {
       game.ui.toast(`${missing.length} new gyms have appeared! Follow the arrow to find them.`);
     }
   }
+  if (!saved.toldHomes) game.ui.toast('New! Put a Doormat in the floor to build a home. Find it in the Blocks panel.');
   // Players who haven't beaten the Fossil Gym yet: it moved into a cave.
   if (!game.badges.includes('bone') && !saved.toldCaveGym) {
     game.ui.toast('The Fossil Gym moved into a big cave! Follow the arrow to the stairs.');
@@ -402,6 +414,12 @@ function togglePanel(which = 'team') {
 const toggleTeam = () => togglePanel('team');
 const toggleBlocks = () => togglePanel('blocks');
 const toggleBook = () => togglePanel('book');
+// T22: the home panel. game.openHome('choose' | 'home' | 'preview') opens it (or switches view when it is open).
+game.openHome = view => {
+  game.homeUi.want = view ?? (game.homes.chooseTarget() && !game.homes.onMat?.type ? 'choose' : 'home');
+  if (!game.ui.panelOpen) togglePanel('home');
+  else if (game.ui.homeOpen) { game.homeUi.open(game.homeUi.want); game.homeUi.want = null; }
+};
 game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
 game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
 
@@ -437,6 +455,7 @@ document.getElementById('menu').addEventListener('click', e => { e.stopPropagati
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
 document.getElementById('blocks-close').addEventListener('click', toggleBlocks);
+document.getElementById('home-close').addEventListener('click', () => togglePanel('home'));
 document.getElementById('book-close').addEventListener('click', toggleBook);
 canvas.addEventListener('click', () => {
   if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();
@@ -464,6 +483,11 @@ document.addEventListener('keydown', e => {
     togglePanel(e.code === 'KeyB' ? 'blocks' : e.code === 'KeyC' ? 'book' : 'team');
     return;
   }
+  if (e.code === 'KeyH' && !game.inBattle && (game.ui.homeOpen || (!game.ui.panelOpen && game.homes.matPos && playing()))) {
+    e.preventDefault();
+    togglePanel('home'); // T22: H on a Doormat, or to close the home panel
+    return;
+  }
   if (!playing()) return;
   if (e.code === 'Space') e.preventDefault();
   game.player.keys[e.code] = true;
@@ -471,7 +495,7 @@ document.addEventListener('keydown', e => {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
-  if (e.code === 'KeyE') interact();
+  if (e.code === 'KeyE' && !interact() && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
 document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.code] = false; });
@@ -570,6 +594,7 @@ function placeBlock(hit = target.block) {
   world.set(x, y, z, id);
   game.mp.sendBlock(x, y, z, id);
   sound.play('place');
+  if (id === B.DOORMAT) game.homes.place(x, y, z); // T22: your home moves here
   if (isLimited(id)) { game.blockCounts[id]--; game.ui.renderHud(); }
 }
 
@@ -597,7 +622,7 @@ game.touch = new TouchControls(game, canvas, {
   jump: down => { game.player.keys.Space = down && playing(); },
   breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
   place: () => { if (playing()) placeBlock(); },
-  interact: () => { if (playing()) interact(); },
+  interact: () => { if (playing() && !interact() && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
   team: toggleTeam,
   blocks: toggleBlocks,
   book: toggleBook,
@@ -850,6 +875,14 @@ game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
+// T22: the prompt while you stand on a Doormat and look at nothing else.
+function homePrompt() {
+  if (!game.homes.matPos) return '';
+  const h = game.homes.onMat;
+  const who = !h || h.owner === game.playerId ? 'Your home' : `${h.name || 'A friend'}'s home`;
+  return touchMode ? who : `${who} · press H`;
+}
+
 function updateTarget() {
   const origin = game.player.eyePos;
   const dir = game.player.forward;
@@ -882,14 +915,15 @@ function updateTarget() {
     : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
-      : (target.block && game.gymLive.prompt(target.block, how)) || '');
+      : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? `Battle ${target.player.name}!`
     : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
-      : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || '');
+      : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
 }
 
+let fireAt = 0, fireK = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -907,8 +941,11 @@ function frame(now) {
     game.gymLive.update(dt);
     if (p.onGround) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
-      game.gymLive.stand(fx, fy, fz, game.world.get(fx, fy, fz));
+      const under = game.world.get(fx, fy, fz);
+      game.gymLive.stand(fx, fy, fz, under);
+      if (game.homes.stand(fx, fy, fz, under) && playing()) game.openHome('choose'); // T22: a new Doormat
     }
+    game.homes.update(dt, p.pos);
     if (p.pos.y < -20) { p.pos.copy(game.spawnPoint); p.vel.set(0, 0, 0); }
     game.world.updateDirty();
     game.creatures.update(dt, p.pos, game.spawnPoint, game.night);
@@ -949,6 +986,8 @@ function frame(now) {
     if (cloudTimer > 60) { cloudTimer = 0; pushCloud(); }
   }
 
+  if (game.world?.hasFire && now - fireAt > 140) { fireAt = now; flickerFire(atlas, ++fireK); texture.needsUpdate = true; } // T22: flames
+  game.homeUi.update(now);
   game.fx.update(now);
   game.world?.cull(camera.position, scene.fog.far);
   renderer.render(scene, camera);

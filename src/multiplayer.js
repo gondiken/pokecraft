@@ -15,8 +15,8 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
-const WORLD_VERSION = 7; // 7: T20 treasure blocks
-const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel'];
+const WORLD_VERSION = 8; // 7: T20 treasure blocks, 8: T22 home blocks
+const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home'];
 
 const OUTFITS = [
   { shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
@@ -221,8 +221,8 @@ export class Multiplayer {
       this.parts[p.part] = p;
       if (this.parts.filter(Boolean).length < p.parts) return;
       const edits = this.parts.flatMap(x => x.edits);
-      const { seed, time, hostPos, hostName, size, weather } = p;
-      this.gotWorld({ seed, time, hostPos, hostName, edits, size, weather });
+      const { seed, time, hostPos, hostName, size, weather, homes, owner } = p;
+      this.gotWorld({ seed, time, hostPos, hostName, edits, size, weather, homes, owner });
     });
     t.on('state', p => {
       if (!this.active || p.id === this.id) return;
@@ -240,6 +240,9 @@ export class Multiplayer {
       if (!this.active || p.id === this.id) return;
       if (!this.game.world.editAllowed(p.x, p.y, p.z, p.b)) return; // gyms stay whole (T17)
       this.game.world.set(p.x, p.y, p.z, p.b);
+    });
+    t.on('home', p => { // T22: another player placed / changed their home
+      if (this.active && p.id !== this.id) this.hooks.home?.(p.home);
     });
     t.on('bye', p => this.removePlayer(p.id, true));
     t.on('duel', p => {
@@ -274,7 +277,7 @@ export class Multiplayer {
     for (let i = 0; i < parts; i++) {
       this.t.send('world', {
         to, wv: WORLD_VERSION, part: i, parts, seed: g.world.seed, time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
-        hostPos: [p.x, p.y, p.z], edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
+        hostPos: [p.x, p.y, p.z], homes: g.homes.toSave(), owner: g.homes.worldOwner, edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
       });
     }
   }
@@ -289,6 +292,11 @@ export class Multiplayer {
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,
     });
+  }
+
+  // T22: a home record { owner, name, x, y, z, type } (Home.toSave()).
+  sendHome(record) {
+    if (this.active) this.t.send('home', { id: this.id, home: record });
   }
 
   sendBlock(x, y, z, b) {

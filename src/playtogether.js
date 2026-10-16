@@ -20,8 +20,10 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       game.homeWorld = {
         seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
         pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
+        homes: game.homes.toSave(), // T22: your own world's homes, saved while you visit
       };
       createWorld(data.seed, data.edits, data.size);
+      game.homes.load(data.homes, data.owner); // the host's homes (and who owns this world)
       game.npcs.undisguise(key => game.beaten.includes(key));
       game.time = data.time;
       if (data.weather) game.weather.apply(data.weather);
@@ -30,6 +32,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
       game.ui.renderHud();
     },
+    home: rec => game.homes.apply(rec),
     duel: p => game.duels.onMessage(p),
     left: id => game.duels.left(id),
     ended: reason => {

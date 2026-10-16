@@ -443,3 +443,7 @@ body.touch .book-move button.wlink { min-height: 40px; }
 #book-typematch { margin: -4px 0 12px; }
 #book-typematch h3 { margin-top: 6px; }
 #book-typematch .book-note { font-size: 16px; color: var(--muted); margin: 4px 0 0; }
+
+/* T22: home meter (HUD). Builder B styles the inside; placement: top centre, below the touch buttons on tablets. */
+#home-meter { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+body.touch #home-meter { top: 70px; pointer-events: auto; }

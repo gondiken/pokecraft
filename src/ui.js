@@ -59,6 +59,7 @@ export class UI {
     this.partyPanel = document.getElementById('party');
     this.blocksPanel = document.getElementById('blocks');
     this.bookPanel = document.getElementById('book');
+    this.homePanel = document.getElementById('home'); // T22
     this.slots = [];
     // Storage box view: the sort is remembered on this device, the type filter is not.
     // Both are only for showing: game.box keeps its order, so saves don't change.
@@ -288,10 +289,18 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden'); }
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden'); }
+  get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
 
   openPanel(which = 'team') {
     if (which === 'book') { this.game.book.open(); return; }
+    if (which === 'home') { // T22: homeUi.open() fills #home-body
+      this.homePanel.classList.remove('hidden');
+      const view = this.game.homeUi.want ?? 'home';
+      this.game.homeUi.want = null;
+      this.game.homeUi.open(view);
+      return;
+    }
     if (which === 'blocks') {
       this.renderBlocks();
       this.blocksPanel.classList.remove('hidden');
@@ -307,5 +316,7 @@ export class UI {
     this.partyPanel.classList.add('hidden');
     this.blocksPanel.classList.add('hidden');
     this.bookPanel.classList.add('hidden');
+    this.homePanel.classList.add('hidden');
+    this.game.homeUi?.close();
   }
 }

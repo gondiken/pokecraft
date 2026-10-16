@@ -55,7 +55,7 @@ function fbm(x, z, seed, octaves = 4) {
 }
 
 // Each face: direction, brightness, kind, and 4 corners as [x, y, z, u, v].
-const FACES = [
+export const FACES = [
   { dir: [-1, 0, 0], shade: 0.62, kind: 'side', corners: [[0, 1, 0, 0, 1], [0, 0, 0, 0, 0], [0, 1, 1, 1, 1], [0, 0, 1, 1, 0]] },
   { dir: [1, 0, 0], shade: 0.62, kind: 'side', corners: [[1, 1, 1, 0, 1], [1, 0, 1, 0, 0], [1, 1, 0, 1, 1], [1, 0, 0, 1, 0]] },
   { dir: [0, -1, 0], shade: 0.32, kind: 'bottom', corners: [[1, 0, 1, 1, 0], [0, 0, 1, 0, 0], [1, 0, 0, 1, 1], [0, 0, 0, 0, 1]] },
@@ -138,6 +138,7 @@ export class World {
     if (!record) return;
     this.edits.set(i, id);
     this.markDirty(x, z, old, id);
+    this.onEdit?.(x, y, z, old, id); // T22: the home manager listens here
   }
 
   // Changes a block for this player only (T19 doors and lasers): redrawn, but never an edit, never saved or sent.
@@ -622,6 +623,7 @@ export class World {
             const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
             if (isOccluder(n)) continue;
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
+            if (id === B.FIREPLACE) this.hasFire = true; // T22: main.js flickers the fire only in worlds that have one
             if (def.glow) this.addFace(glow, x, y, z, f, tile);
             else {
               const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];
