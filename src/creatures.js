@@ -87,7 +87,7 @@ export class CreatureManager {
       night, under,
       golden: under || !env ? null : goldenHour(env.time()),
       evening: !!env && isEvening(env.time()),
-      homes: under || !env?.homes ? [] : env.homes().filter(h => Math.hypot(h.x - playerPos.x, h.z - playerPos.z) <= HOME_RANGE),
+      homes: !env?.homes ? [] : env.homes().filter(h => Math.hypot(h.x - playerPos.x, h.z - playerPos.z) <= HOME_RANGE),
       friendsNear: !!env && env.friends().some(p => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) <= TOGETHER_RANGE),
     };
   }
@@ -156,16 +156,21 @@ export class CreatureManager {
     if (!biome) return;
     const [species, when] = this.pickEntry(biome, ctx);
     // A condition with a `place` (near a home) says where the creature appears.
-    const place = condOf(when)?.place;
-    if (place) {
-      const at = place(ctx, when.split(':')[1]);
-      if (at) this.spawnAt(species, at.x, at.y, at.z, { when, level: this.wildLevel(at.x, at.z, spawnPoint, SPECIES[species]) });
-      return;
-    }
+    if (this.spawnPlaced(species, when, ctx, spawnPoint)) return;
     const sp = SPECIES[species];
     const y = this.groundY(x + 0.5, z + 0.5, sp);
     if (y === null) return;
     this.spawnAt(species, x, y, z, { when, level: this.wildLevel(x, z, spawnPoint, sp) });
+  }
+
+  // A condition with a `place` (a home visitor) says where the creature appears. Returns true when `when` has a place
+  // (spawned or not), so the caller does not look for a spot of its own. Used by trySpawn and trySpawnCave (T22).
+  spawnPlaced(species, when, ctx, spawnPoint) {
+    const place = condOf(when)?.place;
+    if (!place) return false;
+    const at = place(ctx, when.split(':')[1]);
+    if (at) this.spawnAt(species, at.x, at.y, at.z, { when, indoor: true, level: this.wildLevel(at.x, at.z, spawnPoint, SPECIES[species]) });
+    return true;
   }
 
   // Further from the spawn point = tougher creatures (extra: cave creatures get +3).
@@ -178,7 +183,7 @@ export class CreatureManager {
   // Puts a creature at the world cell (x, y, z) (y = the standing height, an integer for Camo creatures).
   // Camo creatures (species.disguise) are dressed as the local block: no spawn (null) if there is no room
   // for it or the block is not around. Never changes the world. Returns the Wild, or null.
-  spawnAt(species, x, y, z, { when, cave = false, level = 5 } = {}) {
+  spawnAt(species, x, y, z, { when, cave = false, indoor = false, level = 5 } = {}) {
     const d = SPECIES[species].disguise;
     const size = d ? d.size || 1 : 0;
     let block = null;
@@ -193,6 +198,7 @@ export class CreatureManager {
     const wild = new Wild(makeCreature(species, level), model, pos);
     wild.when = when;
     if (cave) wild.cave = true;
+    if (indoor) wild.indoor = true; // T22: a home visitor walks on the floor like a cave creature, under any roof
     if (d) {
       wild.heading = 0;
       wild.size = size;
@@ -212,6 +218,9 @@ export class CreatureManager {
   trySpawnCave(center, spawnPoint, night = false) {
     const world = this.world;
     const angle = Math.random() * Math.PI * 2, dist = 5 + Math.random() * 13;
+    const ctx = CreatureManager.asCtx(night);
+    const [species, when] = this.pickEntry('cave', ctx);
+    if (this.spawnPlaced(species, when, ctx, spawnPoint)) return; // a home visitor (T22): appears in its home
     const x = Math.floor(center.x + Math.cos(angle) * dist), z = Math.floor(center.z + Math.sin(angle) * dist);
     if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
     const y0 = Math.floor(center.y) + Math.floor(Math.random() * 11) - 5;
@@ -221,7 +230,6 @@ export class CreatureManager {
       const below = world.get(x, y - 1, z);
       if (below === B.AIR || below === B.WATER || !isSolid(below)) continue;
       if (world.skyAt(x, y, z) >= 0.5 || y >= ground - 2) continue;
-      const [species, when] = this.pickEntry('cave', CreatureManager.asCtx(night));
       const sp = SPECIES[species];
       if (sp.waterOnly) return;
       this.spawnAt(species, x, y, z, { when, cave: true, level: this.wildLevel(x, z, spawnPoint, sp, 3) });
@@ -230,14 +238,15 @@ export class CreatureManager {
   }
 
   // Where a cave creature may stand at (x, z), near height fromY: { y, ceiling } or null.
-  caveGroundY(x, z, fromY) {
+  // underOnly = false (home visitors): a floor under the open sky or a roof is fine too.
+  caveGroundY(x, z, fromY, underOnly = true) {
     const world = this.world;
     const xi = Math.floor(x), zi = Math.floor(z);
     if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
     const ground = world.ground[xi + zi * WORLD_W];
     for (let y = Math.floor(fromY) + 1; y >= Math.floor(fromY) - 3; y--) {
       if (!isSolid(world.get(xi, y - 1, zi)) || world.get(xi, y, zi) !== B.AIR || isSolid(world.get(xi, y + 1, zi))) continue;
-      if (y >= ground - 1) return null;
+      if (underOnly && y >= ground - 1) return null;
       let ceiling = y + 6;
       for (let k = 1; k <= 6; k++) if (isSolid(world.get(xi, y + k, zi))) { ceiling = y + k; break; }
       return { y, ceiling };
@@ -267,7 +276,7 @@ export class CreatureManager {
       for (const w of this.list) {
         if (w.frozen) continue;
         const d = w.pos.distanceTo(playerPos);
-        const wrongTime = !condOk(w.when, ctx) || !!w.cave !== under;
+        const wrongTime = !condOk(w.when, ctx) || (!w.indoor && !!w.cave !== under);
         if (d > 60 || (d > 10 && (w.life <= 0 || wrongTime))) { this.remove(w); break; }
       }
     }
@@ -349,14 +358,15 @@ export class CreatureManager {
       const speed = sp.flies ? 2.2 : 1.3;
       const nx = w.pos.x + Math.sin(w.heading) * speed * dt;
       const nz = w.pos.z + Math.cos(w.heading) * speed * dt;
-      const cave = w.cave ? this.caveGroundY(nx, nz, w.pos.y) : null;
-      const gy = w.cave ? cave && cave.y : this.groundY(nx, nz, sp);
+      const floor = w.cave || w.indoor;
+      const cave = floor ? this.caveGroundY(nx, nz, w.pos.y, !w.indoor) : null;
+      const gy = floor ? cave && cave.y : this.groundY(nx, nz, sp);
       if (gy !== null && (sp.flies || sp.floats || gy - w.pos.y <= 1.1)) { w.pos.x = nx; w.pos.z = nz; }
       else w.heading += Math.PI * (0.5 + Math.random());
     }
     let target;
-    if (w.cave) {
-      const here = this.caveGroundY(w.pos.x, w.pos.z, w.pos.y);
+    if (w.cave || w.indoor) {
+      const here = this.caveGroundY(w.pos.x, w.pos.z, w.pos.y, !w.indoor);
       target = here ? here.y : w.pos.y;
       if (here && (sp.flies || sp.floats)) target = Math.min(here.y + 1.2, here.ceiling - 1);
       if (here && sp.flies) target += Math.sin(w.t * 1.5) * 0.15;

@@ -41,6 +41,10 @@ this file is for working on the code.
 | `src/access.js` | Gym access objects (T16): `WHERE` (surface / cave / sky: arrow target + text, tips, welcome) x `WHEN` (always / night: wait, closed text) pieces, `createAccess` -> `game.access.of(gym)` (`aim`, `tips`, `contains`, `welcome`, `wait`, `closedText(npc)`); a gym picks pieces from how it was placed and `def.night`, or `def.access = { where, when }`. New gym kind = a `WHERE`/`WHEN` entry (+ `def.access`), never an `if` in the guide |
 | `src/world.js` | (T17: `generate()` makes the old 224 map in its own `World(seed, …, [224, 224])` and copies it in, then `generateNewLand()`; `protectedAt`/`editAllowed`/`cull`) Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, `generate()`, chunk meshing (solid / water / glowing), voxel raycast |
 | `src/gymplace.js` | Gym and tower placement and buildings (`gymSpots`, `placeGyms`, `buildGym`, `pickSpot`, `placeTower`...): a class whose methods `installGymPlacement(World)` copies onto `World.prototype` (moved out of `world.js` in T15, code unchanged) |
+| `src/homes.js` | T22 homes: `Home` (record `{ owner, name, x, y, z, type }` + `report` + `result`; `freeCells`/`spawnSpot`/`standSpots(n)`), `HomeManager` = `game.homes` (`reset`, `load(records, worldOwner)`, `toSave`, `mine`, `at`, `worldOwnerHome`, `ready`, `place`, `choose`, `apply`, `onEdit`, `update`, `stand`, `onChange`, `findRoom`; `matPos`/`onMat`/`active`/`chooseTarget()`) |
+| `src/roomfinder.js` | `findRoom(world, x, f, z)`: the room around a Doormat (flood over the L3 cells, leak finder, ring, door runs, roof, floor, zones) -> plain report; knows no home type |
+| `src/hometypes.js` | `HomeType` (`evaluate(report)`), features `hasBlock`/`atLeast`/`mostly`, `HOME_TYPES`, `addHomeType`/`removeHomeType`, `boxHouse`, the Cozy and Treasure types and their example houses, `placeExample` |
+| `src/homeui.js` | `createHomeUi` -> `game.homeUi`: meter, red gaps and floor outline, home panel (choose / home / preview), spinning example |
 | `src/caves.js` | Caves: `carveCaves(world)` (seeded worms below a 3-block roof, entrances, lakes, decoration, chests), `carveBigCaves(world)` (second layer: halls, wide tunnels, lit stairways, lamp posts), `planStairs`/`buildStairs` (also used by the cave gym) and the light shader (`caveLight`, `patchMaterial`) |
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks; `limited` blocks (T20: `TREASURE`, `isLimited`) |
 | `src/species.js` | Types + effectiveness chart, moves (134, with `fx`; `moveInfo(id)` gives the button/Book words), all 196 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
@@ -76,8 +80,7 @@ Key ideas:
   **`home:<type>` (T21):** `CONDITIONS.home` has a function `share` (`HOME_SPAWN` in spawnrules.js: cozy 1/60, x1.5 in the evening, x2 when the
   home is `full`; treasure 1/1500), `max: 1`, a `place` (the creature appears at `home.spawnSpot()` instead of a random spot) and
   `text`/`toast` per type (`condText`/`condToast`). `creatures.context()` has `homes` (from `creatures.env.homes()`, only those within
-  `HOME_RANGE` 32, empty underground) and `evening`. T22 sets `env.homes` (finished homes: `{ type, x, y, z, full, spawnSpot() }`). Until
-  then Cozy and Treasure creatures never spawn (the `two-types` spec drives it with fake homes). The Book shows one "Near a cozy home" row.
+  `HOME_RANGE` 32, also underground since T22) and `evening`. T22 sets `env.homes = () => game.homes.ready()` (finished `Home`s: `{ type, x, y, z, full, spawnSpot() }`). The Book shows one "Near a cozy home" row.
   **Sparkle:** Treasure models sparkle (`parts.sparkle`, built in `buildModel` for the whole type, animated in `animateModel`;
   `sparkleGeometry` in shapes.js).
   **Camo creatures** have `disguise: { blocks, size }` in `SPECIES`: `creatures.spawnAt(species, x, y, z)` dresses them as the most
@@ -86,7 +89,7 @@ Key ideas:
   walked into (`creatures.onBump`); `Wild.reveal()` (called by `Battle.start`) pops them out. **Never call `disposeModel` on a
   disguised model without `disguise.dispose()` first** (it would free the shared world material; `CreatureManager.remove` does
   it right). A disguise never changes the world, is never saved or sent. Wool ids: time 54, camo 55, cyber 56, cozy 68, treasure 69; the next free
-  block id is 70 (57-64 are the T19 gym blocks, 65-67 the T20 treasure blocks).
+  block id is 73 (57-64 are the T19 gym blocks, 65-67 the T20 treasure blocks, 70-72 the T22 Doormat / Bed / Fireplace).
 - **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects are in `fxrecipes.js` (T11). See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
@@ -196,6 +199,19 @@ Key ideas:
   (`hit`/`prompt`), friend lane open while another player (`game.mp.others` positions) stands on a pad; everything via `LiveCells` (never turns on
   inside you) and `setLive`. Sound `laserflip`. `LiveCells` is in `src/livecells.js` (re-exported by `gymlive.js`): **gym files must import it from
   `livecells.js`**, because `gymlive.js` imports them (a cycle breaks `LIVE = { maze: MazeLive }`).
+- **Homes (T22, `plans/T22.md`, spec `homes`):** blocks Doormat 70, Bed 71, Fireplace 72 (the fire flickers: `flickerFire(atlas, k)` from `main.js` `frame()`
+  while `world.hasFire`), eight wool colours placeable as rugs. **Room finder** (`roomfinder.js`): everything is checked in columns around the mat at
+  floor level f (L1-L3 = f+1..f+3); flood over columns whose L3 is open (max 20 wide), a leak finder plugs necks (up to 4) so a missing wall top or a
+  doorway without lintel shows as ONE hole, the ring (8-neighbours) gives walls/holes/door runs (a door = 1-2 wide, 2 high, nearest run to the mat), roof =
+  lowest solid in f+4..f+12, floor, size >= 8x8, zones `counts[floor|inside|wall|roof][id]`. **Types are data:** `HomeType.evaluate(report)` -> `{ room,
+  ok, rule, features, done, need, show, finished, full }`; nothing else knows "cozy"/"treasure", a new type is `addHomeType(new HomeType({...}))` (+ a
+  `home:<id>` entry in the `SPAWNS` tables). **Ownership** by `game.playerId` (random, saved, same on all devices); one home per owner and per mat; homes
+  belong to the world and are saved in the world part of the save (`homes`; a visitor keeps his own world's list in `game.homeWorld.homes`). `World.set`
+  calls `world.onEdit` (homes mark themselves dirty for edits inside their box, re-check at most every 0.25 s in `homes.update`; a broken Doormat removes
+  its home, placing a second one turns your old mat into Planks). Play together: `home` message (`mp.sendHome(record)`), `world` parts carry `homes` +
+  `owner`; `WORLD_VERSION` is 8. Visitors: `spawnPlaced` in `creatures.js` (surface and cave spawners), `wild.indoor` creatures walk with `caveGroundY(...,
+  underOnly = false)` and are not removed for being above/below ground; underground homes count too. `HomeType.gymMovesIn`, `home.standSpots(2)`,
+  `homes.worldOwnerHome()` and `onChange` are for T23.
 - **Treasure blocks (T20, spec `treasure`):** Sunstone 65, Ruby 66, Sapphire 67 (`TREASURE`), `glow` + `noLight` (they glint in
   dark caves without lighting them). **Limited blocks:** a block def with `limited: true` is only placeable while
   `game.blockCounts[id] > 0` (`isLimited`): breaking one adds 1 (placed or natural), placing uses 1; the hotbar slot and the
@@ -204,7 +220,7 @@ Key ideas:
   **Placement:** `world.placeTreasure()` runs last in `generateArea` (old area) and after `placeSlotGyms` in `generate` (new
   land only); it only turns natural `STONE` at least 4 below `world.ground` into treasure: 1.5% of cave-wall stone (next to air),
   0.12% of stone 8+ down, never in a `protect` box, from the seed only. So the old area changed **on purpose** (only stone ->
-  treasure; `old-saves` counts treasure as stone for `SUM22`, `SUM` uses `generate({ treasure: false })`). `WORLD_VERSION` is 7.
+  treasure; `old-saves` counts treasure as stone for `SUM22`, `SUM` uses `generate({ treasure: false })`). `WORLD_VERSION` is 7 (8 since T22).
   **Capture Cubes from blocks** (leaves, gold ore) only come from natural blocks: `breakBlock` checks `world.edits` (a placed
   block has an edit), so place-and-break can't farm cubes.
 - Biomes only change surface blocks and plants; **terrain heights must stay the same** for old
@@ -271,7 +287,7 @@ node run.mjs --skip champion               # everything but some (a spec that ha
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
 
-Specs: `two-types` (T21: Cozy and Treasure data, chart incl. the unchanged old 26 x 26 chart, models, sparkle, the `home:<type>` condition with fake homes; `T21_TYPE=cozy|treasure` runs one), `treasure` (T20: treasure in the world, mining/placing counts, greyed at 0, save/load, placed gold gives no cubes), `spawn-rules` (T18: conditions, golden hour, Camo disguises, Cyber with two players), `three-types` (T18 species, moves, chart, models), `access` (T16: golden guide replay in `tests/fixtures/guide-golden.json`, a test-only access kind, guide has no kind checks), `caves` (T3/T8 caves and cave gyms), `moves` (T6 moves and the forget prompt), `seventh` (7th creatures), `bone-alien`, `new-gyms-access` (T14 night gyms, alien look), `water` (T12), `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `big-map` (T17: old area identical, seam, start, slots, gym protection), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
+Specs: `homes` (T22 logic: room rules, re-checks, Doormats, visitors, test-only type, save/load, two browsers), `two-types` (T21: Cozy and Treasure data, chart incl. the unchanged old 26 x 26 chart, models, sparkle, the `home:<type>` condition with fake homes; `T21_TYPE=cozy|treasure` runs one), `treasure` (T20: treasure in the world, mining/placing counts, greyed at 0, save/load, placed gold gives no cubes), `spawn-rules` (T18: conditions, golden hour, Camo disguises, Cyber with two players), `three-types` (T18 species, moves, chart, models), `access` (T16: golden guide replay in `tests/fixtures/guide-golden.json`, a test-only access kind, guide has no kind checks), `caves` (T3/T8 caves and cave gyms), `moves` (T6 moves and the forget prompt), `seventh` (7th creatures), `bone-alien`, `new-gyms-access` (T14 night gyms, alien look), `water` (T12), `box` (storage box: let go, sort, filter; T13), `water` (climbing out of water; T12), `old-saves` (gyms 17–22 and old saves), `new-gyms` (T10 placement, the Cloud and Saucer Gyms' climb, the four new gyms' battles), `book` (Creature Book), `champion` (tower, guards, coach, champion battle; slow, about 5 min), `battle-and-menu`, `fx` (attack animations; `PC_FX_ALL=1` saves a screenshot of every type and signature move), `big-map` (T17: old area identical, seam, start, slots, gym protection), `gym`, `touch` (emulated iPad with real multi-touch), `multiplayer`
 and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `four-types` (Sky/Slime/Light/Paper + Puzzlet; `T9_TYPE=sky|slime|light|paper` runs one), `map` (old-save migration), `blocks`, `sound`, `icon`, `cloud` (skipped without credentials). Shared helpers are in `tests/helpers.mjs` (`openGame`, `openPair`, `seedSave`, `continueGame`, `platform`, `startWeakBattle`, `waitFor`, `playBattle`): prefer `waitFor`/`waitForFunction` to fixed sleeps. Gotchas learned the hard way:
 - Cloud sessions may block unpkg/jsdelivr and **WebSockets**. The helpers serve three.js from
   `tests/node_modules` and block Supabase unless a test opts in. The multiplayer spec relays

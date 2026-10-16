@@ -3,6 +3,7 @@
 import { B, isSolid } from './blocks.js';
 import { HOME_TYPES } from './hometypes.js';
 import { sound } from './sound.js';
+import { findRoom } from './roomfinder.js';
 
 const ACTIVE_RANGE = 24; // the meter and glow stay on this close to the Doormat
 const TOAST_RANGE = 32;  // you hear about your own home changing this close
@@ -10,17 +11,7 @@ const RECHECK = 0.25;    // seconds between re-checks of homes whose box was edi
 
 /* ------------------------------ room finder ------------------------------ */
 
-// STEP 0 STUB: always "not found". Builder A writes the real one (plans/T22.md section 2) with this exact report shape.
-export function findRoom(world, x, y, z) {
-  return {
-    found: false, mat: [x, y, z], f: y, escaped: false, inside: [], box: { x0: x, x1: x, z0: z, z1: z }, size: null,
-    door: null, doorRuns: 0, roofLevel: y + 4,
-    holes: { wall: [], roof: [], floor: [] },
-    counts: { floor: {}, inside: {}, wall: {}, roof: {} }, wallTotal: 0,
-    checks: { walls: false, roof: null, size: null, floor: null },
-    ok: false,
-  };
-}
+export { findRoom };
 
 /* --------------------------------- Home ---------------------------------- */
 
@@ -109,7 +100,7 @@ export class HomeManager {
     for (const rec of Array.isArray(records) ? records : []) {
       const home = this.valid(rec);
       if (!home) continue;
-      this.list = this.list.filter(h => h.owner !== home.owner); // one per owner, the last wins
+      this.list = this.list.filter(h => h.owner !== home.owner && !(h.x === home.x && h.y === home.y && h.z === home.z)); // one per owner and per mat, the last wins
       this.list.push(home);
     }
     for (const h of this.list) { h.check(this.world); this.checks++; }
@@ -123,6 +114,8 @@ export class HomeManager {
     if (![x, y, z].every(Number.isInteger) || !w.inBounds(x, y, z) || w.get(x, y, z) !== B.DOORMAT) return null;
     return new Home({ owner: rec.owner, name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '', x, y, z, type: HOME_TYPES[rec.type] ? rec.type : null }, this.game);
   }
+
+  findRoom(x, y, z) { return findRoom(this.world, x, y, z); } // the room around a Doormat cell (specs)
 
   toSave() { return this.list.map(h => h.toSave()); }
 
