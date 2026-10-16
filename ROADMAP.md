@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Next: **wave 8** (homes, Cozy/Treasure types and gyms, T20–T23), then the backlog below.
+Wave 8a: **T20 (treasure blocks) is done** (plan `T20`). Next: T21 (Cozy and Treasure types), then T22–T23, then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -613,6 +613,9 @@ Two types found **only near a home the player builds**. Both need new systems (h
 can only mine), so they have their own wave after wave 7.
 
 ### T20 · Treasure blocks you can only mine (size: M)
+
+**Done** (plan in `plans/T20.md`): treasure in cave walls and deep stone of the old area and the new land (only stone changed;
+`old-saves` counts treasure as stone), limited blocks with counts, natural-only cubes from gold ore and leaves, spec `treasure`.
 
 - **Three new blocks: Sunstone (warm shining gold), Ruby (red), Sapphire (blue)**, with their own
   names and textures, clearly different from Gold Ore and Star Crystal (those stay free in the

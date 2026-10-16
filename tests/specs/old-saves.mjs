@@ -60,11 +60,11 @@ export default async function ({ browser, base, t }) {
   // 1. The world itself.
   const worlds = await page.evaluate(async seeds => {
     const { World, WORLD_W: W, WORLD_D: D, WORLD_H: H } = await import('/src/world.js');
-    const { WOOL } = await import('/src/blocks.js');
+    const { WOOL, B, TREASURE } = await import('/src/blocks.js');
     const out = {};
     for (const seed of seeds) {
       const plain = new World(seed, null, null);
-      plain.generate({ bigCaves: false, caveGyms: false, newGyms: false });
+      plain.generate({ bigCaves: false, caveGyms: false, newGyms: false, treasure: false });
       const spots = plain.extraGymSpots();
       let h = 2166136261;
       for (let y = 0; y < H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) { // the old 224 x 224 area (T17), indexed with the big map's stride
@@ -76,9 +76,11 @@ export default async function ({ browser, base, t }) {
       const w = new World(seed, null, null);
       w.generate();
       const inBox = (x, z, y) => w.newGymBoxes.some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && y >= b.y0 && y <= b.y1);
+      // T20: treasure blocks only ever replace stone, so with them counted as stone the world is the old one.
+      const asStone = id => (TREASURE.includes(id) ? B.STONE : id);
       let h22 = 2166136261;
       for (let y = 0; y < H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) {
-        if (!inBox(x, z, y)) h22 = Math.imul(h22 ^ w.data[x + W * (z + D * y)], 16777619) >>> 0;
+        if (!inBox(x, z, y)) h22 = Math.imul(h22 ^ asStone(w.data[x + W * (z + D * y)]), 16777619) >>> 0;
       }
       const skip = new Uint8Array(W * D);
       const box = (cx, cz, r) => { for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const x = cx + a, z = cz + b; if (x >= 0 && z >= 0 && x < W && z < D) skip[x + z * W] = 1; } };

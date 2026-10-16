@@ -81,23 +81,34 @@ export class UI {
         if (g.selected === i && g.started && !g.inBattle) g.openBlocks?.();
         else { g.selected = i; this.renderHud(); }
       },
-    }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1)));
+    }, drawBlockIcon(this.atlas, id), el('span', {}, i + 1), BLOCKS[id].limited ? el('b', { class: 'count' }) : ''));
     this.hotbar.replaceChildren(...this.slots);
   }
 
   renderBlocks() {
     const g = this.game;
     document.getElementById('blocks-slot').textContent = g.selected + 1;
-    document.getElementById('block-list').replaceChildren(...PLACEABLE.map(id => el('button', {
-      class: id === g.hotbar[g.selected] ? 'sel' : '', title: BLOCKS[id].name,
-      onclick: () => { g.hotbar[g.selected] = id; this.renderHud(); g.closeBlocks?.(); },
-    }, drawBlockIcon(this.atlas, id), BLOCKS[id].name)));
+    // Limited blocks (T20 treasure) show how many you have ("Ruby ×3") and are greyed out at 0.
+    document.getElementById('block-list').replaceChildren(...PLACEABLE.map(id => {
+      const def = BLOCKS[id], n = g.blockCounts[id] || 0;
+      return el('button', {
+        class: `${id === g.hotbar[g.selected] ? 'sel' : ''}${def.limited && !n ? ' empty' : ''}`, title: def.name,
+        onclick: () => { g.hotbar[g.selected] = id; this.renderHud(); g.closeBlocks?.(); },
+      }, drawBlockIcon(this.atlas, id), def.limited ? `${def.name} ×${n}` : def.name);
+    }));
   }
 
   renderHud() {
     const g = this.game;
     if (this.hotbarKey !== g.hotbar.join()) this.buildHotbar();
-    this.slots.forEach((s, i) => s.classList.toggle('sel', i === g.selected));
+    this.slots.forEach((s, i) => {
+      s.classList.toggle('sel', i === g.selected);
+      const count = s.querySelector('.count');
+      if (!count) return;
+      const n = g.blockCounts[g.hotbar[i]] || 0;
+      count.textContent = `×${n}`;
+      s.classList.toggle('empty', !n);
+    });
     this.cubes.textContent = `Capture Cubes: ${g.cubes}`;
     const key = g.badges.join();
     if (this.badgeKey !== key) {

@@ -30,6 +30,7 @@ const MORE_TILES = [
   'FLOWERS', 'CRYSTAL', 'GLASS', 'STONE_BRICKS', 'LAMP', 'COAL_ORE', 'GOLD_ORE',
   'GLOWCAP', 'CHEST_SIDE', 'CHEST_TOP', 'CHEST_OPEN_TOP', 'CLOUD',
   'LASER_RED', 'LASER_BLUE', 'LASER_FRIEND', 'SWITCH_RED_TOP', 'SWITCH_BLUE_TOP', 'FRIEND_PAD_TOP', 'RESET_BUTTON', 'CLOCK_DOOR', // T19
+  'SUNSTONE', 'RUBY', 'SAPPHIRE', // T20 treasure blocks
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -44,8 +45,10 @@ export const B = {
   // 49-52 are the sky / slime / light / paper wool blocks.
   CLOUD: 53,
   // 54-56 are the time / camo / cyber wool blocks.
-  // 57-64: T19 gym blocks (lasers, switches, reset button, clock door). Next free id: 65.
+  // 57-64: T19 gym blocks (lasers, switches, reset button, clock door).
   LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
+  // 65-67: T20 treasure blocks (limited: you mine them to have them). Next free id: 68.
+  SUNSTONE: 65, RUBY: 66, SAPPHIRE: 67,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -95,6 +98,13 @@ BLOCKS[B.SWITCH_BLUE] = { name: 'Blue Switch', top: T.SWITCH_BLUE_TOP, side: T.S
 BLOCKS[B.FRIEND_PAD] = { name: 'Friend Pad', top: T.FRIEND_PAD_TOP, side: T.STONE_BRICKS, bottom: T.STONE_BRICKS };
 BLOCKS[B.RESET_BUTTON] = { name: 'Reset Button', ...all(T.RESET_BUTTON) };
 BLOCKS[B.CLOCK_DOOR] = { name: 'Clock Door', ...all(T.CLOCK_DOOR), wallText: 'This door opens at its time. Look at the big clock!' };
+// T20 treasure blocks. `limited`: you only have the ones you mined (game.blockCounts); breaking one gives 1, placing
+// one uses 1. They glint in the dark (glow material) without lighting the cave around them.
+BLOCKS[B.SUNSTONE] = { name: 'Sunstone', ...all(T.SUNSTONE), glow: true, noLight: true, limited: true };
+BLOCKS[B.RUBY] = { name: 'Ruby', ...all(T.RUBY), glow: true, noLight: true, limited: true };
+BLOCKS[B.SAPPHIRE] = { name: 'Sapphire', ...all(T.SAPPHIRE), glow: true, noLight: true, limited: true };
+export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
+export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
 
 // The starting hotbar. Players can swap any slot for another block in the Blocks panel.
@@ -104,6 +114,7 @@ export const PLACEABLE = [
   B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.STONE_BRICKS, B.BRICK, B.PLANKS, B.LOG, B.PINE_LOG,
   B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.CACTUS, B.SAND, B.SANDSTONE, B.GRAVEL, B.MUD, B.SNOW,
   B.ICE, B.GLASS, B.CLOUD, B.LAMP, B.CRYSTAL, B.GLOWCAP, B.COAL_ORE, B.GOLD_ORE,
+  B.SUNSTONE, B.RUBY, B.SAPPHIRE, // limited: only as many as you have mined
 ];
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
@@ -334,6 +345,26 @@ export function drawAtlas() {
     const col = d < 1.8 && !hand ? [60, 40, 20] : hand ? [50, 30, 14] : d < 4.2 ? [250, 240, 205] : d < 5.2 ? [110, 72, 30] : shade([214, 170, 80], (y % 4 === 3 ? 0.78 : 1) * (1 + (rand() - 0.5) * 0.08));
     put(T.CLOCK_DOOR, x, y, col);
   });
+
+  // T20 treasure blocks: big cut gems set in dark rock, each in its own shape so they never look like ore or crystal.
+  // Sunstone: a warm round sun with rays; Ruby: a red diamond; Sapphire: a blue octagon. Facets: light upper left.
+  const ROCK = [58, 52, 60];
+  const gem = (tile, inside, col, rim) => each((x, y) => {
+    const dx = x - 7.5, dy = y - 7.5, k = inside(dx, dy);
+    if (k < 0) { put(tile, x, y, shade(ROCK, 1 + (rand() - 0.5) * 0.3)); return; }
+    const facet = dx + dy < -3 ? 1.35 : dx + dy > 3 ? 0.72 : Math.abs(dx - dy) < 1 ? 1.15 : 1;
+    const shine = (x === 5 && y >= 4 && y <= 5) || (y === 4 && x === 6);
+    put(tile, x, y, shine ? [255, 255, 245] : k < 1 ? rim : shade(col, facet));
+  });
+  gem(T.SUNSTONE, (dx, dy) => {
+    const d = Math.hypot(dx, dy), ray = Math.abs(dx) < 0.6 || Math.abs(dy) < 0.6 || Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.7;
+    return d < 4.6 ? 4.6 - d : ray && d < 7.4 ? 0.5 : -1;
+  }, [255, 196, 60], [255, 140, 20]);
+  gem(T.RUBY, (dx, dy) => 6.6 - Math.abs(dx) - Math.abs(dy) * 0.9 - 0.4, [215, 30, 60], [120, 10, 30]);
+  gem(T.SAPPHIRE, (dx, dy) => {
+    const a = Math.max(Math.abs(dx), Math.abs(dy)), b = (Math.abs(dx) + Math.abs(dy)) * 0.72;
+    return 6 - Math.max(a, b);
+  }, [50, 110, 235], [20, 40, 140]);
 
   return c;
 }

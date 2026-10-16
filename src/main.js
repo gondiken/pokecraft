@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas } from './blocks.js';
+import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, isLimited } from './blocks.js';
 import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
@@ -89,6 +89,7 @@ const game = {
   scene, camera,
   world: null, player: null, creatures: null,
   party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
+  blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
   renderer, underground: false,
@@ -146,6 +147,7 @@ function snapshot() {
     ...home, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
+    blockCounts: game.blockCounts,
     toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
@@ -241,6 +243,7 @@ function startNew(starterId) {
   game.badges = [];
   game.beaten = [];
   game.champion = false;
+  game.blockCounts = {};
   game.hotbar = [...HOTBAR];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
@@ -260,6 +263,7 @@ function continueGame(saved) {
   game.badges = saved.badges || [];
   game.beaten = saved.beaten || [];
   game.champion = !!saved.champion;
+  game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
   game.hotbar = HOTBAR.map((id, i) => (BLOCKS[saved.hotbar?.[i]] && PLACEABLE.includes(saved.hotbar[i]) ? saved.hotbar[i] : id));
   const p = game.player;
@@ -284,6 +288,13 @@ function continueGame(saved) {
   if (!game.badges.includes('bone') && !saved.toldCaveGym) {
     game.ui.toast('The Fossil Gym moved into a big cave! Follow the arrow to the stairs.');
   }
+}
+
+// Limited blocks from a save: only known limited ids with a whole count above 0.
+function loadCounts(saved) {
+  const out = {};
+  for (const [id, n] of Object.entries(saved || {})) if (isLimited(Number(id)) && Number.isInteger(n) && n > 0) out[id] = n;
+  return out;
 }
 
 function begin() {
@@ -506,6 +517,8 @@ function breakBlock(hit = target.block) {
   if (!hit || hit.y === 0) return;
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
   if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || 'Gym walls are too strong to break!'); return; }
+  // Natural blocks have no edit yet; a placed block does (T20: so placed gold ore and leaves never give cubes).
+  const natural = !world.edits.has(world.index(hit.x, hit.y, hit.z));
   world.set(hit.x, hit.y, hit.z, B.AIR);
   // Water flows into the hole if it borders water.
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]]) {
@@ -513,8 +526,16 @@ function breakBlock(hit = target.block) {
   }
   game.mp.sendBlock(hit.x, hit.y, hit.z, world.get(hit.x, hit.y, hit.z));
   sound.play('break');
-  // Leaves and gold ore sometimes hide a Capture Cube.
-  const find = hit.id === B.LEAVES ? 0.1 : hit.id === B.GOLD_ORE ? 0.35 : 0;
+  // Limited blocks (T20 treasure) go into your bag.
+  if (isLimited(hit.id)) {
+    const n = (game.blockCounts[hit.id] || 0) + 1;
+    game.blockCounts[hit.id] = n;
+    game.ui.renderHud();
+    sound.play('cube');
+    game.ui.toast(`You got a ${BLOCKS[hit.id].name}! You have ${n}.`);
+  }
+  // Natural leaves and gold ore sometimes hide a Capture Cube.
+  const find = !natural ? 0 : hit.id === B.LEAVES ? 0.1 : hit.id === B.GOLD_ORE ? 0.35 : 0;
   if (Math.random() < find) {
     game.cubes++;
     game.ui.renderHud();
@@ -542,11 +563,14 @@ function placeBlock(hit = target.block) {
   const x = hit.x + hit.normal[0], y = hit.y + hit.normal[1], z = hit.z + hit.normal[2];
   const cur = world.get(x, y, z);
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
-  if (!world.editAllowed(x, y, z, game.hotbar[game.selected])) { wallToast("You can't build inside a gym!"); return; }
+  const id = game.hotbar[game.selected];
+  if (!world.editAllowed(x, y, z, id)) { wallToast("You can't build inside a gym!"); return; }
+  if (isLimited(id) && !game.blockCounts[id]) { wallToast(`You have no ${BLOCKS[id].name} yet. Look for it in cave walls!`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
-  world.set(x, y, z, game.hotbar[game.selected]);
-  game.mp.sendBlock(x, y, z, game.hotbar[game.selected]);
+  world.set(x, y, z, id);
+  game.mp.sendBlock(x, y, z, id);
   sound.play('place');
+  if (isLimited(id)) { game.blockCounts[id]--; game.ui.renderHud(); }
 }
 
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.

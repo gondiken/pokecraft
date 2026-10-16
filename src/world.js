@@ -1,6 +1,6 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
-import { B, BLOCKS, TILE_COUNT, isOccluder, isSolid } from './blocks.js';
+import { B, BLOCKS, TILE_COUNT, TREASURE, isOccluder, isSolid } from './blocks.js';
 import { GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves } from './caves.js';
 import { installGymPlacement } from './gymplace.js';
@@ -311,6 +311,7 @@ export class World {
     try {
       this.generateNewLand();
       if (opts.slotGyms !== false) this.placeSlotGyms();
+      if (opts.treasure !== false) this.placeTreasure(true);
     } finally { this.guardOld = false; }
     this.gyms.sort((a, b) => GYMS.indexOf(a.def) - GYMS.indexOf(b.def));
   }
@@ -350,8 +351,9 @@ export class World {
 
   // caves: the old caves; bigCaves: the second, bigger cave layer; caveGyms: gyms that live in caves (tests only).
   // newGyms: the T10 gyms (19+); off only for tests that compare with the world before them.
+  // treasure: the T20 treasure blocks (they only ever replace stone, so counted as stone the world is the old one).
   // Generates a World of the old size (224 x 224) in full; the game's world calls it on its old-size twin.
-  generateArea({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true } = {}) {
+  generateArea({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true, treasure = true } = {}) {
     const { W, D } = this;
     const biomes = new Array(W * D);
     for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) biomes[x + z * W] = this.fillColumn(x, z);
@@ -380,6 +382,31 @@ export class World {
     if (newGyms) this.placeNewGyms(caveGyms);
     this.gyms.sort((a, b) => GYMS.indexOf(a.def) - GYMS.indexOf(b.def));
     if (caves) this.fillCavesNearStart(solid, carved);
+    if (treasure) this.placeTreasure();
+  }
+
+  // T20: Sunstone, Ruby and Sapphire, rare, in place of natural stone at least 4 blocks under the ground: more often
+  // in cave walls (next to air), now and then deep in the rock (8+ down). Never inside a gym's protected box, so it
+  // can always be mined. Runs last, from the seed only. newLandOnly: the 288 world's pass (the old area has its own).
+  placeTreasure(newLandOnly = false) {
+    const { W, D, data, seed } = this;
+    const layer = W * D;
+    for (let x = 1; x < W - 1; x++) {
+      for (let z = 1; z < D - 1; z++) {
+        if (newLandOnly && x < OLD_W && z < OLD_D) continue;
+        const g = this.ground[x + z * W];
+        for (let y = 1; y <= g - 4; y++) {
+          const i = this.index(x, y, z);
+          if (data[i] !== B.STONE) continue;
+          const r = hash2(x * 31 + y * 7, z * 17 - y * 11, seed + 2020);
+          if (r >= 0.015) continue;
+          const wall = data[i - 1] === B.AIR || data[i + 1] === B.AIR || data[i - W] === B.AIR || data[i + W] === B.AIR
+            || data[i - layer] === B.AIR || data[i + layer] === B.AIR;
+          if (!(wall || (y <= g - 8 && r < 0.0012)) || this.protectedAt(x, y, z)) continue;
+          data[i] = TREASURE[Math.floor(hash2(x + y, z - y * 3, seed + 2021) * 3)];
+        }
+      }
+    }
   }
 
   // Where a new player starts (same search as findSpawn in main.js): the first grass going outwards

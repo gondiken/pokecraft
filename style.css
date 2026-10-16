@@ -128,6 +128,9 @@ button.primary { background: #3b6fd8; }
 .slot.sel { border-color: #fff; }
 .slot canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
 .slot span { position: absolute; left: 2px; top: -2px; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+.slot .count { position: absolute; right: 2px; bottom: -2px; font-size: 16px; font-weight: normal; text-shadow: 1px 1px 0 #000; }
+.slot.empty canvas, #block-list button.empty canvas { filter: grayscale(1); opacity: .45; }
+#block-list button.empty { color: var(--muted); }
 
 #cubes {
   position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%);
