@@ -565,7 +565,7 @@ function placeBlock(hit = target.block) {
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   const id = game.hotbar[game.selected];
   if (!world.editAllowed(x, y, z, id)) { wallToast("You can't build inside a gym!"); return; }
-  if (isLimited(id) && !game.blockCounts[id]) { wallToast(`You have no ${BLOCKS[id].name} yet. Look for it in cave walls!`); return; }
+  if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! Mine one in a cave wall, or break one you placed.`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, id);
   game.mp.sendBlock(x, y, z, id);

@@ -109,7 +109,7 @@ export default async function ({ browser, base, t }) {
     return out;
   });
   t.ok(m.start === 0 && m.emptySlot.grey && m.emptySlot.count === '×0', `a new game has no rubies: the hotbar slot is grey and says ${m.emptySlot.count}`);
-  t.ok(m.noneLeft.placed === 0 && /no Ruby yet/.test(m.noneLeft.toast), `placing a Ruby with none does nothing ("${m.noneLeft.toast}")`);
+  t.ok(m.noneLeft.placed === 0 && /No Ruby left!.*break one you placed/.test(m.noneLeft.toast), `placing a Ruby with none does nothing ("${m.noneLeft.toast}")`);
   t.ok(m.mined.ruby === 2 && m.mined.sapphire === 1 && m.mined.sunstone === 0 && m.mined.air && /Sapphire/.test(m.mined.toast),
     `mining adds 1 each (rubies ${m.mined.ruby}, sapphires ${m.mined.sapphire}; "${m.mined.toast}")`);
   t.ok(!m.fullSlot.grey && m.fullSlot.count === '×2', `the hotbar slot lights up and says ${m.fullSlot.count}`);
