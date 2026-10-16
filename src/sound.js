@@ -185,6 +185,7 @@ const SOUNDS = {
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.
+  knock: () => notes([196, 180], 0.18, { len: 0.1, type: 'triangle', vol: 0.32 }), // two soft wooden knocks
   doorchime: () => notes([784, 1047], 0.16, { len: 0.35, type: 'sine', vol: 0.22 }),
   // A camo creature pops out of its disguise.
   popout: () => { noise({ freq: 1500, len: 0.08, vol: 0.25, q: 1 }); tone(300, { len: 0.12, vol: 0.25, slide: 500, type: 'triangle' }); },

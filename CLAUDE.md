@@ -222,6 +222,15 @@ Key ideas:
   Blocks `KEY_CHEST` 73 (glow, noLight) and `VAULT_DOOR` 74 (not placeable, `wallText`); next free block id is 75. Save field `keys` (`game.keys`, strings
   `'<gymId>:<key>'`, per player, `loadKeys` drops unknown ones). `breakBlock` calls `gymLive.hit` first (touch break button). `WORLD_VERSION` is 9.
   Tower: needs all 27 badges; guards 47-50, Champion 49-52 (Zenithar 52), rematch cap 55, Coach Dex up to level 50 (9th team).
+- **Cozy Gym (T23, `src/homegym.js`, `HomeLive` = `LIVE.home`):** every 0.25 s it reads `homeGymState`. Only the world owner's browser moves the gym in
+  (`owner && ready && caught >= need`): `homes.setGyms(home, ids)` writes `home.gyms` (record field, validated against `place: 'home'` defs in
+  `homes.js`, kept when the Doormat moves or the type changes, gone with the record, sent as the normal `home` message), then a 2.5 s knock
+  (`phase: 'knock'`, sound `knock`, people on the door cells) and a "moved into your cozy home" toast. Everybody places the people from the record on
+  `home.standSpots(3)` (leader furthest from the door), again when the home's key (mat, floor, inside size) changes or a person's cell turns solid;
+  no record = `sendAway`. While the home is not finished `closedText` says "Brr" (arms shiver) and "Ahh, cozy again" comes when it is back. A cozy
+  home needs 3 of its 5 things, so a test makes it chilly by removing Bed + Fireplace + Lamp. **A live object must not have its own `stand`/`hit`/`prompt`
+  methods unless it means the `gymLive` hooks** (`gymLive.stand` calls `o.stand` on every object). Spec: the `cozyGym` part of `gym.mjs` and the Cozy
+  part of `multiplayer.mjs`.
 - **Treasure blocks (T20, spec `treasure`):** Sunstone 65, Ruby 66, Sapphire 67 (`TREASURE`), `glow` + `noLight` (they glint in
   dark caves without lighting them). **Limited blocks:** a block def with `limited: true` is only placeable while
   `game.blockCounts[id] > 0` (`isLimited`): breaking one adds 1 (placed or natural), placing uses 1; the hotbar slot and the

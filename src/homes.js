@@ -4,6 +4,11 @@ import { B, isSolid } from './blocks.js';
 import { HOME_TYPES } from './hometypes.js';
 import { sound } from './sound.js';
 import { findRoom } from './roomfinder.js';
+import { GYMS } from './gyms.js';
+
+// T23: ids of the gyms that can move into a home (GYMS defs with place: 'home').
+const HOME_GYM_IDS = new Set(GYMS.filter(g => g.place === 'home').map(g => g.id));
+const cleanGyms = list => (Array.isArray(list) ? [...new Set(list.filter(id => typeof id === 'string' && HOME_GYM_IDS.has(id)))] : []);
 
 const ACTIVE_RANGE = 24; // the meter and glow stay on this close to the Doormat
 const TOAST_RANGE = 32;  // you hear about your own home changing this close
@@ -16,8 +21,9 @@ export { findRoom };
 /* --------------------------------- Home ---------------------------------- */
 
 export class Home {
-  constructor({ owner, name = '', x, y, z, type = null }, game = null) {
+  constructor({ owner, name = '', x, y, z, type = null, gyms = [] }, game = null) {
     Object.assign(this, { owner, name, x, y, z, type });
+    this.gyms = cleanGyms(gyms); // T23: gyms that moved in (kept when the mat moves or the type changes; gone with the record)
     Object.defineProperty(this, 'game', { value: game, enumerable: false });
     this.report = null;  // findRoom's report (see homes.js findRoom)
     this.result = null;  // HomeType.evaluate(report), or null while no type is chosen
@@ -61,7 +67,11 @@ export class Home {
       .slice(0, n);
   }
 
-  toSave() { return { owner: this.owner, name: this.name, x: this.x, y: this.y, z: this.z, type: this.type }; }
+  toSave() {
+    const o = { owner: this.owner, name: this.name, x: this.x, y: this.y, z: this.z, type: this.type };
+    if (this.gyms.length) o.gyms = [...this.gyms];
+    return o;
+  }
 }
 
 /* ------------------------------ HomeManager ------------------------------ */
@@ -112,7 +122,7 @@ export class HomeManager {
     if (!rec || typeof rec !== 'object' || typeof rec.owner !== 'string' || !w) return null;
     const { x, y, z } = rec;
     if (![x, y, z].every(Number.isInteger) || !w.inBounds(x, y, z) || w.get(x, y, z) !== B.DOORMAT) return null;
-    return new Home({ owner: rec.owner, name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '', x, y, z, type: HOME_TYPES[rec.type] ? rec.type : null }, this.game);
+    return new Home({ owner: rec.owner, name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '', x, y, z, type: HOME_TYPES[rec.type] ? rec.type : null, gyms: rec.gyms }, this.game);
   }
 
   findRoom(x, y, z) { return findRoom(this.world, x, y, z); } // the room around a Doormat cell (specs)
@@ -152,7 +162,7 @@ export class HomeManager {
       }
       what = 'moved';
     }
-    home = new Home({ owner: this.playerId, name, x, y, z, type: old?.type ?? null }, this.game);
+    home = new Home({ owner: this.playerId, name, x, y, z, type: old?.type ?? null, gyms: old?.gyms }, this.game);
     this.list.push(home);
     home.check(w); this.checks++;
     this.active = home;
@@ -233,6 +243,14 @@ export class HomeManager {
     }
     const a = this.active;
     if (a && pos && Math.hypot(pos.x - a.x, pos.z - a.z) > ACTIVE_RANGE) this.active = null;
+  }
+
+  // T23: a gym moved in (or out): sets the record's `gyms`, sends it to everyone, tells listeners, saves.
+  setGyms(home, ids) {
+    home.gyms = cleanGyms(ids);
+    this.send(home);
+    this.emit(home, 'gyms');
+    this.game.save?.();
   }
 
   // Toasts for your own home when it becomes ready or stops being ready.
