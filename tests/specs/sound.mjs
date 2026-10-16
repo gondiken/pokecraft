@@ -100,6 +100,13 @@ export default async function ({ browser, base, t }) {
     for (const id of ['echobat', 'boomwing', 'drumbo', 'bongorilla', 'dinglet', 'gongolin']) s.cry(id, 'sound');
     return s.errors.length === 0;
   }), `all sounds play without errors ${await page.evaluate(() => window.pokecraft.sound.errors.join('; '))}`);
+  // T23: the Cozy Gym's knock plays without errors.
+  t.ok(await page.evaluate(() => {
+    const s = window.pokecraft.sound;
+    s.errors.length = 0;
+    s.play('knock');
+    return s.played.includes('knock') && s.errors.length === 0;
+  }), 'the knock sound plays without errors');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

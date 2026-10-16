@@ -68,6 +68,84 @@ export default async function ({ browser, base, t }) {
   await A.waitForFunction(() => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'cyber'); return gym.rooms[0].friend.every(([x, y, z]) => g.world.get(x, y, z) === 59); }, null, { timeout: 60000, polling: 200 }).catch(() => {});
   t.ok((await friendIds(A)).every(id => id === 59), 'when the visitor steps off the pad the friend lane closes again');
 
+  // T23 Cozy Gym: the host's cozy home gets the gym moved in (only the owner's browser decides); the visitor sees the
+  // people inside the host's home, the guide does not ask them to catch anything, "chilly" agrees in both browsers, and
+  // the visitor can battle there. Both browsers get the same house blocks (blocks are not sent in this test).
+  const cozyHouse = await A.evaluate(async () => {
+    const g = window.pokecraft, { B } = await import('/src/blocks.js');
+    const s = g.spawnPoint, F = 42;
+    let X0 = null, Z0 = null;
+    search: for (let r = 0; r < 160; r += 8) for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]]) {
+      const x = Math.floor(s.x) + 6 + dx, z = Math.floor(s.z) - 14 + dz;
+      let free = x > 2 && z > 2 && x + 16 < 220 && z + 16 < 220;
+      for (let a = 0; free && a < 16; a += 4) for (let b = 0; free && b < 16; b += 4) for (let y = F; y <= F + 13; y += 3) if (g.world.protectedAt(x + a, y, z + b)) free = false;
+      if (free) { X0 = x; Z0 = z; break search; }
+    }
+    return X0 === null ? null : [X0, Z0];
+  });
+  t.ok(cozyHouse, 'found a free patch for the host\'s cozy house');
+  const build = async ([X0, Z0]) => {
+    const g = window.pokecraft, { B } = await import('/src/blocks.js'), { placeExample } = await import('/src/hometypes.js');
+    for (let x = -2; x < 12; x++) for (let z = -2; z < 12; z++) {
+      g.world.set(X0 + x, 42, Z0 + z, B.STONE);
+      for (let y = 1; y <= 12; y++) g.world.set(X0 + x, 42 + y, Z0 + z, B.AIR);
+    }
+    return placeExample(g.world, 'cozy', X0, 42, Z0);
+  };
+  const mat = await A.evaluate(build, cozyHouse);
+  await B.evaluate(build, cozyHouse);
+  await A.evaluate(([mat]) => {
+    const g = window.pokecraft, h = g.homes.place(...mat);
+    g.homes.choose(h, 'cozy');
+    for (const id of ['snugbun', 'purrmit', 'pillowlamb']) g.book.caught.add(id);
+    g.player.pos.set(mat[0] + 0.5, mat[1] + 1, mat[2] + 5.5);
+  }, [mat]);
+  const peopleIn = P => P.evaluate(() => {
+    const g = window.pokecraft, h = g.homes.worldOwnerHome(), r = h?.report;
+    const list = g.npcs.list.filter(n => n.gym?.def.id === 'cozy');
+    return !!r?.inside && list.length === 3 && list.every(n => !n.away && r.inside.some(([a, b]) => a === Math.floor(n.pos.x) && b === Math.floor(n.pos.z)));
+  });
+  await A.waitForFunction(() => window.pokecraft.homes.mine()?.gyms.includes('cozy') && window.pokecraft.gymLive.of('cozy').phase === '', null, { timeout: 90000, polling: 200 }).catch(() => {});
+  await B.waitForFunction(() => window.pokecraft.homes.worldOwnerHome()?.gyms.includes('cozy'), null, { timeout: 60000, polling: 200 }).catch(() => {});
+  await B.waitForFunction(() => { const g = window.pokecraft, h = g.homes.worldOwnerHome(), r = h?.report, l = g.npcs.list.filter(n => n.gym?.def.id === 'cozy'); return !!r?.inside && l.length === 3 && l.every(n => !n.away); }, null, { timeout: 60000, polling: 200 }).catch(() => {});
+  t.ok(await peopleIn(A), 'the host sees the Cozy Gym people inside their home');
+  t.ok(await peopleIn(B), 'the visitor sees the Cozy Gym people inside the host\'s home');
+  const guideB = await B.evaluate(async () => { // the arrow follows the nearest unbeaten gym: leave only the Cozy Gym
+    const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
+    window.__oldBadges = g.badges; g.badges = GYMS.map(x => x.id).filter(id => id !== 'cozy');
+    g.updateGuide(); return document.getElementById('guide').textContent; });
+  t.ok(guideB.includes('Cozy Gym') && !guideB.includes('catch 3') && !guideB.includes('build a cozy home'), `the visitor's guide does not ask for cozy creatures (${guideB})`);
+  const furniture = await A.evaluate(async () => {
+    const g = window.pokecraft, { B } = await import('/src/blocks.js'), h = g.homes.mine(), found = [];
+    for (let x = h.x - 12; x <= h.x + 12; x++) for (let z = h.z - 12; z <= h.z + 12; z++) for (let y = h.y; y <= h.y + 6; y++) {
+      const id = g.world.get(x, y, z);
+      if (id === B.BED || id === B.FIREPLACE || id === B.LAMP) found.push([x, y, z, id]);
+    }
+    for (const [x, y, z] of found) { g.world.set(x, y, z, B.AIR); g.mp.sendBlock(x, y, z, B.AIR); }
+    return found;
+  });
+  await B.waitForFunction(() => !window.pokecraft.homes.worldOwnerHome()?.finished, null, { timeout: 60000, polling: 200 }).catch(() => {});
+  const chillyB = await B.evaluate(() => {
+    const g = window.pokecraft, l = g.npcs.list.find(n => n.gym?.def.id === 'cozy' && n.kind === 'leader');
+    document.exitPointerLock();
+    g.talkTo(l);
+    return { toast: document.getElementById('toast').textContent, battle: g.inBattle };
+  });
+  t.ok(chillyB.toast.includes('Brr') && !chillyB.battle, `breaking the furniture on the host makes it chilly for the visitor too (${chillyB.toast})`);
+  await A.evaluate(([f]) => { const g = window.pokecraft; for (const [x, y, z, id] of f) { g.world.set(x, y, z, id); g.mp.sendBlock(x, y, z, id); } }, [furniture]);
+  await B.waitForFunction(() => window.pokecraft.homes.worldOwnerHome()?.finished, null, { timeout: 60000, polling: 200 }).catch(() => {});
+  await B.evaluate(async () => {
+    const g = window.pokecraft, { makeCreature } = await import('/src/species.js');
+    window.__oldParty = g.party;
+    g.party = [makeCreature('tidalord', 70), makeCreature('thunderwolf', 70), makeCreature('grovebeast', 70)];
+    const n = g.npcs.list.find(n => n.gym?.def.id === 'cozy' && n.kind === 'trainer' && n.index === 0);
+    g.player.pos.set(n.pos.x + 1.5, n.pos.y, n.pos.z);
+    g.talkTo(n);
+  });
+  t.ok(await playBattle(B), 'the visitor battles Knitter Bea in the host\'s home');
+  t.ok(await B.evaluate(() => window.pokecraft.beaten.includes('cozy:trainer')), 'the visitor remembers beating her');
+  await B.evaluate(() => { const g = window.pokecraft; g.party = window.__oldParty; g.badges = window.__oldBadges; g.beaten = g.beaten.filter(k => !k.startsWith('cozy:')); });
+
   // The visitor is in a battle when the host stops: they go home only after the battle.
   await B.evaluate(async () => {
     const g = window.pokecraft;
