@@ -430,8 +430,8 @@ blocks): Cozy and Treasure. After wave 7 there are 26 types and 25 gyms; after w
   are proposals; the planner checks they are original.
 - **Gyms: 2 trainers + a leader**, like every other gym. Each new gym is harder than the last,
   the last ones quite hard. Levels in release order: **Time 31–33, Camo 34–36, Cyber 37–40
-  (4 creatures)**, then **Cozy 41–43, Treasure 44–46**. (Open: the owner may prefer Cozy and
-  Treasure to sit lower; ask before T23.)
+  (4 creatures)**, then **Cozy 41–43, Treasure 44–46**. (Asked on 2026-10-16: the owner
+  keeps these levels.)
 - **The Champion's Tower needs every badge** (25 after wave 7, 27 after wave 8), with **no
   exception for players who were already Champion** (today old Champions keep access; the
   owner decided to drop that). Old saves keep their badges and Champion title. The Tower's
