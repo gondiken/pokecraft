@@ -643,8 +643,8 @@ cheap on the slow renderer) and are **rare**.
 
 | Type | Family 1 | Family 2 | Family 3 | Single |
 | --- | --- | --- | --- | --- |
-| **Cozy** (no teapots: soft, sleepy, warm) | Snugbun (bunny rolled in a blanket) → Quiltbun (quilt cape) | Purrmit (kitten in a mitten) → Knitcat (cat in a knitted sweater) | Pillowool (sheep made of pillows) → Dozeram (sleepy ram, pillow horns) | Snoozebear (bear in pyjamas and slippers) |
-| **Treasure** (gold/gem colours, sparkling, not always animals) | Coinlet (a rolling gold coin) → Kingcoin (coin stack with a crown) | Crystafox (crystal fur) → Prismfox (fur that throws rainbows) | Ringlet (floating ring, gem eye) → Crownguard (walking crown, gem armour) | Chandelia (floating glittering chandelier) |
+| **Cozy** (no teapots: soft, sleepy, warm) | Snugbun (bunny rolled in a blanket) → Quiltbun (quilt cape) | Purrmit (kitten in a mitten) → Knitcat (cat in a knitted sweater) | Pillowlamb (sheep made of pillows) → Dozeram (sleepy ram, pillow horns) | Snoozebear (bear in pyjamas and slippers) |
+| **Treasure** (gold/gem colours, sparkling, not always animals) | Coinlet (a rolling gold coin) → Kingcoin (coin stack with a crown) | Crystafox (crystal fur) → Prismfox (fur that throws rainbows) | Ringlet (floating ring, gem eye) → Crownguard (walking crown, gem armour) | Lustrelle (floating glittering chandelier) |
 
 **Matchups the owner approved:**
 - Triangle with wave 7's Cyber: **Cozy beats Cyber** (put the screens away and cuddle), **Cyber
