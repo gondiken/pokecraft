@@ -481,6 +481,13 @@ class GymPlacement {
     }
   }
 
+  // A rectangle (inclusive world x/z) that stays bright, like markLit (T19: the long Firewall Maze).
+  markLitBox(x0, x1, z0, z1) {
+    for (let x = Math.max(0, x0); x <= Math.min(this.W - 1, x1); x++) {
+      for (let z = Math.max(0, z0); z <= Math.min(this.D - 1, z1); z++) this.litCol[x + z * this.W] = 1;
+    }
+  }
+
   buildGym(x0, fy, z0, front, type, { cave = false } = {}) {
     const R = 6; // half-size of the building
     const wool = WOOL[type];
