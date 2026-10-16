@@ -69,7 +69,11 @@ export default async function ({ browser, base, t }) {
       if ((!best || h > best.h) && !w.gyms.some(gy => Math.hypot(gy.x - x, gy.z - z) < 20)) best = { x, z, h };
     }
     g.player.pos.set(best.x + 0.5, w.surface(best.x, best.z).y + 1, best.z + 0.5);
+    // Set the clock too (noon, then midnight): a new game starts in the sunrise window, where
+    // dawn-only Time creatures would take some of the 16 places.
+    g.time = 0.25;
     for (let i = 0; i < 1800; i++) cm.update(0.1, g.player.pos, g.spawnPoint, false);
+    g.time = 0.75;
     for (let i = 0; i < 1800; i++) cm.update(0.1, g.player.pos, g.spawnPoint, true);
     return {
       cosmic: cm.list.filter(c => c.species.type === 'cosmic').length,
