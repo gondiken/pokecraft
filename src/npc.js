@@ -175,13 +175,13 @@ export class NpcManager {
       const { leader } = gym.def;
       this.add(new Npc({
         kind: 'leader', name: leader.name, gym, colors: leader.colors,
-        pos: gym.leaderPos, heading: facing, cape: typeColor, look: leader.look, def: leader,
+        pos: gym.leaderPos, heading: gym.leaderHeading ?? facing, cape: typeColor, look: leader.look, def: leader,
       }));
       const spots = gym.trainerPositions || [gym.trainerPos];
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i], heading: facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i], heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
         if (trainer.disguise === 'stone') this.disguiseAs(npc, world, B.STONE);
