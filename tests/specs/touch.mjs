@@ -1,6 +1,7 @@
 // Tablet controls on an emulated iPad: joystick + drag-look (multi-touch), buttons, team screen, pause.
 import { devices } from 'playwright';
 import { openGame } from '../helpers.mjs';
+import { STAGE } from './home-ui.mjs';
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
@@ -109,6 +110,46 @@ export default async function ({ browser, base, t }) {
   await page.tap('#btn-break');
   t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the Break button on a disguised creature battles it (and breaks no block)');
   await endBattle();
+  // T22: homes on a tablet. Stepping on a new Doormat opens the chooser, a tap on a card picks the type, the action
+  // button says "My home", the meter can be tapped, "Show me a house" shows the spinning model (drag turns, pinch zooms).
+  const { sx: hx, sz: hz, mat } = await page.evaluate(STAGE);
+  await page.evaluate(([x, z]) => { const p = window.pokecraft.player; p.pos.set(x + 4.5, 43, z - 2.5); p.vel.set(0, 0, 0); }, [hx, hz]);
+  await page.waitForTimeout(600);
+  await page.evaluate(([x, y, z]) => { const p = window.pokecraft.player; p.pos.set(x + 0.5, y + 1, z + 0.5); p.vel.set(0, 0, 0); }, mat);
+  await page.waitForFunction(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'choose', null, { timeout: 30000 });
+  t.ok(true, 'stepping on a new Doormat opens the home chooser');
+  await page.tap('#home .hm-card[data-type="cozy"]');
+  await page.waitForFunction(() => !window.pokecraft.ui.homeOpen && window.pokecraft.homes.mine()?.type === 'cozy', null, { timeout: 15000 });
+  t.ok(true, 'tapping a card picks the type and closes the chooser');
+  t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'and the pause screen stays away');
+  await page.waitForFunction(() => document.getElementById('btn-act').textContent === 'My home', null, { timeout: 15000 }).catch(() => {});
+  t.ok(await page.evaluate(() => document.getElementById('btn-act').textContent === 'My home'), 'the action button says "My home" on the Doormat');
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'] }, 'cozy'));
+  await page.waitForFunction(() => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .feat'), null, { timeout: 15000 });
+  t.ok(await page.evaluate(() => getComputedStyle(document.getElementById('home-meter')).pointerEvents === 'auto'), 'the meter takes taps on a tablet');
+  await page.tap('#home-meter');
+  await page.waitForFunction(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'home', null, { timeout: 15000 });
+  t.ok(true, 'tapping the meter opens the home panel');
+  await page.tap('#home button[data-act="preview"]');
+  await page.waitForFunction(() => window.pokecraft.homeUi.state().view === 'preview', null, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  t.ok(await page.evaluate(() => !!document.querySelector('#home canvas.hm-canvas')), '"Show me a house" shows the model');
+  const cv = await center('#home canvas');
+  const s0 = await page.evaluate(() => window.pokecraft.homeUi.state());
+  await touch('touchStart', [[cv[0] - 60, cv[1], 11]]);
+  for (let i = 1; i <= 8; i++) { await touch('touchMove', [[cv[0] - 60 + i * 15, cv[1], 11]]); await page.waitForTimeout(40); }
+  const s1 = await page.evaluate(() => window.pokecraft.homeUi.state());
+  await touch('touchEnd', []);
+  t.ok(Math.abs(s1.yaw - s0.yaw) > 0.8, `a one-finger drag turns the model (yaw ${s0.yaw.toFixed(2)} -> ${s1.yaw.toFixed(2)})`);
+  await touch('touchStart', [[cv[0] - 40, cv[1], 21], [cv[0] + 40, cv[1], 22]]);
+  for (let i = 1; i <= 8; i++) { await touch('touchMove', [[cv[0] - 40 - i * 10, cv[1], 21], [cv[0] + 40 + i * 10, cv[1], 22]]); await page.waitForTimeout(40); }
+  const s2 = await page.evaluate(() => window.pokecraft.homeUi.state());
+  await touch('touchEnd', []);
+  t.ok(s2.zoom > 1.3 && s2.zoom <= 2, `a two-finger pinch zooms in (zoom ${s2.zoom.toFixed(2)})`);
+  await page.screenshot({ path: new URL('../screenshots/t22-touch-preview.png', import.meta.url).pathname });
+  await page.tap('#home-close');
+  await page.waitForFunction(() => !window.pokecraft.ui.homeOpen, null, { timeout: 15000 });
+  t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'Close returns to playing (no pause screen)');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

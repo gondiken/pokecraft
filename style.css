@@ -445,5 +445,42 @@ body.touch .book-move button.wlink { min-height: 40px; }
 #book-typematch .book-note { font-size: 16px; color: var(--muted); margin: 4px 0 0; }
 
 /* T22: home meter (HUD). Builder B styles the inside; placement: top centre, below the touch buttons on tablets. */
-#home-meter { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+#home-meter { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); pointer-events: none; width: max-content; max-width: 96vw; }
 body.touch #home-meter { top: 70px; pointer-events: auto; }
+
+/* T22: home meter and panel */
+.hm { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 6px 10px; border-radius: 12px; background: rgba(15, 17, 24, .78); border: 3px solid transparent; color: #fff; }
+.hm.ready { border-color: #f5c542; }
+.hm-title { display: flex; gap: 8px; align-items: baseline; font-size: 16px; }
+.hm-type { color: #cfd6e6; font-size: 14px; }
+.hm-ready { color: #f5c542; font-weight: bold; }
+.hm-sub { font-size: 14px; color: #cfd6e6; }
+.hm-row { display: flex; gap: 8px; align-items: flex-start; justify-content: center; }
+.hm.big .hm-row { flex-wrap: wrap; }
+.hm .chk, .hm .feat { position: relative; display: flex; flex-direction: column; align-items: center; width: 52px; }
+.hm.big .chk, .hm.big .feat { width: 76px; }
+.hm .chk .ico { font-size: 32px; line-height: 48px; height: 48px; }
+.hm .bi { width: 48px; height: 48px; image-rendering: pixelated; }
+.hm .feat:not(.done):not(.rule) .bi { opacity: .35; }
+.hm .rule:not(.done) .bi { opacity: .6; }
+.hm .badge { position: absolute; top: -4px; right: 0; font-size: 18px; line-height: 20px; }
+.hm .sub, .hm .count { font-size: 13px; color: #e8ecf5; }
+.hm .heart { font-size: 22px; line-height: 22px; color: #555; }
+.hm .heart.on { color: #ff4060; }
+.hm .lbl { font-size: 14px; color: #e8ecf5; text-align: center; }
+#home .hm { background: transparent; }
+.hm-hint { font-size: 20px; margin: 12px 0; }
+.hm-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+.hm-btns button { min-height: 48px; font-size: 20px; }
+.hm-cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.hm-card { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 260px; padding: 10px; font-size: 22px; text-align: center; cursor: pointer; }
+.hm-card small { font-size: 16px; white-space: normal; }
+.hm-pic { width: 240px; height: 180px; max-width: 100%; border-radius: 8px; background: rgba(255, 255, 255, .06); }
+.hm-card .chip { padding: 2px 10px; border-radius: 10px; color: #fff; font-size: 14px; text-transform: capitalize; }
+.hm-stage { display: flex; justify-content: center; }
+.hm-canvas { border-radius: 10px; background: rgba(255, 255, 255, .07); touch-action: none; cursor: grab; max-width: 100%; }
+.hm-icons { display: flex; gap: 10px; justify-content: center; margin-top: 8px; }
+.hm-icons .pv { display: inline-flex; font-size: 32px; line-height: 40px; min-width: 40px; justify-content: center; border-radius: 8px; }
+.hm-icons .pv.miss { outline: 2px solid #d03535; }
+.hm-icons .pv.off { opacity: .2; }
+.hm-icons canvas { image-rendering: pixelated; }
