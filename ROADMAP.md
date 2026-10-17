@@ -865,7 +865,7 @@ shapes; the plan lists them) can be ridden. Ride from the team screen or a "Ride
 Done when: a `riding` spec covers getting on/off, each kind of ride, gym protection and a visitor
 seeing it; `touch` and `multiplayer` pass.
 
-### T28 · Gym rematches that get harder (size: M)
+### T28 · Gym rematches that get harder (size: M) — DONE (plan `T28.md`)
 
 After you have a gym's badge, its leader offers a **rematch**. Every win makes the next rematch harder
 (levels up a few each time, a fuller team, later the new T25 moves), per player, with a prize (cubes, XP).

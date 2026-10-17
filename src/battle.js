@@ -292,7 +292,7 @@ export class Battle {
       await this.say(was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
     } else {
       const npc = this.trainer;
-      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level]) => makeCreature(species, level));
+      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves]) => makeCreature(species, level, moves));
       this.stepBack(npc.pos, 5.5);
       g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2, npc.pos.z));
       this.foePos = npc.pos;

@@ -8,7 +8,8 @@ import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } 
 import { Battle } from './battle.js';
 import { Book } from './book.js';
 import { NpcManager } from './npc.js';
-import { GYMS, TOWER, ORIGINAL_GYMS, trainersOf, trainerKey } from './gyms.js';
+import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
+import { createRematch, loadWins } from './rematch.js';
 import { TouchControls } from './touch.js';
 import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
@@ -94,6 +95,7 @@ const game = {
   scene, camera,
   world: null, player: null, creatures: null,
   party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
+  rematchWins: {}, // T28 gym rematch wins per gym id, per player like badges
   keys: [], // T23 golden keys found ('<gymId>:<key>'), per player like badges
   blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
   time: 0.05, started: false, inBattle: false,
@@ -156,6 +158,7 @@ function snapshot() {
     ...home, playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
+    rematchWins: game.rematchWins,
     blockCounts: game.blockCounts,
     keys: game.keys,
     toldCaveGym: true,
@@ -254,6 +257,7 @@ function startNew(starterId) {
   game.badges = [];
   game.beaten = [];
   game.champion = false;
+  game.rematchWins = {};
   game.blockCounts = {};
   game.keys = [];
   game.playerId = game.playerId || randomId();
@@ -278,6 +282,7 @@ function continueGame(saved) {
   game.badges = saved.badges || [];
   game.beaten = saved.beaten || [];
   game.champion = !!saved.champion;
+  game.rematchWins = loadWins(saved.rematchWins); // old saves have none
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
@@ -488,6 +493,10 @@ document.addEventListener('keydown', e => {
     if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
     return;
   }
+  if (game.ui.asking && (e.code === 'KeyY' || e.code === 'KeyN')) { // T28: the rematch question
+    if (e.code === 'KeyY') game.ui.askYes(); else game.ui.askNo();
+    return;
+  }
   // "Continue exploring" after a battle: a key press works too (and lets the game take the mouse back).
   if (game.inBattle && (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyE')) {
     const btn = document.querySelector('#b-actions button.continue');
@@ -682,11 +691,8 @@ function talkTo(npc) {
     ui.toast(`${npc.name}: Beat ${todo.join(' and ')} first, then come back to me!`);
     return;
   }
-  const rematch = game.badges.includes(gym.id);
-  startBattle({
-    trainer: npc, team: gym.leaderTeam,
-    intro: rematch ? ['Back for a rematch? I have been training too!'] : gym.intro,
-  });
+  if (game.badges.includes(gym.id)) { game.rematch.offer(npc); return; } // T28: asked first, then a harder team
+  startBattle({ trainer: npc, team: gym.leaderTeam, intro: gym.intro });
 }
 
 // People in the Champion's Tower: two guards, Coach Dex and the Champion. All wait for every badge (since T19 also old Champions).
@@ -720,7 +726,7 @@ function talkTower(npc) {
     ui.toast(`${npc.name}: Beat my guards first, then come back!`);
     return;
   }
-  const team = p.team.map(([s, l]) => [s, Math.min(55, l + (game.champion ? 3 : 0))]);
+  const team = p.team.map(([s, l]) => [s, Math.min(REMATCH_CAP, l + (game.champion ? 3 : 0))]);
   startBattle({ trainer: npc, team, intro: game.champion ? p.rematch : p.intro, boss: true });
 }
 
@@ -760,6 +766,7 @@ function startBattle(opts) {
   // Close anything that could cover the battle (the team screen, Blocks, the Book), and answer
   // "busy" to a battle invite that is still showing.
   game.ui.closePanel();
+  game.ui.closeAsk();
   if (!opts.duel) game.duels.busy();
   pauseEl.classList.add('hidden');
   document.body.classList.add('in-battle');
@@ -798,6 +805,7 @@ game.onBattleEnd = (result, opts) => {
     game.player.pos.copy(game.spawnPoint);
     game.player.vel.set(0, 0, 0);
     if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
+    if (opts.rematch) game.rematch.lost(opts.trainer);
   }
   if (result === 'caught' && opts.wild) for (const id of opts.wild.data.traits || []) if (TRAITS[id]?.caught) game.ui.toast(TRAITS[id].caught(SPECIES[opts.wild.data.species].name));
   const npc = opts.trainer;
@@ -810,6 +818,8 @@ game.onBattleEnd = (result, opts) => {
       game.cubes += 2;
       game.ui.toast(`${npc.name}: Nice battle! ${gym.leader.name} is waiting ${gym.leaderWhere || 'at the back'}.`);
       game.ui.toast('You got 2 Capture Cubes.');
+    } else if (opts.rematch) {
+      game.rematch.won(npc, opts);
     } else if (!game.badges.includes(gym.id)) {
       game.badges.push(gym.id);
       sound.play('badge');
@@ -820,9 +830,6 @@ game.onBattleEnd = (result, opts) => {
         game.ui.toast(game.champion ? 'You collected every badge! Champion Solenne would love a rematch.'
           : 'You collected every badge! The Champion\'s Tower is open. Follow the arrow!');
       }
-    } else {
-      sound.play('win');
-      game.ui.toast(`${npc.name}: You are as strong as ever!`);
     }
   }
   game.ui.renderHud();
@@ -890,6 +897,7 @@ function updateSky(dt) {
 
 let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
+game.rematch = createRematch(game, { startBattle }); // T28
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -900,6 +908,9 @@ function homePrompt() {
   const who = !h || h.owner === game.playerId ? 'Your home' : `${h.name || 'A friend'}'s home`;
   return touchMode ? who : `${who} · press H`;
 }
+
+// T28: a gym leader whose badge you already hold offers a rematch.
+const isRematch = npc => npc.kind === 'leader' && !!npc.gym && game.badges.includes(npc.gym.def.id);
 
 function updateTarget() {
   const origin = game.player.eyePos;
@@ -930,12 +941,12 @@ function updateTarget() {
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
   game.ui.setPrompt(target.player ? `${target.player.name} · ${how} to ask for a battle`
-    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : 'challenge'}`
+    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? `Battle ${target.player.name}!`
-    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : 'Challenge!')
+    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
       : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
@@ -957,6 +968,7 @@ function frame(now) {
     p.joy = game.touch.joy;
     if (playing()) p.update(dt);
     game.gymLive.update(dt);
+    game.rematch.update();
     if (p.onGround) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
       const under = game.world.get(fx, fy, fz);

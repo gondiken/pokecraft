@@ -298,6 +298,9 @@ export const EXTRA_GYMS_END = 18;
 // Later cave gyms are carved over the finished caves instead (World.carveGymRooms fills caves near them).
 export const LEGACY_CAVE_GYMS = 1;
 
+// Gym rematches (T28) and the Tower Champion's rematch share the level cap.
+export const REMATCH_CAP = 55;
+
 // The Champion's Tower: opens after all badges (27). `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).
 export const TOWER = {

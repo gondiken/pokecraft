@@ -37,6 +37,7 @@ this file is for working on the code.
 | `src/main.js` | Glue: renderer, input, game loop, save/load, title + pause screens |
 | `src/accounts.js` | `createAccounts(game, deps)`: sign-in box on the title screen, online save upload/download (moved out of `main.js` in T15) |
 | `src/playtogether.js` | `createPlayTogether(game, deps)`: share/join box, visitor `loadWorld`, `goHome`, wires `Multiplayer` and `Duels` (T15) |
+| `src/rematch.js` | T28 gym rematches: `rematchTeam(def, wins)` (pure), `loadWins`, `grownUp`, `rematchMoves` (T25 hook), `REMATCH`, `createRematch(game, { startBattle })` -> `game.rematch` (`offer`, `accept`, `won`, `lost`, `update`) |
 | `src/guide.js` | `createGuide(game)`: guide arrow and "Welcome to the ..." / closed toasts; knows no gym kinds, only reads `game.access.of(gym)` (T15, T16) |
 | `src/access.js` | Gym access objects (T16): `WHERE` (surface / cave / sky: arrow target + text, tips, welcome) x `WHEN` (always / night: wait, closed text) pieces, `createAccess` -> `game.access.of(gym)` (`aim`, `tips`, `contains`, `welcome`, `wait`, `closedText(npc)`); a gym picks pieces from how it was placed and `def.night`, or `def.access = { where, when }`. New gym kind = a `WHERE`/`WHEN` entry (+ `def.access`), never an `if` in the guide |
 | `src/world.js` | (T17: `generate()` makes the old 224 map in its own `World(seed, …, [224, 224])` and copies it in, then `generateNewLand()`; `protectedAt`/`editAllowed`/`cull`) Seeded terrain, biomes (`biome(x, z)` from height + warmth/wetness noise), plants, ores, `generate()`, chunk meshing (solid / water / glowing), voxel raycast |
@@ -95,6 +96,13 @@ Key ideas:
   block id is 73 (57-64 are the T19 gym blocks, 65-67 the T20 treasure blocks, 70-72 the T22 Doormat / Bed / Fireplace).
 - **T9 types (Sky, Slime, Light, Paper):** their creatures live in `/* ==== T9 x ==== */` sections of `SPECIES` (species.js) and their shapes in `SHAPES_SKY/SLIME/LIGHT/PAPER` (shapes.js); spawns are in `SPAWN_SKY/SLIME/LIGHT/PAPER`. Origrane is Paper; Puzzlet is Mind's 7th. Their attack effects are in `fxrecipes.js` (T11). See `plans/T9.md`.
 - **7th creatures (T4b):** each type's 7th creature is single-stage with its own shape; `SPAWNS` gets them from `SEVENTH_A/B/C` right after the table. The `seventh` spec checks them (`T4B_GROUP=A|B|C` for one group).
+- **Gym rematches (T28, `src/rematch.js`, spec `gym`):** the first badge battle is unchanged; once you hold the badge, `talkTo` on the leader calls
+  `game.rematch.offer(npc)`, which shows the generic `ui.ask({ text, yes, no, onYes, onNo })` box (`#ask`, Y/N keys, talk again = yes, `askYes/askNo/closeAsk`, `ui.asking`;
+  reusable) and only then starts the battle (`opts.rematch = { gym, wins }`, `xpBoost` 1.5). Team = `rematchTeam(def, wins)`: tier = wins + 1, every leader
+  creature +3 levels per tier (cap `REMATCH_CAP` 55, shared with the Tower Champion), grown up via `evolve`, plus `floor(tier / 2)` extras (up to 6 in all) taken from the
+  gym's trainers' species, then the gym's type, placed before the signature creature. `rematchMoves` is the hook for T25 moves; `opts.team` tuples may carry a third
+  element (moves, `makeCreature(species, level, moves)`). Win: `rematchCubes(n)` = `min(8, 3 + n)` cubes. Save field `rematchWins` (`{ [gymId]: n }`, `loadWins` drops
+  junk; old saves have none), per player like badges. The box closes after 20 s, 8 blocks away, or when the gym closes (night, chilly Cozy...).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
   (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all 27 badges (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
@@ -102,7 +110,7 @@ Key ideas:
   (Zenithar hangs on once and powers up at half HP); the coach passes `xpBoost: 2`. After 16 badges (or the Champion title)
   `creatures.levelBonus` is 10 (wild creatures get +10 levels).
 - `window.pokecraft` is the global `game` object (handy in tests and the console):
-  `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`, `weather`.
+  `world`, `player`, `party`, `box`, `badges`, `beaten`, `cubes`, `battle`, `mp`, `npcs`, `creatures`, `weather`, `rematchWins`.
   Weather is not saved (restarts clear on load); the host sends its phase to visitors, who never run the timer.
 - **Gyms 17+ (Fossil = Bone, Saucer = Alien):** the first 16 gyms come from `gymSpots(ORIGINAL_GYMS)`; gyms 17+ from
   `extraGymSpots()` (furthest dry spots, terrain only). **Never change either or call `gymSpots` with another count**
