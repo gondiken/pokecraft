@@ -886,6 +886,7 @@ Done when: a `missions` spec covers each mission kind (the co-op boss via `openP
 
 A play-together game: one player hides (a 60-second head start, the seeker's screen goes dark), the seeker
 gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
+`openPair` plays a round.
 small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
 
 ### T30.5 · Homes are every type they qualify for (size: M, after wave 9)
@@ -976,7 +977,6 @@ works next to the others. `two-types` checks the spawn odds at 15 / 25 / 45+ gem
 (cozyGym part: a cozy home with gems keeps the gym; breaking the bed makes them shiver; fixing it says "Ahh, cozy
 again") and `multiplayer` (Cozy part: a visitor sees the same types without any `type` in the message) pass.
 `touch` passes (the panel on a tablet).
-`openPair` plays a round.
 
 ---
 
