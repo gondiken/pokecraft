@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Next: wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Next: wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek), then wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -832,25 +832,26 @@ text, an AI rule (when the AI uses it), and only late gyms get a few (gyms stay 
 Done when: a new `big-moves` spec checks every kind (incl. bench effects and both sides of a duel);
 `moves`/`fx`/`book`/`pvp` pass.
 
-### T26 · Personalities (size: M–L)
+### T26 · Traits: the logic only, first trait Rideable (size: S–M)
 
-Every creature gets one **personality** that makes it different from another of the same kind, so
-catching a second one can be worth it. Data-driven list (`PERSONALITIES`), shown on the team/box card
-and the Book's "Yours" line, short child-friendly words. Ideas (the plan picks ~10-12 and balances them):
-- Stats: **Brave** (+attack, −defense), **Sturdy** (+defense, −speed), **Speedy** (+speed, −attack).
-- Battle habits: **Lucky** (more critical hits), **Light sleeper** (wakes a turn early), **Stubborn**
-  (stat drops from foes are halved), **Show-off** (+1 attack after a knockout).
-- World: **Rideable** (can be ridden, T27), **Curious** (wild ones walk towards you instead of away).
-- **Works for old saves:** a creature without `personality` gets one drawn from its `uid` (it has one
-  since long ago; fall back to species + level + index for any without), so the same creature always
-  gets the same one on every device; then it is saved. Wild and trainer creatures get one too.
-- Duels send it with the team (`VERSION` bump; both sides use the same personality in their copies).
-Done when: a `personality` spec covers old saves (same result twice, saved after), each trait's effect,
-the card text, and `pvp` passes.
+The owner's son didn't like personalities (stat changes), so **no stat traits**. Build only the general part,
+so later plans can add traits as data:
+- A data list `TRAITS` (id, short child-friendly text, which species can have it, how often). Each creature has a
+  `traits` list (often empty). Traits change nothing in battle; whatever a trait does is coded by the feature that
+  uses it (riding reads `rideable`), never in the trait list itself.
+- **First and only trait now: Rideable** (for T27). Only species where riding makes sense can have it (big land,
+  water or sky shapes; the plan lists them), and only some creatures of those species do, so finding one is a small
+  hunt. Later candidates (not now): Curious (wild ones walk towards you), anything a future plan needs.
+- **Old saves:** a creature without `traits` gets them drawn from its `uid` (fall back to species + level + index),
+  so the same creature always gets the same traits on every device; then it is saved. Wild and trainer creatures too.
+- Shown as a small badge on the team/box card ("Can be ridden"), nothing more. Duels send `traits` with the team
+  (no battle effect, so no `VERSION` bump needed for traits alone).
+Done when: a `traits` spec covers old saves (same result twice, saved after), only allowed species getting Rideable,
+the card badge, and a visitor seeing the same traits.
 
 ### T27 · Riding (size: L, after T26)
 
-Creatures with the **Rideable** personality (only species where it makes sense: big land, water or sky
+Creatures with the **Rideable** trait (only species where it makes sense: big land, water or sky
 shapes; the plan lists them) can be ridden. Ride from the team screen or a "Ride" button (touch too).
 - **Land**: faster walking, a higher jump. **Water**: swim on the surface at walking speed. **Sky**:
   fly low (a height cap above the ground; never over gym roofs: `protect` boxes stay protected).
@@ -966,7 +967,7 @@ Two options for the design, the owner is still deciding:
 1. **Free design:** a design screen (shape, colours, name, moves), the look saved on the creature and sent in saves,
    duels and play-together, models built from it. High: the look has to travel everywhere.
 2. **Ready-made designs + palettes (compromise):** ~6 Doodle species with a few part choices and ~12 fixed palettes;
-   the creature only stores two small numbers (e.g. `paint: [design, palette]`), like a personality. Everything else is
+   the creature only stores two small numbers (e.g. `paint: [design, palette]`), like traits. Everything else is
    a normal species, recoloured. Medium.
 
 ---
@@ -992,7 +993,7 @@ Owner likes these, but not now: **gifts** (give a friend blocks or a Capture Cub
 present box) and **trading** between players, **home helpers** (creatures left at home do jobs: fire keeps
 the fireplace lit, grass grows flowers), **eggs** (found in chests and mission rewards, or left in a cozy home
 by two creatures of one type; carried in a team slot and hatched by walking; the baby is special from level 1: the
-player picks its personality from two, and a home egg knows one move from a parent. No warmth, no "what it hears",
+home egg knows one move from a parent (more once there are more traits). No warmth, no "what it hears",
 no bond meter: they add special cases all over the game), **creature helpers** (fire lights lamps, rock digs
 faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
 
