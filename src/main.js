@@ -3,6 +3,7 @@ import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, flickerFire, isLimited } from 
 import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
+import { TRAITS, fixTraits } from './traits.js';
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
 import { Battle } from './battle.js';
 import { Book } from './book.js';
@@ -270,6 +271,7 @@ function startNew(starterId) {
 function continueGame(saved) {
   game.party = saved.party || [];
   game.box = saved.box || [];
+  const drawn = fixTraits(game.party, 'party') + fixTraits(game.box, 'box'); // T26: old saves get a uid + traits
   game.book.load(saved);
   game.cubes = saved.cubes ?? 10;
   game.time = saved.time ?? 0.05;
@@ -288,6 +290,7 @@ function continueGame(saved) {
   if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
   begin();
+  if (drawn) save();
   // Old players with the first 16 badges: tell them about the gyms they have not seen yet.
   const old = GYMS.slice(0, ORIGINAL_GYMS);
   if (old.every(g => game.badges.includes(g.id))) {
@@ -796,6 +799,7 @@ game.onBattleEnd = (result, opts) => {
     game.player.vel.set(0, 0, 0);
     if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
   }
+  if (result === 'caught' && opts.wild) for (const id of opts.wild.data.traits || []) if (TRAITS[id]?.caught) game.ui.toast(TRAITS[id].caught(SPECIES[opts.wild.data.species].name));
   const npc = opts.trainer;
   if (result === 'won' && npc?.kind === 'tower') towerWon(npc);
   else if (result === 'won' && npc) {

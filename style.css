@@ -183,6 +183,9 @@ button.primary { background: #3b6fd8; }
 .mon.lead { border-color: var(--accent); }
 .mon .top { display: flex; justify-content: space-between; align-items: center; }
 .mon .nm { font-family: 'Press Start 2P', monospace; font-size: 11px; }
+.mon .traits { margin-top: 3px; }
+.mon .trait { display: inline-block; font-size: 8px; font-family: 'Press Start 2P', monospace; padding: 3px 6px; border-radius: 8px; background: #ffd27a; color: #3a2a00; border: 2px solid #1b1d26; }
+body.touch .mon .trait { font-size: 9px; }
 .mon .moves { display: flex; flex-wrap: wrap; gap: 4px; }
 .mon .moves button { font-family: 'VT323', monospace; font-size: 17px; padding: 1px 6px; color: #111; box-shadow: none; border: 2px solid #1b1d26; }
 body.touch .mon .moves button { font-size: 19px; min-height: 36px; padding: 4px 8px; }

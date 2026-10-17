@@ -837,7 +837,7 @@ text, an AI rule (when the AI uses it), and only late gyms get a few (gyms stay 
 Done when: a new `big-moves` spec checks every kind (incl. bench effects and both sides of a duel);
 `moves`/`fx`/`book`/`pvp` pass.
 
-### T26 · Traits: the logic only, first trait Rideable (size: S–M)
+### T26 · Traits: the logic only, first trait Rideable (size: S–M) — DONE
 
 The owner's son didn't like personalities (stat changes), so **no stat traits**. Build only the general part,
 so later plans can add traits as data:

@@ -1,6 +1,7 @@
 // Creature data (types, moves, species), stat/XP math and blocky 3D models.
 import * as THREE from 'three';
 import { B } from './blocks.js';
+import { TRAITS, drawTraits, gainTraits } from './traits.js';
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
 
 export const TYPE_COLORS = {
@@ -1632,6 +1633,7 @@ export function makeCreature(species, level, knownMoves) {
   if (!keep.length && hit > 0) [c.moves[0], c.moves[hit]] = [c.moves[hit], c.moves[0]];
   c.learned = keep.length ? [...c.moves] : [...new Set(moves)]; // moves already offered (see gainXp)
   c.hp = statsFor(c).maxHp;
+  c.traits = drawTraits(c); // T26: drawn once from the uid, then saved
   return c;
 }
 
@@ -1685,6 +1687,7 @@ export function gainXp(c, amount, { ask = false } = {}) {
       c.hp += statsFor(c).maxHp - oldMax;
       msgs.push(`What? ${oldName} is evolving...`);
       msgs.push(`${oldName} evolved into ${nameOf(c)}!`);
+      for (const id of gainTraits(c)) msgs.push(TRAITS[id].grown(nameOf(c)));
       evolved = true;
       // a move waiting at this level for the new species must not be lost
       for (const [l, m] of SPECIES[c.species].learn) if (l === c.level) offerMove(c, m, msgs, ask, offered);

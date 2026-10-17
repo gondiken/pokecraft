@@ -3,13 +3,15 @@
 // winner gets Capture Cubes. Both browsers work out every turn themselves: they swap only the
 // chosen actions and share a random seed, so they always agree on what happened.
 import { sound } from './sound.js';
+import { cleanTraits } from './traits.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
 const VERSION = 7; // bump when the battle rules change, so players on different versions don't battle
 
 const newId = () => Math.random().toString(36).slice(2, 10);
-const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves] }));
+const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])] }));
+const teamIn = team => (Array.isArray(team) ? team : []).map(c => ({ ...c, traits: cleanTraits(c?.traits, c?.species) }));
 
 export class Duels {
   // hooks: { start(duel), toast(text) }
@@ -54,7 +56,7 @@ export class Duels {
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
       }
-      this.incoming = { id: p.id, from: p.from, name: p.name, team: p.team, seed: p.seed,
+      this.incoming = { id: p.id, from: p.from, name: p.name, team: teamIn(p.team), seed: p.seed,
         timer: setTimeout(() => this.decline(), ANSWER_TIME * 1000) };
       document.getElementById('duel-text').textContent = `${p.name} wants to have a creature battle with you!`;
       this.box.classList.remove('hidden');
@@ -75,7 +77,7 @@ export class Duels {
         return;
       }
       if (g.inBattle) { this.mp.sendDuel(p.from, { type: 'act', id: p.id, n: 0, action: { kind: 'left' } }); return; }
-      this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: p.team, first: true });
+      this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: teamIn(p.team), first: true });
     } else if (p.type === 'act' && this.current?.id === p.id) {
       const d = this.current;
       d.inbox[p.n] = p.action;

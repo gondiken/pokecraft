@@ -1,6 +1,7 @@
 // HUD, toasts, team screen and creature portraits.
 import * as THREE from 'three';
 import { BLOCKS, PLACEABLE, drawBlockIcon } from './blocks.js';
+import { TRAITS } from './traits.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
@@ -201,7 +202,9 @@ export class UI {
           el('img', { src: portrait(c.species, 70, 60), width: 70, height: 60, alt: sp.name })),
         el('div', { style: 'flex:1;margin-left:8px' },
           el('button', { class: 'wlink nm', 'data-species': c.species, onclick: () => this.openBook({ species: c.species }) }, sp.name),
-          el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`))),
+          el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`),
+          (c.traits || []).length > 0 && el('div', { class: 'traits' }, ...c.traits.filter(id => TRAITS[id]).map(id =>
+            el('span', { class: 'trait', 'data-trait': id }, TRAITS[id].text))))),
       el('div', {}, `HP ${c.hp}/${st.maxHp} · ATK ${st.atk} · DEF ${st.def} · SPD ${st.spd}`),
       el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })),
       el('div', { class: 'xpbar' }, el('div', { style: `width:${Math.max(0, Math.min(1, xpFrac)) * 100}%` })),
