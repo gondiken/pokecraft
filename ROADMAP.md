@@ -57,7 +57,12 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 8a ✅ | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
 | 8b ✅ | T22 Homes | Needs 8a |
 | 8c ✅ | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
-| 8.5 | T23.5 Firewall Maze exit (bug fix) | Small; before S1 (backlog), which changes the same `MazeLive` |
+| 8.5 ✅ | T23.5 Firewall Maze exit (bug fix) | Small; before S1 (backlog), which changes the same `MazeLive` |
+| 9a | T24 Battle fixes · T26 Traits · T28 Gym rematches | Battle rules vs. creature data vs. gym people |
+| 9b | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
+| 9c | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
+| 10 | T31 Realms · T32 More room for gyms | Both careful world work; can run side by side (realm world vs. main map) |
+| 11 | T33 Food · T34 Swarm · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
