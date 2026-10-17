@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24: battle fixes, T25: big-decision moves, more to be chosen), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -830,7 +830,56 @@ text, an AI rule (when the AI uses it), and only late gyms get a few (gyms stay 
 Done when: a new `big-moves` spec checks every kind (incl. bench effects and both sides of a duel);
 `moves`/`fx`/`book`/`pvp` pass.
 
-### T26 onward · to be chosen (the owner is picking from new ideas)
+### T26 · Personalities (size: M–L)
+
+Every creature gets one **personality** that makes it different from another of the same kind, so
+catching a second one can be worth it. Data-driven list (`PERSONALITIES`), shown on the team/box card
+and the Book's "Yours" line, short child-friendly words. Ideas (the plan picks ~10-12 and balances them):
+- Stats: **Brave** (+attack, −defense), **Sturdy** (+defense, −speed), **Speedy** (+speed, −attack).
+- Battle habits: **Lucky** (more critical hits), **Light sleeper** (wakes a turn early), **Stubborn**
+  (stat drops from foes are halved), **Show-off** (+1 attack after a knockout).
+- World: **Rideable** (can be ridden, T27), **Curious** (wild ones walk towards you instead of away).
+- **Works for old saves:** a creature without `personality` gets one drawn from its `uid` (it has one
+  since long ago; fall back to species + level + index for any without), so the same creature always
+  gets the same one on every device; then it is saved. Wild and trainer creatures get one too.
+- Duels send it with the team (`VERSION` bump; both sides use the same personality in their copies).
+Done when: a `personality` spec covers old saves (same result twice, saved after), each trait's effect,
+the card text, and `pvp` passes.
+
+### T27 · Riding (size: L, after T26)
+
+Creatures with the **Rideable** personality (only species where it makes sense: big land, water or sky
+shapes; the plan lists them) can be ridden. Ride from the team screen or a "Ride" button (touch too).
+- **Land**: faster walking, a higher jump. **Water**: swim on the surface at walking speed. **Sky**:
+  fly low (a height cap above the ground; never over gym roofs: `protect` boxes stay protected).
+- The rider sits on the model; visitors see it (the avatar message carries the ride). Get off with the
+  same button; a battle gets you off. Wild creatures still notice you.
+Done when: a `riding` spec covers getting on/off, each kind of ride, gym protection and a visitor
+seeing it; `touch` and `multiplayer` pass.
+
+### T28 · Gym rematches that get harder (size: M)
+
+After you have a gym's badge, its leader offers a **rematch**. Every win makes the next rematch harder
+(levels up a few each time, a fuller team, later the new T25 moves), per player, with a prize (cubes, XP).
+Saved as a win count per gym. The first, badge battle stays as easy as now. Done when: `gym` covers a
+rematch, the level going up after a win, and old saves (no count = 0).
+
+### T29 · Champion missions (size: L)
+
+After becoming Champion, the Champion in the tower gives **missions** (one at a time, a list of done ones):
+- **Treasure maps:** a map piece with a picture clue ("by the big lake, near a red flower") leads to a dig
+  spot with a rare reward. Spots come from the seed, so they are the same for everyone in that world.
+- **Build challenges:** a task like "build a tower 6 high with a lamp on top"; checked with the room finder
+  ideas from homes (`roomfinder.js`-style checks as data).
+- **Co-op boss:** two players together battle one big boss creature (two against one); needs play together.
+Done when: a `missions` spec covers each mission kind (the co-op boss via `openPair`).
+
+### T30 · Hide and seek (size: M)
+
+A play-together game: one player hides (a 60-second head start, the seeker's screen goes dark), the seeker
+gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
+small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
+`openPair` plays a round.
 
 ---
 
@@ -851,10 +900,10 @@ Done when: a new `big-moves` spec checks every kind (incl. bench effects and bot
 
 ## Backlog (later)
 
-Owner likes these, but not now: **riding creatures** (run on Duskmare/Blizzbear, swim on
-Torrentide, fly on Stormwyvern/Boomwing), **creature helpers** (fire lights lamps, rock digs
-faster, sound reveals hidden ore), **music blocks**, **photo mode**, **trading** between
-players, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+Owner likes these, but not now: **gifts** (give a friend blocks or a Capture Cube, arrives as a
+present box) and **trading** between players, **home helpers** (creatures left at home do jobs: fire keeps
+the fireplace lit, grass grows flowers), **eggs and raising creatures**, **daily challenges**, **creature helpers** (fire lights lamps, rock digs
+faster, sound reveals hidden ore), **music blocks**, **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
 Realtime path for play-together isn't covered by automated tests.
