@@ -84,6 +84,33 @@ export function findRoom(world, mx, f, mz) {
 
   const inside = new Set(fl.order.map(([x, z]) => k(x, z)));
 
+  // 3b. Pockets: columns next to the room that are blocked at L3 but open below (the space under stair steps, a nook in a
+  // thick wall) belong to the room when, as a group, they lead nowhere: every side that is not the room or the group is
+  // solid at L1 and L2. A doorway or a hole to the outside always has an open side, so it stays a door or a hole.
+  const pocketish = (x, z) => !inside.has(k(x, z)) && !open3(x, z) && !(solid(x, L1, z) && solid(x, L2, z));
+  const tried = new Set();
+  for (const [x, z] of [...fl.order]) for (const [dx, dz] of DIRS) {
+    const sx = x + dx, sz = z + dz;
+    if (tried.has(k(sx, sz)) || !pocketish(sx, sz)) continue;
+    const group = [[sx, sz]], inGroup = new Set([k(sx, sz)]);
+    let leads = false;
+    for (let i = 0; i < group.length && !leads; i++) {
+      const [gx, gz] = group[i];
+      for (const [ex, ez] of DIRS) {
+        const nx = gx + ex, nz = gz + ez, key = k(nx, nz);
+        if (inGroup.has(key) || inside.has(key) || (solid(nx, L1, nz) && solid(nx, L2, nz))) continue;
+        if (pocketish(nx, nz) && group.length < 40) { inGroup.add(key); group.push([nx, nz]); } else { leads = true; break; }
+      }
+    }
+    for (const key of inGroup) tried.add(key);
+    if (leads) continue;
+    const b = { ...fl.box };
+    for (const [gx, gz] of group) Object.assign(b, { x0: Math.min(b.x0, gx), x1: Math.max(b.x1, gx), z0: Math.min(b.z0, gz), z1: Math.max(b.z1, gz) });
+    if (b.x1 - b.x0 + 1 > MAX_SIDE || b.z1 - b.z0 + 1 > MAX_SIDE) continue;
+    for (const [gx, gz] of group) { inside.add(k(gx, gz)); fl.order.push([gx, gz]); report.inside.push([gx, gz]); }
+    Object.assign(fl.box, b);
+  }
+
   // 4. Ring: every 8-neighbour of an inside column that is not inside.
   const ring = new Map();
   for (const [x, z] of fl.order) for (const [dx, dz] of AROUND) { const nx = x + dx, nz = z + dz; if (!inside.has(k(nx, nz))) ring.set(k(nx, nz), [nx, nz]); }

@@ -83,6 +83,9 @@ export default async function ({ browser, base, t }) {
     const big = run({ w: 24, d: 24 }); o.big = { esc: big.rep.escaped, size: big.rep.size, c: JSON.stringify(big.rep.checks), ok: big.rep.ok };
     const doorway = run({}, [[4, 0, 1, B.PLANKS], [4, 0, 0, B.DOORMAT]]); o.doorway = { ok: doorway.rep.ok, finished: doorway.res.finished };
     // the mat of the doorway house is the doorway cell
+    // stairs against a wall with air under the steps: the step at floor+3 has open space below it, which is part of the room
+    const stairs = run({}, [[8, 1, 3, B.PLANKS], [8, 2, 4, B.PLANKS], [8, 3, 5, B.PLANKS], [7, 3, 5, B.PLANKS]]);
+    o.stairs = { ok: stairs.rep.ok, holes: stairs.rep.holes.wall.length, runs: stairs.rep.doorRuns, size: stairs.rep.size.join() };
     const fur = run({}, [[6, 1, 6, B.BED], [7, 1, 6, B.FIREPLACE], [6, 1, 7, B.LAMP], [7, 1, 7, B.COBBLE], [7, 2, 7, B.COBBLE]]); o.furniture = { ok: fur.rep.ok, finished: fur.res.finished };
     const stone = run({ wall: B.STONE_BRICKS }); o.stone = { rule: stone.res.rule.done, finished: stone.res.finished, done: stone.res.done };
     const two5 = run({ features: ['bed', 'lamp'] }); o.two5 = { done: two5.res.done, finished: two5.res.finished };
@@ -110,6 +113,7 @@ export default async function ({ browser, base, t }) {
   t.ok(R.floor.c === false && R.floor.holes === 1, `a floor hole is found ${JSON.stringify(R.floor)}`);
   t.ok(R.big.esc && R.big.size === null && R.big.ok === false && JSON.parse(R.big.c).roof === null, `24x24 is too big: escaped, size unknown ${JSON.stringify(R.big)}`);
   t.ok(R.doorway.ok && R.doorway.finished, `a mat in the doorway works ${JSON.stringify(R.doorway)}`);
+  t.ok(R.stairs.ok && R.stairs.holes === 0 && R.stairs.runs === 1 && R.stairs.size === '8,8', `stairs with air under the steps are not wall holes ${JSON.stringify(R.stairs)}`);
   t.ok(R.furniture.ok && R.furniture.finished, `furniture does not break the room ${JSON.stringify(R.furniture)}`);
   t.ok(R.stone.rule === false && !R.stone.finished && R.stone.done === 5, `stone walls: the wood rule fails ${JSON.stringify(R.stone)}`);
   t.ok(R.two5.done === 2 && !R.two5.finished && R.three5.done === 3 && R.three5.finished && !R.three5.full, `2 of 5 is not enough, 3 of 5 is finished but not full ${JSON.stringify([R.two5, R.three5])}`);
