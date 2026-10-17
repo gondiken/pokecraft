@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (more fun, to be planned), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T27: battle fixes, big-decision moves, Sparkly creatures + stickers, a follower creature), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -788,9 +788,69 @@ the gym is played. Do it before S1 (backlog; both touch `MazeLive`).
 
 ---
 
-## Wave 9 · More fun (owner request, 2026-10-17)
+## Wave 9 · More fun: battles with real choices, and more to collect (owner request, 2026-10-17)
 
-To be planned: the owner has new ideas to make the game more fun. Comes after wave 8.5.
+After wave 8.5. Battle tasks change battle rules, so bump `duel.js` `VERSION` once for the wave
+(both players need the new version) and keep the duel draw order rule (same random draws on both sides).
+Keep the Book's move words short and child-readable; the AI (`battle.js` move scoring) must learn the new kinds.
+
+### T24 · Battle fixes: multi-hit 1–5, a Snooze that is worth it (size: S, first)
+
+- **Multi-hit moves** (Seed Volley, Rivet Shot, Meteor Shower, Bone Toss, Confetti, Rapid Click, Pillow Fight,
+  Gem Toss) hit **1 to 5 times** instead of 2–4, weighted so 2–3 stay most common (e.g. 1: 10%, 2: 30%, 3: 30%,
+  4: 20%, 5: 10%). Thousand Cranes (signature) stays 3–5. Book: "hits 1 to 5 times". AI expected hits stays 3.
+- **Sleep:** today Snooze costs your turn and the foe loses one: a draw. New rule: a sleeping creature sleeps
+  **2–3 turns** (drawn when it falls asleep), takes **+25% damage** while asleep, and wakes early if hit by a
+  multi-hit move's 3rd hit (so moves combine). Catching a sleeping creature stays easier. Sleep moves can't
+  work on a creature that just woke up (one free turn), so no endless sleep-lock.
+- Done when: `moves` covers both rules; `pvp` passes with the new `VERSION`.
+
+### T25 · Big-decision moves: team effects with a price (size: L)
+
+One new move **per type (28)**, learned around levels 20–35, each with a clear upside and a real downside or a
+low chance, so the player has to think. New `fx.kind`s, all data-driven in `battle.js` (one handler per kind):
+
+| Kind | What it does | The price |
+| --- | --- | --- |
+| `rally` | Whole team (also the bench) gets +1 attack until the battle ends | User's defense −2 |
+| `shield` | Whole team takes 30% less damage for 3 turns | User can't attack next turn |
+| `spread` | Hits the foe's whole team (bench too) for a small amount | User loses 1/8 HP |
+| `gamble` | 50%: triple damage; 50%: hits yourself | — |
+| `charge` | Turn 1 glows, turn 2 a huge hit | Hit for double while charging |
+| `sacrifice` | User faints, the next creature comes in fully healed and +1 attack | You lose a creature |
+| `curse` | Foe's whole team −1 speed | Only 40% chance to work |
+| `swapper` | Swaps stat changes between you and the foe | Useless if you have none |
+| `field` | 5 turns: one type (for both sides) does +50% | Helps the foe too if they share it |
+| `lastword` | Only usable at under 1/4 HP: very strong | Useless before |
+
+Map kinds to types by feel (e.g. Fire `gamble` "Wild Blaze", Cozy `shield` "Group Hug", Toxic `curse`,
+Sound `rally` "Battle Song", Treasure `gamble` "Jackpot", Time `charge`, Bone `sacrifice`...). Every new move
+needs an fx recipe (`fxrecipes.js`), Book text, a wild/trainer use rule in the AI, and gyms get a few of them
+(late gyms only; gyms stay easy). Done when: a new `big-moves` spec checks every kind (incl. bench effects
+and duels on both sides), `moves`/`fx`/`book`/`pvp` pass.
+
+### T26 · Shiny creatures and a Sticker Book (size: M)
+
+- **Shiny ("Sparkly")**: 1 in 150 wild creatures has another colour palette and a twinkle; saved on the
+  creature (`shiny: true`), shown in the team/box/Book (a star), sent in duels and to visitors' avatars.
+- **Stickers** (achievements): "Catch 10 Fire creatures", "Win without being hit", "Build a cozy home",
+  "Find a Sparkly", "Beat a gym with one creature"... A Sticker Book page; each sticker gives Capture Cubes.
+  Data-driven list, saved as `stickers`.
+
+### T27 · Your creature follows you (size: M)
+
+The first creature in your team walks behind you in the world (same model, same walk as wild ones), sits
+down when you stop, cheers after a win, and visitors see it. Tap it for a small hello and its mood.
+Optional later: it points at nearby hidden ore or chests (a step toward the backlog's creature helpers).
+
+### Ideas to pick from later (wave 10 candidates)
+
+- **Gym rematches:** after the badge, the leader offers a harder rematch once a day for cubes and XP.
+- **Daily challenge:** one small task per day ("catch a Water creature at dawn") with a reward.
+- **Co-op boss:** two players together battle one giant creature (two against one).
+- **Races and hide-and-seek** when playing together (Camo-themed hide-and-seek).
+- **Creature eggs:** found in chests, hatch after walking, may be Sparkly.
+- From the backlog: riding, helpers, trading, crafting, music blocks, photo mode.
 
 ---
 

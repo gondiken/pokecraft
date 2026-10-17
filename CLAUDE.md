@@ -334,7 +334,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11), wave 7.5 (T19.5: Book wiki links) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; wave 8 (T20–T23: treasure blocks, Cozy/Treasure types, homes, Cozy Gym and Treasure Vault) is done; next is wave 8.5 (T23.5: an exit from the Firewall Maze, whose rooms 2 and 3 trap you walking back alone), then wave 9 (more fun; the owner is adding the tasks), then the backlog (which now holds the backlog wave S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). Read it before
+  and the backlog). All waves (T1–T11), wave 7.5 (T19.5: Book wiki links) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; wave 8 (T20–T23: treasure blocks, Cozy/Treasure types, homes, Cozy Gym and Treasure Vault) is done; next is wave 8.5 (T23.5: an exit from the Firewall Maze, whose rooms 2 and 3 trap you walking back alone), then wave 9 (T24–T27: multi-hit 1-5 and better sleep, team-effect moves with a price, Sparkly creatures and stickers, a follower creature), then the backlog (which now holds the backlog wave S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
