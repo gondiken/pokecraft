@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Next: wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -758,6 +758,8 @@ CLAUDE.md updated.
 ## Wave 8.5 · Firewall Maze bug fix (owner report, 2026-10-17)
 
 ### T23.5 · A way out of the Firewall Maze (size: S)
+
+**Done:** a live exit door in the server room's side wall (`EXIT_AT`, opened per player with `setLive` for the badge holder or anyone in the server room), `solveRoom(..., { back: true })` and the `firewall-maze` exit checks. The world's blocks did not change (no `WORLD_VERSION` bump).
 
 **The bug:** after beating Leader Ada the owner was stuck in the maze. `solveRoom` (and the
 `firewall-maze` spec) only checks each laser room from its entry (row 0) to its exit (row 8); nobody
