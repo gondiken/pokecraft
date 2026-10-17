@@ -34,6 +34,9 @@ const installHelpers = page => page.evaluate(async () => {
     for (const stat of ['atk', 'def', 'spd']) list.push([`status up ${stat}`, () => [fx.status('up', a(), { stat })]]);
     list.push(['status down', () => [fx.status('down', f(), { stat: 'atk' })]]);
     list.push(['status miss', () => [fx.status('miss', f(), { from: a() })]]);
+    for (const k of ['rally', 'shield', 'sacrifice']) list.push([`status ${k}`, () => [fx.status(k, a(), { type: 'water' })]]);
+    list.push(['status curse', () => [fx.status('curse', f(), { type: 'ice', from: a() })]]);
+    list.push(['status field', () => [fx.status('field', a(), { type: 'cosmic', from: f() })]]);
     list.push(['aura fire', () => [fx.aura('fire', a())]]);
     list.push(['aura mind', () => [fx.aura('mind', a())]]);
     return list;
@@ -156,16 +159,19 @@ export default async function ({ browser, base, t }) {
     const types = ['normal', ...Object.keys(S.TYPE_COLORS)];
     const sigs = Object.entries(S.MOVES).filter(([, m]) => m.sig).map(([id]) => id);
     const names = types.map(t => `fx:${t}`);
-    for (const n of names) sound.play(n);
+    const kinds = ['rally', 'shield', 'jackpot', 'oops', 'gift', 'curse', 'field', 'lastword'].map(n => `kind:${n}`);
+    for (const n of [...names, ...kinds]) sound.play(n);
     return {
       noTravel: types.filter(t => !R.TRAVEL[t]), noImpact: types.filter(t => !R.IMPACT[t]), noColors: types.filter(t => !R.FX_COLORS[t]),
-      noSig: sigs.filter(id => !R.SIG[id]), noSound: names.filter(n => !sound.has(n)), soundErrors: sound.errors.slice(), count: types.length, sigCount: sigs.length,
+      noSig: sigs.filter(id => !R.SIG[id]), noSound: names.filter(n => !sound.has(n)), noKind: kinds.filter(n => !sound.has(n)), soundErrors: sound.errors.slice(), count: types.length, sigCount: sigs.length,
     };
   });
   t.ok(!cover.noTravel.length && !cover.noImpact.length && !cover.noColors.length,
     `all ${cover.count} types have a travel, impact and colours (missing ${cover.noTravel} ${cover.noImpact} ${cover.noColors})`);
   t.ok(!cover.noSig.length && cover.sigCount === 16, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
   t.ok(!cover.noSound.length && !cover.soundErrors.length, `every type has a quiet fx sound that plays without errors (missing ${cover.noSound} ${cover.soundErrors})`);
+
+  t.ok(!cover.noKind.length, `the 8 big-move sounds exist and play without errors (missing ${cover.noKind})`);
 
   // 7. Contact sheet: a frozen frame of some attacks, saved as pictures and as one sheet.
   // (PC_FX_ALL=1 also saves every type and signature move, for looking at them by hand.)
@@ -189,6 +195,19 @@ export default async function ({ browser, base, t }) {
     const file = path.join(SHOTS, `fx-${s.name}.png`);
     await page.screenshot({ path: file, clip });
     files.push({ name: s.name, file });
+    await page.evaluate(() => { const fx = window.pokecraft.fx; fx.clear(); fx.hold = null; });
+  }
+  // T25 status effects: a frozen frame of each, saved as pictures (look at fx-status-*.png).
+  for (const kind of ['rally', 'shield', 'curse', 'field', 'sacrifice']) {
+    await page.evaluate(kind => {
+      const g = window.pokecraft, b = g.battle, fx = g.fx, a = b.spot('ally'), f = b.spot('foe');
+      fx.hold = 0.55;
+      if (kind === 'curse') fx.status(kind, f, { type: 'ice', from: a });
+      else if (kind === 'field') fx.status(kind, a, { type: 'cosmic', from: f });
+      else fx.status(kind, a, { type: 'water' });
+    }, kind);
+    await page.evaluate(() => window.H.frames(2));
+    await page.screenshot({ path: path.join(SHOTS, `fx-status-${kind}.png`), clip });
     await page.evaluate(() => { const fx = window.pokecraft.fx; fx.clear(); fx.hold = null; });
   }
   const sheetFiles = files.filter(f => SHEET.includes(f.name));

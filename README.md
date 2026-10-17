@@ -99,6 +99,20 @@ Every move has one small effect at most. The battle buttons say what a move does
 | Hurts you a little too | A big hit with a little recoil. It never knocks you out (Inferno Dash, Drake Charge) |
 | Never misses | Always hits (Mind Trick, Color Splash and the special moves) |
 
+### Big moves
+
+Every type has 2 or 3 **big moves**. Creatures learn them from level 21 on (Lv 21 to 34), and only the late gym leaders use them, so you meet them as a surprise. Each one is a big decision: it helps a lot, but it costs something.
+
+| Big move | What it does | The price |
+| --- | --- | --- |
+| Team boost (Go Team Go!, Hive Hum...) | Your whole team, also the friends waiting, gets +1 attack until the battle ends | Your defence goes down 2 |
+| Team shield (Stand Together, Leafy Roof, Stone Fort...) | Your whole team takes 30% less damage for 3 turns | You rest on your next turn |
+| Risky hit (Wild Blaze, Live Wire...) | Power 60. Half the time it hits 3 times as hard | The other half it hurts you instead |
+| Goodbye (Wave Goodbye, Seed Gift...) | You faint, and the next friend comes in with full HP and +1 attack | You are out, and it only works if a friend can come in |
+| Curse (Static Fuzz, Big Freeze...) | May slow every foe, also the ones waiting, until the battle ends | Works only 4 times out of 10 |
+| Field (High Tide, Snow Day, Garden Bloom...) | One type is 50% stronger for 5 turns | The foe gets the boost too! |
+| Last word (Never Give Up, Last Ember, Cliff Crash...) | Power 140 and never misses | Only works when you have less than 1/4 HP left |
+
 Stat changes and sleep go away when a creature is switched out. A few creatures learn a **special move** (Blazehound, Tidalord, Grovebeast, Gongolin, Kitegale, Slimperor, Lumitower, Origrane, Clangalarm, Statuo, Pixbit 2.0, Dozeram and Crownguard at Lv 30, Zenithar at Lv 45). Some moves were renamed to original names (Bump, Belly Bash, Cinder, Bubble Pop, Zap, Blaze Burst, Snow Storm, Nibble, Shadow Dash). Player battles need both players to have the latest version of the game.
 
 ## Types

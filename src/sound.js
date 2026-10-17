@@ -193,6 +193,15 @@ const SOUNDS = {
   laserflip: () => { tone(500, { len: 0.1, vol: 0.2, slide: 900, type: 'square' }); tone(1000, { at: 0.09, len: 0.06, vol: 0.12, type: 'square' }); },
   // T23: a golden key chest opens (short rising sparkle).
   keyfound: () => notes([1047, 1319, 1568, 2093], 0.07, { len: 0.2, type: 'sine', vol: 0.22 }),
+  // T25 big-decision moves (short and quiet).
+  'kind:rally': () => notes([392, 523, 659, 784], 0.08, { len: 0.14, type: 'triangle', vol: 0.26 }),
+  'kind:shield': () => { bell(660, 0, 0.5, 0.18); tone(440, { at: 0.05, len: 0.35, vol: 0.14, slide: 440, type: 'sine' }); },
+  'kind:jackpot': () => { bell(1319, 0, 0.5, 0.18); bell(1568, 0.1, 0.5, 0.18); bell(2093, 0.2, 0.5, 0.2); },
+  'kind:oops': () => { tone(500, { len: 0.3, vol: 0.26, slide: -350, type: 'triangle' }); noise({ at: 0.22, freq: 300, len: 0.1, vol: 0.2 }); },
+  'kind:gift': () => notes([392, 494, 587, 784, 988], 0.07, { len: 0.16, type: 'sine', vol: 0.24 }),
+  'kind:curse': () => notes([440, 370, 294], 0.15, { len: 0.2, type: 'sawtooth', vol: 0.12 }),
+  'kind:field': () => tone(220, { len: 0.55, vol: 0.2, slide: 220, type: 'sine' }),
+  'kind:lastword': () => { drum(110, 0, 0.3); tone(330, { at: 0.12, len: 0.35, vol: 0.2, slide: 330, type: 'triangle' }); },
   // Move effects in battle.
   statup: () => notes([523, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
