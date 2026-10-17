@@ -887,6 +887,95 @@ Done when: a `missions` spec covers each mission kind (the co-op boss via `openP
 A play-together game: one player hides (a 60-second head start, the seeker's screen goes dark), the seeker
 gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
 small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
+
+### T30.5 · Homes are every type they qualify for (size: M, after wave 9)
+
+Owner request, 2026-10-17. Today you pick ONE type on the Doormat, and switching from Cozy to Treasure makes the
+Cozy Gym's people shiver ("Brr"), which a child can't connect to the menu choice. New rule: **there is no type to
+pick. A home is every type it qualifies for, worked out from the blocks.** A gem-studded wooden cabin is cozy AND
+treasure at once. One Doormat, one home, no switching.
+
+**Keep it data-driven** (ROADMAP wave 10 rules): nothing outside `hometypes.js` and the `HOME_SPAWN` table may name
+"cozy" or "treasure". If wave 9 added more home types (Grass/Rock/... as data), they must just work too. Two types
+whose rules clash (e.g. two "mostly X walls" rules) simply can't both be met. That's fine, not a special case.
+If T29 (build challenges) moved or extended the feature helpers (`hasBlock`/`atLeast`/`mostly`), use the result,
+don't duplicate them.
+
+**1. Home record and result (`homes.js`)**
+- The record no longer has a chosen `type`. On load, ignore an old `type` field. Don't write it any more. `gyms`,
+  `owner`, `name`, x/y/z stay as they are.
+- `home.check(world)` evaluates EVERY `HOME_TYPES` entry: `home.results = { [typeId]: evaluate(report) }`,
+  `home.types` = ids whose result is `finished`, in `HOME_TYPES` order. Helpers: `home.is(typeId)`,
+  `home.resultOf(typeId)`. `finished` (any type) and `full` (per type, through `resultOf`) replace the
+  single-type getters; `homeType`/`result` go away (grep every use: homes, homeui, homegym, access, creatures, tests).
+- `homes.ready()` = homes with at least one type.
+- `homes.choose()` and the "chooser opens when you step on a new mat" path go away. Stepping on a new Doormat
+  (yours, or an orphan) just makes it your home: `claim(x, y, z)` (one home per owner as now, the old mat ->
+  Planks as now) and opens the home panel.
+- Toasts per type change: when a type becomes true: "Your home is cozy now! Cozy creatures may come to visit." /
+  "Your home is a treasure home now! ✨" (words from the HomeType: add a short `doneText`/`lostText` field). When one
+  stops: "Your home is not cozy any more. Stand on the Doormat to see what is missing." Only for your own home,
+  only when near it (as now).
+- Play together: no change to the `home` message apart from the missing `type`. Every browser works out the types
+  itself from the same world blocks, so there is nothing to keep in sync. No `WORLD_VERSION` bump needed (no
+  world blocks change).
+
+**2. Treasure type (`hometypes.js`)**
+- Gems count in **walls, floor AND roof/ceiling**: `where: ['wall', 'floor', 'roof']`.
+- Minimum **15 gems** (was 10). Measured: a world has ~600-1,100 gems, ~120-330 visible in cave walls, so 15 is
+  one or two caves of mining. Keep the number in ONE place.
+- Note for the meter: gems in the walls count against the Cozy rule "walls mostly wood" (50%). With ~80 wall
+  blocks in a small house that is fine up to ~40 gems; the meter's wood counter already shows it. No special code.
+
+**3. More gems = treasure creatures come more often (`spawnrules.js`)**
+- Today the treasure share is 1/1500 per spawn attempt (one every 0.6 s, so about 15 minutes near the home on
+  average). New: every gem above the minimum makes it a bit more likely:
+  odds = 1 in `max(300, 1500 - 40 * (gems - 15))` -> 15 gems ≈ 15 min, 25 ≈ 11 min, 35 ≈ 7 min, 45+ ≈ 3 min.
+- As data, not an `if`: a `HOME_SPAWN` entry may have `bonus: { feature: 'gems', step: 40, best: 300 }`
+  (meaning: each `have` above `need` of that feature takes `step` off the "1 in N", never below `best`).
+  `CONDITIONS.home.share` applies it generically (the home object passed to conditions gives `resultOf(type)`).
+  Cozy keeps its evening/full multipliers.
+- `CONDITIONS.home.ok` = `home.is(type)`; `full` = `home.resultOf(type).full`. Update the fake homes in the
+  `two-types` spec to the new shape.
+
+**4. Cozy Gym (`homegym.js`, `access.js`)**
+- `homeGymState`: `ofType` = `home.is(cozy type)`; `ready` = that. Nothing else changes: the gym still moves in
+  after 3 cozy creatures, `gyms` on the record stays sticky, and "Brr" now only happens when the home really stops
+  being cozy (e.g. too many gems replaced the wood, the bed was broken), never because of a menu.
+
+**5. Home panel and meter (`homeui.js`)**
+- The meter shows the room checks (walls, roof, size) once, then one line per type that has started (any feature
+  or rule `have` > 0), or that is done: Cozy as hearts, Treasure as a gem counter "💎 12/15". A type with nothing
+  started stays off the meter (no clutter for a child).
+- The panel's 'choose' view becomes **"What can my home be?"**: every type with its blurb, its progress
+  (hearts/counter, ✅ when done) and its own **Show me a house** button (the existing preview, per type). No
+  "Change home type" button.
+- Red gaps and the floor outline don't change (they are room checks, not type checks).
+
+**6. Sparkle on treasure homes (only if small)**
+- A HomeType may have `sparkle: true` (Treasure does). A home that `is` such a type gets one small sparkle effect:
+  reuse `sparkleGeometry` (shapes.js) / the creature sparkle's look, ~10 twinkling points on inside cells next to
+  the walls (from `report.inside`), ONE draw call per home, only for homes within 32 blocks, removed when the type
+  stops or the home is gone. Never a world block, never saved or sent.
+- If this turns out bigger than ~60 lines, skip it and note it in the backlog instead.
+
+**7. Old saves**
+- Homes are re-checked on load and become whatever they qualify for. An old "Treasure home" with 10-14 gems is not
+  treasure until it has 15 (the meter shows 💎 12/15, no extra toast). An old Cozy home stays cozy, and its Cozy Gym
+  stays moved in.
+
+**8. Book, README, CLAUDE.md**
+- Book row for treasure creatures: "Near a home with 15+ gems" (from the condition's `text`, no type check).
+- README "Homes": no choosing; a home can be cozy and treasure at once; more gems = more treasure visitors.
+- CLAUDE.md: update the Homes (T22) and Cozy Gym (T23) notes (`types`/`is`/`resultOf`, no `choose`, `bonus`).
+
+**Done when:** `homes` covers: a home that is cozy and treasure at once; no chooser on a new mat (it is claimed and
+the panel opens); gems in the roof count; 14 gems = not treasure, 15 = treasure; the per-type toasts; an old save
+with `type: 'treasure'` and `type: 'cozy'` loads into the right types; a test-only type added with `addHomeType`
+works next to the others. `two-types` checks the spawn odds at 15 / 25 / 45+ gems (1500 / 1100 / 300). `gym`
+(cozyGym part: a cozy home with gems keeps the gym; breaking the bed makes them shiver; fixing it says "Ahh, cozy
+again") and `multiplayer` (Cozy part: a visitor sees the same types without any `type` in the message) pass.
+`touch` passes (the panel on a tablet).
 `openPair` plays a round.
 
 ---
