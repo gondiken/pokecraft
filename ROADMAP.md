@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T25: one shared world when playing together), then the backlog below.
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (more fun, to be planned), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -57,7 +57,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 8a ✅ | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
 | 8b ✅ | T22 Homes | Needs 8a |
 | 8c ✅ | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
-| 8.5 | T23.5 Firewall Maze exit (bug fix) | Small; before T24, which changes the same `MazeLive` |
+| 8.5 | T23.5 Firewall Maze exit (bug fix) | Small; before S1 (backlog), which changes the same `MazeLive` |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -784,63 +784,13 @@ battle (back to spawn).
 
 Done when: `firewall-maze` has the backwards/exit check and a test that beats the leader and walks
 out alone; `big-map`, `old-saves` and `gym` pass. README gym list mentions the exit if it changes how
-the gym is played. Do it before T24 (both touch `MazeLive`).
+the gym is played. Do it before S1 (backlog; both touch `MazeLive`).
 
 ---
 
-## Wave 9 · Playing together: one shared world (owner request, 2026-10-16)
+## Wave 9 · More fun (owner request, 2026-10-17)
 
-While playing together, both players should see the same world. Today two things differ per player,
-which the owner noticed in the Firewall Maze and with wild creatures. **Not before wave 8 is done.**
-No new server: the game has none (GitHub Pages + Supabase saves and Realtime broadcast only), so
-**the host's browser is the authority for its world**, the way weather already works (the host sends
-its phase, visitors never run the timer). Playing alone must work exactly as now (you are your own host).
-
-### T24 · Shared Firewall Maze lasers (size: S–M, first)
-
-Today `MazeLive` keeps a phase per player and room, so a visitor sees the host walk through red
-lasers that are off on the host's screen. Make it **one phase per room per world, owned by the host**:
-
-- Stepping on a switch (anyone) flips that room's lasers for everyone; the reset button resets the
-  room for everyone. Visitors send "I stepped on switch X / pressed reset" to the host, the host
-  applies it and sends the room phases; a visitor joining gets the current phases with the world.
-- A laser must never turn on inside **any** player (`LiveCells` already checks the local player;
-  also check `game.mp.others` positions, and stay off until they step out).
-- Friend pads keep working as now (they already depend on the other player's position).
-- Rooms stay solvable alone (`solveRoom` unchanged). Badges are still per player: everyone beats
-  the trainers themselves.
-
-Done when: `firewall-maze` passes, and `multiplayer` (or a new `maze-together` step via `openPair`)
-shows a switch pressed by one browser flipping the lasers in both, a laser not turning on inside the
-other player, and reset working for both.
-
-### T25 · Shared wild creatures (size: L)
-
-Today every browser spawns and walks its own wild creatures (`creatures.js`, `Math.random()` for
-spawns and wandering), so a creature next to a friend on one screen doesn't exist on the other.
-
-- **Only the host spawns**, around every player (it already has their positions; the `together`
-  condition uses them). Visitors spawn nothing while in someone's world. The extra work on the
-  host's computer for creatures around far-away visitors is accepted (2–3 players).
-- **Spawn = one message:** id, species, level, position, and a **path seed**. Wandering is computed
-  from that seed + the shared clock (no `Math.random()` in the walk), so every screen gets the same
-  path with **no position messages while it walks**. Only events are sent: spawn, battle start,
-  battle end, caught / beaten / left.
-- **In a battle the creature freezes in place** for everyone (like the player), so two players can
-  never battle the same creature. A visitor asks the host to start a battle; the host says yes
-  (marks it busy) or no (someone else got there first).
-- **Caught or beaten = gone for everyone.**
-- **Camo creatures** are dressed by each screen from the world's blocks (`Disguise.pick` is
-  deterministic from the world), so both see the same disguise; the host decides where they spawn.
-- **Host leaves mid-battle:** the visitor goes home as today, and the battle simply ends.
-- Spawn conditions (day/night, golden hour, weather boosts, `together`) are worked out by the host.
-  Levels stay per world (the host's `levelBonus`; check what feels fair for a visitor with fewer badges).
-
-Done when: a new `creatures-together` spec (via `openPair`) shows the same creatures at the same
-places in both browsers over time, a battle freezing the creature for the other player and refusing
-a second battle, a catch removing it in both, and solo play unchanged (`spawn-rules`, `weather`,
-`battle-and-menu`, `multiplayer`, `pvp` pass). Bump `duel.js` `VERSION` only if battle rules change;
-both players need the new version (say so kindly if a visitor's version is older).
+To be planned: the owner has new ideas to make the game more fun. Comes after wave 8.5.
 
 ---
 
@@ -868,3 +818,59 @@ players, **simple crafting** (logs → planks, stone → stone bricks, gold → 
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
 Realtime path for play-together isn't covered by automated tests.
+
+---
+
+## Backlog wave · Playing together: one shared world (owner request, 2026-10-16; moved out of wave 9 on 2026-10-17)
+
+While playing together, both players should see the same world. Today two things differ per player,
+which the owner noticed in the Firewall Maze and with wild creatures. **Not before wave 9 is done.**
+No new server: the game has none (GitHub Pages + Supabase saves and Realtime broadcast only), so
+**the host's browser is the authority for its world**, the way weather already works (the host sends
+its phase, visitors never run the timer). Playing alone must work exactly as now (you are your own host).
+
+### S1 · Shared Firewall Maze lasers (size: S–M, first)
+
+Today `MazeLive` keeps a phase per player and room, so a visitor sees the host walk through red
+lasers that are off on the host's screen. Make it **one phase per room per world, owned by the host**:
+
+- Stepping on a switch (anyone) flips that room's lasers for everyone; the reset button resets the
+  room for everyone. Visitors send "I stepped on switch X / pressed reset" to the host, the host
+  applies it and sends the room phases; a visitor joining gets the current phases with the world.
+- A laser must never turn on inside **any** player (`LiveCells` already checks the local player;
+  also check `game.mp.others` positions, and stay off until they step out).
+- Friend pads keep working as now (they already depend on the other player's position).
+- Rooms stay solvable alone (`solveRoom` unchanged). Badges are still per player: everyone beats
+  the trainers themselves.
+
+Done when: `firewall-maze` passes, and `multiplayer` (or a new `maze-together` step via `openPair`)
+shows a switch pressed by one browser flipping the lasers in both, a laser not turning on inside the
+other player, and reset working for both.
+
+### S2 · Shared wild creatures (size: L)
+
+Today every browser spawns and walks its own wild creatures (`creatures.js`, `Math.random()` for
+spawns and wandering), so a creature next to a friend on one screen doesn't exist on the other.
+
+- **Only the host spawns**, around every player (it already has their positions; the `together`
+  condition uses them). Visitors spawn nothing while in someone's world. The extra work on the
+  host's computer for creatures around far-away visitors is accepted (2–3 players).
+- **Spawn = one message:** id, species, level, position, and a **path seed**. Wandering is computed
+  from that seed + the shared clock (no `Math.random()` in the walk), so every screen gets the same
+  path with **no position messages while it walks**. Only events are sent: spawn, battle start,
+  battle end, caught / beaten / left.
+- **In a battle the creature freezes in place** for everyone (like the player), so two players can
+  never battle the same creature. A visitor asks the host to start a battle; the host says yes
+  (marks it busy) or no (someone else got there first).
+- **Caught or beaten = gone for everyone.**
+- **Camo creatures** are dressed by each screen from the world's blocks (`Disguise.pick` is
+  deterministic from the world), so both see the same disguise; the host decides where they spawn.
+- **Host leaves mid-battle:** the visitor goes home as today, and the battle simply ends.
+- Spawn conditions (day/night, golden hour, weather boosts, `together`) are worked out by the host.
+  Levels stay per world (the host's `levelBonus`; check what feels fair for a visitor with fewer badges).
+
+Done when: a new `creatures-together` spec (via `openPair`) shows the same creatures at the same
+places in both browsers over time, a battle freezing the creature for the other player and refusing
+a second battle, a catch removing it in both, and solo play unchanged (`spawn-rules`, `weather`,
+`battle-and-menu`, `multiplayer`, `pvp` pass). Bump `duel.js` `VERSION` only if battle rules change;
+both players need the new version (say so kindly if a visitor's version is older).
