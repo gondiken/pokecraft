@@ -435,6 +435,8 @@ game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
 
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
+  // a lock asked for when a panel closed can arrive after the next panel opened: let go again
+  if (locked && game.ui.panelOpen) { document.exitPointerLock(); return; }
   if (locked) pauseEl.classList.add('hidden');
   else {
     game.player.keys = {};
