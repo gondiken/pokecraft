@@ -458,10 +458,14 @@ export function drawAtlas() {
   return c;
 }
 
-// T22: shows flame frame k % 4 of the Fireplace in the atlas (the caller sets texture.needsUpdate).
+// T22: draws flame frame k % 4 of the Fireplace into the atlas canvas and returns { frame, x } (its ImageData and the
+// tile's x in the atlas), so the caller can upload just that tile (re-uploading the whole atlas is slow on tablets).
 export function flickerFire(atlas, k) {
   const f = atlas.fireFrames;
-  if (f) atlas.getContext('2d').putImageData(f[((k % 4) + 4) % 4], T.FIREPLACE * TILE, 0);
+  if (!f) return null;
+  const frame = f[((k % 4) + 4) % 4], x = T.FIREPLACE * TILE;
+  atlas.getContext('2d').putImageData(frame, x, 0);
+  return { frame, x };
 }
 
 // Small isometric-ish icon for a block, used by the hotbar.

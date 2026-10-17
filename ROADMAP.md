@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8a: **T20 (treasure blocks) is done** (plan `T20`). Next: T21 (Cozy and Treasure types), then T22–T23. Wave 9 (T24–T25: one shared world when playing together) comes after wave 8, then the backlog below.
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 9 (T24–T25: one shared world when playing together), then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -54,9 +54,9 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 7a ✅ | T16 Guide cleanup · T17 Bigger map + protected gyms · T18 Time, Camo, Cyber types | Guide/UI vs. world generation vs. species data |
 | 7b ✅ | T19 Clock Tower, Hidden Hill, Firewall Maze gyms + Tower at 25 | Needs 7a |
 | 7.5 ✅ | T19.5 Book wiki links | Small UI task (book.js, ui.js) between waves 7 and 8 |
-| 8a | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
-| 8b | T22 Homes | Needs 8a |
-| 8c | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
+| 8a ✅ | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
+| 8b ✅ | T22 Homes | Needs 8a |
+| 8c ✅ | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -635,6 +635,8 @@ at 0), placed gold ore never gives cubes, `old-saves` passes.
 
 ### T21 · Two new types: Cozy and Treasure (size: L)
 
+**Done** (plan in `plans/T21.md`; Chandelia became Lustrelle and Pillowool became Pillowlamb).
+
 Like T18 (colours, effectiveness, moves, fx, sound, wool, README, Book). Roster: 26 → 28 types.
 
 The owner calls the Treasure creatures "shiny creatures", but "shiny" is a Pokémon term, so the
@@ -663,6 +665,8 @@ Done when: roster (28 × 7), fx and sound specs pass, screenshots of all 14 crea
 matchups in the type chart.
 
 ### T22 · Homes: Doormat, home types, meter, preview (size: L)
+
+**Done** (plan in `plans/T22.md`; the meter and red glow show within 24 blocks of your home, eight wool colours are placeable for rugs).
 
 **The design (owner-approved):**
 - **Doormat:** a new free block. **One per player** (placing a new one moves your home). In
@@ -715,6 +719,8 @@ test-only extra `HomeType` works with no other code changes; touch spec covers t
 the preview; screenshots of the meter, red glow and spinning model reviewed.
 
 ### T23 · Cozy and Treasure gyms and the Tower at 27 badges (size: L)
+
+**Done** (plan in `plans/T23.md`).
 
 Both plug into T16's access objects ("home" and "keys" access kinds); Treasure is in T17's new
 land (its reserved spot) and protected by T17's rule.

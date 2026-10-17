@@ -55,6 +55,7 @@ scene.add(hemi, sun);
 
 const atlas = drawAtlas();
 const texture = new THREE.CanvasTexture(atlas);
+const fireTiles = new Map(), firePos = new THREE.Vector2(); // T22: Fireplace flame frames as small textures
 texture.magFilter = THREE.NearestFilter;
 texture.minFilter = THREE.NearestFilter;
 texture.generateMipmaps = false;
@@ -999,7 +1000,16 @@ function frame(now) {
     if (cloudTimer > 60) { cloudTimer = 0; pushCloud(); }
   }
 
-  if (game.world?.hasFire && now - fireAt > 140) { fireAt = now; flickerFire(atlas, ++fireK); texture.needsUpdate = true; } // T22: flames
+  if (game.world?.hasFire && now - fireAt > 140) { // T22: flames; only the 16x16 Fireplace tile goes to the GPU
+    fireAt = now;
+    const f = flickerFire(atlas, ++fireK);
+    if (f) {
+      const src = fireTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
+      fireTiles.set(f.frame, src);
+      firePos.set(f.x, 0);
+      renderer.copyTextureToTexture(firePos, src, texture);
+    }
+  }
   game.homeUi.update(now);
   game.fx.update(now);
   game.world?.cull(camera.position, scene.fog.far);

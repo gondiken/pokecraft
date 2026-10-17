@@ -202,7 +202,7 @@ Key ideas:
   inside you) and `setLive`. Sound `laserflip`. `LiveCells` is in `src/livecells.js` (re-exported by `gymlive.js`): **gym files must import it from
   `livecells.js`**, because `gymlive.js` imports them (a cycle breaks `LIVE = { maze: MazeLive }`).
 - **Homes (T22, `plans/T22.md`, spec `homes`):** blocks Doormat 70, Bed 71, Fireplace 72 (the fire flickers: `flickerFire(atlas, k)` from `main.js` `frame()`
-  while `world.hasFire`), eight wool colours placeable as rugs. **Room finder** (`roomfinder.js`): everything is checked in columns around the mat at
+  while `world.hasFire`; only that 16x16 tile is uploaded with `renderer.copyTextureToTexture`: `texture.needsUpdate` on the whole atlas cut the frame rate to a quarter), eight wool colours placeable as rugs. **Room finder** (`roomfinder.js`): everything is checked in columns around the mat at
   floor level f (L1-L3 = f+1..f+3); flood over columns whose L3 is open (max 20 wide), a leak finder plugs necks (up to 4) so a missing wall top or a
   doorway without lintel shows as ONE hole, the ring (8-neighbours) gives walls/holes/door runs (a door = 1-2 wide, 2 high, nearest run to the mat), roof =
   lowest solid in f+4..f+12, floor, size >= 8x8, zones `counts[floor|inside|wall|roof][id]`. **Types are data:** `HomeType.evaluate(report)` -> `{ room,
@@ -334,7 +334,7 @@ and `pvp` (two browsers, via `openPair`), `new-types`, `weather`, `roster`, `fou
 ## Open items
 
 - **Next work is planned in `ROADMAP.md`** (tasks T1–T7 in waves, how to run them with subagents,
-  and the backlog). All waves (T1–T11), wave 7.5 (T19.5: Book wiki links) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; wave 8 has started (T20 treasure blocks done; next T21–T23: Cozy/Treasure types, homes, gyms), then wave 9 (T24–T25: shared maze lasers and shared wild creatures when playing together, host is the authority), then the backlog. Read it before
+  and the backlog). All waves (T1–T11), wave 7.5 (T19.5: Book wiki links) and wave 6a (T12–T14: bug fixes, storage box, night gyms) are done; T15 (cleanup) and wave 7 (T16–T19: guide cleanup, bigger map, Time/Camo/Cyber types and gyms) are done; wave 8 (T20–T23: treasure blocks, Cozy/Treasure types, homes, Cozy Gym and Treasure Vault) is done; next is wave 9 (T24–T25: shared maze lasers and shared wild creatures when playing together, host is the authority), then the backlog. Read it before
   starting new features.
 
 - Two locked test accounts (`claude-test-a/b@pokecraft.invalid`) may still exist in Supabase;
