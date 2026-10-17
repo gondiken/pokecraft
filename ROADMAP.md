@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T30: battle fixes, big-decision moves, personalities, riding, harder gym rematches, Champion missions, hide and seek), then wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -880,6 +880,92 @@ A play-together game: one player hides (a 60-second head start, the seeker's scr
 gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
 small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
 `openPair` plays a round.
+
+---
+
+## Wave 10 · Foundations for new types: realms and room for more gyms (planned 2026-10-17)
+
+Both are careful, world-level work; do them before wave 11. Same rules as T17: old saves keep every block,
+gym and build where it was.
+
+### T31 · Realms: another place you can go to and come back from (size: L, careful)
+
+A **realm** is a small separate world (own seed-made terrain, e.g. 64x64, own spawn tables, own gyms) that you
+travel to and back from, like going into a cave but not inside this world. Built once and general, so later
+portals or parallel worlds are just new realms. Dream (T35) is the first user.
+- Only one place is loaded at a time: entering unloads the big world, leaving loads it again (short loading moment).
+- Travel saves where you were and puts you back there; the save records which place you are in.
+- Each realm has its own creatures (`SPAWNS` table per realm) and its own gyms (`protect` as usual).
+- Play together: you see a friend only when you are both in the same place; the host's world still owns its realms.
+- Never changes the main world (`old-saves`/`big-map` checksums unchanged).
+Done when: a `realms` spec covers going there and back, save/load inside a realm, two browsers in the same and in
+different places, and the main world unchanged.
+
+### T32 · More room for gyms in the main world (size: L, careful)
+
+New worldly gyms (Food, Swarm, Parkour...) belong in the main world, not in realms. The new land has only one spare
+gym slot, so grow the map once more the T17 way: old area block for block the same, a new ring of land, a new list of
+gym slots (terrain only, never changes once set). **Be cautious about speed:** measure load time, frame rate and draw
+calls before and after (desktop and emulated iPad) and keep them about the same (fog culling, chunk budget); grow only
+as much as the planned gyms need.
+Done when: `big-map` covers the new ring and slots, old saves are unchanged, and the before/after numbers are in the plan.
+
+## Wave 11 · New types: Food, Swarm, Dream, Parkour
+
+Shared cost for each type (data, not systems): 7 creatures with at least 3 new shapes, chart row and column, moves,
+wool, fx + sound, Book, README. Battle rules stay the same for all; a type only leans towards some T25 move kinds.
+
+### T33 · 🍎 Food (custom code: low)
+- Creatures: e.g. Donutoad, Sushiroll, Pretzling, Jellywob.
+- Spawn: only near flowers or crops **you placed** (one new spawn condition counting placed blocks nearby, like Cozy's
+  `home:<type>`). Behaviour: none. Battle: leans to healing and Shield moves.
+- Gym, the Kitchen: Chef battles only after you bring 3 ingredients (berry from leaves, cave mushroom, fish); reuse the
+  Treasure Vault's `keys`. Trainers at stoves.
+
+### T34 · 🐝 Swarm (custom code: low)
+- Creatures: e.g. Buzzcloud, Antrail, Minnowball, Sparkflies: 5 small models flying together (a group body shape).
+- Spawn: meadows, flowers, water (normal biome tables). Behaviour: none beyond the group model.
+- Battle: one **general optional species field** (e.g. `weakensWithHp`, like `legendary`/`disguise`): its attack power
+  shrinks with its HP, so multi-hit moves are great against it. Swarm is its first user; no other creature changes.
+  Same on both sides of a duel (`VERSION` bump).
+- Gym, the Hive: a honeycomb tower you climb (a shaped building, no live parts).
+
+### T35 · 🌙 Dream (custom code: low-medium, after T31)
+- Creatures: e.g. Snoozlet, Dreamjelly, Pillowmoth, Starsheep.
+- Spawn: near a Bed at night (a condition like `home:<type>`), and in the Dream realm.
+- Battle: leans to sleep moves (stronger after T24).
+- Gym, the Dream Island: sleep in a Bed at night and wake up in the Dream realm (T31), a floating island with odd
+  colours. Losing or the morning wakes you in your bed.
+
+### T36 · 🤸 Parkour (custom code: medium)
+- Creatures: e.g. Flipfrog, Wallrunner, Vaultkit, Springbun.
+- Spawn: on high places (treetops, roofs, pillar tops): a condition + a `place` rule (homes already have `place`).
+- **Behaviour:** wild ones hop away from you over blocks, so you chase them: one new "run away" walk style (Racer could
+  reuse it later with a "run" style).
+- Gym, the Obstacle Course: jumps and narrow beams; falling sends you back to the start (a small `gymLive` check);
+  trainers on the landings. Moving platforms only if cheap.
+
+## Later type ideas (not planned yet)
+
+- **🧲 Magnet:** spawns only with a Metal creature in your team (one condition); maybe slides towards you. Gym: the
+  Junkyard, a metal floor where you slide until you hit scrap (needs a solver test like the maze). Medium.
+- **🏃 Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. Gym: a race
+  against the leader (new NPC path code) or a plain gym. Low type, medium-high gym.
+- **⛏️ Digger:** hidden underground as a moving dirt bump (Camo's hidden-then-revealed idea, as particles); hit the
+  ground to pop it out. Gym: the Dig Site, soft sand that is breakable inside the gym and comes back (`setLive`). Medium.
+- **🧱 Builder:** spawns near places you built a lot; wild ones slowly build a small hut next to them (drawn with
+  `setLive`, never saved). Gym: the Build-off, copy the leader's small model. Medium.
+
+## Doodle wave (own wave, not decided yet)
+
+Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of a tower (each floor: copy a
+picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
+Two options for the design, the owner is still deciding:
+1. **Free design:** a design screen (shape, colours, name, moves), the look saved on the creature and sent in saves,
+   duels and play-together, models built from it. High: the look has to travel everywhere.
+2. **Ready-made designs + palettes (compromise):** ~6 Doodle species with a few part choices and ~12 fixed palettes;
+   the creature only stores two small numbers (e.g. `paint: [design, palette]`), like a personality. Everything else is
+   a normal species, recoloured. Medium.
 
 ---
 
