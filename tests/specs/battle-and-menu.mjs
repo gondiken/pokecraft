@@ -12,7 +12,8 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0);
   t.ok((await state()).started, 'new game starts');
 
-  // Battle the nearest wild creature with a strong lead, so we win.
+  // Battle the nearest wild creature with a strong lead, so we win (wait until one has spawned).
+  await page.waitForFunction(() => window.pokecraft.creatures.list.length > 0, null, { timeout: 120000 });
   await page.evaluate(() => {
     const g = window.pokecraft;
     const w = g.creatures.list.sort((a, b) => a.pos.distanceTo(g.player.pos) - b.pos.distanceTo(g.player.pos))[0];
@@ -36,6 +37,7 @@ export default async function ({ browser, base, t }) {
 
   // Catching: battle another creature and throw cubes until caught.
   const teamBefore = await page.evaluate(() => window.pokecraft.party.length);
+  await page.waitForFunction(() => window.pokecraft.creatures.list.length > 0, null, { timeout: 120000 });
   await page.evaluate(() => {
     const g = window.pokecraft;
     const w = g.creatures.list[0];
