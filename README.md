@@ -169,7 +169,7 @@ There are 27 gyms, one for each type except normal. 25 are scattered around the 
 | 26 | Cozy Gym (moves into your cozy home) | Cozy | Leader Maple | 42–43 |
 | 27 | Treasure Vault (three golden keys) | Treasure | Leader Goldie | 45–46 |
 
-Inside each gym is one apprentice trainer (two in the five newest gyms) you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 27 to open the Champion's Tower.
+Inside each gym is one apprentice trainer (two in the five newest gyms) you must beat before the Gym Leader will battle you. Trainer battles use 2–3 creatures in a row, and you can't catch their creatures or run away. Beating a leader earns that gym's badge and 5 Capture Cubes. Collect all 27 to open the Champion's Tower. Beat a leader again for a rematch: they ask first, get stronger every time (and may bring more creatures), and you win Capture Cubes!
 
 The **Cozy Gym** has no building: it moves into *your* home! Build a finished **Cozy home** (see **Homes**) and catch 3 different cozy creatures (blanket bunnies, mitten kittens and friends). Then someone knocks on your door: Leader Maple and her two friends move in. Talk to them to battle (the two friends first, then the leader). Keep your home cozy! If it stops being cozy they say "Brr, it's chilly in here! Can you fix it?" and won't battle until you fix it. If you move your Doormat they come with you, and if you break it they go away and come back when you have a cozy home again. Only the home of the world's owner counts, but friends who play together can come in and battle there too.
 

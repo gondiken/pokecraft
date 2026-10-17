@@ -325,6 +325,32 @@ export class UI {
     }
   }
 
+  // A question with two buttons (T28 gym rematch; reusable): ask({ text, yes, no, onYes, onNo }).
+  ask({ text, yes = 'Battle!', no = 'Not now', onYes, onNo }) {
+    this.askBox = this.askBox || document.getElementById('ask');
+    if (!this.askWired) {
+      this.askWired = true;
+      document.getElementById('ask-yes').addEventListener('click', e => { e.stopPropagation(); this.askYes(); });
+      document.getElementById('ask-no').addEventListener('click', e => { e.stopPropagation(); this.askNo(); });
+    }
+    this.asked = { onYes, onNo };
+    document.getElementById('ask-text').textContent = text;
+    document.getElementById('ask-yes').textContent = yes;
+    document.getElementById('ask-no').textContent = no;
+    this.askBox.classList.remove('hidden');
+  }
+
+  get asking() { return !!this.asked; }
+
+  askYes() { const a = this.asked; this.closeAsk(); a?.onYes?.(); }
+
+  askNo() { const a = this.asked; this.closeAsk(); a?.onNo?.(); }
+
+  closeAsk() {
+    this.asked = null;
+    (this.askBox || document.getElementById('ask'))?.classList.add('hidden');
+  }
+
   closePanel() {
     this.closeConfirm();
     this.teamScroll = null;

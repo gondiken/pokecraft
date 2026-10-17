@@ -1,5 +1,5 @@
 // Gym flow: leader refuses before the trainer is beaten; trainer then leader; badge awarded.
-import { openGame, newGame, playBattle, continueGame, waitFor } from '../helpers.mjs';
+import { openGame, newGame, playBattle, continueGame, waitFor, seedSave } from '../helpers.mjs';
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
@@ -71,9 +71,95 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(`window.pokecraft.talkTo(${npc('trainer')})`);
   t.ok(await playBattle(page), 'trainer battle finishes');
   await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
+  t.ok(await page.evaluate(() => JSON.stringify(window.pokecraft.battle.foes.map(c => [c.species, c.level])) === JSON.stringify(window.pokecraft.world.gyms[0].def.leaderTeam)
+    && window.pokecraft.world.gyms[0].def.leaderTeam.length === 3), 'the first badge battle is unchanged: the leader\'s own team');
   t.ok(await playBattle(page), 'leader battle finishes');
   const s = await page.evaluate(() => ({ badges: window.pokecraft.badges, beaten: window.pokecraft.beaten }));
   t.ok(s.badges.includes('rock') && s.beaten.includes('rock:trainer'), 'Boulder Badge awarded');
+
+  // Rematches (T28)
+  t.ok(await page.evaluate(async () => {
+    const { GYMS } = await import('/src/gyms.js');
+    const { SPECIES } = await import('/src/species.js');
+    const { rematchTeam, loadWins } = await import('/src/rematch.js');
+    for (const def of GYMS) {
+      let prev = null;
+      for (let w = 0; w <= 30; w++) {
+        const team = rematchTeam(def, w);
+        if (team.length < 1 || team.length > 6 || team.length < (prev?.length || 0)) return `${def.id} w${w}: size ${team.length}`;
+        if (team.some(([sp, l]) => !SPECIES[sp] || l > 55)) return `${def.id} w${w}: bad species or level`;
+        const base = team.slice(team.length - def.leaderTeam.length);
+        if (base.some(([, l], i) => l < def.leaderTeam[i][1])) return `${def.id} w${w}: base below badge level`;
+        if (prev && prev.base.some((l, i) => base[i][1] < l)) return `${def.id} w${w}: level went down`;
+        if (w === 0 && (team.length !== def.leaderTeam.length || base.some(([, l], i) => l !== Math.min(55, def.leaderTeam[i][1] + 3)))) return `${def.id}: wins 0 is not base + 3`;
+        prev = { length: team.length, base: base.map(x => x[1]) };
+      }
+    }
+    const rock = rematchTeam(GYMS[0], 1);
+    if (rock.length !== 4) return 'boulder w1 size ' + rock.length;
+    const vault = GYMS.find(g => g.id === 'treasure');
+    const v = rematchTeam(vault, 30);
+    if (v.length > 6 || v.some(x => x[1] !== 55)) return 'vault w30 ' + JSON.stringify(v);
+    const ok = JSON.stringify(loadWins({ rock: 2, nope: 5, bug: -1, water: 'x', ice: 1.5 })) === '{"rock":2}'
+      && JSON.stringify(loadWins(undefined)) === '{}' && JSON.stringify(loadWins([1])) === '{}';
+    return ok ? true : 'loadWins';
+  }) === true, 'rematch teams: sizes, levels, cap and loadWins');
+  const heal = () => page.evaluate(async () => {
+    const { statsFor } = await import('/src/species.js');
+    for (const c of window.pokecraft.party) c.hp = statsFor(c).maxHp;
+  });
+  // Stand next to the leader like a real player (the question closes when you walk away).
+  const near = () => page.evaluate(`(() => { const g = window.pokecraft, n = ${npc('leader')}; g.player.pos.set(n.pos.x + 1.5, n.pos.y, n.pos.z); document.exitPointerLock(); })()`);
+  const askText = () => page.evaluate(() => (document.getElementById('ask').classList.contains('hidden') ? '' : document.getElementById('ask-text').textContent));
+  await heal();
+  await near();
+  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
+  const q1 = await askText();
+  t.ok(/rematch/i.test(q1) && q1.includes('level 11') && !(await page.evaluate(() => window.pokecraft.inBattle)), `the leader asks first: "${q1}"`);
+  await page.screenshot({ path: 'screenshots/t28-ask-desktop.png' });
+  await page.keyboard.press('KeyN');
+  t.ok(!(await askText()) && !(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('Come back any time'), 'N says not now');
+  const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
+  await near();
+  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
+  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`); // talking again = yes
+  const r1 = await page.evaluate(() => ({ b: window.pokecraft.battle?.foes.map(c => c.level), boost: window.pokecraft.battle?.opts?.xpBoost ?? window.pokecraft.battle?.xpBoost }));
+  t.ok(JSON.stringify(r1.b) === '[9,10,11]' && r1.boost === 1.5, `rematch 1: foes ${JSON.stringify(r1.b)}, xp boost ${r1.boost}`);
+  t.ok(await playBattle(page), 'rematch 1 finishes');
+  const w1 = await page.evaluate(() => ({ w: window.pokecraft.rematchWins.rock, cubes: window.pokecraft.cubes, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).rematchWins, toast: document.getElementById('toast').innerText }));
+  t.ok(w1.w === 1 && w1.cubes === cubes0 + 4 && w1.saved?.rock === 1 && w1.toast.includes('Rematch win 1'), `rematch win counted, +4 cubes, saved (${JSON.stringify(w1)})`);
+  await page.evaluate(() => document.exitPointerLock());
+  await heal();
+  await near();
+  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
+  const q2 = await askText();
+  t.ok(q2.includes('level 14'), `second ask is harder: "${q2}"`);
+  await page.evaluate(() => document.getElementById('ask-yes').click());
+  const r2 = await page.evaluate(() => window.pokecraft.battle?.foes.map(c => c.level));
+  t.ok(r2?.length === 4 && JSON.stringify(r2.slice(1)) === '[12,13,14]', `rematch 2 has an extra creature first: ${JSON.stringify(r2)}`);
+  t.ok(await playBattle(page), 'rematch 2 finishes');
+  t.ok(await page.evaluate(() => window.pokecraft.rematchWins.rock) === 2, 'second win counted');
+  await page.evaluate(() => document.exitPointerLock());
+  await heal();
+  await near();
+  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
+  t.ok(!!(await askText()), 'ask box open again');
+  await page.evaluate(() => { const g = window.pokecraft; g.player.pos.x += 12; g.rematch.update(); });
+  t.ok(!(await askText()), 'walking away closes the question');
+  const oldSave = await page.evaluate(() => { const o = JSON.parse(localStorage.getItem('pokecraft-save-v2')); delete o.rematchWins; return o; });
+  const pg2 = await openGame(browser, base, { setup: seedSave(oldSave) });
+  await continueGame(pg2);
+  const old = await pg2.evaluate(() => ({ w: JSON.stringify(window.pokecraft.rematchWins), badge: window.pokecraft.badges.includes('rock') }));
+  t.ok(old.w === '{}' && old.badge, 'an old save has no rematch wins and keeps its badge');
+  await pg2.evaluate(async id => {
+    const g = window.pokecraft;
+    const n = g.npcs.list.find(n => n.kind === 'leader' && n.gym === g.world.gyms[0]);
+    g.player.pos.set(n.pos.x + 1.5, n.pos.y, n.pos.z);
+    document.exitPointerLock();
+    g.talkTo(n);
+  });
+  t.ok((await pg2.locator('#ask-text').innerText()).includes('level 11'), 'old save: first rematch ask says level 11');
+  await pg2.context().close();
 
   // The two newest gyms (needs the Bone and Alien creatures): trainer, then leader, for both.
   for (const [id, badge] of [['bone', 'Fossil'], ['alien', 'Saucer']]) {
