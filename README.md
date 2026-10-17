@@ -93,8 +93,8 @@ Every move has one small effect at most. The battle buttons say what a move does
 | Raises your attack / defence | One step up, up to 3 steps (Pump Up, Hunker Down, Deep Focus, Iron Wall, Lie Low, Firewall) |
 | Lowers the foe's attack / slows the foe | One step down (Grumble, Silk Wrap, Chill Wind, Ink Splat, Bling!...). "May" means it only sometimes works |
 | May make the foe flinch | If you move first, the foe may lose its move (a few moves, like Fast Forward, always go first) |
-| Puts the foe to sleep | The foe skips one move (Lullaby, Sweet Dreams, Big Bong, Snooze, Bedtime Story). Sleepy creatures are easier to catch |
-| Hits 2 to 4 times | Several small hits (Seed Volley, Rivet Shot, Meteor Shower, Confetti, Rapid Click, Pillow Fight, Gem Toss) |
+| Puts the foe to sleep | The foe skips 2 or 3 moves and gets hurt a bit more while it sleeps. Three hits in a row (a multi-hit move) wake it up. After waking it gets one move that can't be slept away (Lullaby, Sweet Dreams, Big Bong, Snooze, Bedtime Story). Sleepy creatures are easier to catch |
+| Hits 1 to 5 times | Several small hits, most often 2 or 3; Thousand Cranes always hits 3 to 5 (Seed Volley, Rivet Shot, Meteor Shower, Confetti, Rapid Click, Pillow Fight, Gem Toss) |
 | Hurts you a little too | A big hit with a little recoil. It never knocks you out (Inferno Dash, Drake Charge) |
 | Never misses | Always hits (Mind Trick, Color Splash and the special moves) |
 

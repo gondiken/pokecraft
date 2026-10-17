@@ -2,13 +2,14 @@
 import * as THREE from 'three';
 import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
-  xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo,
+  xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo, multiHits,
 } from './species.js';
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 import { sound } from './sound.js';
 
 const PARTY_MAX = 6;
+const WAKE_HIT = 3; // the 3rd hit of a multi-hit move wakes a sleeper
 
 // Stat changes: +1 / -1 per use, at most 3 either way. Gentle: +3 is x1.75, -3 is x0.57.
 const stage = s => (s >= 0 ? (4 + s) / 4 : 4 / (4 - s));
@@ -49,10 +50,44 @@ export class Battle {
   cry(c) { sound.cry(c.species, SPECIES[c.species].type); }
 
   // Changes in a creature during one battle (stat steps, sleep). Never saved; cleared when it comes in.
+  // `sleep` = own moves it will still lose (0 = awake); `justWoke` = its free turn after waking (can't be slept again).
   mods(c) {
     let m = this.modMap.get(c);
-    if (!m) this.modMap.set(c, m = { atk: 0, def: 0, spd: 0, sleep: false, flinch: false, healed: 0 });
+    if (!m) this.modMap.set(c, m = { atk: 0, def: 0, spd: 0, sleep: 0, justWoke: false, flinch: false, healed: 0 });
     return m;
+  }
+
+  // Damage taken is multiplied by this (sleeping: +25%). T25's shield multiplies in here too.
+  takenFactor(c) { return this.mods(c).sleep ? 1.25 : 1; }
+
+  // Put a creature to sleep for `turns` of its own moves (2 or 3, drawn by the caller).
+  async fallAsleep(side, turns) {
+    const c = side === 'ally' ? this.ally : this.foe;
+    this.mods(c).sleep = turns;
+    sound.play('snooze');
+    this.game.fx?.status('sleep', this.spot(side));
+    this.refresh();
+    await this.say(`${this.labelOf(side)} fell asleep! Zzz`, 1300);
+  }
+
+  // how = 'own' (slept its turns away) or 'bonk' (a multi-hit move's 3rd hit)
+  async wakeUp(side, how) {
+    const c = side === 'ally' ? this.ally : this.foe;
+    const m = this.mods(c);
+    m.sleep = 0;
+    m.justWoke = true;
+    this.refresh();
+    const who = this.labelOf(side);
+    await this.say(how === 'bonk' ? `Bonk! The third hit woke ${who} up!` : `${who} woke up!`, 1000);
+  }
+
+  // Chance (0.05 to 0.95) that a Capture Cube holds the foe.
+  catchChance() {
+    const st = statsFor(this.foe);
+    const hpFactor = 1 - (2 / 3) * (this.foe.hp / st.maxHp);
+    const levelFactor = Math.max(0.5, 1 - (this.foe.level - 5) * 0.02);
+    const sleepy = this.mods(this.foe).sleep ? 1.5 : 1; // a sleeping creature is easier to catch
+    return Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2 * sleepy));
   }
 
   speedOf(c) { return Math.floor(statsFor(c).spd * stage(this.mods(c).spd)); }
@@ -486,13 +521,13 @@ export class Battle {
         const eff = effectiveness(mv.type, allyType);
         if (eff === 0) return 0;
         const stab = mv.type === foeType ? 1.5 : 1;
-        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1);
+        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1) * this.takenFactor(ally);
       }
       const fx = mv.fx;
       if (fx.kind === 'heal') return foe.hp < statsFor(foe).maxHp * 0.45 && fm.healed < 1 ? 120 : 0;
       if (fx.kind === 'raise') return fm[fx.stat] < 2 && foe.hp > statsFor(foe).maxHp * 0.6 ? 45 : 0;
       if (fx.kind === 'lower') return am[fx.stat] > -2 ? 40 : 0;
-      if (fx.kind === 'sleep') return am.sleep ? 0 : 55;
+      if (fx.kind === 'sleep') return am.sleep || am.justWoke ? 0 : 55;
       return 0;
     };
     const scored = foe.moves.map(id => [id, score(id)]);
@@ -506,8 +541,9 @@ export class Battle {
     return pool[Math.floor(Math.random() * pool.length)][0];
   }
 
-  // One creature uses a move. The random numbers are drawn in a fixed order (hit, number of hits,
-  // critical, damage roll, effect chance) and never depend on which side is moving, because in a
+  // One creature uses a move. The random numbers are drawn in a fixed order (1 hit, 2 number of hits
+  // (multi only), 3 critical, 4 damage roll, 5 effect chance (moves with `chance`), 6 sleep length
+  // (whenever a sleep effect lands). The sleeping path and the wake-up hit draw nothing) and never depend on which side is moving, because in a
   // player battle both browsers must draw exactly the same numbers.
   async useMove(side, moveId, { first = false } = {}) {
     const atk = side === 'ally' ? this.ally : this.foe;
@@ -527,11 +563,12 @@ export class Battle {
       sound.play('snooze');
       fx?.status('sleep', this.spot(side));
       await this.say(`${who} is fast asleep... Zzz`, 1100);
-      ma.sleep = false;
-      this.refresh();
-      await this.say(`${who} woke up!`, 900);
+      ma.sleep--;
+      if (!ma.sleep) await this.wakeUp(side, 'own');
+      else this.refresh();
       return;
     }
+    ma.justWoke = false; // it is awake and gets to act: its free turn is used up
     this.say(`${who} used ${mv.name}!`, 700);
     sound.play(sound.has(moveId) ? moveId : `fx:${mv.type}`); // sound-type moves have their own sound
     await this.lunge(side);
@@ -542,14 +579,16 @@ export class Battle {
 
     const mfx = mv.fx;
     let hits = 1;
-    if (mfx?.kind === 'multi') hits = mfx.min + Math.floor(this.rng() * (mfx.max - mfx.min + 1)); // draw 2
+    if (mfx?.kind === 'multi') hits = multiHits(mfx, this.rng()); // draw 2
     const as = statsFor(atk), ds = statsFor(def);
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
-    const crit = this.rng() < 1 / 16 ? 1.5 : 1;
+    const crit = this.rng() < 1 / 16 ? 1.5 : 1; // draw 3
     const atkPower = as.atk * stage(ma.atk) * (atk.boost || 1), defPower = ds.def * stage(md.def);
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * atkPower / defPower) / 50) + 2;
-    const dmg = Math.max(1, Math.floor(base * stab * eff * crit * (0.85 + this.rng() * 0.15)));
+    const roll = 0.85 + this.rng() * 0.15; // draw 4
+    const defSide = side === 'ally' ? 'foe' : 'ally';
+    const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crit * this.takenFactor(def) * roll));
     const hpStart = def.hp;
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
@@ -557,7 +596,7 @@ export class Battle {
     await fx?.attack(moveId, this.spot(side), this.spot(side === 'ally' ? 'foe' : 'ally'));
     for (let i = 0; i < hits && def.hp > 0; i++) {
       const hpBefore = def.hp;
-      def.hp = Math.max(0, def.hp - dmg);
+      def.hp = Math.max(0, def.hp - dmgNow());
       if (bossLast && def.hp <= 0 && hpBefore > statsFor(def).maxHp / 2) def.hp = 1;
       done++;
       sound.play(eff > 1 ? 'super' : 'hit');
@@ -565,6 +604,7 @@ export class Battle {
       fx?.impact(mv.type, this.spot(side === 'ally' ? 'foe' : 'ally'), { big: !!mv.sig });
       this.refresh();
       await wait(hits > 1 ? 300 : 450);
+      if (mfx?.kind === 'multi' && i === WAKE_HIT - 1 && md.sleep && def.hp > 0 && eff > 0) await this.wakeUp(defSide, 'bonk');
     }
     const dealt = hpStart - def.hp;
     if (crit > 1) await this.say('A critical hit!', 900);
@@ -629,13 +669,11 @@ export class Battle {
       // Only works if the user moved first this turn (the other creature has not moved yet).
       if (first) this.mods(target).flinch = true;
     } else if (fx.kind === 'sleep') {
+      const turns = this.rng() < 0.5 ? 2 : 3; // draw 6: FIRST thing whenever a sleep effect lands, even if it then fails
       const m = this.mods(target);
       if (m.sleep) { if (!quiet) await this.say(`But ${tWho} is already asleep!`, 1100); return; }
-      m.sleep = true;
-      sound.play('snooze');
-      vis?.status('sleep', this.spot(targetSide));
-      this.refresh();
-      await this.say(`${tWho} fell asleep! Zzz`, 1300);
+      if (m.justWoke) { if (!quiet) await this.say(`${tWho} just woke up and is wide awake!`, 1100); return; }
+      await this.fallAsleep(targetSide, turns);
     }
   }
 
@@ -799,11 +837,7 @@ export class Battle {
     const ground = this.foePos.y + 0.15;
     await tween(250, t => { cube.position.y = to.y + (ground - to.y) * t; cube.rotation.set(0, 0, 0); });
 
-    const st = statsFor(this.foe);
-    const hpFactor = 1 - (2 / 3) * (this.foe.hp / st.maxHp);
-    const levelFactor = Math.max(0.5, 1 - (this.foe.level - 5) * 0.02);
-    const sleepy = this.mods(this.foe).sleep ? 1.5 : 1; // a sleeping creature is easier to catch
-    const p = Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2 * sleepy));
+    const p = this.catchChance();
     const shakeOk = Math.cbrt(p);
 
     let caught = true;

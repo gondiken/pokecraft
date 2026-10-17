@@ -801,7 +801,7 @@ After wave 8.5. Battle tasks change battle rules, so bump `duel.js` `VERSION` on
 (both players need the new version) and keep the duel draw order rule (same random draws on both sides).
 Keep the Book's move words short and child-readable; the AI (`battle.js` move scoring) must learn the new kinds.
 
-### T24 · Battle fixes: multi-hit 1–5, a Snooze that is worth it (size: S, first)
+### T24 · Battle fixes: multi-hit 1–5, a Snooze that is worth it (size: S, first) — DONE
 
 - **Multi-hit moves** (Seed Volley, Rivet Shot, Meteor Shower, Bone Toss, Confetti, Rapid Click, Pillow Fight,
   Gem Toss) hit **1 to 5 times** instead of 2–4, weighted so 2–3 stay most common (e.g. 1: 10%, 2: 30%, 3: 30%,

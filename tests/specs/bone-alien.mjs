@@ -67,7 +67,7 @@ export default async function ({ browser, base, t }) {
   t.ok(!r.chart.length, `type chart ${r.chart.join('; ')}`);
   t.ok(!r.bad.length, `all 12 models build and animate ${r.bad.join('; ')}`);
   t.ok(r.evolve.length === 6, `6 evolutions (${r.evolve.join(', ')})`);
-  t.ok(r.bonetoss.includes('hits 2 to 4 times'), `Bone Toss text: ${r.bonetoss}`);
+  t.ok(r.bonetoss.includes('hits 1 to 5 times'), `Bone Toss text: ${r.bonetoss}`);
   t.ok(r.sig.every(Boolean), 'Howlbone and Ufomax learn their special moves at 30');
   t.ok(r.count === 196, `${r.count} normal species`);
 

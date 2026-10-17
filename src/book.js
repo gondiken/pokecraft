@@ -347,6 +347,7 @@ export class Book {
     const hidden = learners.length - known.length;
     const info = el('div', { class: 'book-info' },
       el('p', {}, cap(moveInfo(id).text || 'a move') + '.'),
+      moveInfo(id).note && el('p', { class: 'book-note' }, moveInfo(id).note),
       m.acc != null && el('p', { class: 'book-note' }, m.sure || m.acc >= 1 ? 'Always hits.' : `Hits ${Math.round(m.acc * 100)} times out of 100.`),
       el('h3', {}, 'Who learns it'));
     if (known.length) {

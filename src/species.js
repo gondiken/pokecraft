@@ -68,6 +68,9 @@ export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[de
 // power 0 = status move (no damage). sure: true = never misses. sig: true = signature move.
 // Some names changed on screen; the ids stay the same so old saves keep working.
 const mv = (name, type, power, acc, extra = {}) => ({ name, type, power, acc, ...extra });
+// Multi-hit moves: how often they hit 1, 2, 3, 4, 5 times (out of 10). 2 or 3 is most common.
+export const HITS_1_5 = [1, 3, 3, 2, 1];
+
 export const MOVES = {
   tackle: mv('Bump', 'normal', 40, 1),
   quickjab: mv('Quick Jab', 'normal', 35, 1, { priority: 1 }),
@@ -88,7 +91,7 @@ export const MOVES = {
   bigwave: mv('Big Wave', 'water', 95, 0.85),
   royaltide: mv('Royal Tide', 'water', 90, 0.95, { fx: { kind: 'lower', stat: 'spd', chance: 0.3 }, sig: true }),
   leafcut: mv('Leaf Cut', 'grass', 40, 1),
-  seedvolley: mv('Seed Volley', 'grass', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  seedvolley: mv('Seed Volley', 'grass', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   vinelash: mv('Vine Lash', 'grass', 75, 0.9),
   sapsip: mv('Sap Sip', 'grass', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
   rootslam: mv('Root Slam', 'grass', 90, 1, { sure: true, sig: true }),
@@ -117,7 +120,7 @@ export const MOVES = {
   brainwave: mv('Brain Wave', 'mind', 75, 0.9),
   deepfocus: mv('Deep Focus', 'mind', 0, 1, { fx: { kind: 'raise', stat: 'atk' } }),
   clank: mv('Clank', 'metal', 40, 1),
-  rivetshot: mv('Rivet Shot', 'metal', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  rivetshot: mv('Rivet Shot', 'metal', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   ironbash: mv('Iron Bash', 'metal', 75, 0.9),
   ironwall: mv('Iron Wall', 'metal', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
   sludgespit: mv('Sludge Spit', 'toxic', 40, 1),
@@ -138,7 +141,7 @@ export const MOVES = {
   shimmer: mv('Shimmer', 'rainbow', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
   zenithray: mv('Zenith Ray', 'rainbow', 90, 1, { sure: true, sig: true }),
   starshard: mv('Star Shard', 'cosmic', 40, 1),
-  meteorshower: mv('Meteor Shower', 'cosmic', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  meteorshower: mv('Meteor Shower', 'cosmic', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   cometcrash: mv('Comet Crash', 'cosmic', 75, 0.9),
   supernova: mv('Supernova', 'cosmic', 100, 0.85),
   echoping: mv('Echo Ping', 'sound', 40, 1),
@@ -146,7 +149,7 @@ export const MOVES = {
   bassblast: mv('Bass Blast', 'sound', 75, 0.9),
   lullaby: mv('Lullaby', 'sound', 0, 0.75, { fx: { kind: 'sleep' } }),
   bonebonk: mv('Bone Bonk', 'bone', 40, 1),
-  bonetoss: mv('Bone Toss', 'bone', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  bonetoss: mv('Bone Toss', 'bone', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   fossilcrush: mv('Fossil Crush', 'bone', 75, 0.9),
   dinostomp: mv('Dino Stomp', 'bone', 95, 0.85, { fx: { kind: 'flinch', chance: 0.2 } }),
   rattledance: mv('Rattle Dance', 'bone', 80, 1, { fx: { kind: 'raise', stat: 'atk', chance: 0.5 }, sig: true }),
@@ -172,7 +175,7 @@ export const MOVES = {
   sunburst: mv('Sun Burst', 'light', 100, 0.85),
   beaconbeam: mv('Beacon Beam', 'light', 90, 1, { sure: true, sig: true }),
   paperflick: mv('Paper Flick', 'paper', 40, 1),
-  confetti: mv('Confetti', 'paper', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  confetti: mv('Confetti', 'paper', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   foldslam: mv('Fold Slam', 'paper', 75, 0.9),
   inksplat: mv('Ink Splat', 'paper', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
   thousandcranes: mv('Thousand Cranes', 'paper', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
@@ -188,18 +191,18 @@ export const MOVES = {
   lielow: mv('Lie Low', 'camo', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
   statueslam: mv('Statue Slam', 'camo', 90, 1, { sure: true, sig: true }),
   pixelpop: mv('Pixel Pop', 'cyber', 40, 1),
-  rapidclick: mv('Rapid Click', 'cyber', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  rapidclick: mv('Rapid Click', 'cyber', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   glitchbeam: mv('Glitch Beam', 'cyber', 75, 0.9),
   firewall: mv('Firewall', 'cyber', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
   megabyte: mv('Mega Byte', 'cyber', 90, 0.95, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
   snuggle: mv('Snuggle', 'cozy', 40, 1),
-  pillowfight: mv('Pillow Fight', 'cozy', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  pillowfight: mv('Pillow Fight', 'cozy', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   warmhug: mv('Warm Hug', 'cozy', 75, 0.9),
   hotcocoa: mv('Hot Cocoa', 'cozy', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
   bedtimestory: mv('Bedtime Story', 'cozy', 0, 0.75, { fx: { kind: 'sleep' } }),
   lightsout: mv('Lights Out', 'cozy', 85, 0.9, { fx: { kind: 'sleep', chance: 0.3 }, sig: true }),
   coinflip: mv('Coin Flip', 'treasure', 40, 1),
-  gemtoss: mv('Gem Toss', 'treasure', 20, 1, { fx: { kind: 'multi', min: 2, max: 4 } }),
+  gemtoss: mv('Gem Toss', 'treasure', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   goldrush: mv('Gold Rush', 'treasure', 75, 0.9),
   bling: mv('Bling!', 'treasure', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
   crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
@@ -209,7 +212,7 @@ export const MOVES = {
 export function moveInfo(id) {
   const m = MOVES[id];
   const tags = [];
-  if (!m) return { tags, text: '' };
+  if (!m) return { tags, text: '', note: '' };
   const fx = m.fx;
   if (m.power > 0) tags.push(`power ${m.power}`);
   if (m.priority) tags.push('goes first');
@@ -225,7 +228,22 @@ export function moveInfo(id) {
     else if (fx.kind === 'recoil') tags.push('hurts you a little too');
   }
   if (m.sig) tags.push('special move');
-  return { tags, text: tags.join(' · ') };
+  let note = '';
+  if (fx?.kind === 'sleep') note = 'A sleeping creature skips 2 or 3 turns and gets hurt a bit more. Three hits in a row wake it up!';
+  else if (fx?.kind === 'multi') note = fx.weights
+    ? 'Hits 1 to 5 times, most often 2 or 3. The third hit wakes up a sleeping foe!'
+    : `Hits ${fx.min} to ${fx.max} times. The third hit wakes up a sleeping foe!`;
+  return { tags, text: tags.join(' · '), note };
+}
+
+// How many times a multi-hit move hits, from ONE random number r in [0, 1).
+export function multiHits(fx, r) {
+  if (fx.weights) {
+    let x = r * fx.weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < fx.weights.length; i++) { x -= fx.weights[i]; if (x < 0) return fx.min + i; }
+    return fx.max;
+  }
+  return fx.min + Math.floor(r * (fx.max - fx.min + 1));
 }
 
 // Standard learnset for a type: a weak move at first, then stronger and more varied ones. Every
