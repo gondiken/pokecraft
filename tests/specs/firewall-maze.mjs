@@ -33,6 +33,25 @@ const INSTALL = async () => {
     }
     return false;
   };
+  // T23.5: can you walk from local (d, s) out to the front of the gym (d 12) right now, alone?
+  fw.out = (w, g, [fd, fs]) => {
+    const fy = g.fy, ok = (x, z) => !w.isSolid(x, fy + 1, z) && !w.isSolid(x, fy + 2, z) && w.isSolid(x, fy, z);
+    const loc = new Map();
+    for (let d = -16; d <= 12; d++) for (let s = -20; s <= 20; s++) { const [x, z] = F.mazeCol(g, d, s); loc.set(x + ',' + z, d); }
+    const [sx, sz] = F.mazeCol(g, fd, fs);
+    const seen = new Set([sx + ',' + sz]), st = [[sx, sz]];
+    while (st.length) {
+      const [x, z] = st.pop();
+      if (loc.get(x + ',' + z) === 12) return true;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + a, nz = z + b, k = nx + ',' + nz;
+        if (!loc.has(k) || seen.has(k) || !ok(nx, nz)) continue;
+        seen.add(k); st.push([nx, nz]);
+      }
+    }
+    return false;
+  };
+  fw.exitShut = (w, g) => g.exit.every(([x, y, z]) => w.isSolid(x, y, z));
 };
 
 const SEQ = [[['r', 2, 2]], [['r', 2, 7], ['b', 5, 1]], [['r', 1, 7], ['b', 4, 4], ['r', 4, 0]]]; // switches to press, room by room
@@ -48,6 +67,13 @@ export default async function ({ browser, base, t }) {
   t.ok(grids.every(g => g.w === 11 && g.h === 9), 'every room is 11 columns by 9 rows');
   t.ok(grids.map(g => g.plain.presses).join() === '1,2,3' && grids.every(g => g.plain.solvable && !g.plain.trap), 'rooms need 1, 2 and 3 switch presses, and none has a trap');
   t.ok(grids.every(g => g.friend.solvable && g.friend.presses === 0 && !g.friend.trap), 'with the friend lane open each room needs no switch');
+  // T23.5: walking back alone. Room 1 lets you out in the state you leave it in; rooms 2 and 3 are traps that way,
+  // so the server room has its own exit (checked in the live game below).
+  const back = await page.evaluate(async () => {
+    const { ROOMS, solveRoom } = await import('/src/firewall.js');
+    return ROOMS.map(r => [0, 1].map(phase => solveRoom(r, { back: true, phase })));
+  });
+  t.ok(back[0][1].solvable && back.every(r => r.every(x => typeof x.trap === 'boolean')), `backwards check runs; room 1 can be walked back (${JSON.stringify(back.map(r => r.map(x => x.solvable && !x.trap)))})`);
 
   // 2. Placement on three seeds: inside slot 2's box, protected, lasers in their start state, nothing recorded as an edit.
   const placed = await page.evaluate(async seeds => {
@@ -172,6 +198,27 @@ export default async function ({ browser, base, t }) {
   t.ok(prot.kept && prot.same && /Lasers can't be broken/.test(prot.toast), `breaking a laser changes nothing and says why (${prot.toast})`);
   t.ok(prot.placed === 0 && prot.same && prot.saved === 0, 'building inside a maze room is refused, and the save holds no maze block');
 
+  // T23.5: the exit door. Shut from outside (not a way in), open from inside the server room, and you can walk out alone.
+  const exitA = await page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, gym = window.fw.gym(w), M = window.fw.F.mazeCol, fy = gym.fy;
+    const out = { shut: window.fw.exitShut(w, gym), noWayIn: !window.fw.out(w, gym, [-11, 12]) };
+    const [x, z] = M(gym, -9, 15);
+    g.player.pos.set(x + 0.5, fy + 1, z + 0.5); g.player.vel.set(0, 0, 0);
+    return out;
+  });
+  t.ok(exitA.shut, 'the exit door is shut for a player outside without the badge');
+  t.ok(exitA.noWayIn, 'with the door shut the server room cannot be reached from the front without the rooms');
+  await waitFor(page, () => { const g = window.pokecraft; return !window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
+  const exitB = await page.evaluate(() => {
+    const g = window.pokecraft, w = g.world, gym = window.fw.gym(w);
+    return { toast: document.getElementById('toast').textContent, out: window.fw.out(w, gym, [-11, 12]), edits: w.edits.size };
+  });
+  t.ok(/this way out/.test(exitB.toast), `standing in the server room opens the exit and says so (${exitB.toast})`);
+  t.ok(exitB.out && exitB.edits === 0, 'from the server room you can walk out to the front alone; the door is no edit');
+  await page.evaluate(() => { const g = window.pokecraft, gym = window.fw.gym(g.world), [x, z] = window.fw.F.mazeCol(gym, -9, 21); g.player.pos.set(x + 0.5, gym.fy + 1, z + 0.5); g.player.vel.set(0, 0, 0); });
+  await waitFor(page, () => { const g = window.pokecraft; return window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
+  t.ok(true, 'the exit door shuts again once you are out (no badge yet)');
+
   // 4. The people: both trainers, then the leader, then the badge.
   const who = async (i, kind) => page.evaluate(async ([i, kind]) => {
     const g = window.pokecraft, gym = window.fw.gym(g.world);
@@ -194,6 +241,11 @@ export default async function ({ browser, base, t }) {
   t.ok(await playBattle(page), `${lead.name}'s battle finishes`);
   const done = await page.evaluate(() => ({ badges: window.pokecraft.badges, beaten: window.pokecraft.beaten }));
   t.ok(done.badges.includes('cyber') && done.beaten.includes('cyber:trainer') && done.beaten.includes('cyber:trainer2'), 'Circuit Badge awarded');
+  // T23.5: after beating the leader, walk out alone from the leader's spot, whatever state the laser rooms are in.
+  await page.evaluate(() => { const g = window.pokecraft, gym = window.fw.gym(g.world); for (const r of gym.rooms) g.gymLive.hit({ x: r.reset[0], y: r.reset[1], z: r.reset[2], id: window.fw.B.RESET_BUTTON }); const [x, , z] = gym.leaderPos; g.player.pos.set(x + 1.5, gym.fy + 1, z); g.player.vel.set(0, 0, 0); });
+  await waitFor(page, () => { const g = window.pokecraft; return !window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
+  const leave = await page.evaluate(() => { const g = window.pokecraft, w = g.world, gym = window.fw.gym(w); return { out: window.fw.out(w, gym, [-11, 13]), back: [0, 1, 2].map(k => window.fw.walk(w, gym, k, [8, 5], [0, 5])) }; });
+  t.ok(leave.out, `after beating the leader you can walk out alone through the exit (rooms back: ${leave.back})`);
 
   // 5. Screenshots: outside by day and night, each room from its entry, the server room.
   const shot = async (name, place) => {

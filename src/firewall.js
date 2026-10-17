@@ -49,7 +49,9 @@ export const ROOMS = [
 // Solves a room grid: BFS over (row, column, phase) from the entry cell. phase 0 = red on / blue off, 1 = the other
 // way round. Walking onto `r` makes phase 1, onto `b` phase 0. `friend` = the purple lane is open.
 // Returns { solvable, presses (fewest switch flips to the exit, or -1), trap (a reachable state that cannot reach the exit) }.
-export function solveRoom(rows, { friend = false } = {}) {
+// `back: true` walks the other way: in at the exit cell (row 8) with the room in `phase`, out at row 0 (T23.5: rooms 2 and 3
+// are traps that way, which is why the server room has its own exit door).
+export function solveRoom(rows, { friend = false, back = false, phase = 0 } = {}) {
   const H = rows.length, W = rows[0].length;
   const open = (r, c, ph) => {
     const ch = rows[r]?.[c];
@@ -69,10 +71,10 @@ export function solveRoom(rows, { friend = false } = {}) {
     }
     return out;
   };
-  const isExit = r => r === H - 1;
+  const isExit = r => (back ? r === 0 : r === H - 1);
   // Fewest flips: Dijkstra with cost 1 when the phase changes, 0 otherwise.
   const dist = new Map();
-  const start = [0, 5, after(0, 5, 0)];
+  const start = back ? [H - 1, 5, after(H - 1, 5, phase)] : [0, 5, after(0, 5, 0)];
   dist.set(key(...start), 0);
   const queue = [[0, start]];
   const reach = [];
@@ -114,6 +116,9 @@ export const ROOM_AT = [
 ];
 // Reset button wall cell (local d, s) next to each room's entry door.
 export const RESET_AT = [[6, -11], [-4, 1], [6, 13]];
+
+// The exit door (local d, s) in the server room's outer wall, between two racks (T23.5).
+export const EXIT_AT = [-9, 18];
 
 const inFoot = (d, s) => Math.abs(s) <= 18 && d <= 10 && (d >= -8 || s >= 6);
 
@@ -227,12 +232,17 @@ export function buildFirewallMaze(world, def, slot) {
   const pr = bbox(-15, 11, -19, 19);
   const inner = bbox(-13, 9, -17, 17);
   world.markLitBox(pr.x0, pr.x1, pr.z0, pr.z1);
+  // T23.5: the exit door in the server room's side wall (built as wall; MazeLive opens it with setLive, per player).
+  const [ex, ez] = col(EXIT_AT[0], EXIT_AT[1]);
+  const exit = [1, 2, 3].map(h => [ex, fy + h, ez]);
+  const sr = bbox(-13, -5, 7, 17);
+  const server = { ...sr, y0: fy + 1, y1: fy + 3 };
   return {
     def, x: x0, z: z0, y: fy + 1, front,
     leaderPos: at(-11, 12), trainerPos: at(-6, -6), trainerPositions: [at(-6, -6), at(8, 6)],
     protect: [{ ...pr, y0: 1, y1: WORLD_H - 1 }], // everything: lasers, switches, buttons, roof
     area: { ...inner, y0: fy, y1: fy + 5 },
-    rooms, fy,
+    rooms, fy, exit, server,
   };
 }
 
@@ -245,6 +255,8 @@ export class MazeLive {
     this.phase = gym.rooms.map(() => 0); // 0 = red on, 1 = blue on
     this.friend = gym.rooms.map(() => false);
     this.acc = 0;
+    this.open = false; // the exit door (T23.5)
+    this.exitIds = (gym.exit || []).map(c => game.world.get(...c)); // the wall it was built as (wool and a glass window)
     gym.rooms.forEach((_, i) => this.apply(i));
   }
 
@@ -289,10 +301,28 @@ export class MazeLive {
     return block.id === B.RESET_BUTTON && this.roomOfReset(block) >= 0 ? `Reset button · ${how} to reset the room` : null;
   }
 
+  // The exit door is open for a player who has the badge or is in the server room, so it is a way out, never a way in.
+  inServer() {
+    const p = this.game.player?.pos, b = this.gym.server;
+    if (!p || !b) return false;
+    const x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+    return x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && y >= b.y0 - 1 && y <= b.y1;
+  }
+
+  updateExit() {
+    if (!this.gym.exit) return;
+    const inside = this.inServer();
+    const open = inside || !!this.game.badges?.includes(this.gym.def.id);
+    if (open !== this.open && open && inside) this.game.ui?.toast('The exit door is open: this way out!');
+    this.open = open;
+    this.gym.exit.forEach(([x, y, z], i) => this.cells.want(x, y, z, open ? B.AIR : this.exitIds[i]));
+  }
+
   update(dt) {
     this.acc += dt;
     if (this.acc >= 0.25) {
       this.acc = 0;
+      this.updateExit();
       const others = this.game.mp?.active ? [...this.game.mp.others.values()] : [];
       this.gym.rooms.forEach((room, i) => {
         const on = others.some(a => a.pos && room.pads.has(`${Math.floor(a.pos.x)},${Math.floor(a.pos.z)}`) && Math.abs(a.pos.y - (this.gym.fy + 1)) < 0.6);
