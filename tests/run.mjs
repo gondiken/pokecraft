@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import { serve, launch, Checks } from './helpers.mjs';
 
 const FAST = ['roster', 'seventh', 'four-types', 'bone-alien', 'icon', 'blocks', 'map'];
-const LIMIT_MIN = { 'treasure-vault': 20, 'clock-tower': 20, 'hidden-hill': 15, 'firewall-maze': 20, 'big-map': 15, champion: 30, caves: 25, 'old-saves': 25, 'new-gyms': 25, fx: 25, moves: 25 };
+const LIMIT_MIN = { 'treasure-vault': 20, 'clock-tower': 20, 'hidden-hill': 15, 'firewall-maze': 20, 'big-map': 15, champion: 30, caves: 25, 'old-saves': 25, 'new-gyms': 25, fx: 25, moves: 25, gym: 25 };
 
 const args = process.argv.slice(2);
 const skip = new Set(), only = [];
@@ -42,6 +42,8 @@ for (const name of specs) {
     ]);
   } catch (e) {
     t.ok(false, `crashed: ${e.message.split('\n')[0]}`);
+    // a crashed or timed-out spec leaves its pages running; close them so the next specs get the browser to themselves
+    for (const c of browser.contexts()) await c.close().catch(() => {});
   }
   clearTimeout(timer);
   const secs = Math.round((Date.now() - started) / 1000);

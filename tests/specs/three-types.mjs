@@ -190,7 +190,7 @@ export default async function ({ browser, base, t }) {
         const id = rowsIds[row][i];
         const img = new Image();
         img.src = portrait(id, W, H);
-        await img.decode();
+        await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 3000))]); // decode() can hang in a busy headless browser
         ctx.drawImage(img, i * W, row * (H + LABEL));
         ctx.fillText(S.SPECIES[id].name, i * W + W / 2, row * (H + LABEL) + H + 18);
         singles[id] = portrait(id, 480, 400);

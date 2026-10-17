@@ -85,7 +85,7 @@ export default async function ({ browser, base, t }) {
       const url = portrait(ids[i], W, H);
       const img = new Image();
       img.src = url;
-      await img.decode();
+      await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 3000))]); // decode() can hang in a busy headless browser
       ctx.drawImage(img, (i % 4) * W, Math.floor(i / 4) * H);
       singles[ids[i]] = portrait(ids[i], 480, 400);
     }

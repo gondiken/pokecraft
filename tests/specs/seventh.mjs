@@ -126,7 +126,7 @@ export default async function ({ browser, base, t }) {
       for (let i = 0; i < ids.length; i++) {
         const img = new Image();
         img.src = portrait(ids[i], W, H);
-        await img.decode();
+        await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 3000))]); // decode() can hang in a busy headless browser
         const x = (i % COLS) * W, y = Math.floor(i / COLS) * (H + LABEL);
         ctx.drawImage(img, x, y);
         ctx.fillText(S.SPECIES[ids[i]].name, x + W / 2, y + H + 18);
