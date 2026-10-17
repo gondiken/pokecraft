@@ -885,9 +885,9 @@ Done when: a `missions` spec covers each mission kind (the co-op boss via `openP
 ### T30 · Hide and seek (size: M)
 
 A play-together game: one player hides (a 60-second head start, the seeker's screen goes dark), the seeker
-`openPair` plays a round.
 gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
 small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
+`openPair` plays a round.
 
 ### T30.5 · Homes are every type they qualify for (size: M, after wave 9)
 
