@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 9 (T24–T25: one shared world when playing together), then the backlog below.
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Next: wave 8.5 (T23.5: a way out of the Firewall Maze), then wave 9 (T24–T25: one shared world when playing together), then the backlog below.
 
 ## How to run this (multi-agent)
 
@@ -57,6 +57,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 8a ✅ | T20 Treasure blocks · T21 Cozy and Treasure types | World/blocks vs. species data |
 | 8b ✅ | T22 Homes | Needs 8a |
 | 8c ✅ | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
+| 8.5 | T23.5 Firewall Maze exit (bug fix) | Small; before T24, which changes the same `MazeLive` |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -751,6 +752,39 @@ Done when: the gym spec beats both (the Cozy Gym in a test home, including the "
 the three keys found and the vault opened), the Tower refuses with 25 badges and battles with 27,
 and `old-saves`, `champion`, `new-gyms`, `multiplayer` pass. README (gyms, homes, types) and
 CLAUDE.md updated.
+
+---
+
+## Wave 8.5 · Firewall Maze bug fix (owner report, 2026-10-17)
+
+### T23.5 · A way out of the Firewall Maze (size: S)
+
+**The bug:** after beating Leader Ada the owner was stuck in the maze. `solveRoom` (and the
+`firewall-maze` spec) only checks each laser room from its entry (row 0) to its exit (row 8); nobody
+checked walking back. Walking backwards alone, **room 2 and room 3 are traps** in every laser state
+(room 1 is fine in the state you leave it in): in room 3 you come back in with blue on, the only red
+switch you can reach changes nothing, and the blue switch is behind a blue laser. Only the purple
+friend lane gets you out, and only while another player stands on a purple pad of that room (either
+pad counts, so a visitor standing next to you works). Reloading doesn't help (lasers reset to red on,
+still stuck) and the gym is protected, so blocks can't be broken. The only solo way out is losing a
+battle (back to spawn).
+
+**Fix:**
+- **An exit in the server room** back to the front of the gym (outside the maze), so nobody walks
+  back through the rooms. It must not be a way **in** that skips the rooms: e.g. a door in the outer
+  wall that opens (`setLive`, per player, like the Clock Tower doors) only for a player who has
+  beaten the leader or is standing inside the server room, or an exit pad in the server room that
+  moves you to the front door. Kid-friendly wording on it ("Exit" sign / toast "This way out!").
+  Its blocks stay inside the slot box and `protect`; if the building's blocks change, bump
+  `WORLD_VERSION` and re-measure what `old-saves`/`big-map` check.
+- **A backwards check in the spec:** `solveRoom` (or a helper next to it) also walks every room from
+  the exit row to the entry row; the spec asserts the player can always leave the gym alone from
+  any reachable spot (through the new exit or backwards), so a trap like this can't come back.
+- The rooms stay as they are (still solvable forwards alone with 1/2/3 presses, no trap).
+
+Done when: `firewall-maze` has the backwards/exit check and a test that beats the leader and walks
+out alone; `big-map`, `old-saves` and `gym` pass. README gym list mentions the exit if it changes how
+the gym is played. Do it before T24 (both touch `MazeLive`).
 
 ---
 
