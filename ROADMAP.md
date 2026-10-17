@@ -902,8 +902,11 @@ small score. Camo creatures nearby may "help" by being decoys. Done when: a `hid
 
 Owner likes these, but not now: **gifts** (give a friend blocks or a Capture Cube, arrives as a
 present box) and **trading** between players, **home helpers** (creatures left at home do jobs: fire keeps
-the fireplace lit, grass grows flowers), **eggs and raising creatures**, **daily challenges**, **creature helpers** (fire lights lamps, rock digs
-faster, sound reveals hidden ore), **music blocks**, **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+the fireplace lit, grass grows flowers), **eggs and raising creatures** (ideas still open), **creature helpers** (fire lights lamps, rock digs
+faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+
+**Rare mission blocks:** a few new rare blocks you can only get by finishing Champion missions (T29),
+later used for something special (to be decided).
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
 Realtime path for play-together isn't covered by automated tests.
