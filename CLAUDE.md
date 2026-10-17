@@ -285,11 +285,11 @@ Key ideas:
   `blocks.js` if it gets a gym. Also add `TRAVEL` / `IMPACT` / `FX_COLORS` entries in `fxrecipes.js` and an `fx:<type>` sound in `sound.js` (the `fx` spec checks both). A new signature move needs a `SIG` entry. Remember the README tables.
 - Saves also have `seen` / `caught` (species id lists for the Creature Book). `Battle.refresh()` marks seen, a catch marks caught, and `snapshot()`/`Book.open()` call `book.syncTeam()` (team + box = caught), which covers evolution and old saves.
 - Moves (`MOVES` in species.js): `fx.kind` is heal / raise / lower / flinch / sleep / multi / recoil; `sure`, `priority`,
-  `sig` are flags. Ids are saved, names are display only. Per-battle stat steps and sleep live in `battle.modMap`
+  `sig` are flags. T24: multi-hit moves hit 1-5 times (`HITS_1_5` weights, `multiHits(fx, r)` from one draw; Thousand Cranes 3-5 uniform); sleep = `mods.sleep` turns left (2 or 3) + `mods.justWoke` (one free turn), a sleeper takes x1.25 (`takenFactor`), a multi-hit 3rd hit wakes it (`wakeUp`, `fallAsleep`, `catchChance` in battle.js), `moveInfo(id)` also returns `note`; duel `VERSION` is 8. Ids are saved, names are display only. Per-battle stat steps and sleep live in `battle.modMap`
   (never saved, cleared when a creature comes in). `c.learned` lists moves already offered; `gainXp(c, xp, { ask: true })`
   returns `{ learn }` messages for `Battle.askForget` (full move list), and also offers one older move per level-up
   (old saves: `OLD_MOVE_IDS` count as offered). Duel draw order in `useMove`: hit, number of hits (multi), crit, damage
-  roll, effect chance (moves with `chance`); nothing may branch on `side` before a draw. `duel.js` `VERSION` must be
+  roll, effect chance (moves with `chance`), sleep length (6th, whenever a sleep effect lands); nothing may branch on `side` before a draw. `duel.js` `VERSION` must be
   bumped when battle rules change. Never name a move like a sound effect in `sound.js` (`useMove` plays `sound.play(moveId)`).
 - Pointer lock: with a mouse the browser only lets the game capture the mouse after a click.
   That's why battles end with a "Continue exploring" button and the pause screen exists.

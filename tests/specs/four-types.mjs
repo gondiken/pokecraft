@@ -153,7 +153,7 @@ export default async function ({ browser, base, t }) {
   const missing = r.problems;
   t.ok(r.colors >= 23, `at least 23 types in TYPE_COLORS (${r.colors})`);
   t.ok(!missing.length, `four-types data, chart, moves, species and models ${missing.join('; ')}`);
-  t.ok(r.confetti.includes('hits 2 to 4 times'), `Confetti text: ${r.confetti}`);
+  t.ok(r.confetti.includes('hits 1 to 5 times'), `Confetti text: ${r.confetti}`);
   t.ok(!r.sigs.length, `Kitegale, Slimperor, Lumitower and Origrane learn their special at 30 ${r.sigs.join(', ')}`);
   t.ok(r.kiteling, 'a Lv 28 Kiteling knows Tornado Spin');
   t.ok(r.mind === 7, `Mind still has 7 creatures (${r.mind})`);

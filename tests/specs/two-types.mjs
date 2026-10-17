@@ -193,7 +193,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.oldPairs === OLD_CHART.length, `the old chart still has ${OLD_CHART.length} non-1 pairs (${r.oldPairs})`);
   t.ok(r.infos.hotcocoa.includes('heals you'), `Hot Cocoa text: ${r.infos.hotcocoa}`);
   t.ok(r.infos.bedtimestory.includes('puts the foe to sleep'), `Bedtime Story text: ${r.infos.bedtimestory}`);
-  t.ok(r.infos.pillowfight.includes('hits 2 to 4 times') && r.infos.gemtoss.includes('hits 2 to 4 times'), `Pillow Fight / Gem Toss text: ${r.infos.pillowfight} | ${r.infos.gemtoss}`);
+  t.ok(r.infos.pillowfight.includes('hits 1 to 5 times') && r.infos.gemtoss.includes('hits 1 to 5 times'), `Pillow Fight / Gem Toss text: ${r.infos.pillowfight} | ${r.infos.gemtoss}`);
   t.ok(r.infos.bling.includes("lowers the foe's attack"), `Bling! text: ${r.infos.bling}`);
   t.ok(!r.sigs.length, `Dozeram and Crownguard learn their special at 30 ${r.sigs.join(', ')}`);
   t.ok(r.bts, 'a Lv 20 Snoozebear knows Bedtime Story');

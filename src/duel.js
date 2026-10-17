@@ -7,7 +7,7 @@ import { cleanTraits } from './traits.js';
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
-const VERSION = 7; // bump when the battle rules change, so players on different versions don't battle
+const VERSION = 8; // wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump)
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])] }));
