@@ -2334,21 +2334,22 @@ export function buildModel(species) {
       if (o.isMesh) { o.material.transparent = true; o.material.opacity = 0.82; }
     });
   }
-  // Treasure creatures sparkle all the time: three glints twinkle in turn at spots around the body.
+  // Treasure creatures sparkle all the time: SPARKLES glints twinkle in turn at spots around the body. They are unlit
+  // (MeshBasic), so they shine just as bright at night and in dark caves.
   if (sp.type === 'treasure') {
     const bb = new THREE.Box3().setFromObject(root);
     const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
     parts.sparkle = [];
-    for (let k = 0; k < 3; k++) {
-      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: new THREE.Color(0xfff2b0), side: THREE.DoubleSide });
-      const g = new THREE.Mesh(sparkleGeometry(0.16), mat);
+    for (let k = 0; k < SPARKLES; k++) {
+      const mat = new THREE.MeshBasicMaterial({ color: k % 2 ? 0xffffff : 0xfff2b0, side: THREE.DoubleSide });
+      const g = new THREE.Mesh(sparkleGeometry(0.26), mat);
       const spots = [0, 1, 2].map(j => {
-        const a = k * 2.1 + j * 2.4, h = 0.3 + 0.25 * ((k + j * 2) % 3);
-        return new THREE.Vector3(c.x + Math.sin(a) * (size.x / 2 + 0.04), bb.min.y + size.y * h, c.z + Math.cos(a) * (size.z / 2 + 0.04));
+        const a = k * 1.3 + j * 2.4, h = 0.2 + 0.2 * ((k + j * 2) % 4);
+        return new THREE.Vector3(c.x + Math.sin(a) * (size.x / 2 + 0.06), bb.min.y + size.y * h, c.z + Math.cos(a) * (size.z / 2 + 0.06));
       });
       g.position.copy(spots[0]);
       root.add(g);
-      parts.sparkle.push({ g, spots, phase: k * 0.55, period: 1.5 + k * 0.3 });
+      parts.sparkle.push({ g, spots, phase: k * 0.37, period: 1.1 + (k % 3) * 0.2 });
     }
   }
   root.scale.setScalar(m.scale);
@@ -2356,6 +2357,9 @@ export function buildModel(species) {
   group.userData.species = species;
   return group;
 }
+
+// Treasure sparkle: how many glints, and how long one twinkle lasts (s).
+const SPARKLES = 5, SPARKLE_TIME = 0.6;
 
 // Procedural idle/walk animation.
 export function animateModel(group, t, moving) {
@@ -2385,8 +2389,8 @@ export function animateModel(group, t, moving) {
   for (const r of p.rainbow || []) r.mat.color.setHSL((r.offset + t * 0.15) % 1, 0.75, 0.62);
   for (const s of p.sparkle || []) {
     const u = (t + s.phase) / s.period, n = Math.floor(u);
-    const k = ((u - n) * s.period) / 0.45; // each twinkle lasts 0.45 s of its period
-    const a = k < 1 ? Math.sin(k * Math.PI) : 0;
+    const k = ((u - n) * s.period) / SPARKLE_TIME; // each twinkle lasts SPARKLE_TIME s of its period
+    const a = k < 1 ? Math.sin(k * Math.PI) * 1.25 : 0;
     s.g.visible = a > 0.03;
     if (!s.g.visible) continue;
     s.g.position.copy(s.spots[((n % 3) + 3) % 3]);

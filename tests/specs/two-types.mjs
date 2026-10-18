@@ -158,7 +158,7 @@ export default async function ({ browser, base, t }) {
           // 5. Sparkle: every Treasure model twinkles, nobody else.
           const sp = m.userData.parts.sparkle;
           if (type === 'treasure') {
-            if (sp?.length !== 3) bad(`${id}: ${sp?.length} sparkles (want 3)`);
+            if (sp?.length !== 5) bad(`${id}: ${sp?.length} sparkles (want 5)`);
             else {
               const before = sp.map(s => s.g.position);
               const vis = sp.map(() => 0); let any = 0, steps = 0;
