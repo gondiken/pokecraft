@@ -95,8 +95,9 @@ export default async function ({ browser, base, t }) {
   const mat = await A.evaluate(build, cozyHouse);
   await B.evaluate(build, cozyHouse);
   await A.evaluate(([mat]) => {
-    const g = window.pokecraft, h = g.homes.place(...mat);
-    g.homes.choose(h, 'cozy');
+    const g = window.pokecraft;
+    window.__sentHomes = []; const sh = g.mp.sendHome.bind(g.mp); g.mp.sendHome = r => { window.__sentHomes.push(r); return sh(r); };
+    g.homes.place(...mat);
     for (const id of ['snugbun', 'purrmit', 'pillowlamb']) g.book.caught.add(id);
     g.player.pos.set(mat[0] + 0.5, mat[1] + 1, mat[2] + 5.5);
   }, [mat]);
@@ -110,6 +111,10 @@ export default async function ({ browser, base, t }) {
   await B.waitForFunction(() => { const g = window.pokecraft, h = g.homes.worldOwnerHome(), r = h?.report, l = g.npcs.list.filter(n => n.gym?.def.id === 'cozy'); return !!r?.inside && l.length === 3 && l.every(n => !n.away); }, null, { timeout: 60000, polling: 200 }).catch(() => {});
   t.ok(await peopleIn(A), 'the host sees the Cozy Gym people inside their home');
   t.ok(await peopleIn(B), 'the visitor sees the Cozy Gym people inside the host\'s home');
+  // T30.5: no type in the message; the visitor works out the same types from the same blocks
+  const typesA = await A.evaluate(() => ({ sent: window.__sentHomes.length, noType: !window.__sentHomes.some(r => 'type' in r), types: window.pokecraft.homes.mine().types.join() }));
+  const typesB = await B.evaluate(() => window.pokecraft.homes.worldOwnerHome()?.types.join());
+  t.ok(typesA.sent > 0 && typesA.noType && typesA.types === 'cozy' && typesB === 'cozy', `the home message has no type, both browsers say cozy (${JSON.stringify(typesA)} ${typesB})`);
   const guideB = await B.evaluate(async () => { // the arrow follows the nearest unbeaten gym: leave only the Cozy Gym
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     window.__oldBadges = g.badges; g.badges = GYMS.map(x => x.id).filter(id => id !== 'cozy');

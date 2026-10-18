@@ -106,7 +106,6 @@ WHERE.home = (g, game) => {
       if (!s.movedIn) {
         if (!s.owner) return { text: () => `Next: ${n} · it moves into your friend's cozy home` };
         if (!h) return { text: () => `Next: ${n} · build a cozy home! Put a Doormat in the floor.` };
-        if (!s.ofType) return { ...at, text: (a, d) => `Next: ${n} · make your home a ${s.type.name} ${a} ${d}m` };
         if (!s.ready) return { ...at, text: (a, d) => `Next: ${n} · make your home cozy ${a} ${d}m` };
         return { ...at, text: (a, d) => `Next: ${n} · catch ${s.need} cozy creatures (${Math.min(s.caught, s.need)}/${s.need}) ${a} ${d}m` };
       }

@@ -889,7 +889,7 @@ gets a hot/cold compass (like the key compass). Found = touch or tap the hider. 
 small score. Camo creatures nearby may "help" by being decoys. Done when: a `hide-seek` spec via
 `openPair` plays a round.
 
-### T30.5 · Homes are every type they qualify for (size: M, after wave 9)
+### T30.5 · Homes are every type they qualify for — DONE (plan plans/T30.5.md) (size: M, after wave 9)
 
 Owner request, 2026-10-17. Today you pick ONE type on the Doormat, and switching from Cozy to Treasure makes the
 Cozy Gym's people shiver ("Brr"), which a child can't connect to the menu choice. New rule: **there is no type to

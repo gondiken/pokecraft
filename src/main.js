@@ -444,9 +444,9 @@ function togglePanel(which = 'team') {
 const toggleTeam = () => togglePanel('team');
 const toggleBlocks = () => togglePanel('blocks');
 const toggleBook = () => togglePanel('book');
-// T22: the home panel. game.openHome('choose' | 'home' | 'preview') opens it (or switches view when it is open).
+// T22: the home panel. game.openHome('types' | 'home' | 'preview') opens it (or switches view when it is open).
 game.openHome = view => {
-  game.homeUi.want = view ?? (game.homes.chooseTarget() && !game.homes.onMat?.type ? 'choose' : 'home');
+  game.homeUi.want = view ?? 'home'; // T30.5
   if (!game.ui.panelOpen) togglePanel('home');
   else if (game.ui.homeOpen) { game.homeUi.open(game.homeUi.want); game.homeUi.want = null; }
 };
@@ -1008,7 +1008,8 @@ function frame(now) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
       const under = game.world.get(fx, fy, fz);
       game.gymLive.stand(fx, fy, fz, under);
-      if (game.homes.stand(fx, fy, fz, under) && playing()) game.openHome('choose'); // T22: a new Doormat
+      const st = game.homes.stand(fx, fy, fz, under); // T30.5: no chooser; an orphan mat becomes your home
+      if (st && playing()) { if (st === 'orphan') game.homes.claim(fx, fy, fz); game.openHome('types'); }
     }
     game.homes.update(dt, p.pos);
     if (p.pos.y < -20) { p.pos.copy(game.spawnPoint); p.vel.set(0, 0, 0); }

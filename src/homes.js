@@ -1,5 +1,5 @@
 // T22: homes. findRoom (the room finder, knows no home type), Home (one record + its last report/result) and
-// HomeManager (game.homes: ownership, placing/choosing/removing, re-checks on edits, play-together messages).
+// HomeManager (game.homes: ownership, placing/claiming/removing, re-checks on edits, play-together messages).
 import { B, isSolid } from './blocks.js';
 import { HOME_TYPES } from './hometypes.js';
 import { sound } from './sound.js';
@@ -21,24 +21,28 @@ export { findRoom };
 /* --------------------------------- Home ---------------------------------- */
 
 export class Home {
-  constructor({ owner, name = '', x, y, z, type = null, gyms = [] }, game = null) {
-    Object.assign(this, { owner, name, x, y, z, type });
-    this.gyms = cleanGyms(gyms); // T23: gyms that moved in (kept when the mat moves or the type changes; gone with the record)
+  constructor({ owner, name = '', x, y, z, gyms = [] }, game = null) { // an old record's `type` is simply not read (T30.5)
+    Object.assign(this, { owner, name, x, y, z });
+    this.gyms = cleanGyms(gyms); // T23: gyms that moved in (kept when the mat moves; gone with the record)
     Object.defineProperty(this, 'game', { value: game, enumerable: false });
+    Object.defineProperty(this, 'fresh', { value: false, writable: true, enumerable: false }); // just placed: not saved, not sent
     this.report = null;  // findRoom's report (see homes.js findRoom)
-    this.result = null;  // HomeType.evaluate(report), or null while no type is chosen
+    this.results = {};   // { [typeId]: HomeType.evaluate(report) } for EVERY home type (T30.5)
+    this.types = [];     // ids of the finished types, in HOME_TYPES order
     this.world = null;
   }
 
-  get homeType() { return HOME_TYPES[this.type] ?? null; }
-  get finished() { return !!this.result?.finished; }
-  get full() { return !!this.result?.full; }
+  get finished() { return this.types.length > 0; }
+  is(id) { return this.types.includes(id); }
+  resultOf(id) { return this.results[id] ?? null; }
 
-  check(world = this.world) {
-    this.world = world;
-    this.report = findRoom(world, this.x, this.y, this.z);
-    this.result = this.homeType?.evaluate(this.report) ?? null;
+  judge(report) { // every HomeType, in HOME_TYPES order (tests fake a report through this)
+    this.report = report;
+    this.results = {};
+    for (const t of Object.values(HOME_TYPES)) this.results[t.id] = t.evaluate(report);
+    this.types = Object.keys(this.results).filter(id => this.results[id].finished);
   }
+  check(world = this.world) { this.world = world; this.judge(findRoom(world, this.x, this.y, this.z)); }
 
   // Inside columns (not the Doormat, not the door) with a solid floor and air at floor+1 and floor+2: [{ x, y: f+1, z }].
   freeCells() {
@@ -68,7 +72,7 @@ export class Home {
   }
 
   toSave() {
-    const o = { owner: this.owner, name: this.name, x: this.x, y: this.y, z: this.z, type: this.type };
+    const o = { owner: this.owner, name: this.name, x: this.x, y: this.y, z: this.z };
     if (this.gyms.length) o.gyms = [...this.gyms];
     return o;
   }
@@ -122,7 +126,7 @@ export class HomeManager {
     if (!rec || typeof rec !== 'object' || typeof rec.owner !== 'string' || !w) return null;
     const { x, y, z } = rec;
     if (![x, y, z].every(Number.isInteger) || !w.inBounds(x, y, z) || w.get(x, y, z) !== B.DOORMAT) return null;
-    return new Home({ owner: rec.owner, name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '', x, y, z, type: HOME_TYPES[rec.type] ? rec.type : null, gyms: rec.gyms }, this.game);
+    return new Home({ owner: rec.owner, name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '', x, y, z, gyms: rec.gyms }, this.game);
   }
 
   findRoom(x, y, z) { return findRoom(this.world, x, y, z); } // the room around a Doormat cell (specs)
@@ -132,10 +136,7 @@ export class HomeManager {
   mine() { return this.list.find(h => h.owner === this.playerId) ?? null; }
   at(x, y, z) { return this.list.find(h => h.x === x && h.y === y && h.z === z) ?? null; }
   worldOwnerHome() { return this.list.find(h => h.owner === this.worldOwner) ?? null; }
-  ready() { return this.list.filter(h => h.finished); } // creatures.env.homes()
-
-  // What the chooser would change: the Home on the mat you stand on, or its [x, y, z] when it is an orphan.
-  chooseTarget() { return this.onMat ?? this.matPos; }
+  ready() { return this.list.filter(h => h.finished); } // at least one type; // creatures.env.homes()
 
   onChange(fn) { this.listeners.push(fn); return () => { this.listeners = this.listeners.filter(f => f !== fn); }; }
   emit(home, what) { for (const fn of this.listeners) fn(home, what); }
@@ -147,8 +148,8 @@ export class HomeManager {
     return !!p && Math.hypot(p.x - home.x, p.z - home.z) <= range;
   }
 
-  // You placed a Doormat at (x, y, z): your home moves here (the old mat turns into Planks), and it is sent to everyone.
-  place(x, y, z) {
+  // You placed a Doormat at (x, y, z) (or claimed an orphan): your home moves here (the old mat turns into Planks), and it is sent to everyone.
+  place(x, y, z, how = 'placed') {
     const w = this.world, old = this.mine();
     const name = this.game.mp?.name ?? '';
     let home = this.at(x, y, z);
@@ -162,36 +163,24 @@ export class HomeManager {
       }
       what = 'moved';
     }
-    home = new Home({ owner: this.playerId, name, x, y, z, type: old?.type ?? null, gyms: old?.gyms }, this.game);
+    const before = old?.types ?? [];
+    home = new Home({ owner: this.playerId, name, x, y, z, gyms: old?.gyms }, this.game);
+    home.fresh = true;
     this.list.push(home);
     home.check(w); this.checks++;
     this.active = home;
     this.send(home);
-    this.say(what === 'moved' ? 'Your home moved here!' : 'A Doormat! Stand on it to choose what kind of home to make.');
-    this.emit(home, what);
+    this.say(what === 'moved' ? 'Your home moved here!' : how === 'claimed' ? 'This Doormat is your home now!'
+      : 'A Doormat! Your home is here. Stand on it to see what it can be.');
+    this.announce(home, before);
+    this.emit(home, what === 'moved' ? 'moved' : how);
     return home;
   }
 
-  // `target`: a Home or [x, y, z] of a Doormat. Claims an orphan mat; only the owner changes an owned home.
-  choose(target, type) {
-    if (!HOME_TYPES[type]) return false;
-    let home = target instanceof Home ? target : this.at(...target);
-    if (!home) {
-      const [x, y, z] = target;
-      if (this.world.get(x, y, z) !== B.DOORMAT) return false;
-      const old = this.mine();
-      if (old) this.list = this.list.filter(h => h !== old); // one home per owner: the old mat stays as it is
-      home = new Home({ owner: this.playerId, name: this.game.mp?.name ?? '', x, y, z, type: null }, this.game);
-      this.list.push(home);
-    } else if (home.owner !== this.playerId) return false;
-    home.type = type;
-    home.check(this.world); this.checks++;
-    this.active = home;
-    if (this.matPos && this.matPos[0] === home.x && this.matPos[1] === home.y && this.matPos[2] === home.z) this.onMat = home;
-    this.send(home);
-    this.emit(home, 'type');
-    this.announce(home, false);
-    return true;
+  // An orphan Doormat (no record) becomes your home (T30.5); null when it is not a free mat.
+  claim(x, y, z) {
+    if (this.world.get(x, y, z) !== B.DOORMAT || this.at(x, y, z)) return null;
+    return this.place(x, y, z, 'claimed');
   }
 
   // A 'home' message: replaces that owner's record (or the record at that spot).
@@ -205,7 +194,7 @@ export class HomeManager {
     home.check(this.world); this.checks++;
     if (gone.includes(this.active)) this.active = home.owner === this.playerId ? home : null;
     if (gone.includes(this.onMat)) this.onMat = home;
-    this.emit(home, before ? (before.type !== home.type ? 'type' : 'moved') : 'placed');
+    this.emit(home, before ? 'moved' : 'placed');
     return home;
   }
 
@@ -235,10 +224,9 @@ export class HomeManager {
       for (const h of [...this.dirty]) {
         this.dirty.delete(h);
         if (!this.list.includes(h)) continue;
-        const was = h.finished;
+        const before = h.types.slice();
         h.check(this.world); this.checks++;
-        if (was !== h.finished) { this.emit(h, h.finished ? 'finished' : 'unfinished'); this.announce(h, true); }
-        else this.emit(h, 'checked');
+        if (before.join() !== h.types.join()) { this.emit(h, 'types'); this.announce(h, before); } else this.emit(h, 'checked');
       }
     }
     const a = this.active;
@@ -253,24 +241,25 @@ export class HomeManager {
     this.game.save?.();
   }
 
-  // Toasts for your own home when it becomes ready or stops being ready.
-  announce(home, changed) {
+  // Toasts for your own home, near it, when a type starts or stops being true (the words are the HomeType's).
+  announce(home, before) {
     if (home.owner !== this.playerId || !this.near(home)) return;
-    const t = home.homeType;
-    if (home.finished && t) {
-      this.say(`Your ${t.name} is ready! ${t.name.split(' ')[0]} creatures may come to visit.`);
-      sound.play('doorchime');
-    } else if (changed && t) this.say('Your home needs fixing. Stand on the Doormat to see what is missing.');
+    const gained = home.types.filter(id => !before.includes(id)), lost = before.filter(id => !home.types.includes(id));
+    for (const id of gained) if (HOME_TYPES[id]) this.say(HOME_TYPES[id].doneText);
+    for (const id of lost) if (HOME_TYPES[id]) this.say(HOME_TYPES[id].lostText);
+    if (gained.length) sound.play('doorchime');
   }
 
-  // Called every frame the player stands on the ground, with the block under the feet. Returns true when the home
-  // chooser should open (you just stepped on a Doormat that is new, or yours without a type): main.js opens it.
+  // Called every frame the player stands on the ground, with the block under the feet. Returns 'orphan' (a Doormat
+  // nobody owns: main.js claims it), 'fresh' (your own new mat: the panel opens) or false.
   stand(x, y, z, id) {
     if (id !== B.DOORMAT) { this.onMat = null; this.matPos = null; return false; }
     if (this.matPos && this.matPos[0] === x && this.matPos[1] === y && this.matPos[2] === z) return false;
     this.matPos = [x, y, z];
     this.onMat = this.at(x, y, z);
-    if (this.onMat) this.active = this.onMat;
-    return !this.onMat || (this.onMat.type === null && this.onMat.owner === this.playerId);
+    if (!this.onMat) return 'orphan';
+    this.active = this.onMat;
+    if (this.onMat.fresh && this.onMat.owner === this.playerId) { this.onMat.fresh = false; return 'fresh'; }
+    return false;
   }
 }

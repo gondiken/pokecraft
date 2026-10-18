@@ -1,12 +1,13 @@
 // T22: the home UI (game.homeUi): meter in the HUD, red glow + floor outline in the world, the home panel
-// (chooser / home / preview) and the spinning example model. Everything here reads game.homes (active home,
-// result, report) and HOME_TYPES; there are no home type ids in this file.
+// ('What can my home be?' / home / preview) and the spinning example model. Everything here reads game.homes (active home,
+// results, report) and HOME_TYPES (a home is every type it qualifies for, T30.5); there are no home type ids in this file.
 //
 // Contract used by the rest of the game (keep these names):
-//   homeUi.open(view)   view = 'choose' | 'home' | 'preview' (default 'home'); called by ui.openPanel('home') AFTER #home is shown
+//   homeUi.open(view, typeId)   view = 'types' | 'home' | 'preview' (default 'home'; typeId only for 'preview'; 'choose' = 'types'); called by ui.openPanel('home') AFTER #home is shown
 //   homeUi.close()      called by ui.closePanel() (always, whatever is open); stop rendering the preview here
 //   homeUi.update(now)  every frame from main.js frame() (now = ms); meter / glow / pulse / preview render
 //   homeUi.state()      for tests: { view, yaw, pitch, zoom, blinkOn, missing: [...] }
+//   homeUi.sparkles()   for tests: [{ owner, x, y, z, count }] (homes that sparkle right now)
 //   homeUi.want         view that game.openHome(view) asked for before the panel opened (read it in open(), default 'home')
 // DOM: #home-meter (in #hud, hidden by default), #home (overlay, .panel inside), #home-body (render into it), #home-close.
 import * as THREE from 'three';
@@ -14,6 +15,7 @@ import { BLOCKS, TILE_COUNT, isOccluder, drawBlockIcon } from './blocks.js';
 import { FACES } from './world.js';
 import { HOME_TYPES } from './hometypes.js';
 import { TYPE_COLORS } from './species.js';
+import { sparkleGeometry } from './shapes.js';
 
 const GLOW_MAX = 64;
 const el = (tag, cls = '', attrs = {}, ...kids) => {
@@ -69,67 +71,107 @@ export function blockMesh(blocks, texture) {
 
 /* ------------------------------- the meter ------------------------------- */
 
-// What the room report says, as one short line. Generic: reads checks / holes / result only.
+const NO_CHECKS = { walls: false, roof: null, size: null, floor: null };
+
+// A type is on the meter when it is done or has started (its rule or any feature has have > 0).
+const started = res => res.finished || (res.rule?.have ?? 0) > 0 || res.features.some(f => f.have > 0);
+const shownTypes = home => Object.values(HOME_TYPES).filter(t => home.resultOf(t.id) && started(home.resultOf(t.id)));
+const countText = f => `${f.have}/${f.need}`;
+
+// How far along a started type is (for the hint): rule done counts 1, then done/need.
+const progress = res => (res.rule?.done ? 1 : 0) + res.done / Math.max(1, res.need);
+
+// What the room report says, as one short line. Generic: reads the report and the results only.
 export function hintFor(home) {
-  const r = home.report, res = home.result;
-  if (!res) return 'Choose what kind of home to make.';
+  const r = home.report, c = r?.checks ?? NO_CHECKS;
   if (!r?.found) return 'Put the Doormat inside, by the door.';
-  if (!res.room.walls) {
+  if (!c.walls) {
     if (!r.door) return 'Make a door: 1 or 2 wide, 2 high.';
     return r.holes.wall.length ? 'Close the red gaps in the walls.' : 'Close the walls all round.';
   }
-  if (res.room.roof === false) return 'Fill the red holes in the roof.';
-  if (res.room.size === 'small') return 'Make the room at least 8 by 8.';
-  if (res.room.floor === false) return 'Fill the red holes in the floor.';
-  if (res.room.roof == null || res.room.size == null) return 'Close the walls all round.';
-  if (res.rule && !res.rule.done) return `Needs: ${res.rule.name}.`;
-  const miss = res.features.filter(f => !f.done).map(f => f.name);
-  if (res.finished) return res.full ? 'All done! Creatures love it.' : `Ready! Add more for more fun: ${miss.join(', ')}.`;
-  return `Add more: ${miss.join(', ')}.`;
+  if (c.roof === false) return 'Fill the red holes in the roof.';
+  if (c.size === 'small') return 'Make the room at least 8 by 8.';
+  if (c.floor === false) return 'Fill the red holes in the floor.';
+  if (c.roof == null || c.size == null) return 'Close the walls all round.';
+  const done = home.types.map(id => HOME_TYPES[id]).filter(Boolean);
+  const open = shownTypes(home).filter(t => !home.is(t.id));
+  const next = open.sort((a, b) => progress(home.resultOf(b.id)) - progress(home.resultOf(a.id)))[0];
+  if (!done.length && !next) return 'What can it be? Open "What can my home be?" to see.';
+  if (!next && done.every(t => home.resultOf(t.id).full)) return 'All done! Creatures love it.';
+  const parts = [];
+  if (done.length) parts.push(`It is ${done.map(t => `a ${t.name.split(' ')[0]} home`).join(' and ')}!`);
+  if (next) {
+    const res = home.resultOf(next.id);
+    if (res.rule && !res.rule.done) parts.push(`${next.name}: needs ${res.rule.name}.`);
+    else parts.push(`Add more for a ${next.name}: ${res.features.filter(f => !f.done).map(f => (res.show === 'counter' ? `${f.name} (${countText(f)})` : f.name)).join(', ')}.`);
+  }
+  return parts.join(' ');
 }
 
 function meterKey(game, home) {
-  const r = home.report, res = home.result;
-  return JSON.stringify([home.owner, home.name, home.type, game.playerId, r?.found, r?.size, r?.doorRuns,
-    res && [res.room, res.rule && [res.rule.done, res.rule.have, res.rule.need],
-      res.features.map(f => [f.done, f.have, f.need]), res.finished, res.full]]);
+  const r = home.report;
+  return JSON.stringify([home.owner, home.name, game.playerId, r?.found, r?.size, r?.doorRuns, r?.checks, home.types,
+    Object.values(HOME_TYPES).map(t => { const s = home.resultOf(t.id); return s && [t.id, s.rule && [s.rule.have, s.rule.need], s.features.map(f => [f.have, f.need]), s.finished, s.full]; })]);
+}
+
+// One type's progress: [emoji (+ name when big)] [rule] [features: hearts or "have/need"] [tick when done]. Meter and cards use it.
+function typeLine(atlas, t, res, { big = false, name = true } = {}) {
+  const icon = id => { const c = drawBlockIcon(atlas, id, 48); c.className = 'bi'; return c; };
+  const line = el('div', `hm-line${res.finished ? ' done' : ''}`, { 'data-type': t.id },
+    name ? el('span', 'hm-tname', { text: big ? `${t.emoji} ${t.name}` : t.emoji }) : null);
+  if (res.rule) {
+    line.append(el('div', `feat rule${res.rule.done ? ' done' : ''}`, { 'data-key': res.rule.key },
+      icon(res.rule.icon), el('span', `badge ${res.rule.done ? 'ok' : 'bad'}`, { text: res.rule.done ? '✅' : '❌' }),
+      el('span', 'count', { text: countText(res.rule) }), big ? el('span', 'lbl', { text: res.rule.name }) : null));
+  }
+  for (const f of res.features) {
+    const under = res.show === 'counter' ? el('span', 'count', { text: countText(f) }) : el('span', `heart${f.done ? ' on' : ''}`, { text: '♥' });
+    line.append(el('div', `feat${f.done ? ' done' : ''}`, { 'data-key': f.key }, icon(f.icon), under, big ? el('span', 'lbl', { text: f.name }) : null));
+  }
+  if (res.finished) line.append(el('span', 'hm-tick', { text: '✅' }));
+  return line;
 }
 
 function meterEl(game, atlas, home, { big = false } = {}) {
   const root = el('div', `hm${big ? ' big' : ''}`);
   const mine = home.owner === game.playerId;
   const who = mine ? 'Your home' : `${home.name || 'A friend'}'s home`;
-  const type = home.homeType, res = home.result;
-  if (!type || !res) {
-    root.append(el('div', 'hm-title', {}, el('b', '', { text: who })), el('div', 'hm-sub', { text: mine ? 'Tap to choose a home type' : 'No type yet' }));
-    return root;
-  }
-  if (res.finished) root.classList.add('ready');
-  root.append(el('div', 'hm-title', {}, el('b', '', { text: who }), el('span', 'hm-type', { text: type.name }),
-    res.finished ? el('span', 'hm-ready', { text: '✔ Ready!' }) : null));
-  const row = el('div', 'hm-row');
+  if (home.finished) root.classList.add('ready');
+  root.append(el('div', 'hm-title', {}, el('b', '', { text: who }),
+    ...home.types.map(id => HOME_TYPES[id]).filter(Boolean).map(t => el('span', 'hm-type', { text: `${t.emoji} ${t.name}` }))));
+  const row = el('div', 'hm-row room');
   const chk = (cls, icon, label, v, extra = '') => {
     const st = v === true || v === 'ok' ? 'ok' : v === false || v === 'small' ? 'bad' : 'unk';
     return el('div', `chk ${cls} ${st}`, {}, el('span', 'ico', { text: icon }), el('span', 'badge', { text: st === 'ok' ? '✅' : st === 'bad' ? '❌' : '❔' }),
       extra ? el('span', 'sub', { text: extra }) : null, big ? el('span', 'lbl', { text: label }) : null);
   };
-  const size = home.report?.size;
-  row.append(chk('walls', '🧱', 'Walls', res.room.walls), chk('roof', '🏠', 'Roof', res.room.roof),
-    chk('size', '📏', 'Size', res.room.size, size ? `${size[0]}x${size[1]}` : ''));
-  const icon = id => { const c = drawBlockIcon(atlas, id, 48); c.className = 'bi'; return c; };
-  if (res.rule) {
-    row.append(el('div', `feat rule${res.rule.done ? ' done' : ''}`, { 'data-key': res.rule.key },
-      icon(res.rule.icon), el('span', `badge ${res.rule.done ? 'ok' : 'bad'}`, { text: res.rule.done ? '✅' : '❌' }),
-      el('span', 'count', { text: `${res.rule.have}/${res.rule.need}` }), big ? el('span', 'lbl', { text: res.rule.name }) : null));
-  }
-  for (const f of res.features) {
-    const under = res.show === 'counter'
-      ? el('span', 'count', { text: `${f.have}/${f.need}` })
-      : el('span', `heart${f.done ? ' on' : ''}`, { text: '♥' });
-    row.append(el('div', `feat${f.done ? ' done' : ''}`, { 'data-key': f.key }, icon(f.icon), under, big ? el('span', 'lbl', { text: f.name }) : null));
-  }
+  const c = home.report?.checks ?? NO_CHECKS, size = home.report?.size;
+  row.append(chk('walls', '🧱', 'Walls', c.walls), chk('roof', '🏠', 'Roof', c.roof), chk('size', '📏', 'Size', c.size, size ? `${size[0]}x${size[1]}` : ''));
   root.append(row);
+  for (const t of shownTypes(home)) root.append(typeLine(atlas, t, home.resultOf(t.id), { big }));
   return root;
+}
+
+/* --------------------------- sparkle on treasure homes --------------------------- */
+
+// A home whose type has `sparkle` glitters (never a block, never saved or sent): one InstancedMesh of 10 four-point
+// stars per such home within SPARK_RANGE, twinkling like the creature sparkle.
+const SPARK_GEO = sparkleGeometry(0.22);
+const SPARK_MAT = new THREE.MeshBasicMaterial({ color: 0xfff2b0, side: THREE.DoubleSide });
+const SPARK_RANGE = 32, SPARK_N = 10;
+function sparkSpots(report) { // inside cells next to the walls, 10 evenly spread, moved a bit towards the wall
+  const inside = new Set(report.inside.map(([x, z]) => `${x},${z}`)), cells = [];
+  for (const [x, z] of report.inside) {
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (!inside.has(`${x + dx},${z + dz}`)) { cells.push({ x, z, dx, dz }); break; }
+    }
+  }
+  cells.sort((a, b) => (a.x * 1000 + a.z) - (b.x * 1000 + b.z));
+  const n = Math.min(SPARK_N, cells.length);
+  return Array.from({ length: n }, (_, i) => {
+    const c = cells[Math.floor(i * cells.length / n)];
+    return [c.x + 0.5 + c.dx * 0.42, report.f + 1.4 + (i * 7 % 3) * 0.7, c.z + 0.5 + c.dz * 0.42];
+  });
 }
 
 /* --------------------------------- the UI --------------------------------- */
@@ -204,6 +246,38 @@ export function createHomeUi(game, { atlas, texture }) {
     outline.material.opacity = 0.5 + pulse;
   }
 
+  /* ---- sparkle (T30.5) ---- */
+  const sparks = new Map(); // home -> { mesh, spots, report }
+  const sm = new THREE.Matrix4(), sq = new THREE.Quaternion(), sp = new THREE.Vector3(), ss = new THREE.Vector3(), sz = new THREE.Vector3(0, 0, 1);
+  function updateSparkle(now) {
+    const pos = game.player?.pos, want = new Set();
+    if (pos && game.started) {
+      for (const h of game.homes.list) {
+        if (h.report?.found && Object.values(HOME_TYPES).some(t => t.sparkle && h.is(t.id)) && Math.hypot(pos.x - h.x, pos.z - h.z) <= SPARK_RANGE) want.add(h);
+      }
+    }
+    for (const [h, e] of sparks) if (!want.has(h)) { game.scene.remove(e.mesh); e.mesh.dispose?.(); sparks.delete(h); }
+    for (const h of want) {
+      let e = sparks.get(h);
+      if (!e) {
+        const mesh = new THREE.InstancedMesh(SPARK_GEO, SPARK_MAT, SPARK_N);
+        mesh.frustumCulled = false;
+        game.scene.add(mesh);
+        sparks.set(h, e = { mesh, spots: [], report: null });
+      }
+      if (e.report !== h.report) { e.report = h.report; e.spots = sparkSpots(h.report); e.mesh.count = e.spots.length; }
+      const t = now / 1000;
+      e.spots.forEach(([x, y, z], i) => {
+        const period = 1.5 + (i % 3) * 0.3, k = ((t + i * 0.37) % period) / 0.45;
+        const a = k < 1 ? Math.sin(k * Math.PI) : 0.001;
+        sq.setFromAxisAngle(sz, k < 1 ? k * 0.8 : 0);
+        sm.compose(sp.set(x, y, z), sq, ss.set(a, a, a));
+        e.mesh.setMatrixAt(i, sm);
+      });
+      e.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   /* ---- the small renderer (preview + chooser pictures), made on first use and kept ---- */
   let renderer = null, canvas = null;
   const scene = new THREE.Scene();
@@ -256,56 +330,49 @@ export function createHomeUi(game, { atlas, texture }) {
   /* ---- panel ---- */
   const ui = { atlas, texture, want: null };
   let drag = false; // a finger or the mouse is turning the model
-  let resumeAt = 0, lastNow = 0, lastDraw = 0, roofOn = false, panelKey = null, previewEl = null, previewType = null;
+  let resumeAt = 0, lastNow = 0, lastDraw = 0, roofOn = false, panelKey = null, previewEl = null, previewType = null, previewId = null;
 
   const viewHome = () => game.homes.active ?? game.homes.onMat ?? game.homes.mine();
-  const targetFor = () => game.homes.chooseTarget() ?? game.homes.mine(); // the mat you stand on, else your own home
   const closePanel = () => document.getElementById('home-close')?.click();
 
-  function renderChoose() {
-    const target = targetFor();
+  // 'What can my home be?': one card per type with its own progress and a house to look at. Nothing to pick.
+  function renderTypes() {
+    const home = viewHome();
+    panelKey = home ? meterKey(game, home) : 'none';
     const cards = el('div', 'hm-cards');
     for (const t of Object.values(HOME_TYPES)) {
       const col = TYPE_COLORS[t.creature] ?? '#888';
       const img = el('img', 'hm-pic', { alt: t.name, width: 240, height: 180 });
       img.src = picture(t);
-      cards.append(el('button', 'card hm-card', {
-        'data-type': t.id, type: 'button',
-        on: { click: () => {
-          const tg = targetFor();
-          if (!tg || !game.homes.choose(tg, t.id)) { game.ui.toast('Stand on your Doormat first!'); return; }
-          closePanel();
-          game.ui.toast(`This is your ${t.name} now!`);
-        } },
-      }, img, el('b', '', { text: t.name }), el('span', 'chip', { text: t.creature, style: `background:${col}` }), el('small', '', { text: t.blurb })));
+      const res = home?.resultOf(t.id);
+      cards.append(el('div', 'card hm-card', { 'data-type': t.id }, img,
+        el('b', '', { text: home?.is(t.id) ? `${t.emoji} ${t.name} ✅` : `${t.emoji} ${t.name}` }),
+        el('span', 'chip', { text: t.creature, style: `background:${col}` }), el('small', '', { text: t.blurb }),
+        res ? el('div', 'hm in-card', {}, typeLine(atlas, t, res, { big: true, name: false })) : null,
+        el('button', 'hm-show', { 'data-act': 'preview', 'data-type': t.id, type: 'button', on: { click: () => ui.open('preview', t.id) } }, '🏠 Show me a house')));
     }
-    body.replaceChildren(...[el('h2', '', { text: 'What kind of home?' }), cards,
-      target ? null : el('p', 'hm-hint', { text: 'Stand on a Doormat first.' })].filter(Boolean));
+    body.replaceChildren(...[el('h2', '', { text: 'What can my home be?' }),
+      home ? el('p', 'hm-hint', { text: hintFor(home) }) : el('p', 'hm-hint', { text: 'Put a Doormat in the floor to make a home. Find it in the Blocks panel.' }),
+      cards,
+      home ? el('div', 'hm-btns', {}, el('button', '', { 'data-act': 'back', type: 'button', on: { click: () => ui.open('home') } }, 'My home')) : null].filter(Boolean));
   }
 
   function renderHome() {
     const home = viewHome();
     panelKey = home ? meterKey(game, home) : 'none';
+    const typesBtn = el('button', 'primary', { 'data-act': 'types', type: 'button', on: { click: () => ui.open('types') } }, '✨ What can my home be?');
     if (!home) {
-      body.replaceChildren(el('h2', '', { text: 'Homes' }), el('p', 'hm-hint', { text: 'Put a Doormat in the floor to make a home. Find it in the Blocks panel.' }));
+      body.replaceChildren(el('h2', '', { text: 'Homes' }), el('p', 'hm-hint', { text: 'Put a Doormat in the floor to make a home. Find it in the Blocks panel.' }),
+        el('div', 'hm-btns', {}, typesBtn));
       return;
     }
-    const mine = home.owner === game.playerId;
-    const btns = el('div', 'hm-btns');
-    if (home.homeType) btns.append(el('button', 'primary', { 'data-act': 'preview', type: 'button', on: { click: () => ui.open('preview') } }, '🏠 Show me a house'));
-    if (mine) {
-      btns.append(el('button', '', {
-        'data-act': 'change', type: 'button',
-        on: { click: () => { ui.open('choose'); } },
-      }, home.homeType ? 'Change home type' : 'Choose a home type'));
-    }
-    body.replaceChildren(meterEl(game, atlas, home, { big: true }), el('p', 'hm-hint', { text: hintFor(home) }), btns);
+    body.replaceChildren(meterEl(game, atlas, home, { big: true }), el('p', 'hm-hint', { text: hintFor(home) }), el('div', 'hm-btns', {}, typesBtn));
   }
 
   // Failing room checks + the rule + features not done, of the home you are looking at (if it is the shown type).
   function missingKeys(home) {
-    const res = home?.result;
-    if (!res || !previewType || home.homeType !== previewType) return [];
+    const res = previewType && home?.resultOf(previewType.id);
+    if (!res) return [];
     const m = [];
     if (!res.room.walls) m.push('walls');
     if (res.room.roof === false) m.push('roof');
@@ -317,7 +384,7 @@ export function createHomeUi(game, { atlas, texture }) {
 
   function renderPreview() {
     const home = viewHome();
-    const type = home?.homeType ?? Object.values(HOME_TYPES)[0];
+    const type = HOME_TYPES[previewId] ?? Object.values(HOME_TYPES)[0];
     if (!type) { renderHome(); return; }
     previewType = type;
     ensureRenderer();
@@ -338,7 +405,7 @@ export function createHomeUi(game, { atlas, texture }) {
     roofBtn.addEventListener('click', () => { roofOn = !roofOn; roofBtn.textContent = roofOn ? '🏠 Roof: on' : '🏠 Roof: off'; applyVisibility(); });
     previewEl = el('div', 'hm-stage', {}, canvas);
     body.replaceChildren(el('h2', '', { text: type.name }), previewEl, icons, el('p', 'hm-hint', { text: 'Drag to turn. Pinch or scroll to zoom.' }),
-      el('div', 'hm-btns', {}, el('button', '', { 'data-act': 'back', type: 'button', on: { click: () => ui.open('home') } }, 'Back'), roofBtn));
+      el('div', 'hm-btns', {}, el('button', '', { 'data-act': 'back', type: 'button', on: { click: () => ui.open('types') } }, 'Back'), roofBtn));
     applyVisibility();
   }
 
@@ -400,11 +467,13 @@ export function createHomeUi(game, { atlas, texture }) {
     }, { passive: false });
   }
 
-  ui.open = (view = 'home') => {
+  ui.open = (view = 'home', typeId = null) => {
     if (!body) return;
+    if (view === 'choose') view = 'types';
+    if (view === 'preview') previewId = typeId ?? previewId;
     state.view = view;
     if (view !== 'preview') { clearModel(); previewEl = null; }
-    if (view === 'choose') renderChoose();
+    if (view === 'types') renderTypes();
     else if (view === 'preview') renderPreview();
     else renderHome();
   };
@@ -414,9 +483,10 @@ export function createHomeUi(game, { atlas, texture }) {
     const dt = Math.min(1, Math.max(0, (now - lastNow) / 1000)); // real time: frames can be slow on tablets and in tests lastNow = now;
     updateMeter();
     updateGlow(now);
-    if (state.view === 'home') {
+    updateSparkle(now);
+    if (state.view === 'home' || state.view === 'types') {
       const home = viewHome();
-      if ((home ? meterKey(game, home) : 'none') !== panelKey) renderHome();
+      if ((home ? meterKey(game, home) : 'none') !== panelKey) (state.view === 'home' ? renderHome : renderTypes)();
     }
     if (state.view !== 'preview' || !model) return;
     state.missing = missingKeys(viewHome());
@@ -427,6 +497,7 @@ export function createHomeUi(game, { atlas, texture }) {
     lastDraw = now;
     drawModel(state.yaw, state.pitch, state.zoom);
   };
+  ui.sparkles = () => [...sparks].map(([h, e]) => ({ owner: h.owner, x: h.x, y: h.y, z: h.z, count: e.mesh.count }));
   ui.state = () => ({ ...state, missing: [...state.missing] });
   return ui;
 }

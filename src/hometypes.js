@@ -1,5 +1,5 @@
 // T22: home types as data. A HomeType says which features (and an optional rule) make a room a home of that kind;
-// nothing else (meter, glow, preview, chooser, spawning) knows type names, they only read evaluate()'s result.
+// nothing else (meter, glow, preview, the 'What can my home be?' panel, spawning) knows type names, they only read evaluate()'s result.
 // Add a type with addHomeType(); tests add a throw-away one the same way.
 import { B, WOOL, TREASURE } from './blocks.js';
 import { HOME_SPAWN } from './spawnrules.js';
@@ -8,9 +8,15 @@ import { HOME_SPAWN } from './spawnrules.js';
 import { count, hasBlock, atLeast, mostly } from './features.js';
 export { count, hasBlock, atLeast, mostly };
 
+export const GEMS_NEED = 15; // the ONE place: gems a treasure home needs (meter, Book row and spawn bonus read it from here)
+
 export class HomeType {
-  constructor({ id, name, blurb = '', creature, rule = null, features, need = features.length, show = 'hearts', example, spawn, gymMovesIn = null }) {
-    Object.assign(this, { id, name, blurb, creature, rule, features, need, show, example, spawn, gymMovesIn });
+  // T30.5: doneText / lostText (toasts), emoji (meter), near (the Book's words for its visitors), sparkle (the home glitters)
+  constructor({ id, name, blurb = '', creature, rule = null, features, need = features.length, show = 'hearts', example, spawn, gymMovesIn = null,
+    doneText, lostText, emoji = '🏠', near = null, sparkle = false }) {
+    doneText = doneText ?? `Your home is a ${name} now!`;
+    lostText = lostText ?? `Your home is not a ${name} any more. Stand on the Doormat to see what is missing.`;
+    Object.assign(this, { id, name, blurb, creature, rule, features, need, show, example, spawn, gymMovesIn, doneText, lostText, emoji, near, sparkle });
   }
 
   // -> { room: report.checks, ok, rule: { key, name, icon, done, have, need } | null,
@@ -29,15 +35,19 @@ export class HomeType {
   }
 }
 
-export const HOME_TYPES = {}; // registry, in chooser order
+export const HOME_TYPES = {}; // registry, in panel order (also the order of home.types)
 const spawnAdded = new Set(); // ids whose HOME_SPAWN entry addHomeType made (removeHomeType takes it away again)
+const textAdded = new Set();  // ids whose HOME_SPAWN text addHomeType copied from the type's `near`
 export function addHomeType(t) {
   HOME_TYPES[t.id] = t;
   if (!(t.id in HOME_SPAWN) && t.spawn) { HOME_SPAWN[t.id] = t.spawn; spawnAdded.add(t.id); }
+  const s = HOME_SPAWN[t.id]; // T30.5: the Book reads the type's own words without spawnrules.js importing this file
+  if (s && t.near && s.text == null) { s.text = t.near; textAdded.add(t.id); }
   return t;
 }
 export function removeHomeType(id) { // tests clean up
   delete HOME_TYPES[id];
+  if (textAdded.delete(id) && HOME_SPAWN[id]) delete HOME_SPAWN[id].text;
   if (spawnAdded.delete(id)) delete HOME_SPAWN[id];
 }
 
@@ -85,13 +95,15 @@ const COZY_EXAMPLE = withBlocks(
   ],
 );
 
-// 10x10 stone-brick house with 10 gems (4 Sunstone, 3 Ruby, 3 Sapphire) in the back wall and 2 in the floor.
+// 10x10 stone-brick house with 16 gems: 12 in the back wall (mixed Sunstone / Ruby / Sapphire), 2 in the floor and 2 in the
+// ceiling (so it qualifies with room to spare).
 const TREASURE_EXAMPLE = withBlocks(
   boxHouse({ w: 10, d: 10, wall: B.STONE_BRICKS, roof: B.STONE_BRICKS, floor: B.STONE_BRICKS }),
   [
-    ...[[2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2]]
-      .map(([x, y], i) => [x, y, 9, TREASURE[i < 4 ? 0 : i < 7 ? 1 : 2], 'gems']),
+    ...[2, 3, 4, 5, 6, 7].flatMap(x => [1, 2].map(y => [x, y]))
+      .map(([x, y], i) => [x, y, 9, TREASURE[i % 3], 'gems']),
     [3, 0, 3, B.SUNSTONE, 'gems'], [6, 0, 3, B.RUBY, 'gems'],
+    [4, 4, 5, B.SAPPHIRE, 'gems'], [5, 4, 5, B.SUNSTONE, 'gems'],
   ],
 );
 
@@ -115,9 +127,14 @@ addHomeType(new HomeType({
     atLeast(2, [B.GLASS], { key: 'windows', name: 'Windows', where: ['wall'] }),
   ],
   need: 3, show: 'hearts', example: COZY_EXAMPLE, spawn: HOME_SPAWN.cozy, gymMovesIn: 'cozy', // T23 uses gymMovesIn
+  emoji: '❤️', doneText: 'Your home is cozy now! Cozy creatures may come to visit.',
+  lostText: 'Your home is not cozy any more. Stand on the Doormat to see what is missing.',
 }));
 addHomeType(new HomeType({
-  id: 'treasure', name: 'Treasure home', creature: 'treasure', blurb: 'Gems in the walls. Treasure creatures may visit (rarely!).',
-  features: [atLeast(10, TREASURE, { key: 'gems', name: 'Gems', icon: B.SUNSTONE, where: ['wall', 'floor'] })],
+  id: 'treasure', name: 'Treasure home', creature: 'treasure', blurb: `${GEMS_NEED} gems in the walls, floor or ceiling. More gems, more treasure visitors!`,
+  features: [atLeast(GEMS_NEED, TREASURE, { key: 'gems', name: 'Gems', icon: B.SUNSTONE, where: ['wall', 'floor', 'roof'] })],
   need: 1, show: 'counter', example: TREASURE_EXAMPLE, spawn: HOME_SPAWN.treasure,
+  emoji: '💎', sparkle: true, near: `near a home with ${GEMS_NEED}+ gems`,
+  doneText: 'Your home is a treasure home now! ✨',
+  lostText: 'Your home is not a treasure home any more. Stand on the Doormat to see what is missing.',
 }));

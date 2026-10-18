@@ -334,11 +334,10 @@ async function cozyGym(page, t) {
   const home = await page.evaluate(([mat1]) => {
     const g = window.pokecraft;
     const h = g.homes.place(...mat1);
-    g.homes.choose(h, 'cozy');
     g.updateGuide();
-    return { finished: h.finished, target: g.guideTarget, text: document.getElementById('guide').textContent };
+    return { finished: h.finished && h.is('cozy'), target: g.guideTarget, text: document.getElementById('guide').textContent };
   }, [mat1]);
-  t.ok(home.finished, 'the example home is finished');
+  t.ok(home.finished, 'the example home is finished (and cozy)');
   t.ok(home.text.includes('catch 3 cozy creatures (0/3)') && home.target && Math.abs(home.target[0] - (mat1[0] + 0.5)) < 1 && Math.abs(home.target[1] - (mat1[2] + 0.5)) < 1, `the guide counts cozy creatures and points at the Doormat (${home.text})`);
   t.ok(await page.evaluate(() => window.__people().every(n => n.away) && !window.pokecraft.homes.mine().gyms.length), 'with no creatures caught the people stay away');
 
@@ -358,6 +357,24 @@ async function cozyGym(page, t) {
   t.ok(inside.length === 3 && inside.every(p => !p.away && p.visible && p.inside && p.floor && p.air1 && p.air2), `the leader and two trainers stand on free cells inside the home (${JSON.stringify(inside)})`);
   t.ok(await page.evaluate(() => window.__toastLog.join('|').includes('Leader Maple, Knitter Bea and Sleepy Sam moved into your cozy home! Talk to them to battle.')), 'the moving-in toast names the three of them');
 
+  // 3b. A cozy home with gems is also a treasure home, and keeps the gym (T30.5): 14 gems in the back wall + 1 in the floor.
+  const gems = await page.evaluate(async ([mat1]) => {
+    const g = window.pokecraft, { B, TREASURE } = await import('/src/blocks.js');
+    const X0 = mat1[0] - 4, Z0 = mat1[2] - 1, F = mat1[1];
+    window.__toastLog.length = 0;
+    const list = []; for (const x of [1, 2, 3, 4, 6, 7, 8]) for (const y of [1, 3]) list.push([x, y, 9]);
+    list.push([2, 0, 2]);
+    list.forEach(([x, y, z], i) => g.world.set(X0 + x, F + y, Z0 + z, TREASURE[i % 3]));
+    return list.length;
+  }, [mat1]);
+  await waitFor(page, () => window.pokecraft.homes.mine().is('treasure') && window.pokecraft.homes.mine().is('cozy'), null, 30000);
+  const gm = await page.evaluate(() => {
+    const g = window.pokecraft, live = g.gymLive.of('cozy');
+    return { n: g.homes.mine().types.join(), gyms: g.homes.mine().gyms.includes('cozy'), away: window.__people().some(n => n.away), chilly: live.chilly, log: window.__toastLog.join('|') };
+  });
+  t.ok(gems === 15 && gm.n === 'cozy,treasure' && gm.gyms && !gm.away && gm.chilly === false, `a cozy home with 15 gems is cozy and treasure and keeps the gym ${JSON.stringify(gm)}`);
+  t.ok(gm.log.includes('Your home is a treasure home now!') && !gm.log.includes('Brr'), 'the treasure toast comes, nobody shivers');
+
   // A picture of the people in the home (from a few blocks in front of the leader, towards the door).
   await page.evaluate(() => {
     const g = window.pokecraft, h = g.homes.mine(), r = h.report, d = r.door[0];
@@ -372,8 +389,8 @@ async function cozyGym(page, t) {
   await page.waitForTimeout(1500);
   await page.screenshot({ path: new URL('../screenshots/t23-cozy-people.png', import.meta.url).pathname }).catch(() => {});
 
-  // 4. Chilly: take the Bed, Fireplace and Lamp away (a cozy home needs 3 of its 5 things). Nobody battles, the guide
-  // says it is chilly; with them back the battles work.
+  // 4. Chilly: a cozy home needs 3 of its 5 things, so first the Fireplace and the Lamp go (replaced by planks: it stays cozy
+  // and nobody shivers), then the Bed goes: now it is not cozy. Nobody battles, the guide says it is chilly; with them back the battles work.
   const bed = await page.evaluate(async () => {
     const g = window.pokecraft, { B } = await import('/src/blocks.js'), h = g.homes.mine();
     const found = [];
@@ -381,10 +398,16 @@ async function cozyGym(page, t) {
       const id = g.world.get(x, y, z);
       if (id === B.BED || id === B.FIREPLACE || id === B.LAMP) found.push([x, y, z, id]);
     }
-    for (const [x, y, z] of found) g.world.set(x, y, z, B.AIR);
+    for (const [x, y, z, id] of found) if (id !== B.BED) g.world.set(x, y, z, B.PLANKS);
+    window.__toastLog.length = 0;
     return found;
   });
-  await waitFor(page, () => !window.pokecraft.homes.mine().finished, null, 30000);
+  await waitFor(page, () => window.pokecraft.homes.mine().resultOf('cozy').done === 3, null, 30000);
+  t.ok(await page.evaluate(() => window.pokecraft.homes.mine().is('cozy') && !window.pokecraft.gymLive.of('cozy').chilly && !window.__toastLog.join('|').includes('Brr')), 'still cozy with 3 of 5 things: nobody shivers');
+  await page.evaluate(async ([bed]) => { const { B } = await import('/src/blocks.js'); for (const [x, y, z, id] of bed) if (id === B.BED) window.pokecraft.world.set(x, y, z, B.AIR); }, [bed]);
+  await waitFor(page, () => !window.pokecraft.homes.mine().is('cozy'), null, 30000);
+  await waitFor(page, () => window.pokecraft.gymLive.of('cozy').chilly, null, 30000);
+  t.ok(await page.evaluate(() => window.__toastLog.join('|').includes('Your home is not cozy any more')), 'the home says it is not cozy any more');
   const chilly = await page.evaluate(() => {
     const g = window.pokecraft, leader = window.__people().find(n => n.kind === 'leader');
     g.player.pos.set(leader.pos.x + 1.5, leader.pos.y, leader.pos.z);
