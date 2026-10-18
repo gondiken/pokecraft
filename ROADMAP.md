@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Next: wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek), then wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). Next: wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -58,9 +58,9 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 8b ✅ | T22 Homes | Needs 8a |
 | 8c ✅ | T23 Cozy and Treasure gyms + Tower at 27 | Needs T22 |
 | 8.5 ✅ | T23.5 Firewall Maze exit (bug fix) | Small; before S1 (backlog), which changes the same `MazeLive` |
-| 9a | T24 Battle fixes · T26 Traits · T28 Gym rematches | Battle rules vs. creature data vs. gym people |
-| 9b | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
-| 9c | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
+| 9a ✅ | T24 Battle fixes · T26 Traits · T28 Gym rematches | Battle rules vs. creature data vs. gym people |
+| 9b ✅ | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
+| 9c ✅ | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
 | 10 | T31 Realms · T32 More room for gyms | Both careful world work; can run side by side (realm world vs. main map) |
 | 11 | T33 Food · T34 Swarm · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
 
@@ -872,7 +872,7 @@ After you have a gym's badge, its leader offers a **rematch**. Every win makes t
 Saved as a win count per gym. The first, badge battle stays as easy as now. Done when: `gym` covers a
 rematch, the level going up after a win, and old saves (no count = 0).
 
-### T29 · Champion missions (size: L) — builder A part done (missions, maps, builds, rare blocks, panel; co-op boss is builder B)
+### T29 · Champion missions (size: L) — DONE (plan `T29.md`: missions, treasure maps, build challenges, rare blocks 75-77, co-op giant battles)
 
 After becoming Champion, the Champion in the tower gives **missions** (one at a time, a list of done ones):
 - **Treasure maps:** a map piece with a picture clue ("by the big lake, near a red flower") leads to a dig
@@ -882,7 +882,7 @@ After becoming Champion, the Champion in the tower gives **missions** (one at a 
 - **Co-op boss:** two players together battle one big boss creature (two against one); needs play together.
 Done when: a `missions` spec covers each mission kind (the co-op boss via `openPair`).
 
-### T30 · Hide and seek (size: M)
+### T30 · Hide and seek (size: M) — DONE (plan `T30.md`)
 
 A play-together game: one player hides (a 60-second head start, the seeker's screen goes dark), the seeker
 gets a hot/cold compass (like the key compass). Found = touch or tap the hider. Rounds swap roles; a
