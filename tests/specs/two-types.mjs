@@ -146,7 +146,10 @@ export default async function ({ browser, base, t }) {
         try {
           const m = S.buildModel(id);
           S.animateModel(m, 0);
+          const glints = (m.userData.parts.sparkle || []).map(x => [x.g, x.g.parent]);
+          glints.forEach(([g, p]) => p.remove(g)); // measure the body; the sparkle glints are decoration around it
           const box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
+          glints.forEach(([g, p]) => p.add(g));
           out.info[id] = `${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)}`;
           if (size.y < 0.35 || size.y > 2.6) bad(`${id}: height ${size.y.toFixed(2)} outside 0.35-2.6`);
           if (size.x > 2.6 || size.z > 2.6) bad(`${id}: width/depth ${size.x.toFixed(2)}/${size.z.toFixed(2)} over 2.6`);
