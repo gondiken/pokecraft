@@ -102,7 +102,7 @@ export default async function ({ browser, base, t }) {
   // 2. The meter (hand-made reports).
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }));
   await page.evaluate(() => window.pokecraft.ui.closePanel());
-  await waitFor(page, () => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .chk.walls'));
+  await waitFor(page, () => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .hm.ready'));
   const meter = () => page.evaluate(() => {
     const q = s => document.querySelectorAll(`#home-meter ${s}`).length;
     const cls = s => document.querySelector(`#home-meter ${s}`)?.className ?? '';
@@ -115,9 +115,8 @@ export default async function ({ browser, base, t }) {
     };
   });
   let m = await meter();
-  t.ok(m.shown && m.walls.includes('ok') && m.roof.includes('ok') && m.size.includes('ok') && m.sizeText === '8x8', `good house: walls, roof, size 8x8 are ticks (${m.walls}|${m.roof}|${m.size})`);
-  t.ok(m.hearts === 3 && m.hearts_all === 5 && m.done === 3 + 1 && m.ready, `3 of 5 hearts on, the wood rule done, and "Ready!" (${m.hearts}/${m.hearts_all}, ready ${m.ready})`);
-  t.ok(m.chips.length === 1 && m.chips[0].includes('Cozy home') && m.lines === 1, `the title names the kind it is (${m.chips}) and one kind is on the meter (${m.lines})`);
+  t.ok(m.shown && !m.walls && !m.roof && !m.size && m.ready, `good house: the room checks are all fine, so the small meter hides them (${m.walls}|${m.roof}|${m.size})`);
+  t.ok(m.chips.length === 1 && m.chips[0].includes('Cozy home') && m.lines === 0, `a finished kind is just its chip in the title, no line of hearts (${m.chips}, ${m.lines} lines)`);
   await shot('t22-meter.png');
   await page.evaluate(([sx, sz]) => window.__fake({ feats: ['bed'], roofHoles: [[sx + 4, 46, sz + 4], [sx + 5, 46, sz + 4]] }), [sx, sz]);
   await waitFor(page, () => document.querySelector('#home-meter .chk.roof.bad'));
@@ -131,8 +130,10 @@ export default async function ({ browser, base, t }) {
   await waitFor(page, () => document.querySelector('#home-meter .chk.size.unk'));
   m = await meter();
   t.ok(m.size.includes('unk') && m.roof.includes('unk') && m.sizeText === '', 'walls not closed: size and roof show "?"');
-  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug', 'lamp', 'windows'] }));
-  await waitFor(page, () => document.querySelectorAll('#home-meter .heart.on').length === 5);
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'] }));
+  await waitFor(page, () => document.querySelectorAll('#home-meter .heart.on').length === 2);
+  m = await meter();
+  t.ok(m.lines === 1 && m.hearts_all === 5 && !m.walls && !m.ready, `2 of 5 hearts: not cozy yet, so its line shows (${m.hearts}/${m.hearts_all})`);
   // nothing started: no type line. Then the treasure type: a counter instead of hearts.
   await page.evaluate(() => window.__fake({ wood: 'none' }));
   await waitFor(page, () => !document.querySelector('#home-meter .hm-line'));
@@ -150,11 +151,11 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(() => window.__fake({ wood: 'none', gems: 14, roofGems: 1 }));
   await waitFor(page, () => document.querySelector('#home-meter .hm.ready'));
   m = await meter();
-  t.ok(m.doneLines === 1 && m.chips.length === 1 && m.chips[0].includes('Treasure home'), `15 gems (one in the ceiling): the treasure line is done (${m.chips})`);
+  t.ok(m.lines === 0 && m.chips.length === 1 && m.chips[0].includes('Treasure home'), `15 gems (one in the ceiling): a treasure home, just its chip (${m.chips})`);
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'], gems: 15 }));
   await waitFor(page, () => document.querySelectorAll('#home-meter .hm-type').length === 2);
   m = await meter();
-  t.ok(m.chips.length === 2 && m.lines === 2 && m.doneLines === 2, `cozy and treasure at once: two chips, two lines (${m.chips})`);
+  t.ok(m.chips.length === 2 && m.lines === 0, `cozy and treasure at once: two chips and nothing else (${m.chips})`);
   await shot('t30-5-meter-both.png');
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }));
 

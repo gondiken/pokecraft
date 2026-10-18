@@ -147,8 +147,11 @@ function meterEl(game, atlas, home, { big = false } = {}) {
   };
   const c = home.report?.checks ?? NO_CHECKS, size = home.report?.size;
   row.append(chk('walls', '🧱', 'Walls', c.walls), chk('roof', '🏠', 'Roof', c.roof), chk('size', '📏', 'Size', c.size, size ? `${size[0]}x${size[1]}` : ''));
-  root.append(row);
-  for (const t of shownTypes(home)) root.append(typeLine(atlas, t, home.resultOf(t.id), { big }));
+  // The small HUD meter only shows what still needs work: the room checks while one is not a tick, and a kind's
+  // things while it is not done yet (a done kind is just its chip in the title). The panel (big) shows everything.
+  const roomOk = c.walls === true && (c.roof === true || c.roof === 'ok') && (c.size === true || c.size === 'ok');
+  if (big || !roomOk) root.append(row);
+  for (const t of shownTypes(home)) if (big || !home.is(t.id)) root.append(typeLine(atlas, t, home.resultOf(t.id), { big }));
   return root;
 }
 
