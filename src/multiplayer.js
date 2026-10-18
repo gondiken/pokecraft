@@ -17,7 +17,7 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
 const WORLD_VERSION = 9; // 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
-const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home'];
+const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
   { shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
@@ -82,7 +82,9 @@ class Avatar {
     this.name = info.name;
     this.isHost = !!info.host;
     this.model = buildPerson(OUTFITS[hash(info.id) % OUTFITS.length]);
-    this.model.add(nameTag(info.name));
+    this.tag = nameTag(info.name); // T30: hide and seek hides it from the seeker
+    this.model.add(this.tag);
+    this.hiding = false; // T30
     this.model.userData.avatar = this;
     this.pos = new THREE.Vector3(info.x, info.y, info.z);
     this.target = this.pos.clone();
@@ -172,6 +174,8 @@ class Avatar {
       this.lead.rotation.y = this.yaw + Math.PI;
       animateModel(this.lead, this.t, moving);
     }
+    this.tag.visible = !this.hiding; // T30
+    if (this.lead && this.hiding) this.lead.visible = false;
   }
 
   dispose() {
@@ -279,10 +283,17 @@ export class Multiplayer {
     t.on('home', p => { // T22: another player placed / changed their home
       if (this.active && p.id !== this.id) this.hooks.home?.(p.home);
     });
+    t.on('hs', p => { // T30
+      if (this.active && p.to === this.id && p.from !== this.id) this.hooks.hs?.(p);
+    });
     t.on('bye', p => this.removePlayer(p.id, true));
     t.on('duel', p => {
       if (this.active && p.to === this.id && p.from !== this.id) this.hooks.duel?.(p);
     });
+  }
+
+  sendHs(to, data) { // T30
+    if (this.active) this.t.send('hs', { ...data, from: this.id, to, name: this.name });
   }
 
   sendDuel(to, data) {
@@ -361,6 +372,7 @@ export class Multiplayer {
 
   close() {
     this.game.duels?.reset();
+    this.game.hideSeek?.reset(); // T30
     if (this.t) {
       if (this.active) this.t.send('bye', { id: this.id });
       // Give the goodbye a moment to go out before closing.

@@ -172,6 +172,47 @@ export class UI {
     c.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('got', i < state.found));
   }
 
+  // T30 hide and seek: the warmer / colder compass, the score line and the seeker's dark screen.
+  setSeekCompass(state) {
+    const c = this.seekCompass ??= document.getElementById('seek-compass');
+    if (!c) return;
+    if (!state) { if (this.seekShown !== null) { c.classList.add('hidden'); this.seekShown = null; } return; }
+    const tag = `${Math.round(state.period * 10)}/${state.word}`;
+    if (tag === this.seekShown) return;
+    this.seekShown = tag;
+    c.classList.remove('hidden');
+    c.classList.toggle('hot', !!state.hot);
+    c.classList.toggle('wobble', !!state.wobble);
+    c.style.setProperty('--glint', `${(Math.round(state.period * 10) / 10).toFixed(1)}s`);
+    c.querySelector('.word').textContent = state.word;
+  }
+
+  setHideSeek(hud) {
+    const box = this.hsHud ??= document.getElementById('hs-hud');
+    if (!hud) { if (this.hsShown !== null) { box.classList.add('hidden'); this.hsShown = null; } return; }
+    const tag = `${hud.score}|${hud.phase}`;
+    if (tag === this.hsShown) return;
+    this.hsShown = tag;
+    box.classList.remove('hidden');
+    box.querySelector('.score').textContent = hud.score;
+    box.querySelector('.phase').textContent = hud.phase;
+  }
+
+  setDark(d) {
+    const box = this.hsDark ??= document.getElementById('hs-dark');
+    if (!this.hsDarkWired) {
+      this.hsDarkWired = true;
+      document.getElementById('hs-stop').addEventListener('click', e => { e.stopPropagation(); this.game.hideSeek?.stop(); });
+    }
+    if (!d) { if (this.darkShown !== null) { box.classList.add('hidden'); this.darkShown = null; } return; }
+    const tag = `${d.who}|${d.count}`;
+    if (tag === this.darkShown) return;
+    this.darkShown = tag;
+    box.classList.remove('hidden');
+    box.querySelector('.hs-who').textContent = d.who;
+    box.querySelector('.hs-count').textContent = d.count;
+  }
+
   setClock(text) {
     if (this.clock.textContent !== text) this.clock.textContent = text;
   }
@@ -331,7 +372,7 @@ export class UI {
   }
 
   // A question with two buttons (T28 gym rematch; reusable): ask({ text, yes, no, onYes, onNo }).
-  ask({ text, yes = 'Battle!', no = 'Not now', onYes, onNo }) {
+  ask({ text, yes = 'Battle!', no = 'Not now', hint = 'press Y / N, or click the leader again', onYes, onNo }) {
     this.askBox = this.askBox || document.getElementById('ask');
     if (!this.askWired) {
       this.askWired = true;
@@ -342,6 +383,7 @@ export class UI {
     document.getElementById('ask-text').textContent = text;
     document.getElementById('ask-yes').textContent = yes;
     document.getElementById('ask-no').textContent = no;
+    document.getElementById('ask-hint').innerHTML = hint.replace('Y / N', '<b>Y</b> / <b>N</b>'); // T30
     this.askBox.classList.remove('hidden');
   }
 

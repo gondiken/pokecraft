@@ -38,14 +38,14 @@ export async function openGame(browser, base, { query = '', contextOptions = {},
     await page.route('https://*.supabase.co/**', r => r.abort());
   }
   page.on('dialog', d => d.accept());
-  await page.goto(base + '/' + query);
+  await page.goto(base + '/' + query, { timeout: 120000 });
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
   return page;
 }
 
 // Two players in separate browsers. The test relays messages between them in place of Supabase
 // Realtime (?mp=local + a BroadcastChannel stand-in), because many test environments block WebSockets.
-export async function openPair(browser, base) {
+export async function openPair(browser, base, { contextOptions = {} } = {}) {
   const pages = {};
   const relay = other => async ctx => {
     await ctx.exposeBinding('__relaySend', async (_s, ch, data) => {
@@ -61,8 +61,8 @@ export async function openPair(browser, base) {
       };
     });
   };
-  pages.A = await openGame(browser, base, { query: '?mp=local', setup: relay('B') });
-  pages.B = await openGame(browser, base, { query: '?mp=local', setup: relay('A') });
+  pages.A = await openGame(browser, base, { query: '?mp=local', contextOptions, setup: relay('B') });
+  pages.B = await openGame(browser, base, { query: '?mp=local', contextOptions, setup: relay('A') });
   return [pages.A, pages.B];
 }
 

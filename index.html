@@ -42,6 +42,16 @@
         </svg>
         <span class="pip"></span><span class="pip"></span><span class="pip"></span>
       </div>
+      <!-- T30 -->
+      <div id="seek-compass" class="hidden" title="How close is your friend?">
+        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+          <circle cx="13" cy="13" r="8" fill="none" stroke="#7fd8ff" stroke-width="3.5"/>
+          <path d="M19 19 L28 28" stroke="#7fd8ff" stroke-width="4" stroke-linecap="square"/>
+          <circle class="shine" cx="10" cy="10" r="2" fill="#fff"/>
+        </svg>
+        <span class="word"></span>
+      </div>
+      <div id="hs-hud" class="hidden"><div class="score"></div><div class="phase"></div></div>
       <div id="mp-hud"></div>
     </div>
     <div id="home-meter" class="hidden"></div>
@@ -69,6 +79,12 @@
     </div>
   </div>
 
+  <!-- T30 hide and seek: the seeker's dark screen during the head start -->
+  <div id="hs-dark" class="hidden">
+    <div class="hs-who"></div><div class="hs-count"></div><div class="hs-tip">No peeking!</div>
+    <button id="hs-stop" class="small">Stop the game</button>
+  </div>
+
   <div id="toast"></div>
 
   <!-- Another player asks for a battle -->
@@ -82,7 +98,7 @@
   <div id="ask" class="hidden">
     <div id="ask-text"></div>
     <p><button id="ask-yes" class="primary">Battle!</button> <button id="ask-no">Not now</button></p>
-    <div class="hint desktop-only">press <b>Y</b> / <b>N</b>, or click the leader again</div>
+    <div class="hint desktop-only" id="ask-hint">press <b>Y</b> / <b>N</b>, or click the leader again</div>
   </div>
 
   <!-- Title / starter selection -->
