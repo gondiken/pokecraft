@@ -812,7 +812,7 @@ Keep the Book's move words short and child-readable; the AI (`battle.js` move sc
   work on a creature that just woke up (one free turn), so no endless sleep-lock.
 - Done when: `moves` covers both rules; `pvp` passes with the new `VERSION`.
 
-### T25 · Big-decision moves: team effects with a price (size: L)
+### T25 · Big-decision moves: team effects with a price (size: L) — DONE (plan `plans/T25.md`: 61 moves in 7 kinds, team state in battles, 5 fx status recipes, 8 `kind:*` sounds)
 
 New moves with a clear upside and a real price or a low chance, so the player has to think. Seven **kinds**
 (the mechanic, `fx.kind`, one handler each in `battle.js`); every move gets **its own name fitting its type**

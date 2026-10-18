@@ -378,6 +378,113 @@ const STATUS = {
       },
     };
   },
+  // T25 big-decision moves.
+  rally(k, from, to, opts) {
+    const N = 10, cols = FX_COLORS[opts.type] || FX_COLORS.normal;
+    const pts = k.points({ n: N, tex: 'up', size: 0.45, glow: true, colors: [0xff6a3a, cols[0]] });
+    const ring = k.mesh('ring', { color: cols[0], glow: true, opacity: 0.4 });
+    const feet = 2 * to.pos.y - to.top;
+    return {
+      dur: 900,
+      step(p) {
+        for (let i = 0; i < N; i++) {
+          const q = p * 1.3 - (i / N) * 0.3;
+          if (q <= 0) { pts.hide(i); continue; }
+          const t = Math.min(1, q), ang = (i / N) * 6.283 + t;
+          pts.set(i, to.pos.x + Math.cos(ang) * (to.r + 0.35), lerp(feet, to.top + 0.4, t), to.pos.z + Math.sin(ang) * (to.r + 0.35));
+        }
+        pts.fade(p < 0.7 ? 1 : (1 - p) / 0.3);
+        flat(ring, to.pos.x, feet + 0.06, to.pos.z, to.r * (0.6 + easeOut(p) * 1.6));
+        ring.material.opacity = 0.5 * (1 - p);
+      },
+    };
+  },
+  shield(k, from, to, opts) {
+    const N = 14, cols = FX_COLORS[opts.type] || FX_COLORS.normal;
+    const pts = k.points({ n: N, tex: 'square', size: 0.34, glow: true, colors: [0x8fc8ff, 0xe0f0ff, cols[0]] });
+    const ring = k.mesh('ring', { color: 0x8fc8ff, glow: true, opacity: 0.4 });
+    const s = k.seeds(N, 2), feet = 2 * to.pos.y - to.top, rad = to.r + 0.45, h = to.top - feet + 0.3;
+    return {
+      dur: 900,
+      step(p) {
+        for (let i = 0; i < N; i++) {
+          const pop = p * 3 - (i / N) * 0.8;
+          if (pop <= 0) { pts.hide(i); continue; }
+          const az = (i / N) * 6.283 * 2.3, el = (0.15 + (i % 5) * 0.28) * 1.4;
+          const sh = Math.sin(p * 18 + s[i * 2] * 6) * 0.04;
+          pts.set(i, to.pos.x + Math.cos(az) * Math.cos(el) * rad, feet + Math.sin(el) * h + sh, to.pos.z + Math.sin(az) * Math.cos(el) * rad);
+        }
+        pts.fade(p < 0.7 ? 1 : (1 - p) / 0.3);
+        flat(ring, to.pos.x, feet + 0.06, to.pos.z, rad * (0.9 + 0.2 * wave(p)));
+        ring.material.opacity = 0.5 * (p < 0.7 ? 1 : (1 - p) / 0.3);
+      },
+    };
+  },
+  curse(k, from, to, opts) {
+    const arr = k.points({ n: 8, tex: 'down', size: 0.42, colors: [0x5a3a7a, 0x6a5a8a] });
+    const gray = k.points({ n: 6, tex: 'puff', size: 0.55, colors: [0x8a8494, 0x6c6678] });
+    const s = k.seeds(6, 2), feet = 2 * to.pos.y - to.top;
+    return {
+      dur: 900,
+      step(p) {
+        for (let i = 0; i < 8; i++) {
+          const q = p * 1.3 - i * 0.07;
+          if (q <= 0) { arr.hide(i); continue; }
+          const t = Math.min(1, q), ang = i * 0.785 + t * 5, rr = (to.r + 0.9) * (1 - t * 0.7);
+          arr.set(i, to.pos.x + Math.cos(ang) * rr, lerp(to.top + 0.8, feet + 0.3, t), to.pos.z + Math.sin(ang) * rr);
+        }
+        for (let i = 0; i < 6; i++) {
+          const q = Math.min(1, Math.max(0, p * 1.2 - i * 0.05));
+          if (q <= 0) { gray.hide(i); continue; }
+          gray.set(i, to.pos.x + (s[i * 2] - 0.5) * to.r * 2, to.top + 0.2 + q * 0.7, to.pos.z + (s[i * 2 + 1] - 0.5) * to.r * 2);
+        }
+        arr.fade(p < 0.7 ? 1 : (1 - p) / 0.3);
+        gray.fade(0.9 * (1 - p));
+      },
+    };
+  },
+  field(k, from, to, opts) {
+    const N = 16, cols = FX_COLORS[opts.type] || FX_COLORS.normal;
+    const disc = k.mesh('disc', { color: cols[0], opacity: 0.25 });
+    const pts = k.points({ n: N, tex: 'star', size: 0.32, glow: true, colors: cols });
+    const s = k.seeds(N, 2);
+    const mx = (from.pos.x + to.pos.x) / 2, mz = (from.pos.z + to.pos.z) / 2, y = Math.min(from.pos.y, to.pos.y) - 0.2;
+    const rad = k.dist / 2 + 1;
+    return {
+      dur: 950,
+      step(p) {
+        const R = rad * easeOut(Math.min(1, p * 1.4));
+        flat(disc, mx, y + 0.05, mz, Math.max(0.01, R));
+        disc.material.opacity = 0.25 * wave(p);
+        for (let i = 0; i < N; i++) {
+          const ang = s[i * 2] * 6.283 + p * 1.5, d = Math.sqrt(s[i * 2 + 1]) * R;
+          pts.set(i, mx + Math.cos(ang) * d, y + 0.3 + wave(Math.min(1, p * 1.3 + s[i * 2] * 0.3)) * 0.6, mz + Math.sin(ang) * d);
+        }
+        pts.fade(p < 0.7 ? 1 : (1 - p) / 0.3);
+      },
+    };
+  },
+  sacrifice(k, from, to, opts) {
+    const N = 10, cols = FX_COLORS[opts.type] || FX_COLORS.normal;
+    const pts = k.points({ n: N, tex: 'heart', size: 0.42, glow: true, colors: [0xff7a9a, 0xffc0d0, cols[0]] });
+    const star = k.sprite('star', { color: 0xfff2a0, size: 0.1, glow: true });
+    const s = k.seeds(N, 2);
+    return {
+      dur: 950,
+      step(p) {
+        for (let i = 0; i < N; i++) {
+          const q = p * 1.3 - (i / N) * 0.3;
+          if (q <= 0) { pts.hide(i); continue; }
+          const t = Math.min(1, q), ang = s[i * 2] * 6.283, sp = (0.2 + s[i * 2 + 1] * 0.8) * t;
+          pts.set(i, to.pos.x + Math.cos(ang) * (to.r * 0.5 + sp * 0.9), lerp(to.pos.y, to.top + 1.4, t), to.pos.z + Math.sin(ang) * (to.r * 0.5 + sp * 0.9));
+        }
+        pts.fade(p < 0.7 ? 1 : (1 - p) / 0.3);
+        star.position.set(to.pos.x, to.top + 1.0 + p * 0.6, to.pos.z);
+        star.scale.setScalar(0.1 + 0.9 * wave(Math.min(1, p * 1.2)));
+        star.material.opacity = p < 0.5 ? 1 : (1 - p) / 0.5;
+      },
+    };
+  },
 };
 
 // Stat arrows: three rise (up) or sink (down) round the creature.
