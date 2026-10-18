@@ -63,6 +63,7 @@ export class UI {
     this.blocksPanel = document.getElementById('blocks');
     this.bookPanel = document.getElementById('book');
     this.homePanel = document.getElementById('home'); // T22
+    this.missionsPanel = document.getElementById('missions'); // T29
     this.slots = [];
     // Storage box view: the sort is remembered on this device, the type filter is not.
     // Both are only for showing: game.box keeps its order, so saves don't change.
@@ -308,7 +309,8 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden'); }
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden'); } // T29: + missions
+  get missionsOpen() { return !this.missionsPanel.classList.contains('hidden'); } // T29
   get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
 
   openPanel(which = 'team') {
@@ -319,6 +321,13 @@ export class UI {
       const view = this.game.homeUi.want ?? 'home';
       this.game.homeUi.want = null;
       this.game.homeUi.open(view);
+      return;
+    }
+    if (which === 'missions') { // T29: missionUi.open() fills #missions-body
+      this.missionsPanel.classList.remove('hidden');
+      const mode = this.game.missionUi.want ?? 'view';
+      this.game.missionUi.want = null;
+      this.game.missionUi.open(mode);
       return;
     }
     if (which === 'blocks') {
@@ -364,5 +373,7 @@ export class UI {
     this.bookPanel.classList.add('hidden');
     this.homePanel.classList.add('hidden');
     this.game.homeUi?.close();
+    this.missionsPanel.classList.add('hidden'); // T29
+    this.game.missionUi?.close();
   }
 }

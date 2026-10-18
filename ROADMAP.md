@@ -872,7 +872,7 @@ After you have a gym's badge, its leader offers a **rematch**. Every win makes t
 Saved as a win count per gym. The first, badge battle stays as easy as now. Done when: `gym` covers a
 rematch, the level going up after a win, and old saves (no count = 0).
 
-### T29 · Champion missions (size: L)
+### T29 · Champion missions (size: L) — builder A part done (missions, maps, builds, rare blocks, panel; co-op boss is builder B)
 
 After becoming Champion, the Champion in the tower gives **missions** (one at a time, a list of done ones):
 - **Treasure maps:** a map piece with a picture clue ("by the big lake, near a red flower") leads to a dig
@@ -1091,8 +1091,9 @@ home egg knows one move from a parent (more once there are more traits). No warm
 no bond meter: they add special cases all over the game), **creature helpers** (fire lights lamps, rock digs
 faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
 
-**Rare mission blocks:** a few new rare blocks you can only get by finishing Champion missions (T29),
-later used for something special (to be decided).
+**Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
+what they unlock or are used for is still open.
+**T32 note:** keep new gyms 12 blocks away from the treasure map spots (`treasureSpots(world)`, T29).
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
 Realtime path for play-together isn't covered by automated tests.

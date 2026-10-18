@@ -503,3 +503,38 @@ body.touch #home-meter { top: 70px; pointer-events: auto; }
 .hm-icons .pv.miss { outline: 2px solid #d03535; }
 .hm-icons .pv.off { opacity: .2; }
 .hm-icons canvas { image-rendering: pixelated; }
+
+/* ---------- T29 missions ---------- */
+#mission-chip { background: rgba(0,0,0,.55); padding: 4px 10px; font-size: 20px; cursor: pointer; pointer-events: auto; max-width: 300px; text-align: right; border: 2px solid rgba(255, 210, 58, .5); }
+#mission-chip.hidden { display: none; }
+#mission-chip .mc-icon { display: inline-block; animation: mission-pulse var(--pulse, 3s) ease-in-out infinite; }
+@keyframes mission-pulse { 0%, 100% { transform: scale(1); filter: none; } 50% { transform: scale(1.35); filter: drop-shadow(0 0 6px #ffd23a); } }
+#missions h2 { margin: 0 0 4px; }
+#missions .mc-count, #missions .mc-note { color: var(--muted); font-size: 22px; margin: 4px 0 10px; }
+#missions .mission-card { background: rgba(255,255,255,.07); padding: 12px 14px; margin: 8px 0 12px; border: 2px solid rgba(255,255,255,.12); }
+#missions .mc-head { display: flex; gap: 12px; align-items: center; font-size: 26px; margin-bottom: 8px; }
+#missions .mc-big { font-size: 40px; }
+#missions .mc-kind { font-size: 18px; color: var(--muted); }
+#missions .mission-map, #missions .mission-build, #missions .mission-boss { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+#missions canvas.map { width: 240px; height: 240px; image-rendering: pixelated; transform: rotate(-1deg); box-shadow: 4px 6px 10px rgba(0,0,0,.5); background: #e9d9a8; }
+#missions canvas.example { image-rendering: pixelated; background: rgba(255,255,255,.08); max-width: 100%; }
+#missions .boss-pic { width: 160px; height: 140px; }
+#missions .clue { flex: 1; min-width: 200px; font-size: 22px; }
+#missions .clue p { margin: 0 0 8px; }
+#missions .hot { color: #ffd23a; }
+#missions .warn { color: #ffb070; }
+#missions .tip { color: var(--muted); font-size: 18px; }
+#missions ul.checks { list-style: none; padding: 0; margin: 0 0 10px; }
+#missions ul.checks li { color: var(--muted); }
+#missions ul.checks li.ok { color: #6bff8a; }
+#missions button.mbtn { min-height: 44px; font-size: 20px; margin: 4px 8px 4px 0; }
+#missions .mission-done { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+#missions .chip.done { background: rgba(107, 255, 138, .16); border: 1px solid rgba(107,255,138,.4); padding: 2px 10px; font-size: 18px; }
+body.touch #missions button { min-height: 48px; font-size: 22px; }
+body.touch #mission-chip { min-height: 44px; display: flex; align-items: center; }
+/* the co-op friend's battle card (builder B creates the element); same offsets as #b-ally, 92px higher */
+#b-friend { right: 16px; bottom: 334px; transform: scale(.85); transform-origin: bottom right; }
+#battle.asking #b-friend { bottom: 450px; }
+@media (max-width: 700px) { #b-friend { bottom: 422px; } }
+body.touch #b-friend { bottom: 380px; }
+body.touch #battle.asking #b-friend { bottom: 480px; }

@@ -45,6 +45,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | P / Tab | Team & storage screen |
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
 | C | Creature Book: every creature you've seen and caught |
+| M | Champion missions (after you are the Champion) |
 | Esc | Pause (Resume, Main menu, Play together) |
 
 On a tablet:
@@ -203,6 +204,16 @@ After you collect all 27 badges, the **Champion's Tower** opens. It is a tall st
 - After 16 badges, wild creatures are also 10 levels stronger, so there is always something to train against.
 - Champions keep their title, but the tower waits until they have every badge again.
 
+## Champion missions
+
+Once you are the **Champion**, talk to Champion Solenne again: she gives you **missions**, one at a time (12 in all, M shows them any time; a small chip in the corner reminds you what you are doing). Finish one, go back to her for the next. Not in the mood? **Do a different one** swaps it.
+
+- **Treasure map**: you get a piece of an old map with a picture of the ground and a red **X**, and words that tell you where to start and how many steps to walk. The chip says *cold, warm, hot* as you get closer. Stand on the X and **dig 2 blocks down** (stand in the hole) to find the treasure. The X is the same for everyone in the same world.
+- **Build challenge**: build something (a Lamp Tower, a Water Bridge, a Rainbow Wall, a Star Tower). A list shows what is still missing; the game checks your build by itself, or press **Check my build**. Only blocks you placed yourself count.
+- **Giant battle**: two players against one giant creature (play together, stand close, ask your friend to help). Both of you battle at once; your creatures are copies, so nobody's real team gets hurt. The friend who helps gets a prize too.
+
+Prizes are Capture Cubes and three **rare mission blocks** you can only get this way: **Star Block** (treasure maps), **Rainbow Brick** (builds) and **Giant Trophy** (giant battles). They work like gems: placing uses one, breaking one gives it back. Missions are saved per player.
+
 ## Online saves
 
 Sign in on the title screen to keep your progress online and continue on another device. Accounts and saves use [Supabase](https://supabase.com) (project `pokecraft`).
@@ -251,6 +262,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/npc.js` | Blocky people: trainers, leaders and the healer |
 | `src/gymlive.js`, `src/daytime.js` | Parts of a gym that change while you play (the Clock Tower's doors, the Firewall Maze's lasers) and the Clock Tower's times of day |
 | `src/clocktower.js`, `src/hiddenhill.js`, `src/firewall.js` | The Clock Tower, Hidden Hill and Firewall Maze gyms (building and live parts) |
+| `src/missions.js`, `src/treasuremap.js`, `src/buildcheck.js`, `src/features.js`, `src/missionui.js` | Champion missions: the list and rewards, treasure map spots from the seed and the map picture, build challenges, the shared block checks (also used by homes), and the missions panel and chip |
 | `src/homegym.js`, `src/treasurevault.js` | The Cozy Gym (moves into your home) and the Treasure Vault (golden keys) |
 | `src/creatures.js` | Wild creature spawning and wandering AI |
 | `src/homes.js`, `src/roomfinder.js`, `src/hometypes.js`, `src/homeui.js` | Homes: who owns which Doormat, the room finder, the Cozy / Treasure home types, and the meter, red gaps and preview |

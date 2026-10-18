@@ -10,6 +10,8 @@ import { Book } from './book.js';
 import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
 import { createRematch, loadWins } from './rematch.js';
+import { createMissions, loadMissions } from './missions.js'; // T29
+import { createMissionUi } from './missionui.js'; // T29
 import { TouchControls } from './touch.js';
 import { createRiding } from './riding.js';
 import { createPlayTogether } from './playtogether.js';
@@ -99,6 +101,7 @@ const game = {
   rematchWins: {}, // T28 gym rematch wins per gym id, per player like badges
   keys: [], // T23 golden keys found ('<gymId>:<key>'), per player like badges
   blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
+  missionState: loadMissions(), // T29 Champion missions: { active, done: [ids], last }, per player like badges
   time: 0.05, started: false, inBattle: false,
   spawnPoint: new THREE.Vector3(),
   renderer, underground: false,
@@ -126,6 +129,7 @@ game.npcs.onBump = npc => { if (playing()) talkTo(npc); }; // walked into a disg
 game.homes = new HomeManager(game); // T22
 game.ui = new UI(game, atlas);
 game.homeUi = createHomeUi(game, { atlas, texture });
+game.missionUi = createMissionUi(game, { atlas }); // T29
 game.fx = new Fx(scene);
 game.battle = new Battle(game);
 game.weather = new Weather(game, {
@@ -161,6 +165,7 @@ function snapshot() {
     champion: game.champion,
     rematchWins: game.rematchWins,
     blockCounts: game.blockCounts,
+    missions: game.missionState, // T29
     keys: game.keys,
     toldCaveGym: true,
     ...game.book.toSave(),
@@ -261,6 +266,7 @@ function startNew(starterId) {
   game.champion = false;
   game.rematchWins = {};
   game.blockCounts = {};
+  game.missionState = loadMissions(); // T29
   game.keys = [];
   game.playerId = game.playerId || randomId();
   game.homes.load([], game.playerId);
@@ -286,6 +292,7 @@ function continueGame(saved) {
   game.champion = !!saved.champion;
   game.rematchWins = loadWins(saved.rematchWins); // old saves have none
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
+  game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
@@ -443,6 +450,13 @@ game.openHome = view => {
   if (!game.ui.panelOpen) togglePanel('home');
   else if (game.ui.homeOpen) { game.homeUi.open(game.homeUi.want); game.homeUi.want = null; }
 };
+// T29: the missions panel. game.openMissions('desk' | 'view') opens it (or switches mode when it is open).
+game.openMissions = mode => {
+  game.missionUi.want = mode;
+  if (!game.ui.panelOpen) togglePanel('missions');
+  else if (game.ui.missionsOpen) { game.missionUi.open(mode); game.missionUi.want = null; }
+};
+game.closeMissions = () => { if (game.ui.missionsOpen) togglePanel(); };
 game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
 game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
 
@@ -481,6 +495,7 @@ game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
 document.getElementById('blocks-close').addEventListener('click', toggleBlocks);
 document.getElementById('home-close').addEventListener('click', () => togglePanel('home'));
+document.getElementById('missions-close').addEventListener('click', () => togglePanel('missions')); // T29
 document.getElementById('book-close').addEventListener('click', toggleBook);
 canvas.addEventListener('click', () => {
   if (!touchMode && game.started && !locked && !game.inBattle && !game.ui.panelOpen) resume();
@@ -507,9 +522,9 @@ document.addEventListener('keydown', e => {
     if (btn) { e.preventDefault(); btn.click(); }
     return;
   }
-  if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || (e.code === 'Escape' && game.ui.panelOpen)) {
+  if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || e.code === 'KeyM' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
-    togglePanel(e.code === 'KeyB' ? 'blocks' : e.code === 'KeyC' ? 'book' : 'team');
+    togglePanel(e.code === 'KeyB' ? 'blocks' : e.code === 'KeyC' ? 'book' : e.code === 'KeyM' ? 'missions' : 'team');
     return;
   }
   if (e.code === 'KeyH' && !game.inBattle && (game.ui.homeOpen || (!game.ui.panelOpen && game.homes.matPos && playing()))) {
@@ -620,7 +635,7 @@ function placeBlock(hit = target.block) {
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   const id = game.hotbar[game.selected];
   if (!world.editAllowed(x, y, z, id)) { wallToast("You can't build inside a gym!"); return; }
-  if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! Mine one in a cave wall, or break one you placed.`); return; }
+  if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, id);
   game.mp.sendBlock(x, y, z, id);
@@ -733,6 +748,11 @@ function talkTower(npc) {
     ui.toast(`${npc.name}: Beat my guards first, then come back!`);
     return;
   }
+  if (npc.role === 'champion' && game.champion) { game.missions.desk(() => championBattle(npc, p)); return; } // T29: missions + rematch
+  championBattle(npc, p);
+}
+
+function championBattle(npc, p) {
   const team = p.team.map(([s, l]) => [s, Math.min(REMATCH_CAP, l + (game.champion ? 3 : 0))]);
   startBattle({ trainer: npc, team, intro: game.champion ? p.rematch : p.intro, boss: true });
 }
@@ -753,6 +773,7 @@ function towerWon(npc) {
     ui.toast(`${npc.name}: ${p.lose}`);
     ui.toast(first ? 'You are the Champion! +20 Capture Cubes' : 'Another win! +5 Capture Cubes');
     if (first) ui.celebrate();
+    if (first) ui.toast('Talk to Champion Solenne again: she has missions for you!'); // T29
   } else {
     const key = `tower:${npc.role}`;
     if (!game.beaten.includes(key)) game.beaten.push(key);
@@ -791,6 +812,7 @@ game.onBattleEnd = (result, opts) => {
   document.body.classList.remove('in-battle');
   if (game.hostLeft) setTimeout(goHome, 2500); // the host left during the battle
   if (opts.duel) {
+    if (opts.duel.coop) { game.duels.finish(); game.missions.coopEnded(result, opts.duel); game.ui.renderHud(); save(true); afterOverlay(); return; } // T29: co-op boss
     // Battles between players: nobody's team gets hurt, and the winner gets 3 Capture Cubes.
     const name = opts.duel.name;
     game.duels.finish();
@@ -906,6 +928,7 @@ function updateSky(dt) {
 let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
+game.missions = createMissions(game, { save }); // T29
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
@@ -919,6 +942,7 @@ function homePrompt() {
 }
 
 // T28: a gym leader whose badge you already hold offers a rematch.
+const isChampDesk = npc => npc.kind === 'tower' && npc.role === 'champion' && game.champion && game.badges.length >= GYMS.length; // T29
 const isRematch = npc => npc.kind === 'leader' && !!npc.gym && game.badges.includes(npc.gym.def.id);
 
 function updateTarget() {
@@ -950,12 +974,12 @@ function updateTarget() {
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
   game.ui.setPrompt(target.player ? `${target.player.name} · ${how} to ask for a battle`
-    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
+    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? `Battle ${target.player.name}!`
-    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
+    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
       : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
@@ -979,6 +1003,7 @@ function frame(now) {
     game.riding.update(dt, now);
     game.gymLive.update(dt);
     game.rematch.update();
+    game.missions.update(dt); // T29
     if (p.onGround) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
       const under = game.world.get(fx, fy, fz);
@@ -992,6 +1017,7 @@ function frame(now) {
     game.npcs.update(dt, p.pos);
     game.mp.update(dt);
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
+    if (game.battle.friendModel) animateModel(game.battle.friendModel, now / 1000 + 2, false); // T29: the co-op friend's creature
     if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
 
     camera.position.copy(p.eyePos);
