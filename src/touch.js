@@ -21,6 +21,8 @@ export class TouchControls {
     this.setupJoystick();
     this.setupLook(canvas);
     this.hold('btn-jump', down => actions.jump(down));
+    this.hold('btn-down', down => actions.down(down));
+    this.tap('btn-ride', () => actions.ride());
     this.press('btn-break', () => actions.breakBlock());
     this.press('btn-place', () => actions.place());
     // Buttons that open something react on the finished tap, so the tap can't also land on what opened.
@@ -30,6 +32,19 @@ export class TouchControls {
     this.tap('btn-book', () => actions.book());
     this.tap('btn-pause', () => actions.pause());
     this.actBtn = document.getElementById('btn-act');
+    this.ride = { show: false, on: false, sky: false };
+  }
+
+  // T27: the Ride / Get off button, and Jump -> Up with a Down button while flying (DOM written only on change).
+  setRide(s) {
+    const old = this.ride;
+    if (s.show !== old.show) document.getElementById('btn-ride').classList.toggle('hidden', !s.show);
+    if (s.on !== old.on) document.getElementById('btn-ride').textContent = s.on ? 'Get off' : 'Ride';
+    if (s.sky !== old.sky) {
+      document.getElementById('touch').classList.toggle('sky', s.sky);
+      document.getElementById('btn-jump').textContent = s.sky ? 'Up' : 'Jump';
+    }
+    this.ride = { show: s.show, on: s.on, sky: s.sky };
   }
 
   // Fires on touch-down for snappy buttons; stops the touch turning into a look-drag or a click.

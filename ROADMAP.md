@@ -854,7 +854,7 @@ so later plans can add traits as data:
 Done when: a `traits` spec covers old saves (same result twice, saved after), only allowed species getting Rideable,
 the card badge, and a visitor seeing the same traits.
 
-### T27 · Riding (size: L, after T26)
+### T27 · Riding (size: L, after T26) — DONE
 
 Creatures with the **Rideable** trait (only species where it makes sense: big land, water or sky
 shapes; the plan lists them) can be ridden. Ride from the team screen or a "Ride" button (touch too).

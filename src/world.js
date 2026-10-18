@@ -505,6 +505,13 @@ export class World {
     return this.tower && inside(this.tower) ? this.tower : null;
   }
 
+  // T27: is this cell inside any gym's or the tower's protected box? Riders can't go in (the box list is fixed after generate()).
+  fenced(x, y, z) {
+    const boxes = this.fenceBoxes ??= [...this.gyms, this.tower].flatMap(g => g?.protect || []);
+    for (const b of boxes) if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1) return true;
+    return false;
+  }
+
   // May this cell become `id`? One rule for the player, touch, visitors and saved edits. Opening a chest is not
   // breaking it (cave chests; T23's key chests).
   editAllowed(x, y, z, id) {

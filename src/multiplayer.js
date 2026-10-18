@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { buildPerson } from './npc.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { isSolid } from './blocks.js';
+import { rideSpecies, fitRide } from './riding.js';
 import { WORLD_W, WORLD_D } from './world.js';
 import { realtimeChannel } from './cloud.js';
 
@@ -90,6 +91,10 @@ class Avatar {
     scene.add(this.model);
     this.lead = null;
     this.leadSpecies = null;
+    this.rideModel = null;
+    this.rideFit = null;
+    this.rideSpecies = null;
+    this.isDueling = false;
     this.heard = 0;
     this.t = 0;
   }
@@ -99,10 +104,27 @@ class Avatar {
     this.yaw = info.yaw;
     this.heard = 0;
     if (info.lead !== this.leadSpecies) this.setLead(info.lead);
+    const r = rideSpecies(info.ride);
+    if (r !== this.rideSpecies) this.setRide(r);
   }
 
   // The lead creature hides while this player is in a battle with you (their creature is out).
-  set dueling(on) { if (this.lead) this.lead.visible = !on; }
+  set dueling(on) { this.isDueling = on; if (this.lead) this.lead.visible = !on && !this.rideModel; }
+
+  // T27: the creature this player is riding (null = walking). Not a child of the person, so picks only hit the person.
+  setRide(species) {
+    if (this.rideModel) { this.scene.remove(this.rideModel); disposeModel(this.rideModel); this.rideModel = null; }
+    this.rideSpecies = null;
+    if (species) {
+      try {
+        this.rideModel = buildModel(species);
+        this.rideFit = fitRide(this.rideModel);
+        this.scene.add(this.rideModel);
+        this.rideSpecies = species;
+      } catch { this.rideModel = null; this.rideSpecies = species; }
+    }
+    if (this.lead) this.lead.visible = !this.isDueling && !this.rideModel;
+  }
 
   setLead(species) {
     if (this.lead) { this.scene.remove(this.lead); disposeModel(this.lead); this.lead = null; }
@@ -126,8 +148,20 @@ class Avatar {
     // Players' cameras face -Z at yaw 0, but people models face +Z.
     this.model.rotation.y = this.yaw + Math.PI;
     const p = this.model.userData.parts;
-    for (const l of p.legs) l.g.rotation.x = moving ? Math.sin(this.t * 9 + l.phase) * 0.7 : 0;
-    for (const a of p.arms) a.g.rotation.x = moving ? Math.sin(this.t * 9 + a.phase) * 0.6 : 0;
+    const riding = !!this.rideModel;
+    if (riding) {
+      // Sitting on a creature: raised, legs apart, no swing.
+      this.model.position.y += this.rideFit.seat - 0.75;
+      p.legs.forEach((l, i) => { l.g.rotation.x = 0; l.g.rotation.z = i % 2 ? 0.5 : -0.5; });
+      for (const a of p.arms) a.g.rotation.x = 0;
+      const f = this.rideFit;
+      this.rideModel.position.set(this.pos.x - Math.sin(this.yaw) * f.shift, this.pos.y + f.lift, this.pos.z - Math.cos(this.yaw) * f.shift);
+      this.rideModel.rotation.y = this.yaw + Math.PI;
+      animateModel(this.rideModel, this.t, moving);
+    } else {
+      for (const l of p.legs) { l.g.rotation.z = 0; l.g.rotation.x = moving ? Math.sin(this.t * 9 + l.phase) * 0.7 : 0; }
+      for (const a of p.arms) a.g.rotation.x = moving ? Math.sin(this.t * 9 + a.phase) * 0.6 : 0;
+    }
     if (this.lead) {
       // The lead creature trots along behind and to the side.
       const back = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)).multiplyScalar(1.4);
@@ -144,6 +178,7 @@ class Avatar {
     this.scene.remove(this.model);
     disposeModel(this.model);
     this.setLead(null);
+    this.setRide(null);
   }
 }
 
@@ -288,6 +323,7 @@ export class Multiplayer {
     this.t.send('state', {
       id: this.id, name: this.name, host: this.role === 'host',
       x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +g.player.yaw.toFixed(2),
+      ride: g.riding?.species ?? null,
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,

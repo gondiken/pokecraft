@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { BLOCKS, PLACEABLE, drawBlockIcon } from './blocks.js';
 import { TRAITS } from './traits.js';
+import { rideKind } from './riding.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
@@ -190,6 +191,7 @@ export class UI {
     const btns = [];
     if (inParty) {
       if (i > 0) btns.push(el('button', { onclick: () => { g.party.unshift(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'Make lead'));
+      if (rideKind(c)) btns.push(el('button', { class: 'ride', 'data-ride': c.uid, onclick: () => g.riding.toggle(c) }, g.riding?.creature === c ? 'Get off' : 'Ride'));
       if (g.party.length > 1) btns.push(el('button', { onclick: () => { g.box.push(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'To box'));
     } else {
       // i is the real index in game.box (the box view may be sorted or filtered).
