@@ -60,7 +60,7 @@ export default async function ({ browser, base, t }) {
   // 1. Data.
   const data = await page.evaluate(async (reserved) => {
     const S = await import('/src/species.js');
-    const KINDS = ['heal', 'raise', 'lower', 'flinch', 'sleep', 'multi', 'recoil'];
+    const KINDS = ['heal', 'raise', 'lower', 'flinch', 'sleep', 'multi', 'recoil', 'rally', 'shield', 'risky', 'sacrifice', 'curse', 'field', 'lastword'];
     const types = ['normal', ...Object.keys(S.TYPE_COLORS)];
     const out = { few: [], bad: [], dupNames: [], clash: [], unknownLearn: [], firstNotDamage: [], noCoverage: [], hits: 0, total: Object.keys(S.MOVES).length };
     for (const type of types) {
@@ -89,7 +89,7 @@ export default async function ({ browser, base, t }) {
     out.info = S.moveInfo('flarekick').text + ' / ' + S.moveInfo('lullaby').text;
     return out;
   }, RESERVED_SOUNDS);
-  t.ok(data.total >= 77 && !data.few.length, `every type has enough moves (${data.total} moves) ${data.few.join(', ')}`);
+  t.ok(data.total >= 138 && !data.few.length, `every type has enough moves (${data.total} moves) ${data.few.join(', ')}`);
   t.ok(!data.bad.length && !data.dupNames.length && !data.clash.length, `moves are well formed, names unique, no sound clash ${[...data.bad, ...data.dupNames, ...data.clash].join(', ')}`);
   t.ok(!data.unknownLearn.length, `every learnset move exists ${data.unknownLearn.join(', ')}`);
   t.ok(!data.firstNotDamage.length, `the first move is always a damaging move, levels 1 to 60 ${data.firstNotDamage.slice(0, 5).join(', ')}`);
@@ -109,7 +109,7 @@ export default async function ({ browser, base, t }) {
       b.allies = [S.makeCreature(allySp, lv, allyMoves)];
       b.foes = [S.makeCreature(foeSp, foeLv, foeMoves)];
       b.allyIdx = b.foeIdx = 0;
-      b.trainer = b.duel = null; b.boss = false; b.modMap = new Map();
+      b.trainer = b.duel = null; b.boss = false; b.modMap = new Map(); b.resetSides();
       return log;
     };
     const seq = list => { const s = { n: 0 }; b.rng = () => { s.n++; return list.length ? list.shift() : 0.5; }; return s; };
@@ -393,7 +393,8 @@ export default async function ({ browser, base, t }) {
     const c = window.pokecraft.party[0];
     return S.gainXp(c, S.xpForLevel(27) - c.xp, { ask: true }).msgs.filter(m => m.learn).map(m => m.learn);
   });
-  t.ok(again.length === 0, `a move you said no to is not offered again (${again.join(',')})`);
+  // (the big move staticfuzz arrives at Lv 24, which is new; nothing the player already said no to comes back)
+  t.ok(again.join(',') === 'staticfuzz', `a move you said no to is not offered again, only the new big move (${again.join(',')})`);
   t.ok(!page.errors.length, `no page errors (desktop) ${page.errors.join('; ')}`);
   await page.context().close();
 

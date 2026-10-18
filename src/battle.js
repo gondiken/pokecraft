@@ -14,6 +14,9 @@ const WAKE_HIT = 3; // the 3rd hit of a multi-hit move wakes a sleeper
 // Stat changes: +1 / -1 per use, at most 3 either way. Gentle: +3 is x1.75, -3 is x0.57.
 const stage = s => (s >= 0 ? (4 + s) / 4 : 4 / (4 - s));
 const STAT_NAMES = { atk: 'attack', def: 'defence', spd: 'speed' };
+// Per-team effects of the big moves (T25). shield: { until, name } | null; gift: the next one in gets full HP + attack.
+const newSide = () => ({ atk: 0, spd: 0, shield: null, gift: false });
+const cap = s => s[0].toUpperCase() + s.slice(1);
 
 export class Battle {
   constructor(game) {
@@ -26,6 +29,7 @@ export class Battle {
     this.skip = null;
     this.history = [];
     this.modMap = new Map();
+    this.resetSides();
     this.log.addEventListener('click', () => this.skip?.());
     this.allyModel = null;
     this.active = false;
@@ -53,12 +57,82 @@ export class Battle {
   // `sleep` = own moves it will still lose (0 = awake); `justWoke` = its free turn after waking (can't be slept again).
   mods(c) {
     let m = this.modMap.get(c);
-    if (!m) this.modMap.set(c, m = { atk: 0, def: 0, spd: 0, sleep: 0, justWoke: false, flinch: false, healed: 0 });
+    if (!m) {
+      const s = this.sides[this.sideOf(c)]; // a creature coming in picks up its team's rally and curse
+      this.modMap.set(c, m = { atk: s?.atk || 0, def: 0, spd: s?.spd || 0, sleep: 0, justWoke: false, flinch: false, healed: 0, rest: false });
+    }
     return m;
   }
 
-  // Damage taken is multiplied by this (sleeping: +25%). T25's shield multiplies in here too.
-  takenFactor(c) { return this.mods(c).sleep ? 1.25 : 1; }
+  // Per-team state of the big moves, the one shared field and the round counter. Never saved.
+  resetSides() { this.sides = { ally: newSide(), foe: newSide() }; this.field = null; this.round = 0; }
+  sideOf(c) {
+    if (this.allies?.includes(c)) return 'ally';
+    if (this.foes?.includes(c)) return 'foe';
+    return null;
+  }
+  // Healthy creatures of a team that are not out (they wait on the bench).
+  bench(side) {
+    const list = side === 'ally' ? this.allies : this.foes, cur = side === 'ally' ? this.ally : this.foe;
+    return (list || []).filter(c => c !== cur && c.hp > 0).length > 0;
+  }
+  teamName(side) {
+    if (side === 'ally') return 'Your team';
+    if (this.duel) return `${this.duel.name}'s team`;
+    if (this.trainer) return `${this.trainer.name}'s team`;
+    return 'The wild team';
+  }
+  shieldOn(side) { const s = this.sides[side].shield; return !!s && s.until >= this.round; }
+  fieldFactor(type) { return this.field && this.field.type === type ? this.field.boost : 1; }
+  turnsLeft(until, n) { return Math.min(n, until - this.round + 1); }
+
+  // Damage taken is multiplied by this (sleeping: +25%, a team shield: -30%).
+  takenFactor(c) {
+    const side = this.sideOf(c);
+    return (this.mods(c).sleep ? 1.25 : 1) * (side && this.shieldOn(side) ? 0.7 : 1);
+  }
+
+  // Why a creature can't use a move right now ('' = it can).
+  cantUse(side, id) {
+    const c = side === 'ally' ? this.ally : this.foe, fx = MOVES[id]?.fx;
+    if (fx?.kind === 'lastword' && c.hp >= statsFor(c).maxHp * fx.below) return 'only below 1/4 HP';
+    if (fx?.kind === 'sacrifice' && !this.bench(side)) return 'no friend can come in';
+    return '';
+  }
+
+  // A new round starts: shields and the field wear off. Draws no random numbers.
+  async tickEffects() {
+    for (const side of ['ally', 'foe']) {
+      const s = this.sides[side].shield;
+      if (s && s.until < this.round) {
+        this.sides[side].shield = null;
+        this.refresh();
+        await this.say(`${s.name} wore off.`, 1000);
+      }
+    }
+    if (this.field && this.field.until < this.round) {
+      const f = this.field;
+      this.field = null;
+      this.refresh();
+      await this.say(`${f.name} is over.`, 1000);
+    }
+  }
+
+  // The next creature after a sacrifice arrives with full HP and +1 attack.
+  async giftArrives(side) {
+    const s = this.sides[side];
+    if (!s.gift) return;
+    s.gift = false;
+    const c = side === 'ally' ? this.ally : this.foe;
+    c.hp = statsFor(c).maxHp;
+    const m = this.mods(c);
+    m.atk = Math.min(3, m.atk + 1);
+    sound.play('kind:gift');
+    this.game.fx?.status('heal', this.spot(side));
+    this.game.fx?.status('power', this.spot(side));
+    this.refresh();
+    await this.say(`${this.labelOf(side)} comes in fresh and strong! Full HP and more attack!`, 1400);
+  }
 
   // Put a creature to sleep for `turns` of its own moves (2 or 3, drawn by the caller).
   async fallAsleep(side, turns) {
@@ -127,6 +201,10 @@ export class Battle {
       if (m[k]) tags.push(el('span', { class: m[k] > 0 ? 'up' : 'down' }, `${label} ${m[k] > 0 ? '↑' : '↓'}${Math.abs(m[k]) > 1 ? Math.abs(m[k]) : ''}`));
     }
     if (m.sleep) tags.push(el('span', { class: 'zzz' }, 'Zzz'));
+    if (m.rest) tags.push(el('span', { class: 'zzz' }, 'Resting'));
+    const side = this.sideOf(c), sh = side && this.sides[side].shield;
+    if (sh && this.shieldOn(side)) tags.push(el('span', { class: 'up' }, `${sh.name} ${this.turnsLeft(sh.until, 3)}`));
+    if (this.field) tags.push(el('span', { style: `color:${TYPE_COLORS[this.field.type]}` }, `${this.field.name} ${this.turnsLeft(this.field.until, 5)}`));
     return tags.length ? el('div', { class: 'b-tags' }, ...tags) : null;
   }
 
@@ -156,13 +234,19 @@ export class Battle {
   async chooseAction() {
     for (;;) {
       const g = this.game;
+      const resting = this.mods(this.ally).rest;
       const moves = this.ally.moves.map(id => {
         const mv = MOVES[id];
+        const why = resting ? 'resting this turn' : this.cantUse('ally', id);
         return {
-          label: mv.name, sub: `${mv.type} · ${moveInfo(id).text}`, value: { kind: 'move', move: id },
+          label: mv.name, sub: `${mv.type} · ${why || moveInfo(id).text}`, value: { kind: 'move', move: id }, disabled: !!why,
           style: `background:${TYPE_COLORS[mv.type]};color:#111`,
         };
       });
+      // Resting or nothing usable: one wide button passes the turn (the move is refused in useMove).
+      if (moves.every(m => m.disabled)) {
+        moves.unshift({ label: resting ? 'Rest' : 'Wait', sub: resting ? 'You rest after the shield.' : 'No move works right now.', value: { kind: 'move', move: this.ally.moves[0] }, cls: 'wide primary' });
+      }
       const canSwitch = this.allies.some((c, i) => i !== this.allyIdx && c.hp > 0);
       const trainer = !!this.trainer;
       const duel = !!this.duel;
@@ -262,6 +346,7 @@ export class Battle {
     this.cry(this.foe);
     await tween(300, t => model.scale.setScalar(easeOut(t)));
     await wait(900);
+    await this.giftArrives('foe');
   }
 
   async lunge(side) {
@@ -298,6 +383,7 @@ export class Battle {
     this.boss = !!opts.boss;
     this.poweredUp = false;
     this.modMap = new Map();
+    this.resetSides();
     this.history = [];
     this.xpBoost = opts.xpBoost || 1;
     this.trainer = opts.trainer || (this.duel && { name: this.duel.name, pos: this.duel.pos });
@@ -382,6 +468,8 @@ export class Battle {
   }
 
   async turn() {
+    this.round++;
+    await this.tickEffects(); // draws nothing
     if (this.duel) return this.duelTurn();
     const action = await this.chooseAction();
     const g = this.game;
@@ -515,22 +603,30 @@ export class Battle {
     const foe = this.foe, ally = this.ally;
     const fm = this.mods(foe), am = this.mods(ally);
     const allyType = SPECIES[ally.species].type, foeType = SPECIES[foe.species].type;
+    const maxHp = statsFor(foe).maxHp, fb = this.bench('foe') ? 1 : 0;
     const score = id => {
       const mv = MOVES[id];
+      if (mv.fx?.kind === 'risky' && foe.hp < maxHp * 0.4) return 0;
       if (mv.power > 0) {
         const eff = effectiveness(mv.type, allyType);
         if (eff === 0) return 0;
         const stab = mv.type === foeType ? 1.5 : 1;
-        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1) * this.takenFactor(ally);
+        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1) * this.takenFactor(ally) * this.fieldFactor(mv.type);
       }
       const fx = mv.fx;
       if (fx.kind === 'heal') return foe.hp < statsFor(foe).maxHp * 0.45 && fm.healed < 1 ? 120 : 0;
       if (fx.kind === 'raise') return fm[fx.stat] < 2 && foe.hp > statsFor(foe).maxHp * 0.6 ? 45 : 0;
       if (fx.kind === 'lower') return am[fx.stat] > -2 ? 40 : 0;
       if (fx.kind === 'sleep') return am.sleep || am.justWoke ? 0 : 55;
+      if (fx.kind === 'rally') return this.sides.foe.atk < 1 && foe.hp > maxHp * 0.6 && fb >= 1 ? 40 + 10 * Math.min(fb, 2) : 0;
+      if (fx.kind === 'shield') return !this.shieldOn('foe') && foe.hp > maxHp * 0.5 && fb >= 1 ? 40 : 0;
+      if (fx.kind === 'curse') return am.spd > -2 && this.sides.ally.spd > -2 ? 30 : 0;
+      if (fx.kind === 'field') return this.field?.type !== mv.type && foe.moves.some(m => MOVES[m].type === mv.type && MOVES[m].power > 0) ? 45 : 0;
+      if (fx.kind === 'sacrifice') return fb >= 1 && foe.hp < maxHp * 0.3 ? 50 : 0;
       return 0;
     };
-    const scored = foe.moves.map(id => [id, score(id)]);
+    const usable = foe.moves.filter(id => !this.cantUse('foe', id));
+    const scored = (usable.length ? usable : foe.moves).map(id => [id, score(id)]);
     if (Math.random() < 0.5) {
       const best = Math.max(...scored.map(s => s[1]));
       const top = scored.filter(s => s[1] === best);
@@ -542,9 +638,10 @@ export class Battle {
   }
 
   // One creature uses a move. The random numbers are drawn in a fixed order (1 hit, 2 number of hits
-  // (multi only), 3 critical, 4 damage roll, 5 effect chance (moves with `chance`), 6 sleep length
-  // (whenever a sleep effect lands). The sleeping path and the wake-up hit draw nothing) and never depend on which side is moving, because in a
-  // player battle both browsers must draw exactly the same numbers.
+  // (multi only), 3 critical, 4 damage roll, 7 risky coin (right after 4), 5 effect chance (moves with `chance`),
+  // 6 sleep length (whenever a sleep effect lands), 8 curse roll (first thing in the curse branch). Sleeping,
+  // resting, flinching, a blocked move and the wake-up hit draw nothing) and never depend on which side is moving,
+  // because in a player battle both browsers must draw exactly the same numbers.
   async useMove(side, moveId, { first = false } = {}) {
     const atk = side === 'ally' ? this.ally : this.foe;
     const def = side === 'ally' ? this.foe : this.ally;
@@ -555,11 +652,13 @@ export class Battle {
     // A flinched or sleepy creature loses its move.
     if (ma.flinch) {
       ma.flinch = false;
+      ma.rest = false;
       fx?.status('flinch', this.spot(side));
       await this.say(`${who} flinched and couldn't move!`, 1100);
       return;
     }
     if (ma.sleep) {
+      ma.rest = false;
       sound.play('snooze');
       fx?.status('sleep', this.spot(side));
       await this.say(`${who} is fast asleep... Zzz`, 1100);
@@ -568,6 +667,14 @@ export class Battle {
       else this.refresh();
       return;
     }
+    if (ma.rest) { // the turn after a team shield: no draws
+      ma.rest = false;
+      this.refresh();
+      await this.say(`${who} is resting after the shield.`, 1100);
+      return;
+    }
+    const why = this.cantUse(side, moveId);
+    if (why) { await this.say(`${who} can't use ${mv.name} now: ${why}!`, 1100); return; } // no draws
     ma.justWoke = false; // it is awake and gets to act: its free turn is used up
     this.say(`${who} used ${mv.name}!`, 700);
     sound.play(sound.has(moveId) ? moveId : `fx:${mv.type}`); // sound-type moves have their own sound
@@ -588,7 +695,13 @@ export class Battle {
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * atkPower / defPower) / 50) + 2;
     const roll = 0.85 + this.rng() * 0.15; // draw 4
     const defSide = side === 'ally' ? 'foe' : 'ally';
-    const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crit * this.takenFactor(def) * roll));
+    let mult = 1;
+    if (mfx?.kind === 'risky') { // draw 7: right after the damage roll
+      if (this.rng() < mfx.odds) mult = mfx.times;
+      else { await this.backfire(side, mv, roll); return; }
+    }
+    if (mfx?.kind === 'lastword') { fx?.status('power', this.spot(side)); sound.play('kind:lastword'); }
+    const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crit * mult * this.fieldFactor(mv.type) * this.takenFactor(def) * roll));
     const hpStart = def.hp;
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
@@ -601,7 +714,7 @@ export class Battle {
       done++;
       sound.play(eff > 1 ? 'super' : 'hit');
       this.flash(side === 'ally' ? 'foe' : 'ally');
-      fx?.impact(mv.type, this.spot(side === 'ally' ? 'foe' : 'ally'), { big: !!mv.sig });
+      fx?.impact(mv.type, this.spot(side === 'ally' ? 'foe' : 'ally'), { big: !!mv.sig || mult > 1 || mfx?.kind === 'lastword' });
       this.refresh();
       await wait(hits > 1 ? 300 : 450);
       if (mfx?.kind === 'multi' && i === WAKE_HIT - 1 && md.sleep && def.hp > 0 && eff > 0) await this.wakeUp(defSide, 'bonk');
@@ -612,6 +725,7 @@ export class Battle {
     else if (eff > 1) await this.say("It's super effective!", 1000);
     else if (eff < 1) await this.say("It's not very effective...", 1000);
     if (hits > 1 && eff > 0) await this.say(`Hit ${done} times!`, 900);
+    if (mult > 1 && eff > 0) { sound.play('kind:jackpot'); await this.say('Wow! Three times the power!', 1000); }
 
     // draw 5: only moves with a "chance" effect, and always drawn so both players stay in step
     if (mfx?.chance) {
@@ -629,6 +743,22 @@ export class Battle {
       }
     }
     if (bossLast && def.hp > 0 && def.hp <= statsFor(def).maxHp / 2) await this.powerUp(def);
+  }
+
+  // A risky move that went wrong: the user hits itself with the move's power. No STAB, type, crit or field.
+  async backfire(side, mv, roll) {
+    const atk = side === 'ally' ? this.ally : this.foe, ma = this.mods(atk), fx = this.game.fx;
+    const st = statsFor(atk);
+    const selfBase = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * st.atk * stage(ma.atk) * (atk.boost || 1) / (st.def * stage(ma.def))) / 50) + 2;
+    const loss = Math.max(1, Math.floor(selfBase * roll * this.takenFactor(atk)));
+    atk.hp = Math.max(0, atk.hp - loss);
+    sound.play('kind:oops');
+    fx?.status('recoil', this.spot(side));
+    fx?.impact(mv.type, this.spot(side));
+    this.flash(side);
+    this.refresh();
+    await wait(450);
+    await this.say(`Oh no! ${this.labelOf(side)} hit itself!`, 1200);
   }
 
   labelOf(side) { return side === 'foe' ? `${this.foeLabel} ${nameOf(this.foe)}` : nameOf(this.ally); }
@@ -674,6 +804,60 @@ export class Battle {
       if (m.sleep) { if (!quiet) await this.say(`But ${tWho} is already asleep!`, 1100); return; }
       if (m.justWoke) { if (!quiet) await this.say(`${tWho} just woke up and is wide awake!`, 1100); return; }
       await this.fallAsleep(targetSide, turns);
+    } else if (fx.kind === 'rally') {
+      const s = this.sides[userSide], m = this.mods(user);
+      if (m.atk >= 3 && s.atk >= 3) { await this.say(`${this.teamName(userSide)}'s attack can't go any higher!`, 1100); return; }
+      m.atk = Math.min(3, m.atk + fx.atk);
+      s.atk = Math.min(3, s.atk + fx.atk);
+      sound.play('kind:rally');
+      vis?.status('rally', this.spot(userSide), { type: mv.type });
+      this.refresh();
+      await this.say(`${this.teamName(userSide)} feels stronger! Attack up!`, 1300);
+      const before = m.def;
+      m.def = Math.max(-3, m.def + fx.def);
+      if (m.def !== before) {
+        sound.play('statdown');
+        vis?.status('down', this.spot(userSide), { stat: 'def' });
+        this.refresh();
+        await this.say(`${uWho}'s defence went down ${before - m.def}!`, 1200);
+      }
+    } else if (fx.kind === 'shield') {
+      this.sides[userSide].shield = { until: this.round + fx.turns, name: mv.name };
+      this.mods(user).rest = true;
+      sound.play('kind:shield');
+      vis?.status('shield', this.spot(userSide), { type: mv.type });
+      this.refresh();
+      await this.say(`${mv.name} covers ${this.teamName(userSide)} for ${fx.turns} turns!`, 1300);
+      await this.say(`${uWho} will rest next turn.`, 1000);
+    } else if (fx.kind === 'sacrifice') {
+      if (!this.bench(userSide)) { await this.say('But no friend can come in!', 1100); return; }
+      sound.play('kind:gift');
+      vis?.status('sacrifice', this.spot(userSide), { type: mv.type });
+      user.hp = 0;
+      this.sides[userSide].gift = true;
+      this.refresh();
+      await this.say(`${uWho} gave everything for the team!`, 1300);
+    } else if (fx.kind === 'curse') {
+      const r = this.rng(); // draw 8: always, first thing in the branch
+      if (r >= fx.odds) {
+        vis?.status('miss', this.spot(targetSide), { from: this.spot(userSide) });
+        await this.say("But it didn't work...", 1100);
+        return;
+      }
+      const s = this.sides[targetSide], m = this.mods(target);
+      if (m.spd <= -3 && s.spd <= -3) { await this.say(`${this.teamName(targetSide)} can't get any slower!`, 1100); return; }
+      m.spd = Math.max(-3, m.spd + fx.spd);
+      s.spd = Math.max(-3, s.spd + fx.spd);
+      sound.play('kind:curse');
+      vis?.status('curse', this.spot(targetSide), { type: mv.type, from: this.spot(userSide) });
+      this.refresh();
+      await this.say(`${this.teamName(targetSide)} got slower!`, 1300);
+    } else if (fx.kind === 'field') {
+      this.field = { type: mv.type, name: mv.name, boost: fx.boost, until: this.round + fx.turns };
+      sound.play('kind:field');
+      vis?.status('field', this.spot(userSide), { type: mv.type, from: this.spot(targetSide) });
+      this.refresh();
+      await this.say(`${mv.name}! ${cap(mv.type)} moves are stronger for ${fx.turns} turns. For everyone!`, 1400);
     }
   }
 
@@ -814,6 +998,7 @@ export class Battle {
     await this.placeAlly();
     this.cry(this.ally);
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    await this.giftArrives('ally');
     return null;
   }
 
