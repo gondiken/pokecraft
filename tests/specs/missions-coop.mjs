@@ -113,13 +113,13 @@ export default async function ({ browser, base, t }) {
   });
   await look();
   for (const page of [A, B]) {
-    await page.evaluate(async () => {
+    await page.evaluate(async asker => {
       const { BOSSES } = await import('/src/coopboss.js');
       BOSSES.giant1.plan = ['a', 'stonefort', 'a', 'cliffcrash'];
       BOSSES.giant1.giant = 2.5;
       const g = window.pokecraft;
-      if (g.missions) g.missionState.active = 'giant1';
-    });
+      if (g.missions) g.missionState.active = asker ? 'giant1' : null; // the helper has no boss mission of their own
+    }, page === A);
   }
 
   // 3. coopFor errors and success
@@ -190,7 +190,8 @@ export default async function ({ browser, base, t }) {
   if (await A.evaluate(() => !!window.pokecraft.missions?.coopEnded)) {
     t.ok(await A.evaluate(() => window.pokecraft.missionState.done.includes('giant1')) && await A.evaluate(() => window.pokecraft.blockCounts[77]) === 2
       && await A.evaluate(() => window.pokecraft.cubes) === cubesA + 10, 'rewards: the asker gets 2 trophies and 10 cubes');
-    t.ok(await B.evaluate(() => window.pokecraft.blockCounts[77]) === 1 && await B.evaluate(() => window.pokecraft.cubes) === cubesB + 5, 'the helper gets 1 trophy and 5 cubes');
+    const hB = await B.evaluate(() => ({ t: window.pokecraft.blockCounts[77], c: window.pokecraft.cubes }));
+    t.ok(hB.t === 1 && hB.c === cubesB + 5, `the helper gets 1 trophy and 5 cubes (${hB.t} trophies, cubes ${cubesB} -> ${hB.c})`);
   } else console.log('      skipped: needs builder A (rewards)');
 
   // 7. One team out: the kid has one weak creature

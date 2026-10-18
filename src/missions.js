@@ -164,11 +164,14 @@ export function createMissions(game, { save }) {
       if (result !== 'won') return;
       const def = m.active;
       if (coop.helper) {
-        m.reward(REWARDS.helper);
-        sound.play('badge');
-        toast('You helped beat the giant! +1 Giant Trophy, +5 Capture Cubes');
+        // A helper with a boss mission of their own finishes it (its full reward); anyone else gets the helper reward. Never both.
         if (def?.kind === 'boss') m.complete(def);
-        else { game.ui.renderHud(); save(true); }
+        else {
+          m.reward(REWARDS.helper);
+          sound.play('badge');
+          toast('You helped beat the giant! +1 Giant Trophy, +5 Capture Cubes');
+          game.ui.renderHud(); save(true);
+        }
       } else {
         const mine = missionById(coop.mission);
         if (mine && game.missionState.active === mine.id) m.complete(mine);

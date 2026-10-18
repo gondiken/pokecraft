@@ -816,7 +816,7 @@ game.onBattleEnd = (result, opts) => {
   document.body.classList.remove('in-battle');
   if (game.hostLeft) setTimeout(goHome, 2500); // the host left during the battle
   if (opts.duel) {
-    if (opts.duel.coop) { game.duels.finish(); game.missions.coopEnded(result, opts.duel); game.ui.renderHud(); save(true); afterOverlay(); return; } // T29: co-op boss
+    if (opts.duel.coop) { game.duels.finish(); game.duels.lastResult = result; game.missions.coopEnded(result, opts.duel); game.ui.renderHud(); save(true); afterOverlay(); return; } // T29: co-op boss
     // Battles between players: nobody's team gets hurt, and the winner gets 3 Capture Cubes.
     const name = opts.duel.name;
     game.duels.finish();
