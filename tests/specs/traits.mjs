@@ -219,9 +219,9 @@ export default async function ({ browser, base, t }) {
   await B.evaluate(() => window.pokecraft.duels.decline());
   await waitFor(A, () => !window.pokecraft.duels.asking);
   // A hand-made challenge with a bad list and no list.
-  const odd = await B.evaluate(() => {
-    const d = window.pokecraft.duels;
-    d.onMessage({ type: 'ask', v: 7, from: 'nobody', id: 'zz', name: 'Odd', seed: 1,
+  const odd = await B.evaluate(async () => {
+    const d = window.pokecraft.duels, { VERSION } = await import('/src/duel.js');
+    d.onMessage({ type: 'ask', v: VERSION, from: 'nobody', id: 'zz', name: 'Odd', seed: 1,
       team: [{ species: 'blazehound', level: 5, moves: ['tackle'], traits: ['bogus'] }, { species: 'fluffin', level: 5, moves: ['tackle'] }] });
     return d.incoming?.team.map(c => c.traits);
   });
