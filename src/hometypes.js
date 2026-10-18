@@ -4,28 +4,9 @@
 import { B, WOOL, TREASURE } from './blocks.js';
 import { HOME_SPAWN } from './spawnrules.js';
 
-// Sum of report.counts[zone][id] over the zones and ids. `ids = null` counts every block.
-export function count(report, zones, ids = null) {
-  let n = 0;
-  for (const z of zones) {
-    const c = report?.counts?.[z];
-    if (!c) continue;
-    for (const [id, k] of Object.entries(c)) if (!ids || ids.includes(Number(id))) n += k;
-  }
-  return n;
-}
-
-// A Feature (or rule) is { key, name, icon (block id for its picture), check(report) -> { done, have, need } }.
-export const hasBlock = (id, { key, name, where = ['inside'], icon = id }) =>
-  ({ key, name, icon, where, check: r => { const have = count(r, where, [id]); return { done: have >= 1, have: Math.min(have, 1), need: 1 }; } });
-export const atLeast = (n, ids, { key, name, where = ['inside'], icon = ids[0] }) =>
-  ({ key, name, icon, where, check: r => { const have = count(r, where, ids); return { done: have >= n, have, need: n }; } });
-// Rule: at least `share` of all blocks in the zones are one of ids (need = ceil(total * share); nothing there = not done).
-export const mostly = (ids, share, { key, name, where = ['wall'], icon = ids[0] }) =>
-  ({ key, name, icon, where, check: r => {
-    const total = count(r, where), have = count(r, where, ids), need = Math.ceil(total * share);
-    return { done: total > 0 && have >= need, have, need };
-  } });
+// T29: the feature helpers live in features.js (build challenges use them too); re-exported so every import keeps working.
+import { count, hasBlock, atLeast, mostly } from './features.js';
+export { count, hasBlock, atLeast, mostly };
 
 export class HomeType {
   constructor({ id, name, blurb = '', creature, rule = null, features, need = features.length, show = 'hearts', example, spawn, gymMovesIn = null }) {

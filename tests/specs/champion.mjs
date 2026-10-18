@@ -84,7 +84,7 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: tw.x + 0.5, y: tw.y + 9, z: tw.z + 0.5 });
   });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'tower.png' });
+  await page.screenshot({ path: SHOTS + 'tower.png', timeout: 180000 });
 
   // 3. Before 27 badges everyone in the tower refuses politely (the nurse still heals).
   await page.evaluate(async () => {
@@ -154,7 +154,7 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: c.pos.x, y: c.pos.y + 1.2, z: c.pos.z });
   });
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: SHOTS + 'tower-inside.png' });
+  await page.screenshot({ path: SHOTS + 'tower-inside.png', timeout: 180000 });
 
   await heal();
   await page.evaluate(`window.pokecraft.talkTo(${person('champion')})`);
@@ -164,7 +164,7 @@ export default async function ({ browser, base, t }) {
     if (shot) return;
     if (await page.evaluate(() => window.pokecraft.battle.foeIdx === 5 && window.pokecraft.battle.foeModel?.visible)) {
       await page.waitForTimeout(1500);
-      await page.screenshot({ path: SHOTS + 'champion-battle.png' });
+      await page.screenshot({ path: SHOTS + 'champion-battle.png', timeout: 180000 });
       shot = true;
     }
   });
@@ -202,6 +202,9 @@ export default async function ({ browser, base, t }) {
   const guided = await page.waitForFunction(() => document.getElementById('guide').textContent.includes('Champion'), null, { timeout: 40000 }).then(() => true, () => false);
   t.ok(guided, 'the guide says Champion');
   await page.evaluate(`document.exitPointerLock(); window.pokecraft.talkTo(${person('champion')})`);
+  // T29: the Champion now opens the missions panel first; her rematch is a button there
+  await page.waitForSelector('#missions:not(.hidden) button:has-text("Battle Champion Solenne")');
+  await page.click('#missions button:has-text("Battle Champion Solenne")');
   const rematch = await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, lv: window.pokecraft.battle.foes?.[0]?.level }));
   t.ok(rematch.inBattle && rematch.lv === 52, `rematch: Solenne's first creature is Lv ${rematch.lv}`);
 

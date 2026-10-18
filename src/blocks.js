@@ -35,6 +35,7 @@ const MORE_TILES = [
   'SUNSTONE', 'RUBY', 'SAPPHIRE', // T20 treasure blocks
   'DOORMAT_TOP', 'DOORMAT_SIDE', 'BED_TOP', 'BED_SIDE', 'FIREPLACE', 'FIREPLACE_TOP', // T22 home blocks
   'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
+  'STAR_BLOCK', 'RAINBOW_BRICK', 'TROPHY_SIDE', 'TROPHY_TOP', // T29 mission blocks
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -51,11 +52,13 @@ export const B = {
   // 54-56 are the time / camo / cyber wool blocks, 68-69 the cozy / treasure ones (T21).
   // 57-64: T19 gym blocks (lasers, switches, reset button, clock door).
   LASER_RED: 57, LASER_BLUE: 58, LASER_FRIEND: 59, SWITCH_RED: 60, SWITCH_BLUE: 61, FRIEND_PAD: 62, RESET_BUTTON: 63, CLOCK_DOOR: 64,
-  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). (Next free id: 75, see below.)
+  // 65-67: T20 treasure blocks (limited: you mine them to have them). 68-69: cozy / treasure wool (T21). (Next free id: 78, see below.)
   SUNSTONE: 65, RUBY: 66, SAPPHIRE: 67,
-  // 70-72: T22 home blocks. 73-74: T23 Treasure Vault blocks (not placeable). Next free id: 75.
+  // 70-72: T22 home blocks. 73-74: T23 Treasure Vault blocks (not placeable). Next free id: 78.
   DOORMAT: 70, BED: 71, FIREPLACE: 72,
   KEY_CHEST: 73, VAULT_DOOR: 74,
+  // 75-77: T29 mission blocks (limited, only from Champion missions). Next free id: 78.
+  STAR_BLOCK: 75, RAINBOW_BRICK: 76, GIANT_TROPHY: 77,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -118,6 +121,12 @@ BLOCKS[B.FIREPLACE] = { name: 'Fireplace', top: T.FIREPLACE_TOP, side: T.FIREPLA
 // drawn as CHEST_OPEN (live, per player). The vault door stays until you have all three golden keys.
 BLOCKS[B.KEY_CHEST] = { name: 'Golden Key Chest', top: T.KEY_CHEST_TOP, side: T.KEY_CHEST_SIDE, bottom: T.KEY_CHEST_TOP, glow: true, noLight: true, wallText: 'Open it! Click or tap the chest.' };
 BLOCKS[B.VAULT_DOOR] = { name: 'Vault Door', ...all(T.VAULT_DOOR), wallText: 'The vault is locked. Find the 3 golden keys!' };
+// T29 mission blocks: limited like the treasure blocks, but never in the world: Champion missions are the only way to get them.
+const MISSION_MORE = 'Finish Champion missions to get more!';
+BLOCKS[B.STAR_BLOCK] = { name: 'Star Block', ...all(T.STAR_BLOCK), glow: true, noLight: true, limited: true, getMore: MISSION_MORE };
+BLOCKS[B.RAINBOW_BRICK] = { name: 'Rainbow Brick', ...all(T.RAINBOW_BRICK), limited: true, getMore: MISSION_MORE };
+BLOCKS[B.GIANT_TROPHY] = { name: 'Giant Trophy', top: T.TROPHY_TOP, side: T.TROPHY_SIDE, bottom: T.TROPHY_TOP, limited: true, getMore: MISSION_MORE };
+export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
@@ -134,6 +143,7 @@ export const PLACEABLE = [
 // T22: home blocks, then eight wool colours as rugs (any wool counts as a rug). Added after the others so nothing moves.
 PLACEABLE.splice(PLACEABLE.indexOf(B.LAMP) + 1, 0, B.DOORMAT, B.BED, B.FIREPLACE);
 PLACEABLE.push(WOOL.cozy, WOOL.normal, WOOL.fire, WOOL.water, WOOL.grass, WOOL.electric, WOOL.pixie, WOOL.treasure);
+PLACEABLE.push(...MISSION_BLOCKS); // T29
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
 const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS]);
@@ -358,6 +368,36 @@ export function drawAtlas() {
       : d < 2 ? [255, 226, 110] : d < 3.2 ? [150, 110, 30] : d < 5.4 ? [236, 190, 60] : d < 6.4 ? [90, 94, 104]
       : shade([142, 150, 162], (x === 0 || y === 0 || x === 15 || y === 15 ? 0.7 : 1) * (1 + (rand() - 0.5) * 0.06)));
   });
+
+  // T29 Star Block: deep night blue, a few yellow plus-shaped stars and white dots.
+  { // own random numbers, so no older tile changes
+    const r2 = mulberry32(2929);
+    const stars = [[4, 4], [11, 6], [6, 11], [12, 12]];
+    each((x, y) => {
+      const star = stars.some(([sx, sy]) => (Math.abs(x - sx) + Math.abs(y - sy) <= 1));
+      const dot = (x * 7 + y * 13) % 29 === 0;
+      put(T.STAR_BLOCK, x, y, star ? [255, 226, 80] : dot ? [255, 255, 255] : shade([24, 30, 84], 1 + (r2() - 0.5) * 0.25));
+    });
+    // Rainbow Brick: brick pattern, each brick row one rainbow colour.
+    const RB = [[220, 50, 50], [240, 140, 40], [240, 210, 50], [70, 180, 70], [60, 120, 230], [140, 70, 200]];
+    each((x, y) => {
+      const row = (y / 3) | 0, off = row % 2 ? 4 : 0;
+      const mortar = y % 3 === 2 || y >= 15 || (x + off) % 8 === 0;
+      put(T.RAINBOW_BRICK, x, y, mortar ? [225, 222, 214] : shade(RB[Math.min(row, 5)], 1 + (r2() - 0.5) * 0.16));
+    });
+    // Giant Trophy: a gold cup with handles on a dark-gold plate.
+    each((x, y) => {
+      const cup = y >= 2 && y <= 8 && x >= 5 && x <= 10 && (y < 7 || (x >= 6 && x <= 9));
+      const handle = y >= 3 && y <= 5 && (x === 3 || x === 4 || x === 11 || x === 12) && !(y === 4 && (x === 4 || x === 11));
+      const stem = y >= 9 && y <= 10 && x >= 7 && x <= 8;
+      const plate = y >= 11 && y <= 13 && x >= 3 && x <= 12;
+      const rim = y === 2 && x >= 5 && x <= 10;
+      put(T.TROPHY_SIDE, x, y, rim ? [150, 100, 10] : cup ? shade([255, 205, 50], 1 + (r2() - 0.5) * 0.1) : handle ? [255, 232, 130] : stem ? [230, 180, 40]
+        : plate ? [150, 100, 16] : shade([96, 66, 18], 1 + (r2() - 0.5) * 0.15));
+      const d = Math.hypot(x - 7.5, y - 7.5), edge = x === 0 || y === 0 || x === 15 || y === 15;
+      put(T.TROPHY_TOP, x, y, edge ? [130, 88, 10] : d > 4.5 && d < 5.8 ? [255, 236, 140] : shade([226, 174, 40], 1 + (r2() - 0.5) * 0.08));
+    });
+  }
 
   // T19 gym blocks. Lasers: three thin bright beams with dark gaps.
   const laser = (tile, base, dark, beam) => each((x, y) => put(tile, x, y, [1, 2, 3].some(k => Math.abs(y - (k * 4 - 2)) < 1)

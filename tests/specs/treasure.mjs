@@ -14,11 +14,11 @@ export default async function ({ browser, base, t }) {
   // 1. The world: where treasure is, and that it only ever replaced stone.
   const w = await page.evaluate(async () => {
     const { World, OLD_W, OLD_D, WORLD_W: W, WORLD_D: D } = await import('/src/world.js');
-    const { B, BLOCKS, TREASURE, PLACEABLE, isLimited } = await import('/src/blocks.js');
+    const { B, BLOCKS, TREASURE, MISSION_BLOCKS, PLACEABLE, isLimited } = await import('/src/blocks.js');
     const out = {
       ids: TREASURE.join(), names: TREASURE.map(id => BLOCKS[id].name).join(),
-      limited: TREASURE.every(isLimited) && PLACEABLE.filter(isLimited).join() === TREASURE.join(),
-      others: PLACEABLE.filter(id => !TREASURE.includes(id)).every(id => !isLimited(id)),
+      limited: TREASURE.every(isLimited) && PLACEABLE.filter(isLimited).join() === [...TREASURE, ...MISSION_BLOCKS].join(), // T29: the mission blocks 75-77 are limited too
+      others: PLACEABLE.filter(id => !TREASURE.includes(id) && !MISSION_BLOCKS.includes(id)).every(id => !isLimited(id)),
       ownTiles: new Set(TREASURE.map(id => BLOCKS[id].side)).size === 3 && TREASURE.every(id => ![B.GOLD_ORE, B.CRYSTAL].some(o => BLOCKS[o].side === BLOCKS[id].side)),
       seeds: {},
     };
@@ -127,7 +127,7 @@ export default async function ({ browser, base, t }) {
   const panel = await page.evaluate(() => [...document.querySelectorAll('#block-list button')]
     .filter(b => /Sunstone|Ruby|Sapphire/.test(b.textContent)).map(b => [b.textContent, b.classList.contains('empty')]));
   t.ok(JSON.stringify(panel) === JSON.stringify([['Sunstone ×0', true], ['Ruby ×1', false], ['Sapphire ×1', false]]), `the Blocks panel shows the counts (${panel.map(([text, grey]) => text + (grey ? ' grey' : '')).join(', ')})`);
-  await page.screenshot({ path: SHOTS + 't20-blocks-panel.png' });
+  await page.screenshot({ path: SHOTS + 't20-blocks-panel.png', timeout: 180000 });
   await page.keyboard.press('b');
 
   // 5. Saved and loaded.
@@ -159,7 +159,7 @@ export default async function ({ browser, base, t }) {
     w.updateDirty();
   });
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: SHOTS + 't20-treasure.png' });
+  await page.screenshot({ path: SHOTS + 't20-treasure.png', timeout: 180000 });
   t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
   await page.context().close();
 }
