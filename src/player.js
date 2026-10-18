@@ -15,6 +15,10 @@ export class Player {
     this.halfW = 0.3;
     this.height = 1.8;
     this.eye = 1.62;
+    this.ride = null;       // T27: { kind, speed, ... } from riding.js while riding
+    this.fenceHit = false;  // a rider bumped into a gym box
+    this.capped = false;    // a sky rider hit the height cap
+    this.landed = false;    // a gliding sky rider reached the floor
     this._eye = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
   }
@@ -49,7 +53,72 @@ export class Player {
       for (let y = y0; y <= y1; y++)
         for (let z = z0; z <= z1; z++)
           if (this.world.isSolid(x, y, z)) return true;
+          else if (this.ride && this.world.fenced(x, y, z)) { this.fenceHit = true; return true; }
     return false;
+  }
+
+  // T27: first solid block or water under the feet: { y: top of it, water }.
+  floorBelow() {
+    const x = Math.floor(this.pos.x), z = Math.floor(this.pos.z);
+    for (let y = Math.floor(this.pos.y); y >= 0; y--) {
+      const id = this.world.get(x, y, z);
+      if (id === B.WATER) return { y: y + 1, water: true };
+      if (this.world.isSolid(x, y, z)) return { y: y + 1, water: false };
+    }
+    return { y: 0, water: false };
+  }
+
+  // T27: top surface of the water column around the feet, or null.
+  waterTop() {
+    const x = Math.floor(this.pos.x), z = Math.floor(this.pos.z);
+    let y = Math.floor(this.pos.y + 0.5);
+    if (this.world.get(x, y, z) !== B.WATER) {
+      y = Math.floor(this.pos.y - 0.3);
+      if (this.world.get(x, y, z) !== B.WATER) return null;
+    }
+    for (let n = 0; n < 64 && this.world.get(x, y + 1, z) === B.WATER; n++) y++;
+    return y + 1;
+  }
+
+  // T27: forced get-off: straight down to the floor, no fall damage exists.
+  dropToFloor() {
+    for (let i = 0; i < 120 && !this.onGround; i++) {
+      this.moveAxis('y', -0.1);
+      if (this.inWater) break;
+    }
+    this.vel.set(0, 0, 0);
+  }
+
+  // T27: sky riding. No gravity; Space up, Shift down; capped 6 blocks above the floor; gliding down to get off.
+  fly(dt, wx, wz, len, analog) {
+    const r = this.ride, k = this.keys;
+    this.capped = false; this.landed = false;
+    const fl = this.floorBelow();
+    const cap = fl.y + r.cap;
+    const up = k.Space ? 1 : 0, down = (k.ShiftLeft || k.ShiftRight) ? 1 : 0;
+    if (r.landing) {
+      this.vel.set(0, -r.glide, 0);
+    } else {
+      this.vel.x = wx * r.speed * analog;
+      this.vel.z = wz * r.speed * analog;
+      let vy = (up - down) * r.climb;
+      if (this.pos.y >= cap) {
+        if (up) this.capped = true;
+        vy = Math.min(vy, this.pos.y > cap + 0.05 ? -r.sink : 0);
+        if (this.pos.y > cap + 0.05) vy = -r.sink;
+      } else if (this.pos.y + vy * dt > cap) {
+        vy = (cap - this.pos.y) / dt;
+        if (up) this.capped = true;
+      }
+      if (fl.water && this.pos.y + vy * dt < fl.y) vy = Math.max(vy, (fl.y - this.pos.y) / dt);
+      this.vel.y = vy;
+    }
+    this.onGround = false;
+    this.hitWall = false;
+    this.moveAxis('x', this.vel.x * dt);
+    this.moveAxis('z', this.vel.z * dt);
+    this.moveAxis('y', this.vel.y * dt);
+    if (r.landing && (this.onGround || (fl.water && this.pos.y <= fl.y + 0.001))) this.landed = true;
   }
 
   // Would a block at (x, y, z) overlap the player?
@@ -101,13 +170,29 @@ export class Player {
     const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
 
+    const r = this.ride;
+    if (r && r.kind === 'sky') return this.fly(dt, wx, wz, len, analog);
+
     const water = this.inWater;
-    let speed = (k.ShiftLeft || k.ShiftRight || stickSprint ? 6.2 : 4.3) * analog;
-    if (water) speed *= 0.55;
+    const sprint = k.ShiftLeft || k.ShiftRight || stickSprint;
+    let speed = (sprint ? 6.2 : 4.3) * analog;
+    let jump = 8.6;
+    if (r && r.kind === 'land' && !water) { speed = (sprint ? r.sprint : r.speed) * analog; jump = r.jump; }
+    if (water && !(r && r.kind === 'water')) speed *= 0.55;
+    // T27: a water creature floats on top of the water; on land it is slow.
+    const surf = r && r.kind === 'water' ? this.waterTop() : null;
+    if (r && r.kind === 'water') {
+      if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog;
+      else speed *= r.landSlow;
+    }
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
 
-    if (water) {
+    if (surf !== null) {
+      const target = surf - 0.25;
+      this.vel.y = Math.max(-4, Math.min(4, (target - this.pos.y) * 8));
+      if (k.Space && this.pos.y > target - 0.3) this.vel.y = r.jump;
+    } else if (water) {
       this.vel.y = Math.max(this.vel.y - 9 * dt, -2.5);
       if (k.Space) this.vel.y = Math.min(this.vel.y + 22 * dt, 3.4);
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
@@ -115,7 +200,7 @@ export class Player {
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
     } else {
       this.vel.y = Math.max(this.vel.y - 28 * dt, -19);
-      if (k.Space && this.onGround) this.vel.y = 8.6;
+      if (k.Space && this.onGround) this.vel.y = jump;
     }
 
     this.onGround = false;

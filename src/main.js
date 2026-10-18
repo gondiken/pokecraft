@@ -11,6 +11,7 @@ import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
 import { createRematch, loadWins } from './rematch.js';
 import { TouchControls } from './touch.js';
+import { createRiding } from './riding.js';
 import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
@@ -184,6 +185,7 @@ const { pushCloud, renderAccount, initAccount } = accounts;
 
 // size: the map size the edits were saved with (missing in saves from before the map grew).
 function createWorld(seed, edits, size) {
+  game.riding?.stop('quiet');
   if (game.world) game.world.dispose();
   const world = new World(seed, scene, materials);
   world.generate();
@@ -330,6 +332,7 @@ function loadCounts(saved) {
 
 function begin() {
   game.started = true;
+  game.riding.sync();
   game.weather.reset();
   titleEl.classList.add('hidden');
   hudEl.classList.remove('hidden');
@@ -403,6 +406,7 @@ async function goToMenu() {
   save(true);
   game.mp.close();
   game.fx.clear();
+  game.riding.stop('quiet');
   game.started = false;
   game.weather.reset();
   if (locked) document.exitPointerLock();
@@ -520,6 +524,7 @@ document.addEventListener('keydown', e => {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
+  if (e.code === 'KeyR' && !e.repeat) game.riding.toggle(); // T27
   if (e.code === 'KeyE' && !interact() && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
@@ -646,6 +651,8 @@ function tapAt(x, y) {
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { game.player.keys.Space = down && playing(); },
+  ride: () => { if (playing()) game.riding.toggle(); },
+  down: d => { game.player.keys.ShiftLeft = d && playing(); },
   breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
   place: () => { if (playing()) placeBlock(); },
   interact: () => { if (playing() && !interact() && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
@@ -762,6 +769,7 @@ function startBattle(opts) {
     game.ui.toast('Your team is too tired to battle. Let them rest a moment.');
     return;
   }
+  game.riding.stop('battle');
   game.inBattle = true;
   // Close anything that could cover the battle (the team screen, Blocks, the Book), and answer
   // "busy" to a battle invite that is still showing.
@@ -898,6 +906,7 @@ function updateSky(dt) {
 let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
+game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -967,6 +976,7 @@ function frame(now) {
   } else {
     p.joy = game.touch.joy;
     if (playing()) p.update(dt);
+    game.riding.update(dt, now);
     game.gymLive.update(dt);
     game.rematch.update();
     if (p.onGround) {
