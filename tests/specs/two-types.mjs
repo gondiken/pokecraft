@@ -209,6 +209,11 @@ export default async function ({ browser, base, t }) {
       const S = await import('/src/species.js');
       const Bk = await import('/src/book.js');
       const out = {};
+      // T30.5: a home is every type it qualifies for: fake homes answer is() / resultOf()
+      const fake = (types, extra = {}) => ({ ...extra, is: ty => types.includes(ty), resultOf: ty => (types.includes(ty) ? { finished: true, full: !!extra.full, features: [] } : null) });
+      const { HOME_TYPES } = await import('/src/hometypes.js'), { B } = await import('/src/blocks.js');
+      const real = n => { const rep = { ok: true, checks: { walls: true, roof: true, size: 'ok', floor: true }, counts: { wall: { [B.SUNSTONE]: n }, floor: {}, roof: {}, inside: {} } };
+        const res = HOME_TYPES.treasure.evaluate(rep); return { is: ty => ty === 'treasure' && res.finished, resultOf: ty => (ty === 'treasure' ? res : null) }; };
       g.weather.set('clear');
       cm.weather = null;
       cm.clear();
@@ -224,22 +229,25 @@ export default async function ({ browser, base, t }) {
       const none = picks({ night: false, golden: null, homes: [] }, 3000);
       out.noHome = none.filter(e => ['cozy', 'treasure'].includes(typeOf(e))).length;
       const base = { night: false, golden: null };
-      const c1 = picks({ ...base, homes: [{ type: 'cozy', full: false }] }, 60000);
+      const c1 = picks({ ...base, homes: [fake(['cozy'])] }, 60000);
       out.cozy = share(c1, 'cozy'); out.cozyTreasure = share(c1, 'treasure');
       out.cozyOnlyHome = c1.filter(e => typeOf(e) === 'cozy').every(e => e[1] === 'home:cozy');
-      out.eve = share(picks({ ...base, evening: true, homes: [{ type: 'cozy', full: false }] }, 60000), 'cozy');
-      out.full = share(picks({ ...base, homes: [{ type: 'cozy', full: true }] }, 60000), 'cozy');
-      const tr = picks({ ...base, homes: [{ type: 'treasure', full: false }] }, 60000);
+      out.eve = share(picks({ ...base, evening: true, homes: [fake(['cozy'])] }, 60000), 'cozy');
+      out.full = share(picks({ ...base, homes: [fake(['cozy'], { full: true })] }, 60000), 'cozy');
+      const tr = picks({ ...base, homes: [real(15)] }, 60000);
       out.treasure = tr.filter(e => typeOf(e) === 'treasure').length; out.treasureCozy = tr.filter(e => typeOf(e) === 'cozy').length;
       cm.list.push({ when: 'home:cozy' });
-      out.cozyMax = picks({ ...base, homes: [{ type: 'cozy', full: true }] }, 20000).filter(e => typeOf(e) === 'cozy').length;
+      out.odds = [14, 15, 25, 35, 45, 60].map(n => { const c = { homes: [real(n)] }; return R.CONDITIONS.home.ok(c, 'treasure') ? Math.round(1 / R.CONDITIONS.home.share(c, 'treasure')) : 0; });
+      const both = { homes: [fake(['cozy', 'treasure'])] };
+      out.both = R.CONDITIONS.home.ok(both, 'cozy') && R.CONDITIONS.home.ok(both, 'treasure');
+      out.cozyMax = picks({ ...base, homes: [fake(['cozy'], { full: true })] }, 20000).filter(e => typeOf(e) === 'cozy').length;
       cm.list.length = 0;
 
       // End to end: a fake home on the platform.
       const sx = Math.floor(g.spawnPoint.x), sz = Math.floor(g.spawnPoint.z), py = 43;
       const pos = g.player.pos.clone();
       const spot = { x: sx + 2, y: py, z: sz + 1 };
-      let home = { type: 'cozy', x: sx, y: py, z: sz, full: true, spawnSpot: () => ({ ...spot }) };
+      let home = fake(['cozy'], { x: sx, y: py, z: sz, full: true, spawnSpot: () => ({ ...spot }) });
       let homes = [home];
       cm.env = { time: () => 0.25, friends: () => [], homes: () => homes };
       const oldShare = R.HOME_SPAWN.cozy.share;
@@ -278,7 +286,7 @@ export default async function ({ browser, base, t }) {
       // a test-only home type needs no code change
       R.HOME_SPAWN.testonly = { share: 1 };
       for (const list of Object.values(S.SPAWNS)) list.push(['fluffin', 1, 'home:testonly']);
-      homes = [{ type: 'testonly', x: sx, y: py, z: sz, full: false, spawnSpot: () => ({ ...spot }) }];
+      homes = [fake(['testonly'], { x: sx, y: py, z: sz, spawnSpot: () => ({ ...spot }) })];
       cm.clear(); seen.length = 0; cm.spawnTimer = 0; run(100);
       out.testonly = seen.filter(s => s.when === 'home:testonly').length;
       for (const list of Object.values(S.SPAWNS)) list.pop();
@@ -294,12 +302,14 @@ export default async function ({ browser, base, t }) {
     t.ok(h.text === 'near a cozy home', `condText: ${h.text}`);
     t.ok(/treasure/.test(h.toast || ''), `condToast: ${h.toast}`);
     t.ok(h.rows.length === 1 && h.rows[0].startsWith('Near a cozy home|null|'), `Book: one row "Near a cozy home" (${h.rows})`);
-    t.ok(h.rowsTreasure.length === 1 && h.rowsTreasure[0] === 'Near a treasure home|rare', `Book: Crownguard is rare near a treasure home (${h.rowsTreasure})`);
+    t.ok(h.rowsTreasure.length === 1 && h.rowsTreasure[0] === 'Near a home with 15+ gems|rare', `Book: Crownguard is rare near a home with 15+ gems (${h.rowsTreasure})`);
     t.ok(h.noHome === 0, `without a home no Cozy or Treasure creature is picked (${h.noHome})`);
     t.ok(h.cozy > 0.012 && h.cozy < 0.022 && h.cozyTreasure === 0 && h.cozyOnlyHome, `near a cozy home about 1/60 picks are Cozy (${h.cozy}), never Treasure`);
     t.ok(h.eve > h.cozy * 1.25 && h.eve < h.cozy * 1.8, `evening: about x1.5 (${h.eve} vs ${h.cozy})`);
     t.ok(h.full > h.cozy * 1.6 && h.full < h.cozy * 2.5, `5 hearts: about x2 (${h.full} vs ${h.cozy})`);
     t.ok(h.treasure >= 15 && h.treasure <= 90 && h.treasureCozy === 0, `near a treasure home 15-90 of 60000 picks are Treasure (${h.treasure})`);
+    t.ok(h.odds.join() === '0,1500,1100,700,300,300', `treasure odds: 15 gems 1 in 1500, 25 gems 1 in 1100, 45+ gems 1 in 300 (${h.odds})`);
+    t.ok(h.both, 'a home that is both cozy and treasure counts for both');
     t.ok(h.cozyMax === 0, 'with one visitor already out, no more are picked');
     t.ok(h.e2eAt && h.maxAtOnce === 1, `a cozy visitor appears on the home's spot, never two at once (${h.e2e.length} spawns, max ${h.maxAtOnce})`);
     t.ok(h.others === 0, 'the home spawns only that home type');

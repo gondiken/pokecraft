@@ -57,12 +57,13 @@ export default async function ({ browser, base, t }) {
       clear();
       const mat = ht.placeExample(g.world, id, X0, F, Z0);
       const rep = report(mat), res = ht.HOME_TYPES[id].evaluate(rep);
+      if (id === 'treasure') out.treasureGems = `${res.features[0].have}/${res.features[0].need}`;
       out[id] = { ok: rep.ok, size: rep.size, finished: res.finished, full: res.full, done: res.done, holes: rep.holes.wall.length + rep.holes.roof.length + rep.holes.floor.length };
     }
     return out;
   });
   t.ok(ex.cozy.finished && ex.cozy.full && ex.cozy.done === 5 && ex.cozy.ok && ex.cozy.holes === 0 && ex.cozy.size.join() === '8,8', `the cozy example is a finished, full home ${JSON.stringify(ex.cozy)}`);
-  t.ok(ex.treasure.finished && ex.treasure.ok, `the treasure example is a finished home ${JSON.stringify(ex.treasure)}`);
+  t.ok(ex.treasure.finished && ex.treasure.ok && ex.treasureGems === '16/15', `the treasure example is a finished home with 16 gems ${JSON.stringify(ex.treasure)} ${ex.treasureGems}`);
 
   // 2. Rules, one house each.
   const R = await page.evaluate(() => {
@@ -90,15 +91,19 @@ export default async function ({ browser, base, t }) {
     const stone = run({ wall: B.STONE_BRICKS }); o.stone = { rule: stone.res.rule.done, finished: stone.res.finished, done: stone.res.done };
     const two5 = run({ features: ['bed', 'lamp'] }); o.two5 = { done: two5.res.done, finished: two5.res.finished };
     const three5 = run({ features: ['bed', 'lamp', 'fire'] }); o.three5 = { done: three5.res.done, finished: three5.res.finished, full: three5.res.full };
-    // treasure: 12 gems in the example; take 3 away for 9, then put one back
-    const tmat = ht.placeExample(g.world, 'treasure', X0, F, Z0 + 0);
-    const gem = (x, y, z) => g.world.get(X0 + x, F + y, Z0 + z);
-    const gems = ht.HOME_TYPES.treasure.example.blocks.filter(b => b[4] === 'gems');
-    for (const [x, y, z] of gems.slice(0, 3)) g.world.set(X0 + x, F + y, Z0 + z, B.STONE_BRICKS);
-    const t9 = ht.HOME_TYPES.treasure.evaluate(report(tmat));
-    const [x, y, z, id] = gems[0]; g.world.set(X0 + x, F + y, Z0 + z, id);
-    const t10 = ht.HOME_TYPES.treasure.evaluate(report(tmat));
-    o.treasure = { nine: `${t9.features[0].have}/${t9.features[0].need} ${t9.finished}`, ten: `${t10.features[0].have}/${t10.features[0].need} ${t10.finished}` };
+    // treasure (T30.5): 15 gems in walls, floor or ceiling; a stone-brick house with 14 gems in the walls, one more in the ceiling
+    const TR = [B.SUNSTONE, B.RUBY, B.SAPPHIRE], gemsAt = (list, ox = 0) => list.forEach(([x, y, z], i) => g.world.set(X0 + ox + x, F + y, Z0 + z, TR[i % 3]));
+    const evalT = rep => ht.HOME_TYPES.treasure.evaluate(rep);
+    const wallGems = []; for (let x = 1; x <= 7; x++) for (const y of [1, 3]) wallGems.push([x, y, 9]);
+    const st = () => house({ wall: B.STONE_BRICKS, features: [] });
+    const tmat = st(); gemsAt(wallGems);
+    const t14 = evalT(report(tmat));
+    gemsAt([[4, 4, 4]]);
+    const t15 = evalT(report(tmat));
+    o.treasure = { fourteen: `${t14.features[0].have}/${t14.features[0].need} ${t14.finished}`, fifteen: `${t15.features[0].have}/${t15.features[0].need} ${t15.finished}` };
+    const tmat2 = st(); gemsAt([[2, 4, 2], [3, 4, 2], [4, 4, 2], [5, 4, 2], [6, 4, 2], [2, 4, 3], [3, 4, 3], [4, 0, 3], [5, 0, 3], [6, 0, 3], [7, 0, 3], [2, 0, 6], [3, 0, 6], [4, 0, 6], [5, 0, 6]]);
+    const t2 = evalT(report(tmat2));
+    o.roofFloor = `${t2.features[0].have} ${t2.finished}`;
     return o;
   });
   t.ok(R.good.ok && R.good.done === 5 && R.good.finished && R.good.full && R.good.runs === 1, `a good cozy house is finished and full ${JSON.stringify(R.good)}`);
@@ -117,7 +122,9 @@ export default async function ({ browser, base, t }) {
   t.ok(R.furniture.ok && R.furniture.finished, `furniture does not break the room ${JSON.stringify(R.furniture)}`);
   t.ok(R.stone.rule === false && !R.stone.finished && R.stone.done === 5, `stone walls: the wood rule fails ${JSON.stringify(R.stone)}`);
   t.ok(R.two5.done === 2 && !R.two5.finished && R.three5.done === 3 && R.three5.finished && !R.three5.full, `2 of 5 is not enough, 3 of 5 is finished but not full ${JSON.stringify([R.two5, R.three5])}`);
-  t.ok(R.treasure.nine === '9/10 false' && R.treasure.ten === '10/10 true', `treasure: 9 gems no, 10 gems yes ${JSON.stringify(R.treasure)}`);
+  t.ok(R.treasure.fourteen === '14/15 false', `14 gems: not treasure (14/15) ${JSON.stringify(R.treasure)}`);
+  t.ok(R.treasure.fifteen === '15/15 true', `15 gems: treasure (the 15th one is in the ceiling) ${JSON.stringify(R.treasure)}`);
+  t.ok(R.roofFloor === '15 true', `gems in the roof (ceiling) and floor count ${R.roofFloor}`);
 
   // 3. Doormats and re-checks, with a real home.
   const D = await page.evaluate(async () => {
@@ -129,9 +136,9 @@ export default async function ({ browser, base, t }) {
     g.player.pos.set(X0 + 4.5, F + 1, Z0 + 3.5);
     const mat = house();
     g.homes.place(...mat);
-    g.homes.choose(g.homes.at(...mat), 'cozy');
-    const hearts = () => g.homes.mine().result.done;
-    o.start = `${hearts()} ${g.homes.mine().finished} ready=${g.homes.ready().length}`;
+    const hearts = () => g.homes.mine().resultOf('cozy').done;
+    o.start = `${hearts()} ${g.homes.mine().finished} ready=${g.homes.ready().length} types=${g.homes.mine().types}`;
+    o.noChooser = typeof g.homes.choose === 'undefined' && typeof g.homes.chooseTarget === 'undefined';
     // re-check timing
     let c0 = g.homes.checks;
     g.homes.update(3, g.player.pos);
@@ -146,6 +153,43 @@ export default async function ({ browser, base, t }) {
     put(X0 + 1, F + 1, Z0 + 8, B.BED);
     g.homes.update(1, g.player.pos);
     o.bedBack = hearts();
+    // cozy AND treasure: 15 gems in the wooden cabin (10 in the side wall, 3 in the floor, 2 in the ceiling)
+    toasts.length = 0;
+    const TR = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
+    const gl = []; for (const y of [1, 2]) for (const z of [2, 3, 4, 6, 7]) gl.push([0, y, z]);
+    gl.push([2, 0, 2], [3, 0, 2], [2, 0, 3], [2, 4, 2], [3, 4, 2]);
+    const put15 = n => gl.slice(0, n).forEach(([x, y, z], i) => put(X0 + x, F + y, Z0 + z, TR[i % 3]));
+    const tick = () => g.homes.update(1, g.player.pos);
+    put15(14); tick();
+    o.t14 = `${g.homes.mine().types}`;
+    put15(15); tick();
+    const m = g.homes.mine();
+    g.homeUi.update(performance.now());
+    o.spark = `${JSON.stringify(g.homeUi.sparkles().map(x => x.count))} ${g.scene.children.filter(c => c.isInstancedMesh && c.material.color?.getHex() === 0xfff2b0).length}`;
+    o.both = `${m.types.join()} ${m.is('cozy')} ${m.is('treasure')} ${g.homes.ready().filter(h => h === m).length} wood=${m.resultOf('cozy').rule.done}`;
+    o.gainToast = toasts.filter(x => x === 'Your home is a treasure home now! ✨').length;
+    const n0 = toasts.length;
+    tick(); o.quiet = toasts.length === n0;
+    const [gx, gy, gz] = gl[14]; put(X0 + gx, F + gy, Z0 + gz, B.STONE_BRICKS); tick();
+    g.homeUi.update(performance.now()); o.sparkOff = JSON.stringify(g.homeUi.sparkles());
+    o.lostToast = toasts.includes('Your home is not a treasure home any more. Stand on the Doormat to see what is missing.');
+    put(X0 + gx, F + gy, Z0 + gz, TR[2]); tick();
+    const bed = [X0 + 1, F + 1, Z0 + 8], fire = [X0 + 5, F + 2, Z0 + 9], lamp = [X0 + 5, F + 4, Z0 + 5];
+    toasts.length = 0;
+    put(...bed, B.AIR); put(...fire, B.PLANKS); put(...lamp, B.PLANKS); tick();
+    o.lostCozy = toasts.includes('Your home is not cozy any more. Stand on the Doormat to see what is missing.') && !g.homes.mine().is('cozy') && g.homes.mine().is('treasure');
+    put(...bed, B.BED); put(...fire, B.FIREPLACE); put(...lamp, B.LAMP); tick();
+    o.gainCozy = toasts.includes('Your home is cozy now! Cozy creatures may come to visit.');
+    // 60 blocks away: no toast
+    toasts.length = 0; g.player.pos.set(X0 + 4.5, F + 1, Z0 + 3.5 + 0); const far = g.player.pos.clone(); g.player.pos.x += 60;
+    put(...bed, B.AIR); put(...fire, B.PLANKS); put(...lamp, B.PLANKS); g.homes.update(1, g.player.pos);
+    o.farQuiet = toasts.length === 0 && !g.homes.mine().is('cozy');
+    put(...bed, B.BED); put(...fire, B.FIREPLACE); put(...lamp, B.LAMP); g.homes.update(1, g.player.pos);
+    g.player.pos.copy(far);
+    for (const [x, y, z] of gl) put(X0 + x, F + y, Z0 + z, y === 0 ? B.PLANKS : y === 4 ? B.PLANKS : B.PLANKS);
+    tick();
+    o.cozyOnly = `${g.homes.mine().types}`;
+    // re-check timing continues below
     // moving the Doormat
     const mat2 = [X0 + 20, F, Z0 + 3];
     put(...mat2, B.DOORMAT);
@@ -155,22 +199,45 @@ export default async function ({ browser, base, t }) {
     // breaking it removes the home
     put(...mat2, B.AIR);
     o.removed = `${g.homes.list.length} ${toasts.some(s => s.startsWith('No doormat'))}`;
-    // an orphan mat: standing on it opens the chooser, choosing claims it
+    // an orphan mat: stepping on it says 'orphan', claim makes it your home (no type to pick)
     const orphan = [X0 + 24, F, Z0 + 3];
     put(...orphan, B.DOORMAT);
     o.orphanAsks = g.homes.stand(...orphan, B.DOORMAT);
-    o.orphanTarget = JSON.stringify(g.homes.chooseTarget()) === JSON.stringify(orphan);
-    g.homes.choose(g.homes.chooseTarget(), 'treasure');
-    o.claimed = `${g.homes.mine()?.x === orphan[0]} ${g.homes.mine()?.type}`;
-    o.otherChoose = g.homes.choose(g.homes.mine(), 'nonsense');
+    g.homes.claim(...orphan);
+    o.claimed = `${g.homes.mine()?.x === orphan[0]} ${JSON.stringify(g.homes.mine()?.toSave())}`;
+    o.claimNull = g.homes.claim(...orphan);
+    // a second orphan while owning a home: the old mat turns into Planks
+    const orphan2 = [X0 + 26, F, Z0 + 3];
+    put(...orphan2, B.DOORMAT);
+    toasts.length = 0;
+    g.homes.claim(...orphan2);
+    o.claim2 = `${g.homes.mine().x === orphan2[0]} old=${g.world.get(...orphan) === B.PLANKS} ${toasts.includes('Your home moved here!')}`;
+    // fresh: first stand reports it, the second visit does not
+    g.homes.stand(0, 0, 0, B.AIR);
+    o.fresh1 = g.homes.stand(...orphan2, B.DOORMAT);
+    g.homes.stand(0, 0, 0, B.AIR);
+    o.fresh2 = g.homes.stand(...orphan2, B.DOORMAT);
+    const mat5 = [X0 + 28, F, Z0 + 3]; put(...mat5, B.DOORMAT); g.homes.place(...mat5);
+    g.homes.stand(0, 0, 0, B.AIR);
+    o.fresh3 = g.homes.stand(...mat5, B.DOORMAT);
+    g.homes.stand(0, 0, 0, B.AIR);
+    o.fresh4 = g.homes.stand(...mat5, B.DOORMAT);
+    o.freshNotSaved = !('fresh' in g.homes.mine().toSave());
     return o;
   });
-  t.ok(D.start === '5 true ready=1', `a placed, chosen home is finished and ready ${D.start}`);
+  t.ok(D.start === '5 true ready=1 types=cozy' && D.noChooser, `a placed home is every type it can be, and there is no chooser ${D.start}`);
   t.ok(D.idle === 0 && D.far === 0, `no edits (or edits far away) cause no re-checks ${JSON.stringify([D.idle, D.far])}`);
   t.ok(D.bed.startsWith('4 ') && D.bedBack === 5, `breaking the Bed drops a heart, putting it back adds it ${D.bed} ${D.bedBack}`);
+  t.ok(D.t14 === 'cozy' && D.both === 'cozy,treasure true true 1 wood=true', `a cozy cabin with 15 gems is cozy AND treasure ${D.t14} / ${D.both}`);
+  t.ok(D.spark === '[10] 1' && D.sparkOff === '[]', `a treasure home sparkles (10 stars, one mesh) and stops when it is not one any more ${D.spark} ${D.sparkOff}`);
+  t.ok(D.gainToast === 1 && D.quiet && D.lostToast && D.lostCozy && D.gainCozy, `a toast for each type gained or lost, none for a re-check without change ${JSON.stringify([D.gainToast, D.quiet, D.lostToast, D.lostCozy, D.gainCozy])}`);
+  t.ok(D.farQuiet && D.cozyOnly === 'cozy', `60 blocks away there is no toast ${JSON.stringify([D.farQuiet, D.cozyOnly])}`);
   t.ok(D.moved === '1 old=true at=true' && D.movedToast, `placing a second Doormat moves the home, the old mat is Planks ${D.moved}`);
   t.ok(D.removed === '0 true', `breaking the Doormat removes the home and says so ${D.removed}`);
-  t.ok(D.orphanAsks && D.orphanTarget && D.claimed === 'true treasure' && D.otherChoose === false, `an orphan mat opens the chooser and is claimed ${JSON.stringify([D.orphanAsks, D.claimed])}`);
+  t.ok(D.orphanAsks === 'orphan' && D.claimed.startsWith('true ') && !D.claimed.includes('type') && D.claimNull === null, `an orphan mat is claimed, with no type in the record ${D.claimed}`);
+  t.ok(D.claim2 === 'true old=true true', `claiming another orphan moves the home, the old mat is Planks ${D.claim2}`);
+  t.ok(D.fresh1 === 'orphan' || D.fresh1 === 'fresh' || D.fresh1 === false, `stepping on a claimed mat is not an orphan ${D.fresh1}`);
+  t.ok(D.fresh3 === 'fresh' && D.fresh4 === false && D.freshNotSaved, `a new mat opens the panel once ${JSON.stringify([D.fresh3, D.fresh4, D.freshNotSaved])}`);
 
   // 4. Visitors: indoor walking, one at a time, leaving, treasure, underground.
   const V = await page.evaluate(async () => {
@@ -186,7 +253,7 @@ export default async function ({ browser, base, t }) {
     const clean = () => { for (const w of [...g.creatures.list]) g.creatures.remove(w); };
     g.homes.list.length = 0;
     const mat = house();
-    g.homes.place(...mat); g.homes.choose(g.homes.at(...mat), 'cozy');
+    g.homes.place(...mat);
     clean();
     wait('cozy');
     const v = visitors('cozy');
@@ -217,7 +284,7 @@ export default async function ({ browser, base, t }) {
     clean();
     const mat2 = ht.placeExample(g.world, 'treasure', X0, F, Z0 + 0);
     g.homes.list.length = 0;
-    g.homes.place(...mat2); g.homes.choose(g.homes.at(...mat2), 'treasure');
+    g.homes.place(...mat2);
     o.treasureReady = g.homes.ready().length;
     wait('treasure');
     o.treasure = visitors('treasure').length;
@@ -226,7 +293,7 @@ export default async function ({ browser, base, t }) {
     g.homes.list.length = 0;
     const mat3 = house();
     for (let x = -2; x < 30; x++) for (let z = -2; z < 30; z++) g.world.ground[(X0 + x) + (Z0 + z) * g.world.W] = 90;
-    g.homes.place(...mat3); g.homes.choose(g.homes.at(...mat3), 'cozy');
+    g.homes.place(...mat3);
     wait('cozy', true);
     o.underground = visitors('cozy').length;
     for (let i = 0; i < 40; i++) g.creatures.update(0.1, far, sp, false, true);
@@ -249,12 +316,18 @@ export default async function ({ browser, base, t }) {
     for (let x = -2; x < 30; x++) for (let z = -2; z < 30; z++) g.world.ground[(X0 + x) + (Z0 + z) * g.world.W] = 10;
     g.homes.place(...mat4);
     o.typeCount = Object.keys(ht.HOME_TYPES).length;
-    o.chosen = g.homes.choose(g.homes.at(...mat4), 'testonly');
+    const gem = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
+    for (let i = 0; i < 15; i++) g.world.set(X0 + 1 + (i % 8), F, Z0 + 3 + Math.floor(i / 8), gem[i % 3]);
+    g.homes.update(1, g.player.pos);
+    o.mixTypes = g.homes.mine().types.join();
+    o.mixResults = Object.keys(g.homes.mine().results).length;
     o.testFinished = g.homes.mine().finished;
     wait('testonly');
     o.testVisitor = visitors('testonly').map(w => w.data.species).join();
+    g.homeUi.open('types'); o.cards = document.querySelectorAll('#home-body .hm-card').length; g.homeUi.close();
     for (const [list, e] of added) list.splice(list.indexOf(e), 1);
     removeHomeType('testonly');
+    g.homes.mine().check(g.world); o.afterRemove = Object.keys(g.homes.mine().results).length;
     o.removedType = Object.keys(ht.HOME_TYPES).join();
     clean();
     sr.HOME_SPAWN.cozy.share = old.cozy; sr.HOME_SPAWN.treasure.share = old.treasure;
@@ -265,7 +338,7 @@ export default async function ({ browser, base, t }) {
   t.ok(V.unfinished && V.left, `it leaves when the home stops being finished ${JSON.stringify([V.unfinished, V.left])}`);
   t.ok(V.treasureReady === 1 && V.treasure === 1, `a treasure home gets a treasure visitor ${JSON.stringify([V.treasureReady, V.treasure])}`);
   t.ok(V.underground === 1 && V.underStays, `an underground home gets a visitor too ${JSON.stringify([V.underground, V.underStays])}`);
-  t.ok(V.typeCount === 3 && V.chosen && V.testFinished && V.testVisitor === 'fluffin' && V.removedType === 'cozy,treasure', `a test-only home type needs no code change ${JSON.stringify(V)}`);
+  t.ok(V.typeCount === 3 && V.mixTypes === 'treasure,testonly' && V.mixResults === 3 && V.cards === 3 && V.afterRemove === 2 && V.testFinished && V.testVisitor === 'fluffin' && V.removedType === 'cozy,treasure', `a test-only home type needs no code change ${JSON.stringify(V)}`);
 
   // 5. Save and load.
   const S = await page.evaluate(async () => {
@@ -273,10 +346,10 @@ export default async function ({ browser, base, t }) {
     clear();
     const mat = ht.placeExample(g.world, 'cozy', X0, F, Z0);
     g.homes.list.length = 0;
-    g.homes.place(...mat); g.homes.choose(g.homes.at(...mat), 'cozy');
+    g.homes.place(...mat);
     g.save();
     const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
-    const o = { pid: saved.playerId === g.playerId && !!saved.playerId, homes: JSON.stringify(saved.homes.map(h => [h.owner === g.playerId, h.x, h.y, h.z, h.type])), want: JSON.stringify([[true, ...mat, 'cozy']]), told: saved.toldHomes };
+    const o = { pid: saved.playerId === g.playerId && !!saved.playerId, homes: JSON.stringify(saved.homes.map(h => [h.owner === g.playerId, h.x, h.y, h.z, 'type' in h])), want: JSON.stringify([[true, ...mat, false]]), told: saved.toldHomes };
     // bad records
     const w = g.world, m2 = [X0 + 25, F, Z0 + 25];
     w.set(...m2, B.DOORMAT);
@@ -284,13 +357,13 @@ export default async function ({ browser, base, t }) {
       { owner: 'a', x: m2[0], y: m2[1], z: m2[2], type: 'cozy' }, { owner: 'b', x: 1, y: 2, z: 3, type: 'cozy' }, { owner: 'c', x: NaN, y: 1, z: 1 },
       { owner: 'd', x: m2[0] + 0.5, y: m2[1], z: m2[2] }, null, 'x', { x: m2[0], y: m2[1], z: m2[2] }, { owner: 'e', x: m2[0], y: m2[1], z: m2[2], type: 'bogus' },
     ], 'e');
-    o.bad = `${g.homes.list.length} ${g.homes.list[0]?.owner} ${g.homes.list[0]?.type}`;
+    o.bad = `${g.homes.list.length} ${g.homes.list[0]?.owner}`;
     g.homes.load(undefined, 'z'); o.none = g.homes.list.length;
     g.homes.load(saved.homes, g.playerId); // back
     return o;
   });
   t.ok(S.pid && S.homes === S.want && S.told === true, `the save has playerId and the home ${S.homes}`);
-  t.ok(S.bad === '1 e null' && S.none === 0, `bad records are dropped, an unknown type becomes null ${S.bad}`);
+  t.ok(S.bad === '1 e' && S.none === 0, `bad records are dropped, an old type field is ignored ${S.bad}`);
   await page.reload();
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
   await continueGame(page);
@@ -306,6 +379,42 @@ export default async function ({ browser, base, t }) {
   t.ok(!page2.errors.length, `no page errors ${page2.errors.join('; ')}`);
   await page2.context().close();
 
+  // 5b. An old save with chosen types (T30.5): the `type` fields are ignored, nobody is told anything, nothing writes `type` again.
+  const pageO = await openGame(browser, base);
+  await newGame(pageO, 0);
+  await pause(pageO);
+  await pageO.evaluate(SETUP);
+  const old = await pageO.evaluate(() => {
+    const { g, B, ht, X0, Z0, F, clear } = window.__h;
+    clear();
+    const cozyMat = ht.placeExample(g.world, 'cozy', X0, F, Z0);
+    const treasureMat = ht.placeExample(g.world, 'treasure', X0 + 12, F, Z0);
+    const twelveMat = ht.placeExample(g.world, 'treasure', X0, F, Z0 + 12);
+    for (const [x, y, z] of ht.HOME_TYPES.treasure.example.blocks.filter(b => b[4] === 'gems').slice(0, 4)) g.world.set(X0 + x, F + y, Z0 + 12 + z, B.STONE_BRICKS);
+    g.homes.list.length = 0;
+    g.save();
+    const save = JSON.parse(localStorage.getItem('pokecraft-save-v2')), me = g.playerId;
+    const rec = (owner, m, type) => ({ owner, name: '', x: m[0], y: m[1], z: m[2], type });
+    save.homes = [rec(me, cozyMat, 'treasure'), rec('friend1', treasureMat, 'cozy'), rec('friend2', twelveMat, 'treasure')];
+    return save;
+  });
+  await pageO.context().close();
+  const pageN = await openGame(browser, base, { setup: seedSave(old) });
+  await pageN.evaluate(() => { window.__log = []; const ui = window.pokecraft.ui, f = ui.toast.bind(ui); ui.toast = m => { window.__log.push(m); f(m); }; });
+  await continueGame(pageN);
+  const OS = await pageN.evaluate(() => {
+    const g = window.pokecraft, by = o => g.homes.list.find(h => h.owner === o);
+    const gem = by('friend2').resultOf('treasure').features[0];
+    const out = { mine: g.homes.mine().types.join(), f1: by('friend1').types.join(), f2: by('friend2').types.join(), gems: `${gem.have}/${gem.need}`, ready: g.homes.ready().length,
+      toasts: window.__log.filter(m => /cozy now|treasure home now|any more/.test(m)).length };
+    g.save();
+    out.types = JSON.parse(localStorage.getItem('pokecraft-save-v2')).homes.filter(h => 'type' in h).length;
+    return out;
+  });
+  t.ok(OS.mine === 'cozy' && OS.f1 === 'treasure' && OS.f2 === '' && OS.gems === '12/15' && OS.ready === 2, `an old save's chosen types are ignored: every home is what its blocks say ${JSON.stringify(OS)}`);
+  t.ok(OS.toasts === 0 && OS.types === 0, `loading says nothing and no record gets a type again ${JSON.stringify(OS)}`);
+  await pageN.context().close();
+
   // 6. Two browsers.
   const [A, B2] = await openPair(browser, base);
   await newGame(A, 0); await pause(A);
@@ -315,7 +424,8 @@ export default async function ({ browser, base, t }) {
     const { g, ht, X0, Z0, F, clear } = window.__h;
     clear();
     const mat = ht.placeExample(g.world, 'cozy', X0, F, Z0);
-    g.homes.place(...mat); g.homes.choose(g.homes.at(...mat), 'cozy');
+    window.__sentHomes = []; const sh = g.mp.sendHome.bind(g.mp); g.mp.sendHome = r => { window.__sentHomes.push(r); return sh(r); };
+    g.homes.place(...mat);
     g.player.pos.set(X0 + 4.5, F + 1, Z0 + 4.5);
     return { mat, pid: g.playerId };
   });
@@ -330,25 +440,26 @@ export default async function ({ browser, base, t }) {
   await B2.waitForTimeout(1500);
   const G = await B2.evaluate(() => {
     const g = window.pokecraft, h = g.homes.list[0];
-    return { n: g.homes.list.length, type: h?.type, ready: g.homes.ready().length, owner: g.homes.worldOwnerHome()?.owner, name: h?.name };
+    return { n: g.homes.list.length, types: h?.types.join(), ready: g.homes.ready().length, owner: g.homes.worldOwnerHome()?.owner, name: h?.name };
   });
-  t.ok(G.n === 1 && G.type === 'cozy' && G.ready === 1 && G.owner === home.pid, `the guest sees the host's cozy home ${JSON.stringify(G)}`);
+  t.ok(G.n === 1 && G.types === 'cozy' && G.ready === 1 && G.owner === home.pid, `the guest sees the host's cozy home ${JSON.stringify(G)}`);
   const place = await B2.evaluate(async ([x, y, z]) => {
     const g = window.pokecraft, { B } = await import('/src/blocks.js');
     g.world.set(x, y, z, B.DOORMAT); g.mp.sendBlock(x, y, z, B.DOORMAT);
-    const h = g.homes.place(x, y, z);
-    g.homes.choose(h, 'treasure');
+    g.homes.place(x, y, z);
     return true;
   }, [home.mat[0] + 14, home.mat[1], home.mat[2]]);
   await A.waitForTimeout(1500);
-  const A2 = await A.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { n: g.homes.list.length, types: g.homes.list.map(h => h.type).sort().join(), saved: s.homes.length }; });
-  t.ok(place && A2.n === 2 && A2.types === 'cozy,treasure' && A2.saved === 2, `the host gets the guest's home and saves both ${JSON.stringify(A2)}`);
+  const A2 = await A.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { n: g.homes.list.length, types: g.homes.list.map(h => h.types.join()).sort().join('|'), saved: s.homes.length }; });
+  t.ok(place && A2.n === 2 && A2.types === '|cozy' && A2.saved === 2, `the host gets the guest's home and saves both ${JSON.stringify(A2)}`);
   await A.evaluate(async ([x, y, z]) => {
     const g = window.pokecraft, { B } = await import('/src/blocks.js');
     g.world.set(x, y, z, B.AIR); g.mp.sendBlock(x, y, z, B.AIR);
   }, [home.mat[0] + 14, home.mat[1], home.mat[2]]);
   await B2.waitForTimeout(1500);
   const gone = await B2.evaluate(() => window.pokecraft.homes.list.length);
+  const sent = await A.evaluate(() => window.__sentHomes.every(r => !('type' in r)));
+  t.ok(sent, 'the home message has no type');
   t.ok(gone === 1, `breaking the guest's mat removes the home for both (${gone} left for the guest)`);
   t.ok(!A.errors.length && !B2.errors.length, `no page errors ${[...A.errors, ...B2.errors].join('; ')}`);
 }

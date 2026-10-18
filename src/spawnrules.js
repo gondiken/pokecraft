@@ -17,19 +17,31 @@ export function goldenHour(time) {
 export const TOGETHER_RANGE = 30;
 
 // T21: Cozy and Treasure creatures only come to a finished home of their type. Homes come from creatures.env.homes()
-// (T22). A home is { type, x, y, z, full, spawnSpot() }: x/y/z = its Doormat, full = every feature done (a cozy
-// home's 5 hearts), spawnSpot() = a free cell { x, y, z } (integers, y = the air cell above the floor) in or right
+// (T22). A home is a Home { x, y, z, is(type), resultOf(type), spawnSpot() } (T30.5: a home is every type it qualifies
+// for): x/y/z = its Doormat, resultOf(type).full = every feature done (a cozy home's 5 hearts), spawnSpot() = a free cell { x, y, z } (integers, y = the air cell above the floor) in or right
 // by the home, or null. Only homes within HOME_RANGE of the player count.
 export const HOME_RANGE = 32;
 // 16:00-22:00 on the HUD clock (game.time 0 = 06:00, 1 = a whole day).
 export const isEvening = time => { const t = ((time % 1) + 1) % 1; return t >= 10 / 24 && t < 16 / 24; };
 // Share of spawn attempts (one every 0.6 s) while near such a home and none of its creatures is out; T22's HomeType
-// may point at these. evening / full multiply the share.
+// may point at these. evening / full multiply the share. `bonus: { feature, step, best }` (T30.5): each `have` above `need` of
+// that feature (from the home's result) takes `step` off the '1 in N', never below `best`.
 export const HOME_SPAWN = {
   cozy: { share: 1 / 60, evening: 1.5, full: 2, toast: 'Knock knock! A cozy creature came to visit your home.' },
-  treasure: { share: 1 / 1500, toast: 'Something is sparkling at your home... a treasure creature!' },
+  treasure: { share: 1 / 1500, bonus: { feature: 'gems', step: 40, best: 300 }, toast: 'Something is sparkling at your home... a treasure creature!' },
 };
-const homeOf = (c, type) => c.homes?.find(h => h.type === type);
+const homeOf = (c, type) => c.homes?.find(h => h.is?.(type));
+// The share of spawn attempts for a home type: base share, the bonus (data), evening and full multipliers.
+export function homeShare(c, type) {
+  const s = HOME_SPAWN[type] || {}, res = homeOf(c, type)?.resultOf?.(type);
+  let share = s.share ?? 0;
+  if (s.bonus && share > 0) {
+    const f = res?.features?.find(x => x.key === s.bonus.feature);
+    const extra = f ? Math.max(0, f.have - f.need) : 0;
+    share = 1 / Math.min(1 / share, Math.max(s.bonus.best, 1 / share - s.bonus.step * extra)); // never rarer, never above `best`
+  }
+  return share * (c.evening ? s.evening ?? 1 : 1) * (res?.full ? s.full ?? 1 : 1);
+}
 
 export const CONDITIONS = {
   day: { ok: c => !c.night, text: 'day' },
@@ -40,13 +52,10 @@ export const CONDITIONS = {
     toast: 'Bzzt! Playing together woke up a cyber creature nearby!' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
-    share: (c, type) => {
-      const s = HOME_SPAWN[type] || {};
-      return (s.share ?? 0) * (c.evening ? s.evening ?? 1 : 1) * (homeOf(c, type)?.full ? s.full ?? 1 : 1);
-    },
+    share: homeShare,
     max: 1,
     place: (c, type) => homeOf(c, type)?.spawnSpot?.() ?? null, // where it appears (instead of a random spot)
-    text: type => `near a ${type} home`,
+    text: type => HOME_SPAWN[type]?.text ?? `near a ${type} home`,
     toast: type => HOME_SPAWN[type]?.toast,
   },
 };

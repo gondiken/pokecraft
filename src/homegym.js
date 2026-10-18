@@ -14,10 +14,10 @@ export const caughtOfType = (game, type) => [...game.book.caught].filter(id => S
 export function homeGymState(game, g) {
   const type = homeTypeFor(g.def.id), home = game.homes?.worldOwnerHome?.() || null;
   const owner = game.homes?.worldOwner == null || game.homes.worldOwner === game.playerId; // visiting a friend's world = not the owner
-  const ofType = !!home && home.type === type?.id;
+  const ofType = !!home && !!type && home.is(type.id); // cozy right now (a home is every type it qualifies for, T30.5)
   return {
     type, home, owner, ofType,
-    ready: ofType && home.finished,                 // cozy right now
+    ready: ofType,
     movedIn: !!home?.gyms?.includes(g.def.id),      // sticky on the record until the Doormat is gone
     caught: owner ? caughtOfType(game, type?.creature) : 0, need: g.def.moveIn?.caught ?? 3,
   };

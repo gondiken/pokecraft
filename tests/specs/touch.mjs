@@ -110,27 +110,31 @@ export default async function ({ browser, base, t }) {
   await page.tap('#btn-break');
   t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the Break button on a disguised creature battles it (and breaks no block)');
   await endBattle();
-  // T22: homes on a tablet. Stepping on a new Doormat opens the chooser, a tap on a card picks the type, the action
+  // T22: homes on a tablet. Stepping on a new Doormat claims it and opens 'What can my home be?', the action
   // button says "My home", the meter can be tapped, "Show me a house" shows the spinning model (drag turns, pinch zooms).
   const { sx: hx, sz: hz, mat } = await page.evaluate(STAGE);
   await page.evaluate(([x, z]) => { const p = window.pokecraft.player; p.pos.set(x + 4.5, 43, z - 2.5); p.vel.set(0, 0, 0); }, [hx, hz]);
   await page.waitForTimeout(600);
   await page.evaluate(([x, y, z]) => { const p = window.pokecraft.player; p.pos.set(x + 0.5, y + 1, z + 0.5); p.vel.set(0, 0, 0); }, mat);
-  await page.waitForFunction(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'choose', null, { timeout: 30000 });
-  t.ok(true, 'stepping on a new Doormat opens the home chooser');
-  await page.tap('#home .hm-card[data-type="cozy"]');
-  await page.waitForFunction(() => !window.pokecraft.ui.homeOpen && window.pokecraft.homes.mine()?.type === 'cozy', null, { timeout: 15000 });
-  t.ok(true, 'tapping a card picks the type and closes the chooser');
+  await page.waitForFunction(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'types', null, { timeout: 30000 });
+  const nTypes = await page.evaluate(async () => Object.keys((await import('/src/hometypes.js')).HOME_TYPES).length);
+  t.ok(await page.evaluate(([x, z]) => { const m = window.pokecraft.homes.mine(); return !!m && m.x === x + 4 && m.z === z + 1; }, [hx, hz]) && await page.evaluate(() => document.querySelectorAll('#home .hm-card').length) === nTypes, 'stepping on a new Doormat claims it and opens "What can my home be?"');
+  await page.screenshot({ path: new URL('../screenshots/t30-5-types-ipad.png', import.meta.url).pathname });
+  t.ok(await page.evaluate(() => [...document.querySelectorAll('#home-body button')].every(b => b.getBoundingClientRect().height >= 44)), 'every button in the panel is at least 44 px high');
+  await page.tap('#home-close');
+  await page.waitForFunction(() => !window.pokecraft.ui.homeOpen, null, { timeout: 15000 });
   t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'and the pause screen stays away');
   await page.waitForFunction(() => document.getElementById('btn-act').textContent === 'My home', null, { timeout: 15000 }).catch(() => {});
   t.ok(await page.evaluate(() => document.getElementById('btn-act').textContent === 'My home'), 'the action button says "My home" on the Doormat');
-  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'] }, 'cozy'));
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'] }));
   await page.waitForFunction(() => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .feat'), null, { timeout: 15000 });
   t.ok(await page.evaluate(() => getComputedStyle(document.getElementById('home-meter')).pointerEvents === 'auto'), 'the meter takes taps on a tablet');
   await page.tap('#home-meter');
   await page.waitForFunction(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'home', null, { timeout: 15000 });
   t.ok(true, 'tapping the meter opens the home panel');
-  await page.tap('#home button[data-act="preview"]');
+  await page.tap('#home button[data-act="types"]');
+  await page.waitForFunction(() => window.pokecraft.homeUi.state().view === 'types', null, { timeout: 15000 });
+  await page.tap('#home button[data-act="preview"][data-type="cozy"]');
   await page.waitForFunction(() => window.pokecraft.homeUi.state().view === 'preview', null, { timeout: 15000 });
   await page.waitForTimeout(500);
   t.ok(await page.evaluate(() => !!document.querySelector('#home canvas.hm-canvas')), '"Show me a house" shows the model');

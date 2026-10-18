@@ -41,7 +41,7 @@ for (const name of specs) {
       new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`timed out after ${limitMs / 60000} minutes`)), limitMs); }),
     ]);
   } catch (e) {
-    t.ok(false, `crashed: ${e.message.split('\n')[0]}`);
+    t.ok(false, `crashed: ${e.message.split("\n")[0]}`); if (process.env.PC_STACK) console.log(e.stack);
     // a crashed or timed-out spec leaves its pages running; close them so the next specs get the browser to themselves
     for (const c of browser.contexts()) await c.close().catch(() => {});
   }

@@ -1,4 +1,4 @@
-// T22: the home UI on desktop (mouse + pointer lock): the type chooser, the meter, the red glow and floor outline,
+// T22: the home UI on desktop (mouse + pointer lock): the 'What can my home be?' panel, the meter, the red glow and floor outline,
 // the home panel with "Show me a house" (a spinning example model: drag, wheel, blinking missing parts).
 // The room finder is not what is tested here, so the page gives its home a hand-made room report (window.__fake);
 // the UI reads the same report fields and HomeType.evaluate() results as with the real finder.
@@ -25,9 +25,10 @@ export const STAGE = async () => {
   // spec: { feats: [keys], gems: n, wood: bool, roofHoles: [[x,y,z]], wallHoles: [[x,y,z]], small: bool, escaped: bool, ox: x offset of the house }
   const build = (home, s) => {
     const esc = !!s.escaped, small = !!s.small;
-    const counts = { floor: {}, inside: {}, wall: { [B.PLANKS]: s.wood === false ? 4 : 34 }, roof: {} };
+    const counts = { floor: {}, inside: {}, wall: { [B.PLANKS]: s.wood === 'none' ? 0 : s.wood === false ? 4 : 34 }, roof: {} };
     for (const k of s.feats ?? []) { const [z, id, n] = COUNTS[k]; counts[z][id] = (counts[z][id] || 0) + n; }
     if (s.gems != null) counts.wall[B.SUNSTONE] = s.gems;
+    if (s.roofGems != null) counts.roof[B.RUBY] = s.roofGems;
     const roofHoles = s.roofHoles ?? [], wallHoles = s.wallHoles ?? [];
     const walls = !esc && !wallHoles.length, roof = esc ? null : !roofHoles.length;
     const box = small ? { x0: sx + 2, x1: sx + 7, z0: sz + 2, z1: sz + 7 } : { x0: sx + 1, x1: sx + 8, z0: sz + 1, z1: sz + 8 };
@@ -39,11 +40,11 @@ export const STAGE = async () => {
       ok: walls && roof === true && !small && !esc,
     };
   };
-  window.__fake = (spec, type) => {
+  window.__fake = spec => {
     const h = g.homes.mine();
     h.fake = spec;
-    h.check = function check() { this.report = build(this, this.fake); this.result = this.homeType?.evaluate(this.report) ?? null; };
-    if (type && h.type !== type) g.homes.choose(h, type); else h.check();
+    h.check = function check() { this.judge(build(this, this.fake)); };
+    h.check();
     g.homes.active = h;
     return h;
   };
@@ -68,34 +69,38 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.ui.homeOpen && !document.pointerLockElement);
   };
 
-  // 1. A new Doormat that nobody owns: stepping on it opens the chooser.
+  // 1. A new Doormat that nobody owns: stepping on it makes it your home and opens 'What can my home be?'.
   for (let i = 0; i < 4 && !(await open()); i++) { // step off, wait for the ground, step on (frames are slow here)
     await stand(4.5, -2.5, 0);
     await waitFor(page, () => window.pokecraft.player.onGround);
     await toMat();
     await waitFor(page, () => window.pokecraft.ui.homeOpen, null, 8000).catch(() => {});
   }
-  await waitFor(page, () => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'choose');
+  await waitFor(page, () => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'types');
   const ch = await page.evaluate(() => ({
-    cards: [...document.querySelectorAll('#home .card')].map(c => ({ type: c.dataset.type, src: c.querySelector('img').src.slice(0, 22), w: c.querySelector('img').naturalWidth })),
+    cards: [...document.querySelectorAll('#home .card')].map(c => ({ type: c.dataset.type, src: c.querySelector('img').src.slice(0, 22), hasShow: !!c.querySelector('button[data-act="preview"]'), w: c.querySelector('img').naturalWidth })),
   }));
   const typeCount = await page.evaluate(async () => Object.keys((await import('/src/hometypes.js')).HOME_TYPES).length);
-  t.ok(ch.cards.length === typeCount && typeCount >= 2, `the chooser has one card per home type (${ch.cards.length})`);
+  t.ok(ch.cards.length === typeCount && typeCount >= 2, `the panel has one card per home type (${ch.cards.length})`);
   t.ok(ch.cards.every(c => c.src.startsWith('data:image/png') && c.w === 240), 'each card has a picture (a data URL, 240 wide)');
   await waitFor(page, () => !document.pointerLockElement).catch(() => {});
   t.ok(await page.evaluate(() => document.pointerLockElement === null), 'the mouse is free to click the cards');
   await page.waitForTimeout(300);
-  await shot('t22-chooser.png');
-  await click(page, '#home .hm-card[data-type="cozy"]');
+  await shot('t30-5-types.png');
+  t.ok(await page.evaluate(() => { const m = window.pokecraft.homes.mine(); return m && m.x === window.pokecraft.homes.matPos[0] && !('type' in m.toSave()); }), 'the orphan mat was claimed as your home, no type in the record');
+  t.ok(ch.cards.every(c => c.hasShow) && await page.evaluate(() => !document.querySelector('#home .hm-card[data-type]:not(div)')), 'every card has a "Show me a house" button and cards are not buttons');
+  await click(page, '#home .hm-card[data-type="cozy"] img').catch(() => {});
+  t.ok(await page.evaluate(() => window.pokecraft.ui.homeOpen && window.pokecraft.homeUi.state().view === 'types'), 'clicking a card changes nothing');
+  await page.locator('#home-close').scrollIntoViewIfNeeded(); // the panel is taller than the window: scroll like a player does
+  await click(page, '#home-close');
   await waitFor(page, () => !window.pokecraft.ui.homeOpen);
-  t.ok(await page.evaluate(() => window.pokecraft.homes.mine()?.type === 'cozy'), 'clicking Cozy closes the chooser and sets the type');
   // like after the other panels, the pause screen asks for a click; one click on it and we play again
   if (await page.evaluate(() => !document.getElementById('pause').classList.contains('hidden'))) await page.mouse.click(550, 30);
   await waitFor(page, () => document.getElementById('pause').classList.contains('hidden'));
-  t.ok(true, 'closing the chooser returns to the game after one click');
+  t.ok(true, 'closing the panel returns to the game after one click');
 
   // 2. The meter (hand-made reports).
-  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }, 'cozy'));
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }));
   await page.evaluate(() => window.pokecraft.ui.closePanel());
   await waitFor(page, () => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .chk.walls'));
   const meter = () => page.evaluate(() => {
@@ -106,11 +111,13 @@ export default async function ({ browser, base, t }) {
       walls: cls('.chk.walls'), roof: cls('.chk.roof'), size: cls('.chk.size'), sizeText: document.querySelector('#home-meter .chk.size .sub')?.textContent ?? '',
       hearts: q('.heart.on'), hearts_all: q('.heart'), done: q('.feat.done'), counts: [...document.querySelectorAll('#home-meter .count')].map(c => c.textContent),
       ready: !!document.querySelector('#home-meter .hm.ready'),
+      lines: q('.hm-line'), chips: [...document.querySelectorAll('#home-meter .hm-type')].map(c => c.textContent), doneLines: q('.hm-line.done'),
     };
   });
   let m = await meter();
   t.ok(m.shown && m.walls.includes('ok') && m.roof.includes('ok') && m.size.includes('ok') && m.sizeText === '8x8', `good house: walls, roof, size 8x8 are ticks (${m.walls}|${m.roof}|${m.size})`);
   t.ok(m.hearts === 3 && m.hearts_all === 5 && m.done === 3 + 1 && m.ready, `3 of 5 hearts on, the wood rule done, and "Ready!" (${m.hearts}/${m.hearts_all}, ready ${m.ready})`);
+  t.ok(m.chips.length === 1 && m.chips[0].includes('Cozy home') && m.lines === 1, `the title names the kind it is (${m.chips}) and one kind is on the meter (${m.lines})`);
   await shot('t22-meter.png');
   await page.evaluate(([sx, sz]) => window.__fake({ feats: ['bed'], roofHoles: [[sx + 4, 46, sz + 4], [sx + 5, 46, sz + 4]] }), [sx, sz]);
   await waitFor(page, () => document.querySelector('#home-meter .chk.roof.bad'));
@@ -126,16 +133,30 @@ export default async function ({ browser, base, t }) {
   t.ok(m.size.includes('unk') && m.roof.includes('unk') && m.sizeText === '', 'walls not closed: size and roof show "?"');
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug', 'lamp', 'windows'] }));
   await waitFor(page, () => document.querySelectorAll('#home-meter .heart.on').length === 5);
-  // the treasure type: a counter instead of hearts
-  await page.evaluate(() => window.__fake({ gems: 9 }, 'treasure'));
-  await waitFor(page, () => document.querySelector('#home-meter .feat .count'));
+  // nothing started: no type line. Then the treasure type: a counter instead of hearts.
+  await page.evaluate(() => window.__fake({ wood: 'none' }));
+  await waitFor(page, () => !document.querySelector('#home-meter .hm-line'));
   m = await meter();
-  t.ok(m.counts.includes('9/10') && m.hearts_all === 0 && !m.ready, `treasure home: the gem counter reads 9/10, no hearts (${m.counts})`);
+  t.ok(m.lines === 0 && !m.ready, 'nothing started: no type line on the meter');
+  await page.evaluate(() => window.__fake({ wood: 'none', gems: 3 }));
+  await waitFor(page, () => document.querySelector('#home-meter .hm-line .count'));
+  m = await meter();
+  t.ok(m.lines === 1 && m.counts.includes('3/15') && m.hearts_all === 0, `only the treasure line, the gem counter reads 3/15 (${m.counts})`);
+  await page.evaluate(() => window.__fake({ wood: 'none', gems: 14 }));
+  await waitFor(page, () => [...document.querySelectorAll('#home-meter .count')].some(c => c.textContent === '14/15'));
+  m = await meter();
+  t.ok(!m.ready && m.doneLines === 0, `14 gems: not ready (${m.counts})`);
   await shot('t22-treasure.png');
-  await page.evaluate(() => window.__fake({ gems: 10 }));
+  await page.evaluate(() => window.__fake({ wood: 'none', gems: 14, roofGems: 1 }));
   await waitFor(page, () => document.querySelector('#home-meter .hm.ready'));
-  t.ok(true, 'treasure home with 10 gems is Ready');
-  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }, 'cozy'));
+  m = await meter();
+  t.ok(m.doneLines === 1 && m.chips.length === 1 && m.chips[0].includes('Treasure home'), `15 gems (one in the ceiling): the treasure line is done (${m.chips})`);
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'], gems: 15 }));
+  await waitFor(page, () => document.querySelectorAll('#home-meter .hm-type').length === 2);
+  m = await meter();
+  t.ok(m.chips.length === 2 && m.lines === 2 && m.doneLines === 2, `cozy and treasure at once: two chips, two lines (${m.chips})`);
+  await shot('t30-5-meter-both.png');
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug'] }));
 
   // 3. The red glow and the floor outline.
   const glow = () => page.evaluate(() => {
@@ -184,8 +205,12 @@ export default async function ({ browser, base, t }) {
   await waitFor(page, () => !window.pokecraft.ui.homeOpen);
   t.ok(true, 'H closes the panel');
   await openPanel('home');
-  await click(page, '#home button[data-act="preview"]');
+  t.ok(await page.evaluate(() => !!document.querySelector('#home button[data-act="types"]') && !document.querySelector('#home [data-act="change"]')), 'the home view has "What can my home be?" and no "Change home type"');
+  await click(page, '#home button[data-act="types"]');
+  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'types');
+  await click(page, '#home button[data-act="preview"][data-type="cozy"]');
   await waitFor(page, () => window.pokecraft.homeUi.state().view === 'preview');
+  t.ok(await page.evaluate(() => document.querySelector('#home h2').textContent === 'Cozy home'), 'the preview is titled with the type');
   await page.waitForTimeout(600);
   const y1 = (await ui()).yaw;
   await page.waitForTimeout(1500);
@@ -218,30 +243,25 @@ export default async function ({ browser, base, t }) {
   await shot('t22-preview-b.png');
   // the model is only drawn while the preview is open
   await click(page, '#home button[data-act="back"]');
-  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'home');
+  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'types');
   const idle = await page.evaluate(() => new Promise(res => {
     const hu = window.pokecraft.homeUi, y = hu.state().yaw;
     setTimeout(() => res(hu.state().yaw === y), 1200);
   }));
-  t.ok(idle, 'back on the home view the model no longer spins');
+  t.ok(idle, 'back on the types view the model no longer spins');
   await click(page, '#home-close');
   await waitFor(page, () => !window.pokecraft.ui.homeOpen);
   t.ok(await page.evaluate(() => window.pokecraft.homeUi.state().view === null), 'Close ends the home panel');
-  // changing the home type
-  await openPanel('home');
-  // a click can be lost if the panel redraws under a slow frame, so both clicks are retried
-  for (let i = 0; i < 10 && (await ui()).view !== 'choose'; i++) {
-    await click(page, '#home button[data-act="change"]').catch(() => {});
-    await page.waitForTimeout(2000);
-  }
-  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'choose', null, 10000);
-  for (let i = 0; i < 10 && !(await page.evaluate(() => window.pokecraft.homes.mine().type === 'treasure')); i++) {
-    await click(page, '#home .hm-card[data-type="treasure"]').catch(() => {});
-    await page.waitForTimeout(2000);
-  }
-  await waitFor(page, () => window.pokecraft.homes.mine().type === 'treasure');
-  t.ok(true, '"Change home type" opens the chooser and Treasure can be picked');
-  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug', 'lamp', 'windows'] }, 'cozy'));
+  // the treasure card's preview lists the gems as missing (3 gems in the fake)
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'], gems: 3 }));
+  await openPanel('types');
+  await click(page, '#home button[data-act="preview"][data-type="treasure"]');
+  await waitFor(page, () => window.pokecraft.homeUi.state().view === 'preview');
+  await waitFor(page, () => window.pokecraft.homeUi.state().missing.includes('gems'));
+  t.ok(true, 'the treasure preview blinks the gems when there are too few');
+  await click(page, '#home-close');
+  await waitFor(page, () => !window.pokecraft.ui.homeOpen);
+  await page.evaluate(() => window.__fake({ feats: ['bed', 'fire', 'rug', 'lamp', 'windows'] }));
 
   // 5. A cosy room at night: the fireplace glows.
   await page.evaluate(() => { window.pokecraft.ui.closePanel(); window.pokecraft.time = 0.8; });
