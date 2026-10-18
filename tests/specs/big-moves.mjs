@@ -303,7 +303,7 @@ export default async function ({ browser, base, t }) {
     const RM = await import('/src/rematch.js');
     const want = { kitegale: 'windyday', clangalarm: 'lastsecond', statuo: 'decoyswap', error404: 'lagspike', clickit2: 'levelboost', snoozebear: 'grouphug', dozeram: 'tuckin', kingcoin: 'jackpot', crownguard: 'treasurehunt' };
     const found = {};
-    for (const gym of G.GYMS) for (const [sp, lv, mv] of gym.leaderTeam) if (want[sp]) found[sp] = { has: mv?.includes(want[sp]), n: mv?.length, dmg: S.MOVES[mv?.[0]]?.power > 0, lv };
+    for (const gym of G.GYMS) for (const [sp, lv, mv] of gym.leaderTeam) if (want[sp]) found[sp] = { has: mv?.includes(want[sp]), n: mv?.length, dmg: S.MOVES[mv?.[0]]?.power > 0, lv, same: JSON.stringify(mv) === JSON.stringify(S.movesWith(sp, lv, want[sp])) };
     const treasure = G.GYMS.find(x => x.id === 'treasure' || x.leaderTeam.some(([sp]) => sp === 'kingcoin'));
     const rock = G.GYMS[0];
     const bigOf = tm => tm.map(([sp, lv, mv]) => ({ sp, lv, big: (mv || []).filter(S.isBig) }));
@@ -365,7 +365,7 @@ export default async function ({ browser, base, t }) {
   t.ok(R.mirror.same && R.mirror.long, `mirror run: sides swapped give the same battle (${R.mirror.m1.slice(0, 200)})`);
   t.ok(JSON.stringify(R.draws) === JSON.stringify({ rally: 1, shield: 1, rest: 0, field: 1, sacrifice: 1, curse: 2, risky: 4, lastwordBlocked: 0, lastword: 3 }), `draws per kind (${JSON.stringify(R.draws)})`);
   const gy = R.gyms;
-  t.ok(Object.keys(gy.found).length === 9 && Object.values(gy.found).every(f => f.has && f.n === 4 && f.dmg), `the 9 leader creatures know their big move, 4 moves, damage first (${JSON.stringify(gy.found)})`);
+  t.ok(Object.keys(gy.found).length === 9 && Object.values(gy.found).every(f => f.has && f.n === 4 && f.dmg && f.same), `the 9 leader creatures know their big move, 4 moves, damage first, written out exactly as movesWith gives them (${JSON.stringify(gy.found)})`);
   t.ok(gy.t3.every(x => x.should ? x.big.length > 0 : true) && gy.t3.every(x => x.noSac) && gy.tier12.every(l => l.length === 0 || l.every(sp => ['kingcoin', 'crownguard'].includes(sp))) && gy.rock.every(n => n === 0),
     `rematch: tier 3 gives a big move where one exists, tiers 1-2 and Boulder add none (${JSON.stringify(gy.t3)} / ${JSON.stringify(gy.tier12)} / ${gy.rock})`);
 
