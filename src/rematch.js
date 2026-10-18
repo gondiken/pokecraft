@@ -1,7 +1,7 @@
 // Gym rematches (T28): after you have a gym's badge, its leader offers a rematch that gets harder
 // with every win (per player, saved as a win count per gym id). The first badge battle is not touched.
 import { GYMS, trainersOf, REMATCH_CAP } from './gyms.js';
-import { SPECIES } from './species.js';
+import { SPECIES, MOVES, isBig, movesWith } from './species.js';
 import { sound } from './sound.js';
 
 export const REMATCH = { step: 3, cap: REMATCH_CAP, maxTeam: 6, xpBoost: 1.5, maxWins: 999, askTime: 20, askRange: 8 };
@@ -28,8 +28,17 @@ export function grownUp(species, level) {
   return s;
 }
 
-// T25 hook: later moves for a stronger rematch team. Today the creature keeps what its level gives it.
-export function rematchMoves(def, tier, species, level, baseMoves) { return baseMoves; }
+// T25: a stronger rematch team (tier 3 and up) gets a big move too. Big moves named in the base moves stay.
+// Without a base list the creature keeps what its level gives it (plus the big move, if it gets one).
+export function rematchMoves(def, tier, species, level, baseMoves) {
+  const bigs = (baseMoves || []).filter(isBig);
+  if (tier >= 3 && !bigs.length) {
+    const pick = SPECIES[species].learn.filter(([l, m]) => isBig(m) && l <= level && MOVES[m].fx.kind !== 'sacrifice')
+      .sort((a, b) => b[0] - a[0])[0];
+    if (pick) bigs.push(pick[1]);
+  }
+  return bigs.length ? movesWith(species, level, ...bigs) : baseMoves;
+}
 
 // The leader's team for a rematch after `wins` wins: [[species, level, moves?], ...]. Pure.
 export function rematchTeam(def, wins = 0, rules = {}) {

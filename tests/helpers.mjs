@@ -95,7 +95,9 @@ export async function playBattle(page, prefer) {
     if (!(await page.evaluate(() => window.pokecraft.inBattle))) return true;
     await page.evaluate(pref => {
       const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')];
-      (bs.find(b => pref && b.textContent.startsWith(pref)) || bs.find(b => b.querySelector('small')?.textContent.includes('power ')) || bs[0])?.click();
+      const no = bs.find(b => b.textContent.startsWith("Don't learn")); // a forget prompt (big moves are offered at Lv 21+): keep the attacks
+      if (no) { no.click(); return; }
+      (bs.find(b => pref && b.textContent.startsWith(pref)) || bs.find(b => { const s = b.querySelector('small')?.textContent || ''; return s.includes('power ') && !s.includes('half the time'); }) || bs[0])?.click();
     }, prefer);
     await page.waitForTimeout(700);
   }

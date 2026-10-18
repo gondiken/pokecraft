@@ -209,6 +209,156 @@ export const MOVES = {
   crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
 };
 
+// T25 big-decision moves: one kind (the mechanic) each, a name per type. Learned at these levels:
+export const BIG_LEVEL = { shield: 21, rally: 22, curse: 24, field: 26, risky: 29, sacrifice: 32, lastword: 34 };
+export const BIG_KINDS = Object.keys(BIG_LEVEL);
+const BIG_FX = {
+  rally: { atk: 1, def: -2 },          // whole team +1 attack (bench too) until the battle ends; user -2 defence
+  shield: { turns: 3, cut: 0.3 },      // whole team takes 30% less for 3 turns; user rests its next move
+  risky: { odds: 0.5, times: 3 },      // 50%: x3, else the user hits itself with power 60
+  sacrifice: { atk: 1 },               // user faints; the next one in gets full HP and +1 attack
+  curse: { odds: 0.4, spd: -1 },       // 40%: foe team -1 speed (bench too)
+  field: { turns: 5, boost: 1.5 },     // one type x1.5 for 5 turns, both sides
+  lastword: { below: 0.25 },           // only usable below 1/4 HP
+};
+// [id, name, kind, book text] per type (plans/T25-table.md)
+const BIG_MOVES = {
+  normal: [
+    ['goteamgo', 'Go Team Go!', 'rally', 'Whole team hits harder. You get softer.'],
+    ['standtogether', 'Stand Together', 'shield', 'Team takes less damage. You rest next turn.'],
+    ['nevergiveup', 'Never Give Up', 'lastword', 'A huge hit! Only when you are almost out.'],
+  ],
+  fire: [
+    ['wildblaze', 'Wild Blaze', 'risky', 'Half the time: triple hit! Or it burns you.'],
+    ['lastember', 'Last Ember', 'lastword', 'A huge fire hit, only when almost out.'],
+  ],
+  water: [
+    ['wavegoodbye', 'Wave Goodbye', 'sacrifice', 'You leave. Next friend comes in fresh and strong.'],
+    ['hightide', 'High Tide', 'field', 'Water moves are stronger for 5 turns. Foes too!'],
+  ],
+  grass: [
+    ['leafyroof', 'Leafy Roof', 'shield', 'Leaves cover the team. You rest next turn.'],
+    ['seedgift', 'Seed Gift', 'sacrifice', 'You leave. Next friend comes in fresh and strong.'],
+    ['gardenbloom', 'Garden Bloom', 'field', 'Grass moves are stronger for 5 turns. Foes too!'],
+  ],
+  electric: [
+    ['livewire', 'Live Wire', 'risky', 'Half the time: triple hit! Or it zaps you.'],
+    ['staticfuzz', 'Static Fuzz', 'curse', 'Might slow down the whole foe team.'],
+  ],
+  rock: [
+    ['stonefort', 'Stone Fort', 'shield', 'Team takes less damage. You rest next turn.'],
+    ['cliffcrash', 'Cliff Crash', 'lastword', 'A huge rock hit, only when almost out.'],
+  ],
+  ice: [
+    ['bigfreeze', 'Big Freeze', 'curse', 'Might make the whole foe team slow and chilly.'],
+    ['snowday', 'Snow Day', 'field', 'Ice moves are stronger for 5 turns. Foes too!'],
+  ],
+  bug: [
+    ['hivehum', 'Hive Hum', 'rally', 'Whole team hits harder. You get softer.'],
+    ['cobwebtangle', 'Cobweb Tangle', 'curse', 'Might slow down the whole foe team.'],
+  ],
+  ghost: [
+    ['poof', 'Poof!', 'sacrifice', 'You go poof! Next friend comes in fresh.'],
+    ['spookyshiver', 'Spooky Shiver', 'curse', 'Might make the whole foe team slow.'],
+  ],
+  mind: [
+    ['mindbubble', 'Mind Bubble', 'shield', 'A bubble guards the team. You rest next turn.'],
+    ['slowthoughts', 'Slow Thoughts', 'curse', 'Might slow down the whole foe team.'],
+    ['thinktank', 'Think Tank', 'field', 'Mind moves are stronger for 5 turns. Foes too!'],
+  ],
+  metal: [
+    ['metalumbrella', 'Metal Umbrella', 'shield', 'Team takes less damage. You rest next turn.'],
+    ['wreckingball', 'Wrecking Ball', 'risky', 'Half the time: triple hit! Or it bonks you.'],
+  ],
+  toxic: [
+    ['fizzypotion', 'Fizzy Potion', 'risky', 'Half the time: triple hit! Or you drink it.'],
+    ['stinkyfog', 'Stinky Fog', 'curse', 'Might slow down the whole foe team.'],
+  ],
+  pixie: [
+    ['sparklecheer', 'Sparkle Cheer', 'rally', 'Whole team hits harder. You get softer.'],
+    ['daisyring', 'Daisy Ring', 'shield', 'Flowers guard the team. You rest next turn.'],
+  ],
+  drake: [
+    ['bravebellow', 'Brave Bellow', 'rally', 'Whole team hits harder. You get softer.'],
+    ['scalestorm', 'Scale Storm', 'lastword', 'A huge drake hit, only when almost out.'],
+  ],
+  rainbow: [
+    ['prismdome', 'Prism Dome', 'shield', 'Colors guard the team. You rest next turn.'],
+    ['colorcarnival', 'Color Carnival', 'field', 'Rainbow moves are stronger for 5 turns. Foes too!'],
+  ],
+  cosmic: [
+    ['luckystar', 'Lucky Star', 'risky', 'Half the time: triple hit! Or it hits you.'],
+    ['starrynight', 'Starry Night', 'field', 'Cosmic moves are stronger for 5 turns. Foes too!'],
+    ['bigbang', 'Big Bang', 'lastword', 'A huge space hit, only when almost out.'],
+  ],
+  sound: [
+    ['battlesong', 'Battle Song', 'rally', 'Whole team hits harder. You get softer.'],
+    ['earringer', 'Ear Ringer', 'curse', 'Might slow down the whole foe team.'],
+  ],
+  bone: [
+    ['falltopieces', 'Fall to Pieces', 'sacrifice', 'You fall apart. Next friend comes in fresh.'],
+    ['dinocomeback', 'Dino Comeback', 'lastword', 'A huge bone hit, only when almost out.'],
+  ],
+  alien: [
+    ['mysterybutton', 'Mystery Button', 'risky', 'Half the time: triple hit! Or it hits you.'],
+    ['slowmoray', 'Slow-Mo Ray', 'curse', 'Might slow down the whole foe team.'],
+  ],
+  sky: [
+    ['cloudcushion', 'Cloud Cushion', 'shield', 'Clouds guard the team. You rest next turn.'],
+    ['windyday', 'Windy Day', 'field', 'Sky moves are stronger for 5 turns. Foes too!'],
+  ],
+  slime: [
+    ['jellywall', 'Jelly Wall', 'shield', 'Jelly guards the team. You rest next turn.'],
+    ['meltaway', 'Melt Away', 'sacrifice', 'You melt away. Next friend comes in fresh.'],
+  ],
+  light: [
+    ['shinebright', 'Shine Bright', 'rally', 'Whole team hits harder. You get softer.'],
+    ['daylightglow', 'Daylight Glow', 'field', 'Light moves are stronger for 5 turns. Foes too!'],
+  ],
+  paper: [
+    ['pepposter', 'Pep Poster', 'rally', 'Whole team hits harder. You get softer.'],
+    ['foldaway', 'Fold Away', 'sacrifice', 'You fold up. Next friend comes in fresh.'],
+  ],
+  time: [
+    ['rushhour', 'Rush Hour', 'field', 'Time moves are stronger for 5 turns. Foes too!'],
+    ['lastsecond', 'Last Second', 'lastword', 'A huge hit, only when almost out.'],
+  ],
+  camo: [
+    ['sneakyleap', 'Sneaky Leap', 'risky', 'Half the time: triple hit! Or you trip.'],
+    ['decoyswap', 'Decoy Swap', 'sacrifice', 'You leave. Next friend comes in fresh and strong.'],
+  ],
+  cyber: [
+    ['levelboost', 'Level Up!', 'rally', 'Whole team hits harder. You get softer.'],
+    ['lagspike', 'Lag Spike', 'curse', 'Might slow down the whole foe team.'],
+    ['wifizone', 'Wi-Fi Zone', 'field', 'Cyber moves are stronger for 5 turns. Foes too!'],
+  ],
+  cozy: [
+    ['grouphug', 'Group Hug', 'shield', 'A hug guards the team. You rest next turn.'],
+    ['tuckin', 'Tuck In', 'sacrifice', 'You go to bed. Next friend comes in fresh.'],
+  ],
+  treasure: [
+    ['jackpot', 'Jackpot', 'risky', 'Half the time: triple hit! Or it hits you.'],
+    ['treasurehunt', 'Treasure Hunt', 'field', 'Treasure moves are stronger for 5 turns. Foes too!'],
+  ],
+};
+for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
+  const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
+  MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
+}
+const BIG = Object.fromEntries(Object.entries(BIG_MOVES).map(([t, list]) => [t, list.map(([id, , kind]) => [BIG_LEVEL[kind], id])]));
+export const isBig = id => !!MOVES[id]?.big;
+
+// Extra tags and the Book note per big kind (T is the capitalised type name).
+const BIG_NOTES = {
+  rally: { tags: () => ['team attack up', 'lowers your defence'], note: () => 'Attack +1 for every creature on your team, also the ones waiting, until the battle ends. Your defence goes down 2.' },
+  shield: { tags: () => ['team shield for 3 turns', 'you rest next turn'], note: () => 'For 3 turns your whole team takes 30% less damage. The user has to rest on its next turn.' },
+  risky: { tags: () => ['half the time x3, or it hits you'], note: () => 'Half the time it hits 3 times as hard. The other half it hits the user instead!' },
+  sacrifice: { tags: () => ['you faint', 'next friend comes in fresh'], note: () => 'The user faints. The next creature comes in with full HP and more attack. Only works when a friend can come in.' },
+  curse: { tags: () => ['may slow the whole foe team'], note: () => 'Works 4 times out of 10. Then every foe, also the ones waiting, is slower until the battle ends.' },
+  field: { tags: T => [`${T} moves stronger for 5 turns`], note: T => `For 5 turns ${T} moves are 50% stronger. For the foe too!` },
+  lastword: { tags: () => ['only below 1/4 HP'], note: () => 'Only works when the user has less than 1/4 of its HP left.' },
+};
+
 // Short, kid-friendly words for what a move does. Used on battle buttons, the forget prompt and the Book.
 export function moveInfo(id) {
   const m = MOVES[id];
@@ -230,7 +380,12 @@ export function moveInfo(id) {
   }
   if (m.sig) tags.push('special move');
   let note = '';
-  if (fx?.kind === 'sleep') note = 'A sleeping creature skips 2 or 3 turns and gets hurt a bit more. Three hits in a row wake it up!';
+  const big = m.big && BIG_NOTES[fx.kind];
+  if (big) {
+    const T = m.type[0].toUpperCase() + m.type.slice(1);
+    tags.push(...big.tags(T));
+    note = `${m.book} ${big.note(T)}`;
+  } else if (fx?.kind === 'sleep') note = 'A sleeping creature skips 2 or 3 turns and gets hurt a bit more. Three hits in a row wake it up!';
   else if (fx?.kind === 'multi') note = fx.weights
     ? 'Hits 1 to 5 times, most often 2 or 3. The third hit wakes up a sleeping foe!'
     : `Hits ${fx.min} to ${fx.max} times. The third hit wakes up a sleeping foe!`;
@@ -287,7 +442,7 @@ function L(type, second, extra = []) {
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
     : [[1, 'tackle'], [1, T1[type]], [7, 'quickjab'], [10, T3[type]], [13, T2[type]], [19, T3[second]],
        [23, UTIL[type] || 'bodyslam'], [28, T4[type]]];
-  return [...base, ...extra].filter(([, m]) => m).sort((a, b) => a[0] - b[0]); // no slot for a type = no move
+  return [...base, ...extra, ...(BIG[type] || [])].filter(([, m]) => m).sort((a, b) => a[0] - b[0]); // no slot for a type = no move
 }
 
 export const SPECIES = {
@@ -1636,19 +1791,42 @@ export function statsFor(c) {
 
 export const nameOf = c => SPECIES[c.species].name;
 
+// The moves a wild or trainer creature gets by level: the last 4 learned, big moves left out, a damaging move first.
+export function autoMoves(species, level) {
+  const moves = SPECIES[species].learn.filter(([l, m]) => l <= level && !isBig(m)).map(([, m]) => m);
+  const picked = [...new Set(moves)].slice(-4);
+  const hit = picked.findIndex(m => MOVES[m].power > 0);
+  if (hit > 0) [picked[0], picked[hit]] = [picked[hit], picked[0]];
+  return picked;
+}
+
+// autoMoves plus these named moves (gym leaders): each replaces the weakest move at index >= 1
+// (lowest power, the later on a tie), never one of `ids`; with fewer than 4 it is added.
+export function movesWith(species, level, ...ids) {
+  const moves = autoMoves(species, level);
+  for (const id of ids) {
+    if (moves.includes(id)) continue;
+    if (moves.length < 4) { moves.push(id); continue; }
+    let weakest = -1;
+    for (let i = 1; i < moves.length; i++) {
+      if (ids.includes(moves[i])) continue;
+      if (weakest < 0 || MOVES[moves[i]].power <= MOVES[moves[weakest]].power) weakest = i;
+    }
+    if (weakest > 0) moves[weakest] = id;
+  }
+  return moves;
+}
+
 // knownMoves: keep these moves (for copies of an existing creature) instead of the usual ones.
 export function makeCreature(species, level, knownMoves) {
   const sp = SPECIES[species];
-  const moves = sp.learn.filter(([l]) => l <= level).map(([, m]) => m);
+  const moves = sp.learn.filter(([l, m]) => l <= level && !isBig(m)).map(([, m]) => m);
   const keep = (knownMoves || []).filter(m => MOVES[m]);
   const c = {
     uid: Math.random().toString(36).slice(2, 10),
     species, level, xp: xpForLevel(level), hp: 0,
-    moves: keep.length ? [...new Set(keep)].slice(0, 4) : [...new Set(moves)].slice(-4),
+    moves: keep.length ? [...new Set(keep)].slice(0, 4) : autoMoves(species, level),
   };
-  // A damaging move goes first (wild and trainer creatures, and the first button, use it most).
-  const hit = c.moves.findIndex(m => MOVES[m].power > 0);
-  if (!keep.length && hit > 0) [c.moves[0], c.moves[hit]] = [c.moves[hit], c.moves[0]];
   c.learned = keep.length ? [...c.moves] : [...new Set(moves)]; // moves already offered (see gainXp)
   c.hp = statsFor(c).maxHp;
   c.traits = drawTraits(c); // T26: drawn once from the uid, then saved

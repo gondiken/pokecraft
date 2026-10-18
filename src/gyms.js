@@ -1,5 +1,6 @@
 // Gyms: each one specialises in a type and has an apprentice trainer and a Gym Leader.
 // Gyms are listed in the intended order; later ones are further from the start and tougher.
+import { movesWith } from './species.js';
 
 export const GYMS = [
   {
@@ -198,7 +199,7 @@ export const GYMS = [
     leader: { name: 'Leader Wren', colors: { shirt: 0x8fd0ff, pants: 0xffffff, hair: 0xf0f0f0, skin: 0xf2d0b0 } },
     trainer: { name: 'Kite Flyer Lou', colors: { shirt: 0xf0a030, pants: 0x3a5a8a, hair: 0x3a2a1a, skin: 0xd9a066 } },
     trainerTeam: [['kiteling', 30], ['balloony', 31]],
-    leaderTeam: [['skyfin', 31], ['pinwhirl', 32], ['kitegale', 33]],
+    leaderTeam: [['skyfin', 31], ['pinwhirl', 32], ['kitegale', 33, movesWith('kitegale', 33, 'windyday')]],
     intro: ['You climbed all the way up here? Welcome to the Cloud Gym!', 'Up in the clouds my sky creatures fly free. Ready to soar?'],
     lose: 'You blew us away! Take the Cloud Badge.',
   },
@@ -214,7 +215,7 @@ export const GYMS = [
       { name: 'Tea Time Theo', opens: 'afternoon', colors: { shirt: 0xf08a3a, pants: 0x2a3a5a, hair: 0x1a1a1a, skin: 0xc68a5a },
         team: [['pendulo', 32], ['twilorb', 32]], intro: ["Tick, tock, it is battle o'clock!"] },
     ],
-    leaderTeam: [['sandtimer', 32], ['grandtock', 33], ['clangalarm', 33]],
+    leaderTeam: [['sandtimer', 32], ['grandtock', 33], ['clangalarm', 33, movesWith('clangalarm', 33, 'lastsecond')]],
     intro: ['You climbed my tower from morning to night. Welcome!', 'My clocks never stop. Can you keep up with them?'],
     lose: 'Right on time! The Chime Badge is yours.',
   },
@@ -229,7 +230,7 @@ export const GYMS = [
       { name: 'Hider Juno', disguise: 'stone', colors: { shirt: 0x8a9a6a, pants: 0x3a4a2a, hair: 0xe0c060, skin: 0xd9a066 },
         team: [['bushling', 35], ['chromacurl', 35]], intro: ['Oh no, you found me! Nobody ever finds me!'] },
     ],
-    leaderTeam: [['fortsand', 35], ['topiphant', 36], ['statuo', 36]],
+    leaderTeam: [['fortsand', 35], ['topiphant', 36], ['statuo', 36, movesWith('statuo', 36, 'decoyswap')]],
     intro: ['You found my hideout! Not many trainers do.', 'My team is very good at hiding. Can you find their weak spots?'],
     lose: 'You see everything! The Hideout Badge is yours.',
   },
@@ -244,7 +245,7 @@ export const GYMS = [
       { name: 'Gamer Zed', colors: { shirt: 0x8ff4ff, pants: 0x3a2a5a, hair: 0x1a1a1a, skin: 0xc68a5a },
         team: [['error404', 38], ['wifly', 38], ['clickit2', 38]], intro: ['Two firewalls down! But can you beat my high score?'] },
     ],
-    leaderTeam: [['error404', 39], ['wifly2', 39], ['clickit2', 40], ['pixbit2', 40]],
+    leaderTeam: [['error404', 39, movesWith('error404', 39, 'lagspike')], ['wifly2', 39], ['clickit2', 40, movesWith('clickit2', 40, 'levelboost')], ['pixbit2', 40]],
     intro: ['Welcome to the server room! You beat every firewall.', 'Now let us see if your team can beat my upgrades!'],
     lose: 'System beaten! The Circuit Badge is yours.',
   },
@@ -259,7 +260,7 @@ export const GYMS = [
       { name: 'Sleepy Sam', colors: { shirt: 0x7ab8e8, pants: 0xffffff, hair: 0x3a2a1a, skin: 0xc68a5a },
         team: [['pillowlamb', 42], ['snoozebear', 42], ['knitcat', 42]], intro: ['*Yawn*... oh! A battle? I am awake now!'] },
     ],
-    leaderTeam: [['snoozebear', 42], ['quiltbun', 43], ['knitcat', 43], ['dozeram', 43]],
+    leaderTeam: [['snoozebear', 42, movesWith('snoozebear', 42, 'grouphug')], ['quiltbun', 43], ['knitcat', 43], ['dozeram', 43, movesWith('dozeram', 43, 'tuckin')]],
     intro: ['You built us a real home. Thank you!', 'Now let us see how strong a cozy team can be!'],
     lose: 'Warm and strong! The Snuggle Badge is yours.',
     chilly: "Brr, it's chilly in here! Can you fix it?",
@@ -276,7 +277,7 @@ export const GYMS = [
       { name: 'Miner Jem', colors: { shirt: 0xd08a3a, pants: 0x4a4a5a, hair: 0x5a3a1a, skin: 0xc68a5a },
         team: [['crystafox', 45], ['lustrelle', 45], ['kingcoin', 45]], intro: ['I dug up these gems myself. They are tough!'] },
     ],
-    leaderTeam: [['lustrelle', 45], ['kingcoin', 46], ['prismfox', 46], ['crownguard', 46]],
+    leaderTeam: [['lustrelle', 45], ['kingcoin', 46, movesWith('kingcoin', 46, 'jackpot')], ['prismfox', 46], ['crownguard', 46, movesWith('crownguard', 46, 'treasurehunt')]],
     intro: ['You found all three golden keys!', 'My treasures are the strongest of all. Ready?'],
     lose: 'What a treasure of a trainer! The Jackpot Badge is yours.',
   },
