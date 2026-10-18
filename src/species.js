@@ -2342,7 +2342,7 @@ export function buildModel(species) {
     parts.sparkle = [];
     for (let k = 0; k < SPARKLES; k++) {
       const mat = new THREE.MeshBasicMaterial({ color: k % 2 ? 0xffffff : 0xfff2b0, side: THREE.DoubleSide });
-      const g = new THREE.Mesh(sparkleGeometry(0.26), mat);
+      const g = new THREE.Mesh(sparkleGeometry(0.2), mat);
       const spots = [0, 1, 2].map(j => {
         const a = k * 1.3 + j * 2.4, h = 0.2 + 0.2 * ((k + j * 2) % 4);
         return new THREE.Vector3(c.x + Math.sin(a) * (size.x / 2 + 0.06), bb.min.y + size.y * h, c.z + Math.cos(a) * (size.z / 2 + 0.06));
@@ -2390,7 +2390,7 @@ export function animateModel(group, t, moving) {
   for (const s of p.sparkle || []) {
     const u = (t + s.phase) / s.period, n = Math.floor(u);
     const k = ((u - n) * s.period) / SPARKLE_TIME; // each twinkle lasts SPARKLE_TIME s of its period
-    const a = k < 1 ? Math.sin(k * Math.PI) * 1.25 : 0;
+    const a = k < 1 ? Math.sin(k * Math.PI) * 1.1 : 0;
     s.g.visible = a > 0.03;
     if (!s.g.visible) continue;
     s.g.position.copy(s.spots[((n % 3) + 3) % 3]);
@@ -2403,7 +2403,7 @@ export function animateModel(group, t, moving) {
 // Tint a model for hit flashes (pass null to restore).
 export function tintModel(group, color) {
   group.traverse(o => {
-    if (!o.isMesh) return;
+    if (!o.isMesh || !o.material.emissive) return; // unlit parts (the Treasure sparkle glints) have no emissive: leave them as they are
     if (o.userData.baseEmissive === undefined) o.userData.baseEmissive = o.material.emissive.getHex();
     o.material.emissive.setHex(color ?? o.userData.baseEmissive);
   });

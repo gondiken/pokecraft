@@ -517,7 +517,13 @@ export class Battle {
     }
 
     let result = null;
-    while (!result) result = await this.turn();
+    try {
+      while (!result) result = await this.turn();
+    } catch (e) { // a bug must never freeze the game: end the battle like running away (a duel just ends)
+      console.error('battle turn failed', e);
+      this.say?.('Oops! Something went wrong. Let\'s go back to exploring.', 1500)?.catch?.(() => {});
+      result = this.duel ? 'ended' : 'ran';
+    }
     g.fx?.clear();
     clearInterval(this.music);
     this.music = null;

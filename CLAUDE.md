@@ -92,7 +92,7 @@ Key ideas:
   home is `full`; treasure 1/1500), `max: 1`, a `place` (the creature appears at `home.spawnSpot()` instead of a random spot) and
   `text`/`toast` per type (`condText`/`condToast`). `creatures.context()` has `homes` (from `creatures.env.homes()`, only those within
   `HOME_RANGE` 32, also underground since T22) and `evening`. T22 sets `env.homes = () => game.homes.ready()` (`Home`s with at least one type: `{ x, y, z, is(type), resultOf(type), spawnSpot() }`, T30.5; `full` comes from `resultOf(type).full`). `HOME_SPAWN` may have `bonus: { feature, step, best }` (`homeShare`): treasure is 1 in `max(300, 1500 - 40 * (gems - 15))`. The Book shows one "Near a cozy home" row and one "Near a home with 15+ gems" row (`HomeType.near` is copied to `HOME_SPAWN[id].text`).
-  **Sparkle:** Treasure models sparkle (`parts.sparkle`: `SPARKLES` 5 unlit glints, built in `buildModel` for the whole type, animated in `animateModel`;
+  **Sparkle:** Treasure models sparkle (`parts.sparkle`: `SPARKLES` 5 unlit glints (MeshBasic, no `emissive`: `tintModel` skips such parts), built in `buildModel` for the whole type, animated in `animateModel`;
   `sparkleGeometry` in shapes.js).
   **Camo creatures** have `disguise: { blocks, size }` in `SPECIES`: `creatures.spawnAt(species, x, y, z)` dresses them as the most
   common of those blocks nearby (`Disguise.pick`, no spawn if there is none or no room: `Disguise.fits`), they never walk (`Wild.still`),

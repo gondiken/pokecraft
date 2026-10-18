@@ -4,7 +4,7 @@
 // Saves tests/screenshots/two-types[-<type>].png and creature-<id>.png.
 import fs from 'node:fs';
 import path from 'node:path';
-import { openGame, newGame, platform, ROOT } from '../helpers.mjs';
+import { openGame, newGame, platform, ROOT, waitFor } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const TYPES = ['cozy', 'treasure'];
@@ -174,6 +174,7 @@ export default async function ({ browser, base, t }) {
               vis.forEach((v, i) => { if (v === 0 || v === steps) bad(`${id}: glint ${i} is ${v === 0 ? 'never' : 'always'} visible`); });
               if (any / steps < 0.4) bad(`${id}: a glint is visible in only ${Math.round(100 * any / steps)}% of the steps`);
               if (sp.some((s, i) => s.g.position !== before[i])) bad(`${id}: a glint position was reallocated`);
+              try { S.tintModel(m, 0xff2020); S.tintModel(m, null); } catch (e) { bad(`${id}: the hit flash breaks on its sparkle (${e.message})`); } // a crash here froze a real battle
             }
           } else if (sp) bad(`${id}: only Treasure creatures sparkle`);
           S.disposeModel(m);
@@ -354,6 +355,37 @@ export default async function ({ browser, base, t }) {
     save(only ? `two-types-${only}.png` : 'two-types.png', shots.grid);
     for (const [id, url] of Object.entries(shots.singles)) save(`creature-${id}.png`, url);
     t.ok(shots.grid.length > 20000, 'portrait grid drawn');
+  }
+
+  /* 8. A real battle against a sparkling Treasure creature: hit it (the red flash comes and goes), then throw a cube.
+     The hit flash used to crash on the sparkle glints, which froze the battle and the game. */
+  if (!only || only === 'treasure') {
+    await platform(page, { day: true });
+    await page.evaluate(async () => {
+      const g = window.pokecraft, S = await import('/src/species.js'), { Wild } = await import('/src/creatures.js');
+      g.party = [S.makeCreature('blazehound', 30)]; g.cubes = 10;
+      const wild = new Wild(S.makeCreature('crystafox', 20), S.buildModel('crystafox'), g.player.pos.clone().setX(g.player.pos.x + 3));
+      g.creatures.list.push(wild); g.scene.add(wild.model); wild.model.position.copy(wild.pos);
+      g.inBattle = true; document.body.classList.add('in-battle'); document.getElementById('pause').classList.add('hidden');
+      document.exitPointerLock();
+      window.__wild = wild;
+      g.battle.start({ wild });
+    });
+    const buttons = () => page.evaluate(() => [...document.querySelectorAll('#b-actions button:not([disabled])')].map(b => b.textContent));
+    await waitFor(page, () => [...document.querySelectorAll('#b-actions button:not([disabled])')].some(b => b.textContent.startsWith('Cube')), null, 60000);
+    await page.evaluate(() => [...document.querySelectorAll('#b-actions button:not([disabled])')].find(b => b.querySelector('small')?.textContent.includes('power '))?.click());
+    await waitFor(page, () => [...document.querySelectorAll('#b-actions button:not([disabled])')].some(b => b.textContent.startsWith('Cube')) || !window.pokecraft.inBattle, null, 60000);
+    const red = await page.evaluate(() => { let n = 0; (window.pokecraft.battle.foeModel || window.__wild.model).traverse(o => { if (o.isMesh && o.material.emissive && o.material.emissive.getHex() === 0xff2222) n++; }); return n; });
+    t.ok(red === 0 && !page.errors.length, `after a hit the Treasure creature is not stuck red (${red} red parts; ${page.errors.join('; ')})`);
+    if (await page.evaluate(() => window.pokecraft.inBattle)) {
+      await page.evaluate(() => { window.__wild.data.hp = 1; window.pokecraft.battle.catchChance = () => 1; });
+      await page.evaluate(() => [...document.querySelectorAll('#b-actions button:not([disabled])')].find(b => b.textContent.startsWith('Cube'))?.click());
+      t.ok(await waitFor(page, () => [...document.querySelectorAll('#b-actions button:not([disabled])')].some(b => b.textContent.startsWith('Continue exploring')), null, 90000),
+        `throwing a cube at it finishes the catch (buttons: ${await buttons()})`);
+      await page.evaluate(() => [...document.querySelectorAll('#b-actions button')].find(b => b.textContent.startsWith('Continue exploring'))?.click());
+      t.ok(await waitFor(page, () => !window.pokecraft.inBattle, null, 30000) && await page.evaluate(() => window.pokecraft.party.some(c => c.species === 'crystafox')),
+        'the battle ends and Crystafox joins the team');
+    }
   }
 
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
