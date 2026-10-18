@@ -204,6 +204,7 @@ body.touch .mon .moves button { font-size: 19px; min-height: 36px; padding: 4px 
 }
 #b-wild { top: 16px; left: 16px; }
 #b-ally { right: 16px; bottom: 242px; }
+#b-friend { right: 16px; bottom: 350px; transform: scale(.85); transform-origin: bottom right; } /* T29 co-op: the friend's creature, above mine */
 .bcard .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .bcard .nm { font-family: 'Press Start 2P', monospace; font-size: 12px; }
 .bcard .hpbar { height: 10px; margin-top: 8px; }
@@ -235,11 +236,13 @@ body.touch .mon .moves button { font-size: 19px; min-height: 36px; padding: 4px 
 /* the "forget which move?" question needs more room */
 #battle.asking #b-box { height: 330px; }
 #battle.asking #b-ally { bottom: 358px; }
+#battle.asking #b-friend { bottom: 466px; } /* T29 */
 
 @media (max-width: 700px) {
   h1 { font-size: 26px; }
   .bcard { width: calc(100% - 32px); }
   #b-ally { bottom: 330px; }
+  #b-friend { bottom: 438px; } /* T29 */
   #b-box { flex-direction: column; height: 300px; }
 }
 
@@ -304,8 +307,10 @@ body.touch #b-log { font-size: 24px; }
 @media (min-width: 701px) {
   body.touch #b-box { height: 260px; }
   body.touch #b-ally { bottom: 288px; }
+  body.touch #b-friend { bottom: 396px; } /* T29 */
   body.touch #battle.asking #b-box { height: 360px; }
   body.touch #battle.asking #b-ally { bottom: 388px; }
+  body.touch #battle.asking #b-friend { bottom: 496px; } /* T29 */
 }
 body.touch .mon .btns button { font-size: 10px; padding: 10px 12px; }
 /* storage box: sort buttons, type chips and the "let it go?" question */

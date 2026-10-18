@@ -7,6 +7,7 @@ import {
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 import { sound } from './sound.js';
+import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
 
 const PARTY_MAX = 6;
 const WAKE_HIT = 3; // the 3rd hit of a multi-hit move wakes a sleeper
@@ -26,6 +27,9 @@ export class Battle {
     this.actions = document.getElementById('b-actions');
     this.wildCard = document.getElementById('b-wild');
     this.allyCard = document.getElementById('b-ally');
+    this.friendCard = el('div', { id: 'b-friend', class: 'bcard hidden' }); // T29: the other player's creature in a co-op battle
+    this.root.appendChild(this.friendCard);
+    this.coop = null;
     this.skip = null;
     this.history = [];
     this.modMap = new Map();
@@ -37,7 +41,16 @@ export class Battle {
 
   get ally() { return this.allies[this.allyIdx]; }
   get foe() { return this.foes[this.foeIdx]; }
-  get foeLabel() { return this.duel ? `${this.duel.name}'s` : this.trainer ? 'Foe' : 'Wild'; }
+  get friend() { return this.friends?.[this.friendIdx]; } // T29: the other player's creature (co-op only)
+  get foeLabel() { return this.coop ? 'Giant' : this.duel ? `${this.duel.name}'s` : this.trainer ? 'Foe' : 'Wild'; }
+
+  // T29 co-op sides: 'ally' = my creature, 'friend' = the other player's, 'foe' = the giant. Outside co-op these
+  // return exactly what the old ternaries did.
+  creature(side) { return side === 'ally' ? this.ally : side === 'friend' ? this.friend : this.foe; }
+  // Whom a move hits: our creatures hit the giant; the giant hits this.bossTarget ('ally' or 'friend').
+  other(side) { return side === 'foe' ? (this.coop ? this.bossTarget || 'ally' : 'ally') : 'foe'; }
+  teamSide(side) { return side === 'friend' ? 'ally' : side; } // both players' creatures are one team
+  actives(teamSide) { return teamSide === 'ally' ? [this.ally, ...(this.coop && !this.friendOut && this.friend ? [this.friend] : [])] : [this.foe]; }
 
   // Standing height at (x, z), searching down from fromY so creatures stay inside buildings.
   groundBelow(x, z, fromY) {
@@ -67,17 +80,17 @@ export class Battle {
   // Per-team state of the big moves, the one shared field and the round counter. Never saved.
   resetSides() { this.sides = { ally: newSide(), foe: newSide() }; this.field = null; this.round = 0; }
   sideOf(c) {
-    if (this.allies?.includes(c)) return 'ally';
+    if (this.allies?.includes(c) || this.friends?.includes(c)) return 'ally';
     if (this.foes?.includes(c)) return 'foe';
     return null;
   }
   // Healthy creatures of a team that are not out (they wait on the bench).
   bench(side) {
-    const list = side === 'ally' ? this.allies : this.foes, cur = side === 'ally' ? this.ally : this.foe;
+    const list = side === 'ally' ? this.allies : side === 'friend' ? this.friends : this.foes, cur = this.creature(side);
     return (list || []).filter(c => c !== cur && c.hp > 0).length > 0;
   }
   teamName(side) {
-    if (side === 'ally') return 'Your team';
+    if (side === 'ally') return this.coop ? `Your team and ${this.duel.name}'s` : 'Your team';
     if (this.duel) return `${this.duel.name}'s team`;
     if (this.trainer) return `${this.trainer.name}'s team`;
     return 'The wild team';
@@ -94,7 +107,8 @@ export class Battle {
 
   // Why a creature can't use a move right now ('' = it can).
   cantUse(side, id) {
-    const c = side === 'ally' ? this.ally : this.foe, fx = MOVES[id]?.fx;
+    const c = this.creature(side), fx = MOVES[id]?.fx;
+    if (this.coop && fx?.kind === 'sacrifice') return 'not in a giant battle';
     if (fx?.kind === 'lastword' && c.hp >= statsFor(c).maxHp * fx.below) return 'only below 1/4 HP';
     if (fx?.kind === 'sacrifice' && !this.bench(side)) return 'no friend can come in';
     return '';
@@ -123,7 +137,7 @@ export class Battle {
     const s = this.sides[side];
     if (!s.gift) return;
     s.gift = false;
-    const c = side === 'ally' ? this.ally : this.foe;
+    const c = this.creature(side);
     c.hp = statsFor(c).maxHp;
     const m = this.mods(c);
     m.atk = Math.min(3, m.atk + 1);
@@ -136,7 +150,7 @@ export class Battle {
 
   // Put a creature to sleep for `turns` of its own moves (2 or 3, drawn by the caller).
   async fallAsleep(side, turns) {
-    const c = side === 'ally' ? this.ally : this.foe;
+    const c = this.creature(side);
     this.mods(c).sleep = turns;
     sound.play('snooze');
     this.game.fx?.status('sleep', this.spot(side));
@@ -146,7 +160,7 @@ export class Battle {
 
   // how = 'own' (slept its turns away) or 'bonk' (a multi-hit move's 3rd hit)
   async wakeUp(side, how) {
-    const c = side === 'ally' ? this.ally : this.foe;
+    const c = this.creature(side);
     const m = this.mods(c);
     m.sleep = 0;
     m.justWoke = true;
@@ -211,7 +225,13 @@ export class Battle {
   refresh() {
     this.game.book?.markSeen(this.foe.species);
     this.card(this.wildCard, this.foe, false);
+    if (this.coop) { const nm = this.wildCard.querySelector('.nm'); if (nm) nm.textContent = bossName(this.coop.boss); } // T29
     this.card(this.allyCard, this.ally, true);
+    if (this.coop && this.friend) { // T29
+      this.card(this.friendCard, this.friend, true);
+      const nm = this.friendCard.querySelector('.nm');
+      if (nm) nm.textContent = `${this.duel.name}'s ${nm.textContent}`;
+    }
   }
 
   choose(buttons) {
@@ -286,7 +306,7 @@ export class Battle {
     const gap = dir.length();
     dir.normalize();
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
-    const pos = p.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, 1.5);
+    const pos = p.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, 1.5 * (this.coop ? this.coopSign() : 1));
     pos.y = this.groundBelow(pos.x, pos.z, p.y + 1);
     const model = buildModel(this.ally.species);
     model.position.copy(pos);
@@ -294,6 +314,34 @@ export class Battle {
     g.scene.add(model);
     this.allyModel = model;
     this.allyHome = pos.clone();
+    return tween(300, t => model.scale.setScalar(easeOut(t)));
+  }
+
+  // T29: which way my creature stands from me (+1 right, -1 left): away from the friend, so the two never overlap.
+  coopSign() {
+    const p = this.game.player.pos, a = this.duel.avatar.pos, w = this.foePos;
+    const dx = w.x - p.x, dz = w.z - p.z, len = Math.hypot(dx, dz) || 1;
+    const lateral = (a.x - p.x) * (-dz / len) + (a.z - p.z) * (dx / len); // positive = friend on my right
+    return lateral > 0.01 ? -1 : 1;
+  }
+
+  // T29: the friend's creature stands next to the friend's avatar, on the side away from me.
+  placeFriend() {
+    const g = this.game;
+    this.modMap.delete(this.friend);
+    if (this.friendModel) { g.scene.remove(this.friendModel); disposeModel(this.friendModel); }
+    const a = this.duel.avatar.pos, w = this.foePos;
+    const dir = new THREE.Vector3(w.x - a.x, 0, w.z - a.z);
+    const gap = dir.length();
+    dir.normalize();
+    const right = new THREE.Vector3(-dir.z, 0, dir.x);
+    const pos = a.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, -1.5 * this.coopSign());
+    pos.y = this.groundBelow(pos.x, pos.z, a.y + 1);
+    const model = buildModel(this.friend.species);
+    model.position.copy(pos);
+    model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
+    g.scene.add(model);
+    this.friendModel = model;
     return tween(300, t => model.scale.setScalar(easeOut(t)));
   }
 
@@ -310,7 +358,7 @@ export class Battle {
     }
   }
 
-  modelOf(side) { return side === 'ally' ? this.allyModel : this.foeModel; }
+  modelOf(side) { return side === 'ally' ? this.allyModel : side === 'friend' ? this.friendModel : this.foeModel; }
 
   // Where a creature is, for the attack animations (null when it has no model on screen).
   spot(side) {
@@ -325,6 +373,7 @@ export class Battle {
   // Trainer battles: put the trainer's current creature between them and the player.
   async sendOutFoe() {
     const g = this.game;
+    if (this.coop) return this.sendOutGiant();
     const npc = this.trainer;
     this.modMap.delete(this.foe);
     if (this.foeModel) { g.scene.remove(this.foeModel); disposeModel(this.foeModel); }
@@ -349,8 +398,25 @@ export class Battle {
     await this.giftArrives('foe');
   }
 
+  // T29: the giant appears where the ask said, facing the two players, and grows to its big size.
+  async sendOutGiant() {
+    const g = this.game;
+    const at = this.foePos;
+    this.modMap.delete(this.foe);
+    const mid = g.player.pos.clone().add(this.duel.avatar.pos).multiplyScalar(0.5);
+    const model = buildModel(this.foe.species);
+    model.position.copy(at);
+    model.rotation.y = Math.atan2(mid.x - at.x, mid.z - at.z);
+    model.scale.setScalar(0.01);
+    g.scene.add(model);
+    this.foeModel = model;
+    this.refresh();
+    this.cry(this.foe);
+    await tween(500, t => model.scale.setScalar(Math.max(0.01, easeOut(t) * BOSS_SCALE)));
+  }
+
   async lunge(side) {
-    const a = this.modelOf(side), b = this.modelOf(side === 'ally' ? 'foe' : 'ally');
+    const a = this.modelOf(side), b = this.modelOf(this.other(side));
     const start = a.position.clone();
     const toward = b.position.clone().sub(start).setY(0).normalize().multiplyScalar(0.8);
     await tween(320, t => {
@@ -386,13 +452,21 @@ export class Battle {
     this.resetSides();
     this.history = [];
     this.xpBoost = opts.xpBoost || 1;
-    this.trainer = opts.trainer || (this.duel && { name: this.duel.name, pos: this.duel.pos });
+    this.coop = this.duel?.coop || null; // T29: 2 players against one giant
+    this.trainer = opts.trainer || (this.coop ? { name: bossName(this.coop.boss), pos: new THREE.Vector3(...this.coop.at) } : this.duel && { name: this.duel.name, pos: this.duel.pos });
     this.foeModel = null;
+    this.friends = null; this.friendIdx = 0; this.friendModel = null; this.myOut = false; this.friendOut = false;
+    this.bossTarget = null; this.trace = [];
+    this.friendCard.classList.add('hidden');
     this.foeIdx = 0;
     // Battles between players use full-HP copies of each team, so nobody's real team gets hurt.
     const copy = c => makeCreature(c.species, Math.max(1, Math.min(60, c.level | 0)), c.moves);
     this.allies = this.duel ? g.party.map(copy) : g.party;
     this.allyIdx = this.allies.findIndex(c => c.hp > 0);
+    if (this.coop) {
+      this.friends = this.duel.team.filter(c => SPECIES[c?.species]).slice(0, PARTY_MAX).map(copy);
+      this.friendIdx = Math.max(0, this.friends.findIndex(c => c.hp > 0));
+    }
     this.root.classList.remove('hidden');
     this.actions.replaceChildren();
     sound.play(this.boss ? 'boss' : 'battle');
@@ -411,6 +485,15 @@ export class Battle {
       this.refresh();
       this.cry(this.foe);
       await this.say(was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
+    } else if (this.coop) {
+      const npc = this.trainer;
+      this.foes = [makeBoss(this.coop.boss, this.allies, this.friends)];
+      this.stepBack(npc.pos, 5.5);
+      g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2 * BOSS_SCALE, npc.pos.z));
+      this.foePos = npc.pos.clone();
+      this.refresh();
+      await this.say(`A giant ${nameOf(this.foe)} appeared! Beat it together with ${this.duel.name}!`, 2000);
+      await this.sendOutFoe();
     } else {
       const npc = this.trainer;
       this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves]) => makeCreature(species, level, moves));
@@ -425,6 +508,13 @@ export class Battle {
     await this.placeAlly();
     this.cry(this.ally);
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    if (this.coop) {
+      await this.placeFriend();
+      this.refresh();
+      this.friendCard.classList.remove('hidden');
+      this.cry(this.friend);
+      await this.say(`${this.duel.name} sent out ${nameOf(this.friend)}!`, 1000);
+    }
 
     let result = null;
     while (!result) result = await this.turn();
@@ -446,6 +536,8 @@ export class Battle {
       g.scene.remove(m); disposeModel(m);
       this.allyModel = null;
     }
+    if (this.friendModel) { g.scene.remove(this.friendModel); disposeModel(this.friendModel); this.friendModel = null; } // T29
+    this.friendCard.classList.add('hidden');
     if (this.wild) {
       if (result === 'caught' || result === 'won') g.creatures.remove(this.wild);
       else this.wild.frozen = false;
@@ -460,6 +552,7 @@ export class Battle {
   // A few words on the "Continue exploring" button about how the battle ended.
   endText(result) {
     if (result === 'caught') return `You caught ${nameOf(this.foe)}!`;
+    if (this.coop && result !== 'gaveup') return result === 'won' ? `You and ${this.duel.name} beat the giant!` : result === 'lost' ? 'The giant was too strong this time.' : 'The giant battle is over.';
     if (result === 'won') return this.trainer ? `You beat ${this.trainer.name}!` : 'You won!';
     if (result === 'ran') return 'You got away.';
     if (result === 'lost') return this.duel ? `${this.duel.name} won this time.` : 'Your team is resting at the start.';
@@ -470,6 +563,7 @@ export class Battle {
   async turn() {
     this.round++;
     await this.tickEffects(); // draws nothing
+    if (this.coop) return this.coopTurn(); // T29
     if (this.duel) return this.duelTurn();
     const action = await this.chooseAction();
     const g = this.game;
@@ -582,9 +676,152 @@ export class Battle {
     return null;
   }
 
+  /* ---------------------------- T29: co-op boss ---------------------------- */
+  // Two players against one giant, on the duel messages. What both browsers must agree on: the order of the
+  // actions (priority, speed, then role rank asker/helper/giant: no draw), draw B (the giant's target, only
+  // when both players are still in, drawn just before the giant's move), then each useMove's draws in the
+  // usual order. Switches and faint picks come as messages in the same order as in duels. The player who is
+  // out keeps sending { kind: 'watch' } every turn, so the number of messages per turn never changes.
+  // Roles: p1 = the asker (duel.first), p2 = the helper. 'ally' is always MY creature, 'friend' the other one's.
+  async coopTurn() {
+    const d = this.duel, rank = s => s === 'foe' ? 2 : (s === 'ally') === d.first ? 0 : 1;
+    const mine = this.myOut ? { kind: 'watch' } : await this.chooseAction();
+    d.send(mine);
+    if (mine.kind === 'giveup') { await this.say('You left the giant battle.'); return 'gaveup'; }
+    const theirs = await this.waitForThem(`Waiting for ${d.name}...`);
+    if (theirs.kind === 'me-giveup') { await this.say('You left the giant battle.'); return 'gaveup'; }
+    if (theirs.kind === 'left') { await this.say(this.leftText(theirs)); return 'ended'; }
+    if (theirs.kind === 'giveup') { await this.say(`${d.name} left the giant battle.`); return 'ended'; }
+
+    if (mine.kind === 'switch') {
+      await this.say(`Come back, ${nameOf(this.ally)}!`, 800);
+      this.allyIdx = mine.idx;
+      this.refresh();
+      await this.placeAlly();
+      this.cry(this.ally);
+      await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    }
+    if (theirs.kind === 'switch') {
+      const idx = this.friends[theirs.idx]?.hp > 0 ? theirs.idx : this.friends.findIndex(c => c.hp > 0);
+      if (idx >= 0 && idx !== this.friendIdx) {
+        this.friendIdx = idx;
+        this.refresh();
+        await this.placeFriend();
+        this.cry(this.friend);
+        await this.say(`${d.name} sent out ${nameOf(this.friend)}!`, 900);
+      }
+    }
+    const acts = []; // [side, move, the creature that acts]
+    if (mine.kind === 'move') acts.push(['ally', mine.move, this.ally]);
+    if (theirs.kind === 'move') acts.push(['friend', MOVES[theirs.move] ? theirs.move : 'tackle', this.friend]);
+    if (this.foe.hp > 0) acts.push(['foe', this.bossMove(), this.foe]);
+    acts.sort((a, b) => (MOVES[b[1]].priority || 0) - (MOVES[a[1]].priority || 0)
+      || this.speedOf(this.creature(b[0])) - this.speedOf(this.creature(a[0])) || rank(a[0]) - rank(b[0])); // no draw for ties
+    this.clearFlinch();
+    const acted = new Set();
+    for (const [side, move, actor] of acts) {
+      if (this.creature(side) !== actor || actor.hp <= 0) continue; // fainted (or was replaced) earlier this turn
+      if (side === 'foe') this.bossTarget = this.pickTarget(); // draw B
+      await this.useMove(side, move, { first: !acted.has(this.other(side)) });
+      acted.add(side);
+      this.trace.push([this.round, rank(side), move, ...this.hpByRole()]);
+      if (this.foe.hp <= 0) return this.coopWon();
+      if (this.ally.hp <= 0 && !this.myOut) await this.coopAllyFainted();
+      if (this.friend.hp <= 0 && !this.friendOut) { const r = await this.coopFriendFainted(); if (r) return r; }
+      if (this.myOut && this.friendOut) { await this.say('The giant was too strong this time!', 1600); return 'lost'; }
+    }
+    this.clearFlinch();
+    await this.warnBig();
+    return null;
+  }
+
+  // The giant's target this turn: whoever is still in, or a shared coin flip (draw B) when both are.
+  pickTarget() {
+    if (this.myOut) return 'friend';
+    if (this.friendOut) return 'ally';
+    const p1 = this.duel.first ? 'ally' : 'friend', p2 = p1 === 'ally' ? 'friend' : 'ally';
+    return this.rng() < 0.5 ? p1 : p2;
+  }
+
+  // What the giant does in a round: its plan, going round and round. No draws.
+  plannedMove(round) {
+    const b = BOSSES[this.coop.boss], step = b.plan[(round - 1) % b.plan.length];
+    const hits = this.foe.moves.filter(id => MOVES[id].power > 0 && !MOVES[id].big)
+      .sort((x, y) => MOVES[y].power - MOVES[x].power || (x < y ? -1 : 1));
+    if (step === 'a') return hits[0] || this.foe.moves[0];
+    if (step === 'b') return hits[1] || hits[0] || this.foe.moves[0];
+    return this.foe.moves.includes(step) && !this.cantUse('foe', step) ? step : hits[0] || this.foe.moves[0];
+  }
+  bossMove() { return this.plannedMove(this.round); }
+
+  // One round before a big move the giant says so. No draws.
+  async warnBig() {
+    if (this.foe.hp <= 0) return;
+    const step = BOSSES[this.coop.boss].plan[this.round % BOSSES[this.coop.boss].plan.length];
+    if (MOVES[step]?.big && this.foe.moves.includes(step) && !this.cantUse('foe', step)) {
+      await this.say(`${this.labelOf('foe')} is getting ready for something big!`, 1500);
+    }
+  }
+
+  hpByRole() { // [asker's creature, helper's creature, giant]: the same order in both browsers
+    const [p1, p2] = this.duel.first ? [this.ally, this.friend] : [this.friend, this.ally];
+    return [p1.hp, p2.hp, this.foe.hp];
+  }
+
+  async coopAllyFainted() {
+    await this.faintModel(this.allyModel);
+    await this.say(`${nameOf(this.ally)} fainted!`);
+    if (this.allies.some(c => c.hp > 0)) {
+      const idx = await this.pickPartyMember(false);
+      this.duel.send({ kind: 'next', idx });
+      this.allyIdx = idx;
+      this.refresh();
+      await this.placeAlly();
+      this.cry(this.ally);
+      await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    } else {
+      this.myOut = true;
+      this.duel.send({ kind: 'next', idx: -1 });
+      this.refresh();
+      await this.say(`Your team is tired out. Cheer for ${this.duel.name}!`, 1600);
+    }
+  }
+
+  // The friend's creature fainted: wait for their pick (the same order of messages as in duels).
+  async coopFriendFainted() {
+    const d = this.duel;
+    await this.faintModel(this.friendModel);
+    await this.say(`${this.labelOf('friend')} fainted!`);
+    const next = await this.waitForThem(`Waiting for ${d.name} to choose a creature...`);
+    if (next.kind === 'me-giveup') { await this.say('You left the giant battle.'); return 'gaveup'; }
+    if (next.kind === 'left') { await this.say(this.leftText(next)); return 'ended'; }
+    if (next.kind === 'giveup') { await this.say(`${d.name} left the giant battle.`); return 'ended'; }
+    const idx = next.idx;
+    if (!(idx >= 0) || !this.friends[idx] || this.friends[idx].hp <= 0) {
+      this.friendOut = true;
+      this.refresh();
+      await this.say(`${d.name}'s team is tired out!`, 1500);
+      return null;
+    }
+    this.friendIdx = idx;
+    this.refresh();
+    await this.placeFriend();
+    this.cry(this.friend);
+    await this.say(`${d.name} sent out ${nameOf(this.friend)}!`, 900);
+    return null;
+  }
+
+  async coopWon() {
+    await this.faintModel(this.foeModel);
+    await this.say(`You and ${this.duel.name} beat the ${this.trainer.name}!`, 1800);
+    sound.play('champion');
+    return 'won';
+  }
+
   clearFlinch() {
     this.mods(this.ally).flinch = false;
     this.mods(this.foe).flinch = false;
+    if (this.coop && this.friend) this.mods(this.friend).flinch = false;
   }
 
   // The other player's choice of creature, or their first healthy one if it doesn't make sense.
@@ -639,12 +876,13 @@ export class Battle {
 
   // One creature uses a move. The random numbers are drawn in a fixed order (1 hit, 2 number of hits
   // (multi only), 3 critical, 4 damage roll, 7 risky coin (right after 4), 5 effect chance (moves with `chance`),
-  // 6 sleep length (whenever a sleep effect lands), 8 curse roll (first thing in the curse branch). Sleeping,
+  // 6 sleep length (whenever a sleep effect lands), B the giant's target (co-op only, just before its move), 8 curse roll (first thing in the curse branch). Sleeping,
   // resting, flinching, a blocked move and the wake-up hit draw nothing) and never depend on which side is moving,
   // because in a player battle both browsers must draw exactly the same numbers.
   async useMove(side, moveId, { first = false } = {}) {
-    const atk = side === 'ally' ? this.ally : this.foe;
-    const def = side === 'ally' ? this.foe : this.ally;
+    const atk = this.creature(side);
+    const defSide = this.other(side); // T29: in co-op the giant hits whoever bossTarget says
+    const def = this.creature(defSide);
     const mv = MOVES[moveId];
     const who = this.labelOf(side);
     const ma = this.mods(atk), md = this.mods(def);
@@ -681,7 +919,7 @@ export class Battle {
     await this.lunge(side);
     await wait(150);
     const hit = this.rng(); // draw 1: always, even for moves that never miss
-    if (!mv.sure && hit > mv.acc) { sound.play('miss'); fx?.status('miss', this.spot(side === 'ally' ? 'foe' : 'ally'), { from: this.spot(side) }); await this.say('But it missed!', 1000); return; }
+    if (!mv.sure && hit > mv.acc) { sound.play('miss'); fx?.status('miss', this.spot(defSide), { from: this.spot(side) }); await this.say('But it missed!', 1000); return; }
     if (!mv.power) { fx?.aura(mv.type, this.spot(side)); await this.applyFx(side, mv, { first }); return; }
 
     const mfx = mv.fx;
@@ -694,7 +932,6 @@ export class Battle {
     const atkPower = as.atk * stage(ma.atk) * (atk.boost || 1), defPower = ds.def * stage(md.def);
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * atkPower / defPower) / 50) + 2;
     const roll = 0.85 + this.rng() * 0.15; // draw 4
-    const defSide = side === 'ally' ? 'foe' : 'ally';
     let mult = 1;
     if (mfx?.kind === 'risky') { // draw 7: right after the damage roll
       if (this.rng() < mfx.odds) mult = mfx.times;
@@ -704,17 +941,17 @@ export class Battle {
     const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crit * mult * this.fieldFactor(mv.type) * this.takenFactor(def) * roll));
     const hpStart = def.hp;
     // The champion's last creature hangs on once and powers up at half HP.
-    const bossLast = this.boss && side === 'ally' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
+    const bossLast = this.boss && side !== 'foe' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
     let done = 0;
-    await fx?.attack(moveId, this.spot(side), this.spot(side === 'ally' ? 'foe' : 'ally'));
+    await fx?.attack(moveId, this.spot(side), this.spot(defSide));
     for (let i = 0; i < hits && def.hp > 0; i++) {
       const hpBefore = def.hp;
       def.hp = Math.max(0, def.hp - dmgNow());
       if (bossLast && def.hp <= 0 && hpBefore > statsFor(def).maxHp / 2) def.hp = 1;
       done++;
       sound.play(eff > 1 ? 'super' : 'hit');
-      this.flash(side === 'ally' ? 'foe' : 'ally');
-      fx?.impact(mv.type, this.spot(side === 'ally' ? 'foe' : 'ally'), { big: !!mv.sig || mult > 1 || mfx?.kind === 'lastword' });
+      this.flash(defSide);
+      fx?.impact(mv.type, this.spot(defSide), { big: !!mv.sig || mult > 1 || mfx?.kind === 'lastword' });
       this.refresh();
       await wait(hits > 1 ? 300 : 450);
       if (mfx?.kind === 'multi' && i === WAKE_HIT - 1 && md.sleep && def.hp > 0 && eff > 0) await this.wakeUp(defSide, 'bonk');
@@ -747,7 +984,7 @@ export class Battle {
 
   // A risky move that went wrong: the user hits itself with the move's power. No STAB, type, crit or field.
   async backfire(side, mv, roll) {
-    const atk = side === 'ally' ? this.ally : this.foe, ma = this.mods(atk), fx = this.game.fx;
+    const atk = this.creature(side), ma = this.mods(atk), fx = this.game.fx;
     const st = statsFor(atk);
     const selfBase = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * st.atk * stage(ma.atk) * (atk.boost || 1) / (st.def * stage(ma.def))) / 50) + 2;
     const loss = Math.max(1, Math.floor(selfBase * roll * this.takenFactor(atk)));
@@ -761,15 +998,18 @@ export class Battle {
     await this.say(`Oh no! ${this.labelOf(side)} hit itself!`, 1200);
   }
 
-  labelOf(side) { return side === 'foe' ? `${this.foeLabel} ${nameOf(this.foe)}` : nameOf(this.ally); }
+  labelOf(side) {
+    if (side === 'friend') return `${this.duel.name}'s ${nameOf(this.friend)}`; // T29
+    return side === 'foe' ? `${this.foeLabel} ${nameOf(this.foe)}` : nameOf(this.ally);
+  }
 
   // The extra effect of a move: healing, stat changes, sleep or flinch. `quiet` (a side effect of an
   // attack) skips messages that would only say "nothing happened".
   async applyFx(side, mv, { quiet = false, first = false } = {}) {
     const fx = mv.fx, vis = this.game.fx;
-    const user = side === 'ally' ? this.ally : this.foe;
-    const target = side === 'ally' ? this.foe : this.ally;
-    const userSide = side, targetSide = side === 'ally' ? 'foe' : 'ally';
+    const user = this.creature(side);
+    const targetSide = this.other(side), target = this.creature(targetSide);
+    const userSide = side;
     const uWho = this.labelOf(userSide), tWho = this.labelOf(targetSide);
     if (fx.kind === 'heal') {
       const max = statsFor(user).maxHp;
@@ -805,14 +1045,14 @@ export class Battle {
       if (m.justWoke) { if (!quiet) await this.say(`${tWho} just woke up and is wide awake!`, 1100); return; }
       await this.fallAsleep(targetSide, turns);
     } else if (fx.kind === 'rally') {
-      const s = this.sides[userSide], m = this.mods(user);
-      if (m.atk >= 3 && s.atk >= 3) { await this.say(`${this.teamName(userSide)}'s attack can't go any higher!`, 1100); return; }
-      m.atk = Math.min(3, m.atk + fx.atk);
+      const uTeam = this.teamSide(userSide), s = this.sides[uTeam], m = this.mods(user);
+      if (m.atk >= 3 && s.atk >= 3) { await this.say(`${this.teamName(uTeam)}'s attack can't go any higher!`, 1100); return; }
+      for (const c of this.actives(uTeam)) { const cm = this.mods(c); cm.atk = Math.min(3, cm.atk + fx.atk); } // T29: both players' creatures in co-op
       s.atk = Math.min(3, s.atk + fx.atk);
       sound.play('kind:rally');
       vis?.status('rally', this.spot(userSide), { type: mv.type });
       this.refresh();
-      await this.say(`${this.teamName(userSide)} feels stronger! Attack up!`, 1300);
+      await this.say(`${this.teamName(uTeam)} feels stronger! Attack up!`, 1300);
       const before = m.def;
       m.def = Math.max(-3, m.def + fx.def);
       if (m.def !== before) {
@@ -822,12 +1062,12 @@ export class Battle {
         await this.say(`${uWho}'s defence went down ${before - m.def}!`, 1200);
       }
     } else if (fx.kind === 'shield') {
-      this.sides[userSide].shield = { until: this.round + fx.turns, name: mv.name };
+      this.sides[this.teamSide(userSide)].shield = { until: this.round + fx.turns, name: mv.name };
       this.mods(user).rest = true;
       sound.play('kind:shield');
       vis?.status('shield', this.spot(userSide), { type: mv.type });
       this.refresh();
-      await this.say(`${mv.name} covers ${this.teamName(userSide)} for ${fx.turns} turns!`, 1300);
+      await this.say(`${mv.name} covers ${this.teamName(this.teamSide(userSide))} for ${fx.turns} turns!`, 1300);
       await this.say(`${uWho} will rest next turn.`, 1000);
     } else if (fx.kind === 'sacrifice') {
       if (!this.bench(userSide)) { await this.say('But no friend can come in!', 1100); return; }
@@ -844,14 +1084,14 @@ export class Battle {
         await this.say("But it didn't work...", 1100);
         return;
       }
-      const s = this.sides[targetSide], m = this.mods(target);
-      if (m.spd <= -3 && s.spd <= -3) { await this.say(`${this.teamName(targetSide)} can't get any slower!`, 1100); return; }
-      m.spd = Math.max(-3, m.spd + fx.spd);
+      const tTeam = this.teamSide(targetSide), s = this.sides[tTeam], m = this.mods(target);
+      if (m.spd <= -3 && s.spd <= -3) { await this.say(`${this.teamName(tTeam)} can't get any slower!`, 1100); return; }
+      for (const c of this.actives(tTeam)) { const cm = this.mods(c); cm.spd = Math.max(-3, cm.spd + fx.spd); } // T29
       s.spd = Math.max(-3, s.spd + fx.spd);
       sound.play('kind:curse');
       vis?.status('curse', this.spot(targetSide), { type: mv.type, from: this.spot(userSide) });
       this.refresh();
-      await this.say(`${this.teamName(targetSide)} got slower!`, 1300);
+      await this.say(`${this.teamName(tTeam)} got slower!`, 1300);
     } else if (fx.kind === 'field') {
       this.field = { type: mv.type, name: mv.name, boost: fx.boost, until: this.round + fx.turns };
       sound.play('kind:field');
@@ -878,8 +1118,8 @@ export class Battle {
 
   async faintModel(model) {
     sound.play('faint');
-    const y = model.position.y;
-    await tween(450, t => { model.scale.setScalar(1 - t * 0.9); model.position.y = y - t * 0.3; });
+    const y = model.position.y, s0 = model.scale.x; // T29: the giant is bigger than 1
+    await tween(450, t => { model.scale.setScalar(s0 * (1 - t * 0.9)); model.position.y = y - t * 0.3; });
     model.visible = false;
   }
 

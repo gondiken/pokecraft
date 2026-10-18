@@ -1781,8 +1781,9 @@ export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 
 export function statsFor(c) {
   const b = SPECIES[c.species].base, L = c.level;
+  const hp = Math.floor((b.hp * 2 * L) / 100) + L + 10;
   return {
-    maxHp: Math.floor((b.hp * 2 * L) / 100) + L + 10,
+    maxHp: c.giant ? Math.floor(hp * c.giant) : hp, // T29: only the boss of a co-op battle has `giant`
     atk: Math.floor((b.atk * 2 * L) / 100) + 5,
     def: Math.floor((b.def * 2 * L) / 100) + 5,
     spd: Math.floor((b.spd * 2 * L) / 100) + 5,

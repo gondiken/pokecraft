@@ -4,10 +4,11 @@
 // chosen actions and share a random seed, so they always agree on what happened.
 import { sound } from './sound.js';
 import { cleanTraits } from './traits.js';
+import { cleanCoop, bossName, COOP_RANGE } from './coopboss.js'; // T29
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
-const VERSION = 8; // wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump)
+const VERSION = 9; // 8: wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump). 9: T29 co-op boss battles (the coop field)
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])] }));
@@ -29,7 +30,8 @@ export class Duels {
 
   get mp() { return this.game.mp; }
 
-  challenge(avatar) {
+  // coop (T29) = coopFor(...) result: ask a friend to help with a giant (2 against 1) instead of a battle
+  challenge(avatar, coop = null) {
     const g = this.game;
     if (this.asking) { this.hooks.toast(`Still waiting for ${this.asking.name} to answer.`); return; }
     if (this.incoming || this.current || g.inBattle) return;
@@ -37,15 +39,15 @@ export class Duels {
     const id = newId();
     const seed = (Math.random() * 2 ** 31) | 0;
     this.asking = {
-      id, seed, to: avatar.id, name: avatar.name,
+      id, seed, to: avatar.id, name: avatar.name, coop,
       timer: setTimeout(() => {
         this.mp.sendDuel(avatar.id, { type: 'cancel', id });
         this.asking = null;
         this.hooks.toast(`${avatar.name} didn't answer. Try again later!`);
       }, ANSWER_TIME * 1000),
     };
-    this.mp.sendDuel(avatar.id, { type: 'ask', v: VERSION, id, seed, team: teamOf(g.party) });
-    this.hooks.toast(`You asked ${avatar.name} for a battle. Waiting for an answer...`);
+    this.mp.sendDuel(avatar.id, { type: 'ask', v: VERSION, id, seed, team: teamOf(g.party), coop: coop && { mission: coop.mission, boss: coop.boss, at: coop.at } });
+    this.hooks.toast(coop ? `You asked ${avatar.name} to help with the giant. Waiting for an answer...` : `You asked ${avatar.name} for a battle. Waiting for an answer...`);
   }
 
   onMessage(p) {
@@ -56,17 +58,25 @@ export class Duels {
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
       }
-      this.incoming = { id: p.id, from: p.from, name: p.name, team: teamIn(p.team), seed: p.seed,
+      const coop = p.coop ? cleanCoop(p.coop) : null; // T29
+      if (p.coop) {
+        const far = this.mp.others.get(p.from)?.pos.distanceTo(g.player.pos) > COOP_RANGE + 8;
+        if (!coop || far || !teamIn(p.team).length) { this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true }); return; }
+      }
+      this.incoming = { id: p.id, from: p.from, name: p.name, team: teamIn(p.team), seed: p.seed, coop,
         timer: setTimeout(() => this.decline(), ANSWER_TIME * 1000) };
-      document.getElementById('duel-text').textContent = `${p.name} wants to have a creature battle with you!`;
+      document.getElementById('duel-text').textContent = coop
+        ? `${p.name} needs your help! A ${bossName(coop.boss)} is here. Battle it together, 2 against 1?`
+        : `${p.name} wants to have a creature battle with you!`;
       this.box.classList.remove('hidden');
       sound.play('ask');
     } else if (p.type === 'cancel' && this.incoming?.id === p.id) {
       this.closeAsk();
     } else if (p.type === 'no' && this.asking?.id === p.id) {
       clearTimeout(this.asking.timer);
+      const coop = this.asking.coop;
       this.asking = null;
-      this.hooks.toast(p.busy ? `${p.name} is busy right now. Try again soon!` : `${p.name} doesn't want to battle right now.`);
+      this.hooks.toast(coop ? `${p.name} can't help right now.` : p.busy ? `${p.name} is busy right now. Try again soon!` : `${p.name} doesn't want to battle right now.`);
     } else if (p.type === 'yes' && this.asking?.id === p.id) {
       const a = this.asking;
       clearTimeout(a.timer);
@@ -77,7 +87,7 @@ export class Duels {
         return;
       }
       if (g.inBattle) { this.mp.sendDuel(p.from, { type: 'act', id: p.id, n: 0, action: { kind: 'left' } }); return; }
-      this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: teamIn(p.team), first: true });
+      this.begin({ id: a.id, seed: a.seed, opp: p.from, name: p.name, team: teamIn(p.team), first: true, coop: a.coop && { ...a.coop, helper: false } });
     } else if (p.type === 'act' && this.current?.id === p.id) {
       const d = this.current;
       d.inbox[p.n] = p.action;
@@ -92,7 +102,7 @@ export class Duels {
     if (!this.mp.others.has(inc.from)) return;
     if (this.game.inBattle) { this.mp.sendDuel(inc.from, { type: 'no', id: inc.id, busy: true }); return; }
     this.mp.sendDuel(inc.from, { type: 'yes', v: VERSION, id: inc.id, team: teamOf(this.game.party) });
-    this.begin({ id: inc.id, seed: inc.seed, opp: inc.from, name: inc.name, team: inc.team, first: false });
+    this.begin({ id: inc.id, seed: inc.seed, opp: inc.from, name: inc.name, team: inc.team, first: false, coop: inc.coop && { ...inc.coop, helper: true } });
   }
 
   decline() {

@@ -3,6 +3,7 @@
 import { WORLD_W, WORLD_D } from './world.js';
 import { Multiplayer, cleanCode } from './multiplayer.js';
 import { Duels } from './duel.js';
+import { coopFor } from './coopboss.js'; // T29
 import { el } from './util.js';
 
 // deps: createWorld(seed, edits, size) swaps the world, save() / pushCloud() save the game,
@@ -45,9 +46,11 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
   });
 
   game.duels = new Duels(game, {
-    start: duel => startBattle({ duel }),
+    start: duel => startBattle(duel.coop ? { duel, boss: true } : { duel }), // T29: co-op boss
     toast: text => game.ui.toast(text),
   });
+
+  game.coopFor = coopFor; // T29
 
   function playerName() {
     let name = '';
