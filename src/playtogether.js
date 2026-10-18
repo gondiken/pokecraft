@@ -35,7 +35,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     },
     home: rec => game.homes.apply(rec),
     duel: p => game.duels.onMessage(p),
-    left: id => game.duels.left(id),
+    hs: p => game.hideSeek?.onMessage(p), // T30
+    left: id => { game.duels.left(id); game.hideSeek?.left(id); }, // T30
     ended: reason => {
       if (reason !== 'host-left') return;
       game.hostLeft = true;
@@ -72,6 +73,11 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     renderMp();
   }
 
+  // T30: the hide and seek buttons (one per player) and the Stop button. Clicking redraws the box.
+  function hideSeekButtons() {
+    return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
+  }
+
   function renderMp() {
     const mp = game.mp;
     const msg = mpMessage.text && el('div', { class: `acct-msg${mpMessage.error ? ' error' : ''}` }, mpMessage.text);
@@ -84,6 +90,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', { class: 'mp-code' }, mp.code),
         el('div', {}, 'The other player picks "Join a world" and types this code.'),
         el('div', { class: 'mp-who' }, who),
+        ...hideSeekButtons(), // T30
         el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
         msg);
       return;
@@ -93,6 +100,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('h3', {}, 'Play together'),
         el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
         el('div', { class: 'mp-who' }, who),
+        ...hideSeekButtons(), // T30
         el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
         el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),
         msg);
@@ -142,6 +150,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
   // Clicks inside the box shouldn't count as "click anywhere to resume".
   mpBox.addEventListener('click', e => e.stopPropagation());
   mpBox.addEventListener('pointerdown', e => e.stopPropagation());
+  // T30: players walk closer / further while the box is open, so the hide and seek buttons follow.
+  setInterval(() => { if (!pauseEl.classList.contains('hidden') && game.mp.active) renderMp(); }, 1000);
   new MutationObserver(() => { if (!pauseEl.classList.contains('hidden')) renderMp(); })
     .observe(pauseEl, { attributes: true, attributeFilter: ['class'] });
 

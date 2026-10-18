@@ -14,6 +14,7 @@ import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
 import { TouchControls } from './touch.js';
 import { createRiding } from './riding.js';
+import { createHideSeek } from './hideseek.js'; // T30
 import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
@@ -226,6 +227,7 @@ const pauseEl = document.getElementById('pause');
 const hudEl = document.getElementById('hud');
 
 function showTitle() {
+  game.hideSeek?.reset(); // T30
   const saved = loadSave();
   createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits, saved?.size);
   const buttons = document.getElementById('title-buttons');
@@ -380,7 +382,7 @@ function goFullscreen() {
 
 // True while the player is walking around (not paused, in a menu or in a battle).
 function playing() {
-  if (!game.started || game.inBattle || game.ui.panelOpen) return false;
+  if (!game.started || game.inBattle || game.ui.panelOpen || game.hideSeek?.frozen) return false; // T30: the seeker waits
   return touchMode ? pauseEl.classList.contains('hidden') : locked;
 }
 
@@ -412,6 +414,7 @@ async function goToMenu() {
   if (game.mp.role === 'guest') { await goHome(); return; } // reloads into your own world's title screen
   save(true);
   game.mp.close();
+  game.hideSeek.reset(); // T30
   game.fx.clear();
   game.riding.stop('quiet');
   game.started = false;
@@ -554,7 +557,7 @@ document.addEventListener('wheel', e => {
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 document.addEventListener('mousedown', e => {
-  if (!locked || game.inBattle) return;
+  if (!locked || game.inBattle || game.hideSeek?.frozen) return; // T30
   if (e.button === 0) {
     if (!interact()) breakBlock();
   } else if (e.button === 2) {
@@ -564,7 +567,7 @@ document.addEventListener('mousedown', e => {
 
 // Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
 function interact() {
-  if (target.player) { game.duels.challenge(target.player); return true; }
+  if (target.player) { if (!game.hideSeek.tag(target.player)) game.duels.challenge(target.player); return true; } // T30
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   if (target.block && game.gymLive.hit(target.block)) return true;
@@ -656,7 +659,7 @@ function tapAt(x, y) {
   const other = game.mp.pick(origin, direction, reach);
   const block = raycastVoxel(game.world, origin, direction, reach);
   const wall = block ? block.t : Infinity;
-  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) game.duels.challenge(other.player);
+  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.duels.challenge(other.player); } // T30
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
   else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
@@ -786,6 +789,7 @@ function towerWon(npc) {
 
 function startBattle(opts) {
   if (game.inBattle) return;
+  if (game.hideSeek?.blocksBattle(opts)) return; // T30
   if (!opts.duel && !game.party.some(c => c.hp > 0)) {
     game.ui.toast('Your team is too tired to battle. Let them rest a moment.');
     return;
@@ -930,6 +934,7 @@ game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
 game.missions = createMissions(game, { save }); // T29
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
+game.hideSeek = createHideSeek(game); // T30
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -973,12 +978,12 @@ function updateTarget() {
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
-  game.ui.setPrompt(target.player ? `${target.player.name} · ${how} to ask for a battle`
+  game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
     : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
-  game.touch.setAction(target.player ? `Battle ${target.player.name}!`
+  game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
     : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
@@ -999,7 +1004,9 @@ function frame(now) {
     game.creatures.update(dt, new THREE.Vector3(MID_X, 0, MID_Z), game.spawnPoint, false, false);
   } else {
     p.joy = game.touch.joy;
+    const before = p.pos.clone(); // T30
     if (playing()) p.update(dt);
+    game.hideSeek.fence(p.pos, before, p.vel); // T30
     game.riding.update(dt, now);
     game.gymLive.update(dt);
     game.rematch.update();
@@ -1016,6 +1023,7 @@ function frame(now) {
     game.creatures.update(dt, p.pos, game.spawnPoint, game.night);
     game.npcs.update(dt, p.pos);
     game.mp.update(dt);
+    game.hideSeek.update(dt); // T30
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
     if (game.battle.friendModel) animateModel(game.battle.friendModel, now / 1000 + 2, false); // T29: the co-op friend's creature
     if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
@@ -1081,6 +1089,7 @@ requestAnimationFrame(frame);
 initAccount();
 
 // Exposed for debugging from the browser console.
+game.playing = playing; // T30
 window.pokecraft = game;
 game.sound = sound;
 game.updateGuide = updateGuide;

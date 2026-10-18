@@ -537,3 +537,15 @@ body.touch #home-meter { top: 70px; pointer-events: auto; }
 #missions .chip.done { background: rgba(107, 255, 138, .16); border: 1px solid rgba(107,255,138,.4); padding: 2px 10px; font-size: 18px; }
 body.touch #missions button { min-height: 48px; font-size: 22px; }
 body.touch #mission-chip { min-height: 44px; display: flex; align-items: center; }
+/* T30 hide and seek */
+#seek-compass { display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,.45); padding: 2px 8px; --glint: 3s; font-size: 20px; }
+#seek-compass.hidden, #hs-hud.hidden, #hs-dark.hidden { display: none; }
+#seek-compass svg { animation: key-glint var(--glint) ease-in-out infinite; }
+#seek-compass .shine { animation: key-shine var(--glint) ease-in-out infinite; }
+#seek-compass.hot .word { color: #ff7a5a; }
+#seek-compass.wobble svg { animation-timing-function: steps(3); }
+#hs-hud { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 18px; text-align: right; }
+#hs-dark { position: fixed; inset: 0; z-index: 21; background: #05060a; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; }
+#hs-dark .hs-who { font-size: 30px; } #hs-dark .hs-count { font-size: 120px; line-height: 1; } #hs-dark .hs-tip { font-size: 22px; color: var(--muted); }
+body.touch #hs-stop { min-height: 48px; font-size: 14px; }
