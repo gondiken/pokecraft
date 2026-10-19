@@ -16,7 +16,14 @@ const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill
 
 // Slot boxes of the new land (T17): the 5 places where gyms 23+ go. Never change these numbers.
 export const SLOT_R = 24, SLOT_GAP = 56;
-export const T17_SLOTS = 5; // slots 0-4 are in the T17 land, slots 5+ in the T32 south strip
+export const T17_SLOTS = 5; // slots 0-4 are in the T17 land, slots 5-9 in the T32 south strip
+// T32 south slots: 5 centres at least `gap` apart in x, centre z in z0..z1 (boxes x 3..284, z 290..364 of the 368-deep map).
+const SOUTH = { n: 5, gap: 52, x0: 27, x1: 260, z0: 314, z1: 340 };
+// Gym slots (def.slot):
+//   0-2  T17 land: Clock Tower, Hidden Hill, Firewall Maze (T19)
+//   3    T17 land: spare (players may have built there since T17; stays empty)
+//   4    T17 land: Treasure Vault (T23)
+//   5-9  T32 south strip, dry ones first, then nearest the start first: wave 11 (Food, Swarm, Parkour) + 2 spare
 
 // A protected box (inclusive): nothing in it can be broken or built (World.editAllowed).
 const pbox = (x, z, r, y0, y1) => ({ x0: x - r, x1: x + r, y0, y1, z0: z - r, z1: z + r });
@@ -912,11 +919,55 @@ class GymPlacement {
     return (this.slots = picked.map(({ x, z }, k) => ({ k, x, z, box: pbox(x, z, SLOT_R, 0, WORLD_H - 1) })));
   }
 
+  // The 5 places in the south strip (T32) where gyms go: slots 5-9. Terrain only (seed and constants). The best total of
+  // T17's slot score over 5 centres at least SOUTH.gap apart in x (exact, so no greedy luck), then sorted: dry slots first
+  // (so the first three, wave 11's gyms, are dry on about 99% of maps), nearest the start first within each group.
+  // NEVER change: it would move these gyms in every world made since T32.
+  southSlots() {
+    if (this.south) return this.south;
+    const h = (x, z) => Math.min(this.terrainHeight(x, z), WORLD_H - 10);
+    const dry = (x, z) => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([a, b]) => h(x + a, z + b) > WATER_LEVEL);
+    const score = (x, z) => { // the same score as newLandSlots
+      let n = 0;
+      for (let a = -16; a <= 16; a += 8) for (let b = -16; b <= 16; b += 8) { const g = h(x + a, z + b); if (g > WATER_LEVEL && g <= 26) n++; }
+      return n + (dry(x, z) ? 5 : 0);
+    };
+    const { n: N, gap: GAP, x0: X0, x1: X1, z0: Z0, z1: Z1 } = SOUTH;
+    const col = []; // for every centre x: the best centre z (lowest z on a tie) and its score
+    for (let x = X0; x <= X1; x++) {
+      let best = null;
+      for (let z = Z0; z <= Z1; z++) { const s = score(x, z); if (!best || s > best.s) best = { x, z, s }; }
+      col.push(best);
+    }
+    // best[k][i]: the highest total score of k + 1 slots whose last one is col[i]; from[k][i]: the one before it.
+    // Ties keep the first (lowest) index found, so the result depends on the terrain alone.
+    const best = [], from = [];
+    for (let k = 0; k < N; k++) {
+      best.push([]); from.push([]);
+      for (let i = 0; i < col.length; i++) {
+        if (k === 0) { best[k][i] = col[i].s; from[k][i] = -1; continue; }
+        let b = -Infinity, f = -1;
+        for (let j = 0; j <= i - GAP; j++) if (best[k - 1][j] > b) { b = best[k - 1][j]; f = j; }
+        best[k][i] = b + col[i].s; from[k][i] = f;
+      }
+    }
+    let end = -1, top = -Infinity;
+    for (let i = 0; i < col.length; i++) if (best[N - 1][i] > top) { top = best[N - 1][i]; end = i; }
+    const picked = [];
+    for (let k = N - 1, i = end; k >= 0; i = from[k][i], k--) picked.unshift(col[i]);
+    const d = c => Math.hypot(c.x - MID_X, c.z - MID_Z), wet = c => (dry(c.x, c.z) ? 0 : 1);
+    picked.sort((a, b) => wet(a) - wet(b) || d(a) - d(b) || a.x - b.x);
+    return (this.south = picked.map(({ x, z }, i) => ({ k: T17_SLOTS + i, x, z, box: pbox(x, z, SLOT_R, 0, WORLD_H - 1) })));
+  }
+
+  // Every gym slot, index = def.slot: T17's five (newLandSlots), then T32's five (southSlots).
+  gymSlots() { return [...this.newLandSlots(), ...this.southSlots()]; }
+
   // Places the slot gyms whose def.slot is in [first, last]: each goes in its slot (gymSlots()). A slot gym may change blocks
   // only inside its slot box. def.build names a builder in SLOT_BUILDERS; otherwise it is a normal surface gym. The 288 map
   // places slots 0-4 (and the home gyms), the T32 map slots 5+ (World.generate).
   placeSlotGyms([first, last] = [0, Infinity]) {
-    const slots = this.newLandSlots();
+    const slots = first < T17_SLOTS ? this.newLandSlots() : this.gymSlots();
     for (const def of GYMS) {
       if (def.place === 'home') { if (first === 0) this.gyms.push(this.homeGym(def)); continue; } // T23: lives in a player's home
       if (def.slot == null || def.slot < first || def.slot > last) continue;

@@ -1,5 +1,7 @@
 // T17: the 288 x 288 map (old 224 x 224 area unchanged, a natural seam, the start point where it was, five
 // reserved gym slots in the new land) and gyms that can't be broken into or built in.
+// T32: the map is 288 x 368: the 288 x 288 map unchanged inside it, an 80-row south strip with five more gym slots (5-9),
+// treasure map spots pinned, old [288, 288] saves converted.
 import { devices } from 'playwright';
 import { openGame, seedSave, continueGame, click } from '../helpers.mjs';
 
@@ -8,6 +10,20 @@ const SLOTS = {
   1: [[136, 248], [80, 248], [260, 132], [260, 48], [192, 252]],
   4242: [[84, 248], [140, 248], [28, 248], [248, 204], [252, 260]],
   777: [[248, 92], [144, 248], [252, 152], [248, 28], [248, 248]],
+};
+// T32: southSlots() (slots 5-9, dry ones first, then nearest the start). They must never change.
+const SOUTH = {
+  1: [[131, 314], [183, 316], [27, 314], [79, 335], [235, 340]],
+  4242: [[131, 314], [79, 314], [27, 314], [260, 336], [208, 318]],
+  777: [[156, 314], [208, 316], [104, 338], [27, 331], [260, 314]],
+  294331207: [[81, 314], [197, 314], [249, 314], [134, 314], [27, 314]],
+};
+// T32: treasureSpots() measured before the map grew (they must never move; 777 and 294331207 have fallback spots).
+const SPOTS = {
+  1: [[104, 129], [172, 174], [89, 80], [57, 133], [146, 130]],
+  4242: [[103, 127], [192, 51], [72, 172], [146, 143], [23, 154]],
+  777: [[30, 210], [67, 90], [176, 144], [170, 51], [61, 164]],
+  294331207: [[211, 14], [96, 76], [56, 56], [152, 77], [95, 118]],
 };
 // Where a new player starts: x, feet y, z.
 const START = { 1: [112, 15, 112], 4242: [120, 15, 111], 294331207: [94, 17, 96] };
@@ -25,9 +41,9 @@ export default async function ({ browser, base, t }) {
       const o = new World(seed, null, null, [224, 224]); o.generate();
       // 1. Old area identical.
       let diff = 0, gdiff = 0;
-      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) if (w.data[x + 288 * (z + 288 * y)] !== o.data[x + 224 * (z + 224 * y)]) diff++;
-      for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) if (w.ground[x + 288 * z] !== o.ground[x + 224 * z]) gdiff++;
-      const remap = c => (c % 224) + Math.floor(c / 224) * 288;
+      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) if (w.data[x + w.W * (z + w.D * y)] !== o.data[x + 224 * (z + 224 * y)]) diff++;
+      for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) if (w.ground[x + w.W * z] !== o.ground[x + 224 * z]) gdiff++;
+      const remap = c => (c % 224) + Math.floor(c / 224) * w.W;
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
@@ -57,7 +73,7 @@ export default async function ({ browser, base, t }) {
       const bare = new World(seed, null, null); bare.generate({ slotGyms: false });
       const boxes = [0, 1, 2, 4].map(i => got[i].box); // slot 3 is spare
       let outsideDiff = 0;
-      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < 288; z++) for (let x = 0; x < 288; x++) {
+      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
         if (boxes.some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1)) continue;
         if (w.get(x, y, z) !== bare.get(x, y, z)) outsideDiff++;
       }
@@ -103,7 +119,7 @@ export default async function ({ browser, base, t }) {
 
   for (const seed of [1, 4242, 777]) {
     const s = r.same[seed];
-    t.ok(s.size.join() === '288,288' && s.diff === 0 && s.gdiff === 0, `seed ${seed}: the old 224x224 area is block for block the same as the old map (${s.diff} blocks, ${s.gdiff} heights differ)`);
+    t.ok(s.size.join() === '288,368' && s.diff === 0 && s.gdiff === 0, `seed ${seed}: the old 224x224 area is block for block the same as the old map (${s.diff} blocks, ${s.gdiff} heights differ)`);
     t.ok(s.gyms && s.tower && s.caves, `seed ${seed}: no old gym, the tower or cave entrance moved`);
     const m = r.seam[seed];
     t.ok(m.bad === 0 && m.maxStep <= 3, `seed ${seed}: the seam at 224 is plain terrain on both sides (${m.bad} odd columns, biggest step ${m.maxStep})`);
@@ -119,6 +135,107 @@ export default async function ({ browser, base, t }) {
     t.ok(p.outside.every(Boolean), `seed ${seed}: cells 2 outside a box are not protected`);
     t.ok(p.pads.length === 2 && p.pads.every(Boolean), `seed ${seed}: the Cloud and Saucer pads and their pillar columns are not protected`);
   }
+  // T32 1-5: the 288 x 288 map inside the 288 x 368 one, treasure spots, the seam at 287 | 288, the south slots, a test-only south gym.
+  const q = await page.evaluate(async ({ south, spots }) => {
+    const { World, WORLD_H, WATER_LEVEL, PLANTS } = await import('/src/world.js');
+    const { B } = await import('/src/blocks.js');
+    const { GYMS } = await import('/src/gyms.js');
+    const { treasureSpots } = await import('/src/treasuremap.js');
+    const out = { same: {}, spots: {}, seam: {}, south: {}, gym: null };
+    const seeds = [1, 4242, 777, 294331207];
+    for (const seed of seeds) {
+      const w = new World(seed, null, null); w.generate();
+      const m = new World(seed, null, null, [288, 288]); m.generate();
+      const xz = a => JSON.stringify(a.map(s => [s.x, s.z]));
+      // 2. Treasure spots: as measured before T32, and the same as on the 288 map.
+      out.spots[seed] = { fixture: xz(treasureSpots(w)) === JSON.stringify(spots[seed]), same: xz(treasureSpots(w)) === xz(treasureSpots(m)), got: xz(treasureSpots(w)) };
+      // 4. South slots.
+      const fresh = new World(seed, null, null).southSlots(), got = w.southSlots(), t17 = w.newLandSlots();
+      let apart = 999;
+      for (let i = 0; i < got.length; i++) for (let j = i + 1; j < got.length; j++) apart = Math.min(apart, Math.abs(got[i].x - got[j].x));
+      const overlap = got.some(a => t17.some(b => !(a.box.x1 < b.box.x0 || b.box.x1 < a.box.x0 || a.box.z1 < b.box.z0 || b.box.z1 < a.box.z0)));
+      const boxDist = (x, z, b) => Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1, 0);
+      const spotDist = Math.min(...treasureSpots(w).flatMap(s => got.map(g => boxDist(s.x, s.z, g.box))));
+      const h = (x, z) => Math.min(w.terrainHeight(x, z), WORLD_H - 10);
+      const dry = s => [[0, 0], [6, 6], [-6, 6], [6, -6], [-6, -6]].every(([a, b]) => h(s.x + a, s.z + b) > WATER_LEVEL);
+      const dryFlags = got.map(dry);
+      out.south[seed] = {
+        fixture: xz(got) === JSON.stringify(south[seed]), same: xz(fresh) === xz(got), got: xz(got),
+        n: got.length, ks: got.map(s => s.k).join(), all: w.gymSlots().length, apart, overlap, spotDist,
+        inside: got.every(s => s.box.z0 >= 290 && s.box.z1 <= w.D - 4 && s.box.x0 >= 3 && s.box.x1 <= w.W - 4),
+        dryFirst: dryFlags.every((d, i) => i === 0 || d <= dryFlags[i - 1]),
+      };
+      if (seed === 294331207) continue; // 1-3 only on the first three seeds (time)
+      // 1. The 288 x 288 map is block for block inside the 288 x 368 one.
+      let diff = 0, gdiff = 0;
+      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < 288; z++) for (let x = 0; x < 288; x++) if (w.data[x + 288 * (z + 368 * y)] !== m.data[x + 288 * (z + 288 * y)]) diff++;
+      for (let z = 0; z < 288; z++) for (let x = 0; x < 288; x++) if (w.ground[x + 288 * z] !== m.ground[x + 288 * z]) gdiff++;
+      const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(c));
+      out.same[seed] = {
+        diff, gdiff, size: [m.W, m.D],
+        gyms: w.gyms.length === m.gyms.length && w.gyms.every((g, i) => g.def === m.gyms[i].def && g.x === m.gyms[i].x && g.y === m.gyms[i].y && g.z === m.gyms[i].z),
+        tower: w.tower.x === m.tower.x && w.tower.y === m.tower.y && w.tower.z === m.tower.z,
+        caves: sameSet(w.caves.opened, m.caves.opened) && sameSet(w.caves.marks, m.caves.marks),
+        slots: xz(w.newLandSlots()) === xz(m.newLandSlots()),
+        start: w.startColumn().join() === m.startColumn().join(),
+      };
+      // 3. The seam at 287 | 288: plain terrain on both sides; the strip has biomes and plants.
+      const natural = (x, z) => Math.max(Math.min(w.terrainHeight(x, z), WORLD_H - 10), WATER_LEVEL);
+      const landTop = (x, z) => { for (let y = WORLD_H - 1; y >= 0; y--) { const id = w.get(x, y, z); if (id !== B.AIR && !PLANTS.has(id) && id !== B.FLOWER_BUSH) return y; } return -1; };
+      let bad = 0, maxStep = 0;
+      for (let x = 0; x < 288; x++) {
+        for (const z of [287, 288]) if (landTop(x, z) !== natural(x, z)) bad++;
+        maxStep = Math.max(maxStep, Math.abs(natural(x, 287) - natural(x, 288)));
+      }
+      const biomes = new Set();
+      let plants = 0;
+      for (let x = 0; x < 288; x += 2) for (let z = 290; z < 365; z += 2) {
+        biomes.add(w.biome(x, z));
+        const id = w.get(x, w.surface(x, z).y, z);
+        if (PLANTS.has(id) || id === B.FLOWER_BUSH) plants++;
+      }
+      out.seam[seed] = { bad, maxStep, biomes: biomes.size, plants };
+    }
+    // 5. A test-only gym in slot 5 (the Boulder Gym's def, a plain surface gym): placed in its slot, protected inside the box,
+    // changes nothing outside it, and the 288 x 288 map is still the same.
+    const seed = 4242;
+    const plain = new World(seed, null, null); plain.generate();
+    const def = { ...GYMS[0], id: 'test32', slot: 5 };
+    GYMS.push(def);
+    let w;
+    try { w = new World(seed, null, null); w.generate(); } finally { GYMS.splice(GYMS.indexOf(def), 1); }
+    const g = w.gyms.find(x => x.def === def), box = w.southSlots()[0].box;
+    let outside = 0, inside = 0;
+    for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
+      if (w.data[x + 288 * (z + 368 * y)] === plain.data[x + 288 * (z + 368 * y)]) continue;
+      if (x >= box.x0 && x <= box.x1 && z >= box.z0 && z <= box.z1) inside++; else outside++;
+    }
+    out.gym = {
+      found: !!g, at: g && g.x === w.southSlots()[0].x && g.z === w.southSlots()[0].z, k: g?.slot?.k, n: w.gyms.length, inside, outside,
+      protect: !!g?.protect?.length && g.protect.every(b => b.x0 >= box.x0 && b.x1 <= box.x1 && b.z0 >= box.z0 && b.z1 <= box.z1),
+      protectedHere: g && w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g,
+    };
+    return out;
+  }, { south: SOUTH, spots: SPOTS });
+  for (const seed of [1, 4242, 777]) {
+    const s = q.same[seed];
+    t.ok(s.size.join() === '288,288' && s.diff === 0 && s.gdiff === 0, `seed ${seed}: the 288x288 map is block for block the same inside the 288x368 one (${s.diff} blocks, ${s.gdiff} heights differ)`);
+    t.ok(s.gyms && s.tower && s.caves && s.slots && s.start, `seed ${seed}: no gym, the tower, a cave entrance, a T17 slot or the start moved`);
+    const m = q.seam[seed];
+    t.ok(m.bad === 0 && m.maxStep <= 3, `seed ${seed}: the seam at 288 is plain terrain on both sides (${m.bad} odd columns, biggest step ${m.maxStep})`);
+    t.ok(m.biomes >= 3 && m.plants > 20, `seed ${seed}: the south strip has ${m.biomes} biomes and ${m.plants} plants`);
+  }
+  for (const seed of [1, 4242, 777, 294331207]) {
+    const sp = q.spots[seed];
+    t.ok(sp.fixture && sp.same, `seed ${seed}: treasure map spots did not move (${sp.got})`);
+    const so = q.south[seed];
+    t.ok(so.fixture && so.same && so.n === 5 && so.ks === '5,6,7,8,9' && so.all === 10, `seed ${seed}: 5 south slots (5-9) as always (${so.got})`);
+    t.ok(so.inside && so.apart >= 52 && !so.overlap && so.dryFirst, `seed ${seed}: south slot boxes lie in the strip, at least ${so.apart} apart, not on a T17 slot, dry ones first`);
+    t.ok(so.spotDist >= 12, `seed ${seed}: south slots stay ${so.spotDist} blocks from every treasure spot`);
+  }
+  const tg = q.gym;
+  t.ok(tg.found && tg.at && tg.k === 5 && tg.n === 28 && tg.protect && tg.protectedHere, `a test-only gym with slot 5 is built in south slot 5 and protected (${JSON.stringify(tg)})`);
+  t.ok(tg.inside > 0 && tg.outside === 0, `the slot 5 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
   t.ok(JSON.stringify(r.start) === JSON.stringify(START), `the start point did not move ${JSON.stringify(r.start)}`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
@@ -147,7 +264,7 @@ export default async function ({ browser, base, t }) {
   await continueGame(page);
   const loaded = await page.evaluate(([wx, wy, wz, ox, oy, oz]) => {
     const w = window.pokecraft.world;
-    return { wall: w.get(wx, wy, wz), brick: w.get(ox, oy, oz), editsHaveWall: w.edits.has(wx + 288 * (wz + 288 * wy)) };
+    return { wall: w.get(wx, wy, wz), brick: w.get(ox, oy, oz), editsHaveWall: w.edits.has(wx + 288 * (wz + 368 * wy)) };
   }, [wallX, wallY, wallZ, outX, outY, outZ]);
   t.ok(loaded.wall !== 0 && !loaded.editsHaveWall, `the hole dug into the gym in the old save was repaired on load (block ${loaded.wall})`);
   t.ok(loaded.brick === 11, 'a brick built outside the gym is still there');
@@ -212,16 +329,44 @@ export default async function ({ browser, base, t }) {
     // The save writes the new size and index.
     g.save();
     const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
-    out.saved = { size: saved.size, brick: saved.edits.some(([i, id]) => id === 11 && i === (outBrick[0] + 288 * (outBrick[2] + 288 * outBrick[1]))), wall: saved.edits.some(([i]) => i === wallIdx) };
+    out.saved = { size: saved.size, brick: saved.edits.some(([i, id]) => id === 11 && i === (outBrick[0] + 288 * (outBrick[2] + 368 * outBrick[1]))), wall: saved.edits.some(([i]) => i === wallIdx) };
     return out;
-  }, [[outX, outY, outZ], wallX + 288 * (wallZ + 288 * wallY)]);
+  }, [[outX, outY, outZ], wallX + 288 * (wallZ + 368 * wallY)]);
   for (const c of play.cases) {
     t.ok(c.found && c.kept && c.toast === 'Gym walls are too strong to break!', `breaking ${c.name} fails with the toast (${c.found ? `kept ${c.kept}, "${c.toast}"` : 'no wall found'})`);
   }
   t.ok(play.inside.before === 0 && play.inside.after === 0 && play.inside.toast === "You can't build inside a gym!", `placing a block inside a gym fails with the toast ("${play.inside.toast}")`);
   t.ok(play.outside.placed !== 0 && play.outside.broken === 0 && play.outside.toasts === 0, 'next to a gym (outside its box) building and breaking still work');
   t.ok(play.pad.want >= 5 && play.pad.built === play.pad.want, `the Cloud pad pillar can be built all the way up (${play.pad.built} of ${play.pad.want} blocks)`);
-  t.ok(JSON.stringify(play.saved.size) === '[288,288]' && play.saved.brick && !play.saved.wall, 'saving stores the new size, the outside brick at its new index and no edit inside the gym');
+  t.ok(JSON.stringify(play.saved.size) === '[288,368]' && play.saved.brick && !play.saved.wall, 'saving stores the new size, the outside brick at its new index and no edit inside the gym');
+  t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
+  await page.context().close();
+
+  // T32 6: a save from the 288 x 288 map with a brick near its old south edge; the player can walk into the strip.
+  const save288 = {
+    seed: 4242, edits: [[150 + 288 * (280 + 288 * 30), 11]], pos: [112.5, 40, 112.5], yaw: 0, pitch: 0, time: 0.4, size: [288, 288],
+    party: [{ uid: 'a', species: 'zapple', level: 8, xp: 307, hp: 20, moves: ['tackle', 'spark'] }],
+    box: [], cubes: 7, badges: [], beaten: [], savedAt: 1,
+  };
+  page = await openGame(browser, base, { setup: seedSave(save288) });
+  await continueGame(page);
+  const s288 = await page.evaluate(() => {
+    const g = window.pokecraft, w = g.world;
+    const brick = w.get(150, 30, 280);
+    g.save();
+    const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
+    // Stand at the old edge: the old wall at z = 288 is gone, the strip has land, the new wall is at z = 368.
+    const y = w.surface(150, 286).y + 1;
+    g.player.pos.set(150.5, y, 286.5); g.player.vel.set(0, 0, 0);
+    let open = 0;
+    for (let z = 287; z <= 292; z++) if (!w.isSolid(150, Math.max(y, w.surface(150, z).y + 1), z)) open++;
+    return {
+      brick, size: saved.size, idx: saved.edits.some(([i, id]) => id === 11 && i === 150 + 288 * (280 + 368 * 30)),
+      open, land: w.surface(150, 330).y > 0 && w.get(150, 1, 330) !== 0, wall: w.isSolid(150, 40, 368) && !w.isSolid(150, 46, 367),
+    };
+  });
+  t.ok(s288.brick === 11 && JSON.stringify(s288.size) === '[288,368]' && s288.idx, `a [288, 288] save keeps its brick at (150, 30, 280) and saves it at the new index (${JSON.stringify(s288)})`);
+  t.ok(s288.open === 6 && s288.land && s288.wall, 'past the old south edge there is open land, and the map edge is at z = 368');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 

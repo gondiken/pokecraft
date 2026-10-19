@@ -1,7 +1,6 @@
 // Gym access: where a gym is (surface, cave, sky, ...) and when it is open (always, night, ...), one small
 // piece each, combined per gym. The guide only talks to these objects. Add a kind by adding an entry to WHERE
 // or WHEN; a gym picks one with def.access = { where, when } (else from how it was placed and def.night).
-import { WORLD_W } from './world.js';
 import { trainersOf, trainerKey } from './gyms.js';
 import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
 import { homeGymState } from './homegym.js';
@@ -62,7 +61,7 @@ export const WHERE = {
       const along = (p.x - (mx + 0.5)) * -fx + (p.z - (mz + 0.5)) * -fz; // distance from the arch towards the gym
       const total = Math.abs(mx - g.x) + Math.abs(mz - g.z);
       const across = Math.abs((p.x - g.x - 0.5) * fz) + Math.abs((p.z - g.z - 0.5) * fx);
-      const ground = game.world.ground[Math.floor(p.x) + Math.floor(p.z) * WORLD_W] ?? 99;
+      const ground = game.world.ground[Math.floor(p.x) + Math.floor(p.z) * game.world.W] ?? 99;
       const onTheWay = along >= -1 && along <= total + 1 && across <= 3 && p.y < ground + 1;
       const inCavern = Math.max(Math.abs(p.x - g.x - 0.5), Math.abs(p.z - g.z - 0.5)) <= 14 && p.y < g.y + 9;
       if (onTheWay || inCavern) where = 'in';

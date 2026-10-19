@@ -6,13 +6,13 @@ import { carveCaves, carveBigCaves } from './caves.js';
 import { installGymPlacement, T17_SLOTS } from './gymplace.js';
 import { generateRealm } from './realms.js'; // T31
 
-export const WORLD_W = 288; // the map since T17 (array stride of every World the game makes)
-export const WORLD_D = 288;
+export const WORLD_W = 288; // the map since T32: 288 x 368 (array stride of every main World the game makes)
+export const WORLD_D = 368; // T32: + an 80-row strip in the south (z 288..367) for gym slots 5-9
 export const OLD_W = 224, OLD_D = 224; // the map before T17: generated exactly as before, never changes
 export const T17_W = 288, T17_D = 288; // the map before T32: generated exactly as before (old 224 area + T17 land), never changes
 export const MID_X = 112, MID_Z = 112; // the old middle: the start search, gym doors and the title fly-over use it
 // T32: every size of the main map that ever shipped, oldest first (World.generate). Never change an existing entry.
-const SIZES = [[OLD_W, OLD_D], [T17_W, T17_D]];
+const SIZES = [[OLD_W, OLD_D], [T17_W, T17_D], [WORLD_W, WORLD_D]];
 const NO_SIZE = [192, 192]; // saves from before the map grew don't record their size
 export const WORLD_H = 48;
 const CHUNK = 16;

@@ -18,7 +18,7 @@ export default async function ({ browser, base, t }) {
     new World(1, null, null).generate();
     return { W: WORLD_W, D: WORLD_D, ms: Math.round(performance.now() - t0) };
   });
-  t.ok(W === 288 && D === 288, `the map is ${W}x${D} (generating it takes ${ms} ms here)`);
+  t.ok(W === 288 && D === 368, `the map is ${W}x${D} (generating it takes ${ms} ms here)`);
   // Caves must never change the terrain: heights are the same as ever (checksum for seed 4242), and
   // the surface is the same as a world without caves except at the cave entrances.
   const terrain = await page.evaluate(async () => {
@@ -40,7 +40,7 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(() => document.exitPointerLock());
   await page.waitForTimeout(800);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')));
-  t.ok(JSON.stringify(saved.size) === '[288,288]' && saved.edits.some(([i, id]) => id === 11 && i === 100 + 288 * (100 + 288 * 30)),
+  t.ok(JSON.stringify(saved.size) === '[288,368]' && saved.edits.some(([i, id]) => id === 11 && i === 100 + 288 * (100 + 368 * 30)),
     'saving again stores the new size and converted block positions');
   t.ok(saved.party[0].species === 'zapple' && saved.cubes === 7, 'the team and items are kept');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
