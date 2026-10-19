@@ -1093,6 +1093,9 @@ faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs →
 
 **Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
 what they unlock or are used for is still open.
+**Wild creatures grow with your team** (owner request, 2026-10-19): today a wild creature's level comes only from its distance to the start
+(`far / 10` in `creatures.js`) plus +10 after 16 badges; it should also follow your team's level so the world stays a challenge.
+
 **T32 note:** keep new gyms 12 blocks away from the treasure map spots (`treasureSpots(world)`, T29).
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
