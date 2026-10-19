@@ -94,6 +94,7 @@ export default async function ({ browser, base, t }) {
   t.ok(there.realm === 'dream' && there.size.join() === '64,64' && Math.abs(there.px - 32.5) < 1 && Math.abs(there.pz - 32.5) < 1, `you arrive in the Dream realm at its middle (${JSON.stringify(there.size)} ${there.px},${there.pz})`);
   t.ok(there.npcs === 0 && there.homes === 0 && /Wake Stone/.test(there.guide), `no people, no homes; the guide points at the Wake Stone ("${there.guide}")`);
   const sv = there.mainSave;
+  t.ok(sv.party?.length === 1 && Array.isArray(sv.badges) && !!sv.playerId, 'the save made in the dream still has the team, badges and player id');
   t.ok(sv.place === 'dream' && Array.isArray(sv.realmPos) && sv.homes.length === 1 && sv.edits.some(([, b]) => b === 11) && Math.hypot(sv.pos[0] - H.bed[0] - 0.5, sv.pos[2] - H.bed[2] - 0.5) < 2,
     'the save keeps the main world (edits, homes, pos beside the bed) and says where you are');
   // building in the dream: a broken block; a Doormat is refused

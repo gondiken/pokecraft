@@ -167,7 +167,7 @@ function snapshot() {
     homes: game.homes.toSave(), // T22
   });
   return {
-    ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, // T31 playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
+    ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, /* T31 */ playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
     rematchWins: game.rematchWins,
