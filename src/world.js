@@ -3,13 +3,16 @@ import * as THREE from 'three';
 import { B, BLOCKS, TILE_COUNT, TREASURE, isOccluder, isSolid } from './blocks.js';
 import { GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves } from './caves.js';
-import { installGymPlacement } from './gymplace.js';
+import { installGymPlacement, T17_SLOTS } from './gymplace.js';
 import { generateRealm } from './realms.js'; // T31
 
 export const WORLD_W = 288; // the map since T17 (array stride of every World the game makes)
 export const WORLD_D = 288;
 export const OLD_W = 224, OLD_D = 224; // the map before T17: generated exactly as before, never changes
+export const T17_W = 288, T17_D = 288; // the map before T32: generated exactly as before (old 224 area + T17 land), never changes
 export const MID_X = 112, MID_Z = 112; // the old middle: the start search, gym doors and the title fly-over use it
+// T32: every size of the main map that ever shipped, oldest first (World.generate). Never change an existing entry.
+const SIZES = [[OLD_W, OLD_D], [T17_W, T17_D]];
 const NO_SIZE = [192, 192]; // saves from before the map grew don't record their size
 export const WORLD_H = 48;
 const CHUNK = 16;
@@ -132,7 +135,7 @@ export class World {
 
   set(x, y, z, id, record = true) {
     if (!this.inBounds(x, y, z)) return;
-    if (this.guardOld && x < OLD_W && z < OLD_D) throw new Error(`T17: write into the old area at ${x},${y},${z}`);
+    if (this.guardOld && x < this.guardOld[0] && z < this.guardOld[1]) throw new Error(`write into the older map at ${x},${y},${z}`);
     const i = this.index(x, y, z);
     const old = this.data[i];
     this.data[i] = id;
@@ -304,52 +307,58 @@ export class World {
     }
   }
 
-  // The game's world: the old 224 x 224 map is generated exactly as before in its own World and copied in,
-  // then the new land (east and south of it) gets terrain, plants and the slot gyms. Nothing old can move.
+  // The game's world is generated as a chain of map sizes (T32): a World of one of SIZES is made exactly as that version
+  // of the game did, which is the size before it (generated in its own World and copied in) plus the land added around it:
+  // 224 x 224 (generateArea), then the T17 land (288 x 288, slots 0-4), then the T32 south strip (slots 5+).
+  // Nothing older can move: set() throws for any write inside the inner map while the new land is made.
   generate(opts = {}) {
     if (this.realm) return generateRealm(this); // T31: a realm has its own terrain; the main path below is untouched
-    if (this.W === OLD_W && this.D === OLD_D) return this.generateArea(opts); // the old map itself (tests)
-    const old = new World(this.seed, null, null, [OLD_W, OLD_D]);
-    old.generateArea(opts);
-    this.adoptOld(old);
-    this.guardOld = true; // set() throws if anything writes into the old area from here on
+    const k = SIZES.findIndex(([w, d]) => w === this.W && d === this.D);
+    if (k < 0) throw new Error(`No map of size ${this.W} x ${this.D}`);
+    if (k === 0) return this.generateArea(opts); // the old map itself
+    const [iw, id] = SIZES[k - 1];
+    const inner = new World(this.seed, null, null, [iw, id]);
+    inner.generate(opts);
+    this.adoptOld(inner);
+    this.guardOld = [iw, id];
     try {
-      this.generateNewLand();
-      if (opts.slotGyms !== false) this.placeSlotGyms();
-      if (opts.treasure !== false) this.placeTreasure(true);
-    } finally { this.guardOld = false; }
+      this.generateNewLand(iw, id);
+      if (opts.slotGyms !== false) this.placeSlotGyms(k === 1 ? [0, T17_SLOTS - 1] : [T17_SLOTS, Infinity]);
+      if (opts.treasure !== false) this.placeTreasure([iw, id]);
+    } finally { this.guardOld = null; }
     this.gyms.sort((a, b) => GYMS.indexOf(a.def) - GYMS.indexOf(b.def));
   }
 
-  // Copies a finished old-size World into this (bigger) one, row by row, and takes over its bookkeeping.
+  // Copies a finished smaller World into this (bigger) one, row by row, and takes over its bookkeeping.
   adoptOld(old) {
-    const { W } = this;
+    const { W } = this, OW = old.W, OD = old.D;
     for (let y = 0; y < WORLD_H; y++) {
-      for (let z = 0; z < OLD_D; z++) this.data.set(old.data.subarray(OLD_W * (z + OLD_D * y), OLD_W * (z + OLD_D * y + 1)), this.index(0, y, z));
+      for (let z = 0; z < OD; z++) this.data.set(old.data.subarray(OW * (z + OD * y), OW * (z + OD * y + 1)), this.index(0, y, z));
     }
-    for (let z = 0; z < OLD_D; z++) {
-      this.ground.set(old.ground.subarray(z * OLD_W, (z + 1) * OLD_W), z * W);
-      this.litCol.set(old.litCol.subarray(z * OLD_W, (z + 1) * OLD_W), z * W);
+    for (let z = 0; z < OD; z++) {
+      this.ground.set(old.ground.subarray(z * OW, (z + 1) * OW), z * W);
+      this.litCol.set(old.litCol.subarray(z * OW, (z + 1) * OW), z * W);
     }
-    const remap = i => (i % OLD_W) + Math.floor(i / OLD_W) * W;
+    const remap = i => (i % OW) + Math.floor(i / OW) * W;
     if (old.caves) {
       old.caves.opened = new Set([...old.caves.opened].map(remap));
       if (old.caves.marks) old.caves.marks = new Set([...old.caves.marks].map(remap));
     }
     for (const k of ['caves', 'gyms', 'tower', 'litRooms', 'newGymBoxes', 'high', 'extraSpots', 'caveSpots', 'newSpots']) this[k] = old[k];
+    if (old.slots) this.slots = old.slots; // T32: newLandSlots() cache of the 288 map
   }
 
-  // Terrain and plants for every column outside the old area, from the same noise and the same rules (biome()
-  // keeps using the old area's height thresholds). Writes only outside the old area. No caves here.
-  generateNewLand() {
+  // Terrain and plants for every column outside the inner map (IW x ID), from the same noise and the same rules (biome()
+  // keeps using the old area's height thresholds). Writes only outside the inner map. No caves here.
+  generateNewLand(IW = OLD_W, ID = OLD_D) {
     const { W, D } = this;
     const biomes = new Array(W * D);
-    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (x >= OLD_W || z >= OLD_D) biomes[x + z * W] = this.fillColumn(x, z);
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (x >= IW || z >= ID) biomes[x + z * W] = this.fillColumn(x, z);
     for (let x = 3; x < W - 3; x++) {
       for (let z = 3; z < D - 3; z++) {
-        if (x < OLD_W && z < OLD_D) continue;
-        // Crowns are 2 wide: trunks start 2 columns past the seam, so a tree never reaches into the old map.
-        this.plantAt(x, z, biomes[x + z * W], !(x < OLD_W + 2 && z < OLD_D + 2));
+        if (x < IW && z < ID) continue;
+        // Crowns are 2 wide: trunks start 2 columns past the seam, so a tree never reaches into the inner map.
+        this.plantAt(x, z, biomes[x + z * W], !(x < IW + 2 && z < ID + 2));
       }
     }
   }
@@ -392,13 +401,13 @@ export class World {
 
   // T20: Sunstone, Ruby and Sapphire, rare, in place of natural stone at least 4 blocks under the ground: more often
   // in cave walls (next to air), now and then deep in the rock (8+ down). Never inside a gym's protected box, so it
-  // can always be mined. Runs last, from the seed only. newLandOnly: the 288 world's pass (the old area has its own).
-  placeTreasure(newLandOnly = false) {
+  // can always be mined. Runs last, from the seed only. skip: [w, d] of the inner map, which has had its own pass.
+  placeTreasure(skip = null) {
     const { W, D, data, seed } = this;
     const layer = W * D;
     for (let x = 1; x < W - 1; x++) {
       for (let z = 1; z < D - 1; z++) {
-        if (newLandOnly && x < OLD_W && z < OLD_D) continue;
+        if (skip && x < skip[0] && z < skip[1]) continue;
         const g = this.ground[x + z * W];
         for (let y = 1; y <= g - 4; y++) {
           const i = this.index(x, y, z);

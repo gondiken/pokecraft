@@ -16,6 +16,7 @@ const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill
 
 // Slot boxes of the new land (T17): the 5 places where gyms 23+ go. Never change these numbers.
 export const SLOT_R = 24, SLOT_GAP = 56;
+export const T17_SLOTS = 5; // slots 0-4 are in the T17 land, slots 5+ in the T32 south strip
 
 // A protected box (inclusive): nothing in it can be broken or built (World.editAllowed).
 const pbox = (x, z, r, y0, y1) => ({ x0: x - r, x1: x + r, y0, y1, z0: z - r, z1: z + r });
@@ -911,14 +912,16 @@ class GymPlacement {
     return (this.slots = picked.map(({ x, z }, k) => ({ k, x, z, box: pbox(x, z, SLOT_R, 0, WORLD_H - 1) })));
   }
 
-  // Places the new-land gyms: those whose def has a `slot` go in their slot of the new land. A slot gym may change blocks only inside
-  // its slot box. def.build names a builder in SLOT_BUILDERS; otherwise it is a normal surface gym.
-  placeSlotGyms() {
+  // Places the slot gyms whose def.slot is in [first, last]: each goes in its slot (gymSlots()). A slot gym may change blocks
+  // only inside its slot box. def.build names a builder in SLOT_BUILDERS; otherwise it is a normal surface gym. The 288 map
+  // places slots 0-4 (and the home gyms), the T32 map slots 5+ (World.generate).
+  placeSlotGyms([first, last] = [0, Infinity]) {
     const slots = this.newLandSlots();
     for (const def of GYMS) {
-      if (def.place === 'home') { this.gyms.push(this.homeGym(def)); continue; } // T23: lives in a player's home
-      if (def.slot == null) continue;
+      if (def.place === 'home') { if (first === 0) this.gyms.push(this.homeGym(def)); continue; } // T23: lives in a player's home
+      if (def.slot == null || def.slot < first || def.slot > last) continue;
       const s = slots[def.slot];
+      if (!s) throw new Error(`No gym slot ${def.slot}`);
       const b = SLOT_BUILDERS[def.build];
       const g = b ? b(this, def, s) : this.placeGym(def, s.x, s.z);
       g.slot = s;
