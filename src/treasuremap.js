@@ -1,9 +1,10 @@
 // Treasure map spots (T29): 5 columns per world from the seed and the terrain only (world.ground, biome(), the generated gyms,
 // tower and new-land slots), never from player edits, so every player in a world gets the same spots. Never change the rules:
 // it would move the X in existing worlds. Only the first MAP_GYMS gym defs count as landmarks / keep-outs, so gyms added later
-// (T32) do not move them (T32: keep new gyms 12 blocks away from treasureSpots()).
+// (T32) do not move them (T32: keep new gyms 12 blocks away from treasureSpots()). T32: pinned to the 288 x 288 map (the edge
+// rule and the fallback search use T17_W/T17_D, never the current size); new gyms go in the south strip, 13+ from any spot.
 import { B, mulberry32 } from './blocks.js';
-import { WATER_LEVEL, MID_X, MID_Z } from './world.js';
+import { WATER_LEVEL, MID_X, MID_Z, T17_W, T17_D } from './world.js';
 import { GYMS } from './gyms.js';
 
 export const MAP_GYMS = 27;
@@ -30,7 +31,7 @@ function keepOuts(world) {
   const boxes = [];
   for (const g of world.gyms) if (GYMS.indexOf(g.def) < MAP_GYMS) for (const b of g.protect || []) boxes.push(b);
   for (const b of world.tower?.protect || []) boxes.push(b);
-  const pads = world.gyms.filter(g => g.sky && g.pad).map(g => g.pad);
+  const pads = world.gyms.filter(g => GYMS.indexOf(g.def) < MAP_GYMS && g.sky && g.pad).map(g => g.pad);
   const slots = world.newLandSlots().map(s => s.box);
   return { boxes, pads, slots };
 }
@@ -40,10 +41,10 @@ function keepOuts(world) {
 export const leftOf = front => [front[1], -front[0]];
 
 function okColumn(world, x, z, k, rules, out, chosen) {
-  const { W, D } = world;
+  const W = T17_W, D = T17_D; // T32: the map the spots were made for, never the current size
   if (x < rules.edge || z < rules.edge || x > W - 1 - rules.edge || z > D - 1 - rules.edge) return false;
   for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-    const g = world.ground[(x + a) + (z + b) * W];
+    const g = world.ground[(x + a) + (z + b) * world.W];
     if (g <= WATER_LEVEL || g > rules.maxG) return false;
   }
   for (const b of out.boxes) if (boxDist(x, z, b) <= rules.gap) return false;
@@ -83,7 +84,7 @@ function findSpot(world, k, chosen, out) {
   // Fallback: any good column on the map, measured from the nearest landmark door.
   const rules = { ...MAP_RULES, gap: 8, spread: 24 };
   for (let t = 0; t < 20000; t++) {
-    const x = Math.floor(rand() * world.W), z = Math.floor(rand() * world.D);
+    const x = Math.floor(rand() * T17_W), z = Math.floor(rand() * T17_D); // T32: pinned
     if (!okColumn(world, x, z, k, rules, out, chosen)) continue;
     let best = null, bd = Infinity;
     for (const L of list) {
