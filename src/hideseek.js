@@ -159,7 +159,7 @@ export function createHideSeek(game) {
     // Other players close enough to play with.
     nearby() {
       const p = game.player.pos;
-      return [...game.mp.others.values()].filter(a => a.pos.distanceTo(p) <= HS.near);
+      return [...game.mp.others.values()].filter(a => a.here && a.pos.distanceTo(p) <= HS.near); // T31: same place only
     },
 
     // Buttons and lines for the Play-together box.

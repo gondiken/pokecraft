@@ -29,6 +29,7 @@ import { goldenHour, condToast } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
+import { createRealms, MAIN } from './realms.js'; // T31
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -124,7 +125,7 @@ game.creatures.onSpawn = wild => {
   if (game.started && tip) game.ui.toast(tip);
 };
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
-game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].map(a => a.pos) : []) };
+game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []) }; // T31: only friends in the same place
 game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
 game.npcs.onBump = npc => { if (playing()) talkTo(npc); }; // walked into a disguised trainer (Hidden Hill)
 game.homes = new HomeManager(game); // T22
@@ -155,13 +156,18 @@ function snapshot() {
   game.book.syncTeam();
   const p = game.player;
   // While visiting someone else's world, keep saving your own world and position, not theirs.
-  const home = game.homeWorld ?? {
+  // T31: in a realm, the main world's part is the one kept aside (pos = where you wake up), plus where you are in the realm.
+  const main = game.realms?.mainPart();
+  const away = !game.homeWorld && main ? { place: game.place, realmPos: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch] } : {};
+  const home = game.homeWorld ?? (main ? {
+    seed: main.seed, edits: main.edits, size: main.size, pos: main.pos, yaw: main.yaw, pitch: main.pitch, time: game.time, homes: main.homes,
+  } : {
     seed: game.world.seed, edits: [...game.world.edits], size: [WORLD_W, WORLD_D],
     pos: [p.pos.x, p.pos.y, p.pos.z], yaw: p.yaw, pitch: p.pitch, time: game.time,
     homes: game.homes.toSave(), // T22
-  };
+  });
   return {
-    ...home, playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
+    ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, // T31 playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
     rematchWins: game.rematchWins,
@@ -190,12 +196,14 @@ const accounts = createAccounts(game, { loadSave, saveKey: SAVE_KEY, showTitle, 
 const { pushCloud, renderAccount, initAccount } = accounts;
 
 // size: the map size the edits were saved with (missing in saves from before the map grew).
-function createWorld(seed, edits, size) {
+// opts.realm (T31): a realm def; the world is that realm (its own size, terrain and edits).
+function createWorld(seed, edits, size, opts = {}) {
   game.riding?.stop('quiet');
   if (game.world) game.world.dispose();
-  const world = new World(seed, scene, materials);
+  const realm = opts.realm ?? null;
+  const world = realm ? new World(seed, scene, materials, realm.size, realm) : new World(seed, scene, materials);
   world.generate();
-  if (edits) world.applyEdits(convertEdits(edits, size));
+  if (edits) world.applyEdits(realm ? edits : convertEdits(edits, size));
   world.buildAll();
   game.world = world;
   game.player = new Player(world);
@@ -207,6 +215,7 @@ function createWorld(seed, edits, size) {
 }
 
 function findSpawn(world) {
+  if (world.realm) { const [x, z] = world.realm.arrive; return new THREE.Vector3(x + 0.5, world.surface(x, z).y + 1, z + 0.5); } // T31
   const cx = MID_X, cz = MID_Z; // the old middle (T17: the map grew, the start did not move)
   for (let r = 0; r < 60; r++) {
     for (let dx = -r; dx <= r; dx++) {
@@ -228,6 +237,7 @@ const hudEl = document.getElementById('hud');
 
 function showTitle() {
   game.hideSeek?.reset(); // T30
+  game.realms?.reset(); // T31: the title fly-over is always the main world
   const saved = loadSave();
   createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits, saved?.size);
   const buttons = document.getElementById('title-buttons');
@@ -272,6 +282,7 @@ function startNew(starterId) {
   game.keys = [];
   game.playerId = game.playerId || randomId();
   game.homes.load([], game.playerId);
+  game.realmEdits = {}; // T31
   game.hotbar = [...HOTBAR];
   const p = game.player;
   p.pos.copy(game.spawnPoint);
@@ -305,6 +316,7 @@ function continueGame(saved) {
   // Buildings can move between versions; never start inside a wall.
   if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
   p.yaw = saved.yaw || 0; p.pitch = saved.pitch || 0;
+  game.realms.restore(saved); // T31: a save made in a realm loads that realm (old saves: main)
   begin();
   if (drawn) save();
   // Old players with the first 16 badges: tell them about the gyms they have not seen yet.
@@ -543,7 +555,7 @@ document.addEventListener('keydown', e => {
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
   if (e.code === 'KeyR' && !e.repeat) game.riding.toggle(); // T27
-  if (e.code === 'KeyE' && !interact() && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
+  if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
 document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.code] = false; });
@@ -566,12 +578,15 @@ document.addEventListener('mousedown', e => {
 });
 
 // Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
-function interact() {
+// use (T31): E / tap / the touch action button, not a mouse click (a click on a Bed breaks it, a use sleeps in it).
+function interact(use = false) {
   if (target.player) { if (!game.hideSeek.tag(target.player)) game.duels.challenge(target.player); return true; } // T30
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   if (target.block && game.gymLive.hit(target.block)) return true;
   if (target.block?.id === B.CHEST) { openChest(target.block); return true; }
+  if (target.block?.id === B.WAKE_STONE) { game.realms.leave('stone'); return true; } // T31
+  if (use && target.block?.id === B.BED && game.realms.useBed(target.block)) return true;
   return false;
 }
 
@@ -589,6 +604,7 @@ function breakBlock(hit = target.block) {
   if (!hit || hit.y === 0) return;
   if (game.gymLive.hit(hit)) return; // T23: key chests open, reset buttons press (the touch break button comes here)
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
+  if (hit.id === B.WAKE_STONE) { game.realms.leave('stone'); return; } // T31: touching it wakes you up
   if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || 'Gym walls are too strong to break!'); return; }
   // Natural blocks have no edit yet; a placed block does (T20: so placed gold ore and leaves never give cubes).
   const natural = !world.edits.has(world.index(hit.x, hit.y, hit.z));
@@ -638,6 +654,7 @@ function placeBlock(hit = target.block) {
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   const id = game.hotbar[game.selected];
   if (!world.editAllowed(x, y, z, id)) { wallToast("You can't build inside a gym!"); return; }
+  if (id === B.DOORMAT && world.realm) { wallToast('No homes in dreams! Build your home in your own world.'); return; } // T31
   if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, id);
@@ -664,6 +681,8 @@ function tapAt(x, y) {
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
   else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
   else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
+  else if (block?.id === B.WAKE_STONE && block.t <= REACH) game.realms.leave('stone'); // T31
+  else if (block?.id === B.BED && block.t <= REACH) game.realms.useBed(block);
 }
 
 game.touch = new TouchControls(game, canvas, {
@@ -673,7 +692,7 @@ game.touch = new TouchControls(game, canvas, {
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
   breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
   place: () => { if (playing()) placeBlock(); },
-  interact: () => { if (playing() && !interact() && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
+  interact: () => { if (playing() && !interact(true) && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
   team: toggleTeam,
   blocks: toggleBlocks,
   book: toggleBook,
@@ -836,8 +855,11 @@ game.onBattleEnd = (result, opts) => {
   if (result === 'lost') {
     sound.play('lose');
     healTeam();
-    game.player.pos.copy(game.spawnPoint);
-    game.player.vel.set(0, 0, 0);
+    if (game.place !== MAIN) game.realms.leave('lost'); // T31: losing in a realm wakes you up in your bed
+    else {
+      game.player.pos.copy(game.spawnPoint);
+      game.player.vel.set(0, 0, 0);
+    }
     if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
     if (opts.rematch) game.rematch.lost(opts.trainer);
   }
@@ -881,6 +903,7 @@ let hudTimer = 0;
 let last = performance.now();
 let underFade = 0; // 0 on the surface, 1 underground (eased)
 const CAVE_DARK = new THREE.Color(0x07080c);
+const REALM_SKY = new THREE.Color(); // T31
 
 function smoothstep(a, b, x) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -915,6 +938,12 @@ function updateSky(dt) {
   scene.background.lerp(CAVE_DARK, underFade);
   scene.fog.color.copy(scene.background);
   scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar + (40 - wx.fogFar) * underFade;
+  const look = game.world.realm?.look; // T31: a realm's own sky colour and fog
+  if (look) {
+    scene.background.lerp(REALM_SKY.setHex(look.sky).multiplyScalar(0.4 + 0.6 * light), 0.7);
+    scene.fog.color.copy(scene.background);
+    if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
+  }
   const lit = Math.min(1, brightness * wx.dim + wx.flash * 0.4);
   caveLight.uLit.value = lit;
   caveLight.uLantern.value = 0.75 * underFade;
@@ -924,7 +953,7 @@ function updateSky(dt) {
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
-  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`);
+  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}${game.world.realm ? ' · Dream' : ''}`);
   game.night = light < 0.3;
   game.npcs.setNight(game.night); // the night gyms' people (Comet, Saucer) come and go with the night
 }
@@ -935,6 +964,7 @@ game.rematch = createRematch(game, { startBattle }); // T28
 game.missions = createMissions(game, { save }); // T29
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.hideSeek = createHideSeek(game); // T30
+game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -982,11 +1012,14 @@ function updateTarget() {
     : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
+      : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
+      : target.block?.id === B.BED && game.place === MAIN ? `Bed · ${touchMode ? 'tap' : 'press E'} to sleep`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
     : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
+      : target.block?.id === B.WAKE_STONE ? 'Wake up!' : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
       : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
 }
 
@@ -1011,6 +1044,7 @@ function frame(now) {
     game.gymLive.update(dt);
     game.rematch.update();
     game.missions.update(dt); // T29
+    game.realms.update(); // T31: morning wakes you up
     if (p.onGround) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
       const under = game.world.get(fx, fy, fz);

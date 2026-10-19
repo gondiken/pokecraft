@@ -36,6 +36,7 @@ const MORE_TILES = [
   'DOORMAT_TOP', 'DOORMAT_SIDE', 'BED_TOP', 'BED_SIDE', 'FIREPLACE', 'FIREPLACE_TOP', // T22 home blocks
   'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
   'STAR_BLOCK', 'RAINBOW_BRICK', 'TROPHY_SIDE', 'TROPHY_TOP', // T29 mission blocks
+  'WAKE_STONE', // T31 realms
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -59,6 +60,8 @@ export const B = {
   KEY_CHEST: 73, VAULT_DOOR: 74,
   // 75-77: T29 mission blocks (limited, only from Champion missions). Next free id: 78.
   STAR_BLOCK: 75, RAINBOW_BRICK: 76, GIANT_TROPHY: 77,
+  // 78: T31 Wake Stone (only in realms, never in the main world). Next free id: 79.
+  WAKE_STONE: 78,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -126,6 +129,8 @@ const MISSION_MORE = 'Finish Champion missions to get more!';
 BLOCKS[B.STAR_BLOCK] = { name: 'Star Block', ...all(T.STAR_BLOCK), glow: true, noLight: true, limited: true, getMore: MISSION_MORE };
 BLOCKS[B.RAINBOW_BRICK] = { name: 'Rainbow Brick', ...all(T.RAINBOW_BRICK), limited: true, getMore: MISSION_MORE };
 BLOCKS[B.GIANT_TROPHY] = { name: 'Giant Trophy', top: T.TROPHY_TOP, side: T.TROPHY_SIDE, bottom: T.TROPHY_TOP, limited: true, getMore: MISSION_MORE };
+// T31: the Wake Stone in a realm: touch (use or break) it to wake up. Not placeable.
+BLOCKS[B.WAKE_STONE] = { name: 'Wake Stone', ...all(T.WAKE_STONE), glow: true, wallText: 'Touch the Wake Stone to wake up!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -396,6 +401,14 @@ export function drawAtlas() {
         : plate ? [150, 100, 16] : shade([96, 66, 18], 1 + (r2() - 0.5) * 0.15));
       const d = Math.hypot(x - 7.5, y - 7.5), edge = x === 0 || y === 0 || x === 15 || y === 15;
       put(T.TROPHY_TOP, x, y, edge ? [130, 88, 10] : d > 4.5 && d < 5.8 ? [255, 236, 140] : shade([226, 174, 40], 1 + (r2() - 0.5) * 0.08));
+    });
+  }
+  { // T31 Wake Stone: a pale glowing stone with a sleepy moon. Own random numbers, so no older tile changes.
+    const r3 = mulberry32(3131);
+    each((x, y) => {
+      const moon = Math.hypot(x - 7.5, y - 7.5) < 4.6 && Math.hypot(x - 9.3, y - 6.3) > 3.6;
+      const edge = x === 0 || y === 0 || x === 15 || y === 15;
+      put(T.WAKE_STONE, x, y, edge ? [150, 120, 220] : moon ? [255, 236, 150] : shade([210, 200, 255], 1 + (r3() - 0.5) * 0.12));
     });
   }
 

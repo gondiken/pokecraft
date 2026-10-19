@@ -1,7 +1,7 @@
 // Wild creatures roaming the world: spawning, wandering AI and targeting.
 import * as THREE from 'three';
 import { B, BLOCKS, isSolid } from './blocks.js';
-import { WORLD_W, WORLD_D, WORLD_H, WATER_LEVEL } from './world.js';
+import { WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
 import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
 import { Disguise } from './disguise.js';
@@ -72,7 +72,11 @@ export class CreatureManager {
     for (const w of [...this.list]) this.remove(w);
   }
 
+  // T31: a realm has its own spawn tables (world.realm.spawns); the main world uses SPAWNS.
+  table(biome) { return this.world?.realm?.spawns[biome] ?? SPAWNS[biome] ?? []; }
+
   biomeAt(x, z) {
+    if (this.world.realm) return this.world.realm.biome; // T31
     if (this.world.surface(x, z).id === B.WATER) return 'water';
     return this.world.biome(x, z);
   }
@@ -99,7 +103,7 @@ export class CreatureManager {
   weights(biome, ctx) {
     ctx = CreatureManager.asCtx(ctx);
     const wx = this.weather;
-    return SPAWNS[biome].filter(([, , when]) => condOk(when, ctx) && !condOf(when)?.share)
+    return this.table(biome).filter(([, , when]) => condOk(when, ctx) && !condOf(when)?.share)
       .map(e => [e, e[1] * (wx ? wx.boost(biome, SPECIES[e[0]].type) : 1)]);
   }
 
@@ -115,7 +119,7 @@ export class CreatureManager {
     ctx = CreatureManager.asCtx(ctx);
     const wx = this.weather;
     const done = new Set();
-    for (const e of SPAWNS[biome]) {
+    for (const e of this.table(biome)) {
       const cond = e[2];
       const def = condOf(cond);
       if (!def?.share || done.has(cond)) continue;
@@ -123,7 +127,7 @@ export class CreatureManager {
       if (!condOk(cond, ctx) || this.count(cond) >= (def.max ?? Infinity)) continue;
       const share = typeof def.share === 'function' ? def.share(ctx, cond.split(':')[1]) : def.share;
       if (Math.random() >= share) continue;
-      const table = SPAWNS[biome].filter(x => x[2] === cond).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
+      const table = this.table(biome).filter(x => x[2] === cond).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
       return this.pickFrom(table);
     }
     return this.pickFrom(this.weights(biome, ctx));
@@ -134,13 +138,13 @@ export class CreatureManager {
   // Ground height a creature should stand at for column (x, z), or null if not walkable.
   groundY(x, z, sp) {
     const xi = Math.floor(x), zi = Math.floor(z);
-    if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
+    if (xi < 1 || zi < 1 || xi >= this.world.W - 1 || zi >= this.world.D - 1) return null;
     const s = this.world.surface(xi, zi);
     const airborne = sp.flies || sp.floats;
     if (s.id === B.WATER) return sp.swims || airborne ? WATER_LEVEL + 0.55 : null;
     if (sp.waterOnly) return null; // fish stay in the water
     // Only walk on natural ground (not trees, cacti, gyms or other buildings).
-    if (!GROUND.has(s.id)) return airborne ? s.y + 1 : null;
+    if (!(this.world.walk ?? GROUND).has(s.id)) return airborne ? s.y + 1 : null;
     return s.y + 1;
   }
 
@@ -151,7 +155,7 @@ export class CreatureManager {
     const dist = Math.random() < 0.4 ? 9 + Math.random() * 8 : 14 + Math.random() * 22;
     const x = Math.floor(center.x + Math.cos(angle) * dist);
     const z = Math.floor(center.z + Math.sin(angle) * dist);
-    if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
+    if (x < 2 || z < 2 || x >= this.world.W - 2 || z >= this.world.D - 2) return;
     const biome = this.biomeAt(x, z);
     if (!biome) return;
     const [species, when] = this.pickEntry(biome, ctx);
@@ -222,9 +226,9 @@ export class CreatureManager {
     const [species, when] = this.pickEntry('cave', ctx);
     if (this.spawnPlaced(species, when, ctx, spawnPoint)) return; // a home visitor (T22): appears in its home
     const x = Math.floor(center.x + Math.cos(angle) * dist), z = Math.floor(center.z + Math.sin(angle) * dist);
-    if (x < 2 || z < 2 || x >= WORLD_W - 2 || z >= WORLD_D - 2) return;
+    if (x < 2 || z < 2 || x >= this.world.W - 2 || z >= this.world.D - 2) return;
     const y0 = Math.floor(center.y) + Math.floor(Math.random() * 11) - 5;
-    const ground = world.ground[x + z * WORLD_W];
+    const ground = world.ground[x + z * world.W];
     for (let y = Math.min(y0 + 4, WORLD_H - 3); y >= Math.max(1, y0 - 6); y--) {
       if (world.get(x, y, z) !== B.AIR || world.get(x, y + 1, z) !== B.AIR) continue;
       const below = world.get(x, y - 1, z);
@@ -242,8 +246,8 @@ export class CreatureManager {
   caveGroundY(x, z, fromY, underOnly = true) {
     const world = this.world;
     const xi = Math.floor(x), zi = Math.floor(z);
-    if (xi < 1 || zi < 1 || xi >= WORLD_W - 1 || zi >= WORLD_D - 1) return null;
-    const ground = world.ground[xi + zi * WORLD_W];
+    if (xi < 1 || zi < 1 || xi >= this.world.W - 1 || zi >= this.world.D - 1) return null;
+    const ground = world.ground[xi + zi * world.W];
     for (let y = Math.floor(fromY) + 1; y >= Math.floor(fromY) - 3; y--) {
       if (!isSolid(world.get(xi, y - 1, zi)) || world.get(xi, y, zi) !== B.AIR || isSolid(world.get(xi, y + 1, zi))) continue;
       if (underOnly && y >= ground - 1) return null;

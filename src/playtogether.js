@@ -5,6 +5,7 @@ import { Multiplayer, cleanCode } from './multiplayer.js';
 import { Duels } from './duel.js';
 import { coopFor } from './coopboss.js'; // T29
 import { el } from './util.js';
+import { realmOf } from './realms.js'; // T31
 
 // deps: createWorld(seed, edits, size) swaps the world, save() / pushCloud() save the game,
 // startBattle(opts) begins a battle, pauseEl is the pause screen.
@@ -32,8 +33,10 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
       for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
       game.ui.renderHud();
+      const r = realmOf(data.place); // T31: the host is dreaming; guests stay in the main world
+      if (r) setTimeout(() => game.ui.toast(`${data.hostName || 'Your friend'} is asleep in the ${r.name}. Look around until they wake up!`), 500);
     },
-    home: rec => game.homes.apply(rec),
+    home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),
     hs: p => game.hideSeek?.onMessage(p), // T30
     left: id => { game.duels.left(id); game.hideSeek?.left(id); }, // T30
@@ -128,6 +131,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     const join = async () => {
       const n = checkName(); if (!n) return;
       if (code.value.length !== 5) { setMpMessage('Type the 5-letter world code first.', true); return; }
+      if (game.place && game.place !== 'main') await game.realms.leave('quiet'); // T31: wake up before visiting
       save();
       mpMessage = { text: '', error: false };
       const pending = mp.join(code.value, n);

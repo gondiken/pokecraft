@@ -7,6 +7,12 @@ export function createGuide(game) {
   // Points the player towards the next gym they haven't beaten yet.
   function updateGuide() {
     const p = game.player.pos;
+    if (game.world.realm) { // T31: no gyms here; the arrow points at the Wake Stone
+      const w = game.world.wake;
+      if (!w) { game.ui.setGuide(`☾ ${game.world.realm.name}`); return; }
+      updateArrow(p, { wake: true }, '');
+      return;
+    }
     const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
     let next = unbeaten[0], note = '';
     // Gyms you have to wait for (night gyms by day) are skipped, and the arrow names them.
@@ -40,7 +46,8 @@ export function createGuide(game) {
   }
 
   function updateArrow(p, next, note) {
-    const aim = acc(next).aim(p);
+    const wake = next.wake && game.world.wake; // T31
+    const aim = wake ? { x: wake[0] + 0.5, z: wake[2] + 0.5, text: (a, d) => `${a} Wake Stone · ${d} m` } : acc(next).aim(p);
     let arrow = '', dist = 0;
     if (aim.x === undefined) game.guideTarget = null;
     else {
@@ -53,7 +60,7 @@ export function createGuide(game) {
       const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
       arrow = arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
     }
-    game.ui.setGuide(aim.text(arrow, dist) + acc(next).status() + note);
+    game.ui.setGuide(aim.text(arrow, dist) + (wake ? '' : acc(next).status()) + note);
   }
 
   return { updateGuide };

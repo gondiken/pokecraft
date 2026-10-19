@@ -4,6 +4,7 @@ import { B, BLOCKS, TILE_COUNT, TREASURE, isOccluder, isSolid } from './blocks.j
 import { GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves } from './caves.js';
 import { installGymPlacement } from './gymplace.js';
+import { generateRealm } from './realms.js'; // T31
 
 export const WORLD_W = 288; // the map since T17 (array stride of every World the game makes)
 export const WORLD_D = 288;
@@ -91,8 +92,9 @@ for (let id = 1; id < 256; id++) OCCLUDERS[id] = isOccluder(id) ? 1 : 0;
 export class World {
   // size: [W, D]. The game's world is WORLD_W x WORLD_D; generate() also makes the old 224 x 224 map in its own
   // World (T17), and tests may ask for one directly.
-  constructor(seed, scene, materials, [W, D] = [WORLD_W, WORLD_D]) {
+  constructor(seed, scene, materials, [W, D] = [WORLD_W, WORLD_D], realm = null) {
     this.seed = seed;
+    this.realm = realm; // T31: a realm def (realms.js), or null for the main world
     this.scene = scene;
     this.materials = materials;
     this.W = W;
@@ -241,6 +243,7 @@ export class World {
   // The biome at (x, z), from the natural terrain (player building doesn't change it):
   // peak, snow, mountain, beach, swamp, taiga (snowy pine forest), desert, forest, meadow or plains.
   biome(x, z) {
+    if (this.realm) return this.realm.biome; // T31
     const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
     // The highest ground of this map: about 3% peaks, 2% snow and 6% mountains.
     const high = this.highGround();
@@ -304,6 +307,7 @@ export class World {
   // The game's world: the old 224 x 224 map is generated exactly as before in its own World and copied in,
   // then the new land (east and south of it) gets terrain, plants and the slot gyms. Nothing old can move.
   generate(opts = {}) {
+    if (this.realm) return generateRealm(this); // T31: a realm has its own terrain; the main path below is untouched
     if (this.W === OLD_W && this.D === OLD_D) return this.generateArea(opts); // the old map itself (tests)
     const old = new World(this.seed, null, null, [OLD_W, OLD_D]);
     old.generateArea(opts);

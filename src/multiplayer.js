@@ -8,6 +8,7 @@ import { isSolid } from './blocks.js';
 import { rideSpecies, fitRide } from './riding.js';
 import { WORLD_W, WORLD_D } from './world.js';
 import { realtimeChannel } from './cloud.js';
+import { realmOf } from './realms.js'; // T31
 
 const SEND_EVERY = 0.2;   // seconds between position updates (5 per second)
 const GONE_AFTER = 8;     // seconds without news before a player counts as gone
@@ -16,7 +17,7 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
-const WORLD_VERSION = 10; // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
+const WORLD_VERSION = 11; // T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
@@ -85,6 +86,8 @@ class Avatar {
     this.tag = nameTag(info.name); // T30: hide and seek hides it from the seeker
     this.model.add(this.tag);
     this.hiding = false; // T30
+    this.place = info.place || 'main'; // T31: where this player is ('main' or a realm id)
+    this.here = true;                   // T31: in the same place as you (else hidden, not pickable)
     this.model.userData.avatar = this;
     this.pos = new THREE.Vector3(info.x, info.y, info.z);
     this.target = this.pos.clone();
@@ -176,6 +179,9 @@ class Avatar {
     }
     this.tag.visible = !this.hiding; // T30
     if (this.lead && this.hiding) this.lead.visible = false;
+    this.model.visible = this.here; // T31: a player in another place is not drawn
+    if (!this.here) { if (this.lead) this.lead.visible = false; if (this.rideModel) this.rideModel.visible = false; }
+    else { if (this.rideModel) this.rideModel.visible = true; if (this.lead && !this.hiding) this.lead.visible = !this.isDueling && !this.rideModel; }
   }
 
   dispose() {
@@ -260,8 +266,8 @@ export class Multiplayer {
       this.parts[p.part] = p;
       if (this.parts.filter(Boolean).length < p.parts) return;
       const edits = this.parts.flatMap(x => x.edits);
-      const { seed, time, hostPos, hostName, size, weather, homes, owner } = p;
-      this.gotWorld({ seed, time, hostPos, hostName, edits, size, weather, homes, owner });
+      const { seed, time, hostPos, hostName, size, weather, homes, owner, place } = p;
+      this.gotWorld({ seed, time, hostPos, hostName, edits, size, weather, homes, owner, place });
     });
     t.on('state', p => {
       if (!this.active || p.id === this.id) return;
@@ -272,11 +278,19 @@ export class Multiplayer {
         this.hooks.toast(`${p.name} ${p.host ? 'is hosting this world' : 'joined the world'}!`);
       }
       a.update(p);
+      const place = typeof p.place === 'string' ? p.place : 'main'; // T31
+      if (place !== a.place) {
+        a.place = place;
+        const r = realmOf(place);
+        this.hooks.toast(r ? `${a.name} fell asleep and is in the ${r.name}.` : `${a.name} woke up!`);
+      }
+      a.here = a.place === (this.game.place || 'main');
       if (p.host && this.role === 'guest' && typeof p.time === 'number') this.game.time = p.time;
       if (p.host && this.role === 'guest' && p.weather) this.game.weather?.apply(p.weather);
     });
     t.on('block', p => {
       if (!this.active || p.id === this.id) return;
+      if ((p.place || 'main') !== (this.game.place || 'main')) { if ((p.place || 'main') === 'main') this.game.realms?.stashBlock(p); return; } // T31: kept for the main world
       if (!this.game.world.editAllowed(p.x, p.y, p.z, p.b)) return; // gyms stay whole (T17)
       this.game.world.set(p.x, p.y, p.z, p.b);
     });
@@ -307,7 +321,7 @@ export class Multiplayer {
     this.raycaster.far = maxDist;
     const meshes = [];
     const reach = maxDist + 3;
-    for (const a of this.others.values()) if (a.pos.distanceToSquared(origin) < reach * reach) a.model.traverse(o => { if (o.isMesh) meshes.push(o); }); // not the name tag sprite
+    for (const a of this.others.values()) if (a.here && a.pos.distanceToSquared(origin) < reach * reach) a.model.traverse(o => { if (o.isMesh) meshes.push(o); }); // not the name tag sprite
     const hits = this.raycaster.intersectObjects(meshes, false);
     if (!hits.length) return null;
     let o = hits[0].object;
@@ -317,13 +331,14 @@ export class Multiplayer {
 
   sendWorld(to) {
     const g = this.game;
-    const edits = [...g.world.edits];
+    const main = g.realms?.mainPart(); // T31: while the host is in a realm, guests still get the main world
+    const edits = main ? main.edits : [...g.world.edits];
     const parts = Math.max(1, Math.ceil(edits.length / EDITS_PER_MESSAGE));
-    const p = g.player.pos;
+    const p = main ? { x: main.pos[0], y: main.pos[1], z: main.pos[2] } : g.player.pos;
     for (let i = 0; i < parts; i++) {
       this.t.send('world', {
-        to, wv: WORLD_VERSION, part: i, parts, seed: g.world.seed, time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
-        hostPos: [p.x, p.y, p.z], homes: g.homes.toSave(), owner: g.homes.worldOwner, edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
+        to, wv: WORLD_VERSION, part: i, parts, seed: main ? main.seed : g.world.seed, place: g.place || 'main', time: g.time, weather: g.weather?.state(), hostName: this.name, size: [WORLD_W, WORLD_D],
+        hostPos: [p.x, p.y, p.z], homes: main ? main.homes : g.homes.toSave(), owner: main ? main.owner : g.homes.worldOwner, edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE),
       });
     }
   }
@@ -332,7 +347,7 @@ export class Multiplayer {
     if (!this.active) return;
     const g = this.game, p = g.player.pos;
     this.t.send('state', {
-      id: this.id, name: this.name, host: this.role === 'host',
+      id: this.id, name: this.name, host: this.role === 'host', place: g.place || 'main', // T31
       x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +g.player.yaw.toFixed(2),
       ride: g.riding?.species ?? null,
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
@@ -347,7 +362,7 @@ export class Multiplayer {
   }
 
   sendBlock(x, y, z, b) {
-    if (this.active) this.t.send('block', { id: this.id, x, y, z, b });
+    if (this.active) this.t.send('block', { id: this.id, x, y, z, b, place: this.game.place || 'main' }); // T31
   }
 
   removePlayer(id, said) {
@@ -365,6 +380,7 @@ export class Multiplayer {
     this.sendTimer += dt;
     if (this.sendTimer >= SEND_EVERY) { this.sendTimer = 0; this.sendState(); }
     for (const a of [...this.others.values()]) {
+      a.here = a.place === (this.game.place || 'main'); // T31
       a.tick(dt, this.game.world);
       if (a.heard > GONE_AFTER) this.removePlayer(a.id, false);
     }

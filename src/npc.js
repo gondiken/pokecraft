@@ -207,6 +207,7 @@ export class NpcManager {
         this.add(npc);
       }
     }
+    if (world.realm) return; // T31: no healer in a realm (losing there wakes you up, rested)
     // The healer waits next to where you start.
     const hx = Math.floor(spawnPoint.x) + 3, hz = Math.floor(spawnPoint.z);
     const s = world.surface(hx, hz);

@@ -1,4 +1,5 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
+import { REALMS } from './realms.js'; // T31
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness, moveInfo } from './species.js';
 import { TRAITS } from './traits.js';
 import { BLOCKS } from './blocks.js';
@@ -53,6 +54,10 @@ export function spawnInfo(id) {
     const at = out.findIndex(o => o.when === when);
     for (let i = out.length - 1; i >= 0; i--) if (out[i].when === when) out.splice(i, 1);
     out.splice(at, 0, { biome: null, name: 'Anywhere', when, rarity: best });
+  }
+  for (const r of Object.values(REALMS)) { // T31: realms list their own creatures (one row per realm)
+    const e = r.spawns[r.biome]?.find(x => x[0] === id);
+    if (e) out.push({ biome: null, name: r.name, when: null, rarity: e[1] >= 2 ? 'common' : e[1] >= 0.5 ? 'sometimes' : 'rare' });
   }
   for (const o of out) if (o.words === undefined) o.words = condText(o.when) ?? o.when;
   return out;

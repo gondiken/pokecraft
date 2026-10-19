@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). Next: wave 10 (realms, room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). T31 (realms: a bare-bones Dream realm from your cozy home's Bed) is done. Next: the rest of wave 10 (room for more gyms), wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -61,7 +61,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 9a ✅ | T24 Battle fixes · T26 Traits · T28 Gym rematches | Battle rules vs. creature data vs. gym people |
 | 9b ✅ | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
 | 9c ✅ | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
-| 10 | T31 Realms · T32 More room for gyms | Both careful world work; can run side by side (realm world vs. main map) |
+| 10 | T31 Realms ✅ · T32 More room for gyms | Both careful world work; can run side by side (realm world vs. main map) |
 | 11 | T33 Food · T34 Swarm · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
@@ -985,7 +985,7 @@ again") and `multiplayer` (Cozy part: a visitor sees the same types without any 
 Both are careful, world-level work; do them before wave 11. Same rules as T17: old saves keep every block,
 gym and build where it was.
 
-### T31 · Realms: another place you can go to and come back from (size: L, careful)
+### T31 · Realms: another place you can go to and come back from (size: L, careful) ✅ done (plans/T31.md: a bare-bones Dream realm, reached from your cozy home's Bed at night)
 
 A **realm** is a small separate world (own seed-made terrain, e.g. 64x64, own spawn tables, own gyms) that you
 travel to and back from, like going into a cave but not inside this world. Built once and general, so later

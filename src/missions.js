@@ -122,7 +122,8 @@ export function createMissions(game, { save }) {
       if (tick < 0.25) return;
       tick = 0;
       const def = m.active;
-      if (def?.kind === 'map') {
+      if (def?.kind === 'map' && game.world.realm) m.hint = null; // T31: the treasure is in the main world
+      else if (def?.kind === 'map') {
         const spot = treasureSpots(game.world)[def.n];
         if (spot) {
           m.hint = findCheck(game.player, spot);
