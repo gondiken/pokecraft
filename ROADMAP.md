@@ -1056,13 +1056,39 @@ wool, fx + sound, Book, README. Battle rules stay the same for all; a type only 
 - **⛏️ Digger:** hidden underground as a moving dirt bump (Camo's hidden-then-revealed idea, as particles); hit the
   ground to pop it out. Gym: the Dig Site, soft sand that is breakable inside the gym and comes back (`setLive`). Medium.
 - **🧱 Builder:** spawns near places you built a lot; wild ones slowly build a small hut next to them (drawn with
-  `setLive`, never saved). Gym: the Build-off, copy the leader's small model. Medium.
+  `setLive`, never saved). Gym: needs a new idea (the old "Build-off, copy the leader's small model" is now the
+  Doodle tower's painting floors, see below).
 
-## Doodle wave (own wave, not decided yet)
+## Doodle wave, or "custom gym" (own wave, not decided yet)
 
 Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of a tower (each floor: copy a
 picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
-Two options for the design, the owner is still deciding:
+
+**Reaching the Wizard: the painting tower** (owner, 2026-10-20). **One game, not one per floor:** every floor is the same
+thing, "make the canvas look like the picture", and floors differ only by data, like the Firewall Maze's `ROOMS`.
+- **Canvas + easel:** each floor has an easel with a small picture and a canvas, a flat grid of blank wool cells on the
+  wall. **Tap/click a canvas cell to paint it** with the colour picked from a row of paint pots (easier on an iPad than
+  placing blocks on a wall). The canvas is drawn with `setLive` (never an edit, never saved or sent; the gym stays
+  `protect`ed). When it matches, the stairs door opens (like the Vault door). Stuck for a while: the wrong cells blink.
+- **One checker** with one extra rule: a target cell may be **free** ("any colour, but all free cells of one group the
+  same colour"). Pre-painted cells are just part of the floor's data.
+- **Five floors (a floor table):**
+  1. **Copy** a 4x4 picture (teaches the controls; the only floor that needs real guidance).
+  2. **Bigger:** a 6x6 copy.
+  3. **Mirror:** half is pre-painted, you paint the other half as in a mirror.
+  4. **Your colour:** "copy it, but the ? parts can be any colour you like" (free cells; the easel shows them as a
+     rainbow ? swatch).
+  5. **Top, the Wizard's floor:** half a creature is given (mirror) and its parts are free colours: **the colours you
+     paint here become your Doodle's palette**. Then the Wizard battle.
+- Guidance: the picture explains itself after floor 1; one short sign per floor ("Pick any colour for the ? parts!").
+- No timer, no fail state, no trainers on the landings (the paintings are the challenge; keeps it easy).
+- **Left out on purpose** (each would be a second game: new code and new guidance): a from-memory floor (timer, covered
+  easel) and a free-rules top floor ("3 colours, same on both sides" needs a second checker and is hard to explain).
+- Later, maybe: painting together (each player sees half the picture), needs shared live state like S1.
+- Open: where the tower stands (free slots 3, 8, 9), picture designs, the Wizard's team, badge or not, when it unlocks.
+
+Two options for the design, the owner is still deciding (the painted palette fits option 2: the creature stores a few
+wool ids instead of a palette number):
 1. **Free design:** a design screen (shape, colours, name, moves), the look saved on the creature and sent in saves,
    duels and play-together, models built from it. High: the look has to travel everywhere.
 2. **Ready-made designs + palettes (compromise):** ~6 Doodle species with a few part choices and ~12 fixed palettes;
