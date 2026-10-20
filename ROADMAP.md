@@ -1128,8 +1128,9 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   bunnies (Hopsy, Moonhop, Lunaroo) already hop; the boxing kangaroo and the chameleon also exist. Creature designs: open.
 - Spawn: on high places (treetops, roofs, pillar tops): a condition + a `place` rule (homes already have `place`). Owner: OK.
 - **Behaviour:** wild ones hop away from you over blocks, so you chase them: one new "run away" walk style (Racer could
-  reuse it later with a "run" style). **The owner needs to see it before deciding** whether it is fun or frustrating:
-  build a playable prototype first.
+  reuse it later with a "run" style). No separate prototype: build it and the owner says after playing if it's not fun.
+  Kid-friendly defaults: it hops a few blocks at a time (never off a cliff or into water), **gets tired after ~3 hops**
+  and sits panting, and touching it starts the battle (like a Camo creature).
 - **Gym, the Obstacle Course** (the clearest part): jumps and narrow beams; **falling sends you back to the start**
   (owner: fine, his son plays games like that); **checkpoints if the course is long** (a small `gymLive` check);
   trainers on the landings. Moving platforms only if cheap.
