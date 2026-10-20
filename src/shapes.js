@@ -3773,6 +3773,158 @@ function chandelier(root, m, parts) {
 const SHAPES_TREASURE = { coin, crystalfox, gemring, chandelier };
 /* ==== end of T21 treasure shapes ==== */
 
+/* ==== T34 squad shapes ==== */
+// A crew of little ones standing on each other's shoulders. spots = [[x, y, z], ...] from the BOTTOM up; make(g, i)
+// builds member i into its own group g (at its spot). Fills parts.members, which setModelHealth / animateModel use: a member
+// is { g, base, side, on, fallAt }. g is ONLY moved by the health code (rest position = base); put any idle sway on a pivot
+// INSIDE g, never on g itself.
+function crewStack(root, parts, spots, make) {
+  const body = pivot(root, 0, 0, 0);
+  parts.members = [];
+  spots.forEach(([x, y, z], i) => {
+    const g = pivot(body, x, y, z);
+    make(g, i);
+    parts.members.push({ g, base: g.position.clone(), side: i % 2 ? 1 : -1, on: true, fallAt: null });
+  });
+  return body;
+}
+
+// Teetertot / Teetertower: kids in knitted hats, each standing on the head of the one below. The top one waves.
+function beaniestack(root, m, parts) {
+  const n = has(m, 'tall') ? 5 : 3;
+  const poms = [m.accent, 0xffffff, 0xffe27a, 0xff8ac8, 0x8ad46a];
+  parts.legs = [];
+  parts.arms = [];
+  const spots = Array.from({ length: n }, (_, i) => [0, i * 0.58, 0]);
+  crewStack(root, parts, spots, (g, i) => {
+    const top = i === n - 1;
+    const inner = pivot(g, 0, 0, 0);
+    swing(parts, inner, 'z', 0.03 + 0.012 * i, 2.2, i * 0.7);
+    for (const s of [-1, 1]) {
+      const leg = pivot(inner, s * 0.075, 0.08, 0);
+      box(leg, 0.1, 0.08, 0.14, m.dark, 0, -0.04, 0.02);
+      if (i === 0) parts.legs.push({ g: leg, phase: s > 0 ? Math.PI : 0 });
+    }
+    box(inner, 0.3, 0.22, 0.26, m.body, 0, 0.19, 0);
+    box(inner, 0.31, 0.04, 0.27, m.accent, 0, 0.12, 0); // a stripe on the sweater
+    box(inner, 0.28, 0.22, 0.26, m.belly, 0, 0.39, 0);
+    eyes(inner, 0.4, 0.131, 0.075, 0.075);
+    for (const s of [-1, 1]) box(inner, 0.05, 0.035, 0.02, 0xff9ab0, s * 0.105, 0.345, 0.133); // rosy cheeks
+    box(inner, 0.07, 0.025, 0.02, 0x8a3a3a, 0, 0.335, 0.133);
+    box(inner, 0.3, 0.08, 0.28, m.accent, 0, 0.47, 0); // beanie
+    box(inner, 0.07, 0.07, 0.07, poms[i], 0, 0.535, 0); // pompom
+    for (const s of [-1, 1]) {
+      const arm = pivot(inner, s * 0.19, 0.27, 0);
+      box(arm, 0.07, 0.2, 0.07, m.body, 0, 0.1, 0);
+      box(arm, 0.08, 0.06, 0.08, m.belly, 0, 0.22, 0);
+      arm.rotation.z = s * -0.25;
+      if (top) parts.arms.push({ g: arm, phase: s > 0 ? Math.PI : 0 });
+    }
+    if (top) parts.head = inner;
+  });
+}
+
+// Sockhop / Socktacular: odd sock puppets in a pyramid. They chatter and hop together.
+function sockpyramid(root, m, parts) {
+  const six = has(m, 'six');
+  const spots = six
+    ? [[-0.34, 0, 0], [0, 0, 0], [0.34, 0, 0], [-0.17, 0.42, 0], [0.17, 0.42, 0], [0, 0.84, 0]]
+    : [[-0.17, 0, 0], [0.17, 0, 0], [0, 0.42, 0]];
+  const cols = [m.body, m.belly, m.accent, m.body, m.belly, m.accent];
+  const body = crewStack(root, parts, spots, (g, i) => {
+    const c = cols[i], stripe = cols[(i + 1) % 6] === c ? m.dark : cols[(i + 1) % 6];
+    box(g, 0.3, 0.08, 0.26, c, 0, 0.04, 0); // cuff
+    box(g, 0.31, 0.025, 0.27, stripe, 0, 0.03, 0);
+    box(g, 0.31, 0.025, 0.27, stripe, 0, 0.07, 0);
+    box(g, 0.28, 0.3, 0.24, c, 0, 0.23, 0);
+    box(g, 0.24, 0.09, 0.14, c, 0, 0.27, 0.17); // the toe, folded forward
+    const jaw = pivot(g, 0, 0.225, 0.1);
+    box(jaw, 0.22, 0.05, 0.14, m.dark, 0, -0.025, 0.07);
+    box(jaw, 0.1, 0.03, 0.08, 0xe0485a, 0, 0.0, 0.08); // felt tongue
+    swing(parts, jaw, 'x', 0.15, 6 + (i % 3), i * 1.3);
+    eyes(g, 0.345, 0.122, 0.07, 0.09);
+    box(g, 0.1, 0.03, 0.03, stripe, 0, 0.38, 0); // a tuft on top
+  });
+  parts.bounce = body;
+}
+
+// Bucketeer / Bucketeam: round buddies with upside-down buckets on their heads, a wobbly column.
+function bucketcolumn(root, m, parts) {
+  const n = has(m, 'team') ? 5 : 3;
+  parts.legs = [];
+  const spots = Array.from({ length: n }, (_, i) => [i % 2 ? 0.07 : -0.07, i * 0.46, 0]);
+  crewStack(root, parts, spots, (g, i) => {
+    const inner = pivot(g, 0, 0, 0);
+    swing(parts, inner, 'z', 0.05 + 0.02 * i, 1.7, i * Math.PI);
+    for (const s of [-1, 1]) {
+      const leg = pivot(inner, s * 0.075, 0.06, 0);
+      box(leg, 0.1, 0.06, 0.14, m.dark, 0, -0.03, 0.02);
+      if (i === 0) parts.legs.push({ g: leg, phase: s > 0 ? Math.PI : 0 });
+    }
+    ball(inner, 0.14, m.body, 0, 0.2, 0);
+    box(inner, 0.2, 0.1, 0.05, m.belly, 0, 0.14, 0.12); // tummy
+    eyes(inner, 0.225, 0.143, 0.065, 0.07);
+    for (const s of [-1, 1]) {
+      const arm = pivot(inner, s * 0.14, 0.2, 0);
+      box(arm, 0.14, 0.05, 0.05, m.body, s * 0.07, 0, 0);
+      box(arm, 0.06, 0.07, 0.07, m.belly, s * 0.15, 0, 0);
+      arm.rotation.z = s * 0.35;
+      swing(parts, arm, 'z', 0.25, 2.4, i + s);
+    }
+    box(inner, 0.3, 0.16, 0.3, m.accent, 0, 0.35, 0); // the bucket, upside down
+    box(inner, 0.34, 0.04, 0.34, m.accent, 0, 0.27, 0);
+    box(inner, 0.35, 0.015, 0.35, m.dark, 0, 0.255, 0); // rim shadow
+    box(inner, 0.13, 0.03, 0.03, m.dark, 0, 0.44, 0); // handle
+  });
+}
+
+// Tallcoat: three little ones in one big coat, with a moustache and four sneakers.
+function trenchcoat(root, m, parts) {
+  parts.legs = [];
+  crewStack(root, parts, [[0, 0, 0], [0, 0.5, 0], [0, 1.0, 0]], (g, i) => {
+    if (i === 0) {
+      box(g, 0.5, 0.35, 0.36, m.body, 0, 0.295, 0); // coat hem
+      box(g, 0.51, 0.04, 0.37, m.dark, 0, 0.14, 0);
+      for (const [x, z, ph] of [[-0.17, 0.07, 0], [-0.06, -0.07, Math.PI], [0.06, 0.07, Math.PI], [0.17, -0.07, 0]]) {
+        const leg = pivot(g, x, 0.13, z);
+        box(leg, 0.09, 0.13, 0.09, m.belly, 0, -0.065, 0);
+        box(leg, 0.11, 0.06, 0.17, 0xffffff, 0, -0.1, 0.04); // sneaker
+        box(leg, 0.11, 0.02, 0.17, m.accent, 0, -0.13, 0.04);
+        parts.legs.push({ g: leg, phase: ph });
+      }
+    } else if (i === 1) {
+      box(g, 0.5, 0.5, 0.36, m.body, 0, 0.25, 0); // coat torso
+      for (const s of [-1, 1]) {
+        box(g, 0.1, 0.46, 0.04, m.dark, s * 0.17, 0.25, 0.185); // lapels
+        const arm = pivot(g, s * 0.3, 0.45, 0);
+        box(arm, 0.1, 0.4, 0.1, m.body, 0, -0.18, 0);
+        box(arm, 0.1, 0.1, 0.1, m.belly, 0, -0.4, 0);
+        parts.arms ||= [];
+        parts.arms.push({ g: arm, phase: s > 0 ? Math.PI : 0 });
+      }
+      box(g, 0.06, 0.06, 0.03, m.dark, -0.045, 0.1, 0.19); // buttons
+      box(g, 0.06, 0.06, 0.03, m.dark, 0.045, 0.1, 0.19);
+      box(g, 0.2, 0.1, 0.03, 0x2a2a2a, 0, 0.3, 0.185); // the gap where two eyes peek out
+      eyes(g, 0.3, 0.2, 0.05, 0.07);
+    } else {
+      const head = pivot(g, 0, 0, 0);
+      parts.head = head;
+      swing(parts, head, 'y', 0.35, 0.9);
+      box(head, 0.5, 0.1, 0.36, m.body, 0, 0.04, 0); // collar
+      box(head, 0.34, 0.3, 0.3, m.belly, 0, 0.2, 0);
+      eyes(head, 0.24, 0.155, 0.08, 0.08);
+      box(head, 0.08, 0.06, 0.04, 0xe89a9a, 0, 0.19, 0.16); // nose
+      box(head, 0.26, 0.07, 0.04, m.dark, 0, 0.145, 0.165); // big fake moustache
+      for (const s of [-1, 1]) box(head, 0.08, 0.05, 0.04, m.dark, s * 0.15, 0.125, 0.165);
+      box(head, 0.46, 0.04, 0.46, m.accent, 0, 0.36, 0); // hat brim
+      box(head, 0.28, 0.16, 0.28, m.accent, 0, 0.46, 0);
+      box(head, 0.29, 0.04, 0.29, m.dark, 0, 0.4, 0);
+    }
+  });
+}
+const SHAPES_SQUAD = { beaniestack, sockpyramid, bucketcolumn, trenchcoat };
+/* ==== end of T34 squad shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
@@ -3780,4 +3932,5 @@ export const SHAPES = {
   ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
   ...SHAPES_TIME, ...SHAPES_CAMO, ...SHAPES_CYBER,
   ...SHAPES_COZY, ...SHAPES_TREASURE,
+  ...SHAPES_SQUAD,
 };

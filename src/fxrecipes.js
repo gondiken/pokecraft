@@ -1880,3 +1880,117 @@ SIG.crownjewel = (k, from, to) => {
   };
 };
 /* ==== end of T21 ==== */
+
+/* ==== T34: squad ==== */
+Object.assign(FX_COLORS, { squad: [0xff9f5a, 0x5ab0e0, 0x8ad46a] });
+
+// A conga line of six little buddies hops along the arc in single file.
+TRAVEL.squad = k => {
+  const N = 6;
+  const line = k.points({ n: N, tex: 'buddy', size: 0.42, glow: true, colors: [0xff9f5a, 0x5ab0e0, 0x8ad46a] });
+  return {
+    dur: 420,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.5);
+        if (t < 0) { line.hide(i); continue; }
+        k.at(t, A, 0.3);
+        line.set(i, A.x, A.y + Math.abs(Math.sin(p * 16 + i * 0.9)) * 0.28, A.z);
+      }
+      line.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+
+// Six buddies drop onto the target into a little 3-2-1 pyramid, then scatter and fade; four stars twinkle.
+IMPACT.squad = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 6;
+  const crew = k.points({ n: N, tex: 'buddy', size: 0.4 * m, glow: true, colors: [0xff9f5a, 0x5ab0e0, 0x8ad46a] });
+  const stars = k.points({ n: 4, tex: 'star', size: 0.24 * m, glow: true, colors: [0xffffff, 0xfff6c0] });
+  const slots = [[-0.3, 0], [0, 0], [0.3, 0], [-0.15, 0.3], [0.15, 0.3], [0, 0.6]];
+  const s = k.seeds(N, 1);
+  return {
+    dur: 380,
+    step(p) {
+      const land = clamp01(p / 0.4), go = clamp01((p - 0.6) / 0.4);
+      for (let i = 0; i < N; i++) {
+        const [x, y] = slots[i];
+        const drop = (1 - land) * (1 - land) * (1.4 + i * 0.25);
+        const ang = (i / N) * 6.283 + s[i] * 0.8;
+        const out = go * go * (0.8 + s[i] * 0.5) * m;
+        planeAt(B, to.pos, k.side, x * m + Math.cos(ang) * out, 0.1 + y * m + drop + Math.abs(Math.sin(ang)) * out);
+        crew.set(i, B.x, B.y, B.z);
+      }
+      crew.fade(1 - go);
+      for (let i = 0; i < 4; i++) {
+        const tw = wave21(clamp01(p * 1.5 - 0.35 - i * 0.1));
+        if (tw <= 0.02) { stars.hide(i); continue; }
+        const ang = (i / 4) * 6.283 + 0.5, d = (to.r * 0.5 + 0.25) * m;
+        stars.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.2 + (i % 2) * 0.35, to.pos.z + Math.sin(ang) * d);
+      }
+      stars.fade(0.95);
+    },
+  };
+};
+
+// Tower Topple: a column of five buddies grows above the user, tips over like a tree towards the target and lands with a ring and puffs.
+SIG.towertopple = (k, from, to) => {
+  const N = 5;
+  const column = k.points({ n: N, tex: 'buddy', size: 0.5, glow: true, colors: [0xff9f5a, 0x5ab0e0, 0x8ad46a, 0xff9f5a, 0x5ab0e0] });
+  const puffs = k.points({ n: 8, tex: 'puff', size: 0.5, colors: [0xe8e4d8, 0xb8b4a8] });
+  const ring = k.mesh('ring', { color: 0xffd23a, opacity: 0.7 });
+  const s = k.seeds(8, 2);
+  const feet = feetOf(to);
+  const dx = to.pos.x - from.pos.x, dz = to.pos.z - from.pos.z, dist = Math.hypot(dx, dz) || 1;
+  const ux = dx / dist, uz = dz / dist;
+  const L = Math.min(6, Math.max(2.4, dist - to.r * 0.4)); // the column is long enough to reach the target
+  const foot = feetOf(from) + 0.2;
+  return {
+    dur: 650,
+    step(p) {
+      const grow = clamp01(p / 0.3), tip = clamp01((p - 0.3) / 0.4), hit = clamp01((p - 0.7) / 0.3);
+      const th = tip * tip * (Math.PI / 2); // slow start, then it falls
+      for (let i = 0; i < N; i++) {
+        if (grow < (i + 0.5) / N && tip === 0) { column.hide(i); continue; }
+        const h = ((i + 1) / N) * L;
+        column.set(i, from.pos.x + ux * Math.sin(th) * h, foot + Math.cos(th) * h, from.pos.z + uz * Math.sin(th) * h);
+      }
+      column.fade(fadeOut(p, 0.85));
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, (to.r * 0.5 + k.ease(hit) * 1.4) * (hit > 0 ? 1 : 0)));
+      ring.material.opacity = hit > 0 ? 0.7 * (1 - hit) : 0;
+      for (let i = 0; i < 8; i++) {
+        if (hit <= 0) { puffs.hide(i); continue; }
+        const ang = s[i * 2] * 6.283, d = (to.r * 0.4 + 0.2 + s[i * 2 + 1] * 0.7) * k.ease(hit);
+        puffs.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.2 + s[i * 2 + 1] * 0.6 * k.ease(hit), to.pos.z + Math.sin(ang) * d);
+      }
+      puffs.fade(1 - hit);
+    },
+  };
+};
+
+// Count Off!: four buddies pop up above the target one at a time, left to right, each with a star flash; then all jump together.
+SIG.countoff = (k, from, to) => {
+  const N = 4;
+  const crew = k.points({ n: N, tex: 'buddy', size: 0.5, glow: true, colors: [0xff9f5a, 0x5ab0e0, 0x8ad46a, 0xff9f5a] });
+  const flash = k.points({ n: N, tex: 'star', size: 0.3, glow: true, colors: [0xffffff, 0xfff6c0] });
+  return {
+    dur: 650,
+    step(p) {
+      const jump = clamp01((p - 0.7) / 0.3);
+      for (let i = 0; i < N; i++) {
+        const at = 0.08 + i * 0.15;
+        if (p < at) { crew.hide(i); flash.hide(i); continue; }
+        const up = clamp01((p - at) / 0.1);
+        planeAt(B, to.pos, k.side, (i - 1.5) * 0.55, to.top - to.pos.y + 0.25 + Math.sin(up * Math.PI * 0.5) * 0.2 + Math.abs(Math.sin(jump * Math.PI * 2)) * 0.35);
+        crew.set(i, B.x, B.y, B.z);
+        const f = clamp01((p - at) / 0.14);
+        if (f >= 1) flash.hide(i); else flash.set(i, B.x + 0.28, B.y + 0.28, B.z);
+      }
+      crew.fade(fadeOut(p, 0.9));
+      flash.fade(0.95);
+    },
+  };
+};
+/* ==== end of T34 ==== */

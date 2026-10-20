@@ -2,6 +2,8 @@
 // the Cloud Gym floating out of reach until you build up to it, and pictures of each new gym.
 import fs from 'node:fs';
 import { openGame, click, playBattle, seedSave, continueGame } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const NG = GYMS.length; // all gyms, also those added later
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const SEEDS = [1, 7, 99, 777, 4242, 123456];
@@ -88,7 +90,7 @@ export default async function ({ browser, base, t }) {
   }, [SEEDS, GOO_FALLBACK_SEED]);
   for (const seed of SEEDS) {
     const w = worlds[seed], o = OLD[seed];
-    t.ok(w.n === 27 && w.order, `seed ${seed}: 27 gyms in GYMS order`);
+    t.ok(w.n === NG && w.order, `seed ${seed}: ${NG} gyms in GYMS order`);
     t.ok(JSON.stringify(w.old) === JSON.stringify(o.gyms) && JSON.stringify(w.tower) === JSON.stringify(o.tower) && JSON.stringify(w.fossil) === JSON.stringify(o.fossil),
       `seed ${seed}: gyms 1-18, the tower and the Fossil Gym are where they were before the new gyms`);
     const [light, paper, goo, sky] = w.news;
@@ -109,7 +111,7 @@ export default async function ({ browser, base, t }) {
     t.ok(w.boxes >= 4, `seed ${seed}: the new gyms' boxes are recorded (${w.boxes})`);
   }
   const fb = worlds[GOO_FALLBACK_SEED];
-  t.ok(fb.n === 27 && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
+  t.ok(fb.n === NG && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
 
   // 2. The Cloud Gym and (wave 6) the Saucer Gym are out of reach until you build up to them.
   const reach = await page.evaluate(async ([seeds]) => {
@@ -228,7 +230,7 @@ export default async function ({ browser, base, t }) {
   for (const [id, file] of [['light', 'gym-light'], ['paper', 'gym-paper'], ['sky', 'gym-sky']]) {
     t.ok(await aim(id), `found a clear view of the ${id} gym`);
     await page.waitForTimeout(4500);
-    await page.screenshot({ path: SHOTS + file + '.png' });
+    await page.screenshot({ path: SHOTS + file + '.png', timeout: 120000 });
   }
   // The Goo Gym's cavern (puddles, glowcaps, goo dripping from the roof), lamps lit.
   t.ok(await page.evaluate(() => !!window.pokecraft.world.gyms.find(x => x.def.id === 'slime').cave), 'the Goo Gym stands in a cave on seed 1');
@@ -242,7 +244,7 @@ export default async function ({ browser, base, t }) {
     return g.world.get(gym.x + fx * d, tread, gym.z + fz * d) !== 0;
   }), 'a view of the Goo Gym from its stairs');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-slime.png' });
+  await page.screenshot({ path: SHOTS + 'gym-slime.png', timeout: 120000 });
 
   // 4. All four can be beaten: trainer, then leader, then the badge (a strong team, standing inside each gym).
   for (const [id, badge] of [['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {

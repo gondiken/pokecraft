@@ -1,6 +1,6 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
 import { REALMS } from './realms.js'; // T31
-import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, effectiveness, moveInfo } from './species.js';
+import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, CREW, effectiveness, moveInfo } from './species.js';
 import { TRAITS } from './traits.js';
 import { BLOCKS } from './blocks.js';
 import { condOf, condText } from './spawnrules.js';
@@ -332,6 +332,7 @@ export class Book {
     } else {
       info.append(el('p', { class: 'book-desc' }, sp.desc));
       for (const [tid, t] of Object.entries(TRAITS)) if (t.species[id]) info.append(el('p', { class: 'book-note book-trait', 'data-trait': tid }, t.book));
+      if (sp.weakensWithHp) info.append(el('p', { class: 'book-note book-crew' }, CREW.book)); // T34
       const yours = this.yoursSection(id);
       if (yours) info.append(yours);
       info.append(this.livesSection(id), this.evolutionSection(id, queue), this.movesSection(id), this.matchupSection(sp.type));

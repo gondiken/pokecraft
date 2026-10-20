@@ -4,6 +4,8 @@
 import fs from 'node:fs';
 import { devices } from 'playwright';
 import { openGame, newGame, playBattle } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const NG = GYMS.length; // all gyms, also those added later
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 
@@ -29,7 +31,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 1);
   await recordToasts(page);
   await page.evaluate(() => { const g = window.pokecraft; g.creatures.clear(); document.exitPointerLock(); });
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), '27 gyms are placed');
+  t.ok(await page.evaluate(n => window.pokecraft.world.gyms.length === n, NG), `${NG} gyms are placed`);
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return GYMS.find(g => g.id === 'alien').night === true && GYMS.slice(18, 22).map(g => g.id).join() === 'light,paper,slime,sky';
@@ -76,13 +78,13 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 8, z: gym.z + 0.5 });
   });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-alien-day.png' });
+  await page.screenshot({ path: SHOTS + 'gym-alien-day.png', timeout: 120000 });
 
   // 2. At night they are back, the saucer hovers, and the gym works.
   await setTime(page, 0.75, true);
   await page.evaluate(() => { for (const s of window.pokecraft.npcs.saucers) s.rise = 0; });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-alien-night.png' });
+  await page.screenshot({ path: SHOTS + 'gym-alien-night.png', timeout: 120000 });
   t.ok(await page.evaluate(`${who('leader', 'alien')}.model.visible && ${who('trainer', 'alien')}.model.visible`), 'the Saucer Gym people are there at night');
   t.ok(await page.evaluate(() => window.pokecraft.npcs.saucers.length === 1 && window.pokecraft.npcs.saucers[0].group.visible), 'the flying saucer is out at night');
   await stand('alien');
@@ -186,8 +188,8 @@ export default async function ({ browser, base, t }) {
     t.ok(await page.evaluate(gid => window.pokecraft.badges.includes(gid), id), `${badge} Badge awarded`);
   }
   msg = await toasts(page);
-  t.ok(await page.evaluate(() => window.pokecraft.badges.length === 27) && msg.includes('(27/27)') && msg.includes('Tower is open'),
-    `the 27th badge says the Champion's Tower is open`);
+  t.ok(await page.evaluate(n => window.pokecraft.badges.length === n, NG) && msg.includes(`(${NG}/${NG})`) && msg.includes('Tower is open'),
+    `the last badge says the Champion's Tower is open`);
 
   // 4. Cloud Gym hints.
   await clearToasts(page);
@@ -238,9 +240,9 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 2, z: gym.z + 0.5 });
   });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-sky-ground.png' });
+  await page.screenshot({ path: SHOTS + 'gym-sky-ground.png', timeout: 120000 });
 
-  // 5. The badge HUD with 27 diamonds, on desktop.
+  // 5. The badge HUD with all the diamonds, on desktop.
   await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     g.badges = GYMS.map(x => x.id);
@@ -251,8 +253,8 @@ export default async function ({ browser, base, t }) {
     const r = document.getElementById('badges').getBoundingClientRect();
     return { n: document.querySelectorAll('#badges > *').length, got: document.querySelectorAll('#badges > .got').length, h: r.height, w: r.width, right: r.right, vw: innerWidth };
   });
-  t.ok(desk.n === 27 && desk.got === 27 && desk.h <= 90 && desk.right <= desk.vw, `desktop: 27 badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
-  await page.screenshot({ path: SHOTS + 'badges-25-desktop.png' });
+  t.ok(desk.n === NG && desk.got === NG && desk.h <= 90 && desk.right <= desk.vw, `desktop: ${NG} badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
+  await page.screenshot({ path: SHOTS + 'badges-25-desktop.png', timeout: 120000 });
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
@@ -276,8 +278,8 @@ export default async function ({ browser, base, t }) {
       const hit = others.some(o => !(o.right < hud.left || o.left > hud.right || o.bottom < hud.top || o.top > hud.bottom));
       return { n: document.querySelectorAll('#badges > *').length, h: r.height, right: r.right, vw: innerWidth, hit };
     });
-    t.ok(m.n === 27 && m.h <= 90 && m.right <= m.vw && !m.hit, `iPad ${name}: 27 badges fit (${Math.round(m.h)}px high) and the touch buttons are clear`);
-    await pad.screenshot({ path: SHOTS + `badges-25-ipad-${name}.png` });
+    t.ok(m.n === NG && m.h <= 90 && m.right <= m.vw && !m.hit, `iPad ${name}: ${NG} badges fit (${Math.round(m.h)}px high) and the touch buttons are clear`);
+    await pad.screenshot({ path: SHOTS + `badges-25-ipad-${name}.png`, timeout: 120000 });
     t.ok(!pad.errors.length, `iPad ${name}: no page errors ${pad.errors.join('; ')}`);
     await pad.context().close();
   }

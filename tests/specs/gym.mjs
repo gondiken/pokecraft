@@ -1,10 +1,12 @@
 // Gym flow: leader refuses before the trainer is beaten; trainer then leader; badge awarded.
 import { openGame, newGame, playBattle, continueGame, waitFor, seedSave } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const NG = GYMS.length; // all gyms, also those added later
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   await newGame(page, 1);
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), '27 gyms are placed');
+  t.ok(await page.evaluate(n => window.pokecraft.world.gyms.length === n, NG), `${NG} gyms are placed`);
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return window.pokecraft.world.gyms.every((g, i) => g.def === GYMS[i]);

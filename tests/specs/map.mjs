@@ -1,5 +1,7 @@
 // The bigger map, and old saves (made when the map was 192x192) keeping their building.
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const NG = GYMS.length; // all gyms, also those added later
 
 export default async function ({ browser, base, t }) {
   // An old save: a brick placed at (100, 30, 100), stored by its index in the old 192x192 map.
@@ -36,7 +38,7 @@ export default async function ({ browser, base, t }) {
   t.ok(terrain.diff === 0 && terrain.holes < 600, `with caves the surface is the same except around ${terrain.holes} entrance columns`);
   await continueGame(page);
   t.ok(await page.evaluate(() => window.pokecraft.world.get(100, 30, 100) === 11), "an old save's block is still in the same place");
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), 'all 27 gyms fit');
+  t.ok(await page.evaluate(n => window.pokecraft.world.gyms.length === n, NG), `all ${NG} gyms fit`);
   await page.evaluate(() => document.exitPointerLock());
   await page.waitForTimeout(800);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')));

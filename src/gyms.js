@@ -282,6 +282,22 @@ export const GYMS = [
     intro: ['You found all three golden keys!', 'My treasures are the strongest of all. Ready?'],
     lose: 'What a treasure of a trainer! The Jackpot Badge is yours.',
   },
+  {
+    id: 'squad', type: 'squad', name: 'Big Top Gym', badge: 'Pyramid Badge', slot: 6, build: 'bigTop',
+    leaderWhere: 'at the top of the pyramid',
+    welcome: 'Welcome to the Big Top! Climb the pyramid one step at a time.',
+    leader: { name: 'Leader Topsy', colors: { shirt: 0x46a0d8, pants: 0xff9f5a, hair: 0x3a2a1a, skin: 0xe8b98a } },
+    trainers: [
+      { name: 'Acrobat Lulu', colors: { shirt: 0xff9f5a, pants: 0x2a3a5a, hair: 0xe0c060, skin: 0xf2c79a },
+        team: [['teetertot', 48], ['bucketeer', 48], ['tallcoat', 48]], intro: ['Hup! I hold up the bottom of the pyramid.', 'Beat me and climb up!'] },
+      { name: 'Tumbler Ned', colors: { shirt: 0x8ad46a, pants: 0x3a2a4a, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['sockhop', 49], ['tallcoat', 49], ['bucketeam', 49]], intro: ['Whoa, careful up here! It wobbles!'] },
+    ],
+    leaderTeam: [['bucketeam', 49], ['socktacular', 50, ['countoff', 'pileon', 'shriek', 'allhandsin']],
+      ['teetertower', 50, ['towertopple', 'pileon', 'swoop', 'squadhuddle']]],
+    intro: ['You climbed all the way to the top!', 'My squad sticks together. Can you knock us down?'],
+    lose: 'The whole pyramid tumbled down! The Pyramid Badge is yours.',
+  },
 ];
 
 // Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).

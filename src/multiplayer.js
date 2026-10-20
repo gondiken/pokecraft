@@ -17,7 +17,7 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
-const WORLD_VERSION = 12; // T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
+const WORLD_VERSION = 13; // wave 11 13: new slot gyms (T34 Big Top in slot 6). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
