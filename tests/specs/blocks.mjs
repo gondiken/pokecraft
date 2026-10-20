@@ -27,6 +27,7 @@ export default async function ({ browser, base, t }) {
         id: B[k] === 57 + i, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT),
         noLight: !!BLOCKS[B[k]].noLight, glow: !!BLOCKS[B[k]].glow, wallText: !!BLOCKS[B[k]].wallText })),
       vault: ['KEY_CHEST', 'VAULT_DOOR'].map((k, i) => ({ id: B[k] === 73 + i, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), limited: !!BLOCKS[B[k]].limited, tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText })),
+      dream: [['BOUNCE', 87], ['DREAM_GRASS', 88]].map(([k, n]) => ({ id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), bounce: BLOCKS[B[k]].bounce, fixed: !!BLOCKS[B[k]].fixed, wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight })),
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
       woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82)),
       biomes: [...biomes].sort(),
@@ -43,6 +44,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.gymBlocks.every(b => b.id && b.def && !b.placeable && b.tiles), 'the T19 gym blocks 57-64 exist, have tiles and cannot be built with');
   t.ok(r.gymBlocks.slice(0, 3).every(b => b.glow && b.noLight && b.wallText) && r.gymBlocks[7].wallText, 'lasers glow without lighting their surroundings; lasers and the clock door have a wall text');
   t.ok(r.vault.every(b => b.id && b.def && !b.placeable && !b.limited && b.tiles && b.wallText), 'the T23 vault blocks 73-74 exist, have tiles and a wall text, and cannot be built with');
+  t.ok(r.dream.every(b => b.id && b.def && !b.placeable && b.tiles) && r.dream[0].bounce === 14 && r.dream[0].fixed && r.dream[0].wallText && r.dream[0].glow && r.dream[0].noLight && !r.dream[1].fixed && !r.dream[1].bounce, 'the T35 blocks 87 (Bounce Block: bounce 14, fixed, wall text, glows without lighting) and 88 (Dream Grass) exist, have tiles and cannot be built with');
   t.ok(JSON.stringify(r.wool) === JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
     `the four new wool blocks are 49-52 and have names (${r.wool.map(w => w.join(' ')).join(', ')})`);
   const want = ['beach', 'desert', 'forest', 'meadow', 'mountain', 'peak', 'plains', 'snow', 'swamp', 'taiga'];

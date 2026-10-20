@@ -18,7 +18,7 @@ export const ISLES = [
   { id: 'outerE', dx: 65, dz: -50, r: 12, top: 22, kind: 'candy', outer: true },
   { id: 'outerW', dx: -41, dz: -48, r: 10, top: 23, kind: 'hanging', outer: true },
   { id: 'outerS', dx: 78, dz: 28, r: 10, top: 13, kind: 'checker', outer: true }, // low: has a sea pad
-  { id: 'lowW', dx: -46, dz: 34, r: 7, top: 12, kind: 'candy' },           // low: has a sea pad
+  { id: 'lowW', dx: -45, dz: 35, r: 7, top: 12, kind: 'candy' },           // low: has a sea pad
   { id: 'lowNW', dx: -55, dz: -62, r: 7, top: 13, kind: 'candy', outer: true }, // low: has a sea pad
   { id: 'lowNE', dx: 80, dz: -66, r: 7, top: 13, kind: 'candy', outer: true },  // low: has a sea pad
 ];
@@ -91,7 +91,7 @@ export function dreamLand(world, def) {
         if (isle.kind === 'checker') topBlock = ((x >> 1) + (z >> 1)) & 1 ? WOOL.dream : WOOL.paper;
         else {
           const pn = noise(x / 5 + 50, z / 5 + 50, seed + 9);
-          topBlock = pn > 0.82 ? WOOL.pixie : pn < 0.12 ? WOOL.mind : B.DREAM_GRASS;
+          topBlock = (isle.kind === 'home' && d < 8) || (pn <= 0.82 && pn >= 0.12) ? B.DREAM_GRASS : pn > 0.5 ? WOOL.pixie : WOOL.mind; // the arrival area is always Dream Grass
         }
         for (let y = y0; y <= h; y++) put(x, y, z, y === h ? topBlock : y >= h - 2 ? WOOL.sky : B.CLOUD);
         world.ground[x + z * W] = h;
@@ -149,7 +149,7 @@ export function dreamLand(world, def) {
   const isReserved = (x, z, m = 0) => reserved.some(b => x >= b[0] - m && x <= b[1] + m && z >= b[2] - m && z <= b[3] + m);
   const home = byId.home, arriveX = home.x, arriveZ = home.z;
   reserved.push([arriveX - 6, arriveX + 8, arriveZ - 4, arriveZ + 4]);
-  for (const [x, , z] of pads) reserved.push([x, x, z, z]);
+  for (const [x, , z] of pads) reserved.push([x - 3, x + 3, z - 3, z + 3]); // a tree's crown reaches 2 sideways: nothing grows over a pad
   const gymIsle = byId.gym;
   if (gymIsle) reserved.push([gymIsle.x - 9, gymIsle.x + 9, gymIsle.z - 9, gymIsle.z + 9]);
 
