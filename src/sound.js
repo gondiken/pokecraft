@@ -188,6 +188,7 @@ const SOUNDS = {
   checkpoint: () => notes([784, 1175], 0.1, { len: 0.22, type: 'triangle', vol: 0.24 }),
   // T36 parkour: a quick whoosh (sweeping down) and a soft landing tap.
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
+  'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.

@@ -6,6 +6,11 @@ import path from 'node:path';
 import { openGame, openPair, newGame, click, pause, platform, startWeakBattle, playBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
+// Big moves added by wave 11 (each task adds its own key, kinds -> how many): the T25 numbers below stay as they were.
+const WAVE11_BIG = { squad: { rally: 1, shield: 1, sacrifice: 1 } }; // T34
+const ADD = {};
+for (const k of Object.values(WAVE11_BIG)) for (const [kind, n] of Object.entries(k)) ADD[kind] = (ADD[kind] || 0) + n;
+const ADD_TOTAL = Object.values(ADD).reduce((a, b) => a + b, 0);
 
 // A wild battle against a level-2 Fluffin with 1 HP (like startWeakBattle) with a chosen lead and HP.
 const startUi = (page, { species, level, moves }) => page.evaluate(async ({ species, level, moves }) => {

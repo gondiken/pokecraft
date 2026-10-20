@@ -3,6 +3,7 @@
 // Champion title survive, and the tower asks for all 27 badges (since T19 also from old Champions, who keep the title).
 import fs from 'node:fs';
 import { GYMS } from '../../src/gyms.js';
+const NG = GYMS.length; // all gyms, also those added later
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
@@ -226,7 +227,7 @@ export default async function ({ browser, base, t }) {
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p25 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p25.toasts.includes('New gyms have appeared: the Cozy Gym and Treasure Vault! Follow the arrow.'), `the 25-badge player is told about the Cozy Gym and Treasure Vault (${p25.toasts})`);
+  t.ok(p25.toasts.includes(`New gyms have appeared: the ${GYMS.slice(25).map(g => g.name).reduce((a, n, i, all) => (i === 0 ? n : i === all.length - 1 ? `${a} and ${n}` : `${a}, ${n}`), '')}! Follow the arrow.`), `the 25-badge player is told about the gyms after the Cozy Gym by name (${p25.toasts})`);
   t.ok(p25.guide.includes('Cozy Gym') && p25.guide.includes('build a cozy home'), `the guide says to build a cozy home (${p25.guide})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

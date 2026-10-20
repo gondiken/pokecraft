@@ -10,6 +10,7 @@ import { buildFirewallMaze } from './firewall.js';
 import { buildTreasureVault } from './treasurevault.js';
 import { buildRestaurant } from './restaurant.js'; // T33
 import { buildObstacleCourse } from './obstaclecourse.js'; // T36
+import { buildBigTop } from './bigtop.js'; // T34
 import { OLD_W, OLD_D, MID_X, MID_Z, WORLD_H, WATER_LEVEL, hash2, groundOf, PLANTS } from './world.js';
 
 // Builders of the slot gyms (T19), by `def.build`: (world, def, slot) => gym object. Each writes only inside slot.box and
@@ -17,6 +18,7 @@ import { OLD_W, OLD_D, MID_X, MID_Z, WORLD_H, WATER_LEVEL, hash2, groundOf, PLAN
 const SLOT_BUILDERS = { clockTower: buildClockTower, hiddenHill: buildHiddenHill, firewallMaze: buildFirewallMaze, treasureVault: buildTreasureVault };
 SLOT_BUILDERS.restaurant = buildRestaurant; // T33
 SLOT_BUILDERS.obstacleCourse = buildObstacleCourse; // T36
+SLOT_BUILDERS.bigTop = buildBigTop; // T34
 
 // Slot boxes of the new land (T17): the 5 places where gyms 23+ go. Never change these numbers.
 export const SLOT_R = 24, SLOT_GAP = 56;

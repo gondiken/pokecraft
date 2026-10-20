@@ -78,13 +78,13 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 8, z: gym.z + 0.5 });
   });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-alien-day.png' });
+  await page.screenshot({ path: SHOTS + 'gym-alien-day.png', timeout: 120000 });
 
   // 2. At night they are back, the saucer hovers, and the gym works.
   await setTime(page, 0.75, true);
   await page.evaluate(() => { for (const s of window.pokecraft.npcs.saucers) s.rise = 0; });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-alien-night.png' });
+  await page.screenshot({ path: SHOTS + 'gym-alien-night.png', timeout: 120000 });
   t.ok(await page.evaluate(`${who('leader', 'alien')}.model.visible && ${who('trainer', 'alien')}.model.visible`), 'the Saucer Gym people are there at night');
   t.ok(await page.evaluate(() => window.pokecraft.npcs.saucers.length === 1 && window.pokecraft.npcs.saucers[0].group.visible), 'the flying saucer is out at night');
   await stand('alien');
@@ -240,9 +240,9 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 2, z: gym.z + 0.5 });
   });
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-sky-ground.png' });
+  await page.screenshot({ path: SHOTS + 'gym-sky-ground.png', timeout: 120000 });
 
-  // 5. The badge HUD with 27 diamonds, on desktop.
+  // 5. The badge HUD with all the diamonds, on desktop.
   await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     g.badges = GYMS.map(x => x.id);

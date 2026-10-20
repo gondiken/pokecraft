@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
   xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo, multiHits,
+  hpPower, crewHit, setModelHealth, // T34
 } from './species.js';
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
@@ -232,6 +233,16 @@ export class Battle {
       const nm = this.friendCard.querySelector('.nm');
       if (nm) nm.textContent = `${this.duel.name}'s ${nm.textContent}`;
     }
+    // T34: crews show their health (generic: a no-op for models without members)
+    for (const [m, c] of [[this.allyModel, this.ally], [this.foeModel, this.foe], [this.friendModel, this.friend]]) {
+      if (m && c && m.userData.who === c) setModelHealth(m, c.hp / statsFor(c).maxHp);
+    }
+  }
+
+  // T34: remember which creature a battle model shows, and start it with the members its health allows.
+  showsCreature(model, c) {
+    model.userData.who = c;
+    setModelHealth(model, c.hp / statsFor(c).maxHp, { instant: true });
   }
 
   choose(buttons) {
@@ -311,6 +322,7 @@ export class Battle {
     const model = buildModel(this.ally.species);
     model.position.copy(pos);
     model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
+    this.showsCreature(model, this.ally);
     g.scene.add(model);
     this.allyModel = model;
     this.allyHome = pos.clone();
@@ -340,6 +352,7 @@ export class Battle {
     const model = buildModel(this.friend.species);
     model.position.copy(pos);
     model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
+    this.showsCreature(model, this.friend);
     g.scene.add(model);
     this.friendModel = model;
     return tween(300, t => model.scale.setScalar(easeOut(t)));
@@ -364,7 +377,10 @@ export class Battle {
   spot(side) {
     const m = this.modelOf(side);
     if (!m || !m.parent || !m.visible) return null;
-    const box = new THREE.Box3().setFromObject(m);
+    const box = new THREE.Box3();
+    const members = m.userData.parts?.members;
+    if (members?.length) { m.updateMatrixWorld(true); for (const mm of members) { if (mm.g.visible) box.expandByObject(mm.g); } } // T34: what is left of the stack
+    else box.setFromObject(m);
     if (box.isEmpty()) return null;
     const pos = box.getCenter(new THREE.Vector3());
     return { pos, top: box.max.y, r: Math.max(0.3, (box.max.x - box.min.x) / 2) };
@@ -387,6 +403,7 @@ export class Battle {
     model.position.copy(pos);
     model.rotation.y = Math.atan2(p.x - pos.x, p.z - pos.z);
     model.scale.setScalar(0.01);
+    this.showsCreature(model, this.foe);
     g.scene.add(model);
     this.foeModel = model;
     this.foePos = pos;
@@ -408,6 +425,7 @@ export class Battle {
     model.position.copy(at);
     model.rotation.y = Math.atan2(mid.x - at.x, mid.z - at.z);
     model.scale.setScalar(0.01);
+    this.showsCreature(model, this.foe);
     g.scene.add(model);
     this.foeModel = model;
     this.refresh();
@@ -479,6 +497,7 @@ export class Battle {
       wild.frozen = true;
       wild.face(g.player.pos);
       this.foeModel = wild.model;
+      this.showsCreature(wild.model, wild.data); // T34
       this.foePos = wild.pos;
       this.stepBack(wild.pos, 4.5);
       g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
@@ -854,7 +873,7 @@ export class Battle {
         const eff = effectiveness(mv.type, allyType);
         if (eff === 0) return 0;
         const stab = mv.type === foeType ? 1.5 : 1;
-        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1) * this.takenFactor(ally) * this.fieldFactor(mv.type);
+        return mv.power * eff * stab * (mv.sure ? 1 : mv.acc) * (mv.fx?.kind === 'multi' ? 3 : 1) * crewHit(ally, mv) * this.takenFactor(ally) * this.fieldFactor(mv.type);
       }
       const fx = mv.fx;
       if (fx.kind === 'heal') return foe.hp < statsFor(foe).maxHp * 0.45 && fm.healed < 1 ? 120 : 0;
@@ -935,7 +954,7 @@ export class Battle {
     const eff = effectiveness(mv.type, SPECIES[def.species].type);
     const stab = mv.type === SPECIES[atk.species].type ? 1.5 : 1;
     const crit = this.rng() < 1 / 16 ? 1.5 : 1; // draw 3
-    const atkPower = as.atk * stage(ma.atk) * (atk.boost || 1), defPower = ds.def * stage(md.def);
+    const atkPower = as.atk * stage(ma.atk) * (atk.boost || 1) * hpPower(atk), defPower = ds.def * stage(md.def);
     const base = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * atkPower / defPower) / 50) + 2;
     const roll = 0.85 + this.rng() * 0.15; // draw 4
     let mult = 1;
@@ -944,7 +963,7 @@ export class Battle {
       else { await this.backfire(side, mv, roll); return; }
     }
     if (mfx?.kind === 'lastword') { fx?.status('power', this.spot(side)); sound.play('kind:lastword'); }
-    const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crit * mult * this.fieldFactor(mv.type) * this.takenFactor(def) * roll));
+    const dmgNow = () => Math.max(1, Math.floor(base * stab * eff * crewHit(def, mv) * crit * mult * this.fieldFactor(mv.type) * this.takenFactor(def) * roll));
     const hpStart = def.hp;
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side !== 'foe' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
@@ -992,7 +1011,7 @@ export class Battle {
   async backfire(side, mv, roll) {
     const atk = this.creature(side), ma = this.mods(atk), fx = this.game.fx;
     const st = statsFor(atk);
-    const selfBase = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * st.atk * stage(ma.atk) * (atk.boost || 1) / (st.def * stage(ma.def))) / 50) + 2;
+    const selfBase = Math.floor((((2 * atk.level) / 5 + 2) * mv.power * st.atk * stage(ma.atk) * (atk.boost || 1) * hpPower(atk) / (st.def * stage(ma.def))) / 50) + 2;
     const loss = Math.max(1, Math.floor(selfBase * roll * this.takenFactor(atk)));
     atk.hp = Math.max(0, atk.hp - loss);
     sound.play('kind:oops');

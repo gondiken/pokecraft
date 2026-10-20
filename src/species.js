@@ -220,6 +220,13 @@ export const MOVES = {
   goldrush: mv('Gold Rush', 'treasure', 75, 0.9),
   bling: mv('Bling!', 'treasure', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
   crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
+  // T34 squad
+  onetwo: mv('One-Two', 'squad', 40, 1),
+  highfives: mv('High Fives', 'squad', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
+  pileon: mv('Pile On', 'squad', 75, 0.9),
+  teamcheer: mv('Team Cheer', 'squad', 0, 1, { fx: { kind: 'raise', stat: 'atk' } }),
+  towertopple: mv('Tower Topple', 'squad', 90, 0.95, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
+  countoff: mv('Count Off!', 'squad', 30, 1, { fx: { kind: 'multi', min: 2, max: 4 }, sig: true }),
 };
 
 /* ==== T33 food moves ==== */
@@ -363,6 +370,11 @@ const BIG_MOVES = {
     ['jackpot', 'Jackpot', 'risky', 'Half the time: triple hit! Or it hits you.'],
     ['treasurehunt', 'Treasure Hunt', 'field', 'Treasure moves are stronger for 5 turns. Foes too!'],
   ],
+  squad: [
+    ['allhandsin', 'All Hands In', 'rally', 'Everyone puts a hand in! Team hits harder. You get softer.'],
+    ['squadhuddle', 'Squad Huddle', 'shield', 'Everyone huddles up to guard the team. You rest next turn.'],
+    ['tagteam', 'Tag Team', 'sacrifice', 'Tag! You leave. Next friend comes in fresh and strong.'],
+  ],
 };
 BIG_MOVES.food = [ // T33
   ['dinnerbell', 'Dinner Bell', 'rally', 'Ding ding, dinner time! Whole team hits harder. You get softer.'],
@@ -451,6 +463,7 @@ const T1 = {
   cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
   sky: 'breezepuff', slime: 'slimeshot', light: 'glint', paper: 'paperflick',
   time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop', cozy: 'snuggle', treasure: 'coinflip',
+  squad: 'onetwo', // T34
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
@@ -458,6 +471,7 @@ const T2 = {
   cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
   sky: 'cloudburst', slime: 'slimeslam', light: 'sunbeam', paper: 'foldslam',
   time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam', cozy: 'warmhug', treasure: 'goldrush',
+  squad: 'pileon', // T34
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
@@ -465,6 +479,7 @@ const T3 = {
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
   sky: 'swoop', slime: 'stickygoo', light: 'flashbulb', paper: 'confetti',
   time: 'fastforward', camo: 'surprise', cyber: 'rapidclick', cozy: 'pillowfight', treasure: 'gemtoss',
+  squad: 'highfives', // T34
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
@@ -472,6 +487,7 @@ const T4 = {
   pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
   time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling',
+  squad: 'teamcheer', // T34
 };
 T1.food = 'nomnom'; T2.food = 'foodfight'; T3.food = 'sprinkles'; T4.food = 'snacktime'; // T33
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
@@ -1727,6 +1743,46 @@ export const SPECIES = {
     model: { shape: 'stickrunner', scale: 0.9, body: 0x3a3a5a, accent: 0xff9a4a, dark: 0x2a2a40, belly: 0xffe0c0, extras: [] },
   },
   /* ==== end of T36 parkour ==== */
+  /* ==== T34 squad ==== */
+  teetertot: {
+    name: 'Teetertot', type: 'squad', desc: "Three little ones in fuzzy hats, standing on each other's heads. The one on top waves at everybody.",
+    base: { hp: 45, atk: 62, def: 38, spd: 65 }, baseXp: 64, catchRate: 0.45, learn: L('squad', 'sky'), weakensWithHp: true,
+    evolve: { level: 22, into: 'teetertower' },
+    model: { shape: 'beaniestack', scale: 0.75, body: 0xff9f5a, accent: 0x5ab0e0, dark: 0x3a2a4a, belly: 0xb8f0d0, extras: [] },
+  },
+  teetertower: {
+    name: 'Teetertower', type: 'squad', desc: "Five friends stacked up to the clouds. It teeters and totters, but it has never fallen over. Yet!",
+    base: { hp: 72, atk: 108, def: 60, spd: 105 }, baseXp: 165, catchRate: 0.12, learn: L('squad', 'sky', [[30, 'towertopple']]), weakensWithHp: true,
+    model: { shape: 'beaniestack', scale: 0.85, body: 0x5ab0e0, accent: 0xff9f5a, dark: 0x2a2a4a, belly: 0xd8c8ff, extras: ['tall'] },
+  },
+  sockhop: {
+    name: 'Sockhop', type: 'squad', desc: "Three odd socks that hop around together. Nobody knows where their matching socks went.",
+    base: { hp: 50, atk: 58, def: 45, spd: 57 }, baseXp: 64, catchRate: 0.45, learn: L('squad', 'sound'), weakensWithHp: true,
+    evolve: { level: 22, into: 'socktacular' },
+    model: { shape: 'sockpyramid', scale: 0.9, body: 0xffffff, accent: 0xff6a6a, dark: 0x2a2a3a, belly: 0x8ad46a, extras: [] },
+  },
+  socktacular: {
+    name: 'Socktacular', type: 'squad', desc: "A pyramid of six chatty sock puppets. They all talk at once, and they always agree.",
+    base: { hp: 85, atk: 102, def: 78, spd: 80 }, baseXp: 165, catchRate: 0.12, learn: L('squad', 'sound', [[30, 'countoff']]), weakensWithHp: true,
+    model: { shape: 'sockpyramid', scale: 1.15, body: 0xffe27a, accent: 0x5ab0e0, dark: 0x2a2a3a, belly: 0xff8ac8, extras: ['six'] },
+  },
+  bucketeer: {
+    name: 'Bucketeer', type: 'squad', desc: "Three buddies with buckets on their heads, in a wobbly line. They pass water up and down.",
+    base: { hp: 50, atk: 60, def: 52, spd: 48 }, baseXp: 64, catchRate: 0.45, learn: L('squad', 'water'), weakensWithHp: true,
+    evolve: { level: 24, into: 'bucketeam' },
+    model: { shape: 'bucketcolumn', scale: 0.8, body: 0xffc890, accent: 0xe04a4a, dark: 0x3a2a2a, belly: 0xfff0d0, extras: [] },
+  },
+  bucketeam: {
+    name: 'Bucketeam', type: 'squad', desc: "Five bucket buddies in a swaying tower. When it rains they catch every drop and share it.",
+    base: { hp: 82, atk: 100, def: 92, spd: 66 }, baseXp: 170, catchRate: 0.1, learn: L('squad', 'water'), weakensWithHp: true,
+    model: { shape: 'bucketcolumn', scale: 0.95, body: 0xa8e0ff, accent: 0xffd23a, dark: 0x2a3a4a, belly: 0xffffff, extras: ['team'] },
+  },
+  tallcoat: {
+    name: 'Tallcoat', type: 'squad', desc: "Three little ones in one big coat, pretending to be a grown-up. The moustache fools nobody.",
+    base: { hp: 68, atk: 82, def: 52, spd: 58 }, baseXp: 100, catchRate: 0.3, learn: L('squad', 'camo'), weakensWithHp: true,
+    model: { shape: 'trenchcoat', scale: 1.0, body: 0xc8a070, accent: 0x5a4a3a, dark: 0x2a2a2a, belly: 0xffb8d0, extras: [] },
+  },
+  /* ==== end of T34 squad ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1898,13 +1954,24 @@ const HOME = [['snugbun', 1, 'home:cozy'], ['purrmit', 1, 'home:cozy'], ['pillow
   ['quiltbun', 0.15, 'home:cozy'], ['knitcat', 0.15, 'home:cozy'], ['dozeram', 0.12, 'home:cozy'],
   ['coinlet', 0.4, 'home:treasure'], ['crystafox', 0.4, 'home:treasure'], ['ringlet', 0.4, 'home:treasure'], ['lustrelle', 0.3, 'home:treasure'],
   ['kingcoin', 0.08, 'home:treasure'], ['prismfox', 0.08, 'home:treasure'], ['crownguard', 0.06, 'home:treasure']];
+// T34: Squad crews. Hat kids where it is cold, socks on the plains, bucket buddies at the beach, the coat sneaks about at night.
+const SPAWN_SQUAD = {
+  plains: [['sockhop', 1.2], ['teetertot', 0.8], ['tallcoat', 0.6, 'night'], ['socktacular', 0.12], ['teetertower', 0.1]],
+  meadow: [['sockhop', 1], ['teetertot', 0.6, 'day']],
+  snow:   [['teetertot', 1.2], ['teetertower', 0.15]],
+  taiga:  [['teetertot', 1], ['tallcoat', 0.4, 'night']],
+  beach:  [['bucketeer', 1.5], ['bucketeam', 0.15]],
+  swamp:  [['bucketeer', 0.8]],
+  forest: [['tallcoat', 0.8, 'night'], ['bucketeer', 0.5]],
+  desert: [['bucketeer', 0.5, 'day']],
+};
 const SPAWN_HOME = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, HOME]));
 // T36: Parkour creatures sit up high (the 'high' condition: treetops, roofs, pillars), in every biome above ground.
 const PARKOUR = [['teetail', 1, 'high'], ['zippet', 1, 'high'], ['vaultling', 1, 'high'], ['zoomstick', 0.6, 'high'],
   ['tightropa', 0.12, 'high'], ['ferrocket', 0.12, 'high'], ['highvault', 0.1, 'high']];
 const SPAWN_PARKOUR = Object.fromEntries(Object.keys(SPAWNS).filter(b => b !== 'cave').map(b => [b, PARKOUR]));
 
-for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME, SPAWN_PARKOUR]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME, SPAWN_PARKOUR, SPAWN_SQUAD]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 // T33: Food creatures live near where their food comes from.
 const SPAWN_FOOD = {
@@ -1931,6 +1998,16 @@ export function statsFor(c) {
     spd: Math.floor((b.spd * 2 * L) / 100) + 5,
   };
 }
+
+// T34: crews (species with `weakensWithHp: true`, read like `legendary`/`disguise`, never a type check). Their attack power
+// shrinks with their HP: x1 at full, x0.8 at half, x0.6 at the very end. Moves that hit many times knock more of them off: x1.2.
+export const CREW = { floor: 0.6, multi: 1.2, book: 'A crew of little ones! It gets weaker as it gets hurt, and moves that hit many times knock more of them off.' };
+export function hpPower(c) {
+  if (!SPECIES[c.species]?.weakensWithHp) return 1;
+  const f = Math.max(0, Math.min(1, c.hp / statsFor(c).maxHp));
+  return CREW.floor + (1 - CREW.floor) * f;
+}
+export const crewHit = (c, mv) => (SPECIES[c.species]?.weakensWithHp && mv.fx?.kind === 'multi' ? CREW.multi : 1);
 
 export const nameOf = c => SPECIES[c.species].name;
 
@@ -2502,6 +2579,7 @@ export function buildModel(species) {
 
 // Treasure sparkle: how many glints, and how long one twinkle lasts (s).
 const SPARKLES = 5, SPARKLE_TIME = 0.6;
+const FALL_TIME = 0.7; // T34: how long a crew member takes to tumble off
 
 // Procedural idle/walk animation.
 export function animateModel(group, t, moving) {
@@ -2539,6 +2617,16 @@ export function animateModel(group, t, moving) {
     s.g.scale.setScalar(a);
     s.g.rotation.z = k * 0.8;
   }
+  // T34 crews: a member that lost its place tumbles off sideways (FALL_TIME s), then hides. The last one left shakes nervously.
+  for (const m of p.members || []) {
+    if (m.on || !m.g.visible) continue;
+    if (m.fallAt == null || t < m.fallAt) m.fallAt = t;
+    const k = (t - m.fallAt) / FALL_TIME;
+    if (k >= 1) { m.g.visible = false; m.g.position.copy(m.base); m.g.rotation.set(0, 0, 0); continue; }
+    m.g.position.set(m.base.x + m.side * k * 0.7, m.base.y * (1 - k * k) + Math.sin(k * Math.PI) * 0.25, m.base.z + k * 0.2);
+    m.g.rotation.z = -m.side * k * 2.5;
+  }
+  if (p.members?.length > 1 && p.membersOn === 1) p.members[0].g.rotation.z = Math.sin(t * 24) * 0.06;
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
 }
 
@@ -2549,6 +2637,25 @@ export function tintModel(group, color) {
     if (o.userData.baseEmissive === undefined) o.userData.baseEmissive = o.material.emissive.getHex();
     o.material.emissive.setHex(color ?? o.userData.baseEmissive);
   });
+}
+
+// T34: shows a crew's members for its health: frac = hp / maxHp. Members drop off from the TOP; one is always left (also at
+// 0 HP: the faint animation shrinks it). instant: hide at once (a model just built); else animateModel tumbles them off.
+// A model without parts.members (every non-crew creature) is left alone.
+export function setModelHealth(group, frac, { instant = false } = {}) {
+  const p = group?.userData?.parts, list = p?.members;
+  if (!list?.length) return;
+  const n = list.length;
+  const on = frac > 0 ? Math.min(n, Math.max(1, Math.ceil(frac * n - 1e-9))) : 1; // 1e-9: 2/3 * 3 must give 2
+  p.membersOn = on;
+  list.forEach((m, i) => {
+    const want = i < on;
+    if (want === m.on) return;
+    m.on = want;
+    m.fallAt = null;
+    if (want || instant) { m.g.position.copy(m.base); m.g.rotation.set(0, 0, 0); m.g.visible = want; }
+  });
+  if (on > 1) list[0].g.rotation.z = 0; // no more nervous shaking
 }
 
 export function disposeModel(group) {

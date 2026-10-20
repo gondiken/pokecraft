@@ -10,7 +10,7 @@ this file is for working on the code.
   friendly and readable by a child; error messages should say what to do next.
 - **No Pokémon names or exact Pokémon terms.** All creatures, moves and gym names are original.
   Types that came from Pokémon were renamed: Poison → **Toxic**, Fairy → **Pixie**,
-  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 28 types in all: **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo**, **Cyber**, **Cozy**, **Treasure** and **Parkour** are our own too).
+  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 32 types in all: **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo**, **Cyber**, **Cozy**, **Treasure** and **Squad** are our own too, and wave 11 adds **Food**, **Dream** and **Parkour**).
 - Gym difficulty should stay on the easy side; the owner already asked once for easier gyms.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
@@ -66,6 +66,7 @@ this file is for working on the code.
 | `src/homegym.js` | T23 Cozy Gym: `homeGymState(game, g)` (pure, used by `WHERE.home`/`WHEN.home`), `homeTypeFor`, `caughtOfType`, `HomeLive` (`LIVE.home`) |
 | `src/treasurevault.js` | T23 Treasure Vault: `buildTreasureVault(world, def, slot)` (slot 4), `VaultLive` (`LIVE.vault`) |
 | `src/obstaclecourse.js` | T36 Obstacle Course: `buildObstacleCourse(world, def, slot)` (slot 7), `CourseLive` (`LIVE.course`: checkpoints, a fall onto the mat sends you back to the furthest flag, never past an unbeaten trainer's landing) |
+| `src/bigtop.js` | T34 Big Top Gym (slot 6): `buildBigTop(world, def, slot)`: striped tent hall, 3-tier pyramid, trainers on tiers 1-2, leader on top; no live parts |
 | `src/missions.js` | T29 Champion missions: `MISSIONS` (12, append-only), `REWARDS`, `loadMissions`, `nextMission`, `createMissions(game, { save })` -> `game.missions` (`desk`, `give`, `swap`, `complete`, `update`, `check`, `coopEnded`; `hint`, `report`, `result`) |
 | `src/treasuremap.js` | T29 `treasureSpots(world)` (5 spots from the seed, cached on `world.treasureSpots`), `clueOf`, `drawMap`, `findCheck`, `MAP_RULES`/`MAP_LEGS`/`MAP_GYMS`; pinned to the 288 x 288 map (T32) |
 | `src/buildcheck.js` | T29 `scanBuild(world, pos)` (placed blocks only; report zones `all/top/base/overWater` + `stats`) and `BUILDS` (challenges as data) |
@@ -319,6 +320,7 @@ Key ideas:
   `stand` on a checkpoint lights flags 0..k and toasts, on the mat inside `gym.course` moves the player to `target()` (the furthest flag, but at most the first landing whose trainer is not beaten). `WHERE.course` aims at `gym.entry` (no `tips`).
   `look: 'sport'` = a red sweatband (npc.js). `WORLD_VERSION` is 13. Checkpoints are not saved.
 - **Riding (T27, `plans/T27.md`, spec `riding`):** physics live in `Player` (`ride`, `fly`, `waterTop`, `floorBelow`, `dropToFloor`, `fenceHit`/`capped`/`landed`); `riding.js` has the rules, toasts and the model under the camera (first person, eye and hitbox unchanged). Riders are fenced out of every gym/tower `protect` box by `world.fenced` (so sky gyms keep their pillar climb). Sky cap = floor + 6 (`WORLD_H` is only 48, so the spec's slab is at y 40); the user's get-off in the air glides down, forced ones (`startBattle`, left the team) are instant. Not saved. Visitors get `state.ride` (a species id, checked by `rideSpecies`). Touch: `#btn-ride`, `#btn-down`, `setRide`.
+- **Squad crews (T34, `plans/T34.md`, spec `squad`):** species with `weakensWithHp: true` (all 7 Squad ones; never a type check): `hpPower(c)` = `CREW.floor` 0.6 + 0.4 x HP fraction in `useMove`/`backfire`, multi-hit moves x`CREW.multi` 1.2 against them (`crewHit`); no new draws; duel `VERSION` 10. Models from `crewStack` (shapes.js) fill `parts.members` (bottom to top, `{ g, base, side, on, fallAt }`, sway only on pivots inside `g`); `setModelHealth(group, frac, { instant })` shows `ceil(frac x n)` (at least 1) and is a no-op without members; battle.js calls it in `refresh()` (only when `model.userData.who` is that creature) and instantly when a model is placed (`showsCreature`); `animateModel` tumbles members off (`FALL_TIME` 0.7 s) and shakes the last one. Outside battles models are always whole. `spot()` uses visible members. Big Top Gym: slot 6, `WORLD_VERSION` 13.
 - **Treasure blocks (T20, spec `treasure`):** Sunstone 65, Ruby 66, Sapphire 67 (`TREASURE`), `glow` + `noLight` (they glint in
   dark caves without lighting them). **Limited blocks:** a block def with `limited: true` is only placeable while
   `game.blockCounts[id] > 0` (`isLimited`): breaking one adds 1 (placed or natural), placing uses 1; the hotbar slot and the
