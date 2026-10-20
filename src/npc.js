@@ -67,6 +67,10 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     const d = box(head, 0.12, 0.12, 0.05, 0xfff6a0, 0, y, 0);
     d.rotation.z = Math.PI / 4;
   }
+  if (look === 'chef') { // T33: a tall white chef's hat
+    box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
+    box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);
+  }
   if (hat) {
     box(head, 0.58, 0.08, 0.62, hat, 0, 0.54, 0.03);
     box(head, 0.5, 0.16, 0.5, hat, 0, 0.64, 0);
@@ -100,6 +104,7 @@ class Npc {
   }
 
   get title() {
+    if (this.def?.title) return this.def.title; // T33: Restaurant customers
     if (this.kind === 'healer') return `${this.name} · heals your team`;
     return `${this.name} (${this.gym.def.name})`;
   }
@@ -187,12 +192,14 @@ export class NpcManager {
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: ['alien', 'chef'].includes(trainer.look) ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
         if (none) this.sendAway(npc);
         if (trainer.disguise === 'stone') this.disguiseAs(npc, world, B.STONE);
       });
+      // T33: a gym may list more people (the Restaurant's customers: kind 'guest', one line each).
+      for (const p of gym.people || []) this.add(new Npc({ kind: p.kind, name: p.name, gym, colors: p.colors, pos: p.pos, heading: p.heading ?? facing, hat: p.hat, look: p.look, def: p }));
       if (gym.def.saucer) this.addSaucer(gym);
     }
     // The Champion's Tower: nurse, coach, two guards and the champion.

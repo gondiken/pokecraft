@@ -1880,3 +1880,97 @@ SIG.crownjewel = (k, from, to) => {
   };
 };
 /* ==== end of T21 ==== */
+
+/* ==== T33: food ==== */
+Object.assign(FX_COLORS, { food: [0xff6a4a, 0xffd24a, 0x8ad46a, 0xfff0d8] });
+const SPRINKLES = [0xff4a4a, 0x4ab0ff, 0xffe84a, 0x6ad84a, 0xffffff, 0xb06aff];
+
+// Sprinkles wiggle along the arc with a few bun crumbs trailing behind.
+TRAVEL.food = k => {
+  const N = 7;
+  const dots = k.points({ n: N, tex: 'dot', size: 0.26, glow: true, colors: SPRINKLES });
+  const crumbs = k.points({ n: 3, tex: 'puff', size: 0.34, colors: [0xe0a050, 0xf4d08a] });
+  return {
+    dur: 400,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.4);
+        if (t < 0) { dots.hide(i); continue; }
+        k.at(t, A, 0.5);
+        dots.set(i, A.x, A.y + Math.sin(p * 18 + i * 1.7) * 0.16, A.z);
+      }
+      dots.fade(fadeOut(p, 0.85));
+      for (let i = 0; i < 3; i++) {
+        const t = trailT(p, i * 2 + 1, N, 0.6);
+        if (t < 0) { crumbs.hide(i); continue; }
+        k.at(t, A, 0.3);
+        crumbs.set(i, A.x, A.y - 0.1 - t * 0.1, A.z);
+      }
+      crumbs.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// Tomato and cheese splats burst out; sprinkles are thrown up and fall back.
+IMPACT.food = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const splats = k.points({ n: 6, tex: 'splat', size: 0.4 * m, glow: true, colors: [0xff5a3a, 0xffd23a] });
+  const dots = k.points({ n: N, tex: 'dot', size: 0.24 * m, glow: true, colors: SPRINKLES });
+  const s = k.seeds(N + 6, 3);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * 6.283 + s[i * 3] * 0.8, d = (to.r * 0.4 + 0.1 + k.ease(p) * 0.7) * m;
+        splats.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + s[i * 3 + 1] * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      splats.fade(fadeOut(p, 0.5));
+      for (let i = 0; i < N; i++) {
+        const ang = s[(i + 6) * 3] * 6.283, v = (0.3 + s[(i + 6) * 3 + 1] * 0.5) * m, up = (1.6 + s[(i + 6) * 3 + 2] * 1.2) * m;
+        const t = p * 0.55;
+        dots.set(i, to.pos.x + Math.cos(ang) * v * p * 1.5, to.pos.y + 0.1 + up * t * 1.2 - 9 * t * t, to.pos.z + Math.sin(ang) * v * p * 1.5);
+      }
+      dots.fade(fadeOut(p, 0.6));
+    },
+  };
+};
+
+// Mega Munch: two rows of four white teeth close on the target twice; every chomp throws crumbs and a star flash.
+SIG.megamunch = (k, from, to) => {
+  const top = [0, 1, 2, 3].map(() => k.sprite('square', { color: 0xffffff, size: 0.1, glow: true }));
+  const bot = [0, 1, 2, 3].map(() => k.sprite('square', { color: 0xfff4e0, size: 0.1, glow: true }));
+  const flash = k.sprite('star', { color: 0xffe14a, size: 0.1, glow: true });
+  const crumbs = k.points({ n: 12, tex: 'puff', size: 0.34, colors: [0xe0a050, 0xf4d08a] });
+  const s = k.seeds(12, 2);
+  const mid = to.pos.y + 0.2, reach = (to.top - to.pos.y) + 0.7;
+  return {
+    dur: 650,
+    step(p) {
+      // wide open at first, shut at p 0.35, open again, shut at p 0.7
+      const gap = p < 0.35 ? 1 - k.ease(p / 0.35) : p < 0.5 ? k.ease((p - 0.35) / 0.15) : p < 0.7 ? 1 - k.ease((p - 0.5) / 0.2) : 0;
+      const open = reach * (0.05 + 0.95 * gap);
+      const fade = p > 0.85 ? clamp01((1 - p) / 0.15) : clamp01(p / 0.1);
+      for (let i = 0; i < 4; i++) {
+        const x = (i - 1.5) * 0.34;
+        planeAt(top[i].position, to.pos, k.side, x, mid - to.pos.y + open);
+        planeAt(bot[i].position, to.pos, k.side, x, mid - to.pos.y - open * 0.7);
+        top[i].scale.setScalar(Math.max(0.01, 0.3 * fade));
+        bot[i].scale.setScalar(Math.max(0.01, 0.3 * fade));
+        top[i].material.opacity = bot[i].material.opacity = fade;
+      }
+      const c1 = clamp01((p - 0.35) / 0.2), c2 = clamp01((p - 0.7) / 0.2);
+      const burst = p < 0.7 ? c1 : c2;
+      flash.position.set(to.pos.x, mid, to.pos.z);
+      flash.scale.setScalar(Math.max(0.01, 0.9 * wave21(burst)));
+      flash.material.opacity = burst > 0 && burst < 1 ? 1 : 0;
+      for (let i = 0; i < 12; i++) {
+        const b = i < 6 ? (p < 0.7 ? c1 : 0) : c2;
+        if (b <= 0 || b >= 1) { crumbs.hide(i); continue; }
+        const ang = s[i * 2] * 6.283, d = (0.2 + s[i * 2 + 1] * 0.8) * k.ease(b);
+        crumbs.set(i, to.pos.x + Math.cos(ang) * d, mid + 0.2 + s[i * 2 + 1] * 0.8 * b - 1.2 * b * b, to.pos.z + Math.sin(ang) * d);
+      }
+      crumbs.fade(0.9);
+    },
+  };
+};
+/* ==== end of T33 ==== */

@@ -4,7 +4,7 @@ import { openGame, newGame, playBattle, continueGame, waitFor, seedSave } from '
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   await newGame(page, 1);
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), '27 gyms are placed');
+  t.ok(await page.evaluate(async () => window.pokecraft.world.gyms.length === (await import('/src/gyms.js')).GYMS.length), 'every gym is placed');
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return window.pokecraft.world.gyms.every((g, i) => g.def === GYMS[i]);

@@ -104,9 +104,15 @@ export function createRematch(game, { startBattle }) {
       pending = null;
       game.ui.closeAsk();
       if (!npc || !usable(npc) || dist(npc) > REMATCH.askRange) return;
+      api.start(npc);
+    },
+    // Start the rematch battle without the question (T33: the Restaurant starts it once the dish is served). `intro` = the words.
+    start(npc, intro) {
+      pending = null;
+      game.ui.closeAsk();
       const def = npc.gym.def, wins = winsOf(def.id);
       const team = rematchTeam(def, wins);
-      const intro = def.rematchIntro || (wins === 0 ? ['Back for a rematch? I have been training too!']
+      intro = intro || def.rematchIntro || (wins === 0 ? ['Back for a rematch? I have been training too!']
         : [`Rematch number ${wins + 1}! My team got even stronger.`]);
       startBattle({ trainer: npc, team, intro, xpBoost: REMATCH.xpBoost, rematch: { gym: def.id, wins } });
     },

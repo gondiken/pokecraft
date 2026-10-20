@@ -4,6 +4,7 @@
 import { trainersOf, trainerKey } from './gyms.js';
 import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
 import { homeGymState } from './homegym.js';
+import { menuStatus } from './restaurant.js'; // T33
 
 // Is p inside the box {x0, x1, y0, y1, z0, z1} (inclusive block coordinates)?
 const inBox = (b, p) => p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y < b.y1 + 1;
@@ -176,6 +177,9 @@ WHEN.keys = (g, game) => {
     status: () => (have() < g.def.keys.length ? ` · golden keys ${have()}/${g.def.keys.length}` : ''),
   };
 };
+
+// Menu gym (T33 Restaurant): always open; the guide shows the open order (ingredients found, dish ready...).
+WHEN.menu = (g, game) => ({ wait: () => null, closedText: () => null, status: () => menuStatus(game, g) });
 
 // deps = { dayLength, smoothstep }, the same ones the sky uses.
 export function createAccess(game, deps) {

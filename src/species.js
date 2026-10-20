@@ -222,6 +222,16 @@ export const MOVES = {
   crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
 };
 
+/* ==== T33 food moves ==== */
+Object.assign(MOVES, {
+  nomnom: mv('Nom Nom', 'food', 40, 1),
+  foodfight: mv('Food Fight', 'food', 75, 0.9),
+  sprinkles: mv('Sprinkles', 'food', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
+  snacktime: mv('Snack Time', 'food', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
+  megamunch: mv('Mega Munch', 'food', 90, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+});
+/* ==== end of T33 food moves ==== */
+
 // T25 big-decision moves: one kind (the mechanic) each, a name per type. Learned at these levels:
 export const BIG_LEVEL = { shield: 21, rally: 22, curse: 24, field: 26, risky: 29, sacrifice: 32, lastword: 34 };
 export const BIG_KINDS = Object.keys(BIG_LEVEL);
@@ -354,6 +364,11 @@ const BIG_MOVES = {
     ['treasurehunt', 'Treasure Hunt', 'field', 'Treasure moves are stronger for 5 turns. Foes too!'],
   ],
 };
+BIG_MOVES.food = [ // T33
+  ['dinnerbell', 'Dinner Bell', 'rally', 'Ding ding, dinner time! Whole team hits harder. You get softer.'],
+  ['lastbite', 'Last Bite', 'sacrifice', 'You share your last bite. Next friend comes in fresh and strong.'],
+  ['picnicday', 'Picnic Day', 'field', 'Food moves are stronger for 5 turns. Foes too!'],
+];
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -445,6 +460,7 @@ const T4 = {
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
   time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling',
 };
+T1.food = 'nomnom'; T2.food = 'foodfight'; T3.food = 'sprinkles'; T4.food = 'snacktime'; // T33
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
   ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };
@@ -1615,6 +1631,46 @@ export const SPECIES = {
     model: { shape: 'chandelier', scale: 0.9, body: 0xffd23a, accent: 0xffb030, dark: 0x6a4a10, belly: 0xfff4e0, extras: [] },
   },
   /* ==== end of T21 treasure ==== */
+  /* ==== T33 food ==== */
+  makiroll: {
+    name: 'Makiroll', type: 'food', desc: "A round sushi roll with a seaweed belt. It rolls along the beach looking for a friendly face.",
+    base: { hp: 50, atk: 50, def: 55, spd: 55 }, baseXp: 64, catchRate: 0.45, learn: L('food', 'water'),
+    evolve: { level: 22, into: 'sushisail' },
+    model: { shape: 'sushi', scale: 0.75, body: 0x1f3a2a, accent: 0xff8a6a, dark: 0x101810, belly: 0xfdfaf0, extras: [] },
+  },
+  sushisail: {
+    name: 'Sushisail', type: 'food', desc: "A little wooden sushi boat with a seaweed sail. Two sushi rolls ride on deck and wave hello.",
+    base: { hp: 85, atk: 85, def: 90, spd: 80 }, baseXp: 165, catchRate: 0.12, learn: L('food', 'water'),
+    model: { shape: 'sushi', scale: 1.25, body: 0xb07a45, accent: 0xff8a6a, dark: 0x1f3a2a, belly: 0xfdfaf0, extras: ['boat'] },
+  },
+  bitesize: {
+    name: 'Bitesize', type: 'food', desc: "A tiny burger on pickle feet. When it laughs, its top bun flaps open like a mouth.",
+    base: { hp: 55, atk: 55, def: 50, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('food', 'fire'),
+    evolve: { level: 22, into: 'bigbite' },
+    model: { shape: 'burger', scale: 0.75, body: 0xe0a050, accent: 0xffd23a, dark: 0x6a3a1a, belly: 0x6ad04a, extras: [] },
+  },
+  bigbite: {
+    name: 'Bigbite', type: 'food', desc: "A double-decker burger with a cheese cape. Its top bun chomps so loud you hear it a field away.",
+    base: { hp: 95, atk: 100, def: 80, spd: 65 }, baseXp: 170, catchRate: 0.1, learn: L('food', 'fire', [[30, 'megamunch']]),
+    model: { shape: 'burger', scale: 1.3, body: 0xe8a850, accent: 0xffc82a, dark: 0x5a2a12, belly: 0x5ac83a, extras: ['double'] },
+  },
+  noodlet: {
+    name: 'Noodlet', type: 'food', desc: "A bowl of spaghetti with a meatball nose. Its noodles wiggle when it is happy, which is always.",
+    base: { hp: 55, atk: 45, def: 50, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('food', 'slime'),
+    evolve: { level: 24, into: 'pastapus' },
+    model: { shape: 'noodlebowl', scale: 0.8, body: 0xffffff, accent: 0xe0402a, dark: 0x7a3a1a, belly: 0xffe08a, extras: [] },
+  },
+  pastapus: {
+    name: 'Pastapus', type: 'food', desc: "A spaghetti octopus! It walks on long noodle legs and shares its meatballs with every friend.",
+    base: { hp: 90, atk: 80, def: 75, spd: 95 }, baseXp: 165, catchRate: 0.12, learn: L('food', 'slime'),
+    model: { shape: 'noodlebowl', scale: 1.3, body: 0x8ad0ff, accent: 0xe0402a, dark: 0x6a3010, belly: 0xffe08a, extras: ['octo'] },
+  },
+  scoopsy: {
+    name: 'Scoopsy', type: 'food', desc: "Three scoops of ice cream on a crunchy cone, with a cherry on top. It never melts, even in the sun.",
+    base: { hp: 70, atk: 60, def: 55, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('food', 'ice'),
+    model: { shape: 'icecream', scale: 0.9, body: 0xd8a050, accent: 0xff9ac0, dark: 0x6a3a1a, belly: 0xfff4e0, extras: [] },
+  },
+  /* ==== end of T33 food ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1789,6 +1845,19 @@ const HOME = [['snugbun', 1, 'home:cozy'], ['purrmit', 1, 'home:cozy'], ['pillow
 const SPAWN_HOME = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, HOME]));
 
 for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+
+// T33: Food creatures live near where their food comes from.
+const SPAWN_FOOD = {
+  beach: [['makiroll', 1.2], ['sushisail', 0.15]],
+  swamp: [['makiroll', 0.4]],
+  plains: [['bitesize', 1.2], ['noodlet', 0.6], ['bigbite', 0.15]],
+  meadow: [['noodlet', 1], ['bitesize', 0.6], ['pastapus', 0.12]],
+  forest: [['noodlet', 0.6], ['pastapus', 0.1]],
+  snow: [['scoopsy', 1]],
+  taiga: [['scoopsy', 0.6]],
+  peak: [['scoopsy', 0.4]],
+};
+for (const [biome, list] of Object.entries(SPAWN_FOOD)) SPAWNS[biome].push(...list); // T33
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 
