@@ -1880,3 +1880,109 @@ SIG.crownjewel = (k, from, to) => {
   };
 };
 /* ==== end of T21 ==== */
+
+/* ==== T36 parkour ==== */
+// Band red, shoe white, sole blue.
+FX_COLORS.parkour = [0xff3b3b, 0xffffff, 0x2a8cff];
+const wave36 = t => Math.sin(Math.PI * t);
+
+// A parkour run: five dust puffs bounce along the arc in three little hops, with three speed lines trailing behind.
+TRAVEL.parkour = k => {
+  const N = 5;
+  const dust = k.points({ n: N, tex: 'puff', size: 0.4, colors: [0xe8e0d0, 0xc8c0b0] });
+  const lines = k.points({ n: 3, tex: 'streak', size: 0.36, glow: true, colors: [0xff3b3b, 0xffffff, 0x2a8cff] });
+  return {
+    dur: 400,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.3);
+        if (t < 0) { dust.hide(i); continue; }
+        k.at(t, A, 0.15);
+        dust.set(i, A.x, A.y + Math.abs(Math.sin(t * 3 * Math.PI)) * 0.35, A.z);
+      }
+      dust.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 3; i++) {
+        const t = clamp01(p * 1.3 - 0.08 - i * 0.1);
+        if (t <= 0 || p >= 1) { lines.hide(i); continue; }
+        k.at(t, A, 0.15);
+        lines.set(i, A.x + k.side.x * (i - 1) * 0.16, A.y + Math.abs(Math.sin(t * 3 * Math.PI)) * 0.35 + (i - 1) * 0.06, A.z + k.side.z * (i - 1) * 0.16);
+      }
+      lines.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// A landing: a bang star on the target and a ring of eight dust clouds rolling out at its feet.
+IMPACT.parkour = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const dust = k.points({ n: N, tex: 'puff', size: 0.5 * m, colors: [0xe8e0d0, 0xc8c0b0] });
+  const bang = k.sprite('bang', { color: 0xff3b3b, size: 0.1, glow: true });
+  return {
+    dur: 340,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283, d = (to.r * 0.4 + 0.1) * m + k.ease(p) * (0.6 + to.r * 0.5) * m;
+        dust.set(i, to.pos.x + Math.cos(ang) * d, feetOf(to) + 0.15 + p * 0.2, to.pos.z + Math.sin(ang) * d);
+      }
+      dust.fade(1 - p);
+      bang.position.set(to.pos.x, to.pos.y + 0.1, to.pos.z);
+      bang.scale.setScalar(Math.max(0.01, 0.9 * m * wave36(clamp01(p * 1.4))));
+      bang.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Rooftop Run: a red trail zigzags up three steps beside the target (a wall run), arcs over it and drops down; a dust ring and
+// five stars flash at its feet on landing.
+SIG.rooftoprun = (k, from, to) => {
+  const trail = k.points({ n: 12, tex: 'streak', size: 0.3, glow: true, colors: [0xff3b3b, 0xffffff] });
+  const runner = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  const ring = k.mesh('ring', { color: 0xe8e0d0, opacity: 0.8 });
+  const stars = k.points({ n: 5, tex: 'star', size: 0.3, glow: true, colors: [0xff3b3b, 0xffffff, 0x2a8cff] });
+  const feet = feetOf(to), top = to.top - feet + 0.5;
+  // the path for u in 0..1: three zigzag steps up the side, an arc over the target, a drop
+  const at = (u, out) => {
+    const sx = k.side.x, sz = k.side.z;
+    if (u < 0.45) { // three steps, each a little diagonal
+      const q = u / 0.45, st = Math.min(2, Math.floor(q * 3)), f = q * 3 - st;
+      const off = 0.55 + (st % 2 ? 0.1 : -0.1) * (f - 0.5);
+      return out.set(to.pos.x + sx * off, feet + ((st + f) / 3) * top, to.pos.z + sz * off);
+    }
+    if (u < 0.75) { // over the top
+      const q = (u - 0.45) / 0.3;
+      return out.set(to.pos.x + sx * lerp(0.55, -0.1, q), feet + top + Math.sin(q * Math.PI) * 0.5, to.pos.z + sz * lerp(0.55, -0.1, q));
+    }
+    const q = (u - 0.75) / 0.25; // drop to the feet
+    return out.set(to.pos.x - sx * 0.1 * (1 - q), lerp(feet + top, feet + 0.1, q * q), to.pos.z - sz * 0.1 * (1 - q));
+  };
+  const s = k.seeds(5, 2);
+  return {
+    dur: 650,
+    step(p) {
+      const u = clamp01(p / 0.8);
+      for (let i = 0; i < 12; i++) {
+        const t = u - i * 0.045;
+        if (t <= 0 || u >= 1) { trail.hide(i); continue; }
+        at(t, A);
+        trail.set(i, A.x, A.y, A.z);
+      }
+      trail.fade(fadeOut(p, 0.8));
+      at(u, A);
+      runner.position.copy(A);
+      runner.scale.setScalar(Math.max(0.01, 0.3 * (p < 0.8 ? 1 : 0)));
+      runner.material.opacity = p < 0.8 ? 1 : 0;
+      const hit = clamp01((p - 0.8) / 0.2);
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, (to.r * 0.5 + k.ease(hit) * 1.1) * (hit > 0 ? 1 : 0)));
+      ring.material.opacity = hit > 0 ? 0.8 * (1 - hit) : 0;
+      for (let i = 0; i < 5; i++) {
+        if (hit <= 0) { stars.hide(i); continue; }
+        const ang = (i / 5) * 6.283 + s[i * 2], d = (to.r * 0.4 + 0.1 + s[i * 2 + 1] * 0.3) * k.ease(hit);
+        stars.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.2 + k.ease(hit) * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      stars.fade(1 - hit);
+    },
+  };
+};
+/* ==== end of T36 parkour ==== */

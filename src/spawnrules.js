@@ -43,6 +43,11 @@ export function homeShare(c, type) {
   return share * (c.evening ? s.evening ?? 1 : 1) * (res?.full ? s.full ?? 1 : 1);
 }
 
+/* ==== T36 parkour ==== */
+// 'high': Parkour creatures sit up high. `c.perch` (from creatures.context) is a function that finds a treetop, roof or
+// pillar near the player ({ x, y, z } = the cell to stand in, or null); there is none underground, in a realm or without
+// env. `outdoor`: the creature is not an indoor walker (spawnPlaced). `once`: its toast shows once per play session.
+/* ==== end of T36 parkour ==== */
 export const CONDITIONS = {
   day: { ok: c => !c.night, text: 'day' },
   night: { ok: c => !!c.night, text: 'night' },
@@ -50,6 +55,10 @@ export const CONDITIONS = {
   dusk: { ok: c => c.golden === 'dusk', share: 0.4, max: 3, text: 'at sunset' },
   together: { ok: c => !!c.friendsNear, share: 1 / 15, max: 1, text: 'with a friend close by',
     toast: 'Bzzt! Playing together woke up a cyber creature nearby!' },
+  high: { ok: c => !!c.perch, share: 1 / 30, max: 2, outdoor: true, once: true, // T36
+    place: c => c.perch(),
+    text: 'up high: on treetops, roofs and tall pillars',
+    toast: 'Look up! A sporty creature is on a high spot nearby.' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,

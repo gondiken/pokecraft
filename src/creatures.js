@@ -13,6 +13,22 @@ const NOTE_HEAD = new THREE.BoxGeometry(0.18, 0.14, 0.04);
 const NOTE_STEM = new THREE.BoxGeometry(0.04, 0.34, 0.04).translate(0.07, 0.17, 0);
 const GROUND = new Set([B.GRASS, B.DIRT, B.SAND, B.STONE, B.SNOW, B.COBBLE, B.ICE, B.GRAVEL, B.MUD, B.SANDSTONE]);
 
+/* ==== T36 parkour ==== */
+// A gait owns a creature's movement instead of the wander walk (species field `gait`). 'hopaway' (Parkour): it sits
+// still until you come near, then hops a few blocks away from you; after `tiredAfter` hops (or when it is cornered) it is
+// out of breath for `tired` seconds, and then you can walk into it to battle. Hops are closed form (time based).
+// notice/noticeUp: how close (blocks, sideways / up and down) you must be; hops: distances tried (3 then 2); time/arc: one
+// hop's seconds and height; up/down: the most it climbs / drops (never off a cliff); leap: how far a creature on a perch
+// may jump down, to the natural ground; leash: how far from where it spawned; angles: degrees off straight away tried in order.
+export const GAITS = {
+  hopaway: { notice: 6, noticeUp: 8, hops: [3, 2], time: 0.45, arc: 0.9, pause: 0.35, tiredAfter: 3, tired: 8,
+    up: 1, down: 2, leap: 8, leash: 14, angles: [0, 35, -35, 70, -70, 110, -110], bump: true },
+};
+// A perch is a spot that stands this much above the natural ground (treetops, roofs, pillars; never hills).
+const PERCH_UP = 3;
+const TIRED_RANGE = 12;
+/* ==== end of T36 parkour ==== */
+
 export class Wild {
   constructor(data, model, pos) {
     this.data = data;
@@ -26,6 +42,8 @@ export class Wild {
     this.frozen = false;
     this.disguise = null; // Camo creatures wear one until they are hit (see CreatureManager.spawnAt)
     this.popT = -1;
+    this.home = { x: pos.x, z: pos.z }; // T36: where it spawned (the gait leash)
+    this.hop = null; this.hops = 0; this.tired = 0; this.pause = 0; this.touching = false; // T36 gait state
     model.userData.wild = this;
   }
   get species() { return SPECIES[this.data.species]; }
@@ -60,6 +78,7 @@ export class CreatureManager {
     this.env = null; // set by main.js: { time: () => game.time, friends: () => [positions of other players] }
     this.viewer = null; // the player's position, for blinks
     this.onBump = null; // main.js: the player walked into a disguised creature
+    this.onTired = null; // main.js (T36): a Parkour creature is out of breath: walk into it
     this.raycaster = new THREE.Raycaster();
   }
 
@@ -93,6 +112,8 @@ export class CreatureManager {
       evening: !!env && isEvening(env.time()),
       homes: !env?.homes ? [] : env.homes().filter(h => Math.hypot(h.x - playerPos.x, h.z - playerPos.z) <= HOME_RANGE),
       friendsNear: !!env && env.friends().some(p => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) <= TOGETHER_RANGE),
+      // T36: a function (the search only runs when the 'high' condition is rolled); none underground, in a realm or without env
+      perch: under || !env || this.world?.realm ? null : () => this.perchNear(playerPos),
     };
   }
 
@@ -173,7 +194,7 @@ export class CreatureManager {
     const place = condOf(when)?.place;
     if (!place) return false;
     const at = place(ctx, when.split(':')[1]);
-    if (at) this.spawnAt(species, at.x, at.y, at.z, { when, indoor: true, level: this.wildLevel(at.x, at.z, spawnPoint, SPECIES[species]) });
+    if (at) this.spawnAt(species, at.x, at.y, at.z, { when, indoor: !condOf(when).outdoor, level: this.wildLevel(at.x, at.z, spawnPoint, SPECIES[species]) });
     return true;
   }
 
@@ -217,6 +238,32 @@ export class CreatureManager {
     this.onSpawn?.(wild);
     return wild;
   }
+
+  /* ==== T36 parkour ==== */
+  // A perch at column (x, z): { x, y, z } = the air cell to stand in, or null. Something stands on the land (3+ above the
+  // natural ground: treetops, tall cacti, roofs, pillars; hills never count); ground blocks only count when the player
+  // built them (a gym builder's slopes and frozen lakes do not); never water, a gym or tower, or a realm.
+  isPerch(x, z) {
+    const world = this.world;
+    if (!world || world.realm || x < 1 || z < 1 || x >= world.W - 1 || z >= world.D - 1) return null;
+    const s = world.surface(x, z);
+    if (s.y < 0 || s.id === B.WATER || !isSolid(s.id)) return null;
+    if (s.y - world.ground[x + z * world.W] < PERCH_UP) return null;
+    if (GROUND.has(s.id) && !world.edits.has(world.index(x, s.y, z))) return null;
+    if (s.y + 2 >= WORLD_H || world.fenced(x, s.y + 1, z)) return null;
+    return { x, y: s.y + 1, z };
+  }
+
+  // Up to 16 random columns 8-24 blocks from the player (close enough to see, not in your face): the first perch, or null.
+  perchNear(pos) {
+    for (let i = 0; i < 16; i++) {
+      const a = Math.random() * Math.PI * 2, d = 8 + Math.random() * 16;
+      const at = this.isPerch(Math.floor(pos.x + Math.cos(a) * d), Math.floor(pos.z + Math.sin(a) * d));
+      if (at) return at;
+    }
+    return null;
+  }
+  /* ==== end of T36 parkour ==== */
 
   // Cave creatures: a standing place underground near the player (air with floor below and room above).
   trySpawnCave(center, spawnPoint, night = false) {
@@ -291,6 +338,14 @@ export class CreatureManager {
         const half = w.size / 2 + 0.4, dy = playerPos.y - w.pos.y;
         if (Math.abs(playerPos.x - w.pos.x) < half && Math.abs(playerPos.z - w.pos.z) < half && dy >= 0 && dy < w.size + 1) this.onBump(w);
       }
+      // T36: a gait creature (Parkour) starts a battle when you START touching it, so a fled battle does not restart at once.
+      else if (GAITS[w.species.gait]?.bump && !w.frozen && this.onBump) {
+        const dy = playerPos.y - w.pos.y;
+        const touching = Math.abs(playerPos.x - w.pos.x) < 0.9 && Math.abs(playerPos.z - w.pos.z) < 0.9 && dy >= -1 && dy < 1.5;
+        const start = touching && !w.touching;
+        w.touching = touching;
+        if (start) this.onBump(w);
+      }
       // Sound-type creatures sing now and then, so you can hear them before you see them.
       if (w.species.type === 'sound' && !w.frozen && (w.songTimer = (w.songTimer ?? Math.random() * 3) - dt) <= 0) {
         w.songTimer = 5 + Math.random() * 4;
@@ -351,8 +406,10 @@ export class CreatureManager {
     if (w.frozen || w.still) { // battling, or a Camo creature idling in place
       animateModel(w.model, w.t, false);
       w.model.rotation.y = w.heading;
+      if (sp.gait) w.model.scale.set(1, 1, 1); // T36: no panting in a battle
       return;
     }
+    if (sp.gait) return this.updateGait(w, dt); // T36
     w.timer -= dt;
     if (w.timer <= 0) {
       if (w.mode === 'walk') { w.mode = 'idle'; w.timer = 1 + Math.random() * 3; }
@@ -383,6 +440,110 @@ export class CreatureManager {
     w.model.rotation.y = w.heading;
     animateModel(w.model, w.t, w.mode === 'walk');
   }
+
+  /* ==== T36 parkour ==== */
+  // Where a hop from the cell (x0, y0, z0) to the column (cx, cz) lands: the standing y, or null. Never into water, at most
+  // g.up up and g.down down; a creature on a perch may also drop up to g.leap, but only onto the natural ground.
+  hopLanding(g, x0, y0, z0, cx, cz, perched) {
+    const world = this.world;
+    if (cx < 1 || cz < 1 || cx >= world.W - 1 || cz >= world.D - 1) return null;
+    const lowest = y0 - (perched ? g.leap : g.down);
+    for (let y = y0 + g.up; y >= Math.max(1, lowest); y--) {
+      const here = world.get(cx, y, cz), below = world.get(cx, y - 1, cz);
+      if (here === B.WATER || below === B.WATER) return null; // never into water
+      if (here !== B.AIR || world.get(cx, y + 1, cz) !== B.AIR || !isSolid(below)) continue;
+      if (y0 - y > g.down && y - 1 > world.ground[cx + cz * world.W]) return null; // a long drop: only down to the natural ground
+      if (world.fenced(cx, y, cz)) return null;
+      // the arc is free: the 1-2 columns between start and landing have room
+      for (const f of [1 / 3, 2 / 3]) {
+        const mx = Math.floor(x0 + (cx + 0.5 - x0) * f), mz = Math.floor(z0 + (cz + 0.5 - z0) * f);
+        if ((mx === Math.floor(x0) && mz === Math.floor(z0)) || (mx === cx && mz === cz)) continue;
+        const top = Math.max(y0, y);
+        if (world.get(mx, top + 1, mz) !== B.AIR || world.get(mx, top + 2, mz) !== B.AIR) return null;
+      }
+      return y;
+    }
+    return null;
+  }
+
+  // The hop away from the player: { x, y, z } (cell centre) or null when cornered.
+  chooseHop(w, g, p) {
+    const x0 = Math.floor(w.pos.x), z0 = Math.floor(w.pos.z), y0 = Math.round(w.pos.y);
+    let ax = w.pos.x - p.x, az = w.pos.z - p.z;
+    const len = Math.hypot(ax, az);
+    if (len < 0.01) { ax = Math.sin(w.heading); az = Math.cos(w.heading); } else { ax /= len; az /= len; }
+    const here = Math.hypot(p.x - w.pos.x, p.z - w.pos.z);
+    const perched = !!this.isPerch(x0, z0);
+    for (const deg of g.angles) {
+      const r = deg * Math.PI / 180, dx = ax * Math.cos(r) - az * Math.sin(r), dz = ax * Math.sin(r) + az * Math.cos(r);
+      for (const dist of g.hops) {
+        const cx = Math.floor(w.pos.x + dx * dist), cz = Math.floor(w.pos.z + dz * dist);
+        if (cx === x0 && cz === z0) continue;
+        if (Math.hypot(cx + 0.5 - w.home.x, cz + 0.5 - w.home.z) > g.leash) continue;
+        if (Math.hypot(p.x - (cx + 0.5), p.z - (cz + 0.5)) < here) continue; // never towards you
+        const y = this.hopLanding(g, w.pos.x, y0, w.pos.z, cx, cz, perched);
+        if (y !== null) return { x: cx + 0.5, y, z: cz + 0.5 };
+      }
+    }
+    return null;
+  }
+
+  // A creature with a gait (species.gait): it stands on leaves, roofs and pillars, so it uses no ground lookups.
+  updateGait(w, dt) {
+    const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
+    let moving = false, panting = false;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
+    if (w.hop) { // the hop is closed form: any dt lands exactly on the cell
+      const h = w.hop;
+      h.t += dt;
+      const k = Math.min(1, h.t / g.time), arc = g.arc + Math.max(0, h.to.y - h.from.y);
+      w.pos.set(h.from.x + (h.to.x - h.from.x) * k, h.from.y + (h.to.y - h.from.y) * k + 4 * arc * k * (1 - k), h.from.z + (h.to.z - h.from.z) * k);
+      moving = true;
+      if (k >= 1) {
+        w.pos.set(h.to.x, h.to.y, h.to.z);
+        w.hop = null;
+        w.pause = g.pause;
+        if (++w.hops >= g.tiredAfter) this.getTired(w, g, dist);
+      }
+    } else if (w.tired > 0) {
+      w.tired -= dt;
+      panting = true;
+      if (w.tired <= 0) { w.tired = 0; w.hops = 0; panting = false; }
+    } else if (p) {
+      w.pause = Math.max(0, w.pause - dt);
+      const near = dist <= g.notice && Math.abs(p.y - w.pos.y) <= g.noticeUp;
+      if (near) {
+        const want = Math.atan2(dx, dz);
+        if (w.pause > 0) w.heading = want; // it looks back at you between hops
+        else {
+          const to = this.chooseHop(w, g, p);
+          if (!to) this.getTired(w, g, dist); // cornered: it gives up
+          else {
+            w.hop = { from: w.pos.clone(), to, t: 0 };
+            w.heading = Math.atan2(to.x - w.pos.x, to.z - w.pos.z);
+          }
+        }
+      } else if (dist < g.notice * 3) { // idle: slowly turns to look at you
+        let d = Math.atan2(dx, dz) - w.heading;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 2);
+      }
+    }
+    if (panting) {
+      const s = Math.abs(Math.sin(w.t * 10));
+      model.scale.set(1 + 0.03 * s, 1 - 0.06 * s, 1 + 0.03 * s);
+    } else if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    animateModel(model, w.t, moving);
+  }
+
+  getTired(w, g, dist) {
+    w.tired = g.tired;
+    w.hop = null;
+    if (dist <= TIRED_RANGE) this.onTired?.(w);
+  }
+  /* ==== end of T36 parkour ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

@@ -25,7 +25,7 @@ import { createGuide } from './guide.js';
 import { createAccess } from './access.js';
 import { createGymLive } from './gymlive.js';
 import { createAccounts } from './accounts.js';
-import { goldenHour, condToast } from './spawnrules.js';
+import { goldenHour, condToast, condOf } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
@@ -122,8 +122,13 @@ game.creatures.onSing = (wild, volume) => {
 game.creatures.onSpawn = wild => {
   if (game.started && wild.species.type === 'rainbow') game.ui.toast('Something shimmering is nearby... a rainbow creature!');
   const tip = condToast(wild.when); // e.g. a Cyber creature, or a visitor at a home
-  if (game.started && tip) game.ui.toast(tip);
+  if (game.started && tip && !(condOf(wild.when)?.once && game.toldOnce.has(wild.when))) { // T36: 'once' toasts (Look up!) show once per session
+    game.ui.toast(tip);
+    game.toldOnce.add(wild.when);
+  }
 };
+game.toldOnce = new Set();
+game.creatures.onTired = w => { if (game.started && !game.inBattle) game.ui.toast(`${w.species.name} is out of breath! Walk into it to battle.`); }; // T36
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
 game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []) }; // T31: only friends in the same place
 game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
