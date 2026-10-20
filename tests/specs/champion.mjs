@@ -209,7 +209,7 @@ export default async function ({ browser, base, t }) {
   await page.waitForSelector('#missions:not(.hidden) button:has-text("Battle Champion Solenne")');
   await page.click('#missions button:has-text("Battle Champion Solenne")');
   const rematch = await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, lv: window.pokecraft.battle.foes?.[0]?.level }));
-  t.ok(rematch.inBattle && rematch.lv === 52, `rematch: Solenne's first creature is Lv ${rematch.lv}`);
+  t.ok(rematch.inBattle && rematch.lv === 60, `rematch: Solenne's first creature is Lv ${rematch.lv}`);
 
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

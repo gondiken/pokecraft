@@ -397,7 +397,7 @@ export const EXTRA_GYMS_END = 18;
 export const LEGACY_CAVE_GYMS = 1;
 
 // Gym rematches (T28) and the Tower Champion's rematch share the level cap.
-export const REMATCH_CAP = 55;
+export const REMATCH_CAP = 63; // wave 11: above the Dream gym (54) and the Champion (57-60)
 
 // The Champion's Tower: opens after all badges (27). `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).
@@ -413,21 +413,21 @@ export const TOWER = {
       colors: { shirt: 0xf05a3a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
         ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur'],
-        ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2'], ['knitcat', 'kingcoin', 'clangalarm']],
+        ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2'], ['knitcat', 'kingcoin', 'clangalarm'], ['bigbite', 'bucketeam', 'highvault'], ['scrawlbert', 'sushisail', 'tightropa']],
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
-      team: [['titanox', 47], ['venomamba', 48], ['boomwing', 49]],
+      team: [['titanox', 55], ['venomamba', 56], ['boomwing', 57]],
       intro: ['Halt! Only the strongest trainers may see the Champion.', 'Show me what you can do!'],
       lose: 'You are strong! Go on, Guard Opal is next.' },
     { role: 'guard2', name: 'Guard Opal', at: [-1, -2], hat: 0xb08ae0,
       colors: { shirt: 0x7a5ab0, pants: 0x2a2a3a, hair: 0xf0e0a0, skin: 0xf2d0b0 },
-      team: [['duskmare', 48], ['pomperina', 49], ['thunderwolf', 50]],
+      team: [['duskmare', 56], ['pomperina', 57], ['thunderwolf', 58]],
       intro: ['You beat Bram? Impressive!', 'I am the last guard. The Champion is right behind me.'],
       lose: 'Wonderful! The Champion is waiting for you.' },
     { role: 'champion', name: 'Champion Solenne', at: [-4, 0], cape: 0xffd84a,
       colors: { shirt: 0xf8f4ff, pants: 0x6a4ac8, hair: 0xffd84a, skin: 0xf2d0b0 },
-      team: [['glacieron', 49], ['tidalord', 50], ['pyrolynx', 50], ['sageowl', 50], ['stormwyvern', 50], ['zenithar', 52]],
+      team: [['glacieron', 57], ['tidalord', 58], ['pyrolynx', 58], ['sageowl', 58], ['stormwyvern', 58], ['zenithar', 60]],
       intro: [`So you are the trainer with all ${GYMS.length} badges!`,
         'I am Solenne. Zenithar and I have guarded this tower for many years.',
         'Show me how much you and your team have grown. Give it everything!'],

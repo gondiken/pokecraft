@@ -84,17 +84,18 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     const { SPECIES } = await import('/src/species.js');
-    const { rematchTeam, loadWins } = await import('/src/rematch.js');
+    const { rematchTeam, loadWins, REMATCH } = await import('/src/rematch.js');
+    const CAP = REMATCH.cap;
     for (const def of GYMS) {
       let prev = null;
       for (let w = 0; w <= 30; w++) {
         const team = rematchTeam(def, w);
         if (team.length < 1 || team.length > 6 || team.length < (prev?.length || 0)) return `${def.id} w${w}: size ${team.length}`;
-        if (team.some(([sp, l]) => !SPECIES[sp] || l > 55)) return `${def.id} w${w}: bad species or level`;
+        if (team.some(([sp, l]) => !SPECIES[sp] || l > CAP)) return `${def.id} w${w}: bad species or level`;
         const base = team.slice(team.length - def.leaderTeam.length);
         if (base.some(([, l], i) => l < def.leaderTeam[i][1])) return `${def.id} w${w}: base below badge level`;
         if (prev && prev.base.some((l, i) => base[i][1] < l)) return `${def.id} w${w}: level went down`;
-        if (w === 0 && (team.length !== def.leaderTeam.length || base.some(([, l], i) => l !== Math.min(55, def.leaderTeam[i][1] + 3)))) return `${def.id}: wins 0 is not base + 3`;
+        if (w === 0 && (team.length !== def.leaderTeam.length || base.some(([, l], i) => l !== Math.min(CAP, def.leaderTeam[i][1] + 3)))) return `${def.id}: wins 0 is not base + 3`;
         prev = { length: team.length, base: base.map(x => x[1]) };
       }
     }
@@ -102,7 +103,7 @@ export default async function ({ browser, base, t }) {
     if (rock.length !== 4) return 'boulder w1 size ' + rock.length;
     const vault = GYMS.find(g => g.id === 'treasure');
     const v = rematchTeam(vault, 30);
-    if (v.length > 6 || v.some(x => x[1] !== 55)) return 'vault w30 ' + JSON.stringify(v);
+    if (v.length > 6 || v.some(x => x[1] !== CAP)) return 'vault w30 ' + JSON.stringify(v);
     const ok = JSON.stringify(loadWins({ rock: 2, nope: 5, bug: -1, water: 'x', ice: 1.5 })) === '{"rock":2}'
       && JSON.stringify(loadWins(undefined)) === '{}' && JSON.stringify(loadWins([1])) === '{}';
     return ok ? true : 'loadWins';
