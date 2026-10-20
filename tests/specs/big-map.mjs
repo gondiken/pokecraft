@@ -4,6 +4,8 @@
 // treasure map spots pinned, old [288, 288] saves converted.
 import { devices } from 'playwright';
 import { openGame, seedSave, continueGame, click } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 // newLandSlots() for three seeds (x, z), nearest the start first. They must never change.
 const SLOTS = {
@@ -47,7 +49,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
-        gyms: w.gyms.length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
+        gyms: w.gyms.filter(g => g.x != null).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
         tower: w.tower.x === o.tower.x && w.tower.z === o.tower.z && w.tower.y === o.tower.y,
         caves: sameSet(w.caves.opened, o.caves.opened) && sameSet(w.caves.marks, o.caves.marks),
       };
@@ -93,8 +95,8 @@ export default async function ({ browser, base, t }) {
         placed: w.gyms.length,
       };
       // 5. Protection data.
-      const res = { all: w.gyms.filter(g => !g.home).every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
-      for (const g of w.gyms.filter(g => !g.home)) {
+      const res = { all: w.gyms.filter(g => g.x != null).every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
+      for (const g of w.gyms.filter(g => g.x != null)) {
         const wall = g.sky ? w.protectedAt(g.x, g.y - 1, g.z) === g : w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g;
         const b = g.protect[0];
         const out2 = w.protectedAt(b.x1 + 2, (b.y0 + b.y1) >> 1, g.z) !== g && w.protectedAt(g.x, (b.y0 + b.y1) >> 1, b.z1 + 2) !== g;
@@ -126,7 +128,7 @@ export default async function ({ browser, base, t }) {
     t.ok(m.biomes >= 3 && m.plants > 20, `seed ${seed}: the new land has ${m.biomes} biomes and ${m.plants} plants`);
     const sl = r.slots[seed];
     t.ok(sl.fixture && sl.same && sl.n === 5 && sl.inside && sl.apart >= 56, `seed ${seed}: 5 gym slots in the new land as always (${JSON.stringify(SLOTS[seed])}), at least ${sl.apart} apart`);
-    t.ok(sl.placed === 27, `seed ${seed}: 27 gyms are placed (${sl.placed})`);
+    t.ok(sl.placed === N, `seed ${seed}: ${N} gyms are placed (${sl.placed})`);
     const sg = r.slotGyms[seed];
     t.ok(sg.bareGyms === 22 && sg.n === 4 && sg.ids === 'time,camo,cyber,treasure' && sg.protect && sg.k && sg.inBox && sg.outsideDiff === 0,
       `seed ${seed}: the Clock Tower, Hidden Hill and Firewall Maze are in slots 0-2 and the Treasure Vault in slot 4, protected, and change nothing outside their boxes (${sg.outsideDiff} cells differ)`);
@@ -234,7 +236,7 @@ export default async function ({ browser, base, t }) {
     t.ok(so.spotDist >= 12, `seed ${seed}: south slots stay ${so.spotDist} blocks from every treasure spot`);
   }
   const tg = q.gym;
-  t.ok(tg.found && tg.at && tg.k === 5 && tg.n === 28 && tg.protect && tg.protectedHere, `a test-only gym with slot 5 is built in south slot 5 and protected (${JSON.stringify(tg)})`);
+  t.ok(tg.found && tg.at && tg.k === 5 && tg.n === N + 1 && tg.protect && tg.protectedHere, `a test-only gym with slot 5 is built in south slot 5 and protected (${JSON.stringify(tg)})`);
   t.ok(tg.inside > 0 && tg.outside === 0, `the slot 5 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
   t.ok(JSON.stringify(r.start) === JSON.stringify(START), `the start point did not move ${JSON.stringify(r.start)}`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);

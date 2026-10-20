@@ -2,6 +2,8 @@
 // the champion with Zenithar (powers up at half HP), saving, reloading and the rematch.
 import fs from 'node:fs';
 import { openGame, newGame, click, continueGame } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 // Gym positions recorded BEFORE the tower was added: gyms must never move in existing saves.
@@ -42,18 +44,18 @@ export default async function ({ browser, base, t }) {
       const [fx, fz] = tw.front;
       out.push({
         seed, ok: !!tw, gyms: w.gyms.length,
-        gap: Math.min(...w.gyms.filter(g => !g.home).map(g => Math.max(Math.abs(tw.x - g.x), Math.abs(tw.z - g.z)))),
+        gap: Math.min(...w.gyms.filter(g => g.x != null).map(g => Math.max(Math.abs(tw.x - g.x), Math.abs(tw.z - g.z)))),
         middle: Math.hypot(tw.x - 112, tw.z - 112),
         back: w.get(tw.x - 6 * fx, tw.y, tw.z - 6 * fz), spire: w.get(tw.x, tw.y + 14, tw.z),
         dry: tw.y - 1 > WATER_LEVEL,
-        corners: w.gyms.filter(g => g.def.slot == null && !g.home).every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6)) || (g.def.id === 'alien' && w.get(g.x + 6, g.y, g.z + 6) === WOOL.metal)), // the Saucer's corners are metal
-        pos: w.gyms.filter(g => !g.home).map(g => [g.x, g.z]),
+        corners: w.gyms.filter(g => g.def.slot == null && g.x != null).every(g => [9, 6].includes(w.get(g.x + 6, g.y, g.z + 6)) || (g.def.id === 'alien' && w.get(g.x + 6, g.y, g.z + 6) === WOOL.metal)), // the Saucer's corners are metal
+        pos: w.gyms.filter(g => g.x != null).map(g => [g.x, g.z]),
       });
     }
     return out;
   });
   for (const w of worlds) {
-    t.ok(w.ok && w.gyms === 27 && w.gap >= 23 && w.middle >= 17 && w.back === 42 && w.spire === 40 && w.dry && w.corners,
+    t.ok(w.ok && w.gyms === N && w.gap >= 23 && w.middle >= 17 && w.back === 42 && w.spire === 40 && w.dry && w.corners,
       `seed ${w.seed}: tower placed (gap ${w.gap}, ${w.middle.toFixed(0)} from the middle)`);
   }
   for (const seed of [1, 4242]) {
@@ -101,7 +103,7 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(`window.pokecraft.talkTo(${person(role)})`);
     t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), `${role} refuses with 25 badges`);
   }
-  t.ok((await page.locator('#toast').innerText()).includes('27 badges'), 'the refusal says how many badges are needed');
+  t.ok((await page.locator('#toast').innerText()).includes(`${N} badges`), 'the refusal says how many badges are needed');
   // Also with 22 badges (what a player had before the three newest gyms), and an old Champion is refused too (T19).
   for (const champion of [false, true]) {
     await page.evaluate(async champion => {
@@ -114,7 +116,7 @@ export default async function ({ browser, base, t }) {
       t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), `${role} refuses ${champion ? 'an old Champion' : 'a player'} with 22 badges`);
     }
     const msg = await page.locator('#toast').innerText();
-    t.ok(msg.includes('27 badges') && msg.includes('You have 22') && (!champion || msg.includes('Welcome back, Champion')), `the refusal asks for 27 badges${champion ? ' and welcomes the Champion back' : ''}`);
+    t.ok(msg.includes(`${N} badges`) && msg.includes('You have 22') && (!champion || msg.includes('Welcome back, Champion')), `the refusal asks for ${N} badges${champion ? ' and welcomes the Champion back' : ''}`);
   }
   await page.evaluate(() => { window.pokecraft.champion = false; });
 

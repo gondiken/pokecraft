@@ -1,5 +1,7 @@
 // Cosmic and Sound types: moves, creatures, wild spawns, wool roofs and a gym each.
 import { openGame, newGame, playBattle } from '../helpers.mjs';
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
@@ -53,7 +55,7 @@ export default async function ({ browser, base, t }) {
     const { GYMS } = await import('/src/gyms.js');
     return { want: GYMS.length, shown: [...document.querySelectorAll('#badges > *')].length, h: document.getElementById('badges').getBoundingClientRect().height };
   });
-  t.ok(hud.want === 27 && hud.shown === hud.want, `HUD shows ${hud.want} badge slots (${hud.shown})`);
+  t.ok(hud.want === N && hud.shown === hud.want, `HUD shows ${hud.want} badge slots (${hud.shown})`);
   t.ok(hud.h <= 90, `the badge box is at most 90px high (${Math.round(hud.h)})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
