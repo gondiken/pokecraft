@@ -381,6 +381,7 @@ const BIG_MOVES = {
     ['allhandsin', 'All Hands In', 'rally', 'Everyone puts a hand in! Team hits harder. You get softer.'],
     ['squadhuddle', 'Squad Huddle', 'shield', 'Everyone huddles up to guard the team. You rest next turn.'],
     ['tagteam', 'Tag Team', 'sacrifice', 'Tag! You leave. Next friend comes in fresh and strong.'],
+  ],
   dream: [ // T35
     ['wilddream', 'Wild Dream', 'risky', 'Half the time: triple hit! Or you wake up with a bump.'],
     ['mixedup', 'Mixed Up', 'curse', 'Might mix up the whole foe team (slower).'],
