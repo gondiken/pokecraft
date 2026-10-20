@@ -1075,9 +1075,11 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   - **The head-stander:** walks on its head, upside-down face (smile above the eyes), paws waving in the air.
   - **The toddler drawing:** everything in the wrong place, crayon colours: eyes on two mismatched ear stalks, mouth on
     top of its head, a foot where an arm should be, a hand as one foot, scribbles on the body.
-  - **A third family: open** (the back-to-front one was dropped: it only reads while moving). Must read in a still
-    picture and must not repeat existing ideas (something inside the body: Galaxor, Wobblock; long legs: Tallipod;
-    an island on its back: Bonzoise).
+  - **The balloon-head (friendly):** its head is a balloon on a string tied to a bow on top of its body; the body has
+    its own happy face on its tummy (a "headless" body was too scary for a kid), one arm waving.
+  - Dropped after prototypes: back-to-front (only reads while moving), shadow-swap (a bit spooky), sideways (didn't read).
+    Don't repeat existing ideas (something inside the body: Galaxor, Wobblock; long legs: Tallipod; an island on its
+    back: Bonzoise).
 - **Spawn: only in the Dream realm** (its own `spawns` table). No "near a Bed" condition (Cozy already spawns near homes).
   So Dream creatures are caught only by dreaming.
 - **Battle:** its own two type moves like every type, nothing special, **no sleep focus**. The look and the realm are
@@ -1098,11 +1100,12 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   walking home to heal would cost the night).
   - **Wacky building with a twist, little custom logic** (owner). Proposed: an **upside-down house** floating above the
     island, roof at the bottom; you get in by a bounce block up through a door in its floor; inside, the furniture
-    hangs from the ceiling. The twist reuses the bounce blocks (no new live logic). To confirm with the owner.
+    hangs from the ceiling. The twist reuses the bounce blocks (no new live logic). **Owner: yes.**
   - **Always harder than the previous gym** (owner rule): its leader is about +2 levels over the top level of the gym
     before it (e.g. the gym before tops out at 55 -> Dream leader ~57), trainers a little below. **Knock-on:** wave 11
     puts four gyms above the Treasure Vault (leader ~46), so the Champion's Tower (guards 47-50, Champion 49-52, Zenithar 52),
-    `REMATCH_CAP` (55) and Coach Dex must move up so the Tower stays the hardest; decide that in wave 11.
+    `REMATCH_CAP` (55) and Coach Dex **move up** (owner: yes) so the Tower always stays above the hardest gym; set the
+    numbers in wave 11 once the four gyms' levels are known.
 - **Names** (creatures, moves, leader, gym): Claude picks original, fitting names (owner, 2026-10-20). Terrain layout,
   where the gym / healer / Wake Stone go, and new block ids (from 79) are Claude's call too.
 - **Nights stay the normal length** (about 4 minutes of an 8-minute day; no realm time scale: fewer exceptions).
