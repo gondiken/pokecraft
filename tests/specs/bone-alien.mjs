@@ -69,7 +69,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.evolve.length === 6, `6 evolutions (${r.evolve.join(', ')})`);
   t.ok(r.bonetoss.includes('hits 1 to 5 times'), `Bone Toss text: ${r.bonetoss}`);
   t.ok(r.sig.every(Boolean), 'Howlbone and Ufomax learn their special moves at 30');
-  t.ok(r.count === 203, `${r.count} normal species`);
+  t.ok(r.count === 224, `${r.count} normal species`);
 
   // Portrait grid: 4 columns x 3 rows, and a close-up of each.
   const shots = await page.evaluate(async ids => {
