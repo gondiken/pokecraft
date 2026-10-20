@@ -1125,7 +1125,17 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
 ### T36 · 🤸 Parkour (custom code: medium)
 - **Start from the mechanic** (owner, 2026-10-20): Parkour creatures are **athletic, agile and lean**, not just "they run
   away". The old placeholders Flipfrog and Springbun are dropped: three frogs (Sproutle, Hopfold, Frogami) and three
-  bunnies (Hopsy, Moonhop, Lunaroo) already hop; the boxing kangaroo and the chameleon also exist. Creature designs: open.
+  bunnies (Hopsy, Moonhop, Lunaroo) already hop; the boxing kangaroo and the chameleon also exist.
+  **Chosen (owner saw prototypes, 2026-10-20; "animals the most"):**
+  - **Type look: sport gear:** every Parkour creature wears a sweatband headband and sneakers, has long thin limbs and
+    stands in an action pose (crouch, mid-stride, mid-leap). Just boxes in the shape builders, no new code.
+  - **The slackline lemur:** balancing on one foot with arms out, a striped tail longer than its body.
+  - **The ferret:** a long lean body stretched out mid-leap, front paws reaching, back legs pushing off (a curled
+    mid-flip pose did not read).
+  - **The pole-vaulter:** lanky, a race number on its chest, holding a pole. Keep the pole short or upright so it
+    doesn't stick far out of the battle view or through blocks.
+  - **The stick-runner** as the single-stage 7th: a stick figure mid-sprint; give it a creature face (ears, a snout)
+    so it doesn't read as a little person.
 - Spawn: on high places (treetops, roofs, pillar tops): a condition + a `place` rule (homes already have `place`). Owner: OK.
 - **Behaviour:** wild ones hop away from you over blocks, so you chase them: one new "run away" walk style (Racer could
   reuse it later with a "run" style). No separate prototype: build it and the owner says after playing if it's not fun.
