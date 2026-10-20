@@ -1021,7 +1021,7 @@ wool, fx + sound, Book, README. Battle rules stay the same for all; a type only 
 - Creatures: e.g. Donutoad, Sushiroll, Pretzling, Jellywob.
 - Spawn: only near flowers or crops **you placed** (one new spawn condition counting placed blocks nearby, like Cozy's
   `home:<type>`). Behaviour: none. Battle: leans to healing and Shield moves.
-- Gym, the Kitchen: Chef battles only after you bring 3 ingredients (berry from leaves, cave mushroom, fish); reuse the
+- Gym, the Restaurant: Chef battles only after you bring 3 ingredients (berry from leaves, cave mushroom, fish); reuse the
   Treasure Vault's `keys`. Trainers at stoves.
 
 ### T34 · 🐝 Swarm (custom code: low)
