@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). T31 (realms: a bare-bones Dream realm from your cozy home's Bed) and T32 (room for more gyms: the map grew south to 288 x 368, gym slots 5-9) are done, so wave 10 is done. Next: wave 11 (Food, Squad, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). T31 (realms: a bare-bones Dream realm from your cozy home's Bed) and T32 (room for more gyms: the map grew south to 288 x 368, gym slots 5-9) are done, so wave 10 is done. Wave 11 (T33-T36: Food with the Restaurant, Squad with the Big Top Gym, Parkour with the Obstacle Course, Dream with a 256 x 256 Dream realm and the Upside-Down House; Tower at 31, guards 55-58, Champion 57-60) is done (plans `wave11.md`, `T33`-`T36`). Next: the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -62,7 +62,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 9b ✅ | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
 | 9c ✅ | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
 | 10 ✅ | T31 Realms ✅ · T32 More room for gyms ✅ | Both careful world work; can run side by side (realm world vs. main map) |
-| 11 | T33 Food · T34 Squad · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
+| 11 ✅ | T33 Food · T34 Squad · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -1012,7 +1012,7 @@ calls before and after (desktop and emulated iPad) and keep them about the same 
 as much as the planned gyms need.
 Done when: `big-map` covers the new ring and slots, old saves are unchanged, and the before/after numbers are in the plan.
 
-## Wave 11 · New types: Food, Squad, Dream, Parkour
+## Wave 11 · New types: Food, Squad, Dream, Parkour ✅ (done: plans `wave11.md`, `T33`-`T36`)
 
 Shared cost for each type (data, not systems): 7 creatures with at least 3 new shapes, chart row and column, moves,
 wool, fx + sound, Book, README. Battle rules stay the same for all; a type only leans towards some T25 move kinds.
