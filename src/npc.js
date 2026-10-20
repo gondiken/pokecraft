@@ -17,7 +17,7 @@ function box(parent, w, h, d, color, x, y, z) {
 
 // A blocky, Minecraft-style person. Faces +Z.
 // look: 'alien' (no hair, big black eyes, antennae with glowing tips in the hair colour) or
-// 'star' (a little yellow star on top of the head or hat).
+// 'star' (a little yellow star on top of the head or hat) or 'sport' (a red sweatband, no hat; T36).
 export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
   const group = new THREE.Group();
   const parts = { legs: [], arms: [] };
@@ -59,6 +59,11 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
       box(head, 0.05, 0.06, 0.02, 0x2a2a6a, s * 0.1, 0.28, 0.262);
     }
     box(head, 0.16, 0.04, 0.02, 0x8a4a3a, 0, 0.14, 0.255);
+  }
+  if (look === 'sport') { // T36: a red sweatband round the head, with two tails at the back
+    box(head, 0.55, 0.08, 0.55, 0xff3b3b, 0, 0.4, 0);
+    box(head, 0.06, 0.2, 0.04, 0xff3b3b, -0.06, 0.32, -0.3);
+    box(head, 0.06, 0.14, 0.04, 0xff3b3b, 0.06, 0.3, -0.33);
   }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
@@ -187,7 +192,7 @@ export class NpcManager {
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: trainer.look === 'alien' || trainer.look === 'sport' ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
         if (none) this.sendAway(npc);

@@ -88,6 +88,17 @@ WHERE.hidden = g => ({
   },
 });
 
+// Obstacle Course (T36): the arrow points at the foot of the start stairs. No `tips` (the golden fixture).
+WHERE.course = g => ({
+  aim(p) {
+    const [ex, , ez] = g.entry;
+    return {
+      x: ex + 0.5, z: ez + 0.5,
+      text: (arrow, dist) => (inBox(g.area, p) ? `${g.def.name} is here!` : dist < 6 ? `The ${g.def.name} starts up these stairs!` : `Next: ${g.def.name} ${arrow} ${dist}m`),
+    };
+  },
+});
+
 // Home gyms (T23 Cozy Gym): no building. Until it moves in the arrow says what to do next (build a home, make it cozy,
 // catch 3 cozy creatures) and points at your home; afterwards at the home itself. No `tips` (the golden fixture).
 WHERE.home = (g, game) => {

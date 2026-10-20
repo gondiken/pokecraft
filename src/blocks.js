@@ -39,6 +39,7 @@ const MORE_TILES = [
   'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
   'STAR_BLOCK', 'RAINBOW_BRICK', 'TROPHY_SIDE', 'TROPHY_TOP', // T29 mission blocks
   'WAKE_STONE', // T31 realms
+  'SOFT_MAT', 'CHECKPOINT_TOP', 'CHECKPOINT_ON_TOP', 'BEAM_TOP', 'BEAM_SIDE', // T36 parkour
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -65,6 +66,8 @@ export const B = {
   // 78: T31 Wake Stone (only in realms, never in the main world). 79-82: food / squad / dream / parkour wool (wave 11).
   // Reserved for wave 11: 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
   WAKE_STONE: 78,
+  // 91-94: T36 Obstacle Course blocks (not placeable). Next free id: 95.
+  SOFT_MAT: 91, CHECKPOINT: 92, CHECKPOINT_ON: 93, BEAM: 94,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -134,6 +137,11 @@ BLOCKS[B.RAINBOW_BRICK] = { name: 'Rainbow Brick', ...all(T.RAINBOW_BRICK), limi
 BLOCKS[B.GIANT_TROPHY] = { name: 'Giant Trophy', top: T.TROPHY_TOP, side: T.TROPHY_SIDE, bottom: T.TROPHY_TOP, limited: true, getMore: MISSION_MORE };
 // T31: the Wake Stone in a realm: touch (use or break) it to wake up. Not placeable.
 BLOCKS[B.WAKE_STONE] = { name: 'Wake Stone', ...all(T.WAKE_STONE), glow: true, wallText: 'Touch the Wake Stone to wake up!' };
+// T36 Obstacle Course blocks: none can be placed. The checkpoint flag turns green (CHECKPOINT_ON) with setLive once you stood on it.
+BLOCKS[B.SOFT_MAT] = { name: 'Soft Mat', ...all(T.SOFT_MAT), wallText: 'A soft mat. Jump back on the course!' };
+BLOCKS[B.CHECKPOINT] = { name: 'Checkpoint Flag', top: T.CHECKPOINT_TOP, side: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), bottom: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), wallText: 'Stand on the flag! If you fall, you come back here.' };
+BLOCKS[B.CHECKPOINT_ON] = { name: 'Checkpoint Flag', top: T.CHECKPOINT_ON_TOP, side: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), bottom: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), glow: true, noLight: true, wallText: 'Stand on the flag! If you fall, you come back here.' };
+BLOCKS[B.BEAM] = { name: 'Balance Beam', top: T.BEAM_TOP, side: T.BEAM_SIDE, bottom: T.BEAM_TOP, wallText: 'A balance beam. Walk along it!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -412,6 +420,26 @@ export function drawAtlas() {
       const moon = Math.hypot(x - 7.5, y - 7.5) < 4.6 && Math.hypot(x - 9.3, y - 6.3) > 3.6;
       const edge = x === 0 || y === 0 || x === 15 || y === 15;
       put(T.WAKE_STONE, x, y, edge ? [150, 120, 220] : moon ? [255, 236, 150] : shade([210, 200, 255], 1 + (r3() - 0.5) * 0.12));
+    });
+  }
+
+  { // T36 Obstacle Course tiles. Own random numbers, so no older tile changes.
+    const r4 = mulberry32(3636);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    // Soft Mat: blue gym-mat foam with lighter seams in a 2 x 2 grid.
+    each((x, y) => put(T.SOFT_MAT, x, y, edge(x, y) || x === 7 || x === 8 || y === 7 || y === 8 ? [130, 180, 255] : shade([58, 118, 222], 1 + (r4() - 0.5) * 0.1)));
+    // Checkpoint flag: a white pad with a flag on a pole (red; green on gold when reached).
+    const flag = (tile, pad, cloth, border) => each((x, y) => {
+      const pole = x === 4 && y >= 2 && y <= 13;
+      const cloth_ = x >= 5 && x <= 12 && y >= 2 && y <= 2 + Math.round(5 - Math.max(0, x - 8) * 1.2);
+      put(tile, x, y, pole ? [60, 40, 30] : cloth_ ? cloth : edge(x, y) ? border : shade(pad, 1 + (r4() - 0.5) * 0.05));
+    });
+    flag(T.CHECKPOINT_TOP, [245, 245, 250], [235, 50, 50], [190, 190, 200]);
+    flag(T.CHECKPOINT_ON_TOP, [255, 214, 90], [40, 180, 80], [200, 150, 30]);
+    // Balance beam: light wood on top, red and white stripes down the sides.
+    each((x, y) => {
+      put(T.BEAM_TOP, x, y, y % 5 === 2 ? [196, 156, 98] : edge(x, y) ? [186, 146, 90] : shade([232, 198, 140], 1 + (r4() - 0.5) * 0.08));
+      put(T.BEAM_SIDE, x, y, ((x + y) >> 2) % 2 ? [248, 248, 248] : [226, 52, 52]);
     });
   }
 

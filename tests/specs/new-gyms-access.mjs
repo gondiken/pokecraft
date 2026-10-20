@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import { devices } from 'playwright';
 import { openGame, newGame, playBattle } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 
@@ -29,7 +30,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 1);
   await recordToasts(page);
   await page.evaluate(() => { const g = window.pokecraft; g.creatures.clear(); document.exitPointerLock(); });
-  t.ok(await page.evaluate(() => window.pokecraft.world.gyms.length === 27), '27 gyms are placed');
+  t.ok(await page.evaluate(n => window.pokecraft.world.gyms.length === n, ALL_GYMS.length), `${ALL_GYMS.length} gyms are placed`);
   t.ok(await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
     return GYMS.find(g => g.id === 'alien').night === true && GYMS.slice(18, 22).map(g => g.id).join() === 'light,paper,slime,sky';

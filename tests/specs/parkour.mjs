@@ -4,7 +4,8 @@
 // Screenshots go to tests/screenshots/t36-*.png.
 import fs from 'node:fs';
 import path from 'node:path';
-import { openGame, newGame, platform, ROOT } from '../helpers.mjs';
+import { devices } from 'playwright';
+import { openGame, newGame, platform, playBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const IDS = ['teetail', 'tightropa', 'zippet', 'ferrocket', 'vaultling', 'highvault', 'zoomstick'];
@@ -163,13 +164,13 @@ export default async function ({ browser, base, t }) {
     g.time = 0.25;
     const out = [];
     ids.forEach((id, i) => {
-      const x = sx - 3 + i, z = sz - 2;
+      const x = sx - 4 + i * 1.5, z = sz - 2;
       const w = g.creatures.spawnAt(id, x, y - 0, z, { level: 5, when: 'high' });
       w.frozen = true; // posing for the photo
       w.heading = Math.PI + (i - 3) * 0.12;
       out.push(!!w);
     });
-    g.player.pos.set(sx + 0.5, y, sz + 3.6);
+    g.player.pos.set(sx + 0.5, y, sz + 4);
     g.player.vel.set(0, 0, 0);
     g.player.lookAt({ x: sx + 0.5, y: y + 0.4, z: sz - 2 });
     g.player.keys = {};
@@ -499,6 +500,383 @@ export default async function ({ browser, base, t }) {
   t.ok(Bump.still === 1, 'standing inside it starts no second battle');
   t.ok(Bump.again === 2, 'stepping away and back starts one again');
   t.ok(Bump.above === 2 && Bump.frozen === 2, 'jumping over it or touching it in a battle does nothing');
+
+  /* ---------------------------------------------------------------- D. The Obstacle Course (step B) */
+  // D1 + D2: placement on three seeds, nothing outside the box changes, and the course is solvable (one way only).
+  const D12 = await page.evaluate(async seeds => {
+    const { World, WORLD_H } = await import('/src/world.js');
+    const { GYMS } = await import('/src/gyms.js');
+    const { B, isSolid } = await import('/src/blocks.js');
+    const out = {};
+    for (const seed of seeds) {
+      const r = {};
+      const w = new World(seed, null, null); w.generate();
+      const def = GYMS.find(x => x.id === 'parkour');
+      const g = w.gyms.find(x => x.def === def);
+      r.found = !!g; r.k = g?.slot?.k;
+      const box = g.slot.box;
+      const inBox = (x, z) => x >= box.x0 && x <= box.x1 && z >= box.z0 && z <= box.z1;
+      r.protect = g.protect.every(b => b.x0 >= box.x0 && b.x1 <= box.x1 && b.z0 >= box.z0 && b.z1 <= box.z1);
+      r.area = g.area.x0 >= box.x0 && g.area.x1 <= box.x1 && g.area.z0 >= box.z0 && g.area.z1 <= box.z1;
+      // the world without the gym
+      const i = GYMS.indexOf(def);
+      GYMS.splice(i, 1);
+      let w0;
+      try { w0 = new World(seed, null, null); w0.generate(); } finally { GYMS.splice(i, 0, def); }
+      let inside = 0, outside = 0;
+      for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
+        const k = x + w.W * (z + w.D * y);
+        if (w.data[k] === w0.data[k]) continue;
+        if (inBox(x, z)) inside++; else outside++;
+      }
+      r.inside = inside; r.outside = outside;
+      // blocks
+      const { fy, P, front, side, checkpoints, pieces, course } = g;
+      const col = (d, s) => [g.x + front[0] * d + side[0] * s, g.z + front[1] * d + side[1] * s];
+      let matBad = 0, matCount = 0;
+      for (let d = -17; d <= 17; d++) for (let s = -17; s <= 17; s++) {
+        const [x, z] = col(d, s);
+        matCount++;
+        if (w.get(x, fy, z) !== B.SOFT_MAT) matBad++;
+      }
+      r.mat = { bad: matBad, count: matCount };
+      r.cps = checkpoints.map(c => w.get(...c.cell));
+      r.beamsOk = Object.values(pieces).filter(p => p.beam).every(p => {
+        for (let x = p.x0; x <= p.x1; x++) for (let z = p.z0; z <= p.z1; z++) if (w.get(x, p.y, z) !== B.BEAM) return false;
+        return true;
+      });
+      const cp0 = checkpoints[0].cell;
+      r.fenced = w.fenced(cp0[0], cp0[1] + 1, cp0[2]) && w.fenced(g.x, fy + 2, g.z) && w.fenced(col(-12, 9)[0], P + 5, col(-12, 9)[1]);
+      const [bx, bz] = col(-3, -11);
+      r.editBlocked = !w.editAllowed(bx, P + 1, bz, B.AIR) && !w.editAllowed(col(0, 0)[0], fy, col(0, 0)[1], B.AIR) && !w.editAllowed(col(5, 5)[0], fy + 1, col(5, 5)[1], B.STONE) && !w.editAllowed(cp0[0], cp0[1], cp0[2], B.AIR);
+      r.pieces = Object.keys(pieces).length;
+      r.top = P + 3;
+
+      // ---- the BFS over standing cells
+      const hidden = new Set();
+      const key = (x, y, z) => x + w.W * (z + w.D * y);
+      const get = (x, y, z) => (hidden.has(key(x, y, z)) ? B.AIR : w.get(x, y, z));
+      const air = (x, y, z) => get(x, y, z) === B.AIR;
+      const solid = (x, y, z) => isSolid(get(x, y, z));
+      const stand = (x, y, z) => inBox(x, z) && y >= 1 && air(x, y, z) && air(x, y + 1, z) && solid(x, y - 1, z) && get(x, y - 1, z) !== B.SOFT_MAT;
+      const D8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]], D4 = D8.slice(0, 4);
+      const moves = (x, y, z) => {
+        const res = [];
+        for (const [dx, dz] of D8) {
+          const nx = x + dx, nz = z + dz;
+          if (stand(nx, y, nz)) res.push([nx, y, nz, 'walk']);
+          if (air(nx, y, nz) && air(nx, y + 1, nz)) for (let k = 1; k <= 3; k++) {
+            if (k > 1 && !air(nx, y - k + 1, nz)) break;
+            if (stand(nx, y - k, nz)) { res.push([nx, y - k, nz, 'down']); break; }
+          }
+          if (stand(nx, y + 1, nz) && air(x, y + 2, z)) res.push([nx, y + 1, nz, 'up']);
+        }
+        for (const [dx, dz] of D4) for (let gap = 1; gap <= 2; gap++) {
+          for (const dy of [0, 1, -1, -2, -3]) {
+            if (dy === 1 && gap > 1) continue;
+            const lx = x + dx * (gap + 1), lz = z + dz * (gap + 1), y1 = y + dy;
+            if (!stand(lx, y1, lz)) continue;
+            let free = true;
+            for (let j = 1; j <= gap && free; j++) for (let yy = Math.min(y, y1); yy <= Math.max(y, y1) + 1; yy++) if (!air(x + dx * j, yy, z + dz * j)) { free = false; break; }
+            if (free) res.push([lx, y1, lz, `jump${gap}${dy === 0 ? 'flat' : dy > 0 ? 'up' : 'down'}`]);
+          }
+        }
+        return res;
+      };
+      const bfs = start => {
+        const seen = new Map([[key(...start), null]]), q = [start];
+        for (let i = 0; i < q.length; i++) {
+          const c = q[i];
+          for (const m of moves(c[0], c[1], c[2])) {
+            const k = key(m[0], m[1], m[2]);
+            if (seen.has(k)) continue;
+            seen.set(k, { from: c, kind: m[3] });
+            q.push([m[0], m[1], m[2]]);
+          }
+        }
+        return { seen, has: c => seen.has(key(...c)) };
+      };
+      const onPieceXZ = (x, z) => Object.values(pieces).some(p => x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1);
+      const stands = checkpoints.map(c => [c.cell[0], c.cell[1] + 1, c.cell[2]]);
+      const leader = g.leaderPos.map(Math.floor);
+      const entry = [g.entry[0], fy + 1, g.entry[2]];
+      r.entryStands = stand(...entry);
+      const all = bfs(entry);
+      r.reach = [...stands, leader].map(c => all.has(c));
+      // the designed joins, piece after piece: the gap of air between them and how far up (+) or down (-) the next one is
+      const order = Object.entries(pieces), joins = [];
+      for (let i = 1; i < order.length; i++) {
+        const [, a] = order[i - 1], [id, b] = order[i];
+        const sepX = Math.max(0, b.x0 - a.x1 - 1, a.x0 - b.x1 - 1), sepZ = Math.max(0, b.z0 - a.z1 - 1, a.z0 - b.z1 - 1);
+        joins.push({ id, gap: Math.max(sepX, sepZ), both: sepX > 0 && sepZ > 0, dy: b.y - a.y });
+      }
+      r.joins = joins;
+      // without a trainer's landing the leader is out of reach
+      const hide = id => { const p = pieces[id]; for (let x = p.x0; x <= p.x1; x++) for (let z = p.z0; z <= p.z1; z++) for (let y = p.y - 1; y <= p.y + 1; y++) hidden.add(key(x, y, z)); };
+      hide('L1');
+      const noL1 = bfs(entry);
+      r.noL1 = [stands[2], stands[3], leader].map(c => noL1.has(c));
+      hidden.clear();
+      hide('L2');
+      const noL2 = bfs(entry);
+      r.noL2 = [stands[2], stands[3], leader].map(c => noL2.has(c));
+      hidden.clear();
+      // one way out: from the end ledge you cannot get back to the finish, from the finish you can leave
+      const exitCell = [g.exit[0], fy + 1, g.exit[2]];
+      const e = pieces.E, eStand = [e.x0, e.y + 1, e.z0];
+      const fromE = bfs(eStand);
+      r.fromE = { ground: fromE.has(exitCell) };
+      // the end ledge does not lead back up by itself: with the ground out of the way (no walking round to the start) nothing else is reachable
+      const noGround = new Set();
+      for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = 1; y <= fy + 2; y++) if (!onPieceXZ(x, z)) noGround.add(key(x, y, z)); // the stairs and the ground are no way back
+      for (const k of noGround) hidden.add(k);
+      const viaLedge = bfs(eStand);
+      r.fromE.finish = viaLedge.has(stands[3]) || viaLedge.has(leader);
+      r.fromE.cells = viaLedge.seen.size;
+      hidden.clear();
+      const fromF = bfs(stands[3]);
+      r.fromF = { ground: fromF.has(exitCell), e: fromF.has(eStand) };
+      // from the ground only the stairs, the start and the end ledge are one move away
+      const onPiece = (x, y, z) => Object.entries(pieces).find(([, p]) => x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1 && y === p.y + 1)?.[0];
+      const direct = new Set();
+      let outsideStands = 0;
+      for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = Math.max(1, fy - 1); y <= fy + 3; y++) {
+        if (!stand(x, y, z) || onPiece(x, y, z)) continue;
+        outsideStands++;
+        for (const m of moves(x, y, z)) { const id = onPiece(m[0], m[1], m[2]); if (id) direct.add(id); }
+      }
+      r.direct = [...direct].sort();
+      r.outsideStands = outsideStands;
+      out[seed] = r;
+    }
+    return out;
+  }, [1, 4242, 777]);
+  for (const seed of [1, 4242, 777]) {
+    const r = D12[seed];
+    t.ok(r.found && r.k === 7 && r.protect && r.area, `seed ${seed}: the Obstacle Course is in slot 7 with its protect box and area inside the slot box`);
+    t.ok(r.inside > 500 && r.outside === 0, `seed ${seed}: it changes ${r.inside} cells inside its slot box and ${r.outside} outside`);
+    t.ok(r.mat.bad === 0 && r.cps.every(c => c === 92) && r.beamsOk && r.pieces === 21, `seed ${seed}: soft mat everywhere (${r.mat.bad} bad), 4 flags (${r.cps}), beams are BEAM, ${r.pieces} pieces`);
+    t.ok(r.fenced && r.editBlocked, `seed ${seed}: the whole site is fenced and cannot be edited (${r.fenced}, ${r.editBlocked})`);
+    t.ok(r.entryStands && r.reach.every(Boolean), `seed ${seed}: from the stair foot you can reach every flag and the leader (${r.reach})`);
+    t.ok(r.noL1.every(v => !v) && r.noL2.every(v => !v), `seed ${seed}: without a landing nothing beyond it can be reached (${r.noL1} / ${r.noL2})`);
+    t.ok(!r.fromE.finish && r.fromE.ground && r.fromF.ground && r.fromF.e, `seed ${seed}: one way: the end ledge does not lead back (${JSON.stringify(r.fromE)}), the finish leads out (${JSON.stringify(r.fromF)})`);
+    t.ok(r.direct.join() === 'E,S0', `seed ${seed}: from the ground only S0 and E are one move away (${r.direct}; ${r.outsideStands} outside cells)`);
+    const two = r.joins.filter(j => j.gap === 2);
+    t.ok(two.length === 3 && two.every(j => j.dy === 0) && r.joins.every(j => !j.both && j.gap <= 2 && j.dy <= 1 && (j.dy >= -1 || j.id === 'E')) && r.joins.find(j => j.id === 'E').dy === -3,
+      `seed ${seed}: the pieces join with gaps of 0-1 blocks, exactly 3 flat two-block gaps, never more than 1 up, and only the exit drops (${JSON.stringify(r.joins.map(j => `${j.id}:${j.gap}/${j.dy}`))})`);
+  }
+
+  // D3: real physics on a high platform: what a child can really jump, at 60 and 20 frames per second.
+  const D3 = await page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, p = g.player;
+    const { B } = await import('/src/blocks.js');
+    const { sx, sz } = window.__keep;
+    const cx = sx + 20, cz = sz - 24, Y = 40;
+    const out = {};
+    const trial = (gap, dy, sprint, dt) => {
+      for (let x = cx - 4; x <= cx + 4; x++) for (let z = cz - 12; z <= cz + 12; z++) for (let y = Y - 2; y <= Y + 8; y++) w.set(x, y, z, B.AIR, false);
+      for (let x = cx - 2; x <= cx + 2; x++) {
+        for (let z = cz; z <= cz + 4; z++) w.set(x, Y, z, B.STONE, false);
+        for (let z = cz - gap - 4; z <= cz - gap - 1; z++) w.set(x, Y + dy, z, B.STONE, false);
+      }
+      p.pos.set(cx + 0.5, Y + 1, cz + 3.5); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.onGround = true; p.ride = null;
+      p.keys = { KeyW: true, ShiftLeft: sprint };
+      let jumped = false, air = false, t = 0;
+      for (let i = 0; i < 400; i++) {
+        if (!jumped && p.pos.z - cz <= 0.2) { p.keys.Space = true; jumped = true; }
+        p.update(dt);
+        t += dt;
+        if (jumped && !p.onGround) air = true;
+        if (jumped) p.keys.Space = false;
+        if (air && p.onGround) break;
+        if (p.pos.y < Y - 6) break;
+      }
+      p.keys = {};
+      const target = Y + dy + 1;
+      return { ok: Math.abs(p.pos.y - target) < 0.01 && p.pos.z < cz - gap + 0.3 && p.pos.z > cz - gap - 4, y: +p.pos.y.toFixed(2), z: +(p.pos.z - cz).toFixed(2) };
+    };
+    for (const [name, dt] of [['60', 1 / 60], ['20', 1 / 20]]) {
+      out[name] = {
+        gap1walk: trial(1, 0, false, dt), gap2sprint: trial(2, 0, true, dt), up1gap1walk: trial(1, 1, false, dt), down1gap1walk: trial(1, -1, false, dt),
+        gap4sprint: trial(4, 0, true, dt), gap5sprint: trial(5, 0, true, dt), gap7sprint: trial(7, 0, true, dt), up2gap1sprint: trial(1, 2, true, dt), up1gap5sprint: trial(5, 1, true, dt),
+      };
+    }
+    for (let x = cx - 4; x <= cx + 4; x++) for (let z = cz - 12; z <= cz + 12; z++) for (let y = Y - 2; y <= Y + 8; y++) w.set(x, y, z, B.AIR, false);
+    return out;
+  });
+  console.log('  jump trials:', JSON.stringify(D3));
+  for (const fps of ['60', '20']) {
+    const d = D3[fps];
+    t.ok(d.gap1walk.ok && d.gap2sprint.ok && d.up1gap1walk.ok && d.down1gap1walk.ok, `at ${fps} fps: walking over one gap, sprinting over two, one up with one gap, one down with one gap all land`);
+    t.ok(!d.gap5sprint.ok && !d.gap7sprint.ok && !d.up2gap1sprint.ok && !d.up1gap5sprint.ok, `at ${fps} fps: five blocks of air, two blocks up and the 5-block lane gaps cannot be jumped, so no lane can be skipped (${JSON.stringify([d.gap5sprint, d.up2gap1sprint, d.up1gap5sprint])})`);
+  }
+
+  // D4: in the game.
+  const D4 = await page.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, p = g.player;
+    const { B } = await import('/src/blocks.js');
+    const { trainerKey } = await import('/src/gyms.js');
+    const gym = w.gyms.find(x => x.def.id === 'parkour');
+    const L = g.gymLive.of('parkour');
+    const out = { has: !!L, def: gym.def };
+    g.beaten = g.beaten.filter(k => !k.startsWith('parkour:'));
+    g.badges = g.badges.filter(b => b !== 'parkour');
+    window.__sounds = {};
+    const play = g.sound.play.bind(g.sound);
+    g.sound.play = (n, ...r) => { window.__sounds[n] = (window.__sounds[n] || 0) + 1; return play(n, ...r); };
+    window.__toasts.length = 0;
+    const sound = n => window.__sounds[n] || 0;
+    const cps = gym.checkpoints;
+    const mat = (() => { const [x, z] = [gym.course.x0 + 3, gym.course.z0 + 3]; return [x, gym.fy, z]; })();
+    const at = k => ({ x: cps[k].stand[0], y: cps[k].stand[1], z: cps[k].stand[2] });
+    const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 0.01;
+    // flags are lit with setLive and never edits
+    L.update(0);
+    out.flag0 = w.get(...cps[0].cell); out.flag1 = w.get(...cps[1].cell);
+    out.noEdits = !w.edits.has(w.index(...cps[0].cell)) && !w.edits.has(w.index(...cps[1].cell));
+    // falling before any flag: the start
+    p.pos.set(5, 5, 5);
+    L.stand(...mat, B.SOFT_MAT);
+    out.toStart = near(p.pos, at(0)) && sound('boing') === 1 && window.__toasts.at(-1) === 'Boing! Back to the start.' && L.falls === 1;
+    // CP1 without beating trainer 0, then a fall
+    L.stand(...cps[1].cell, B.CHECKPOINT);
+    out.cp1Toast = window.__toasts.find(m => m.startsWith('Checkpoint!'));
+    out.cp1Sound = sound('checkpoint');
+    out.flag1On = w.get(...cps[1].cell) === B.CHECKPOINT_ON && w.get(...cps[2].cell) === B.CHECKPOINT;
+    L.stand(...mat, B.SOFT_MAT);
+    out.toCp1 = near(p.pos, at(1)) && window.__toasts.at(-1) === 'Boing! Back to your last flag.' && L.falls === 2;
+    // CP2 with trainer 0 not beaten: back to CP1 (cannot skip a trainer)
+    L.stand(...cps[2].cell, B.CHECKPOINT);
+    L.stand(...mat, B.SOFT_MAT);
+    out.skipNo = near(p.pos, at(1));
+    g.beaten.push(trainerKey(gym.def, 0));
+    L.stand(...mat, B.SOFT_MAT);
+    out.skipYes = near(p.pos, at(2));
+    // a real fall from above the mat
+    const [mx, , mz] = mat;
+    p.pos.set(mx + 0.5, gym.fy + 6, mz + 0.5); p.vel.set(0, 0, 0); p.keys = {};
+    let n = 0;
+    while (!p.onGround && n++ < 200) p.update(0.05);
+    const under = w.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z));
+    out.realFall = { under, onGround: p.onGround };
+    L.stand(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z), under);
+    out.realFallBack = near(p.pos, at(2));
+    // the flag of the start is waiting
+    window.__toasts.length = 0;
+    L.stand(...cps[0].cell, B.CHECKPOINT_ON);
+    out.waiting = window.__toasts.at(-1);
+    out.prompt = L.prompt({ id: B.CHECKPOINT_ON }, 'click') + '|' + L.prompt({ id: B.STONE }, 'click');
+    // standing on the mat outside the course box does nothing
+    p.pos.set(1, 1, 1);
+    L.stand(gym.course.x1 + 5, gym.fy, gym.course.z1 + 5, B.SOFT_MAT);
+    out.outside = p.pos.x === 1;
+    // protection
+    const beam = gym.pieces.A4;
+    window.__toasts.length = 0;
+    out.editBeam = w.editAllowed(beam.x0, beam.y, beam.z0, B.AIR);
+    out.editMat = w.editAllowed(mat[0], mat[1], mat[2], B.AIR);
+    // riders cannot enter: fenced
+    out.fenced = w.fenced(Math.floor(cps[0].stand[0]), Math.floor(cps[0].stand[1]), Math.floor(cps[0].stand[2]));
+    return out;
+  });
+  t.ok(D4.has && D4.flag0 === 93 && D4.flag1 === 92 && D4.noEdits, `the start flag is drawn lit, the others not, and flags are never edits (${D4.flag0}, ${D4.flag1})`);
+  t.ok(D4.toStart, 'a fall before any flag goes back to the start (boing, toast, falls counted)');
+  t.ok(D4.cp1Toast?.includes('Runner Remy wants to battle you!') && D4.cp1Sound === 1 && D4.flag1On, `the first landing flag says so and lights up (${D4.cp1Toast})`);
+  t.ok(D4.toCp1, 'a fall from the first landing goes back to its flag');
+  t.ok(D4.skipNo, 'with Runner Remy not beaten, reaching the second flag still sends you back to the first');
+  t.ok(D4.skipYes, 'after beating Runner Remy a fall sends you to the second flag');
+  t.ok(D4.realFall.under === 91 && D4.realFall.onGround && D4.realFallBack, `a real fall lands on the soft mat and the frame's stand call sends you back (${JSON.stringify(D4.realFall)})`);
+  t.ok(D4.waiting === 'Your flag is waiting! Hop onto the soft mat to go back to it.' && D4.prompt === 'Checkpoint flag|null', `the start flag waits for you (${D4.waiting}, ${D4.prompt})`);
+  t.ok(D4.outside, 'the mat outside the course box does nothing');
+  t.ok(!D4.editBeam && !D4.editMat && D4.fenced, 'breaking a beam or the mat is refused, and the course is fenced for riders');
+
+  // The way in a real game: the guide, the welcome, the people, the badge.
+  const info = await page.evaluate(() => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'parkour');
+    return { x: gym.x, z: gym.z, fy: gym.fy, front: gym.front, entry: gym.entry, stand0: gym.checkpoints[0].stand, yaw0: gym.checkpoints[0].yaw, P: gym.P };
+  });
+  const guide = await page.evaluate(() => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'parkour');
+    const farP = { x: gym.entry[0] + 0.5 + 30, y: gym.fy + 1, z: gym.entry[2] + 0.5 + 30 };
+    const far = g.access.of(gym).aim(farP).text('→', 30);
+    const aim = g.access.of(gym).aim(farP);
+    const nearP = { x: gym.entry[0] + 0.5 + gym.front[0] * 3, y: gym.fy + 1, z: gym.entry[2] + 0.5 + gym.front[1] * 3 }; // just outside the site, at the foot of the stairs
+    const nearText = g.access.of(gym).aim(nearP).text('→', 3);
+    const hereText = g.access.of(gym).aim({ x: gym.x + 0.5, y: gym.fy + 1, z: gym.z + 0.5 }).text('→', 5);
+    return { far, aimOk: Math.abs(aim.x - (gym.entry[0] + 0.5)) < 1e-9 && Math.abs(aim.z - (gym.entry[2] + 0.5)) < 1e-9, nearText, welcome: g.access.of(gym).welcome(), hereText, tips: g.access.of(gym).tips };
+  });
+  t.ok(guide.aimOk && guide.far === 'Next: Obstacle Course → 30m' && guide.nearText === 'The Obstacle Course starts up these stairs!' && guide.hereText === 'Obstacle Course is here!' && guide.tips === null, `the arrow points at the foot of the stairs (${guide.far} / ${guide.nearText})`);
+  t.ok(guide.welcome.startsWith('Welcome to the Obstacle Course!'), 'the welcome toast');
+
+  // People and the badge
+  await page.evaluate(async () => {
+    const g = window.pokecraft;
+    g.creatures.clear(); document.exitPointerLock();
+    window.__toasts = [];
+    new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) window.__toasts.push(n.textContent); })
+      .observe(document.getElementById('toast'), { childList: true });
+    const { makeCreature } = await import('/src/species.js');
+    g.party = ['titanox', 'spectrion', 'stormwyvern'].map(s => makeCreature(s, 70));
+    g.beaten = g.beaten.filter(k => !k.startsWith('parkour:'));
+    g.badges = g.badges.filter(b => b !== 'parkour');
+  });
+  const ppl = await page.evaluate(() => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'parkour');
+    const ns = g.npcs.list.filter(n => n.gym === gym);
+    return ns.map(n => ({ kind: n.kind, name: n.name, i: n.index, y: n.pos.y, ok: n.pos.y === gym.leaderPos[1] || gym.trainerPositions.some(p => p[1] === n.pos.y) }));
+  });
+  t.ok(ppl.length === 3 && ppl.every(p => p.ok), `Leader Rio and two trainers stand on the platforms (${JSON.stringify(ppl)})`);
+  await page.evaluate(() => { const g = window.pokecraft; g.talkTo(g.npcs.list.find(x => x.kind === 'leader' && x.gym.def.id === 'parkour')); });
+  const ts = await page.evaluate(() => window.__toasts.join('|'));
+  t.ok(ts.includes('Beat Runner Remy and Gymnast Gigi first'), `the leader refuses first (${ts})`);
+  for (const [i, name] of [[0, 'Runner Remy'], [1, 'Gymnast Gigi']]) {
+    await page.evaluate(i => { const g = window.pokecraft; g.talkTo(g.npcs.list.find(x => x.kind === 'trainer' && x.index === i && x.gym.def.id === 'parkour')); }, i);
+    t.ok(await page.evaluate(() => window.pokecraft.inBattle), `${name} battles`);
+    t.ok(await playBattle(page), `beat ${name}`);
+    await page.waitForTimeout(500);
+    await page.evaluate(() => document.exitPointerLock());
+  }
+  await page.evaluate(() => { const g = window.pokecraft; g.talkTo(g.npcs.list.find(x => x.kind === 'leader' && x.gym.def.id === 'parkour')); });
+  t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the leader battles after both trainers');
+  t.ok(await playBattle(page), 'beat Leader Rio');
+  await page.waitForTimeout(500);
+  t.ok(await page.evaluate(() => window.pokecraft.badges.includes('parkour')), 'the Sneaker Badge is awarded');
+
+  // Screenshots: from above at noon, first person on the start platform, and on an iPad.
+  await page.evaluate(() => { const g = window.pokecraft; g.inBattle = false; document.getElementById('pause')?.classList.add('hidden'); g.time = 0.25; g.weather.set('clear'); g.creatures.clear(); g.creatures.spawnTimer = 1e9; });
+  const cam = async (name, x, y, z, look, wait = 3000) => {
+    await page.evaluate(([x, y, z, look]) => {
+      const g = window.pokecraft;
+      g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); g.player.keys = {};
+      g.player.lookAt({ x: look[0], y: look[1], z: look[2] });
+      g.creatures.clear();
+    }, [x, y, z, look]);
+    await page.waitForTimeout(wait);
+    await page.screenshot({ path: path.join(SHOTS, name), timeout: 180000 });
+    console.log(`  screenshot ${name}`);
+  };
+  const gx = info.x + 0.5, gz = info.z + 0.5, fy = info.fy;
+  await cam('t36-course-overview.png', gx - info.front[0] * 2 + 0.01, fy + 44, gz - info.front[1] * 2, [gx, fy, gz]);
+  await cam('t36-course-start.png', info.stand0[0], info.stand0[1], info.stand0[2], [info.stand0[0] - Math.sin(info.yaw0) * 0 - Math.sin(info.yaw0) * 8, info.stand0[1] - 1.2, info.stand0[2] - Math.cos(info.yaw0) * 8]);
+
+  const ipad = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
+  await ipad.tap('text=New Game', { timeout: 180000 });
+  await ipad.tap('.starter >> nth=0', { timeout: 180000 });
+  await ipad.waitForTimeout(1500);
+  const iinfo = await ipad.evaluate(() => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'parkour');
+    g.time = 0.25; g.weather.set('clear'); g.creatures.clear(); g.creatures.spawnTimer = 1e9;
+    const c = gym.checkpoints[0].stand;
+    g.player.pos.set(c[0], c[1], c[2]); g.player.vel.set(0, 0, 0);
+    g.player.lookAt({ x: c[0] - Math.sin(gym.checkpoints[0].yaw) * 10, y: c[1] - 2, z: c[2] - Math.cos(gym.checkpoints[0].yaw) * 10 });
+    return { touch: document.body.classList.contains('touch'), mat: gym.course };
+  });
+  await ipad.waitForTimeout(3500);
+  await ipad.screenshot({ path: path.join(SHOTS, 't36-course-ipad.png'), timeout: 180000 });
+  console.log('  screenshot t36-course-ipad.png');
+  t.ok(iinfo.touch, 'the course loads on an iPad viewport');
+  t.ok(!ipad.errors.length, `no page errors on the iPad ${ipad.errors.join('; ')}`);
+  await ipad.context().close();
 
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

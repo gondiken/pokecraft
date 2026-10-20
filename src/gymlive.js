@@ -6,10 +6,11 @@ import { ClockLive } from './clocktower.js';
 import { MazeLive } from './firewall.js';
 import { HomeLive } from './homegym.js';
 import { VaultLive } from './treasurevault.js';
+import { CourseLive } from './obstaclecourse.js'; // T36
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose().
-export const LIVE = { clock: ClockLive, maze: MazeLive, home: HomeLive, vault: VaultLive };
+export const LIVE = { clock: ClockLive, maze: MazeLive, home: HomeLive, vault: VaultLive, course: CourseLive };
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object
