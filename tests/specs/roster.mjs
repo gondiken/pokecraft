@@ -13,7 +13,9 @@ export default async function ({ browser, base, t }) {
     const ids = allIds.filter(id => !S.SPECIES[id].legendary);
     const byType = {};
     for (const id of ids) (byType[S.SPECIES[id].type] ||= []).push(id);
-    const spawns = new Set(Object.values(S.SPAWNS).flat().map(e => e[0]));
+    const { REALMS } = await import('/src/realms.js'); // T35: Dream creatures live only in the realm's tables
+    const realmSpawns = Object.values(REALMS).flatMap(r => Object.values(r.spawns).flat());
+    const spawns = new Set([...Object.values(S.SPAWNS).flat(), ...realmSpawns].map(e => e[0]));
     const badModels = [];
     for (const id of allIds) {
       try {
@@ -28,7 +30,7 @@ export default async function ({ browser, base, t }) {
       sizes: Object.fromEntries(Object.entries(byType).map(([t, l]) => [t, l.length])),
       types: Object.keys(S.TYPE_COLORS),
       notFound: ids.filter(id => !spawns.has(id) && !ids.some(o => S.SPECIES[o].evolve?.into === id && spawns.has(o))),
-      badConds: Object.values(S.SPAWNS).flat().filter(e => e[2] && !condOf(e[2])).map(e => `${e[0]}:${e[2]}`),
+      badConds: [...Object.values(S.SPAWNS).flat(), ...realmSpawns].filter(e => e[2] && !condOf(e[2])).map(e => `${e[0]}:${e[2]}`),
       badSpawns: [...spawns].filter(id => !S.SPECIES[id]),
       badEvolve: allIds.filter(id => S.SPECIES[id].evolve && S.SPECIES[id].evolve.into in S.SPECIES === false),
       crossType: allIds.filter(id => S.SPECIES[id].evolve && S.SPECIES[S.SPECIES[id].evolve.into]?.type !== S.SPECIES[id].type),

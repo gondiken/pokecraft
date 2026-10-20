@@ -182,6 +182,8 @@ const SOUNDS = {
   // T21: Cozy (a soft, warm two-note "mmm") and Treasure (a little coin jingle).
   'fx:cozy': () => notes([523, 659], 0.12, { len: 0.2, type: 'triangle', vol: 0.14 }),
   'fx:treasure': () => { bell(1760, 0, 0.25, 0.14); bell(2349, 0.08, 0.3, 0.12); bell(2637, 0.16, 0.35, 0.1); },
+  // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).
+  'fx:dream': () => { tone(523, { len: 0.18, type: 'triangle', vol: 0.12, slide: 90 }); tone(528, { len: 0.18, type: 'triangle', vol: 0.1, slide: 70 }); tone(613, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.12, slide: -100 }); tone(618, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.1, slide: -80 }); },
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.

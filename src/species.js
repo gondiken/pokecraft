@@ -220,6 +220,13 @@ export const MOVES = {
   goldrush: mv('Gold Rush', 'treasure', 75, 0.9),
   bling: mv('Bling!', 'treasure', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
   crownjewel: mv('Crown Jewel', 'treasure', 90, 1, { sure: true, sig: true }),
+  // T35 dream
+  oddpoke: mv('Odd Poke', 'dream', 40, 1),
+  wobblewave: mv('Wobble Wave', 'dream', 75, 0.9),
+  floatybits: mv('Floaty Bits', 'dream', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
+  upsidedown: mv('Upside Down', 'dream', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }),
+  headoverheels: mv('Head Over Heels', 'dream', 90, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  crayonstorm: mv('Crayon Storm', 'dream', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
 };
 
 // T25 big-decision moves: one kind (the mechanic) each, a name per type. Learned at these levels:
@@ -353,6 +360,11 @@ const BIG_MOVES = {
     ['jackpot', 'Jackpot', 'risky', 'Half the time: triple hit! Or it hits you.'],
     ['treasurehunt', 'Treasure Hunt', 'field', 'Treasure moves are stronger for 5 turns. Foes too!'],
   ],
+  dream: [ // T35
+    ['wilddream', 'Wild Dream', 'risky', 'Half the time: triple hit! Or you wake up with a bump.'],
+    ['mixedup', 'Mixed Up', 'curse', 'Might mix up the whole foe team (slower).'],
+    ['dreamscape', 'Dreamscape', 'field', 'Dream moves are stronger for 5 turns. Foes too!'],
+  ],
 };
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
@@ -422,28 +434,28 @@ const T1 = {
   ghost: 'shadowsneak', mind: 'mindpulse', metal: 'clank', toxic: 'sludgespit', pixie: 'pixiedust', drake: 'scaleswipe', rainbow: 'prismray',
   cosmic: 'starshard', sound: 'echoping', bone: 'bonebonk', alien: 'beepbeam',
   sky: 'breezepuff', slime: 'slimeshot', light: 'glint', paper: 'paperflick',
-  time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop', cozy: 'snuggle', treasure: 'coinflip',
+  time: 'secondhand', camo: 'peekaboo', cyber: 'pixelpop', cozy: 'snuggle', treasure: 'coinflip', dream: 'oddpoke',
 };
 const T2 = {
   fire: 'flameburst', water: 'tidecrash', grass: 'vinelash', electric: 'thunderjolt', rock: 'rockslam', ice: 'blizzard', bug: 'stingbarrage',
   ghost: 'phantomstrike', mind: 'brainwave', metal: 'ironbash', toxic: 'toxiccloud', pixie: 'moonbeam', drake: 'drakeroar', rainbow: 'rainbowburst',
   cosmic: 'cometcrash', sound: 'bassblast', bone: 'fossilcrush', alien: 'ufoblast',
   sky: 'cloudburst', slime: 'slimeslam', light: 'sunbeam', paper: 'foldslam',
-  time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam', cozy: 'warmhug', treasure: 'goldrush',
+  time: 'hourstrike', camo: 'blendbash', cyber: 'glitchbeam', cozy: 'warmhug', treasure: 'goldrush', dream: 'wobblewave',
 };
 const T3 = {
   fire: 'flarekick', water: 'soakshot', grass: 'seedvolley', electric: 'staticsnap', rock: 'rumblerock',
   ice: 'chillwind', bug: 'buzzdive', ghost: 'boo', mind: 'mindtrick', metal: 'rivetshot', toxic: 'goopshot',
   pixie: 'glitterpuff', drake: 'clawrake', rainbow: 'colorsplash', cosmic: 'meteorshower', sound: 'shriek', bone: 'bonetoss', alien: 'tractorbeam',
   sky: 'swoop', slime: 'stickygoo', light: 'flashbulb', paper: 'confetti',
-  time: 'fastforward', camo: 'surprise', cyber: 'rapidclick', cozy: 'pillowfight', treasure: 'gemtoss',
+  time: 'fastforward', camo: 'surprise', cyber: 'rapidclick', cozy: 'pillowfight', treasure: 'gemtoss', dream: 'floatybits',
 };
 const T4 = {
   fire: 'infernodash', water: 'bigwave', grass: 'sapsip', electric: 'stormcall', rock: 'boulderdrop',
   ice: 'glacierslam', bug: 'silkwrap', ghost: 'gloomwave', mind: 'deepfocus', metal: 'ironwall', toxic: 'stinkbomb',
   pixie: 'sweetdreams', drake: 'drakecharge', rainbow: 'shimmer', cosmic: 'supernova', sound: 'lullaby', bone: 'dinostomp', alien: 'gravityflip',
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
-  time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling',
+  time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling', dream: 'upsidedown',
 };
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
@@ -1615,6 +1627,46 @@ export const SPECIES = {
     model: { shape: 'chandelier', scale: 0.9, body: 0xffd23a, accent: 0xffb030, dark: 0x6a4a10, belly: 0xfff4e0, extras: [] },
   },
   /* ==== end of T21 treasure ==== */
+  /* ==== T35 dream ==== */
+  flipsy: {
+    name: 'Flipsy', type: 'dream', desc: 'It walks on its head and waves its paws at the sky. Its smile is on top, because it is upside down.',
+    base: { hp: 50, atk: 55, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('dream', 'sound'),
+    evolve: { level: 22, into: 'topsyturvy' },
+    model: { shape: 'headstander', scale: 0.85, body: 0xb9a6ff, accent: 0xff9ad5, dark: 0x7a5ad0, belly: 0xffd6f0, extras: [] },
+  },
+  topsyturvy: {
+    name: 'Topsyturvy', type: 'dream', desc: 'It balances on its head in a top hat. Nobody has seen it the right way up, not even itself.',
+    base: { hp: 80, atk: 100, def: 70, spd: 105 }, baseXp: 165, catchRate: 0.12, learn: L('dream', 'sound', [[30, 'headoverheels']]),
+    model: { shape: 'headstander', scale: 1.1, body: 0x8f78f0, accent: 0xff7ac0, dark: 0x3a2a7a, belly: 0xfff0a0, extras: ['tophat'] },
+  },
+  scribbit: {
+    name: 'Scribbit', type: 'dream', desc: 'A creature drawn by a very small child. Its eyes sit on its ears and its mouth is on top of its head.',
+    base: { hp: 55, atk: 60, def: 50, spd: 55 }, baseXp: 64, catchRate: 0.45, learn: L('dream', 'paper'),
+    evolve: { level: 22, into: 'scrawlbert' },
+    model: { shape: 'toddler', scale: 0.75, body: 0xff8a5c, accent: 0x5cb8ff, dark: 0x2a2a6a, belly: 0xffd23c, extras: [] },
+  },
+  scrawlbert: {
+    name: 'Scrawlbert', type: 'dream', desc: 'More crayon, more eyes, more everything. It scribbles itself a new crown whenever it gets bored.',
+    base: { hp: 90, atk: 105, def: 80, spd: 70 }, baseXp: 165, catchRate: 0.12, learn: L('dream', 'paper', [[30, 'crayonstorm']]),
+    model: { shape: 'toddler', scale: 0.95, body: 0xff6a8a, accent: 0x5c8aff, dark: 0x4a1a6a, belly: 0xffe05c, extras: ['crown'] },
+  },
+  bobbloon: {
+    name: 'Bobbloon', type: 'dream', desc: 'Its head is a balloon tied to a bow. Its tummy does the smiling while the head bobs along above.',
+    base: { hp: 60, atk: 45, def: 55, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('dream', 'sky'),
+    evolve: { level: 24, into: 'bobblimp' },
+    model: { shape: 'balloonhead', scale: 0.7, body: 0xffb36b, accent: 0x8ad7ff, dark: 0x2a6a9a, belly: 0xffe2c0, extras: [] },
+  },
+  bobblimp: {
+    name: 'Bobblimp', type: 'dream', desc: 'Its balloon head grew into a little blimp. On windy days it holds on tight to the ground.',
+    base: { hp: 100, atk: 80, def: 95, spd: 65 }, baseXp: 170, catchRate: 0.1, learn: L('dream', 'sky'),
+    model: { shape: 'balloonhead', scale: 0.95, body: 0xff9a8a, accent: 0xb89cff, dark: 0x4a2a9a, belly: 0xffe8d0, extras: ['blimp'] },
+  },
+  drizzup: {
+    name: 'Drizzup', type: 'dream', desc: 'An umbrella that stands upside down and rains upward. Its raindrops float off to water the clouds.',
+    base: { hp: 65, atk: 70, def: 60, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('dream', 'water'),
+    model: { shape: 'upbrella', scale: 0.95, body: 0xffb3e6, accent: 0x9ce8ff, dark: 0x6a4ac0, belly: 0xfff0a0, extras: [] },
+  },
+  /* ==== end of T35 dream ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2386,6 +2438,10 @@ export function animateModel(group, t, moving) {
   if (p.head) p.head.rotation.x = moving ? 0 : Math.sin(t * 1.5) * 0.06;
   for (const s of p.spin || []) s.g.rotation[s.axis] = t * s.speed;
   for (const w of p.wobble || []) w.g.rotation[w.axis] = Math.sin(t * w.speed + w.phase) * w.amp;
+  for (const d of p.drift || []) { // T35: parts that float apart and bob on their own (Dream look)
+    d.g.position.y = d.y0 + d.amp * (0.5 + 0.5 * Math.sin(t * d.speed + d.phase)); // only ever up: never under the ground
+    d.g.rotation.z = Math.sin(t * d.speed * 0.7 + d.phase) * 0.06;
+  }
   if (p.bounce) {
     if (p.float || p.hover) {
       p.bounce.position.y = 0.35 + Math.sin(t * 2) * 0.12;

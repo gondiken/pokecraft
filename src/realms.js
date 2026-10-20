@@ -11,7 +11,7 @@ export const REALMS = {
     seedSalt: 0xd2ea,                   // realm seed = realmSeed(mainSeed, salt)
     terrain: 'dreamIsland',             // key into TERRAINS
     biome: 'dream',                     // world.biome() everywhere in the realm
-    spawns: { dream: [['dreamlet', 3], ['snoozle', 3], ['moonhop', 2], ['twinklet', 1]] }, // T35 adds its own creatures
+    spawns: { dream: [['flipsy', 1.2], ['scribbit', 1.2], ['bobbloon', 1.2], ['drizzup', 0.8], ['topsyturvy', 0.12], ['scrawlbert', 0.12], ['bobblimp', 0.1]] }, // T35
     walk: [WOOL.pixie, WOOL.mind, B.CLOUD], // blocks wild creatures walk on here
     gyms: [],                           // realm gyms (each with `protect`), none yet
     look: { sky: 0x6a4fb0, fog: [28, 70], time: null /* null = the main clock */, weather: false },

@@ -1880,3 +1880,121 @@ SIG.crownjewel = (k, from, to) => {
   };
 };
 /* ==== end of T21 ==== */
+
+/* ==== T35 dream ==== */
+Object.assign(FX_COLORS, { dream: [0xb49cff, 0xffb3e6, 0x9ce8ff] });
+const DREAM_COLS = [0xb49cff, 0xffb3e6, 0x9ce8ff];
+
+/* -------------------------------- dream -------------------------------- */
+
+// Six pastel bits and two balloons float over on a slow wobbly arc, each bobbing on its own.
+TRAVEL.dream = k => {
+  const N = 6;
+  const bits = k.points({ n: N, tex: 'square', size: 0.26, glow: true, colors: DREAM_COLS });
+  const balloons = k.points({ n: 2, tex: 'bubble', size: 0.4, colors: [0xffb3e6, 0x9ce8ff] });
+  return {
+    dur: 400,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.45);
+        if (t < 0) { bits.hide(i); continue; }
+        k.at(t, A, 0.55);
+        const w = Math.sin(t * 8 + i) * 0.16;
+        bits.set(i, A.x + k.side.x * w, A.y + Math.sin(p * 7 + i) * 0.12, A.z + k.side.z * w);
+      }
+      bits.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 2; i++) {
+        const t = trailT(p, i * 3 + 1, N, 0.45);
+        if (t < 0) { balloons.hide(i); continue; }
+        k.at(t, A, 0.7);
+        const w = Math.sin(t * 6 + i * 3) * 0.2;
+        balloons.set(i, A.x + k.side.x * w, A.y + 0.1 + Math.sin(p * 7 + i * 2) * 0.14, A.z + k.side.z * w);
+      }
+      balloons.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// The bits burst out from the target and drift back in: held together by nothing.
+IMPACT.dream = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10;
+  const bits = k.points({ n: N, tex: 'square', size: 0.28 * m, glow: true, colors: DREAM_COLS });
+  const stars = k.points({ n: 4, tex: 'star', size: 0.26 * m, glow: true, colors: [0xffffff, 0xffe6fa] });
+  const s = k.seeds(N, 3);
+  return {
+    dur: 360,
+    step(p) {
+      const out = p < 0.5 ? k.ease(p / 0.5) : 1 - k.ease((p - 0.5) / 0.5);
+      for (let i = 0; i < N; i++) {
+        const ang = s[i * 3] * 6.283, d = (to.r * 0.5 + 0.15 + s[i * 3 + 1] * 0.6) * out * m;
+        bits.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + s[i * 3 + 2] * 0.5 * out * m + Math.sin(p * 9 + i) * 0.05, to.pos.z + Math.sin(ang) * d);
+      }
+      bits.fade(fadeOut(p, 0.7));
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * 6.283 + 0.5, d = (to.r * 0.5 + 0.2) * m;
+        const tw = wave21(clamp01(p * 1.4 - i * 0.12));
+        if (tw <= 0.02) { stars.hide(i); continue; }
+        stars.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.15 + (i % 2) * 0.35, to.pos.z + Math.sin(ang) * d);
+      }
+      stars.fade(0.95);
+    },
+  };
+};
+
+// Head Over Heels: an up and a down arrow swap places over the target while a ring of stars cartwheels round it.
+SIG.headoverheels = (k, from, to) => {
+  const up = k.sprite('up', { color: 0xb49cff, size: 0.1, glow: true });
+  const down = k.sprite('down', { color: 0xffb3e6, size: 0.1, glow: true });
+  const ring = k.points({ n: 8, tex: 'star', size: 0.3, glow: true, colors: DREAM_COLS });
+  const axis = new THREE.Vector3(to.pos.x - from.pos.x, 0, to.pos.z - from.pos.z).normalize();
+  const perp = new THREE.Vector3(-axis.z, 0, axis.x), Q = new THREE.Quaternion();
+  return {
+    dur: 600,
+    step(p) {
+      const sw = k.ease(clamp01(p / 0.7)), top = to.top + 0.5;
+      const a = lerp(top, to.pos.y - 0.1, sw), b = lerp(to.pos.y - 0.1, top, sw);
+      up.position.set(to.pos.x - k.side.x * 0.3, a, to.pos.z - k.side.z * 0.3);
+      down.position.set(to.pos.x + k.side.x * 0.3, b, to.pos.z + k.side.z * 0.3);
+      const sz = Math.max(0.01, 0.6 * wave21(clamp01(p * 1.05)));
+      up.scale.setScalar(sz); down.scale.setScalar(sz);
+      up.material.opacity = down.material.opacity = fadeOut(p, 0.8);
+      Q.setFromAxisAngle(axis, p * 6.283 * 1.2);
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * 6.283, R = to.r + 0.35;
+        A.copy(perp).multiplyScalar(Math.cos(ang) * R);
+        A.y = Math.sin(ang) * R;
+        A.applyQuaternion(Q);
+        ring.set(i, to.pos.x + A.x, to.pos.y + 0.1 + A.y, to.pos.z + A.z);
+      }
+      ring.fade(wave21(clamp01(p)));
+    },
+  };
+};
+
+// Crayon Storm: five crayon strokes zigzag across the target one after another, each leaving three scribbles.
+SIG.crayonstorm = (k, from, to) => {
+  const CRAYONS = [0xe03a3a, 0xffd23a, 0x3a7aff, 0x4cc84c, 0xa050e0];
+  const strokes = CRAYONS.map(c => k.sprite('streak', { color: c, size: 0.1, glow: true }));
+  const scribbles = CRAYONS.map(c => k.points({ n: 3, tex: 'dot', size: 0.2, glow: true, colors: [c] }));
+  return {
+    dur: 650,
+    step(p) {
+      for (let i = 0; i < 5; i++) {
+        const q = clamp01((p - i * 0.12) / 0.3);
+        const x = lerp(-0.55, 0.55, q) * (i % 2 ? -1 : 1), y = to.pos.y + 0.55 - i * 0.18 + Math.sin(q * 12) * 0.08;
+        strokes[i].position.set(to.pos.x + k.side.x * x, y, to.pos.z + k.side.z * x);
+        strokes[i].scale.setScalar(Math.max(0.01, 0.5 * (q > 0 && q < 1 ? 1 : 0)));
+        strokes[i].material.opacity = q > 0 && q < 1 ? 1 : 0;
+        strokes[i].material.rotation = (i % 2 ? 0.5 : -0.5) + Math.sin(q * 12) * 0.4;
+        for (let j = 0; j < 3; j++) {
+          const f = clamp01((q - 0.3 - j * 0.2) * 3);
+          if (q < 0.3 || f <= 0) { scribbles[i].hide(j); continue; }
+          const sx = lerp(-0.55, 0.55, 0.3 + j * 0.25) * (i % 2 ? -1 : 1);
+          scribbles[i].set(j, to.pos.x + k.side.x * sx, to.pos.y + 0.55 - i * 0.18 + (j - 1) * 0.1, to.pos.z + k.side.z * sx);
+        }
+        scribbles[i].fade(fadeOut(p, 0.75));
+      }
+    },
+  };
+};
+/* ==== end of T35 ==== */
