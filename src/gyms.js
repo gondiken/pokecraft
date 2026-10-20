@@ -328,6 +328,23 @@ export const GYMS = [
       { table: 4, name: 'Tilly', colors: { shirt: 0xffd23a, pants: 0x8a4ab0, hair: 0x8a3a1a, skin: 0xd9a066 }, line: 'Mmm, something smells yummy in the kitchen!' },
     ],
   },
+  // T36: the Obstacle Course (slot 7 of the south strip): jump from block to block, balance beams, a soft mat and checkpoint flags.
+  {
+    id: 'parkour', type: 'parkour', name: 'Obstacle Course', badge: 'Sneaker Badge', slot: 7, build: 'obstacleCourse',
+    live: 'course', access: { where: 'course' }, leaderWhere: 'at the finish',
+    welcome: 'Welcome to the Obstacle Course! Jump from block to block. If you fall on the soft mat, you go back to your last flag.',
+    leader: { name: 'Leader Rio', look: 'sport', colors: { shirt: 0xff3b3b, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a } },
+    trainers: [
+      { name: 'Runner Remy', look: 'sport', colors: { shirt: 0x2a8cff, pants: 0x1a2a4a, hair: 0xe0c060, skin: 0xf2c79a },
+        team: [['teetail', 50], ['zippet', 50], ['zoomstick', 50]], intro: ['You made it across the beam! Ready for a race?'] },
+      { name: 'Gymnast Gigi', look: 'sport', colors: { shirt: 0xc060e0, pants: 0x3a2a5a, hair: 0x1a1a1a, skin: 0xe8b98a },
+        team: [['vaultling', 51], ['tightropa', 51], ['zoomstick', 51]], intro: ['Nice jumping! Can your team keep up with mine?'] },
+    ],
+    leaderTeam: [['tightropa', 51], ['zoomstick', 51], ['ferrocket', 52, ['flipkick', 'staticsnap', 'bodyslam', 'tripleflip']],
+      ['highvault', 52, ['rivetshot', 'bodyslam', 'finalsprint', 'rooftoprun']]],
+    intro: ['You reached the finish! What a run!', 'My team never stops moving. Can you keep up?'],
+    lose: 'Gold medal! The Sneaker Badge is yours.',
+  },
 ];
 
 // Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).

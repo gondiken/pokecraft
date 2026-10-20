@@ -1,5 +1,6 @@
 // Gym flow: leader refuses before the trainer is beaten; trainer then leader; badge awarded.
 import { openGame, newGame, playBattle, continueGame, waitFor, seedSave } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);

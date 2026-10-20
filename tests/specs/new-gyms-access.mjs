@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import { devices } from 'playwright';
 import { openGame, newGame, playBattle } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 

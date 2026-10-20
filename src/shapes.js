@@ -3967,3 +3967,204 @@ export const SHAPES = {
   ...SHAPES_COZY, ...SHAPES_TREASURE,
   ...SHAPES_FOOD, // T33
 };
+
+/* ==== T36 parkour shapes ==== */
+// Parkour look: a red sweatband and white sneakers with blue soles, long thin limbs, an action pose. The meshes are
+// tagged (userData.gear = 'band' / 'shoe') so a spec can check that every Parkour model wears both.
+// animateModel sets rotations absolutely, so every posed limb sits inside a plain pivot and the OUTER pivot is the one
+// that swings (parts.wobble); nothing here sets root.position.
+const PK_BAND = 0xff3b3b, PK_SHOE = 0xffffff, PK_SOLE = 0x2a8cff;
+function pkHeadband(head, y, w, d, tails = true) {
+  box(head, w, 0.06, d, PK_BAND, 0, y, 0).userData.gear = 'band';
+  if (tails) {
+    box(head, 0.06, 0.15, 0.04, PK_BAND, -0.05, y - 0.06, -d / 2 - 0.02).userData.gear = 'band';
+    box(head, 0.06, 0.1, 0.04, PK_BAND, 0.05, y - 0.05, -d / 2 - 0.05).userData.gear = 'band';
+  }
+}
+function pkSneaker(parent, x, y, z, rx = 0) {
+  const g = pivot(parent, x, y, z);
+  g.rotation.x = rx;
+  box(g, 0.13, 0.08, 0.22, PK_SHOE, 0, 0, 0.04).userData.gear = 'shoe';
+  box(g, 0.14, 0.03, 0.24, PK_SOLE, 0, -0.05, 0.04);
+  box(g, 0.135, 0.02, 0.06, PK_BAND, 0, 0.03, 0.1);
+  return g;
+}
+// A thin limb hanging from a pivot, posed by rx / rz (the pose lives in this inner pivot).
+function pkLimb(parent, x, y, z, len, color, rx = 0, rz = 0, w = 0.07) {
+  const g = pivot(parent, x, y, z);
+  g.rotation.x = rx;
+  g.rotation.z = rz;
+  box(g, w, len, w, color, 0, -len / 2, 0);
+  return g;
+}
+
+// Teetail / Tightropa: a lemur balancing on one foot on a short slackline, arms out, a long striped tail.
+function lemur(root, m, parts) {
+  const LINE = 0.3;
+  box(root, 0.05, 0.04, 1.4, 0xffe14a, 0.04, LINE, 0);
+  for (const z of [-0.7, 0.7]) box(root, 0.1, LINE, 0.1, 0x8a5a36, 0.04, LINE / 2, z);
+  const lift = pivot(root, 0, 0.285, 0);
+  const sway = pivot(lift, 0, 0.82, 0);
+  swing(parts, sway, 'z', 0.05, 2.2);
+  const body = pivot(sway, 0, 0, 0);
+  body.rotation.z = 0.12;
+  box(body, 0.3, 0.42, 0.24, m.body, 0, 0, 0);
+  box(body, 0.2, 0.3, 0.02, m.belly, 0, -0.03, 0.125);
+  const head = pivot(body, 0, 0.36, 0.02);
+  box(head, 0.32, 0.28, 0.28, m.body, 0, 0, 0);
+  box(head, 0.2, 0.16, 0.08, m.belly, 0, -0.04, 0.15);
+  pkHeadband(head, 0.08, 0.34, 0.3);
+  for (const s of [-1, 1]) {
+    box(head, 0.09, 0.09, 0.03, m.dark, s * 0.08, 0, 0.19);
+    box(head, 0.05, 0.05, 0.03, 0xffb020, s * 0.08, 0, 0.2);
+    box(head, 0.1, 0.14, 0.06, m.dark, s * 0.17, 0.16, -0.02); // ears
+    // arms straight out, wobbling to keep the balance
+    const outer = pivot(body, s * 0.17, 0.16, 0);
+    swing(parts, outer, 'z', 0.18, 2.6, s > 0 ? 0 : 1.6);
+    const arm = pkLimb(outer, 0, 0, 0, 0.42, m.body, 0, s * 1.45, 0.08);
+    box(arm, 0.1, 0.08, 0.1, m.dark, 0, -0.42, 0);
+    if (s > 0 && has(m, 'umbrella')) { // Tightropa holds a tiny open umbrella
+      const hx = 0.42 * Math.sin(1.45), hy = -0.42 * Math.cos(1.45);
+      box(outer, 0.03, 0.55, 0.03, 0x6a4a30, hx, hy + 0.27, 0);
+      box(outer, 0.62, 0.05, 0.62, m.accent, hx, hy + 0.56, 0);
+      box(outer, 0.2, 0.06, 0.64, 0xffffff, hx, hy + 0.575, 0);
+      box(outer, 0.4, 0.04, 0.4, m.accent, hx, hy + 0.61, 0);
+    }
+  }
+  box(head, 0.06, 0.04, 0.03, m.dark, 0, -0.08, 0.2);
+  // the standing leg on the line, the other leg bent up
+  const l1 = pkLimb(lift, 0.04, 0.62, 0, 0.5, m.body, 0, 0.02, 0.1);
+  pkSneaker(l1, 0, -0.52, 0.02, 0);
+  const l2 = pkLimb(lift, -0.1, 0.62, 0, 0.3, m.body, -1.2, -0.3, 0.1);
+  pkSneaker(l2, 0, -0.32, 0, 1.1);
+  // the striped tail, curling up behind, longer than the body
+  const tail = pivot(lift, -0.02, 0.62, -0.18);
+  swing(parts, tail, 'x', 0.12, 1.8);
+  for (let i = 0; i < 9; i++) {
+    const a = i * 0.24;
+    box(tail, 0.13, 0.13, 0.13, i % 2 ? m.dark : m.belly, -Math.sin(a) * 0.08, 0.06 + i * 0.115, -Math.sin(a * 0.9) * 0.4);
+  }
+}
+
+// Zippet / Ferrocket: a long lean ferret stretched out mid-leap, front paws reaching, back legs pushing off.
+function ferret(root, m, parts) {
+  const spring = pivot(root, 0, 0.1, 0);
+  parts.bounce = spring; // a springy bob (leaping in place when it moves)
+  const b = pivot(spring, 0, 0.5, 0);
+  b.rotation.x = -0.2; // nose up: leaping forward and up
+  box(b, 0.26, 0.24, 1.1, m.body, 0, 0, 0);
+  box(b, 0.2, 0.04, 0.9, m.belly, 0, -0.13, 0.02);
+  const h = pivot(b, 0, 0.04, 0.66);
+  parts.head = h;
+  box(h, 0.3, 0.26, 0.28, m.body, 0, 0, 0);
+  box(h, 0.31, 0.09, 0.12, m.dark, 0, 0.03, 0.09); // the mask
+  box(h, 0.14, 0.12, 0.14, m.belly, 0, -0.07, 0.18);
+  box(h, 0.06, 0.05, 0.04, 0x2a1a10, 0, -0.03, 0.26);
+  pkHeadband(h, 0.12, 0.32, 0.3);
+  for (const s of [-1, 1]) {
+    box(h, 0.05, 0.06, 0.03, 0xffffff, s * 0.08, 0.04, 0.145);
+    box(h, 0.03, 0.04, 0.02, 0x111111, s * 0.08, 0.04, 0.16);
+    box(h, 0.08, 0.08, 0.06, m.body, s * 0.11, 0.16, -0.05);
+    if (has(m, 'goggles')) { // Ferrocket: two goggles on the band
+      box(h, 0.12, 0.1, 0.06, m.accent, s * 0.085, 0.17, 0.12);
+      box(h, 0.08, 0.06, 0.03, 0xffffff, s * 0.085, 0.17, 0.155);
+    }
+    const f = pivot(b, s * 0.1, -0.08, 0.42); // front paws reaching forward
+    swing(parts, f, 'x', 0.22, 6, s > 0 ? 0 : 1.2);
+    const fl = pkLimb(f, 0, 0, 0, 0.28, m.body, -1.25, 0, 0.08);
+    pkSneaker(fl, 0, -0.3, 0, 1.3);
+    const k = pivot(b, s * 0.1, -0.08, -0.42); // back legs pushing off
+    swing(parts, k, 'x', 0.2, 6, s > 0 ? 1.2 : 0);
+    const kl = pkLimb(k, 0, 0, 0, 0.3, m.body, 1.1, 0, 0.09);
+    pkSneaker(kl, 0, -0.32, 0, -1.0);
+  }
+  if (has(m, 'goggles')) box(h, 0.34, 0.04, 0.1, m.accent, 0, 0.17, 0.05);
+  // the long tail streaming behind
+  const t = pivot(b, 0, 0.04, -0.55);
+  t.rotation.x = 0.2;
+  swing(parts, t, 'y', 0.25, 3);
+  box(t, 0.12, 0.12, 0.5, m.dark, 0, 0, -0.25);
+}
+
+// Vaultling / Highvault: a lanky jumper with a race number and long ears, holding its pole upright beside it.
+function vaulter(root, m, parts) {
+  const big = has(m, 'medal');
+  const body = pivot(root, 0, 0.9, 0);
+  body.rotation.x = 0.12;
+  box(body, 0.26, 0.5, 0.22, m.body, 0, 0, 0);
+  box(body, 0.18, 0.36, 0.02, m.belly, 0, 0, 0.115);
+  box(body, 0.16, 0.1, 0.02, 0xffffff, 0, 0.08, 0.13); // the race number
+  box(body, 0.04, 0.06, 0.02, PK_BAND, 0, 0.08, 0.14);
+  if (big) { // Highvault: a gold medal on a ribbon
+    box(body, 0.06, 0.2, 0.02, PK_BAND, 0, 0.2, 0.125);
+    box(body, 0.12, 0.12, 0.03, m.accent, 0, -0.03, 0.14);
+    box(body, 0.06, 0.06, 0.03, 0xfff0a0, 0, -0.03, 0.155);
+  }
+  const head = pivot(body, 0, 0.4, 0.04);
+  parts.head = head;
+  box(head, 0.26, 0.3, 0.26, m.body, 0, 0, 0);
+  box(head, 0.18, 0.12, 0.12, m.belly, 0, -0.06, 0.15);
+  pkHeadband(head, 0.09, 0.28, 0.28);
+  eyes(head, 0.03, 0.135, 0.07, 0.09);
+  box(head, 0.1, 0.03, 0.03, 0x5a2a3a, 0, -0.08, 0.215);
+  for (const [i, s] of [-1, 1].entries()) {
+    const ear = pivot(head, s * 0.08, 0.15, -0.04);
+    box(ear, 0.05, 0.22, 0.05, m.dark, 0, 0.11, 0);
+    swing(parts, ear, 'z', 0.12, 2, i * 1.5);
+  }
+  // long legs, mid-stride
+  for (const [s, rx, ph] of [[-1, 0.5, 0], [1, -0.45, Math.PI]]) {
+    const o = pivot(root, s * 0.07, 0.68, 0);
+    swing(parts, o, 'x', 0.25, 5, ph);
+    const l = pkLimb(o, 0, 0, 0, 0.6, m.body, rx);
+    pkSneaker(l, 0, -0.62, 0.02, -rx);
+  }
+  // the free arm swings, the other holds the pole upright beside the body
+  const freeArm = pivot(body, -0.15, 0.18, 0.04);
+  swing(parts, freeArm, 'x', 0.4, 5, 0);
+  pkLimb(freeArm, 0, 0, 0, 0.34, m.body, -0.5, 0, 0.07);
+  const hold = pivot(body, 0.15, 0.18, 0.04);
+  swing(parts, hold, 'z', 0.04, 2.5);
+  pkLimb(hold, 0, 0, 0, 0.34, m.body, 0, 0.75, 0.07);
+  const len = big ? 1.45 : 0.9;
+  const pole = pivot(root, 0.4, 0, 0.12);
+  swing(parts, pole, 'z', 0.03, 2.5);
+  box(pole, 0.05, len, 0.05, m.accent, 0, len / 2, 0);
+  box(pole, 0.07, 0.06, 0.07, PK_BAND, 0, len - 0.03, 0);
+}
+
+// Zoomstick: a stick-figure runner mid-sprint, with a creature face (two pointy ears and a snout).
+function stickrunner(root, m, parts) {
+  const hip = pivot(root, 0, 0.78, 0);
+  hip.rotation.x = 0.25;
+  box(hip, 0.08, 0.5, 0.08, m.body, 0, 0.25, 0); // spine
+  const head = pivot(hip, 0, 0.62, 0.05);
+  parts.head = head;
+  box(head, 0.3, 0.3, 0.3, m.accent, 0, 0, 0);
+  box(head, 0.14, 0.12, 0.12, m.belly, 0, -0.06, 0.18); // snout
+  box(head, 0.06, 0.05, 0.04, 0x2a1a10, 0, -0.03, 0.25);
+  pkHeadband(head, 0.07, 0.32, 0.32);
+  eyes(head, 0.04, 0.155, 0.07, 0.09);
+  for (const s of [-1, 1]) { // pointy ears
+    const ear = box(head, 0.09, 0.22, 0.06, m.accent, s * 0.1, 0.24, -0.02);
+    ear.rotation.z = -s * 0.2;
+    box(head, 0.04, 0.14, 0.03, m.belly, s * 0.1, 0.23, 0.01).rotation.z = -s * 0.2;
+  }
+  // arms swinging, legs mid-stride: running on the spot
+  for (const [s, rx, ph] of [[-1, -0.9, 0], [1, 0.9, Math.PI]]) {
+    const o = pivot(hip, s * 0.08, 0.46, 0);
+    swing(parts, o, 'x', 0.35, 8, ph);
+    const a = pkLimb(o, 0, 0, 0, 0.36, m.body, rx, s * -0.1);
+    box(a, 0.1, 0.08, 0.1, PK_BAND, 0, -0.3, 0);
+  }
+  const o1 = pivot(root, -0.06, 0.78, 0);
+  swing(parts, o1, 'x', 0.3, 8, Math.PI);
+  pkSneaker(pkLimb(o1, 0, 0, 0, 0.42, m.body, 0.7), 0, -0.44, 0.02, -0.7);
+  const o2 = pivot(root, 0.06, 0.78, 0);
+  swing(parts, o2, 'x', 0.3, 8, 0);
+  const l2 = pkLimb(o2, 0, 0, 0, 0.42, m.body, -0.6);
+  pkSneaker(pkLimb(l2, 0, -0.42, 0, 0.36, m.body, -0.9), 0, -0.38, 0, 1.5);
+}
+const SHAPES_PARKOUR = { lemur, ferret, vaulter, stickrunner };
+Object.assign(SHAPES, SHAPES_PARKOUR);
+/* ==== end of T36 parkour shapes ==== */

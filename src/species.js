@@ -369,6 +369,19 @@ BIG_MOVES.food = [ // T33
   ['lastbite', 'Last Bite', 'sacrifice', 'You share your last bite. Next friend comes in fresh and strong.'],
   ['picnicday', 'Picnic Day', 'field', 'Food moves are stronger for 5 turns. Foes too!'],
 ];
+/* ==== T36 parkour ==== */
+Object.assign(MOVES, {
+  wallhop: mv('Wall Hop', 'parkour', 40, 1),
+  flipkick: mv('Flip Kick', 'parkour', 75, 0.9),
+  quickvault: mv('Quick Vault', 'parkour', 50, 1, { priority: 1 }),
+  warmup: mv('Warm Up', 'parkour', 0, 1, { fx: { kind: 'raise', stat: 'atk' } }),
+  rooftoprun: mv('Rooftop Run', 'parkour', 85, 1, { priority: 1, sig: true }),
+});
+BIG_MOVES.parkour = [
+  ['tripleflip', 'Triple Flip', 'risky', 'Half the time: triple hit! Or you land on your bottom.'],
+  ['finalsprint', 'Final Sprint', 'lastword', 'A huge hit, only when almost out.'],
+];
+/* ==== end of T36 parkour ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -466,6 +479,9 @@ const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunk
   ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };
 const SNZ = [[16, 'snoozebutton']]; // Time creatures can learn Snooze
 const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
+/* ==== T36 parkour ==== */
+T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
+/* ==== end of T36 parkour ==== */
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -1671,6 +1687,46 @@ export const SPECIES = {
     model: { shape: 'icecream', scale: 0.9, body: 0xd8a050, accent: 0xff9ac0, dark: 0x6a3a1a, belly: 0xfff4e0, extras: [] },
   },
   /* ==== end of T33 food ==== */
+  /* ==== T36 parkour ==== */
+  teetail: {
+    name: 'Teetail', type: 'parkour', desc: "A little lemur that walks on ropes. Its striped tail helps it balance, so it never falls.", gait: 'hopaway',
+    base: { hp: 45, atk: 50, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('parkour', 'sky'),
+    evolve: { level: 22, into: 'tightropa' },
+    model: { shape: 'lemur', scale: 0.8, body: 0xb7b7c7, accent: 0xffb020, dark: 0x3a3a48, belly: 0xf4f4f8, extras: [] },
+  },
+  tightropa: {
+    name: 'Tightropa', type: 'parkour', desc: "It crosses rope bridges holding a tiny umbrella. Once it balanced on a rope for a whole day.", gait: 'hopaway',
+    base: { hp: 70, atk: 85, def: 60, spd: 125 }, baseXp: 165, catchRate: 0.12, learn: L('parkour', 'sky'),
+    model: { shape: 'lemur', scale: 1.2, body: 0xc8c0d8, accent: 0xff8a3a, dark: 0x3a3a48, belly: 0xf4f4f8, extras: ['umbrella'] },
+  },
+  zippet: {
+    name: 'Zippet', type: 'parkour', desc: "A ferret that never walks when it can leap. It jumps from rock to rock just for fun.", gait: 'hopaway',
+    base: { hp: 40, atk: 60, def: 35, spd: 85 }, baseXp: 64, catchRate: 0.45, learn: L('parkour', 'electric'),
+    evolve: { level: 22, into: 'ferrocket' },
+    model: { shape: 'ferret', scale: 0.75, body: 0xc98a4a, accent: 0x3ad0ff, dark: 0x5a3a20, belly: 0xffe7c4, extras: [] },
+  },
+  ferrocket: {
+    name: 'Ferrocket', type: 'parkour', desc: "It leaps so far that it seems to fly. Its sneakers have the fastest soles in the land.", gait: 'hopaway',
+    base: { hp: 65, atk: 110, def: 50, spd: 120 }, baseXp: 165, catchRate: 0.12, learn: L('parkour', 'electric'),
+    model: { shape: 'ferret', scale: 1.2, body: 0xd06a3a, accent: 0x3ad0ff, dark: 0x5a3a20, belly: 0xffe7c4, extras: ['goggles'] },
+  },
+  vaultling: {
+    name: 'Vaultling', type: 'parkour', desc: "It carries a short stick everywhere. One push and it vaults over fences, logs and you.", gait: 'hopaway',
+    base: { hp: 50, atk: 60, def: 45, spd: 65 }, baseXp: 64, catchRate: 0.45, learn: L('parkour', 'metal'),
+    evolve: { level: 24, into: 'highvault' },
+    model: { shape: 'vaulter', scale: 0.8, body: 0x6ad0c8, accent: 0xffcf3a, dark: 0x2a7a74, belly: 0xe0fff8, extras: [] },
+  },
+  highvault: {
+    name: 'Highvault', type: 'parkour', desc: "A tall, lanky jumper with a race number. It clears rooftops with one bounce of its pole.", gait: 'hopaway',
+    base: { hp: 80, atk: 105, def: 70, spd: 95 }, baseXp: 170, catchRate: 0.1, learn: L('parkour', 'metal', [[30, 'rooftoprun']]),
+    model: { shape: 'vaulter', scale: 1.2, body: 0x4ab0e0, accent: 0xffcf3a, dark: 0x2a7a74, belly: 0xe0fff8, extras: ['medal'] },
+  },
+  zoomstick: {
+    name: 'Zoomstick', type: 'parkour', desc: "A thin little runner with pointy ears. You only ever see a streak and a red headband.", gait: 'hopaway',
+    base: { hp: 55, atk: 75, def: 40, spd: 100 }, baseXp: 100, catchRate: 0.3, learn: L('parkour', 'time'),
+    model: { shape: 'stickrunner', scale: 0.9, body: 0x3a3a5a, accent: 0xff9a4a, dark: 0x2a2a40, belly: 0xffe0c0, extras: [] },
+  },
+  /* ==== end of T36 parkour ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -1843,8 +1899,12 @@ const HOME = [['snugbun', 1, 'home:cozy'], ['purrmit', 1, 'home:cozy'], ['pillow
   ['coinlet', 0.4, 'home:treasure'], ['crystafox', 0.4, 'home:treasure'], ['ringlet', 0.4, 'home:treasure'], ['lustrelle', 0.3, 'home:treasure'],
   ['kingcoin', 0.08, 'home:treasure'], ['prismfox', 0.08, 'home:treasure'], ['crownguard', 0.06, 'home:treasure']];
 const SPAWN_HOME = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, HOME]));
+// T36: Parkour creatures sit up high (the 'high' condition: treetops, roofs, pillars), in every biome above ground.
+const PARKOUR = [['teetail', 1, 'high'], ['zippet', 1, 'high'], ['vaultling', 1, 'high'], ['zoomstick', 0.6, 'high'],
+  ['tightropa', 0.12, 'high'], ['ferrocket', 0.12, 'high'], ['highvault', 0.1, 'high']];
+const SPAWN_PARKOUR = Object.fromEntries(Object.keys(SPAWNS).filter(b => b !== 'cave').map(b => [b, PARKOUR]));
 
-for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
+for (const extra of [SEVENTH_A, SEVENTH_B, SEVENTH_C, SPAWN_SKY, SPAWN_SLIME, SPAWN_LIGHT, SPAWN_PAPER, SPAWN_TIME, SPAWN_CAMO, SPAWN_CYBER, SPAWN_HOME, SPAWN_PARKOUR]) for (const [biome, list] of Object.entries(extra)) SPAWNS[biome].push(...list);
 
 // T33: Food creatures live near where their food comes from.
 const SPAWN_FOOD = {

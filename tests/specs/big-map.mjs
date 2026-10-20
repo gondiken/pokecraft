@@ -49,7 +49,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
-        gyms: w.gyms.length === o.gyms.length + 6 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
+        gyms: w.gyms.filter(g => !(g.slot && g.slot.k >= 5)).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
         tower: w.tower.x === o.tower.x && w.tower.z === o.tower.z && w.tower.y === o.tower.y,
         caves: sameSet(w.caves.opened, o.caves.opened) && sameSet(w.caves.marks, o.caves.marks),
       };
@@ -175,7 +175,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(c));
       out.same[seed] = {
         diff, gdiff, size: [m.W, m.D],
-        gyms: w.gyms.length === m.gyms.length + 1 && m.gyms.every((_, i) => { const g = w.gyms[i]; return g.def === m.gyms[i].def && g.x === m.gyms[i].x && g.y === m.gyms[i].y && g.z === m.gyms[i].z; }), // T33: the 368 map adds the Restaurant
+        gyms: w.gyms.filter(g => !(g.slot && g.slot.k >= 5)).length === m.gyms.length && w.gyms.filter(g => !(g.slot && g.slot.k >= 5)).every((g, i) => g.def === m.gyms[i].def && g.x === m.gyms[i].x && g.y === m.gyms[i].y && g.z === m.gyms[i].z),
         tower: w.tower.x === m.tower.x && w.tower.y === m.tower.y && w.tower.z === m.tower.z,
         caves: sameSet(w.caves.opened, m.caves.opened) && sameSet(w.caves.marks, m.caves.marks),
         slots: xz(w.newLandSlots()) === xz(m.newLandSlots()),
