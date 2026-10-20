@@ -1094,7 +1094,17 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   - Wackier terrain (all data in `TERRAINS`): floating islands at different heights joined by bounce blocks, trees
     hanging under the islands, a checkerboard meadow, giant everyday things, odd colours.
 - **The gym is inside the realm** (realms have no gyms yet: placing a gym in a realm world, its people and its badge is
-  the main new code). It has a **healer** (realms have none today; walking home to heal would cost the night).
+  the main new code). It has a **healer**, placed statically like Healer Hana in the main world (realms have none today;
+  walking home to heal would cost the night).
+  - **Wacky building with a twist, little custom logic** (owner). Proposed: an **upside-down house** floating above the
+    island, roof at the bottom; you get in by a bounce block up through a door in its floor; inside, the furniture
+    hangs from the ceiling. The twist reuses the bounce blocks (no new live logic). To confirm with the owner.
+  - **Always harder than the previous gym** (owner rule): its leader is about +2 levels over the top level of the gym
+    before it (e.g. the gym before tops out at 55 -> Dream leader ~57), trainers a little below. **Knock-on:** wave 11
+    puts four gyms above the Treasure Vault (leader ~46), so the Champion's Tower (guards 47-50, Champion 49-52, Zenithar 52),
+    `REMATCH_CAP` (55) and Coach Dex must move up so the Tower stays the hardest; decide that in wave 11.
+- **Names** (creatures, moves, leader, gym): Claude picks original, fitting names (owner, 2026-10-20). Terrain layout,
+  where the gym / healer / Wake Stone go, and new block ids (from 79) are Claude's call too.
 - **Nights stay the normal length** (about 4 minutes of an 8-minute day; no realm time scale: fewer exceptions).
   It stays calm because: the morning never wakes you during a battle (gym or wild; `realms.update` already skips
   `inBattle`), beaten trainers stay beaten (`beaten` is saved), so the gym can take a few nights. **A moon on the HUD**
@@ -1183,6 +1193,10 @@ by two creatures of one type; carried in a team slot and hatched by walking; the
 home egg knows one move from a parent (more once there are more traits). No warmth, no "what it hears",
 no bond meter: they add special cases all over the game), **creature helpers** (fire lights lamps, rock digs
 faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+
+**Dreaming together** (owner, 2026-10-20: fine to leave out of T35): today a guest cannot follow the host into the Dream
+realm (T31 toast). Once Dream has its own creatures and gym, a friend visiting your world can't catch them or earn that
+badge there; let a guest come along later if needed.
 
 **Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
 what they unlock or are used for is still open.
