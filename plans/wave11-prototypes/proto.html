@@ -1,0 +1,320 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Wave 11 creature prototypes (2026-10-20), not game code. Serve the repo root and open /plans/wave11-prototypes/proto.html; shoot.mjs makes the screenshots. -->
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "/tests/node_modules/three/build/three.module.js" } }</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { box, pivot, eyes } from '/src/shapes.js';
+import { buildModel } from '/src/species.js';
+
+// ---------- "held together by nothing": parts float apart and bob on their own ----------
+const GAP = 0.15;
+function drift(parts, g, amp = 0.05, speed = 1.6, phase = 0) {
+  parts.drift = parts.drift || [];
+  parts.drift.push({ g, base: g.position.clone(), amp, speed, phase });
+  return g;
+}
+function animate(parts, t) {
+  for (const d of parts.drift || []) {
+    d.g.position.y = d.base.y + Math.sin(t * d.speed + d.phase) * d.amp;
+    d.g.rotation.z = Math.sin(t * d.speed * 0.7 + d.phase) * 0.06;
+  }
+}
+
+function mouth(parent, y, z, w = 0.16) { box(parent, w, 0.05, 0.03, 0x5a2a3a, 0, y, z); }
+
+// 1. The head-stander: walks on its head, feet waving in the air.
+function headstander(root, parts) {
+  const C = { body: 0xb9a6ff, head: 0xc9b8ff, belly: 0xffd6f0, paw: 0x7a5ad0, ear: 0xff9ad5 };
+  // head on the ground; its face is upside down (mouth above the eyes)
+  const head = drift(parts, pivot(root, 0, 0.27, 0), 0.03, 1.3, 0);
+  box(head, 0.56, 0.54, 0.52, C.head, 0, 0, 0);
+  for (const s of [-1, 1]) {
+    // eyes upside down: pupils at the top
+    box(head, 0.13, 0.15, 0.04, 0xffffff, s * 0.13, -0.06, 0.27).userData.eye = true;
+    box(head, 0.07, 0.09, 0.03, 0x111111, s * 0.13, -0.02, 0.29).userData.eye = true;
+    box(head, 0.09, 0.04, 0.02, 0xff8fb8, s * 0.2, -0.17, 0.27); // cheeks below the eyes = above, upside down
+  }
+  box(head, 0.18, 0.05, 0.03, 0x5a2a3a, 0, 0.14, 0.27); // smile on top (it's upside down)
+  box(head, 0.1, 0.04, 0.03, 0x5a2a3a, -0.1, 0.11, 0.27);
+  box(head, 0.1, 0.04, 0.03, 0x5a2a3a, 0.1, 0.11, 0.27);
+  // floppy ears lying on the ground beside the head
+  for (const s of [-1, 1]) drift(parts, pivot(root, s * (0.28 + GAP + 0.1), 0.06, 0.02), 0.015, 2, s).add(
+    new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.34), new THREE.MeshLambertMaterial({ color: C.ear })));
+  // body above the head
+  const body = drift(parts, pivot(root, 0, 0.54 + GAP + 0.32, 0), 0.04, 1.5, 1);
+  box(body, 0.5, 0.64, 0.42, C.body, 0, 0, 0);
+  box(body, 0.32, 0.44, 0.03, C.belly, 0, 0, 0.215);
+  // legs pointing at the sky, each floating on its own
+  const top = 0.54 + GAP + 0.64 + GAP;
+  [[-0.15, 0.12], [0.15, 0.12], [-0.15, -0.12], [0.15, -0.12]].forEach(([x, z], i) => {
+    const leg = drift(parts, pivot(root, x, top + 0.17, z), 0.07, 2.6, i * 1.4);
+    box(leg, 0.13, 0.3, 0.13, C.body, 0, 0, 0);
+    box(leg, 0.17, 0.08, 0.2, C.paw, 0, 0.18, 0.02);
+  });
+  // tail pointing down to the ground behind, like a kickstand
+  drift(parts, pivot(root, 0, 0.54 + GAP + 0.1, -0.21 - GAP - 0.1), 0.03, 1.8, 2).add(
+    new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.22), new THREE.MeshLambertMaterial({ color: C.ear })));
+}
+
+// 3. The toddler drawing: everything in the wrong place, crayon colours.
+function toddler(root, parts) {
+  const C = { body: 0xff8a5c, ear1: 0x5cb8ff, ear2: 0x7ad65c, foot: 0xffd23c, hand: 0xc77dff, scribble: 0x2a2a6a };
+  const body = drift(parts, pivot(root, 0, 0.72, 0), 0.04, 1.3, 0);
+  box(body, 0.66, 0.6, 0.5, C.body, 0, 0, 0);
+  // scribbly crayon lines on the body
+  for (const [x, y, r] of [[-0.12, 0.08, 0.5], [0.1, -0.1, -0.4], [0.02, 0.16, 0.2]]) {
+    const l = box(body, 0.36, 0.035, 0.02, C.scribble, x, y, 0.26); l.rotation.z = r;
+  }
+  // mouth on TOP of the head
+  box(body, 0.3, 0.02, 0.12, 0x5a2a3a, 0.05, 0.305, 0.0);
+  box(body, 0.12, 0.02, 0.06, 0xff6f8a, 0.05, 0.31, 0.0); // tongue
+  // two tall ears of different colours and heights, with the EYES on their tips
+  [[-0.2, C.ear1, 0.5, 0], [0.22, C.ear2, 0.34, 1]].forEach(([x, col, h, i]) => {
+    const ear = drift(parts, pivot(root, x, 0.72 + 0.3 + GAP + h / 2, -0.05), 0.07, 2.1, i * 2);
+    box(ear, 0.12, h, 0.12, col, 0, 0, 0);
+    const e = pivot(ear, 0, h / 2 + 0.1, 0);
+    box(e, 0.2, 0.2, 0.18, 0xffffff, 0, 0, 0).userData.eye = true;
+    box(e, 0.1, 0.11, 0.03, 0x111111, i ? 0.03 : -0.03, 0, 0.1).userData.eye = true;
+  });
+  // a big FOOT sticking out where an arm should be
+  const arm = drift(parts, pivot(root, 0.33 + GAP + 0.14, 0.78, 0.04), 0.06, 2.3, 3);
+  box(arm, 0.24, 0.12, 0.12, C.body, 0, 0, 0);
+  box(arm, 0.16, 0.12, 0.3, C.foot, 0.14, -0.02, 0.06);
+  // a HAND on the other side... waving, with three fat fingers
+  const hand = drift(parts, pivot(root, -0.33 - GAP - 0.12, 0.84, 0.04), 0.06, 2.7, 4);
+  box(hand, 0.2, 0.12, 0.12, C.body, 0, 0, 0);
+  box(hand, 0.16, 0.18, 0.08, C.hand, -0.14, 0.04, 0);
+  for (let k = 0; k < 3; k++) box(hand, 0.04, 0.1, 0.05, C.hand, -0.19 + k * 0.05, 0.17, 0);
+  // legs of different lengths: one leg, one hand to stand on
+  const legA = drift(parts, pivot(root, 0.16, 0.2, 0.02), 0.03, 2, 5);
+  box(legA, 0.14, 0.34, 0.14, C.body, 0, 0, 0);
+  box(legA, 0.18, 0.08, 0.24, C.foot, 0, -0.14, 0.05);
+  const legB = drift(parts, pivot(root, -0.18, 0.22, 0.02), 0.03, 2.2, 6);
+  box(legB, 0.14, 0.3, 0.14, C.body, 0, 0.02, 0);
+  box(legB, 0.2, 0.08, 0.14, C.hand, 0, -0.14, 0); // a hand as a foot
+  for (let k = 0; k < 3; k++) box(legB, 0.05, 0.05, 0.08, C.hand, -0.06 + k * 0.06, -0.15, 0.1);
+}
+
+
+// A. Balloon-head (friendly): its own happy face on the tummy, a bow at the neck, the balloon-head on a string from the bow.
+function balloonhead(root, parts) {
+  const C = { body: 0xffb36b, head: 0x8ad7ff, dark: 0x2a6a9a, string: 0xffffff, belly: 0xffe2c0, shoe: 0x6a4ad0, bow: 0xff5c9a };
+  const body = drift(parts, pivot(root, 0, 0.55, 0), 0.03, 1.4, 0);
+  box(body, 0.56, 0.58, 0.42, C.body, 0, 0, 0);
+  box(body, 0.42, 0.42, 0.03, C.belly, 0, -0.02, 0.215);
+  // a big happy face on the tummy
+  for (const s of [-1, 1]) {
+    box(body, 0.11, 0.13, 0.03, 0xffffff, s * 0.1, 0.07, 0.235).userData.eye = true;
+    box(body, 0.06, 0.08, 0.02, 0x111111, s * 0.1, 0.06, 0.25).userData.eye = true;
+    box(body, 0.08, 0.04, 0.02, 0xff8fb8, s * 0.17, -0.05, 0.235);
+  }
+  box(body, 0.16, 0.04, 0.02, 0x5a2a3a, 0, -0.1, 0.235);
+  box(body, 0.06, 0.04, 0.02, 0x5a2a3a, -0.1, -0.08, 0.235);
+  box(body, 0.06, 0.04, 0.02, 0x5a2a3a, 0.1, -0.08, 0.235);
+  // a bow tied on top, where the string starts
+  box(body, 0.1, 0.1, 0.1, C.bow, 0, 0.33, 0);
+  box(body, 0.14, 0.12, 0.06, C.bow, -0.12, 0.33, 0);
+  box(body, 0.14, 0.12, 0.06, C.bow, 0.12, 0.33, 0);
+  for (const s of [-1, 1]) {
+    const leg = drift(parts, pivot(root, s * 0.15, 0.13, 0), 0.02, 2, s);
+    box(leg, 0.15, 0.22, 0.15, C.body, 0, 0, 0);
+    box(leg, 0.19, 0.08, 0.24, C.shoe, 0, -0.11, 0.04);
+    const arm = drift(parts, pivot(root, s * (0.28 + GAP + 0.05), s > 0 ? 0.82 : 0.55, 0.04), 0.04, 1.8, 2 + s);
+    box(arm, 0.12, 0.3, 0.12, C.body, 0, 0, 0);
+    box(arm, 0.14, 0.1, 0.14, C.belly, 0, s > 0 ? 0.18 : -0.18, 0); // one waving, one down
+  }
+  for (let k = 0; k < 8; k++) box(root, 0.025, 0.14, 0.025, C.string, Math.sin(k * 0.9) * 0.04, 1.02 + k * 0.13, 0);
+  const head = drift(parts, pivot(root, 0, 2.3, 0), 0.1, 1.1, 1);
+  box(head, 0.7, 0.66, 0.6, C.head, 0, 0, 0);
+  box(head, 0.56, 0.8, 0.46, C.head, 0, 0, 0);
+  box(head, 0.82, 0.5, 0.46, C.head, 0, 0, 0);
+  box(head, 0.1, 0.08, 0.1, C.dark, 0, -0.44, 0);
+  for (const s of [-1, 1]) {
+    box(head, 0.13, 0.16, 0.04, 0xffffff, s * 0.15, 0.08, 0.31).userData.eye = true;
+    box(head, 0.07, 0.09, 0.03, 0x111111, s * 0.15, 0.06, 0.33).userData.eye = true;
+    box(head, 0.1, 0.05, 0.02, 0xff8fb8, s * 0.24, -0.07, 0.31);
+  }
+  box(head, 0.2, 0.05, 0.03, 0x5a2a3a, 0, -0.12, 0.31);
+  box(head, 0.1, 0.16, 0.03, 0xffffff, -0.2, 0.22, 0.31);
+}
+
+
+// ===== Parkour: athletic, agile, lean. Type look: sweatband headband + sneakers, long thin limbs, action poses. =====
+const BAND = 0xff3b3b, SHOE = 0xffffff, SOLE = 0x2a8cff;
+function sneaker(parent, x, y, z, rx = 0) {
+  const g = pivot(parent, x, y, z); g.rotation.x = rx;
+  box(g, 0.13, 0.08, 0.22, SHOE, 0, 0, 0.04);
+  box(g, 0.14, 0.03, 0.24, SOLE, 0, -0.05, 0.04);
+  box(g, 0.135, 0.02, 0.06, BAND, 0, 0.03, 0.1);
+  return g;
+}
+function limb(parent, x, y, z, len, color, rx = 0, rz = 0, w = 0.07) {
+  const g = pivot(parent, x, y, z); g.rotation.x = rx; g.rotation.z = rz;
+  box(g, w, len, w, color, 0, -len / 2, 0);
+  return g;
+}
+
+// 1. The stick-runner: a stick figure, mid-sprint.
+function stickrunner(root, parts) {
+  const C = { body: 0x3a3a5a, head: 0xffd2a0 };
+  const hip = pivot(root, 0, 0.78, 0); hip.rotation.x = 0.25;
+  box(hip, 0.08, 0.5, 0.08, C.body, 0, 0.25, 0); // spine
+  const head = pivot(hip, 0, 0.62, 0.05);
+  box(head, 0.3, 0.3, 0.3, C.head, 0, 0, 0);
+  box(head, 0.32, 0.07, 0.32, BAND, 0, 0.07, 0); // headband
+  box(head, 0.06, 0.18, 0.04, BAND, -0.05, -0.02, -0.17); box(head, 0.06, 0.14, 0.04, BAND, 0.04, -0.04, -0.2); // band tails flying
+  for (const s of [-1, 1]) {
+    box(head, 0.06, 0.08, 0.03, 0x111111, s * 0.07, 0.0, 0.155);
+  }
+  box(head, 0.12, 0.03, 0.03, 0x5a2a3a, 0, -0.08, 0.155);
+  // arms swinging
+  const a1 = limb(hip, -0.08, 0.46, 0, 0.36, C.body, -0.9, 0.1); box(a1, 0.1, 0.08, 0.1, BAND, 0, -0.3, 0);
+  const a2 = limb(hip, 0.08, 0.46, 0, 0.36, C.body, 0.9, -0.1); box(a2, 0.1, 0.08, 0.1, BAND, 0, -0.3, 0);
+  // legs mid-stride
+  const l1 = limb(root, -0.06, 0.78, 0, 0.42, C.body, 0.7); sneaker(l1, 0, -0.44, 0.02, -0.7);
+  const l2 = limb(root, 0.06, 0.78, 0, 0.42, C.body, -0.6); const k = limb(l2, 0, -0.42, 0, 0.36, C.body, -0.9); sneaker(k, 0, -0.38, 0, 1.5);
+  root.position.y = 0.0;
+}
+
+// 2. The ferret: a long lean body stretched out mid-leap, front paws reaching, back legs pushing off.
+function ferret(root, parts) {
+  const C = { body: 0xc98a4a, belly: 0xffe7c4, mask: 0x5a3a20 };
+  const b = pivot(root, 0, 0.75, 0); b.rotation.x = -0.25; // nose up: leaping forward and up
+  box(b, 0.26, 0.24, 1.1, C.body, 0, 0, 0);
+  box(b, 0.2, 0.04, 0.9, C.belly, 0, -0.13, 0.02);
+  const h = pivot(b, 0, 0.04, 0.66);
+  box(h, 0.3, 0.26, 0.28, C.body, 0, 0, 0);
+  box(h, 0.31, 0.09, 0.12, C.mask, 0, 0.03, 0.09);
+  box(h, 0.14, 0.12, 0.14, C.belly, 0, -0.07, 0.18);
+  box(h, 0.06, 0.05, 0.04, 0x2a1a10, 0, -0.03, 0.26);
+  box(h, 0.32, 0.06, 0.3, BAND, 0, 0.12, 0);
+  box(h, 0.06, 0.14, 0.04, BAND, -0.05, 0.06, -0.17); box(h, 0.06, 0.1, 0.04, BAND, 0.05, 0.05, -0.2);
+  for (const s of [-1, 1]) {
+    box(h, 0.05, 0.06, 0.03, 0xffffff, s * 0.08, 0.04, 0.145);
+    box(h, 0.03, 0.04, 0.02, 0x111111, s * 0.08, 0.04, 0.16);
+    box(h, 0.08, 0.08, 0.06, C.body, s * 0.11, 0.16, -0.05);
+    // front legs reaching forward
+    const f = limb(b, s * 0.1, -0.08, 0.42, 0.28, C.body, -1.25, 0, 0.08); sneaker(f, 0, -0.3, 0, 1.3);
+    // back legs pushing back
+    const k = limb(b, s * 0.1, -0.08, -0.42, 0.3, C.body, 1.1, 0, 0.09); sneaker(k, 0, -0.32, 0, -1.0);
+  }
+  // long tail streaming behind
+  const t = pivot(b, 0, 0.04, -0.55); t.rotation.x = 0.2;
+  box(t, 0.12, 0.12, 0.5, C.mask, 0, 0, -0.25);
+}
+
+// 3. The slackline lemur: balancing on one foot, arms out, a huge striped tail.
+function lemur(root, parts) {
+  const C = { body: 0xb7b7c7, dark: 0x3a3a48, face: 0xf4f4f8, eye: 0xffb020 };
+  const body = pivot(root, 0, 0.82, 0); body.rotation.z = 0.12;
+  box(body, 0.3, 0.42, 0.24, C.body, 0, 0, 0);
+  box(body, 0.2, 0.3, 0.02, C.face, 0, -0.03, 0.125);
+  const head = pivot(body, 0, 0.36, 0.02);
+  box(head, 0.32, 0.28, 0.28, C.body, 0, 0, 0);
+  box(head, 0.2, 0.16, 0.08, C.face, 0, -0.04, 0.15);
+  box(head, 0.34, 0.06, 0.3, BAND, 0, 0.08, 0);
+  for (const s of [-1, 1]) {
+    box(head, 0.09, 0.09, 0.03, C.dark, s * 0.08, 0.0, 0.19);
+    box(head, 0.05, 0.05, 0.03, C.eye, s * 0.08, 0.0, 0.2);
+    box(head, 0.1, 0.14, 0.06, C.dark, s * 0.17, 0.16, -0.02); // ears
+    const arm = limb(body, s * 0.17, 0.16, 0, 0.42, C.body, 0, s * -1.45, 0.08); // arms straight out
+    box(arm, 0.1, 0.08, 0.1, C.dark, 0, -0.42, 0);
+  }
+  box(head, 0.06, 0.04, 0.03, C.dark, 0, -0.08, 0.2);
+  // standing leg + the other leg bent up
+  const l1 = limb(root, 0.04, 0.62, 0, 0.5, C.body, 0, 0.02, 0.1); sneaker(l1, 0, -0.52, 0.02, 0);
+  const l2 = limb(root, -0.1, 0.62, 0, 0.3, C.body, -1.2, -0.3, 0.1); sneaker(l2, 0, -0.32, 0, 1.1);
+  // the striped tail, curling up behind, longer than the body
+  for (let i = 0; i < 10; i++) {
+    const a = i * 0.24;
+    box(root, 0.13, 0.13, 0.13, i % 2 ? C.dark : C.face, -0.02 - Math.sin(a) * 0.08, 0.68 + i * 0.12, -0.18 - Math.sin(a * 0.9) * 0.4);
+  }
+  // a short bit of slackline under its foot
+  box(root, 0.04, 0.04, 2.2, 0xffe14a, 0.04, -0.0, 0);
+  for (const z of [-1.1, 1.1]) box(root, 0.12, 0.6, 0.12, 0x8a5a36, 0.04, -0.3, z);
+  root.position.y = 0.32;
+}
+
+// 4. The pole-vaulter: lanky, holding a pole taller than itself.
+function vaulter(root, parts) {
+  const C = { body: 0x6ad0c8, dark: 0x2a7a74, belly: 0xe0fff8, pole: 0xffcf3a };
+  const body = pivot(root, 0, 0.9, 0); body.rotation.x = 0.2;
+  box(body, 0.26, 0.5, 0.22, C.body, 0, 0, 0);
+  box(body, 0.18, 0.36, 0.02, C.belly, 0, 0, 0.115);
+  box(body, 0.16, 0.1, 0.02, 0xffffff, 0, 0.08, 0.13); box(body, 0.04, 0.06, 0.02, BAND, 0, 0.08, 0.14); // a race number
+  const head = pivot(body, 0, 0.4, 0.04);
+  box(head, 0.26, 0.3, 0.26, C.body, 0, 0, 0);
+  box(head, 0.18, 0.12, 0.12, C.belly, 0, -0.06, 0.15);
+  box(head, 0.28, 0.06, 0.28, BAND, 0, 0.09, 0);
+  for (const s of [-1, 1]) { box(head, 0.06, 0.08, 0.03, 0x111111, s * 0.07, 0.03, 0.14); box(head, 0.05, 0.2, 0.05, C.dark, s * 0.08, 0.24, -0.04); }
+  box(head, 0.1, 0.03, 0.03, 0x5a2a3a, 0, -0.08, 0.215);
+  // long legs, running
+  const l1 = limb(root, -0.07, 0.68, 0, 0.6, C.body, 0.5); sneaker(l1, 0, -0.62, 0.02, -0.5);
+  const l2 = limb(root, 0.07, 0.68, 0, 0.6, C.body, -0.45); sneaker(l2, 0, -0.62, 0, 0.45);
+  // arms forward holding the long pole, tip down in front
+  for (const s of [-1, 1]) limb(body, s * 0.15, 0.18, 0.04, 0.34, C.body, -1.2, 0, 0.07);
+  const pole = pivot(root, 0, 1.08, 0.3); pole.rotation.x = 1.25;
+  box(pole, 0.05, 2.6, 0.05, C.pole, 0, -0.4, 0);
+  root.position.y = 0.02;
+}
+
+const BUILD = { stickrunner, ferret, lemur, vaulter, headstander, toddler, balloonhead };
+
+// ---------- a little piece of the normal world ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+const W = 900, H = 640;
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fd4ff);
+scene.fog = new THREE.Fog(0x9fd4ff, 14, 30);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x88aa66, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(4, 8, 6); scene.add(sun);
+const grass = new THREE.MeshLambertMaterial({ color: 0x6cbf4a }), dirt = new THREE.MeshLambertMaterial({ color: 0x8a5a36 });
+for (let x = -9; x <= 9; x++) for (let z = -9; z <= 6; z++) {
+  const g = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), (x + z) % 7 === 0 ? dirt : grass);
+  g.position.set(x, -0.5, z); scene.add(g);
+}
+function tree(x, z) {
+  for (let y = 0; y < 3; y++) { const t = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), dirt); t.position.set(x, y + 0.5, z); scene.add(t); }
+  const l = new THREE.MeshLambertMaterial({ color: 0x3f9a3a });
+  for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let y = 3; y < 5; y++) {
+    if (y === 4 && Math.abs(dx) + Math.abs(dz) === 2) continue;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), l); b.position.set(x + dx, y + 0.5, z + dz); scene.add(b);
+  }
+}
+tree(-5, -5); tree(5, -6);
+for (const [x, z, c] of [[-2, 2, 0xff5c8a], [3, 1, 0xffe14a], [1, 3, 0xffffff]]) {
+  const f = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshLambertMaterial({ color: c })); f.position.set(x, 0.35, z); scene.add(f);
+  const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.06), grass); s.position.set(x, 0.15, z); scene.add(s);
+}
+
+const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
+const models = [];
+window.setup = ({ which, scale = 1.6, compare = null }) => {
+  for (const m of models) scene.remove(m.g);
+  models.length = 0;
+  const list = which.split(',');
+  list.forEach((id, i) => {
+    const g = new THREE.Group(), root = new THREE.Group(), parts = {};
+    g.add(root);
+    if (BUILD[id]) BUILD[id](root, parts); else root.add(buildModel(id));
+    root.scale.setScalar(BUILD[id] ? scale : 1);
+    g.position.x = (i - (list.length - 1) / 2) * 2.3;
+    scene.add(g);
+    models.push({ g, parts });
+  });
+};
+window.shot = ({ t = 0, cam = [2.6, 1.9, 3.6], look = [0, 0.9, 0], rotY = 0 }) => {
+  for (const m of models) { animate(m.parts, t); m.g.rotation.y = rotY; }
+  camera.position.set(...cam); camera.lookAt(...look);
+  renderer.render(scene, camera);
+  return true;
+};
+window.ready = true;
+</script>
+</body></html>

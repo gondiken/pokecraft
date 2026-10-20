@@ -1076,7 +1076,8 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
 - **Creatures:** must also look right in the normal world (they can be caught and brought home), so nothing that needs
   dream physics. "Mixed-up" is not enough (normal creatures already are, e.g. Bonzoise); they must be **wackier**, and
   the type gets one wacky dreamy look. Old placeholder names (Pillowmoth, Starsheep) are dropped: they overlap Cozy.
-  **Chosen (owner saw prototypes, 2026-10-20):**
+  **Chosen (owner saw prototypes, 2026-10-20; screenshots + model code in `plans/wave11-prototypes/`: `dream-*.png`,
+  builders `headstander`, `toddler`, `balloonhead` in `proto.html`, a starting point for the shape builders):**
   - **Type look: "held together by nothing":** every Dream creature's parts (head, body, legs, ears, tail) float a little
     apart (gap ~0.15) and each bobs on its own. Code: a generic `parts.drift` list filled by the shape builders + one loop
     in `animateModel` (no type check).
@@ -1126,7 +1127,8 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
 - **Start from the mechanic** (owner, 2026-10-20): Parkour creatures are **athletic, agile and lean**, not just "they run
   away". The old placeholders Flipfrog and Springbun are dropped: three frogs (Sproutle, Hopfold, Frogami) and three
   bunnies (Hopsy, Moonhop, Lunaroo) already hop; the boxing kangaroo and the chameleon also exist.
-  **Chosen (owner saw prototypes, 2026-10-20; "animals the most"):**
+  **Chosen (owner saw prototypes, 2026-10-20; "animals the most"; screenshots + model code in `plans/wave11-prototypes/`:
+  `parkour-*.png`, builders `lemur`, `ferret`, `vaulter`, `stickrunner` in `proto.html`):**
   - **Type look: sport gear:** every Parkour creature wears a sweatband headband and sneakers, has long thin limbs and
     stands in an action pose (crouch, mid-stride, mid-leap). Just boxes in the shape builders, no new code.
   - **The slackline lemur:** balancing on one foot with arms out, a striped tail longer than its body.
