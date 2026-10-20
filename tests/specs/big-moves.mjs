@@ -103,7 +103,7 @@ export default async function ({ browser, base, t }) {
     const sw = S.autoMoves('fluffin', 40), mw = S.movesWith('fluffin', 40, 'goteamgo', 'standtogether');
     R.data = {
       total: big.length, counts, types: Object.keys(perType).length, minPer: Math.min(...Object.values(perType)), maxPer: Math.max(...Object.values(perType)),
-      flags: big.every(([, m]) => !m.sig && m.fx.chance === undefined), uniqueNames: names.size === 61, learnBad, autoBad, offered,
+      flags: big.every(([, m]) => !m.sig && m.fx.chance === undefined), uniqueNames: names.size === 64, learnBad, autoBad, offered,
       swBig: sw.some(S.isBig), mw, mwOk: mw.length === 4 && mw.includes('goteamgo') && mw.includes('standtogether') && S.MOVES[mw[0]].power > 0,
       kinds: S.BIG_KINDS.join(','), lastwordPower: S.MOVES.nevergiveup.power, riskyPower: S.MOVES.wildblaze.power,
       info: Object.fromEntries(['goteamgo', 'standtogether', 'wildblaze', 'wavegoodbye', 'staticfuzz', 'hightide', 'nevergiveup'].map(id => [id, S.moveInfo(id)])),

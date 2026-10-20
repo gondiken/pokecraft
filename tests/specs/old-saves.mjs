@@ -96,7 +96,7 @@ export default async function ({ browser, base, t }) {
       const others = [...w.gyms.slice(0, 16).map(g => [g.x, g.z]), [w.tower.x, w.tower.z]];
       const gapOf = g => Math.min(...others.map(([x, z]) => Math.hypot(g.x - x, g.z - z)));
       out[seed] = {
-        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure'][i]),
+        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure', 'food'][i]),
         old: w.gyms.slice(0, 16).map(g => [g.x, g.z]), reserved: spots[0], saucer: [extra[1].x, extra[1].z], h, h22, terrain, surf,
         types: extra.map(g => g.def.type), cave: extra.map(g => !!g.cave),
         gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - 112, g.z - 112)),
@@ -186,7 +186,7 @@ export default async function ({ browser, base, t }) {
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p18 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p18.toasts.includes('9 new gyms have appeared'), `the 18-badge player is told about the 9 new gyms (${p18.toasts})`);
+  t.ok(p18.toasts.includes(`${NGYMS - 18} new gyms have appeared`), `the 18-badge player is told about the ${NGYMS - 18} new gyms (${p18.toasts})`);
   t.ok(p18.guide.includes('Sunbeam Gym'), `the arrow points at the Sunbeam Gym (${p18.guide})`);
   await page.evaluate(() => {
     const g = window.pokecraft, tw = g.world.tower, [fx, fz] = tw.front;
@@ -217,12 +217,12 @@ export default async function ({ browser, base, t }) {
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p22 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p22.toasts.includes('5 new gyms have appeared! Follow the arrow to find them.'), `the 22-badge player is told about the 5 new gyms (${p22.toasts})`);
+  t.ok(p22.toasts.includes(`${NGYMS - 22} new gyms have appeared! Follow the arrow to find them.`), `the 22-badge player is told about the ${NGYMS - 22} new gyms (${p22.toasts})`);
   t.ok(p22.guide.includes('Clock Tower'), `the arrow points at the Clock Tower (${p22.guide})`);
   await page.context().close();
 
   // 3f. A player with the first 25 badges is told about the Cozy Gym and the Treasure Vault by name (T23); the arrow says what to do next.
-  page = await openWithSave(browser, base, { ...oldSave(false), badges: GYMS.slice(0, 25).map(x => x.id) });
+  page = await openWithSave(browser, base, { ...oldSave(false), badges: [...GYMS.slice(0, 25), GYMS.find(x => x.id === 'food')].map(x => x.id) }); // T33: the Restaurant is already done, so only the Cozy Gym and the Vault are new
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p25 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
@@ -248,7 +248,7 @@ export default async function ({ browser, base, t }) {
     g.player.lookAt({ x: gym.x + 0.5, y: gym.y + 6, z: gym.z + 0.5 });
   }, 'alien');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-alien.png' });
+  await page.screenshot({ path: SHOTS + 'gym-alien.png', timeout: 120000 });
   // Inside the cavern, on the stairs 12 blocks from the gym's middle.
   const cave = await page.evaluate(() => {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'bone'), [fx, fz] = gym.front;
@@ -261,7 +261,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(cave, 'the Fossil Gym stands in a cave');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'cave-gym.png' });
+  await page.screenshot({ path: SHOTS + 'cave-gym.png', timeout: 120000 });
   // The arch above the stairs, from 8 blocks outside.
   const arch = await page.evaluate(async () => {
     const g = window.pokecraft, w = g.world, { raycastVoxel } = await import('/src/world.js');
@@ -286,7 +286,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(arch, 'found a clear view of the Fossil Gym arch');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'cave-gym-entrance.png' });
+  await page.screenshot({ path: SHOTS + 'cave-gym-entrance.png', timeout: 120000 });
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

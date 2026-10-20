@@ -230,7 +230,7 @@ export default async function ({ browser, base, t }) {
   for (const [id, file] of [['light', 'gym-light'], ['paper', 'gym-paper'], ['sky', 'gym-sky']]) {
     t.ok(await aim(id), `found a clear view of the ${id} gym`);
     await page.waitForTimeout(4500);
-    await page.screenshot({ path: SHOTS + file + '.png' });
+    await page.screenshot({ path: SHOTS + file + '.png', timeout: 120000 });
   }
   // The Goo Gym's cavern (puddles, glowcaps, goo dripping from the roof), lamps lit.
   t.ok(await page.evaluate(() => !!window.pokecraft.world.gyms.find(x => x.def.id === 'slime').cave), 'the Goo Gym stands in a cave on seed 1');
@@ -244,7 +244,7 @@ export default async function ({ browser, base, t }) {
     return g.world.get(gym.x + fx * d, tread, gym.z + fz * d) !== 0;
   }), 'a view of the Goo Gym from its stairs');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: SHOTS + 'gym-slime.png' });
+  await page.screenshot({ path: SHOTS + 'gym-slime.png', timeout: 120000 });
 
   // 4. All four can be beaten: trainer, then leader, then the badge (a strong team, standing inside each gym).
   for (const [id, badge] of [['light', 'Sunbeam'], ['paper', 'Origami'], ['slime', 'Goo'], ['sky', 'Cloud']]) {

@@ -77,7 +77,7 @@ export default async function ({ browser, base, t }) {
       } catch (e) { bad(`${id}: model failed: ${e.message}`); }
     }
     // Moves, big moves, fx, sounds.
-    for (const id of ['nibble', 'foodfight', 'sprinkles', 'snacktime', 'megamunch', 'dinnerbell', 'lastbite', 'picnicday']) {
+    for (const id of ['nomnom', 'foodfight', 'sprinkles', 'snacktime', 'megamunch', 'dinnerbell', 'lastbite', 'picnicday']) {
       if (!S.MOVES[id] || S.MOVES[id].type !== 'food') bad(`move ${id}`);
       if (sound.has(id)) bad(`move ${id} is also a sound name`);
     }

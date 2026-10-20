@@ -224,7 +224,7 @@ export const MOVES = {
 
 /* ==== T33 food moves ==== */
 Object.assign(MOVES, {
-  nibble: mv('Nibble', 'food', 40, 1),
+  nomnom: mv('Nom Nom', 'food', 40, 1),
   foodfight: mv('Food Fight', 'food', 75, 0.9),
   sprinkles: mv('Sprinkles', 'food', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
   snacktime: mv('Snack Time', 'food', 0, 1, { fx: { kind: 'heal', amount: 0.5 } }),
@@ -460,7 +460,7 @@ const T4 = {
   sky: 'tornadospin', slime: 'goopatch', light: 'sunburst', paper: 'inksplat',
   time: 'rewind', camo: 'lielow', cyber: 'firewall', cozy: 'hotcocoa', treasure: 'bling',
 };
-T1.food = 'nibble'; T2.food = 'foodfight'; T3.food = 'sprinkles'; T4.food = 'snacktime'; // T33
+T1.food = 'nomnom'; T2.food = 'foodfight'; T3.food = 'sprinkles'; T4.food = 'snacktime'; // T33
 // Types whose T4 is a big hit get a normal helper move at 23; the others get Belly Bash.
 const UTIL = { fire: 'pumpup', water: 'restup', electric: 'grumble', rock: 'hunker', ice: 'hunker',
   ghost: 'grumble', toxic: 'hunker', drake: 'pumpup', cosmic: 'restup', bone: 'hunker', alien: 'pumpup', sky: 'pumpup', light: 'restup' };

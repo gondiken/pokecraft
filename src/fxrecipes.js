@@ -1935,10 +1935,10 @@ IMPACT.food = (k, from, to, { big }) => {
   };
 };
 
-// Mega Munch: two rows of white teeth close on the target twice; every chomp throws crumbs and a star flash.
+// Mega Munch: two rows of four white teeth close on the target twice; every chomp throws crumbs and a star flash.
 SIG.megamunch = (k, from, to) => {
-  const top = [0, 1, 2, 3, 4].map(() => k.sprite('square', { color: 0xffffff, size: 0.1, glow: true }));
-  const bot = [0, 1, 2, 3, 4].map(() => k.sprite('square', { color: 0xfff4e0, size: 0.1, glow: true }));
+  const top = [0, 1, 2, 3].map(() => k.sprite('square', { color: 0xffffff, size: 0.1, glow: true }));
+  const bot = [0, 1, 2, 3].map(() => k.sprite('square', { color: 0xfff4e0, size: 0.1, glow: true }));
   const flash = k.sprite('star', { color: 0xffe14a, size: 0.1, glow: true });
   const crumbs = k.points({ n: 12, tex: 'puff', size: 0.34, colors: [0xe0a050, 0xf4d08a] });
   const s = k.seeds(12, 2);
@@ -1950,8 +1950,8 @@ SIG.megamunch = (k, from, to) => {
       const gap = p < 0.35 ? 1 - k.ease(p / 0.35) : p < 0.5 ? k.ease((p - 0.35) / 0.15) : p < 0.7 ? 1 - k.ease((p - 0.5) / 0.2) : 0;
       const open = reach * (0.05 + 0.95 * gap);
       const fade = p > 0.85 ? clamp01((1 - p) / 0.15) : clamp01(p / 0.1);
-      for (let i = 0; i < 5; i++) {
-        const x = (i - 2) * 0.28;
+      for (let i = 0; i < 4; i++) {
+        const x = (i - 1.5) * 0.34;
         planeAt(top[i].position, to.pos, k.side, x, mid - to.pos.y + open);
         planeAt(bot[i].position, to.pos, k.side, x, mid - to.pos.y - open * 0.7);
         top[i].scale.setScalar(Math.max(0.01, 0.3 * fade));
