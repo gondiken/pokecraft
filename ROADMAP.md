@@ -1021,8 +1021,25 @@ wool, fx + sound, Book, README. Battle rules stay the same for all; a type only 
 - Creatures: e.g. Donutoad, Sushiroll, Pretzling, Jellywob.
 - Spawn: only near flowers or crops **you placed** (one new spawn condition counting placed blocks nearby, like Cozy's
   `home:<type>`). Behaviour: none. Battle: leans to healing and Shield moves.
-- Gym, the Restaurant: Chef battles only after you bring 3 ingredients (berry from leaves, cave mushroom, fish); reuse the
-  Treasure Vault's `keys`. Trainers at stoves.
+- **Gym, the Restaurant** (owner, 2026-10-20; keep custom code small: three new pieces, everything else reused):
+  - **Trainers:** two normal trainers like every other gym (dressed as waiters / line cooks: names and colours only).
+  - **Customers:** fixed NPCs at tables, one line each. No logic beyond "you are holding the right dish".
+  - **The Chef (the special part):** talking to the Chef gives the order: "Table 2 wants Berry Pie! I need 🫐 🍄 ❄️."
+    The order comes from a customer, so the Chef names the table.
+  - **Ingredients = the Treasure Vault's `keys`:** a found ingredient is `'<gymId>:berry'` in `game.keys` (per player,
+    saved, `loadKeys`). No new save field, no counting, nothing used up. **New piece 1:** while an order is open,
+    breaking a natural block of the right kind anywhere gives the ingredient (one check in `breakBlock`, next to the
+    "natural blocks give cubes" check; toast "🫐 You found a berry!"). Ingredients come from different places, so an
+    order sends you exploring: e.g. 🫐 berry from forest leaves, 🍄 glowcap from caves, ❄️ snow from the peaks
+    (ice cream), 🌵 cactus fruit from the desert. **No fish** (the game has no fishing).
+  - **New piece 2: the pot,** one live object (`gymLive`, about the size of `VaultLive`). With all ingredients the pot
+    (drawn with `setLive`) cycles raw -> golden -> burnt over a few seconds; tap it while golden. Wide window (easy);
+    burnt = try again, ingredients are kept. Reaction timing is new in the game (the Clock Tower is time of day).
+  - **Serve:** talk to the customer while holding the finished dish; their happy line opens the Chef battle.
+  - **New piece 3: a menu table** (`{ name, table, ingredients, time }`, harder dishes have a shorter golden window).
+    The badge order is the first dish; **each T28 rematch is the next dish**, so the Restaurant changes per visit;
+    ingredients already found still count.
+  - Slot 5 (the south slot nearest the start, T32).
 
 ### T34 · 🐝 Swarm (custom code: low)
 - Creatures: e.g. Buzzcloud, Antrail, Minnowball, Sparkflies: 5 small models flying together (a group body shape).
