@@ -60,16 +60,18 @@ export default async function ({ browser, base, t }) {
     return {
       seed: R.realmSeed(1234, 0xd2ea) === R.realmSeed(1234, 0xd2ea) && R.realmSeed(1234, 0xd2ea) !== R.realmSeed(1235, 0xd2ea),
       same: h(a) === h(b), differ: h(a) !== h(c), size: [a.W, a.D], wake: a.get(...a.wake) === B.WAKE_STONE,
-      biome: a.biome(5, 5), gyms: a.gyms.length, tower: a.tower, arrive: a.surface(32, 32).y > 15,
+      biome: a.biome(5, 5), gyms: a.gyms.length, tower: a.tower, arrive: a.surface(128, 128).y > 15,
       mainRealm: window.pokecraft.world.realm, realmOf: R.realmOf('nope') === null && R.realmOf('dream') === R.REALMS.dream,
-      clean: JSON.stringify(R.cleanRealmEdits({ dream: [[5, 3], ['x', 1], [-1, 2]], moon: [[1, 1]] })),
+      clean: JSON.stringify(R.cleanRealmEdits({ dream: [[5, 3], ['x', 1], [-1, 2]], moon: [[1, 1]] }, { dream: 2 })),
+      cleanOld: JSON.stringify(R.cleanRealmEdits({ dream: [[5, 3]] })), cleanOld1: JSON.stringify(R.cleanRealmEdits({ dream: [[5, 3]] }, { dream: 1 })),
     };
   });
   t.ok(pure.seed, 'realmSeed is a pure function of the main seed');
   t.ok(pure.same && pure.differ, 'the Dream island is the same for the same seed and different for another');
-  t.ok(pure.size.join() === '64,64' && pure.wake && pure.biome === 'dream' && pure.gyms === 0 && pure.tower === null && pure.arrive, `the Dream realm: 64x64, a Wake Stone, biome dream, no gyms (${JSON.stringify(pure)})`);
+  t.ok(pure.size.join() === '256,256' && pure.wake && pure.biome === 'dream' && pure.gyms === 1 && pure.tower === null && pure.arrive, `the Dream realm: 256x256, a Wake Stone, biome dream, one gym (${JSON.stringify(pure)})`);
   t.ok(pure.mainRealm === null && pure.realmOf, 'the main world has no realm; realmOf knows only real realms');
-  t.ok(pure.clean === '{"dream":[[5,3]]}', `realmEdits from a save keep only good entries of known realms (${pure.clean})`);
+  t.ok(pure.clean === '{"dream":[[5,3]]}', `realmEdits from a save keep only good entries of known realms of the right version (${pure.clean})`);
+  t.ok(pure.cleanOld === '{}' && pure.cleanOld1 === '{}', `old (version 1) Dream edits are dropped (${pure.cleanOld} ${pure.cleanOld1})`);
 
   // 1. There and back.
   await newGame(page); await pause(page);
@@ -91,10 +93,11 @@ export default async function ({ browser, base, t }) {
     return { size: [g.world.W, g.world.D], realm: g.world.realm?.id, px: p.x, pz: p.z, npcs: g.npcs.list.length, homes: g.homes.list.length,
       guide: document.getElementById('guide').textContent, stash: g.realms.stash.edits.length, mainSave: JSON.parse(JSON.stringify(g.save && (() => { g.save(); return JSON.parse(localStorage.getItem('pokecraft-save-v2')); })())) };
   });
-  t.ok(there.realm === 'dream' && there.size.join() === '64,64' && Math.abs(there.px - 32.5) < 1 && Math.abs(there.pz - 32.5) < 1, `you arrive in the Dream realm at its middle (${JSON.stringify(there.size)} ${there.px},${there.pz})`);
-  t.ok(there.npcs === 0 && there.homes === 0 && /Wake Stone/.test(there.guide), `no people, no homes; the guide points at the Wake Stone ("${there.guide}")`);
+  t.ok(there.realm === 'dream' && there.size.join() === '256,256' && Math.abs(there.px - 128.5) < 1 && Math.abs(there.pz - 128.5) < 1, `you arrive in the Dream realm at its middle (${JSON.stringify(there.size)} ${there.px},${there.pz})`);
+  t.ok(there.npcs === 4 && there.homes === 0 && /Upside-Down House/.test(there.guide), `the gym's 3 people and Healer Stella, no homes; the guide follows the way to the gym ("${there.guide}")`);
   const sv = there.mainSave;
   t.ok(sv.party?.length === 1 && Array.isArray(sv.badges) && !!sv.playerId, 'the save made in the dream still has the team, badges and player id');
+  t.ok(sv.realmVersions?.dream === 2, 'a save made in the dream says which version of the Dream it was');
   t.ok(sv.place === 'dream' && Array.isArray(sv.realmPos) && sv.homes.length === 1 && sv.edits.some(([, b]) => b === 11) && Math.hypot(sv.pos[0] - H.bed[0] - 0.5, sv.pos[2] - H.bed[2] - 0.5) < 2,
     'the save keeps the main world (edits, homes, pos beside the bed) and says where you are');
   // building in the dream: a broken block; a Doormat is refused
@@ -129,7 +132,13 @@ export default async function ({ browser, base, t }) {
   await sleep(page, H.bed);
   await page.evaluate(() => { window.pokecraft.time = 0.1; });
   await waitFor(page, () => window.pokecraft.place === 'main' && !window.pokecraft.realms.busy);
-  t.ok(await page.evaluate(() => window.__toasts.includes('Good morning! You woke up in your bed.')), 'the morning wakes you up');
+  t.ok(await page.evaluate(() => window.__toasts.includes('Good morning! The gym will wait for you tonight.')), 'the morning wakes you up (the gym waits for tonight)');
+  await page.evaluate(() => { const g = window.pokecraft; g.badges.push('dream'); g.time = 0.75; });
+  await sleep(page, H.bed);
+  await page.evaluate(() => { window.__toasts = []; window.pokecraft.time = 0.1; });
+  await waitFor(page, () => window.pokecraft.place === 'main' && !window.pokecraft.realms.busy);
+  t.ok(await page.evaluate(() => window.__toasts.includes('Good morning! You woke up in your bed.')), 'with the Wonder Badge the morning toast is the plain one');
+  await page.evaluate(() => { const g = window.pokecraft; g.badges = g.badges.filter(b => b !== 'dream'); });
   await page.evaluate(() => { window.pokecraft.time = 0.75; });
   await sleep(page, H.bed);
   await page.evaluate(() => window.pokecraft.onBattleEnd('lost', {}));

@@ -207,7 +207,10 @@ export class NpcManager {
         this.add(npc);
       }
     }
-    if (world.realm) return; // T31: no healer in a realm (losing there wakes you up, rested)
+    if (world.realm) { // T31: no Healer Hana in a realm (losing there wakes you up, rested); T35: a realm may have its own healer
+      if (world.healer) this.add(new Npc({ kind: 'healer', name: 'Healer Stella', look: 'star', colors: { shirt: 0xc8b4ff, pants: 0xffffff, hair: 0xfff0a0, skin: 0xf2d0b0 }, pos: world.healer.slice(0, 3), heading: world.healer[3] }));
+      return;
+    }
     // The healer waits next to where you start.
     const hx = Math.floor(spawnPoint.x) + 3, hz = Math.floor(spawnPoint.z);
     const s = world.surface(hx, hz);

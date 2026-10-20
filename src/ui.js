@@ -161,6 +161,21 @@ export class UI {
   }
 
   // T23 key compass: null hides it; otherwise { period, found } (seconds per glint, keys found so far).
+  // T35: the moon of the Dream HUD. p = how far the night is (0 start, 1 end) or null = hidden. The moon moves along an arc
+  // from the top left to the bottom right and sinks out of sight; the last part of the strip turns dawn pink.
+  setMoon(p) {
+    const m = this.moon ??= document.getElementById('moon');
+    const v = p == null ? null : Math.round(Math.min(1, Math.max(0, p)) * 100) / 100;
+    this.moonShown = v;
+    if (!m) return;
+    m.classList.toggle('hidden', v === null);
+    if (v === null) return;
+    const icon = m.firstElementChild;
+    const x = 4 + v * 78, y = Math.sin(v * Math.PI) * -6 + v * v * 28; // up a little, then down out of sight
+    icon.style.transform = `translate(${x}px, ${y}px)`;
+    m.style.setProperty('--dawn', String(Math.max(0, (v - 0.85) / 0.15)));
+  }
+
   setKeyCompass(state) {
     const c = this.keyCompass;
     if (!c) return;

@@ -2,20 +2,26 @@
 // time. The registry is data; the first realm is a bare-bones Dream (T35 adds creatures, a gym and polish). You reach it
 // by sleeping at night in the Bed of your own finished cozy home, and wake up beside that Bed: at the Wake Stone, in
 // the morning, or after losing a battle. The main world never changes (realms only ever build their own World).
-import { B, WOOL, mulberry32 } from './blocks.js';
+import { B, WOOL } from './blocks.js';
+import { GYMS } from './gyms.js';
+import { dreamLand } from './dreamland.js';
+import { buildDreamHouse } from './dreamhouse.js';
 
 export const MAIN = 'main';
 export const REALMS = {
   dream: {
-    id: 'dream', name: 'Dream realm', size: [64, 64],
+    id: 'dream', name: 'Dream realm', version: 2, // T35: v1 = T31's 64 x 64 island (its saved edits are dropped once)
+    size: [256, 256],                   // fallback [192, 192] (plans/T35.md 2.3)
     seedSalt: 0xd2ea,                   // realm seed = realmSeed(mainSeed, salt)
-    terrain: 'dreamIsland',             // key into TERRAINS
+    terrain: 'dreamLand',               // key into TERRAINS
     biome: 'dream',                     // world.biome() everywhere in the realm
+    gravity: 0.5,                       // moon jumps everywhere here (World.gravity -> Player)
+    levelBonus: 6,                      // wild Dream creatures are a bit tougher (creatures.wildLevel)
     spawns: { dream: [['flipsy', 1.2], ['scribbit', 1.2], ['bobbloon', 1.2], ['drizzup', 0.8], ['topsyturvy', 0.12], ['scrawlbert', 0.12], ['bobblimp', 0.1]] }, // T35
-    walk: [WOOL.pixie, WOOL.mind, B.CLOUD], // blocks wild creatures walk on here
-    gyms: [],                           // realm gyms (each with `protect`), none yet
-    look: { sky: 0x6a4fb0, fog: [28, 70], time: null /* null = the main clock */, weather: false },
-    arrive: [32, 32],
+    walk: [B.DREAM_GRASS, WOOL.dream, WOOL.paper, WOOL.pixie, WOOL.mind], // blocks wild creatures walk on here (NOT the cloud sea)
+    gyms: ['dream'],                    // GYMS ids built in this realm (REALM_BUILDERS)
+    look: { sky: 0x6a4fb0, fog: [30, 90], time: null /* null = the main clock */, weather: false, light: 0.8 /* lowest brightness: the Dream is only visited at night */ },
+    arrive: [128, 128],
     enterText: 'You fall asleep... and dream!',
   },
 };
@@ -27,75 +33,77 @@ export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) |
 export const isNight = t => Math.sin(t * Math.PI * 2) < -0.04;
 export function realmOf(id) { return Object.hasOwn(REALMS, id) ? REALMS[id] : null; }
 
-// Small value noise of its own (world.js imports this file, so no import back).
-function hash(x, z, seed) {
-  let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
-function noise(x, z, seed) {
-  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
-  const a = hash(xi, zi, seed), b = hash(xi + 1, zi, seed), c = hash(xi, zi + 1, seed), d = hash(xi + 1, zi + 1, seed);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
+// Terrain builders: (world, def) fill world.data / world.ground and set world.wake (the Wake Stone cell) and world.isles.
+// Writes go straight into data (not edits), like the main terrain.
+export const TERRAINS = { dreamLand };
 
-// Terrain builders: (world, def) fill world.data / world.ground and set world.wake (the Wake Stone cell). Writes go
-// straight into data (not edits), like the main terrain.
-export const TERRAINS = {
-  // A floating island of pink and purple wool over a cloud underside, crystal flowers, candy trees, cloud puffs.
-  dreamIsland(world, def) {
-    const { W, D, seed } = world, [cx, cz] = def.arrive, TOP = 22;
-    const put = (x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
-    const rand = mulberry32(seed);
-    for (let x = 0; x < W; x++) {
-      for (let z = 0; z < D; z++) {
-        const d = Math.hypot(x - cx, z - cz), edge = 19 + noise(x / 7, z / 7, seed + 1) * 9;
-        if (d > edge) continue;
-        const k = 1 - d / edge;
-        const h = TOP + Math.round(noise(x / 9, z / 9, seed + 2) * 3 * k);
-        const depth = 2 + Math.round(k * 10 + noise(x / 5, z / 5, seed + 3) * 3);
-        world.ground[x + z * W] = h;
-        const top = noise(x / 6 + 50, z / 6 + 50, seed + 4) > 0.55 ? WOOL.mind : WOOL.pixie;
-        for (let y = h - depth; y <= h; y++) put(x, y, z, y === h ? top : y > h - 3 ? WOOL.sky : B.CLOUD);
-      }
-    }
-    const surf = (x, z) => world.ground[x + z * W];
-    const onTop = (x, z) => world.get(x, surf(x, z), z) !== B.AIR && Math.hypot(x - cx, z - cz) > 4;
-    for (let x = 2; x < W - 2; x++) {
-      for (let z = 2; z < D - 2; z++) {
-        if (!onTop(x, z)) continue;
-        const r = hash(x, z, seed + 9), y = surf(x, z) + 1;
-        if (r < 0.012) { // a candy tree: a light trunk and a ball of pixie and light wool
-          const t = 3 + Math.floor(r * 200);
-          for (let i = 0; i < t; i++) put(x, y + i, z, WOOL.paper);
-          for (let a = -2; a <= 2; a++) for (let b = -1; b <= 2; b++) for (let c = -2; c <= 2; c++) {
-            if (a * a + (b - 0.5) ** 2 + c * c <= 5.5 && world.get(x + a, y + t + b, z + c) === B.AIR) put(x + a, y + t + b, z + c, (a + b + c) & 1 ? WOOL.pixie : WOOL.light);
-          }
-        } else if (r < 0.04) put(x, y, z, B.CRYSTAL);
-        else if (r < 0.055) put(x, y, z, B.GLOWCAP);
-      }
-    }
-    for (let i = 0; i < 9; i++) { // cloud puffs around the island
-      const a = rand() * Math.PI * 2, d = 24 + rand() * 6, px = Math.round(cx + Math.cos(a) * d), pz = Math.round(cz + Math.sin(a) * d), py = 16 + Math.floor(rand() * 16);
-      for (let dx = -2; dx <= 2; dx++) for (let dz = -1; dz <= 1; dz++) if (Math.abs(dx) + Math.abs(dz) < 3 && px + dx > 0 && pz + dz > 0 && px + dx < W - 1 && pz + dz < D - 1) put(px + dx, py, pz + dz, B.CLOUD);
-    }
-    // The Wake Stone: 5 blocks east of where you arrive, on the ground, with two lamps beside it.
-    const wx = cx + 5, wz = cz, wy = surf(wx, wz) + 1;
-    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let y = wy; y < wy + 4; y++) put(wx + dx, y, wz + dz, B.AIR);
-    put(wx, wy, wz, B.WAKE_STONE);
-    world.wake = [wx, wy, wz];
-  },
-};
+// Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
+export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };
 
-// Builds a realm's terrain into a World whose `realm` is set (world.generate() calls this).
+// Builds a realm's terrain and its gyms into a World whose `realm` is set (world.generate() calls this).
 export function generateRealm(world) {
   const def = world.realm;
   TERRAINS[def.terrain](world, def);
-  world.gyms = [];
+  world.gyms = GYMS.filter(d => d.realm === def.id).map(d => REALM_BUILDERS[d.build](world, d, world.isles));
   world.tower = null;
   world.caves = null;
   world.walk = new Set(def.walk || []);
+  if (def.look?.light) world.litCol.fill(1); // bright everywhere: no cave darkness under the islands or inside the house
+}
+
+// Night progress for the Dream moon: 0 when the night starts (the moment isNight turns true), 1 when it ends.
+const NIGHT_EDGE = Math.asin(0.04) / (2 * Math.PI);
+export const nightProgress = t => Math.min(1, Math.max(0, (t - 0.5 - NIGHT_EDGE) / (0.5 - 2 * NIGHT_EDGE)));
+
+// Your own home that is finished as a cozy home (the one whose Bed lets you dream), or null.
+export function dreamHome(game) {
+  return game.homes?.list.find(h => h.owner === game.playerId && h.types.includes('cozy')) ?? null;
+}
+
+// The way between the islands: where the player is and what to do next to reach island `to`. Used by the guide arrow.
+// kind: 'here' (on the target island) | 'pad' (walk to the pad towards the next island) | 'jump' (on that pad) | 'air' (flying) | 'sea'.
+export function routeOf(world, p, to, entrance = null) {
+  const I = world.isles;
+  if (!I) return null;
+  const byId = Object.fromEntries(I.list.map(i => [i.id, i]));
+  if (p.y < 4) { // on the cloud sea: the nearest sea pad
+    let best = null, bd = Infinity;
+    for (const [x, , z] of I.seaPads) { const d = Math.hypot(x + 0.5 - p.x, z + 0.5 - p.z); if (d < bd) { bd = d; best = [x, z]; } }
+    return best ? { kind: 'sea', x: best[0] + 0.5, z: best[1] + 0.5 } : null;
+  }
+  let here = null;
+  for (const i of I.list) {
+    if (Math.hypot(p.x - i.x, p.z - i.z) > i.r + 1.5 || p.y < i.top - 0.5 || p.y > i.top + 14) continue;
+    if (!here || Math.abs(p.y - i.top) < Math.abs(p.y - here.top)) here = i;
+  }
+  let flying = false;
+  if (!here) { // in the air: route from the island nearest to you
+    flying = true;
+    let bd = Infinity;
+    for (const i of I.list) { const d = Math.hypot(p.x - i.x, p.z - i.z) - i.r; if (d < bd) { bd = d; here = i; } }
+  }
+  if (here.id === to) {
+    if (!entrance) return { kind: 'here', x: here.x + 0.5, z: here.z + 0.5 };
+    const near = Math.hypot(p.x - entrance[0] - 0.5, p.z - entrance[2] - 0.5) < 2.2 && !flying;
+    return { kind: flying ? 'air' : near ? 'jump' : 'here', x: entrance[0] + 0.5, z: entrance[2] + 0.5 };
+  }
+  // breadth-first search over the links, from the target back to `here`
+  const next = new Map([[to, null]]), queue = [to];
+  while (queue.length) {
+    const a = queue.shift();
+    for (const [x, y] of I.links) {
+      const other = x === a ? y : y === a ? x : null;
+      if (other && !next.has(other)) { next.set(other, a); queue.push(other); }
+    }
+  }
+  const step = next.get(here.id);
+  if (!step) return null;
+  const link = I.links.find(([a, b]) => (a === here.id && b === step) || (b === here.id && a === step));
+  const pad = link[0] === here.id ? link[2] : link[3];
+  const N = byId[step];
+  if (flying) return { kind: 'air', x: N.x + 0.5, z: N.z + 0.5, to: step };
+  const onPad = Math.hypot(p.x - pad[0] - 0.5, p.z - pad[2] - 0.5) < 2.2;
+  return onPad ? { kind: 'jump', x: N.x + 0.5, z: N.z + 0.5, to: step } : { kind: 'pad', x: pad[0] + 0.5, z: pad[2] + 0.5, to: step };
 }
 
 // Which home Bed lets you dream: a Bed inside one of YOUR homes that is finished as a cozy home.
@@ -119,6 +127,7 @@ export function createRealms(game, { createWorld, save, size }) {
   let stash = null;      // the main world while you are in a realm: { seed, edits, homes, owner, ret: [x, y, z, yaw, pitch] }
   let busy = false;      // travelling right now
   let asked = false;     // our 'Go to sleep?' box is showing
+  let told = {};         // T35: the Dream's one-time hints (bounce block, steering, the cloud sea)
   const overlay = () => document.getElementById('travel');
   const show = text => { const o = overlay(); if (!o) return; o.querySelector('.travel-text').textContent = text; o.classList.remove('hidden'); };
   const hide = () => overlay()?.classList.add('hidden');
@@ -201,8 +210,10 @@ export function createRealms(game, { createWorld, save, size }) {
         game.player.yaw = -Math.PI / 2; game.player.pitch = 0; // facing the Wake Stone
         game.weather.snap?.();
       } finally { busy = false; hide(); }
+      told = {};
       game.ui.toast(def.enterText || `Welcome to the ${def.name}!`);
-      game.ui.toast('Touch the glowing Wake Stone to wake up.');
+      if (game.world.gyms.some(g => !game.badges.includes(g.def.id))) game.ui.toast('Everything is light here: jump high! An upside-down house floats somewhere. Follow the arrow.');
+      else game.ui.toast('Touch the glowing Wake Stone to wake up.');
       game.mp?.sendState();
       save(true);
       return true;
@@ -212,6 +223,7 @@ export function createRealms(game, { createWorld, save, size }) {
     async leave(reason = 'stone') {
       if (game.place === MAIN || !stash || busy) return false;
       busy = true;
+      const left = game.place;
       game.realmEdits = self.edits();
       game.riding?.stop('quiet');
       show('Waking up...');
@@ -229,7 +241,8 @@ export function createRealms(game, { createWorld, save, size }) {
         p.yaw = yaw; p.pitch = pitch;
         game.weather.snap?.();
       } finally { busy = false; hide(); }
-      const words = { stone: 'You woke up in your bed. What a dream!', morning: 'Good morning! You woke up in your bed.', lost: 'Oh! You woke up in your bed. Your team is rested.' };
+      const waits = (realmOf(left)?.gyms || []).some(id => !game.badges.includes(id)); // T35: a gym of that realm is still unbeaten
+      const words = { stone: 'You woke up in your bed. What a dream!', morning: waits ? 'Good morning! The gym will wait for you tonight.' : 'Good morning! You woke up in your bed.', lost: 'Oh! You woke up in your bed. Your team is rested.' };
       if (words[reason]) game.ui.toast(words[reason]);
       game.mp?.sendState();
       save(true);
@@ -239,7 +252,7 @@ export function createRealms(game, { createWorld, save, size }) {
     // From a save: { place, realmPos, realmEdits } plus the main part. Loads the realm when the save was made in one.
     // Call after the main world exists and the player stands at the main return spot.
     restore(saved) {
-      game.realmEdits = cleanRealmEdits(saved?.realmEdits);
+      game.realmEdits = cleanRealmEdits(saved?.realmEdits, saved?.realmVersions);
       const def = realmOf(saved?.place);
       game.place = MAIN;
       stash = null;
@@ -248,7 +261,7 @@ export function createRealms(game, { createWorld, save, size }) {
       stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch] };
       createWorld(realmSeed(w.seed, def.seedSalt), game.realmEdits[def.id], def.size, { realm: def });
       game.place = def.id;
-      const rp = saved.realmPos;
+      const rp = (saved.realmVersions?.[def.id] ?? 1) === (def.version ?? 1) ? saved.realmPos : null; // T35: another version of the realm: arrive at the start
       const np = game.player;
       if (Array.isArray(rp) && rp.slice(0, 3).every(Number.isFinite)) { np.pos.set(rp[0], rp[1], rp[2]); np.yaw = rp[3] || 0; np.pitch = rp[4] || 0; }
       else np.pos.copy(game.spawnPoint);
@@ -256,27 +269,47 @@ export function createRealms(game, { createWorld, save, size }) {
       return true;
     },
 
-    // Every frame: morning wakes you up.
+    // Every frame: morning wakes you up (never in the middle of a battle or a duel invite); one-time hints.
     update() {
-      if (game.place === MAIN || busy || game.inBattle || !game.started) return;
-      if (!isNight(game.time)) self.leave('morning');
+      if (game.place === MAIN || busy || game.inBattle || game.duels?.incoming || !game.started) return;
+      if (!isNight(game.time)) { self.leave('morning'); return; }
+      const p = game.player;
+      if (p.onBounce && !told.pad) { told.pad = true; game.ui.toast('A bounce block! Jump on it to fly up high. Boing!'); }
+      else if (p.pos.y < 3 && p.onGround && !told.sea) { told.sea = true; game.ui.toast('You fell into the cloud sea! Find a bounce block to jump back up.'); }
     },
+    // The player just launched from a Bounce Block (main.js).
+    onBounce() { if (!told.steer && game.place !== MAIN) { told.steer = true; game.ui.toast('Steer while you fly to land on the next island!'); } },
+
+    // Where to go next in this realm (see routeOf): the island you are on, and the next pad.
+    route(p, isleId, entrance) { return game.world?.isles ? routeOf(game.world, p, isleId, entrance) : null; },
+    // The realm's own guide arrow when no realm gym is left: to the home island, then the Wake Stone.
+    aim(p) {
+      const w = game.world, wake = w?.wake;
+      if (!wake) return null;
+      const r = routeOf(w, p, w.isles?.home ?? 'home');
+      if (!r || r.kind === 'here') return { x: wake[0] + 0.5, z: wake[2] + 0.5, text: (a, d) => `${a} Wake Stone · ${d} m` };
+      return { x: r.x, z: r.z, text: (a, d) => (r.kind === 'sea' ? `Bounce back up! ${a} ${d}m` : r.kind === 'jump' ? `Jump! Then fly this way ${a}` : r.kind === 'air' ? `Fly this way ${a}` : `Bounce to the next island ${a} ${d}m`) };
+    },
+    // realmVersions for a save: every realm's version (missing in a save = 1).
+    versions() { return Object.fromEntries(Object.values(REALMS).map(r => [r.id, r.version ?? 1])); },
 
     // The title screen / a new game: forget everything.
-    reset() { stash = null; busy = false; game.place = MAIN; hide(); },
+    reset() { stash = null; busy = false; told = {}; game.place = MAIN; hide(); },
   };
   game.place = MAIN;
   game.realmEdits = {};
   return self;
 }
 
-// realmEdits from a save: only known realms, only [index, block] pairs of whole numbers.
-export function cleanRealmEdits(saved) {
+// realmEdits from a save: only known realms, only [index, block] pairs of whole numbers. T35: a realm's list is dropped
+// when the save was made in another version of that realm (versions[id], missing = 1; the Dream is version 2).
+export function cleanRealmEdits(saved, versions) {
   const out = {};
   if (!saved || typeof saved !== 'object') return out;
   for (const [id, list] of Object.entries(saved)) {
     const def = realmOf(id);
     if (!def || !Array.isArray(list)) continue;
+    if ((versions?.[id] ?? 1) !== (def.version ?? 1)) continue;
     const max = def.size[0] * def.size[1] * 48;
     out[id] = list.filter(e => Array.isArray(e) && Number.isInteger(e[0]) && Number.isInteger(e[1]) && e[0] >= 0 && e[0] < max && e[1] >= 0 && e[1] < 256);
   }

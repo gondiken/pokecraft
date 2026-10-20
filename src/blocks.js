@@ -39,6 +39,7 @@ const MORE_TILES = [
   'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
   'STAR_BLOCK', 'RAINBOW_BRICK', 'TROPHY_SIDE', 'TROPHY_TOP', // T29 mission blocks
   'WAKE_STONE', // T31 realms
+  'BOUNCE_TOP', 'BOUNCE_SIDE', 'DREAM_GRASS_TOP', 'DREAM_GRASS_SIDE', // T35 dream
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -65,6 +66,8 @@ export const B = {
   // 78: T31 Wake Stone (only in realms, never in the main world). 79-82: food / squad / dream / parkour wool (wave 11).
   // Reserved for wave 11: 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
   WAKE_STONE: 78,
+  // T35 (87-90): Bounce Block and Dream Grass (natural, not placeable); 89-90 stay spare.
+  BOUNCE: 87, DREAM_GRASS: 88,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -134,6 +137,9 @@ BLOCKS[B.RAINBOW_BRICK] = { name: 'Rainbow Brick', ...all(T.RAINBOW_BRICK), limi
 BLOCKS[B.GIANT_TROPHY] = { name: 'Giant Trophy', top: T.TROPHY_TOP, side: T.TROPHY_SIDE, bottom: T.TROPHY_TOP, limited: true, getMore: MISSION_MORE };
 // T31: the Wake Stone in a realm: touch (use or break) it to wake up. Not placeable.
 BLOCKS[B.WAKE_STONE] = { name: 'Wake Stone', ...all(T.WAKE_STONE), glow: true, wallText: 'Touch the Wake Stone to wake up!' };
+// T35: the Bounce Block (jump on it to fly `bounce` blocks up; `fixed` = nobody can break or replace it) and Dream Grass.
+BLOCKS[B.BOUNCE] = { name: 'Bounce Block', top: T.BOUNCE_TOP, side: T.BOUNCE_SIDE, bottom: T.BOUNCE_SIDE, glow: true, noLight: true, bounce: 14, fixed: true, wallText: "It's too springy to break! Jump on it instead." };
+BLOCKS[B.DREAM_GRASS] = { name: 'Dream Grass', top: T.DREAM_GRASS_TOP, side: T.DREAM_GRASS_SIDE, bottom: T.CLOUD };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -412,6 +418,19 @@ export function drawAtlas() {
       const moon = Math.hypot(x - 7.5, y - 7.5) < 4.6 && Math.hypot(x - 9.3, y - 6.3) > 3.6;
       const edge = x === 0 || y === 0 || x === 15 || y === 15;
       put(T.WAKE_STONE, x, y, edge ? [150, 120, 220] : moon ? [255, 236, 150] : shade([210, 200, 255], 1 + (r3() - 0.5) * 0.12));
+    });
+  }
+
+  { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
+    const r4 = mulberry32(3535);
+    each((x, y) => {
+      const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)); // a trampoline: rings of pink and cyan round a white middle
+      put(T.BOUNCE_TOP, x, y, d > 6.6 ? [120, 70, 200] : d < 1.6 ? [255, 255, 255] : d < 3.6 ? [255, 150, 220] : d < 5.6 ? [130, 230, 255] : [255, 150, 220]);
+      put(T.BOUNCE_SIDE, x, y, y % 4 < 2 ? [255, 150, 220] : [130, 230, 255]);
+      const speck = r4() < 0.07;
+      put(T.DREAM_GRASS_TOP, x, y, speck ? [255, 170, 225] : shade([190, 160, 245], 1 + (r4() - 0.5) * 0.16));
+      const band = y < 4 || (y < 6 && r4() < 0.5);
+      put(T.DREAM_GRASS_SIDE, x, y, band ? shade([190, 160, 245], 1 + (r4() - 0.5) * 0.14) : shade([240, 238, 252], 1 + (r4() - 0.5) * 0.05));
     });
   }
 

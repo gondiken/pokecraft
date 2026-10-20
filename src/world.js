@@ -116,6 +116,8 @@ export class World {
     this.litRooms = []; // boxes that are always bright (cave gym rooms): { x0, x1, z0, z1, y0, y1 }
   }
 
+  get gravity() { return this.realm?.gravity ?? 1; } // T35: a place's own gravity (the Dream realm is 0.5: moon jumps)
+
   index(x, y, z) { return x + this.W * (z + this.D * y); }
 
   inBounds(x, y, z) {
@@ -528,6 +530,7 @@ export class World {
   // May this cell become `id`? One rule for the player, touch, visitors and saved edits. Opening a chest is not
   // breaking it (cave chests; T23's key chests).
   editAllowed(x, y, z, id) {
+    if (BLOCKS[this.get(x, y, z)]?.fixed) return false; // T35: Bounce Blocks can't be broken or replaced by anybody
     return !this.protectedAt(x, y, z) || (this.get(x, y, z) === B.CHEST && id === B.CHEST_OPEN);
   }
 

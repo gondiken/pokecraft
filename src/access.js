@@ -4,6 +4,7 @@
 import { trainersOf, trainerKey } from './gyms.js';
 import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
 import { homeGymState } from './homegym.js';
+import { dreamHome } from './realms.js';
 
 // Is p inside the box {x0, x1, y0, y1, z0, z1} (inclusive block coordinates)?
 const inBox = (b, p) => p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y < b.y1 + 1;
@@ -114,6 +115,37 @@ WHERE.home = (g, game) => {
   };
 };
 
+// T35 realm gyms. The main-world stand-in (g.access = { where: 'realm', when: 'dream' }, see World.realmGym) says how to get to a gym
+// that lives in a dream: build a cozy home, sleep in its Bed at night. It has no building, so you are never "in" it. No `tips`.
+WHERE.realm = (g, game) => ({
+  contains: () => false,
+  aim() {
+    const n = g.def.name;
+    if (game.mp?.role === 'guest') return { text: () => `Next: ${n} · it is in a dream (dream in your own world)` };
+    const cozy = dreamHome(game), mine = cozy || game.homes?.mine();
+    const at = mine && { x: mine.x + 0.5, z: mine.z + 0.5 };
+    if (!cozy) return at ? { ...at, text: (a, d) => `Next: ${n} · it is in a dream! Make your home cozy ${a} ${d}m` } : { text: () => `Next: ${n} · it is in a dream! Build a cozy home and sleep in its Bed at night.` };
+    return { ...at, text: (a, d) => (d < 8 ? `${n}: sleep in your Bed at night to dream there!` : `Next: ${n} · in a dream! Sleep in your cozy Bed ${a} ${d}m`) };
+  },
+});
+
+// The real house in the Dream realm: the arrow follows the bounce blocks from island to island (realms.route), then the pad
+// under the house; inside it says it is here.
+WHERE.upside = (g, game) => ({
+  aim(p) {
+    const n = g.def.name;
+    if (inBox(g.area, p)) return { x: g.x + 0.5, z: g.z + 0.5, text: () => `${n} is here!` };
+    const r = game.realms.route(p, g.isle, g.pad);
+    if (!r) return { text: () => `Next: ${n}` };
+    const out = { x: r.x, z: r.z };
+    if (r.kind === 'sea') return { ...out, text: (a, d) => `Bounce back up! ${a} ${d}m` };
+    if (r.kind === 'air') return { ...out, text: (a) => `Fly this way ${a}` };
+    if (r.kind === 'jump') return { ...out, text: (a) => (r.to ? `Jump! Then fly this way ${a}` : `Jump! ⬆`) };
+    if (r.kind === 'here') return { ...out, text: () => `The ${n} is right above you! Jump on the bounce block ⬆` };
+    return { ...out, text: (a, d) => `Next: ${n} · bounce to the next island ${a} ${d}m` };
+  },
+});
+
 // Minutes of real time until it gets dark (0 if it already is).
 function minutesToNight(game, { dayLength, smoothstep }) {
   if (game.night) return 0;
@@ -159,6 +191,13 @@ export const WHEN = {
   }),
 };
 
+// Dream gym: you can only dream at night, so by day the arrow skips it while another gym is open.
+WHEN.dream = (g, game) => ({
+  wait: () => (game.night ? null : 'when you dream at night ☾'),
+  closedText: () => null,
+  status: () => '',
+});
+
 // Home gym (Cozy): never skipped by the arrow; while the home it moved into is not cozy its people say "Brr".
 WHEN.home = (g, game) => ({
   wait: () => null,
@@ -183,7 +222,7 @@ export function createAccess(game, deps) {
   function of(g) {
     let a = cache.get(g);
     if (a) return a;
-    const spec = g.def.access || {};
+    const spec = g.access || g.def.access || {}; // T35: a stand-in gym (a realm gym seen from the main world) carries its own pieces
     const where = spec.where || (g.sky ? 'sky' : g.cave ? 'cave' : 'surface');
     const when = spec.when || (g.def.night ? 'night' : 'always');
     if (!WHERE[where]) throw new Error(`Unknown gym access '${where}' for ${g.def.id}`);

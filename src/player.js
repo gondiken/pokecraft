@@ -1,6 +1,6 @@
 // First-person player: movement, gravity, swimming and AABB collision.
 import * as THREE from 'three';
-import { B } from './blocks.js';
+import { B, BLOCKS } from './blocks.js';
 
 export class Player {
   constructor(world) {
@@ -19,6 +19,8 @@ export class Player {
     this.fenceHit = false;  // a rider bumped into a gym box
     this.capped = false;    // a sky rider hit the height cap
     this.landed = false;    // a gliding sky rider reached the floor
+    this.onBounce = false;  // T35: standing on a Bounce Block (for the hint toast)
+    this.bounced = false;   // T35: launched by a Bounce Block this frame (main.js plays 'boing')
     this._eye = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
   }
@@ -173,6 +175,7 @@ export class Player {
     const r = this.ride;
     if (r && r.kind === 'sky') return this.fly(dt, wx, wz, len, analog);
 
+    const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
     const water = this.inWater;
     const sprint = k.ShiftLeft || k.ShiftRight || stickSprint;
     let speed = (sprint ? 6.2 : 4.3) * analog;
@@ -193,14 +196,18 @@ export class Player {
       this.vel.y = Math.max(-4, Math.min(4, (target - this.pos.y) * 8));
       if (k.Space && this.pos.y > target - 0.3) this.vel.y = r.jump;
     } else if (water) {
-      this.vel.y = Math.max(this.vel.y - 9 * dt, -2.5);
+      this.vel.y = Math.max(this.vel.y - 9 * g * dt, -2.5);
       if (k.Space) this.vel.y = Math.min(this.vel.y + 22 * dt, 3.4);
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
       // 1 block above the water (not 2), like Minecraft.
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
     } else {
-      this.vel.y = Math.max(this.vel.y - 28 * dt, -19);
+      this.vel.y = Math.max(this.vel.y - 28 * g * dt, -19);
       if (k.Space && this.onGround) this.vel.y = jump;
+      // T35: jump on a Bounce Block to launch (not on landing, so walking over a pad never traps you in a loop)
+      const under = this.onGround ? BLOCKS[this.world.get(Math.floor(this.pos.x), Math.floor(this.pos.y - 0.05), Math.floor(this.pos.z))] : null;
+      this.onBounce = !!under?.bounce;
+      if (under?.bounce && k.Space) { this.vel.y = Math.sqrt(2 * 28 * g * under.bounce); this.bounced = true; } // boing!
     }
 
     this.onGround = false;

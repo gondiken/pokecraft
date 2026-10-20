@@ -18,8 +18,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const runs = Number(process.argv[2]) || 3;
-const dir = path.resolve(process.argv[3] || path.dirname(fileURLToPath(import.meta.url)));
+// T35: `--dream` measures the Dream realm next to the main world (the "Dreaming..." time, generation and meshing of the realm,
+// chunks / verts / gpuMB, draw calls at the arrival and from the highest island, fps at the arrival); `--size=192` measures the
+// smaller fallback map. Example: node perf.mjs 3 --dream   /   node perf.mjs 3 --dream --size=192
+const flags = process.argv.slice(2).filter(a => a.startsWith('--')), args = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const DREAM = flags.includes('--dream'), DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
+const runs = Number(args[0]) || 3;
+const dir = path.resolve(args[1] || path.dirname(fileURLToPath(import.meta.url)));
 const { serve, openGame, seedSave, continueGame } = await import(path.join(dir, 'helpers.mjs'));
 const { chromium, devices } = await import(path.join(dir, 'node_modules/playwright/index.mjs'));
 
@@ -100,7 +105,83 @@ async function measure(profile) {
   return { profile, loadMs, ...gen, ...still, fps, errors: errors.length };
 }
 
+// T35: the main world and the Dream realm in one browser, same profile, same seeded save.
+async function measureDream(profile) {
+  const page = await openGame(browser, base, { contextOptions: PROFILES[profile], setup: seedSave(SAVE) });
+  await continueGame(page);
+  await page.evaluate(() => document.exitPointerLock?.());
+  const probe = async (label, setup) => page.evaluate(async ([label, setup]) => {
+    const g = window.pokecraft, w = g.world, cam = g.camera;
+    g.weather.set('clear', 99999); g.time = 0.75;
+    g.creatures.clear(); g.creatures.update = () => {};
+    window.gc(); await new Promise(r => setTimeout(r, 300)); window.gc();
+    let verts = 0, idx = 0, chunks = 0;
+    for (const list of w.meshes.values()) { chunks++; for (const m of list) { verts += m.geometry.attributes.position.count; idx += m.geometry.index?.count || 0; } }
+    const s = g.spawnPoint, sx = Math.floor(s.x), sz = Math.floor(s.z);
+    const spots = { N: [sx, sz, 0], E: [sx, sz, -Math.PI / 2], S: [sx, sz, Math.PI], W: [sx, sz, Math.PI / 2] };
+    if (w.isles) { const t = w.isles.list.find(i => i.id === 'tall'); spots.tall = [t.x, t.z, Math.PI / 4, t.top + 3]; }
+    const calls = {};
+    for (const [k, [x, z, yaw, y]] of Object.entries(spots)) {
+      cam.position.set(x + 0.5, y ?? w.surface(x, z).y + 2.6, z + 0.5); cam.rotation.set(-0.15, yaw, 0); cam.updateMatrixWorld();
+      w.cull(cam.position, w.realm?.look?.fog ? w.realm.look.fog[1] : 100);
+      g.renderer.render(g.scene, cam);
+      calls[k] = g.renderer.info.render.calls;
+    }
+    // fps: standing at the arrival, drawn by the game loop
+    const p = g.player, put = () => { p.pos.set(s.x, s.y, s.z); p.vel.set(0, 0, 0); p.yaw = Math.PI; p.pitch = -0.15; };
+    put();
+    await new Promise(r => setTimeout(r, 1500));
+    let n = 0, stop = false; const t0 = performance.now();
+    const tick = () => { put(); n++; if (!stop) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    await new Promise(r => setTimeout(r, 8000));
+    stop = true;
+    return { label, chunks, verts, gpuMB: Math.round((verts * 32 + idx * 4) / 1048576), calls, fps: Math.round(n / ((performance.now() - t0) / 1000) * 100) / 100 };
+  }, [label, setup]);
+  const main = await page.evaluate(async () => {
+    const g = window.pokecraft, { World } = await import('/src/world.js');
+    let t = performance.now();
+    const w = new World(4242, g.scene, g.world.materials); w.generate();
+    const genMs = performance.now() - t; t = performance.now();
+    w.buildAll(); const meshMs = performance.now() - t; w.dispose();
+    return { genMs: Math.round(genMs), meshMs: Math.round(meshMs) };
+  });
+  const mainView = await probe('main');
+  // the realm: the "Dreaming..." time, and generation / meshing of the same realm in a World of its own
+  const enter = await page.evaluate(async size => {
+    const g = window.pokecraft, R = await import('/src/realms.js'), { World } = await import('/src/world.js');
+    const def = R.REALMS.dream;
+    if (size) { def.size = [size, size]; def.arrive = [size >> 1, size >> 1]; }
+    const mats = g.world.materials;
+    let t = performance.now();
+    const w = new World(R.realmSeed(4242, def.seedSalt), g.scene, mats, def.size, def); w.generate();
+    const genMs = performance.now() - t; t = performance.now();
+    w.buildAll(); const meshMs = performance.now() - t; w.dispose();
+    g.time = 0.75;
+    t = performance.now();
+    await g.realms.enter('dream');
+    return { size: def.size, genMs: Math.round(genMs), meshMs: Math.round(meshMs), enterMs: Math.round(performance.now() - t) };
+  }, DREAM_SIZE);
+  const dream = await probe('dream');
+  const errors = page.errors.slice();
+  await page.context().close();
+  return { profile, main: { ...main, ...mainView }, enter, dream, errors: errors.length };
+}
+
 const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
+if (DREAM) {
+  const rs = { desktop: [], ipad: [] };
+  for (let i = 0; i < runs; i++) for (const profile of Object.keys(PROFILES)) { const r = await measureDream(profile); rs[profile].push(r); console.log(JSON.stringify(r)); }
+  for (const [profile, list] of Object.entries(rs)) {
+    const m = (k, sub) => med(list.map(r => r[k][sub]));
+    const calls = (k, sub) => med(list.map(r => r[k].calls[sub]));
+    console.log(`MEDIAN ${profile} (${runs} runs) main: ` + JSON.stringify({ genMeshMs: m('main', 'genMs') + m('main', 'meshMs'), chunks: m('main', 'chunks'), verts: m('main', 'verts'), gpuMB: m('main', 'gpuMB'), callsN: calls('main', 'N'), callsE: calls('main', 'E'), callsS: calls('main', 'S'), callsW: calls('main', 'W'), fps: m('main', 'fps') }));
+    console.log(`MEDIAN ${profile} (${runs} runs) dream ${JSON.stringify(list[0].enter.size)}: ` + JSON.stringify({ enterMs: m('enter', 'enterMs'), genMeshMs: m('enter', 'genMs') + m('enter', 'meshMs'), chunks: m('dream', 'chunks'), verts: m('dream', 'verts'), gpuMB: m('dream', 'gpuMB'), callsN: calls('dream', 'N'), callsE: calls('dream', 'E'), callsS: calls('dream', 'S'), callsW: calls('dream', 'W'), callsTall: calls('dream', 'tall'), fps: m('dream', 'fps') }));
+  }
+  await browser.close();
+  server.close();
+  process.exit(0);
+}
 const all = { desktop: [], ipad: [] };
 for (let i = 0; i < runs; i++) {
   for (const profile of Object.keys(PROFILES)) { // interleaved, so a slow moment of the machine hits both

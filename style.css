@@ -110,6 +110,11 @@ button.primary { background: #3b6fd8; }
   position: fixed; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
 }
 #clock, #guide { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 20px; }
+/* T35: a small dark strip with a moon that moves along an arc and sinks out of sight; the bottom goes dawn pink near the end */
+#moon { position: relative; width: 110px; height: 30px; overflow: hidden; background: rgba(20,10,50,.6); border-radius: 4px; }
+#moon.hidden { display: none; }
+#moon::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: linear-gradient(to top, #ff9ad5, rgba(255,154,213,0)); opacity: var(--dawn, 0); }
+#moon .moon-icon { position: absolute; left: 0; top: 0; font-size: 20px; line-height: 20px; color: #fff6c0; text-shadow: 0 0 6px #fff6c0; }
 #key-compass { display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,.45); padding: 2px 8px; --glint: 3s; }
 #key-compass.hidden { display: none; }
 #key-compass svg { filter: drop-shadow(0 0 2px rgba(255,210,58,.6)); animation: key-glint var(--glint) ease-in-out infinite; }

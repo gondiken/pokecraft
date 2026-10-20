@@ -181,7 +181,7 @@ export class CreatureManager {
   wildLevel(x, z, spawnPoint, sp, extra = 0) {
     const far = Math.hypot(x - spawnPoint.x, z - spawnPoint.z);
     const rare = sp.baseXp > 100 ? 3 : 0;
-    return Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus) + extra);
+    return Math.min(40 + this.levelBonus, Math.max(2, Math.floor(1 + far / 10 + rare + Math.random() * 3) + this.levelBonus + (this.world?.realm?.levelBonus ?? 0)) + extra); // T35: a realm may toughen its wild creatures
   }
 
   // Puts a creature at the world cell (x, y, z) (y = the standing height, an integer for Camo creatures).

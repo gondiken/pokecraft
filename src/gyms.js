@@ -282,6 +282,23 @@ export const GYMS = [
     intro: ['You found all three golden keys!', 'My treasures are the strongest of all. Ready?'],
     lose: 'What a treasure of a trainer! The Jackpot Badge is yours.',
   },
+  // T35: the first gym inside a realm. `realm` + `build` = built by generateRealm (REALM_BUILDERS in realms.js), not in the main world.
+  {
+    id: 'dream', type: 'dream', name: 'Upside-Down House', badge: 'Wonder Badge', realm: 'dream', build: 'dreamHouse',
+    access: { where: 'upside' }, leaderWhere: 'at the back, on the ceiling',
+    welcome: 'Welcome to the Upside-Down House! Mind your head... I mean your feet!',
+    leader: { name: 'Leader Wimsy', look: 'star', colors: { shirt: 0xb49cff, pants: 0x5a3a9a, hair: 0xff9ad5, skin: 0xf2d0b0 } },
+    trainers: [
+      { name: 'Juggler Bo', colors: { shirt: 0xffd23c, pants: 0x3a6aff, hair: 0x2a1a1a, skin: 0xc68a5a },
+        team: [['flipsy', 52], ['bobbloon', 52], ['drizzup', 53]], intro: ['I juggle upside down. Can you keep up?'] },
+      { name: 'Painter Pia', colors: { shirt: 0x5cd6a8, pants: 0xff8a5c, hair: 0x7a3a1a, skin: 0xf2d0b0 },
+        team: [['scribbit', 52], ['drizzup', 52], ['scrawlbert', 53]], intro: ['I painted my team myself. Every color!'] },
+    ],
+    leaderTeam: [['bobblimp', 53], ['scrawlbert', 53, ['confetti', 'bodyslam', 'upsidedown', 'crayonstorm']], ['drizzup', 53],
+      ['topsyturvy', 54, ['shriek', 'bodyslam', 'wilddream', 'headoverheels']]],
+    intro: ['You bounced all the way up here!', 'In dreams anything can happen. Ready?'],
+    lose: 'Topsy-turvy! You earned the Wonder Badge.',
+  },
 ];
 
 // Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).
