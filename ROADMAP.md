@@ -1063,11 +1063,34 @@ ones making one big one**, like "three kids in a trench coat".
   parts. Name open (not "Hive"). Slot 6 (T32).
 
 ### T35 · 🌙 Dream (custom code: low-medium, after T31)
-- Creatures: e.g. Snoozlet, Dreamjelly, Pillowmoth, Starsheep.
-- Spawn: near a Bed at night (a condition like `home:<type>`), and in the Dream realm.
-- Battle: leans to sleep moves (stronger after T24).
-- Gym, the Dream Island: sleep in a Bed at night and wake up in the Dream realm (T31), a floating island with odd
-  colours. Losing or the morning wakes you in your bed.
+Owner, 2026-10-20. **Falling asleep belongs to Cozy and Ghost** (Snoozle, Slumbergeist, Pillowlamb, Dozeram, Snoozebear;
+sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see once asleep: wide awake and odd.**
+- **Creatures:** must also look right in the normal world (they can be caught and brought home), so nothing that needs
+  dream physics. "Mixed-up" is not enough (normal creatures already are, e.g. Bonzoise); they must be **wackier**, and
+  the type gets one wacky dreamy look. Concepts still open (see the chat notes when T35 starts). Old placeholder names
+  (Pillowmoth, Starsheep) are dropped: they overlap Cozy.
+- **Spawn: only in the Dream realm** (its own `spawns` table). No "near a Bed" condition (Cozy already spawns near homes).
+  So Dream creatures are caught only by dreaming.
+- **Battle:** its own two type moves like every type, nothing special, **no sleep focus**. The look and the realm are
+  its identity.
+- **The realm, bigger and wackier:**
+  - **Size 256 x 256** (owner: "bigger if cheap"). Only one place is loaded at a time, so it costs less than the main map
+    (288 x 368 x 48); measure the "Dreaming..." load with `tests/perf.mjs` and fall back to 192 if it is slow.
+  - **Reset Dream edits once** (T31 left "Dream decides its own reset"): old edits are indexed for 64 x 64 and the
+    terrain changes anyway. A realm-def version so `cleanRealmEdits` drops older edits.
+  - **Gravity is a property of the place:** the realm def gets `gravity` (e.g. 0.5) and `Player` asks the world for it
+    (default 1), never "if in the dream". **Moon jumps everywhere in the Dream** (one number, simpler than zones).
+    No upside-down gravity (camera and collision would need a rewrite).
+  - **Bounce blocks** that launch you up to the next island: one new block + one check in `Player`.
+  - Wackier terrain (all data in `TERRAINS`): floating islands at different heights joined by bounce blocks, trees
+    hanging under the islands, a checkerboard meadow, giant everyday things, odd colours.
+- **The gym is inside the realm** (realms have no gyms yet: placing a gym in a realm world, its people and its badge is
+  the main new code). It has a **healer** (realms have none today; walking home to heal would cost the night).
+- **Nights stay the normal length** (about 4 minutes of an 8-minute day; no realm time scale: fewer exceptions).
+  It stays calm because: the morning never wakes you during a battle (gym or wild; `realms.update` already skips
+  `inBattle`), beaten trainers stay beaten (`beaten` is saved), so the gym can take a few nights. **A moon on the HUD**
+  that slowly sets instead of a countdown; a friendly morning toast ("Good morning! The gym will wait for you tonight.").
+  Losing still wakes you in your bed (T31).
 
 ### T36 · 🤸 Parkour (custom code: medium)
 - Creatures: e.g. Flipfrog, Wallrunner, Vaultkit, Springbun.
