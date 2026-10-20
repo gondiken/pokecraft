@@ -31,8 +31,8 @@ const EFFECTIVENESS = {
   normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5, treasure: 0.5 },
   fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2, food: 2 },
   water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2 },
-  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5 },
-  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5, squad: 2 },
+  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5, parkour: 2 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5, squad: 2, dream: 2 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5, parkour: 0.5 },
   ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5, food: 0.5 },
   bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2, food: 2 },
@@ -52,8 +52,8 @@ const EFFECTIVENESS = {
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
   sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
-  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2, parkour: 2 },
-  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2, dream: 2 },
+  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2 },
+  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
   // Time, Camo, Cyber: time rusts metal, crumbles old paper and dries up slime; camo sneaks up on bugs and
   // minds can't find it; cyber hacks metal and minds and goes paperless.
@@ -66,8 +66,8 @@ const EFFECTIVENESS = {
   cozy: { ice: 2, ghost: 2, cyber: 2, cozy: 0.5, dream: 0.5 },
   treasure: { drake: 2, pixie: 2, cozy: 2, treasure: 0.5 },
   // Wave 11: Food, Squad, Parkour, Dream. A pizza party breaks up the squad, a crowd blocks the runner, a runner
-  // jumps right out of a dream, and dream food is gone when you wake up. Many eyes find a camo creature;
-  // a real runner beats a video game; dreams are more colourful than rainbows.
+  // jumps right out of a dream, and dream food is gone when you wake up. Many eyes find a camo creature; a real
+  // runner beats a video game; dreams are more colourful than rainbows; vines trip a runner; an alarm buzz ends a dream.
   // Food beats squad, squad beats parkour, parkour beats dream, dream beats food.
   food: { squad: 2, alien: 2, treasure: 2, food: 0.5, bug: 0.5, toxic: 0.5, metal: 0.5 },
   squad: { parkour: 2, camo: 2, normal: 2, squad: 0.5, sky: 0.5, slime: 0.5 },

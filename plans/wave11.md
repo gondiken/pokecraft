@@ -10,8 +10,8 @@ they can be planned and built side by side. Each task has its own plan in `plans
   Food beats squad, squad beats parkour, parkour beats dream, dream beats food.
   - food: squad 2, alien 2, treasure 2; food/bug/toxic/metal 0.5. Weak to fire, bug, toxic, dream; ice 0.5.
   - squad: parkour 2, camo 2, normal 2; squad/sky/slime 0.5. Weak to electric, sound, food; ghost 0.5.
-  - parkour: dream 2, bone 2, cyber 2; parkour/sky/ghost/slime 0.5. Weak to slime, squad; rock 0.5.
-  - dream: food 2, time 2, rainbow 2; dream/light/cyber 0.5. Weak to light, time, parkour; cozy/mind 0.5.
+  - parkour: dream 2, bone 2, cyber 2; parkour/sky/ghost/slime 0.5. Weak to grass, squad; rock 0.5.
+  - dream: food 2, time 2, rainbow 2; dream/light/cyber 0.5. Weak to electric, time, parkour; cozy/mind 0.5.
 - **Wool blocks:** food 79, squad 80, dream 81, parkour 82 (`WOOL.<type>`; plain colour tiles, a task may give its
   wool a pattern in `blocks.js` like cozy/treasure).
 - **Block ids reserved:** 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
