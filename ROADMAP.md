@@ -1067,8 +1067,17 @@ Owner, 2026-10-20. **Falling asleep belongs to Cozy and Ghost** (Snoozle, Slumbe
 sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see once asleep: wide awake and odd.**
 - **Creatures:** must also look right in the normal world (they can be caught and brought home), so nothing that needs
   dream physics. "Mixed-up" is not enough (normal creatures already are, e.g. Bonzoise); they must be **wackier**, and
-  the type gets one wacky dreamy look. Concepts still open (see the chat notes when T35 starts). Old placeholder names
-  (Pillowmoth, Starsheep) are dropped: they overlap Cozy.
+  the type gets one wacky dreamy look. Old placeholder names (Pillowmoth, Starsheep) are dropped: they overlap Cozy.
+  **Chosen (owner saw prototypes, 2026-10-20):**
+  - **Type look: "held together by nothing":** every Dream creature's parts (head, body, legs, ears, tail) float a little
+    apart (gap ~0.15) and each bobs on its own. Code: a generic `parts.drift` list filled by the shape builders + one loop
+    in `animateModel` (no type check).
+  - **The head-stander:** walks on its head, upside-down face (smile above the eyes), paws waving in the air.
+  - **The toddler drawing:** everything in the wrong place, crayon colours: eyes on two mismatched ear stalks, mouth on
+    top of its head, a foot where an arm should be, a hand as one foot, scribbles on the body.
+  - **A third family: open** (the back-to-front one was dropped: it only reads while moving). Must read in a still
+    picture and must not repeat existing ideas (something inside the body: Galaxor, Wobblock; long legs: Tallipod;
+    an island on its back: Bonzoise).
 - **Spawn: only in the Dream realm** (its own `spawns` table). No "near a Bed" condition (Cozy already spawns near homes).
   So Dream creatures are caught only by dreaming.
 - **Battle:** its own two type moves like every type, nothing special, **no sleep focus**. The look and the realm are
