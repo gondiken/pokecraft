@@ -10,7 +10,7 @@ types + 7th creatures, shiny was cancelled; T15 skipped the optional cache-busti
 Plans for every task are in `plans/`. Wave 7a (T16–T18: gym access objects, 288×288 map with protected gyms, Time/Camo/Cyber types) is done (plans `T16`–`T18`).
 Wave 7b (T19: Clock Tower, Hidden Hill and Firewall Maze gyms, Tower at 25) is done (plan `T19`).
 Wave 7.5 (T19.5: the Creature Book as a wiki, linked from the team screen) is done.
-Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). T31 (realms: a bare-bones Dream realm from your cozy home's Bed) and T32 (room for more gyms: the map grew south to 288 x 368, gym slots 5-9) are done, so wave 10 is done. Next: wave 11 (Food, Swarm, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
+Wave 8 (T20–T23: treasure blocks, Cozy and Treasure types, homes, the Cozy Gym and Treasure Vault, Tower at 27) is done (plans `T20`–`T23`). Wave 8.5 (T23.5: the Firewall Maze exit door) is done. Wave 9 (T24–T30: battle fixes, big-decision moves, traits (Rideable), riding, harder gym rematches, Champion missions, hide and seek) and T30.5 (homes are every type they qualify for) are done (plans `T24`–`T30.5`). T31 (realms: a bare-bones Dream realm from your cozy home's Bed) and T32 (room for more gyms: the map grew south to 288 x 368, gym slots 5-9) are done, so wave 10 is done. Next: wave 11 (Food, Squad, Dream, Parkour), then the backlog below (including the backlog wave S1–S2: one shared world when playing together).
 
 ## How to run this (multi-agent)
 
@@ -62,7 +62,7 @@ The owner wants tasks run by subagents rather than one at a time by hand:
 | 9b ✅ | T25 Big-decision moves · T27 Riding | T25 needs T24's battle rules; T27 needs T26's Rideable |
 | 9c ✅ | T29 Champion missions · T30 Hide and seek | Tower/world vs. play-together; T29's co-op boss uses T25's moves |
 | 10 ✅ | T31 Realms ✅ · T32 More room for gyms ✅ | Both careful world work; can run side by side (realm world vs. main map) |
-| 11 | T33 Food · T34 Swarm · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
+| 11 | T33 Food · T34 Squad · T35 Dream · T36 Parkour | Need wave 10 (T35 needs T31, new gyms need T32) |
 
 T3 (caves) and T7 (animations) are the largest; each could take a session of its own.
 
@@ -1005,14 +1005,14 @@ time), five new gym slots 5-9 (`southSlots()`, dry ones first), treasure map spo
 use `slot: 5..7`; 8, 9 and T17's 3 stay spare.
 
 
-New worldly gyms (Food, Swarm, Parkour...) belong in the main world, not in realms. The new land has only one spare
+New worldly gyms (Food, Squad, Parkour...) belong in the main world, not in realms. The new land has only one spare
 gym slot, so grow the map once more the T17 way: old area block for block the same, a new ring of land, a new list of
 gym slots (terrain only, never changes once set). **Be cautious about speed:** measure load time, frame rate and draw
 calls before and after (desktop and emulated iPad) and keep them about the same (fog culling, chunk budget); grow only
 as much as the planned gyms need.
 Done when: `big-map` covers the new ring and slots, old saves are unchanged, and the before/after numbers are in the plan.
 
-## Wave 11 · New types: Food, Swarm, Dream, Parkour
+## Wave 11 · New types: Food, Squad, Dream, Parkour
 
 Shared cost for each type (data, not systems): 7 creatures with at least 3 new shapes, chart row and column, moves,
 wool, fx + sound, Book, README. Battle rules stay the same for all; a type only leans towards some T25 move kinds.
@@ -1041,13 +1041,26 @@ wool, fx + sound, Book, README. Battle rules stay the same for all; a type only 
     ingredients already found still count.
   - Slot 5 (the south slot nearest the start, T32).
 
-### T34 · 🐝 Swarm (custom code: low)
-- Creatures: e.g. Buzzcloud, Antrail, Minnowball, Sparkflies: 5 small models flying together (a group body shape).
-- Spawn: meadows, flowers, water (normal biome tables). Behaviour: none beyond the group model.
-- Battle: one **general optional species field** (e.g. `weakensWithHp`, like `legendary`/`disguise`): its attack power
-  shrinks with its HP, so multi-hit moves are great against it. Swarm is its first user; no other creature changes.
-  Same on both sides of a duel (`VERSION` bump).
-- Gym, the Hive: a honeycomb tower you climb (a shaped building, no live parts).
+### T34 · Squad (was "Swarm"; custom code: low)
+Owner, 2026-10-20: "Swarm" read as Bug (🐝, insects, a honeycomb Hive, and "Hive Gym" is already the Bug gym's name), and
+groups of fish/birds/pebbles/embers repeat what the game has. Chosen instead (over Clone and Snap): **Squad, lots of little
+ones making one big one**, like "three kids in a trench coat".
+- **Creatures:** each is a small crew standing on each other's shoulders to make one body; every family has its own crew
+  member and its own stack (tower, pyramid, wobbly column), so the roster's 3+ shapes per type come from 3+ member designs.
+  Evolving = a taller stack, more members. Names and emoji still open (not insects, not existing animals/elements).
+- **Battle:** one **general optional species field** `weakensWithHp` (read like `legendary`/`disguise`, never a type
+  check): its attack power shrinks with its HP, so multi-hit moves are great against it. Same on both sides of a duel
+  (`VERSION` bump).
+- **You see it:** members fall off from the top as it gets hurt; at low HP one nervous little guy is left. No guidance
+  needed: every hit knocks one off, a multi-hit knocks off several.
+- **Code shape (no new exceptions):** a `stack` shape builder in `shapes.js` fills `parts.members` (bottom to top), like
+  every shape fills `legs`/`wings`/`spin`; one generic `setModelHealth(group, frac)` hides members from the top when
+  `parts.members` exists (no-op otherwise), called for every creature where the HP bar updates; one more loop in
+  `animateModel` for the tumble (time-based, like the sparkle). **Do not** add it the way the Treasure sparkle is
+  (`if (sp.type === ...)` in `buildModel`).
+- Spawn: normal biome tables. Behaviour: none beyond the model.
+- **Gym:** a plain building with tiered trainer spots (a human pyramid you take apart one battle at a time); no live
+  parts. Name open (not "Hive"). Slot 6 (T32).
 
 ### T35 · 🌙 Dream (custom code: low-medium, after T31)
 - Creatures: e.g. Snoozlet, Dreamjelly, Pillowmoth, Starsheep.
