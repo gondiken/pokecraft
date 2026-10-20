@@ -168,7 +168,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(!cover.noTravel.length && !cover.noImpact.length && !cover.noColors.length,
     `all ${cover.count} types have a travel, impact and colours (missing ${cover.noTravel} ${cover.noImpact} ${cover.noColors})`);
-  t.ok(!cover.noSig.length && cover.sigCount === 17, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
+  t.ok(!cover.noSig.length && cover.sigCount === 22, `all ${cover.sigCount} signature moves have their own effect (missing ${cover.noSig})`);
   t.ok(!cover.noSound.length && !cover.soundErrors.length, `every type has a quiet fx sound that plays without errors (missing ${cover.noSound} ${cover.soundErrors})`);
 
   t.ok(!cover.noKind.length, `the 8 big-move sounds exist and play without errors (missing ${cover.noKind})`);

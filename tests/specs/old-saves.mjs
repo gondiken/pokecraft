@@ -224,11 +224,13 @@ export default async function ({ browser, base, t }) {
   await page.context().close();
 
   // 3f. A player with the first 25 badges is told about the Cozy Gym and the Treasure Vault by name (T23); the arrow says what to do next.
-  page = await openWithSave(browser, base, { ...oldSave(false), badges: [...GYMS.slice(0, 25), GYMS.find(x => x.id === 'food')].map(x => x.id) }); // T33: the Restaurant is already done, so only the Cozy Gym and the Vault are new
+  const badges25 = [...GYMS.slice(0, 25), ...GYMS.filter(x => ['food', 'squad', 'parkour'].includes(x.id))].map(x => x.id); // wave 11: the south gyms are done, so the Cozy Gym, the Vault and the Dream gym are new
+  const new25 = GYMS.filter(x => !badges25.includes(x.id)).map(x => x.name);
+  page = await openWithSave(browser, base, { ...oldSave(false), badges: badges25 });
   await click(page, '#title-buttons button:has-text("Continue")');
   await page.waitForFunction(() => document.getElementById('guide').textContent, null, { timeout: 90000, polling: 500 }).catch(() => {});
   const p25 = await page.evaluate(() => ({ toasts: window.__toasts.join(' | '), guide: document.getElementById('guide').textContent }));
-  t.ok(p25.toasts.includes(`New gyms have appeared: the ${GYMS.slice(25).map(g => g.name).reduce((a, n, i, all) => (i === 0 ? n : i === all.length - 1 ? `${a} and ${n}` : `${a}, ${n}`), '')}! Follow the arrow.`), `the 25-badge player is told about the gyms after the Cozy Gym by name (${p25.toasts})`);
+  t.ok(p25.toasts.includes(`New gyms have appeared: the ${new25.reduce((a, n, i, all) => (i === 0 ? n : i === all.length - 1 ? `${a} and ${n}` : `${a}, ${n}`), '')}! Follow the arrow.`), `the 25-badge player is told about the gyms after the Cozy Gym by name (${p25.toasts})`);
   t.ok(p25.guide.includes('Cozy Gym') && p25.guide.includes('build a cozy home'), `the guide says to build a cozy home (${p25.guide})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

@@ -108,7 +108,7 @@ export default async function ({ browser, base, t }) {
     const sw = S.autoMoves('fluffin', 40), mw = S.movesWith('fluffin', 40, 'goteamgo', 'standtogether');
     R.data = {
       total: big.length, counts, types: Object.keys(perType).length, minPer: Math.min(...Object.values(perType)), maxPer: Math.max(...Object.values(perType)),
-      flags: big.every(([, m]) => !m.sig && m.fx.chance === undefined), uniqueNames: names.size === 64, learnBad, autoBad, offered,
+      flags: big.every(([, m]) => !m.sig && m.fx.chance === undefined), uniqueNames: names.size === big.length, learnBad, autoBad, offered,
       swBig: sw.some(S.isBig), mw, mwOk: mw.length === 4 && mw.includes('goteamgo') && mw.includes('standtogether') && S.MOVES[mw[0]].power > 0,
       kinds: S.BIG_KINDS.join(','), lastwordPower: S.MOVES.nevergiveup.power, riskyPower: S.MOVES.wildblaze.power,
       info: Object.fromEntries(['goteamgo', 'standtogether', 'wildblaze', 'wavegoodbye', 'staticfuzz', 'hightide', 'nevergiveup'].map(id => [id, S.moveInfo(id)])),
@@ -326,9 +326,9 @@ export default async function ({ browser, base, t }) {
 
   // ---- checks ----
   const d = R.data;
-  t.ok(d.total === 64 && d.counts.rally === 9 && d.counts.shield === 10 && d.counts.risky === 8 && d.counts.sacrifice === 9 && d.counts.curse === 9 && d.counts.field === 12 && d.counts.lastword === 7,
-    `64 big moves, kinds rally 9 shield 10 risky 8 sacrifice 9 curse 9 field 12 lastword 7 (${JSON.stringify(d.counts)})`);
-  t.ok(d.types === 29 && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types (T33 adds Food), ${d.minPer}-${d.maxPer})`);
+  t.ok(d.total === 72 && d.counts.rally === 10 && d.counts.shield === 11 && d.counts.risky === 10 && d.counts.sacrifice === 10 && d.counts.curse === 10 && d.counts.field === 13 && d.counts.lastword === 8,
+    `72 big moves (61 + wave 11's 11), kinds rally 10 shield 11 risky 10 sacrifice 10 curse 10 field 13 lastword 8 (${JSON.stringify(d.counts)})`);
+  t.ok(d.types === 32 && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types, ${d.minPer}-${d.maxPer})`);
   t.ok(d.flags && d.uniqueNames && !d.soundClash.length, `big moves have no signature or chance flag, unique names, no sound clash (${d.soundClash})`);
   t.ok(!d.learnBad.length, `every creature learns its type's big moves at BIG_LEVEL, none of another type ${d.learnBad.slice(0, 5)}`);
   t.ok(!d.autoBad.length && !d.swBig, `makeCreature and autoMoves never give a big move ${d.autoBad.slice(0, 5)}`);

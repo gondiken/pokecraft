@@ -134,7 +134,7 @@ export default async function ({ browser, base, t }) {
     const { GYMS } = await import('/src/gyms.js');
     const { makeCreature } = await import('/src/species.js');
     g.badges = GYMS.map(x => x.id);
-    g.party = ['titanox', 'spectrion', 'stormwyvern', 'visionelk', 'bongorilla', 'blazehound'].map(s => makeCreature(s, 60));
+    g.party = ['titanox', 'spectrion', 'stormwyvern', 'visionelk', 'bongorilla', 'blazehound'].map(s => makeCreature(s, 70));
     g.cubes = 10;
   });
   const heal = () => page.evaluate(`window.pokecraft.talkTo(${person('nurse')})`);
@@ -190,7 +190,7 @@ export default async function ({ browser, base, t }) {
   await heal();
   await page.evaluate(`window.pokecraft.talkTo(${person('coach')})`);
   const coach = await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, levels: window.pokecraft.battle.foes?.map(c => c.level), boost: window.pokecraft.battle.xpBoost }));
-  t.ok(coach.inBattle && coach.levels.length === 3 && coach.levels.every(l => l >= 49 && l <= 50) && coach.boost === 2,
+  t.ok(coach.inBattle && coach.levels.length === 3 && coach.levels.every(l => l >= 57 && l <= 58) && coach.boost === 2,
     `Coach Dex brings 3 creatures at level ${coach.levels} with double XP`);
   t.ok(await finish(page), 'Coach Dex battle finishes');
 
