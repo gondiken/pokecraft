@@ -7,6 +7,7 @@ const NG = GYMS.length; // all gyms, also those added later
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 // Where gyms 1-16 were recorded before the Fossil and Saucer gyms existed (same list as the champion spec).
@@ -97,7 +98,7 @@ export default async function ({ browser, base, t }) {
       const others = [...w.gyms.slice(0, 16).map(g => [g.x, g.z]), [w.tower.x, w.tower.z]];
       const gapOf = g => Math.min(...others.map(([x, z]) => Math.hypot(g.x - x, g.z - z)));
       out[seed] = {
-        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure', 'food'][i]),
+        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure', 'food', 'squad', 'parkour', 'dream'][i]),
         old: w.gyms.slice(0, 16).map(g => [g.x, g.z]), reserved: spots[0], saucer: [extra[1].x, extra[1].z], h, h22, terrain, surf,
         types: extra.map(g => g.def.type), cave: extra.map(g => !!g.cave),
         gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - 112, g.z - 112)),

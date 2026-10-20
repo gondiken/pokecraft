@@ -1,6 +1,8 @@
 // Cosmic and Sound types: moves, creatures, wild spawns, wool roofs and a gym each.
 import { openGame, newGame, playBattle } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);

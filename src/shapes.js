@@ -4110,6 +4110,205 @@ function trenchcoat(root, m, parts) {
 const SHAPES_SQUAD = { beaniestack, sockpyramid, bucketcolumn, trenchcoat };
 /* ==== end of T34 squad shapes ==== */
 
+/* ==== T35 dream shapes ==== */
+// The Dream look: "held together by nothing". Parts float a little apart (DRIFT_GAP) and each bobs on its own.
+// drift() registers a part; animateModel (species.js) moves it. Any shape may use it.
+export const DRIFT_GAP = 0.15;
+export function drift(parts, g, amp = 0.05, speed = 1.6, phase = 0) {
+  parts.drift = parts.drift || [];
+  parts.drift.push({ g, y0: g.position.y, amp, speed, phase });
+  return g;
+}
+const dreamMouth = (parent, y, z, w = 0.16) => box(parent, w, 0.05, 0.03, 0x5a2a3a, 0, y, z);
+
+// Flipsy / Topsyturvy: walks on its head, upside-down face, four legs waving at the sky.
+function headstander(root, m, parts) {
+  const hat = m.extras.includes('tophat');
+  const up = hat ? 0.36 : 0; // Topsyturvy's head sits in an upside-down top hat
+  const G = DRIFT_GAP;
+  if (hat) {
+    const h = pivot(root, 0, 0, 0);
+    box(h, 0.96, 0.05, 0.96, m.dark, 0, 0.025, 0); // brim on the ground
+    box(h, 0.68, up + 0.05, 0.64, m.dark, 0, (up + 0.05) / 2 + 0.03, 0); // crown
+    box(h, 0.7, 0.07, 0.66, m.accent, 0, 0.17, 0); // hat band
+  }
+  const head = drift(parts, pivot(root, 0, 0.27 + up, 0), 0.03, 1.3, 0);
+  box(head, 0.56, 0.54, 0.52, m.body, 0, 0, 0);
+  for (const s of [-1, 1]) {
+    // eyes upside down: pupils at the top
+    box(head, 0.13, 0.15, 0.04, 0xffffff, s * 0.13, -0.06, 0.27).userData.eye = true;
+    box(head, 0.07, 0.09, 0.03, 0x111111, s * 0.13, -0.02, 0.29).userData.eye = true;
+    box(head, 0.09, 0.04, 0.02, 0xff8fb8, s * 0.2, -0.17, 0.27); // cheeks below the eyes = above, upside down
+  }
+  dreamMouth(head, 0.14, 0.27, 0.18); // the smile is on top
+  box(head, 0.1, 0.04, 0.03, 0x5a2a3a, -0.1, 0.11, 0.27);
+  box(head, 0.1, 0.04, 0.03, 0x5a2a3a, 0.1, 0.11, 0.27);
+  // floppy ears lying on the ground beside the head
+  const ex = hat ? 0.62 : 0.53;
+  for (const s of [-1, 1]) {
+    const ear = drift(parts, pivot(root, s * ex, 0.06, 0.02), 0.015, 2, s);
+    box(ear, hat ? 0.3 : 0.22, 0.08, hat ? 0.42 : 0.34, m.accent, 0, 0, 0);
+  }
+  // body above the head
+  const body = drift(parts, pivot(root, 0, 0.54 + G + 0.32 + up, 0), 0.04, 1.5, 1);
+  box(body, 0.5, 0.64, 0.42, m.body, 0, 0, 0);
+  box(body, 0.32, 0.44, 0.03, m.belly, 0, 0, 0.215);
+  // legs pointing at the sky, each floating on its own
+  const top = 0.54 + G + 0.64 + G + up;
+  [[-0.15, 0.12], [0.15, 0.12], [-0.15, -0.12], [0.15, -0.12]].forEach(([x, z], i) => {
+    const leg = drift(parts, pivot(root, x, top + 0.17, z), 0.07, 2.6, i * 1.4);
+    box(leg, 0.13, 0.3, 0.13, m.body, 0, 0, 0);
+    box(leg, 0.17, 0.08, 0.2, hat ? m.accent : m.dark, 0, 0.18, 0.02); // paws (little shoes for Topsyturvy)
+    if (hat) box(leg, 0.19, 0.04, 0.22, m.dark, 0, 0.23, 0.02);
+  });
+  // tail pointing down to the ground behind, like a kickstand
+  const tail = drift(parts, pivot(root, 0, 0.54 + G + 0.1 + up, -0.21 - G - 0.1), 0.03, 1.8, 2);
+  box(tail, 0.1, 0.1, 0.22, m.accent, 0, 0, 0);
+}
+
+// Scribbit / Scrawlbert: a drawing by a very small child: everything in the wrong place, crayon colours.
+function toddler(root, m, parts) {
+  const crown = m.extras.includes('crown');
+  const G = DRIFT_GAP, HAND = 0xc77dff, EAR2 = 0x7ad65c;
+  const body = drift(parts, pivot(root, 0, 0.72, 0), 0.04, 1.3, 0);
+  box(body, 0.66, 0.6, 0.5, m.body, 0, 0, 0);
+  // scribbly crayon lines on the body
+  const lines = [[-0.12, 0.08, 0.5], [0.1, -0.1, -0.4], [0.02, 0.16, 0.2]];
+  if (crown) lines.push([-0.14, -0.14, -0.7], [0.16, 0.12, 0.9]);
+  lines.forEach(([x, y, r], i) => { const l = box(body, 0.36, 0.035, 0.02, i > 2 ? 0xffe05c : m.dark, x, y, 0.26); l.rotation.z = r; });
+  // mouth on TOP of the head, with a tongue
+  box(body, 0.3, 0.02, 0.12, 0x5a2a3a, 0.05, 0.305, 0);
+  box(body, 0.12, 0.02, 0.06, 0xff6f8a, 0.05, 0.31, 0);
+  // tall ears of different colours and heights, with the EYES on their tips
+  const stalks = [[-0.2, m.accent, 0.5, 0], [0.22, EAR2, 0.34, 1]];
+  if (crown) stalks.push([0.02, 0xff8ad8, 0.66, 2]);
+  stalks.forEach(([x, col, h, i]) => {
+    const ear = drift(parts, pivot(root, x, 0.72 + 0.3 + G + h / 2, i === 2 ? -0.2 : -0.05), 0.07, 2.1, i * 2);
+    box(ear, 0.12, h, 0.12, col, 0, 0, 0);
+    const e = pivot(ear, 0, h / 2 + 0.1, 0);
+    box(e, 0.2, 0.2, 0.18, 0xffffff, 0, 0, 0).userData.eye = true;
+    box(e, 0.1, 0.11, 0.03, 0x111111, i === 1 ? 0.03 : -0.03, 0, 0.1).userData.eye = true;
+  });
+  if (crown) { // a zigzag crayon crown floating over the top mouth
+    const cr = drift(parts, pivot(root, 0.05, 0.72 + 0.3 + G + 0.1, 0.2), 0.05, 1.7, 3);
+    for (let k = 0; k < 3; k++) zigzag(cr, [0xffe05c, 0xff6f8a, 0x5cb8ff][k], -0.2 + k * 0.2, 0, 0, 0.8);
+  }
+  // a big FOOT sticking out where an arm should be
+  const arm = drift(parts, pivot(root, 0.33 + G + 0.14, 0.78, 0.04), 0.06, 2.3, 3);
+  box(arm, 0.24, 0.12, 0.12, m.body, 0, 0, 0);
+  box(arm, 0.16, 0.12, 0.3, m.belly, 0.14, -0.02, 0.06);
+  // a HAND on the other side, waving, with three fat fingers
+  const hand = drift(parts, pivot(root, -0.33 - G - 0.12, 0.84, 0.04), 0.06, 2.7, 4);
+  box(hand, 0.2, 0.12, 0.12, m.body, 0, 0, 0);
+  box(hand, 0.16, 0.18, 0.08, HAND, -0.14, 0.04, 0);
+  for (let k = 0; k < 3; k++) box(hand, 0.04, 0.1, 0.05, HAND, -0.19 + k * 0.05, 0.17, 0);
+  // legs of different lengths: one leg, one hand to stand on
+  const legA = drift(parts, pivot(root, 0.16, 0.2, 0.02), 0.03, 2, 5);
+  box(legA, 0.14, 0.34, 0.14, m.body, 0, 0, 0);
+  box(legA, 0.18, 0.08, 0.24, m.belly, 0, -0.14, 0.05);
+  const legB = drift(parts, pivot(root, -0.18, 0.22, 0.02), 0.03, 2.2, 6);
+  box(legB, 0.14, 0.3, 0.14, m.body, 0, 0.02, 0);
+  box(legB, 0.2, 0.08, 0.14, HAND, 0, -0.14, 0);
+  for (let k = 0; k < 3; k++) box(legB, 0.05, 0.05, 0.08, HAND, -0.06 + k * 0.06, -0.15, 0.1);
+}
+
+// Bobbloon / Bobblimp: a body with its own happy face and a balloon (or blimp) head on a string.
+function balloonhead(root, m, parts) {
+  const blimp = m.extras.includes('blimp');
+  const G = DRIFT_GAP;
+  const body = drift(parts, pivot(root, 0, 0.55, 0), 0.03, 1.4, 0);
+  box(body, 0.56, 0.58, 0.42, m.body, 0, 0, 0);
+  box(body, 0.42, 0.42, 0.03, m.belly, 0, -0.02, 0.215);
+  for (const s of [-1, 1]) { // a big happy face on the tummy
+    box(body, 0.11, 0.13, 0.03, 0xffffff, s * 0.1, 0.07, 0.235).userData.eye = true;
+    box(body, 0.06, 0.08, 0.02, 0x111111, s * 0.1, 0.06, 0.25).userData.eye = true;
+    box(body, 0.08, 0.04, 0.02, 0xff8fb8, s * 0.17, -0.05, 0.235);
+  }
+  box(body, 0.16, 0.04, 0.02, 0x5a2a3a, 0, -0.1, 0.235);
+  box(body, 0.06, 0.04, 0.02, 0x5a2a3a, -0.1, -0.08, 0.235);
+  box(body, 0.06, 0.04, 0.02, 0x5a2a3a, 0.1, -0.08, 0.235);
+  // a bow on top, where the string starts
+  const BOW = 0xff5c9a;
+  box(body, 0.1, 0.1, 0.1, BOW, 0, 0.33, 0);
+  box(body, 0.14, 0.12, 0.06, BOW, -0.12, 0.33, 0);
+  box(body, 0.14, 0.12, 0.06, BOW, 0.12, 0.33, 0);
+  for (const s of [-1, 1]) {
+    const leg = drift(parts, pivot(root, s * 0.15, 0.13, 0), 0.02, 2, s);
+    box(leg, 0.15, 0.22, 0.15, m.body, 0, 0, 0);
+    box(leg, 0.19, 0.08, 0.24, m.dark, 0, -0.11, 0.04);
+    const arm = drift(parts, pivot(root, s * (0.28 + G + 0.05), s > 0 ? 0.82 : 0.55, 0.04), 0.04, 1.8, 2 + s);
+    box(arm, 0.12, 0.3, 0.12, m.body, 0, 0, 0);
+    box(arm, 0.14, 0.1, 0.14, m.belly, 0, s > 0 ? 0.18 : -0.18, 0); // one waving, one down
+  }
+  const strings = blimp ? 5 : 8, headY = blimp ? 1.72 : 2.3;
+  for (let k = 0; k < strings; k++) box(root, 0.025, 0.14, 0.025, 0xffffff, Math.sin(k * 0.9) * 0.04, 0.95 + k * 0.13, 0);
+  const head = drift(parts, pivot(root, 0, headY, 0), 0.1, 1.1, 1);
+  if (blimp) { // a long friendly blimp with a nose face, a gondola and tail fins
+    box(head, 0.62, 0.6, 1.3, m.accent, 0, 0, 0);
+    box(head, 0.5, 0.74, 1.1, m.accent, 0, 0, 0);
+    box(head, 0.74, 0.46, 1.1, m.accent, 0, 0, 0);
+    box(head, 0.16, 0.06, 1.0, m.dark, 0, 0.38, 0); // stripe along the top
+    box(head, 0.3, 0.14, 0.5, m.dark, 0, -0.44, 0.1); // gondola
+    box(head, 0.06, 0.6, 0.3, m.dark, 0, 0.05, -0.74); // tail fins
+    box(head, 0.6, 0.06, 0.3, m.dark, 0, 0.05, -0.74);
+    for (const s of [-1, 1]) {
+      box(head, 0.13, 0.16, 0.04, 0xffffff, s * 0.15, 0.08, 0.66).userData.eye = true;
+      box(head, 0.07, 0.09, 0.03, 0x111111, s * 0.15, 0.06, 0.68).userData.eye = true;
+      box(head, 0.1, 0.05, 0.02, 0xff8fb8, s * 0.24, -0.07, 0.66);
+    }
+    dreamMouth(head, -0.12, 0.66, 0.2);
+    return;
+  }
+  box(head, 0.7, 0.66, 0.6, m.accent, 0, 0, 0);
+  box(head, 0.56, 0.8, 0.46, m.accent, 0, 0, 0);
+  box(head, 0.82, 0.5, 0.46, m.accent, 0, 0, 0);
+  box(head, 0.1, 0.08, 0.1, m.dark, 0, -0.44, 0); // the knot
+  for (const s of [-1, 1]) {
+    box(head, 0.13, 0.16, 0.04, 0xffffff, s * 0.15, 0.08, 0.31).userData.eye = true;
+    box(head, 0.07, 0.09, 0.03, 0x111111, s * 0.15, 0.06, 0.33).userData.eye = true;
+    box(head, 0.1, 0.05, 0.02, 0xff8fb8, s * 0.24, -0.07, 0.31);
+  }
+  dreamMouth(head, -0.12, 0.31, 0.2);
+  box(head, 0.1, 0.16, 0.03, 0xffffff, -0.2, 0.22, 0.31); // a shiny spot
+}
+
+// Drizzup (the 7th): an open umbrella standing upside down, raindrops bobbing UP above its rim.
+function upbrella(root, m, parts) {
+  const layers = [[0.36, 0.3, 0.2], [0.66, 0.5, 0.2], [0.96, 0.7, 0.2]]; // [width, centre y, height]
+  const cols = [m.body, m.accent, m.belly];
+  layers.forEach(([w, y, h], i) => {
+    const g = i === 0 ? pivot(root, 0, y, 0) : drift(parts, pivot(root, 0, y, 0), 0.02, 1.5, i);
+    box(g, w, h + 0.04, w, cols[i % 3], 0, 0, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(g, w * 0.2, h + 0.045, w * 0.2, i % 2 ? m.body : m.accent, sx * w * 0.4, 0, sz * w * 0.4);
+  });
+  // a face on the canopy front
+  const f = layers[1][0] / 2 + 0.02;
+  for (const s of [-1, 1]) {
+    box(root, 0.11, 0.13, 0.03, 0xffffff, s * 0.1, 0.55, f).userData.eye = true;
+    box(root, 0.06, 0.08, 0.02, 0x111111, s * 0.1, 0.54, f + 0.02).userData.eye = true;
+    box(root, 0.07, 0.04, 0.02, 0xff8fb8, s * 0.2, 0.47, f);
+  }
+  box(root, 0.14, 0.04, 0.02, 0x5a2a3a, 0, 0.45, f);
+  // two stubby feet under the canopy tip
+  for (const s of [-1, 1]) {
+    const foot = drift(parts, pivot(root, s * 0.1, 0.07, 0.04), 0.015, 2.2, s);
+    box(foot, 0.14, 0.14, 0.2, m.dark, 0, 0, 0);
+  }
+  // the J-hook handle sticks up from the middle like a tail
+  const handle = drift(parts, pivot(root, 0, 0.8 + DRIFT_GAP, 0), 0.04, 1.4, 2);
+  box(handle, 0.06, 0.5, 0.06, m.dark, 0, 0.25, 0);
+  box(handle, 0.2, 0.06, 0.06, m.dark, 0.07, 0.52, 0);
+  box(handle, 0.06, 0.14, 0.06, m.dark, 0.17, 0.46, 0);
+  // five raindrops above the rim that bob upwards
+  [[-0.4, 0, 0], [0.38, 0.1, 1], [-0.12, 0.4, 2], [0.15, -0.4, 3], [0.42, -0.25, 4]].forEach(([x, z, i]) => {
+    const d = drift(parts, pivot(root, x, 1.0 + (i % 3) * 0.1, z), 0.1 + i * 0.01, 1.7 + i * 0.35, i * 1.3);
+    box(d, 0.08, 0.13, 0.08, 0xaee4ff, 0, 0, 0);
+    box(d, 0.05, 0.06, 0.05, 0xffffff, 0, 0.08, 0);
+  });
+}
+const SHAPES_DREAM = { headstander, toddler, balloonhead, upbrella };
+/* ==== end of T35 dream shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
@@ -4119,6 +4318,7 @@ export const SHAPES = {
   ...SHAPES_COZY, ...SHAPES_TREASURE,
   ...SHAPES_FOOD, // T33
   ...SHAPES_SQUAD, // T34
+  ...SHAPES_DREAM, // T35
 };
 
 /* ==== T36 parkour shapes ==== */

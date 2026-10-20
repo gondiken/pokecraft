@@ -29,7 +29,7 @@ import { goldenHour, condToast, condOf } from './spawnrules.js';
 import { caveLight, patchMaterial } from './caves.js';
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
-import { createRealms, MAIN } from './realms.js'; // T31
+import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -172,7 +172,7 @@ function snapshot() {
     homes: game.homes.toSave(), // T22
   });
   return {
-    ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, /* T31 */ playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
+    ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, realmVersions: game.realms?.versions() /* T35 */, /* T31 */ playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
     rematchWins: game.rematchWins,
@@ -718,7 +718,7 @@ function talkTo(npc) {
   if (npc.kind === 'healer') {
     healTeam();
     sound.play('heal');
-    ui.toast(`${npc.name}: Your team is fully healed. Good luck out there!`);
+    ui.toast(`${npc.name}: Your team is fully healed. ${game.world.realm ? 'Sweet dreams... I mean, good luck!' : 'Good luck out there!'}`); // T35
     return;
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
@@ -953,16 +953,19 @@ function updateSky(dt) {
     scene.fog.color.copy(scene.background);
     if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
   }
-  const lit = Math.min(1, brightness * wx.dim + wx.flash * 0.4);
+  const floor = look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
+  const lit = Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4));
   caveLight.uLit.value = lit;
   caveLight.uLantern.value = 0.75 * underFade;
   caveLight.uPlayer.value.copy(game.player.eyePos);
-  hemi.intensity = (0.35 + 1.0 * light) * (1 - 0.6 * underFade);
-  sun.intensity = (0.1 + 1.1 * light) * (1 - 0.6 * underFade);
+  const lightF = Math.max(light, floor);
+  hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade);
+  sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade);
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
-  game.ui.setClock(`${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}${game.world.realm ? ' · Dream' : ''}`);
+  game.ui.setClock(game.world.realm ? '☾ Dream' : `${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`); // T35: no hours in a dream, the moon shows how long the night lasts
+  game.ui.setMoon(game.world.realm ? nightProgress(game.time) : null);
   game.night = light < 0.3;
   game.npcs.setNight(game.night); // the night gyms' people (Comet, Saucer) come and go with the night
 }
@@ -1049,6 +1052,7 @@ function frame(now) {
     p.joy = game.touch.joy;
     const before = p.pos.clone(); // T30
     if (playing()) p.update(dt);
+    if (p.bounced) { p.bounced = false; sound.play('boing'); game.realms.onBounce(); } // T35: launched by a Bounce Block
     game.hideSeek.fence(p.pos, before, p.vel); // T30
     game.riding.update(dt, now);
     game.gymLive.update(dt);

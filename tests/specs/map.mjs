@@ -1,6 +1,8 @@
 // The bigger map, and old saves (made when the map was 192x192) keeping their building.
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 export default async function ({ browser, base, t }) {
   // An old save: a brick placed at (100, 30, 100), stored by its index in the old 192x192 map.

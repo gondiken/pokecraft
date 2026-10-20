@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { openGame, click, playBattle, seedSave, continueGame } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const SEEDS = [1, 7, 99, 777, 4242, 123456];

@@ -8,7 +8,8 @@ import { openGame, ROOT } from '../helpers.mjs';
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const GROUPS = { A: ['stitchums', 'waxwobble', 'jellume', 'bonzoise', 'wattwink', 'amethump', 'flurrydome'],
   B: ['twirlshell', 'lanterboo', 'puzzlet', 'tickatin', 'gurglepot', 'cuppix'],
-  C: ['nimbrake', 'chromacurl', 'voidle', 'clawdio', 'finnibone', 'zorbit'] };
+  C: ['nimbrake', 'chromacurl', 'voidle', 'clawdio', 'finnibone', 'zorbit'],
+  W11: ['drizzup'] }; // wave 11: each task adds its 7th here (T35: drizzup)
 const OLD_SHAPES = ['quad', 'blob', 'biped', 'bird', 'serpent', 'bug', 'guardian', 'butterfly', 'moth', 'star', 'robe', 'hopper',
   'planet', 'comet', 'cloud', 'tall', 'squid', 'bat', 'drum', 'ape', 'bell', 'armadillo', 'wyvern', 'fish', 'nut', 'drone', 'wisp',
   'puff', 'crystal', 'skull', 'bonedog', 'dino', 'ufo', 'visitor', 'tripod'];
@@ -17,12 +18,14 @@ const ids = group ? GROUPS[group] : Object.values(GROUPS).flat();
 
 export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  t.ok(!!ids, `T4B_GROUP "${group}" is A, B or C (or unset)`);
+  t.ok(!!ids, `T4B_GROUP "${group}" is A, B, C or W11 (or unset)`);
   if (!ids) return;
   const page = await openGame(browser, base);
   const r = await page.evaluate(async ({ ids, OLD_SHAPES, full }) => {
     const S = await import('/src/species.js');
     const SH = await import('/src/shapes.js');
+    const { REALMS } = await import('/src/realms.js'); // T35: creatures that live only in a realm
+    const SPAWN_TABLES = { ...S.SPAWNS, ...Object.fromEntries(Object.values(REALMS).flatMap(r => Object.entries(r.spawns).filter(([b]) => b !== 'cave').map(([b, l]) => [`realm:${r.id}:${b}`, l]))) };
     const THREE = await import('three');
     const out = { missing: ids.filter(id => !S.SPECIES[id]), problems: [], types: [], sig: {}, hue: null };
     if (out.missing.length) return out;
@@ -55,7 +58,7 @@ export default async function ({ browser, base, t }) {
       if (names.filter(n => n === s.name.toLowerCase()).length !== 1) bad(id, `name ${s.name} is not unique`);
       if (!s.desc || s.desc.length > 110) bad(id, `desc is ${s.desc?.length} characters`);
       // spawns
-      const where = Object.entries(S.SPAWNS).flatMap(([biome, list]) => list.filter(e => e[0] === id).map(e => ({ biome, w: e[1], when: e[2] })));
+      const where = Object.entries(SPAWN_TABLES).flatMap(([biome, list]) => list.filter(e => e[0] === id).map(e => ({ biome, w: e[1], when: e[2] })));
       if (!where.length) bad(id, 'is in no SPAWNS table');
       for (const e of where) {
         if (s.type === 'ice' && !['snow', 'taiga', 'peak'].includes(e.biome)) bad(id, `ice in ${e.biome}`);
@@ -141,7 +144,7 @@ export default async function ({ browser, base, t }) {
     };
     save(group ? `seventh-creatures-${group}.png` : 'seventh-creatures.png', shots.grid);
     for (const id of ids) save(`creature-${id}.png`, shots.singles[id]);
-    t.ok(shots.grid.length > 20000, 'portrait grid drawn');
+    t.ok(shots.grid.length > Math.min(20000, ids.length * 6000), 'portrait grid drawn');
   }
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

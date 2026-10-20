@@ -214,7 +214,7 @@ class GymPlacement {
     const caveItems = []; // cave gyms so far: { x, z, cells } (cells = the stairway)
     for (const sp of this.caveGymSpots()) if (sp) caveItems.push({ x: sp.x, z: sp.z, cells: this.stairCells(sp) });
     // Cave gyms first (they need the most room; the others keep away from them), then the rest in GYMS order.
-    const defs = GYMS.slice(EXTRA_GYMS_END).filter(d => d.slot == null && d.place !== 'home'), found = new Map(); // slot gyms (T17/T19) live in the new land, home gyms (T23) have no building
+    const defs = GYMS.slice(EXTRA_GYMS_END).filter(d => d.slot == null && d.place !== 'home' && !d.realm), found = new Map(); // slot gyms (T17/T19) live in the new land, home gyms (T23) have no building
     let masks = null;
     for (const def of defs) {
       if (def.place !== 'cave') continue;
@@ -976,6 +976,7 @@ class GymPlacement {
     const slots = first < T17_SLOTS ? this.newLandSlots() : this.gymSlots();
     for (const def of GYMS) {
       if (def.place === 'home') { if (first === 0) this.gyms.push(this.homeGym(def)); continue; } // T23: lives in a player's home
+      if (def.realm) { if (first === 0) this.gyms.push(this.realmGym(def)); continue; } // T35: lives in a realm; the main world only knows it exists
       if (def.slot == null || def.slot < first || def.slot > last) continue;
       const s = slots[def.slot];
       if (!s) throw new Error(`No gym slot ${def.slot}`);
@@ -989,6 +990,10 @@ class GymPlacement {
   // A gym that has no building: its people move into a player's home (T23 Cozy Gym, see homegym.js). It writes
   // nothing to the world; x/y/z stay null and it has no protected box (the home is the player's own build).
   homeGym(def) { return { def, home: true, x: null, y: null, z: null, front: [0, 1], protect: [], leaderPos: null, trainerPositions: [] }; }
+
+  // T35: a gym that lives in a realm (the Upside-Down House in the Dream). It writes nothing to the world; x/y/z stay null and its
+  // people stay away. It carries its own access pieces so the guide can tell you how to get there (access.js WHERE.realm).
+  realmGym(def) { return { def, elsewhere: def.realm, x: null, y: null, z: null, front: [0, 1], protect: [], leaderPos: null, trainerPositions: [], access: { where: 'realm', when: 'dream' } }; }
 
   // Step-0 stand-in for the slot gym builders: the plain gym of its type with a second trainer beside the first, so
   // the gym can be battled (and is protected) until its real building exists.

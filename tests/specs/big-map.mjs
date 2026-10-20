@@ -6,6 +6,8 @@ import { devices } from 'playwright';
 import { openGame, seedSave, continueGame, click } from '../helpers.mjs';
 import { GYMS as ALL_GYMS } from '../../src/gyms.js';
 const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
+import { GYMS } from '../../src/gyms.js';
+const N = GYMS.length; // T35: the number of gyms (and badges) grows with every wave, so never hard-code it
 
 // newLandSlots() for three seeds (x, z), nearest the start first. They must never change.
 const SLOTS = {
@@ -49,7 +51,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
-        gyms: w.gyms.filter(g => !(g.slot && g.slot.k >= 5)).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
+        gyms: w.gyms.filter(g => !(g.slot && g.slot.k >= 5) && !g.elsewhere).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
         tower: w.tower.x === o.tower.x && w.tower.z === o.tower.z && w.tower.y === o.tower.y,
         caves: sameSet(w.caves.opened, o.caves.opened) && sameSet(w.caves.marks, o.caves.marks),
       };
@@ -95,8 +97,8 @@ export default async function ({ browser, base, t }) {
         placed: w.gyms.length,
       };
       // 5. Protection data.
-      const res = { all: w.gyms.filter(g => !g.home).every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
-      for (const g of w.gyms.filter(g => !g.home)) {
+      const res = { all: w.gyms.filter(g => g.x != null).every(g => g.protect?.length) && !!w.tower.protect?.length, walls: [], outside: [], pads: [] };
+      for (const g of w.gyms.filter(g => g.x != null)) {
         const wall = g.sky ? w.protectedAt(g.x, g.y - 1, g.z) === g : w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g;
         const b = g.protect[0];
         const out2 = w.protectedAt(b.x1 + 2, (b.y0 + b.y1) >> 1, g.z) !== g && w.protectedAt(g.x, (b.y0 + b.y1) >> 1, b.z1 + 2) !== g;

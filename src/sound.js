@@ -189,6 +189,10 @@ const SOUNDS = {
   // T36 parkour: a quick whoosh (sweeping down) and a soft landing tap.
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
+  // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).
+  'fx:dream': () => { tone(523, { len: 0.18, type: 'triangle', vol: 0.12, slide: 90 }); tone(528, { len: 0.18, type: 'triangle', vol: 0.1, slide: 70 }); tone(613, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.12, slide: -100 }); tone(618, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.1, slide: -80 }); },
+  // T35: a Bounce Block launches you: a quick springy pitch sweep up with a little wobble.
+  boing: () => { tone(200, { len: 0.22, type: 'triangle', vol: 0.3, slide: 500 }); tone(420, { at: 0.04, len: 0.18, type: 'sine', vol: 0.12, slide: 280 }); },
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.
