@@ -49,7 +49,7 @@ export default async function ({ browser, base, t }) {
       const sameSet = (a, b) => a.size === b.size && [...b].every(c => a.has(remap(c)));
       out.same[seed] = {
         diff, gdiff, size: [w.W, w.D],
-        gyms: w.gyms.filter(g => g.x != null).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
+        gyms: w.gyms.filter(g => !g.elsewhere).length === o.gyms.length + 5 && w.gyms.slice(0, o.gyms.length).every((g, i) => g.def === o.gyms[i].def && g.x === o.gyms[i].x && g.y === o.gyms[i].y && g.z === o.gyms[i].z),
         tower: w.tower.x === o.tower.x && w.tower.z === o.tower.z && w.tower.y === o.tower.y,
         caves: sameSet(w.caves.opened, o.caves.opened) && sameSet(w.caves.marks, o.caves.marks),
       };

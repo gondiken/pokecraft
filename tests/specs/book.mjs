@@ -97,7 +97,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(paper.n === 7 && paper.all, `the Paper filter shows the 7 paper creatures (${paper.n})`);
   await page.evaluate(() => document.querySelector('.book-filter[data-filter="all"]').click());
-  t.ok(await page.evaluate(async () => { const { SPECIES } = await import('/src/species.js'); return document.querySelectorAll('.book-filter').length === new Set(Object.values(SPECIES).map(x => x.type)).size + 1; }), 'one filter button per type that has creatures, and All');
+  t.ok(await page.evaluate(async () => { const { TYPE_COLORS } = await import('/src/species.js'); return document.querySelectorAll('.book-filter').length === Object.keys(TYPE_COLORS).length + 1; }), 'one filter button per type, and All');
 
   // 8
   await page.evaluate(() => { const b = window.pokecraft.book; b.markCaught('wispurr'); b.showDetail('emberpup'); });
