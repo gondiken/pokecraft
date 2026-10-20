@@ -1017,10 +1017,18 @@ Done when: `big-map` covers the new ring and slots, old saves are unchanged, and
 Shared cost for each type (data, not systems): 7 creatures with at least 3 new shapes, chart row and column, moves,
 wool, fx + sound, Book, README. Battle rules stay the same for all; a type only leans towards some T25 move kinds.
 
+**Gym order and levels** (owner OK, 2026-10-20): every new gym's leader is about 2 levels above the one before:
+Treasure Vault ~46, then **Food ~48, Squad ~50, Parkour ~52, Dream ~54**; then the Champion's Tower, `REMATCH_CAP` and
+Coach Dex move up so the Tower is always above the hardest gym.
+
 ### T33 · 🍎 Food (custom code: low)
-- Creatures: e.g. Donutoad, Sushiroll, Pretzling, Jellywob.
-- Spawn: only near flowers or crops **you placed** (one new spawn condition counting placed blocks nearby, like Cozy's
-  `home:<type>`). Behaviour: none. Battle: leans to healing and Shield moves.
+- **Creatures: funny dishes with faces** (owner, 2026-10-20): e.g. sushi, a hamburger, spaghetti. No tie-in to the
+  Restaurant needed. Avoid what exists: Cuppix (teacup), Slime's gummy/jelly shapes, Wobblock (jelly cube), so no
+  jelly creature (the old placeholder Jellywob is dropped).
+- **Spawn: near where their ingredients come from** = the normal biome tables (e.g. sushi by water, a burger on the
+  plains): no new spawn condition (cheaper than "near the Restaurant", which would need one). Behaviour: none.
+- Battle (Claude's call): leans to healing and **rally** ("sharing a meal" lifts the team); Cozy already has the
+  comfy heal (Hot Cocoa), so Food's heals should feel like eating (a bite, a feast), not resting.
 - **Gym, the Restaurant** (owner, 2026-10-20; keep custom code small: three new pieces, everything else reused):
   - **Trainers:** two normal trainers like every other gym (dressed as waiters / line cooks: names and colours only).
   - **Customers:** fixed NPCs at tables, one line each. No logic beyond "you are holding the right dish".
@@ -1115,11 +1123,15 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   Losing still wakes you in your bed (T31).
 
 ### T36 · 🤸 Parkour (custom code: medium)
-- Creatures: e.g. Flipfrog, Wallrunner, Vaultkit, Springbun.
-- Spawn: on high places (treetops, roofs, pillar tops): a condition + a `place` rule (homes already have `place`).
+- **Start from the mechanic** (owner, 2026-10-20): Parkour creatures are **athletic, agile and lean**, not just "they run
+  away". The old placeholders Flipfrog and Springbun are dropped: three frogs (Sproutle, Hopfold, Frogami) and three
+  bunnies (Hopsy, Moonhop, Lunaroo) already hop; the boxing kangaroo and the chameleon also exist. Creature designs: open.
+- Spawn: on high places (treetops, roofs, pillar tops): a condition + a `place` rule (homes already have `place`). Owner: OK.
 - **Behaviour:** wild ones hop away from you over blocks, so you chase them: one new "run away" walk style (Racer could
-  reuse it later with a "run" style).
-- Gym, the Obstacle Course: jumps and narrow beams; falling sends you back to the start (a small `gymLive` check);
+  reuse it later with a "run" style). **The owner needs to see it before deciding** whether it is fun or frustrating:
+  build a playable prototype first.
+- **Gym, the Obstacle Course** (the clearest part): jumps and narrow beams; **falling sends you back to the start**
+  (owner: fine, his son plays games like that); **checkpoints if the course is long** (a small `gymLive` check);
   trainers on the landings. Moving platforms only if cheap.
 
 ## Later type ideas (not planned yet)
