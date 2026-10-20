@@ -39,6 +39,7 @@ const MORE_TILES = [
   'KEY_CHEST_SIDE', 'KEY_CHEST_TOP', 'VAULT_DOOR', // T23 Treasure Vault blocks
   'STAR_BLOCK', 'RAINBOW_BRICK', 'TROPHY_SIDE', 'TROPHY_TOP', // T29 mission blocks
   'WAKE_STONE', // T31 realms
+  'POT_SIDE', 'POT_TOP', 'POT_GOLD', 'POT_BURNT', 'STOVE_SIDE', 'STOVE_TOP', // T33 Restaurant
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -65,6 +66,7 @@ export const B = {
   // 78: T31 Wake Stone (only in realms, never in the main world). 79-82: food / squad / dream / parkour wool (wave 11).
   // Reserved for wave 11: 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
   WAKE_STONE: 78,
+  POT: 83, POT_GOLDEN: 84, POT_BURNT: 85, STOVE: 86, // T33 Restaurant (not placeable)
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -134,6 +136,12 @@ BLOCKS[B.RAINBOW_BRICK] = { name: 'Rainbow Brick', ...all(T.RAINBOW_BRICK), limi
 BLOCKS[B.GIANT_TROPHY] = { name: 'Giant Trophy', top: T.TROPHY_TOP, side: T.TROPHY_SIDE, bottom: T.TROPHY_TOP, limited: true, getMore: MISSION_MORE };
 // T31: the Wake Stone in a realm: touch (use or break) it to wake up. Not placeable.
 BLOCKS[B.WAKE_STONE] = { name: 'Wake Stone', ...all(T.WAKE_STONE), glow: true, wallText: 'Touch the Wake Stone to wake up!' };
+// T33 Restaurant blocks: not placeable. The pot is drawn per player with setLive (raw -> golden -> burnt).
+const POT_TEXT = 'Cook in it! Click or tap the pot.';
+BLOCKS[B.POT] = { name: 'Cooking Pot', top: T.POT_TOP, side: T.POT_SIDE, bottom: T.POT_SIDE, wallText: POT_TEXT };
+BLOCKS[B.POT_GOLDEN] = { name: 'Golden Pot', ...all(T.POT_GOLD), glow: true, noLight: true, wallText: POT_TEXT };
+BLOCKS[B.POT_BURNT] = { name: 'Burnt Pot', ...all(T.POT_BURNT), wallText: POT_TEXT };
+BLOCKS[B.STOVE] = { name: 'Stove', top: T.STOVE_TOP, side: T.STOVE_SIDE, bottom: T.STOVE_SIDE, glow: true, wallText: 'The stove is hot! Cook in the pot on top.' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -285,6 +293,7 @@ export function drawAtlas() {
                           : t === 'cyber' && (x % 4 === 0 || y % 4 === 0) ? [80, 220, 255] // glowing grid
                             : t === 'cozy' ? (x % 8 < 2 && y % 8 < 2 ? [150, 70, 60] : x % 8 < 2 || y % 8 < 2 ? [240, 200, 150] : WOOL_RGB[t]) // blanket plaid
                               : t === 'treasure' ? (x === 0 || y === 0 ? [255, 230, 140] : (x * 5 + y * 3) % 17 === 0 ? [230, 60, 80] : (x * 3 + y * 7) % 19 === 0 ? [80, 140, 240] : WOOL_RGB[t]) // gold with gems
+                                : t === 'food' ? (((x >> 2) + (y >> 2)) % 2 ? [250, 240, 230] : WOOL_RGB[t]) // tablecloth check (T33)
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
@@ -412,6 +421,38 @@ export function drawAtlas() {
       const moon = Math.hypot(x - 7.5, y - 7.5) < 4.6 && Math.hypot(x - 9.3, y - 6.3) > 3.6;
       const edge = x === 0 || y === 0 || x === 15 || y === 15;
       put(T.WAKE_STONE, x, y, edge ? [150, 120, 220] : moon ? [255, 236, 150] : shade([210, 200, 255], 1 + (r3() - 0.5) * 0.12));
+    });
+  }
+
+  { // T33 Restaurant: the cooking pot (iron with bubbling soup; golden = ready; burnt), and the stove. Own random numbers.
+    const r4 = mulberry32(3333);
+    const bubbles = (x, y) => (x * 5 + y * 3) % 7 === 0;
+    const potSide = (tile, iron, rim, soup, soupDark, glint) => each((x, y) => {
+      const handle = (x <= 1 || x >= 14) && y >= 6 && y <= 8;
+      put(tile, x, y, handle ? rim : y <= 2 ? rim : y <= 5 ? (bubbles(x, y) ? soupDark : soup)
+        : glint && (x * 3 + y * 7) % 11 === 0 ? glint : shade(iron, 1 + (r4() - 0.5) * 0.1));
+    });
+    potSide(T.POT_SIDE, [70, 74, 80], [110, 114, 122], [245, 235, 205], [225, 210, 170]);
+    potSide(T.POT_GOLD, [255, 205, 70], [200, 140, 30], [255, 240, 150], [255, 205, 70], [255, 250, 200]);
+    each((x, y) => {
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      put(T.POT_TOP, x, y, d > 6.4 ? [60, 64, 70] : d > 5.4 ? [110, 114, 122] : (x * 5 + y * 3) % 9 === 0 ? [225, 210, 170] : [245, 235, 205]);
+    });
+    each((x, y) => {
+      const smoke = (x + y * 2) % 7 === 0 && y > 2 && y < 12;
+      const ember = (x * 7 + y * 3) % 17 === 0;
+      put(T.POT_BURNT, x, y, ember ? [160, 40, 20] : smoke ? [120, 120, 120] : shade([35, 30, 28], 1 + (r4() - 0.5) * 0.3));
+    });
+    each((x, y) => {
+      const fire = x >= 4 && x <= 11 && y >= 9 && y <= 13;
+      const up = 13 - y, flame = fire && up <= 1 + (((x * 5) % 4) + 1);
+      const knob = y >= 2 && y <= 3 && (x === 3 || x === 7 || x === 12);
+      put(T.STOVE_SIDE, x, y, fire ? (flame ? (up < 1 ? [255, 235, 120] : up < 2 ? [255, 170, 40] : [235, 90, 30]) : [30, 24, 22])
+        : knob ? [170, 174, 180] : x === 0 || x === 15 || y === 15 ? [24, 24, 28] : shade([40, 40, 46], 1 + (r4() - 0.5) * 0.12));
+    });
+    each((x, y) => {
+      const ring = [[4, 4], [11, 11]].some(([cx, cy]) => { const d = Math.hypot(x - cx, y - cy); return d > 1.8 && d < 3.2; });
+      put(T.STOVE_TOP, x, y, ring ? [255, 140, 40] : x % 4 === 0 || y % 4 === 0 ? [16, 16, 18] : shade([48, 48, 54], 1 + (r4() - 0.5) * 0.1));
     });
   }
 

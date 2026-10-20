@@ -2,6 +2,8 @@
 // the Cloud Gym floating out of reach until you build up to it, and pictures of each new gym.
 import fs from 'node:fs';
 import { openGame, click, playBattle, seedSave, continueGame } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
+const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const SEEDS = [1, 7, 99, 777, 4242, 123456];
@@ -88,7 +90,7 @@ export default async function ({ browser, base, t }) {
   }, [SEEDS, GOO_FALLBACK_SEED]);
   for (const seed of SEEDS) {
     const w = worlds[seed], o = OLD[seed];
-    t.ok(w.n === 27 && w.order, `seed ${seed}: 27 gyms in GYMS order`);
+    t.ok(w.n === NGYMS && w.order, `seed ${seed}: ${NGYMS} gyms in GYMS order`);
     t.ok(JSON.stringify(w.old) === JSON.stringify(o.gyms) && JSON.stringify(w.tower) === JSON.stringify(o.tower) && JSON.stringify(w.fossil) === JSON.stringify(o.fossil),
       `seed ${seed}: gyms 1-18, the tower and the Fossil Gym are where they were before the new gyms`);
     const [light, paper, goo, sky] = w.news;
@@ -109,7 +111,7 @@ export default async function ({ browser, base, t }) {
     t.ok(w.boxes >= 4, `seed ${seed}: the new gyms' boxes are recorded (${w.boxes})`);
   }
   const fb = worlds[GOO_FALLBACK_SEED];
-  t.ok(fb.n === 27 && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
+  t.ok(fb.n === NGYMS && !fb.news[2].cave && !fb.news[2].sky && fb.news[2].id === 'slime', `seed ${GOO_FALLBACK_SEED}: no room for a cavern, the Goo Gym is a swamp or forest building on the surface`);
 
   // 2. The Cloud Gym and (wave 6) the Saucer Gym are out of reach until you build up to them.
   const reach = await page.evaluate(async ([seeds]) => {

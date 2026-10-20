@@ -6,10 +6,13 @@ import { ClockLive } from './clocktower.js';
 import { MazeLive } from './firewall.js';
 import { HomeLive } from './homegym.js';
 import { VaultLive } from './treasurevault.js';
+import { RestaurantLive } from './restaurant.js'; // T33
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
-// prompt(block, how) and dispose().
+// prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
+// (a live object must not use these four names for anything else, the same rule as stand/hit/prompt).
 export const LIVE = { clock: ClockLive, maze: MazeLive, home: HomeLive, vault: VaultLive };
+LIVE.restaurant = RestaurantLive; // T33
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object
@@ -31,6 +34,12 @@ export function createGymLive(game) {
     hit(block) { return !!each(o => o.hit?.(block)); },
     // Text for the crosshair prompt, or null.
     prompt(block, how) { return each(o => o.prompt?.(block, how)); },
+    // T33: a person was talked to (true = handled), the words for the crosshair / touch button ({ verb, action } or null),
+    // a natural block was broken (ingredients), and a battle ended.
+    talk(npc) { return !!each(o => o.talk?.(npc)); },
+    talkPrompt(npc) { return each(o => o.talkPrompt?.(npc)); },
+    broke(block) { for (const o of objects.values()) o.broke?.(block); },
+    battleEnded(result, opts) { for (const o of objects.values()) o.battleEnded?.(result, opts); },
     of(id) { return objects.get(id); },
   };
 }

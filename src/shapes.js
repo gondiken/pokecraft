@@ -3773,6 +3773,191 @@ function chandelier(root, m, parts) {
 const SHAPES_TREASURE = { coin, crystalfox, gemring, chandelier };
 /* ==== end of T21 treasure shapes ==== */
 
+/* ==== T33 food shapes ==== */
+// One sushi roll standing on its end (Makiroll, and the two on Sushisail's deck). k scales it, nori is the seaweed colour.
+function rollFood(parent, m, k, nori, eyeSize) {
+  const g = pivot(parent, 0, 0, 0);
+  box(g, 0.7 * k, 0.55 * k, 0.5 * k, nori, 0, 0.33 * k, 0);
+  box(g, 0.5 * k, 0.55 * k, 0.7 * k, nori, 0, 0.33 * k, 0);
+  box(g, 0.62 * k, 0.06 * k, 0.44 * k, m.belly, 0, 0.63 * k, 0);
+  box(g, 0.44 * k, 0.06 * k, 0.62 * k, m.belly, 0, 0.63 * k, 0);
+  box(g, 0.24 * k, 0.07 * k, 0.24 * k, m.accent, 0, 0.665 * k, 0);
+  for (const [x, z] of [[-0.3, 0.1], [0.3, -0.1], [0.1, 0.3], [-0.12, -0.3], [0.28, 0.2], [-0.25, -0.2]]) box(g, 0.05 * k, 0.04 * k, 0.05 * k, m.belly, x * k, 0.67 * k, z * k);
+  eyes(g, 0.4 * k, 0.37 * k, 0.12 * k, eyeSize);
+  mouth(g, 0.25 * k, 0.36 * k, 0.1 * k);
+  for (const s of [-1, 1]) box(g, 0.07 * k, 0.05 * k, 0.03, 0xff9aa8, s * 0.2 * k, 0.3 * k, 0.36 * k);
+  return g;
+}
+
+// Makiroll: a maki roll that rocks as if about to roll. Sushisail: a wooden sushi boat with a nori sail and two rolls on deck.
+function sushi(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  if (has(m, 'boat')) {
+    const hull = pivot(body, 0, 0, 0);
+    swing(parts, hull, 'z', 0.08, 1.4);
+    const dark = 0x7a5028;
+    box(hull, 0.8, 0.3, 1.2, m.body, 0, 0.25, 0);
+    box(hull, 0.86, 0.06, 1.26, dark, 0, 0.42, 0);
+    box(hull, 0.62, 0.26, 0.2, m.body, 0, 0.33, 0.7);
+    box(hull, 0.44, 0.22, 0.16, m.body, 0, 0.39, 0.88);
+    box(hull, 0.5, 0.05, 0.2, dark, 0, 0.51, 0.88);
+    eyes(hull, 0.43, 0.97, 0.1, 0.09);
+    mouth(hull, 0.31, 0.97, 0.12);
+    box(hull, 0.05, 0.8, 0.05, dark, 0, 0.8, -0.38);
+    const sail = pivot(hull, 0, 0.82, -0.38);
+    swing(parts, sail, 'y', 0.2, 1.2);
+    box(sail, 0.5, 0.5, 0.03, m.dark, 0, 0.1, 0);
+    box(sail, 0.34, 0.07, 0.04, m.belly, 0, 0.16, 0);
+    [-0.2, 0.2].forEach((x, i) => {
+      const deck = pivot(hull, x, 0.45, 0.12);
+      swing(parts, deck, 'x', 0.12, 2.4, i * 1.5);
+      rollFood(deck, m, 0.62, m.dark, 0.08);
+    });
+    return;
+  }
+  const rock = pivot(body, 0, 0.05, 0);
+  swing(parts, rock, 'z', 0.15, 1.8);
+  rollFood(rock, m, 1, m.body, 0.12);
+  for (const s of [-1, 1]) box(body, 0.14, 0.1, 0.2, m.dark, s * 0.18, 0.05, 0.05);
+}
+
+// Bitesize: a tiny burger whose top bun is a flapping jaw. Bigbite: a double-decker with a cheese cape and little arms.
+function burger(root, m, parts) {
+  const dbl = has(m, 'double');
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(body, s * 0.2, 0.09, 0.1);
+    box(leg, 0.18, 0.08, 0.26, 0x6aa83a, 0, -0.04, 0.03);
+    parts.legs.push({ g: leg, phase });
+  }
+  box(body, 0.7, 0.18, 0.7, m.body, 0, 0.18, 0);
+  box(body, 0.62, 0.04, 0.78, m.body, 0, 0.18, 0);
+  let y = 0.27;
+  const layers = dbl ? 2 : 1;
+  for (let i = 0; i < layers; i++) {
+    box(body, 0.76, 0.14, 0.76, m.dark, 0, y + 0.07, 0);
+    y += 0.14;
+    box(body, 0.78, 0.04, 0.78, m.accent, 0, y + 0.02, 0);
+    for (const s of [-1, 1]) box(body, 0.1, 0.12, 0.05, m.accent, s * 0.3, y - 0.05, 0.4);
+    y += 0.04;
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    box(body, 0.14, 0.05, 0.14, m.belly, Math.cos(a) * 0.38, y + 0.02 + (i % 2 ? 0.02 : -0.02), Math.sin(a) * 0.38);
+  }
+  box(body, 0.2, 0.04, 0.18, 0xff7a8a, 0, y - 0.05, 0.4); // tongue
+  const hinge = pivot(body, 0, y + 0.02, -0.35);
+  hinge.rotation.x = -0.18;
+  const jaw = pivot(hinge, 0, 0, 0);
+  swing(parts, jaw, 'x', 0.18, dbl ? 4 : 3);
+  box(jaw, 0.74, 0.26, 0.74, m.body, 0, 0.13, 0.37);
+  box(jaw, 0.56, 0.08, 0.56, m.body, 0, 0.3, 0.37);
+  for (const [x, z] of [[-0.18, 0.2], [0.15, 0.25], [0, 0.45], [-0.12, 0.55], [0.2, 0.5], [-0.2, 0.4]]) box(jaw, 0.05, 0.02, 0.08, 0xfff4d8, x, 0.35, z);
+  eyes(jaw, 0.14, 0.75, 0.17, 0.12);
+  mouth(jaw, 0.04, 0.75, 0.16);
+  if (dbl) {
+    for (const s of [-1, 1]) {
+      const b = box(jaw, 0.14, 0.04, 0.04, m.dark, s * 0.17, 0.24, 0.76);
+      b.rotation.z = s * 0.35;
+    }
+    const cape = pivot(body, 0, y + 0.1, -0.42);
+    swing(parts, cape, 'x', 0.1, 1.6);
+    box(cape, 0.6, 0.55, 0.03, m.accent, 0, -0.25, 0);
+    box(cape, 0.6, 0.06, 0.04, 0xe0302a, 0, 0.0, 0);
+    parts.arms = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const arm = pivot(body, s * 0.46, 0.5, 0.05);
+      box(arm, 0.1, 0.3, 0.1, m.body, 0, -0.15, 0);
+      box(arm, 0.16, 0.14, 0.16, 0xe0302a, 0, -0.34, 0);
+      parts.arms.push({ g: arm, phase });
+    }
+  }
+}
+
+// Noodlet: a bowl of spaghetti with a meatball nose and wiggly noodle strands. Pastapus: the same bowl on six noodle legs.
+function noodlebowl(root, m, parts) {
+  const octo = has(m, 'octo');
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const bowl = pivot(body, 0, octo ? 0.75 : 0, 0);
+  box(bowl, 0.5, 0.08, 0.5, m.body, 0, 0.04, 0);
+  for (const [w, d, x, z] of [[0.7, 0.06, 0, 0.32], [0.7, 0.06, 0, -0.32], [0.06, 0.7, 0.32, 0], [0.06, 0.7, -0.32, 0]]) {
+    box(bowl, w, 0.32, d, m.body, x, 0.24, z);
+    box(bowl, w + (w > d ? 0.04 : 0), 0.07, d + (d > w ? 0.04 : 0), m.accent, x, 0.34, z);
+  }
+  if (!octo) for (const s of [-1, 1]) box(bowl, 0.14, 0.05, 0.2, m.dark, s * 0.16, 0.02, 0);
+  box(bowl, 0.6, 0.14, 0.6, m.belly, 0, 0.47, 0);
+  box(bowl, 0.5, 0.12, 0.5, m.belly, 0, 0.6, 0);
+  box(bowl, 0.32, 0.05, 0.32, m.accent, 0, 0.665, 0);
+  ball(bowl, 0.1, m.dark, 0, 0.42, 0.33);
+  eyes(bowl, 0.54, 0.31, 0.12, octo ? 0.13 : 0.1);
+  mouth(bowl, 0.24, 0.355, 0.16);
+  [[0.37, 0.2, 'z'], [0.37, -0.2, 'z'], [-0.37, 0.2, 'z'], [-0.37, -0.2, 'z'], [0.15, -0.37, 'x'], [-0.15, -0.37, 'x']].forEach(([x, z, axis], k) => {
+    const strand = pivot(bowl, x, 0.4, z);
+    swing(parts, strand, axis, 0.25, 2.5, k);
+    box(strand, 0.04, 0.18, 0.04, m.belly, 0, -0.09, 0);
+    box(strand, 0.04, 0.1, 0.04, m.belly, 0.01, -0.22, 0);
+  });
+  if (!octo) return;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    const out = pivot(body, Math.sin(a) * 0.22, 0.78, Math.cos(a) * 0.22);
+    out.rotation.y = a;
+    const tilt = pivot(out, 0, 0, 0);
+    tilt.rotation.x = -0.5;
+    let parent = tilt;
+    for (let seg = 0; seg < 3; seg++) {
+      const g = pivot(parent, 0, seg ? -0.26 : 0, 0);
+      swing(parts, g, 'x', 0.25, 2, i + seg * 0.6);
+      box(g, 0.07, 0.26, 0.07, m.belly, 0, -0.13, 0);
+      parent = g;
+    }
+  }
+  const fork = pivot(bowl, 0.2, 0.62, -0.1);
+  fork.rotation.set(-0.4, 0, 0.2);
+  box(fork, 0.04, 0.5, 0.04, 0xc8d0d8, 0, 0.25, 0);
+  for (const x of [-0.05, 0, 0.05]) box(fork, 0.02, 0.14, 0.02, 0xc8d0d8, x, 0.55, 0);
+  box(fork, 0.14, 0.03, 0.03, 0xc8d0d8, 0, 0.5, 0);
+}
+
+// Scoopsy: three scoops on a waffle cone, a wobbly stack with a face on the strawberry scoop and a bobbing cherry.
+function icecream(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  [0.42, 0.32, 0.22, 0.12].forEach((w, i) => {
+    const y = 0.48 - i * 0.14;
+    box(body, w, 0.14, w, m.body, 0, y, 0);
+    for (const s of [-1, 1]) {
+      box(body, 0.03, Math.min(0.1, w * 0.6), 0.02, m.dark, s * w * 0.2, y, w / 2 + 0.005).rotation.z = s * 0.6;
+      box(body, 0.02, Math.min(0.1, w * 0.6), 0.03, m.dark, s * (w / 2 + 0.005), y, s * w * 0.15).rotation.x = s * 0.6;
+    }
+  });
+  const stack = pivot(body, 0, 0.55, 0);
+  swing(parts, stack, 'z', 0.08, 2);
+  ball(stack, 0.27, 0x7a4a2a, 0, 0.17, 0);
+  ball(stack, 0.25, m.accent, 0, 0.49, 0);
+  ball(stack, 0.22, m.belly, 0, 0.78, 0);
+  for (const s of [-1, 1]) {
+    box(stack, 0.07, 0.14, 0.07, 0x7a4a2a, s * 0.22, 0.0, 0.12);
+    box(stack, 0.07, 0.12, 0.07, m.accent, s * 0.2, 0.33, 0.1);
+  }
+  box(stack, 0.07, 0.16, 0.07, m.accent, 0, 0.32, 0.2);
+  eyes(stack, 0.52, 0.26, 0.09, 0.1);
+  mouth(stack, 0.42, 0.26, 0.1);
+  for (const s of [-1, 1]) box(stack, 0.07, 0.05, 0.03, 0xff5a7a, s * 0.17, 0.44, 0.23);
+  [[0xff4a4a, -0.1, 0.96, 0.1, 0.3], [0x4ab0ff, 0.1, 0.97, 0.08, -0.5], [0xffe84a, 0, 0.99, -0.1, 1.0], [0x6ad84a, -0.14, 0.9, -0.08, -0.2],
+   [0xffffff, 0.14, 0.9, 0.06, 0.8], [0xb06aff, 0.03, 0.88, 0.17, 0.1]].forEach(([c, x, y, z, r]) => box(stack, 0.05, 0.02, 0.1, c, x, y, z).rotation.y = r);
+  const cherry = pivot(stack, 0, 1.0, 0);
+  swing(parts, cherry, 'z', 0.3, 3);
+  ball(cherry, 0.07, 0xe0203a, 0, 0.07, 0);
+  box(cherry, 0.02, 0.12, 0.02, 0x2a3a1a, 0.02, 0.19, 0).rotation.z = -0.3;
+}
+const SHAPES_FOOD = { sushi, burger, noodlebowl, icecream };
+/* ==== end of T33 food shapes ==== */
+
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
   guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
@@ -3780,4 +3965,5 @@ export const SHAPES = {
   ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
   ...SHAPES_TIME, ...SHAPES_CAMO, ...SHAPES_CYBER,
   ...SHAPES_COZY, ...SHAPES_TREASURE,
+  ...SHAPES_FOOD, // T33
 };

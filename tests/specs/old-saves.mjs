@@ -4,6 +4,8 @@
 import fs from 'node:fs';
 import { GYMS } from '../../src/gyms.js';
 import { openGame, click, seedSave, continueGame } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
+const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 // Where gyms 1-16 were recorded before the Fossil and Saucer gyms existed (same list as the champion spec).
@@ -106,7 +108,7 @@ export default async function ({ browser, base, t }) {
   }, [1, 4242]);
   for (const seed of [1, 4242]) {
     const w = worlds[seed];
-    t.ok(w.n === 27 && w.order && JSON.stringify(w.old) === JSON.stringify(OLD_GYMS[seed]), `seed ${seed}: 27 gyms in order; gyms 1-16 are where they always were`);
+    t.ok(w.n === NGYMS && w.order && JSON.stringify(w.old) === JSON.stringify(OLD_GYMS[seed]), `seed ${seed}: ${NGYMS} gyms in order; gyms 1-16 are where they always were`);
     t.ok(JSON.stringify(w.reserved) === JSON.stringify(EXTRA[seed][0]) && JSON.stringify(w.saucer) === JSON.stringify(EXTRA[seed][1]), `seed ${seed}: the Saucer Gym stays at ${JSON.stringify(w.saucer)} (the old Fossil spot ${JSON.stringify(w.reserved)} is only reserved now)`);
     t.ok(w.h === SUM[seed] && (seed !== 4242 || w.terrain === 596409), `seed ${seed}: without the new caves and the cave gym every block outside the two legacy boxes is unchanged (checksum ${w.h}, terrain ${w.terrain})`);
     t.ok(w.h22 === SUM22[seed], `seed ${seed}: with the four new gyms every block outside their boxes is unchanged (checksum ${w.h22})`);
@@ -133,7 +135,7 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(champ.badges === 16 && champ.champion, 'the old Champion keeps 16 badges and the title');
-  t.ok(champ.icons === 27 && champ.lit === 16 && champ.title, `badge HUD has ${champ.icons} icons with ${champ.lit} lit, and the Champion title shows`);
+  t.ok(champ.icons === NGYMS && champ.lit === 16 && champ.title, `badge HUD has ${champ.icons} icons with ${champ.lit} lit, and the Champion title shows`);
   t.ok(champ.guide.includes('Fossil Gym'), `the arrow leads to the Fossil Gym (${champ.guide})`);
   t.ok(/new gyms have appeared/i.test(champ.toasts), 'a toast tells the player about the new gyms');
   t.ok(champ.toasts.includes('The Fossil Gym moved into a big cave'), 'a toast says the Fossil Gym moved into a cave');
@@ -146,7 +148,7 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'coach'));
     return { battle: g.inBattle, toast: document.querySelector('#toast').innerText };
   });
-  t.ok(!coach.battle && coach.toast.includes('Welcome back, Champion') && coach.toast.includes('27') && coach.toast.includes('You have 16'),
+  t.ok(!coach.battle && coach.toast.includes('Welcome back, Champion') && coach.toast.includes(String(NGYMS)) && coach.toast.includes('You have 16'),
     `since T19 Coach Dex refuses an old Champion with 16 badges, kindly (${coach.toast})`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
@@ -161,7 +163,7 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
   });
   t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)), 'Guard Bram refuses with 16 badges');
-  t.ok((await page.locator('#toast').innerText()).includes('27 badges'), 'the refusal asks for 27 badges');
+  t.ok((await page.locator('#toast').innerText()).includes(`${NGYMS} badges`), `the refusal asks for ${NGYMS} badges`);
   const open = await page.evaluate(async () => {
     const g = window.pokecraft;
     const { GYMS } = await import('/src/gyms.js');
@@ -169,7 +171,7 @@ export default async function ({ browser, base, t }) {
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
     return g.inBattle;
   });
-  t.ok(open, 'with all 27 badges Guard Bram battles');
+  t.ok(open, 'with all the badges Guard Bram battles');
   await page.context().close();
 
   // 3b. Someone who already has the Fossil Badge is not told that the gym moved.
@@ -192,8 +194,8 @@ export default async function ({ browser, base, t }) {
     document.exitPointerLock();
     g.talkTo(g.npcs.list.find(n => n.role === 'guard1'));
   });
-  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes('27 badges'),
-    'Guard Bram refuses the 18-badge player and asks for 27 badges');
+  t.ok(!(await page.evaluate(() => window.pokecraft.inBattle)) && (await page.locator('#toast').innerText()).includes(`${NGYMS} badges`),
+    `Guard Bram refuses the 18-badge player and asks for ${NGYMS} badges`);
   await page.context().close();
 
   // 3d. An old Champion with 18 badges keeps the title, but the whole tower waits for 27 badges (T19).

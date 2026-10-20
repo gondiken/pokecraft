@@ -4,6 +4,8 @@
 // treasure map spots pinned, old [288, 288] saves converted.
 import { devices } from 'playwright';
 import { openGame, seedSave, continueGame, click } from '../helpers.mjs';
+import { GYMS as ALL_GYMS } from '../../src/gyms.js';
+const NGYMS = ALL_GYMS.length; // every gym (28 since T33)
 
 // newLandSlots() for three seeds (x, z), nearest the start first. They must never change.
 const SLOTS = {
@@ -71,13 +73,13 @@ export default async function ({ browser, base, t }) {
       for (let i = 0; i < got.length; i++) for (let j = i + 1; j < got.length; j++) apart = Math.min(apart, Math.max(Math.abs(got[i].x - got[j].x), Math.abs(got[i].z - got[j].z)));
       // T19: the three slot gyms (slots 0-2) change nothing outside their boxes, and are protected with an area.
       const bare = new World(seed, null, null); bare.generate({ slotGyms: false });
-      const boxes = [0, 1, 2, 4].map(i => got[i].box); // slot 3 is spare
+      const boxes = w.gyms.filter(g => g.slot).map(g => g.slot.box); // every placed slot gym (slot 3 is spare; T33: the Restaurant in the south strip)
       let outsideDiff = 0;
       for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
         if (boxes.some(b => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1)) continue;
         if (w.get(x, y, z) !== bare.get(x, y, z)) outsideDiff++;
       }
-      const slotGyms = w.gyms.filter(g => g.slot);
+      const slotGyms = w.gyms.filter(g => g.slot && g.slot.k < 5); // the T17 slots (the south ones are checked below)
       out.slotGyms = out.slotGyms || {};
       out.slotGyms[seed] = {
         outsideDiff, n: slotGyms.length, ids: slotGyms.map(g => g.def.id).join(),
@@ -126,7 +128,7 @@ export default async function ({ browser, base, t }) {
     t.ok(m.biomes >= 3 && m.plants > 20, `seed ${seed}: the new land has ${m.biomes} biomes and ${m.plants} plants`);
     const sl = r.slots[seed];
     t.ok(sl.fixture && sl.same && sl.n === 5 && sl.inside && sl.apart >= 56, `seed ${seed}: 5 gym slots in the new land as always (${JSON.stringify(SLOTS[seed])}), at least ${sl.apart} apart`);
-    t.ok(sl.placed === 27, `seed ${seed}: 27 gyms are placed (${sl.placed})`);
+    t.ok(sl.placed === NGYMS, `seed ${seed}: all ${NGYMS} gyms are placed (${sl.placed})`);
     const sg = r.slotGyms[seed];
     t.ok(sg.bareGyms === 22 && sg.n === 4 && sg.ids === 'time,camo,cyber,treasure' && sg.protect && sg.k && sg.inBox && sg.outsideDiff === 0,
       `seed ${seed}: the Clock Tower, Hidden Hill and Firewall Maze are in slots 0-2 and the Treasure Vault in slot 4, protected, and change nothing outside their boxes (${sg.outsideDiff} cells differ)`);
@@ -196,22 +198,22 @@ export default async function ({ browser, base, t }) {
       }
       out.seam[seed] = { bad, maxStep, biomes: biomes.size, plants };
     }
-    // 5. A test-only gym in slot 5 (the Boulder Gym's def, a plain surface gym): placed in its slot, protected inside the box,
+    // 5. A test-only gym in slot 8 (slot 5 is the Restaurant's since T33; the Boulder Gym's def, a plain surface gym): placed in its slot, protected inside the box,
     // changes nothing outside it, and the 288 x 288 map is still the same.
     const seed = 4242;
     const plain = new World(seed, null, null); plain.generate();
-    const def = { ...GYMS[0], id: 'test32', slot: 5 };
+    const def = { ...GYMS[0], id: 'test32', slot: 8 };
     GYMS.push(def);
     let w;
     try { w = new World(seed, null, null); w.generate(); } finally { GYMS.splice(GYMS.indexOf(def), 1); }
-    const g = w.gyms.find(x => x.def === def), box = w.southSlots()[0].box;
+    const g = w.gyms.find(x => x.def === def), box = w.southSlots()[3].box;
     let outside = 0, inside = 0;
     for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
       if (w.data[x + 288 * (z + 368 * y)] === plain.data[x + 288 * (z + 368 * y)]) continue;
       if (x >= box.x0 && x <= box.x1 && z >= box.z0 && z <= box.z1) inside++; else outside++;
     }
     out.gym = {
-      found: !!g, at: g && g.x === w.southSlots()[0].x && g.z === w.southSlots()[0].z, k: g?.slot?.k, n: w.gyms.length, inside, outside,
+      found: !!g, at: g && g.x === w.southSlots()[3].x && g.z === w.southSlots()[3].z, k: g?.slot?.k, n: w.gyms.length, inside, outside,
       protect: !!g?.protect?.length && g.protect.every(b => b.x0 >= box.x0 && b.x1 <= box.x1 && b.z0 >= box.z0 && b.z1 <= box.z1),
       protectedHere: g && w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g,
     };
@@ -234,8 +236,8 @@ export default async function ({ browser, base, t }) {
     t.ok(so.spotDist >= 12, `seed ${seed}: south slots stay ${so.spotDist} blocks from every treasure spot`);
   }
   const tg = q.gym;
-  t.ok(tg.found && tg.at && tg.k === 5 && tg.n === 28 && tg.protect && tg.protectedHere, `a test-only gym with slot 5 is built in south slot 5 and protected (${JSON.stringify(tg)})`);
-  t.ok(tg.inside > 0 && tg.outside === 0, `the slot 5 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
+  t.ok(tg.found && tg.at && tg.k === 8 && tg.n === NGYMS + 1 && tg.protect && tg.protectedHere, `a test-only gym with slot 8 is built in south slot 8 and protected (${JSON.stringify(tg)})`);
+  t.ok(tg.inside > 0 && tg.outside === 0, `the slot 8 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
   t.ok(JSON.stringify(r.start) === JSON.stringify(START), `the start point did not move ${JSON.stringify(r.start)}`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();

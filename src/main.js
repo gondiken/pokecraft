@@ -623,6 +623,7 @@ function breakBlock(hit = target.block) {
     sound.play('cube');
     game.ui.toast(`You got a ${BLOCKS[hit.id].name}! You have ${n}.`);
   }
+  if (natural) game.gymLive.broke(hit); // T33: ingredients for an open Restaurant order
   // Natural leaves and gold ore sometimes hide a Capture Cube.
   const find = !natural ? 0 : hit.id === B.LEAVES ? 0.1 : hit.id === B.GOLD_ORE ? 0.35 : 0;
   if (Math.random() < find) {
@@ -720,6 +721,8 @@ function talkTo(npc) {
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
   if (npc.disguise && game.npcs.reveal(npc)) ui.toast(`That stone pillar was ${npc.name}!`);
+  if (game.gymLive.talk(npc)) return; // T33: the Restaurant's Chef and customers
+  if (npc.kind === 'guest') { ui.toast(`${npc.name}: ${npc.def?.line || 'Hello!'}`); return; } // T33: people with one line
   const list = trainersOf(gym), where = gym.leaderWhere || 'at the back';
   if (npc.kind === 'trainer') {
     const i = npc.index || 0;
@@ -888,6 +891,7 @@ game.onBattleEnd = (result, opts) => {
       }
     }
   }
+  game.gymLive.battleEnded(result, opts); // T33
   game.ui.renderHud();
   save(true);
   afterOverlay();
@@ -1008,15 +1012,16 @@ function updateTarget() {
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
+  const talk = target.npc && game.gymLive.talkPrompt(target.npc); // T33
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
-    : target.npc ? `${target.npc.title} · ${how} to ${target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge'}`
+    : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
       : target.block?.id === B.BED && game.place === MAIN ? `Bed · ${touchMode ? 'tap' : 'press E'} to sleep`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
-    : target.npc ? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!')
+    : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!'))
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
       : target.block?.id === B.WAKE_STONE ? 'Wake up!' : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31

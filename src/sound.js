@@ -182,6 +182,7 @@ const SOUNDS = {
   // T21: Cozy (a soft, warm two-note "mmm") and Treasure (a little coin jingle).
   'fx:cozy': () => notes([523, 659], 0.12, { len: 0.2, type: 'triangle', vol: 0.14 }),
   'fx:treasure': () => { bell(1760, 0, 0.25, 0.14); bell(2349, 0.08, 0.3, 0.12); bell(2637, 0.16, 0.35, 0.1); },
+  'fx:food': () => { tone(330, { len: 0.06, type: 'square', vol: 0.12 }); tone(262, { at: 0.09, len: 0.08, type: 'square', vol: 0.12 }); }, // T33: a quiet nom nom
   // The golden hour starts: a soft tick-tock, 8 ticks over about 3 seconds, the last two quieter.
   ticktock: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 1100 : 1500, { at: i * 0.42, len: 0.025, type: 'square', vol: i >= 6 ? 0.04 : 0.08 }); },
   // A Clock Tower door opens: two soft bell notes.
@@ -193,6 +194,11 @@ const SOUNDS = {
   laserflip: () => { tone(500, { len: 0.1, vol: 0.2, slide: 900, type: 'square' }); tone(1000, { at: 0.09, len: 0.06, vol: 0.12, type: 'square' }); },
   // T23: a golden key chest opens (short rising sparkle).
   keyfound: () => notes([1047, 1319, 1568, 2093], 0.07, { len: 0.2, type: 'sine', vol: 0.22 }),
+  // T33 Restaurant: the pot starts to cook, turns golden (kitchen-timer ding), burns, and the dish is served.
+  potbubble: () => { for (let i = 0; i < 4; i++) tone(200 + i * 40, { at: i * 0.08, len: 0.05, type: 'sine', vol: 0.15, slide: 120 }); },
+  cookding: () => bell(1568, 0, 0.5, 0.2),
+  potburnt: () => { noise({ freq: 400, len: 0.3, vol: 0.2 }); tone(300, { at: 0.1, len: 0.3, slide: -200, type: 'triangle', vol: 0.2 }); },
+  yum: () => notes([523, 659, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.25 }),
   // T25 big-decision moves (short and quiet).
   'kind:rally': () => notes([392, 523, 659, 784], 0.08, { len: 0.14, type: 'triangle', vol: 0.26 }),
   'kind:shield': () => { bell(660, 0, 0.5, 0.18); tone(440, { at: 0.05, len: 0.35, vol: 0.14, slide: 440, type: 'sine' }); },

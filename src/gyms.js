@@ -282,6 +282,52 @@ export const GYMS = [
     intro: ['You found all three golden keys!', 'My treasures are the strongest of all. Ready?'],
     lose: 'What a treasure of a trainer! The Jackpot Badge is yours.',
   },
+  // ---- T33: the Restaurant (south slot 5). The Chef gives an order, you find the ingredients, cook and serve. ----
+  {
+    id: 'food', type: 'food', name: 'Restaurant', badge: 'Spoon Badge', slot: 5, build: 'restaurant', live: 'restaurant',
+    access: { when: 'menu' }, leaderWhere: 'in the kitchen',
+    welcome: 'Welcome to the Restaurant! Beat the waiter and the cook, then Chef Basil has a job for you.',
+    // game.keys entries: the open order's state, and the ingredients you found (kept forever).
+    keys: ['order', 'cooked', 'served', 'berry', 'honey', 'pinenut', 'glowcap', 'snow', 'cactus', 'starsugar'],
+    leader: { name: 'Chef Basil', look: 'chef', colors: { shirt: 0xffffff, pants: 0x2a2a3a, hair: 0x8a4a2a, skin: 0xf2c79a } },
+    trainers: [
+      { name: 'Waiter Olive', colors: { shirt: 0xffffff, pants: 0x1a1a1a, hair: 0x6a3a1a, skin: 0xe8b98a },
+        team: [['makiroll', 46], ['bitesize', 46], ['noodlet', 47]], intro: ['A table for one? Your table is... a battle!'] },
+      { name: 'Cook Benny', look: 'chef', colors: { shirt: 0xffffff, pants: 0x4a4a5a, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['noodlet', 47], ['scoopsy', 47], ['sushisail', 47]], intro: ['Careful, the kitchen is hot! Let us battle!'] },
+    ],
+    leaderTeam: [['scoopsy', 47], ['sushisail', 47], ['pastapus', 48, ['foodfight', 'stickygoo', 'bodyslam', 'dinnerbell']],
+      ['bigbite', 48, ['flarekick', 'bodyslam', 'picnicday', 'megamunch']]],
+    intro: ['Mmm, Berry Pie! You cook like a real chef.', 'Now let us see if your team is as good as your cooking!'],
+    lose: 'Delicious battle! The Spoon Badge is yours.',
+    // Ingredients: emoji, how the toast says it, where it is (Chef tips), and the natural blocks that give it.
+    // The Chef only picks a rematch dish whose ingredients exist on this map (restaurant.js sourcesFound).
+    ingredients: {
+      berry: { emoji: '🫐', name: 'berry', found: 'a berry', hint: 'tree leaves', blocks: ['LEAVES'] },
+      honey: { emoji: '🍯', name: 'honey', found: 'some honey', hint: 'flower bushes in meadows', blocks: ['FLOWER_BUSH'] },
+      pinenut: { emoji: '🌰', name: 'pine nut', found: 'a pine nut', hint: 'pine trees where it is cold', blocks: ['PINE_LEAVES'] },
+      glowcap: { emoji: '🍄', name: 'glowcap', found: 'a glowcap', hint: 'glowing mushrooms in caves', blocks: ['GLOWCAP'] },
+      snow: { emoji: '❄️', name: 'snow', found: 'some snow', hint: 'snowy mountains', blocks: ['SNOW', 'ICE'] },
+      cactus: { emoji: '🌵', name: 'cactus fruit', found: 'a cactus fruit', hint: 'cactuses in the desert', blocks: ['CACTUS'] },
+      starsugar: { emoji: '✨', name: 'star sugar', found: 'some star sugar', hint: 'star crystals on high peaks and in big caves', blocks: ['CRYSTAL'] },
+    },
+    // The menu. Dish 0 is the badge dish (only ingredients every map has); each rematch win moves on to the next dish
+    // that can be made on this map (1..5, then round again). time = seconds the pot stays golden (harder dishes: shorter).
+    menu: [
+      { id: 'berrypie', name: 'Berry Pie', emoji: '🥧', table: 2, ingredients: ['berry', 'honey', 'pinenut'], time: 4 },
+      { id: 'glowsoup', name: 'Glowcap Soup', emoji: '🍲', table: 4, ingredients: ['glowcap', 'pinenut'], time: 3.5 },
+      { id: 'snowcone', name: 'Snow Cone', emoji: '🍧', table: 1, ingredients: ['snow', 'berry', 'honey'], time: 3.2 },
+      { id: 'cactussalad', name: 'Cactus Salad', emoji: '🥗', table: 3, ingredients: ['cactus', 'glowcap', 'honey'], time: 3 },
+      { id: 'starsundae', name: 'Star Sundae', emoji: '🍨', table: 2, ingredients: ['snow', 'starsugar', 'berry'], time: 2.7 },
+      { id: 'rainbowfeast', name: 'Rainbow Feast', emoji: '🍱', table: 4, ingredients: ['berry', 'honey', 'pinenut', 'glowcap', 'snow', 'cactus', 'starsugar'], time: 2.5 },
+    ],
+    customers: [
+      { table: 1, name: 'Pip', colors: { shirt: 0x6ac8ff, pants: 0x3a4a8a, hair: 0xf0c040, skin: 0xf2d0b0 }, line: "I'm so hungry I could eat a whole cloud!" },
+      { table: 2, name: 'Granny Rosa', colors: { shirt: 0xc05a8a, pants: 0x4a3a5a, hair: 0xe8e8e8, skin: 0xe8b98a }, line: 'This is my favourite restaurant. The Chef trains creatures too!' },
+      { table: 3, name: 'Max', colors: { shirt: 0x5ab04a, pants: 0x3a3a3a, hair: 0x2a1a10, skin: 0xc68a5a }, line: 'The Chef finds food all over the world. Leaves, caves, snow...' },
+      { table: 4, name: 'Tilly', colors: { shirt: 0xffd23a, pants: 0x8a4ab0, hair: 0x8a3a1a, skin: 0xd9a066 }, line: 'Mmm, something smells yummy in the kitchen!' },
+    ],
+  },
 ];
 
 // Old gyms have one `trainer` + `trainerTeam`; T19+ gyms have `trainers` (each with its own team).
