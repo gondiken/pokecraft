@@ -16,6 +16,7 @@ const WOOL_TYPES = [
   'sky', 'slime', 'light', 'paper', // T10 gyms: ids 49-52 (see WOOL below)
   'time', 'camo', 'cyber', // T18: ids 54-56
   'cozy', 'treasure', // T21: ids 68-69
+  'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -25,6 +26,7 @@ const WOOL_RGB = {
   sky: [150, 210, 255], slime: [120, 220, 110], light: [255, 228, 110], paper: [250, 248, 240],
   time: [222, 170, 80], camo: [110, 150, 80], cyber: [40, 52, 80],
   cozy: [200, 110, 90], treasure: [230, 185, 60],
+  food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -60,12 +62,13 @@ export const B = {
   KEY_CHEST: 73, VAULT_DOOR: 74,
   // 75-77: T29 mission blocks (limited, only from Champion missions). Next free id: 78.
   STAR_BLOCK: 75, RAINBOW_BRICK: 76, GIANT_TROPHY: 77,
-  // 78: T31 Wake Stone (only in realms, never in the main world). Next free id: 79.
+  // 78: T31 Wake Stone (only in realms, never in the main world). 79-82: food / squad / dream / parkour wool (wave 11).
+  // Reserved for wave 11: 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
   WAKE_STONE: 78,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });

@@ -19,47 +19,60 @@ export const TYPE_COLORS = {
   cyber: 'repeating-linear-gradient(90deg,#8ff4ff 0 6px,#5ab8ff 6px 7px)',
   cozy: 'repeating-linear-gradient(45deg,#ffb48a 0 6px,#ffd8b8 6px 12px)',
   treasure: 'linear-gradient(135deg,#fff3a8,#ffd23a 45%,#ffb020 55%,#fff0a0)',
+  // Wave 11 (T33-T36)
+  food: 'linear-gradient(90deg,#ff6a4a 50%,#ffd24a 50%)',
+  squad: 'repeating-linear-gradient(90deg,#ff9f5a 0 5px,#5ab0e0 5px 10px,#8ad46a 10px 15px)',
+  dream: 'linear-gradient(135deg,#b49cff,#ffb3e6,#9ce8ff)',
+  parkour: 'linear-gradient(180deg,#ff5a4a 0 40%,#ffffff 40% 55%,#ff5a4a 55%)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
   normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5, treasure: 0.5 },
-  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2 },
+  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2, food: 2 },
   water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2 },
   grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5 },
-  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5 },
-  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5 },
-  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5 },
-  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2 },
-  ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5, squad: 2 },
+  rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5, parkour: 0.5 },
+  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5, food: 0.5 },
+  bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2, food: 2 },
+  ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0, squad: 0.5 },
   // New types
-  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5, camo: 0.5 },
+  mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5, camo: 0.5, dream: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5, paper: 2 },
-  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2, cozy: 2, treasure: 2 },
+  toxic: { grass: 2, pixie: 2, toxic: 0.5, rock: 0.5, ghost: 0.5, bone: 0.5, metal: 0, light: 2, cozy: 2, treasure: 2, food: 2 },
   pixie: { drake: 2, ghost: 2, fire: 0.5, metal: 0.5, toxic: 0.5, light: 0.5 },
   drake: { drake: 2, bone: 2, metal: 0.5, pixie: 0 },
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
   // Cosmic beats sound, sound beats mind, mind beats cosmic.
   cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5, light: 2, time: 2 },
-  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5, camo: 2 },
+  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5, camo: 2, squad: 2 },
   // Bone and Alien: skeletons are not scared of ghosts or aliens; aliens love normal creatures' surprise.
   bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
   sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
-  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2 },
-  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2 },
+  slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2, parkour: 2 },
+  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2, dream: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
   // Time, Camo, Cyber: time rusts metal, crumbles old paper and dries up slime; camo sneaks up on bugs and
   // minds can't find it; cyber hacks metal and minds and goes paperless.
-  time: { metal: 2, paper: 2, slime: 2, time: 0.5, cosmic: 0.5, ghost: 0.5 },
+  time: { metal: 2, paper: 2, slime: 2, time: 0.5, cosmic: 0.5, ghost: 0.5, dream: 2 },
   camo: { bug: 2, mind: 2, camo: 0.5, light: 0.5, metal: 0.5 },
   cyber: { metal: 2, mind: 2, paper: 2, cyber: 0.5, grass: 0.5, water: 0.5, treasure: 2 },
   // Cozy and Treasure: cozy warms up ice, nothing is scary at home, and you put the screens away to cuddle;
   // treasure distracts drakes and pixies with gold and outshines a blanket.
   // Cozy beats cyber, cyber beats treasure, treasure beats cozy.
-  cozy: { ice: 2, ghost: 2, cyber: 2, cozy: 0.5 },
+  cozy: { ice: 2, ghost: 2, cyber: 2, cozy: 0.5, dream: 0.5 },
   treasure: { drake: 2, pixie: 2, cozy: 2, treasure: 0.5 },
+  // Wave 11: Food, Squad, Parkour, Dream. A pizza party breaks up the squad, a crowd blocks the runner, a runner
+  // jumps right out of a dream, and dream food is gone when you wake up. Many eyes find a camo creature;
+  // a real runner beats a video game; dreams are more colourful than rainbows.
+  // Food beats squad, squad beats parkour, parkour beats dream, dream beats food.
+  food: { squad: 2, alien: 2, treasure: 2, food: 0.5, bug: 0.5, toxic: 0.5, metal: 0.5 },
+  squad: { parkour: 2, camo: 2, normal: 2, squad: 0.5, sky: 0.5, slime: 0.5 },
+  parkour: { dream: 2, bone: 2, cyber: 2, parkour: 0.5, sky: 0.5, ghost: 0.5, slime: 0.5 },
+  dream: { food: 2, time: 2, rainbow: 2, dream: 0.5, light: 0.5, cyber: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 

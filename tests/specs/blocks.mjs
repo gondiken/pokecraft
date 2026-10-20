@@ -28,7 +28,7 @@ export default async function ({ browser, base, t }) {
         noLight: !!BLOCKS[B[k]].noLight, glow: !!BLOCKS[B[k]].glow, wallText: !!BLOCKS[B[k]].wallText })),
       vault: ['KEY_CHEST', 'VAULT_DOOR'].map((k, i) => ({ id: B[k] === 73 + i, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), limited: !!BLOCKS[B[k]].limited, tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText })),
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
-      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69)),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82)),
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),
