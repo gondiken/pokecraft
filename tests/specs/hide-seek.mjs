@@ -76,7 +76,7 @@ export default async function ({ browser, base, t }) {
   t.ok(Number.isFinite(c1) && c2 <= c1, `the number counts down (${c1} -> ${c2})`);
   const f = await A.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0];
     return { frozen: g.hideSeek.frozen, playing: g.playing(), hiding: a.hiding, vis: a.model.visible, tag: a.tag.visible }; });
-  t.ok(f.frozen && !f.playing && f.hiding && !f.vis, 'the seeker is frozen and cannot play; the hider is hidden from them');
+  t.ok(f.frozen && !f.playing && f.hiding && !f.vis, `the seeker is frozen and cannot play; the hider is hidden from them (${JSON.stringify(f)})`);
   t.ok(await B.evaluate(() => !window.pokecraft.hideSeek.frozen && document.getElementById('hs-dark').classList.contains('hidden')), 'the hider sees no dark screen');
   await shot(A, 't30-dark.png'); await shot(B, 't30-hider.png');
   const blocked = await A.evaluate(async () => {

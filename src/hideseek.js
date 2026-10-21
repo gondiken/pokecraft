@@ -45,7 +45,8 @@ export function createHideSeek(game) {
     a.hiding = on;
     if (a.tag) a.tag.visible = !on;
     if (a.lead) a.lead.visible = !on && !a.isDueling && !a.rideModel;
-    a.model.visible = !(on && s?.phase === 'hide');
+    a.unseen = on && s?.phase === 'hide'; // Avatar.update draws the model from this
+    a.model.visible = !a.unseen && a.here !== false;
   }
 
   function flags() {

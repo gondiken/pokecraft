@@ -86,6 +86,7 @@ class Avatar {
     this.tag = nameTag(info.name); // T30: hide and seek hides it from the seeker
     this.model.add(this.tag);
     this.hiding = false; // T30
+    this.unseen = false; // T30: the hider during the head start is not drawn for the seeker
     this.place = info.place || 'main'; // T31: where this player is ('main' or a realm id)
     this.here = true;                   // T31: in the same place as you (else hidden, not pickable)
     this.model.userData.avatar = this;
@@ -179,7 +180,7 @@ class Avatar {
     }
     this.tag.visible = !this.hiding; // T30
     if (this.lead && this.hiding) this.lead.visible = false;
-    this.model.visible = this.here; // T31: a player in another place is not drawn
+    this.model.visible = this.here && !this.unseen; // T31: a player in another place is not drawn (T30: nor a hider in the head start)
     if (!this.here) { if (this.lead) this.lead.visible = false; if (this.rideModel) this.rideModel.visible = false; }
     else { if (this.rideModel) this.rideModel.visible = true; if (this.lead && !this.hiding) this.lead.visible = !this.isDueling && !this.rideModel; }
   }
