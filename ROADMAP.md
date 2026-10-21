@@ -1154,19 +1154,19 @@ step just shows the round again). A rematch starts with a longer dance. The pads
 building, so no world block changed; badges, the beaten trainer and rematch wins of existing players stay. Other old
 plain gyms could get a makeover the same way later.
 
-## Wave 12 · More new types (owner, 2026-10-21; the picks are not decided yet)
+## Wave 12 · Racer, Ball, Tiny, Pirate (owner, 2026-10-21: picked)
 
-**Goal:** 36 badges (a 9 x 4 grid in the HUD; maybe 40 = 10 x 4, the owner will confirm). Today there are 31 gyms; the
-Doodle wave (13) adds one, so wave 12 adds **four** new types (or eight for 40), each with a gym about 2 levels above
-the one before (shared cost per type as in wave 11: 7 creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book,
-README). Every new gym should be something you **do** (riding was the big hit: moving around beats more puzzles).
+**Four new types**, each with a gym about 2 levels above the one before (shared cost per type as in wave 11: 7
+creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book, README). Every new gym should be something you **do**
+(riding was the big hit: moving around beats more puzzles). 31 gyms today, 35 after wave 12.
+**Room on the map:** only south slots 8 and 9 are free (slot 3 stays spare), and waves 12-14 add up to 8 gyms, so the
+wave 12 plan starts by deciding where they go (another strip of new land like T32, or realms like Portal's Swirl).
 
 **Dropped** (the son did not like them): Magnet, Digger, Builder, Mirror. **Music** too: Sound already exists (its
-gym got the dance-off makeover instead, see above).
+gym got the dance-off makeover instead, see above). Knight and Ninja moved to the backlog (2026-10-21).
 
-**Candidates** (the owner and son pick; the first three were their early favourites, then they liked the rest too):
 - **🏎️ Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. Gym: a race
-  against the leader around a track (new NPC path code). Overlaps a little with Funfair's rides.
+  against the leader around a track (new NPC path code). Overlaps a little with Funfair's rides (wave 13).
 - **⚽ Ball:** the creatures are balls. Gym: a football pitch and a basketball court; score to win. Needs a ball that
   rolls and bounces (new physics); probably the biggest gym so far.
 - **🐜 Tiny:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding in small places
@@ -1176,6 +1176,15 @@ gym got the dance-off makeover instead, see above).
   giant remote), a tap that makes a river you float down on a bottle cap, a sleeping cat to tiptoe past (running wakes
   it a bit: wait, never a fail), a mouse hole and a keyhole as secret ways, crumbs for bonus cubes, the leader on a
   giant cookie on the table.
+- **🏴‍☠️ Pirate:** a parrot captain, a crab with a hook claw, a ship in a bottle, an octopus with a spyglass. Gym:
+  islands at sea; a cannon shoots you from island to island, swing on ropes, board the leader's ship (ships and
+  cannons, not digging like Treasure).
+
+## Wave 13 · Portal, Surprise, Funfair (owner, 2026-10-21: picked)
+
+Three more types and gyms (38 gyms after wave 13, 39 if the Doodle Wizard in wave 14 gives a badge; the badge goal
+(36 = 9 x 4 or 40 = 10 x 4 in the HUD) is still to be confirmed: 40 would need one more type somewhere).
+
 - **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
   Gym: the Portal House, a chain of portal rooms to the leader (teleports are cheap). Three ways to place it:
   (1) its gym in the Dream realm (a sleep-only secret gym; needs "realms together" for friends), (2) portals only as a
@@ -1183,25 +1192,17 @@ gym got the dance-off makeover instead, see above).
   time through a stone portal frame in the main world (no Bed needed), back through the same portal or by losing a
   battle; later a special portal from the Swirl into the Dream. Option 3 reuses T31's realm code (a second `REALMS`
   entry) and keeps the main map's free slots.
-- **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
-  castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
-  wall, the leader in the throne room.
-- **🏴‍☠️ Pirate:** a parrot captain, a crab with a hook claw, a ship in a bottle, an octopus with a spyglass. Gym:
-  islands at sea; a cannon shoots you from island to island, swing on ropes, board the leader's ship (ships and
-  cannons, not digging like Treasure).
-- **🎡 Funfair ("lunapark"):** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking ticket. Gym: the
-  Fair: trampolines, a carousel, bumper cars and a roller-coaster ride to the leader.
-- **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
-  (a bit like hide and seek).
 - **🎁 Surprise:** gift boxes, a jack-in-the-box, a piñata; every wild one starts as a box and you only see what it is
   when it opens. Gym: the Room of Doors, every door a surprise (a slide, a ball pit, a confetti room, a trainer). Fits
-  wave 14's gifts.
+  wave 15's gifts.
+- **🎡 Funfair ("lunapark"):** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking ticket. Gym: the
+  Fair: trampolines, a carousel, bumper cars and a roller-coaster ride to the leader.
 
 **More badges:** the badge row is just a list, so 10 x 4 is a small HUD change; the Champion's Tower, `REMATCH_CAP` and
 Coach Dex move up each time so the Tower stays the hardest. A longer road to the Tower makes "wild creatures grow with
-your team" (wave 14) more useful, maybe sooner.
+your team" (wave 15) more useful, maybe sooner.
 
-## Wave 13 · Doodle, or "custom gym" (owner, 2026-10-20: this is wave 13; the design option below is still open)
+## Wave 14 · Doodle, or "custom gym" (owner, 2026-10-21: moved from wave 13 to wave 14; the design option below is still open)
 
 Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of a tower (each floor: copy a
 picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
@@ -1239,7 +1240,7 @@ wool ids instead of a palette number):
 
 ---
 
-## Wave 14 · Sharing and the world around you (owner, 2026-10-20)
+## Wave 15 · Sharing and the world around you (owner, 2026-10-20; wave 15 since 2026-10-21)
 
 - **Gifts and trading:** give a friend blocks or a Capture Cube (arrives as a present box), and trade creatures
   between players.
@@ -1253,13 +1254,13 @@ wool ids instead of a palette number):
   wake-up reward), **your creatures talk** (short speech bubbles from your team, only in dreams), **dream blocks** to
   bring home (cotton candy, a floating star block, a glowing cloud; `limited` blocks like the gems), a friendly **"bad
   dream" corner** (a grumpy fog patch with a shy creature that cheers up when you beat it). Best value first: new dream
-  every night, dream rules, talking creatures. With a Portal realm (wave 12) "Dreaming together" becomes **"realms
+  every night, dream rules, talking creatures. With a Portal realm (wave 13) "Dreaming together" becomes **"realms
   together"**.
 - **Wild creatures grow with your team** (owner request, 2026-10-19): today a wild creature's level comes only from its
   distance to the start (`far / 10` in `creatures.js`) plus +10 after 16 badges; it should also follow your team's
   level so the world stays a challenge.
 
-## Wave 15 · Eggs, hatching and raising (owner, 2026-10-20: its own wave, may get complicated)
+## Wave 16 · Eggs, hatching and raising (owner, 2026-10-20: its own wave, may get complicated; wave 16 since 2026-10-21)
 
 **Eggs:** found in chests and mission rewards, or left in a cozy home by two creatures of one type; carried in a
 team slot and hatched by walking; the baby is special from level 1: the home egg knows one move from a parent (more
@@ -1288,7 +1289,7 @@ over the game); "raising" is to be planned when the wave starts.
 Owner likes these, but not now: **home helpers** (creatures left at home do jobs: fire keeps
 the fireplace lit, grass grows flowers), **creature helpers** (fire lights lamps, rock digs
 faster, sound reveals hidden ore), **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
-(Gifts, trading, photo mode, dreaming together and growing wild creatures moved to wave 14, eggs to wave 15.)
+(Gifts, trading, photo mode, dreaming together and growing wild creatures moved to wave 15, eggs to wave 16.)
 
 **Fun ideas** (2026-10-21, after riding was a hit; not decided): **a buddy that follows you** (your lead creature walks,
 swims or flies beside you, sits when you stop, tap to pet; friends see it), **traits that do something** (Glider:
@@ -1299,6 +1300,13 @@ races** (fly or ride through rings against the clock, alone or racing a friend; 
 together** (a friend sits behind you, or side by side), **hats and costumes** for creatures and the player (could be
 what the rare mission blocks buy), **tricks** (teach your buddy a spin or a dance to show off), **events now and then**
 (a parade of rare creatures, a shooting-star night, a festival day). Suggested order: buddy, bouncy blocks, more traits.
+
+**Types for later** (owner, 2026-10-21: moved out of wave 12; same per-type cost as wave 11):
+- **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
+  castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
+  wall, the leader in the throne room.
+- **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
+  (a bit like hide and seek).
 
 **Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
 what they unlock or are used for is still open.
