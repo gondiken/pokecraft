@@ -88,15 +88,10 @@ export const PIECES = [
 
 // Checkpoints: the landing piece, the spot of the flag, the direction you face when sent back, the trainer (index in the
 // gym's trainers) whose landing it is, and a hint shown once per session the first time you stand there.
-export const FLAGS = [
-  { piece: 'S0', at: [15, -14], way: [0, 1],  trainer: null, hint: 'Run (Shift, or push the stick all the way) for long jumps. Crumbly blocks fall: keep moving!' },
-  { piece: 'L1', at: [14, 15],  way: [-1, 0], trainer: null, hint: 'Blink blocks come and go. When yours flashes, jump to the next one!' },
-  { piece: 'L2', at: [-13, 15], way: [-1, -1], trainer: 0,   hint: 'Red zap tiles send you back. Cross them while they are dark!' },
-  { piece: 'L3', at: [-16, -17], way: [1, 0], trainer: null, hint: 'Pushers push you off the beam. Go when they pull back!' },
-  { piece: 'L4', at: [11, -9],  way: [0, 1],  trainer: null, hint: 'Jump on a spring to fly up high!' },
+export const FLAGS = [ // only four (owner: fewer flags make it harder): the start, the two trainers' landings, the finish
+  { piece: 'S0', at: [15, -14], way: [0, 1],  trainer: null, hint: 'Run (Shift, or push the stick all the way) for long jumps. Crumbly blocks fall and blink blocks come and go: keep moving!' },
+  { piece: 'L2', at: [-13, 15], way: [-1, -1], trainer: 0,   hint: 'Red zap tiles send you back: cross while they are dark. Pushers push: go when they pull back!' },
   { piece: 'L5', at: [10, 8],   way: [-1, 1], trainer: 1,    hint: 'Now everything is mixed up. Take your time!' },
-  { piece: 'L6', at: [-16, 15], way: [0, -1], trainer: null, hint: 'Almost at the top. Watch every block!' },
-  { piece: 'L7', at: [-14, -17], way: [1, 0], trainer: null, hint: 'The last run! You can do it!' },
   { piece: 'F',  at: [15, -16], way: [1, 0],  trainer: null, hint: 'You made it to the top! The green pad takes you back down.' },
 ];
 const LAMP_PIECES = ['S0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
@@ -293,11 +288,9 @@ export class CourseLive {
 
   beaten(i) { return i == null || this.game.beaten.includes(trainerKey(this.gym.def, i)); }
 
-  // Where a fall sends you: the furthest flag you stood on, but never past a landing whose trainer is not beaten yet.
+  // Where a fall sends you: the furthest flag you stood on.
   target() {
-    const cps = this.gym.checkpoints;
-    for (let j = 1; j <= this.reached; j++) if (!this.beaten(cps[j].trainer)) return j;
-    return this.reached;
+    return this.reached; // the leader only battles once both trainers are beaten, so a flag never needs to wait for them
   }
 
   indexAt(x, y, z) { return this.gym.checkpoints.findIndex(c => c.cell[0] === x && c.cell[1] === y && c.cell[2] === z); }
@@ -344,6 +337,14 @@ export class CourseLive {
     const g = this.game, p = g.player;
     this.clock += dt;
     if (!p) return;
+    // Walked right out of the course (the mat is inside, so a fall is not leaving): the flags start over.
+    const a = this.gym.area;
+    if (this.reached > 0 && !g.inBattle && (p.pos.x < a.x0 || p.pos.x >= a.x1 + 1 || p.pos.z < a.z0 || p.pos.z >= a.z1 + 1)) {
+      this.reached = 0;
+      this.last = -1;
+      this.draw();
+      g.ui?.toast('You left the Obstacle Course. Next time you start from the beginning!');
+    }
     // A shove in progress (walls stop it).
     if (this.shove) {
       const sh = this.shove, step = Math.min(sh.left, TIMES.push.speed * dt);
@@ -437,7 +438,7 @@ export class CourseLive {
       this.wasAir = false;
       this.lastTop = null;
       sound.play('whoosh');
-      ui?.toast(this.game.badges?.includes(g.def.id) ? 'Great run! Come back any time.' : 'Back on the ground. Your flag waits for you!');
+      ui?.toast(this.game.badges?.includes(g.def.id) ? 'Great run! Come back any time.' : 'Back on the ground! Leave the course and your flags start over.');
       return;
     }
     if (id === B.ZAP_ON) { this.sendBack('zap'); return; }
