@@ -46,7 +46,7 @@ const installHelpers = page => page.evaluate(async () => {
   H.check = async index => {
     const [name, start] = H.items()[index];
     await H.frames(1);
-    const idle = r.info.render.calls;
+    const idle = r.info.render.calls, geos0 = r.info.memory.geometries;
     fx.hold = 0.5;
     const ps = start();
     await H.frames(2);
@@ -59,6 +59,7 @@ const installHelpers = page => page.evaluate(async () => {
     await Promise.all(ps);
     await H.frames(2);
     res.after = fx.root.children.length;
+    res.geos = r.info.memory.geometries - geos0;
     return res;
   };
   return H.items().length;
@@ -103,6 +104,7 @@ export default async function ({ browser, base, t }) {
     if (r.points > 300) problems.push(`${r.points} points`);
     if (r.calls > 12) problems.push(`${r.calls} extra draw calls`);
     if (r.after !== 0) problems.push('not removed');
+    if (r.geos > 0) problems.push(`${r.geos} geometries left`);
     if (problems.length) bad.push(`${r.name}: ${problems.join(', ')}`);
   }
   t.ok(!bad.length, `all ${count} effects are added, finite, inside the budget and removed ${bad.join(' | ')}`);
