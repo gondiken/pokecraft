@@ -157,7 +157,8 @@ export class UI {
   }
 
   setGuide(text) {
-    if (this.guide.textContent !== text) this.guide.textContent = text;
+    this.guideText = text;
+    this.renderGuide();
   }
 
   // T23 key compass: null hides it; otherwise { period, found } (seconds per glint, keys found so far).
@@ -188,24 +189,46 @@ export class UI {
     c.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('got', i < state.found));
   }
 
-  // T33: the open order's ingredients in the HUD: [{ emoji, name, got, period }] or null. A missing one glows every `period`
-  // seconds (faster when nearer), or stays dim when none is near; a found one has a tick.
+  // T33: the open order's ingredients: [{ emoji, name, got, period }] or null. A missing one glows every `period` seconds
+  // (faster when nearer) or stays dim when none is near. The glow goes on the guide line's own emojis; only when the guide
+  // shows no order (a rematch dish while it points at another gym) do they get their own row (#food-compass, ticks on found ones).
   setFoodCompass(list) {
-    const c = this.foodCompass ??= document.getElementById('food-compass');
-    if (!c) return;
-    if (!list) { if (this.foodShown !== null) { c.classList.add('hidden'); this.foodShown = null; } return; }
-    const tag = list.map(i => `${i.emoji}${i.got ? '+' : i.period == null ? '-' : Math.round(i.period * 10)}`).join();
-    if (tag === this.foodShown) return;
-    this.foodShown = tag;
-    c.classList.remove('hidden');
-    c.replaceChildren(...list.map(i => {
+    this.food = list;
+    this.renderGuide();
+  }
+
+  renderGuide() {
+    const text = this.guideText ?? '', list = this.food;
+    const missing = (list || []).filter(i => !i.got);
+    const inGuide = !!list && missing.every(i => text.includes(i.emoji));
+    const tag = `${text}|${(list || []).map(i => `${i.emoji}${i.got ? '+' : i.period == null ? '-' : Math.round(i.period * 10)}`).join()}`;
+    if (tag === this.guideTag) return;
+    this.guideTag = tag;
+    const chip = i => {
       const s = document.createElement('span');
       s.className = `food ${i.got ? 'got' : i.period == null ? 'far' : 'near'}`;
       s.textContent = i.emoji;
       s.title = i.got ? `You have ${i.name}` : i.period == null ? `No ${i.name} near here` : `${i.name} is near! It glows faster when you get closer.`;
       if (!i.got && i.period != null) s.style.setProperty('--glint', `${(Math.round(i.period * 10) / 10).toFixed(1)}s`);
       return s;
-    }));
+    };
+    if (!inGuide || !missing.length) this.guide.textContent = text;
+    else { // split the text at the missing ingredients' emojis and make those glow
+      const nodes = [];
+      let rest = text;
+      for (;;) {
+        let at = -1, hit = null;
+        for (const i of missing) { const k = rest.indexOf(i.emoji); if (k >= 0 && (at < 0 || k < at)) { at = k; hit = i; } }
+        if (!hit) { nodes.push(rest); break; }
+        nodes.push(rest.slice(0, at), chip(hit));
+        rest = rest.slice(at + hit.emoji.length);
+      }
+      this.guide.replaceChildren(...nodes);
+    }
+    const row = this.foodCompass ??= document.getElementById('food-compass');
+    if (!row) return;
+    row.classList.toggle('hidden', !list || inGuide);
+    if (list && !inGuide) row.replaceChildren(...list.map(chip));
   }
 
   // T30 hide and seek: the warmer / colder compass, the score line and the seeker's dark screen.

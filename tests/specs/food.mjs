@@ -298,6 +298,10 @@ export default async function ({ browser, base, t }) {
     g.party = ['titanox', 'spectrion', 'stormwyvern'].map(s => makeCreature(s, 70));
     g.badges = GYMS.filter(x => x.id !== 'food').map(x => x.id);
     g.world.foodSources = new Set(['berry', 'honey', 'pinenut', 'glowcap', 'snow', 'cactus', 'starsugar']); // every dish can be made
+    // The test platform (helpers' platform() at the spawn point) must not touch a gym or the tower (on some maps the tower is next to the start).
+    const boxes = [...g.world.gyms, g.world.tower].flatMap(q => q?.protect || []);
+    const clear = (x, z) => boxes.every(b => x + 8 < b.x0 || x - 6 > b.x1 || z + 6 < b.z0 || z - 6 > b.z1);
+    for (let r = 0; r < 60 && !clear(Math.floor(g.spawnPoint.x), Math.floor(g.spawnPoint.z)); r += 4) g.spawnPoint.x += 4;
   });
   const toasts = () => page.evaluate(() => window.__toasts.join(' | '));
   const clearToasts = () => page.evaluate(() => { window.__toasts.length = 0; });
@@ -397,17 +401,26 @@ export default async function ({ browser, base, t }) {
     if (id != null) g.world.set(x, y, z, id, !natural);
     const L = g.gymLive.of('food');
     L.sniff();
+    g.updateGuide();
     const el = document.getElementById('food-compass');
-    return { list: L.sniffed, shown: !el.classList.contains('hidden'), html: el.innerHTML };
+    return { list: L.sniffed, shown: !el.classList.contains('hidden'), html: g.ui.guide.innerHTML, row: el.innerHTML };
   }, [dx, id, natural]);
   let sn = await sniff(0, null);
-  t.ok(sn.shown && sn.list.map(i => i.emoji).join(' ') === '🫐 🍯 🌰' && sn.list.every(i => !i.got), `the HUD shows the three ingredients (${sn.list.map(i => i.emoji + (i.period ?? '-')).join(' ')})`);
+  t.ok(!sn.shown && sn.list.map(i => i.emoji).join(' ') === '🫐 🍯 🌰' && sn.list.every(i => !i.got) && (sn.html.match(/class="food /g) || []).length === 3, `the guide line's three ingredients glow (no second row) (${sn.list.map(i => i.emoji + (i.period ?? '-')).join(' ')})`);
   const honey0 = sn.list[1].period;
   sn = await sniff(2, B.FLOWER_BUSH, false);
   t.ok(sn.list[1].period === honey0, `a placed flower bush 2 blocks away does not glow (${sn.list[1].period})`);
   sn = await sniff(3, B.FLOWER_BUSH, true);
   t.ok(sn.list[1].period != null && sn.list[1].period < 0.6 && (honey0 == null || honey0 > sn.list[1].period), `a natural flower bush 3 blocks away: honey glows fast (${honey0} -> ${sn.list[1].period})`);
-  t.ok(sn.html.includes('class="food near"') && sn.html.includes('--glint'), 'the near ingredient blinks in the HUD');
+  t.ok(sn.html.includes('class="food near"') && sn.html.includes('--glint') && sn.html.includes('Berry Pie'), 'the near ingredient blinks in the guide line');
+  const own = await page.evaluate(() => { // a rematch dish while the guide points at another gym: the ingredients get their own row
+    const g = window.pokecraft, keep = g.badges.slice();
+    g.badges.push('food'); g.updateGuide();
+    const el = document.getElementById('food-compass'), out = { shown: !el.classList.contains('hidden'), n: el.querySelectorAll('.food').length, guide: g.ui.guide.textContent };
+    g.badges = keep; g.updateGuide();
+    return out;
+  });
+  t.ok(own.shown && own.n === 3 && !own.guide.includes('🫐'), `when the guide shows no order, the ingredients get their own row (${own.guide})`);
   await page.evaluate(() => { document.getElementById('pause').classList.add('hidden'); });
   await page.waitForTimeout(800);
   await page.screenshot({ path: SHOTS + 't33-ingredient-glow.png', clip: { x: 700, y: 0, width: 400, height: 260 } });
