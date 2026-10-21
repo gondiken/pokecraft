@@ -38,7 +38,10 @@ const HOUSE = async () => {
 // A checksum of the main world; gym "live" blocks (doors that open by the clock, lasers, vault lights) count as air.
 const sum = () => {
   const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102]);
-  let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) ? 0 : d[i])) | 0; return h;
+  // The Obstacle Course's timed blocks (crumble, blink, pushers) turn into air and back by the course clock: skip its whole box.
+  const w = window.pokecraft.world, c = w.gyms.find(g => g.def.id === 'parkour')?.protect?.[0];
+  const inCourse = i => { if (!c) return false; const x = i % w.W, z = Math.floor(i / w.W) % w.D; return x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1; };
+  let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) || inCourse(i) ? 0 : d[i])) | 0; return h;
 };
 const sleep = async (page, bed) => {
   await page.evaluate(b => { const g = window.pokecraft; g.realms.useBed({ x: b[0], y: b[1], z: b[2], id: 71 }); }, bed);

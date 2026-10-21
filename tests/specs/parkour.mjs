@@ -196,7 +196,7 @@ export default async function ({ browser, base, t }) {
     let nx = sx + 14, nz = sz + 14;
     for (let k = 0; k < 40; k++, nx++) if (w.surface(nx, nz).y - w.ground[colOf(nx, nz)] < 3 && w.surface(nx, nz).id !== B.WATER) break;
     out.natural = cm.isPerch(nx, nz);
-    const pillar = (x, z, n, id = B.STONE, record = true) => { const g0 = w.ground[colOf(x, z)]; for (let k = 1; k <= n; k++) w.set(x, g0 + k, z, id, record); return g0; };
+    const pillar = (x, z, n, id = B.STONE, record = true) => { const g0 = w.ground[colOf(x, z)]; for (let k = n + 1; k <= 16 && g0 + k < 47; k++) w.set(x, g0 + k, z, B.AIR, false); for (let k = 1; k <= n; k++) w.set(x, g0 + k, z, id, record); return g0; }; // the air above is cleared first (a tree there would be a perch)
     const px = nx + 3, pz = nz;
     const g4 = pillar(px, pz, 4);
     out.pillar4 = cm.isPerch(px, pz); out.pillar4Want = { x: px, y: g4 + 5, z: pz };
