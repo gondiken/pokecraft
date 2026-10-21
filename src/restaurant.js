@@ -7,6 +7,7 @@ import { WORLD_H, WATER_LEVEL, MID_X, MID_Z } from './world.js';
 import { trainersOf, trainerKey } from './gyms.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
+import { NEAR } from './glint.js';
 
 const RD = 8; // front and back walls at d = +-8
 const RS = 10; // side walls at s = +-10
@@ -65,9 +66,6 @@ export function nearestSources(world, def, keys, p, r = SNIFF_R) {
   keys.forEach((k, n) => { if (best[n] < Infinity) out[k] = best[n]; });
   return out;
 }
-
-// How fast an ingredient glows: like the Treasure Vault's key, faster the nearer it is (seconds per glint).
-export const sniffPeriod = d => Math.min(3, Math.max(0.35, 0.3 + d / 12));
 
 // Dishes (indices 1..) whose ingredients all exist on this map. Dish 0, the badge dish, only needs things every map has.
 export function availableDishes(world, def) {
@@ -376,7 +374,7 @@ export class RestaurantLive {
       const near = nearestSources(this.game.world, this.def, s.missing, p);
       want = s.dish.ingredients.map(k => ({
         key: k, emoji: I[k].emoji, name: I[k].name, got: !s.missing.includes(k),
-        period: near[k] != null ? sniffPeriod(near[k]) : null,
+        period: near[k] != null ? NEAR.period(near[k]) : null, // the same glow as the vault's key
       }));
     }
     this.sniffed = want;

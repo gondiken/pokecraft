@@ -5,6 +5,7 @@ import { B, WOOL, isSolid } from './blocks.js';
 import { WORLD_H, WATER_LEVEL, MID_X, MID_Z, PLANTS } from './world.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
+import { NEAR } from './glint.js';
 
 const R = 6; // the vault is 13 x 13 (walls at +-6), roof layer at fy + HEIGHT
 const HEIGHT = 14;
@@ -203,7 +204,7 @@ export class VaultLive {
       for (const k of g.keys) {
         if (!this.has(k.id)) best = Math.min(best, Math.hypot(p.x - (k.chest[0] + 0.5), p.y - k.chest[1], p.z - (k.chest[2] + 0.5)));
       }
-      want = { period: Math.min(3, Math.max(0.35, 0.3 + best / 12)), found: this.count() };
+      want = { period: NEAR.period(best), found: this.count() };
     }
     this.compass = { shown: !!want, period: want ? want.period : 0 };
     this.game.ui?.setKeyCompass(want);

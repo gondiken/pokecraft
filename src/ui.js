@@ -7,6 +7,7 @@ import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, 
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
 import { typeLink } from './book.js';
+import { Glint } from './glint.js';
 
 const BOX_SORT_KEY = 'pokecraft-box-sort';
 const BOX_SORTS = [['newest', 'Newest'], ['level', 'Level'], ['name', 'Name'], ['type', 'Type']];
@@ -181,11 +182,11 @@ export class UI {
     const c = this.keyCompass;
     if (!c) return;
     if (!state) { if (this.keyShown !== null) { c.classList.add('hidden'); this.keyShown = null; } return; }
-    const tag = `${Math.round(state.period * 10)}/${state.found}`;
+    const tag = `${Glint.tag(state.period)}/${state.found}`;
     if (tag === this.keyShown) return;
     this.keyShown = tag;
     c.classList.remove('hidden');
-    c.style.setProperty('--glint', `${(Math.round(state.period * 10) / 10).toFixed(1)}s`);
+    Glint.show(c, state.period);
     c.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('got', i < state.found));
   }
 
@@ -201,7 +202,7 @@ export class UI {
     const text = this.guideText ?? '', list = this.food;
     const missing = (list || []).filter(i => !i.got);
     const inGuide = !!list && missing.every(i => text.includes(i.emoji));
-    const tag = `${text}|${(list || []).map(i => `${i.emoji}${i.got ? '+' : i.period == null ? '-' : Math.round(i.period * 10)}`).join()}`;
+    const tag = `${text}|${(list || []).map(i => `${i.emoji}${i.got ? '+' : i.period == null ? '-' : Glint.tag(i.period)}`).join()}`;
     if (tag === this.guideTag) return;
     this.guideTag = tag;
     const chip = i => {
@@ -209,7 +210,7 @@ export class UI {
       s.className = `food ${i.got ? 'got' : i.period == null ? 'far' : 'near'}`;
       s.textContent = i.emoji;
       s.title = i.got ? `You have ${i.name}` : i.period == null ? `No ${i.name} near here` : `${i.name} is near! It glows faster when you get closer.`;
-      if (!i.got && i.period != null) s.style.setProperty('--glint', `${(Math.round(i.period * 10) / 10).toFixed(1)}s`);
+      if (!i.got && i.period != null) Glint.show(s, i.period);
       return s;
     };
     if (!inGuide || !missing.length) this.guide.textContent = text;
@@ -236,13 +237,13 @@ export class UI {
     const c = this.seekCompass ??= document.getElementById('seek-compass');
     if (!c) return;
     if (!state) { if (this.seekShown !== null) { c.classList.add('hidden'); this.seekShown = null; } return; }
-    const tag = `${Math.round(state.period * 10)}/${state.word}`;
+    const tag = `${Glint.tag(state.period)}/${state.word}`;
     if (tag === this.seekShown) return;
     this.seekShown = tag;
     c.classList.remove('hidden');
     c.classList.toggle('hot', !!state.hot);
     c.classList.toggle('wobble', !!state.wobble);
-    c.style.setProperty('--glint', `${(Math.round(state.period * 10) / 10).toFixed(1)}s`);
+    Glint.show(c, state.period);
     c.querySelector('.word').textContent = state.word;
   }
 

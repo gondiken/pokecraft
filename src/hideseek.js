@@ -2,11 +2,12 @@
 // `round` messages; the seeker says when the hider is found. Nothing is saved; nothing in the world changes.
 import { sound } from './sound.js';
 import { el } from './util.js';
+import { SEEK } from './glint.js';
 
 export const HS = { hide: 60, seek: 180, brk: 6, answer: 30, radius: 40, near: 24, help: 6, beat: 2, lost: 10,
   bump: 1.0, fenceToast: 3, VERSION: 1 };
 const ORDER = { hide: 0, seek: 1, brk: 2 };
-export const seekPeriod = d => Math.min(3, Math.max(0.35, 0.3 + d / 16));
+export const seekPeriod = d => SEEK.period(d);
 export const seekWord = d => (d > 30 ? 'Cold' : d > 15 ? 'Warm' : d > 6 ? 'Hot!' : 'Very hot!');
 
 const newId = () => Math.random().toString(36).slice(2, 10);
