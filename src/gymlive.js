@@ -8,6 +8,7 @@ import { HomeLive } from './homegym.js';
 import { VaultLive } from './treasurevault.js';
 import { RestaurantLive } from './restaurant.js'; // T33
 import { CourseLive } from './obstaclecourse.js'; // T36
+import { DanceLive } from './dancefloor.js'; // the Echo Gym's dance-off
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -15,6 +16,7 @@ import { CourseLive } from './obstaclecourse.js'; // T36
 export const LIVE = { clock: ClockLive, maze: MazeLive, home: HomeLive, vault: VaultLive };
 LIVE.restaurant = RestaurantLive; // T33
 LIVE.course = CourseLive; // T36
+LIVE.dance = DanceLive; // the Echo Gym's dance-off (the building is unchanged)
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

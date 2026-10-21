@@ -45,6 +45,7 @@ const MORE_TILES = [
   // T36.5 Obstacle Course: crumble, blink, zap, pusher, spring and exit pad tiles
   'CRUMBLE', 'CRUMBLE_SHAKE', 'BLINK', 'BLINK_WARN', 'ZAP_OFF_TOP', 'ZAP_WARN_TOP', 'ZAP_ON_TOP',
   'PUSHER', 'PUSHER_WARN', 'PUSHER_HEAD', 'SPRING_TOP', 'SPRING_SIDE', 'EXIT_TOP',
+  'DANCE_0', 'DANCE_1', 'DANCE_2', 'DANCE_3', 'DANCE_0_LIT', 'DANCE_1_LIT', 'DANCE_2_LIT', 'DANCE_3_LIT', // Echo Gym dance floor
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -78,6 +79,8 @@ export const B = {
   SOFT_MAT: 91, CHECKPOINT: 92, CHECKPOINT_ON: 93, BEAM: 94,
   CRUMBLE: 89, CRUMBLE_SHAKE: 90, BLINK: 95, BLINK_WARN: 96, ZAP_OFF: 97, ZAP_WARN: 98, ZAP_ON: 99,
   PUSHER: 100, PUSHER_WARN: 101, PUSHER_HEAD: 102, SPRING: 103, EXIT_PAD: 104,
+  // 105-112: the Echo Gym's dance pads (red, blue, green, yellow) and their lit versions, drawn only with setLive. Next free id: 113.
+  DANCE_0: 105, DANCE_1: 106, DANCE_2: 107, DANCE_3: 108, DANCE_0_LIT: 109, DANCE_1_LIT: 110, DANCE_2_LIT: 111, DANCE_3_LIT: 112,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -173,6 +176,12 @@ BLOCKS[B.PUSHER_WARN] = { name: 'Pusher', ...all(T.PUSHER_WARN), glow: true, noL
 BLOCKS[B.PUSHER_HEAD] = { name: 'Pusher', ...all(T.PUSHER_HEAD), wallText: 'A pusher! Go when it pulls back.' };
 BLOCKS[B.SPRING] = { name: 'Spring', top: T.SPRING_TOP, side: T.SPRING_SIDE, bottom: T.SPRING_SIDE, glow: true, noLight: true, bounce: 4, wallText: 'A spring! Jump on it to fly up.' };
 BLOCKS[B.EXIT_PAD] = { name: 'Exit Pad', top: T.EXIT_TOP, side: PK, bottom: PK, glow: true, noLight: true, wallText: 'Stand on it to go back down.' };
+// Echo Gym dance pads (not placeable): the world holds the gym's planks; the pads are drawn per player with setLive.
+for (let k = 0; k < 4; k++) {
+  const text = 'The dance floor! Talk to Leader Melody for a dance-off.';
+  BLOCKS[B[`DANCE_${k}`]] = { name: 'Dance Pad', ...all(T[`DANCE_${k}`]), wallText: text };
+  BLOCKS[B[`DANCE_${k}_LIT`]] = { name: 'Dance Pad', ...all(T[`DANCE_${k}_LIT`]), glow: true, noLight: true, wallText: text };
+}
 // T35: the Bounce Block (jump on it to fly `bounce` blocks up; `fixed` = nobody can break or replace it) and Dream Grass.
 BLOCKS[B.BOUNCE] = { name: 'Bounce Block', top: T.BOUNCE_TOP, side: T.BOUNCE_SIDE, bottom: T.BOUNCE_SIDE, glow: true, noLight: true, bounce: 14, fixed: true, wallText: "It's too springy to break! Jump on it instead." };
 BLOCKS[B.DREAM_GRASS] = { name: 'Dream Grass', top: T.DREAM_GRASS_TOP, side: T.DREAM_GRASS_SIDE, bottom: T.CLOUD };
@@ -552,6 +561,15 @@ export function drawAtlas() {
       const arrow = (x >= 6 && x <= 9 && y >= 2 && y <= 8) || (y >= 8 && y <= 13 && Math.abs(x - 7.5) <= 13.5 - y - 0.5);
       put(T.EXIT_TOP, x, y, arrow ? [255, 255, 255] : edge(x, y) ? [20, 120, 50] : shade([50, 190, 90], 1 + (r4() - 0.5) * 0.06));
     });
+  }
+  { // Echo Gym dance pads: a coloured tile with a light border and a note in the middle; lit = bright with a white glow.
+    const PADS = [[230, 60, 70], [60, 120, 235], [60, 190, 90], [245, 205, 50]];
+    const note = (x, y) => (Math.hypot(x - 6, y - 10.5) < 2.2) || (x === 8 && y >= 3 && y <= 10) || (y === 3 && x >= 8 && x <= 11) || (y === 4 && x >= 10 && x <= 11);
+    PADS.forEach((c, k) => each((x, y) => {
+      const rim = x === 0 || y === 0 || x === 15 || y === 15, inner = x === 1 || y === 1 || x === 14 || y === 14;
+      put(T[`DANCE_${k}`], x, y, rim ? [40, 36, 50] : inner ? shade(c, 0.55) : note(x, y) ? shade(c, 0.45) : shade(c, 0.72));
+      put(T[`DANCE_${k}_LIT`], x, y, rim ? [255, 255, 255] : inner ? shade(c, 1.25) : note(x, y) ? [255, 255, 255] : shade(c, 1.15));
+    }));
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);

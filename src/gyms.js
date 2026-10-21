@@ -69,6 +69,7 @@ export const GYMS = [
   },
   {
     id: 'sound', type: 'sound', name: 'Echo Gym', badge: 'Echo Badge',
+    live: 'dance', keys: ['danced'], // a dance-off with Melody before her battle (dancefloor.js)
     leader: { name: 'Leader Melody', colors: { shirt: 0x4fd8c4, pants: 0x2a2a3a, hair: 0xff6aa8, skin: 0xe8b98a } },
     trainer: { name: 'Drummer Jojo', colors: { shirt: 0xf0a020, pants: 0x3a3a50, hair: 0x1a1a1a, skin: 0xc68a5a } },
     trainerTeam: [['echobat', 17], ['drumbo', 17]],

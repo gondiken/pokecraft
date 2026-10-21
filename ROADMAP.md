@@ -1147,6 +1147,13 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   (owner: fine, his son plays games like that); **checkpoints if the course is long** (a small `gymLive` check);
   trainers on the landings. Moving platforms only if cheap.
 
+## Echo Gym makeover: a dance-off ✅ done (owner, 2026-10-21; `src/dancefloor.js`, spec `dance`)
+
+Leader Melody starts a "copy my steps" dance-off on four coloured pads before her battle (2, 3, then 4 steps; a wrong
+step just shows the round again). A rematch starts with a longer dance. The pads are drawn with `setLive` on the old
+building, so no world block changed; badges, the beaten trainer and rematch wins of existing players stay. Other old
+plain gyms could get a makeover the same way later.
+
 ## Wave 12 · Two more new types (owner, 2026-10-20; which two is not decided yet)
 
 The owner will **pick two of these four** (same shared cost per type as wave 11: 7 creatures, 3+ new shapes, chart,

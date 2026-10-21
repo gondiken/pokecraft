@@ -213,6 +213,13 @@ const SOUNDS = {
   cookding: () => bell(1568, 0, 0.5, 0.2),
   potburnt: () => { noise({ freq: 400, len: 0.3, vol: 0.2 }); tone(300, { at: 0.1, len: 0.3, slide: -200, type: 'triangle', vol: 0.2 }); },
   yum: () => notes([523, 659, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.25 }),
+  // Echo Gym dance-off: one note per pad (red, blue, green, yellow), a soft "watch again" and a cheer at the end.
+  dancepad0: () => { tone(523, { len: 0.22, type: 'triangle', vol: 0.3 }); drum(196, 0, 0.18); },
+  dancepad1: () => { tone(659, { len: 0.22, type: 'triangle', vol: 0.3 }); drum(220, 0, 0.18); },
+  dancepad2: () => { tone(784, { len: 0.22, type: 'triangle', vol: 0.3 }); drum(247, 0, 0.18); },
+  dancepad3: () => { tone(1047, { len: 0.22, type: 'triangle', vol: 0.28 }); drum(262, 0, 0.18); },
+  danceoops: () => tone(392, { len: 0.25, vol: 0.2, slide: -120, type: 'triangle' }),
+  danceyay: () => { notes([523, 659, 784, 1047, 784, 1047], 0.09, { len: 0.14, type: 'triangle', vol: 0.28 }); drum(196, 0); drum(196, 0.27); drum(262, 0.45); },
   // T25 big-decision moves (short and quiet).
   'kind:rally': () => notes([392, 523, 659, 784], 0.08, { len: 0.14, type: 'triangle', vol: 0.26 }),
   'kind:shield': () => { bell(660, 0, 0.5, 0.18); tone(440, { at: 0.05, len: 0.35, vol: 0.14, slide: 440, type: 'sine' }); },

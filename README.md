@@ -175,7 +175,7 @@ There are 31 gyms, one for each type except normal. 28 are scattered around the 
 | 5 | Twinkle Gym | Pixie | Leader Luma | 14–15 |
 | 6 | Grove Gym | Grass | Leader Fern | 15–17 |
 | 7 | Volt Gym | Electric | Leader Sparky | 17–19 |
-| 8 | Echo Gym | Sound | Leader Melody | 18–20 |
+| 8 | Echo Gym (a dance-off with the leader first) | Sound | Leader Melody | 18–20 |
 | 9 | Iron Gym | Metal | Leader Forge | 19–21 |
 | 10 | Mystic Gym | Mind | Leader Sage | 20–22 |
 | 11 | Blaze Gym | Fire | Leader Cinder | 22–24 |
