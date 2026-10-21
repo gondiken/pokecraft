@@ -16,6 +16,7 @@ export const REALMS = {
     terrain: 'dreamLand',               // key into TERRAINS
     biome: 'dream',                     // world.biome() everywhere in the realm
     gravity: 0.5,                       // moon jumps everywhere here (World.gravity -> Player)
+    timeSpeed: 0.5,                     // the clock runs at half speed here, so a dream night lasts twice as long (updateSky)
     levelBonus: 6,                      // wild Dream creatures are a bit tougher (creatures.wildLevel)
     spawns: { dream: [['flipsy', 1.2], ['scribbit', 1.2], ['bobbloon', 1.2], ['drizzup', 0.8], ['topsyturvy', 0.12], ['scrawlbert', 0.12], ['bobblimp', 0.1]] }, // T35
     walk: [B.DREAM_GRASS, WOOL.dream, WOOL.paper, WOOL.pixie, WOOL.mind], // blocks wild creatures walk on here (NOT the cloud sea)

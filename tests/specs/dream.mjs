@@ -124,11 +124,21 @@ export default async function ({ browser, base, t }) {
     return { g: g.world.gravity, up: top - y0 };
   };
   const mainJump = await page.evaluate(jump);
+  // How far the clock moves per frame (the night speed); slow software frames are clamped to 0.05 s each, so this is steady.
+  const clockStep = () => new Promise(done => {
+    const g = window.pokecraft, t0 = g.time; let n = 0;
+    const tick = () => { if (++n < 8) requestAnimationFrame(tick); else done({ per: ((g.time - t0 + 1) % 1) / (n - 1), frames: n }); };
+    requestAnimationFrame(tick);
+  });
+  const mainClock = await page.evaluate(clockStep);
   t.ok(mainJump.g === 1 && Math.abs(mainJump.up - 1.32) < 0.15, `main world: gravity 1, a jump goes ${mainJump.up.toFixed(2)} blocks high`);
   const before = await page.evaluate(sum);
   await enter(page);
   await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(130.5, g.world.surface(130, 125).y + 1, 125.5); g.player.vel.set(0, 0, 0); });
   const dreamJump = await page.evaluate(jump);
+  const dreamClock = await page.evaluate(clockStep);
+  const speed = await page.evaluate(() => window.pokecraft.world.realm.timeSpeed);
+  t.ok(speed === 0.5 && dreamClock.per / mainClock.per > 0.3 && dreamClock.per / mainClock.per < 0.7, `the dream clock runs at half speed, so the night lasts twice as long (${(dreamClock.per / mainClock.per).toFixed(2)})`);
   t.ok(dreamJump.g === 0.5 && Math.abs(dreamJump.up - 2.64) < 0.25, `the dream: gravity 0.5, a jump goes ${dreamJump.up.toFixed(2)} blocks high (moon jumps)`);
   const there = await page.evaluate(() => { const g = window.pokecraft, w = g.world; return { size: [w.W, w.D], npcs: g.npcs.list.map(n => n.name).sort(), light: w.litCol[200 + 200 * w.W], gyms: w.gyms.length, enterToasts: window.__toasts.filter(m => /light here|fall asleep/.test(m)) }; });
   t.ok(there.size.join() === '256,256' && there.npcs.join() === 'Healer Stella,Juggler Bo,Leader Wimsy,Painter Pia' && there.light === 1 && there.gyms === 1,

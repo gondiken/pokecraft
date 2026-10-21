@@ -558,7 +558,7 @@ export default async function ({ browser, base, t }) {
         zap: timed.zaps.every(c => c.cells.every(k => w.get(...k) === B.ZAP_OFF)),
         pusher: timed.pushers.every(p => p.body.every(k => w.get(...k) === B.PUSHER) && p.head.every(k => w.get(...k) === B.AIR)),
         spring: Object.entries(pieces).filter(([, p]) => p.kind === 'spring').every(([, p]) => { for (let x = p.x0; x <= p.x1; x++) for (let z = p.z0; z <= p.z1; z++) if (w.get(x, p.y, z) !== B.SPRING) return false; return true; }),
-        exitPad: g.exitPad.length === 2 && g.exitPad.every(k => w.get(...k) === B.EXIT_PAD),
+        noExitPad: !w.data.includes(B.EXIT_PAD),
       };
       r.counts = { crumble: timed.crumbles.length, blink: timed.blinks.length, zap: timed.zaps.length, pusher: timed.pushers.length, ghost: g.ghost.length };
       const cp0 = checkpoints[0].cell;
@@ -902,22 +902,19 @@ export default async function ({ browser, base, t }) {
     p.pos.set(s0x + 0.5, gym.pieces.S0.y + 1, s0z + 0.5); p.onGround = true;
     L.update(0.05);
     out.startStays = Math.abs(p.pos.x - (s0x + 0.5)) < 0.01;
-    // the exit pad
+    // no exit pad: with the badge, a fall from the finish lets you go (flags reset, no bounce back); without it you go back up
     L.reached = 3; L.last = -1; window.__toasts.length = 0;
-    p.pos.set(gym.exitPad[0][0] + 0.5, gym.exitPad[0][1] + 1, gym.exitPad[0][2] + 0.5); p.onGround = true;
-    L.stand(...gym.exitPad[0], B.EXIT_PAD);
-    out.exit = { at: Math.hypot(p.pos.x - (gym.exit[0] + 0.5), p.pos.z - (gym.exit[2] + 0.5)) < 0.01 && Math.abs(p.pos.y - gym.exit[1]) < 0.01, toast: last(), outside: !(p.pos.x >= gym.course.x0 && p.pos.x <= gym.course.x1 + 1 && p.pos.z >= gym.course.z0 && p.pos.z <= gym.course.z1 + 1) || true };
-    // the landing spot of the pad is inside the area: it does not reset the flags by itself
-    const a = gym.area, inside = () => p.pos.x >= a.x0 && p.pos.x < a.x1 + 1 && p.pos.z >= a.z0 && p.pos.z < a.z1 + 1;
-    window.__toasts.length = 0;
-    L.update(0.05);
-    out.exitKeeps = inside() && L.reached === 3 && window.__toasts.length === 0;
     g.badges.push('parkour');
-    L.stand(...gym.exitPad[0], B.EXIT_PAD);
-    out.exit.toastBadge = last();
+    p.pos.set(mat[0] + 0.5, gym.fy + 1, mat[2] + 0.5); p.vel.set(0, 0, 0); p.onGround = true;
+    L.stand(...mat, B.SOFT_MAT);
+    out.exit = { stays: Math.abs(p.pos.x - (mat[0] + 0.5)) < 0.01, reached: L.reached, toast: last() };
     g.badges = g.badges.filter(b => b !== 'parkour');
-    p.pos.set(s0x + 0.5, gym.pieces.S0.y + 1, s0z + 0.5); p.onGround = true; L.update(0.05);
-    out.exit.backUp = near(p.pos, at(L.target()));
+    L.reached = 3; L.last = -1;
+    p.pos.set(mat[0] + 0.5, gym.fy + 1, mat[2] + 0.5); p.onGround = true;
+    L.stand(...mat, B.SOFT_MAT);
+    out.exit.noBadgeBack = near(p.pos, at(3));
+    out.exit.noPad = !w.data.includes(B.EXIT_PAD);
+    const a = gym.area;
     // standing on the mat (a fall) is not leaving
     L.reached = 2; L.last = -1; window.__toasts.length = 0;
     p.pos.set(mat[0] + 0.5, gym.fy + 1, mat[2] + 0.5); p.onGround = true;
@@ -940,7 +937,7 @@ export default async function ({ browser, base, t }) {
     p.pos.set(s0x + 0.5, gym.pieces.S0.y + 1, s0z + 0.5); p.onGround = true;
     L.reached = 2; L.last = -1;
     // prompts
-    out.prompt = [L.prompt({ id: B.CHECKPOINT_ON }), L.prompt({ id: B.EXIT_PAD }), L.prompt({ id: B.STONE })].join('|');
+    out.prompt = [L.prompt({ id: B.CHECKPOINT_ON }), L.prompt({ id: B.STONE })].join('|');
     // the mat outside the course box does nothing
     p.pos.set(1, 1, 1);
     L.stand(gym.course.x1 + 5, gym.fy, gym.course.z1 + 5, B.SOFT_MAT);
@@ -966,10 +963,10 @@ export default async function ({ browser, base, t }) {
   t.ok(D4.catchFall.back && D4.catchFall.toast === 'Boing! Back to your last flag.', `(sections ${D4.secs}) a drop from L6 (section 2) onto an earlier section sends you to your flag on the landing frame (${JSON.stringify(D4.catchFall)})`);
   t.ok(!D4.catchSame.back && D4.catchSameStays && !D4.catchLower.back && D4.catchLowerStays && D4.walkBack, 'a drop inside the current section and walking back onto an earlier piece do nothing');
   t.ok(D4.startBack && D4.startStays, 'stepping on the start platform takes you to your furthest flag ("Your flag is waiting! Whoosh!"), or nowhere without one');
-  t.ok(D4.exit.at && D4.exit.toast === 'Back on the ground! Leave the course and your flags start over.' && D4.exit.toastBadge === 'Great run! Come back any time.' && D4.exit.backUp, `the Exit Pad puts you by the entrance, words by badge, and the start platform takes you back up (${JSON.stringify(D4.exit)})`);
-  t.ok(D4.exitKeeps && D4.matKeeps && D4.battleKeeps, `the Exit Pad's landing spot, standing on the mat and a battle do not reset the flags (${D4.exitKeeps}, ${D4.matKeeps}, ${D4.battleKeeps})`);
+  t.ok(D4.exit.noPad && D4.exit.stays && D4.exit.reached === 0 && D4.exit.toast === 'Great run! Come back any time.' && D4.exit.noBadgeBack, `no Exit Pad; with the badge a fall from the finish lets you leave, without it you go back up to the finish (${JSON.stringify(D4.exit)})`);
+  t.ok(D4.matKeeps && D4.battleKeeps, `standing on the mat and a battle do not reset the flags (${D4.matKeeps}, ${D4.battleKeeps})`);
   t.ok(D4.leave.reached === 0 && D4.leave.last === -1 && D4.leave.toast === 'You left the Obstacle Course. Next time you start from the beginning!' && D4.leave.count === 1 && D4.leave.once && D4.leave.lit && D4.leave.quiet, `walking out of the course area resets the flags, redraws them and toasts once (${JSON.stringify(D4.leave)})`);
-  t.ok(D4.prompt === 'Checkpoint flag|Exit pad · stand on it to go down|', `prompts (${D4.prompt})`);
+  t.ok(D4.prompt === 'Checkpoint flag|', `prompts (${D4.prompt})`);
   t.ok(D4.outside, 'the mat outside the course box does nothing');
   t.ok(!D4.editBeam && !D4.editMat && D4.fenced, 'breaking a beam or the mat is refused, and the course is fenced for riders');
 

@@ -920,7 +920,7 @@ function smoothstep(a, b, x) {
 }
 
 function updateSky(dt) {
-  game.time = (game.time + dt / DAY_LENGTH) % 1;
+  game.time = (game.time + dt / DAY_LENGTH * (game.world?.realm?.timeSpeed ?? 1)) % 1; // a realm may run its clock slower (Dream nights last twice as long)
   const elevation = Math.sin(game.time * Math.PI * 2);
   const light = smoothstep(-0.2, 0.25, elevation);
   const brightness = 0.25 + 0.75 * light;

@@ -175,6 +175,7 @@ BLOCKS[B.PUSHER] = { name: 'Pusher', ...all(T.PUSHER), wallText: 'A pusher! Go w
 BLOCKS[B.PUSHER_WARN] = { name: 'Pusher', ...all(T.PUSHER_WARN), glow: true, noLight: true, wallText: 'A pusher! Go when it pulls back.' };
 BLOCKS[B.PUSHER_HEAD] = { name: 'Pusher', ...all(T.PUSHER_HEAD), wallText: 'A pusher! Go when it pulls back.' };
 BLOCKS[B.SPRING] = { name: 'Spring', top: T.SPRING_TOP, side: T.SPRING_SIDE, bottom: T.SPRING_SIDE, glow: true, noLight: true, bounce: 4, wallText: 'A spring! Jump on it to fly up.' };
+// EXIT_PAD (104) is no longer in the world (WORLD_VERSION 16); the id stays reserved.
 BLOCKS[B.EXIT_PAD] = { name: 'Exit Pad', top: T.EXIT_TOP, side: PK, bottom: PK, glow: true, noLight: true, wallText: 'Stand on it to go back down.' };
 // Echo Gym dance pads (not placeable): the world holds the gym's planks; the pads are drawn per player with setLive.
 for (let k = 0; k < 4; k++) {

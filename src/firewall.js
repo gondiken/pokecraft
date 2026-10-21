@@ -311,9 +311,8 @@ export class MazeLive {
 
   updateExit() {
     if (!this.gym.exit) return;
-    const inside = this.inServer();
-    const open = inside || !!this.game.badges?.includes(this.gym.def.id);
-    if (open !== this.open && open && inside) this.game.ui?.toast('The exit door is open: this way out!');
+    const open = this.inServer(); // only from inside: never a way in, not even with the badge (walking back alone through the rooms is a trap)
+    if (open && !this.open) this.game.ui?.toast('The exit door is open: this way out!');
     this.open = open;
     this.gym.exit.forEach(([x, y, z], i) => this.cells.want(x, y, z, open ? B.AIR : this.exitIds[i]));
   }

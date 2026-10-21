@@ -83,7 +83,7 @@ export const PIECES = [
   ['P5', -2, 4, -18, -18, 17, 'beam', { push: [[-1, 1, 0], [1, -1, 2.5], [3, 1, 0]] }],
   ['W4', 5, 9, -19, -17, 17, 'zap', { zap: [[6, 8, 0]] }],
   ['W5', 11, 12, -19, -17, 17, 'blinkB'],
-  ['F', 14, 19, -19, -13, 17, 'plat'],                        // CP8, the finish, Leader Rio, the Exit Pad
+  ['F', 14, 19, -19, -13, 17, 'plat'],                        // CP8, the finish, Leader Rio
 ];
 
 // Checkpoints: the landing piece, the spot of the flag, the direction you face when sent back, the trainer (index in the
@@ -201,8 +201,6 @@ export function buildObstacleCourse(world, def, slot) {
     // The finish arch: two posts at the back corners and a checkered bar 5 above the platform.
     for (const s of [b.s0, b.s1]) for (let y = 1; y <= 5; y++) putD(b.d1, s, b.top + y, y === 5 ? WOOL.paper : WOOL.parkour);
     for (let s = b.s0 + 1; s < b.s1; s++) putD(b.d1, s, b.top + 5, (s - b.s0) % 2 ? WOOL.parkour : WOOL.paper);
-    // The Exit Pad in the back-left corner beside the arch post.
-    for (const d of [17, 18]) putD(d, b.s0, b.top, B.EXIT_PAD);
   }
 
   // 4. Checkpoint flags (on the top of a landing) and the people.
@@ -218,12 +216,11 @@ export function buildObstacleCourse(world, def, slot) {
   const leaderPos = cell(17, -16, boxes.F.top);
   const mat = bbox(-CURB_R, CURB_R, -CURB_R, CURB_R);
   const pieces = Object.fromEntries(Object.entries(boxes).map(([id, b]) => [id, { ...bbox(b.d0, b.d1, b.s0, b.s1), y: b.top, kind: b.kind, beam: b.kind === 'beam', sec: secOf[id] }]));
-  const [ex, ez] = col(22, -16), [xx, xz] = col(22, -11);
+  const [ex, ez] = col(22, -16);
   return {
     def, x: x0, z: z0, y: P + 1, fy, P, front, side,
-    entry: [ex, fy + 1, ez], exit: [xx, fy + 1, xz], exitYaw: Math.atan2(-front[0], -front[1]),
+    entry: [ex, fy + 1, ez],
     checkpoints, pieces, timed, secAt,
-    exitPad: [17, 18].map(d => cellD(d, boxes.F.s0, boxes.F.top)),
     ghost: timed.blinks.flatMap(b => b.cells),
     course: { ...mat, y0: fy, y1: fy + 1 }, // a fall = standing on a SOFT_MAT in here
     leaderPos, leaderHeading: heading(-1, 0), trainerPos: trainerPositions[0], trainerPositions,
@@ -428,29 +425,24 @@ export class CourseLive {
       return;
     }
     this.last = -1;
-    if (id === B.EXIT_PAD) {
-      const [ex, ey, ez] = g.exit, p = this.game.player;
-      p.pos.set(ex + 0.5, ey, ez + 0.5);
-      p.vel.set(0, 0, 0);
-      p.yaw = g.exitYaw;
-      p.pitch = 0;
-      this.shove = null;
-      this.wasAir = false;
-      this.lastTop = null;
-      sound.play('whoosh');
-      ui?.toast(this.game.badges?.includes(g.def.id) ? 'Great run! Come back any time.' : 'Back on the ground! Leave the course and your flags start over.');
-      return;
-    }
     if (id === B.ZAP_ON) { this.sendBack('zap'); return; }
     if (id !== B.SOFT_MAT) return;
     const c = g.course;
     if (x < c.x0 || x > c.x1 || z < c.z0 || z > c.z1 || y < c.y0 || y > c.y1) return;
+    // With the badge, jumping down from the finish is the way out (no exit pad: kids stepped on it before the battle).
+    if (this.reached === g.checkpoints.length - 1 && this.game.badges?.includes(g.def.id)) {
+      this.reached = 0;
+      this.last = -1;
+      this.draw();
+      ui?.toast('Great run! Come back any time.');
+      return;
+    }
     this.sendBack('fall');
   }
 
   prompt(block) {
     if (block.id === B.CHECKPOINT || block.id === B.CHECKPOINT_ON) return 'Checkpoint flag';
-    return block.id === B.EXIT_PAD ? 'Exit pad · stand on it to go down' : null;
+    return null;
   }
 
   dispose() {

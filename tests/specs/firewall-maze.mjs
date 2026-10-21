@@ -198,7 +198,7 @@ export default async function ({ browser, base, t }) {
   t.ok(prot.kept && prot.same && /Lasers can't be broken/.test(prot.toast), `breaking a laser changes nothing and says why (${prot.toast})`);
   t.ok(prot.placed === 0 && prot.same && prot.saved === 0, 'building inside a maze room is refused, and the save holds no maze block');
 
-  // T23.5: the exit door. Shut from outside (not a way in), open from inside the server room, and you can walk out alone.
+  // T23.5: the exit door. Shut from outside (not a way in, even with the badge), open from inside the server room, and you can walk out alone.
   const exitA = await page.evaluate(async () => {
     const g = window.pokecraft, w = g.world, gym = window.fw.gym(w), M = window.fw.F.mazeCol, fy = gym.fy;
     const out = { shut: window.fw.exitShut(w, gym), noWayIn: !window.fw.out(w, gym, [-11, 12]) };
@@ -206,7 +206,7 @@ export default async function ({ browser, base, t }) {
     g.player.pos.set(x + 0.5, fy + 1, z + 0.5); g.player.vel.set(0, 0, 0);
     return out;
   });
-  t.ok(exitA.shut, 'the exit door is shut for a player outside without the badge');
+  t.ok(exitA.shut, 'the exit door is shut for a player outside');
   t.ok(exitA.noWayIn, 'with the door shut the server room cannot be reached from the front without the rooms');
   await waitFor(page, () => { const g = window.pokecraft; return !window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
   const exitB = await page.evaluate(() => {
@@ -246,6 +246,10 @@ export default async function ({ browser, base, t }) {
   await waitFor(page, () => { const g = window.pokecraft; return !window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
   const leave = await page.evaluate(() => { const g = window.pokecraft, w = g.world, gym = window.fw.gym(w); return { out: window.fw.out(w, gym, [-11, 13]), back: [0, 1, 2].map(k => window.fw.walk(w, gym, k, [8, 5], [0, 5])) }; });
   t.ok(leave.out, `after beating the leader you can walk out alone through the exit (rooms back: ${leave.back})`);
+  // Once you are out the door shuts behind you, badge or not: it is never a way back in.
+  await page.evaluate(() => { const g = window.pokecraft, gym = window.fw.gym(g.world), [x, z] = window.fw.F.mazeCol(gym, -9, 21); g.player.pos.set(x + 0.5, gym.fy + 1, z + 0.5); g.player.vel.set(0, 0, 0); });
+  await waitFor(page, () => { const g = window.pokecraft; return window.fw.exitShut(g.world, window.fw.gym(g.world)); }, null, 60000);
+  t.ok(await page.evaluate(() => { const g = window.pokecraft, w = g.world, gym = window.fw.gym(w); return g.badges.includes('cyber') && !window.fw.out(w, gym, [-11, 12]); }), 'with the badge, outside, the exit door stays shut: no way in');
 
   // 5. Screenshots: outside by day and night, each room from its entry, the server room.
   const shot = async (name, place) => {
