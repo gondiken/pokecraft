@@ -1154,16 +1154,23 @@ step just shows the round again). A rematch starts with a longer dance. The pads
 building, so no world block changed; badges, the beaten trainer and rematch wins of existing players stay. Other old
 plain gyms could get a makeover the same way later.
 
+## Wave 11.5 · Room for the new gyms (owner, 2026-10-21: before wave 12; not decided yet)
+
+Waves 12-14 add 9 gyms (Racer, Ball, Tiny, Pirate; Portal, Surprise, Funfair, Ninja; the Doodle Wizard's tower), but
+only south slots 8 and 9 are free (slot 3 stays spare). Options being talked about: grow the main map once more (one
+more entry in `SIZES`, like T32), and/or new realms (Portal's own weird world, maybe Tiny in the Dream or a world of
+its own, worlds shared by several gyms) with a story that ties them together. **Play together:** a gym in a realm
+can only be played with a friend once "realms together" (wave 15) exists, so it may have to move up into this wave.
+
 ## Wave 12 · Racer, Ball, Tiny, Pirate (owner, 2026-10-21: picked)
 
 **Four new types**, each with a gym about 2 levels above the one before (shared cost per type as in wave 11: 7
 creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book, README). Every new gym should be something you **do**
 (riding was the big hit: moving around beats more puzzles). 31 gyms today, 35 after wave 12.
-**Room on the map:** only south slots 8 and 9 are free (slot 3 stays spare), and waves 12-14 add up to 8 gyms, so the
-wave 12 plan starts by deciding where they go (another strip of new land like T32, or realms like Portal's Swirl).
+**Room on the map:** see wave 11.5 (where the new gyms go), which comes first.
 
 **Dropped** (the son did not like them): Magnet, Digger, Builder, Mirror. **Music** too: Sound already exists (its
-gym got the dance-off makeover instead, see above). Knight and Ninja moved to the backlog (2026-10-21).
+gym got the dance-off makeover instead, see above). Knight moved to the backlog, Ninja to wave 13 (2026-10-21).
 
 - **🏎️ Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. Gym: a race
   against the leader around a track (new NPC path code). Overlaps a little with Funfair's rides (wave 13).
@@ -1180,10 +1187,10 @@ gym got the dance-off makeover instead, see above). Knight and Ninja moved to th
   islands at sea; a cannon shoots you from island to island, swing on ropes, board the leader's ship (ships and
   cannons, not digging like Treasure).
 
-## Wave 13 · Portal, Surprise, Funfair (owner, 2026-10-21: picked)
+## Wave 13 · Portal, Surprise, Funfair, Ninja (owner, 2026-10-21: picked)
 
-Three more types and gyms (38 gyms after wave 13, 39 if the Doodle Wizard in wave 14 gives a badge; the badge goal
-(36 = 9 x 4 or 40 = 10 x 4 in the HUD) is still to be confirmed: 40 would need one more type somewhere).
+Four more types and gyms. **Badge goal: 40** (owner, 2026-10-21): 31 today, 35 after wave 12, 39 after wave 13 and
+40 with the Doodle Wizard (wave 14). The HUD keeps its 9-wide rows until waves 13 and 14 are done, then becomes 10 x 4.
 
 - **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
   Gym: the Portal House, a chain of portal rooms to the leader (teleports are cheap). Three ways to place it:
@@ -1197,6 +1204,8 @@ Three more types and gyms (38 gyms after wave 13, 39 if the Doodle Wizard in wav
   wave 15's gifts.
 - **🎡 Funfair ("lunapark"):** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking ticket. Gym: the
   Fair: trampolines, a carousel, bumper cars and a roller-coaster ride to the leader.
+- **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
+  (a bit like hide and seek).
 
 **More badges:** the badge row is just a list, so 10 x 4 is a small HUD change; the Champion's Tower, `REMATCH_CAP` and
 Coach Dex move up each time so the Tower stays the hardest. A longer road to the Tower makes "wild creatures grow with
@@ -1301,12 +1310,10 @@ together** (a friend sits behind you, or side by side), **hats and costumes** fo
 what the rare mission blocks buy), **tricks** (teach your buddy a spin or a dance to show off), **events now and then**
 (a parade of rare creatures, a shooting-star night, a festival day). Suggested order: buddy, bouncy blocks, more traits.
 
-**Types for later** (owner, 2026-10-21: moved out of wave 12; same per-type cost as wave 11):
+**Types for later** (owner, 2026-10-21: moved out of wave 12; same per-type cost as wave 11; Ninja went to wave 13):
 - **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
   castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
   wall, the leader in the throne room.
-- **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
-  (a bit like hide and seek).
 
 **Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
 what they unlock or are used for is still open.
