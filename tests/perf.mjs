@@ -188,10 +188,10 @@ async function measureCourse(profile) {
       const spot = where === 'entry' ? [gym.entry[0] + 0.5, gym.entry[1], gym.entry[2] + 0.5] : gym.checkpoints[where === 'L5' ? 5 : 2].stand;
       const put = () => { p.pos.set(spot[0], spot[1], spot[2]); p.vel.set(0, 0, 0); p.yaw = Math.PI; p.pitch = -0.15; };
       put();
-      let builds = 0;
-      if (!w.__counted) { const b = w.buildChunk.bind(w); w.buildChunk = (...a) => { builds++; return b(...a); }; w.__counted = true; }
+      window.__builds = window.__builds || 0;
+      if (!w.__counted) { const b = w.buildChunk.bind(w); w.buildChunk = (...a) => { window.__builds++; return b(...a); }; w.__counted = true; }
       await new Promise(r => setTimeout(r, 1500));
-      builds = 0;
+      window.__builds = 0;
       const clock0 = L.clock;
       let n = 0, stop = false; const t0 = performance.now();
       const tick = () => { put(); n++; if (!stop) requestAnimationFrame(tick); };
@@ -199,7 +199,7 @@ async function measureCourse(profile) {
       await new Promise(r => setTimeout(r, 8000));
       stop = true;
       const secs = (performance.now() - t0) / 1000;
-      return { fps: Math.round(n / secs * 100) / 100, rebuildsPerSec: Math.round(builds / secs * 100) / 100, clockSecs: Math.round((L.clock - clock0) * 10) / 10 };
+      return { fps: Math.round(n / secs * 100) / 100, rebuildsPerSec: Math.round(window.__builds / secs * 100) / 100, clockSecs: Math.round((L.clock - clock0) * 10) / 10 };
     }, where);
   }
   const errors = page.errors.slice();
