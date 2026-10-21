@@ -22,6 +22,9 @@ import { fileURLToPath } from 'node:url';
 // chunks / verts / gpuMB, draw calls at the arrival and from the highest island, fps at the arrival); `--size=192` measures the
 // smaller fallback map. Example: node perf.mjs 3 --dream   /   node perf.mjs 3 --dream --size=192
 const flags = process.argv.slice(2).filter(a => a.startsWith('--')), args = process.argv.slice(2).filter(a => !a.startsWith('--'));
+// T36.5: `--course` measures the Obstacle Course: fps and chunk rebuilds a second standing on the landing L5 (sections 5-6 animate around
+// you) against standing at the entry (everything at rest). Example: node perf.mjs 3 --course
+const COURSE = flags.includes('--course');
 const DREAM = flags.includes('--dream'), DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
 const runs = Number(args[0]) || 3;
 const dir = path.resolve(args[1] || path.dirname(fileURLToPath(import.meta.url)));
@@ -168,7 +171,54 @@ async function measureDream(profile) {
   return { profile, main: { ...main, ...mainView }, enter, dream, errors: errors.length };
 }
 
+// T36.5: the Obstacle Course. Frames per second and chunk rebuilds a second over 8 s at the entry (everything at rest) and on L5
+// (the timed blocks around you animate; the game loop runs gymLive.update as usual).
+async function measureCourse(profile) {
+  const page = await openGame(browser, base, { contextOptions: PROFILES[profile], setup: seedSave(SAVE) });
+  await continueGame(page);
+  await page.evaluate(() => document.exitPointerLock?.());
+  const out = {};
+  for (const where of ['entry', 'L5', 'L2']) {
+    out[where] = await page.evaluate(async where => {
+      const g = window.pokecraft, w = g.world, p = g.player;
+      g.weather.set('clear', 99999); g.time = 0.25;
+      g.creatures.clear(); g.creatures.update = () => {};
+      const gym = w.gyms.find(x => x.def.id === 'parkour');
+      const L = g.gymLive.of('parkour');
+      const spot = where === 'entry' ? [gym.entry[0] + 0.5, gym.entry[1], gym.entry[2] + 0.5] : gym.checkpoints[where === 'L5' ? 5 : 2].stand;
+      const put = () => { p.pos.set(spot[0], spot[1], spot[2]); p.vel.set(0, 0, 0); p.yaw = Math.PI; p.pitch = -0.15; };
+      put();
+      let builds = 0;
+      if (!w.__counted) { const b = w.buildChunk.bind(w); w.buildChunk = (...a) => { builds++; return b(...a); }; w.__counted = true; }
+      await new Promise(r => setTimeout(r, 1500));
+      builds = 0;
+      const clock0 = L.clock;
+      let n = 0, stop = false; const t0 = performance.now();
+      const tick = () => { put(); n++; if (!stop) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      await new Promise(r => setTimeout(r, 8000));
+      stop = true;
+      const secs = (performance.now() - t0) / 1000;
+      return { fps: Math.round(n / secs * 100) / 100, rebuildsPerSec: Math.round(builds / secs * 100) / 100, clockSecs: Math.round((L.clock - clock0) * 10) / 10 };
+    }, where);
+  }
+  const errors = page.errors.slice();
+  await page.context().close();
+  return { profile, ...out, errors: errors.length };
+}
+
 const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
+if (COURSE) {
+  const rs = { desktop: [], ipad: [] };
+  for (let i = 0; i < runs; i++) for (const profile of Object.keys(PROFILES)) { const r = await measureCourse(profile); rs[profile].push(r); console.log(JSON.stringify(r)); }
+  for (const [profile, list] of Object.entries(rs)) {
+    const m = (k, sub) => med(list.map(r => r[k][sub]));
+    console.log(`MEDIAN ${profile} (${runs} runs) course: ` + JSON.stringify({ fpsEntry: m('entry', 'fps'), fpsL5: m('L5', 'fps'), fpsL2: m('L2', 'fps'), ratioL5: Math.round(m('L5', 'fps') / m('entry', 'fps') * 100) / 100, rebuildsEntry: m('entry', 'rebuildsPerSec'), rebuildsL5: m('L5', 'rebuildsPerSec'), rebuildsL2: m('L2', 'rebuildsPerSec') }));
+  }
+  await browser.close();
+  server.close();
+  process.exit(0);
+}
 if (DREAM) {
   const rs = { desktop: [], ipad: [] };
   for (let i = 0; i < runs; i++) for (const profile of Object.keys(PROFILES)) { const r = await measureDream(profile); rs[profile].push(r); console.log(JSON.stringify(r)); }

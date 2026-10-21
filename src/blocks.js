@@ -42,6 +42,9 @@ const MORE_TILES = [
   'POT_SIDE', 'POT_TOP', 'POT_GOLD', 'POT_BURNT', 'STOVE_SIDE', 'STOVE_TOP', // T33 Restaurant
   'SOFT_MAT', 'CHECKPOINT_TOP', 'CHECKPOINT_ON_TOP', 'BEAM_TOP', 'BEAM_SIDE', // T36 parkour
   'BOUNCE_TOP', 'BOUNCE_SIDE', 'DREAM_GRASS_TOP', 'DREAM_GRASS_SIDE', // T35 dream
+  // T36.5 Obstacle Course: crumble, blink, zap, pusher, spring and exit pad tiles
+  'CRUMBLE', 'CRUMBLE_SHAKE', 'BLINK', 'BLINK_WARN', 'ZAP_OFF_TOP', 'ZAP_WARN_TOP', 'ZAP_ON_TOP',
+  'PUSHER', 'PUSHER_WARN', 'PUSHER_HEAD', 'SPRING_TOP', 'SPRING_SIDE', 'EXIT_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -66,13 +69,15 @@ export const B = {
   // 75-77: T29 mission blocks (limited, only from Champion missions). Next free id: 78.
   STAR_BLOCK: 75, RAINBOW_BRICK: 76, GIANT_TROPHY: 77,
   // 78: T31 Wake Stone (only in realms, never in the main world). 79-82: food / squad / dream / parkour wool (wave 11).
-  // Reserved for wave 11: 83-86 T33 (Restaurant), 87-90 T35 (Dream), 91-94 T36 (Parkour). Next free id: 95.
+  // Reserved for wave 11: 83-86 T33 (Restaurant), 87-88 T35 (Dream), 89-90 and 95-104 T36.5, 91-94 T36 (Parkour). Next free id: 105.
   WAKE_STONE: 78,
   POT: 83, POT_GOLDEN: 84, POT_BURNT: 85, STOVE: 86, // T33 Restaurant (not placeable)
-  // T35 (87-90): Bounce Block and Dream Grass (natural, not placeable); 89-90 stay spare.
+  // T35 (87-88): Bounce Block and Dream Grass (natural, not placeable); 89-90 are the course's crumble blocks (T36.5).
   BOUNCE: 87, DREAM_GRASS: 88,
-  // 91-94: T36 Obstacle Course blocks (not placeable). Next free id: 95.
+  // 91-94: T36 Obstacle Course blocks (not placeable). T36.5 adds 89-90 and 95-104. Next free id: 105.
   SOFT_MAT: 91, CHECKPOINT: 92, CHECKPOINT_ON: 93, BEAM: 94,
+  CRUMBLE: 89, CRUMBLE_SHAKE: 90, BLINK: 95, BLINK_WARN: 96, ZAP_OFF: 97, ZAP_WARN: 98, ZAP_ON: 99,
+  PUSHER: 100, PUSHER_WARN: 101, PUSHER_HEAD: 102, SPRING: 103, EXIT_PAD: 104,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -153,6 +158,21 @@ BLOCKS[B.SOFT_MAT] = { name: 'Soft Mat', ...all(T.SOFT_MAT), wallText: 'A soft m
 BLOCKS[B.CHECKPOINT] = { name: 'Checkpoint Flag', top: T.CHECKPOINT_TOP, side: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), bottom: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), wallText: 'Stand on the flag! If you fall, you come back here.' };
 BLOCKS[B.CHECKPOINT_ON] = { name: 'Checkpoint Flag', top: T.CHECKPOINT_ON_TOP, side: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), bottom: T.WOOL0 + WOOL_TYPES.indexOf('parkour'), glow: true, noLight: true, wallText: 'Stand on the flag! If you fall, you come back here.' };
 BLOCKS[B.BEAM] = { name: 'Balance Beam', top: T.BEAM_TOP, side: T.BEAM_SIDE, bottom: T.BEAM_TOP, wallText: 'A balance beam. Walk along it!' };
+// T36.5 Obstacle Course blocks (none can be placed). The "live only" ones (shake, warn, zap on/warn, pusher warn/head) are drawn
+// with setLive while you are near; the others are what the world holds.
+const PK = T.WOOL0 + WOOL_TYPES.indexOf('parkour');
+BLOCKS[B.CRUMBLE] = { name: 'Crumble Block', ...all(T.CRUMBLE), wallText: 'Crumbly! It falls soon after you step on it.' };
+BLOCKS[B.CRUMBLE_SHAKE] = { name: 'Crumble Block', ...all(T.CRUMBLE_SHAKE), wallText: 'Crumbly! It falls soon after you step on it.' };
+BLOCKS[B.BLINK] = { name: 'Blink Block', ...all(T.BLINK), glow: true, noLight: true, wallText: 'A blink block: it comes and goes.' };
+BLOCKS[B.BLINK_WARN] = { name: 'Blink Block', ...all(T.BLINK_WARN), glow: true, noLight: true, wallText: 'A blink block: it comes and goes.' };
+BLOCKS[B.ZAP_OFF] = { name: 'Zap Tile', top: T.ZAP_OFF_TOP, side: PK, bottom: PK, wallText: 'A zap tile! Cross it when it is dark.' };
+BLOCKS[B.ZAP_WARN] = { name: 'Zap Tile', top: T.ZAP_WARN_TOP, side: PK, bottom: PK, glow: true, noLight: true, wallText: 'A zap tile! Cross it when it is dark.' };
+BLOCKS[B.ZAP_ON] = { name: 'Zap Tile', top: T.ZAP_ON_TOP, side: PK, bottom: PK, glow: true, noLight: true, wallText: 'A zap tile! Cross it when it is dark.' };
+BLOCKS[B.PUSHER] = { name: 'Pusher', ...all(T.PUSHER), wallText: 'A pusher! Go when it pulls back.' };
+BLOCKS[B.PUSHER_WARN] = { name: 'Pusher', ...all(T.PUSHER_WARN), glow: true, noLight: true, wallText: 'A pusher! Go when it pulls back.' };
+BLOCKS[B.PUSHER_HEAD] = { name: 'Pusher', ...all(T.PUSHER_HEAD), wallText: 'A pusher! Go when it pulls back.' };
+BLOCKS[B.SPRING] = { name: 'Spring', top: T.SPRING_TOP, side: T.SPRING_SIDE, bottom: T.SPRING_SIDE, glow: true, noLight: true, bounce: 4, wallText: 'A spring! Jump on it to fly up.' };
+BLOCKS[B.EXIT_PAD] = { name: 'Exit Pad', top: T.EXIT_TOP, side: PK, bottom: PK, glow: true, noLight: true, wallText: 'Stand on it to go back down.' };
 // T35: the Bounce Block (jump on it to fly `bounce` blocks up; `fixed` = nobody can break or replace it) and Dream Grass.
 BLOCKS[B.BOUNCE] = { name: 'Bounce Block', top: T.BOUNCE_TOP, side: T.BOUNCE_SIDE, bottom: T.BOUNCE_SIDE, glow: true, noLight: true, bounce: 14, fixed: true, wallText: "It's too springy to break! Jump on it instead." };
 BLOCKS[B.DREAM_GRASS] = { name: 'Dream Grass', top: T.DREAM_GRASS_TOP, side: T.DREAM_GRASS_SIDE, bottom: T.CLOUD };
@@ -486,6 +506,51 @@ export function drawAtlas() {
     each((x, y) => {
       put(T.BEAM_TOP, x, y, y % 5 === 2 ? [196, 156, 98] : edge(x, y) ? [186, 146, 90] : shade([232, 198, 140], 1 + (r4() - 0.5) * 0.08));
       put(T.BEAM_SIDE, x, y, ((x + y) >> 2) % 2 ? [248, 248, 248] : [226, 52, 52]);
+    });
+  }
+  { // T36.5 Obstacle Course tiles (own random numbers).
+    const r4 = mulberry32(3650);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    // Crumble: a sandy biscuit with thin cracks; the shaking one has many dark cracks and missing corners.
+    const crack = (x, y) => (x * 3 + y * 5) % 11 === 0 || (x + 2 * y) % 13 === 1;
+    each((x, y) => {
+      const biscuit = shade([222, 188, 120], 1 + (r4() - 0.5) * 0.1);
+      put(T.CRUMBLE, x, y, edge(x, y) ? [176, 138, 80] : (x * 5 + y * 3) % 17 === 0 ? [168, 130, 76] : biscuit);
+      const corner = (x < 3 && y < 3) || (x > 12 && y > 12);
+      put(T.CRUMBLE_SHAKE, x, y, corner ? [40, 30, 24] : crack(x, y) || (x + y) % 6 === 0 ? [70, 46, 24] : edge(x, y) ? [120, 86, 50] : shade([206, 166, 98], 1 + (r4() - 0.5) * 0.1));
+    });
+    // Blink: bright cyan glass with a white frame; the warning one has orange-red stripes.
+    each((x, y) => {
+      put(T.BLINK, x, y, edge(x, y) ? [255, 255, 255] : x === 1 || y === 1 || x === 14 || y === 14 ? [120, 220, 255] : shade([60, 200, 240], 1 + (r4() - 0.5) * 0.08));
+      put(T.BLINK_WARN, x, y, edge(x, y) ? [255, 255, 255] : ((x + y) >> 1) % 2 ? [255, 90, 40] : [255, 190, 60]);
+    });
+    // Zap tile tops: dark tile with a red zigzag outline; half lit orange; on = bright red/yellow electric zigzag.
+    const zig = (x, y) => Math.abs(y - (7.5 + (((x >> 1) % 2) ? 3.5 : -3.5))) < 1.3 || Math.abs(x - 7.5) > 6 && Math.abs(y - 7.5) > 3 && ((x + y) % 4 === 0);
+    each((x, y) => {
+      const zz = zig(x, y), line = edge(x, y);
+      put(T.ZAP_OFF_TOP, x, y, line ? [200, 40, 40] : zz ? [170, 36, 36] : shade([52, 52, 60], 1 + (r4() - 0.5) * 0.08));
+      put(T.ZAP_WARN_TOP, x, y, line ? [255, 150, 40] : zz && x < 8 ? [255, 190, 70] : zz ? [170, 36, 36] : shade([66, 56, 56], 1 + (r4() - 0.5) * 0.08));
+      put(T.ZAP_ON_TOP, x, y, line ? [255, 240, 80] : zz ? [255, 255, 200] : (x + y) % 3 === 0 ? [255, 190, 40] : [235, 40, 30]);
+    });
+    // Pusher: grey metal box with yellow-black hazard stripes; warning = red stripes and a white "!".
+    const bang = (x, y) => (x === 7 || x === 8) && (y >= 3 && y <= 9 || y === 12);
+    each((x, y) => {
+      const stripe = ((x + y) >> 2) % 2;
+      put(T.PUSHER, x, y, edge(x, y) ? [60, 60, 66] : stripe ? [250, 210, 40] : [40, 40, 44]);
+      put(T.PUSHER_WARN, x, y, bang(x, y) ? [255, 255, 255] : edge(x, y) ? [255, 255, 255] : stripe ? [235, 40, 40] : [120, 16, 20]);
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      put(T.PUSHER_HEAD, x, y, d > 7 || edge(x, y) ? [255, 255, 255] : d < 3.5 ? [255, 120, 120] : shade([220, 40, 50], 1 + (r4() - 0.5) * 0.08));
+    });
+    // Spring: green with a yellow coil spiral on top; green / yellow bands on the sides.
+    each((x, y) => {
+      const d = Math.hypot(x - 7.5, y - 7.5), ring = Math.abs(((d * 1.2 + Math.atan2(y - 7.5, x - 7.5) / 1.6) % 3 + 3) % 3) < 1.1;
+      put(T.SPRING_TOP, x, y, edge(x, y) ? [30, 120, 50] : ring ? [255, 220, 60] : [60, 190, 90]);
+      put(T.SPRING_SIDE, x, y, y % 4 < 2 ? [60, 190, 90] : [255, 220, 60]);
+    });
+    // Exit pad: green with a big white down arrow.
+    each((x, y) => {
+      const arrow = (x >= 6 && x <= 9 && y >= 2 && y <= 8) || (y >= 8 && y <= 13 && Math.abs(x - 7.5) <= 13.5 - y - 0.5);
+      put(T.EXIT_TOP, x, y, arrow ? [255, 255, 255] : edge(x, y) ? [20, 120, 50] : shade([50, 190, 90], 1 + (r4() - 0.5) * 0.06));
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.

@@ -344,21 +344,21 @@ export const GYMS = [
     intro: ['You climbed all the way to the top!', 'My squad sticks together. Can you knock us down?'],
     lose: 'The whole pyramid tumbled down! The Pyramid Badge is yours.',
   },
-  // T36: the Obstacle Course (slot 7 of the south strip): jump from block to block, balance beams, a soft mat and checkpoint flags.
+  // T36 / T36.5: the Obstacle Course (slot 7 of the south strip): a tall course of crumbling, blinking, zapping and pushing blocks, springs, beams, a soft mat and checkpoint flags.
   {
     id: 'parkour', type: 'parkour', name: 'Obstacle Course', badge: 'Sneaker Badge', slot: 7, build: 'obstacleCourse',
-    live: 'course', access: { where: 'course' }, leaderWhere: 'at the finish',
-    welcome: 'Welcome to the Obstacle Course! Jump from block to block. If you fall on the soft mat, you go back to your last flag.',
+    live: 'course', access: { where: 'course' }, leaderWhere: 'at the very top',
+    welcome: 'Welcome to the Obstacle Course! Some blocks crumble, blink, zap or push. Watch first, then jump! If you fall, you go back to your last flag.',
     leader: { name: 'Leader Rio', look: 'sport', colors: { shirt: 0xff3b3b, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a } },
     trainers: [
       { name: 'Runner Remy', look: 'sport', colors: { shirt: 0x2a8cff, pants: 0x1a2a4a, hair: 0xe0c060, skin: 0xf2c79a },
-        team: [['teetail', 50], ['zippet', 50], ['zoomstick', 50]], intro: ['You made it across the beam! Ready for a race?'] },
+        team: [['teetail', 50], ['zippet', 50], ['zoomstick', 50]], intro: ['You got past the blink blocks! Ready for a race?'] },
       { name: 'Gymnast Gigi', look: 'sport', colors: { shirt: 0xc060e0, pants: 0x3a2a5a, hair: 0x1a1a1a, skin: 0xe8b98a },
-        team: [['vaultling', 51], ['tightropa', 51], ['zoomstick', 51]], intro: ['Nice jumping! Can your team keep up with mine?'] },
+        team: [['vaultling', 51], ['tightropa', 51], ['zoomstick', 51]], intro: ['Boing! Nice spring jumps. Can your team keep up with mine?'] },
     ],
     leaderTeam: [['tightropa', 51], ['zoomstick', 51], ['ferrocket', 52, ['flipkick', 'staticsnap', 'bodyslam', 'tripleflip']],
       ['highvault', 52, ['rivetshot', 'bodyslam', 'finalsprint', 'rooftoprun']]],
-    intro: ['You reached the finish! What a run!', 'My team never stops moving. Can you keep up?'],
+    intro: ['You climbed all the way to the top! What a run!', 'My team never stops moving. Can you keep up?'],
     lose: 'Gold medal! The Sneaker Badge is yours.',
   },
   // T35: the first gym inside a realm. `realm` + `build` = built by generateRealm (REALM_BUILDERS in realms.js), not in the main world.

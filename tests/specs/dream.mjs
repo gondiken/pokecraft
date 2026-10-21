@@ -12,7 +12,7 @@ const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 
 // A checksum of the main world; gym "live" blocks count as air (same as the realms spec).
 const sum = () => {
-  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93]); // also the blocks wave 11 gyms redraw per player (pot, checkpoint flags)
+  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102]); // also the blocks wave 11 gyms redraw per player (pot, checkpoint flags)
   let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) ? 0 : d[i])) | 0; return h;
 };
 const toasts = page => page.evaluate(() => { window.__toasts ||= []; const g = window.pokecraft; if (!g.ui.__wrapped) { const f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; g.ui.__wrapped = true; } });

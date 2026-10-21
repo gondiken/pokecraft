@@ -185,6 +185,10 @@ const SOUNDS = {
   'fx:food': () => { tone(330, { len: 0.06, type: 'square', vol: 0.12 }); tone(262, { at: 0.09, len: 0.08, type: 'square', vol: 0.12 }); }, // T33: a quiet nom nom
   // T36 Obstacle Course: a springy boing when you fall on the mat, two rising notes at a checkpoint flag.
   boing: () => { tone(420, { len: 0.16, vol: 0.28, slide: -260, type: 'triangle' }); tone(220, { at: 0.15, len: 0.16, vol: 0.28, slide: 380, type: 'triangle' }); },
+  // T36.5: crumble (a short gravelly crunch), zap (an electric buzz falling in pitch), whoosh (an air puff).
+  crumble: () => { noise({ freq: 700, len: 0.1, vol: 0.2, q: 0.7 }); noise({ at: 0.07, freq: 1200, len: 0.08, vol: 0.14, q: 0.7 }); },
+  zap: () => { tone(900, { len: 0.3, type: 'sawtooth', vol: 0.1, slide: -700 }); noise({ freq: 3000, len: 0.12, vol: 0.12, q: 0.8 }); },
+  whoosh: () => { noise({ freq: 1200, len: 0.25, vol: 0.2, q: 0.5 }); },
   checkpoint: () => notes([784, 1175], 0.1, { len: 0.22, type: 'triangle', vol: 0.24 }),
   // T36 parkour: a quick whoosh (sweeping down) and a soft landing tap.
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
