@@ -13,9 +13,10 @@ const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 // A checksum of the main world; gym "live" blocks count as air (same as the realms spec).
 const sum = () => {
   const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102]); // also the blocks wave 11 gyms redraw per player (pot, checkpoint flags)
-  // The Obstacle Course's timed blocks (crumble, blink, pushers) turn into air and back by the course clock: skip its whole box.
-  const w = window.pokecraft.world, c = w.gyms.find(g => g.def.id === 'parkour')?.protect?.[0];
-  const inCourse = i => { if (!c) return false; const x = i % w.W, z = Math.floor(i / w.W) % w.D; return x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1; };
+  // Gyms with live parts redraw ordinary blocks too (the course's timed blocks turn into air, the maze's exit door opens with
+  // the badge): skip their whole boxes.
+  const w = window.pokecraft.world, boxes = w.gyms.filter(g => g.def.live && g.protect?.length).map(g => g.protect[0]);
+  const inCourse = i => { const x = i % w.W, z = Math.floor(i / w.W) % w.D; return boxes.some(c => x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1); };
   let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) || inCourse(i) ? 0 : d[i])) | 0; return h;
 };
 const toasts = page => page.evaluate(() => { window.__toasts ||= []; const g = window.pokecraft; if (!g.ui.__wrapped) { const f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; g.ui.__wrapped = true; } });
