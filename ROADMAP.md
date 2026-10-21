@@ -1147,7 +1147,10 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   (owner: fine, his son plays games like that); **checkpoints if the course is long** (a small `gymLive` check);
   trainers on the landings. Moving platforms only if cheap.
 
-## Later type ideas (not planned yet)
+## Wave 12 · Two more new types (owner, 2026-10-20; which two is not decided yet)
+
+The owner will **pick two of these four** (same shared cost per type as wave 11: 7 creatures, 3+ new shapes, chart,
+moves, wool, fx + sound, Book, README; each gets a gym about 2 levels above the one before):
 
 - **🧲 Magnet:** spawns only with a Metal creature in your team (one condition); maybe slides towards you. Gym: the
   Junkyard, a metal floor where you slide until you hit scrap (needs a solver test like the maze). Medium.
@@ -1159,7 +1162,7 @@ sleep moves are already Pixie, Sound, Time and Cozy). **Dream is what you see on
   `setLive`, never saved). Gym: needs a new idea (the old "Build-off, copy the leader's small model" is now the
   Doodle tower's painting floors, see below).
 
-## Doodle wave, or "custom gym" (own wave, not decided yet)
+## Wave 13 · Doodle, or "custom gym" (owner, 2026-10-20: this is wave 13; the design option below is still open)
 
 Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of a tower (each floor: copy a
 picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
@@ -1197,6 +1200,26 @@ wool ids instead of a palette number):
 
 ---
 
+## Wave 14 · Sharing and the world around you (owner, 2026-10-20)
+
+- **Gifts and trading:** give a friend blocks or a Capture Cube (arrives as a present box), and trade creatures
+  between players.
+- **Dreaming together** (fine to leave out of T35): today a guest cannot follow the host into the Dream realm
+  (T31 toast), so a visiting friend can't catch Dream creatures or earn that badge; let a guest come along.
+- **Photo mode.**
+- **Wild creatures grow with your team** (owner request, 2026-10-19): today a wild creature's level comes only from its
+  distance to the start (`far / 10` in `creatures.js`) plus +10 after 16 badges; it should also follow your team's
+  level so the world stays a challenge.
+
+## Wave 15 · Eggs, hatching and raising (owner, 2026-10-20: its own wave, may get complicated)
+
+**Eggs:** found in chests and mission rewards, or left in a cozy home by two creatures of one type; carried in a
+team slot and hatched by walking; the baby is special from level 1: the home egg knows one move from a parent (more
+once there are more traits). Earlier note: no warmth, no "what it hears", no bond meter (they add special cases all
+over the game); "raising" is to be planned when the wave starts.
+
+---
+
 ## T19.5 · Creature Book wiki links (size: S)
 
 **Done** (wave 7.5; no separate plan).
@@ -1214,23 +1237,13 @@ wool ids instead of a palette number):
 
 ## Backlog (later)
 
-Owner likes these, but not now: **gifts** (give a friend blocks or a Capture Cube, arrives as a
-present box) and **trading** between players, **home helpers** (creatures left at home do jobs: fire keeps
-the fireplace lit, grass grows flowers), **eggs** (found in chests and mission rewards, or left in a cozy home
-by two creatures of one type; carried in a team slot and hatched by walking; the baby is special from level 1: the
-home egg knows one move from a parent (more once there are more traits). No warmth, no "what it hears",
-no bond meter: they add special cases all over the game), **creature helpers** (fire lights lamps, rock digs
-faster, sound reveals hidden ore), **photo mode**, **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
-
-**Dreaming together** (owner, 2026-10-20: fine to leave out of T35): today a guest cannot follow the host into the Dream
-realm (T31 toast). Once Dream has its own creatures and gym, a friend visiting your world can't catch them or earn that
-badge there; let a guest come along later if needed.
+Owner likes these, but not now: **home helpers** (creatures left at home do jobs: fire keeps
+the fireplace lit, grass grows flowers), **creature helpers** (fire lights lamps, rock digs
+faster, sound reveals hidden ore), **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+(Gifts, trading, photo mode, dreaming together and growing wild creatures moved to wave 14, eggs to wave 15.)
 
 **Rare mission blocks:** the blocks exist now (T29: Star Block, Rainbow Brick, Giant Trophy, ids 75-77, limited, only from missions);
 what they unlock or are used for is still open.
-**Wild creatures grow with your team** (owner request, 2026-10-19): today a wild creature's level comes only from its distance to the start
-(`far / 10` in `creatures.js`) plus +10 after 16 badges; it should also follow your team's level so the world stays a challenge.
-
 **T32 note:** keep new gyms 12 blocks away from the treasure map spots (`treasureSpots(world)`, T29). Done by construction: the spots are pinned to the 288 x 288 map (z <= 277) and the south slot boxes start at z = 290.
 
 Still open from before (see CLAUDE.md): late gyms need a lot of training; the real Supabase
