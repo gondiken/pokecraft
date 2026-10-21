@@ -501,7 +501,7 @@ export default async function ({ browser, base, t }) {
   t.ok(Bump.again === 2, 'stepping away and back starts one again');
   t.ok(Bump.above === 2 && Bump.frozen === 2, 'jumping over it or touching it in a battle does nothing');
 
-  /* ---------------------------------------------------------------- D. The Obstacle Course (T36.5: 60 pieces, 9 flags) */
+  /* ---------------------------------------------------------------- D. The Obstacle Course (T36.5: 60 pieces, 4 flags) */
   // D1 + D2: placement on three seeds, nothing outside the box changes, the layout rules (joins, skips, headroom, pushers) and the
   // course is solvable in one way only (all timed blocks in their solid state; springs are jumps).
   const D12 = await page.evaluate(async seeds => {
@@ -689,7 +689,7 @@ export default async function ({ browser, base, t }) {
       r.reachedAll = reachedPieces(all).size;
       // no flag can be skipped: with a landing out of the way nothing beyond it can be reached
       r.noLanding = {};
-      for (let k = 1; k <= 7; k++) {
+      for (let k = 1; k < C.FLAGS.length; k++) { // every flag landing after the start (L2, L5, F)
         const p = pieces[C.FLAGS[k].piece];
         for (let x = p.x0; x <= p.x1; x++) for (let z = p.z0; z <= p.z1; z++) for (let y = p.y - 1; y <= p.y + 1; y++) hidden.add(key(x, y, z));
         const b2 = bfs(entry);
@@ -720,12 +720,12 @@ export default async function ({ browser, base, t }) {
     const r = D12[seed];
     t.ok(r.found && r.k === 7 && r.protect && r.area, `seed ${seed}: the Obstacle Course is in slot 7 with its protect box and area inside the slot box`);
     t.ok(r.inside > 1500 && r.outside === 0, `seed ${seed}: it changes ${r.inside} cells inside its slot box and ${r.outside} outside`);
-    t.ok(r.mat.bad === 0 && r.mat.rimBad === 0 && r.cps.length === 9 && r.cps.every(c => c === 92) && r.beamsOk && r.pieces === 60, `seed ${seed}: soft mat and rim (${r.mat.bad} / ${r.mat.rimBad} bad), 9 flags (${r.cps}), beams are BEAM, ${r.pieces} pieces`);
+    t.ok(r.mat.bad === 0 && r.mat.rimBad === 0 && r.cps.length === 4 && r.cps.every(c => c === 92) && r.beamsOk && r.pieces === 60, `seed ${seed}: soft mat and rim (${r.mat.bad} / ${r.mat.rimBad} bad), 4 flags (${r.cps}), beams are BEAM, ${r.pieces} pieces`);
     t.ok(Object.values(r.timedOk).every(Boolean) && r.counts.crumble === 11 && r.counts.blink === 11 && r.counts.zap === 6 && r.counts.pusher === 10, `seed ${seed}: every crumble / blink / zap / spring / pusher / exit pad cell is its block at rest (${JSON.stringify(r.timedOk)}, ${JSON.stringify(r.counts)})`);
     t.ok(r.top.max === 17 && r.top.arch, `seed ${seed}: the highest piece is P + ${r.top.max} and the arch fits under the world top`);
     t.ok(r.fenced && r.editBlocked, `seed ${seed}: the whole site is fenced and cannot be edited (${r.fenced}, ${r.editBlocked})`);
     t.ok(r.entryStands && r.reach.every(Boolean), `seed ${seed}: from the stair foot you can reach every flag and the leader (${r.reach})`);
-    t.ok(Object.values(r.noLanding).every(v => !v), `seed ${seed}: without a landing nothing beyond it can be reached (${JSON.stringify(r.noLanding)})`);
+    t.ok(Object.values(r.noLanding).every(v => !v), `seed ${seed}: without one of the 3 landing flags' pieces (L2, L5, F) nothing beyond it can be reached (${JSON.stringify(r.noLanding)})`);
     t.ok(r.direct.join() === 'S0', `seed ${seed}: from the ground only S0 is one move away (${r.direct}; ${r.outsideStands} outside cells)`);
     t.ok(r.bodyHarmless, `seed ${seed}: standing on a pusher body leads nowhere new`);
     const two = r.joins.filter(j => j.gap === 2), springs = r.joins.filter(j => j.spring);
@@ -818,7 +818,7 @@ export default async function ({ browser, base, t }) {
     const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 0.01;
     const last = () => window.__toasts.at(-1);
     const beat = i => g.beaten.push(trainerKey(gym.def, i));
-    out.nine = cps.length === 9 && cps.map(c => c.hint).every(h => h && h.length < 110);
+    out.four = cps.length === 4 && gym.def.trainers.length === 2 && cps[1].trainer === 0 && cps[2].trainer === 1 && cps.map(c => c.hint).every(h => h && h.length < 130);
     // flags are lit with setLive and never edits
     L.update(0);
     out.flag0 = w.get(...cps[0].cell); out.flag1 = w.get(...cps[1].cell);
@@ -834,31 +834,25 @@ export default async function ({ browser, base, t }) {
     p.pos.set(5, 5, 5);
     L.stand(...mat, B.SOFT_MAT);
     out.toStart = near(p.pos, at(0)) && sound('boing') === 1 && last() === 'Boing! Back to the start.' && L.falls === 1;
-    // CP1 (no trainer), then CP2 with Remy
+    // CP1 = Runner Remy's landing (L2)
     L.stand(...cps[1].cell, B.CHECKPOINT);
     out.cp1Toast = last();
     out.cp1Sound = sound('checkpoint');
     out.flag1On = w.get(...cps[1].cell) === B.CHECKPOINT_ON && w.get(...cps[2].cell) === B.CHECKPOINT;
     L.stand(...mat, B.SOFT_MAT);
     out.toCp1 = near(p.pos, at(1)) && last() === 'Boing! Back to your last flag.' && L.falls === 2;
+    // CP2 = Gymnast Gigi's landing, reached with Remy NOT battled: a fall still goes back to CP2 (no trainer clamp)
     L.stand(...cps[2].cell, B.CHECKPOINT);
     out.cp2Toast = last();
-    // CP3 reached with Remy not beaten: a fall goes back to CP2 (cannot skip a trainer)
+    L.stand(...mat, B.SOFT_MAT);
+    out.noClamp = near(p.pos, at(2)) && !g.beaten.some(k => k.startsWith('parkour:'));
+    beat(0); beat(1);
+    L.stand(...mat, B.SOFT_MAT);
+    out.beatenSame = near(p.pos, at(2));
+    // CP3 = the finish
     L.stand(...cps[3].cell, B.CHECKPOINT);
     L.stand(...mat, B.SOFT_MAT);
-    out.skipNo = near(p.pos, at(2));
-    beat(0);
-    L.stand(...mat, B.SOFT_MAT);
-    out.skipYes = near(p.pos, at(3));
-    // the same for Gigi on CP5 / CP6
-    L.stand(...cps[4].cell, B.CHECKPOINT); L.stand(...cps[5].cell, B.CHECKPOINT);
-    out.cp5Toast = last();
-    L.stand(...cps[6].cell, B.CHECKPOINT);
-    L.stand(...mat, B.SOFT_MAT);
-    out.gigiNo = near(p.pos, at(5));
-    beat(1);
-    L.stand(...mat, B.SOFT_MAT);
-    out.gigiYes = near(p.pos, at(6));
+    out.finishBack = near(p.pos, at(3));
     // a real fall from above the mat
     const [mx, , mz] = mat;
     p.pos.set(mx + 0.5, gym.fy + 6, mz + 0.5); p.vel.set(0, 0, 0); p.keys = {};
@@ -867,8 +861,8 @@ export default async function ({ browser, base, t }) {
     const under = w.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z));
     out.realFall = { under, onGround: p.onGround };
     L.stand(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z), under);
-    out.realFallBack = near(p.pos, at(6));
-    // the earlier-section catch: a drop from CP6's height onto Z1's safe wool (section 2) is a fall
+    out.realFallBack = near(p.pos, at(3));
+    // the earlier-section catch: a drop from L6's height (section 2) onto Z1's safe wool (section 1) is a fall
     const drop = (fromPiece, toCell, k, expectBack) => {
       L.reached = k; L.last = -1; window.__toasts.length = 0;
       p.pos.set(toCell[0] + 0.5, toCell[1] + 6, toCell[2] + 0.5); p.vel.set(0, 0, 0); p.keys = {}; p.onGround = false;
@@ -882,15 +876,16 @@ export default async function ({ browser, base, t }) {
     const dirW = (dd, ds) => [gym.front[0] * dd + gym.side[0] * ds, gym.front[1] * dd + gym.side[1] * ds];
     const col = (d, s) => { const [a, b] = dirW(d, s); return [gym.x + a, gym.z + b]; };
     const [ix, iz] = col(-16, 6);
-    out.catchFall = drop('L6', [ix, gym.pieces.Z1.y, iz], 6, 6);
-    // the same drop with reached = 2 (Z1 is the current section, sec 2): nothing happens
-    out.catchSame = drop('L6', [ix, gym.pieces.Z1.y, iz], 2, 2);
+    out.catchFall = drop('L6', [ix, gym.pieces.Z1.y, iz], 2, 2);
+    out.secs = [gym.pieces.C7.sec, gym.pieces.L2.sec, gym.pieces.Z1.sec, gym.pieces.L5.sec, gym.pieces.L6.sec, gym.pieces.F.sec].join();
+    // the same drop with reached = 1 (Z1 is the current section, sec 1): nothing happens
+    out.catchSame = drop('L6', [ix, gym.pieces.Z1.y, iz], 1, 1);
     out.catchSameStays = Math.abs(p.pos.x - (ix + 0.5)) < 0.01 && p.onGround;
-    // a drop onto a lower piece of the current section: H1 (h 10) onto SP1 (h 7) with reached = 4 (both section 4)
+    // a drop onto a lower piece of the current section: H1 (h 10) onto SP1 (h 7) with reached = 1 (both section 1)
     const [sx, sz] = col(11, -3);
-    out.catchLower = drop('H1', [sx, gym.pieces.SP1.y, sz], 4, 4);
+    out.catchLower = drop('H1', [sx, gym.pieces.SP1.y, sz], 1, 1);
     out.catchLowerStays = Math.abs(p.pos.x - (sx + 0.5)) < 0.01 && p.onGround;
-    // walking back from CP1's landing onto C7 (section 0, same height) is not a fall
+    // walking back from L1 (section 0, a plain platform now) onto C7 (section 0, same height) is not a fall
     L.reached = 1; L.wasAir = false; L.lastTop = gym.pieces.L1.y;
     const [cx7, cz7] = col(15, 13);
     p.pos.set(cx7 + 0.5, gym.pieces.C7.y + 1, cz7 + 0.5); p.vel.set(0, 0, 0); p.onGround = true;
@@ -908,17 +903,42 @@ export default async function ({ browser, base, t }) {
     L.update(0.05);
     out.startStays = Math.abs(p.pos.x - (s0x + 0.5)) < 0.01;
     // the exit pad
-    L.reached = 8; L.last = -1; window.__toasts.length = 0;
+    L.reached = 3; L.last = -1; window.__toasts.length = 0;
     p.pos.set(gym.exitPad[0][0] + 0.5, gym.exitPad[0][1] + 1, gym.exitPad[0][2] + 0.5); p.onGround = true;
     L.stand(...gym.exitPad[0], B.EXIT_PAD);
     out.exit = { at: Math.hypot(p.pos.x - (gym.exit[0] + 0.5), p.pos.z - (gym.exit[2] + 0.5)) < 0.01 && Math.abs(p.pos.y - gym.exit[1]) < 0.01, toast: last(), outside: !(p.pos.x >= gym.course.x0 && p.pos.x <= gym.course.x1 + 1 && p.pos.z >= gym.course.z0 && p.pos.z <= gym.course.z1 + 1) || true };
+    // the landing spot of the pad is inside the area: it does not reset the flags by itself
+    const a = gym.area, inside = () => p.pos.x >= a.x0 && p.pos.x < a.x1 + 1 && p.pos.z >= a.z0 && p.pos.z < a.z1 + 1;
+    window.__toasts.length = 0;
+    L.update(0.05);
+    out.exitKeeps = inside() && L.reached === 3 && window.__toasts.length === 0;
     g.badges.push('parkour');
     L.stand(...gym.exitPad[0], B.EXIT_PAD);
     out.exit.toastBadge = last();
     g.badges = g.badges.filter(b => b !== 'parkour');
     p.pos.set(s0x + 0.5, gym.pieces.S0.y + 1, s0z + 0.5); p.onGround = true; L.update(0.05);
     out.exit.backUp = near(p.pos, at(L.target()));
-    L.reached = 6; L.last = -1;
+    // standing on the mat (a fall) is not leaving
+    L.reached = 2; L.last = -1; window.__toasts.length = 0;
+    p.pos.set(mat[0] + 0.5, gym.fy + 1, mat[2] + 0.5); p.onGround = true;
+    L.update(0.05); L.stand(...mat, B.SOFT_MAT); L.update(0.05);
+    out.matKeeps = L.reached === 2 && !window.__toasts.some(x => x.startsWith('You left'));
+    // a battle does not reset, even far outside the area
+    p.pos.set(a.x1 + 6, gym.fy + 1, a.z1 + 6); g.inBattle = true;
+    L.update(0.05);
+    out.battleKeeps = L.reached === 2 && !window.__toasts.some(x => x.startsWith('You left'));
+    g.inBattle = false;
+    // walking out of the area: the flags start over, one toast, flags redrawn
+    window.__toasts.length = 0;
+    L.update(0.05);
+    out.leave = { reached: L.reached, last: L.last, toast: last(), count: window.__toasts.length, lit: w.get(...cps[0].cell) === B.CHECKPOINT_ON && w.get(...cps[2].cell) === B.CHECKPOINT && w.get(...cps[1].cell) === B.CHECKPOINT };
+    L.update(0.05);
+    out.leave.once = window.__toasts.length === 1;
+    // nothing reached: being outside does nothing
+    L.reached = 0; window.__toasts.length = 0; L.update(0.05);
+    out.leave.quiet = window.__toasts.length === 0 && L.reached === 0;
+    p.pos.set(s0x + 0.5, gym.pieces.S0.y + 1, s0z + 0.5); p.onGround = true;
+    L.reached = 2; L.last = -1;
     // prompts
     out.prompt = [L.prompt({ id: B.CHECKPOINT_ON }), L.prompt({ id: B.EXIT_PAD }), L.prompt({ id: B.STONE })].join('|');
     // the mat outside the course box does nothing
@@ -930,23 +950,25 @@ export default async function ({ browser, base, t }) {
     window.__toasts.length = 0;
     out.editBeam = w.editAllowed(beam.x0, beam.y, beam.z0, B.AIR);
     out.editMat = w.editAllowed(mat[0], mat[1], mat[2], B.AIR);
-    out.fenced = w.fenced(Math.floor(cps[0].stand[0]), Math.floor(cps[0].stand[1]), Math.floor(cps[0].stand[2])) && w.fenced(Math.floor(cps[5].stand[0]), Math.floor(cps[5].stand[1]), Math.floor(cps[5].stand[2]));
+    out.fenced = w.fenced(Math.floor(cps[0].stand[0]), Math.floor(cps[0].stand[1]), Math.floor(cps[0].stand[2])) && w.fenced(Math.floor(cps[2].stand[0]), Math.floor(cps[2].stand[1]), Math.floor(cps[2].stand[2]));
     L.reached = 0; L.last = -1;
     return out;
   });
-  t.ok(D4.has && D4.nine && D4.flag0 === 93 && D4.flag1 === 92 && D4.noEdits, `9 flags with short hints; the start flag is drawn lit, the others not, and flags are never edits (${D4.flag0}, ${D4.flag1})`);
+  t.ok(D4.has && D4.four && D4.flag0 === 93 && D4.flag1 === 92 && D4.noEdits, `4 flags (start, Remy's landing, Gigi's landing, finish) with short hints; the start flag is drawn lit, the others not, and flags are never edits (${D4.flag0}, ${D4.flag1})`);
   t.ok(D4.hint0?.startsWith('Run (Shift') && D4.hint0Again === 0, 'the start flag says how to run, once per session');
   t.ok(D4.toStart, 'a fall before any flag goes back to the start (boing, toast, falls counted)');
-  t.ok(D4.cp1Toast?.startsWith('Checkpoint! Blink blocks') && D4.cp1Sound === 1 && D4.flag1On, `the first landing flag teaches blink blocks and lights up (${D4.cp1Toast})`);
-  t.ok(D4.toCp1, 'a fall from the first landing goes back to its flag');
-  t.ok(D4.cp2Toast?.includes('Runner Remy wants to battle you!'), `the zap flag names Runner Remy (${D4.cp2Toast})`);
-  t.ok(D4.skipNo && D4.skipYes, 'with Runner Remy not beaten, a fall from CP3 goes back to CP2; after beating him to CP3');
-  t.ok(D4.cp5Toast?.includes('Gymnast Gigi wants to battle you!') && D4.gigiNo && D4.gigiYes, 'the same for Gymnast Gigi on CP5 / CP6');
+  t.ok(D4.cp1Toast?.startsWith('Checkpoint! Red zap') && D4.cp1Toast.includes('Runner Remy wants to battle you!') && D4.cp1Sound === 1 && D4.flag1On, `Remy's flag teaches zaps and pushers, names Runner Remy and lights up (${D4.cp1Toast})`);
+  t.ok(D4.toCp1, 'a fall from Remy\'s landing goes back to its flag');
+  t.ok(D4.cp2Toast?.includes('Gymnast Gigi wants to battle you!'), `Gigi's flag names Gymnast Gigi (${D4.cp2Toast})`);
+  t.ok(D4.noClamp && D4.beatenSame, 'after reaching Gigi\'s flag without battling Remy a fall still goes back to Gigi\'s flag (no trainer clamp), and the same once both are beaten');
+  t.ok(D4.finishBack, 'a fall after the finish flag goes back to the finish flag');
   t.ok(D4.realFall.under === 91 && D4.realFall.onGround && D4.realFallBack, `a real fall lands on the soft mat and the frame's stand call sends you back (${JSON.stringify(D4.realFall)})`);
-  t.ok(D4.catchFall.back && D4.catchFall.toast === 'Boing! Back to your last flag.', `a drop from lap 3 onto an earlier section sends you to your flag on the landing frame (${JSON.stringify(D4.catchFall)})`);
+  t.ok(D4.catchFall.back && D4.catchFall.toast === 'Boing! Back to your last flag.', `(sections ${D4.secs}) a drop from L6 (section 2) onto an earlier section sends you to your flag on the landing frame (${JSON.stringify(D4.catchFall)})`);
   t.ok(!D4.catchSame.back && D4.catchSameStays && !D4.catchLower.back && D4.catchLowerStays && D4.walkBack, 'a drop inside the current section and walking back onto an earlier piece do nothing');
   t.ok(D4.startBack && D4.startStays, 'stepping on the start platform takes you to your furthest flag ("Your flag is waiting! Whoosh!"), or nowhere without one');
-  t.ok(D4.exit.at && D4.exit.toast === 'Back on the ground. Your flag waits for you!' && D4.exit.toastBadge === 'Great run! Come back any time.' && D4.exit.backUp, `the Exit Pad puts you by the entrance, words by badge, and the start platform takes you back up (${JSON.stringify(D4.exit)})`);
+  t.ok(D4.exit.at && D4.exit.toast === 'Back on the ground! Leave the course and your flags start over.' && D4.exit.toastBadge === 'Great run! Come back any time.' && D4.exit.backUp, `the Exit Pad puts you by the entrance, words by badge, and the start platform takes you back up (${JSON.stringify(D4.exit)})`);
+  t.ok(D4.exitKeeps && D4.matKeeps && D4.battleKeeps, `the Exit Pad's landing spot, standing on the mat and a battle do not reset the flags (${D4.exitKeeps}, ${D4.matKeeps}, ${D4.battleKeeps})`);
+  t.ok(D4.leave.reached === 0 && D4.leave.last === -1 && D4.leave.toast === 'You left the Obstacle Course. Next time you start from the beginning!' && D4.leave.count === 1 && D4.leave.once && D4.leave.lit && D4.leave.quiet, `walking out of the course area resets the flags, redraws them and toasts once (${JSON.stringify(D4.leave)})`);
   t.ok(D4.prompt === 'Checkpoint flag|Exit pad · stand on it to go down|', `prompts (${D4.prompt})`);
   t.ok(D4.outside, 'the mat outside the course box does nothing');
   t.ok(!D4.editBeam && !D4.editMat && D4.fenced, 'breaking a beam or the mat is refused, and the course is fenced for riders');
@@ -1314,7 +1336,7 @@ export default async function ({ browser, base, t }) {
     const nearP = { x: gym.entry[0] + 0.5 + gym.front[0] * 3, y: gym.fy + 1, z: gym.entry[2] + 0.5 + gym.front[1] * 3 }; // just outside the site, at the foot of the stairs
     const nearText = g.access.of(gym).aim(nearP).text('→', 3);
     const hereText = g.access.of(gym).aim({ x: gym.x + 0.5, y: gym.fy + 1, z: gym.z + 0.5 }).text('→', 5);
-    const l7 = gym.checkpoints[7].stand; // the area is full height now: the arrow also says so up on the last lap
+    const l7 = gym.checkpoints[3].stand; // the area is full height now: the arrow also says so up at the finish
     const hereTop = g.access.of(gym).aim({ x: l7[0], y: l7[1], z: l7[2] }).text('→', 5);
     return { far, aimOk: Math.abs(aim.x - (gym.entry[0] + 0.5)) < 1e-9 && Math.abs(aim.z - (gym.entry[2] + 0.5)) < 1e-9, nearText, welcome: g.access.of(gym).welcome(), hereText, hereTop, tips: g.access.of(gym).tips };
   });
