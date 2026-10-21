@@ -37,7 +37,7 @@ const HOUSE = async () => {
 
 // A checksum of the main world; gym "live" blocks (doors that open by the clock, lasers, vault lights) count as air.
 const sum = () => {
-  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9]);
+  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93]);
   let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) ? 0 : d[i])) | 0; return h;
 };
 const sleep = async (page, bed) => {
