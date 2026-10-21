@@ -188,6 +188,26 @@ export class UI {
     c.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('got', i < state.found));
   }
 
+  // T33: the open order's ingredients in the HUD: [{ emoji, name, got, period }] or null. A missing one glows every `period`
+  // seconds (faster when nearer), or stays dim when none is near; a found one has a tick.
+  setFoodCompass(list) {
+    const c = this.foodCompass ??= document.getElementById('food-compass');
+    if (!c) return;
+    if (!list) { if (this.foodShown !== null) { c.classList.add('hidden'); this.foodShown = null; } return; }
+    const tag = list.map(i => `${i.emoji}${i.got ? '+' : i.period == null ? '-' : Math.round(i.period * 10)}`).join();
+    if (tag === this.foodShown) return;
+    this.foodShown = tag;
+    c.classList.remove('hidden');
+    c.replaceChildren(...list.map(i => {
+      const s = document.createElement('span');
+      s.className = `food ${i.got ? 'got' : i.period == null ? 'far' : 'near'}`;
+      s.textContent = i.emoji;
+      s.title = i.got ? `You have ${i.name}` : i.period == null ? `No ${i.name} near here` : `${i.name} is near! It glows faster when you get closer.`;
+      if (!i.got && i.period != null) s.style.setProperty('--glint', `${(Math.round(i.period * 10) / 10).toFixed(1)}s`);
+      return s;
+    }));
+  }
+
   // T30 hide and seek: the warmer / colder compass, the score line and the seeker's dark screen.
   setSeekCompass(state) {
     const c = this.seekCompass ??= document.getElementById('seek-compass');

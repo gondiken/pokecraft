@@ -304,11 +304,11 @@ export const GYMS = [
     // Ingredients: emoji, how the toast says it, where it is (Chef tips), and the natural blocks that give it.
     // The Chef only picks a rematch dish whose ingredients exist on this map (restaurant.js sourcesFound).
     ingredients: {
-      berry: { emoji: '🫐', name: 'berry', found: 'a berry', hint: 'tree leaves', blocks: ['LEAVES'] },
+      berry: { emoji: '🫐', name: 'berry', found: 'a berry', hint: 'the leaves of any tree', blocks: ['LEAVES'] },
       honey: { emoji: '🍯', name: 'honey', found: 'some honey', hint: 'flower bushes in meadows', blocks: ['FLOWER_BUSH'] },
-      pinenut: { emoji: '🌰', name: 'pine nut', found: 'a pine nut', hint: 'pine trees where it is cold', blocks: ['PINE_LEAVES'] },
+      pinenut: { emoji: '🌰', name: 'pine nut', found: 'a pine nut', hint: 'the needles of pine trees where it is cold', blocks: ['PINE_LEAVES'] },
       glowcap: { emoji: '🍄', name: 'glowcap', found: 'a glowcap', hint: 'glowing mushrooms in caves', blocks: ['GLOWCAP'] },
-      snow: { emoji: '❄️', name: 'snow', found: 'some snow', hint: 'snowy mountains', blocks: ['SNOW', 'ICE'] },
+      snow: { emoji: '❄️', name: 'snow', found: 'some snow', hint: 'snow or ice on cold mountains', blocks: ['SNOW', 'ICE'] },
       cactus: { emoji: '🌵', name: 'cactus fruit', found: 'a cactus fruit', hint: 'cactuses in the desert', blocks: ['CACTUS'] },
       starsugar: { emoji: '✨', name: 'star sugar', found: 'some star sugar', hint: 'star crystals on high peaks and in big caves', blocks: ['CRYSTAL'] },
     },

@@ -386,9 +386,32 @@ export default async function ({ browser, base, t }) {
   const orderToast = await toasts();
   st = await state();
   t.ok(st.keys === 'food:order' && st.stage === 'shopping' && st.dish === 'berrypie', `the Chef gives an order (${st.keys}, ${st.stage})`);
-  t.ok(orderToast.includes('Table 2 (blue) wants Berry Pie') && orderToast.includes('🫐 🍯 🌰') && orderToast.includes('tree leaves'), `the order toast: ${orderToast}`);
+  t.ok(orderToast.includes('Table 2 (blue) wants Berry Pie') && orderToast.includes('🫐 🍯 🌰') && orderToast.includes('the leaves of any tree'), `the order toast: ${orderToast}`);
   const after = await page.evaluate(() => { const g = window.pokecraft, c = g.npcs.list.find(x => x.kind === 'leader' && x.gym.def.id === 'food'); return { p: g.gymLive.talkPrompt(c), status: g.access.of(g.world.gyms.find(x => x.def.id === 'food')).status() }; });
   t.ok(after.p.verb === 'talk' && after.status.includes('🫐') && after.status.includes('🍯') && after.status.includes('🌰'), `the guide lists the ingredients: ${after.status}`);
+
+  // 4d2. The HUD glow: the order's ingredients, glowing faster when a natural one is near (placed ones don't count).
+  await platform(page);
+  const sniff = (dx, id, natural) => page.evaluate(([dx, id, natural]) => {
+    const g = window.pokecraft, p = g.player.pos, x = Math.floor(p.x) + dx, y = Math.floor(p.y), z = Math.floor(p.z);
+    if (id != null) g.world.set(x, y, z, id, !natural);
+    const L = g.gymLive.of('food');
+    L.sniff();
+    const el = document.getElementById('food-compass');
+    return { list: L.sniffed, shown: !el.classList.contains('hidden'), html: el.innerHTML };
+  }, [dx, id, natural]);
+  let sn = await sniff(0, null);
+  t.ok(sn.shown && sn.list.map(i => i.emoji).join(' ') === '🫐 🍯 🌰' && sn.list.every(i => !i.got), `the HUD shows the three ingredients (${sn.list.map(i => i.emoji + (i.period ?? '-')).join(' ')})`);
+  const honey0 = sn.list[1].period;
+  sn = await sniff(2, B.FLOWER_BUSH, false);
+  t.ok(sn.list[1].period === honey0, `a placed flower bush 2 blocks away does not glow (${sn.list[1].period})`);
+  sn = await sniff(3, B.FLOWER_BUSH, true);
+  t.ok(sn.list[1].period != null && sn.list[1].period < 0.6 && (honey0 == null || honey0 > sn.list[1].period), `a natural flower bush 3 blocks away: honey glows fast (${honey0} -> ${sn.list[1].period})`);
+  t.ok(sn.html.includes('class="food near"') && sn.html.includes('--glint'), 'the near ingredient blinks in the HUD');
+  await page.evaluate(() => { document.getElementById('pause').classList.add('hidden'); });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: SHOTS + 't33-ingredient-glow.png', clip: { x: 700, y: 0, width: 400, height: 260 } });
+  await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos; g.world.set(Math.floor(p.x) + 3, Math.floor(p.y), Math.floor(p.z), 0, false); });
 
   // 4e. Ingredients on a platform: only natural blocks count, one of each, and only the ones the dish needs.
   await platform(page);
@@ -401,13 +424,16 @@ export default async function ({ browser, base, t }) {
   t.ok((await state()).keys.includes('food:berry') && msg.includes('🫐 You found a berry! (1/3 for Berry Pie)'), `a natural leaf is a berry (${msg})`);
   await clearToasts();
   await breakNatural(B.LEAVES);
-  t.ok(!(await toasts()).includes('You found'), 'a second leaf: nothing new');
+  msg = await toasts();
+  t.ok(!msg.includes('You found'), `a second leaf: nothing new (${msg})`);
   await breakNatural(B.FLOWER_BUSH);
   await breakNatural(B.PINE_LEAVES);
   msg = await toasts();
   st = await state();
   t.ok(st.keys.includes('food:honey') && st.keys.includes('food:pinenut') && st.stage === 'cook' && msg.includes('You have everything for Berry Pie'), `honey and a pine nut: ${msg}`);
   t.ok((await page.evaluate(() => window.pokecraft.world.edits.size)) > 0, 'the broken blocks are normal edits');
+  sn = await page.evaluate(() => { window.pokecraft.gymLive.of('food').sniff(); return !document.getElementById('food-compass').classList.contains('hidden'); });
+  t.ok(!sn, 'with everything found the HUD glow is gone');
 
   // 4f. The pot.
   await place(inside(-5, -5)[0], info.fy + 1, inside(-5, -5)[1], [-fx, -fz], -0.15);

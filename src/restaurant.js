@@ -14,6 +14,8 @@ const H = 5; // walls fy+1..fy+5, roof layer at fy+6
 const RAW = 3; // seconds the pot is raw
 const BURNT_SHOW = 2.5; // seconds it shows burnt
 const SIGHT = 16; // pot toasts only when the player is this close
+const SNIFF_R = 40; // the HUD ingredient glow looks this far around you (sideways; any height, so caves count)
+const SNIFF_EVERY = 0.5; // seconds between searches
 
 /* ----------------------------- pure helpers ----------------------------- */
 
@@ -41,6 +43,31 @@ export function sourcesFound(world, def) {
   cache.set(world, found);
   return found;
 }
+
+// The nearest natural, breakable block of each ingredient in `keys` within SNIFF_R of p (x/z), any height: { key: distance }.
+// Like sourcesFound, placed blocks and blocks inside a gym do not count.
+export function nearestSources(world, def, keys, p, r = SNIFF_R) {
+  const look = new Int16Array(256).fill(-1);
+  keys.forEach((k, n) => { for (const id of ingredientIds(def, k)) look[id] = n; });
+  const W = world.W, D = world.D, H = world.data.length / (W * D), data = world.data;
+  const px = Math.floor(p.x), pz = Math.floor(p.z), best = keys.map(() => Infinity);
+  const x0 = Math.max(0, px - r), x1 = Math.min(W - 1, px + r), z0 = Math.max(0, pz - r), z1 = Math.min(D - 1, pz + r);
+  for (let y = 0; y < H; y++) for (let z = z0; z <= z1; z++) {
+    const row = W * (z + D * y);
+    for (let x = x0; x <= x1; x++) {
+      const n = look[data[row + x]];
+      if (n < 0) continue;
+      const d = Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y, z + 0.5 - p.z);
+      if (d < best[n] && !world.edits.has(row + x) && world.editAllowed(x, y, z, B.AIR)) best[n] = d;
+    }
+  }
+  const out = {};
+  keys.forEach((k, n) => { if (best[n] < Infinity) out[k] = best[n]; });
+  return out;
+}
+
+// How fast an ingredient glows: like the Treasure Vault's key, faster the nearer it is (seconds per glint).
+export const sniffPeriod = d => Math.min(3, Math.max(0.35, 0.3 + d / 12));
 
 // Dishes (indices 1..) whose ingredients all exist on this map. Dish 0, the badge dish, only needs things every map has.
 export function availableDishes(world, def) {
@@ -180,6 +207,7 @@ export class RestaurantLive {
     this.now = () => performance.now() / 1000; // tests replace it
     this.cookAt = null;
     this.last = 'idle';
+    this.sniffAcc = SNIFF_EVERY;
     this.update(0);
   }
 
@@ -199,7 +227,9 @@ export class RestaurantLive {
     return t < RAW ? 'raw' : t < RAW + time ? 'golden' : t < RAW + time + BURNT_SHOW ? 'burnt' : 'done';
   }
 
-  update() {
+  update(dt = 0) {
+    this.sniffAcc += dt;
+    if (this.sniffAcc >= SNIFF_EVERY) this.sniff();
     this.cells.flush();
     let p = this.phase();
     if (p === 'done') { this.cookAt = null; p = 'idle'; }
@@ -255,6 +285,7 @@ export class RestaurantLive {
     this.add(key);
     sound.play('keyfound');
     const left = this.order().missing, n = s.dish.ingredients.length - left.length;
+    this.sniff();
     this.ui.toast(`${I[key].emoji} You found ${I[key].found}! (${n}/${s.dish.ingredients.length} for ${s.dish.name})`);
     if (!left.length) this.ui.toast(`You have everything for ${s.dish.name}! Cook it in the pot at the Restaurant.`);
     this.game.save?.();
@@ -335,7 +366,26 @@ export class RestaurantLive {
     this.ui.toast(`${this.def.leader.name}: Come back soon! There is a new dish on the menu.`);
   }
 
-  state() { return { ...this.order(), phase: this.phase(), cookAt: this.cookAt }; }
+  // The HUD row of the open order's ingredients while shopping: found ones are ticked, missing ones glow faster the nearer
+  // the closest one is (dim when none is within SNIFF_R). Nothing in the world changes.
+  sniff() {
+    this.sniffAcc = 0;
+    const s = this.order(), p = this.game.player?.pos, I = this.def.ingredients;
+    let want = null;
+    if (p && this.game.started && s.stage === 'shopping') {
+      const near = nearestSources(this.game.world, this.def, s.missing, p);
+      want = s.dish.ingredients.map(k => ({
+        key: k, emoji: I[k].emoji, name: I[k].name, got: !s.missing.includes(k),
+        period: near[k] != null ? sniffPeriod(near[k]) : null,
+      }));
+    }
+    this.sniffed = want;
+    this.game.ui?.setFoodCompass?.(want);
+  }
+
+  dispose() { this.game.ui?.setFoodCompass?.(null); }
+
+  state() { return { ...this.order(), phase: this.phase(), cookAt: this.cookAt, sniffed: this.sniffed }; }
 }
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
