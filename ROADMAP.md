@@ -1154,13 +1154,31 @@ step just shows the round again). A rematch starts with a longer dance. The pads
 building, so no world block changed; badges, the beaten trainer and rematch wins of existing players stay. Other old
 plain gyms could get a makeover the same way later.
 
-## Wave 11.5 · Room for the new gyms (owner, 2026-10-21: before wave 12; not decided yet)
+## Wave 11.5 · Other worlds and room for the new gyms (owner, 2026-10-21: before wave 12)
 
-Waves 12-14 add 9 gyms (Racer, Ball, Tiny, Pirate; Portal, Surprise, Funfair, Ninja; the Doodle Wizard's tower), but
-only south slots 8 and 9 are free (slot 3 stays spare). Options being talked about: grow the main map once more (one
-more entry in `SIZES`, like T32), and/or new realms (Portal's own weird world, maybe Tiny in the Dream or a world of
-its own, worlds shared by several gyms) with a story that ties them together. **Play together:** a gym in a realm
-can only be played with a friend once "realms together" (wave 15) exists, so it may have to move up into this wave.
+Waves 12-14 add 9 gyms (Racer, Ball, Tiny, Pirate; Portal, Surprise, Funfair, Ninja; the Doodle Wizard), but only
+south slots 8 and 9 are free (slot 3 stays spare). Most of them go into **other worlds** (realms, T31 code).
+
+**Decided:**
+- **Realms together** moves here from wave 15: a friend can follow you through a portal (and into the Dream), so
+  father and son can play every realm gym together. Without it a realm gym is a solo gym.
+- **The story: the Swirl.** Portal creatures make swirls; the Swirl is the strange world between worlds (floating
+  doorways in a purple sky), reached any time through a stone portal frame in the main world (no Bed), back through
+  the same frame. Its doorways lead to small worlds of their own. Idea: the doorways are **paintings**: the Wizard
+  (wave 14) painted these worlds and Portal creatures let you step into a painting.
+- Wave 11.5 builds the frame, the Swirl hub and realms together **without** the Portal type (that is wave 13); each
+  later wave adds its world as one more doorway.
+
+**Proposed placement** (Claude, 2026-10-21; owner to confirm):
+
+| World | Gyms | Why |
+| --- | --- | --- |
+| The Swirl (hub) | Portal (wave 13), the Wizard's painting tower (wave 14) | the Wizard painted the worlds, so his tower stands where the paintings hang |
+| The Giant House | Tiny (wave 12) | you come out as small as a mouse; also a mouse hole in the main world as a second way in |
+| The Pirate Seas | Pirate (wave 12) | open sea with islands is hard to fit in the main world |
+| Playland | Racer, Ball (wave 12), Funfair (wave 13) | a flat world built for it: race track round the stadium and the pitch, the fair beside them; one world, three gyms |
+| Main world | Surprise (slot 8), Ninja (slot 9) (wave 13) | the last two free slots; no map growth needed |
+| The Dream | (unchanged) | later also a doorway from the Swirl |
 
 ## Wave 12 · Racer, Ball, Tiny, Pirate (owner, 2026-10-21: picked)
 
@@ -1253,7 +1271,7 @@ wool ids instead of a palette number):
 
 - **Gifts and trading:** give a friend blocks or a Capture Cube (arrives as a present box), and trade creatures
   between players.
-- **Dreaming together** (fine to leave out of T35): today a guest cannot follow the host into the Dream realm
+- **Dreaming together** (moved to wave 11.5 as "realms together", 2026-10-21): today a guest cannot follow the host into the Dream realm
   (T31 toast), so a visiting friend can't catch Dream creatures or earn that badge; let a guest come along.
 - **Photo mode.**
 - **More to do in the Dream** (ideas, 2026-10-21, not decided): **a new dream every night** (the island's shape and
