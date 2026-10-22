@@ -15,6 +15,8 @@ this file is for working on the code.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
 - Prefer free services. Deployed on GitHub Pages; backend is a free Supabase project.
+- **The game's story** is in `STORY.md` (the Wizard, why creatures battle, cubes, gyms, the Tower, the Swirl and its worlds).
+  New features should fit it.
 
 ## Running and deploying
 

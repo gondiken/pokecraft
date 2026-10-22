@@ -1162,10 +1162,11 @@ south slots 8 and 9 are free (slot 3 stays spare). Most of them go into **other 
 **Decided:**
 - **Realms together** moves here from wave 15: a friend can follow you through a portal (and into the Dream), so
   father and son can play every realm gym together. Without it a realm gym is a solo gym.
-- **The story: the Swirl.** Portal creatures make swirls; the Swirl is the strange world between worlds (floating
-  doorways in a purple sky), reached any time through a stone portal frame in the main world (no Bed), back through
-  the same frame. Its doorways lead to small worlds of their own. Idea: the doorways are **paintings**: the Wizard
-  (wave 14) painted these worlds and Portal creatures let you step into a painting.
+- **The story** is in `STORY.md` (owner, 2026-10-22): the Wizard who made the world went missing; the Swirl is the
+  place between worlds where he worked, full of floating frames that are doorways to the other worlds he made; it
+  leaks (the Champion missions' giants come from it), so the Portal creatures built a stone **portal frame** in the
+  main world (any time, no Bed; back through the same frame). Each world hides a page of his journal that leads to
+  his tower (wave 14).
 - Wave 11.5 builds the frame, the Swirl hub and realms together **without** the Portal type (that is wave 13); each
   later wave adds its world as one more doorway.
 
