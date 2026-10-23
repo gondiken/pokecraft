@@ -1,6 +1,10 @@
 # The Story of PokeCraft
 
-The lore behind the game (owner, 2026-10-22). New waves should fit it; `ROADMAP.md` says which wave adds which part.
+The lore behind the game (owner, 2026-10-23). New features should fit it; `ROADMAP.md` says which wave adds which
+part. The game has two chapters: **our world** (badges, the Champion's Tower) and **the Swirl** (the other worlds,
+the Wizard).
+
+# Chapter 1: Our world
 
 ## The Wizard and the world
 
@@ -37,44 +41,65 @@ He told them to give their **badge** only to trainers they trust. A badge means:
 creatures, and I trust you."* Beating a leader doesn't make them your enemy. They're proud of you, and they'll
 battle you again whenever you want to see how much you've grown.
 
+## The Dream
+
+There's one world the Wizard didn't make. When you sleep in your cozy home, **you** make it. That's why everything
+there floats, hangs upside down and makes no sense, and why you can jump so high. It has a gym too, and its badge
+counts like any other.
+
 ## The Wizard disappears
 
-One day the Wizard went away to work on something new, and he never came back.
+The Wizard made his worlds in **the Swirl**, his workshop between the worlds. Every world he made there left the
+Swirl a little weaker, and one day it **cracked**.
 
-Before he left, he built the **Champion's Tower**. He knew that one day a trainer would earn the trust of **every**
-gym leader, and he wanted that trainer to be ready. So he left people in the tower to wait:
+The Wizard went into the Swirl to hold it together, and **sealed himself inside his tower** so the crack couldn't
+spread. He can't come out, or the crack would grow again.
 
-- **Two guards** let in only trainers who carry every badge.
+Before he left, he did three things:
+- He built the **Champion's Tower**, for the trainer who would one day earn the trust of every gym leader.
+- He asked his oldest friends, **Champion Solenne** and **Zenithar**, to guard it and wait for that trainer.
+- He hid a **page of his journal** in each of his other worlds, explaining how to reach him.
+
+## The Champion's Tower
+
+Only a trainer with **every badge of our world** gets in:
+- **Two guards** check your badges.
 - **Coach Dex** trains you for what's at the top.
-- **Champion Solenne** and **Zenithar**, the Wizard's oldest friends, have guarded the tower ever since he left.
+- **Champion Solenne** and **Zenithar** battle you. Win, and you're the **Champion**.
 
 ## Champion missions
 
 With the Wizard gone, somebody has to look after the world. Solenne asks the new Champion to help:
-
 - **Treasure maps** lead to things the Wizard hid long ago.
 - **Building challenges:** the world keeps growing, and the Champion builds the new parts.
-- **Giants:** some creatures have started growing **far too big**, confused and grumpy. Nobody knows why. One
-  trainer can't calm a giant down, so you need **a friend**.
+- **Giants:** some creatures have started growing **far too big**, confused and grumpy. One trainer can't calm a
+  giant down, so you need **a friend**.
 
 The rare rewards (Star Blocks, Rainbow Bricks, Giant Trophies) are things the Wizard made himself and left with
 Solenne for the Champion.
 
+# Chapter 2: The Swirl
+
+## Where the giants come from
+
+The giants keep coming, and Solenne finally tells the Champion the truth: they leak through the **crack in the
+Swirl**. Someone has to go in.
+
+The only creatures who can move between worlds, the **Portal creatures**, have built a **stone portal frame** in our
+world. You can step through any time, alone or with a friend, and come back through the same frame.
+
 ## The Swirl
 
-The giants are a sign that something is wrong, and it comes from **the Swirl**.
+The Swirl is a purple sky full of floating platforms, rivers that run *upwards*, stairs that loop back on
+themselves, and big frames hanging in the air. Each frame is a **doorway to another world** the Wizard made.
 
-The Swirl is the place between worlds, where the Wizard worked. It's a purple sky full of floating platforms, rivers
-that run *upwards*, stairs that loop back on themselves, and big empty frames hanging in the air. Each frame is a
-**doorway to another world** the Wizard made.
+Far out in the sky floats **the Wizard's tower**. You can see it the moment you arrive, but you can't reach it: the
+**bridge** to it is broken.
 
-Since he left, the Swirl has been leaking: that's where the giants come from. The only creatures who can move
-between worlds, the **Portal creatures**, can't fix it alone. So they built a **stone portal frame** in our world
-and are waiting for the Champion to step through.
+Every gym in the Swirl gives you a **badge**, like any other, and one of the **journal pages** the Wizard left
+behind. Each page brings back **one piece of the bridge**.
 
-The Wizard left **a page of his journal** in each world. Find them all and you'll know where he went.
-
-## The other worlds
+## The worlds
 
 **The Giant House.** Step through and you're the size of a mouse. The Wizard made this house from the point of view
 of his pet mouse. The kitchen is as big as a town:
@@ -83,45 +108,46 @@ of his pet mouse. The kitchen is as big as a town:
 - a dripping tap becomes a river you float down on a bottle cap
 - a cat sleeps by the table: don't wake it
 
-The leader waits on a giant cookie on the table, next to the first journal page.
+The leader waits on a giant cookie on the table.
 
 **The Pirate Seas.** Open ocean and scattered islands, ruled by **Captain Squawk**, a parrot pirate who took over
 this world once the Wizard was gone. Fly from island to island by cannon, swing on ropes, and board the Captain's
-ship. The second journal page is in the Captain's treasure chest.
+ship. His journal page is in his treasure chest.
 
 **Playland.** The Wizard built it for a great festival: a race track, a football stadium and a fair with a roller
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
-and the fair leader, and Playland starts up again. The third page is pinned to the leader's booth.
+and the fair leader, and Playland starts up again.
 
-**In our own world:**
+**The Portal creatures' home.** The Swirl itself has a gym too: the Portal creatures' leader, who has been watching
+the crack the longest.
+
+**Back in our world**, new creatures have appeared since the crack:
 - **Ninja creatures** move through the shadows and seem to know more than they say.
 - **Surprise creatures** are gifts the Wizard never got to hand out. You only know what's inside when they open.
 
-## The Dream
-
-There's one world the Wizard didn't make. When you sleep in your cozy home, **you** make it. That's why everything
-there floats, hangs upside down and makes no sense, and why you can jump so high.
-
 ## The Wizard's Tower
 
-The journal pages lead to a tower in the middle of the Swirl: the Wizard's **studio**. Before he made any creature,
-he drew it first, so every floor holds a drawing to copy, and each floor is harder than the last.
+With every page found, the bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
+drew it first, so every floor holds a drawing to copy, each harder than the last. Climbing it teaches you how a
+creature is designed.
 
-At the top you find the Wizard. He didn't get lost. He was working on his **last creature** and couldn't finish it,
-because he wanted it to be one that **he hadn't designed himself**.
+At the top is the Wizard, still holding the Swirl together. He's tired. What would close the crack for good is a
+**new guardian creature** for the Swirl, but he has no strength left to make one.
 
-He battles you to see the team you've built on your journey. When you win, he hands you his drawing board:
+He battles you first, the hardest battle in the game, to see if your team is strong enough. When you win, he hands
+you his drawing board:
 
-*"This one is yours to design."*
+*"You design it."*
 
-Your own creature, unlike any other, and **badge number 40**.
+You design your own creature, unlike any other. It becomes the Swirl's guardian, the crack closes, and the Wizard
+can finally come out. That's **badge number 40**.
 
-## How it lines up with the waves
+# How it lines up with the game
 
-| Wave | What it adds |
-| --- | --- |
-| Done | The Wizard's world, creatures, cubes, gyms, the Champion's Tower, missions and giants, the Dream |
-| 11.5 | The Swirl, the portal frame, friends can come along |
-| 12 | The Giant House, the Pirate Seas, and Playland's race track and stadium |
-| 13 | The Portal creatures, Playland's fair, Ninja and Surprise in our world |
-| 14 | The Wizard's Tower and designing your own creature |
+| Part | In the game | Wave |
+| --- | --- | --- |
+| Chapter 1: the world, creatures, cubes, gyms, the Dream, the Champion's Tower, missions and giants | Already in the game | Done |
+| The portal frame (after the Champion title), the Swirl, the far-away tower and the broken bridge, friends can come along | Realms together, portal frame, Swirl hub | 11.5 |
+| The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball gyms (badge + page + bridge piece each) | 12 |
+| The Portal leader, Playland's fair, Ninja and Surprise in our world | Portal, Funfair gyms in the Swirl; Ninja, Surprise gyms in our world (they count for the Tower) | 13 |
+| The studio, the Wizard, designing the guardian | Doodle, badge 40 | 14 |

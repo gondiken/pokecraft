@@ -1162,23 +1162,27 @@ south slots 8 and 9 are free (slot 3 stays spare). Most of them go into **other 
 **Decided:**
 - **Realms together** moves here from wave 15: a friend can follow you through a portal (and into the Dream), so
   father and son can play every realm gym together. Without it a realm gym is a solo gym.
-- **The story** is in `STORY.md` (owner, 2026-10-22): the Wizard who made the world went missing; the Swirl is the
-  place between worlds where he worked, full of floating frames that are doorways to the other worlds he made; it
-  leaks (the Champion missions' giants come from it), so the Portal creatures built a stone **portal frame** in the
-  main world (any time, no Bed; back through the same frame). Each world hides a page of his journal that leads to
-  his tower (wave 14).
+- **The story** is in `STORY.md` (owner, 2026-10-23). The Wizard sealed himself in his tower in the Swirl to hold
+  a crack shut; the Champion missions' giants leak through it.
+- **Two chapters** (owner, 2026-10-23). **Chapter 1** = our world: the Champion's Tower needs every badge of the
+  **main world** (the Dream counts; Swirl gyms do not), so it stops growing with every wave (33 after wave 13 with
+  Ninja and Surprise). **Chapter 2** = the Swirl: becoming Champion gives a mission from Solenne that opens the stone
+  **portal frame** (any time after that, alone or with a friend; back through the same frame). Swirl gyms give normal
+  badges (the grid still fills to 40) **plus a journal page**; each page brings back **one piece of the bridge** to
+  the Wizard's tower, which floats far out in the Swirl, visible from the start but unreachable until the bridge is
+  whole. The Wizard (wave 14) is the hardest battle in the game, above Solenne.
 - Wave 11.5 builds the frame, the Swirl hub and realms together **without** the Portal type (that is wave 13); each
   later wave adds its world as one more doorway.
 
-**Proposed placement** (Claude, 2026-10-21; owner to confirm):
+**Placement** (owner, 2026-10-23, with the story):
 
 | World | Gyms | Why |
 | --- | --- | --- |
-| The Swirl (hub) | Portal (wave 13), the Wizard's painting tower (wave 14) | the Wizard painted the worlds, so his tower stands where the paintings hang |
+| The Swirl (hub) | Portal (wave 13), the Wizard's tower behind the broken bridge (wave 14) | the Wizard's workshop between the worlds |
 | The Giant House | Tiny (wave 12) | you come out as small as a mouse; also a mouse hole in the main world as a second way in |
 | The Pirate Seas | Pirate (wave 12) | open sea with islands is hard to fit in the main world |
 | Playland | Racer, Ball (wave 12), Funfair (wave 13) | a flat world built for it: race track round the stadium and the pitch, the fair beside them; one world, three gyms |
-| Main world | Surprise (slot 8), Ninja (slot 9) (wave 13) | the last two free slots; no map growth needed |
+| Main world | Surprise (slot 8), Ninja (slot 9) (wave 13) | the last two free slots; no map growth needed; they count for the Champion's Tower |
 | The Dream | (unchanged) | later also a doorway from the Swirl |
 
 ## Wave 12 · Racer, Ball, Tiny, Pirate (owner, 2026-10-21: picked)
@@ -1212,12 +1216,8 @@ Four more types and gyms. **Badge goal: 40** (owner, 2026-10-21): 31 today, 35 a
 40 with the Doodle Wizard (wave 14). The HUD keeps its 9-wide rows until waves 13 and 14 are done, then becomes 10 x 4.
 
 - **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
-  Gym: the Portal House, a chain of portal rooms to the leader (teleports are cheap). Three ways to place it:
-  (1) its gym in the Dream realm (a sleep-only secret gym; needs "realms together" for friends), (2) portals only as a
-  Dream feature, no type, or (3) **its own small realm** "the Swirl" (floating platforms in a purple sky), reached any
-  time through a stone portal frame in the main world (no Bed needed), back through the same portal or by losing a
-  battle; later a special portal from the Swirl into the Dream. Option 3 reuses T31's realm code (a second `REALMS`
-  entry) and keeps the main map's free slots.
+  Gym: the Portal House, a chain of portal rooms to the leader (teleports are cheap), **in the Swirl** (decided
+  2026-10-23; the Swirl itself is built in wave 11.5).
 - **🎁 Surprise:** gift boxes, a jack-in-the-box, a piñata; every wild one starts as a box and you only see what it is
   when it opens. Gym: the Room of Doors, every door a surprise (a slide, a ball pit, a confetti room, a trainer). Fits
   wave 15's gifts.
@@ -1226,8 +1226,9 @@ Four more types and gyms. **Badge goal: 40** (owner, 2026-10-21): 31 today, 35 a
 - **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
   (a bit like hide and seek).
 
-**More badges:** the badge row is just a list, so 10 x 4 is a small HUD change; the Champion's Tower, `REMATCH_CAP` and
-Coach Dex move up each time so the Tower stays the hardest. A longer road to the Tower makes "wild creatures grow with
+**More badges:** the badge row is just a list, so 10 x 4 is a small HUD change. The Champion's Tower only needs the
+main world's badges (two chapters, see wave 11.5), so it no longer moves up with every wave; Swirl gyms sit above it
+and the Wizard is the hardest. `REMATCH_CAP` and Coach Dex are checked against the new top. A longer road to the Tower makes "wild creatures grow with
 your team" (wave 15) more useful, maybe sooner.
 
 ## Wave 14 · Doodle, or "custom gym" (owner, 2026-10-21: moved from wave 13 to wave 14; the design option below is still open)
@@ -1256,7 +1257,10 @@ thing, "make the canvas look like the picture", and floors differ only by data, 
 - **Left out on purpose** (each would be a second game: new code and new guidance): a from-memory floor (timer, covered
   easel) and a free-rules top floor ("3 colours, same on both sides" needs a second checker and is hard to explain).
 - Later, maybe: painting together (each player sees half the picture), needs shared live state like S1.
-- Open: where the tower stands (free slots 3, 8, 9), picture designs, the Wizard's team, badge or not, when it unlocks.
+- **Decided by the story (2026-10-23):** the tower stands in the Swirl, reached over the bridge once every Swirl gym's
+  journal page is found; the Wizard gives badge 40; the creature you design is the Swirl's new **guardian** (the
+  floors teach how a creature is designed).
+- Open: picture designs, the Wizard's team.
 
 Two options for the design, the owner is still deciding (the painted palette fits option 2: the creature stores a few
 wool ids instead of a palette number):
