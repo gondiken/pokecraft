@@ -382,6 +382,7 @@ export default async function ({ browser, base, t }) {
   t.ok(fr.placed === 0, `you cannot build into a picture frame's space (${fr.placed})`);
 
   // 8. Stars light the bridge: the first stone turns to Star Stone, the others stay air with outlines.
+  await waitFor(Q, () => window.pokecraft.portal.info()?.outline); // drawn by the first update after arriving (0.25 s steps)
   const bridge0 = await Q.evaluate(() => window.pokecraft.portal.info());
   t.ok(bridge0.outline && bridge0.outlineBoxes === 7, `seven gold outlines mark the empty stones (${bridge0.outlineBoxes})`);
   await Q.evaluate(() => { window.pokecraft.stars = ['house']; });
