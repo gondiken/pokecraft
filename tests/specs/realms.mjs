@@ -37,7 +37,7 @@ const HOUSE = async () => {
 
 // A checksum of the main world; gym "live" blocks (doors that open by the clock, lasers, vault lights) count as air.
 const sum = () => {
-  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102]);
+  const d = window.pokecraft.world.data, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102, 124, 125]); // T38a: the Portal Door is drawn per player
   // Gyms with live parts redraw ordinary blocks too (the course's timed blocks turn into air, the maze's exit door opens with
   // the badge): skip their whole boxes.
   const w = window.pokecraft.world, boxes = w.gyms.filter(g => g.def.live && g.protect?.length).map(g => g.protect[0]);

@@ -8,7 +8,7 @@ export function createGuide(game) {
   function updateGuide() {
     const p = game.player.pos;
     if (game.world.realm) { // T31/T35: in a realm the arrow follows its gym (the next one without a badge); with none left it points at the Wake Stone
-      if (!game.world.wake) { game.ui.setGuide(`☾ ${game.world.realm.name}`); return; }
+      if (!game.world.wake && !game.world.door) { game.ui.setGuide(`☾ ${game.world.realm.name}`); return; } // T38a: the Swirl has a door back instead of a Wake Stone
       const todo = game.world.gyms.find(g => !game.badges.includes(g.def.id));
       updateArrow(p, todo || { realmAim: true }, '');
       const inside = game.world.gyms.find(g => acc(g).contains(p)) || null;

@@ -12,6 +12,7 @@ import { buildRestaurant } from './restaurant.js'; // T33
 import { buildObstacleCourse } from './obstaclecourse.js'; // T36
 import { buildBigTop } from './bigtop.js'; // T34
 import { buildShadowDojo } from './shadowdojo.js'; // T37b
+import { buildPortalDoor } from './portal.js'; // T38a
 import { OLD_W, OLD_D, MID_X, MID_Z, WORLD_H, WATER_LEVEL, hash2, groundOf, PLANTS } from './world.js';
 
 // Builders of the slot gyms (T19), by `def.build`: (world, def, slot) => gym object. Each writes only inside slot.box and
@@ -1079,6 +1080,11 @@ class GymPlacement {
     const posOf = ([d, s]) => [x + front[0] * d + side[0] * s + 0.5, floor + 1, z + front[1] * d + side[1] * s + 0.5];
     this.tower = { def: TOWER, tower: true, x, z, y: floor + 1, front, people: TOWER.people.map(p => ({ ...p, pos: posOf(p.at) })), protect: [pbox(x, z, 7, 1, WORLD_H - 1)] };
     this.markLit(x, z);
+    if (this.portalDoor !== false) { // T38a: the Portal Door beside the tower door; its box lies inside protect[0] and is appended for the keep-out rules
+      const pd = buildPortalDoor(this, this.tower);
+      this.tower.protect.push(pd.box);
+      this.newGymBoxes.push({ ...pd.box, y0: 0, y1: WORLD_H - 1 });
+    }
   }
 
   // The tower: stone walls 11 high, a rainbow roof with battlements and a crystal spire.

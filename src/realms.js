@@ -6,6 +6,7 @@ import { B, WOOL } from './blocks.js';
 import { GYMS } from './gyms.js';
 import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
+import { swirlLand, swirlAim } from './swirlland.js'; // T38a
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -24,6 +25,32 @@ export const REALMS = {
     look: { sky: 0x6a4fb0, fog: [30, 90], time: null /* null = the main clock */, weather: false, light: 0.8 /* lowest brightness: the Dream is only visited at night */ },
     arrive: [128, 128],
     enterText: 'You fall asleep... and dream!',
+    // T38a: per-realm words and rules, so no code has to name a realm
+    arriveYaw: -Math.PI / 2,            // facing the Wake Stone
+    morning: true,                      // the morning wakes you up
+    clock: '☾ Dream', moon: true,       // the HUD clock text; the moon shows how long the night lasts
+    travelText: 'Dreaming...',
+    backText: 'You woke up in your bed. What a dream!',
+    noHomeText: 'No homes in dreams! Build your home in your own world.',
+    away: n => `${n} fell asleep and is in the Dream realm.`,
+    hostAway: n => `${n} is asleep in the Dream realm. Look around until they wake up!`,
+  },
+  // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, seven covered picture frames and the sealed
+  // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
+  swirl: {
+    id: 'swirl', name: 'Swirl', version: 1, size: [160, 160], seedSalt: 0x5317,
+    terrain: 'swirlLand', biome: 'swirl',
+    gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
+    spawns: { swirl: [], cave: [] },    // no wild creatures in wave 13
+    walk: [], gyms: [],
+    look: { sky: 0x5b2a9e, fog: [40, 120], time: null, weather: false, light: 0.85, still: true, stars: true },
+    arrive: [43, 80], arriveYaw: -Math.PI / 2, // 4 in front of the door back, facing east
+    morning: false,                     // the morning never wakes you here
+    clock: '✦ Swirl', travelText: 'Swirling...', travelIcon: '🌀', enterText: 'Whoosh! Welcome to the Swirl!',
+    backText: 'You stepped back through the Portal Door.',
+    noHomeText: 'No homes in the Swirl! Build your home in your own world.',
+    away: n => `${n} stepped through the Portal Door.`,
+    hostAway: n => `${n} is in the Swirl. Look around until they come back!`,
   },
 };
 REALMS.dream.spawns.cave = REALMS.dream.spawns.dream; // digging into the island: the same dreamers
@@ -36,7 +63,9 @@ export function realmOf(id) { return Object.hasOwn(REALMS, id) ? REALMS[id] : nu
 
 // Terrain builders: (world, def) fill world.data / world.ground and set world.wake (the Wake Stone cell) and world.isles.
 // Writes go straight into data (not edits), like the main terrain.
-export const TERRAINS = { dreamLand };
+export const TERRAINS = { dreamLand, swirlLand };
+// The guide arrow of a terrain when no realm gym is left: (world, p, game) => { x, z, text(arrow, distance) } (T38a). The Dream's is in aim() below.
+export const TERRAIN_AIMS = { swirlLand: swirlAim };
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };
@@ -130,7 +159,7 @@ export function createRealms(game, { createWorld, save, size }) {
   let asked = false;     // our 'Go to sleep?' box is showing
   let told = {};         // T35: the Dream's one-time hints (bounce block, steering, the cloud sea)
   const overlay = () => document.getElementById('travel');
-  const show = text => { const o = overlay(); if (!o) return; o.querySelector('.travel-text').textContent = text; o.classList.remove('hidden'); };
+  const show = (text, icon = '☾') => { const o = overlay(); if (!o) return; o.querySelector('.travel-text').textContent = text; o.querySelector('.travel-moon').textContent = icon; o.classList.remove('hidden'); };
   const hide = () => overlay()?.classList.add('hidden');
   const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
 
@@ -192,29 +221,30 @@ export function createRealms(game, { createWorld, save, size }) {
     },
 
     // Travel to a realm. opts.bed: the Bed cell (you wake up beside it). Returns a promise of true when you arrived.
-    async enter(id, { bed } = {}) {
+    async enter(id, { bed, back: backAt } = {}) {
       const def = realmOf(id);
       const no = !def ? 'There is no such place.' : game.place !== MAIN ? 'You are already away!' : why();
       if (no) { game.ui.toast(no); return false; }
       busy = true;
       const p = game.player, w = game.world;
       const back = bed ? besideBed(game, bed) : [p.pos.x, p.pos.y, p.pos.z];
-      stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: [...back, p.yaw, p.pitch] };
+      // backAt (T38a): a ready [x, y, z, yaw] to wake up / come back at (the Portal Door's stand)
+      stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: backAt ? [backAt[0], backAt[1], backAt[2], backAt[3] ?? p.yaw, 0] : [...back, p.yaw, p.pitch] };
       game.riding?.stop('quiet');
       game.ui.closeAsk?.();
-      show(id === 'dream' ? 'Dreaming...' : 'Travelling...');
+      show(def.travelText || 'Travelling...', def.travelIcon);
       await frame();
       try {
         createWorld(realmSeed(stash.seed, def.seedSalt), game.realmEdits[id], def.size, { realm: def });
         game.place = id;
         game.player.pos.copy(game.spawnPoint);
-        game.player.yaw = -Math.PI / 2; game.player.pitch = 0; // facing the Wake Stone
+        game.player.yaw = def.arriveYaw ?? -Math.PI / 2; game.player.pitch = 0; // facing the Wake Stone (T38a: or the realm's own way)
         game.weather.snap?.();
       } finally { busy = false; hide(); }
       told = {};
       game.ui.toast(def.enterText || `Welcome to the ${def.name}!`);
       if (game.world.gyms.some(g => !game.badges.includes(g.def.id))) game.ui.toast('Everything is light here: jump high! An upside-down house floats somewhere. Follow the arrow.');
-      else game.ui.toast('Touch the glowing Wake Stone to wake up.');
+      else if (game.world.wake) game.ui.toast('Touch the glowing Wake Stone to wake up.');
       game.mp?.sendState();
       save(true);
       return true;
@@ -227,7 +257,7 @@ export function createRealms(game, { createWorld, save, size }) {
       const left = game.place;
       game.realmEdits = self.edits();
       game.riding?.stop('quiet');
-      show('Waking up...');
+      show(realmOf(left)?.morning === false ? 'Swirling...' : 'Waking up...', realmOf(left)?.travelIcon); // T38a
       await frame();
       const s = stash;
       try {
@@ -243,7 +273,7 @@ export function createRealms(game, { createWorld, save, size }) {
         game.weather.snap?.();
       } finally { busy = false; hide(); }
       const waits = (realmOf(left)?.gyms || []).some(id => !game.badges.includes(id)); // T35: a gym of that realm is still unbeaten
-      const words = { stone: 'You woke up in your bed. What a dream!', morning: waits ? 'Good morning! The gym will wait for you tonight.' : 'Good morning! You woke up in your bed.', lost: 'Oh! You woke up in your bed. Your team is rested.' };
+      const words = { stone: realmOf(left)?.backText || 'You woke up in your bed. What a dream!', door: realmOf(left)?.backText || 'You stepped back through the Portal Door.', morning: waits ? 'Good morning! The gym will wait for you tonight.' : 'Good morning! You woke up in your bed.', lost: 'Oh! You woke up in your bed. Your team is rested.' };
       if (words[reason]) game.ui.toast(words[reason]);
       game.mp?.sendState();
       save(true);
@@ -273,8 +303,9 @@ export function createRealms(game, { createWorld, save, size }) {
     // Every frame: morning wakes you up (never in the middle of a battle or a duel invite); one-time hints.
     update() {
       if (game.place === MAIN || busy || game.inBattle || game.duels?.incoming || !game.started) return;
-      if (!isNight(game.time)) { self.leave('morning'); return; }
+      if (game.world.realm?.morning && !isNight(game.time)) { self.leave('morning'); return; }
       const p = game.player;
+      if (!game.world.isles) return; // T38a: the hints below are the Dream's
       if (p.onBounce && !told.pad) { told.pad = true; game.ui.toast('A bounce block! Jump on it to fly up high. Boing!'); }
       else if (p.pos.y < 3 && p.onGround && !told.sea) { told.sea = true; game.ui.toast('You fell into the cloud sea! Find a bounce block to jump back up.'); }
     },
@@ -286,6 +317,8 @@ export function createRealms(game, { createWorld, save, size }) {
     // The realm's own guide arrow when no realm gym is left: to the home island, then the Wake Stone.
     aim(p) {
       const w = game.world, wake = w?.wake;
+      const own = TERRAIN_AIMS[w?.realm?.terrain]?.(w, p, game); // T38a
+      if (own) return own;
       if (!wake) return null;
       const r = routeOf(w, p, w.isles?.home ?? 'home');
       if (!r || r.kind === 'here') return { x: wake[0] + 0.5, z: wake[2] + 0.5, text: (a, d) => `${a} Wake Stone · ${d} m` };

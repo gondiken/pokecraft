@@ -346,7 +346,7 @@ export class World {
       old.caves.opened = new Set([...old.caves.opened].map(remap));
       if (old.caves.marks) old.caves.marks = new Set([...old.caves.marks].map(remap));
     }
-    for (const k of ['caves', 'gyms', 'tower', 'litRooms', 'newGymBoxes', 'high', 'extraSpots', 'caveSpots', 'newSpots']) this[k] = old[k];
+    for (const k of ['caves', 'gyms', 'tower', 'litRooms', 'newGymBoxes', 'high', 'extraSpots', 'caveSpots', 'newSpots', 'portal']) this[k] = old[k]; // T38a: portal = the Portal Door beside the tower
     if (old.slots) this.slots = old.slots; // T32: newLandSlots() cache of the 288 map
   }
 
@@ -369,8 +369,9 @@ export class World {
   // newGyms: the T10 gyms (19+); off only for tests that compare with the world before them.
   // treasure: the T20 treasure blocks (they only ever replace stone, so counted as stone the world is the old one).
   // Generates a World of the old size (224 x 224) in full; the game's world calls it on its old-size twin.
-  generateArea({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true, treasure = true } = {}) {
+  generateArea({ caves = true, bigCaves = caves, caveGyms = true, newGyms = true, treasure = true, portal = true } = {}) {
     const { W, D } = this;
+    this.portalDoor = portal; // T38a: tests only (generate({ portal: false }))
     const biomes = new Array(W * D);
     for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) biomes[x + z * W] = this.fillColumn(x, z);
     // Caves under the hills (before the plants, so trees only grow where there is still ground).
@@ -517,12 +518,14 @@ export class World {
   protectedAt(x, y, z) {
     const inside = g => g.protect?.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1);
     for (const g of this.gyms) if (inside(g)) return g;
-    return this.tower && inside(this.tower) ? this.tower : null;
+    if (this.tower && inside(this.tower)) return this.tower;
+    for (const k of this.keeps || []) if (inside(k)) return k; // T38a: a realm's keep boxes (the Swirl's star bridge, frames...)
+    return null;
   }
 
   // T27: is this cell inside any gym's or the tower's protected box? Riders can't go in (the box list is fixed after generate()).
   fenced(x, y, z) {
-    const boxes = this.fenceBoxes ??= [...this.gyms, this.tower].flatMap(g => g?.protect || []);
+    const boxes = this.fenceBoxes ??= [...this.gyms, this.tower, ...(this.keeps || [])].flatMap(g => g?.protect || []);
     for (const b of boxes) if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1) return true;
     return false;
   }
@@ -543,6 +546,13 @@ export class World {
       const vis = dx * dx + dz * dz < r;
       for (const m of list) m.visible = vis;
     }
+  }
+
+  // T38a: the Swirl's lift stream (an upward river) that holds the feet at `p`, or null. Boxes, not blocks: nothing is meshed.
+  liftAt(p) {
+    if (!this.lifts) return null;
+    for (const l of this.lifts) if (p.x >= l.x[0] && p.x < l.x[1] + 1 && p.z >= l.z[0] && p.z < l.z[1] + 1 && p.y >= l.y[0] - 0.5 && p.y < l.y[1] + 1) return l;
+    return null;
   }
 
   // Topmost non-air block in a column.
@@ -647,6 +657,7 @@ export class World {
             if (isOccluder(n)) continue;
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
             if (id === B.FIREPLACE) this.hasFire = true; // T22: main.js flickers the fire only in worlds that have one
+            if (id === B.PORTAL) this.hasPortal = true; // T38a: main.js turns the Portal Door's spiral only in worlds that have one
             if (def.glow) this.addFace(glow, x, y, z, f, tile);
             else {
               const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];

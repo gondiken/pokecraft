@@ -122,7 +122,7 @@ export default async function ({ browser, base, t }) {
   t.ok(D.fx, 'fx recipes (travel, impact, two signature moves, colours) and the sound exist');
   t.ok(D.duel === 11, `duel VERSION is ${D.duel}`);
   const wv = await page.evaluate(() => fetch('/src/multiplayer.js').then(r => r.text()));
-  t.ok(/WORLD_VERSION = 15/.test(wv), 'WORLD_VERSION is 15');
+  t.ok(/WORLD_VERSION = 18/.test(wv), 'WORLD_VERSION is 18');
   t.ok(D.crew[0] === 1 && D.crew[1] === 0.6 && D.crew[2] === 1.2, 'CREW numbers and hpPower of a non-crew');
 
   // ---- portraits: full, half and nearly gone ----

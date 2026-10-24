@@ -24,12 +24,15 @@ const SUM = { 1: 1681420519, 4242: 3236083087 };
 // FNV-1a of the surface height of every column outside the new holes, arches, lamp posts and the old Fossil box,
 // measured with the old code too (identical): the hills look the same.
 // T10 (gyms 19-22) also leaves out world.newGymBoxes (the boxes the four new gyms may change), so this number changed.
-const SURF = { 1: 595959614, 4242: 4175453469 };
+const SURF = { 1: 3843678633, 4242: 3591049081 }; // T38a: re-measured, see SUM22 (was 595959614 / 4175453469)
 // T10: FNV-1a of every block of the full world outside world.newGymBoxes, measured with the T8 code (boxes from the
 // new code) and with the new code: identical. Without the new gyms ({ newGyms: false }) SUM above still holds.
 // Wave 6: the Saucer Gym floats in the sky, and its 18-block box joined world.newGymBoxes, so SUM22 and SURF were
 // measured again, the same way: the old code (with the Saucer box left out too) and the new code agree.
-const SUM22 = { 1: 3934547195, 4242: 2033726684 };
+// T38a: the Portal Door beside the tower door. Its box (the tower's row d = 7, s 3..7, all y) joined world.newGymBoxes, so SUM22 and
+// SURF were measured again, the same way: the code before T38a (67d59f7) with the door's box also left out (computed from the tower:
+// d = 7, s = 3..7 in front of it) and the new code agree. (SUM below uses generate({ portal: false }) and did not change.)
+const SUM22 = { 1: 1288122680, 4242: 2563966394 }; // was 3934547195 / 2033726684
 
 // A save from before the two gyms: `badges` = the first 16 gym ids; the Champion title is optional.
 function oldSave(champion) {
@@ -68,7 +71,7 @@ export default async function ({ browser, base, t }) {
     const out = {};
     for (const seed of seeds) {
       const plain = new World(seed, null, null);
-      plain.generate({ bigCaves: false, caveGyms: false, newGyms: false, treasure: false });
+      plain.generate({ bigCaves: false, caveGyms: false, newGyms: false, treasure: false, portal: false }); // T38a
       const spots = plain.extraGymSpots();
       let h = 2166136261;
       for (let y = 0; y < H; y++) for (let z = 0; z < 224; z++) for (let x = 0; x < 224; x++) { // the old 224 x 224 area (T17), indexed with the big map's stride
