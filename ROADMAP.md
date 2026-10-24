@@ -1168,7 +1168,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 
 # Chapter 1 · Our world
 
-## Wave 12 · Ninja, the 32nd and last gym of our world (owner, 2026-10-24)
+## Wave 12 · Ninja, the 32nd and last gym of our world (owner, 2026-10-24) ✅ done (T37, `plans/T37.md`)
 
 - **Badges: an 8 x 4 grid** at the top of the screen (32 = every gym of our world; the Dream counts). The
   Champion's Tower needs those 32 and never grows again. Old Champions keep their title as now (`game.champion`).
