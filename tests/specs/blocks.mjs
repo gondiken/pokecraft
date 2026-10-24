@@ -31,7 +31,9 @@ export default async function ({ browser, base, t }) {
       dream: [['BOUNCE', 87], ['DREAM_GRASS', 88]].map(([k, n]) => ({ id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), bounce: BLOCKS[B[k]].bounce, fixed: !!BLOCKS[B[k]].fixed, wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight })),
       course: [['CRUMBLE', 89], ['CRUMBLE_SHAKE', 90], ['BLINK', 95], ['BLINK_WARN', 96], ['ZAP_OFF', 97], ['ZAP_WARN', 98], ['ZAP_ON', 99], ['PUSHER', 100], ['PUSHER_WARN', 101], ['PUSHER_HEAD', 102], ['SPRING', 103], ['EXIT_PAD', 104]].map(([k, n]) => ({ k, id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), bounce: BLOCKS[B[k]].bounce, wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight, solid: isSolid(B[k]) })), // T36.5
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
-      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82)),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82) || id === 113),
+      dojo: [['NIGHTINGALE', 114], ['TATAMI', 115], ['SHOJI', 116], ['BARREL', 117], ['TALL_GRASS', 118], ['PAPER_LANTERN', 119], ['STONE_LANTERN', 120], ['STONE_LANTERN_ON', 121], ['LANTERN_LIGHT', 122], ['MAPLE_LEAVES', 123]].map(([k, n]) => ({ k, id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight, solid: isSolid(B[k]) })), // T37b
+      nextFree: Math.max(...Object.values(B)) + 1,
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),
@@ -51,7 +53,10 @@ export default async function ({ browser, base, t }) {
   const cb = k => r.course.find(c => c.k === k);
   t.ok(r.course.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid), 'the T36.5 course blocks 89-90 and 95-104 exist, have tiles and a wall text, and cannot be built with');
   t.ok(cb('SPRING').bounce === 4 && ['BLINK', 'BLINK_WARN', 'ZAP_WARN', 'ZAP_ON', 'PUSHER_WARN', 'SPRING', 'EXIT_PAD'].every(k => cb(k).glow && cb(k).noLight) && ['CRUMBLE', 'CRUMBLE_SHAKE', 'ZAP_OFF', 'PUSHER', 'PUSHER_HEAD'].every(k => !cb(k).glow && !cb(k).bounce), 'the spring bounces 4 blocks; the flashing course blocks glow without lighting their surroundings');
-  t.ok(JSON.stringify(r.wool) === JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
+  const db = k => r.dojo.find(c => c.k === k);
+  t.ok(r.dojo.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid) && r.nextFree === 124, `the T37b Shadow Dojo blocks 114-123 exist, have tiles and a wall text, and cannot be built with (next free id ${r.nextFree})`);
+  t.ok(['STONE_LANTERN_ON', 'LANTERN_LIGHT'].every(k => db(k).glow && db(k).noLight) && db('PAPER_LANTERN').glow && !db('PAPER_LANTERN').noLight && !db('NIGHTINGALE').glow, 'paper lanterns light the garden; the lit stone lantern and the lantern light glow without lighting their surroundings');
+  t.ok(JSON.stringify(r.wool) ===JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
     `the four new wool blocks are 49-52 and have names (${r.wool.map(w => w.join(' ')).join(', ')})`);
   const want = ['beach', 'desert', 'forest', 'meadow', 'mountain', 'peak', 'plains', 'snow', 'swamp', 'taiga'];
   t.ok(want.every(b => r.biomes.includes(b)), `worlds have all the biomes (${r.biomes.join(', ')})`);

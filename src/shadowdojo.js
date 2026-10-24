@@ -177,7 +177,7 @@ export function buildShadowDojo(world, def, slot) {
     if (c === 3) for (let y = fy + 1; y <= fy + 11; y++) {
       const corner = Math.abs(a) === 3 && Math.abs(b) === 3;
       const win = !corner && (Math.abs(a) === 3 ? Math.abs(b) <= 1 : Math.abs(a) <= 1) && [fy + 2, fy + 3, fy + 6, fy + 7, fy + 10].includes(y);
-      putD(d, s, y, corner ? RED : win ? B.SHOJI : y === fy + 4 || y === fy + 8 ? RED : DARK);
+      putD(d, s, y, corner ? B.LOG : win ? B.SHOJI : y === fy + 4 || y === fy + 8 ? DARK : RED);
     }
     if (c <= 1) for (let y = fy + 1; y <= fy + 11; y++) putD(d, s, y, B.PLANKS); // the middle pillar
     if (c >= 4) putD(d, s, fy + 4, c === 5 && Math.abs(a) === 5 && Math.abs(b) === 5 ? RED : DARK); // the first roof

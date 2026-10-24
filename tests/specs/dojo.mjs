@@ -35,13 +35,13 @@ export default async function ({ browser, base, t }) {
       return {
         over: [P(30, 26, gym.fy + 26), P(-4, 0, gym.fy + 2)],
         top: [P(1, 0.01, gym.fy + 60), P(0, 0, gym.fy)],
-        gate: [P(21.5, 1.5, gym.fy + 2.6), P(12, -2, gym.fy + 2)],
+        gate: [P(24.5, 0.3, gym.fy + 2.2), P(12, -1, gym.fy + 2.5)],
         garden: [P(18.5, -1, gym.fy + 1), P(11, -2, gym.fy + 0.5)],
         hall: [P(6.5, -9, gym.fy + 1), P(2, 4, gym.fy + 1.2)],
         court: [P(-3, 9, gym.fy + 1), P(-12, 0, gym.fy + 5)],
         pagoda: [P(-5, 14, gym.fy + 9), P(-13, 0, gym.fy + 8)],
         deck: [P(-12, -2, gym.fy + 13), P(10, 0, gym.fy + 4)],
-        roof: [P(3, 18, gym.fy + 5), P(3, 6, gym.fy + 6)],
+        roof: [P(17, 20, gym.fy + 4.2), P(6, 14, gym.fy + 5)],
       };
     });
     const cam = async (name, [eye, look], { time = 0.47, wait = 3500, clock = 3 } = {}) => {
@@ -69,6 +69,7 @@ export default async function ({ browser, base, t }) {
     await cam('t37-dojo-pagoda.png', at.pagoda);
     await cam('t37-dojo-roof.png', at.roof);
     await cam('t37-dojo-deck.png', at.deck);
+    await cam('t37-dojo-night.png', at.court, { time: 0.66, clock: 1 });
     await page.evaluate(() => { const L = window.pokecraft.gymLive.of('ninja'); L.update = L.__u; delete L.__u; });
   };
   if (ONLY === 'shots') { await shots(); t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`); await page.context().close(); return; }
