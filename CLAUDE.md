@@ -56,7 +56,7 @@ this file is for working on the code.
 | `src/blocks.js` | Block ids (wool is 20–38, newer blocks 40+), `PLACEABLE` (Blocks panel), procedurally drawn texture atlas, per-type "wool" roof blocks; `limited` blocks (T20: `TREASURE`, `isLimited`) |
 | `src/species.js` | Types + effectiveness chart, moves (with `fx`; `moveInfo(id)` gives the button/Book words), all 224 normal species (7 per type; the `roster` test checks this) plus the legendary Zenithar (`legendary: true`, never in `SPAWNS`, not catchable; the roster counts skip legendary species) (stats, learnsets, evolutions, model recipe), spawn tables, XP curve, blocky model builders + animation |
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`...) and the newer body shapes (star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal, moth, butterfly; the T9 shapes kite, balloon, skywhale, pinwheel, gelcube, drip, slimedog, gummy, sunfox, lighthouse, rooster, mirrorball, paperplane, origamifrog, book, puzzle; the T18 shapes hourglass, pendulum, alarmclock, sunmoon, bushblock, sandcastle, stonecube, igloo, pixelblob, cursor, wifiwing, glitchghost; the T21 shapes blanketbun, mittencat, pillowsheep, pajamabear (Cozy), coin, crystalfox, gemring, chandelier (Treasure) and `sparkleGeometry`; the 7th-creature shapes plushie, candle, jelly, bonsai, bulbfly, geode, globe, snail, lantern, crane, windup, pitcher, teacup, nimbus, chameleon, blackhole, jukebox, fishbone, zorb) |
-| `src/gyms.js` | The 31 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
+| `src/gyms.js` | The 32 gyms in difficulty order (teams, leader/trainer names, dialogue; `trainersOf(def)` / `trainerKey(def, i)`: old gyms have one `trainer`, T19 gyms a `trainers` list) and `TOWER` (the Champion's Tower: nurse, coach, two guards, champion) |
 | `src/book.js` | Creature Book (key C, `game.book`): seen/caught sets, list + creature + move pages, spawn/evolution/type-matchup helpers; wiki links (T19.5): `go(view)`/`back()` trail, `open({ species, move, type, from: 'team' })`, `typeLink`; the team screen links in via `ui.openBook` / `ui.backToTeam` |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/creatures.js` | Wild creature spawning (biome tables + spawn conditions), wandering, Camo disguises (`spawnAt`, `Wild.reveal`) |
@@ -129,7 +129,7 @@ Key ideas:
   junk; old saves have none), per player like badges. The box closes after 20 s, 8 blocks away, or when the gym closes (night, chilly Cozy...).
 - **Champion's Tower:** `world.tower` is built by `placeTower` right after `placeGyms` (own spot from `towerSpot`, at least
   23 blocks from every gym; it never moves gyms). Its people are NPCs with `kind: 'tower'` and a `role`
-  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all badges (31 since wave 11) (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
+  (`guard1`, `guard2`, `coach`, `champion`; the nurse is a normal healer). Everyone refuses until all badges (32 since wave 12, and it never grows again) (since T19 also old Champions, who only keep the title: `game.champion`; `TOWER.locked(n, champion)` words it kindly). `beaten` gains
   `tower:guard1` / `tower:guard2`; the save has an optional boolean `champion`. Boss battles pass `boss: true`
   (Zenithar hangs on once and powers up at half HP); the coach passes `xpBoost: 2`. After 16 badges (or the Champion title)
   `creatures.levelBonus` is 10 (wild creatures get +10 levels).
@@ -282,7 +282,7 @@ Key ideas:
   `def.moveIn.caught` = cozy kinds in the Book. The Treasure Vault is slot 4 (`def.build: 'treasureVault'`, `def.keys`, `live: 'vault'`); slot 3 stays spare.
   Blocks `KEY_CHEST` 73 (glow, noLight) and `VAULT_DOOR` 74 (not placeable, `wallText`); next free block id is 75. Save field `keys` (`game.keys`, strings
   `'<gymId>:<key>'`, per player, `loadKeys` drops unknown ones). `breakBlock` calls `gymLive.hit` first (touch break button). `WORLD_VERSION` is 9.
-  Tower: needs all badges (`GYMS.length`, 31 since wave 11); since wave 11 guards 55-58, Champion 57-60 (Zenithar 60), rematch cap 63, Coach Dex up to level 58 (11 teams).
+  Tower: needs all badges (`GYMS.length`, 32 since wave 12: every gym of our world, the Tower never grows again); since wave 12 guards 57-60, Champion 59-62 (Zenithar 62), rematch cap 65, Coach Dex up to level 60 (12 teams). The HUD shows the badges in an 8 x 4 grid (`#badges`).
 - **Treasure Vault (T23, `src/treasurevault.js`, slot 4):** `buildTreasureVault` (13x13, 15 high, `fy = clamp(terrainHeight, WATER_LEVEL + 1, 24)`, door `d = 6` towards the middle,
   roof layer `fy + 14`) writes only inside the slot box (guarded `put`) and returns `door` (9 cells), `lights` (3, `fy + 4`), `keys: [{ id: 'dig', chest, mark, spot }, { id: 'build', chest },
   { id: 'explore', chest, mouth, side }]` (order = `def.keys`), `protect` = vault box + 1-cell boxes round the dig and explore chests (the X, the shaft and the tunnel stay open, the roof is
