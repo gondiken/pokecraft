@@ -4521,3 +4521,272 @@ function stickrunner(root, m, parts) {
 const SHAPES_PARKOUR = { lemur, ferret, vaulter, stickrunner };
 Object.assign(SHAPES, SHAPES_PARKOUR);
 /* ==== end of T36 parkour shapes ==== */
+
+
+/* ==== T37 ninja ==== */
+// Ninja look: a dark bandit mask across the eyes (pointed at both ends, big bright eyes peeking out) and a red headband
+// whose two tails flutter out behind the head. The meshes are tagged (userData.gear = 'mask' / 'band') so a spec can
+// check that every Ninja wears both. Action poses: crouched low, on tiptoe, ready to spring. Posed limbs sit in an
+// inner pivot; the outer pivot is the one that swings (parts.wobble), and nothing here sets root.position.
+const NJ_BAND = 0xd83a4a, NJ_MASK = 0x1e1a2e, NJ_LEAF = 0x6fd35a;
+// The mask: a dark strip across the face at height y (front face at z, w wide), pointed ends, two big eyes with a sparkle.
+function njMask(head, y, w, z, { h = 0.12, spread = 0.08, eye = 0.085, color = NJ_MASK } = {}) {
+  box(head, w + 0.02, h, 0.04, color, 0, y, z).userData.gear = 'mask';
+  for (const s of [-1, 1]) {
+    const tip = box(head, 0.08, h * 0.7, 0.04, color, s * (w / 2 + 0.04), y + h * 0.15, z - 0.01);
+    tip.rotation.z = s * 0.35;
+    tip.userData.gear = 'mask';
+    box(head, eye, eye * 0.95, 0.03, 0xffffff, s * spread, y, z + 0.025).userData.eye = true;
+    box(head, eye * 0.5, eye * 0.62, 0.02, 0x14101e, s * spread + s * eye * 0.12, y - 0.005, z + 0.04).userData.eye = true;
+    box(head, eye * 0.22, eye * 0.22, 0.02, 0xffffff, s * spread + s * eye * 0.12 - eye * 0.1, y + eye * 0.16, z + 0.052);
+  }
+}
+// The headband round the head (w x d) at height y, a knot at the back and two tails that flutter out to the sides.
+function njHeadband(head, parts, y, w, d, len = 0.3) {
+  box(head, w + 0.02, 0.065, d + 0.02, NJ_BAND, 0, y, 0).userData.gear = 'band';
+  box(head, 0.1, 0.1, 0.05, NJ_BAND, 0, y, -d / 2 - 0.03).userData.gear = 'band';
+  for (const [s, ph] of [[-1, 0], [1, 1.7]]) {
+    const tail = pivot(head, s * 0.04, y, -d / 2 - 0.04);
+    tail.rotation.set(0.45, s * 0.75, 0);
+    swing(parts, tail, 'x', 0.25, 5, ph);
+    const inner = pivot(tail, 0, 0, 0);
+    inner.rotation.y = s * 0.75; // the pose: out to the side (the outer pivot flutters it up and down)
+    box(inner, 0.07, 0.035, len, NJ_BAND, 0, 0, -len / 2).userData.gear = 'band';
+  }
+}
+// A small leaf with a stem, pointing along +z (Flickit's throwing leaf, Bambooze's leaves).
+function njLeaf(parent, color, x, y, z, len = 0.22) {
+  const g = pivot(parent, x, y, z);
+  box(g, 0.025, 0.025, len * 0.3, 0x6a4a20, 0, 0, len * 0.15);
+  box(g, len * 0.5, 0.025, len * 0.7, color, 0, 0, len * 0.6);
+  box(g, len * 0.25, 0.026, len * 0.25, color, 0, 0, len * 1.05);
+  box(g, 0.02, 0.03, len * 0.8, 0xd8f0b0, 0, 0.005, len * 0.6); // the vein
+  return g;
+}
+
+// Hushcoon / Shadecoon: a round raccoon tiptoeing in a low crouch, one paw at its mouth ("shh!"), a big ringed tail
+// curling up behind it. Shadecoon (`scarf`) is taller and wears a dark scarf whose ends blow back.
+function raccoon(root, m, parts) {
+  const big = has(m, 'scarf');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift; // the tiptoe bob
+  const hipY = big ? 0.34 : 0.29;
+  const body = pivot(lift, 0, hipY + 0.14, 0);
+  body.rotation.x = 0.3; // leaning forward, sneaking
+  box(body, 0.46, 0.4, 0.42, m.body, 0, 0, 0);
+  box(body, 0.32, 0.28, 0.04, m.belly, 0, -0.04, 0.21);
+  if (big) { // the scarf, its two ends blowing back
+    box(body, 0.48, 0.09, 0.44, m.dark, 0, 0.19, 0);
+    box(body, 0.49, 0.03, 0.45, NJ_BAND, 0, 0.14, 0);
+    const ends = pivot(body, 0.14, 0.18, -0.22);
+    swing(parts, ends, 'y', 0.3, 4);
+    const e = pivot(ends, 0, 0, 0);
+    e.rotation.set(0.6, 0.4, 0);
+    box(e, 0.1, 0.05, 0.34, m.dark, 0, 0, -0.17);
+    box(e, 0.09, 0.05, 0.26, m.dark, -0.1, -0.05, -0.13);
+  }
+  const head = pivot(body, 0, 0.36, 0.05);
+  head.rotation.x = -0.3; // looking straight ahead
+  parts.head = head;
+  box(head, 0.46, 0.36, 0.38, m.body, 0, 0, 0);
+  box(head, 0.18, 0.12, 0.14, m.belly, 0, -0.09, 0.22); // the snout
+  box(head, 0.07, 0.05, 0.04, 0x14101e, 0, -0.05, 0.3); // the nose
+  box(head, 0.32, 0.05, 0.03, m.belly, 0, 0.11, 0.19); // light brows above the mask
+  njMask(head, 0.02, 0.46, 0.2, { h: 0.13, spread: 0.1, eye: 0.1 });
+  njHeadband(head, parts, 0.15, 0.46, 0.38);
+  for (const s of [-1, 1]) { // round ears
+    box(head, 0.13, 0.12, 0.06, m.body, s * 0.16, 0.23, -0.04);
+    box(head, 0.07, 0.07, 0.03, m.belly, s * 0.16, 0.22, -0.005);
+  }
+  // the "shh" paw up in front of the snout, the other arm out behind for balance
+  const shh = pivot(body, 0.13, 0.05, 0.16);
+  swing(parts, shh, 'x', 0.05, 2.4);
+  const a1 = pivot(shh, 0, 0, 0);
+  a1.rotation.set(-2.25, 0, 0.35);
+  box(a1, 0.1, 0.28, 0.1, m.body, 0, -0.14, 0);
+  box(a1, 0.11, 0.08, 0.11, m.dark, 0, -0.29, 0);
+  box(a1, 0.04, 0.09, 0.04, m.dark, 0, -0.37, 0.02); // the "shh" finger
+  const back = pivot(body, -0.24, 0.06, 0);
+  swing(parts, back, 'x', 0.15, 2.4, 1.2);
+  const a2 = pivot(back, 0, 0, 0);
+  a2.rotation.set(0.9, 0, -0.45);
+  box(a2, 0.1, 0.24, 0.1, m.body, 0, -0.12, 0);
+  box(a2, 0.11, 0.08, 0.11, m.dark, 0, -0.25, 0);
+  // bent legs on tiptoe: knee forward, shin back, a little dark paw
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const hip = pivot(lift, s * 0.14, hipY, -0.02);
+    swing(parts, hip, 'x', 0.1, 4, ph);
+    const thigh = pivot(hip, 0, 0, 0);
+    thigh.rotation.x = -1.0;
+    box(thigh, 0.14, 0.22, 0.15, m.body, 0, -0.1, 0);
+    const shin = pivot(thigh, 0, -0.2, 0);
+    shin.rotation.x = 1.6;
+    const sl = big ? 0.2 : 0.15;
+    box(shin, 0.1, sl, 0.1, m.body, 0, -sl / 2, 0);
+    box(shin, 0.11, 0.06, 0.12, m.dark, 0, -sl, 0.02);
+  }
+  // the big ringed tail, curling up behind and peeking out at the side
+  const tail = pivot(lift, 0.05, hipY + 0.06, -0.22);
+  swing(parts, tail, 'z', 0.12, 1.8);
+  const n = big ? 8 : 7;
+  for (let i = 0; i < n; i++) {
+    const a = i / (n - 1);
+    const r = 0.17 + Math.sin(a * Math.PI) * 0.05;
+    box(tail, r, r, r, i % 2 ? m.dark : m.body, Math.sin(a * 2.4) * 0.22, a * (big ? 0.7 : 0.58), -Math.sin(a * 1.7) * 0.4);
+  }
+}
+
+// Peekaw / Ravenshade: a round little crow on tiptoe, one wing pulled across the front like a cloak so only the masked
+// eyes and the beak peek over it. Ravenshade (`crest`) is bigger, with three crest feathers and a half-open wing.
+function crow(root, m, parts) {
+  const big = has(m, 'crest');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  for (const s of [-1, 1]) { // thin legs on tiptoe
+    box(lift, 0.04, 0.25, 0.04, 0xf0a040, s * 0.09, 0.15, -0.02);
+    box(lift, 0.05, 0.03, 0.1, 0xf0a040, s * 0.09, 0.02, 0.03);
+  }
+  const body = pivot(lift, 0, 0.5, 0);
+  body.rotation.x = 0.12;
+  box(body, 0.48, 0.44, 0.44, m.body, 0, 0, 0);
+  box(body, 0.42, 0.5, 0.38, m.body, 0, 0, 0); // rounder
+  box(body, 0.3, 0.28, 0.04, m.belly, 0, -0.06, 0.22);
+  const head = pivot(body, 0, 0.38, 0.04);
+  head.rotation.x = -0.12;
+  parts.head = head;
+  box(head, 0.4, 0.34, 0.36, m.body, 0, 0, 0);
+  njMask(head, 0.03, 0.4, 0.19, { h: 0.15, spread: 0.095, eye: 0.115, color: m.dark });
+  njHeadband(head, parts, 0.12, 0.4, 0.36, 0.34);
+  box(head, 0.13, 0.08, 0.14, 0xf0a040, 0, -0.08, 0.24); // the beak
+  box(head, 0.08, 0.05, 0.07, 0xd08020, 0, -0.1, 0.33);
+  if (big) for (const [x, h, r] of [[-0.08, 0.16, 0.35], [0, 0.22, 0], [0.08, 0.16, -0.35]]) { // the crest
+    const f = box(head, 0.06, h, 0.06, m.dark, x, 0.17 + h / 2, -0.06);
+    f.rotation.set(-0.35, 0, r);
+  }
+  // the cloak: the right wing sweeps across the front, up to just under the beak
+  const cloak = pivot(body, 0.24, 0.08, 0.24);
+  swing(parts, cloak, 'y', 0.05, 2.2);
+  const w1 = pivot(cloak, 0, 0, 0);
+  w1.rotation.set(0.05, -0.25, 0.1);
+  box(w1, 0.08, 0.34, 0.3, m.dark, 0, 0, -0.12); // the wing's shoulder on the side
+  box(w1, 0.4, 0.3, 0.06, m.dark, -0.18, 0.02, 0.03); // the wing across the chest
+  for (let i = 0; i < 3; i++) box(w1, 0.12, 0.07, 0.065, m.belly, -0.32 + i * 0.12, -0.12, 0.04); // feather tips
+  // the left wing: folded (Peekaw) or half open (Ravenshade)
+  const other = pivot(body, -0.25, 0.16, -0.02);
+  if (big) parts.flap = [{ g: other, s: 1 }];
+  else swing(parts, other, 'z', 0.08, 2.2, 1);
+  const wl = big ? 0.46 : 0.34;
+  box(other, 0.06, wl, 0.36, m.dark, -0.03, -wl / 2, 0);
+  box(other, 0.05, wl * 0.4, 0.22, m.belly, -0.035, -wl * 0.8, -0.06);
+  // tail feathers
+  const tail = pivot(body, 0, -0.12, -0.22);
+  swing(parts, tail, 'y', 0.15, 2.5);
+  const t = pivot(tail, 0, 0, 0);
+  t.rotation.x = -0.5;
+  for (const x of [-0.08, 0, 0.08]) box(t, 0.07, 0.04, big ? 0.34 : 0.24, m.dark, x, 0, -(big ? 0.17 : 0.12));
+}
+
+// Flickit / Whirlwhisk: a squirrel standing up on its toes, one paw raised high to flick a spinning leaf, a huge bushy
+// tail curling up behind. Whirlwhisk (`leafring`) has a bigger tail with three leaves whirling round it.
+function squirrel(root, m, parts) {
+  const big = has(m, 'leafring');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  for (const s of [-1, 1]) { // haunches and long feet, heels up
+    box(lift, 0.16, 0.18, 0.24, m.body, s * 0.13, 0.13, -0.02);
+    box(lift, 0.1, 0.06, 0.18, m.dark, s * 0.13, 0.03, 0.12);
+  }
+  const body = pivot(lift, 0, 0.42, 0);
+  body.rotation.x = 0.15;
+  box(body, 0.34, 0.42, 0.3, m.body, 0, 0, 0);
+  box(body, 0.22, 0.32, 0.04, m.belly, 0, -0.02, 0.15);
+  const head = pivot(body, 0, 0.36, 0.03);
+  head.rotation.x = -0.15;
+  parts.head = head;
+  box(head, 0.36, 0.32, 0.32, m.body, 0, 0, 0);
+  box(head, 0.22, 0.12, 0.1, m.belly, 0, -0.09, 0.17); // the cheeks
+  box(head, 0.06, 0.04, 0.03, 0x2a1810, 0, -0.05, 0.225);
+  box(head, 0.07, 0.04, 0.02, 0xffffff, 0, -0.13, 0.215); // two front teeth
+  njMask(head, 0.035, 0.36, 0.165, { h: 0.15, spread: 0.08, eye: 0.09 });
+  njHeadband(head, parts, 0.135, 0.36, 0.32);
+  for (const s of [-1, 1]) { // tufted ears
+    box(head, 0.08, 0.16, 0.06, m.body, s * 0.12, 0.23, -0.03);
+    box(head, 0.05, 0.08, 0.05, m.dark, s * 0.12, 0.34, -0.03);
+  }
+  // the throwing arm raised up at the side with its leaf, the other paw pointing ahead
+  const throwArm = pivot(body, 0.18, 0.14, 0);
+  swing(parts, throwArm, 'z', 0.12, 3.2);
+  const a1 = pivot(throwArm, 0, 0, 0);
+  a1.rotation.set(0.3, 0, 2.3);
+  box(a1, 0.08, 0.24, 0.08, m.body, 0, -0.12, 0);
+  box(a1, 0.09, 0.07, 0.09, m.dark, 0, -0.25, 0);
+  const hold = pivot(a1, 0, -0.3, 0);
+  spin(parts, hold, 'y', 6); // the leaf spins in its paw
+  const leaf = njLeaf(hold, NJ_LEAF, 0, 0, -0.04, 0.3);
+  leaf.rotation.x = 1.3;
+  const a2 = pivot(body, -0.19, 0.12, 0.04);
+  a2.rotation.set(-1.25, 0, 0.15);
+  box(a2, 0.08, 0.2, 0.08, m.body, 0, -0.1, 0);
+  box(a2, 0.09, 0.07, 0.09, m.dark, 0, -0.21, 0);
+  // the bushy tail: up behind the back, curling over at the top
+  const tail = pivot(lift, 0, 0.2, -0.18);
+  swing(parts, tail, 'x', 0.1, 2);
+  const k = big ? 1.2 : 1;
+  [[0.05, -0.12, 0.22], [0.22, -0.3, 0.27], [0.46, -0.36, 0.3], [0.7, -0.3, 0.3], [0.88, -0.14, 0.26], [0.92, 0.04, 0.2]].forEach(([y, z, r], i) => {
+    box(tail, r * k, r * k, r * k, m.body, 0, y * k, z * k);
+    box(tail, r * k * 0.7, r * k * 0.6, 0.03, m.belly, 0, y * k, z * k - r * k * 0.5); // the lighter fur behind
+  });
+  if (big) { // three leaves whirling round the tail
+    const ring = pivot(tail, 0, 0.6 * k, -0.3 * k);
+    spin(parts, ring, 'y', 2.2);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      const l = njLeaf(ring, [0x6fd35a, 0x9ae070, 0x4ab84a][i], Math.cos(a) * 0.5, (i - 1) * 0.14, Math.sin(a) * 0.5, 0.28);
+      l.rotation.set(0.2, -a, 0.3);
+    }
+  }
+}
+
+// Bambooze: a little bamboo shoot standing in a tuft of grass: three green segments with pale rings, a masked face on
+// the top one, two leaf arms up in a fighting stance and leaves sprouting from the top. It sways like bamboo in the
+// wind, from its feet, so it never dips under the ground.
+function bamboo(root, m, parts) {
+  for (const [x, z, h, r] of [[-0.22, 0.12, 0.16, 0.3], [0.22, 0.1, 0.13, -0.3], [0.05, -0.22, 0.15, 0.1], [-0.12, -0.14, 0.11, -0.2]]) {
+    box(root, 0.05, h, 0.05, 0x5ab040, x, h / 2, z).rotation.z = r; // the grass tuft
+  }
+  const sway = pivot(root, 0, 0, 0);
+  swing(parts, sway, 'z', 0.06, 1.6);
+  for (const s of [-1, 1]) box(sway, 0.1, 0.06, 0.16, m.dark, s * 0.09, 0.03, 0.04); // tiny root feet
+  const W = 0.36, SEG = 0.3;
+  for (let i = 0; i < 3; i++) {
+    const y = 0.06 + i * SEG, w = W - i * 0.02;
+    box(sway, w, SEG - 0.02, w, m.body, 0, y + SEG / 2, 0);
+    box(sway, w + 0.04, 0.05, w + 0.04, m.belly, 0, y + SEG, 0); // the node ring
+    box(sway, 0.04, SEG * 0.6, 0.02, m.belly, i === 2 ? -0.13 : -0.1 + i * 0.08, y + SEG * 0.45, w / 2 + 0.005); // a pale stripe
+  }
+  const face = pivot(sway, 0, 0.06 + SEG * 2.45, 0);
+  parts.head = face;
+  const fw = W - 0.04;
+  njMask(face, 0.0, fw, fw / 2 + 0.005, { h: 0.14, spread: 0.075, eye: 0.09 });
+  box(face, 0.08, 0.03, 0.03, 0x2a4a20, 0, -0.1, fw / 2 + 0.01); // a small determined mouth
+  for (const s of [-1, 1]) box(face, 0.06, 0.04, 0.02, 0xff9aa0, s * 0.12, -0.085, fw / 2 + 0.01); // pink cheeks
+  njHeadband(face, parts, 0.1, fw, fw, 0.26);
+  // leaf arms up in a fighting stance
+  for (const [s, ph] of [[-1, 0], [1, 1.4]]) {
+    const arm = pivot(sway, s * (W / 2), 0.06 + SEG * 1.6, 0.02);
+    swing(parts, arm, 'z', 0.12, 2.6, ph);
+    const a = pivot(arm, 0, 0, 0);
+    a.rotation.z = s * 0.5;
+    box(a, 0.16, 0.04, 0.04, m.dark, s * 0.08, 0, 0);
+    const l = njLeaf(a, 0x8ad46a, s * 0.16, 0, 0, 0.26);
+    l.rotation.set(-1.2, s * 0.4, 0);
+  }
+  // leaves on top
+  const top = pivot(sway, 0, 0.06 + SEG * 3, 0);
+  swing(parts, top, 'x', 0.1, 2.1, 0.6);
+  box(top, 0.05, 0.14, 0.05, m.body, 0, 0.07, 0);
+  for (const [a, r] of [[0.5, 0.7], [2.6, 0.8], [4.7, 0.6]]) njLeaf(top, 0x8ad46a, 0, 0.12, 0, 0.26).rotation.set(-r, a, 0);
+}
+const SHAPES_NINJA = { raccoon, crow, squirrel, bamboo };
+Object.assign(SHAPES, SHAPES_NINJA);
+/* ==== end of T37 ninja ==== */

@@ -55,6 +55,7 @@ export const CONDITIONS = {
   dusk: { ok: c => c.golden === 'dusk', share: 0.4, max: 3, text: 'at sunset' },
   together: { ok: c => !!c.friendsNear, share: 1 / 15, max: 1, text: 'with a friend close by',
     toast: 'Bzzt! Playing together woke up a cyber creature nearby!' },
+  evening: { ok: c => !!c.evening || !!c.night, text: 'in the evening and at night' }, // T37 ninja
   high: { ok: c => !!c.perch, share: 1 / 30, max: 2, outdoor: true, once: true, // T36
     place: c => c.perch(),
     text: 'up high: on treetops, roofs and tall pillars',

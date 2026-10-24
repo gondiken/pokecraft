@@ -28,6 +28,20 @@ export const GAITS = {
 const PERCH_UP = 3;
 const TIRED_RANGE = 12;
 /* ==== end of T36 parkour ==== */
+/* ==== T37 ninja ==== */
+// 'blink' (Ninja): it stands still and watches you. Come at it FAST (sprinting, riding: the distance to you shrinks by
+// more than `fast` blocks a second) within `notice` and it vanishes in a puff of smoke and pops up `dists` blocks away
+// (on a free spot at most `up` higher / `down` lower: never in water, a gym, a wall or off a cliff). Walk up slowly and
+// it lets you come: walk into it to battle. After `tiredAfter` blinks (or when it has nowhere to go) it is out of breath
+// for `tired` seconds. `gone`: seconds it stays invisible; `teleport`: a faster "approach" is a teleport, not you running.
+// Everything is closed form and uses no Math.random (the spot comes from fixed angles), so tests can replay it.
+Object.assign(GAITS, {
+  blink: { notice: 8, noticeUp: 6, fast: 5.2, teleport: 15, dists: [6, 5, 7, 4], gone: 0.45, pause: 0.6, tiredAfter: 3, tired: 10,
+    up: 2, down: 3, leash: 16, angles: [0, 40, -40, 80, -80, 120, -120], bump: true },
+});
+const PUFF_TIME = 0.6, PUFF_N = 7;
+const PUFF_GEO = new THREE.BoxGeometry(0.28, 0.28, 0.28);
+/* ==== end of T37 ninja ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -79,6 +93,7 @@ export class CreatureManager {
     this.viewer = null; // the player's position, for blinks
     this.onBump = null; // main.js: the player walked into a disguised creature
     this.onTired = null; // main.js (T36): a Parkour creature is out of breath: walk into it
+    this.onBlink = null; this.puffs = []; // T37: a Ninja creature blinked away (main.js: a tip); its smoke puffs
     this.raycaster = new THREE.Raycaster();
   }
 
@@ -89,6 +104,7 @@ export class CreatureManager {
 
   clear() {
     for (const w of [...this.list]) this.remove(w);
+    this.clearPuffs(); // T37
   }
 
   // T31: a realm has its own spawn tables (world.realm.spawns); the main world uses SPAWNS.
@@ -357,6 +373,7 @@ export class CreatureManager {
       }
     }
     this.updateNotes(dt);
+    this.updatePuffs(dt); // T37
   }
 
   // Little glowing music notes that float up from a singing creature.
@@ -407,6 +424,7 @@ export class CreatureManager {
       animateModel(w.model, w.t, false);
       w.model.rotation.y = w.heading;
       if (sp.gait) w.model.scale.set(1, 1, 1); // T36: no panting in a battle
+      if (w.blink) this.endBlink(w); // T37: never stuck invisible
       return;
     }
     if (sp.gait) return this.updateGait(w, dt); // T36
@@ -490,6 +508,7 @@ export class CreatureManager {
 
   // A creature with a gait (species.gait): it stands on leaves, roofs and pillars, so it uses no ground lookups.
   updateGait(w, dt) {
+    if (w.species.gait === 'blink') return this.updateBlink(w, dt); // T37
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -544,6 +563,134 @@ export class CreatureManager {
     if (dist <= TIRED_RANGE) this.onTired?.(w);
   }
   /* ==== end of T36 parkour ==== */
+
+  /* ==== T37 ninja ==== */
+  // Where a blink to the column (cx, cz) lands, from standing height y0: the standing y, or null. Air for the body and the
+  // head, something solid to stand on, no water, no gym, at most g.up higher and g.down lower (so never off a cliff).
+  blinkLanding(g, y0, cx, cz) {
+    const world = this.world;
+    if (cx < 1 || cz < 1 || cx >= world.W - 1 || cz >= world.D - 1) return null;
+    for (let y = Math.min(y0 + g.up, WORLD_H - 3); y >= Math.max(1, y0 - g.down); y--) {
+      const here = world.get(cx, y, cz), below = world.get(cx, y - 1, cz);
+      if (here === B.WATER || below === B.WATER) return null;
+      if (here !== B.AIR || world.get(cx, y + 1, cz) !== B.AIR || !isSolid(below)) continue;
+      return world.fenced(cx, y, cz) ? null : y;
+    }
+    return null;
+  }
+
+  // The spot it blinks to: { x, y, z } (a cell centre) away from the player, or null when there is none. Fixed angles
+  // and distances; every other blink tries the angles mirrored, so it zigzags instead of running in a line.
+  chooseBlink(w, g, p) {
+    const x0 = Math.floor(w.pos.x), z0 = Math.floor(w.pos.z), y0 = Math.round(w.pos.y);
+    let ax = w.pos.x - p.x, az = w.pos.z - p.z;
+    const len = Math.hypot(ax, az);
+    if (len < 0.01) { ax = Math.sin(w.heading); az = Math.cos(w.heading); } else { ax /= len; az /= len; }
+    const here = Math.hypot(p.x - w.pos.x, p.z - w.pos.z), flip = w.hops % 2 ? -1 : 1;
+    for (const deg of g.angles) {
+      const r = flip * deg * Math.PI / 180, dx = ax * Math.cos(r) - az * Math.sin(r), dz = ax * Math.sin(r) + az * Math.cos(r);
+      for (const dist of g.dists) {
+        const cx = Math.floor(w.pos.x + dx * dist), cz = Math.floor(w.pos.z + dz * dist);
+        if (cx === x0 && cz === z0) continue;
+        if (Math.hypot(cx + 0.5 - w.home.x, cz + 0.5 - w.home.z) > g.leash) continue;
+        if (Math.hypot(p.x - (cx + 0.5), p.z - (cz + 0.5)) < here + 1) continue; // always further from you
+        const y = this.blinkLanding(g, y0, cx, cz);
+        if (y !== null) return { x: cx + 0.5, y, z: cz + 0.5 };
+      }
+    }
+    return null;
+  }
+
+  // The Ninja walk. w.closing = how fast you are coming closer (blocks / s; a jump of more than g.teleport is ignored).
+  updateBlink(w, dt) {
+    const g = GAITS.blink, p = this.viewer, model = w.model;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
+    let closing = 0;
+    if (p && w.lastDist != null && dt > 0) closing = (w.lastDist - dist) / dt;
+    if (closing > g.teleport) closing = 0;
+    w.lastDist = p ? dist : null;
+    w.closing = closing;
+    let panting = false;
+    if (w.blink) { // gone in the smoke: it shows up again after g.gone seconds
+      w.blink.t += dt;
+      if (w.blink.t >= g.gone) {
+        this.endBlink(w);
+        w.pause = g.pause;
+        if (++w.hops >= g.tiredAfter) this.getTired(w, g, dist);
+      }
+    } else if (w.tired > 0) {
+      w.tired -= dt;
+      panting = true;
+      if (w.tired <= 0) { w.tired = 0; w.hops = 0; panting = false; }
+    } else if (p) {
+      w.pause = Math.max(0, w.pause - dt);
+      const near = dist <= g.notice && Math.abs(p.y - w.pos.y) <= g.noticeUp;
+      if (near && closing >= g.fast && w.pause <= 0) {
+        const to = this.chooseBlink(w, g, p);
+        if (!to) this.getTired(w, g, dist); // nowhere to go: it gives up
+        else {
+          this.puff(w.pos);
+          w.blink = { t: 0, from: w.pos.clone() };
+          w.pos.set(to.x, to.y, to.z);
+          w.lastDist = Math.hypot(p.x - w.pos.x, p.z - w.pos.z);
+          model.visible = false;
+          this.onBlink?.(w);
+        }
+      }
+      if (dist < g.notice * 3) { // it turns to watch you
+        let d = Math.atan2(dx, dz) - w.heading;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 3);
+      }
+    }
+    if (panting) {
+      const s = Math.abs(Math.sin(w.t * 10));
+      model.scale.set(1 + 0.03 * s, 1 - 0.06 * s, 1 + 0.03 * s);
+    } else if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    animateModel(model, w.t, false);
+  }
+
+  // Back from the smoke: visible again at its new spot, with a puff, facing the player.
+  endBlink(w) {
+    w.blink = null;
+    w.model.visible = true;
+    if (this.viewer) w.heading = Math.atan2(this.viewer.x - w.pos.x, this.viewer.z - w.pos.z);
+    this.puff(w.pos);
+  }
+
+  // A small puff of smoke: PUFF_N grey cubes that swell, drift up and fade in PUFF_TIME s (closed form, no random).
+  puff(at) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xd8d4e4, transparent: true, depthWrite: false });
+    const g = new THREE.Group();
+    for (let i = 0; i < PUFF_N; i++) g.add(new THREE.Mesh(PUFF_GEO, mat));
+    g.position.set(at.x, at.y, at.z);
+    this.scene.add(g);
+    this.puffs.push({ g, mat, t: 0 });
+    if (this.viewer && Math.hypot(this.viewer.x - at.x, this.viewer.z - at.z) < 20) sound.play('smokepuff');
+  }
+
+  updatePuffs(dt) {
+    for (const f of this.puffs) {
+      f.t += dt;
+      const k = Math.min(1, f.t / PUFF_TIME);
+      f.g.children.forEach((c, i) => {
+        const a = (i / PUFF_N) * Math.PI * 2, r = 0.15 + 0.55 * k;
+        c.position.set(Math.cos(a) * r, 0.2 + (i % 3) * 0.25 + 0.5 * k, Math.sin(a) * r);
+        c.scale.setScalar(0.6 + 1.2 * k);
+      });
+      f.mat.opacity = 0.9 * (1 - k);
+    }
+    for (const f of this.puffs.filter(f => f.t >= PUFF_TIME)) { this.scene.remove(f.g); f.mat.dispose(); }
+    this.puffs = this.puffs.filter(f => f.t < PUFF_TIME);
+  }
+
+  clearPuffs() {
+    for (const f of this.puffs) { this.scene.remove(f.g); f.mat.dispose(); }
+    this.puffs = [];
+  }
+  /* ==== end of T37 ninja ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

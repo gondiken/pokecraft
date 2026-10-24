@@ -2312,3 +2312,85 @@ SIG.crayonstorm = (k, from, to) => {
   };
 };
 /* ==== end of T35 ==== */
+
+/* ==== T37 ninja ==== */
+// Mask dark, band red, leaf green.
+FX_COLORS.ninja = [0x2a2440, 0xd83a4a, 0x6fd35a];
+
+// Leaf stars: three spinning leaves fly in a little fan along a flat arc, each with a short dark streak behind it.
+TRAVEL.ninja = k => {
+  const leaves = [0, 1, 2].map(i => k.sprite('leaf', { color: [0x6fd35a, 0x9ae070, 0x4ab84a][i], size: 0.34 }));
+  const streaks = k.points({ n: 6, tex: 'streak', size: 0.3, colors: [0x2a2440, 0x5a5070] });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < 3; i++) {
+        const t = clamp01(p * 1.25 - i * 0.12), fan = (i - 1) * 0.28 * Math.sin(Math.PI * t);
+        const s = leaves[i];
+        if (t <= 0 || t >= 1) { s.material.opacity = 0; streaks.hide(i * 2); streaks.hide(i * 2 + 1); continue; }
+        k.at(t, A, 0.12);
+        s.position.set(A.x + k.side.x * fan, A.y + (i - 1) * 0.08, A.z + k.side.z * fan);
+        s.material.opacity = 1;
+        s.material.rotation = p * 30 + i * 2;
+        for (let j = 0; j < 2; j++) {
+          k.at(Math.max(0, t - 0.07 * (j + 1)), B, 0.12);
+          streaks.set(i * 2 + j, B.x + k.side.x * fan, B.y + (i - 1) * 0.08, B.z + k.side.z * fan);
+        }
+      }
+      streaks.fade(fadeOut(p, 0.7) * 0.8);
+    },
+  };
+};
+
+// A ninja hit: a red flash star and a ring of dark smoke puffs, two leaves twirling off.
+IMPACT.ninja = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const smoke = k.points({ n: N, tex: 'puff', size: 0.55 * m, colors: [0x4a4460, 0x6a6480, 0x2a2440] });
+  const leaves = k.points({ n: 2, tex: 'leaf', size: 0.32 * m, colors: [0x6fd35a, 0x9ae070] });
+  const flash = k.sprite('star', { color: 0xd83a4a, size: 0.1, glow: true });
+  return {
+    dur: 360,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283, d = (to.r * 0.4 + 0.1 + k.ease(p) * 0.7) * m;
+        smoke.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y - 0.1 + p * 0.4 + (i % 2) * 0.15, to.pos.z + Math.sin(ang) * d);
+      }
+      smoke.fade((1 - p) * 0.9);
+      for (let i = 0; i < 2; i++) {
+        const s = i ? 1 : -1;
+        leaves.set(i, to.pos.x + k.side.x * s * (0.2 + p * 0.8) * m, to.pos.y + 0.3 + Math.sin(p * Math.PI) * 0.5, to.pos.z + k.side.z * s * (0.2 + p * 0.8) * m);
+      }
+      leaves.fade(fadeOut(p, 0.6));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 0.9 * m * Math.sin(Math.PI * clamp01(p * 1.6))));
+      flash.material.rotation = p * 3;
+      flash.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Leaf Whirlwind: fourteen leaves spiral up round the target in a whirlwind, then burst out; a green ring on the ground.
+SIG.leafwhirl = (k, from, to) => {
+  const N = 14;
+  const leaves = k.points({ n: N, tex: 'leaf', size: 0.34, colors: [0x6fd35a, 0x9ae070, 0x4ab84a, 0xd8f0b0] });
+  const ring = k.mesh('ring', { color: 0x6fd35a, opacity: 0.7 });
+  const feet = feetOf(to), h = to.top - feet + 0.4;
+  return {
+    dur: 700,
+    step(p) {
+      const spin = clamp01(p / 0.75), out = clamp01((p - 0.75) / 0.25);
+      for (let i = 0; i < N; i++) {
+        const u = clamp01(spin * 1.3 - (i / N) * 0.3);
+        if (u <= 0) { leaves.hide(i); continue; }
+        const ang = u * 12 + (i / N) * 6.283, r = (to.r * 0.6 + 0.35) * (1 - u * 0.3) + out * 1.4;
+        leaves.set(i, to.pos.x + Math.cos(ang) * r, feet + 0.1 + u * h + out * 0.3, to.pos.z + Math.sin(ang) * r);
+      }
+      leaves.fade(1 - out);
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, to.r * 0.6 + 0.4 + out * 1.2));
+      ring.material.opacity = 0.7 * (1 - out) * clamp01(p * 4);
+    },
+  };
+};
+/* ==== end of T37 ninja ==== */

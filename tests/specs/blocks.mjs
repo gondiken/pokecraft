@@ -31,7 +31,7 @@ export default async function ({ browser, base, t }) {
       dream: [['BOUNCE', 87], ['DREAM_GRASS', 88]].map(([k, n]) => ({ id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), bounce: BLOCKS[B[k]].bounce, fixed: !!BLOCKS[B[k]].fixed, wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight })),
       course: [['CRUMBLE', 89], ['CRUMBLE_SHAKE', 90], ['BLINK', 95], ['BLINK_WARN', 96], ['ZAP_OFF', 97], ['ZAP_WARN', 98], ['ZAP_ON', 99], ['PUSHER', 100], ['PUSHER_WARN', 101], ['PUSHER_HEAD', 102], ['SPRING', 103], ['EXIT_PAD', 104]].map(([k, n]) => ({ k, id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), bounce: BLOCKS[B[k]].bounce, wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight, solid: isSolid(B[k]) })), // T36.5
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
-      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82)),
+      woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82) || id === 113),
       biomes: [...biomes].sort(),
       missing: natural.filter(n => !found.has(B[n])),
       iceOk: where('ice').every(([b]) => ['snow', 'taiga', 'peak'].includes(b)),
