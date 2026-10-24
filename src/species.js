@@ -25,7 +25,7 @@ export const TYPE_COLORS = {
   dream: 'linear-gradient(135deg,#b49cff,#ffb3e6,#9ce8ff)',
   parkour: 'linear-gradient(180deg,#ff5a4a 0 40%,#ffffff 40% 55%,#ff5a4a 55%)',
   // Wave 12 (T37)
-  ninja: 'linear-gradient(180deg,#2a2440 0 35%,#d83a4a 35% 50%,#2a2440 50%)',
+  ninja: 'linear-gradient(180deg,#aca0cc 0 35%,#ff7080 35% 50%,#aca0cc 50%)', // T37a: light enough for the dark chip text
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -412,6 +412,21 @@ BIG_MOVES.parkour = [
   ['finalsprint', 'Final Sprint', 'lastword', 'A huge hit, only when almost out.'],
 ];
 /* ==== end of T36 parkour ==== */
+/* ==== T37 ninja ==== */
+// Ninjas throw leaves, strike from the shadows and vanish in smoke.
+Object.assign(MOVES, {
+  leafstar: mv('Leaf Star', 'ninja', 40, 1),
+  sneakstep: mv('Sneak Step', 'ninja', 50, 1, { priority: 1 }),
+  shadowstrike: mv('Shadow Strike', 'ninja', 75, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
+  twigtrip: mv('Twig Trip', 'ninja', 0, 0.95, { fx: { kind: 'lower', stat: 'spd' } }),
+  leafwhirl: mv('Leaf Whirlwind', 'ninja', 25, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sig: true }),
+});
+BIG_MOVES.ninja = [
+  ['smokescreen', 'Smoke Screen', 'shield', 'Thick smoke hides your whole team. You rest next turn.'],
+  ['duskfalls', 'Dusk Falls', 'field', 'It gets dark. Ninja moves are stronger for 5 turns. Foes too!'],
+  ['vanishswap', 'Vanish Swap', 'sacrifice', 'Poof, you vanish! Next friend comes in fresh and strong.'],
+];
+/* ==== end of T37 ninja ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -520,6 +535,7 @@ const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 /* ==== T36 parkour ==== */
 T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
 /* ==== end of T36 parkour ==== */
+T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -1846,34 +1862,43 @@ export const SPECIES = {
   },
   /* ==== end of T35 dream ==== */
   /* ==== T37 ninja ==== */
-  // Step 0 stand-ins (ids, names, levels and families are fixed; T37a gives them their own shapes, moves and words).
   hushcoon: {
-    name: 'Hushcoon', type: 'ninja', desc: 'A masked raccoon that tiptoes.', base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45,
-    learn: L('ninja', 'grass'), evolve: { level: 22, into: 'shadecoon' }, model: { shape: 'lemur', scale: 0.8, body: 0x4a4458, accent: 0xd83a4a, dark: 0x1a1824, belly: 0xc8c0d0, extras: [] },
+    name: 'Hushcoon', type: 'ninja', desc: "A raccoon in a mask that tiptoes everywhere. Shh! If you run at it, it vanishes in a puff.", gait: 'blink',
+    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('ninja', 'grass'),
+    evolve: { level: 22, into: 'shadecoon' },
+    model: { shape: 'raccoon', scale: 0.85, body: 0x8a8498, accent: 0xd83a4a, dark: 0x2a2638, belly: 0xe8e4ee, extras: [] },
   },
   shadecoon: {
-    name: 'Shadecoon', type: 'ninja', desc: 'A masked raccoon in the shadows.', base: { hp: 70, atk: 95, def: 60, spd: 120 }, baseXp: 165, catchRate: 0.12,
-    learn: L('ninja', 'grass'), model: { shape: 'lemur', scale: 1.2, body: 0x3a3448, accent: 0xd83a4a, dark: 0x1a1824, belly: 0xc8c0d0, extras: [] },
+    name: 'Shadecoon', type: 'ninja', desc: "It slips through the shadows in a dark scarf. Nobody has ever heard its footsteps.", gait: 'blink',
+    base: { hp: 70, atk: 95, def: 60, spd: 120 }, baseXp: 165, catchRate: 0.12, learn: L('ninja', 'grass'),
+    model: { shape: 'raccoon', scale: 1.2, body: 0x6a6480, accent: 0xd83a4a, dark: 0x22202e, belly: 0xd8d2e2, extras: ['scarf'] },
   },
   peekaw: {
-    name: 'Peekaw', type: 'ninja', desc: 'A little crow that peeks.', base: { hp: 40, atk: 60, def: 35, spd: 85 }, baseXp: 64, catchRate: 0.45,
-    learn: L('ninja', 'sky'), evolve: { level: 22, into: 'ravenshade' }, model: { shape: 'lemur', scale: 0.75, body: 0x2a2a3a, accent: 0xd83a4a, dark: 0x101018, belly: 0x5a5a6a, extras: [] },
+    name: 'Peekaw', type: 'ninja', desc: "A little crow that hides behind its own wing and peeks. Peek-a-boo... caw!", gait: 'blink',
+    base: { hp: 40, atk: 60, def: 35, spd: 85 }, baseXp: 64, catchRate: 0.45, learn: L('ninja', 'sky'),
+    evolve: { level: 22, into: 'ravenshade' },
+    model: { shape: 'crow', scale: 0.8, body: 0x50507a, accent: 0xd83a4a, dark: 0x22223a, belly: 0x9a9ac0, extras: [] },
   },
   ravenshade: {
-    name: 'Ravenshade', type: 'ninja', desc: 'A big crow of the night.', base: { hp: 65, atk: 105, def: 55, spd: 115 }, baseXp: 165, catchRate: 0.12,
-    learn: L('ninja', 'sky'), model: { shape: 'lemur', scale: 1.2, body: 0x22222e, accent: 0xd83a4a, dark: 0x101018, belly: 0x5a5a6a, extras: [] },
+    name: 'Ravenshade', type: 'ninja', desc: "A big crow of the night. It swoops down from the treetops without a sound.", gait: 'blink',
+    base: { hp: 65, atk: 105, def: 55, spd: 115 }, baseXp: 165, catchRate: 0.12, learn: L('ninja', 'sky'),
+    model: { shape: 'crow', scale: 1.2, body: 0x3e3e62, accent: 0xd83a4a, dark: 0x1a1a2c, belly: 0x7a7aa4, extras: ['crest'] },
   },
   flickit: {
-    name: 'Flickit', type: 'ninja', desc: 'A squirrel that flicks leaves.', base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45,
-    learn: L('ninja', 'metal'), evolve: { level: 24, into: 'whirlwhisk' }, model: { shape: 'lemur', scale: 0.8, body: 0xb06a3a, accent: 0xd83a4a, dark: 0x3a2418, belly: 0xffe0c0, extras: [] },
+    name: 'Flickit', type: 'ninja', desc: "A squirrel that flicks leaves like little throwing stars. It never misses an acorn.", gait: 'blink',
+    base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('ninja', 'metal'),
+    evolve: { level: 24, into: 'whirlwhisk' },
+    model: { shape: 'squirrel', scale: 0.85, body: 0xc0763e, accent: 0xd83a4a, dark: 0x5a3420, belly: 0xffe4c4, extras: [] },
   },
   whirlwhisk: {
-    name: 'Whirlwhisk', type: 'ninja', desc: 'A squirrel with a whirling tail.', base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 170, catchRate: 0.1,
-    learn: L('ninja', 'metal'), model: { shape: 'lemur', scale: 1.2, body: 0x9a5a30, accent: 0xd83a4a, dark: 0x3a2418, belly: 0xffe0c0, extras: [] },
+    name: 'Whirlwhisk', type: 'ninja', desc: "Leaves whirl round its huge tail. One flick and a storm of leaves flies out.", gait: 'blink',
+    base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 170, catchRate: 0.1, learn: L('ninja', 'metal', [[30, 'leafwhirl']]),
+    model: { shape: 'squirrel', scale: 1.2, body: 0xa85e2e, accent: 0xd83a4a, dark: 0x4a2a18, belly: 0xffe0b8, extras: ['leafring'] },
   },
   bambooze: {
-    name: 'Bambooze', type: 'ninja', desc: 'A bamboo shoot that hides in bamboo.', base: { hp: 60, atk: 75, def: 55, spd: 90 }, baseXp: 100, catchRate: 0.3,
-    learn: L('ninja', 'time'), model: { shape: 'lemur', scale: 0.9, body: 0x7ac85a, accent: 0xd83a4a, dark: 0x2a4a20, belly: 0xd8f0b0, extras: [] },
+    name: 'Bambooze', type: 'ninja', desc: "A bamboo shoot that hides among bamboo. Count the stalks: is one of them looking at you?", gait: 'blink',
+    base: { hp: 60, atk: 75, def: 55, spd: 90 }, baseXp: 100, catchRate: 0.3, learn: L('ninja', 'time'),
+    model: { shape: 'bamboo', scale: 0.95, body: 0x7ac85a, accent: 0xd83a4a, dark: 0x3a6a2a, belly: 0xd8f0b0, extras: [] },
   },
   /* ==== end of T37 ninja ==== */
 };
@@ -2078,6 +2103,20 @@ const SPAWN_FOOD = {
   peak: [['scoopsy', 0.4]],
 };
 for (const [biome, list] of Object.entries(SPAWN_FOOD)) SPAWNS[biome].push(...list); // T33
+
+/* ==== T37 ninja ==== */
+// Ninja creatures sneak about in forests and tall grass, mostly from the evening on (the 'evening' condition: evening or
+// night). Flickit and Bambooze are out by day too. Final evolutions are rare.
+const SPAWN_NINJA = {
+  forest: [['hushcoon', 1.2, 'evening'], ['peekaw', 1, 'evening'], ['flickit', 1], ['bambooze', 0.8],
+    ['shadecoon', 0.12, 'evening'], ['ravenshade', 0.12, 'evening'], ['whirlwhisk', 0.1]],
+  taiga: [['hushcoon', 0.8, 'evening'], ['peekaw', 0.8, 'evening'], ['flickit', 0.6], ['ravenshade', 0.1, 'evening']],
+  meadow: [['flickit', 0.6, 'day'], ['bambooze', 0.5, 'evening'], ['whirlwhisk', 0.06, 'day']],
+  plains: [['peekaw', 0.6, 'evening'], ['hushcoon', 0.5, 'evening'], ['shadecoon', 0.06, 'evening']],
+  swamp: [['bambooze', 0.8], ['hushcoon', 0.5, 'evening']],
+};
+for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...list);
+/* ==== end of T37 ninja ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

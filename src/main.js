@@ -129,6 +129,7 @@ game.creatures.onSpawn = wild => {
 };
 game.toldOnce = new Set();
 game.creatures.onTired = w => { if (game.started && !game.inBattle) game.ui.toast(`${w.species.name} is out of breath! Walk into it to battle.`); }; // T36
+game.creatures.onBlink = w => { if (game.started && !game.inBattle && !game.toldOnce.has('blink')) { game.toldOnce.add('blink'); game.ui.toast(`Poof! ${w.species.name} blinked away. Ninjas run from fast feet: walk up slowly!`); } }; // T37
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
 game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []) }; // T31: only friends in the same place
 game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature

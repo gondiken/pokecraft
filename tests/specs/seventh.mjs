@@ -9,7 +9,8 @@ const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const GROUPS = { A: ['stitchums', 'waxwobble', 'jellume', 'bonzoise', 'wattwink', 'amethump', 'flurrydome'],
   B: ['twirlshell', 'lanterboo', 'puzzlet', 'tickatin', 'gurglepot', 'cuppix'],
   C: ['nimbrake', 'chromacurl', 'voidle', 'clawdio', 'finnibone', 'zorbit'],
-  W11: ['drizzup'] }; // wave 11: each task adds its 7th here (T35: drizzup)
+  W11: ['drizzup'], // wave 11: each task adds its 7th here (T35: drizzup)
+  W12: ['bambooze'] }; // wave 12 (T37: bambooze)
 const OLD_SHAPES = ['quad', 'blob', 'biped', 'bird', 'serpent', 'bug', 'guardian', 'butterfly', 'moth', 'star', 'robe', 'hopper',
   'planet', 'comet', 'cloud', 'tall', 'squid', 'bat', 'drum', 'ape', 'bell', 'armadillo', 'wyvern', 'fish', 'nut', 'drone', 'wisp',
   'puff', 'crystal', 'skull', 'bonedog', 'dino', 'ufo', 'visitor', 'tripod'];
@@ -18,7 +19,7 @@ const ids = group ? GROUPS[group] : Object.values(GROUPS).flat();
 
 export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  t.ok(!!ids, `T4B_GROUP "${group}" is A, B, C or W11 (or unset)`);
+  t.ok(!!ids, `T4B_GROUP "${group}" is A, B, C, W11 or W12 (or unset)`);
   if (!ids) return;
   const page = await openGame(browser, base);
   const r = await page.evaluate(async ({ ids, OLD_SHAPES, full }) => {

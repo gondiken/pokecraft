@@ -68,7 +68,7 @@ export default async function ({ browser, base, t }) {
       bad(`the old 26 x 26 chart changed: lost ${OLD_CHART.filter(x => !now.has(x))}, new ${oldNow.filter(x => !was.has(x))}`);
     }
     out.oldPairs = oldNow.length;
-    const allTypes = Object.keys(S.TYPE_COLORS);
+    const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
       if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 6 : 5)) bad(`${d} is weak to ${weak} types`);
@@ -192,7 +192,7 @@ export default async function ({ browser, base, t }) {
   }, { types, ALL: TYPES, OLD_SHAPES, OLD_CHART, OLD_TYPES });
 
   const missing = r.problems;
-  t.ok(r.colors === 32, `32 types in TYPE_COLORS (28 + wave 11's four) (${r.colors})`);
+  t.ok(r.colors === 33, `33 types in TYPE_COLORS (28 + wave 11's four + Ninja) (${r.colors})`);
   t.ok(!missing.length, `two-types data, chart, moves, species, models and sparkle ${missing.join('; ')}`);
   t.ok(r.oldPairs === OLD_CHART.length, `the old chart still has ${OLD_CHART.length} non-1 pairs (${r.oldPairs})`);
   t.ok(r.infos.hotcocoa.includes('heals you'), `Hot Cocoa text: ${r.infos.hotcocoa}`);
@@ -201,7 +201,7 @@ export default async function ({ browser, base, t }) {
   t.ok(r.infos.bling.includes("lowers the foe's attack"), `Bling! text: ${r.infos.bling}`);
   t.ok(!r.sigs.length, `Dozeram and Crownguard learn their special at 30 ${r.sigs.join(', ')}`);
   t.ok(r.bts, 'a Lv 20 Snoozebear knows Bedtime Story');
-  t.ok(only || r.normal === 224, `${r.normal} normal species`);
+  t.ok(only || r.normal === 231, `${r.normal} normal species`);
   console.log(`  sizes ${Object.entries(r.info).map(([k, v]) => `${k} ${v}`).join(', ')}`);
 
   /* 6. The home condition with fake homes */
