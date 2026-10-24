@@ -1154,87 +1154,102 @@ step just shows the round again). A rematch starts with a longer dance. The pads
 building, so no world block changed; badges, the beaten trainer and rematch wins of existing players stay. Other old
 plain gyms could get a makeover the same way later.
 
-## Wave 11.5 · Other worlds and room for the new gyms (owner, 2026-10-21: before wave 12)
+## The plan from here: three chapters (owner, 2026-10-24)
 
-Waves 12-14 add 9 gyms (Racer, Ball, Tiny, Pirate; Portal, Surprise, Funfair, Ninja; the Doodle Wizard), but only
-south slots 8 and 9 are free (slot 3 stays spare). Most of them go into **other worlds** (realms, T31 code).
+The story is in `STORY.md`. **Chapter 1** = our world: 32 gyms and badges, then the Champion's Tower. **Chapter 2** =
+the Swirl: Champion missions that never end, and the places behind the Swirl's frames, which lead to the Wizard (they
+are **not gyms** and give **no badges**). **Chapter 3** = not decided yet (ideas at the end).
 
-**Decided:**
-- **Realms together** moves here from wave 15: a friend can follow you through a portal (and into the Dream), so
-  father and son can play every realm gym together. Without it a realm gym is a solo gym.
-- **The story** is in `STORY.md` (owner, 2026-10-23). The Wizard sealed himself in his tower in the Swirl to hold
-  a crack shut; the Champion missions' giants leak through it.
-- **Two chapters** (owner, 2026-10-23). **Chapter 1** = our world: the Champion's Tower needs every badge of the
-  **main world** (the Dream counts; Swirl gyms do not), so it stops growing with every wave (33 after wave 13 with
-  Ninja and Surprise). **Chapter 2** = the Swirl: becoming Champion gives a mission from Solenne that opens the stone
-  **portal frame** (any time after that, alone or with a friend; back through the same frame). Swirl gyms give normal
-  badges (the grid still fills to 40) **plus a journal page**; each page brings back **one piece of the bridge** to
-  the Wizard's tower, which floats far out in the Swirl, visible from the start but unreachable until the bridge is
-  whole. The Wizard (wave 14) is the hardest battle in the game, above Solenne.
-- Wave 11.5 builds the frame, the Swirl hub and realms together **without** the Portal type (that is wave 13); each
-  later wave adds its world as one more doorway.
+**Dropped types** (the son did not like them): Magnet, Digger, Builder, Mirror. **Music** too: Sound already exists
+(its gym got the dance-off makeover instead, see above). Knight is in the backlog (it could become a Swirl place).
 
-**Placement** (owner, 2026-10-23, with the story):
+Every new gym or place should be something you **do** (riding was the big hit: moving around beats more puzzles).
+New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book, README.
 
-| World | Gyms | Why |
-| --- | --- | --- |
-| The Swirl (hub) | Portal (wave 13), the Wizard's tower behind the broken bridge (wave 14) | the Wizard's workshop between the worlds |
-| The Giant House | Tiny (wave 12) | you come out as small as a mouse; also a mouse hole in the main world as a second way in |
-| The Pirate Seas | Pirate (wave 12) | open sea with islands is hard to fit in the main world |
-| Playland | Racer, Ball (wave 12), Funfair (wave 13) | a flat world built for it: race track round the stadium and the pitch, the fair beside them; one world, three gyms |
-| Main world | Surprise (slot 8), Ninja (slot 9) (wave 13) | the last two free slots; no map growth needed; they count for the Champion's Tower |
-| The Dream | (unchanged) | later also a doorway from the Swirl |
+# Chapter 1 · Our world
 
-## Wave 12 · Racer, Ball, Tiny, Pirate (owner, 2026-10-21: picked)
+## Wave 12 · Ninja, the 32nd and last gym of our world (owner, 2026-10-24)
 
-**Four new types**, each with a gym about 2 levels above the one before (shared cost per type as in wave 11: 7
-creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book, README). Every new gym should be something you **do**
-(riding was the big hit: moving around beats more puzzles). 31 gyms today, 35 after wave 12.
-**Room on the map:** see wave 11.5 (where the new gyms go), which comes first.
+- **Badges: an 8 x 4 grid** at the top of the screen (32 = every gym of our world; the Dream counts). The
+  Champion's Tower needs those 32 and never grows again. Old Champions keep their title as now (`game.champion`).
+- **🥷 Ninja creatures** blink from spot to spot and throw leaves. In the wild: a new gait `'blink'` in `GAITS`
+  (creatures.js, like Parkour's `hopaway`): when you come close fast they vanish in a puff and reappear a few blocks
+  away; walk up slowly (no sprinting) and you can reach them.
+- **The gym: the Shadow Dojo** (main world, south slot 8; slot 9 stays spare). A walled garden at dusk with paper
+  lanterns, a dojo hall and a pagoda; the leader waits on the pagoda roof. It must be **really fun**, so it is about
+  sneaking, never a fail:
+  - **Watchers:** trainers walk set paths with a lantern; its light cone on the floor shows where they look. Caught in
+    the light = "Spotted!" and a puff of smoke puts you back at the last lantern you passed (no lost progress).
+  - **Sneak up from behind** and tap a watcher: a battle where your creature moves first ("Surprise attack!").
+    Spotted watchers still battle you normally, so sneaking is a bonus, not a must.
+  - **Hiding spots:** tall grass, paper screens, barrels: inside one you can't be seen.
+  - **Squeaky floor:** golden "nightingale" boards squeak when you run on them and turn nearby watchers towards
+    the noise; walk and they stay quiet. Tatami mats are always quiet.
+  - **Smoke puff:** an action button that hides you for 3 seconds (a few per room, refilled at each lantern).
+  - **Rooftops:** a second way along the roofs and beams for kids who like jumping more than sneaking.
+- **Objects, not special cases:** the Dojo is data plus small reusable classes (in the style of `access.js`
+  pieces and `HomeType`): a `Watcher` (path, speed, cone; `sees(pos)`), a `Hideout` (box; `hides(pos)`), floor kinds
+  (`quiet`, `squeak`) and a `Checkpoint` lantern. `DojoLive` (`LIVE.dojo`) only wires them together, so other gyms or
+  Swirl places can reuse watchers and hiding spots later. Lanterns and cones drawn with `setLive` / glow blocks.
+- Tests: a `dojo` spec (paths, cones, hiding, squeak, back to the lantern, sneak-attack first move, touch button, iPad).
 
-**Dropped** (the son did not like them): Magnet, Digger, Builder, Mirror. **Music** too: Sound already exists (its
-gym got the dance-off makeover instead, see above). Knight moved to the backlog, Ninja to wave 13 (2026-10-21).
+# Chapter 2 · The Swirl
 
-- **🏎️ Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. Gym: a race
-  against the leader around a track (new NPC path code). Overlaps a little with Funfair's rides (wave 13).
-- **⚽ Ball:** the creatures are balls. Gym: a football pitch and a basketball court; score to win. Needs a ball that
-  rolls and bounces (new physics); probably the biggest gym so far.
-- **🐜 Tiny:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding in small places
-  (in flowers, under a leaf, in a cup in your home). Gym: **the Giant Kitchen**, "a mouse in a house", built from normal
-  blocks at giant scale (nothing shrinks in code). Not a jump course like Parkour: no falling penalty, several ways
-  through, and the giant things **do something**: a fan whose wind lifts you to a shelf, a toy train you ride (press the
-  giant remote), a tap that makes a river you float down on a bottle cap, a sleeping cat to tiptoe past (running wakes
-  it a bit: wait, never a fail), a mouse hole and a keyhole as secret ways, crumbs for bonus cubes, the leader on a
-  giant cookie on the table.
-- **🏴‍☠️ Pirate:** a parrot captain, a crab with a hook claw, a ship in a bottle, an octopus with a spyglass. Gym:
-  islands at sea; a cannon shoots you from island to island, swing on ropes, board the leader's ship (ships and
-  cannons, not digging like Treasure).
+## Wave 13 · The way in (owner, 2026-10-24)
 
-## Wave 13 · Portal, Surprise, Funfair, Ninja (owner, 2026-10-21: picked)
+- **The Portal Door:** a big, bright, glowing door **right next to the Champion's Tower door**, so nobody has to
+  search for it. Before the Champion title it is dim and says so kindly ("Only a Champion can open this door. Win
+  in the tower first!"); after it, it swirls and takes you to the Swirl (any time, alone or with a friend; back
+  through the same door). It changes blocks beside the tower, so check it against player builds there (it must sit
+  inside a new protected box) and bump `WORLD_VERSION`.
+- **The Swirl** (a realm, T31 code): a purple sky, floating platforms, rivers that run upwards, looping stairs,
+  frames hanging in the air (one per place; frames whose place does not exist yet are covered with cloth), and far
+  out the Wizard's tower behind a broken bridge.
+- **Realms together** (moved here from wave 15): a friend can follow you through the door and into the Dream, so
+  father and son can play every place together. Without it a realm place is solo.
+- **Missions that never end.** Today `MISSIONS` has 12 hand-written ones. After them, a mission maker builds new ones
+  from templates (treasure map, build challenge, giant, and maybe new kinds: catch a creature of a type, beat a
+  rematch, find a rare creature), with the details drawn from the mission number and the seed, so every device gets
+  the same next mission and old saves keep their place in the list. Treasure maps then need more spots than the five
+  `treasureSpots`: a new spot list after the old five, never moving those. Giants grow a little with each round.
+- **Chapter 2's places are not gyms.** Name still open (ideas: **Rifts** with a **Keeper**: the crack shows in each
+  world as a rift; beat its Keeper and mend it). Each one gives **a page of the Wizard's journal** instead of a badge
+  (a journal in the HUD, not more badge squares), and each page brings back **one piece of the bridge**. There is no
+  fixed number, so more places can be added later than planned. Their levels sit above the Champion; `REMATCH_CAP`
+  and Coach Dex are checked against the new top.
 
-Four more types and gyms. **Badge goal: 40** (owner, 2026-10-21): 31 today, 35 after wave 12, 39 after wave 13 and
-40 with the Doodle Wizard (wave 14). The HUD keeps its 9-wide rows until waves 13 and 14 are done, then becomes 10 x 4.
+## Wave 14 · Swirl places 1: the Giant House, the Pirate Seas, Playland
+
+- **🐜 Tiny, the Giant House:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding
+  in small places (in flowers, under a leaf, in a cup). The house is built from normal blocks at giant scale (nothing
+  shrinks in code). Not a jump course like Parkour: no falling penalty, several ways through, and the giant things
+  **do something**: a fan whose wind lifts you to a shelf, a toy train you ride (press the giant remote), a tap that
+  makes a river you float down on a bottle cap, a sleeping cat to tiptoe past (running wakes it a bit: wait, never a
+  fail; can reuse the Dojo's `Watcher`), a mouse hole and a keyhole as secret ways, crumbs for bonus cubes, the Keeper
+  on a giant cookie on the table.
+- **🏴‍☠️ Pirate, the Pirate Seas:** a parrot captain, a crab with a hook claw, a ship in a bottle, an octopus with a
+  spyglass. Open sea and islands; a cannon shoots you from island to island, swing on ropes, board Captain Squawk's
+  ship (ships and cannons, not digging like Treasure).
+- **Playland** (one flat world for three places, the third in wave 15):
+  - **🏎️ Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. A race
+    against the Keeper around a track (new NPC path code).
+  - **⚽ Ball:** the creatures are balls. A football pitch and a basketball court; score to win. Needs a ball that
+    rolls and bounces (new physics); probably the biggest place so far.
+
+## Wave 15 · Swirl places 2: Portal, the Fair, Surprise
 
 - **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
-  Gym: the Portal House, a chain of portal rooms to the leader (teleports are cheap), **in the Swirl** (decided
-  2026-10-23; the Swirl itself is built in wave 11.5).
-- **🎁 Surprise:** gift boxes, a jack-in-the-box, a piñata; every wild one starts as a box and you only see what it is
-  when it opens. Gym: the Room of Doors, every door a surprise (a slide, a ball pit, a confetti room, a trainer). Fits
-  wave 15's gifts.
-- **🎡 Funfair ("lunapark"):** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking ticket. Gym: the
-  Fair: trampolines, a carousel, bumper cars and a roller-coaster ride to the leader.
-- **🥷 Ninja:** creatures that blink from spot to spot and throw leaves. Gym: the Dojo, sneak past guards with lanterns
-  (a bit like hide and seek).
+  The Portal House in the Swirl itself: a chain of portal rooms to the Keeper (teleports are cheap).
+- **🎡 Funfair ("lunapark"), in Playland:** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking
+  ticket. Trampolines, a carousel, bumper cars and a roller-coaster ride to the Keeper.
+- **🎁 Surprise** (moved from our world into the Swirl, 2026-10-24): gift boxes, a jack-in-the-box, a piñata; every
+  wild one starts as a box and you only see what it is when it opens. The Room of Doors, every door a surprise (a
+  slide, a ball pit, a confetti room, a trainer).
 
-**More badges:** the badge row is just a list, so 10 x 4 is a small HUD change. The Champion's Tower only needs the
-main world's badges (two chapters, see wave 11.5), so it no longer moves up with every wave; Swirl gyms sit above it
-and the Wizard is the hardest. `REMATCH_CAP` and Coach Dex are checked against the new top. A longer road to the Tower makes "wild creatures grow with
-your team" (wave 15) more useful, maybe sooner.
+## Wave 16 · The Wizard: Doodle, or "custom gym" (the design option below is still open)
 
-## Wave 14 · Doodle, or "custom gym" (owner, 2026-10-21: moved from wave 13 to wave 14; the design option below is still open)
-
-Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of a tower (each floor: copy a
-picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
+Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of his tower (each floor: copy
+a picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
 
 **Reaching the Wizard: the painting tower** (owner, 2026-10-20). **One game, not one per floor:** every floor is the same
 thing, "make the canvas look like the picture", and floors differ only by data, like the Firewall Maze's `ROOMS`.
@@ -1257,9 +1272,9 @@ thing, "make the canvas look like the picture", and floors differ only by data, 
 - **Left out on purpose** (each would be a second game: new code and new guidance): a from-memory floor (timer, covered
   easel) and a free-rules top floor ("3 colours, same on both sides" needs a second checker and is hard to explain).
 - Later, maybe: painting together (each player sees half the picture), needs shared live state like S1.
-- **Decided by the story (2026-10-23):** the tower stands in the Swirl, reached over the bridge once every Swirl gym's
-  journal page is found; the Wizard gives badge 40; the creature you design is the Swirl's new **guardian** (the
-  floors teach how a creature is designed).
+- **Decided by the story (2026-10-23, 2026-10-24):** the tower stands in the Swirl, reached over the bridge once every
+  Swirl place's journal page is found; beating the Wizard ends chapter 2 (no badge: chapter 2 has none); the creature
+  you design is the Swirl's new **guardian** (the floors teach how a creature is designed).
 - Open: picture designs, the Wizard's team.
 
 Two options for the design, the owner is still deciding (the painted palette fits option 2: the creature stores a few
@@ -1272,11 +1287,21 @@ wool ids instead of a palette number):
 
 ---
 
-## Wave 15 · Sharing and the world around you (owner, 2026-10-20; wave 15 since 2026-10-21)
+# Chapter 3 · not decided yet (owner, 2026-10-24: "we have to start thinking about it")
+
+Ideas, nothing picked. The two waves below were planned before the chapters and may become part of chapter 3.
+
+- **The apprentice Maker:** after the guardian, the Wizard teaches you more: design more creatures, build a challenge
+  of your own that friends can visit and play (the "custom gym" idea), raise eggs of the creatures you designed.
+  Chapter 2 raised the stakes; this one raises the creativity.
+- **A rival:** a trainer who wanted the Wizard's drawing board for themselves turns up everywhere you go.
+- **The world after the crack:** the giants turn into friendly helpers, new land appears, seasons and festivals.
+
+## Sharing and the world around you (owner, 2026-10-20)
 
 - **Gifts and trading:** give a friend blocks or a Capture Cube (arrives as a present box), and trade creatures
   between players.
-- **Dreaming together** (moved to wave 11.5 as "realms together", 2026-10-21): today a guest cannot follow the host into the Dream realm
+- **Dreaming together** (moved to wave 13 as "realms together"): today a guest cannot follow the host into the Dream realm
   (T31 toast), so a visiting friend can't catch Dream creatures or earn that badge; let a guest come along.
 - **Photo mode.**
 - **More to do in the Dream** (ideas, 2026-10-21, not decided): **a new dream every night** (the island's shape and
@@ -1286,13 +1311,12 @@ wool ids instead of a palette number):
   wake-up reward), **your creatures talk** (short speech bubbles from your team, only in dreams), **dream blocks** to
   bring home (cotton candy, a floating star block, a glowing cloud; `limited` blocks like the gems), a friendly **"bad
   dream" corner** (a grumpy fog patch with a shy creature that cheers up when you beat it). Best value first: new dream
-  every night, dream rules, talking creatures. With a Portal realm (wave 13) "Dreaming together" becomes **"realms
-  together"**.
+  every night, dream rules, talking creatures. "Dreaming together" became **"realms together"** (wave 13).
 - **Wild creatures grow with your team** (owner request, 2026-10-19): today a wild creature's level comes only from its
   distance to the start (`far / 10` in `creatures.js`) plus +10 after 16 badges; it should also follow your team's
   level so the world stays a challenge.
 
-## Wave 16 · Eggs, hatching and raising (owner, 2026-10-20: its own wave, may get complicated; wave 16 since 2026-10-21)
+## Eggs, hatching and raising (owner, 2026-10-20: its own wave, may get complicated)
 
 **Eggs:** found in chests and mission rewards, or left in a cozy home by two creatures of one type; carried in a
 team slot and hatched by walking; the baby is special from level 1: the home egg knows one move from a parent (more
@@ -1321,7 +1345,7 @@ over the game); "raising" is to be planned when the wave starts.
 Owner likes these, but not now: **home helpers** (creatures left at home do jobs: fire keeps
 the fireplace lit, grass grows flowers), **creature helpers** (fire lights lamps, rock digs
 faster, sound reveals hidden ore), **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
-(Gifts, trading, photo mode, dreaming together and growing wild creatures moved to wave 15, eggs to wave 16.)
+(Gifts, trading, photo mode and growing wild creatures moved to "Sharing", eggs to "Eggs", both under chapter 3; dreaming together is wave 13.)
 
 **Fun ideas** (2026-10-21, after riding was a hit; not decided): **a buddy that follows you** (your lead creature walks,
 swims or flies beside you, sits when you stop, tap to pet; friends see it), **traits that do something** (Glider:
@@ -1333,7 +1357,7 @@ together** (a friend sits behind you, or side by side), **hats and costumes** fo
 what the rare mission blocks buy), **tricks** (teach your buddy a spin or a dance to show off), **events now and then**
 (a parade of rare creatures, a shooting-star night, a festival day). Suggested order: buddy, bouncy blocks, more traits.
 
-**Types for later** (owner, 2026-10-21: moved out of wave 12; same per-type cost as wave 11; Ninja went to wave 13):
+**Types for later** (owner, 2026-10-21; same per-type cost as wave 11; Ninja went to wave 12; Knight could become a Swirl place, the Castle):
 - **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
   castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
   wall, the leader in the throne room.

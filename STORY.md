@@ -1,8 +1,8 @@
 # The Story of PokeCraft
 
-The lore behind the game (owner, 2026-10-23). New features should fit it; `ROADMAP.md` says which wave adds which
-part. The game has two chapters: **our world** (badges, the Champion's Tower) and **the Swirl** (the other worlds,
-the Wizard).
+The lore behind the game (owner, 2026-10-23, 2026-10-24). New features should fit it; `ROADMAP.md` says which wave
+adds which part. **Chapter 1** is our world (32 gyms and badges, the Champion's Tower), **chapter 2** the Swirl
+(missions, the places behind the frames, the Wizard). **Chapter 3** is not written yet.
 
 # Chapter 1: Our world
 
@@ -41,6 +41,11 @@ He told them to give their **badge** only to trainers they trust. A badge means:
 creatures, and I trust you."* Beating a leader doesn't make them your enemy. They're proud of you, and they'll
 battle you again whenever you want to see how much you've grown.
 
+## The Ninja
+The last gym of our world is the **Shadow Dojo**, home of the **Ninja creatures**: they move through the shadows,
+vanish in a puff of smoke and seem to know more than they say. Its trainers keep watch with lanterns; sneak past
+them, or sneak up on them.
+
 ## The Dream
 
 There's one world the Wizard didn't make. When you sleep in your cozy home, **you** make it. That's why everything
@@ -62,10 +67,12 @@ Before he left, he did three things:
 
 ## The Champion's Tower
 
-Only a trainer with **every badge of our world** gets in:
+Only a trainer with **all 32 badges of our world** gets in:
 - **Two guards** check your badges.
 - **Coach Dex** trains you for what's at the top.
-- **Champion Solenne** and **Zenithar** battle you. Win, and you're the **Champion**.
+- **Champion Solenne** and **Zenithar** battle you. Win, and you're the **Champion**. That ends chapter 1.
+
+# Chapter 2: The Swirl
 
 ## Champion missions
 
@@ -76,17 +83,17 @@ With the Wizard gone, somebody has to look after the world. Solenne asks the new
   giant down, so you need **a friend**.
 
 The rare rewards (Star Blocks, Rainbow Bricks, Giant Trophies) are things the Wizard made himself and left with
-Solenne for the Champion.
-
-# Chapter 2: The Swirl
+Solenne for the Champion. The missions **never run out**: there is always another map, another build, another
+giant, because a world always needs looking after.
 
 ## Where the giants come from
 
 The giants keep coming, and Solenne finally tells the Champion the truth: they leak through the **crack in the
 Swirl**. Someone has to go in.
 
-The only creatures who can move between worlds, the **Portal creatures**, have built a **stone portal frame** in our
-world. You can step through any time, alone or with a friend, and come back through the same frame.
+The only creatures who can move between worlds, the **Portal creatures**, have built a **Portal Door** right next
+to the Champion's Tower door: big, bright and swirling, but it only opens for a Champion. You can step through any
+time, alone or with a friend, and come back through the same door.
 
 ## The Swirl
 
@@ -96,8 +103,9 @@ themselves, and big frames hanging in the air. Each frame is a **doorway to anot
 Far out in the sky floats **the Wizard's tower**. You can see it the moment you arrive, but you can't reach it: the
 **bridge** to it is broken.
 
-Every gym in the Swirl gives you a **badge**, like any other, and one of the **journal pages** the Wizard left
-behind. Each page brings back **one piece of the bridge**.
+The places behind the frames are **not gyms**, and there are no more badges. In each one, the crack shows, and
+somebody guards one of the **journal pages** the Wizard left behind. Win the page, and it brings back **one piece of
+the bridge**. Nobody knows how many pages there are: the Wizard made a lot of worlds.
 
 ## The worlds
 
@@ -108,7 +116,7 @@ of his pet mouse. The kitchen is as big as a town:
 - a dripping tap becomes a river you float down on a bottle cap
 - a cat sleeps by the table: don't wake it
 
-The leader waits on a giant cookie on the table.
+The page waits on a giant cookie on the table.
 
 **The Pirate Seas.** Open ocean and scattered islands, ruled by **Captain Squawk**, a parrot pirate who took over
 this world once the Wizard was gone. Fly from island to island by cannon, swing on ropes, and board the Captain's
@@ -118,12 +126,11 @@ ship. His journal page is in his treasure chest.
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
 and the fair leader, and Playland starts up again.
 
-**The Portal creatures' home.** The Swirl itself has a gym too: the Portal creatures' leader, who has been watching
-the crack the longest.
+**The Portal House.** In the Swirl itself, the Portal creatures' oldest, who has been watching the crack the
+longest, guards a page at the end of a chain of portal rooms.
 
-**Back in our world**, new creatures have appeared since the crack:
-- **Ninja creatures** move through the shadows and seem to know more than they say.
-- **Surprise creatures** are gifts the Wizard never got to hand out. You only know what's inside when they open.
+**The Room of Doors.** The Wizard locked away the gifts he never got to hand out: the **Surprise creatures**. You
+only know what's inside when they open, and every door in the room is a surprise too.
 
 ## The Wizard's Tower
 
@@ -140,14 +147,19 @@ you his drawing board:
 *"You design it."*
 
 You design your own creature, unlike any other. It becomes the Swirl's guardian, the crack closes, and the Wizard
-can finally come out. That's **badge number 40**.
+can finally come out. That ends chapter 2.
+
+# Chapter 3
+
+Not written yet (ideas in `ROADMAP.md`).
 
 # How it lines up with the game
 
 | Part | In the game | Wave |
 | --- | --- | --- |
-| Chapter 1: the world, creatures, cubes, gyms, the Dream, the Champion's Tower, missions and giants | Already in the game | Done |
-| The portal frame (after the Champion title), the Swirl, the far-away tower and the broken bridge, friends can come along | Realms together, portal frame, Swirl hub | 11.5 |
-| The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball gyms (badge + page + bridge piece each) | 12 |
-| The Portal leader, Playland's fair, Ninja and Surprise in our world | Portal, Funfair gyms in the Swirl; Ninja, Surprise gyms in our world (they count for the Tower) | 13 |
-| The studio, the Wizard, designing the guardian | Doodle, badge 40 | 14 |
+| Chapter 1: the world, creatures, cubes, 31 gyms, the Dream, the Champion's Tower | Already in the game | Done |
+| The Shadow Dojo, 32 badges in an 8 x 4 grid | Ninja gym | 12 |
+| Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
+| The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball places (a journal page and a bridge piece each) | 14 |
+| The Portal House, Playland's fair, the Room of Doors | Portal, Funfair, Surprise places | 15 |
+| The studio, the Wizard, designing the guardian | Doodle | 16 |
