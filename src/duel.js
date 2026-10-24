@@ -55,7 +55,7 @@ export class Duels {
     const g = this.game;
     if (p.type === 'ask') {
       if (p.v !== VERSION) { this.mp.sendDuel(p.from, { type: 'no', id: p.id, old: true }); return; } // the asker has an older game
-      if (!g.started || g.inBattle || g.hideSeek?.active || this.current || this.incoming || this.asking || !g.party.length) {
+      if (!g.started || g.inBattle || g.hideSeek?.active || this.current || this.incoming || this.asking || !g.party.length || this.mp.others.get(p.from)?.here === false) { // T38b: not from another place
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
       }

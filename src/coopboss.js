@@ -43,6 +43,7 @@ export function coopFor(game, missionId, avatar) {
   const boss = bossOf(game, missionId);
   if (!boss || !BOSSES[boss]) return { error: 'This mission is not a boss battle.' };
   if (!avatar || !game.mp.others.has(avatar.id)) return { error: 'Your friend left the world.' };
+  if (avatar.here === false) return { error: 'Your friend is in another place.' }; // T38b
   const me = game.player.pos, you = avatar.pos;
   if (Math.hypot(me.x - you.x, me.z - you.z) > COOP_RANGE) return { error: `Walk closer to ${avatar.name} first.` };
   const d = game.duels;

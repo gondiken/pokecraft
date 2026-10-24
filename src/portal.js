@@ -33,6 +33,8 @@ export function buildPortalDoor(world, tower) {
 }
 
 const DOOR_IDS = new Set([B.PORTAL, B.PORTAL_DIM, B.PORTAL_FRAME]);
+// T38b: a guest can use the door only while the host is in the Swirl (and then needs no title)
+const openFor = game => game.mp?.role === 'guest' ? game.realms.followableAt('portal') : game.champion;
 const inBox = (b, k) => k.x >= b.x0 && k.x <= b.x1 && k.y >= b.y0 && k.y <= b.y1 && k.z >= b.z0 && k.z <= b.z1;
 
 export function createPortal(game) {
@@ -73,8 +75,12 @@ export function createPortal(game) {
     use(block) {
       const k = kindOf(block);
       if (k === 'main') {
+        if (game.mp?.role === 'guest') { // T38b: a guest goes where the host is (no title needed), never on their own
+          if (game.champion || game.realms.followableAt('portal')) game.realms.guestEntrance('portal');
+          else game.ui.toast('Only a Champion can open this door. Win in the tower first!');
+          return true;
+        }
         if (!game.champion) { game.ui.toast('Only a Champion can open this door. Win in the tower first!'); return true; }
-        if (game.mp?.role === 'guest') { game.ui.toast('Go through the Portal Door in your own world!'); return true; }
         game.realms.enter('swirl', { back: game.world.portal.stand });
         return true;
       }
@@ -85,13 +91,13 @@ export function createPortal(game) {
     // The words under the crosshair: '' = not mine.
     prompt(block, how) {
       const k = kindOf(block);
-      if (k === 'main') return game.champion ? `Portal Door · ${how} to step in` : 'Portal Door · closed';
+      if (k === 'main') return openFor(game) ? `Portal Door · ${how} to step in` : 'Portal Door · closed';
       if (k === 'back') return `Portal Door · ${how} to go home`;
       return swirlPrompt(game, block, how);
     },
     action(block) {
       const k = kindOf(block);
-      if (k === 'main') return game.champion ? 'Step in!' : '';
+      if (k === 'main') return openFor(game) ? 'Step in!' : '';
       if (k === 'back') return 'Go home!';
       return swirlAction(game, block);
     },

@@ -1161,7 +1161,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 
 /* ----------------------------- play together ----------------------------- */
 
-const { goHome } = createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl });
+const { goHome } = createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl, resume });
 
 showTitle();
 requestAnimationFrame(frame);

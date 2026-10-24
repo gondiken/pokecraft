@@ -17,8 +17,8 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
-const WORLD_VERSION = 18; // 18: T38a the Portal Door beside the tower (blocks 124-131). 17: wave 12 the Shadow Dojo (slot 8, blocks 114-123). 16: the Obstacle Course has no Exit Pad (the finish keeps its platform block). 15: the Obstacle Course has 4 flags instead of 9. 14: T36.5 the bigger Obstacle Course (blocks 89-90 and 95-104). 13: wave 11 south slot gyms (T33 Restaurant slot 5, blocks 83-86; T34 Big Top slot 6; T36 Obstacle Course slot 7, blocks 91-94). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
-const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs']; // T30: 'hs' = hide and seek
+const WORLD_VERSION = 19; // 19: T38b realm requests (guests follow into realms). 18: T38a the Portal Door beside the tower (blocks 124-131). 17: wave 12 the Shadow Dojo (slot 8, blocks 114-123). 16: the Obstacle Course has no Exit Pad (the finish keeps its platform block). 15: the Obstacle Course has 4 flags instead of 9. 14: T36.5 the bigger Obstacle Course (blocks 89-90 and 95-104). 13: wave 11 south slot gyms (T33 Restaurant slot 5, blocks 83-86; T34 Big Top slot 6; T36 Obstacle Course slot 7, blocks 91-94). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
+const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs', 'realm']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
   { shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
@@ -215,6 +215,7 @@ export class Multiplayer {
 
   get active() { return this.role === 'host' || this.role === 'guest'; }
   get players() { return [...this.others.values()].map(a => a.name); }
+  get hostAvatar() { return [...this.others.values()].find(a => a.isHost); } // T38b
   get hostName() { return [...this.others.values()].find(a => a.isHost)?.name; }
 
   async host(name) {
@@ -281,10 +282,10 @@ export class Multiplayer {
       a.update(p);
       const place = typeof p.place === 'string' ? p.place : 'main'; // T31
       if (place !== a.place) {
-        const was = realmOf(a.place); // T38a: the words come from the realm's def (away / back)
+        const was = realmOf(a.place); // T38a: the words come from the realm's def (away / returned)
         a.place = place;
         const r = realmOf(place);
-        this.hooks.toast(r ? (r.away?.(a.name) ?? `${a.name} fell asleep and is in the ${r.name}.`) : was?.morning === false ? `${a.name} is back!` : `${a.name} woke up!`);
+        this.hooks.toast(r ? (r.away?.(a.name) ?? `${a.name} fell asleep and is in the ${r.name}.`) : was?.returned?.(a.name) ?? `${a.name} woke up!`);
       }
       a.here = a.place === (this.game.place || 'main');
       if (p.host && this.role === 'guest' && typeof p.time === 'number') this.game.time = p.time;
@@ -292,7 +293,11 @@ export class Multiplayer {
     });
     t.on('block', p => {
       if (!this.active || p.id === this.id) return;
-      if ((p.place || 'main') !== (this.game.place || 'main')) { if ((p.place || 'main') === 'main') this.game.realms?.stashBlock(p); return; } // T31: kept for the main world
+      if ((p.place || 'main') !== (this.game.place || 'main')) { // T31: kept for the main world; T38b: the host keeps a realm block too
+        if ((p.place || 'main') === 'main') this.game.realms?.stashBlock(p);
+        else if (this.role === 'host') this.game.realms?.stashRealmBlock(p);
+        return;
+      }
       if (!this.game.world.editAllowed(p.x, p.y, p.z, p.b)) return; // gyms stay whole (T17)
       this.game.world.set(p.x, p.y, p.z, p.b);
     });
@@ -302,10 +307,44 @@ export class Multiplayer {
     t.on('hs', p => { // T30
       if (this.active && p.to === this.id && p.from !== this.id) this.hooks.hs?.(p);
     });
+    t.on('realm', p => { // T38b: a guest follows the host into a realm
+      if (!this.active || p.to !== this.id || p.from === this.id) return;
+      if (p.type === 'ask') { if (this.role === 'host') this.hooks.realm?.(p); return; }
+      const r = this.realmReq;
+      if (!r || r.id !== p.id) return;
+      if (p.type === 'no') { r.done({ error: `${this.hostName || 'Your friend'} is not there any more.` }); return; }
+      if (p.type !== 'part') return;
+      const def = realmOf(p.realm);
+      if (!def || (p.rv ?? 1) !== (def.version ?? 1)) { r.done({ error: 'Your friend has a newer game. Please reload the page!' }); return; }
+      r.parts[p.part] = p;
+      if (r.parts.filter(Boolean).length < p.parts) return;
+      r.done({ edits: r.parts.flatMap(x => x.edits), ret: p.ret, spot: p.spot });
+    });
     t.on('bye', p => this.removePlayer(p.id, true));
     t.on('duel', p => {
       if (this.active && p.to === this.id && p.from !== this.id) this.hooks.duel?.(p);
     });
+  }
+
+  // T38b, guest: ask the host for the realm they are in -> { edits, ret, spot } | { error } (child words).
+  askRealm(realm) {
+    return new Promise(resolve => {
+      const host = this.hostAvatar;
+      if (!this.active || !host) { resolve({ error: 'Your friend is not here any more.' }); return; }
+      const id = randomId();
+      const done = res => { clearTimeout(timer); if (this.realmReq?.id === id) this.realmReq = null; resolve(res); };
+      const timer = setTimeout(() => done({ error: `Couldn't reach ${host.name}'s trip. Try again from the pause screen.` }), JOIN_TIMEOUT * 1000);
+      this.realmReq = { id, parts: [], done };
+      this.t.send('realm', { type: 'ask', id, from: this.id, to: host.id, realm });
+    });
+  }
+
+  // T38b, host: the answer to a guest's ask (data: { type, id, ... }); big edit lists go out in parts like the world.
+  sendRealm(to, data) {
+    if (!this.active) return;
+    const edits = data.edits || [];
+    const parts = Math.max(1, Math.ceil(edits.length / EDITS_PER_MESSAGE));
+    for (let i = 0; i < parts; i++) this.t.send('realm', { ...data, from: this.id, to, part: i, parts, edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE) });
   }
 
   sendHs(to, data) { // T30

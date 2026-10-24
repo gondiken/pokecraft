@@ -4,36 +4,10 @@
 // places: hidden, no cross edits, the guest's edit waits for the host's main world).
 import fs from 'node:fs';
 import path from 'node:path';
+import { HOUSE, sleep } from '../realmhelp.mjs';
 import { ROOT, openGame, openPair, newGame, pause, click, continueGame, waitFor, seedSave } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
-
-// A cozy house on a stone slab at y = 42 near the start (all five features), your home, at night. Returns its cells.
-const HOUSE = async () => {
-  const g = window.pokecraft, { B, WOOL } = await import('/src/blocks.js'), ht = await import('/src/hometypes.js');
-  const s = g.spawnPoint, F = 42;
-  const free = (x0, z0) => { for (let x = -2; x < 14; x += 3) for (let z = -2; z < 14; z += 3) for (let y = F; y <= F + 13; y += 3) if (g.world.protectedAt(x0 + x, y, z0 + z)) return false; return true; };
-  let X0 = null, Z0 = null;
-  search: for (let r = 0; r < 120; r += 8) for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
-    const x = Math.floor(s.x) + 6 + dx, z = Math.floor(s.z) - 14 + dz;
-    if (x > 2 && z > 2 && x < 200 && z < 200 && free(x, z)) { X0 = x; Z0 = z; break search; }
-  }
-  for (let x = -2; x < 14; x++) for (let z = -2; z < 14; z++) { g.world.set(X0 + x, F, Z0 + z, B.STONE); for (let y = 1; y <= 12; y++) g.world.set(X0 + x, F + y, Z0 + z, B.AIR); }
-  const ex = ht.boxHouse({ w: 10, d: 10, wall: B.PLANKS, roof: B.PLANKS, floor: B.PLANKS });
-  const at = (x, y, z, id) => g.world.set(X0 + x, F + y, Z0 + z, id);
-  for (const [x, y, z, id] of ex.blocks) at(x, y, z, id);
-  at(1, 1, 8, B.BED); at(5, 2, 9, B.FIREPLACE); at(5, 4, 5, B.LAMP); at(0, 2, 5, B.GLASS); at(9, 2, 5, B.GLASS);
-  for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) at(5 + dx, 0, 4 + dz, WOOL.cozy);
-  at(-1, 1, -1, B.BED); // a bed outside any home
-  const mat = [X0 + ex.mat[0], F, Z0 + ex.mat[2]];
-  g.homes.place(...mat);
-  g.player.pos.set(X0 + 3.5, F + 1, Z0 + 6.5); g.player.vel.set(0, 0, 0);
-  g.time = 0.75; // midnight
-  window.__toasts = [];
-  const toast = g.ui.toast.bind(g.ui);
-  g.ui.toast = m => { window.__toasts.push(m); toast(m); };
-  return { bed: [X0 + 1, F + 1, Z0 + 8], outside: [X0 - 1, F + 1, Z0 - 1], mat, edit: [X0 + 12, F, Z0 + 12] };
-};
 
 // A checksum of the main world; gym "live" blocks (doors that open by the clock, lasers, vault lights) count as air.
 const sum = () => {
@@ -44,14 +18,6 @@ const sum = () => {
   const inCourse = i => { const x = i % w.W, z = Math.floor(i / w.W) % w.D; return boxes.some(c => x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1); };
   let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) || inCourse(i) ? 0 : d[i])) | 0; return h;
 };
-const sleep = async (page, bed) => {
-  await page.evaluate(b => { const g = window.pokecraft; g.realms.useBed({ x: b[0], y: b[1], z: b[2], id: 71 }); }, bed);
-  const asked = await page.evaluate(() => window.pokecraft.ui.asking && document.getElementById('ask-text').textContent);
-  await page.evaluate(() => window.pokecraft.ui.askYes());
-  await waitFor(page, () => window.pokecraft.place === 'dream' && !window.pokecraft.realms.busy);
-  return asked;
-};
-
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
 
@@ -199,6 +165,8 @@ export default async function ({ browser, base, t }) {
   t.ok(await B.evaluate(() => window.pokecraft.place === 'main' && window.__toasts.some(m => /your own world/.test(m))), 'a guest gets a toast instead of dreaming');
   // the host dreams: hidden from the guest, a toast, no cross edits
   await sleep(A, HA.bed);
+  await waitFor(B, () => window.pokecraft.ui.asking && /Dad is dreaming/.test(document.getElementById('ask-text').textContent)); // T38b: the guest is asked to follow
+  await B.evaluate(() => window.pokecraft.ui.askNo()); // "Not now": the places stay different
   await waitFor(B, () => { const a = [...window.pokecraft.mp.others.values()][0]; return a && !a.here && !a.model.visible; });
   t.ok(await B.evaluate(() => window.__toasts.some(m => /Dad fell asleep/.test(m))), 'the guest is told the host is dreaming');
   t.ok(await B.evaluate(() => { const g = window.pokecraft, o = g.player.eyePos.clone(), a = [...g.mp.others.values()][0]; return !g.mp.pick(o, a.pos.clone().setY(a.pos.y + 1).sub(o).normalize(), 50); }), 'the dreaming host can\'t be picked by the guest');
