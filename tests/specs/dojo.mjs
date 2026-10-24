@@ -152,7 +152,7 @@ export default async function ({ browser, base, t }) {
       }
       r.watchers = g.watchers.length;
       r.trainers = g.trainerPositions.length === 2 && g.watchers.every(x => x.trainer == null) && g.watchers.filter(x => x.guard != null).length === 3
-        && g.trainerPositions.every(([x, y, z]) => y === fy + 13 && !solid(x, y, z) && !solid(x, y + 1, z) && solid(x, y - 1, z)); // the masters stand on the pagoda roof
+        && g.trainerPositions.every(([px, y, pz]) => { const x = Math.floor(px), z = Math.floor(pz); return y === fy + 13 && !solid(x, y, z) && !solid(x, y + 1, z) && solid(x, y - 1, z); }); // the masters stand on the pagoda roof
       // edits and riders refused
       const [mx, mz] = col(10, 0);
       r.edit = !w.editAllowed(mx, fy, mz, B.AIR) && !w.editAllowed(mx, fy + 1, mz, B.STONE) && w.fenced(mx, fy + 1, mz);
@@ -404,10 +404,14 @@ export default async function ({ browser, base, t }) {
     const yawTo = (dd, ds) => { const dx = gym.front[0] * dd + gym.side[0] * ds, dz = gym.front[1] * dd + gym.side[1] * ds; return Math.atan2(-dx, -dz); };
     g.toldOnce.delete('dojo:squeak');
     window.__toasts = [];
+    // the first moment Tora walks past (6.5, -4.3) on her way along +s
+    const [tx, , tz] = P(6.5, -4.3);
+    let spot = 0;
+    for (let t = 0; t < 40; t += 0.01) { const q = ren.at(t); if (Math.hypot(q.x - tx, q.z - tz) < 0.08) { spot = t; break; } }
     const run = (from, sprint, frames = 24) => {
       for (const x of L.watchers) x.noise = null;
       ren.clock = 0; ren.set(ren.at(0)); // at the corner (6.5, -10.5), about to walk along +s
-      ren.clock = 8; ren.set(ren.at(8)); // 8 s later: walking along +s, s about -4.3
+      ren.clock = spot; ren.set(ren.at(spot)); // walking along +s, at s about -4.3 (whatever the guards' speed)
       const h0 = ren.heading, sq0 = L.squeaks;
       p.pos.set(...from); p.vel.set(0, 0, 0); p.yaw = yawTo(0, 1); p.pitch = 0; p.onGround = true; p.ride = null;
       p.keys = { KeyW: true, ShiftLeft: sprint };
