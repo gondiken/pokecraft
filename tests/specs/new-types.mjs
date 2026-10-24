@@ -49,6 +49,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(`!!${npc('leader')} && !!${npc('trainer')}`), 'Echo Gym has a trainer and a leader');
   await page.evaluate(`window.pokecraft.talkTo(${npc('trainer')})`);
   t.ok(await playBattle(page), 'Echo Gym trainer battle finishes');
+  await page.evaluate(() => { const g = window.pokecraft; if (!g.keys.includes('sound:danced')) g.keys.push('sound:danced'); }); // the dance-off is done (spec `dance` plays it)
   await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
   t.ok(await playBattle(page), 'Echo Gym leader battle finishes');
   t.ok(await page.evaluate(() => window.pokecraft.badges.includes('sound')), 'Echo Badge awarded');
