@@ -26,8 +26,8 @@ const HALL = { d0: -2, d1: 8, s: 12, front: [-9, -7], back: [7, 9] };
 
 // Tunables (one object so the owner can make it easier or harder).
 export const DOJO = {
-  speed: 1.0,      // watchers walk this many blocks a second (the player walks 4.3)
-  range: 5.5,      // how far a lantern's light reaches
+  speed: 1.15,     // watchers walk this many blocks a second (the player walks 4.3)
+  range: 6.2,      // how far a lantern's light reaches (6.2 lights about 27% more floor than 5.5)
   angle: 0.6,      // half the light cone (radians, about 34 degrees)
   pause: 1.8,      // seconds a watcher stands at each corner of its path
   hear: 8,         // a squeak within this many blocks makes a watcher turn
@@ -39,8 +39,8 @@ export const DOJO = {
 
 // Where the people walk, in local (d, s) points (a loop; two points = back and forth). who: a trainer index or a guard index.
 const WATCH = [
-  { id: 'suzu', trainer: 0, path: [[12, -12], [12, 12]] },                                // the front garden, across the path
-  { id: 'ren', trainer: 1, path: [[6.5, -10.5], [6.5, 10.5], [-0.5, 10.5], [-0.5, -10.5]] }, // round the hall's board corridor
+  { id: 'aki', guard: 1, path: [[12, -12], [12, 12]] },                                  // the front garden, across the path
+  { id: 'tora', guard: 2, path: [[6.5, -10.5], [6.5, 10.5], [-0.5, 10.5], [-0.5, -10.5]] }, // round the hall's board corridor
   { id: 'hoshi', guard: 0, path: [[-6, -7], [-6, 7], [-18, 7], [-18, -7]] },                // round the pagoda
 ];
 // Hiding spots: two cells each [d, s] and the side they open to ([dd, ds]); built from `block`, two high.
@@ -262,9 +262,12 @@ export function buildShadowDojo(world, def, slot) {
   });
   const startOf = w => [w.path[0][0], fy + 1, w.path[0][1]];
   const legHeading = w => Math.atan2(w.path[1][0] - w.path[0][0], w.path[1][1] - w.path[0][1]);
+  // The masters (trainers) stand on the deck either side of the leader, facing the gate; a trainer that walks a path
+  // (a WATCH entry with `trainer`) would start on it instead.
+  const DECK_SPOTS = [P(2, 2), P(2, -2)];
   const trainerWatch = trainersOf(def).map((_, i) => watchers.find(w => w.trainer === i));
-  const trainerPositions = trainerWatch.map(w => startOf(w));
-  const trainerHeadings = trainerWatch.map(w => legHeading(w));
+  const trainerPositions = trainerWatch.map((w, i) => w ? startOf(w) : cell(...DECK_SPOTS[i], fy + 13));
+  const trainerHeadings = trainerWatch.map(w => w ? legHeading(w) : heading(1, 0));
   const people = (def.guards || []).map((p, i) => {
     const w = watchers.find(x => x.guard === i);
     return { kind: 'guest', name: p.name, title: `${p.name} (${def.name})`, colors: p.colors, look: p.look, line: p.line, sneak: p.sneak, pos: startOf(w), heading: legHeading(w), guard: i };
@@ -339,6 +342,7 @@ export class DojoLive {
 
   // Finds the people the watchers carry (they change with every world) and gives them a lantern.
   bind() {
+    for (const n of this.game.npcs.list) if (this.masterOf(n) != null) n.lookout = true; // masters keep looking out at the gate
     for (const w of this.watchers) {
       if (w.npc && this.game.npcs.list.includes(w.npc)) continue;
       w.npc = this.game.npcs.list.find(n => n.gym === this.gym && (w.trainer != null ? n.kind === 'trainer' && (n.index || 0) === w.trainer : n.kind === 'guest' && n.def?.guard === w.guard)) || null;
@@ -532,8 +536,26 @@ export class DojoLive {
     return !!p && !w.stopped && w.behind(p) && !w.sees(p, this.solid);
   }
 
-  // Talking to (tapping) a watcher: from behind = a surprise attack; a guard just jumps.
+  // A master (a trainer of this gym who walks no path) stands still looking out; right behind them = a sneak attack.
+  masterOf(npc) { return npc?.gym === this.gym && npc.kind === 'trainer' && !this.watcherOf(npc) ? npc.index || 0 : null; }
+  masterSneaky(npc) {
+    const p = this.game.player?.pos;
+    if (!p || Math.hypot(p.x - npc.pos.x, p.z - npc.pos.z) > 3) return false;
+    const a = Math.atan2(p.x - npc.pos.x, p.z - npc.pos.z) - (npc.homeHeading ?? npc.heading);
+    return Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > Math.PI / 2;
+  }
+
+  // Talking to (tapping) a watcher: from behind = a surprise attack; a guard just jumps. A master: a battle, a sneak
+  // attack from behind.
   talk(npc) {
+    const m = this.masterOf(npc);
+    if (m != null) {
+      if (this.game.beaten.includes(trainerKey(this.def, m))) return false; // "You already beat me!"
+      const t = trainersOf(this.def)[m], sneak = this.masterSneaky(npc);
+      this.grace = DOJO.grace;
+      this.game.startBattle({ trainer: npc, team: t.team, intro: sneak ? (t.sneak || ['Eek! Where did you come from?']) : t.intro, surprise: sneak });
+      return true;
+    }
     const w = this.watcherOf(npc);
     if (!w) return false;
     const sneak = this.sneaky(w);
@@ -551,6 +573,8 @@ export class DojoLive {
   }
 
   talkPrompt(npc) {
+    const m = this.masterOf(npc);
+    if (m != null) return !this.game.beaten.includes(trainerKey(this.def, m)) && this.masterSneaky(npc) ? { verb: 'sneak attack', action: 'Sneak attack!' } : null;
     const w = this.watcherOf(npc);
     if (!w || (w.trainer != null && this.beaten(w))) return null;
     if (this.sneaky(w)) return { verb: w.trainer != null ? 'sneak attack' : 'surprise', action: w.trainer != null ? 'Sneak attack!' : 'Boo!' };

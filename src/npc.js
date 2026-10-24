@@ -327,7 +327,7 @@ export class NpcManager {
         for (const a of p.arms) a.g.rotation.x = n.moving ? Math.sin(n.t * 7 + a.phase) * 0.25 : 0;
         continue;
       }
-      const near = n.pos.distanceTo(playerPos) < 7;
+      const near = !n.lookout && n.pos.distanceTo(playerPos) < 7; // a lookout (a Shadow Dojo master) keeps looking out
       // Turn to face the player when they come close.
       const want = near ? Math.atan2(playerPos.x - n.pos.x, playerPos.z - n.pos.z) : n.homeHeading;
       let d = want - n.heading;
