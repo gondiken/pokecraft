@@ -180,7 +180,7 @@ export default async function ({ browser, base, t }) {
   await mainOn(page);
   const back = await page.evaluate(() => {
     const g = window.pokecraft, p = g.player.pos, c = g.world.portal;
-    return { d: Math.hypot(p.x - c.stand[0], p.z - c.stand[2]), dy: Math.abs(p.y - c.stand[1]), yaw: g.player.yaw - Math.atan2(-c.front[0], -c.front[1]), toast: window.__toasts.at(-1), size: g.world.W, champion: g.champion };
+    return { d: Math.hypot(p.x - c.stand[0], p.z - c.stand[2]), dy: Math.abs(p.y - c.stand[1]), yaw: g.player.yaw - Math.atan2(-c.front[0], -c.front[1]), toast: window.__toasts.find(m => m.startsWith('You stepped back')) ?? window.__toasts.at(-1), size: g.world.W, champion: g.champion };
   });
   t.ok(back.d < 0.5 && back.dy < 1 && Math.abs(back.yaw) < 0.01 && back.size === 288, `the door back puts you in front of the Portal Door, looking away from it (${JSON.stringify(back)})`);
   t.ok(back.toast === 'You stepped back through the Portal Door.', `the words coming back (${back.toast})`);
@@ -257,5 +257,209 @@ export default async function ({ browser, base, t }) {
 
   // ===================================== PART B (builder B) =====================================
   // The real Swirl: decks, galleries, stairs, lifts, frames, the star bridge, the Wizard's tower, walks, the guide on the hub
-  // and on the cloud sea, an iPad tap. Builder B adds those checks here (plans/T38a.md sections 3 and 7).
+  // and on the cloud sea, an iPad tap.
+  const Q = await openGame(browser, base);
+  await newGame(Q, 0); await pause(Q);
+  await Q.evaluate(toasts);
+  await Q.evaluate(() => { window.pokecraft.champion = true; });
+  await Q.evaluate(() => { const g = window.pokecraft; g.realms.enter('swirl', { back: g.world.portal.stand }); });
+  await swirlOn(Q);
+  await Q.evaluate(() => { document.getElementById('pause').classList.add('hidden'); window.__edits0 = window.pokecraft.world.edits.size; });
+
+  // 4. The data: same seed, same blocks; the decks, frames, bridge and the Wizard's tower are where the tables say.
+  const data = await Q.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, { B } = await import('/src/blocks.js'), { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');
+    const L = await import('/src/swirlland.js'), { PICTURE_WORLDS } = await import('/src/pictureworlds.js');
+    const sumOf = x => { let h = 0; for (let i = 0; i < x.data.length; i++) h = (h * 31 + x.data[i]) | 0; return h; };
+    const a = new World(w.seed, null, null, REALMS.swirl.size, REALMS.swirl); a.generate();
+    const b = new World(w.seed + 5, null, null, REALMS.swirl.size, REALMS.swirl); b.generate();
+    const decks = L.DECKS.map(d => {
+      const [x, z] = d.round ? [d.round[0] - 6, d.round[1]] : [d.box[0] + 1, d.box[2] + 1];
+      return w.surface(x, z).y === d.y && w.get(x, d.y, z) === B.SWIRL_STONE;
+    });
+    const sw = w.swirl;
+    const frames = sw.frames.map(f => ({ id: f.spot.id, cloth: f.cloth.length, ok: f.cloth.every(([x, y, z]) => w.get(x, y, z) === B.CLOTH) && f.border.every(([x, y, z]) => w.get(x, y, z) !== B.AIR) }));
+    const s3 = L.FRAME_SPOTS[7], s3empty = w.get(s3.x, s3.y + 3, s3.z) === 0 && w.get(s3.x - 3, s3.y, s3.z) === 0;
+    const bridgeAir = sw.bridge.every(s => s.cells.every(([x, y, z]) => w.get(x, y, z) === B.AIR));
+    // the Wizard's tower is sealed: flood from inside over non-solid cells and see if it ever leaves the 9 x 9 box
+    const wz = sw.wizard, start = [wz.x, 25, wz.z], seen = new Set([start.join()]), q = [start];
+    let leak = false;
+    while (q.length) {
+      const [x, y, z] = q.pop();
+      for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+        const n = [x + dx, y + dy, z + dz];
+        if (!w.inBounds(...n)) { leak = true; continue; }
+        if (w.isSolid(...n)) continue;
+        const k = n.join(); if (seen.has(k)) continue;
+        seen.add(k); q.push(n);
+        if (Math.abs(n[0] - wz.x) > 4 || Math.abs(n[2] - wz.z) > 4) leak = true;
+      }
+    }
+    return {
+      same: sumOf(a) === sumOf(w), other: sumOf(a) === sumOf(b), decks, frames, s3empty, bridgeAir, bridge: sw.bridge.length, n: PICTURE_WORLDS.length,
+      sealed: !leak && seen.size > 100, island: [wz.x - 9, wz.x + 9], x12: L.wizardX(12) + 9,
+      lifts: w.lifts.length, liftAt: !!w.liftAt({ x: 70.5, y: 5, z: 106.5 }) && !w.liftAt({ x: 80.5, y: 5, z: 106.5 }), size: [w.W, w.D], gyms: w.gyms.length, tower: w.tower,
+    };
+  });
+  t.ok(data.same && data.other, 'the Swirl is the same for every seed, block for block (it is made of tables)');
+  t.ok(data.decks.every(Boolean), `every deck is where DECKS says: Swirl Stone at its height (${data.decks.join()})`);
+  t.ok(data.frames.length === 7 && data.frames.every(f => f.cloth === 25 && f.ok) && data.s3empty, `7 picture frames with cloth inside (5 x 5), the 8th spot waits empty (${data.frames.map(f => f.id).join()})`);
+  t.ok(data.bridgeAir && data.bridge === data.n, `the ${data.n} star-bridge stones are air until a star is won`);
+  t.ok(data.sealed, "the Wizard's tower has no way in (a flood from inside never gets out)");
+  t.ok(data.x12 <= 158 && data.island[0] === 103 && data.island[1] === 121, `the Wizard's island stays on the 160 map even with 12 Picture Worlds (x ${data.island.join('-')}, 12 worlds: right edge ${data.x12})`);
+  t.ok(data.liftAt && data.lifts === 6 && data.size.join() === '160,160' && data.gyms === 0 && data.tower === null, 'six lift streams (boxes, no blocks), no gyms, no tower');
+
+  // 5. Walkable: a flood over standable cells from the arrival reaches every frame, the bridge start, the loop's peak and the door home.
+  const walk = await Q.evaluate(() => {
+    const w = window.pokecraft.world, sw = w.swirl, solid = (x, y, z) => w.isSolid(x, y, z);
+    const start = [43, 21, 80], seen = new Set([start.join()]), q = [start];
+    while (q.length) {
+      const [x, y, z] = q.pop();
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, nz = z + dz;
+        for (let ny = y + 1; ny >= 1; ny--) { // step up at most 1, drop any
+          if (!solid(nx, ny - 1, nz)) continue;
+          if (solid(nx, ny, nz) || solid(nx, ny + 1, nz) || (ny > y && solid(x, y + 2, z))) break;
+          const k = [nx, ny, nz].join();
+          if (!seen.has(k)) { seen.add(k); q.push([nx, ny, nz]); }
+          break;
+        }
+      }
+    }
+    const has = (x, y, z) => seen.has([x, y, z].join());
+    let peak = 0, island = false, tower = false;
+    for (const k of seen) {
+      const [x, y, z] = k.split(',').map(Number);
+      if (x >= 56 && x <= 64 && z >= 84 && z <= 92) peak = Math.max(peak, y);
+      if (x >= 103 && y >= 21) island = true;
+      if (Math.abs(x - sw.wizard.x) <= 4 && y > 21) tower = true;
+    }
+    // from the cloud sea, every point of the playground is near a lift stream
+    let far = 0;
+    for (let x = 5; x <= 95; x += 5) for (let z = 20; z <= 140; z += 5) far = Math.max(far, Math.min(...w.lifts.map(l => Math.hypot((l.x[0] + l.x[1] + 1) / 2 - x, (l.z[0] + l.z[1] + 1) / 2 - z))));
+    return { frames: sw.frames.map(f => has(...f.stand)), bridge: has(60, 21, 80), door: has(44, 21, 80), peak, island, tower, far: Math.round(far) };
+  });
+  t.ok(walk.frames.every(Boolean), `you can walk to every picture frame (${walk.frames.join()})`);
+  t.ok(walk.bridge && walk.door, 'and to the start of the star bridge and back to the door home');
+  t.ok(walk.peak >= 24, `the looping stairs climb ${walk.peak - 20} blocks`);
+  t.ok(!walk.island && !walk.tower, "the Wizard's island can't be reached on foot (the bridge is empty)");
+  t.ok(walk.far <= 60, `from the cloud sea a lift is never more than ${walk.far} blocks away`);
+
+  // 6. A lift stream: stand in the south one at the bottom, it carries you up to the deck.
+  const lift = await Q.evaluate(() => {
+    const g = window.pokecraft, p = g.player, l = g.world.lifts.find(x => x.id === 'south');
+    p.keys = {};
+    p.pos.set(70.0, 1, 106.0); p.vel.set(0, 0, 0);
+    for (let i = 0; i < 20; i++) p.update(0.05);
+    const midY = p.pos.y;
+    for (let i = 0; i < 60; i++) p.update(0.05);
+    const topY = p.pos.y;
+    p.pos.x = 67.5; p.pos.z = 106.5; p.vel.set(0, 0, 0); // a step to the west is the deck
+    for (let i = 0; i < 40; i++) p.update(0.05);
+    return { midY, topY, y1: l.y[1], landed: p.pos.y, onGround: p.onGround, meshes: g.portal.info().lifts };
+  });
+  t.ok(lift.midY > 5 && lift.topY > lift.y1 - 1 && lift.topY < lift.y1 + 3, `a lift stream carries you up to the deck (1 -> ${lift.midY.toFixed(1)} -> ${lift.topY.toFixed(1)}, top ${lift.y1})`);
+  t.ok(Math.abs(lift.landed - 15) < 0.1 && lift.onGround, `a step sideways lands you on the south deck (${lift.landed})`);
+  t.ok(lift.meshes === 6, 'each stream is drawn as one moving picture (6 meshes)');
+
+  // 7. Frames: using one says the world is not open yet; breaking changes nothing.
+  const fr = await Q.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, { B } = await import('/src/blocks.js'), f = w.swirl.frames[0], c = f.cloth[12], b = f.border[3];
+    const before = w.edits.size;
+    window.__toasts = [];
+    const used = g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }), t1 = window.__toasts.at(-1);
+    const prompt = g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'click or E');
+    window.__toasts = [];
+    g.portal.use({ x: b[0], y: b[1], z: b[2], id: w.get(...b) });
+    const t2 = window.__toasts.at(-1);
+    const edits = w.edits.size;
+    g.hotbar[g.selected] = B.PLANKS;
+    g.placeBlock({ x: c[0], y: c[1], z: c[2] + 2, normal: [0, 0, -1], id: B.CLOTH }); // the cell in front of the cloth, inside the frame's keep
+    return { used, t1, prompt, t2, still: w.get(...c), edits: w.edits.size - edits, before, placed: w.get(c[0], c[1], c[2] + 1) };
+  });
+  t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Picture frame · Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
+  t.ok(fr.still === 129 && fr.edits === 0 && fr.t2 === fr.t1, `breaking a frame says the same and changes nothing ${JSON.stringify(fr)}`);
+  t.ok(fr.placed === 0, `you cannot build into a picture frame's space (${fr.placed})`);
+
+  // 8. Stars light the bridge: the first stone turns to Star Stone, the others stay air with outlines.
+  const bridge0 = await Q.evaluate(() => window.pokecraft.portal.info());
+  t.ok(bridge0.outline && bridge0.outlineBoxes === 7, `seven gold outlines mark the empty stones (${bridge0.outlineBoxes})`);
+  await Q.evaluate(() => { window.pokecraft.stars = ['house']; });
+  await waitFor(Q, () => { const g = window.pokecraft, c = g.world.swirl.bridge[0].cells[0]; return g.world.get(...c) === 130; });
+  const lit = await Q.evaluate(() => {
+    const g = window.pokecraft, w = g.world, sw = w.swirl.bridge, i = g.portal.info();
+    return { first: sw[0].cells.every(([x, y, z]) => w.get(x, y, z) === 130), rest: sw.slice(1).every(s => s.cells.every(([x, y, z]) => w.get(x, y, z) === 0)), boxes: i.outlineBoxes, edits: w.edits.size - window.__edits0 };
+  });
+  t.ok(lit.first && lit.rest && lit.boxes === 6 && lit.edits === 0, `one star lights stone 0; the other 6 keep their outline (${JSON.stringify(lit)})`);
+  const walkOn = await Q.evaluate(() => {
+    const g = window.pokecraft, p = g.player; p.keys = {};
+    p.pos.set(63.5, 21, 80.5); p.vel.set(0, 0, 0);
+    for (let i = 0; i < 10; i++) p.update(0.05);
+    return { y: p.pos.y, on: p.onGround };
+  });
+  t.ok(Math.abs(walkOn.y - 21) < 0.1 && walkOn.on, 'a lit star stone holds you up');
+  await Q.evaluate(() => { window.pokecraft.stars = []; });
+  await waitFor(Q, () => window.pokecraft.world.get(...window.pokecraft.world.swirl.bridge[0].cells[0]) === 0);
+
+  // 12. The guide: on the hub the door home, on the cloud sea the nearest lift.
+  const guide = await Q.evaluate(() => {
+    const g = window.pokecraft, p = g.player; p.pos.set(52.5, 21, 76.5); p.vel.set(0, 0, 0); g.updateGuide();
+    const hub = document.getElementById('guide').textContent;
+    p.pos.set(100.5, 1, 140.5); g.updateGuide();
+    return { hub, sea: document.getElementById('guide').textContent, target: g.guideTarget };
+  });
+  t.ok(/Portal Door home/.test(guide.hub), `on the hub the guide points at the door home ("${guide.hub}")`);
+  t.ok(/Ride the river up!/.test(guide.sea), `on the cloud sea it points at the nearest lift ("${guide.sea}")`);
+
+  // The Wizard's tower: using it says why it is shut.
+  const wz = await Q.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, { B } = await import('/src/blocks.js'), c = w.swirl.wizard.door[2];
+    window.__toasts = [];
+    const used = g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.WIZARD_STONE });
+    return { used, toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.WIZARD_STONE }, 'E') };
+  });
+  t.ok(wz.used && wz.toast === 'The Wizard is inside, holding the Swirl together. Bring him stars!' && /sealed/.test(wz.prompt), `the Wizard's door: "${wz.toast}" (${wz.prompt})`);
+
+  // Screenshots: the frames, the bridge and the Wizard's tower, a lift, the hub and the stairs.
+  const shot = async (name, pos, at) => {
+    await Q.evaluate(([pos, at]) => {
+      const p = window.pokecraft.player; p.keys = {};
+      document.getElementById('toast').replaceChildren();
+      p.pos.set(...pos); p.vel.set(0, 0, 0); p.lookAt({ x: at[0], y: at[1], z: at[2] });
+    }, [pos, at]);
+    await Q.waitForTimeout(1500);
+    await Q.screenshot({ path: path.join(SHOTS, name) });
+  };
+  await shot('t38-swirl-frames.png', [37.5, 29, 64], [42, 31, 51]);
+  await Q.evaluate(() => { window.pokecraft.stars = ['house', 'pirate']; });
+  await shot('t38-swirl-bridge.png', [58.5, 21, 80.5], [100, 30, 80.5]);
+  await shot('t38-swirl-lift.png', [66, 3, 109], [70, 10, 106]);
+  await shot('t38-swirl-hub.png', [41, 24, 72], [52, 20, 82]);
+  await shot('t38-swirl-wizard.png', [64, 22, 80.5], [112, 34, 80.5]);
+  await shot('t38-swirl-stairs.png', [48.5, 27, 80], [48, 27, 62]);
+  await Q.evaluate(() => { window.pokecraft.stars = []; });
+  t.ok(Q.errors.length === 0, `no page errors in the real Swirl (${Q.errors.slice(0, 3).join(' | ')})`);
+  await Q.context().close();
+
+  // 14. iPad: tapping the Portal Door takes you in, and the action button says "Step in!".
+  const { devices } = await import('playwright');
+  const T = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
+  await T.tap('text=New Game');
+  await T.tap('.starter >> nth=0');
+  await T.waitForFunction(() => window.pokecraft.started, null, { timeout: 60000 });
+  await T.evaluate(() => { window.pokecraft.champion = true; });
+  await T.evaluate(lookAtDoor);
+  await waitFor(T, () => document.getElementById('btn-act')?.textContent === 'Step in!');
+  t.ok(true, 'on an iPad the action button says "Step in!" in front of the Portal Door');
+  const spot = await T.evaluate(() => {
+    const g = window.pokecraft, c = g.world.portal.surface[7], v = new g.player.eyePos.constructor(c[0] + 0.5, c[1] + 0.5, c[2] + 0.5).project(g.camera);
+    return [(v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight];
+  });
+  await T.touchscreen.tap(spot[0], spot[1]);
+  await swirlOn(T);
+  t.ok(await T.evaluate(() => window.pokecraft.place === 'swirl'), 'tapping the Portal Door on an iPad takes a Champion into the Swirl');
+  await T.waitForTimeout(1000);
+  await T.screenshot({ path: path.join(SHOTS, 't38-swirl-ipad.png') });
+  t.ok(T.errors.length === 0, `no page errors on the iPad (${T.errors.slice(0, 3).join(' | ')})`);
+  await T.context().close();
 }

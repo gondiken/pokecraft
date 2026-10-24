@@ -548,6 +548,13 @@ export class World {
     }
   }
 
+  // T38a: the Swirl's lift stream (an upward river) that holds the feet at `p`, or null. Boxes, not blocks: nothing is meshed.
+  liftAt(p) {
+    if (!this.lifts) return null;
+    for (const l of this.lifts) if (p.x >= l.x[0] && p.x < l.x[1] + 1 && p.z >= l.z[0] && p.z < l.z[1] + 1 && p.y >= l.y[0] - 0.5 && p.y < l.y[1] + 1) return l;
+    return null;
+  }
+
   // Topmost non-air block in a column.
   surface(x, z) {
     for (let y = WORLD_H - 1; y >= 0; y--) {

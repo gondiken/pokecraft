@@ -25,7 +25,10 @@ const flags = process.argv.slice(2).filter(a => a.startsWith('--')), args = proc
 // T36.5: `--course` measures the Obstacle Course: fps and chunk rebuilds a second standing on the landing L5 (sections 5-6 animate around
 // you) against standing at the entry (everything at rest). Example: node perf.mjs 3 --course
 const COURSE = flags.includes('--course');
-const DREAM = flags.includes('--dream'), DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
+// T38a: `--swirl` does the same for the Swirl realm (arrival view instead of the tall island).
+const SWIRL = flags.includes('--swirl');
+const REALM = SWIRL ? 'swirl' : 'dream';
+const DREAM = flags.includes('--dream') || SWIRL, DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
 const runs = Number(args[0]) || 3;
 const dir = path.resolve(args[1] || path.dirname(fileURLToPath(import.meta.url)));
 const { serve, openGame, seedSave, continueGame } = await import(path.join(dir, 'helpers.mjs'));
@@ -151,9 +154,9 @@ async function measureDream(profile) {
   });
   const mainView = await probe('main');
   // the realm: the "Dreaming..." time, and generation / meshing of the same realm in a World of its own
-  const enter = await page.evaluate(async size => {
+  const enter = await page.evaluate(async ([size, REALM]) => {
     const g = window.pokecraft, R = await import('/src/realms.js'), { World } = await import('/src/world.js');
-    const def = R.REALMS.dream;
+    const def = R.REALMS[REALM];
     if (size) { def.size = [size, size]; def.arrive = [size >> 1, size >> 1]; }
     const mats = g.world.materials;
     let t = performance.now();
@@ -162,9 +165,9 @@ async function measureDream(profile) {
     w.buildAll(); const meshMs = performance.now() - t; w.dispose();
     g.time = 0.75;
     t = performance.now();
-    await g.realms.enter('dream');
+    await g.realms.enter(REALM, { back: [g.player.pos.x, g.player.pos.y, g.player.pos.z, 0] });
     return { size: def.size, genMs: Math.round(genMs), meshMs: Math.round(meshMs), enterMs: Math.round(performance.now() - t) };
-  }, DREAM_SIZE);
+  }, [DREAM_SIZE, REALM]);
   const dream = await probe('dream');
   const errors = page.errors.slice();
   await page.context().close();

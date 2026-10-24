@@ -201,6 +201,8 @@ export class Player {
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
       // 1 block above the water (not 2), like Minecraft.
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
+    } else if (this.world.liftAt?.(this.pos)) {
+      this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T38a: an upward river in the Swirl lifts you
     } else {
       this.vel.y = Math.max(this.vel.y - 28 * g * dt, -19);
       if (k.Space && this.onGround) this.vel.y = jump;

@@ -3,6 +3,7 @@
 // only a Champion sees swirling (setLive: never an edit, never saved or sent). Using it travels to the Swirl realm
 // (realms.js); the door back in the Swirl travels home. `createPortal(game)` -> `game.portal`.
 // Imports only blocks.js (world.js and gymplace.js import this file, so it must not import them back).
+import * as THREE from 'three';
 import { B } from './blocks.js';
 import { PICTURE_WORLDS } from './pictureworlds.js';
 
@@ -97,15 +98,149 @@ export function createPortal(game) {
 
     // A new world was made (createWorld): forget what was drawn.
     reset(world) { acc = 0; wanted = null; swirlReset(game, world); },
+    // For tests and the HUD: what the Swirl is showing right now.
+    info() {
+      const st = SWIRL.get(game);
+      return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told } } : null;
+    },
     // The board the HUD shows: one entry per Picture World.
     stars() { return PICTURE_WORLDS.map(w => ({ id: w.id, name: w.name, won: game.stars.includes(w.id) })); },
   };
   return self;
 }
 
-/* ---- The Swirl's own parts (builder B fills these in): frames, star stones and their outlines, the Wizard's door, lifts. ---- */
-function swirlUpdate(game, dt) { /* B: light the star stones from game.stars, outlines, hints */ }
-function swirlUse(game, block) { return false; /* B: picture frames ("not open yet") and the Wizard's door */ }
-function swirlPrompt(game, block, how) { return ''; }
-function swirlAction(game, block) { return ''; }
-function swirlReset(game, world) { /* B: lift meshes and outlines are rebuilt for the new world, removed when you leave */ }
+/* ---- The Swirl's own parts: picture frames, star stones and their outlines, the Wizard's door, the lift rivers. ---- */
+const SWIRL = new WeakMap(); // game -> { world, lifts: [mesh], tex, outline, lit: 'key', told: {}, frameAt: Map, acc, t }
+const WIZARD_IDS = new Set([B.WIZARD_STONE, B.STAR_STONE, B.PICTURE_FRAME]);
+const keyOf = b => `${b.x},${b.y},${b.z}`;
+
+function stateOf(game) {
+  const w = game.world;
+  if (game.place === 'main' || !w?.swirl) return null;
+  let st = SWIRL.get(game);
+  if (!st || st.world !== w) { swirlReset(game, w); st = SWIRL.get(game); }
+  return st ?? null;
+}
+
+// The picture of a stream of light that runs up (the texture scrolls).
+function liftTexture() {
+  const c = document.createElement('canvas'); c.width = 16; c.height = 64;
+  const g = c.getContext('2d');
+  for (let y = 0; y < 64; y++) {
+    const v = (Math.sin(y / 64 * Math.PI * 4) + 1) / 2;
+    g.fillStyle = `rgba(${Math.round(150 + 105 * v)}, ${Math.round(200 + 40 * v)}, 255, ${0.25 + 0.75 * v})`;
+    g.fillRect(0, y, 16, 1);
+  }
+  for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(255, 190, 240, 0.95)'; g.fillRect(2 + (i * 7) % 12, (i * 29) % 60, 2, 4); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// The 12 edges of every unlit star stone, one geometry for all of them.
+function outlineGeometry(boxes) {
+  const pos = [];
+  for (const b of boxes) {
+    const x0 = b.x0, x1 = b.x1 + 1, y0 = b.y0, y1 = b.y1 + 1, z0 = b.z0, z1 = b.z1 + 1;
+    const c = [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]];
+    for (const [a, d] of [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]]) pos.push(...c[a], ...c[d]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return geo;
+}
+
+function dropOutline(game, st) {
+  if (!st.outline) return;
+  game.scene?.remove(st.outline); st.outline.geometry.dispose(); st.outline.material.dispose(); st.outline = null;
+}
+
+// A new world was made: take the old world's meshes out of the scene and (in the Swirl) make the new ones.
+function swirlReset(game, world) {
+  const old = SWIRL.get(game);
+  if (old) {
+    for (const m of old.lifts) { game.scene?.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
+    dropOutline(game, old);
+    old.tex?.dispose();
+    SWIRL.delete(game);
+  }
+  if (!world?.swirl || !game.scene) return;
+  const st = { world, lifts: [], tex: liftTexture(), outline: null, lit: null, told: {}, acc: 0, t: 0, frameAt: new Map() };
+  for (const l of world.lifts || []) {
+    const w = l.x[1] - l.x[0] + 1, d = l.z[1] - l.z[0] + 1, h = l.y[1] + 1 - l.y[0];
+    const map = st.tex.clone();
+    map.wrapS = map.wrapT = THREE.RepeatWrapping; map.repeat.set(1, h / 6); map.needsUpdate = true;
+    const mat = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(l.x[0] + w / 2, l.y[0] + h / 2, l.z[0] + d / 2);
+    m.renderOrder = 5;
+    game.scene.add(m);
+    st.lifts.push(m);
+  }
+  for (const f of world.swirl.frames) for (const c of f.cells) st.frameAt.set(`${c[0]},${c[1]},${c[2]}`, f);
+  SWIRL.set(game, st);
+}
+
+// Every frame while you are in the Swirl: the rivers run up, won stars light the bridge, two one-time hints.
+function swirlUpdate(game, dt) {
+  const st = stateOf(game);
+  if (!st) return;
+  const w = game.world;
+  st.t += dt;
+  for (const m of st.lifts) m.material.map.offset.y = -(st.t * 0.8) % 1;
+  st.acc += dt;
+  if (st.acc < 0.25 && st.lit !== null) return;
+  st.acc = 0;
+  const stars = game.stars || [], key = stars.join();
+  if (key !== st.lit || (w.swirl.bridge[0] && w.get(...w.swirl.bridge[0].cells[0]) === (stars.includes(w.swirl.bridge[0].world) ? B.AIR : B.STAR_STONE))) {
+    st.lit = key;
+    const unlit = [];
+    for (const s of w.swirl.bridge) {
+      const lit = stars.includes(s.world);
+      for (const [x, y, z] of s.cells) w.setLive(x, y, z, lit ? B.STAR_STONE : B.AIR);
+      if (!lit) unlit.push(s.box);
+    }
+    dropOutline(game, st);
+    if (unlit.length) {
+      st.outline = new THREE.LineSegments(outlineGeometry(unlit), new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.85, depthWrite: false }));
+      st.outline.renderOrder = 6;
+      game.scene.add(st.outline);
+    }
+  }
+  if (game.started && !game.inBattle) {
+    const p = game.player.pos;
+    if (!st.told.bridge && p.x >= 57 && p.x < 61 && p.z >= 77 && p.z < 84 && p.y > 18) { st.told.bridge = true; game.ui.toast('A star bridge will grow here: one stone for every star from a Picture World.'); }
+    else if (!st.told.loop && Math.hypot(p.x - 60, p.z - 88) < 6 && p.y > 21.5) { st.told.loop = true; game.ui.toast('These stairs go round and round... and round!'); }
+  }
+}
+
+function frameOf(game, block) {
+  const st = stateOf(game);
+  return st && block ? st.frameAt.get(keyOf(block)) ?? null : null;
+}
+function inWizard(game, b) {
+  const wz = game.world?.swirl?.wizard;
+  return !!wz && WIZARD_IDS.has(b.id) && inBox({ ...wz.box, x0: wz.box.x0 - 1 }, b);
+}
+
+function swirlUse(game, block) {
+  if (game.place === 'main' || !game.world?.swirl) return false;
+  const f = frameOf(game, block);
+  if (f) {
+    const pw = PICTURE_WORLDS.find(p => p.id === f.world);
+    game.ui.toast(`${pw.emoji} ${pw.name}: this world isn't open yet. Come back soon!`);
+    return true;
+  }
+  if (inWizard(game, block)) { game.ui.toast('The Wizard is inside, holding the Swirl together. Bring him stars!'); return true; }
+  return false;
+}
+function swirlPrompt(game, block, how) {
+  const f = frameOf(game, block);
+  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.name} · ${pw.ready ? `${how} to go in` : 'covered'}`; }
+  if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
+  return '';
+}
+function swirlAction(game, block) {
+  const f = frameOf(game, block);
+  return f && PICTURE_WORLDS.find(p => p.id === f.world)?.ready ? 'Step in!' : '';
+}
