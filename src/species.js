@@ -25,7 +25,7 @@ export const TYPE_COLORS = {
   dream: 'linear-gradient(135deg,#b49cff,#ffb3e6,#9ce8ff)',
   parkour: 'linear-gradient(180deg,#ff5a4a 0 40%,#ffffff 40% 55%,#ff5a4a 55%)',
   // Wave 12 (T37)
-  ninja: 'linear-gradient(180deg,#2a2440 0 35%,#d83a4a 35% 50%,#2a2440 50%)',
+  ninja: 'linear-gradient(180deg,#aca0cc 0 35%,#ff7080 35% 50%,#aca0cc 50%)', // T37a: light enough for the dark chip text
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
