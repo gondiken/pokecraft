@@ -213,6 +213,9 @@ const SOUNDS = {
   cookding: () => bell(1568, 0, 0.5, 0.2),
   potburnt: () => { noise({ freq: 400, len: 0.3, vol: 0.2 }); tone(300, { at: 0.1, len: 0.3, slide: -200, type: 'triangle', vol: 0.2 }); },
   yum: () => notes([523, 659, 784], 0.08, { len: 0.12, type: 'triangle', vol: 0.25 }),
+  // T37b Shadow Dojo: a nightingale board squeaks (two quick chirps up), a puff of smoke takes you back to the lantern.
+  squeak: () => { tone(1500, { len: 0.07, type: 'triangle', vol: 0.18, slide: 900 }); tone(1800, { at: 0.08, len: 0.06, type: 'triangle', vol: 0.14, slide: 700 }); },
+  puff: () => { noise({ freq: 900, len: 0.3, vol: 0.22, q: 0.5 }); tone(520, { at: 0.05, len: 0.25, type: 'sine', vol: 0.16, slide: -300 }); },
   // Echo Gym dance-off: one note per pad (red, blue, green, yellow), a soft "watch again" and a cheer at the end.
   dancepad0: () => { tone(523, { len: 0.22, type: 'triangle', vol: 0.3 }); drum(196, 0, 0.18); },
   dancepad1: () => { tone(659, { len: 0.22, type: 'triangle', vol: 0.3 }); drum(220, 0, 0.18); },

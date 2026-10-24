@@ -383,14 +383,22 @@ export const GYMS = [
   // lanterns, hide in grass, behind screens and in barrels; walk on the squeaky boards. Slot 9 stays spare.
   {
     id: 'ninja', type: 'ninja', name: 'Shadow Dojo', badge: 'Shuriken Badge', slot: 8,
+    build: 'shadowDojo', live: 'dojo', access: { where: 'dojo' }, // T37b: src/shadowdojo.js (watchers, hiding spots: sneak.js)
     leaderWhere: 'on the pagoda roof',
-    welcome: 'Welcome to the Shadow Dojo! Sneak past the lanterns. Walk, don\'t run!',
-    leader: { name: 'Leader Kage', colors: { shirt: 0x2a2440, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xe8b98a } },
+    welcome: 'Welcome to the Shadow Dojo! Stay out of the lantern light. Hide, walk softly and sneak up from behind!',
+    leader: { name: 'Leader Kage', look: 'ninja', colors: { shirt: 0x2a2440, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xe8b98a } },
     trainers: [
-      { name: 'Watcher Suzu', colors: { shirt: 0x3a3458, pants: 0x1a1828, hair: 0x2a1a10, skin: 0xf2c79a },
-        team: [['hushcoon', 54], ['peekaw', 54], ['bambooze', 54]], intro: ['Spotted you! ...or did you spot me?'] },
-      { name: 'Watcher Ren', colors: { shirt: 0x4a2a3a, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xc68a5a },
-        team: [['flickit', 55], ['shadecoon', 55], ['bambooze', 55]], intro: ['Shh! Only quiet feet reach the pagoda.'] },
+      { name: 'Watcher Suzu', look: 'ninja', colors: { shirt: 0x3a3458, pants: 0x1a1828, hair: 0x2a1a10, skin: 0xf2c79a },
+        team: [['hushcoon', 54], ['peekaw', 54], ['bambooze', 54]], intro: ['Spotted you! Now show me your team.'],
+        sneak: ['Eek! Where did you come from?', 'A sneak attack! You move first!'] },
+      { name: 'Watcher Ren', look: 'ninja', colors: { shirt: 0x4a2a3a, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['flickit', 55], ['shadecoon', 55], ['bambooze', 55]], intro: ['Shh! Only quiet feet reach the pagoda.'],
+        sneak: ['Whoa! I did not hear a single squeak!', 'Sneaky! You move first!'] },
+    ],
+    // T37b: a guard who walks round the pagoda with a lantern too (no battle; sneak up on him for a surprise).
+    guards: [
+      { name: 'Night Guard Hoshi', look: 'ninja', colors: { shirt: 0x2e3a4a, pants: 0x1a1828, hair: 0x3a2a1a, skin: 0xd9a066 },
+        line: 'I keep watch round the pagoda. Can you get past my lantern?', sneak: 'Eek! You sneaked up on me! Real ninja feet!' },
     ],
     leaderTeam: [['bambooze', 55], ['ravenshade', 55], ['shadecoon', 56], ['whirlwhisk', 56]],
     intro: ['You reached the roof without a sound!', 'Now show me how fast your team can be.'],

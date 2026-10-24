@@ -48,6 +48,10 @@ const MORE_TILES = [
   'CRUMBLE', 'CRUMBLE_SHAKE', 'BLINK', 'BLINK_WARN', 'ZAP_OFF_TOP', 'ZAP_WARN_TOP', 'ZAP_ON_TOP',
   'PUSHER', 'PUSHER_WARN', 'PUSHER_HEAD', 'SPRING_TOP', 'SPRING_SIDE', 'EXIT_TOP',
   'DANCE_0', 'DANCE_1', 'DANCE_2', 'DANCE_3', 'DANCE_0_LIT', 'DANCE_1_LIT', 'DANCE_2_LIT', 'DANCE_3_LIT', // Echo Gym dance floor
+  // T37b Shadow Dojo: nightingale boards, tatami, paper screen, barrel, tall grass, paper lantern, stone lantern (dark / lit),
+  // a watcher's lantern light on the floor, maple leaves
+  'NIGHTINGALE', 'TATAMI', 'SHOJI', 'BARREL_SIDE', 'BARREL_TOP', 'TALL_GRASS', 'PAPER_LANTERN', 'STONE_LANTERN', 'STONE_LANTERN_ON',
+  'LANTERN_LIGHT', 'MAPLE_LEAVES',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -83,7 +87,10 @@ export const B = {
   PUSHER: 100, PUSHER_WARN: 101, PUSHER_HEAD: 102, SPRING: 103, EXIT_PAD: 104,
   // 105-112: the Echo Gym's dance pads (red, blue, green, yellow) and their lit versions, drawn only with setLive. Next free id: 113.
   DANCE_0: 105, DANCE_1: 106, DANCE_2: 107, DANCE_3: 108, DANCE_0_LIT: 109, DANCE_1_LIT: 110, DANCE_2_LIT: 111, DANCE_3_LIT: 112,
-  // 113: ninja wool (wave 12). 114-123: reserved for the Shadow Dojo (T37). Next free id: 124.
+  // 113: ninja wool (wave 12). 114-123: the Shadow Dojo (T37b, not placeable). Next free id: 124.
+  NIGHTINGALE: 114, TATAMI: 115, SHOJI: 116, BARREL: 117, TALL_GRASS: 118, PAPER_LANTERN: 119,
+  STONE_LANTERN: 120, STONE_LANTERN_ON: 121, LANTERN_LIGHT: 122, MAPLE_LEAVES: 123,
+  // STONE_LANTERN_ON and LANTERN_LIGHT are drawn only with setLive (a lit checkpoint, a watcher's light cone).
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -189,6 +196,17 @@ for (let k = 0; k < 4; k++) {
 // T35: the Bounce Block (jump on it to fly `bounce` blocks up; `fixed` = nobody can break or replace it) and Dream Grass.
 BLOCKS[B.BOUNCE] = { name: 'Bounce Block', top: T.BOUNCE_TOP, side: T.BOUNCE_SIDE, bottom: T.BOUNCE_SIDE, glow: true, noLight: true, bounce: 14, fixed: true, wallText: "It's too springy to break! Jump on it instead." };
 BLOCKS[B.DREAM_GRASS] = { name: 'Dream Grass', top: T.DREAM_GRASS_TOP, side: T.DREAM_GRASS_SIDE, bottom: T.CLOUD };
+// T37b Shadow Dojo blocks (not placeable). The lit stone lantern and the lantern light are drawn only with setLive.
+BLOCKS[B.NIGHTINGALE] = { name: 'Nightingale Floor', ...all(T.NIGHTINGALE), wallText: 'Squeaky golden boards! Walk softly, never run.' };
+BLOCKS[B.TATAMI] = { name: 'Tatami Mat', top: T.TATAMI, side: T.PLANKS, bottom: T.PLANKS, wallText: 'A soft tatami mat. It is always quiet.' };
+BLOCKS[B.SHOJI] = { name: 'Paper Screen', ...all(T.SHOJI), wallText: 'A paper screen. Hide behind it!' };
+BLOCKS[B.BARREL] = { name: 'Barrel', top: T.BARREL_TOP, side: T.BARREL_SIDE, bottom: T.BARREL_TOP, wallText: 'A big barrel. Hide between the barrels!' };
+BLOCKS[B.TALL_GRASS] = { name: 'Tall Grass', ...all(T.TALL_GRASS), wallText: 'Tall grass. Step into the gap to hide!' };
+BLOCKS[B.PAPER_LANTERN] = { name: 'Paper Lantern', ...all(T.PAPER_LANTERN), glow: true, wallText: 'A paper lantern. It lights the garden.' };
+BLOCKS[B.STONE_LANTERN] = { name: 'Stone Lantern', ...all(T.STONE_LANTERN), wallText: 'A stone lantern. Walk past it: if a watcher spots you, you come back here.' };
+BLOCKS[B.STONE_LANTERN_ON] = { name: 'Stone Lantern', ...all(T.STONE_LANTERN_ON), glow: true, noLight: true, wallText: 'A stone lantern. Walk past it: if a watcher spots you, you come back here.' };
+BLOCKS[B.LANTERN_LIGHT] = { name: 'Lantern Light', ...all(T.LANTERN_LIGHT), glow: true, noLight: true, wallText: "A watcher's lantern light. Stay out of it!" };
+BLOCKS[B.MAPLE_LEAVES] = { name: 'Maple Leaves', ...all(T.MAPLE_LEAVES), wallText: 'Red maple leaves. So pretty at dusk!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -209,7 +227,7 @@ PLACEABLE.push(WOOL.cozy, WOOL.normal, WOOL.fire, WOOL.water, WOOL.grass, WOOL.e
 PLACEABLE.push(...MISSION_BLOCKS); // T29
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
-const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS]);
+const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES]);
 export const isOccluder = id => !SEE_THROUGH.has(id);
 // Blocks the player and creatures collide with.
 export const isSolid = id => id !== B.AIR && id !== B.WATER;
@@ -574,6 +592,41 @@ export function drawAtlas() {
       put(T[`DANCE_${k}`], x, y, rim ? [40, 36, 50] : inner ? shade(c, 0.55) : note(x, y) ? shade(c, 0.45) : shade(c, 0.72));
       put(T[`DANCE_${k}_LIT`], x, y, rim ? [255, 255, 255] : inner ? shade(c, 1.25) : note(x, y) ? [255, 255, 255] : shade(c, 1.15));
     }));
+  }
+  { // T37b Shadow Dojo tiles (own random numbers, so no older tile changes).
+    const r5 = mulberry32(3737);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    each((x, y) => {
+      // Nightingale boards: golden planks in four rows with dark seams and little nail dots.
+      const seam = y % 4 === 3, nail = y % 4 === 1 && (x + (y >> 2) * 5) % 8 === 2;
+      put(T.NIGHTINGALE, x, y, seam ? [120, 84, 20] : nail ? [250, 236, 160] : shade([226, 178, 64], 1 + (r5() - 0.5) * 0.14 + (x % 7 === 0 ? -0.08 : 0)));
+      // Tatami: straw green with woven lines and a dark cloth border on two sides.
+      const border = y < 2 || y > 13;
+      put(T.TATAMI, x, y, border ? (y === 0 || y === 15 ? [30, 40, 30] : [44, 66, 44]) : shade(x % 2 ? [176, 186, 112] : [164, 176, 100], 1 + (r5() - 0.5) * 0.08));
+      // Paper screen: white paper in a dark wooden grid.
+      const wood = x === 0 || x === 15 || y === 0 || y === 15 || x === 5 || x === 10 || y === 5 || y === 10;
+      put(T.SHOJI, x, y, wood ? [70, 46, 30] : shade([246, 238, 214], 1 + (r5() - 0.5) * 0.04));
+      // Barrel: brown staves with two dark iron hoops; the top is a round lid.
+      const hoop = y === 3 || y === 4 || y === 11 || y === 12;
+      put(T.BARREL_SIDE, x, y, hoop ? [54, 50, 52] : shade(x % 4 === 0 ? [118, 74, 40] : [150, 98, 52], 1 + (r5() - 0.5) * 0.1));
+      const dl = Math.hypot(x - 7.5, y - 7.5);
+      put(T.BARREL_TOP, x, y, dl > 7 ? [54, 50, 52] : dl > 6 ? [118, 74, 40] : shade(y % 3 ? [170, 116, 64] : [146, 98, 54], 1 + (r5() - 0.5) * 0.08));
+      // Tall grass: thick blades in dusky greens.
+      const blade = (x * 7 + ((y * 3) >> 2)) % 5;
+      put(T.TALL_GRASS, x, y, blade === 0 ? [30, 64, 34] : blade === 2 ? shade([96, 150, 64], 1 + (r5() - 0.5) * 0.2) : shade([62, 116, 52], 1 + (r5() - 0.5) * 0.25));
+      // Paper lantern: red paper with dark caps, gold bands and thin ribs.
+      const cap = y < 2 || y > 13, rib = y % 3 === 0, lx = Math.abs(x - 7.5);
+      put(T.PAPER_LANTERN, x, y, cap ? [60, 40, 30] : y === 2 || y === 13 ? [240, 190, 70] : rib ? [210, 70, 50] : shade([255, 120 - lx * 6, 70 - lx * 3], 1 + (r5() - 0.5) * 0.06));
+      // Stone lantern: grey stone with a window; dark when unlit, warm orange when lit.
+      const win = x >= 4 && x <= 11 && y >= 4 && y <= 10;
+      put(T.STONE_LANTERN, x, y, win ? [36, 32, 34] : edge(x, y) ? [104, 102, 96] : shade([150, 148, 140], 1 + (r5() - 0.5) * 0.18));
+      put(T.STONE_LANTERN_ON, x, y, win ? (Math.hypot(x - 7.5, y - 7) < 2.4 ? [255, 250, 200] : [255, 186, 70]) : edge(x, y) ? [130, 120, 100] : shade([176, 168, 150], 1 + (r5() - 0.5) * 0.12));
+      // A watcher's lantern light on the floor: warm yellow, brightest in the middle.
+      put(T.LANTERN_LIGHT, x, y, shade([255, 214, 110], 1.05 - dl * 0.03 + (r5() - 0.5) * 0.05));
+      // Maple leaves: red and orange with a few dark gaps.
+      const r = r5();
+      put(T.MAPLE_LEAVES, x, y, r < 0.1 ? [70, 20, 18] : r < 0.4 ? shade([236, 110, 40], 1 + (r5() - 0.5) * 0.2) : shade([200, 44, 40], 1 + (r5() - 0.5) * 0.3));
+    });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);
