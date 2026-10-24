@@ -222,9 +222,16 @@ export default async function ({ browser, base, t }) {
     const out = { problems: [], blinks: [] };
     const Y = 40, R = 14;
     // a spot near the start whose platform (and a margin) is outside every gym box
-    const clear = (x0, z0) => { for (let x = x0 - R - 9; x <= x0 + R + 9; x++) for (let z = z0 - R - 9; z <= z0 + R + 9; z++) if (w.fenced(x, Y + 1, z)) return false; return true; };
+    const clear = (x0, z0) => {
+      if (x0 - R - 3 < 1 || z0 - R - 3 < 1 || x0 + R + 3 >= w.W - 1 || z0 + R + 3 >= w.D - 1) return false;
+      for (let x = x0 - R - 3; x <= x0 + R + 3; x++) for (let z = z0 - R - 3; z <= z0 + R + 3; z++) if (w.fenced(x, Y + 1, z)) return false;
+      return true;
+    };
     let cx = sx + 20, cz = sz - 26;
-    for (const [dx, dz] of [[20, -26], [-30, -30], [30, 30], [-30, 30], [0, 40], [40, 0], [0, -40], [-40, 0], [50, 50], [-50, -50]]) if (clear(sx + dx, sz + dz)) { cx = sx + dx; cz = sz + dz; break; }
+    search: for (let d = 24; d <= 120; d += 8) for (let k = 0; k < 12; k++) {
+      const x = Math.floor(sx + Math.cos(k * Math.PI / 6) * d), z = Math.floor(sz + Math.sin(k * Math.PI / 6) * d);
+      if (clear(x, z)) { cx = x; cz = z; break search; }
+    }
     window.__plat = { cx, cz };
     let fenced = 0;
     // a 29 x 29 stone platform in the air with a few water cells and a wall piece on it
