@@ -1185,13 +1185,12 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   - **Hiding spots:** tall grass, paper screens, barrels: inside one you can't be seen.
   - **Squeaky floor:** golden "nightingale" boards squeak when you run on them and turn nearby watchers towards
     the noise; walk and they stay quiet. Tatami mats are always quiet.
-  - **Smoke puff:** an action button that hides you for 3 seconds (a few per room, refilled at each lantern).
   - **Rooftops:** a second way along the roofs and beams for kids who like jumping more than sneaking.
 - **Objects, not special cases:** the Dojo is data plus small reusable classes (in the style of `access.js`
   pieces and `HomeType`): a `Watcher` (path, speed, cone; `sees(pos)`), a `Hideout` (box; `hides(pos)`), floor kinds
   (`quiet`, `squeak`) and a `Checkpoint` lantern. `DojoLive` (`LIVE.dojo`) only wires them together, so other gyms or
   Picture Worlds can reuse watchers and hiding spots later. Lanterns and cones drawn with `setLive` / glow blocks.
-- Tests: a `dojo` spec (paths, cones, hiding, squeak, back to the lantern, sneak-attack first move, touch button, iPad).
+- Tests: a `dojo` spec (paths, cones, hiding, squeak, back to the lantern, sneak-attack first move, iPad; no smoke-puff button, owner 2026-10-24).
 
 # Chapter 2 · The Swirl
 
