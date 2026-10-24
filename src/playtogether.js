@@ -8,8 +8,8 @@ import { el } from './util.js';
 import { realmOf } from './realms.js'; // T31
 
 // deps: createWorld(seed, edits, size) swaps the world, save() / pushCloud() save the game,
-// startBattle(opts) begins a battle, pauseEl is the pause screen.
-export function createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl }) {
+// startBattle(opts) begins a battle, pauseEl is the pause screen, resume() closes it (T38b).
+export function createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl, resume }) {
   const NAME_KEY = 'pokecraft-name';
   const mpBox = document.getElementById('mp');
   let mpMessage = { text: '', error: false };
@@ -33,12 +33,12 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       np.pos.set(data.hostPos[0] + 1.5, data.hostPos[1], data.hostPos[2] + 1.5);
       for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
       game.ui.renderHud();
-      const r = realmOf(data.place); // T31: the host is dreaming; guests stay in the main world
-      if (r) setTimeout(() => game.ui.toast(r.hostAway?.(data.hostName || 'Your friend') ?? `${data.hostName || 'Your friend'} is asleep in the ${r.name}. Look around until they wake up!`), 500);
+      // T38b: a host who is away in a realm: realms.update asks "Dad is dreaming. Dream together?" as soon as the host's avatar is known
     },
     home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),
     hs: p => game.hideSeek?.onMessage(p), // T30
+    realm: p => game.realms.answer(p), // T38b: a guest asks to follow me into my realm
     left: id => { game.duels.left(id); game.hideSeek?.left(id); }, // T30
     ended: reason => {
       if (reason !== 'host-left') return;
@@ -81,6 +81,23 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
   }
 
+  // T38b, host: one line for every player who is in another place.
+  function awayLines() {
+    const mine = game.place || 'main';
+    return [...game.mp.others.values()].filter(a => a.place !== mine).map(a => {
+      const r = realmOf(a.place);
+      return el('div', { class: 'mp-who' }, r ? `${a.name} is in the ${r.name}.` : `${a.name} is back in your world.`);
+    });
+  }
+
+  // T38b, guest: a Follow button while the host is in a realm and I am not there.
+  function followButton() {
+    const id = game.realms.hostPlace(), r = realmOf(id);
+    if (!r || game.place === id) return [];
+    const name = game.mp.hostName || 'your friend';
+    return [el('button', { class: 'small primary', onclick: () => { resume(); game.realms.follow(); } }, `Follow ${name} into the ${r.name}`)];
+  }
+
   function renderMp() {
     const mp = game.mp;
     const msg = mpMessage.text && el('div', { class: `acct-msg${mpMessage.error ? ' error' : ''}` }, mpMessage.text);
@@ -94,6 +111,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', {}, 'The other player picks "Join a world" and types this code.'),
         el('div', { class: 'mp-who' }, who),
         ...hideSeekButtons(), // T30
+        ...awayLines(), // T38b
         el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
         msg);
       return;
@@ -104,6 +122,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
         el('div', { class: 'mp-who' }, who),
         ...hideSeekButtons(), // T30
+        ...followButton(), // T38b
         el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
         el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),
         msg);

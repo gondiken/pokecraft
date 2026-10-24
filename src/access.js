@@ -5,7 +5,7 @@ import { trainersOf, trainerKey } from './gyms.js';
 import { WINDOWS, windowAt, minutesUntil } from './daytime.js';
 import { homeGymState } from './homegym.js';
 import { menuStatus } from './restaurant.js'; // T33
-import { dreamHome } from './realms.js';
+import { dreamHome, realmOf } from './realms.js';
 
 // Is p inside the box {x0, x1, y0, y1, z0, z1} (inclusive block coordinates)?
 const inBox = (b, p) => p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y < b.y1 + 1;
@@ -144,7 +144,10 @@ WHERE.realm = (g, game) => ({
   contains: () => false,
   aim() {
     const n = g.def.name;
-    if (game.mp?.role === 'guest') return { text: () => `Next: ${n} · it is in a dream (dream in your own world)` };
+    if (game.mp?.role === 'guest') { // T38b: a guest follows the host into the dream
+      const host = game.mp.hostName || 'your friend', r = realmOf(game.realms.hostPlace());
+      return { text: () => (r ? `Next: ${n} · ${r.guide?.(host) ?? `in the ${r.name}`}: follow ${host} (pause -> Play together)` : `Next: ${n} · it is in a dream: follow ${host} when they sleep`) };
+    }
     const cozy = dreamHome(game), mine = cozy || game.homes?.mine();
     const at = mine && { x: mine.x + 0.5, z: mine.z + 0.5 };
     if (!cozy) return at ? { ...at, text: (a, d) => `Next: ${n} · it is in a dream! Make your home cozy ${a} ${d}m` } : { text: () => `Next: ${n} · it is in a dream! Build a cozy home and sleep in its Bed at night.` };

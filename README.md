@@ -263,6 +263,8 @@ You see each other walking around with name tags, with each player's lead creatu
 
 **Battle each other**: look at (or tap) another player and click or press **E** to ask for a battle. They get a **Battle!** / **Not now** question (or press **Y** / **N**). Both teams fight at full HP, nobody's creatures get hurt or lost, and there is no XP. The winner gets **3 Capture Cubes**. **Give up** ends the battle early.
 
+**Follow your friend into the Dream or the Swirl**: when the host goes to sleep and dreams (or steps through the Portal Door into the Swirl), the visitor is asked "Dad is dreaming. Dream together?" and can say **Follow** or **Not now**. Not now is fine: later there is a **Follow ...** button in the pause screen's Play together box, or use a Bed (or the Portal Door) in the host's world. You arrive next to your friend, see each other, build together (what you build there is saved in the host's world) and can earn the realm's badge for yourself. You do not need your own cozy home, a night or the Champion title: your friend's trip is the key. When your friend wakes up or comes back, you do too (after any battle you are in). Duels, giant battles and hide and seek only work when you are in the same place.
+
 A visitor's own world is untouched. **Go back to my world** returns them to it, and that happens automatically if the host stops sharing or leaves. The connection uses Supabase Realtime. Neither player needs to be signed in, but both need an internet connection.
 
 For testing on one computer, add `?mp=local` to the address. Tabs in the same browser then connect to each other directly, without the server.

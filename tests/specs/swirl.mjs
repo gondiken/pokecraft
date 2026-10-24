@@ -241,7 +241,7 @@ export default async function ({ browser, base, t }) {
   await A.evaluate(() => { window.pokecraft.champion = true; });
   await Bp.evaluate(() => { window.pokecraft.champion = true; });
   await Bp.evaluate(() => { const g = window.pokecraft, c = g.world.portal; g.portal.use({ x: c.surface[0][0], y: c.surface[0][1], z: c.surface[0][2], id: 125 }); });
-  t.ok(await Bp.evaluate(() => window.pokecraft.place === 'main' && window.__toasts.at(-1) === 'Go through the Portal Door in your own world!'), 'a guest who is a Champion gets a toast, not a trip');
+  t.ok(await Bp.evaluate(() => window.pokecraft.place === 'main' && window.__toasts.at(-1) === 'You can go to the Swirl in your own world, or follow Dad when they go.'), 'a guest who is a Champion gets a toast, not a trip (T38b: follow the host instead)');
   await Bp.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; g.player.pos.copy(a.target).add({ x: 2, y: 0, z: 0 }); });
   await waitFor(Bp, () => [...window.pokecraft.mp.others.values()][0]?.model.visible);
   await A.evaluate(() => { const g = window.pokecraft, c = g.world.portal; g.portal.use({ x: c.surface[0][0], y: c.surface[0][1], z: c.surface[0][2], id: 125 }); });
