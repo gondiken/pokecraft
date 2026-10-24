@@ -65,6 +65,12 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.06, 0.2, 0.04, 0xff3b3b, -0.06, 0.32, -0.3);
     box(head, 0.06, 0.14, 0.04, 0xff3b3b, 0.06, 0.3, -0.33);
   }
+  if (look === 'ninja') { // T37b: a dark mask over the nose and mouth and a red headband with two tails at the back
+    box(head, 0.54, 0.2, 0.54, 0x24202e, 0, 0.11, 0);
+    box(head, 0.55, 0.07, 0.55, 0xc0303a, 0, 0.4, 0);
+    box(head, 0.06, 0.22, 0.04, 0xc0303a, -0.06, 0.3, -0.3);
+    box(head, 0.06, 0.16, 0.04, 0xc0303a, 0.06, 0.28, -0.33);
+  }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
     box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);
@@ -197,7 +203,7 @@ export class NpcManager {
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: ['alien', 'chef', 'sport'].includes(trainer.look) ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: ['alien', 'chef', 'sport', 'ninja'].includes(trainer.look) ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
         if (none) this.sendAway(npc);
@@ -314,6 +320,13 @@ export class NpcManager {
         if (k >= 1) { n.popT = -1; n.model.scale.setScalar(1); }
       }
       const p = n.model.userData.parts;
+      if (n.steer) { // T37b: a live gym part walks this person (the Shadow Dojo's watchers): no turning to the player
+        n.model.position.copy(n.pos);
+        n.model.rotation.y = n.heading;
+        for (const l of p.legs) l.g.rotation.x = n.moving ? Math.sin(n.t * 7 + l.phase) * 0.5 : 0;
+        for (const a of p.arms) a.g.rotation.x = n.moving ? Math.sin(n.t * 7 + a.phase) * 0.25 : 0;
+        continue;
+      }
       const near = n.pos.distanceTo(playerPos) < 7;
       // Turn to face the player when they come close.
       const want = near ? Math.atan2(playerPos.x - n.pos.x, playerPos.z - n.pos.z) : n.homeHeading;

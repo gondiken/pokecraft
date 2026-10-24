@@ -855,7 +855,7 @@ export default async function ({ browser, base, t }) {
     out.finishBack = near(p.pos, at(3));
     // a real fall from above the mat
     const [mx, , mz] = mat;
-    p.pos.set(mx + 0.5, gym.fy + 6, mz + 0.5); p.vel.set(0, 0, 0); p.keys = {};
+    p.pos.set(mx + 0.5, gym.fy + 6, mz + 0.5); p.vel.set(0, 0, 0); p.keys = {}; p.onGround = false; // (a stale onGround from an earlier frame would skip the fall)
     let n = 0;
     while (!p.onGround && n++ < 200) p.update(0.05);
     const under = w.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z));

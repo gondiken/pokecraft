@@ -470,6 +470,8 @@ export class Battle {
     this.resetSides();
     this.history = [];
     this.xpBoost = opts.xpBoost || 1;
+    this.surprise = !!opts.surprise && !this.duel && !opts.wild; // T37b: a sneak attack (Shadow Dojo): your creature moves first in round 1
+    this.order = null; // the last turn's order of sides (tests)
     this.coop = this.duel?.coop || null; // T29: 2 players against one giant
     this.trainer = opts.trainer || (this.coop ? { name: bossName(this.coop.boss), pos: new THREE.Vector3(...this.coop.at) } : this.duel && { name: this.duel.name, pos: this.duel.pos });
     this.foeModel = null;
@@ -527,6 +529,7 @@ export class Battle {
     await this.placeAlly();
     this.cry(this.ally);
     await this.say(`Go, ${nameOf(this.ally)}!`, 900);
+    if (this.surprise) await this.say(`Surprise attack! ${nameOf(this.ally)} moves first!`, 1400); // T37b
     if (this.coop) {
       await this.placeFriend();
       this.refresh();
@@ -620,11 +623,13 @@ export class Battle {
 
     // Both sides attack; priority moves first, then the faster creature.
     const foeMove = this.pickFoeMove();
-    const allyFirst = (MOVES[action.move].priority || 0) - (MOVES[foeMove].priority || 0) ||
+    // T37b: a surprise attack goes first in round 1 whatever the speed or priority (decided before any draw, so no new draws).
+    const allyFirst = (this.surprise && this.round === 1) || (MOVES[action.move].priority || 0) - (MOVES[foeMove].priority || 0) ||
       this.speedOf(this.ally) - this.speedOf(this.foe) || Math.random() - 0.5;
     const order = allyFirst > 0
       ? [['ally', action.move], ['foe', foeMove]]
       : [['foe', foeMove], ['ally', action.move]];
+    this.order = order.map(o => o[0]);
     this.clearFlinch();
     for (const [i, [side, move]] of order.entries()) {
       await this.useMove(side, move, { first: i === 0 });

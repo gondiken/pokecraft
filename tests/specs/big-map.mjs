@@ -200,22 +200,22 @@ export default async function ({ browser, base, t }) {
       }
       out.seam[seed] = { bad, maxStep, biomes: biomes.size, plants };
     }
-    // 5. A test-only gym in slot 8 (slot 5 is the Restaurant's since T33; the Boulder Gym's def, a plain surface gym): placed in its slot, protected inside the box,
+    // 5. A test-only gym in slot 9 (slots 5-8 hold the Restaurant, Big Top, Obstacle Course and Shadow Dojo; the Boulder Gym's def, a plain surface gym): placed in its slot, protected inside the box,
     // changes nothing outside it, and the 288 x 288 map is still the same.
     const seed = 4242;
     const plain = new World(seed, null, null); plain.generate();
-    const def = { ...GYMS[0], id: 'test32', slot: 8 };
+    const def = { ...GYMS[0], id: 'test32', slot: 9 };
     GYMS.push(def);
     let w;
     try { w = new World(seed, null, null); w.generate(); } finally { GYMS.splice(GYMS.indexOf(def), 1); }
-    const g = w.gyms.find(x => x.def === def), box = w.southSlots()[3].box;
+    const g = w.gyms.find(x => x.def === def), box = w.southSlots()[4].box;
     let outside = 0, inside = 0;
     for (let y = 0; y < WORLD_H; y++) for (let z = 0; z < w.D; z++) for (let x = 0; x < w.W; x++) {
       if (w.data[x + 288 * (z + 368 * y)] === plain.data[x + 288 * (z + 368 * y)]) continue;
       if (x >= box.x0 && x <= box.x1 && z >= box.z0 && z <= box.z1) inside++; else outside++;
     }
     out.gym = {
-      found: !!g, at: g && g.x === w.southSlots()[3].x && g.z === w.southSlots()[3].z, k: g?.slot?.k, n: w.gyms.length, inside, outside,
+      found: !!g, at: g && g.x === w.southSlots()[4].x && g.z === w.southSlots()[4].z, k: g?.slot?.k, n: w.gyms.length, inside, outside,
       protect: !!g?.protect?.length && g.protect.every(b => b.x0 >= box.x0 && b.x1 <= box.x1 && b.z0 >= box.z0 && b.z1 <= box.z1),
       protectedHere: g && w.protectedAt(g.x + 6, g.y + 1, g.z + 6) === g,
     };
@@ -238,8 +238,8 @@ export default async function ({ browser, base, t }) {
     t.ok(so.spotDist >= 12, `seed ${seed}: south slots stay ${so.spotDist} blocks from every treasure spot`);
   }
   const tg = q.gym;
-  t.ok(tg.found && tg.at && tg.k === 8 && tg.n === NGYMS + 1 && tg.protect && tg.protectedHere, `a test-only gym with slot 8 is built in south slot 8 and protected (${JSON.stringify(tg)})`);
-  t.ok(tg.inside > 0 && tg.outside === 0, `the slot 8 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
+  t.ok(tg.found && tg.at && tg.k === 9 && tg.n === NGYMS + 1 && tg.protect && tg.protectedHere, `a test-only gym with slot 9 is built in south slot 9 and protected (${JSON.stringify(tg)})`);
+  t.ok(tg.inside > 0 && tg.outside === 0, `the slot 9 gym changes ${tg.inside} cells inside its box and ${tg.outside} outside`);
   t.ok(JSON.stringify(r.start) === JSON.stringify(START), `the start point did not move ${JSON.stringify(r.start)}`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
