@@ -508,12 +508,13 @@ export class Battle {
       await this.say(was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
     } else if (this.coop) {
       const npc = this.trainer;
-      this.foes = [makeBoss(this.coop.boss, this.allies, this.friends)];
+      this.foes = [makeBoss(this.coop.boss, this.allies, this.friends, this.coop.grow || 0)]; // T38c
       this.stepBack(npc.pos, 5.5);
       g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2 * BOSS_SCALE, npc.pos.z));
       this.foePos = npc.pos.clone();
       this.refresh();
       await this.say(`A giant ${nameOf(this.foe)} appeared! Beat it together with ${this.duel.name}!`, 2000);
+      if (this.coop.grow > 0) await this.say('It looks even bigger than last time!', 1600); // T38c
       await this.sendOutFoe();
     } else {
       const npc = this.trainer;
@@ -1307,6 +1308,7 @@ export class Battle {
     if (caught) {
       sound.play('caught');
       g.book?.markCaught(this.foe.species);
+      g.missions?.caught?.(this.foe); // T38c
       g.scene.remove(cube);
       tintModel(target, null);
       await this.say(`Gotcha! ${nameOf(this.foe)} was caught!`, 1600);

@@ -73,6 +73,29 @@ export default async function ({ browser, base, t }) {
   t.ok(data.swappedOk, 'makeBoss gives the same giant with the teams swapped');
   t.ok(data.same && data.normal === data.plain, 'statsFor is unchanged without `giant`');
 
+  // 1b. T38c: giants that grow (grow 0 is today's giant; level cap 55 + 2 per step up to REMATCH_CAP; HP +0.25 per step up to +1.5)
+  const gr = await A.evaluate(async () => {
+    const C = await import('/src/coopboss.js');
+    const S = await import('/src/species.js');
+    const { REMATCH_CAP } = await import('/src/gyms.js');
+    const { VERSION } = await import('/src/duel.js');
+    const lv = (s, l) => S.makeCreature(s, l);
+    const hi = [lv('zapple', 70)], lo = [lv('zapple', 30)];
+    const row = grow => { const b = C.makeBoss('giant1', hi, lo, grow); return [b.level, b.giant]; };
+    return {
+      cap: REMATCH_CAP, version: VERSION, zero: row(0), same0: JSON.stringify(row(0)) === JSON.stringify([C.makeBoss('giant1', hi, lo).level, C.makeBoss('giant1', hi, lo).giant]),
+      rows: [1, 3, 5, 8].map(row), low: [1, 3].map(g => { const b = C.makeBoss('giant1', lo, lo, g); return [b.level, b.giant]; }),
+      swapped: (k => JSON.stringify([k(C.makeBoss('giant1', hi, lo, 4)), k(C.makeBoss('giant1', lo, hi, 4))]) === JSON.stringify([k(C.makeBoss('giant1', hi, lo, 4)), k(C.makeBoss('giant1', hi, lo, 4))]))(b => [b.level, b.giant, b.hp, b.moves]),
+      clean: [C.cleanCoop({ mission: 'gen:18', boss: 'giant1', at: [1, 2, 3], grow: 3 }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3], grow: -2 }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3], grow: 'x' }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3] }).grow],
+    };
+  });
+  t.ok(gr.version === 11, `duel VERSION is ${gr.version}`);
+  t.ok(gr.zero[0] === 55 && gr.zero[1] === 3 && gr.same0, `grow 0 is today's giant (level ${gr.zero[0]}, ${gr.zero[1]}x HP)`);
+  t.ok(JSON.stringify(gr.rows.map(r => r[0])) === `[${Math.min(gr.cap, 57)},${Math.min(gr.cap, 61)},${Math.min(gr.cap, 65)},${Math.min(gr.cap, 65)}]`, `the level cap grows 57 / 61 / 65 / 65 (${gr.rows.map(r => r[0])}, cap ${gr.cap})`);
+  t.ok(JSON.stringify(gr.rows.map(r => r[1])) === '[3.25,3.75,4.25,4.5]', `the HP factor grows 0.25 per step up to +1.5 (${gr.rows.map(r => r[1])})`);
+  t.ok(gr.low[0][0] === 33 && gr.low[1][0] === 35 && gr.swapped, `a small team makes a small giant (${gr.low.map(r => r[0])}) and the order of the teams does not matter`);
+  t.ok(gr.clean.join() === '3,0,0,0', `cleanCoop keeps grow 0..99 and drops junk (${gr.clean})`);
+
   // 3a. coopFor errors before playing together
   const e1 = await A.evaluate(() => window.pokecraft.coopFor(window.pokecraft, 'giant1', { id: 'x', name: 'Kid' }));
   t.ok(e1.error?.includes('Play together'), `alone: "${e1.error}"`);
@@ -226,18 +249,50 @@ export default async function ({ browser, base, t }) {
   t.ok((await B.evaluate(() => window.pokecraft.battle.history.join('|'))).includes('left the giant battle'), 'the other player is told "left the giant battle"');
   t.ok(!(await inBattle(A)) && !(await inBattle(B)), 'both are out of the battle');
 
+  // 8b. T38c: a generated giant that has grown (round 2: giant2, grow 2). Both browsers build the same giant, the traces agree.
+  await teams([['blazehound', 40], ['ampup', 40]], [['zapple', 40], ['thornox', 40]]);
+  await look();
+  for (const page of [A, B]) {
+    await page.evaluate(async asker => {
+      const { BOSSES } = await import('/src/coopboss.js');
+      const G = await import('/src/missiongen.js');
+      BOSSES.giant2.giant = 1; BOSSES.giant2.plan = ['a', 'b', 'a', 'b']; // short battle on software rendering
+      const g = window.pokecraft, s = g.missionState;
+      let m; for (let n = 13; n < 100 && !m; n++) { const x = G.makeMission(n, 22); if (x.kind === 'boss' && x.grow === 2) m = x; }
+      Object.assign(s, { done: [], gen: 0, active: asker ? m.id : null, last: asker ? m.id : null, next: m.n, seed: 22, spec: asker ? m : null });
+    }, page === A);
+  }
+  const growCoop = await A.evaluate(() => { const g = window.pokecraft, kid = [...g.mp.others.values()][0]; const c = g.coopFor(g, g.missionState.active, kid); if (!c.error) g.duels.challenge(kid, c); return c; });
+  t.ok(!growCoop.error && growCoop.boss === 'giant2' && growCoop.grow === 2, `the ask of a generated giant carries grow (${growCoop.error || JSON.stringify([growCoop.boss, growCoop.grow])})`);
+  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await B.keyboard.press('y');
+  t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'the battle with the bigger giant starts');
+  await waitFor(A, () => !!window.pokecraft.battle.foe && window.pokecraft.battle.foes?.length === 1, 30000);
+  await waitFor(B, () => !!window.pokecraft.battle.foe && window.pokecraft.battle.foes?.length === 1, 30000);
+  const giantOf = p => p.evaluate(() => { const f = window.pokecraft.battle.foes[0]; return [f.species, f.level, f.giant, window.pokecraft.battle.coop.grow]; });
+  const gA = await giantOf(A), gB = await giantOf(B);
+  t.ok(JSON.stringify(gA) === JSON.stringify(gB) && gA[1] === 44 && gA[2] === 1.5 && gA[3] === 2, `both browsers build the same giant (Lv ${gA[1]}, ${gA[2]}x HP, grow ${gA[3]})`);
+  t.ok(await playCoop([A, B]), 'the battle with the bigger giant finishes');
+  const i3A = await info(A), i3B = await info(B);
+  t.ok(i3A.trace.length > 3 && JSON.stringify(i3A.trace) === JSON.stringify(i3B.trace), `the traces agree (${i3A.trace.length} steps)`);
+  t.ok(await res(A) === await res(B), `both end the same way (${await res(A)})`);
+  const rw = await A.evaluate(() => ({ gen: window.pokecraft.missionState.gen, next: window.pokecraft.missionState.next, active: window.pokecraft.missionState.active }));
+  if (await res(A) === 'won') t.ok(rw.gen === 1 && rw.active === null, `winning finishes the generated mission (${JSON.stringify(rw)})`);
+
   // 9. An ask from an old game, and a broken ask
   const odd = await B.evaluate(() => {
     const g = window.pokecraft, d = g.duels, from = [...g.mp.others.keys()][0];
     const base = { type: 'ask', id: 'old1', from, name: 'Dad', seed: 1, team: [{ species: 'zapple', level: 5, moves: ['spark'] }] };
     d.onMessage({ ...base, v: 8, coop: { mission: 'giant1', boss: 'giant1', at: [1, 2, 3] } });
     const a = !!d.incoming;
+    d.onMessage({ ...base, v: 10, id: 'old10', coop: { mission: 'giant1', boss: 'giant1', at: [1, 2, 3] } }); // T38c: VERSION is 11 now
+    const a10 = !!d.incoming;
     d.onMessage({ ...base, v: 9, id: 'bad1', coop: { mission: 'giant1', boss: 'nope', at: [1, 2, 3] } });
     const b = !!d.incoming;
     d.onMessage({ ...base, v: 9, id: 'bad2', coop: { mission: 'giant1', boss: 'giant1', at: [1, 2] } });
-    return { a, b, c: !!d.incoming, shown: !document.getElementById('duel-ask').classList.contains('hidden') };
+    return { a, a10, b, c: !!d.incoming, shown: !document.getElementById('duel-ask').classList.contains('hidden') };
   });
-  t.ok(!odd.a && !odd.b && !odd.c && !odd.shown, 'an ask from an older game or with a broken coop field is answered no');
+  t.ok(!odd.a && !odd.a10 && !odd.b && !odd.c && !odd.shown, 'an ask from an older game (also v 10) or with a broken coop field is answered no');
 
   t.ok(A.errors?.length === 0 || !A.errors, 'no errors on Dad\'s page');
   t.ok(B.errors?.length === 0 || !B.errors, 'no errors on Kid\'s page');

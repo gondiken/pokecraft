@@ -6,6 +6,7 @@
 import { B, mulberry32 } from './blocks.js';
 import { WATER_LEVEL, MID_X, MID_Z, T17_W, T17_D } from './world.js';
 import { GYMS } from './gyms.js';
+import { MORE_SPOTS } from './missiongen.js'; // T38c
 
 export const MAP_GYMS = 27;
 export const MAP_RULES = { edge: 10, gap: 12, pad: 6, slot: 4, spread: 40, start: 14, tries: 400, maxG: WATER_LEVEL + 24 };
@@ -111,6 +112,114 @@ export function treasureSpots(world) {
     if (s) chosen.push(s);
   }
   return (world.treasureSpots = chosen);
+}
+
+/* ------------------- spots 6 and on (T38c, moreTreasureSpots) ------------------- */
+// The old five above are NOT changed. Missions made by the mission maker use spots k = 5..28, found once per world from the seed
+// and the terrain, never moving the old five. Pinned to the 288 x 368 map (copied constants: a later map growth never moves them);
+// only the first MORE_GYMS gym defs and the tower count, so gyms added later must stay 12 blocks away from moreTreasureSpots() too.
+export const MORE_GYMS = 32;
+export const MORE_W = 288, MORE_D = 368;
+export const MORE_RULES = { ...MAP_RULES, spread: 20, old: 16, tries: 300 };
+export { MORE_SPOTS };
+
+// Landmarks: the tower and every gym of the first MORE_GYMS defs that has a front and stands on the ground in the main world.
+function moreLandmarks(world) {
+  const list = world.tower ? [{ name: world.tower.def?.name || "Champion's Tower", tower: true, x: world.tower.x, z: world.tower.z, front: world.tower.front }] : [];
+  for (const g of world.gyms) {
+    const i = GYMS.indexOf(g.def);
+    if (i < 0 || i >= MORE_GYMS || g.home || g.sky || g.def.place === 'cave' || g.def.place === 'sky' || g.def.realm || g.x == null || !g.front) continue;
+    list.push({ name: g.def.name, x: g.x, z: g.z, front: g.front, gym: g });
+  }
+  return list;
+}
+
+// Every protect box of the tower and the first MORE_GYMS gyms (the list world.fenced / protectedAt use, so a Portal Door box in
+// world.tower.protect is covered with no code here), sky gym pads, every gym slot box (also the empty spare ones).
+function moreKeepOuts(world) {
+  const boxes = [], pads = [];
+  for (const g of [...world.gyms, world.tower]) {
+    if (!g) continue;
+    if (g !== world.tower && !(GYMS.indexOf(g.def) >= 0 && GYMS.indexOf(g.def) < MORE_GYMS)) continue;
+    for (const b of g.protect || []) boxes.push(b);
+    if (g.sky && g.pad) pads.push(g.pad);
+  }
+  return { boxes, pads, slots: world.gymSlots().map(s => s.box) };
+}
+
+function okMore(world, x, z, rules, out, chosen, old) {
+  if (x < rules.edge || z < rules.edge || x > MORE_W - 1 - rules.edge || z > MORE_D - 1 - rules.edge) return false;
+  if (x >= world.W || z >= world.D) return false;
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+    const g = world.ground[(x + a) + (z + b) * world.W];
+    if (g <= WATER_LEVEL || g > rules.maxG) return false;
+  }
+  for (const b of out.boxes) if (boxDist(x, z, b) <= rules.gap) return false;
+  for (const p of out.pads) if (Math.max(Math.abs(x - p[0]), Math.abs(z - p[2])) <= rules.pad) return false;
+  for (const s of out.slots) if (boxDist(x, z, s) <= rules.slot) return false;
+  for (const c of chosen) if (Math.max(Math.abs(x - c.x), Math.abs(z - c.z)) < rules.spread) return false;
+  for (const c of old) if (Math.max(Math.abs(x - c.x), Math.abs(z - c.z)) < rules.old) return false;
+  if (Math.max(Math.abs(x - MID_X), Math.abs(z - MID_Z)) < rules.start) return false;
+  return true;
+}
+
+// Same machinery as findSpot (copied, so the old one cannot move): legs cycle MAP_LEGS by k % 5, own random numbers.
+function findMore(world, k, chosen, out, old) {
+  const leg = MAP_LEGS[k % MAP_LEGS.length];
+  const rand = mulberry32((world.seed ^ 0x3c5a11) + k * 7919);
+  const list = moreLandmarks(world).filter(L => !!L.tower === (leg.from === 'tower'));
+  if (!list.length) return null;
+  const attempts = [{ ...MORE_RULES }, { ...MORE_RULES, gap: 8, spread: 14, old: 12 }];
+  for (const rules of attempts) {
+    for (let pick = 0; pick < 6; pick++) {
+      const L = list[Math.floor(rand() * list.length)];
+      const door = [L.x + L.front[0] * DOOR_STEPS, L.z + L.front[1] * DOOR_STEPS];
+      const left = leftOf(L.front);
+      for (let t = 0; t < rules.tries; t++) {
+        const fwd = leg.min + Math.floor(rand() * (leg.max - leg.min + 1));
+        const side = Math.round((rand() * 2 - 1) * fwd / 2);
+        const x = door[0] + L.front[0] * fwd + left[0] * side;
+        const z = door[1] + L.front[1] * fwd + left[1] * side;
+        if (okMore(world, x, z, rules, out, chosen, old)) {
+          return makeSpot(world, k, x, z, { name: L.name, door, front: L.front, tower: !!L.tower }, fwd, side, false, rules !== attempts[0]);
+        }
+      }
+    }
+  }
+  const rules = { ...MORE_RULES, gap: 8, spread: 14, old: 12 };
+  for (let t = 0; t < 20000; t++) {
+    const x = Math.floor(rand() * MORE_W), z = Math.floor(rand() * MORE_D);
+    if (!okMore(world, x, z, rules, out, chosen, old)) continue;
+    let best = null, bd = Infinity;
+    for (const L of list) {
+      const door = [L.x + L.front[0] * DOOR_STEPS, L.z + L.front[1] * DOOR_STEPS];
+      const d = Math.hypot(x - door[0], z - door[1]);
+      if (d < bd) { bd = d; best = { L, door }; }
+    }
+    const { L, door } = best, left = leftOf(L.front);
+    const dx = x - door[0], dz = z - door[1];
+    return makeSpot(world, k, x, z, { name: L.name, door, front: L.front, tower: !!L.tower }, dx * L.front[0] + dz * L.front[1], dx * left[0] + dz * left[1], true);
+  }
+  return null;
+}
+
+// -> MORE_SPOTS spots (k = 5..28; fewer only on a map with no room), cached on world.moreSpots. Never in a realm.
+export function moreTreasureSpots(world) {
+  if (world.moreSpots) return world.moreSpots;
+  if (world.realm) throw new Error('moreTreasureSpots: main world only');
+  const old = treasureSpots(world), out = moreKeepOuts(world), chosen = [];
+  for (let i = 0; i < MORE_SPOTS; i++) {
+    const s = findMore(world, MAP_LEGS.length + i, chosen, out, old);
+    if (s) chosen.push(s);
+  }
+  return (world.moreSpots = chosen);
+}
+
+// Spot k of the map missions: 0-4 the old five, 5-28 the new ones (undefined when the map has no such spot).
+export function spotOf(world, k) {
+  if (k < MAP_LEGS.length) return treasureSpots(world)[k];
+  const more = moreTreasureSpots(world);
+  return more.find(s => s.k === k) || more[(k - MAP_LEGS.length) % (more.length || 1)];
 }
 
 /* ------------------------------- the words -------------------------------- */

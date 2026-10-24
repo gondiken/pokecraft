@@ -3,7 +3,7 @@
 // The report works with the feature helpers (features.js), like a home's room report.
 // Zones: all = every block of the build, top = its highest layer, base = its lowest layer, overWater = blocks with water below them
 // (straight down through air).
-import { B, WOOL, PLACEABLE } from './blocks.js';
+import { B, WOOL, PLACEABLE, BLOCKS } from './blocks.js'; // T38c: BLOCKS
 import { reach, hasBlock, atLeast, different } from './features.js';
 
 const WOOLS = PLACEABLE.filter(id => Object.values(WOOL).includes(id));
@@ -113,3 +113,96 @@ export const BUILDS = {
     tip: 'Star Blocks come from treasure maps.',
   },
 };
+
+/* ----------------------- build templates (T38c) ----------------------- */
+// The mission maker (missiongen.js) picks a template and numbers; makeBuild turns `{ t, ...params }` into a BUILDS-shaped object
+// (name, text, features, example, tip?) so scanBuild / checkAll / the panel work unchanged. Pure: it never reads the game.
+// Numbers grow slowly with the round: `lo + (0..2) + floor(round / 3)`, at most `hi`.
+const rint = (rand, lo, hi, round) => Math.min(hi, lo + Math.floor(rand() * 3) + Math.max(0, Math.floor(round / 3)));
+export const TOWER_TOPS = [B.LAMP, B.CRYSTAL, ...WOOLS.slice(0, 4)];
+const blockName = id => BLOCKS[id]?.name || 'block';
+const inRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+const MAX_COLOURS = Math.min(8, WOOLS.length);
+
+const wallPic = (w, h, colours) => {
+  const out = [];
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) out.push([x, y, 0, WOOLS[(x + y) % colours]]);
+  return out;
+};
+const bridgePic = len => {
+  const out = [];
+  for (let x = 0; x < len; x++) out.push([x + 1, 1, 0, B.WATER]);
+  for (let x = 0; x < len + 2; x++) out.push([x, 2, 0, B.PLANKS]);
+  out.push([0, 1, 0, B.PLANKS], [len + 1, 1, 0, B.PLANKS]);
+  return out;
+};
+const starPlaces = (h, n) => Array.from({ length: n }, (_, i) => 1 + 2 * i).filter(y => y < h - 1);
+
+// pick(rand, round) -> params; ok(p) -> are the params of the right type and in range; make(p) -> the BUILDS-shaped object.
+export const BUILD_TEMPLATES = {
+  tower: {
+    pick: (r, round) => ({ h: rint(r, 6, 10, round), top: TOWER_TOPS[Math.floor(r() * TOWER_TOPS.length)] }),
+    ok: p => inRange(p.h, 6, 10) && TOWER_TOPS.includes(p.top),
+    make: p => ({
+      name: `${blockName(p.top)} Tower ${p.h}`, text: `Build a tower ${p.h} blocks high with a ${blockName(p.top)} on top.`,
+      features: [reach('height', p.h, { key: 'high', name: `${p.h} blocks high`, icon: B.COBBLE }),
+        hasBlock(p.top, { key: 'top', name: `${blockName(p.top)} on top`, where: ['top'] })],
+      example: [...column(0, 0, p.h - 1, B.COBBLE), [0, p.h - 1, 0, p.top]],
+    }),
+  },
+  bridge: {
+    pick: (r, round) => ({ len: rint(r, 8, 14, round) }),
+    ok: p => inRange(p.len, 8, 14),
+    make: p => ({
+      name: `Water Bridge ${p.len}`, text: `Build a bridge over water, ${p.len} blocks long.`,
+      features: [atLeast(p.len, null, { key: 'span', name: `${p.len} blocks over water`, icon: B.PLANKS, where: ['overWater'] })],
+      example: bridgePic(Math.min(p.len, 10)),
+    }),
+  },
+  rainbow: {
+    pick: (r, round) => ({ c: rint(r, 4, MAX_COLOURS, round), h: rint(r, 3, 4, 0) }),
+    ok: p => inRange(p.c, 4, MAX_COLOURS) && inRange(p.h, 3, 4),
+    make: p => ({
+      name: `Rainbow Wall ${p.c}`, text: `Build a wall with ${p.c} different colours of wool.`,
+      features: [different(p.c, WOOLS, { key: 'colours', name: `${p.c} wool colours`, icon: WOOL.fire }),
+        reach('height', p.h, { key: 'tall', name: `${p.h} blocks high`, icon: WOOL.water })],
+      example: wallPic(Math.max(6, p.c), p.h, p.c),
+    }),
+  },
+  wide: {
+    pick: (r, round) => ({ w: rint(r, 8, 14, round), h: rint(r, 2, 3, 0) }),
+    ok: p => inRange(p.w, 8, 14) && inRange(p.h, 2, 3),
+    make: p => ({
+      name: `Long Wall ${p.w}`, text: `Build a long wall, ${p.w} blocks wide.`,
+      features: [reach('width', p.w, { key: 'wide', name: `${p.w} blocks wide`, icon: B.STONE_BRICKS }),
+        reach('height', p.h, { key: 'tall', name: `${p.h} blocks high`, icon: B.COBBLE })],
+      example: wallPic(Math.min(p.w, 10), p.h, 1).map(b => [b[0], b[1], b[2], B.STONE_BRICKS]),
+    }),
+  },
+  glowtower: {
+    pick: (r, round) => ({ h: rint(r, 6, 8, round), n: rint(r, 3, 5, round) }),
+    ok: p => inRange(p.h, 6, 8) && inRange(p.n, 3, 5),
+    make: p => ({
+      name: `Glow Tower ${p.h}`, text: `Build a tower ${p.h} blocks high with ${p.n} Lamps in it.`,
+      features: [reach('height', p.h, { key: 'high', name: `${p.h} blocks high`, icon: B.COBBLE }),
+        atLeast(p.n, [B.LAMP], { key: 'lamps', name: `${p.n} Lamps`, where: ['all'] })],
+      example: Array.from({ length: p.h }, (_, y) => [0, y, 0, y % 2 === 1 && y <= p.n * 2 - 1 ? B.LAMP : B.COBBLE]),
+    }),
+  },
+  startower: {
+    pick: (r, round) => ({ h: rint(r, 8, 10, round), n: rint(r, 3, 4, round) }),
+    ok: p => inRange(p.h, 8, 10) && inRange(p.n, 3, 4),
+    make: p => ({
+      name: `Star Tower ${p.h}`, text: `Build a tower ${p.h} blocks high with ${p.n} Star Blocks in it.`,
+      features: [reach('height', p.h, { key: 'high', name: `${p.h} blocks high`, icon: B.STONE_BRICKS }),
+        atLeast(p.n, [B.STAR_BLOCK], { key: 'stars', name: `${p.n} Star Blocks`, where: ['all'] })],
+      example: tower3(p.h, starPlaces(p.h, p.n)),
+      tip: 'Star Blocks come from treasure maps.',
+    }),
+  },
+};
+export const BUILD_IDS = Object.keys(BUILD_TEMPLATES);
+export const buildSpecOk = s => !!s && typeof s === 'object' && !!BUILD_TEMPLATES[s.t] && BUILD_TEMPLATES[s.t].ok(s);
+export const makeBuild = s => BUILD_TEMPLATES[s.t].make(s);
+// A mission's build: a BUILDS id (hand-written missions) or a `{ t, ...params }` object (the mission maker).
+export const buildOf = def => (typeof def.build === 'string' ? BUILDS[def.build] : makeBuild(def.build));

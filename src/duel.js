@@ -8,7 +8,7 @@ import { cleanCoop, bossName, COOP_RANGE } from './coopboss.js'; // T29
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
-export const VERSION = 10; // 8: wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump). 9: T29 co-op boss battles (the coop field). 10: T34 crews (weakensWithHp: attack shrinks with HP, multi-hit x1.2 against them)
+export const VERSION = 11; // 11: T38c giants grow (coop.grow). 8: wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump). 9: T29 co-op boss battles (the coop field). 10: T34 crews (weakensWithHp: attack shrinks with HP, multi-hit x1.2 against them)
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])] }));
@@ -47,7 +47,7 @@ export class Duels {
         this.hooks.toast(`${avatar.name} didn't answer. Try again later!`);
       }, ANSWER_TIME * 1000),
     };
-    this.mp.sendDuel(avatar.id, { type: 'ask', v: VERSION, id, seed, team: teamOf(g.party), coop: coop && { mission: coop.mission, boss: coop.boss, at: coop.at } });
+    this.mp.sendDuel(avatar.id, { type: 'ask', v: VERSION, id, seed, team: teamOf(g.party), coop: coop && { mission: coop.mission, boss: coop.boss, at: coop.at, grow: coop.grow | 0 } }); // T38c: grow
     this.hooks.toast(coop ? `You asked ${avatar.name} to help with the giant. Waiting for an answer...` : `You asked ${avatar.name} for a battle. Waiting for an answer...`);
   }
 
