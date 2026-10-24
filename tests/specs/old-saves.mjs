@@ -98,7 +98,7 @@ export default async function ({ browser, base, t }) {
       const others = [...w.gyms.slice(0, 16).map(g => [g.x, g.z]), [w.tower.x, w.tower.z]];
       const gapOf = g => Math.min(...others.map(([x, z]) => Math.hypot(g.x - x, g.z - z)));
       out[seed] = {
-        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure', 'food', 'squad', 'parkour', 'dream'][i]),
+        n: w.gyms.length, order: w.gyms.every((g, i) => g.def.id === ['rock', 'bug', 'toxic', 'water', 'pixie', 'grass', 'electric', 'sound', 'metal', 'mind', 'fire', 'ice', 'cosmic', 'ghost', 'drake', 'rainbow', 'bone', 'alien', 'light', 'paper', 'slime', 'sky', 'time', 'camo', 'cyber', 'cozy', 'treasure', 'food', 'squad', 'parkour', 'dream', 'ninja'][i]),
         old: w.gyms.slice(0, 16).map(g => [g.x, g.z]), reserved: spots[0], saucer: [extra[1].x, extra[1].z], h, h22, terrain, surf,
         types: extra.map(g => g.def.type), cave: extra.map(g => !!g.cave),
         gaps: extra.map(gapOf), middles: extra.map(g => Math.hypot(g.x - 112, g.z - 112)),
