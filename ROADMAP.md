@@ -1157,11 +1157,11 @@ plain gyms could get a makeover the same way later.
 ## The plan from here: three chapters (owner, 2026-10-24)
 
 The story is in `STORY.md`. **Chapter 1** = our world: 32 gyms and badges, then the Champion's Tower. **Chapter 2** =
-the Swirl: Champion missions that never end, and the places behind the Swirl's frames, which lead to the Wizard (they
-are **not gyms** and give **no badges**). **Chapter 3** = not decided yet (ideas at the end).
+the Swirl: Champion missions that never end, and the **Picture Worlds** behind the Swirl's frames, which lead to the
+Wizard (they are **not gyms** and give **no badges**). **Chapter 3** = the Scribble (outline at the end).
 
 **Dropped types** (the son did not like them): Magnet, Digger, Builder, Mirror. **Music** too: Sound already exists
-(its gym got the dance-off makeover instead, see above). Knight is in the backlog (it could become a Swirl place).
+(its gym got the dance-off makeover instead, see above). Knight is in the backlog (it could become a Picture World).
 
 Every new gym or place should be something you **do** (riding was the big hit: moving around beats more puzzles).
 New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, moves, wool, fx + sound, Book, README.
@@ -1190,7 +1190,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 - **Objects, not special cases:** the Dojo is data plus small reusable classes (in the style of `access.js`
   pieces and `HomeType`): a `Watcher` (path, speed, cone; `sees(pos)`), a `Hideout` (box; `hides(pos)`), floor kinds
   (`quiet`, `squeak`) and a `Checkpoint` lantern. `DojoLive` (`LIVE.dojo`) only wires them together, so other gyms or
-  Swirl places can reuse watchers and hiding spots later. Lanterns and cones drawn with `setLive` / glow blocks.
+  Picture Worlds can reuse watchers and hiding spots later. Lanterns and cones drawn with `setLive` / glow blocks.
 - Tests: a `dojo` spec (paths, cones, hiding, squeak, back to the lantern, sneak-attack first move, touch button, iPad).
 
 # Chapter 2 · The Swirl
@@ -1203,8 +1203,8 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   through the same door). It changes blocks beside the tower, so check it against player builds there (it must sit
   inside a new protected box) and bump `WORLD_VERSION`.
 - **The Swirl** (a realm, T31 code): a purple sky, floating platforms, rivers that run upwards, looping stairs,
-  frames hanging in the air (one per place; frames whose place does not exist yet are covered with cloth), and far
-  out the Wizard's tower behind a broken bridge.
+  frames hanging in the air (one per Picture World; frames whose world does not exist yet are covered with cloth), and
+  far out the Wizard's tower with an empty row of stepping-stone spots for the star bridge.
 - **Realms together** (moved here from wave 15): a friend can follow you through the door and into the Dream, so
   father and son can play every place together. Without it a realm place is solo.
 - **Missions that never end.** Today `MISSIONS` has 12 hand-written ones. After them, a mission maker builds new ones
@@ -1212,36 +1212,37 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   rematch, find a rare creature), with the details drawn from the mission number and the seed, so every device gets
   the same next mission and old saves keep their place in the list. Treasure maps then need more spots than the five
   `treasureSpots`: a new spot list after the old five, never moving those. Giants grow a little with each round.
-- **Chapter 2's places are not gyms.** Name still open (ideas: **Rifts** with a **Keeper**: the crack shows in each
-  world as a rift; beat its Keeper and mend it). Each one gives **a page of the Wizard's journal** instead of a badge
-  (a journal in the HUD, not more badge squares), and each page brings back **one piece of the bridge**. There is no
-  fixed number, so more places can be added later than planned. Their levels sit above the Champion; `REMATCH_CAP`
+- **Chapter 2's places are not gyms: they are Picture Worlds** (owner, 2026-10-24; "rift" was too hard a word for a
+  7-year-old). Each one is free to explore and ends with a **Boss**; beating the Boss wins that world's **star** (with
+  a short note from the Wizard). Each star becomes one glowing stepping stone of the **star bridge** to the Wizard's
+  tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. There is no
+  fixed number, so more Picture Worlds can be added later than planned. Their levels sit above the Champion; `REMATCH_CAP`
   and Coach Dex are checked against the new top.
 
-## Wave 14 · Swirl places 1: the Giant House, the Pirate Seas, Playland
+## Wave 14 · Picture Worlds 1: the Giant House, the Pirate Seas, Playland
 
 - **🐜 Tiny, the Giant House:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding
   in small places (in flowers, under a leaf, in a cup). The house is built from normal blocks at giant scale (nothing
   shrinks in code). Not a jump course like Parkour: no falling penalty, several ways through, and the giant things
   **do something**: a fan whose wind lifts you to a shelf, a toy train you ride (press the giant remote), a tap that
   makes a river you float down on a bottle cap, a sleeping cat to tiptoe past (running wakes it a bit: wait, never a
-  fail; can reuse the Dojo's `Watcher`), a mouse hole and a keyhole as secret ways, crumbs for bonus cubes, the Keeper
+  fail; can reuse the Dojo's `Watcher`), a mouse hole and a keyhole as secret ways, crumbs for bonus cubes, the Boss
   on a giant cookie on the table.
 - **🏴‍☠️ Pirate, the Pirate Seas:** a parrot captain, a crab with a hook claw, a ship in a bottle, an octopus with a
   spyglass. Open sea and islands; a cannon shoots you from island to island, swing on ropes, board Captain Squawk's
   ship (ships and cannons, not digging like Treasure).
 - **Playland** (one flat world for three places, the third in wave 15):
   - **🏎️ Racer:** dashes away in straight lines (Parkour's run-away walk, "run" style); fast but fragile. A race
-    against the Keeper around a track (new NPC path code).
+    against the Boss around a track (new NPC path code).
   - **⚽ Ball:** the creatures are balls. A football pitch and a basketball court; score to win. Needs a ball that
     rolls and bounces (new physics); probably the biggest place so far.
 
-## Wave 15 · Swirl places 2: Portal, the Fair, Surprise
+## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise
 
 - **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
-  The Portal House in the Swirl itself: a chain of portal rooms to the Keeper (teleports are cheap).
+  The Portal House in the Swirl itself: a chain of portal rooms to the Boss (teleports are cheap).
 - **🎡 Funfair ("lunapark"), in Playland:** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking
-  ticket. Trampolines, a carousel, bumper cars and a roller-coaster ride to the Keeper.
+  ticket. Trampolines, a carousel, bumper cars and a roller-coaster ride to the Boss.
 - **🎁 Surprise** (moved from our world into the Swirl, 2026-10-24): gift boxes, a jack-in-the-box, a piñata; every
   wild one starts as a box and you only see what it is when it opens. The Room of Doors, every door a surprise (a
   slide, a ball pit, a confetti room, a trainer).
@@ -1273,7 +1274,7 @@ thing, "make the canvas look like the picture", and floors differ only by data, 
   easel) and a free-rules top floor ("3 colours, same on both sides" needs a second checker and is hard to explain).
 - Later, maybe: painting together (each player sees half the picture), needs shared live state like S1.
 - **Decided by the story (2026-10-23, 2026-10-24):** the tower stands in the Swirl, reached over the bridge once every
-  Swirl place's journal page is found; beating the Wizard ends chapter 2 (no badge: chapter 2 has none); the creature
+  Picture World's star is found; beating the Wizard ends chapter 2 (no badge: chapter 2 has none); the creature
   you design is the Swirl's new **guardian** (the floors teach how a creature is designed).
 - Open: picture designs, the Wizard's team.
 
@@ -1287,15 +1288,18 @@ wool ids instead of a palette number):
 
 ---
 
-# Chapter 3 · not decided yet (owner, 2026-10-24: "we have to start thinking about it")
+# Chapter 3 · The Scribble (owner, 2026-10-24: direction agreed, to be fleshed out over time)
 
-Ideas, nothing picked. The two waves below were planned before the chapters and may become part of chapter 3.
-
-- **The apprentice Maker:** after the guardian, the Wizard teaches you more: design more creatures, build a challenge
-  of your own that friends can visit and play (the "custom gym" idea), raise eggs of the creatures you designed.
-  Chapter 2 raised the stakes; this one raises the creativity.
-- **A rival:** a trainer who wanted the Wizard's drawing board for themselves turns up everywhere you go.
-- **The world after the crack:** the giants turn into friendly helpers, new land appears, seasons and festivals.
+Story in `STORY.md`: a creature the Wizard once scribbled out and threw away escaped through the crack and scribbles
+over the worlds; you are the **Wizard's ally**. Pieces so far:
+- **Battling beside the Wizard:** two against one, using the co-op giant battle's `'friend'` side (T29) with the
+  Wizard's creature in it.
+- **Scribbled zones** appear in places you already know (our world and the Picture Worlds), so old places get new life.
+- **Simple crafting** (from the backlog): the Wizard's workshop, e.g. crafting Capture Cubes.
+- **Eggs, hatching and raising** (section below): a scribbled creature turned back into an egg; raise it to heal it.
+- **Gifts and trading** (section below): some eggs only hatch with a friend's help; presents and trades between friends.
+- **The ending:** help the Wizard finish drawing the Scribble, and it becomes a friend.
+- Not wanted: more "custom" design features (owner, 2026-10-24).
 
 ## Sharing and the world around you (owner, 2026-10-20)
 
@@ -1344,7 +1348,7 @@ over the game); "raising" is to be planned when the wave starts.
 
 Owner likes these, but not now: **home helpers** (creatures left at home do jobs: fire keeps
 the fireplace lit, grass grows flowers), **creature helpers** (fire lights lamps, rock digs
-faster, sound reveals hidden ore), **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes).
+faster, sound reveals hidden ore), **simple crafting** (logs → planks, stone → stone bricks, gold → Capture Cubes; now part of chapter 3).
 (Gifts, trading, photo mode and growing wild creatures moved to "Sharing", eggs to "Eggs", both under chapter 3; dreaming together is wave 13.)
 
 **Fun ideas** (2026-10-21, after riding was a hit; not decided): **a buddy that follows you** (your lead creature walks,

@@ -2,7 +2,7 @@
 
 The lore behind the game (owner, 2026-10-23, 2026-10-24). New features should fit it; `ROADMAP.md` says which wave
 adds which part. **Chapter 1** is our world (32 gyms and badges, the Champion's Tower), **chapter 2** the Swirl
-(missions, the places behind the frames, the Wizard). **Chapter 3** is not written yet.
+(missions, the Picture Worlds, the Wizard), **chapter 3** the Scribble (still being worked out).
 
 # Chapter 1: Our world
 
@@ -63,7 +63,7 @@ spread. He can't come out, or the crack would grow again.
 Before he left, he did three things:
 - He built the **Champion's Tower**, for the trainer who would one day earn the trust of every gym leader.
 - He asked his oldest friends, **Champion Solenne** and **Zenithar**, to guard it and wait for that trainer.
-- He hid a **page of his journal** in each of his other worlds, explaining how to reach him.
+- He hid a **star** in each of his other worlds. Together, the stars make a bridge to his tower.
 
 ## The Champion's Tower
 
@@ -100,14 +100,16 @@ time, alone or with a friend, and come back through the same door.
 The Swirl is a purple sky full of floating platforms, rivers that run *upwards*, stairs that loop back on
 themselves, and big frames hanging in the air. Each frame is a **doorway to another world** the Wizard made.
 
-Far out in the sky floats **the Wizard's tower**. You can see it the moment you arrive, but you can't reach it: the
-**bridge** to it is broken.
+Far out in the sky floats **the Wizard's tower**. You can see it the moment you arrive, but you can't reach it:
+there is no bridge yet, only an empty row of stepping-stone spots leading out to it.
 
-The places behind the frames are **not gyms**, and there are no more badges. In each one, the crack shows, and
-somebody guards one of the **journal pages** the Wizard left behind. Win the page, and it brings back **one piece of
-the bridge**. Nobody knows how many pages there are: the Wizard made a lot of worlds.
+The worlds behind the frames are the **Picture Worlds**: you step into a picture, and you're somewhere else. They
+are not gyms, and there are no more badges. Explore them as much as you like; at the end of each one waits a
+**Boss**. Beat the Boss and you win that world's **star**, the one the Wizard hid there. Bring it back and it becomes
+a glowing stepping stone on the **star bridge** to his tower. (Each star comes with a little note from the Wizard.)
+Nobody knows how many stars there are: the Wizard made a lot of worlds.
 
-## The worlds
+## The Picture Worlds
 
 **The Giant House.** Step through and you're the size of a mouse. The Wizard made this house from the point of view
 of his pet mouse. The kitchen is as big as a town:
@@ -116,25 +118,25 @@ of his pet mouse. The kitchen is as big as a town:
 - a dripping tap becomes a river you float down on a bottle cap
 - a cat sleeps by the table: don't wake it
 
-The page waits on a giant cookie on the table.
+The Boss waits on a giant cookie on the table.
 
 **The Pirate Seas.** Open ocean and scattered islands, ruled by **Captain Squawk**, a parrot pirate who took over
 this world once the Wizard was gone. Fly from island to island by cannon, swing on ropes, and board the Captain's
-ship. His journal page is in his treasure chest.
+ship. The star is in his treasure chest.
 
 **Playland.** The Wizard built it for a great festival: a race track, a football stadium and a fair with a roller
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
 and the fair leader, and Playland starts up again.
 
 **The Portal House.** In the Swirl itself, the Portal creatures' oldest, who has been watching the crack the
-longest, guards a page at the end of a chain of portal rooms.
+longest, is the Boss at the end of a chain of portal rooms.
 
 **The Room of Doors.** The Wizard locked away the gifts he never got to hand out: the **Surprise creatures**. You
 only know what's inside when they open, and every door in the room is a surprise too.
 
 ## The Wizard's Tower
 
-With every page found, the bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
+With every star found, the star bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
 drew it first, so every floor holds a drawing to copy, each harder than the last. Climbing it teaches you how a
 creature is designed.
 
@@ -149,9 +151,23 @@ you his drawing board:
 You design your own creature, unlike any other. It becomes the Swirl's guardian, the crack closes, and the Wizard
 can finally come out. That ends chapter 2.
 
-# Chapter 3
+# Chapter 3: The Scribble
 
-Not written yet (ideas in `ROADMAP.md`).
+(The outline; it will be filled in over time.)
+
+Long ago the Wizard drew a creature he didn't like. He scribbled over it and threw it away. When the Swirl cracked,
+**the Scribble** slipped out. Now it's angry and lonely, and it **scribbles over the worlds**: patches of our world
+and of the Picture Worlds turn into messy grey scribble, and the creatures caught in it go grey and grumpy.
+
+The Wizard is weak after holding the Swirl together for so long, so this time he needs a partner: **you**.
+- **The Wizard battles beside you**, two against one, in the scribbled places.
+- **His workshop:** he teaches you to make things yourself, like Capture Cubes (he made the first ones, after all).
+- **Eggs:** the Wizard can save a scribbled creature by turning it back into an egg. Raise it, and it hatches bright
+  and new. Eggs are how you heal the world.
+- **Friends:** some eggs only hatch with a friend's help, and friends can give each other presents and trade
+  creatures. The Scribble is beaten by friends working together.
+
+In the end you don't destroy the Scribble. You help the Wizard **finish drawing it**, and it becomes a friend.
 
 # How it lines up with the game
 
@@ -160,6 +176,7 @@ Not written yet (ideas in `ROADMAP.md`).
 | Chapter 1: the world, creatures, cubes, 31 gyms, the Dream, the Champion's Tower | Already in the game | Done |
 | The Shadow Dojo, 32 badges in an 8 x 4 grid | Ninja gym | 12 |
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
-| The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball places (a journal page and a bridge piece each) | 14 |
-| The Portal House, Playland's fair, the Room of Doors | Portal, Funfair, Surprise places | 15 |
+| The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
+| The Portal House, Playland's fair, the Room of Doors | Portal, Funfair, Surprise Picture Worlds | 15 |
 | The studio, the Wizard, designing the guardian | Doodle | 16 |
+| Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |
