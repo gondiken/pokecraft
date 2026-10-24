@@ -166,7 +166,7 @@ export function buildShadowDojo(world, def, slot) {
     if (d >= 2 && d <= 4) putD(d, s, fy + 6, d === 3 ? RED : DARK);
   }
   for (const s of [-7, 0, 7]) for (const d of [5, 1]) putD(d, s, fy + 4, B.PAPER_LANTERN);
-  world.markLitBox(...Object.values(bbox(HALL.d0, HALL.d1, -HALL.s, HALL.s)));
+  world.markLitBox(...Object.values(bbox(HALL.d0 - 1, HALL.d1 + 1, -HALL.s - 1, HALL.s + 1))); // with the eaves (not a cave)
 
   // 5. The pagoda: a red-cornered tower (walls at Chebyshev 3), three dark roofs that get smaller going up, a deck on top
   // (Leader Kage) and a golden spire. Inside, steps go round a middle pillar up to the deck: the ground way up.
@@ -195,7 +195,7 @@ export function buildShadowDojo(world, def, slot) {
   for (let i = 7; i <= 11; i++) putD(...P(...RING[i]), fy + 12, B.AIR); // room for your head over the top steps
   for (const [a, b] of [[3, 3], [3, -3], [-3, 3], [-3, -3]]) putD(...P(a, b), fy + 13, RED); // railing posts
   putD(...P(0, 0), fy + 13, DARK); putD(...P(0, 0), fy + 14, WOOL.treasure); putD(...P(0, 0), fy + 15, WOOL.treasure); putD(...P(0, 0), fy + 16, B.PAPER_LANTERN);
-  world.markLitBox(...Object.values(bbox(PAG - 3, PAG + 3, -3, 3)));
+  world.markLitBox(...Object.values(bbox(PAG - 5, PAG + 5, -5, 5)));
 
   // 6. Hiding spots: two cells walled by tall grass, paper screens or barrels on every side but one.
   const hideouts = NOOKS.map(n => {
