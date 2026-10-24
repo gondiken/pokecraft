@@ -1218,6 +1218,17 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   fixed number, so more Picture Worlds can be added later than planned. Their levels sit above the Champion; `REMATCH_CAP`
   and Coach Dex are checked against the new top.
 
+## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`, not built yet)
+
+- **Choose where to go:** tap or click the guide line (or press G): big rows for the next gym, any gym, the Champion's Tower,
+  the Portal Door, your home, a friend, the current mission, and in realms the way home. Places that are meant to be found
+  keep their own rules (the arrow only brings you near Hidden Hill; food ingredients, vault keys and treasure spots are never
+  destinations). Object-oriented: a `Destination` per kind with a `help` level (`full` / `near` / `none`).
+- **One-button answers:** the button that asks also says yes (E / Enter / the action button / a click), Esc or N says no;
+  a fresh press is needed, so holding E never answers by accident; questions from another player wait a second.
+- **A calmer tablet screen:** one big action button that says what it will do, Place / Ride / Down only when useful, a
+  smaller top bar (☰ and Book); nothing lost.
+
 ## Wave 14 · Picture Worlds 1: the Giant House, the Pirate Seas, Playland
 
 - **🐜 Tiny, the Giant House:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding
