@@ -17,15 +17,7 @@ const BLOB_DIRS = SKY_BLOBS.map(([az, el]) => [Math.cos(el) * Math.cos(az), Math
 const MAX_PUFFS = 80, MAX_SPARKS = 400;
 
 const srgb = (c, rgb) => c.setRGB(rgb[0], rgb[1], rgb[2], THREE.SRGBColorSpace);
-const lin = v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
 
-function disc(size, stops) { // a soft round sprite
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  const g = c.getContext('2d'), grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  for (const [at, col] of stops) grad.addColorStop(at, col);
-  g.fillStyle = grad; g.fillRect(0, 0, size, size);
-  return new THREE.CanvasTexture(c);
-}
 function spiralTexture() { // pastel arms for the swirl-wheels
   const n = 64, c = document.createElement('canvas'); c.width = c.height = n;
   const g = c.getContext('2d'), img = g.createImageData(n, n);
@@ -59,13 +51,13 @@ function frameGeometry() {
 // A mesh of camera-facing quads for a list of { x, y, z, color, size?, phase, kind? }. `motion` is GLSL that may change `c` (the
 // centre) and `s` (the size); fade = [from, to] distances over which a sprite appears; additive ones fade out with the fog instead of
 // tinting to it. One draw call, no per-frame buffer uploads.
-function sprites(list, { map, size, opacity, additive = false, motion, fade, uTime }) {
+function sprites(list, { maxAngle = 99, size, opacity, additive = false, motion, fade, uTime }) {
   const n = list.length, pos = new Float32Array(n * 12), col = new Float32Array(n * 12), cor = new Float32Array(n * 8), siz = new Float32Array(n * 4), ph = new Float32Array(n * 4), kind = new Float32Array(n * 4), idx = [];
   const C = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
   list.forEach((p, i) => {
     for (let k = 0; k < 4; k++) {
       const v = i * 4 + k;
-      pos.set([p.x, p.y, p.z], v * 3); col.set([lin(p.color[0]), lin(p.color[1]), lin(p.color[2])], v * 3); cor.set(C[k], v * 2);
+      pos.set([p.x, p.y, p.z], v * 3); col.set(p.color, v * 3); cor.set(C[k], v * 2);
       siz[v] = size(p); ph[v] = p.phase; kind[v] = p.kind ?? 0;
     }
     idx.push(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 2, i * 4 + 1, i * 4 + 3);
@@ -77,7 +69,7 @@ function sprites(list, { map, size, opacity, additive = false, motion, fade, uTi
   geo.setIndex(idx);
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, fog: true,
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime, uMap: { value: map }, uOpacity: { value: opacity } }]),
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime, uOpacity: { value: opacity } }]),
     vertexShader: `
       attribute vec3 color;
       attribute vec2 aCorner; attribute float aSize; attribute float aPhase; attribute float aKind;
@@ -88,19 +80,21 @@ function sprites(list, { map, size, opacity, additive = false, motion, fade, uTi
         ${motion}
         vec4 mvPosition = viewMatrix * vec4(c, 1.0);
         vDist = length(mvPosition.xyz); vFogDepth = -mvPosition.z;
-        mvPosition.xy += aCorner * s * 0.5;
+        mvPosition.xy += aCorner * min(s, ${maxAngle.toFixed(2)} * vDist) * 0.5; // never bigger than a part of the screen: big blends cost a lot on software GL
         vUv = aCorner * 0.5 + 0.5; vCol = color;
         gl_Position = projectionMatrix * mvPosition;
       }`,
     fragmentShader: `
-      uniform sampler2D uMap; uniform float uOpacity; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar;
+      uniform float uOpacity; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar;
       varying vec2 vUv; varying vec3 vCol; varying float vDist; varying float vFade; varying float vFogDepth;
       void main() {
-        vec4 t = texture2D(uMap, vUv);
-        float a = t.a * uOpacity * smoothstep(${fade[0].toFixed(1)}, ${fade[1].toFixed(1)}, vDist);
+        float r = length(vUv * 2.0 - 1.0);
+        if (r >= 1.0) discard;
+        float k = 1.0 - r;
+        float a = k * k * (0.6 + 0.8 * k) * uOpacity * smoothstep(${fade[0].toFixed(1)}, ${fade[1].toFixed(1)}, vDist);
+        if (a < 0.01) discard;
         float f = smoothstep(fogNear, fogFar, vFogDepth);
-        ${additive ? 'a *= 1.0 - f; gl_FragColor = vec4(vCol, a);' : 'gl_FragColor = vec4(mix(vCol, fogColor, f), a);'}
-        #include <colorspace_fragment>
+        ${additive ? 'a *= 1.0 - f; gl_FragColor = vec4(vCol, a);' : 'gl_FragColor = vec4(mix(vCol, pow(fogColor, vec3(0.4545)), f), a);'}
       }`,
   });
   return new THREE.Mesh(geo, mat);
@@ -112,7 +106,7 @@ export function createSwirlSky(game, { scene, camera }) {
 
   function dispose() {
     if (!st) return;
-    for (const o of st.objects) { scene.remove(o); o.geometry.dispose(); o.material.map?.dispose(); o.material.uniforms?.uMap?.value.dispose(); o.material.dispose(); }
+    for (const o of st.objects) { scene.remove(o); o.geometry.dispose(); o.material.map?.dispose(); o.material.dispose(); }
     st.spiral?.dispose();
     st = null;
     swirlTint.uTintOn.value = 0;
@@ -137,21 +131,25 @@ export function createSwirlSky(game, { scene, camera }) {
     // 1. The dome
     const dg = new THREE.SphereGeometry(180, 48, 24);
     dg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(dg.attributes.position.count * 3), 3));
-    st.dome = add(new THREE.Mesh(dg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })), -10);
+    st.dome = add(new THREE.Mesh(dg, new THREE.ShaderMaterial({ // plain colours, no lighting, no colour-space work: the cheapest full-screen pass (the values are screen colours already)
+      side: THREE.BackSide, depthWrite: false,
+      vertexShader: 'attribute vec3 color; varying vec3 vC; void main() { vC = color; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying vec3 vC; void main() { gl_FragColor = vec4(vC, 1.0); }',
+    })), 100); // drawn after the blocks: only the sky pixels are shaded
     st.dir = Array.from({ length: dg.attributes.position.count }, (_, i) => new THREE.Vector3().fromBufferAttribute(dg.attributes.position, i).normalize());
 
     // 2. Glowing nebula puffs: one mesh of camera-facing quads (not GL points: their size is capped on many GPUs), a bob and a soft fade up close
     const puffs = decor.puffs.slice(0, MAX_PUFFS);
     st.puffs = add(sprites(puffs, {
-      map: disc(64, [[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,255,255,0.55)'], [1, 'rgba(255,255,255,0)']]), size: p => 26 * p.size, opacity: 0.8,
-      motion: 'c.y += sin(uTime * 0.3 + aPhase * 6.2831) * 1.5;', fade: [10, 24], uTime: st.uniforms.uTime,
+      size: p => 20 * p.size, opacity: 0.8, maxAngle: 0.3,
+      motion: 'c.y += sin(uTime * 0.3 + aPhase * 6.2831) * 1.5;', fade: [16, 32], uTime: st.uniforms.uTime,
     }), 3);
     st.puffs.userData.count = puffs.length;
 
     // 3. Sparkles: fireflies wander, paint drops rise (all motion in the shader)
     const sparks = decor.sparks.slice(0, MAX_SPARKS);
     st.sparks = add(sprites(sparks, {
-      map: disc(32, [[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,0.7)'], [1, 'rgba(255,255,255,0)']]), size: () => 0.36, opacity: 1, additive: true,
+      size: () => 0.36, opacity: 1, additive: true,
       motion: `float rise = mod(uTime * 0.7 + aPhase * 14.0, 14.0);
         if (aKind > 0.5) { c.y += rise; vFade = 1.0 - rise / 14.0; }
         else c += vec3(sin(uTime * 0.5 + aPhase * 40.0), sin(uTime * 0.7 + aPhase * 23.0) * 0.7, cos(uTime * 0.4 + aPhase * 31.0)) * 0.6;
@@ -210,7 +208,7 @@ export function createSwirlSky(game, { scene, camera }) {
         r = mixc(r, band, 0.3 * ss(0.55, 1, b) * (1 - ss(0.75, 1, h)) * ss(0.02, 0.12, h));
         BLOB_DIRS.forEach((B, j) => { const dot = Math.max(0, d.x * B[0] + h * B[1] + d.z * B[2]); r = mixc(r, j % 2 ? bB : bA, 0.55 * dot ** SKY_BLOBS[j][2] * ss(0.02, 0.1, h)); });
       }
-      col.setXYZ(i, lin(r[0]), lin(r[1]), lin(r[2]));
+      col.setXYZ(i, r[0], r[1], r[2]);
     }
     col.needsUpdate = true;
   }

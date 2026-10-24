@@ -193,7 +193,7 @@ function swirlUpdate(game, dt) {
   if (!st) return;
   const w = game.world;
   st.t += dt;
-  st.lifts.forEach((m, i) => { m.material.map.offset.y = -(st.t * 0.8) % 1; m.material.color.setHSL((st.t * 0.04 + i / 6) % 1, 0.9, 0.62); }); // T38d: each stream slowly changes pastel colour
+  st.lifts.forEach((m, i) => { m.material.map.offset.y = -(st.t * 0.8) % 1; m.material.color.setHSL((st.t * 0.04 + i / 6) % 1, 0.9, 0.5); }); // T38d: each stream slowly changes pastel colour
   st.acc += dt;
   if (st.acc < 0.25 && st.lit !== null) return;
   st.acc = 0;

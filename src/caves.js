@@ -645,19 +645,18 @@ vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vTint = vec3(1.0);
 if (uTintOn > 0.5 && ((uv.x >= uTintU.x && uv.x < uTintU.y) || (uv.x >= uTintU.z && uv.x < uTintU.w))) {
   vec3 wp = vCavePos;
-  float wt[5];
-  float sum = uHaze;
-  for (int i = 0; i < 4; i++) {
-    float t = clamp(1.0 - distance(wp.xz, uZone[i].xy) / uZone[i].z, 0.0, 1.0);
-    wt[i] = t * t * (3.0 - 2.0 * t);
-    sum += wt[i];
+  vec4 t = clamp(vec4(1.0) - vec4(distance(wp.xz, uZone[0].xy) / uZone[0].z, distance(wp.xz, uZone[1].xy) / uZone[1].z, distance(wp.xz, uZone[2].xy) / uZone[2].z, distance(wp.xz, uZone[3].xy) / uZone[3].z), 0.0, 1.0);
+  vec4 w = t * t * (3.0 - 2.0 * t);
+  float inv = 1.0 / (w.x + w.y + w.z + w.w + uHaze);
+  vec3 c;
+  if (wp.y < 1.5) c = (uSea[0] * w.x + uSea[1] * w.y + uSea[2] * w.z + uSea[3] * w.w + uSea[4] * uHaze) * inv;
+  else {
+    vec3 lo = (uLo[0] * w.x + uLo[1] * w.y + uLo[2] * w.z + uLo[3] * w.w + uLo[4] * uHaze) * inv;
+    vec3 hi = (uHi[0] * w.x + uHi[1] * w.y + uHi[2] * w.z + uHi[3] * w.w + uHi[4] * uHaze) * inv;
+    c = mix(lo, hi, clamp((wp.y - 4.0) / 26.0 + (color.b > 0.9 ? 0.4 : 0.0), 0.0, 1.0)); // tops are paler, sides and undersides deeper
   }
-  wt[4] = uHaze;
-  vec3 lo = vec3(0.0), hi = vec3(0.0), sea = vec3(0.0);
-  for (int i = 0; i < 5; i++) { float k = wt[i] / sum; lo += uLo[i] * k; hi += uHi[i] * k; sea += uSea[i] * k; }
-  vec3 c = wp.y < 1.5 ? sea : mix(lo, hi, clamp((wp.y - 4.0) / 26.0 + (color.b > 0.9 ? 0.4 : 0.0), 0.0, 1.0)); // tops are paler, sides and undersides deeper
   vTint = c * (0.93 + 0.07 * sin(wp.x * 0.23 + wp.z * 0.17 + wp.y * 0.3 + uTime * 0.7));
-  vTint *= min(pow(1.0 / max(color.r, 0.25), 0.6), 1.9); // pastel: take back some of the face and overhang shading
+  vTint *= min(inversesqrt(max(color.r, 0.25)), 1.9); // pastel: take back some of the face and overhang shading
 }`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;')

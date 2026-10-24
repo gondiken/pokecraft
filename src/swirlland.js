@@ -128,20 +128,20 @@ export const FRAME_COLORS = ['#e8b84a', '#9ee8c8', '#ffa8cf', '#9ccfff'];
 // Glowing nebula puffs and sparkles (swirlsky.js). Scattered from a fixed seed: the world never depends on them.
 const PUFF_COLORS = { mist: ['#ff8fd0', '#6fe3ff', '#c9a8ff'], ink: ['#b28dff', '#ff9ad5', '#6fe3ff'], sun: ['#fff3b0', '#ffb3c6', '#ffc9a0'], sherbet: ['#ffffff', '#ffd0e8', '#bfe6ff'] };
 export const PUFFS = [ // { zone, x, z, r, y: [y0, y1], n, colors }
-  { zone: 'mist', x: 48, z: 30, r: 11, y: [10, 36], n: 14, colors: PUFF_COLORS.mist },
-  { zone: 'mist', x: 48, z: 62, r: 18, y: [2, 8], n: 8, colors: PUFF_COLORS.mist },
-  { zone: 'inkwell', x: 92, z: 62, r: 12, y: [4, 30], n: 10, colors: PUFF_COLORS.ink },
-  { zone: 'inkwell', x: 92, z: 98, r: 12, y: [4, 30], n: 10, colors: PUFF_COLORS.ink },
-  { zone: 'inkwell', x: 136, z: 80, r: 14, y: [10, 40], n: 10, colors: PUFF_COLORS.ink },
-  { zone: 'sundrop', x: 48, z: 132, r: 18, y: [4, 18], n: 10, colors: PUFF_COLORS.sun },
-  { zone: 'sherbet', x: 40, z: 82, r: 24, y: [38, 48], n: 10, colors: PUFF_COLORS.sherbet },
+  { zone: 'mist', x: 48, z: 30, r: 11, y: [10, 36], n: 8, colors: PUFF_COLORS.mist },
+  { zone: 'mist', x: 48, z: 62, r: 18, y: [2, 8], n: 5, colors: PUFF_COLORS.mist },
+  { zone: 'inkwell', x: 92, z: 62, r: 12, y: [4, 30], n: 6, colors: PUFF_COLORS.ink },
+  { zone: 'inkwell', x: 92, z: 98, r: 12, y: [4, 30], n: 6, colors: PUFF_COLORS.ink },
+  { zone: 'inkwell', x: 136, z: 80, r: 14, y: [10, 40], n: 6, colors: PUFF_COLORS.ink },
+  { zone: 'sundrop', x: 48, z: 132, r: 18, y: [4, 18], n: 6, colors: PUFF_COLORS.sun },
+  { zone: 'sherbet', x: 40, z: 82, r: 24, y: [38, 48], n: 6, colors: PUFF_COLORS.sherbet },
 ];
 export const SPARKS = [ // { zone, box: [x0, x1, z0, z1, y0, y1], n, colors, kind: 0 firefly / 1 rising drop }
-  { zone: 'mist', box: [28, 68, 50, 60, 27, 32], n: 120, colors: ['#7ff0e8', '#ffa0dc'], kind: 0 },
-  { zone: 'inkwell', box: [60, 110, 74, 86, 21, 30], n: 100, colors: ['#ffe08a', '#fff3c4'], kind: 0 },
-  { zone: 'sundrop', box: [30, 66, 108, 120, 14, 20], n: 50, colors: ['#ff9f8f', '#ffe08a', '#ffffff'], kind: 1 },
+  { zone: 'mist', box: [28, 68, 50, 60, 27, 32], n: 60, colors: ['#7ff0e8', '#ffa0dc'], kind: 0 },
+  { zone: 'inkwell', box: [60, 110, 74, 86, 21, 30], n: 50, colors: ['#ffe08a', '#fff3c4'], kind: 0 },
+  { zone: 'sundrop', box: [30, 66, 108, 120, 14, 20], n: 30, colors: ['#ff9f8f', '#ffe08a', '#ffffff'], kind: 1 },
   { zone: 'sundrop', box: [56, 74, 126, 140, 1, 8], n: 30, colors: ['#ff9f8f', '#ffe08a', '#ffffff'], kind: 1 },
-  { zone: 'sherbet', box: [30, 66, 66, 96, 22, 34], n: 60, colors: ['#ffffff', '#fff0d4'], kind: 0 },
+  { zone: 'sherbet', box: [30, 66, 66, 96, 22, 34], n: 30, colors: ['#ffffff', '#fff0d4'], kind: 0 },
 ];
 // The scattered lists: { puffs: [{ zone, x, y, z, size, color, phase }], sparks: [{ zone, x, y, z, color, kind, phase }], floaters, lanterns }.
 export function decorList() {
