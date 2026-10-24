@@ -245,7 +245,7 @@ export default async function ({ browser, base, t }) {
   // 5. The badge HUD with all the diamonds, on desktop.
   await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
-    g.badges = GYMS.map(x => x.id);
+    g.badges = GYMS.slice(1).map(x => x.id); // all but one: the fullest grid (with every badge it goes away)
     g.ui.renderHud();
   });
   await page.waitForTimeout(1500);
@@ -253,8 +253,14 @@ export default async function ({ browser, base, t }) {
     const r = document.getElementById('badges').getBoundingClientRect();
     return { n: document.querySelectorAll('#badges > *').length, got: document.querySelectorAll('#badges > .got').length, h: r.height, w: r.width, right: r.right, vw: innerWidth };
   });
-  t.ok(desk.n === N && desk.got === N && desk.h <= 90 && desk.right <= desk.vw, `desktop: ${N} badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
+  t.ok(desk.n === N && desk.got === N - 1 && desk.h <= 90 && desk.right <= desk.vw, `desktop: ${N} badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
   await page.screenshot({ path: SHOTS + 'badges-25-desktop.png' });
+  const allGone = await page.evaluate(async () => {
+    const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
+    g.badges = GYMS.map(x => x.id); g.ui.renderHud();
+    return { hidden: document.getElementById('badges').getBoundingClientRect().height === 0 };
+  });
+  t.ok(allGone.hidden, 'with every badge won the badge grid goes away (the team screen lists them)');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
@@ -266,7 +272,7 @@ export default async function ({ browser, base, t }) {
     await pad.waitForTimeout(1500);
     await pad.evaluate(async () => {
       const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
-      g.badges = GYMS.map(x => x.id);
+      g.badges = GYMS.slice(1).map(x => x.id);
       g.ui.renderHud();
     });
     await pad.waitForTimeout(1000);

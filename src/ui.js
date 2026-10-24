@@ -120,6 +120,8 @@ export class UI {
     if (this.badgeKey !== key) {
       this.badgeKey = key;
       this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
+      // Every badge won: the grid goes away (owner 2026-10-25: a calm HUD); the team screen still lists them all.
+      this.badgeRow.classList.toggle('hidden', GYMS.every(gym => g.badges.includes(gym.id)));
     }
     // T38a: the Picture World stars: only in the Swirl or once you have one (owner 2026-10-25: a calm HUD; no Champion label)
     const starKey = g.place === 'swirl' || g.stars.length ? g.stars.join() : null;

@@ -16,7 +16,7 @@ export class Player {
     this.height = 1.8;
     this.eye = 1.62;
     this.ride = null;       // T27: { kind, speed, ... } from riding.js while riding
-    this.fenceHit = false;  // a rider bumped into a gym box
+    this.fenceHit = false;  // a rider bumped into a fenced box: false or its owner (a gym, the tower, a keep)
     this.capped = false;    // a sky rider hit the height cap
     this.landed = false;    // a gliding sky rider reached the floor
     this.onBounce = false;  // T35: standing on a Bounce Block (for the hint toast)
@@ -55,7 +55,7 @@ export class Player {
       for (let y = y0; y <= y1; y++)
         for (let z = z0; z <= z1; z++)
           if (this.world.isSolid(x, y, z)) return true;
-          else if (this.ride && this.world.fenced(x, y, z)) { this.fenceHit = true; return true; }
+          else if (this.ride && this.world.fenced(x, y, z)) { this.fenceHit = this.world.fenceAt(x, y, z); return true; }
     return false;
   }
 

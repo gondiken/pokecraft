@@ -24,6 +24,15 @@ export function fitRide(model) {
   return { scale, shift, lift: -bb.min.y * scale, seat: Math.min(1.2, h * scale) * 0.8 };
 }
 
+// What a rider hears at a fence: the place's own words, else by kind (only gyms say "gyms"; the Swirl's keeps and the
+// tower are not gyms).
+export function fenceText(owner) {
+  if (owner?.rideText) return owner.rideText;
+  if (owner?.tower) return "The Champion's Tower is for walking. Get off to go in!";
+  if (owner?.def) return 'Gyms are for walking. Get off to go in!';
+  return 'Get off your creature to walk here!';
+}
+
 export function createRiding(game, { scene, closePanel }) {
   const riding = {
     creature: null, species: null, kind: null, model: null, fit: null, t: 0,
@@ -111,7 +120,7 @@ export function createRiding(game, { scene, closePanel }) {
       if (this.model) animateModel(this.model, this.t, Math.hypot(p.vel.x, p.vel.z) > 0.5 || this.kind === 'sky');
       if (p.capped && now - this.capToast > 5000) { this.capToast = now; game.ui.toast(`${nameOf(c)} can't fly any higher here.`); }
       if (p.fenceHit) {
-        if (now - this.fenceToast > 2000) { this.fenceToast = now; game.ui.toast('Gyms are for walking. Get off to go in!'); }
+        if (now - this.fenceToast > 2000) { this.fenceToast = now; game.ui.toast(fenceText(p.fenceHit)); }
         p.fenceHit = false;
       }
     },

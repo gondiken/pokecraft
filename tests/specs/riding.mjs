@@ -343,6 +343,13 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(!gyms.skyBad && !gyms.landBad, `a rider never overlaps a surface gym's box (${gyms.surfId}; sky ${gyms.skyBad}, land ${gyms.landBad}, failed starts ${gyms.startFail || 0})`);
   t.ok(gyms.skyToast || gyms.landToast, `the gym toast shows (sky ${gyms.skyToast}, land ${gyms.landToast})`);
+  const fenceWords = await page.evaluate(async () => {
+    const { fenceText } = await import('/src/riding.js');
+    const w = window.pokecraft.world, gym = w.gyms.find(g => g.protect?.length), t = w.tower, b = gym.protect[0], tb = t.protect[0];
+    return { gym: fenceText(w.fenceAt(b.x0, b.y0 + 2, b.z0)), tower: fenceText(w.fenceAt(tb.x0, tb.y0 + 2, tb.z0)), keep: fenceText({ name: 'frame', protect: [] }), own: fenceText({ rideText: 'Hop off!' }) };
+  });
+  t.ok(fenceWords.gym.startsWith('Gyms are') && fenceWords.tower.startsWith("The Champion's Tower") && !/gym/i.test(fenceWords.keep) && fenceWords.own === 'Hop off!',
+    `each fenced place has its own words; only gyms say "gyms" (${JSON.stringify(fenceWords)})`);
   t.ok(!gyms.startInside && gyms.insideToast.includes('No riding in or next to a gym') && !gyms.insideRide, `starting inside a gym fails kindly ("${gyms.insideToast}")`);
 
   // (c) and (d): the Cloud and Saucer Gyms
