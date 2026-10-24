@@ -24,6 +24,8 @@ export const TYPE_COLORS = {
   squad: 'repeating-linear-gradient(90deg,#ff9f5a 0 5px,#5ab0e0 5px 10px,#8ad46a 10px 15px)',
   dream: 'linear-gradient(135deg,#b49cff,#ffb3e6,#9ce8ff)',
   parkour: 'linear-gradient(180deg,#ff5a4a 0 40%,#ffffff 40% 55%,#ff5a4a 55%)',
+  // Wave 12 (T37)
+  ninja: 'linear-gradient(180deg,#2a2440 0 35%,#d83a4a 35% 50%,#2a2440 50%)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -36,7 +38,7 @@ const EFFECTIVENESS = {
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5, parkour: 0.5 },
   ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5, food: 0.5 },
   bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2, food: 2 },
-  ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0, squad: 0.5 },
+  ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0, squad: 0.5, ninja: 0.5 },
   // New types
   mind: { toxic: 2, drake: 2, cosmic: 2, mind: 0.5, metal: 0.5, alien: 0.5, camo: 0.5, dream: 0.5 },
   metal: { ice: 2, rock: 2, pixie: 2, metal: 0.5, fire: 0.5, water: 0.5, electric: 0.5, paper: 2 },
@@ -46,19 +48,19 @@ const EFFECTIVENESS = {
   rainbow: { ghost: 2, toxic: 2, mind: 2, metal: 0.5, rainbow: 0.5 },
   // Cosmic beats sound, sound beats mind, mind beats cosmic.
   cosmic: { rock: 2, drake: 2, sound: 2, metal: 0.5, cosmic: 0.5, rainbow: 0.5, alien: 0.5, light: 2, time: 2 },
-  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5, camo: 2, squad: 2 },
+  sound: { ice: 2, bug: 2, mind: 2, alien: 2, metal: 0.5, sound: 0.5, cosmic: 0.5, camo: 2, squad: 2, ninja: 2 },
   // Bone and Alien: skeletons are not scared of ghosts or aliens; aliens love normal creatures' surprise.
   bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
   sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
   slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2 },
-  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2 },
+  light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2, ninja: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
   // Time, Camo, Cyber: time rusts metal, crumbles old paper and dries up slime; camo sneaks up on bugs and
   // minds can't find it; cyber hacks metal and minds and goes paperless.
   time: { metal: 2, paper: 2, slime: 2, time: 0.5, cosmic: 0.5, ghost: 0.5, dream: 2 },
-  camo: { bug: 2, mind: 2, camo: 0.5, light: 0.5, metal: 0.5 },
+  camo: { bug: 2, mind: 2, camo: 0.5, light: 0.5, metal: 0.5, ninja: 0.5 },
   cyber: { metal: 2, mind: 2, paper: 2, cyber: 0.5, grass: 0.5, water: 0.5, treasure: 2 },
   // Cozy and Treasure: cozy warms up ice, nothing is scary at home, and you put the screens away to cuddle;
   // treasure distracts drakes and pixies with gold and outshines a blanket.
@@ -73,6 +75,10 @@ const EFFECTIVENESS = {
   squad: { parkour: 2, camo: 2, normal: 2, squad: 0.5, sky: 0.5, slime: 0.5 },
   parkour: { dream: 2, bone: 2, cyber: 2, parkour: 0.5, sky: 0.5, ghost: 0.5, slime: 0.5 },
   dream: { food: 2, time: 2, rainbow: 2, dream: 0.5, light: 0.5, cyber: 0.5 },
+  // Wave 12: Ninja. A ninja sneaks past a mind, cuts paper and picks a squad off one by one; it can't hide in bright
+  // light or from metal armour, and other ninjas see its tricks. Light finds the shadows and a noise (sound) gives a
+  // ninja away; ghosts and camo creatures know all its hiding tricks (0.5).
+  ninja: { mind: 2, paper: 2, squad: 2, ninja: 0.5, light: 0.5, metal: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -1839,6 +1845,37 @@ export const SPECIES = {
     model: { shape: 'upbrella', scale: 0.95, body: 0xffb3e6, accent: 0x9ce8ff, dark: 0x6a4ac0, belly: 0xfff0a0, extras: [] },
   },
   /* ==== end of T35 dream ==== */
+  /* ==== T37 ninja ==== */
+  // Step 0 stand-ins (ids, names, levels and families are fixed; T37a gives them their own shapes, moves and words).
+  hushcoon: {
+    name: 'Hushcoon', type: 'ninja', desc: 'A masked raccoon that tiptoes.', base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45,
+    learn: L('ninja', 'grass'), evolve: { level: 22, into: 'shadecoon' }, model: { shape: 'lemur', scale: 0.8, body: 0x4a4458, accent: 0xd83a4a, dark: 0x1a1824, belly: 0xc8c0d0, extras: [] },
+  },
+  shadecoon: {
+    name: 'Shadecoon', type: 'ninja', desc: 'A masked raccoon in the shadows.', base: { hp: 70, atk: 95, def: 60, spd: 120 }, baseXp: 165, catchRate: 0.12,
+    learn: L('ninja', 'grass'), model: { shape: 'lemur', scale: 1.2, body: 0x3a3448, accent: 0xd83a4a, dark: 0x1a1824, belly: 0xc8c0d0, extras: [] },
+  },
+  peekaw: {
+    name: 'Peekaw', type: 'ninja', desc: 'A little crow that peeks.', base: { hp: 40, atk: 60, def: 35, spd: 85 }, baseXp: 64, catchRate: 0.45,
+    learn: L('ninja', 'sky'), evolve: { level: 22, into: 'ravenshade' }, model: { shape: 'lemur', scale: 0.75, body: 0x2a2a3a, accent: 0xd83a4a, dark: 0x101018, belly: 0x5a5a6a, extras: [] },
+  },
+  ravenshade: {
+    name: 'Ravenshade', type: 'ninja', desc: 'A big crow of the night.', base: { hp: 65, atk: 105, def: 55, spd: 115 }, baseXp: 165, catchRate: 0.12,
+    learn: L('ninja', 'sky'), model: { shape: 'lemur', scale: 1.2, body: 0x22222e, accent: 0xd83a4a, dark: 0x101018, belly: 0x5a5a6a, extras: [] },
+  },
+  flickit: {
+    name: 'Flickit', type: 'ninja', desc: 'A squirrel that flicks leaves.', base: { hp: 50, atk: 60, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45,
+    learn: L('ninja', 'metal'), evolve: { level: 24, into: 'whirlwhisk' }, model: { shape: 'lemur', scale: 0.8, body: 0xb06a3a, accent: 0xd83a4a, dark: 0x3a2418, belly: 0xffe0c0, extras: [] },
+  },
+  whirlwhisk: {
+    name: 'Whirlwhisk', type: 'ninja', desc: 'A squirrel with a whirling tail.', base: { hp: 80, atk: 100, def: 70, spd: 100 }, baseXp: 170, catchRate: 0.1,
+    learn: L('ninja', 'metal'), model: { shape: 'lemur', scale: 1.2, body: 0x9a5a30, accent: 0xd83a4a, dark: 0x3a2418, belly: 0xffe0c0, extras: [] },
+  },
+  bambooze: {
+    name: 'Bambooze', type: 'ninja', desc: 'A bamboo shoot that hides in bamboo.', base: { hp: 60, atk: 75, def: 55, spd: 90 }, baseXp: 100, catchRate: 0.3,
+    learn: L('ninja', 'time'), model: { shape: 'lemur', scale: 0.9, body: 0x7ac85a, accent: 0xd83a4a, dark: 0x2a4a20, belly: 0xd8f0b0, extras: [] },
+  },
+  /* ==== end of T37 ninja ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];

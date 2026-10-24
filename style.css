@@ -129,7 +129,8 @@ button.primary { background: #3b6fd8; }
 .food.far { opacity: .35; filter: grayscale(.6); }
 .food.near { display: inline-block; animation: key-glint var(--glint, 3s) ease-in-out infinite; }
 #food-compass .food.got::after { content: '✓'; position: absolute; right: -5px; bottom: -2px; font-size: 13px; color: #6fe08a; font-weight: bold; }
-#badges { display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: 200px; gap: 3px; background: rgba(0,0,0,.45); padding: 4px 6px; }
+/* Wave 12: 32 badges in an 8 x 4 grid (every gym of our world) */
+#badges { display: grid; grid-template-columns: repeat(8, auto); justify-content: end; gap: 3px; background: rgba(0,0,0,.45); padding: 4px 6px; }
 .badge {
   width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
   transform: rotate(45deg); margin: 3px;
