@@ -224,11 +224,14 @@ After you collect all 32 badges (the top-right corner shows them in 4 rows of 8)
 
 ## Champion missions
 
-Once you are the **Champion**, talk to Champion Solenne again: she gives you **missions**, one at a time (12 in all, M shows them any time; a small chip in the corner reminds you what you are doing). Finish one, go back to her for the next. Not in the mood? **Do a different one** swaps it.
+Once you are the **Champion**, talk to Champion Solenne again: she gives you **missions**, one at a time (M shows them any time; a small chip in the corner reminds you what you are doing). Finish one, go back to her for the next. Not in the mood? **Do a different one** swaps it. The first 12 are made by hand; **after that the missions never end**: she keeps making new ones, in rounds of 6 (two treasure maps, a build, a catch, a rematch or another build, and a giant). The panel counts them (*Mission 15 · 14 done*). Your list is the same on every device. The giants **grow a little every round**.
 
 - **Treasure map**: you get a piece of an old map with a picture of the ground and a red **X**, and words that tell you where to start and how many steps to walk. The chip says *cold, warm, hot* as you get closer. Stand on the X and **dig 2 blocks down** (stand in the hole) to find the treasure. The X is the same for everyone in the same world.
 - **Build challenge**: build something (a Lamp Tower, a Water Bridge, a Rainbow Wall, a Star Tower). A list shows what is still missing; the game checks your build by itself, or press **Check my build**. Only blocks you placed yourself count.
-- **Giant battle**: two players against one giant creature (play together, stand close, ask your friend to help). Both of you battle at once; your creatures are copies, so nobody's real team gets hurt. The friend who helps gets a prize too.
+- **Giant battle**: two players against one giant creature (play together, stand close, ask your friend to help). Both of you battle at once; your creatures are copies, so nobody's real team gets hurt. The friend who helps gets a prize too. If you have no friend to play with and only giants are left, Solenne gives you other missions first.
+- **Catch a creature** (after the first 12): "Catch a Fire creature". The card tells you which places to look in and links to the Creature Book. Only a creature you catch while the mission is on counts. Prize: 8 Capture Cubes and 2 Star Blocks.
+- **Gym rematch** (after the first 12): "Beat the Boulder Gym again". Win a rematch there. Prize: 5 Capture Cubes and 2 Rainbow Bricks.
+- The later treasure maps use new X spots (24 of them); builds get new shapes (towers with a Lamp, Crystal or wool colour on top, long walls, Glow Towers...). Maps and builds wait while you are in a dream: do them back in the normal world.
 
 Prizes are Capture Cubes and three **rare mission blocks** you can only get this way: **Star Block** (treasure maps), **Rainbow Brick** (builds) and **Giant Trophy** (giant battles). They work like gems: placing uses one, breaking one gives it back. Missions are saved per player.
 
@@ -281,6 +284,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/npc.js` | Blocky people: trainers, leaders and the healer |
 | `src/gymlive.js`, `src/daytime.js` | Parts of a gym that change while you play (the Clock Tower's doors, the Firewall Maze's lasers) and the Clock Tower's times of day |
 | `src/clocktower.js`, `src/hiddenhill.js`, `src/firewall.js` | The Clock Tower, Hidden Hill and Firewall Maze gyms (building and live parts) |
+| `src/missiongen.js` | The mission maker (T38c): the missions after the first 12, made the same way on every device from your world's seed (rounds of 6, pools of catch types and rematch gyms, growing giants) |
 | `src/missions.js`, `src/treasuremap.js`, `src/buildcheck.js`, `src/features.js`, `src/missionui.js` | Champion missions: the list and rewards, treasure map spots from the seed and the map picture, build challenges, the shared block checks (also used by homes), and the missions panel and chip |
 | `src/bigtop.js` | The Big Top Gym (Squad, a circus tent with a three-tier pyramid) |
 | `src/homegym.js`, `src/treasurevault.js` | The Cozy Gym (moves into your home) and the Treasure Vault (golden keys) |

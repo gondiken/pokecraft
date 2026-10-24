@@ -67,7 +67,7 @@ export default async function ({ browser, base, t }) {
       next0: M.nextMission({ done: [], last: null })?.id,
       nextWrap: M.nextMission({ done: M.MISSIONS.filter(m => m.id !== 'map1').map(m => m.id), last: 'giant3' })?.id,
       nextSkip: M.nextMission({ done: [], last: 'map1' }, 'lamptower')?.id,
-      nextNone: M.nextMission({ done: M.MISSIONS.map(m => m.id), last: 'map1' }),
+      nextNone: M.nextMission({ done: M.MISSIONS.map(m => m.id), last: 'map1' }, null, 22)?.id, // T38c: the maker takes over
       same: H.hasBlock === F.hasBlock && H.atLeast === F.atLeast && H.mostly === F.mostly && H.count === F.count,
       checks,
       ids: [Bk.B.STAR_BLOCK, Bk.B.RAINBOW_BRICK, Bk.B.GIANT_TROPHY].join(),
@@ -80,10 +80,10 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(d.n === 12 && d.unique === 12 && d.kinds.map === 5 && d.kinds.build === 4 && d.kinds.boss === 3, `12 missions, unique ids (${JSON.stringify(d.kinds)})`);
   t.ok(d.builds && d.bosses, 'every build mission has a challenge; every boss mission has a species');
-  t.ok(d.empty === '{"active":null,"done":[],"last":null}', `no save gives an empty state (${d.empty})`);
-  t.ok(d.junk === '{"active":null,"done":["map1"],"last":null}', `junk is dropped (${d.junk})`);
-  t.ok(d.doneActive === '{"active":null,"done":["map1"],"last":null}' && d.goodActive === '{"active":"map2","done":["map1"],"last":"map1"}', 'an active mission that is done is dropped; good saves stay');
-  t.ok(d.next0 === 'map1' && d.nextWrap === 'map1' && d.nextSkip === 'map2' && d.nextNone === null, `next mission: first, wraps round, skips, null at the end (${d.next0}/${d.nextWrap}/${d.nextSkip})`);
+  t.ok(d.empty === '{"active":null,"done":[],"last":null,"next":13,"gen":0,"seed":null,"spec":null}', `no save gives an empty state (${d.empty})`);
+  t.ok(d.junk === '{"active":null,"done":["map1"],"last":null,"next":13,"gen":0,"seed":null,"spec":null}', `junk is dropped (${d.junk})`);
+  t.ok(d.doneActive === '{"active":null,"done":["map1"],"last":null,"next":13,"gen":0,"seed":null,"spec":null}' && d.goodActive === '{"active":"map2","done":["map1"],"last":"map1","next":13,"gen":0,"seed":null,"spec":null}', 'an active mission that is done is dropped; good saves stay');
+  t.ok(d.next0 === 'map1' && d.nextWrap === 'map1' && d.nextSkip === 'map2' && d.nextNone === 'gen:13', `next mission: first, wraps round, skips, the maker after the 12 (${d.next0}/${d.nextWrap}/${d.nextSkip})`);
   t.ok(d.same, 'hometypes re-exports the same feature helpers');
   const c = d.checks;
   t.ok(c.reach.done && c.reach.have === 6 && !c.reach2.done && c.reach2.have === 6 && c.reach2.need === 9, 'reach() reads report.stats');
@@ -311,7 +311,7 @@ export default async function ({ browser, base, t }) {
     const wrap = M.nextMission({ done: all, last: 'map5' })?.id;
     return { afterBridge, given, wrap, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).missions.last };
   });
-  t.ok(sw3.afterBridge === 'map3' && sw3.given === 'map3' && sw3.wrap === 'giant1', `after the bridge comes map 3, and the giant comes back later (${sw3.afterBridge}/${sw3.wrap})`);
+  t.ok(sw3.afterBridge === 'map3' && sw3.given === 'map3' && sw3.wrap === 'gen:13', `after the bridge comes map 3, and with only a giant left the maker's mission comes first (T38c) (${sw3.afterBridge}/${sw3.wrap})`);
   t.ok(sw3.saved === 'map3', 'the "last" mission is saved');
   await page.evaluate(() => window.pokecraft.closeMissions());
 
@@ -358,11 +358,11 @@ export default async function ({ browser, base, t }) {
     return { pg, st };
   };
   let r = await mk(s => { s.missions = { active: 'map2', done: ['map1', 'junk'], last: 'map1' }; });
-  t.ok(r.st.s === '{"active":"map2","done":["map1"],"last":"map1"}', `a saved state loads and drops junk (${r.st.s})`);
+  t.ok(r.st.s === '{"active":"map2","done":["map1"],"last":"map1","next":13,"gen":0,"seed":null,"spec":null}', `a saved state loads and drops junk (${r.st.s})`);
   t.ok(!r.pg.errors.length, 'no errors loading it');
   await r.pg.context().close();
   r = await mk(s => { delete s.missions; });
-  t.ok(r.st.s === '{"active":null,"done":[],"last":null}', 'an old save without missions starts empty');
+  t.ok(r.st.s === '{"active":null,"done":[],"last":null,"next":13,"gen":0,"seed":null,"spec":null}', 'an old save without missions starts empty');
   t.ok(!r.pg.errors.length, `no errors loading an old save ${r.pg.errors.join('; ')}`);
 
   // 8. Not the Champion.
@@ -384,6 +384,283 @@ export default async function ({ browser, base, t }) {
     return { toasts: toasts.join('|'), panel: !document.getElementById('missions').classList.contains('hidden'), battle: g.inBattle };
   });
   t.ok(/badges/.test(lock.toasts) && !lock.panel && !lock.battle, `the tower still wants all badges ("${lock.toasts}")`);
+  await page.context().close();
+
+  // 10. T38c: missions that never end (the maker, the save, the new kinds, treasure spots 6+, the realm pause).
+  const OLD12 = ['map1', 'lamptower', 'map2', 'giant1', 'bridge', 'map3', 'rainbow', 'giant2', 'map4', 'startower', 'map5', 'giant3'];
+  const genDump = pg => pg.evaluate(async () => {
+    const G = await import('/src/missiongen.js');
+    const { SPECIES, SPAWNS } = await import('/src/species.js');
+    const { GYMS } = await import('/src/gyms.js');
+    const { BOSSES } = await import('/src/coopboss.js');
+    const { BUILD_TEMPLATES, makeBuild } = await import('/src/buildcheck.js');
+    const { checkAll } = await import('/src/features.js');
+    const lists = {};
+    for (const seed of [22, 4242]) { lists[seed] = []; for (let n = 13; n < 13 + 6 * 20; n++) lists[seed].push(G.makeMission(n, seed)); }
+    const pools = { catchOk: true, rematchOk: true, buildOk: true, bossOk: true, cleanOk: true, bad: [] };
+    for (const type of G.CATCH_TYPES) {
+      const ids = new Set();
+      for (const list of Object.values(SPAWNS)) for (const [id, , cond] of list) if (SPECIES[id]?.type === type && (cond == null || cond === 'day' || cond === 'night')) ids.add(id);
+      if (ids.size < 2) { pools.catchOk = false; pools.bad.push(type); }
+    }
+    for (const [id, name] of Object.entries(G.REMATCH_GYMS)) {
+      const d = GYMS.find(g => g.id === id);
+      if (!d || d.night || d.place || d.realm || d.name !== name) { pools.rematchOk = false; pools.bad.push(id); }
+    }
+    for (const t of Object.keys(BUILD_TEMPLATES)) for (let round = 1; round <= 12; round += 3) {
+      let k = 0; const rand = () => ((k += 0.3173) % 1);
+      const spec = { t, ...BUILD_TEMPLATES[t].pick(rand, round) };
+      const b = makeBuild(spec), r = checkAll(b.features, { ok: true, counts: {}, stats: {} });
+      if (!BUILD_TEMPLATES[t].ok(spec) || typeof b.text !== 'string' || !b.example.length || r.need !== b.features.length) { pools.buildOk = false; pools.bad.push(t); }
+    }
+    for (const [id, [species, name]] of Object.entries(G.GIANT_INFO)) if (BOSSES[id]?.species !== species || name !== `Giant ${SPECIES[species].name}`) pools.bossOk = false;
+    for (const l of Object.values(lists)) for (const m of l) if (JSON.stringify(G.cleanSpec(JSON.parse(JSON.stringify(m)), m.n)) !== JSON.stringify(m)) pools.cleanOk = false;
+    return { lists, pools };
+  });
+  let pg1 = await openGame(browser, base);
+  const g1 = await genDump(pg1);
+  const ld = await pg1.evaluate(async () => {
+    const M = await import('/src/missions.js'), G = await import('/src/missiongen.js');
+    const spec = G.makeMission(15, 22);
+    const good = M.loadMissions({ active: 'gen:15', done: ['map1'], last: 'map1', next: 15, gen: 2, seed: 22, spec });
+    return {
+      good: JSON.stringify(good) === JSON.stringify({ active: 'gen:15', done: ['map1'], last: 'map1', next: 15, gen: 2, seed: 22, spec }),
+      junk: JSON.stringify(M.loadMissions({ active: 'map1', done: [], last: null, next: -3, gen: 'x', seed: 'q', spec: { kind: 'zzz' } })),
+      badSpec: M.loadMissions({ active: 'gen:15', next: 15, seed: 22, spec: { id: 'gen:15', n: 15, kind: 'zzz', name: 'x' } }).spec?.id,
+      noSeed: M.loadMissions({ active: 'gen:15', next: 15, spec: { kind: 'zzz' } }).active,
+      wrongN: M.loadMissions({ active: 'gen:7', next: 13, seed: 22 }).active,
+      lastGen: M.loadMissions({ last: 'gen:14', next: 15 }).last,
+      lastFuture: M.loadMissions({ last: 'gen:40', next: 15 }).last,
+      of: M.missionOf({ active: null, seed: 22, spec: null }, 'gen:15')?.id,
+      ofNoSeed: M.missionOf({ active: null, seed: null, spec: null }, 'gen:15'),
+    };
+  });
+  await pg1.context().close();
+  const pg2 = await openGame(browser, base);
+  const g2 = await genDump(pg2);
+  await pg2.context().close();
+  t.ok(JSON.stringify(g1.lists) === JSON.stringify(g2.lists), 'the mission maker gives the same 120 missions for a seed on a second, fresh page');
+  t.ok(JSON.stringify(g1.lists[22]) !== JSON.stringify(g1.lists[4242]), 'two seeds give different missions');
+  for (const seed of [22, 4242]) {
+    const l = g1.lists[seed];
+    let rounds = true, giants = true, order = true;
+    const ks = new Set();
+    for (let r = 1; r <= 20; r++) {
+      const round = l.slice((r - 1) * 6, r * 6), kinds = round.map(m => m.kind);
+      const first = kinds.slice(0, 5).sort().join(), want = (r % 2 === 0 ? ['build', 'catch', 'map', 'map', 'rematch'] : ['build', 'build', 'catch', 'map', 'map']).join();
+      if (first !== want) rounds = false;
+      if (kinds[5] !== 'boss' || round[5].boss !== ['giant1', 'giant2', 'giant3'][(r - 1) % 3] || round[5].grow !== r) giants = false;
+      if (round.some((m, i) => m.round !== r || m.pos !== i + 1 || m.n !== 12 + (r - 1) * 6 + i + 1)) order = false;
+      for (const m of round) if (m.kind === 'map') ks.add(m.k);
+    }
+    t.ok(rounds && order, `seed ${seed}: every round is map x2, build, catch, rematch or build, then the giant`);
+    t.ok(giants, `seed ${seed}: the giants cycle giant1-3 and grow by one each round`);
+    t.ok(ks.size === 24 && Math.min(...ks) === 5 && Math.max(...ks) === 28, `seed ${seed}: the maps use treasure spots 5..28 (${ks.size} different)`);
+    const types = l.filter(m => m.kind === 'catch').map(m => m.type);
+    t.ok(types.every((x, i) => i === 0 || x !== types[i - 1]), `seed ${seed}: no catch type twice in a row`);
+    const builds = l.filter(m => m.kind === 'build').map(m => m.build.t);
+    t.ok(builds.length > 25 && new Set(builds).size >= 4, `seed ${seed}: builds use several templates (${[...new Set(builds)].join()})`);
+  }
+  t.ok(g1.pools.catchOk && g1.pools.rematchOk && g1.pools.buildOk && g1.pools.bossOk && g1.pools.cleanOk, `the pools are valid: catch types live in the main world, rematch gyms are open all day, builds are checkable (${g1.pools.bad.join()})`);
+  t.ok(ld.good && ld.junk === '{"active":"map1","done":[],"last":null,"next":13,"gen":0,"seed":null,"spec":null}', 'loadMissions keeps next / gen / seed / spec and drops junk');
+  t.ok(ld.badSpec === 'gen:15' && ld.noSeed === null && ld.wrongN === null, `a bad spec is made again from the seed; no seed or the wrong number drops the active one (${ld.badSpec}/${ld.noSeed}/${ld.wrongN})`);
+  t.ok(ld.lastGen === 'gen:14' && ld.lastFuture === null && ld.of === 'gen:15' && ld.ofNoSeed === null, 'missionOf and a generated "last" load as expected');
+
+  // The old save at mission 12 goes on with mission 13, on this device and after a reload.
+  const withMissions = missions => ({ ...base1, missions });
+  let og = await openGame(browser, base, { setup: seedSave(withMissions({ active: 'giant3', done: OLD12.slice(0, 11), last: 'giant3' })) });
+  await continueGame(og);
+  await champ(og);
+  await pause(og);
+  await og.evaluate(() => window.pokecraft.openMissions('view'));
+  await waitFor(og, () => !document.getElementById('missions').classList.contains('hidden'));
+  t.ok(await og.evaluate(() => /Mission 12/.test(document.getElementById('missions-body').innerText) && /11 done/.test(document.getElementById('missions-body').innerText)), 'an old save with 11 done and the third giant shows "Mission 12 / 11 done"');
+  const c1 = await og.evaluate(async () => {
+    const g = window.pokecraft, M = await import('/src/missions.js');
+    g.missions.complete(g.missions.active);
+    const toasts = document.getElementById('toast').innerText;
+    const n = g.missions.next();
+    const out = { next: n.id, number: g.missions.number, done: g.missionState.done.length, gen: g.missionState.gen, toasts, seedBefore: g.missionState.seed };
+    g.missions.give();
+    const s = g.missionState;
+    out.active = s.active; out.seed = s.seed; out.worldSeed = g.world.seed; out.spec = s.spec && s.spec.id; out.nextNo = s.next; out.kind = g.missions.active.kind;
+    out.panel = g.missions.active && M.missionOf(s, s.active).id;
+    return out;
+  });
+  t.ok(c1.next === 'gen:13' && c1.number === 13 && c1.done === 12 && c1.gen === 0 && c1.seedBefore === null, `after the 12th mission the maker offers gen:13 (${JSON.stringify([c1.next, c1.number])})`);
+  t.ok(/all of Champion Solenne's missions/.test(c1.toasts), 'the 12th mission says she has more');
+  t.ok(c1.active === 'gen:13' && c1.seed === c1.worldSeed && c1.spec === 'gen:13' && c1.panel === 'gen:13', 'give() stores the own world seed and the spec');
+  const saved13 = await og.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')));
+  const spec13 = await og.evaluate(() => JSON.stringify(window.pokecraft.missionState.spec));
+  await og.context().close();
+  og = await openGame(browser, base, { setup: seedSave(saved13) });
+  await continueGame(og);
+  await champ(og);
+  await pause(og);
+  await og.evaluate(() => window.pokecraft.openMissions('view'));
+  await waitFor(og, () => !document.getElementById('missions').classList.contains('hidden'));
+  const re = await og.evaluate(() => ({ active: window.pokecraft.missionState.active, spec: JSON.stringify(window.pokecraft.missionState.spec), text: document.getElementById('missions-body').innerText }));
+  t.ok(re.active === 'gen:13' && re.spec === spec13 && /Mission 13/.test(re.text) && /Round 1 · mission 1 of 6/.test(re.text), 'after a reload the same generated mission is active ("Mission 13", round line)');
+
+  // Solo unlock, swap past 12, completing.
+  const sol = await og.evaluate(async () => {
+    const g = window.pokecraft, s = g.missionState;
+    const OLD = ['map1', 'lamptower', 'map2', 'giant1', 'bridge', 'map3', 'rainbow', 'giant2', 'map4', 'startower', 'map5', 'giant3'];
+    Object.assign(s, { done: OLD.filter(id => !id.startsWith('giant')), active: null, last: 'map5', next: 13, gen: 0, seed: null, spec: null });
+    g.missions.give();
+    const a = s.active;
+    g.missions.swap();
+    const b = s.active, nb = s.next;
+    g.missions.swap();
+    return { a, b, nb, c: s.active, nc: s.next, done: s.done.length };
+  });
+  t.ok(sol.a === 'gen:13' && sol.b === 'giant1' && sol.nb === 14 && sol.c === 'gen:14' && sol.nc === 14, `a player with only the giants left gets the maker's missions (${JSON.stringify(sol)})`);
+  const past = await og.evaluate(async () => {
+    const g = window.pokecraft, s = g.missionState, G = await import('/src/missiongen.js');
+    const OLD = ['map1', 'lamptower', 'map2', 'giant1', 'bridge', 'map3', 'rainbow', 'giant2', 'map4', 'startower', 'map5', 'giant3'];
+    Object.assign(s, { done: OLD.slice(), active: 'gen:15', last: 'gen:14', next: 15, gen: 2, seed: g.world.seed, spec: G.makeMission(15, g.world.seed) });
+    g.missions.swap();
+    const a = { active: s.active, done: s.done.length, gen: s.gen, next: s.next, spec: s.spec?.id };
+    g.missions.complete(g.missions.active);
+    return { a, gen: s.gen, next: s.next, active: s.active, number: g.missions.number };
+  });
+  t.ok(past.a.active === 'gen:16' && past.a.done === 12 && past.a.gen === 2 && past.a.next === 16 && past.a.spec === 'gen:16', `swap past 12 gives the next number (${JSON.stringify(past.a)})`);
+  t.ok(past.gen === 3 && past.next === 17 && past.active === null && past.number === 16, `completing a generated mission counts it (${JSON.stringify(past)})`);
+
+  // New kinds: catch and rematch, and the realm pause.
+  const kinds = await og.evaluate(async () => {
+    const g = window.pokecraft, s = g.missionState, G = await import('/src/missiongen.js');
+    const { SPECIES } = await import('/src/species.js');
+    const { GYMS } = await import('/src/gyms.js');
+    const seed = g.world.seed;
+    const find = (kind, ok = () => true) => { for (let n = 13; n < 400; n++) { const m = G.makeMission(n, seed); if (m.kind === kind && ok(m)) return m; } };
+    const set = m => { Object.assign(s, { done: ['map1'], gen: 0, active: m.id, last: m.id, next: m.n, seed, spec: m }); g.missions.hint = g.missions.report = g.missions.result = null; };
+    const out = {};
+    const c = find('catch');
+    set(c);
+    const other = Object.keys(SPECIES).find(id => SPECIES[id].type !== c.type && !SPECIES[id].legendary);
+    const mine = Object.keys(SPECIES).find(id => SPECIES[id].type === c.type);
+    g.missions.caught({ species: other });
+    out.wrongStill = s.active === c.id;
+    const before = { cubes: g.cubes, stars: g.blockCounts[75] || 0 };
+    g.missions.caught({ species: mine });
+    out.catchDone = s.active === null && s.gen === 1;
+    out.catchReward = [g.cubes - before.cubes, (g.blockCounts[75] || 0) - before.stars];
+    out.catchChip = c.name;
+    const rm = find('rematch');
+    set(rm);
+    const otherGym = GYMS.find(x => x.id !== rm.gym && x.id !== 'cozy');
+    g.missions.rematchWon(otherGym.id);
+    out.rmWrongStill = s.active === rm.id;
+    const def = GYMS.find(x => x.id === rm.gym);
+    const cubes = g.cubes, bricks = g.blockCounts[76] || 0;
+    g.rematch.won({ name: 'Leader', gym: { def } }, {});
+    out.rmDone = s.active === null;
+    out.rmReward = [g.cubes - cubes, (g.blockCounts[76] || 0) - bricks];
+    // the realm pause: a map and a build stay put in a realm
+    const mp = find('map'), bd = find('build');
+    const realm = {};
+    for (const m of [mp, bd]) {
+      set(m);
+      const was = g.world.realm;
+      g.world.realm = { id: 'dream' };
+      g.missions.update(0.3);
+      const chip = document.getElementById('mission-chip').textContent;
+      const res = g.missions.check();
+      g.world.realm = was;
+      realm[m.kind] = { chip, res, active: s.active === m.id, hint: g.missions.hint };
+    }
+    out.realm = realm;
+    return out;
+  });
+  t.ok(kinds.wrongStill && kinds.catchDone, 'a catch mission finishes only when a creature of its type is caught');
+  t.ok(kinds.catchReward[0] === 8 && kinds.catchReward[1] === 2, `a catch mission pays 8 cubes and 2 Star Blocks (${kinds.catchReward})`);
+  t.ok(kinds.rmWrongStill && kinds.rmDone && kinds.rmReward[1] === 2 && kinds.rmReward[0] >= 5, `a rematch mission finishes only when its own gym is beaten again (${kinds.rmReward})`);
+  t.ok(['map', 'build'].every(k => kinds.realm[k].active && /back home first/.test(kinds.realm[k].chip) && kinds.realm[k].hint === null && kinds.realm[k].res === null), `in a realm a map and a build wait: "${kinds.realm.map.chip}" / "${kinds.realm.build.chip}"`);
+
+  // Treasure spots 6+.
+  const more = await og.evaluate(async () => {
+    const { World, WATER_LEVEL, MID_X, MID_Z } = await import('/src/world.js');
+    const { treasureSpots, moreTreasureSpots, MORE_RULES, MORE_W, MORE_D } = await import('/src/treasuremap.js');
+    const out = [];
+    const box = (x, z, b) => Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1, 0);
+    for (const seed of [22, 4242]) {
+      const w = new World(seed, null, null); w.generate();
+      const old = JSON.stringify(treasureSpots(w).map(p => [p.x, p.z]));
+      const t0 = performance.now();
+      const m = moreTreasureSpots(w);
+      const ms = performance.now() - t0;
+      const boxes = [...w.gyms, w.tower].flatMap(g => g.protect || []);
+      const r = { seed, n: m.length, ms: Math.round(ms), old, same: old === JSON.stringify(treasureSpots(w).map(p => [p.x, p.z])), land: true, free: true, slots: true, olds: true, spread: true, inside: true, relaxed: m.filter(p => p.relaxed).length, ks: m.map(p => p.k).join() };
+      const olds = treasureSpots(w);
+      m.forEach((p, i) => {
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (w.ground[(p.x + a) + (p.z + b) * w.W] <= WATER_LEVEL) r.land = false;
+        if (boxes.some(b => box(p.x, p.z, b) <= (p.relaxed ? 8 : MORE_RULES.gap))) r.free = false;
+        if (w.gymSlots().some(sl => box(p.x, p.z, sl.box) <= MORE_RULES.slot)) r.slots = false;
+        if (olds.some(o => Math.max(Math.abs(p.x - o.x), Math.abs(p.z - o.z)) < (p.relaxed ? 12 : MORE_RULES.old))) r.olds = false;
+        for (let j = 0; j < i; j++) if (Math.max(Math.abs(p.x - m[j].x), Math.abs(p.z - m[j].z)) < (p.relaxed ? 14 : MORE_RULES.spread)) r.spread = false;
+        if (p.x < 0 || p.z < 0 || p.x >= MORE_W || p.z >= MORE_D || Math.max(Math.abs(p.x - MID_X), Math.abs(p.z - MID_Z)) < MORE_RULES.start) r.inside = false;
+      });
+      const again = JSON.stringify(m.map(p => [p.x, p.z]));
+      w.moreSpots = null;
+      r.det = again === JSON.stringify(moreTreasureSpots(w).map(p => [p.x, p.z]));
+      let threw = false;
+      w.realm = { id: 'dream' }; w.moreSpots = null;
+      try { moreTreasureSpots(w); } catch { threw = true; }
+      r.realmThrows = threw;
+      out.push(r);
+    }
+    return out;
+  });
+  for (const r of more) {
+    t.ok(r.n === 24 && r.ks === Array.from({ length: 24 }, (_, i) => 5 + i).join(), `seed ${r.seed}: 24 more spots, k 5..28 (${r.n})`);
+    t.ok(r.same && r.land && r.free && r.slots && r.olds && r.spread && r.inside && r.det, `seed ${r.seed}: the old five did not move; the new ones are on dry land, clear of every protected box and gym slot, away from the old ones and each other, and the same again (${r.relaxed} relaxed)`);
+    t.ok(r.realmThrows, `seed ${r.seed}: no extra spots inside a realm`);
+    console.log(`  timing: first moreTreasureSpots call for seed ${r.seed}: ${r.ms} ms (software rendering)`);
+    t.ok(r.ms < 400, `seed ${r.seed}: the first moreTreasureSpots call is fast (${r.ms} ms)`);
+  }
+  // Play one: dig at spot k = 5.
+  const played = await og.evaluate(async () => {
+    const g = window.pokecraft, s = g.missionState, G = await import('/src/missiongen.js');
+    const { spotOf } = await import('/src/treasuremap.js');
+    const seed = g.world.seed;
+    let m; for (let n = 13; n < 400 && !m; n++) { const x = G.makeMission(n, seed); if (x.kind === 'map' && x.k === 5) m = x; }
+    Object.assign(s, { done: ['map1'], active: m.id, last: m.id, next: m.n, seed, spec: m });
+    const spot = spotOf(g.world, 5), stars = g.blockCounts[75] || 0, cubes = g.cubes;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const dy of [0, -1]) g.world.set(spot.x + a, spot.g + dy, spot.z + b, 0);
+    g.player.pos.set(spot.x + 0.5, spot.g - 1, spot.z + 0.5); g.player.vel.set(0, 0, 0); g.player.onGround = true;
+    g.missions.update(0.3);
+    return { id: m.id, active: s.active, gen: s.gen, stars: (g.blockCounts[75] || 0) - stars, cubes: g.cubes - cubes };
+  });
+  t.ok(played.active === null && played.stars === 4 && played.cubes === 5 && played.gen >= 1, `digging at spot 5 finishes a generated map: 4 Star Blocks, 5 cubes (${JSON.stringify(played)})`);
+  t.ok(!og.errors.length, `no page errors ${og.errors.join('; ')}`);
+  await og.context().close();
+
+  // The panel on an iPad: counter, round line, catch card.
+  page = await openGame(browser, base, { contextOptions: { ...devices['iPad (gen 7) landscape'], viewport: { width: 1024, height: 768 } } });
+  await page.tap('text=New Game');
+  await page.tap('.starter >> nth=0');
+  await page.waitForTimeout(1500);
+  await champ(page);
+  await page.evaluate(async () => {
+    const g = window.pokecraft, s = g.missionState, G = await import('/src/missiongen.js');
+    const seed = g.world.seed;
+    let m; for (let n = 13; n < 400 && !m; n++) { const x = G.makeMission(n, seed); if (x.kind === 'catch') m = x; }
+    Object.assign(s, { done: ['map1', 'lamptower'], gen: 5, active: m.id, last: m.id, next: m.n, seed, spec: m });
+    g.missions.update(0.3); document.exitPointerLock();
+  });
+  await waitFor(page, () => !document.getElementById('mission-chip').classList.contains('hidden'));
+  const chipBox2 = await page.evaluate(() => { const r = document.getElementById('mission-chip').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await page.touchscreen.tap(chipBox2[0], chipBox2[1]);
+  await waitFor(page, () => !document.getElementById('missions').classList.contains('hidden'));
+  await page.waitForTimeout(400);
+  const ipad = await page.evaluate(() => {
+    const p = document.querySelector('#missions .panel');
+    return { text: document.getElementById('missions-body').innerText, fits: p.scrollWidth <= p.clientWidth + 1, small: [...document.querySelectorAll('#missions button')].filter(b => b.getBoundingClientRect().height < 48).map(b => b.textContent) };
+  });
+  t.ok(/Mission 8/.test(ipad.text) && /7 done/.test(ipad.text) && /Round 1 · mission \d of 6/.test(ipad.text) && /Look in:/.test(ipad.text) && /Catch/.test(ipad.text), `the panel shows the counter, the round line and the catch card ("${ipad.text.replace(/\n+/g, ' | ').slice(0, 200)}")`);
+  t.ok(ipad.fits && !ipad.small.length, `the new panel fits the iPad and its buttons are big enough (${ipad.small.join()})`);
+  await page.screenshot({ path: path.join(SHOTS, 't38c-mission-panel.png'), timeout: 120000 });
   await page.context().close();
 
   // 9. iPad.

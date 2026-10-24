@@ -2,16 +2,20 @@
 // Contract: missionUi.open(mode) mode = 'desk' | 'view' (called by ui.openPanel('missions') AFTER #missions is shown),
 // close() (ui.closePanel always calls it), refresh(), setChip(). missionUi.want = the mode game.openMissions(mode) asked for.
 import { BLOCKS, drawBlockIcon } from './blocks.js';
-import { treasureSpots, clueOf, drawMap } from './treasuremap.js';
-import { BUILDS } from './buildcheck.js';
-import { MISSIONS, missionById, nextMission } from './missions.js';
+import { spotOf, clueOf, drawMap } from './treasuremap.js';
+import { buildOf } from './buildcheck.js';
+import { MISSIONS } from './missions.js';
+import { spotIndex, aType, ROUND_LEN, isGenId } from './missiongen.js'; // T38c
+import { GYMS } from './gyms.js';
+import { SPECIES } from './species.js';
+import { spawnInfo, typeLink } from './book.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
 const TILE = 16; // pixels per atlas tile (blocks.js)
 const COOP_RANGE = 16;
-const KIND_LINE = { map: 'Treasure map', build: 'Build challenge', boss: 'Giant battle (2 players)' };
-const KIND_ICON = { map: '🗺', build: '🏗', boss: '👥' };
+const KIND_LINE = { map: 'Treasure map', build: 'Build challenge', boss: 'Giant battle (2 players)', catch: 'Catch a creature', rematch: 'Gym rematch' };
+const KIND_ICON = { map: '🗺', build: '🏗', boss: '👥', catch: '✨', rematch: '🏅' };
 
 export function createMissionUi(game, { atlas }) {
   const body = () => document.getElementById('missions-body');
@@ -42,6 +46,9 @@ export function createMissionUi(game, { atlas }) {
   document.getElementById('topright')?.append(chip);
   let chipKey = '';
 
+  const gymOf = def => GYMS.find(g => g.id === def.gym);
+  const leaderOf = def => `Leader ${gymOf(def)?.leader?.name || ''}`.trim();
+
   function nearbyFriend() {
     if (!game.mp?.active) return null;
     for (const a of game.mp.others.values()) if (a.pos.distanceTo(game.player.pos) <= COOP_RANGE) return a;
@@ -52,7 +59,10 @@ export function createMissionUi(game, { atlas }) {
     const ms = game.missions;
     if (!game.champion || !game.missionState) return null;
     const def = ms.active;
-    if (!def) return nextMission(game.missionState) ? { text: '⭐ New mission at the tower!' } : null;
+    if (!def) return { text: `⭐ Mission ${ms.number} at the tower!` }; // T38c: there is always a next one
+    if ((def.kind === 'map' || def.kind === 'build') && game.world.realm) return { text: `${def.name} · back home first`, icon: KIND_ICON[def.kind] }; // T38c
+    if (def.kind === 'catch') return { text: `Catch ${aType(def.type)} creature`, icon: '✨' }; // T38c
+    if (def.kind === 'rematch') return { text: `${def.name} · beat ${leaderOf(def)}`, icon: '🏅' }; // T38c
     if (def.kind === 'map') {
       const h = ms.hint;
       return { text: h ? `${def.name} · ${h.word}` : def.name, icon: '🗺', pulse: h?.period };
@@ -83,7 +93,8 @@ export function createMissionUi(game, { atlas }) {
   const btn = (text, onclick, cls = '') => el('button', { class: `mbtn ${cls}`.trim(), onclick }, text);
 
   function mapCard(def) {
-    const spot = treasureSpots(game.world)[def.n];
+    if (game.world.realm) return el('p', { class: 'warn' }, 'The treasure is back home in our world. Wake up first!'); // T38c
+    const spot = spotOf(game.world, spotIndex(def));
     if (!spot) return el('p', {}, 'This map is blank. Try a different mission!');
     const canvas = el('canvas', { class: 'map', width: 164, height: 164 });
     drawMap(canvas, game.world, spot, colorOf);
@@ -108,10 +119,11 @@ export function createMissionUi(game, { atlas }) {
   }
 
   function buildCard(def) {
-    const b = BUILDS[def.build], ms = game.missions;
+    const b = buildOf(def), ms = game.missions;
     const lines = (ms.result?.features || b.features.map(f => ({ ...f, done: false, have: 0, need: f.check({}).need }))).map(f =>
       el('li', { class: f.done ? 'ok' : '' }, `${f.done ? '✓' : '✗'} ${f.name}`, f.need > 1 ? ` (${f.have}/${f.need})` : ''));
-    const stand = ms.report && !ms.report.ok ? el('p', { class: 'warn' }, 'Stand right next to your build, then check again.') : null;
+    const away = game.world.realm ? el('p', { class: 'warn' }, 'Build it back home in our world!') : null; // T38c
+    const stand = away || (ms.report && !ms.report.ok ? el('p', { class: 'warn' }, 'Stand right next to your build, then check again.') : null);
     const tip = b.tip && (game.blockCounts[75] || 0) < 3 ? el('p', { class: 'tip' }, b.tip) : null;
     return el('div', { class: 'mission-build' }, examplePic(b),
       el('div', { class: 'clue' }, el('p', {}, b.text), el('ul', { class: 'checks' }, lines), stand,
@@ -131,14 +143,42 @@ export function createMissionUi(game, { atlas }) {
     const helpText = near.length ? null : all.length ? `Walk closer to ${all[0].name} first.` : 'Play together with a friend first: Pause -> Play together.';
     return el('div', { class: 'mission-boss' },
       el('img', { class: 'boss-pic', src: portrait(def.species, 160, 140), alt: def.name }),
-      el('div', { class: 'clue' }, el('p', {}, `Giant ${def.name.replace(/^Giant /, '')}`), el('p', {}, 'Two against one! Ask a friend in Play together to help.'),
+      el('div', { class: 'clue' }, el('p', {}, `Giant ${def.name.replace(/^Giant /, '')}`), el('p', {}, 'Two against one! Ask a friend in Play together to help.'), def.grow > 0 ? el('p', {}, 'This giant grows bigger every round!') : null,
         helpText && el('p', { class: 'warn' }, helpText), el('div', { class: 'mbtns' }, asks)));
   }
 
+  // T38c: where a type lives in the main world (at most 3 biome names, most species first).
+  function livesIn(type) {
+    const tally = new Map();
+    for (const [id, sp] of Object.entries(SPECIES)) {
+      if (sp.type !== type) continue;
+      for (const r of spawnInfo(id)) if (r.biome && (!r.when || r.when === 'day' || r.when === 'night')) tally.set(r.name, (tally.get(r.name) || 0) + 1);
+    }
+    return [...tally].sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0].toLowerCase());
+  }
+
+  function catchCard(def) {
+    const places = livesIn(def.type);
+    const go = t => { game.ui.closePanel(); game.book.open({ type: t }); };
+    return el('div', { class: 'mission-catch' },
+      el('div', { class: 'clue' }, el('p', {}, `Find ${aType(def.type)} creature and catch it!`),
+        places.length ? el('p', {}, `Look in: ${places.join(', ')}.`) : null,
+        el('p', {}, 'See them in the Creature Book: ', typeLink(def.type, go))));
+  }
+
+  function rematchCard(def) {
+    const g = gymOf(def);
+    return el('div', { class: 'mission-catch' },
+      el('div', { class: 'clue' }, el('p', {}, `Go to the ${g?.name || 'gym'} and beat ${g?.leader?.name || 'the leader'} again!`)));
+  }
+
   function card(def, { start = false } = {}) {
+    const gen = isGenId(def.id);
+    const inner = def.kind === 'map' ? mapCard(def) : def.kind === 'build' ? buildCard(def) : def.kind === 'catch' ? catchCard(def) : def.kind === 'rematch' ? rematchCard(def) : bossCard(def);
     return el('div', { class: 'mission-card' },
       el('div', { class: 'mc-head' }, el('span', { class: 'mc-big' }, KIND_ICON[def.kind]), el('div', {}, el('b', {}, def.name), el('div', { class: 'mc-kind' }, KIND_LINE[def.kind]))),
-      def.kind === 'map' ? mapCard(def) : def.kind === 'build' ? buildCard(def) : bossCard(def),
+      inner,
+      gen ? el('p', { class: 'mc-round' }, `Round ${def.round} · mission ${def.pos} of ${ROUND_LEN}`) : null,
       start ? btn('Start this mission!', () => game.missions.give(), 'primary') : null);
   }
 
@@ -146,24 +186,25 @@ export function createMissionUi(game, { atlas }) {
     const root = body();
     if (!root || mode == null) return;
     const ms = game.missions, s = game.missionState;
-    const kids = [el('h2', {}, 'Champion missions'), el('p', { class: 'mc-count' }, `${ms.doneCount}/${MISSIONS.length} done`)];
+    const kids = [el('h2', {}, 'Champion missions'),
+      el('p', { class: 'mc-count' }, el('b', { class: 'mc-num' }, `Mission ${ms.number}`), `  ${ms.doneCount} done`)];
     if (!game.champion) {
       kids.push(el('p', { class: 'mc-note' }, 'Become the Champion to get missions!'));
     } else {
       const active = ms.active;
       if (active) {
         kids.push(card(active));
-        if (nextMission(s, active)) kids.push(btn('Do a different one', () => { ms.swap(); }));
+        if (ms.canSwap()) kids.push(btn('Do a different one', () => { ms.swap(); }));
       } else if (mode === 'desk') {
-        const n = nextMission(s);
-        kids.push(n ? card(n, { start: true }) : el('p', { class: 'mc-note' }, 'You finished every mission!'));
+        const n = ms.next();
+        kids.push(n ? card(n, { start: true }) : el('p', { class: 'mc-note' }, 'Come back soon for a new mission!'));
       } else {
-        kids.push(el('p', { class: 'mc-note' }, nextMission(s) ? 'Talk to Champion Solenne in the tower for your next mission.' : 'You finished every mission!'));
+        kids.push(el('p', { class: 'mc-note' }, `Talk to Champion Solenne in the tower for mission ${ms.number}.`));
       }
       if (mode === 'desk') kids.push(btn('Battle Champion Solenne', () => { game.closeMissions?.(); ms.battle(); }));
-      kids.push(el('div', { class: 'mission-done' }, s.done.length
-        ? MISSIONS.filter(m => s.done.includes(m.id)).map(m => el('span', { class: 'chip done' }, `✓ ${m.name}`))
-        : el('span', { class: 'mc-note' }, 'No missions done yet.')));
+      const chips = MISSIONS.filter(m => s.done.includes(m.id)).map(m => el('span', { class: 'chip done' }, `✓ ${m.name}`));
+      if (s.gen > 0) chips.push(el('span', { class: 'chip done' }, `+ ${s.gen} more`));
+      kids.push(el('div', { class: 'mission-done' }, chips.length ? chips : el('span', { class: 'mc-note' }, 'No missions done yet.')));
     }
     root.replaceChildren(...kids);
   }

@@ -975,6 +975,7 @@ let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
 game.missions = createMissions(game, { save }); // T29
+game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?? game.world.seed; // T38c: the maker's seed is your own main world's, never a visited world's or a realm's
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31

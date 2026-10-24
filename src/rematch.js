@@ -126,6 +126,7 @@ export function createRematch(game, { startBattle }) {
       toast(`${npc.name}: Wow, you beat me again!`);
       const capped = rematchTeam(npc.gym.def, n).every(t => t[1] >= REMATCH.cap);
       toast(`Rematch win ${n}! +${c} Capture Cubes. ${capped ? "My team can't get any stronger. You are the best!" : 'Next time my team will be even stronger!'}`);
+      game.missions?.rematchWon?.(id); // T38c
     },
     lost(npc) { toast(`${npc?.name || 'Leader'}: Good battle! Train a little and try again.`); },
     update() {
