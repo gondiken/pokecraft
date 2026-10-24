@@ -388,17 +388,23 @@ export const GYMS = [
     welcome: 'Welcome to the Shadow Dojo! Stay out of the lantern light. Hide, walk softly and sneak up from behind!',
     leader: { name: 'Leader Kage', look: 'ninja', colors: { shirt: 0x2a2440, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xe8b98a } },
     trainers: [
-      { name: 'Watcher Suzu', look: 'ninja', colors: { shirt: 0x3a3458, pants: 0x1a1828, hair: 0x2a1a10, skin: 0xf2c79a },
-        team: [['hushcoon', 54], ['peekaw', 54], ['bambooze', 54]], intro: ['Spotted you! Now show me your team.'],
+      // The masters wait on the pagoda roof beside Leader Kage, looking out at the gate (the stairs come up behind them:
+      // a sneak attack from behind lets your creature move first). They used to walk with lanterns; the guards do that now.
+      { name: 'Master Suzu', look: 'ninja', colors: { shirt: 0x3a3458, pants: 0x1a1828, hair: 0x2a1a10, skin: 0xf2c79a },
+        team: [['hushcoon', 54], ['peekaw', 54], ['bambooze', 54]], intro: ['You got past the guards! Now show me your team.'],
         sneak: ['Eek! Where did you come from?', 'A sneak attack! You move first!'] },
-      { name: 'Watcher Ren', look: 'ninja', colors: { shirt: 0x4a2a3a, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xc68a5a },
-        team: [['flickit', 55], ['shadecoon', 55], ['bambooze', 55]], intro: ['Shh! Only quiet feet reach the pagoda.'],
+      { name: 'Master Ren', look: 'ninja', colors: { shirt: 0x4a2a3a, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xc68a5a },
+        team: [['flickit', 55], ['shadecoon', 55], ['bambooze', 55]], intro: ['Quiet feet brought you up here. Can you beat me too?'],
         sneak: ['Whoa! I did not hear a single squeak!', 'Sneaky! You move first!'] },
     ],
-    // T37b: a guard who walks round the pagoda with a lantern too (no battle; sneak up on him for a surprise).
+    // Guards walk with lanterns and never battle: being seen puffs you back to the last lantern; sneak up on one for a surprise.
     guards: [
       { name: 'Night Guard Hoshi', look: 'ninja', colors: { shirt: 0x2e3a4a, pants: 0x1a1828, hair: 0x3a2a1a, skin: 0xd9a066 },
         line: 'I keep watch round the pagoda. Can you get past my lantern?', sneak: 'Eek! You sneaked up on me! Real ninja feet!' },
+      { name: 'Night Guard Aki', look: 'ninja', colors: { shirt: 0x34304e, pants: 0x1a1828, hair: 0x2a1a10, skin: 0xf2c79a },
+        line: 'I watch the front garden. Stay out of my light!', sneak: 'Whoa! I did not see you coming!' },
+      { name: 'Night Guard Tora', look: 'ninja', colors: { shirt: 0x4a2a3a, pants: 0x1a1828, hair: 0x1a1a1a, skin: 0xc68a5a },
+        line: 'I walk round the hall. Only quiet feet get past me.', sneak: 'Not a single squeak! You are a real ninja!' },
     ],
     leaderTeam: [['bambooze', 55], ['ravenshade', 55], ['shadecoon', 56], ['whirlwhisk', 56]],
     intro: ['You reached the roof without a sound!', 'Now show me how fast your team can be.'],

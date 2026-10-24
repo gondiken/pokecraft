@@ -1,6 +1,7 @@
 // T37b: the Shadow Dojo (gym 32, slot 8): the building inside its slot box and protected; the sneak.js pieces (watcher paths
-// in closed form, light cones, hiding spots, squeaky boards, lanterns); spotted -> back to the last lantern; a sneak attack
-// from behind makes your creature move first; the leader after both trainers and the badge; an iPad; screenshots
+// in closed form, light cones, hiding spots, squeaky boards, lanterns); spotted -> back to the last lantern (guards never
+// battle); the two masters on the pagoda roof: a sneak attack from behind makes your creature move first; the leader after
+// both masters and the badge; an iPad; screenshots
 // (tests/screenshots/t37-dojo-*.png). The live part is driven with synchronous L.update(dt) calls inside page.evaluate; between
 // them L.playing() is false, so the game's own frames never spot the player.
 import fs from 'node:fs';
@@ -150,7 +151,8 @@ export default async function ({ browser, base, t }) {
         }
       }
       r.watchers = g.watchers.length;
-      r.trainers = g.trainerPositions.length === 2 && g.watchers.filter(x => x.trainer != null).length === 2;
+      r.trainers = g.trainerPositions.length === 2 && g.watchers.every(x => x.trainer == null) && g.watchers.filter(x => x.guard != null).length === 3
+        && g.trainerPositions.every(([px, y, pz]) => { const x = Math.floor(px), z = Math.floor(pz); return y === fy + 13 && !solid(x, y, z) && !solid(x, y + 1, z) && solid(x, y - 1, z); }); // the masters stand on the pagoda roof
       // edits and riders refused
       const [mx, mz] = col(10, 0);
       r.edit = !w.editAllowed(mx, fy, mz, B.AIR) && !w.editAllowed(mx, fy + 1, mz, B.STONE) && w.fenced(mx, fy + 1, mz);
@@ -211,7 +213,7 @@ export default async function ({ browser, base, t }) {
     t.ok(r.lanterns.length === 3 && r.lanterns.every(id => id === 120) && r.stands, `seed ${seed}: three stone lanterns with standable spots (${r.lanterns})`);
     t.ok(r.hideouts === 11 && r.kinds === 'barrel,grass,screen' && !r.hideBad.length, `seed ${seed}: 11 hiding spots (grass, screens, barrels), each open, two high and walled on all sides but one ${r.hideBad}`);
     t.ok(r.squeak > 40 && r.quiet > 80 && r.floorsMatch, `seed ${seed}: ${r.squeak} squeaky board cells and ${r.quiet} quiet tatami cells, matching their blocks`);
-    t.ok(r.watchers === 3 && r.trainers && !r.pathBad.length, `seed ${seed}: 3 watchers (2 trainers, 1 guard) whose paths never go through a block ${r.pathBad.slice(0, 5)}`);
+    t.ok(r.watchers === 3 && r.trainers && !r.pathBad.length, `seed ${seed}: 3 guards walk with lanterns on paths that never go through a block; the 2 masters stand on the pagoda roof ${r.pathBad.slice(0, 5)}`);
     t.ok(r.edit, `seed ${seed}: the dojo cannot be edited and riders are fenced out`);
     t.ok(r.entryStands && r.ground && r.groundOnly, `seed ${seed}: from the gate the ground way (through the pagoda's stairs) reaches the leader`);
     t.ok(r.roof && r.wallStep, `seed ${seed}: the rooftop way (wall, beams, roofs, barrel steps) reaches the leader without the pagoda's stairs`);
@@ -297,11 +299,12 @@ export default async function ({ browser, base, t }) {
     g.player.pos.set(...P(18, 0)); g.player.vel.set(0, 0, 0);
     for (const x of L.watchers) { x.noise = null; x.clock = 0; x.set(x.at(0)); }
     for (let i = 0; i < 90; i++) L.update(1 / 30);
-    const su = L.watchers.find(x => x.id === 'suzu');
+    const su = L.watchers.find(x => x.id === 'aki');
     const at = su.at(su.clock);
     out.closed = Math.abs(su.x - at.x) < 1e-9 && Math.abs(su.clock - 3) < 1e-6;
     out.npc = L.watchers.every(x => x.npc && x.npc.steer && Math.abs(x.npc.pos.x - x.x) < 1e-9 && Math.abs(x.npc.pos.z - x.z) < 1e-9 && x.npc.model.userData.lantern);
     out.names = L.watchers.map(x => x.npc?.name);
+    out.tune = L.watchers.every(x => x.speed === 1.15 && x.range === 6.2);
     L.coneT = 0; L.update(0);
     const want = new Set();
     for (const x of L.watchers) for (const [cx, cz] of x.cone(L.solid)) if (L.lightable.has(`${cx},${cz}`)) want.add(`${cx},${cz}`);
@@ -315,7 +318,7 @@ export default async function ({ browser, base, t }) {
     g.player.pos.set(...P(18, 0)); L.coneT = 0; L.update(0);
     return out;
   });
-  t.ok(C1.closed && C1.npc, `the three watchers (${C1.names}) walk their paths in closed form and carry a lantern`);
+  t.ok(C1.closed && C1.npc && C1.tune, `the three guards (speed 1.15, light 6.2) (${C1.names}) walk their paths in closed form and carry a lantern`);
   t.ok(C1.lit > 20 && C1.lit === C1.want && C1.drawn && C1.noEdits, `their light falls on ${C1.lit} floor cells, drawn live (never an edit)`);
   t.ok(C1.cleared, 'far away the light is taken off and every floor block is back');
 
@@ -333,8 +336,8 @@ export default async function ({ browser, base, t }) {
     p.pos.set(...gym.checkpoints[1].stand); p.vel.set(0, 0, 0);
     L.update(0.016);
     out.passed = L.last === 1 && L.passed.has(1) && w.get(...gym.checkpoints[1].cell) === B.STONE_LANTERN_ON && window.__toasts.some(m => m.startsWith('A stone lantern!'));
-    // Suzu looks one way and stays (a noise far in front of her); stand 4 blocks in front of her
-    const su = L.watchers.find(x => x.id === 'suzu');
+    // Aki looks one way and stays (a noise far in front of her); stand 4 blocks in front of her
+    const su = L.watchers.find(x => x.id === 'aki');
     const look = (x, dx, dz) => { x.heading = Math.atan2(dx, dz); x.noise = { x: x.x + dx * 30, z: x.z + dz * 30, left: 1e9 }; };
     const fwd = x => [Math.sin(x.heading), Math.cos(x.heading)];
     su.clock = 6; su.set(su.at(6)); look(su, gym.side[0], gym.side[1]);
@@ -387,24 +390,28 @@ export default async function ({ browser, base, t }) {
     return out;
   });
   t.ok(C2.passed, 'walking past a stone lantern lights it and says what it is for (once)');
-  t.ok(C2.seenBefore && C2.back && C2.toast && C2.puffs >= 1, `caught in Suzu's light: "${C2.toast}" and a puff of smoke puts you back at the last lantern`);
+  t.ok(C2.seenBefore && C2.back && C2.toast && C2.puffs >= 1, `caught in Aki's light: "${C2.toast}" and a puff of smoke puts you back at the last lantern`);
   t.ok(C2.grace > 2 && C2.graceOk, 'right after the puff nobody can spot you for a moment');
   t.ok(C2.battleOk && C2.askOk, 'nobody spots you during a battle or while a question box is open');
   t.ok(C2.nook && C2.inLight && C2.hidden && C2.hideOk && C2.outSeen, 'in a grass nook in her light you are hidden; one step out and she sees you');
   t.ok(C2.left, 'leaving the dojo resets the lanterns');
 
-  // C3: squeaky boards, with the real player physics: running on them squeaks and turns Ren; walking or tatami does not.
+  // C3: squeaky boards, with the real player physics: running on them squeaks and turns Tora; walking or tatami does not.
   const C3 = await page.evaluate(async () => {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player;
     const P = (d, s, y = gym.fy + 1) => [gym.x + 0.5 + gym.front[0] * d + gym.side[0] * s, y, gym.z + 0.5 + gym.front[1] * d + gym.side[1] * s];
-    const ren = L.watchers.find(x => x.id === 'ren');
+    const ren = L.watchers.find(x => x.id === 'tora');
     const yawTo = (dd, ds) => { const dx = gym.front[0] * dd + gym.side[0] * ds, dz = gym.front[1] * dd + gym.side[1] * ds; return Math.atan2(-dx, -dz); };
     g.toldOnce.delete('dojo:squeak');
     window.__toasts = [];
+    // the first moment Tora walks past (6.5, -4.3) on her way along +s
+    const [tx, , tz] = P(6.5, -4.3);
+    let spot = 0;
+    for (let t = 0; t < 40; t += 0.01) { const q = ren.at(t); if (Math.hypot(q.x - tx, q.z - tz) < 0.08) { spot = t; break; } }
     const run = (from, sprint, frames = 24) => {
       for (const x of L.watchers) x.noise = null;
       ren.clock = 0; ren.set(ren.at(0)); // at the corner (6.5, -10.5), about to walk along +s
-      ren.clock = 8; ren.set(ren.at(8)); // 8 s later: walking along +s, s about -4.3
+      ren.clock = spot; ren.set(ren.at(spot)); // walking along +s, at s about -4.3 (whatever the guards' speed)
       const h0 = ren.heading, sq0 = L.squeaks;
       p.pos.set(...from); p.vel.set(0, 0, 0); p.yaw = yawTo(0, 1); p.pitch = 0; p.onGround = true; p.ride = null;
       p.keys = { KeyW: true, ShiftLeft: sprint };
@@ -423,11 +430,12 @@ export default async function ({ browser, base, t }) {
     for (const x of L.watchers) x.noise = null;
     return out;
   });
-  t.ok(C3.walk.squeaks === 0 && !C3.walk.heard && C3.walk.kept && C3.walk.under === 'squeak', `walking on the nightingale boards is quiet: Ren keeps walking (${JSON.stringify(C3.walk)})`);
+  t.ok(C3.walk.squeaks === 0 && !C3.walk.heard && C3.walk.kept && C3.walk.under === 'squeak', `walking on the nightingale boards is quiet: Tora keeps walking (${JSON.stringify(C3.walk)})`);
   t.ok(C3.tatami.squeaks === 0 && !C3.tatami.heard && C3.tatami.under === 'quiet', `running on tatami is quiet too (${JSON.stringify(C3.tatami)})`);
-  t.ok(C3.sprint.squeaks >= 1 && C3.sprint.heard && C3.sprint.turned && C3.toast, `running on the boards squeaks and Ren turns to look (${JSON.stringify(C3.sprint)})`);
+  t.ok(C3.sprint.squeaks >= 1 && C3.sprint.heard && C3.sprint.turned && C3.toast, `running on the boards squeaks and Tora turns to look (${JSON.stringify(C3.sprint)})`);
 
-  // C4: a sneak attack from behind (Suzu): "Surprise attack!" and your creature moves first, though it is slower.
+  // C4: a sneak attack from behind on Master Suzu (on the pagoda roof, looking out at the gate): "Surprise attack!" and
+  // your creature moves first, though it is slower.
   const battleTurn = async () => {
     await waitFor(page, () => window.pokecraft.inBattle && document.querySelectorAll('#b-actions button:not([disabled])').length > 0, null, 180000);
     const info = await page.evaluate(() => { const b = window.pokecraft.battle; return { surprise: b.surprise, ally: b.speedOf(b.ally), foe: b.speedOf(b.foe), round: b.round }; });
@@ -439,56 +447,52 @@ export default async function ({ browser, base, t }) {
     info.done = await playBattle(page);
     return info;
   };
-  const C4 = await page.evaluate(() => {
-    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player;
-    const su = L.watchers.find(x => x.id === 'suzu');
-    su.clock = 6; su.set(su.at(6));
-    su.heading = Math.atan2(gym.side[0], gym.side[1]);
-    su.noise = { x: su.x + gym.side[0] * 30, z: su.z + gym.side[1] * 30, left: 1e9 };
-    L.update(0.016);
-    p.pos.set(su.x - gym.side[0] * 2.2, gym.fy + 1, su.z - gym.side[1] * 2.2); p.vel.set(0, 0, 0);
-    p.lookAt({ x: su.x, y: gym.fy + 2.2, z: su.z });
+  const master = i => `window.pokecraft.npcs.list.find(n => n.gym?.def.id === 'ninja' && n.kind === 'trainer' && (n.index || 0) === ${i})`;
+  await page.evaluate(m => { const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), su = eval(m);
+    g.player.pos.set(su.pos.x - gym.front[0] * 2.2, su.pos.y, su.pos.z - gym.front[1] * 2.2); g.player.vel.set(0, 0, 0); g.gymLive.of('ninja').update(0.016); }, master(0));
+  await page.waitForTimeout(1500); // the game runs a few frames: a lookout must not turn round
+  const C4 = await page.evaluate(m => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player, su = eval(m);
+    p.pos.set(su.pos.x - gym.front[0] * 2.2, su.pos.y, su.pos.z - gym.front[1] * 2.2); p.vel.set(0, 0, 0);
+    p.lookAt({ x: su.pos.x, y: su.pos.y + 1.2, z: su.pos.z });
     const b = g.battle;
     b.speedOf = c => (c === b.ally ? 1 : 999); // your creature is much slower: only a surprise lets it go first
-    const out = { prompt: L.talkPrompt(su.npc), sneaky: L.sneaky(su) };
+    const out = { prompt: L.talkPrompt(su), sneaky: L.masterSneaky(su), lookout: su.lookout && Math.abs(Math.atan2(Math.sin(su.heading - su.homeHeading), Math.cos(su.heading - su.homeHeading))) < 0.05,
+      roof: Math.abs(su.pos.y - (gym.fy + 13)) < 0.01, name: su.name };
     window.__toasts = [];
-    g.talkTo(su.npc);
+    g.talkTo(su);
     out.inBattle = g.inBattle;
     return out;
-  });
-  t.ok(C4.sneaky && C4.prompt?.action === 'Sneak attack!' && C4.inBattle, `right behind Suzu the button says "${C4.prompt?.action}" and tapping her starts a battle`);
+  }, master(0));
+  t.ok(C4.roof && C4.lookout, `${C4.name} stands on the pagoda roof and keeps looking out at the gate when you come close`);
+  t.ok(C4.sneaky && C4.prompt?.action === 'Sneak attack!' && C4.inBattle, `right behind ${C4.name} the button says "${C4.prompt?.action}" and tapping her starts a battle`);
   const sneakB = await battleTurn();
   t.ok(sneakB.surprise && sneakB.ally < sneakB.foe && sneakB.order?.[0] === 'ally' && sneakB.log.some(m => m.startsWith('Surprise attack!')), `a sneak attack: "Surprise attack!" and your slower creature moves first in round 1 (${sneakB.order}, speed ${sneakB.ally} vs ${sneakB.foe})`);
-  t.ok(sneakB.done && await page.evaluate(() => window.pokecraft.beaten.includes('ninja:trainer')), 'Suzu is beaten');
+  t.ok(sneakB.done && await page.evaluate(() => window.pokecraft.beaten.includes('ninja:trainer')), 'Master Suzu is beaten');
   const C4b = await page.evaluate(() => {
     const g = window.pokecraft, L = g.gymLive.of('ninja');
     L.update(0.1);
-    const su = L.watchers.find(x => x.id === 'suzu');
-    return { stopped: su.stopped, cone: su.cone(L.solid).length, steer: su.npc.steer, grace: L.grace > 0 };
+    return L.watchers.map(w => ({ id: w.id, stopped: w.stopped, steer: !!w.npc?.steer }));
   });
-  t.ok(C4b.stopped && C4b.cone === 0 && !C4b.steer && C4b.grace, 'a beaten watcher stops watching: she stands still and has no light');
+  t.ok(C4b.every(w => !w.stopped && w.steer), `the guards keep walking whatever you beat (${JSON.stringify(C4b)})`);
 
-  // C5: talking to Ren from the front is a normal battle (he moves first, as the faster one).
-  const C5 = await page.evaluate(() => {
-    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player;
-    const ren = L.watchers.find(x => x.id === 'ren');
-    ren.clock = 8; ren.set(ren.at(8));
-    ren.noise = { x: ren.x + gym.side[0] * 30, z: ren.z + gym.side[1] * 30, left: 1e9 };
-    L.update(0.016);
-    p.pos.set(ren.x + gym.side[0] * 2.2, gym.fy + 1, ren.z + gym.side[1] * 2.2); p.vel.set(0, 0, 0);
-    p.lookAt({ x: ren.x, y: gym.fy + 2.2, z: ren.z });
-    const out = { sneaky: L.sneaky(ren), prompt: L.talkPrompt(ren.npc) };
-    g.talkTo(ren.npc);
+  // C5: talking to Master Ren from the front is a normal battle (he moves first, as the faster one).
+  const C5 = await page.evaluate(m => {
+    const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player, ren = eval(m);
+    p.pos.set(ren.pos.x + gym.front[0] * 2.2, ren.pos.y, ren.pos.z + gym.front[1] * 2.2); p.vel.set(0, 0, 0);
+    p.lookAt({ x: ren.pos.x, y: ren.pos.y + 1.2, z: ren.pos.z });
+    const out = { sneaky: L.masterSneaky(ren), prompt: L.talkPrompt(ren) };
+    g.talkTo(ren);
     out.inBattle = g.inBattle;
     return out;
-  });
-  t.ok(!C5.sneaky && C5.prompt === null && C5.inBattle, 'in front of Ren there is no sneak attack: a normal "Challenge!" battle');
+  }, master(1));
+  t.ok(!C5.sneaky && C5.prompt === null && C5.inBattle, 'in front of Master Ren there is no sneak attack: a normal "Challenge!" battle');
   const normalB = await battleTurn();
   t.ok(!normalB.surprise && normalB.order?.[0] === 'foe' && !normalB.log.some(m => m.startsWith('Surprise attack!')), `a normal battle: the faster foe moves first (${normalB.order})`);
-  t.ok(normalB.done && await page.evaluate(() => window.pokecraft.beaten.includes('ninja:trainer2')), 'Ren is beaten');
+  t.ok(normalB.done && await page.evaluate(() => window.pokecraft.beaten.includes('ninja:trainer2')), 'Master Ren is beaten');
   await page.evaluate(() => { delete window.pokecraft.battle.speedOf; });
 
-  // C6: a trainer who spots you close by battles you (no puff); the guard Hoshi only jumps when you sneak up on him.
+  // C6: guards never battle: Hoshi only jumps when you sneak up on him; a guard who sees you close by puffs you back.
   const C6 = await page.evaluate(() => {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player;
     const out = {};
@@ -505,37 +509,35 @@ export default async function ({ browser, base, t }) {
     g.talkTo(ho.npc);
     out.line = window.__toasts.find(m => m.includes('keep watch'));
     out.noBattle = !g.inBattle;
-    // a guard who sees you close by: a puff, not a battle
     L.playing = () => true; L.grace = 0; L.last = 0;
     L.update(0.016);
     out.guardPuff = !g.inBattle && L.spots === 2;
-    // Suzu again (her beaten key taken away for this check): close in front of her = a normal battle
-    g.beaten = g.beaten.filter(k => k !== 'ninja:trainer');
-    const su = L.watchers.find(x => x.id === 'suzu'); su.stopped = false;
-    su.clock = 6; su.set(su.at(6)); su.heading = Math.atan2(gym.side[0], gym.side[1]); su.noise = { x: su.x + gym.side[0] * 30, z: su.z + gym.side[1] * 30, left: 1e9 };
+    // Aki (the front garden guard), close in front of her: a puff too, never a battle; tapping her: her line
+    const aki = L.watchers.find(x => x.id === 'aki');
+    aki.clock = 6; aki.set(aki.at(6)); aki.heading = Math.atan2(gym.side[0], gym.side[1]); aki.noise = { x: aki.x + gym.side[0] * 30, z: aki.z + gym.side[1] * 30, left: 1e9 };
     L.update(0.016);
-    p.pos.set(su.x + gym.side[0] * 2.5, gym.fy + 1, su.z + gym.side[1] * 2.5); L.grace = 0;
+    p.pos.set(aki.x + gym.side[0] * 1.5, gym.fy + 1, aki.z + gym.side[1] * 1.5); L.grace = 0;
     L.update(0.016);
-    out.spottedBattle = g.inBattle && !g.battle.surprise && window.__toasts.some(m => m === 'Spotted! Watcher Suzu wants to battle!');
+    out.akiPuff = !g.inBattle && L.spots === 3;
+    p.pos.set(aki.x + gym.side[0] * 1.5, gym.fy + 1, aki.z + gym.side[1] * 1.5);
+    g.talkTo(aki.npc);
+    out.akiLine = !g.inBattle && window.__toasts.some(m => m.startsWith('Night Guard Aki:'));
     L.playing = () => false;
     for (const x of L.watchers) x.noise = null;
     return out;
   });
   t.ok(C6.prompt === 'Boo!' && C6.boo && C6.line && C6.noBattle, `Night Guard Hoshi: sneak up on him for "${C6.boo}"; from the front he says his line; he never battles`);
   t.ok(C6.guardPuff, 'when the guard sees you, a puff takes you back');
-  t.ok(C6.spottedBattle, 'a trainer who spots you close by battles you normally ("Spotted! ... wants to battle!")');
-  await waitFor(page, () => window.pokecraft.battle.foes?.length, null, 60000).catch(() => {});
-  await page.evaluate(() => { const b = window.pokecraft.battle; for (const f of b.foes || []) f.hp = Math.min(f.hp, 1); });
-  t.ok(await playBattle(page), 'that battle finishes');
+  t.ok(C6.akiPuff && C6.akiLine, 'a guard who sees you right in front of her still only puffs you back; tapping her gives her line, never a battle');
 
-  // C7: the leader waits for both trainers, then battles; the badge.
+  // C7: the leader waits for both masters, then battles; the badge.
   await page.evaluate(() => {
     const g = window.pokecraft;
     g.beaten = g.beaten.filter(k => !k.startsWith('ninja:'));
     window.__toasts = [];
     g.talkTo(g.npcs.list.find(x => x.kind === 'leader' && x.gym.def.id === 'ninja'));
   });
-  t.ok(await page.evaluate(() => !window.pokecraft.inBattle && window.__toasts.some(m => m.includes('Beat Watcher Suzu and Watcher Ren first'))), 'Leader Kage refuses until both watchers are beaten');
+  t.ok(await page.evaluate(() => !window.pokecraft.inBattle && window.__toasts.some(m => m.includes('Beat Master Suzu and Master Ren first'))), 'Leader Kage refuses until both masters are beaten');
   await page.evaluate(() => {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja');
     g.beaten.push('ninja:trainer', 'ninja:trainer2');
@@ -557,7 +559,7 @@ export default async function ({ browser, base, t }) {
 
   await shots();
 
-  /* ------------------------------------------------ D. iPad: tap a watcher from behind */
+  /* ------------------------------------------------ D. iPad: tap a master from behind */
   const ipad = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
   await ipad.tap('text=New Game', { timeout: 180000 });
   await ipad.tap('.starter >> nth=0', { timeout: 180000 });
@@ -566,17 +568,14 @@ export default async function ({ browser, base, t }) {
     const g = window.pokecraft, gym = g.world.gyms.find(x => x.def.id === 'ninja'), L = g.gymLive.of('ninja'), p = g.player;
     g.time = 0.47; g.weather.set('clear'); g.creatures.clear(); g.creatures.spawnTimer = 1e9;
     L.playing = () => false;
-    const su = L.watchers.find(x => x.id === 'suzu');
-    su.clock = 6; su.set(su.at(6));
-    su.heading = Math.atan2(gym.side[0], gym.side[1]);
-    su.noise = { x: su.x + gym.side[0] * 30, z: su.z + gym.side[1] * 30, left: 1e9 };
-    p.pos.set(su.x - gym.side[0] * 2.4, gym.fy + 1, su.z - gym.side[1] * 2.4); p.vel.set(0, 0, 0);
-    p.lookAt({ x: su.x, y: gym.fy + 2, z: su.z });
+    const su = g.npcs.list.find(n => n.gym?.def.id === 'ninja' && n.kind === 'trainer' && (n.index || 0) === 0);
+    p.pos.set(su.pos.x - gym.front[0] * 2.4, su.pos.y, su.pos.z - gym.front[1] * 2.4); p.vel.set(0, 0, 0);
+    p.lookAt({ x: su.pos.x, y: su.pos.y + 1, z: su.pos.z });
   });
   await waitFor(ipad, () => document.getElementById('prompt').textContent.includes('sneak attack'), null, 60000).catch(() => {});
   const iinfo = await ipad.evaluate(() => {
-    const g = window.pokecraft, L = g.gymLive.of('ninja'), su = L.watchers.find(x => x.id === 'suzu');
-    const v = new (g.player.eyePos.constructor)(su.x, su.y + 1.1, su.z).project(g.camera);
+    const g = window.pokecraft, su = g.npcs.list.find(n => n.gym?.def.id === 'ninja' && n.kind === 'trainer' && (n.index || 0) === 0);
+    const v = new (g.player.eyePos.constructor)(su.pos.x, su.pos.y + 1.1, su.pos.z).project(g.camera);
     return { touch: document.body.classList.contains('touch'), prompt: document.getElementById('prompt').textContent, action: document.getElementById('btn-act')?.textContent ?? null, spot: [(v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight] };
   });
   await ipad.screenshot({ path: path.join(SHOTS, 't37-dojo-ipad.png'), timeout: 180000 });
@@ -585,7 +584,7 @@ export default async function ({ browser, base, t }) {
   await waitFor(ipad, () => window.pokecraft.inBattle, null, 30000).catch(() => {});
   const ib = await ipad.evaluate(() => ({ inBattle: window.pokecraft.inBattle, surprise: window.pokecraft.battle.surprise }));
   t.ok(iinfo.touch && iinfo.prompt.includes('sneak attack'), `on an iPad the prompt says "${iinfo.prompt}"`);
-  t.ok(ib.inBattle && ib.surprise, 'tapping the watcher from behind starts a surprise battle');
+  t.ok(ib.inBattle && ib.surprise, 'tapping a master from behind starts a surprise battle');
   t.ok(!ipad.errors.length, `no page errors on the iPad ${ipad.errors.join('; ')}`);
   await ipad.context().close();
 

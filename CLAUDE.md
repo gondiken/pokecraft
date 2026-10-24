@@ -351,12 +351,12 @@ Key ideas:
   (arrow at the torii, no `tips`), trainers with `sneak` intros, `guards` (Night Guard Hoshi: a `kind: 'guest'` person from `gym.people` with `guard: 0`). Blocks 114-123:
   `NIGHTINGALE` (squeak floor), `TATAMI` (quiet floor), `SHOJI`, `BARREL`, `TALL_GRASS`, `PAPER_LANTERN` (glow), `STONE_LANTERN` / `STONE_LANTERN_ON` (a lit checkpoint, setLive only),
   `LANTERN_LIGHT` (a watcher's light on the floor, setLive only), `MAPLE_LEAVES`; none placeable, all `wallText`. `fy` = the natural ground just outside the gate (clamped
-  13..24), so the gravel ramp from the torii never meets a cliff. Three watchers (Suzu in the front garden, Ren round the hall's board corridor, the guard round the pagoda):
+  13..24), so the gravel ramp from the torii never meets a cliff. Three watchers, all guards (`def.guards`: Aki in the front garden, Tora round the hall's board corridor, Hoshi round the pagoda; owner 2026-10-24: guards never battle and always keep walking, `DOJO.speed` 1.15, `range` 6.2):
   `Watcher` clocks are summed frame dt (not during battles), a noise stops the clock while the watcher looks. **Spotted** (in a cone, line of sight, not in a `Hideout`, not
   within 1.6 of a lantern stand, `canSpot()`: no battle / ask box / panel / pause / grace 2.5 s after a puff, a battle or a new world) = a puff of smoke back to the last stone
-  lantern passed (`last`; leaving `gym.area` resets them); a trainer who spots you within `DOJO.battle` (3) battles you normally instead. Running (horizontal speed > 5) on a
-  `squeak` cell squeaks (`squeak` sound) and every watcher within 8 turns to look for 3 s. Beaten trainers stop (`Watcher.stopped`: no cone, the person stands, `n.steer` off).
-  **Surprise attack:** `DojoLive.talk` (a trainer, behind it and unseen) starts `startBattle({ ..., surprise: true })`; `Battle.start` sets `battle.surprise` (never in duels or
+  lantern passed (`last`; leaving `gym.area` resets them); a watcher that carries a trainer (a `WATCH` entry with `trainer`, none today) would battle you within `DOJO.battle` (3) instead. Running (horizontal speed > 5) on a
+  `squeak` cell squeaks (`squeak` sound) and every watcher within 8 turns to look for 3 s. Beaten trainer-watchers would stop (`Watcher.stopped`). **The masters** (the two trainers, keys `ninja:trainer` / `ninja:trainer2` as before, so old badges and beaten trainers stay) stand on the pagoda deck at `P(2, 2)` / `P(2, -2)` facing the gate with `npc.lookout` (npc.js: never turns to the player).
+  **Surprise attack:** `DojoLive.talk` (a master within 3 blocks behind its `homeHeading`: `masterSneaky`; or a trainer-watcher behind it and unseen) starts `startBattle({ ..., surprise: true })`; `Battle.start` sets `battle.surprise` (never in duels or
   wild battles), says "Surprise attack! X moves first!" and `turn()` puts the ally first in round 1 before any draw (`battle.order` = the last turn's sides, for tests).
   People walked by a live part set `npc.steer` (npc.js: position / heading copied, legs swing, no turning to the player); `look: 'ninja'` = a mask and a red headband.
   Rooftop way: barrels at the gate corner onto the wall top, along it, a log beam to the hall roof, a beam to the pagoda's first roof, barrel steps up its roofs to the deck.
