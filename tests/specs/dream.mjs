@@ -124,10 +124,15 @@ export default async function ({ browser, base, t }) {
     return { g: g.world.gravity, up: top - y0 };
   };
   const mainJump = await page.evaluate(jump);
-  // How far the clock moves per frame (the night speed); slow software frames are clamped to 0.05 s each, so this is steady.
+  // How far the clock moves per second of (clamped) game time: the night speed.
   const clockStep = () => new Promise(done => {
-    const g = window.pokecraft, t0 = g.time; let n = 0;
-    const tick = () => { if (++n < 8) requestAnimationFrame(tick); else done({ per: ((g.time - t0 + 1) % 1) / (n - 1), frames: n }); };
+    // Per second of game time (each frame's dt is clamped to 0.05 s like main.js frame()), so a change of frame rate between
+    // the two measurements doesn't skew the ratio.
+    const g = window.pokecraft; let n = 0, t0 = null, prev = null, secs = 0;
+    const tick = now => {
+      if (prev == null) { prev = now; t0 = g.time; } else secs += Math.min(0.05, (now - prev) / 1000), prev = now;
+      if (++n < 9) requestAnimationFrame(tick); else done({ per: ((g.time - t0 + 1) % 1) / secs, frames: n });
+    };
     requestAnimationFrame(tick);
   });
   const mainClock = await page.evaluate(clockStep);
