@@ -1194,7 +1194,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 
 # Chapter 2 · The Swirl
 
-## Wave 13 · The way in (owner, 2026-10-24)
+## Wave 13 · The way in (owner, 2026-10-24) ✅ done (T38a Portal Door + the Swirl, T38b realms together, T38c missions that never end; `plans/T38.md`). T38d (a more atmospheric Swirl, `plans/T38d.md`) follows.
 
 - **The Portal Door:** a big, bright, glowing door **right next to the Champion's Tower door**, so nobody has to
   search for it. Before the Champion title it is dim and says so kindly ("Only a Champion can open this door. Win
