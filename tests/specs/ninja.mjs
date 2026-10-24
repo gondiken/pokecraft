@@ -293,7 +293,7 @@ export default async function ({ browser, base, t }) {
       const c = mk('hushcoon');
       const v = c.pos.clone(); v.x -= 20;
       cm.viewer = v;
-      for (let i = 0; i < 40; i++) { v.x += 0.3; cm.updateOne(c, 0.05); }
+      for (let i = 0; i < 30; i++) { v.x += 0.3; cm.updateOne(c, 0.05); } // 6 blocks/s, from 20 to 11 blocks away
       out.farStill = c.pos.x === cx + 0.5 && !c.blink && c.hops === 0;
     }
     // 2. sprinting at it: three blinks, then it is out of breath and you run into it
