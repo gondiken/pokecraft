@@ -24,6 +24,7 @@ const enter = async (page, time = 0.75) => {
   await page.evaluate(t => { window.pokecraft.time = t; }, time);
   await page.evaluate(() => window.pokecraft.realms.enter('dream'));
   await waitFor(page, () => window.pokecraft.place === 'dream' && !window.pokecraft.realms.busy);
+  t.ok(await page.evaluate(async () => { const { swirlTint } = await import('/src/caves.js'); return swirlTint.uTintOn.value === 0 && !window.pokecraft.scene.children.some(o => o.userData.swirlSky) && window.pokecraft.swirlSky.info() === null; }), 'in the Dream the Swirl gradient is off and no Swirl sky mesh exists (T38d)'); // T38d
   await page.evaluate(() => { document.getElementById('pause').classList.add('hidden'); });
 };
 const leave = async page => {

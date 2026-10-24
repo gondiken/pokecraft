@@ -609,19 +609,63 @@ export const caveLight = {
   uPlayer: { value: new THREE.Vector3() },
 };
 
+// T38d: the Swirl's zone tint. Blocks whose tile lies in one of two tile ranges (uTintU: Swirl Stone top/side, Swirl Paint/Cloud) take the
+// colour of the zone you are in, mixed from the zone weights (the same smoothstep rings as swirlland.js zoneWeights; swirlsky.js fills
+// the uniforms from ZONES), darker underneath and paler on top, with a slow wet-paint shimmer. uTintOn is 0 everywhere but the Swirl,
+// where the output is exactly what it was before. Tint by tile range: no mesh change, player-built blocks keep their own colours.
+export const swirlTint = {
+  uTintOn: { value: 0 },
+  uTintU: { value: new THREE.Vector4(2, 2, 2, 2) },   // tile ranges in u: [a0, a1) and [b0, b1)
+  uTime: { value: 0 },
+  uHaze: { value: 0.12 },
+  uZone: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] }, // x, z, radius
+  uLo: { value: Array.from({ length: 5 }, () => new THREE.Color(1, 1, 1)) },
+  uHi: { value: Array.from({ length: 5 }, () => new THREE.Color(1, 1, 1)) },
+  uSea: { value: Array.from({ length: 5 }, () => new THREE.Color(1, 1, 1)) },
+};
+
 // Vertex colours are packed as r = sky light x shade, g = block light x shade, b = shade.
 export function patchMaterial(mat) {
   mat.onBeforeCompile = shader => {
-    Object.assign(shader.uniforms, caveLight);
+    Object.assign(shader.uniforms, caveLight, swirlTint);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vCavePos;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      .replace('#include <common>', `#include <common>
+varying vec3 vCavePos;
+varying vec3 vTint;
+uniform float uTintOn;
+uniform vec4 uTintU;
+uniform float uTime;
+uniform float uHaze;
+uniform vec4 uZone[4];
+uniform vec3 uLo[5];
+uniform vec3 uHi[5];
+uniform vec3 uSea[5];`)
+      .replace('#include <project_vertex>', `#include <project_vertex>
+vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+vTint = vec3(1.0);
+if (uTintOn > 0.5 && ((uv.x >= uTintU.x && uv.x < uTintU.y) || (uv.x >= uTintU.z && uv.x < uTintU.w))) {
+  vec3 wp = vCavePos;
+  float wt[5];
+  float sum = uHaze;
+  for (int i = 0; i < 4; i++) {
+    float t = clamp(1.0 - distance(wp.xz, uZone[i].xy) / uZone[i].z, 0.0, 1.0);
+    wt[i] = t * t * (3.0 - 2.0 * t);
+    sum += wt[i];
+  }
+  wt[4] = uHaze;
+  vec3 lo = vec3(0.0), hi = vec3(0.0), sea = vec3(0.0);
+  for (int i = 0; i < 5; i++) { float k = wt[i] / sum; lo += uLo[i] * k; hi += uHi[i] * k; sea += uSea[i] * k; }
+  vec3 c = wp.y < 1.5 ? sea : mix(lo, hi, clamp((wp.y - 4.0) / 26.0 + (color.b > 0.9 ? 0.4 : 0.0), 0.0, 1.0)); // tops are paler, sides and undersides deeper
+  vTint = c * (0.93 + 0.07 * sin(wp.x * 0.23 + wp.z * 0.17 + wp.y * 0.3 + uTime * 0.7));
+  vTint *= min(pow(1.0 / max(color.r, 0.25), 0.6), 1.9); // pastel: take back some of the face and overhang shading
+}`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vCavePos;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;')
       .replace('#include <color_fragment>', `
         float lan = uLantern * clamp(1.0 - distance(vCavePos, uPlayer) / 8.0, 0.0, 1.0);
-        diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));`);
+        diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
+        diffuseColor.rgb *= vTint;`);
   };
-  mat.customProgramCacheKey = () => 'cave-light';
+  mat.customProgramCacheKey = () => 'cave-light-2';
   mat.needsUpdate = true;
 }

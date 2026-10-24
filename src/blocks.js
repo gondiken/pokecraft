@@ -54,6 +54,8 @@ const MORE_TILES = [
   'LANTERN_LIGHT', 'MAPLE_LEAVES',
   // T38a swirl: the Portal Door (dim, swirling, frame), the Swirl's stone (top / side), picture frame, cloth, star stone, Wizard stone
   'PORTAL_DIM', 'PORTAL', 'PORTAL_FRAME', 'SWIRL_STONE_TOP', 'SWIRL_STONE', 'PICTURE_FRAME', 'CLOTH', 'STAR_STONE', 'WIZARD_STONE',
+  // T38d swirl looks: SWIRL_PAINT and SWIRL_CLOUD must stay next to each other (one tint range, see caves.js swirlTint)
+  'SWIRL_PAINT', 'SWIRL_CLOUD', 'GLOW_PUFF', 'GLOW_PUFF_MINT', 'BRISTLE_SIDE', 'BRISTLE_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -95,6 +97,8 @@ export const B = {
   // STONE_LANTERN_ON and LANTERN_LIGHT are drawn only with setLive (a lit checkpoint, a watcher's light cone).
   // 124-131: T38a, the Portal Door and the Swirl (none placeable). Next free id: 132.
   PORTAL_DIM: 124, PORTAL: 125, PORTAL_FRAME: 126, SWIRL_STONE: 127, PICTURE_FRAME: 128, CLOTH: 129, STAR_STONE: 130, WIZARD_STONE: 131,
+  // 132-136: T38d, the Swirl's looks (none placeable, only in the Swirl). 137-139 are reserved for more Swirl looks. Next free id: 140.
+  SWIRL_PAINT: 132, SWIRL_CLOUD: 133, GLOW_PUFF: 134, GLOW_PUFF_MINT: 135, BRISTLE: 136,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -221,6 +225,12 @@ BLOCKS[B.PICTURE_FRAME] = { name: 'Picture Frame', ...all(T.PICTURE_FRAME), fixe
 BLOCKS[B.CLOTH] = { name: 'Cloth', ...all(T.CLOTH), fixed: true, wallText: 'A cloth covers the picture. This world is not open yet!' };
 BLOCKS[B.STAR_STONE] = { name: 'Star Stone', ...all(T.STAR_STONE), glow: true, noLight: true, fixed: true, wallText: 'A star stone. It lit up because you won a star!' };
 BLOCKS[B.WIZARD_STONE] = { name: 'Wizard Stone', ...all(T.WIZARD_STONE), fixed: true, wallText: 'The Wizard is inside, holding the Swirl together. Bring him stars!' };
+// T38d: the Swirl's looks. Paint and Cloud are tinted by the zone you are in (caves.js swirlTint); Glow Puffs glow and light their cells.
+BLOCKS[B.SWIRL_PAINT] = { name: 'Swirl Paint', ...all(T.SWIRL_PAINT), fixed: true, wallText: 'Wet paint that never dries. Too magic to break!' };
+BLOCKS[B.SWIRL_CLOUD] = { name: 'Swirl Cloud', ...all(T.SWIRL_CLOUD), fixed: true, wallText: 'A soft Swirl cloud. It holds you up!' };
+BLOCKS[B.GLOW_PUFF] = { name: 'Glow Puff', ...all(T.GLOW_PUFF), glow: true, fixed: true, wallText: 'A glowing puff. Too magic to break!' };
+BLOCKS[B.GLOW_PUFF_MINT] = { name: 'Glow Puff', ...all(T.GLOW_PUFF_MINT), glow: true, fixed: true, wallText: 'A glowing puff. Too magic to break!' };
+BLOCKS[B.BRISTLE] = { name: 'Brush Bristles', top: T.BRISTLE_TOP, side: T.BRISTLE_SIDE, bottom: T.BRISTLE_TOP, fixed: true, wallText: 'The giant paintbrush is too big to break!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -673,6 +683,26 @@ export function drawAtlas() {
     }
     g.putImageData(turnFrames[0], T.PORTAL * TILE, 0);
     c.portalFrames = turnFrames;
+  }
+  { // T38d swirl looks (own random numbers): pale canvas stone, wet paint, cloud, glow puffs, brush bristles
+    const r7 = mulberry32(3842);
+    const sh = (col, a) => shade(col, 1 + (r7() - 0.5) * a);
+    each((x, y) => {
+      const dx = x - 7.5, dy = y - 7.5, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const spiral = (((a / (Math.PI * 2)) * 16 + d + 64) % 4) < 1;
+      put(T.SWIRL_STONE_TOP, x, y, sh(spiral ? [212, 208, 220] : [240, 236, 244], 0.05));
+      const stroke = y % 4 === 1 && ((x * 7 + (y >> 2) * 5) % 13) < 8;
+      put(T.SWIRL_STONE, x, y, y === 15 ? [200, 196, 210] : sh(stroke ? [214, 210, 222] : [232, 228, 238], 0.05));
+      put(T.SWIRL_PAINT, x, y, sh((((a / (Math.PI * 2)) * 16 + d + 64) % 4) < 1 ? [238, 230, 250] : [204, 190, 232], 0.06));
+      const blot = Math.sin(x * 0.9 + Math.sin(y * 0.7) * 1.4) + Math.sin(y * 0.8 + x * 0.3) > 0.9;
+      put(T.SWIRL_CLOUD, x, y, sh(blot ? [232, 230, 238] : [246, 244, 250], 0.04));
+      const bump = Math.sin(a * 4) * 0.8;
+      put(T.GLOW_PUFF, x, y, d < 3 ? [255, 238, 248] : d < 6 + bump ? [255, 214, 236] : d < 7.5 ? [255, 176, 218] : [240, 140, 200]);
+      put(T.GLOW_PUFF_MINT, x, y, d < 3 ? [240, 255, 250] : d < 6 + bump ? [190, 245, 228] : d < 7.5 ? [140, 228, 206] : [90, 200, 180]);
+      put(T.BRISTLE_SIDE, x, y, sh(x % 2 ? [250, 242, 224] : [228, 212, 180], 0.06 + (y > 11 ? 0.2 : 0)));
+      put(T.BRISTLE_TOP, x, y, sh([246, 128, 186], 0.06));
+    });
+    each((x, y) => { if (r7() < 0.012) put(T.SWIRL_CLOUD, x, y, [255, 255, 255]); });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);

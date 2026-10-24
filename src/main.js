@@ -31,6 +31,7 @@ import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
 import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
 import { createPortal } from './portal.js'; // T38a
+import { createSwirlSky } from './swirlsky.js'; // T38d
 import { loadStars } from './pictureworlds.js'; // T38a
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
@@ -223,6 +224,7 @@ function createWorld(seed, edits, size, opts = {}) {
   game.gymLive.reset(world);
   game.homes.reset(world);
   game.portal?.reset(world); // T38a
+  game.swirlSky?.reset(world); // T38d
 }
 
 function findSpawn(world) {
@@ -961,12 +963,13 @@ function updateSky(dt) {
   scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar + (40 - wx.fogFar) * underFade;
   const look = game.world.realm?.look; // T31: a realm's own sky colour and fog
   if (look) {
-    if (look.still) scene.background.copy(REALM_SKY.setHex(look.sky)); // T38a: the Swirl's sky never changes (the main clock keeps running)
+    if (look.still) scene.background.copy(game.swirlSky?.fog ?? REALM_SKY.setHex(look.sky)); // T38a: the Swirl's sky never changes (the main clock keeps running); T38d: it follows the zone
     else scene.background.lerp(REALM_SKY.setHex(look.sky).multiplyScalar(0.4 + 0.6 * light), 0.7);
     scene.fog.color.copy(scene.background);
-    if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
+    if (game.swirlSky?.fog) { scene.fog.near = game.swirlSky.near; scene.fog.far = game.swirlSky.far; }
+    else if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
   }
-  const floor = look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
+  const floor = game.swirlSky?.lit ?? look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
   const lit = look?.still ? floor : Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4)); // T38a: a still realm is always the same brightness
   caveLight.uLit.value = lit;
   caveLight.uLantern.value = 0.75 * underFade;
@@ -992,6 +995,7 @@ game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelO
 game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
+game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -1102,6 +1106,7 @@ function frame(now) {
     if (!game.inBattle) updateTarget();
     game.weather.update(dt, now);
     updateSky(dt);
+    game.swirlSky.update(dt, now); // T38d
 
     regenTimer += dt;
     if (regenTimer > 2 && !game.inBattle) {
