@@ -176,11 +176,11 @@ export default async function ({ browser, base, t }) {
   t.ok(shot, 'Zenithar was sent out last');
   const after = await page.evaluate(() => ({
     champion: window.pokecraft.champion, powered: window.pokecraft.battle.poweredUp, cubes: window.pokecraft.cubes,
-    title: !document.querySelector('#champion-title').classList.contains('hidden'),
+    title: !document.querySelector('#champion-title'),
     celebrate: !!document.getElementById('celebrate'),
   }));
   t.ok(after.champion && after.powered, 'you are the Champion, and Zenithar powered up on the way');
-  t.ok(after.title && after.celebrate, 'the Champion title shows and the celebration plays');
+  t.ok(after.title && after.celebrate, 'the celebration plays (no Champion label on the HUD)');
   t.ok(after.cubes >= 30, `rewards: ${after.cubes} Capture Cubes`);
   // T38a: becoming the Champion opens the Portal Door beside the tower door.
   t.ok(await page.evaluate(() => window.__toasts.includes('A Portal Door opened beside the tower door! Step through it.')), 'a toast says a Portal Door opened beside the tower door');
@@ -205,7 +205,7 @@ export default async function ({ browser, base, t }) {
   await page.reload();
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
   await continueGame(page);
-  t.ok(await page.evaluate(() => window.pokecraft.champion && !document.querySelector('#champion-title').classList.contains('hidden')), 'still the Champion after a reload');
+  t.ok(await page.evaluate(() => window.pokecraft.champion), 'still the Champion after a reload');
   // The HUD refreshes every 0.5 game seconds, which takes a while with software rendering.
   const guided = await page.waitForFunction(() => document.getElementById('guide').textContent.includes('Champion'), null, { timeout: 40000 }).then(() => true, () => false);
   t.ok(guided, 'the guide says Champion');

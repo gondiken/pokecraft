@@ -60,8 +60,6 @@ export class UI {
     this.keyCompass = document.getElementById('key-compass');
     this.badgeRow = document.getElementById('badges');
     this.starsRow = document.getElementById('stars'); // T38a
-    this.titleEl = el('div', { id: 'champion-title', class: 'hidden' }, '★ Champion ★');
-    this.badgeRow.after(this.titleEl);
     this.partyPanel = document.getElementById('party');
     this.blocksPanel = document.getElementById('blocks');
     this.bookPanel = document.getElementById('book');
@@ -123,9 +121,8 @@ export class UI {
       this.badgeKey = key;
       this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
     }
-    this.titleEl.classList.toggle('hidden', !g.champion);
-    // T38a: the Picture World stars: only for Champions and in the Swirl (nothing new for anybody else)
-    const starKey = g.champion || g.place === 'swirl' ? g.stars.join() : null;
+    // T38a: the Picture World stars: only in the Swirl or once you have one (owner 2026-10-25: a calm HUD; no Champion label)
+    const starKey = g.place === 'swirl' || g.stars.length ? g.stars.join() : null;
     if (this.starKey !== starKey) {
       this.starKey = starKey;
       this.starsShown = starKey === null ? null : `${g.stars.length}/${PICTURE_WORLDS.length}`;

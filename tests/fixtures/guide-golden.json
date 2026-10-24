@@ -1,7 +1,11 @@
 [
  {
   "label": "1/day champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower ↘ 138m",
+  "target": [
+   125.5,
+   124.5
+  ],
   "toasts": []
  },
  {
@@ -1350,7 +1354,7 @@
  },
  {
   "label": "1/night champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower ↘ 138m",
   "target": [
    125.5,
    124.5
@@ -2685,10 +2689,10 @@
  },
  {
   "label": "22/day champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower ↘ 113m",
   "target": [
-   125.5,
-   124.5
+   97.5,
+   122.5
   ],
   "toasts": []
  },
@@ -3989,7 +3993,7 @@
  },
  {
   "label": "22/night champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower ↘ 113m",
   "target": [
    97.5,
    122.5
@@ -5275,10 +5279,10 @@
  },
  {
   "label": "122/day champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower → 94m",
   "target": [
-   97.5,
-   122.5
+   96.5,
+   64.5
   ],
   "toasts": []
  },
@@ -6542,7 +6546,7 @@
  },
  {
   "label": "122/night champion",
-  "guide": "★ Champion! ★",
+  "guide": "Next: Champion's Tower → 94m",
   "target": [
    96.5,
    64.5

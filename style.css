@@ -396,10 +396,6 @@ button.link { background: none; border: none; box-shadow: none; color: var(--mut
 #block-list canvas { width: 48px; height: 48px; image-rendering: pixelated; }
 
 /* Champion */
-#champion-title {
-  background: rgba(0,0,0,.45); padding: 4px 10px; color: #ffd84a; font-family: 'Press Start 2P', monospace;
-  font-size: 11px; text-shadow: 0 0 8px rgba(255,216,74,.7);
-}
 #celebrate {
   position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px;

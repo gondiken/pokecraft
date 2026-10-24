@@ -59,7 +59,7 @@ export function createMissionUi(game, { atlas }) {
     const ms = game.missions;
     if (!game.champion || !game.missionState) return null;
     const def = ms.active;
-    if (!def) return { text: `⭐ Mission ${ms.number} at the tower!` }; // T38c: there is always a next one
+    if (!def) return null; // the guide arrow already leads to the tower (owner 2026-10-25: fewer signs)
     if ((def.kind === 'map' || def.kind === 'build') && game.world.realm) return { text: `${def.name} · back home first`, icon: KIND_ICON[def.kind] }; // T38c
     if (def.kind === 'catch') return { text: `Catch ${aType(def.type)} creature`, icon: '✨' }; // T38c
     if (def.kind === 'rematch') return { text: `${def.name} · beat ${leaderOf(def)}`, icon: '🏅' }; // T38c

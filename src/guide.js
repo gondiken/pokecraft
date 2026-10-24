@@ -30,8 +30,9 @@ export function createGuide(game) {
         next = other;
       } else note = ` (opens ${acc(next).wait()})`;
     }
-    if (!next && !game.champion && game.world.tower) next = game.world.tower;
-    if (!next) game.ui.setGuide('★ Champion! ★');
+    // Every badge: the arrow leads to the Champion's Tower (the Champion battle, then the missions and the Portal Door).
+    if (!next && game.world.tower) next = game.world.tower;
+    if (!next) game.ui.setGuide('');
     else updateArrow(p, next, note);
 
     // Tips near a gym (today: the sky gyms' "build a tower" and pad tips), for the nearest unbeaten gym that has them.
