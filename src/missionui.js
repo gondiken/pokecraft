@@ -187,7 +187,7 @@ export function createMissionUi(game, { atlas }) {
     if (!root || mode == null) return;
     const ms = game.missions, s = game.missionState;
     const kids = [el('h2', {}, 'Champion missions'),
-      el('p', { class: 'mc-count' }, el('b', { class: 'mc-num' }, `Mission ${ms.number}`), `  ${ms.doneCount} done`)];
+      el('p', { class: 'mc-count' }, el('b', { class: 'mc-num' }, `Mission ${ms.number}`), ` · ${ms.doneCount} done`)];
     if (!game.champion) {
       kids.push(el('p', { class: 'mc-note' }, 'Become the Champion to get missions!'));
     } else {
