@@ -173,7 +173,7 @@ export class Weather {
 
   kindAt(biome) {
     if (biome === 'cave') return 'clear';
-    if (this.game.world?.realm?.look.weather === false) return this.night ? 'stars' : 'clear'; // T31: no rain in a dream
+    if (this.game.world?.realm?.look.weather === false) return this.game.world.realm.look.stars || this.night ? 'stars' : 'clear'; // T38a: the Swirl always has twinkly stars // T31: no rain in a dream
     if (this.forced) return this.forced;
     if (this.phase === 'clear') {
       const t = this.game.time;

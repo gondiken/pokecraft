@@ -52,6 +52,8 @@ const MORE_TILES = [
   // a watcher's lantern light on the floor, maple leaves
   'NIGHTINGALE', 'TATAMI', 'SHOJI', 'BARREL_SIDE', 'BARREL_TOP', 'TALL_GRASS', 'PAPER_LANTERN', 'STONE_LANTERN', 'STONE_LANTERN_ON',
   'LANTERN_LIGHT', 'MAPLE_LEAVES',
+  // T38a swirl: the Portal Door (dim, swirling, frame), the Swirl's stone (top / side), picture frame, cloth, star stone, Wizard stone
+  'PORTAL_DIM', 'PORTAL', 'PORTAL_FRAME', 'SWIRL_STONE_TOP', 'SWIRL_STONE', 'PICTURE_FRAME', 'CLOTH', 'STAR_STONE', 'WIZARD_STONE',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -91,6 +93,8 @@ export const B = {
   NIGHTINGALE: 114, TATAMI: 115, SHOJI: 116, BARREL: 117, TALL_GRASS: 118, PAPER_LANTERN: 119,
   STONE_LANTERN: 120, STONE_LANTERN_ON: 121, LANTERN_LIGHT: 122, MAPLE_LEAVES: 123,
   // STONE_LANTERN_ON and LANTERN_LIGHT are drawn only with setLive (a lit checkpoint, a watcher's light cone).
+  // 124-131: T38a, the Portal Door and the Swirl (none placeable). Next free id: 132.
+  PORTAL_DIM: 124, PORTAL: 125, PORTAL_FRAME: 126, SWIRL_STONE: 127, PICTURE_FRAME: 128, CLOTH: 129, STAR_STONE: 130, WIZARD_STONE: 131,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -207,6 +211,16 @@ BLOCKS[B.STONE_LANTERN] = { name: 'Stone Lantern', ...all(T.STONE_LANTERN), wall
 BLOCKS[B.STONE_LANTERN_ON] = { name: 'Stone Lantern', ...all(T.STONE_LANTERN_ON), glow: true, noLight: true, wallText: 'A stone lantern. Walk past it: if a watcher spots you, you come back here.' };
 BLOCKS[B.LANTERN_LIGHT] = { name: 'Lantern Light', ...all(T.LANTERN_LIGHT), glow: true, noLight: true, wallText: "A watcher's lantern light. Stay out of it!" };
 BLOCKS[B.MAPLE_LEAVES] = { name: 'Maple Leaves', ...all(T.MAPLE_LEAVES), wallText: 'Red maple leaves. So pretty at dusk!' };
+// T38a: the Portal Door and the Swirl. None can be placed; 125-131 are `fixed` (nobody can break or replace them).
+// PORTAL_DIM is what the main world holds; Champions see PORTAL (setLive). STAR_STONE is drawn only with setLive.
+BLOCKS[B.PORTAL_DIM] = { name: 'Portal Door', ...all(T.PORTAL_DIM), wallText: 'Only a Champion can open this door. Win in the tower first!' };
+BLOCKS[B.PORTAL] = { name: 'Portal Door', ...all(T.PORTAL), glow: true, noLight: true, fixed: true, wallText: 'Step into the swirl! (press E or tap)' };
+BLOCKS[B.PORTAL_FRAME] = { name: 'Portal Frame', ...all(T.PORTAL_FRAME), glow: true, noLight: true, fixed: true, wallText: "The Portal Door is made of magic. It can't break!" };
+BLOCKS[B.SWIRL_STONE] = { name: 'Swirl Stone', top: T.SWIRL_STONE_TOP, side: T.SWIRL_STONE, bottom: T.SWIRL_STONE, fixed: true, wallText: 'Swirl Stone is too magic to break. You can build on it!' };
+BLOCKS[B.PICTURE_FRAME] = { name: 'Picture Frame', ...all(T.PICTURE_FRAME), fixed: true, wallText: 'A picture frame. Somebody magic hung it here.' };
+BLOCKS[B.CLOTH] = { name: 'Cloth', ...all(T.CLOTH), fixed: true, wallText: 'A cloth covers the picture. This world is not open yet!' };
+BLOCKS[B.STAR_STONE] = { name: 'Star Stone', ...all(T.STAR_STONE), glow: true, noLight: true, fixed: true, wallText: 'A star stone. It lit up because you won a star!' };
+BLOCKS[B.WIZARD_STONE] = { name: 'Wizard Stone', ...all(T.WIZARD_STONE), fixed: true, wallText: 'The Wizard is inside, holding the Swirl together. Bring him stars!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -628,6 +642,38 @@ export function drawAtlas() {
       put(T.MAPLE_LEAVES, x, y, r < 0.1 ? [70, 20, 18] : r < 0.4 ? shade([236, 110, 40], 1 + (r5() - 0.5) * 0.2) : shade([200, 44, 40], 1 + (r5() - 0.5) * 0.3));
     });
   }
+  { // T38a swirl tiles (own random numbers). The Portal Door is a purple and pink spiral; 4 frames turn it (see swirlPortal).
+    const r6 = mulberry32(3838);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    const spiral = (x, y, turn) => {
+      const dx = x - 7.5, dy = y - 7.5, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const v = Math.sin(a * 2 + d * 0.9 - turn * Math.PI / 2);
+      return d < 1.4 ? [255, 255, 255] : v > 0.35 ? [255, 140, 220] : v > -0.35 ? [170, 90, 240] : [90, 40, 170];
+    };
+    each((x, y) => {
+      put(T.PORTAL_DIM, x, y, spiral(x, y, 0).map(v => v * 0.38 + 30));
+      put(T.PORTAL, x, y, spiral(x, y, 0));
+      put(T.PORTAL_FRAME, x, y, edge(x, y) ? [120, 70, 200] : (x + y) % 6 === 0 ? [255, 235, 150] : shade([190, 150, 250], 1 + (r6() - 0.5) * 0.14));
+      const swirlBand = ((x + y * 2) >> 2) % 2 === 0;
+      put(T.SWIRL_STONE_TOP, x, y, shade(swirlBand ? [150, 110, 220] : [118, 84, 190], 1 + (r6() - 0.5) * 0.1));
+      put(T.SWIRL_STONE, x, y, edge(x, y) ? [84, 56, 150] : shade(y % 5 < 2 ? [112, 80, 184] : [132, 98, 206], 1 + (r6() - 0.5) * 0.1));
+      const inner = x >= 3 && x <= 12 && y >= 3 && y <= 12;
+      put(T.PICTURE_FRAME, x, y, edge(x, y) ? [96, 60, 20] : inner ? shade([226, 188, 90], 1 + (r6() - 0.5) * 0.1) : shade([200, 150, 52], 1 + (r6() - 0.5) * 0.14));
+      const fold = Math.sin(x * 0.9 + Math.sin(y * 0.5) * 1.6);
+      put(T.CLOTH, x, y, shade([176, 70, 110], 0.8 + 0.22 * fold + (r6() - 0.5) * 0.06));
+      const dd = Math.hypot(x - 7.5, y - 7.5), starRay = Math.abs(x - 7.5) < 1 || Math.abs(y - 7.5) < 1 || Math.abs(Math.abs(x - 7.5) - Math.abs(y - 7.5)) < 1;
+      put(T.STAR_STONE, x, y, dd < 2.5 ? [255, 255, 235] : starRay && dd < 7 ? [255, 226, 110] : edge(x, y) ? [210, 160, 40] : shade([250, 200, 70], 1 + (r6() - 0.5) * 0.1));
+      const star = r6() < 0.07;
+      put(T.WIZARD_STONE, x, y, star ? [235, 240, 255] : edge(x, y) ? [18, 28, 80] : shade([30, 46, 120], 1 + (r6() - 0.5) * 0.2));
+    });
+    const turnFrames = [];
+    for (let k = 0; k < 4; k++) {
+      each((x, y) => put(T.PORTAL, x, y, spiral(x, y, k)));
+      turnFrames.push(g.getImageData(T.PORTAL * TILE, 0, TILE, TILE));
+    }
+    g.putImageData(turnFrames[0], T.PORTAL * TILE, 0);
+    c.portalFrames = turnFrames;
+  }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);
     each((x, y) => {
@@ -746,6 +792,15 @@ export function flickerFire(atlas, k) {
   const f = atlas.fireFrames;
   if (!f) return null;
   const frame = f[((k % 4) + 4) % 4], x = T.FIREPLACE * TILE;
+  atlas.getContext('2d').putImageData(frame, x, 0);
+  return { frame, x };
+}
+
+// T38a: the Portal Door's spiral: draws frame k % 4 into the atlas canvas like flickerFire (upload only that tile).
+export function swirlPortal(atlas, k) {
+  const f = atlas.portalFrames;
+  if (!f) return null;
+  const frame = f[((k % 4) + 4) % 4], x = T.PORTAL * TILE;
   atlas.getContext('2d').putImageData(frame, x, 0);
   return { frame, x };
 }

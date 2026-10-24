@@ -17,7 +17,7 @@ const EDITS_PER_MESSAGE = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
-const WORLD_VERSION = 17; // 17: wave 12 the Shadow Dojo (slot 8, blocks 114-123). 16: the Obstacle Course has no Exit Pad (the finish keeps its platform block). 15: the Obstacle Course has 4 flags instead of 9. 14: T36.5 the bigger Obstacle Course (blocks 89-90 and 95-104). 13: wave 11 south slot gyms (T33 Restaurant slot 5, blocks 83-86; T34 Big Top slot 6; T36 Obstacle Course slot 7, blocks 91-94). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
+const WORLD_VERSION = 18; // 18: T38a the Portal Door beside the tower (blocks 124-131). 17: wave 12 the Shadow Dojo (slot 8, blocks 114-123). 16: the Obstacle Course has no Exit Pad (the finish keeps its platform block). 15: the Obstacle Course has 4 flags instead of 9. 14: T36.5 the bigger Obstacle Course (blocks 89-90 and 95-104). 13: wave 11 south slot gyms (T33 Restaurant slot 5, blocks 83-86; T34 Big Top slot 6; T36 Obstacle Course slot 7, blocks 91-94). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
 const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
@@ -281,9 +281,10 @@ export class Multiplayer {
       a.update(p);
       const place = typeof p.place === 'string' ? p.place : 'main'; // T31
       if (place !== a.place) {
+        const was = realmOf(a.place); // T38a: the words come from the realm's def (away / back)
         a.place = place;
         const r = realmOf(place);
-        this.hooks.toast(r ? `${a.name} fell asleep and is in the ${r.name}.` : `${a.name} woke up!`);
+        this.hooks.toast(r ? (r.away?.(a.name) ?? `${a.name} fell asleep and is in the ${r.name}.`) : was?.morning === false ? `${a.name} is back!` : `${a.name} woke up!`);
       }
       a.here = a.place === (this.game.place || 'main');
       if (p.host && this.role === 'guest' && typeof p.time === 'number') this.game.time = p.time;

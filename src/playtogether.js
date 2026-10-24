@@ -34,7 +34,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
       game.ui.renderHud();
       const r = realmOf(data.place); // T31: the host is dreaming; guests stay in the main world
-      if (r) setTimeout(() => game.ui.toast(`${data.hostName || 'Your friend'} is asleep in the ${r.name}. Look around until they wake up!`), 500);
+      if (r) setTimeout(() => game.ui.toast(r.hostAway?.(data.hostName || 'Your friend') ?? `${data.hostName || 'Your friend'} is asleep in the ${r.name}. Look around until they wake up!`), 500);
     },
     home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),

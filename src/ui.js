@@ -6,6 +6,7 @@ import { rideKind } from './riding.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
+import { PICTURE_WORLDS } from './pictureworlds.js'; // T38a
 import { typeLink } from './book.js';
 import { Glint } from './glint.js';
 
@@ -58,6 +59,7 @@ export class UI {
     this.guide = document.getElementById('guide');
     this.keyCompass = document.getElementById('key-compass');
     this.badgeRow = document.getElementById('badges');
+    this.starsRow = document.getElementById('stars'); // T38a
     this.titleEl = el('div', { id: 'champion-title', class: 'hidden' }, '★ Champion ★');
     this.badgeRow.after(this.titleEl);
     this.partyPanel = document.getElementById('party');
@@ -122,6 +124,14 @@ export class UI {
       this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
     }
     this.titleEl.classList.toggle('hidden', !g.champion);
+    // T38a: the Picture World stars: only for Champions and in the Swirl (nothing new for anybody else)
+    const starKey = g.champion || g.place === 'swirl' ? g.stars.join() : null;
+    if (this.starKey !== starKey) {
+      this.starKey = starKey;
+      this.starsShown = starKey === null ? null : `${g.stars.length}/${PICTURE_WORLDS.length}`;
+      this.starsRow.classList.toggle('hidden', starKey === null);
+      this.starsRow.replaceChildren(...(starKey === null ? [] : PICTURE_WORLDS.map(w => el('span', { class: `star${g.stars.includes(w.id) ? ' got' : ''}`, title: w.name }, g.stars.includes(w.id) ? '★' : '☆'))));
+    }
     this.partyMini.replaceChildren(...g.party.map((c, i) => {
       const st = statsFor(c);
       const frac = c.hp / st.maxHp;

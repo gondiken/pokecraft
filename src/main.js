@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, flickerFire, isLimited } from './blocks.js';
+import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, flickerFire, swirlPortal, isLimited } from './blocks.js';
 import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
@@ -30,6 +30,8 @@ import { caveLight, patchMaterial } from './caves.js';
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
 import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
+import { createPortal } from './portal.js'; // T38a
+import { loadStars } from './pictureworlds.js'; // T38a
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -62,6 +64,7 @@ scene.add(hemi, sun);
 
 const atlas = drawAtlas();
 const texture = new THREE.CanvasTexture(atlas);
+const portalTiles = new Map(), portalPos = new THREE.Vector2(); // T38a: the Portal Door's spiral frames
 const fireTiles = new Map(), firePos = new THREE.Vector2(); // T22: Fireplace flame frames as small textures
 texture.magFilter = THREE.NearestFilter;
 texture.minFilter = THREE.NearestFilter;
@@ -99,7 +102,7 @@ window.addEventListener('resize', () => {
 const game = {
   scene, camera,
   world: null, player: null, creatures: null,
-  party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false,
+  party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false, stars: [], // T38a: Picture World ids whose Boss you beat
   rematchWins: {}, // T28 gym rematch wins per gym id, per player like badges
   keys: [], // T23 golden keys found ('<gymId>:<key>'), per player like badges
   blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
@@ -176,6 +179,7 @@ function snapshot() {
     ...home, ...away, realmEdits: game.realms ? game.realms.edits() : game.realmEdits, realmVersions: game.realms?.versions() /* T35 */, /* T31 */ playerId: game.playerId, toldHomes: true, party: game.party, box: game.box, cubes: game.cubes, badges: game.badges, beaten: game.beaten,
     hotbar: game.hotbar,
     champion: game.champion,
+    stars: game.stars, // T38a
     rematchWins: game.rematchWins,
     blockCounts: game.blockCounts,
     missions: game.missionState, // T29
@@ -218,6 +222,7 @@ function createWorld(seed, edits, size, opts = {}) {
   game.npcs.populate(world, game.spawnPoint);
   game.gymLive.reset(world);
   game.homes.reset(world);
+  game.portal?.reset(world); // T38a
 }
 
 function findSpawn(world) {
@@ -282,6 +287,7 @@ function startNew(starterId) {
   game.badges = [];
   game.beaten = [];
   game.champion = false;
+  game.stars = []; // T38a
   game.rematchWins = {};
   game.blockCounts = {};
   game.missionState = loadMissions(); // T29
@@ -309,6 +315,7 @@ function continueGame(saved) {
   game.badges = saved.badges || [];
   game.beaten = saved.beaten || [];
   game.champion = !!saved.champion;
+  game.stars = loadStars(saved.stars); // T38a: old saves have none
   game.rematchWins = loadWins(saved.rematchWins); // old saves have none
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
@@ -591,6 +598,7 @@ function interact(use = false) {
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   if (target.block && game.gymLive.hit(target.block)) return true;
   if (target.block?.id === B.CHEST) { openChest(target.block); return true; }
+  if (target.block && game.portal.use(target.block)) return true; // T38a
   if (target.block?.id === B.WAKE_STONE) { game.realms.leave('stone'); return true; } // T31
   if (use && target.block?.id === B.BED && game.realms.useBed(target.block)) return true;
   return false;
@@ -610,8 +618,9 @@ function breakBlock(hit = target.block) {
   if (!hit || hit.y === 0) return;
   if (game.gymLive.hit(hit)) return; // T23: key chests open, reset buttons press (the touch break button comes here)
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
+  if (game.portal.use(hit)) return; // T38a: a click on a door uses it, like the Wake Stone
   if (hit.id === B.WAKE_STONE) { game.realms.leave('stone'); return; } // T31: touching it wakes you up
-  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || 'Gym walls are too strong to break!'); return; }
+  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || world.protectedAt(hit.x, hit.y, hit.z)?.wallText || 'Gym walls are too strong to break!'); return; }
   // Natural blocks have no edit yet; a placed block does (T20: so placed gold ore and leaves never give cubes).
   const natural = !world.edits.has(world.index(hit.x, hit.y, hit.z));
   world.set(hit.x, hit.y, hit.z, B.AIR);
@@ -660,8 +669,8 @@ function placeBlock(hit = target.block) {
   const cur = world.get(x, y, z);
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   const id = game.hotbar[game.selected];
-  if (!world.editAllowed(x, y, z, id)) { wallToast("You can't build inside a gym!"); return; }
-  if (id === B.DOORMAT && world.realm) { wallToast('No homes in dreams! Build your home in your own world.'); return; } // T31
+  if (!world.editAllowed(x, y, z, id)) { wallToast(world.protectedAt(x, y, z)?.wallText || "You can't build inside a gym!"); return; } // T38a: a keep says its own words
+  if (id === B.DOORMAT && world.realm) { wallToast(world.realm.noHomeText || 'No homes in dreams! Build your home in your own world.'); return; } // T31
   if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;
   world.set(x, y, z, id);
@@ -688,6 +697,7 @@ function tapAt(x, y) {
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
   else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
   else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
+  else if (block && block.t <= REACH && game.portal.use(block)) { /* a door (T38a) */ }
   else if (block?.id === B.WAKE_STONE && block.t <= REACH) game.realms.leave('stone'); // T31
   else if (block?.id === B.BED && block.t <= REACH) game.realms.useBed(block);
 }
@@ -805,6 +815,7 @@ function towerWon(npc) {
     ui.toast(first ? 'You are the Champion! +20 Capture Cubes' : 'Another win! +5 Capture Cubes');
     if (first) ui.celebrate();
     if (first) ui.toast('Talk to Champion Solenne again: she has missions for you!'); // T29
+    if (first) ui.toast('A Portal Door opened beside the tower door! Step through it.'); // T38a
   } else {
     const key = `tower:${npc.role}`;
     if (!game.beaten.includes(key)) game.beaten.push(key);
@@ -950,23 +961,24 @@ function updateSky(dt) {
   scene.fog.near = wx.fogNear; scene.fog.far = wx.fogFar + (40 - wx.fogFar) * underFade;
   const look = game.world.realm?.look; // T31: a realm's own sky colour and fog
   if (look) {
-    scene.background.lerp(REALM_SKY.setHex(look.sky).multiplyScalar(0.4 + 0.6 * light), 0.7);
+    if (look.still) scene.background.copy(REALM_SKY.setHex(look.sky)); // T38a: the Swirl's sky never changes (the main clock keeps running)
+    else scene.background.lerp(REALM_SKY.setHex(look.sky).multiplyScalar(0.4 + 0.6 * light), 0.7);
     scene.fog.color.copy(scene.background);
     if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
   }
   const floor = look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
-  const lit = Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4));
+  const lit = look?.still ? floor : Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4)); // T38a: a still realm is always the same brightness
   caveLight.uLit.value = lit;
   caveLight.uLantern.value = 0.75 * underFade;
   caveLight.uPlayer.value.copy(game.player.eyePos);
-  const lightF = Math.max(light, floor);
+  const lightF = look?.still ? floor : Math.max(light, floor);
   hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade);
   sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade);
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');
-  game.ui.setClock(game.world.realm ? '☾ Dream' : `${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`); // T35: no hours in a dream, the moon shows how long the night lasts
-  game.ui.setMoon(game.world.realm ? nightProgress(game.time) : null);
+  game.ui.setClock(game.world.realm ? (game.world.realm.clock || '☾ Dream') : `${light > 0.5 ? '☀' : '☾'} ${hh}:${mm}${game.weather.icon}${under ? ' · Cave' : ''}`); // T35: no hours in a dream, the moon shows how long the night lasts
+  game.ui.setMoon(game.world.realm?.moon ? nightProgress(game.time) : null); // T38a: only the Dream has the moon
   game.night = light < 0.3;
   game.npcs.setNight(game.night); // the night gyms' people (Comet, Saucer) come and go with the night
 }
@@ -978,6 +990,7 @@ game.missions = createMissions(game, { save }); // T29
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
+game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 
@@ -1022,22 +1035,26 @@ function updateTarget() {
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
   const talk = target.npc && game.gymLive.talkPrompt(target.npc); // T33
+  const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
+      : door ? door // T38a
       : target.block?.id === B.BED && game.place === MAIN ? `Bed · ${touchMode ? 'tap' : 'press E'} to sleep`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
   game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
     : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!'))
     : target.wild ? `Battle ${target.wild.species.name}!`
       : target.block?.id === B.CHEST ? 'Open chest!'
-      : target.block?.id === B.WAKE_STONE ? 'Wake up!' : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
+      : target.block?.id === B.WAKE_STONE ? 'Wake up!'
+      : door ? game.portal.action(target.block) // T38a
+      : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
       : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
 }
 
-let fireAt = 0, fireK = 0;
+let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -1060,6 +1077,7 @@ function frame(now) {
     game.rematch.update();
     game.missions.update(dt); // T29
     game.realms.update(); // T31: morning wakes you up
+    game.portal.update(dt); // T38a
     if (p.onGround) {
       const fx = Math.floor(p.pos.x), fy = Math.floor(p.pos.y - 0.05), fz = Math.floor(p.pos.z);
       const under = game.world.get(fx, fy, fz);
@@ -1118,6 +1136,16 @@ function frame(now) {
       fireTiles.set(f.frame, src);
       firePos.set(f.x, 0);
       renderer.copyTextureToTexture(firePos, src, texture);
+    }
+  }
+  if (game.world?.hasPortal && now - portalAt > 160) { // T38a: the Portal Door's spiral turns; only its 16x16 tile goes to the GPU
+    portalAt = now;
+    const f = swirlPortal(atlas, ++portalK);
+    if (f) {
+      const src = portalTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
+      portalTiles.set(f.frame, src);
+      portalPos.set(f.x, 0);
+      renderer.copyTextureToTexture(portalPos, src, texture);
     }
   }
   game.homeUi.update(now);

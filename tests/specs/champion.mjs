@@ -160,6 +160,7 @@ export default async function ({ browser, base, t }) {
   await page.screenshot({ path: SHOTS + 'tower-inside.png', timeout: 180000 });
 
   await heal();
+  await page.evaluate(() => { const g = window.pokecraft, toast = g.ui.toast.bind(g.ui); window.__toasts = []; g.ui.toast = m => { window.__toasts.push(m); toast(m); }; }); // T38a
   await page.evaluate(`window.pokecraft.talkTo(${person('champion')})`);
   t.ok(await page.evaluate(() => window.pokecraft.inBattle && window.pokecraft.battle.boss), 'the champion battle starts as a boss battle');
   let shot = false;
@@ -181,6 +182,10 @@ export default async function ({ browser, base, t }) {
   t.ok(after.champion && after.powered, 'you are the Champion, and Zenithar powered up on the way');
   t.ok(after.title && after.celebrate, 'the Champion title shows and the celebration plays');
   t.ok(after.cubes >= 30, `rewards: ${after.cubes} Capture Cubes`);
+  // T38a: becoming the Champion opens the Portal Door beside the tower door.
+  t.ok(await page.evaluate(() => window.__toasts.includes('A Portal Door opened beside the tower door! Step through it.')), 'a toast says a Portal Door opened beside the tower door');
+  await page.waitForFunction(() => { const g = window.pokecraft, c = g.world.portal; return g.world.get(...c.surface[0]) === 125; }, null, { timeout: 30000 });
+  t.ok(true, 'the Portal Door swirls for the new Champion');
 
   // Zenithar close up.
   const png = await page.evaluate(async () => (await import('/src/ui.js')).portrait('zenithar', 520, 440));

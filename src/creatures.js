@@ -195,6 +195,7 @@ export class CreatureManager {
     if (x < 2 || z < 2 || x >= this.world.W - 2 || z >= this.world.D - 2) return;
     const biome = this.biomeAt(x, z);
     if (!biome) return;
+    if (!this.table(biome).length) return; // T38a: a realm with no wild creatures (the Swirl)
     const [species, when] = this.pickEntry(biome, ctx);
     // A condition with a `place` (near a home) says where the creature appears.
     if (this.spawnPlaced(species, when, ctx, spawnPoint)) return;
@@ -286,6 +287,7 @@ export class CreatureManager {
     const world = this.world;
     const angle = Math.random() * Math.PI * 2, dist = 5 + Math.random() * 13;
     const ctx = CreatureManager.asCtx(night);
+    if (!this.table('cave').length) return; // T38a
     const [species, when] = this.pickEntry('cave', ctx);
     if (this.spawnPlaced(species, when, ctx, spawnPoint)) return; // a home visitor (T22): appears in its home
     const x = Math.floor(center.x + Math.cos(angle) * dist), z = Math.floor(center.z + Math.sin(angle) * dist);
