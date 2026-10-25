@@ -27,8 +27,10 @@ const flags = process.argv.slice(2).filter(a => a.startsWith('--')), args = proc
 const COURSE = flags.includes('--course');
 // T38a: `--swirl` does the same for the Swirl realm (arrival view instead of the tall island).
 const SWIRL = flags.includes('--swirl');
-const REALM = SWIRL ? 'swirl' : 'dream';
-const DREAM = flags.includes('--dream') || SWIRL, DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
+// T40: `--realm=<id>` measures any realm (a Picture World is entered through the Swirl; `--swirl` runs with one ready frame, the house).
+const REALM_FLAG = (flags.find(a => a.startsWith('--realm=')) || '').slice(8);
+const REALM = REALM_FLAG || (SWIRL ? 'swirl' : 'dream');
+const DREAM = flags.includes('--dream') || SWIRL || !!REALM_FLAG, DREAM_SIZE = Number((flags.find(a => a.startsWith('--size=')) || '').slice(7)) || 0;
 const runs = Number(args[0]) || 3;
 const dir = path.resolve(args[1] || path.dirname(fileURLToPath(import.meta.url)));
 const { serve, openGame, seedSave, continueGame } = await import(path.join(dir, 'helpers.mjs'));
@@ -178,8 +180,14 @@ async function measureDream(profile) {
     const genMs = performance.now() - t; t = performance.now();
     w.buildAll(); const meshMs = performance.now() - t; w.dispose();
     g.time = 0.75;
+    if (REALM === 'swirl' || def.parent) (await import('/src/pictureworlds.js')).pictureWorld('house').ready = true; // T40: one ready frame
+    g.champion = true;
+    if (def.parent) { // a Picture World: through the Swirl, then the frame of its first Picture World
+      await g.realms.enter(def.parent, { back: [g.player.pos.x, g.player.pos.y, g.player.pos.z, 0] });
+      (await import('/src/pictureworlds.js')).worldsOf(def.id).forEach(x => { x.ready = true; });
+    }
     t = performance.now();
-    await g.realms.enter(REALM, { back: [g.player.pos.x, g.player.pos.y, g.player.pos.z, 0] });
+    await g.realms.enter(REALM, { back: [g.player.pos.x, g.player.pos.y, g.player.pos.z, 0], arrive: (await import('/src/pictureworlds.js')).worldsOf(def.id)[0]?.id });
     return { size: def.size, genMs: Math.round(genMs), meshMs: Math.round(meshMs), enterMs: Math.round(performance.now() - t) };
   }, [DREAM_SIZE, REALM]);
   const dream = await probe('dream');

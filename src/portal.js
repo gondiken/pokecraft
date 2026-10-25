@@ -5,7 +5,7 @@
 // Imports only blocks.js (world.js and gymplace.js import this file, so it must not import them back).
 import * as THREE from 'three';
 import { B } from './blocks.js';
-import { PICTURE_WORLDS } from './pictureworlds.js';
+import { PICTURE_WORLDS, FRAME_WORLDS } from './pictureworlds.js';
 
 // The door stands flat against the tower's front wall, right of the rainbow pillar, in the row d = 7 (the tower's own
 // protected box, +-7, already holds it: no player build can be lost). d = distance in front of the tower centre,
@@ -115,19 +115,21 @@ void main() {
 }`;
 
 const DOOR_IDS = new Set([B.PORTAL, B.PORTAL_DIM, B.PORTAL_FRAME]);
+// T40: the blocks of a way back (the Swirl's door home, and the picture frame you step into in a Picture World)
+const BACK_IDS = new Set([B.PORTAL, B.PORTAL_FRAME, B.WAY_BACK, B.PICTURE_FRAME]);
 // T38b: a guest can use the door only while the host is in the Swirl (and then needs no title)
 const openFor = game => game.mp?.role === 'guest' ? game.realms.followableAt('portal') : game.champion;
 const inBox = (b, k) => k.x >= b.x0 && k.x <= b.x1 && k.y >= b.y0 && k.y <= b.y1 && k.z >= b.z0 && k.z <= b.z1;
 
 export function createPortal(game) {
-  let acc = 0, wanted = null, glow = null; // glow: the DoorGlow of the door in this world (main or the Swirl's door home)
+  let acc = 0, wanted = null, glows = []; // glows: the DoorGlows of the doors in this world (main, the Swirl's door home, or a Picture World's ways back)
 
   // Which door (if any) is this block? 'main' = the Portal Door beside the tower, 'back' = the Swirl's door home.
   function kindOf(block) {
     const w = game.world;
     if (!block || !w) return null;
     if (game.place === 'main') return w.portal && DOOR_IDS.has(block.id) && inBox(w.portal.box, block) ? 'main' : null;
-    if (w.door && (block.id === B.PORTAL || block.id === B.PORTAL_FRAME) && inBox(w.door.box, block)) return 'back';
+    for (const d of w.doors ?? (w.door ? [w.door] : [])) if (BACK_IDS.has(block.id) && inBox(d.box, block)) return 'back';
     return null;
   }
 
@@ -137,7 +139,7 @@ export function createPortal(game) {
     // Every frame (the main loop): a Champion sees the door swirling; everybody else sees it dim.
     update(dt) {
       const w = game.world;
-      glow?.update(dt, game.place !== 'main' || openFor(game) ? 1 : 0);
+      for (const g of glows) g.update(dt, game.place !== 'main' || openFor(game) ? 1 : 0);
       if (!w || game.place !== 'main') { swirlUpdate(game, dt); return; }
       if (!w.portal) return;
       acc += dt;
@@ -175,25 +177,26 @@ export function createPortal(game) {
     prompt(block, how) {
       const k = kindOf(block);
       if (k === 'main') return openFor(game) ? `Portal Door · ${how} to step in` : 'Portal Door · closed';
-      if (k === 'back') return `Portal Door · ${how} to go home`;
+      if (k === 'back') { const r = game.world.realm; return `${r?.doorName ?? 'Portal Door'} · ${how} to ${r?.doorVerb ?? 'go home'}`; } // T40: the words are the realm's
       return swirlPrompt(game, block, how);
     },
     action(block) {
       const k = kindOf(block);
       if (k === 'main') return openFor(game) ? 'Step in!' : '';
-      if (k === 'back') return 'Go home!';
+      if (k === 'back') return game.world.realm?.doorAction ?? 'Go home!';
       return swirlAction(game, block);
     },
 
     // A new world was made (createWorld): forget what was drawn.
     reset(world) {
       acc = 0; wanted = null;
-      glow?.dispose(); glow = null;
-      const door = world?.portal || world?.door; // the main world's Portal Door, or the Swirl's door home
-      if (door?.surface?.length && game.scene) glow = new DoorGlow(game.scene, door.surface, door.stand);
+      for (const g of glows) g.dispose();
+      glows = [];
+      const doors = [world?.portal, ...(world?.doors ?? [world?.door])].filter(Boolean); // the main world's Portal Door, the Swirl's door home, or a Picture World's ways back
+      for (const door of doors) if (door.surface?.length && game.scene) glows.push(new DoorGlow(game.scene, door.surface, door.stand));
       swirlReset(game, world);
     },
-    glow: () => glow && { open: glow.u.open.value, t: glow.u.t.value, parts: glow.group.children.length }, // for tests
+    glow: () => glows[0] && { open: glows[0].u.open.value, t: glows[0].u.t.value, parts: glows[0].group.children.length, count: glows.length }, // for tests
     // For tests and the HUD: what the Swirl is showing right now.
     info() {
       const st = SWIRL.get(game);
@@ -246,6 +249,46 @@ function outlineGeometry(boxes) {
   return geo;
 }
 
+// T40: the picture of a ready frame (one canvas plane each, drawn by the entry's own `picture(ctx, size)` or a default).
+function drawPicture(pw) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  if (pw.picture) { pw.picture(g, 128); return c; }
+  const grad = g.createLinearGradient(0, 0, 0, 128);
+  grad.addColorStop(0, `#${pw.frame[0].toString(16).padStart(6, '0')}`); grad.addColorStop(1, '#ffffff');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  g.font = '84px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
+  g.fillText(pw.emoji, 64, 70);
+  g.fillStyle = 'rgba(255,255,255,0.9)';
+  for (const [x, y] of [[16, 18], [108, 24], [22, 108], [104, 104], [64, 10]]) { g.beginPath(); g.arc(x, y, 4, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
+function dropPictures(game, st) {
+  for (const m of st.pictures || []) { game.scene?.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
+  st.pictures = [];
+}
+// Ready frames show their picture, the others stay covered with cloth (cells drawn with setLive: never an edit).
+function updateFrames(game, st) {
+  const w = game.world, key = FRAME_WORLDS.map(p => (p.ready ? 1 : 0)).join('');
+  const first = w.swirl.frames.find(f => FRAME_WORLDS.find(p => p.id === f.world)?.ready);
+  const drawn = first ? w.get(...first.cloth[0]) === B.PICTURE : true;
+  if (key === st.ready && drawn) return;
+  st.ready = key;
+  dropPictures(game, st);
+  for (const f of w.swirl.frames) {
+    const pw = FRAME_WORLDS.find(p => p.id === f.world);
+    for (const [x, y, z] of f.cloth) w.setLive(x, y, z, pw?.ready ? B.PICTURE : B.CLOTH);
+    if (!pw?.ready || !game.scene) continue;
+    const [fx, fz] = f.spot.facing, tex = new THREE.CanvasTexture(drawPicture(pw));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ map: tex }));
+    m.position.set(f.spot.x + 0.5, f.spot.y + 3.5, f.spot.z + 0.5 + 0.52 * fz);
+    m.rotation.y = fz > 0 ? 0 : Math.PI; // the plane's front looks along +z
+    m.userData.swirlSky = true;
+    game.scene.add(m);
+    st.pictures.push(m);
+  }
+}
+
 function dropOutline(game, st) {
   if (!st.outline) return;
   game.scene?.remove(st.outline); st.outline.geometry.dispose(); st.outline.material.dispose(); st.outline = null;
@@ -257,11 +300,12 @@ function swirlReset(game, world) {
   if (old) {
     for (const m of old.lifts) { game.scene?.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
     dropOutline(game, old);
+    dropPictures(game, old);
     old.tex?.dispose();
     SWIRL.delete(game);
   }
   if (!world?.swirl || !game.scene) return;
-  const st = { world, lifts: [], tex: liftTexture(), outline: null, lit: null, told: {}, acc: 0, t: 0, frameAt: new Map() };
+  const st = { world, lifts: [], tex: liftTexture(), outline: null, lit: null, told: {}, acc: 0, t: 0, frameAt: new Map(), pictures: [], ready: null };
   for (const l of world.lifts || []) {
     const w = l.x[1] - l.x[0] + 1, d = l.z[1] - l.z[0] + 1, h = l.y[1] + 1 - l.y[0];
     const map = st.tex.clone();
@@ -287,6 +331,7 @@ function swirlUpdate(game, dt) {
   st.acc += dt;
   if (st.acc < 0.25 && st.lit !== null) return;
   st.acc = 0;
+  updateFrames(game, st); // T40
   const stars = game.stars || [], key = stars.join();
   if (key !== st.lit || (w.swirl.bridge[0] && w.get(...w.swirl.bridge[0].cells[0]) === (stars.includes(w.swirl.bridge[0].world) ? B.AIR : B.STAR_STONE))) {
     st.lit = key;
@@ -324,6 +369,12 @@ function swirlUse(game, block) {
   const f = frameOf(game, block);
   if (f) {
     const pw = PICTURE_WORLDS.find(p => p.id === f.world);
+    if (pw.ready && pw.realm) { // T40: step into the picture
+      if (game.mp?.role === 'guest') { game.realms.guestEntrance('frame'); return true; } // a guest follows the host, never steps in alone
+      const [fx, fz] = f.spot.facing;
+      game.realms.enter(pw.realm, { back: [f.stand[0] + 0.5, f.stand[1], f.stand[2] + 0.5, Math.atan2(-fx, -fz)], arrive: pw.id });
+      return true;
+    }
     if (pw.secret && !pw.ready) { game.ui.toast('❓ A secret world! Nobody knows what is behind this cloth yet.'); return true; }
     game.ui.toast(`${pw.emoji} ${pw.name}: this world isn't open yet. Come back soon!`);
     return true;
@@ -333,7 +384,7 @@ function swirlUse(game, block) {
 }
 function swirlPrompt(game, block, how) {
   const f = frameOf(game, block);
-  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.secret && !pw.ready ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in` : 'covered'}`; }
+  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.ready ? `${pw.emoji} ${pw.name}` : pw.secret ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
   if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
   return '';
 }

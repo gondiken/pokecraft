@@ -172,6 +172,12 @@ export class Player {
     const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
 
+    if (this.carry) { // T40: on a Mover (a toy train, a bottle cap, a cannon arc): it moves you, a fresh jump press gets you off
+      const w = this.carry.where();
+      this.pos.set(w.x, w.y, w.z); this.vel.set(0, 0, 0); this.onGround = true;
+      if (this.carry.wantsLeave(k.Space)) this.carry.leave(true);
+      return;
+    }
     const r = this.ride;
     if (r && r.kind === 'sky') return this.fly(dt, wx, wz, len, analog);
 

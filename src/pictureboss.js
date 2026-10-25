@@ -1,0 +1,163 @@
+// T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge) and a short
+// note from the Wizard. Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
+// crew: bonus battles (never a gate before the Boss). The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
+import { PICTURE_WORLDS, pictureWorld, loadStars } from './pictureworlds.js';
+import { rematchTeam, rematchCubes } from './rematch.js';
+import { REMATCH_CAP } from './gyms.js';
+import { sound } from './sound.js';
+
+export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
+
+// A Boss def (one per Picture World, keyed by its PICTURE_WORLDS id):
+// { id, name, type, title?, colors: { shirt, pants, hair, skin }, hat?, cape?, look?,   // a person (buildPerson), or
+//   model?: { species, scale },                                                       // a big creature (buildModel), e.g. a parrot captain
+//   team: [[species, level, moves?], ...],          // the signature creature last; Step 0 top levels 62 / 63 / 64 / 65
+//   intro: [lines], lose: 'said when you win', win: 'said when you lose', rematchIntro?: [lines],
+//   note: "The Wizard's note: one or two short sentences",
+//   gate?: game => null | 'what the Boss says instead of battling' (alias: ready),
+//   crew?: [{ name, colors, look?, team, intro?, line }] }   // optional helpers, 2-4 levels below the Boss; never a gate
+export const BOSSES = {};
+export function addBoss(def) { BOSSES[def.id] = { ...def, title: def.title ?? `${def.name} · ${pictureWorld(def.id).name} Boss` }; }
+export const bossOf = id => BOSSES[id] ?? null;
+export const crewKey = (id, i) => `pw:${id}:crew${i + 1}`;      // saved in `beaten` (strings, like trainer keys)
+
+// The team for a star rematch after `wins` rematch wins (pure): the T28 growth with the crew's species as extras.
+export function bossTeam(def, wins = null) {
+  if (wins === null) return def.team;
+  const gym = { id: def.id, type: def.type, leaderTeam: def.team, trainers: (def.crew || []).map(c => ({ team: c.team })) };
+  return rematchTeam(gym, wins, { cap: BOSS.cap });
+}
+
+// bossWins from a save: { [Picture World id]: whole number > 0 }; unknown ids and junk dropped (old saves have none).
+export function loadBossWins(saved) {
+  const out = {};
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return out;
+  for (const w of PICTURE_WORLDS) {
+    const n = saved[w.id];
+    if (Number.isInteger(n) && n > 0) out[w.id] = Math.min(BOSS.maxWins, n);
+  }
+  return out;
+}
+
+const topLevel = team => Math.max(...team.map(t => t[1]));
+
+// Stand-in Bosses with old species (each task replaces its own call with the real Boss).
+const NOTE = 'Thank you! Every star makes my Swirl a little stronger. Bring me more!';
+const PEOPLE = { shirt: 0xffffff, pants: 0x3a3a6a, hair: 0x6a3a1a, skin: 0xf2d0b0 };
+addBoss({ id: 'house', name: "Wizard's Mouse Mimi", type: 'normal', colors: { ...PEOPLE, shirt: 0xffb8d8 }, team: [['bounceroo', 60], ['slimehound', 62]],
+  intro: ['Squeak! Do you want to battle?'], lose: 'Squeak! You are strong!', win: 'Good battle! Try again any time.', note: NOTE });
+addBoss({ id: 'pirate', name: 'Deckhand Dot', type: 'water', colors: { ...PEOPLE, shirt: 0xd0d8f0, pants: 0x2a4a8a }, team: [['shellby', 61], ['tidalord', 63]],
+  intro: ['Ahoy! Ready for a battle?'], lose: 'Ahoy! You win this one!', win: 'Good battle! Try again any time.', note: NOTE });
+addBoss({ id: 'race', name: 'Starter Sam', type: 'electric', colors: { ...PEOPLE, shirt: 0xff6a4a, pants: 0x2a2a2a }, look: 'sport', team: [['thunderwolf', 62], ['blazehound', 64]],
+  intro: ['On your marks! Battle time!'], lose: 'What a finish! You win!', win: 'Good battle! Try again any time.', note: NOTE });
+addBoss({ id: 'stadium', name: 'Coach Kiki', type: 'normal', colors: { ...PEOPLE, shirt: 0x3aa84a, pants: 0xffffff }, look: 'sport', team: [['zorbit', 63], ['boomwing', 65]],
+  intro: ['Team huddle! Let us play!'], lose: 'Great game! You win!', win: 'Good battle! Try again any time.', note: NOTE });
+
+export function createBosses(game, { startBattle, save }) {
+  let pending = null; // { npc, at } while the rematch question is on screen
+  const toast = m => game.ui.toast(m);
+  const winsOf = id => game.bossWins[id] || 0;
+  const hasStar = id => game.stars.includes(id);
+  const defOf = npc => (npc.kind === 'crew' ? bossOf(npc.def?.boss) : bossOf(npc.def?.id));
+  const dist = npc => Math.hypot(npc.pos.x - game.player.pos.x, npc.pos.z - game.player.pos.z);
+  const usable = npc => game.npcs.list.includes(npc) && !game.inBattle;
+  const gateText = def => (def.gate ?? def.ready)?.(game) ?? null;
+
+  const api = {
+    winsOf,
+    get pending() { return pending; },
+
+    // The player talked to a Boss or a crew person. Always handled (true).
+    talk(npc) {
+      const def = defOf(npc);
+      if (!def) return true;
+      if (npc.kind === 'crew') {
+        const i = npc.def.index, crew = def.crew[i];
+        if (game.beaten.includes(crewKey(def.id, i))) { toast(`${npc.name}: ${crew.line}`); return true; }
+        startBattle({ trainer: npc, team: crew.team, intro: crew.intro || ['Get past me first!'], picture: { id: def.id, crew: i, rematch: null } });
+        return true;
+      }
+      const why = gateText(def);
+      if (why) { toast(`${npc.name}: ${why}`); return true; }
+      if (!hasStar(def.id)) {
+        startBattle({ trainer: npc, team: def.team, intro: def.intro, boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: null } });
+        return true;
+      }
+      if (pending?.npc === npc && game.ui.asking) { api.accept(); return true; } // talk again = yes
+      if (game.duels?.incoming) { toast('Answer the battle question first!'); return true; }
+      const wins = winsOf(def.id), top = topLevel(bossTeam(def, wins));
+      pending = { npc, at: performance.now() };
+      game.ui.ask({
+        text: wins === 0 ? `${npc.name}: A rematch? My team trained too. Now they are up to level ${top}!`
+          : `${npc.name}: Rematch number ${wins + 1}? You beat me ${wins} ${wins === 1 ? 'time' : 'times'}! My team is up to level ${top} now.`,
+        yes: 'Battle!', no: 'Not now', kind: 'mine',
+        onYes: () => api.accept(npc),
+        onNo: () => { pending = null; toast(`${npc.name}: OK! Come back any time.`); },
+      });
+      return true;
+    },
+    accept(npc = pending?.npc) {
+      pending = null;
+      game.ui.closeAsk();
+      if (!npc || !usable(npc) || dist(npc) > BOSS.askRange) return;
+      const def = defOf(npc), wins = winsOf(def.id);
+      startBattle({ trainer: npc, team: bossTeam(def, wins), intro: def.rematchIntro || ["Back again? Let's go!"], boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: wins } });
+    },
+
+    // The words for the big action button: { verb, action } or null for people that are not mine.
+    talkPrompt(npc) {
+      if (npc.kind === 'crew') return game.beaten.includes(crewKey(npc.def?.boss, npc.def?.index)) ? { verb: 'talk', action: 'Talk' } : { verb: 'battle', action: 'Battle!' };
+      if (npc.kind !== 'boss') return null;
+      const star = hasStar(npc.def?.id);
+      return { verb: star ? 'ask for a rematch' : 'challenge', action: star ? 'Rematch!' : 'Challenge!' };
+    },
+
+    // Battle end (main.js onBattleEnd): opts.picture = { id, crew?, rematch? }
+    lost(npc) {
+      const def = npc ? defOf(npc) : null;
+      toast(`${npc?.name || 'Boss'}: ${def?.win || 'Good battle! Try again any time.'}`);
+    },
+    won(npc, opts) {
+      const { id, crew } = opts.picture;
+      const def = bossOf(id), pw = pictureWorld(id);
+      if (!def || !pw) return;
+      if (crew != null) { // a helper: a bonus battle, never a gate
+        game.beaten.push(crewKey(id, crew));
+        game.cubes += BOSS.crewCubes;
+        sound.play('win');
+        toast(`${npc.name}: Nice battle! +${BOSS.crewCubes} Capture Cubes`);
+        return;
+      }
+      if (!hasStar(id)) { // the first win: the star, the Wizard's note
+        game.stars = loadStars([...game.stars, id]);
+        const c = def.cubes ?? BOSS.cubes;
+        game.cubes += c;
+        sound.play('champion');
+        toast(`${npc.name}: ${def.lose}`);
+        toast(`⭐ You won the star of the ${pw.name}! (${game.stars.length}/${PICTURE_WORLDS.length}) +${c} Capture Cubes`);
+        game.ui.celebrate(`⭐ The ${pw.name} star!`, `🧙 "${def.note}"`, BOSS.noteMs);
+        toast(`🧙 ${def.note}`);
+        toast('Go back to the Swirl: your star lights a stone of the star bridge!');
+        return;
+      }
+      const n = Math.min(BOSS.maxWins, winsOf(id) + 1); // a rematch
+      game.bossWins[id] = n;
+      const c = rematchCubes(n);
+      game.cubes += c;
+      sound.play('win');
+      toast(`${npc.name}: Wow, you beat me again!`);
+      const capped = bossTeam(def, n).every(t => t[1] >= BOSS.cap);
+      toast(`Rematch win ${n}! +${c} Capture Cubes. ${capped ? "My team can't get any stronger. You are the best!" : 'Next time my team will be even stronger!'}`);
+    },
+
+    update() {
+      if (!pending) return;
+      const { npc, at } = pending;
+      if (!game.ui.asking) { pending = null; return; }
+      if (performance.now() - at > BOSS.askTime * 1000 || dist(npc) > BOSS.askRange || !usable(npc) || !game.started) api.close();
+    },
+    close() { pending = null; game.ui.closeAsk(); },
+  };
+  game.bosses = api;
+  return api;
+}

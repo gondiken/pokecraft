@@ -163,6 +163,10 @@ Stat changes and sleep go away when a creature is switched out. A few creatures 
 | Squad | Parkour, camo, normal | A crowd blocks the runner, many eyes find a camo creature, and a team beats one on its own. Weak to electric, sound and food (a pizza party breaks up the squad). Squad, sky and slime attacks barely hurt it; ghost attacks are weak against it. Squad creatures get weaker as they get hurt: moves that hit many times are great against them |
 | Parkour | Dream, bone, cyber | A runner jumps right out of a dream, outruns skeletons and beats a video game. Weak to grass (vines trip it) and squad (a crowd blocks the way). Parkour, sky and ghost attacks don't do much to it |
 | Ninja | Mind, paper, squad | A ninja sneaks past a mind, cuts paper and picks a squad off one by one. Weak to light (no shadows to hide in) and sound (a noise gives it away). Ghost and camo attacks don't do much to it (they know all its hiding tricks); its own attacks bounce off metal armour, bright light and other ninjas |
+| Tiny | Racer, food, cyber | Ants get into the picnic and the wires, and a tiny one jams a racer's engine. Weak to fire, sky (a gust blows it away) and ball (squashed!) |
+| Pirate | Ball, treasure, water | A pirate's hook pops the ball, grabs the treasure and rules the waves. Weak to electric (a shock on deck) and racer (outrun!) |
+| Racer | Pirate, time, parkour | A racer outruns the pirate, beats the clock and the runner. Weak to water (a wet track skids), ice and tiny |
+| Ball | Tiny, squad, bone | A ball squashes the tiny, bowls over the squad and knocks the bones down like pins. Weak to grass, pirate and ninja |
 
 Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, paper beats light, light beats slime, and slime beats sky. Cozy beats cyber, cyber beats treasure, and treasure beats cozy. Food beats squad, squad beats parkour, parkour beats dream, and dream beats food. Mind and cosmic attacks are weak against aliens (space is their home).
 

@@ -7,6 +7,9 @@ import { GYMS } from './gyms.js';
 import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
 import { swirlLand, swirlAim } from './swirlland.js'; // T38a
+import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
+import { pictureStub, pictureAim } from './picturelands.js'; // T40
+import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -47,6 +50,7 @@ export const REALMS = {
   swirl: {
     id: 'swirl', name: 'Swirl', version: 3, size: [160, 160], seedSalt: 0x5317,
     terrain: 'swirlLand', biome: 'swirl',
+    showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
     spawns: { swirl: [], cave: [] },    // no wild creatures in wave 13
     walk: [], gyms: [],
@@ -68,6 +72,42 @@ export const REALMS = {
 };
 REALMS.dream.spawns.cave = REALMS.dream.spawns.dream; // digging into the island: the same dreamers
 
+// T40: a Picture World realm: a child of the Swirl, entered through a picture frame (entrance 'frame'), never by morning.
+// Every field may be overridden; words use the def's own name, so no code has to name a Picture World.
+export function pictureRealm(d) {
+  const biome = d.biome ?? d.id, name = d.name;
+  return {
+    version: 1, biome, gravity: 1, timeSpeed: 1,
+    levelBonus: 33, levelCap: 45,          // wild creatures about 45-55 for a Champion (creatures.wildLevel)
+    spawns: { [biome]: [], cave: [] },     // never fall back to the main world's SPAWNS (creatures.table)
+    walk: [], gyms: [],
+    look: { sky: 0xbfe6ff, fog: [40, 150], time: null, weather: false, light: 0.95, still: true, stars: false },
+    arriveYaw: 0, morning: false, lose: 'stay', showStars: true,
+    parent: 'swirl', entrance: 'frame',
+    clock: `🖼️ ${name}`, travelText: 'Into the picture...', travelIcon: '🖼️',
+    enterText: `Whoosh! You stepped into the ${name}!`,
+    arriveHint: 'Find the Boss and win the star! The way back is right behind you.',
+    backText: 'You stepped out of the picture, back into the Swirl.',
+    lostText: 'Your team had a little rest. Try again!',
+    noHomeText: `No homes in the ${name}! Build your home in your own world.`,
+    doorName: 'Way back', doorVerb: 'go back to the Swirl', doorAction: 'Back!',
+    away: n => `${n} stepped into the ${name}.`,
+    hostAway: n => `${n} is in the ${name}. Look around until they come back!`,
+    returned: n => `${n} is back!`,
+    askFollow: n => `${n} stepped into the ${name}. Go too?`, followText: 'Go too',
+    joined: n => `You followed ${n} into the ${name}!`,
+    too: n => `${n} went back to the Swirl, so you go too!`,
+    guide: n => `in the ${name} with ${n}`,
+    guestNote: n => `Wait for ${n} to step into a picture, then follow!`,
+    ...d,
+  };
+}
+// The stand-in Picture Worlds (each task replaces its own line with the real realm, keeping pictureRealm({...})).
+REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05, size: [64, 64], terrain: 'pictureStub', arrive: [32, 37], walk: [B.GRASS] });
+REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [64, 64], terrain: 'pictureStub', arrive: [32, 37], walk: [B.SAND] });
+REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9a1d, size: PLAYLAND.size, terrain: 'playLand',
+  arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });
+
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
 // so a game loaded in a realm by day wakes up only after the clock is known.
@@ -76,7 +116,7 @@ export function realmOf(id) { return Object.hasOwn(REALMS, id) ? REALMS[id] : nu
 
 // Terrain builders: (world, def) fill world.data / world.ground and set world.wake (the Wake Stone cell) and world.isles.
 // Writes go straight into data (not edits), like the main terrain.
-export const TERRAINS = { dreamLand, swirlLand };
+export const TERRAINS = { dreamLand, swirlLand, pictureStub, playLand };
 // The guide arrow of a terrain when no realm gym is left: (world, p, game) => { x, z, text(arrow, distance) } (T38a). The Dream's is in aim() below.
 export const TERRAIN_AIMS = { swirlLand: swirlAim };
 
@@ -90,7 +130,7 @@ export function generateRealm(world) {
   world.gyms = GYMS.filter(d => d.realm === def.id).map(d => REALM_BUILDERS[d.build](world, d, world.isles));
   world.tower = null;
   world.caves = null;
-  world.walk = new Set(def.walk || []);
+  world.walk = new Set([...(def.walk || []), ...(world.extraWalk || [])]); // T40: a terrain (Playland's parts) may add walkable blocks
   if (def.look?.light) world.litCol.fill(1); // bright everywhere: no cave darkness under the islands or inside the house
 }
 
@@ -196,6 +236,41 @@ export function createRealms(game, { createWorld, save, size }) {
     return '';
   }
 
+  // T40: back up one level (Picture World -> the Swirl). The host keeps its own edits; a guest asks the host for the parent's edits.
+  async function goUp(reason) {
+    busy = true;
+    if (game.hideSeek?.active) game.hideSeek.stop();
+    const left = realmOf(game.place), P = realmOf(stash.up.id);
+    let edits;
+    if (!stash.guest) { game.realmEdits = self.edits(); edits = game.realmEdits[P.id]; }
+    lastGround = null;
+    game.riding?.stop('quiet');
+    show(left.travelText || 'Travelling...', left.travelIcon);
+    if (stash.guest) { // the host went up first and is in the parent now: ask for its edits (a copy from when we went down is the fallback)
+      let res = null;
+      try { res = await game.mp.askRealm(P.id); } catch { res = null; }
+      edits = Array.isArray(res?.edits) ? res.edits : stash.up.edits;
+      if (!Array.isArray(edits)) { busy = false; hide(); return self.leave(reason, { home: true }); }
+    }
+    await frame();
+    const up = stash.up;
+    try {
+      createWorld(realmSeed(stash.seed, P.seedSalt), edits, P.size, { realm: P });
+      game.place = P.id;
+      stash.up = null;
+      const p = game.player;
+      if (up.ret) { p.pos.set(up.ret[0], up.ret[1], up.ret[2]); p.yaw = up.ret[3] ?? 0; p.pitch = up.ret[4] ?? 0; } else p.pos.copy(game.spawnPoint);
+      p.vel.set(0, 0, 0);
+      if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
+      game.weather.snap?.();
+    } finally { busy = false; hide(); }
+    told = {};
+    game.ui.toast(reason === 'friend' ? (left.too?.(hostName()) ?? `${hostName()} went back, so you go too!`) : left.backText || 'You stepped back out of the picture.');
+    game.mp?.sendState();
+    save(true);
+    return true;
+  }
+
   const self = {
     get place() { return game.place; },
     get stash() { return stash; },
@@ -204,6 +279,9 @@ export function createRealms(game, { createWorld, save, size }) {
     get lastGround() { return lastGround; },
     hostPlace,
     realm() { return realmOf(game.place); },
+    // T40: a trip one level deeper (Swirl -> Picture World): which Picture World you came in by, and the part for the save / the realm answer
+    get via() { return stash?.up?.via ?? null; },
+    upPart() { return stash?.up ? { id: stash.up.id, ret: stash.up.ret, via: stash.up.via } : null; },
 
     // The main world's save part while in a realm (snapshot, and the host's `world` message).
     mainPart() {
@@ -244,16 +322,16 @@ export function createRealms(game, { createWorld, save, size }) {
     answer(p) {
       const def = realmOf(p.realm);
       if (!def || game.place !== p.realm || busy || !stash || stash.guest) { game.mp.sendRealm(p.from, { type: 'no', id: p.id, why: 'gone' }); return; }
-      game.mp.sendRealm(p.from, { type: 'part', id: p.id, realm: def.id, rv: def.version ?? 1, edits: [...game.world.edits], ret: stash.ret, spot: lastGround });
+      game.mp.sendRealm(p.from, { type: 'part', id: p.id, realm: def.id, rv: def.version ?? 1, edits: [...game.world.edits], ret: stash.ret, spot: lastGround, up: self.upPart() });
     },
 
     // T38b, guest: a friend's trip to a realm. Asks the host for the realm's edits, then goes there.
     async follow() {
       if (game.mp?.role !== 'guest') return false;
-      if (game.place !== MAIN || following) return false;
+      const id = hostPlace(), def = realmOf(id);
+      if (!(game.place === MAIN || (def?.parent && def.parent === game.place)) || following) return false; // T40: from main, or one level up from the host's Picture World
       const no = why();
       if (no) { game.ui.toast(no); return false; }
-      const id = hostPlace(), def = realmOf(id);
       if (!def) { game.ui.toast(`${hostName()} is not away. Follow them when they go to sleep!`); return false; }
       following = true;
       game.ui.closeAsk?.();
@@ -265,7 +343,8 @@ export function createRealms(game, { createWorld, save, size }) {
     },
 
     // T38b, guest: is the host in a realm whose entrance is of this kind (`def.entrance`)? Then the guest may follow through it.
-    followableAt(kind) { return realmOf(hostPlace())?.entrance === kind; },
+    // T40: the whole chain counts (a host in the Giant House can still be followed through the Portal Door).
+    followableAt(kind) { for (let d = realmOf(hostPlace()); d; d = realmOf(d.parent)) if (d.entrance === kind) return true; return false; },
     // T38b, guest used an entrance (a Bed, the Portal Door...): follow the host when he went through this kind, else say why not
     // with the realm's own words (`guestNote`). The entrance rules (bed + night, Champion title) are the host's; a guest skips them.
     guestEntrance(kind) {
@@ -278,7 +357,7 @@ export function createRealms(game, { createWorld, save, size }) {
     // T38b, guest: the "Dad is dreaming. Dream together?" box (once per host trip, or when asked for).
     offerFollow() {
       const id = hostPlace(), def = realmOf(id);
-      if (!def || game.place !== MAIN) return false;
+      if (!def || !(game.place === MAIN || (def.parent && def.parent === game.place))) return false;
       if (followBox && game.ui.asked === followBox) { game.ui.askYes(); return true; } // asking again = yes
       const no = why();
       if (no) { game.ui.toast(no); return true; }
@@ -309,20 +388,35 @@ export function createRealms(game, { createWorld, save, size }) {
     },
 
     // Travel to a realm. opts.bed: the Bed cell (you wake up beside it). Returns a promise of true when you arrived.
-    async enter(id, { bed, back: backAt, follow } = {}) {
+    // T40: a realm with a `parent` (a Picture World) is entered from that parent (a hop down, stash.up remembers the way up), or by a
+    // guest straight from main when the host is in it (follow). opts.arrive: which Picture World you came by (its arrival spot).
+    async enter(id, { bed, back: backAt, follow, arrive } = {}) {
       const def = realmOf(id);
-      const no = !def ? 'There is no such place.' : game.place !== MAIN ? 'You are already away!' : why();
+      const hop = !!def?.parent && game.place === def.parent && game.place !== MAIN;         // B: a hop down
+      const joinDeep = !!def?.parent && game.place === MAIN && !!follow;                     // C: a guest joins a host who is already deep
+      const no = !def ? 'There is no such place.'
+        : def.parent && game.place === MAIN && !follow ? 'Step into its picture in the Swirl!'
+        : game.place !== MAIN && !hop ? 'You are already away!' : why();
       if (no) { game.ui.toast(no); return false; }
       busy = true;
       if (game.hideSeek?.active) game.hideSeek.stop();
       const p = game.player, w = game.world;
-      const back = bed ? besideBed(game, bed) : [p.pos.x, p.pos.y, p.pos.z];
-      // backAt (T38a): a ready [x, y, z, yaw] to wake up / come back at (the Portal Door's stand)
-      stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: backAt ? [backAt[0], backAt[1], backAt[2], backAt[3] ?? p.yaw, 0] : [...back, p.yaw, p.pitch] };
-      if (follow) { // T38b: the host's trip: wake up where the host wakes up, and the realm is the host's (never my realmEdits)
-        stash.guest = true;
-        const r = follow.ret;
-        if (Array.isArray(r) && r.length >= 3 && r.slice(0, 5).every(Number.isFinite)) stash.ret = [r[0], r[1], r[2], r[3] ?? 0, r[4] ?? 0];
+      if (hop) {
+        if (!stash.guest) game.realmEdits[game.place] = [...w.edits];                         // the Swirl's edits are kept
+        stash.up = { id: game.place, ret: backAt ? [backAt[0], backAt[1], backAt[2], backAt[3] ?? p.yaw, 0] : [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch],
+          via: arrive ?? null, edits: stash.guest ? [...w.edits] : null };
+        if (validRet(follow?.up?.ret)) stash.up.ret = cleanRet(follow.up.ret);                // a guest comes back at the host's frame
+        if (PICTURE_WORLDS.some(w => w.id === follow?.up?.via)) stash.up.via = follow.up.via;
+      } else {
+        const back = bed ? besideBed(game, bed) : [p.pos.x, p.pos.y, p.pos.z];
+        // backAt (T38a): a ready [x, y, z, yaw] to wake up / come back at (the Portal Door's stand)
+        stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: backAt ? [backAt[0], backAt[1], backAt[2], backAt[3] ?? p.yaw, 0] : [...back, p.yaw, p.pitch] };
+        if (follow) { // T38b: the host's trip: wake up where the host wakes up, and the realm is the host's (never my realmEdits)
+          stash.guest = true;
+          const r = follow.ret;
+          if (Array.isArray(r) && r.length >= 3 && r.slice(0, 5).every(Number.isFinite)) stash.ret = [r[0], r[1], r[2], r[3] ?? 0, r[4] ?? 0];
+        }
+        if (joinDeep) stash.up = { id: def.parent, ret: cleanRet(follow.up?.ret), via: cleanVia(follow.up?.via, def.id), edits: null };
       }
       game.riding?.stop('quiet');
       game.ui.closeAsk?.();
@@ -332,19 +426,22 @@ export function createRealms(game, { createWorld, save, size }) {
         createWorld(realmSeed(stash.seed, def.seedSalt), follow ? follow.edits : game.realmEdits[id], def.size, { realm: def });
         game.place = id;
         game.player.pos.copy(game.spawnPoint);
+        game.player.yaw = def.arriveYaw ?? -Math.PI / 2; game.player.pitch = 0; // facing the Wake Stone (T38a: or the realm's own way)
+        const at = game.world.arrivals?.[arrive ?? stash.up?.via]; // T40: a Picture World's arrival spot, in front of its way back
+        if (Array.isArray(at)) { game.player.pos.set(at[0], at[1], at[2]); game.player.yaw = at[3] ?? game.player.yaw; }
         const sp = follow?.spot, np = game.player;
         if (Array.isArray(sp) && sp.slice(0, 3).every(Number.isFinite)) { // beside the host
           np.pos.set(sp[0] + 1.5, sp[1], sp[2] + 1.5);
           for (let i = 0; i < 20 && np.collides(np.pos); i++) np.pos.y += 1;
           if (np.collides(np.pos)) np.pos.copy(game.spawnPoint);
         }
-        game.player.yaw = def.arriveYaw ?? -Math.PI / 2; game.player.pitch = 0; // facing the Wake Stone (T38a: or the realm's own way)
         game.weather.snap?.();
       } finally { busy = false; hide(); }
       told = {};
       lastGround = null; offered = true;
       game.ui.toast(follow ? (def.joined?.(follow.host) ?? `You followed ${follow.host} into the ${def.name}!`) : def.enterText || `Welcome to the ${def.name}!`);
       if (game.world.gyms.some(g => !game.badges.includes(g.def.id))) game.ui.toast('Everything is light here: jump high! An upside-down house floats somewhere. Follow the arrow.');
+      else if (def.arriveHint) game.ui.toast(def.arriveHint);
       else if (game.world.wake) game.ui.toast('Touch the glowing Wake Stone to wake up.');
       game.mp?.sendState();
       save(true);
@@ -352,8 +449,10 @@ export function createRealms(game, { createWorld, save, size }) {
     },
 
     // Back to the main world, beside the Bed. reason: 'stone' | 'morning' | 'lost' | 'quiet'.
-    async leave(reason = 'stone') {
+    // T40: from a Picture World it goes up to the Swirl first (stash.up), unless opts.home (visiting a friend, a guest whose host went home).
+    async leave(reason = 'stone', { home = false } = {}) {
       if (game.place === MAIN || !stash || busy) return false;
+      if (stash.up && !home) return goUp(reason);
       busy = true;
       if (game.hideSeek?.active) game.hideSeek.stop();
       const left = game.place;
@@ -383,6 +482,18 @@ export function createRealms(game, { createWorld, save, size }) {
       return true;
     },
 
+    // T40: losing a battle. A Picture World keeps you there (healed, at the nearest rest spot); the Dream wakes you up as before.
+    lost() {
+      const def = realmOf(game.place);
+      if (!def || def.lose !== 'stay') { self.leave('lost'); return; }
+      const p = game.player, rests = game.world.rests || [];
+      let best = null;
+      for (const r of rests) if (!best || Math.hypot(r[0] - p.pos.x, r[2] - p.pos.z) < Math.hypot(best[0] - p.pos.x, best[2] - p.pos.z)) best = r;
+      if (best) { p.pos.set(best[0], best[1], best[2]); p.yaw = best[3] ?? p.yaw; } else p.pos.copy(game.spawnPoint);
+      p.vel.set(0, 0, 0);
+      game.ui.toast(def.lostText || 'Your team had a little rest. Try again!');
+    },
+
     // From a save: { place, realmPos, realmEdits } plus the main part. Loads the realm when the save was made in one.
     // Call after the main world exists and the player stands at the main return spot.
     restore(saved) {
@@ -393,6 +504,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (!def || saved.place === MAIN) return false;
       const p = game.player, w = game.world;
       stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch] };
+      if (def.parent) stash.up = { id: def.parent, ret: cleanRet(saved.realmUp?.ret), via: cleanVia(saved.realmUp?.via, def.id), edits: null }; // T40
       createWorld(realmSeed(w.seed, def.seedSalt), game.realmEdits[def.id], def.size, { realm: def });
       game.place = def.id;
       const rp = (saved.realmVersions?.[def.id] ?? 1) === (def.version ?? 1) ? saved.realmPos : null; // T35: another version of the realm: arrive at the start
@@ -411,9 +523,12 @@ export function createRealms(game, { createWorld, save, size }) {
       if (game.mp?.role === 'guest') {
         const a = game.mp.hostAvatar, hp = hostPlace();
         if (a && (a.place || 'main') !== seenHost) { seenHost = a.place || 'main'; offered = false; }
-        if (a && game.place !== MAIN && hp !== game.place) { self.leave('friend'); return; }
+        if (a && game.place !== MAIN && hp !== game.place) { // T40: the host is not here any more
+          const up = realmOf(game.place)?.parent, hd = realmOf(hp);
+          if (!(hd?.parent && hd.parent === game.place)) { self.leave('friend', { home: !(up && hp && (hp === up || hd?.parent === up)) }); return; } // up when the host is in my parent or a sibling
+        }
         if (!hp && followBox && game.ui.asked === followBox) { game.ui.closeAsk?.(); followBox = null; } // the host is back: the question is old
-        if (a && game.place === MAIN && hp && !offered && !game.hideSeek?.active && !game.ui.asking) self.offerFollow();
+        if (a && hp && hp !== game.place && !offered && (game.place === MAIN || realmOf(hp)?.parent === game.place) && !game.hideSeek?.active && !game.ui.asking) self.offerFollow();
       }
       if (game.place === MAIN) return;
       if (game.world.realm?.morning && !isNight(game.time)) { self.leave('morning'); return; }
@@ -432,6 +547,7 @@ export function createRealms(game, { createWorld, save, size }) {
       const w = game.world, wake = w?.wake;
       const own = TERRAIN_AIMS[w?.realm?.terrain]?.(w, p, game); // T38a
       if (own) return own;
+      if (w?.realm?.parent && (w.bosses?.length || w.doors?.length)) return game.gymLive?.aim?.(p) ?? pictureAim(w, p, { stars: game.stars, via: self.via }); // T40: a live part (a race) may point the arrow first
       if (!wake) return null;
       const r = routeOf(w, p, w.isles?.home ?? 'home');
       if (!r || r.kind === 'here') return { x: wake[0] + 0.5, z: wake[2] + 0.5, text: (a, d) => `${a} Wake Stone · ${d} m` };
@@ -462,3 +578,9 @@ export function cleanRealmEdits(saved, versions) {
   }
   return out;
 }
+
+// T40: a saved return spot: 3 finite numbers (yaw and pitch default to 0), else null.
+function validRet(r) { return Array.isArray(r) && r.length >= 3 && r.slice(0, 3).every(Number.isFinite); }
+function cleanRet(r) { return validRet(r) ? [r[0], r[1], r[2], Number.isFinite(r[3]) ? r[3] : 0, Number.isFinite(r[4]) ? r[4] : 0] : null; }
+// T40: a saved `via`: a PICTURE_WORLDS id whose realm is `realm`, else null.
+function cleanVia(v, realm) { return PICTURE_WORLDS.some(w => w.id === v && w.realm === realm) ? v : null; }

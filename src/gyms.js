@@ -429,7 +429,7 @@ export const EXTRA_GYMS_END = 18;
 export const LEGACY_CAVE_GYMS = 1;
 
 // Gym rematches (T28) and the Tower Champion's rematch share the level cap.
-export const REMATCH_CAP = 65; // wave 12: above the Shadow Dojo (56) and the Champion (59-62)
+export const REMATCH_CAP = 70; // wave 14 (was 65 in wave 12): above the Shadow Dojo (56) and the Champion (59-62)
 
 // The Champion's Tower: opens after all badges (32 since wave 12: every gym of our world; it never grows again). `at` = [steps toward the door, steps sideways]
 // from the tower's centre (see World.placeTower).

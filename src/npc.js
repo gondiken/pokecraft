@@ -1,10 +1,11 @@
 // People in the world: gym trainers, gym leaders and the healer.
 import * as THREE from 'three';
-import { disposeModel } from './species.js';
+import { disposeModel, buildModel, animateModel } from './species.js';
 import { trainersOf, trainerKey } from './gyms.js';
 import { Disguise } from './disguise.js';
 import { B } from './blocks.js';
 import { sound } from './sound.js';
+import { bossOf } from './pictureboss.js'; // T40
 
 const AWAY = [0, -64, 0]; // where people who are not here yet are parked (T23)
 
@@ -97,7 +98,7 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
 }
 
 class Npc {
-  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look, index = 0, def = null }) {
+  constructor({ kind, name, gym = null, colors, pos, heading, hat, cape, look, index = 0, def = null, model = null }) {
     this.kind = kind;
     this.index = index; // which trainer of the gym (T19: gyms may have two)
     this.def = def; // the person's entry in the gym def (`opens`, `disguise`...)
@@ -106,7 +107,8 @@ class Npc {
     this.pos = new THREE.Vector3(...pos);
     this.homeHeading = heading;
     this.heading = heading;
-    this.model = buildPerson(colors, { hat, cape, look });
+    this.model = model ?? buildPerson(colors, { hat, cape, look });
+    this.creature = !!model; // T40: a Picture World Boss may be a big creature (no limbs to move)
     this.model.userData.npc = this;
     this.t = Math.random() * 10;
     this.disguise = null; // T19: Hidden Hill trainers stand about as a stone pillar until found (NpcManager.disguiseAs)
@@ -225,6 +227,18 @@ export class NpcManager {
         this.add(npc);
       }
     }
+    // T40: the Bosses of a Picture World (and their crews): world.bosses from picturelands.js, defs from pictureboss.js
+    for (const b of world.bosses || []) {
+      const def = bossOf(b.id);
+      if (!def) continue;
+      const mk = d => { if (!d.model) return {}; const model = buildModel(d.model.species); model.scale.setScalar(d.model.scale ?? 2); return { model }; };
+      this.add(new Npc({ kind: 'boss', name: def.name, colors: def.colors, pos: b.pos, heading: b.heading, hat: def.hat, cape: def.cape, look: def.look, def, ...mk(def) }));
+      const pw = def.title.split(' · ').pop();
+      (def.crew || []).forEach((c, i) => {
+        const at = b.crew.find(q => q.i === i);
+        if (at) this.add(new Npc({ kind: 'crew', name: c.name, colors: c.colors, pos: at.pos, heading: at.heading, hat: c.hat, look: c.look, def: { ...c, title: `${c.name} · ${pw}`, boss: def.id, index: i } }));
+      });
+    }
     if (world.realm) { // T31: no Healer Hana in a realm (losing there wakes you up, rested); T35: a realm may have its own healer
       if (world.healer) this.add(new Npc({ kind: 'healer', name: 'Healer Stella', look: 'star', colors: { shirt: 0xc8b4ff, pants: 0xffffff, hair: 0xfff0a0, skin: 0xf2d0b0 }, pos: world.healer.slice(0, 3), heading: world.healer[3] }));
       return;
@@ -318,6 +332,15 @@ export class NpcManager {
         const k = Math.min(1, n.popT / 0.3);
         n.model.scale.setScalar(k < 0.6 ? 0.3 + 0.8 * (k / 0.6) : 1.1 - 0.1 * ((k - 0.6) / 0.4));
         if (k >= 1) { n.popT = -1; n.model.scale.setScalar(1); }
+      }
+      if (n.creature) { // T40: a creature Boss turns to the player and idles
+        const want = n.pos.distanceTo(playerPos) < 9 ? Math.atan2(playerPos.x - n.pos.x, playerPos.z - n.pos.z) : n.homeHeading;
+        let d = want - n.heading;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        n.heading += d * Math.min(1, dt * 4);
+        n.model.rotation.y = n.heading;
+        animateModel(n.model, n.t, false);
+        continue;
       }
       const p = n.model.userData.parts;
       if (n.steer) { // T37b: a live gym part walks this person (the Shadow Dojo's watchers): no turning to the player

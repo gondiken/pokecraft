@@ -10,6 +10,7 @@ import { Book } from './book.js';
 import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
 import { createRematch, loadWins } from './rematch.js';
+import { createBosses, loadBossWins } from './pictureboss.js'; // T40
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
 import { TouchControls } from './touch.js';
@@ -32,7 +33,7 @@ import { createHomeUi } from './homeui.js';
 import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
 import { createPortal } from './portal.js'; // T38a
 import { createSwirlSky } from './swirlsky.js'; // T38d
-import { loadStars } from './pictureworlds.js'; // T38a
+import { loadStars, PICTURE_WORLDS } from './pictureworlds.js'; // T38a
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -105,6 +106,7 @@ const game = {
   world: null, player: null, creatures: null,
   party: [], box: [], cubes: 10, selected: 0, hotbar: [...HOTBAR], badges: [], beaten: [], champion: false, stars: [], // T38a: Picture World ids whose Boss you beat
   rematchWins: {}, // T28 gym rematch wins per gym id, per player like badges
+  bossWins: {}, // T40 Picture World Boss rematch wins per Picture World id, per player
   keys: [], // T23 golden keys found ('<gymId>:<key>'), per player like badges
   blockCounts: {}, // limited blocks (T20 treasure) you have: { [block id]: count }
   missionState: loadMissions(), // T29 Champion missions: { active, done: [ids], last }, per player like badges
@@ -168,7 +170,7 @@ function snapshot() {
   // While visiting someone else's world, keep saving your own world and position, not theirs.
   // T31: in a realm, the main world's part is the one kept aside (pos = where you wake up), plus where you are in the realm.
   const main = game.realms?.mainPart();
-  const away = !game.homeWorld && main ? { place: game.place, realmPos: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch] } : {};
+  const away = !game.homeWorld && main ? { place: game.place, realmPos: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch], ...(game.realms.upPart() ? { realmUp: game.realms.upPart() } : {}) /* T40 */ } : {};
   const home = game.homeWorld ?? (main ? {
     seed: main.seed, edits: main.edits, size: main.size, pos: main.pos, yaw: main.yaw, pitch: main.pitch, time: game.time, homes: main.homes,
   } : {
@@ -182,6 +184,7 @@ function snapshot() {
     champion: game.champion,
     stars: game.stars, // T38a
     rematchWins: game.rematchWins,
+    bossWins: game.bossWins, // T40
     blockCounts: game.blockCounts,
     missions: game.missionState, // T29
     keys: game.keys,
@@ -291,6 +294,7 @@ function startNew(starterId) {
   game.champion = false;
   game.stars = []; // T38a
   game.rematchWins = {};
+  game.bossWins = {}; // T40
   game.blockCounts = {};
   game.missionState = loadMissions(); // T29
   game.keys = [];
@@ -319,6 +323,7 @@ function continueGame(saved) {
   game.champion = !!saved.champion;
   game.stars = loadStars(saved.stars); // T38a: old saves have none
   game.rematchWins = loadWins(saved.rematchWins); // old saves have none
+  game.bossWins = loadBossWins(saved.bossWins); // T40: old saves have none
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
@@ -356,7 +361,9 @@ function continueGame(saved) {
 // Golden keys from a save (T23): only '<gymId>:<key>' strings that a gym def names, each once.
 const ALL_KEYS = new Set(GYMS.flatMap(def => (def.keys || []).map(k => `${def.id}:${k}`)));
 function loadKeys(saved) {
-  return [...new Set(Array.isArray(saved) ? saved : [])].filter(k => typeof k === 'string' && ALL_KEYS.has(k));
+  // T40: a Picture World may keep its own keys too ('<Picture World id>:<name>', e.g. 'stadium:goal1')
+  const pictureKey = k => /^[a-z0-9]{1,16}:[a-z0-9_-]{1,24}$/.test(k) && PICTURE_WORLDS.some(w => k.startsWith(`${w.id}:`));
+  return [...new Set(Array.isArray(saved) ? saved : [])].filter(k => typeof k === 'string' && (ALL_KEYS.has(k) || pictureKey(k)));
 }
 
 // Limited blocks from a save: only known limited ids with a whole count above 0.
@@ -598,6 +605,7 @@ function interact(use = false) {
   if (target.player) { if (!game.hideSeek.tag(target.player)) game.duels.challenge(target.player); return true; } // T30
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
+  if (target.near && game.gymLive.use(game.player)) return true; // T40: a live part's own action ("Fire!", "Kick!")
   if (target.block && game.gymLive.hit(target.block)) return true;
   if (target.block?.id === B.CHEST) { openChest(target.block); return true; }
   if (target.block && game.portal.use(target.block)) return true; // T38a
@@ -735,6 +743,7 @@ function talkTo(npc) {
     return;
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
+  if (npc.kind === 'boss' || npc.kind === 'crew') { if (!game.gymLive.talk(npc)) game.bosses.talk(npc); return; } // T40: a live part (the race) may take the talk first
   const gym = npc.gym.def;
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
@@ -877,17 +886,19 @@ game.onBattleEnd = (result, opts) => {
   if (result === 'lost') {
     sound.play('lose');
     healTeam();
-    if (game.place !== MAIN) game.realms.leave('lost'); // T31: losing in a realm wakes you up in your bed
+    if (game.place !== MAIN) game.realms.lost(); // T31: losing in a realm wakes you up in your bed (T40: a Picture World keeps you there)
     else {
       game.player.pos.copy(game.spawnPoint);
       game.player.vel.set(0, 0, 0);
     }
     if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
     if (opts.rematch) game.rematch.lost(opts.trainer);
+    if (opts.picture) game.bosses.lost(opts.trainer, opts); // T40
   }
   if (result === 'caught' && opts.wild) for (const id of opts.wild.data.traits || []) if (TRAITS[id]?.caught) game.ui.toast(TRAITS[id].caught(SPECIES[opts.wild.data.species].name));
   const npc = opts.trainer;
   if (result === 'won' && npc?.kind === 'tower') towerWon(npc);
+  else if (result === 'won' && opts.picture) game.bosses.won(npc, opts); // T40: a Picture World Boss or helper
   else if (result === 'won' && npc) {
     const gym = npc.gym.def;
     if (npc.kind === 'trainer') {
@@ -918,7 +929,7 @@ game.onBattleEnd = (result, opts) => {
 
 /* ------------------------------- main loop ------------------------------- */
 
-const target = { wild: null, npc: null, player: null, block: null };
+const target = { wild: null, npc: null, player: null, block: null, near: null };
 let regenTimer = 0;
 let saveTimer = 0;
 let cloudTimer = 0;
@@ -989,6 +1000,7 @@ function updateSky(dt) {
 let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
+createBosses(game, { startBattle, save }); // T40 -> game.bosses
 game.missions = createMissions(game, { save }); // T29
 game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?? game.world.seed; // T38c: the maker's seed is your own main world's, never a visited world's or a realm's
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
@@ -1024,6 +1036,7 @@ function updateTarget() {
   target.npc = !target.player && hitNpc && hitNpc.dist < blockDist && (!hitWild || hitNpc.dist < hitWild.dist) ? hitNpc.npc : null;
   target.wild = !target.player && !target.npc && hitWild && hitWild.dist < blockDist ? hitWild.wild : null;
   target.block = target.wild || target.npc || target.player ? null : hitBlock;
+  target.near = !target.player && !target.npc && !target.wild ? game.gymLive.near(game.player) : null; // T40: a live part's word, e.g. "Fire!"
   const dis = target.wild?.disguise; // a disguised creature gets the same outline as a real block (no tell)
   if (dis) {
     highlight.visible = true;
@@ -1039,11 +1052,12 @@ function updateTarget() {
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
-  const talk = target.npc && game.gymLive.talkPrompt(target.npc); // T33
+  const talk = target.npc && (game.gymLive.talkPrompt(target.npc) ?? game.bosses.talkPrompt(target.npc)); // T33, T40
   const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
+      : target.near ? `${touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
       : door ? door // T38a
@@ -1052,11 +1066,12 @@ function updateTarget() {
   game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
     : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!'))
     : target.wild ? `Battle ${target.wild.species.name}!`
+      : target.near ? target.near // T40
       : target.block?.id === B.CHEST ? 'Open chest!'
       : target.block?.id === B.WAKE_STONE ? 'Wake up!'
       : door ? game.portal.action(target.block) // T38a
       : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
-      : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
+      : (target.block && game.gymLive.prompt(target.block, 'tap') && (game.gymLive.action(target.block) || 'Press!')) || (game.homes.matPos ? 'My home' : ''));
 }
 
 let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;
@@ -1080,6 +1095,7 @@ function frame(now) {
     game.riding.update(dt, now);
     game.gymLive.update(dt);
     game.rematch.update();
+    game.bosses.update(); // T40
     game.missions.update(dt); // T29
     game.realms.update(); // T31: morning wakes you up
     game.portal.update(dt); // T38a
@@ -1173,7 +1189,7 @@ requestAnimationFrame(frame);
 initAccount();
 
 // Exposed for debugging from the browser console.
-game.playing = playing; // T30
+game.playing = playing; // T30 (a function; T40: live parts call game.playing() to freeze their own clocks while paused)
 window.pokecraft = game;
 game.sound = sound;
 game.updateGuide = updateGuide;

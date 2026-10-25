@@ -217,7 +217,7 @@ export class RestaurantLive {
   table(dish) { return tableWords(this.gym, dish); }
   emojis(list) { return list.map(k => this.def.ingredients[k].emoji).join(' '); }
   atPot(b) { const [x, y, z] = this.gym.pot; return b.x === x && b.y === y && b.z === z; }
-  near() { const p = this.game.player?.pos, [x, , z] = this.gym.pot; return !!p && Math.hypot(p.x - x, p.z - z) <= SIGHT; }
+  nearPot() { const p = this.game.player?.pos, [x, , z] = this.gym.pot; return !!p && Math.hypot(p.x - x, p.z - z) <= SIGHT; }
 
   phase(now = this.now()) {
     if (this.cookAt == null) return 'idle';
@@ -231,7 +231,7 @@ export class RestaurantLive {
     this.cells.flush();
     let p = this.phase();
     if (p === 'done') { this.cookAt = null; p = 'idle'; }
-    if (p !== this.last && this.near()) {
+    if (p !== this.last && this.nearPot()) {
       if (p === 'golden') { sound.play('cookding'); this.ui?.toast("It's golden! Tap the pot now!"); }
       if (p === 'burnt') { sound.play('potburnt'); this.ui?.toast('Oh no, it burnt! Tap the pot to try again. Your ingredients are safe.'); }
     }

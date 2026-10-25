@@ -48,7 +48,7 @@ export class HomeLive {
     const list = (this.game.npcs?.list || []).filter(n => n.gym === this.gym);
     return [list.find(n => n.kind === 'leader'), ...list.filter(n => n.kind === 'trainer').sort((a, b) => a.index - b.index)].filter(Boolean);
   }
-  near(home) {
+  nearHome(home) {
     const p = this.game.player?.pos;
     return !!p && Math.hypot(p.x - home.x, p.z - home.z) <= NEAR;
   }
@@ -68,7 +68,7 @@ export class HomeLive {
     // 1. Moving in: only the world owner's browser decides.
     if (s.owner && s.home && !s.movedIn && s.ready && s.caught >= s.need) {
       game.homes.setGyms(s.home, [...s.home.gyms, this.id]);
-      if (this.near(s.home)) {
+      if (this.nearHome(s.home)) {
         this.phase = 'knock'; this.knockT = 0;
         this.knockAt(people, s.home);
         this.say(`Knock knock! ${names[0]} is at your door!`);
@@ -100,7 +100,7 @@ export class HomeLive {
     }
 
     // 5. Cozy again.
-    if (this.wasReady === false && s.ready && this.near(s.home)) this.say(`${names[0]}: Ahh, cozy again. Thank you!`);
+    if (this.wasReady === false && s.ready && this.nearHome(s.home)) this.say(`${names[0]}: Ahh, cozy again. Thank you!`);
     this.wasReady = s.ready;
     this.chilly = !s.ready;
     this.shiver();
