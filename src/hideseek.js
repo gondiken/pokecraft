@@ -201,7 +201,7 @@ export function createHideSeek(game) {
         const inc = incoming = { id: p.id, from: p.from, name: p.name, onYes: () => accept(), timer: null };
         inc.timer = setTimeout(() => { closeIncomingBox(); decline(); }, HS.answer * 1000);
         game.ui.ask({ text: `${p.name} wants to play hide and seek! You hide first.`, yes: "Let's play!", no: 'Not now',
-          hint: 'press Y / N', onYes: inc.onYes, onNo: () => decline() });
+          kind: 'incoming', onYes: inc.onYes, onNo: () => decline() });
         sound.play('ask');
       } else if (t === 'cancel') {
         if (incoming?.id === p.id) { closeIncomingBox(); clearTimeout(incoming.timer); incoming = null; }

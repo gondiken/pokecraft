@@ -185,16 +185,18 @@ button.primary { background: #3b6fd8; }
 @keyframes fade { 0%, 75% { opacity: 1 } 100% { opacity: 0 } }
 
 /* ---------- another player asks for a battle ---------- */
-#duel-ask, #ask {
+#ask {
   position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25; text-align: center;
   background: #1b1d26; border: 4px solid var(--accent); padding: 12px 18px; font-size: 22px;
   max-width: calc(100vw - 32px); box-shadow: 0 6px 0 rgba(0,0,0,.4);
 }
-#duel-ask p, #ask p { margin: 10px 0 0; display: flex; gap: 10px; justify-content: center; }
-#duel-ask .hint, #ask .hint { margin-top: 6px; font-size: 18px; }
+#ask p { margin: 10px 0 0; display: flex; gap: 10px; justify-content: center; }
+#ask .hint { margin-top: 6px; font-size: 18px; }
 
 #ask { z-index: 24; }
-body.touch #ask button { min-height: 48px; font-size: 24px; }
+/* T39b: below the top bar on touch, big buttons */
+body.touch #ask { top: 80px; }
+body.touch #ask button { min-height: 64px; font-size: 24px; }
 
 /* ---------- team panel ---------- */
 .mon-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -287,33 +289,33 @@ body.in-battle #touch { display: none; }
   background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.8);
 }
 
-#touch-buttons {
-  position: absolute; right: calc(20px + env(safe-area-inset-right)); bottom: 90px;
-  display: grid; grid-template-columns: 84px 84px; grid-template-rows: auto 84px 84px; gap: 12px;
-  pointer-events: none;
-}
+/* T39c: fixed slots. Every button keeps its place; a button that can't act is dimmed (dark backing, light outline), never hidden. */
+#touch-buttons { position: absolute; inset: 0; pointer-events: none; }
 #touch-buttons button, #touch-top button {
   pointer-events: auto; touch-action: none;
-  background: rgba(20,22,30,.55); border: 3px solid rgba(255,255,255,.45); color: #fff;
-  font-size: 10px; padding: 0; box-shadow: none;
+  background: rgba(20,22,30,.62); border: 3px solid rgba(255,255,255,.7); color: #fff;
+  font-size: 15px; padding: 0; box-shadow: none; text-shadow: 0 1px 2px #000; line-height: 1.05;
 }
-#touch-buttons button { width: 84px; height: 84px; border-radius: 50%; }
+#touch-buttons button { position: absolute; border-radius: 50%; width: 68px; height: 68px; }
 #touch-buttons button:active, #touch-buttons button.down { background: rgba(255,255,255,.35); }
-#btn-act {
-  grid-column: span 2; height: 64px !important; width: auto !important; border-radius: 12px !important;
-  background: rgba(59,111,216,.85) !important; font-size: 12px !important;
-}
-#btn-jump { grid-column: 2; grid-row: 3; }
-#btn-place { grid-column: 2; grid-row: 2; }
-#btn-break { grid-column: 1; grid-row: 3; }
-#btn-ride { grid-column: 1; grid-row: 2; background: rgba(255,190,80,.6) !important; }
-#btn-down { grid-column: 2; grid-row: 2; }
+#touch-buttons button.dim { background: rgba(10,12,18,.82) !important; border-color: rgba(255,255,255,.7); color: rgba(255,255,255,.55); text-shadow: none; }
+#btn-jump { width: 84px !important; height: 84px !important; right: calc(20px + env(safe-area-inset-right)); bottom: 90px; font-size: 17px !important; }
+#btn-act { width: 100px !important; height: 100px !important; right: calc(108px + env(safe-area-inset-right)); bottom: 82px; font-size: 19px !important; background: rgba(59,111,216,.92) !important; padding: 4px !important; }
+#btn-place { right: calc(28px + env(safe-area-inset-right)); bottom: 194px; }
+#btn-ride { right: calc(124px + env(safe-area-inset-right)); bottom: 194px; background: rgba(255,170,60,.88) !important; }
+#btn-ride.dim { background: rgba(10,12,18,.82) !important; }
+#btn-down { right: calc(30px + env(safe-area-inset-right)); bottom: 14px; }
 #touch:not(.sky) #btn-down { display: none; }
-#touch.sky #btn-place { display: none; }
 .mon button.ride { background: #ffd27a; color: #3a2a00; }
 
 #touch-top { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-#touch-top button { height: 48px; min-width: 64px; padding: 0 14px; border-radius: 10px; }
+#touch-top button { height: 56px; min-width: 70px; padding: 0 18px; border-radius: 12px; font-size: 22px; }
+body.touch #party-mini { pointer-events: auto; cursor: pointer; }
+body.touch #party-mini::after { content: 'Team'; font-size: 13px; color: #fff; opacity: .8; padding-left: 8px; }
+.pause-big { display: none; }
+body.touch .pause-big { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 8px 0 14px; }
+.pause-big button { min-height: 64px; min-width: 140px; font-size: 22px; }
+.pause-big button.hidden { display: none; }
 
 body.touch #hotbar { bottom: calc(10px + env(safe-area-inset-bottom)); }
 body.touch .slot { width: 44px; height: 44px; }
@@ -581,3 +583,27 @@ body.touch #hs-stop { min-height: 48px; font-size: 14px; }
 #travel.hidden { display: none; }
 #travel .travel-moon { font-size: 80px; color: #ffe89a; }
 #travel .travel-text { font-size: 32px; }
+
+/* ---------- T39a: Where to go ---------- */
+#guide { pointer-events: auto; cursor: pointer; }
+#guide:empty { display: none; }
+#guide::after { content: ' ▾'; opacity: .7; }
+body.touch #guide { min-height: 44px; display: flex; align-items: center; padding: 6px 12px; }
+#nav h2 { margin: 0 0 8px; }
+#nav h3 { margin: 14px 0 6px; font-size: 20px; color: var(--muted); font-weight: 600; }
+#nav .nav-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 4px 0; padding: 6px 14px; text-align: left; font-size: 22px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.15); color: inherit; cursor: pointer; }
+#nav .nav-row.on, #nav .nav-tile.on { border-color: #ffd23a; background: rgba(255, 210, 58, .16); }
+#nav .nav-row.dim, #nav .nav-tile.dim { opacity: .5; }
+#nav .nav-icon { font-size: 30px; width: 40px; text-align: center; flex: none; }
+#nav .nav-text { display: flex; flex-direction: column; flex: 1; }
+#nav .nav-text small { color: var(--muted); font-size: 16px; }
+#nav .nav-on { color: #6bff8a; font-size: 26px; }
+#nav .nav-note { min-height: 24px; margin: 4px 0; color: #ffd23a; font-size: 20px; }
+#nav .nav-tiles { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+#nav .nav-tile { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; min-height: 64px; padding: 6px 2px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.15); color: inherit; font-size: 13px; line-height: 1.1; cursor: pointer; }
+#nav .nav-tile .nt-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--c); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; text-shadow: 0 0 3px #000; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+#nav .nav-tile.got .nt-dot { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }
+#nav .nav-tile .nt-name { text-align: center; overflow-wrap: anywhere; }
+body.touch #nav .nav-row { min-height: 64px; }
+body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
+@media (max-width: 700px) { #nav .nav-tiles { grid-template-columns: repeat(4, 1fr); } }

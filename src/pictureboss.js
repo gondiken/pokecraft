@@ -83,7 +83,6 @@ export function createBosses(game, { startBattle, save }) {
         startBattle({ trainer: npc, team: def.team, intro: def.intro, boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: null } });
         return true;
       }
-      if (pending?.npc === npc && game.ui.asking) { api.accept(); return true; } // talk again = yes
       if (game.duels?.incoming) { toast('Answer the battle question first!'); return true; }
       const wins = winsOf(def.id), top = topLevel(bossTeam(def, wins));
       pending = { npc, at: performance.now() };

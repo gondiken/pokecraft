@@ -45,8 +45,10 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | P / Tab | Team & storage screen |
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
 | C | Creature Book: every creature you've seen and caught |
+| G | Where to go: pick a gym or place and the arrow follows it (on a tablet, tap the arrow line at the top right) |
 | M | Champion missions (after you are the Champion) |
-| Esc | Pause (Resume, Main menu, Play together) |
+| E / Enter / Y | Say **yes** to a question (sleep, rematch, a friend's invite). Press it fresh; a held key does not count |
+| Esc / N / Backspace | Say **no** ("Not now") to a question; otherwise Esc pauses (Resume, Main menu, Play together) |
 
 On a tablet:
 
@@ -55,10 +57,16 @@ On a tablet:
 | Left joystick | Walk (push all the way to run) |
 | Drag on the right side | Look around |
 | Tap a creature or person | Battle it, or talk to them |
-| Battle / Challenge / Heal button | Same as tapping the creature or person under the crosshair |
-| Break / Place / Jump buttons | Break or place a block at the crosshair, jump or swim up |
+| Big round action button | Does what you look at, and its word says what: **Battle!**, **Talk**, **Heal**, **Open**, **Sleep**, **Press**, **Break**, or the **Yes** word while a question is showing. Greyed out when there is nothing to do |
+| Place button (above Jump) | Build the picked block at the crosshair (greyed out when you can't; tap it to hear why) |
+| Ride button (above the action button) | Get on your rideable creature (only there when you have one; says Land while flying) |
+| Jump button | Jump or swim up (says **Up** while flying, with a **Down** button right under it) |
 | Tap the hotbar | Pick a block (tap the picked one again to change it) |
-| Team / Blocks / Book / II buttons | Team screen / Blocks screen / Creature Book / pause |
+| Tap the creature card (top left) | Your team |
+| Book button | Creature Book |
+| Menu button (&#9776;) | Pause screen with big buttons: Team, Blocks, Book, Missions (Champions), Where to go, My home (on a Doormat), Sound, Effects, Play together, Main menu |
+
+Buttons never move or disappear: they stay in the same place and turn grey when they can't do anything.
 
 ## Features
 
@@ -303,7 +311,7 @@ Browser tests (Playwright) are in `tests/`: `cd tests && npm install && npm test
 | `src/homes.js`, `src/roomfinder.js`, `src/hometypes.js`, `src/homeui.js` | Homes: who owns which Doormat, the room finder, the Cozy / Treasure home types, and the meter, red gaps and preview |
 | `src/battle.js` | Battle flow, animations, catching |
 | `src/ui.js` | HUD, team screen, creature portraits |
-| `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, buttons |
+| `src/touch.js` | Tablet controls: joystick, drag-to-look, tap-to-interact, fixed-slot buttons (`setButtons`) |
 | `src/cloud.js` | Accounts, online saves and the live channel for playing together (Supabase) |
 | `src/multiplayer.js` | Play together: sharing a world, other players' avatars, block syncing |
 | `src/duel.js` | Battles between players: asking, answering, swapping each turn's choices |

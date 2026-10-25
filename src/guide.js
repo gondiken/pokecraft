@@ -7,15 +7,23 @@ export function createGuide(game) {
   // Points the player towards the next gym they haven't beaten yet.
   function updateGuide() {
     const p = game.player.pos;
+    const nav = game.nav?.update(p); // T39a: a place chosen in "Where to go" (null = the arrow chooses, exactly as before)
     if (game.world.realm) { // T31/T35: in a realm the arrow follows its gym (the next one without a badge); with none left it points at the Wake Stone
       if (!game.world.wake && !game.world.door) { game.ui.setGuide(`☾ ${game.world.realm.name}`); return; } // T38a: the Swirl has a door back instead of a Wake Stone
       const todo = game.world.gyms.find(g => !game.badges.includes(g.def.id));
-      updateArrow(p, todo || { realmAim: true }, '');
+      if (nav) updateNavArrow(p, nav); // T39a
+      else updateArrow(p, todo || { realmAim: true }, '');
       const inside = game.world.gyms.find(g => acc(g).contains(p)) || null;
       if (inside !== currentGym) { currentGym = inside; if (inside) game.ui.toast(acc(inside).closedText() || acc(inside).welcome()); }
       return;
     }
     const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
+    if (nav) updateNavArrow(p, nav);
+    else guideNext(p, unbeaten);
+    tipsAndWelcome(p, unbeaten);
+  }
+
+  function guideNext(p, unbeaten) {
     let next = unbeaten[0], note = '';
     // Gyms you have to wait for (night gyms by day) are skipped, and the arrow names them.
     if (next && acc(next).wait()) {
@@ -34,7 +42,9 @@ export function createGuide(game) {
     if (!next && game.world.tower) next = game.world.tower;
     if (!next) game.ui.setGuide('');
     else updateArrow(p, next, note);
+  }
 
+  function tipsAndWelcome(p, unbeaten) {
     // Tips near a gym (today: the sky gyms' "build a tower" and pad tips), for the nearest unbeaten gym that has them.
     const dist = g => Math.hypot(g.x + 0.5 - p.x, g.z + 0.5 - p.z);
     const near = unbeaten.filter(g => acc(g).tips).sort((a, b) => dist(a) - dist(b))[0];
@@ -46,6 +56,27 @@ export function createGuide(game) {
       currentGym = inside;
       if (inside) game.ui.toast(acc(inside).closedText() || acc(inside).welcome());
     }
+  }
+
+  // T39a: the chosen place; its target is an access object or anything with aim(p) and status().
+  function updateNavArrow(p, nav) {
+    const aim = nav.target.aim(p);
+    let arrow = '', dist = 0;
+    if (aim.x === undefined) game.guideTarget = null;
+    else {
+      game.guideTarget = [aim.x, aim.z];
+      const dx = aim.x - p.x, dz = aim.z - p.z;
+      dist = Math.round(Math.hypot(dx, dz));
+      arrow = arrowFor(dx, dz);
+    }
+    game.ui.setGuide(`📍 ${aim.text(arrow, dist).replace(/^Next: /, '')}${nav.target.status?.() || ''}`);
+  }
+
+  function arrowFor(dx, dz) {
+    let rel = Math.atan2(-dx, -dz) - game.player.yaw;
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    const arrows = ['↑', '↖', '←', '↙', '↓', '↘', '→', '↗'];
+    return arrows[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
   }
 
   function updateArrow(p, next, note) {

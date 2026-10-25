@@ -1219,7 +1219,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   bridge stones (the ten plus Portal, whose house is in the Swirl, no frame), the 12th star from the Wizard (no frame, no stone). Their levels sit above the Champion; `REMATCH_CAP`
   and Coach Dex are checked against the new top.
 
-## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`, not built yet)
+## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`) ✅ done (T39a-c)
 
 - **Choose where to go:** tap or click the guide line (or press G): big rows for the next gym, any gym, the Champion's Tower,
   the Portal Door, your home, a friend, the current mission, and in realms the way home. Places that are meant to be found

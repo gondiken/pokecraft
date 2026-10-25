@@ -13,8 +13,10 @@ import { createRematch, loadWins } from './rematch.js';
 import { createBosses, loadBossWins } from './pictureboss.js'; // T40
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
+import { createNavUi } from './navui.js'; // T39a
+import { createNav } from './destinations.js'; // T39a
 import { TouchControls } from './touch.js';
-import { createRiding } from './riding.js';
+import { createRiding, rideKind } from './riding.js';
 import { createHideSeek } from './hideseek.js'; // T30
 import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
@@ -435,7 +437,13 @@ function afterOverlay() {
   resume();
 }
 
+// T39c: the pause screen's big buttons (touch): each opens its panel; Missions only for Champions, My home on a mat.
+function showPauseButtons() {
+  document.getElementById('pb-missions').classList.toggle('hidden', !game.champion);
+  document.getElementById('pb-home').classList.toggle('hidden', !game.homes.matPos);
+}
 function pause() {
+  showPauseButtons();
   save(true);
   if (locked) document.exitPointerLock();
   game.player.keys = {};
@@ -496,6 +504,13 @@ game.openMissions = mode => {
 game.closeMissions = () => { if (game.ui.missionsOpen) togglePanel(); };
 game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
 game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
+// T39a: the "Where to go" panel (G, or a tap on the guide line)
+game.openNav = () => {
+  const dark = !document.getElementById('hs-dark')?.classList.contains('hidden');
+  if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking && !game.hideSeek?.frozen && !dark && !game.realms.busy) togglePanel('nav');
+};
+game.closeNav = () => { if (game.ui.navOpen) togglePanel(); };
+document.getElementById('nav-close').addEventListener('click', () => togglePanel('nav'));
 
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
@@ -504,6 +519,7 @@ document.addEventListener('pointerlockchange', () => {
   if (locked) pauseEl.classList.add('hidden');
   else {
     game.player.keys = {};
+    if (game.ui.asking && !game.ui.panelOpen) game.ui.askNo(); // T39b: Esc while the mouse is captured is "Not now"
     if (game.started && !game.inBattle && !game.ui.panelOpen) {
       pauseEl.classList.remove('hidden');
       save(true);
@@ -528,6 +544,10 @@ const showFx = () => { fxBtn.textContent = game.fx.on ? '✨ Effects on' : '✨ 
 fxBtn.addEventListener('click', e => { e.stopPropagation(); game.fx.setOn(!game.fx.on); showFx(); });
 showFx();
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
+for (const [id, fn] of [['pb-team', toggleTeam], ['pb-blocks', toggleBlocks], ['pb-book', toggleBook],
+  ['pb-missions', () => game.openMissions('view')], ['pb-where', () => game.openNav()], ['pb-home', () => game.openHome()]]) {
+  document.getElementById(id).addEventListener('click', e => { e.stopPropagation(); pauseEl.classList.add('hidden'); fn(); });
+}
 game.isTouch = () => touchMode;
 document.getElementById('party-close').addEventListener('click', toggleTeam);
 document.getElementById('blocks-close').addEventListener('click', toggleBlocks);
@@ -545,12 +565,17 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('keydown', e => {
   if (!game.started) return;
   if (e.target instanceof HTMLInputElement) return; // typing a name or code, not playing
-  if (game.duels.incoming && (e.code === 'KeyY' || e.code === 'KeyN')) {
-    if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
-    return;
+  // T39b: a question is open (bed, rematch, follow, duel, giant, hide and seek): the key that asked also answers.
+  // E / Enter = yes (a fresh press, not too quick), Y = yes, Esc / N / Backspace = no. E never also talks or breaks.
+  if (game.ui.asking) {
+    if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); game.ui.askYes('key', e); return; }
+    if (e.code === 'KeyY') { game.ui.askYes('y'); return; }
+    if (e.code === 'KeyN' || e.code === 'Backspace' || e.code === 'Escape') { e.preventDefault(); game.ui.askNo(); return; }
   }
-  if (game.ui.asking && (e.code === 'KeyY' || e.code === 'KeyN')) { // T28: the rematch question
-    if (e.code === 'KeyY') game.ui.askYes(); else game.ui.askNo();
+  // T39b: the "Let go" question in the box panel: Enter = yes, Esc = keep it
+  if (game.ui.confirmYes && (e.code === 'Enter' || e.code === 'Escape')) {
+    e.preventDefault();
+    if (e.code === 'Enter' && !e.repeat) game.ui.confirmYes(); else if (e.code === 'Escape') game.ui.closeConfirm();
     return;
   }
   // "Continue exploring" after a battle: a key press works too (and lets the game take the mouse back).
@@ -558,6 +583,10 @@ document.addEventListener('keydown', e => {
     const btn = document.querySelector('#b-actions button.continue');
     if (btn) { e.preventDefault(); btn.click(); }
     return;
+  }
+  if (e.code === 'KeyG' && !e.repeat && !game.inBattle) { // T39a: Go
+    if (game.ui.navOpen) { e.preventDefault(); togglePanel('nav'); return; }
+    if (!game.ui.panelOpen) { e.preventDefault(); game.openNav(); return; }
   }
   if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || e.code === 'KeyM' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
@@ -592,6 +621,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 
 document.addEventListener('mousedown', e => {
   if (!locked || game.inBattle || game.hideSeek?.frozen) return; // T30
+  if (game.ui.asking) { if (e.button === 0) game.ui.askYes('click'); return; } // T39b: a click answers the question, nothing else
   if (e.button === 0) {
     if (!interact()) breakBlock();
   } else if (e.button === 2) {
@@ -693,7 +723,7 @@ function placeBlock(hit = target.block) {
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.
 const tapRay = new THREE.Raycaster();
 function tapAt(x, y) {
-  if (!playing()) return;
+  if (!playing() || game.ui.asking) return; // T39b: a tap on the world never answers a question
   tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
   const { origin, direction } = tapRay.ray;
   const reach = REACH + 4;
@@ -712,14 +742,20 @@ function tapAt(x, y) {
   else if (block?.id === B.BED && block.t <= REACH) game.realms.useBed(block);
 }
 
+game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { game.player.keys.Space = down && playing(); },
-  ride: () => { if (playing()) game.riding.toggle(); },
+  ride: () => { if (!playing()) return; if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); },
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
-  breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
-  place: () => { if (playing()) placeBlock(); },
-  interact: () => { if (playing() && !interact(true) && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
+  place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
+  // T39c: one button = "do the thing I look at": answer a question, else use the target, else break the block, else My home
+  interact: () => {
+    if (game.ui.asking) { game.ui.askYes('tap'); return; } // T39b
+    if (!playing() || interact(true)) return;
+    if (target.block) breakBlock(); else if (game.homes.matPos) game.openHome(); // T22
+    else game.ui.toast('Look at something to use this button!');
+  },
   team: toggleTeam,
   blocks: toggleBlocks,
   book: toggleBook,
@@ -1010,6 +1046,8 @@ game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
+game.nav = createNav(game); // T39a: the place the guide follows (no choice = the next gym)
+game.navUi = createNavUi(game); // T39a
 
 // T22: the prompt while you stand on a Doormat and look at nothing else.
 function homePrompt() {
@@ -1063,15 +1101,35 @@ function updateTarget() {
       : door ? door // T38a
       : target.block?.id === B.BED && game.place === MAIN ? `Bed · ${touchMode ? 'tap' : 'press E'} to sleep`
       : (target.block && game.gymLive.prompt(target.block, how)) || homePrompt());
-  game.touch.setAction(target.player ? (game.hideSeek.action(target.player) ?? `Battle ${target.player.name}!`)
-    : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal team' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : 'Challenge!'))
-    : target.wild ? `Battle ${target.wild.species.name}!`
-      : target.near ? target.near // T40
-      : target.block?.id === B.CHEST ? 'Open chest!'
-      : target.block?.id === B.WAKE_STONE ? 'Wake up!'
+  // T39c: the fixed-slot buttons. The action button's word says what it will do; the rest dim, never hide.
+  const p = game.player;
+  const reach = target.block && target.block.t <= REACH;
+  let act = target.player ? (game.hideSeek.action(target.player) ?? 'Battle!')
+    : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : target.npc.kind === 'guest' || target.npc.kind === 'tower' ? 'Talk' : 'Battle!'))
+    : target.wild ? 'Battle!'
+      : target.near ? target.near // T40: a live part's own word ("Fire!", "Kick!")
+      : target.block?.id === B.CHEST ? 'Open'
+      : target.block?.id === B.WAKE_STONE ? 'Wake up'
       : door ? game.portal.action(target.block) // T38a
       : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
-      : (target.block && game.gymLive.prompt(target.block, 'tap') && (game.gymLive.action(target.block) || 'Press!')) || (game.homes.matPos ? 'My home' : ''));
+      : (target.block && game.gymLive.prompt(target.block, 'tap') && (game.gymLive.action(target.block) || 'Press')) || (reach ? 'Break' : game.homes.matPos ? 'My home' : 'Break');
+  let dim = !(target.player || target.npc || target.wild || target.near || reach || game.homes.matPos);
+  if (game.ui.asking) { act = game.ui.asked.yes; dim = false; } // T39b: the action button answers yes and says so
+  const id = game.hotbar[game.selected];
+  const noneLeft = isLimited(id) && !game.blockCounts[id];
+  const placeWhy = !target.block ? 'Look at a block to build on it!' : noneLeft ? `No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}` : '';
+  game.touchWhy.place = placeWhy;
+  const riding = game.riding, have = game.party.some(c => rideKind(c));
+  const rideWhy = riding.on ? '' : game.hideSeek?.active ? 'No riding in hide and seek!'
+    : !riding.first() ? 'Your rideable friends are too tired. Visit Healer Hana!'
+    : game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)) ? 'No riding right here. Walk a little further first!' : '';
+  game.touchWhy.ride = rideWhy;
+  game.touch.setButtons({
+    act: { label: act, dim },
+    place: { dim: !!placeWhy, why: placeWhy },
+    ride: { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on },
+    sky: riding.on && riding.kind === 'sky',
+  });
 }
 
 let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;

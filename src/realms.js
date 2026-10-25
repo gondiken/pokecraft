@@ -348,22 +348,22 @@ export function createRealms(game, { createWorld, save, size }) {
     // T38b, guest used an entrance (a Bed, the Portal Door...): follow the host when he went through this kind, else say why not
     // with the realm's own words (`guestNote`). The entrance rules (bed + night, Champion title) are the host's; a guest skips them.
     guestEntrance(kind) {
-      if (self.followableAt(kind)) { self.offerFollow(); return true; }
+      if (self.followableAt(kind)) { self.offerFollow(true); return true; } // T39b: you started it
       const def = Object.values(REALMS).find(r => r.entrance === kind);
       if (def?.guestNote) game.ui.toast(def.guestNote(hostName()));
       return !!def?.guestNote;
     },
 
     // T38b, guest: the "Dad is dreaming. Dream together?" box (once per host trip, or when asked for).
-    offerFollow() {
+    offerFollow(byYou = false) { // T39b: byYou = you used a Bed / door ('mine'), else it popped up by itself ('incoming')
       const id = hostPlace(), def = realmOf(id);
-      if (!def || !(game.place === MAIN || (def.parent && def.parent === game.place))) return false;
-      if (followBox && game.ui.asked === followBox) { game.ui.askYes(); return true; } // asking again = yes
+      if (!def || !(game.place === MAIN || (def.parent && def.parent === game.place))) return false; // T40: also from the Swirl into a Picture World
+      if (followBox && game.ui.asked === followBox) return true;
       const no = why();
       if (no) { game.ui.toast(no); return true; }
       offered = true;
       const name = hostName();
-      game.ui.ask({ text: def.askFollow?.(name) ?? `${name} went to the ${def.name}. Go too?`, yes: def.followText || 'Follow', no: 'Not now', hint: 'press Y / N',
+      game.ui.ask({ text: def.askFollow?.(name) ?? `${name} went to the ${def.name}. Go too?`, yes: def.followText || 'Follow', no: 'Not now', kind: byYou ? 'mine' : 'incoming',
         onYes: () => { self.follow(); } });
       followBox = game.ui.asked;
       return true;
@@ -381,9 +381,8 @@ export function createRealms(game, { createWorld, save, size }) {
       if (!isNight(game.time)) { game.ui.toast('You can only dream at night.'); return true; }
       const no = why();
       if (no) { game.ui.toast(no); return true; }
-      if (asked && game.ui.asking) { game.ui.askYes(); return true; } // use the bed again = yes
       asked = true;
-      game.ui.ask({ text: 'Go to sleep and dream?', yes: 'Sleep', no: 'Not now', hint: 'press Y / N', onYes: () => { asked = false; self.enter('dream', { bed: [hit.x, hit.y, hit.z] }); }, onNo: () => { asked = false; } });
+      game.ui.ask({ text: 'Go to sleep and dream?', yes: 'Sleep', no: 'Not now', onYes: () => { asked = false; self.enter('dream', { bed: [hit.x, hit.y, hit.z] }); }, onNo: () => { asked = false; } });
       return true;
     },
 

@@ -86,7 +86,6 @@ export function createRematch(game, { startBattle }) {
     winsOf,
     get pending() { return pending; },
     offer(npc) {
-      if (pending?.npc === npc && game.ui.asking) { api.accept(); return; } // talk again = yes
       if (game.duels?.incoming) { toast('Answer the battle question first!'); return; }
       const def = npc.gym.def, wins = winsOf(def.id);
       const top = topLevel(rematchTeam(def, wins));

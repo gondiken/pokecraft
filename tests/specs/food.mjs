@@ -438,7 +438,7 @@ export default async function ({ browser, base, t }) {
   await clearToasts();
   await breakNatural(B.LEAVES);
   msg = await toasts();
-  t.ok(!msg.includes('You found'), `a second leaf: nothing new (${msg})`);
+  t.ok(!/You found (?!a Capture Cube)/.test(msg), `a second leaf: nothing new (${msg})`); // a leaf may still give a Capture Cube (10%): that is not an ingredient
   await breakNatural(B.FLOWER_BUSH);
   await breakNatural(B.PINE_LEAVES);
   msg = await toasts();

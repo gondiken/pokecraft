@@ -19,6 +19,17 @@ const sum = () => {
   const inCourse = i => { const x = i % w.W, z = Math.floor(i / w.W) % w.D; return boxes.some(c => x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1); };
   let h = 0; for (let i = 0; i < d.length; i++) h = (h * 31 + (live.has(d[i]) || inCourse(i) ? 0 : d[i])) | 0; return h;
 };
+// The same sum per 16 x 16 column area (for the failure message: where the main world changed).
+const areaSums = () => {
+  const d = window.pokecraft.world.data, w = window.pokecraft.world, live = new Set([57, 58, 59, 60, 61, 62, 63, 64, 73, 74, 48, 69, 9, 83, 84, 85, 92, 93, 89, 90, 95, 96, 97, 98, 99, 100, 101, 102, 124, 125]);
+  const boxes = w.gyms.filter(g => g.def.live && g.protect?.length).map(g => g.protect[0]), out = {};
+  for (let i = 0; i < d.length; i++) {
+    const x = i % w.W, z = Math.floor(i / w.W) % w.D;
+    if (live.has(d[i]) || boxes.some(c => x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1)) continue;
+    const k = `${x >> 4},${z >> 4}`; out[k] = ((out[k] || 0) * 31 + d[i] + 1) | 0;
+  }
+  return out;
+};
 const toasts = page => page.evaluate(() => { window.__toasts ||= []; const g = window.pokecraft; if (!g.ui.__wrapped) { const f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; g.ui.__wrapped = true; } });
 const enter = async (page, time = 0.75) => {
   await page.evaluate(t => { window.pokecraft.time = t; }, time);
@@ -138,6 +149,7 @@ export default async function ({ browser, base, t }) {
   const mainClock = await page.evaluate(clockStep);
   t.ok(mainJump.g === 1 && Math.abs(mainJump.up - 1.32) < 0.15, `main world: gravity 1, a jump goes ${mainJump.up.toFixed(2)} blocks high`);
   const before = await page.evaluate(sum);
+  const areasBefore = await page.evaluate(areaSums); // to name the area if the check below fails
   await enter(page);
   t.ok(await page.evaluate(async () => { const { swirlTint } = await import('/src/caves.js'); return swirlTint.uTintOn.value === 0 && !window.pokecraft.scene.children.some(o => o.userData.swirlSky) && window.pokecraft.swirlSky.info() === null; }), 'in the Dream the Swirl gradient is off and no Swirl sky mesh exists (T38d)'); // T38d
   await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(130.5, g.world.surface(130, 125).y + 1, 125.5); g.player.vel.set(0, 0, 0); });
@@ -313,7 +325,16 @@ export default async function ({ browser, base, t }) {
   t.ok(!main.battle && /Only trainers with all \d+ badges/.test(main.toast), `a Tower guard refuses with every badge but the Wonder Badge ("${main.toast}")`);
   await page.evaluate(() => { window.pokecraft.time = 0.25; }); // the clock tower's live parts follow the time: back to the time `before` was measured at
   await page.waitForTimeout(3000);
-  t.ok(await page.evaluate(sum) === before, 'the main world is block for block the same as before the dream (after a reload in the dream too)');
+  const same = await page.evaluate(sum) === before;
+  let diff = '';
+  if (!same) { // which 16 x 16 areas differ, and what gym (if any) is there
+    const now = await page.evaluate(areaSums);
+    const bad = Object.keys(now).filter(k => now[k] !== areasBefore[k]).slice(0, 6);
+    diff = await page.evaluate(bad => bad.map(k => { const [cx, cz] = k.split(',').map(Number), w = window.pokecraft.world;
+      const g = [...w.gyms, w.tower].find(g => g?.x != null && Math.abs(g.x - (cx * 16 + 8)) < 30 && Math.abs(g.z - (cz * 16 + 8)) < 30);
+      return `area ${cx * 16},${cz * 16}${g ? ` near ${g.def?.id || 'tower'}` : ''}`; }).join('; '), bad);
+  }
+  t.ok(same, `the main world is block for block the same as before the dream (after a reload in the dream too) ${diff}`);
   t.ok(page.errors.length === 0, `no page errors (${page.errors.slice(0, 3).join(' | ')})`);
   await page.context().close();
 

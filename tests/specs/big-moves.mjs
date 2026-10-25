@@ -447,8 +447,8 @@ export default async function ({ browser, base, t }) {
   await stand(A, 0); await stand(B, 3);
   await A.waitForTimeout(1500);
   await A.evaluate(() => { const g = window.pokecraft; g.duels.challenge([...g.mp.others.values()][0]); });
-  await B.waitForFunction(() => !document.getElementById('duel-ask').classList.contains('hidden'), null, { timeout: 30000 });
-  await click(B, '#duel-yes');
+  await B.waitForFunction(() => !document.getElementById('ask').classList.contains('hidden'), null, { timeout: 30000 });
+  await click(B, '#ask-yes');
   await A.waitForFunction(() => window.pokecraft.inBattle, null, { timeout: 30000 });
   const scripts = new Map([[A, ['hightide', 'wavegoodbye', 'goteamgo', 'standtogether', 'nevergiveup']], [B, ['staticfuzz', 'livewire', 'bigfreeze', 'snowday']]]);
   let shotDone = false;
