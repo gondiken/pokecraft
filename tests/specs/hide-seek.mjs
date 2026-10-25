@@ -141,7 +141,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await waitFor(B, () => window.pokecraft.hideSeek.state().n >= 2), 'round 2 begins');
   t.ok(await waitFor(A, () => window.pokecraft.hideSeek.state().n === 2), 'Dad is on round 2 too');
   const a3 = await st(A), b3 = await st(B);
-  t.ok(a3.role === 'hider' && b3.role === 'seeker' && (b3.phase !== 'hide' || (b3.frozen && b3.dark)), 'roles swapped: Kid seeks behind the dark screen, Dad hides');
+  t.ok(a3.role === 'hider' && b3.role === 'seeker' && (b3.phase !== 'hide' || (b3.frozen && b3.dark)), `roles swapped: Kid seeks behind the dark screen, Dad hides ${JSON.stringify([a3, b3])}`);
   // 7a. Bump: after the head start Dad (hider) walks right up to Kid
   t.ok(await waitFor(A, () => window.pokecraft.hideSeek.state().phase === 'seek') && await waitFor(B, () => window.pokecraft.hideSeek.state().phase === 'seek'), 'round 2 seek phase');
   await A.evaluate(() => { const g = window.pokecraft; const s = g.spawnPoint; g.player.pos.set(Math.floor(s.x) + 4.5, 43, Math.floor(s.z) + 0.5); });
