@@ -45,7 +45,7 @@ export const REALMS = {
   // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, seven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: 2, size: [160, 160], seedSalt: 0x5317,
+    id: 'swirl', name: 'Swirl', version: 3, size: [160, 160], seedSalt: 0x5317,
     terrain: 'swirlLand', biome: 'swirl',
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
     spawns: { swirl: [], cave: [] },    // no wild creatures in wave 13

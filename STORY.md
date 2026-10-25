@@ -107,7 +107,9 @@ The worlds behind the frames are the **Picture Worlds**: you step into a picture
 are not gyms, and there are no more badges. Explore them as much as you like; at the end of each one waits a
 **Boss**. Beat the Boss and you win that world's **star**, the one the Wizard hid there. Bring it back and it becomes
 a glowing stepping stone on the **star bridge** to his tower. (Each star comes with a little note from the Wizard.)
-Nobody knows how many stars there are: the Wizard made a lot of worlds.
+There are **12 stars**: ten Picture Worlds hang as frames in the Swirl (four of them are still secret), the Portal House
+is in the Swirl itself (its Boss gives the 11th star), and the 11 stars light the 11 stones of the star bridge. The
+Wizard gives the 12th star at the top of his tower.
 
 ## The Picture Worlds
 

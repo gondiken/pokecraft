@@ -324,6 +324,7 @@ function swirlUse(game, block) {
   const f = frameOf(game, block);
   if (f) {
     const pw = PICTURE_WORLDS.find(p => p.id === f.world);
+    if (pw.secret && !pw.ready) { game.ui.toast('❓ A secret world! Nobody knows what is behind this cloth yet.'); return true; }
     game.ui.toast(`${pw.emoji} ${pw.name}: this world isn't open yet. Come back soon!`);
     return true;
   }
@@ -332,7 +333,7 @@ function swirlUse(game, block) {
 }
 function swirlPrompt(game, block, how) {
   const f = frameOf(game, block);
-  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.name} · ${pw.ready ? `${how} to go in` : 'covered'}`; }
+  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.secret && !pw.ready ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in` : 'covered'}`; }
   if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
   return '';
 }

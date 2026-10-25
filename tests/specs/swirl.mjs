@@ -139,8 +139,8 @@ export default async function ({ browser, base, t }) {
   t.ok(there.realm === 'swirl' && there.size.join() === '160,160' && Math.abs(there.x - 43.5) < 0.6 && Math.abs(there.z - 80.5) < 0.6 && Math.abs(there.yaw + Math.PI / 2) < 0.01,
     `using the door takes a Champion to the Swirl: 160 x 160, arrive at 43.5, 80.5, facing east (${JSON.stringify(there)})`);
   t.ok(there.toasts.includes('Whoosh! Welcome to the Swirl!') && !there.toasts.some(m => /Wake Stone|upside-down/i.test(m)), `the welcome toast is the Swirl's own (${there.toasts.join(' | ')})`);
-  t.ok(there.stars === '0/7' && there.npcs === 0 && there.homes === 0, `7 empty stars on the screen, no people, no homes (${there.stars}, npcs ${there.npcs})`);
-  t.ok(there.sp === 'swirl' && there.sv?.swirl === 2 && there.sv?.dream === 2, `a save made in the Swirl says so and knows the realm versions (${JSON.stringify(there.sv)})`);
+  t.ok(there.stars === '0/12' && there.npcs === 0 && there.homes === 0, `12 empty stars on the screen, no people, no homes (${there.stars}, npcs ${there.npcs})`);
+  t.ok(there.sp === 'swirl' && there.sv?.swirl === 3 && there.sv?.dream === 2, `a save made in the Swirl says so and knows the realm versions (${JSON.stringify(there.sv)})`);
   t.ok(Math.hypot(there.ret[0] - there.pos[0], there.ret[2] - there.pos[2]) < 0.01, 'the saved main position is where the Portal Door sends you back');
   t.ok(/Portal Door home/.test(there.guide), `the guide in the Swirl points at the door home ("${there.guide}")`);
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); document.getElementById('pause').classList.add('hidden'); });
@@ -202,7 +202,7 @@ export default async function ({ browser, base, t }) {
 
   // 8 (A part). Stars: HUD, save, reload, loadStars.
   await page.evaluate(() => { window.pokecraft.stars = ['house']; });
-  await waitFor(page, () => window.pokecraft.ui.starsShown === '1/7');
+  await waitFor(page, () => window.pokecraft.ui.starsShown === '1/12');
   const hud = await page.evaluate(async () => {
     const { loadStars, PICTURE_WORLDS } = await import('/src/pictureworlds.js');
     const g = window.pokecraft;
@@ -211,16 +211,16 @@ export default async function ({ browser, base, t }) {
       saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).stars, clean: JSON.stringify(loadStars(['x', 'house', 'house', 3])), none: JSON.stringify(loadStars()), order: JSON.stringify(loadStars(['doors', 'house'])),
       ids: PICTURE_WORLDS.map(w => w.id).join(), ready: PICTURE_WORLDS.some(w => w.ready) };
   });
-  t.ok(hud.got === 1 && hud.all === 7 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of seven, each named (${hud.got}/${hud.all}: ${hud.titles})`);
+  t.ok(hud.got === 1 && hud.all === 12 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of twelve, each named (${hud.got}/${hud.all}: ${hud.titles})`);
   t.ok(JSON.stringify(hud.saved) === '["house"]' && hud.clean === '["house"]' && hud.none === '[]' && hud.order === '["house","doors"]', `stars are saved; loadStars drops junk and repeats, and keeps the list order (${hud.clean} ${hud.order})`);
-  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors' && !hud.ready, 'seven Picture Worlds, none ready in wave 13');
+  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && !hud.ready, 'twelve stars (Picture Worlds), none ready yet');
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SHOTS, 't38-hud-stars.png') });
   await page.reload();
   await page.waitForFunction(() => window.pokecraft?.world);
   await continueGame(page);
-  t.ok(await page.evaluate(() => JSON.stringify(window.pokecraft.stars) === '["house"]' && window.pokecraft.ui.starsShown === '1/7'), 'stars survive a reload');
+  t.ok(await page.evaluate(() => JSON.stringify(window.pokecraft.stars) === '["house"]' && window.pokecraft.ui.starsShown === '1/12'), 'stars survive a reload');
   t.ok(page.errors.length === 0, `no page errors (${page.errors.slice(0, 3).join(' | ')})`);
   await page.context().close();
 
@@ -276,7 +276,7 @@ export default async function ({ browser, base, t }) {
   // 4. The data: same seed, same blocks; the decks, frames, bridge and the Wizard's tower are where the tables say.
   const data = await Q.evaluate(async () => {
     const g = window.pokecraft, w = g.world, { B } = await import('/src/blocks.js'), { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');
-    const L = await import('/src/swirlland.js'), { PICTURE_WORLDS } = await import('/src/pictureworlds.js');
+    const L = await import('/src/swirlland.js'), PW = await import('/src/pictureworlds.js'), { PICTURE_WORLDS } = PW;
     const sumOf = x => { let h = 0; for (let i = 0; i < x.data.length; i++) h = (h * 31 + x.data[i]) | 0; return h; };
     const a = new World(w.seed, null, null, REALMS.swirl.size, REALMS.swirl); a.generate();
     const b = new World(w.seed + 5, null, null, REALMS.swirl.size, REALMS.swirl); b.generate();
@@ -286,7 +286,7 @@ export default async function ({ browser, base, t }) {
     });
     const sw = w.swirl;
     const frames = sw.frames.map(f => ({ id: f.spot.id, cloth: f.cloth.length, ok: f.cloth.every(([x, y, z]) => w.get(x, y, z) === B.CLOTH) && f.border.every(([x, y, z]) => w.get(x, y, z) !== B.AIR) }));
-    const s3 = L.FRAME_SPOTS[7], s3empty = w.get(s3.x, s3.y + 3, s3.z) === 0 && w.get(s3.x - 3, s3.y, s3.z) === 0;
+    const s3empty = L.FRAME_SPOTS.length === 10 && PW.FRAME_WORLDS.length === 10 && PW.BRIDGE_WORLDS.length === 11 && PICTURE_WORLDS.length === 12 && !PW.FRAME_WORLDS.some(x => x.id === 'portal' || x.id === 'wizard') && !PW.BRIDGE_WORLDS.some(x => x.id === 'wizard') && PW.BRIDGE_WORLDS.some(x => x.id === 'portal');
     const bridgeAir = sw.bridge.every(s => s.cells.every(([x, y, z]) => w.get(x, y, z) === B.AIR));
     // the Wizard's tower is sealed: flood from inside over non-solid cells and see if it ever leaves the 9 x 9 box
     const wz = sw.wizard, start = [wz.x, 25, wz.z], seen = new Set([start.join()]), q = [start];
@@ -303,17 +303,17 @@ export default async function ({ browser, base, t }) {
       }
     }
     return {
-      same: sumOf(a) === sumOf(w), other: sumOf(a) === sumOf(b), decks, frames, s3empty, bridgeAir, bridge: sw.bridge.length, n: PICTURE_WORLDS.length,
-      sealed: !leak && seen.size > 100, island: [wz.x - 9, wz.x + 9], x12: L.wizardX(12) + 9,
+      same: sumOf(a) === sumOf(w), other: sumOf(a) === sumOf(b), decks, frames, s3empty, bridgeAir, bridge: sw.bridge.length, n: PW.BRIDGE_WORLDS.length,
+      sealed: !leak && seen.size > 100, island: [wz.x - 9, wz.x + 9], x12: L.wizardX(11) + 9,
       lifts: w.lifts.length, liftAt: !!w.liftAt({ x: 70.5, y: 5, z: 106.5 }) && !w.liftAt({ x: 80.5, y: 5, z: 106.5 }), size: [w.W, w.D], gyms: w.gyms.length, tower: w.tower,
     };
   });
   t.ok(data.same && data.other, 'the Swirl is the same for every seed, block for block (it is made of tables)');
   t.ok(data.decks.every(Boolean), `every deck is where DECKS says: Swirl Stone or Paint at its height (${data.decks.join()})`);
-  t.ok(data.frames.length === 7 && data.frames.every(f => f.cloth === 25 && f.ok) && data.s3empty, `7 picture frames with cloth inside (5 x 5), the 8th spot waits empty (${data.frames.map(f => f.id).join()})`);
+  t.ok(data.frames.length === 10 && data.frames.every(f => f.cloth === 25 && f.ok) && data.s3empty, `10 picture frames with cloth inside (5 x 5); 12 stars, 10 frames, 11 stones, no frame for Portal or the Wizard (${data.frames.map(f => f.id).join()})`);
   t.ok(data.bridgeAir && data.bridge === data.n, `the ${data.n} star-bridge stones are air until a star is won`);
   t.ok(data.sealed, "the Wizard's tower has no way in (a flood from inside never gets out)");
-  t.ok(data.x12 <= 158 && data.island[0] === 103 && data.island[1] === 121, `the Wizard's island stays on the 160 map even with 12 Picture Worlds (x ${data.island.join('-')}, 12 worlds: right edge ${data.x12})`);
+  t.ok(data.x12 <= 158 && data.island[0] === 127 && data.island[1] === 145, `the Wizard's island stays on the 160 map with 11 stones (x ${data.island.join('-')}, right edge ${data.x12})`);
   t.ok(data.liftAt && data.lifts === 6 && data.size.join() === '160,160' && data.gyms === 0 && data.tower === null, 'six lift streams (boxes, no blocks), no gyms, no tower');
 
   // 5. Walkable: a flood over standable cells from the arrival reaches every frame, the bridge start, the loop's peak and the door home.
@@ -338,7 +338,7 @@ export default async function ({ browser, base, t }) {
     for (const k of seen) {
       const [x, y, z] = k.split(',').map(Number);
       if (x >= 56 && x <= 64 && z >= 84 && z <= 92) peak = Math.max(peak, y);
-      if (x >= 103 && y >= 21) island = true;
+      if (x >= 127 && y >= 21) island = true;
       if (Math.abs(x - sw.wizard.x) <= 4 && y > 21) tower = true;
     }
     // from the cloud sea, every point of the playground is near a lift stream
@@ -386,19 +386,26 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Picture frame · Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
   t.ok(fr.still === 129 && fr.edits === 0 && fr.t2 === fr.t1, `breaking a frame says the same and changes nothing ${JSON.stringify(fr)}`);
+  const sec = await Q.evaluate(async () => {
+    const g = window.pokecraft, { B } = await import('/src/blocks.js'), f = g.world.swirl.frames.find(x => x.world === 'secret1'), c = f.cloth[12];
+    window.__toasts = [];
+    g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.CLOTH });
+    return { toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'E') };
+  });
+  t.ok(sec.toast === '❓ A secret world! Nobody knows what is behind this cloth yet.' && sec.prompt === 'Picture frame · a secret world · covered', `a secret frame: "${sec.toast}" (${sec.prompt})`);
   t.ok(fr.placed === 0, `you cannot build into a picture frame's space (${fr.placed})`);
 
   // 8. Stars light the bridge: the first stone turns to Star Stone, the others stay air with outlines.
   await waitFor(Q, () => window.pokecraft.portal.info()?.outline); // drawn by the first update after arriving (0.25 s steps)
   const bridge0 = await Q.evaluate(() => window.pokecraft.portal.info());
-  t.ok(bridge0.outline && bridge0.outlineBoxes === 7, `seven gold outlines mark the empty stones (${bridge0.outlineBoxes})`);
+  t.ok(bridge0.outline && bridge0.outlineBoxes === 11, `eleven gold outlines mark the empty stones (${bridge0.outlineBoxes})`);
   await Q.evaluate(() => { window.pokecraft.stars = ['house']; });
   await waitFor(Q, () => { const g = window.pokecraft, c = g.world.swirl.bridge[0].cells[0]; return g.world.get(...c) === 130; });
   const lit = await Q.evaluate(() => {
     const g = window.pokecraft, w = g.world, sw = w.swirl.bridge, i = g.portal.info();
     return { first: sw[0].cells.every(([x, y, z]) => w.get(x, y, z) === 130), rest: sw.slice(1).every(s => s.cells.every(([x, y, z]) => w.get(x, y, z) === 0)), boxes: i.outlineBoxes, edits: w.edits.size - window.__edits0 };
   });
-  t.ok(lit.first && lit.rest && lit.boxes === 6 && lit.edits === 0, `one star lights stone 0; the other 6 keep their outline (${JSON.stringify(lit)})`);
+  t.ok(lit.first && lit.rest && lit.boxes === 10 && lit.edits === 0, `one star lights stone 0; the other 10 keep their outline (${JSON.stringify(lit)})`);
   const walkOn = await Q.evaluate(() => {
     const g = window.pokecraft, p = g.player; p.keys = {};
     p.pos.set(63.5, 21, 80.5); p.vel.set(0, 0, 0);
@@ -441,7 +448,7 @@ export default async function ({ browser, base, t }) {
     }
     const pal = L.PARSED.map(p => ({ id: p.id, rgb: ['top', 'mid', 'fog', 'band', 'blobA', 'blobB', 'lo', 'hi', 'sea'].every(k => p[k].every(v => Number.isFinite(v) && v >= 0 && v <= 1)), lit: p.lit, near: p.fogNear, far: p.fogFar }));
     const u = swirlTint.uZone.value;
-    return { sumErr, maxd, at: ['hub', 'north', 'south', 'wizard', 'corner'].map((k, i) => L.zoneAt(...[[48, 80], [48, 54], [48, 106], [L.wizardX(7), 80], [4, 4]][i])), pal,
+    return { sumErr, maxd, at: ['hub', 'north', 'south', 'wizard', 'corner'].map((k, i) => L.zoneAt(...[[48, 80], [48, 54], [48, 106], [L.wizardX(11), 80], [4, 4]][i])), pal,
       haze: swirlTint.uHaze.value === L.HAZE.w && L.HAZE.w === 0.12, zones: L.ZONES.every((z, i) => u[i].x === z.x && u[i].y === z.z && u[i].z === z.r), n: L.ZONES.length };
   });
   t.ok(zn.sumErr < 1e-6 && zn.n === 4, `the zone weights add up to 1 (error ${zn.sumErr})`);
@@ -553,7 +560,7 @@ export default async function ({ browser, base, t }) {
   await shot('t38-swirl-bridge.png', [58.5, 21, 80.5], [100, 30, 80.5]);
   await shot('t38-swirl-lift.png', [66, 3, 109], [70, 10, 106]);
   await shot('t38-swirl-hub.png', [41, 24, 72], [52, 20, 82]);
-  await shot('t38-swirl-wizard.png', [64, 22, 80.5], [112, 34, 80.5]);
+  await shot('t38-swirl-wizard.png', [64, 22, 80.5], [136, 34, 80.5]);
   await shot('t38-swirl-stairs.png', [48.5, 27, 80], [48, 27, 62]);
   await Q.evaluate(() => { window.pokecraft.stars = []; });
   // 22. T38d screenshots (the sky snaps to where you stand first)
@@ -586,14 +593,14 @@ export default async function ({ browser, base, t }) {
   t.ok(Q.errors.length === 0, `no page errors in the real Swirl (${Q.errors.slice(0, 3).join(' | ')})`);
   await Q.context().close();
 
-  // 19. An old Swirl save (version 1): loads in the Swirl at the arrival, its edit on the hub is gone, the stars are kept.
+  // 19. An old Swirl save (version 2): loads in the Swirl at the arrival, its edit on the hub is gone, the stars are kept.
   const oldSwirl = { seed: 4242, edits: [], size: [288, 368], pos: [112.5, 30, 112.5], yaw: 0, pitch: 0, time: 0.2, party: [], box: [], cubes: 10, badges: [], beaten: [], champion: true, savedAt: 1,
-    stars: ['house'], place: 'swirl', realmPos: [48.5, 15, 106.5, 0, 0], realmVersions: { swirl: 1 }, realmEdits: { swirl: [[48 + 80 * 160 + 21 * 160 * 160, 9]] } };
+    stars: ['house'], place: 'swirl', realmPos: [48.5, 15, 106.5, 0, 0], realmVersions: { swirl: 2 }, realmEdits: { swirl: [[48 + 80 * 160 + 21 * 160 * 160, 9]] } };
   const P3 = await openGame(browser, base, { setup: seedSave(oldSwirl) });
   await continueGame(P3);
   await waitFor(P3, () => window.pokecraft.place === 'swirl' && !window.pokecraft.realms.busy);
   const os = await P3.evaluate(() => { const g = window.pokecraft, p = g.player.pos; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { realm: g.world.realm?.id, d: Math.hypot(p.x - 43.5, p.z - 80.5), block: g.world.get(48, 21, 80), stars: g.stars.join(), v: s.realmVersions?.swirl, re: JSON.stringify(s.realmEdits?.swirl ?? []) }; });
-  t.ok(os.realm === 'swirl' && os.d < 2 && os.block === 0 && os.stars === 'house' && os.v === 2 && os.re === '[]', `an old Swirl save loads in the new Swirl at the arrival, its edit dropped, the star kept (${JSON.stringify(os)})`);
+  t.ok(os.realm === 'swirl' && os.d < 2 && os.block === 0 && os.stars === 'house' && os.v === 3 && os.re === '[]', `an old Swirl save loads in the new Swirl at the arrival, its edit dropped, the star kept (${JSON.stringify(os)})`);
   t.ok(P3.errors.length === 0, `no page errors (${P3.errors.slice(0, 3).join(' | ')})`);
   await P3.context().close();
 

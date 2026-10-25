@@ -1214,8 +1214,9 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 - **Chapter 2's places are not gyms: they are Picture Worlds** (owner, 2026-10-24; "rift" was too hard a word for a
   7-year-old). Each one is free to explore and ends with a **Boss**; beating the Boss wins that world's **star** (with
   a short note from the Wizard). Each star becomes one glowing stepping stone of the **star bridge** to the Wizard's
-  tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. There is no
-  fixed number, so more Picture Worlds can be added later than planned. Their levels sit above the Champion; `REMATCH_CAP`
+  tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
+  (2026-10-25): **12 stars**, 10 frames (framed Picture Worlds; four are placeholder `secret1`..`secret4` still to be named), 11
+  bridge stones (the ten plus Portal, whose house is in the Swirl, no frame), the 12th star from the Wizard (no frame, no stone). Their levels sit above the Champion; `REMATCH_CAP`
   and Coach Dex are checked against the new top.
 
 ## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`, not built yet)
