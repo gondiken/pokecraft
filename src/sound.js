@@ -194,6 +194,12 @@ const SOUNDS = {
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
   // T37 ninja: a quick throwing-star swish (high, sweeping down) and a soft thock; a wild Ninja's smoke puff (a soft hiss).
   'fx:ninja': () => { noise({ freq: 4000, len: 0.07, vol: 0.14, q: 1.2 }); tone(1400, { at: 0.02, len: 0.08, type: 'triangle', vol: 0.1, slide: -900 }); tone(180, { at: 0.1, len: 0.06, vol: 0.18, slide: -40 }); },
+  // T40d ball: a rubbery thump-boing; the stadium's kick (a low thump), a goal cheer (a crowd rising, three notes), a net swish and two whistle chirps.
+  'fx:ball': () => { tone(160, { len: 0.08, vol: 0.25, slide: 120 }); tone(320, { at: 0.09, len: 0.12, type: 'triangle', vol: 0.15, slide: 200 }); },
+  ballkick: () => { noise({ freq: 220, len: 0.08, vol: 0.4, q: 0.6 }); tone(120, { len: 0.09, vol: 0.3, slide: -40 }); },
+  goalcheer: () => { for (const f of [700, 1200, 2000]) noise({ freq: f, len: 0.6, vol: 0.12, q: 0.4 }); notes([523, 659, 784], 0.12, { len: 0.2, type: 'triangle', vol: 0.14 }); },
+  netswish: () => { noise({ freq: 5000, len: 0.25, vol: 0.2, q: 0.8 }); tone(1800, { len: 0.2, type: 'sine', vol: 0.05, slide: -1200 }); },
+  whistle: () => { tone(2600, { len: 0.12, type: 'square', vol: 0.07 }); tone(2600, { at: 0.18, len: 0.2, type: 'square', vol: 0.07 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
   // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).
@@ -240,7 +246,7 @@ const SOUNDS = {
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   snooze: () => notes([440, 392, 330], 0.14, { len: 0.2, type: 'triangle', vol: 0.18 }),
 };
-for (const t of ['tiny', 'pirate', 'racer', 'ball']) SOUNDS[`fx:${t}`] ??= SOUNDS['fx:normal']; // T40 base: until T40a-d add their own
+for (const t of ['tiny', 'pirate', 'racer']) SOUNDS[`fx:${t}`] ??= SOUNDS['fx:normal']; // T40 base: until T40a-d add their own
 
 function loadOn() {
   try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; }

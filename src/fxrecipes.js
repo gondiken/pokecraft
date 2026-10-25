@@ -2313,6 +2313,137 @@ SIG.crayonstorm = (k, from, to) => {
 };
 /* ==== end of T35 ==== */
 
+/* ==== T40d ball ==== */
+// White, sky blue and basketball orange.
+FX_COLORS.ball = [0xffffff, 0x9fd6ff, 0xff7a2a];
+
+// A ball that bounces along the path: two hops, squashing at each touch (wider and flatter for a moment), with a dark spot inside.
+TRAVEL.ball = k => {
+  const ball = k.sprite('dot', { color: 0xffffff, size: 0.4 });
+  const spot = k.sprite('dot', { color: 0x2a2a34, size: 0.18 });
+  return {
+    dur: 420,
+    step(p) {
+      const hop = Math.abs(Math.sin(p * Math.PI * 2)), sq = 1 - clamp01(hop / 0.25); // 1 at a touch, 0 in the air
+      k.at(p, A, 0.1);
+      ball.position.set(A.x, A.y + hop * 0.5, A.z);
+      ball.scale.set(0.4 * (1 + 0.3 * sq), 0.4 * (1 - 0.3 * sq), 1);
+      spot.position.set(A.x + k.dir.x * 0.01, A.y + hop * 0.5, A.z + k.dir.z * 0.01);
+      spot.scale.set(0.18 * (1 + 0.3 * sq), 0.18 * (1 - 0.3 * sq), 1);
+      ball.material.opacity = spot.material.opacity = p > 0.97 ? 0 : 1;
+    },
+  };
+};
+
+// A ball hit: a white squash flash, a sky-blue ring on the ground under the target and six little balls that bounce out once.
+IMPACT.ball = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 6;
+  const flash = k.sprite('dot', { color: 0xffffff, size: 0.1, glow: true });
+  const ring = k.mesh('ring', { color: 0x9fd6ff, opacity: 0.8 });
+  const dots = k.points({ n: N, tex: 'dot', size: 0.3 * m, colors: [0xffffff, 0x9fd6ff, 0xff7a2a] });
+  const feet = feetOf(to);
+  return {
+    dur: 380,
+    step(p) {
+      const sq = Math.sin(Math.PI * clamp01(p * 1.8)); // squashes flat, then pops
+      flash.position.copy(to.pos);
+      flash.scale.set(Math.max(0.01, (0.4 + sq * 0.8) * m * 1.3), Math.max(0.01, (0.4 + sq * 0.8) * m * 0.7), 1);
+      flash.material.opacity = fadeOut(p, 0.4);
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, (to.r * 0.5 + 0.2 + k.ease(p) * 0.9) * m));
+      ring.material.opacity = 0.8 * (1 - p);
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283, d = (0.2 + k.ease(p) * 0.9) * to.r * 1.6 * m;
+        dots.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.25 + Math.abs(Math.sin(p * Math.PI)) * 0.9 * m, to.pos.z + Math.sin(ang) * d);
+      }
+      dots.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// Golden Goal: a white goal frame stands up behind the target, the ball flies in, the net ripples (a grid of dots bulging back) and a
+// golden star bursts out.
+SIG.goldengoal = (k, from, to) => {
+  const feet = feetOf(to), h = Math.max(1.2, to.top - feet + 0.5), w = Math.max(1.4, to.r * 3);
+  const bx = to.pos.x + k.dir.x * (to.r + 0.8), bz = to.pos.z + k.dir.z * (to.r + 0.8);
+  const posts = [-1, 1].map(() => k.sprite('square', { color: 0xffffff, size: 0.1 }));
+  const bar = k.sprite('square', { color: 0xffffff, size: 0.1 });
+  const ball = k.sprite('dot', { color: 0xffffff, size: 0.38 });
+  const COLS = 4, ROWS = 3, N = COLS * ROWS;
+  const net = k.points({ n: N, tex: 'dot', size: 0.16, colors: [0xffffff, 0xcfe8ff] });
+  const star = k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true });
+  const bits = k.points({ n: 8, tex: 'star', size: 0.3, glow: true, colors: [0xffd23a, 0xfff08a] });
+  return {
+    dur: 750,
+    step(p) {
+      const up = clamp01(p / 0.25), fly = clamp01((p - 0.2) / 0.4), rip = clamp01((p - 0.55) / 0.3), out = clamp01((p - 0.55) / 0.45);
+      posts.forEach((s, i) => {
+        s.position.set(bx + k.side.x * (i ? w / 2 : -w / 2), feet + (h * up) / 2, bz + k.side.z * (i ? w / 2 : -w / 2));
+        s.scale.set(0.12, Math.max(0.01, h * up), 1);
+        s.material.opacity = fadeOut(p, 0.75);
+      });
+      bar.position.set(bx, feet + h * up, bz);
+      bar.scale.set(Math.max(0.01, w * up), 0.12, 1);
+      bar.material.opacity = fadeOut(p, 0.75);
+      // the ball: from the attacker, into the goal's middle
+      ball.position.set(lerp(from.pos.x, bx, fly), lerp(from.pos.y, feet + h * 0.45, fly) + Math.sin(Math.PI * fly) * 0.5, lerp(from.pos.z, bz, fly));
+      ball.material.opacity = fly > 0 && p < 0.8 ? 1 : 0;
+      // the net: dots in a grid that bulge back (away from the attacker) when the ball hits
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const i = r * COLS + c;
+        if (up < 1) { net.hide(i); continue; }
+        const u = (c / (COLS - 1) - 0.5) * w * 0.8, v = (r / (ROWS - 1)) * h * 0.85 + 0.1;
+        const bulge = Math.sin(Math.PI * rip) * (1 - Math.hypot(c / (COLS - 1) - 0.5, r / (ROWS - 1) - 0.5)) * 0.7;
+        net.set(i, bx + k.side.x * u + k.dir.x * bulge, feet + v, bz + k.side.z * u + k.dir.z * bulge);
+      }
+      net.fade(fadeOut(p, 0.8));
+      star.position.set(bx - k.dir.x * 0.1, feet + h * 0.45, bz - k.dir.z * 0.1);
+      star.scale.setScalar(Math.max(0.01, Math.sin(Math.PI * rip) * 1.2));
+      star.material.rotation = p * 4;
+      for (let i = 0; i < 8; i++) {
+        if (out <= 0) { bits.hide(i); continue; }
+        const a = (i / 8) * 6.283, d = out * (0.5 + (i % 2) * 0.3);
+        bits.set(i, bx + Math.cos(a) * d * 0.8, feet + h * 0.45 + Math.sin(a) * d, bz + Math.sin(a) * d * 0.8);
+      }
+      bits.fade(1 - out);
+    },
+  };
+};
+
+// Ace Smash: a fast streaked ball drops from high above the user onto the target, then a flash like a bang.
+SIG.acesmash = (k, from, to) => {
+  const N = 6;
+  const streak = k.points({ n: N, tex: 'streak', size: 0.4, glow: true, colors: [0xff9a2a, 0xffd23a, 0xffffff] });
+  const ball = k.sprite('dot', { color: 0xffe14a, size: 0.42 });
+  const bang = k.sprite('bang', { color: 0xffffff, size: 0.1, glow: true });
+  const ring = k.mesh('ring', { color: 0xff9a2a, opacity: 0.8 });
+  const feet = feetOf(to);
+  return {
+    dur: 450,
+    step(p) {
+      const fall = clamp01(p / 0.6), hit = clamp01((p - 0.6) / 0.4);
+      const x = lerp(from.pos.x, to.pos.x, fall * fall), z = lerp(from.pos.z, to.pos.z, fall * fall);
+      const y = lerp(from.top + 2.2, to.pos.y, fall * fall);
+      ball.position.set(x, y, z);
+      ball.material.opacity = hit > 0 ? 0 : 1;
+      for (let i = 0; i < N; i++) {
+        const f2 = clamp01(fall - i * 0.04);
+        if (fall <= 0 || hit > 0 || f2 <= 0) { streak.hide(i); continue; }
+        streak.set(i, lerp(from.pos.x, to.pos.x, f2 * f2), lerp(from.top + 2.2, to.pos.y, f2 * f2), lerp(from.pos.z, to.pos.z, f2 * f2));
+      }
+      streak.fade(0.9);
+      bang.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
+      bang.scale.setScalar(Math.max(0.01, Math.sin(Math.PI * hit) * 1.4));
+      bang.material.opacity = hit > 0 ? 1 : 0;
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, to.r * 0.5 + hit * 1.3));
+      ring.material.opacity = hit > 0 ? 0.8 * (1 - hit) : 0;
+    },
+  };
+};
+/* ==== end of T40d ball ==== */
 /* ==== T37 ninja ==== */
 // Mask dark, band red, leaf green.
 FX_COLORS.ninja = [0x2a2440, 0xd83a4a, 0x6fd35a];
@@ -2395,4 +2526,4 @@ SIG.leafwhirl = (k, from, to) => {
 };
 /* ==== end of T37 ninja ==== */
 // T40 base: until T40a-d add their own entries for the wave 14 types, they borrow the normal ones
-for (const t of ['tiny', 'pirate', 'racer', 'ball']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }
+for (const t of ['tiny', 'pirate', 'racer']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }
