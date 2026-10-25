@@ -179,6 +179,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | The Shadow Dojo, 32 badges in an 8 x 4 grid | Ninja gym | 12 |
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
-| The Portal House, Playland's fair, the Room of Doors | Portal, Funfair, Surprise Picture Worlds | 15 |
-| The studio, the Wizard, designing the guardian | Doodle | 16 |
+| The Portal House, Playland's fair, the Room of Doors, the Sketchbook | Portal, Funfair, Surprise, Doodle Picture Worlds | 15 |
+| The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |

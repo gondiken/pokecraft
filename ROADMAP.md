@@ -1248,19 +1248,40 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   - **⚽ Ball:** the creatures are balls. A football pitch and a basketball court; score to win. Needs a ball that
     rolls and bounces (new physics); probably the biggest place so far.
 
-## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise
+## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
 
-- **🌀 Portal:** creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
+- **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
+  the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
   The Portal House in the Swirl itself: a chain of portal rooms to the Boss (teleports are cheap).
 - **🎡 Funfair ("lunapark"), in Playland:** a carousel horse, a candy-floss sheep, a balloon-animal dog, a walking
   ticket. Trampolines, a carousel, bumper cars and a roller-coaster ride to the Boss.
 - **🎁 Surprise** (moved from our world into the Swirl, 2026-10-24): gift boxes, a jack-in-the-box, a piñata; every
   wild one starts as a box and you only see what it is when it opens. The Room of Doors, every door a surprise (a
   slide, a ball pit, a confetti room, a trainer).
+- **✏️ Doodle, the Sketchbook** (owner, 2026-10-25; was the Wizard's tower's name, now a Picture World of its own):
+  the same blocks and cubes as everywhere, but drawn in a new art style: monochrome charcoal on paper, almost hand
+  drawn and almost unfinished. The world, its creatures and its Boss all look this way. A new `pictureworlds.js` entry
+  (append-only: an 8th id, `doodle`, with its own frame and star). Little custom code, because the look lives in
+  textures and the shader, not in new geometry:
+  - **A sketch atlas:** a second version of `drawAtlas` (blocks.js): paper tiles with a few charcoal strokes and
+    hatching, swapped in for the realm. Block kinds must differ by hatching pattern, not only by shade (readable for a child).
+  - **Outlines and hatching in the shared shader:** wobbly, gappy dark lines near block edges (from the position on the
+    block face) and hatching where it is darker; one switch next to the Swirl's `swirlTint`, off everywhere else (main
+    world, Dream and Swirl stay bit for bit as they are).
+  - **Unfinished edges:** paper-white sky and fog, so the far world fades out like a drawing not finished yet.
+  - **Boiling lines:** the strokes jump a few times a second like hand-drawn animation (one time uniform; gentle, so it
+    never flickers hard).
+  - **Creatures, people and the Boss:** one function swaps their materials for a sketch material in the realm (grey
+    shading, outlines on the box edges, the same boiling); battles there look sketched too. Doodle creatures still
+    get their own shapes and the usual per-type cost (7 creatures, 3+ shapes, chart, moves, wool, fx + sound, Book,
+    README), plus a terrain builder and a Boss.
+  - Rejected: a full-screen post-processing pass (edge detection + greyscale). Less control and an extra full-screen
+    pass on iPads.
 
-## Wave 16 · The Wizard: Doodle, or "custom gym" (the design option below is still open)
+## Wave 16 · The Wizard's Tower and the Custom type (the design option below is still open)
 
-Doodle has no wild creatures: you design yours after beating the **Wizard** at the top of his tower (each floor: copy
+"Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). The **Custom** type has no
+wild creatures: you design yours after beating the **Wizard** at the top of his tower (each floor: copy
 a picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
 
 **Reaching the Wizard: the painting tower** (owner, 2026-10-20). **One game, not one per floor:** every floor is the same
@@ -1278,7 +1299,7 @@ thing, "make the canvas look like the picture", and floors differ only by data, 
   4. **Your colour:** "copy it, but the ? parts can be any colour you like" (free cells; the easel shows them as a
      rainbow ? swatch).
   5. **Top, the Wizard's floor:** half a creature is given (mirror) and its parts are free colours: **the colours you
-     paint here become your Doodle's palette**. Then the Wizard battle.
+     paint here become your Custom creature's palette**. Then the Wizard battle.
 - Guidance: the picture explains itself after floor 1; one short sign per floor ("Pick any colour for the ? parts!").
 - No timer, no fail state, no trainers on the landings (the paintings are the challenge; keeps it easy).
 - **Left out on purpose** (each would be a second game: new code and new guidance): a from-memory floor (timer, covered
@@ -1293,7 +1314,7 @@ Two options for the design, the owner is still deciding (the painted palette fit
 wool ids instead of a palette number):
 1. **Free design:** a design screen (shape, colours, name, moves), the look saved on the creature and sent in saves,
    duels and play-together, models built from it. High: the look has to travel everywhere.
-2. **Ready-made designs + palettes (compromise):** ~6 Doodle species with a few part choices and ~12 fixed palettes;
+2. **Ready-made designs + palettes (compromise):** ~6 Custom species with a few part choices and ~12 fixed palettes;
    the creature only stores two small numbers (e.g. `paint: [design, palette]`), like traits. Everything else is
    a normal species, recoloured. Medium.
 
