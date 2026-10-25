@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import { serve, launch, Checks } from './helpers.mjs';
 
 const FAST = ['roster', 'seventh', 'four-types', 'bone-alien', 'icon', 'blocks', 'map'];
-const LIMIT_MIN = { 'treasure-vault': 20, 'clock-tower': 20, 'hidden-hill': 15, 'firewall-maze': 20, 'big-map': 20, champion: 30, caves: 25, 'old-saves': 25, 'new-gyms': 25, fx: 25, moves: 25, gym: 25, squad: 20 };
+const LIMIT_MIN = { 'treasure-vault': 20, 'clock-tower': 20, 'hidden-hill': 15, 'firewall-maze': 20, 'big-map': 20, champion: 30, caves: 25, 'old-saves': 25, 'new-gyms': 25, fx: 25, moves: 25, gym: 25, squad: 20, pirate: 45 };
 
 const args = process.argv.slice(2);
 const skip = new Set(), only = [];

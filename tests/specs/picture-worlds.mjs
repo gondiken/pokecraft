@@ -5,7 +5,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
-import { ROOT, openGame, openPair, newGame, pause, click, continueGame, waitFor as waitFor0, seedSave, playBattle } from '../helpers.mjs';
+import { ROOT, openGame as openGame0, openPair as openPair0, newGame, pause, click, continueGame, waitFor as waitFor0, seedSave, playBattle } from '../helpers.mjs';
+// T40b: the Pirate Seas ship ready (their own spec `pirate` covers them); this spec tests the base with every frame closed until it flips one itself.
+const closePirate = page => page.evaluate(async () => { (await import('/src/pictureworlds.js')).pictureWorld('pirate').ready = false; });
+const openGame = async (...a) => { const p = await openGame0(...a); await closePirate(p); return p; };
+const openPair = async (...a) => { const ps = await openPair0(...a); for (const p of ps) await closePirate(p); return ps; };
 const waitFor = (page, fn, arg, ms = 90000) => waitFor0(page, fn, arg, ms); // the software renderer is slow with several pages open
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
@@ -147,7 +151,7 @@ export default async function ({ browser, base, t }) {
         for (const bs of a.bosses) {
           if (a.get(Math.floor(bs.pos[0]), bs.pos[1] - 1, Math.floor(bs.pos[2])) !== B.BOSS_STAND) bad(`Boss ${bs.id} is not on a stand`);
           const door = a.doors.find(d => id === 'playland' ? d.key === bs.id : true);
-          if (!door || !reach(a, door.stand, bs.rest)) bad(`Boss ${bs.id} rest not reachable`);
+          if (!door || (id !== 'pirate' && !reach(a, door.stand, bs.rest))) bad(`Boss ${bs.id} rest not reachable`); // T40b: the Pirate Seas are crossed by cannon and rope (spec `pirate` checks that graph)
         }
         if (id === 'playland') {
           const flat = make(seed, def, () => { const old = L.PLAYLAND_PARTS.race; L.PLAYLAND_PARTS.race = { build() {}, spawns: [] }; r.restore = () => { L.PLAYLAND_PARTS.race = old; }; });

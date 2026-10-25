@@ -96,7 +96,6 @@ export function pictureAim(world, p, { stars = [], via = null } = {}) {
 /* ---- The stand-in worlds (64 x 64, flat): each task deletes its line when it registers its real terrain. ---- */
 export const STUBS = {
   house: { door: [32, 34, [0, 1]], boss: [32, 52, [0, -1]] },
-  pirate: { door: [32, 34, [0, 1]], boss: [32, 52, [0, -1]], top: B.SAND },
 };
 export function pictureStub(world, def) {
   const s = STUBS[def.id] ?? STUBS.house;

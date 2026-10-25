@@ -207,6 +207,7 @@ export class Player {
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
       // 1 block above the water (not 2), like Minecraft.
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
+      if (this.world.liftAt?.(this.pos)) this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T40b: a rope ladder's lift column also holds a swimmer (the Swirl's streams are never over water)
     } else if (this.world.liftAt?.(this.pos)) {
       this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T38a: an upward river in the Swirl lifts you
     } else {
