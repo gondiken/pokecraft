@@ -118,9 +118,12 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(backOff);
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
   await page.waitForTimeout(800);
+  await waitFor(page, () => window.pokecraft.portal.glow()?.open > 0.9, null, 120000); // the door's magic eases in
   await page.screenshot({ path: path.join(SHOTS, 't38-door-open.png') });
   await page.evaluate(lookAtDoor);
   t.ok(await page.evaluate(() => window.pokecraft.world.hasPortal === true), 'the world knows it has a swirling door (so main.js turns its tile)');
+  const glow = await page.evaluate(() => window.pokecraft.portal.glow());
+  t.ok(glow && glow.parts === 3 && glow.open > 0.5, `the open door glows: a vortex, a halo and sparkles (${JSON.stringify(glow)})`);
   t.ok(await page.evaluate(() => window.pokecraft.ui.starsShown === null), 'a Champion with no star sees no star row in our world (a calm HUD)');
   const before = await page.evaluate(sum);
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); // a game frame has seen where we look now

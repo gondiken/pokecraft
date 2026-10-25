@@ -32,13 +32,95 @@ export function buildPortalDoor(world, tower) {
   return world.portal;
 }
 
+// A door's magic (owner 2026-10-25: "more magical, portal-ish, swirly"): a turning spiral vortex with a bright heart
+// over the door's surface, sparkles drawn into it and a soft halo round the frame. Shaders only (3 draw calls, no
+// textures, nothing per frame but two uniforms). `open` eases between 0 (closed: a faint grey breath) and 1.
+// Works for any door: its surface cells and the spot you stand on in front of it (that side is the front).
+export class DoorGlow {
+  constructor(scene, cells, stand) {
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]), zs = cells.map(c => c[2]);
+    const [x0, x1, y0, y1, z0, z1] = [Math.min(...xs), Math.max(...xs) + 1, Math.min(...ys), Math.max(...ys) + 1, Math.min(...zs), Math.max(...zs) + 1];
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+    const alongX = x1 - x0 > z1 - z0; // the door's width runs along x (so it faces z) or along z
+    const w = alongX ? x1 - x0 : z1 - z0, h = y1 - y0;
+    const toward = alongX ? Math.sign(stand[2] - cz) || 1 : Math.sign(stand[0] - cx) || 1;
+    this.group = new THREE.Group();
+    this.group.position.set(cx + (alongX ? 0 : toward * 0.52), cy, cz + (alongX ? toward * 0.52 : 0));
+    this.group.rotation.y = alongX ? (toward > 0 ? 0 : Math.PI) : (toward > 0 ? Math.PI / 2 : -Math.PI / 2);
+    this.u = { t: { value: 0 }, open: { value: 0 }, size: { value: new THREE.Vector2(w, h) } };
+    const add = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: this.u };
+    const vortex = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.ShaderMaterial({ ...add, blending: THREE.NormalBlending, vertexShader: DOOR_VERT, fragmentShader: VORTEX_FRAG })); // covers the tile: dark gaps make the arms read
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(w + 3, h + 3), new THREE.ShaderMaterial({ ...add, vertexShader: DOOR_VERT, fragmentShader: HALO_FRAG }));
+    halo.position.z = -0.01; // just behind the vortex, glowing over the frame
+    const n = 48, seed = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { seed[i * 3] = (i * 0.618034) % 1; seed[i * 3 + 1] = (i * 0.414214) % 1; seed[i * 3 + 2] = (i * 0.732051) % 1; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); // placed in the shader
+    g.setAttribute('seed', new THREE.BufferAttribute(seed, 3));
+    const sparks = new THREE.Points(g, new THREE.ShaderMaterial({ ...add, vertexShader: SPARK_VERT, fragmentShader: SPARK_FRAG }));
+    sparks.frustumCulled = false;
+    for (const m of [halo, vortex, sparks]) { m.renderOrder = 7; this.group.add(m); }
+    this.scene = scene;
+    scene.add(this.group);
+  }
+  update(dt, open) {
+    this.u.t.value += dt;
+    this.u.open.value += (open - this.u.open.value) * Math.min(1, dt * 2);
+  }
+  dispose() {
+    this.scene.remove(this.group);
+    for (const m of this.group.children) { m.geometry.dispose(); m.material.dispose(); }
+  }
+}
+const DOOR_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+const VORTEX_FRAG = `uniform float t, open; uniform vec2 size; varying vec2 vUv;
+void main() {
+  vec2 p = (vUv - 0.5) * size / (0.5 * size.x); float r = length(p), a = atan(p.y, p.x);
+  float sp = t * mix(0.35, 2.4, open);
+  float arms = pow(0.5 + 0.5 * sin(a * 3.0 - r * 6.5 + sp * 2.0), 2.2);   // three bright arms winding in
+  float fine = pow(0.5 + 0.5 * sin(a * 6.0 + r * 11.0 - sp * 3.0), 3.0);  // thin streaks turning the other way
+  vec3 deep = vec3(0.10, 0.02, 0.24);
+  vec3 col = mix(deep, mix(vec3(0.62, 0.30, 1.0), vec3(1.0, 0.45, 0.85), 0.5 + 0.5 * sin(a + t)), arms);
+  col += vec3(0.35, 0.95, 1.0) * fine * 0.55 * smoothstep(1.7, 0.4, r);
+  col += vec3(1.0, 0.95, 1.0) * smoothstep(0.42, 0.0, r) * (0.85 + 0.25 * sin(t * 3.0)); // the bright heart
+  col = mix(vec3(dot(col, vec3(0.3))) * 0.8 + vec3(0.06, 0.04, 0.1), col, open);
+  float e = min(min(vUv.x, 1.0 - vUv.x) * size.x, min(vUv.y, 1.0 - vUv.y) * size.y);
+  float alpha = smoothstep(0.0, 0.45, e) * mix(0.35 + 0.08 * sin(t * 1.3), 0.96, open);
+  gl_FragColor = vec4(col, alpha);
+}`;
+const HALO_FRAG = `uniform float t, open; uniform vec2 size; varying vec2 vUv;
+void main() {
+  vec2 q = (vUv - 0.5) * (size + 3.0); vec2 d = max(abs(q) - size * 0.5, 0.0);
+  float g = exp(-length(d) * 1.6) * (1.0 - step(length(d), 0.001) * 0.6);
+  float pulse = 0.75 + 0.25 * sin(t * 2.2);
+  vec3 col = mix(vec3(0.75, 0.4, 1.0), vec3(1.0, 0.55, 0.85), 0.5 + 0.5 * sin(t * 0.7));
+  gl_FragColor = vec4(col * g * pulse * mix(0.1, 0.8, open), 1.0);
+}`;
+const SPARK_VERT = `uniform float t, open; uniform vec2 size; attribute vec3 seed; varying float vK;
+void main() {
+  float life = fract(seed.x - t * mix(0.05, 0.28, open));      // 1 = far out, 0 = swallowed by the door
+  float ang = seed.y * 6.2832 + life * 4.0 + t * 0.4;
+  float rad = life * (0.5 * size.x + 1.4);
+  vec3 pos = vec3(cos(ang) * rad, sin(ang) * rad * size.y / size.x, 0.15 + life * 1.6 * seed.z);
+  vK = seed.z;
+  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  gl_PointSize = clamp((2.0 + 4.0 * seed.z) * (1.0 - life * 0.4) * 60.0 / -mv.z, 1.0, 14.0) * step(0.02, open);
+  gl_Position = projectionMatrix * mv;
+}`;
+const SPARK_FRAG = `uniform float open; varying float vK;
+void main() {
+  float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard;
+  vec3 col = mix(vec3(1.0, 0.6, 0.95), vec3(0.6, 0.95, 1.0), vK);
+  gl_FragColor = vec4(col * (1.0 - d * 2.0) * open, 1.0);
+}`;
+
 const DOOR_IDS = new Set([B.PORTAL, B.PORTAL_DIM, B.PORTAL_FRAME]);
 // T38b: a guest can use the door only while the host is in the Swirl (and then needs no title)
 const openFor = game => game.mp?.role === 'guest' ? game.realms.followableAt('portal') : game.champion;
 const inBox = (b, k) => k.x >= b.x0 && k.x <= b.x1 && k.y >= b.y0 && k.y <= b.y1 && k.z >= b.z0 && k.z <= b.z1;
 
 export function createPortal(game) {
-  let acc = 0, wanted = null;
+  let acc = 0, wanted = null, glow = null; // glow: the DoorGlow of the door in this world (main or the Swirl's door home)
 
   // Which door (if any) is this block? 'main' = the Portal Door beside the tower, 'back' = the Swirl's door home.
   function kindOf(block) {
@@ -55,6 +137,7 @@ export function createPortal(game) {
     // Every frame (the main loop): a Champion sees the door swirling; everybody else sees it dim.
     update(dt) {
       const w = game.world;
+      glow?.update(dt, game.place !== 'main' || openFor(game) ? 1 : 0);
       if (!w || game.place !== 'main') { swirlUpdate(game, dt); return; }
       if (!w.portal) return;
       acc += dt;
@@ -103,7 +186,14 @@ export function createPortal(game) {
     },
 
     // A new world was made (createWorld): forget what was drawn.
-    reset(world) { acc = 0; wanted = null; swirlReset(game, world); },
+    reset(world) {
+      acc = 0; wanted = null;
+      glow?.dispose(); glow = null;
+      const door = world?.portal || world?.door; // the main world's Portal Door, or the Swirl's door home
+      if (door?.surface?.length && game.scene) glow = new DoorGlow(game.scene, door.surface, door.stand);
+      swirlReset(game, world);
+    },
+    glow: () => glow && { open: glow.u.open.value, t: glow.u.t.value, parts: glow.group.children.length }, // for tests
     // For tests and the HUD: what the Swirl is showing right now.
     info() {
       const st = SWIRL.get(game);
