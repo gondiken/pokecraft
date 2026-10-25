@@ -121,11 +121,12 @@ export default async function ({ browser, base, t }) {
   await page.screenshot({ path: path.join(SHOTS, 't38-door-open.png') });
   await page.evaluate(lookAtDoor);
   t.ok(await page.evaluate(() => window.pokecraft.world.hasPortal === true), 'the world knows it has a swirling door (so main.js turns its tile)');
-  t.ok(await page.evaluate(() => window.pokecraft.ui.starsShown === '0/7'), 'a Champion sees 7 empty stars on the screen');
+  t.ok(await page.evaluate(() => window.pokecraft.ui.starsShown === null), 'a Champion with no star sees no star row in our world (a calm HUD)');
   const before = await page.evaluate(sum);
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); // a game frame has seen where we look now
   await page.evaluate(() => { window.__toasts = []; window.pokecraft.interact(true); });
   await swirlOn(page);
+  await waitFor(page, () => window.pokecraft.ui.starsShown !== null); // the HUD refreshes from the game loop
   const there = await page.evaluate(() => {
     const g = window.pokecraft, p = g.player.pos, s = JSON.parse((g.save(), localStorage.getItem('pokecraft-save-v2')));
     g.updateGuide();
@@ -225,7 +226,7 @@ export default async function ({ browser, base, t }) {
   const P2 = await openGame(browser, base, { setup: seedSave(old) });
   await continueGame(P2);
   const o = await P2.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { place: g.place, stars: s.stars, shown: g.ui.starsShown, door: !!g.world.portal }; });
-  t.ok(o.place === 'main' && JSON.stringify(o.stars) === '[]' && o.shown === '0/7' && o.door, `an old Champion's save loads: no stars yet, the door is there (${JSON.stringify(o)})`);
+  t.ok(o.place === 'main' && JSON.stringify(o.stars) === '[]' && o.shown === null && o.door, `an old Champion's save loads: no stars yet (no star row), the door is there (${JSON.stringify(o)})`);
   await P2.context().close();
 
   // 13. Two browsers: a guest can't use the host's door; the host going in and coming back is told to the guest.
