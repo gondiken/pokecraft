@@ -5,6 +5,7 @@
 import { B, WOOL } from './blocks.js';
 import { PICTURE_WORLDS } from './pictureworlds.js';
 import { kit, flatLand, buildWayBack, placeBoss } from './picturelands.js';
+import { buildRaceTrack, RACER_SPAWNS, RACE_WALK } from './racetrack.js'; // T40c
 
 export const PLAYLAND = { size: [224, 224], y: 10 };       // ground top y 10 (you stand at 11)
 export const HUB = { x0: 8, x1: 215, z0: 96, z1: 131 };     // the promenade across the middle: base-owned
@@ -35,7 +36,7 @@ function stadiumStub(world) {
 
 // Part builders, by zone: { build(world, zone, def), spawns: [[species, weight, cond?], ...], walk?: [block ids wild creatures walk on] }. Each writes only inside zone.box.
 export const PLAYLAND_PARTS = {
-  race: { build: raceStub, spawns: [] },       // T40c replaces this line
+  race: { build: buildRaceTrack, spawns: RACER_SPAWNS, walk: RACE_WALK }, // T40c
   stadium: { build: stadiumStub, spawns: [] }, // T40d replaces this line
   fair: null,                                  // wave 15
 };

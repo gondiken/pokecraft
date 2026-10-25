@@ -437,6 +437,22 @@ BIG_MOVES.ninja = [
   ['vanishswap', 'Vanish Swap', 'sacrifice', 'Poof, you vanish! Next friend comes in fresh and strong.'],
 ];
 /* ==== end of T37 ninja ==== */
+/* ==== T40c racer ==== */
+// Racers are fast and fragile: they zoom, jump ramps and rev up.
+Object.assign(MOVES, {
+  wheelspin: mv('Wheel Spin', 'racer', 40, 1),
+  rampjump: mv('Ramp Jump', 'racer', 80, 0.9),
+  zoomdash: mv('Zoom Dash', 'racer', 50, 1, { priority: 1 }),
+  revup: mv('Rev Up', 'racer', 0, 1, { fx: { kind: 'raise', stat: 'spd' } }),
+  photofinish: mv('Photo Finish', 'racer', 85, 1, { priority: 1, sig: true }),
+  nitroblast: mv('Nitro Blast', 'racer', 25, 1, { fx: { kind: 'multi', min: 2, max: 4 }, sig: true }),
+});
+BIG_MOVES.racer = [
+  ['pitcrew', 'Pit Crew', 'rally', 'The pit crew cheers! Whole team hits harder. You get softer.'],
+  ['fullthrottle', 'Full Throttle', 'risky', 'Half the time: a huge zoom hit! Or you spin out.'],
+  ['raceday', 'Race Day', 'field', 'Racer moves are stronger for 5 turns. Foes too!'],
+];
+/* ==== end of T40c racer ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -546,6 +562,7 @@ const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
 /* ==== end of T36 parkour ==== */
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
+T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -1910,6 +1927,46 @@ export const SPECIES = {
     base: { hp: 60, atk: 75, def: 55, spd: 90 }, baseXp: 100, catchRate: 0.3, learn: L('ninja', 'time'),
     model: { shape: 'bamboo', scale: 0.95, body: 0x7ac85a, accent: 0xd83a4a, dark: 0x3a6a2a, belly: 0xd8f0b0, extras: [] },
   },
+  /* ==== T40c racer ==== */
+  vroomlet: {
+    name: 'Vroomlet', type: 'racer', desc: "A wind-up toy car with a big grin. Turn its key and it is gone!", gait: 'dash',
+    base: { hp: 38, atk: 58, def: 32, spd: 95 }, baseXp: 64, catchRate: 0.45, learn: L('racer', 'metal'),
+    evolve: { level: 24, into: 'vroomster' },
+    model: { shape: 'toycar', scale: 0.85, body: 0xff8a2a, accent: 0xffffff, dark: 0x2a2a34, belly: 0xffe0a0, extras: [] },
+  },
+  vroomster: {
+    name: 'Vroomster', type: 'racer', desc: "It zooms so fast its stripes blur. It always wins by a nose.", gait: 'dash',
+    base: { hp: 58, atk: 92, def: 48, spd: 130 }, baseXp: 165, catchRate: 0.12, learn: L('racer', 'metal', [[30, 'photofinish']]),
+    model: { shape: 'toycar', scale: 1.25, body: 0xe85a1a, accent: 0xffffff, dark: 0x22222c, belly: 0xffd080, extras: ['spoiler'] },
+  },
+  zipskate: {
+    name: 'Zipskate', type: 'racer', desc: "A roller skate that wants to fly. Its little rocket goes pop-pop-pop.", gait: 'dash',
+    base: { hp: 36, atk: 60, def: 30, spd: 100 }, baseXp: 64, catchRate: 0.45, learn: L('racer', 'sky'),
+    evolve: { level: 22, into: 'blastskate' },
+    model: { shape: 'rocketskate', scale: 0.85, body: 0x4ab8ff, accent: 0xffa24a, dark: 0x24304a, belly: 0xffffff, extras: [] },
+  },
+  blastskate: {
+    name: 'Blastskate', type: 'racer', desc: "Two rockets, eight wheels, one big WHOOSH. Hold on to your hat!", gait: 'dash',
+    base: { hp: 55, atk: 95, def: 45, spd: 128 }, baseXp: 165, catchRate: 0.12, learn: L('racer', 'sky', [[30, 'nitroblast']]),
+    model: { shape: 'rocketskate', scale: 1.2, body: 0x2a8ae8, accent: 0xffa24a, dark: 0x1a2440, belly: 0xffffff, extras: ['twinrocket'] },
+  },
+  pitpig: {
+    name: 'Pitpig', type: 'racer', desc: "A piglet with wheels for trotters. It loves muddy tracks.", gait: 'dash',
+    base: { hp: 45, atk: 55, def: 40, spd: 90 }, baseXp: 64, catchRate: 0.45, learn: L('racer', 'rock'),
+    evolve: { level: 24, into: 'karthog' },
+    model: { shape: 'kartpig', scale: 0.85, body: 0xffa6b8, accent: 0xffd23a, dark: 0x5a2a34, belly: 0xffe0e6, extras: [] },
+  },
+  karthog: {
+    name: 'Karthog', type: 'racer', desc: "A big go-kart hog with a bumper nose. Beep beep, coming through!", gait: 'dash',
+    base: { hp: 68, atk: 90, def: 55, spd: 115 }, baseXp: 170, catchRate: 0.1, learn: L('racer', 'rock'),
+    model: { shape: 'kartpig', scale: 1.25, body: 0xd8708a, accent: 0xffd23a, dark: 0x4a1e2a, belly: 0xffd0da, extras: ['bumper'] },
+  },
+  wheelie: {
+    name: 'Wheelie', type: 'racer', desc: "A happy tyre that rolls everywhere on its own. Its face is in the middle.", gait: 'dash',
+    base: { hp: 50, atk: 75, def: 40, spd: 115 }, baseXp: 100, catchRate: 0.3, learn: L('racer', 'electric'),
+    model: { shape: 'tyre', scale: 1.0, body: 0x34343e, accent: 0xffa24a, dark: 0x18181e, belly: 0xd8d8e0, extras: [] },
+  },
+  /* ==== end of T40c racer ==== */
   /* ==== end of T37 ninja ==== */
 };
 

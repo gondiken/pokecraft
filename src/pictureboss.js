@@ -48,8 +48,22 @@ addBoss({ id: 'house', name: "Wizard's Mouse Mimi", type: 'normal', colors: { ..
   intro: ['Squeak! Do you want to battle?'], lose: 'Squeak! You are strong!', win: 'Good battle! Try again any time.', note: NOTE });
 addBoss({ id: 'pirate', name: 'Deckhand Dot', type: 'water', colors: { ...PEOPLE, shirt: 0xd0d8f0, pants: 0x2a4a8a }, team: [['shellby', 61], ['tidalord', 63]],
   intro: ['Ahoy! Ready for a battle?'], lose: 'Ahoy! You win this one!', win: 'Good battle! Try again any time.', note: NOTE });
-addBoss({ id: 'race', name: 'Starter Sam', type: 'electric', colors: { ...PEOPLE, shirt: 0xff6a4a, pants: 0x2a2a2a }, look: 'sport', team: [['thunderwolf', 62], ['blazehound', 64]],
-  intro: ['On your marks! Battle time!'], lose: 'What a finish! You win!', win: 'Good battle! Try again any time.', note: NOTE });
+addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in racelive.js; he battles after you win it)
+  id: 'race', name: 'Racer Rio', type: 'racer', title: 'Racer Rio · Race Track Boss',
+  colors: { shirt: 0xff8a2a, pants: 0x2a2a34, hair: 0x3a2418, skin: 0xf0c8a0 }, look: 'helmet',
+  team: [['wheelie', 61], ['karthog', 62, ['pitcrew']], ['blastskate', 63], ['vroomster', 64, ['photofinish', 'fullthrottle']]],
+  intro: ['Vroom! You beat me on the track...', "Now let's see if your team is fast too!"],
+  lose: 'You beat me on the track AND in a battle! Hear that? Playland is waking up!',
+  win: 'My racers are quick! Heal up and talk to me. No need to race again.',
+  rematchIntro: ['Back for more? My team got even faster!'],
+  note: 'I built this track for the festival race, but nobody ever raced on it. Thank you for racing!',
+  crew: [
+    { name: 'Pit Crew Pia', look: 'helmet', colors: { shirt: 0xffffff, pants: 0xff8a2a, hair: 0x2a1a10, skin: 0xd8a070 },
+      team: [['vroomlet', 60], ['wheelie', 61]], intro: ['Want a practice battle before the big race?'], line: 'Go go go! Rio is fast, but you can do it!' },
+    { name: 'Pit Crew Max', look: 'helmet', colors: { shirt: 0x2a8ae8, pants: 0xffffff, hair: 0xc89a40, skin: 0xf0c8a0 },
+      team: [['zipskate', 60], ['pitpig', 61], ['blastskate', 62]], intro: ['Vroom vroom! Practice battle?'], line: 'Step on the boost pads. Zoom!' },
+  ],
+});
 addBoss({ id: 'stadium', name: 'Coach Kiki', type: 'normal', colors: { ...PEOPLE, shirt: 0x3aa84a, pants: 0xffffff }, look: 'sport', team: [['zorbit', 63], ['boomwing', 65]],
   intro: ['Team huddle! Let us play!'], lose: 'Great game! You win!', win: 'Good battle! Try again any time.', note: NOTE });
 
