@@ -1891,13 +1891,13 @@ export const SPECIES = {
   /* ==== T40d ball ==== */
   boinkle: {
     name: 'Boinkle', type: 'ball', desc: 'A rubber ball with puppy ears. Throw it anything and it bounces back to you, wagging.',
-    base: { hp: 55, atk: 55, def: 50, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('ball', 'normal'),
+    base: { hp: 55, atk: 55, def: 50, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('ball', 'electric'),
     evolve: { level: 22, into: 'goalhound' },
     model: { shape: 'ballpup', scale: 0.8, body: 0xe84a3a, accent: 0xffe8d0, dark: 0x2a2a30, belly: 0xffffff, extras: [] },
   },
   goalhound: {
     name: 'Goalhound', type: 'ball', desc: 'The captain of every match it plays. It heads the ball, it IS the ball, and it never stops running.',
-    base: { hp: 90, atk: 100, def: 80, spd: 85 }, baseXp: 168, catchRate: 0.1, learn: L('ball', 'normal', [[30, 'goldengoal']]),
+    base: { hp: 90, atk: 100, def: 80, spd: 85 }, baseXp: 168, catchRate: 0.1, learn: L('ball', 'electric', [[30, 'goldengoal']]),
     model: { shape: 'ballpup', scale: 1.15, body: 0xf4f4f4, accent: 0xffd23a, dark: 0x22222a, belly: 0xffffff, extras: ['patches', 'armband'] },
   },
   sealbop: {

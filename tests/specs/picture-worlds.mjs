@@ -72,7 +72,7 @@ export default async function ({ browser, base, t }) {
   t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
   t.ok(JSON.stringify(d1.wool) === JSON.stringify([[140, 'Tiny Wool', false], [141, 'Pirate Wool', false], [142, 'Racer Wool', false], [143, 'Ball Wool', false]]), 'wool 140-143 with their names, not placeable');
   t.ok(d1.blocks.map(b => b.id).join() === '144,145,146' && d1.blocks.every(b => b.def && !b.placeable && b.fixed && b.wall && b.tiles), `blocks 144-146 (picture, way back, Boss stand): tiles, wall text, fixed, not placeable`);
-  t.ok(d1.tiles <= 163 && d1.free === 147, `the atlas grew by 8 tiles (${d1.tiles} of 256), next free id ${d1.free}`);
+  t.ok(d1.tiles <= 163 + 72 && d1.free >= 147, `the atlas grew by 8 tiles (+ at most 72 more from wave 14's tasks) (${d1.tiles} of 256), next free id ${d1.free}`);
 
   /* ---- 2. Data ---- */
   const d2 = await page.evaluate(async () => {
@@ -212,6 +212,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
   await intoSwirl(page);
+  await flip(page, 'stadium', false); // the shipped state is per task: the stadium frame is ready (T40d), this part wants a covered one
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);
