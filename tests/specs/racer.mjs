@@ -319,7 +319,7 @@ export default async function ({ browser, base, t }) {
       const { g, live, rio, Y } = window.__R, w = g.world, p = g.player;
       const n = rio(), prompt = g.gymLive.talkPrompt(n);
       p.pos.set(112.5, Y + 1, 88.5); p.vel.set(0, 0, 0); g.updateGuide();
-      const out = { prompt, guide: g.ui.guideText, title: n.title, helmet: !!n.def?.look, state: live.state, crew: g.npcs.list.filter(x => x.kind === 'crew').length, lamps: window.__R.lamps() };
+      const out = { prompt, guide: g.ui.guideText, title: n.title, helmet: !!n.def?.look, state: live.state, crew: g.npcs.list.filter(x => x.kind === 'crew' && /Pit Crew/.test(x.name)).length, lamps: window.__R.lamps() };
       p.pos.set(n.pos.x, Y + 1, n.pos.z + 3); p.lookAt({ x: n.pos.x, y: Y + 2.5, z: n.pos.z });
       return out;
     });

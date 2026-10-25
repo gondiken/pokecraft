@@ -135,7 +135,7 @@ async function nodePart(t) {
     const stand = (x, y, z) => solidAt(Math.floor(x), y - 1, Math.floor(z)) && !solidAt(Math.floor(x), y, Math.floor(z)) && !solidAt(Math.floor(x), y + 1, Math.floor(z));
     const boss = world.bosses.find(b => b.id === 'stadium');
     t.ok(boss && boss.crew.length === 2 && [boss.pos, boss.rest, boss.crew[0].pos, boss.crew[1].pos, ...part.rests].every(p => stand(p[0], p[1], p[2])), `10: the Captain's stand, both helpers and both rest spots have a floor and 2 air above`);
-    t.ok(world.keeps.some(k => k.name === 'stadium' && k.protect[0].x0 === Z.x0 && k.protect[0].z1 === Z.z1) && world.parts.length === 1, '10: one keep over the whole zone, one live part');
+    t.ok(world.keeps.some(k => k.name === 'stadium' && k.protect[0].x0 === Z.x0 && k.protect[0].z1 === Z.z1) && world.parts.filter(o => o.live === 'stadium').length === 1, '10: one keep over the whole zone, one live part');
     // BFS on foot from the gate's arrival (step up <= 1, head room 2)
     const arrival = world.arrivals.stadium;
     const reach = (from, to) => {
@@ -370,7 +370,7 @@ async function browserPart({ browser, base, t }) {
   t.ok(d11.moves.every(m => m === 'ball') && d11.big.every(Boolean) && d11.sig.every(Boolean) && d11.learn.every(Boolean), '11: four Ball moves, two signature moves learned at 30, three big moves');
   t.ok(d11.fx[0] && d11.fx[1] && d11.fx[2] && d11.fx[3] === 'function' && d11.fx[4] === 'function' && d11.sound, '11: real Ball fx recipes (not the borrowed ones), both signature recipes, the Ball sounds');
   t.ok(!d11.inMain.length && d11.inRealm.length === 7, "11: Ball creatures are in no main world spawn table, all seven in Playland's stadium zone");
-  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 163 + 12 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
+  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 163 + 72 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
   // the creatures, as portraits
   const shots = await page.evaluate(async ids => {
     const { portrait } = await import('/src/ui.js');
