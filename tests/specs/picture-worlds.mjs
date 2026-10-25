@@ -93,7 +93,7 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,10,11' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && d2.ready === 0, `12 / 10 / 11 Picture Worlds in the old order, none ready in the shipped base (${d2.counts})`);
+  t.ok(d2.counts.join() === '12,10,11' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && d2.ready <= 4, `12 / 10 / 11 Picture Worlds in the old order, at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
   t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
