@@ -279,7 +279,7 @@ export default async function ({ browser, base, t }) {
     const m = await pad.evaluate(() => {
       const r = document.getElementById('badges').getBoundingClientRect();
       const hud = r;
-      const others = [...document.querySelectorAll('#btn-break, #btn-place, #btn-jump, #btn-team, #btn-blocks, #btn-book, #btn-pause, #joystick')]
+      const others = [...document.querySelectorAll('#btn-act, #btn-place, #btn-jump, #btn-ride, #btn-book, #btn-pause, #joystick')]
         .filter(e => e.offsetParent).map(e => e.getBoundingClientRect());
       const hit = others.some(o => !(o.right < hud.left || o.left > hud.right || o.bottom < hud.top || o.top > hud.bottom));
       return { n: document.querySelectorAll('#badges > *').length, h: r.height, right: r.right, vw: innerWidth, hit };

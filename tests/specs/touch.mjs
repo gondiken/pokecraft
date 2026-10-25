@@ -44,12 +44,46 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => window.pokecraft.selected === 4), 'tapping the hotbar picks a block');
   await page.evaluate(() => { window.pokecraft.player.pitch = -1.2; });
   await page.waitForTimeout(300);
-  await page.tap('#btn-break');
+  // T39c: fixed slots. The action button says Break and is bright at a block; Down is not there on the ground.
+  const st = () => page.evaluate(() => {
+    const r = id => { const e = document.getElementById(id), b = e.getBoundingClientRect(); return { dim: e.classList.contains('dim'), hidden: getComputedStyle(e).display === 'none', text: e.textContent, x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; };
+    return { act: r('btn-act'), place: r('btn-place'), ride: r('btn-ride'), jump: r('btn-jump'), down: r('btn-down'), pause: r('btn-pause'), book: r('btn-book') };
+  });
+  await page.waitForFunction(() => document.getElementById('btn-act').textContent === 'Break' && !document.getElementById('btn-act').classList.contains('dim'), null, { timeout: 20000 }).catch(() => {});
+  const u1 = await st();
+  t.ok(u1.act.text === 'Break' && !u1.act.dim && !u1.place.dim, 'at a block: the action button says Break, Place is bright');
+  t.ok(u1.down.hidden && u1.ride.hidden, 'on the ground with no rideable creature: no Down, no Ride');
+  t.ok(u1.act.w >= 96 && u1.jump.w === 84 && u1.place.w >= 64, 'sizes: action 100, Jump 84, Place 68');
+  const boxes = ['act', 'place', 'jump'].map(k => u1[k]);
+  t.ok(boxes.every((a, i) => boxes.every((b, j) => i === j || a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)), 'Action, Place and Jump do not overlap');
+  t.ok(u1.pause.h >= 56 && u1.book.h >= 56 && await page.evaluate(() => !document.getElementById('btn-team') && !document.getElementById('btn-blocks') && !document.getElementById('btn-break')), 'top bar: only the menu and Book');
+  await page.tap('#btn-act');
   await page.waitForTimeout(300);
-  t.ok(await page.evaluate(() => window.pokecraft.world.edits.size > 0), 'Break button breaks a block');
-  await page.tap('#btn-team');
+  t.ok(await page.evaluate(() => window.pokecraft.world.edits.size > 0), 'the action button breaks a block');
+  // The sky: Action and Place dim in the same places; a tap on dim Place says why.
+  await page.evaluate(() => { window.pokecraft.player.pitch = 1.4; });
+  await page.waitForFunction(() => document.getElementById('btn-place').classList.contains('dim'), null, { timeout: 20000 });
+  const u2 = await st();
+  t.ok(u2.act.dim && u2.place.dim && u2.act.x === u1.act.x && u2.act.y === u1.act.y && u2.place.x === u1.place.x && u2.place.y === u1.place.y && !u2.act.hidden && !u2.place.hidden, 'looking at the sky: both dim, same size and place');
+  await page.evaluate(() => { window.__toasts = []; });
+  await page.tap('#btn-place');
+  t.ok(await page.evaluate(() => /Look at a block/.test(document.getElementById('toast').textContent)), 'a tap on dim Place says why');
+  await page.evaluate(() => { window.pokecraft.player.pitch = -1.2; });
   await page.waitForTimeout(400);
-  t.ok(await page.evaluate(() => window.pokecraft.ui.panelOpen), 'Team button opens the team screen');
+  // Ride only with a rideable creature, in its fixed slot; Down only while flying, right under Jump.
+  await page.evaluate(async () => { const g = window.pokecraft; const S = await import('/src/species.js'); const c = S.makeCreature('whaloft', 20); c.traits = ['rideable']; g.party.push(c); });
+  await page.waitForFunction(() => !document.getElementById('btn-ride').classList.contains('hidden'), null, { timeout: 20000 }).catch(() => {});
+  const u3 = await st();
+  t.ok(!u3.ride.hidden && u3.ride.text === 'Ride' && u3.ride.x < u3.place.x && u3.ride.y === u3.place.y, 'with a rideable creature the Ride slot appears above the action button, left of Place');
+  await page.evaluate(() => { const g = window.pokecraft; g.party.pop(); });
+  await page.evaluate(async () => { const g = window.pokecraft; g.touch.setButtons({ ...g.touch.cur(), sky: true }); });
+  const u4 = await st();
+  t.ok(!u4.down.hidden && u4.jump.text === 'Up' && u4.down.y >= u4.jump.y + u4.jump.h - 2 && Math.abs((u4.down.x + u4.down.w / 2) - (u4.jump.x + u4.jump.w / 2)) < 20 && u4.jump.x === u1.jump.x && u4.jump.y === u1.jump.y, 'flying: Jump says Up in the same place, Down sits right under it');
+  await page.screenshot({ path: new URL('../screenshots/t39-after-ipad-fly-buttons.png', import.meta.url).pathname });
+  await page.evaluate(() => { const g = window.pokecraft; g.touch.setButtons({ ...g.touch.cur(), sky: false }); });
+  await page.tap('#party-mini');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => window.pokecraft.ui.panelOpen), 'tapping the creature card opens the team screen');
   await page.tap('#party-close');
   await page.waitForTimeout(300);
   t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'Close button closes it');
@@ -60,15 +94,24 @@ export default async function ({ browser, base, t }) {
   await page.tap('#block-list button:has-text("Lamp")');
   await page.waitForTimeout(400);
   t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen && document.querySelector('#hotbar .slot.sel').title === 'Lamp'), 'picking Lamp fills the slot and closes the panel');
-  await page.tap('#btn-blocks');
-  await page.waitForTimeout(400);
-  t.ok(await page.evaluate(() => !document.getElementById('blocks').classList.contains('hidden')), 'Blocks button opens the Blocks panel');
-  await page.tap('#blocks-close');
-  await page.waitForTimeout(300);
-  t.ok(await page.evaluate(() => !window.pokecraft.ui.panelOpen), 'its Close button closes it');
   await page.tap('#btn-pause');
   await page.waitForTimeout(300);
-  t.ok(await page.evaluate(() => !document.getElementById('pause').classList.contains('hidden')), 'pause button pauses (and the tap does not instantly unpause)');
+  t.ok(await page.evaluate(() => !document.getElementById('pause').classList.contains('hidden')), 'the menu button pauses (and the tap does not instantly unpause)');
+  const pb = await page.evaluate(() => ['pb-team', 'pb-blocks', 'pb-book', 'pb-missions', 'pb-where', 'pb-home'].map(id => { const e = document.getElementById(id), r = e.getBoundingClientRect(); return [id, getComputedStyle(e).display !== 'none', Math.round(r.height)]; }));
+  t.ok(pb.slice(0, 3).every(([, shown, h]) => shown && h >= 56) && pb[4][1] && !pb[3][1] && !pb[5][1], `pause screen: big Team, Blocks, Book, Where to go; no Missions (not a Champion) or My home (not on a mat) ${JSON.stringify(pb)}`);
+  await page.tap('#pb-blocks');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => !document.getElementById('blocks').classList.contains('hidden') && document.getElementById('pause').classList.contains('hidden')), 'the pause Blocks button opens the Blocks panel');
+  await page.tap('#blocks-close');
+  await page.waitForTimeout(300);
+  await page.tap('#btn-pause');
+  await page.tap('#pb-where');
+  await page.waitForTimeout(400);
+  t.ok(await page.evaluate(() => window.pokecraft.ui.navOpen), 'the pause Where to go button opens the nav panel');
+  await page.tap('#nav-close');
+  await page.waitForTimeout(300);
+  await page.tap('#btn-pause');
+  await page.waitForTimeout(300);
   await page.tap('#resume');
   await page.waitForTimeout(300);
   t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'Resume button resumes');
@@ -107,8 +150,9 @@ export default async function ({ browser, base, t }) {
   await endBattle();
   await camoSetup();
   await page.waitForFunction(() => document.getElementById('prompt').textContent.includes('Bushling'), null, { timeout: 60000 }).catch(() => {});
-  await page.tap('#btn-break');
-  t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the Break button on a disguised creature battles it (and breaks no block)');
+  await page.waitForFunction(() => document.getElementById('btn-act').textContent === 'Battle!', null, { timeout: 60000 }).catch(() => {});
+  await page.tap('#btn-act');
+  t.ok(await page.evaluate(() => window.pokecraft.inBattle), 'the action button on a disguised creature battles it (and breaks no block)');
   await endBattle();
   // T22: homes on a tablet. Stepping on a new Doormat claims it and opens 'What can my home be?', the action
   // button says "My home", the meter can be tapped, "Show me a house" shows the spinning model (drag turns, pinch zooms).
@@ -124,8 +168,15 @@ export default async function ({ browser, base, t }) {
   await page.tap('#home-close');
   await page.waitForFunction(() => !window.pokecraft.ui.homeOpen, null, { timeout: 15000 });
   t.ok(await page.evaluate(() => document.getElementById('pause').classList.contains('hidden')), 'and the pause screen stays away');
-  await page.waitForFunction(() => document.getElementById('btn-act').textContent === 'My home', null, { timeout: 15000 }).catch(() => {});
-  t.ok(await page.evaluate(() => document.getElementById('btn-act').textContent === 'My home'), 'the action button says "My home" on the Doormat');
+  // T39c: the action button breaks what you look at (the Doormat room has walls); My home is a big button in the pause screen.
+  await page.tap('#btn-pause');
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('pb-home')).display !== 'none', null, { timeout: 15000 });
+  t.ok(true, 'the pause screen shows "My home" on the Doormat');
+  await page.tap('#pb-home');
+  await page.waitForFunction(() => window.pokecraft.ui.homeOpen, null, { timeout: 15000 });
+  t.ok(true, 'and it opens the home panel');
+  await page.tap('#home-close');
+  await page.waitForFunction(() => !window.pokecraft.ui.homeOpen, null, { timeout: 15000 });
   await page.evaluate(() => window.__fake({ feats: ['bed', 'fire'] }));
   await page.waitForFunction(() => !document.getElementById('home-meter').classList.contains('hidden') && document.querySelector('#home-meter .feat'), null, { timeout: 15000 });
   t.ok(await page.evaluate(() => getComputedStyle(document.getElementById('home-meter')).pointerEvents === 'auto'), 'the meter takes taps on a tablet');

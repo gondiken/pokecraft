@@ -289,33 +289,33 @@ body.in-battle #touch { display: none; }
   background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.8);
 }
 
-#touch-buttons {
-  position: absolute; right: calc(20px + env(safe-area-inset-right)); bottom: 90px;
-  display: grid; grid-template-columns: 84px 84px; grid-template-rows: auto 84px 84px; gap: 12px;
-  pointer-events: none;
-}
+/* T39c: fixed slots. Every button keeps its place; a button that can't act is dimmed (dark backing, light outline), never hidden. */
+#touch-buttons { position: absolute; inset: 0; pointer-events: none; }
 #touch-buttons button, #touch-top button {
   pointer-events: auto; touch-action: none;
-  background: rgba(20,22,30,.55); border: 3px solid rgba(255,255,255,.45); color: #fff;
-  font-size: 10px; padding: 0; box-shadow: none;
+  background: rgba(20,22,30,.62); border: 3px solid rgba(255,255,255,.7); color: #fff;
+  font-size: 15px; padding: 0; box-shadow: none; text-shadow: 0 1px 2px #000; line-height: 1.05;
 }
-#touch-buttons button { width: 84px; height: 84px; border-radius: 50%; }
+#touch-buttons button { position: absolute; border-radius: 50%; width: 68px; height: 68px; }
 #touch-buttons button:active, #touch-buttons button.down { background: rgba(255,255,255,.35); }
-#btn-act {
-  grid-column: span 2; height: 64px !important; width: auto !important; border-radius: 12px !important;
-  background: rgba(59,111,216,.85) !important; font-size: 12px !important;
-}
-#btn-jump { grid-column: 2; grid-row: 3; }
-#btn-place { grid-column: 2; grid-row: 2; }
-#btn-break { grid-column: 1; grid-row: 3; }
-#btn-ride { grid-column: 1; grid-row: 2; background: rgba(255,190,80,.6) !important; }
-#btn-down { grid-column: 2; grid-row: 2; }
+#touch-buttons button.dim { background: rgba(10,12,18,.82) !important; border-color: rgba(255,255,255,.7); color: rgba(255,255,255,.55); text-shadow: none; }
+#btn-jump { width: 84px !important; height: 84px !important; right: calc(20px + env(safe-area-inset-right)); bottom: 90px; font-size: 17px !important; }
+#btn-act { width: 100px !important; height: 100px !important; right: calc(108px + env(safe-area-inset-right)); bottom: 82px; font-size: 19px !important; background: rgba(59,111,216,.92) !important; padding: 4px !important; }
+#btn-place { right: calc(28px + env(safe-area-inset-right)); bottom: 194px; }
+#btn-ride { right: calc(124px + env(safe-area-inset-right)); bottom: 194px; background: rgba(255,170,60,.88) !important; }
+#btn-ride.dim { background: rgba(10,12,18,.82) !important; }
+#btn-down { right: calc(30px + env(safe-area-inset-right)); bottom: 14px; }
 #touch:not(.sky) #btn-down { display: none; }
-#touch.sky #btn-place { display: none; }
 .mon button.ride { background: #ffd27a; color: #3a2a00; }
 
 #touch-top { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-#touch-top button { height: 48px; min-width: 64px; padding: 0 14px; border-radius: 10px; }
+#touch-top button { height: 56px; min-width: 70px; padding: 0 18px; border-radius: 12px; font-size: 22px; }
+body.touch #party-mini { pointer-events: auto; cursor: pointer; }
+body.touch #party-mini::after { content: 'Team'; font-size: 13px; color: #fff; opacity: .8; padding-left: 8px; }
+.pause-big { display: none; }
+body.touch .pause-big { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 8px 0 14px; }
+.pause-big button { min-height: 64px; min-width: 140px; font-size: 22px; }
+.pause-big button.hidden { display: none; }
 
 body.touch #hotbar { bottom: calc(10px + env(safe-area-inset-bottom)); }
 body.touch .slot { width: 44px; height: 44px; }

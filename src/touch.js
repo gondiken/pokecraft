@@ -23,28 +23,45 @@ export class TouchControls {
     this.hold('btn-jump', down => actions.jump(down));
     this.hold('btn-down', down => actions.down(down));
     this.tap('btn-ride', () => actions.ride());
-    this.press('btn-break', () => actions.breakBlock());
     this.press('btn-place', () => actions.place());
     // Buttons that open something react on the finished tap, so the tap can't also land on what opened.
     this.tap('btn-act', () => actions.interact());
-    this.tap('btn-team', () => actions.team());
-    this.tap('btn-blocks', () => actions.blocks());
     this.tap('btn-book', () => actions.book());
     this.tap('btn-pause', () => actions.pause());
+    this.tap('party-mini', () => actions.team()); // T39c: the creature card opens Team
     this.actBtn = document.getElementById('btn-act');
-    this.ride = { show: false, on: false, sky: false };
+    this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false };
   }
 
-  // T27: the Ride / Get off button, and Jump -> Up with a Down button while flying (DOM written only on change).
-  setRide(s) {
-    const old = this.ride;
-    if (s.show !== old.show) document.getElementById('btn-ride').classList.toggle('hidden', !s.show);
-    if (s.on !== old.on) document.getElementById('btn-ride').textContent = s.on ? 'Get off' : 'Ride';
-    if (s.sky !== old.sky) {
-      document.getElementById('touch').classList.toggle('sky', s.sky);
-      document.getElementById('btn-jump').textContent = s.sky ? 'Up' : 'Jump';
+  // T39c: every button has one fixed place; they dim (never hide) when they can't act. DOM written only on change.
+  // s = { act: { label, dim }, place: { dim, why }, ride: { have, dim, why, on }, sky }
+  setButtons(s) {
+    const o = this.state, n = {
+      act: s.act?.label ?? o.act, actDim: !!s.act?.dim,
+      placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '',
+      have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, sky: !!s.sky,
+    };
+    const $ = id => document.getElementById(id);
+    if (n.act !== o.act) this.actBtn.textContent = n.act;
+    if (n.actDim !== o.actDim) this.actBtn.classList.toggle('dim', n.actDim);
+    if (n.placeDim !== o.placeDim) $('btn-place').classList.toggle('dim', n.placeDim);
+    if (n.have !== o.have) $('btn-ride').classList.toggle('hidden', !n.have);
+    if (n.on !== o.on) $('btn-ride').textContent = n.on ? (n.sky ? 'Land' : 'Get off') : 'Ride';
+    else if (n.sky !== o.sky && n.on) $('btn-ride').textContent = n.sky ? 'Land' : 'Get off';
+    if (n.rideDim !== o.rideDim) $('btn-ride').classList.toggle('dim', n.rideDim);
+    if (n.sky !== o.sky) {
+      $('touch').classList.toggle('sky', n.sky);
+      $('btn-jump').textContent = n.sky ? 'Up' : 'Jump';
     }
-    this.ride = { show: s.show, on: s.on, sky: s.sky };
+    this.state = n;
+  }
+
+  // Old callers: the action word, and the Ride state.
+  setAction(label, dim = !label) { this.setButtons({ ...this.cur(), act: { label: label || this.state.act, dim } }); }
+  setRide(s) { this.setButtons({ ...this.cur(), ride: { have: s.show, on: s.on, dim: this.state.rideDim, why: this.state.rideWhy }, sky: s.sky }); }
+  cur() {
+    const o = this.state;
+    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on }, sky: o.sky };
   }
 
   // Fires on touch-down for snappy buttons; stops the touch turning into a look-drag or a click.
@@ -125,12 +142,6 @@ export class TouchControls {
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
-  }
-
-  // Shows the context button ("Battle!", "Talk", ...) or hides it when label is empty.
-  setAction(label) {
-    if (this.actBtn.textContent !== label) this.actBtn.textContent = label;
-    this.actBtn.classList.toggle('hidden', !label);
   }
 
   // Forget every finger (a battle or menu started while the joystick or Jump was held).

@@ -70,15 +70,12 @@
   <div id="touch" class="hidden">
     <div id="joystick"><div id="joy-knob"></div></div>
     <div id="touch-top">
-      <button id="btn-team">Team</button>
-      <button id="btn-blocks">Blocks</button>
-      <button id="btn-book">Book</button>
-      <button id="btn-pause">II</button>
+      <button id="btn-pause" aria-label="Menu">&#9776;</button>
+      <button id="btn-book">&#128214; Book</button>
     </div>
     <div id="touch-buttons">
-      <button id="btn-act" class="hidden"></button>
-      <button id="btn-break">Break</button>
-      <button id="btn-place">Place</button>
+      <button id="btn-act" class="dim">Break</button>
+      <button id="btn-place" class="dim">Place</button>
       <button id="btn-ride" class="hidden">Ride</button>
       <button id="btn-down">Down</button>
       <button id="btn-jump">Jump</button>
@@ -122,8 +119,8 @@
       </div>
       <div class="controls touch-only">
         <b>Left stick</b> walk (push all the way to run) · <b>Drag</b> right side to look<br>
-        <b>Tap</b> a creature to battle it, or a person to talk · <b>Ride</b> gets on your rideable creature<br>
-        <b>Break</b> / <b>Place</b> blocks at the crosshair · tap the bar to pick a block (tap it again, or <b>Blocks</b>, to change it)<br>
+        <b>Tap</b> a creature to battle it, or a person to talk · the big round button does what you look at (battle, talk, open, break...) · <b>Ride</b> gets on your rideable creature<br>
+        <b>Place</b> builds at the crosshair · tap the bar to pick a block (tap it again to change it) · tap your creature card for your team · <b>&#9776;</b> has Team, Blocks, Book and Where to go<br>
         Beat every Gym Leader to collect every badge!
       </div>
     </div>
@@ -133,6 +130,10 @@
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <h2>Paused</h2>
+      <div class="pause-big">
+        <button id="pb-team">Team</button> <button id="pb-blocks">Blocks</button> <button id="pb-book">Book</button>
+        <button id="pb-missions" class="hidden">Missions</button> <button id="pb-where">Where to go</button> <button id="pb-home" class="hidden">My home</button>
+      </div>
       <p class="pause-btns"><button id="resume" class="primary">Resume</button> <button id="menu">Main menu</button> <button id="sound-btn"></button> <button id="fx-btn"></button></p>
       <p class="hint"><span class="desktop-only">Or click</span><span class="touch-only">Or tap</span> anywhere outside the boxes</p>
       <div id="cloud-status"></div>
@@ -140,7 +141,8 @@
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
-        <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> battle / talk · <b>P</b> team · <b>C</b> creature book
+        <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> use / talk / battle · <b>P</b> team · <b>C</b> creature book<br>
+        <b>G</b> where to go · <b>M</b> missions · <b>H</b> home (on a Doormat) · <b>R</b> ride / get off · <b>Esc</b> cancel / pause
       </div>
     </div>
   </div>

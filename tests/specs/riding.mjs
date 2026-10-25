@@ -456,7 +456,7 @@ export default async function ({ browser, base, t }) {
     down: getComputedStyle(document.getElementById('btn-down')).display,
     place: getComputedStyle(document.getElementById('btn-place')).display,
   }));
-  t.ok(ui.ride === 'Get off' && ui.jump === 'Up' && ui.down !== 'none' && ui.place === 'none', `touch: buttons while flying ${JSON.stringify(ui)}`);
+  t.ok(ui.ride === 'Land' && ui.jump === 'Up' && ui.down !== 'none' && ui.place !== 'none', `touch: buttons while flying ${JSON.stringify(ui)}`);
   const cdp = await tp.context().newCDPSession(tp);
   const center = sel => tp.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
   // Check the key wiring (hold sets the key, release clears it), then fly with the physics.
