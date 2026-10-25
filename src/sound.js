@@ -193,6 +193,11 @@ const SOUNDS = {
   // T36 parkour: a quick whoosh (sweeping down) and a soft landing tap.
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
   // T37 ninja: a quick throwing-star swish (high, sweeping down) and a soft thock; a wild Ninja's smoke puff (a soft hiss).
+  'fx:tiny': () => { notes([1760, 1976, 2093], 0.04, { len: 0.03, type: 'square', vol: 0.06 }); tone(2400, { at: 0.13, len: 0.06, type: 'sine', vol: 0.08, slide: 700 }); }, // T40a: a pitter-patter and a tiny squeak
+  // T40a Giant House: the toy train (chuff chuff, a whistle), the cat waking (a soft mrrow), the tap and the river (bubbles)
+  choochoo: () => { noise({ freq: 900, len: 0.1, vol: 0.2 }); noise({ at: 0.18, freq: 900, len: 0.1, vol: 0.2 }); tone(880, { at: 0.4, len: 0.3, type: 'triangle', vol: 0.18, slide: -120 }); tone(660, { at: 0.4, len: 0.3, type: 'triangle', vol: 0.14 }); },
+  mrrow: () => { tone(520, { len: 0.3, type: 'triangle', vol: 0.25, slide: -200 }); tone(700, { at: 0.12, len: 0.25, type: 'sine', vol: 0.16, slide: -300 }); },
+  gurgle: () => { notes([300, 420, 360, 500, 420], 0.07, { len: 0.08, type: 'sine', vol: 0.18, slide: 150 }); noise({ freq: 1500, len: 0.3, vol: 0.1, q: 0.5 }); },
   'fx:ninja': () => { noise({ freq: 4000, len: 0.07, vol: 0.14, q: 1.2 }); tone(1400, { at: 0.02, len: 0.08, type: 'triangle', vol: 0.1, slide: -900 }); tone(180, { at: 0.1, len: 0.06, vol: 0.18, slide: -40 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
