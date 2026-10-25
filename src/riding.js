@@ -26,11 +26,12 @@ export function fitRide(model) {
 
 // What a rider hears at a fence: the place's own words, else by kind (only gyms say "gyms"; the Swirl's keeps and the
 // tower are not gyms).
-export function fenceText(owner) {
+// `start`: you tried to get on there (else you rode into it).
+export function fenceText(owner, start = false) {
   if (owner?.rideText) return owner.rideText;
-  if (owner?.tower) return "The Champion's Tower is for walking. Get off to go in!";
-  if (owner?.def) return 'Gyms are for walking. Get off to go in!';
-  return 'Get off your creature to walk here!';
+  if (owner?.tower) return start ? "No riding at the Champion's Tower. Walk outside first!" : "The Champion's Tower is for walking. Get off to go in!";
+  if (owner?.def) return start ? 'No riding in or next to a gym. Walk outside first!' : 'Gyms are for walking. Get off to go in!';
+  return start ? 'No riding right here. Walk a little further first!' : 'Get off your creature to walk here!';
 }
 
 export function createRiding(game, { scene, closePanel }) {
@@ -55,8 +56,9 @@ export function createRiding(game, { scene, closePanel }) {
       p.ride = { ...RIDE[kind] };
       p.fenceHit = false;
       if (p.collides(p.pos)) {
-        p.ride = null;
-        ui.toast('No riding in or next to a gym. Walk outside first!');
+        const owner = p.fenceHit || game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)); // a block may be hit before the fence
+        p.ride = null; p.fenceHit = false;
+        ui.toast(fenceText(owner, true));
         return false;
       }
       this.creature = c; this.species = c.species; this.kind = kind;

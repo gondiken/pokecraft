@@ -26,10 +26,12 @@ export function createHideSeek(game) {
   const avatarOf = id => game.mp.others.get(id);
   const nameOf = id => (id === me() ? myName() : s?.partnerName || avatarOf(id)?.name || 'Your friend');
   const role = () => (!s ? null : s.hider === me() ? 'hider' : 'seeker');
-  const inGym = () => {
+  const fenceHere = () => { // the gym, tower or keep you stand in (null = none)
     const p = game.player.pos;
-    return !!game.world.fenced(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z));
+    return game.world.fenceAt(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z));
   };
+  const inGym = () => !!fenceHere();
+  const placeWord = o => (o?.tower ? "the Champion's Tower" : o?.def ? 'the gym' : 'here'); // only gyms are called gyms
   const scoreLine = () => {
     const ids = s.leader ? [me(), s.partner] : [s.partner, me()];
     return ids.map(id => `${nameOf(id)} ${s.score[id] || 0}`).join(' · ');
@@ -179,7 +181,7 @@ export function createHideSeek(game) {
 
     invite(avatar) {
       if (asking) { game.ui.toast(`Still waiting for ${asking.name} to answer.`); return; }
-      if (inGym()) { game.ui.toast('Walk out of the gym first, then ask.'); return; }
+      if (inGym()) { const w = placeWord(fenceHere()); game.ui.toast(w === 'here' ? 'Walk a little further first, then ask.' : `Walk out of ${w} first, then ask.`); return; }
       if (busy()) { game.ui.toast('Finish what you are doing first, then ask.'); return; }
       const id = newId();
       asking = { id, to: avatar.id, name: avatar.name, timer: setTimeout(() => {
@@ -338,11 +340,11 @@ export function createHideSeek(game) {
       const out = q => (q.x - c[0]) ** 2 + (q.z - c[1]) ** 2 > r2;
       const gym = q => {
         const x = Math.floor(q.x), y = Math.floor(q.y), z = Math.floor(q.z);
-        return game.world.fenced(x, y, z) || game.world.fenced(x, y + 1, z);
+        return game.world.fenceAt(x, y, z) || game.world.fenceAt(x, y + 1, z);
       };
       let why = null;
       if (out(pos) && !out(before)) why = "That's the edge of the play area!";
-      else if (gym(pos) && !gym(before)) why = 'No hiding in gyms!';
+      else if (gym(pos) && !gym(before)) { const o = gym(pos); why = o.tower ? 'No hiding in the Champion\'s Tower!' : o.def ? 'No hiding in gyms!' : 'No hiding here!'; }
       if (!why) return;
       pos.copy(before);
       vel.x = vel.z = 0;
