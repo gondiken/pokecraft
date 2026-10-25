@@ -4790,3 +4790,255 @@ function bamboo(root, m, parts) {
 const SHAPES_NINJA = { raccoon, crow, squirrel, bamboo };
 Object.assign(SHAPES, SHAPES_NINJA);
 /* ==== end of T37 ninja ==== */
+
+/* ==== T40b pirate ==== */
+// Pirate look: every Pirate model wears a striped red-and-cream bandana (userData.gear = 'bandana') and something gold (an
+// earring, a hook, a ring, a band, a spyglass: userData.gear = 'gold'). A spec checks both on every model (like the Ninja mask).
+// Posed parts sit inside a plain pivot and the outer pivot swings (animateModel sets rotations absolutely); nothing sets root.position.
+const PR_RED = 0xe03a3a, PR_CREAM = 0xf6efe0, PR_GOLD = 0xffd23c, PR_IRON = 0x4a4e5a;
+const gear = (mesh, kind) => { mesh.userData.gear = kind; return mesh; };
+// A bandana round a head (w wide, d deep) at height y: red band, cream stripes, a knot and two tails at the back.
+function prBandana(head, parts, y, w, d) {
+  gear(box(head, w + 0.02, 0.075, d + 0.02, PR_RED, 0, y, 0), 'bandana');
+  for (const x of [-0.3, 0, 0.3]) gear(box(head, 0.045, 0.082, d + 0.028, PR_CREAM, x * w, y, 0), 'bandana');
+  gear(box(head, w + 0.028, 0.082, 0.045, PR_CREAM, 0, y, d * 0.28), 'bandana');
+  gear(box(head, 0.09, 0.09, 0.05, PR_RED, 0, y, -d / 2 - 0.035), 'bandana');
+  for (const [s, ph] of [[-1, 0], [1, 1.9]]) {
+    const t = pivot(head, s * 0.04, y - 0.02, -d / 2 - 0.05);
+    swing(parts, t, 'x', 0.22, 4.5, ph);
+    const inner = pivot(t, 0, 0, 0);
+    inner.rotation.set(0.5, s * 0.5, 0);
+    gear(box(inner, 0.06, 0.03, 0.2, s > 0 ? PR_CREAM : PR_RED, 0, -0.02, -0.1), 'bandana');
+  }
+}
+// A gold hook (three boxes in a J) pointing along +z, hanging from the origin of `parent`.
+function prHook(parent, x, y, z, s = 1) {
+  const g = pivot(parent, x, y, z);
+  gear(box(g, 0.05 * s, 0.05 * s, 0.22 * s, PR_GOLD, 0, 0, 0.11 * s), 'gold');
+  gear(box(g, 0.05 * s, 0.15 * s, 0.05 * s, PR_GOLD, 0, -0.07 * s, 0.22 * s), 'gold');
+  gear(box(g, 0.05 * s, 0.05 * s, 0.1 * s, PR_GOLD, 0, -0.15 * s, 0.17 * s), 'gold');
+  return g;
+}
+
+// Parroteer / Featherbeard: an upright pear-shaped parrot on two short legs, a big hooked beak, a crest and a long tail.
+// Featherbeard (`tricorn`, `coat`, `hook`) is a parrot captain: a three-cornered hat over the bandana, red coat tails and a gold hook.
+function parrot(root, m, parts) {
+  const big = has(m, 'tricorn');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  for (const s of [-1, 1]) { // short legs with gripping toes
+    box(lift, 0.05, 0.16, 0.05, 0xf0a040, s * 0.1, 0.1, 0);
+    for (const t of [-1, 0, 1]) box(lift, 0.025, 0.025, 0.1, 0xf0a040, s * 0.1 + t * 0.03, 0.02, 0.05);
+  }
+  const body = pivot(lift, 0, 0.46, -0.02);
+  body.rotation.x = 0.14; // leaning a little forward
+  box(body, 0.44, 0.3, 0.4, m.body, 0, -0.08, 0);
+  box(body, 0.36, 0.34, 0.34, m.body, 0, 0.18, -0.01);
+  box(body, 0.28, 0.4, 0.04, big ? m.accent : m.belly, 0, 0.02, 0.2); // the chest
+  const head = pivot(body, 0, 0.5, 0.03);
+  head.rotation.x = -0.14;
+  parts.head = head;
+  box(head, 0.38, 0.34, 0.34, m.body, 0, 0, 0);
+  for (const s of [-1, 1]) { // side eyes
+    box(head, 0.04, 0.12, 0.12, 0xffffff, s * 0.19, 0.04, 0.07).userData.eye = true;
+    box(head, 0.03, 0.07, 0.07, 0x111111, s * 0.205, 0.035, 0.09).userData.eye = true;
+  }
+  box(head, 0.15, 0.13, 0.2, m.accent, 0, -0.05, 0.25); // the big beak: upper, hooked tip, lower
+  box(head, 0.1, 0.09, 0.07, m.accent, 0, -0.1, 0.36);
+  box(head, 0.11, 0.05, 0.14, m.dark, 0, -0.14, 0.24);
+  for (const [x, h, r] of [[-0.09, 0.14, 0.4], [0, 0.2, 0], [0.09, 0.14, -0.4]]) { // a three-feather crest
+    const f = box(head, 0.05, h, 0.05, x === 0 ? m.accent : m.dark, x, 0.17 + h / 2, -0.07);
+    f.rotation.set(-0.4, 0, r);
+  }
+  prBandana(head, parts, 0.1, 0.38, 0.34);
+  gear(box(head, 0.03, 0.03, 0.03, PR_GOLD, 0.2, -0.06, -0.04), 'gold'); // a gold earring hanging from the cheek
+  for (const y of [-0.1, -0.14]) gear(box(head, 0.02, 0.04, 0.04, PR_GOLD, 0.205, y, -0.04), 'gold');
+  if (big) { // the tricorn: a flat black brim with three turned-up corners, gold trim and a feather
+    const hat = pivot(head, 0, 0.19, 0);
+    box(hat, 0.52, 0.04, 0.46, 0x1a1a22, 0, 0, 0);
+    box(hat, 0.3, 0.1, 0.28, 0x1a1a22, 0, 0.07, 0);
+    for (const [x, z, r, q] of [[0, 0.25, 0.5, 0], [-0.27, -0.05, 0, 0.5], [0.27, -0.05, 0, -0.5]]) {
+      const c = box(hat, q ? 0.06 : 0.46, 0.1, q ? 0.4 : 0.06, 0x1a1a22, x, 0.05, z);
+      c.rotation.set(r, 0, q);
+    }
+    gear(box(hat, 0.52, 0.015, 0.03, PR_GOLD, 0, 0.025, 0.24), 'gold');
+    box(hat, 0.03, 0.18, 0.03, m.accent, 0.12, 0.14, -0.02).rotation.z = -0.4;
+  }
+  // folded wings that flap a little
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const w = pivot(body, s * 0.23, 0.3, -0.02);
+    swing(parts, w, 'z', 0.12, 3, ph);
+    const inner = pivot(w, 0, 0, 0);
+    inner.rotation.z = s * 0.12;
+    box(inner, 0.06, 0.4, 0.3, big ? m.belly : m.dark, s * 0.02, -0.2, -0.02);
+    box(inner, 0.06, 0.14, 0.24, m.accent, s * 0.03, -0.44, -0.02);
+    if (big && s === 1) prHook(inner, 0.06, -0.5, 0.05, 0.9); // a gold hook at one wing tip
+  }
+  // a long tail of three thin feathers, angled back and down
+  const tail = pivot(body, 0, -0.14, -0.2);
+  swing(parts, tail, 'y', 0.12, 2.4);
+  const t = pivot(tail, 0, 0, 0);
+  t.rotation.x = -0.75;
+  const tl = big ? 0.5 : 0.4;
+  for (const [x, c, k] of [[-0.08, m.body, 1], [0, m.accent, 1.15], [0.08, m.dark, 1]]) box(t, 0.065, 0.04, tl * k, c, x, 0, -(tl * k) / 2);
+  if (big) { // coat tails over the tail base
+    const coat = pivot(body, 0, 0.1, -0.2);
+    swing(parts, coat, 'x', 0.06, 2.4, 0.5);
+    box(coat, 0.42, 0.36, 0.05, 0xa82828, 0, -0.1, -0.02);
+    box(coat, 0.16, 0.34, 0.05, 0x7a1a1a, -0.15, -0.14, -0.05).rotation.z = 0.1;
+    box(coat, 0.16, 0.34, 0.05, 0x7a1a1a, 0.15, -0.14, -0.05).rotation.z = -0.1;
+    for (const y of [0.05, -0.05]) gear(box(coat, 0.04, 0.04, 0.03, PR_GOLD, 0, y, 0.01), 'gold');
+  }
+}
+
+// Pinchook / Anchorclaw: a wide flat shell crab with six stepping legs, two eye stalks, one pincer and one arm that ends in a
+// gold hook, a bandana knotted on the shell. It sways sideways. Anchorclaw (`anchor`, `barnacles`) swaps the hook for a ship's anchor.
+function hookcrab(root, m, parts) {
+  const anchor = has(m, 'anchor');
+  const sway = pivot(root, 0, 0, 0);
+  swing(parts, sway, 'z', 0.05, 2.6); // the sideways sidestep look
+  const shell = pivot(sway, 0, 0.3, 0);
+  box(shell, 0.8, 0.22, 0.55, m.body, 0, 0, 0);
+  box(shell, 0.66, 0.12, 0.45, m.body, 0, 0.15, 0);
+  box(shell, 0.4, 0.04, 0.34, m.belly, 0, 0.22, 0.02);
+  for (let i = 0; i < 5; i++) box(shell, 0.07, 0.05, 0.07, m.dark, -0.24 + i * 0.12, 0.23, -0.12); // shell bumps
+  box(shell, 0.62, 0.05, 0.04, m.dark, 0, -0.06, 0.28); // the front rim
+  parts.head = shell;
+  if (has(m, 'barnacles')) for (const [x, y, z] of [[-0.3, 0.2, 0.1], [0.28, 0.18, -0.14], [-0.12, 0.22, -0.2], [0.34, 0.1, 0.18], [-0.36, 0.06, -0.12]]) box(shell, 0.08, 0.06, 0.08, 0xe8e0d0, x, y, z);
+  for (const s of [-1, 1]) { // eye stalks
+    const st = pivot(shell, s * 0.12, 0.2, 0.2);
+    swing(parts, st, 'z', 0.1, 3, s);
+    box(st, 0.04, 0.2, 0.04, m.dark, 0, 0.1, 0);
+    box(st, 0.12, 0.13, 0.12, 0xffffff, 0, 0.24, 0.01).userData.eye = true;
+    box(st, 0.07, 0.08, 0.05, 0x111111, 0, 0.24, 0.07).userData.eye = true;
+  }
+  prBandana(shell, parts, 0.2, 0.5, 0.2);
+  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { // six legs: two-part pivots that step
+    const hip = pivot(shell, s * 0.4, -0.08, -0.15 + i * 0.17);
+    swing(parts, hip, 'x', 0.18, 6, i * 1.3 + (s > 0 ? Math.PI : 0));
+    const up = pivot(hip, 0, 0, 0);
+    up.rotation.z = s * -0.7;
+    box(up, 0.2, 0.06, 0.06, m.dark, s * 0.1, 0, 0);
+    const knee = pivot(up, s * 0.2, 0, 0);
+    knee.rotation.z = s * 1.5;
+    box(knee, 0.06, 0.2, 0.06, m.body, 0, -0.09, 0);
+  }
+  // the left arm: a big pincer that opens and closes
+  const arm = pivot(shell, -0.4, 0.0, 0.2);
+  swing(parts, arm, 'y', 0.18, 2, 0.5);
+  const a = pivot(arm, 0, 0, 0);
+  a.rotation.set(0, 0.35, 0.15);
+  box(a, 0.22, 0.08, 0.08, m.dark, -0.1, 0, 0.0);
+  box(a, 0.2, 0.13, 0.14, m.body, -0.26, 0, 0.1);
+  const up = pivot(a, -0.34, 0.05, 0.14);
+  swing(parts, up, 'x', 0.35, 3.2);
+  box(up, 0.1, 0.07, 0.2, m.body, 0, 0, 0.1);
+  const lo = pivot(a, -0.34, -0.04, 0.14);
+  swing(parts, lo, 'x', 0.35, 3.2, Math.PI);
+  box(lo, 0.1, 0.07, 0.2, m.dark, 0, 0, 0.1);
+  // the right arm: a gold hook (Pinchook) or a ship's anchor (Anchorclaw)
+  const harm = pivot(shell, 0.4, 0.0, 0.2);
+  swing(parts, harm, 'y', 0.14, 1.8, 1.4);
+  const h = pivot(harm, 0, 0, 0);
+  h.rotation.set(0, -0.3, -0.15);
+  box(h, 0.22, 0.08, 0.08, m.dark, 0.1, 0, 0);
+  if (!anchor) {
+    prHook(h, 0.24, 0.02, 0.0, 1.1).rotation.y = -0.2;
+  } else { // shank, stock, a gold ring and two flukes
+    const an = pivot(h, 0.28, 0.0, 0.12);
+    box(an, 0.07, 0.34, 0.07, PR_IRON, 0, 0.05, 0);
+    box(an, 0.24, 0.06, 0.06, PR_IRON, 0, 0.2, 0); // the stock
+    gear(box(an, 0.12, 0.05, 0.05, PR_GOLD, 0, 0.27, 0), 'gold'); // the ring on top
+    box(an, 0.3, 0.06, 0.06, PR_IRON, 0, -0.12, 0);
+    for (const s of [-1, 1]) box(an, 0.12, 0.05, 0.07, PR_IRON, s * 0.16, -0.08, 0).rotation.z = s * 0.7;
+  }
+}
+
+// Bottlet / Shipshape: a glass bottle lying on its side with a tiny ship sailing inside, a cork, two eyes on the glass shoulder and a
+// gold band round the neck. It rocks. Shipshape (`masts3`) holds a big three-masted ship. Only the glass is see-through.
+function shipbottle(root, m, parts) {
+  const three = has(m, 'masts3');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const rock = pivot(lift, 0, 0.32, 0);
+  swing(parts, rock, 'z', 0.12, 1.8);
+  const body = pivot(rock, 0, 0, 0);
+  const glass = (w, h, d, x, y, z) => {
+    const g = box(body, w, h, d, m.body, x, y, z);
+    g.material.transparent = true; g.material.opacity = 0.35; g.material.depthWrite = false;
+    g.renderOrder = 2;
+    return g;
+  };
+  glass(0.5, 0.5, 0.9, 0, 0, -0.05);
+  glass(0.36, 0.36, 0.14, 0, 0, 0.45); // the shoulder
+  glass(0.22, 0.22, 0.26, 0, 0, 0.6); // the neck
+  box(body, 0.26, 0.26, 0.04, m.dark, 0, 0, 0.74); // the rim
+  box(body, 0.15, 0.15, 0.1, 0xc89a5a, 0, 0, 0.8); // the cork
+  gear(box(body, 0.27, 0.27, 0.045, PR_GOLD, 0, 0, 0.55), 'gold'); // the gold band round the neck
+  for (const s of [-1, 1]) { // eyes on the glass shoulder
+    box(body, 0.12, 0.13, 0.04, 0xffffff, s * 0.12, 0.06, 0.42).userData.eye = true;
+    box(body, 0.07, 0.09, 0.03, 0x111111, s * 0.12 + s * 0.012, 0.055, 0.44).userData.eye = true;
+  }
+  // the little ship inside: a brown hull, masts, white sails with a red stripe, a striped flag on top
+  const ship = pivot(body, 0, -0.1, -0.12);
+  swing(parts, ship, 'z', 0.1, 2.4, 1);
+  const masts = three ? [-0.24, 0.02, 0.28] : [0.02];
+  box(ship, 0.28, 0.1, 0.78, m.accent, 0, 0, 0.0);
+  box(ship, 0.2, 0.05, 0.22, m.accent, 0, 0.07, -0.34); // the stern
+  box(ship, 0.06, 0.06, 0.16, m.accent, 0, 0.02, 0.45).rotation.x = -0.4; // the bowsprit
+  for (const z of masts) {
+    const mh = three ? (z === 0.02 ? 0.42 : 0.32) : 0.34;
+    box(ship, 0.035, mh, 0.035, 0x4a2a14, 0, 0.05 + mh / 2, z);
+    box(ship, 0.02, mh * 0.62, 0.18, 0xffffff, 0, 0.12 + mh * 0.3, z + 0.01);
+    box(ship, 0.024, 0.045, 0.19, PR_RED, 0, 0.12 + mh * 0.3, z + 0.01);
+    gear(box(ship, 0.012, 0.04, 0.09, PR_RED, 0, 0.08 + mh, z - 0.05), 'bandana'); // the striped flag on top of the mast
+    gear(box(ship, 0.012, 0.03, 0.07, PR_CREAM, 0, 0.1 + mh, z + 0.03), 'bandana');
+  }
+  for (const s of [-1, 1]) for (const z of [-0.3, 0.25]) box(lift, 0.1, 0.07, 0.12, m.dark, s * 0.2, 0.035, z); // feet, so it stands in a battle
+}
+
+// Lookapus: a wooden barrel with an octopus poking out of the top, tentacles curling over the rim, one holding a brass spyglass to its
+// eye that sweeps slowly left and right. A bandana on its head.
+function barrelpus(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  box(lift, 0.6, 0.56, 0.6, m.accent, 0, 0.28, 0); // staves, a little round in the middle
+  box(lift, 0.68, 0.3, 0.68, m.accent, 0, 0.28, 0);
+  for (const [y, w] of [[0.08, 0.63], [0.28, 0.7], [0.5, 0.63]]) box(lift, w, 0.045, w, 0x3a3a44, 0, y, 0); // dark hoops
+  box(lift, 0.52, 0.04, 0.52, 0x2a1a10, 0, 0.575, 0); // the dark inside
+  const head = pivot(lift, 0, 0.58, 0);
+  parts.head = head;
+  box(head, 0.46, 0.28, 0.42, m.body, 0, 0.14, 0);
+  box(head, 0.36, 0.14, 0.34, m.body, 0, 0.34, 0);
+  box(head, 0.26, 0.05, 0.26, m.belly, 0, 0.42, 0);
+  for (const s of [-1, 1]) { // big eyes
+    box(head, 0.14, 0.17, 0.04, 0xffffff, s * 0.12, 0.2, 0.22).userData.eye = true;
+    box(head, 0.08, 0.11, 0.03, 0x111111, s * 0.12 + s * 0.015, 0.19, 0.245).userData.eye = true;
+  }
+  prBandana(head, parts, 0.31, 0.38, 0.34);
+  // tentacles over the rim: two-part pivots that wave (the front is left for the spyglass arm)
+  [Math.PI / 2, -Math.PI / 2, 2.3, -2.3, Math.PI].forEach((a, i) => {
+    const base = pivot(lift, Math.sin(a) * 0.27, 0.57, Math.cos(a) * 0.27);
+    base.rotation.y = a;
+    swing(parts, base, 'x', 0.14, 2.2, i * 1.3);
+    const t1 = pivot(base, 0, 0, 0);
+    t1.rotation.x = 0.55;
+    box(t1, 0.11, 0.24, 0.11, m.body, 0, 0.11, 0);
+    const t2 = pivot(t1, 0, 0.22, 0);
+    t2.rotation.x = 1.5;
+    box(t2, 0.09, 0.28, 0.09, m.body, 0, 0.13, 0);
+    box(t2, 0.07, 0.06, 0.07, m.belly, 0, 0.29, 0);
+  });
+  // the spyglass arm in front: it sweeps left and right
+  const sweep = pivot(head, 0, 0.12, 0.2);
+  swing(parts, sweep, 'y', 0.35, 0.9);
+  box(sweep, 0.1, 0.1, 0.22, m.body, 0.1, -0.05, 0.05);
+  const scope = pivot(sweep, 0.1, 0.07, 0.17);
+  gear(box(scope, 0.07, 0.07, 0.14, PR_GOLD, 0, 0, 0.02), 'gold');
+  gear(box(scope, 0.09, 0.09, 0.1, 0xe0b030, 0, 0, 0.12), 'gold');
+  gear(box(scope, 0.115, 0.115, 0.05, 0xc89a20, 0, 0, 0.19), 'gold');
+  box(scope, 0.08, 0.08, 0.02, 0x9ad8f0, 0, 0, 0.22);
+}
+const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
+Object.assign(SHAPES, SHAPES_PIRATE);
+/* ==== end of T40b pirate ==== */

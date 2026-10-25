@@ -194,6 +194,10 @@ const SOUNDS = {
   'fx:parkour': () => { noise({ freq: 2000, len: 0.06, vol: 0.16, q: 0.9 }); noise({ at: 0.06, freq: 800, len: 0.06, vol: 0.14, q: 0.9 }); tone(110, { at: 0.13, len: 0.1, vol: 0.2, slide: -30 }); },
   // T37 ninja: a quick throwing-star swish (high, sweeping down) and a soft thock; a wild Ninja's smoke puff (a soft hiss).
   'fx:ninja': () => { noise({ freq: 4000, len: 0.07, vol: 0.14, q: 1.2 }); tone(1400, { at: 0.02, len: 0.08, type: 'triangle', vol: 0.1, slide: -900 }); tone(180, { at: 0.1, len: 0.06, vol: 0.18, slide: -40 }); },
+  // T40b pirate: a low cannon boom with a short burst of noise; the gadget cannon (deeper, two drums); a falling splash in the sea.
+  'fx:pirate': () => { drum(96, 0, 0.3); noise({ freq: 1500, len: 0.1, vol: 0.14, q: 0.7 }); },
+  cannonboom: () => { drum(70, 0, 0.45); drum(52, 0.07, 0.4); noise({ freq: 700, len: 0.35, vol: 0.28, q: 0.5 }); },
+  seasplash: () => { noise({ freq: 2200, len: 0.35, vol: 0.2, q: 0.6 }); noise({ at: 0.08, freq: 900, len: 0.4, vol: 0.18, q: 0.5 }); tone(300, { len: 0.2, vol: 0.08, slide: -180 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
   // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).

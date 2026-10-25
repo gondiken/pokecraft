@@ -60,6 +60,9 @@ const MORE_TILES = [
   'SWIRL_PAINT', 'SWIRL_CLOUD', 'GLOW_PUFF', 'GLOW_PUFF_MINT', 'BRISTLE_SIDE', 'BRISTLE_TOP',
   // T40 base (wave 14): a ready picture frame, the way back to the Swirl, the Boss's stand
   'PICTURE', 'WAY_BACK', 'BOSS_STAND_TOP', 'BOSS_STAND_SIDE',
+  // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
+  'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
+  'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -106,6 +109,9 @@ export const B = {
   // 140-143: wave 14 wool (tiny, pirate, racer, ball). 144-146: T40 base blocks (none placeable); 147-149 reserved for the base.
   // 150-203 belong to T40a-d (see plans/T40.md). Next free id after wave 14: 204.
   PICTURE: 144, WAY_BACK: 145, BOSS_STAND: 146,
+  // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
+  HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
+  PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -242,6 +248,21 @@ BLOCKS[B.BRISTLE] = { name: 'Brush Bristles', top: T.BRISTLE_TOP, side: T.BRISTL
 BLOCKS[B.PICTURE] = { name: 'Picture', ...all(T.PICTURE), glow: true, noLight: true, fixed: true, wallText: "It's a picture of another world. Step in! (press E or tap)" };
 BLOCKS[B.WAY_BACK] = { name: 'Way Back', ...all(T.WAY_BACK), glow: true, noLight: true, fixed: true, wallText: 'This is the way back to the Swirl. Step in!' };
 BLOCKS[B.BOSS_STAND] = { name: 'Boss Stand', top: T.BOSS_STAND_TOP, side: T.BOSS_STAND_SIDE, bottom: T.BOSS_STAND_SIDE, fixed: true, wallText: 'The Boss stands here!' };
+// T40b Pirate Seas blocks (none can be placed). Gadget blocks are `fixed`; palm, coral and shell sand are natural (breakable, no cubes).
+BLOCKS[B.HULL] = { name: 'Ship Planks', ...all(T.HULL), wallText: "Captain Squawk's ship is too strong to break!" };
+BLOCKS[B.DECK] = { name: 'Deck', top: T.DECK, side: T.PLANKS, bottom: T.PLANKS, wallText: "Captain Squawk's ship is too strong to break!" };
+BLOCKS[B.ROPE_LADDER] = { name: 'Rope Ladder', top: T.HULL, side: T.ROPE_LADDER, bottom: T.HULL, fixed: true, wallText: 'A rope ladder! Swim into it and up you go.' };
+BLOCKS[B.CANNON_PAD] = { name: 'Cannon Pad', top: T.CANNON_PAD, side: T.PLANKS, bottom: T.PLANKS, fixed: true, wallText: 'Stand on the cannon and press Fire!' };
+BLOCKS[B.TARGET] = { name: 'Target', top: T.TARGET, side: T.SAND, bottom: T.SAND, fixed: true, wallText: 'The cannon lands here. Boom!' };
+BLOCKS[B.ROPE_POST] = { name: 'Rope Post', top: T.ROPE_POST_TOP, side: T.ROPE_POST, bottom: T.ROPE_POST_TOP, fixed: true, wallText: 'A rope post. Stand here and press Swing!' };
+BLOCKS[B.PALM_LOG] = { name: 'Palm Log', top: T.PALM_TOP, side: T.PALM, bottom: T.PALM_TOP };
+BLOCKS[B.PALM_LEAVES] = { name: 'Palm Leaves', ...all(T.PALM_LEAVES) };
+BLOCKS[B.PIRATE_FLAG] = { name: 'Pirate Flag', ...all(T.PIRATE_FLAG), fixed: true, wallText: 'A pirate flag with a parrot feather and two spoons. Squawk!' };
+BLOCKS[B.BIG_CHEST] = { name: "Captain's Chest", top: T.BIG_CHEST_TOP, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, fixed: true, wallText: "Captain Squawk's treasure chest! It's locked tight." };
+BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, glow: true, noLight: true, fixed: true, wallText: 'Only gold coins left. Squawk!' };
+BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
+BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
+BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -727,6 +748,61 @@ export function drawAtlas() {
       const star = d < 2.4 || (Math.abs(dx) < 0.9 && Math.abs(dy) < 6) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 6);
       put(T.BOSS_STAND_TOP, x, y, edge(x, y) ? [255, 226, 110] : star ? [255, 226, 110] : shade([96, 56, 170], 1 + (r8() - 0.5) * 0.08));
       put(T.BOSS_STAND_SIDE, x, y, edge(x, y) ? [255, 226, 110] : shade(y % 4 < 2 ? [110, 70, 190] : [92, 56, 164], 1 + (r8() - 0.5) * 0.06));
+    });
+  }
+  { // T40b pirate blocks (own random numbers)
+    const r9 = mulberry32(4141);
+    const sh9 = (col, a) => shade(col, 1 + (r9() - 0.5) * a);
+    const edge9 = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    each((x, y) => {
+      // HULL: dark brown boards with a thin yellow line every 4 rows and a few nails
+      put(T.HULL, x, y, y % 4 === 0 ? [214, 170, 60] : (x + (y >> 2) * 5) % 8 === 0 ? [60, 36, 20] : sh9([104, 62, 34], 0.14));
+      // DECK: long light boards, dark seams, nail dots
+      const nail = (y % 8 === 1 || y % 8 === 5) && (x === 2 || x === 13);
+      put(T.DECK, x, y, nail ? [90, 70, 50] : y % 4 === 3 ? [128, 96, 60] : sh9([206, 166, 106], 0.1));
+      // ROPE_LADDER: hull planks with rope rungs and two side ropes
+      const rung = y % 4 === 1 || y % 4 === 2, rail = x === 3 || x === 4 || x === 11 || x === 12;
+      put(T.ROPE_LADDER, x, y, rail ? sh9([214, 188, 130], 0.12) : rung && x > 3 && x < 12 ? sh9([196, 164, 100], 0.12) : y % 4 === 0 ? [214, 170, 60] : sh9([104, 62, 34], 0.14));
+      // CANNON_PAD: an iron plate with a gold arrow
+      const arrow = (x >= 7 && x <= 8 && y >= 5 && y <= 13) || (y >= 2 && y <= 5 && Math.abs(x - 7.5) <= y - 1.5);
+      const rivet = (x === 2 || x === 13) && (y === 2 || y === 13);
+      put(T.CANNON_PAD, x, y, edge9(x, y) ? [40, 40, 46] : arrow ? [255, 214, 70] : rivet ? [150, 150, 160] : sh9([82, 84, 94], 0.1));
+      // TARGET: red-white rings on sand
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      put(T.TARGET, x, y, d < 1.8 ? [230, 50, 50] : d < 3.6 ? [250, 246, 240] : d < 5.4 ? [230, 50, 50] : d < 7.2 ? [250, 246, 240] : sh9([222, 210, 166], 0.14));
+      // ROPE_POST: a log wrapped in rope; top is the log end with a rope ring
+      const coil = (y + (x >> 1)) % 3 === 0;
+      put(T.ROPE_POST, x, y, y > 3 && y < 14 && coil ? sh9([222, 196, 140], 0.1) : y > 3 && y < 14 ? sh9([176, 140, 90], 0.12) : sh9([104, 82, 52], 0.2));
+      const dd = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+      put(T.ROPE_POST_TOP, x, y, dd > 6.5 ? sh9([104, 82, 52], 0.1) : dd > 4.5 ? sh9([222, 196, 140], 0.1) : sh9([176, 140, 88], 0.12));
+      // PALM trunk: ring bands; top: end rings
+      put(T.PALM, x, y, y % 3 === 0 ? sh9([120, 92, 58], 0.1) : sh9([170, 136, 92], 0.14));
+      put(T.PALM_TOP, x, y, dd > 5.5 ? sh9([130, 100, 62], 0.1) : Math.floor(dd) % 2 ? sh9([176, 140, 88], 0.1) : sh9([150, 114, 70], 0.1));
+      // PALM_LEAVES: long fronds in two greens
+      const frond = Math.abs(((x + y) % 8) - 4) < 1.3 || Math.abs(((x - y + 16) % 8) - 4) < 1;
+      put(T.PALM_LEAVES, x, y, frond ? sh9([108, 190, 70], 0.12) : sh9([52, 140, 60], 0.18));
+      // PIRATE_FLAG: black, a white parrot feather and two crossed spoons (no skulls)
+      const feather = Math.abs(y - 7.5) < 1.2 && x > 2 && x < 9 || (x === 5 && y > 3 && y < 12) || (Math.abs((x - 5) - (y - 7.5) * 0.5) < 0.9 && x > 2 && x < 9 && Math.abs(y - 7.5) < 4);
+      const spoon1 = Math.abs((x - 9) - (y - 3)) < 0.8 && x >= 9 && y >= 3 && y <= 12, spoon2 = Math.abs((x - 9) + (y - 12)) < 0.8 && x >= 9 && y >= 3 && y <= 12;
+      put(T.PIRATE_FLAG, x, y, feather ? [250, 246, 240] : spoon1 || spoon2 ? [210, 214, 224] : sh9([24, 24, 32], 0.1));
+      // BIG_CHEST: wood, two gold bands, a lock
+      const band = x === 2 || x === 3 || x === 12 || x === 13 || y === 0 || y === 1 || y === 14 || y === 15;
+      const lock = x >= 7 && x <= 8 && y >= 6 && y <= 9;
+      put(T.BIG_CHEST, x, y, lock ? [255, 226, 110] : band ? sh9([232, 184, 56], 0.1) : y % 4 === 3 ? [86, 50, 26] : sh9([140, 88, 44], 0.14));
+      put(T.BIG_CHEST_TOP, x, y, edge9(x, y) || x === 2 || x === 13 ? sh9([232, 184, 56], 0.1) : sh9([150, 96, 48], 0.14));
+      // BIG_CHEST_OPEN (top): a heap of gold coins with a star glint
+      const coin = (Math.floor(x / 2) + Math.floor(y / 2)) % 2 === 0, glint = (Math.abs(x - 7.5) < 0.9 && Math.abs(y - 7.5) < 3.2) || (Math.abs(y - 7.5) < 0.9 && Math.abs(x - 7.5) < 3.2);
+      put(T.BIG_CHEST_OPEN, x, y, glint ? [255, 255, 235] : edge9(x, y) ? [232, 184, 56] : coin ? sh9([255, 214, 60], 0.1) : sh9([226, 170, 30], 0.12));
+      // WHEEL: spoked wheel on a post
+      const dw = Math.hypot(x - 7.5, y - 6.5), ang = Math.atan2(y - 6.5, x - 7.5), spoke = Math.abs(Math.sin(ang * 4)) < 0.2;
+      const sea = [150, 190, 220], rim = dw >= 4.4 && dw < 5.8, tip = dw >= 5.8 && dw < 7 && Math.abs(Math.sin(ang * 4)) < 0.2;
+      put(T.WHEEL, x, y, dw < 1.6 ? [232, 184, 56] : tip ? [232, 184, 56] : rim ? sh9([150, 96, 48], 0.1) : dw < 4.4 && spoke ? sh9([176, 120, 62], 0.1) : y > 12 && x > 5 && x < 10 ? sh9([104, 62, 34], 0.1) : sea);
+      // CORAL: pink and orange branches on a darker coral red
+      const br = (Math.abs(x - 3) < 1.2 && y > 5) || (Math.abs(x - 8) < 1.5 && y > 2) || (Math.abs(x - 12.5) < 1.2 && y > 7) || (y === 6 && x > 2 && x < 9) || (y === 9 && x > 8 && x < 13);
+      put(T.CORAL, x, y, br ? ((x + y) % 3 === 0 ? sh9([255, 170, 110], 0.12) : sh9([250, 130, 170], 0.12)) : sh9([196, 84, 112], 0.2));
+      // SHELL_SAND: sand with pink and white shell flecks
+      const fleck = r9() < 0.07;
+      put(T.SHELL_SAND, x, y, fleck ? (r9() < 0.5 ? [250, 226, 226] : [240, 150, 160]) : sh9([226, 214, 170], 0.14));
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
