@@ -1215,7 +1215,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   7-year-old). Each one is free to explore and ends with a **Boss**; beating the Boss wins that world's **star** (with
   a short note from the Wizard). Each star becomes one glowing stepping stone of the **star bridge** to the Wizard's
   tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
-  (2026-10-25): **12 stars**, 10 frames (framed Picture Worlds; four are placeholder `secret1`..`secret4` still to be named), 11
+  (2026-10-25): **12 stars**, 10 frames (framed Picture Worlds; four are placeholder `secret1`..`secret4` still to be named; `secret1` will be Doodle, wave 15), 11
   bridge stones (the ten plus Portal, whose house is in the Swirl, no frame), the 12th star from the Wizard (no frame, no stone). Their levels sit above the Champion; `REMATCH_CAP`
   and Coach Dex are checked against the new top.
 
@@ -1260,8 +1260,9 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   slide, a ball pit, a confetti room, a trainer).
 - **✏️ Doodle, the Sketchbook** (owner, 2026-10-25; was the Wizard's tower's name, now a Picture World of its own):
   the same blocks and cubes as everywhere, but drawn in a new art style: monochrome charcoal on paper, almost hand
-  drawn and almost unfinished. The world, its creatures and its Boss all look this way. A new `pictureworlds.js` entry
-  (append-only: an 8th id, `doodle`, with its own frame and star). Little custom code, because the look lives in
+  drawn and almost unfinished. The world, its creatures and its Boss all look this way. It takes the first placeholder
+  frame (`secret1` in `pictureworlds.js` becomes `doodle`: no save can hold that star yet, so the 12 stars stay 12).
+  Little custom code, because the look lives in
   textures and the shader, not in new geometry:
   - **A sketch atlas:** a second version of `drawAtlas` (blocks.js): paper tiles with a few charcoal strokes and
     hatching, swapped in for the realm. Block kinds must differ by hatching pattern, not only by shade (readable for a child).
