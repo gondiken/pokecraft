@@ -5,6 +5,7 @@
 import { B, WOOL } from './blocks.js';
 import { PICTURE_WORLDS } from './pictureworlds.js';
 import { kit, flatLand, buildWayBack, placeBoss } from './picturelands.js';
+import { buildStadium, STADIUM_SPAWNS } from './stadium.js'; // T40d
 
 export const PLAYLAND = { size: [224, 224], y: 10 };       // ground top y 10 (you stand at 11)
 export const HUB = { x0: 8, x1: 215, z0: 96, z1: 131 };     // the promenade across the middle: base-owned
@@ -19,24 +20,17 @@ export const PLAYLAND_ZONE_NAMES = { hub: 'Playland', race: 'Playland · Race Tr
 const put = (world, x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
 const fill = (world, x0, x1, z0, z1, y, id) => { for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) put(world, x, y, z, id); };
 
-// Stand-in parts (T40c / T40d replace them): a checkered start line with the Boss, a green pitch with the Boss.
+// Stand-in part (T40c replaces it): a checkered start line with the Boss.
 function raceStub(world, zone) {
   const y = PLAYLAND.y, mx = (zone.box.x0 + zone.box.x1 + 1) >> 1;
   for (let x = mx - 4; x <= mx + 4; x++) for (let z = 82; z <= 86; z++) put(world, x, y, z, (x + z) % 2 ? WOOL.ninja : WOOL.rainbow);
   placeBoss(world, 'race', { x: mx, y, z: 88, facing: [0, 1] });
 }
-function stadiumStub(world) {
-  const y = PLAYLAND.y, mx = 58, mz = 174;
-  fill(world, mx - 10, mx + 9, mz - 6, mz + 5, y, WOOL.grass);
-  for (let x = mx - 10; x <= mx + 9; x++) { put(world, x, y, mz - 6, WOOL.rainbow); put(world, x, y, mz + 5, WOOL.rainbow); }
-  for (let z = mz - 6; z <= mz + 5; z++) { put(world, mx - 10, y, z, WOOL.rainbow); put(world, mx + 9, y, z, WOOL.rainbow); put(world, mx, y, z, WOOL.rainbow); }
-  placeBoss(world, 'stadium', { x: mx + 3, y, z: mz, facing: [0, -1] });
-}
 
 // Part builders, by zone: { build(world, zone, def), spawns: [[species, weight, cond?], ...], walk?: [block ids wild creatures walk on] }. Each writes only inside zone.box.
 export const PLAYLAND_PARTS = {
   race: { build: raceStub, spawns: [] },       // T40c replaces this line
-  stadium: { build: stadiumStub, spawns: [] }, // T40d replaces this line
+  stadium: { build: buildStadium, spawns: STADIUM_SPAWNS, walk: [B.PITCH_DARK, B.PITCH_LIGHT, B.PITCH_LINE] }, // T40d: the Ball Stadium (stadium.js)
   fair: null,                                  // wave 15
 };
 // The realm's wild creature tables by zone (read once by REALMS.playland; creatures read them through world.realmBiome).

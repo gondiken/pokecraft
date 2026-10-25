@@ -60,6 +60,8 @@ const MORE_TILES = [
   'SWIRL_PAINT', 'SWIRL_CLOUD', 'GLOW_PUFF', 'GLOW_PUFF_MINT', 'BRISTLE_SIDE', 'BRISTLE_TOP',
   // T40 base (wave 14): a ready picture frame, the way back to the Swirl, the Boss's stand
   'PICTURE', 'WAY_BACK', 'BOSS_STAND_TOP', 'BOSS_STAND_SIDE',
+  // T40d Ball Stadium: pitch stripes, chalk line, goal post, net, court floor and line, hoop, backboard, stadium seat (top / side)
+  'PITCH_LIGHT', 'PITCH_DARK', 'PITCH_LINE', 'GOAL_POST', 'GOAL_NET', 'COURT_FLOOR', 'COURT_LINE', 'HOOP_RIM', 'BACKBOARD', 'SEAT_TOP', 'SEAT_SIDE',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -106,6 +108,8 @@ export const B = {
   // 140-143: wave 14 wool (tiny, pirate, racer, ball). 144-146: T40 base blocks (none placeable); 147-149 reserved for the base.
   // 150-203 belong to T40a-d (see plans/T40.md). Next free id after wave 14: 204.
   PICTURE: 144, WAY_BACK: 145, BOSS_STAND: 146,
+  // 194-203: T40d, the Ball Stadium in Playland (none placeable, all fixed)
+  PITCH_LIGHT: 194, PITCH_DARK: 195, PITCH_LINE: 196, GOAL_POST: 197, GOAL_NET: 198, COURT_FLOOR: 199, COURT_LINE: 200, HOOP_RIM: 201, BACKBOARD: 202, STAND_SEAT: 203,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -242,6 +246,20 @@ BLOCKS[B.BRISTLE] = { name: 'Brush Bristles', top: T.BRISTLE_TOP, side: T.BRISTL
 BLOCKS[B.PICTURE] = { name: 'Picture', ...all(T.PICTURE), glow: true, noLight: true, fixed: true, wallText: "It's a picture of another world. Step in! (press E or tap)" };
 BLOCKS[B.WAY_BACK] = { name: 'Way Back', ...all(T.WAY_BACK), glow: true, noLight: true, fixed: true, wallText: 'This is the way back to the Swirl. Step in!' };
 BLOCKS[B.BOSS_STAND] = { name: 'Boss Stand', top: T.BOSS_STAND_TOP, side: T.BOSS_STAND_SIDE, bottom: T.BOSS_STAND_SIDE, fixed: true, wallText: 'The Boss stands here!' };
+// T40d Ball Stadium: none placeable, all `fixed`. The hoop glows (easy to see from far) without lighting anything.
+{
+  const PITCH = 'This is the football pitch! Kick the ball into a goal.', GOAL = 'The goal! Kick the ball in here.', HOOPS = 'Shoot hoops! Tap Shoot! next to the ball.';
+  BLOCKS[B.PITCH_LIGHT] = { name: 'Pitch Grass', top: T.PITCH_LIGHT, side: T.GRASS_SIDE, bottom: T.DIRT, fixed: true, wallText: PITCH };
+  BLOCKS[B.PITCH_DARK] = { name: 'Pitch Grass', top: T.PITCH_DARK, side: T.GRASS_SIDE, bottom: T.DIRT, fixed: true, wallText: PITCH };
+  BLOCKS[B.PITCH_LINE] = { name: 'Chalk Line', top: T.PITCH_LINE, side: T.GRASS_SIDE, bottom: T.DIRT, fixed: true, wallText: PITCH };
+  BLOCKS[B.GOAL_POST] = { name: 'Goal Post', ...all(T.GOAL_POST), fixed: true, wallText: GOAL };
+  BLOCKS[B.GOAL_NET] = { name: 'Goal Net', ...all(T.GOAL_NET), fixed: true, wallText: GOAL };
+  BLOCKS[B.COURT_FLOOR] = { name: 'Court Floor', top: T.COURT_FLOOR, side: T.PLANKS, bottom: T.PLANKS, fixed: true, wallText: HOOPS };
+  BLOCKS[B.COURT_LINE] = { name: 'Court Line', top: T.COURT_LINE, side: T.PLANKS, bottom: T.PLANKS, fixed: true, wallText: HOOPS };
+  BLOCKS[B.HOOP_RIM] = { name: 'Hoop', ...all(T.HOOP_RIM), glow: true, noLight: true, fixed: true, wallText: HOOPS };
+  BLOCKS[B.BACKBOARD] = { name: 'Backboard', ...all(T.BACKBOARD), fixed: true, wallText: HOOPS };
+  BLOCKS[B.STAND_SEAT] = { name: 'Stadium Seat', top: T.SEAT_TOP, side: T.SEAT_SIDE, bottom: T.SEAT_SIDE, fixed: true, wallText: 'The stands. Go down onto the pitch!' };
+}
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -727,6 +745,30 @@ export function drawAtlas() {
       const star = d < 2.4 || (Math.abs(dx) < 0.9 && Math.abs(dy) < 6) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 6);
       put(T.BOSS_STAND_TOP, x, y, edge(x, y) ? [255, 226, 110] : star ? [255, 226, 110] : shade([96, 56, 170], 1 + (r8() - 0.5) * 0.08));
       put(T.BOSS_STAND_SIDE, x, y, edge(x, y) ? [255, 226, 110] : shade(y % 4 < 2 ? [110, 70, 190] : [92, 56, 164], 1 + (r8() - 0.5) * 0.06));
+    });
+  }
+  { // T40d Ball Stadium tiles (own random numbers)
+    const r9 = mulberry32(4044);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    each((x, y) => {
+      const blade = r9() < 0.12 ? 0.9 : 1 + (r9() - 0.5) * 0.1;
+      put(T.PITCH_LIGHT, x, y, shade([112, 188, 70], blade));
+      put(T.PITCH_DARK, x, y, shade([84, 156, 54], blade));
+      const chalk = (x + y * 3) % 11 === 0 ? 0.92 : 1; // a slightly uneven edge on the chalk
+      put(T.PITCH_LINE, x, y, edge(x, y) && (x + y) % 5 === 0 ? shade([96, 168, 62], 1) : shade([248, 248, 240], chalk * (1 + (r9() - 0.5) * 0.04)));
+      put(T.GOAL_POST, x, y, edge(x, y) ? [176, 180, 188] : shade([252, 252, 252], 1 + (r9() - 0.5) * 0.02));
+      const mesh = (x + y) % 4 === 0 || (x - y + 16) % 4 === 0;
+      put(T.GOAL_NET, x, y, mesh ? [236, 240, 244] : [58, 84, 74]);
+      const board = y % 8 === 7, nailed = y % 8 === 3 && (x + (y >> 3) * 5) % 8 === 2; // two long boards a tile: calmer from far away
+      put(T.COURT_FLOOR, x, y, board ? [184, 108, 42] : nailed ? [236, 164, 92] : shade([226, 140, 60], 1 + (r9() - 0.5) * 0.06));
+      put(T.COURT_LINE, x, y, y >= 6 && y <= 9 ? [250, 250, 245] : board ? [184, 108, 42] : shade([226, 140, 60], 1 + (r9() - 0.5) * 0.06));
+      const ring = Math.abs(Math.hypot(x - 7.5, y - 7.5) - 5.5) < 1.1;
+      put(T.HOOP_RIM, x, y, ring ? [255, 150, 40] : edge(x, y) ? [255, 190, 90] : shade([255, 110, 20], 1 + (r9() - 0.5) * 0.06));
+      const square = x >= 4 && x <= 11 && y >= 4 && y <= 11 && (x === 4 || x === 11 || y === 4 || y === 11);
+      put(T.BACKBOARD, x, y, square ? [220, 40, 40] : edge(x, y) ? [150, 154, 164] : shade([250, 252, 255], 1 + (r9() - 0.5) * 0.03));
+      const seat = (x % 8 < 6) && (y % 8 < 6);
+      put(T.SEAT_TOP, x, y, seat ? shade([50, 110, 230], 1 + (r9() - 0.5) * 0.06) : [28, 56, 130]);
+      put(T.SEAT_SIDE, x, y, y < 10 ? (y === 9 ? [24, 50, 120] : shade([50, 108, 224], 1 + (r9() - 0.5) * 0.06)) : shade([156, 160, 168], 1 + (r9() - 0.5) * 0.08)); // a blue seat back over grey concrete
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.

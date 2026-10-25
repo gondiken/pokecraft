@@ -5,6 +5,7 @@ import { PICTURE_WORLDS, pictureWorld, loadStars } from './pictureworlds.js';
 import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
+import { goalState } from './stadium.js'; // T40d
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -50,8 +51,27 @@ addBoss({ id: 'pirate', name: 'Deckhand Dot', type: 'water', colors: { ...PEOPLE
   intro: ['Ahoy! Ready for a battle?'], lose: 'Ahoy! You win this one!', win: 'Good battle! Try again any time.', note: NOTE });
 addBoss({ id: 'race', name: 'Starter Sam', type: 'electric', colors: { ...PEOPLE, shirt: 0xff6a4a, pants: 0x2a2a2a }, look: 'sport', team: [['thunderwolf', 62], ['blazehound', 64]],
   intro: ['On your marks! Battle time!'], lose: 'What a finish! You win!', win: 'Good battle! Try again any time.', note: NOTE });
-addBoss({ id: 'stadium', name: 'Coach Kiki', type: 'normal', colors: { ...PEOPLE, shirt: 0x3aa84a, pants: 0xffffff }, look: 'sport', team: [['zorbit', 63], ['boomwing', 65]],
-  intro: ['Team huddle! Let us play!'], lose: 'Great game! You win!', win: 'Good battle! Try again any time.', note: NOTE });
+/* ==== T40d ball ==== */
+addBoss({ // the Ball Stadium (Playland). Score 2 goals first (3 for a rematch): the gate reads the saved goal keys (stadium.js goalState).
+  id: 'stadium', name: 'Captain Kickley', type: 'ball', look: 'sport',
+  colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x6a3a1a, skin: 0xf0c8a0 },
+  gate: game => { const { n, need, done } = goalState(game); return done ? null : `Score ${need} goals past our keepers first! Then we battle. (${n} / ${need})`; },
+  team: [['smashbird', 62], ['beachboomer', 63], ['strikehorn', 63], ['goalhound', 65, ['goldengoal', 'cannonroll', 'quickpass', 'teamhuddle']]],
+  intro: ['Two goals past our keepers! You can really kick.', "Now let's see how your team plays!"],
+  rematchIntro: ['Three goals! Ready for the second half?'],
+  lose: 'What a match! The stadium is cheering again. Here is the star the Wizard hid in our trophy!',
+  win: 'Good game! Score again and we play another match.',
+  note: "This stadium was built for the festival's big match. Thank you for playing it!",
+  crew: [
+    { name: 'Winger Wes', colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'sport',
+      team: [['fuzzchick', 61], ['sealbop', 61], ['smashbird', 62]], intro: ["I'm the fastest winger in Playland! Battle?"],
+      line: 'Run into the ball to dribble. Tap Kick! for a big shot!' },
+    { name: 'Hoops Hazel', colors: { shirt: 0xf07a28, pants: 0x2a2a2a, hair: 0x1a1a1a, skin: 0xf2c79a },
+      team: [['strikehorn', 62], ['beachboomer', 62], ['goalhound', 63]], intro: ['Nothing but net! Can your team keep up?'],
+      line: 'Stand next to the ball on the court and tap Shoot!' },
+  ],
+});
+/* ==== end of T40d ball ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen
