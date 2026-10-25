@@ -126,7 +126,8 @@ export default async function ({ browser, base, t }) {
   const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
   await near();
   await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`);
-  await page.evaluate(`window.pokecraft.talkTo(${npc('leader')})`); // talking again = yes
+  await page.waitForTimeout(450); // T39b: a fresh E (not too quick) is yes
+  await page.keyboard.press('KeyE');
   const r1 = await page.evaluate(() => ({ b: window.pokecraft.battle?.foes.map(c => c.level), boost: window.pokecraft.battle?.opts?.xpBoost ?? window.pokecraft.battle?.xpBoost }));
   t.ok(JSON.stringify(r1.b) === '[9,10,11]' && r1.boost === 1.5, `rematch 1: foes ${JSON.stringify(r1.b)}, xp boost ${r1.boost}`);
   t.ok(await playBattle(page), 'rematch 1 finishes');
