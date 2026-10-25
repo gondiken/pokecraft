@@ -23,9 +23,7 @@ export class Duels {
     this.incoming = null; // { id, from, name, team, seed, timer } while deciding
     this.current = null;  // the battle being played
     this.waitTime = WAIT_TIME; // tests make this shorter
-    this.box = document.getElementById('duel-ask');
-    document.getElementById('duel-yes').addEventListener('click', e => { e.stopPropagation(); this.accept(); });
-    document.getElementById('duel-no').addEventListener('click', e => { e.stopPropagation(); this.decline(); });
+    this.box = null;      // T39b: our question in the shared ui.ask box (ui.asked) while it shows
   }
 
   get mp() { return this.game.mp; }
@@ -55,7 +53,7 @@ export class Duels {
     const g = this.game;
     if (p.type === 'ask') {
       if (p.v !== VERSION) { this.mp.sendDuel(p.from, { type: 'no', id: p.id, old: true }); return; } // the asker has an older game
-      if (!g.started || g.inBattle || g.hideSeek?.active || this.current || this.incoming || this.asking || !g.party.length || this.mp.others.get(p.from)?.here === false) { // T38b: not from another place
+      if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || this.current || this.incoming || this.asking || !g.party.length || this.mp.others.get(p.from)?.here === false) { // T38b: not from another place
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
       }
@@ -66,10 +64,11 @@ export class Duels {
       }
       this.incoming = { id: p.id, from: p.from, name: p.name, team: teamIn(p.team), seed: p.seed, coop,
         timer: setTimeout(() => this.decline(), ANSWER_TIME * 1000) };
-      document.getElementById('duel-text').textContent = coop
-        ? `${p.name} needs your help! A ${bossName(coop.boss)} is here. Battle it together, 2 against 1?`
-        : `${p.name} wants to have a creature battle with you!`;
-      this.box.classList.remove('hidden');
+      g.ui.ask({ kind: 'incoming', yes: coop ? 'Help!' : 'Battle!', no: 'Not now', // T39b: one box, one key rule
+        text: coop ? `${p.name} needs your help! A ${bossName(coop.boss)} is here. Battle it together, 2 against 1?`
+          : `${p.name} wants to have a creature battle with you!`,
+        onYes: () => this.accept(), onNo: () => this.decline() });
+      this.box = g.ui.asked;
       sound.play('ask');
     } else if (p.type === 'cancel' && this.incoming?.id === p.id) {
       this.closeAsk();
@@ -116,7 +115,8 @@ export class Duels {
   closeAsk() {
     if (this.incoming) clearTimeout(this.incoming.timer);
     this.incoming = null;
-    this.box.classList.add('hidden');
+    if (this.box && this.game.ui.asked === this.box) this.game.ui.closeAsk();
+    this.box = null;
   }
 
   begin(info) {

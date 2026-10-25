@@ -497,6 +497,7 @@ document.addEventListener('pointerlockchange', () => {
   if (locked) pauseEl.classList.add('hidden');
   else {
     game.player.keys = {};
+    if (game.ui.asking && !game.ui.panelOpen) game.ui.askNo(); // T39b: Esc while the mouse is captured is "Not now"
     if (game.started && !game.inBattle && !game.ui.panelOpen) {
       pauseEl.classList.remove('hidden');
       save(true);
@@ -538,12 +539,17 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('keydown', e => {
   if (!game.started) return;
   if (e.target instanceof HTMLInputElement) return; // typing a name or code, not playing
-  if (game.duels.incoming && (e.code === 'KeyY' || e.code === 'KeyN')) {
-    if (e.code === 'KeyY') game.duels.accept(); else game.duels.decline();
-    return;
+  // T39b: a question is open (bed, rematch, follow, duel, giant, hide and seek): the key that asked also answers.
+  // E / Enter = yes (a fresh press, not too quick), Y = yes, Esc / N / Backspace = no. E never also talks or breaks.
+  if (game.ui.asking) {
+    if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); game.ui.askYes('key', e); return; }
+    if (e.code === 'KeyY') { game.ui.askYes('y'); return; }
+    if (e.code === 'KeyN' || e.code === 'Backspace' || e.code === 'Escape') { e.preventDefault(); game.ui.askNo(); return; }
   }
-  if (game.ui.asking && (e.code === 'KeyY' || e.code === 'KeyN')) { // T28: the rematch question
-    if (e.code === 'KeyY') game.ui.askYes(); else game.ui.askNo();
+  // T39b: the "Let go" question in the box panel: Enter = yes, Esc = keep it
+  if (game.ui.confirmYes && (e.code === 'Enter' || e.code === 'Escape')) {
+    e.preventDefault();
+    if (e.code === 'Enter' && !e.repeat) game.ui.confirmYes(); else if (e.code === 'Escape') game.ui.closeConfirm();
     return;
   }
   // "Continue exploring" after a battle: a key press works too (and lets the game take the mouse back).
@@ -585,6 +591,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 
 document.addEventListener('mousedown', e => {
   if (!locked || game.inBattle || game.hideSeek?.frozen) return; // T30
+  if (game.ui.asking) { if (e.button === 0) game.ui.askYes('click'); return; } // T39b: a click answers the question, nothing else
   if (e.button === 0) {
     if (!interact()) breakBlock();
   } else if (e.button === 2) {
@@ -685,7 +692,7 @@ function placeBlock(hit = target.block) {
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.
 const tapRay = new THREE.Raycaster();
 function tapAt(x, y) {
-  if (!playing()) return;
+  if (!playing() || game.ui.asking) return; // T39b: a tap on the world never answers a question
   tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
   const { origin, direction } = tapRay.ray;
   const reach = REACH + 4;
@@ -709,9 +716,9 @@ game.touch = new TouchControls(game, canvas, {
   jump: down => { game.player.keys.Space = down && playing(); },
   ride: () => { if (playing()) game.riding.toggle(); },
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
-  breakBlock: () => { if (playing() && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
-  place: () => { if (playing()) placeBlock(); },
-  interact: () => { if (playing() && !interact(true) && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
+  breakBlock: () => { if (playing() && !game.ui.asking && !(target.wild && interact())) breakBlock(); }, // a creature under the finger battles, like the mouse
+  place: () => { if (playing() && !game.ui.asking) placeBlock(); },
+  interact: () => { if (game.ui.asking) { game.ui.askYes('tap'); return; } /* T39b */ if (playing() && !interact(true) && game.homes.matPos) game.openHome(); }, // T22: 'My home' when nothing else is targeted
   team: toggleTeam,
   blocks: toggleBlocks,
   book: toggleBook,
@@ -1057,6 +1064,7 @@ function updateTarget() {
       : door ? game.portal.action(target.block) // T38a
       : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
       : (target.block && game.gymLive.prompt(target.block, 'tap') && 'Press!') || (game.homes.matPos ? 'My home' : ''));
+  if (game.ui.asking) game.touch.setAction(game.ui.asked.yes); // T39b: the action button answers yes and says so
 }
 
 let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;

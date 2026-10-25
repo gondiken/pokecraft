@@ -448,25 +448,42 @@ export class UI {
     }
   }
 
-  // A question with two buttons (T28 gym rematch; reusable): ask({ text, yes, no, onYes, onNo }).
-  ask({ text, yes = 'Battle!', no = 'Not now', hint = 'press Y / N, or click the leader again', onYes, onNo }) {
+  // T39b: a question with two buttons: ask({ text, yes, no, onYes, onNo, kind }).
+  // kind 'mine' = you started it (bed, rematch, follow from a Bed): a fresh E / tap / click says yes after 350 ms.
+  // kind 'incoming' = it came to you (duel, giant, hide and seek, automatic follow): E / tap / click only after 1 s.
+  // Y and the Yes button work at once. Esc, N, Backspace and "Not now" say no.
+  ask({ text, yes = 'Battle!', no = 'Not now', onYes, onNo, kind = 'mine' }) {
     this.askBox = this.askBox || document.getElementById('ask');
     if (!this.askWired) {
       this.askWired = true;
-      document.getElementById('ask-yes').addEventListener('click', e => { e.stopPropagation(); this.askYes(); });
+      document.getElementById('ask-yes').addEventListener('click', e => { e.stopPropagation(); this.askYes('button'); });
       document.getElementById('ask-no').addEventListener('click', e => { e.stopPropagation(); this.askNo(); });
     }
-    this.asked = { onYes, onNo };
+    this.asked = { onYes, onNo, kind, yes, no, openedAt: performance.now() };
     document.getElementById('ask-text').textContent = text;
     document.getElementById('ask-yes').textContent = yes;
     document.getElementById('ask-no').textContent = no;
-    document.getElementById('ask-hint').innerHTML = hint.replace('Y / N', '<b>Y</b> / <b>N</b>'); // T30
+    document.getElementById('ask-hint').innerHTML = `<b>E</b> = ${yes} · <b>Esc</b> = ${no}`;
     this.askBox.classList.remove('hidden');
   }
 
   get asking() { return !!this.asked; }
 
-  askYes() { const a = this.asked; this.closeAsk(); a?.onYes?.(); }
+  // Is this press allowed to say yes? how: 'y' / 'button' (always), 'key' (E, Enter: not held), 'tap', 'click' (fresh and not too quick).
+  canConfirm(how, e) {
+    const a = this.asked;
+    if (!a) return false;
+    if (how === 'y' || how === 'button') return true;
+    if (how === 'key' && e?.repeat) return false;
+    return performance.now() - a.openedAt >= (a.kind === 'incoming' ? 1000 : 350);
+  }
+
+  // Returns true when the answer was taken.
+  askYes(how = 'button', e) {
+    if (!this.canConfirm(how, e)) return false;
+    const a = this.asked; this.closeAsk(); a?.onYes?.();
+    return true;
+  }
 
   askNo() { const a = this.asked; this.closeAsk(); a?.onNo?.(); }
 

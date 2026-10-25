@@ -46,7 +46,8 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
 | C | Creature Book: every creature you've seen and caught |
 | M | Champion missions (after you are the Champion) |
-| Esc | Pause (Resume, Main menu, Play together) |
+| E / Enter / Y | Say **yes** to a question (sleep, rematch, a friend's invite). Press it fresh; a held key does not count |
+| Esc / N / Backspace | Say **no** ("Not now") to a question; otherwise Esc pauses (Resume, Main menu, Play together) |
 
 On a tablet:
 
@@ -57,6 +58,7 @@ On a tablet:
 | Tap a creature or person | Battle it, or talk to them |
 | Battle / Challenge / Heal button | Same as tapping the creature or person under the crosshair |
 | Break / Place / Jump buttons | Break or place a block at the crosshair, jump or swim up |
+| Tap the action button while a question is showing | Says **yes** (the button shows the Yes word, like "Sleep" or "Battle!") |
 | Tap the hotbar | Pick a block (tap the picked one again to change it) |
 | Team / Blocks / Book / II buttons | Team screen / Blocks screen / Creature Book / pause |
 

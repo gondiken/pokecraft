@@ -4,7 +4,7 @@ import { openPair, newGame, click, pause } from '../helpers.mjs';
 
 const SHOTS = new URL('../screenshots/', import.meta.url).pathname;
 const inBattle = page => page.evaluate(() => window.pokecraft.inBattle);
-const askShown = page => page.evaluate(() => !document.getElementById('duel-ask').classList.contains('hidden'));
+const askShown = page => page.evaluate(() => !document.getElementById('ask').classList.contains('hidden'));
 const teamKey = page => page.evaluate(() => JSON.stringify(window.pokecraft.party.map(c => [c.uid, c.species, c.level, c.xp, c.moves])));
 
 async function waitFor(page, fn, ms = 60000) {
@@ -164,17 +164,17 @@ export default async function ({ browser, base, t }) {
   const ask = async () => {
     const r = await A.evaluate(() => { const g = window.pokecraft, kid = [...g.mp.others.values()][0]; const c = g.coopFor(g, 'giant1', kid); if (!c.error) g.duels.challenge(kid, c); return c; });
     if (r.error) console.log(`      (ask refused: ${r.error})`);
-    else if (!(await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden')))) {
+    else if (!(await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')))) {
       console.log('      (no ask on B: ' + JSON.stringify(await A.evaluate(() => ({ a: !!window.pokecraft.duels.asking, c: !!window.pokecraft.duels.current, b: window.pokecraft.inBattle }))) + ' / ' + JSON.stringify(await B.evaluate(() => ({ i: !!window.pokecraft.duels.incoming, c: !!window.pokecraft.duels.current, b: window.pokecraft.inBattle }))) + ')');
     }
   };
 
   // 4. The ask, the question, the start
   await ask();
-  t.ok(await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden')
-    && document.getElementById('duel-text').textContent.includes('needs your help')
-    && document.getElementById('duel-text').textContent.includes('Giant Cragtusk')), 'the friend is asked "Dad needs your help! A Giant Cragtusk ..."');
-  await click(B, '#duel-yes');
+  t.ok(await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')
+    && document.getElementById('ask-text').textContent.includes('needs your help')
+    && document.getElementById('ask-text').textContent.includes('Giant Cragtusk')), 'the friend is asked "Dad needs your help! A Giant Cragtusk ..."');
+  await click(B, '#ask-yes');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'saying yes starts the battle for both');
   t.ok(await waitFor(A, () => !!window.pokecraft.battle.friendModel && !!window.pokecraft.battle.foeModel && !document.getElementById('b-friend').classList.contains('hidden'), 30000)
     && await waitFor(B, () => !!window.pokecraft.battle.friendModel && !!window.pokecraft.battle.foeModel && !document.getElementById('b-friend').classList.contains('hidden'), 30000),
@@ -221,7 +221,7 @@ export default async function ({ browser, base, t }) {
   await teams([['blazehound', 40], ['ampup', 40]], [['zapple', 5]]);
   await look();
   await ask();
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await B.keyboard.press('y');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'a second giant battle starts');
   t.ok(await playCoop([A, B]), 'it finishes with one team tired out');
@@ -239,7 +239,7 @@ export default async function ({ browser, base, t }) {
   await teams([['blazehound', 30]], [['zapple', 30]]);
   await look();
   await ask();
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await B.keyboard.press('y');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'a third giant battle starts');
   await waitFor(A, () => [...document.querySelectorAll('#b-actions button')].some(b => b.textContent === 'Give up'), 40000);
@@ -264,7 +264,7 @@ export default async function ({ browser, base, t }) {
   }
   const growCoop = await A.evaluate(() => { const g = window.pokecraft, kid = [...g.mp.others.values()][0]; const c = g.coopFor(g, g.missionState.active, kid); if (!c.error) g.duels.challenge(kid, c); return c; });
   t.ok(!growCoop.error && growCoop.boss === 'giant2' && growCoop.grow === 2, `the ask of a generated giant carries grow (${growCoop.error || JSON.stringify([growCoop.boss, growCoop.grow])})`);
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await B.keyboard.press('y');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'the battle with the bigger giant starts');
   await waitFor(A, () => !!window.pokecraft.battle.foe && window.pokecraft.battle.foes?.length === 1, 30000);
@@ -290,7 +290,7 @@ export default async function ({ browser, base, t }) {
     d.onMessage({ ...base, v: 9, id: 'bad1', coop: { mission: 'giant1', boss: 'nope', at: [1, 2, 3] } });
     const b = !!d.incoming;
     d.onMessage({ ...base, v: 9, id: 'bad2', coop: { mission: 'giant1', boss: 'giant1', at: [1, 2] } });
-    return { a, a10, b, c: !!d.incoming, shown: !document.getElementById('duel-ask').classList.contains('hidden') };
+    return { a, a10, b, c: !!d.incoming, shown: !document.getElementById('ask').classList.contains('hidden') };
   });
   t.ok(!odd.a && !odd.a10 && !odd.b && !odd.c && !odd.shown, 'an ask from an older game (also v 10) or with a broken coop field is answered no');
 

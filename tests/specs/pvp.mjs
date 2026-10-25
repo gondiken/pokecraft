@@ -5,7 +5,7 @@
 import { openPair, newGame, click, pause, playBattle } from '../helpers.mjs';
 
 const inBattle = page => page.evaluate(() => window.pokecraft.inBattle);
-const askShown = page => page.evaluate(() => !document.getElementById('duel-ask').classList.contains('hidden'));
+const askShown = page => page.evaluate(() => !document.getElementById('ask').classList.contains('hidden'));
 const teamKey = page => page.evaluate(() => JSON.stringify(window.pokecraft.party.map(c => [c.uid, c.species, c.level, c.xp, c.moves])));
 const cubes = page => page.evaluate(() => window.pokecraft.cubes);
 
@@ -83,9 +83,9 @@ export default async function ({ browser, base, t }) {
 
   // Asking, and saying "Not now".
   await A.evaluate(() => window.pokecraft.interact());
-  t.ok(await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden')
-    && document.getElementById('duel-text').textContent.includes('Dad wants')), 'the other player is asked "Dad wants to have a creature battle"');
-  await click(B, '#duel-no');
+  t.ok(await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')
+    && document.getElementById('ask-text').textContent.includes('Dad wants')), 'the other player is asked "Dad wants to have a creature battle"');
+  await click(B, '#ask-no');
   t.ok(await waitFor(A, () => !window.pokecraft.duels.asking), 'saying "Not now" tells the asker');
   t.ok(!(await inBattle(A)) && !(await inBattle(B)) && !(await askShown(B)), 'nobody is in a battle after "Not now"');
 
@@ -95,8 +95,8 @@ export default async function ({ browser, base, t }) {
   await A.evaluate(() => window.pokecraft.interact());
   await A.keyboard.press('c');
   t.ok(await B.evaluate(() => window.pokecraft.ui.panelOpen) && await A.evaluate(() => window.pokecraft.ui.panelOpen), 'the kid has the team screen open, Dad the Book');
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
-  await click(B, '#duel-yes');
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
+  await click(B, '#ask-yes');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'saying "Battle!" starts the battle for both players');
   t.ok(!(await B.evaluate(() => window.pokecraft.ui.panelOpen)) && !(await A.evaluate(() => window.pokecraft.ui.panelOpen)),
     'the team screen and the Book close when the battle starts');
@@ -121,7 +121,7 @@ export default async function ({ browser, base, t }) {
   // Accepting with the Y key, then giving up.
   const challenge = () => A.evaluate(() => { const g = window.pokecraft; g.duels.challenge([...g.mp.others.values()][0]); });
   await challenge();
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await B.keyboard.press('y');
   t.ok(await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B), 'pressing Y accepts');
   await waitFor(B, () => [...document.querySelectorAll('#b-actions button')].some(b => b.textContent === 'Give up'), 30000);
@@ -134,7 +134,7 @@ export default async function ({ browser, base, t }) {
   // Giving up while waiting for the other player.
   const startDuel = async () => {
     await challenge();
-    await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+    await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
     await B.keyboard.press('y');
     return await waitFor(A, () => window.pokecraft.inBattle) && await inBattle(B);
   };
@@ -167,7 +167,7 @@ export default async function ({ browser, base, t }) {
 
   // An invite that arrives during another battle is answered "busy" and closed.
   await challenge();
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await B.evaluate(async () => {
     const g = window.pokecraft;
     const S = await import('/src/species.js');
@@ -183,10 +183,10 @@ export default async function ({ browser, base, t }) {
 
   // Leaving play-together stops waiting for an answer (no "didn't answer" later on the title screen).
   await challenge();
-  await waitFor(B, () => !document.getElementById('duel-ask').classList.contains('hidden'));
+  await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));
   await A.evaluate(() => window.pokecraft.mp.close());
   t.ok(await A.evaluate(() => !window.pokecraft.duels.asking && !window.pokecraft.duels.incoming), 'closing play-together resets the battle invites');
-  t.ok(await waitFor(B, () => document.getElementById('duel-ask').classList.contains('hidden')), "and the other player's invite box closes");
+  t.ok(await waitFor(B, () => document.getElementById('ask').classList.contains('hidden')), "and the other player's invite box closes");
   t.ok(!A.errors.length && !B.errors.length, `no page errors ${[...A.errors, ...B.errors].join('; ')}`);
   await A.context().close(); await B.context().close();
 }
