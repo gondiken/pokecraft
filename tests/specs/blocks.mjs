@@ -4,7 +4,7 @@ import { openGame, newGame, pause, click } from '../helpers.mjs';
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
   const r = await page.evaluate(async () => {
-    const { B, BLOCKS, PLACEABLE, TILE_COUNT, WOOL, isSolid } = await import('/src/blocks.js');
+    const { B, BLOCKS, PLACEABLE, TILE_COUNT, WOOL, isSolid, T } = await import('/src/blocks.js');
     const { World } = await import('/src/world.js');
     const { SPAWNS, SPECIES } = await import('/src/species.js');
     const tiles = PLACEABLE.every(id => BLOCKS[id] && ['top', 'side', 'bottom'].every(k => BLOCKS[id][k] < TILE_COUNT));
@@ -33,6 +33,7 @@ export default async function ({ browser, base, t }) {
       wool: ['sky', 'slime', 'light', 'paper'].map(k => [WOOL[k], BLOCKS[WOOL[k]]?.name]),
       woolIds: new Set(Object.values(WOOL)).size === Object.keys(WOOL).length && Object.values(WOOL).every(id => id < 40 || (id >= 49 && id <= 52) || (id >= 54 && id <= 56) || (id >= 68 && id <= 69) || (id >= 79 && id <= 82) || id === 113),
       dojo: [['NIGHTINGALE', 114], ['TATAMI', 115], ['SHOJI', 116], ['BARREL', 117], ['TALL_GRASS', 118], ['PAPER_LANTERN', 119], ['STONE_LANTERN', 120], ['STONE_LANTERN_ON', 121], ['LANTERN_LIGHT', 122], ['MAPLE_LEAVES', 123]].map(([k, n]) => ({ k, id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight, solid: isSolid(B[k]) })), // T37b
+      looks: { adjacent: T.SWIRL_CLOUD === T.SWIRL_PAINT + 1 && T.SWIRL_STONE === T.SWIRL_STONE_TOP + 1, defs: [['SWIRL_PAINT', 132], ['SWIRL_CLOUD', 133], ['GLOW_PUFF', 134], ['GLOW_PUFF_MINT', 135], ['BRISTLE', 136]].map(([k, n]) => ({ k, id: B[k] === n, placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText, fixed: !!BLOCKS[B[k]].fixed, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight })) }, // T38d
       swirl: [['PORTAL_DIM', 124], ['PORTAL', 125], ['PORTAL_FRAME', 126], ['SWIRL_STONE', 127], ['PICTURE_FRAME', 128], ['CLOTH', 129], ['STAR_STONE', 130], ['WIZARD_STONE', 131]].map(([k, n]) => ({ k, id: B[k] === n, def: !!BLOCKS[B[k]], placeable: PLACEABLE.includes(B[k]), tiles: ['top', 'side', 'bottom'].every(f => BLOCKS[B[k]][f] < TILE_COUNT), wallText: !!BLOCKS[B[k]].wallText, glow: !!BLOCKS[B[k]].glow, noLight: !!BLOCKS[B[k]].noLight, fixed: !!BLOCKS[B[k]].fixed, solid: isSolid(B[k]) })), // T38a
       nextFree: Math.max(...Object.values(B)) + 1,
       biomes: [...biomes].sort(),
@@ -55,10 +56,12 @@ export default async function ({ browser, base, t }) {
   t.ok(r.course.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid), 'the T36.5 course blocks 89-90 and 95-104 exist, have tiles and a wall text, and cannot be built with');
   t.ok(cb('SPRING').bounce === 4 && ['BLINK', 'BLINK_WARN', 'ZAP_WARN', 'ZAP_ON', 'PUSHER_WARN', 'SPRING', 'EXIT_PAD'].every(k => cb(k).glow && cb(k).noLight) && ['CRUMBLE', 'CRUMBLE_SHAKE', 'ZAP_OFF', 'PUSHER', 'PUSHER_HEAD'].every(k => !cb(k).glow && !cb(k).bounce), 'the spring bounces 4 blocks; the flashing course blocks glow without lighting their surroundings');
   const db = k => r.dojo.find(c => c.k === k);
-  t.ok(r.dojo.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid) && r.nextFree === 132, `the T37b Shadow Dojo blocks 114-123 exist, have tiles and a wall text, and cannot be built with (next free id ${r.nextFree})`);
+  t.ok(r.dojo.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid) && r.nextFree === 137, `the T37b Shadow Dojo blocks 114-123 exist, have tiles and a wall text, and cannot be built with (next free id ${r.nextFree})`);
   t.ok(['STONE_LANTERN_ON', 'LANTERN_LIGHT'].every(k => db(k).glow && db(k).noLight) && db('PAPER_LANTERN').glow && !db('PAPER_LANTERN').noLight && !db('NIGHTINGALE').glow, 'paper lanterns light the garden; the lit stone lantern and the lantern light glow without lighting their surroundings');
   const sw = k => r.swirl.find(c => c.k === k);
   t.ok(r.swirl.every(b => b.id && b.def && !b.placeable && b.tiles && b.wallText && b.solid) && r.swirl.slice(1).every(b => b.fixed) && !sw('PORTAL_DIM').fixed, 'the T38a Portal Door and Swirl blocks 124-131 exist, have tiles and a wall text, cannot be built with; 125-131 cannot be broken');
+  t.ok(r.looks.adjacent && r.looks.defs.every(b => b.id && !b.placeable && b.tiles && b.wallText && b.fixed), 'the T38d Swirl looks 132-136 exist with tiles, cannot be built with or broken; Swirl Paint and Cloud (and the stone top and side) tiles sit side by side for the tint range');
+  t.ok(r.looks.defs.filter(b => b.k.startsWith('GLOW')).every(b => b.glow && !b.noLight) && !r.looks.defs.find(b => b.k === 'SWIRL_CLOUD').glow, 'Glow Puffs glow and light their surroundings (not noLight)');
   t.ok(['PORTAL', 'PORTAL_FRAME', 'STAR_STONE'].every(k => sw(k).glow && sw(k).noLight) && !sw('PORTAL_DIM').glow && !sw('SWIRL_STONE').glow, 'the Portal Door, its frame and the star stones glow without lighting their surroundings; the dim door and the Swirl Stone do not glow');
   t.ok(JSON.stringify(r.wool) ===JSON.stringify([[49, 'Sky Wool'], [50, 'Slime Wool'], [51, 'Light Wool'], [52, 'Paper Wool']]) && r.woolIds,
     `the four new wool blocks are 49-52 and have names (${r.wool.map(w => w.join(' ')).join(', ')})`);

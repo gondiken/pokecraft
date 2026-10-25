@@ -126,6 +126,7 @@ async function measureDream(profile) {
     const s = g.spawnPoint, sx = Math.floor(s.x), sz = Math.floor(s.z);
     const spots = { N: [sx, sz, 0], E: [sx, sz, -Math.PI / 2], S: [sx, sz, Math.PI], W: [sx, sz, Math.PI / 2] };
     if (w.isles) { const t = w.isles.list.find(i => i.id === 'tall'); spots.tall = [t.x, t.z, Math.PI / 4, t.top + 3]; }
+    if (w.swirl) Object.assign(spots, { mist: [48, 54, 0, 28.6], ink: [75, 80, -Math.PI / 2, 22.6], dawn: [48, 106, Math.PI, 16.6] }); // T38d: the dim zone with its puffs, the bridge, the sunset side
     const calls = {};
     for (const [k, [x, z, yaw, y]] of Object.entries(spots)) {
       cam.position.set(x + 0.5, y ?? w.surface(x, z).y + 2.6, z + 0.5); cam.rotation.set(-0.15, yaw, 0); cam.updateMatrixWorld();
@@ -142,7 +143,20 @@ async function measureDream(profile) {
     requestAnimationFrame(tick);
     await new Promise(r => setTimeout(r, 8000));
     stop = true;
-    return { label, chunks, verts, gpuMB: Math.round((verts * 32 + idx * 4) / 1048576), calls, fps: Math.round(n / ((performance.now() - t0) / 1000) * 100) / 100 };
+    const fps = Math.round(n / ((performance.now() - t0) / 1000) * 100) / 100;
+    let fpsMist; // T38d: standing on the north deck facing the frames (puffs + dim + fireflies, the worst case)
+    if (w.swirl) {
+      const put2 = () => { p.pos.set(48.5, 27, 54.5); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0.1; };
+      put2(); g.swirlSky.snap();
+      await new Promise(r => setTimeout(r, 1500));
+      let n2 = 0, stop2 = false; const t1 = performance.now();
+      const tick2 = () => { put2(); n2++; if (!stop2) requestAnimationFrame(tick2); };
+      requestAnimationFrame(tick2);
+      await new Promise(r => setTimeout(r, 8000));
+      stop2 = true;
+      fpsMist = Math.round(n2 / ((performance.now() - t1) / 1000) * 100) / 100;
+    }
+    return { label, chunks, verts, gpuMB: Math.round((verts * 32 + idx * 4) / 1048576), calls, fps, fpsMist };
   }, [label, setup]);
   const main = await page.evaluate(async () => {
     const g = window.pokecraft, { World } = await import('/src/world.js');
@@ -229,7 +243,7 @@ if (DREAM) {
     const m = (k, sub) => med(list.map(r => r[k][sub]));
     const calls = (k, sub) => med(list.map(r => r[k].calls[sub]));
     console.log(`MEDIAN ${profile} (${runs} runs) main: ` + JSON.stringify({ genMeshMs: m('main', 'genMs') + m('main', 'meshMs'), chunks: m('main', 'chunks'), verts: m('main', 'verts'), gpuMB: m('main', 'gpuMB'), callsN: calls('main', 'N'), callsE: calls('main', 'E'), callsS: calls('main', 'S'), callsW: calls('main', 'W'), fps: m('main', 'fps') }));
-    console.log(`MEDIAN ${profile} (${runs} runs) dream ${JSON.stringify(list[0].enter.size)}: ` + JSON.stringify({ enterMs: m('enter', 'enterMs'), genMeshMs: m('enter', 'genMs') + m('enter', 'meshMs'), chunks: m('dream', 'chunks'), verts: m('dream', 'verts'), gpuMB: m('dream', 'gpuMB'), callsN: calls('dream', 'N'), callsE: calls('dream', 'E'), callsS: calls('dream', 'S'), callsW: calls('dream', 'W'), callsTall: calls('dream', 'tall'), fps: m('dream', 'fps') }));
+    console.log(`MEDIAN ${profile} (${runs} runs) dream ${JSON.stringify(list[0].enter.size)}: ` + JSON.stringify({ enterMs: m('enter', 'enterMs'), genMeshMs: m('enter', 'genMs') + m('enter', 'meshMs'), chunks: m('dream', 'chunks'), verts: m('dream', 'verts'), gpuMB: m('dream', 'gpuMB'), callsN: calls('dream', 'N'), callsE: calls('dream', 'E'), callsS: calls('dream', 'S'), callsW: calls('dream', 'W'), callsTall: calls('dream', 'tall'), callsMist: calls('dream', 'mist'), callsInk: calls('dream', 'ink'), callsDawn: calls('dream', 'dawn'), fps: m('dream', 'fps'), fpsMist: m('dream', 'fpsMist') }));
   }
   await browser.close();
   server.close();

@@ -123,6 +123,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => window.pokecraft.world.hasPortal === true), 'the world knows it has a swirling door (so main.js turns its tile)');
   t.ok(await page.evaluate(() => window.pokecraft.ui.starsShown === '0/7'), 'a Champion sees 7 empty stars on the screen');
   const before = await page.evaluate(sum);
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); // a game frame has seen where we look now
   await page.evaluate(() => { window.__toasts = []; window.pokecraft.interact(true); });
   await swirlOn(page);
   const there = await page.evaluate(() => {
@@ -135,7 +136,7 @@ export default async function ({ browser, base, t }) {
     `using the door takes a Champion to the Swirl: 160 x 160, arrive at 43.5, 80.5, facing east (${JSON.stringify(there)})`);
   t.ok(there.toasts.includes('Whoosh! Welcome to the Swirl!') && !there.toasts.some(m => /Wake Stone|upside-down/i.test(m)), `the welcome toast is the Swirl's own (${there.toasts.join(' | ')})`);
   t.ok(there.stars === '0/7' && there.npcs === 0 && there.homes === 0, `7 empty stars on the screen, no people, no homes (${there.stars}, npcs ${there.npcs})`);
-  t.ok(there.sp === 'swirl' && there.sv?.swirl === 1 && there.sv?.dream === 2, `a save made in the Swirl says so and knows the realm versions (${JSON.stringify(there.sv)})`);
+  t.ok(there.sp === 'swirl' && there.sv?.swirl === 2 && there.sv?.dream === 2, `a save made in the Swirl says so and knows the realm versions (${JSON.stringify(there.sv)})`);
   t.ok(Math.hypot(there.ret[0] - there.pos[0], there.ret[2] - there.pos[2]) < 0.01, 'the saved main position is where the Portal Door sends you back');
   t.ok(/Portal Door home/.test(there.guide), `the guide in the Swirl points at the door home ("${there.guide}")`);
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); document.getElementById('pause').classList.add('hidden'); });
@@ -149,12 +150,14 @@ export default async function ({ browser, base, t }) {
     for (let i = 0; i < 60; i++) { g.realms.update(); g.creatures.update(0.5, p, g.spawnPoint, g.night); }
     const bg = g.scene.background.getHex();
     g.time = 0.75;
-    await new Promise(r => setTimeout(r, 1500));
-    return { place: g.place, list: g.creatures.list.length, clock: document.getElementById('clock').textContent, moon: g.ui.moonShown, kind: g.weather.kindAt('swirl'), bg, bg2: g.scene.background.getHex(), busy: g.realms.busy };
+    window.__toasts = [];
+    await new Promise(r => setTimeout(r, 20000));
+    const shooting = window.__toasts.some(m => /shooting star|Cosmic creatures/i.test(m));
+    return { shooting, place: g.place, list: g.creatures.list.length, clock: document.getElementById('clock').textContent, moon: g.ui.moonShown, kind: g.weather.kindAt('swirl'), bg, bg2: g.scene.background.getHex(), busy: g.realms.busy };
   });
   t.ok(still.place === 'swirl' && !still.busy, 'the morning does not wake you up in the Swirl');
   t.ok(still.list === 0, `no wild creatures (${still.list})`);
-  t.ok(still.clock.includes('✦ Swirl') && still.moon === null && still.kind === 'stars', `the clock says Swirl, no moon, twinkly stars (${still.clock} ${still.moon} ${still.kind})`);
+  t.ok(still.clock.includes('✦ Swirl') && still.moon === null && still.kind === 'clear' && !still.shooting, `the clock says Swirl, no moon, always clear: no shooting-star toast (${still.clock} ${still.moon} ${still.kind})`);
   t.ok(still.bg === still.bg2, 'the sky does not change with the main clock');
 
   // 10. Place a block on the hub, save, reload: still in the Swirl, where you were, block kept.
@@ -166,7 +169,7 @@ export default async function ({ browser, base, t }) {
     g.player.pos.x += 1; g.save();
     return { cell: [x, y + 1, z], id: w.get(x, y + 1, z), pos: g.player.pos.toArray(), top: w.get(x, y, z) };
   });
-  t.ok(placed.id === 8 && placed.top === 127, `you can build on the Swirl Stone of the hub (${JSON.stringify(placed)})`);
+  t.ok(placed.id === 8 && (placed.top === 127 || placed.top === 132), `you can build on the Swirl Stone of the hub (${JSON.stringify(placed)})`);
   await page.reload();
   await page.waitForFunction(() => window.pokecraft?.world);
   await continueGame(page);
@@ -275,7 +278,7 @@ export default async function ({ browser, base, t }) {
     const b = new World(w.seed + 5, null, null, REALMS.swirl.size, REALMS.swirl); b.generate();
     const decks = L.DECKS.map(d => {
       const [x, z] = d.round ? [d.round[0] - 6, d.round[1]] : [d.box[0] + 1, d.box[2] + 1];
-      return w.surface(x, z).y === d.y && w.get(x, d.y, z) === B.SWIRL_STONE;
+      return w.surface(x, z).y === d.y && (w.get(x, d.y, z) === B.SWIRL_STONE || w.get(x, d.y, z) === B.SWIRL_PAINT);
     });
     const sw = w.swirl;
     const frames = sw.frames.map(f => ({ id: f.spot.id, cloth: f.cloth.length, ok: f.cloth.every(([x, y, z]) => w.get(x, y, z) === B.CLOTH) && f.border.every(([x, y, z]) => w.get(x, y, z) !== B.AIR) }));
@@ -302,7 +305,7 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(data.same && data.other, 'the Swirl is the same for every seed, block for block (it is made of tables)');
-  t.ok(data.decks.every(Boolean), `every deck is where DECKS says: Swirl Stone at its height (${data.decks.join()})`);
+  t.ok(data.decks.every(Boolean), `every deck is where DECKS says: Swirl Stone or Paint at its height (${data.decks.join()})`);
   t.ok(data.frames.length === 7 && data.frames.every(f => f.cloth === 25 && f.ok) && data.s3empty, `7 picture frames with cloth inside (5 x 5), the 8th spot waits empty (${data.frames.map(f => f.id).join()})`);
   t.ok(data.bridgeAir && data.bridge === data.n, `the ${data.n} star-bridge stones are air until a star is won`);
   t.ok(data.sealed, "the Wizard's tower has no way in (a flood from inside never gets out)");
@@ -421,6 +424,116 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(wz.used && wz.toast === 'The Wizard is inside, holding the Swirl together. Bring him stars!' && /sealed/.test(wz.prompt), `the Wizard's door: "${wz.toast}" (${wz.prompt})`);
 
+  // ===== T38d: the looks =====
+  // 15. Zones (pure): weights add up to 1, change smoothly, the right zone is the biggest in the right place, palettes are sane, and the
+  // shader's constants are the JS ones.
+  const zn = await Q.evaluate(async () => {
+    const L = await import('/src/swirlland.js'), { swirlTint } = await import('/src/caves.js');
+    let sumErr = 0, maxd = 0;
+    for (let x = 0; x < 160; x++) for (let z = 0; z < 160; z++) {
+      const a = L.zoneWeights(x, z);
+      if (x % 2 === 0 && z % 2 === 0) sumErr = Math.max(sumErr, Math.abs(Object.values(a).reduce((p, v) => p + v, 0) - 1));
+      for (const [dx, dz] of [[1, 0], [0, 1]]) { if (x + dx > 159 || z + dz > 159) continue; const b = L.zoneWeights(x + dx, z + dz); for (const k in a) maxd = Math.max(maxd, Math.abs(a[k] - b[k])); }
+    }
+    const pal = L.PARSED.map(p => ({ id: p.id, rgb: ['top', 'mid', 'fog', 'band', 'blobA', 'blobB', 'lo', 'hi', 'sea'].every(k => p[k].every(v => Number.isFinite(v) && v >= 0 && v <= 1)), lit: p.lit, near: p.fogNear, far: p.fogFar }));
+    const u = swirlTint.uZone.value;
+    return { sumErr, maxd, at: ['hub', 'north', 'south', 'wizard', 'corner'].map((k, i) => L.zoneAt(...[[48, 80], [48, 54], [48, 106], [L.wizardX(7), 80], [4, 4]][i])), pal,
+      haze: swirlTint.uHaze.value === L.HAZE.w && L.HAZE.w === 0.12, zones: L.ZONES.every((z, i) => u[i].x === z.x && u[i].y === z.z && u[i].z === z.r), n: L.ZONES.length };
+  });
+  t.ok(zn.sumErr < 1e-6 && zn.n === 4, `the zone weights add up to 1 (error ${zn.sumErr})`);
+  t.ok(zn.maxd <= 0.12, `neighbouring cells never differ by more than 0.12 in any weight, so moods blend smoothly (${zn.maxd.toFixed(3)})`);
+  t.ok(zn.at.join() === 'sherbet,mist,sundrop,inkwell,haze', `the biggest weight: hub sherbet, north mist, south sundrop, the Wizard's island inkwell, a corner haze (${zn.at.join()})`);
+  t.ok(zn.pal.every(p => p.rgb && p.lit >= 0.6 && p.lit <= 1 && p.near < p.far && p.far >= 80) && zn.pal[0].lit === 1, `every palette parses, brightness 0.6-1 (sherbet 1), fog near < far >= 80 (${zn.pal.map(p => p.id + ' ' + p.lit).join(', ')})`);
+  t.ok(zn.haze && zn.zones, "the shader's haze weight and zone rings are the JS ones");
+
+  // 16. The decor: counts, and everything keeps its distance from the places you can walk.
+  const decor = await Q.evaluate(async () => {
+    const g = window.pokecraft, w = g.world, sw = w.swirl, solid = (x, y, z) => w.isSolid(x, y, z);
+    const start = [43, 21, 80], seen = new Set([start.join()]), q = [start], cells = [];
+    while (q.length) {
+      const [x, y, z] = q.pop(); cells.push([x, y, z]);
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, nz = z + dz;
+        for (let ny = y + 1; ny >= 1; ny--) {
+          if (!solid(nx, ny - 1, nz)) continue;
+          if (solid(nx, ny, nz) || solid(nx, ny + 1, nz) || (ny > y && solid(x, y + 2, z))) break;
+          const k = [nx, ny, nz].join();
+          if (!seen.has(k)) { seen.add(k); q.push([nx, ny, nz]); }
+          break;
+        }
+      }
+    }
+    const high = cells.filter(c => c[1] > 4), d = sw.decor;
+    const near = (p, list) => list.reduce((m, c) => Math.min(m, Math.hypot(p.x - (c[0] + 0.5), p.y - (c[1] + 0.5), p.z - (c[2] + 0.5))), 1e9);
+    const inBox = (p, b) => p.x >= b.x0 && p.x <= b.x1 + 1 && p.y >= b.y0 && p.y <= b.y1 + 1 && p.z >= b.z0 && p.z <= b.z1 + 1;
+    const keepBoxes = w.keeps.flatMap(k => k.protect);
+    const viewBoxes = sw.frames.map(f => ({ ...f.box, z0: f.spot.facing[1] < 0 ? f.box.z0 - 6 : f.box.z0, z1: f.spot.facing[1] > 0 ? f.box.z1 + 6 : f.box.z1 }));
+    const liftBoxes = w.lifts.map(l => ({ x0: l.x[0], x1: l.x[1], z0: l.z[0], z1: l.z[1], y0: l.y[0], y1: l.y[1] }));
+    const doorBox = w.door.box;
+    let puffMin = 1e9, floatMin = 1e9, floatBad = [];
+    for (const p of d.puffs) puffMin = Math.min(puffMin, near(p, high));
+    for (const f of d.floaters) {
+      floatMin = Math.min(floatMin, near(f, high));
+      if (inBox(f, doorBox) || viewBoxes.some(b => inBox(f, b))) floatBad.push(f);
+    }
+    const cellBad = [];
+    const all = [...sw.sculptures.flatMap(s => s.cells.map(c => [s.id, c])), ...sw.lanterns.map(c => ['lantern', c])];
+    for (const [id, c] of all) {
+      const p = { x: c[0] + 0.5, y: c[1] + 0.5, z: c[2] + 0.5 };
+      if (liftBoxes.some(b => inBox(p, b)) || inBox(p, doorBox) || viewBoxes.some(b => inBox(p, b)) || (sw.frames.some(f => inBox(p, f.box))) || seen.has(c.join())) cellBad.push([id, c]);
+    }
+    // a lantern sits right under a solid cell and is itself in the air before it is placed (a Glow Puff now)
+    const lanternOk = sw.lanterns.every(c => w.isSolid(c[0], c[1] + 1, c[2]));
+    const keepsOk = w.keeps.every(k => k.name === 'bridge' || k.name === 'wizard' || !all.some(([, c]) => inBox({ x: c[0] + 0.5, y: c[1] + 0.5, z: c[2] + 0.5 }, k.protect[0])));
+    return { puffs: d.puffs.length, sparks: d.sparks.length, floaters: d.floaters.length, puffMin, floatMin, floatBad: floatBad.length, cellBad: cellBad.slice(0, 3), lanternOk, keepsOk, flood: seen.size,
+      sculptures: sw.sculptures.map(s => s.id + ':' + s.cells.length).join(' '), lanterns: sw.lanterns.length };
+  });
+  t.ok(decor.puffs <= 80 && decor.sparks <= 400 && decor.floaters === 18, `puffs ${decor.puffs} <= 80, sparks ${decor.sparks} <= 400, 18 floating oddities`);
+  t.ok(decor.puffMin >= 10, `every nebula puff is 10+ blocks from every place you can stand above the sea (${decor.puffMin.toFixed(1)})`);
+  t.ok(decor.floatMin >= 5 && decor.floatBad === 0, `every frame and wheel is 5+ blocks from the walkways and outside the door and the frames' view boxes (${decor.floatMin.toFixed(1)}, ${decor.floatBad} bad)`);
+  t.ok(decor.cellBad.length === 0 && decor.lanternOk && decor.keepsOk, `sculptures and lanterns are outside lifts, keeps, frames and the door, off the paths, and each lantern hangs under a solid cell (${JSON.stringify(decor.cellBad)}) ${decor.sculptures}`);
+  t.ok(decor.lanterns === 8 && decor.sculptures.split(' ').length === 6, `8 lanterns, 6 sculptures (${decor.sculptures})`);
+
+  // 17. In the game: the sky follows the zone you stand in; the zone's name shows once; the gradient is on.
+  const info = async (pos, wait = 1200) => {
+    await Q.evaluate(pos => { const g = window.pokecraft, p = g.player; p.keys = {}; p.pos.set(...pos); p.vel.set(0, 0, 0); g.swirlSky.snap(); }, pos);
+    await Q.waitForTimeout(wait);
+    return Q.evaluate(async pos => {
+      const g = window.pokecraft, { caveLight, swirlTint } = await import('/src/caves.js'), L = await import('/src/swirlland.js'), i = g.swirlSky.info();
+      const want = L.zoneMix(pos[0], pos[2], 'fog'), c = g.scene.fog.color, hex = c.getHex(), got = [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
+      return { zone: i.zone, objects: i.objects, tint: swirlTint.uTintOn.value, lit: caveLight.uLit.value, fogErr: Math.max(...want.map((v, k) => Math.abs(v - got[k]))), wLit: L.zoneMix(pos[0], pos[2], 'lit'), near: g.scene.fog.near, bg: g.scene.background.getHex() === hex, sky: i.weights };
+    }, pos);
+  };
+  // (the earlier checks teleported about before any frame ran: start the sky afresh at the arrival, like a real trip)
+  await Q.evaluate(() => { const g = window.pokecraft, p = g.player; p.keys = {}; p.pos.set(43.5, 21, 80.5); p.vel.set(0, 0, 0); g.camera.position.copy(p.eyePos); g.swirlSky.reset(g.world); window.__toasts = []; });
+  await Q.waitForTimeout(1500);
+  t.ok(await Q.evaluate(() => !window.__toasts.some(m => /Sherbet/.test(m))), 'the zone you arrive in is not announced');
+  const arr = await info([43.5, 21, 80.5]);
+  t.ok(arr.zone === 'sherbet' && arr.tint === 1 && arr.lit > 0.95, `at the arrival: Sherbet Sky, the gradient is on, full brightness (${arr.zone} ${arr.lit.toFixed(2)})`);
+  t.ok(arr.objects.dome === 1 && arr.objects.puffs > 0 && arr.objects.puffs <= 80 && arr.objects.sparks > 0 && arr.objects.frames === 12 && arr.objects.wheels === 6, `the sky has a dome, puffs, sparks, 12 frames, 6 wheels (${JSON.stringify(arr.objects)})`);
+  const mist = await info([48.5, 27, 55.5]);
+  t.ok(mist.zone === 'mist' && Math.abs(mist.lit - 0.7) <= 0.05 && Math.abs(mist.lit - mist.wLit) < 0.03 && mist.fogErr < 0.06 && mist.bg && mist.near < 35, `on the north deck: Moonmilk Mist, dim (${mist.lit.toFixed(2)}), the fog colour follows (err ${mist.fogErr.toFixed(3)}, near ${mist.near.toFixed(0)})`);
+  t.ok(await Q.evaluate(() => window.__toasts.filter(m => /Moonmilk Mist/.test(m)).length) === 1, 'a toast names the Moonmilk Mist, once');
+  await info([48.5, 21, 80.5], 800);
+  await info([48.5, 27, 55.5], 800);
+  t.ok(await Q.evaluate(() => window.__toasts.filter(m => /Moonmilk Mist/.test(m)).length) === 1, 'walking back into the mist says nothing again (once per trip)');
+  const sun = await info([48.5, 15, 106.5]);
+  t.ok(sun.zone === 'sundrop' && sun.fogErr < 0.06 && sun.lit > 0.85, `on the south deck: Sundrop Shore (${sun.lit.toFixed(2)}, fog err ${sun.fogErr.toFixed(3)})`);
+  const ink = await info([90.5, 21, 80.5]);
+  t.ok(ink.zone === 'inkwell' && ink.sky.inkwell > 0.3 && ink.fogErr < 0.06, `out on the bridge: Inkwell Deep (weight ${ink.sky.inkwell.toFixed(2)})`);
+  const names = await Q.evaluate(() => window.__toasts.slice());
+  t.ok(['Sundrop Shore', 'Inkwell Deep'].every(n => names.some(m => m.includes(n))), `each zone shows its name (${names.join(' | ')})`);
+
+  // 20. The lift streams change colour.
+  const hue = await Q.evaluate(async () => { const m = window.pokecraft.scene.children.find(o => o.isMesh && o.material?.blending === 2 && o.material.map && o.geometry.type === 'BoxGeometry'); const a = m.material.color.getHex(); await new Promise(r => setTimeout(r, 2500)); return [a, m.material.color.getHex()]; });
+  t.ok(hue[0] !== hue[1], `a lift stream slowly changes pastel colour (${hue[0].toString(16)} -> ${hue[1].toString(16)})`);
+
+  // 21. Draw calls at the arrival facing east (loose: software numbers vary).
+  await Q.evaluate(() => { const p = window.pokecraft.player; p.pos.set(43.5, 21, 80.5); p.vel.set(0, 0, 0); p.lookAt({ x: 90, y: 24, z: 80.5 }); window.pokecraft.swirlSky.snap(); });
+  await Q.waitForTimeout(1500);
+  const calls = await Q.evaluate(() => window.pokecraft.renderer.info.render.calls);
+  t.ok(calls > 0 && calls <= 110, `draw calls at the arrival facing east: ${calls}`);
+
   // Screenshots: the frames, the bridge and the Wizard's tower, a lift, the hub and the stairs.
   const shot = async (name, pos, at) => {
     await Q.evaluate(([pos, at]) => {
@@ -439,8 +552,46 @@ export default async function ({ browser, base, t }) {
   await shot('t38-swirl-wizard.png', [64, 22, 80.5], [112, 34, 80.5]);
   await shot('t38-swirl-stairs.png', [48.5, 27, 80], [48, 27, 62]);
   await Q.evaluate(() => { window.pokecraft.stars = []; });
+  // 22. T38d screenshots (the sky snaps to where you stand first)
+  const shotD = async (name, pos, at, stars = []) => {
+    await Q.evaluate(([pos, at, stars]) => {
+      const g = window.pokecraft, p = g.player; p.keys = {}; g.stars = stars;
+      document.getElementById('toast').replaceChildren();
+      p.pos.set(...pos); p.vel.set(0, 0, 0); p.lookAt({ x: at[0], y: at[1], z: at[2] }); g.swirlSky.snap();
+    }, [pos, at, stars]);
+    await Q.waitForTimeout(2500);
+    await Q.evaluate(() => document.getElementById('toast').replaceChildren());
+    await Q.screenshot({ path: path.join(SHOTS, name) });
+  };
+  await shotD('t38d-arrival.png', [43.5, 21, 80.5], [80, 24, 80.5]);
+  await shotD('t38d-hub-back.png', [50, 21, 80.5], [14, 18, 80.5]);
+  await shotD('t38d-mist.png', [34.5, 27, 55.5], [66, 31, 57]);
+  await shotD('t38d-sundrop.png', [48.5, 15, 106.5], [70, 24, 128]);
+  await shotD('t38d-inkwell.png', [58.5, 21, 80.5], [105, 32, 80.5], ['house']);
+  await shotD('t38d-from-sea.png', [66, 3, 109], [60, 14, 100]);
+  t.ok(Q.errors.length === 0, `no page errors after the looks (${Q.errors.slice(0, 3).join(' | ')})`);
+
+  // 18. Clean-up: back through the door, the Swirl's gradient, sky and fog are gone.
+  await Q.evaluate(() => { window.pokecraft.realms.leave('door'); });
+  await mainOn(Q);
+  const gone = await Q.evaluate(async () => {
+    const g = window.pokecraft, { swirlTint } = await import('/src/caves.js');
+    return { tint: swirlTint.uTintOn.value, left: g.scene.children.filter(o => o.userData.swirlSky).length, info: g.swirlSky.info(), fog: g.swirlSky.fog, bg: g.scene.background.getHex() };
+  });
+  t.ok(gone.tint === 0 && gone.left === 0 && gone.info === null && gone.fog === null, `back in the main world nothing of the Swirl's look is left (${JSON.stringify(gone)})`);
   t.ok(Q.errors.length === 0, `no page errors in the real Swirl (${Q.errors.slice(0, 3).join(' | ')})`);
   await Q.context().close();
+
+  // 19. An old Swirl save (version 1): loads in the Swirl at the arrival, its edit on the hub is gone, the stars are kept.
+  const oldSwirl = { seed: 4242, edits: [], size: [288, 368], pos: [112.5, 30, 112.5], yaw: 0, pitch: 0, time: 0.2, party: [], box: [], cubes: 10, badges: [], beaten: [], champion: true, savedAt: 1,
+    stars: ['house'], place: 'swirl', realmPos: [48.5, 15, 106.5, 0, 0], realmVersions: { swirl: 1 }, realmEdits: { swirl: [[48 + 80 * 160 + 21 * 160 * 160, 9]] } };
+  const P3 = await openGame(browser, base, { setup: seedSave(oldSwirl) });
+  await continueGame(P3);
+  await waitFor(P3, () => window.pokecraft.place === 'swirl' && !window.pokecraft.realms.busy);
+  const os = await P3.evaluate(() => { const g = window.pokecraft, p = g.player.pos; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { realm: g.world.realm?.id, d: Math.hypot(p.x - 43.5, p.z - 80.5), block: g.world.get(48, 21, 80), stars: g.stars.join(), v: s.realmVersions?.swirl, re: JSON.stringify(s.realmEdits?.swirl ?? []) }; });
+  t.ok(os.realm === 'swirl' && os.d < 2 && os.block === 0 && os.stars === 'house' && os.v === 2 && os.re === '[]', `an old Swirl save loads in the new Swirl at the arrival, its edit dropped, the star kept (${JSON.stringify(os)})`);
+  t.ok(P3.errors.length === 0, `no page errors (${P3.errors.slice(0, 3).join(' | ')})`);
+  await P3.context().close();
 
   // 14. iPad: tapping the Portal Door takes you in, and the action button says "Step in!".
   const { devices } = await import('playwright');
@@ -461,6 +612,10 @@ export default async function ({ browser, base, t }) {
   t.ok(await T.evaluate(() => window.pokecraft.place === 'swirl'), 'tapping the Portal Door on an iPad takes a Champion into the Swirl');
   await T.waitForTimeout(1000);
   await T.screenshot({ path: path.join(SHOTS, 't38-swirl-ipad.png') });
+  await T.evaluate(() => { const g = window.pokecraft, p = g.player; p.pos.set(40.5, 27, 55.5); p.vel.set(0, 0, 0); p.lookAt({ x: 62, y: 31, z: 50 }); g.swirlSky.snap(); document.getElementById('toast').replaceChildren(); });
+  await T.waitForTimeout(2500);
+  await T.evaluate(() => document.getElementById('toast').replaceChildren());
+  await T.screenshot({ path: path.join(SHOTS, 't38d-ipad.png') });
   t.ok(T.errors.length === 0, `no page errors on the iPad (${T.errors.slice(0, 3).join(' | ')})`);
   await T.context().close();
 }

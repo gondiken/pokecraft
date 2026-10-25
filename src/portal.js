@@ -176,7 +176,7 @@ function swirlReset(game, world) {
     const w = l.x[1] - l.x[0] + 1, d = l.z[1] - l.z[0] + 1, h = l.y[1] + 1 - l.y[0];
     const map = st.tex.clone();
     map.wrapS = map.wrapT = THREE.RepeatWrapping; map.repeat.set(1, h / 6); map.needsUpdate = true;
-    const mat = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const mat = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     m.position.set(l.x[0] + w / 2, l.y[0] + h / 2, l.z[0] + d / 2);
     m.renderOrder = 5;
@@ -193,7 +193,7 @@ function swirlUpdate(game, dt) {
   if (!st) return;
   const w = game.world;
   st.t += dt;
-  for (const m of st.lifts) m.material.map.offset.y = -(st.t * 0.8) % 1;
+  st.lifts.forEach((m, i) => { m.material.map.offset.y = -(st.t * 0.8) % 1; m.material.color.setHSL((st.t * 0.04 + i / 6) % 1, 0.9, 0.5); }); // T38d: each stream slowly changes pastel colour
   st.acc += dt;
   if (st.acc < 0.25 && st.lit !== null) return;
   st.acc = 0;
