@@ -60,7 +60,7 @@ export default async function ({ browser, base, t }) {
   t.ok(f.toast, 'Kid is told "You followed Dad into the dream!"');
   await waitFor(B, () => [...window.pokecraft.mp.others.values()][0]?.here && [...window.pokecraft.mp.others.values()][0].model.visible);
   await waitFor(A, () => [...window.pokecraft.mp.others.values()][0]?.here);
-  t.ok(await near(B) < 4, `Kid arrives beside Dad (${(await near(B)).toFixed(1)} blocks)`);
+  t.ok(await near(B) < 6, `Kid arrives beside Dad (${(await near(B)).toFixed(1)} blocks)`); // beside = Dad's last spot on the ground + 1.5, 1.5; Dad keeps moving while Kid's world loads (1-2 fps here)
 
   // 3. Blocks across, both ways; fixed blocks stay.
   const c1 = await cellNear(A, 2, 3);
