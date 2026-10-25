@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, openPair, newGame, pause, click, continueGame, waitFor as waitFor0, seedSave, playBattle } from '../helpers.mjs';
-const waitFor = (page, fn, arg, ms = 90000) => waitFor0(page, fn, arg, ms); // the software renderer is slow with several pages open
+const waitFor = (page, fn, arg, ms = 90000) => waitFor0(page, fn, arg, Math.max(ms, 90000)); // the software renderer is slow with several pages open
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const OLD_CHART = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'old-chart.json'), 'utf8'));

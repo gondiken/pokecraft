@@ -145,7 +145,7 @@ export async function continueGame(page) {
 
 // Waits until fn (run in the page, with arg) returns something truthy. Use instead of a fixed sleep:
 // the software renderer is slow and its speed changes with the load.
-export const waitFor = (page, fn, arg, timeout = 30000) => page.waitForFunction(fn, arg, { timeout, polling: 100 });
+export const waitFor = (page, fn, arg, timeout = 90000) => page.waitForFunction(fn, arg, { timeout, polling: 100 });
 
 export class Checks {
   constructor(name) { this.name = name; this.results = []; }
