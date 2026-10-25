@@ -2525,5 +2525,129 @@ SIG.leafwhirl = (k, from, to) => {
   };
 };
 /* ==== end of T37 ninja ==== */
+/* ==== T40c racer ==== */
+// Racer: orange paint, white stripes, dark tyre smoke.
+FX_COLORS.racer = [0xff8a2a, 0xffffff, 0x2a2a34];
+
+// A bright orange streak zips straight at the target with three white speed lines beside it and a tiny chequered flag at the head.
+TRAVEL.racer = k => {
+  const streak = k.mesh('box', { color: 0xff8a2a, glow: true });
+  const lines = k.points({ n: 9, tex: 'streak', size: 0.34, colors: [0xffffff, 0xfff0d0] });
+  const flag = k.sprite('chequer', { color: 0xffffff, size: 0.36 });
+  const yaw = Math.atan2(k.dir.x, k.dir.z);
+  return {
+    dur: 340,
+    step(p) {
+      const t = clamp01(p * 1.15);
+      k.at(t, A, 0.05);
+      const len = 0.9 + 0.5 * Math.sin(Math.PI * t);
+      streak.position.set(A.x - k.dir.x * len / 2, A.y, A.z - k.dir.z * len / 2);
+      streak.scale.set(0.14, 0.14, len);
+      streak.rotation.y = yaw;
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+        const u = clamp01(t - 0.08 * (j + 1)), off = (i - 1) * 0.3;
+        if (t <= 0.02) { lines.hide(i * 3 + j); continue; }
+        k.at(u, B, 0.05);
+        lines.set(i * 3 + j, B.x + k.side.x * off, B.y + (i - 1) * 0.04, B.z + k.side.z * off);
+      }
+      lines.fade(fadeOut(p, 0.7));
+      flag.position.set(A.x, A.y + 0.28, A.z);
+      flag.material.rotation = Math.sin(p * 30) * 0.2;
+      flag.material.opacity = fadeOut(p, 0.85);
+    },
+  };
+};
+
+// A racer hit: a white flash, a ring of grey tyre smoke and two skid marks on the ground that fade (big: two rings).
+IMPACT.racer = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = big ? 12 : 8;
+  const smoke = k.points({ n: N, tex: 'puff', size: 0.5 * m, colors: [0x8a8a92, 0xb0b0b8, 0x4a4a52] });
+  const flash = k.sprite('dot', { color: 0xffffff, size: 0.1, glow: true });
+  const skids = [0, 1].map(() => k.mesh('box', { color: 0x2a2a34, opacity: 0.6 }));
+  const feet = feetOf(to), yaw = Math.atan2(k.dir.x, k.dir.z);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ring = big && i >= N / 2 ? 1 : 0, ang = (i / (N / (ring ? 2 : 1))) * 6.283 + ring * 0.4;
+        const d = (to.r * 0.4 + 0.1 + k.ease(p) * (0.6 + ring * 0.5)) * m;
+        smoke.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.15 + p * 0.35 + ring * 0.1, to.pos.z + Math.sin(ang) * d);
+      }
+      smoke.fade((1 - p) * 0.85);
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 1.1 * m * Math.sin(Math.PI * clamp01(p * 2.2))));
+      flash.material.opacity = fadeOut(p, 0.4);
+      skids.forEach((s, i) => {
+        const o = (i ? 1 : -1) * 0.18;
+        s.position.set(to.pos.x + k.side.x * o, feet + 0.03, to.pos.z + k.side.z * o);
+        s.rotation.y = yaw;
+        s.scale.set(0.1, 0.02, (0.4 + 0.9 * k.ease(clamp01(p * 2))) * m);
+        s.material.opacity = 0.6 * fadeOut(p, 0.5);
+      });
+    },
+  };
+};
+
+// Photo Finish: a camera flash on the target (a big white burst), then a chequered banner waves over it.
+SIG.photofinish = (k, from, to) => {
+  const flash = k.sprite('dot', { color: 0xffffff, size: 0.1, glow: true });
+  const banner = k.sprite('chequer', { color: 0xffffff, size: 0.1 });
+  const bits = k.points({ n: 8, tex: 'chequer', size: 0.26, colors: [0xffffff, 0xff8a2a] });
+  const top = to.top;
+  return {
+    dur: 700,
+    step(p) {
+      const f = clamp01(p / 0.22);
+      flash.position.set(to.pos.x, to.pos.y, to.pos.z);
+      flash.scale.setScalar(Math.max(0.01, (f < 1 ? f : 1) * 3.2 * to.r + 0.4));
+      flash.material.opacity = p < 0.22 ? 1 : fadeOut(p, 0.3) * clamp01((0.4 - p) * 6);
+      const b = clamp01((p - 0.18) / 0.82), sz = Math.min(1, b * 4) * (1.0 + to.r * 0.6);
+      banner.visible = b > 0;
+      banner.position.set(to.pos.x, top + 0.45 + Math.sin(p * 18) * 0.06, to.pos.z);
+      banner.scale.setScalar(Math.max(0.01, sz));
+      banner.material.rotation = Math.sin(p * 14) * 0.3;
+      banner.material.opacity = fadeOut(p, 0.8);
+      for (let i = 0; i < 8; i++) {
+        if (b <= 0) { bits.hide(i); continue; }
+        const ang = (i / 8) * 6.283 + p * 4;
+        bits.set(i, to.pos.x + Math.cos(ang) * (0.4 + b * 0.8), top + 0.2 + b * 0.5 + (i % 3) * 0.1, to.pos.z + Math.sin(ang) * (0.4 + b * 0.8));
+      }
+      bits.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// Nitro Blast: four blue-white rocket flames shoot at the target one after the other, each with a small flash where it lands.
+SIG.nitroblast = (k, from, to) => {
+  const N = 4;
+  const jets = [], cores = [];
+  for (let i = 0; i < N; i++) { jets.push(k.mesh('cone', { color: 0x4ab8ff, glow: true, opacity: 0.9 })); cores.push(k.mesh('cone', { color: 0xffffff, glow: true })); }
+  const sparks = k.sprite('star', { color: 0x9ad8ff, size: 0.1, glow: true });
+  const yaw = Math.atan2(k.dir.x, k.dir.z);
+  return {
+    dur: 800,
+    step(p) {
+      let hit = 0;
+      for (let i = 0; i < N; i++) {
+        const u = clamp01((p - i * 0.17) / 0.34), j = jets[i], c = cores[i];
+        const off = (i % 2 ? 1 : -1) * (0.12 + i * 0.05), lift = 0.1 + i * 0.1;
+        if (u <= 0 || u >= 1) { j.visible = c.visible = false; continue; }
+        j.visible = c.visible = true;
+        k.at(u, A, lift);
+        for (const [m, w, l] of [[j, 0.2, 1.3], [c, 0.1, 1.0]]) {
+          m.position.set(A.x + k.side.x * off - k.dir.x * l / 2, A.y, A.z + k.side.z * off - k.dir.z * l / 2);
+          m.rotation.y = yaw + Math.PI;
+          m.scale.set(w, w, l);
+        }
+        if (u > 0.85) hit = Math.max(hit, (u - 0.85) / 0.15);
+      }
+      sparks.visible = hit > 0 || p > 0.6;
+      sparks.position.copy(to.pos);
+      sparks.scale.setScalar(Math.max(0.01, (0.5 + 0.5 * Math.sin(p * 40)) * 0.9 * (1 + to.r * 0.5) * fadeOut(p, 0.8)));
+      sparks.material.rotation = p * 8;
+    },
+  };
+};
+/* ==== end of T40c racer ==== */
 // T40 base: until T40a-d add their own entries for the wave 14 types, they borrow the normal ones
 for (const t of ['tiny', 'pirate', 'racer']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }

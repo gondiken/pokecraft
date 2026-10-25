@@ -4978,3 +4978,184 @@ function bowlrhino(root, m, parts) {
 const SHAPES_BALL = { ballpup, beachseal, tennischick, bowlrhino };
 Object.assign(SHAPES, SHAPES_BALL);
 /* ==== end of T40d ball shapes ==== */
+/* ==== T40c racer ==== */
+// Racer look: a racing stripe (two thin white boxes along the top, userData.gear = 'stripe') and goggles on a strap
+// (two lenses, userData.gear = 'goggles'), like the Ninja's mask and band. Wheels turn with parts.spin. Every model faces +z.
+const RC_LENS = 0x9ae6ff, RC_STRAP = 0x2a2a34;
+// Two thin white boxes side by side, `len` long (along z), lying on a surface at height y.
+function rcStripe(parent, x, y, z, len, gap = 0.05) {
+  for (const s of [-1, 1]) box(parent, 0.04, 0.02, len, 0xffffff, x + s * gap, y, z).userData.gear = 'stripe';
+}
+// Goggles across a forehead: a strap w wide and two lenses with dark rims, front face at z. `up` pushes them onto the top.
+function rcGoggles(parent, y, z, w, { lens = 0.12, color = RC_STRAP } = {}) {
+  box(parent, w, 0.05, 0.05, color, 0, y, z).userData.gear = 'goggles';
+  for (const s of [-1, 1]) {
+    box(parent, lens + 0.04, lens * 0.9 + 0.04, 0.05, color, s * w * 0.24, y, z + 0.01).userData.gear = 'goggles';
+    glow(box(parent, lens, lens * 0.9, 0.05, RC_LENS, s * w * 0.24, y, z + 0.03), 0x3a7a9a).userData.gear = 'goggles';
+  }
+}
+// A chunky wheel (a cross of boxes and a lighter hub bar so you can see it turn) on a pivot that spins round x.
+function rcWheel(parent, parts, x, y, z, r, thick, dark, hub, speed = 6) {
+  const g = pivot(parent, x, y, z);
+  box(g, thick, r * 2, r * 1.4, dark);
+  box(g, thick, r * 1.4, r * 2, dark);
+  box(g, thick, r * 1.6, r * 1.6, dark).rotation.x = Math.PI / 4;
+  box(g, thick + 0.02, r * 0.4, r * 1.3, hub);
+  box(g, thick + 0.02, r * 1.3, r * 0.4, hub);
+  spin(parts, g, 'x', speed);
+  return g;
+}
+
+// Vroomlet / Vroomster: a chunky toy car with a grinning grille, a windscreen that is its face, four wheels and a wind-up
+// key on the back. Vroomster (`spoiler`) has a big wing at the back.
+function toycar(root, m, parts) {
+  const big = has(m, 'spoiler');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  box(lift, 0.64, 0.22, 1.0, m.body, 0, 0.3, 0); // the body
+  box(lift, 0.66, 0.1, 0.5, m.dark, 0, 0.2, 0.15); // the bumper shadow
+  const cabin = pivot(lift, 0, 0.55, -0.06);
+  parts.head = cabin;
+  box(cabin, 0.5, 0.26, 0.5, m.body, 0, 0, 0);
+  box(cabin, 0.44, 0.2, 0.03, m.belly, 0, 0.01, 0.255); // the windscreen glass
+  eyes(cabin, 0.03, 0.275, 0.1, 0.11);
+  mouth(cabin, -0.05, 0.275, 0.1);
+  rcStripe(lift, 0, 0.415, 0.34, 0.3); // down the bonnet
+  rcStripe(cabin, 0, 0.14, 0, 0.5); // over the roof
+  rcGoggles(cabin, 0.145, 0.11, 0.36, { lens: 0.1 }); // pushed up onto the roof
+  const grin = box(lift, 0.42, 0.09, 0.03, m.dark, 0, 0.26, 0.505); // the grille grin
+  for (let i = -1; i <= 1; i++) box(lift, 0.07, 0.05, 0.035, 0xffffff, i * 0.12, 0.28, 0.51);
+  for (const s of [-1, 1]) glow(box(lift, 0.12, 0.1, 0.04, m.accent === 0xffffff ? 0xffe680 : m.accent, s * 0.22, 0.37, 0.505), 0xffe680); // headlights
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) rcWheel(lift, parts, sx * 0.36, 0.15, sz * 0.32, 0.15, 0.2, m.dark, 0xd8d8e0);
+  // the wind-up key on the back, turning slowly
+  const key = pivot(lift, 0, 0.5, -0.53);
+  spin(parts, key, 'z', 1.6);
+  box(key, 0.04, 0.04, 0.1, 0xc8c8d0, 0, 0, 0.0);
+  box(key, 0.32, 0.07, 0.04, 0xf0c040, 0, 0, -0.07);
+  for (const s of [-1, 1]) box(key, 0.1, 0.12, 0.04, 0xf0c040, s * 0.17, 0, -0.07);
+  if (big) { // a wing on two posts
+    for (const s of [-1, 1]) box(lift, 0.05, 0.3, 0.06, m.dark, s * 0.22, 0.52, -0.46);
+    box(lift, 0.74, 0.05, 0.22, m.accent, 0, 0.68, -0.48);
+    for (const s of [-1, 1]) box(lift, 0.04, 0.12, 0.26, m.body, s * 0.37, 0.68, -0.48);
+  }
+}
+
+// Zipskate / Blastskate: a high-top roller skate standing up. Laces, a cuff, wheels in a line and a rocket on the heel with
+// a flickering flame. Blastskate (`twinrocket`) has two rockets and eight wheels.
+function rocketskate(root, m, parts) {
+  const big = has(m, 'twinrocket');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  box(lift, 0.38, 0.22, 0.72, m.body, 0, 0.33, 0.08); // the foot
+  box(lift, 0.4, 0.24, 0.2, m.belly, 0, 0.33, 0.42); // the toe cap
+  const shaft = pivot(lift, 0, 0.62, -0.1);
+  parts.head = shaft;
+  box(shaft, 0.38, 0.5, 0.36, m.body, 0, 0, 0);
+  box(shaft, 0.44, 0.1, 0.42, m.accent, 0, 0.27, 0); // the cuff
+  box(shaft, 0.3, 0.36, 0.03, m.belly, 0, 0.0, 0.195); // the face panel
+  eyes(shaft, 0.06, 0.215, 0.08, 0.1);
+  mouth(shaft, -0.06, 0.215, 0.12);
+  rcStripe(shaft, 0, 0.325, 0.0, 0.36, 0.08); // over the top of the cuff
+  rcGoggles(shaft, 0.2, 0.2, 0.34, { lens: 0.1 });
+  for (let i = 0; i < 3; i++) box(lift, 0.22, 0.03, 0.05, 0xffffff, 0, 0.455, 0.15 + i * 0.1); // laces on the foot
+  // wheels in a line under the foot (two rows for Blastskate)
+  const rows = big ? [-0.13, 0.13] : [0];
+  for (const x of rows) for (let i = 0; i < 4; i++) rcWheel(lift, parts, x, 0.1, -0.18 + i * 0.18, 0.1, big ? 0.1 : 0.14, m.dark, 0xd8d8e0, 8);
+  // rocket tubes on the heel with flickering flames
+  const tubes = big ? [-0.12, 0.12] : [0];
+  for (const x of tubes) {
+    box(lift, 0.15, 0.15, 0.32, m.dark, x, 0.5, -0.4);
+    box(lift, 0.17, 0.17, 0.06, m.accent, x, 0.5, -0.25);
+    const fl = pivot(lift, x, 0.5, -0.58);
+    swing(parts, fl, 'z', 0.2, 14, x * 9);
+    const f = big ? 1.4 : 1;
+    box(fl, 0.12 * f, 0.12 * f, 0.2 * f, 0xffa24a, 0, 0, -0.1 * f);
+    box(fl, 0.07 * f, 0.07 * f, 0.26 * f, 0xfff0a0, 0, 0, -0.14 * f);
+  }
+}
+
+// Pitpig / Karthog: a round little pig sitting low in a go-kart: a snout with two nostrils, floppy ears, a curly tail,
+// wheels instead of trotters and a small steering wheel. Karthog (`bumper`) has a rubber bumper round the front.
+function kartpig(root, m, parts) {
+  const big = has(m, 'bumper');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  box(lift, 0.74, 0.1, 0.92, m.dark, 0, 0.19, 0); // the kart floor
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) rcWheel(lift, parts, sx * 0.41, 0.16, sz * 0.3, 0.16, 0.2, m.dark, 0xe8e0d0, 5);
+  box(lift, 0.58, 0.4, 0.6, m.body, 0, 0.45, -0.06); // the round body
+  box(lift, 0.46, 0.3, 0.04, m.belly, 0, 0.42, 0.25);
+  rcStripe(lift, 0, 0.66, -0.06, 0.5, 0.06);
+  const head = pivot(lift, 0, 0.62, 0.22);
+  parts.head = head;
+  box(head, 0.52, 0.42, 0.4, m.body, 0, 0.06, 0);
+  box(head, 0.26, 0.18, 0.14, m.belly, 0, -0.04, 0.26); // the snout
+  for (const s of [-1, 1]) box(head, 0.045, 0.06, 0.03, m.dark, s * 0.06, -0.04, 0.34); // nostrils
+  eyes(head, 0.1, 0.205, 0.14, 0.1);
+  rcGoggles(head, 0.2, 0.18, 0.5, { lens: 0.11 }); // on the forehead
+  for (const s of [-1, 1]) { // floppy ears
+    const ear = pivot(head, s * 0.24, 0.24, -0.04);
+    swing(parts, ear, 'z', 0.12, 3, s);
+    const e = pivot(ear, 0, 0, 0);
+    e.rotation.z = s * 0.6;
+    box(e, 0.16, 0.2, 0.06, m.body, s * 0.03, -0.06, 0);
+    box(e, 0.1, 0.12, 0.05, m.belly, s * 0.03, -0.08, 0.01);
+  }
+  // a small steering wheel ring in front of the chest
+  const wheel = pivot(lift, 0, 0.36, 0.38);
+  wheel.rotation.x = -0.6;
+  for (const [x, y, w, h] of [[0, 0.1, 0.22, 0.04], [0, -0.1, 0.22, 0.04], [-0.1, 0, 0.04, 0.22], [0.1, 0, 0.04, 0.22]]) box(wheel, w, h, 0.04, m.accent, x, y, 0);
+  // curly tail
+  const tail = pivot(lift, 0, 0.5, -0.4);
+  swing(parts, tail, 'z', 0.4, 6);
+  box(tail, 0.05, 0.05, 0.1, m.body, 0, 0, -0.04);
+  box(tail, 0.05, 0.1, 0.05, m.body, 0, 0.06, -0.1);
+  box(tail, 0.05, 0.05, 0.1, m.body, 0, 0.11, -0.04);
+  if (big) { // a rubber bumper round the front
+    box(lift, 0.86, 0.1, 0.1, m.accent, 0, 0.2, 0.52);
+    for (const s of [-1, 1]) box(lift, 0.1, 0.1, 0.36, m.accent, s * 0.4, 0.2, 0.36);
+    for (const x of [-0.25, 0, 0.25]) box(lift, 0.06, 0.06, 0.03, 0xffffff, x, 0.2, 0.575);
+  }
+}
+
+// Wheelie: a big standing tyre. The ring (tread notches all round) turns slowly while the face on its light hub stays
+// upright; two little arms wave and a valve sticks up on top.
+function tyre(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const cy = 0.53, R = 0.4, N = 10;
+  const ring = pivot(lift, 0, cy, 0);
+  spin(parts, ring, 'z', 1.2);
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2, seg = pivot(ring, Math.cos(a) * R, Math.sin(a) * R, 0);
+    seg.rotation.z = a;
+    box(seg, 0.2, 0.3, 0.34, i % 2 ? m.dark : 0x2a2a34, 0, 0, 0); // radial x tangential x width
+    box(seg, 0.06, 0.12, 0.38, m.dark, 0.11, 0, 0); // a tread notch
+    if (i % 2 === 0) box(seg, 0.03, 0.08, 0.02, m.accent, -0.1, 0, 0.18); // a coloured dot on the side wall
+  }
+  // the hub with the face (not inside the turning ring)
+  const face = pivot(lift, 0, cy, 0);
+  parts.head = face;
+  box(face, 0.64, 0.5, 0.1, m.belly, 0, 0, 0.07);
+  box(face, 0.5, 0.64, 0.1, m.belly, 0, 0, 0.07);
+  eyes(face, 0.04, 0.13, 0.12, 0.13);
+  mouth(face, -0.12, 0.125, 0.18);
+  for (const s of [-1, 1]) box(face, 0.05, 0.05, 0.03, m.dark, s * 0.11, -0.1, 0.13); // smile corners
+  for (const s of [-1, 1]) box(face, 0.1, 0.06, 0.03, 0xff9aa0, s * 0.22, -0.06, 0.13); // cheeks
+  rcStripe(face, 0, 0.325, 0.07, 0.1, 0.06); // racing stripe over the top of the hub
+  rcGoggles(face, 0.22, 0.125, 0.5, { lens: 0.13 });
+  // little waving arms
+  for (const [s, ph] of [[-1, 0], [1, 1.5]]) {
+    const arm = pivot(lift, s * 0.62, cy - 0.02, 0.05);
+    swing(parts, arm, 'z', 0.5, 5, ph);
+    const a = pivot(arm, 0, 0, 0);
+    a.rotation.z = s * 0.6;
+    box(a, 0.08, 0.26, 0.08, m.dark, 0, 0.1, 0);
+    box(a, 0.12, 0.1, 0.12, m.accent, 0, 0.26, 0);
+  }
+  // the valve on top
+  box(lift, 0.04, 0.18, 0.04, 0xc8c8d0, 0, cy + R + 0.2, 0);
+  box(lift, 0.08, 0.06, 0.08, 0xff4a4a, 0, cy + R + 0.3, 0);
+}
+const SHAPES_RACER = { toycar, rocketskate, kartpig, tyre };
+Object.assign(SHAPES, SHAPES_RACER);
+/* ==== end of T40c racer ==== */

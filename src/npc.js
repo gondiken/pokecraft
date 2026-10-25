@@ -72,6 +72,14 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.06, 0.22, 0.04, 0xc0303a, -0.06, 0.3, -0.3);
     box(head, 0.06, 0.16, 0.04, 0xc0303a, 0.06, 0.28, -0.33);
   }
+  if (look === 'helmet') { // T40c: a round racing helmet in the shirt colour, a light visor over the eyes, a white stripe over the top
+    box(head, 0.6, 0.36, 0.6, c.shirt, 0, 0.4, 0);
+    box(head, 0.5, 0.1, 0.5, c.shirt, 0, 0.62, 0);
+    box(head, 0.5, 0.17, 0.04, 0x7ac8ff, 0, 0.29, 0.31);
+    box(head, 0.5, 0.03, 0.05, 0x2a2a34, 0, 0.39, 0.31);
+    box(head, 0.12, 0.03, 0.62, 0xffffff, 0, 0.68, 0);
+    box(head, 0.12, 0.4, 0.03, 0xffffff, 0, 0.45, -0.31);
+  }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
     box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);

@@ -201,6 +201,13 @@ const SOUNDS = {
   netswish: () => { noise({ freq: 5000, len: 0.25, vol: 0.2, q: 0.8 }); tone(1800, { len: 0.2, type: 'sine', vol: 0.05, slide: -1200 }); },
   whistle: () => { tone(2600, { len: 0.12, type: 'square', vol: 0.07 }); tone(2600, { at: 0.18, len: 0.2, type: 'square', vol: 0.07 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
+  // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
+  'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },
+  racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),
+  racego: () => tone(990, { len: 0.4, type: 'square', vol: 0.16 }),
+  lapbell: () => { bell(1568, 0, 0.35, 0.2); bell(2093, 0.14, 0.4, 0.2); },
+  boostzoom: () => { tone(200, { len: 0.34, type: 'sawtooth', vol: 0.1, slide: 900 }); noise({ freq: 3500, len: 0.3, vol: 0.08, q: 0.7 }); },
+  dashzoom: () => tone(110, { len: 0.2, type: 'sawtooth', vol: 0.06, slide: 120 }),
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
   // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).
   'fx:dream': () => { tone(523, { len: 0.18, type: 'triangle', vol: 0.12, slide: 90 }); tone(528, { len: 0.18, type: 'triangle', vol: 0.1, slide: 70 }); tone(613, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.12, slide: -100 }); tone(618, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.1, slide: -80 }); },

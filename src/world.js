@@ -527,7 +527,7 @@ export class World {
   fenced(x, y, z) { return !!this.fenceAt(x, y, z); }
   // The gym, tower or keep whose protect box holds this cell (riders are fenced out of it; it may have its own `rideText`).
   fenceAt(x, y, z) {
-    const boxes = this.fenceBoxes ??= [...this.gyms, this.tower, ...(this.keeps || [])].flatMap(g => (g?.protect || []).map(b => ({ b, owner: g })));
+    const boxes = this.fenceBoxes ??= [...this.gyms, this.tower, ...(this.keeps || [])].filter(g => !g?.rideIn).flatMap(g => (g?.protect || []).map(b => ({ b, owner: g }))); // T40c: keeps with `rideIn` (the Race Track) are left out: riders may enter, building is still not allowed
     for (const { b, owner } of boxes) if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1) return owner;
     return null;
   }

@@ -42,6 +42,17 @@ Object.assign(GAITS, {
 const PUFF_TIME = 0.6, PUFF_N = 7;
 const PUFF_GEO = new THREE.BoxGeometry(0.28, 0.28, 0.28);
 /* ==== end of T37 ninja ==== */
+/* ==== T40c racer ==== */
+// 'dash' (Racer): it sits still watching you. Come within `notice` and it revs (shakes for `rev` s), then zooms away from you in a
+// straight line (`dists` blocks tried in order, at `speed` blocks/s: faster than you can sprint), stops and looks back. After
+// `tiredAfter` dashes (or when it has no straight way out) it is out of breath for `tired` s: walk into it to battle. The line
+// is checked cell by cell (never into water, a gym, a wall or off a ledge; no squeezing through a diagonal gap) and the dash is
+// closed form, so any frame rate lands on the same cell. No Math.random: the way out is chosen from fixed angles.
+Object.assign(GAITS, {
+  dash: { notice: 7, noticeUp: 4, rev: 0.3, dists: [9, 7, 5], speed: 13, pause: 0.5, tiredAfter: 3, tired: 9,
+    up: 1, down: 1, drop: 2, leash: 20, angles: [0, 25, -25, 50, -50, 80, -80, 120, -120], bump: true },
+});
+/* ==== end of T40c racer ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -427,6 +438,7 @@ export class CreatureManager {
       w.model.rotation.y = w.heading;
       if (sp.gait) w.model.scale.set(1, 1, 1); // T36: no panting in a battle
       if (w.blink) this.endBlink(w); // T37: never stuck invisible
+      if (w.dash) { w.dash = null; w.model.rotation.x = 0; } // T40c: a dash ends when the battle starts
       return;
     }
     if (sp.gait) return this.updateGait(w, dt); // T36
@@ -511,6 +523,7 @@ export class CreatureManager {
   // A creature with a gait (species.gait): it stands on leaves, roofs and pillars, so it uses no ground lookups.
   updateGait(w, dt) {
     if (w.species.gait === 'blink') return this.updateBlink(w, dt); // T37
+    if (w.species.gait === 'dash') return this.updateDash(w, dt); // T40c
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -663,14 +676,14 @@ export class CreatureManager {
   }
 
   // A small puff of smoke: PUFF_N grey cubes that swell, drift up and fade in PUFF_TIME s (closed form, no random).
-  puff(at) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xd8d4e4, transparent: true, depthWrite: false });
+  puff(at, { color = 0xd8d4e4, sound: snd = 'smokepuff' } = {}) { // T40c: optional colour and sound (null = silent)
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false });
     const g = new THREE.Group();
     for (let i = 0; i < PUFF_N; i++) g.add(new THREE.Mesh(PUFF_GEO, mat));
     g.position.set(at.x, at.y, at.z);
     this.scene.add(g);
     this.puffs.push({ g, mat, t: 0 });
-    if (this.viewer && Math.hypot(this.viewer.x - at.x, this.viewer.z - at.z) < 20) sound.play('smokepuff');
+    if (this.viewer && Math.hypot(this.viewer.x - at.x, this.viewer.z - at.z) < 20 && snd) sound.play(snd);
   }
 
   updatePuffs(dt) {
@@ -693,6 +706,120 @@ export class CreatureManager {
     this.puffs = [];
   }
   /* ==== end of T37 ninja ==== */
+
+  /* ==== T40c racer ==== */
+  // The straight line a dash takes: an array of cell centres { x, y, z } (one per cell crossed) or null when any step is not
+  // valid. From the creature's cell, direction (ax, az) (unit), `dist` steps. Each column: a standing y within g.down / g.up of the
+  // last one (and g.drop below / g.up above where it started: never off a ledge), air for body and head, solid below, no water, inside the map, not fenced.
+  dashLine(g, w, ax, az, dist) {
+    const world = this.world, y0 = Math.round(w.pos.y);
+    const sx = Math.floor(w.pos.x) + 0.5, sz = Math.floor(w.pos.z) + 0.5;
+    let px = Math.floor(w.pos.x), pz = Math.floor(w.pos.z), py = y0;
+    const cells = [];
+    for (let i = 1; i <= dist; i++) {
+      const cx = Math.floor(sx + ax * i), cz = Math.floor(sz + az * i);
+      if (cx === px && cz === pz) continue;
+      if (cx < 1 || cz < 1 || cx >= world.W - 1 || cz >= world.D - 1) return null;
+      let y = null;
+      for (let yy = Math.min(py + g.up, WORLD_H - 3); yy >= Math.max(1, py - g.down); yy--) {
+        if (yy > y0 + g.up || yy < y0 - g.drop) continue;
+        const here = world.get(cx, yy, cz), below = world.get(cx, yy - 1, cz);
+        if (here === B.WATER || below === B.WATER) return null;
+        if (here !== B.AIR || world.get(cx, yy + 1, cz) !== B.AIR || !isSolid(below)) continue;
+        y = yy; break;
+      }
+      if (y === null || world.fenced(cx, y, cz)) return null;
+      if (cx !== px && cz !== pz) { // a diagonal step: one of the two cells beside it must be free, or it would squeeze through a gap
+        const top = Math.max(py, y), free = (x, z) => world.get(x, top, z) === B.AIR && world.get(x, top + 1, z) === B.AIR;
+        if (!free(px, cz) && !free(cx, pz)) return null;
+      }
+      cells.push({ x: cx + 0.5, y, z: cz + 0.5 });
+      px = cx; pz = cz; py = y;
+    }
+    return cells.length ? cells : null;
+  }
+
+  // The way out: { cells, to } straight away from the player (angles mirrored every other dash), the first whole line that ends
+  // inside the leash and at least 2 blocks further from the player than the creature is now. Null = cornered.
+  chooseDash(w, g, p) {
+    let ax = w.pos.x - p.x, az = w.pos.z - p.z;
+    const len = Math.hypot(ax, az);
+    if (len < 0.01) { ax = Math.sin(w.heading); az = Math.cos(w.heading); } else { ax /= len; az /= len; }
+    const here = Math.hypot(p.x - w.pos.x, p.z - w.pos.z), flip = w.hops % 2 ? -1 : 1;
+    for (const deg of g.angles) {
+      const r = flip * deg * Math.PI / 180, dx = ax * Math.cos(r) - az * Math.sin(r), dz = ax * Math.sin(r) + az * Math.cos(r);
+      for (const dist of g.dists) {
+        const cells = this.dashLine(g, w, dx, dz, dist);
+        if (!cells) continue;
+        const to = cells[cells.length - 1];
+        if (Math.hypot(to.x - w.home.x, to.z - w.home.z) > g.leash) continue;
+        if (Math.hypot(p.x - to.x, p.z - to.z) < here + 2) continue;
+        return { cells, to };
+      }
+    }
+    return null;
+  }
+
+  // The Racer walk. w.dash = { phase: 'rev' | 'go', t, from, cells, to, yaw }.
+  updateDash(w, dt) {
+    const g = GAITS.dash, p = this.viewer, model = w.model;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
+    let moving = false, panting = false, jitter = 0;
+    const turn = (to, rate) => { let d = to - w.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * rate); };
+    const d = w.dash;
+    if (d) {
+      d.t += dt;
+      if (d.phase === 'rev') { // shaking on the spot, turning to the way out
+        turn(d.yaw, 12);
+        jitter = Math.sin(w.t * 60) * 0.03;
+        if (d.t >= g.rev) {
+          d.phase = 'go'; d.t -= g.rev; w.heading = d.yaw;
+          model.rotation.order = 'YXZ';
+          this.puff(w.pos, { color: 0xe6d6ac, sound: null });
+          const now = performance.now();
+          if (p && dist < 20 && now - (this.zoomAt || 0) > 300) { this.zoomAt = now; sound.play('dashzoom'); }
+        }
+      }
+      if (d.phase === 'go') {
+        const pts = [d.from, ...d.cells], n = d.cells.length;
+        const k = Math.min(1, d.t / (n / g.speed)), e = 1 - (1 - k) * (1 - k), sc = e * n;
+        const i = Math.min(n - 1, Math.floor(sc)), f = sc - i, a = pts[i], b = pts[i + 1];
+        w.pos.set(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, a.z + (b.z - a.z) * f);
+        moving = true;
+        model.rotation.x = -0.2 * (1 - e); // leaning forward into the zoom
+        if (k >= 1) {
+          w.pos.set(d.to.x, d.to.y, d.to.z);
+          w.dash = null; model.rotation.x = 0; moving = false;
+          w.pause = g.pause;
+          if (++w.hops >= g.tiredAfter) this.getTired(w, g, dist);
+        }
+      }
+    } else if (w.tired > 0) {
+      w.tired -= dt;
+      panting = true;
+      if (w.tired <= 0) { w.tired = 0; w.hops = 0; panting = false; }
+    } else if (p) {
+      w.pause = Math.max(0, w.pause - dt);
+      const near = dist <= g.notice && Math.abs(p.y - w.pos.y) <= g.noticeUp;
+      if (near) {
+        if (w.pause > 0) turn(Math.atan2(dx, dz), 6); // it looks back at you between dashes
+        else {
+          const way = this.chooseDash(w, g, p);
+          if (!way) this.getTired(w, g, dist); // cornered: it gives up
+          else w.dash = { phase: 'rev', t: 0, from: w.pos.clone(), cells: way.cells, to: way.to, yaw: Math.atan2(way.cells[0].x - w.pos.x, way.cells[0].z - w.pos.z) };
+        }
+      } else if (dist < g.notice * 3) turn(Math.atan2(dx, dz), 2); // idle: slowly turns to look at you
+    }
+    if (panting) {
+      const s = Math.abs(Math.sin(w.t * 10));
+      model.scale.set(1 + 0.03 * s, 1 - 0.06 * s, 1 + 0.03 * s);
+    } else if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    model.position.copy(w.pos);
+    model.position.x += jitter;
+    model.rotation.y = w.heading;
+    animateModel(model, w.t, moving);
+  }
+  /* ==== end of T40c racer ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

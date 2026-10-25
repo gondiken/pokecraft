@@ -62,6 +62,8 @@ const MORE_TILES = [
   'PICTURE', 'WAY_BACK', 'BOSS_STAND_TOP', 'BOSS_STAND_SIDE',
   // T40d Ball Stadium: pitch stripes, chalk line, goal post, net, court floor and line, hoop, backboard, stadium seat (top / side)
   'PITCH_LIGHT', 'PITCH_DARK', 'PITCH_LINE', 'GOAL_POST', 'GOAL_NET', 'COURT_FLOOR', 'COURT_LINE', 'HOOP_RIM', 'BACKBOARD', 'SEAT_TOP', 'SEAT_SIDE',
+  // T40c Race Track: asphalt, white line, chequer, kerb, boost pad (2), start light (3), tyre wall (2)
+  'ASPHALT', 'TRACK_LINE', 'CHECKER', 'KERB', 'BOOST_PAD', 'BOOST_PAD_LIT', 'START_LIGHT', 'START_RED', 'START_GREEN', 'TYRE_SIDE', 'TYRE_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -110,6 +112,8 @@ export const B = {
   PICTURE: 144, WAY_BACK: 145, BOSS_STAND: 146,
   // 194-203: T40d, the Ball Stadium in Playland (none placeable, all fixed)
   PITCH_LIGHT: 194, PITCH_DARK: 195, PITCH_LINE: 196, GOAL_POST: 197, GOAL_NET: 198, COURT_FLOOR: 199, COURT_LINE: 200, HOOP_RIM: 201, BACKBOARD: 202, STAND_SEAT: 203,
+  // 184-193: T40c, the Race Track (none placeable). BOOST_PAD_LIT, START_RED and START_GREEN are drawn only with setLive.
+  ASPHALT: 184, TRACK_LINE: 185, CHECKER: 186, KERB: 187, BOOST_PAD: 188, BOOST_PAD_LIT: 189, START_LIGHT: 190, START_RED: 191, START_GREEN: 192, TYRE_WALL: 193,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -260,6 +264,17 @@ BLOCKS[B.BOSS_STAND] = { name: 'Boss Stand', top: T.BOSS_STAND_TOP, side: T.BOSS
   BLOCKS[B.BACKBOARD] = { name: 'Backboard', ...all(T.BACKBOARD), fixed: true, wallText: HOOPS };
   BLOCKS[B.STAND_SEAT] = { name: 'Stadium Seat', top: T.SEAT_TOP, side: T.SEAT_SIDE, bottom: T.SEAT_SIDE, fixed: true, wallText: 'The stands. Go down onto the pitch!' };
 }
+// T40c Race Track: all fixed (nobody breaks or replaces them), none placeable. The lit pads and lamps glow without lighting anything.
+BLOCKS[B.ASPHALT] = { name: 'Asphalt', ...all(T.ASPHALT), fixed: true, wallText: "That's the race track. Too tough to dig!" };
+BLOCKS[B.TRACK_LINE] = { name: 'Track Line', top: T.TRACK_LINE, side: T.ASPHALT, bottom: T.ASPHALT, fixed: true, wallText: "That's the race track. Too tough to dig!" };
+BLOCKS[B.CHECKER] = { name: 'Chequer', ...all(T.CHECKER), fixed: true, wallText: 'The start and finish line. Too tough to dig!' };
+BLOCKS[B.KERB] = { name: 'Kerb', top: T.KERB, side: T.ASPHALT, bottom: T.ASPHALT, fixed: true, wallText: "That's the race track. Too tough to dig!" };
+BLOCKS[B.BOOST_PAD] = { name: 'Boost Pad', top: T.BOOST_PAD, side: T.ASPHALT, bottom: T.ASPHALT, glow: true, noLight: true, fixed: true, wallText: 'A boost pad! Run over it. Zoom!' };
+BLOCKS[B.BOOST_PAD_LIT] = { name: 'Boost Pad', top: T.BOOST_PAD_LIT, side: T.ASPHALT, bottom: T.ASPHALT, glow: true, noLight: true, fixed: true, wallText: 'A boost pad! Run over it. Zoom!' };
+BLOCKS[B.START_LIGHT] = { name: 'Start Light', ...all(T.START_LIGHT), fixed: true, wallText: 'The start lights. Wait for green!' };
+BLOCKS[B.START_RED] = { name: 'Start Light', ...all(T.START_RED), glow: true, noLight: true, fixed: true, wallText: 'The start lights. Wait for green!' };
+BLOCKS[B.START_GREEN] = { name: 'Start Light', ...all(T.START_GREEN), glow: true, noLight: true, fixed: true, wallText: 'The start lights. Wait for green!' };
+BLOCKS[B.TYRE_WALL] = { name: 'Tyre Wall', top: T.TYRE_TOP, side: T.TYRE_SIDE, bottom: T.TYRE_TOP, fixed: true, wallText: 'Bouncy tyres keep racers on the track.' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -769,6 +784,26 @@ export function drawAtlas() {
       const seat = (x % 8 < 6) && (y % 8 < 6);
       put(T.SEAT_TOP, x, y, seat ? shade([50, 110, 230], 1 + (r9() - 0.5) * 0.06) : [28, 56, 130]);
       put(T.SEAT_SIDE, x, y, y < 10 ? (y === 9 ? [24, 50, 120] : shade([50, 108, 224], 1 + (r9() - 0.5) * 0.06)) : shade([156, 160, 168], 1 + (r9() - 0.5) * 0.08)); // a blue seat back over grey concrete
+  { // T40c Race Track tiles (own random numbers): dark grain, a white edge line, a 4 x 4 chequer, red and white kerb, chevron boost pads, lamps, stacked tyres
+    const r9 = mulberry32(4141);
+    const grain = (x, y, base = [58, 60, 68], a = 0.12) => shade(base, 1 + (r9() - 0.5) * a + (r9() < 0.06 ? -0.12 : 0));
+    each((x, y) => {
+      put(T.ASPHALT, x, y, grain(x, y));
+      put(T.TRACK_LINE, x, y, y < 3 ? [244, 244, 240] : y === 3 ? [120, 122, 130] : grain(x, y));
+      put(T.CHECKER, x, y, ((x >> 2) + (y >> 2)) % 2 ? [24, 24, 30] : [244, 244, 240]);
+      put(T.KERB, x, y, (x >> 2) % 2 ? [230, 50, 50] : [244, 244, 240]);
+      const chev = (yy, lit) => { const k = ((y + Math.abs(x - 7.5) * 1.1) % 6); return k < 2.2 ? (lit ? [255, 245, 90] : [255, 150, 30]) : (lit ? [110, 90, 30] : [44, 40, 50]); };
+      put(T.BOOST_PAD, x, y, x === 0 || x === 15 ? [255, 190, 60] : chev(y, false));
+      put(T.BOOST_PAD_LIT, x, y, x === 0 || x === 15 ? [255, 255, 160] : chev(y, true));
+      const d = Math.hypot(x - 7.5, y - 7.5), lamp = d < 4.2;
+      put(T.START_LIGHT, x, y, lamp ? [58, 40, 44] : [30, 30, 36]);
+      put(T.START_RED, x, y, lamp ? (d < 2 ? [255, 210, 200] : [255, 50, 40]) : [30, 30, 36]);
+      put(T.START_GREEN, x, y, lamp ? (d < 2 ? [210, 255, 215] : [40, 230, 80]) : [30, 30, 36]);
+      const row = y >> 2, tx = (x + (row % 2) * 4) % 8; // stacked black tyres, a white ring on each
+      const ring = Math.abs(Math.hypot((tx - 3.5) / 1.0, ((y % 4) - 1.5) * 1.6) - 3.2) < 0.7;
+      put(T.TYRE_SIDE, x, y, y % 4 === 3 ? [10, 10, 14] : ring ? [236, 236, 232] : grain(x, y, [34, 34, 40], 0.25));
+      const td = Math.hypot(x - 7.5, y - 7.5);
+      put(T.TYRE_TOP, x, y, td < 2.5 ? [14, 14, 18] : td > 4.4 && td < 5.4 ? [236, 236, 232] : td > 7.4 ? [14, 14, 18] : grain(x, y, [38, 38, 44], 0.25));
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
