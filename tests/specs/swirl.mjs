@@ -142,7 +142,7 @@ export default async function ({ browser, base, t }) {
   t.ok(there.stars === '0/12' && there.npcs === 0 && there.homes === 0, `12 empty stars on the screen, no people, no homes (${there.stars}, npcs ${there.npcs})`);
   t.ok(there.sp === 'swirl' && there.sv?.swirl === 3 && there.sv?.dream === 2, `a save made in the Swirl says so and knows the realm versions (${JSON.stringify(there.sv)})`);
   t.ok(Math.hypot(there.ret[0] - there.pos[0], there.ret[2] - there.pos[2]) < 0.01, 'the saved main position is where the Portal Door sends you back');
-  t.ok(/Portal Door home/.test(there.guide), `the guide in the Swirl points at the door home ("${there.guide}")`);
+  t.ok(/Portal Door home|Giant House/.test(there.guide), `the guide in the Swirl points at the door home ("${there.guide}")`);
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); document.getElementById('pause').classList.add('hidden'); });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(SHOTS, 't38-swirl-arrival.png') });
@@ -424,7 +424,7 @@ export default async function ({ browser, base, t }) {
     p.pos.set(100.5, 1, 140.5); g.updateGuide();
     return { hub, sea: document.getElementById('guide').textContent, target: g.guideTarget };
   });
-  t.ok(/Portal Door home/.test(guide.hub), `on the hub the guide points at the door home ("${guide.hub}")`);
+  t.ok(/Portal Door home|Giant House/.test(guide.hub), `on the hub the guide points at the door home ("${guide.hub}")`);
   t.ok(/Ride the river up!/.test(guide.sea), `on the cloud sea it points at the nearest lift ("${guide.sea}")`);
 
   // The Wizard's tower: using it says why it is shut.

@@ -60,6 +60,8 @@ export const CONDITIONS = {
     place: c => c.perch(),
     text: 'up high: on treetops, roofs and tall pillars',
     toast: 'Look up! A sporty creature is on a high spot nearby.' },
+  nook: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, // T40a: Tiny creatures hide in small places
+    text: 'hiding in tiny places: in cups, flowers and under leaves' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,

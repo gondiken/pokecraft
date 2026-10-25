@@ -5159,3 +5159,211 @@ function tyre(root, m, parts) {
 const SHAPES_RACER = { toycar, rocketskate, kartpig, tyre };
 Object.assign(SHAPES, SHAPES_RACER);
 /* ==== end of T40c racer ==== */
+/* ==== T40a tiny ==== */
+// Tiny look: small, with big round shiny eyes (a white glint up-left). The four Tiny families: an ant carrying a crumb
+// (Antsy / Antlas), a mouse in a thimble (Thimbit / Spoolmouse), a dust bunny (Dustbun / Fluffnado) and a seed that
+// squeaks (Pipsqueak). Nothing here uses Math.random: the fluff sits at fixed spots.
+// Two big round eyes at +-x: a dark box with a white glint. `r` is their size.
+export function tnEyes(g, x, y, z, r = 0.17, color = 0x16121a) {
+  for (const s of [-1, 1]) {
+    box(g, r, r * 1.1, 0.05, color, s * x, y, z).userData.eye = true;
+    box(g, r * 0.42, r * 0.42, 0.04, 0xffffff, s * x - r * 0.18, y + r * 0.2, z + 0.03).userData.eye = true;
+    box(g, r * 0.2, r * 0.2, 0.04, 0xffffff, s * x + r * 0.2, y - r * 0.25, z + 0.03).userData.eye = true;
+  }
+}
+// An unlit square (the sparkles on a sugar cube).
+function tnShine(parent, w, color, x, y, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, w, 0.03), new THREE.MeshBasicMaterial({ color }));
+  m.position.set(x, y, z);
+  parent.add(m);
+  return m;
+}
+
+// Antsy / Antlas: three round segments in a row (head, small middle, big back), six thin legs, bent antennae with ball
+// tips, and a crumb held over the head by the two front legs. Antlas (`sugarcube`) holds a big white sugar cube.
+function ant(root, m, parts) {
+  const big = has(m, 'sugarcube');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const hy = 0.42;
+  box(lift, 0.4, 0.34, 0.5, m.body, 0, hy, -0.36); // the big back segment
+  box(lift, 0.3, 0.1, 0.4, m.belly, 0, hy - 0.2, -0.36);
+  box(lift, 0.22, 0.2, 0.2, m.body, 0, hy + 0.02, 0.0); // the small middle
+  const hs = big ? 0.42 : 0.36;
+  const head = pivot(lift, 0, hy + 0.04, 0.3);
+  parts.head = head;
+  box(head, hs, hs * 0.92, hs, m.body, 0, 0, 0);
+  tnEyes(head, hs * 0.26, 0.04, hs / 2 + 0.005, big ? 0.17 : 0.16);
+  box(head, 0.12, 0.03, 0.03, m.dark, 0, -0.11, hs / 2 + 0.01); // a tiny smile
+  for (const [s, ph] of [[-1, 0], [1, 1.9]]) { // antennae: up, then bent forward, with a ball tip
+    const a = pivot(head, s * 0.1, hs * 0.46, 0.04);
+    a.rotation.z = -s * 0.15;
+    swing(parts, a, 'x', 0.18, 2.6, ph);
+    box(a, 0.035, 0.22, 0.035, m.dark, 0, 0.11, 0);
+    const b = pivot(a, 0, 0.22, 0);
+    b.rotation.x = 0.9;
+    box(b, 0.035, 0.035, 0.18, m.dark, 0, 0, 0.09);
+    box(b, 0.08, 0.08, 0.08, m.accent, 0, 0, 0.2);
+  }
+  parts.legs = [];
+  const ll = big ? 0.4 : 0.36, th = big ? 0.06 : 0.045;
+  for (const [sx, z, phase] of [[-1, 0.05, 0], [1, 0.05, Math.PI], [-1, -0.2, Math.PI], [1, -0.2, 0], [-1, -0.45, 0], [1, -0.45, Math.PI]]) {
+    const leg = pivot(lift, sx * 0.12, hy - 0.06, z);
+    leg.rotation.z = sx * 0.55;
+    box(leg, th, ll, th, m.dark, 0, -ll / 2, 0);
+    box(leg, th * 1.6, 0.04, th * 2.2, m.dark, 0, -ll, 0.02);
+    parts.legs.push({ g: leg, phase });
+  }
+  // the held load: two raised front arms, the crumb (or sugar cube) on top
+  const cs = big ? 0.46 : 0.26, cy = hy + 0.04 + hs / 2 + cs / 2 + 0.16;
+  for (const s of [-1, 1]) {
+    const arm = box(lift, th, 0.4, th, m.dark, s * (cs / 2 - 0.03), hy + 0.3, 0.3);
+    arm.rotation.z = -s * 0.12;
+  }
+  const load = pivot(lift, 0, cy, 0.3);
+  swing(parts, load, 'z', 0.05, 2, 0.5);
+  if (big) {
+    box(load, cs, cs, cs, 0xffffff, 0, 0, 0);
+    box(load, cs + 0.02, 0.05, cs + 0.02, 0xdfe8f4, 0, -cs / 2 + 0.07, 0); // faint shaded layers
+    box(load, cs + 0.02, 0.05, cs + 0.02, 0xdfe8f4, 0, 0.02, 0);
+    for (const [x, y, w] of [[-0.1, 0.1, 0.07], [0.1, -0.05, 0.05], [0.0, -0.14, 0.06]]) tnShine(load, w, 0xffffcc, x, y, cs / 2 + 0.018);
+  } else {
+    box(load, cs, cs * 0.8, cs, m.accent, 0, 0, 0);
+    box(load, cs * 0.5, cs * 0.3, cs * 0.5, 0xc08a50, cs * 0.18, cs * 0.28, cs * 0.18); // a crumb on the crumb
+    for (const [x, y] of [[-0.06, 0.02], [0.05, -0.04], [0.02, 0.07]]) box(load, 0.04, 0.04, 0.03, 0x7a4a2a, x, y, cs / 2 + 0.005); // chocolate bits
+  }
+}
+
+// Thimbit / Spoolmouse: a round grey mouse. Thimbit sits in a silver thimble (8 boxes in a ring, dark dimples) and a curly
+// tail hangs over the rim. Spoolmouse (`spool`) stands on a rolling cotton spool and holds a sewing pin like a lance.
+function thimblemouse(root, m, parts) {
+  const spool = has(m, 'spool');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const base = spool ? 0.66 : 0.3; // the height of the mouse's seat
+  if (spool) {
+    const wheel = pivot(lift, 0, 0.33, 0);
+    spin(parts, wheel, 'x', 1.6);
+    for (const s of [-1, 1]) {
+      box(wheel, 0.06, 0.46, 0.46, 0xb08050, s * 0.22, 0, 0); // the two wooden discs
+      box(wheel, 0.07, 0.3, 0.3, 0x9a6a3a, s * 0.22, 0, 0);
+    }
+    box(wheel, 0.38, 0.3, 0.3, m.accent, 0, 0, 0); // the thread
+    for (let k = -1; k <= 1; k++) box(wheel, 0.06, 0.32, 0.32, 0xffa0b8, k * 0.1, 0, 0);
+    box(wheel, 0.4, 0.04, 0.04, 0xffffff, 0, 0.16, 0.12);
+  } else {
+    for (let k = 0; k < 8; k++) { // the thimble: 8 flat boxes in a ring
+      const a = (k * Math.PI) / 4, g = pivot(lift, Math.sin(a) * 0.23, 0.17, Math.cos(a) * 0.23);
+      g.rotation.y = a;
+      box(g, 0.2, 0.34, 0.05, m.accent, 0, 0, 0);
+      box(g, 0.05, 0.05, 0.02, 0x7a8090, -0.04, 0.06, 0.03);
+      box(g, 0.05, 0.05, 0.02, 0x7a8090, 0.05, -0.05, 0.03);
+    }
+    box(lift, 0.5, 0.05, 0.5, 0x9ea4b4, 0, 0.025, 0); // the closed top (seen as the bottom)
+    box(lift, 0.56, 0.05, 0.56, 0xeef0f6, 0, 0.32, 0); // the rim
+  }
+  box(lift, 0.4, 0.3, 0.4, m.body, 0, base + 0.02, -0.02); // the round body
+  box(lift, 0.3, 0.2, 0.04, m.belly, 0, base - 0.02, 0.2);
+  const head = pivot(lift, 0, base + 0.26, 0.1);
+  parts.head = head;
+  box(head, 0.34, 0.3, 0.32, m.body, 0, 0, 0);
+  box(head, 0.18, 0.13, 0.16, m.body, 0, -0.07, 0.2); // the snout
+  box(head, 0.07, 0.06, 0.05, 0xf08aa0, 0, -0.03, 0.29); // pink nose
+  tnEyes(head, 0.1, 0.05, 0.165, 0.15);
+  for (const s of [-1, 1]) {
+    for (let w = 0; w < 2; w++) { // whiskers
+      const wh = box(head, 0.2, 0.012, 0.012, 0xffffff, s * 0.17, -0.08 - w * 0.03, 0.22);
+      wh.rotation.z = s * (0.15 - w * 0.3);
+    }
+    box(head, 0.17, 0.17, 0.05, m.body, s * 0.16, 0.22, -0.02); // big round ears
+    box(head, 0.11, 0.11, 0.03, m.belly, s * 0.16, 0.22, 0.015);
+  }
+  if (spool) { // the sewing pin: a long thin silver lance with a round head
+    const pin = pivot(lift, 0.2, base + 0.1, 0.1);
+    pin.rotation.x = -0.3;
+    swing(parts, pin, 'z', 0.05, 2.2);
+    box(pin, 0.03, 0.03, 0.9, 0xdde2ec, 0, 0, 0.35);
+    box(pin, 0.09, 0.09, 0.09, 0xff6a8a, 0, 0, -0.1);
+    box(pin, 0.04, 0.04, 0.12, 0xffffff, 0, 0, 0.84);
+  }
+  const tail = pivot(lift, 0, base - 0.02, -0.22); // a long curly tail
+  swing(parts, tail, 'x', 0.18, 2.4);
+  box(tail, 0.05, 0.05, 0.2, m.belly, 0, 0, -0.1);
+  box(tail, 0.05, 0.2, 0.05, m.belly, 0, 0.1, -0.2);
+  box(tail, 0.05, 0.05, 0.14, m.belly, 0, 0.2, -0.14);
+  if (!spool) tail.position.set(0, 0.34, -0.26);
+}
+
+// Dustbun / Fluffnado: a fuzzy ball of 14 small grey cubes round a core (fixed spots), two long floppy ears, big eyes, a pink
+// nose, and four loose bits of fluff that bob about. Fluffnado (`whirl`) floats on a cone of four spinning fluff rings.
+function dustbunny(root, m, parts) {
+  const whirl = has(m, 'whirl');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const cy = whirl ? 0.74 : 0.4;
+  if (whirl) {
+    [[0.78, 0.3, 3.4], [0.6, 0.2, -4.4], [0.42, 0.12, 5.6], [0.26, 0.05, -7]].forEach(([w, y, sp], i) => {
+      const r = pivot(lift, 0, y, 0);
+      spin(parts, r, 'y', sp);
+      box(r, w, 0.06, 0.16, i % 2 ? m.belly : m.body, 0, 0, 0);
+      box(r, 0.16, 0.06, w, i % 2 ? m.belly : m.body, 0, 0, 0);
+      box(r, w * 0.7, 0.06, w * 0.7, i % 2 ? m.body : m.belly, 0, 0.01, 0).rotation.y = Math.PI / 4;
+    });
+  }
+  const ball = pivot(lift, 0, cy, 0);
+  box(ball, 0.46, 0.4, 0.44, m.body, 0, 0, 0);
+  for (let i = 0; i < 14; i++) { // the fuzz, spread on a sphere by the golden angle
+    const y = 1 - (i + 0.5) / 7, rr = Math.sqrt(Math.max(0, 1 - y * y)), a = i * 2.3999;
+    const s = 0.15 + (i % 3) * 0.03;
+    const f = box(ball, s, s, s, i % 2 ? m.belly : m.body, Math.cos(a) * rr * 0.27, y * 0.25, Math.sin(a) * rr * 0.27);
+    f.rotation.set(i * 0.7, i * 1.1, i * 0.4);
+  }
+  tnEyes(ball, 0.11, 0.04, 0.3, 0.16);
+  box(ball, 0.08, 0.06, 0.04, m.accent, 0, -0.06, 0.34); // pink nose
+  for (const [s, ph] of [[-1, 0], [1, 1.2]]) { // long floppy ears
+    const ear = pivot(ball, s * 0.13, 0.26, -0.02);
+    ear.rotation.z = -s * 0.2;
+    swing(parts, ear, 'z', 0.2, 2.1, ph);
+    box(ear, 0.11, 0.4, 0.07, m.body, 0, 0.2, 0);
+    box(ear, 0.06, 0.3, 0.03, m.accent, 0, 0.19, 0.04);
+    box(ear, 0.1, 0.1, 0.07, m.body, s * 0.03, 0.43, 0).rotation.z = s * 0.4;
+  }
+  [[-0.32, 0.18, 0.1], [0.34, -0.1, -0.05], [-0.24, -0.2, 0.28], [0.26, 0.26, 0.22]].forEach(([x, y, z], i) => {
+    const bit = pivot(ball, x, y, z);
+    box(bit, 0.1, 0.07, 0.1, i % 2 ? m.belly : m.body, 0, 0, 0).rotation.y = i;
+    drift(parts, bit, 0.08, 1.4, i);
+  });
+}
+
+// Pipsqueak: an acorn-like seed (stacked boxes narrowing to the bottom), a dark cap with a stalk, a green sprout with two
+// leaves, a zigzag crack across the front with big eyes peeking out of it, and two tiny feet.
+function seedling(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  for (const s of [-1, 1]) box(lift, 0.12, 0.1, 0.16, m.dark, s * 0.1, 0.05, 0.03); // feet
+  const rows = [[0.16, 0.14, 0.1], [0.3, 0.1, 0.2], [0.44, 0.12, 0.3], [0.54, 0.14, 0.44], [0.58, 0.16, 0.58], [0.56, 0.14, 0.7]];
+  rows.forEach(([w, h, y]) => box(lift, w, h, w * 0.9, m.body, 0, y, 0));
+  box(lift, 0.5, 0.14, 0.46, m.dark, 0, 0.86, 0); // the cap
+  box(lift, 0.56, 0.06, 0.52, m.dark, 0, 0.79, 0);
+  box(lift, 0.08, 0.14, 0.08, m.dark, 0, 0.97, 0); // the stalk
+  const sprout = pivot(lift, 0, 1.04, 0);
+  swing(parts, sprout, 'z', 0.12, 2);
+  box(sprout, 0.04, 0.16, 0.04, m.accent, 0, 0.08, 0);
+  for (const s of [-1, 1]) {
+    const leaf = pivot(sprout, 0, 0.14, 0);
+    leaf.rotation.z = -s * 0.7;
+    box(leaf, 0.2, 0.05, 0.1, m.accent, s * 0.1, 0.02, 0);
+    box(leaf, 0.1, 0.05, 0.07, 0xa8f090, s * 0.23, 0.04, 0);
+  }
+  // the crack: a zigzag of light across the front, the eyes peeking out of it
+  const z = 0.28;
+  box(lift, 0.44, 0.2, 0.03, m.belly, 0, 0.6, z); // light inside the crack
+  box(lift, 0.16, 0.04, 0.035, m.dark, -0.15, 0.7, z + 0.005);
+  box(lift, 0.16, 0.04, 0.035, m.dark, 0.0, 0.5, z + 0.005);
+  box(lift, 0.16, 0.04, 0.035, m.dark, 0.15, 0.7, z + 0.005);
+  tnEyes(lift, 0.09, 0.6, z + 0.02, 0.16);
+  box(lift, 0.08, 0.025, 0.03, m.dark, 0, 0.5, z + 0.03);
+}
+const SHAPES_TINY = { ant, thimblemouse, dustbunny, seedling };
+Object.assign(SHAPES, SHAPES_TINY);
+/* ==== end of T40a tiny ==== */

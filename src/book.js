@@ -59,7 +59,7 @@ export function spawnInfo(id) {
     for (const [zone, list] of Object.entries(r.spawns)) { // T40: a realm may have zones (Playland · Race Track); the cave table repeats the others
       if (zone === 'cave') continue;
       const e = list.find(x => x[0] === id);
-      if (e) out.push({ biome: null, name: r.zoneNames?.[zone] ?? r.name, when: null, rarity: e[1] >= 2 ? 'common' : e[1] >= 0.5 ? 'sometimes' : 'rare' });
+      if (e) out.push({ biome: null, name: r.zoneNames?.[zone] ?? r.name, when: e[2] ?? null, rarity: e[1] >= 2 ? 'common' : e[1] >= 0.5 ? 'sometimes' : 'rare' });
     }
   }
   for (const o of out) if (o.words === undefined) o.words = condText(o.when) ?? o.when;

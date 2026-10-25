@@ -45,8 +45,14 @@ const topLevel = team => Math.max(...team.map(t => t[1]));
 // Stand-in Bosses with old species (each task replaces its own call with the real Boss).
 const NOTE = 'Thank you! Every star makes my Swirl a little stronger. Bring me more!';
 const PEOPLE = { shirt: 0xffffff, pants: 0x3a3a6a, hair: 0x6a3a1a, skin: 0xf2d0b0 };
-addBoss({ id: 'house', name: "Wizard's Mouse Mimi", type: 'normal', colors: { ...PEOPLE, shirt: 0xffb8d8 }, team: [['bounceroo', 60], ['slimehound', 62]],
-  intro: ['Squeak! Do you want to battle?'], lose: 'Squeak! You are strong!', win: 'Good battle! Try again any time.', note: NOTE });
+addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", type: 'tiny', look: 'mouse', // T40a: the Giant House
+  colors: { shirt: 0xf2a6c0, pants: 0x8a8a96, hair: 0x9a9aa6, skin: 0xb8b8c4 }, // a pink apron, grey fur
+  team: [['pipsqueak', 59], ['spoolmouse', 60], ['fluffnado', 61, ['swoop', 'bodyslam', 'cuphide', 'fluffstorm']], ['antlas', 62, ['buzzdive', 'bodyslam', 'antarmy', 'sugarlift']]], // the move lists are what movesWith(species, level, ...) gives (the tiny spec checks)
+  intro: ['Squeak! You are as small as me now!', 'The Wizard gave me his star to look after.', 'Win it in a battle!'],
+  lose: 'Squeak-tastic! You did it. The star is yours!',
+  win: 'Good try! Have a crumb, rest a bit, and come back!',
+  rematchIntro: ['Back again? My tiny team grew a little!'],
+  note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
 addBoss({ id: 'pirate', name: 'Deckhand Dot', type: 'water', colors: { ...PEOPLE, shirt: 0xd0d8f0, pants: 0x2a4a8a }, team: [['shellby', 61], ['tidalord', 63]],
   intro: ['Ahoy! Ready for a battle?'], lose: 'Ahoy! You win this one!', win: 'Good battle! Try again any time.', note: NOTE });
 addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in racelive.js; he battles after you win it)

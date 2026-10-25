@@ -2649,5 +2649,93 @@ SIG.nitroblast = (k, from, to) => {
   };
 };
 /* ==== end of T40c racer ==== */
+/* ==== T40a tiny ==== */
+// Crumb tan, cookie brown, sugar white.
+FX_COLORS.tiny = [0xe6c08a, 0x7a4a2a, 0xffffff];
+
+// A marching line of six tiny dots ("ants") along a low arc, each a little later, each bobbing on its way.
+TRAVEL.tiny = k => {
+  const N = 6;
+  const ants = k.points({ n: N, tex: 'dot', size: 0.2, colors: [0x3a1a12, 0x7a4a2a] });
+  return {
+    dur: 420,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01(p * 1.4 - i * 0.08);
+        if (t <= 0 || t >= 1) { ants.hide(i); continue; }
+        k.at(t, A, 0.05);
+        ants.set(i, A.x, A.y - 0.1 + 0.04 * Math.abs(Math.sin(t * 40 + i)), A.z);
+      }
+      ants.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+
+// A tiny hit: eight crumbs jump out low and land once, a small star flash.
+IMPACT.tiny = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const crumbs = k.points({ n: N, tex: 'square', size: 0.2 * m, colors: [0xe6c08a, 0xc08a50, 0x7a4a2a] });
+  const s = k.seeds(N, 2);
+  const flash = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  return {
+    dur: 340,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i * 2], d = (to.r * 0.4 + 0.15 + s[i * 2 + 1] * 0.4) * k.ease(p) * m, h = 0.7 * m * (0.6 + s[i * 2 + 1] * 0.4);
+        crumbs.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.5 * 4 * h * p * (1 - p) - 0.2, to.pos.z + Math.sin(ang) * d);
+      }
+      crumbs.fade(fadeOut(p, 0.7));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 0.7 * m * Math.sin(Math.PI * clamp01(p * 1.8))));
+      flash.material.rotation = p * 2;
+      flash.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Sugar Lift: a big white sugar cube rises over the attacker, flies over on a high arc, drops on the target; sparkles pop out.
+SIG.sugarlift = (k, from, to) => {
+  const cube = k.sprite('square', { color: 0xffffff, size: 0.1, glow: true });
+  const sparks = k.points({ n: 6, tex: 'dot', size: 0.22, glow: true, colors: [0xffffff, 0xfff8c0] });
+  const fFeet = feetOf(from);
+  return {
+    dur: 620,
+    step(p) {
+      const rise = clamp01(p / 0.35), fly = clamp01((p - 0.35) / 0.45), pop = clamp01((p - 0.8) / 0.2);
+      if (p < 0.35) cube.position.set(from.pos.x, fFeet + 0.3 + rise * (from.top - fFeet + 0.5), from.pos.z);
+      else if (p < 0.8) {
+        k.at(fly, A, 0.2);
+        cube.position.set(A.x, A.y + Math.sin(Math.PI * fly) * 1.2 + (1 - fly) * 0.6, A.z);
+      } else cube.position.copy(to.pos);
+      cube.scale.setScalar(Math.max(0.01, p < 0.8 ? 0.5 + rise * 0.3 : 0.8 * (1 - pop)));
+      cube.material.rotation = p * 3;
+      cube.material.opacity = p < 0.8 ? 1 : 1 - pop;
+      for (let i = 0; i < 6; i++) {
+        if (pop <= 0) { sparks.hide(i); continue; }
+        const ang = (i / 6) * 6.283, d = (0.2 + pop * 0.8) * (to.r * 0.6 + 0.4);
+        sparks.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.15 + pop * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      sparks.fade(1 - pop);
+    },
+  };
+};
+
+// Fluff Storm: ten grey puffs spiral up round the target, then fade.
+SIG.fluffstorm = (k, from, to) => {
+  const N = 10;
+  const puffs = k.points({ n: N, tex: 'puff', size: 0.4, colors: [0xb8b4c0, 0xdcd8e2, 0xf2a6c0] });
+  const feet = feetOf(to);
+  return {
+    dur: 650,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 9, r = (to.r * 0.5 + 0.3) * (1 + 0.2 * Math.sin(p * 6 + i));
+        puffs.set(i, to.pos.x + Math.cos(ang) * r, feet + 0.15 + p * 0.9 + (i % 3) * 0.12, to.pos.z + Math.sin(ang) * r);
+      }
+      puffs.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+/* ==== end of T40a tiny ==== */
 // T40 base: until T40a-d add their own entries for the wave 14 types, they borrow the normal ones
 for (const t of ['tiny', 'pirate', 'racer']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }

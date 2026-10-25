@@ -6,6 +6,7 @@ import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel }
 import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
 import { Disguise } from './disguise.js';
 import { sound } from './sound.js';
+import { hash32 } from './traits.js'; // T40a
 
 const MAX_WILD = 16;
 const SING_RANGE = 18;
@@ -53,6 +54,14 @@ Object.assign(GAITS, {
     up: 1, down: 1, drop: 2, leash: 20, angles: [0, 25, -25, 50, -50, 80, -80, 120, -120], bump: true },
 });
 /* ==== end of T40c racer ==== */
+/* ==== T40a tiny ==== */
+// 'peek' (Tiny): it never moves; it sits in its nook (a cup, a flower, under a leaf). Far away (more than `notice` sideways or
+// `noticeUp` up / down) it is only seen while it peeks: `show` seconds out of every `every`, each creature at its own phase.
+// Within `notice` it stays out and faces you; when you step away it stays out for `keep` more seconds. Walk into it to battle.
+Object.assign(GAITS, {
+  peek: { notice: 4.5, noticeUp: 3, every: 4.5, show: 1.4, keep: 3, bump: true },
+});
+/* ==== end of T40a tiny ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -68,6 +77,7 @@ export class Wild {
     this.disguise = null; // Camo creatures wear one until they are hit (see CreatureManager.spawnAt)
     this.popT = -1;
     this.home = { x: pos.x, z: pos.z }; // T36: where it spawned (the gait leash)
+    this.hidden = false; this.keepT = 0; // T40a: a peeking Tiny creature that is out of sight
     this.hop = null; this.hops = 0; this.tired = 0; this.pause = 0; this.touching = false; // T36 gait state
     model.userData.wild = this;
   }
@@ -141,6 +151,7 @@ export class CreatureManager {
       friendsNear: !!env && env.friends().some(p => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) <= TOGETHER_RANGE),
       // T36: a function (the search only runs when the 'high' condition is rolled); none underground, in a realm or without env
       perch: under || !env || this.world?.realm ? null : () => this.perchNear(playerPos),
+      nook: this.world?.nooks?.length ? () => this.nookNear(playerPos) : null, // T40a
     };
   }
 
@@ -371,7 +382,7 @@ export class CreatureManager {
       else if (GAITS[w.species.gait]?.bump && !w.frozen && this.onBump) {
         const dy = playerPos.y - w.pos.y;
         const touching = Math.abs(playerPos.x - w.pos.x) < 0.9 && Math.abs(playerPos.z - w.pos.z) < 0.9 && dy >= -1 && dy < 1.5;
-        const start = touching && !w.touching;
+        const start = touching && !w.touching && !w.hidden; // T40a: not while it hides
         w.touching = touching;
         if (start) this.onBump(w);
       }
@@ -439,6 +450,7 @@ export class CreatureManager {
       if (sp.gait) w.model.scale.set(1, 1, 1); // T36: no panting in a battle
       if (w.blink) this.endBlink(w); // T37: never stuck invisible
       if (w.dash) { w.dash = null; w.model.rotation.x = 0; } // T40c: a dash ends when the battle starts
+      if (w.hidden) this.endPeek(w); // T40a
       return;
     }
     if (sp.gait) return this.updateGait(w, dt); // T36
@@ -524,6 +536,7 @@ export class CreatureManager {
   updateGait(w, dt) {
     if (w.species.gait === 'blink') return this.updateBlink(w, dt); // T37
     if (w.species.gait === 'dash') return this.updateDash(w, dt); // T40c
+    if (w.species.gait === 'peek') return this.updatePeek(w, dt); // T40a
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -820,6 +833,53 @@ export class CreatureManager {
     animateModel(model, w.t, moving);
   }
   /* ==== end of T40c racer ==== */
+  /* ==== T40a tiny ==== */
+  // A nook near the player: { x, y, z } (the air cell a Tiny creature sits in) from world.nooks, 6-36 blocks away sideways and
+  // within 20 up / down, with no other wild creature within 1.5; null when there is none. Any realm that sets world.nooks has them.
+  nookNear(pos) {
+    const list = (this.world?.nooks || []).filter(n => {
+      const d = Math.hypot(n.x + 0.5 - pos.x, n.z + 0.5 - pos.z);
+      return d >= 6 && d <= 36 && Math.abs(n.y - pos.y) <= 20
+        && !this.list.some(w => Math.hypot(w.pos.x - (n.x + 0.5), w.pos.z - (n.z + 0.5)) < 1.5 && Math.abs(w.pos.y - n.y) < 2);
+    });
+    if (!list.length) return null;
+    const n = list[Math.floor(Math.random() * list.length)];
+    return { x: n.x, y: n.y, z: n.z };
+  }
+
+  // The Tiny walk: closed form in w.t (no Math.random). Returns nothing; sets w.hidden.
+  updatePeek(w, dt) {
+    const g = GAITS.peek, p = this.viewer, model = w.model;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = p ? Math.hypot(dx, dz) : Infinity;
+    const out = !!p && dist <= g.notice && Math.abs(p.y - w.pos.y) <= g.noticeUp;
+    if (out) w.keepT = g.keep; else if (w.keepT > 0) w.keepT = Math.max(0, w.keepT - dt);
+    w.phase ??= ((hash32(w.data.uid || 'x') % 1000) / 1000) * g.every;
+    const u = (w.t + w.phase) % g.every;
+    const peeking = u < g.show;
+    let rise = 0; // 0 = fully out, 1 = down in the nook
+    if (!out && w.keepT <= 0) {
+      rise = peeking ? 1 - Math.min(1, Math.min(u, g.show - u) / 0.25) : 1; // 0.25 s up, 0.25 s down
+    }
+    w.hidden = rise >= 1;
+    model.visible = !w.hidden;
+    if (p && dist < 40) { // it turns to look at you
+      let d = Math.atan2(dx, dz) - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 4);
+    }
+    model.position.set(w.pos.x, w.pos.y - 0.25 * rise, w.pos.z);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    animateModel(model, w.t, false);
+  }
+
+  // Back in view (a battle starts, or the creature is removed): visible, at its spot.
+  endPeek(w) {
+    w.hidden = false;
+    w.model.visible = true;
+    w.model.position.copy(w.pos);
+  }
+  /* ==== end of T40a tiny ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

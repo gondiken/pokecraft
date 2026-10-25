@@ -469,6 +469,22 @@ BIG_MOVES.racer = [
   ['raceday', 'Race Day', 'field', 'Racer moves are stronger for 5 turns. Foes too!'],
 ];
 /* ==== end of T40c racer ==== */
+/* ==== T40a tiny ==== */
+// Tiny creatures hide in small places and peek out. Lots of little feet, a mighty mite and a sugar cube.
+Object.assign(MOVES, {
+  teenytap: mv('Teeny Tap', 'tiny', 40, 1),
+  mightymite: mv('Mighty Mite', 'tiny', 75, 0.9),
+  tinysteps: mv('Tiny Steps', 'tiny', 20, 1, { fx: { kind: 'multi', min: 1, max: 5, weights: HITS_1_5 } }),
+  tuckaway: mv('Tuck Away', 'tiny', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
+  sugarlift: mv('Sugar Lift', 'tiny', 90, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  fluffstorm: mv('Fluff Storm', 'tiny', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
+});
+BIG_MOVES.tiny = [
+  ['cuphide', 'Hide in a Cup', 'shield', 'The whole team hides under a cup. You rest next turn.'],
+  ['antarmy', 'Ant Army', 'rally', 'Lots of little friends help out! Team hits harder. You get softer.'],
+  ['smallworld', 'Small World', 'field', 'Tiny moves are stronger for 5 turns. Foes too!'],
+];
+/* ==== end of T40a tiny ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -580,6 +596,7 @@ T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.p
 T1.ball = 'bouncebop'; T2.ball = 'cannonroll'; T3.ball = 'quickpass'; T4.ball = 'dribble'; // T40d
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
+T1.tiny = 'teenytap'; T2.tiny = 'mightymite'; T3.tiny = 'tinysteps'; T4.tiny = 'tuckaway'; // T40a
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2025,6 +2042,46 @@ export const SPECIES = {
   },
   /* ==== end of T40c racer ==== */
   /* ==== end of T37 ninja ==== */
+  /* ==== T40a tiny ==== */
+  antsy: {
+    name: 'Antsy', type: 'tiny', desc: 'A tiny ant that carries a crumb ten times its size. It never drops it, not even when it runs.', gait: 'peek',
+    base: { hp: 40, atk: 55, def: 45, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('tiny', 'bug'),
+    evolve: { level: 22, into: 'antlas' },
+    model: { shape: 'ant', scale: 0.5, body: 0xb5412e, accent: 0xe6c08a, dark: 0x3a1a12, belly: 0xd8704a, extras: [] },
+  },
+  antlas: {
+    name: 'Antlas', type: 'tiny', desc: 'It lifts a whole sugar cube over its head. The strongest creature in the house, for its size.', gait: 'peek',
+    base: { hp: 65, atk: 105, def: 75, spd: 100 }, baseXp: 165, catchRate: 0.12, learn: L('tiny', 'bug', [[30, 'sugarlift']]),
+    model: { shape: 'ant', scale: 0.8, body: 0x8f2e20, accent: 0xffffff, dark: 0x2a120c, belly: 0xb85a3a, extras: ['sugarcube'] },
+  },
+  thimbit: {
+    name: 'Thimbit', type: 'tiny', desc: 'A little mouse that lives in a thimble. When it is scared it pulls the thimble over its head.', gait: 'peek',
+    base: { hp: 45, atk: 50, def: 55, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('tiny', 'metal'),
+    evolve: { level: 22, into: 'spoolmouse' },
+    model: { shape: 'thimblemouse', scale: 0.55, body: 0xa8a8b4, accent: 0xd8dce4, dark: 0x3a3a46, belly: 0xf2b8c8, extras: [] },
+  },
+  spoolmouse: {
+    name: 'Spoolmouse', type: 'tiny', desc: 'It rolls about on a cotton spool and pokes with a sewing pin. Zip, zip, round the table legs!', gait: 'peek',
+    base: { hp: 75, atk: 90, def: 85, spd: 105 }, baseXp: 165, catchRate: 0.12, learn: L('tiny', 'metal'),
+    model: { shape: 'thimblemouse', scale: 0.85, body: 0x9494a2, accent: 0xe0507a, dark: 0x34343e, belly: 0xf2b8c8, extras: ['spool'] },
+  },
+  dustbun: {
+    name: 'Dustbun', type: 'tiny', desc: 'A dust bunny that came alive under the bed. Its fluff floats about, and so does it.', gait: 'peek',
+    base: { hp: 50, atk: 45, def: 50, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('tiny', 'sky'),
+    evolve: { level: 24, into: 'fluffnado' },
+    model: { shape: 'dustbunny', scale: 0.6, body: 0xb8b4c0, accent: 0xf2a6c0, dark: 0x4a4652, belly: 0xdcd8e2, extras: [] },
+  },
+  fluffnado: {
+    name: 'Fluffnado', type: 'tiny', desc: 'A whirl of fluff with ears on top. When it spins, every crumb in the room flies with it.', gait: 'peek',
+    base: { hp: 85, atk: 85, def: 75, spd: 100 }, baseXp: 170, catchRate: 0.1, learn: L('tiny', 'sky', [[30, 'fluffstorm']]),
+    model: { shape: 'dustbunny', scale: 0.85, body: 0xa8a4b4, accent: 0xf2a6c0, dark: 0x4a4652, belly: 0xdcd8e2, extras: ['whirl'] },
+  },
+  pipsqueak: {
+    name: 'Pipsqueak', type: 'tiny', desc: 'A seed that squeaks. It peeks out of a crack in its shell to see if the coast is clear.', gait: 'peek',
+    base: { hp: 60, atk: 65, def: 60, spd: 80 }, baseXp: 100, catchRate: 0.3, learn: L('tiny', 'grass'),
+    model: { shape: 'seedling', scale: 0.6, body: 0x9a6a3a, accent: 0x6fd35a, dark: 0x4a2e18, belly: 0xffe8a0, extras: [] },
+  },
+  /* ==== end of T40a tiny ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2241,6 +2298,12 @@ const SPAWN_NINJA = {
 };
 for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...list);
 /* ==== end of T37 ninja ==== */
+
+/* ==== T40a tiny ==== */
+// Tiny creatures live only in the Giant House (REALMS.house.spawns), always in nooks (cups, flowers, under leaves).
+export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'nook'],
+  ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
+/* ==== end of T40a tiny ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

@@ -1,8 +1,21 @@
 // T38a: the Picture Worlds that are stars (most hang as framed pictures in the Swirl). Data only (no imports).
 // Append-only: the ids are saved in `stars` (the worlds whose Boss you beat). Waves 14-15 flip `ready` and add a `realm`.
 // Until a world is ready, its frame in the Swirl is covered with a cloth. Frame colours: [border gem, trim].
+// T40a: the picture in the Giant House's frame: a cream wall, the edge of a brown table, a big cookie and a little grey mouse (128 px canvas).
+function drawHousePicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#f7ecd8'); r(0, 0, 128, 40, '#c4e2bc'); for (let x = 0; x < 128; x += 16) r(x, 0, 8, 40, '#d4ecc8');
+  r(0, 84, 128, 44, '#a8662f'); r(0, 84, 128, 6, '#c4843f'); for (let y = 98; y < 128; y += 10) r(0, y, 128, 2, '#8c5226');
+  g.fillStyle = '#d9a35a'; g.beginPath(); g.ellipse(46 * k, 78 * k, 34 * k, 13 * k, 0, 0, 7); g.fill();
+  g.fillStyle = '#e8b86a'; g.beginPath(); g.ellipse(46 * k, 73 * k, 34 * k, 12 * k, 0, 0, 7); g.fill();
+  for (const [x, y] of [[30, 72], [44, 66], [58, 74], [38, 80], [64, 68], [24, 78]]) r(x, y, 5, 4, '#5a3320');
+  g.fillStyle = '#9a9aa8'; g.beginPath(); g.ellipse(96 * k, 72 * k, 17 * k, 14 * k, 0, 0, 7); g.fill();
+  g.beginPath(); g.arc(88 * k, 54 * k, 11 * k, 0, 7); g.arc(106 * k, 54 * k, 11 * k, 0, 7); g.fill();
+  g.fillStyle = '#f2a6c0'; g.beginPath(); g.arc(88 * k, 54 * k, 6 * k, 0, 7); g.arc(106 * k, 54 * k, 6 * k, 0, 7); g.fill();
+  r(80, 68, 6, 6, '#16121a'); r(92, 68, 6, 6, '#16121a'); r(82, 69, 2, 2, '#fff'); r(94, 69, 2, 2, '#fff'); r(86, 76, 6, 4, '#f08aa0');
+}
 export const PICTURE_WORLDS = [
-  { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: false, realm: 'house' },
+  { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: false, realm: 'pirate' },
   { id: 'race', name: 'Race Track', emoji: '🏎️', frame: [0xd83a3a, 0xf8f8f8], ready: true, realm: 'playland' },
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland' },
