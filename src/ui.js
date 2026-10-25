@@ -65,6 +65,7 @@ export class UI {
     this.bookPanel = document.getElementById('book');
     this.homePanel = document.getElementById('home'); // T22
     this.missionsPanel = document.getElementById('missions'); // T29
+    this.navPanel = document.getElementById('nav'); // T39a
     this.slots = [];
     // Storage box view: the sort is remembered on this device, the type filter is not.
     // Both are only for showing: game.box keeps its order, so saves don't change.
@@ -418,8 +419,9 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden'); } // T29: + missions
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden') || !this.navPanel.classList.contains('hidden'); } // T29: + missions; T39a: + nav
   get missionsOpen() { return !this.missionsPanel.classList.contains('hidden'); } // T29
+  get navOpen() { return !this.navPanel.classList.contains('hidden'); } // T39a
   get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
 
   openPanel(which = 'team') {
@@ -437,6 +439,11 @@ export class UI {
       const mode = this.game.missionUi.want ?? 'view';
       this.game.missionUi.want = null;
       this.game.missionUi.open(mode);
+      return;
+    }
+    if (which === 'nav') { // T39a: navUi.open() fills #nav-body
+      this.navPanel.classList.remove('hidden');
+      this.game.navUi.open();
       return;
     }
     if (which === 'blocks') {
@@ -485,5 +492,7 @@ export class UI {
     this.game.homeUi?.close();
     this.missionsPanel.classList.add('hidden'); // T29
     this.game.missionUi?.close();
+    this.navPanel.classList.add('hidden'); // T39a
+    this.game.navUi?.close();
   }
 }
