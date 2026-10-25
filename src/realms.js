@@ -108,7 +108,7 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
 REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b
   spawns: { pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
   zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS],
-  look: { sky: 0x7cc8ff, fog: [50, 140], time: null, weather: false, light: 0.95, still: true, stars: false }, // always a sunny noon
+  look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false }, // always a sunny noon
   clock: '🏴‍☠️ Pirate Seas', travelText: 'Sailing in...', travelIcon: '🏴‍☠️', enterText: 'Ahoy! Welcome to the Pirate Seas!',
   arriveHint: 'Stand on the cannon and press Fire! Captain Squawk has the star on his ship.',
   noHomeText: 'No homes at sea! Build your home in your own world.', followText: 'Sail too' });

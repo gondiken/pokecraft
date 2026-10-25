@@ -201,7 +201,8 @@ export default async function ({ browser, base, t }) {
   t.ok(r.infos.bling.includes("lowers the foe's attack"), `Bling! text: ${r.infos.bling}`);
   t.ok(!r.sigs.length, `Dozeram and Crownguard learn their special at 30 ${r.sigs.join(', ')}`);
   t.ok(r.bts, 'a Lv 20 Snoozebear knows Bedtime Story');
-  t.ok(only || r.normal === 231, `${r.normal} normal species`);
+  t.ok(only || (r.normal >= 231 && (r.normal - 231) % 7 === 0), // (wave 14 adds 7 per type)
+     `${r.normal} normal species`);
   console.log(`  sizes ${Object.entries(r.info).map(([k, v]) => `${k} ${v}`).join(', ')}`);
 
   /* 6. The home condition with fake homes */

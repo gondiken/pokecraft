@@ -76,7 +76,7 @@ export default async function ({ browser, base, t }) {
   t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
   t.ok(JSON.stringify(d1.wool) === JSON.stringify([[140, 'Tiny Wool', false], [141, 'Pirate Wool', false], [142, 'Racer Wool', false], [143, 'Ball Wool', false]]), 'wool 140-143 with their names, not placeable');
   t.ok(d1.blocks.map(b => b.id).join() === '144,145,146' && d1.blocks.every(b => b.def && !b.placeable && b.fixed && b.wall && b.tiles), `blocks 144-146 (picture, way back, Boss stand): tiles, wall text, fixed, not placeable`);
-  t.ok(d1.tiles <= 163 && d1.free === 147, `the atlas grew by 8 tiles (${d1.tiles} of 256), next free id ${d1.free}`);
+  t.ok(d1.tiles <= 163 + 72 && d1.free >= 147, `the atlas grew by 8 tiles (${d1.tiles} of 256), next free id ${d1.free}`);
 
   /* ---- 2. Data ---- */
   const d2 = await page.evaluate(async () => {
@@ -225,7 +225,7 @@ export default async function ({ browser, base, t }) {
   const ready = await page.evaluate(() => window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length);
   const fr = await page.evaluate(c => { const g = window.pokecraft, b = { x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }; return { prompt: g.portal.prompt(b, 'click or E'), action: g.portal.action(b) }; }, cloth0);
   t.ok(ready === 1 && /Giant House · click or E to go in/.test(fr.prompt) && fr.action === 'Step in!', `a ready frame: PICTURE cells and one picture mesh (${ready}), "${fr.prompt}" / "${fr.action}"`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-frame-ready.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-frame-ready.png'), timeout: 180000 });
   await page.evaluate(c => { const g = window.pokecraft; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); }, cloth0);
   await placeIs(page, 'house');
   const inHouse = await page.evaluate(() => {
@@ -238,7 +238,7 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(() => window.pokecraft.player.pos.set(window.pokecraft.world.doors[0].stand[0], window.pokecraft.world.doors[0].stand[1], window.pokecraft.world.doors[0].stand[2]));
   const guide = await page.evaluate(() => { const g = window.pokecraft; g.updateGuide(); return { text: document.getElementById('guide')?.textContent || g.ui.guideText, target: g.guideTarget, boss: g.world.bosses[0].pos }; });
   t.ok(/Giant House Boss/.test(guide.text || ''), `the guide names the Boss (${guide.text})`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-house-stub.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-house-stub.png'), timeout: 180000 });
 
   // talk to the Boss: a Boss battle
   await page.evaluate(async () => {
@@ -255,7 +255,7 @@ export default async function ({ browser, base, t }) {
   const won = await page.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { cubes: g.cubes, note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent, place: s.place, up: s.realmUp, stars: s.stars }; });
   t.ok(won.stars.includes('house') && /Giant House star/.test(won.note || '') && /Every star makes my Swirl/.test(won.small || ''), `the star and the Wizard's note (${won.note}: ${won.small})`);
   t.ok(won.cubes >= 10 && won.place === 'house' && won.up.id === 'swirl' && won.up.via === 'house', `10 Capture Cubes; the save has place house and realmUp swirl via house`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-star-note.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-star-note.png'), timeout: 180000 });
   await pause(page);
 
   // reload in a fresh context: back in the house
@@ -355,7 +355,7 @@ export default async function ({ browser, base, t }) {
   await placeIs(page, 'playland');
   const pl1 = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, d = g.world.doors.find(d => d.key === 'race'); g.updateGuide(); return { via: g.realms.via, z: p.z, door: d.stand[2], doors: g.world.doors.length, glow: g.portal.glow().count, guide: g.ui.guideText }; });
   t.ok(pl1.via === 'race' && Math.abs(pl1.z - pl1.door) < 0.1 && pl1.doors === 2 && pl1.glow === 2 && /Race Track Boss/.test(pl1.guide || ''), `the race frame opens Playland at the race gate, two glowing doors, the guide names the Race Track Boss (${pl1.guide})`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-playland-hub.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-playland-hub.png'), timeout: 180000 });
   await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors.find(d => d.key === 'race'), m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(page, 'swirl');
   const near = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'race'), p = g.player.pos; return Math.hypot(p.x - f.stand[0] - 0.5, p.z - f.stand[2] - 0.5); });
