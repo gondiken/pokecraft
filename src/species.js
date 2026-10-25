@@ -422,6 +422,22 @@ BIG_MOVES.parkour = [
   ['finalsprint', 'Final Sprint', 'lastword', 'A huge hit, only when almost out.'],
 ];
 /* ==== end of T36 parkour ==== */
+/* ==== T40d ball ==== */
+// Ball creatures bounce, roll, pass and smash: fast, friendly hits with a bounce in them.
+Object.assign(MOVES, {
+  bouncebop: mv('Bounce Bop', 'ball', 40, 1),
+  cannonroll: mv('Cannon Roll', 'ball', 80, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
+  quickpass: mv('Quick Pass', 'ball', 50, 1, { priority: 1 }),
+  dribble: mv('Dribble', 'ball', 0, 1, { fx: { kind: 'raise', stat: 'spd' } }),
+  goldengoal: mv('Golden Goal', 'ball', 95, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  acesmash: mv('Ace Smash', 'ball', 85, 1, { priority: 1, sig: true }),
+});
+BIG_MOVES.ball = [
+  ['teamhuddle', 'Team Huddle', 'rally', 'Huddle up! Whole team hits harder. You get softer.'],
+  ['trickshot', 'Trick Shot', 'risky', 'Half the time: a great goal! Or it bounces off the post.'],
+  ['bigmatch', 'Big Match', 'field', 'Big match day! Ball moves are stronger for 5 turns. Foes too!'],
+];
+/* ==== end of T40d ball ==== */
 /* ==== T37 ninja ==== */
 // Ninjas throw leaves, strike from the shadows and vanish in smoke.
 Object.assign(MOVES, {
@@ -545,6 +561,7 @@ const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 /* ==== T36 parkour ==== */
 T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
 /* ==== end of T36 parkour ==== */
+T1.ball = 'bouncebop'; T2.ball = 'cannonroll'; T3.ball = 'quickpass'; T4.ball = 'dribble'; // T40d
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 function L(type, second, extra = []) {
   const base = type === 'normal'
@@ -1871,6 +1888,46 @@ export const SPECIES = {
     model: { shape: 'upbrella', scale: 0.95, body: 0xffb3e6, accent: 0x9ce8ff, dark: 0x6a4ac0, belly: 0xfff0a0, extras: [] },
   },
   /* ==== end of T35 dream ==== */
+  /* ==== T40d ball ==== */
+  boinkle: {
+    name: 'Boinkle', type: 'ball', desc: 'A rubber ball with puppy ears. Throw it anything and it bounces back to you, wagging.',
+    base: { hp: 55, atk: 55, def: 50, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('ball', 'electric'),
+    evolve: { level: 22, into: 'goalhound' },
+    model: { shape: 'ballpup', scale: 0.8, body: 0xe84a3a, accent: 0xffe8d0, dark: 0x2a2a30, belly: 0xffffff, extras: [] },
+  },
+  goalhound: {
+    name: 'Goalhound', type: 'ball', desc: 'The captain of every match it plays. It heads the ball, it IS the ball, and it never stops running.',
+    base: { hp: 90, atk: 100, def: 80, spd: 85 }, baseXp: 168, catchRate: 0.1, learn: L('ball', 'electric', [[30, 'goldengoal']]),
+    model: { shape: 'ballpup', scale: 1.15, body: 0xf4f4f4, accent: 0xffd23a, dark: 0x22222a, belly: 0xffffff, extras: ['patches', 'armband'] },
+  },
+  sealbop: {
+    name: 'Sealbop', type: 'ball', desc: 'A seal whose tummy is a beach ball. Bop it up and it claps its flippers.',
+    base: { hp: 65, atk: 45, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('ball', 'water'),
+    evolve: { level: 24, into: 'beachboomer' },
+    model: { shape: 'beachseal', scale: 0.85, body: 0x6a8cb8, accent: 0xffd23a, dark: 0x2a3a58, belly: 0xffffff, extras: [] },
+  },
+  beachboomer: {
+    name: 'Beachboomer', type: 'ball', desc: 'It balances a ball on its nose all day at the beach, and never once drops it.',
+    base: { hp: 105, atk: 80, def: 95, spd: 60 }, baseXp: 168, catchRate: 0.1, learn: L('ball', 'water'),
+    model: { shape: 'beachseal', scale: 1.15, body: 0x5a7cac, accent: 0xffd23a, dark: 0x1e2e4a, belly: 0xffffff, extras: ['shades', 'noseball'] },
+  },
+  fuzzchick: {
+    name: 'Fuzzchick', type: 'ball', desc: "A fuzzy tennis-ball chick. It chirps 'Fifteen-love!' and nobody knows what it means.",
+    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('ball', 'sky'),
+    evolve: { level: 22, into: 'smashbird' },
+    model: { shape: 'tennischick', scale: 0.75, body: 0xd8ee3a, accent: 0xff9a2a, dark: 0x6a8a1a, belly: 0xf4ffb0, extras: [] },
+  },
+  smashbird: {
+    name: 'Smashbird', type: 'ball', desc: 'Its wings grew into rackets. It serves so fast the ball whistles.',
+    base: { hp: 70, atk: 100, def: 60, spd: 115 }, baseXp: 166, catchRate: 0.12, learn: L('ball', 'sky', [[30, 'acesmash']]),
+    model: { shape: 'tennischick', scale: 1.1, body: 0xc4e02a, accent: 0xff9a2a, dark: 0x4a6a14, belly: 0xf0ff98, extras: ['rackets'] },
+  },
+  strikehorn: {
+    name: 'Strikehorn', type: 'ball', desc: 'A bowling-ball rhino. It rolls down the lane and knocks over ten pins with one horn.',
+    base: { hp: 85, atk: 90, def: 90, spd: 45 }, baseXp: 100, catchRate: 0.3, learn: L('ball', 'rock'),
+    model: { shape: 'bowlrhino', scale: 1.0, body: 0x2a4aa8, accent: 0xff4a4a, dark: 0x141e50, belly: 0xffffff, extras: [] },
+  },
+  /* ==== end of T40d ball ==== */
   /* ==== T37 ninja ==== */
   hushcoon: {
     name: 'Hushcoon', type: 'ninja', desc: "A raccoon in a mask that tiptoes everywhere. Shh! If you run at it, it vanishes in a puff.", gait: 'blink',

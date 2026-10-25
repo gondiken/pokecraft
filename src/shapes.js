@@ -4790,3 +4790,191 @@ function bamboo(root, m, parts) {
 const SHAPES_NINJA = { raccoon, crow, squirrel, bamboo };
 Object.assign(SHAPES, SHAPES_NINJA);
 /* ==== end of T37 ninja ==== */
+
+/* ==== T40d ball shapes ==== */
+// Ball creatures are round and shiny, and every one has a white shine spot (userData.gear = 'shine', so a spec can check it).
+// All of them hop when they walk through the body pivot `parts.bounce` (the existing animateModel bounce). Never a red-and-white
+// split ball. Posed limbs sit in pivots; nothing here sets root.position.
+const BL_SHINE = 0xffffff;
+function blShine(parent, x, y, z, s = 0.1) { // a white glint on a round body: a little L of two boxes
+  box(parent, s * 1.7, s * 0.8, 0.03, BL_SHINE, x, y, z).userData.gear = 'shine';
+  box(parent, s * 0.8, s * 1.5, 0.03, BL_SHINE, x - s * 0.45, y - s * 0.4, z).userData.gear = 'shine';
+}
+
+// Boinkle / Goalhound: a rubber ball with a puppy's floppy ears, a black nose, stubby legs and a wagging tail.
+// Goalhound (`patches`) is a white football with black patches; (`armband`) a yellow captain's band on a front leg.
+function ballpup(root, m, parts) {
+  const big = has(m, 'patches');
+  const r = big ? 0.42 : 0.38, cy = 0.55;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  ball(lift, r, m.body, 0, cy, 0);
+  if (big) { // the black patches of a football
+    for (const [x, y, z, w, h, d] of [[0, cy + 0.06, r + 0.005, 0.2, 0.2, 0.04], [r + 0.005, cy + 0.02, 0.0, 0.04, 0.2, 0.2], [-r - 0.005, cy + 0.02, 0.0, 0.04, 0.2, 0.2],
+      [0, cy + r + 0.005, -0.05, 0.2, 0.04, 0.2], [0.12, cy - 0.26, r - 0.04, 0.16, 0.14, 0.04], [-0.12, cy - 0.26, r - 0.04, 0.16, 0.14, 0.04], [0, cy + 0.02, -r - 0.005, 0.2, 0.2, 0.04]]) {
+      box(lift, w, h, d, m.dark, x, y, z);
+    }
+  } else box(lift, 0.3, 0.2, 0.04, m.belly, 0, cy - 0.17, r + 0.005); // a pale muzzle patch
+  eyes(lift, cy + 0.1, r + 0.02, 0.14, 0.13);
+  box(lift, 0.11, 0.08, 0.06, 0x14141a, 0, cy - 0.02, r + 0.04); // the nose
+  mouth(lift, cy - 0.12, r + 0.025, 0.14);
+  blShine(lift, -0.17, cy + r * 0.78, r * 0.55, 0.09);
+  for (const s of [-1, 1]) { // floppy ears
+    const ear = pivot(lift, s * (r * 0.62), cy + r * 0.85, 0);
+    swing(parts, ear, 'z', 0.1, 3, s);
+    const e = pivot(ear, 0, 0, 0);
+    e.rotation.z = s * 0.6;
+    box(e, 0.15, 0.3, 0.12, m.dark, s * 0.04, -0.06, 0);
+    box(e, 0.1, 0.2, 0.04, m.accent, s * 0.04, -0.06, 0.07);
+  }
+  parts.legs = [];
+  for (const [x, z, ph] of [[-0.18, 0.14, 0], [0.18, 0.14, Math.PI], [-0.18, -0.14, Math.PI], [0.18, -0.14, 0]]) {
+    const leg = pivot(lift, x, 0.2, z);
+    box(leg, 0.14, 0.2, 0.14, m.dark, 0, -0.1, 0);
+    box(leg, 0.15, 0.06, 0.18, m.belly, 0, -0.19, 0.02);
+    if (has(m, 'armband') && x > 0 && z > 0) box(leg, 0.17, 0.06, 0.17, 0xffd23a, 0, -0.04, 0);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tail = pivot(lift, 0, cy - 0.05, -r);
+  parts.tail = tail;
+  const t2 = pivot(tail, 0, 0, 0);
+  t2.rotation.x = -0.9;
+  box(t2, 0.08, 0.08, 0.26, m.dark, 0, 0, -0.13);
+}
+
+// Sealbop / Beachboomer: a seal's head and flippers on a beach ball made of colourful stripes, with whiskers.
+// Beachboomer (`shades`) wears sunglasses and (`noseball`) balances a little ball on its nose that spins.
+function beachseal(root, m, parts) {
+  const r = 0.4, cy = 0.5;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  ball(lift, r, m.belly, 0, cy, 0);
+  const stripes = [0xff5a4a, 0xffd23a, 0x3a8cff, 0xffffff, 0xff5a4a, 0xffd23a], w = r * 1.5 / 6, e = r * 0.75;
+  stripes.forEach((c, i) => { // six wedges of colour over every side of the ball: front, back, both sides and the top
+    const o = -e + w * (i + 0.5);
+    box(lift, w, r * 1.5, 0.03, c, o, cy, r + 0.012);
+    box(lift, w, r * 1.5, 0.03, c, o, cy, -r - 0.012);
+    for (const sx of [-1, 1]) box(lift, 0.03, r * 1.5, w, c, sx * (r + 0.012), cy, o);
+    box(lift, w, 0.03, r * 1.5, c, o, cy + r + 0.012, 0);
+  });
+  blShine(lift, -0.2, cy + 0.2, r + 0.04, 0.09);
+  const head = pivot(lift, 0, cy + r + 0.12, 0.1);
+  parts.head = head;
+  box(head, 0.42, 0.34, 0.38, m.body, 0, 0, 0);
+  box(head, 0.28, 0.17, 0.14, 0xe0e8f4, 0, -0.07, 0.2); // a pale snout
+  box(head, 0.11, 0.08, 0.05, 0x14141a, 0, -0.01, 0.285);
+  for (const s of [-1, 1]) { // whiskers
+    box(head, 0.16, 0.015, 0.015, 0xffffff, s * 0.2, -0.07, 0.28);
+    box(head, 0.14, 0.015, 0.015, 0xffffff, s * 0.19, -0.11, 0.27);
+  }
+  if (has(m, 'shades')) {
+    box(head, 0.44, 0.09, 0.04, 0x14141a, 0, 0.08, 0.2);
+    for (const s of [-1, 1]) box(head, 0.16, 0.11, 0.05, 0x14141a, s * 0.11, 0.08, 0.205);
+    box(head, 0.44, 0.015, 0.06, 0xffd23a, 0, 0.13, 0.2);
+    for (const s of [-1, 1]) box(head, 0.05, 0.03, 0.05, 0xffffff, s * 0.09, 0.11, 0.235);
+  } else eyes(head, 0.08, 0.195, 0.11, 0.12);
+  if (has(m, 'noseball')) { // a little ball on its nose
+    const nb = pivot(head, 0, 0.24, 0.3);
+    spin(parts, nb, 'y', 3);
+    ball(nb, 0.08, 0xffd23a, 0, 0.06, 0);
+    box(nb, 0.17, 0.025, 0.025, 0xff5a4a, 0, 0.06, 0.07);
+  }
+  parts.arms = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) { // flippers
+    const fl = pivot(lift, s * (r + 0.02), cy - 0.02, 0.04);
+    parts.arms.push({ g: fl, phase: ph });
+    const f2 = pivot(fl, 0, 0, 0);
+    f2.rotation.z = -s * 0.8;
+    box(f2, 0.12, 0.34, 0.2, m.body, s * 0.04, -0.15, 0);
+  }
+  for (const s of [-1, 1]) box(lift, 0.18, 0.07, 0.24, m.body, s * 0.11, 0.1, -r - 0.08); // tail flippers
+}
+
+// Fuzzchick / Smashbird: a fuzzy tennis-ball chick with a white curved seam, a small orange beak, wing stubs and chick feet.
+// Smashbird (`rackets`): the wings end in two string rackets.
+function tennischick(root, m, parts) {
+  const big = has(m, 'rackets');
+  const r = big ? 0.38 : 0.36, cy = 0.5;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  ball(lift, r, m.body, 0, cy, 0);
+  for (const [x, y, z] of [[-0.2, cy + 0.2, r - 0.03], [0.22, cy - 0.06, r - 0.02], [-0.25, cy - 0.15, r - 0.06], [0.1, cy + 0.3, r - 0.1], [r - 0.02, cy + 0.1, 0.15], [-r + 0.02, cy + 0.12, 0.1]]) {
+    box(lift, 0.07, 0.07, 0.05, m.belly, x, y, z); // fuzz
+  }
+  for (let i = 0; i <= 8; i++) { // the white S-shaped seam across the front
+    const t = i / 8, x = Math.sin(t * Math.PI * 2) * 0.13, y = cy + 0.3 - t * 0.6;
+    box(lift, 0.055, 0.055, 0.04, 0xffffff, x, y, r + 0.005 - Math.abs(x) * 0.2);
+  }
+  eyes(lift, cy + 0.12, r + 0.015, 0.12, 0.12);
+  box(lift, 0.11, 0.08, 0.13, m.accent, 0, cy + 0.0, r + 0.06); // the beak
+  box(lift, 0.09, 0.03, 0.1, m.accent, 0, cy - 0.05, r + 0.05);
+  blShine(lift, -0.17, cy + r * 0.7, r * 0.6, 0.09);
+  for (const x of [-0.05, 0, 0.05]) box(lift, 0.04, 0.12 + (x === 0 ? 0.04 : 0), 0.04, m.dark, x, cy + r + 0.05, -0.02); // head tuft
+  if (big) { box(lift, r * 2 + 0.03, 0.06, r * 1.5 + 0.03, 0xffffff, 0, cy + 0.2, 0); box(lift, r * 1.5 + 0.03, 0.06, r * 2 + 0.03, 0xffffff, 0, cy + 0.2, 0); } // a white sweatband round the head
+  parts.legs = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(lift, s * 0.12, 0.2, 0.02);
+    box(leg, 0.05, 0.2, 0.05, m.accent, 0, -0.1, 0);
+    for (const t of [-1, 0, 1]) box(leg, 0.04, 0.03, 0.12, m.accent, t * 0.05, -0.19, 0.04);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  for (const [s, ph] of [[-1, 0], [1, 1.6]]) { // wings (or rackets)
+    const w = pivot(lift, s * (r + 0.01), cy + 0.02, -0.02);
+    swing(parts, w, 'z', 0.25, 5, ph);
+    const w2 = pivot(w, 0, 0, 0);
+    w2.rotation.z = s * 0.5;
+    if (big) { // a big racket: handle, a frame with strings (it sticks out sideways and up so you can see it)
+      w2.rotation.z = s * 1.9;
+      box(w2, 0.06, 0.28, 0.06, 0x2a2a30, s * 0.02, -0.14, 0);
+      const fr = pivot(w2, s * 0.02, -0.5, 0);
+      for (const [fx, fy, fw, fh] of [[0, 0.2, 0.34, 0.06], [0, -0.2, 0.34, 0.06], [-0.17, 0, 0.06, 0.46], [0.17, 0, 0.06, 0.46]]) box(fr, fw, fh, 0.07, 0xe83a3a, fx, fy, 0);
+      for (const k of [-0.09, 0, 0.09]) { box(fr, 0.012, 0.4, 0.02, 0xffffff, k, 0, 0); box(fr, 0.3, 0.012, 0.02, 0xffffff, 0, k * 1.6, 0); }
+    } else box(w2, 0.08, 0.2, 0.16, m.body, s * 0.03, -0.1, 0);
+  }
+  const tail = pivot(lift, 0, cy - 0.05, -r);
+  parts.tail = tail;
+  box(tail, 0.14, 0.12, 0.1, m.dark, 0, 0.05, -0.04);
+}
+
+// Strikehorn: a heavy shiny bowling ball with three finger holes on its back, short thick legs and a little rhino face. Its
+// horn is a bowling pin with a red stripe.
+function bowlrhino(root, m, parts) {
+  const r = 0.46, cy = 0.62;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  ball(lift, r, m.body, 0, cy, 0);
+  for (const [x, z] of [[-0.09, -0.16], [0.09, -0.16], [0, -0.3]]) box(lift, 0.08, 0.03, 0.08, 0x0a0a12, x, cy + r - 0.02, z); // finger holes
+  blShine(lift, -0.2, cy + r * 0.72, 0.1, 0.1);
+  for (const [x, z, w, d] of [[0.1, 0.1, 0.34, 0.07], [-0.05, -0.1, 0.4, 0.07], [0.2, -0.28, 0.24, 0.07]]) box(lift, w, 0.025, d, 0x4a74e0, x, cy + r + 0.012, z).rotation.y = 0.5; // marbled swirls on top
+  for (const sx of [-1, 1]) for (const [y, z, d] of [[0.1, 0.0, 0.3], [-0.12, -0.2, 0.26]]) box(lift, 0.025, 0.07, d, 0x4a74e0, sx * (r + 0.012), cy + y, z);
+  const head = pivot(lift, 0, cy - 0.06, r - 0.02);
+  parts.head = head;
+  box(head, 0.4, 0.34, 0.26, m.dark, 0, 0, 0);
+  box(head, 0.34, 0.2, 0.14, m.belly, 0, -0.07, 0.17); // the broad snout
+  for (const s of [-1, 1]) {
+    box(head, 0.05, 0.05, 0.03, 0x14141a, s * 0.08, -0.04, 0.25); // nostrils
+    box(head, 0.1, 0.1, 0.06, m.dark, s * 0.18, 0.2, -0.02); // ears
+  }
+  eyes(head, 0.08, 0.135, 0.12, 0.11);
+  const horn = pivot(head, 0, 0.17, 0.18); // a bowling pin on its forehead, a bit bigger than a real horn
+  horn.rotation.x = 0.25;
+  box(horn, 0.2, 0.15, 0.2, 0xffffff, 0, 0.08, 0);
+  box(horn, 0.14, 0.14, 0.14, 0xffffff, 0, 0.22, 0);
+  box(horn, 0.15, 0.05, 0.15, 0xe83a3a, 0, 0.27, 0);
+  box(horn, 0.12, 0.12, 0.12, 0xffffff, 0, 0.36, 0);
+  box(horn, 0.14, 0.04, 0.14, 0xe83a3a, 0, 0.33, 0);
+  parts.legs = [];
+  for (const [x, z, ph] of [[-0.2, 0.18, 0], [0.2, 0.18, Math.PI], [-0.2, -0.18, Math.PI], [0.2, -0.18, 0]]) {
+    const leg = pivot(lift, x, 0.26, z);
+    box(leg, 0.18, 0.26, 0.18, m.dark, 0, -0.13, 0);
+    box(leg, 0.2, 0.07, 0.22, m.belly, 0, -0.24, 0.02);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tail = pivot(lift, 0, cy, -r);
+  parts.tail = tail;
+  box(tail, 0.06, 0.06, 0.22, m.dark, 0, -0.04, -0.1);
+}
+
+const SHAPES_BALL = { ballpup, beachseal, tennischick, bowlrhino };
+Object.assign(SHAPES, SHAPES_BALL);
+/* ==== end of T40d ball shapes ==== */
