@@ -784,6 +784,8 @@ export function drawAtlas() {
       const seat = (x % 8 < 6) && (y % 8 < 6);
       put(T.SEAT_TOP, x, y, seat ? shade([50, 110, 230], 1 + (r9() - 0.5) * 0.06) : [28, 56, 130]);
       put(T.SEAT_SIDE, x, y, y < 10 ? (y === 9 ? [24, 50, 120] : shade([50, 108, 224], 1 + (r9() - 0.5) * 0.06)) : shade([156, 160, 168], 1 + (r9() - 0.5) * 0.08)); // a blue seat back over grey concrete
+    });
+  }
   { // T40c Race Track tiles (own random numbers): dark grain, a white edge line, a 4 x 4 chequer, red and white kerb, chevron boost pads, lamps, stacked tyres
     const r9 = mulberry32(4141);
     const grain = (x, y, base = [58, 60, 68], a = 0.12) => shade(base, 1 + (r9() - 0.5) * a + (r9() < 0.06 ? -0.12 : 0));
