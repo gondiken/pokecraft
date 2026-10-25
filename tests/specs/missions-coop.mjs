@@ -91,7 +91,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(gr.version === 11, `duel VERSION is ${gr.version}`);
   t.ok(gr.zero[0] === 55 && gr.zero[1] === 3 && gr.same0, `grow 0 is today's giant (level ${gr.zero[0]}, ${gr.zero[1]}x HP)`);
-  t.ok(JSON.stringify(gr.rows.map(r => r[0])) === `[${Math.min(gr.cap, 57)},${Math.min(gr.cap, 61)},${Math.min(gr.cap, 65)},${Math.min(gr.cap, 65)}]`, `the level cap grows 57 / 61 / 65 / 65 (${gr.rows.map(r => r[0])}, cap ${gr.cap})`);
+  t.ok(JSON.stringify(gr.rows.map(r => r[0])) === `[${Math.min(gr.cap, 57)},${Math.min(gr.cap, 61)},${Math.min(gr.cap, 65)},${Math.min(gr.cap, 71)}]`, `the level cap grows 57 / 61 / 65 / 71, up to the cap (${gr.rows.map(r => r[0])}, cap ${gr.cap})`);
   t.ok(JSON.stringify(gr.rows.map(r => r[1])) === '[3.25,3.75,4.25,4.5]', `the HP factor grows 0.25 per step up to +1.5 (${gr.rows.map(r => r[1])})`);
   t.ok(gr.low[0][0] === 33 && gr.low[1][0] === 35 && gr.swapped, `a small team makes a small giant (${gr.low.map(r => r[0])}) and the order of the teams does not matter`);
   t.ok(gr.clean.join() === '3,0,0,0', `cleanCoop keeps grow 0..99 and drops junk (${gr.clean})`);

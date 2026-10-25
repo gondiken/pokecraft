@@ -84,7 +84,7 @@ export class DanceLive {
     return this.padAt(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z));
   }
 
-  near() {
+  nearPad() {
     const p = this.game.player?.pos;
     return !!p && Math.max(Math.abs(p.x - this.gym.x - 0.5), Math.abs(p.z - this.gym.z - 0.5)) <= DANCE.range && Math.abs(p.y - this.gym.y) < 4;
   }
@@ -110,7 +110,7 @@ export class DanceLive {
   update() {
     this.cells.flush();
     const now = this.now(), ui = this.ui;
-    if (this.phase !== 'idle' && !this.near()) {
+    if (this.phase !== 'idle' && !this.nearPad()) {
       this.reset();
       ui?.toast(`${this.def.leader.name}: The dance-off stopped. Talk to me to dance again!`);
     }

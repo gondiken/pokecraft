@@ -248,7 +248,7 @@ export class World {
   // The biome at (x, z), from the natural terrain (player building doesn't change it):
   // peak, snow, mountain, beach, swamp, taiga (snowy pine forest), desert, forest, meadow or plains.
   biome(x, z) {
-    if (this.realm) return this.realm.biome; // T31
+    if (this.realm) return this.realmBiome?.(x, z) ?? this.realm.biome; // T31 (T40: Playland's zones)
     const h = Math.min(this.terrainHeight(x, z), WORLD_H - 10);
     // The highest ground of this map: about 3% peaks, 2% snow and 6% mountains.
     const high = this.highGround();

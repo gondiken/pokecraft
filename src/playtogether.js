@@ -150,7 +150,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     const join = async () => {
       const n = checkName(); if (!n) return;
       if (code.value.length !== 5) { setMpMessage('Type the 5-letter world code first.', true); return; }
-      if (game.place && game.place !== 'main') await game.realms.leave('quiet'); // T31: wake up before visiting
+      if (game.place && game.place !== 'main') await game.realms.leave('quiet', { home: true }); // T31: wake up before visiting
       save();
       mpMessage = { text: '', error: false };
       const pending = mp.join(code.value, n);

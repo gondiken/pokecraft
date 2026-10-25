@@ -205,15 +205,16 @@ export default async function ({ browser, base, t }) {
   await waitFor(page, () => window.pokecraft.ui.starsShown === '1/12');
   const hud = await page.evaluate(async () => {
     const { loadStars, PICTURE_WORLDS } = await import('/src/pictureworlds.js');
+    const { REALMS: REALMS_ } = await import('/src/realms.js');
     const g = window.pokecraft;
     g.save();
     return { got: document.querySelectorAll('#stars .star.got').length, all: document.querySelectorAll('#stars .star').length, titles: [...document.querySelectorAll('#stars .star')].map(s => s.title).join(),
       saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).stars, clean: JSON.stringify(loadStars(['x', 'house', 'house', 3])), none: JSON.stringify(loadStars()), order: JSON.stringify(loadStars(['doors', 'house'])),
-      ids: PICTURE_WORLDS.map(w => w.id).join(), ready: PICTURE_WORLDS.some(w => w.ready) };
+      ids: PICTURE_WORLDS.map(w => w.id).join(), ready: PICTURE_WORLDS.every(w => !w.ready || (w.realm && REALMS_[w.realm]?.parent === 'swirl')) };
   });
   t.ok(hud.got === 1 && hud.all === 12 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of twelve, each named (${hud.got}/${hud.all}: ${hud.titles})`);
   t.ok(JSON.stringify(hud.saved) === '["house"]' && hud.clean === '["house"]' && hud.none === '[]' && hud.order === '["house","doors"]', `stars are saved; loadStars drops junk and repeats, and keeps the list order (${hud.clean} ${hud.order})`);
-  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && !hud.ready, 'twelve stars (Picture Worlds), none ready yet');
+  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && hud.ready, 'twelve stars (Picture Worlds), every ready one has a realm below the Swirl');
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SHOTS, 't38-hud-stars.png') });

@@ -124,7 +124,7 @@ export class UI {
       this.badgeRow.classList.toggle('hidden', GYMS.every(gym => g.badges.includes(gym.id)));
     }
     // T38a: the Picture World stars: only in the Swirl or once you have one (owner 2026-10-25: a calm HUD; no Champion label)
-    const starKey = g.place === 'swirl' || g.stars.length ? g.stars.join() : null;
+    const starKey = g.world?.realm?.showStars || g.stars.length ? g.stars.join() : null;
     if (this.starKey !== starKey) {
       this.starKey = starKey;
       this.starsShown = starKey === null ? null : `${g.stars.length}/${PICTURE_WORLDS.length}`;
@@ -152,18 +152,18 @@ export class UI {
   }
 
   // Confetti and a big message when the player becomes Champion.
-  celebrate() {
+  celebrate(big = 'You are the Champion!', small = 'Your team is the best in the world!', ms = 7000) { // T40: words and time as arguments (a star's note)
     document.getElementById('celebrate')?.remove();
     const colors = ['#ff5a5a', '#ffa23a', '#ffd84a', '#5ad85a', '#4aa8ff', '#a06aff'];
     const confetti = Array.from({ length: 40 }, () => el('span', {
       style: `left:${Math.random() * 100}%;animation-delay:${(Math.random() * 3).toFixed(2)}s;background:${colors[Math.floor(Math.random() * colors.length)]}`,
     }));
     const box = el('div', { id: 'celebrate' },
-      el('div', { class: 'big' }, 'You are the Champion!'),
-      el('div', { class: 'small' }, 'Your team is the best in the world!'),
+      el('div', { class: 'big' }, big),
+      el('div', { class: 'small' }, small),
       ...confetti);
     document.body.append(box);
-    setTimeout(() => box.remove(), 7000);
+    setTimeout(() => box.remove(), ms);
   }
 
   setGuide(text) {
