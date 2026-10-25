@@ -83,6 +83,7 @@ export const WHERE = {
 // Hidden gyms (T19 Hidden Hill): far away the normal arrow; within HIDE_R blocks it fades out (no `x`) and the
 // player has to look around.
 WHERE.hidden = g => ({
+  help: 'near', near: HIDE_R, // T39a: the picker says "we'll get you close"; the rule itself is the code below
   aim(p) {
     const x = g.x + 0.5, z = g.z + 0.5;
     if (Math.hypot(x - p.x, z - p.z) > HIDE_R) return { x, z, text: (arrow, dist) => `Next: ${g.def.name} ${arrow} ${dist}m` };
@@ -259,6 +260,7 @@ export function createAccess(game, deps) {
     const w = WHERE[where](g, game, deps), t = WHEN[when](g, game, deps);
     a = {
       gym: g, name: g.def.name, where, when,
+      help: w.help || 'full', near: w.near || 0, // T39a: labels for the "Where to go" panel only
       aim: p => w.aim(p),
       tips: w.tips ? (p, told) => w.tips(p, told) : null,
       contains: w.contains || (p => (g.area ? inBox(g.area, p) : (g.tower ? game.world.towerAt(p.x, p.z) : game.world.gymAt(p.x, p.z, p.y)) === g)),

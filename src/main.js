@@ -12,6 +12,8 @@ import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from 
 import { createRematch, loadWins } from './rematch.js';
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
+import { createNavUi } from './navui.js'; // T39a
+import { createNav } from './destinations.js'; // T39a
 import { TouchControls } from './touch.js';
 import { createRiding } from './riding.js';
 import { createHideSeek } from './hideseek.js'; // T30
@@ -489,6 +491,13 @@ game.openMissions = mode => {
 game.closeMissions = () => { if (game.ui.missionsOpen) togglePanel(); };
 game.openBlocks = () => { if (!game.ui.panelOpen) toggleBlocks(); };
 game.closeBlocks = () => { if (game.ui.panelOpen) togglePanel(); };
+// T39a: the "Where to go" panel (G, or a tap on the guide line)
+game.openNav = () => {
+  const dark = !document.getElementById('hs-dark')?.classList.contains('hidden');
+  if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking && !game.hideSeek?.frozen && !dark && !game.realms.busy) togglePanel('nav');
+};
+game.closeNav = () => { if (game.ui.navOpen) togglePanel(); };
+document.getElementById('nav-close').addEventListener('click', () => togglePanel('nav'));
 
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
@@ -551,6 +560,10 @@ document.addEventListener('keydown', e => {
     const btn = document.querySelector('#b-actions button.continue');
     if (btn) { e.preventDefault(); btn.click(); }
     return;
+  }
+  if (e.code === 'KeyG' && !e.repeat && !game.inBattle) { // T39a: Go
+    if (game.ui.navOpen) { e.preventDefault(); togglePanel('nav'); return; }
+    if (!game.ui.panelOpen) { e.preventDefault(); game.openNav(); return; }
   }
   if (e.code === 'KeyP' || e.code === 'Tab' || e.code === 'KeyB' || e.code === 'KeyC' || e.code === 'KeyM' || (e.code === 'Escape' && game.ui.panelOpen)) {
     e.preventDefault();
@@ -998,6 +1011,8 @@ game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
+game.nav = createNav(game); // T39a: the place the guide follows (no choice = the next gym)
+game.navUi = createNavUi(game); // T39a
 
 // T22: the prompt while you stand on a Doormat and look at nothing else.
 function homePrompt() {

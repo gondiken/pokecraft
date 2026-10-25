@@ -581,3 +581,27 @@ body.touch #hs-stop { min-height: 48px; font-size: 14px; }
 #travel.hidden { display: none; }
 #travel .travel-moon { font-size: 80px; color: #ffe89a; }
 #travel .travel-text { font-size: 32px; }
+
+/* ---------- T39a: Where to go ---------- */
+#guide { pointer-events: auto; cursor: pointer; }
+#guide:empty { display: none; }
+#guide::after { content: ' ▾'; opacity: .7; }
+body.touch #guide { min-height: 44px; display: flex; align-items: center; padding: 6px 12px; }
+#nav h2 { margin: 0 0 8px; }
+#nav h3 { margin: 14px 0 6px; font-size: 20px; color: var(--muted); font-weight: 600; }
+#nav .nav-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 4px 0; padding: 6px 14px; text-align: left; font-size: 22px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.15); color: inherit; cursor: pointer; }
+#nav .nav-row.on, #nav .nav-tile.on { border-color: #ffd23a; background: rgba(255, 210, 58, .16); }
+#nav .nav-row.dim, #nav .nav-tile.dim { opacity: .5; }
+#nav .nav-icon { font-size: 30px; width: 40px; text-align: center; flex: none; }
+#nav .nav-text { display: flex; flex-direction: column; flex: 1; }
+#nav .nav-text small { color: var(--muted); font-size: 16px; }
+#nav .nav-on { color: #6bff8a; font-size: 26px; }
+#nav .nav-note { min-height: 24px; margin: 4px 0; color: #ffd23a; font-size: 20px; }
+#nav .nav-tiles { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+#nav .nav-tile { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; min-height: 64px; padding: 6px 2px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.15); color: inherit; font-size: 13px; line-height: 1.1; cursor: pointer; }
+#nav .nav-tile .nt-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--c); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; text-shadow: 0 0 3px #000; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+#nav .nav-tile.got .nt-dot { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }
+#nav .nav-tile .nt-name { text-align: center; overflow-wrap: anywhere; }
+body.touch #nav .nav-row { min-height: 64px; }
+body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
+@media (max-width: 700px) { #nav .nav-tiles { grid-template-columns: repeat(4, 1fr); } }

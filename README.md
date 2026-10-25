@@ -45,6 +45,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | P / Tab | Team & storage screen |
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
 | C | Creature Book: every creature you've seen and caught |
+| G | Where to go: pick a gym or place and the arrow follows it (on a tablet, tap the arrow line at the top right) |
 | M | Champion missions (after you are the Champion) |
 | Esc | Pause (Resume, Main menu, Play together) |
 
