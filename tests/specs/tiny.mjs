@@ -204,7 +204,7 @@ export default async function ({ browser, base, t }) {
       return { top, y: p.pos.y, z: p.pos.z, onGround: p.onGround, r };
     });
     t.ok(up.top >= 33.9 && up.y >= 33.9 && up.y <= 34.8 && up.z < 124 && up.onGround, `the wind lifts you to the shelf (${up.top.toFixed(2)}) and you walk onto it (y ${up.y.toFixed(2)}, z ${up.z.toFixed(1)})`);
-    await shot(page, 'fan', [14, 6, 140, -1.57, 0.1], 1500);
+    await shot(page, 'fan', [11.5, 1, 142.5, 0, 0.22], 1500);
     const off = await page.evaluate(() => { const g = window.pokecraft; g.gymLive.hit(window.__blk(12, 1, 134)); return { lifts: g.world.lifts.length, on: window.__live().fanOn }; });
     t.ok(off.lifts === 0 && !off.on, 'the other switch cell turns the fan off again: the lift is gone');
 
@@ -281,8 +281,7 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(!cap.early && cap.boarded && cap.midX > 52, `standing on the cap boards it after 0.6 s (not before) and it floats you east (x ${cap.midX.toFixed(1)}) ${JSON.stringify(cap)}`);
     t.ok(cap.carry && Math.abs(cap.x - 99.5) < 0.1 && cap.y >= 31 && cap.y < 31.2 && cap.ground === 153 && cap.above === 0 && cap.dock === 'E', `after the river it sets you down on dry counter (${cap.x.toFixed(1)}, ${cap.y.toFixed(1)}); the cap waits at the east dock`);
-    await page.evaluate(() => { window.__at(60.5, 31, 20.5, -0.4, -0.5); });
-    await shot(page, 'river', [70, 31, 26, 0.15, -0.35], 2000);
+    await shot(page, 'river', [99.5, 31, 15.5, 1.57, -0.32], 2000);
     const dry = await page.evaluate(() => { const g = window.pokecraft; g.gymLive.hit(window.__blk(34, 32, 5)); window.__step(170); let wet = 0; for (let x = 48; x <= 97; x++) for (let z = 14; z <= 16; z++) if (g.world.get(x, 30, z) === 5) wet++; return { wet, basin: g.world.get(30, 29, 15) }; });
     t.ok(dry.wet === 0 && dry.basin === 0, 'the tap off: after 8 s the groove and the sink are dry again');
 
@@ -326,7 +325,8 @@ export default async function ({ browser, base, t }) {
       return { awake, cell, after: g.world.get(78, 15, 87) };
     });
     t.ok(inside.awake && inside.cell === 0 && inside.after === 163, `a tail cell never closes on you: it stays air while you stand in it and turns to fur when you step out ${JSON.stringify(inside)}`);
-    await shot(page, 'cat', [110.5, 15, 89.5, 1.57, 0.15], 1800); // asleep again: the z z z over its head
+    await page.evaluate(() => window.__step(140)); // asleep again: the z z z over its head
+    await shot(page, 'cat', [112.5, 15, 88.5, 1.45, 0.25], 1800);
 
     // ---- the crumbs
     const crumbs = await page.evaluate(async () => {
@@ -478,23 +478,24 @@ export default async function ({ browser, base, t }) {
   }
 
   /* ======================================== D. iPad ======================================== */
-  if (want('live') && !only) {
+  if (!only || only === 'ipad') {
     const ip = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
     await newGame(ip, 0);
     const before = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
     await intoHouse(ip);
     const words = await ip.evaluate(async () => {
       const g = window.pokecraft, out = {};
-      const look = async (name, pos, tgt) => {
+      const look = async (name, pos, tgt, fresh) => {
         window.__at(pos[0], pos[1], pos[2], 0, 0); g.player.lookAt({ x: tgt[0] + 0.5, y: tgt[1] + 0.5, z: tgt[2] + 0.5 });
-        for (let i = 0; i < 40; i++) { await new Promise(r => setTimeout(r, 100)); const el = document.getElementById('btn-act'); if (el && !el.classList.contains('hidden') && el.textContent) { out[name] = el.textContent; return; } }
+        const prev = document.getElementById('btn-act')?.textContent;
+        for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 100)); const el = document.getElementById('btn-act'); if (el && !el.classList.contains('hidden') && el.textContent && (!fresh || el.textContent !== prev)) { out[name] = el.textContent; return; } }
         out[name] = document.getElementById('btn-act')?.textContent || '';
       };
       await look('remote', [40.5, 1, 175.5], [40, 1, 178]);
-      await look('fan', [11.5, 1, 130.5], [11, 1, 134]);
-      await look('tap', [36.5, 31, 8.5], [34, 32, 5]);
+      await look('fan', [11.5, 1, 136.5], [11, 1, 134]);
+      await look('tap', [34.5, 31, 8.5], [34, 32, 5], true);
       const G = await import('/src/giantland.js'); const c = G.CRUMBS[0];
-      await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c);
+      await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c, true);
       return out;
     });
     t.ok(words.remote === 'Ride!' && words.fan === 'Fan on!' && words.tap === 'Turn tap!' && words.crumb === 'Pick up!', `the big button says "${words.remote}" at the remote, "${words.fan}" at the fan, "${words.tap}" at the tap, "${words.crumb}" at a crumb`);
