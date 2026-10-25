@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
+import { PENDING } from '../pending-types.mjs'; // T40 base: wave 14 types whose moves are not made yet
 import { openGame, newGame, click, pause, playBattle, platform, startWeakBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
@@ -58,10 +59,10 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0);
 
   // 1. Data.
-  const data = await page.evaluate(async (reserved) => {
+  const data = await page.evaluate(async ([reserved, pending]) => {
     const S = await import('/src/species.js');
     const KINDS = ['heal', 'raise', 'lower', 'flinch', 'sleep', 'multi', 'recoil', 'rally', 'shield', 'risky', 'sacrifice', 'curse', 'field', 'lastword'];
-    const types = ['normal', ...Object.keys(S.TYPE_COLORS)];
+    const types = ['normal', ...Object.keys(S.TYPE_COLORS).filter(x => !pending.includes(x))];
     const out = { few: [], bad: [], dupNames: [], clash: [], unknownLearn: [], firstNotDamage: [], noCoverage: [], hits: 0, total: Object.keys(S.MOVES).length };
     for (const type of types) {
       const n = Object.values(S.MOVES).filter(m => m.type === type && !m.sig).length;
@@ -88,7 +89,7 @@ export default async function ({ browser, base, t }) {
     }
     out.info = S.moveInfo('flarekick').text + ' / ' + S.moveInfo('lullaby').text;
     return out;
-  }, RESERVED_SOUNDS);
+  }, [RESERVED_SOUNDS, PENDING]);
   t.ok(data.total >= 138 && !data.few.length, `every type has enough moves (${data.total} moves) ${data.few.join(', ')}`);
   t.ok(!data.bad.length && !data.dupNames.length && !data.clash.length, `moves are well formed, names unique, no sound clash ${[...data.bad, ...data.dupNames, ...data.clash].join(', ')}`);
   t.ok(!data.unknownLearn.length, `every learnset move exists ${data.unknownLearn.join(', ')}`);

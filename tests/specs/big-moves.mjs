@@ -3,6 +3,7 @@
 // buttons (screenshots) and a real duel between two browsers.
 import fs from 'node:fs';
 import path from 'node:path';
+import { PENDING } from '../pending-types.mjs'; // T40 base
 import { openGame, openPair, newGame, click, pause, platform, startWeakBattle, playBattle, ROOT } from '../helpers.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
@@ -328,7 +329,7 @@ export default async function ({ browser, base, t }) {
   const d = R.data;
   t.ok(d.total === 75 && d.counts.rally === 10 && d.counts.shield === 12 && d.counts.risky === 10 && d.counts.sacrifice === 11 && d.counts.curse === 10 && d.counts.field === 14 && d.counts.lastword === 8,
     `75 big moves (61 + wave 11's 11 + Ninja's 3), kinds rally 10 shield 12 risky 10 sacrifice 11 curse 10 field 14 lastword 8 (${JSON.stringify(d.counts)})`);
-  t.ok(d.types === 33 && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types, ${d.minPer}-${d.maxPer})`);
+  t.ok(d.types === 33 + (4 - PENDING.length) && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types, ${d.minPer}-${d.maxPer})`);
   t.ok(d.flags && d.uniqueNames && !d.soundClash.length, `big moves have no signature or chance flag, unique names, no sound clash (${d.soundClash})`);
   t.ok(!d.learnBad.length, `every creature learns its type's big moves at BIG_LEVEL, none of another type ${d.learnBad.slice(0, 5)}`);
   t.ok(!d.autoBad.length && !d.swBig, `makeCreature and autoMoves never give a big move ${d.autoBad.slice(0, 5)}`);

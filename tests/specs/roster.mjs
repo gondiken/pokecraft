@@ -1,10 +1,11 @@
 // Every type has the same number of creatures; every creature can be found, evolves into
 // something real, and has a model.
 import { openGame } from '../helpers.mjs';
+import { PENDING } from '../pending-types.mjs'; // T40 base: wave 14 types whose creatures are not made yet
 
 export default async function ({ browser, base, t }) {
   const page = await openGame(browser, base);
-  const r = await page.evaluate(async () => {
+  const r = await page.evaluate(async pending => {
     const S = await import('/src/species.js');
     const { condOf } = await import('/src/spawnrules.js');
     const allIds = Object.keys(S.SPECIES);
@@ -28,7 +29,7 @@ export default async function ({ browser, base, t }) {
     return {
       count: ids.length,
       sizes: Object.fromEntries(Object.entries(byType).map(([t, l]) => [t, l.length])),
-      types: Object.keys(S.TYPE_COLORS),
+      types: Object.keys(S.TYPE_COLORS).filter(x => !pending.includes(x)),
       notFound: ids.filter(id => !spawns.has(id) && !ids.some(o => S.SPECIES[o].evolve?.into === id && spawns.has(o))),
       badConds: [...Object.values(S.SPAWNS).flat(), ...realmSpawns].filter(e => e[2] && !condOf(e[2])).map(e => `${e[0]}:${e[2]}`),
       badSpawns: [...spawns].filter(id => !S.SPECIES[id]),
@@ -42,7 +43,7 @@ export default async function ({ browser, base, t }) {
       legendaryWild: legendary.filter(id => spawns.has(id)),
       legendary,
     };
-  });
+  }, PENDING);
   const sizes = Object.values(r.sizes);
   t.ok(r.types.every(t => r.sizes[t]) && new Set(sizes).size === 1,
     `every type has the same number of creatures (${JSON.stringify(r.sizes)})`);

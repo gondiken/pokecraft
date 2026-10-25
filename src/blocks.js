@@ -18,6 +18,7 @@ const WOOL_TYPES = [
   'cozy', 'treasure', // T21: ids 68-69
   'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
   'ninja', // wave 12 (T37): id 113
+  'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -29,6 +30,7 @@ const WOOL_RGB = {
   cozy: [200, 110, 90], treasure: [230, 185, 60],
   food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
   ninja: [46, 40, 66],
+  tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -56,6 +58,8 @@ const MORE_TILES = [
   'PORTAL_DIM', 'PORTAL', 'PORTAL_FRAME', 'SWIRL_STONE_TOP', 'SWIRL_STONE', 'PICTURE_FRAME', 'CLOTH', 'STAR_STONE', 'WIZARD_STONE',
   // T38d swirl looks: SWIRL_PAINT and SWIRL_CLOUD must stay next to each other (one tint range, see caves.js swirlTint)
   'SWIRL_PAINT', 'SWIRL_CLOUD', 'GLOW_PUFF', 'GLOW_PUFF_MINT', 'BRISTLE_SIDE', 'BRISTLE_TOP',
+  // T40 base (wave 14): a ready picture frame, the way back to the Swirl, the Boss's stand
+  'PICTURE', 'WAY_BACK', 'BOSS_STAND_TOP', 'BOSS_STAND_SIDE',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -99,10 +103,13 @@ export const B = {
   PORTAL_DIM: 124, PORTAL: 125, PORTAL_FRAME: 126, SWIRL_STONE: 127, PICTURE_FRAME: 128, CLOTH: 129, STAR_STONE: 130, WIZARD_STONE: 131,
   // 132-136: T38d, the Swirl's looks (none placeable, only in the Swirl). 137-139 are reserved for more Swirl looks. Next free id: 140.
   SWIRL_PAINT: 132, SWIRL_CLOUD: 133, GLOW_PUFF: 134, GLOW_PUFF_MINT: 135, BRISTLE: 136,
+  // 140-143: wave 14 wool (tiny, pirate, racer, ball). 144-146: T40 base blocks (none placeable); 147-149 reserved for the base.
+  // 150-203 belong to T40a-d (see plans/T40.md). Next free id after wave 14: 204.
+  PICTURE: 144, WAY_BACK: 145, BOSS_STAND: 146,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -231,6 +238,10 @@ BLOCKS[B.SWIRL_CLOUD] = { name: 'Swirl Cloud', ...all(T.SWIRL_CLOUD), fixed: tru
 BLOCKS[B.GLOW_PUFF] = { name: 'Glow Puff', ...all(T.GLOW_PUFF), glow: true, fixed: true, wallText: 'A glowing puff. Too magic to break!' };
 BLOCKS[B.GLOW_PUFF_MINT] = { name: 'Glow Puff', ...all(T.GLOW_PUFF_MINT), glow: true, fixed: true, wallText: 'A glowing puff. Too magic to break!' };
 BLOCKS[B.BRISTLE] = { name: 'Brush Bristles', top: T.BRISTLE_TOP, side: T.BRISTLE_SIDE, bottom: T.BRISTLE_TOP, fixed: true, wallText: 'The giant paintbrush is too big to break!' };
+// T40 base: PICTURE is drawn only with setLive (a ready frame in the Swirl); WAY_BACK is the picture you step into to go back up
+BLOCKS[B.PICTURE] = { name: 'Picture', ...all(T.PICTURE), glow: true, noLight: true, fixed: true, wallText: "It's a picture of another world. Step in! (press E or tap)" };
+BLOCKS[B.WAY_BACK] = { name: 'Way Back', ...all(T.WAY_BACK), glow: true, noLight: true, fixed: true, wallText: 'This is the way back to the Swirl. Step in!' };
+BLOCKS[B.BOSS_STAND] = { name: 'Boss Stand', top: T.BOSS_STAND_TOP, side: T.BOSS_STAND_SIDE, bottom: T.BOSS_STAND_SIDE, fixed: true, wallText: 'The Boss stands here!' };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -703,6 +714,20 @@ export function drawAtlas() {
       put(T.BRISTLE_TOP, x, y, sh([246, 128, 186], 0.06));
     });
     each((x, y) => { if (r7() < 0.012) put(T.SWIRL_CLOUD, x, y, [255, 255, 255]); });
+  }
+  { // T40 base blocks (own random numbers): a pale swirl of paint, the Swirl's purple sky seen through a way back, the Boss's star stand
+    const r8 = mulberry32(4040);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    each((x, y) => {
+      const dx = x - 7.5, dy = y - 7.5, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const sw = Math.sin(a * 2 + d * 0.8);
+      put(T.PICTURE, x, y, edge(x, y) ? [230, 220, 245] : shade(sw > 0.3 ? [255, 250, 240] : sw > -0.3 ? [235, 225, 250] : [215, 205, 240], 1 + (r8() - 0.5) * 0.05));
+      const deck = (y === 11 || y === 12) && ((x >= 2 && x <= 6) || (x >= 9 && x <= 13));
+      put(T.WAY_BACK, x, y, edge(x, y) ? [120, 70, 200] : deck ? [236, 228, 252] : shade([128 + y * 3, 90 + y * 2, 200 + y], 1 + (r8() - 0.5) * 0.08));
+      const star = d < 2.4 || (Math.abs(dx) < 0.9 && Math.abs(dy) < 6) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 6);
+      put(T.BOSS_STAND_TOP, x, y, edge(x, y) ? [255, 226, 110] : star ? [255, 226, 110] : shade([96, 56, 170], 1 + (r8() - 0.5) * 0.08));
+      put(T.BOSS_STAND_SIDE, x, y, edge(x, y) ? [255, 226, 110] : shade(y % 4 < 2 ? [110, 70, 190] : [92, 56, 164], 1 + (r8() - 0.5) * 0.06));
+    });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);

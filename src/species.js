@@ -26,17 +26,22 @@ export const TYPE_COLORS = {
   parkour: 'linear-gradient(180deg,#ff5a4a 0 40%,#ffffff 40% 55%,#ff5a4a 55%)',
   // Wave 12 (T37)
   ninja: 'linear-gradient(180deg,#aca0cc 0 35%,#ff7080 35% 50%,#aca0cc 50%)', // T37a: light enough for the dark chip text
+  // Wave 14 (T40)
+  tiny: '#e6c08a',
+  pirate: 'repeating-linear-gradient(90deg,#f6efe0 0 5px,#e07a6a 5px 10px)',
+  racer: 'linear-gradient(90deg,#ffa24a 0 70%,#ffffff 70% 78%,#ffa24a 78%)',
+  ball: 'radial-gradient(circle at 35% 35%,#ffffff 18%,#9fd6ff 19%)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
   normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5, treasure: 0.5 },
-  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2, food: 2 },
-  water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2 },
-  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5, parkour: 2 },
-  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5, squad: 2, dream: 2 },
+  fire: { grass: 2, ice: 2, bug: 2, metal: 2, fire: 0.5, water: 0.5, rock: 0.5, drake: 0.5, rainbow: 0.5, paper: 2, food: 2, tiny: 2 },
+  water: { fire: 2, rock: 2, bone: 2, water: 0.5, grass: 0.5, drake: 0.5, rainbow: 0.5, cyber: 2, racer: 2 },
+  grass: { water: 2, rock: 2, fire: 0.5, grass: 0.5, bug: 0.5, metal: 0.5, toxic: 0.5, drake: 0.5, slime: 2, sky: 0.5, camo: 0.5, parkour: 2, ball: 2 },
+  electric: { water: 2, sound: 2, alien: 2, bone: 0.5, electric: 0.5, grass: 0.5, rock: 0.5, drake: 0.5, sky: 2, light: 0.5, cyber: 0.5, squad: 2, dream: 2, pirate: 2 },
   rock: { fire: 2, electric: 2, ice: 2, bug: 2, grass: 0.5, metal: 0.5, slime: 0.5, paper: 0.5, parkour: 0.5 },
-  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5, food: 0.5 },
+  ice: { grass: 2, bug: 2, drake: 2, fire: 0.5, water: 0.5, ice: 0.5, metal: 0.5, sky: 2, cozy: 0.5, food: 0.5, racer: 2 },
   bug: { grass: 2, mind: 2, ghost: 0.5, fire: 0.5, rock: 0.5, metal: 0.5, pixie: 0.5, sky: 0.5, time: 2, cyber: 2, cozy: 2, food: 2 },
   ghost: { ghost: 2, mind: 2, rainbow: 2, cosmic: 2, normal: 0, squad: 0.5, ninja: 0.5 },
   // New types
@@ -53,7 +58,7 @@ const EFFECTIVENESS = {
   bone: { ghost: 2, electric: 2, alien: 2, metal: 0.5, grass: 0.5 },
   alien: { normal: 2, metal: 2, toxic: 2, cosmic: 0.5, alien: 0.5 },
   // Sky, Slime, Light, Paper: wind blows paper away, paper shades light, light dries slime, slime glues wings.
-  sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5 },
+  sky: { fire: 2, paper: 2, pixie: 2, rock: 0.5, metal: 0.5, tiny: 2 },
   slime: { metal: 2, sky: 2, sound: 2, slime: 0.5, toxic: 0.5, paper: 0.5, treasure: 2 },
   light: { ghost: 2, slime: 2, cosmic: 2, light: 0.5, rainbow: 0.5, paper: 0.5, camo: 2, ninja: 2 },
   paper: { rock: 2, slime: 2, light: 2, fire: 0.5, metal: 0.5, paper: 0.5 },
@@ -78,7 +83,12 @@ const EFFECTIVENESS = {
   // Wave 12: Ninja. A ninja sneaks past a mind, cuts paper and picks a squad off one by one; it can't hide in bright
   // light or from metal armour, and other ninjas see its tricks. Light finds the shadows and a noise (sound) gives a
   // ninja away; ghosts and camo creatures know all its hiding tricks (0.5).
-  ninja: { mind: 2, paper: 2, squad: 2, ninja: 0.5, light: 0.5, metal: 0.5 },
+  ninja: { mind: 2, paper: 2, squad: 2, ninja: 0.5, light: 0.5, metal: 0.5, ball: 2 },
+  // Wave 14: ball squashes tiny, tiny jams the racer, the racer outruns the pirate, the pirate's hook pops the ball.
+  tiny: { racer: 2, food: 2, cyber: 2, tiny: 0.5, fire: 0.5, sky: 0.5 },
+  pirate: { ball: 2, treasure: 2, water: 2, pirate: 0.5, metal: 0.5, ice: 0.5 },
+  racer: { pirate: 2, time: 2, parkour: 2, racer: 0.5, rock: 0.5, slime: 0.5 },
+  ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
