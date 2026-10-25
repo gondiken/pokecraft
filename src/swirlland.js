@@ -8,7 +8,7 @@
 // T38d: the Wizard's paint-box look: four moods (ZONES, zoneWeights), painted deck tops, glow puffs and lanterns, sculptures made of
 // blocks (SCULPTURES), and the data for the sky's nebula puffs, sparks and floating oddities (decorList; swirlsky.js draws those).
 import { B, WOOL, mulberry32 } from './blocks.js';
-import { PICTURE_WORLDS } from './pictureworlds.js';
+import { FRAME_WORLDS, BRIDGE_WORLDS } from './pictureworlds.js';
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // T38d: the Swirl's moods. Four zones with their own pastel palettes blend over a constant haze (weights are smoothstep rings; the GLSL
@@ -62,7 +62,7 @@ export const DECKS = [ // round: [cx, cz, r]; box: [x0, x1, z0, z1]; the top blo
   { id: 'north', box: [28, 68, 52, 57], y: 26 },    // north gallery: frames N0-N3 hang above its north edge
   { id: 'south', box: [28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S2 hang beyond its south edge
   { id: 'loopbase', box: [56, 64, 84, 92], y: 20 }, // the looping stairs stand here, joined to the hub
-  { id: 'wizard', round: [112, 80, 9], y: 20 },     // the Wizard's island (its x moves with the number of Picture Worlds)
+  { id: 'wizard', round: [136, 80, 9], y: 20 },     // the Wizard's island (its x = wizardX(11), the number of bridge stones)
 ];
 export const DOOR = { x: 39, z: [78, 82], y: [21, 25], facing: [1, 0] }; // PORTAL 5 wide x 5 tall, frame round it (z 77/83, y 26)
 export const STAIRS = [
@@ -78,9 +78,9 @@ export const LIFTS = [ // upward rivers: boxes (cells x0..x1, z0..z1), feet insi
   { id: 'southW', x: [26, 27], z: [105, 106], y: [1, 16] },
   { id: 'wizard', x: [59, 60], z: [82, 83], y: [1, 22] }, // beside the bridge's start: a fall from the bridge is never far from here
 ];
-export const FRAME_SPOTS = [ // 8 places; PICTURE_WORLDS[i] -> FRAME_SPOTS[i] (the 8th waits for a world to come)
-  ...[32, 42, 52, 62].map((x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] })), // hangs 1 above the north deck (y 27 is air)
-  ...[32, 42, 52, 62].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
+export const FRAME_SPOTS = [ // 10 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
+  ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] })), // hangs 1 above the north deck (y 27 is air)
+  ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
 ];
 export const FRAME = { w: 7, h: 7 }; // PICTURE_FRAME border, 5x5 inside: CLOTH, or PORTAL when the world is ready (later waves)
 export const BRIDGE = { x0: 61, z: [79, 81], y: 20, len: 5, gap: 1 }; // star stone i: x 61+6i .. 65+6i, two layers (y 19-20)
@@ -201,7 +201,7 @@ export function swirlLand(world, def) {
     if (d.id === 'wizard') continue; // placed below (its x depends on the number of worlds)
     if (d.round) round(d.round[0], d.round[1], d.round[2], d.y); else box(...d.box, d.y);
   }
-  const n = PICTURE_WORLDS.length;
+  const n = BRIDGE_WORLDS.length;
   const wx = wizardX(n);
   round(wx, WIZARD.z, WIZARD.r, WIZARD.y);
 
@@ -259,7 +259,7 @@ export function swirlLand(world, def) {
 
   // 7. The picture frames: a PICTURE_FRAME border 7 x 7, two gem corners, CLOTH inside.
   const frames = [];
-  PICTURE_WORLDS.forEach((pw, i) => {
+  FRAME_WORLDS.forEach((pw, i) => {
     const spot = FRAME_SPOTS[i];
     if (!spot) return;
     const cells = [], border = [], cloth = [];
@@ -274,7 +274,7 @@ export function swirlLand(world, def) {
   });
 
   // 8. The star bridge: n stones of air (drawn with setLive when won), the island after them.
-  const bridge = PICTURE_WORLDS.map((pw, i) => {
+  const bridge = BRIDGE_WORLDS.map((pw, i) => {
     const x0 = stoneX(i), x1 = x0 + BRIDGE.len - 1, [z0, z1] = BRIDGE.z, cells = [];
     for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) for (let y = BRIDGE.y - 1; y <= BRIDGE.y; y++) cells.push([x, y, z]);
     return { world: pw.id, cells, box: { x0, x1, z0, z1, y0: BRIDGE.y - 1, y1: BRIDGE.y } };
@@ -417,7 +417,7 @@ export function swirlAim(world, p, game) {
     const c = near(world.lifts.map(l => { const [x, z] = liftCenter(l); return { x, z }; }));
     return { x: c.x, z: c.z, text: (a, m) => `Ride the river up! ${a} ${m}m` };
   }
-  const open = (world.swirl?.frames || []).map(f => ({ f, w: PICTURE_WORLDS.find(w => w.id === f.world) }))
+  const open = (world.swirl?.frames || []).map(f => ({ f, w: FRAME_WORLDS.find(w => w.id === f.world) }))
     .filter(({ w }) => w?.ready && !game?.stars?.includes(w.id)).map(({ f, w }) => ({ x: f.stand[0] + 0.5, z: f.stand[2] + 0.5, w }));
   if (open.length) { const c = near(open); return { x: c.x, z: c.z, text: (a, m) => `${c.w.emoji} ${c.w.name} ${a} ${m}m` }; }
   const d = world.door, c = d.surface[Math.floor(d.surface.length / 2)];
