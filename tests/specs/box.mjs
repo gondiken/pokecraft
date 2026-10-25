@@ -83,7 +83,7 @@ export default async function ({ browser, base, t }) {
   await pad.tap('.starter >> nth=0');
   await pad.waitForTimeout(1500);
   await fillBox(pad);
-  await pad.tap('#btn-team');
+  await pad.tap('#party-mini');
   await pad.waitForTimeout(400);
   t.ok((await cards(pad)).join() === 'Zapple,Blazehound,Sproutle,Emberpup,Fluffin', 'iPad: the box shows five cards, newest first');
   await pad.tap('#box-tools .chip[data-type="grass"]');

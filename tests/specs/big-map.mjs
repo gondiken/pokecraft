@@ -397,7 +397,7 @@ export default async function ({ browser, base, t }) {
   });
   let toast = '';
   for (let i = 0; i < 8 && !toast; i++) {
-    await page.tap('#btn-break');
+    await page.tap('#btn-act');
     await page.waitForTimeout(2300);
     toast = await page.evaluate(() => window.__toasts.find(s => /too strong/.test(s)) || '');
   }

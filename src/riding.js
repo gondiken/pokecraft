@@ -135,10 +135,10 @@ export function createRiding(game, { scene, closePanel }) {
     },
 
     sync() {
-      const s = { show: this.on || !!this.first(), on: this.on, sky: this.kind === 'sky' };
+      const s = { show: this.on || game.party.some(c => rideKind(c)), on: this.on, sky: this.kind === 'sky' };
       const key = `${s.show}|${s.on}|${s.sky}`;
       if (key === this.lastSync || !game.touch) return;
-      this.lastSync = key;
+      this.lastSync = key; // T39c: main.js also drives the touch buttons every frame (setButtons); this keeps Ride / Up / Down right away
       game.touch.setRide(s);
     },
   };
