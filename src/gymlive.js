@@ -10,6 +10,7 @@ import { RestaurantLive } from './restaurant.js'; // T33
 import { CourseLive } from './obstaclecourse.js'; // T36
 import { DanceLive } from './dancefloor.js'; // the Echo Gym's dance-off
 import { DojoLive } from './shadowdojo.js'; // T37b
+import { HouseLive } from './houselive.js'; // T40a
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -19,6 +20,7 @@ LIVE.restaurant = RestaurantLive; // T33
 LIVE.course = CourseLive; // T36
 LIVE.dance = DanceLive; // the Echo Gym's dance-off (the building is unchanged)
 LIVE.dojo = DojoLive; // T37b the Shadow Dojo's watchers
+LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumbs
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

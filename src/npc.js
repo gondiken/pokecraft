@@ -52,6 +52,18 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
       box(head, 0.1, 0.1, 0.1, c.hair, s * 0.18, 0.78, 0);
     }
     box(head, 0.12, 0.03, 0.02, 0x2a5a2a, 0, 0.11, 0.255);
+  } else if (look === 'mouse') { // T40a: Nibbles, the Wizard's Mouse: two big round ears, shiny eyes, a pink nose, whiskers, a thin tail (no hair, no hat)
+    for (const s of [-1, 1]) {
+      box(head, 0.3, 0.3, 0.08, c.hair, s * 0.2, 0.62, -0.02);
+      box(head, 0.2, 0.2, 0.05, 0xf2a6c0, s * 0.2, 0.62, 0.02);
+      box(head, 0.14, 0.17, 0.02, 0x14101a, s * 0.12, 0.3, 0.255);
+      box(head, 0.05, 0.05, 0.02, 0xffffff, s * 0.09, 0.35, 0.265);
+      for (let k = -1; k <= 1; k++) { const w = box(head, 0.22, 0.012, 0.012, 0xffffff, s * 0.27, 0.15 + k * 0.04, 0.2); w.rotation.z = s * k * 0.2; }
+    }
+    box(head, 0.1, 0.08, 0.05, 0xf08aa0, 0, 0.17, 0.27);
+    box(head, 0.12, 0.03, 0.02, 0x4a3a3a, 0, 0.08, 0.255);
+    const tail = box(group, 0.06, 0.06, 0.7, c.skin, 0, 0.7, -0.5);
+    tail.rotation.x = 0.35;
   } else {
     box(head, 0.52, 0.14, 0.52, c.hair, 0, 0.46, 0);
     box(head, 0.52, 0.35, 0.12, c.hair, 0, 0.3, -0.21);

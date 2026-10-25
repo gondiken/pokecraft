@@ -60,6 +60,10 @@ const MORE_TILES = [
   'SWIRL_PAINT', 'SWIRL_CLOUD', 'GLOW_PUFF', 'GLOW_PUFF_MINT', 'BRISTLE_SIDE', 'BRISTLE_TOP',
   // T40 base (wave 14): a ready picture frame, the way back to the Swirl, the Boss's stand
   'PICTURE', 'WAY_BACK', 'BOSS_STAND_TOP', 'BOSS_STAND_SIDE',
+  // T40a Giant House: kitchen floor (two), wallpaper, counter top / cupboard side, giant wood, cookie (top / side), crumb, fan grill, chrome,
+  // fan switch (off / on), toy track, train remote button, tap handle, cat fur / sleeping eye / open eye, keyhole
+  'FLOOR_TILE', 'FLOOR_TILE_DARK', 'WALLPAPER', 'COUNTER_TOP', 'CUPBOARD_SIDE', 'TABLE_WOOD', 'COOKIE_TOP', 'COOKIE_SIDE', 'CRUMB', 'FAN_GRILL',
+  'CHROME', 'FAN_SWITCH', 'FAN_SWITCH_ON', 'TRACK_TOP', 'REMOTE_BUTTON', 'TAP_HANDLE', 'CAT_FUR', 'CAT_EYE', 'CAT_EYE_OPEN', 'KEYHOLE',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -106,6 +110,9 @@ export const B = {
   // 140-143: wave 14 wool (tiny, pirate, racer, ball). 144-146: T40 base blocks (none placeable); 147-149 reserved for the base.
   // 150-203 belong to T40a-d (see plans/T40.md). Next free id after wave 14: 204.
   PICTURE: 144, WAY_BACK: 145, BOSS_STAND: 146,
+  // 150-167: T40a, the Giant House (none placeable; HOUSE_FLOOR_DARK, FAN_SWITCH_ON and CAT_EYE_OPEN are drawn with setLive where they change)
+  HOUSE_FLOOR: 150, HOUSE_FLOOR_DARK: 151, WALLPAPER: 152, CUPBOARD: 153, GIANT_WOOD: 154, COOKIE: 155, CRUMB: 156, FAN_GRILL: 157, FAN_SWITCH: 158, FAN_SWITCH_ON: 159,
+  TRACK: 160, REMOTE_BUTTON: 161, TAP_HANDLE: 162, CAT_FUR: 163, CAT_EYE: 164, CAT_EYE_OPEN: 165, KEYHOLE: 166, CHROME: 167,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -242,6 +249,29 @@ BLOCKS[B.BRISTLE] = { name: 'Brush Bristles', top: T.BRISTLE_TOP, side: T.BRISTL
 BLOCKS[B.PICTURE] = { name: 'Picture', ...all(T.PICTURE), glow: true, noLight: true, fixed: true, wallText: "It's a picture of another world. Step in! (press E or tap)" };
 BLOCKS[B.WAY_BACK] = { name: 'Way Back', ...all(T.WAY_BACK), glow: true, noLight: true, fixed: true, wallText: 'This is the way back to the Swirl. Step in!' };
 BLOCKS[B.BOSS_STAND] = { name: 'Boss Stand', top: T.BOSS_STAND_TOP, side: T.BOSS_STAND_SIDE, bottom: T.BOSS_STAND_SIDE, fixed: true, wallText: 'The Boss stands here!' };
+// T40a: the Giant House (everything is `fixed` except the crumbs, which you pick up with a click through houselive.js)
+{
+  const HOUSE = "It's the Wizard's house. Everything is too big to change!", fx = { fixed: true };
+  const cyberTile = T.WOOL0 + WOOL_TYPES.indexOf('cyber');
+  BLOCKS[B.HOUSE_FLOOR] = { name: 'Kitchen Floor', ...all(T.FLOOR_TILE), ...fx, wallText: 'The kitchen floor. Far too big to dig!' };
+  BLOCKS[B.HOUSE_FLOOR_DARK] = { name: 'Kitchen Floor', ...all(T.FLOOR_TILE_DARK), ...fx, wallText: 'The kitchen floor. Far too big to dig!' };
+  BLOCKS[B.WALLPAPER] = { name: 'Wallpaper', ...all(T.WALLPAPER), ...fx, wallText: "It's the wall of the house. Too big to break!" };
+  BLOCKS[B.CUPBOARD] = { name: 'Cupboard', top: T.COUNTER_TOP, side: T.CUPBOARD_SIDE, bottom: T.CUPBOARD_SIDE, ...fx, wallText: HOUSE };
+  BLOCKS[B.GIANT_WOOD] = { name: 'Giant Wood', ...all(T.TABLE_WOOD), ...fx, wallText: 'Giant furniture! Too big to break.' };
+  BLOCKS[B.COOKIE] = { name: 'Giant Cookie', top: T.COOKIE_TOP, side: T.COOKIE_SIDE, bottom: T.COOKIE_SIDE, ...fx, wallText: "Yum! But it is Nibbles' cookie." };
+  BLOCKS[B.CRUMB] = { name: 'Cookie Crumb', ...all(T.CRUMB), glow: true, noLight: true, wallText: 'A cookie crumb! Pick it up.' };
+  BLOCKS[B.FAN_GRILL] = { name: 'Fan Grill', top: T.FAN_GRILL, side: T.CHROME, bottom: T.CHROME, ...fx, wallText: HOUSE };
+  BLOCKS[B.FAN_SWITCH] = { name: 'Fan Switch', ...all(T.FAN_SWITCH), ...fx, wallText: "It's the fan's switch. Press it!" };
+  BLOCKS[B.FAN_SWITCH_ON] = { name: 'Fan Switch', ...all(T.FAN_SWITCH_ON), glow: true, noLight: true, ...fx, wallText: "It's the fan's switch. Press it!" };
+  BLOCKS[B.TRACK] = { name: 'Toy Track', top: T.TRACK_TOP, side: T.TABLE_WOOD, bottom: T.TABLE_WOOD, ...fx, wallText: HOUSE };
+  BLOCKS[B.REMOTE_BUTTON] = { name: 'Train Remote', top: T.REMOTE_BUTTON, side: cyberTile, bottom: cyberTile, glow: true, noLight: true, ...fx, wallText: "It's the train's remote. Press it!" };
+  BLOCKS[B.TAP_HANDLE] = { name: 'Tap Handle', ...all(T.TAP_HANDLE), ...fx, wallText: "It's the tap. Turn it on!" };
+  BLOCKS[B.CAT_FUR] = { name: 'Cat Fur', ...all(T.CAT_FUR), ...fx, wallText: 'Shh! Let the cat sleep.' };
+  BLOCKS[B.CAT_EYE] = { name: 'Sleepy Cat', ...all(T.CAT_EYE), ...fx, wallText: 'Shh! Let the cat sleep.' };
+  BLOCKS[B.CAT_EYE_OPEN] = { name: 'Cat Eye', ...all(T.CAT_EYE_OPEN), ...fx, wallText: 'Shh! Let the cat sleep.' };
+  BLOCKS[B.KEYHOLE] = { name: 'Keyhole', ...all(T.KEYHOLE), ...fx, wallText: 'A brass keyhole. You are small enough to squeeze through!' };
+  BLOCKS[B.CHROME] = { name: 'Shiny Metal', ...all(T.CHROME), ...fx, wallText: HOUSE };
+}
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -727,6 +757,44 @@ export function drawAtlas() {
       const star = d < 2.4 || (Math.abs(dx) < 0.9 && Math.abs(dy) < 6) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 6);
       put(T.BOSS_STAND_TOP, x, y, edge(x, y) ? [255, 226, 110] : star ? [255, 226, 110] : shade([96, 56, 170], 1 + (r8() - 0.5) * 0.08));
       put(T.BOSS_STAND_SIDE, x, y, edge(x, y) ? [255, 226, 110] : shade(y % 4 < 2 ? [110, 70, 190] : [92, 56, 164], 1 + (r8() - 0.5) * 0.06));
+    });
+  }
+  { // T40a Giant House blocks (own random numbers)
+    const rg = mulberry32(4001);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    const sh = (col, a) => shade(col, 1 + (rg() - 0.5) * a);
+    each((x, y) => {
+      const dx = x - 7.5, dy = y - 7.5, d = Math.hypot(dx, dy);
+      put(T.FLOOR_TILE, x, y, x === 0 || y === 0 ? [196, 184, 156] : sh([238, 228, 202], 0.06));
+      put(T.FLOOR_TILE_DARK, x, y, x === 0 || y === 0 ? [140, 74, 52] : sh([200, 114, 82], 0.08));
+      const stripe = x % 4 < 2, flower = (x % 8 === 3 && y % 8 === 3) || (x % 8 === 4 && y % 8 === 2) || (x % 8 === 2 && y % 8 === 4) || (x % 8 === 3 && y % 8 === 4) || (x % 8 === 4 && y % 8 === 4);
+      put(T.WALLPAPER, x, y, flower && (x + y) % 3 ? [250, 160, 190] : flower ? [255, 250, 240] : sh(stripe ? [204, 232, 196] : [186, 218, 178], 0.05));
+      put(T.COUNTER_TOP, x, y, rg() < 0.1 ? [150, 146, 140] : rg() < 0.08 ? [250, 248, 244] : sh([222, 216, 206], 0.05));
+      const panel = x === 2 || x === 13 || y === 2 || y === 13, knob = Math.abs(x - 11) < 1.5 && Math.abs(y - 7.5) < 1.5;
+      put(T.CUPBOARD_SIDE, x, y, knob ? [236, 196, 80] : panel ? [118, 78, 42] : sh([178, 126, 76], 0.08));
+      put(T.TABLE_WOOD, x, y, sh(Math.sin(y * 1.3 + Math.sin(x * 0.4) * 2) > 0.55 ? [160, 102, 54] : [194, 136, 76], 0.05));
+      const chip = ((x * 5 + y * 3) % 11 === 0) || ((x * 7 + y) % 13 === 0);
+      put(T.COOKIE_TOP, x, y, chip ? [96, 56, 32] : sh([218, 166, 92], 0.1));
+      put(T.COOKIE_SIDE, x, y, y > 12 ? [176, 120, 60] : ((x * 3 + y) % 9 === 0 ? [255, 226, 170] : sh([226, 176, 102], 0.1)));
+      put(T.CRUMB, x, y, d > 6.4 ? [150, 100, 50] : d < 3 ? [255, 240, 190] : sh([236, 190, 110], 0.1));
+      put(T.FAN_GRILL, x, y, x % 4 === 0 || y % 4 === 0 ? [188, 194, 206] : [64, 70, 82]);
+      const hi = Math.abs(x - y) < 2 || Math.abs(x - y - 8) < 1;
+      put(T.CHROME, x, y, edge(x, y) ? [128, 136, 150] : hi ? [248, 250, 255] : sh([196, 204, 216], 0.06));
+      const plate = Math.abs(dx) < 5 && Math.abs(dy) < 5;
+      put(T.FAN_SWITCH, x, y, edge(x, y) ? [40, 40, 48] : plate ? (dy > 0 ? [150, 40, 40] : [214, 70, 70]) : [78, 80, 92]);
+      put(T.FAN_SWITCH_ON, x, y, edge(x, y) ? [40, 40, 48] : plate ? (dy > 0 ? [60, 170, 90] : [120, 240, 140]) : [78, 80, 92]);
+      const rail = (y >= 2 && y <= 3) || (y >= 12 && y <= 13), sleeper = x % 4 < 2;
+      put(T.TRACK_TOP, x, y, rail ? [206, 212, 224] : sleeper ? [178, 124, 66] : sh([126, 88, 52], 0.1));
+      put(T.REMOTE_BUTTON, x, y, edge(x, y) ? [30, 30, 40] : d < 4.6 ? (d < 2 ? [255, 150, 150] : [226, 40, 40]) : d < 6 ? [150, 24, 28] : [50, 52, 66]);
+      const bar = Math.abs(dx) < 2.2 && Math.abs(dy) < 7 ? [64, 110, 240] : Math.abs(dy) < 2.2 && Math.abs(dx) < 7 ? [230, 52, 52] : null;
+      put(T.TAP_HANDLE, x, y, bar ?? sh([196, 204, 216], 0.05));
+      const stripeC = y % 5 < 2 && x % 7 !== 3;
+      put(T.CAT_FUR, x, y, sh(stripeC ? [186, 92, 28] : [240, 158, 66], 0.08));
+      const closed = (y === 8 && x >= 3 && x <= 12) || (y === 9 && (x === 3 || x === 12));
+      put(T.CAT_EYE, x, y, closed ? [70, 40, 20] : sh(stripeC ? [186, 92, 28] : [240, 158, 66], 0.08));
+      put(T.CAT_EYE_OPEN, x, y, d < 3.4 ? (Math.abs(dx) < 1 ? [20, 20, 20] : [150, 230, 90]) : d < 5 ? [240, 244, 200] : sh(stripeC ? [186, 92, 28] : [240, 158, 66], 0.08));
+      const hole = Math.hypot(x - 7.5, y - 5) < 2.7 || (x >= 6 && x <= 9 && y >= 6 && y <= 12);
+      put(T.KEYHOLE, x, y, hole ? [24, 20, 16] : edge(x, y) ? [150, 112, 36] : sh([214, 170, 62], 0.08));
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
