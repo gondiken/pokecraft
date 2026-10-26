@@ -265,7 +265,7 @@ async function nodePart(t) {
     for (let tt = 0; tt < 40; tt += 0.01) for (const kp of part.keepers) for (const hard of [false, true]) {
       const kk = keeperAt(kp, tt, hard).box, post = [158, 166];
       if (kk.z0 < post[0] + 0.4 - 1e-9 || kk.z1 > post[1] - 0.4 + 1e-9) inside = false;
-      maxV = Math.max(maxV, Math.abs(keeperAt(kp, tt, hard).vz));
+      if (!hard) maxV = Math.max(maxV, Math.abs(keeperAt(kp, tt, hard).vz));
     }
     t.ok(inside && maxV < 4.3 && keeperAt(k, 0, true).vz > keeperAt(k, 0, false).vz, `8: a keeper box stays 0.4 inside each post (also hard); the top speed is ${maxV.toFixed(1)} blocks/s (a walk is 4.3); hard is faster`);
     // a drive from 16 blocks out at the east goal: when the ball arrives, keeper 1 is at his top (nearly standing still)
@@ -440,7 +440,7 @@ async function browserPart({ browser, base, t }) {
   // time 5.65: Keeper Gail is just about at the top of his run (z 164.6), nearly standing still, when the ball arrives
   const shootAt = (z, time) => page.evaluate(([z, time]) => {
     const g = window.pokecraft, L = window.__live, p = g.player;
-    L.goalAt = null; L.lastSave = -99;
+    L.goalAt = null; L.lastSave = -99; L.rivals = false;
     L.foot.reset([82, 11.401, z]); L.foot.time = time;
     p.pos.set(80.6, 11, z); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
     const word = g.gymLive.near(g.player), used = g.gymLive.use(g.player);
@@ -448,20 +448,22 @@ async function browserPart({ browser, base, t }) {
     for (let i = 0; i < 60; i++) { L.update(0.05); if (goalFrame < 0 && L.goalAt != null) goalFrame = i; }
     return { word, used, goalFrame, beaten: g.beaten.filter(k => k.startsWith('pw:stadium:goal')), ball: L.foot.pos.x, spot: L.part.ballSpot };
   }, [z, time]);
-  const saved = await shootAt(164.6, 5.65);
+  const { KEEPER } = await import(pathToFileURL(path.join(ROOT, 'src', 'ballphysics.js')).href);
+  const TOP = KEEPER.P - 0.35; // Keeper Gail is at the top of his run (z 162 + A) when the ball arrives
+  const saved = await shootAt(162 + KEEPER.A - 0.3, TOP);
   t.ok(saved.word === 'Kick!' && saved.used && saved.goalFrame < 0 && !saved.beaten.length && await said(page, /Saved by Keeper Gail! Try again!/), `14: a shot straight at the keeper is saved: the toast comes, no goal key (${JSON.stringify(saved.beaten)})`);
-  const scored = await shootAt(162, 5.65);
+  const scored = await shootAt(162, TOP);
   t.ok(scored.goalFrame >= 0 && scored.goalFrame < 60 && scored.beaten.join() === GOAL(1) && await said(page, /GOAL! ⚽ 1 of 2/), `14: a shot at the open side is a goal within 3 s: GOAL! 1 of 2, key ${GOAL(1)} (goal at frame ${scored.goalFrame})`);
   t.ok(Math.abs(scored.ball - scored.spot[0]) < 0.5, `14: 1.5 s after the goal the ball is on the centre spot again (${scored.ball.toFixed(1)})`);
   // a goal picture: the ball in the net (the part is frozen so the picture stays)
-  await page.evaluate(() => {
+  await page.evaluate(TOP => {
     const g = window.pokecraft, L = window.__live, p = g.player;
-    L.goalAt = null; L.foot.reset([82, 11.401, 162]); L.foot.time = 5.65; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2;
+    L.goalAt = null; L.foot.reset([82, 11.401, 162]); L.foot.time = TOP; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2;
     g.gymLive.use(g.player);
     for (let i = 0; i < 9; i++) L.update(0.05); // the ball is in the net, the crowd is cheering
     L.playing = () => false;
     p.pos.set(75, 12, 160); p.vel.set(0, 0, 0); p.lookAt({ x: 87.5, y: 12, z: 162 });
-  });
+  }, TOP);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(SHOTS, 't40d-goal.png'), timeout: 180000 });
   console.log('  screenshot t40d-goal.png');
@@ -480,8 +482,9 @@ async function browserPart({ browser, base, t }) {
   /* ---- 17. Baskets ---- */
   const d17 = await page.evaluate(() => {
     const g = window.pokecraft, L = window.__live, p = g.player, out = [];
+    L.rivals = false; // Blocker Bo is checked below
     for (let k = 0; k < 4; k++) {
-      L.hoop.reset([52.2, 11.401, 203]);
+      L.hoop.reset([52.2, 11.401, 203]); L.longShots = 0;
       p.pos.set(53.6, 11, 203); p.vel.set(0, 0, 0); p.yaw = Math.PI / 2; p.pitch = 0;
       const c0 = g.cubes, word = g.gymLive.near(g.player);
       g.gymLive.use(g.player);
@@ -493,6 +496,43 @@ async function browserPart({ browser, base, t }) {
   });
   t.ok(d17.every(r => r.word === 'Shoot!') && d17.map(r => r.cubes).join() === '1,1,1,0' && d17[3].bonus === 3, `17: next to the court ball the button says Shoot!; three baskets give a cube each, the fourth none (${d17.map(r => r.cubes)})`);
   t.ok(await said(page, /Swish! 🏀 \+1 Capture Cube/) && await said(page, /Swish! 🏀$/), '17: the Swish! words');
+
+  /* ---- 17b. Defender Dee and Blocker Bo (owner 2026-10-26: a bit harder) ---- */
+  const d17b = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live, p = g.player;
+    L.rivals = true; L.goalAt = null; L.outAt.foot = null; window.__toasts = [];
+    p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); // the player is far away
+    // Dee: the football lies still near the east goal, Dee is 3 blocks from it
+    L.foot.reset([80, 11.401, 160]); L.dee.x = 77; L.dee.z = 160; L.dee.rest = 0;
+    let stole = false;
+    for (let i = 0; i < 40 && !stole; i++) { L.update(0.05); stole = L.foot.vel.x < -3; }
+    const deeToast = window.__toasts.some(m => /Defender Dee took the ball/.test(m));
+    // far from both goals he walks back to his spot and leaves the ball alone
+    L.foot.reset(); L.dee.x = 40; L.dee.z = 140; L.dee.rest = 0;
+    for (let i = 0; i < 20; i++) L.update(0.05);
+    const homeward = Math.hypot(L.dee.x - L.part.ballSpot[0], L.dee.z - L.part.ballSpot[2] - 3) < Math.hypot(40 - L.part.ballSpot[0], 140 - L.part.ballSpot[2] - 3) && Math.hypot(L.foot.vel.x, L.foot.vel.z) < 0.1;
+    // Bo: in the air his box is higher than on the ground
+    L.t = 0.45; L.moveBlocker(0); const up = L.blockerBox().y0; L.t = 1.5; L.moveBlocker(0); const down = L.blockerBox().y0;
+    L.t = 0.45; L.moveBlocker(0);
+    // a ball thrown flat at him while he is up bounces off with the hint
+    window.__toasts = []; L.bo.told = -99;
+    const bx = L.bo.x, bz = L.bo.z, by = L.blockerBox().y0 + 0.8;
+    L.hoop.reset([bx - 2.5, by, bz]); Object.assign(L.hoop.vel, { x: 8, y: 0, z: 0 });
+    let back = false;
+    for (let i = 0; i < 10 && !back; i++) { L.hoop.update(0.05, () => [L.blockerBox()]); for (const ev of L.hoop.events) if (ev.kind === 'keeper') { L.blocked(L.hoop); back = true; } }
+    const boToast = window.__toasts.some(m => /Blocked by Blocker Bo/.test(m));
+    // long shots: every other one from far away is aimed off the hole
+    L.rivals = false; L.longShots = 0;
+    const far = [L.part.hoops[0].hole[0] + 11 * L.part.hoops[0].front, 11.401, L.part.hoops[0].hole[1]];
+    const aims = [0, 1].map(() => { L.hoop.reset(far); const v = L.shoot([-L.part.hoops[0].front, 0]); return v.z; });
+    L.rivals = true; L.hoop.reset(); L.foot.reset();
+    return { stole, deeToast, homeward, up, down, back, boToast, aims };
+  });
+  t.ok(d17b.stole && d17b.deeToast, '17b: Defender Dee runs to a football near a goal and kicks it back to the middle ("Defender Dee took the ball!")');
+  t.ok(d17b.homeward, '17b: far from the goals Dee walks back to his spot and leaves the ball alone');
+  t.ok(d17b.up > d17b.down + 1, `17b: Blocker Bo jumps (feet ${d17b.down.toFixed(1)} -> ${d17b.up.toFixed(1)})`);
+  t.ok(d17b.back && d17b.boToast, '17b: a ball thrown at Bo in the air bounces off ("Blocked by Blocker Bo! Shoot when he lands.")');
+  t.ok(Math.abs(d17b.aims[0]) < 0.05 && Math.abs(d17b.aims[1]) > 0.2, `17b: from 11 blocks the first shot is aimed at the hole, the second one off it (${d17b.aims.map(a => a.toFixed(2))})`);
 
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {

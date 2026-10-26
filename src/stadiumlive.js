@@ -76,6 +76,7 @@ export class StadiumLive {
     this.dee = { x: part.ballSpot[0], z: part.ballSpot[2] + 3, rest: 0, told: -99, moving: false, mesh: person(STADIUM.defender) };
     this.bo = { x: part.courtSpot[0] + 2, z: part.courtSpot[2], jump: 0, told: -99, moving: false, mesh: person(STADIUM.blocker) };
     this.longShots = 0;
+    this.rivals = true; // Dee and Bo play (tests switch them off to check the plain ball rules)
     this.t = 0;
     this.drawAll();
   }
@@ -151,6 +152,7 @@ export class StadiumLive {
   /* ---- Defender Dee: near a goal he runs at the football and kicks it back to the middle ---- */
   moveDefender(dt) {
     const D = STADIUM.defender, d = this.dee, b = this.foot, home = this.part.ballSpot;
+    if (!this.rivals) { d.x = home[0]; d.z = home[2] + 3; d.moving = false; return; }
     const nearGoal = this.part.goals.some(g => Math.abs(b.pos.x - g.line) < D.zone);
     const chase = this.goalAt == null && this.outAt.foot == null && nearGoal && d.rest <= 0;
     if (d.rest > 0) d.rest -= dt;
@@ -182,7 +184,7 @@ export class StadiumLive {
     o.jump = ph < 0.45 ? K.up * Math.sin(Math.PI * ph / 0.45) : 0;
   }
   blockerBox() {
-    const K = STADIUM.blocker, o = this.bo, y = this.part.courtSpot[1] - BALL_R - 0.001 + o.jump;
+    const K = STADIUM.blocker, o = this.bo, y = this.part.courtSpot[1] - BALL_R - 0.001 + o.jump + (this.rivals ? 0 : 99);
     return { x0: o.x - K.half, x1: o.x + K.half, y0: y, y1: y + K.height, z0: o.z - K.half, z1: o.z + K.half, v: { x: 0, y: 0, z: 0 }, id: 'bo' };
   }
   blocked(b) {
