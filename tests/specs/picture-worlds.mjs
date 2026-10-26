@@ -216,8 +216,7 @@ export default async function ({ browser, base, t }) {
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);
-  const covP = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'pirate'); return g.world.get(...f.cloth[0]); }); // T40a: the house is ready now, the pirate frame is still covered
-  t.ok(covP === 129, 'a covered frame (the pirate one): cloth');
+  t.ok(cov.id === 129 && cov.pics === 0, `a covered frame: cloth, no picture (${cov.id}, ${cov.pics} pictures)`);
   await flip(page, 'house');
   await waitFor(page, c => window.pokecraft.world.get(...c) === 144, cloth0, 30000);
   await waitFor(page, () => window.pokecraft.scene.children.some(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5), null, 30000);
