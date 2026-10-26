@@ -534,7 +534,7 @@ export default async function ({ browser, base, t }) {
       live.state = 'idle'; live.hideKart(); live.won = false;
       g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
       g.talkTo(R.rio()); live.step(3.2);
-      R.drive(7, {});
+      R.drive(6.2 * R.T.RACE.pace, {});
       const won = live.won, state = live.state;
       live.step(3.2);
       g.talkTo(R.rio()); // the Boss battle
