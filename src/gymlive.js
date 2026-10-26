@@ -13,6 +13,7 @@ import { DojoLive } from './shadowdojo.js'; // T37b
 import { StadiumLive } from './stadiumlive.js'; // T40d
 import { RaceLive } from './racelive.js'; // T40c
 import { HouseLive } from './houselive.js'; // T40a
+import { PirateLive } from './pirateparts.js'; // T40b
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -25,6 +26,7 @@ LIVE.dojo = DojoLive; // T37b the Shadow Dojo's watchers
 LIVE.stadium = StadiumLive; // T40d the Ball Stadium's balls and keepers (a live part of Playland)
 LIVE.race = RaceLive; // T40c the Race Track
 LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumbs
+LIVE.pirate = PirateLive; // T40b the Pirate Seas: cannons, ropes, the chest
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

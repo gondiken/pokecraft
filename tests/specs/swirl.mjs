@@ -4,7 +4,9 @@
 // PART B (builder B, see the marked block near the end): the real Swirl terrain, lifts, frames, star bridge, Wizard's tower.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, openGame, openPair, newGame, pause, click, continueGame, waitFor, seedSave } from '../helpers.mjs';
+import { ROOT, openGame as openGame0, openPair, newGame, pause, click, continueGame, waitFor, seedSave } from '../helpers.mjs';
+// T40b: the Pirate Seas frame ships ready (the Swirl's guide would point at it); these checks are about the Swirl, so close it in each page
+const openGame = async (...a) => { const p = await openGame0(...a); await p.evaluate(async () => { (await import('/src/pictureworlds.js')).pictureWorld('pirate').ready = false; }); return p; };
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 

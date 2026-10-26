@@ -147,7 +147,7 @@ export default async function ({ browser, base, t }) {
         for (const bs of a.bosses) {
           if (a.get(Math.floor(bs.pos[0]), bs.pos[1] - 1, Math.floor(bs.pos[2])) !== B.BOSS_STAND) bad(`Boss ${bs.id} is not on a stand`);
           const door = a.doors.find(d => id === 'playland' ? d.key === bs.id : true);
-          if (!door || !reach(a, door.stand, bs.rest)) bad(`Boss ${bs.id} rest not reachable`);
+          if (!door || (id !== 'pirate' && !reach(a, door.stand, bs.rest))) bad(`Boss ${bs.id} rest not reachable`); // T40b: the Pirate Seas are crossed by cannon and rope (spec `pirate` checks that graph)
         }
         if (id === 'playland') {
           const flat = make(seed, def, () => { const old = L.PLAYLAND_PARTS.race; L.PLAYLAND_PARTS.race = { build() {}, spawns: [] }; r.restore = () => { L.PLAYLAND_PARTS.race = old; }; });
@@ -254,7 +254,7 @@ export default async function ({ browser, base, t }) {
   const won = await page.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { cubes: g.cubes, note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent, place: s.place, up: s.realmUp, stars: s.stars }; });
   t.ok(won.stars.includes('house') && /Giant House star/.test(won.note || '') && /little mouse/.test(won.small || ''), `the star and the Wizard's note (${won.note}: ${won.small})`);
   t.ok(won.cubes >= 10 && won.place === 'house' && won.up.id === 'swirl' && won.up.via === 'house', `10 Capture Cubes; the save has place house and realmUp swirl via house`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-star-note.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-star-note.png'), timeout: 180000 });
   await pause(page);
 
   // reload in a fresh context: back in the house
@@ -354,7 +354,7 @@ export default async function ({ browser, base, t }) {
   await placeIs(page, 'playland');
   const pl1 = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, d = g.world.doors.find(d => d.key === 'race'); g.updateGuide(); return { via: g.realms.via, z: p.z, door: d.stand[2], doors: g.world.doors.length, glow: g.portal.glow().count, guide: g.ui.guideText }; });
   t.ok(pl1.via === 'race' && Math.abs(pl1.z - pl1.door) < 0.1 && pl1.doors === 2 && pl1.glow === 2 && /Race Track Boss/.test(pl1.guide || ''), `the race frame opens Playland at the race gate, two glowing doors, the guide names the Race Track Boss (${pl1.guide})`);
-  await page.screenshot({ path: path.join(SHOTS, 't40-playland-hub.png') });
+  await page.screenshot({ path: path.join(SHOTS, 't40-playland-hub.png'), timeout: 180000 });
   await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors.find(d => d.key === 'race'), m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(page, 'swirl');
   const near = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'race'), p = g.player.pos; return Math.hypot(p.x - f.stand[0] - 0.5, p.z - f.stand[2] - 0.5); });

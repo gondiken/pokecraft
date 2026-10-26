@@ -205,6 +205,10 @@ const SOUNDS = {
   goalcheer: () => { for (const f of [700, 1200, 2000]) noise({ freq: f, len: 0.6, vol: 0.12, q: 0.4 }); notes([523, 659, 784], 0.12, { len: 0.2, type: 'triangle', vol: 0.14 }); },
   netswish: () => { noise({ freq: 5000, len: 0.25, vol: 0.2, q: 0.8 }); tone(1800, { len: 0.2, type: 'sine', vol: 0.05, slide: -1200 }); },
   whistle: () => { tone(2600, { len: 0.12, type: 'square', vol: 0.07 }); tone(2600, { at: 0.18, len: 0.2, type: 'square', vol: 0.07 }); },
+  // T40b pirate: a low cannon boom with a short burst of noise; the gadget cannon (deeper, two drums); a falling splash in the sea.
+  'fx:pirate': () => { drum(96, 0, 0.3); noise({ freq: 1500, len: 0.1, vol: 0.14, q: 0.7 }); },
+  cannonboom: () => { drum(70, 0, 0.45); drum(52, 0.07, 0.4); noise({ freq: 700, len: 0.35, vol: 0.28, q: 0.5 }); },
+  seasplash: () => { noise({ freq: 2200, len: 0.35, vol: 0.2, q: 0.6 }); noise({ at: 0.08, freq: 900, len: 0.4, vol: 0.18, q: 0.5 }); tone(300, { len: 0.2, vol: 0.08, slide: -180 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
   'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },

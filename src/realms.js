@@ -9,6 +9,7 @@ import { buildDreamHouse } from './dreamhouse.js';
 import { swirlLand, swirlAim } from './swirlland.js'; // T38a
 import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
 import { pictureStub, pictureAim } from './picturelands.js'; // T40
+import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 import { houseLand, houseAim } from './giantland.js'; // T40a
 import { TINY_SPAWNS } from './species.js'; // T40a
@@ -110,7 +111,13 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
   arriveHint: 'Nibbles waits on the cookie on the table. Ride the toy train, or find another way up!',
   spawns: { house: TINY_SPAWNS, cave: [] },
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
-REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [64, 64], terrain: 'pictureStub', arrive: [32, 37], walk: [B.SAND] });
+REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b
+  spawns: { pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
+  zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS],
+  look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false }, // always a sunny noon
+  clock: '🏴‍☠️ Pirate Seas', travelText: 'Sailing in...', travelIcon: '🏴‍☠️', enterText: 'Ahoy! Welcome to the Pirate Seas!',
+  arriveHint: 'Stand on the cannon and press Fire! Captain Squawk has the star on his ship.',
+  noHomeText: 'No homes at sea! Build your home in your own world.', followText: 'Sail too' });
 REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9a1d, size: PLAYLAND.size, terrain: 'playLand',
   arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });
 
@@ -127,6 +134,8 @@ TERRAINS.houseLand = houseLand; // T40a
 // The guide arrow of a terrain when no realm gym is left: (world, p, game) => { x, z, text(arrow, distance) } (T38a). The Dream's is in aim() below.
 export const TERRAIN_AIMS = { swirlLand: swirlAim };
 TERRAIN_AIMS.houseLand = houseAim; // T40a
+TERRAINS.pirateLand = pirateLand; // T40b
+TERRAIN_AIMS.pirateLand = pirateAim; // T40b
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

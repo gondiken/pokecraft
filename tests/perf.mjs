@@ -130,6 +130,7 @@ async function measureDream(profile) {
     if (w.isles) { const t = w.isles.list.find(i => i.id === 'tall'); spots.tall = [t.x, t.z, Math.PI / 4, t.top + 3]; }
     if (w.swirl) Object.assign(spots, { mist: [48, 54, 0, 28.6], ink: [75, 80, -Math.PI / 2, 22.6], dawn: [48, 106, Math.PI, 16.6] }); // T38d: the dim zone with its puffs, the bridge, the sunset side
     if (w.parts?.some(pt => pt.id === 'stadium')) Object.assign(spots, { stW: [58, 162, Math.PI / 2, 12.6], stE: [58, 162, -Math.PI / 2, 12.6], stCourt: [58, 203, Math.PI / 2, 12.6], stTunnel: [58, 133, Math.PI, 12.6] }); // T40d: the Ball Stadium: the centre spot looking at each goal, the court, the tunnel
+    if (w.pirate) Object.assign(spots, { ship: [104, 86, Math.PI, 19], sea: [30, 30, 0, 14.5] }); // T40b: Lookout Isle looking at the ship, and a spot at sea level
     const calls = {};
     for (const [k, [x, z, yaw, y]] of Object.entries(spots)) {
       cam.position.set(x + 0.5, y ?? w.surface(x, z).y + 2.6, z + 0.5); cam.rotation.set(-0.15, yaw, 0); cam.updateMatrixWorld();

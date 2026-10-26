@@ -92,6 +92,15 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.12, 0.03, 0.62, 0xffffff, 0, 0.68, 0);
     box(head, 0.12, 0.4, 0.03, 0xffffff, 0, 0.45, -0.31);
   }
+  if (look === 'pirate') { // T40b: a red-and-cream striped bandana with a knot at the back, and a black eye patch on one eye
+    box(head, 0.55, 0.14, 0.55, 0xe03a3a, 0, 0.46, 0);
+    for (const x of [-0.18, 0, 0.18]) box(head, 0.06, 0.15, 0.56, 0xf6efe0, x, 0.46, 0);
+    box(head, 0.1, 0.1, 0.06, 0xe03a3a, 0, 0.42, -0.3);
+    box(head, 0.06, 0.2, 0.04, 0xf6efe0, -0.06, 0.3, -0.33);
+    box(head, 0.06, 0.14, 0.04, 0xe03a3a, 0.06, 0.28, -0.34);
+    box(head, 0.54, 0.025, 0.54, 0x1a1a1a, 0, 0.35, 0); // the eye patch's strap
+    box(head, 0.14, 0.13, 0.03, 0x1a1a1a, -0.11, 0.28, 0.268);
+  }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
     box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);
@@ -225,7 +234,7 @@ export class NpcManager {
       trainersOf(gym.def).forEach((trainer, i) => {
         const npc = new Npc({
           kind: 'trainer', name: trainer.name, gym, colors: trainer.colors, look: trainer.look,
-          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: ['alien', 'chef', 'sport', 'ninja'].includes(trainer.look) ? null : trainer.colors.pants, index: i, def: trainer,
+          pos: spots[i] || AWAY, heading: gym.trainerHeadings?.[i] ?? facing, hat: ['alien', 'chef', 'sport', 'ninja', 'pirate'].includes(trainer.look) ? null : trainer.colors.pants, index: i, def: trainer,
         });
         this.add(npc);
         if (none) this.sendAway(npc);

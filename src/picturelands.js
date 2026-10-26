@@ -95,10 +95,9 @@ export function pictureAim(world, p, { stars = [], via = null } = {}) {
 
 /* ---- The stand-in worlds (64 x 64, flat): each task deletes its line when it registers its real terrain. ---- */
 export const STUBS = {
-  pirate: { door: [32, 34, [0, 1]], boss: [32, 52, [0, -1]], top: B.SAND },
 };
 export function pictureStub(world, def) {
-  const s = STUBS[def.id] ?? STUBS.pirate; // T40a: the house has its own terrain now
+  const s = STUBS[def.id] ?? { door: [32, 34, [0, 1]], boss: [32, 52, [0, -1]] }; // T40a, T40b: every picture realm has its own terrain now (kept for tests and wave 15)
   kit(world);
   flatLand(world, { y: 10, top: s.top ?? B.GRASS });
   buildWayBack(world, def.id, { x: s.door[0], y: 10, z: s.door[1], facing: s.door[2] });

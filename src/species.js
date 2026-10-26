@@ -485,6 +485,22 @@ BIG_MOVES.tiny = [
   ['smallworld', 'Small World', 'field', 'Tiny moves are stronger for 5 turns. Foes too!'],
 ];
 /* ==== end of T40a tiny ==== */
+/* ==== T40b pirate ==== */
+// Pirates swing hooks, fire cannons and shout ahoy. (Friendly: no skulls, only parrots, parrots and more parrots.)
+Object.assign(MOVES, {
+  hookswipe: mv('Hook Swipe', 'pirate', 40, 1),
+  cannonball: mv('Cannonball', 'pirate', 80, 0.85),
+  swashbuckle: mv('Swashbuckle', 'pirate', 50, 1, { priority: 1 }),
+  spyglass: mv('Spyglass', 'pirate', 0, 1, { fx: { kind: 'lower', stat: 'def' } }),
+  broadside: mv('Broadside', 'pirate', 30, 1, { fx: { kind: 'multi', min: 2, max: 4 }, sig: true }),
+  anchordrop: mv('Anchor Drop', 'pirate', 95, 0.9, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
+});
+BIG_MOVES.pirate = [
+  ['jollyroger', 'Raise the Flag', 'rally', 'Up goes the flag! Whole team hits harder. You get softer.'],
+  ['powderkeg', 'Powder Keg', 'risky', 'Half the time: triple boom! Or it goes off on you.'],
+  ['walktheplank', 'Walk the Plank', 'curse', 'The foe team wobbles on the plank and gets slower (sometimes).'],
+];
+/* ==== end of T40b pirate ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -597,6 +613,7 @@ T1.ball = 'bouncebop'; T2.ball = 'cannonroll'; T3.ball = 'quickpass'; T4.ball = 
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
 T1.tiny = 'teenytap'; T2.tiny = 'mightymite'; T3.tiny = 'tinysteps'; T4.tiny = 'tuckaway'; // T40a
+T1.pirate = 'hookswipe'; T2.pirate = 'cannonball'; T3.pirate = 'swashbuckle'; T4.pirate = 'spyglass'; // T40b
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2082,6 +2099,46 @@ export const SPECIES = {
     model: { shape: 'seedling', scale: 0.6, body: 0x9a6a3a, accent: 0x6fd35a, dark: 0x4a2e18, belly: 0xffe8a0, extras: [] },
   },
   /* ==== end of T40a tiny ==== */
+  /* ==== T40b pirate ==== */
+  parroteer: {
+    name: 'Parroteer', type: 'pirate', desc: 'A little parrot in a striped bandana. It repeats everything you say. Ahoy! Ahoy!',
+    base: { hp: 45, atk: 60, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('pirate', 'sky'), flies: true,
+    evolve: { level: 26, into: 'featherbeard' },
+    model: { shape: 'parrot', scale: 0.8, body: 0x3ac26a, accent: 0xffd23c, dark: 0x1a6a3a, belly: 0xffe08a, extras: [] },
+  },
+  featherbeard: {
+    name: 'Featherbeard', type: 'pirate', desc: 'A parrot captain with a big hat and a long red coat. It shouts orders at the waves.',
+    base: { hp: 75, atk: 100, def: 65, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('pirate', 'sky', [[30, 'broadside']]), flies: true,
+    model: { shape: 'parrot', scale: 1.25, body: 0xe03a3a, accent: 0xffd23c, dark: 0x2a2a6a, belly: 0x3a8aff, extras: ['tricorn', 'coat', 'hook'] },
+  },
+  pinchook: {
+    name: 'Pinchook', type: 'pirate', desc: 'A beach crab with a golden hook for one claw. It walks sideways to hide its treasure.',
+    base: { hp: 50, atk: 65, def: 70, spd: 35 }, baseXp: 64, catchRate: 0.45, learn: L('pirate', 'rock'),
+    evolve: { level: 26, into: 'anchorclaw' },
+    model: { shape: 'hookcrab', scale: 0.8, body: 0xf07a3a, accent: 0xf6d55a, dark: 0x8a3a1a, belly: 0xffd0a0, extras: [] },
+  },
+  anchorclaw: {
+    name: 'Anchorclaw', type: 'pirate', desc: 'Its big claw is a ship\'s anchor. When it drops it, the whole beach shakes.',
+    base: { hp: 85, atk: 110, def: 105, spd: 45 }, baseXp: 168, catchRate: 0.12, learn: L('pirate', 'rock', [[32, 'anchordrop']]),
+    model: { shape: 'hookcrab', scale: 1.25, body: 0xd04a2a, accent: 0x8a96a8, dark: 0x5a2210, belly: 0xffc090, extras: ['anchor', 'barnacles'] },
+  },
+  bottlet: {
+    name: 'Bottlet', type: 'pirate', desc: 'A tiny ship sails inside this bottle. Nobody knows how it got in there.',
+    base: { hp: 55, atk: 45, def: 60, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('pirate', 'light'), swims: true,
+    evolve: { level: 28, into: 'shipshape' },
+    model: { shape: 'shipbottle', scale: 0.8, body: 0x9ae8d8, accent: 0x8a5a2a, dark: 0x3a2a1a, belly: 0xffffff, extras: [] },
+  },
+  shipshape: {
+    name: 'Shipshape', type: 'pirate', desc: 'A big bottle with a three-masted ship inside. Some of them let you ride across the sea!',
+    base: { hp: 85, atk: 85, def: 90, spd: 85 }, baseXp: 165, catchRate: 0.12, learn: L('pirate', 'light'), swims: true,
+    model: { shape: 'shipbottle', scale: 1.3, body: 0x7ad0f0, accent: 0x6a3a1a, dark: 0x2a1a10, belly: 0xffffff, extras: ['masts3'] },
+  },
+  lookapus: {
+    name: 'Lookapus', type: 'pirate', desc: 'An octopus in a barrel, with a spyglass. It always sees you first. Land ho!',
+    base: { hp: 75, atk: 70, def: 65, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('pirate', 'water'), swims: true,
+    model: { shape: 'barrelpus', scale: 1.0, body: 0x9a5ad8, accent: 0xb07a3a, dark: 0x4a2a6a, belly: 0xf0d0ff, extras: [] },
+  },
+  /* ==== end of T40b pirate ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];

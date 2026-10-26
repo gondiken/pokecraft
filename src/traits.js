@@ -12,7 +12,7 @@ export const TRAITS = {
     // Who may have it, and how it is ridden: 'land' | 'water' | 'sky'.
     species: {
       ...list('land', 'blazehound pyrolynx grovebeast thornox thunderwolf cragtusk woolumph blizzbear hornbeetle visionelk titanox lunaroo howlbone stompasaur slimehound solvixen topiphant dozeram prismfox vroomster karthog'), // T40c: + vroomster karthog
-      ...list('water', 'tidalord torrentide shellby spectrafin'),
+      ...list('water', 'tidalord torrentide shellby spectrafin shipshape'),
       ...list('sky', 'scalewing stormwyvern skywyrm whaloft zeppeluff kitegale auroraptor sageowl boomwing jetfold ufomax duskmare'),
     },
   },

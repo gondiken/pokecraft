@@ -2737,5 +2737,121 @@ SIG.fluffstorm = (k, from, to) => {
   };
 };
 /* ==== end of T40a tiny ==== */
+/* ==== T40b pirate ==== */
+// Iron grey, stripe red, gold.
+FX_COLORS.pirate = [0x2a2a30, 0xe07a6a, 0xf6d55a];
+
+// A cannonball: a dark ball on a flat arc with three grey smoke puffs trailing it and a little flash at the muzzle.
+TRAVEL.pirate = k => {
+  const ball = k.sprite('dot', { color: 0x23232b, size: 0.32 });
+  const trail = k.points({ n: 3, tex: 'puff', size: 0.38, colors: [0xc8c8cc, 0x9a9aa4, 0xb4b4bc] });
+  const flash = k.sprite('star', { color: 0xffd23c, size: 0.1, glow: true });
+  return {
+    dur: 360,
+    step(p) {
+      k.at(p, A, 0.25);
+      ball.position.copy(A);
+      for (let i = 0; i < 3; i++) {
+        const t = p - 0.09 * (i + 1);
+        if (t <= 0) { trail.hide(i); continue; }
+        k.at(t, B, 0.25);
+        trail.set(i, B.x, B.y + 0.04 * i, B.z);
+      }
+      trail.fade(fadeOut(p, 0.7) * 0.85);
+      k.at(0, C, 0);
+      flash.position.copy(C);
+      flash.scale.setScalar(Math.max(0.01, 0.7 * Math.sin(Math.PI * clamp01(p * 5))));
+      flash.material.opacity = p < 0.2 ? 1 : 0;
+    },
+  };
+};
+
+// A cannonball hit: a flash, a ring of smoke puffs and three gold coins hopping out.
+IMPACT.pirate = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 6;
+  const smoke = k.points({ n: N, tex: 'puff', size: 0.55 * m, colors: [0x6a6a74, 0x8a8a94, 0x4a4a54] });
+  const coins = k.points({ n: 3, tex: 'coin', size: 0.3 * m, colors: [0xffd23c, 0xffe680] });
+  const flash = k.sprite('star', { color: 0xffd23c, size: 0.1, glow: true });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283, d = (to.r * 0.4 + 0.1 + k.ease(p) * 0.7) * m;
+        smoke.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y - 0.05 + p * 0.35 + (i % 2) * 0.12, to.pos.z + Math.sin(ang) * d);
+      }
+      smoke.fade((1 - p) * 0.9);
+      for (let i = 0; i < 3; i++) {
+        const s = (i - 1) * 0.5, hop = Math.abs(Math.sin(p * Math.PI * 1.5 + i)) * (0.6 - p * 0.3);
+        coins.set(i, to.pos.x + k.side.x * s * (0.3 + p) * m, to.pos.y + 0.2 + hop * m, to.pos.z + k.side.z * s * (0.3 + p) * m);
+      }
+      coins.fade(fadeOut(p, 0.6));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 1.0 * m * Math.sin(Math.PI * clamp01(p * 1.7))));
+      flash.material.rotation = p * 2;
+      flash.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Broadside: three cannonballs one after the other from three spots beside the user, three flashes on the target.
+SIG.broadside = (k, from, to) => {
+  const balls = [0, 1, 2].map(() => k.sprite('dot', { color: 0x23232b, size: 0.34 }));
+  const flashes = [0, 1, 2].map(i => k.sprite('star', { color: i === 1 ? 0xffd23c : 0xffb830, size: 0.1, glow: true }));
+  const puffs = k.points({ n: 6, tex: 'puff', size: 0.42, colors: [0xb4b4bc, 0x8a8a94] });
+  return {
+    dur: 700,
+    step(p) {
+      for (let i = 0; i < 3; i++) {
+        const t = clamp01((p - i * 0.12) / 0.4), off = (i - 1) * 0.7;
+        const b = balls[i];
+        if (t <= 0 || t >= 1) { b.material.opacity = 0; puffs.hide(i * 2); puffs.hide(i * 2 + 1); } else {
+          k.at(t, A, 0.3);
+          b.position.set(A.x + k.side.x * off * (1 - t), A.y, A.z + k.side.z * off * (1 - t));
+          b.material.opacity = 1;
+          for (let j = 0; j < 2; j++) {
+            k.at(Math.max(0, t - 0.1 * (j + 1)), B, 0.3);
+            puffs.set(i * 2 + j, B.x + k.side.x * off * (1 - t), B.y, B.z + k.side.z * off * (1 - t));
+          }
+        }
+        const u = clamp01((p - i * 0.12 - 0.4) / 0.25), f = flashes[i];
+        f.position.set(to.pos.x + k.side.x * off * 0.5, to.pos.y + 0.1 * i, to.pos.z + k.side.z * off * 0.5);
+        f.scale.setScalar(Math.max(0.01, 1.0 * Math.sin(Math.PI * u)));
+        f.material.opacity = u > 0 && u < 1 ? 1 : 0;
+        f.material.rotation = u * 2 + i;
+      }
+      puffs.fade(fadeOut(p, 0.6) * 0.8);
+    },
+  };
+};
+
+// Anchor Drop: a big anchor falls from above onto the target, a ring spreads on the ground and six drops splash up.
+SIG.anchordrop = (k, from, to) => {
+  const anchor = k.sprite('anchor', { color: 0x4a4e5a, size: 1.3 });
+  const ring = k.mesh('ring', { color: 0xbfe0ff, opacity: 0.7 });
+  const N = 6;
+  const drops = k.points({ n: N, tex: 'drop', size: 0.3, colors: [0x7ab8ff, 0xbfe0ff] });
+  const feet = feetOf(to);
+  return {
+    dur: 650,
+    step(p) {
+      const fall = clamp01(p / 0.4), hit = clamp01((p - 0.4) / 0.6);
+      const y = lerp(to.top + 3.2, feet + 0.7, fall * fall);
+      anchor.position.set(to.pos.x, y, to.pos.z);
+      anchor.material.opacity = p < 0.4 ? 1 : fadeOut((p - 0.4) / 0.6, 0.5);
+      anchor.material.rotation = (1 - fall) * 0.5;
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, hit * (to.r + 1.1)));
+      ring.material.opacity = hit > 0 ? 0.7 * (1 - hit) : 0;
+      for (let i = 0; i < N; i++) {
+        if (hit <= 0) { drops.hide(i); continue; }
+        const ang = (i / N) * 6.283, d = 0.3 + hit * (to.r * 0.7 + 0.5);
+        drops.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.15 + Math.sin(hit * Math.PI) * (0.5 + 0.1 * (i % 3)), to.pos.z + Math.sin(ang) * d);
+      }
+      drops.fade(fadeOut(hit, 0.5));
+    },
+  };
+};
+/* ==== end of T40b pirate ==== */
 // T40 base: until T40a-d add their own entries for the wave 14 types, they borrow the normal ones
 for (const t of ['tiny', 'pirate', 'racer']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }

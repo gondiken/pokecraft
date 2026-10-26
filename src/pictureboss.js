@@ -53,8 +53,24 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   win: 'Good try! Have a crumb, rest a bit, and come back!',
   rematchIntro: ['Back again? My tiny team grew a little!'],
   note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
-addBoss({ id: 'pirate', name: 'Deckhand Dot', type: 'water', colors: { ...PEOPLE, shirt: 0xd0d8f0, pants: 0x2a4a8a }, team: [['shellby', 61], ['tidalord', 63]],
-  intro: ['Ahoy! Ready for a battle?'], lose: 'Ahoy! You win this one!', win: 'Good battle! Try again any time.', note: NOTE });
+// T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (optional battles: Dot, Lou and First Mate Fin).
+addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
+  team: [['anchorclaw', 61, ['anchordrop', 'rumblerock', 'cannonball', 'hookswipe']], ['shipshape', 61],
+    ['lookapus', 62, ['spyglass', 'soakshot', 'cannonball', 'walktheplank']],
+    ['featherbeard', 63, ['broadside', 'swoop', 'jollyroger', 'cannonball']]], // top level 63, the easy side, four creatures
+  intro: ['Squawk! Who is that on MY ship?', 'The star is in my treasure chest, and it stays there! Battle stations!'],
+  lose: 'Squawk... you win, matey! My chest is yours. The star was in it all along!',
+  win: 'Squawk! Good battle, matey. Have a rest and try again!',
+  rematchIntro: ['Back for more, matey? My crew trained all day. Squawk!'],
+  note: 'Captain Squawk was my parrot. I painted him a whole sea to sail! When I left, he got a bit bossy. Thank you for the star!',
+  crew: [
+    { name: 'Deckhand Dot', look: 'pirate', colors: { shirt: 0xf6efe0, pants: 0x3a5aa8, hair: 0x7a3a1a, skin: 0xf2d0b0 },
+      team: [['pinchook', 59], ['parroteer', 60]], intro: ['Ahoy! Nobody lands on Parrot Perch without a battle!'], line: 'The ropes take you to Lookout Isle. Swing!' },
+    { name: 'Lookout Lou', look: 'pirate', colors: { shirt: 0xe07a6a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
+      team: [['bottlet', 60], ['lookapus', 60]], intro: ['I saw you coming with my spyglass! Battle!'], line: 'That cannon shoots you right onto the ship!' },
+    { name: 'First Mate Fin', look: 'pirate', colors: { shirt: 0x2a4aa8, pants: 0x3a2a1a, hair: 0xe0c060, skin: 0xf2d0b0 },
+      team: [['parroteer', 60], ['anchorclaw', 61], ['shipshape', 61]], intro: ['The Captain is counting his gold. Battle me first, if you dare!'], line: 'The Captain is on the quarterdeck. Good luck, matey!' },
+  ] });
 addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in racelive.js; he battles after you win it)
   id: 'race', name: 'Racer Rio', type: 'racer', title: 'Racer Rio · Race Track Boss',
   colors: { shirt: 0xff8a2a, pants: 0x2a2a34, hair: 0x3a2418, skin: 0xf0c8a0 }, look: 'helmet',
