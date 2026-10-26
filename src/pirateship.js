@@ -22,7 +22,8 @@ export const SHIP = {
   gaps: [[103, 105], [117, 119]],                       // no railing here (and at the gangplank)
   gang: { x0: 111, x1: 113, z0: 55, z1: 59, tops: [17, 16, 15, 14, 13] },
   dock: { x0: 108, z0: 60, z1: 61, y: 13, post: 6 },
-  decor: [[108, 53, 1], [122, 53, 1], [108, 43, -1], [122, 43, -1]], // decor cannons: x, z, side (+1 south, -1 north)
+  decor: [[108, 53, 1], [122, 53, 1]],                // decor cannons: x, z, side (+1 south)
+  swivels: [[108, 42], [122, 42]],                     // owner 2026-10-26: swivel cannons on the north rail (x, rail z) for the rowboats; a DECK step behind each lifts you over the rail
 };
 
 const put = (world, x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
@@ -103,6 +104,7 @@ export function buildShip(world, S = SHIP) {
   for (const [x, y, z] of S.lamps) put(world, x, y, z, B.LAMP);
   put(world, S.wheel[0], S.wheel[1], S.wheel[2], B.SHIP_WHEEL);
   put(world, S.chest[0], S.chest[1], S.chest[2], B.BIG_CHEST);
+  for (const [x, z] of S.swivels) put(world, x, S.deck + 1, z + 1, B.DECK); // the gunner's step behind each swivel cannon
   world.starChest = [...S.chest];
   // the target on the main deck
   for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) put(world, S.target.x + dx, S.deck, S.target.z + dz, B.TARGET);

@@ -150,7 +150,7 @@ export default async function ({ browser, base, t }) {
   t.ok(A.evolve.join() === 'hushcoon>shadecoon@22,peekaw>ravenshade@22,flickit>whirlwhisk@24', `evolution levels kept (${A.evolve})`);
   t.ok(A.shapes.join() === 'bamboo,crow,raccoon,squirrel' && A.shapesRegistered && A.ownShapes, `four own Ninja shapes (${A.shapes}), registered in SHAPES`);
   t.ok(A.bambooShapeUse === 1, 'Bambooze has its own shape');
-  t.ok(A.gait, "the 'blink' gait exists and bumps start battles");
+  t.ok(A.gait, "the 'blink' gait exists and notices you touching it");
   t.ok(!A.problems.length, `all seven pass the data and model checks (mask, headband, size, animation) ${A.problems.join('; ')}`);
   console.log('  sizes:', JSON.stringify(A.sizes));
   t.ok(A.moves.every(m => m === 'ninja'), `the eight moves are Ninja (${A.names.join(', ')})`);
@@ -469,13 +469,15 @@ export default async function ({ browser, base, t }) {
     r = window.__chase(c, { sprint: false, startX: -6 });
     cm.onBump = realBump;
     if (!r.bumps) return { r };
-    // what main.js's onBump does while playing (startBattle)
+    // owner 2026-10-26: the game's own onBump never battles a creature you only walk into (only a disguised Camo one); E / a tap does
+    const before = g.inBattle; realBump(c); const bumped = g.inBattle !== before || g.battle.active;
+    if (bumped) return { r, bumped };
     g.inBattle = true; document.body.classList.add('in-battle');
     document.getElementById('pause').classList.add('hidden');
     g.battle.start({ wild: c });
     return { r, active: g.battle.active, foe: g.battle.foes?.[0]?.species, frozen: c.frozen, visible: c.model.visible };
   });
-  t.ok(F.r.blinks === 0 && F.active && F.foe === 'flickit' && F.frozen && F.visible, `walking into a Flickit starts a battle with it (${JSON.stringify(F)})`);
+  t.ok(F.r.blinks === 0 && F.active && F.foe === 'flickit' && F.frozen && F.visible, `walking up slowly reaches a Flickit; bumping it starts no battle, E (startBattle) does (${JSON.stringify(F)})`);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(SHOTS, 't37-battle.png'), timeout: 180000 });
   console.log('  screenshot t37-battle.png');
