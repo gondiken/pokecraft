@@ -185,7 +185,7 @@ export default async function ({ browser, base, t }) {
     t.ok(JSON.stringify(A.mine) === JSON.stringify([...IDS].sort()), `seven Racer species (${A.mine})`);
     t.ok(A.evolve.join() === 'vroomlet>vroomster@24,zipskate>blastskate@22,pitpig>karthog@24' && A.single, `three two-stage families and a single-stage Wheelie (${A.evolve})`);
     t.ok(A.shapes.join() === 'kartpig,rocketskate,toycar,tyre' && A.shapesRegistered && A.ownShapes, `four own Racer shapes (${A.shapes}), registered in SHAPES`);
-    t.ok(A.gait, "the 'dash' gait exists and bumps start battles");
+    t.ok(A.gait, "the 'dash' gait exists and notices you touching it");
     t.ok(!A.problems.length, `all seven pass the data and model checks (stripe, goggles, size, animation, only in Playland) ${A.problems.join('; ')}`);
     t.ok(A.moves.every(m => m === 'racer') && A.zoom && A.t1, `the nine moves are Racer moves; Zoom Dash and Photo Finish go first, Rev Up raises speed (${A.moves})`);
     t.ok(A.sig && A.sigOnly === 'blastskate,vroomster', `Photo Finish (Vroomster) and Nitro Blast (Blastskate, multi-hit) are signature moves learned at 30 (${A.sigOnly})`);
