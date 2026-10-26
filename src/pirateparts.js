@@ -6,6 +6,9 @@
 // Owner 2026-10-26, "some dexterity": the island cannons swing (fire when the dots of the landing preview turn gold), the rope keeps
 // swinging until you press Let go!, and three rowboats must be sunk with the ship's deck cannons before Captain Squawk battles
 // (the pure rules are in pirateland.js: AIM, cannonShot, LETGO, letGo, ropeDrop, ROWBOATS, deckShot, boatHit). A miss is a splash.
+// Owner, later the same day ("way too easy"): the rope and the swivel cannons are held and let go (gymLive holds / release, like
+// Kick!): hold Swing! to hang on, let go to drop; hold Fire! and the shot goes further (then nearer again), let go to fire. The boats
+// row fast figure-eights; the dots turn gold only for the short moment a let-go would hit (aim ahead, let go on gold).
 // `steady = true` (tests) gives the old rides: every cannon on target, every rope straight across.
 // Meshes: cannon barrels, cannon wheels, ropes, a pool of puffs, the preview dots, the deck cannon ball, boat hulls and sails:
 // 8 draw calls, all with userData.pirate, removed in dispose().
@@ -13,7 +16,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { Mover, PATHS, makePath } from './mover.js';
-import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, boatState, boatAt, deckShot, deckStand, boatHit } from './pirateland.js';
+import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, boatState, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
 import { SHIP } from './pirateship.js';
 import { sound } from './sound.js';
 
@@ -40,6 +43,7 @@ export class PirateLive {
     this.steady = false;   // tests: the old rides (no swinging cannons, ropes go straight across)
     this.aimT = {}; this.misses = {}; // per island cannon: its own aim clock, misses in a row (it swings slower after a miss)
     this.ball = null;      // a deck cannon ball in the air: { path, t, to, gi }
+    this.held = null;      // the big button / E / the mouse held down: { kind: 'rope' } or { kind: 'deck', g, t0 }
     this.boatT = 0; this.sinking = {}; this.reloadAt = -9;
     this.preview = null;   // what the dots show: { spec, gold }
     this.meshes = [];
@@ -177,11 +181,13 @@ export class PirateLive {
   // the island cannon's barrel angle beside its target right now
   offOf(c) { return this.steady ? 0 : sweepAngle(this.aimT[c.id] ?? 0, c); }
   // what firing now would do: { spec, hit } for an island cannon, { spec, hit (a boat index or -1), shot } for a deck cannon
+  // (deck: `hit` = the boat the ball would hit if you let go now: where it will be when the ball comes down)
   shotNow(g) {
     if (g.kind === 'cannon') return cannonShot(this.world, g.c, this.offOf(g.c));
-    const shot = deckShot(g.at, this.game.player.yaw);
-    return { spec: shot.spec, hit: boatHit(this.game, shot.to, this.boatT + ROWBOATS.time), shot };
+    const shot = deckShot(g.at, this.game.player.yaw, this.power());
+    return { spec: shot.spec, hit: boatHit(this.game, shot.to, this.boatT + shot.spec.time), shot };
   }
+  power() { return this.held?.kind === 'deck' ? power(this.clock - this.held.t0) : 0; }
   // the short word for the big action button / E prompt (gymLive.near)
   near() {
     if (!this.game.playing?.()) return null;
@@ -189,12 +195,32 @@ export class PirateLive {
     const g = this.gadget();
     return g ? (g.kind === 'rope' ? 'Swing!' : 'Fire!') : null;
   }
+  // the big button presses and lets go (touch.js), E and the mouse too (main.js): a rope or a swivel cannon, or while held
+  holds() {
+    if (!this.game.playing?.()) return false;
+    if (this.held?.kind === 'deck') return true;
+    if (this.swing) return false; // swinging: the word is Let go! (letting go of the held button, or a fresh tap / E, drops you)
+    const g = this.gadget();
+    return !!g && (g.kind === 'deck' || (g.kind === 'rope' && !this.steady));
+  }
   use() {
     if (!this.game.playing?.()) return false;
-    if (this.swing?.path.loop) { this.letGo(); return true; }
+    if (this.held) return true; // a key repeat while held
+    if (this.swing?.path.loop) { this.letGo(); return true; } // (a press without a hold, e.g. the hold was lost)
     const g = this.gadget();
     if (!g) return false;
-    if (g.kind === 'cannon') this.fire(g.c); else if (g.kind === 'deck') this.shoot(g); else this.swingOn(g.r, g.from);
+    if (g.kind === 'cannon') this.fire(g.c);
+    else if (g.kind === 'deck') { if (!this.ball && this.clock - this.reloadAt >= ROWBOATS.reload) this.held = { kind: 'deck', g, t0: this.clock }; }
+    else { this.swingOn(g.r, g.from); if (!this.steady) this.held = { kind: 'rope' }; }
+    return true;
+  }
+  // let go of the button: drop off the rope, or fire the swivel cannon
+  release() {
+    const h = this.held;
+    if (!h) return false;
+    if (h.kind === 'deck') this.shoot(h.g);
+    this.held = null;
+    if (h.kind === 'rope' && this.swing) this.letGo();
     return true;
   }
   // a click / tap on the gadget's own blocks, or on the chest
@@ -236,7 +262,7 @@ export class PirateLive {
     this.mover = new Mover({ path, run: 'ride', canLeave: false, onEnd: () => { this.swing = null; this.landed(r.id, from === 'a' ? r.b.pos : r.a.pos, true); } });
     this.carrying = r.id;
     this.mover.board(p);
-    if (loop) this.hint('letgo', 'Let go when the rope is gold!');
+    if (loop) this.hint('letgo', 'Hold on! Let go when the rope is gold.');
   }
   // Let go of a swinging rope: a short hop onto the far stand, back onto your own, or a splash into the sea under the rope
   letGo() {
@@ -246,6 +272,7 @@ export class PirateLive {
     const to = how === 'far' ? far.pos : how === 'back' ? back.pos : ropeDrop(this.world, s.r, [p.pos.x, p.pos.z]) ?? back.pos;
     this.mover.leave(false);
     this.swing = null;
+    if (this.held?.kind === 'rope') this.held = null;
     const from = [p.pos.x, p.pos.y, p.pos.z], dist = Math.hypot(to[0] - from[0], to[2] - from[2]);
     const path = makePath({ kind: 'arc', from, to: [...to], height: 0.4, time: LETGO.hop + dist / 20 });
     this.mover = new Mover({ path, run: 'ride', canLeave: false, onEnd: () => this.landed(s.r.id, to, true) });
@@ -258,7 +285,7 @@ export class PirateLive {
   // a deck cannon: a ball at the rowboats (it does not carry you)
   shoot(g) {
     if (this.ball || this.clock - this.reloadAt < ROWBOATS.reload) return;
-    const { shot } = this.shotNow(g);
+    const { shot } = this.shotNow(g); // (with the power of the hold: call it before `held` is cleared)
     sound.play('cannonboom');
     this.kickAt = this.clock; this.kickId = g.gi; this.reloadAt = this.clock;
     this.puff(shot.spec.from[0], shot.spec.from[1], shot.spec.from[2], false, 3);
@@ -307,7 +334,7 @@ export class PirateLive {
       const b = boatAt(i, gone ? this.sinking[i] ?? 0 : this.boatT), k = Math.min(1, since / ROWBOATS.sink);
       if (gone && k >= 1) { d.position.set(0, -50, 0); d.scale.set(0, 0, 0); } else {
         d.position.set(b.x, 13.05 + Math.sin(this.boatT * 2 + i) * 0.06 - (gone ? k * 1.6 : 0), b.z);
-        d.rotation.set(gone ? k * 0.9 : Math.sin(this.boatT * 1.6 + i) * 0.05, b.dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0); d.scale.set(1, 1, 1);
+        d.rotation.set(gone ? k * 0.9 : Math.sin(this.boatT * 1.6 + i) * 0.05, b.yaw, 0, 'YXZ'); d.scale.set(1, 1, 1);
       }
       d.updateMatrix();
       this.hulls.setMatrixAt(i, d.matrix); this.sails.setMatrixAt(i, d.matrix);
@@ -340,12 +367,15 @@ export class PirateLive {
       if (Math.abs(dir - (c.aim ?? c.dir)) > 1e-4) this.placeGun(i, 0, dir);
     });
     // the dots: where you would land (or where the ball would), gold when it is a hit
+    if (this.held?.kind === 'deck' && gad?.kind !== 'deck') this.held = null; // walked off the step while holding
     this.preview = null;
-    if (gad && gad.kind !== 'rope') {
+    if (gad && gad.kind === 'cannon') {
       const s = this.shotNow(gad);
-      this.preview = { spec: s.spec, gold: gad.kind === 'deck' ? s.hit >= 0 : s.hit, ball: gad.kind === 'deck' };
-      if (gad.kind === 'cannon' && !gad.c.home && !this.steady) this.hint('aim', 'Fire when the dots are gold!');
-      if (gad.kind === 'deck' && !boatState(g).done) this.hint('deck', 'Aim at a boat. Fire when the dots are gold!');
+      this.preview = { spec: s.spec, gold: s.hit, ball: false };
+      if (!gad.c.home && !this.steady) this.hint('aim', 'Fire when the dots are gold!');
+    } else if (gad?.kind === 'deck') { // the dots only while Fire! is held (they show how far it goes)
+      if (this.held) { const s = this.shotNow(gad); this.preview = { spec: s.spec, gold: s.hit >= 0, ball: true }; }
+      if (!boatState(g).done) this.hint('deck', 'Hold Fire! Let go when the dots are gold.');
     }
     this.drawDots(); this.drawBoats();
     // the barrel kicks back after a shot
@@ -388,12 +418,12 @@ export class PirateLive {
   }
   info() {
     return { carrying: this.carrying, t: this.mover ? this.mover.clock : 0, chest: this.chest, clock: this.clock, meshes: this.meshes.length, told: [...this.told],
-      swinging: !!this.swing, ball: !!this.ball, boatT: this.boatT, preview: this.preview && { gold: this.preview.gold, to: this.preview.spec.to }, misses: { ...this.misses } };
+      swinging: !!this.swing, ball: !!this.ball, held: this.held?.kind ?? null, power: this.power(), boatT: this.boatT, preview: this.preview && { gold: this.preview.gold, to: this.preview.spec.to }, misses: { ...this.misses } };
   }
 
   dispose() {
     if (this.mover) this.mover.leave(false);
-    this.mover = null; this.carrying = null; this.swing = null; this.ball = null;
+    this.mover = null; this.carrying = null; this.swing = null; this.ball = null; this.held = null;
     for (const m of this.meshes) { this.game.scene.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
     this.meshes = [];
   }
