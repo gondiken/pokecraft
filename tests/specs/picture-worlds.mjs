@@ -372,7 +372,7 @@ export default async function ({ browser, base, t }) {
   await placeIs(page, 'swirl');
   const cross = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'race'), p = g.player.pos, c = f.cloth[12]; return { d: Math.hypot(p.x - f.stand[0] - 0.5, p.z - f.stand[2] - 0.5), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }, 'click or E') }; });
   t.ok(cross.d < 1.5, `in through the stadium frame, out through the race door: you come out at the race frame (${cross.d.toFixed(1)})`);
-  t.ok(/Picture frame · 🏎️ Playland · Race Track/.test(cross.prompt), `the frame says it is Playland ("${cross.prompt}")`);
+  t.ok(/^🏎️ Playland · Race Track · /.test(cross.prompt), `the frame says it is Playland ("${cross.prompt}")`);
   await page.evaluate(() => window.pokecraft.realms.leave('door'));
   await placeIs(page, 'main');
   await flip(page, 'house', false); await flip(page, 'race', false); await flip(page, 'stadium', false);

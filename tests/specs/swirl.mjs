@@ -387,7 +387,7 @@ export default async function ({ browser, base, t }) {
     g.placeBlock({ x: c[0], y: c[1], z: c[2] + 2, normal: [0, 0, -1], id: B.CLOTH }); // the cell in front of the cloth, inside the frame's keep
     return { used, t1, prompt, t2, still: w.get(...c), edits: w.edits.size - edits, before, placed: w.get(c[0], c[1], c[2] + 1) };
   });
-  t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Picture frame · Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
+  t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
   t.ok(fr.still === 129 && fr.edits === 0 && fr.t2 === fr.t1, `breaking a frame says the same and changes nothing ${JSON.stringify(fr)}`);
   const sec = await Q.evaluate(async () => {
     const g = window.pokecraft, { B } = await import('/src/blocks.js'), f = g.world.swirl.frames.find(x => x.world === 'secret1'), c = f.cloth[12];
@@ -395,7 +395,7 @@ export default async function ({ browser, base, t }) {
     g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.CLOTH });
     return { toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'E') };
   });
-  t.ok(sec.toast === '❓ A secret world! Nobody knows what is behind this cloth yet.' && sec.prompt === 'Picture frame · a secret world · covered', `a secret frame: "${sec.toast}" (${sec.prompt})`);
+  t.ok(sec.toast === '❓ A secret world! Nobody knows what is behind this cloth yet.' && sec.prompt === 'A secret world · covered', `a secret frame: "${sec.toast}" (${sec.prompt})`);
   t.ok(fr.placed === 0, `you cannot build into a picture frame's space (${fr.placed})`);
 
   // 8. Stars light the bridge: the first stone turns to Star Stone, the others stay air with outlines.

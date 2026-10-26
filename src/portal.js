@@ -392,7 +392,7 @@ function swirlUse(game, block) {
 }
 function swirlPrompt(game, block, how) {
   const f = frameOf(game, block);
-  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.ready ? `${pw.emoji} ${fullName(pw)}` : pw.secret ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
+  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `${pw.ready ? `${pw.emoji} ${fullName(pw)}` : pw.secret ? 'A secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
   if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
   return '';
 }
