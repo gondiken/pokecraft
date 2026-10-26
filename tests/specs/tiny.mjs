@@ -170,7 +170,7 @@ export default async function ({ browser, base, t }) {
       if (seed === 1) console.log('  ride', r.stops, `${r.ride9.toFixed(1)} s`, 'standIn', r.msStandIn, 'ms');
     }
     const small = await page.evaluate(async () => { const Bk = await import('/src/blocks.js'); return { n: Bk.TILE_COUNT, free: Math.max(...Object.values(Bk.B)) + 1 }; });
-    t.ok(small.n <= 256 && small.free >= 168, `the atlas has ${small.n} tiles (of 256)`);
+    t.ok(small.n <= 1024 && small.free >= 168, `the atlas has ${small.n} tiles (of 1024)`);
   }
 
   /* ======================================== C. live ======================================== */

@@ -10,9 +10,9 @@ import { kit, placeBoss, placeCrew } from './picturelands.js'; // pure too (bloc
 // narrower track (asphalt 3 wide + an edge line each side), thin boost strips, a hairpin, an S and a chicane, tyre walls outside the
 // tight corners and a bridge over a pond; off the track (grass, the pond) you only walk.
 export const RACE = {
-  laps: 2, lane: 1, grid: -1.5,                   // Rio's lane; both start 1.5 behind the line
+  laps: 3, lane: 1, grid: -1.5,                   // Rio's lane; both start 1.5 behind the line
   count: 3, hold: 1.2,                            // countdown seconds; how far you may move before GO
-  speed: { straight: 9.0, sweeper: 8.7, bridge: 9.0, corner: 7.2, chicane: 6.6, hairpin: 5.5, boost: 10.4 },
+  speed: { straight: 9.45, sweeper: 9.15, bridge: 9.45, corner: 7.55, chicane: 6.95, hairpin: 5.8, boost: 10.9 }, // owner 2026-10-26: 5% quicker, 3 laps
   band: { near: 1, slow: 0.03, min: 0.85, behind: 3, fast: 0.03, max: 1.12, ease: 0.04, final: 45, cap: [1, 0.9, 0.8] },
   boost: { dist: 6, speed: 16 },                  // a boost strip zooms you 6 blocks at 16 blocks/s
   pace: 1.35, offTrack: 4.3, fov: 82,                      // on foot on the track: 1.35 x a sprint (8.4); off it (grass, water): a walk at most

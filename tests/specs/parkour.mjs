@@ -496,8 +496,8 @@ export default async function ({ browser, base, t }) {
     for (let x = cx - 9; x <= cx + 9; x++) for (let z = cz - 9; z <= cz + 9; z++) for (let y = Y; y <= Y + 6; y++) w.set(x, y, z, B.AIR);
     return { far, first, still, again, above, frozen };
   });
-  t.ok(Bump.far === 0 && Bump.first === 1, `walking into it starts a battle once (${JSON.stringify(Bump)})`);
-  t.ok(Bump.still === 1, 'standing inside it starts no second battle');
+  t.ok(Bump.far === 0 && Bump.first === 1, `walking into it is noticed once (${JSON.stringify(Bump)})`);
+  t.ok(Bump.still === 1, 'standing inside it is not noticed again');
   t.ok(Bump.again === 2, 'stepping away and back starts one again');
   t.ok(Bump.above === 2 && Bump.frozen === 2, 'jumping over it or touching it in a battle does nothing');
 

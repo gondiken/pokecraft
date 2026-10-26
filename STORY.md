@@ -107,9 +107,9 @@ The worlds behind the frames are the **Picture Worlds**: you step into a picture
 are not gyms, and there are no more badges. Explore them as much as you like; at the end of each one waits a
 **Boss**. Beat the Boss and you win that world's **star**, the one the Wizard hid there. Bring it back and it becomes
 a glowing stepping stone on the **star bridge** to his tower. (Each star comes with a little note from the Wizard.)
-There are **12 stars**: ten Picture Worlds hang as frames in the Swirl (four of them are still secret), the Portal House
-is in the Swirl itself (its Boss gives the 11th star), and the 11 stars light the 11 stones of the star bridge. The
-Wizard gives the 12th star at the top of his tower.
+There are **12 stars**, and every one comes from a Picture World: eleven hang as frames in the Swirl (five of them are
+still secret), and the Portal House is in the Swirl itself. The 12 stars light the 12 stones of the star bridge. The
+Wizard has no star to give: reaching him and winning is the end of chapter 2 itself.
 
 ## The Picture Worlds
 
@@ -151,7 +151,8 @@ you his drawing board:
 *"You design it."*
 
 You design your own creature, unlike any other. It becomes the Swirl's guardian, the crack closes, and the Wizard
-can finally come out. That ends chapter 2.
+can finally come out. That is your win, like becoming Champion was in chapter 1: you are now the **Wizard's ally**.
+That ends chapter 2.
 
 # Chapter 3: The Scribble
 

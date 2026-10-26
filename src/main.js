@@ -140,7 +140,9 @@ game.creatures.onTired = w => { if (game.started && !game.inBattle) game.ui.toas
 game.creatures.onBlink = w => { if (game.started && !game.inBattle && !game.toldOnce.has('blink')) { game.toldOnce.add('blink'); game.ui.toast(`Poof! ${w.species.name} blinked away. Ninjas run from fast feet: walk up slowly!`); } }; // T37
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
 game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []) }; // T31: only friends in the same place
-game.creatures.onBump = wild => { if (playing()) startBattle({ wild }); }; // walked into a Camo creature
+// Walking into a disguised Camo creature finds it (else you would walk through a "block"). Owner 2026-10-26: walking into any other
+// creature (a tired Racer, Parkour or Ninja creature, a Tiny peeker) never starts a battle: press E or tap it, like every creature.
+game.creatures.onBump = wild => { if (playing() && wild.disguise) startBattle({ wild }); };
 game.npcs.onBump = npc => { if (playing()) talkTo(npc); }; // walked into a disguised trainer (Hidden Hill)
 game.homes = new HomeManager(game); // T22
 game.ui = new UI(game, atlas);
@@ -1222,7 +1224,7 @@ function frame(now) {
     if (f) {
       const src = fireTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
       fireTiles.set(f.frame, src);
-      firePos.set(f.x, 0);
+      firePos.set(f.x, f.y);
       renderer.copyTextureToTexture(firePos, src, texture);
     }
   }
@@ -1232,7 +1234,7 @@ function frame(now) {
     if (f) {
       const src = portalTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
       portalTiles.set(f.frame, src);
-      portalPos.set(f.x, 0);
+      portalPos.set(f.x, f.y);
       renderer.copyTextureToTexture(portalPos, src, texture);
     }
   }

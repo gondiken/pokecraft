@@ -58,6 +58,7 @@ export class UI {
     this.clock = document.getElementById('clock');
     this.guide = document.getElementById('guide');
     this.keyCompass = document.getElementById('key-compass');
+    this.scoreChip = document.getElementById('score-chip');
     this.badgeRow = document.getElementById('badges');
     this.starsRow = document.getElementById('stars'); // T38a
     this.partyPanel = document.getElementById('party');
@@ -186,6 +187,15 @@ export class UI {
     const x = 4 + v * 78, y = Math.sin(v * Math.PI) * -6 + v * v * 28; // up a little, then down out of sight
     icon.style.transform = `translate(${x}px, ${y}px)`;
     m.style.setProperty('--dawn', String(Math.max(0, (v - 0.85) / 0.15)));
+  }
+
+  // The stadium's score for the Captain (owner 2026-10-26): null hides it; { text, done }. The DOM is written only on change.
+  setScore(state) {
+    const c = this.scoreChip, tag = state ? `${state.text}/${state.done}` : null;
+    if (!c || tag === this.scoreShown) return;
+    this.scoreShown = tag;
+    c.classList.toggle('hidden', !state);
+    if (state) { c.textContent = state.text; c.classList.toggle('done', !!state.done); }
   }
 
   setKeyCompass(state) {

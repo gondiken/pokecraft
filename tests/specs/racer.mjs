@@ -94,8 +94,8 @@ export default async function ({ browser, base, t }) {
     const win = (v, l, dt) => raceRun(v, l, dt, tr).winner;
     // owner 2026-10-26: a walk never wins; a clean run at the race's pace (8.4) wins; a sloppy one (7) loses the first race, wins after a loss
     const pace = 6.2 * RACE.pace;
-    const table = [[0, 4.3, 'rio'], [0, pace, 'you'], [1, 4.3, 'rio'], [1, pace, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [0, 6.2, 'rio'], [0, 7.0, 'rio'], [1, 7.4, 'you'], [2, pace, 'you'], [0, 9.5, 'you']];
-    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a clean run at race pace (${pace.toFixed(1)}) wins, a sloppy one (7) loses the first race (dt ${dt.toFixed(3)})`);
+    const table = [[0, 4.3, 'rio'], [0, pace, 'you'], [1, 4.3, 'rio'], [1, pace, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [0, 6.2, 'rio'], [0, 7.0, 'rio'], [0, 7.4, 'rio'], [1, 7.8, 'you'], [2, 7.4, 'you'], [2, pace, 'you'], [0, 9.5, 'you']];
+    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a clean run at race pace (${pace.toFixed(1)}) wins, a sloppy one (7.4) loses the first race, gentler after losses (dt ${dt.toFixed(3)})`);
     t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 6.2, pace, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
     const top = Math.max(...Object.values(RACE.speed)) * RACE.band.max;
     let fast = 0;
@@ -185,7 +185,7 @@ export default async function ({ browser, base, t }) {
     t.ok(JSON.stringify(A.mine) === JSON.stringify([...IDS].sort()), `seven Racer species (${A.mine})`);
     t.ok(A.evolve.join() === 'vroomlet>vroomster@24,zipskate>blastskate@22,pitpig>karthog@24' && A.single, `three two-stage families and a single-stage Wheelie (${A.evolve})`);
     t.ok(A.shapes.join() === 'kartpig,rocketskate,toycar,tyre' && A.shapesRegistered && A.ownShapes, `four own Racer shapes (${A.shapes}), registered in SHAPES`);
-    t.ok(A.gait, "the 'dash' gait exists and bumps start battles");
+    t.ok(A.gait, "the 'dash' gait exists and notices you touching it");
     t.ok(!A.problems.length, `all seven pass the data and model checks (stripe, goggles, size, animation, only in Playland) ${A.problems.join('; ')}`);
     t.ok(A.moves.every(m => m === 'racer') && A.zoom && A.t1, `the nine moves are Racer moves; Zoom Dash and Photo Finish go first, Rev Up raises speed (${A.moves})`);
     t.ok(A.sig && A.sigOnly === 'blastskate,vroomster', `Photo Finish (Vroomster) and Nitro Blast (Blastskate, multi-hit) are signature moves learned at 30 (${A.sigOnly})`);
@@ -343,7 +343,7 @@ export default async function ({ browser, base, t }) {
       out.onGrid = Math.hypot(p.pos.x - live.part.grid.player[0], p.pos.z - live.part.grid.player[2]) < 0.01;
       out.rioGrid = Math.hypot(n.pos.x - live.part.grid.boss[0], n.pos.z - live.part.grid.boss[2]) < 0.01 && n.steer === true;
       out.yaw = Math.abs(Math.sin(p.yaw) + 1) < 1e-6;
-      out.hello = window.__R.said("Race me\\? Two laps");
+      out.hello = window.__R.said("Race me\\? Three laps");
       const lamp = () => window.__R.lamps().map(id => (id === B.START_RED ? 'R' : id === B.START_GREEN ? 'G' : id === B.START_LIGHT ? '.' : '?')).join('');
       out.lamps = [];
       live.step(0.01); out.lamps.push(lamp());
@@ -372,7 +372,7 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(D2b.state === 'race' && D2b.green && D2b.go && D2b.action === 'Go go go!', `at 3 seconds all three lamps turn green and "GO!" starts the race (${D2b.state})`);
 
-    // a win: running at the race's pace (8.4 blocks per second) round two laps, every flag in order
+    // a win: running at the race's pace (8.4 blocks per second) round three laps, every flag in order
     const D3 = await page.evaluate(() => {
       const R = window.__R, { live, g } = R, seq = [];
       let last = live.next;
@@ -382,9 +382,9 @@ export default async function ({ browser, base, t }) {
       return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("Now talk to me"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
         prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), sound: g.sound.played.slice(-8).join() };
     });
-    t.ok(D3.seq === '1,2,3,4,1,2,3,4' || D3.seq === '1,2,3,4,1,2,3,4,0' || D3.seq.startsWith('1,2,3,4,1,2,3,4'), `the flags are passed in order, twice round (${D3.seq})`);
-    t.ok(D3.state === 'done' && D3.lap === 2 && D3.won && D3.last && D3.win && D3.line, `the race ends in a win after two laps: "Last lap!", "You won the race!", Rio says his line (${D3.secs.toFixed(0)} s)`);
-    t.ok(D3.bossS < 2 * D3.L && D3.prompt === null && D3.base.action === 'Challenge!', `Rio was behind, the button now says the base's "${D3.base.action}"`);
+    t.ok(D3.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4'), `the flags are passed in order, three times round (${D3.seq})`);
+    t.ok(D3.state === 'done' && D3.lap === 3 && D3.won && D3.last && D3.win && D3.line, `the race ends in a win after three laps: "Last lap!", "You won the race!", Rio says his line (${D3.secs.toFixed(0)} s)`);
+    t.ok(D3.bossS < 3 * D3.L && D3.prompt === null && D3.base.action === 'Challenge!', `Rio was behind, the button now says the base's "${D3.base.action}"`);
     t.ok(/lapbell/.test(D3.sound) || D3.seq.length > 0, `the lap bell and the finish sound play (${D3.sound})`);
 
     // done -> idle: Rio drives on, then he is back on his stand
@@ -525,7 +525,7 @@ export default async function ({ browser, base, t }) {
       return out;
     });
     t.ok(D8.rode && D8.on && D8.kind === 'land' && D8.moved > 9 && !D8.fence && !D8.fencedCell && !D8.fenceToast, `riding a Vroomster on the track is not fenced out (${D8.moved.toFixed(1)} blocks in 2 s)`);
-    t.ok(D8.state === 'done' && D8.won && D8.lap === 2, 'a race run while riding counts');
+    t.ok(D8.state === 'done' && D8.won && D8.lap === 3, 'a race run while riding counts');
     t.ok(D8.sky >= 2, 'a flying rider passes a flag above the beam (feet at 7 above the ground)');
 
     // the Boss battle after a won race
@@ -534,7 +534,7 @@ export default async function ({ browser, base, t }) {
       live.state = 'idle'; live.hideKart(); live.won = false;
       g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
       g.talkTo(R.rio()); live.step(3.2);
-      R.drive(7, {});
+      R.drive(6.2 * R.T.RACE.pace, {});
       const won = live.won, state = live.state;
       live.step(3.2);
       g.talkTo(R.rio()); // the Boss battle

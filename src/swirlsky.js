@@ -3,7 +3,7 @@
 // oddities (tumbling empty frames, spinning swirl-wheels). All of it is meshes: never blocks, never saved, never solid. 5 draw calls.
 // The gradient on the Swirl's blocks is a tint in the shared shader (caves.js swirlTint); this file only feeds its uniforms.
 import * as THREE from 'three';
-import { T, TILE_COUNT } from './blocks.js';
+import { T } from './blocks.js';
 import { swirlTint } from './caves.js';
 import { ZONES, PALETTES, PARSED, zoneWeights, FRAME_COLORS, hexRgb } from './swirlland.js';
 
@@ -116,7 +116,7 @@ export function createSwirlSky(game, { scene, camera }) {
   function feedTint() {
     ZONES.forEach((z, i) => swirlTint.uZone.value[i].set(z.x, z.z, z.r, 0));
     PARSED.forEach((p, i) => { srgb(swirlTint.uLo.value[i], p.lo); srgb(swirlTint.uHi.value[i], p.hi); srgb(swirlTint.uSea.value[i], p.sea); });
-    swirlTint.uTintU.value.set(T.SWIRL_STONE_TOP / TILE_COUNT, (T.SWIRL_STONE + 1) / TILE_COUNT, T.SWIRL_PAINT / TILE_COUNT, (T.SWIRL_CLOUD + 1) / TILE_COUNT);
+    swirlTint.uTintU.value.set(T.SWIRL_STONE_TOP, T.SWIRL_STONE + 1, T.SWIRL_PAINT, T.SWIRL_CLOUD + 1);
     swirlTint.uHaze.value = PALETTES.at(-1).w;
     swirlTint.uTintOn.value = 1;
   }

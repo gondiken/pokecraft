@@ -1,7 +1,7 @@
 // T29: the Champion missions panel (#missions, opened with M, from the chip, or by talking to Champion Solenne) and the HUD chip.
 // Contract: missionUi.open(mode) mode = 'desk' | 'view' (called by ui.openPanel('missions') AFTER #missions is shown),
 // close() (ui.closePanel always calls it), refresh(), setChip(). missionUi.want = the mode game.openMissions(mode) asked for.
-import { BLOCKS, drawBlockIcon } from './blocks.js';
+import { BLOCKS, drawBlockIcon, tileX, tileY } from './blocks.js';
 import { spotOf, clueOf, drawMap } from './treasuremap.js';
 import { buildOf } from './buildcheck.js';
 import { MISSIONS } from './missions.js';
@@ -29,7 +29,7 @@ export function createMissionUi(game, { atlas }) {
     let col = [128, 128, 128];
     try {
       const def = BLOCKS[id];
-      const d = atlas.getContext('2d').getImageData(def.top * TILE, 0, TILE, TILE).data;
+      const d = atlas.getContext('2d').getImageData(tileX(def.top), tileY(def.top), TILE, TILE).data;
       let r = 0, g = 0, b = 0, n = 0;
       for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 8) continue; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
       if (n) col = [r / n, g / n, b / n];

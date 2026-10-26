@@ -422,7 +422,7 @@ async function browserPart({ browser, base, t }) {
   t.ok(d11.moves.every(m => m === 'ball') && d11.big.every(Boolean) && d11.sig.every(Boolean) && d11.learn.every(Boolean), '11: four Ball moves, two signature moves learned at 30, three big moves');
   t.ok(d11.fx[0] && d11.fx[1] && d11.fx[2] && d11.fx[3] === 'function' && d11.fx[4] === 'function' && d11.sound, '11: real Ball fx recipes (not the borrowed ones), both signature recipes, the Ball sounds');
   t.ok(!d11.inMain.length && d11.inRealm.length === 7, "11: Ball creatures are in no main world spawn table, all seven in Playland's stadium zone");
-  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 163 + 72 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
+  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 1024 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
   // the creatures, as portraits
   const shots = await page.evaluate(async ids => {
     const { portrait } = await import('/src/ui.js');
@@ -556,13 +556,16 @@ async function browserPart({ browser, base, t }) {
     const g = window.pokecraft, L = window.__live, p = g.player;
     L.rivals = true; L.goalAt = null; L.outAt.foot = null; window.__toasts = [];
     p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); // the player is far away
-    // Dee: the football lies still near the east goal, Dee is 3 blocks from it
-    L.foot.reset([80, 11.401, 160]); L.dee.x = 77; L.dee.z = 160; L.dee.rest = 0;
-    let stole = false;
-    for (let i = 0; i < 40 && !stole; i++) { L.update(0.05); stole = L.foot.vel.x < -3; }
-    const deeToast = window.__toasts.some(m => /Defender Dee took the ball/.test(m));
-    // far from both goals he walks back to his spot and leaves the ball alone
-    L.foot.reset(); L.dee.x = 40; L.dee.z = 140; L.dee.rest = 0;
+    // Dee: once you touched the football he runs at it anywhere (here in the middle of the pitch, far from both goals) and kicks it
+    // up over the nearer sideline; it is out and back on the centre spot a moment later
+    L.foot.reset([50, 11.401, 157]); L.touched = true; L.dee.x = 47; L.dee.z = 157; L.dee.rest = 0;
+    let stole = false, sideways = false;
+    for (let i = 0; i < 40 && !stole; i++) { L.update(0.05); stole = L.foot.vel.z < -5; sideways = stole && Math.abs(L.foot.vel.z) > 3 * Math.abs(L.foot.vel.x); }
+    const deeToast = window.__toasts.some(m => /Defender Dee kicked it out/.test(m));
+    for (let i = 0; i < 60 && L.touched; i++) L.update(0.05);
+    const backOnSpot = !L.touched && Math.hypot(L.foot.pos.x - L.part.ballSpot[0], L.foot.pos.z - L.part.ballSpot[2]) < 0.5;
+    // a ball nobody has touched yet he leaves alone: he walks back to his spot
+    L.foot.reset([70, 11.401, 150]); L.touched = false; L.dee.x = 40; L.dee.z = 140; L.dee.rest = 0;
     for (let i = 0; i < 20; i++) L.update(0.05);
     const homeward = Math.hypot(L.dee.x - L.part.ballSpot[0], L.dee.z - L.part.ballSpot[2] - 3) < Math.hypot(40 - L.part.ballSpot[0], 140 - L.part.ballSpot[2] - 3) && Math.hypot(L.foot.vel.x, L.foot.vel.z) < 0.1;
     // Bo: in the air his box is higher than on the ground
@@ -601,15 +604,29 @@ async function browserPart({ browser, base, t }) {
     for (let i = 0; i < 60; i++) L.update(0.05);
     const overToast = window.__toasts.some(m => /Too much power/.test(m)), b1 = g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length;
     L.rivals = true; L.hoop.reset(); L.foot.reset();
-    return { stole, deeToast, homeward, up, down, back, boToast, early, late, ring, word, wild, overToast, noGoal: b1 === b0, ringAfter: L.ring.g.visible };
+    return { stole, sideways, backOnSpot, deeToast, homeward, up, down, back, boToast, early, late, ring, word, wild, overToast, noGoal: b1 === b0, ringAfter: L.ring.g.visible };
   });
-  t.ok(d17b.stole && d17b.deeToast, '17b: Defender Dee runs to a football near a goal and kicks it back to the middle ("Defender Dee took the ball!")');
-  t.ok(d17b.homeward, '17b: far from the goals Dee walks back to his spot and leaves the ball alone');
+  t.ok(d17b.stole && d17b.sideways && d17b.deeToast && d17b.backOnSpot, '17b: once you touched the football, Defender Dee runs at it anywhere on the pitch and kicks it out over the nearer sideline ("Defender Dee kicked it out!"); it comes back to the centre spot');
+  t.ok(d17b.homeward, '17b: a ball nobody touched yet he leaves alone and walks back to his spot');
   t.ok(d17b.up > d17b.down + 1, `17b: Blocker Bo jumps (feet ${d17b.down.toFixed(1)} -> ${d17b.up.toFixed(1)})`);
   t.ok(d17b.back && d17b.boToast, '17b: a ball thrown at Bo in the air bounces off ("Blocked by Blocker Bo! Shoot when he lands.")');
   t.ok(d17b.early.jumped && d17b.early.overHead && d17b.early.glowTop > 0.3 && d17b.early.glowOff === 0, '17b: holding Shoot! jumps you up with the ball over your head; it glows only at the top of the jump');
   t.ok(d17b.early.miss < 0 && d17b.late.miss > 0 && !d17b.early.swish && !d17b.late.swish, `17b: let go too early the shot is short, too late it is long, and neither goes in (${d17b.early.miss.toFixed(2)} / ${d17b.late.miss.toFixed(2)})`);
   t.ok(d17b.ring && d17b.word === 'Kick!' && d17b.wild && d17b.overToast && d17b.noGoal && !d17b.ringAfter, '17b: holding Kick! fills the ring round the ball; held too long it flies over the bar ("Too much power!") and is no goal');
+
+  /* ---- 17c. The score in the corner (owner 2026-10-26) ---- */
+  const d17c = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live, p = g.player, chip = document.getElementById('score-chip'), keep = [...g.beaten];
+    const read = (x, z) => { p.pos.set(x, 11, z); p.vel.set(0, 0, 0); L.update(0.05); return chip.classList.contains('hidden') ? null : chip.textContent; };
+    g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:')); g.beaten.push('pw:stadium:goal1');
+    const pitch = read(60, 150), court = read(55, 198), off = read(58, 128);
+    for (const k of ['goal2', 'goal3', 'basket1', 'basket2', 'basket3']) g.beaten.push('pw:stadium:' + k);
+    const done = read(60, 150), green = chip.classList.contains('done');
+    g.beaten = keep; read(58, 128);
+    return { pitch, court, off, done, green };
+  });
+  t.ok(d17c.pitch === '⚽ 1/3 · 🏀 0/3' && d17c.court === d17c.pitch && d17c.off === null, `17c: on the pitch or the court the corner shows the goals and baskets ("${d17c.pitch}"), off them nothing`);
+  t.ok(d17c.done === '⚽ 3/3 · 🏀 3/3 · Battle the Captain!' && d17c.green, `17c: with 3 and 3 it says "${d17c.done}"`);
 
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
@@ -660,9 +677,10 @@ async function browserPart({ browser, base, t }) {
   await waitFor(page, () => window.pokecraft.stars.includes('stadium'), null, 60000);
   const won = await page.evaluate(async () => {
     const g = window.pokecraft, PB = await import('/src/pictureboss.js'), npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
-    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action };
+    const L = g.gymLive.of('part:stadium'), p = g.player; L.playing = () => true; p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); L.update(0.05); const corner = document.getElementById('score-chip').textContent;
+    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action, corner };
   });
-  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}"`);
+  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk' && won.corner === '⚽ 0/3 · 🏀 0/3', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}", the corner "${won.corner}"`);
   await page.waitForTimeout(500);
 
   /* ---- 18. Save and load ---- */

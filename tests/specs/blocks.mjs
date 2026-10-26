@@ -46,6 +46,21 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(r.count >= 24 && r.tiles, `${r.count} blocks to build with, each with its own textures`);
+  // Wave 14.5: the atlas is a grid. Every corner's uv leads back to its own tile (the Swirl tint's shader formula), the canvas is the
+  // grid's size, and a whole row of tiles more still fits in a 32 x 32 grid (512 x 512 px).
+  const atlas = await page.evaluate(async () => {
+    const Bk = await import('/src/blocks.js'), c = Bk.drawAtlas(), uv = [];
+    let wrong = 0;
+    for (let t = 0; t < Bk.TILE_COUNT; t++) for (const [u, v] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      uv.length = 0; Bk.tileUv(uv, t, u, v);
+      const back = Math.floor(uv[0] * Bk.ATLAS_COLS) + Math.floor((1 - uv[1]) * Bk.ATLAS_ROWS) * Bk.ATLAS_COLS;
+      const px = [Bk.tileX(t) + (u ? 15.9 : 0.1), (1 - uv[1]) * c.height]; // the texel the corner samples, in canvas pixels
+      if (back !== t || Math.floor(px[0] / 16) !== t % Bk.ATLAS_COLS || Math.floor(px[1] / 16) !== Math.floor(t / Bk.ATLAS_COLS)) wrong++;
+      if (Bk.tileGlY(t) !== c.height - 16 - Bk.tileY(t)) wrong++;
+    }
+    return { wrong, w: c.width, h: c.height, rows: Bk.ATLAS_ROWS, cols: Bk.ATLAS_COLS, n: Bk.TILE_COUNT };
+  });
+  t.ok(atlas.wrong === 0 && atlas.w === atlas.cols * 16 && atlas.h === atlas.rows * 16 && atlas.rows <= 31, `the block atlas is a ${atlas.cols} x ${atlas.rows} grid (${atlas.w} x ${atlas.h} px, ${atlas.n} of 1024 tiles) and every tile corner finds its own tile`);
   t.ok(r.cloud, 'Cloud blocks (53) can be built with');
   t.ok(r.gymBlocks.every(b => b.id && b.def && !b.placeable && b.tiles), 'the T19 gym blocks 57-64 exist, have tiles and cannot be built with');
   t.ok(r.gymBlocks.slice(0, 3).every(b => b.glow && b.noLight && b.wallText) && r.gymBlocks[7].wallText, 'lasers glow without lighting their surroundings; lasers and the clock door have a wall text');
