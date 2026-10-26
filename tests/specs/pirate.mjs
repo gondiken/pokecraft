@@ -561,7 +561,7 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.gymLive.of('part:seas').info().chest === 'open', null, 60000);
     const won = await page.evaluate(() => {
       const g = window.pokecraft, lv = g.gymLive.of('part:seas'), [x, y, z] = g.world.starChest;
-      return { chest: lv.info().chest, block: g.world.get(x, y, z), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, boats: g.beaten.filter(k => /pw:pirate:boat/.test(k)).length };
+      return { chest: lv.info().chest, block: g.world.get(x, y, z), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, boats: g.beaten.filter(k => /pw:pirate:rowboat/.test(k)).length };
     });
     t.ok(won.boats === 0, 'a won Captain battle clears the rowboats (a rematch needs them sunk again)');
     t.ok(won.chest === 'open' && won.block === 178 && /Pirate Seas star/.test(won.note || '') && /Captain Squawk was my parrot/.test(won.small || ''), `the star comes out of the chest, the chest opens and the Wizard's note shows (${won.note})`);

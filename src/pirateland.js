@@ -177,7 +177,9 @@ export const ROWBOATS = {
   turn: 1.1, near: 6, far: 28, fill: 2, // range from `near` to `far` blocks: up in `fill` seconds of holding, then back down
   hit: 1.8, reload: 1, sink: 1.5,
 };
-export const boatKey = i => `pw:pirate:boat${i + 1}`;
+// (`rowboat`, not the first version's `boat`: the boats got harder, so boats sunk the easy way count no more)
+export const boatKey = i => `pw:pirate:rowboat${i + 1}`;
+export const OLD_BOAT = /^pw:pirate:boat\d$/;
 export function boatState(game) {
   const need = ROWBOATS.boats.length, sunk = ROWBOATS.boats.filter((_, i) => game?.beaten?.includes(boatKey(i))).length;
   return { sunk, need, done: sunk >= need };
