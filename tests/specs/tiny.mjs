@@ -485,17 +485,17 @@ export default async function ({ browser, base, t }) {
     await intoHouse(ip);
     const words = await ip.evaluate(async () => {
       const g = window.pokecraft, out = {};
-      const look = async (name, pos, tgt, fresh) => {
+      const want = { remote: 'Ride!', fan: 'Fan on!', tap: 'Turn tap!', crumb: 'Pick up!' };
+      const look = async (name, pos, tgt) => { // wait for the word (the button follows the target on the next frames)
         window.__at(pos[0], pos[1], pos[2], 0, 0); g.player.lookAt({ x: tgt[0] + 0.5, y: tgt[1] + 0.5, z: tgt[2] + 0.5 });
-        const prev = document.getElementById('btn-act')?.textContent;
-        for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 100)); const el = document.getElementById('btn-act'); if (el && !el.classList.contains('hidden') && el.textContent && (!fresh || el.textContent !== prev)) { out[name] = el.textContent; return; } }
+        for (let i = 0; i < 100; i++) { await new Promise(r => setTimeout(r, 100)); const el = document.getElementById('btn-act'); if (el && el.textContent === want[name]) { out[name] = el.textContent; return; } }
         out[name] = document.getElementById('btn-act')?.textContent || '';
       };
       await look('remote', [40.5, 1, 175.5], [40, 1, 178]);
-      await look('fan', [11.5, 1, 136.5], [11, 1, 134], true);
-      await look('tap', [34.5, 31, 8.5], [34, 32, 5], true);
+      await look('fan', [11.5, 1, 136.5], [11, 1, 134]);
+      await look('tap', [34.5, 31, 8.5], [34, 32, 5]);
       const G = await import('/src/giantland.js'); const c = G.CRUMBS[0];
-      await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c, true);
+      await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c);
       return out;
     });
     t.ok(words.remote === 'Ride!' && words.fan === 'Fan on!' && words.tap === 'Turn tap!' && words.crumb === 'Pick up!', `the big button says "${words.remote}" at the remote, "${words.fan}" at the fan, "${words.tap}" at the tap, "${words.crumb}" at a crumb`);
