@@ -31,10 +31,11 @@ export const STADIUM = {
   crew: [{ x: 46, z: 181, facing: [0, -1] }, { x: 57, z: 192, facing: [0, 1] }],
   keepers: [{ name: 'Keeper Gus', colors: { shirt: 0x3aa84a, pants: 0x2a2a2a, hair: 0x3a2a1a, skin: 0xf0c8a0 }, x: 30.5, phase: 0, side: -1 },
     { name: 'Keeper Gail', colors: { shirt: 0x2a9a8a, pants: 0x2a2a2a, hair: 0x1a1a1a, skin: 0xc68a5a }, x: 85.5, phase: Math.PI / 2, side: 1 }],
-  // owner 2026-10-26, "a bit harder": a defender who runs at the football near a goal and kicks it back to the middle (slower than
-  // you walk, so you can keep it away from him), and a blocker who guards the basketball and jumps (shoot while he is landing).
-  defender: { name: 'Defender Dee', colors: { shirt: 0xe04a3a, pants: 0x2a2a2a, hair: 0x6a3a1a, skin: 0xf0c8a0 }, speed: 3.4, hardSpeed: 3.9, zone: 14, reach: 0.9, kick: 9, rest: 1.5 },
-  blocker: { name: 'Blocker Bo', colors: { shirt: 0x8a4ad8, pants: 0x2a2a2a, hair: 0x1a1a1a, skin: 0xc68a5a }, speed: 3, guard: 1.6, period: 2, hardPeriod: 1.5, up: 1.4, half: 0.45, height: 2.1, longShot: 9 },
+  // owner 2026-10-26: a defender who runs at the football near a goal and kicks it back to the middle (speed by goals scored this
+  // match: a bit slower than a walk (4.3) for the first, faster than a walk for the third; a rematch adds hardAdd), and a blocker
+  // who guards the basketball and jumps (shoot while he is landing).
+  defender: { name: 'Defender Dee', colors: { shirt: 0xe04a3a, pants: 0x2a2a2a, hair: 0x6a3a1a, skin: 0xf0c8a0 }, speed: [3.8, 4.2, 4.6], hardAdd: 0.4, zone: 14, reach: 0.9, kick: 9, rest: 1.5 },
+  blocker: { name: 'Blocker Bo', colors: { shirt: 0x8a4ad8, pants: 0x2a2a2a, hair: 0x1a1a1a, skin: 0xc68a5a }, speed: 3, guard: 1.6, period: 2, hardPeriod: 1.5, up: 1.4, half: 0.45, height: 2.1 },
 };
 
 export const goalKey = i => `pw:stadium:goal${i}`;   // saved in `beaten`, like the helpers' keys

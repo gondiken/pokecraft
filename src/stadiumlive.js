@@ -2,13 +2,17 @@
 // Two balls (a football on the pitch, a basketball on the court) that are this player's own meshes (never blocks, never saved or
 // sent: every player kicks their own ball), two goalkeepers walking on the football's clock, goals (saved at once as `beaten`
 // keys pw:stadium:goal1..3), baskets (a few bonus cubes), the words, and the guide arrow. The physics are in ballphysics.js.
+// Owner 2026-10-26, "a real skill": Kick! and Shoot! are held and let go (gymLive `press` / `release`): the kick's power is how
+// long you hold (a ring fills round the ball; green = a hard low drive, past it = over the bar), the shot is good when you let go at
+// the top of the jump that Shoot! starts (the ball glows then). Keepers dive at a shot; every goal or basket makes the next harder.
 import * as THREE from 'three';
-import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, aimShot, shotTo, keeperAt } from './ballphysics.js';
+import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, shotTo, keeperAt, diveAt, DIVE, HOLD, kickZone, kickPower, shotWindow, shotMiss } from './ballphysics.js';
 import { goalOf, basketCross, inBox, goalState, goalKey, basketKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
 import { buildPerson } from './npc.js';
 import { disposeModel } from './species.js';
 import { sound } from './sound.js';
 
+const KEEPER_REACH = 2.9; // a keeper stays 0.4 inside each post (the walk's own reach, KEEPER.A)
 export const LIVE_RULES = { sleepDist: 60, goalPause: 1.5, outPause: 0.8, highY: 12.5, highFor: 1, bonusMax: 3, saveGap: 4, soundGap: 0.15 };
 
 const ICO = (() => { // the 12 directions of a football's black patches
@@ -75,10 +79,24 @@ export class StadiumLive {
     const person = def => { const m = buildPerson(def.colors, { look: 'sport' }); this.parts.push(m); scene?.add(m); return m; };
     this.dee = { x: part.ballSpot[0], z: part.ballSpot[2] + 3, rest: 0, told: -99, moving: false, mesh: person(STADIUM.defender) };
     this.bo = { x: part.courtSpot[0] + 2, z: part.courtSpot[2], jump: 0, told: -99, moving: false, mesh: person(STADIUM.blocker) };
-    this.longShots = 0;
+    this.held = null;        // a Kick! or Shoot! being held: { key, t0, apex?, d? }
+    this.dives = part.keepers.map(() => null);
+    this.wild = false;       // the football was over-hit: it can't score until somebody touches it again
+    this.overAt = null;
+    this.ring = this.chargeRing(); // the power ring round the football (only shown while Kick! is held)
     this.rivals = true; // Dee and Bo play (tests switch them off to check the plain ball rules)
     this.t = 0;
     this.drawAll();
+  }
+
+  chargeRing() {
+    const flat = g => g.rotateX(-Math.PI / 2), mat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+    const back = new THREE.Mesh(flat(new THREE.RingGeometry(0.6, 0.8, 48)), mat(0x000000, 0.35));
+    const fill = new THREE.Mesh(flat(new THREE.RingGeometry(0.6, 0.8, 48, 1)), mat(0xffffff, 0.9));
+    const zone = new THREE.Mesh(flat(new THREE.RingGeometry(0.83, 0.95, 48, 1)), mat(0x40e060, 0.9));
+    const g = new THREE.Group(); g.add(back, fill, zone); g.visible = false; g.userData.charge = true;
+    this.parts.push(g); this.scene?.add(g);
+    return { g, fill, zone };
   }
 
   shadow() {
@@ -95,24 +113,29 @@ export class StadiumLive {
 
   /* ---- helpers ---- */
   get hard() { return this.game.stars.includes('stadium'); }
+  get goalsIn() { return goalState(this.game).n; }   // goals and baskets already in this match: each makes the next harder
+  get basketsIn() { return goalState(this.game).b; }
   toast(m) { this.game.ui.toast(m); }
   frozen() { const g = this.game; return !!(g.inBattle || g.ui.asking || g.ui.panelOpen || !this.playing()); }
   playerBox(p = this.game.player) {
     return { x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: p.vel.x, vz: p.vel.z, yaw: p.yaw, halfW: 0.3, height: 1.8 };
   }
-  keeperBoxes(t) { return this.part.keepers.map((k, i) => { const b = keeperAt(k, t, this.hard).box; b.id = i; return b; }); }
+  keeperAt(i, t) { return diveAt(this.part.keepers[i], t, this.hard, this.dives[i]); }
+  keeperBoxes(t) { return this.part.keepers.map((k, i) => { const b = this.keeperAt(i, t).box; b.id = i; return b; }); }
 
   /* ---- every frame ---- */
   update(dt) {
-    if (this.frozen()) { this.drawAll(); return; }
+    if (this.frozen()) { this.held = null; this.drawAll(); return; }
     const g = this.game, part = this.part, pl = this.playerBox();
     this.t += dt;
+    this.updateHold(pl);
     for (const key of ['foot', 'hoop']) {
       const b = this[key];
+      if (this.held?.key === 'hoop' && key === 'hoop') { this.carry(b); continue; } // the basketball is in your hands
       const far = Math.hypot(b.pos.x - pl.x, b.pos.z - pl.z) > LIVE_RULES.sleepDist;
       if (far && b.restFor > 0.2) continue; // a ball at rest far away costs nothing
       if (key === 'hoop') this.hoopPrevY = b.pos.y;
-      if (touchKick(b, pl) === 'kick') this.noise(b, 'ballkick');
+      if (touchKick(b, pl) === 'kick') { this.noise(b, 'ballkick'); if (key === 'foot') this.wild = false; }
       b.update(dt, key === 'foot' ? t => this.keeperBoxes(t) : () => [this.blockerBox()]);
       for (const ev of b.events) {
         if (ev.kind === 'keeper' && key === 'foot') this.saved(ev, b);
@@ -122,12 +145,16 @@ export class StadiumLive {
     }
     this.moveDefender(dt);
     this.moveBlocker(dt);
-    // the keepers
-    part.keepers.forEach((k, i) => { this.keeperPos[i] = keeperAt(k, this.foot.time, this.hard); });
-    // a goal
-    if (this.goalAt == null) {
-      const k = goalOf(part, this.foot.pos);
-      if (k >= 0) this.goal();
+    // the keepers: walk their sine, dive at a shot
+    this.dive();
+    part.keepers.forEach((k, i) => { this.keeperPos[i] = this.keeperAt(i, this.foot.time); });
+    // a goal (an over-hit ball goes over the bar instead)
+    if (this.overAt != null) {
+      if (this.foot.time - this.overAt > LIVE_RULES.outPause) { this.foot.reset(); this.overAt = null; this.wild = false; }
+    } else if (this.goalAt == null) {
+      if (this.wild && part.goals.some(gl => (gl.side < 0 ? this.foot.pos.x < gl.line - BALL_R : this.foot.pos.x > gl.line + BALL_R))) {
+        this.overAt = this.foot.time; this.toast('Too much power! It flew over the bar. Let go sooner!');
+      } else if (goalOf(part, this.foot.pos) >= 0) this.goal();
     } else if (this.foot.time - this.goalAt > LIVE_RULES.goalPause) {
       this.foot.reset(); this.goalAt = null; sound.play('whistle');
     }
@@ -138,7 +165,7 @@ export class StadiumLive {
     if (basketCross(part, this.hoopPrevY, this.hoop.pos)) this.basket();
     if (!this.told && inBox(part.area, { x: pl.x, y: pl.y, z: pl.z })) {
       this.told = true;
-      this.toast(`The Ball Stadium! Run into the ball, or ${document.body.classList.contains('touch') ? 'tap Kick!' : 'press E to kick!'}`);
+      this.toast(`The Ball Stadium! Run into the ball, or hold ${document.body.classList.contains('touch') ? 'Kick!' : 'E'} and let go to kick!`);
     }
     this.drawAll();
   }
@@ -157,7 +184,7 @@ export class StadiumLive {
     const chase = this.goalAt == null && this.outAt.foot == null && nearGoal && d.rest <= 0;
     if (d.rest > 0) d.rest -= dt;
     const tx = chase ? b.pos.x : home[0], tz = chase ? b.pos.z : home[2] + 3;
-    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (this.hard ? D.hardSpeed : D.speed) * dt;
+    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (D.speed[Math.min(2, this.goalsIn)] + (this.hard ? D.hardAdd : 0)) * dt;
     d.moving = dist > 0.2 && d.rest <= 0;
     if (d.moving) { const k = Math.min(1, step / dist); d.x += dx * k; d.z += dz * k; d.yaw = Math.atan2(dx, dz); }
     if (!chase || dist > D.reach || b.pos.y > home[1] + 1.2) return;
@@ -251,28 +278,90 @@ export class StadiumLive {
     c.sort((a, b) => d(a[0]) - d(b[0]));
     return { key: c[0][0], word: c[0][1], pl };
   }
-  near(p) { return this.frozen() ? null : this.nearest(p)?.word ?? null; }
-  use(p) {
+  near(p) { return this.frozen() ? null : this.held ? (this.held.key === 'foot' ? 'Kick!' : 'Shoot!') : this.nearest(p)?.word ?? null; }
+  holds(p) { return !this.frozen() && (!!this.held || !!this.nearest(p)); } // the big button presses and lets go here (touch.js)
+  use(p) { return this.press(p); }
+  // Kick! / Shoot! pressed: the hold starts (a Shoot! jumps you). Nothing flies until it is let go (release) or held too long.
+  press(p) {
     if (this.frozen()) return false;
+    if (this.held) return true; // a key repeat
     const n = this.nearest(p);
     if (!n) return false;
-    const f = [-Math.sin(n.pl.yaw), -Math.cos(n.pl.yaw)];
-    if (n.key === 'foot') boot(this.foot, aimShot(this.foot.pos, f, this.part.goals.map(g => ({ x: g.line, z: g.mid[1], hw: (g.z[1] - g.z[0]) / 2 }))));
-    else boot(this.hoop, this.shoot(f));
-    this.noise(this[n.key], 'ballkick');
+    this.held = { key: n.key, t0: this.t };
+    const told = this.game.toldOnce, hint = n.key === 'foot' ? 'kickring' : 'shootjump';
+    if (told && !told.has(hint)) { told.add(hint); this.toast(n.key === 'foot' ? 'Let go when the ring is green! Too long and it flies over the bar.' : 'Let go at the top of your jump, when the ball shines!'); }
+    if (n.key === 'hoop') {
+      const pl = this.game.player, g = 28 * (this.game.world.gravity ?? 1);
+      if (pl.onGround) { pl.vel.y = HOLD.hoop.jump; pl.onGround = false; }
+      this.held.apex = this.t + Math.max(-1, pl.vel.y / g); // the top of the jump
+      this.carry(this.hoop);
+    }
     return true;
   }
-  // The velocity of a Shoot!: the hoop you face (1.5..15 away), else the nearer one in front, else a lob forward.
-  shoot(f) {
-    const b = this.hoop, p = b.pos;
+  // Let go: the kick or the shot.
+  release(p = this.game.player) {
+    const h = this.held;
+    if (!h) return false;
+    this.held = null;
+    if (this.frozen()) return true;
+    const pl = this.playerBox(p), f = [-Math.sin(pl.yaw), -Math.cos(pl.yaw)];
+    if (h.key === 'foot') {
+      if (!canBoot(this.foot, pl)) return true; // it rolled away while you held
+      const v = kickPower(Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, this.foot.pos, f, kickZone(this.goalsIn, this.hard), this.part.goals.map(gl => ({ x: gl.line })));
+      boot(this.foot, v);
+      this.wild = v.kind === 'over';
+      this.lastKick = v.kind;
+    } else {
+      const err = this.t - h.apex, d = this.hoopDist(f);
+      const miss = d == null ? 0 : shotMiss(err, shotWindow(this.basketsIn, d, this.hard));
+      boot(this.hoop, this.shoot(f, miss));
+      this.lastShot = { err, miss };
+    }
+    this.noise(this[h.key], 'ballkick');
+    return true;
+  }
+  // While held: Kick! lets go by itself when held far too long; Shoot! when you land again.
+  updateHold(pl) {
+    const h = this.held;
+    if (!h) return;
+    if (h.key === 'foot' && this.t - h.t0 >= HOLD.foot.max) this.release();
+    else if (h.key === 'hoop' && this.game.player.onGround && this.t > h.apex + HOLD.hoop.late) this.release();
+  }
+  // The held basketball sits above your head, a little in front.
+  carry(b) {
+    const p = this.game.player, f = [-Math.sin(p.yaw), -Math.cos(p.yaw)];
+    b.pos.x = p.pos.x + f[0] * 0.35; b.pos.y = p.pos.y + 2.05; b.pos.z = p.pos.z + f[1] * 0.35;
+    b.vel.x = b.vel.y = b.vel.z = 0; b.restFor = 0; b.onGround = false;
+  }
+  // The hoop a Shoot! goes for: the one you face (3.6..15 away), else the nearer one in front; null = a lob forward.
+  pickHoop(f) {
+    const p = this.hoop.pos;
     const hs = this.part.hoops.map(h => { const dx = h.hole[0] - p.x, dz = h.hole[1] - p.z, d = Math.hypot(dx, dz); return { h, d, dot: d > 1e-6 ? (f[0] * dx + f[1] * dz) / d : 1 }; })
       .filter(o => o.d >= SHOT.min && o.d <= SHOT.max && shootable(o.h, p));
-    const pick = hs.filter(o => o.dot > 0.5).sort((a, b2) => b2.dot - a.dot)[0] ?? hs.filter(o => o.dot > 0).sort((a, b2) => a.d - b2.d)[0];
+    return hs.filter(o => o.dot > 0.5).sort((a, b2) => b2.dot - a.dot)[0] ?? hs.filter(o => o.dot > 0).sort((a, b2) => a.d - b2.d)[0] ?? null;
+  }
+  hoopDist(f) { return this.pickHoop(f)?.d ?? null; }
+  // The velocity of a Shoot!: at the hole, or `miss` blocks short (< 0) or long (> 0) of it and a bit to the side.
+  shoot(f, miss = 0) {
+    const b = this.hoop, p = b.pos, pick = this.pickHoop(f);
     if (!pick) return { x: f[0] * 6, y: 9, z: f[1] * 6 };
-    let miss = 0; // owner 2026-10-26: from far away every other shot rims out
-    if (pick.d > STADIUM.blocker.longShot && this.longShots++ % 2 === 1) miss = 1.4;
-    const sx = pick.d > 1e-6 ? -(pick.h.hole[1] - p.z) / pick.d : 0, sz = pick.d > 1e-6 ? (pick.h.hole[0] - p.x) / pick.d : 0;
-    return shotTo(p, { x: pick.h.hole[0] + sx * miss, y: pick.h.rimMid, z: pick.h.hole[1] + sz * miss }, b.opts.g, 2, b.opts.h, { d: SHOT.rim, y: pick.h.rimMid + SHOT.clear }).v;
+    const ux = (pick.h.hole[0] - p.x) / pick.d, uz = (pick.h.hole[1] - p.z) / pick.d, side = Math.abs(miss) * HOLD.hoop.side;
+    const target = { x: pick.h.hole[0] + ux * miss - uz * side, y: pick.h.rimMid, z: pick.h.hole[1] + uz * miss + ux * side };
+    return shotTo(p, target, b.opts.g, 2, b.opts.h, { d: SHOT.rim, y: pick.h.rimMid + SHOT.clear }).v;
+  }
+  // A shot is coming at a keeper's goal: he dives to where it will cross the line (a new dive when the ball's line changes).
+  dive() {
+    const b = this.foot, t = b.time, hv = Math.hypot(b.vel.x, b.vel.z);
+    this.part.keepers.forEach((k, i) => {
+      const toward = k.side < 0 ? b.vel.x < 0 && b.pos.x > k.x : b.vel.x > 0 && b.pos.x < k.x;
+      if (!toward || hv < DIVE.min || Math.abs(k.x - b.pos.x) > DIVE.reach || this.goalAt != null) return;
+      const zc = b.pos.z + b.vel.z * (k.x - b.pos.x) / b.vel.x;
+      if (Math.abs(zc - k.c) > 5.5) return;
+      const z1 = Math.max(k.c - KEEPER_REACH, Math.min(k.c + KEEPER_REACH, zc)), old = this.dives[i];
+      if (old && t < old.until && Math.abs(old.z1 - z1) < DIVE.again) return;
+      const t0 = t + DIVE.react;
+      this.dives[i] = { t0, z0: this.keeperAt(i, t0).z, z1, speed: DIVE.speed[Math.min(2, this.goalsIn)] + (this.hard ? DIVE.hard : 0), until: t0 + DIVE.hold };
+    });
   }
 
   /* ---- the Captain: the generic Boss `gate` keeps the battle shut; only the button word is ours ---- */
@@ -305,6 +394,21 @@ export class StadiumLive {
   }
 
   /* ---- drawing ---- */
+  // The power ring round the football while Kick! is held; the basketball glows at the top of a Shoot! jump.
+  drawHold() {
+    const h = this.held, r = this.ring;
+    r.g.visible = h?.key === 'foot';
+    if (r.g.visible) {
+      const b = this.foot, p = Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, [lo, hi] = kickZone(this.goalsIn, this.hard);
+      r.g.position.set(b.pos.x, b.pos.y - BALL_R + 0.04, b.pos.z);
+      r.fill.geometry.setDrawRange(0, 6 * Math.round(48 * Math.min(1, p)));
+      r.fill.material.color.setHex(p < lo ? 0xffffff : p <= hi ? 0x40e060 : 0xff4a3a);
+      r.zone.geometry.setDrawRange(6 * Math.round(48 * lo), 6 * Math.round(48 * (hi - lo)));
+    }
+    let glow = 0;
+    if (h?.key === 'hoop') { const d = this.hoopDist([-Math.sin(this.game.player.yaw), -Math.cos(this.game.player.yaw)]); if (d != null && Math.abs(this.t - h.apex) <= shotWindow(this.basketsIn, d, this.hard)) glow = 0.55; }
+    this.meshes.hoop.material.emissive.setRGB(glow, glow, glow * 0.4);
+  }
   drawAll() {
     const q = new THREE.Quaternion(), axis = new THREE.Vector3();
     for (const key of ['foot', 'hoop']) {
@@ -321,6 +425,7 @@ export class StadiumLive {
       s.position.set(b.pos.x, y + 1.02, b.pos.z);
       s.scale.setScalar(1 / (1 + 0.15 * h));
     }
+    this.drawHold();
     for (const o of [this.dee, this.bo]) { // the defender and the blocker
       const m = o.mesh, floor = o === this.dee ? this.part.ballSpot[1] - BALL_R - 0.001 : this.part.courtSpot[1] - BALL_R - 0.001;
       m.position.set(o.x, floor + (o.jump || 0), o.z);
