@@ -2,7 +2,8 @@
 // moves, effects, sounds, chart). B. terrain for three seeds (islands, cannons, ropes, the ship, the sea, people, keeps). C. gadgets with
 // real Player physics (every cannon, every rope both ways, a pause, ladders, swimming out, riding on the sea). D. play (the frame,
 // the guide, crew, the Captain, the chest, losing, a reload, the way back). E. iPad. F. two browsers.
-// PIRATE_ONLY=data|terrain|gadgets|play|ipad|pair|shots runs part of it. Screenshots: tests/screenshots/t40b-*.png.
+// G. the challenges (owner 2026-10-26: swinging cannons, letting go of the rope, the rowboats; the other parts use `steady` rides).
+// PIRATE_ONLY=data|terrain|gadgets|challenge|play|ipad|pair|shots runs part of it. Screenshots: tests/screenshots/t40b-*.png.
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -16,7 +17,8 @@ const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id 
 const toasts = page => page.evaluate(() => { window.__toasts = []; const g = window.pokecraft, f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; });
 const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new RegExp(src).test(m)), re.source);
 const shot = async (page, name) => { await page.waitForTimeout(1200); await page.screenshot({ path: path.join(SHOTS, `t40b-${name}.png`), timeout: 180000 }); console.log(`  screenshot t40b-${name}.png`); };
-const helpers = page => page.evaluate(([a, b]) => { window.__step = eval(a); window.__play = eval(b); }, [STEP, PLAY]);
+// (the parts that are not about the challenges use the old steady rides: every cannon on target, every rope straight across)
+const helpers = page => page.evaluate(([a, b]) => { window.__step = eval(a); window.__play = eval(b); const lv = window.pokecraft.gymLive.of('part:seas'); if (lv) lv.steady = true; }, [STEP, PLAY]);
 // the Champion goes into the Swirl and through the Pirate Seas frame
 async function intoPirate(page) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
@@ -262,7 +264,7 @@ export default async function ({ browser, base, t }) {
   }
 
   /* ================================ C. gadgets ================================ */
-  if (want('gadgets') || want('play') || want('shots')) {
+  if (want('gadgets') || want('challenge') || want('play') || want('shots')) {
     await newGame(page, 0);
     await toasts(page);
     const frame = await intoPirate(page);
@@ -273,6 +275,7 @@ export default async function ({ browser, base, t }) {
     t.ok(await said(page, /Stand on the cannon and press Fire/), 'the arrival hint tells you to stand on the cannon');
     await shot(page, 'arrival');
     if (want('shots') || !ONLY) {
+      await challengeShots(page);
       // the seven creatures in a row, on a platform up in the sky above the island
       const IDS = ['parroteer', 'featherbeard', 'pinchook', 'anchorclaw', 'bottlet', 'shipshape', 'lookapus'];
       await page.evaluate(async ids => {
@@ -340,6 +343,8 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(P.t1 > 0.4 && P.t2 === P.t1 && P.t3 === P.t1 && P.carrying === null, `a pause or a battle freezes the flight (${P.t1} / ${P.t2} / ${P.t3}) and it finishes after`);
   }
+
+  if (want('gadgets') || want('challenge')) await challengePart({ page, t });
 
   if (want('gadgets')) {
     // ladders: swim into the hull or the stone and you go up
@@ -453,6 +458,43 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(r1.near === 'Swing!' && /Swing!/.test(r1.guide || ''), `at the rope the button says "${r1.near}" and the guide "${r1.guide}"`);
     await shot(page, 'ship-from-lookout');
+    // the rowboats: the guide sends you to a deck cannon, the Captain waits, three real shots sink them
+    const boats = await page.evaluate(async () => {
+      const g = window.pokecraft, w = g.world, p = g.player, b = w.bosses[0], L = await import('/src/pirateland.js'), { SHIP } = await import('/src/pirateship.js'), lv = g.gymLive.of('part:seas');
+      const step = window.__step, play = window.__play, n = g.npcs.list.find(n => n.kind === 'boss');
+      p.pos.set(b.rest[0], b.rest[1], b.rest[2]); p.vel.set(0, 0, 0); p.carry = null;
+      g.updateGuide?.(); const g1 = g.ui.guideText;
+      g.bosses.talk(n); const gate = !g.inBattle;
+      const shots = [];
+      for (const k of [0, 2, 1]) { // boat k from the nearer cannon
+        const at = k === 2 ? L.ROWBOATS.cannons[1] : L.ROWBOATS.cannons[0];
+        p.pos.set(...L.deckStand(at)); p.vel.set(0, 0, 0); p.yaw = 0; step(g, 1 / 20, 4);
+        while (lv.clock - lv.reloadAt < L.ROWBOATS.reload) step(g, 1 / 20, 1);
+        const want = L.boatAt(k, lv.boatT + L.ROWBOATS.time).x;
+        let best = 0, bd = 1e9;
+        for (let y = -1.5; y <= 1.5; y += 0.005) { const d = Math.abs(L.deckShot(at, y).to[0] - want); if (d < bd) { bd = d; best = y; } }
+        p.yaw = best;
+        const gold = play(g, () => lv.shotNow(lv.gadget()).hit === k), near = play(g, () => g.gymLive.near(p));
+        g.updateGuide?.(); const guide = g.ui.guideText;
+        play(g, () => g.gymLive.use(p));
+        step(g, 1 / 20, 60, () => !lv.ball);
+        shots.push({ k, gold, near, guide, sunk: g.beaten.includes(L.boatKey(k)) });
+        if (k === 0) { // a miss first from the other side: nothing sinks
+          step(g, 1 / 20, 30);
+          let y = -1.5, free = null;
+          for (; y <= 1.5; y += 0.05) { const to = L.deckShot(at, y).to; if (L.boatHit(g, to, lv.boatT + L.ROWBOATS.time) < 0 && L.ROWBOATS.boats.every((_, i) => Math.abs(L.boatAt(i, lv.boatT + L.ROWBOATS.time).x - to[0]) > 5)) { free = y; break; } }
+          p.yaw = free; const before = g.beaten.length;
+          play(g, () => g.gymLive.use(p)); step(g, 1 / 20, 60, () => !lv.ball);
+          shots.push({ miss: true, same: g.beaten.length === before });
+        }
+      }
+      const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
+      return { g1, gate, shots, state: L.boatState(g), saved: L.ROWBOATS.boats.every((_, i) => saved.beaten.includes(L.boatKey(i))) };
+    });
+    t.ok(/Deck cannon: sink the rowboats \(0 \/ 3\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 3 rowboats first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
+    t.ok(boats.shots.filter(s => !s.miss).every(s => s.gold && s.near === 'Fire!' && s.sunk && /Aim at a rowboat/.test(s.guide || '')) && boats.shots.some(s => s.miss && s.same), `three aimed deck cannon shots sink the three rowboats (the dots were gold), a miss sinks nothing (${JSON.stringify(boats.shots)})`);
+    t.ok(boats.state.done && boats.saved && await said(page, /3 \/ 3! Now battle the Captain/), 'all three are sunk, saved at once, and the Captain is ready');
+    await shot(page, 'rowboats-sunk');
     // the ship: the guide names the Boss, the chest is closed
     const ship = await page.evaluate(async () => {
       const g = window.pokecraft, w = g.world, p = g.player, b = w.bosses[0];
@@ -503,8 +545,9 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.gymLive.of('part:seas').info().chest === 'open', null, 60000);
     const won = await page.evaluate(() => {
       const g = window.pokecraft, lv = g.gymLive.of('part:seas'), [x, y, z] = g.world.starChest;
-      return { chest: lv.info().chest, block: g.world.get(x, y, z), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes };
+      return { chest: lv.info().chest, block: g.world.get(x, y, z), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, boats: g.beaten.filter(k => /pw:pirate:boat/.test(k)).length };
     });
+    t.ok(won.boats === 0, 'a won Captain battle clears the rowboats (a rematch needs them sunk again)');
     t.ok(won.chest === 'open' && won.block === 178 && /Pirate Seas star/.test(won.note || '') && /Captain Squawk was my parrot/.test(won.small || ''), `the star comes out of the chest, the chest opens and the Wizard's note shows (${won.note})`);
     await shot(page, 'chest-open');
     const after = await page.evaluate(async () => {
@@ -670,4 +713,85 @@ async function pairPart({ browser, base, t }) {
   t.ok(true, 'Dad goes back to the Swirl and Kid goes too');
   t.ok(!A.errors.length && !Bp.errors.length, `no page errors (pair) ${A.errors.concat(Bp.errors).slice(0, 3).join('; ')}`);
   await A.context().close(); await Bp.context().close();
+}
+
+// G. the challenges (owner 2026-10-26): with real Player physics at 60 and 20 steps a second
+async function challengePart({ page, t }) {
+  await page.evaluate(() => { window.pokecraft.gymLive.of('part:seas').steady = false; });
+  // 1. swinging cannons: in the middle of the sweep you land on the target, at the edge you splash into the sea; slower after a miss
+  const C = await page.evaluate(async () => {
+    const g = window.pokecraft, step = window.__step, play = window.__play, p = g.player, d = g.world.pirate, lv = g.gymLive.of('part:seas');
+    const L = await import('/src/pirateland.js'), out = [];
+    const aimAt = (c, k) => { lv.aimT[c.id] = ((((k - c.phase) % 1) + 1) % 1) * L.AIM.period; }; // k: 0.25 = the middle, 0.5 = the edge
+    for (const dt of [1 / 60, 1 / 20]) for (const c of d.cannons) for (const k of c.home ? [0.5] : [0.25, 0.5]) {
+      lv.misses = {};
+      p.pos.set(c.S[0], c.S[1], c.S[2]); p.vel.set(0, 0, 0); p.carry = null; p.keys = {};
+      step(g, dt, 2); aimAt(c, k); step(g, dt, 1);
+      const gold = lv.info().preview?.gold, off = lv.offOf(c), near = play(g, () => g.gymLive.near(p));
+      play(g, () => g.gymLive.use(p));
+      step(g, dt, Math.ceil(6 / dt), () => !lv.busy && !p.carry && (p.onGround || p.inWater));
+      step(g, dt, Math.ceil(0.5 / dt));
+      out.push({ dt, id: c.id, home: !!c.home, k, gold, off, near, d: Math.hypot(p.pos.x - c.E[0], p.pos.z - c.E[2]), wet: p.inWater, ground: p.onGround, free: !p.collides(p.pos), misses: lv.misses[c.id] ?? 0 });
+    }
+    // slower after a miss: the aim clock runs at 0.75, then 0.55
+    const c = d.cannons[0]; lv.misses = { [c.id]: 1 }; const a0 = lv.aimT[c.id]; p.pos.set(60.5, 30, 20.5); step(g, 1 / 20, 20); const slow = (lv.aimT[c.id] - a0) / 1;
+    return { out, slow };
+  });
+  for (const dt of [1 / 60, 1 / 20]) {
+    const rows = C.out.filter(r => r.dt === dt), fps = dt === 1 / 60 ? '60' : '20';
+    const hits = rows.filter(r => r.home || r.k === 0.25), miss = rows.filter(r => !r.home && r.k === 0.5);
+    t.ok(hits.every(r => r.near === 'Fire!' && r.gold && r.d < 1.5 && r.ground && r.free), `${fps} steps: fired in the middle of the swing (or a steady home cannon) you land on the target, the dots are gold (${hits.map(r => `${r.id}:${r.d.toFixed(1)}`).join(' ')})`);
+    t.ok(miss.length === 3 && miss.every(r => !r.gold && Math.abs(r.off) > 0.3 && r.wet && r.d > 4 && r.free && r.misses === 1), `${fps} steps: fired at the edge of the swing you splash into the sea, the dots are white, the miss is counted (${miss.map(r => `${r.id}:${r.d.toFixed(1)}`).join(' ')})`);
+  }
+  t.ok(Math.abs(C.slow - 0.75) < 0.01, `after a miss the cannon swings slower (${C.slow.toFixed(2)} of the speed)`);
+  t.ok(await said(page, /Fire when the dots are gold/), 'one short hint: fire when the dots are gold');
+
+  // 2. the rope: let go over the far stand, at once (back), in the middle (splash), or not at all (back after three swings)
+  const R = await page.evaluate(async () => {
+    const g = window.pokecraft, step = window.__step, play = window.__play, p = g.player, d = g.world.pirate, lv = g.gymLive.of('part:seas');
+    const L = await import('/src/pirateland.js'), out = [];
+    for (const dt of [1 / 60, 1 / 20]) for (const r of d.ropes) for (const from of ['a', 'b']) for (const how of ['far', 'back', 'splash', 'none']) {
+      const A = from === 'a' ? r.a : r.b, Bq = from === 'a' ? r.b : r.a;
+      p.pos.set(A.pos[0], A.pos[1], A.pos[2]); p.vel.set(0, 0, 0); p.carry = null; p.keys = {};
+      step(g, dt, 3);
+      play(g, () => g.gymLive.use(p));
+      const time = lv.swing.path.time, word = play(g, () => g.gymLive.near(p));
+      if (how === 'far') step(g, dt, Math.round(time / dt));
+      if (how === 'splash') step(g, dt, Math.round(time / 2 / dt));
+      if (how === 'none') step(g, dt, Math.ceil((L.LETGO.swings * 2 * time + 0.1) / dt), () => !lv.swing);
+      const gold = how === 'far' ? L.letGo(lv.swing.path, lv.mover.clock) === 'far' : null;
+      if (how !== 'none') play(g, () => g.gymLive.use(p));
+      step(g, dt, Math.ceil(3 / dt), () => !lv.busy && !p.carry && (p.onGround || p.inWater));
+      step(g, dt, Math.ceil(0.4 / dt));
+      const to = how === 'far' ? Bq : A;
+      out.push({ dt, id: r.id + from, how, word, gold, d: Math.hypot(p.pos.x - to.pos[0], p.pos.z - to.pos[2]), wet: p.inWater, ground: p.onGround, free: !p.collides(p.pos), busy: lv.busy });
+    }
+    return out;
+  });
+  for (const dt of [1 / 60, 1 / 20]) {
+    const rows = R.filter(r => r.dt === dt), fps = dt === 1 / 60 ? '60' : '20', of = h => rows.filter(r => r.how === h);
+    t.ok(rows.every(r => r.word === 'Let go!' && r.free && !r.busy), `${fps} steps: on a swinging rope the button says Let go! and you always come down free (${rows.length} swings)`);
+    t.ok(of('far').every(r => r.gold && r.d < 1.2 && r.ground), `${fps} steps: let go over the far stand (the rope is gold) and you land on it, every rope both ways (${of('far').map(r => `${r.id}:${r.d.toFixed(1)}`).join(' ')})`);
+    t.ok(of('back').every(r => r.d < 1.2 && r.ground) && of('none').every(r => r.d < 1.2 && r.ground), `${fps} steps: let go at once, or never, and you are back on your own stand`);
+    t.ok(of('splash').every(r => r.wet), `${fps} steps: let go in the middle and you splash into the sea (${of('splash').map(r => r.id).join(' ')})`);
+  }
+  await page.evaluate(() => { const lv = window.pokecraft.gymLive.of('part:seas'); lv.steady = true; lv.misses = {}; });
+}
+
+// pictures of the challenges: the gold dots on a cannon, the rowboats from a deck cannon
+async function challengeShots(page) {
+  await page.evaluate(async () => {
+    const g = window.pokecraft, step = window.__step, p = g.player, c = g.world.pirate.cannons.find(c => c.id === 'c1'), lv = g.gymLive.of('part:seas');
+    lv.steady = true; // (held on target while the slow software renderer takes the picture: gold dots)
+    p.pos.set(c.S[0], c.S[1], c.S[2]); p.vel.set(0, 0, 0); p.carry = null; step(g, 1 / 20, 2);
+    p.yaw = Math.PI * 0.08; p.pitch = -0.15;
+  });
+  await shot(page, 'cannon-aim');
+  await page.evaluate(async () => {
+    const g = window.pokecraft, step = window.__step, p = g.player, lv = g.gymLive.of('part:seas');
+    const L = await import('/src/pirateland.js'); lv.steady = false;
+    p.pos.set(...L.deckStand(L.ROWBOATS.cannons[0])); p.vel.set(0, 0, 0); p.yaw = 0.15; p.pitch = -0.5; step(g, 1 / 20, 2);
+  });
+  await shot(page, 'rowboats');
+  await page.evaluate(() => { window.pokecraft.gymLive.of('part:seas').steady = true; });
 }
