@@ -107,8 +107,9 @@ export function pictureRealm(d) {
 }
 // The stand-in Picture Worlds (each task replaces its own line with the real realm, keeping pictureRealm({...})).
 REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05, size: [192, 192], terrain: 'houseLand', arrive: [24, 181], // T40a
+  version: 2, // T40a.5: the puzzle house (a save made in version 1 arrives at the start)
   clock: '🐭 Giant House', travelText: 'Shrinking...', travelIcon: '🐭', enterText: 'Whoa! Everything is HUGE! You are as small as a mouse.',
-  arriveHint: 'Nibbles waits on the cookie on the table. Ride the toy train, or find another way up!',
+  arriveHint: 'Nibbles is in a sugar fort on the table. Ride the toy train to the fan, and look for the yellow notes!',
   spawns: { house: TINY_SPAWNS, cave: [] },
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
 REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b

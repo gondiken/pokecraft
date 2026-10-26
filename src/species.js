@@ -2358,7 +2358,7 @@ for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...l
 
 /* ==== T40a tiny ==== */
 // Tiny creatures live only in the Giant House (REALMS.house.spawns), always in nooks (cups, flowers, under leaves).
-export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'nook'],
+export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'crumbs'], // T40a.5: Pipsqueak after all 12 crumbs
   ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
 /* ==== end of T40a tiny ==== */
 

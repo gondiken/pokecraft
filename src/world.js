@@ -653,6 +653,7 @@ export class World {
             continue;
           }
           const def = BLOCKS[id];
+          if (def.hidden) continue; // T40a.5: solid but never drawn (a model shows it)
           for (const f of FACES) {
             if (y === 0 && f.kind === 'bottom') continue;
             const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);

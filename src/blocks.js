@@ -124,6 +124,9 @@ export const B = {
   // 150-167: T40a, the Giant House (none placeable; HOUSE_FLOOR_DARK, FAN_SWITCH_ON and CAT_EYE_OPEN are drawn with setLive where they change)
   HOUSE_FLOOR: 150, HOUSE_FLOOR_DARK: 151, WALLPAPER: 152, CUPBOARD: 153, GIANT_WOOD: 154, COOKIE: 155, CRUMB: 156, FAN_GRILL: 157, FAN_SWITCH: 158, FAN_SWITCH_ON: 159,
   TRACK: 160, REMOTE_BUTTON: 161, TAP_HANDLE: 162, CAT_FUR: 163, CAT_EYE: 164, CAT_EYE_OPEN: 165, KEYHOLE: 166, CHROME: 167,
+  // 250: T40a.5, the Giant House's puzzle things are models (houseprops.js); this hidden block is what you stand on, bump into and
+  // tap under a model (the cat, the plug, the wind-up key...). Taken from the top so it never meets the ids wave 15 takes from 204 up.
+  HOUSE_PROP: 250,
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
@@ -310,6 +313,7 @@ BLOCKS[B.TYRE_WALL] = { name: 'Tyre Wall', top: T.TYRE_TOP, side: T.TYRE_SIDE, b
   BLOCKS[B.CAT_EYE_OPEN] = { name: 'Cat Eye', ...all(T.CAT_EYE_OPEN), ...fx, wallText: 'Shh! Let the cat sleep.' };
   BLOCKS[B.KEYHOLE] = { name: 'Keyhole', ...all(T.KEYHOLE), ...fx, wallText: 'A brass keyhole. You are small enough to squeeze through!' };
   BLOCKS[B.CHROME] = { name: 'Shiny Metal', ...all(T.CHROME), ...fx, wallText: HOUSE };
+  BLOCKS[B.HOUSE_PROP] = { name: 'Giant House thing', ...all(T.CHROME), ...fx, hidden: true, wallText: HOUSE }; // never drawn: a model shows it
 }
 // T40b Pirate Seas blocks (none can be placed). Gadget blocks are `fixed`; palm, coral and shell sand are natural (breakable, no cubes).
 BLOCKS[B.HULL] = { name: 'Ship Planks', ...all(T.HULL), wallText: "Captain Squawk's ship is too strong to break!" };
@@ -346,7 +350,7 @@ PLACEABLE.push(WOOL.cozy, WOOL.normal, WOOL.fire, WOOL.water, WOOL.grass, WOOL.e
 PLACEABLE.push(...MISSION_BLOCKS); // T29
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
-const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES]);
+const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES, B.HOUSE_PROP]);
 export const isOccluder = id => !SEE_THROUGH.has(id);
 // Blocks the player and creatures collide with.
 export const isSolid = id => id !== B.AIR && id !== B.WATER;

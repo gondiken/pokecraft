@@ -15,7 +15,7 @@ function drawHousePicture(g, n = 128) {
   r(80, 68, 6, 6, '#16121a'); r(92, 68, 6, 6, '#16121a'); r(82, 69, 2, 2, '#fff'); r(94, 69, 2, 2, '#fff'); r(86, 76, 6, 4, '#f08aa0');
 }
 export const PICTURE_WORLDS = [
-  { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: false, realm: 'house', picture: drawHousePicture }, // T40a; owner 2026-10-26: covered while the house is rebuilt with puzzles (T40a.5)
+  { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
   { id: 'race', name: 'Race Track', emoji: '🏎️', frame: [0xd83a3a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' }, // place: the world it shares (owner 2026-10-26: the frames say so)
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },

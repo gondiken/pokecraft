@@ -1,6 +1,7 @@
 // T40a (wave 14): the Tiny type and the Giant House. Part A (type data, models, fx), B (the terrain for three seeds: walk graph, secrets, paths,
 // keeps), C (live: the whole loop in a browser: fan, train, river and cap, cat, crumbs, nooks, the Boss, the secret ways, iPad, the line-up).
-// TINY_ONLY=type|land|live|shots runs one part. Screenshots: t40a-house-arrival.png, t40a-fan.png, t40a-train.png, t40a-river.png, t40a-cat.png,
+// TINY_ONLY=type|land|live|shots runs one part. T40a.5: the live part plays the four puzzles (towel + key, plug + tap, yarn + cat,
+// marble + spoon) with real physics. Screenshots: t40a-house-arrival.png, t40a-train.png, t40a-fan.png, t40a-river.png, t40a-cat.png, t40a-spoon.png,
 // t40a-cookie-boss.png, t40a-ipad.png, t40a-tiny-family.png (+ t40a-nooks.png).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -112,7 +113,8 @@ export default async function ({ browser, base, t }) {
       const inMain = Object.values(S.SPAWNS).flat().filter(e => ids.includes(e[0])).length;
       const house = R.REALMS.house.spawns;
       if (inMain) bad('Tiny creatures are in the main SPAWNS');
-      if (!house.house?.length || !house.house.every(e => e[2] === 'nook' && ids.includes(e[0])) || house.house.length !== 7) bad('house spawns');
+      if (!house.house?.length || !house.house.every(e => e[2] === (e[0] === 'pipsqueak' ? 'crumbs' : 'nook') && ids.includes(e[0])) || house.house.length !== 7) bad('house spawns'); // T40a.5: Pipsqueak after all 12 crumbs
+      if (!SR.CONDITIONS.crumbs?.place || SR.CONDITIONS.crumbs.share || !/crumbs/.test(SR.CONDITIONS.crumbs.text)) bad('crumbs condition');
       if (!SR.CONDITIONS.nook || SR.CONDITIONS.nook.share || !SR.CONDITIONS.nook.place || !SR.CONDITIONS.nook.text) bad('nook condition');
       out.chart = ['racer', 'food', 'cyber', 'tiny', 'fire', 'sky'].map(b => S.effectiveness('tiny', b)).join() + '|' + [S.effectiveness('fire', 'tiny'), S.effectiveness('sky', 'tiny'), S.effectiveness('ball', 'tiny')].join();
       return out;
@@ -150,19 +152,20 @@ export default async function ({ browser, base, t }) {
         };
         const sample = pts => { const line = M.PATHS.line({ points: pts, speed: 1 }); let n = 0, badAt = null; for (let s = 0; s <= line.time; s += 0.25) { const p = line.at(s); n++; if (!clear([p.x, p.y, p.z])) { badAt ??= [p.x, p.y, p.z].map(v => +v.toFixed(2)).join(','); } } return { n, badAt }; };
         const track = sample(G.TRACK.points), east = sample(G.CAP_LINES.east), west = sample(G.CAP_LINES.west), ride = sample(G.trackInfo().toN);
+        const fling = (() => { const ss = G.SEESAW, a = M.PATHS.arc({ from: [ss.bowl[0], 26, ss.bowl[2]], to: ss.land, height: 7, time: 1.6 }); let n = 0, badAt = null; for (let q = 0; q <= a.time + 1e-9; q += 0.02) { const p = a.at(q); n++; if (!clear([p.x, p.y, p.z])) badAt ??= [p.x, p.y, p.z].map(v => +v.toFixed(2)).join(','); } return { n, badAt }; })(); // T40a.5: the spoon's flight over the fort wall
         // the dry groove and the cap: the groove floor is below the cap's feet; the counter top ends the east line
         const info = G.trackInfo();
         return {
           problems: a.out.problems, info: a.out.info, ms, msStandIn: a.out.info.ms, top, ids150: [...ids150].sort((x, y) => x - y).join(), consecutive, tileNames: tiles.length,
-          track, east, west, ride, stops: [info.sOf.S.toFixed(1), info.sOf.N.toFixed(1), info.total.toFixed(1)].join(),
+          track, east, west, ride, fling, stops: [info.sOf.S.toFixed(1), info.sOf.N.toFixed(1), info.total.toFixed(1)].join(),
           ride9: (info.sOf.N - info.sOf.S) / 9, nooks: w.nooks.length, parts: w.parts.map(p => p.id).join(), lifts: w.lifts.length, bosses: w.bosses.length, walk: w.walk instanceof Set,
           sameAsStandIn: (() => { const s = H.makeHouse(R.realmSeed(seed, def.seedSalt)); for (let i = 0; i < w.data.length; i++) if (w.data[i] !== s.data[i]) return false; return true; })(),
         };
       }, seed);
       t.ok(!r.problems.length, `seed ${seed}: the house is deterministic, standable, reachable by all ways, nobody stuck, secrets, cat strip, keeps, nooks ${r.problems.join(' | ')}`);
-      t.ok(r.info.walkRamp && r.info.fan && r.info.train && r.info.mouseHole && r.info.keyhole && r.info.stripOpen && r.info.stripClosed && r.info.stuck === 0, `seed ${seed}: the Boss by the ramp, by the fan, by the train; the mouse hole and the keyhole lead up; the strip closes with the tail (${r.info.cells} cells)`);
-      t.ok(r.ms < 400 && r.top <= 47 && r.ids150 === '150,151,152,153,154,155,156,157,158,160,161,162,163,164,166,167' && r.consecutive, `seed ${seed}: generated in ${r.ms.toFixed(0)} ms (the faster of two runs), nothing above y 47 (top ${r.top}), every block 150-167 used except the two drawn only with setLive (${r.ids150.split(',').length} of 18), the 20 tiles in a row (${r.consecutive})`);
-      t.ok(!r.track.badAt && !r.east.badAt && !r.west.badAt && !r.ride.badAt, `seed ${seed}: the train line, the ride and both cap lines have 2 cells of air and nothing solid in the way (${r.track.n + r.east.n + r.west.n} samples) ${r.track.badAt || r.east.badAt || r.west.badAt || r.ride.badAt || ''}`);
+      t.ok(r.info.all4 && !r.info.noFan && !r.info.noCap && !r.info.noCat && !r.info.noFling && r.info.mouseNoFan && r.info.mouseHole && r.info.keyhole && r.info.dryStuckEast && r.info.dryBack && r.info.stuck === 0, `seed ${seed}: the Boss with the four puzzles and not without any one of them (fan, water, cat, spoon); the mouse hole skips the fan; the keyhole leads up; the dry river is a dead end with steps back (${r.info.cells} cells)`);
+      t.ok(r.ms < 400 && r.top <= 47 && r.ids150 === '150,151,152,153,154,155,156,157,160,161,162,166,167' && r.consecutive, `seed ${seed}: generated in ${r.ms.toFixed(0)} ms (the faster of two runs), nothing above y 47 (top ${r.top}), the blocks 150-167 the puzzle house still uses (T40a.5: no fan switch, no block cat; ${r.ids150.split(',').length} of 18), the 20 tiles in a row (${r.consecutive})`);
+      t.ok(!r.track.badAt && !r.east.badAt && !r.west.badAt && !r.ride.badAt && !r.fling.badAt, `seed ${seed}: the train line, the ride, both cap lines and the spoon's flight have 2 cells of air and nothing solid in the way (${r.track.n + r.east.n + r.west.n + r.fling.n} samples) ${r.track.badAt || r.east.badAt || r.west.badAt || r.ride.badAt || r.fling.badAt || ''}`);
       t.ok(r.nooks === 22 && r.parts === 'house' && r.lifts === 0 && r.bosses === 1 && r.walk && r.sameAsStandIn, `seed ${seed}: 22 nooks, the house part, no lifts yet, one Boss; the real World gives the same blocks as the stand-in`);
       if (seed === 1) console.log('  ride', r.stops, `${r.ride9.toFixed(1)} s`, 'standIn', r.msStandIn, 'ms');
     }
@@ -181,96 +184,122 @@ export default async function ({ browser, base, t }) {
       return { place: g.place, stand: [p.x, p.y, p.z].map(v => +v.toFixed(1)).join(), want: a.slice(0, 3).map(v => +v.toFixed(1)).join(), glow: !!g.portal.glow(), part: !!g.gymLive.of('part:house'), guide: document.getElementById('guide')?.textContent || '', size: [w.W, w.D].join('x'), bosses: g.npcs.list.filter(n => n.kind === 'boss').map(n => n.name).join() };
     });
     t.ok(enter.place === 'house' && enter.stand === enter.want && enter.glow && enter.part && enter.size === '192x192' && enter.bosses === 'Nibbles', `the frame leads into the 192 x 192 house, to the arrival (${enter.stand}), with the live part and Nibbles`);
-    t.ok(await said(page, /HUGE/) && await said(page, /Nibbles waits on the cookie/), 'the toasts say you are small and Nibbles waits on the cookie');
+    t.ok(await said(page, /HUGE/) && await said(page, /sugar fort/), 'the toasts say you are small and Nibbles is in a sugar fort');
     t.ok(/Toy train!/.test(enter.guide), `the guide points at the toy train (${enter.guide})`);
     await shot(page, 'house-arrival', [24.5, 1, 181.5, -1.2, 0.05]);
 
-    // ---- the fan
-    const fan = await page.evaluate(() => {
-      const g = window.pokecraft, sw = window.__blk(11, 1, 134), live = window.__live();
-      window.__at(11.5, 1, 131.5, 0, 0);
-      const before = { lifts: g.world.lifts.length, prompt: g.gymLive.prompt(sw, 'click or E'), action: g.gymLive.action(sw) };
-      const hit = g.gymLive.hit(sw);
-      const after = { lifts: g.world.lifts.length, prompt: g.gymLive.prompt(window.__blk(11, 1, 134), 'click or E'), action: g.gymLive.action(window.__blk(11, 1, 134)), on: live.fanOn, cell: g.world.get(11, 1, 134) };
-      return { before, hit, after };
-    });
-    t.ok(fan.hit && fan.before.lifts === 0 && fan.before.action === 'Fan on!' && /to turn it on/.test(fan.before.prompt), `the fan switch: "${fan.before.prompt}" / "${fan.before.action}"`);
-    t.ok(fan.after.lifts === 1 && fan.after.on && fan.after.action === 'Fan off' && /to turn it off/.test(fan.after.prompt) && fan.after.cell === 159, `fan on: the lift is there, the switch lights, "${fan.after.action}"`);
-    const up = await page.evaluate(() => {
-      window.__at(11.5, 4, 127.5, 0, 0);
-      window.__step(120);
-      const p = window.pokecraft.player, top = p.pos.y;
-      // walk north onto the shelf (jump when a step is in the way)
-      const r = window.__walk([[11.5, 118.5]], 200);
-      return { top, y: p.pos.y, z: p.pos.z, onGround: p.onGround, r };
-    });
-    t.ok(up.top >= 33.9 && up.y >= 33.9 && up.y <= 34.8 && up.z < 124 && up.onGround, `the wind lifts you to the shelf (${up.top.toFixed(2)}) and you walk onto it (y ${up.y.toFixed(2)}, z ${up.z.toFixed(1)})`);
-    await shot(page, 'fan', [11.5, 1, 142.5, 0, 0.22], 1500);
-    const off = await page.evaluate(() => { const g = window.pokecraft; g.gymLive.hit(window.__blk(12, 1, 134)); return { lifts: g.world.lifts.length, on: window.__live().fanOn }; });
-    t.ok(off.lifts === 0 && !off.on, 'the other switch cell turns the fan off again: the lift is gone');
-
-    // ---- the toy train
+    // ---- the toy train: from the arrival to the fan (T40a.5)
     const train = await page.evaluate(() => {
-      const g = window.pokecraft, live = window.__live(), btnS = window.__blk(40, 1, 178), btnN = window.__blk(116, 15, 95);
+      const g = window.pokecraft, live = window.__live(), btnS = window.__blk(40, 1, 178);
       window.__at(40.5, 1, 176.5, 0, 0);
       const act0 = g.gymLive.action(btnS), pr0 = g.gymLive.prompt(btnS, 'click or E');
-      const far = (() => { window.__at(40.5, 1, 190 - 6, 0, 0); window.__at(60.5, 1, 183.5, 0, 0); g.gymLive.hit(btnS); return !g.player.carry; })();
+      const far = (() => { window.__at(60.5, 1, 183.5, 0, 0); g.gymLive.hit(btnS); return !g.player.carry; })();
       window.__at(40.5, 1, 176.5, 0, 0);
       g.gymLive.hit(btnS);
-      const carried = !!g.player.carry, mover = g.player.carry;
-      let collided = 0, s = 0;
-      for (let i = 0; i < 20; i++) { g.player.update(0.05); g.gymLive.update(0.05); }
-      const y1 = g.player.pos.y;
-      // one frame screenshot position: remember a mid-ride place
-      for (let i = 0; i < 300; i++) { g.player.update(0.05); g.gymLive.update(0.05); }
-      const mid = [g.player.pos.x, g.player.pos.y, g.player.pos.z];
-      const guideMid = g.world.realm && (g.updateGuide(), document.getElementById('guide')?.textContent || '');
-      for (let i = 0; i < 800; i++) { if (g.player.carry && g.player.collides(g.player.pos)) collided++; g.player.update(0.05); g.gymLive.update(0.05); s++; if (!g.player.carry) break; }
-      const p = g.player.pos, stop = [116.5, 15.5, 92.5];
-      return { act0, pr0, far, carried, y1, mid, guideMid, collided, steps: s, end: [p.x, p.y, p.z], dist: Math.hypot(p.x - stop[0], p.z - stop[2]), carryNull: g.player.carry === null, at: live.train.at, mover: !!mover };
+      const carried = !!g.player.carry;
+      let collided = 0, s = 0, guideMid = '';
+      for (let i = 0; i < 800; i++) {
+        if (g.player.carry && g.player.collides(g.player.pos)) collided++;
+        g.player.update(0.05); g.gymLive.update(0.05); s++;
+        if (i === 100) { g.updateGuide(); guideMid = document.getElementById('guide')?.textContent || ''; }
+        if (!g.player.carry) break;
+      }
+      const p = g.player.pos, stop = [26.5, 1.5, 64.5];
+      g.updateGuide();
+      return { act0, pr0, far, carried, collided, steps: s, dist: Math.hypot(p.x - stop[0], p.z - stop[2]), at: live.train.at, guideMid, guideEnd: document.getElementById('guide')?.textContent || '' };
     });
-    t.ok(train.act0 === 'Ride!' && /Toy train remote · .* to ride/.test(train.pr0) && train.far && train.carried && train.mover, `remote S says "${train.act0}"; far away the button asks you to stand by the train; pressing it near boards you`);
-    t.ok(train.collided === 0 && train.carryNull && train.dist < 0.6 && train.at === 'N' && train.steps + 320 < 640 && train.steps + 320 > 540, `the ride takes ${((train.steps + 320) * 0.05).toFixed(0)} s to stop N (${train.dist.toFixed(2)} away), nothing solid on the way`);
-    t.ok(/Choo choo/.test(train.guideMid) || /Toy|Choo|table/.test(train.guideMid), `the guide on the ride says "${train.guideMid}"`);
-    const guide2 = await page.evaluate(() => { const g = window.pokecraft; window.__at(110.5, 15, 89.5, 0, 0); g.updateGuide(); return document.getElementById('guide')?.textContent || ''; });
-    t.ok(/Tiptoe past the cat/.test(guide2), `on the bench the guide says "${guide2}"`);
+    t.ok(train.act0 === 'Ride!' && /Toy train remote · .* to ride/.test(train.pr0) && train.far && train.carried, `remote S says "${train.act0}"; far away the button asks you to stand by the train; pressing it near boards you`);
+    t.ok(train.collided === 0 && train.dist < 0.6 && train.at === 'N' && train.steps * 0.05 > 10 && train.steps * 0.05 < 18, `the ride takes ${(train.steps * 0.05).toFixed(1)} s to the stop by the fan (${train.dist.toFixed(2)} from it), never inside a block`);
+    t.ok(/Off to the fan/.test(train.guideMid) && /towel/.test(train.guideEnd), `the guide on the ride: "${train.guideMid}", at the stop: "${train.guideEnd}"`);
     const back = await page.evaluate(() => {
-      const g = window.pokecraft, live = window.__live(), btnN = window.__blk(116, 15, 95), btnS = window.__blk(40, 1, 178);
-      window.__at(116.5, 15, 93.5, 0, 0);
+      const g = window.pokecraft, live = window.__live(), btnN = window.__blk(29, 1, 64);
+      window.__at(26.5, 1, 65.5, 0, 0);
       const a1 = g.gymLive.action(btnN);
       g.gymLive.hit(btnN);
       const riding = !!g.player.carry;
-      // a fresh jump press gets you off mid-ride; the train goes on without you and arrives at S
-      g.player.keys.Space = false; window.__step(20); g.player.keys.Space = true; window.__step(2); g.player.keys.Space = false;
+      g.player.keys.Space = false; window.__step(20); g.player.keys.Space = true; window.__step(2); g.player.keys.Space = false; // a fresh jump: off mid-ride
       const off = g.player.carry === null, runKind = live.train.run?.kind;
-      window.__step(620);
+      window.__step(400);
       const atAfter = live.train.at;
-      // the train is at S: remote N says "Call train!" (an empty run), then "Ride!" when it is here
-      window.__at(116.5, 15, 93.5, 0, 0);
+      window.__at(26.5, 1, 65.5, 0, 0);
       const a2 = g.gymLive.action(btnN);
       g.gymLive.hit(btnN);
       const calling = live.train.run?.kind, busy = g.gymLive.action(btnN);
-      window.__step(700);
+      window.__step(400);
       return { a1, riding, off, runKind, atAfter, a2, calling, busy, now: live.train.at, a3: g.gymLive.action(btnN) };
     });
     t.ok(back.a1 === 'Ride!' && back.riding && back.off && back.runKind === 'call', `remote N says "${back.a1}", rides back, a fresh jump press gets you off mid-ride and the empty train goes on`);
-    t.ok(back.atAfter === 'S' && back.a2 === 'Call train!' && back.calling === 'call' && back.busy === 'Wait...' && back.now === 'N' && back.a3 === 'Ride!', `the train came home by itself (${back.atAfter}); remote N says "${back.a2}", then "${back.busy}", and when it is here "${back.a3}"`);
-    await page.evaluate(() => { const g = window.pokecraft, live = window.__live(); window.__at(116.5, 15, 93.5, 0, 0); g.gymLive.hit(window.__blk(116, 15, 95)); window.__step(300); });
-    await shot(page, 'train', null, 1800);
+    t.ok(back.atAfter === 'S' && back.a2 === 'Call train!' && back.calling === 'call' && back.busy === 'Wait...' && back.now === 'N' && back.a3 === 'Ride!', `the train came home by itself (${back.atAfter}); remote N says "${back.a2}", then "${back.busy}", then "${back.a3}"`);
+    await shot(page, 'train', [30.5, 1, 72.5, 0.3, 0.05], 1800);
 
-    // ---- the tap, the river and the bottle cap
+    // ---- puzzle 1: the tea towel and the wind-up key
+    const fan = await page.evaluate(() => {
+      const g = window.pokecraft, live = window.__live(), p = g.player;
+      window.__at(26.5, 1, 57.5, 0, 0);
+      const keyWord = g.gymLive.near(p), keyPr = g.gymLive.prompt(window.__blk(25, 1, 55), 'click or E');
+      g.gymLive.use(p); // wind it with the towel still on: it runs, but no wind comes through
+      window.__step(4);
+      const covered = { running: live.fanRunning(), lifts: g.world.lifts.length, toast: window.__toasts.at(-1) };
+      window.__at(11.5, 1, 61.5, 0, 0);
+      const towelWord = g.gymLive.near(p);
+      g.gymLive.use(p);
+      window.__step(4);
+      const off = { towel: live.towelOn, lifts: g.world.lifts.length, word: g.gymLive.near(p) };
+      return { keyWord, keyPr, covered, towelWord, off };
+    });
+    t.ok(fan.keyWord === 'Wind!' && /Wind-up key/.test(fan.keyPr), `by the key box the big button says "${fan.keyWord}" ("${fan.keyPr}")`);
+    t.ok(fan.covered.running && fan.covered.lifts === 0 && /towel is in the way/.test(fan.covered.toast), `with the towel on, the fan runs but blows nobody up ("${fan.covered.toast}")`);
+    t.ok(fan.towelWord === 'Pull!' && !fan.off.towel && fan.off.lifts === 1 && fan.off.word !== 'Pull!', `"${fan.towelWord}" pulls the towel off: now the wind blows (a lift)`);
+    const timer = await page.evaluate(() => {
+      const g = window.pokecraft, live = window.__live(), p = g.player;
+      window.__step(260); // the 12 s run down
+      const ran = { running: live.fanRunning(), lifts: g.world.lifts.length };
+      // wind it, then run (real walking) to the grill and ride up
+      window.__at(26.5, 1, 57.5, 0, 0);
+      g.gymLive.use(p);
+      const t0 = live.clock;
+      const r = window.__walk([[17.5, 55.5], [11.5, 53.5]], 400);
+      const tGrill = live.clock - t0;
+      window.__step(140);
+      const top = p.pos.y;
+      const r2 = window.__walk([[11.5, 47.5]], 200);
+      return { ran, r, tGrill, top, y: p.pos.y, z: p.pos.z, onGround: p.onGround };
+    });
+    t.ok(!timer.ran.running && timer.ran.lifts === 0, 'after its 12 seconds the fan runs down and the wind stops');
+    t.ok(timer.tGrill < 8 && timer.top >= 33.9 && timer.y >= 33.9 && timer.y <= 34.8 && timer.z < 51 && timer.onGround, `wind the key, walk to the grill (${timer.tGrill.toFixed(1)} s of 12), ride the wind up (${timer.top.toFixed(2)}) and step onto the shelf (y ${timer.y.toFixed(2)}, z ${timer.z.toFixed(1)})`);
+    const hold = await page.evaluate(() => { // the wind never stops under you: it waits until you are out of it
+      const g = window.pokecraft, live = window.__live(), p = g.player;
+      window.__at(26.5, 1, 57.5, 0, 0); g.gymLive.use(p);
+      window.__at(11.5, 4, 53.5, 0, 0);
+      live.runUntil = live.clock + 0.5; // almost run down
+      window.__step(60);
+      return { lifts: g.world.lifts.length, y: p.pos.y };
+    });
+    t.ok(hold.lifts === 1 && hold.y > 20, `a fan that runs down while you ride keeps blowing until you are off (y ${hold.y.toFixed(1)})`);
+    await page.evaluate(() => window.__step(200));
+    await shot(page, 'fan', [24.5, 6, 62.5, 0.95, -0.25], 1500);
+
+    // ---- puzzle 2: the plug, the tap, the deep river and the bottle cap
     const tap = await page.evaluate(() => {
-      const g = window.pokecraft, live = window.__live(), h = window.__blk(34, 32, 5);
+      const g = window.pokecraft, live = window.__live(), h = window.__blk(34, 32, 5), p = g.player;
       window.__at(36.5, 31, 8.5, 0, 0);
       const pr = g.gymLive.prompt(h, 'click or E'), act = g.gymLive.action(h);
-      g.gymLive.hit(h);
-      window.__step(160); // 8 s
+      g.gymLive.hit(h); // the tap first: the water runs away
+      window.__step(160);
+      const noPlug = { stream: g.world.get(36, 33, 11), basin: g.world.get(30, 29, 15), groove: g.world.get(60, 28, 15), toast: window.__toasts.some(m => /plughole/.test(m)) };
+      window.__at(44.5, 31, 24.5, 0, 0);
+      const word = g.gymLive.near(p);
+      g.gymLive.use(p);
+      const plugged = { in: live.plugIn(), rim: g.world.get(44, 31, 22), hole: g.world.get(36, 29, 15) };
+      window.__at(36.5, 31, 8.5, 0, 0); plugged.atTap = g.gymLive.near(p); // by the tap the big button never says Unplug (E turns the tap)
+      window.__step(160);
       let dry = 0;
-      for (let x = 48; x <= 97; x++) for (let z = 14; z <= 16; z++) if (g.world.get(x, 30, z) !== 5) dry++;
-      const basin = g.world.get(30, 29, 15), stream = g.world.get(36, 33, 11);
-      return { pr, act, dry, basin, stream, on: live.tapOn };
+      for (let x = 48; x <= 96; x++) for (let z = 14; z <= 16; z++) for (let y = 27; y <= 30; y++) { const id = g.world.get(x, y, z); if (id !== 5 && id === 0) dry++; }
+      return { pr, act, noPlug, word, plugged, dry, basin: g.world.get(30, 29, 15), wet: live.wet() };
     });
-    t.ok(/Tap · .* to turn it on/.test(tap.pr) && tap.act === 'Turn tap!' && tap.on && tap.dry === 0 && tap.basin === 5 && tap.stream === 5, `the tap: "${tap.act}", after 8 s the stream, the sink and the whole groove are water (${tap.dry} dry cells)`);
+    t.ok(/Tap · .* to turn it on/.test(tap.pr) && tap.act === 'Turn tap!' && tap.noPlug.stream === 5 && tap.noPlug.basin === 0 && tap.noPlug.groove === 0 && tap.noPlug.toast, 'the tap without the plug: water runs from the tap, but the sink and the river stay dry (a toast says why)');
+    t.ok(tap.word === 'Plug in!' && tap.plugged.in && tap.plugged.rim === 0 && tap.plugged.hole === 250 && tap.plugged.atTap === null, `"${tap.word}": the plug moves from the rim into the plughole`);
+    t.ok(tap.dry === 0 && tap.basin === 5 && tap.wet, `with the plug in, after 8 s the sink and the whole deep river are water (${tap.dry} dry cells)`);
     const cap = await page.evaluate(() => {
       const g = window.pokecraft, p = g.player, live = window.__live();
       window.__at(50.5, 30, 15.5, -1.57, 0);
@@ -278,56 +307,102 @@ export default async function ({ browser, base, t }) {
       window.__step(20);
       const midX = p.pos.x;
       window.__step(400);
-      return { early, boarded, midX, carry: p.carry === null, x: p.pos.x, y: p.pos.y, z: p.pos.z, ground: g.world.get(99, 30, 15), above: g.world.get(99, 31, 15), dock: live.dock };
+      return { early, boarded, midX, carry: p.carry === null, x: p.pos.x, y: p.pos.y, ground: g.world.get(99, 30, 15), above: g.world.get(99, 31, 15), dock: live.dock };
     });
-    t.ok(!cap.early && cap.boarded && cap.midX > 52, `standing on the cap boards it after 0.6 s (not before) and it floats you east (x ${cap.midX.toFixed(1)}) ${JSON.stringify(cap)}`);
-    t.ok(cap.carry && Math.abs(cap.x - 99.5) < 0.1 && cap.y >= 31 && cap.y < 31.2 && cap.ground === 153 && cap.above === 0 && cap.dock === 'E', `after the river it sets you down on dry counter (${cap.x.toFixed(1)}, ${cap.y.toFixed(1)}); the cap waits at the east dock`);
+    t.ok(!cap.early && cap.boarded && cap.midX > 52, `the cap boards after 0.6 s (not before) and floats you east (x ${cap.midX.toFixed(1)})`);
+    t.ok(cap.carry && Math.abs(cap.x - 99.5) < 0.1 && cap.y >= 31 && cap.y < 31.2 && cap.ground === 153 && cap.above === 0 && cap.dock === 'E', `after the river it sets you down on the counter (${cap.x.toFixed(1)}, ${cap.y.toFixed(1)})`);
     await shot(page, 'river', [99.5, 31, 15.5, 1.57, -0.32], 2000);
-    const dry = await page.evaluate(() => { const g = window.pokecraft; g.gymLive.hit(window.__blk(34, 32, 5)); window.__step(170); let wet = 0; for (let x = 48; x <= 97; x++) for (let z = 14; z <= 16; z++) if (g.world.get(x, 30, z) === 5) wet++; return { wet, basin: g.world.get(30, 29, 15) }; });
-    t.ok(dry.wet === 0 && dry.basin === 0, 'the tap off: after 8 s the groove and the sink are dry again');
+    const drain = await page.evaluate(() => {
+      const g = window.pokecraft, live = window.__live(), p = g.player;
+      g.gymLive.hit(window.__blk(34, 32, 5)); window.__step(60); // the tap off: the plug keeps the water in
+      const kept = g.world.get(70, 28, 15);
+      window.__at(36.5, 30, 18.5, 0, 0); const word = g.gymLive.near(p); g.gymLive.use(p); window.__step(200); // pull the plug
+      let wet = 0; for (let x = 48; x <= 96; x++) for (let z = 14; z <= 16; z++) for (let y = 27; y <= 30; y++) if (g.world.get(x, y, z) === 5) wet++;
+      return { kept, word, wet, rim: g.world.get(44, 31, 22), basin: g.world.get(30, 29, 15) };
+    });
+    t.ok(drain.kept === 5 && drain.word === 'Unplug' && drain.wet === 0 && drain.rim === 250 && drain.basin === 0, `the tap off keeps the water (the plug is in); "${drain.word}" lets it all run away and the plug goes back on the rim`);
+    const dryWalk = await page.evaluate(() => { // in the dry river you are stuck: walking east ends at a wall, the steps by the sink lead back up
+      const g = window.pokecraft, p = g.player;
+      window.__at(60.5, 27, 15.5, 0, 0);
+      window.__walk([[96.5, 15.5]], 300);
+      const east = { x: p.pos.x, y: p.pos.y };
+      const r = window.__walk([[49.5, 15.5], [48.5, 15.5], [46.5, 15.5], [30.5, 15.5], [26.5, 10.5], [24.5, 10.5], [22.5, 12.5]], 900);
+      return { east, back: { i: r.i, x: p.pos.x, y: p.pos.y } };
+    });
+    t.ok(dryWalk.east.y < 28 && dryWalk.back.y >= 30.9, `the dry river: walking east you stay at the bottom (y ${dryWalk.east.y.toFixed(1)}); the steps by the sink and the sponge take you back up (y ${dryWalk.back.y.toFixed(1)})`);
 
-    // ---- the cat
+    // ---- puzzle 3: the yarn and the cat on the book stairs
     const cat = await page.evaluate(() => {
       const g = window.pokecraft, live = window.__live(), p = g.player;
-      window.__toastsBefore = window.__toasts.length;
-      window.__at(104.5, 15, 87.5, 1.57, 0);
-      // walking (4.3) never wakes it
-      p.keys.KeyW = true; window.__step(30); p.keys.KeyW = false;
-      const walkAwake = live.awake;
-      window.__at(104.5, 15, 87.5, 1.57, 0);
-      p.keys.KeyW = true; p.keys.ShiftLeft = true; window.__step(14); p.keys.KeyW = false; p.keys.ShiftLeft = false;
-      const awake = live.awake;
-      window.__step(2);
-      const tail = [g.world.get(78, 15, 87), g.world.get(79, 16, 88), g.world.get(78, 15, 92)];
-      const eye = g.world.get(97, 20, 91);
-      const pr = g.gymLive.prompt(window.__blk(97, 20, 91), 'click or E'), act = g.gymLive.action(window.__blk(97, 20, 91));
-      const guide = (window.__at(110.5, 15, 89.5, 0, 0), g.updateGuide(), document.getElementById('guide')?.textContent || '');
-      return { walkAwake, awake, tail, eye, pr, act, guide };
+      window.__at(113.5, 31, 26.5, 0, 0); // at the top of the books: the cat is in the way
+      const blocked = window.__walk([[113.5, 45.5]], 120);
+      const stuck = { z: p.pos.z, y: p.pos.y, cell: g.world.get(113, 31, 30), pr: g.gymLive.prompt(window.__blk(113, 31, 29), 'click or E') };
+      window.__at(119.5, 31, 23.5, 0, 0);
+      const word = g.gymLive.near(p);
+      g.gymLive.use(p);
+      window.__step(50); // the yarn falls, the cat wakes and jumps down
+      const away = { phase: live.catPhase, cell: g.world.get(113, 31, 30), away: live.catAway() };
+      g.updateGuide(); const guide = document.getElementById('guide')?.textContent || '';
+      window.__at(113.5, 31, 26.5, 0, 0);
+      const down = window.__walk([[113.5, 46.5]], 400);
+      const onTable = { y: p.pos.y, z: p.pos.z };
+      return { stuck, word, away, guide, onTable, steps: down.steps };
     });
-    t.ok(!cat.walkAwake && cat.awake && cat.tail.join() === '163,163,163' && cat.eye === 165, `walking never wakes the cat; running does: tail up (${cat.tail}), eyes open (${cat.eye}); "${cat.pr}" / "${cat.act}"`);
-    t.ok(/wait for the cat to sleep/.test(cat.guide) && await said(page, /Mrrow/), `the guide and a toast say to wait ("${cat.guide}")`);
-    const sleep = await page.evaluate(() => {
+    t.ok(cat.stuck.z < 29 && cat.stuck.cell === 250 && /Sleeping cat/.test(cat.stuck.pr), `the cat asleep on the book stairs blocks the way (you stop at z ${cat.stuck.z.toFixed(1)}): "${cat.stuck.pr}"`);
+    t.ok(cat.word === 'Push!' && cat.away.phase === 'play' && cat.away.cell === 0 && cat.away.away && /Quick! Down the books/.test(cat.guide), `"${cat.word}" pushes the yarn off: the cat jumps down after it and plays (the books are free; "${cat.guide}")`);
+    t.ok(cat.onTable.y >= 25.9 && cat.onTable.y < 26.6 && cat.onTable.z > 44, `down the book stairs onto the table (y ${cat.onTable.y.toFixed(1)}, ${(cat.steps * 0.05).toFixed(1)} s)`);
+    const comeBack = await page.evaluate(() => {
       const g = window.pokecraft, live = window.__live();
-      window.__at(110.5, 15, 87.5, 1.57, 0);
-      window.__step(40); // 2 s: still awake
-      const still = live.awake;
-      window.__step(110);
-      return { still, awake: live.awake, tail: [g.world.get(78, 15, 87), g.world.get(79, 16, 88)], eye: g.world.get(97, 20, 91) };
+      window.__at(113.5, 30, 32.5, 0, 0); window.__step(300); // standing where it sleeps: it waits on the floor
+      const waits = live.catPhase;
+      window.__at(113.5, 26, 50.5, 0, 0); window.__step(60);
+      return { waits, phase: live.catPhase, cell: g.world.get(113, 31, 30), yarn: g.world.get(119, 31, 25) };
     });
-    t.ok(sleep.still && !sleep.awake && sleep.tail.join() === '0,0' && sleep.eye === 164 && JSON.stringify(sleep) !== '', `5 s after the last noise the cat sleeps again: the tail is down and the strip is open ${JSON.stringify(sleep)}`);
-    const inside = await page.evaluate(() => {
-      const g = window.pokecraft, live = window.__live(), p = g.player;
-      window.__at(78.5, 15, 87.5, 0, 0);
-      live.cat.hearNoise(95, 90); live.noiseT = 0;
-      window.__step(4);
-      const awake = live.awake, cell = g.world.get(78, 15, 87);
-      window.__at(76.5, 15, 87.5, 0, 0);
-      window.__step(4);
-      return { awake, cell, after: g.world.get(78, 15, 87) };
+    t.ok(comeBack.waits === 'play' && comeBack.phase === 'sleep' && comeBack.cell === 250 && comeBack.yarn === 250, `after its game the cat waits while you stand on its spot, then brings the yarn back up and sleeps again`);
+    await shot(page, 'cat', [113.5, 31, 22.5, Math.PI, -0.2], 1800);
+
+    // ---- puzzle 4: the marble, the spoon seesaw and the fort
+    const fling = await page.evaluate(() => {
+      const g = window.pokecraft, live = window.__live(), p = g.player, ss = live.h.seesaw;
+      // the fort is closed from outside
+      window.__at(96.5, 26, 79.5, 0, 0);
+      const outside = window.__walk([[96.5, 70.5]], 120);
+      const shut = { z: p.pos.z, door: g.world.get(96, 26, 75) };
+      // roll the marble but stay out of the spoon: it flips empty, the marble comes back
+      window.__at(109.5, 26, 52.5, 0, 0);
+      const word = g.gymLive.near(p);
+      g.gymLive.use(p);
+      window.__step(10); const rolling = live.marbleRolling();
+      window.__step(170);
+      const empty = { carry: !!p.carry, toast: window.__toasts.at(-1) };
+      window.__step(60);
+      const backTop = live.marbleState;
+      // roll it, walk to the bowl, wait
+      window.__at(109.5, 26, 52.5, 0, 0);
+      g.gymLive.use(p);
+      const r = window.__walk([[118.5, 56.5], [121.1, 64.5]], 400);
+      const walkT = r.steps * 0.05;
+      let flew = false, inWall = 0;
+      for (let i = 0; i < 300; i++) { window.__step(1); if (p.carry && live.flingMover(p.carry)) { flew = true; if (p.collides(p.pos)) inWall++; } if (flew && !p.carry) break; }
+      window.__step(10);
+      const land = [p.pos.x, p.pos.y, p.pos.z];
+      const inside = Math.hypot(p.pos.x - 96, p.pos.z - 64) < 10;
+      g.updateGuide();
+      return { shut, word, rolling, empty, backTop, walkT, flew, inWall, land, inside, guide: document.getElementById('guide')?.textContent || '' };
     });
-    t.ok(inside.awake && inside.cell === 0 && inside.after === 163, `a tail cell never closes on you: it stays air while you stand in it and turns to fur when you step out ${JSON.stringify(inside)}`);
-    await page.evaluate(() => window.__step(140)); // asleep again: the z z z over its head
-    await shot(page, 'cat', [112.5, 15, 88.5, 1.45, 0.25], 1800);
+    t.ok(fling.shut.z > 76 && fling.shut.door !== 0, `the fort is closed from outside: you stop at the wall (z ${fling.shut.z.toFixed(1)})`);
+    t.ok(fling.word === 'Roll!' && fling.rolling && !fling.empty.carry && /nobody was in it/.test(fling.empty.toast) && fling.backTop === 'top', `"${fling.word}": the marble rolls down the ruler; with nobody in the bowl the spoon flips empty and the marble comes back`);
+    t.ok(fling.walkT < 8 && fling.flew && fling.inWall === 0 && fling.inside && Math.abs(fling.land[1] - 27) < 0.1, `roll it, walk into the bowl (${fling.walkT.toFixed(1)} s of 8): the spoon flings you over the wall onto the cookie (${fling.land.map(v => v.toFixed(1))})`);
+    t.ok(/Nibbles!/.test(fling.guide), `inside the fort the guide points at Nibbles ("${fling.guide}")`);
+    const door = await page.evaluate(() => { // the back door opens from inside and shuts behind you
+      const g = window.pokecraft, p = g.player;
+      const r = window.__walk([[96.5, 72.5], [96.5, 79.5]], 300);
+      window.__step(10);
+      return { z: p.pos.z, y: p.pos.y, shut: g.world.get(96, 26, 75) !== 0 };
+    });
+    t.ok(door.z > 77 && door.y < 26.5 && door.shut, `the fort's back door opens from inside, you walk out (z ${door.z.toFixed(1)}) and it shuts behind you`);
+    await page.evaluate(() => window.__at(124.5, 26, 72.5, 0, 0));
+    await shot(page, 'spoon', [126.5, 30, 76.5, Math.atan2(28, 10), -0.32], 1800);
 
     // ---- the crumbs
     const crumbs = await page.evaluate(async () => {
@@ -357,10 +432,12 @@ export default async function ({ browser, base, t }) {
       const c11 = G.CRUMBS[11];
       window.__at(c11[0] + 0.5, c11[1], c11[2] + 1.5, 0, 0);
       g.gymLive.hit(window.__blk(...c11));
-      return { place: g.place, a, b, cubes: g.cubes - cubes0, last: window.__toasts.at(-1), air: G.CRUMBS.slice(1, 11).every(c => g.world.get(...c) === 0) };
+      const ctx = g.creatures.context(g.player.pos, false, false), SR = await import('/src/spawnrules.js');
+      return { place: g.place, a, b, cubes: g.cubes - cubes0, last: window.__toasts.at(-1), air: G.CRUMBS.slice(1, 11).every(c => g.world.get(...c) === 0), all: g.world.allCrumbs, pip: SR.condOk('crumbs', ctx) };
     });
     t.ok(reload.place === 'house' && reload.a === 0 && reload.b === 156, `a reload continues in the house: crumb 0 is still gone, crumb 1 is there (${reload.a}, ${reload.b})`);
     t.ok(reload.cubes === 6 && reload.air && /every crumb/.test(reload.last), `the twelfth crumb gives +1 and the +5 bonus (${reload.cubes}): "${reload.last}"`);
+    t.ok(reload.all && reload.pip, 'with all twelve crumbs the house says so and Pipsqueak\'s condition (crumbs) is true');
     await page2.context().close();
 
     // ---- the nooks and the peek gait
@@ -396,13 +473,14 @@ export default async function ({ browser, base, t }) {
       for (let i = 0; i < 300; i++) { cm.trySpawn(ctr, g.spawnPoint, cm.context(ctr, false, false)); if (cm.list.length > 12) break; }
       for (const x of cm.list) { spawned++; species.add(x.data.species); if (!set.has(`${Math.floor(x.pos.x)},${Math.round(x.pos.y)},${Math.floor(x.pos.z)}`)) off++; }
       for (const x of [...cm.list]) cm.remove(x);
-      return { far, near, kept, hidden, bumped, pick, spawned, off, species: [...species].join(), tiny: [...species].every(s => S.SPECIES[s].type === 'tiny') };
+      return { far, near, kept, hidden, bumped, pick, spawned, off, species: [...species].join(), tiny: [...species].every(s => S.SPECIES[s].type === 'tiny'), pip: species.has('pipsqueak'), all: !!g.world.allCrumbs };
     } catch (e) { return { err: e.stack }; } });
     if (nook.err) console.log(nook.err);
     t.ok(nook.far > 0.1 && nook.far < 0.6, `far away a peeking creature is out only part of the time (${(nook.far * 100).toFixed(0)}%)`);
     t.ok(nook.near.visible && nook.near.turn && nook.kept && nook.hidden, 'close by it stays out and faces you; step away and it hides again after a while');
     t.ok(nook.bumped === 1 && nook.pick, `walking into it starts a battle (one bump) and it can be picked ${JSON.stringify({ b: nook.bumped, p: nook.pick })}`);
     t.ok(nook.spawned >= 3 && nook.off === 0 && nook.tiny, `natural spawns only sit on nook cells (${nook.spawned} wild: ${nook.species})`);
+    t.ok(!nook.all && !nook.pip, 'before all twelve crumbs are found Pipsqueak never comes out');
     // the Book page
     const book = await page.evaluate(async () => {
       const g = window.pokecraft;
@@ -446,8 +524,8 @@ export default async function ({ browser, base, t }) {
     // ---- the secret ways, with real physics
     const hole = await page.evaluate(() => {
       window.pokecraft.inBattle = false;
-      window.__at(8.5, 1, 148.5, 1.57, 0);
-      const r = window.__walk([[3.5, 148.5], [2.0, 148.5], [2.0, 120], [2.0, 83.0], [4.5, 83.0]], 1800);
+      window.__at(8.5, 1, 114.5, 1.57, 0);
+      const r = window.__walk([[3.5, 114.5], [2.0, 114.5], [2.0, 90], [2.0, 49.0], [4.5, 49.0]], 1800);
       const p = window.pokecraft.player.pos;
       return { r, x: p.x, y: p.y, z: p.z };
     });
@@ -486,20 +564,20 @@ export default async function ({ browser, base, t }) {
     await intoHouse(ip);
     const words = await ip.evaluate(async () => {
       const g = window.pokecraft, out = {};
-      const want = { remote: 'Ride!', fan: 'Fan on!', tap: 'Turn tap!', crumb: 'Pick up!' };
+      const want = { remote: 'Ride!', fan: 'Wind!', tap: 'Turn tap!', crumb: 'Pick up!' };
       const look = async (name, pos, tgt) => { // wait for the word (the button follows the target on the next frames)
         window.__at(pos[0], pos[1], pos[2], 0, 0); g.player.lookAt({ x: tgt[0] + 0.5, y: tgt[1] + 0.5, z: tgt[2] + 0.5 });
         for (let i = 0; i < 100; i++) { await new Promise(r => setTimeout(r, 100)); const el = document.getElementById('btn-act'); if (el && el.textContent === want[name]) { out[name] = el.textContent; return; } }
         out[name] = document.getElementById('btn-act')?.textContent || '';
       };
       await look('remote', [40.5, 1, 175.5], [40, 1, 178]);
-      await look('fan', [11.5, 1, 136.5], [11, 1, 134]);
+      await look('fan', [26.5, 1, 57.5], [25, 1, 55]); // the wind-up key: a near word (T40a.5)
       await look('tap', [34.5, 31, 8.5], [34, 32, 5]);
       const G = await import('/src/giantland.js'); const c = G.CRUMBS[0];
       await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c);
       return out;
     });
-    t.ok(words.remote === 'Ride!' && words.fan === 'Fan on!' && words.tap === 'Turn tap!' && words.crumb === 'Pick up!', `the big button says "${words.remote}" at the remote, "${words.fan}" at the fan, "${words.tap}" at the tap, "${words.crumb}" at a crumb`);
+    t.ok(words.remote === 'Ride!' && words.fan === 'Wind!' && words.tap === 'Turn tap!' && words.crumb === 'Pick up!', `the big button says "${words.remote}" at the remote, "${words.fan}" at the wind-up key, "${words.tap}" at the tap, "${words.crumb}" at a crumb`);
     const buttons = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
     t.ok(buttons === before, `the number of touch buttons did not change (${before})`);
     const tapRide = await ip.evaluate(async () => {

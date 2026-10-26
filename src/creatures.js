@@ -152,6 +152,7 @@ export class CreatureManager {
       // T36: a function (the search only runs when the 'high' condition is rolled); none underground, in a realm or without env
       perch: under || !env || this.world?.realm ? null : () => this.perchNear(playerPos),
       nook: this.world?.nooks?.length ? () => this.nookNear(playerPos) : null, // T40a
+      allCrumbs: !!this.world?.allCrumbs, // T40a.5 (set by the Giant House's live part)
     };
   }
 

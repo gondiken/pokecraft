@@ -201,6 +201,22 @@ export function buildMarble({ r = 0.45 } = {}) {
   return finish(g, { ball: g.children[0] });
 }
 
+/* ---------------------------------- the ruler ---------------------------------- */
+// A wooden ruler with marks and a groove down the middle, `length` long along +z from the origin (the marble's slide).
+export function buildRuler({ length = 14 } = {}) {
+  const g = new THREE.Group();
+  const marks = canvasTex(32, 256, (c, w, h) => {
+    c.fillStyle = '#f2d27a'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#5a3a1a';
+    for (let k = 0; k < 64; k++) { const y = k * 4, long = k % 5 === 0; c.fillRect(0, y, long ? 12 : 6, 1); c.fillRect(w - (long ? 12 : 6), y, long ? 12 : 6, 1); }
+    c.fillStyle = 'rgba(120,80,30,0.35)'; c.fillRect(w / 2 - 3, 0, 6, h); // the groove
+  });
+  marks.wrapT = THREE.RepeatWrapping; marks.repeat.set(1, length / 6);
+  const strip = mesh(new THREE.BoxGeometry(1.3, 0.16, length), [mat(0xd8b860), mat(0xd8b860), mat(0xffffff, { map: marks }), mat(0xd8b860), mat(0xd8b860), mat(0xd8b860)], [0, 0, length / 2], g);
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.1, 0.16, length), mat(0xb8983a), [s * 0.6, 0.12, length / 2], g); // little rails
+  return finish(g, { strip });
+}
+
 /* ---------------------------------- the wind-up key ---------------------------------- */
 // A brass butterfly key, standing up out of a small box on the floor (the fan's timer). parts.key turns round z while it runs.
 export function buildWindKey() {
