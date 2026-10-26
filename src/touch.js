@@ -25,7 +25,7 @@ export class TouchControls {
     this.tap('btn-ride', () => actions.ride());
     this.press('btn-place', () => actions.place());
     // Buttons that open something react on the finished tap, so the tap can't also land on what opened.
-    this.tap('btn-act', () => actions.interact());
+    this.actButton(actions);
     this.tap('btn-book', () => actions.book());
     this.tap('btn-pause', () => actions.pause());
     this.tap('party-mini', () => actions.team()); // T39c: the creature card opens Team
@@ -74,6 +74,23 @@ export class TouchControls {
     const el = document.getElementById(id);
     el.addEventListener('pointerdown', e => e.stopPropagation());
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); fn(); });
+  }
+
+  // The big button: a tap, except for a hold-and-let-go action (Kick!, Shoot!: owner 2026-10-26), which starts on the finger down
+  // and flies on the finger up; the click that follows is then skipped.
+  actButton(actions) {
+    const el = document.getElementById('btn-act');
+    let held = false, skip = false;
+    el.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      held = skip = !!actions.actPress?.();
+      if (held) { e.preventDefault(); capture(el, e.pointerId); el.classList.add('down'); }
+    });
+    const up = () => { if (!held) return; held = false; el.classList.remove('down'); actions.actRelease?.(); };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (skip) { skip = false; return; } actions.interact(); });
   }
 
   hold(id, fn) {

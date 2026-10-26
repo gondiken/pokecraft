@@ -177,21 +177,6 @@ export function boot(ball, v) {
   ball.kickedAt = ball.time; ball.restFor = 0;
 }
 
-// Kick!: a low drive of 13 blocks/s along the facing, bent towards a goal mouth when you face one within 25 degrees.
-// mouths: [{ x, z, hw }] (the middle of each goal's opening and its half width). Returns a velocity.
-export const AIM = { speed: 13, up: 3, cone: 25 * Math.PI / 180, reach: 28, post: 1 };
-export function aimShot(pos, f, mouths = []) {
-  let dir = f, best = Infinity;
-  for (const m of mouths) {
-    const lim = Math.max(0, m.hw - AIM.post), tz = Math.min(m.z + lim, Math.max(m.z - lim, pos.z));
-    const dx = m.x - pos.x, dz = tz - pos.z, dist = hyp(dx, dz);
-    if (dist > AIM.reach || dist < 0.5) continue;
-    const ang = Math.acos(Math.max(-1, Math.min(1, (f[0] * dx + f[1] * dz) / dist)));
-    if (ang <= AIM.cone && ang < best) { best = ang; dir = [dx / dist, dz / dist]; }
-  }
-  return { x: dir[0] * AIM.speed, y: AIM.up, z: dir[1] * AIM.speed };
-}
-
 // Shoot!: the arc from `from` to `target` that is falling at least `slope` times faster than it moves sideways at the end,
 // so it drops cleanly through a 2 x 2 hole. `over` = { d, y }: the arc must also be at least y high when it is still d
 // sideways from the target (to clear a rim that sticks out round the hole): the flight time grows until it is.
@@ -219,4 +204,64 @@ export function keeperAt(k, t, hard = false) {
     x: k.x, z, vz,
     box: { x0: k.x - KEEPER.halfX, x1: k.x + KEEPER.halfX, y0: y, y1: y + KEEPER.height, z0: z - KEEPER.halfZ, z1: z + KEEPER.halfZ, v: { x: 0, y: 0, z: vz } },
   };
+}
+
+/* ---- Hold and let go (owner 2026-10-26: "they need a real skill"): the power of a Kick!, the timing of a Shoot! ---- */
+// n = goals (or baskets) already scored for this match (0, 1, 2): every one makes the next harder; hard = a rematch.
+export const HOLD = {
+  foot: {
+    fill: 1, max: 1.35,                                     // seconds to fill the power ring; held longer than max it kicks by itself
+    zones: [[0.38, 0.82], [0.48, 0.8], [0.56, 0.78]],       // the green part of the ring (a share of a full fill)
+    hardZones: [[0.52, 0.78], [0.57, 0.77], [0.61, 0.75]],
+    soft: [3, 8], softUp: 1.5,                              // too early: a soft roll (3..8 blocks/s) the keeper can reach
+    drive: { speed: 14, up: 2.5 },                          // in the green: a hard, low drive
+    over: { h: 5.2, tMin: 0.45, tMax: 1.6, maxUp: 20, lob: [11, 12] }, // too late: up over the bar (5.2 above the ball at the line when it can); an over-hit ball never scores (stadiumlive `wild`)
+  },
+  hoop: {
+    jump: 9.5,                                              // holding Shoot! jumps you up (a normal jump is 8.6)
+    win: [0.11, 0.085, 0.065], hard: 0.85,                  // half the good moment around the top of the jump, in seconds
+    near: 4, far: 15, nearK: 1.25, farK: 0.7,               // close shots get a longer good moment, long ones a shorter one
+    miss: [1, 2.5, 2.4], side: 0.8,                         // outside it: short (early) or long (late) by 1 + 2.5 per second past it (at most 2.4), and 0.8 of that sideways
+    late: 0.05,                                             // still held after landing: it shoots by itself
+  },
+};
+export const kickZone = (n, hard = false) => (hard ? HOLD.foot.hardZones : HOLD.foot.zones)[Math.max(0, Math.min(2, n))];
+// The velocity of a Kick! held for a share p of a full fill, along the facing f (no aim help). mouths: [{ x }] goal lines.
+export function kickPower(p, pos, f, zone, mouths = []) {
+  const F = HOLD.foot, [lo, hi] = zone;
+  if (p < lo) { const s = F.soft[0] + (F.soft[1] - F.soft[0]) * Math.max(0, p) / lo; return { x: f[0] * s, y: F.softUp, z: f[1] * s, kind: 'soft' }; }
+  if (p <= hi) return { x: f[0] * F.drive.speed, y: F.drive.up, z: f[1] * F.drive.speed, kind: 'drive' };
+  let d = Infinity;
+  for (const m of mouths) { const along = Math.abs(f[0]) > 1e-6 ? (m.x - pos.x) / f[0] : -1; if (along > 0.5 && along < d) d = along; }
+  if (d > 40) return { x: f[0] * F.over.lob[0], y: F.over.lob[1], z: f[1] * F.over.lob[0], kind: 'over' };
+  const T = Math.min(F.over.tMax, Math.max(F.over.tMin, d / 13)), vh = d / T, vy = Math.min(F.over.maxUp, (F.over.h + 10 * T * T) / T); // g 20: 10 T^2
+  return { x: f[0] * vh, y: vy, z: f[1] * vh, kind: 'over' };
+}
+// Half the good moment of a Shoot! from d blocks away.
+export function shotWindow(n, d, hard = false) {
+  const H = HOLD.hoop, u = Math.max(0, Math.min(1, (d - H.near) / (H.far - H.near)));
+  return H.win[Math.max(0, Math.min(2, n))] * (H.nearK + (H.farK - H.nearK) * u) * (hard ? H.hard : 1);
+}
+// err = let-go time minus the top of the jump (s). 0 = a clean shot; < 0 short, > 0 long (blocks past the hole's middle; the caller adds HOLD.hoop.side of it sideways).
+export function shotMiss(err, win) {
+  const [a, k, cap] = HOLD.hoop.miss, e = Math.abs(err);
+  return e <= win ? 0 : Math.sign(err) * Math.min(cap, a + k * (e - win));
+}
+
+// A keeper diving at a shot: { t0, z0, z1, speed, until } (start time, where he was, where the ball will cross the line, how fast,
+// when he goes back). Before t0 and without a dive he walks his sine; after `until` he eases back to it in `back` seconds.
+export const DIVE = { react: 0.15, speed: [2.4, 3, 3.6], hard: 0.5, hold: 1.6, back: 2, min: 5, reach: 22, again: 0.8 };
+export function diveAt(k, t, hard = false, dive = null) {
+  const base = keeperAt(k, t, hard);
+  if (!dive || t < dive.t0) return base;
+  const span = Math.abs(dive.z1 - dive.z0), sg = Math.sign(dive.z1 - dive.z0);
+  const zAt = tt => dive.z0 + sg * Math.min(span, Math.max(0, tt - dive.t0) * dive.speed);
+  let z, vz;
+  if (t <= dive.until) { z = zAt(t); vz = (t - dive.t0) * dive.speed < span ? sg * dive.speed : 0; }
+  else {
+    const u = Math.min(1, (t - dive.until) / DIVE.back), zEnd = zAt(dive.until);
+    z = zEnd + (base.z - zEnd) * u; vz = u < 1 ? (base.z - zEnd) / DIVE.back : base.vz;
+  }
+  const y = k.y ?? 11;
+  return { x: k.x, z, vz, box: { x0: k.x - KEEPER.halfX, x1: k.x + KEEPER.halfX, y0: y, y1: y + KEEPER.height, z0: z - KEEPER.halfZ, z1: z + KEEPER.halfZ, v: { x: 0, y: 0, z: vz } } };
 }

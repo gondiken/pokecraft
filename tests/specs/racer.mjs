@@ -69,13 +69,18 @@ export default async function ({ browser, base, t }) {
   /* ---------------------------------------------------------------- B. Track maths (pure, in Node) */
   if (want('track')) {
     const tr = makeTrack();
-    t.ok(Math.abs(tr.L - 167.24) < 0.05 && tr.pieces.length === 13 && tr.gates.length === 4, `the lap is ${tr.L.toFixed(2)} blocks in 13 pieces with 4 gates`);
+    t.ok(Math.abs(tr.L - 190.85) < 0.05 && tr.pieces.length === 19 && tr.gates.length === 4, `the lap is ${tr.L.toFixed(2)} blocks in 19 pieces with 4 gates`);
+    // owner 2026-10-26: a narrower, twistier track that never runs close to itself (points 14+ apart along it are 7+ apart)
+    let close = 0; const pts = []; for (let s = 0; s < tr.L; s += 0.5) pts.push([s, tr.at(s)]);
+    for (const [s1, a] of pts) for (const [s2, b] of pts) { let ds = Math.abs(s1 - s2); ds = Math.min(ds, tr.L - ds); if (ds >= 14 && Math.hypot(a.x - b.x, a.z - b.z) < 7) close++; }
+    const kinds = new Set(tr.pieces.map(p => p.kind)), right = tr.pieces.filter(p => p.cw).length;
+    t.ok(close === 0 && ['hairpin', 'sweeper', 'bridge', 'chicane'].every(k => kinds.has(k)) && right === 2 && RACE.edge < 2.5, `a hairpin, a sweeping bend, a bridge, a chicane and two right turns (an S); the track never comes back near itself (${close} close points)`);
     let jump = 0, back = 0, cells = 0;
     const corners = tr.pieces.filter(p => p.kind === 'chicane').map(p => p.s0).concat(tr.pieces.filter(p => p.kind === 'chicane').map(p => p.s0 + p.len));
     for (let s = 0; s < tr.L; s += 0.5) {
       const a = tr.at(s), b = tr.at(s + 0.01);
       if (Math.hypot(a.x - b.x, a.z - b.z) > 0.02) jump++;
-      for (const lane of [-3, -1.5, 0, 1.5, 3]) {
+      for (const lane of [-2, -1, 0, 1, 2]) {
         if (Math.abs(lane) > 0.5 && corners.some(c => Math.abs(c - s) < 1.6 * Math.abs(lane) + 0.5)) continue; // the offset line folds over at the sharp chicane corners
         const q = tr.at(s, lane), p = tr.project(q.x, q.z);
         let ds = Math.abs(p.s - s); ds = Math.min(ds, tr.L - ds);
@@ -84,17 +89,19 @@ export default async function ({ browser, base, t }) {
       }
     }
     t.ok(jump === 0, 'at(s) is continuous (every 0.5)');
-    t.ok(back === 0, `project(at(s, lane)) gives back s and the lane for lanes -3..3 (${cells} points, ${back} wrong)`);
+    t.ok(back === 0, `project(at(s, lane)) gives back s and the lane for lanes -2..2 (${cells} points, ${back} wrong)`);
     t.ok(tr.gates.map(g => g.id).join() === 'G0,G1,G2,G3' && tr.gates.every((g, i) => i === 0 || g.s > tr.gates[i - 1].s), 'the gates are G0..G3, sorted by distance');
     const win = (v, l, dt) => raceRun(v, l, dt, tr).winner;
-    const table = [[0, 4.3, 'rio'], [0, 6.2, 'you'], [1, 4.3, 'rio'], [1, 6.2, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [1, 5.8, 'you'], [2, 6.2, 'you'], [0, 9.5, 'you']]; // owner 2026-10-26: a walk never wins (in a race you always run)
-    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a run (6.2, what a race gives you) wins every time (dt ${dt.toFixed(3)})`);
-    t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 5.8, 6.2, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
+    // owner 2026-10-26: a walk never wins; a clean run at the race's pace (8.4) wins; a sloppy one (7) loses the first race, wins after a loss
+    const pace = 6.2 * RACE.pace;
+    const table = [[0, 4.3, 'rio'], [0, pace, 'you'], [1, 4.3, 'rio'], [1, pace, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [0, 6.2, 'rio'], [0, 7.0, 'rio'], [1, 7.4, 'you'], [2, pace, 'you'], [0, 9.5, 'you']];
+    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a clean run at race pace (${pace.toFixed(1)}) wins, a sloppy one (7) loses the first race (dt ${dt.toFixed(3)})`);
+    t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 6.2, pace, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
     const top = Math.max(...Object.values(RACE.speed)) * RACE.band.max;
     let fast = 0;
     for (let s = -1.5; s < RACE.laps * tr.L; s += 1.1) for (const lead of [-30, -4, 0, 2, 20]) for (const l of [0, 1, 2, 3]) if (bossSpeed(s, lead, l, tr) > top + 1e-9) fast++;
     t.ok(fast === 0, `Rio is never faster than ${top.toFixed(2)} blocks per second`);
-    t.ok(tr.pads.length === 3 && tr.pads.every(p => p.cells.length === 12), 'three boost pads of 12 cells');
+    t.ok(tr.pads.length === 3 && tr.pads.every(p => p.cells.length === 6), 'three thin boost strips of 6 cells');
   }
 
   const page = await openGame(browser, base);
@@ -274,11 +281,13 @@ export default async function ({ browser, base, t }) {
         r.badLine = badLine;
         // the start line spans the track; 12 pad cells each; tyre walls never on the track
         let checker = 0;
-        for (let v = 19; v <= 25; v++) for (let u = 28; u <= 29; u++) if (w.get(68 + u, Y, 96 - 1 - v) === B.CHECKER) checker++;
+        for (let v = 18; v <= 22; v++) for (let u = 28; u <= 29; u++) if (w.get(68 + u, Y, 96 - 1 - v) === B.CHECKER) checker++;
         r.checker = checker;
         r.pads = tr.pads.map(p => p.cells.filter(([x, zc]) => w.get(x, Y, zc) === B.BOOST_PAD).length).join();
+        r.pond = 0; for (const q of T.POND) for (let u = q.u[0]; u <= q.u[1]; u++) for (let v = q.v[0]; v <= q.v[1]; v++) if (w.get(68 + u, Y, 96 - 1 - v) === B.WATER) r.pond++;
+        r.bridge = [138, 139, 140, 141, 142].every(x => w.get(x, Y, 96 - 1 - 40) !== B.WATER && w.isSolid(x, Y, 96 - 1 - 40)) && w.get(137, Y, 96 - 1 - 40) === B.WATER;
         let wallOnTrack = 0, walls = 0;
-        for (let x = 60; x <= 160; x++) for (let zc = 20; zc <= 95; zc++) if (w.get(x, Y + 1, zc) === B.TYRE_WALL) { walls++; if (tr.project(x + 0.5, zc + 0.5).d <= T.RACE.half + 0.5 && !(x >= 96 && x <= 106 && zc >= 60 && zc <= 66)) wallOnTrack++; }
+        for (let x = 60; x <= 160; x++) for (let zc = 20; zc <= 95; zc++) if (w.get(x, Y + 1, zc) === B.TYRE_WALL) { walls++; if (tr.project(x + 0.5, zc + 0.5).d <= T.RACE.edge + 0.5 && !(x >= 96 && x <= 106 && zc >= 60 && zc <= 66)) wallOnTrack++; }
         r.walls = walls; r.wallOnTrack = wallOnTrack;
         // the walk in: from the arrival through the hedge gap and between the stands to the grid spot, to Rio's rest spot and to the garage
         const arrival = w.arrivals.race, boss = w.bosses.find(b => b.id === 'race');
@@ -302,7 +311,7 @@ export default async function ({ browser, base, t }) {
     });
     for (const r of C) {
       t.ok(!r.problems.length && r.outside === 0 && r.inHub === 0 && r.changed > 2000, `seed ${r.seed}: the track writes only inside the race zone, never in the hub (${r.changed} cells, ${r.outside} outside, ${r.inHub} in the hub) ${r.problems.join('; ')}`);
-      t.ok(r.badLine === 0 && r.checker === 14 && r.pads === '12,12,12', `seed ${r.seed}: the centreline is open asphalt with air above, the chequer line is 2 x 7, three pads of 12 (${r.badLine} bad, ${r.checker}, ${r.pads})`);
+      t.ok(r.badLine === 0 && r.checker === 10 && r.pads === '6,6,6' && r.pond > 60 && r.bridge, `seed ${r.seed}: the centreline is open asphalt with air above, the chequer line is 2 x 5, three strips of 6, the bridge crosses the pond (${r.badLine} bad, ${r.checker}, ${r.pads}, ${r.pond} water)`);
       t.ok(r.walls > 40 && r.wallOnTrack === 0, `seed ${r.seed}: tyre walls stand outside the track (${r.walls} cells, ${r.wallOnTrack} on it)`);
       t.ok(r.toGrid && r.toGrid2 && r.toRest && r.toCrew, `seed ${r.seed}: from the arrival you can walk to both grid spots, Rio's rest spot and the helpers (hedge gap, between the stands)`);
       t.ok(r.keep && r.fenced === false && r.protectedAt && r.live && r.walk && r.biome === 'race', `seed ${r.seed}: one keep that riders may enter but nobody can build in, the live part, walkable track blocks, the zone is the race biome`);
@@ -363,12 +372,12 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(D2b.state === 'race' && D2b.green && D2b.go && D2b.action === 'Go go go!', `at 3 seconds all three lamps turn green and "GO!" starts the race (${D2b.state})`);
 
-    // a win: running at 7 blocks per second round two laps, every flag in order
+    // a win: running at the race's pace (8.4 blocks per second) round two laps, every flag in order
     const D3 = await page.evaluate(() => {
       const R = window.__R, { live, g } = R, seq = [];
       let last = live.next;
       const until = () => { if (live.next !== last) { last = live.next; seq.push(last); } return live.state !== 'race'; };
-      const secs = R.drive(7, { until });
+      const secs = R.drive(6.2 * R.T.RACE.pace, { until });
       const n = R.rio();
       return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("Now talk to me"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
         prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), sound: g.sound.played.slice(-8).join() };
@@ -428,28 +437,28 @@ export default async function ({ browser, base, t }) {
       const idle = live.state;
       g.talkTo(R.rio()); live.step(3.2);
       const out = { idle, losses: live.losses };
-      // flags 0 and then skip flag 1 by a jump to the chicane
-      R.drive(7, { until: () => R.s > 40 || live.state !== 'race' });
+      // flags 0 and then skip flag 1 by a jump past it
+      const G = R.track.gates;
+      R.drive(7, { until: () => R.s > G[0].s + 10 || live.state !== 'race' });
       out.next1 = live.next;
-      R.put(90, -1.5); live.step(0.05); live.step(0.05);
+      R.put(G[1].s + 30, -1); live.step(0.05); live.step(0.05);
       out.next2 = live.next; out.missed = live.missed; out.toast = R.said('Missed a flag'); out.aim = live.aim(R.p)?.text('↑', 12);
       // back before the flag and through it
-      R.put(50, -1.5); live.step(0.05);
-      R.drive(7, { s: 50, until: () => live.next >= 2 || live.state !== 'race', max: 5 });
+      R.put(G[1].s - 6, -1); live.step(0.05);
+      R.drive(7, { s: G[1].s - 6, lane: -1, until: () => live.next >= 2 || live.state !== 'race', max: 5 });
       out.next3 = live.next; out.missed2 = live.missed;
       // wrong way: back over flag 1 at once
-      R.put(58, -1.5); live.step(0.05); R.put(54, -1.5); live.step(0.05);
+      R.put(G[1].s + 2, -1); live.step(0.05); R.put(G[1].s - 2, -1); live.step(0.05);
       out.wrong = R.said('Wrong way');
-      // the shortcut over the grass behind the chicane: along v = 54 from u 62 to u 30 (G2 is before it, G3 after)
-      R.drive(7, { s: 58, until: () => live.next >= 3 || live.state !== 'race', max: 8 });
+      // the shortcut over the grass inside the last left turn before the chicane (G2 is before it, G3 after it)
+      R.drive(7, { s: G[1].s + 2, lane: -1, until: () => live.next >= 3 || live.state !== 'race', max: 12 });
       out.next4 = live.next;
-      const dt = 1 / 20, tr = R.track;
-      let u = 58;
-      while (u > 31) { u -= 7 * dt; R.p.pos.set(68 + u, R.Y + 1, 96 - 54 - 0.5); live.step(dt); }
+      const dt = 1 / 20, tr = R.track, from = tr.at(G[2].s + 4), to = tr.at(G[3].s - 6);
+      for (let k = 0; k <= 1; k += 7 * dt / Math.hypot(to.x - from.x, to.z - from.z)) { R.p.pos.set(from.x + (to.x - from.x) * k, R.Y + 1, from.z + (to.z - from.z) * k); live.step(dt); }
       out.afterShortcut = live.next;
       const proj = tr.project(R.p.pos.x, R.p.pos.z);
       out.P = live.P; out.s = proj.s;
-      R.drive(7, { s: 113, until: () => live.next >= 4 || live.state !== 'race', max: 10 });
+      R.drive(7, { s: G[3].s - 6, lane: -1, until: () => live.next >= 4 || live.state !== 'race', max: 10 });
       out.next5 = live.next;
       // a boost pad
       return out;
@@ -458,7 +467,7 @@ export default async function ({ browser, base, t }) {
     t.ok(D5.idle === 'idle' && D5.losses === 1 && D5.next1 === 1, 'three seconds after a lost race Rio is on his stand; the next race starts with the first flag passed');
     t.ok(D5.next2 === 1 && D5.missed && D5.toast && /Go back to the flag/.test(D5.aim || ''), `skipping a flag leaves it uncounted, says so once and the guide points back at it (${D5.aim})`);
     t.ok(D5.next3 === 2 && !D5.missed2 && D5.wrong, 'going back through the flag counts it; crossing it backwards says "Wrong way!"');
-    t.ok(D5.next4 === 3 && D5.afterShortcut === 3 && D5.next5 === 4 && D5.P - D5.s < 1e-6 + 0, `the grass shortcut behind the chicane still counts: flag 2 before it, flag 3 after it (${D5.next4}, ${D5.afterShortcut}, ${D5.next5})`);
+    t.ok(D5.next4 === 3 && D5.afterShortcut === 3 && D5.next5 === 4 && D5.P - D5.s < 1e-6 + 0, `the grass shortcut inside the last turn still counts: flag 2 before it, flag 3 after it (${D5.next4}, ${D5.afterShortcut}, ${D5.next5})`);
 
     // boost pad: stand on it and zoom 5 blocks along +x in well under half a second
     const D6 = await page.evaluate(() => {
@@ -470,7 +479,7 @@ export default async function ({ browser, base, t }) {
       while (live.zoom && t < 2) { live.step(0.05); t += 0.05; }
       return { started, moved: R.p.pos.x - x0, t, toast: R.said('Zoom! Boost pads'), sound: g.sound.played.includes('boostzoom') };
     });
-    t.ok(D6.started && Math.abs(D6.moved - 5) < 0.2 && D6.t < 0.5 && D6.toast && D6.sound, `a boost pad zooms you ${D6.moved.toFixed(1)} blocks in ${D6.t.toFixed(2)} s`);
+    t.ok(D6.started && Math.abs(D6.moved - RACE.boost.dist) < 0.2 && D6.t < 0.5 && D6.toast && D6.sound, `a boost pad zooms you ${D6.moved.toFixed(1)} blocks in ${D6.t.toFixed(2)} s`);
 
     // pause: a battle stops the race clock and Rio; leaving the area stops the race without a loss
     const D7 = await page.evaluate(() => {
@@ -552,7 +561,7 @@ export default async function ({ browser, base, t }) {
       g.talkTo(R.rio());
       const raced = live.state === 'count' && !g.ui.asking;
       const again = R.said('this time I go full speed') || R.said('Race me again');
-      live.step(3.2); R.drive(7, {});
+      live.step(3.2); R.drive(6.2 * R.T.RACE.pace, {});
       g.talkTo(R.rio());
       return { raced, again, asking: g.ui.asking, text: document.getElementById('ask-text')?.textContent, action: g.gymLive.talkPrompt(R.rio()), base: g.bosses.talkPrompt(R.rio()).action };
     });
