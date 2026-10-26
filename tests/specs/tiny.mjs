@@ -17,6 +17,7 @@ const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new Re
 const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id);
 // the Swirl, then the house frame (the real way in)
 async function intoHouse(page) {
+  await page.evaluate(async () => { const { pictureWorld } = await import('/src/pictureworlds.js'); pictureWorld('house').ready = true; }); // covered while T40a.5 rebuilds it
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
   await waitFor(page, () => { const f = window.pokecraft.world.swirl.frames.find(f => f.world === 'house'); return window.pokecraft.world.get(...f.cloth[0]) === 144; }, null, 30000);
