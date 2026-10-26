@@ -106,6 +106,7 @@ export class StadiumLive {
   }
 
   dispose() {
+    this.game.ui?.setScore?.(null);
     for (const o of this.parts) {
       this.scene?.remove(o);
       o.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
@@ -165,11 +166,23 @@ export class StadiumLive {
     this.checkOut('hoop', part.courtBox);
     // a basket
     if (basketCross(part, this.hoopPrevY, this.hoop.pos)) this.basket();
+    this.showScore(pl);
     if (!this.told && inBox(part.area, { x: pl.x, y: pl.y, z: pl.z })) {
       this.told = true;
       this.toast(`The Ball Stadium! Run into the ball, or hold ${document.body.classList.contains('touch') ? 'Kick!' : 'E'} and let go to kick!`);
     }
     this.drawAll();
+  }
+
+  // On the pitch or the court: the goals and baskets for the Captain in the top corner (owner 2026-10-26). After a won Boss battle
+  // the keys are cleared, so it reads 0/3 again (every battle needs a new 3 + 3).
+  scoreText() {
+    const st = goalState(this.game);
+    return { text: `⚽ ${Math.min(st.n, st.need)}/${st.need} · 🏀 ${Math.min(st.b, st.bneed)}/${st.bneed}${st.done ? ' · Battle the Captain!' : ''}`, done: st.done };
+  }
+  showScore(pl) {
+    const on = b => pl.x > b.x0 && pl.x < b.x1 && pl.z > b.z0 && pl.z < b.z1;
+    this.game.ui.setScore?.(on(this.part.pitchBox) || on(this.part.courtBox) ? this.scoreText() : null);
   }
 
   noise(b, name) {

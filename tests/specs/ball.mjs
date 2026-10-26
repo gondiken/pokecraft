@@ -614,6 +614,20 @@ async function browserPart({ browser, base, t }) {
   t.ok(d17b.early.miss < 0 && d17b.late.miss > 0 && !d17b.early.swish && !d17b.late.swish, `17b: let go too early the shot is short, too late it is long, and neither goes in (${d17b.early.miss.toFixed(2)} / ${d17b.late.miss.toFixed(2)})`);
   t.ok(d17b.ring && d17b.word === 'Kick!' && d17b.wild && d17b.overToast && d17b.noGoal && !d17b.ringAfter, '17b: holding Kick! fills the ring round the ball; held too long it flies over the bar ("Too much power!") and is no goal');
 
+  /* ---- 17c. The score in the corner (owner 2026-10-26) ---- */
+  const d17c = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live, p = g.player, chip = document.getElementById('score-chip'), keep = [...g.beaten];
+    const read = (x, z) => { p.pos.set(x, 11, z); p.vel.set(0, 0, 0); L.update(0.05); return chip.classList.contains('hidden') ? null : chip.textContent; };
+    g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:')); g.beaten.push('pw:stadium:goal1');
+    const pitch = read(60, 150), court = read(55, 198), off = read(58, 128);
+    for (const k of ['goal2', 'goal3', 'basket1', 'basket2', 'basket3']) g.beaten.push('pw:stadium:' + k);
+    const done = read(60, 150), green = chip.classList.contains('done');
+    g.beaten = keep; read(58, 128);
+    return { pitch, court, off, done, green };
+  });
+  t.ok(d17c.pitch === '⚽ 1/3 · 🏀 0/3' && d17c.court === d17c.pitch && d17c.off === null, `17c: on the pitch or the court the corner shows the goals and baskets ("${d17c.pitch}"), off them nothing`);
+  t.ok(d17c.done === '⚽ 3/3 · 🏀 3/3 · Battle the Captain!' && d17c.green, `17c: with 3 and 3 it says "${d17c.done}"`);
+
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
     const g = window.pokecraft, L = window.__live, S = await import('/src/species.js');
@@ -663,9 +677,10 @@ async function browserPart({ browser, base, t }) {
   await waitFor(page, () => window.pokecraft.stars.includes('stadium'), null, 60000);
   const won = await page.evaluate(async () => {
     const g = window.pokecraft, PB = await import('/src/pictureboss.js'), npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
-    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action };
+    const L = g.gymLive.of('part:stadium'), p = g.player; L.playing = () => true; p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); L.update(0.05); const corner = document.getElementById('score-chip').textContent;
+    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action, corner };
   });
-  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}"`);
+  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk' && won.corner === '⚽ 0/3 · 🏀 0/3', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}", the corner "${won.corner}"`);
   await page.waitForTimeout(500);
 
   /* ---- 18. Save and load ---- */
