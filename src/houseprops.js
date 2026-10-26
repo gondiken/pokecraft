@@ -239,18 +239,35 @@ export function buildYarn({ r = 1.4, color = '#e04a5a' } = {}) {
   return finish(g, parts);
 }
 
-/* ---------------------------------- the sock ---------------------------------- */
-// A striped sock lying flat (heel up a little), toe at +z: it covers the fan's grill until you push it off.
-export function buildSock() {
+/* ---------------------------------- the tea towel ---------------------------------- */
+// A red and white checked tea towel thrown over the fan (owner 2026-10-26: a sock did not read): a cloth that follows the
+// stepped housing (`steps` = [radius, top] pairs from the inside out) and hangs down to the floor round it. Origin = the fan's
+// middle on the floor. parts.cloth slides off when you pull it.
+export function buildTowel({ size = 12.5, steps = [[3.5, 3], [4.5, 2], [5.5, 1]] } = {}) {
   const g = new THREE.Group();
-  const stripes = canvasTex(128, 32, (c, w, h) => { for (let x = 0; x < w; x += 16) { c.fillStyle = (x / 16) % 2 ? '#ffffff' : '#4ab84a'; c.fillRect(x, 0, 16, h); } });
-  const bend = [[0, 0, -4.2], [0, 0, -1.0], [0.2, 0, 1.0], [1.2, 0, 2.2], [3.6, 0, 2.5]]; // the leg along z, the heel, the foot off to +x
-  const sock = mesh(taperTube(bend, 1.15, 1.0, 40, 14), mat(0xffffff, { map: stripes }), [0, 0.6, 0], g);
-  sock.scale.set(1, 0.5, 1);
-  const toe = mesh(ball(1.0, 16, 12), mat(0xe8c83a), [3.6, 0.6, 2.5], g); toe.scale.set(1.1, 0.5, 1);
-  const cuff = mesh(new THREE.TorusGeometry(1.0, 0.25, 8, 20), mat(0xe8c83a), [0, 0.6, -4.2], g); cuff.scale.set(1.15, 0.55, 1);
-  const heel = mesh(ball(1.05, 16, 12), mat(0xe8c83a), [-0.25, 0.62, 1.1], g); heel.scale.set(0.8, 0.52, 0.9);
-  return finish(g, {});
+  const check = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h);
+    const n = 8, k = w / n;
+    c.fillStyle = 'rgba(216,58,58,0.55)';
+    for (let i = 0; i < n; i += 2) { c.fillRect(i * k, 0, k, h); c.fillRect(0, i * k, w, k); }
+    c.fillStyle = 'rgba(216,58,58,0.6)';
+    for (let i = 0; i < n; i += 2) for (let j = 0; j < n; j += 2) c.fillRect(i * k, j * k, k, k);
+    c.strokeStyle = '#ffffff'; c.lineWidth = 3; // a fringe along two edges
+    for (let x = 2; x < w; x += 6) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 7); c.moveTo(x, h); c.lineTo(x, h - 7); c.stroke(); }
+  });
+  const seg = 40, geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
+    let y = 0; // the top of the housing under this point, rounded so the cloth folds over the edges
+    for (const [rr, top] of steps) y = Math.max(y, top * (1 - sm(rr - 0.2, rr + 0.9, r)) + (top - 1) * sm(rr - 0.2, rr + 0.9, r));
+    y += 0.4 + 0.12 * Math.sin(x * 1.3 + z * 0.7) * sm(1, 6, r); // soft wrinkles away from the middle
+    pos.setY(i, Math.max(0.05, y));
+  }
+  geo.computeVertexNormals();
+  const cloth = mesh(geo, mat(0xffffff, { map: check, side: THREE.DoubleSide, emissive: 0x201010 }), [0, 0, 0], g);
+  return finish(g, { cloth });
 }
 
 /* ---------------------------------- Nibbles' sticky notes ---------------------------------- */
@@ -265,7 +282,7 @@ export function buildNote(draw, { wall = false } = {}) {
     draw(c, w, h);
   });
   const paper = mesh(new THREE.PlaneGeometry(2.4, 2.4), mat(0xffffff, { map: pic, side: THREE.DoubleSide }), [0, 1.2, 0], g);
-  if (!wall) { paper.position.set(0, 1.05, -0.3); paper.rotation.x = -0.25; mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a5a2a), [0, 0.8, -0.55], g).rotation.x = 0.35; }
+  if (!wall) { paper.position.set(0, 1.4, 0); paper.rotation.x = -0.2; mesh(new THREE.BoxGeometry(2.0, 0.3, 0.6), mat(0x8a5a2a), [0, 0.15, 0.05], g); } // in a little wooden stand
   return finish(g, { paper });
 }
 // The drawings (crayon lines on a 256 square). Each tells one puzzle without words.
@@ -309,11 +326,17 @@ export const NOTES = {
     crayon(c, '#3a9ae8', 9); for (const y of [150, 172, 194]) { c.beginPath(); c.moveTo(204, y); c.lineTo(216, y + 10); c.stroke(); }
   },
   // wind the key, then run into the wind
-  fan(c) {
-    crayon(c, '#d8a83a', 9); c.beginPath(); c.arc(50, 70, 16, 0, Math.PI * 2); c.arc(86, 70, 16, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(68, 86); c.lineTo(68, 120); c.stroke();
-    crayon(c, '#2a2a2a', 6); c.beginPath(); c.arc(68, 70, 50, -0.6, 0.9); c.stroke();
-    crayon(c, '#2a2a2a', 6); arrow(c, 100, 150, 150, 150);
-    crayon(c, '#8a8a96', 8); c.beginPath(); c.ellipse(200, 214, 40, 12, 0, 0, Math.PI * 2); c.stroke();
-    crayon(c, '#3a9ae8', 6); for (const x of [180, 200, 220]) { c.beginPath(); c.moveTo(x, 196); c.quadraticCurveTo(x + 10, 150, x, 104); c.stroke(); }
+  fan(c) { // 1 pull the towel off, 2 wind the key, 3 ride the wind up
+    crayon(c, '#2a2a2a', 6); c.font = 'bold 34px sans-serif'; c.fillText('1', 14, 66); c.fillText('2', 140, 66); c.fillText('3', 14, 176);
+    crayon(c, '#d83a3a', 6); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if ((i + j) % 2 === 0) c.fillRect(44 + i * 18, 44 + j * 18, 18, 18);
+    c.strokeRect(44, 44, 54, 54); crayon(c, '#2a2a2a', 5); arrow(c, 100, 72, 128, 50);
+    crayon(c, '#3a7ad8', 6); c.fillRect(168, 92, 60, 30); // the box with the key on top
+    crayon(c, '#c8901a', 6); c.beginPath(); c.moveTo(198, 92); c.lineTo(198, 70); c.stroke();
+    c.beginPath(); c.ellipse(184, 60, 13, 9, 0, 0, Math.PI * 2); c.ellipse(212, 60, 13, 9, 0, 0, Math.PI * 2); c.stroke();
+    crayon(c, '#2a2a2a', 5); c.beginPath(); c.arc(198, 62, 32, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); arrow(c, 222, 42, 228, 50); // round and round
+    crayon(c, '#8a8a96', 7); c.beginPath(); c.ellipse(120, 226, 54, 13, 0, 0, Math.PI * 2); c.stroke();
+    crayon(c, '#3a9ae8', 5); for (const x of [92, 120, 148]) { c.beginPath(); c.moveTo(x, 212); c.quadraticCurveTo(x + 8, 180, x, 140); c.stroke(); }
+    crayon(c, '#8a8a96', 6); c.beginPath(); c.arc(120, 150, 11, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(112, 139, 5, 0, Math.PI * 2); c.arc(128, 139, 5, 0, Math.PI * 2); c.stroke(); // a mouse going up
+    crayon(c, '#2a2a2a', 5); arrow(c, 150, 170, 150, 128);
   },
 };

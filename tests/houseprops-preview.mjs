@@ -31,7 +31,7 @@ await page.evaluate(async () => {
   put(P.buildNote(P.NOTES.spoon), 79, 26, 60, Math.PI / 2 - 0.3);
   put(P.buildPlug({ chainTo: [-4, 0, -1.2] }), 44, 31, 24);
   put(P.buildNote(P.NOTES.plug), 50, 31, 24.5, Math.PI / 2);
-  put(P.buildSock(), 11.5, 4, 127.5, 0.6);
+  put(P.buildTowel(), 11.5, 1, 127.5, 0.3);
   put(P.buildWindKey(), 22, 1, 127, Math.PI / 2);
   put(P.buildNote(P.NOTES.fan), 24, 1, 131, Math.PI / 2 + 0.4);
   g.player.update = () => {}; // the camera stays where it is put (no falling)
@@ -44,7 +44,7 @@ const shots = [
   ['cat-stand', [134, 1, 163, Math.atan2(6, 23), 0.12]],
   ['spoon', [85, 30, 54, Math.atan2(11, -12), -0.32]], ['spoon-side', [87, 26, 66, Math.PI / 2, -0.12]],
   ['plug', [49, 32.5, 21, Math.atan2(5, -3), -0.45]],
-  ['fan', [32, 1, 136, Math.atan2(18, 8), 0]], ['sock', [20, 12, 136, Math.atan2(8.5, 8.5), -0.6]],
+  ['fan', [32, 1, 136, Math.atan2(18, 8), 0]], ['towel', [21, 8, 136, Math.atan2(9.5, 8.5), -0.42]], ['fan-note', [27, 2.2, 134, Math.atan2(3, 3), -0.35]],
 ];
 for (const [name, spot] of shots) {
   await page.evaluate(s => window.__at(...s), spot);
