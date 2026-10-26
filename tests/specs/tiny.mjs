@@ -492,7 +492,7 @@ export default async function ({ browser, base, t }) {
         out[name] = document.getElementById('btn-act')?.textContent || '';
       };
       await look('remote', [40.5, 1, 175.5], [40, 1, 178]);
-      await look('fan', [11.5, 1, 136.5], [11, 1, 134]);
+      await look('fan', [11.5, 1, 136.5], [11, 1, 134], true);
       await look('tap', [34.5, 31, 8.5], [34, 32, 5], true);
       const G = await import('/src/giantland.js'); const c = G.CRUMBS[0];
       await look('crumb', [c[0] + 0.5, c[1], c[2] + 2.5], c, true);

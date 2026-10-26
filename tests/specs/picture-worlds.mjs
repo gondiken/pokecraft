@@ -237,6 +237,8 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(() => window.pokecraft.player.pos.set(window.pokecraft.world.doors[0].stand[0], window.pokecraft.world.doors[0].stand[1], window.pokecraft.world.doors[0].stand[2]));
   const guide = await page.evaluate(() => { const g = window.pokecraft; g.updateGuide(); return { text: document.getElementById('guide')?.textContent || g.ui.guideText, target: g.guideTarget, boss: g.world.bosses[0].pos }; });
   t.ok(/Giant House Boss|Toy train/.test(guide.text || ''), `the guide names the Boss or the way to him (${guide.text})`);
+  const navRows = await page.evaluate(() => window.pokecraft.nav.rows().map(r => `${r.dest.id}:${r.dest.label}`));
+  t.ok(navRows.includes('boss:house:Giant House Boss') && navRows.includes('door:Way back to the Swirl'), `"Where to go" in the Giant House: its Boss and the way back (${navRows.join(', ')})`);
   await page.screenshot({ path: path.join(SHOTS, 't40-house-stub.png') });
 
   // talk to the Boss: a Boss battle
@@ -279,6 +281,8 @@ export default async function ({ browser, base, t }) {
     return { near: Math.hypot(p.x - (f.stand[0] + 0.5), p.z - (f.stand[2] + 0.5)), stone: g.world.get(...g.world.swirl.bridge[0].cells[0]), stash: !!g.realms.stash.up, edit: g.realms.edits().swirl };
   }, block);
   t.ok(sw.near < 1.5 && sw.stone === 130 && !sw.stash, `back in the Swirl in front of the house frame (${sw.near.toFixed(1)}), bridge stone 0 is lit`);
+  const swRows = await page2.evaluate(() => window.pokecraft.nav.rows().map(r => r.dest.id));
+  t.ok(swRows.includes('frame:house') && swRows.includes('door'), `"Where to go" in the Swirl: the open frames and the door home (${swRows.join(', ')})`);
   await page2.evaluate(async () => { const { pictureWorld } = await import('/src/pictureworlds.js'); pictureWorld('house').ready = true; window.pokecraft.portal.reset(window.pokecraft.world); });
   const home = await page2.evaluate(() => { const g = window.pokecraft, d = g.world.door, m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 125 }); return true; });
   await placeIs(page2, 'main');

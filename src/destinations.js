@@ -12,6 +12,7 @@
 // Add a place: one more source in DESTINATIONS (`addDestination`), like `addHomeType`.
 import { MID_X, MID_Z } from './world.js';
 import { GYMS } from './gyms.js';
+import { pictureWorld } from './pictureworlds.js'; // T40
 
 const dist2 = (p, x, z) => Math.hypot(x - p.x, z - p.z);
 
@@ -163,7 +164,7 @@ export const DESTINATIONS = [
     rows: game => {
       const w = game.world;
       if (w.wake) return [new RealmWayDestination({ id: 'wake', icon: '🪨', label: 'Wake Stone', at: g => g.world.wake && [g.world.wake[0] + 0.5, g.world.wake[2] + 0.5] })];
-      if (w.door) return [new RealmWayDestination({ id: 'door', icon: '🚪', label: 'Door home', at: g => g.world.door && [g.world.door.stand[0], g.world.door.stand[2]] })];
+      if (w.door) return [new RealmWayDestination({ id: 'door', icon: w.realm?.parent ? '🖼️' : '🚪', label: w.realm?.parent ? 'Way back to the Swirl' : 'Door home', at: g => g.world.door && [g.world.door.stand[0], g.world.door.stand[2]] })]; // T40: a Picture World's way back
       return [];
     },
   },
@@ -227,3 +228,21 @@ export function createNav(game) {
     },
   };
 }
+
+// T40: the Picture World places. In the Swirl: every open picture frame. In a Picture World: its Boss (or Bosses: Playland has two).
+addDestination({
+  id: 'frames',
+  rows: game => (game.world.swirl?.frames || []).filter(f => pictureWorld(f.world)?.ready).map(f => {
+    const pw = pictureWorld(f.world);
+    return new SpotDestination({ id: `frame:${pw.id}`, group: 'realm', icon: pw.emoji, label: pw.name, where: () => [f.stand[0] + 0.5, f.stand[2] + 0.5], radius: 4,
+      madeText: `The ${pw.name} picture! Step in.` });
+  }),
+});
+addDestination({
+  id: 'bosses',
+  rows: game => (game.world.realm?.parent ? game.world.bosses || [] : []).map(b => {
+    const pw = pictureWorld(b.id), won = game.stars?.includes(b.id);
+    return new SpotDestination({ id: `boss:${b.id}`, group: 'realm', icon: won ? '⭐' : '👑', label: `${pw?.name ?? 'The'} Boss`, where: () => [b.pos[0], b.pos[2]], radius: 4,
+      madeText: won ? 'The Boss is here! Talk to them for a rematch.' : 'The Boss is here! Talk to them.' });
+  }),
+});
