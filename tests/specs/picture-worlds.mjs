@@ -465,10 +465,10 @@ async function pairPart({ browser, base, t }) {
   await placeIs(Bp, 'house');
   const k1 = await Bp.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; return { via: g.realms.via, up: g.realms.upPart(), guest: g.realms.stash.guest, near: a ? Math.hypot(a.pos.x - g.player.pos.x, a.pos.z - g.player.pos.z) : -1 }; });
   t.ok(k1.via === 'house' && k1.up.id === 'swirl' && k1.guest, 'Kid is in the Giant House with the Swirl as his way up');
-  // blocks both ways
-  const hb = await A.evaluate(() => { const g = window.pokecraft, bs = g.world.bosses[0], x = Math.floor(bs.rest[0]) + 4, z = Math.floor(bs.rest[2]), y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 11); g.mp.sendBlock(x, y, z, 11); return [x, y, z]; });
+  // blocks both ways (on a buildable spot near the arrival: most of the Giant House is fixed kitchen)
+  const hb = await A.evaluate(() => { const g = window.pokecraft, w = g.world, a = w.arrivals.house, spot = dx => { for (let r = 2; r < 30; r++) for (const s of [1, -1]) { const x = Math.floor(a[0]) + s * r * dx, z = Math.floor(a[2]) + s * r * (1 - dx), y = w.surface(x, z).y + 1; if (y > 0 && y < 46 && w.editAllowed(x, y, z, 11) && w.get(x, y, z) === 0) return [x, y, z]; } return null; }; const [x, y, z] = spot(1); g.world.set(x, y, z, 11); g.mp.sendBlock(x, y, z, 11); return [x, y, z]; });
   await waitFor(Bp, c => window.pokecraft.world.get(...c) === 11, hb, 30000);
-  const kb = await Bp.evaluate(() => { const g = window.pokecraft, bs = g.world.bosses[0], x = Math.floor(bs.rest[0]) - 4, z = Math.floor(bs.rest[2]), y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 13); g.mp.sendBlock(x, y, z, 13); return [x, y, z]; });
+  const kb = await Bp.evaluate(() => { const g = window.pokecraft, w = g.world, a = w.arrivals.house, spot = dx => { for (let r = 2; r < 30; r++) for (const s of [1, -1]) { const x = Math.floor(a[0]) + s * r * dx, z = Math.floor(a[2]) + s * r * (1 - dx), y = w.surface(x, z).y + 1; if (y > 0 && y < 46 && w.editAllowed(x, y, z, 11) && w.get(x, y, z) === 0) return [x, y, z]; } return null; }; const [x, y, z] = spot(0); g.world.set(x, y, z, 13); g.mp.sendBlock(x, y, z, 13); return [x, y, z]; });
   await waitFor(A, c => window.pokecraft.world.get(...c) === 13, kb, 30000);
   t.ok(true, "blocks travel both ways in the Picture World");
   const kSave = await Bp.evaluate(() => { window.pokecraft.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { re: s.realmEdits, place: s.place }; });
