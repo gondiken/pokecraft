@@ -6,6 +6,7 @@ import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
+import { boatState } from './pirateland.js'; // T40b
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -54,14 +55,16 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   rematchIntro: ['Back again? My tiny team grew a little!'],
   note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
 // T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (optional battles: Dot, Lou and First Mate Fin).
+// Owner 2026-10-26: sink his 3 rowboats with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
 addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
+  gate: game => { const { sunk, need, done } = boatState(game); return done ? null : `Squawk! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`; },
   team: [['anchorclaw', 61, ['anchordrop', 'rumblerock', 'cannonball', 'hookswipe']], ['shipshape', 61],
     ['lookapus', 62, ['spyglass', 'soakshot', 'cannonball', 'walktheplank']],
     ['featherbeard', 63, ['broadside', 'swoop', 'jollyroger', 'cannonball']]], // top level 63, the easy side, four creatures
-  intro: ['Squawk! Who is that on MY ship?', 'The star is in my treasure chest, and it stays there! Battle stations!'],
+  intro: ['Squawk! You sank ALL my rowboats!', 'The star is in my treasure chest, and it stays there! Battle stations!'],
   lose: 'Squawk... you win, matey! My chest is yours. The star was in it all along!',
   win: 'Squawk! Good battle, matey. Have a rest and try again!',
-  rematchIntro: ['Back for more, matey? My crew trained all day. Squawk!'],
+  rematchIntro: ['You sank my new rowboats too? My crew trained all day. Squawk!'],
   note: 'Captain Squawk was my parrot. I painted him a whole sea to sail! When I left, he got a bit bossy. Thank you for the star!',
   crew: [
     { name: 'Deckhand Dot', look: 'pirate', colors: { shirt: 0xf6efe0, pants: 0x3a5aa8, hair: 0x7a3a1a, skin: 0xf2d0b0 },
@@ -69,7 +72,7 @@ addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species
     { name: 'Lookout Lou', look: 'pirate', colors: { shirt: 0xe07a6a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       team: [['bottlet', 60], ['lookapus', 60]], intro: ['I saw you coming with my spyglass! Battle!'], line: 'That cannon shoots you right onto the ship!' },
     { name: 'First Mate Fin', look: 'pirate', colors: { shirt: 0x2a4aa8, pants: 0x3a2a1a, hair: 0xe0c060, skin: 0xf2d0b0 },
-      team: [['parroteer', 60], ['anchorclaw', 61], ['shipshape', 61]], intro: ['The Captain is counting his gold. Battle me first, if you dare!'], line: 'The Captain is on the quarterdeck. Good luck, matey!' },
+      team: [['parroteer', 60], ['anchorclaw', 61], ['shipshape', 61]], intro: ['The Captain is counting his gold. Battle me first, if you dare!'], line: 'Use the cannons on the rail. Sink the rowboats!' },
   ] });
 addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in racelive.js; he battles after you win it)
   id: 'race', name: 'Racer Rio', type: 'racer', title: 'Racer Rio · Race Track Boss',

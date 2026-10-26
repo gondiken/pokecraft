@@ -2,9 +2,11 @@
 // ship, cannons that shoot you from island to island, ropes you swing on and rope ladders. Everything is data (ISLES, CANNONS, ROPES,
 // WALKS) and a small loop: seeded noise only makes the sea floor, island edges and plants, so every gadget is always where the table says.
 // It only needs a world with W / D / seed / data / ground / index / inBounds / get (the spec runs it on a stand-in in Node, like
-// dreamland.js) and imports only blocks.js, picturelands.js and pirateship.js. The pure paths (cannonSpec, swingPath), the guide
-// (pirateAim) and the route finder live here too, so PirateLive (pirateparts.js) and the spec agree.
+// dreamland.js) and imports only blocks.js, mover.js, picturelands.js and pirateship.js. The pure paths (cannonSpec, swingPath), the
+// challenges (owner 2026-10-26: swinging cannons, letting go of the rope, the rowboats), the guide (pirateAim) and the route finder
+// live here too, so PirateLive (pirateparts.js) and the spec agree.
 import { B, mulberry32 } from './blocks.js';
+import { makePath } from './mover.js';
 import { kit, buildWayBack, placeCrew, pictureAim } from './picturelands.js';
 import { SHIP, buildShip, buildDock, deckTop } from './pirateship.js';
 
@@ -72,7 +74,8 @@ export function cannonSpec(c) {
 // The swing path of a worked-out rope (a, b = [x, feet, z] stand points with the same feet), starting at `from` ('a' or 'b'): a pendulum
 // on an anchor above the middle, at rest at both ends (a soft start and landing). Both ends are SWING.lift above the stands, so the
 // player's box clears the island's edge on the way in and out (the pendulum arrives at a steep angle) and drops the last bit.
-export function swingPath(r, from = 'a') {
+// loop: the rope keeps swinging there and back (u is not clamped) until you let go (owner 2026-10-26).
+export function swingPath(r, from = 'a', loop = false) {
   const [ax, ay, az] = r.a, [bx, , bz] = r.b, k = from === 'a' ? 1 : -1;
   const len = Math.hypot(bx - ax, bz - az), s = len / 2, ux = (bx - ax) / len, uz = (bz - az) / len;
   const mx = (ax + bx) / 2, mz = (az + bz) / 2, end = ay + SWING.lift;
@@ -81,12 +84,127 @@ export function swingPath(r, from = 'a') {
   const time = Math.min(2.4, Math.max(1.2, Math.PI * Math.sqrt(L / 28))); // half a pendulum swing at our gravity (28)
   const yaw = Math.atan2(-ux * k, -uz * k);
   return {
-    time, loop: false, anchor: [mx, end + h, mz], L, span: len, lowest: end + h - L, ends: end,
+    time, loop, anchor: [mx, end + h, mz], L, span: len, lowest: end + h - L, ends: end,
     at(t) {
-      const u = Math.min(1, Math.max(0, t / time)), th = th0 * Math.cos(Math.PI * u), off = -L * Math.sin(th) * k;
+      const u = loop ? t / time : Math.min(1, Math.max(0, t / time)), th = th0 * Math.cos(Math.PI * u), off = -L * Math.sin(th) * k;
       return { x: mx + ux * off, y: end + h - L * Math.cos(th), z: mz + uz * off, yaw };
     },
   };
+}
+
+/* ------------------------------ the challenges (owner 2026-10-26: "some dexterity") ------------------------------ */
+// Never a fail: a miss drops you in the sea near where you wanted to go, and you swim to a beach or a rope ladder.
+
+// 1. Island cannons swing left and right (a triangle wave: an even speed, no fast middle); fire while the barrel points at the target.
+// `u` is the cannon's own aim clock (PirateLive slows it after a miss: `slower[misses]`). A home cannon holds still.
+export const AIM = { sweep: 0.36, hit: 0.12, period: 3.2, slower: [1, 0.75, 0.55] };
+export function sweepAngle(u, c) {
+  if (c.home) return 0;
+  const k = (((u / AIM.period + (c.phase ?? 0)) % 1) + 1) % 1;
+  return AIM.sweep * (1 - 4 * Math.abs(k - 0.5));
+}
+export const onTarget = off => Math.abs(off) <= AIM.hit;
+// open water at least 2 deep in every column within r cells of (x, z)
+export function openSea(world, x, z, r = 2) {
+  for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+    const cx = Math.floor(x) + dx, cz = Math.floor(z) + dz;
+    if (cx < 2 || cz < 2 || cx >= world.W - 2 || cz >= world.D - 2 || colTop(world, cx, cz) > SEA - 2) return false;
+  }
+  return true;
+}
+// the player's box is free of blocks (water is fine) from `from` (0..1 of the time) to the end of a path
+export function clearFlight(world, spec, from = 0.3) {
+  const path = makePath(spec);
+  for (let k = from; k <= 1.0001; k += 0.02) {
+    const w = path.at(k * path.time);
+    for (const dy of [0.1, 1, 1.7]) {
+      const id = world.get(Math.floor(w.x), Math.floor(w.y + dy), Math.floor(w.z));
+      if (id !== B.AIR && id !== B.WATER) return false;
+    }
+  }
+  return true;
+}
+// The flight of a cannon fired `off` radians beside its target: the same distance (or a bit shorter / longer) that way, into open sea.
+// If there is no sea that way (never on our map), it lands on the target after all (the spec checks every cannon at both ends).
+export function missSpec(world, c, off) {
+  const S = c.S, dist = Math.hypot(c.E[0] - S[0], c.E[2] - S[2]), a = Math.atan2(c.E[0] - S[0], c.E[2] - S[2]) + off;
+  for (const f of [1, 0.9, 1.1, 0.8, 1.2, 0.7, 1.3, 0.6, 0.5]) {
+    const x = Math.floor(S[0] + Math.sin(a) * dist * f) + 0.5, z = Math.floor(S[2] + Math.cos(a) * dist * f) + 0.5;
+    if (!openSea(world, x, z)) continue;
+    const spec = cannonSpec({ S, E: [x, SEA + 0.2, z] });
+    if (clearFlight(world, spec)) return spec;
+  }
+  return c.spec;
+}
+// What a cannon does if you fire it now: { spec, hit }
+export function cannonShot(world, c, off) {
+  if (onTarget(off)) return { spec: c.spec, hit: true };
+  const spec = missSpec(world, c, off);
+  return { spec, hit: spec === c.spec };
+}
+
+// 2. The rope keeps swinging (swingPath(r, from, true)) until you press Let go! Out past `good` of the way on the far side you land on
+// the far stand, on your own side you drop back on your stand, in the middle you splash into the sea. After `swings` times there and
+// back with no press you drop back where you started.
+export const LETGO = { good: 0.45, swings: 3, hop: 0.35 };
+export function letGo(path, t) {
+  const c = Math.cos(Math.PI * t / path.time); // 1 at your own stand, -1 at the far one
+  return c <= -LETGO.good ? 'far' : c >= LETGO.good ? 'back' : 'splash';
+}
+// Where a splash lands: open sea under the rope's line, the nearest to `p` ([x, z]); null when there is none (then: back).
+export function ropeDrop(world, r, p) {
+  const [ax, , az] = r.a.pos, [bx, , bz] = r.b.pos, len = Math.hypot(bx - ax, bz - az);
+  const s0 = Math.max(0, Math.min(1, ((p[0] - ax) * (bx - ax) + (p[1] - az) * (bz - az)) / (len * len)));
+  const tries = [];
+  for (let k = 0; k <= 20; k++) tries.push(k / 20);
+  tries.sort((u, v) => Math.abs(u - s0) - Math.abs(v - s0));
+  for (const rr of [1, 0]) for (const s of tries) { // (a narrow strait: a single deep enough column will do)
+    const x = Math.floor(ax + (bx - ax) * s) + 0.5, z = Math.floor(az + (bz - az) * s) + 0.5;
+    if (openSea(world, x, z, rr)) return [x, SEA + 0.2, z];
+  }
+  return null;
+}
+
+// 3. Captain Squawk's rowboats row up and down a lane north of the ship (each in its own stretch, so they never meet). Sink all three
+// with the two north deck cannons and the Captain battles you (the Boss def's gate). Sunk boats are `beaten` keys, saved at once, and
+// cleared after a won Captain battle (the next rematch needs them sunk again), like the Ball Stadium's goals.
+export const ROWBOATS = {
+  lane: 31, boats: [[94, 107], [108, 121], [122, 135]], phase: [0, 0.4, 0.75], speed: 1.5, // x from..to, blocks a second
+  cannons: SHIP.swivels, // the swivel cannons on the north rail ([x, rail z]): you stand on the step one cell south of each
+  turn: 0.9, time: 1.1, height: 2.5, hit: 2.2, reload: 1, sink: 1.5,
+};
+export const boatKey = i => `pw:pirate:boat${i + 1}`;
+export function boatState(game) {
+  const need = ROWBOATS.boats.length, sunk = ROWBOATS.boats.filter((_, i) => game?.beaten?.includes(boatKey(i))).length;
+  return { sunk, need, done: sunk >= need };
+}
+// a boat at boat clock t: { x, z, dir } (dir +1 = rowing east)
+export function boatAt(i, t) {
+  const [a, b] = ROWBOATS.boats[i], len = b - a, per = (2 * len) / ROWBOATS.speed;
+  const k = ((((t / per) + ROWBOATS.phase[i]) % 1) + 1) % 1;
+  return { x: (k < 0.5 ? a + len * 2 * k : b - len * (2 * k - 1)) + 0.5, z: ROWBOATS.lane + 0.5, dir: k < 0.5 ? 1 : -1 };
+}
+// where you stand to use the swivel cannon on rail cell `at` (feet): on its step, one cell south
+export const deckStand = at => [at[0] + 0.5, SHIP.deck + 2, at[1] + 1.5];
+// A deck cannon shot (the swivel cannon on rail cell `at` = [x, z]) when you look along `yaw`: the barrel turns your way (at most
+// `turn` either side of north), the ball lands on the boats' lane. { a, spec, to }
+export function deckShot(at, yaw) {
+  let d = Math.atan2(-Math.sin(yaw), -Math.cos(yaw)) - Math.PI;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  const a = Math.PI + Math.max(-ROWBOATS.turn, Math.min(ROWBOATS.turn, d));
+  const from = [at[0] + 0.5 + Math.sin(a) * 1.1, SHIP.deck + 2.6, at[1] + 0.5 + Math.cos(a) * 1.1];
+  const t = (ROWBOATS.lane + 0.5 - from[2]) / Math.cos(a), to = [from[0] + Math.sin(a) * t, SEA + 0.6, ROWBOATS.lane + 0.5];
+  return { a, to, spec: { kind: 'arc', from, to, height: ROWBOATS.height, time: ROWBOATS.time } };
+}
+// The boat a shot landing at `to` hits after `time` more seconds of boat clock `t`, or -1 (only boats still afloat count).
+export function boatHit(game, to, t) {
+  let best = -1, bd = ROWBOATS.hit;
+  ROWBOATS.boats.forEach((_, i) => {
+    if (game?.beaten?.includes(boatKey(i))) return;
+    const b = boatAt(i, t), d = Math.hypot(b.x - to[0], b.z - to[2]);
+    if (d <= bd) { bd = d; best = i; }
+  });
+  return best;
 }
 
 /* ------------------------------ where am I, how do I get there ------------------------------ */
@@ -149,6 +267,11 @@ export function pirateAim(world, p, game) {
   }
   if (where === 'air') return { x: p.x, z: p.z, text: () => 'Wheee! 🏴‍☠️' };
   const goal = star ? 'start' : 'ship';
+  if (where === 'ship' && !star && !boatState(game).done) { // the rowboats first: to the nearer north deck cannon
+    const { sunk, need } = boatState(game), at = nearest(p, ROWBOATS.cannons.map(c => { const s = deckStand(c); return { x: s[0], z: s[2] }; }));
+    const here = Math.hypot(at.x - p.x, at.z - p.z) < 1.6;
+    return { x: at.x, z: here ? at.z - 12 : at.z, text: (a, m) => (here ? `Aim at a rowboat and Fire! 🚣 ${sunk} / ${need} ${a}` : `💣 Deck cannon: sink the rowboats (${sunk} / ${need}) ${a} ${m} m`) };
+  }
   if (where === goal) return pictureAim(world, p, { stars, via: game?.realms?.via });
   const e = routeTo(world, where, goal);
   if (!e) return pictureAim(world, p, { stars, via: game?.realms?.via });
@@ -250,7 +373,7 @@ export function pirateLand(world, def) {
       for (let x = tx - 1; x <= tx + 1; x++) for (let z = tz - 1; z <= tz + 1; z++) put(world, x, tt, z, B.TARGET);
     }
     const S = [px + 0.5, t + 1, pz + 0.5], E = [tx + 0.5, tt + 1, tz + 0.5];
-    const w = { ...c, carriage: car, padTop: t, S, E, dir: Math.atan2(dx, dz) };
+    const w = { ...c, carriage: car, padTop: t, S, E, dir: Math.atan2(dx, dz), phase: (cannons.length * 0.37) % 1 };
     w.spec = cannonSpec(w);
     cannons.push(w);
     keep(`cannon-${c.id}`, { x0: Math.min(px, car[0]), x1: Math.max(px, car[0]), y0: t, y1: t + 3, z0: Math.min(pz, car[1]), z1: Math.max(pz, car[1]) }, 'The cannon is part of the picture. Stand on it and press Fire!');
