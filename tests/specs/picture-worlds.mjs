@@ -72,7 +72,7 @@ export default async function ({ browser, base, t }) {
   t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
   t.ok(JSON.stringify(d1.wool) === JSON.stringify([[140, 'Tiny Wool', false], [141, 'Pirate Wool', false], [142, 'Racer Wool', false], [143, 'Ball Wool', false]]), 'wool 140-143 with their names, not placeable');
   t.ok(d1.blocks.map(b => b.id).join() === '144,145,146' && d1.blocks.every(b => b.def && !b.placeable && b.fixed && b.wall && b.tiles), `blocks 144-146 (picture, way back, Boss stand): tiles, wall text, fixed, not placeable`);
-  t.ok(d1.tiles <= 163 + 72 && d1.free >= 147, `the atlas grew by 8 tiles (+ at most 72 more from wave 14's tasks) (${d1.tiles} of 256), next free id ${d1.free}`);
+  t.ok(d1.tiles <= 1024 && d1.free >= 147, `the atlas has room (${d1.tiles} of 1024 tiles, a 32 x 32 grid), next free id ${d1.free}`);
 
   /* ---- 2. Data ---- */
   const d2 = await page.evaluate(async () => {
@@ -93,7 +93,7 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,10,11' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,wizard' && d2.ready <= 4, `12 / 10 / 11 Picture Worlds in the old order, at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
+  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 4, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
   t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);

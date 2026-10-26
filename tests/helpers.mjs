@@ -21,7 +21,7 @@ export function serve() {
   return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve({ server, base: `http://127.0.0.1:${server.address().port}` })));
 }
 
-export const launch = () => chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
+export const launch = () => chromium.launch({ executablePath: process.env.PC_CHROMIUM || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 
 // Opens the game in a fresh browser context (its own localStorage).
 // online: false blocks Supabase so tests never touch the real project.

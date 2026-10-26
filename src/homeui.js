@@ -11,7 +11,7 @@
 //   homeUi.want         view that game.openHome(view) asked for before the panel opened (read it in open(), default 'home')
 // DOM: #home-meter (in #hud, hidden by default), #home (overlay, .panel inside), #home-body (render into it), #home-close.
 import * as THREE from 'three';
-import { BLOCKS, TILE_COUNT, isOccluder, drawBlockIcon } from './blocks.js';
+import { BLOCKS, tileUv, isOccluder, drawBlockIcon } from './blocks.js';
 import { FACES } from './world.js';
 import { HOME_TYPES } from './hometypes.js';
 import { TYPE_COLORS } from './species.js';
@@ -50,7 +50,7 @@ export function blockMesh(blocks, texture) {
       const base = buf.pos.length / 3;
       for (const [cx, cy, cz, u, v] of f.corners) {
         buf.pos.push(x + cx, y + cy, z + cz);
-        buf.uv.push((tile + (u ? 0.999 : 0.001)) / TILE_COUNT, v);
+        tileUv(buf.uv, tile, u, v);
         buf.col.push(f.shade, f.shade, f.shade);
       }
       buf.idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);

@@ -48,10 +48,10 @@ export const REALMS = {
     guide: n => `in ${n}'s dream`,
     entrance: 'bed', guestNote: () => 'You can dream in your own world. Sleep tight!', // how you get in on your own, and what a guest who cannot follow is told
   },
-  // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, seven covered picture frames and the sealed
+  // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, eleven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: 3, size: [160, 160], seedSalt: 0x5317,
+    id: 'swirl', name: 'Swirl', version: 4, size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star)
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)

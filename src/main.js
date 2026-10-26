@@ -1222,7 +1222,7 @@ function frame(now) {
     if (f) {
       const src = fireTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
       fireTiles.set(f.frame, src);
-      firePos.set(f.x, 0);
+      firePos.set(f.x, f.y);
       renderer.copyTextureToTexture(firePos, src, texture);
     }
   }
@@ -1232,7 +1232,7 @@ function frame(now) {
     if (f) {
       const src = portalTiles.get(f.frame) ?? new THREE.DataTexture(f.frame.data, f.frame.width, f.frame.height);
       portalTiles.set(f.frame, src);
-      portalPos.set(f.x, 0);
+      portalPos.set(f.x, f.y);
       renderer.copyTextureToTexture(portalPos, src, texture);
     }
   }

@@ -1,6 +1,6 @@
 // T38a: the terrain of the Swirl realm (TERRAINS.swirlLand in realms.js). A purple sky over a soft cloud sea, with floating
 // decks (the hub with the door home, a north and a south gallery, the looping stairs, the Wizard's island), a spiral stair and
-// a straight one, lift streams (upward rivers: boxes, no blocks), seven picture frames hanging in the air covered with cloth,
+// a straight one, lift streams (upward rivers: boxes, no blocks), eleven picture frames hanging in the air covered with cloth,
 // and far to the east the Wizard's tower behind a row of empty star-stone spots (the star bridge).
 // Everything is data (DECKS, STAIRS, LIFTS, FRAME_SPOTS, BRIDGE) and a few loops; the seed changes nothing, so every deck, step
 // and frame is always where the table says. Node-runnable like dreamland.js: needs only a world with
@@ -59,10 +59,10 @@ export function zoneMix(x, z, key) {
 export const SEA = 0; // B.SWIRL_CLOUD at y 0 everywhere, ground 0: a soft landing
 export const DECKS = [ // round: [cx, cz, r]; box: [x0, x1, z0, z1]; the top block is at y (you stand at y + 1)
   { id: 'hub', round: [48, 80, 11], y: 20 },        // arrival, door home, start of the star bridge
-  { id: 'north', box: [28, 68, 52, 57], y: 26 },    // north gallery: frames N0-N3 hang above its north edge
-  { id: 'south', box: [28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S2 hang beyond its south edge
+  { id: 'north', box: [20, 68, 52, 57], y: 26 },    // north gallery: frames N0-N5 hang above its north edge (x 20-27 since 2026-10-26, for N5)
+  { id: 'south', box: [28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S4 hang beyond its south edge
   { id: 'loopbase', box: [56, 64, 84, 92], y: 20 }, // the looping stairs stand here, joined to the hub
-  { id: 'wizard', round: [136, 80, 9], y: 20 },     // the Wizard's island (its x = wizardX(11), the number of bridge stones)
+  { id: 'wizard', round: [142, 80, 9], y: 20 },     // the Wizard's island (its x = wizardX(12), the number of bridge stones)
 ];
 export const DOOR = { x: 39, z: [78, 82], y: [21, 25], facing: [1, 0] }; // PORTAL 5 wide x 5 tall, frame round it (z 77/83, y 26)
 export const STAIRS = [
@@ -73,20 +73,22 @@ export const STAIRS = [
 export const LIFTS = [ // upward rivers: boxes (cells x0..x1, z0..z1), feet inside rise until y1 + 1, then you bob and walk onto the deck
   { id: 'hubS', x: [50, 51], z: [91, 92], y: [1, 22] },
   { id: 'north', x: [69, 70], z: [54, 55], y: [1, 28] },
-  { id: 'northW', x: [26, 27], z: [54, 55], y: [1, 28] },
+  { id: 'northW', x: [18, 19], z: [54, 55], y: [1, 28] }, // beside the gallery's west end
   { id: 'south', x: [69, 70], z: [105, 106], y: [1, 16] },
   { id: 'southW', x: [26, 27], z: [105, 106], y: [1, 16] },
   { id: 'wizard', x: [59, 60], z: [82, 83], y: [1, 22] }, // beside the bridge's start: a fall from the bridge is never far from here
 ];
-export const FRAME_SPOTS = [ // 10 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
-  ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] })), // hangs 1 above the north deck (y 27 is air)
+const north = (x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] }); // hangs 1 above the north deck (y 27 is air)
+export const FRAME_SPOTS = [ // 11 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
+  ...[32, 40, 48, 56, 64].map(north),
   ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
+  north(24, 5), // owner 2026-10-26: the 11th frame (the fifth secret world), west of N0
 ];
 export const FRAME = { w: 7, h: 7 }; // PICTURE_FRAME border, 5x5 inside: CLOTH, or PORTAL when the world is ready (later waves)
 export const BRIDGE = { x0: 61, z: [79, 81], y: 20, len: 5, gap: 1 }; // star stone i: x 61+6i .. 65+6i, two layers (y 19-20)
 export const WIZARD = { z: 80, r: 9, y: 20, R: 4, wallTop: 39 };
 // Little floating islets: scenery only, nobody needs them.
-export const ISLETS = [[14, 20, 3, 30], [24, 128, 4, 22], [86, 36, 3, 34], [90, 122, 4, 18], [126, 40, 3, 26], [132, 118, 5, 30], [150, 82, 3, 34], [78, 14, 4, 20], [76, 148, 3, 26]]; // (T38d: the one at 10, 82 is the paint palette now)
+export const ISLETS = [[14, 20, 3, 30], [24, 128, 4, 22], [86, 36, 3, 34], [90, 122, 4, 18], [126, 40, 3, 26], [132, 118, 5, 30], [152, 60, 3, 34], [78, 14, 4, 20], [76, 148, 3, 26]]; // (T38d: the one at 10, 82 is the paint palette now)
 
 // T38d: painted swirls on the deck tops: round decks get arms of a spiral, box decks wavy stripes (true = Swirl Paint, false = Swirl Stone).
 const ARMS = { hub: 3, wizard: 5 };
@@ -121,7 +123,7 @@ export const FLOATERS = [
     [30, 40, 34, 4, 3, 3], [62, 38, 30, 5, 5, 0], [70, 48, 40, 3, 4, 1],
     [34, 122, 22, 3, 4, 2], [64, 124, 20, 4, 3, 3],
     [84, 66, 30, 5, 5, 1], [90, 94, 34, 4, 3, 0], [126, 66, 36, 3, 4, 2], [128, 96, 30, 4, 3, 3]].map(([x, z, y, w, h, c]) => ({ kind: 'frame', x, y, z, w, h, c })),
-  ...[[20, 60, 34, 2.5], [74, 40, 36, 3], [78, 104, 26, 2], [40, 128, 26, 3], [100, 62, 38, 2.5], [134, 80, 34, 3]].map(([x, z, y, r]) => ({ kind: 'wheel', x, y, z, r })),
+  ...[[20, 60, 34, 2.5], [74, 40, 36, 3], [78, 104, 26, 2], [40, 128, 26, 3], [100, 62, 38, 2.5], [140, 80, 34, 3]].map(([x, z, y, r]) => ({ kind: 'wheel', x, y, z, r })),
 ];
 export const FRAME_COLORS = ['#e8b84a', '#9ee8c8', '#ffa8cf', '#9ccfff'];
 
@@ -132,7 +134,7 @@ export const PUFFS = [ // { zone, x, z, r, y: [y0, y1], n, colors }
   { zone: 'mist', x: 48, z: 62, r: 18, y: [2, 8], n: 5, colors: PUFF_COLORS.mist },
   { zone: 'inkwell', x: 92, z: 62, r: 12, y: [4, 30], n: 6, colors: PUFF_COLORS.ink },
   { zone: 'inkwell', x: 92, z: 98, r: 12, y: [4, 30], n: 6, colors: PUFF_COLORS.ink },
-  { zone: 'inkwell', x: 136, z: 80, r: 14, y: [10, 40], n: 6, colors: PUFF_COLORS.ink },
+  { zone: 'inkwell', x: 142, z: 80, r: 14, y: [10, 40], n: 6, colors: PUFF_COLORS.ink },
   { zone: 'sundrop', x: 48, z: 132, r: 18, y: [4, 18], n: 6, colors: PUFF_COLORS.sun },
   { zone: 'sherbet', x: 40, z: 82, r: 24, y: [38, 48], n: 6, colors: PUFF_COLORS.sherbet },
 ];

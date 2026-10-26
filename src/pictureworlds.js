@@ -22,15 +22,17 @@ export const PICTURE_WORLDS = [
   { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: false, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
   { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: false },
   { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: false },
-  // Four worlds still to be named (owner 2026-10-25): framed, covered, secret.
+  // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'secret1', name: 'Secret World', emoji: '❓', frame: [0xb8a0f0, 0xf8e8c8], ready: false, secret: true },
   { id: 'secret2', name: 'Secret World', emoji: '❓', frame: [0x8adcc8, 0xf8f0d8], ready: false, secret: true },
   { id: 'secret3', name: 'Secret World', emoji: '❓', frame: [0xf8b8a0, 0xe8f0f8], ready: false, secret: true },
   { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },
-  // The 12th star: the Wizard at the top of his tower. No frame, no bridge stone.
-  { id: 'wizard', name: "The Wizard's Star", emoji: '🧙', frame: [0xe8d83a, 0x8a5ad8], ready: false, door: false, bridge: false },
+  // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world
+  // (it took the place of the old `wizard` entry, which no save could hold).
+  { id: 'secret5', name: 'Secret World', emoji: '❓', frame: [0xf0d080, 0xd8c8f8], ready: false, secret: true },
 ];
-// 12 stars in all (PICTURE_WORLDS); 10 hang as frames in the Swirl; 11 light a stone of the star bridge.
+// 12 stars in all (PICTURE_WORLDS), every one from a Picture World; 11 hang as frames in the Swirl (all but the Portal House);
+// all 12 light a stone of the star bridge.
 export const FRAME_WORLDS = PICTURE_WORLDS.filter(w => w.door !== false);
 export const BRIDGE_WORLDS = PICTURE_WORLDS.filter(w => w.bridge !== false);
 // T40: the Picture Worlds that open a realm (`realm` = a REALMS id; Race Track and Ball Stadium share Playland, each frame has its own arrival).

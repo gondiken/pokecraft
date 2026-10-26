@@ -422,7 +422,7 @@ async function browserPart({ browser, base, t }) {
   t.ok(d11.moves.every(m => m === 'ball') && d11.big.every(Boolean) && d11.sig.every(Boolean) && d11.learn.every(Boolean), '11: four Ball moves, two signature moves learned at 30, three big moves');
   t.ok(d11.fx[0] && d11.fx[1] && d11.fx[2] && d11.fx[3] === 'function' && d11.fx[4] === 'function' && d11.sound, '11: real Ball fx recipes (not the borrowed ones), both signature recipes, the Ball sounds');
   t.ok(!d11.inMain.length && d11.inRealm.length === 7, "11: Ball creatures are in no main world spawn table, all seven in Playland's stadium zone");
-  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 163 + 72 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
+  t.ok(d11.blocks.slice(0, 10).join() === '194,195,196,197,198,199,200,201,202,203' && d11.defs && d11.tiles <= 1024 && d11.ready === true, `11: blocks 194-203 are fixed, have wall text, are not placeable; the stadium frame is ready (${d11.tiles} tiles)`);
   // the creatures, as portraits
   const shots = await page.evaluate(async ids => {
     const { portrait } = await import('/src/ui.js');

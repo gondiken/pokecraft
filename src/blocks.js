@@ -2,7 +2,7 @@
 
 const TILE = 16;
 
-// Tile indices inside the atlas (a single row of 16x16 tiles).
+// Tile indices inside the atlas (a grid of 16x16 tiles, see ATLAS_COLS).
 export const T = {
   GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
   LOG_SIDE: 6, LOG_TOP: 7, LEAVES: 8, PLANKS: 9, COBBLE: 10,
@@ -74,6 +74,19 @@ const MORE_TILES = [
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
+// Wave 14.5: the atlas is a grid, ATLAS_COLS tiles wide, as many rows as needed (it was one row, 256 tiles at most).
+// Tile t sits at column t % ATLAS_COLS, row t / ATLAS_COLS (row 0 at the top of the canvas). Everything that finds a
+// tile in the atlas goes through tileX / tileY (canvas pixels), tileUv (texture coordinates) or tileGlY (texture uploads).
+export const ATLAS_COLS = 32;
+export const ATLAS_ROWS = Math.ceil(TILE_COUNT / ATLAS_COLS);
+export const tileX = t => (t % ATLAS_COLS) * TILE;
+export const tileY = t => Math.floor(t / ATLAS_COLS) * TILE;
+// The tile's y as WebGL counts it for renderer.copyTextureToTexture: from the bottom of the (flipped) texture.
+export const tileGlY = t => (ATLAS_ROWS - 1) * TILE - tileY(t);
+// Pushes the texture coordinates of corner (u, v) (each 0 or 1) of tile t, a hair inside the tile so its neighbours never bleed in.
+export function tileUv(out, t, u, v) {
+  out.push(((t % ATLAS_COLS) + (u ? 0.999 : 0.001)) / ATLAS_COLS, 1 - (Math.floor(t / ATLAS_COLS) + (v ? 0.001 : 0.999)) / ATLAS_ROWS);
+}
 
 export const B = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5,
@@ -362,14 +375,14 @@ export function mulberry32(a) {
 
 export function drawAtlas() {
   const c = document.createElement('canvas');
-  c.width = TILE * TILE_COUNT;
-  c.height = TILE;
+  c.width = TILE * ATLAS_COLS;
+  c.height = TILE * ATLAS_ROWS;
   const g = c.getContext('2d');
   const rand = mulberry32(42);
 
   const put = (t, x, y, col) => {
     g.fillStyle = `rgb(${clamp(col[0])},${clamp(col[1])},${clamp(col[2])})`;
-    g.fillRect(t * TILE + x, y, 1, 1);
+    g.fillRect(tileX(t) + x, tileY(t) + y, 1, 1);
   };
   const clamp = v => Math.max(0, Math.min(255, v | 0));
   const shade = (col, f) => col.map(v => v * f);
@@ -512,7 +525,7 @@ export function drawAtlas() {
     put(T.CRYSTAL, x, y, (x * 7 + y * 3) % 19 === 0 ? [255, 250, 200] : shade([150, 120, 240], facet * (1 + (rand() - 0.5) * 0.1)));
   });
   // Glass: a frame with a see-through middle (and a little shine).
-  g.clearRect(T.GLASS * TILE, 0, TILE, TILE);
+  g.clearRect(tileX(T.GLASS), tileY(T.GLASS), TILE, TILE);
   each((x, y) => {
     if (x === 0 || y === 0 || x === 15 || y === 15) put(T.GLASS, x, y, [200, 225, 235]);
     else if ((x === 3 && y > 2 && y < 7) || (x === 4 && y > 3 && y < 6)) put(T.GLASS, x, y, [240, 250, 255]);
@@ -774,9 +787,9 @@ export function drawAtlas() {
     const turnFrames = [];
     for (let k = 0; k < 4; k++) {
       each((x, y) => put(T.PORTAL, x, y, spiral(x, y, k)));
-      turnFrames.push(g.getImageData(T.PORTAL * TILE, 0, TILE, TILE));
+      turnFrames.push(g.getImageData(tileX(T.PORTAL), tileY(T.PORTAL), TILE, TILE));
     }
-    g.putImageData(turnFrames[0], T.PORTAL * TILE, 0);
+    g.putImageData(turnFrames[0], tileX(T.PORTAL), tileY(T.PORTAL));
     c.portalFrames = turnFrames;
   }
   { // T38d swirl looks (own random numbers): pale canvas stone, wet paint, cloud, glow puffs, brush bristles
@@ -1056,31 +1069,32 @@ export function drawAtlas() {
   const fireFrames = [];
   for (let k = 0; k < 4; k++) {
     drawFire(k);
-    fireFrames.push(g.getImageData(T.FIREPLACE * TILE, 0, TILE, TILE));
+    fireFrames.push(g.getImageData(tileX(T.FIREPLACE), tileY(T.FIREPLACE), TILE, TILE));
   }
-  g.putImageData(fireFrames[0], T.FIREPLACE * TILE, 0);
+  g.putImageData(fireFrames[0], tileX(T.FIREPLACE), tileY(T.FIREPLACE));
   c.fireFrames = fireFrames;
 
   return c;
 }
 
-// T22: draws flame frame k % 4 of the Fireplace into the atlas canvas and returns { frame, x } (its ImageData and the
-// tile's x in the atlas), so the caller can upload just that tile (re-uploading the whole atlas is slow on tablets).
+// T22: draws flame frame k % 4 of the Fireplace into the atlas canvas and returns { frame, x, y } (its ImageData and the
+// tile's place for renderer.copyTextureToTexture: y counted from the bottom, tileGlY), so the caller can upload just that
+// tile (re-uploading the whole atlas is slow on tablets).
 export function flickerFire(atlas, k) {
   const f = atlas.fireFrames;
   if (!f) return null;
-  const frame = f[((k % 4) + 4) % 4], x = T.FIREPLACE * TILE;
-  atlas.getContext('2d').putImageData(frame, x, 0);
-  return { frame, x };
+  const frame = f[((k % 4) + 4) % 4], x = tileX(T.FIREPLACE);
+  atlas.getContext('2d').putImageData(frame, x, tileY(T.FIREPLACE));
+  return { frame, x, y: tileGlY(T.FIREPLACE) };
 }
 
 // T38a: the Portal Door's spiral: draws frame k % 4 into the atlas canvas like flickerFire (upload only that tile).
 export function swirlPortal(atlas, k) {
   const f = atlas.portalFrames;
   if (!f) return null;
-  const frame = f[((k % 4) + 4) % 4], x = T.PORTAL * TILE;
-  atlas.getContext('2d').putImageData(frame, x, 0);
-  return { frame, x };
+  const frame = f[((k % 4) + 4) % 4], x = tileX(T.PORTAL);
+  atlas.getContext('2d').putImageData(frame, x, tileY(T.PORTAL));
+  return { frame, x, y: tileGlY(T.PORTAL) };
 }
 
 // Small isometric-ish icon for a block, used by the hotbar.
@@ -1091,6 +1105,6 @@ export function drawBlockIcon(atlas, id, size = 48) {
   g.imageSmoothingEnabled = false;
   const def = BLOCKS[id];
   const pad = size * 0.12;
-  g.drawImage(atlas, def.side * TILE, 0, TILE, TILE, pad, pad, size - pad * 2, size - pad * 2);
+  g.drawImage(atlas, tileX(def.side), tileY(def.side), TILE, TILE, pad, pad, size - pad * 2, size - pad * 2);
   return c;
 }

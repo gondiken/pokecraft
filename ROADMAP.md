@@ -1215,9 +1215,10 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   7-year-old). Each one is free to explore and ends with a **Boss**; beating the Boss wins that world's **star** (with
   a short note from the Wizard). Each star becomes one glowing stepping stone of the **star bridge** to the Wizard's
   tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
-  (2026-10-25): **12 stars**, 10 frames (framed Picture Worlds; four are placeholder `secret1`..`secret4` still to be named; `secret1` will be Doodle, wave 15), 11
-  bridge stones (the ten plus Portal, whose house is in the Swirl, no frame), the 12th star from the Wizard (no frame, no stone). Their levels sit above the Champion; `REMATCH_CAP`
-  and Coach Dex are checked against the new top.
+  (2026-10-25, changed 2026-10-26): **12 stars, every one from a Picture World**, 11 frames (framed Picture Worlds; five are placeholder
+  `secret1`..`secret5` still to be named; `secret1` will be Doodle, wave 15), 12 bridge stones (the eleven plus Portal, whose house is in
+  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 16). Their levels
+  sit above the Champion; `REMATCH_CAP` and Coach Dex are checked against the new top.
 
 ## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`) ✅ done (T39a-c)
 
@@ -1248,9 +1249,18 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   - **⚽ Ball:** the creatures are balls. A football pitch and a basketball court; score to win. Needs a ball that
     rolls and bounces (new physics); probably the biggest place so far.
 
-## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
+## Wave 14.5 · Room for more blocks, and the Wizard's star (owner, 2026-10-26) ✅ done
 
-- **Before it:** the block atlas is one row of 16 px tiles and holds 222 of 256 after wave 14; wave 15 needs a two-row atlas (UVs in the mesher) or must stay within 34 more tiles.
+- **The block atlas is a grid** (`ATLAS_COLS` 32 wide, as many rows as needed: 512 x 112 px today, room for 1024 tiles in a 512 x 512
+  grid). It was one row of 16 px tiles, 256 at most (4096 px, the widest texture many tablets take), and wave 14 left 222 used.
+  Every tile is drawn exactly as before (checked pixel for pixel); the few places that find a tile in the atlas go through
+  `tileX` / `tileY` / `tileUv` / `tileGlY` in `blocks.js`; the Swirl tint's shader gets the tile number back from the uv. Still one
+  texture and the same draw calls. New tiles are added as before (`MORE_TILES`).
+- **The Wizard gives no star** (owner 2026-10-26): the 12th star is a fifth secret Picture World (`secret5`, it took the `wizard`
+  entry's place: no save could hold that star). The Swirl (version 4) has 11 frames (the new one, N5, at the west end of the north
+  gallery, which grew by 8) and 12 bridge stones; the Wizard's island moved 6 east (x 142). Old Swirl edits are dropped once.
+
+## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
 
 - **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
   the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
@@ -1283,7 +1293,9 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 
 ## Wave 16 · The Wizard's Tower and the Custom type (the design option below is still open)
 
-"Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). The **Custom** type has no
+"Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). **The Wizard is chapter 2's
+championship** (owner, 2026-10-26): he gives no star (all 12 come from Picture Worlds and are found before you can cross the bridge);
+the win is designing your Custom creature and becoming the Wizard's ally. Maybe a title too (like Champion): not decided. The **Custom** type has no
 wild creatures: you design yours after beating the **Wizard** at the top of his tower (each floor: copy
 a picture with wool blocks, harder going up; the Wizard is +5 levels after every win, reusing the T28 win count).
 
@@ -1309,7 +1321,7 @@ thing, "make the canvas look like the picture", and floors differ only by data, 
   easel) and a free-rules top floor ("3 colours, same on both sides" needs a second checker and is hard to explain).
 - Later, maybe: painting together (each player sees half the picture), needs shared live state like S1.
 - **Decided by the story (2026-10-23, 2026-10-24):** the tower stands in the Swirl, reached over the bridge once every
-  Picture World's star is found; beating the Wizard ends chapter 2 (no badge: chapter 2 has none); the creature
+  Picture World's star is found (all 12); beating the Wizard ends chapter 2 (no badge and no star: chapter 2 has no badges and the Wizard gives no star); the creature
   you design is the Swirl's new **guardian** (the floors teach how a creature is designed).
 - Open: picture designs, the Wizard's team.
 

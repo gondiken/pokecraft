@@ -1,6 +1,6 @@
 // Voxel world: terrain generation, block storage and chunked meshing.
 import * as THREE from 'three';
-import { B, BLOCKS, TILE_COUNT, TREASURE, isOccluder, isSolid } from './blocks.js';
+import { B, BLOCKS, tileUv, TREASURE, isOccluder, isSolid } from './blocks.js';
 import { GYMS, LEGACY_EXTRA_GYMS } from './gyms.js';
 import { carveCaves, carveBigCaves } from './caves.js';
 import { installGymPlacement, T17_SLOTS } from './gymplace.js';
@@ -587,7 +587,7 @@ export class World {
     const s = face.shade, r = s * sky, g = s * blk;
     for (const [cx, cy, cz, u, v] of face.corners) {
       buf.pos.push(x + cx, y + (cy ? topScale : 0), z + cz);
-      buf.uv.push((tile + (u ? 0.999 : 0.001)) / TILE_COUNT, v);
+      tileUv(buf.uv, tile, u, v);
       buf.col.push(r, g, s);
     }
     buf.idx.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);

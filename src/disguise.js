@@ -3,7 +3,7 @@
 // Never changes the world, is never saved or sent. Used by Camo creatures; T19's Hidden Hill trainers can
 // reuse it: new Disguise(world, B.STONE, { w: 1, h: 2 }).
 import * as THREE from 'three';
-import { B, BLOCKS, TILE_COUNT } from './blocks.js';
+import { B, BLOCKS, tileUv } from './blocks.js';
 
 // dir, shade, kind, corners [x, y, z, u, v] (same numbers as the faces in world.js)
 const FACES = [
@@ -66,7 +66,7 @@ export class Disguise {
           this.cells.push([cx, cy, cz, f]);
           for (const [qx, qy, qz, u, v] of f.corners) {
             pos.push(-w / 2 + cx + qx, cy + qy, -w / 2 + cz + qz);
-            uv.push((tile + (u ? 0.999 : 0.001)) / TILE_COUNT, v);
+            tileUv(uv, tile, u, v);
             col.push(f.shade, f.shade, f.shade);
           }
           idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);

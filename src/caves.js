@@ -1,7 +1,7 @@
 // Caves: tunnels carved under the hills from the world seed, glowing decorations, treasure
 // chests, and the light shader that makes everything under cover dark.
 import * as THREE from 'three';
-import { B, WOOL, isSolid, mulberry32 } from './blocks.js';
+import { B, WOOL, isSolid, mulberry32, ATLAS_COLS, ATLAS_ROWS } from './blocks.js';
 import { OLD_W, OLD_D, WORLD_H, WATER_LEVEL } from './world.js';
 import { ORIGINAL_GYMS, LEGACY_EXTRA_GYMS, LEGACY_CAVE_GYMS } from './gyms.js';
 
@@ -615,7 +615,8 @@ export const caveLight = {
 // where the output is exactly what it was before. Tint by tile range: no mesh change, player-built blocks keep their own colours.
 export const swirlTint = {
   uTintOn: { value: 0 },
-  uTintU: { value: new THREE.Vector4(2, 2, 2, 2) },   // tile ranges in u: [a0, a1) and [b0, b1)
+  uTintU: { value: new THREE.Vector4(-1, -1, -1, -1) }, // tile ranges (tile numbers): [a0, a1) and [b0, b1)
+  uAtlas: { value: new THREE.Vector2(ATLAS_COLS, ATLAS_ROWS) }, // wave 14.5: the atlas grid, to get the tile number back from uv
   uTime: { value: 0 },
   uHaze: { value: 0.12 },
   uZone: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] }, // x, z, radius
@@ -634,6 +635,7 @@ varying vec3 vCavePos;
 varying vec3 vTint;
 uniform float uTintOn;
 uniform vec4 uTintU;
+uniform vec2 uAtlas;
 uniform float uTime;
 uniform float uHaze;
 uniform vec4 uZone[4];
@@ -643,7 +645,8 @@ uniform vec3 uSea[5];`)
       .replace('#include <project_vertex>', `#include <project_vertex>
 vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vTint = vec3(1.0);
-if (uTintOn > 0.5 && ((uv.x >= uTintU.x && uv.x < uTintU.y) || (uv.x >= uTintU.z && uv.x < uTintU.w))) {
+float tileN = floor(uv.x * uAtlas.x) + floor((1.0 - uv.y) * uAtlas.y) * uAtlas.x;
+if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTintU.z && tileN < uTintU.w))) {
   vec3 wp = vCavePos;
   vec4 t = clamp(vec4(1.0) - vec4(distance(wp.xz, uZone[0].xy) / uZone[0].z, distance(wp.xz, uZone[1].xy) / uZone[1].z, distance(wp.xz, uZone[2].xy) / uZone[2].z, distance(wp.xz, uZone[3].xy) / uZone[3].z), 0.0, 1.0);
   vec4 w = t * t * (3.0 - 2.0 * t);
@@ -665,6 +668,6 @@ if (uTintOn > 0.5 && ((uv.x >= uTintU.x && uv.x < uTintU.y) || (uv.x >= uTintU.z
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
         diffuseColor.rgb *= vTint;`);
   };
-  mat.customProgramCacheKey = () => 'cave-light-2';
+  mat.customProgramCacheKey = () => 'cave-light-3';
   mat.needsUpdate = true;
 }
