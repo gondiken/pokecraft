@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { Mover, PATHS, makePath } from './mover.js';
-import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, boatState, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
+import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, OLD_BOAT, boatState, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
 import { SHIP } from './pirateship.js';
 import { sound } from './sound.js';
 
@@ -47,6 +47,7 @@ export class PirateLive {
     this.boatT = 0; this.sinking = {}; this.reloadAt = -9;
     this.preview = null;   // what the dots show: { spec, gold }
     this.meshes = [];
+    for (let k = game.beaten.length - 1; k >= 0; k--) if (OLD_BOAT.test(game.beaten[k])) game.beaten.splice(k, 1); // the easy first version's sunk boats
     this.build();
   }
 
