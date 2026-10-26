@@ -2853,5 +2853,3 @@ SIG.anchordrop = (k, from, to) => {
   };
 };
 /* ==== end of T40b pirate ==== */
-// T40 base: until T40a-d add their own entries for the wave 14 types, they borrow the normal ones
-for (const t of ['tiny', 'pirate', 'racer']) { TRAVEL[t] ??= TRAVEL.normal; IMPACT[t] ??= IMPACT.normal; FX_COLORS[t] ??= FX_COLORS.normal; }

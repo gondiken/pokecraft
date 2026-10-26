@@ -1230,7 +1230,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 - **A calmer tablet screen:** one big action button that says what it will do, Place / Ride / Down only when useful, a
   smaller top bar (☰ and Book); nothing lost.
 
-## Wave 14 · Picture Worlds 1: the Giant House, the Pirate Seas, Playland
+## Wave 14 · Picture Worlds 1: the Giant House, the Pirate Seas, Playland ✅ done (T40 base + T40a-d, `plans/T40.md`-`T40d.md`; owner questions left open: the Wizard's note words, the ladybug, Boss rematch rewards)
 
 - **🐜 Tiny, the Giant House:** very small creatures (ants, a ladybug, a thimble mouse, a dust bunny, a seed) hiding
   in small places (in flowers, under a leaf, in a cup). The house is built from normal blocks at giant scale (nothing
@@ -1249,6 +1249,8 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
     rolls and bounces (new physics); probably the biggest place so far.
 
 ## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
+
+- **Before it:** the block atlas is one row of 16 px tiles and holds 205 of 256 after wave 14; wave 15 needs a two-row atlas (UVs in the mesher) or must stay within 51 more tiles.
 
 - **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
   the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).

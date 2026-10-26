@@ -262,7 +262,6 @@ const SOUNDS = {
   statdown: () => notes([523, 330], 0.08, { len: 0.12, type: 'triangle', vol: 0.28 }),
   snooze: () => notes([440, 392, 330], 0.14, { len: 0.2, type: 'triangle', vol: 0.18 }),
 };
-for (const t of ['tiny', 'pirate', 'racer']) SOUNDS[`fx:${t}`] ??= SOUNDS['fx:normal']; // T40 base: until T40a-d add their own
 
 function loadOn() {
   try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; }

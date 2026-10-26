@@ -195,7 +195,7 @@ export default async function ({ browser, base, t }) {
   await heal();
   await page.evaluate(`window.pokecraft.talkTo(${person('coach')})`);
   const coach = await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, levels: window.pokecraft.battle.foes?.map(c => c.level), boost: window.pokecraft.battle.xpBoost }));
-  t.ok(coach.inBattle && coach.levels.length === 3 && coach.levels.every(l => l >= 59 && l <= 60) && coach.boost === 2,
+  t.ok(coach.inBattle && coach.levels.length === 3 && coach.levels.every(l => l >= 59 && l <= 64) && coach.boost === 2,
     `Coach Dex brings 3 creatures at level ${coach.levels} with double XP`);
   t.ok(await finish(page), 'Coach Dex battle finishes');
 

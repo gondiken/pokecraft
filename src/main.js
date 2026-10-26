@@ -815,7 +815,7 @@ function talkTower(npc) {
   const p = game.world.tower.people.find(q => q.role === npc.role);
   if (npc.role === 'coach') {
     const top = Math.max(...game.party.map(c => c.level));
-    const lv = Math.max(25, Math.min(60, top)); // wave 12: up to the Tower guards' levels
+    const lv = Math.max(25, Math.min(64, top)); // wave 14: up to the Picture World Bosses' levels (62-65)
     const ids = p.teams[Math.floor(Math.random() * p.teams.length)];
     startBattle({ trainer: npc, team: ids.map((id, i) => [id, i === 0 ? lv - 1 : lv]), intro: p.intro, xpBoost: 2 });
     return;

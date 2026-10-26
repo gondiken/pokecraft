@@ -446,7 +446,7 @@ export const TOWER = {
       teams: [['bounceroo', 'monarchwing', 'rivetron'], ['woolumph', 'lumimoth', 'gongolin'],
         ['loudbeak', 'emperice', 'visionelk'], ['blizzbear', 'hornbeetle', 'lunaroo'], ['bloomora', 'venomamba', 'phantomaw'], ['howlbone', 'ufomax', 'stompasaur'],
         ['kitegale', 'slimperor', 'frogami'], ['sandtimer', 'topiphant', 'pixbit2'], ['knitcat', 'kingcoin', 'clangalarm'], ['bigbite', 'bucketeam', 'highvault'], ['scrawlbert', 'sushisail', 'tightropa'],
-        ['shadecoon', 'ravenshade', 'whirlwhisk']],
+        ['shadecoon', 'ravenshade', 'whirlwhisk'], ['fluffnado', 'featherbeard', 'vroomster'], ['goalhound', 'anchorclaw', 'spoolmouse']], // wave 14: two teams of the Picture World types
       intro: ['Training time! Battles with me give double XP.'], win: 'Great training! Come back any time.' },
     { role: 'guard1', name: 'Guard Bram', at: [2, 2], hat: 0x8a96a2,
       colors: { shirt: 0x5a6a8a, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xd9a066 },
