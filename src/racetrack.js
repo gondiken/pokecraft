@@ -9,8 +9,8 @@ import { kit, placeBoss, placeCrew } from './picturelands.js'; // pure too (bloc
 export const RACE = {
   laps: 2, lane: 1.5, grid: -1.5,                 // Rio's lane; both start 1.5 behind the line
   count: 3, hold: 1.2,                            // countdown seconds; how far you may move before GO
-  speed: { straight: 6.3, corner: 5.3, chicane: 4.6, boost: 7.6 }, // owner 2026-10-26: a bit harder: walking loses the first two races, sprinting (6.2), riding or the boost pads win
-  band: { near: 1, slow: 0.04, min: 0.8, behind: 3, fast: 0.03, max: 1.12, ease: 0.05, final: 45, cap: [0.95, 0.8, 0.6] },
+  speed: { straight: 6.7, corner: 5.6, chicane: 4.9, boost: 7.6 }, // owner 2026-10-26: in a race you always run (Player.forceSprint), a walk never wins; a run wins, the boost pads and riding help
+  band: { near: 1, slow: 0.03, min: 0.85, behind: 3, fast: 0.03, max: 1.12, ease: 0.04, final: 45, cap: [1, 0.9, 0.8] },
   boost: { dist: 5, speed: 14 },                  // a boost pad zooms you 5 blocks at 14 blocks/s
   leave: 40,                                      // further than this from the track ends the race
   parade: { speed: 5, lanes: [-1.5, 1.5] },

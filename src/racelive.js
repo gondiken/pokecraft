@@ -17,7 +17,7 @@ export const RACE_LINES = {
   lose: 'I win! That was close. Race again?',             // you lost the race
   again: 'Race me again? This time I go full speed!',      // with the star
 };
-const TIPS = ['', 'Tip: run! Hold Shift, or push the stick all the way.', 'Tip: ride a creature to go even faster!'];
+const TIPS = ['', 'Tip: hit the boost pads and take the corners on the inside!', 'Tip: ride a creature to go even faster!'];
 const ordinal = n => (n === 1 ? '1st' : '2nd');
 
 /* ------------------------------ the karts (a few merged boxes, no creature models) ------------------------------ */
@@ -310,6 +310,7 @@ export class RaceLive {
   step(dt) {
     const g = this.game, p = g.player;
     if (!p || !g.world) return;
+    p.forceSprint = this.state === 'race'; // owner 2026-10-26: in a race you always run (no Shift, no full stick push on a tablet)
     this.cells.flush();
     const paused = this.paused();
     if (this.zoomCool > 0 && !paused) this.zoomCool -= dt;
@@ -416,6 +417,7 @@ export class RaceLive {
   }
 
   dispose() {
+    if (this.game.player) this.game.player.forceSprint = false;
     disposeKart(this.kart);
     for (const k of this.paradeKarts || []) disposeKart(k);
     this.kart = null; this.paradeKarts = null;

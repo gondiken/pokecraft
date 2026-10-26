@@ -12,7 +12,7 @@
 // Add a place: one more source in DESTINATIONS (`addDestination`), like `addHomeType`.
 import { MID_X, MID_Z } from './world.js';
 import { GYMS } from './gyms.js';
-import { pictureWorld } from './pictureworlds.js'; // T40
+import { pictureWorld, fullName } from './pictureworlds.js'; // T40
 
 const dist2 = (p, x, z) => Math.hypot(x - p.x, z - p.z);
 
@@ -234,8 +234,8 @@ addDestination({
   id: 'frames',
   rows: game => (game.world.swirl?.frames || []).filter(f => pictureWorld(f.world)?.ready).map(f => {
     const pw = pictureWorld(f.world);
-    return new SpotDestination({ id: `frame:${pw.id}`, group: 'realm', icon: pw.emoji, label: pw.name, where: () => [f.stand[0] + 0.5, f.stand[2] + 0.5], radius: 4,
-      madeText: `The ${pw.name} picture! Step in.` });
+    return new SpotDestination({ id: `frame:${pw.id}`, group: 'realm', icon: pw.emoji, label: fullName(pw), where: () => [f.stand[0] + 0.5, f.stand[2] + 0.5], radius: 4,
+      madeText: `The ${fullName(pw)} picture! Step in.` });
   }),
 });
 addDestination({

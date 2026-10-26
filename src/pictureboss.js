@@ -88,13 +88,13 @@ addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in raceliv
   ],
 });
 /* ==== T40d ball ==== */
-addBoss({ // the Ball Stadium (Playland). Score 2 goals first (3 for a rematch): the gate reads the saved goal keys (stadium.js goalState).
+addBoss({ // the Ball Stadium (Playland). Score 3 goals and 3 baskets first: the gate reads the saved goal keys (stadium.js goalState).
   id: 'stadium', name: 'Captain Kickley', type: 'ball', look: 'sport',
   colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x6a3a1a, skin: 0xf0c8a0 },
-  gate: game => { const { n, need, done } = goalState(game); return done ? null : `Score ${need} goals past our keepers first! Then we battle. (${n} / ${need})`; },
+  gate: game => { const { n, need, b, bneed, done } = goalState(game); return done ? null : `Score ${need} goals and ${bneed} baskets first! Then we battle. (⚽ ${n} / ${need} · 🏀 ${b} / ${bneed})`; },
   team: [['smashbird', 62], ['beachboomer', 63], ['strikehorn', 63], ['goalhound', 65, ['goldengoal', 'cannonroll', 'quickpass', 'teamhuddle']]],
-  intro: ['Two goals past our keepers! You can really kick.', "Now let's see how your team plays!"],
-  rematchIntro: ['Three goals! Ready for the second half?'],
+  intro: ['Three goals and three baskets! You can really play.', "Now let's see how your team plays!"],
+  rematchIntro: ['Goals and baskets again! Ready for the second half?'],
   lose: 'What a match! The stadium is cheering again. Here is the star the Wizard hid in our trophy!',
   win: 'Good game! Score again and we play another match.',
   note: "This stadium was built for the festival's big match. Thank you for playing it!",

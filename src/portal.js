@@ -5,7 +5,7 @@
 // Imports only blocks.js (world.js and gymplace.js import this file, so it must not import them back).
 import * as THREE from 'three';
 import { B } from './blocks.js';
-import { PICTURE_WORLDS, FRAME_WORLDS } from './pictureworlds.js';
+import { PICTURE_WORLDS, FRAME_WORLDS, fullName } from './pictureworlds.js';
 
 // The door stands flat against the tower's front wall, right of the rainbow pillar, in the row d = 7 (the tower's own
 // protected box, +-7, already holds it: no player build can be lost). d = distance in front of the tower centre,
@@ -169,7 +169,7 @@ export function createPortal(game) {
         game.realms.enter('swirl', { back: game.world.portal.stand });
         return true;
       }
-      if (k === 'back') { game.realms.leave('door'); return true; }
+      if (k === 'back') { const d = (game.world.doors || []).find(o => inBox(o.box, block)); game.realms.leave('door', { via: d?.key }); return true; } // the door you use decides which frame you come out at
       return swirlUse(game, block);
     },
 
@@ -253,7 +253,7 @@ function outlineGeometry(boxes) {
 function drawPicture(pw) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d');
-  if (pw.picture) { pw.picture(g, 128); return c; }
+  if (pw.picture) { pw.picture(g, 128); return banner(g, pw, c); }
   const grad = g.createLinearGradient(0, 0, 0, 128);
   grad.addColorStop(0, `#${pw.frame[0].toString(16).padStart(6, '0')}`); grad.addColorStop(1, '#ffffff');
   g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
@@ -261,6 +261,14 @@ function drawPicture(pw) {
   g.fillText(pw.emoji, 64, 70);
   g.fillStyle = 'rgba(255,255,255,0.9)';
   for (const [x, y] of [[16, 18], [108, 24], [22, 108], [104, 104], [64, 10]]) { g.beginPath(); g.arc(x, y, 4, 0, Math.PI * 2); g.fill(); }
+  return banner(g, pw, c);
+}
+// A place inside a shared world (owner 2026-10-26): its world's name on a strip at the top ('PLAYLAND').
+function banner(g, pw, c) {
+  if (!pw.place) return c;
+  g.fillStyle = 'rgba(30,20,60,0.82)'; g.fillRect(0, 0, 128, 26);
+  g.font = 'bold 18px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff';
+  g.fillText(pw.place.toUpperCase(), 64, 14);
   return c;
 }
 function dropPictures(game, st) {
@@ -384,7 +392,7 @@ function swirlUse(game, block) {
 }
 function swirlPrompt(game, block, how) {
   const f = frameOf(game, block);
-  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.ready ? `${pw.emoji} ${pw.name}` : pw.secret ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
+  if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `Picture frame · ${pw.ready ? `${pw.emoji} ${fullName(pw)}` : pw.secret ? 'a secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
   if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
   return '';
 }

@@ -411,6 +411,15 @@ export function swirlLand(world, def) {
 
 // The guide in the Swirl: { x, z, text(arrow, distance) }. On the cloud sea: the nearest lift; a ready Picture World you have no
 // star from: its frame; otherwise the door home.
+// Where you come back out when you leave a Picture World through the way back of `id` (owner 2026-10-26: each door of a shared
+// world, like Playland's, takes you out at its own frame): in front of that frame, facing it. Same as portal.js's way in.
+export function frameReturn(id) {
+  const i = FRAME_WORLDS.findIndex(w => w.id === id), spot = FRAME_SPOTS[i];
+  if (!spot) return null;
+  const [fx, fz] = spot.facing;
+  return [spot.stand[0] + 0.5, spot.stand[1], spot.stand[2] + 0.5, Math.atan2(-fx, -fz), 0];
+}
+
 export function swirlAim(world, p, game) {
   const near = list => list.reduce((best, c) => (!best || Math.hypot(c.x - p.x, c.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z) ? c : best), null);
   if (p.y < 4 && world.lifts?.length) {

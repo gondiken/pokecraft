@@ -87,9 +87,9 @@ export default async function ({ browser, base, t }) {
     t.ok(back === 0, `project(at(s, lane)) gives back s and the lane for lanes -3..3 (${cells} points, ${back} wrong)`);
     t.ok(tr.gates.map(g => g.id).join() === 'G0,G1,G2,G3' && tr.gates.every((g, i) => i === 0 || g.s > tr.gates[i - 1].s), 'the gates are G0..G3, sorted by distance');
     const win = (v, l, dt) => raceRun(v, l, dt, tr).winner;
-    const table = [[0, 4.3, 'rio'], [0, 6.2, 'you'], [1, 4.3, 'rio'], [1, 6.2, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'you'], [1, 5.2, 'you'], [2, 6.2, 'you'], [0, 9.5, 'you']]; // owner 2026-10-26: a bit harder
-    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `you need a sprint the first two times (a walk loses), a walk wins the third time (dt ${dt.toFixed(3)})`);
-    t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 5.0, 6.2, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
+    const table = [[0, 4.3, 'rio'], [0, 6.2, 'you'], [1, 4.3, 'rio'], [1, 6.2, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [1, 5.8, 'you'], [2, 6.2, 'you'], [0, 9.5, 'you']]; // owner 2026-10-26: a walk never wins (in a race you always run)
+    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a run (6.2, what a race gives you) wins every time (dt ${dt.toFixed(3)})`);
+    t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 5.8, 6.2, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
     const top = Math.max(...Object.values(RACE.speed)) * RACE.band.max;
     let fast = 0;
     for (let s = -1.5; s < RACE.laps * tr.L; s += 1.1) for (const lead of [-30, -4, 0, 2, 20]) for (const l of [0, 1, 2, 3]) if (bossSpeed(s, lead, l, tr) > top + 1e-9) fast++;
@@ -416,9 +416,9 @@ export default async function ({ browser, base, t }) {
       let t = 0;
       while (live.state === 'race' && t < 200) { R.p.pos.set(grid.player[0], grid.player[1], grid.player[2]); live.step(0.1); t += 0.1; }
       const after = snap();
-      return { state: live.state, losses: live.losses, won: live.won, secs: t, tip: R.said('Tip: run!'), wins: R.said('Rio wins this time'), lose: R.said('Race again\\?'), action: g.gymLive.talkPrompt(R.rio()).action, same: before === after, bossS: live.bossS, L: live.track.L };
+      return { state: live.state, losses: live.losses, won: live.won, secs: t, tip: R.said('Tip: hit the boost pads'), wins: R.said('Rio wins this time'), lose: R.said('Race again\\?'), action: g.gymLive.talkPrompt(R.rio()).action, same: before === after, bossS: live.bossS, L: live.track.L };
     });
-    t.ok(D4.state === 'done' && D4.losses === 1 && !D4.won && D4.wins && D4.lose && D4.tip, `a lost race: "Rio wins this time!", Rio's line and the run tip (${D4.secs.toFixed(0)} s)`);
+    t.ok(D4.state === 'done' && D4.losses === 1 && !D4.won && D4.wins && D4.lose && D4.tip, `a lost race: "Rio wins this time!", Rio's line and the boost-pad tip (${D4.secs.toFixed(0)} s)`);
     t.ok(D4.action === 'Race again!' && D4.same, 'the button says "Race again!" and nothing in the save changed');
 
     // the second race: a walk (4.3) wins now (Rio is gentler); a missed flag and the shortcut

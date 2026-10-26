@@ -165,6 +165,7 @@ export class Player {
       f = -j.y; s = j.x;
       analog = Math.min(1, Math.hypot(j.x, j.y));
       stickSprint = analog > 0.95;
+      if (this.forceSprint && analog > 0.5) analog = 1; // a race: half a push is a full run
     }
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let wx = -sin * f + cos * s;
@@ -183,7 +184,7 @@ export class Player {
 
     const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
     const water = this.inWater;
-    const sprint = k.ShiftLeft || k.ShiftRight || stickSprint;
+    const sprint = k.ShiftLeft || k.ShiftRight || stickSprint || this.forceSprint;
     let speed = (sprint ? 6.2 : 4.3) * analog;
     let jump = 8.6;
     if (r && r.kind === 'land' && !water) { speed = (sprint ? r.sprint : r.speed) * analog; jump = r.jump; }

@@ -4,7 +4,7 @@
 // keys pw:stadium:goal1..3), baskets (a few bonus cubes), the words, and the guide arrow. The physics are in ballphysics.js.
 import * as THREE from 'three';
 import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, aimShot, shotTo, keeperAt } from './ballphysics.js';
-import { goalOf, basketCross, inBox, goalState, goalKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
+import { goalOf, basketCross, inBox, goalState, goalKey, basketKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
 import { buildPerson } from './npc.js';
 import { disposeModel } from './species.js';
 import { sound } from './sound.js';
@@ -212,7 +212,8 @@ export class StadiumLive {
       if (key) { g.beaten.push(key); n++; g.save?.(); }
     }
     if (before >= need) this.toast('GOAL! What a shot!');
-    else if (n >= need) this.toast(`GOAL! ⚽ ${need} of ${need}! Captain Kickley wants to battle you!`);
+    else if (goalState(g).done) this.toast(`GOAL! ⚽ ${need} of ${need}! Captain Kickley wants to battle you!`);
+    else if (n >= need) this.toast(`GOAL! ⚽ ${need} of ${need}! Now ${goalState(g).bneed} baskets on the court.`);
     else this.toast(`GOAL! ⚽ ${n} of ${need}`);
   }
 
@@ -228,10 +229,16 @@ export class StadiumLive {
   basket() {
     const g = this.game;
     sound.play('netswish');
+    const st = goalState(g); // owner 2026-10-26: the captain wants baskets too (saved at once, like goals)
+    let counted = '';
+    if (st.b < st.bneed) {
+      const key = [1, 2, 3].map(basketKey).find(k => !g.beaten.includes(k));
+      if (key) { g.beaten.push(key); g.save?.(); const now = goalState(g); counted = now.done ? ` ${now.bneed} of ${now.bneed}! Captain Kickley wants to battle you!` : ` ${now.b} of ${now.bneed}`; }
+    }
     if (this.bonus < LIVE_RULES.bonusMax) {
       this.bonus++; g.cubes++; g.ui.renderHud?.();
-      this.toast('Swish! 🏀 +1 Capture Cube');
-    } else this.toast('Swish! 🏀');
+      this.toast(`Swish! 🏀${counted} +1 Capture Cube`);
+    } else this.toast(`Swish! 🏀${counted}`);
   }
 
   /* ---- Kick! and Shoot! (gymLive near / use hooks) ---- */
@@ -277,14 +284,18 @@ export class StadiumLive {
   battleEnded(result, opts) {
     if (result !== 'won' || opts?.picture?.id !== 'stadium' || opts.picture.crew != null) return;
     const g = this.game;
-    for (let i = 1; i <= 3; i++) { const k = g.beaten.indexOf(goalKey(i)); if (k >= 0) g.beaten.splice(k, 1); }
+    for (let i = 1; i <= 3; i++) for (const key of [goalKey(i), basketKey(i)]) { const k = g.beaten.indexOf(key); if (k >= 0) g.beaten.splice(k, 1); }
   }
 
   /* ---- the guide ---- */
   aim(p) {
     const { part } = this, st = goalState(this.game);
     if (!inBox(part.area, { x: p.x, y: 1, z: p.z }) || st.done) return null;
-    if (this.hard && st.n === 0) return null; // a rematch has not started: the base points at the way back
+    if (this.hard && st.n === 0 && st.b === 0) return null; // a rematch has not started: the base points at the way back
+    if (st.n >= st.need) { // the goals are in: now the baskets
+      const h = this.hoop.pos, bl = `(${st.b} / ${st.bneed})`;
+      return { x: h.x, z: h.z, text: (a, m) => `🏀 Shoot baskets on the court! ${bl} ${a} ${m}m` };
+    }
     const f = this.foot.pos, d = Math.hypot(f.x - p.x, f.z - p.z);
     const label = `(${st.n} / ${st.need})`;
     if (d > 8) return { x: f.x, z: f.z, text: (a, m) => `⚽ Kick the ball into a goal! ${label} ${a} ${m}m` };

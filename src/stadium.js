@@ -11,7 +11,8 @@ import { placeBoss, placeCrew } from './picturelands.js';
 
 const WORLD_H = 48;
 export const G = 10;
-export const GOALS = { first: 2, rematch: 3 };      // goals the captain wants: the first star, then every rematch
+export const GOALS = { first: 3, rematch: 3 };      // goals the captain wants: the first star, then every rematch (owner 2026-10-26: 3, and 3 baskets too)
+export const BASKETS = { first: 3, rematch: 3 };    // baskets the captain wants as well
 export const BALL_R = 0.4;
 // Shoot!: from 3.2 to 15 blocks away; the arc clears the rim (a square sticking out 2 from the hole's middle, 3.4 on the diagonal with the ball's size) by 1 block.
 export const SHOT = { min: 3.6, max: 15, rim: 3.5, clear: 1.0, behind: 1.0, under: 3.6 }; // `behind`: a ball more than 1 behind the hole's middle (under the backboard) lobs instead
@@ -37,11 +38,14 @@ export const STADIUM = {
 };
 
 export const goalKey = i => `pw:stadium:goal${i}`;   // saved in `beaten`, like the helpers' keys
+export const basketKey = i => `pw:stadium:basket${i}`;
 // Goals scored for the next match: how many, how many are needed (2 for the star, 3 for a rematch) and whether that is enough.
 export function goalState(game) {
-  const need = game.stars.includes('stadium') ? GOALS.rematch : GOALS.first;
+  const again = game.stars.includes('stadium');
+  const need = again ? GOALS.rematch : GOALS.first, bneed = again ? BASKETS.rematch : BASKETS.first;
   const n = [1, 2, 3].filter(i => game.beaten.includes(goalKey(i))).length;
-  return { n, need, done: n >= need };
+  const b = [1, 2, 3].filter(i => game.beaten.includes(basketKey(i))).length;
+  return { n, need, b, bneed, done: n >= need && b >= bneed };
 }
 export const inBox = (b, p) => p.x > b.x0 && p.x < b.x1 && p.z > b.z0 && p.z < b.z1 && p.y > b.y0 && p.y < b.y1;
 

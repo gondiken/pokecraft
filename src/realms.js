@@ -6,7 +6,7 @@ import { B, WOOL } from './blocks.js';
 import { GYMS } from './gyms.js';
 import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
-import { swirlLand, swirlAim } from './swirlland.js'; // T38a
+import { swirlLand, swirlAim, frameReturn } from './swirlland.js'; // T38a
 import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
 import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
@@ -133,6 +133,8 @@ export const TERRAINS = { dreamLand, swirlLand, pictureStub, playLand };
 TERRAINS.houseLand = houseLand; // T40a
 // The guide arrow of a terrain when no realm gym is left: (world, p, game) => { x, z, text(arrow, distance) } (T38a). The Dream's is in aim() below.
 export const TERRAIN_AIMS = { swirlLand: swirlAim };
+// Where a Picture World's way back of Picture World `id` leads out in its parent (owner 2026-10-26): (id) -> [x, y, z, yaw, pitch] | null.
+export const TERRAIN_RETURNS = { swirlLand: frameReturn };
 TERRAIN_AIMS.houseLand = houseAim; // T40a
 TERRAINS.pirateLand = pirateLand; // T40b
 TERRAIN_AIMS.pirateLand = pirateAim; // T40b
@@ -254,10 +256,12 @@ export function createRealms(game, { createWorld, save, size }) {
   }
 
   // T40: back up one level (Picture World -> the Swirl). The host keeps its own edits; a guest asks the host for the parent's edits.
-  async function goUp(reason) {
+  async function goUp(reason, via = null) {
     busy = true;
     if (game.hideSeek?.active) game.hideSeek.stop();
     const left = realmOf(game.place), P = realmOf(stash.up.id);
+    const out = via && via !== stash.up.via ? TERRAIN_RETURNS[P.terrain]?.(via) : null; // through another door of a shared world: out at that door's own frame
+    if (out) { stash.up.ret = out; stash.up.via = via; }
     let edits;
     if (!stash.guest) { game.realmEdits = self.edits(); edits = game.realmEdits[P.id]; }
     lastGround = null;
@@ -466,9 +470,9 @@ export function createRealms(game, { createWorld, save, size }) {
 
     // Back to the main world, beside the Bed. reason: 'stone' | 'morning' | 'lost' | 'quiet'.
     // T40: from a Picture World it goes up to the Swirl first (stash.up), unless opts.home (visiting a friend, a guest whose host went home).
-    async leave(reason = 'stone', { home = false } = {}) {
+    async leave(reason = 'stone', { home = false, via = null } = {}) {
       if (game.place === MAIN || !stash || busy) return false;
-      if (stash.up && !home) return goUp(reason);
+      if (stash.up && !home) return goUp(reason, via);
       busy = true;
       if (game.hideSeek?.active) game.hideSeek.stop();
       const left = game.place;

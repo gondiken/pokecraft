@@ -453,7 +453,7 @@ async function browserPart({ browser, base, t }) {
   const saved = await shootAt(162 + KEEPER.A - 0.3, TOP);
   t.ok(saved.word === 'Kick!' && saved.used && saved.goalFrame < 0 && !saved.beaten.length && await said(page, /Saved by Keeper Gail! Try again!/), `14: a shot straight at the keeper is saved: the toast comes, no goal key (${JSON.stringify(saved.beaten)})`);
   const scored = await shootAt(162, TOP);
-  t.ok(scored.goalFrame >= 0 && scored.goalFrame < 60 && scored.beaten.join() === GOAL(1) && await said(page, /GOAL! ⚽ 1 of 2/), `14: a shot at the open side is a goal within 3 s: GOAL! 1 of 2, key ${GOAL(1)} (goal at frame ${scored.goalFrame})`);
+  t.ok(scored.goalFrame >= 0 && scored.goalFrame < 60 && scored.beaten.join() === GOAL(1) && await said(page, /GOAL! ⚽ 1 of 3/), `14: a shot at the open side is a goal within 3 s: GOAL! 1 of 3, key ${GOAL(1)} (goal at frame ${scored.goalFrame})`);
   t.ok(Math.abs(scored.ball - scored.spot[0]) < 0.5, `14: 1.5 s after the goal the ball is on the centre spot again (${scored.ball.toFixed(1)})`);
   // a goal picture: the ball in the net (the part is frozen so the picture stays)
   await page.evaluate(TOP => {
@@ -537,7 +537,7 @@ async function browserPart({ browser, base, t }) {
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
     const g = window.pokecraft, L = window.__live, S = await import('/src/species.js');
-    L.goalAt = null; g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:goal')); g.beaten.push('pw:stadium:goal1');
+    L.goalAt = null; g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:')); g.beaten.push('pw:stadium:goal1');
     const bs = g.world.bosses.find(b => b.id === 'stadium');
     g.player.pos.set(bs.rest[0], bs.rest[1], bs.rest[2]); g.player.vel.set(0, 0, 0);
     g.party = [S.makeCreature('grovebeast', 100), S.makeCreature('thunderwolf', 100)];
@@ -549,23 +549,26 @@ async function browserPart({ browser, base, t }) {
     g.bosses.talk(npc);
     return { word, inBattle: g.inBattle, name: npc.name };
   });
-  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 2 goals past our keepers first! Then we battle\. \(1 \/ 2\)/), '16: with 1 goal the Captain says to score first (1 / 2), no battle, the button says Talk');
+  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 3 goals and 3 baskets first! Then we battle\. \(⚽ 1 \/ 3 · 🏀 0 \/ 3\)/), '16: with 1 goal the Captain says to score 3 goals and 3 baskets first (⚽ 1 / 3 · 🏀 0 / 3), no battle, the button says Talk');
   const guide = await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 150); g.updateGuide(); return g.ui.guideText; });
-  t.ok(/Kick the ball into a goal! \(1 \/ 2\)/.test(guide || ''), `16: the guide says "${guide}"`);
+  t.ok(/Kick the ball into a goal! \(1 \/ 3\)/.test(guide || ''), `16: the guide says "${guide}"`);
   // a lost battle: still in Playland, healed, the goals are kept
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js');
-    g.beaten.push('pw:stadium:goal2');
+    g.beaten.push('pw:stadium:goal2', 'pw:stadium:goal3');
+    window.__gateGoals = (await import('/src/pictureboss.js')).bossOf('stadium').gate(g); // 3 goals, no baskets: the gate is still shut
+    g.beaten.push('pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3');
     g.party = [S.makeCreature('fluffin', 2)];
     g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium'));
   });
   await waitFor(page, () => window.pokecraft.inBattle, null, 30000);
   const foes = await page.evaluate(() => { const g = window.pokecraft, f = g.battle.foes; return { levels: f.map(x => x.level).join(), last: f.at(-1).species, moves: JSON.stringify(f.at(-1).moves) }; });
-  t.ok(Math.max(...foes.levels.split(',').map(Number)) === 65 && foes.last === 'goalhound' && /goldengoal/.test(foes.moves), `16: with 2 goals the Captain battles: top level 65, Goalhound last with Golden Goal (${foes.levels}; ${foes.moves})`);
+  t.ok(Math.max(...foes.levels.split(',').map(Number)) === 65 && foes.last === 'goalhound' && /goldengoal/.test(foes.moves), `16: with 3 goals and 3 baskets the Captain battles: top level 65, Goalhound last with Golden Goal (${foes.levels}; ${foes.moves})`);
   await playBattle(page);
   await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
-  const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party.every(c => c.hp > 0), keys: g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length, star: g.stars.includes('stadium') }; });
-  t.ok(lost.place === 'playland' && lost.hp && lost.keys === 2 && !lost.star, `16: losing keeps you in Playland, healed, with both goals (${JSON.stringify(lost)})`);
+  const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party.every(c => c.hp > 0), keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, star: g.stars.includes('stadium'), gate3: window.__gateGoals }; });
+  t.ok(/🏀 0 \/ 3/.test(lost.gate3 || ''), `16: 3 goals but no baskets: the gate is still shut ("${lost.gate3}")`);
+  t.ok(lost.place === 'playland' && lost.hp && lost.keys === 6 && !lost.star, `16: losing keeps you in Playland, healed, with all goals and baskets (${JSON.stringify(lost)})`);
   // a won battle: the star, the goal keys are gone, the next gate says 0 / 3
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js');
@@ -580,9 +583,9 @@ async function browserPart({ browser, base, t }) {
   await waitFor(page, () => window.pokecraft.stars.includes('stadium'), null, 60000);
   const won = await page.evaluate(async () => {
     const g = window.pokecraft, PB = await import('/src/pictureboss.js'), npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
-    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action };
+    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action };
   });
-  t.ok(won.keys === 0 && /Score 3 goals past our keepers first!.*\(0 \/ 3\)/.test(won.gate) && won.word === 'Talk', `16: winning gives the star and clears the goals: the rematch gate says "${won.gate}"`);
+  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}"`);
   await page.waitForTimeout(500);
 
   /* ---- 18. Save and load ---- */
@@ -668,7 +671,7 @@ async function browserPart({ browser, base, t }) {
   const kBefore = await Bp.evaluate(() => { const L = window.__live; return { x: L.foot.pos.x, z: L.foot.pos.z }; });
   const dad = await A.evaluate(() => {
     const g = window.pokecraft, L = window.__live, p = g.player;
-    L.foot.reset([82, 11.401, 162]); L.foot.time = 5.65; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2; p.pitch = 0;
+    L.rivals = false; L.foot.reset([82, 11.401, 162]); L.foot.time = 4.05; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2; p.pitch = 0; // 4.05 = KEEPER.P - 0.35: Gail at the top of her run
     g.gymLive.use(g.player);
     for (let i = 0; i < 60; i++) L.update(0.05);
     return g.beaten.filter(k => k.startsWith('pw:stadium:goal'));

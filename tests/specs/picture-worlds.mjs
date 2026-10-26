@@ -367,8 +367,12 @@ export default async function ({ browser, base, t }) {
   await placeIs(page, 'playland');
   const pl2 = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, d = g.world.doors.find(d => d.key === 'stadium'); g.updateGuide(); return { via: g.realms.via, z: p.z, door: d.stand[2], guide: g.ui.guideText }; });
   t.ok(pl2.via === 'stadium' && Math.abs(pl2.z - pl2.door) < 0.1 && /Ball Stadium Boss/.test(pl2.guide || ''), `the stadium frame arrives at the stadium gate in the same realm (${pl2.guide})`);
-  await page.evaluate(() => window.pokecraft.realms.leave('door'));
+  // in through the stadium frame, out through the race door: you come out at the race frame (owner 2026-10-26)
+  await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors.find(d => d.key === 'race'), m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(page, 'swirl');
+  const cross = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'race'), p = g.player.pos, c = f.cloth[12]; return { d: Math.hypot(p.x - f.stand[0] - 0.5, p.z - f.stand[2] - 0.5), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }, 'click or E') }; });
+  t.ok(cross.d < 1.5, `in through the stadium frame, out through the race door: you come out at the race frame (${cross.d.toFixed(1)})`);
+  t.ok(/Picture frame · 🏎️ Playland · Race Track/.test(cross.prompt), `the frame says it is Playland ("${cross.prompt}")`);
   await page.evaluate(() => window.pokecraft.realms.leave('door'));
   await placeIs(page, 'main');
   await flip(page, 'house', false); await flip(page, 'race', false); await flip(page, 'stadium', false);
