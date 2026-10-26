@@ -1250,7 +1250,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 
 ## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
 
-- **Before it:** the block atlas is one row of 16 px tiles and holds 205 of 256 after wave 14; wave 15 needs a two-row atlas (UVs in the mesher) or must stay within 51 more tiles.
+- **Before it:** the block atlas is one row of 16 px tiles and holds 222 of 256 after wave 14; wave 15 needs a two-row atlas (UVs in the mesher) or must stay within 34 more tiles.
 
 - **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
   the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
