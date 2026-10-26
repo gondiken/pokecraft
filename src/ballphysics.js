@@ -210,7 +210,7 @@ export function shotTo(from, target, g = 20, slope = 2, h = BALL.h, over = null)
 }
 
 /* ---- The keepers (closed form of the stadium clock) ---- */
-export const KEEPER = { A: 2.6, P: 6, hardA: 2.9, hardP: 4.5, halfX: 0.35, halfZ: 0.7, height: 1.9 };
+export const KEEPER = { A: 3.0, P: 4.2, hardA: 3.2, hardP: 3.4, halfX: 0.35, halfZ: 0.7, height: 1.9 }; // owner 2026-10-26: faster keepers
 // k = { x, c, phase, y } (x just in front of the goal line, c = the middle of the goal, y = feet). Returns the position, velocity and box.
 export function keeperAt(k, t, hard = false) {
   const A = hard ? KEEPER.hardA : KEEPER.A, P = hard ? KEEPER.hardP : KEEPER.P, w = 2 * Math.PI / P;

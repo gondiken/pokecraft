@@ -4,7 +4,7 @@
 // keys pw:stadium:goal1..3), baskets (a few bonus cubes), the words, and the guide arrow. The physics are in ballphysics.js.
 import * as THREE from 'three';
 import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, aimShot, shotTo, keeperAt } from './ballphysics.js';
-import { goalOf, basketCross, inBox, goalState, goalKey, GOALS, BALL_R, SHOT, shootable } from './stadium.js';
+import { goalOf, basketCross, inBox, goalState, goalKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
 import { buildPerson } from './npc.js';
 import { disposeModel } from './species.js';
 import { sound } from './sound.js';
@@ -71,6 +71,11 @@ export class StadiumLive {
       this.parts.push(m); scene?.add(m);
       return m;
     });
+    // owner 2026-10-26: Defender Dee on the pitch, Blocker Bo on the court (plain people, never blocks; local like the balls)
+    const person = def => { const m = buildPerson(def.colors, { look: 'sport' }); this.parts.push(m); scene?.add(m); return m; };
+    this.dee = { x: part.ballSpot[0], z: part.ballSpot[2] + 3, rest: 0, told: -99, moving: false, mesh: person(STADIUM.defender) };
+    this.bo = { x: part.courtSpot[0] + 2, z: part.courtSpot[2], jump: 0, told: -99, moving: false, mesh: person(STADIUM.blocker) };
+    this.longShots = 0;
     this.t = 0;
     this.drawAll();
   }
@@ -107,12 +112,15 @@ export class StadiumLive {
       if (far && b.restFor > 0.2) continue; // a ball at rest far away costs nothing
       if (key === 'hoop') this.hoopPrevY = b.pos.y;
       if (touchKick(b, pl) === 'kick') this.noise(b, 'ballkick');
-      b.update(dt, key === 'foot' ? t => this.keeperBoxes(t) : undefined);
+      b.update(dt, key === 'foot' ? t => this.keeperBoxes(t) : () => [this.blockerBox()]);
       for (const ev of b.events) {
         if (ev.kind === 'keeper' && key === 'foot') this.saved(ev, b);
+        else if (ev.kind === 'keeper' && key === 'hoop') this.blocked(b);
         else if (ev.speed > 3) this.noise(b, 'ballkick');
       }
     }
+    this.moveDefender(dt);
+    this.moveBlocker(dt);
     // the keepers
     part.keepers.forEach((k, i) => { this.keeperPos[i] = keeperAt(k, this.foot.time, this.hard); });
     // a goal
@@ -138,6 +146,48 @@ export class StadiumLive {
     if (this.t - this.lastSound < LIVE_RULES.soundGap) return;
     this.lastSound = this.t;
     sound.play(name);
+  }
+
+  /* ---- Defender Dee: near a goal he runs at the football and kicks it back to the middle ---- */
+  moveDefender(dt) {
+    const D = STADIUM.defender, d = this.dee, b = this.foot, home = this.part.ballSpot;
+    const nearGoal = this.part.goals.some(g => Math.abs(b.pos.x - g.line) < D.zone);
+    const chase = this.goalAt == null && this.outAt.foot == null && nearGoal && d.rest <= 0;
+    if (d.rest > 0) d.rest -= dt;
+    const tx = chase ? b.pos.x : home[0], tz = chase ? b.pos.z : home[2] + 3;
+    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (this.hard ? D.hardSpeed : D.speed) * dt;
+    d.moving = dist > 0.2 && d.rest <= 0;
+    if (d.moving) { const k = Math.min(1, step / dist); d.x += dx * k; d.z += dz * k; d.yaw = Math.atan2(dx, dz); }
+    if (!chase || dist > D.reach || b.pos.y > home[1] + 1.2) return;
+    let ex = home[0] - b.pos.x, ez = home[2] - b.pos.z, el = Math.hypot(ex, ez);
+    if (el < 2) { ex = 0; ez = b.pos.z < home[2] ? -1 : 1; el = 1; }
+    boot(b, { x: ex / el * D.kick, y: 3, z: ez / el * D.kick });
+    d.rest = D.rest;
+    this.noise(b, 'ballkick');
+    if (this.t - d.told > 6) { d.told = this.t; this.toast(`${D.name} took the ball! Get it back!`); }
+  }
+
+  /* ---- Blocker Bo: guards the basketball between it and the hoop, and jumps ---- */
+  moveBlocker(dt) {
+    const K = STADIUM.blocker, o = this.bo, p = this.hoop.pos, box = this.part.courtBox;
+    const h = [...this.part.hoops].sort((a, c) => Math.hypot(a.hole[0] - p.x, a.hole[1] - p.z) - Math.hypot(c.hole[0] - p.x, c.hole[1] - p.z))[0];
+    let hx = h.hole[0] - p.x, hz = h.hole[1] - p.z;
+    const hl = Math.hypot(hx, hz) || 1, g = Math.min(K.guard, hl * 0.5);
+    const tx = Math.min(box.x1 - 1, Math.max(box.x0 + 1, p.x + hx / hl * g)), tz = Math.min(box.z1 - 1, Math.max(box.z0 + 1, p.z + hz / hl * g));
+    const dx = tx - o.x, dz = tz - o.z, dist = Math.hypot(dx, dz), step = K.speed * dt;
+    o.moving = dist > 0.2;
+    if (o.moving) { const k = Math.min(1, step / dist); o.x += dx * k; o.z += dz * k; }
+    o.yaw = Math.atan2(p.x - o.x, p.z - o.z);
+    const P = this.hard ? K.hardPeriod : K.period, ph = (this.t % P) / P;
+    o.jump = ph < 0.45 ? K.up * Math.sin(Math.PI * ph / 0.45) : 0;
+  }
+  blockerBox() {
+    const K = STADIUM.blocker, o = this.bo, y = this.part.courtSpot[1] - BALL_R - 0.001 + o.jump;
+    return { x0: o.x - K.half, x1: o.x + K.half, y0: y, y1: y + K.height, z0: o.z - K.half, z1: o.z + K.half, v: { x: 0, y: 0, z: 0 }, id: 'bo' };
+  }
+  blocked(b) {
+    this.noise(b, 'ballkick');
+    if (this.t - this.bo.told > 4) { this.bo.told = this.t; this.toast(`Blocked by ${STADIUM.blocker.name}! Shoot when he lands.`); }
   }
 
   saved(ev, b) {
@@ -210,7 +260,10 @@ export class StadiumLive {
       .filter(o => o.d >= SHOT.min && o.d <= SHOT.max && shootable(o.h, p));
     const pick = hs.filter(o => o.dot > 0.5).sort((a, b2) => b2.dot - a.dot)[0] ?? hs.filter(o => o.dot > 0).sort((a, b2) => a.d - b2.d)[0];
     if (!pick) return { x: f[0] * 6, y: 9, z: f[1] * 6 };
-    return shotTo(p, { x: pick.h.hole[0], y: pick.h.rimMid, z: pick.h.hole[1] }, b.opts.g, 2, b.opts.h, { d: SHOT.rim, y: pick.h.rimMid + SHOT.clear }).v;
+    let miss = 0; // owner 2026-10-26: from far away every other shot rims out
+    if (pick.d > STADIUM.blocker.longShot && this.longShots++ % 2 === 1) miss = 1.4;
+    const sx = pick.d > 1e-6 ? -(pick.h.hole[1] - p.z) / pick.d : 0, sz = pick.d > 1e-6 ? (pick.h.hole[0] - p.x) / pick.d : 0;
+    return shotTo(p, { x: pick.h.hole[0] + sx * miss, y: pick.h.rimMid, z: pick.h.hole[1] + sz * miss }, b.opts.g, 2, b.opts.h, { d: SHOT.rim, y: pick.h.rimMid + SHOT.clear }).v;
   }
 
   /* ---- the Captain: the generic Boss `gate` keeps the battle shut; only the button word is ours ---- */
@@ -254,6 +307,13 @@ export class StadiumLive {
       const h = Math.max(0, b.pos.y - BALL_R - (y + 1)), s = this.shadows[key];
       s.position.set(b.pos.x, y + 1.02, b.pos.z);
       s.scale.setScalar(1 / (1 + 0.15 * h));
+    }
+    for (const o of [this.dee, this.bo]) { // the defender and the blocker
+      const m = o.mesh, floor = o === this.dee ? this.part.ballSpot[1] - BALL_R - 0.001 : this.part.courtSpot[1] - BALL_R - 0.001;
+      m.position.set(o.x, floor + (o.jump || 0), o.z);
+      if (o.yaw != null) m.rotation.y = o.yaw;
+      for (const l of m.userData.parts.legs) l.g.rotation.x = o.moving ? Math.sin(this.t * 8 + l.phase) * 0.6 : 0;
+      for (const a of m.userData.parts.arms) a.g.rotation.x = o === this.bo ? (o.jump > 0.1 ? -2.6 : -0.4) : o.moving ? Math.sin(this.t * 8 + a.phase) * 0.4 : 0;
     }
     this.keepers.forEach((m, i) => {
       const k = this.keeperPos[i];

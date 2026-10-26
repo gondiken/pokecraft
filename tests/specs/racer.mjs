@@ -87,8 +87,8 @@ export default async function ({ browser, base, t }) {
     t.ok(back === 0, `project(at(s, lane)) gives back s and the lane for lanes -3..3 (${cells} points, ${back} wrong)`);
     t.ok(tr.gates.map(g => g.id).join() === 'G0,G1,G2,G3' && tr.gates.every((g, i) => i === 0 || g.s > tr.gates[i - 1].s), 'the gates are G0..G3, sorted by distance');
     const win = (v, l, dt) => raceRun(v, l, dt, tr).winner;
-    const table = [[0, 4.3, 'rio'], [0, 6.2, 'you'], [1, 4.3, 'you'], [1, 6.2, 'you'], [2, 3.0, 'you'], [2, 4.3, 'you'], [1, 5.0, 'you'], [2, 6.2, 'you'], [0, 9.5, 'you']];
-    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `Rio wins at a walk and you win at a sprint the first time, you win a walk the second time, even a slow walk the third (dt ${dt.toFixed(3)})`);
+    const table = [[0, 4.3, 'rio'], [0, 6.2, 'you'], [1, 4.3, 'rio'], [1, 6.2, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'you'], [1, 5.2, 'you'], [2, 6.2, 'you'], [0, 9.5, 'you']]; // owner 2026-10-26: a bit harder
+    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `you need a sprint the first two times (a walk loses), a walk wins the third time (dt ${dt.toFixed(3)})`);
     t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 5.0, 6.2, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
     const top = Math.max(...Object.values(RACE.speed)) * RACE.band.max;
     let fast = 0;
