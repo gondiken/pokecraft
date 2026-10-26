@@ -561,7 +561,7 @@ export default async function ({ browser, base, t }) {
       g.talkTo(R.rio());
       const raced = live.state === 'count' && !g.ui.asking;
       const again = R.said('this time I go full speed') || R.said('Race me again');
-      live.step(3.2); R.drive(7, {});
+      live.step(3.2); R.drive(6.2 * R.T.RACE.pace, {});
       g.talkTo(R.rio());
       return { raced, again, asking: g.ui.asking, text: document.getElementById('ask-text')?.textContent, action: g.gymLive.talkPrompt(R.rio()), base: g.bosses.talkPrompt(R.rio()).action };
     });

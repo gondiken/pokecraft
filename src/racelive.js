@@ -226,6 +226,7 @@ export class RaceLive {
     this.hideKart();
     this.state = 'idle';
     this.zoom = null;
+    const p = this.game.player; if (p) { p.forceSprint = false; p.speedK = 1; p.speedCap = null; } // the race's pace ends with it
   }
 
   finish(youWon) {
