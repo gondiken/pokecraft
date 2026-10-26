@@ -495,7 +495,7 @@ async function browserPart({ browser, base, t }) {
     return out;
   });
   t.ok(d17.every(r => r.word === 'Shoot!') && d17.map(r => r.cubes).join() === '1,1,1,0' && d17[3].bonus === 3, `17: next to the court ball the button says Shoot!; three baskets give a cube each, the fourth none (${d17.map(r => r.cubes)})`);
-  t.ok(await said(page, /Swish! 🏀 \+1 Capture Cube/) && await said(page, /Swish! 🏀$/), '17: the Swish! words');
+  t.ok(await said(page, /Swish! 🏀 1 of 3 \+1 Capture Cube/) && await said(page, /Swish! 🏀$/), '17: the Swish! words (a basket for the Captain counts: 1 of 3)');
 
   /* ---- 17b. Defender Dee and Blocker Bo (owner 2026-10-26: a bit harder) ---- */
   const d17b = await page.evaluate(() => {
