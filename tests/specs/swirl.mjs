@@ -5,8 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, openGame as openGame0, openPair, newGame, pause, click, continueGame, waitFor, seedSave } from '../helpers.mjs';
-// T40b: the Pirate Seas frame ships ready (the Swirl's guide would point at it); these checks are about the Swirl, so close it in each page
-const openGame = async (...a) => { const p = await openGame0(...a); await p.evaluate(async () => { (await import('/src/pictureworlds.js')).pictureWorld('pirate').ready = false; }); return p; };
+// Wave 14: the four Picture World frames ship ready (the Swirl's guide would point at them, the frames show pictures); these checks are about the wave 13 Swirl, so close them in each page (spec `picture-worlds` covers ready frames)
+const openGame = async (...a) => { const p = await openGame0(...a); await p.evaluate(async () => { const { pictureWorld } = await import('/src/pictureworlds.js'); for (const id of ['house', 'pirate', 'race', 'stadium']) pictureWorld(id).ready = false; }); return p; };
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 
