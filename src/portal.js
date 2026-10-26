@@ -277,7 +277,7 @@ function dropPictures(game, st) {
 }
 // Ready frames show their picture, the others stay covered with cloth (cells drawn with setLive: never an edit).
 function updateFrames(game, st) {
-  const w = game.world, key = FRAME_WORLDS.map(p => (p.ready ? 1 : 0)).join('');
+  const w = st.world, key = FRAME_WORLDS.map(p => (p.ready ? 1 : 0)).join('');
   const first = w.swirl.frames.find(f => FRAME_WORLDS.find(p => p.id === f.world)?.ready);
   const drawn = first ? w.get(...first.cloth[0]) === B.PICTURE : true;
   if (key === st.ready && drawn) return;
@@ -326,6 +326,7 @@ function swirlReset(game, world) {
     st.lifts.push(m);
   }
   for (const f of world.swirl.frames) for (const c of f.cells) st.frameAt.set(`${c[0]},${c[1]},${c[2]}`, f);
+  updateFrames(game, st); // drawn at once, not on the next frame (a paused game still shows the right cloth or picture)
   SWIRL.set(game, st);
 }
 
