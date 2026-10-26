@@ -556,13 +556,16 @@ async function browserPart({ browser, base, t }) {
     const g = window.pokecraft, L = window.__live, p = g.player;
     L.rivals = true; L.goalAt = null; L.outAt.foot = null; window.__toasts = [];
     p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); // the player is far away
-    // Dee: the football lies still near the east goal, Dee is 3 blocks from it
-    L.foot.reset([80, 11.401, 160]); L.dee.x = 77; L.dee.z = 160; L.dee.rest = 0;
-    let stole = false;
-    for (let i = 0; i < 40 && !stole; i++) { L.update(0.05); stole = L.foot.vel.x < -3; }
-    const deeToast = window.__toasts.some(m => /Defender Dee took the ball/.test(m));
-    // far from both goals he walks back to his spot and leaves the ball alone
-    L.foot.reset(); L.dee.x = 40; L.dee.z = 140; L.dee.rest = 0;
+    // Dee: once you touched the football he runs at it anywhere (here in the middle of the pitch, far from both goals) and kicks it
+    // up over the nearer sideline; it is out and back on the centre spot a moment later
+    L.foot.reset([50, 11.401, 157]); L.touched = true; L.dee.x = 47; L.dee.z = 157; L.dee.rest = 0;
+    let stole = false, sideways = false;
+    for (let i = 0; i < 40 && !stole; i++) { L.update(0.05); stole = L.foot.vel.z < -5; sideways = stole && Math.abs(L.foot.vel.z) > 3 * Math.abs(L.foot.vel.x); }
+    const deeToast = window.__toasts.some(m => /Defender Dee kicked it out/.test(m));
+    for (let i = 0; i < 60 && L.touched; i++) L.update(0.05);
+    const backOnSpot = !L.touched && Math.hypot(L.foot.pos.x - L.part.ballSpot[0], L.foot.pos.z - L.part.ballSpot[2]) < 0.5;
+    // a ball nobody has touched yet he leaves alone: he walks back to his spot
+    L.foot.reset([70, 11.401, 150]); L.touched = false; L.dee.x = 40; L.dee.z = 140; L.dee.rest = 0;
     for (let i = 0; i < 20; i++) L.update(0.05);
     const homeward = Math.hypot(L.dee.x - L.part.ballSpot[0], L.dee.z - L.part.ballSpot[2] - 3) < Math.hypot(40 - L.part.ballSpot[0], 140 - L.part.ballSpot[2] - 3) && Math.hypot(L.foot.vel.x, L.foot.vel.z) < 0.1;
     // Bo: in the air his box is higher than on the ground
@@ -601,10 +604,10 @@ async function browserPart({ browser, base, t }) {
     for (let i = 0; i < 60; i++) L.update(0.05);
     const overToast = window.__toasts.some(m => /Too much power/.test(m)), b1 = g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length;
     L.rivals = true; L.hoop.reset(); L.foot.reset();
-    return { stole, deeToast, homeward, up, down, back, boToast, early, late, ring, word, wild, overToast, noGoal: b1 === b0, ringAfter: L.ring.g.visible };
+    return { stole, sideways, backOnSpot, deeToast, homeward, up, down, back, boToast, early, late, ring, word, wild, overToast, noGoal: b1 === b0, ringAfter: L.ring.g.visible };
   });
-  t.ok(d17b.stole && d17b.deeToast, '17b: Defender Dee runs to a football near a goal and kicks it back to the middle ("Defender Dee took the ball!")');
-  t.ok(d17b.homeward, '17b: far from the goals Dee walks back to his spot and leaves the ball alone');
+  t.ok(d17b.stole && d17b.sideways && d17b.deeToast && d17b.backOnSpot, '17b: once you touched the football, Defender Dee runs at it anywhere on the pitch and kicks it out over the nearer sideline ("Defender Dee kicked it out!"); it comes back to the centre spot');
+  t.ok(d17b.homeward, '17b: a ball nobody touched yet he leaves alone and walks back to his spot');
   t.ok(d17b.up > d17b.down + 1, `17b: Blocker Bo jumps (feet ${d17b.down.toFixed(1)} -> ${d17b.up.toFixed(1)})`);
   t.ok(d17b.back && d17b.boToast, '17b: a ball thrown at Bo in the air bounces off ("Blocked by Blocker Bo! Shoot when he lands.")');
   t.ok(d17b.early.jumped && d17b.early.overHead && d17b.early.glowTop > 0.3 && d17b.early.glowOff === 0, '17b: holding Shoot! jumps you up with the ball over your head; it glows only at the top of the jump');

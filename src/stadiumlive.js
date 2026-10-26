@@ -13,7 +13,7 @@ import { disposeModel } from './species.js';
 import { sound } from './sound.js';
 
 const KEEPER_REACH = 2.9; // a keeper stays 0.4 inside each post (the walk's own reach, KEEPER.A)
-export const LIVE_RULES = { sleepDist: 60, goalPause: 1.5, outPause: 0.8, highY: 12.5, highFor: 1, bonusMax: 3, saveGap: 4, soundGap: 0.15 };
+export const LIVE_RULES = { clearOut: 1.2, sleepDist: 60, goalPause: 1.5, outPause: 0.8, highY: 12.5, highFor: 1, bonusMax: 3, saveGap: 4, soundGap: 0.15 };
 
 const ICO = (() => { // the 12 directions of a football's black patches
   const f = (1 + Math.sqrt(5)) / 2, out = [];
@@ -81,6 +81,8 @@ export class StadiumLive {
     this.bo = { x: part.courtSpot[0] + 2, z: part.courtSpot[2], jump: 0, told: -99, moving: false, mesh: person(STADIUM.blocker) };
     this.held = null;        // a Kick! or Shoot! being held: { key, t0, apex?, d? }
     this.dives = part.keepers.map(() => null);
+    this.clearedAt = null;   // Dee kicked it out (foot.time)
+    this.touched = false;    // you touched the football since it was last put on the centre spot (then Dee chases it)
     this.wild = false;       // the football was over-hit: it can't score until somebody touches it again
     this.overAt = null;
     this.ring = this.chargeRing(); // the power ring round the football (only shown while Kick! is held)
@@ -135,7 +137,7 @@ export class StadiumLive {
       const far = Math.hypot(b.pos.x - pl.x, b.pos.z - pl.z) > LIVE_RULES.sleepDist;
       if (far && b.restFor > 0.2) continue; // a ball at rest far away costs nothing
       if (key === 'hoop') this.hoopPrevY = b.pos.y;
-      if (touchKick(b, pl) === 'kick') { this.noise(b, 'ballkick'); if (key === 'foot') this.wild = false; }
+      if (touchKick(b, pl) === 'kick') { this.noise(b, 'ballkick'); if (key === 'foot') { this.wild = false; this.touched = true; } }
       b.update(dt, key === 'foot' ? t => this.keeperBoxes(t) : () => [this.blockerBox()]);
       for (const ev of b.events) {
         if (ev.kind === 'keeper' && key === 'foot') this.saved(ev, b);
@@ -150,13 +152,13 @@ export class StadiumLive {
     part.keepers.forEach((k, i) => { this.keeperPos[i] = this.keeperAt(i, this.foot.time); });
     // a goal (an over-hit ball goes over the bar instead)
     if (this.overAt != null) {
-      if (this.foot.time - this.overAt > LIVE_RULES.outPause) { this.foot.reset(); this.overAt = null; this.wild = false; }
+      if (this.foot.time - this.overAt > LIVE_RULES.outPause) { this.foot.reset(); this.overAt = null; this.wild = false; this.touched = false; this.clearedAt = null; }
     } else if (this.goalAt == null) {
       if (this.wild && part.goals.some(gl => (gl.side < 0 ? this.foot.pos.x < gl.line - BALL_R : this.foot.pos.x > gl.line + BALL_R))) {
         this.overAt = this.foot.time; this.toast('Too much power! It flew over the bar. Let go sooner!');
       } else if (goalOf(part, this.foot.pos) >= 0) this.goal();
     } else if (this.foot.time - this.goalAt > LIVE_RULES.goalPause) {
-      this.foot.reset(); this.goalAt = null; sound.play('whistle');
+      this.foot.reset(); this.goalAt = null; this.touched = false; this.clearedAt = null; sound.play('whistle');
     }
     // the ball left the pitch or the court, or sits on a roof
     this.checkOut('foot', part.pitchBox);
@@ -176,24 +178,25 @@ export class StadiumLive {
     sound.play(name);
   }
 
-  /* ---- Defender Dee: near a goal he runs at the football and kicks it back to the middle ---- */
+  /* ---- Defender Dee: once you touch the football he runs at it, anywhere on the pitch, and kicks it out over the nearer sideline ---- */
+  // (owner 2026-10-26: "he should go after the ball from the beginning"). An untouched ball on the centre spot he leaves alone.
   moveDefender(dt) {
-    const D = STADIUM.defender, d = this.dee, b = this.foot, home = this.part.ballSpot;
+    const D = STADIUM.defender, d = this.dee, b = this.foot, home = this.part.ballSpot, box = this.part.pitchBox;
     if (!this.rivals) { d.x = home[0]; d.z = home[2] + 3; d.moving = false; return; }
-    const nearGoal = this.part.goals.some(g => Math.abs(b.pos.x - g.line) < D.zone);
-    const chase = this.goalAt == null && this.outAt.foot == null && nearGoal && d.rest <= 0;
+    const chase = this.touched && this.goalAt == null && this.outAt.foot == null && this.overAt == null && d.rest <= 0;
     if (d.rest > 0) d.rest -= dt;
     const tx = chase ? b.pos.x : home[0], tz = chase ? b.pos.z : home[2] + 3;
     const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (D.speed[Math.min(2, this.goalsIn)] + (this.hard ? D.hardAdd : 0)) * dt;
     d.moving = dist > 0.2 && d.rest <= 0;
     if (d.moving) { const k = Math.min(1, step / dist); d.x += dx * k; d.z += dz * k; d.yaw = Math.atan2(dx, dz); }
     if (!chase || dist > D.reach || b.pos.y > home[1] + 1.2) return;
-    let ex = home[0] - b.pos.x, ez = home[2] - b.pos.z, el = Math.hypot(ex, ez);
-    if (el < 2) { ex = 0; ez = b.pos.z < home[2] ? -1 : 1; el = 1; }
-    boot(b, { x: ex / el * D.kick, y: 3, z: ez / el * D.kick });
+    const mid = (box.z0 + box.z1) / 2, side = b.pos.z < mid ? -1 : b.pos.z > mid ? 1 : (this.game.player.pos.z < mid ? 1 : -1); // away from the middle (or from you)
+    boot(b, { x: (home[0] - b.pos.x) * 0.08, y: D.up, z: side * D.kick });
     d.rest = D.rest;
+    this.clearedAt = b.time; // up into the stands: out a moment later, whatever it bounces off
+    this.wild = false;
     this.noise(b, 'ballkick');
-    if (this.t - d.told > 6) { d.told = this.t; this.toast(`${D.name} took the ball! Get it back!`); }
+    if (this.t - d.told > 6) { d.told = this.t; this.toast(`${D.name} kicked it out! Keep it away from him!`); }
   }
 
   /* ---- Blocker Bo: guards the basketball between it and the hoop, and jumps ---- */
@@ -246,11 +249,12 @@ export class StadiumLive {
 
   checkOut(key, box) {
     const b = this[key], p = b.pos;
-    const out = p.x < box.x0 || p.x > box.x1 || p.z < box.z0 || p.z > box.z1 || (b.onGround && b.restFor >= LIVE_RULES.highFor && p.y > LIVE_RULES.highY);
+    const cleared = key === 'foot' && this.clearedAt != null && b.time - this.clearedAt > LIVE_RULES.clearOut;
+    const out = cleared || p.x < box.x0 || p.x > box.x1 || p.z < box.z0 || p.z > box.z1 || (b.onGround && b.restFor >= LIVE_RULES.highFor && p.y > LIVE_RULES.highY);
     if (key === 'foot' && this.goalAt != null) { this.outAt.foot = null; return; }
     if (!out) { this.outAt[key] = null; return; }
-    if (this.outAt[key] == null) { this.outAt[key] = b.time; if (key === 'foot') this.toast('Out! The ball goes back to the middle.'); else this.toast('Out! The ball goes back to the middle of the court.'); return; }
-    if (b.time - this.outAt[key] > LIVE_RULES.outPause) { b.reset(); this.outAt[key] = null; }
+    if (this.outAt[key] == null) { this.outAt[key] = b.time; if (key === 'foot' && !cleared) this.toast('Out! The ball goes back to the middle.'); else this.toast('Out! The ball goes back to the middle of the court.'); return; }
+    if (b.time - this.outAt[key] > LIVE_RULES.outPause) { b.reset(); this.outAt[key] = null; if (key === 'foot') { this.touched = false; this.clearedAt = null; } }
   }
 
   basket() {
@@ -288,6 +292,7 @@ export class StadiumLive {
     const n = this.nearest(p);
     if (!n) return false;
     this.held = { key: n.key, t0: this.t };
+    if (n.key === 'foot') this.touched = true; // Dee starts running at it
     const told = this.game.toldOnce, hint = n.key === 'foot' ? 'kickring' : 'shootjump';
     if (told && !told.has(hint)) { told.add(hint); this.toast(n.key === 'foot' ? 'Let go when the ring is green! Too long and it flies over the bar.' : 'Let go at the top of your jump, when the ball shines!'); }
     if (n.key === 'hoop') {

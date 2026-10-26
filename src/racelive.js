@@ -1,4 +1,4 @@
-// T40c: the live part of the Race Track (LIVE.race): talk to Racer Rio and race him round the track, 2 laps. The race is the gate to his
+// T40c: the live part of the Race Track (LIVE.race): talk to Racer Rio and race him round the track, 3 laps. The race is the gate to his
 // Boss battle (the base's pictureboss.js): win it, then talk to him again for the battle. Everything here is per player and in memory:
 // nothing is saved or sent, no block is ever edited (lamps and boost pads are drawn with world.setLive through LiveCells).
 //
@@ -12,7 +12,7 @@ import { sound } from './sound.js';
 import { RACE, bossSpeed } from './racetrack.js';
 
 export const RACE_LINES = {
-  hello: "Vroom! I'm Racer Rio. Nobody has raced here since the festival stopped. Race me? Two laps!",
+  hello: "Vroom! I'm Racer Rio. Nobody has raced here since the festival stopped. Race me? Three laps!",
   win: "Wow, you're fast! Now talk to me for a battle!",   // you won the race
   lose: 'I win! That was close. Race again?',             // you lost the race
   again: 'Race me again? This time I go full speed!',      // with the star
