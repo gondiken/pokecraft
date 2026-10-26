@@ -466,33 +466,49 @@ export default async function ({ browser, base, t }) {
       g.updateGuide?.(); const g1 = g.ui.guideText;
       g.bosses.talk(n); const gate = !g.inBattle;
       const shots = [];
+      // a held Fire!: turn ahead of the boat, let go when the growing distance is right (the ball takes a while: aim where it will be)
+      const R = L.ROWBOATS, plan = (at, k) => {
+        let r = 15, P, a;
+        for (let it = 0; it < 8; it++) {
+          P = L.boatAt(k, lv.boatT + 0.5 + r / 24); a = Math.atan2(P.x - at[0] - 0.5, P.z - at[1] - 0.5);
+          r = Math.hypot(P.x - (at[0] + 0.5 + Math.sin(a) * 1.1), P.z - (at[1] + 0.5 + Math.cos(a) * 1.1));
+        }
+        return { yaw: a + Math.PI, pw: (r - R.near) / (R.far - R.near), ok: Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) <= R.turn };
+      };
       for (const k of [0, 2, 1]) { // boat k from the nearer cannon
-        const at = k === 2 ? L.ROWBOATS.cannons[1] : L.ROWBOATS.cannons[0];
-        p.pos.set(...L.deckStand(at)); p.vel.set(0, 0, 0); p.yaw = 0; step(g, 1 / 20, 4);
-        while (lv.clock - lv.reloadAt < L.ROWBOATS.reload) step(g, 1 / 20, 1);
-        const want = L.boatAt(k, lv.boatT + L.ROWBOATS.time).x;
-        let best = 0, bd = 1e9;
-        for (let y = -1.5; y <= 1.5; y += 0.005) { const d = Math.abs(L.deckShot(at, y).to[0] - want); if (d < bd) { bd = d; best = y; } }
-        p.yaw = best;
-        const gold = play(g, () => lv.shotNow(lv.gadget()).hit === k), near = play(g, () => g.gymLive.near(p));
+        const at = k === 2 ? R.cannons[1] : R.cannons[0];
+        p.pos.set(...L.deckStand(at)); p.vel.set(0, 0, 0); p.yaw = 0; step(g, 1 / 60, 4);
+        while (lv.clock - lv.reloadAt < R.reload) step(g, 1 / 60, 1);
+        const near = play(g, () => g.gymLive.near(p)), holds = play(g, () => g.gymLive.holds(p));
         g.updateGuide?.(); const guide = g.ui.guideText;
         play(g, () => g.gymLive.use(p));
-        step(g, 1 / 20, 60, () => !lv.ball);
-        shots.push({ k, gold, near, guide, sunk: g.beaten.includes(L.boatKey(k)) });
-        if (k === 0) { // a miss first from the other side: nothing sinks
-          step(g, 1 / 20, 30);
-          let y = -1.5, free = null;
-          for (; y <= 1.5; y += 0.05) { const to = L.deckShot(at, y).to; if (L.boatHit(g, to, lv.boatT + L.ROWBOATS.time) < 0 && L.ROWBOATS.boats.every((_, i) => Math.abs(L.boatAt(i, lv.boatT + L.ROWBOATS.time).x - to[0]) > 5)) { free = y; break; } }
+        const held = lv.info().held;
+        let frames = 0, last = lv.power();
+        for (; frames < 1200; frames++) {
+          const q = plan(at, k); p.yaw = q.yaw;
+          const pw = lv.power();
+          if (q.ok && q.pw >= 0 && q.pw <= 1 && Math.abs(pw - q.pw) < 0.008) break;
+          step(g, 1 / 60, 1); last = pw;
+        }
+        void last;
+        const gold = play(g, () => lv.shotNow(lv.gadget()).hit === k); // (the dots show this every frame)
+        play(g, () => g.gymLive.release(p));
+        step(g, 1 / 60, 240, () => !lv.ball);
+        shots.push({ k, near, holds, held, guide, frames, gold, sunk: g.beaten.includes(L.boatKey(k)) });
+        if (k === 0) { // a short tap aimed at open sea: nothing sinks
+          step(g, 1 / 60, 70);
+          let y = -1, free = null;
+          for (; y <= 1; y += 0.05) { const to = L.deckShot(at, y, 0).to; if (R.boats.every((_, i) => [0, 0.5, 1, 1.5].every(dt => { const bq = L.boatAt(i, lv.boatT + dt); return Math.hypot(bq.x - to[0], bq.z - to[2]) > 4; }))) { free = y; break; } }
           p.yaw = free; const before = g.beaten.length;
-          play(g, () => g.gymLive.use(p)); step(g, 1 / 20, 60, () => !lv.ball);
-          shots.push({ miss: true, same: g.beaten.length === before });
+          play(g, () => g.gymLive.use(p)); play(g, () => g.gymLive.release(p)); step(g, 1 / 60, 240, () => !lv.ball);
+          shots.push({ miss: true, same: g.beaten.length === before, free });
         }
       }
       const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
       return { g1, gate, shots, state: L.boatState(g), saved: L.ROWBOATS.boats.every((_, i) => saved.beaten.includes(L.boatKey(i))) };
     });
     t.ok(/Deck cannon: sink the rowboats \(0 \/ 3\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 3 rowboats first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
-    t.ok(boats.shots.filter(s => !s.miss).every(s => s.gold && s.near === 'Fire!' && s.sunk && /Aim at a rowboat/.test(s.guide || '')) && boats.shots.some(s => s.miss && s.same), `three aimed deck cannon shots sink the three rowboats (the dots were gold), a miss sinks nothing (${JSON.stringify(boats.shots)})`);
+    t.ok(boats.shots.filter(s => !s.miss).every(s => s.near === 'Fire!' && s.holds && s.held === 'deck' && s.gold && s.sunk && /Aim at a rowboat/.test(s.guide || '')) && boats.shots.some(s => s.miss && s.same), `three held deck cannon shots, let go at the right distance ahead of the boat, sink the three rowboats (the dots were gold); a short tap at open sea sinks nothing (${JSON.stringify(boats.shots)})`);
     t.ok(boats.state.done && boats.saved && await said(page, /3 \/ 3! Now battle the Captain/), 'all three are sunk, saved at once, and the Captain is ready');
     await shot(page, 'rowboats-sunk');
     // the ship: the guide names the Boss, the chest is closed
@@ -623,6 +639,21 @@ export default async function ({ browser, base, t }) {
     const label2 = await ip.evaluate(() => document.getElementById('btn-act').textContent);
     const after = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
     t.ok(/Swing!/.test(label2) && after === before && A.count === before, `at a rope it says "${label2}"; the number of touch buttons is unchanged (${before})`);
+    // hold the big button on the rope: you hang on; lift the finger: you let go
+    const hold = await ip.evaluate(async () => {
+      const g = window.pokecraft, lv = g.gymLive.of('part:seas'), el = document.getElementById('btn-act');
+      lv.steady = false;
+      const ev = type => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', isPrimary: true }));
+      ev('pointerdown');
+      const on = lv.info().held === 'rope' && !!lv.swing;
+      await new Promise(r => setTimeout(r, 1500));
+      const still = !!lv.swing;
+      ev('pointerup');
+      const off = !lv.swing && lv.info().held === null;
+      lv.steady = true;
+      return { on, still, off };
+    });
+    t.ok(hold.on && hold.still && hold.off, `iPad: holding the big button hangs on to the rope, lifting the finger lets go (${JSON.stringify(hold)})`);
     await shot(ip, 'ipad');
     t.ok(!ip.errors.length, `no page errors (iPad) ${ip.errors.join('; ')}`);
     await ip.context().close();
@@ -754,23 +785,24 @@ async function challengePart({ page, t }) {
       const A = from === 'a' ? r.a : r.b, Bq = from === 'a' ? r.b : r.a;
       p.pos.set(A.pos[0], A.pos[1], A.pos[2]); p.vel.set(0, 0, 0); p.carry = null; p.keys = {};
       step(g, dt, 3);
+      const holds = play(g, () => g.gymLive.holds(p));
       play(g, () => g.gymLive.use(p));
-      const time = lv.swing.path.time, word = play(g, () => g.gymLive.near(p));
+      const time = lv.swing.path.time, word = play(g, () => g.gymLive.near(p)), held = lv.info().held;
       if (how === 'far') step(g, dt, Math.round(time / dt));
       if (how === 'splash') step(g, dt, Math.round(time / 2 / dt));
       if (how === 'none') step(g, dt, Math.ceil((L.LETGO.swings * 2 * time + 0.1) / dt), () => !lv.swing);
       const gold = how === 'far' ? L.letGo(lv.swing.path, lv.mover.clock) === 'far' : null;
-      if (how !== 'none') play(g, () => g.gymLive.use(p));
+      if (how !== 'none') play(g, () => g.gymLive.release(p)); // the held button is let go
       step(g, dt, Math.ceil(3 / dt), () => !lv.busy && !p.carry && (p.onGround || p.inWater));
       step(g, dt, Math.ceil(0.4 / dt));
       const to = how === 'far' ? Bq : A;
-      out.push({ dt, id: r.id + from, how, word, gold, d: Math.hypot(p.pos.x - to.pos[0], p.pos.z - to.pos[2]), wet: p.inWater, ground: p.onGround, free: !p.collides(p.pos), busy: lv.busy });
+      out.push({ dt, id: r.id + from, how, word, gold, holds, held, after: lv.info().held, d: Math.hypot(p.pos.x - to.pos[0], p.pos.z - to.pos[2]), wet: p.inWater, ground: p.onGround, free: !p.collides(p.pos), busy: lv.busy });
     }
     return out;
   });
   for (const dt of [1 / 60, 1 / 20]) {
     const rows = R.filter(r => r.dt === dt), fps = dt === 1 / 60 ? '60' : '20', of = h => rows.filter(r => r.how === h);
-    t.ok(rows.every(r => r.word === 'Let go!' && r.free && !r.busy), `${fps} steps: on a swinging rope the button says Let go! and you always come down free (${rows.length} swings)`);
+    t.ok(rows.every(r => r.holds && r.held === 'rope' && r.after === null && r.word === 'Let go!' && r.free && !r.busy), `${fps} steps: Swing! is held (you hang on), the word is Let go!, and you always come down free (${rows.length} swings)`);
     t.ok(of('far').every(r => r.gold && r.d < 1.2 && r.ground), `${fps} steps: let go over the far stand (the rope is gold) and you land on it, every rope both ways (${of('far').map(r => `${r.id}:${r.d.toFixed(1)}`).join(' ')})`);
     t.ok(of('back').every(r => r.d < 1.2 && r.ground) && of('none').every(r => r.d < 1.2 && r.ground), `${fps} steps: let go at once, or never, and you are back on your own stand`);
     t.ok(of('splash').every(r => r.wet), `${fps} steps: let go in the middle and you splash into the sea (${of('splash').map(r => r.id).join(' ')})`);

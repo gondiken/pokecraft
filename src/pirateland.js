@@ -165,38 +165,48 @@ export function ropeDrop(world, r, p) {
   return null;
 }
 
-// 3. Captain Squawk's rowboats row up and down a lane north of the ship (each in its own stretch, so they never meet). Sink all three
-// with the two north deck cannons and the Captain battles you (the Boss def's gate). Sunk boats are `beaten` keys, saved at once, and
-// cleared after a won Captain battle (the next rematch needs them sunk again), like the Ball Stadium's goals.
+// 3. Captain Squawk's rowboats row figure-eights north of the ship (each in its own patch of sea, so they never meet), quite fast.
+// Sink all three with the two swivel cannons on the north rail and the Captain battles you (the Boss def's gate). Aim by turning; the
+// distance is how long you hold Fire! (it grows, then shrinks again: `power`). The ball flies a while, so aim where the boat will be;
+// the dots turn gold for the short moment a let-go would hit.
+// Sunk boats are `beaten` keys, saved at once, cleared after a won Captain battle (like the Ball Stadium's goals).
 export const ROWBOATS = {
-  lane: 31, boats: [[94, 107], [108, 121], [122, 135]], phase: [0, 0.4, 0.75], speed: 1.5, // x from..to, blocks a second
+  boats: [{ c: [100, 26], a: [6, 5], per: 12 }, { c: [114, 23], a: [6, 5], per: 10 }, { c: [128, 26], a: [6, 5], per: 11 }], // about 4.5 blocks a second (a walk is 4.3)
+  phase: [0, 0.35, 0.7],
   cannons: SHIP.swivels, // the swivel cannons on the north rail ([x, rail z]): you stand on the step one cell south of each
-  turn: 0.9, time: 1.1, height: 2.5, hit: 2.2, reload: 1, sink: 1.5,
+  turn: 1.1, near: 6, far: 28, fill: 2, // range from `near` to `far` blocks: up in `fill` seconds of holding, then back down
+  hit: 1.8, reload: 1, sink: 1.5,
 };
 export const boatKey = i => `pw:pirate:boat${i + 1}`;
 export function boatState(game) {
   const need = ROWBOATS.boats.length, sunk = ROWBOATS.boats.filter((_, i) => game?.beaten?.includes(boatKey(i))).length;
   return { sunk, need, done: sunk >= need };
 }
-// a boat at boat clock t: { x, z, dir } (dir +1 = rowing east)
+// a boat at boat clock t (a figure eight): { x, z, yaw } (yaw: the way it rows, as a mesh rotation.y)
 export function boatAt(i, t) {
-  const [a, b] = ROWBOATS.boats[i], len = b - a, per = (2 * len) / ROWBOATS.speed;
-  const k = ((((t / per) + ROWBOATS.phase[i]) % 1) + 1) % 1;
-  return { x: (k < 0.5 ? a + len * 2 * k : b - len * (2 * k - 1)) + 0.5, z: ROWBOATS.lane + 0.5, dir: k < 0.5 ? 1 : -1 };
+  const b = ROWBOATS.boats[i], u = 2 * Math.PI * (t / b.per + ROWBOATS.phase[i]);
+  const x = b.c[0] + b.a[0] * Math.sin(u), z = b.c[1] + b.a[1] * Math.sin(2 * u);
+  const vx = b.a[0] * Math.cos(u), vz = 2 * b.a[1] * Math.cos(2 * u);
+  return { x: x + 0.5, z: z + 0.5, yaw: Math.atan2(vx, vz) };
+}
+// how far the ball goes after holding Fire! for `held` seconds: 0 -> 1 in `fill`, then back to 0, and so on
+export function power(held) {
+  const k = (held / ROWBOATS.fill) % 2;
+  return k <= 1 ? k : 2 - k;
 }
 // where you stand to use the swivel cannon on rail cell `at` (feet): on its step, one cell south
 export const deckStand = at => [at[0] + 0.5, SHIP.deck + 2, at[1] + 1.5];
-// A deck cannon shot (the swivel cannon on rail cell `at` = [x, z]) when you look along `yaw`: the barrel turns your way (at most
-// `turn` either side of north), the ball lands on the boats' lane. { a, spec, to }
-export function deckShot(at, yaw) {
+// A shot of the swivel cannon on rail cell `at` = [x, z] when you look along `yaw` with power `pw` (0..1): the barrel turns your way
+// (at most `turn` either side of north), the ball lands on the sea `near`..`far` blocks out. { a, spec, to, range }
+export function deckShot(at, yaw, pw = 0) {
   let d = Math.atan2(-Math.sin(yaw), -Math.cos(yaw)) - Math.PI;
   d = Math.atan2(Math.sin(d), Math.cos(d));
-  const a = Math.PI + Math.max(-ROWBOATS.turn, Math.min(ROWBOATS.turn, d));
+  const a = Math.PI + Math.max(-ROWBOATS.turn, Math.min(ROWBOATS.turn, d)), range = ROWBOATS.near + (ROWBOATS.far - ROWBOATS.near) * Math.max(0, Math.min(1, pw));
   const from = [at[0] + 0.5 + Math.sin(a) * 1.1, SHIP.deck + 2.6, at[1] + 0.5 + Math.cos(a) * 1.1];
-  const t = (ROWBOATS.lane + 0.5 - from[2]) / Math.cos(a), to = [from[0] + Math.sin(a) * t, SEA + 0.6, ROWBOATS.lane + 0.5];
-  return { a, to, spec: { kind: 'arc', from, to, height: ROWBOATS.height, time: ROWBOATS.time } };
+  const to = [from[0] + Math.sin(a) * range, SEA + 0.6, from[2] + Math.cos(a) * range];
+  return { a, to, range, spec: { kind: 'arc', from, to, height: 1.5 + range * 0.12, time: 0.5 + range / 24 } };
 }
-// The boat a shot landing at `to` hits after `time` more seconds of boat clock `t`, or -1 (only boats still afloat count).
+// The boat (still afloat) within `hit` of `to` at boat clock t, or -1.
 export function boatHit(game, to, t) {
   let best = -1, bd = ROWBOATS.hit;
   ROWBOATS.boats.forEach((_, i) => {
