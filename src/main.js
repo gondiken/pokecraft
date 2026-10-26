@@ -609,7 +609,11 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
-document.addEventListener('keyup', e => { if (game.player) game.player.keys[e.code] = false; });
+document.addEventListener('keyup', e => {
+  if (game.player) game.player.keys[e.code] = false;
+  if (e.code === 'KeyE' && game.player) game.gymLive?.release(game.player); // a held Kick! / Shoot! is let go
+});
+window.addEventListener('blur', () => { if (game.player) game.gymLive?.release(game.player); });
 
 document.addEventListener('wheel', e => {
   if (!locked || game.inBattle) return;
@@ -628,6 +632,7 @@ document.addEventListener('mousedown', e => {
     placeBlock();
   }
 });
+document.addEventListener('mouseup', e => { if (e.button === 0 && game.player) game.gymLive?.release(game.player); }); // a held Kick! / Shoot!
 
 // Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
 // use (T31): E / tap / the touch action button, not a mouse click (a click on a Bed breaks it, a use sleeps in it).
@@ -756,6 +761,9 @@ game.touch = new TouchControls(game, canvas, {
     if (target.block) breakBlock(); else if (game.homes.matPos) game.openHome(); // T22
     else game.ui.toast('Look at something to use this button!');
   },
+  // a held Kick! / Shoot! starts when the finger goes down on the big button and flies when it comes up (touch.js)
+  actPress: () => !game.ui.asking && playing() && !!target.near && game.gymLive.holds(game.player) && game.gymLive.use(game.player),
+  actRelease: () => game.gymLive.release(game.player),
   team: toggleTeam,
   blocks: toggleBlocks,
   book: toggleBook,
@@ -1095,7 +1103,7 @@ function updateTarget() {
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
-      : target.near ? `${touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40
+      : target.near ? `${game.gymLive.holds(game.player) ? (touchMode ? 'Hold and let go' : 'Hold E and let go') : touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40 (Kick! / Shoot! are held)
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
       : door ? door // T38a

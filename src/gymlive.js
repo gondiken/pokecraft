@@ -17,7 +17,7 @@ import { PirateLive } from './pirateparts.js'; // T40b
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
-// T40 adds action(block), near(p), use(p), aim(p) and parts (see below). (a live object must not use these four names for anything else, the same rule as stand/hit/prompt).
+// T40 adds action(block), near(p), use(p), aim(p) and parts (see below), the owner's 2026-10-26 tweak holds(p) / release(p). (a live object must not use these names for anything else, the same rule as stand/hit/prompt).
 export const LIVE = { clock: ClockLive, maze: MazeLive, home: HomeLive, vault: VaultLive };
 LIVE.restaurant = RestaurantLive; // T33
 LIVE.course = CourseLive; // T36
@@ -65,6 +65,10 @@ export function createGymLive(game) {
     // aim(p) -> a guide arrow { x, z, text(arrow, metres) } that the realm guide asks before the Picture World's default aim.
     near(p) { return each(o => (typeof o.near === 'function' ? o.near(p) : null)); }, // (DojoLive has a boolean `near` of its own: only functions count)
     use(p) { return !!each(o => o.use?.(p)); },
+    // Owner 2026-10-26: a hold-and-let-go action (Kick!, Shoot!). holds(p) -> true when the big button should press on touch-down
+    // (then use(p) starts the hold); release(p) lets go (E up, mouse up, the finger up). Live parts without them are never held.
+    holds(p) { return !!each(o => o.holds?.(p)); },
+    release(p) { return !!each(o => o.release?.(p)); },
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },
     battleEnded(result, opts) { for (const o of objects.values()) o.battleEnded?.(result, opts); },

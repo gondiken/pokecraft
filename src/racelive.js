@@ -310,7 +310,14 @@ export class RaceLive {
   step(dt) {
     const g = this.game, p = g.player;
     if (!p || !g.world) return;
-    p.forceSprint = this.state === 'race'; // owner 2026-10-26: in a race you always run (no Shift, no full stick push on a tablet)
+    // owner 2026-10-26: in a race you always run (no Shift, no full stick push on a tablet), on the track at the race's pace, off it a walk
+    const racing = this.state === 'race', onTrack = racing && this.track.project(p.pos.x, p.pos.z).d <= RACE.half;
+    p.forceSprint = racing;
+    p.speedK = onTrack ? RACE.pace : 1;
+    p.speedCap = racing && !onTrack ? RACE.offTrack : null;
+    const cam = this.game.camera, fov = onTrack ? RACE.fov : 75; // the view widens a little at race speed
+    if (cam && Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
+    if (racing && !onTrack && !this.toldOff) { this.toldOff = true; this.toast('Off the track! Get back on the road to go fast.'); }
     this.cells.flush();
     const paused = this.paused();
     if (this.zoomCool > 0 && !paused) this.zoomCool -= dt;
@@ -417,7 +424,8 @@ export class RaceLive {
   }
 
   dispose() {
-    if (this.game.player) this.game.player.forceSprint = false;
+    const cam = this.game.camera; if (cam && cam.fov !== 75) { cam.fov = 75; cam.updateProjectionMatrix(); }
+    if (this.game.player) { this.game.player.forceSprint = false; this.game.player.speedK = 1; this.game.player.speedCap = null; }
     disposeKart(this.kart);
     for (const k of this.paradeKarts || []) disposeKart(k);
     this.kart = null; this.paradeKarts = null;

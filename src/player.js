@@ -185,7 +185,7 @@ export class Player {
     const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
     const water = this.inWater;
     const sprint = k.ShiftLeft || k.ShiftRight || stickSprint || this.forceSprint;
-    let speed = (sprint ? 6.2 : 4.3) * analog;
+    let speed = (sprint ? 6.2 : 4.3) * analog * (this.speedK ?? 1); // speedK: a race's pace on foot (racelive.js)
     let jump = 8.6;
     if (r && r.kind === 'land' && !water) { speed = (sprint ? r.sprint : r.speed) * analog; jump = r.jump; }
     if (water && !(r && r.kind === 'water')) speed *= 0.55;
@@ -195,6 +195,7 @@ export class Player {
       if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog;
       else speed *= r.landSlow;
     }
+    if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
 

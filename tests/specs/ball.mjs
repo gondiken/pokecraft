@@ -25,7 +25,7 @@ export default async function ({ browser, base, t }) {
 
 async function nodePart(t) {
   const P = await src('ballphysics.js'), S = await src('stadium.js'), L = await src('playland.js'), Bk = await src('blocks.js');
-  const { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, aimShot, shotTo, keeperAt, KEEPER } = P;
+  const { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, shotTo, keeperAt, KEEPER, HOLD, kickZone, kickPower, shotWindow, shotMiss, diveAt, DIVE } = P;
   const { B, isSolid } = Bk;
   const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
 
@@ -292,17 +292,69 @@ async function nodePart(t) {
     t.ok(open.goal && !open.saved, `8: a drive at the open side scores: ${JSON.stringify(open)}`);
   }
 
-  /* ---- 9. aim help ---- */
+  /* ---- 9. hold and let go (owner 2026-10-26: a real skill; no aim help) ---- */
   {
-    const mouths = part.goals.map(g => ({ x: g.line, z: g.mid[1], hw: 4 }));
-    const pos = { x: 70, y: 11.4, z: 150 };
-    const to = [86 - 70, 159 - 150], len = Math.hypot(...to), dir = [to[0] / len, to[1] / len]; // towards the nearest point of the mouth, 1 block in from the post
-    const rot = (v, deg) => { const a = deg * Math.PI / 180; return [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)]; };
-    const f20 = rot(dir, 20), f40 = rot(dir, 40);
-    const v20 = aimShot(pos, f20, mouths), v40 = aimShot(pos, f40, mouths);
-    const zAtLine = v => pos.z + (86 - pos.x) * v.z / v.x;
-    t.ok(zAtLine(v20) > 158 && zAtLine(v20) < 166 && Math.abs(v20.x * f20[0] + v20.z * f20[1]) < 13.001, `9: facing 20 degrees off a goal gives a shot inside the mouth (z ${zAtLine(v20).toFixed(1)} at the line)`);
-    t.ok(near(v40.x, f40[0] * 13) && near(v40.z, f40[1] * 13), '9: facing 40 degrees off leaves the direction alone');
+    const mouths = part.goals.map(g => ({ x: g.line }));
+    const pos = { x: 74, y: 11.401, z: 162 }, f = [1, 0];
+    const zs = [0, 1, 2].map(n => kickZone(n)), hz = [0, 1, 2].map(n => kickZone(n, true));
+    const width = z => z[1] - z[0];
+    t.ok(zs.every((z, i) => i === 0 || width(z) < width(zs[i - 1])) && hz.every((z, i) => width(z) < width(zs[i])), `9: the green part of the power ring shrinks with every goal and is smaller in a rematch (${zs.map(width).map(v => v.toFixed(2))} / ${hz.map(width).map(v => v.toFixed(2))})`);
+    const soft = kickPower(0.1, pos, f, zs[0], mouths), drive = kickPower(0.6, pos, f, zs[0], mouths), over = kickPower(1.1, pos, f, zs[0], mouths);
+    t.ok(soft.kind === 'soft' && soft.x < 8.1 && drive.kind === 'drive' && drive.x === HOLD.foot.drive.speed && over.kind === 'over' && over.y > drive.y && near(soft.z, 0) && near(drive.z, 0), `9: let go early = a soft roll (${soft.x.toFixed(1)}), in the green = a hard drive (${drive.x}), late = up and over (${over.y.toFixed(1)} up); every kick goes where you face`);
+    // over-hit from 6..14 blocks: the ball crosses the goal line above the bar (further out the live part's `wild` rule says over)
+    let above = 0, tries = 0;
+    for (let x = 72; x <= 80; x++) for (const z of [159, 162, 165]) {
+      const from = { x, y: 11.401, z }, ball = new Ball(solidAt, [x, 11.401, z]);
+      boot(ball, kickPower(1.2, from, f, zs[0], mouths)); tries++;
+      for (let i = 0; i < 240; i++) { const px = ball.pos.x; ball.update(1 / 60); if (px < 86 && ball.pos.x >= 86) { if (ball.pos.y >= 14) above++; break; } }
+    }
+    t.ok(above === tries, `9: an over-hit kick from 6-14 blocks crosses the line above the bar (${above} / ${tries})`);
+    // the keeper's dive: inside the posts, smooth, back on his walk afterwards; beaten at the far post, saving the middle from far out
+    const k = part.keepers[1];
+    let inside = true, jump = 0, prev = null;
+    const dv = { t0: 1, z0: keeperAt(k, 1).z, z1: k.c - 2.9, speed: DIVE.speed[2], until: 1 + DIVE.hold };
+    for (let tt = 0; tt < 6; tt += 0.01) {
+      const a = diveAt(k, tt, false, dv);
+      if (a.box.z0 < 158.4 - 1e-9 || a.box.z1 > 165.6 + 1e-9) inside = false;
+      if (prev != null) jump = Math.max(jump, Math.abs(a.z - prev)); prev = a.z;
+    }
+    const back = Math.abs(diveAt(k, dv.until + DIVE.back + 0.01, false, dv).z - keeperAt(k, dv.until + DIVE.back + 0.01).z) < 1e-9;
+    t.ok(inside && jump < 0.075 && back, `9: a dive stays inside the posts, never jumps (${jump.toFixed(3)} per 0.01 s) and eases back to the keeper's walk`);
+    const trial = (x, zt, t0, speed) => {
+      const from = { x, y: 11.401, z: 162 }, l = Math.hypot(86 - x, zt - 162), ff = [(86 - x) / l, (zt - 162) / l];
+      const ball = new Ball(solidAt, [x, 11.401, 162]); ball.time = t0; boot(ball, kickPower(0.6, from, ff, zs[0], mouths));
+      const zc = 162 + ball.vel.z * (k.x - x) / ball.vel.x, ts = t0 + DIVE.react;
+      const dive = { t0: ts, z0: keeperAt(k, ts).z, z1: Math.max(k.c - 2.9, Math.min(k.c + 2.9, zc)), speed, until: ts + DIVE.hold };
+      const boxes = tm => part.keepers.map((kp, i) => { const bx = (i === 1 ? diveAt(kp, tm, false, dive) : keeperAt(kp, tm)).box; bx.id = i; return bx; });
+      for (let i = 0; i < 240; i++) { ball.update(1 / 60, boxes); if (ball.events.some(e => e.kind === 'keeper')) return 'saved'; if (S.goalOf(part, ball.pos) >= 0) return 'goal'; }
+      return 'miss';
+    };
+    const tally = (dist, speed, aim) => { let gl = 0; for (let i = 0; i < 40; i++) { const t0 = i * 0.11, kz = keeperAt(k, t0 + 0.3).z; if (trial(86 - dist, aim === 'far' ? (kz > 162 ? 158.9 : 165.1) : 162, t0, speed) === 'goal') gl++; } return gl; };
+    const farNear = DIVE.speed.map(sp => tally(9, sp, 'far')), midFar = DIVE.speed.map(sp => tally(16, sp, 'mid'));
+    t.ok(farNear.every(n => n >= 30) && midFar.every(n => n === 0), `9: from 9 blocks a drive at the far post beats the diving keeper (${farNear.join(' / ')} of 40 for goals 1-3); from 16 a drive at the middle is always saved (${midFar.join(' / ')})`);
+    // Shoot!: the good moment round the top of the jump
+    const wins = [0, 1, 2].map(n => shotWindow(n, 8)), wNear = shotWindow(0, 4), wFar = shotWindow(0, 15), wHard = shotWindow(0, 8, true);
+    t.ok(wins.every((w, i) => i === 0 || w < wins[i - 1]) && wNear > wins[0] && wFar < wins[0] && wHard < wins[0] && shotMiss(wins[0] * 0.9, wins[0]) === 0 && shotMiss(-wins[0] * 1.2, wins[0]) < 0 && shotMiss(wins[0] * 1.2, wins[0]) > 0,
+      `9: the good moment is shorter with every basket, further away and in a rematch (${wins.map(w => w.toFixed(3)).join(' > ')} s at 8 blocks); inside it a shot is clean, early is short, late is long`);
+    const court = part.courtBox;
+    const missRate = m => {
+      let cells = 0, scored = 0;
+      for (let x = Math.ceil(court.x0); x < court.x1; x++) for (let z = Math.ceil(court.z0); z < court.z1; z++) {
+        if (solidAt(x, 11, z)) continue;
+        for (const h of part.hoops) {
+          const from = { x: x + 0.5, y: 13.05, z: z + 0.5 }, d = Math.hypot(h.hole[0] - from.x, h.hole[1] - from.z);
+          if (d < S.SHOT.min || d > S.SHOT.max || !S.shootable(h, from)) continue;
+          cells++;
+          const ux = (h.hole[0] - from.x) / d, uz = (h.hole[1] - from.z) / d, side = Math.abs(m) * HOLD.hoop.side;
+          const ball = new Ball(solidAt, [from.x, from.y, from.z], BALL_COURT);
+          boot(ball, shotTo(from, { x: h.hole[0] + ux * m - uz * side, y: h.rimMid, z: h.hole[1] + uz * m + ux * side }, BALL_COURT.g, 2, BALL_COURT.h, { d: S.SHOT.rim, y: h.rimMid + S.SHOT.clear }).v);
+          for (let i = 0; i < 360; i++) { const py = ball.pos.y; ball.update(1 / 60); if (S.basketCross(part, py, ball.pos)) { scored++; break; } }
+        }
+      }
+      return scored / cells;
+    };
+    const early = missRate(-HOLD.hoop.miss[0]), late = missRate(HOLD.hoop.miss[0]);
+    t.ok(early < 0.1 && late < 0.1, `9: a shot let go too early or too late from every court cell nearly always misses (${(early * 100).toFixed(0)}% / ${(late * 100).toFixed(0)}% still go in: lucky bounces)`);
     const b0 = new Ball(solidAt, [10, 11.401, 10]);
     t.ok(canBoot(b0, { x: 8.5, y: 11, z: 10, yaw: -Math.PI / 2 }) && !canBoot(b0, { x: 8.5, y: 11, z: 10, yaw: Math.PI / 2 }) && canBoot(b0, { x: 9.3, y: 11, z: 10, yaw: Math.PI / 2 }) && !canBoot(b0, { x: 5, y: 11, z: 10, yaw: -Math.PI / 2 }), '9: Kick! shows when the ball is in front of you (within 2.3), or right at your feet; not when it is behind you or far');
   }
@@ -444,6 +496,7 @@ async function browserPart({ browser, base, t }) {
     L.foot.reset([82, 11.401, z]); L.foot.time = time;
     p.pos.set(80.6, 11, z); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
     const word = g.gymLive.near(g.player), used = g.gymLive.use(g.player);
+    L.held.t0 = L.t - 0.6; g.gymLive.release(g.player); // held into the green: a hard drive
     let goalFrame = -1;
     for (let i = 0; i < 60; i++) { L.update(0.05); if (goalFrame < 0 && L.goalAt != null) goalFrame = i; }
     return { word, used, goalFrame, beaten: g.beaten.filter(k => k.startsWith('pw:stadium:goal')), ball: L.foot.pos.x, spot: L.part.ballSpot };
@@ -459,7 +512,7 @@ async function browserPart({ browser, base, t }) {
   await page.evaluate(TOP => {
     const g = window.pokecraft, L = window.__live, p = g.player;
     L.goalAt = null; L.foot.reset([82, 11.401, 162]); L.foot.time = TOP; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2;
-    g.gymLive.use(g.player);
+    g.gymLive.use(g.player); L.held.t0 = L.t - 0.6; g.gymLive.release(g.player);
     for (let i = 0; i < 9; i++) L.update(0.05); // the ball is in the net, the crowd is cheering
     L.playing = () => false;
     p.pos.set(75, 12, 160); p.vel.set(0, 0, 0); p.lookAt({ x: 87.5, y: 12, z: 162 });
@@ -484,10 +537,11 @@ async function browserPart({ browser, base, t }) {
     const g = window.pokecraft, L = window.__live, p = g.player, out = [];
     L.rivals = false; // Blocker Bo is checked below
     for (let k = 0; k < 4; k++) {
-      L.hoop.reset([52.2, 11.401, 203]); L.longShots = 0;
-      p.pos.set(53.6, 11, 203); p.vel.set(0, 0, 0); p.yaw = Math.PI / 2; p.pitch = 0;
+      L.hoop.reset([52.2, 11.401, 203]);
+      p.pos.set(53.6, 11, 203); p.vel.set(0, 0, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.onGround = true;
       const c0 = g.cubes, word = g.gymLive.near(g.player);
-      g.gymLive.use(g.player);
+      g.gymLive.use(g.player); L.t = L.held.apex; g.gymLive.release(g.player); // let go right at the top of the jump
+      p.vel.set(0, 0, 0);
       for (let i = 0; i < 80; i++) L.update(0.05);
       out.push({ word, cubes: g.cubes - c0, bonus: L.bonus });
     }
@@ -521,18 +575,41 @@ async function browserPart({ browser, base, t }) {
     let back = false;
     for (let i = 0; i < 10 && !back; i++) { L.hoop.update(0.05, () => [L.blockerBox()]); for (const ev of L.hoop.events) if (ev.kind === 'keeper') { L.blocked(L.hoop); back = true; } }
     const boToast = window.__toasts.some(m => /Blocked by Blocker Bo/.test(m));
-    // long shots: every other one from far away is aimed off the hole
-    L.rivals = false; L.longShots = 0;
-    const far = [L.part.hoops[0].hole[0] + 11 * L.part.hoops[0].front, 11.401, L.part.hoops[0].hole[1]];
-    const aims = [0, 1].map(() => { L.hoop.reset(far); const v = L.shoot([-L.part.hoops[0].front, 0]); return v.z; });
+    // Shoot! held: you jump with the ball over your head, it glows at the top; early / late let-gos miss
+    L.rivals = false;
+    const h0 = L.part.hoops[0], shotFrom = early => {
+      L.hoop.reset([h0.hole[0] + 8 * h0.front, 11.401, h0.hole[1]]);
+      p.pos.set(h0.hole[0] + 8.9 * h0.front, 11, h0.hole[1]); p.vel.set(0, 0, 0); p.onGround = true; p.yaw = h0.front > 0 ? Math.PI / 2 : -Math.PI / 2;
+      g.gymLive.use(g.player);
+      const jumped = p.vel.y > 9, overHead = L.hoop.pos.y > p.pos.y + 1.9;
+      L.t = L.held.apex; L.drawAll(); const glowTop = L.meshes.hoop.material.emissive.r;
+      L.t = L.held.apex + (early ? -0.25 : 0.25); L.drawAll(); const glowOff = L.meshes.hoop.material.emissive.r;
+      g.gymLive.release(g.player); p.vel.set(0, 0, 0);
+      let swish = false; const nb = L.basket; L.basket = () => { swish = true; };
+      for (let i = 0; i < 80 && !swish; i++) L.update(0.05);
+      L.basket = nb;
+      return { jumped, overHead, glowTop, glowOff, miss: L.lastShot.miss, swish };
+    };
+    const early = shotFrom(true), late = shotFrom(false);
+    // Kick! held: the ring fills; an over-hit ball never scores
+    L.foot.reset([82, 11.401, 162]); p.pos.set(80.6, 11, 162); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2;
+    g.gymLive.use(g.player); L.t += 0.3; L.drawAll();
+    const ring = L.ring.g.visible, word = g.gymLive.near(g.player);
+    L.held.t0 = L.t - 1.2; window.__toasts = [];
+    g.gymLive.release(g.player);
+    const wild = L.wild, b0 = g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length;
+    for (let i = 0; i < 60; i++) L.update(0.05);
+    const overToast = window.__toasts.some(m => /Too much power/.test(m)), b1 = g.beaten.filter(k => k.startsWith('pw:stadium:goal')).length;
     L.rivals = true; L.hoop.reset(); L.foot.reset();
-    return { stole, deeToast, homeward, up, down, back, boToast, aims };
+    return { stole, deeToast, homeward, up, down, back, boToast, early, late, ring, word, wild, overToast, noGoal: b1 === b0, ringAfter: L.ring.g.visible };
   });
   t.ok(d17b.stole && d17b.deeToast, '17b: Defender Dee runs to a football near a goal and kicks it back to the middle ("Defender Dee took the ball!")');
   t.ok(d17b.homeward, '17b: far from the goals Dee walks back to his spot and leaves the ball alone');
   t.ok(d17b.up > d17b.down + 1, `17b: Blocker Bo jumps (feet ${d17b.down.toFixed(1)} -> ${d17b.up.toFixed(1)})`);
   t.ok(d17b.back && d17b.boToast, '17b: a ball thrown at Bo in the air bounces off ("Blocked by Blocker Bo! Shoot when he lands.")');
-  t.ok(Math.abs(d17b.aims[0]) < 0.05 && Math.abs(d17b.aims[1]) > 0.2, `17b: from 11 blocks the first shot is aimed at the hole, the second one off it (${d17b.aims.map(a => a.toFixed(2))})`);
+  t.ok(d17b.early.jumped && d17b.early.overHead && d17b.early.glowTop > 0.3 && d17b.early.glowOff === 0, '17b: holding Shoot! jumps you up with the ball over your head; it glows only at the top of the jump');
+  t.ok(d17b.early.miss < 0 && d17b.late.miss > 0 && !d17b.early.swish && !d17b.late.swish, `17b: let go too early the shot is short, too late it is long, and neither goes in (${d17b.early.miss.toFixed(2)} / ${d17b.late.miss.toFixed(2)})`);
+  t.ok(d17b.ring && d17b.word === 'Kick!' && d17b.wild && d17b.overToast && d17b.noGoal && !d17b.ringAfter, '17b: holding Kick! fills the ring round the ball; held too long it flies over the bar ("Too much power!") and is no goal');
 
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
@@ -610,11 +687,23 @@ async function browserPart({ browser, base, t }) {
   const act1 = await ip.evaluate(() => ({ text: document.getElementById('btn-act').textContent, prompt: document.getElementById('prompt')?.textContent }));
   await ip.screenshot({ path: path.join(SHOTS, 't40d-ipad.png'), timeout: 180000 });
   console.log('  screenshot t40d-ipad.png');
-  await ip.locator('#btn-act').tap();
-  await waitFor(ip, () => window.__live.foot.vel.x > 3 || window.__live.foot.pos.x > 53, null, 60000);
-  t.ok(act1.text === 'Kick!', `19: next to the football the big button says "${act1.text}" (${act1.prompt}); a real tap on it kicks the ball`);
+  // a real finger: down on the big button starts the hold, up kicks
+  const box = await ip.locator('#btn-act').boundingBox(), cdp = await ip.context().newCDPSession(ip);
+  const finger = type => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 7 }] });
+  await finger('touchStart');
+  await waitFor(ip, () => !!window.__live.held, null, 30000);
+  const holding = await ip.evaluate(() => { const L = window.__live; L.held.t0 = L.t - 0.6; return L.held.key; }); // into the green
+  await finger('touchEnd');
+  await waitFor(ip, () => !window.__live.held && window.__live.foot.vel.x > 10, null, 60000);
+  t.ok(act1.text === 'Kick!' && holding === 'foot', `19: next to the football the big button says "${act1.text}" (${act1.prompt}); a real finger held on it powers up and lifting it kicks a hard drive`);
   await ip.evaluate(() => { const g = window.pokecraft, L = window.__live, p = g.player; L.hoop.reset([52.2, 11.401, 203]); p.pos.set(53.6, 11, 203); p.vel.set(0, 0, 0); p.yaw = Math.PI / 2; p.pitch = 0; });
   await waitFor(ip, () => document.getElementById('btn-act').textContent === 'Shoot!', null, 60000);
+  await finger('touchStart');
+  await waitFor(ip, () => window.__live.held?.key === 'hoop', null, 30000);
+  const jumped = await ip.evaluate(() => window.pokecraft.player.vel.y > 0 || window.pokecraft.player.pos.y > 11.2);
+  await finger('touchEnd');
+  await waitFor(ip, () => !window.__live.held, null, 60000);
+  t.ok(jumped, '19: a finger held on Shoot! jumps you with the ball; lifting it shoots');
   const after = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
   t.ok(after === before, `19: on the court it says Shoot!, and the number of touch buttons is unchanged (${before} / ${after})`);
   await ip.context().close();
@@ -672,7 +761,7 @@ async function browserPart({ browser, base, t }) {
   const dad = await A.evaluate(() => {
     const g = window.pokecraft, L = window.__live, p = g.player;
     L.rivals = false; L.foot.reset([82, 11.401, 162]); L.foot.time = 4.05; p.pos.set(80.6, 11, 162); p.yaw = -Math.PI / 2; p.pitch = 0; // 4.05 = KEEPER.P - 0.35: Gail at the top of her run
-    g.gymLive.use(g.player);
+    g.gymLive.use(g.player); L.held.t0 = L.t - 0.6; g.gymLive.release(g.player);
     for (let i = 0; i < 60; i++) L.update(0.05);
     return g.beaten.filter(k => k.startsWith('pw:stadium:goal'));
   });
