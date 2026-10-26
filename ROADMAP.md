@@ -1408,6 +1408,9 @@ together** (a friend sits behind you, or side by side), **hats and costumes** fo
 what the rare mission blocks buy), **tricks** (teach your buddy a spin or a dance to show off), **events now and then**
 (a parade of rare creatures, a shooting-star night, a festival day). Suggested order: buddy, bouncy blocks, more traits.
 
+**Builder, the Construction Site** (owner, 2026-10-26: probably chapter 3, next to crafting): drive a crane, place beams and
+build your own bridge to where you need to go; diggers, cranes and cement-mixer creatures. Not a Picture World.
+
 **Types for later** (owner, 2026-10-21; same per-type cost as wave 11; Ninja went to wave 12; Knight could become a Swirl place, the Castle):
 - **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
   castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
