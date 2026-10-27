@@ -204,9 +204,9 @@ addBoss({
 /* ==== end of T45 doodle ==== */
 
 /* ==== T42 portal ==== */
-addBoss({ // the Portal House (in the Swirl itself): the four swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star
+addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star
   id: 'portal', name: 'Grandpa Arch', type: 'portal', model: { species: 'gatestrider', scale: 2.0 },
-  gate: game => { const { n, need, ready } = roomState(game); return ready ? null : `Finish all four swirl rooms first! (🌀 ${n} / ${need})`; },
+  gate: game => { const { n, need, ready } = roomState(game); return ready ? null : `Finish all the swirl rooms first! (🌀 ${n} / ${need})`; },
   team: [['peekhole', 60], ['topperoo', 61, ['hattrick', 'popthrough', 'shortcut', 'dizzyswirl']], ['loopwyrm', 62], ['gatestrider', 63, ['doorslam', 'popthrough', 'portalparty', 'shortcut']]], // top level 63, the easy side
   intro: ['Hello, little traveller. I am Grandpa Arch, the oldest Portal creature.', 'I have watched the crack in the Swirl for a long, long time. Show me your team!'],
   lose: 'Wonderful! Take the star. It will make the bridge a little longer.',

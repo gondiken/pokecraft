@@ -542,11 +542,12 @@ export default async function ({ browser, base, t }) {
   const hue = await Q.evaluate(async () => { const m = window.pokecraft.scene.children.find(o => o.isMesh && o.material?.blending === 2 && o.material.map && o.geometry.type === 'BoxGeometry'); const a = m.material.color.getHex(); await new Promise(r => setTimeout(r, 2500)); return [a, m.material.color.getHex()]; });
   t.ok(hue[0] !== hue[1], `a lift stream slowly changes pastel colour (${hue[0].toString(16)} -> ${hue[1].toString(16)})`);
 
-  // 21. Draw calls at the arrival facing east (loose: software numbers vary; T42: the Portal House is in that view, 260).
+  // 21. Draw calls at the arrival facing east (loose: software numbers vary; T42: the Portal House is in that view, but its people are
+  // drawn only inside it and no House block glows, so it adds only the Hub Swirl: 103 measured, the old limit 110 holds).
   await Q.evaluate(() => { const p = window.pokecraft.player; p.pos.set(43.5, 21, 80.5); p.vel.set(0, 0, 0); p.lookAt({ x: 90, y: 24, z: 80.5 }); window.pokecraft.swirlSky.snap(); });
   await Q.waitForTimeout(1500);
   const calls = await Q.evaluate(() => window.pokecraft.renderer.info.render.calls);
-  t.ok(calls > 0 && calls <= 260, `draw calls at the arrival facing east: ${calls}`);
+  t.ok(calls > 0 && calls <= 110, `draw calls at the arrival facing east: ${calls}`);
 
   // Screenshots: the frames, the bridge and the Wizard's tower, a lift, the hub and the stairs.
   const shot = async (name, pos, at) => {
