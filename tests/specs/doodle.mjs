@@ -1,6 +1,6 @@
 // T45: the Doodle type and the Sketchbook (plans/T45.md). A. type data. B. the pencil atlas. C. the sketch switch off = bit for bit
 // (main world, Dream, Swirl, and again after a trip to the Sketchbook). D. the look in the game. E. terrain for three seeds (the walk graph
-// from tests/doodlecheck.mjs). F. Trace! (pure, tracing.js). G. play: the frame, Draw!, ink, falling, saving, crew, Arlo, rematch, the ways
+// from tests/doodlecheck.mjs). F. Draw! (pure, tracing.js, the model players of tests/doodlecheck.mjs). G. play: the frame, Draw!, ink, falling, saving, crew, Arlo, rematch, the ways
 // back. H. iPad. I. two browsers. J. screenshots (tests/screenshots/t45-*.png).
 // DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots runs part of it.
 import fs from 'node:fs';
@@ -24,34 +24,62 @@ const shot = async (page, name, spot, wait = 1500) => {
 };
 
 // in-page helpers: step the player and the live part by hand (no pointer lock in tests, so the frame loop does not play)
-const helpers = page => page.evaluate(() => {
+const helpers = page => page.evaluate(async () => {
   const g = window.pokecraft;
+  window.__DC = await import('/tests/doodlecheck.mjs'); window.__T = await import('/src/tracing.js');
   window.__live = () => g.gymLive.of('part:doodle');
   const lv = window.__live();
   if (lv) lv.playing = () => true;
   window.__at = (x, y, z, yaw = 0, pitch = 0) => { const p = g.player; p.carry?.leave?.(false); p.pos.set(x, y, z); p.vel.set(0, 0, 0); p.yaw = yaw; p.pitch = pitch; p.keys = {}; };
-  // a perfect tracker: look straight at the tip from where you stand (or from `from`)
-  window.__aimAt = (from, tip) => { const e = from ?? g.player.eyePos.toArray(), d = [tip[0] - e[0], tip[1] - e[1], tip[2] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m) }; };
-  // a perfect tracker who walks along with the tip: the eye 5 blocks behind it, looking at it
-  window.__aimNear = tip => { const e = [tip[0], tip[1] + 1.2, tip[2] - 5], d = [0, tip[1] + 1.05 - e[1], 5], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m) }; };
-  window.__walk = (pts, max = 1500) => {
+  window.__walk = (pts, max = 1500, dt = 0.05) => { // real Player physics along points (jumping up steps)
     const p = g.player; let i = 0, steps = 0;
     while (i < pts.length && steps < max) {
       const [x, z] = pts[i], dx = x - p.pos.x, dz = z - p.pos.z;
       if (Math.hypot(dx, dz) < 0.45) { i++; continue; }
       p.yaw = Math.atan2(-dx, -dz);
       p.keys.KeyW = true; p.keys.Space = p.hitWall;
-      p.update(0.05); g.gymLive.update(0.05); steps++;
+      p.update(dt); g.gymLive.update(dt); steps++;
     }
     p.keys.KeyW = false; p.keys.Space = false;
     return { i, steps, x: p.pos.x, y: p.pos.y, z: p.pos.z };
   };
-  // draw line n (1-based) with a perfect tracker, `dt` per step; stops after max steps; returns the info
-  window.__draw = (n, dt = 0.05, max = 4000) => {
+  // Draw line n from its pad with a model player (tests/doodlecheck.mjs DrawBot: it stands on the drawn line and looks where the bot
+  // wants the line to go); the real live part gets the same input. bot: skilled | careless | lazy | idle | nostar.
+  window.__draw = (n, dt = 0.05, { bot = 'skilled', max = 3000, lazy = 5 } = {}) => {
     const L = window.__live(); L.manual = true;
-    const used = L.use(g.player); let i = 0;
-    for (; i < max && L.cur; i++) { const tip = L.cur.line.line.at(L.cur.st.s); L.step(dt, window.__aimNear(tip)); }
-    return { used, steps: i, info: L.info() };
+    const s = g.world.doodle.pads[n - 1].stand; window.__at(s[0], s[1], s[2]);
+    const used = L.use(g.player);
+    if (!L.cur) return { used, steps: 0, info: L.info() };
+    const st = L.cur.st, B = new window.__DC.DrawBot(L.cur.course, { bot, lazy });
+    let i = 0;
+    for (; i < max && L.cur; i++) { const inp = B.input(st, dt); g.player.pos.set(...inp.player); g.player.vel.set(0, 0, 0); L.step(dt, inp); B.after(st); }
+    const cells = [...st.cells.values()].map(c => [c.x, c.y, c.z]);
+    return { used, steps: i, info: L.info(), log: B.log, cells, pts: st.pts.map(p => [p.x, p.row, p.z]), done: st.done };
+  };
+  // Draw line n while walking on it with real Player physics (the sticky line and the step-up hop on): when the pencil's heading is
+  // off the next point of the route, look 3 past the pencil toward it (steer); else look at your own line 2.5 ahead of your feet
+  // (walk). Walk forward while more than `close` from the pencil (-1 = always); careless = always steer at the route's last point.
+  window.__drawReal = (n, dt = 0.05, { max = 3000, route = null, close = 2 } = {}) => {
+    const L = window.__live(), p = g.player, T = window.__T; L.manual = true; L.guardInTests = true;
+    const s = g.world.doodle.pads[n - 1].stand; window.__at(s[0], s[1], s[2]);
+    L.use(p);
+    if (!L.cur) return null;
+    const st = L.cur.st, pts = route ?? L.cur.course.route, backs = []; let wp = 0, i = 0, minY = 99, steer = 0;
+    for (; i < max && L.cur; i++) {
+      const t = st.tip, passed = q => { const dx = q[0] - t.x, dz = q[1] - t.z, d = Math.hypot(dx, dz); return d < 1.6 || (d < 4 && dx * Math.cos(t.h) + dz * Math.sin(t.h) < 0); };
+      while (wp < pts.length - 1 && passed(pts[wp])) wp++;
+      const dx = pts[wp][0] - t.x, dz = pts[wp][1] - t.z, m = Math.hypot(dx, dz) || 1, err = Math.atan2(Math.sin(Math.atan2(dz, dx) - t.h), Math.cos(Math.atan2(dz, dx) - t.h));
+      let q;
+      if (route || Math.abs(err) > 0.12) { q = [t.x + dx / m * 3, t.row + 1, t.z + dz / m * 3]; steer++; }
+      else { const a = T.pointAt(st, Math.min(st.s, st.playerS + 2.5)); q = [a[0], a[1] + 1, a[2]]; }
+      const e = p.eyePos, v = [q[0] - e.x, q[1] - e.y, q[2] - e.z];
+      p.yaw = Math.atan2(-v[0], -v[2]); p.pitch = Math.atan2(v[1], Math.hypot(v[0], v[2]));
+      p.keys.KeyW = Math.hypot(t.x - p.pos.x, t.z - p.pos.z) > close; p.keys.Space = false;
+      p.update(dt); L.step(dt); minY = Math.min(minY, p.pos.y);
+      for (const ev of st.events) if (ev.kind === 'back') backs.push([ev.reason, i, +p.pos.x.toFixed(1), +p.pos.z.toFixed(1)]);
+    }
+    p.keys = {}; L.guardInTests = false;
+    return { steps: i, done: st.done, setbacks: st.setbacks, backs, steer, guarded: L.guarded, info: L.info(), x: p.pos.x, y: p.pos.y, z: p.pos.z, minY, under: g.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) };
   };
 });
 // the Champion goes into the Swirl and through the Sketchbook frame
@@ -281,64 +309,58 @@ export default async function ({ browser, base, t }) {
     if (ONLY === 'land') return;
   }
 
-  /* ================================ F. Trace! (pure) ================================ */
+  /* ================================ F. Draw! (pure, tracing.js + the model players of tests/doodlecheck.mjs) ================================ */
   if (want('trace')) {
     const F = await page.evaluate(async () => {
-      const T = await import('/src/tracing.js'), D = await import('/src/doodleland.js');
-      const lines = D.doodleLines();
-      const out = { problems: [], rows: [] };
+      const C = await import('/tests/doodlecheck.mjs'), T = await import('/src/tracing.js'), D = await import('/src/doodleland.js');
+      const t0 = performance.now(), checks = C.drawChecks(1), ms = performance.now() - t0;
+      const w = C.makeDoodle(1), solid = C.solidOf(w), out = { problems: [...checks.problems], rows: checks.rows, ms };
       const bad = m => out.problems.push(m);
-      // a tracker: aim(st, tip, t) -> { eye, dir, touch } ; dt = 1 / hz; returns the final state and time
-      const run = (line, kind, hz, aim, { k = 0, wins = 0, max = 400, touch = false } = {}) => {
-        const st = T.newTrace(kind, k), dt = 1 / hz; let t = 0;
-        while (!st.done && t < max) { const tip = line.at(st.s); const a = aim(tip, t, st); traceStep(st, dt, { ...a, touch }, line, kind, wins); t += dt; }
-        return { st, t };
-      };
-      const traceStep = T.traceStep;
-      const perfect = (tip) => ({ eye: [tip[0], tip[1] + 1.2, tip[2] - 5], dir: [0, -1.2 / 5.15, 5 / 5.15].map((v, i, a) => v / Math.hypot(...a)) });
-      const away = () => ({ eye: [0, 80, 0], dir: [0, 1, 0] });
-      lines.forEach((l, i) => {
-        const kind = l.kind, cfg = T.TRACE[kind];
-        for (const hz of [60, 20]) {
-          const r = run(l.line, kind, hz, tip => perfect([tip[0], tip[1] + 1.05, tip[2]]), { k: i - 5 });
-          const want = kind === 'race' ? null : l.line.len / cfg.speed;
-          if (!r.st.done) bad(`line ${l.n} at ${hz} does not finish`);
-          if (want && Math.abs(r.t - want) / want > 0.02) bad(`line ${l.n} at ${hz}: ${r.t.toFixed(2)} s, wanted ${want.toFixed(2)} s`);
-          if (kind === 'race' && r.st.rubbed) bad(`a perfect tracker is rubbed on line ${l.n} at ${hz}`);
-          out.rows.push([l.n, hz, +r.t.toFixed(2), r.st.rubbed]);
+      // the same input twice: the same line (no Math.random)
+      const a = C.simCourse(D.courseOf(3, solid)), b = C.simCourse(D.courseOf(3, solid));
+      if (a.st.pts.length !== b.st.pts.length || a.st.pts.some((p, i) => p.x !== b.st.pts[i].x || p.z !== b.st.pts[i].z)) bad('two runs drew different lines');
+      // the pencil draws where you look: looking left of it bends the line left, looking at it keeps it straight
+      const c1 = D.courseOf(1, solid), pl = c1.pad, look = (st, P) => { const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m), player: pl }; };
+      const h0 = T.newDraw(c1).tip.h, side = [-Math.sin(h0), Math.cos(h0)];
+      const s1 = T.newDraw(c1); for (let i = 0; i < 40; i++) T.drawStep(s1, 1 / 60, look(s1, [s1.tip.x, s1.tip.z])); // at the pencil
+      const s2 = T.newDraw(c1); for (let i = 0; i < 40; i++) T.drawStep(s2, 1 / 60, look(s2, [s2.tip.x + Math.cos(h0) * 4 + side[0] * 3, s2.tip.z + Math.sin(h0) * 4 + side[1] * 3])); // to one side of it
+      out.steer = [+(s1.tip.h - h0).toFixed(3), +(s2.tip.h - h0).toFixed(3)];
+      if (Math.abs(out.steer[0]) > 0.001 || Math.abs(out.steer[1]) < 0.3) bad(`steering: at the pencil it turned ${out.steer[0]}, looking to the side ${out.steer[1]}`);
+      // the leash: standing still on the pad, the pencil stops 5 blocks ahead; it uses ink only while it draws
+      const s3 = T.newDraw(c1); for (let i = 0; i < 300; i++) T.drawStep(s3, 1 / 60, look(s3, [pl[0] + Math.cos(h0) * 20, pl[2] + Math.sin(h0) * 20]));
+      out.leash = +Math.hypot(s3.tip.x - pl[0], s3.tip.z - pl[2]).toFixed(2);
+      if (out.leash > T.DRAW.leash + 0.2 || out.leash < T.DRAW.leash - 0.5 || Math.abs(s3.ink - (c1.ink - s3.s)) > 1e-6) bad(`the leash: ${out.leash} ahead, ink ${s3.ink}`);
+      // a blot stops the pencil (line 2 straight at it), another page too (line 6 from the tower deck toward the Desk, with ink to spare), the tower too (line 5)
+      const blk = (n, P0, via) => { const c = { ...D.courseOf(n, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); for (let i = 0; i < 900; i++) { const P = via && i < 90 ? via : P0; const pl = [st.tip.x, c.rowA + 1, st.tip.z]; const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); } return st.blocked; };
+      const c2 = D.courseOf(2, solid), b0 = c2.blots[0], aimBlot = [c2.start[0] + (b0.x - c2.start[0]) * 2, c2.start[1] + (b0.z - c2.start[1]) * 2];
+      out.blocks = [blk(2, aimBlot), blk(6, [40, 40], [45, 78]), blk(5, [24, 80])];
+      if (out.blocks.join() !== 'blot,page,low') bad(`blocked by ${out.blocks}`);
+      // a star: full ink again, and a setback after it keeps the line up to it (Rubber never rubs before it)
+      const r6 = C.simCourse(D.courseOf(6, solid), { bot: 'lazy', lazy: 6, maxT: 40 });
+      out.r6 = r6.backs;
+      const c7 = D.courseOf(7, solid), st7 = T.newDraw(c7), B7 = new C.DrawBot(c7);
+      let star = null, after = null;
+      for (let i = 0; i < 2400 && !st7.done; i++) {
+        const inp = B7.input(st7, 1 / 60);
+        T.drawStep(st7, 1 / 60, inp); B7.after(st7);
+        if (!star && st7.taken.size) { star = { s: st7.s, ink: st7.ink, cells: [...st7.cells.values()].filter(c => c.s <= st7.s).length }; }
+        if (star && !after && st7.s > star.s + 3) { // now stand still until Rubber comes
+          for (let j = 0; j < 900 && !st7.events.some(e => e.kind === 'back'); j++) { T.drawStep(st7, 1 / 60, { ...inp, player: inp.player }); }
+          after = { back: st7.events.find(e => e.kind === 'back')?.reason, s: st7.s, kept: [...st7.cells.values()].filter(c => c.s <= star.s).length, ink: st7.ink };
+          break;
         }
-      });
-      // half the time looking away still finishes (later)
-      const half = run(lines[0].line, 'straight', 60, (tip, t) => (Math.floor(t) % 2 === 0 ? perfect([tip[0], tip[1] + 1.05, tip[2]]) : away()));
-      if (!half.st.done || half.t < lines[0].line.len / 1.6 * 1.6) bad(`looking away half the time: ${half.t}`);
-      // race: look away for 6 s right after the start: rubbed back to a star dot (or the start), and still finishes
-      const race = lines[5];
-      const lost = run(race.line, 'race', 60, (tip, t) => (t > 1 && t < 8 ? away() : perfect([tip[0], tip[1] + 1.05, tip[2]])), { k: 0 });
-      if (lost.st.rubbed < 1 || !lost.st.done) bad(`looking away 7 s on a race line: rubbed ${lost.st.rubbed}, done ${lost.st.done}`);
-      const star = race.line.stars;
-      // grace: a 0.2 s glance away changes nothing
-      const plain = run(lines[0].line, 'straight', 60, tip => perfect([tip[0], tip[1] + 1.05, tip[2]]));
-      const glance = run(lines[0].line, 'straight', 60, (tip, t) => (t > 2 && t < 2.2 ? away() : perfect([tip[0], tip[1] + 1.05, tip[2]])));
-      if (Math.abs(plain.t - glance.t) > 0.05) bad(`a 0.2 s glance changed the time: ${plain.t} vs ${glance.t}`);
-      // 60 and 20 steps a second: the same within one step
-      const a60 = run(lines[3].line, 'curl', 60, tip => perfect([tip[0], tip[1] + 1.05, tip[2]])), a20 = run(lines[3].line, 'curl', 20, tip => perfect([tip[0], tip[1] + 1.05, tip[2]]));
-      if (Math.abs(a60.t - a20.t) > 0.06) bad(`60 vs 20 steps: ${a60.t} vs ${a20.t}`);
-      // the touch ring is 1.25 x: an aim 1.7 off the tip counts only with touch (straight ring 1.5 -> 1.875)
-      const off17 = (tip) => { const e = [tip[0], tip[1] + 1.05, tip[2] - 5]; const aimAt = [tip[0] + 1.7, tip[1] + 1.05, tip[2]]; const d = [aimAt[0] - e[0], aimAt[1] - e[1], aimAt[2] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m) }; };
-      const noTouch = run(lines[0].line, 'straight', 20, off17, { max: 12 }), withTouch = run(lines[0].line, 'straight', 20, off17, { touch: true, max: 12 });
-      if (noTouch.st.s > 0.5 || withTouch.st.s < 5) bad(`touch ring: ${noTouch.st.s} without, ${withTouch.st.s} with`);
-      // rematch: the eraser is faster per win, capped
-      const eraserRate = wins => { const st = T.newTrace('race', 0), l = race.line; st.s = 14; st.wait = 0; const before = st.eraser; T.traceStep(st, 0.1, away(), l, 'race', wins); return (st.eraser - before) / 0.1; };
-      const r0 = eraserRate(0), r3 = eraserRate(3), r99 = eraserRate(99);
-      if (!(r3 > r0 && r99 <= T.TRACE.race.eraserCap + 1e-9 && r99 > r3)) bad(`eraser speed by wins: ${r0} ${r3} ${r99}`);
-      out.rates = [r0, r3, r99]; out.stars = star.length;
-      // the first neat line fraction
-      out.neat = [plain.st.onTime / plain.st.time, half.st.onTime / half.st.time];
+      }
+      out.star = { star, after };
+      if (!star || Math.abs(star.ink - c7.ink) > 1e-6) bad(`a star fills the ink: ${JSON.stringify(star)}`);
+      if (!after || after.back !== 'caught' || Math.abs(after.s - star.s) > 1e-6 || after.kept < star.cells || Math.abs(after.ink - c7.ink) > 1e-6) bad(`caught after the star: back to the star with the line kept: ${JSON.stringify(after)}`);
       return out;
     });
-    t.ok(F.problems.length === 0, `Trace!: ${F.problems.length ? F.problems.join('; ') : `a perfect tracker finishes every line in len / speed (+-2%) at 60 and 20 steps a second and is never rubbed; looking away half the time or 7 s on a race line still finishes (and is rubbed back); a 0.2 s glance changes nothing; touch ring x1.25; the eraser is faster per win and capped (${F.rates.map(r => r.toFixed(2))})`}`);
-    t.ok(F.neat[0] > 0.95 && F.neat[1] < 0.8, `the neat fraction: a perfect line ${F.neat[0].toFixed(2)}, half the time away ${F.neat[1].toFixed(2)}`);
-    console.log('  perfect runs (line, hz, seconds, rubbed): ' + JSON.stringify(F.rows));
+    t.ok(F.problems.length === 0, `Draw!: ${F.problems.length ? F.problems.join('; ') : `for every line a skilled player wins cleanly at 60 and 20 fps (about the same time), drawing straight at the page wins no line cleanly (the landing strip, blots, the tower, bees), the ink never reaches without a star, Rubber catches a player who stops on lines 6-8 and the line still gets drawn, a player who never waits for the bees gets nibbled, lines 6-8 need their stars, Rubber gets faster per rematch win but never as fast as walking, the gaps are keeps (${F.ms.toFixed(0)} ms)`}`);
+    t.ok(Math.abs(F.steer[0]) < 0.001 && Math.abs(F.steer[1]) > 0.3, `the pencil draws where you look: looking at the pencil it goes straight (turned ${F.steer[0]}), looking to one side bends the line (turned ${F.steer[1]} rad)`);
+    t.ok(F.leash <= 5.2, `standing still the pencil waits ${F.leash} blocks ahead and uses ink only while it draws`);
+    t.ok(F.blocks.join() === 'blot,page,low', `an ink blot, a page that is not the next one and the tower stop the pencil (${F.blocks})`);
+    t.ok(!!F.star.after, `a star fills the ink; caught after it you go back to it with the line up to it kept (${JSON.stringify(F.star)})`);
+    console.log('  Draw! per line: ' + F.rows.map(r => JSON.stringify(r)).join('\n    '));
     if (ONLY === 'trace') return;
   }
 
@@ -484,17 +506,36 @@ export default async function ({ browser, base, t }) {
       // a later pad: "Draw the line before this one first!"
       await page.evaluate(() => { const g = window.pokecraft, s = g.world.doodle.pads[3].stand; window.__at(s[0], s[1], s[2]); const L = window.__live(); L.manual = true; window.__lastUse = L.use(g.player); });
       t.ok(await said(page, /Draw the line before this one first/) && !(await page.evaluate(() => window.__live().cur)), 'a later pad says to draw the line before it first, and nothing starts');
-      await stand(page, 0);
-      // draw line 1 with a perfect tracker
-      await stand(page, 0);
-      const r1 = await page.evaluate(() => window.__draw(1, 0.05));
-      t.ok(r1.used && !r1.info.drawing && r1.info.drawn[0], `Draw! starts, the pencil follows a perfect tracker, the line is drawn after ${r1.steps} steps (${(r1.steps * 0.05).toFixed(1)} s)`);
-      const ink = await page.evaluate(() => { const g = window.pokecraft, L = window.__live(), cs = L.inkableOf(0); return { n: cs.length, ink: cs.filter(c => g.world.get(c.x, c.y, c.z) === 246).length, saved: g.beaten.includes('pw:doodle:line1'), toast: window.__toasts.filter(m => /You drew a bridge/.test(m)).length, neat: window.__toasts.some(m => /Neat line/.test(m)), cubes: g.cubes, chip: document.getElementById('score-chip')?.textContent }; });
-      t.ok(ink.n > 10 && ink.ink === ink.n && ink.saved, `every cell of the line became ink (${ink.ink} of ${ink.n}), nothing is an edit, the key pw:doodle:line1 is saved`);
-      t.ok(ink.toast === 1 && ink.neat && /Lines 1 \/ 8/.test(ink.chip || ''), `"You drew a bridge! 1 / 8", "Neat line!" for a perfect line, the score chip says ${ink.chip}`);
+      // line 1 drawn while walking on it with real Player physics (60 and 20 steps a second): the pencil draws where you look
+      const real = [];
+      for (const dt of [1 / 60, 0.05]) {
+        real.push(await page.evaluate(dt => {
+          const r = window.__drawReal(1, dt), L = window.__live(), p = window.pokecraft.player;
+          const t1 = L.courseOf(0).target, w = window.__walk([[(t1[0] + t1[1] + 1) / 2, t1[2] - 3]], 400, dt); // and on along your line onto the page
+          const out = { ...r, z: w.z, y: w.y, under: window.pokecraft.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) };
+          if (r?.done && dt < 0.05) { L.drawnNow.delete(0); window.pokecraft.beaten = window.pokecraft.beaten.filter(k => k !== 'pw:doodle:line1'); }
+          return out;
+        }, dt));
+      }
+      for (const [i, r] of real.entries()) t.ok(r && r.done && r.setbacks === 0 && r.z < 131 && r.z > 109 && r.x > 109 && r.y > 15.9 && r.under === 1 && r.minY > 14.5, `line 1 at ${i ? 20 : 60} steps a second: Draw! starts, you walk on your own line as the pencil draws it and reach Sketch Meadow (${r?.steps} steps, at ${r?.x.toFixed(1)}, ${r?.z.toFixed(1)}, lowest y ${r?.minY.toFixed(1)}, ${r?.setbacks} setbacks)`);
+      const ink = await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); return { keep: L.keepInk.size, ink: [...L.keepInk].filter(k => g.world.get(...k.split(',').map(Number)) === 246).length, edits: g.world.edits.size, saved: g.beaten.includes('pw:doodle:line1'), toast: window.__toasts.filter(m => /You drew a bridge/.test(m)).length, neat: window.__toasts.some(m => /Neat line/.test(m)), chip: document.getElementById('score-chip')?.textContent }; });
+      t.ok(ink.keep > 20 && ink.ink === ink.keep && ink.saved && ink.edits === 0, `your line stays ink (${ink.ink} cells), nothing is an edit, the key pw:doodle:line1 is saved`);
+      t.ok(ink.toast >= 1 && ink.neat && /Lines 1 \/ 8/.test(ink.chip || ''), `"You drew a bridge! 1 / 8", "Neat line!" without a setback, the score chip says ${ink.chip}`);
+      // careless on line 2 (real physics): looking straight at the House page the pencil stops at the ink blot, you walk off its end
+      // and are puffed back to the pad; the try goes on
+      const care = await page.evaluate(() => {
+        const g = window.pokecraft; window.__toasts.length = 0;
+        const L0 = window.__live(), t0 = L0.courseOf(1).target, r = window.__drawReal(2, 0.05, { max: 160, route: [[(t0[0] + t0[1] + 1) / 2, (t0[2] + t0[3] + 1) / 2]], close: -1 });
+        const L = window.__live(), out = { ...r, toasts: window.__toasts.slice(), chip: document.getElementById('score-chip')?.textContent };
+        L.stop(true); return out;
+      });
+      t.ok(!care.done && care.info.blocked === 'blot' && care.toasts.some(m => /Ink blot/.test(m)) && /Ink ▮/.test(care.chip || ''), `careless on line 2: looking straight at the page the pencil stops at the ink blot and the line goes nowhere (your line is sticky, you stay on it: ${care.setbacks} setbacks; "${care.toasts.slice(0, 3).join('" "')}"; chip "${care.chip}")`);
+      // a skilled real-physics player steers round it, through the star
+      const r2 = await page.evaluate(() => window.__drawReal(2, 0.05));
+      t.ok(r2 && r2.done && r2.info.drawn[1], `steering round the blot (real physics) draws line 2 (${r2?.steps} steps, ${r2?.setbacks} setbacks ${JSON.stringify(r2?.backs)})`);
       // the ink never turns solid inside the player: stand in a cell of line 2, start it, and the cell waits
       const wait = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(), cs = L.inkableOf(1), c = cs[5];
+        const g = window.pokecraft, L = window.__live(), cs = L.inkableOf(3), c = cs[5]; // line 4: not drawn yet
         g.world.edits.size; // (not edited)
         const edits = g.world.edits.size;
         window.__at(c.x + 0.5, c.y + 1, c.z + 0.5); // in the air above the cell: standing ON an air cell is the same as being inside it once it turns solid
@@ -505,32 +546,21 @@ export default async function ({ browser, base, t }) {
         return { waiting, solid, after: g.world.get(c.x, c.y, c.z) === 246, edits, editsAfter: g.world.edits.size };
       });
       t.ok(wait.waiting === 1 && !wait.solid && wait.after && wait.edits === wait.editsAfter, 'ink never turns solid inside the player (it waits until you step off) and is no edit');
-      // walk line 1 to the Meadow with real Player physics
-      await stand(page, 0);
-      const walk = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(), cs = L.lines[0].line.cells, pts = cs.filter((c, i) => i % 2 === 0).map(c => [c.x + 0.5, c.z + 0.5]);
-        const end = L.lines[0].line.at(L.lines[0].line.len);
-        const r = window.__walk([...pts, [end[0], end[2] - 2]], 2500);
-        const U = g.player.pos;
-        const page2 = g.world.get(Math.floor(U.x), Math.floor(U.y - 0.05), Math.floor(U.z));
-        return { ...r, under: page2, inMeadow: U.z < 118 && U.z > 99 };
-      });
-      t.ok(walk.inMeadow && walk.y > 15.9 && walk.under === 1, `walked line 1 with real physics onto Sketch Meadow (z ${walk.z.toFixed(1)}, y ${walk.y.toFixed(1)}, standing on grass)`);
-      // falling: not drawn line 2 yet: step off the Meadow's west edge into the gap and land on the blank page: puffed to the pad
+      // falling while not drawing: step off the Meadow's south edge (no line there) onto the blank page: puffed up to the next pad
       const fell = await page.evaluate(() => {
         const g = window.pokecraft, L = window.__live();
         L.manual = true; window.__toasts.length = 0;
-        window.__at(60.5, 15.5, 106.5, Math.PI / 2, 0);
-        let n = 0; for (; n < 400; n++) { g.player.update(0.05); L.step(0.05); const p = g.player.pos; if (p.y > 12 && p.x > 70 && n > 20) break; }
-        const p = g.player.pos, pad = g.world.doodle.pads[1].stand;
+        window.__at(g.world.doodle.pages.meadow.x1 + 2.5, 16, 120.5, -Math.PI / 2, 0); // in the air beside the Meadow's east side: no line there
+        let n = 0, low = 99; for (; n < 400; n++) { g.player.update(0.05); L.step(0.05); const p = g.player.pos; low = Math.min(low, p.y); if (low < 6 && p.y > 12) break; }
+        const p = g.player.pos, pad = g.world.doodle.pads[L.state().next].stand;
         return { n, x: p.x, y: p.y, z: p.z, pad, near: Math.hypot(p.x - pad[0], p.z - pad[2]) < 2, toast: window.__toasts.some(m => /Whoops/.test(m)) };
       });
       t.ok(fell.near && fell.toast, `falling off the page lands on the blank page and puffs you back up to the next pad (${fell.x.toFixed(1)}, ${fell.y.toFixed(1)}, ${fell.z.toFixed(1)}: "Whoops!")`);
       // the pause: nothing happens while a panel is open
       const pz = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(); window.__at(...g.world.doodle.pads[1].stand); L.manual = true;
+        const g = window.pokecraft, L = window.__live(); window.__at(...g.world.doodle.pads[2].stand); L.manual = true;
         L.use(g.player); const before = L.cur.st.s; L.playing = () => false;
-        const tip = L.cur.line.line.at(0); for (let i = 0; i < 30; i++) L.step(0.05, window.__aimNear(tip));
+        for (let i = 0; i < 30; i++) L.step(0.05, L.aimNow());
         const still = L.cur.st.s === before; L.playing = () => true; L.stop(); return { still };
       });
       t.ok(pz.still, 'the pencil stands still while the game is paused');
@@ -557,33 +587,32 @@ export default async function ({ browser, base, t }) {
       const gate = await page.evaluate(() => { const g = window.pokecraft, def = window.__bossDef ??= null; return null; });
       const gateText = await page.evaluate(async () => { const B = await import('/src/pictureboss.js'); return B.bossOf('doodle').gate(window.pokecraft); });
       t.ok(/Draw all the lines to reach me first! \(✏️ 3 \/ 8\)/.test(gateText), `Arlo's gate words: "${gateText}"`);
-      // curl lines and the spiral stair, then race lines: draw 4..5 fast with perfect aim
-      const more = await page.evaluate(() => { const L = window.__live(), out = []; for (const n of [4, 5]) { window.__at(...window.pokecraft.world.doodle.pads[n - 1].stand); out.push(window.__draw(n, 0.05).info.drawn.filter(Boolean).length); } return out; });
-      t.ok(more[1] === 5, `the zigzag (4) and the spiral stair (5) are drawn (${more})`);
+      // the bee line and the spiral round the tower (a model player on the drawn line, the real live part)
+      const more = await page.evaluate(() => [4, 5].map(n => { const r = window.__draw(n, 0.05); return { n, done: r.done, back: r.info.last?.setbacks, waits: r.log.waits, nib: r.log.nibbles, stars: r.log.stars, drawn: r.info.drawn.filter(Boolean).length, pts: r.pts }; }));
+      t.ok(more.every(m => m.done && m.back === 0) && more[1].drawn === 5 && more[1].stars === 4, `line 4: wait for the bee, then go (${more[0].waits} steps waited, ${more[0].nib} nibbles); line 5: a spiral drawn twice round the tower through 4 stars (${more.map(m => m.drawn)})`);
+      await page.evaluate(pts => { window.__spiral = pts; }, more[1].pts);
       const deck = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(), l = L.lines[4], cs = l.line.cells, last = cs[cs.length - 1];
+        const g = window.pokecraft, D = g.world.doodle.tower;
         window.__at(...g.world.doodle.pads[4].stand);
-        const pts = cs.map(c => [c.x + 0.5, c.z + 0.5]);
-        const r = window.__walk(pts.filter((c, i) => i % 2 === 0), 6000);
-        const D = g.world.doodle.tower;
-        return { ...r, onDeck: Math.abs(g.player.pos.y - (D.deckY + 1)) < 1.5, last };
+        const r = window.__walk(window.__spiral.filter((c, i) => i % 2 === 0).map(p => [p[0], p[2]]), 6000);
+        return { ...r, onDeck: Math.abs(g.player.pos.y - (D.deckY + 1)) < 1.5 };
       });
-      t.ok(deck.onDeck, `walking up the spiral stair (real physics) reaches the tower deck (y ${deck.y.toFixed(1)})`);
-      // a race line with a perfect tracker is never rubbed; a tracker who looks away is rubbed back to a star dot
+      t.ok(deck.onDeck, `walking up your own spiral (real physics) reaches the tower deck (y ${deck.y.toFixed(1)})`);
+      // Eraser Hill: stop for a while and Rubber catches you (back to the star, he giggles); keep moving and he never does
       const race = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(); L.drawUpTo(5); window.__at(...g.world.doodle.pads[5].stand); L.manual = true;
-        L.use(g.player);
-        let n = 0, rubbedMsg = false;
-        for (; n < 400; n++) { const tip = L.cur.line.line.at(L.cur.st.s); L.step(0.05, n > 20 && n < 200 ? { eye: [0, 90, 0], dir: [0, 1, 0] } : window.__aimNear(tip)); if (L.info().rubbed >= 1) { rubbedMsg = true; break; } }
-        const info = L.info(), rub = window.__toasts.some(m => /Rubber rubbed it out/.test(m));
-        L.stop();
-        // now a perfect run of line 6
-        const r = window.__draw(6, 0.05);
-        return { rubbed: rubbedMsg, rub, sAfter: info.s, perfect: r.info.drawn[5], rubbedPerfect: r.info.last?.rubbed, steps: r.steps };
+        const g = window.pokecraft, L = window.__live(); window.__toasts.length = 0;
+        const lazy = window.__draw(6, 0.05, { bot: 'lazy', lazy: 6 });
+        const rub = window.__toasts.some(m => /Rubber rubbed it out/.test(m));
+        const done = lazy.done, backs = lazy.log.backs;
+        // the rematch way: draw line 6 again from its pad, moving all the time
+        L.drawnNow.delete(5); g.beaten = g.beaten.filter(k => k !== 'pw:doodle:line6');
+        const r = window.__drawReal(6, 0.05); // with real Player physics: steering, walking, wind and Rubber
+        return { rub, done, backs, perfect: r.done, back: r.info.last?.setbacks, steps: r.steps, steer: r.steer };
       });
-      t.ok(race.rubbed && race.rub, 'on the Eraser Hill looking away lets Rubber catch the pencil: the line is rubbed back and he giggles');
-      t.ok(race.perfect && race.rubbedPerfect === 0, `a steady tracker draws race line 6 without being rubbed (${race.steps} steps)`);
-      await page.evaluate(() => { const L = window.__live(); L.drawUpTo(7); window.__at(...window.pokecraft.world.doodle.pads[7].stand); window.__draw(8, 0.05); });
+      t.ok(race.backs.some(b => b[0] === 'caught') && race.rub && race.done, `on the Eraser Hill a player who stops is caught by Rubber ("Hee hee!", back to the star) and still draws the line after (${JSON.stringify(race.backs)})`);
+      t.ok(race.perfect && race.back === 0, `with real physics a player who keeps moving (and steers into the wind) draws race line 6 without Rubber catching them (${race.steps} steps = ${(race.steps * 0.05).toFixed(1)} s, steering ${race.steer} of them)`);
+      const last = await page.evaluate(() => { const L = window.__live(); window.__draw(7, 0.05); const r = window.__draw(8, 0.05); return { seven: L.state().drawn[6], eight: r.done }; });
+      t.ok(last.seven && last.eight, 'lines 7 (two bees) and 8 (wind, a bee) are drawn');
       const all = await page.evaluate(async () => { const g = window.pokecraft, B = await import('/src/pictureboss.js'); return { gate: B.bossOf('doodle').gate(g), chip: document.getElementById('score-chip')?.textContent, done: window.__live().state().done }; });
       t.ok(all.gate === null && all.done && /To the Desk/.test(all.chip || ''), `all 8 lines: Arlo's gate opens, the chip says "${all.chip}"`);
       // crew battles are optional (never a gate)
@@ -634,7 +663,7 @@ export default async function ({ browser, base, t }) {
       // the rematch: the gate wants lines 6-8 again; draw them, then the rematch is offered
       const gate2 = await page.evaluate(async () => { const g = window.pokecraft, B = await import('/src/pictureboss.js'); const n = g.npcs.list.find(n => n.kind === 'boss'); g.bosses.talk(n); return { gate: B.bossOf('doodle').gate(g), asking: g.ui.asking }; });
       t.ok(/\(✏️ 5 \/ 8\)/.test(gate2.gate || '') && !gate2.asking, `the rematch waits for the Eraser Hill lines (${gate2.gate})`);
-      await page.evaluate(() => { const L = window.__live(); for (const n of [6, 7, 8]) { window.__at(...window.pokecraft.world.doodle.pads[n - 1].stand); window.__draw(n, 0.05); } });
+      await page.evaluate(() => { for (const n of [6, 7, 8]) window.__draw(n, 0.05); });
       await page.evaluate(async () => {
         const g = window.pokecraft, n = g.npcs.list.find(n => n.kind === 'boss'), r = g.world.bosses[0].rest;
         window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), 0); g.bosses.talk(n);
@@ -693,27 +722,38 @@ async function ipadPart({ browser, base, t }) {
   const box = await ip.evaluate(() => { const r = document.getElementById('btn-act').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   await ip.touchscreen.tap(box.x, box.y);
   await waitFor(ip, () => window.__live().info().drawing, null, 30000);
+  await waitFor(ip, () => /Stop/.test(document.getElementById('btn-act')?.textContent || ''), null, 30000).catch(() => {});
   const word = await ip.evaluate(() => document.getElementById('btn-act').textContent);
-  t.ok(true, `iPad: a tap on the big button starts the pencil; it now says "${word}"`);
-  // real drag-to-look touches: calibrate, then keep the tip under the crosshair for a few frames
+  t.ok(/Stop/.test(word), `iPad: a tap on the big button starts the pencil; it now says "${word}"`);
+  // real touches: one finger holds the joystick forward (you walk on your line), another drags the view (the pencil draws where you look)
   const cdp = await ip.context().newCDPSession(ip);
-  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
-  const drag = async (dx, dy) => { const x0 = 560, y0 = 330; await touch('touchStart', [[x0, y0, 5]]); for (let i = 1; i <= 4; i++) await touch('touchMove', [[x0 + dx * i / 4, y0 + dy * i / 4, 5]]); await touch('touchEnd', []); };
+  const send = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id]) => ({ x, y, id })) });
+  const joy = await ip.evaluate(() => { const r = document.getElementById('joystick').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+  const J = [joy[0], joy[1] - 60, 1]; // pushed forward, not all the way (a walk)
   const look = () => ip.evaluate(() => { const p = window.pokecraft.player; return [p.yaw, p.pitch]; });
-  const a = await look(); await drag(80, 0); await ip.waitForTimeout(300); const b = await look(); await drag(0, 60); await ip.waitForTimeout(300); const c2 = await look();
-  const kx = (b[0] - a[0]) / 80, ky = (c2[1] - b[1]) / 60;
-  t.ok(Math.abs(kx) > 1e-4 && Math.abs(ky) > 1e-4, `iPad: a real drag turns the view (${kx.toFixed(4)} rad per px sideways, ${ky.toFixed(4)} up/down)`);
-  let n = 0;
-  for (let i = 0; i < 24; i++) {
-    const want = await ip.evaluate(() => { const g = window.pokecraft, L = window.__live(), p = g.player; if (!L.cur) return null; const tip = L.cur.line.line.at(L.cur.st.s), e = p.eyePos, d = [tip[0] - e.x, tip[1] + 1.05 - e.y, tip[2] - e.z]; return [Math.atan2(-d[0], -d[2]), Math.atan2(d[1], Math.hypot(d[0], d[2])), p.yaw, p.pitch]; });
-    if (!want) break;
-    let dyaw = want[0] - want[2]; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
-    const dxp = Math.max(-150, Math.min(150, dyaw / kx)), dyp = Math.max(-100, Math.min(100, (want[1] - want[3]) / ky));
-    if (Math.abs(dxp) > 1 || Math.abs(dyp) > 1) await drag(dxp, dyp);
-    await ip.waitForTimeout(250); n++;
+  const drag = async (dx, dy, hold) => { const x0 = 620, y0 = 330, base = hold ? [J] : []; await send(hold ? 'touchMove' : 'touchStart', [...base, [x0, y0, 5]]); if (hold) await send('touchStart', [...base, [x0, y0, 5]]); for (let i = 1; i <= 4; i++) await send('touchMove', [...base, [x0 + dx * i / 4, y0 + dy * i / 4, 5]]); await send('touchEnd', base); };
+  const a = await look(); await drag(80, 0, false); await ip.waitForTimeout(300); const b = await look();
+  const kx = (b[0] - a[0]) / 80;
+  t.ok(Math.abs(kx) > 1e-4, `iPad: a real drag turns the view (${kx.toFixed(4)} rad per px)`);
+  // face along line 1 and look a little down the line, then hold the joystick
+  const start = await ip.evaluate(() => { const g = window.pokecraft, p = g.player; const L = window.__live(), h = L.cur.st.tip.h; p.yaw = Math.atan2(-Math.cos(h), -Math.sin(h)); p.pitch = -0.32; return { x: p.pos.x, z: p.pos.z, h, s: L.cur.st.s }; }); // face along the line
+  await send('touchStart', [J]);
+  const rounds = [];
+  for (let i = 0; i < 30; i++) {
+    await ip.waitForTimeout(400);
+    const r = await ip.evaluate(() => { const L = window.__live(), p = window.pokecraft.player, c = L.cur; return { s: c ? c.st.s : -1, x: p.pos.x, z: p.pos.z, y: p.pos.y, h: c ? c.st.tip.h : null, back: c ? c.st.setbacks : -1, done: !c }; });
+    rounds.push(r);
+    if (r.done || (r.s > 8 && Math.hypot(r.x - start.x, r.z - start.z) > 2)) break;
   }
-  const res = await ip.evaluate(() => { const L = window.__live(), c = L.cur; return { s: c ? c.st.s : L.lines[0].line.len, frac: c ? c.st.onTime / Math.max(0.01, c.st.time) : 1, touch: document.body.classList.contains('touch') }; });
-  t.ok(res.s > 1 && res.frac > 0.5 && res.touch, `iPad: following the tip with real drags for ${n} rounds drew ${res.s.toFixed(1)} blocks, the aim was on the tip ${(res.frac * 100).toFixed(0)}% of the time (bigger touch ring)`);
+  const mid = rounds[rounds.length - 1];
+  // a drag to the right while walking: the pencil turns right (west to east is +x: heading grows toward 0 from -pi/2)
+  await drag(-110, 0, true);
+  for (let i = 0; i < 4; i++) await ip.waitForTimeout(350);
+  const end = await ip.evaluate(() => { const L = window.__live(), p = window.pokecraft.player, c = L.cur; return { s: c ? c.st.s : -1, z: p.pos.z, y: p.pos.y, h: c ? c.st.tip.h : null, back: c ? c.st.setbacks : -1, drawing: !!c, chip: document.getElementById('score-chip')?.textContent }; });
+  await send('touchEnd', []);
+  t.ok(mid.s > 3 && Math.hypot(mid.x - start.x, mid.z - start.z) > 1 && mid.y > 14.5 && mid.back === 0, `iPad: holding the joystick you walk on your own line while the pencil draws it (${mid.s.toFixed(1)} blocks drawn, walked ${Math.hypot(mid.x - start.x, mid.z - start.z).toFixed(1)}, y ${mid.y.toFixed(1)})`);
+  t.ok(end.h != null && Math.abs(end.h - start.h) > 0.15 && /Ink ▮/.test(end.chip || ''), `iPad: a drag of the view while walking steers the pencil (heading ${start.h.toFixed(2)} -> ${end.h?.toFixed(2)}), the chip shows the ink "${end.chip}"`);
+  await ip.evaluate(() => { const L = window.__live(), p = window.pokecraft.player, t = L.cur?.st.tip; if (t) p.lookAt({ x: t.x, y: t.row + 0.6, z: t.z }); });
   await shot(ip, 'ipad');
   t.ok(!ip.errors.length, `no page errors (iPad) ${ip.errors.join('; ')}`);
   await ip.context().close();
@@ -791,32 +831,53 @@ async function shotsPart({ browser, base, t }) {
   await toasts(page);
   await page.evaluate(() => { window.pokecraft.sketch.hold = true; window.pokecraft.fx.hold = 0.5; });
   await shot(page, 'arrival', [80.5, 15, 146.5, 0, -0.12]);
-  await page.evaluate(() => { const g = window.pokecraft, p = g.player; p.pos.set(80.5, 15, 140.5); p.lookAt({ x: 80.5, y: 14.5, z: 122 }); });
+  await page.evaluate(() => { const g = window.pokecraft, p = g.player; p.pos.set(84.5, 15, 137.5); p.lookAt({ x: 112, y: 14.5, z: 137 }); }); // the dotted way of line 1 and the landing strip
   await shot(page, 'dotted-line', null, 800);
   await shot(page, 'edge', [80.5, 15, 143.5, 0.6, -0.05]);
   await page.evaluate(() => { const g = window.pokecraft; window.__at(80.5, 15, 140.5, 0, -0.1); });
   await row('creatures', 800);
   await page.evaluate(() => { const g = window.pokecraft; window.__row?.forEach(m => g.scene.remove(m)); });
-  // a line being drawn: the ring on the tip
-  await stand(page, 0);
-  await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); L.manual = true; L.use(g.player); for (let i = 0; i < 160; i++) { const tip = L.cur.line.line.at(L.cur.st.s); L.step(0.05, window.__aimNear(tip)); } const tip = L.cur.line.line.at(L.cur.st.s); g.player.lookAt({ x: tip[0], y: tip[1] + 1.1, z: tip[2] }); });
+  // a line being drawn (stopped half way): the pencil, your line, the star dot, the aim ring
+  const half = (n, steps, look) => page.evaluate(([n, steps, look]) => {
+    const g = window.pokecraft, L = window.__live(); L.manual = true;
+    const s = g.world.doodle.pads[n - 1].stand; window.__at(s[0], s[1], s[2]);
+    L.use(g.player);
+    const st = L.cur.st, B = new window.__DC.DrawBot(L.cur.course);
+    for (let i = 0; i < steps && L.cur; i++) { const inp = B.input(st, 0.05); g.player.pos.set(...inp.player); g.player.vel.set(0, 0, 0); L.step(0.05, inp); B.after(st); }
+    if (look) { const p = g.player; p.pos.set(look[0], look[1], look[2]); p.vel.set(0, 0, 0); p.lookAt({ x: look[3], y: look[4], z: look[5] }); }
+    else { const p = g.player, t = st.tip, q = window.__DC.pointAt(st, Math.max(0, st.s - 6)); p.pos.set(q[0], q[1] + 2.2, q[2]); p.vel.set(0, 0, 0); p.lookAt({ x: t.x + Math.cos(t.h) * 3, y: t.row + 1, z: t.z + Math.sin(t.h) * 3 }); }
+    L.stepMeshes(g.player);
+    return L.info();
+  }, [n, steps, look]);
+  await half(1, 22);
   await shot(page, 'meadow', null, 800);
-  await page.evaluate(() => window.__live().stop());
-  // the Curly Tower: the spiral stair half drawn
-  await page.evaluate(() => { const L = window.__live(), g = window.pokecraft; L.drawUpTo(4); window.__at(...g.world.doodle.pads[4].stand); L.manual = true; L.use(g.player); for (let i = 0; i < 600; i++) { const tip = L.cur.line.line.at(L.cur.st.s); L.step(0.05, window.__aimNear(tip)); if (L.cur.st.s > 40) break; } g.player.pos.set(88.5, 20, 52.5); g.player.vel.set(0, 0, 0); g.player.lookAt({ x: 80, y: 30, z: 60 }); });
+  await page.evaluate(() => window.__live().stop(true));
+  // line 4: the bee, the ink blot and the star over the gap
+  await page.evaluate(() => window.__live().drawUpTo(3));
+  await half(4, 60, [74.5, 22, 33.5, 55, 20, 62]);
+  await shot(page, 'bee', null, 800);
+  await page.evaluate(() => window.__live().stop(true));
+  // the Curly Tower: your spiral half way up
+  await page.evaluate(() => window.__live().drawUpTo(4));
+  await half(5, 160, [37.5, 22, 95.5, 24, 30, 80]);
   await shot(page, 'tower', null, 800);
-  await page.evaluate(() => window.__live().stop());
-  // the Eraser Hill: Rubber chasing the pencil
-  await page.evaluate(() => {
-    const L = window.__live(), g = window.pokecraft; L.drawUpTo(5); window.__at(...g.world.doodle.pads[5].stand); L.manual = true; L.use(g.player);
-    for (let i = 0; i < 70; i++) { const tip = L.cur.line.line.at(L.cur.st.s); L.step(0.05, window.__aimNear(tip)); }
-    for (let i = 0; i < 50; i++) L.step(0.05, { eye: [0, 90, 0], dir: [0, 1, 0] }); // look away: Rubber closes in
-    const c = L.cur, r = c.line.line.at(Math.max(0, c.st.eraser)), t0 = c.line.line.at(c.st.s);
-    g.player.pos.set((r[0] + t0[0]) / 2 + 4, r[1] + 1.5, (r[2] + t0[2]) / 2 + 4); g.player.vel.set(0, 0, 0);
-    g.player.lookAt({ x: (r[0] + t0[0]) / 2, y: r[1] + 1.5, z: (r[2] + t0[2]) / 2 });
+  await page.evaluate(() => window.__live().stop(true));
+  // the Eraser Hill: Rubber coming along your line
+  await page.evaluate(() => window.__live().drawUpTo(5));
+  const er = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(); L.manual = true;
+    const s = g.world.doodle.pads[5].stand; window.__at(s[0], s[1], s[2]); L.use(g.player);
+    const st = L.cur.st, B = new window.__DC.DrawBot(L.cur.course, { bot: 'lazy', lazy: 99 });
+    for (let i = 0; i < 160 && L.cur && !(st.rubber.on && st.rubber.s > 2); i++) { const inp = B.input(st, 0.05); g.player.pos.set(...inp.player); g.player.vel.set(0, 0, 0); L.step(0.05, inp); B.after(st); }
+    const r = window.__DC ? st.rubber : null, p = g.player;
+    const q = window.__DC.pointAt(st, r.s), m = [(q[0] + st.tip.x) / 2, (q[2] + st.tip.z) / 2];
+    p.pos.set(m[0] + 2, st.tip.row + 6, m[1] + 9); p.vel.set(0, 0, 0); p.lookAt({ x: m[0], y: q[1] + 1, z: m[1] });
+    L.stepMeshes(p);
+    return { rubber: r && { s: r.s, on: r.on }, s: st.s };
   });
   await shot(page, 'eraser', null, 800);
-  await page.evaluate(() => window.__live().stop());
+  t.ok(er.rubber?.on, `screenshot: Rubber on his way along your line (${JSON.stringify(er)})`);
+  await page.evaluate(() => window.__live().stop(true));
   // the Desk: Arlo
   await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); L.drawUpTo(8); const n = g.npcs.list.find(n => n.kind === 'boss'), r = g.world.bosses[0].rest; window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), -0.05); });
   await shot(page, 'desk', null, 800);
