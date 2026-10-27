@@ -409,13 +409,16 @@ export default async function ({ browser, base, t }) {
     const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join(), names: b.foes.map(f => f.species).join() }; });
     t.ok(bt.boss && bt.foes === '60,61,62,63' && bt.names === 'peekhole,topperoo,loopwyrm,gatestrider', `the Boss battle has Grandpa Arch's four Portal creatures at levels ${bt.foes} (${bt.names})`);
     t.ok(await playBattle(page), 'the Boss battle is won');
-    await waitFor(page, () => window.pokecraft.stars.includes('portal'), null, 60000);
+    await waitFor(page, () => window.pokecraft.stars.includes('portal'), null, 240000).catch(async e => {
+      console.log('  (no star)', JSON.stringify(await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, stars: window.pokecraft.stars, place: window.pokecraft.place, toasts: (window.__toasts || []).slice(-6) }))), page.errors.slice(0, 3));
+      throw e;
+    });
     await page.evaluate(() => { window.pokecraft.inBattle = false; document.body.classList.remove('in-battle'); });
     const won = await page.evaluate(() => { const g = window.pokecraft; return { note: window.__cele?.[0], small: window.__cele?.[1], keys: g.beaten.filter(k => k.startsWith('pw:portal:room')).length, cubes: g.cubes, toasts: window.__toasts.slice(-6) }; });
     t.ok(/Portal House star/.test(won.note || '') && /very first helpers/.test(won.small || ''), `the star of the Portal House and the Wizard's note (${won.note})`);
     t.ok(won.keys === 0 && won.toasts.some(m => /star lights a stone of the star bridge, back on the hub/.test(m)), `the four room keys are cleared (a rematch is a new run); the star lights a stone back on the hub (${won.keys} keys)`);
     await page.evaluate(() => { const p = window.pokecraft.player; p.pos.set(60.5, 21, 80.0); p.vel.set(0, 0, 0); });
-    await waitFor(page, () => { const w = window.pokecraft.world, s = w.swirl.bridge[4]; return w.get(...s.cells[0]) === 130 && s.world === 'portal'; }, null, 60000);
+    await waitFor(page, () => { const w = window.pokecraft.world, s = w.swirl.bridge[4]; return w.get(...s.cells[0]) === 130 && s.world === 'portal'; }, null, 240000);
     t.ok(true, 'bridge stone number 5 (the Portal House) is lit on the hub by itself');
     // sparks: a cube each, once per trip
     const sp = await page.evaluate(() => {

@@ -2934,19 +2934,18 @@ IMPACT.portal = (k, from, to, { big }) => {
 SIG.hattrick = (k, from, to) => {
   const hats = [0, 1, 2].map(() => k.sprite('square', { color: 0x4a3a7a, size: 0.5 }));
   const flashes = [0, 1, 2].map(i => k.sprite('star', { color: [0xff9a3a, 0x5ae8e0, 0x9a6aff][i], size: 0.1, glow: true }));
-  const rings = [0, 1, 2].map(() => k.mesh('ring', { color: 0xff9a3a, glow: true, opacity: 0.8 }));
+  const ring = k.mesh('ring', { color: 0xff9a3a, glow: true, opacity: 0.8 }); // (one ring over the middle hat: the draw-call budget)
   return {
     dur: 700,
     step(p) {
+      const open = Math.sin(Math.PI * clamp01(p / 0.5));
+      ring.position.set(to.pos.x, to.top + 2.4, to.pos.z);
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.scale.setScalar(Math.max(0.01, 1.8 * open));
+      ring.material.opacity = open * 0.8;
       for (let i = 0; i < 3; i++) {
         const t = clamp01((p - i * 0.14) / 0.4), off = (i - 1) * 0.7;
         const x = to.pos.x + k.side.x * off, z = to.pos.z + k.side.z * off, top = to.top + 2.4;
-        const r = rings[i];
-        r.position.set(x, top, z);
-        r.rotation.set(-Math.PI / 2, 0, 0);
-        const open = Math.sin(Math.PI * clamp01(p / 0.5 - i * 0.2));
-        r.scale.setScalar(Math.max(0.01, 0.6 * open));
-        r.material.opacity = open * 0.8;
         const h = hats[i];
         if (t <= 0 || t >= 1) h.material.opacity = 0; else {
           h.position.set(x, lerp(top, to.pos.y + 0.1, t * t), z);
