@@ -12,6 +12,11 @@ this file is for working on the code.
   Types that came from Pokémon were renamed: Poison → **Toxic**, Fairy → **Pixie**,
   Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 37 types in all: **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo**, **Cyber**, **Cozy**, **Treasure**, **Food**, **Squad**, **Dream**, **Parkour**, **Ninja**, **Tiny**, **Pirate**, **Racer** and **Ball** are our own too; the last four came with wave 14).
 - Gym difficulty should stay on the easy side; the owner already asked once for easier gyms.
+- **The way to a Picture World Boss must be a fun, unique skill challenge** (owner 2026-10-27): aim, dexterity, timing and
+  directional tactics beat puzzles. The rowboat sinking was the best so far; the latest football and basketball were good;
+  the race was a good idea but stayed too simple and easy; the Giant House puzzles worked because the place is so unique.
+  Never repeat the same kind of challenge in another world. Mind + skill together is fine when it fits the game's own play
+  (e.g. the Portal House in the spirit of Valve's Portal). A Surprise world may use plenty of randomness.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
 - Prefer free services. Deployed on GitHub Pages; backend is a free Supabase project.
