@@ -4,7 +4,7 @@
 // is `PATHS.swing` (registered here, pure code in pirateland.js). The clock only runs while the game is playing (not paused, not in a
 // battle), so a pause or a battle freezes a flight.
 // Owner 2026-10-26, "some dexterity": the island cannons swing (fire when the dots of the landing preview turn gold), the rope keeps
-// swinging until you press Let go!, and three rowboats must be sunk with the ship's deck cannons before Captain Squawk battles
+// swinging until you press Let go!, and twelve rowboats (four waves of three, each faster) must be sunk with the ship's deck cannons before Captain Squawk battles
 // (the pure rules are in pirateland.js: AIM, cannonShot, LETGO, letGo, ropeDrop, ROWBOATS, deckShot, boatHit). A miss is a splash.
 // Owner, later the same day ("way too easy"): the rope and the swivel cannons are held and let go (gymLive holds / release, like
 // Kick!): hold Swing! to hang on, let go to drop; hold Fire! and the shot goes further (then nearer again), let go to fire. The boats
@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { Mover, PATHS, makePath } from './mover.js';
-import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, OLD_BOAT, boatState, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
+import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, OLD_BOAT, BOATS_NEED, boatState, boatSunk, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
 import { SHIP } from './pirateship.js';
 import { sound } from './sound.js';
 
@@ -186,7 +186,7 @@ export class PirateLive {
   shotNow(g) {
     if (g.kind === 'cannon') return cannonShot(this.world, g.c, this.offOf(g.c));
     const shot = deckShot(g.at, this.game.player.yaw, this.power());
-    return { spec: shot.spec, hit: boatHit(this.game, shot.to, this.boatT + shot.spec.time), shot };
+    return { spec: shot.spec, hit: boatHit(this.game, shot.to, this.boatT + shot.spec.time, i => this.boatHidden(i, this.boatT + shot.spec.time)), shot };
   }
   power() { return this.held?.kind === 'deck' ? power(this.clock - this.held.t0) : 0; }
   // the short word for the big action button / E prompt (gymLive.near)
@@ -295,22 +295,26 @@ export class PirateLive {
   ballLands() {
     const b = this.ball, game = this.game;
     this.ball = null; this.ballMesh.visible = false;
-    const i = boatHit(game, b.to, this.boatT);
+    const i = boatHit(game, b.to, this.boatT, j => this.boatHidden(j));
     this.puff(b.to[0], 13.3, b.to[2], i >= 0, i >= 0 ? 8 : 2);
     sound.play('seasplash');
     if (i < 0) return;
-    game.beaten.push(boatKey(i)); game.save?.();
+    const before = boatState(game);
+    game.beaten.push(boatKey(before.wave * ROWBOATS.boats.length + i)); game.save?.();
     this.sinking[i] = this.boatT;
-    const { sunk, need, done } = boatState(game);
+    const { sunk, need, done, wave } = boatState(game);
     sound.play(done ? 'win' : 'keyfound');
-    game.ui.toast(done ? `🚣 ${sunk} / ${need}! Now battle the Captain!` : `🚣 ${sunk} / ${need}`);
+    if (!done && wave > before.wave) { // the wave is sunk: the next three row out a bit later, faster
+      this.waveAt = this.boatT + ROWBOATS.sink + ROWBOATS.pause; this.waveFrom = this.sinking; this.sinking = {};
+      game.ui.toast(`🚣 ${sunk} / ${need}! More rowboats are coming, faster!`);
+    } else game.ui.toast(done ? `🚣 ${sunk} / ${need}! Now battle the Captain!` : `🚣 ${sunk} / ${need}`);
   }
   // after a won Captain battle his crew rows new boats out: a rematch needs them sunk again (like the Ball Stadium's goals)
   battleEnded(result, opts) {
     if (result !== 'won' || opts?.picture?.id !== 'pirate' || opts.picture.crew != null) return;
     const g = this.game;
-    ROWBOATS.boats.forEach((_, i) => { const k = g.beaten.indexOf(boatKey(i)); if (k >= 0) g.beaten.splice(k, 1); });
-    this.sinking = {};
+    for (let n = 0; n < BOATS_NEED; n++) { const k = g.beaten.indexOf(boatKey(n)); if (k >= 0) g.beaten.splice(k, 1); }
+    this.sinking = {}; this.waveAt = -Infinity;
   }
 
   /* ---------- the preview dots, the boats ---------- */
@@ -328,13 +332,19 @@ export class PirateLive {
     this.dots.instanceMatrix.needsUpdate = true;
     if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
   }
+  // boat i of the wave is not on the water yet: the new wave rows out after a pause (owner 2026-10-26: 3 at a time, 12 in all)
+  boatHidden(i, t = this.boatT) { return t < (this.waveAt ?? -Infinity); }
   drawBoats() {
-    const d = this.dummy, g = this.game;
+    const d = this.dummy, g = this.game, st = boatState(g);
     ROWBOATS.boats.forEach((_, i) => {
-      const gone = g.beaten?.includes(boatKey(i)), since = this.sinking[i] != null ? this.boatT - this.sinking[i] : Infinity;
-      const b = boatAt(i, gone ? this.sinking[i] ?? 0 : this.boatT), k = Math.min(1, since / ROWBOATS.sink);
-      if (gone && k >= 1) { d.position.set(0, -50, 0); d.scale.set(0, 0, 0); } else {
-        d.position.set(b.x, 13.05 + Math.sin(this.boatT * 2 + i) * 0.06 - (gone ? k * 1.6 : 0), b.z);
+      // the last boat of a finished wave still sinks while the next wave waits to row out
+      const old = this.boatT < (this.waveAt ?? -Infinity) && this.waveFrom?.[i] != null, wave = old ? st.wave - 1 : st.wave;
+      const sunkAt = old ? this.waveFrom[i] : this.sinking[i];
+      const gone = st.done || old || boatSunk(g, i, wave) || this.boatHidden(i), since = sunkAt != null ? this.boatT - sunkAt : Infinity;
+      const b = boatAt(i, sunkAt ?? this.boatT, Math.max(0, wave)), k = Math.min(1, since / ROWBOATS.sink);
+      const rising = !gone && this.waveAt != null && this.boatT - this.waveAt < 1 ? 1 - (this.boatT - this.waveAt) : 0; // the new boat bobs up
+      if (gone && (sunkAt == null || k >= 1)) { d.position.set(0, -50, 0); d.scale.set(0, 0, 0); } else {
+        d.position.set(b.x, 13.05 + Math.sin(this.boatT * 2 + i) * 0.06 - (gone ? k * 1.6 : rising * 1.2), b.z);
         d.rotation.set(gone ? k * 0.9 : Math.sin(this.boatT * 1.6 + i) * 0.05, b.yaw, 0, 'YXZ'); d.scale.set(1, 1, 1);
       }
       d.updateMatrix();

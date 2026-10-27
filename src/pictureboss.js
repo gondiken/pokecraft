@@ -55,7 +55,7 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   rematchIntro: ['Back again? My tiny team grew a little!'],
   note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
 // T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (optional battles: Dot, Lou and First Mate Fin).
-// Owner 2026-10-26: sink his 3 rowboats with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
+// Owner 2026-10-26: sink his 12 rowboats (four waves of three) with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
 addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
   gate: game => { const { sunk, need, done } = boatState(game); return done ? null : `Squawk! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`; },
   team: [['anchorclaw', 61, ['anchordrop', 'rumblerock', 'cannonball', 'hookswipe']], ['shipshape', 61],

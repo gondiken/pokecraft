@@ -166,7 +166,8 @@ export function ropeDrop(world, r, p) {
 }
 
 // 3. Captain Squawk's rowboats row figure-eights north of the ship (each in its own patch of sea, so they never meet), quite fast.
-// Sink all three with the two swivel cannons on the north rail and the Captain battles you (the Boss def's gate). Aim by turning; the
+// Owner 2026-10-26: 12 to sink, three at a time: when a wave of three is sunk the next three row out (after `pause` seconds),
+// each wave a bit faster (`speed`). Sink all twelve with the two swivel cannons on the north rail and the Captain battles you (the Boss def's gate). Aim by turning; the
 // distance is how long you hold Fire! (it grows, then shrinks again: `power`). The ball flies a while, so aim where the boat will be;
 // the dots turn gold for the short moment a let-go would hit.
 // Sunk boats are `beaten` keys, saved at once, cleared after a won Captain battle (like the Ball Stadium's goals).
@@ -176,19 +177,27 @@ export const ROWBOATS = {
   cannons: SHIP.swivels, // the swivel cannons on the north rail ([x, rail z]): you stand on the step one cell south of each
   turn: 1.1, near: 6, far: 28, fill: 2, // range from `near` to `far` blocks: up in `fill` seconds of holding, then back down
   hit: 1.8, reload: 1, sink: 1.5,
+  waves: 4, speed: [1, 1.15, 1.3, 1.45], pause: 3, // 4 waves of the 3 boats; each wave rows faster; the next wave comes out `pause` s after the last boat sank
 };
 // (`rowboat`, not the first version's `boat`: the boats got harder, so boats sunk the easy way count no more)
-export const boatKey = i => `pw:pirate:rowboat${i + 1}`;
+// n = 0..11: the n-th boat of the trip (wave = floor(n / 3), the boat on the water = n % 3)
+export const boatKey = n => `pw:pirate:rowboat${n + 1}`;
 export const OLD_BOAT = /^pw:pirate:boat\d$/;
+export const BOATS_NEED = ROWBOATS.waves * ROWBOATS.boats.length;
 export function boatState(game) {
-  const need = ROWBOATS.boats.length, sunk = ROWBOATS.boats.filter((_, i) => game?.beaten?.includes(boatKey(i))).length;
-  return { sunk, need, done: sunk >= need };
+  const need = BOATS_NEED, per = ROWBOATS.boats.length;
+  let sunk = 0;
+  for (let n = 0; n < need; n++) if (game?.beaten?.includes(boatKey(n))) sunk++;
+  const wave = Math.min(ROWBOATS.waves - 1, Math.floor(sunk / per));
+  return { sunk, need, done: sunk >= need, wave };
 }
-// a boat at boat clock t (a figure eight): { x, z, yaw } (yaw: the way it rows, as a mesh rotation.y)
-export function boatAt(i, t) {
-  const b = ROWBOATS.boats[i], u = 2 * Math.PI * (t / b.per + ROWBOATS.phase[i]);
+// is boat i (0..2) of the current wave sunk?
+export const boatSunk = (game, i, wave = boatState(game).wave) => !!game?.beaten?.includes(boatKey(wave * ROWBOATS.boats.length + i));
+// a boat at boat clock t (a figure eight) in wave `wave` (faster each wave): { x, z, yaw } (yaw: the way it rows, as a mesh rotation.y)
+export function boatAt(i, t, wave = 0) {
+  const b = ROWBOATS.boats[i], u = 2 * Math.PI * (t * ROWBOATS.speed[wave] / b.per + ROWBOATS.phase[i]);
   const x = b.c[0] + b.a[0] * Math.sin(u), z = b.c[1] + b.a[1] * Math.sin(2 * u);
-  const vx = b.a[0] * Math.cos(u), vz = 2 * b.a[1] * Math.cos(2 * u);
+  const vx = b.a[0] * Math.cos(u), vz = 2 * b.a[1] * Math.cos(2 * u); // (the yaw does not need the speed: same direction)
   return { x: x + 0.5, z: z + 0.5, yaw: Math.atan2(vx, vz) };
 }
 // how far the ball goes after holding Fire! for `held` seconds: 0 -> 1 in `fill`, then back to 0, and so on
@@ -208,12 +217,14 @@ export function deckShot(at, yaw, pw = 0) {
   const to = [from[0] + Math.sin(a) * range, SEA + 0.6, from[2] + Math.cos(a) * range];
   return { a, to, range, spec: { kind: 'arc', from, to, height: 1.5 + range * 0.12, time: 0.5 + range / 24 } };
 }
-// The boat (still afloat) within `hit` of `to` at boat clock t, or -1.
-export function boatHit(game, to, t) {
+// The boat of the current wave (still afloat, not hidden(i)) within `hit` of `to` at boat clock t, or -1.
+export function boatHit(game, to, t, hidden = () => false) {
   let best = -1, bd = ROWBOATS.hit;
+  const st = boatState(game);
+  if (st.done) return -1;
   ROWBOATS.boats.forEach((_, i) => {
-    if (game?.beaten?.includes(boatKey(i))) return;
-    const b = boatAt(i, t), d = Math.hypot(b.x - to[0], b.z - to[2]);
+    if (boatSunk(game, i, st.wave) || hidden(i)) return;
+    const b = boatAt(i, t, st.wave), d = Math.hypot(b.x - to[0], b.z - to[2]);
     if (d <= bd) { bd = d; best = i; }
   });
   return best;

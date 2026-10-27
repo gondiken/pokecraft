@@ -460,7 +460,7 @@ export default async function ({ browser, base, t }) {
     await shot(page, 'ship-from-lookout');
     // the rowboats: the guide sends you to a deck cannon, the Captain waits, three real shots sink them
     const boats = await page.evaluate(async () => {
-      const g = window.pokecraft, w = g.world, p = g.player, b = w.bosses[0], L = await import('/src/pirateland.js'), { SHIP } = await import('/src/pirateship.js'), lv = g.gymLive.of('part:seas');
+      const g = window.pokecraft, w = g.world, p = g.player, b = w.bosses[0], L = await import('/src/pirateland.js'), PB = await import('/src/pictureboss.js'), { SHIP } = await import('/src/pirateship.js'), lv = g.gymLive.of('part:seas');
       const step = window.__step, play = window.__play, n = g.npcs.list.find(n => n.kind === 'boss');
       p.pos.set(b.rest[0], b.rest[1], b.rest[2]); p.vel.set(0, 0, 0); p.carry = null;
       g.updateGuide?.(); const g1 = g.ui.guideText;
@@ -505,11 +505,20 @@ export default async function ({ browser, base, t }) {
         }
       }
       const saved = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
-      return { g1, gate, shots, state: L.boatState(g), saved: L.ROWBOATS.boats.every((_, i) => saved.beaten.includes(L.boatKey(i))) };
+      // owner 2026-10-26: 12 in all, three at a time: the next wave waits a moment, then rows out faster
+      const wave1 = L.boatState(g), hiddenNow = lv.boatHidden(0);
+      step(g, 1 / 60, Math.ceil((R.sink + R.pause + 0.2) * 60));
+      const outAgain = !lv.boatHidden(0);
+      const lap = k => { const a = L.boatAt(0, 0, k), b = L.boatAt(0, 0.5, k); return Math.hypot(a.x - b.x, a.z - b.z); };
+      const faster = [0, 1, 2, 3].every((k, i, all) => i === 0 || lap(k) > lap(all[i - 1]));
+      for (let n = 3; n < L.BOATS_NEED; n++) g.beaten.push(L.boatKey(n));
+      const gate2 = PB.bossOf('pirate').gate(g);
+      return { g1, gate, shots, state: L.boatState(g), wave1, hiddenNow, outAgain, faster, gate2, saved: [0, 1, 2].every(n => saved.beaten.includes(L.boatKey(n))) };
     });
-    t.ok(/Deck cannon: sink the rowboats \(0 \/ 3\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 3 rowboats first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
+    t.ok(/Deck cannon: sink the rowboats \(0 \/ 12\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 12 rowboats first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
     t.ok(boats.shots.filter(s => !s.miss).every(s => s.near === 'Fire!' && s.holds && s.held === 'deck' && s.gold && s.sunk && /Aim at a rowboat/.test(s.guide || '')) && boats.shots.some(s => s.miss && s.same), `three held deck cannon shots, let go at the right distance ahead of the boat, sink the three rowboats (the dots were gold); a short tap at open sea sinks nothing (${JSON.stringify(boats.shots)})`);
-    t.ok(boats.state.done && boats.saved && await said(page, /3 \/ 3! Now battle the Captain/), 'all three are sunk, saved at once, and the Captain is ready');
+    t.ok(boats.wave1.sunk === 3 && boats.wave1.wave === 1 && !boats.wave1.done && boats.saved && boats.hiddenNow && boats.outAgain && await said(page, /3 \/ 12! More rowboats are coming, faster/), `the first three are sunk and saved at once; the next three row out a moment later (${JSON.stringify(boats.wave1)})`);
+    t.ok(boats.faster && boats.state.done && boats.gate2 === null, 'every wave of boats rows faster; with all 12 sunk the Captain is ready');
     await shot(page, 'rowboats-sunk');
     // the ship: the guide names the Boss, the chest is closed
     const ship = await page.evaluate(async () => {
