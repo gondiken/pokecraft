@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { ticketState } from './funfair.js'; // T43
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -117,6 +118,26 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
   ],
 });
 /* ==== end of T40d ball ==== */
+
+/* ==== T43 funfair ==== */
+addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). Win three golden tickets at the games and ride the coaster up: the gate reads the saved keys (funfair.js ticketState).
+  id: 'fair', name: 'Merry Mae', type: 'funfair', title: 'Merry Mae · the Fairkeeper', look: 'fair',
+  colors: { shirt: 0xff7ac0, pants: 0xf6efe0, hair: 0xc8902a, skin: 0xf2d0b0 },
+  gate: game => { const { n, done } = ticketState(game); return done ? null : `Win 3 golden tickets at the games! Then ride the coaster up to me. (🎟️ ${n} / 3)`; },
+  team: [['candyram', 61], ['balloodle', 62], ['tixit', 63], ['galloprance', 64, ['colorsplash', 'bumperbash', 'funforall', 'grandgallop']]], // top level 64, the easy side; the move list is what movesWith(..., 'grandgallop', 'funforall', 'bumperbash') gives (the funfair spec checks)
+  intro: ['Three golden tickets! You played every game!', 'Now for the best ride of all: a battle!'],
+  lose: 'What a ride! Listen... the music is playing again! Here is the star.',
+  win: 'Good try! Have some candy floss and try again.',
+  rematchIntro: ['Back at the fair? The games got a bit harder!'],
+  note: 'I built this fair for the festival, and nobody ever rode the carousel. Thank you for riding everything!',
+  crew: [
+    { name: 'Bumper Bea', colors: { shirt: 0xffd23a, pants: 0x3a4a8a, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'fair',
+      team: [['twistpup', 59], ['merrycolt', 60]], intro: ['Bump bump! Want a practice battle?'], line: 'Get behind a car and bump its balloon!' },
+    { name: 'Bouncy Ben', colors: { shirt: 0x4aa8ff, pants: 0xffffff, hair: 0xe0b040, skin: 0xf0c8a0 }, look: 'fair',
+      team: [['flufflamb', 60], ['balloodle', 61]], intro: ['Boing boing! Battle me!'], line: 'Hold Jump to bounce higher, let go to come down!' },
+  ],
+});
+/* ==== end of T43 funfair ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen

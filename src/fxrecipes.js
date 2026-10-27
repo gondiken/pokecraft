@@ -2313,6 +2313,156 @@ SIG.crayonstorm = (k, from, to) => {
 };
 /* ==== end of T35 ==== */
 
+/* ==== T43 funfair ==== */
+// Pink, cream and sky blue.
+FX_COLORS.funfair = [0xff8ac8, 0xfff2a0, 0x8ad8ff];
+
+// A paper ticket tumbles to the target (flipping, cream with a red stub) with a stream of confetti behind it.
+TRAVEL.funfair = k => {
+  const card = k.sprite('square', { color: 0xfff2c0, size: 0.1 });
+  const stub = k.sprite('square', { color: 0xe84a5a, size: 0.1 });
+  const N = 10;
+  const conf = k.points({ n: N, tex: 'star', size: 0.22, glow: true, colors: [0xff8ac8, 0xfff2a0, 0x8ad8ff] });
+  return {
+    dur: 380,
+    step(p) {
+      const t = clamp01(p * 1.1);
+      k.at(t, A, 0.12);
+      const flip = 0.25 + 0.75 * Math.abs(Math.cos(p * 14));
+      card.position.set(A.x, A.y, A.z);
+      card.scale.set(0.42, 0.26 * flip, 1);
+      card.material.rotation = p * 5;
+      stub.position.set(A.x + Math.cos(p * 5) * 0.14, A.y + Math.sin(p * 5) * 0.14 * flip, A.z);
+      stub.scale.set(0.1, 0.26 * flip, 1);
+      stub.material.rotation = p * 5;
+      card.material.opacity = stub.material.opacity = p > 0.97 ? 0 : 1;
+      for (let i = 0; i < N; i++) {
+        const u = clamp01(t - 0.045 * (i + 1));
+        if (t <= 0.02 || u <= 0) { conf.hide(i); continue; }
+        k.at(u, B, 0.12);
+        conf.set(i, B.x + k.side.x * Math.sin(i * 1.9) * 0.16, B.y + Math.cos(i * 2.3) * 0.12 - u * 0.08, B.z + k.side.z * Math.sin(i * 1.9) * 0.16);
+      }
+      conf.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// A funfair hit: a pink pop flash, a confetti burst that falls, and (big: three) little balloons that float up.
+IMPACT.funfair = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = big ? 16 : 10;
+  const flash = k.sprite('star', { color: 0xfff2a0, size: 0.1, glow: true });
+  const conf = k.points({ n: N, tex: 'square', size: 0.2 * m, colors: [0xff8ac8, 0xfff2a0, 0x8ad8ff, 0xffffff] });
+  const balloons = big ? [0xff6a8a, 0x6ad0ff, 0xffd23a].map(c => k.sprite('dot', { color: c, size: 0.1 })) : [];
+  const feet = feetOf(to);
+  return {
+    dur: 400,
+    step(p) {
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 1.2 * m * Math.sin(Math.PI * clamp01(p * 2))));
+      flash.material.rotation = p * 3;
+      flash.material.opacity = fadeOut(p, 0.4);
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + i * 0.7, d = (0.15 + k.ease(p) * (0.5 + (i % 3) * 0.25)) * to.r * 1.6 * m;
+        conf.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + Math.sin(p * Math.PI) * 0.5 * m - p * p * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      conf.fade(fadeOut(p, 0.65));
+      balloons.forEach((b, i) => {
+        b.position.set(to.pos.x + (i - 1) * 0.35, feet + 0.4 + k.ease(p) * 1.0 * m + i * 0.1, to.pos.z + (i % 2 ? 0.15 : -0.15));
+        b.scale.set(0.3 * Math.min(1, p * 5), 0.36 * Math.min(1, p * 5), 1);
+        b.material.opacity = fadeOut(p, 0.6);
+      });
+    },
+  };
+};
+
+// Grand Gallop: a golden carousel pole gallops at the target (bobbing up and down in three bounds) with a trail of warm light
+// bulbs behind it and a little cream horse head on top; then a bang, a ring and stars.
+SIG.grandgallop = (k, from, to) => {
+  const pole = k.mesh('box', { color: 0xffd23a, glow: true });
+  const horse = k.sprite('heart', { color: 0xfff2e0, size: 0.1 });
+  const tip = k.sprite('star', { color: 0xffe94a, size: 0.1, glow: true });
+  const N = 8;
+  const bulbs = k.points({ n: N, tex: 'dot', size: 0.2, glow: true, colors: [0xffe27a, 0xfff2b0] });
+  const bang = k.sprite('bang', { color: 0xffffff, size: 0.1, glow: true });
+  const ring = k.mesh('ring', { color: 0xff8ac8, opacity: 0.8 });
+  const bits = k.points({ n: 6, tex: 'star', size: 0.28, glow: true, colors: [0xff8ac8, 0xfff2a0, 0x8ad8ff] });
+  const feet = feetOf(to);
+  const bob = u => Math.abs(Math.sin(u * Math.PI * 3)) * 0.35;
+  return {
+    dur: 760,
+    step(p) {
+      const run = clamp01(p / 0.62), hit = clamp01((p - 0.62) / 0.38);
+      k.at(run, A, 0.1);
+      const y = A.y + bob(run);
+      pole.visible = horse.visible = tip.visible = hit < 0.3;
+      pole.position.set(A.x, y + 0.2, A.z);
+      pole.scale.set(0.07, 1.0, 0.07);
+      horse.position.set(A.x, y + 0.45, A.z);
+      horse.scale.setScalar(0.5);
+      horse.material.rotation = Math.sin(run * 20) * 0.15;
+      tip.position.set(A.x, y + 0.82, A.z);
+      tip.scale.setScalar(0.3 + 0.1 * Math.sin(p * 30));
+      for (let i = 0; i < N; i++) {
+        const u = clamp01(run - 0.05 * (i + 1));
+        if (run <= 0.02 || u <= 0 || hit > 0) { bulbs.hide(i); continue; }
+        k.at(u, B, 0.1);
+        bulbs.set(i, B.x, B.y + bob(u) + 0.15, B.z);
+      }
+      bulbs.fade(0.95);
+      bang.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
+      bang.scale.setScalar(Math.max(0.01, Math.sin(Math.PI * hit) * 1.5));
+      bang.material.opacity = hit > 0 ? 1 : 0;
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, to.r * 0.5 + hit * 1.4));
+      ring.material.opacity = hit > 0 ? 0.8 * (1 - hit) : 0;
+      for (let i = 0; i < 6; i++) {
+        if (hit <= 0) { bits.hide(i); continue; }
+        const ang = (i / 6) * 6.283 + hit * 2, d = hit * (0.5 + (i % 2) * 0.3) * (1 + to.r * 0.5);
+        bits.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + hit * 0.6, to.pos.z + Math.sin(ang) * d);
+      }
+      bits.fade(1 - hit);
+    },
+  };
+};
+
+// Balloon Burst: five balloons rise round the target and pop one after the other (pop flashes and confetti), one pop for every hit.
+SIG.balloonburst = (k, from, to) => {
+  const COLORS = [0xff6a8a, 0x6ad0ff, 0xffd23a, 0x9aea6a, 0xc89aff], N = COLORS.length;
+  const balloons = COLORS.map(c => k.sprite('dot', { color: c, size: 0.1 }));
+  const flash = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  const conf = k.points({ n: 20, tex: 'square', size: 0.18, colors: COLORS });
+  const feet = feetOf(to);
+  const spot = i => [to.pos.x + Math.cos(i * 1.26 + 0.4) * (to.r * 0.8 + 0.4), feet + 0.5 + (i % 3) * 0.35, to.pos.z + Math.sin(i * 1.26 + 0.4) * (to.r * 0.8 + 0.4)];
+  return {
+    dur: 900,
+    step(p) {
+      let fl = 0, fi = 0;
+      for (let i = 0; i < N; i++) {
+        const born = clamp01(p / 0.3), pop = 0.38 + i * 0.1, popped = p >= pop;
+        const [x, y, z] = spot(i), rise = k.ease(born) * 0.4 + (popped ? 0 : Math.sin(p * 9 + i) * 0.04);
+        balloons[i].position.set(x, y + rise - 0.3 * (1 - born), z);
+        balloons[i].scale.set(0.32 * born, 0.4 * born, 1);
+        balloons[i].material.opacity = popped ? 0 : 1;
+        const q = (p - pop) / 0.12;
+        if (q >= 0 && q <= 1) { fl = Math.sin(Math.PI * q); fi = i; }
+        for (let j = 0; j < 4; j++) {
+          const c = i * 4 + j, u = (p - pop) / 0.3;
+          if (u < 0 || u > 1) { conf.hide(c); continue; }
+          const ang = j * 1.57 + i, d = u * 0.5;
+          conf.set(c, x + Math.cos(ang) * d, y + 0.3 + Math.sin(ang) * d * 0.7 - u * u * 0.4, z + Math.sin(ang * 1.3) * d);
+        }
+      }
+      const [fx, fy, fz] = spot(fi);
+      flash.position.set(fx, fy + 0.4, fz);
+      flash.scale.setScalar(Math.max(0.01, fl * 0.9));
+      flash.material.opacity = fl > 0 ? 1 : 0;
+      flash.material.rotation = p * 5;
+      conf.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+/* ==== end of T43 funfair ==== */
 /* ==== T40d ball ==== */
 // White, sky blue and basketball orange.
 FX_COLORS.ball = [0xffffff, 0x9fd6ff, 0xff7a2a];

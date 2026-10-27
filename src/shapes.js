@@ -4791,6 +4791,219 @@ const SHAPES_NINJA = { raccoon, crow, squirrel, bamboo };
 Object.assign(SHAPES, SHAPES_NINJA);
 /* ==== end of T37 ninja ==== */
 
+/* ==== T43 funfair shapes ==== */
+// Funfair look: a string of little fair light bulbs (userData.gear = 'bulbs'): 5-9 tiny warm-yellow unlit boxes on a thin dark
+// line, ONE merged mesh per model (MeshBasic with vertex colours, so tintModel leaves it alone and it shines at night too).
+// Every model faces +z; nothing here uses Math.random; posed parts sit in pivots.
+const FF_BULB = 0xffe27a, FF_WIRE = 0x3a2a30;
+function fairBulbs(parent, pts, size = 0.06) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  const add = (geo, hex) => {
+    const p = geo.attributes.position, base = pos.length / 3;
+    c.setHex(hex);
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); col.push(c.r, c.g, c.b); }
+    for (const i of geo.index.array) idx.push(base + i);
+    geo.dispose();
+  };
+  const o = new THREE.Object3D();
+  for (let i = 0; i + 1 < pts.length; i++) { // the thin dark line between neighbours
+    const a = new THREE.Vector3(...pts[i]), b = new THREE.Vector3(...pts[i + 1]);
+    o.position.copy(a).add(b).multiplyScalar(0.5);
+    o.lookAt(b);
+    o.updateMatrix();
+    const g = new THREE.BoxGeometry(0.012, 0.012, Math.max(0.01, a.distanceTo(b)));
+    g.applyMatrix4(o.matrix);
+    add(g, FF_WIRE);
+  }
+  for (const p of pts) { const g = new THREE.BoxGeometry(size, size, size); g.translate(p[0], p[1], p[2]); add(g, FF_BULB); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true }));
+  mesh.userData.gear = 'bulbs';
+  parent.add(mesh);
+  return mesh;
+}
+// a bulb string along a straight line from a to b with n bulbs (a little sag in the middle)
+const ffLine = (a, b, n, sag = 0.03) => Array.from({ length: n }, (_, i) => { const t = n === 1 ? 0.5 : i / (n - 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag, a[2] + (b[2] - a[2]) * t]; });
+
+// Merrycolt / Galloprance: a painted carousel horse on a golden pole that goes through its back. The pole stands still and the
+// horse rides up and down on it (parts.drift). Galloprance (`canopy`) has a little striped canopy on the top of the pole.
+function carouselhorse(root, m, parts) {
+  const big = has(m, 'canopy'), top = big ? 1.55 : 1.35;
+  box(root, 0.05, top - 0.05, 0.05, 0xffd23a, 0, 0.05 + (top - 0.05) / 2, 0); // the pole
+  box(root, 0.09, 0.05, 0.09, 0xffd23a, 0, 0.03, 0); // its foot
+  const ride = pivot(root, 0, 0, 0);
+  drift(parts, ride, 0.09, 2.2, 0);
+  box(ride, 0.34, 0.34, 0.8, m.body, 0, 0.62, 0); // the body
+  box(ride, 0.36, 0.1, 0.5, m.belly, 0, 0.5, 0.02); // a painted belly band
+  box(ride, 0.38, 0.06, 0.36, m.dark, 0, 0.8, -0.02); // the saddle
+  for (const z of [-0.12, 0.08]) box(ride, 0.3, 0.02, 0.05, m.accent, 0, 0.835, z); // saddle swirls
+  box(ride, 0.04, 0.34, 0.04, m.accent, 0, 0.62, 0.3); // a golden chest strap
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(ride, sx * 0.11, 0.46, sz * 0.28);
+    box(leg, 0.1, 0.4, 0.1, m.body, 0, -0.2, 0);
+    box(leg, 0.11, 0.08, 0.12, m.dark, 0, -0.42, 0.01); // the hoof
+    box(leg, 0.11, 0.04, 0.11, m.accent, 0, -0.3, 0); // a golden ankle ring
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const neck = pivot(ride, 0, 0.74, 0.34);
+  neck.rotation.x = 0.35;
+  box(neck, 0.18, 0.42, 0.2, m.body, 0, 0.17, 0);
+  for (let i = 0; i < 4; i++) box(neck, 0.06, 0.1, 0.1, i % 2 ? m.accent : m.dark, 0, 0.06 + i * 0.1, -0.13); // the flowing painted mane
+  const head = pivot(neck, 0, 0.4, 0.05);
+  head.rotation.x = -0.35;
+  parts.head = head;
+  box(head, 0.2, 0.22, 0.3, m.body, 0, 0.02, 0.04);
+  box(head, 0.16, 0.14, 0.14, m.belly, 0, -0.07, 0.2); // the muzzle
+  for (const s of [-1, 1]) { box(head, 0.03, 0.03, 0.02, m.dark, s * 0.04, -0.07, 0.275); box(head, 0.06, 0.12, 0.05, m.accent, s * 0.07, 0.17, -0.02); }
+  eyes(head, 0.05, 0.195, 0.07, 0.08);
+  mouth(head, -0.12, 0.2, 0.08);
+  box(head, 0.22, 0.04, 0.04, m.accent, 0, -0.03, 0.12); // a golden bridle
+  const tail = pivot(ride, 0, 0.7, -0.4);
+  swing(parts, tail, 'x', 0.25, 3);
+  box(tail, 0.08, 0.1, 0.1, m.accent, 0, 0, -0.05);
+  box(tail, 0.1, 0.3, 0.07, m.dark, 0, -0.16, -0.1);
+  box(tail, 0.07, 0.16, 0.06, m.accent, 0, -0.34, -0.12);
+  if (big) { // a striped canopy on the pole: four plates that shrink, red and cream
+    for (const [w, y, c] of [[1.0, top - 0.12, 0xe03a4a], [0.8, top - 0.07, 0xf6efe0], [0.58, top - 0.02, 0xe03a4a], [0.34, top + 0.03, 0xf6efe0]]) box(root, w, 0.06, w, c, 0, y, 0);
+    box(root, 0.08, 0.14, 0.08, 0xffd23a, 0, top + 0.12, 0); // the little gold tip
+    fairBulbs(root, [[-0.5, top - 0.14, 0.5], [-0.25, top - 0.15, 0.51], [0, top - 0.15, 0.51], [0.25, top - 0.15, 0.51], [0.5, top - 0.14, 0.5]], 0.07);
+  } else {
+    fairBulbs(root, ffLine([-0.05, 0.25, 0.05], [0.05, 1.25, 0.05], 7, 0), 0.07); // up the pole
+  }
+}
+
+// Flufflamb / Candyram: a puff of candy-floss wool round a paper cone (the cone's point is its tail) on four candy-stick legs.
+// Candyram (`horns`) is bigger, blue and pink, with curly lollipop horns.
+function flosssheep(root, m, parts) {
+  const big = has(m, 'horns');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  // the paper cone lying down: wide at the front, a point at the back
+  const rings = [[0.5, 0.34], [0.42, 0.18], [0.32, 0.0], [0.22, -0.14], [0.13, -0.26], [0.06, -0.37]];
+  rings.forEach(([w, z], i) => box(lift, w, w * 0.9, 0.16, i % 2 ? 0xe8f0ff : 0xfff6e6, 0, 0.58, z));
+  for (let i = 0; i < 3; i++) box(lift, 0.56 - i * 0.03, 0.06, 0.04, m.accent === 0xfff0f8 ? 0x7ac0ff : m.accent, 0, 0.58 + (i - 1) * 0.12, 0.42); // a rolled rim
+  // the floss: puffs round the top and sides
+  const puffs = [[0, 0.88, 0.05, 0.3], [-0.26, 0.74, 0.12, 0.2], [0.26, 0.74, 0.12, 0.2], [0, 0.78, -0.2, 0.22], [-0.2, 0.9, -0.1, 0.14], [0.2, 0.92, -0.04, 0.15], [0, 1.0, 0.18, 0.13]];
+  puffs.forEach(([x, y, z, r], i) => { const b = ball(lift, r, i % 3 === 2 ? m.accent : m.body, x, y, z); swing(parts, b, 'z', 0.06, 2 + i * 0.3, i); });
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) { // candy sticks
+    const leg = pivot(lift, sx * 0.14, 0.34, sz * 0.2);
+    box(leg, 0.05, 0.36, 0.05, 0xfff6e6, 0, -0.17, 0);
+    box(leg, 0.06, 0.05, 0.06, 0xe84a6a, 0, -0.05, 0);
+    box(leg, 0.07, 0.05, 0.1, m.dark, 0, -0.35, 0.02);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const head = pivot(lift, 0, 0.62, 0.44);
+  parts.head = head;
+  box(head, 0.3, 0.28, 0.26, m.belly, 0, 0, 0.04);
+  box(head, 0.18, 0.1, 0.06, m.body, 0, 0.17, 0.0); // a floss fringe
+  eyes(head, 0.04, 0.175, 0.08, 0.09);
+  box(head, 0.06, 0.04, 0.03, 0xe84a6a, 0, -0.03, 0.18);
+  mouth(head, -0.08, 0.175, 0.1);
+  for (const s of [-1, 1]) { const ear = pivot(head, s * 0.17, 0.08, 0); swing(parts, ear, 'z', 0.15, 3, s); box(ear, 0.12, 0.07, 0.07, m.body, s * 0.05, 0, 0); }
+  if (big) {
+    for (const s of [-1, 1]) { // curly lollipop horns: a stick and a swirly disc
+      const h = pivot(head, s * 0.14, 0.2, 0);
+      h.rotation.z = -s * 0.35;
+      box(h, 0.04, 0.3, 0.04, 0xfff6e6, 0, 0.14, 0);
+      box(h, 0.22, 0.22, 0.04, m.accent, 0, 0.34, 0);
+      box(h, 0.14, 0.14, 0.05, 0xfff6e6, 0, 0.34, 0);
+      box(h, 0.07, 0.07, 0.06, m.accent, 0, 0.34, 0);
+    }
+  }
+  fairBulbs(lift, ffLine([-0.28, 0.46, 0.46], [0.28, 0.46, 0.46], big ? 8 : 6, 0.05), 0.06);
+}
+
+// Twistpup / Balloodle: a dog twisted from one long balloon: sausage segments with small knots at every joint and a white shine
+// on each. The tail wobbles. Balloodle (`poodle`) has round pom-poms on its head, chest and feet and a twistier tail.
+function sausage(parent, color, x, y, z, w, h, d) { // a rounded balloon segment: two crossed boxes and a shine
+  const g = pivot(parent, x, y, z);
+  box(g, w, h, d * 0.78, color);
+  box(g, w * 0.82, h * 0.82, d, color);
+  box(g, Math.max(0.02, w * 0.16), 0.012, d * 0.5, 0xffffff, -w * 0.2, h * 0.41 + 0.004, 0);
+  return g;
+}
+function balloondog(root, m, parts) {
+  const big = has(m, 'poodle');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const knot = (p, x, y, z) => box(p, 0.07, 0.07, 0.07, m.dark, x, y, z);
+  sausage(lift, m.body, 0, 0.5, -0.02, 0.26, 0.26, 0.52); // the body
+  knot(lift, 0, 0.5, 0.27); knot(lift, 0, 0.5, -0.3);
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(lift, sx * 0.1, 0.42, sz * 0.18);
+    sausage(leg, m.body, 0, -0.16, 0, 0.14, 0.3, 0.14);
+    knot(leg, 0, 0.0, 0);
+    if (big) ball(leg, 0.09, m.accent, 0, -0.34, 0); // a pom-pom on each foot
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const neck = pivot(lift, 0, 0.55, 0.28);
+  neck.rotation.x = -0.4;
+  sausage(neck, m.body, 0, 0.17, 0, 0.16, 0.34, 0.16);
+  knot(neck, 0, 0.0, 0);
+  const head = pivot(neck, 0, 0.36, 0.02);
+  parts.head = head;
+  sausage(head, m.body, 0, 0.05, 0.04, 0.22, 0.2, 0.3);
+  sausage(head, m.belly, 0, -0.01, 0.24, 0.13, 0.12, 0.2); // the snout
+  box(head, 0.07, 0.05, 0.05, m.dark, 0, 0.02, 0.35); // the nose
+  eyes(head, 0.1, 0.185, 0.07, 0.08);
+  for (const s of [-1, 1]) { const ear = pivot(head, s * 0.14, 0.12, -0.02); swing(parts, ear, 'z', 0.12, 3.2, s); sausage(ear, m.body, s * 0.04, -0.08, 0, 0.09, 0.2, 0.1); }
+  if (big) { ball(head, 0.12, m.accent, 0, 0.2, -0.02); ball(lift, 0.12, m.accent, 0, 0.7, 0.12); } // the head pom-pom and a chest pom-pom
+  const tail = pivot(lift, 0, 0.58, -0.3);
+  swing(parts, tail, 'x', 0.3, big ? 5 : 4);
+  sausage(tail, m.body, 0, 0.1, -0.06, 0.1, 0.24, 0.1);
+  if (big) { sausage(tail, m.body, 0.04, 0.3, -0.08, 0.09, 0.2, 0.09); knot(tail, 0.02, 0.2, -0.07); ball(tail, 0.11, m.accent, 0.05, 0.46, -0.08); }
+  else ball(tail, 0.07, m.accent, 0, 0.26, -0.07);
+  const n = big ? 8 : 6;
+  fairBulbs(lift, Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2; return [Math.cos(a) * 0.14, 0.62 + Math.sin(a) * 0.04, 0.28 + Math.sin(a) * 0.14]; }), 0.055); // a collar of bulbs
+}
+
+// Tixit: a walking paper ticket. A flat cream card with a torn zig-zag bottom edge, a dashed stub line, a gold printed star,
+// ADMIT ONE stripes, two stubby legs and a stamp-hole mouth. A row of bulbs along the top.
+function ticket(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const cy = 0.55;
+  box(lift, 0.84, 0.54, 0.06, m.body, 0, cy, 0); // the card
+  box(lift, 0.84, 0.05, 0.065, m.accent, 0, cy + 0.245, 0); // a red top border
+  for (let i = 0; i < 8; i++) box(lift, 0.105, 0.06, 0.06, m.body, -0.37 + i * 0.105, cy - 0.3 + (i % 2 ? 0.015 : -0.015), 0); // the torn zig-zag
+  for (let i = 0; i < 6; i++) box(lift, 0.035, 0.035, 0.07, m.dark, -0.27, cy - 0.2 + i * 0.075, 0); // the dashed stub line
+  const face = pivot(lift, 0.08, cy, 0.035);
+  parts.head = face;
+  eyes(face, 0.1, 0.0, 0.13, 0.1);
+  const star = box(face, 0.12, 0.12, 0.02, m.accent, 0, -0.02, 0.0);
+  star.rotation.z = Math.PI / 4;
+  box(face, 0.04, 0.2, 0.02, m.accent, 0, -0.02, 0.0);
+  box(face, 0.2, 0.04, 0.02, m.accent, 0, -0.02, 0.0);
+  for (let i = -1; i <= 1; i++) box(face, 0.34, 0.025, 0.02, m.dark, 0, -0.16 + i * 0.045, 0.0); // ADMIT ONE stripes
+  const hole = pivot(face, 0, 0.0, 0.0); // the stamp-hole mouth: a ring of tiny holes
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; box(hole, 0.025, 0.025, 0.02, m.dark, Math.cos(a) * 0.05, 0.03 + Math.sin(a) * 0.04 - 0.14, 0.0); }
+  parts.legs = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(lift, s * 0.17, 0.28, 0);
+    box(leg, 0.1, 0.24, 0.1, m.dark, 0, -0.12, 0);
+    box(leg, 0.13, 0.05, 0.17, m.accent, 0, -0.26, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  for (const [s, ph] of [[-1, 0], [1, 1.4]]) { // little waving arms
+    const arm = pivot(lift, s * 0.46, cy - 0.05, 0);
+    swing(parts, arm, 'z', 0.5, 4.5, ph);
+    const a = pivot(arm, 0, 0, 0);
+    a.rotation.z = s * 0.7;
+    box(a, 0.07, 0.2, 0.07, m.dark, 0, -0.08, 0);
+    box(a, 0.1, 0.08, 0.1, m.belly, 0, -0.2, 0);
+  }
+  fairBulbs(lift, ffLine([-0.36, cy + 0.32, 0.01], [0.36, cy + 0.32, 0.01], 7, 0.04), 0.06);
+}
+const SHAPES_FUNFAIR = { carouselhorse, flosssheep, balloondog, ticket };
+Object.assign(SHAPES, SHAPES_FUNFAIR);
+/* ==== end of T43 funfair shapes ==== */
 /* ==== T40d ball shapes ==== */
 // Ball creatures are round and shiny, and every one has a white shine spot (userData.gear = 'shine', so a spec can check it).
 // All of them hop when they walk through the body pivot `parts.bounce` (the existing animateModel bounce). Never a red-and-white

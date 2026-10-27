@@ -130,6 +130,7 @@ async function measureDream(profile) {
     if (w.isles) { const t = w.isles.list.find(i => i.id === 'tall'); spots.tall = [t.x, t.z, Math.PI / 4, t.top + 3]; }
     if (w.swirl) Object.assign(spots, { mist: [48, 54, 0, 28.6], ink: [75, 80, -Math.PI / 2, 22.6], dawn: [48, 106, Math.PI, 16.6] }); // T38d: the dim zone with its puffs, the bridge, the sunset side
     if (w.parts?.some(pt => pt.id === 'stadium')) Object.assign(spots, { stW: [58, 162, Math.PI / 2, 12.6], stE: [58, 162, -Math.PI / 2, 12.6], stCourt: [58, 203, Math.PI / 2, 12.6], stTunnel: [58, 133, Math.PI, 12.6] }); // T40d: the Ball Stadium: the centre spot looking at each goal, the court, the tunnel
+    if (w.parts?.some(pt => pt.id === 'fair')) Object.assign(spots, { fairArch: [166, 126, Math.PI, 12.6], fairArena: [128, 139, Math.PI, 14], fairCarousel: [166, 139, Math.PI, 12.6], fairStage: [201, 200, -Math.PI / 2, 25.6] }); // T43: the Funfair: from the arrival, the arena, the carousel and the Star Stage
     if (w.pirate) Object.assign(spots, { ship: [104, 86, Math.PI, 19], sea: [30, 30, 0, 14.5] }); // T40b: Lookout Isle looking at the ship, and a spot at sea level
     const calls = {};
     for (const [k, [x, z, yaw, y]] of Object.entries(spots)) {
@@ -174,7 +175,20 @@ async function measureDream(profile) {
       stop3 = true; clearInterval(kick);
       fpsStadium = Math.round(n3 / ((performance.now() - t2) / 1000) * 100) / 100;
     }
-    return { label, chunks, verts, gpuMB: Math.round((verts * 32 + idx * 4) / 1048576), calls, fps, fpsMist, fpsStadium };
+    let fpsFair; // T43: standing on the carousel deck with the live part running (bots, horses, rings, balloons, the wheel animate)
+    if (w.parts?.some(pt => pt.id === 'fair')) {
+      const L = g.gymLive.of('part:fair'); L.playing = () => true;
+      const put4 = () => { p.pos.set(172.5, 12, 153.5); p.vel.set(0, 0, 0); p.yaw = Math.PI / 2; p.pitch = -0.1; };
+      put4();
+      await new Promise(r => setTimeout(r, 1500));
+      let n4 = 0, stop4 = false; const t3 = performance.now();
+      const tick4 = () => { put4(); n4++; if (!stop4) requestAnimationFrame(tick4); };
+      requestAnimationFrame(tick4);
+      await new Promise(r => setTimeout(r, 8000));
+      stop4 = true;
+      fpsFair = Math.round(n4 / ((performance.now() - t3) / 1000) * 100) / 100;
+    }
+    return { label, chunks, verts, gpuMB: Math.round((verts * 32 + idx * 4) / 1048576), calls, fps, fpsMist, fpsStadium, fpsFair };
   }, [label, setup]);
   const main = await page.evaluate(async () => {
     const g = window.pokecraft, { World } = await import('/src/world.js');
@@ -267,7 +281,7 @@ if (DREAM) {
     const m = (k, sub) => med(list.map(r => r[k][sub]));
     const calls = (k, sub) => med(list.map(r => r[k].calls[sub]));
     console.log(`MEDIAN ${profile} (${runs} runs) main: ` + JSON.stringify({ genMeshMs: m('main', 'genMs') + m('main', 'meshMs'), chunks: m('main', 'chunks'), verts: m('main', 'verts'), gpuMB: m('main', 'gpuMB'), callsN: calls('main', 'N'), callsE: calls('main', 'E'), callsS: calls('main', 'S'), callsW: calls('main', 'W'), fps: m('main', 'fps') }));
-    console.log(`MEDIAN ${profile} (${runs} runs) dream ${JSON.stringify(list[0].enter.size)}: ` + JSON.stringify({ enterMs: m('enter', 'enterMs'), genMeshMs: m('enter', 'genMs') + m('enter', 'meshMs'), chunks: m('dream', 'chunks'), verts: m('dream', 'verts'), gpuMB: m('dream', 'gpuMB'), callsN: calls('dream', 'N'), callsE: calls('dream', 'E'), callsS: calls('dream', 'S'), callsW: calls('dream', 'W'), callsTall: calls('dream', 'tall'), callsMist: calls('dream', 'mist'), callsInk: calls('dream', 'ink'), callsDawn: calls('dream', 'dawn'), fps: m('dream', 'fps'), fpsMist: m('dream', 'fpsMist'), callsStW: calls('dream', 'stW'), callsStE: calls('dream', 'stE'), callsStCourt: calls('dream', 'stCourt'), callsStTunnel: calls('dream', 'stTunnel'), fpsStadium: m('dream', 'fpsStadium') }));
+    console.log(`MEDIAN ${profile} (${runs} runs) dream ${JSON.stringify(list[0].enter.size)}: ` + JSON.stringify({ enterMs: m('enter', 'enterMs'), genMeshMs: m('enter', 'genMs') + m('enter', 'meshMs'), chunks: m('dream', 'chunks'), verts: m('dream', 'verts'), gpuMB: m('dream', 'gpuMB'), callsN: calls('dream', 'N'), callsE: calls('dream', 'E'), callsS: calls('dream', 'S'), callsW: calls('dream', 'W'), callsTall: calls('dream', 'tall'), callsMist: calls('dream', 'mist'), callsInk: calls('dream', 'ink'), callsDawn: calls('dream', 'dawn'), fps: m('dream', 'fps'), fpsMist: m('dream', 'fpsMist'), callsStW: calls('dream', 'stW'), callsStE: calls('dream', 'stE'), callsStCourt: calls('dream', 'stCourt'), callsStTunnel: calls('dream', 'stTunnel'), fpsStadium: m('dream', 'fpsStadium'), callsFairArch: calls('dream', 'fairArch'), callsFairArena: calls('dream', 'fairArena'), callsFairCarousel: calls('dream', 'fairCarousel'), callsFairStage: calls('dream', 'fairStage'), fpsFair: m('dream', 'fpsFair') }));
   }
   await browser.close();
   server.close();

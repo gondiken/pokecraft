@@ -174,7 +174,8 @@ function snapshot() {
   // While visiting someone else's world, keep saving your own world and position, not theirs.
   // T31: in a realm, the main world's part is the one kept aside (pos = where you wake up), plus where you are in the realm.
   const main = game.realms?.mainPart();
-  const away = !game.homeWorld && main ? { place: game.place, realmPos: [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.pitch], ...(game.realms.upPart() ? { realmUp: game.realms.upPart() } : {}) /* T40 */ } : {};
+  const at = p.carry?.safe?.() ?? p.pos; // T43: a ride (the Funfair's carousel, coaster, slide) may say where to save you instead of in the air
+  const away = !game.homeWorld && main ? { place: game.place, realmPos: [at.x, at.y, at.z, p.yaw, p.pitch], ...(game.realms.upPart() ? { realmUp: game.realms.upPart() } : {}) /* T40 */ } : {};
   const home = game.homeWorld ?? (main ? {
     seed: main.seed, edits: main.edits, size: main.size, pos: main.pos, yaw: main.yaw, pitch: main.pitch, time: game.time, homes: main.homes,
   } : {
@@ -790,6 +791,7 @@ function talkTo(npc) {
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
   if (npc.kind === 'boss' || npc.kind === 'crew') { if (!game.gymLive.talk(npc)) game.bosses.talk(npc); return; } // T40: a live part (the race) may take the talk first
+  if (npc.kind === 'guest' && !npc.gym) { if (!game.gymLive.talk(npc)) ui.toast(`${npc.name}: ${npc.def?.line || 'Hello!'}`); return; } // T43: a Picture World guest (Ticket Tess)
   const gym = npc.gym.def;
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
@@ -1159,6 +1161,7 @@ function frame(now) {
     const before = p.pos.clone(); // T30
     if (playing()) p.update(dt);
     if (p.bounced) { p.bounced = false; sound.play('boing'); game.realms.onBounce(); } // T35: launched by a Bounce Block
+    if (p.trampolined) { p.trampolined = false; sound.play('boing'); } // T43: a trampoline of the Funfair (no Dream hint)
     game.hideSeek.fence(p.pos, before, p.vel); // T30
     game.riding.update(dt, now);
     game.gymLive.update(dt);

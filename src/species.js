@@ -31,6 +31,8 @@ export const TYPE_COLORS = {
   pirate: 'repeating-linear-gradient(90deg,#f6efe0 0 5px,#e07a6a 5px 10px)',
   racer: 'linear-gradient(90deg,#ffa24a 0 70%,#ffffff 70% 78%,#ffa24a 78%)',
   ball: 'radial-gradient(circle at 35% 35%,#ffffff 18%,#9fd6ff 19%)',
+  // Wave 15 (T43): pink, cream and sky blue stripes, light enough for the dark chip text
+  funfair: 'repeating-linear-gradient(90deg,#ff8ac8 0 6px,#fff2a0 6px 12px,#8ad8ff 12px 18px)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -422,6 +424,31 @@ BIG_MOVES.parkour = [
   ['finalsprint', 'Final Sprint', 'lastword', 'A huge hit, only when almost out.'],
 ];
 /* ==== end of T36 parkour ==== */
+/* ==== T43 funfair ==== */
+// Funfair creatures toss tickets, bump and bounce, zip down rides and wobble the mirrors in the fun house.
+// The chart: time flies when you have fun, a camo creature cannot hide among all the lights and noise, a loud fair beats a cosy evening;
+// rides can't shake metal or rock. (The plan had mind and ghost instead of camo and cozy: the four-types / three-types specs let mind and
+// ghost be weak to at most 6 types and they were already at 6.) Others' cells against Funfair are separate lines (never an edit of another type's row).
+EFFECTIVENESS.funfair = { time: 2, camo: 2, cozy: 2, metal: 0.5, rock: 0.5, funfair: 0.5 };
+EFFECTIVENESS.water.funfair = 2; // rain closes the fair
+EFFECTIVENESS.toxic.funfair = 2; // too many sweets: a tummy ache
+EFFECTIVENESS.electric.funfair = 2; // a power cut stops the rides
+EFFECTIVENESS.sound.funfair = 0.5; // the fair is louder anyway
+EFFECTIVENESS.ball.funfair = 0.5; // fairs are full of ball games
+Object.assign(MOVES, {
+  tickettoss: mv('Ticket Toss', 'funfair', 40, 1),
+  bumperbash: mv('Bumper Bash', 'funfair', 80, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
+  ziprider: mv('Zip Ride', 'funfair', 50, 1, { priority: 1 }),
+  funhouse: mv('Fun House', 'funfair', 0, 1, { fx: { kind: 'lower', stat: 'atk' } }),
+  grandgallop: mv('Grand Gallop', 'funfair', 95, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  balloonburst: mv('Balloon Burst', 'funfair', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+});
+BIG_MOVES.funfair = [
+  ['funforall', 'Fun for All', 'rally', 'Everyone on the rides! Whole team hits harder. You get softer.'],
+  ['prizewheel', 'Prize Wheel', 'risky', "Spin the wheel! Half the time: a big prize hit. Or it lands on 'try again'."],
+  ['fairday', 'Fair Day', 'field', 'The fair is open! Funfair moves are stronger for 5 turns. Foes too!'],
+];
+/* ==== end of T43 funfair ==== */
 /* ==== T40d ball ==== */
 // Ball creatures bounce, roll, pass and smash: fast, friendly hits with a bounce in them.
 Object.assign(MOVES, {
@@ -609,6 +636,7 @@ const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 /* ==== T36 parkour ==== */
 T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
 /* ==== end of T36 parkour ==== */
+T1.funfair = 'tickettoss'; T2.funfair = 'bumperbash'; T3.funfair = 'ziprider'; T4.funfair = 'funhouse'; // T43
 T1.ball = 'bouncebop'; T2.ball = 'cannonroll'; T3.ball = 'quickpass'; T4.ball = 'dribble'; // T40d
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
@@ -1939,6 +1967,46 @@ export const SPECIES = {
     model: { shape: 'upbrella', scale: 0.95, body: 0xffb3e6, accent: 0x9ce8ff, dark: 0x6a4ac0, belly: 0xfff0a0, extras: [] },
   },
   /* ==== end of T35 dream ==== */
+  /* ==== T43 funfair ==== */
+  merrycolt: {
+    name: 'Merrycolt', type: 'funfair', desc: 'A painted carousel horse that hopped off its pole. It still goes up and down when it stands still!',
+    base: { hp: 52, atk: 62, def: 52, spd: 72 }, baseXp: 68, catchRate: 0.45, learn: L('funfair', 'rainbow'),
+    evolve: { level: 24, into: 'galloprance' },
+    model: { shape: 'carouselhorse', scale: 0.85, body: 0xf6efe0, accent: 0xffc83a, dark: 0x8a3a5a, belly: 0xff7aa8, extras: [] },
+  },
+  galloprance: {
+    name: 'Galloprance', type: 'funfair', desc: 'A grand carousel horse with its own little canopy. You can ride it, and it never gets dizzy!',
+    base: { hp: 80, atk: 92, def: 70, spd: 92 }, baseXp: 170, catchRate: 0.1, learn: L('funfair', 'rainbow', [[30, 'grandgallop']]),
+    model: { shape: 'carouselhorse', scale: 1.3, body: 0xf2e6d0, accent: 0xffc83a, dark: 0x7a2a4a, belly: 0xff5a90, extras: ['canopy'] },
+  },
+  flufflamb: {
+    name: 'Flufflamb', type: 'funfair', desc: 'A lamb made of pink candy-floss. It melts a tiny bit when it rains, but it never minds.',
+    base: { hp: 56, atk: 50, def: 55, spd: 46 }, baseXp: 64, catchRate: 0.45, learn: L('funfair', 'pixie'),
+    evolve: { level: 22, into: 'candyram' },
+    model: { shape: 'flosssheep', scale: 0.85, body: 0xff9ac8, accent: 0xfff0f8, dark: 0x8a5a3a, belly: 0xffd6ec, extras: [] },
+  },
+  candyram: {
+    name: 'Candyram', type: 'funfair', desc: 'A big blue-and-pink puff with curly lollipop horns. It smells like a birthday party.',
+    base: { hp: 86, atk: 80, def: 86, spd: 55 }, baseXp: 165, catchRate: 0.12, learn: L('funfair', 'pixie'),
+    model: { shape: 'flosssheep', scale: 1.25, body: 0x8ad0ff, accent: 0xff7ac0, dark: 0x6a4a3a, belly: 0xffd0ea, extras: ['horns'] },
+  },
+  twistpup: {
+    name: 'Twistpup', type: 'funfair', desc: 'A puppy twisted from one long balloon. Squeak! Squeak! It squeaks when it wags.',
+    base: { hp: 46, atk: 60, def: 46, spd: 82 }, baseXp: 64, catchRate: 0.45, learn: L('funfair', 'sky'),
+    evolve: { level: 22, into: 'balloodle' },
+    model: { shape: 'balloondog', scale: 0.85, body: 0xff6a8a, accent: 0xffd23a, dark: 0xc83a5a, belly: 0xffd0da, extras: [] },
+  },
+  balloodle: {
+    name: 'Balloodle', type: 'funfair', desc: 'A balloon poodle with round pom-poms. Pop! Pop! Pop! It never really pops, it just giggles.',
+    base: { hp: 68, atk: 86, def: 60, spd: 106 }, baseXp: 165, catchRate: 0.12, learn: L('funfair', 'sky', [[30, 'balloonburst']]),
+    model: { shape: 'balloondog', scale: 1.2, body: 0x6ad0ff, accent: 0xff7ac0, dark: 0x3a8ac8, belly: 0xd8f4ff, extras: ['poodle'] },
+  },
+  tixit: {
+    name: 'Tixit', type: 'funfair', desc: 'A walking paper ticket that says ADMIT ONE. It admits everybody, and loves company.',
+    base: { hp: 52, atk: 72, def: 60, spd: 96 }, baseXp: 110, catchRate: 0.3, learn: L('funfair', 'paper'),
+    model: { shape: 'ticket', scale: 1.0, body: 0xffe6a0, accent: 0xe84a5a, dark: 0x8a3a2a, belly: 0xfff6d8, extras: [] },
+  },
+  /* ==== end of T43 funfair ==== */
   /* ==== T40d ball ==== */
   boinkle: {
     name: 'Boinkle', type: 'ball', desc: 'A rubber ball with puppy ears. Throw it anything and it bounces back to you, wagging.',
