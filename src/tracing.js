@@ -11,7 +11,7 @@ export const TRACE = { step: 0.5, star: 8 }; // fixed lines: cells every half bl
 
 // def = { pts: [[x, y, z], ...], kind } -> a line you can ask for a place at any distance along it.
 // pts: the line's middle in world x / z, y = the block row of the ink cells (you stand at y + 1). cells: the 2-wide ink cells in order
-// of s ({ x, y, z, s }, each cell once, first come first kept).
+// of s ({ x, y, z, s }, each cell once, first come first kept); 3 wide since the owner's 2026-10-27 rework (the routes turn sharply).
 export function lineOf(def) {
   const pts = def.pts, cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]));
@@ -29,7 +29,7 @@ export function lineOf(def) {
   const cells = [], seen = new Map(); // xz -> rows already used there (a spiral stair passes over the same x / z 8 rows higher)
   for (let s = 0; s <= len + 1e-9; s += TRACE.step) {
     const p = at(s), [tx, tz] = dirAt(s), y = Math.round(p[1]);
-    for (const w of [-0.5, 0.5]) {
+    for (const w of [-1, -0.5, 0, 0.5, 1]) { // 3 wide like a drawn line (sharp turns stay joined)
       const x = Math.floor(p[0] - tz * w), z = Math.floor(p[2] + tx * w), key = x + ',' + z, rows = seen.get(key) ?? [];
       if (rows.some(r => Math.abs(r - y) <= 3)) continue;
       rows.push(y); seen.set(key, rows);
@@ -50,7 +50,7 @@ export const DRAW = {
   leash: 5,                // the pencil waits when you are more than this far behind it (in x / z)
   turn: 2.0,               // rad / s: the most the pencil turns toward where you look
   near: 1.0,               // looking at a point this close to the pencil: it keeps its heading
-  farAim: 40,              // a view ray that meets the line's floor further than this (or never): steer by the view's direction
+  farAim: 40,              // a view ray that meets the line's floor further than this (or never) does not steer
   fence: 1,                // other pages (not the one you leave or the next one), grown by this: the pencil cannot draw there
   roam: 10,                // how far round the two pages the pencil may wander
   blotPad: 1.0,            // a blot of radius r stops the pencil within r + blotPad (the line is 3 wide)
@@ -61,13 +61,13 @@ export const DRAW = {
   fallDrop: 2.5,           // 2.5 below the line where you last stood = you fell off
   onLine: [2.0, 1.3],      // you stand on your line within 2 blocks (x / z) and 1.3 (y) of one of its points
   rubberDelay: 2.5, rubberWin: 0.15, rubberCap: 4.2, catchGap: 0.4,
-  gust: [0.6, 0.4, 5],     // wind x (0.6 + 0.4 sin(2 pi t / 5))
+  gust: [0.5, 0.8, 5],     // wind x (0.5 + 0.8 sin(2 pi t / 5)), never below 0.1: calm, then a gust 1.3 x the wind to lean against
 };
 
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const inRect = (r, x, z, m = 0) => x >= r[0] - m && x < r[1] + 1 + m && z >= r[2] - m && z < r[3] + 1 + m; // r = [x0, x1, z0, z1] inclusive cells
 export const beeAt = (b, t) => { const k = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t / b.T + (b.phase || 0))); return [b.a[0] + (b.b[0] - b.a[0]) * k, b.a[1] + (b.b[1] - b.a[1]) * k]; };
-export const gustAt = t => DRAW.gust[0] + DRAW.gust[1] * Math.sin(2 * Math.PI * t / DRAW.gust[2]);
+export const gustAt = t => Math.max(0.1, DRAW.gust[0] + DRAW.gust[1] * Math.sin(2 * Math.PI * t / DRAW.gust[2]));
 export const rubberSpeed = (course, wins = 0) => (course.rubber ? Math.min(DRAW.rubberCap, course.rubber + DRAW.rubberWin * wins) : 0);
 
 // A fresh try at a course (doodleland.js courseOf: { n, rowA, rowB, flatA, target, start: [x, z], dir: [dx, dz], pad: [x, y, z],
@@ -108,22 +108,23 @@ export function blockedAt(st, x, z, row, h) {
   for (const w of DRAW.across) {
     const cx = Math.floor(x + nx * w), cz = Math.floor(z + nz * w), own = st.cells.has(`${cx},${row},${cz}`);
     const floorOk = own || !c.solid(cx, row, cz) || (row === c.rowA && inRect(c.fromRect, cx, cz)) || (row === c.rowB && inRect(c.target, cx, cz));
-    if (!floorOk) return inRect(c.target, cx, cz) || c.tower ? 'low' : 'solid'; // 'low': the next page (or the tower) is still above the line
-    for (let k = 1; k <= DRAW.head; k++) if (c.solid(cx, row + k, cz)) return 'solid';
+    if (!floorOk) return inRect(c.target, cx, cz) || c.tower ? 'low' : c.toRect && inRect(c.toRect, cx, cz) ? 'land' : 'solid'; // 'low': the next page (or the tower) is still above the line; 'land': the next page, but not its landing strip
+    for (let k = 1; k <= DRAW.head; k++) if (c.solid(cx, row + k, cz)) return c.tower ? 'low' : 'solid'; // round the tower it is always 'go round and climb'
   }
   return null;
 }
 export const inTarget = (c, x, z, row) => row >= c.rowB && inRect(c.target, x, z);
 
-// Where the view ray meets the line's floor (row + 1) in front of the pencil, or the view's direction from the pencil.
+// Where the view ray meets the line's floor (row + 1) beyond the pencil, or null: then the pencil keeps its heading. Looking at the
+// pencil, short of it (at your feet, where you walk) or up at the sky never turns it: you look past the pencil to steer.
 export function aimPoint(st, eye, dir, player) {
   const t = st.tip, y = t.row + 1;
-  let P = null;
-  if (dir[1] < -0.02) { const k = (y - eye[1]) / dir[1]; if (k > 0 && k < DRAW.farAim) P = [eye[0] + dir[0] * k, eye[2] + dir[2] * k]; }
-  const m = Math.hypot(dir[0], dir[2]) || 1, yawP = [t.x + dir[0] / m * 6, t.z + dir[2] / m * 6];
-  if (!P) return yawP;
+  if (dir[1] >= -0.02) return null;
+  const k = (y - eye[1]) / dir[1];
+  if (!(k > 0 && k < DRAW.farAim)) return null;
+  const P = [eye[0] + dir[0] * k, eye[2] + dir[2] * k];
   const tx = t.x - player[0], tz = t.z - player[2], tl = Math.hypot(tx, tz);
-  if (tl > 0.5 && ((P[0] - player[0]) * tx + (P[1] - player[2]) * tz) / tl < tl + 0.5) return yawP; // looking short of the pencil (at your feet)
+  if (Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) return null; // nearer to you than the pencil: you look where you walk
   return P;
 }
 
@@ -139,7 +140,7 @@ function setback(st, reason, extra = {}) {
   st.pts.length = Math.max(1, Math.min(st.pts.length, k.n));
   backTo(st, k.s);
   st.ink = k.ink; st.dryFor = 0; st.playerS = k.s; st.playerRow = st.tip.row;
-  if (st.rubber) { st.rubber.s = k.s; st.rubber.wait = DRAW.rubberDelay; }
+  if (st.rubber) { st.rubber.s = k.s; st.rubber.wait = DRAW.rubberDelay; st.rubber.on = false; }
   st.setbacks++;
   st.events.push({ kind: 'back', reason, stand: k.stand ?? [st.tip.x, st.tip.row + 1, st.tip.z], ...extra });
 }
@@ -171,8 +172,8 @@ function sub(st, inp) {
   // 1. steer toward where you look
   const P = aimPoint(st, inp.eye, inp.dir, inp.player);
   st.aim = P;
-  const dx = P[0] - t.x, dz = P[1] - t.z;
-  if (Math.hypot(dx, dz) > DRAW.near) { const d = wrap(Math.atan2(dz, dx) - t.h), m = DRAW.turn * h; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
+  const dx = P ? P[0] - t.x : 0, dz = P ? P[1] - t.z : 0;
+  if (P && Math.hypot(dx, dz) > DRAW.near) { const d = wrap(Math.atan2(dz, dx) - t.h), m = DRAW.turn * h; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
   // 2. move (only while you are close behind and there is ink)
   st.waiting = Math.hypot(t.x - inp.player[0], t.z - inp.player[2]) > DRAW.leash;
   st.blocked = null;
@@ -224,7 +225,7 @@ function sub(st, inp) {
   if (r && st.started) {
     if (r.wait > 0) r.wait -= h;
     else {
-      r.on = true;
+      if (!r.on) { r.on = true; st.events.push({ kind: 'rubber' }); } // he sets off (a warning sound and a toast)
       r.s = Math.min(r.s + rubberSpeed(c, st.wins) * h, st.s);
       if (r.s >= Math.min(st.playerS, st.s) - DRAW.catchGap) return setback(st, 'caught');
     }

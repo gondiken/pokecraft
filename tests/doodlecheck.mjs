@@ -104,7 +104,8 @@ export function analyze(seed) {
    careless looks straight at the next page all the time;
    nostar   the route without its star dots;
    idle     never walks;
-   lazy     walks, but stands still from 1 s to `lazy` s (default 5) and then plays like skilled. ---- */
+   lazy     walks, but stands still from 1 s to `lazy` s (default 5) and then plays like skilled;
+   rush     the skilled route, but never waits for a bee. ---- */
 export const WALK = 4.3;
 // A model player for one try (st = tracing.newDraw): input(st, dt) -> the drawStep input (feet on the drawn line, the view toward the
 // bot's point); after(st, t) reads the step's events (a setback puts the player back at the star). Used by simCourse and by the spec,
@@ -125,7 +126,7 @@ export class DrawBot {
     while (this.wp < pts.length - 1 && passed(pts[this.wp])) this.wp++;
     const P = this.bot === 'careless' ? this.goal : pts[this.wp];
     let walk = this.bot !== 'idle' && !(this.bot === 'lazy' && this.t > 1 && this.t < this.lazy);
-    if (walk && this.bot !== 'careless' && c.bees.length) { // a gap in the bees: stop when one would meet the pencil soon and would not meet it standing
+    if (walk && this.bot !== 'careless' && this.bot !== 'rush' && c.bees.length) { // a gap in the bees: stop when one would meet the pencil soon and would not meet it standing
       // the pencil goes at about walking speed toward the bot's point (the leash), or stands still
       // (standing still it goes on until it is DRAW.leash ahead of you)
       const f0 = this.feet(st), room = Math.max(0, DRAW.leash - Math.hypot(tip.x - f0[0], tip.z - f0[2]));
@@ -137,7 +138,8 @@ export class DrawBot {
     if (walk) this.sp += Math.min(WALK * dt, Math.max(0, st.s - 1.2 - this.sp));
     let f = this.feet(st);
     if (this.sp > st.s + 0.5) f = [f[0], f[1] - 3, f[2]]; // the line under you went: you fall
-    const eye = [f[0], f[1] + 1.62, f[2]], at = [P[0], tip.row + 1, P[1]], d = [at[0] - eye[0], at[1] - eye[1], at[2] - eye[2]], m = Math.hypot(...d);
+    const ux = P[0] - tip.x, uz = P[1] - tip.z, um = Math.hypot(ux, uz) || 1, far = this.bot === 'careless' ? um : Math.max(3, Math.min(um, 6)); // look past the pencil toward the point
+    const eye = [f[0], f[1] + 1.62, f[2]], at = [tip.x + ux / um * far, tip.row + 1, tip.z + uz / um * far], d = [at[0] - eye[0], at[1] - eye[1], at[2] - eye[2]], m = Math.hypot(...d);
     this.t += dt;
     return { eye, dir: d.map(v => v / m), player: f };
   }
@@ -187,8 +189,8 @@ export function drawChecks(seed = 1) {
     const care = simCourse(c, { bot: 'careless', maxT: 30 });
     row.careless = care.done ? `done ${care.t}s, ${care.setbacks} back` : `not done (${Object.keys(care.blocked).join() || care.backs.map(b => b[0]).slice(0, 3).join()})`;
     if (n >= 2 && care.done && care.setbacks === 0 && care.nibbles === 0) bad(`line ${n}: drawing straight at the page wins cleanly (${care.t} s)`);
-    if (n === 1 && !care.done) bad('line 1 (the first) is not won by drawing straight');
-    if (n >= 5) { const ns = simCourse(c, { bot: 'nostar', maxT: 30 }); row.nostar = ns.done ? `done, ${ns.setbacks} back` : 'not done'; if (ns.done && !ns.setbacks && !ns.nibbles) bad(`line ${n}: won cleanly without its stars`); }
+    if (n === 1 && !care.blocked.land) bad('line 1: drawing straight at the page is not stopped by its side (land on the dotted strip)');
+    if (n >= 6) { const ns = simCourse(c, { bot: 'nostar', maxT: 30 }); row.nostar = ns.done ? `done, ${ns.setbacks} back` : 'not done'; if (ns.done && !ns.setbacks && !ns.nibbles) bad(`line ${n}: won cleanly without its stars`); }
     if (c.rubber) {
       const lazy = simCourse(c, { bot: 'lazy', lazy: 6, maxT: 40 }), idle = simCourse(c, { bot: 'idle', maxT: 10 });
       row.lazy = `${lazy.done ? 'done' : 'not done'} ${lazy.t}s ${lazy.backs.map(b => b[0]).join()}`;
@@ -198,7 +200,8 @@ export function drawChecks(seed = 1) {
       if (!(r1 > r0 && r9 <= DRAW.rubberCap && r9 < WALK)) bad(`line ${n}: Rubber's speed by wins ${r0} ${r1} ${r9}`);
       row.rubber = [r0, r1, r9].map(v => +v.toFixed(2)).join('/');
     }
-    if (c.bees.length && n === 4) { const lz = simCourse(c, { bot: 'careless', maxT: 20 }); const walkOn = simCourse({ ...c, blots: [] }, { bot: 'careless', maxT: 20 }); row.bee = `${walkOn.nibbles} nibbles`; if (!walkOn.nibbles && !lz.nibbles) bad('line 4: the bee never nibbles a player who walks on without looking'); }
+    if (c.bees.length) { let nib = 0; for (const clock of [0, 1.3, 2.9, 4.4, 6.1]) nib += simCourse(c, { bot: 'rush', clock, maxT: 60 }).nibbles; row.rush = `${nib} nibbles in 5 tries`; if (!nib) bad(`line ${n}: the bees never nibble a player who walks on without waiting`); }
+    if (n >= 2) { const total = c.route.reduce((a, p, i) => a + Math.hypot(p[0] - (i ? c.route[i - 1][0] : c.start[0]), p[1] - (i ? c.route[i - 1][1] : c.start[1])), 0); if (total <= c.ink) bad(`line ${n}: the ink (${c.ink}) reaches without a star (${total.toFixed(0)})`); }
     // the course sits in the gaps: stars, blots and bees inside the roam box, not on another page, not on the pad or the next page
     const other = (x, z) => c.fence.some(r => x >= r[0] - 1 && x <= r[1] + 2 && z >= r[2] - 1 && z <= r[3] + 2);
     const inR = (r, x, z) => x >= r[0] && x < r[1] + 1 && z >= r[2] && z < r[3] + 1;
@@ -209,7 +212,7 @@ export function drawChecks(seed = 1) {
   }
   // the gaps are keeps: nobody builds a bridge there (every column next to no page is in a gap box), no page column is in one
   const gaps = w.keeps.filter(k => k.name === 'gap'), inGap = (x, y, z) => gaps.some(k => k.protect.some(b => inBox(b, x, y, z)));
-  for (const [x, z] of [[80, 125], [60, 104], [44, 84], [60, 63], [95, 66], [118, 58], [110, 35]]) if (!inGap(x, 20, z)) bad(`the gap at ${x},${z} is not a keep`);
+  for (const [x, z] of [[100, 136], [114, 98], [98, 30], [60, 50], [80, 56], [84, 80], [57, 80]]) if (!inGap(x, 20, z)) bad(`the gap at ${x},${z} is not a keep`);
   for (const p of Object.values(PAGES)) if (inGap(Math.floor((p.x0 + p.x1) / 2), p.top + 1, Math.floor((p.z0 + p.z1) / 2))) bad('a page is in a gap keep');
   out.ms = Date.now() - t0;
   return out;

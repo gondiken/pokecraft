@@ -11,11 +11,10 @@ import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { DRAW, newDraw, drawStep, cellInk, pointAt, beeAt } from './tracing.js';
 import { lineKey, lineState, LINE_COUNT, courseOf } from './doodleland.js';
-import { sketchModel } from './sketch.js';
 
 export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8 };
 const WORDS = {
-  hint: 'Look where the line should go, and walk on it!',
+  hint: 'Look past the pencil to steer it. Look at your feet to walk!',
   first: 'Draw the line before this one first!',
   intro: {
     2: 'Ink blot ahead! Steer round it.',
@@ -29,6 +28,7 @@ const WORDS = {
   blocked: {
     blot: 'Ink blot! Steer round it.',
     page: 'Not that page! Draw to the next one.',
+    land: 'Land on the dotted strip of the page!',
     edge: 'Too far out! Steer back.',
     low: 'Too low! Go round to climb.',
     solid: 'Something is in the way! Steer round it.',
@@ -41,6 +41,7 @@ const WORDS = {
   },
   star: '⭐ Star! Full of ink.',
   nibble: 'Bzz! A bee nibbled your line!',
+  rubberGo: 'Here comes Rubber the Eraser! Keep walking!',
   low: 'Ink is low! Find a star ⭐',
   wait: 'The pencil waits for you. Walk on your line!',
   stop: 'The pencil rests. Press Draw! to try again.',
@@ -63,9 +64,9 @@ export function buildPencil() { // nib at the origin pointing down, 3.2 long, ye
   g.userData.dispose = () => { for (const m of g.children) { m.geometry.dispose(); m.material.dispose(); } };
   return g;
 }
-export function buildRubber() { // Rubber the Eraser: a pink-grey block with a paper sleeve and two drawn eyes
+export function buildRubber() { // Rubber the Eraser: a pink eraser block with a paper sleeve and two drawn eyes; in colour (keepColour) and big, so he reads from far away
   const g = new THREE.Group();
-  const block = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 1.0), new THREE.MeshLambertMaterial({ color: 0xe9a9b8 }));
+  const block = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 1.0), new THREE.MeshLambertMaterial({ color: 0xf27fa0, emissive: 0x401020 }));
   block.position.y = 0.5;
   const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.06, 1.06), new THREE.MeshLambertMaterial({ color: 0xf4efe0 }));
   sleeve.position.set(-0.2, 0.5, 0);
@@ -76,6 +77,8 @@ export function buildRubber() { // Rubber the Eraser: a pink-grey block with a p
     e.rotation.y = Math.PI / 2;
     g.add(e);
   }
+  g.traverse(o => { if (o.isMesh) o.userData.keepColour = true; });
+  g.scale.setScalar(1.7);
   g.userData.dispose = () => g.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   return g;
 }
@@ -124,7 +127,6 @@ export class DoodleLive {
     this.ring.visible = false;
     this.rubber = buildRubber();
     this.rubber.visible = false;
-    sketchModel(this.rubber);
     const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; m.count = n; return m; };
     this.stars = inst(starGeometry(), new THREE.MeshBasicMaterial({ color: PENCIL, side: THREE.DoubleSide }), MAX_STARS);
     this.stars.userData.keepColour = true;
@@ -134,15 +136,23 @@ export class DoodleLive {
     for (const m of [this.stars, this.blots, this.bees, this.wings]) this.hideAll(m);
     // the dotted guide: the neat bridge of every line not drawn yet (one instanced mesh of flat dashes)
     let n = 0;
-    for (const l of this.lines) n += Math.ceil(l.line.len / 1.1) + 1;
+    for (const l of this.lines) n += Math.ceil(l.line.len / 1.1) + 1 + 60;
     this.dashes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.05, 0.1), new THREE.MeshBasicMaterial({ color: 0x3e3c46, transparent: true, opacity: 0.85 }), n);
     this.dashes.frustumCulled = false;
     this.dashLines = [];
     let at = 0;
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(1, 1, 1);
     this.lines.forEach((l, li) => {
-      const list = [], blots = this.courseOf(li).blots;
-      for (let s = 0; s <= l.line.len; s += 1.1) {
+      const list = [], course = this.courseOf(li), blots = course.blots;
+      // the landing strip on the next page: a dotted outline (owner 2026-10-27: a line lands only there)
+      { const [x0, x1, z0, z1] = course.target, y = course.rowB + 1.06, edge = [];
+        for (let x = x0; x <= x1 + 1; x += 1) { edge.push([x, z0, 0]); edge.push([x, z1 + 1, 0]); }
+        for (let z = z0 + 0.5; z <= z1 + 0.5; z += 1) { edge.push([x0, z, 1]); edge.push([x1 + 1, z, 1]); }
+        for (const [x, z, rot] of edge) {
+          q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot ? Math.PI / 2 : 0); pos.set(x, y, z);
+          this.dashes.setMatrixAt(at, m.compose(pos, q, sc)); list.push({ s: -1, idx: at, pos: pos.clone(), q: q.clone() }); at++;
+        } }
+      for (let s = 0; li < 2 && s <= l.line.len; s += 1.1) { // the dotted way only on the first two lines (learning); later you find your own
         const p = l.line.at(s), [dx, dz] = l.line.dirAt(s);
         if (blots.some(b => Math.hypot(p[0] - b.x, p[2] - b.z) < b.r + 0.6)) continue; // the dots stop at a blot: go round it
         q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-dz, dx));
@@ -162,8 +172,8 @@ export class DoodleLive {
   syncDashes() {
     const m = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0), sc = new THREE.Vector3(1, 1, 1);
     this.dashLines.forEach((list, li) => {
-      const hide = this.drawnNow.has(li) || this.cur?.k === li;
-      for (const d of list) this.dashes.setMatrixAt(d.idx, hide ? zero : m.compose(d.pos, d.q, sc));
+      const drawn = this.drawnNow.has(li), drawing = this.cur?.k === li; // while you draw, the landing outline (s -1) stays
+      for (const d of list) this.dashes.setMatrixAt(d.idx, drawn || (drawing && d.s >= 0) ? zero : m.compose(d.pos, d.q, sc));
     });
     this.dashes.instanceMatrix.needsUpdate = true;
     this.dashesKey = this.key();
@@ -255,6 +265,7 @@ export class DoodleLive {
     const course = this.courseOf(i), wins = this.game.bossWins?.doodle || 0;
     const st = newDraw(course, wins);
     st.clock = this.clock; // the bees keep flying where they were
+    this.lastPos = null; this.lastGround = null; this.guarded = 0;
     this.cur = { k: i, course, st, t0: st.clock, applied: new Map(), said: new Map(), scratchAt: 0, waitFor: 0, low: false };
     this.applyInk();
     this.once('hint', WORDS.hint);
@@ -297,7 +308,7 @@ export class DoodleLive {
   puffTo(stand, heading) {
     const p = this.game.player;
     this.game.creatures?.puff?.({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, { color: 0xf4efe0 });
-    p.pos.set(stand[0], stand[1], stand[2]); p.vel.set(0, 0, 0);
+    p.pos.set(stand[0], stand[1], stand[2]); p.vel.set(0, 0, 0); this.lastPos = null; this.lastGround = null;
     if (heading != null) p.yaw = Math.atan2(-Math.cos(heading), -Math.sin(heading)); // face along the line
     this.game.creatures?.puff?.({ x: stand[0], y: stand[1], z: stand[2] }, { color: 0xf4efe0, sound: null });
   }
@@ -333,12 +344,33 @@ export class DoodleLive {
     this.puffTo(st.done ? this.world.bosses[0].rest : this.pads[i].stand, null);
     this.toast(WORDS.fell);
   }
+  // While you draw, your line is sticky: walking off its side (or its end) stops you at the edge, sliding along it where it can
+  // (owner 2026-10-27 second pass: the skill is steering while you walk, not balancing). Falls still come from Rubber and the bees.
+  guard(p) {
+    const last = this.lastPos, sup = (x, y, z) => isSolid(this.world.get(Math.floor(x), Math.floor(y - 0.05), Math.floor(z)));
+    if (last && !p.onGround && p.vel.y <= 0.01 && Math.abs(p.pos.y - last.y) < 0.3 && Math.hypot(p.pos.x - last.x, p.pos.z - last.z) < 1 && !sup(p.pos.x, p.pos.y, p.pos.z) && sup(last.x, last.y, last.z)) {
+      const y = last.y;
+      if (sup(p.pos.x, y, last.z)) p.pos.set(p.pos.x, y, last.z);
+      else if (sup(last.x, y, p.pos.z)) p.pos.set(last.x, y, p.pos.z);
+      else p.pos.set(last.x, y, last.z);
+      p.vel.y = 0; p.onGround = true; this.guarded = (this.guarded || 0) + 1;
+    }
+    // a hop up a step that came down beside the line: back where you last stood (if it is still there: Rubber may have rubbed it)
+    const lg = this.lastGround;
+    if (lg && !p.onGround && p.pos.y < lg.y - 0.3 && Math.hypot(p.pos.x - lg.x, p.pos.z - lg.z) < 2.5 && !sup(p.pos.x, p.pos.y, p.pos.z) && !sup(p.pos.x, p.pos.y - 1, p.pos.z) && !sup(p.pos.x, p.pos.y - 2, p.pos.z) && sup(lg.x, lg.y, lg.z)) { // (a step down is fine)
+      p.pos.set(lg.x, lg.y, lg.z); p.vel.set(0, 0, 0); p.onGround = true; this.guarded = (this.guarded || 0) + 1;
+    }
+    if (p.onGround && sup(p.pos.x, p.pos.y, p.pos.z)) this.lastGround = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+    this.lastPos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+  }
   stepDraw(dt, inp) {
     const c = this.cur, st = c.st, before = st.s;
+    if (!this.manual || this.guardInTests) this.guard(this.game.player); // (tests that move the player by hand switch it off)
     drawStep(st, dt, inp);
     for (const e of st.events) {
       if (e.kind === 'star') { sound.play('star'); this.toast(WORDS.star); c.low = false; }
       else if (e.kind === 'nibble') { sound.play('doodlerub'); this.say('nibble', WORDS.nibble, 1); }
+      else if (e.kind === 'rubber') { sound.play('doodlerub'); this.toast(WORDS.rubberGo); }
       else if (e.kind === 'back') {
         const atPad = st.ckpt.s === 0;
         if (e.reason === 'caught') sound.play('doodlerub'); // (the puff has its own sound)
@@ -349,12 +381,23 @@ export class DoodleLive {
       }
     }
     if (st.done) return this.finish();
+    this.stepUp(this.game.player);
     if (st.blocked) this.say(`b:${st.blocked}`, c.course.tower && st.blocked === 'low' ? WORDS.intro[5] : WORDS.blocked[st.blocked]);
     if (!c.low && st.ink <= DRAW.lowInk && c.course.stars.some((s, i) => !st.taken.has(i))) { c.low = true; this.toast(WORDS.low); }
     c.waitFor = st.waiting ? c.waitFor + dt : 0;
     if (c.waitFor > DOODLE.waitHint) this.say('wait', WORDS.wait, 8);
     if (st.s > before) { c.scratchAt += dt; if (c.scratchAt >= DOODLE.scratch) { c.scratchAt = 0; sound.play('doodlescratch'); } }
     this.applyInk();
+  }
+  // Walking into a step of your own line lifts you onto it (a small hop): the line climbs one block at a time and a child on a
+  // tablet should not need the Jump button for every step.
+  stepUp(p) {
+    if (!p?.onGround || !p.hitWall || !this.cur) return;
+    const f = p.forward, m = Math.hypot(f.x, f.z) || 1, y = Math.floor(p.pos.y + 0.05);
+    const x = Math.floor(p.pos.x + f.x / m * 0.6), z = Math.floor(p.pos.z + f.z / m * 0.6);
+    if (this.cur.applied.get(`${x},${y},${z}`) !== B.DO_INK) return;
+    if (isSolid(this.world.get(x, y + 1, z)) || isSolid(this.world.get(x, y + 2, z))) return;
+    p.vel.y = Math.max(p.vel.y, 8.6); // a normal jump (one block up)
   }
   stepMeshes(p) {
     const c = this.cur, st = this.state();
@@ -370,7 +413,7 @@ export class DoodleLive {
       this.pencil.scale.setScalar(c ? 1 : 0.9);
     } else this.pencil.visible = false;
     // where you look
-    if (c && c.st.aim) {
+    if (c && c.st.aim) { // (null = you look at the pencil, at your feet or up: the pencil goes straight on)
       const a = c.st.aim, d = Math.hypot(a[0] - c.st.tip.x, a[1] - c.st.tip.z);
       this.ring.visible = d < 14;
       this.ring.position.set(a[0], c.st.tip.row + 1.03, a[1]);
