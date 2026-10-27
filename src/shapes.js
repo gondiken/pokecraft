@@ -5618,3 +5618,153 @@ function barrelpus(root, m, parts) {
 const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
 Object.assign(SHAPES, SHAPES_PIRATE);
 /* ==== end of T40b pirate ==== */
+/* ==== T41 atlantis ==== */
+// Atlantis look: every Atlantis creature has glowing teal rune lines (userData.gear = 'rune', emissive), like the Pirate bandana. A spec checks
+// every model for them. The creatures are old guardians (jars, statues, tiles, a floating stone), never fish or crabs.
+const AT_RUNE = 0x5af0e0;
+const atGear = mesh => { mesh.userData.gear = 'rune'; return glow(mesh, AT_RUNE); };
+const atRune = (parent, w, h, d, x, y, z) => atGear(box(parent, w, h, d, AT_RUNE, x, y, z));
+// Three small rune marks in a row on a flat face (z in front of the face), a stroke between two of them.
+function atMarks(parent, x, y, z, s = 1) {
+  atRune(parent, 0.05 * s, 0.14 * s, 0.03, x - 0.1 * s, y, z);
+  atRune(parent, 0.14 * s, 0.05 * s, 0.03, x, y + 0.04 * s, z);
+  atRune(parent, 0.05 * s, 0.1 * s, 0.03, x + 0.1 * s, y - 0.02 * s, z);
+}
+
+// Jarling / Grand Urnling: a clay jar with a creature peeking out of the mouth (two big eyes over the rim). Grand Urnling (`tall`) is a
+// tall painted vase with a neck and two handle arms.
+function urn(root, m, parts) {
+  const tall = has(m, 'tall'), neck = tall ? 0.3 : 0;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  for (const s of [-1, 1]) box(lift, 0.17, 0.1, 0.22, m.dark, s * 0.17, 0.05, 0.03); // little stub feet
+  box(lift, 0.4, 0.1, 0.4, m.dark, 0, 0.14, 0);
+  box(lift, 0.64, 0.34, 0.62, m.body, 0, 0.36, 0); // the belly
+  box(lift, 0.52, 0.14, 0.5, m.body, 0, 0.6, 0);
+  box(lift, 0.66, 0.05, 0.64, m.accent, 0, 0.27, 0); // painted bands
+  box(lift, 0.55, 0.04, 0.53, m.accent, 0, 0.58, 0);
+  for (let i = 0; i < 7; i++) box(lift, 0.07, 0.05, 0.04, 0xfce8a0, -0.27 + i * 0.09, 0.4 + (i % 2) * 0.05, 0.325); // a wavy painted line
+  if (tall) { box(lift, 0.4, neck, 0.38, m.body, 0, 0.67 + neck / 2, 0); box(lift, 0.43, 0.04, 0.41, m.accent, 0, 0.85, 0); }
+  const top = 0.67 + neck;
+  box(lift, 0.5, 0.07, 0.5, m.dark, 0, top + 0.03, 0); // the rim
+  box(lift, 0.36, 0.04, 0.36, 0x2a1820, 0, top + 0.07, 0); // the dark mouth
+  const head = pivot(lift, 0, top + 0.02, 0.02);
+  parts.head = head;
+  box(head, 0.3, 0.16, 0.28, m.belly, 0, 0.06, 0);
+  eyes(head, 0.17, 0.12, 0.09, 0.12);
+  box(head, 0.08, 0.025, 0.03, 0x5a2a3a, 0, 0.09, 0.145);
+  atMarks(lift, 0, 0.4, 0.325, tall ? 1 : 0.85);
+  atRune(lift, 0.5, 0.025, 0.03, 0, 0.5, 0.325);
+  if (tall) { // two handle arms that wave
+    parts.arms = [];
+    for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+      const a = pivot(lift, s * 0.34, 0.62, 0);
+      parts.arms.push({ g: a, phase: ph });
+      box(a, 0.1, 0.07, 0.07, m.dark, s * 0.07, 0, 0);
+      box(a, 0.07, 0.3, 0.07, m.body, s * 0.13, -0.1, 0);
+      box(a, 0.11, 0.1, 0.11, m.belly, s * 0.13, -0.27, 0);
+    }
+  } else for (const s of [-1, 1]) { box(lift, 0.1, 0.07, 0.07, m.dark, s * 0.35, 0.6, 0); box(lift, 0.07, 0.2, 0.07, m.dark, s * 0.4, 0.52, 0); } // little handles
+}
+
+// Statuecub / Guardlion: a stone lion on four legs, a mane of stone waves, eyes that glow. Guardlion (`mane`) is bigger with a tall
+// mane of stacked wave blocks, a chest plate and a tuft on its tail.
+function stonelion(root, m, parts) {
+  const big = has(m, 'mane'), lh = big ? 0.42 : 0.3, bl = big ? 0.92 : 0.66, bw = big ? 0.5 : 0.4;
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(root, sx * bw * 0.4, lh, sz * bl * 0.32);
+    box(leg, 0.15, lh, 0.17, m.body, 0, -lh / 2, 0);
+    box(leg, 0.17, 0.07, 0.23, m.dark, 0, -lh + 0.035, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const body = pivot(root, 0, lh + bw * 0.4, 0);
+  box(body, bw, bw * 0.8, bl, m.body, 0, 0, 0);
+  box(body, bw * 0.7, 0.05, bl * 0.8, m.dark, 0, bw * 0.4 + 0.02, 0); // a stone slab on its back
+  atRune(body, 0.03, 0.18, 0.18, bw / 2 + 0.01, 0.0, -0.08); // runes on both flanks
+  atRune(body, 0.03, 0.18, 0.18, -bw / 2 - 0.01, 0.0, -0.08);
+  atRune(body, 0.03, 0.06, 0.3, bw / 2 + 0.01, 0.0, -0.08);
+  atRune(body, 0.03, 0.06, 0.3, -bw / 2 - 0.01, 0.0, -0.08);
+  if (big) box(body, bw * 0.8, bw * 0.5, 0.06, m.accent, 0, 0.0, bl / 2 + 0.01); // a chest plate with a glowing gem
+  if (big) atRune(body, 0.1, 0.1, 0.04, 0, 0.0, bl / 2 + 0.04);
+  const head = pivot(body, 0, bw * 0.28, bl / 2 + 0.02);
+  parts.head = head;
+  const hs = big ? 0.46 : 0.4;
+  box(head, hs, hs * 0.9, hs * 0.9, m.body, 0, 0.08, 0.08);
+  box(head, hs * 0.55, hs * 0.38, 0.2, m.belly, 0, -0.04, hs * 0.55); // the muzzle
+  box(head, 0.1, 0.07, 0.05, m.dark, 0, 0.02, hs * 0.55 + 0.1); // the nose
+  for (const s of [-1, 1]) {
+    glow(box(head, 0.1, 0.1, 0.05, AT_RUNE, s * hs * 0.24, 0.16, hs * 0.5 + 0.01), AT_RUNE).userData.eye = true;
+    box(head, 0.11, 0.1, 0.1, m.body, s * hs * 0.4, hs * 0.5, 0.0); // little round ears
+  }
+  atRune(head, 0.07, 0.07, 0.03, 0, hs * 0.5 - 0.02, hs * 0.5 + 0.02); // a rune on its forehead
+  // the mane: a ring of stone waves round the head (two rings and spikes for Guardlion)
+  const rings = big ? 2 : 1;
+  for (let r = 0; r < rings; r++) for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2, rad = (hs * 0.62 + r * 0.14) * (i < 2 || i > 7 ? 0.9 : 1);
+    const w = box(head, 0.16 + r * 0.04, 0.16 + r * 0.04, 0.14, r ? m.accent : m.dark, Math.sin(a) * rad, 0.1 + Math.cos(a) * rad * 0.85, -0.12 - r * 0.07);
+    w.rotation.z = -a; // each block tilted like a wave crest
+  }
+  const tail = pivot(body, 0, 0.1, -bl / 2 - 0.02);
+  parts.tail = tail;
+  box(tail, 0.07, 0.07, 0.3, m.body, 0, 0, -0.15);
+  box(tail, 0.14, 0.14, 0.12, big ? m.accent : m.dark, 0, 0, -0.34);
+}
+
+// Tilesnek / Mosaicoil: a snake made of loose tiles in an S curve with small gaps; the tiles bob a little apart (drift, but tight). The
+// head tile has two eyes and a glowing rune stripe; every other tile has a pattern. Mosaicoil (`long`) is longer and has a raised head.
+function tilesnake(root, m, parts) {
+  const n = has(m, 'long') ? 13 : 9;
+  for (let i = 0; i < n; i++) {
+    const head = i === n - 1, f = i / (n - 1);
+    const x = Math.sin(i * 0.75) * 0.3 * (0.4 + 0.6 * (1 - f)), z = -(n - 1 - i) * 0.19 + 0.3;
+    const y = 0.07 + (f > 0.78 ? (f - 0.78) * (has(m, 'long') ? 1.7 : 1.2) : 0);
+    const t = drift(parts, pivot(root, x, y, z), 0.02, 2.1, i * 0.8);
+    const s = head ? 0.4 : 0.3 + f * 0.06; // tiles grow a little towards the head
+    box(t, s, 0.1, 0.2, i % 2 ? m.body : m.accent, 0, 0, 0);
+    box(t, s - 0.08, 0.025, 0.1, i % 2 ? m.accent : m.body, 0, 0.06, 0);
+    box(t, s, 0.04, 0.2, m.dark, 0, -0.04, 0);
+    if (i % 3 === 1) atRune(t, 0.04, 0.03, 0.1, 0, 0.075, 0); // glowing grooves on some tiles
+    if (head) {
+      parts.head = t;
+      box(t, 0.3, 0.14, 0.12, m.belly, 0, 0.04, 0.12);
+      eyes(t, 0.1, 0.14, 0.1, 0.1);
+      atRune(t, 0.05, 0.03, 0.2, 0, 0.1, 0);
+      box(t, 0.05, 0.03, 0.16, 0xe05a6a, 0, -0.01, 0.26); // a little forked tongue
+    }
+  }
+  atRune(root, 0.04, 0.03, 0.14, 0, 0.14, -(n - 1) * 0.19 + 0.3 - 0.1); // the tail's tip glows
+}
+
+// Runestone: a floating stone with a face made of glowing runes (two square eyes and a small mouth), two pebbles circling it.
+function runestone(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  parts.float = true;
+  const stone = pivot(lift, 0, 0.45, 0);
+  swing(parts, stone, 'z', 0.08, 1.4);
+  parts.head = stone;
+  box(stone, 0.62, 0.7, 0.5, m.body, 0, 0, 0);
+  box(stone, 0.5, 0.2, 0.42, m.dark, 0, 0.42, 0); // a rough top
+  box(stone, 0.4, 0.14, 0.32, m.body, 0.04, 0.55, 0);
+  box(stone, 0.5, 0.14, 0.4, m.dark, -0.02, -0.4, 0); // and a tapering bottom
+  box(stone, 0.34, 0.12, 0.3, m.dark, 0, -0.5, 0);
+  for (const [x, y] of [[-0.31, 0.15], [0.31, -0.1]]) box(stone, 0.04, 0.2, 0.34, m.belly, x, y, 0); // chips
+  for (const s of [-1, 1]) {
+    atGear(box(stone, 0.12, 0.12, 0.04, AT_RUNE, s * 0.15, 0.1, 0.26)).userData.eye = true;
+    atRune(stone, 0.05, 0.05, 0.03, s * 0.15, 0.1, 0.285);
+  }
+  atRune(stone, 0.2, 0.04, 0.03, 0, -0.12, 0.26);
+  atRune(stone, 0.04, 0.16, 0.03, 0, 0.3, 0.26);
+  atRune(stone, 0.04, 0.4, 0.03, 0.31, 0.0, 0.14);
+  for (const [k, speed, rad, y] of [[0, 1.3, 0.62, 0.62], [1, -1.0, 0.7, 0.28]]) { // two pebbles circling it
+    const orbit = pivot(lift, 0, y, 0);
+    (parts.spin ||= []).push({ g: orbit, axis: 'y', speed });
+    const p = box(orbit, 0.14, 0.14, 0.14, k ? m.dark : m.body, rad, 0, 0);
+    p.rotation.set(0.4, 0.4, 0);
+    atRune(p, 0.05, 0.05, 0.03, 0, 0, 0.08);
+  }
+}
+const SHAPES_ATLANTIS = { urn, stonelion, tilesnake, runestone };
+Object.assign(SHAPES, SHAPES_ATLANTIS);
+/* ==== end of T41 atlantis ==== */

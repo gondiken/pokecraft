@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { lightState, LIGHTS } from './glowfish.js'; // T41
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -117,6 +118,25 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
   ],
 });
 /* ==== end of T40d ball ==== */
+/* ==== T41 atlantis ==== */
+addBoss({ // Queen Coralia in the palace of the Sunken City (in the Pirate Seas). The glowfish catch (atlantislive.js) lights the city; the 12 saved lights open the gate.
+  id: 'atlantis', name: 'Queen Coralia', type: 'atlantis', look: 'crown',
+  colors: { shirt: 0x3ab8b4, pants: 0x2a6a78, hair: 0x2a1a3a, skin: 0xe8c09a },
+  gate: game => { const st = lightState(game); return st.done ? null : `The city is still dark! Light the three lanterns first. (💡 ${st.total} / ${LIGHTS})`; },
+  team: [['grandurnling', 60], ['mosaicoil', 62], ['runestone', 62], ['guardlion', 64, ['sunkenbell', 'tiletoss', 'citywakes', 'ancientecho']]],
+  intro: ['The lights are back! The whole city is awake!', 'My guardians want to meet the one who caught the glowfish.'],
+  lose: 'Wonderful! The Sunken City shines again, and the star is yours!',
+  win: 'My guardians are very old and very strong. Rest a little and try again!',
+  rematchIntro: ['The glowfish got away again? You caught them all! Now, my guardians have been training!'],
+  note: 'I painted the Sunken City from a dream about the sea. The glowfish were its lights, and I could never keep them. Thank you for catching them!',
+  crew: [
+    { name: 'Guard Pelos', colors: { shirt: 0xc4683f, pants: 0x6a3420, hair: 0x2a1a10, skin: 0xd8a070 }, hat: 0xd8b84a,
+      team: [['jarling', 59], ['statuecub', 60]], intro: ['Halt! Nobody walks through the Jar Market without a battle!'], line: 'Bump a jar and be quick: a shy glowfish pops out!' },
+    { name: 'Guard Talia', colors: { shirt: 0xd8cfb4, pants: 0x3ab8b4, hair: 0x6a3a1a, skin: 0xf0c8a0 }, hat: 0xd8b84a,
+      team: [['tilesnek', 60], ['runestone', 61], ['grandurnling', 61]], intro: ['The temple is mine! Show me your team!'], line: 'Wait until the golden school bunches up. Then lunge!' },
+  ],
+});
+/* ==== end of T41 atlantis ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen

@@ -990,6 +990,8 @@ function smoothstep(a, b, x) {
   return t * t * (3 - 2 * t);
 }
 
+let uwFade = 0; // T41
+const UW_COLOR = new THREE.Color(), UW_DEEP = new THREE.Color();
 function updateSky(dt) {
   game.time = (game.time + dt / DAY_LENGTH * (game.world?.realm?.timeSpeed ?? 1)) % 1; // a realm may run its clock slower (Dream nights last twice as long)
   const elevation = Math.sin(game.time * Math.PI * 2);
@@ -1026,10 +1028,22 @@ function updateSky(dt) {
     if (game.swirlSky?.fog) { scene.fog.near = game.swirlSky.near; scene.fog.far = game.swirlSky.far; }
     else if (look.fog) { scene.fog.near = look.fog[0]; scene.fog.far = look.fog[1]; }
   }
+  // T41: under water in the Sunken City the fog turns blue-green and closes in with depth (the rest of the Pirate Seas swims as before)
+  const eyeY = game.player.pos.y + game.player.eye;
+  const uwNow = look?.underwater && game.world.deepAt?.(game.player.pos) && game.world.get(Math.floor(game.player.pos.x), Math.floor(eyeY), Math.floor(game.player.pos.z)) === B.WATER;
+  uwFade += ((uwNow ? 1 : 0) - uwFade) * Math.min(1, dt * 6);
+  if (uwFade > 0.01) {
+    const depth = Math.min(1, Math.max(0, (13 - eyeY) / 11));
+    UW_COLOR.setHex(0x2aa0b0).lerp(UW_DEEP.setHex(0x0e4a62), depth);
+    scene.background.lerp(UW_COLOR, uwFade);
+    scene.fog.color.copy(scene.background);
+    scene.fog.near += (1.5 - scene.fog.near) * uwFade;
+    scene.fog.far += ((34 - 12 * depth) - scene.fog.far) * uwFade;
+  }
   const floor = game.swirlSky?.lit ?? look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
   const lit = look?.still ? floor : Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4)); // T38a: a still realm is always the same brightness
   caveLight.uLit.value = lit;
-  caveLight.uLantern.value = 0.75 * underFade;
+  caveLight.uLantern.value = Math.max(0.75 * underFade, game.netGlow ?? 0); // T41: the net's glow lights the Sunken City
   caveLight.uPlayer.value.copy(game.player.eyePos);
   const lightF = look?.still ? floor : Math.max(light, floor);
   hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade);
@@ -1139,6 +1153,7 @@ function updateTarget() {
     place: { dim: !!placeWhy, why: placeWhy },
     ride: { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on },
     sky: riding.on && riding.kind === 'sky',
+    swim: !!p.diving, // T41: Jump says Swim in the Sunken City
   });
 }
 
