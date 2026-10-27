@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, shotTo, keeperAt, diveAt, DIVE, HOLD, kickZone, kickPower, shotWindow, shotMiss } from './ballphysics.js';
 import { goalOf, basketCross, inBox, goalState, goalKey, basketKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
 import { buildPerson } from './npc.js';
+import { bossOf } from './pictureboss.js';
 import { disposeModel } from './species.js';
 import { sound } from './sound.js';
 
@@ -178,8 +179,10 @@ export class StadiumLive {
   // the keys are cleared, so it reads 0/3 again (every battle needs a new 3 + 3).
   scoreText() {
     const st = goalState(this.game);
-    return { text: `⚽ ${Math.min(st.n, st.need)}/${st.need} · 🏀 ${Math.min(st.b, st.bneed)}/${st.bneed}${st.done ? ' · Battle the Captain!' : ''}`, done: st.done };
+    return { text: `⚽ ${Math.min(st.n, st.need)}/${st.need} · 🏀 ${Math.min(st.b, st.bneed)}/${st.bneed}${st.done ? ` · ${this.next(st)}` : ''}`, done: st.ready };
   }
+  // What comes after the goals and baskets: the helpers not beaten yet (owner 2026-10-27), then the Captain.
+  next(st) { return st.crew.length ? `Battle ${st.crew.map(i => bossOf('stadium').crew[i].name.split(' ').at(-1)).join(' and ')}!` : 'Battle the Captain!'; }
   showScore(pl) {
     const on = b => pl.x > b.x0 && pl.x < b.x1 && pl.z > b.z0 && pl.z < b.z1;
     this.game.ui.setScore?.(on(this.part.pitchBox) || on(this.part.courtBox) ? this.scoreText() : null);
@@ -255,7 +258,7 @@ export class StadiumLive {
       if (key) { g.beaten.push(key); n++; g.save?.(); }
     }
     if (before >= need) this.toast('GOAL! What a shot!');
-    else if (goalState(g).done) this.toast(`GOAL! ⚽ ${need} of ${need}! Captain Kickley wants to battle you!`);
+    else if (goalState(g).done) this.toast(`GOAL! ⚽ ${need} of ${need}! ${this.wants(goalState(g))}`);
     else if (n >= need) this.toast(`GOAL! ⚽ ${need} of ${need}! Now ${goalState(g).bneed} baskets on the court.`);
     else this.toast(`GOAL! ⚽ ${n} of ${need}`);
   }
@@ -270,6 +273,8 @@ export class StadiumLive {
     if (b.time - this.outAt[key] > LIVE_RULES.outPause) { b.reset(); this.outAt[key] = null; if (key === 'foot') { this.touched = false; this.clearedAt = null; } }
   }
 
+  wants(st) { return st.ready ? 'Captain Kickley wants to battle you!' : `Now ${this.next(st).replace('Battle', 'battle')}`; }
+
   basket() {
     const g = this.game;
     sound.play('netswish');
@@ -277,7 +282,7 @@ export class StadiumLive {
     let counted = '';
     if (st.b < st.bneed) {
       const key = [1, 2, 3].map(basketKey).find(k => !g.beaten.includes(k));
-      if (key) { g.beaten.push(key); g.save?.(); const now = goalState(g); counted = now.done ? ` ${now.bneed} of ${now.bneed}! Captain Kickley wants to battle you!` : ` ${now.b} of ${now.bneed}`; }
+      if (key) { g.beaten.push(key); g.save?.(); const now = goalState(g); counted = now.done ? ` ${now.bneed} of ${now.bneed}! ${this.wants(now)}` : ` ${now.b} of ${now.bneed}`; }
     }
     if (this.bonus < LIVE_RULES.bonusMax) {
       this.bonus++; g.cubes++; g.ui.renderHud?.();
@@ -384,7 +389,7 @@ export class StadiumLive {
 
   /* ---- the Captain: the generic Boss `gate` keeps the battle shut; only the button word is ours ---- */
   talkPrompt(npc) {
-    if (npc.kind === 'boss' && npc.def?.id === 'stadium' && !goalState(this.game).done) return { verb: 'talk', action: 'Talk' };
+    if (npc.kind === 'boss' && npc.def?.id === 'stadium' && !goalState(this.game).ready) return { verb: 'talk', action: 'Talk' };
     return null;
   }
   // A won Boss battle (the star, or a rematch): the next match starts at 0 goals. A lost one keeps the goals.
@@ -397,7 +402,12 @@ export class StadiumLive {
   /* ---- the guide ---- */
   aim(p) {
     const { part } = this, st = goalState(this.game);
-    if (!inBox(part.area, { x: p.x, y: 1, z: p.z }) || st.done) return null;
+    if (!inBox(part.area, { x: p.x, y: 1, z: p.z }) || st.ready) return null;
+    if (st.done) { // the goals and baskets are in: now the helpers (owner 2026-10-27)
+      const crew = this.game.npcs.list.filter(n => n.kind === 'crew' && n.def?.boss === 'stadium' && st.crew.includes(n.def.index));
+      const c = crew.sort((a, b) => Math.hypot(a.pos.x - p.x, a.pos.z - p.z) - Math.hypot(b.pos.x - p.x, b.pos.z - p.z))[0];
+      return c ? { x: c.pos.x, z: c.pos.z, text: (a, m) => `Battle ${c.name}! ${a} ${m}m` } : null;
+    }
     if (this.hard && st.n === 0 && st.b === 0) return null; // a rematch has not started: the base points at the way back
     if (st.n >= st.need) { // the goals are in: now the baskets
       const h = this.hoop.pos, bl = `(${st.b} / ${st.bneed})`;
