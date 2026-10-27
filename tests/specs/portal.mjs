@@ -694,7 +694,7 @@ async function pairPart({ browser, base, t }) {
   await placeIs(A, 'swirl');
   await waitFor(B, () => window.pokecraft.ui.asking, null, 60000);
   await B.evaluate(() => window.pokecraft.ui.askYes());
-  await placeIs(B, 'swirl').catch(async e => { console.log('  (B did not follow)', B.errors.slice(0, 3), await B.evaluate(() => ({ place: window.pokecraft.place, busy: window.pokecraft.realms.busy }))); throw e; });
+  await placeIs(B, 'swirl').catch(async e => { console.log('  (B did not follow)', B.errors.slice(0, 3), A.errors.slice(0, 3), await B.evaluate(() => ({ place: window.pokecraft.place, busy: window.pokecraft.realms.busy, toasts: (window.__toasts || []).slice(-6), asking: window.pokecraft.ui.asking })), await A.evaluate(() => (window.__toasts || []).slice(-6))); throw e; });
   await helpers(A); await helpers(B);
   const both = async fn => { await A.evaluate(fn); await B.evaluate(fn); };
   await both(() => { const g = window.pokecraft, lv = window.__lv(); lv.wand = true; g.player.pos.set(127.5, 13, 23.5); g.player.vel.set(0, 0, 0); window.__step(g, 1 / 20, 3); });
