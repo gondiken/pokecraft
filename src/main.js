@@ -1032,8 +1032,8 @@ function updateSky(dt) {
   const eyeY = game.player.pos.y + game.player.eye;
   const uwNow = look?.underwater && game.world.deepAt?.(game.player.pos) && game.world.get(Math.floor(game.player.pos.x), Math.floor(eyeY), Math.floor(game.player.pos.z)) === B.WATER;
   uwFade += ((uwNow ? 1 : 0) - uwFade) * Math.min(1, dt * 6);
+  const depth = Math.min(1, Math.max(0, (13 - eyeY) / 11));
   if (uwFade > 0.01) {
-    const depth = Math.min(1, Math.max(0, (13 - eyeY) / 11));
     UW_COLOR.setHex(0x2aa0b0).lerp(UW_DEEP.setHex(0x0e4a62), depth);
     scene.background.lerp(UW_COLOR, uwFade);
     scene.fog.color.copy(scene.background);
@@ -1046,8 +1046,9 @@ function updateSky(dt) {
   caveLight.uLantern.value = Math.max(0.75 * underFade, game.netGlow ?? 0); // T41: the net's glow lights the Sunken City
   caveLight.uPlayer.value.copy(game.player.eyePos);
   const lightF = look?.still ? floor : Math.max(light, floor);
-  hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade);
-  sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade);
+  const uwDim = 1 - 0.45 * uwFade * (0.4 + 0.6 * depth); // T41: the deeper in the Sunken City, the dimmer the light
+  hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade) * uwDim;
+  sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade) * uwDim;
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');

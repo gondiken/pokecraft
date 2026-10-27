@@ -19,7 +19,7 @@ const src = f => import(pathToFileURL(path.join(ROOT, 'src', f)).href);
 const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id);
 const toasts = page => page.evaluate(() => { window.__toasts = []; const g = window.pokecraft, f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; });
 const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new RegExp(src).test(m)), re.source);
-const shot = async (page, name) => { await page.waitForTimeout(1500); await page.screenshot({ path: path.join(SHOTS, `t41-${name}.png`), timeout: 180000 }); console.log(`  screenshot t41-${name}.png`); };
+const shot = async (page, name) => { await page.evaluate(() => window.pokecraft.ui.toastBox?.replaceChildren()); await page.waitForTimeout(1500); await page.screenshot({ path: path.join(SHOTS, `t41-${name}.png`), timeout: 180000 }); console.log(`  screenshot t41-${name}.png`); };
 // Run `n` game steps of dt: the player's physics and the live parts (the page's frame loop cannot interleave); `stop` ends early.
 const STEP = `(g, dt, n, stop) => { const old = g.playing; g.playing = () => true; let i = 0; try { for (; i < n; i++) { g.player.update(dt); g.gymLive.update(dt); if (stop && stop()) break; } } finally { g.playing = old; } return i; }`;
 const PLAY = `(g, fn) => { const old = g.playing; g.playing = () => true; try { return fn(); } finally { g.playing = old; } }`; // run fn with the game "playing" (no pointer lock in a test)
@@ -29,6 +29,7 @@ const helpers = page => page.evaluate(([a, b]) => { window.__step = eval(a); win
 async function intoAtlantis(page) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
+  await toasts(page);
   const info = await page.evaluate(() => {
     const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'atlantis'), p = g.player;
     p.pos.set(f.stand[0] + 0.5, f.stand[1], f.stand[2] + 0.5); p.vel.set(0, 0, 0);
@@ -38,7 +39,6 @@ async function intoAtlantis(page) {
   });
   await placeIs(page, 'pirate');
   await helpers(page);
-  await toasts(page);
   return info;
 }
 
@@ -57,6 +57,7 @@ export default async function ({ browser, base, t }) {
     t.ok(info.id === 144 && /Pirate Seas · Atlantis/.test(info.prompt) && info.used, `the Atlantis frame is ready and says "${info.prompt}"`);
     if (want('swim')) await swimPart(page, t);
     if (want('play')) await playPart(page, t);
+    if (want('shots') || !ONLY) await shotsPart(page, t);
     if (want('lights')) await lightsPart(page, t);
     t.ok(!page.errors.length, `no page errors (Atlantis) ${page.errors.slice(0, 3).join('; ')}`);
   }
@@ -308,8 +309,7 @@ async function swimPart(page, t) {
     out.fwd = [fwd60.length(), fwd20.length(), fwd60.z];
     const up = run(1 / 60, 1, () => { p.pitch = 0.6; p.keys.KeyW = true; });
     out.up = [up.y, Math.hypot(up.x, up.z), Math.sin(0.6) * 3.2, Math.cos(0.6) * 3.2];
-    const down = run(1 / 60, 1, () => { place(258.5, 9, 100.5, 0, -0.5); p.keys.KeyW = true; });
-    out.down = down.y;
+    place(258.5, 9, 100.5, 0, -0.5); const y0 = p.pos.y; p.keys.KeyW = true; step(g, 1 / 60, 60); out.down = p.pos.y - y0; p.keys = {};
     const strafe = run(1 / 60, 1, () => { p.keys.KeyD = true; });
     out.strafe = [strafe.length(), strafe.x];
     const idle = run(1 / 60, 2);
@@ -357,6 +357,23 @@ async function swimPart(page, t) {
 
 /* ======================================================= browser: D. the real part ======================================================= */
 
+const CITYX = 270.5;
+// the camera for a screenshot: the player at pos, looking at a point (the page's own render loop draws it)
+const stage = (page, pos, at) => page.evaluate(([pos, at]) => { const g = window.pokecraft, p = g.player; p.pos.set(...pos); p.vel.set(0, 0, 0); p.keys = {}; p.lookAt({ x: at[0], y: at[1], z: at[2] }); window.__step(g, 1 / 20, 6); }, [pos, at]);
+
+// the screenshots for the owner: the dark city, the glowing school
+async function shotsPart(page, t) {
+  await page.evaluate(async () => { const g = window.pokecraft, lv = g.gymLive.of('part:atlantis'); lv.net = []; for (const f of lv.fish) { f.out = false; f.poured = false; } });
+  await stage(page, [246.5, 8, 112.5], [270.5, 7, 112.5]); // east of the bell door: the Jar Market, the palace dome far away
+  await shot(page, 'dark-city');
+  const c = await page.evaluate(async () => { const g = window.pokecraft, lv = g.gymLive.of('part:atlantis'), G = await import('/src/glowfish.js'); lv.t = 6; lv.acc = 0; return G.schoolCentre(g.world.atlantis.school, 6.0); });
+  await stage(page, [c[0] + 0.3, c[1] - 1.62 + 0.4, c[2] - 5.5], [c[0], c[1], c[2]]); // five blocks from a tight school, the net ring up
+  await page.evaluate(() => { const g = window.pokecraft, lv = g.gymLive.of('part:atlantis'); window.__play(g, () => lv.use()); window.__step(g, 1 / 20, 8); });
+  await shot(page, 'school');
+  await page.evaluate(() => { const g = window.pokecraft, lv = g.gymLive.of('part:atlantis'); lv.held = null; g.player.held = 0; });
+  t.ok(true, 'screenshots: the dark city and the school');
+}
+
 async function playPart(page, t) {
   // arrival, the guide, the swim out
   const R = await page.evaluate(async () => {
@@ -374,7 +391,6 @@ async function playPart(page, t) {
   t.ok(/Jar Market/.test(R.guide || '') && R.chip === 'Lights 0 / 12', `the guide says "${R.guide}"; the chip says "${R.chip}"`);
   t.ok(await said(page, /The Sunken City! Its lights swam away\. Catch the glowfish!/), 'the arrival words');
   t.ok(R.near0 === null && R.diving && R.near === 'Catch!' && R.holds && R.glow >= 0.25 && R.glow < 0.5, `in the water the big button says "${R.near}" and is held and let go; the net glows a little (${R.glow}), nothing before that`);
-  await shot(page, 'dark-city');
 
   const sandbox = () => page.evaluate(() => { // a clean slate: no fish in the net, none poured
     const g = window.pokecraft, lv = g.gymLive.of('part:atlantis'), p = g.player;
@@ -384,7 +400,7 @@ async function playPart(page, t) {
     return true;
   });
   // a spot beside a jar where a swimmer fits, 2.6 blocks away and level with it, looking at the jar
-  const SPOT = `(g, jar, r = 2.6) => { const p = g.player; for (let k = 0; k < 16; k++) { const a = k / 16 * 6.283, v = p.pos.clone(); v.set(jar.cell[0] + 0.5 + Math.cos(a) * r, jar.cell[1] + 0.25, jar.cell[2] + 0.5 + Math.sin(a) * r); if (!p.collides(v)) { p.pos.copy(v); p.vel.set(0, 0, 0); p.keys = {}; p.lookAt({ x: jar.cell[0] + 0.5, y: jar.cell[1] + 1.35, z: jar.cell[2] + 0.5 }); return true; } } return false; }`;
+  const SPOT = `(g, jar, r = 2.6) => { const p = g.player; for (let k = 0; k < 16; k++) { const a = k / 16 * 6.283, v = p.pos.clone(); v.set(jar.cell[0] + 0.5 + Math.cos(a) * r, jar.cell[1] + 3.2, jar.cell[2] + 0.5 + Math.sin(a) * r); if (!p.collides(v)) { p.pos.copy(v); p.vel.set(0, 0, 0); p.keys = {}; p.lookAt({ x: jar.cell[0] + 0.5, y: jar.cell[1] + 1.35, z: jar.cell[2] + 0.5 }); return true; } } return false; }`;
 
   // ---- shy fish: bump a jar, swim at the fish, lunge ----
   const shyRun = (dt, idx) => page.evaluate(async ([dt, idx, spot]) => {
@@ -392,7 +408,7 @@ async function playPart(page, t) {
     const SPOT = eval(spot);
     const jar = A.jars.find(j => j.fish === idx), f = lv.shy[idx], i = lv.jars.findIndex(j => j.fish === idx);
     const log = {};
-    log.spot = SPOT(g, jar, 4.4); step(g, dt, 3);
+    log.spot = SPOT(g, jar, 3.6); step(g, dt, 3);
     // the wrong trick: a lunge at the jar before it has popped catches nothing
     P(() => lv.use()); step(g, dt, Math.round(0.3 / dt)); P(() => lv.release()); step(g, dt, Math.round(0.5 / dt));
     log.wrong = lv.info().net.length;
@@ -401,13 +417,17 @@ async function playPart(page, t) {
     log.bumped = P(() => lv.bump(i)); log.cell = g.world.get(...jar.cell);
     step(g, dt, Math.round(0.45 / dt)); log.mid = lv.info().fish[idx].state;
     step(g, dt, Math.round(0.3 / dt)); log.out = lv.info().fish[idx].state; log.cellBack = g.world.get(...jar.cell);
-    // swim at it for a moment, coil, lunge at where it will be
-    for (let k = 0; k < Math.round(0.4 / dt); k++) { const q = G.shyAt(f.home, lv.t, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] }); p.keys.KeyW = true; step(g, dt, 1); }
+    // swim after it with a kick, coil for a moment, lunge at where it will be
+    { const q = G.shyAt(f.home, lv.t, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] }); p.keys.Space = true; step(g, dt, 1); p.keys.Space = false; }
+    for (let k = 0; k < Math.round(0.5 / dt); k++) { const q = G.shyAt(f.home, lv.t, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] }); p.keys.KeyW = true; step(g, dt, 1); }
     p.keys = {};
+    // judge the distance: the lunge must reach where the fish will be (net 1.2 in front of the eyes, then the lunge); coil that long
+    let hold = 0.5;
+    for (let k = 0; k < 4; k++) { const q = G.shyAt(f.home, lv.t + hold + 0.125, f.pop).pos, e0 = lv.eye(); const L = Math.min(4, Math.max(1.5, Math.hypot(q[0] - e0[0], q[1] - e0[1], q[2] - e0[2]) - 1.2)); hold = (L - 1.5) / 2.5 * 0.9; }
     P(() => lv.use());
-    step(g, dt, Math.round(0.3 / dt));
+    for (let k = 0; k < Math.round(hold / dt); k++) { const q = G.shyAt(f.home, lv.t + 0.3, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.15, z: q[2] }); step(g, dt, 1); }
     const tr = G.shyAt(f.home, lv.t + 0.125 + 0.0, f.pop).pos; p.lookAt({ x: tr[0], y: tr[1] - 0.15, z: tr[2] });
-    const e = lv.eye(); log.dist = Math.hypot(tr[0] - e[0], tr[1] - e[1], tr[2] - e[2]);
+    const e = lv.eye(); log.dist = Math.hypot(tr[0] - e[0], tr[1] - e[1], tr[2] - e[2]); log.hold = hold;
     P(() => lv.release()); step(g, dt, Math.round(0.5 / dt));
     log.net = lv.info().net.join();
     return log;
@@ -418,7 +438,7 @@ async function playPart(page, t) {
   const s20 = await shyRun(1 / 20, 0);
   t.ok(s60.spot && s60.wrong === 0 && s20.wrong === 0, 'the wrong trick: a lunge at a jar that has not popped catches nothing');
   t.ok(s60.bumped && s60.cell === 0 && s60.mid === 'wobble' && s60.out === 'out' && s60.cellBack === 208, `bumping a jar: the jar is drawn as a wobbling box for 0.6 s, then the fish is out and the jar is back (${s60.mid} -> ${s60.out})`);
-  t.ok(s60.net === 'shy0' && s20.net === 'shy0', `the right trick: swim at the popped fish and lunge: caught at 60 and at 20 frames a second (${s60.net} / ${s20.net}; ${s60.dist?.toFixed(1)} blocks away)`);
+  t.ok(s60.net === 'shy0' && s20.net === 'shy0', `the right trick: swim at the popped fish and lunge: caught at 60 and at 20 frames a second (${s60.net} / ${s20.net}; ${s60.dist?.toFixed(1)} blocks away) ${s60.net && s20.net ? '' : JSON.stringify([s60, s20])}`);
   await sandbox();
   // a fish that is out and swims home is not lost: after 4 s it is in its jar again and can be bumped again; an empty jar says so
   const home = await page.evaluate(async spot => {
@@ -427,7 +447,7 @@ async function playPart(page, t) {
     SPOT(g, jar); step(g, 1 / 20, 3);
     P(() => lv.bump(i)); step(g, 1 / 20, 40);
     const popped = !!f.pop;
-    step(g, 1 / 20, 50);
+    step(g, 1 / 20, 62);
     const out = { popped, after: lv.info().fish[1].state, pop: f.pop, out: f.out, again: P(() => lv.bump(i)) };
     const e = lv.jars.findIndex(j => j.fish == null); SPOT(g, lv.jars[e]); step(g, 1 / 20, 3);
     window.__toasts.length = 0; lv.lastBump = -99; out.empty = P(() => lv.bump(e)); out.emptyToast = window.__toasts.some(m => /Nothing in this jar/.test(m));
@@ -446,13 +466,14 @@ async function playPart(page, t) {
     // the player at the mouth, within 7, looking down the pocket
     p.pos.set(de.mouth[0] - de.dir[0] * 0.6, 3.0, de.mouth[1] - de.dir[1] * 0.6); p.vel.set(0, 0, 0); p.keys = {};
     p.lookAt({ x: de.deep[0], y: 3.8, z: de.deep[1] });
-    step(g, 1 / 30, 60);
+    step(g, 1 / 30, 15);
     out.state = D.fish.state; out.pos = [...D.fish.pos];
     // swim a little closer, coil, lunge
-    for (let k = 0; k < 10; k++) { p.lookAt({ x: D.fish.pos[0], y: 3.8, z: D.fish.pos[1] }); p.keys.KeyW = true; step(g, 1 / 30, 1); }
-    p.keys = {}; p.lookAt({ x: D.fish.pos[0], y: 3.8, z: D.fish.pos[1] });
+    for (let k = 0; k < 15; k++) { p.lookAt({ x: D.fish.pos[0], y: 3.35, z: D.fish.pos[1] }); p.keys.KeyW = true; step(g, 1 / 30, 1); }
+    p.keys = {}; p.lookAt({ x: D.fish.pos[0], y: 3.35, z: D.fish.pos[1] });
     out.d = Math.hypot(D.fish.pos[0] - p.pos.x, D.fish.pos[1] - p.pos.z);
-    P(() => lv.use()); step(g, 1 / 30, 15); p.lookAt({ x: D.fish.pos[0], y: 3.8, z: D.fish.pos[1] }); P(() => lv.release()); step(g, 1 / 30, 15);
+    const e = lv.eye(), d3 = Math.hypot(D.fish.pos[0] - e[0], 3.3 - e[1], D.fish.pos[1] - e[2]), L = Math.min(4, Math.max(1.5, d3 - 1.2)), hold = (L - 1.5) / 2.5 * 0.9; // judge the distance
+    P(() => lv.use()); step(g, 1 / 30, Math.max(1, Math.round(hold * 30))); p.lookAt({ x: D.fish.pos[0], y: 3.3, z: D.fish.pos[1] }); P(() => lv.release()); step(g, 1 / 30, 15);
     out.net = lv.info().net.join();
     return out;
   });
@@ -496,14 +517,13 @@ async function playPart(page, t) {
     const g = window.pokecraft, p = g.player, lv = g.gymLive.of('part:atlantis'), step = window.__step, P = fn => window.__play(g, fn);
     const out = [];
     for (const hold of [0, 0.45, 0.9]) {
-      lv.net = []; p.pos.set(258.5, 7, 100.5); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.keys = {}; step(g, 1 / 60, 2); lv.lungeCool = 0;
+      lv.net = []; p.pos.set(258.5, 9, 100.5); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.keys = {}; step(g, 1 / 60, 2); lv.lungeCool = 0;
       const z0 = p.pos.z, g0 = g.netGlow; P(() => lv.use()); step(g, 1 / 60, Math.round(hold * 60)); const gl = g.netGlow, slow = p.held; P(() => lv.release()); step(g, 1 / 60, 40);
       out.push([z0 - p.pos.z, gl - g0, slow]);
     }
     return out;
   });
   t.ok(Math.abs(L2[0][0] - 1.5) < 0.2 && Math.abs(L2[1][0] - 2.75) < 0.3 && Math.abs(L2[2][0] - 4) < 0.3 && L2[2][1] > 0.15 && L2[2][2] > 0.9, `a tap lunges 1.5 blocks, a half coil 2.75, a full coil 4 (${L2.map(l => l[0].toFixed(2))}); holding makes the net glow brighter (+${L2[2][1].toFixed(2)})`);
-  await shot(page, 'school');
 }
 
 /* ======================================================= browser: E. lights, the gate, the Queen ======================================================= */
@@ -559,6 +579,7 @@ async function lightsPart(page, t) {
   t.ok(L.gateShut && /still dark/.test(L.bossGate) && L.talkPrompt?.action === 'Talk', `with 11 of 12 the palace gate is shut and the Queen says "${L.bossGate}"`);
   t.ok(L.done[0] && L.done[1] === 12 && L.done[2] === 0 && L.gateOpen && L.bossGate2 === null && L.saved === 12 && /Lights 12 \/ 12 · To the palace!/.test(L.chip) && await said(page, /All three lanterns are lit! The palace dome opens/), `12 lights: the palace dome opens, the Queen is ready, "${L.chip}"`);
   t.ok(/Queen Coralia|palace/.test(L.guide || ''), `the guide says "${L.guide}"`);
+  await stage(page, [245.5, 7.5, 112.5], [251.5, 5.5, 112.5]);
   await shot(page, 'lit');
 
   // ---- the gate never shuts on you, the Queen battles for the star, losing stays, a win clears the lights ----
@@ -600,6 +621,8 @@ async function lightsPart(page, t) {
   });
   t.ok(won.lights === 0 && won.forceLit && won.lit === '4,4,4' && won.fishBack === 0, `a won Queen battle clears the 12 lights (a rematch is a new catch), the city stays lit for the trip, the fish are back (${won.lights}, ${won.lit})`);
   t.ok(/Atlantis star/.test(won.note || '') && /Sunken City from a dream/.test(won.small || '') && won.stars === 1 && won.cubes >= 10, `the star, the Wizard's note and cubes (${won.note})`);
+  await page.evaluate(() => document.getElementById('celebrate')?.remove());
+  await stage(page, [CITYX - 4.5, 4, 112.5], [CITYX + 3.5, 5.2, 112.5]);
   await shot(page, 'palace');
   // with the star the guide leads to the way back; a reload in a fresh browser keeps the star and the lights
   const after = await page.evaluate(() => { const g = window.pokecraft, p = g.player; p.pos.set(240.5, 5, 112.5); g.updateGuide?.(); return { guide: g.ui.guideText, save: g.save(true) }; });

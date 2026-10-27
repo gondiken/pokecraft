@@ -18,6 +18,28 @@ const COLORS = { shy: 0xffb36a, darter: 0x8af4ff, school: 0xffe27a };
 const SIZE = { shy: 0.5, darter: 0.62, school: 0.44 };
 const NICE = { shy: 'Jar Market', darter: 'Arch Gardens', school: 'Temple Steps' };
 
+// One glowfish: a little body, a tail, a fin and two dark eyes in a single geometry with vertex colours (white = the kind's colour).
+function fishGeometry() {
+  const parts = [[0.22, 0.26, 0.46, 0, 0, 0, 1], [0.05, 0.34, 0.2, 0, 0, -0.32, 1], [0.04, 0.14, 0.22, 0, 0.18, -0.02, 1], [0.04, 0.05, 0.05, 0.12, 0.05, 0.16, 0], [0.04, 0.05, 0.05, -0.12, 0.05, 0.16, 0]];
+  const pos = [], nor = [], col = [], idx = [];
+  for (const [w, h, d, x, y, z, c] of parts) {
+    const g = new THREE.BoxGeometry(w, h, d), base = pos.length / 3;
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      pos.push(g.attributes.position.getX(i) + x, g.attributes.position.getY(i) + y, g.attributes.position.getZ(i) + z);
+      nor.push(g.attributes.normal.getX(i), g.attributes.normal.getY(i), g.attributes.normal.getZ(i));
+      col.push(c ? 1 : 0.08, c ? 1 : 0.1, c ? 1 : 0.14);
+    }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  return geo;
+}
+
 export class AtlantisLive {
   constructor(game, part) {
     this.game = game;
@@ -54,12 +76,11 @@ export class AtlantisLive {
   /* ---------- meshes (all with userData.atlantis, removed in dispose) ---------- */
   mark(m) { m.userData.atlantis = true; m.frustumCulled = false; this.game.scene?.add(m); this.meshes.push(m); return m; }
   build() {
-    const mat = c => new THREE.MeshBasicMaterial({ color: c });
-    const fishGeo = new THREE.BoxGeometry(0.2, 0.26, 0.55);
+    const fishGeo = fishGeometry();
     this.fishMesh = {};
     for (const kind of ['shy', 'darter', 'school']) {
       const n = this.lists[kind].length;
-      this.fishMesh[kind] = this.mark(new THREE.InstancedMesh(fishGeo, mat(COLORS[kind]), n));
+      this.fishMesh[kind] = this.mark(new THREE.InstancedMesh(fishGeo, new THREE.MeshBasicMaterial({ color: COLORS[kind], vertexColors: true }), n));
     }
     this.ring = this.mark(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.035, 8, 40), new THREE.MeshBasicMaterial({ color: 0x5af0e0, transparent: true, opacity: 0.8, depthTest: false, fog: false })));
     this.ring.renderOrder = 20; this.ring.visible = false;

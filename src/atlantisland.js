@@ -188,13 +188,13 @@ export function atlantisLand(world, ctx) {
   for (const h of HOUSES) {
     const [cu, cv] = h.c, [du, dv] = h.door;
     ubox(cu - 3, 2, cv - 3, cu + 3, 5, cv + 3, B.AT_BRICK);
-    ubox(cu - 2, 2, cv - 2, cu + 2, 5, cv + 2, B.AIR);
+    ubox(cu - 2, 2, cv - 2, cu + 2, 5, cv + 2, B.WATER);
     ubox(cu - 3, 6, cv - 3, cu + 3, 6, cv + 3, B.AT_BRICK);
     ubox(cu - 3, 1, cv - 3, cu + 3, 1, cv + 3, B.AT_MOSAIC);
     for (const [ru, rv] of [[-1, 1], [1, 1], [0, -2], [2, 0]]) if (!(ru === 0 && rv === 0)) U(cu + ru, 6, cv + rv, B.WATER); // the roof is broken in a few places
     for (const [ru, rv] of [[-3, 0], [3, 1], [0, 3], [-1, -3]]) if (!(Math.abs(ru - 3 * du) < 1 && Math.abs(rv - 3 * dv) < 1)) U(cu + ru, 5, cv + rv, B.WATER); // and the wall tops are chipped
     // the door: 3 wide, y 2..4
-    for (let s = -1; s <= 1; s++) for (let y = 2; y <= 4; y++) U(cu + 3 * du + (dv ? s : 0), y, cv + 3 * dv + (du ? s : 0), B.AIR);
+    for (let s = -1; s <= 1; s++) for (let y = 2; y <= 4; y++) U(cu + 3 * du + (dv ? s : 0), y, cv + 3 * dv + (du ? s : 0), B.WATER);
     const deep = at(cu - 2 * du, cv - 2 * dv), mouth = at(cu + 4 * du, cv + 4 * dv);
     deadEnds.push({ id: h.id, kind: 'house', deep: [deep[0] + 0.5, deep[1] + 0.5], mouth: [mouth[0] + 0.5, mouth[1] + 0.5], dir: [-du, -dv] });
   }
@@ -204,7 +204,7 @@ export function atlantisLand(world, ctx) {
       const u = su + du * k, v = sv + dv * k, pu = dv ? 1 : 0, pv = du ? 1 : 0; // across the corridor
       for (let s = -2; s <= 2; s++) {
         const edge = Math.abs(s) === 2;
-        for (let y = 2; y <= 6; y++) U(u + pu * s, y, v + pv * s, edge || y === 6 || k === n ? B.AT_BRICK : B.AIR);
+        for (let y = 2; y <= 6; y++) U(u + pu * s, y, v + pv * s, edge || y === 6 || k === n ? B.AT_BRICK : B.WATER);
         U(u + pu * s, 1, v + pv * s, B.AT_MOSAIC);
       }
     }
@@ -275,6 +275,7 @@ export function atlantisLand(world, ctx) {
     jars, shy, darters, deadEnds, school, lit: [0, 0, 0], boss, deep: DEEP,
   };
   world.skyDim = (x, y, z) => dimAt(x, y, z, world.atlantis.lit);
+  world.underground = () => false; // the dim city is not a cave: no cave fog, no "it's dark down here" (the net's glow is the light)
   const biome = world.realmBiome;
   world.realmBiome = (x, z) => (Math.hypot(x - CITY.x, z - CITY.z) <= CITY.flat ? 'atlantis' : biome ? biome(x, z) : 'pirateSea');
   world.sunkenY = (x, z, sp) => { // wild Atlantis creatures stand on the city floor (creatures.groundY)
