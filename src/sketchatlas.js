@@ -1,147 +1,185 @@
-// T45: the Sketchbook's pencil atlas. drawSketchAtlas(atlas) makes a canvas of exactly the same size and grid as the colour
-// atlas (so every block's tile number, every uv in every chunk and the Swirl tint's tile ranges stay valid) with the same tiles
-// drawn as a pencil sketch on warm paper: soft graphite strokes with gaps and grain, a faint wash of the tile's own colour.
-// The PATTERN says what a block is (grass flicks, brick rows, board lines), never only the shade. Tiles without a painter of their
-// own get the auto pattern (the colour tile's own detail as strokes, hatching when dark). Made once (lazily, game.sketch) and
-// deterministic: own mulberry32(4545), the same on every device.
+// T45 (look v2): the Sketchbook's pencil atlas is a DATA atlas. drawSketchAtlas(atlas) makes a canvas of exactly the same size and grid
+// as the colour atlas (so every block's tile number and every uv in every chunk stay valid), but its pixels are not a picture:
+//   R = the tile's KIND x 8 (what pencil marks the shader doodles on it: grass tufts, cracks, boards...; 0 = auto),
+//   G = the tone of the colour tile (its mean brightness: a dark block gets a little hatching even in the light),
+//   B = the auto detail (255 where the colour tile has an edge: a few faint strokes for blocks without a kind of their own),
+//   A = the colour tile's alpha, copied 1:1 (glass and leaf holes stay holes, so alphaTest still cuts them).
+// The face itself is paper and every mark is drawn by the block shader (caves.js skDraw) in world units, so lines run on across blocks,
+// stay smooth at any distance and boil with the drawing. The texture is uploaded without colour conversion (NoColorSpace, sketch.js).
+// Deterministic (no random numbers at all): the same atlas on every device.
 import { T, TILE_COUNT, tileX, tileY, mulberry32 } from './blocks.js';
 
-export const PAPER = [246, 242, 232];  // warm cream
-export const INK = [62, 60, 70];        // soft blue-grey graphite, never pure black
+export const PAPER = [246, 242, 232];  // warm cream (the realm's look.sketch.paper)
+export const INK = [62, 60, 70];        // soft blue-grey graphite, never pure black (look.sketch.ink)
 const N = 16;
 
-/* ---- a tiny drawing kit: a painter gets `d` (put a dot), `L` (line), `C` (ring), `S` (value setter) and the random numbers ---- */
-// mask values: 1 = stroke (grain, gaps), 2 = faint stroke, 3 = solid graphite, 4 = highlight (light)
-function kit(m, rand) {
-  let val = 1;
-  const d = (x, y) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < N && y < N) m[y * N + x] = val; };
-  const L = (x0, y0, x1, y1) => {
-    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
-    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-    let e = dx + dy;
-    for (;;) {
-      d(x0, y0);
-      if (x0 === x1 && y0 === y1) break;
-      const e2 = 2 * e;
-      if (e2 >= dy) { e += dy; x0 += sx; }
-      if (e2 <= dx) { e += dx; y0 += sy; }
-    }
-  };
-  const C = (cx, cy, r, from = 0, to = Math.PI * 2) => {
-    const steps = Math.max(12, Math.ceil(r * 10));
-    for (let i = 0; i <= steps; i++) { const a = from + (to - from) * i / steps; d(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
-  };
-  const S = v => { val = v; };
-  return { d, L, C, S, rand };
-}
-
-// Explicit painters for the blocks the Sketchbook is made of (the rest of the world's blocks use the auto pattern).
-const SKETCH = {
-  GRASS_TOP: ({ d, L, S }) => { S(2); for (const [x, y] of [[2, 2], [10, 1], [6, 7], [13, 8], [3, 12], [10, 13]]) { L(x, y, x + 1, y + 1); L(x + 1, y + 1, x + 2, y); d(x + 1, y + 2); d(x + 1, y + 3); } },
-  GRASS_SIDE: ({ d, L }) => {
-    for (const x0 of [0, 4, 8, 12]) { L(x0, 3, x0, 2); L(x0, 2, x0 + 1, 1); L(x0 + 1, 1, x0 + 2, 1); L(x0 + 2, 1, x0 + 3, 2); L(x0 + 3, 2, x0 + 3, 3); }
-    L(4, 7, 4, 9); L(11, 9, 11, 12); L(8, 11, 8, 12); L(2, 14, 5, 14); L(9, 15, 13, 15); d(14, 6); d(1, 10);
-  },
-  DIRT: ({ d, rand }) => { for (let i = 0; i < 24; i++) d(rand() * N, rand() * N); for (let i = 0; i < 5; i++) { const x = rand() * 14, y = rand() * 14; d(x, y); d(x + 1, y); } },
-  STONE: ({ L, C, d }) => { C(4, 4, 2.6); C(11.5, 5, 3); C(5, 11.5, 3.1); C(12, 12, 2.3); L(8, 8, 9, 10); L(9, 10, 8, 12); d(1, 8); d(14, 1); },
-  COBBLE: ({ C }) => { C(3, 3, 3); C(10, 3, 3.2); C(6.5, 8.5, 3); C(13, 9, 2.6); C(2.5, 13, 2.6); C(9.5, 14, 2.4); },
-  SAND: ({ d, L, rand }) => { for (let i = 0; i < 18; i++) d(rand() * N, rand() * N); L(3, 4, 5, 3); L(5, 3, 7, 4); L(7, 4, 9, 3); L(8, 11, 10, 10); L(10, 10, 12, 11); L(12, 11, 14, 10); },
-  GRAVEL: ({ L }) => { for (const [x, y] of [[1, 1], [6, 0], [11, 2], [3, 6], [8, 5], [13, 7], [1, 11], [6, 10], [11, 12]]) { L(x, y, x + 2, y); L(x, y + 2, x + 2, y + 2); L(x, y, x, y + 2); L(x + 2, y, x + 2, y + 2); } },
-  WATER: ({ d }) => { [3, 8, 13].forEach((y, k) => { for (let x = 0; x < N; x++) d(x, y + Math.round(Math.sin(x * 0.9 + k * 2) * 1.2)); }); },
-  LOG_SIDE: ({ L, C, d }) => { for (const x of [2, 6, 10, 14]) for (let y = 0; y < N; y++) d(x + (y % 5 === 2 ? 1 : 0), y); C(4, 8, 1.4); C(12, 4, 1.2); },
-  LOG_TOP: ({ C, d }) => { C(7.5, 7.5, 2.2); C(7.5, 7.5, 4.3); C(7.5, 7.5, 6.4); d(7, 7); d(8, 8); },
-  LEAVES: ({ L, C }) => { [3, 8, 13].forEach((y, k) => { for (let x0 = (k % 2) * 2 - 2; x0 < N; x0 += 5) C(x0 + 2.5, y, 2.4, Math.PI, Math.PI * 2); }); },
-  PINE_LEAVES: ({ L }) => { for (const y of [1, 6, 11]) { for (const x0 of [0, 8]) { L(x0, y, x0 + 3, y + 3); L(x0 + 3, y + 3, x0 + 7, y); } L(7, y + 2, 7, y + 4); } },
-  PLANKS: ({ L, d }) => { for (const y of [3, 7, 11, 15]) L(0, y, 15, y); [[5, 0, 3], [11, 4, 7], [4, 8, 11], [10, 12, 15]].forEach(([x, a, b]) => L(x, a, x, b)); for (const [x, y] of [[1, 1], [13, 5], [1, 9], [13, 13]]) d(x, y); },
-  BRICK: ({ L }) => { for (const y of [3, 7, 11, 15]) L(0, y, 15, y); [[3, 0, 3], [11, 0, 3], [7, 4, 7], [15, 4, 7], [3, 8, 11], [11, 8, 11], [7, 12, 15], [15, 12, 15]].forEach(([x, a, b]) => L(x, a, x, b)); },
-  STONE_BRICKS: ({ L }) => { L(0, 7, 15, 7); L(0, 15, 15, 15); L(7, 0, 7, 15); L(15, 0, 15, 15); for (const [x, y] of [[0, 0], [8, 0], [0, 8], [8, 8]]) { L(x + 1, y + 1, x + 4, y + 1); L(x + 1, y + 1, x + 1, y + 4); } },
-  GLASS: () => 'opaque', // the outline and the shine are the opaque pixels of the colour tile: ink on all of them
-  CLOUD: ({ d }) => { const cs = [[5, 9, 4.6], [10.5, 8.5, 5], [7.5, 5.5, 3.8]], inside = (x, y) => cs.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) <= r); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (inside(x, y) && !(inside(x - 1, y) && inside(x + 1, y) && inside(x, y - 1) && inside(x, y + 1))) d(x, y); },
-  SNOW: ({ d, L }) => { for (const [x, y] of [[3, 4], [9, 10], [12, 3]]) d(x, y); for (const [x, y] of [[6, 7], [2, 13], [13, 13]]) { L(x - 1, y, x + 1, y); L(x, y - 1, x, y + 1); } },
-  FLOWERS: ({ d, L, C }) => { for (const [x, y] of [[4, 5], [11, 9]]) { d(x, y); C(x, y, 2.4); L(x, y + 3, x, 15); } L(4, 11, 6, 9); L(11, 14, 13, 12); L(2, 13, 4, 12); },
-  LAMP: ({ C, L }) => { C(7.5, 7.5, 2.8); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; L(7.5 + Math.cos(a) * 4.4, 7.5 + Math.sin(a) * 4.4, 7.5 + Math.cos(a) * 6.8, 7.5 + Math.sin(a) * 6.8); } },
-  DO_PAPER: ({ L, S }) => { S(2); L(0, 4, 15, 4); L(0, 9, 15, 9); L(0, 14, 15, 14); L(3, 0, 3, 15); },
-  DO_INK: ({ L, S }) => { S(3); for (let y = 0; y < N; y++) L(0, y, 15, y); S(4); L(3, 4, 12, 4); L(4, 11, 10, 11); },
-  DO_PAD_TOP: ({ C, L, d }) => { C(7.5, 7.5, 6.6); const p = i => [7.5 + Math.sin(i * 4 * Math.PI / 5) * 4.6, 7.5 - Math.cos(i * 4 * Math.PI / 5) * 4.6]; for (let i = 0; i < 5; i++) L(...p(i), ...p(i + 1)); },
-  DO_PAD_SIDE: ({ L, d }) => { L(0, 4, 15, 4); L(0, 11, 15, 11); L(5, 4, 5, 11); L(0, 4, 0, 11); L(0, 4, 3, 7); L(0, 11, 3, 7); L(5, 5, 14, 5); d(2, 7); d(3, 7); },
-  DO_BINDING: ({ L, C }) => { for (const y of [1, 6, 11]) { C(7.5, y + 1.5, 1.4); L(1, y + 1, 5, y + 1); L(10, y + 1, 14, y + 1); L(1, y + 1, 1, y + 3); L(14, y + 1, 14, y + 3); } },
+// The kinds of pencil marks (the shader's numbers: keep them in step with caves.js skMarks).
+export const KIND = {
+  auto: 0, grassTop: 1, grassSide: 2, dirt: 3, stone: 4, cobble: 5, sand: 6, gravel: 7, water: 8, bark: 9, rings: 10, leaves: 11,
+  pine: 12, planks: 13, brick: 14, stoneBricks: 15, glass: 16, snow: 17, flowers: 18, sun: 19, wool: 20, page: 21, ink: 22,
+  padTop: 23, padSide: 24, binding: 25, snowSide: 26, layers: 27, ore: 28, mud: 29, ice: 30, crystal: 31,
 };
-export const SKETCH_TILES = Object.keys(SKETCH);
+// Tile name -> kind. Every other tile is `auto` (wool tiles are `wool`).
+export const KIND_OF = {
+  GRASS_TOP: 'grassTop', DREAM_GRASS_TOP: 'grassTop', PITCH_LIGHT: 'grassTop', PITCH_DARK: 'grassTop',
+  GRASS_SIDE: 'grassSide', DREAM_GRASS_SIDE: 'grassSide',
+  DIRT: 'dirt', STONE: 'stone', COBBLE: 'cobble', CRUMBLE: 'cobble',
+  SAND: 'sand', SHELL_SAND: 'sand', SANDSTONE_TOP: 'sand', GRAVEL: 'gravel', WATER: 'water',
+  LOG_SIDE: 'bark', PINE_SIDE: 'bark', PALM: 'bark', CACTUS_SIDE: 'bark', ROPE_POST: 'bark',
+  LOG_TOP: 'rings', CACTUS_TOP: 'rings', PALM_TOP: 'rings', ROPE_POST_TOP: 'rings', BARREL_TOP: 'rings',
+  LEAVES: 'leaves', MAPLE_LEAVES: 'leaves', PALM_LEAVES: 'pine', PINE_LEAVES: 'pine',
+  PLANKS: 'planks', DECK: 'planks', HULL: 'planks', TABLE_WOOD: 'planks', BARREL_SIDE: 'planks', NIGHTINGALE: 'planks', BEAM_SIDE: 'planks', BEAM_TOP: 'planks',
+  BRICK: 'brick', AT_BRICK: 'brick', RAINBOW_BRICK: 'brick',
+  STONE_BRICKS: 'stoneBricks', SWIRL_STONE: 'stoneBricks',
+  GLASS: 'glass', AT_DOME: 'glass',
+  SNOW: 'snow', CLOUD: 'snow', SWIRL_CLOUD: 'snow', CLOTH: 'snow', COURT_FLOOR: 'snow',
+  FLOWERS: 'flowers', TALL_GRASS: 'flowers',
+  LAMP: 'sun', GLOWCAP: 'sun', PAPER_LANTERN: 'sun', AT_LAMP_ON: 'sun', AT_LANTERN_ON: 'sun', SUNSTONE: 'sun',
+  DO_PAPER: 'page', DO_INK: 'ink', DO_PAD_TOP: 'padTop', DO_PAD_SIDE: 'padSide', DO_BINDING: 'binding',
+  SNOW_SIDE: 'snowSide', SANDSTONE: 'layers', MUD: 'mud',
+  COAL_ORE: 'ore', GOLD_ORE: 'ore', RUBY: 'ore', SAPPHIRE: 'ore',
+  ICE: 'ice', CRYSTAL: 'crystal',
+};
+export const SKETCH_TILES = Object.keys(KIND_OF);
 
-// Knit stitches (rows of little v's) for the wool blocks.
-function knit({ L }) { for (let y = 0; y < N; y += 4) for (let x = (y / 4) % 2 * 2; x < N; x += 4) { L(x, y, x + 1, y + 1); L(x + 1, y + 1, x + 2, y); L(x + 1, y + 2, x + 1, y + 3); } }
-
-/* ---- the auto pattern: the colour tile's own detail (a Sobel edge map of its luma) as strokes, plus hatching when it is dark ---- */
-function autoMask(m, luma, alpha, mean, rand) {
-  const at = (x, y) => luma[Math.max(0, Math.min(N - 1, y)) * N + Math.max(0, Math.min(N - 1, x))];
-  const edge = new Float32Array(N * N);
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const gx = -at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1) + at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1);
-    const gy = -at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1) + at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1);
-    edge[y * N + x] = Math.hypot(gx, gy) / 4;
-  }
-  for (const th of [0.12, 0.2, 0.3, 0.45, 2]) { // sharper and sharper until it is a drawing and not a scribble
-    m.fill(0);
-    let n = 0;
-    for (let i = 0; i < N * N; i++) if (alpha[i] >= 128 && edge[i] > th) { m[i] = 1; n++; }
-    if (n <= N * N * 0.34) break;
-  }
-  let count = 0; for (let i = 0; i < N * N; i++) count += m[i] ? 1 : 0;
-  if (count < 4) for (const [x, y] of [[4, 4], [11, 7], [7, 12], [13, 13], [2, 10]]) m[y * N + x] = 1; // a smooth tile still gets a few pencil dots
-  if (mean < 0.5) { // dark tiles: horizontal hatching, closer the darker (never the shader's diagonal)
-    const gap = mean < 0.25 ? 2 : mean < 0.38 ? 3 : 4;
-    for (let y = 0; y < N; y++) if (y % gap === 1) for (let x = 0; x < N; x++) if (alpha[y * N + x] >= 128 && (x + y * 3) % 7 !== 0) m[y * N + x] = 1;
-  }
-}
-
-// Hex of a colour in [r, g, b] 0..255 mixed.
-const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+// The kind number a tile gets (wool tiles: knit stitches).
+const kindOf = (name, t) => {
+  if (name && KIND_OF[name]) return KIND[KIND_OF[name]];
+  if (t >= T.WOOL0 && t < T.ICE) return KIND.wool; // the wool tiles sit between WOOL0 and the first of the more tiles
+  return KIND.auto;
+};
+export const kindOfTile = t => kindOf(Object.keys(T).find(k => T[k] === t), t);
 
 export function drawSketchAtlas(atlas) {
   const W = atlas.width, H = atlas.height;
   const src = atlas.getContext('2d').getImageData(0, 0, W, H).data;
   const out = new ImageData(W, H), o = out.data;
-  const rand = mulberry32(4545);
-  const names = Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k]));
-  const wool0 = T.WOOL0, woolEnd = T.ICE; // the wool tiles sit between WOOL0 and the first of the more tiles
-  const mask = new Uint8Array(N * N), luma = new Float32Array(N * N), alpha = new Uint8Array(N * N);
+  const names = {}; for (const [k, v] of Object.entries(T)) names[v] = k;
+  const luma = new Float32Array(N * N), alpha = new Uint8Array(N * N);
   for (let t = 0; t < TILE_COUNT; t++) {
     const tx = tileX(t), ty = tileY(t);
-    let sum = 0, cnt = 0, rr = 0, gg = 0, bb = 0;
+    let sum = 0, cnt = 0;
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const i = ((ty + y) * W + tx + x) * 4, k = y * N + x;
       alpha[k] = src[i + 3];
       luma[k] = (0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2]) / 255;
-      if (alpha[k] >= 128) { sum += luma[k]; cnt++; rr += src[i]; gg += src[i + 1]; bb += src[i + 2]; }
+      if (alpha[k] >= 128) { sum += luma[k]; cnt++; }
     }
-    const mean = cnt ? sum / cnt : 1;
-    // paper: a little darker for dark blocks (never below 80% of the paper), with a faint wash of the tile's own colour
-    const wash = 1 - Math.min(0.2, 0.16 * (1 - mean));
-    const tint = cnt ? [rr / cnt, gg / cnt, bb / cnt] : PAPER;
-    const base = mix(PAPER.map(v => v * wash), tint, 0.07);
-    mask.fill(0);
-    const name = names[t], paint = SKETCH[name];
-    let opaque = false;
-    if (paint) { const r = paint(kit(mask, rand)); opaque = r === 'opaque'; }
-    else if (t >= wool0 && t < woolEnd) knit(kit(mask, rand));
-    else autoMask(mask, luma, alpha, mean, rand);
+    const tone = cnt ? sum / cnt : 1;
+    const kind = kindOf(names[t], t);
+    // the auto detail: a Sobel edge map of the colour tile, sharper and sharper until it is a few strokes and not a scribble
+    const at = (x, y) => luma[Math.max(0, Math.min(N - 1, y)) * N + Math.max(0, Math.min(N - 1, x))];
+    const edge = new Float32Array(N * N);
+    if (kind === KIND.auto) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const gx = -at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1) + at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1);
+      const gy = -at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1) + at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1);
+      edge[y * N + x] = Math.hypot(gx, gy) / 4;
+    }
+    let th = 0.12;
+    if (kind === KIND.auto) for (th of [0.12, 0.2, 0.3, 0.45, 2]) {
+      let n = 0; for (let i = 0; i < N * N; i++) if (alpha[i] >= 128 && edge[i] > th) n++;
+      if (n <= N * N * 0.25) break;
+    }
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const k = y * N + x, i = ((ty + y) * W + tx + x) * 4;
-      let m = opaque ? (alpha[k] >= 128 ? 1 : 0) : mask[k];
-      if (alpha[k] < 128) m = 0;
-      if ((m === 1 || m === 2) && rand() < 1 / 12) m = 0; // gappy, hand-drawn
-      const g = 1 + (rand() - 0.5) * 0.3; // +-15% grain
-      let c = base;
-      if (m === 1) c = INK.map(v => v * g);
-      else if (m === 2) c = mix(base, INK, 0.62).map(v => v * g);
-      else if (m === 3) c = INK.map(v => v * (0.8 + (g - 1) * 0.5));
-      else if (m === 4) c = [196, 196, 210];
-      o[i] = Math.max(0, Math.min(255, c[0])); o[i + 1] = Math.max(0, Math.min(255, c[1])); o[i + 2] = Math.max(0, Math.min(255, c[2]));
+      o[i] = kind * 8;
+      o[i + 1] = Math.round(Math.max(0, Math.min(1, tone)) * 255);
+      o[i + 2] = kind === KIND.auto && alpha[k] >= 128 && edge[k] > th ? 255 : 0;
       o[i + 3] = src[i + 3]; // the alpha is copied 1:1: glass and holes stay what they were, so alphaTest still cuts them
     }
   }
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   c.getContext('2d').putImageData(out, 0, 0);
+  return c;
+}
+
+/* ---- the marks: one 96 px cell per kind, pencil strokes as alpha on a clear canvas (the shader reads .a, mipmapped) ---- */
+// The block shader picks the cell of a face's kind and turns / flips it per block (ROTATE kinds: any of 8 ways, the others only a mirror),
+// so neighbours never look stamped. Rows (planks, bricks, water, layers) run to the cell's edge so they join from block to block.
+export const MARK_TILE = 96;
+export const MARK_GRID = [8, 4];
+export const ROTATE_KINDS = [KIND.grassTop, KIND.dirt, KIND.stone, KIND.cobble, KIND.sand, KIND.gravel, KIND.leaves, KIND.snow, KIND.ore, KIND.rings]
+  .reduce((m, k) => m | (1 << k), 0);
+const MARKS = {
+  grassTop: ({ tuft }) => { tuft(0.38, 0.45, 1.1, -0.2); },
+  grassSide: ({ L, dot, rand }) => {
+    for (let i = 0; i < 6; i++) { const x = (i + 0.25 + 0.5 * rand()) / 6; L([[x, 0], [x + 0.06 * (rand() - 0.5), 0.07 + 0.13 * rand()]]); }
+    dot(0.3, 0.62, 0.014); dot(0.72, 0.8, 0.01);
+  },
+  dirt: ({ dot }) => { dot(0.25, 0.3, 0.016); dot(0.7, 0.22, 0.01); dot(0.55, 0.62, 0.02); dot(0.2, 0.75, 0.01); dot(0.8, 0.78, 0.014); dot(0.83, 0.79, 0.008); },
+  stone: ({ L, ring }) => { L([[0.22, 0.3], [0.38, 0.42], [0.36, 0.58]]); L([[0.38, 0.42], [0.5, 0.4]]); ring(0.68, 0.68, 0.11, 0.075); },
+  cobble: ({ ring }) => { ring(0.28, 0.28, 0.19, 0.16); ring(0.73, 0.3, 0.17, 0.17); ring(0.3, 0.74, 0.17, 0.18); ring(0.72, 0.72, 0.19, 0.16); },
+  sand: ({ dot, rand }) => { for (let i = 0; i < 16; i++) dot(0.08 + 0.84 * rand(), 0.08 + 0.84 * rand(), 0.007); },
+  gravel: ({ ring, rand }) => { for (let i = 0; i < 7; i++) { const r = 0.04 + 0.03 * rand(); ring(0.12 + 0.76 * rand(), 0.12 + 0.76 * rand(), r, r * 0.8); } },
+  water: ({ wave }) => { wave(0.22, 0.04, 0.1, 0.6); wave(0.55, 0.035, 0.45, 0.95); wave(0.85, 0.04, 0.05, 0.45); },
+  bark: ({ L, ring }) => { for (const x of [0.18, 0.5, 0.8]) L([[x, 0.02], [x + 0.03, 0.3], [x - 0.02, 0.6], [x + 0.01, 0.82]]); ring(0.33, 0.45, 0.05, 0.08); },
+  rings: ({ ring, dot }) => { ring(0.5, 0.5, 0.16, 0.15); ring(0.5, 0.5, 0.32, 0.3); dot(0.5, 0.5, 0.02); },
+  leaves: ({ loop }) => { loop(0.28, 0.3, 0.09, 1); loop(0.7, 0.36, 0.08, 3); loop(0.42, 0.72, 0.1, 5); loop(0.78, 0.76, 0.07, 2); },
+  pine: ({ L }) => { for (const [x, y] of [[0.3, 0.25], [0.7, 0.5], [0.35, 0.78]]) L([[x - 0.1, y - 0.07], [x, y], [x + 0.1, y - 0.07]]); },
+  planks: ({ L }) => { for (const y of [0, 1 / 3, 2 / 3, 1]) L([[0, y], [1, y]], 0.004); L([[0.6, 0], [0.6, 1 / 3]]); L([[0.25, 1 / 3], [0.25, 2 / 3]]); L([[0.8, 2 / 3], [0.8, 1]]); L([[0.1, 0.5], [0.45, 0.52]], 0.01); },
+  brick: ({ L }) => { for (const y of [0, 0.25, 0.5, 0.75, 1]) L([[0, y], [1, y]], 0.004); for (let r = 0; r < 4; r++) for (const x of r % 2 ? [0.25, 0.75] : [0.5]) L([[x, r * 0.25], [x, r * 0.25 + 0.25]]); },
+  stoneBricks: ({ L }) => { for (const y of [0, 0.5, 1]) L([[0, y], [1, y]], 0.004); L([[0.5, 0], [0.5, 0.5]]); L([[0.25, 0.5], [0.25, 1]]); L([[0.75, 0.5], [0.75, 1]]); L([[0.08, 0.1], [0.2, 0.1]]); L([[0.58, 0.6], [0.7, 0.6]]); },
+  glass: ({ L }) => { L([[0.22, 0.55], [0.55, 0.22]]); L([[0.4, 0.7], [0.7, 0.4]]); },
+  snow: ({ dot }) => { dot(0.3, 0.35, 0.01); dot(0.7, 0.68, 0.008); },
+  flowers: ({ daisy, L }) => { daisy(0.32, 0.32); daisy(0.68, 0.5); L([[0.32, 0.42], [0.34, 0.97]]); L([[0.68, 0.6], [0.66, 0.97]]); },
+  sun: ({ ring, L }) => { ring(0.5, 0.5, 0.15, 0.15); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; L([[0.5 + Math.cos(a) * 0.23, 0.5 + Math.sin(a) * 0.23], [0.5 + Math.cos(a) * 0.34, 0.5 + Math.sin(a) * 0.34]]); } },
+  wool: ({ L }) => { for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) if ((gx + gy) % 2 === 0) { const x = gx / 4, y = gy / 4; L([[x + 0.075, y + 0.09], [x + 0.125, y + 0.16], [x + 0.175, y + 0.09]], 0.002); } },
+  padTop: ({ ring, L }) => { ring(0.5, 0.5, 0.42, 0.42); const p = i => [0.5 + 0.3 * Math.sin(i * 4 * Math.PI / 5), 0.5 - 0.3 * Math.cos(i * 4 * Math.PI / 5)]; L([0, 1, 2, 3, 4, 5].map(p)); },
+  padSide: ({ L }) => { L([[0.1, 0.38], [0.78, 0.38], [0.94, 0.5], [0.78, 0.62], [0.1, 0.62], [0.1, 0.38]]); L([[0.22, 0.38], [0.22, 0.62]]); L([[0.78, 0.38], [0.78, 0.62]]); },
+  binding: ({ ring, L }) => { ring(0.5, 0.28, 0.15, 0.12); ring(0.5, 0.72, 0.15, 0.12); L([[0.1, 0.28], [0.32, 0.28]]); L([[0.1, 0.72], [0.32, 0.72]]); },
+  snowSide: ({ wave, dot }) => { wave(0.24, 0.04, 0, 1); dot(0.35, 0.6, 0.012); dot(0.7, 0.8, 0.01); },
+  layers: ({ L }) => { for (const y of [0, 1 / 3, 2 / 3, 1]) L([[0, y], [1, y]], 0.006); },
+  ore: ({ L, dot }) => { L([[0.2, 0.25], [0.35, 0.4], [0.3, 0.55]]); dot(0.65, 0.3, 0.045); dot(0.72, 0.68, 0.035); dot(0.35, 0.75, 0.04); },
+  mud: ({ dot, wave }) => { dot(0.3, 0.3, 0.014); dot(0.7, 0.25, 0.01); wave(0.62, 0.05, 0.1, 0.8); },
+  ice: ({ L }) => { L([[0.15, 0.7], [0.6, 0.2]]); L([[0.45, 0.85], [0.85, 0.45]]); },
+  crystal: ({ L }) => { L([[0.3, 0.8], [0.5, 0.2], [0.7, 0.8]]); L([[0.5, 0.2], [0.5, 0.8]]); },
+};
+
+export function drawSketchMarks() {
+  const T = MARK_TILE, [GX, GY] = MARK_GRID;
+  const c = document.createElement('canvas');
+  c.width = T * GX; c.height = T * GY;
+  const ctx = c.getContext('2d');
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const rand = mulberry32(4545);
+  for (const [name, k] of Object.entries(KIND)) {
+    const paint = MARKS[name];
+    if (!paint) continue;
+    const ox = (k % GX) * T, oy = Math.floor(k / GX) * T;
+    const P = (x, y) => [ox + x * T, oy + y * T];
+    // a pencil line through the points (tile units): split in short pieces that wander a little, each with its own pressure
+    const L = (pts, wob = 0.008) => {
+      for (let i = 1; i < pts.length; i++) {
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], n = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.05));
+        let px = x0, py = y0;
+        for (let j = 1; j <= n; j++) {
+          const t = j / n, edge = i === pts.length - 1 && j === n;
+          const x = x0 + (x1 - x0) * t + (edge ? 0 : (rand() - 0.5) * wob), y = y0 + (y1 - y0) * t + (edge ? 0 : (rand() - 0.5) * wob);
+          ctx.strokeStyle = `rgba(0,0,0,${(0.78 + 0.22 * rand()).toFixed(3)})`;
+          ctx.lineWidth = 1.3 + 0.5 * rand();
+          ctx.beginPath(); ctx.moveTo(...P(px, py)); ctx.lineTo(...P(x, y)); ctx.stroke();
+          px = x; py = y;
+        }
+      }
+    };
+    const ring = (cx, cy, rx, ry, from = 0, to = Math.PI * 2) => {
+      const n = 24, pts = [];
+      for (let i = 0; i <= n; i++) { const a = from + (to - from) * i / n, w = 1 + 0.08 * Math.sin(a * 3 + cx * 9); pts.push([cx + Math.cos(a) * rx * w, cy + Math.sin(a) * ry * w]); }
+      L(pts, 0.006);
+    };
+    const dot = (x, y, r) => { ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.beginPath(); ctx.arc(...P(x, y), Math.max(1, r * T), 0, Math.PI * 2); ctx.fill(); };
+    const tuft = (x, y, s, a) => { // two or three blades side by side
+      const R = (u, v) => [x + (u * Math.cos(a) - v * Math.sin(a)) * s, y + (u * Math.sin(a) + v * Math.cos(a)) * s];
+      L([R(-0.03, 0), R(-0.05, -0.08)]); L([R(0, 0), R(0.005, -0.12)]); L([R(0.03, 0), R(0.05, -0.075)]);
+    };
+    const loop = (x, y, r, seed) => { const g = seed * 1.3; ring(x, y, r, r * 0.85, g, g + Math.PI * 1.7); L([[x + Math.cos(g) * r, y + Math.sin(g) * r], [x + Math.cos(g) * r * 1.5, y + Math.sin(g) * r * 1.6]]); };
+    const wave = (y, amp, x0, x1) => { const pts = []; for (let i = 0; i <= 24; i++) { const x = x0 + (x1 - x0) * i / 24; pts.push([x, y + amp * Math.sin(x * Math.PI * 4)]); } L(pts, 0.004); };
+    const daisy = (x, y) => { for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; ring(x + Math.cos(a) * 0.055, y + Math.sin(a) * 0.055, 0.035, 0.035); } dot(x, y, 0.015); };
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ox, oy, T, T); ctx.clip();
+    paint({ L, ring, dot, tuft, loop, wave, daisy, rand });
+    ctx.restore();
+  }
   return c;
 }

@@ -634,47 +634,131 @@ export const sketchLook = {
   uInk: { value: new THREE.Color() },
   uSketchEdge: { value: new THREE.Vector4(0, 0, 1e9, 1e9) }, // x, z of the drawing's middle, r0, r1: the unfinished edge
   uAtlas: swirlTint.uAtlas,                   // the same uniform object as the Swirl tint's
+  uSketchMarks: { value: null },              // look v2: the marks texture (sketchatlas.js drawSketchMarks), set by sketch.js
+  uSketchRot: { value: 0 },                   // the kinds whose marks may be turned per block (a bit per kind)
 };
-// The pencil part of a block shader: outlines where the world changes (vEdge: the face's edge mask, world.js), hatching where it is dark,
-// blank paper at the rim. `S` = the light factor of the face (1 for glowing blocks). Runs only while uSketchOn is 1.
-const SKETCH_VERT_PARS = 'attribute float sketchEdge;\nvarying float vEdge;';
-const SKETCH_FRAG_PARS = `varying float vEdge;
+// The pencil part of a block shader (look v2): the face is PAPER (a warm grain continuous in world space) and the drawing is LINES:
+// bold wobbly outlines where the world changes (vEdge's 4 mask bits, world.js edgeMask), drawn as hand strokes 1.7-3 blocks long that
+// run on across blocks, overlap a little where they meet, sit a hair inside the face so they cross and overshoot at corners, lift now
+// and then (gaps) and thin out with distance; a few doodled MARKS that say what a block is (its kind from the data atlas,
+// sketchatlas.js: grass tufts, cracks, boards...); HATCHING where it is darker (broken diagonal strokes in world units, crossing in the
+// darkest places); blank paper at the rim. vEdge's bits 4-7 give the world axes of the face's u and v. Runs only while uSketchOn is 1.
+const SKETCH_VERT_PARS = '#ifdef SKETCH\nattribute float sketchEdge;\nvarying float vEdge;\n#endif';
+const SKETCH_VERT = '#ifdef SKETCH\nvEdge = sketchEdge;\n#endif';
+const SKETCH_FRAG_PARS = `#ifdef SKETCH
+varying float vEdge;
 uniform float uSketchOn;
 uniform float uSketchStep;
 uniform vec3 uPaper;
 uniform vec3 uInk;
 uniform vec4 uSketchEdge;
 uniform vec2 uAtlas;
-float skHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
-float skBit(float m, float k) { return mod(floor(m / exp2(k) + 0.001), 2.0); }`;
+uniform sampler2D uSketchMarks;
+uniform int uSketchRot;
+float skHash(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float skH(float a, float b) { vec3 p = fract(vec3(a, b, a) * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+// paper grain: a few crossed waves in world space (cheap, smooth, runs on across blocks), 0..1
+float skGrain(vec3 p) { return 0.5 + 0.17 * (sin(p.x * 1.9 + sin(p.z * 1.3) * 2.0) + sin(p.z * 2.3 + sin(p.y * 1.7 + p.x * 0.9) * 2.0) + sin((p.x + p.y) * 3.1 - p.z * 1.1)); }
+float skSeg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)); }
+// coverage of a stroke of half width hw at distance d (face units), smooth over a pixel
+float skInk(float d, float hw, float px) { return clamp((hw + 0.5 * px - d) / px, 0.0, 1.0) * min(1.0, (2.0 * hw + 0.3 * px) / px); }
+// one layer of hatching: broken, tapered, slightly bent pencil strokes across q.x, running along q.y; frac = the share of strokes drawn
+float skHatch1(vec2 q, float per, float frac, float px, float seed, float st) {
+  float i = floor(q.x / per), hi = skH(i, seed);
+  if (hi > frac) return 0.0;
+  float along = q.y / (per * 7.6) + hi * 5.0, j = floor(along), t = fract(along);
+  float hj = skH(i + j * 17.0, seed + 2.0);
+  float a0 = 0.03 + 0.3 * hj, a1 = 0.6 + 0.38 * skH(j + 3.0, i + seed);
+  float taper = smoothstep(a0, a0 + 0.12, t) * (1.0 - smoothstep(a1 - 0.12, a1, t));
+  float c = (i + 0.5 + 0.34 * (hj - 0.5) + 0.07 * sin(q.y / per * 0.24 + hi * 6.283 + st * 1.3)) * per;
+  return skInk(abs(q.x - c), max(per * (0.07 + 0.06 * hj), 0.45 * px) * taper, px);
+}
+// hatching that keeps its look on screen: the stroke spacing doubles with distance, so it never turns into moire
+float skHatch(vec2 q, float per, float frac, float px, float seed, float st) {
+  if (frac <= 0.0) return 0.0;
+  float l0 = floor(max(-1.0, log2(6.5 * px / per)) + 0.5);
+  return skHatch1(q, per * exp2(l0), frac, px, seed + l0 * 7.0, st);
+}
+// The whole pencil drawing of a block face: data = the data atlas texel, S = the face's light (1 for glowing blocks).
+vec3 skDraw(vec4 data, vec2 uv, float S) {
+  vec2 f = fract(vec2(uv.x * uAtlas.x, (1.0 - uv.y) * uAtlas.y));
+  vec2 w = max(fwidth(f), vec2(0.0001));
+  float px = max(w.x, w.y), bpx = 1.0 / px; // face units per pixel, and the block's size in pixels
+  int em = int(vEdge + 0.5), ua = (em >> 4) & 3, va = (em >> 6) & 3, na = 3 - ua - va;
+  if (na < 0 || na > 2 || ua == va) { ua = 0; va = 2; na = 1; }
+  vec3 P = vCavePos;
+  vec3 au = vec3(equal(ivec3(ua), ivec3(0, 1, 2))), av = vec3(equal(ivec3(va), ivec3(0, 1, 2)));
+  float pu = dot(P, au), pv = dot(P, av), pn = dot(P, vec3(1.0) - au - av);
+  vec3 cid = vec3(floor(pu), floor(pv), floor(pn + 0.5) + 0.37 * float(na));
+  float st = uSketchStep;
+  int kind = int(data.r * 31.875 + 0.5);
+  float dist = distance(P, cameraPosition);
+  float rim = smoothstep(uSketchEdge.z, uSketchEdge.w, distance(P.xz, uSketchEdge.xy));
+  // paper: warm, with a grain that runs on across blocks
+  float grain = skGrain(P * 4.0);
+  vec3 paper = uPaper * (0.955 + 0.06 * grain);
+  // hatching: darker faces (sides, undersides, shadow) and dark blocks get more strokes, crossing in the darkest places
+  float D = clamp((1.0 - S) * 1.1 + (0.5 - data.g) * 0.45 - 0.05, 0.0, 1.0);
+  vec2 q1 = vec2(pu + pv, pu - pv) * 0.7071, q2 = vec2(pu - pv, pu + pv) * 0.7071;
+  bool inked = kind == 22; // a drawn line: pressed-hard graphite, scribbled both ways (the same two layers, closer and all strokes)
+  float hatch = max(skHatch(q1, inked ? 0.06 : 0.105, inked ? 1.0 : smoothstep(0.12, 0.5, D), px, 1.0, st),
+                    skHatch(q2, inked ? 0.07 : 0.12, inked ? 1.0 : smoothstep(0.62, 0.86, D), px, 2.0, st));
+  hatch = min(1.0, hatch * (1.0 + 0.6 * smoothstep(0.85, 1.0, D))); // the darkest places press harder
+  // marks: what the block is (only when the block is big enough on screen to read them)
+  float marks = 0.0;
+  if (bpx > 9.0) {
+    if (kind == 0) marks = data.b * 0.55 * smoothstep(40.0, 90.0, bpx);
+    else if (kind != 21 && kind != 22) {
+      // the kind's cell of the marks texture, turned and mirrored per block (8 ways for ROTATE kinds, else only mirrored)
+      vec2 g = f; float hs = skHash(cid + 0.5);
+      if (((uSketchRot >> kind) & 1) == 1) { if (hs > 0.5) g = g.yx; if (fract(hs * 4.0) > 0.5) g.y = 1.0 - g.y; }
+      if (fract(hs * 16.0) > 0.5) g.x = 1.0 - g.x;
+      g += 0.006 * sin(vec2(g.y * 13.0, g.x * 11.0) + st * 1.3);
+      vec2 cell = vec2(float(kind - (kind / 8) * 8), float(kind / 8));
+      vec2 mu = (cell + clamp(g, 0.004, 0.996)) / vec2(8.0, 4.0);
+      marks = textureLod(uSketchMarks, vec2(mu.x, 1.0 - mu.y), max(0.0, log2(96.0 * px))).a; // the canvas is uploaded flipped (flipY)
+    }
+    marks *= smoothstep(9.0, 24.0, bpx);
+  }
+  vec3 ink = uInk * (0.92 + 0.16 * grain);
+  vec3 col = mix(paper, ink, 1.0 - (1.0 - 0.6 * hatch) * (1.0 - 0.85 * marks));
+  if (kind == 21) { // the blank page: faint blue ruled lines, like a notebook
+    float rl = skInk(abs(fract(pv / 1.6 + 0.5) - 0.5) * 1.6, 0.012, px) * smoothstep(6.0, 18.0, bpx);
+    col = mix(col, vec3(0.42, 0.56, 0.78), 0.35 * rl);
+  }
+  if (inked) col = mix(paper, ink, 0.42 + 0.5 * hatch); // the paper shows through a little
+  col = mix(col, uPaper, 0.9 * rim);
+  // outlines: hand strokes along the drawn edges
+  float lineW = clamp(bpx * 0.03, 1.5, 4.2);
+  float out_ = 0.0;
+  for (int e = 0; e < 4; e++) {
+    if (((em >> e) & 1) == 0) continue;
+    bool onU = e < 2;
+    float d = e == 0 ? f.x : e == 1 ? 1.0 - f.x : e == 2 ? 1.0 - f.y : f.y;
+    float pxA = onU ? w.x : w.y;
+    float along = onU ? pv : pu, across = onU ? pu : pv;
+    vec3 lid = vec3(floor(across + 0.5), floor(pn + 0.5) + 0.37 * float(na), float(e) * 1.3);
+    float L = 1.7 + 1.3 * skHash(lid), s = along / L + skHash(lid + 3.1), k0 = floor(s), ext = 0.14 / L;
+    for (int j = 0; j < 2; j++) {
+      float kk = k0 + (j == 0 ? 0.0 : (fract(s) < 0.5 ? -1.0 : 1.0)), tt = s - kk;
+      if (tt < -ext || tt > 1.0 + ext) continue;
+      float hk = skHash(lid + vec3(kk, 1.7, 0.4)), tc = clamp(tt, 0.0, 1.0);
+      float off = mix(0.012 + 0.05 * hk, 0.012 + 0.05 * skHash(lid + vec3(kk, 4.3, 0.9)), tc) + 0.007 * sin(along * 7.0 + hk * 6.283 + st * 1.9);
+      float weight = (0.7 + 0.55 * hk) * (0.75 + 0.35 * sin(tc * 3.1416));
+      float taper = smoothstep(-ext, 0.0, tt) * (1.0 - smoothstep(1.0, 1.0 + ext, tt));
+      float ga = skHash(lid + vec3(kk, 8.1, 0.2));
+      float gap = ga > 0.66 ? 1.0 - smoothstep(0.03, 0.07, abs(tt - 0.25 - 0.5 * fract(ga * 7.0)) * L) : 0.0;
+      out_ = max(out_, skInk(abs(d - off), 0.5 * lineW * weight * pxA, pxA) * taper * (1.0 - gap));
+    }
+  }
+  float far_ = mix(1.0, 0.45, smoothstep(34.0, 64.0, dist));
+  return mix(col, ink * 0.92, 0.95 * out_ * far_ * (1.0 - 0.5 * rim));
+}
+#endif`;
 const sketchFrag = S => `
-        if (uSketchOn > 0.5) {
-          float S = ${S};
-          vec2 f = fract(vec2(vMapUv.x * uAtlas.x, (1.0 - vMapUv.y) * uAtlas.y));
-          vec2 w = max(fwidth(f), vec2(0.0001));
-          vec3 cell = floor(vCavePos + 0.002);
-          float step_ = uSketchStep;
-          float rim = smoothstep(uSketchEdge.z, uSketchEdge.w, distance(vCavePos.xz, uSketchEdge.xy));
-          float far_ = mix(1.0, 0.3, smoothstep(30.0, 60.0, distance(vCavePos, cameraPosition)));
-          float ink = 0.0;
-          for (int e = 0; e < 4; e++) {
-            if (skBit(vEdge, float(e)) < 0.5) continue;
-            bool onU = e < 2;
-            float d = e == 0 ? f.x : e == 1 ? 1.0 - f.x : e == 2 ? 1.0 - f.y : f.y;
-            float along = onU ? f.y : f.x;
-            float px = (d + 0.035 * sin(along * 9.0 + skHash(cell + vec3(float(e), step_, 1.0)) * 6.283)) / (onU ? w.x : w.y);
-            float cover = 1.0 - smoothstep(0.8, 1.6, px);
-            float gap = step(0.82, skHash(cell + vec3(float(e) * 3.1, floor(along * 3.0), 7.0)));
-            ink = max(ink, cover * (1.0 - gap));
-          }
-          float hatch = 0.0, off = 0.02 * skHash(vec3(step_, 3.0, 5.0));
-          if (S < 0.8) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract((f.x + f.y) * 7.0 + off)));
-          if (S < 0.55) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract((f.x - f.y) * 7.0 + off)));
-          if (S < 0.35) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract(f.x * 7.0 + 0.5 + off)));
-          diffuseColor.rgb = mix(diffuseColor.rgb, uInk, hatch * 0.45 * clamp((0.8 - S) / 0.8, 0.0, 1.0));
-          diffuseColor.rgb = mix(diffuseColor.rgb, uPaper, 0.9 * rim);
-          diffuseColor.rgb = mix(diffuseColor.rgb, uInk, 0.85 * far_ * ink * (1.0 - 0.5 * rim));
-        }`;
+        #ifdef SKETCH
+        if (uSketchOn > 0.5) diffuseColor.rgb = skDraw(texture2D(map, vMapUv), vMapUv, ${S});
+        #endif`;
 
 // Vertex colours are packed as r = sky light x shade, g = block light x shade, b = shade.
 // { sketch: false } leaves the pencil part out (for the spec's bit-for-bit check only).
@@ -698,7 +782,7 @@ uniform vec3 uHi[5];
 uniform vec3 uSea[5];`)
       .replace('#include <project_vertex>', `#include <project_vertex>
 vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-${sketch ? 'vEdge = sketchEdge;' : ''}
+${sketch ? SKETCH_VERT : ''}
 vTint = vec3(1.0);
 float tileN = floor(uv.x * uAtlas.x) + floor((1.0 - uv.y) * uAtlas.y) * uAtlas.x;
 if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTintU.z && tileN < uTintU.w))) {
@@ -723,22 +807,22 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
         diffuseColor.rgb *= vTint;${sketch ? sketchFrag('max(vColor.r * uLit, max(vColor.g, vColor.b * lan))') : ''}`);
   };
-  mat.customProgramCacheKey = () => (sketch ? 'cave-light-4' : 'cave-light-3');
+  mat.customProgramCacheKey = () => (sketch ? 'cave-light-5' : 'cave-light-3');
   mat.needsUpdate = true;
 }
 
-// T45: the glow material (lamps, the way back, frames) was never patched; it gets only the pencil part (cache key 'sketch-glow-1').
-// With uSketchOn = 0 its output is what it was before.
+// T45: the glow material (lamps, the way back, frames) was never patched; it gets only the pencil part (cache key 'sketch-glow-2').
+// Without the SKETCH define (every world but the Sketchbook) its output is what it was before.
 export function patchSketch(mat) {
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, sketchLook);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_VERT_PARS}`)
-      .replace('#include <project_vertex>', `#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvEdge = sketchEdge;`);
+      .replace('#include <project_vertex>', `#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n${SKETCH_VERT}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_FRAG_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>${sketchFrag('1.0')}`);
   };
-  mat.customProgramCacheKey = () => 'sketch-glow-1';
+  mat.customProgramCacheKey = () => 'sketch-glow-2';
   mat.needsUpdate = true;
 }

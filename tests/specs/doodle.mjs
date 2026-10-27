@@ -143,6 +143,7 @@ export default async function ({ browser, base, t }) {
   }
 
   /* ================================ B. the pencil atlas ================================ */
+  // look v2: a data atlas (R = kind x 8, G = tone, B = auto detail, A = the colour tile's alpha); the shader draws the marks.
   if (want('atlas')) {
     const B = await page.evaluate(async () => {
       const BL = await import('/src/blocks.js'), SA = await import('/src/sketchatlas.js');
@@ -152,39 +153,33 @@ export default async function ({ browser, base, t }) {
       const dat = c => c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       const col = dat(atlas), sk = dat(a), sk2 = dat(a2);
       let same = true; for (let i = 0; i < sk.length; i++) if (sk[i] !== sk2[i]) { same = false; break; }
-      let alphaBad = 0; for (let i = 3; i < col.length; i += 4) if (col[i] < 128 && sk[i] !== col[i]) alphaBad++; else if (col[i] !== sk[i]) alphaBad++;
-      const tiles = []; // per tile: paper pixels and ink pixels
-      const PAPER = SA.PAPER, ink = (r, g, b) => r + g + b < 3 * 120;
-      let noPaper = 0, noInk = [];
+      let alphaBad = 0; for (let i = 3; i < col.length; i += 4) if (col[i] !== sk[i]) alphaBad++;
+      const at = (tt, x, y) => ((BL.tileY(tt) + y) * a.width + BL.tileX(tt) + x) * 4;
+      // every opaque pixel of a tile carries the tile's kind and tone (one value per tile)
+      let mixed = 0;
       for (let tt = 0; tt < BL.TILE_COUNT; tt++) {
-        let paper = 0, inkN = 0;
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = ((BL.tileY(tt) + y) * a.width + BL.tileX(tt) + x) * 4; if (sk[i + 3] < 128) continue; if (ink(sk[i], sk[i + 1], sk[i + 2])) inkN++; else if (sk[i] > 150 && sk[i + 1] > 150) paper++; }
-        if (paper === 0) noPaper++;
-        if (inkN < 3) noInk.push(tt);
+        let r = -1, g = -1;
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = at(tt, x, y); if (sk[i + 3] < 255) continue; if (r < 0) { r = sk[i]; g = sk[i + 1]; } else if (sk[i] !== r || sk[i + 1] !== g) mixed++; }
       }
-      // patterns differ: the binarised ink masks of the tiles that have a painter of their own
-      const names = SA.SKETCH_TILES.filter(n => n !== 'GLASS');
-      const mask = n => { const out = []; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = ((BL.tileY(BL.T[n]) + y) * a.width + BL.tileX(BL.T[n]) + x) * 4; out.push(sk[i] + sk[i + 1] + sk[i + 2] < 3 * 150 ? 1 : 0); } return out; };
-      const masks = Object.fromEntries(names.map(n => [n, mask(n)]));
-      let worst = 1, worstPair = ''; const low = [];
-      for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
-        let d = 0; for (let k = 0; k < 256; k++) if (masks[names[i]][k] !== masks[names[j]][k]) d++;
-        if (d / 256 < 0.14) low.push(names[i] + '/' + names[j] + ':' + (d / 256 * 100).toFixed(0)); if (d / 256 < worst) { worst = d / 256; worstPair = names[i] + '/' + names[j]; }
-      }
-      // brick-like tiles do not look like board-like ones in the auto pattern: BRICK vs PLANKS use painters, so compare two auto tiles
-      const auto = n => { const m = []; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = ((BL.tileY(BL.T[n]) + y) * a.width + BL.tileX(BL.T[n]) + x) * 4; m.push(sk[i] + sk[i + 1] + sk[i + 2] < 3 * 150 ? 1 : 0); } return m; };
-      let autoDiff = 0; { const p = auto('RAINBOW_BRICK'), q = auto('SANDSTONE'); for (let k = 0; k < 256; k++) if (p[k] !== q[k]) autoDiff++; }
-      return { w: a.width === atlas.width, h: a.height === atlas.height, same, alphaBad, noPaper, noInk: noInk.length, ms, ms2, worst, worstPair, names: names.length, low, autoDiff, tiles: BL.TILE_COUNT, walls: ['DO_PAPER', 'DO_INK', 'DO_PAD_TOP', 'DO_PAD_SIDE', 'DO_BINDING'].every(n => BL.T[n] > 0) };
+      const kindOf = n => { const tt = BL.T[n]; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = at(tt, x, y); if (sk[i + 3] === 255) return sk[i] / 8; } return -1; };
+      const wrong = SA.SKETCH_TILES.filter(n => BL.T[n] != null && kindOf(n) !== SA.KIND[SA.KIND_OF[n]]);
+      const kinds = new Set(SA.SKETCH_TILES.filter(n => BL.T[n] != null).map(kindOf));
+      const wool = kindOf('WOOL0' in BL.T ? 'WOOL0' : 'ICE') === SA.KIND.wool;
+      const detail = n => { const out = []; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) out.push(sk[at(BL.T[n], x, y) + 2] > 128 ? 1 : 0); return out; };
+      const p = detail('CHEST_SIDE'), q = detail('TROPHY_SIDE');
+      let autoDiff = 0, autoInk = 0; for (let k = 0; k < 256; k++) { if (p[k] !== q[k]) autoDiff++; autoInk += p[k]; }
+      const toneOf = n => sk[at(BL.T[n], 8, 8) + 1];
+      return { w: a.width === atlas.width, h: a.height === atlas.height, same, alphaBad, mixed, wrong, kinds: kinds.size, wool, autoDiff, autoInk, ms, ms2, dark: toneOf('COAL_ORE') < toneOf('SAND') };
     });
     t.ok(B.w && B.h, 'the pencil atlas has exactly the size of the colour atlas');
-    t.ok(B.same, 'drawing it twice gives the same bytes (own random numbers)');
+    t.ok(B.same, 'drawing it twice gives the same bytes');
     t.ok(B.alphaBad === 0, `the alpha is copied 1:1 (glass and holes stay holes; ${B.alphaBad} differ)`);
-    t.ok(B.noPaper === 0, `every tile has paper (${B.noPaper} tiles without)`);
-    t.ok(B.noInk <= 6, `tiles have at least 3 ink pixels (${B.noInk} of ${B.tiles} do not: blank-ish ones such as glass, snow-like or tiny tiles)`);
-    t.ok(B.worst >= 0.12, `the ${B.names} painted patterns differ pairwise in at least 12% of their pixels (worst ${(B.worst * 100).toFixed(0)}%: ${B.worstPair})`);
-    t.ok(B.autoDiff > 20, `two auto-pattern tiles differ (${B.autoDiff} pixels)`);
+    t.ok(B.mixed === 0, `every tile carries one kind and one tone (${B.mixed} pixels differ from their tile)`);
+    t.ok(B.wrong.length === 0 && B.kinds >= 28, `every named tile has its kind (${B.kinds} different kinds; wrong: ${B.wrong.join(' ')})`);
+    t.ok(B.wool, 'wool tiles get the knit kind');
+    t.ok(B.autoInk > 4 && B.autoDiff > 20, `auto tiles keep a little of their own detail (${B.autoInk} detail pixels, two tiles differ in ${B.autoDiff})`);
+    t.ok(B.dark, 'the tone follows the colour tile (coal ore darker than sand)');
     t.ok(B.ms < 120, `drawing the atlas takes ${B.ms.toFixed(0)} ms here the first time (${B.ms2.toFixed(0)} ms the second; software rendering, once per session)`);
-    if (B.low.length) console.log('  close pairs: ' + B.low.join(' '));
     console.log(`  atlas draw ${B.ms.toFixed(1)} ms (first), ${B.ms2.toFixed(1)} ms (second)`);
   }
 
@@ -357,6 +352,7 @@ export default async function ({ browser, base, t }) {
     t.ok(base.place === 'doodle' && base.live && base.doors === 2 && base.crew === 2 && Math.abs(base.pos[0] - base.arrival[0]) < 0.6, `in the Sketchbook: ${base.doors} ways back, ${base.crew} crew, the pencil part is live, you arrived in front of the way back`);
 
     if (want('look')) {
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); // a frame in the Sketchbook (the sky and fog follow it)
       const L = await page.evaluate(async () => {
         const g = window.pokecraft, { sketchLook } = await import('/src/caves.js'), S = await import('/src/species.js'), THREE = await import('three');
         const out = {};
@@ -404,16 +400,16 @@ export default async function ({ browser, base, t }) {
         const g = window.pokecraft, THREE = await import('three'), r = g.renderer, gl = r.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
         const w0 = g.world, top = 14;
         // a 5 x 5 stone slab, one block high, on the grass of the Cover, seen from straight above
-        for (let x = 74; x < 79; x++) for (let z = 138; z < 143; z++) w0.set(x, top + 1, z, 3);
+        for (let x = 82; x < 87; x++) for (let z = 138; z < 143; z++) w0.set(x, top + 1, z, 3);
         w0.updateDirty();
-        const cam = g.camera; cam.position.set(76.5, top + 14, 140.5); cam.rotation.set(-Math.PI / 2, 0, 0); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        const cam = g.camera; cam.position.set(84.5, top + 14, 140.5); cam.rotation.set(-Math.PI / 2, 0, 0); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
         g.sketch.hold = true;
         g.scene.fog.near = 1000; g.scene.fog.far = 2000;
         r.render(g.scene, cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b);
         const px = (x, y) => { const i = ((H - 1 - y) * W + x) * 4; return b[i] + b[i + 1] + b[i + 2]; };
         const scr = (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(cam); return [Math.round((v.x * 0.5 + 0.5) * W), Math.round((1 - (v.y * 0.5 + 0.5)) * H)]; };
         const dark = (x0, y0, x1, y1) => { let n = 0, tot = 0; for (let y = Math.min(y0, y1); y < Math.max(y0, y1); y++) for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x++) { tot++; if (px(x, y) < 3 * 110) n++; } return n / Math.max(1, tot); };
-        const [ax, ay] = scr(74, top + 2, 138), [bx, by] = scr(79, top + 2, 143); // the slab's top face on screen
+        const [ax, ay] = scr(82, top + 2, 138), [bx, by] = scr(87, top + 2, 143); // the slab's top face on screen
         const edgeBand = 5;
         const north = dark(ax, ay - 2, bx, ay + edgeBand), south = dark(ax, by - edgeBand, bx, by + 2), west = dark(ax - 2, ay, ax + edgeBand, by), east = dark(bx - edgeBand, ay, bx + 2, by);
         const mid = dark(ax + 20, ay + 20, bx - 20, by - 20);
@@ -423,12 +419,38 @@ export default async function ({ browser, base, t }) {
         // distance: a block 76 from the middle (80, 80) is mostly paper
         const meanAt = (x, z) => 0;
         const out = { north, south, west, east, mid, field, size: [bx - ax, by - ay] };
-        for (let x = 74; x < 79; x++) for (let z = 138; z < 143; z++) w0.set(x, top + 1, z, 0);
+        for (let x = 82; x < 87; x++) for (let z = 138; z < 143; z++) w0.set(x, top + 1, z, 0);
         w0.updateDirty();
         return out;
       });
       t.ok(P.north > 0.15 && P.south > 0.15 && P.west > 0.15 && P.east > 0.15, `an outline on each drawn edge of a slab (dark share of the edge bands: N ${P.north.toFixed(2)} S ${P.south.toFixed(2)} W ${P.west.toFixed(2)} E ${P.east.toFixed(2)})`);
       t.ok(P.field < P.north * 0.6, `none between two grass blocks of a flat field (field ${P.field.toFixed(2)} vs edge ${P.north.toFixed(2)})`);
+      // look v2: the kinds read apart (doodled marks, not a texture): the inside of a 3 x 3 slab of each kind, seen from above
+      const K = await page.evaluate(async () => {
+        const g = window.pokecraft, THREE = await import('three'), { B } = await import('/src/blocks.js'), r = g.renderer, gl = r.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+        const w0 = g.world, top = 14, cam = g.camera, out = {};
+        cam.position.set(84.5, top + 5, 140.5); cam.rotation.set(-Math.PI / 2, 0, 0); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        g.scene.fog.near = 1000; g.scene.fog.far = 2000;
+        const masks = {};
+        for (const name of ['STONE', 'PLANKS', 'BRICK', 'COBBLE', 'SAND', 'LEAVES']) {
+          for (let x = 83; x < 86; x++) for (let z = 139; z < 142; z++) w0.set(x, top + 1, z, B[name]);
+          w0.updateDirty();
+          r.render(g.scene, cam); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b);
+          const p0 = new THREE.Vector3(83.15, top + 2, 139.15).project(cam), p1 = new THREE.Vector3(85.85, top + 2, 141.85).project(cam);
+          const sx = v => Math.round((v.x * 0.5 + 0.5) * W), sy = v => Math.round((v.y * 0.5 + 0.5) * H);
+          const m = []; let dark = 0;
+          for (let y = Math.min(sy(p0), sy(p1)); y < Math.max(sy(p0), sy(p1)); y += 2) for (let x = Math.min(sx(p0), sx(p1)); x < Math.max(sx(p0), sx(p1)); x += 2) { const i = (y * W + x) * 4, d = b[i] + b[i + 1] + b[i + 2] < 3 * 150 ? 1 : 0; m.push(d); dark += d; }
+          masks[name] = m; out[name] = dark / m.length;
+        }
+        for (let x = 83; x < 86; x++) for (let z = 139; z < 142; z++) w0.set(x, top + 1, z, 0);
+        w0.updateDirty();
+        const names = Object.keys(masks); let worst = 1, pair = '';
+        for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) { const a = masks[names[i]], c = masks[names[j]]; let d = 0, n = 0; for (let k = 0; k < a.length; k++) { if (a[k] !== c[k]) d++; n += a[k] + c[k]; } if (d / Math.max(1, n) < worst) { worst = d / Math.max(1, n); pair = names[i] + '/' + names[j]; } }
+        out.worst = worst; out.pair = pair;
+        return out;
+      });
+      console.log(`  kinds (dark share of a block top): ${['STONE', 'PLANKS', 'BRICK', 'COBBLE', 'SAND', 'LEAVES'].map(n => n + ' ' + K[n].toFixed(3)).join(', ')}`);
+      t.ok(K.worst > 0.6 && ['STONE', 'PLANKS', 'BRICK', 'COBBLE', 'LEAVES'].every(n => K[n] > 0.003 && K[n] < 0.35), `block kinds are drawn with their own marks, mostly paper (worst pair ${K.pair} shares only ${(100 - K.worst * 100).toFixed(0)}% of its pencil marks)`);
       const far = await page.evaluate(async () => {
         const g = window.pokecraft, THREE = await import('three'), r = g.renderer, gl = r.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, w0 = g.world;
         // a pile of stone 76 from the middle (80, 80): (80, 4) is the south... north edge of the map; the page below is at y 4, so build up from there
@@ -820,6 +842,17 @@ async function shotsPart({ browser, base, t }) {
   // the Desk: Arlo
   await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); L.drawUpTo(8); const n = g.npcs.list.find(n => n.kind === 'boss'), r = g.world.bosses[0].rest; window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), -0.05); });
   await shot(page, 'desk', null, 800);
+  // a battle in the Sketchbook (look v2: paper models, outlines, hatching)
+  await page.evaluate(async () => {
+    const g = window.pokecraft, S = await import('/src/species.js'), p = g.player;
+    window.__at(80.5, 15, 140.5, 0, 0);
+    g.party = [S.makeCreature('thunderwolf', 20)];
+    const wild = g.creatures.spawnAt('graphitan', Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z) - 4);
+    g.inBattle = true; document.body.classList.add('in-battle');
+    g.battle.start({ wild });
+  });
+  await waitFor(page, () => window.pokecraft.battle.allyModel && window.pokecraft.battle.foeModel, null, 60000);
+  await shot(page, 'battle', null, 1500);
   t.ok(!page.errors.length, `no page errors (screenshots) ${page.errors.join('; ')}`);
   await page.context().close();
 }

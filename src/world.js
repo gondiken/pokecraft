@@ -92,6 +92,11 @@ const EDGE_DIRS = FACES.map(f => {
   };
   return [dirOf(0, 0), dirOf(0, 1), dirOf(1, 0), dirOf(1, 1)];
 });
+// T45 look v2: the world axes of the face, packed above the 4 mask bits: bits 4-5 = the axis the tile's u runs along, bits 6-7 = the axis
+// of v (the third is the face's normal). The pencil shader draws its lines, marks and hatching in world units with them, so a stroke
+// runs on across blocks.
+const axisOf = d => d.findIndex(v => v !== 0);
+const EDGE_AXES = EDGE_DIRS.map(ed => 16 * axisOf(ed[0]) + 64 * axisOf(ed[2]));
 
 // Block light: glowing blocks (lamps, crystals, glowcaps) light the cells around them. Each chunk
 // stamps the glow blocks within 4 blocks of it into this buffer (24 x 48 x 24), reused every build.
@@ -671,11 +676,12 @@ export class World {
           if (id === B.AIR) continue;
           if (id === B.WATER) {
             const surfaceTop = this.get(x, y + 1, z) !== B.WATER;
-            for (const f of FACES) {
+            for (let fi = 0; fi < 6; fi++) {
+              const f = FACES[fi];
               const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
               if (n !== B.AIR) continue;
               if (f.kind === 'bottom') continue;
-              this.addFace(water, x, y, z, f, BLOCKS[id].side, surfaceTop ? 0.88 : 1, this.skyAt(x + f.dir[0], y + f.dir[1], z + f.dir[2]), this.lightAt(x + f.dir[0], y + f.dir[1], z + f.dir[2], x0, z0));
+              this.addFace(water, x, y, z, f, BLOCKS[id].side, surfaceTop ? 0.88 : 1, this.skyAt(x + f.dir[0], y + f.dir[1], z + f.dir[2]), this.lightAt(x + f.dir[0], y + f.dir[1], z + f.dir[2], x0, z0), sk ? EDGE_AXES[fi] : 0);
             }
             continue;
           }
@@ -689,10 +695,10 @@ export class World {
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
             if (id === B.FIREPLACE) this.hasFire = true; // T22: main.js flickers the fire only in worlds that have one
             if (id === B.PORTAL) this.hasPortal = true; // T38a: main.js turns the Portal Door's spiral only in worlds that have one
-            if (def.glow) this.addFace(glow, x, y, z, f, tile, 1, 1, 1, sk ? this.edgeMask(x, y, z, fi, id) : 0);
+            if (def.glow) this.addFace(glow, x, y, z, f, tile, 1, 1, 1, sk ? this.edgeMask(x, y, z, fi, id) + EDGE_AXES[fi] : 0);
             else {
               const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];
-              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0), sk ? this.edgeMask(x, y, z, fi, id) : 0);
+              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0), sk ? this.edgeMask(x, y, z, fi, id) + EDGE_AXES[fi] : 0);
             }
           }
         }
