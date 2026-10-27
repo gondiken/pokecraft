@@ -746,7 +746,7 @@ function tapAt(x, y) {
   if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.duels.challenge(other.player); } // T30
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
-  else if (game.gymLive.tap(origin, direction)) { /* T44: a popped jack or a stage door */ }
+  else if (game.gymLive.tap(origin, direction)) { /* T44: a whack at the piñata */ }
   else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
   else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
   else if (block && block.t <= REACH && game.portal.use(block)) { /* a door (T38a) */ }

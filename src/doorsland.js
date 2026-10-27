@@ -1,5 +1,5 @@
-// T44: the Room of Doors (TERRAINS.doorsLand, plans/T44.md section 1). A toy-box hall with twelve doors round its walls, a Shuffle Stage in the
-// middle, a Pop-Up Room behind the east gold door and the Big Gift behind the north one. Terrain as data and pure: needs only a world with
+// T44: the Room of Doors (TERRAINS.doorsLand, plans/T44.md section 1 and "Rework"). A toy-box hall with twelve doors round its walls, the
+// Piñata Party's rug in the middle, the Pop-Up Room (Jack Catch) behind the east gold door and the Big Gift behind the north one. Terrain as data and pure: needs only a world with
 // W / D / data / ground / index / inBounds / get (the spec runs it on a stand-in in Node, like pirateland.js), and imports no live code.
 //
 // Coordinates: the hall is a square, interior x / z 40..72 (centre C = 56), floor top y 10 (you stand at 11), walls to y 22, no ceiling.
@@ -8,7 +8,7 @@
 // room, v 10 = its back wall), world = C + o * (17 + v) + t * (centre + u).
 import { B, WOOL } from './blocks.js';
 import { kit, flatLand, buildWayBack, placeBoss, placeCrew, pictureAim } from './picturelands.js';
-import { hashStr, seeded } from './shuffle.js';
+import { seeded, PINATA } from './pinata.js';
 
 export const SIZE = 112;
 export const FLOOR = 10;       // the top block of the floor; you stand at 11
@@ -27,7 +27,8 @@ export const KINDS = ['slide', 'ballpit', 'confetti', 'springs', 'nested', 'shop
 export const GIFT_KINDS = ['ballpit', 'confetti', 'springs', 'nested'];   // the rooms with a gift chest: pw:doors:gift1..4 by kind
 export const DOOR_COLOURS = [WOOL.fire, WOOL.water, WOOL.grass, WOOL.electric, WOOL.rock, WOOL.ice, WOOL.bug, WOOL.ghost, WOOL.mind, WOOL.metal, WOOL.toxic, WOOL.pixie];
 export const ROOM = { w: 9, d: 9 };
-export const STAGE = { x0: 48, x1: 64, z0: 44, z1: 48, origin: { x: 56.5, y: FLOOR + 2, z: 46.5 }, pad: { x0: 55, x1: 57, z0: 54, z1: 55 } };
+// the Piñata Party's rug (round, a wool rim) and the start pad on its south edge (rework, owner 2026-10-27: the Shuffle Stage is gone)
+export const RING = { ...PINATA.ring, pad: { x0: 55, x1: 57, z0: 60, z1: 61 } };
 export const BIG_GIFT = { chamber: { u0: -10, u1: 10, v0: 11, v1: 25 }, outer: { u0: -4, u1: 4, v0: 17, v1: 25, y0: 11, y1: 18 }, hollow: { u0: -3, u1: 3, v0: 18, v1: 24, y0: 11, y1: 16 },
   front: { u0: -2, u1: 2, y0: 11, y1: 15 }, boss: { u: 0, v: 21 } };
 export const POPUP_ROOM = { cols: [-2, 0, 2], rows: [5, 7, 9], pad: { u0: -1, u1: 1, v0: 1, v1: 2 }, carpet: { u0: -3, u1: 3, v0: 4, v1: 9 } };
@@ -37,7 +38,7 @@ export const COLOURS = [WOOL.fire, WOOL.water, WOOL.grass, WOOL.electric, WOOL.p
 
 /* ---------------------------------------- keys, bows, the gate ---------------------------------------- */
 
-export const bowKey = i => `pw:doors:bow${i}`;                       // i = 1..4: three shuffle rounds and the Pop-Up Room
+export const bowKey = i => `pw:doors:bow${i}`;                       // i = 1..4: the three piñatas and Jack Catch in the Pop-Up Room
 export const giftKey = kind => `pw:doors:gift${GIFT_KINDS.indexOf(kind) + 1}`;
 export function bowState(game) {
   const bows = [1, 2, 3, 4].map(i => (game.beaten || []).includes(bowKey(i)));
@@ -149,11 +150,10 @@ export function doorsPlan(seed) {
     for (const [u, v, n] of [[-4, 5, 2], [4, 5, 3], [0, 9, 2], [-2, 9, 1], [2, 9, 3]]) { const [x, z] = cellOf(r.k, u, v); for (let i = 0; i < n; i++) stacks.push([x, 11 + (u === -4 || u === 4 ? 1 : 0) + i, z, COLOURS[(u + v + i + 8) % COLOURS.length]]); }
     plan.shop = { k: r.k, shelves, nooks, stacks };
   }
-  // --- the hall: the Shuffle Stage, the watch pad, nooks ---
-  plan.stage = { ...STAGE };
+  // --- the hall: the piñata rug, its pad, nooks (by the walls, well away from the rug) ---
+  plan.ring = { ...RING };
   const nooks = [];
   for (let side = 0; side < 4; side++) for (const u of [-6, 6]) { const [x, z] = hallCell(side, u, -1); nooks.push({ kind: 'hall', x, y: 11, z }); }
-  nooks.push({ kind: 'stage', x: STAGE.x0 - 2, y: 11, z: 46 }, { kind: 'stage', x: STAGE.x1 + 2, y: 11, z: 46 });
   plan.nooks = [...nooks, ...plan.shop.nooks];
   // --- the Pop-Up Room ---
   {
@@ -162,7 +162,9 @@ export function doorsPlan(seed) {
     for (const v of POPUP_ROOM.rows) for (const u of POPUP_ROOM.cols) { const [x, z] = cellOf(k, u, v); boxes.push({ i: i++, u, v, cell: [x, 11, z], at: [x + 0.5, 12, z + 0.5] }); }
     const padCells = [];
     for (let u = POPUP_ROOM.pad.u0; u <= POPUP_ROOM.pad.u1; u++) for (let v = POPUP_ROOM.pad.v0; v <= POPUP_ROOM.pad.v1; v++) { const [x, z] = cellOf(k, u, v); padCells.push([x, z]); }
-    plan.popup = { k, boxes, pad: { cells: padCells, box: boxOf(padCells, 10, 13), centre: pointOf(k, 0.5, 1.5) }, room: rooms[k].inner };
+    const isBox = new Set(boxes.map(b => `${b.cell[0]},${b.cell[2]}`)), floor = [];
+    for (let u = -4; u <= 4; u++) for (let v = 1; v <= 9; v++) { const [x, z] = cellOf(k, u, v); if (!isBox.has(`${x},${z}`)) floor.push([x + 0.5, z + 0.5]); }
+    plan.popup = { k, boxes, floor, pad: { cells: padCells, box: boxOf(padCells, 10, 13), centre: pointOf(k, 0.5, 1.5) }, room: rooms[k].inner };
   }
   // --- the Big Gift ---
   {
@@ -258,9 +260,13 @@ export function doorsLand(world, def) {
     world.healer = [hx, 11, hz, Math.atan2(f[0], f[1])];
   }
 
-  // --- the Shuffle Stage (one block high, a wool rim) and the watch pad you stand on to play ---
-  for (let x = STAGE.x0; x <= STAGE.x1; x++) for (let z = STAGE.z0; z <= STAGE.z1; z++) P(x, 11, z, x === STAGE.x0 || x === STAGE.x1 || z === STAGE.z1 ? WOOL.surprise : B.PARTY_FLOOR);
-  for (let x = STAGE.pad.x0; x <= STAGE.pad.x1; x++) for (let z = STAGE.pad.z0; z <= STAGE.pad.z1; z++) P(x, FLOOR, z, WOOL.surprise);
+  // --- the piñata rug (in the floor: nothing to trip over), a ring of pastel wool inside, and the start pad ---
+  for (let x = Math.floor(RING.x - RING.r); x <= Math.ceil(RING.x + RING.r); x++) for (let z = Math.floor(RING.z - RING.r); z <= Math.ceil(RING.z + RING.r); z++) {
+    const d = Math.hypot(x + 0.5 - RING.x, z + 0.5 - RING.z);
+    if (d <= RING.r && d > RING.r - 0.9) P(x, FLOOR, z, WOOL.surprise);
+    else if (d <= 4.6 && d > 3.8) P(x, FLOOR, z, WOOL.pixie);
+  }
+  for (let x = RING.pad.x0; x <= RING.pad.x1; x++) for (let z = RING.pad.z0; z <= RING.pad.z1; z++) P(x, FLOOR, z, WOOL.treasure);
 
   // --- the Wrapping Room: the way back (a picture frame on its back wall), the arrival ---
   {
@@ -299,14 +305,12 @@ export function doorsLand(world, def) {
   for (const r of R.rooms) keep(`room-${r.k}`, { ...r.walls, y0: 9, y1: WALL_TOP + 2 }); // (y 9 = the ball pit's floor)
   keep('chamber', { ...R.gift.chamber, y1: WALL_TOP + 2 });
   for (let side = 0; side < 4; side++) { const [a, b] = [hallCell(side, -17, 0), hallCell(side, 17, 0)]; keep(`hall-wall-${side}`, { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: 10, y1: WALL_TOP + 2, z0: Math.min(a[1], b[1]), z1: Math.max(a[1], b[1]) }); }
-  keep('stage', { x0: STAGE.x0 - 1, x1: STAGE.x1 + 1, y0: 10, y1: 18, z0: STAGE.z0 - 1, z1: STAGE.z1 + 1 }, 'The Shuffle Stage is part of the show. Play it instead!');
-  keep('watch-pad', { x0: STAGE.pad.x0, x1: STAGE.pad.x1, y0: 10, y1: 14, z0: STAGE.pad.z0, z1: STAGE.pad.z1 });
+  keep('ring', { x0: Math.floor(RING.x - RING.r), x1: Math.ceil(RING.x + RING.r), y0: 10, y1: WALL_TOP, z0: Math.floor(RING.z - RING.r), z1: Math.ceil(RING.z + RING.r) }, 'The piñata needs room to swing. Press Play! instead!');
   for (let x = 0; x < world.W; x++) for (let z = 0; z < world.D; z++) world.ground[x + z * world.W] = FLOOR;
   const po = SIDES[1].o; // the Pop-Up pad faces into the room (the boxes); player yaw faces (-sin, -cos)
   world.rests.push([R.popup.pad.centre[0], 11, R.popup.pad.centre[1], Math.atan2(-po[0], -po[1])]);
-  const stagePad = [(STAGE.pad.x0 + STAGE.pad.x1 + 1) / 2, 11, STAGE.pad.z0 + 0.5, 0]; // the watch pad (facing north, the stage): a rest too
-  world.rests.push(stagePad);
-  world.parts.push({ id: 'doors', live: 'doors', plan: R, stage: R.stage, popup: R.popup, gift: R.gift, slide: R.slide, pit: R.pit, chests: R.chests, rooms: R.rooms });
+  world.rests.push([(RING.pad.x0 + RING.pad.x1 + 1) / 2, 11, (RING.pad.z0 + RING.pad.z1 + 1) / 2, 0]); // the rug's pad (facing north, the rug): a rest too
+  world.parts.push({ id: 'doors', live: 'doors', plan: R, ring: R.ring, popup: R.popup, gift: R.gift, slide: R.slide, pit: R.pit, chests: R.chests, rooms: R.rooms });
   return world;
 }
 
@@ -319,10 +323,10 @@ export function doorsAim(world, p, game) {
   const bows = bowState(game), stars = game.stars || [];
   const room = plan.rooms.find(r => inBox({ ...r.inner, y0: 10, y1: 30 }, Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)));
   if (room && !room.gold) return { x: room.door.centre[0], z: room.door.centre[1], text: (a, m) => `🚪 Back to the hall ${a} ${m}m` };
-  const pad = STAGE.pad, popPad = plan.popup.pad.centre;
-  if (room?.k === FIXED.popup && !bows.bows[3]) return { x: popPad[0], z: popPad[1], text: (a, m) => `🤡 Pop-Up pad ${a} ${m}m` };
-  if (!bows.bows[0] || !bows.bows[1] || !bows.bows[2]) return { x: (pad.x0 + pad.x1 + 1) / 2, z: (pad.z0 + pad.z1 + 1) / 2, text: (a, m) => `🎀 Shuffle Stage ${a} ${m}m (bows ${bows.n} / 4)` };
-  if (!bows.bows[3]) { const d = plan.rooms[FIXED.popup].door.centre; return { x: d[0], z: d[1], text: (a, m) => `🤡 Pop-Up Room (golden door) ${a} ${m}m (bows ${bows.n} / 4)` }; }
+  const pad = RING.pad, popPad = plan.popup.pad.centre;
+  if (room?.k === FIXED.popup && !bows.bows[3]) return { x: popPad[0], z: popPad[1], text: (a, m) => `🤡 Jack Catch pad ${a} ${m}m` };
+  if (!bows.bows[0] || !bows.bows[1] || !bows.bows[2]) return { x: (pad.x0 + pad.x1 + 1) / 2, z: (pad.z0 + pad.z1 + 1) / 2, text: (a, m) => `🪅 Piñata Party ${a} ${m}m (bows ${bows.n} / 4)` };
+  if (!bows.bows[3]) { const d = plan.rooms[FIXED.popup].door.centre; return { x: d[0], z: d[1], text: (a, m) => `🤡 Jack Catch, the Pop-Up Room (golden door) ${a} ${m}m (bows ${bows.n} / 4)` }; }
   if (!stars.includes('doors')) { const b = plan.gift.bossAt; return { x: b[0], z: b[1], text: (a, m) => `🎁 Big Gift ${a} ${m}m` }; }
   return pictureAim(world, p, { stars, via: 'doors' });
 }

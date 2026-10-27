@@ -163,7 +163,7 @@ addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). 
 /* ==== end of T43 funfair ==== */
 /* ==== T44 surprise ==== */
 // Jolly Jax, a giant jack-in-the-box in the Big Gift of the Room of Doors, and two optional helpers behind surprise doors. The Big Gift opens
-// only when the four golden bows are won (the Shuffle Stage x3 and the Pop-Up Room: doorslive.js); a won battle uses the bows up again.
+// only when the four golden bows are won (three piñatas and Jack Catch: doorslive.js); a won battle uses the bows up again.
 addBoss({
   id: 'doors', name: 'Jolly Jax', title: 'Jolly Jax · Room of Doors Boss', type: 'surprise', model: { species: 'jestergrin', scale: 2.1 },
   gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! My gift has ${need} ribbons. Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} to untie them! (🎀 ${n} / ${need})`; },
@@ -175,9 +175,9 @@ addBoss({
   note: 'Jax was my favourite toy. I wrapped up gifts for every creature in the Swirl, but never got to give them out. Thank you for opening them!',
   crew: [
     { name: 'Ribbon Rosa', look: 'party', colors: { shirt: 0xe8384a, pants: 0xfff0d0, hair: 0x5a2a1a, skin: 0xf2c79a },
-      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Keep your eyes on the bow when the doors shuffle!' },
+      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Whack the piñata when it swings AT you!' },
     { name: 'Confetti Kit', look: 'party', colors: { shirt: 0x3a8ce8, pants: 0xffd23a, hair: 0xe8c03a, skin: 0xc68a5a },
-      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Boop the jacks fast!' },
+      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Run under the jacks. Dodge the pies!' },
   ],
 });
 /* ==== end of T44 surprise ==== */

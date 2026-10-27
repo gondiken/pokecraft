@@ -34,7 +34,7 @@ LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumb
 LIVE.pirate = PirateLive; // T40b the Pirate Seas: cannons, ropes, the chest
 LIVE.portalhouse = PortalHouseLive; // T42 the Portal House in the Swirl: swirls, rooms, sparks
 LIVE.fair = FairLive; // T43 the Funfair: bumper cars, the trampoline, the carousel, the coaster
-LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Shuffle Stage, the Pop-Up Room, the Big Gift
+LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Piñata Party, Jack Catch, the Big Gift
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
 LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 
@@ -79,7 +79,7 @@ export function createGymLive(game) {
     // (then use(p) starts the hold); release(p) lets go (E up, mouse up, the finger up). Live parts without them are never held.
     holds(p) { return !!each(o => o.holds?.(p)); },
     release(p) { return !!each(o => o.release?.(p)); },
-    // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (a popped jack, a stage door)
+    // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (T44: a whack at the piñata)
     tap(origin, dir) { return !!each(o => o.tap?.(origin, dir)); },
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },

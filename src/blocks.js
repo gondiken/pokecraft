@@ -419,8 +419,8 @@ BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: 
   BLOCKS[B.PARTY_FLOOR] = { name: 'Party Floor', ...all(T.SU_FLOOR), ...fx, wallText: 'A party floor. Too much fun to dig!' };
   BLOCKS[B.GIFT_DOOR] = { name: 'Gift Door', top: T.SU_DOOR_TOP, side: T.SU_DOOR, bottom: T.SU_DOOR_TOP, ...fx, wallText: 'Press Open! to see what is inside!' };
   BLOCKS[B.GOLD_DOOR] = { name: 'Gold Door', ...all(T.SU_GOLD_DOOR), glow: true, noLight: true, ...fx, wallText: 'A golden door! Press Open! to see what is inside!' };
-  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
-  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
+  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
+  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
   BLOCKS[B.BALL_PIT] = { name: 'Ball Pit', ...all(T.SU_BALLS), bounce: 3, ...fx, wallText: 'A ball pit! Jump to bob up and down.' };
   BLOCKS[B.RIBBON] = { name: 'Ribbon', ...all(T.SU_RIBBON), glow: true, noLight: true, ...fx, wallText: 'A ribbon on the Big Gift. Win a golden bow to untie it!' };
 }
