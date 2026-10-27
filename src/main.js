@@ -742,6 +742,7 @@ function tapAt(x, y) {
   if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.duels.challenge(other.player); } // T30
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
+  else if (game.gymLive.tap(origin, direction)) { /* T44: a popped jack or a stage door */ }
   else if (block && block.t <= REACH && game.gymLive.hit(block)) { /* a reset button */ }
   else if (block?.id === B.CHEST && block.t <= REACH) openChest(block);
   else if (block && block.t <= REACH && game.portal.use(block)) { /* a door (T38a) */ }
@@ -1104,6 +1105,7 @@ function updateTarget() {
   const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
+    : target.wild?.wrapped ? `A gift box! 🎁 · ${how} to open` // T44
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
       : target.near ? `${game.gymLive.holds(game.player) ? (touchMode ? 'Hold and let go' : 'Hold E and let go') : touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40 (Kick! / Shoot! are held)
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
@@ -1116,6 +1118,7 @@ function updateTarget() {
   const reach = target.block && target.block.t <= REACH;
   let act = target.player ? (game.hideSeek.action(target.player) ?? 'Battle!')
     : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : target.npc.kind === 'guest' || target.npc.kind === 'tower' ? 'Talk' : 'Battle!'))
+    : target.wild?.wrapped ? 'Open!' // T44
     : target.wild ? 'Battle!'
       : target.near ? target.near // T40: a live part's own word ("Fire!", "Kick!")
       : target.block?.id === B.CHEST ? 'Open'

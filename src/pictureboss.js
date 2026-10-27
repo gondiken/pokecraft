@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { bowState } from './doorsland.js'; // T44
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -117,6 +118,27 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
   ],
 });
 /* ==== end of T40d ball ==== */
+
+/* ==== T44 surprise ==== */
+// Jolly Jax, a giant jack-in-the-box in the Big Gift of the Room of Doors, and two optional helpers behind surprise doors. The Big Gift opens
+// only when the four golden bows are won (the Shuffle Stage x3 and the Pop-Up Room: doorslive.js); a won battle uses the bows up again.
+addBoss({
+  id: 'doors', name: 'Jolly Jax', title: 'Jolly Jax · Room of Doors Boss', type: 'surprise', model: { species: 'jestergrin', scale: 2.1 },
+  gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! My gift has ${need} ribbons. Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} to untie them! (🎀 ${n} / ${need})`; },
+  team: [['bowtower', 61], ['fiestallama', 62, ['sprinkles', 'surpriseparty', 'springpunch', 'candyburst']], ['partypop', 62], ['jestergrin', 63, ['shriek', 'surpriseparty', 'springpunch', 'tadaa']]], // top level 63, the easy side (the move lists are what movesWith(species, level, ...) gives: the surprise spec checks)
+  intro: ['SURPRISE! Ho ho! You untied all my ribbons!', 'The Wizard put his star in my box. Win it!'],
+  lose: 'Ho ho! What a surprise: you win! The star is yours.',
+  win: 'Ho ho! Rest a bit and try again. I will still be in my box!',
+  rematchIntro: ['Boing! New ribbons, new tricks. Ready?'],
+  note: 'Jax was my favourite toy. I wrapped up gifts for every creature in the Swirl, but never got to give them out. Thank you for opening them!',
+  crew: [
+    { name: 'Ribbon Rosa', look: 'party', colors: { shirt: 0xe8384a, pants: 0xfff0d0, hair: 0x5a2a1a, skin: 0xf2c79a },
+      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Keep your eyes on the bow when the doors shuffle!' },
+    { name: 'Confetti Kit', look: 'party', colors: { shirt: 0x3a8ce8, pants: 0xffd23a, hair: 0xe8c03a, skin: 0xc68a5a },
+      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Boop the jacks fast!' },
+  ],
+});
+/* ==== end of T44 surprise ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen

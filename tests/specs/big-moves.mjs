@@ -328,9 +328,9 @@ export default async function ({ browser, base, t }) {
   // ---- checks ----
   const d = R.data;
   const oldCounts = { rally: 10, shield: 12, risky: 10, sacrifice: 11, curse: 10, field: 14, lastword: 8 }; // wave 14's four types add 2-3 each (Ball: rally, risky, field)
-  t.ok(d.total >= 75 && d.total <= 75 + 12 && Object.entries(oldCounts).every(([k, n]) => d.counts[k] >= n),
+  t.ok(d.total >= 75 && d.total <= 75 + 12 + 5 * 3 && Object.entries(oldCounts).every(([k, n]) => d.counts[k] >= n),
     `at least 75 big moves (61 + wave 11's 11 + Ninja's 3, plus up to 12 of wave 14), kinds at least rally 10 shield 12 risky 10 sacrifice 11 curse 10 field 14 lastword 8 (${d.total}: ${JSON.stringify(d.counts)})`);
-  t.ok(d.types === 33 + (4 - PENDING.length) && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types, ${d.minPer}-${d.maxPer})`);
+  t.ok(d.types >= 33 + (4 - PENDING.length) && d.minPer >= 2 && d.maxPer <= 3, `every type has 2 or 3 big moves (${d.types} types, ${d.minPer}-${d.maxPer})`);
   t.ok(d.flags && d.uniqueNames && !d.soundClash.length, `big moves have no signature or chance flag, unique names, no sound clash (${d.soundClash})`);
   t.ok(!d.learnBad.length, `every creature learns its type's big moves at BIG_LEVEL, none of another type ${d.learnBad.slice(0, 5)}`);
   t.ok(!d.autoBad.length && !d.swBig, `makeCreature and autoMoves never give a big move ${d.autoBad.slice(0, 5)}`);

@@ -14,6 +14,7 @@ import { StadiumLive } from './stadiumlive.js'; // T40d
 import { RaceLive } from './racelive.js'; // T40c
 import { HouseLive } from './houselive.js'; // T40a
 import { PirateLive } from './pirateparts.js'; // T40b
+import { DoorsLive } from './doorslive.js'; // T44
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -27,6 +28,7 @@ LIVE.stadium = StadiumLive; // T40d the Ball Stadium's balls and keepers (a live
 LIVE.race = RaceLive; // T40c the Race Track
 LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumbs
 LIVE.pirate = PirateLive; // T40b the Pirate Seas: cannons, ropes, the chest
+LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Shuffle Stage, the Pop-Up Room, the Big Gift
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object
@@ -69,6 +71,8 @@ export function createGymLive(game) {
     // (then use(p) starts the hold); release(p) lets go (E up, mouse up, the finger up). Live parts without them are never held.
     holds(p) { return !!each(o => o.holds?.(p)); },
     release(p) { return !!each(o => o.release?.(p)); },
+    // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (a popped jack, a stage door)
+    tap(origin, dir) { return !!each(o => o.tap?.(origin, dir)); },
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },
     battleEnded(result, opts) { for (const o of objects.values()) o.battleEnded?.(result, opts); },

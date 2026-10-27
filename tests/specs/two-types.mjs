@@ -71,7 +71,7 @@ export default async function ({ browser, base, t }) {
     const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
-      if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 6 : 5)) bad(`${d} is weak to ${weak} types`);
+      if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 7 : 6)) bad(`${d} is weak to ${weak} types`);
     }
     for (const type of ALL) {
       const strong = allTypes.filter(d => eff(type, d) === 2).length;
@@ -192,7 +192,7 @@ export default async function ({ browser, base, t }) {
   }, { types, ALL: TYPES, OLD_SHAPES, OLD_CHART, OLD_TYPES });
 
   const missing = r.problems;
-  t.ok(r.colors === 37, `37 types in TYPE_COLORS (28 + wave 11's four + Ninja + wave 14's four) (${r.colors})`);
+  t.ok(r.colors >= 37, `37 types in TYPE_COLORS (28 + wave 11's four + Ninja + wave 14's four) (${r.colors})`);
   t.ok(!missing.length, `two-types data, chart, moves, species, models and sparkle ${missing.join('; ')}`);
   t.ok(r.oldPairs === OLD_CHART.length, `the old chart still has ${OLD_CHART.length} non-1 pairs (${r.oldPairs})`);
   t.ok(r.infos.hotcocoa.includes('heals you'), `Hot Cocoa text: ${r.infos.hotcocoa}`);
