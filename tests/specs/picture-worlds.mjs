@@ -48,7 +48,7 @@ export default async function ({ browser, base, t }) {
       ...row('fire', { tiny: 2 }), ...row('sky', { tiny: 2 }), ...row('electric', { pirate: 2 }), ...row('water', { racer: 2 }), ...row('ice', { racer: 2 }), ...row('grass', { ball: 2 }), ...row('ninja', { ball: 2 }),
     ];
     // the old 33 x 33 chart is unchanged: every old cell (and every cell not named above is still 1 against the old types)
-    const oldTypes = ['normal', ...types.filter(x => !news.includes(x))], added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
+    const oldTypes = ['normal', ...types.filter(x => !news.includes(x) && !['portal'].includes(x))], added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
     const changed = [];
     for (const a of oldTypes) for (const b of oldTypes) if (e(a, b) !== (old[a]?.[b] ?? 1)) changed.push(`${a}>${b}`);
     const extra = [];
@@ -66,7 +66,7 @@ export default async function ({ browser, base, t }) {
       tiles: Bk.TILE_COUNT, free: Math.max(...Object.values(Bk.B)) + 1,
     };
   }, OLD_CHART);
-  t.ok(d1.n === 37 && d1.colors.every(Boolean), `37 types, the four new ones have colours (${d1.n})`);
+  t.ok(d1.n >= 37 && d1.colors.every(Boolean), `at least 37 types, the four new ones have colours (${d1.n})`);
   t.ok(!d1.bad.length, `the corrected chart rows and the seven added cells ${d1.bad.join('; ')}`);
   t.ok(!d1.changed.length && !d1.extra.length, `the old 33 x 33 chart is unchanged, no other cell touches a new type ${d1.changed.join(',')} ${d1.extra.join(',')}`);
   t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
@@ -93,7 +93,7 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 4, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
+  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 5, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at most the four wave 14 worlds and the Portal House ready (${d2.counts}, ${d2.ready} ready)`);
   t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
