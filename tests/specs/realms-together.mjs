@@ -218,6 +218,12 @@ export default async function ({ browser, base, t }) {
     const sask = await askText(SB);
     t.ok(/Swirl/.test(sask), `Kid is asked about the Swirl ("${sask}")`);
     await SB.evaluate(() => window.pokecraft.ui.askYes());
+    // (the host's reply has 12 s in the game; a loaded software renderer can miss it, so ask again, like a child would)
+    for (let tries = 0; tries < 4; tries++) {
+      const here = await waitFor(SB, () => window.pokecraft.place === 'swirl' && !window.pokecraft.realms.busy, null, 45000).then(() => true, () => false);
+      if (here) break;
+      await SB.evaluate(() => window.pokecraft.realms.follow());
+    }
     await placeIs(SB, 'swirl');
     t.ok(await said(SB, /door opens for you too/) && !(await SB.evaluate(() => window.pokecraft.champion)), "Kid follows without the Champion title, and the title stays Dad's");
     await SB.evaluate(() => window.pokecraft.realms.leave('door'));

@@ -93,13 +93,13 @@ const EFFECTIVENESS = {
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
 /* ==== T42 portal ==== */
-// A shortcut beats any racer; a swirl goes straight through walls of metal and rock; a mind finds the hidden door, time was
+// A shortcut beats any racer; a swirl slips through goo and bones; a mind and time were
 // there first, and two swirls just swap places. The cells where OTHER types hit a Portal creature are separate lines (no old cell changes).
-EFFECTIVENESS.portal = { racer: 2, metal: 2, rock: 2, portal: 0.5, mind: 0.5, time: 0.5 };
-EFFECTIVENESS.mind.portal = 2; // a mind sees where the door is
-EFFECTIVENESS.time.portal = 2; // time closes a swirl
+EFFECTIVENESS.portal = { racer: 2, slime: 2, bone: 2, portal: 0.5, mind: 0.5, time: 0.5 };
+EFFECTIVENESS.bone.portal = 2; // bones jam a swirl
+EFFECTIVENESS.alien.portal = 2; // aliens know other doors
+EFFECTIVENESS.cozy.portal = 2; // a cosy blanket over the door
 EFFECTIVENESS.racer.portal = 0.5; // you can't outrun a shortcut
-EFFECTIVENESS.ninja.portal = 0.5; // no sneaking up on someone who is everywhere
 /* ==== end of T42 portal ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 

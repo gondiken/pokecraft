@@ -184,7 +184,7 @@ Stat changes and sleep go away when a creature is switched out. A few creatures 
 | Pirate | Ball, treasure, water | A pirate's hook pops the ball, grabs the treasure and rules the waves. Weak to electric (a shock on deck) and racer (outrun!) |
 | Racer | Pirate, time, parkour | A racer outruns the pirate, beats the clock and the runner. Weak to water (a wet track skids), ice and tiny |
 | Ball | Tiny, squad, bone | A ball squashes the tiny, bowls over the squad and knocks the bones down like pins. Weak to grass, pirate and ninja |
-| Portal | Racer, metal, rock | A shortcut beats any racer, and a swirl goes straight through walls of metal and rock. Weak to mind (it sees where the door is) and time (time closes a swirl). Racer, ninja and Portal attacks barely hurt it. Its own attacks don't do much to portal, mind and time creatures |
+| Portal | Racer, slime, bone | A shortcut beats any racer, and a swirl slips straight through goo and bones. Weak to bone (it jams a swirl), alien (it knows other doors) and cozy (a blanket over the door). Racer and Portal attacks barely hurt it. Its own attacks don't do much to portal, mind and time creatures |
 
 Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, paper beats light, light beats slime, and slime beats sky. Cozy beats cyber, cyber beats treasure, and treasure beats cozy. Food beats squad, squad beats parkour, parkour beats dream, and dream beats food. Mind and cosmic attacks are weak against aliens (space is their home).
 
