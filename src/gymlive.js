@@ -36,7 +36,7 @@ LIVE.portalhouse = PortalHouseLive; // T42 the Portal House in the Swirl: swirls
 LIVE.fair = FairLive; // T43 the Funfair: bumper cars, the trampoline, the carousel, the coaster
 LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Shuffle Stage, the Pop-Up Room, the Big Gift
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
-LIVE.doodle = DoodleLive; // T45 the Sketchbook: Trace! the pencil, the ink, Rubber the Eraser
+LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

@@ -1,7 +1,8 @@
 // T45: the Sketchbook (realm `doodle`), a Picture World that is a pencil drawing. Terrain as data (Node-runnable: needs only a world with
 // W / D / data / ground / index / inBounds / get, like pirateland.js). Eight pages float above the blank page (DO_PAPER, y 4); the ways
-// between them are LINES that a giant pencil draws while you keep your eye on its tip (tracing.js, doodlelive.js). Nothing in the world
-// data is a bridge: the ink is drawn per player with setLive, so until you drew a line there is only air (and a dotted guide).
+// between them are LINES: the child draws each one with the giant pencil and walks on it (Draw!, owner 2026-10-27: COURSES below,
+// tracing.js, doodlelive.js); a saved line is drawn as its neat bridge (LINES). Nothing in the world data is a bridge: the ink is drawn
+// per player with setLive, so until you drew a line there is only air (and a dotted guide).
 import { B, WOOL } from './blocks.js';
 import { kit, buildWayBack, placeBoss, placeCrew, pictureAim } from './picturelands.js';
 import { lineOf } from './tracing.js';
@@ -47,6 +48,62 @@ export const LINES = [
   { n: 8, kind: 'race', from: 'hill2', to: 'desk', path: straight([116, 40], [104, 28]), len: 18 },
 ];
 export const lineKey = n => `pw:doodle:line${n}`;
+
+// T45 Draw! (owner 2026-10-27, plans/T45.md "Challenge rework"): the child draws each line. Per line: the pencil's speed, its ink,
+// how many blocks of line per row of climb, Rubber's speed (Eraser Hill), the wind [x, z] (blocks / s), star dots [x, z], ink blots
+// [x, z, r], doodle bees { a: [x, z], b: [x, z], T (s, there and back), phase } and `route`: a good way through (the guide's hint, the
+// heights the stars and blots are drawn at, and the spec's skilled player). The difficulty grows line by line (table in the plan).
+export const COURSES = [
+  { n: 1, speed: 4.5, ink: 30, stars: [[80, 125]], route: [[80, 128], [80, 116]] },
+  { n: 2, speed: 4.6, ink: 20, stars: [[60.5, 100]], blots: [[60.5, 104.2, 1.5]], route: [[63, 101.5], [60.5, 100], [57, 100.5], [54, 101]] },
+  { n: 3, speed: 4.7, ink: 12, stars: [[40.5, 84]], blots: [[44, 86.5, 1.5], [39.5, 79.5, 1.5]], route: [[41, 89], [40.5, 84], [44, 80.5], [44.5, 76.5]] },
+  { n: 4, speed: 4.8, ink: 14, stars: [[59, 67.5]], blots: [[63.5, 63.5, 1.6]], bees: [{ a: [60.5, 55], b: [60.5, 72], T: 8, phase: 0.25 }], route: [[56, 66.5], [59, 67.5], [63.5, 68.5], [68.5, 68]] },
+  { n: 5, speed: 4.8, ink: 14, climb: 1.75, tower: true, stars: [[86, 60], [80, 66], [74, 60]], route: [...Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i + 1) * Math.PI / 6; return [80 + 6 * Math.cos(a), 60 + 6 * Math.sin(a)]; }), [76.5, 55.2], [80, 60]] },
+  { n: 6, speed: 5.0, ink: 16, climb: 2.2, rubber: 3.6, wind: [0, -0.8], stars: [[93, 69]], blots: [[94, 64.5, 1.8]], route: [[88, 63.5], [93, 69], [100, 70.5], [106, 71]] },
+  { n: 7, speed: 5.0, ink: 12, rubber: 3.8, stars: [[114, 58]], bees: [{ a: [109, 60.5], b: [127, 60.5], T: 8, phase: 0 }, { a: [127, 55.5], b: [109, 55.5], T: 7, phase: 0.5 }], route: [[116, 62], [114, 58], [117, 55], [119, 51.5]] },
+  { n: 8, speed: 5.1, ink: 12, rubber: 4.0, wind: [0, 1.0], stars: [[112, 30.5]], blots: [[110.5, 35, 1.5]], bees: [{ a: [108.5, 25], b: [108.5, 41], T: 7, phase: 0.75 }], route: [[114.5, 34], [112, 30.5], [105.5, 29.5]] },
+];
+const BEE_Y = 1.6, BLOT_Y = 1.1;
+
+// The course of line n (1-based) for tracing.js newDraw / drawStep. solid(x, y, z): the world's solid cells (the live part passes the
+// real world, the spec a stand-in one). Cached per solid function.
+const courseCache = new WeakMap();
+export function courseOf(n, solid) {
+  let byN = courseCache.get(solid);
+  if (!byN) courseCache.set(solid, byN = new Map());
+  if (byN.has(n)) return byN.get(n);
+  const l = doodleLines()[n - 1], d = COURSES[n - 1];
+  const from = pageRect(l.from), to = pageRect(l.to);
+  const fromRect = l.rowA === PAGES[l.from].top ? from : l.flatA; // where the line's first row is the page itself (the deck: its own rect)
+  const target = l.flatB, climb = d.climb ?? 2;
+  const start = [l.line.pts[0][0], l.line.pts[0][2]], dir = l.line.dirAt(0);
+  // the rows a line drawn along the route would have (the stars, blots and bees are drawn at those heights)
+  const rowAlong = [];
+  { let x = start[0], z = start[1], row = l.rowA, acc = 0, off = false;
+    const pts = [start, ...d.route];
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1], [bx, bz] = pts[i], len = Math.hypot(bx - ax, bz - az), k = Math.ceil(len / 0.5);
+      for (let j = 1; j <= k; j++) {
+        x = ax + (bx - ax) * j / k; z = az + (bz - az) * j / k;
+        if (!off && !(x >= l.flatA[0] && x < l.flatA[1] + 1 && z >= l.flatA[2] && z < l.flatA[3] + 1)) off = true;
+        if (off && row !== l.rowB) { acc += len / k; const need = l.rowB > row ? climb : (d.climbDown ?? climb * 0.75); if (acc >= need) { acc -= need; row += Math.sign(l.rowB - row); } }
+        rowAlong.push([x, z, row]);
+      }
+    } }
+  const rowAt = (x, z) => { let best = rowAlong[0], bd = Infinity; for (const p of rowAlong) { const dd = Math.hypot(p[0] - x, p[1] - z); if (dd < bd) { bd = dd; best = p; } } return best[2]; };
+  const others = Object.entries(PAGES).filter(([id]) => id !== l.from && id !== l.to).map(([, p]) => [p.x0, p.x1, p.z0, p.z1]);
+  const R = 10, roam = [Math.max(2, Math.min(from[0], to[0]) - R), Math.min(SIZE - 3, Math.max(from[1], to[1]) + R), Math.max(2, Math.min(from[2], to[2]) - R), Math.min(SIZE - 3, Math.max(from[3], to[3]) + R)];
+  const c = {
+    n, kind: l.kind, rowA: l.rowA, rowB: l.rowB, flatA: l.flatA, fromRect, target, start, dir, climb, climbDown: d.climbDown,
+    pad: [...(l.padStand ?? [start[0], l.rowA + 1, start[1]])], speed: d.speed, ink: d.ink, rubber: d.rubber ?? 0, wind: d.wind ?? null, tower: !!d.tower,
+    stars: (d.stars || []).map(([x, z]) => ({ x, z, y: rowAt(x, z) + 1 })),
+    blots: (d.blots || []).map(([x, z, r]) => ({ x, z, r, y: rowAt(x, z) + BLOT_Y })),
+    bees: (d.bees || []).map(b => ({ ...b, y: rowAt((b.a[0] + b.b[0]) / 2, (b.a[1] + b.b[1]) / 2) + BEE_Y })),
+    route: d.route, fence: others, roam, solid,
+  };
+  byN.set(n, c);
+  return c;
+}
 export const LINE_COUNT = LINES.length;
 
 // The lines as data (cached): each with its `line` (tracing.lineOf: pts, cells, stars...), the page rows and the pad cells (the first 2 x 2).
@@ -68,7 +125,8 @@ export function doodleLines() {
     const line = lineOf({ pts, kind: d.kind });
     const sx = Math.round(pts[0][0]), sz = Math.round(pts[0][2]); // the pad: the 2 x 2 cells round the line's start point, on the page it leaves
     const padCells = [[sx - 1, rowA, sz - 1], [sx, rowA, sz - 1], [sx - 1, rowA, sz], [sx, rowA, sz]];
-    return { ...d, rowA, rowB, line, padCells };
+    const padStand = [sx, rowA + 1, sz]; // the middle of the 2 x 2 pad
+    return { ...d, rowA, rowB, flatA, flatB, line, padCells, padStand };
   });
   return built;
 }
@@ -85,13 +143,32 @@ const box = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 
 // Where the guide points: the next line's pad (or the Desk once all are drawn); a fallen player is pointed at the pad (the live part's aim runs first).
 export function doodleAim(world, p, game) {
-  const tip = game?.gymLive?.of?.('part:doodle')?.aimTip?.(); // drawing: the arrow is the pencil's tip
+  const tip = game?.gymLive?.of?.('part:doodle')?.aimTip?.(); // drawing: the arrow is the next star, then the next page
   if (tip) return tip;
   const st = lineState(game), lines = doodleLines();
   if (st.done) return null; // the base's aim: the Boss, then the way back
   const l = lines[st.next], c = l.padCells[0];
   const x = c[0] + 0.5, z = c[2] + 0.5;
   return { x, z, text: (a, m) => `✏️ Line ${l.n} of ${LINES.length}: go to the star pad ${a} ${m}m` };
+}
+
+// The air over the blank page beside the pages, as a few boxes (y FLOOR + 1 .. 47).
+export function gapBoxes() {
+  const T = 1, N = SIZE / T, near = (x, z) => Object.values(PAGES).some(p => x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1);
+  const free = (i, j) => { for (let x = i * T; x < i * T + T; x++) for (let z = j * T; z < j * T + T; z++) if (near(x, z)) return false; return true; };
+  const boxes = [], open = new Map(); // 'i0,i1' -> box still growing in z
+  for (let j = 0; j < N; j++) {
+    const runs = [];
+    for (let i = 0; i < N; i++) { if (!free(i, j)) continue; const r = runs[runs.length - 1]; if (r && r[1] === i - 1) r[1] = i; else runs.push([i, i]); }
+    const next = new Map();
+    for (const [i0, i1] of runs) {
+      const k = `${i0},${i1}`, b = open.get(k);
+      if (b) { b.z1 = j * T + T - 1; next.set(k, b); open.delete(k); }
+      else { const nb = box(i0 * T, i1 * T + T - 1, FLOOR + 1, 47, j * T, j * T + T - 1); boxes.push(nb); next.set(k, nb); }
+    }
+    open.clear(); for (const [k, b] of next) open.set(k, b);
+  }
+  return boxes;
 }
 
 export function doodleLand(world, def) {
@@ -182,6 +259,8 @@ export function doodleLand(world, def) {
   placeBoss(world, 'doodle', { x: 93, y: top('desk'), z: 21, facing: [0, 1] });
   placeCrew(world, 'doodle', 0, { x: 78, y: top('meadow'), z: 108, facing: [0, -1] });
   placeCrew(world, 'doodle', 1, { x: 90, y: top('tower'), z: 66, facing: [-1, 0] });
+  // T45 Draw!: the gaps between the pages are keeps (no block bridges, no flying across: riders are fenced out of keeps).
+  for (const b of gapBoxes()) keep('gap', b, 'Draw your way across with the pencil!');
   for (const k of keeps) world.keeps.push(k);
   for (const pg of Object.values(PAGES)) { const x = Math.floor((pg.x0 + pg.x1) / 2), z = Math.floor((pg.z0 + pg.z1) / 2); if (world.get(x, pg.top, z) === B.GRASS && world.get(x, pg.top + 1, z) === B.AIR && world.get(x, pg.top + 2, z) === B.AIR) rests.push([x + 0.5, pg.top + 1, z + 0.5, 0]); }
   for (const r of rests) world.rests.push(r);
