@@ -401,7 +401,7 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(() => { const p = window.pokecraft.player; p.pos.set(129.5, 31, 5.0); p.vel.set(0, 0, 0); window.__step(window.pokecraft, 1 / 20, 4); });
     await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js');
-      g.party = [S.makeCreature('blazehound', 100)]; g.cubes = 0;
+      g.party = ['blazehound', 'thunderwolf', 'grovebeast', 'tidalord'].map(id => S.makeCreature(id, 100)); g.cubes = 0;
       window.__cele = null; const cf = g.ui.celebrate.bind(g.ui); g.ui.celebrate = (...a) => { window.__cele = a; cf(...a); };
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
