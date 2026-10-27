@@ -29,7 +29,8 @@ import { createAccess } from './access.js';
 import { createGymLive } from './gymlive.js';
 import { createAccounts } from './accounts.js';
 import { goldenHour, condToast, condOf } from './spawnrules.js';
-import { caveLight, patchMaterial } from './caves.js';
+import { caveLight, patchMaterial, patchSketch } from './caves.js';
+import { createSketch } from './sketch.js'; // T45
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
 import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
@@ -88,6 +89,7 @@ const materials = {
 // Darkness under cover: vertex colours carry the sky and block light, the shader mixes them (see caves.js).
 patchMaterial(materials.solid);
 patchMaterial(materials.water);
+patchSketch(materials.glow); // T45: only the pencil part (the output is unchanged while the sketch switch is off)
 
 const highlight = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004)),
@@ -232,6 +234,7 @@ function createWorld(seed, edits, size, opts = {}) {
   game.homes.reset(world);
   game.portal?.reset(world); // T38a
   game.swirlSky?.reset(world); // T38d
+  game.sketch?.reset(world); // T45: the pencil look, only in a sketch world
 }
 
 function findSpawn(world) {
@@ -1054,6 +1057,7 @@ game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
+game.sketch = createSketch(game, { materials, texture, atlas }); // T45: the Sketchbook's pencil look
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 game.nav = createNav(game); // T39a: the place the guide follows (no choice = the next gym)
@@ -1191,6 +1195,7 @@ function frame(now) {
     game.weather.update(dt, now);
     updateSky(dt);
     game.swirlSky.update(dt, now); // T38d
+    game.sketch.update(dt, now); // T45
 
     regenTimer += dt;
     if (regenTimer > 2 && !game.inBattle) {
@@ -1218,7 +1223,7 @@ function frame(now) {
     if (cloudTimer > 60) { cloudTimer = 0; pushCloud(); }
   }
 
-  if (game.world?.hasFire && now - fireAt > 140) { // T22: flames; only the 16x16 Fireplace tile goes to the GPU
+  if (game.world?.hasFire && !game.sketch?.on && now - fireAt > 140) { // T22: flames; only the 16x16 Fireplace tile goes to the GPU
     fireAt = now;
     const f = flickerFire(atlas, ++fireK);
     if (f) {
@@ -1228,7 +1233,7 @@ function frame(now) {
       renderer.copyTextureToTexture(firePos, src, texture);
     }
   }
-  if (game.world?.hasPortal && now - portalAt > 160) { // T38a: the Portal Door's spiral turns; only its 16x16 tile goes to the GPU
+  if (game.world?.hasPortal && !game.sketch?.on && now - portalAt > 160) { // T38a: the Portal Door's spiral turns; only its 16x16 tile goes to the GPU
     portalAt = now;
     const f = swirlPortal(atlas, ++portalK);
     if (f) {

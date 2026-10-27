@@ -5618,3 +5618,203 @@ function barrelpus(root, m, parts) {
 const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
 Object.assign(SHAPES, SHAPES_PIRATE);
 /* ==== end of T40b pirate ==== */
+/* ==== T45 doodle shapes ==== */
+// Doodle creatures are drawings that came alive: paper cream and graphite grey, careful lines, and every model wears a yellow crayon star
+// (userData.gear = 'crayon', userData.keepColour = true: it stays yellow even in the pencil-drawn Sketchbook). Every model faces +z.
+const DO_YELLOW = 0xffd23a, DO_PINK = 0xf0a8b8, DO_METAL = 0xb8bcc8, DO_WOOD = 0xe6c08a;
+function doStar(parent, x, y, z, s = 0.08) { // a little four-armed crayon star, flat on the body
+  const g = pivot(parent, x, y, z);
+  for (const r of [0, Math.PI / 4, Math.PI / 2, -Math.PI / 4]) {
+    const b = glow(box(g, s * 2.2, s * 0.5, 0.03, DO_YELLOW, 0, 0, 0), 0x6a5000);
+    b.rotation.z = r;
+    b.userData.gear = 'crayon'; b.userData.keepColour = true;
+  }
+  return g;
+}
+
+// Nibling / Graphitan: a stubby pencil standing on two little legs. The nib is its nose, an eraser cap is its hat; Graphitan (`knight`) is a
+// tall pencil knight with a helmet, a pink plume and a lead lance.
+function pencil(root, m, parts) {
+  const knight = has(m, 'knight');
+  const h = knight ? 0.86 : 0.6, w = knight ? 0.4 : 0.34, y0 = 0.2;
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  parts.legs = [];
+  for (const [x, ph] of [[-0.1, 0], [0.1, Math.PI]]) {
+    const leg = pivot(lift, x, y0, 0);
+    box(leg, 0.1, 0.2, 0.1, m.dark, 0, -0.1, 0);
+    box(leg, 0.13, 0.05, 0.18, m.dark, 0, -0.19, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  box(lift, w, h, w * 0.9, m.body, 0, y0 + h / 2, 0);
+  box(lift, w + 0.02, 0.05, w * 0.9 + 0.02, m.accent, 0, y0 + h * 0.18, 0); // wood-coloured bands
+  box(lift, w + 0.02, 0.05, w * 0.9 + 0.02, m.accent, 0, y0 + h * 0.84, 0);
+  for (const s of [-1, 1]) box(lift, 0.04, h * 0.9, w * 0.9 + 0.02, m.belly, s * w * 0.28, y0 + h / 2, 0); // the facets of a pencil
+  box(lift, w + 0.02, 0.1, w * 0.9 + 0.02, DO_METAL, 0, y0 + h + 0.05, 0); // the ferrule
+  if (knight) {
+    box(lift, w + 0.07, 0.17, w * 0.9 + 0.07, 0x9aa0b0, 0, y0 + h + 0.18, 0); // a helmet
+    box(lift, 0.28, 0.04, 0.03, 0x4a4e5c, 0, y0 + h + 0.17, w * 0.45 + 0.05); // its visor slit
+    const plume = pivot(lift, 0, y0 + h + 0.27, -0.02);
+    swing(parts, plume, 'x', 0.12, 3, 0);
+    box(plume, 0.07, 0.12, 0.2, DO_PINK, 0, 0.06, -0.06);
+  } else box(lift, w * 0.92, 0.13, w * 0.8, DO_PINK, 0, y0 + h + 0.16, 0); // the eraser cap
+  eyes(lift, y0 + h * 0.72, w * 0.45 + 0.02, 0.09, 0.1);
+  box(lift, 0.13, 0.11, 0.1, DO_WOOD, 0, y0 + h * 0.56, w * 0.45 + 0.05); // the nib is its nose
+  box(lift, 0.06, 0.06, 0.06, 0x3a3a44, 0, y0 + h * 0.56, w * 0.45 + 0.12);
+  mouth(lift, y0 + h * 0.42, w * 0.45 + 0.025, 0.1);
+  parts.arms = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(lift, s * (w / 2 + 0.04), y0 + h * 0.62, 0);
+    box(arm, 0.08, 0.26, 0.08, m.dark, 0, -0.11, 0);
+    if (knight && s > 0) { // the lead lance
+      const lance = pivot(arm, 0.02, -0.2, 0.04);
+      lance.rotation.x = -1.35;
+      box(lance, 0.05, 0.05, 0.8, 0xc8c0a0, 0, 0, 0.35);
+      box(lance, 0.09, 0.09, 0.14, 0x3a3a44, 0, 0, 0.8);
+    } else parts.arms.push({ g: arm, phase: ph });
+  }
+  doStar(lift, 0, y0 + h * 0.3, w * 0.45 + 0.03, 0.07);
+}
+
+// Rubbit / Rubbadub: a soft eraser block with long ears and a paper sleeve belt. Rubbadub (`crumbs`) is big and round and little crumbs
+// orbit it.
+function eraserbun(root, m, parts) {
+  const big = has(m, 'crumbs');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const bw = big ? 0.6 : 0.5;
+  box(lift, bw, 0.44, 0.46, m.body, 0, 0.42, 0);
+  if (big) box(lift, bw - 0.1, 0.1, 0.4, m.body, 0, 0.7, 0); // rounder
+  box(lift, bw + 0.02, 0.2, 0.48, m.accent, 0, 0.42, 0); // the paper sleeve belt
+  for (const y of [0.38, 0.46]) box(lift, bw + 0.03, 0.015, 0.49, m.dark, 0, y, 0);
+  box(lift, 0.36, 0.14, 0.03, m.belly, 0, 0.42, 0.245); // a label
+  doStar(lift, 0, 0.42, 0.265, 0.06);
+  const head = pivot(lift, 0, 0.88, 0.04);
+  parts.head = head;
+  box(head, 0.4, 0.32, 0.36, m.body, 0, 0, 0);
+  eyes(head, 0.04, 0.19, 0.1, 0.11);
+  box(head, 0.09, 0.06, 0.05, DO_PINK, 0, -0.04, 0.2);
+  mouth(head, -0.1, 0.19, 0.09);
+  for (const [s, ph] of [[-1, 0], [1, 1.4]]) { // long ears
+    const ear = pivot(head, s * 0.12, 0.16, -0.02);
+    swing(parts, ear, 'z', 0.1, 2.4, ph);
+    ear.rotation.z = s * -0.12;
+    box(ear, 0.1, 0.44, 0.07, m.body, 0, 0.22, 0);
+    box(ear, 0.05, 0.34, 0.03, DO_PINK, 0, 0.2, 0.04);
+  }
+  parts.legs = [];
+  for (const [x, ph] of [[-0.14, 0], [0.14, Math.PI]]) {
+    const leg = pivot(lift, x, 0.2, 0.05);
+    box(leg, 0.14, 0.12, 0.2, m.body, 0, -0.1, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  box(lift, 0.16, 0.16, 0.1, m.belly, 0, 0.36, -0.28); // a puff tail
+  if (big) for (let i = 0; i < 5; i++) { // crumbs orbiting
+    const orb = pivot(lift, 0, 0.4 + (i % 3) * 0.16, 0);
+    orb.rotation.y = i * 1.26;
+    spin(parts, orb, 'y', 0.9 + (i % 2) * 0.4);
+    box(orb, 0.07, 0.05, 0.06, m.body, 0.46 + (i % 2) * 0.08, 0, 0);
+  }
+}
+
+// The outline shape: each box drawn only as its 12 edges (thin sticks merged into ONE geometry per part: you see through it).
+function mergeSticks(list) {
+  const pos = [], nor = [], idx = [];
+  let base = 0;
+  for (const [w, h, d, x, y, z] of list) {
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(x, y, z);
+    const p = g.attributes.position, n = g.attributes.normal;
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); nor.push(n.getX(i), n.getY(i), n.getZ(i)); }
+    for (const i of g.index.array) idx.push(base + i);
+    base += p.count;
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setIndex(idx);
+  return geo;
+}
+// The 12 edges of a w x h x d box centred on (x, y, z), t thick.
+function boxEdges(w, h, d, x, y, z, t = 0.03) {
+  const out = [];
+  for (const sy of [-1, 1]) for (const sz of [-1, 1]) out.push([w, t, t, x, y + sy * h / 2, z + sz * d / 2]);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) out.push([t, h, t, x + sx * w / 2, y, z + sz * d / 2]);
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) out.push([t, t, d, x + sx * w / 2, y + sy * h / 2, z]);
+  return out;
+}
+function outlineMesh(parent, boxes, color, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(mergeSticks(boxes.flatMap(b => boxEdges(...b))), new THREE.MeshLambertMaterial({ color }));
+  m.position.set(x, y, z);
+  parent.add(m);
+  return m;
+}
+
+// Sketchkit / Outlynx: a cat drawn only as an outline. Outlynx (`lynx`) is bigger, with ear tufts and stripes drawn on one side only.
+function outline(root, m, parts) {
+  const lynx = has(m, 'lynx');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  outlineMesh(lift, [[0.46, 0.32, 0.62, 0, 0, 0]], m.dark, 0, 0.4, 0);
+  const head = pivot(lift, 0, 0.62, 0.34);
+  parts.head = head;
+  outlineMesh(head, [[0.34, 0.3, 0.3, 0, 0, 0], [0.1, 0.14, 0.06, -0.1, 0.2, -0.04], [0.1, 0.14, 0.06, 0.1, 0.2, -0.04]], m.dark);
+  if (lynx) for (const s of [-1, 1]) box(head, 0.025, 0.14, 0.025, m.dark, s * 0.1, 0.36, -0.04); // ear tufts
+  eyes(head, 0.03, 0.155, 0.09, 0.1);
+  box(head, 0.07, 0.05, 0.04, DO_PINK, 0, -0.05, 0.16);
+  for (const s of [-1, 1]) { box(head, 0.14, 0.012, 0.012, m.dark, s * 0.2, -0.06, 0.15); box(head, 0.12, 0.012, 0.012, m.dark, s * 0.2, -0.09, 0.15); }
+  parts.legs = [];
+  for (const [x, z, ph] of [[-0.15, 0.2, 0], [0.15, 0.2, Math.PI], [-0.15, -0.2, Math.PI], [0.15, -0.2, 0]]) {
+    const leg = pivot(lift, x, 0.26, z);
+    outlineMesh(leg, [[0.1, 0.24, 0.1, 0, 0, 0]], m.dark, 0, -0.12, 0);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tail = pivot(lift, 0, 0.5, -0.31);
+  parts.tail = tail;
+  outlineMesh(tail, [[0.08, 0.08, lynx ? 0.2 : 0.42, 0, 0, lynx ? -0.1 : -0.21]], m.dark);
+  const stripes = lynx ? 3 : 2; // half-drawn stripes: solid on the left side only
+  for (let i = 0; i < stripes; i++) box(lift, 0.025, 0.2, 0.07, m.dark, 0.235, 0.4, -0.2 + i * 0.2);
+  for (let i = 0; i < stripes; i++) box(lift, 0.025, 0.1, 0.07, m.accent, -0.235, 0.4, -0.2 + i * 0.2); // faint on the other side
+  doStar(lift, 0.236, 0.46, 0.17, 0.05).rotation.y = Math.PI / 2;
+}
+
+// Notquite: a round creature that is only half finished: the left half is drawn and coloured in, the right half is faint boxes and dotted
+// guide lines. "It is not finished yet, and it likes it that way."
+function halfdrawn(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const layers = [[0.46, 0.12], [0.6, 0.14], [0.66, 0.16], [0.6, 0.14], [0.46, 0.12]]; // [width, height] from the bottom
+  let y = 0.2;
+  for (const [w, h] of layers) {
+    box(lift, w / 2, h, w * 0.9, m.body, -w / 4, y + h / 2, 0); // the finished half (the left)
+    const ghost = new THREE.Mesh(new THREE.BoxGeometry(w / 2, h, w * 0.9), new THREE.MeshLambertMaterial({ color: m.body, transparent: true, opacity: 0.16, depthWrite: false }));
+    ghost.position.set(w / 4, y + h / 2, 0);
+    lift.add(ghost);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(ghost.geometry), new THREE.LineBasicMaterial({ color: m.dark }));
+    edges.position.copy(ghost.position);
+    lift.add(edges);
+    y += h;
+  }
+  for (let i = 0; i < 7; i++) box(lift, 0.025, 0.06, 0.025, m.dark, 0.005, 0.26 + i * 0.1, 0.3); // the dotted guide down the middle
+  box(lift, 0.11, 0.13, 0.04, 0xffffff, -0.13, 0.7, 0.3).userData.eye = true; // one drawn eye
+  box(lift, 0.06, 0.08, 0.03, 0x111111, -0.12, 0.69, 0.32).userData.eye = true;
+  const eyeGhost = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.11, 0.13, 0.04)), new THREE.LineBasicMaterial({ color: m.dark })); // and one only outlined
+  eyeGhost.position.set(0.13, 0.7, 0.3);
+  lift.add(eyeGhost);
+  box(lift, 0.14, 0.03, 0.03, 0x2a2a2a, -0.1, 0.55, 0.31);
+  parts.legs = [];
+  for (const [x, ph, solid] of [[-0.14, 0, true], [0.14, Math.PI, false]]) {
+    const leg = pivot(lift, x, 0.2, 0);
+    if (solid) box(leg, 0.12, 0.2, 0.14, m.dark, 0, -0.1, 0);
+    else { const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.12, 0.2, 0.14)), new THREE.LineBasicMaterial({ color: m.dark })); e.position.y = -0.1; leg.add(e); }
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tuft = pivot(lift, -0.1, 1.1, 0);
+  swing(parts, tuft, 'z', 0.15, 2.6, 0);
+  box(tuft, 0.06, 0.16, 0.06, m.dark, 0, 0.08, 0);
+  doStar(lift, -0.17, 0.46, 0.3, 0.06);
+}
+const SHAPES_DOODLE = { pencil, eraserbun, outline, halfdrawn };
+Object.assign(SHAPES, SHAPES_DOODLE);
+/* ==== end of T45 doodle shapes ==== */

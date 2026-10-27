@@ -19,6 +19,7 @@ const WOOL_TYPES = [
   'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
   'ninja', // wave 12 (T37): id 113
   'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
+  'doodle', // wave 15 (T45): id 244
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -31,6 +32,7 @@ const WOOL_RGB = {
   food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
   ninja: [46, 40, 66],
   tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
+  doodle: [236, 232, 220], // T45
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -71,6 +73,8 @@ const MORE_TILES = [
   // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
+  // T45 doodle (wave 15): the blank page under the drawing, a drawn line (ink), the star pad (top / side), the sketchbook's spiral rings
+  'DO_PAPER', 'DO_INK', 'DO_PAD_TOP', 'DO_PAD_SIDE', 'DO_BINDING',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -143,10 +147,12 @@ export const B = {
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
+  // 244-249: T45, the Sketchbook (244 is the doodle wool; 249 reserved; none placeable, all fixed). DO_INK is drawn only with setLive.
+  DO_PAPER: 245, DO_INK: 246, DO_PAD: 247, DO_BINDING: 248,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143, doodle: 244 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -343,6 +349,11 @@ BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, sid
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
+// T45 Sketchbook blocks (none placeable, all fixed). The ink is drawn only with setLive (the pencil draws a line as you follow its tip).
+BLOCKS[B.DO_PAPER] = { name: 'Blank Page', ...all(T.DO_PAPER), fixed: true, wallText: "It's the blank page under the drawing." };
+BLOCKS[B.DO_INK] = { name: 'Pencil Line', ...all(T.DO_INK), fixed: true, wallText: "The pencil drew this. You can't rub it out!" };
+BLOCKS[B.DO_PAD] = { name: 'Star Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, bottom: T.DO_PAD_SIDE, fixed: true, wallText: 'Stand on the star pad and press Draw!' };
+BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: true, wallText: "The sketchbook's spiral rings. Too big to break!" };
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -495,6 +506,7 @@ export function drawAtlas() {
                             : t === 'cozy' ? (x % 8 < 2 && y % 8 < 2 ? [150, 70, 60] : x % 8 < 2 || y % 8 < 2 ? [240, 200, 150] : WOOL_RGB[t]) // blanket plaid
                               : t === 'treasure' ? (x === 0 || y === 0 ? [255, 230, 140] : (x * 5 + y * 3) % 17 === 0 ? [230, 60, 80] : (x * 3 + y * 7) % 19 === 0 ? [80, 140, 240] : WOOL_RGB[t]) // gold with gems
                                 : t === 'food' ? (((x >> 2) + (y >> 2)) % 2 ? [250, 240, 230] : WOOL_RGB[t]) // tablecloth check (T33)
+                                : t === 'doodle' ? (y % 5 === 2 ? [176, 200, 232] : WOOL_RGB[t]) // T45: notebook paper with blue ruled lines
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
@@ -967,6 +979,19 @@ export function drawAtlas() {
       // SHELL_SAND: sand with pink and white shell flecks
       const fleck = r9() < 0.07;
       put(T.SHELL_SAND, x, y, fleck ? (r9() < 0.5 ? [250, 226, 226] : [240, 150, 160]) : sh9([226, 214, 170], 0.14));
+    });
+  }
+  { // T45 Sketchbook tiles (own random numbers): the colour versions; the pencil versions are drawn by sketchatlas.js
+    const r5 = mulberry32(4545), CREAM = [244, 240, 228];
+    each((x, y) => {
+      put(T.DO_PAPER, x, y, y === 5 || y === 11 ? [176, 200, 232] : shade(CREAM, 1 + (r5() - 0.5) * 0.03)); // a notebook page: faint blue ruled lines
+      const hi = (x + y) % 9 === 0 && x > 2 && x < 13; // the drawn line: dark graphite with one bright stroke
+      put(T.DO_INK, x, y, hi ? [150, 150, 170] : shade([56, 54, 66], 1 + (r5() - 0.5) * 0.2));
+      const d = Math.hypot(x - 7.5, y - 7.5), star = Math.abs(Math.sin(Math.atan2(y - 7.5, x - 7.5) * 2.5 + 1.57)) > 0.5 && d < 5 - Math.abs(Math.sin(Math.atan2(y - 7.5, x - 7.5) * 2.5)) * 2;
+      put(T.DO_PAD_TOP, x, y, d > 6.4 ? [90, 84, 100] : star || d < 1.4 ? [255, 214, 60] : shade(CREAM, 1 + (r5() - 0.5) * 0.03)); // a yellow star in a circle
+      const body = y >= 5 && y <= 10 && x >= 2, tip = x < 5 && Math.abs(y - 7.5) < x - 0.5; // a pencil lying down: yellow body, wood cone, dark lead
+      put(T.DO_PAD_SIDE, x, y, y === 4 || y === 11 ? [90, 84, 100] : body && x >= 5 ? (y === 5 || y === 10 ? [214, 160, 20] : [255, 214, 60]) : tip ? (x < 2 ? [60, 58, 70] : [230, 190, 140]) : shade(CREAM, 1 + (r5() - 0.5) * 0.03));
+      put(T.DO_BINDING, x, y, (y % 5 >= 1 && y % 5 <= 2 && x > 1 && x < 14) ? [196, 200, 214] : shade([150, 118, 84], 1 + (r5() - 0.5) * 0.1));
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.

@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -117,6 +118,27 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
   ],
 });
 /* ==== end of T40d ball ==== */
+/* ==== T45 doodle ==== */
+// Artist Arlo, the Sketchbook's Boss, waits on the Desk. His gate is the eight lines (saved `beaten` keys, doodleland.js lineState).
+// Tracey and Charlie Charcoal are optional bonus battles.
+addBoss({
+  id: 'doodle', name: 'Artist Arlo', type: 'doodle', title: 'Artist Arlo · Sketchbook Boss', look: 'beret',
+  colors: { shirt: 0xf4f0e6, pants: 0x4a4a56, hair: 0x5a4a3a, skin: 0xf2d0b0 },
+  gate: game => { const st = lineState(game); return st.done ? null : `Hello! Draw all the lines to reach me first! (✏️ ${st.count} / ${LINE_COUNT})`; },
+  team: [['notquite', 60], ['rubbadub', 61], ['graphitan', 62, ['leadlance']], ['outlynx', 63, ['squigglestrike', 'masterpiece']]],
+  intro: ['Oh! You found my sketchbook!', 'Everything here is drawn, but not finished yet.', "Let's see how my drawings battle!"],
+  lose: 'What a picture! The star is yours.',
+  win: 'Good try! A drawing needs a few goes. Try again!',
+  rematchIntro: ['Back again? I drew my team a bit bigger!'],
+  note: 'My first sketchbook! I drew every creature here before I made them for real. Thank you for finishing the lines for me.',
+  crew: [
+    { name: 'Tracey', colors: { shirt: 0xf6d8e0, pants: 0x4a4a56, hair: 0x2a2a30, skin: 0xe8c09a },
+      team: [['nibling', 59], ['sketchkit', 60], ['rubbit', 60]], intro: ['I trace everything!', 'Battle me!'], line: 'Follow the dots, and keep your eyes on the tip!' },
+    { name: 'Charlie Charcoal', colors: { shirt: 0x4a4a56, pants: 0x2a2a30, hair: 0x1a1a1a, skin: 0xd8a878 },
+      team: [['rubbit', 60], ['graphitan', 61]], intro: ['Smudge! Round and round we go!'], line: 'Round and round and up we go!' },
+  ],
+});
+/* ==== end of T45 doodle ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen

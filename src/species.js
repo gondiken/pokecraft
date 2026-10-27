@@ -31,6 +31,8 @@ export const TYPE_COLORS = {
   pirate: 'repeating-linear-gradient(90deg,#f6efe0 0 5px,#e07a6a 5px 10px)',
   racer: 'linear-gradient(90deg,#ffa24a 0 70%,#ffffff 70% 78%,#ffa24a 78%)',
   ball: 'radial-gradient(circle at 35% 35%,#ffffff 18%,#9fd6ff 19%)',
+  // Wave 15 (T45)
+  doodle: 'repeating-linear-gradient(135deg,#f6f2e8 0 6px,#c8c2b4 6px 7px)', // pencil lines on paper; dark chip text reads
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -90,6 +92,14 @@ const EFFECTIVENESS = {
   racer: { pirate: 2, time: 2, parkour: 2, racer: 0.5, rock: 0.5, slime: 0.5 },
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
+/* ==== T45 doodle chart ==== */
+// Drawing an outline shows where a camo creature hides; pencil and paper never run out of battery; a drawing keeps the moment forever;
+// a pencil cannot scratch metal and paper burns. Others' cells are separate lines (no old cell changes).
+EFFECTIVENESS.doodle = { camo: 2, cyber: 2, time: 2, doodle: 0.5, fire: 0.5, metal: 0.5 };
+EFFECTIVENESS.water.doodle = 2;    // wet paper smudges the lines
+EFFECTIVENESS.rainbow.doodle = 2;  // colour fills in the black and white
+EFFECTIVENESS.paper.doodle = 0.5;  // more paper is just a fresh page
+/* ==== end of T45 doodle chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -501,6 +511,23 @@ BIG_MOVES.pirate = [
   ['walktheplank', 'Walk the Plank', 'curse', 'The foe team wobbles on the plank and gets slower (sometimes).'],
 ];
 /* ==== end of T40b pirate ==== */
+/* ==== T45 doodle ==== */
+// Doodle creatures poke with pencils, swipe sketches, draw quick and rub things out.
+Object.assign(MOVES, {
+  pencilpoke: mv('Pencil Poke', 'doodle', 40, 1),
+  sketchswipe: mv('Sketch Swipe', 'doodle', 75, 0.9),
+  quickdraw: mv('Quick Draw', 'doodle', 45, 1, { priority: 1 }),
+  rubout: mv('Rub Out', 'doodle', 0, 1, { fx: { kind: 'lower', stat: 'def' } }),
+  leadlance: mv('Lead Lance', 'doodle', 95, 0.9, { fx: { kind: 'recoil', amount: 0.25 }, sig: true }),
+  cleanslate: mv('Clean Slate', 'doodle', 0, 1, { fx: { kind: 'heal', amount: 0.5 }, sig: true }),
+  squigglestrike: mv('Squiggle Strike', 'doodle', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sure: true, sig: true }),
+});
+BIG_MOVES.doodle = [
+  ['masterpiece', 'Masterpiece', 'rally', 'Everyone adds a line! Whole team hits harder. You get softer.'],
+  ['tracingpaper', 'Tracing Paper', 'shield', 'A sheet of tracing paper covers the team. You rest next turn.'],
+  ['finishingtouch', 'Finishing Touch', 'lastword', 'One last perfect line! Only when you are almost out.'],
+];
+/* ==== end of T45 doodle ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -614,6 +641,7 @@ T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.nin
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
 T1.tiny = 'teenytap'; T2.tiny = 'mightymite'; T3.tiny = 'tinysteps'; T4.tiny = 'tuckaway'; // T40a
 T1.pirate = 'hookswipe'; T2.pirate = 'cannonball'; T3.pirate = 'swashbuckle'; T4.pirate = 'spyglass'; // T40b
+T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4.doodle = 'rubout'; // T45
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2139,6 +2167,46 @@ export const SPECIES = {
     model: { shape: 'barrelpus', scale: 1.0, body: 0x9a5ad8, accent: 0xb07a3a, dark: 0x4a2a6a, belly: 0xf0d0ff, extras: [] },
   },
   /* ==== end of T40b pirate ==== */
+  /* ==== T45 doodle ==== */
+  nibling: {
+    name: 'Nibling', type: 'doodle', desc: 'A stubby pencil that walks on two little legs. Its nib is its nose, and it sniffs out blank paper.',
+    base: { hp: 48, atk: 58, def: 50, spd: 52 }, baseXp: 64, catchRate: 0.45, learn: L('doodle', 'metal'),
+    evolve: { level: 27, into: 'graphitan' },
+    model: { shape: 'pencil', scale: 0.85, body: 0xf4efe0, accent: 0xe6c08a, dark: 0x6a6870, belly: 0xd8d2c0, extras: [] },
+  },
+  graphitan: {
+    name: 'Graphitan', type: 'doodle', desc: 'A tall pencil knight with a lead lance. It draws a straight line and charges along it.',
+    base: { hp: 80, atk: 100, def: 85, spd: 68 }, baseXp: 168, catchRate: 0.12, learn: L('doodle', 'metal', [[30, 'leadlance']]),
+    model: { shape: 'pencil', scale: 1.2, body: 0xe8e2d0, accent: 0xd0a86a, dark: 0x5a5862, belly: 0xc8c2b0, extras: ['knight'] },
+  },
+  rubbit: {
+    name: 'Rubbit', type: 'doodle', desc: 'A soft eraser bunny in a paper sleeve. It hops about and rubs out mistakes. Oops! Gone!',
+    base: { hp: 52, atk: 45, def: 60, spd: 62 }, baseXp: 64, catchRate: 0.45, learn: L('doodle', 'normal'),
+    evolve: { level: 26, into: 'rubbadub' },
+    model: { shape: 'eraserbun', scale: 0.85, body: 0xf2e2e6, accent: 0xf4efe0, dark: 0x6a6870, belly: 0xffffff, extras: [] },
+  },
+  rubbadub: {
+    name: 'Rubbadub', type: 'doodle', desc: 'A big round eraser bunny with crumbs flying off it. Everything it bounces on turns clean and white.',
+    base: { hp: 90, atk: 70, def: 95, spd: 70 }, baseXp: 168, catchRate: 0.12, learn: L('doodle', 'normal', [[30, 'cleanslate']]),
+    model: { shape: 'eraserbun', scale: 1.25, body: 0xf0dce2, accent: 0xf4efe0, dark: 0x6a6870, belly: 0xffffff, extras: ['crumbs'] },
+  },
+  sketchkit: {
+    name: 'Sketchkit', type: 'doodle', desc: 'A kitten drawn only as an outline. You can see right through it, and it likes to be seen through.',
+    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('doodle', 'camo'),
+    evolve: { level: 28, into: 'outlynx' },
+    model: { shape: 'outline', scale: 0.85, body: 0xf4efe0, accent: 0xc8c2b4, dark: 0x4a4a56, belly: 0xffffff, extras: [] },
+  },
+  outlynx: {
+    name: 'Outlynx', type: 'doodle', desc: 'A lynx drawn in careful lines, with the stripes only half drawn. Some of them let you ride along!',
+    base: { hp: 80, atk: 90, def: 65, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('doodle', 'camo', [[30, 'squigglestrike']]),
+    model: { shape: 'outline', scale: 1.3, body: 0xf4efe0, accent: 0xc8c2b4, dark: 0x3a3a46, belly: 0xffffff, extras: ['lynx'] },
+  },
+  notquite: {
+    name: 'Notquite', type: 'doodle', desc: 'It is not finished yet, and it likes it that way. One half is drawn, the other half is only dotted lines.',
+    base: { hp: 70, atk: 65, def: 65, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('doodle', 'dream'),
+    model: { shape: 'halfdrawn', scale: 1.0, body: 0xf0e8d4, accent: 0xc8c2b4, dark: 0x4a4a56, belly: 0xffffff, extras: [] },
+  },
+  /* ==== end of T45 doodle ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2361,6 +2429,10 @@ for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...l
 export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'crumbs'], // T40a.5: Pipsqueak after all 12 crumbs
   ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
 /* ==== end of T40a tiny ==== */
+/* ==== T45 doodle ==== */
+// Doodle creatures live only in the Sketchbook (REALMS.doodle.spawns), on the pages' grass.
+export const DOODLE_SPAWNS = [['nibling', 1.2], ['rubbit', 1.2], ['sketchkit', 1.0], ['graphitan', 0.12], ['rubbadub', 0.12], ['outlynx', 0.1], ['notquite', 0.08]];
+/* ==== end of T45 doodle ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 
@@ -3040,6 +3112,6 @@ export function setModelHealth(group, frac, { instant = false } = {}) {
 
 export function disposeModel(group) {
   group.traverse(o => {
-    if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); }
+    if (o.isMesh || o.isLine) { o.geometry.dispose(); o.material.dispose(); } // T45: the Doodle shapes have line segments too
   });
 }

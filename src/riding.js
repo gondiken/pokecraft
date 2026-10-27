@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { SPECIES, nameOf, buildModel, animateModel, disposeModel } from './species.js';
 import { TRAITS, hasTrait } from './traits.js';
 import { sound } from './sound.js';
+import { sketchModel } from './sketch.js'; // T45
 
 export const RIDE = {
   land: { kind: 'land', speed: 7.0, sprint: 9.5, jump: 11.2 },
@@ -63,7 +64,7 @@ export function createRiding(game, { scene, closePanel }) {
       }
       this.creature = c; this.species = c.species; this.kind = kind;
       try {
-        this.model = buildModel(c.species);
+        this.model = buildModel(c.species); sketchModel(this.model); // T45
         this.fit = fitRide(this.model);
         scene.add(this.model);
         this.place();

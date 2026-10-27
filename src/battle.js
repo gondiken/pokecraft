@@ -8,6 +8,7 @@ import {
 import { B, isSolid, mulberry32 } from './blocks.js';
 import { wait, tween, easeOut, hpColor, el } from './util.js';
 import { sound } from './sound.js';
+import { sketchModel } from './sketch.js'; // T45
 import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
 
 const PARTY_MAX = 6;
@@ -319,7 +320,7 @@ export class Battle {
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
     const pos = p.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, 1.5 * (this.coop ? this.coopSign() : 1));
     pos.y = this.groundBelow(pos.x, pos.z, p.y + 1);
-    const model = buildModel(this.ally.species);
+    const model = buildModel(this.ally.species); sketchModel(model); // T45
     model.position.copy(pos);
     model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
     this.showsCreature(model, this.ally);
@@ -349,7 +350,7 @@ export class Battle {
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
     const pos = a.clone().addScaledVector(dir, Math.min(2.6, gap * 0.45)).addScaledVector(right, -1.5 * this.coopSign());
     pos.y = this.groundBelow(pos.x, pos.z, a.y + 1);
-    const model = buildModel(this.friend.species);
+    const model = buildModel(this.friend.species); sketchModel(model); // T45
     model.position.copy(pos);
     model.rotation.y = Math.atan2(w.x - pos.x, w.z - pos.z);
     this.showsCreature(model, this.friend);
@@ -399,7 +400,7 @@ export class Battle {
     dir.normalize();
     const pos = npc.pos.clone().addScaledVector(dir, Math.min(2.2, dist * 0.4));
     pos.y = this.groundBelow(pos.x, pos.z, npc.pos.y + 0.5);
-    const model = buildModel(this.foe.species);
+    const model = buildModel(this.foe.species); sketchModel(model); // T45
     model.position.copy(pos);
     model.rotation.y = Math.atan2(p.x - pos.x, p.z - pos.z);
     model.scale.setScalar(0.01);
@@ -421,7 +422,7 @@ export class Battle {
     const at = this.foePos;
     this.modMap.delete(this.foe);
     const mid = g.player.pos.clone().add(this.duel.avatar.pos).multiplyScalar(0.5);
-    const model = buildModel(this.foe.species);
+    const model = buildModel(this.foe.species); sketchModel(model); // T45
     model.position.copy(at);
     model.rotation.y = Math.atan2(mid.x - at.x, mid.z - at.z);
     model.scale.setScalar(0.01);
