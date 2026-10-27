@@ -78,6 +78,21 @@ export const CONDITIONS = {
   },
 };
 
+// Owner 2026-10-27: the rare creatures of a Picture World wait until you got a bit further there (the 4th element of a spawn
+// entry, a Picture World id; wildafter.js checks it). The Book's words for each:
+export const AFTER_TEXT = {
+  house: 'once you found 6 cookie crumbs',
+  race: 'once you beat Racer Rio in a race',
+  stadium: 'once you scored 2 goals',
+  pirate: 'once you sank 6 rowboats',
+  atlantis: 'once you caught 6 glowfish lights',
+  fair: 'once you won a golden ticket',
+  doors: 'once you won 2 golden bows',
+  doodle: 'once you drew 4 lines',
+  portal: 'once you finished 4 swirl rooms',
+};
+export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);
+
 // 'name' or 'name:arg' (T21: 'home:cozy').
 export const condOf = s => (s ? CONDITIONS[s.split(':')[0]] : null);
 const byArg = (v, s) => (typeof v === 'function' ? v(s.split(':')[1]) : v);

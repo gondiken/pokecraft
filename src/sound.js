@@ -263,6 +263,10 @@ const SOUNDS = {
   lapbell: () => { bell(1568, 0, 0.35, 0.2); bell(2093, 0.14, 0.4, 0.2); },
   boostzoom: () => { tone(200, { len: 0.34, type: 'sawtooth', vol: 0.1, slide: 900 }); noise({ freq: 3500, len: 0.3, vol: 0.08, q: 0.7 }); },
   dashzoom: () => tone(110, { len: 0.2, type: 'sawtooth', vol: 0.06, slide: 120 }),
+  // Race Track v2 (owner 2026-10-27): a kart bumping a wall (a rubbery thud), flying off the jump ramp, landing
+  kartbonk: () => { noise({ freq: 400, len: 0.16, vol: 0.22, q: 0.8 }); tone(140, { len: 0.14, type: 'triangle', vol: 0.16, slide: -60 }); },
+  kartjump: () => tone(330, { len: 0.4, type: 'triangle', vol: 0.14, slide: 520 }),
+  kartland: () => { noise({ freq: 700, len: 0.12, vol: 0.16, q: 0.7 }); tone(110, { len: 0.1, type: 'square', vol: 0.08 }); },
   'fx:squad': () => notes([523, 587, 659], 0.07, { len: 0.08, type: 'square', vol: 0.1 }), // T34: hup-hup-hup
   // T35: Dream (a soft wobbly glide up and down on two slightly detuned notes).
   'fx:dream': () => { tone(523, { len: 0.18, type: 'triangle', vol: 0.12, slide: 90 }); tone(528, { len: 0.18, type: 'triangle', vol: 0.1, slide: 70 }); tone(613, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.12, slide: -100 }); tone(618, { at: 0.17, len: 0.18, type: 'triangle', vol: 0.1, slide: -80 }); },

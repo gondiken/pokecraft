@@ -1,13 +1,13 @@
 // T40d: the live part of Playland's Ball Stadium (LIVE.stadium, made by gymLive.reset for the part in world.parts).
 // Two balls (a football on the pitch, a basketball on the court) that are this player's own meshes (never blocks, never saved or
 // sent: every player kicks their own ball), two goalkeepers walking on the football's clock, goals (saved at once as `beaten`
-// keys pw:stadium:goal1..3), baskets (a few bonus cubes), the words, and the guide arrow. The physics are in ballphysics.js.
+// keys pw:stadium:goal1..5), baskets (a few bonus cubes), the words, and the guide arrow. The physics are in ballphysics.js.
 // Owner 2026-10-26, "a real skill": Kick! and Shoot! are held and let go (gymLive `press` / `release`): the kick's power is how
 // long you hold (a ring fills round the ball; green = a hard low drive, past it = over the bar), the shot is good when you let go at
 // the top of the jump that Shoot! starts (the ball glows then). Keepers dive at a shot; every goal or basket makes the next harder.
 import * as THREE from 'three';
 import { Ball, BALL, BALL_COURT, touchKick, canBoot, boot, shotTo, keeperAt, diveAt, DIVE, HOLD, kickZone, kickPower, shotWindow, shotMiss } from './ballphysics.js';
-import { goalOf, basketCross, inBox, goalState, goalKey, basketKey, GOALS, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
+import { goalOf, basketCross, inBox, goalState, goalKey, basketKey, GOALS, SCORE_IDS, stageOf, BALL_R, SHOT, shootable, STADIUM } from './stadium.js';
 import { buildPerson } from './npc.js';
 import { bossOf } from './pictureboss.js';
 import { disposeModel } from './species.js';
@@ -117,8 +117,8 @@ export class StadiumLive {
 
   /* ---- helpers ---- */
   get hard() { return this.game.stars.includes('stadium'); }
-  get goalsIn() { return goalState(this.game).n; }   // goals and baskets already in this match: each makes the next harder
-  get basketsIn() { return goalState(this.game).b; }
+  get goalsIn() { const st = goalState(this.game); return stageOf(st.n, st.need); }   // how hard the next goal / basket is (0..2): goals and baskets already in make it harder
+  get basketsIn() { const st = goalState(this.game); return stageOf(st.b, st.bneed); }
   toast(m) { this.game.ui.toast(m); }
   frozen() { const g = this.game; return !!(g.inBattle || g.ui.asking || g.ui.panelOpen || !this.playing()); }
   playerBox(p = this.game.player) {
@@ -176,7 +176,7 @@ export class StadiumLive {
   }
 
   // On the pitch or the court: the goals and baskets for the Captain in the top corner (owner 2026-10-26). After a won Boss battle
-  // the keys are cleared, so it reads 0/3 again (every battle needs a new 3 + 3).
+  // the keys are cleared, so it reads 0/5 again (every battle needs a new 5 + 5).
   scoreText() {
     const st = goalState(this.game);
     return { text: `⚽ ${Math.min(st.n, st.need)}/${st.need} · 🏀 ${Math.min(st.b, st.bneed)}/${st.bneed}${st.done ? ` · ${this.next(st)}` : ''}`, done: st.ready };
@@ -256,7 +256,7 @@ export class StadiumLive {
     const { n: before, need } = goalState(g);
     let n = before;
     if (before < need) {
-      const key = [1, 2, 3].map(goalKey).find(k => !g.beaten.includes(k));
+      const key = SCORE_IDS.map(goalKey).find(k => !g.beaten.includes(k));
       if (key) { g.beaten.push(key); n++; g.save?.(); }
     }
     if (before >= need) this.toast('GOAL! What a shot!');
@@ -283,7 +283,7 @@ export class StadiumLive {
     const st = goalState(g); // owner 2026-10-26: the captain wants baskets too (saved at once, like goals)
     let counted = '';
     if (st.b < st.bneed) {
-      const key = [1, 2, 3].map(basketKey).find(k => !g.beaten.includes(k));
+      const key = SCORE_IDS.map(basketKey).find(k => !g.beaten.includes(k));
       if (key) { g.beaten.push(key); g.save?.(); const now = goalState(g); counted = now.done ? ` ${now.bneed} of ${now.bneed}! ${this.wants(now)}` : ` ${now.b} of ${now.bneed}`; }
     }
     if (this.bonus < LIVE_RULES.bonusMax) {
@@ -398,7 +398,7 @@ export class StadiumLive {
   battleEnded(result, opts) {
     if (result !== 'won' || opts?.picture?.id !== 'stadium' || opts.picture.crew != null) return;
     const g = this.game;
-    for (let i = 1; i <= 3; i++) for (const key of [goalKey(i), basketKey(i)]) { const k = g.beaten.indexOf(key); if (k >= 0) g.beaten.splice(k, 1); }
+    for (const i of SCORE_IDS) for (const key of [goalKey(i), basketKey(i)]) { const k = g.beaten.indexOf(key); if (k >= 0) g.beaten.splice(k, 1); }
   }
 
   /* ---- the guide ---- */

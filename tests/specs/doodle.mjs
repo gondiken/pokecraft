@@ -340,6 +340,17 @@ export default async function ({ browser, base, t }) {
       const c2 = D.courseOf(2, solid), b0 = c2.blots[0], aimBlot = [c2.start[0] + (b0.x - c2.start[0]) * 2, c2.start[1] + (b0.z - c2.start[1]) * 2];
       out.blocks = [blk(2, aimBlot), blk(6, [40, 40], [45, 78]), blk(5, [24, 80])];
       if (out.blocks.join() !== 'blot,page,low') bad(`blocked by ${out.blocks}`);
+      // owner 2026-10-27 ("the pencil gets stuck at the edge"): a stuck pencil turns round toward where you look, even a point short of it
+      {
+        const c = { ...D.courseOf(2, solid), ink: 99, rubber: 0 }, st = T.newDraw(c);
+        const lookAt = (P, pl) => { const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], Math.min(st.tip.row + 1, e[1] - 0.6) - e[1], P[1] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m), player: pl }; };
+        const behind = () => { const p = st.pts[Math.max(0, st.pts.length - 7)]; return [p.x, p.row + 1, p.z]; }; // you walk 3 blocks behind the tip
+        for (let i = 0; i < 900 && st.blocked !== 'blot'; i++) T.drawStep(st, 1 / 60, lookAt(aimBlot, behind()));
+        const h1 = st.tip.h, s1 = st.s, pl = behind(), back = [pl[0] - Math.sin(h1) * 2 - Math.cos(h1) * 1, pl[2] + Math.cos(h1) * 2 - Math.sin(h1) * 1]; // to the side, a bit back toward you
+        for (let i = 0; i < 120; i++) T.drawStep(st, 1 / 60, lookAt(back, pl));
+        out.unstuck = { was: 'blot', turned: +Math.abs(Math.atan2(Math.sin(st.tip.h - h1), Math.cos(st.tip.h - h1))).toFixed(2), moved: +(st.s - s1).toFixed(2) };
+        if (out.unstuck.turned < 1 || out.unstuck.moved < 0.5) bad(`a stuck pencil does not turn back: ${JSON.stringify(out.unstuck)}`);
+      }
       // a star: full ink again, and a setback after it keeps the line up to it (Rubber never rubs before it)
       const r6 = C.simCourse(D.courseOf(6, solid), { bot: 'lazy', lazy: 6, maxT: 40 });
       out.r6 = r6.backs;
@@ -363,6 +374,7 @@ export default async function ({ browser, base, t }) {
     t.ok(F.problems.length === 0, `Draw!: ${F.problems.length ? F.problems.join('; ') : `for every line a skilled player wins cleanly at 60 and 20 fps (about the same time), drawing straight at the page wins no line cleanly (the landing strip, blots, the tower, bees), the ink never reaches without a star, Rubber catches a player who stops on lines 6-8 and the line still gets drawn, a player who never waits for the bees gets nibbled, lines 6-8 need their stars, Rubber gets faster per rematch win but never as fast as walking, the gaps are keeps (${F.ms.toFixed(0)} ms)`}`);
     t.ok(Math.abs(F.steer[0]) < 0.001 && Math.abs(F.steer[1]) > 0.3, `the pencil draws where you look: looking at the pencil it goes straight (turned ${F.steer[0]}), looking to one side bends the line (turned ${F.steer[1]} rad)`);
     t.ok(F.leash <= 5.2, `standing still the pencil waits ${F.leash} blocks ahead and uses ink only while it draws`);
+    t.ok(F.unstuck && F.unstuck.turned >= 1 && F.unstuck.moved >= 0.5, `owner 2026-10-27: a pencil stuck at the blot turns round toward a point you look at short of it, and draws on (${JSON.stringify(F.unstuck)})`);
     t.ok(F.blocks.join() === 'blot,page,low', `an ink blot, a page that is not the next one and the tower stop the pencil (${F.blocks})`);
     t.ok(!!F.star.after, `a star fills the ink; caught after it you go back to it with the line up to it kept (${JSON.stringify(F.star)})`);
     console.log('  Draw! per line: ' + F.rows.map(r => JSON.stringify(r)).join('\n    '));
@@ -649,7 +661,7 @@ export default async function ({ browser, base, t }) {
       t.ok(all.gate === null && all.done && /To the Desk/.test(all.chip || ''), `all 8 lines: Arlo's gate opens, the chip says "${all.chip}"`);
       // crew battles are optional (never a gate)
       const crew = await page.evaluate(async () => { const g = window.pokecraft, B = await import('/src/pictureboss.js'); return { names: B.bossOf('doodle').crew.map(c => c.name), gateOpen: B.bossOf('doodle').gate(g) === null, keyFmt: B.crewKey('doodle', 0) }; });
-      t.ok(crew.names.join() === 'Tracey,Charlie Charcoal' && crew.gateOpen && crew.keyFmt === 'pw:doodle:crew1', 'two optional crew (Tracey, Charlie Charcoal): the gate never needs them');
+      t.ok(crew.names.join() === 'Tracey,Charlie Charcoal' && crew.gateOpen && crew.keyFmt === 'pw:doodle:crew1', 'two crew (Tracey, Charlie Charcoal): the lines gate never counts them (the Boss waits for them separately, owner 2026-10-27)');
       // crew: Tracey battles once (2 cubes), then says her line; never a gate
       await page.evaluate(async () => {
         const g = window.pokecraft, S = await import('/src/species.js'), n = g.npcs.list.find(n => n.kind === 'crew' && /Tracey/.test(n.name));
@@ -667,9 +679,14 @@ export default async function ({ browser, base, t }) {
         g.party = [S.makeCreature('fluffin', 2)];
         window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), 0);
         const out = { name: n.name, team: n.def.team.map(t => `${t[0]}${t[1]}`).join(), top: Math.max(...n.def.team.map(t => t[1])), prompt: g.bosses.talkPrompt(n) };
+        const toasts = []; const tf = g.ui.toast.bind(g.ui); g.ui.toast = (m, ...r) => { toasts.push(m); return tf(m, ...r); };
+        g.bosses.talk(n); // owner 2026-10-27: Charlie Charcoal is not beaten yet: Arlo waits for him
+        out.crewGate = !g.inBattle && toasts.some(m => /Beat Charlie Charcoal first/.test(m)); g.ui.toast = tf;
+        if (!g.beaten.includes('pw:doodle:crew2')) g.beaten.push('pw:doodle:crew2');
         g.bosses.talk(n);
         return out;
       });
+      t.ok(arlo.crewGate, 'owner 2026-10-27: with Tracey beaten but not Charlie Charcoal, Arlo says to beat Charlie first');
       t.ok(arlo.name === 'Artist Arlo' && arlo.top === 63 && arlo.team === 'notquite60,rubbadub61,graphitan62,outlynx63' && arlo.prompt?.action === 'Challenge!', `Artist Arlo's team ${arlo.team}, top level ${arlo.top}`);
       await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 180000);
       await shot(page, 'battle');

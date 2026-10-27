@@ -544,10 +544,14 @@ export default async function ({ browser, base, t }) {
       const g = window.pokecraft, S = await import('/src/species.js');
       g.party = ['blazehound', 'thunderwolf', 'grovebeast', 'tidalord'].map(id => S.makeCreature(id, 100)); g.cubes = 0;
       window.__cele = null; const cf = g.ui.celebrate.bind(g.ui); g.ui.celebrate = (...a) => { window.__cele = a; cf(...a); };
+      window.__toasts.length = 0; g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss')); // owner 2026-10-27: his two helpers first
+      window.__crewGate = !g.inBattle && window.__toasts.some(m => /Beat Keeper Kit and Keeper Juno first/.test(m));
+      for (const k of ['pw:portal:crew1', 'pw:portal:crew2']) if (!g.beaten.includes(k)) g.beaten.push(k);
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 30000);
     const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join(), names: b.foes.map(f => f.species).join() }; });
+    t.ok(await page.evaluate(() => window.__crewGate), 'owner 2026-10-27: with all eight rooms but his helpers not beaten Grandpa Arch says to beat Keeper Kit and Keeper Juno first');
     t.ok(bt.boss && bt.foes === '60,61,62,63' && bt.names === 'peekhole,topperoo,loopwyrm,gatestrider', `the Boss battle has Grandpa Arch's four Portal creatures at levels ${bt.foes} (${bt.names})`);
     t.ok(await playBattle(page), 'the Boss battle is won');
     await waitFor(page, () => window.pokecraft.stars.includes('portal'), null, 240000).catch(async e => {

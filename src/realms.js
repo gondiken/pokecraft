@@ -58,6 +58,7 @@ export const REALMS = {
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
+    wild: { max: 4, every: 2 }, // owner 2026-10-27: fewer at once (creatures.js)
     spawns: { swirl: [], portal: PORTAL_SPAWNS, cave: [] }, // T42: wild Portal creatures only in the Portal House's calm rooms (world.realmBiome says 'portal' there)
     zoneNames: { portal: 'Portal House' }, levelBonus: 33, levelCap: 45, lose: 'stay', // T42: like a Picture World: a lost battle rests you at the nearest rest spot
     walk: [B.PO_FLOOR], gyms: [],
@@ -86,6 +87,7 @@ export function pictureRealm(d) {
   return {
     version: 1, biome, gravity: 1, timeSpeed: 1,
     levelBonus: 33, levelCap: 45,          // wild creatures about 45-55 for a Champion (creatures.wildLevel)
+    wild: { max: 5, every: 2 },            // owner 2026-10-27: at most 5 wild creatures at once, a spawn try every 2 s (the main world: 16, 0.6 s)
     spawns: { [biome]: [], cave: [] },     // never fall back to the main world's SPAWNS (creatures.table)
     walk: [], gyms: [],
     look: { sky: 0xbfe6ff, fog: [40, 150], time: null, weather: false, light: 0.95, still: true, stars: false },
@@ -117,10 +119,10 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
   spawns: { house: TINY_SPAWNS, cave: [] },
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
 // T41: the Sunken City's wild guardians (on the city floor, world.realmBiome 'atlantis')
-const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2], ['grandurnling', 0.12], ['guardlion', 0.12], ['mosaicoil', 0.12]];
+const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2, null, 'atlantis'], ['grandurnling', 0.12, null, 'atlantis'], ['guardlion', 0.12, null, 'atlantis'], ['mosaicoil', 0.12, null, 'atlantis']]; // the 4th element: wildafter.js
 REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: wave15Open ? [320, 224] : [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
   version: wave15Open ? 2 : 1, convert: wave15Open ? { 1: [224, 224] } : undefined, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
-  spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
+  spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12, null, 'pirate'], ['featherbeard', 0.12, null, 'pirate']], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6, null, 'pirate'], ['parroteer', 0.4], ['shipshape', 0.1, null, 'pirate']], cave: [] },
   zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea', atlantis: 'The Sunken City' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS, B.AT_MOSAIC, B.AT_BRICK],
   look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false, underwater: true }, // always a sunny noon; T41: under water in the crater the fog turns blue-green (main.js updateSky)
   clock: '🏴‍☠️ Pirate Seas', travelText: 'Sailing in...', travelIcon: '🏴‍☠️', enterText: 'Ahoy! Welcome to the Pirate Seas!',
@@ -133,7 +135,7 @@ REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9
 // The Room of Doors (a Picture World behind the Swirl's gift-wrapped frame): a toy-box hall with twelve doors, the Piñata Party, Jack Catch in the Pop-Up Room and the Big Gift.
 REALMS.doors = pictureRealm({ id: 'doors', name: 'Room of Doors', seedSalt: 0xd005, size: [112, 112], terrain: 'doorsLand', arrive: [56, 79], walk: [B.PARTY_FLOOR],
   spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Room of Doors', travelText: 'Unwrapping...', travelIcon: '🎁',
-  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows to open the Big Gift! Start with the piñata in the middle.',
+  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows, and find Jolly Jax\'s two helpers behind the doors! Start with the piñata in the middle.',
   noHomeText: 'No homes in the Room of Doors! Build your home in your own world.', followText: 'Open it too',
   look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
 /* ==== end of T44 surprise ==== */
@@ -595,6 +597,7 @@ export function createRealms(game, { createWorld, save, size }) {
     // The realm's own guide arrow when no realm gym is left: to the home island, then the Wake Stone.
     aim(p) {
       const w = game.world, wake = w?.wake;
+      if (w?.realm?.parent && game.bosses?.crewAim) { const c = game.bosses.crewAim(p); if (c) return c; } // owner 2026-10-27: the Boss waits for his helpers
       const own = TERRAIN_AIMS[w?.realm?.terrain]?.(w, p, game); // T38a
       if (own) return own;
       if (w?.realm?.parent && (w.bosses?.length || w.doors?.length)) return game.gymLive?.aim?.(p) ?? pictureAim(w, p, { stars: game.stars, via: self.via }); // T40: a live part (a race) may point the arrow first

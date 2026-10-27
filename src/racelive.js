@@ -1,5 +1,6 @@
 // T40c: the live part of the Race Track (LIVE.race): talk to Racer Rio and race him round the track, 3 laps. The race is the gate to his
-// Boss battle (the base's pictureboss.js): win it, then talk to him again for the battle. Everything here is per player and in memory:
+// Boss battle (the base's pictureboss.js): win it, beat his crew, then talk to him again for the battle. Owner 2026-10-27 (Race Track
+// v2): you drive your own kart in the race (kart.js; a `carry` ride, the camera follows it). Everything here is per player and in memory:
 // nothing is saved or sent, no block is ever edited (lamps and boost pads are drawn with world.setLive through LiveCells).
 //
 // States: idle (Rio on his stand) -> count (on the grid, lamps 3-2-1-GO) -> race (flags, laps, boost pads) -> done (the result, Rio drives
@@ -10,14 +11,16 @@ import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { RACE, bossSpeed } from './racetrack.js';
+import { Kart, KART } from './kart.js';
+import { crewLeft, crewNames } from './pictureboss.js';
 
 export const RACE_LINES = {
-  hello: "Vroom! I'm Racer Rio. Nobody has raced here since the festival stopped. Race me? Three laps!",
+  hello: "Vroom! I'm Racer Rio. Nobody has raced here since the festival stopped. Hop in your kart: three laps!",
   win: "Wow, you're fast! Now talk to me for a battle!",   // you won the race
   lose: 'I win! That was close. Race again?',             // you lost the race
   again: 'Race me again? This time I go full speed!',      // with the star
 };
-const TIPS = ['', 'Tip: hit the boost pads and take the corners on the inside!', 'Tip: ride a creature to go even faster!'];
+const TIPS = ['', 'Tip: slow down before the tight corners, and keep off the red and white kerbs!', 'Tip: hit the boost pads (Rio does!) and go fast at the jump.'];
 const ordinal = n => (n === 1 ? '1st' : '2nd');
 
 /* ------------------------------ the karts (a few merged boxes, no creature models) ------------------------------ */
@@ -116,6 +119,7 @@ export class RaceLive {
     this.greenAt = -1;
     this.kart = null; this.paradeKarts = null; this.paradeClock = 0; this.parade = false; this.driven = 0;
     this.result = null;
+    this.car = null; this.carMesh = null; this.wish = { x: 0, z: 0, m: 0 }; this.rider = null; this.rioBoost = false; this.carT = 0; // your kart (owner 2026-10-27)
   }
 
   /* ---- helpers ---- */
@@ -167,6 +171,12 @@ export class RaceLive {
       const last = this.lap >= RACE.laps - 1;
       return { x: g.x, z: g.z, text: (a, m) => `🚩 ${last ? 'Last lap!' : `Lap ${this.lap + 1}/${RACE.laps}`} · You're ${ordinal(first ? 1 : 2)}! ${a} ${m}m` };
     }
+    const left = this.won ? crewLeft(this.game, 'race') : [];
+    if (left.length) { // the race is won: lead to the nearest crew person still to beat
+      const c = (this.game.npcs?.list || []).filter(m => m.kind === 'crew' && m.def?.boss === 'race' && left.includes(m.def.index))
+        .sort((a, b) => Math.hypot(a.pos.x - p.x, a.pos.z - p.z) - Math.hypot(b.pos.x - p.x, b.pos.z - p.z))[0];
+      if (c) return { x: c.pos.x, z: c.pos.z, text: (a, m) => `🏆 Race won! Now battle ${c.name} ${a} ${m}m` };
+    }
     const n = this.rio();
     if (!n) return null;
     const star = this.hasStar();
@@ -175,7 +185,7 @@ export class RaceLive {
 
   // Standing on a boost pad: zoom 5 blocks along the track.
   stand(x, y, z, id) {
-    if ((id !== B.BOOST_PAD && id !== B.BOOST_PAD_LIT) || this.zoom || this.zoomCool > 0 || this.paused()) return;
+    if ((id !== B.BOOST_PAD && id !== B.BOOST_PAD_LIT) || this.zoom || this.zoomCool > 0 || this.paused() || this.car) return; // (in a kart, kart.js boosts)
     const pad = this.part.pads.find(p => p.cells.some(c => c[0] === x && c[1] === z));
     if (!pad) return;
     this.zoom = { axis: pad.dir[0] ? 'x' : 'z', sign: pad.dir[0] || pad.dir[1], left: RACE.boost.dist };
@@ -189,9 +199,11 @@ export class RaceLive {
     const g = this.game, p = g.player;
     if (g.hideSeek?.active) { this.toast('Finish hide and seek first!'); return true; }
     const grid = this.part.grid;
+    g.riding?.stop?.('race'); // off your creature: you drive a kart
     p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
     p.vel.set(0, 0, 0);
     p.yaw = grid.yaw; p.pitch = 0;
+    this.getIn(grid.player, grid.heading);
     this.zoom = null;
     this.state = 'count';
     this.countT = 0; this.beeped = 0; this.waitToldAt = -1;
@@ -203,6 +215,72 @@ export class RaceLive {
     this.drawKart();
     this.say(this.hasStar() ? RACE_LINES.again : RACE_LINES.hello);
     return true;
+  }
+
+  /* ---- your kart (owner 2026-10-27) ---- */
+  // Into the kart at `at` = [x, y (feet), z] facing `h`: the player rides it (player.js `carry`), the stick steers it.
+  getIn(at, h) {
+    const p = this.game.player, me = this;
+    this.car = new Kart(at[0], at[1], at[2], h);
+    this.wish = { x: 0, z: 0, m: 0 };
+    this.rider = {
+      where: () => ({ x: me.car.x, y: me.car.y - 0.35, z: me.car.z }), // sitting in it: the eye a bit lower than standing
+      wantsLeave: () => false,
+      leave() { if (p.carry === this) p.carry = null; },
+      steer(wx, wz, analog) { me.wish = { x: wx, z: wz, m: analog }; },
+    };
+    p.carry = this.rider; p.vel.set(0, 0, 0);
+    if (!this.carMesh) { this.carMesh = buildKart({ body: 0x2a8ae8, accent: 0xffffff }); this.carMesh.userData.mine = true; this.game.scene?.add(this.carMesh); }
+    this.carMesh.visible = true;
+    this.drawCar();
+  }
+  // Out of the kart: you stand where it was.
+  getOut() {
+    const p = this.game.player;
+    if (!this.car) return;
+    if (p && p.carry === this.rider) { p.carry = null; p.pos.set(this.car.x, this.car.y + 0.05, this.car.z); p.vel.set(0, 0, 0); }
+    this.car = null; this.rider = null;
+    if (this.carMesh) this.carMesh.visible = false;
+  }
+  drawCar() {
+    const c = this.car, m = this.carMesh;
+    if (!c || !m) return;
+    m.position.set(c.x, c.y, c.z); m.rotation.y = c.h;
+    for (const w of m.userData.wheels) w.rotation.x = this.carDist / 0.28;
+  }
+  // A frame of driving: the kart, its events, the camera following it, the view widening with speed.
+  drive(dt) {
+    const g = this.game, p = g.player, c = this.car;
+    const ev = c.update(dt, this.state === 'race' ? this.wish : { x: 0, z: 0, m: 0 }, (x, y, z) => g.world.get(x, y, z));
+    this.carDist = (this.carDist || 0) + c.speed * dt;
+    if (p.carry === this.rider) { const w = this.rider.where(); p.pos.set(w.x, w.y, w.z); p.vel.set(0, 0, 0); } // (also between player updates: the flags read p.pos)
+    if (this.state === 'race') this.driven += c.speed * dt;
+    for (const e of ev) {
+      if (e.type === 'boost') { sound.play('boostzoom'); if (!g.toldOnce?.has('boost')) { g.toldOnce?.add('boost'); this.toast('Zoom! Boost pads make your kart fast. Rio uses them too!'); } }
+      else if (e.type === 'bonk') sound.play('kartbonk');
+      else if (e.type === 'jump') sound.play('kartjump');
+      else if (e.type === 'land' && e.fall > 1.5) sound.play('kartland');
+      else if (e.type === 'splash') this.splash();
+    }
+    if (this.state === 'race' && (c.surface === 'kerb' || c.surface === 'grass') && !this.toldOff) {
+      this.toldOff = true;
+      this.toast(c.surface === 'kerb' ? 'Bumpy kerbs slow you down! Stay on the road.' : 'Off the track! Get back on the road to go fast.');
+    }
+    // the camera follows the kart (stick forward = go, left / right = steer); the mouse can still look round
+    const want = c.h + Math.PI, d = Math.atan2(Math.sin(want - p.yaw), Math.cos(want - p.yaw));
+    if (this.state === 'race' && c.speed > 0.5) p.yaw += d * Math.min(1, dt * 4);
+    const cam = g.camera, fov = 75 + (RACE.fov - 75) * Math.min(1.4, c.speed / KART.top.road);
+    if (cam && Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
+    this.drawCar();
+  }
+  // In the pond: back on the road before the jump ramp, standing still (Rio does not wait).
+  splash() {
+    const t = this.track, p = t.pieces.find(q => q.kind === 'kicker'), s = p.s0 - 6, at = t.at(s, 0);
+    sound.play('seasplash');
+    this.toast('Splash! Too slow for the jump. Hit the boost pad and go fast!');
+    this.car.reset(at.x, this.part.y + 1 + Math.round(t.yAt(s)), at.z, at.heading);
+    this.game.player.yaw = at.heading + Math.PI;
+    this.prev = null;
   }
 
   ensureKart() {
@@ -224,9 +302,10 @@ export class RaceLive {
     const n = this.rio(), b = this.game.world.bosses?.find(q => q.id === 'race');
     if (n && b) { n.steer = false; n.moving = false; n.pos.set(b.pos[0], b.pos[1], b.pos[2]); n.heading = n.homeHeading = b.heading; n.model.position.copy(n.pos); n.model.rotation.y = n.heading; }
     this.hideKart();
+    this.getOut();
     this.state = 'idle';
     this.zoom = null;
-    const p = this.game.player; if (p) { p.forceSprint = false; p.speedK = 1; p.speedCap = null; } // the race's pace ends with it
+    const p = this.game.player; if (p) { p.forceSprint = false; p.speedK = 1; p.speedCap = null; }
   }
 
   finish(youWon) {
@@ -236,7 +315,8 @@ export class RaceLive {
       this.won = true;
       this.toast('You won the race! 🏆');
       sound.play('win');
-      this.say(RACE_LINES.win);
+      const left = crewLeft(this.game, 'race'); // owner 2026-10-27: his crew battle you before he does
+      this.say(left.length ? `Wow, you're fast! Now beat ${crewNames('race', left)}, then talk to me for a battle!` : RACE_LINES.win);
     } else {
       this.losses++;
       this.toast('Rio wins this time! Try again!');
@@ -302,7 +382,7 @@ export class RaceLive {
   drawPads(lit) {
     if (this.padLit === lit) return;
     this.padLit = lit;
-    for (const p of this.part.pads) for (const [x, z] of p.cells) this.cells.want(x, this.part.y, z, lit ? B.BOOST_PAD_LIT : B.BOOST_PAD);
+    for (const p of this.part.pads) for (const [x, z] of p.cells) this.cells.want(x, this.part.y + (p.h || 0), z, lit ? B.BOOST_PAD_LIT : B.BOOST_PAD);
   }
 
   /* ---- the frame ---- */
@@ -311,16 +391,11 @@ export class RaceLive {
   step(dt) {
     const g = this.game, p = g.player;
     if (!p || !g.world) return;
-    // owner 2026-10-26: in a race you always run (no Shift, no full stick push on a tablet), on the track at the race's pace, off it a walk
-    const racing = this.state === 'race', onTrack = racing && this.track.project(p.pos.x, p.pos.z).d <= RACE.half;
-    p.forceSprint = racing;
-    p.speedK = onTrack ? RACE.pace : 1;
-    p.speedCap = racing && !onTrack ? RACE.offTrack : null;
-    const cam = this.game.camera, fov = onTrack ? RACE.fov : 75; // the view widens a little at race speed
-    if (cam && Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
-    if (racing && !onTrack && !this.toldOff) { this.toldOff = true; this.toast('Off the track! Get back on the road to go fast.'); }
     this.cells.flush();
     const paused = this.paused();
+    if (this.car && p.carry !== this.rider) this.getOut();         // something else took you out of the kart (a new world, a ride)
+    if (this.car && !paused) this.drive(dt);
+    else if (!this.car) { const cam = this.game.camera; if (cam && Math.abs(cam.fov - 75) > 0.05) { cam.fov += (75 - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); } }
     if (this.zoomCool > 0 && !paused) this.zoomCool -= dt;
     if (this.zoom && !paused) this.stepZoom(dt);
     if (this.state === 'count') this.stepCount(dt, paused);
@@ -348,8 +423,8 @@ export class RaceLive {
       this.toast(String(3 - i));
     }
     this.drawLamps(Math.min(3, this.beeped), false);
-    // hold: no moving off the grid before GO
-    if (Math.hypot(p.pos.x - grid.player[0], p.pos.z - grid.player[2]) > RACE.hold) {
+    // hold: no moving off the grid before GO (in the kart the pedals only work after GO)
+    if (!this.car && Math.hypot(p.pos.x - grid.player[0], p.pos.z - grid.player[2]) > RACE.hold) {
       p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
       p.vel.set(0, 0, 0);
       if (this.waitToldAt < 0) { this.waitToldAt = this.countT; this.toast('Wait for GO!'); }
@@ -377,7 +452,10 @@ export class RaceLive {
     // Rio: his track distance grows by his speed (the rubber band looks at the lead)
     const end = RACE.laps * t.L;
     this.bossS += bossSpeed(this.bossS, this.bossS - this.P, this.losses, t) * dt;
-    if (n) { const at = t.at(this.bossS, RACE.lane); n.pos.set(at.x, this.part.y + 1.35, at.z); n.heading = at.heading; n.moving = false; this.drawKart(); }
+    if (n) { const at = t.at(this.bossS, RACE.lane); n.pos.set(at.x, this.part.y + 1.35 + at.y, at.z); n.heading = at.heading; n.moving = false; this.drawKart(); }
+    const boosted = t.kindAt(this.bossS) === 'boost'; // owner 2026-10-27: the pads boost Rio too (you hear it when he is close)
+    if (boosted && !this.rioBoost && n && Math.hypot(n.pos.x - p.pos.x, n.pos.z - p.pos.z) < 25) sound.play('boostzoom');
+    this.rioBoost = boosted;
     if (this.bossS >= end) { this.finish(false); return; }
     // walking away from the track ends the race (not a loss)
     if (!this.inBox(p.pos) || t.project(p.pos.x, p.pos.z).d > RACE.leave) {
@@ -391,7 +469,7 @@ export class RaceLive {
     this.doneT += dt;
     const t = this.track, n = this.rio(), end = RACE.laps * t.L;
     if (this.bossS < end + 4) { this.bossS = Math.min(end + 4, this.bossS + 4 * dt); }
-    if (n) { const at = t.at(this.bossS, RACE.lane); n.pos.set(at.x, this.part.y + 1.35, at.z); n.heading = at.heading; this.drawKart(); }
+    if (n) { const at = t.at(this.bossS, RACE.lane); n.pos.set(at.x, this.part.y + 1.35 + at.y, at.z); n.heading = at.heading; this.drawKart(); }
     if (this.doneT >= 3) this.backToStand();
   }
 
@@ -407,7 +485,7 @@ export class RaceLive {
     const c = this.paradeClock;
     this.paradeKarts.forEach((k, i) => {
       const s = c * RACE.parade.speed + (i * t.L) / 2;
-      placeKart(k, t.at(s, RACE.parade.lanes[i]), this.part.y + 1, s);
+      const at = t.at(s, RACE.parade.lanes[i]); placeKart(k, at, this.part.y + 1 + at.y, s);
     });
     if (Math.hypot(dx, dz) < 30) this.drawPads(Math.floor(c * 2) % 2 === 1);
     const k = Math.floor(c / 1.2) % 5;
@@ -427,7 +505,8 @@ export class RaceLive {
   dispose() {
     const cam = this.game.camera; if (cam && cam.fov !== 75) { cam.fov = 75; cam.updateProjectionMatrix(); }
     if (this.game.player) { this.game.player.forceSprint = false; this.game.player.speedK = 1; this.game.player.speedCap = null; }
-    disposeKart(this.kart);
+    this.getOut();
+    disposeKart(this.kart); disposeKart(this.carMesh); this.carMesh = null;
     for (const k of this.paradeKarts || []) disposeKart(k);
     this.kart = null; this.paradeKarts = null;
     const n = this.rioNpc;
@@ -438,6 +517,7 @@ export class RaceLive {
   info() {
     return { state: this.state, lap: this.lap, next: this.next, P: this.P, bossS: this.bossS, losses: this.losses, won: this.won, clock: this.clock, countT: this.countT,
       zoom: this.zoom ? { ...this.zoom } : null, parade: this.paradeKarts && this.parade ? this.paradeKarts.map(k => [k.position.x, k.position.z]) : null,
-      lamps: this.lamps, padLit: this.padLit, missed: this.missed };
+      lamps: this.lamps, padLit: this.padLit, missed: this.missed,
+      car: this.car ? { x: this.car.x, y: this.car.y, z: this.car.z, h: this.car.h, v: this.car.v, surface: this.car.surface, air: this.car.air } : null };
   }
 }

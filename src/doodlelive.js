@@ -27,11 +27,11 @@ const WORDS = {
   },
   blocked: {
     blot: 'Ink blot! Steer round it.',
-    page: 'Not that page! Draw to the next one.',
+    page: 'Not that page! Look toward the next one to turn the pencil.',
     land: 'Land on the dotted strip of the page!',
-    edge: 'Too far out! Steer back.',
+    edge: 'Too far out! Look back where you want to go: the pencil turns round.',
     low: 'Too low! Go round to climb.',
-    solid: 'Something is in the way! Steer round it.',
+    solid: 'Something is in the way! Look the other way to turn the pencil.',
   },
   back: {
     caught: 'Hee hee! Rubber rubbed it out.',

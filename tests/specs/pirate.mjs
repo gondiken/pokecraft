@@ -433,7 +433,7 @@ export default async function ({ browser, base, t }) {
       g.updateGuide?.(); const g2 = g.ui.guideText;
       return { near, g1, g2, d: Math.hypot(p.pos.x - c.E[0], p.pos.z - c.E[2]) };
     });
-    t.ok(f1.near === 'Fire!' && /Fire the cannon/.test(f1.g1 || '') && f1.d < 1.5 && /Rope to Crab Rock/.test(f1.g2 || ''), `on the pad the button says "${f1.near}", the guide "${f1.g1}"; after the flight: "${f1.g2}"`);
+    t.ok(f1.near === 'Fire!' && /Fire the cannon/.test(f1.g1 || '') && f1.d < 1.5 && /Battle Deckhand Dot/.test(f1.g2 || ''), `on the pad the button says "${f1.near}", the guide "${f1.g1}"; after the flight: "${f1.g2}"`);
     // crew: Deckhand Dot battles once, then talks
     const dot = await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js');
@@ -513,12 +513,22 @@ export default async function ({ browser, base, t }) {
       const faster = [0, 1, 2, 3].every((k, i, all) => i === 0 || lap(k) > lap(all[i - 1]));
       for (let n = 3; n < L.BOATS_NEED; n++) g.beaten.push(L.boatKey(n));
       const gate2 = PB.bossOf('pirate').gate(g);
-      return { g1, gate, shots, state: L.boatState(g), wave1, hiddenNow, outAgain, faster, gate2, saved: [0, 1, 2].every(n => saved.beaten.includes(L.boatKey(n))) };
+      // owner 2026-10-27: with all twelve sunk the boats keep rowing just for fun: they come back, a hit sinks one, nothing is saved
+      const hidden0 = lv.boatHidden(0);
+      step(g, 1 / 60, Math.ceil((R.sink + R.freeBack + 1.2) * 60));
+      const back = [0, 1, 2].every(i => !lv.boatHidden(i));
+      const bq = L.boatAt(1, lv.boatT, R.free), before = g.beaten.length;
+      lv.ball = { path: null, t: 0, to: [bq.x, 13, bq.z], gi: 0 }; lv.ballLands();
+      const fun = { hidden0, back, count: lv.freeCount, same: g.beaten.length === before, gone: lv.boatHidden(1), others: !lv.boatHidden(0) };
+      step(g, 1 / 60, Math.ceil((R.sink + R.freeBack + 1.2) * 60));
+      fun.again = !lv.boatHidden(1);
+      return { g1, gate, shots, fun, state: L.boatState(g), wave1, hiddenNow, outAgain, faster, gate2, saved: [0, 1, 2].every(n => saved.beaten.includes(L.boatKey(n))) };
     });
-    t.ok(/Deck cannon: sink the rowboats \(0 \/ 12\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 12 rowboats first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
+    t.ok(/Deck cannon: sink the rowboats \(0 \/ 12\)/.test(boats.g1 || '') && boats.gate && await said(page, /Sink my 12 rowboats and beat my crew first/), `on the ship the guide says "${boats.g1}" and the Captain waits for the rowboats`);
     t.ok(boats.shots.filter(s => !s.miss).every(s => s.near === 'Fire!' && s.holds && s.held === 'deck' && s.gold && s.sunk && /Aim at a rowboat/.test(s.guide || '')) && boats.shots.some(s => s.miss && s.same), `three held deck cannon shots, let go at the right distance ahead of the boat, sink the three rowboats (the dots were gold); a short tap at open sea sinks nothing (${JSON.stringify(boats.shots)})`);
     t.ok(boats.wave1.sunk === 3 && boats.wave1.wave === 1 && !boats.wave1.done && boats.saved && boats.hiddenNow && boats.outAgain && await said(page, /3 \/ 12! More rowboats are coming, faster/), `the first three are sunk and saved at once; the next three row out a moment later (${JSON.stringify(boats.wave1)})`);
-    t.ok(boats.faster && boats.state.done && boats.gate2 === null, 'every wave of boats rows faster; with all 12 sunk the Captain is ready');
+    t.ok(boats.faster && boats.state.done && /Lookout Lou and First Mate Fin still want a battle/.test(boats.gate2 || ''), `every wave of boats rows faster; with all 12 sunk the Captain still wants his crew beaten (${boats.gate2})`);
+    t.ok(boats.fun.back && boats.fun.count === 1 && boats.fun.same && boats.fun.gone && boats.fun.others && boats.fun.again && await said(page, /sunk just for fun/), `owner 2026-10-27: after all twelve the rowboats row out again; a hit sinks one just for fun (nothing saved) and it comes back (${JSON.stringify(boats.fun)})`);
     await shot(page, 'rowboats-sunk');
     // the ship: the guide names the Boss, the chest is closed
     const ship = await page.evaluate(async () => {
@@ -530,7 +540,7 @@ export default async function ({ browser, base, t }) {
       const closed = lv.info().chest, hit = lv.hit({ x, y, z, id }), prompt = lv.prompt({ x, y, z, id });
       return { guide, closed, hit, prompt, id };
     });
-    t.ok(/Pirate Seas Boss/.test(ship.guide || '') && ship.closed === 'closed' && ship.id === 177 && ship.hit && /locked/.test(ship.prompt) && await said(page, /Beat the Captain first/), `on the ship the guide names the Boss ("${ship.guide}"); the chest is closed and says so`);
+    t.ok(/Battle First Mate Fin/.test(ship.guide || '') && ship.closed === 'closed' && ship.id === 177 && ship.hit && /locked/.test(ship.prompt) && await said(page, /Beat the Captain first/), `on the ship the guide leads to First Mate Fin ("${ship.guide}"); the chest is closed and says so`);
     await shot(page, 'deck');
     // First Mate Fin, then the Captain (strong team)
     await page.evaluate(async () => {
@@ -542,6 +552,15 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.inBattle, null, 60000);
     await playBattle(page);
     await waitFor(page, () => window.pokecraft.beaten.includes('pw:pirate:crew3'), null, 60000);
+    // owner 2026-10-27: Lookout Lou still wants her battle (her battle is like Dot's: the key is set here)
+    const lou = await page.evaluate(() => {
+      const g = window.pokecraft, b = g.world.bosses[0], n = g.npcs.list.find(n => n.kind === 'boss');
+      g.player.pos.set(b.rest[0], b.rest[1], b.rest[2]); g.player.vel.set(0, 0, 0); g.updateGuide?.();
+      const guide = g.ui.guideText; g.bosses.talk(n); const gated = !g.inBattle;
+      g.beaten.push('pw:pirate:crew2');
+      return { guide, gated };
+    });
+    t.ok(lou.gated && /Battle Lookout Lou|Rope|Cannon|Walk/.test(lou.guide || '') && await said(page, /Lookout Lou still wants a battle/), `with Lou not beaten the Captain still waits and the guide leads away to her ("${lou.guide}")`);
     const lost = await page.evaluate(async () => { // lose against the Captain with a weak team: stay on the ship at a rest spot
       const g = window.pokecraft, S = await import('/src/species.js'), b = g.world.bosses[0], n = g.npcs.list.find(n => n.kind === 'boss');
       g.party = [S.makeCreature('fluffin', 2)];

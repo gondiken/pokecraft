@@ -22,7 +22,7 @@ export function ticketState(game) {
   return { have, n, need: TICKETS, done: n >= TICKETS };
 }
 // Wild Funfair creatures of the fair zone (playland.js reads this through PLAYLAND_PARTS.fair.spawns): never in the main SPAWNS.
-export const FUNFAIR_SPAWNS = [['merrycolt', 1.2], ['flufflamb', 1.2], ['twistpup', 1.2], ['galloprance', 0.12], ['candyram', 0.12], ['balloodle', 0.12], ['tixit', 0.15]];
+export const FUNFAIR_SPAWNS = [['merrycolt', 1.2], ['flufflamb', 1.2], ['twistpup', 1.2], ['galloprance', 0.12, null, 'fair'], ['candyram', 0.12, null, 'fair'], ['balloodle', 0.12, null, 'fair'], ['tixit', 0.15, null, 'fair']] // the 4th element: wildafter.js;
 export const FAIR_WALK = [B.FAIR_FLOOR];
 
 export const FAIR = {

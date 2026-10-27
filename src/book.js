@@ -3,7 +3,7 @@ import { REALMS } from './realms.js'; // T31
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, CREW, effectiveness, moveInfo } from './species.js';
 import { TRAITS } from './traits.js';
 import { BLOCKS } from './blocks.js';
-import { condOf, condText } from './spawnrules.js';
+import { condOf, condText, AFTER_TEXT } from './spawnrules.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
 
@@ -59,7 +59,8 @@ export function spawnInfo(id) {
     for (const [zone, list] of Object.entries(r.spawns)) { // T40: a realm may have zones (Playland · Race Track); the cave table repeats the others
       if (zone === 'cave') continue;
       const e = list.find(x => x[0] === id);
-      if (e) out.push({ biome: null, name: r.zoneNames?.[zone] ?? r.name, when: e[2] ?? null, rarity: e[1] >= 2 ? 'common' : e[1] >= 0.5 ? 'sometimes' : 'rare' });
+      if (e) out.push({ biome: null, name: r.zoneNames?.[zone] ?? r.name, when: e[2] ?? null, rarity: e[1] >= 2 ? 'common' : e[1] >= 0.5 ? 'sometimes' : 'rare',
+        ...(e[3] ? { words: [condText(e[2]), AFTER_TEXT[e[3]]].filter(Boolean).join(', ') } : {}) }); // owner 2026-10-27: a rare one waits for your progress
     }
   }
   for (const o of out) if (o.words === undefined) o.words = condText(o.when) ?? o.when;

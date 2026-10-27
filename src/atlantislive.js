@@ -14,6 +14,10 @@ import { FISH, Darter, shyAt, popDir, schoolFish, lungeLength, netCentre, inNet,
 import { CITY, WHIRL, BUBBLES, DISTRICTS, craterR, districtAt } from './atlantisland.js';
 
 export const LIVE_RULES = { jarMargin: 0.3, pourReach: 1.4, hintGap: 8, active: 80, saveGap: 0.25 };
+// The pictures that explain the game (owner 2026-10-27): bulbs over the lanterns, the trail to the lantern, the flight into a bulb, the ghost fish.
+export const VIS = { bulbR: 1.25, bulbUp: 1.4, trail: 16, trailLen: 26, fly: 12, flyTime: 0.8, demo: { period: 6, swim: 3.2, glow: 1.6, near: 30 } };
+// The bulb k (0..3) of a lantern: on a ring over its top.
+export const bulbAt = (lantern, k) => { const a = Math.PI / 4 + (k * Math.PI) / 2, c = lantern.centre; return [c[0] + Math.cos(a) * VIS.bulbR, lantern.box.y1 + 1 + VIS.bulbUp, c[2] + Math.sin(a) * VIS.bulbR]; };
 const COLORS = { shy: 0xffb36a, darter: 0x8af4ff, school: 0xffe27a };
 const SIZE = { shy: 0.5, darter: 0.62, school: 0.44 };
 const NICE = { shy: 'Jar Market', darter: 'Arch Gardens', school: 'Temple Steps' };
@@ -92,6 +96,23 @@ export class AtlantisLive {
     const NB = 24 + BUBBLES.length * 8;
     this.bubbles = this.mark(new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({ color: 0xcff8ff, transparent: true, opacity: 0.55, depthWrite: false }), NB));
     this.wobbles = Array.from({ length: 4 }, () => { const m = this.mark(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), new THREE.MeshLambertMaterial({ color: 0xc4683f }))); m.visible = false; return m; });
+    // owner 2026-10-27 ("I didn't know which ones were glowfish and what was the point"): show it, don't tell it.
+    // A soft glow round every glowfish; four glass bulbs on each lantern that light up one by one; the fish in your net glowing round
+    // you and a trail of light from you to the lantern they belong to; poured fish flying into their bulb; and, until you catch your
+    // first one, a ghost glowfish that swims from the district's fish into the lantern and lights a bulb, over and over.
+    const glowMat = color => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.halo = {};
+    for (const kind of ['shy', 'darter', 'school']) this.halo[kind] = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 12, 8), glowMat(COLORS[kind]), this.lists[kind].length));
+    const n = DISTRICTS.length * PER_DISTRICT;
+    this.bulbs = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), n));
+    this.bulbGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.75, 12, 8), glowMat(0xffffff), n));
+    for (let i = 0; i < n; i++) { this.bulbs.setColorAt(i, new THREE.Color(0x30414a)); this.bulbGlow.setColorAt(i, new THREE.Color(0x000000)); }
+    this.trail = this.mark(new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), glowMat(0xffffff), VIS.trail));
+    this.trail.material.opacity = 0.75; this.trail.count = 0;
+    this.flyMesh = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), VIS.fly));
+    this.flyGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 10, 8), glowMat(0xffffff), VIS.fly));
+    this.flyMesh.count = 0; this.flyGlow.count = 0;
+    this.flying = [];                // { from, to, t0, d, k, kind } fish on their way into a bulb (drawn by the part's clock)
     this.dummy = new THREE.Object3D();
     this.eul = new THREE.Euler();
     this.school.forEach(f => { f.pos = schoolFish(this.A.school, 0, f.index); f.prev = f.pos; });
@@ -222,7 +243,8 @@ export class AtlantisLive {
     f.out = true; f.pop = null;
     this.net.push(f);
     sound.play('atcatch');
-    this.hint('first', 'You caught a glowfish! Swim it to a lantern to light the city.');
+    this.caught = true; // (the ghost fish stops showing the way)
+    this.hint('first', 'You caught a glowfish! Follow its light to the lantern.');
   }
 
   /* ---------- jars ---------- */
@@ -272,6 +294,7 @@ export class AtlantisLive {
       if (gain <= 0) { if (this.t - this.lastHint > LIVE_RULES.hintGap) { this.lastHint = this.t; this.toast('Two school fish make one light. Catch one more!'); } return; }
       const used = mine.slice(0, fishFor(d.kind, gain));
       this.net = this.net.filter(f => !used.includes(f));
+      for (let k = 0; k < gain; k++) this.flying.push({ from: [...c], to: bulbAt(this.A.districts[i].lantern, st.lit[i] + k), t0: this.clock + k * 0.15, d: i, k: st.lit[i] + k, kind: d.kind }); // they fly into their bulbs
       for (const f of used) f.poured = true;           // out stays true: they are in the lantern now
       for (const key of nextLights(g, i, gain)) g.beaten.push(key);
       const total = st.total + gain;
@@ -402,6 +425,87 @@ export class AtlantisLive {
     this.drawNet(pl);
     this.drawWater();
     this.drawBeams();
+    this.drawShow(pl);
+  }
+  // the halos, the bulbs, the trail, the flights and the ghost fish (owner 2026-10-27: the game should explain itself)
+  drawShow(pl) {
+    const d = this.dummy, t = this.clock, near = craterR(pl.pos.x, pl.pos.z) <= LIVE_RULES.active;
+    for (const kind of ['shy', 'darter', 'school']) {
+      const mesh = this.halo[kind];
+      mesh.visible = near;
+      this.lists[kind].forEach((f, i) => {
+        const p = f.pos, catchable = !f.out && this.catchable(f), peek = !f.out && kind === 'shy';
+        d.position.set(p[0], p[1], p[2]); d.rotation.set(0, 0, 0);
+        d.scale.setScalar(f.out ? 0.0001 : (catchable ? 2.2 : peek ? 1.3 : 1.8) * (1 + 0.18 * Math.sin(t * 4 + i * 1.3)));
+        d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    // the bulbs: lit = the saved lights, but a bulb a fish is still flying into waits for it
+    const busy = new Set(this.flying.filter(f => this.clock < f.t0 + VIS.flyTime).map(f => `${f.d}:${f.k}`));
+    const demo = this.demo(pl);
+    const col = new THREE.Color();
+    this.bulbs.visible = this.bulbGlow.visible = near;
+    this.A.districts.forEach((dist, i) => {
+      for (let k = 0; k < PER_DISTRICT; k++) {
+        const j = i * PER_DISTRICT + k, at = bulbAt(dist.lantern, k), lit = k < this.A.lit[i] && !busy.has(`${i}:${k}`), ghost = demo && demo.d === i && k === this.A.lit[i] && demo.glow;
+        d.position.set(...at); d.rotation.set(0, 0, 0); d.scale.setScalar(1); d.updateMatrix();
+        this.bulbs.setMatrixAt(j, d.matrix); this.bulbs.setColorAt(j, col.setHex(lit ? COLORS[dist.kind] : ghost ? 0x7a8a90 : 0x30414a));
+        d.scale.setScalar(lit ? 1 + 0.1 * Math.sin(t * 3 + j) : ghost ? 0.8 * demo.glow : 0.0001); d.updateMatrix();
+        this.bulbGlow.setMatrixAt(j, d.matrix); this.bulbGlow.setColorAt(j, col.setHex(COLORS[dist.kind]));
+      }
+    });
+    for (const m of [this.bulbs, this.bulbGlow]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+    // the trail: from you to the lantern of the first fish in your net (dots drifting towards it)
+    const target = this.trailTarget();
+    let n = 0;
+    if (target && this.inCity()) {
+      const a = this.centre(), b = target.at, dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], len = Math.hypot(dx, dy, dz), shown = Math.min(len, VIS.trailLen);
+      this.trail.material.color.setHex(COLORS[target.kind]);
+      for (let k = 0; k < VIS.trail && len > 2; k++) {
+        const f = ((t * 0.5 + k / VIS.trail) % 1), s = 1.2 + f * (shown - 1.2), u = s / len;
+        d.position.set(a[0] + dx * u, a[1] + dy * u + Math.sin(t * 3 + k) * 0.15, a[2] + dz * u); d.rotation.set(t + k, t * 0.7, 0);
+        d.scale.setScalar(Math.sin(Math.PI * f) * (s > shown - 2 && shown < len ? 0.4 : 1)); d.updateMatrix();
+        this.trail.setMatrixAt(n++, d.matrix);
+      }
+    }
+    this.trail.count = n; this.trail.instanceMatrix.needsUpdate = true;
+    // the flights into the bulbs, and the ghost fish
+    this.flying = this.flying.filter(f => this.clock < f.t0 + VIS.flyTime + 0.1);
+    const fl = this.flying.filter(f => this.clock >= f.t0).map(f => ({ k: Math.min(1, (this.clock - f.t0) / VIS.flyTime), from: f.from, to: f.to, kind: f.kind, a: 1 }));
+    if (demo && demo.swim != null) fl.push({ k: demo.swim, from: demo.from, to: demo.to, kind: demo.kind, a: 0.6 });
+    n = 0;
+    for (const f of fl.slice(0, VIS.fly)) {
+      const e = f.k * f.k * (3 - 2 * f.k), arc = Math.sin(Math.PI * f.k) * 1.5;
+      d.position.set(f.from[0] + (f.to[0] - f.from[0]) * e, f.from[1] + (f.to[1] - f.from[1]) * e + arc, f.from[2] + (f.to[2] - f.from[2]) * e);
+      d.rotation.set(0, 0, 0); d.scale.setScalar(f.a); d.updateMatrix();
+      this.flyMesh.setMatrixAt(n, d.matrix); this.flyMesh.setColorAt(n, col.setHex(COLORS[f.kind]));
+      d.scale.setScalar(f.a * (1.2 + 0.2 * Math.sin(t * 8))); d.updateMatrix();
+      this.flyGlow.setMatrixAt(n, d.matrix); this.flyGlow.setColorAt(n, col.setHex(COLORS[f.kind]));
+      n++;
+    }
+    for (const m of [this.flyMesh, this.flyGlow]) { m.count = n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+  }
+  // Where the trail leads: the lantern of the first fish in the net whose district still needs lights (null = no trail).
+  trailTarget() {
+    const st = lightState(this.game);
+    for (const f of this.net) {
+      const i = DISTRICTS.findIndex(d => d.kind === f.kind);
+      if (i >= 0 && st.lit[i] < PER_DISTRICT) return { at: bulbAt(this.A.districts[i].lantern, st.lit[i]), kind: f.kind, d: i };
+    }
+    return null;
+  }
+  // The ghost fish: before your first catch, in a dark district near its lantern, a ghost glowfish swims from the district's fish into
+  // the next bulb and lights it for a moment, every VIS.demo.period seconds. -> null or { d, kind, from, to, swim (0..1 or null), glow (0..1) }
+  demo(pl) {
+    const D = VIS.demo;
+    if (this.caught || this.net.length || this.forceLit || !this.inCity()) return null;
+    const st = lightState(this.game);
+    const i = this.A.districts.findIndex((dist, k) => st.lit[k] < PER_DISTRICT && Math.hypot(dist.lantern.centre[0] - pl.pos.x, dist.lantern.centre[2] - pl.pos.z) < D.near);
+    if (i < 0) return null;
+    const dist = this.A.districts[i], kind = dist.kind, list = this.lists[kind], f = list.find(q => !q.out) ?? list[0];
+    const from = kind === 'shy' ? f.home : f.pos, to = bulbAt(dist.lantern, st.lit[i]), u = this.clock % D.period;
+    return { d: i, kind, from, to, swim: u < D.swim ? u / D.swim : null, glow: u >= D.swim && u < D.swim + D.glow ? Math.sin(Math.PI * (u - D.swim) / D.glow) : 0 };
   }
   drawNet(pl) {
     const near = this.inCity() && this.diving, r = this.ring;
@@ -480,6 +584,7 @@ export class AtlantisLive {
       fish: this.fish.map(f => ({ id: f.id, kind: f.kind, out: f.out, poured: !!f.poured, pos: [...f.pos], state: f.kind === 'darter' ? f.fish.state : f.kind === 'shy' ? shyAt(f.home, this.t, f.pop).state : 'school' })),
       jars: this.jars.map(j => ({ cell: j.cell, fish: j.fish, wobble: j.t0 !== null })),
       glow: this.glow(), gate: this.A.palace.gate.map(([x, y, z]) => this.world.get(x, y, z)),
+      show: { trail: this.trail.count, flying: this.flyMesh.count, demo: !!this.demo(this.game.player), target: this.trailTarget()?.d ?? null },
     };
   }
 }

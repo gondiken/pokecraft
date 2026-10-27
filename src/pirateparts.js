@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { Mover, PATHS, makePath } from './mover.js';
+import { crewLeft, crewNames } from './pictureboss.js'; // owner 2026-10-27: the crew battle you before the Captain
 import { swingPath, sweepAngle, cannonShot, AIM, letGo, LETGO, ropeDrop, ROWBOATS, boatKey, OLD_BOAT, BOATS_NEED, boatState, boatSunk, boatAt, deckShot, deckStand, boatHit, power } from './pirateland.js';
 import { SHIP } from './pirateship.js';
 import { sound } from './sound.js';
@@ -45,6 +46,7 @@ export class PirateLive {
     this.ball = null;      // a deck cannon ball in the air: { path, t, to, gi }
     this.held = null;      // the big button / E / the mouse held down: { kind: 'rope' } or { kind: 'deck', g, t0 }
     this.boatT = 0; this.sinking = {}; this.reloadAt = -9;
+    this.freeGone = {}; this.freeLast = null; this.freeCount = 0; // free play after all twelve (boat clock when each sank, the twelfth, how many for fun)
     this.preview = null;   // what the dots show: { spec, gold }
     this.meshes = [];
     for (let k = game.beaten.length - 1; k >= 0; k--) if (OLD_BOAT.test(game.beaten[k])) game.beaten.splice(k, 1); // the easy first version's sunk boats
@@ -300,6 +302,12 @@ export class PirateLive {
     sound.play('seasplash');
     if (i < 0) return;
     const before = boatState(game);
+    if (before.done) { // free play (owner 2026-10-27): nothing saved, the boat comes back a bit later
+      this.freeGone[i] = this.boatT; this.freeCount++;
+      sound.play('keyfound');
+      game.ui.toast(`🚣 Splash! ${this.freeCount} sunk just for fun!`);
+      return;
+    }
     game.beaten.push(boatKey(before.wave * ROWBOATS.boats.length + i)); game.save?.();
     this.sinking[i] = this.boatT;
     const { sunk, need, done, wave } = boatState(game);
@@ -307,14 +315,18 @@ export class PirateLive {
     if (!done && wave > before.wave) { // the wave is sunk: the next three row out a bit later, faster
       this.waveAt = this.boatT + ROWBOATS.sink + ROWBOATS.pause; this.waveFrom = this.sinking; this.sinking = {};
       game.ui.toast(`🚣 ${sunk} / ${need}! More rowboats are coming, faster!`);
-    } else game.ui.toast(done ? `🚣 ${sunk} / ${need}! Now battle the Captain!` : `🚣 ${sunk} / ${need}`);
+    } else game.ui.toast(done ? `🚣 ${sunk} / ${need}! ${crewLeft(game, 'pirate').length ? `Now beat ${crewNames('pirate', crewLeft(game, 'pirate'))}, then the Captain!` : 'Now battle the Captain!'}` : `🚣 ${sunk} / ${need}`);
+    if (done) { // the last one sinks where it was; all three row out again later, just for fun
+      this.freeLast = { i, at: this.boatT, wave: before.wave };
+      for (let j = 0; j < ROWBOATS.boats.length; j++) this.freeGone[j] = this.boatT;
+    }
   }
   // after a won Captain battle his crew rows new boats out: a rematch needs them sunk again (like the Ball Stadium's goals)
   battleEnded(result, opts) {
     if (result !== 'won' || opts?.picture?.id !== 'pirate' || opts.picture.crew != null) return;
     const g = this.game;
     for (let n = 0; n < BOATS_NEED; n++) { const k = g.beaten.indexOf(boatKey(n)); if (k >= 0) g.beaten.splice(k, 1); }
-    this.sinking = {}; this.waveAt = -Infinity;
+    this.sinking = {}; this.waveAt = -Infinity; this.freeGone = {}; this.freeLast = null;
   }
 
   /* ---------- the preview dots, the boats ---------- */
@@ -333,9 +345,30 @@ export class PirateLive {
     if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
   }
   // boat i of the wave is not on the water yet: the new wave rows out after a pause (owner 2026-10-26: 3 at a time, 12 in all)
-  boatHidden(i, t = this.boatT) { return t < (this.waveAt ?? -Infinity); }
+  boatHidden(i, t = this.boatT) {
+    if (boatState(this.game).done) return this.freeGone[i] != null && t - this.freeGone[i] < ROWBOATS.sink + ROWBOATS.freeBack;
+    return t < (this.waveAt ?? -Infinity);
+  }
+  // free play: the boats row on after all twelve are sunk; a hit one sinks, then bobs up again `freeBack` s later
+  drawFreeBoats() {
+    const d = this.dummy, R = ROWBOATS;
+    R.boats.forEach((_, i) => {
+      const at = this.freeGone[i], since = at != null ? this.boatT - at : Infinity, back = R.sink + R.freeBack;
+      const twelfth = this.freeLast?.at === at, sinking = since < R.sink && (!twelfth || this.freeLast.i === i); // at the twelfth hit the other two were already sunk
+      const b = sinking ? boatAt(i, at, twelfth ? this.freeLast.wave : R.free) : boatAt(i, this.boatT, R.free);
+      const k = Math.min(1, since / R.sink), rising = since >= back && since < back + 1 ? 1 - (since - back) : 0;
+      if (since < back && !sinking) { d.position.set(0, -50, 0); d.scale.set(0, 0, 0); } else {
+        d.position.set(b.x, 13.05 + Math.sin(this.boatT * 2 + i) * 0.06 - (sinking ? k * 1.6 : rising * 1.2), b.z);
+        d.rotation.set(sinking ? k * 0.9 : Math.sin(this.boatT * 1.6 + i) * 0.05, b.yaw, 0, 'YXZ'); d.scale.set(1, 1, 1);
+      }
+      d.updateMatrix();
+      this.hulls.setMatrixAt(i, d.matrix); this.sails.setMatrixAt(i, d.matrix);
+    });
+    this.hulls.instanceMatrix.needsUpdate = true; this.sails.instanceMatrix.needsUpdate = true;
+  }
   drawBoats() {
     const d = this.dummy, g = this.game, st = boatState(g);
+    if (st.done) return this.drawFreeBoats();
     ROWBOATS.boats.forEach((_, i) => {
       // the last boat of a finished wave still sinks while the next wave waits to row out
       const old = this.boatT < (this.waveAt ?? -Infinity) && this.waveFrom?.[i] != null, wave = old ? st.wave - 1 : st.wave;
@@ -386,7 +419,7 @@ export class PirateLive {
       if (!gad.c.home && !this.steady) this.hint('aim', 'Fire when the dots are gold!');
     } else if (gad?.kind === 'deck') { // the dots only while Fire! is held (they show how far it goes)
       if (this.held) { const s = this.shotNow(gad); this.preview = { spec: s.spec, gold: s.hit >= 0, ball: true }; }
-      if (!boatState(g).done) this.hint('deck', 'Hold Fire! Let go when the dots are gold.');
+      this.hint(boatState(g).done ? 'free' : 'deck', boatState(g).done ? 'The rowboats are back! Sink them just for fun.' : 'Hold Fire! Let go when the dots are gold.');
     }
     this.drawDots(); this.drawBoats();
     // the barrel kicks back after a shot

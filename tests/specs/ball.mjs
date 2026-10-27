@@ -506,7 +506,7 @@ async function browserPart({ browser, base, t }) {
   const saved = await shootAt(162 + KEEPER.A - 0.3, TOP);
   t.ok(saved.word === 'Kick!' && saved.used && saved.goalFrame < 0 && !saved.beaten.length && await said(page, /Saved by Keeper Gail! Try again!/), `14: a shot straight at the keeper is saved: the toast comes, no goal key (${JSON.stringify(saved.beaten)})`);
   const scored = await shootAt(162, TOP);
-  t.ok(scored.goalFrame >= 0 && scored.goalFrame < 60 && scored.beaten.join() === GOAL(1) && await said(page, /GOAL! ⚽ 1 of 3/), `14: a shot at the open side is a goal within 3 s: GOAL! 1 of 3, key ${GOAL(1)} (goal at frame ${scored.goalFrame})`);
+  t.ok(scored.goalFrame >= 0 && scored.goalFrame < 60 && scored.beaten.join() === GOAL(1) && await said(page, /GOAL! ⚽ 1 of 5/), `14: a shot at the open side is a goal within 3 s: GOAL! 1 of 5, key ${GOAL(1)} (goal at frame ${scored.goalFrame})`);
   t.ok(Math.abs(scored.ball - scored.spot[0]) < 0.5, `14: 1.5 s after the goal the ball is on the centre spot again (${scored.ball.toFixed(1)})`);
   // a goal picture: the ball in the net (the part is frozen so the picture stays)
   await page.evaluate(TOP => {
@@ -549,7 +549,7 @@ async function browserPart({ browser, base, t }) {
     return out;
   });
   t.ok(d17.every(r => r.word === 'Shoot!') && d17.map(r => r.cubes).join() === '1,1,1,0' && d17[3].bonus === 3, `17: next to the court ball the button says Shoot!; three baskets give a cube each, the fourth none (${d17.map(r => r.cubes)})`);
-  t.ok(await said(page, /Swish! 🏀 1 of 3 \+1 Capture Cube/) && await said(page, /Swish! 🏀$/), '17: the Swish! words (a basket for the Captain counts: 1 of 3)');
+  t.ok(await said(page, /Swish! 🏀 1 of 5 \+1 Capture Cube/) && await said(page, /Swish! 🏀 4 of 5$/), '17: the Swish! words (a basket for the Captain counts: 1 of 5; the fourth gives no cube)');
 
   /* ---- 17b. Defender Dee and Blocker Bo (owner 2026-10-26: a bit harder) ---- */
   const d17b = await page.evaluate(() => {
@@ -620,16 +620,16 @@ async function browserPart({ browser, base, t }) {
     const read = (x, z) => { p.pos.set(x, 11, z); p.vel.set(0, 0, 0); L.update(0.05); return chip.classList.contains('hidden') ? null : chip.textContent; };
     g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:')); g.beaten.push('pw:stadium:goal1');
     const pitch = read(60, 150), court = read(55, 198), off = read(58, 128);
-    for (const k of ['goal2', 'goal3', 'basket1', 'basket2', 'basket3']) g.beaten.push('pw:stadium:' + k);
+    for (const k of ['goal2', 'goal3', 'goal4', 'goal5', 'basket1', 'basket2', 'basket3', 'basket4', 'basket5']) g.beaten.push('pw:stadium:' + k); // owner 2026-10-27: 5 and 5
     const crewLeft = read(60, 150), notGreen = !chip.classList.contains('done');
     g.beaten.push('pw:stadium:crew1', 'pw:stadium:crew2');
     const done = read(60, 150), green = chip.classList.contains('done');
     g.beaten = keep; read(58, 128);
     return { pitch, court, off, done, green, crewLeft, notGreen };
   });
-  t.ok(d17c.pitch === '⚽ 1/3 · 🏀 0/3' && d17c.court === d17c.pitch && d17c.off === null, `17c: on the pitch or the court the corner shows the goals and baskets ("${d17c.pitch}"), off them nothing`);
-  t.ok(d17c.crewLeft === '⚽ 3/3 · 🏀 3/3 · Battle Wes and Hazel!' && d17c.notGreen, `17c: with 3 and 3 but the helpers not beaten it says "${d17c.crewLeft}"`);
-  t.ok(d17c.done === '⚽ 3/3 · 🏀 3/3 · Battle the Captain!' && d17c.green, `17c: with 3 and 3 and both helpers beaten it says "${d17c.done}"`);
+  t.ok(d17c.pitch === '⚽ 1/5 · 🏀 0/5' && d17c.court === d17c.pitch && d17c.off === null, `17c: on the pitch or the court the corner shows the goals and baskets ("${d17c.pitch}"), off them nothing`);
+  t.ok(d17c.crewLeft === '⚽ 5/5 · 🏀 5/5 · Battle Wes and Hazel!' && d17c.notGreen, `17c: with 5 and 5 but the helpers not beaten it says "${d17c.crewLeft}"`);
+  t.ok(d17c.done === '⚽ 5/5 · 🏀 5/5 · Battle the Captain!' && d17c.green, `17c: with 5 and 5 and both helpers beaten it says "${d17c.done}"`);
 
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
@@ -646,13 +646,13 @@ async function browserPart({ browser, base, t }) {
     g.bosses.talk(npc);
     return { word, inBattle: g.inBattle, name: npc.name };
   });
-  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 3 goals and 3 baskets, and beat Winger Wes and Hoops Hazel! Then we battle\. \(⚽ 1 \/ 3 · 🏀 0 \/ 3\)/), '16: with 1 goal the Captain says to score 3 goals and 3 baskets and beat both helpers first (⚽ 1 / 3 · 🏀 0 / 3), no battle, the button says Talk');
+  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 5 goals and 5 baskets, and beat Winger Wes and Hoops Hazel! Then we battle\. \(⚽ 1 \/ 5 · 🏀 0 \/ 5\)/), '16: with 1 goal the Captain says to score 3 goals and 3 baskets and beat both helpers first (⚽ 1 / 3 · 🏀 0 / 3), no battle, the button says Talk');
   const guide = await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 150); g.updateGuide(); return g.ui.guideText; });
-  t.ok(/Kick the ball into a goal! \(1 \/ 3\)/.test(guide || ''), `16: the guide says "${guide}"`);
+  t.ok(/Kick the ball into a goal! \(1 \/ 5\)/.test(guide || ''), `16: the guide says "${guide}"`);
   // owner 2026-10-27: the helpers are trainers before the Captain. 3 + 3 without them: the gate names them, the guide leads to them
   const d16h = await page.evaluate(() => {
     const g = window.pokecraft, npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
-    g.beaten.push('pw:stadium:goal2', 'pw:stadium:goal3', 'pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3');
+    g.beaten.push('pw:stadium:goal2', 'pw:stadium:goal3', 'pw:stadium:goal4', 'pw:stadium:goal5', 'pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3', 'pw:stadium:basket4', 'pw:stadium:basket5');
     const word = g.gymLive.talkPrompt(npc)?.action;
     g.bosses.talk(npc);
     g.player.pos.set(58.5, 11, 150); g.updateGuide();
@@ -662,7 +662,7 @@ async function browserPart({ browser, base, t }) {
     return { word, inBattle: g.inBattle, guide, guide2: g.ui.guideText };
   });
   t.ok(d16h.word === 'Talk' && !d16h.inBattle && await said(page, /Captain Kickley: Great playing! Now beat Winger Wes and Hoops Hazel\. Then we battle!/) && /Battle Winger Wes!/.test(d16h.guide || '') && /Battle Hoops Hazel!/.test(d16h.guide2 || ''),
-    `16: 3 goals and 3 baskets but the helpers not beaten: no battle, the guide leads to them ("${d16h.guide}", then "${d16h.guide2}")`);
+    `16: 5 goals and 5 baskets but the helpers not beaten: no battle, the guide leads to them ("${d16h.guide}", then "${d16h.guide2}")`);
   // a real battle with Hoops Hazel opens the Captain
   await page.evaluate(() => { const g = window.pokecraft; g.bosses.talk(g.npcs.list.find(n => n.kind === 'crew' && n.def.boss === 'stadium' && n.def.index === 1)); });
   await waitFor(page, () => window.pokecraft.inBattle, null, 30000);
@@ -674,21 +674,21 @@ async function browserPart({ browser, base, t }) {
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js');
     g.beaten = g.beaten.filter(k => !/^pw:stadium:(goal|basket)/.test(k));
-    g.beaten.push('pw:stadium:goal1', 'pw:stadium:goal2', 'pw:stadium:goal3');
-    window.__gateGoals = (await import('/src/pictureboss.js')).bossOf('stadium').gate(g); // 3 goals, no baskets: the gate is still shut
-    g.beaten.push('pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3');
+    g.beaten.push('pw:stadium:goal1', 'pw:stadium:goal2', 'pw:stadium:goal3', 'pw:stadium:goal4', 'pw:stadium:goal5');
+    window.__gateGoals = (await import('/src/pictureboss.js')).bossOf('stadium').gate(g); // 5 goals, no baskets: the gate is still shut
+    g.beaten.push('pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3', 'pw:stadium:basket4', 'pw:stadium:basket5');
     g.party = [S.makeCreature('fluffin', 2)];
     g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium'));
   });
   await waitFor(page, () => window.pokecraft.inBattle, null, 30000);
   const foes = await page.evaluate(() => { const g = window.pokecraft, f = g.battle.foes; return { levels: f.map(x => x.level).join(), last: f.at(-1).species, moves: JSON.stringify(f.at(-1).moves) }; });
-  t.ok(Math.max(...foes.levels.split(',').map(Number)) === 65 && foes.last === 'goalhound' && /goldengoal/.test(foes.moves), `16: with 3 goals and 3 baskets the Captain battles: top level 65, Goalhound last with Golden Goal (${foes.levels}; ${foes.moves})`);
+  t.ok(Math.max(...foes.levels.split(',').map(Number)) === 65 && foes.last === 'goalhound' && /goldengoal/.test(foes.moves), `16: with 5 goals and 5 baskets the Captain battles: top level 65, Goalhound last with Golden Goal (${foes.levels}; ${foes.moves})`);
   await playBattle(page);
   await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
   const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party.every(c => c.hp > 0), keys: g.beaten.filter(k => /^pw:stadium:(goal|basket)/.test(k)).length, star: g.stars.includes('stadium'), gate3: window.__gateGoals }; });
-  t.ok(/🏀 0 \/ 3/.test(lost.gate3 || ''), `16: 3 goals but no baskets: the gate is still shut ("${lost.gate3}")`);
-  t.ok(lost.place === 'playland' && lost.hp && lost.keys === 6 && !lost.star, `16: losing keeps you in Playland, healed, with all goals and baskets (${JSON.stringify(lost)})`);
-  // a won battle: the star, the goal keys are gone, the next gate says 0 / 3
+  t.ok(/🏀 0 \/ 5/.test(lost.gate3 || ''), `16: 5 goals but no baskets: the gate is still shut ("${lost.gate3}")`);
+  t.ok(lost.place === 'playland' && lost.hp && lost.keys === 10 && !lost.star, `16: losing keeps you in Playland, healed, with all goals and baskets (${JSON.stringify(lost)})`);
+  // a won battle: the star, the goal keys are gone, the next gate says 0 / 5
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js');
     g.party = [S.makeCreature('grovebeast', 100), S.makeCreature('thunderwolf', 100)];
@@ -705,7 +705,7 @@ async function browserPart({ browser, base, t }) {
     const L = g.gymLive.of('part:stadium'), p = g.player; L.playing = () => true; p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); L.update(0.05); const corner = document.getElementById('score-chip').textContent;
     return { keys: g.beaten.filter(k => /^pw:stadium:(goal|basket)/.test(k)).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action, corner };
   });
-  t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk' && won.corner === '⚽ 0/3 · 🏀 0/3', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}", the corner "${won.corner}"`);
+  t.ok(won.keys === 0 && /Score 5 goals and 5 baskets first!.*\(⚽ 0 \/ 5 · 🏀 0 \/ 5\)/.test(won.gate) && won.word === 'Talk' && won.corner === '⚽ 0/5 · 🏀 0/5', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}", the corner "${won.corner}"`);
   await page.waitForTimeout(500);
 
   /* ---- 18. Save and load ---- */
@@ -714,7 +714,7 @@ async function browserPart({ browser, base, t }) {
   const p2 = await openGame(browser, base, { setup: seedSave(save) });
   await continueGame(p2);
   const d18 = await p2.evaluate(async () => { const g = window.pokecraft, S = await import('/src/stadium.js'); return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:goal')), state: S.goalState(g), place: g.place, star: g.stars.includes('stadium') }; });
-  t.ok(d18.keys.join() === GOAL(1) && d18.state.n === 1 && d18.state.need === 3 && d18.star, `18: a goal key and the star survive a reload in a fresh browser (${JSON.stringify(d18)})`);
+  t.ok(d18.keys.join() === GOAL(1) && d18.state.n === 1 && d18.state.need === 5 && d18.star, `18: a goal key and the star survive a reload in a fresh browser (${JSON.stringify(d18)})`);
   await p2.context().close();
   t.ok(!page.errors.length, `no page errors (${page.errors.join('; ').slice(0, 200)})`);
   await page.context().close();

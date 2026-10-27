@@ -144,8 +144,8 @@ export class BumperCar {
 }
 // ---- Harder Bumper Cars (owner 2026-10-27: "the challenges should be fun, interesting and unique, need aim / dexterity / timing") ----
 // Three rounds, each with a time limit that runs only while you drive (a missed round simply starts again, never a fail):
-//   1 Warm-up   the three inner bots carry a balloon, plain drivers (3.0 b/s): learn to get behind a car
-//   2 Zoomers   the three outer bots carry one; a zoomer NOTICES you coming up behind it and zooms off (faster than your car) for
+//   1 Warm-up   four bots (the three inner ones and one outer) carry a balloon, plain drivers: learn to get behind a car
+//   2 Zoomers   five bots (the outer three, two inner) carry one; a zoomer NOTICES you coming up behind it and zooms off (faster than your car) for
 //               1.1 s, then puffs along tired (40 % speed) for 1.8 s: chase, wait for the puff, then bump
 //   3 Spinners  all six: the outer ones zoom, the inner ones SPIN their nose towards you when you come within 4 blocks (1.8 rad/s),
 //               so a slow sneak never works: line up behind and come in fast (the last 2.3 blocks take 0.4 s at full speed)
@@ -159,8 +159,9 @@ export const BOT_TRICKS = {
 };
 // kinds: 'plain' | 'zoom' | 'spin' carry a balloon this round, null drives on without one (a moving obstacle). Speeds in blocks a second.
 export const BUMPER_ROUNDS = [
-  { name: 'Warm-up', time: 45, kinds: ['plain', 'plain', 'plain', null, null, null], speeds: [3.0, 3.0, 3.0, 3.4, 3.4, 3.4] },
-  { name: 'Zoomers', time: 50, kinds: [null, null, null, 'zoom', 'zoom', 'zoom'], speeds: [3.0, 3.0, 3.0, 4.2, 4.2, 4.2] },
+  // owner 2026-10-27 ("the requirement could increase"): 4, 5 and 6 balloons (it was 3, 3 and 6), a little more time for the first two
+  { name: 'Warm-up', time: 55, kinds: ['plain', 'plain', 'plain', 'plain', null, null], speeds: [3.0, 3.0, 3.0, 3.4, 3.4, 3.4] },
+  { name: 'Zoomers', time: 65, kinds: ['zoom', 'zoom', null, 'zoom', 'zoom', 'zoom'], speeds: [3.0, 3.0, 3.0, 4.2, 4.2, 4.2] },
   { name: 'Spinners', time: 75, kinds: ['zoom', 'zoom', 'zoom', 'spin', 'spin', 'spin'], speeds: [3.4, 3.4, 3.4, 3.6, 3.6, 3.6] },
 ];
 export const HARD = { botAdd: 0.4, time: 5, bounceScore: 4, ringOmega: 0.07, ringNeed: 1, balloonPeriod: 0.75 }; // a rematch (you hold the star)

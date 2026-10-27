@@ -310,7 +310,7 @@ async function terrainPart(page, t) {
     t.ok(b.lifts.length === 6 && b.lifts.every(l => l[0] === 2 && l[1] === 2) && b.sunk[0] && !b.sunk[1], `${L}: six bubble columns carry you up, the whirlpool pulls you down`);
     t.ok(b.dive[0] && !b.dive[1] && !b.dive[2] && !b.dive[3], `${L}: dive swimming only in the crater (${b.dive})`);
     t.ok(b.keeps === 'atlantis-bell,atlantis-city*,atlantis-palace' && b.sunken[0] === 2 && b.sunken[1] === 'u' && b.sunken[2] === 'u' && b.sunken[3] === null, `${L}: keeps ${b.keeps}; a guardian stands on the city floor (${b.sunken})`);
-    t.ok(b.dim[0] < b.dim[1] && b.dim[0] > 0.3 && b.dim[2] === 1 && b.dim[3] > b.dim[0] && b.dim[4] === 1 && b.bio[0] === 'atlantis' && b.bio[1] === 'pirateSea', `${L}: a dark district is dim, not black, and a lit one is bright; the sea outside is not touched; the crater has its own wild creatures (${b.dim.map(v => v.toFixed(2))}; ${b.bio})`);
+    t.ok(b.dim[0] < b.dim[1] && b.dim[0] > 0.18 && b.dim[2] === 1 && b.dim[3] > b.dim[0] && b.dim[4] === 1 && b.bio[0] === 'atlantis' && b.bio[1] === 'pirateSea', `${L}: a dark district is dim, not black, and a lit one is bright; the sea outside is not touched; the crater has its own wild creatures (${b.dim.map(v => v.toFixed(2))}; ${b.bio})`);
     t.ok(b.stuckAt.length === 0, `${L}: nobody and no rest spot is inside a wall (${b.stuckAt})`);
     t.ok(b.people.map(p => p.join(':')).join() === 'pirate:3,atlantis:2', `${L}: Captain Squawk and Queen Coralia, with their crews (${b.people.map(p => p.join(':'))})`);
   }
@@ -572,8 +572,13 @@ async function lightsPart(page, t) {
     grab('school', 2); goTo(0);
     out.wrong = [lv.net.length, G.lightState(g).total];
     lv.net = []; for (const f of lv.fish) f.out = false;
+    // owner 2026-10-27, the pictures that explain it: before a catch a ghost glowfish shows the way into the lantern; with fish in the
+    // net a trail of light leads to their lantern; poured fish fly into its bulbs
+    lv.caught = false; goTo(0); out.demo = lv.info().show.demo;
+    grab('shy', 2); const lc = A.districts[0].lantern.centre; p.pos.set(lc[0] + 9, lc[1], lc[2]); p.vel.set(0, 0, 0); step(g, 1 / 20, 2);
+    out.trail = [lv.info().show.trail, lv.info().show.target, lv.info().show.demo];
     // two shy fish at the Jar Market: 2 lights, saved at once
-    grab('shy', 2); goTo(0); step(g, 1 / 20, 4);
+    goTo(0); step(g, 1 / 20, 4); out.flying = lv.info().show.flying;
     out.two = [lv.net.length, G.lightState(g).lit.join(), g.beaten.filter(k => G.LIGHT_KEY.test(k)).join(), lv.info().lit.join(), lv.info().fish.filter(f => f.poured).length];
     const lamps2 = A.districts[0].lamps.map(([x, y, z]) => w.get(x, y, z));
     out.lamps2 = lamps2.filter(id => id === 214).length;
@@ -602,6 +607,7 @@ async function lightsPart(page, t) {
     out.guide = (g.updateGuide?.(), g.ui.guideText);
     return out;
   });
+  t.ok(L.demo && L.trail[0] > 5 && L.trail[1] === 0 && !L.trail[2] && L.flying >= 1, `owner 2026-10-27: a ghost glowfish shows the way before your first catch; with fish in the net a trail of light leads to their lantern (${L.trail[0]} dots); poured fish fly into its bulbs (${L.flying})`);
   t.ok(L.wrong[0] === 2 && L.wrong[1] === 0 && await said(page, /These glowfish live in the Temple Steps/), `school fish at the Jar Market lantern pour nothing and say where they live (${L.wrong})`);
   t.ok(L.two[0] === 0 && L.two[1] === '2,0,0' && L.two[2] === 'pw:atlantis:light1,pw:atlantis:light2' && L.two[3] === '2,0,0' && L.two[4] === 2 && await said(page, /\+2 lights! 2 \/ 12/), `two shy fish in the Jar Market lantern: 2 lights, saved at once as keys (${L.two[2]})`);
   t.ok(L.lamps2 === 4 && L.lantern2, `two lights: 4 of the 8 lamps are on, the lantern is still dark (${L.lamps2} lamps)`);
@@ -626,6 +632,16 @@ async function lightsPart(page, t) {
     return { stays, inPalace: lv.inPalace(), near: window.__play(g, () => g.gymLive.near(p)), diving: p.diving, y: p.pos.y };
   });
   t.ok(inside.stays && inside.inPalace && inside.near === null && !inside.diving, 'inside the dry throne room you are not swimming, there is no net, and the gate stays open while you are in');
+  // owner 2026-10-27: every Boss battles only once his helpers are beaten
+  const qGate = await page.evaluate(async () => {
+    const g = window.pokecraft, b = g.world.bosses.find(b => b.id === 'atlantis'), n = g.npcs.list.find(n => n.name === 'Queen Coralia');
+    g.player.pos.set(b.rest[0], b.rest[1], b.rest[2]); window.__toasts = window.__toasts || []; const before = window.__toasts.length;
+    g.bosses.talk(n); const said = window.__toasts.slice(before).join('|');
+    const out = { gated: !g.inBattle && /Beat Guard Pelos and Guard Talia first/.test(said), aim: (g.updateGuide?.(), g.ui.guideText) };
+    g.beaten.push('pw:atlantis:crew1', 'pw:atlantis:crew2');
+    return out;
+  });
+  t.ok(qGate.gated && /Battle Guard/.test(qGate.aim || ''), `with all 12 lights but her guards not beaten the Queen says to beat them first, and the guide leads to one ("${qGate.aim}")`);
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js'), b = g.world.bosses.find(b => b.id === 'atlantis'), n = g.npcs.list.find(n => n.name === 'Queen Coralia');
     g.party = [S.makeCreature('fluffin', 2)];

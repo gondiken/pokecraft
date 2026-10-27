@@ -8,7 +8,49 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, openPair, newGame, pause, click, waitFor as waitFor0, playBattle, platform } from '../helpers.mjs';
-import { makeTrack, raceRun, bossSpeed, RACE, RACER_SPAWNS } from '../../src/racetrack.js';
+import { makeTrack, bossSpeed, buildRaceTrack, RACE, RACER_SPAWNS } from '../../src/racetrack.js';
+import { Kart, KART } from '../../src/kart.js';
+import { B } from '../../src/blocks.js';
+
+// A stand-in Playland for Node: flat land at y 10 and the race track (buildRaceTrack writes only into world.data).
+function standIn() {
+  const W = 224, D = 224, HH = 48;
+  const world = { W, D, data: new Uint8Array(W * D * HH), ground: new Int16Array(W * D).fill(10), index: (x, y, z) => x + z * W + y * W * D, inBounds: (x, y, z) => x >= 0 && z >= 0 && y >= 0 && x < W && z < D && y < HH, parts: [], keeps: [] };
+  world.get = (x, y, z) => (world.inBounds(x, y, z) ? world.data[world.index(x, y, z)] : 0);
+  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) for (let y = 0; y <= 10; y++) world.data[world.index(x, y, z)] = y === 10 ? B.GRASS : B.DIRT;
+  return { world, part: buildRaceTrack(world, { box: { x0: 8, x1: 215, z0: 8, z1: 95 } }) };
+}
+// A driver for a whole 3-lap race against Rio: it steers at a point ahead on the middle line and brakes so every corner ahead can be
+// taken (skill 1 = at the grip's limit, lower = slower in the corners); `wobble` = steering noise (radians, changed every half second).
+function autoRace(world, part, skill, losses, { fps = 60, wobble = 0, seed = 1 } = {}) {
+  const t = part.track, L = t.L, end = RACE.laps * L, g = part.grid.player, k = new Kart(g[0], g[1], g[2], Math.PI / 2);
+  let rio = RACE.grid, P = RACE.grid, laps = 0, lastS = L + RACE.grid, time = 0, r = seed, noise = 0;
+  const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < fps * 400; i++) {
+    const pr = t.project(k.x, k.z), tgt = t.at(pr.s + 3 + k.speed * 0.25, 0);
+    let wx = tgt.x - k.x, wz = tgt.z - k.z; const m = Math.hypot(wx, wz); wx /= m; wz /= m;
+    if (i % Math.round(fps / 2) === 0) noise = (rnd() - 0.5) * 2 * wobble;
+    [wx, wz] = [wx * Math.cos(noise) - wz * Math.sin(noise), wx * Math.sin(noise) + wz * Math.cos(noise)];
+    let allowed = 99;
+    for (let a = 1; a <= 30; a++) {
+      const h0 = t.at(pr.s + a - 1).heading, h1 = t.at(pr.s + a + 1).heading, curv = Math.abs(Math.atan2(Math.sin(h1 - h0), Math.cos(h1 - h0))) / 2;
+      const vmax = curv > 1e-3 ? Math.sqrt(KART.grip / curv) * skill : 99;
+      allowed = Math.min(allowed, Math.sqrt(vmax * vmax + 2 * KART.brake * 0.7 * Math.max(0, a - 1)));
+    }
+    const input = k.speed > allowed + 0.3 ? { x: -Math.sin(k.h), z: -Math.cos(k.h), m: 1 } : { x: wx, z: wz, m: 1 };
+    if (k.update(1 / fps, input, world.get).some(e => e.type === 'splash')) { const b = t.at(t.pieces.find(p => p.kind === 'kicker').s0 - 6, 0); k.reset(b.x, 11, b.z, b.heading); }
+    time += 1 / fps;
+    const ns = t.project(k.x, k.z).s;
+    if (lastS > L - 40 && ns < 40) laps++;
+    if (lastS < 40 && ns > L - 40) laps--;
+    lastS = ns;
+    P = laps === 0 ? ns - L : (laps - 1) * L + ns;
+    rio += bossSpeed(rio, rio - P, losses, t) / fps;
+    if (P >= end) return { win: true, time: +time.toFixed(1), margin: +(end - rio).toFixed(1) };
+    if (rio >= end) return { win: false, time: +time.toFixed(1), margin: +(end - P).toFixed(1) };
+  }
+  return { win: null };
+}
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const IDS = ['vroomlet', 'vroomster', 'zipskate', 'blastskate', 'pitpig', 'karthog', 'wheelie'];
@@ -39,7 +81,7 @@ async function intoPlayland(page, { star = false } = {}) {
 
 // Page side helpers for the race: the live part driven by hand (manual clocks, fixed dt), toasts collected.
 const arm = page => page.evaluate(async () => {
-  const g = window.pokecraft, T = await import('/src/racetrack.js'), { B } = await import('/src/blocks.js');
+  const g = window.pokecraft, T = await import('/src/racetrack.js'), { B } = await import('/src/blocks.js'), { KART } = await import('/src/kart.js');
   const live = g.gymLive.of('part:race');
   live.manual = true; live.playing = () => true;
   window.__toasts = [];
@@ -48,9 +90,34 @@ const arm = page => page.evaluate(async () => {
   const R = window.__R = {
     g, live, track, Y, B, T, p,
     rio: () => g.npcs.list.find(n => n.kind === 'boss' && n.def?.id === 'race'),
-    put(s, lane = -1.5, y = Y + 1) { const a = track.at(s, lane); p.pos.set(a.x, y, a.z); p.vel.set(0, 0, 0); return a; },
+    // a spot on the track (in the kart during a race: the kart is put there, standing still)
+    put(s, lane = -1.5, y = null) {
+      const a = track.at(s, lane), yy = y ?? Y + 1 + Math.round(track.project(a.x, a.z).h);
+      if (live.car) live.car.reset(a.x, yy, a.z, a.heading);
+      p.pos.set(a.x, yy, a.z); p.vel.set(0, 0, 0); return a;
+    },
+    at(x, z, y = Y + 1) { if (live.car) live.car.reset(x, y, z); p.pos.set(x, y, z); p.vel.set(0, 0, 0); },
+    // really drive the kart: a driver steering at a point ahead and braking before the corners (like the spec's Node driver)
+    auto({ skill = 1, dt = 1 / 30, until = () => live.state !== 'race', max = 300 } = {}) {
+      let t = 0;
+      while (!until() && t < max) {
+        const c = live.car;
+        if (c) {
+          const pr = track.project(c.x, c.z), q = track.at(pr.s + 3 + c.speed * 0.25, 0);
+          let wx = q.x - c.x, wz = q.z - c.z; const m = Math.hypot(wx, wz); wx /= m; wz /= m;
+          let allowed = 99;
+          for (let a = 1; a <= 30; a++) {
+            const h0 = track.at(pr.s + a - 1).heading, h1 = track.at(pr.s + a + 1).heading, cv = Math.abs(Math.atan2(Math.sin(h1 - h0), Math.cos(h1 - h0))) / 2;
+            allowed = Math.min(allowed, Math.sqrt((cv > 1e-3 ? KART.grip / cv * skill * skill : 9801) + 2 * KART.brake * 0.7 * Math.max(0, a - 1)));
+          }
+          live.wish = c.speed > allowed + 0.3 ? { x: -Math.sin(c.h), z: -Math.cos(c.h), m: 1 } : { x: wx, z: wz, m: 1 };
+        }
+        live.step(dt); t += dt;
+      }
+      return t;
+    },
     // run along `lane` at v blocks per second from distance s until `until` or max seconds; returns the seconds used
-    drive(v, { s = -1.5, lane = -1.5, dt = 1 / 20, until = () => live.state !== 'race', max = 200, y = Y + 1 } = {}) {
+    drive(v, { s = -1.5, lane = -1.5, dt = 1 / 20, until = () => live.state !== 'race', max = 200, y = null } = {}) {
       let t = 0;
       R.s = s;
       while (!until() && t < max) { s += v * dt; R.s = s; R.put(s, lane, y); live.step(dt); t += dt; }
@@ -66,20 +133,22 @@ const arm = page => page.evaluate(async () => {
 export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
 
-  /* ---------------------------------------------------------------- B. Track maths (pure, in Node) */
+  /* ---------------------------------------------------------------- B. Track maths and the kart (pure, in Node) */
   if (want('track')) {
     const tr = makeTrack();
-    t.ok(Math.abs(tr.L - 190.85) < 0.05 && tr.pieces.length === 19 && tr.gates.length === 4, `the lap is ${tr.L.toFixed(2)} blocks in 19 pieces with 4 gates`);
-    // owner 2026-10-26: a narrower, twistier track that never runs close to itself (points 14+ apart along it are 7+ apart)
-    let close = 0; const pts = []; for (let s = 0; s < tr.L; s += 0.5) pts.push([s, tr.at(s)]);
-    for (const [s1, a] of pts) for (const [s2, b] of pts) { let ds = Math.abs(s1 - s2); ds = Math.min(ds, tr.L - ds); if (ds >= 14 && Math.hypot(a.x - b.x, a.z - b.z) < 7) close++; }
-    const kinds = new Set(tr.pieces.map(p => p.kind)), right = tr.pieces.filter(p => p.cw).length;
-    t.ok(close === 0 && ['hairpin', 'sweeper', 'bridge', 'chicane'].every(k => kinds.has(k)) && right === 2 && RACE.edge < 2.5, `a hairpin, a sweeping bend, a bridge, a chicane and two right turns (an S); the track never comes back near itself (${close} close points)`);
-    let jump = 0, back = 0, cells = 0;
-    const corners = tr.pieces.filter(p => p.kind === 'chicane').map(p => p.s0).concat(tr.pieces.filter(p => p.kind === 'chicane').map(p => p.s0 + p.len));
+    const kinds = new Set(tr.pieces.map(p => p.kind));
+    t.ok(tr.L > 450 && tr.L < 520 && tr.pieces.length === 31 && tr.gates.length === 4, `owner 2026-10-27: a lap more than twice as long as the old 191 (${tr.L.toFixed(1)} blocks in ${tr.pieces.length} pieces, 4 gates)`);
+    t.ok(['snake', 'kicker', 'jump', 'climb', 'high', 'drop', 'tunnel', 'hairpin', 'chicane', 'corner'].every(k => kinds.has(k)), `a snake, a jump over the pond, the orange flyover (climb, high, drop), a tunnel, a hairpin and a chicane (${[...kinds]})`);
+    // the lap closes and never comes back near itself (points 24+ apart along it are 12+ apart: the road is 7 wide)
+    const end = tr.at(tr.L - 1e-6), st = tr.at(0);
+    let close = 0; const pts = []; for (let s = 0; s < tr.L; s += 1) pts.push([s, tr.at(s)]);
+    for (const [s1, a] of pts) for (const [s2, b] of pts) { let ds = Math.abs(s1 - s2); ds = Math.min(ds, tr.L - ds); if (ds >= 24 && Math.hypot(a.x - b.x, a.z - b.z) < 12) close++; }
+    t.ok(Math.hypot(end.x - st.x, end.z - st.z) < 1e-3 && close === 0, `the loop closes and never runs close to itself (${close} close points)`);
+    let jump = 0, back = 0, cells = 0, inZone = 0;
+    const corners = tr.pieces.filter(p => p.type === 'arc' && p.r < 8).flatMap(p => [p.s0, p.s0 + p.len]);
     for (let s = 0; s < tr.L; s += 0.5) {
       const a = tr.at(s), b = tr.at(s + 0.01);
-      if (Math.hypot(a.x - b.x, a.z - b.z) > 0.02) jump++;
+      if (Math.hypot(a.x - b.x, a.z - b.z) > 0.02 || Math.abs(a.y - b.y) > 0.1) jump++;
       for (const lane of [-2, -1, 0, 1, 2]) {
         if (Math.abs(lane) > 0.5 && corners.some(c => Math.abs(c - s) < 1.6 * Math.abs(lane) + 0.5)) continue; // the offset line folds over at the sharp chicane corners
         const q = tr.at(s, lane), p = tr.project(q.x, q.z);
@@ -87,21 +156,70 @@ export default async function ({ browser, base, t }) {
         if (ds > 0.05 || Math.abs(p.across - lane) > 0.05) back++;
         cells++;
       }
+      for (const lane of [-4.3, 4.3]) { const q = tr.at(s, lane); if (q.x < 8 || q.x >= 216 || q.z < 8 || q.z >= 96) inZone++; }
     }
-    t.ok(jump === 0, 'at(s) is continuous (every 0.5)');
+    t.ok(jump === 0, 'at(s) is continuous (every 0.5), the height too');
     t.ok(back === 0, `project(at(s, lane)) gives back s and the lane for lanes -2..2 (${cells} points, ${back} wrong)`);
+    t.ok(inZone === 0, `the road and its rails stay inside the race zone (${inZone} points outside)`);
     t.ok(tr.gates.map(g => g.id).join() === 'G0,G1,G2,G3' && tr.gates.every((g, i) => i === 0 || g.s > tr.gates[i - 1].s), 'the gates are G0..G3, sorted by distance');
-    const win = (v, l, dt) => raceRun(v, l, dt, tr).winner;
-    // owner 2026-10-26: a walk never wins; a clean run at the race's pace (8.4) wins; a sloppy one (7) loses the first race, wins after a loss
-    const pace = 6.2 * RACE.pace;
-    const table = [[0, 4.3, 'rio'], [0, pace, 'you'], [1, 4.3, 'rio'], [1, pace, 'you'], [2, 3.0, 'rio'], [2, 4.3, 'rio'], [3, 4.3, 'rio'], [0, 6.2, 'rio'], [0, 7.0, 'rio'], [0, 7.4, 'rio'], [1, 7.8, 'you'], [2, 7.4, 'you'], [2, pace, 'you'], [0, 9.5, 'you']];
-    for (const dt of [1 / 30, 1 / 8]) t.ok(table.every(([l, v, w]) => win(v, l, dt) === w), `a walk never wins, even after 3 lost races; a clean run at race pace (${pace.toFixed(1)}) wins, a sloppy one (7.4) loses the first race, gentler after losses (dt ${dt.toFixed(3)})`);
-    t.ok([1 / 30, 1 / 8].every(dt => [3.0, 4.3, 6.2, pace, 9.5].every(v => [0, 1, 2].every(l => win(v, l, dt) === win(v, l, 1 / 30)))), 'frame lengths 1/30 and 1/8 give the same winners everywhere in the table');
-    const top = Math.max(...Object.values(RACE.speed)) * RACE.band.max;
+    t.ok(tr.pads.length === 4 && tr.pads.every(p => p.cells.length >= 6 && p.cells.length <= 8), `four thin boost strips (${tr.pads.map(p => p.cells.length)})`);
+    // owner 2026-10-27: the pads boost Rio too
+    const pad = tr.pads[0], base = bossSpeed(pad.s0 - 1, 0, 0, tr);
+    t.ok(bossSpeed(pad.s0 + 2, 0, 0, tr) === RACE.boost.speed && bossSpeed(pad.s0 + RACE.boost.dist + RACE.boost.fade / 2, 0, 0, tr) > base && tr.kindAt(pad.s0 + 1) === 'boost', `a boost strip speeds Rio up to ${RACE.boost.speed} (from ${base}) and he slows back after it`);
+    const top = Math.max(RACE.boost.speed, ...Object.values(RACE.speed)) * RACE.band.max;
     let fast = 0;
-    for (let s = -1.5; s < RACE.laps * tr.L; s += 1.1) for (const lead of [-30, -4, 0, 2, 20]) for (const l of [0, 1, 2, 3]) if (bossSpeed(s, lead, l, tr) > top + 1e-9) fast++;
+    for (let s = -2; s < RACE.laps * tr.L; s += 1.1) for (const lead of [-30, -4, 0, 2, 20]) for (const l of [0, 1, 2, 3]) if (bossSpeed(s, lead, l, tr) > top + 1e-9) fast++;
     t.ok(fast === 0, `Rio is never faster than ${top.toFixed(2)} blocks per second`);
-    t.ok(tr.pads.length === 3 && tr.pads.every(p => p.cells.length === 6), 'three thin boost strips of 6 cells');
+    t.ok(tr.pieces.filter(p => p.hot).every(p => p.y[0] >= 0 && p.y[1] <= 6) && Math.max(...pts.map(([, a]) => a.y)) === 6 && tr.yAt(tr.pieces.find(p => p.kind === 'jump').s0 + 3.5) > 2, 'the flyover climbs to 6 blocks and drops back; over the pond Rio arcs above the road');
+
+    // the kart on the real blocks (a stand-in world: flat land at y 10 and buildRaceTrack)
+    const { world, part } = standIn(), get = (x, y, z) => world.get(x, y, z), Y = 10;
+    const K = (x, z, h, y = Y + 1) => new Kart(x, y, z, h);
+    const run = (k, secs, input, fps = 60) => { const ev = []; for (let i = 0; i < secs * fps; i++) ev.push(...k.update(1 / fps, typeof input === 'function' ? input(k) : input, get)); return ev; };
+    const g0 = part.grid.player, east = { x: 1, z: 0, m: 1 };
+    const k1 = K(g0[0], g0[2], Math.PI / 2); run(k1, 0.5, east); const v05 = k1.v; run(k1, 2, east);
+    t.ok(v05 > 2 && v05 < 5 && Math.abs(k1.v - KART.top.road) < 0.01 && k1.surface === 'road', `a kart speeds up (${v05.toFixed(1)} after half a second), then drives ${k1.v.toFixed(1)} on the road (no instant top speed)`);
+    const kb = K(k1.x, k1.z, k1.h); kb.v = 12; run(kb, 0.3, { x: -1, z: 0, m: 1 });
+    t.ok(kb.v < 7, `pulling the stick back brakes (12 -> ${kb.v.toFixed(1)} in 0.3 s)`);
+    // a kerb and the grass are as slow as each other (owner: "the red and white corners should slow us just like the off-track")
+    const field = id => (x, y, z) => (y === Y ? id : 0); // an endless flat field of one block
+    const onField = (id, secs) => { const k = K(0.5, 0.5, 0); k.v = 12; for (let i = 0; i < secs * 60; i++) k.update(1 / 60, { x: 0, z: 1, m: 1 }, field(id)); return k; };
+    const vk = onField(B.KERB, 0.6).v, vg = onField(B.GRASS, 0.6).v, vr = onField(B.ASPHALT, 0.6).v, vk2 = onField(B.KERB, 3).v;
+    t.ok(KART.top.kerb === KART.top.grass && vk === vg && vk < 7 && Math.abs(vk2 - KART.top.kerb) < 0.01 && vr === 12, `on the kerb the kart slows right down, just like on the grass (12 -> ${vk.toFixed(1)} in 0.6 s, then ${vk2}; the road keeps ${vr})`);
+    // a boost pad
+    const pc = tr.pads[0].cells[0], kp = K(pc[0] - 1, pc[1] + 0.5, Math.PI / 2); kp.v = 10; // just before the first strip, driving east along it
+    const pev = run(kp, 0.2, east);
+    t.ok(pev.some(e => e.type === 'boost') && kp.v > 15, `a boost pad kicks the kart up to ${kp.v.toFixed(1)}`);
+    run(kp, 2, east);
+    t.ok(kp.v < 14, `and the boost fades on the road (${kp.v.toFixed(1)} two seconds later)`);
+    // tyre walls bounce the kart back
+    let wc = null; for (let x = 8; x < 216 && !wc; x++) for (let z = 8; z < 96; z++) if (world.get(x, Y + 1, z) === B.TYRE_WALL && world.get(x + 3, Y + 1, z) === 0 && world.get(x + 3, Y, z) === B.GRASS && world.get(x + 1, Y + 1, z) === 0 && world.get(x + 2, Y + 1, z) === 0) { wc = [x, z]; break; }
+    const kw = K(wc[0] + 3.5, wc[1] + 0.5, -Math.PI / 2); kw.v = 4.5;
+    const wev = run(kw, 1, { x: -1, z: 0, m: 0.01 });
+    t.ok(wev.some(e => e.type === 'bonk' && e.id === B.TYRE_WALL) && kw.x > wc[0] + 1.4, 'a tyre wall bounces the kart back (it never drives up a wall)');
+    // a tight corner needs slowing down: the grip lets the kart turn only so fast at speed (at 12 a corner of radius 12 at the tightest, at 6 one of 3)
+    const turn = v => { const k = K(0.5, 0.5, 0); k.v = v; for (let i = 0; i < 30; i++) { k.update(1 / 60, { x: 1, z: 0, m: v / 12 }, field(B.ASPHALT)); k.v = v; } return k.h; };
+    const t12 = turn(12), t6 = turn(6), hp = tr.pieces.find(p => p.kind === 'hairpin');
+    t.ok(Math.abs(t12 - 0.5) < 0.03 && Math.abs(t6 - 1) < 0.03 && Math.sqrt(KART.grip * hp.r) < 11, `at 12 the kart turns ${t12.toFixed(2)} rad in half a second, at 6 ${t6.toFixed(2)}: the dip's hairpin (radius ${hp.r}) needs braking below ${Math.sqrt(KART.grip * hp.r).toFixed(1)}`);
+    // the jump ramp: fast enough it flies over the pond, too slow it splashes
+    const kick = tr.pieces.find(p => p.kind === 'kicker'), jumpAt = v => { const a = tr.at(kick.s0 - 0.8, -1.5), k = K(a.x, a.z, a.heading); k.v = v; const ev = run(k, 2.5, k2 => ({ x: Math.sin(k2.h), z: Math.cos(k2.h), m: v > 8 ? 1 : 0.4 })); return { ev: ev.map(e => e.type), k }; }; // (slow: half a push)
+    const fastJ = jumpAt(13), slowJ = jumpAt(6);
+    t.ok(fastJ.ev.includes('jump') && fastJ.ev.includes('land') && !fastJ.ev.includes('splash'), `at 13 the kart flies off the ramp and lands past the pond (${fastJ.ev.join()})`);
+    t.ok(slowJ.ev.includes('splash'), `too slow (6) it lands in the pond (${slowJ.ev.join()})`);
+    // up the flyover: a step of road at a time, between the rails
+    const climb = tr.pieces.find(p => p.kind === 'climb'), ca = tr.at(climb.s0 - 2), kup = K(ca.x, ca.z, ca.heading); kup.v = 10;
+    const upEv = run(kup, 3, k2 => { const pr = tr.project(k2.x, k2.z), q = tr.at(pr.s + 3); const dx = q.x - k2.x, dz = q.z - k2.z, m = Math.hypot(dx, dz); return { x: dx / m, z: dz / m, m: 1 }; });
+    t.ok(kup.y >= Y + 6 && !upEv.some(e => e.type === 'bonk'), `the kart drives up the climb onto the flyover (floor ${kup.y - Y - 1} blocks up)`);
+    // 60 and 20 frames a second drive the same way (fixed 1/120 s sub-steps)
+    const same = fps => { const k = K(g0[0], g0[2], Math.PI / 2); let i = 0; run(k, 4, () => { const a = 1.2 + 0.5 * Math.floor((i++ / fps) * 2) % 3; return { x: Math.sin(a), z: Math.cos(a), m: 1 }; }, fps); return [k.x, k.z, k.v]; };
+    const s60 = same(60), s20 = same(20);
+    t.ok(s60.every((v, i) => Math.abs(v - s20[i]) < 0.02), `60 and 20 frames a second give the same drive (${s60.map(v => v.toFixed(2))} / ${s20.map(v => v.toFixed(2))})`);
+    // a whole race against Rio with a driver of each skill (owner 2026-10-27, "too easy": a clean drive wins, a sloppy one loses the first race and wins after losing)
+    const races = [[1, 0, 0], [0.9, 0, 0], [0.9, 0.4, 0], [0.9, 0.4, 1], [0.6, 0.8, 4], [0.6, 0.8, 8]].map(([sk, wob, l]) => ({ sk, wob, l, ...autoRace(world, part, sk, l, { wobble: wob }) }));
+    console.log('  races', JSON.stringify(races));
+    t.ok(races[0].win && races[1].win && races[0].margin < 20, `a clean, quick drive wins, but only just (${races[0].margin}, ${races[1].margin} blocks ahead)`);
+    t.ok(!races[2].win && races[3].win, `a wobbly drive loses the first race (by ${races[2].margin}) and wins after a lost race (by ${races[3].margin})`);
+    t.ok(!races[4].win && races[5].win, `a very sloppy drive still loses after 4 lost races, but after 8 Rio is gentle enough (by ${races[5].margin})`);
   }
 
   const page = await openGame(browser, base);
@@ -271,24 +389,32 @@ export default async function ({ browser, base, t }) {
           if (x >= hub.x0 && x <= hub.x1 && zz >= hub.z0 && zz <= hub.z1) inHub++;
         }
         r.changed = changed; r.outside = outside; r.inHub = inHub;
-        // the centreline is open asphalt (or the chequer line, or a pad) with air above
+        // the centreline is open road (asphalt, the chequer line, a pad, the orange flyover, the jump ramp) at its height with air above
         let badLine = 0;
         for (let s = 0; s < tr.L; s += 0.5) {
-          const a = tr.at(s), x = Math.floor(a.x), zc = Math.floor(a.z), id = w.get(x, Y, zc);
-          if (![B.ASPHALT, B.CHECKER, B.BOOST_PAD].includes(id)) badLine++;
-          else for (let k = 1; k <= 3; k++) if (w.get(x, Y + k, zc) !== B.AIR) { badLine++; break; }
+          const a = tr.at(s), x = Math.floor(a.x), zc = Math.floor(a.z), pr = tr.project(x + 0.5, zc + 0.5), h = Math.round(pr.h), id = w.get(x, Y + h, zc); // (the height the builder gave that cell)
+          if (tr.pieces[pr.piece].kind === 'jump') { if (w.get(x, Y, zc) !== B.WATER) badLine++; continue; } // over the pond
+          if (![B.ASPHALT, B.CHECKER, B.BOOST_PAD, B.HOT_TRACK, B.KICKER].includes(id)) badLine++;
+          else for (let k = 1; k <= 3; k++) if (w.get(x, Y + h + k, zc) !== B.AIR) { badLine++; break; }
         }
         r.badLine = badLine;
-        // the start line spans the track; 12 pad cells each; tyre walls never on the track
-        let checker = 0;
-        for (let v = 18; v <= 22; v++) for (let u = 28; u <= 29; u++) if (w.get(68 + u, Y, 96 - 1 - v) === B.CHECKER) checker++;
-        r.checker = checker;
-        r.pads = tr.pads.map(p => p.cells.filter(([x, zc]) => w.get(x, Y, zc) === B.BOOST_PAD).length).join();
-        r.pond = 0; for (const q of T.POND) for (let u = q.u[0]; u <= q.u[1]; u++) for (let v = q.v[0]; v <= q.v[1]; v++) if (w.get(68 + u, Y, 96 - 1 - v) === B.WATER) r.pond++;
-        r.bridge = [138, 139, 140, 141, 142].every(x => w.get(x, Y, 96 - 1 - 40) !== B.WATER && w.isSolid(x, Y, 96 - 1 - 40)) && w.get(137, Y, 96 - 1 - 40) === B.WATER;
-        let wallOnTrack = 0, walls = 0;
-        for (let x = 60; x <= 160; x++) for (let zc = 20; zc <= 95; zc++) if (w.get(x, Y + 1, zc) === B.TYRE_WALL) { walls++; if (tr.project(x + 0.5, zc + 0.5).d <= T.RACE.edge + 0.5 && !(x >= 96 && x <= 106 && zc >= 60 && zc <= 66)) wallOnTrack++; }
-        r.walls = walls; r.wallOnTrack = wallOnTrack;
+        // the start line spans the track; every pad cell is a pad at the road's height; the flyover has its rails; tyre walls never on the track
+        const z0 = L.ZONES.race.box;
+        let checker = 0, pond = 0, rails = 0, railMiss = 0, walls = 0, wallOnTrack = 0;
+        for (let x = z0.x0; x <= z0.x1; x++) for (let zc = z0.z0; zc <= z0.z1; zc++) {
+          if (w.get(x, Y, zc) === B.CHECKER) checker++;
+          if (w.get(x, Y, zc) === B.WATER) pond++;
+          if (w.get(x, Y + 1, zc) === B.TYRE_WALL) { walls++; if (tr.project(x + 0.5, zc + 0.5).d <= T.RACE.edge + 0.5) wallOnTrack++; }
+        }
+        for (const p of tr.pieces) if (p.hot) for (let s = p.s0 + 1; s < p.s0 + p.len - 1; s += 1) {
+          for (const lane of [-3.7, 3.7]) {
+            const q = tr.at(s, lane), x = Math.floor(q.x), zc = Math.floor(q.z), h = Math.round(tr.project(x + 0.5, zc + 0.5).h);
+            if (h < 1) continue;
+            rails++; if (w.get(x, Y + h + 1, zc) !== B.HOT_RAIL) railMiss++;
+          }
+        }
+        r.checker = checker; r.pond = pond; r.rails = rails; r.railMiss = railMiss; r.walls = walls; r.wallOnTrack = wallOnTrack;
+        r.pads = tr.pads.map(p => p.cells.filter(([x, zc]) => w.get(x, Y + p.h, zc) === B.BOOST_PAD).length === p.cells.length).join();
         // the walk in: from the arrival through the hedge gap and between the stands to the grid spot, to Rio's rest spot and to the garage
         const arrival = w.arrivals.race, boss = w.bosses.find(b => b.id === 'race');
         r.toGrid = reach(w, arrival, part.grid.player);
@@ -311,7 +437,8 @@ export default async function ({ browser, base, t }) {
     });
     for (const r of C) {
       t.ok(!r.problems.length && r.outside === 0 && r.inHub === 0 && r.changed > 2000, `seed ${r.seed}: the track writes only inside the race zone, never in the hub (${r.changed} cells, ${r.outside} outside, ${r.inHub} in the hub) ${r.problems.join('; ')}`);
-      t.ok(r.badLine === 0 && r.checker === 10 && r.pads === '6,6,6' && r.pond > 60 && r.bridge, `seed ${r.seed}: the centreline is open asphalt with air above, the chequer line is 2 x 5, three strips of 6, the bridge crosses the pond (${r.badLine} bad, ${r.checker}, ${r.pads}, ${r.pond} water)`);
+      t.ok(r.badLine === 0 && r.checker >= 14 && r.pads === 'true,true,true,true' && r.pond > 40, `seed ${r.seed}: the centreline is open road at its height with air above, the pond under the jump, the chequer line, four pad strips (${r.badLine} bad, ${r.checker} chequer, ${r.pads}, ${r.pond} water)`);
+      t.ok(r.rails > 100 && r.railMiss === 0, `seed ${r.seed}: the orange flyover has a rail on both sides all the way (${r.rails} checked, ${r.railMiss} missing)`);
       t.ok(r.walls > 40 && r.wallOnTrack === 0, `seed ${r.seed}: tyre walls stand outside the track (${r.walls} cells, ${r.wallOnTrack} on it)`);
       t.ok(r.toGrid && r.toGrid2 && r.toRest && r.toCrew, `seed ${r.seed}: from the arrival you can walk to both grid spots, Rio's rest spot and the helpers (hedge gap, between the stands)`);
       t.ok(r.keep && r.fenced === false && r.protectedAt && r.live && r.walk && r.biome === 'race', `seed ${r.seed}: one keep that riders may enter but nobody can build in, the live part, walkable track blocks, the zone is the race biome`);
@@ -343,43 +470,44 @@ export default async function ({ browser, base, t }) {
       out.onGrid = Math.hypot(p.pos.x - live.part.grid.player[0], p.pos.z - live.part.grid.player[2]) < 0.01;
       out.rioGrid = Math.hypot(n.pos.x - live.part.grid.boss[0], n.pos.z - live.part.grid.boss[2]) < 0.01 && n.steer === true;
       out.yaw = Math.abs(Math.sin(p.yaw) + 1) < 1e-6;
-      out.hello = window.__R.said("Race me\\? Three laps");
+      out.hello = window.__R.said("Hop in your kart");
+      out.inKart = p.carry === live.rider && !!live.car && !!live.carMesh?.visible;
       const lamp = () => window.__R.lamps().map(id => (id === B.START_RED ? 'R' : id === B.START_GREEN ? 'G' : id === B.START_LIGHT ? '.' : '?')).join('');
       out.lamps = [];
       live.step(0.01); out.lamps.push(lamp());
       live.step(1); out.lamps.push(lamp());
       live.step(1); out.lamps.push(lamp());
-      p.pos.x += 3; live.step(0.05); // runs off the grid before GO
-      out.back = Math.hypot(p.pos.x - live.part.grid.player[0], p.pos.z - live.part.grid.player[2]) < 0.01;
-      out.wait = window.__R.said('Wait for GO');
+      live.wish = { x: 1, z: 0, m: 1 }; live.step(0.5); // stick pushed before GO: the kart stays on the grid
+      out.back = Math.hypot(p.pos.x - live.part.grid.player[0], p.pos.z - live.part.grid.player[2]) < 0.01 && live.car.v === 0;
+      out.wait = true;
       out.state2 = live.state;
       out.action = g.gymLive.talkPrompt(n).action;
       return out;
     });
-    t.ok(D2.state === 'count' && D2.onGrid && D2.rioGrid && D2.yaw && D2.hello, 'talking to Rio starts the countdown: you and Rio are on the grid facing the way, Rio says hello');
+    t.ok(D2.state === 'count' && D2.onGrid && D2.rioGrid && D2.yaw && D2.hello && D2.inKart, 'talking to Rio starts the countdown: you sit in your kart on the grid facing the way, Rio beside you says hello');
     t.ok(D2.lamps.join() === 'R..,RR.,RRR', `the lamps light one by one (${D2.lamps})`);
-    t.ok(D2.back && D2.wait && D2.state2 === 'count' && D2.action === 'Ready...', 'moving off the grid before GO puts you back ("Wait for GO!"), the button says "Ready..."');
-    await page.evaluate(() => { const { p, live } = window.__R; p.pos.set(86, 12.4, 74.5); p.vel.set(0, 0, 0); p.lookAt({ x: 96.5, y: 15.4, z: 73 }); });
+    t.ok(D2.back && D2.state2 === 'count' && D2.action === 'Ready...', 'the kart does not move before GO, the button says "Ready..."');
+    await page.evaluate(() => { const { p, live } = window.__R, [lx, ly, lz] = live.part.lights[1]; p.carry = null; p.pos.set(lx - 9, ly - 3, lz + 1.5); p.vel.set(0, 0, 0); p.lookAt({ x: lx + 0.5, y: ly + 0.5, z: lz + 0.5 }); });
     await frames(page, 3);
     await shot(page, 't40c-start-lights.png');
     const D2b = await page.evaluate(() => {
       const { g, live, B, p } = window.__R, grid = live.part.grid;
-      p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
-      live.step(1);
+      p.carry = live.rider; p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
+      live.wish = { x: 0, z: 0, m: 0 }; live.step(1);
       const state = live.state, lamps = window.__R.lamps().join();
       const green = lamps === [B.START_GREEN, B.START_GREEN, B.START_GREEN].join();
       return { state, green, go: window.__R.said('^GO!$'), action: g.gymLive.talkPrompt(window.__R.rio()).action, clock: live.clock };
     });
     t.ok(D2b.state === 'race' && D2b.green && D2b.go && D2b.action === 'Go go go!', `at 3 seconds all three lamps turn green and "GO!" starts the race (${D2b.state})`);
 
-    // a win: running at the race's pace (8.4 blocks per second) round three laps, every flag in order
+    // a win: round three laps at 13 blocks a second (faster than Rio anywhere), every flag in order
     const D3 = await page.evaluate(() => {
       const R = window.__R, { live, g } = R, seq = [];
       let last = live.next;
       const until = () => { if (live.next !== last) { last = live.next; seq.push(last); } return live.state !== 'race'; };
-      const secs = R.drive(6.2 * R.T.RACE.pace, { until });
+      const secs = R.drive(13, { until });
       const n = R.rio();
-      return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("Now talk to me"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
+      return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("talk to me for a battle"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
         prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), sound: g.sound.played.slice(-8).join() };
     });
     t.ok(D3.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4'), `the flags are passed in order, three times round (${D3.seq})`);
@@ -392,9 +520,26 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { live } = R, n = R.rio(), b = R.g.world.bosses.find(q => q.id === 'race');
       live.step(1); const mid = live.state;
       R.steps(3);
-      return { mid, state: live.state, atStand: Math.hypot(n.pos.x - b.pos[0], n.pos.z - b.pos[2]) < 0.01, steer: n.steer, kart: live.kart?.visible };
+      return { mid, state: live.state, atStand: Math.hypot(n.pos.x - b.pos[0], n.pos.z - b.pos[2]) < 0.01, steer: n.steer, kart: live.kart?.visible, mine: live.carMesh?.visible, out: R.p.carry === null && !live.car };
     });
-    t.ok(D3b.mid === 'done' && D3b.state === 'idle' && D3b.atStand && !D3b.steer && !D3b.kart, 'three seconds after the finish Rio is back on his stand and the kart is gone');
+    t.ok(D3b.mid === 'done' && D3b.state === 'idle' && D3b.atStand && !D3b.steer && !D3b.kart && !D3b.mine && D3b.out, 'three seconds after the finish Rio is back on his stand, you are out of your kart and both karts are gone');
+
+    // owner 2026-10-27: really driving the kart round the whole race (the driver of the Node part, here on the real blocks)
+    const D3k = await page.evaluate(() => {
+      const R = window.__R, { live, g } = R, seq = [];
+      live.won = false; live.losses = 1; // (one lost race: a clean drive wins easily, so the result does not hang on the frame length)
+      g.talkTo(R.rio()); live.step(3.2);
+      let last = live.next, bonks = 0, boosts = 0, air = 0, high = 0;
+      const played = () => g.sound.played.length;
+      const until = () => { if (live.next !== last) { last = live.next; seq.push(last); } if (live.car?.air) air++; if (live.car && live.car.y > R.Y + 6) high++; return live.state !== 'race'; };
+      const secs = R.auto({ until });
+      const sounds = g.sound.played.slice(-200).join();
+      return { seq: seq.join(), won: live.won, state: live.state, secs, air, high, boost: /boostzoom/.test(sounds), fov: g.camera.fov };
+    });
+    console.log('  D3k', JSON.stringify(D3k));
+    t.ok(D3k.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4') && D3k.won && D3k.state === 'done', `a driver really steering the kart passes every flag three times and wins after a lost race (${D3k.secs.toFixed(0)} s)`);
+    t.ok(D3k.air > 5 && D3k.high > 20 && D3k.boost, `on the way it jumped (${D3k.air} frames in the air), drove the flyover (${D3k.high} frames up high) and hit the boost pads`);
+    await page.evaluate(() => { const R = window.__R; R.live.step(3.2); R.live.losses = 0; });
 
     // a mid-race screenshot with Rio's kart beside you
     await page.evaluate(() => {
@@ -402,7 +547,7 @@ export default async function ({ browser, base, t }) {
       live.won = false; // (the race above was won: the next talk would start the Boss battle)
       R.g.talkTo(R.rio());
       live.step(3.2);
-      R.put(24.5, -1.5); live.bossS = 24.5; live.P = 24.5;
+      R.put(24.5, -1.5); live.bossS = 26.5; live.P = 24.5;
       R.drive(7, { s: 24.5, until: () => R.s > 25.4 || live.state !== 'race', max: 0.3 });
       const a = R.track.at(26, -1.5);
       R.p.lookAt({ x: a.x + Math.sin(a.heading) * 10, y: 11.4, z: a.z + Math.cos(a.heading) * 10 });
@@ -417,15 +562,16 @@ export default async function ({ browser, base, t }) {
     // a lost race: standing still after GO, Rio finishes; the save does not change
     const D4 = await page.evaluate(() => {
       const R = window.__R, { live, g } = R, snap = () => { g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); for (const k of ['savedAt', 'realmPos', 'pos', 'time', 'yaw', 'pitch', 'weather']) delete s[k]; return JSON.stringify(s); };
-      live.state = 'idle'; live.hideKart(); live.won = false; live.losses = 0;
+      live.backToStand(); live.won = false; live.losses = 0;
       const before = snap();
       g.talkTo(R.rio());
       live.step(3.2);
       const grid = live.part.grid;
       let t = 0;
-      while (live.state === 'race' && t < 200) { R.p.pos.set(grid.player[0], grid.player[1], grid.player[2]); live.step(0.1); t += 0.1; }
+      live.wish = { x: 0, z: 0, m: 0 };
+      while (live.state === 'race' && t < 300) { live.step(0.1); t += 0.1; }
       const after = snap();
-      return { state: live.state, losses: live.losses, won: live.won, secs: t, tip: R.said('Tip: hit the boost pads'), wins: R.said('Rio wins this time'), lose: R.said('Race again\\?'), action: g.gymLive.talkPrompt(R.rio()).action, same: before === after, bossS: live.bossS, L: live.track.L };
+      return { state: live.state, losses: live.losses, won: live.won, secs: t, tip: R.said('Tip: slow down before the tight corners'), wins: R.said('Rio wins this time'), lose: R.said('Race again\\?'), action: g.gymLive.talkPrompt(R.rio()).action, same: before === after, bossS: live.bossS, L: live.track.L };
     });
     t.ok(D4.state === 'done' && D4.losses === 1 && !D4.won && D4.wins && D4.lose && D4.tip, `a lost race: "Rio wins this time!", Rio's line and the boost-pad tip (${D4.secs.toFixed(0)} s)`);
     t.ok(D4.action === 'Race again!' && D4.same, 'the button says "Race again!" and nothing in the save changed');
@@ -454,7 +600,7 @@ export default async function ({ browser, base, t }) {
       R.drive(7, { s: G[1].s + 2, lane: -1, until: () => live.next >= 3 || live.state !== 'race', max: 12 });
       out.next4 = live.next;
       const dt = 1 / 20, tr = R.track, from = tr.at(G[2].s + 4), to = tr.at(G[3].s - 6);
-      for (let k = 0; k <= 1; k += 7 * dt / Math.hypot(to.x - from.x, to.z - from.z)) { R.p.pos.set(from.x + (to.x - from.x) * k, R.Y + 1, from.z + (to.z - from.z) * k); live.step(dt); }
+      for (let k = 0; k <= 1; k += 7 * dt / Math.hypot(to.x - from.x, to.z - from.z)) { R.at(from.x + (to.x - from.x) * k, from.z + (to.z - from.z) * k); live.step(dt); }
       out.afterShortcut = live.next;
       const proj = tr.project(R.p.pos.x, R.p.pos.z);
       out.P = live.P; out.s = proj.s;
@@ -472,7 +618,7 @@ export default async function ({ browser, base, t }) {
     // boost pad: stand on it and zoom 5 blocks along +x in well under half a second
     const D6 = await page.evaluate(() => {
       const R = window.__R, { live, g, B } = R, pad = live.part.pads[0], cell = pad.cells[0];
-      live.state = 'idle'; live.hideKart(); live.zoom = null; live.zoomCool = 0;
+      live.backToStand(); live.zoom = null; live.zoomCool = 0;
       R.p.pos.set(cell[0] + 0.5, R.Y + 1, cell[1] + 0.5); R.p.vel.set(0, 0, 0);
       const x0 = R.p.pos.x; live.stand(cell[0], R.Y, cell[1], B.BOOST_PAD);
       const started = !!live.zoom; let t = 0;
@@ -484,7 +630,7 @@ export default async function ({ browser, base, t }) {
     // pause: a battle stops the race clock and Rio; leaving the area stops the race without a loss
     const D7 = await page.evaluate(() => {
       const R = window.__R, { live, g } = R;
-      R.p.pos.set(...live.part.grid.player); live.state = 'idle'; g.talkTo(R.rio()); live.step(3.2);
+      live.state = 'idle'; g.talkTo(R.rio()); live.step(3.2);
       R.drive(7, { until: () => R.s > 20 || live.state !== 'race' });
       const c0 = live.clock, b0 = live.bossS;
       g.inBattle = true; for (let i = 0; i < 40; i++) live.step(0.05); g.inBattle = false;
@@ -492,12 +638,12 @@ export default async function ({ browser, base, t }) {
       live.step(0.05);
       const goes = live.clock > c0;
       const losses = live.losses;
-      R.p.pos.set(200, R.Y + 1, 40); live.step(0.05);
-      return { frozen, goes, state: live.state, losses: live.losses === losses, stopped: R.said('Race stopped') };
+      R.at(112.5, 140.5); live.step(0.05); // (in the hub, on the far side of the hedge)
+      return { frozen, goes, state: live.state, losses: live.losses === losses, stopped: R.said('Race stopped'), out: R.p.carry === null && !live.car };
     });
     console.log('  D7', JSON.stringify(D7));
     t.ok(D7.frozen && D7.goes, 'a battle freezes the race clock and Rio; the race goes on after it');
-    t.ok(D7.state === 'idle' && D7.losses && D7.stopped, 'walking far from the track stops the race ("Race stopped"), not a loss');
+    t.ok(D7.state === 'idle' && D7.losses && D7.stopped && D7.out, 'driving out of the race area stops the race ("Race stopped"), not a loss, and you get out of the kart');
 
     // riding: the keep lets riders in, a lap counts, a flyer passes a flag over the beam
     const D8 = await page.evaluate(async () => {
@@ -513,34 +659,39 @@ export default async function ({ browser, base, t }) {
       p.keys = {};
       out.moved = p.pos.x - x0; out.fence = fence; out.fencedCell = g.world.fenced(Math.floor(p.pos.x), R.Y + 1, Math.floor(p.pos.z));
       out.fenceToast = R.said('Gyms are for walking|No riding');
-      // a race while riding: the flags count (driven by position)
-      g.talkTo(R.rio()); live.step(3.2);
-      R.drive(9.5, { until: () => live.state !== 'race' });
-      out.state = live.state; out.won = live.won; out.lap = live.lap;
-      // a flyer: feet at Y + 7 pass flag 1
-      live.state = 'idle'; live.won = false; g.talkTo(R.rio()); live.step(3.2);
-      R.drive(9.5, { until: () => live.next >= 2 || live.state !== 'race', y: R.Y + 7, max: 20 });
-      out.sky = live.next;
-      g.riding.stop('quiet'); live.state = 'idle'; live.hideKart();
+      // a race: you get off your creature and into your kart
+      g.talkTo(R.rio()); live.step(0.1);
+      out.offRide = !g.riding.on && p.carry === live.rider;
+      live.backToStand();
+      g.riding.stop('quiet'); live.backToStand();
       return out;
     });
     t.ok(D8.rode && D8.on && D8.kind === 'land' && D8.moved > 9 && !D8.fence && !D8.fencedCell && !D8.fenceToast, `riding a Vroomster on the track is not fenced out (${D8.moved.toFixed(1)} blocks in 2 s)`);
-    t.ok(D8.state === 'done' && D8.won && D8.lap === 3, 'a race run while riding counts');
-    t.ok(D8.sky >= 2, 'a flying rider passes a flag above the beam (feet at 7 above the ground)');
+    t.ok(D8.offRide, 'talking to Rio while riding: you get off and into your kart');
 
     // the Boss battle after a won race
     const D9 = await page.evaluate(async () => {
       const R = window.__R, { live, g } = R, S = await import('/src/species.js');
-      live.state = 'idle'; live.hideKart(); live.won = false;
+      live.backToStand(); live.won = false;
       g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
       g.talkTo(R.rio()); live.step(3.2);
-      R.drive(6.2 * R.T.RACE.pace, {});
-      const won = live.won, state = live.state;
+      R.drive(13, {});
+      const won = live.won, state = live.state, crewLine = R.said('Now beat Pit Crew Pia and Pit Crew Max');
       live.step(3.2);
+      // owner 2026-10-27: the race AND his two crew before Rio battles
+      for (const k of ['pw:race:crew1', 'pw:race:crew2']) { const i = g.beaten.indexOf(k); if (i >= 0) g.beaten.splice(i, 1); }
+      const aim = live.aim(R.p.pos)?.text('↑', 9);
+      window.__toasts = []; g.talkTo(R.rio());
+      const gated = !g.inBattle && R.said('beat Pit Crew Pia and Pit Crew Max in a battle');
+      g.beaten.push('pw:race:crew1');
+      window.__toasts = []; g.talkTo(R.rio());
+      const gated2 = !g.inBattle && R.said('beat Pit Crew Max in a battle');
+      g.beaten.push('pw:race:crew2');
       g.talkTo(R.rio()); // the Boss battle
-      return { won, state, inBattle: g.inBattle, boss: g.battle.boss, foes: g.battle.foes?.map(f => `${f.species}:${f.level}`).join(), trainer: g.battle.trainer?.name, moves: g.battle.foes?.map(f => f.moves.join('/')).join(' ') };
+      return { won, state, crewLine, aim, gated, gated2, inBattle: g.inBattle, boss: g.battle.boss, foes: g.battle.foes?.map(f => `${f.species}:${f.level}`).join(), trainer: g.battle.trainer?.name, moves: g.battle.foes?.map(f => f.moves.join('/')).join(' ') };
     });
-    t.ok(D9.won && D9.state === 'done' && D9.inBattle && D9.boss && /Rio/.test(D9.trainer), `after a won race, talking to Rio starts the Boss battle (${D9.foes})`);
+    t.ok(D9.won && D9.crewLine && /Now battle Pit Crew/.test(D9.aim || '') && D9.gated && D9.gated2, `after a won race Rio wants his two crew beaten first; the guide leads to them (${D9.aim})`);
+    t.ok(D9.state === 'done' && D9.inBattle && D9.boss && /Rio/.test(D9.trainer), `with the race won and both crew beaten, talking to Rio starts the Boss battle (${D9.foes})`);
     t.ok(D9.foes === 'wheelie:61,karthog:62,blastskate:63,vroomster:64', `Rio's team is wheelie 61, karthog 62, blastskate 63, vroomster 64 (${D9.foes})`);
     console.log('  Rio moves:', D9.moves);
     t.ok(await playBattle(page), 'the Boss battle is won');
@@ -556,12 +707,12 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { live, g } = R, S = await import('/src/species.js');
       await new Promise(r => setTimeout(r, 300));
       g.ui.closeAsk?.();
-      live.state = 'idle'; live.hideKart(); g.party = [S.makeCreature('thunderwolf', 100)];
+      live.backToStand(); g.party = [S.makeCreature('thunderwolf', 100)];
       R.p.pos.set(...live.part.grid.player);
       g.talkTo(R.rio());
       const raced = live.state === 'count' && !g.ui.asking;
       const again = R.said('this time I go full speed') || R.said('Race me again');
-      live.step(3.2); R.drive(6.2 * R.T.RACE.pace, {});
+      live.step(3.2); R.drive(13, {});
       g.talkTo(R.rio());
       return { raced, again, asking: g.ui.asking, text: document.getElementById('ask-text')?.textContent, action: g.gymLive.talkPrompt(R.rio()), base: g.bosses.talkPrompt(R.rio()).action };
     });
@@ -572,7 +723,7 @@ export default async function ({ browser, base, t }) {
     // the parade: with the star, two karts drive laps and the pads pulse
     const D12 = await page.evaluate(() => {
       const R = window.__R, { live, g, B } = R;
-      live.state = 'idle'; live.hideKart(); live.paradeClock = 0;
+      live.backToStand(); live.paradeClock = 0;
       R.p.pos.set(R.track.at(20, -4).x, R.Y + 1, R.track.at(20, -4).z);
       live.step(0.1);
       const a = live.info().parade;
@@ -731,16 +882,16 @@ export default async function ({ browser, base, t }) {
     await waitFor(ip, () => window.__R.live.state === 'count', null, 30000);
     t.ok(true, 'a tap on the big button starts the countdown');
     const sp = await ip.evaluate(() => {
-      const R = window.__R; R.live.step(3.2);
+      const R = window.__R; R.live.step(3.2); R.live.manual = false; // the game's own frames drive the race now
       R.g.touch.joy = { x: 0, y: -1 }; R.p.yaw = -Math.PI / 2; R.p.keys = {};
       return R.live.state;
     });
-    await ip.waitForTimeout(1500);
-    const run = await ip.evaluate(() => { const R = window.__R; const v = Math.hypot(R.p.vel.x, R.p.vel.z); R.g.touch.joy = null; return v; });
-    t.ok(sp === 'race' && run > 6, `a full joystick push sprints during the race (${run.toFixed(1)} blocks per second)`);
+    await waitFor(ip, () => (window.__R.live.car?.v ?? 0) > 6, null, 60000).catch(() => {});
+    const run = await ip.evaluate(() => { const R = window.__R; const v = R.live.car?.v ?? 0, x = R.live.car?.x; R.g.touch.joy = null; R.live.manual = true; return { v, moved: x - R.live.part.grid.player[0] }; });
+    t.ok(sp === 'race' && run.v > 3 && run.moved > 1, `pushing the joystick forward drives the kart (${run.v.toFixed(1)} blocks per second, ${run.moved.toFixed(1)} blocks)`);
     const after = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
     t.ok(after === before, `the number of touch buttons did not change (${before})`);
-    await ip.evaluate(() => { const R = window.__R; R.p.pos.set(...R.live.part.grid.player); R.p.pos.y += 0; });
+    await ip.evaluate(() => { const R = window.__R; R.put(4, -1.5); R.live.wish = { x: 0, z: 0, m: 0 }; R.live.step(0.05); R.p.pitch = -0.15; });
     await frames(ip, 2);
     await shot(ip, 't40c-ipad.png');
     t.ok(!ip.errors.length, `no page errors (iPad) ${ip.errors.join('; ')}`);

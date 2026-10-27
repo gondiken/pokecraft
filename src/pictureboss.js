@@ -1,6 +1,6 @@
 // T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge) and a short
 // note from the Wizard. Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
-// crew: bonus battles (a gate before the Boss only where its `gate` says so: the Ball Stadium). The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
+// crew: trainers before the Boss where its `gate` says so (the Ball Stadium, the Race Track, the Pirate Seas), bonus battles elsewhere. The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
 import { PICTURE_WORLDS, pictureWorld, loadStars } from './pictureworlds.js';
 import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
@@ -27,6 +27,9 @@ export const BOSSES = {};
 export function addBoss(def) { BOSSES[def.id] = { ...def, title: def.title ?? `${def.name} · ${pictureWorld(def.id).name} Boss` }; }
 export const bossOf = id => BOSSES[id] ?? null;
 export const crewKey = (id, i) => `pw:${id}:crew${i + 1}`;      // saved in `beaten` (strings, like trainer keys)
+// Owner 2026-10-27: on the Race Track and in the Pirate Seas the crew are trainers before the Boss too (beaten once, kept forever).
+export const crewLeft = (game, id) => (BOSSES[id]?.crew || []).map((_, i) => i).filter(i => !game.beaten?.includes(crewKey(id, i)));
+export const crewNames = (id, list) => list.map(i => BOSSES[id].crew[i].name).join(' and ');
 
 // The team for a star rematch after `wins` rematch wins (pure): the T28 growth with the crew's species as extras.
 export function bossTeam(def, wins = null) {
@@ -59,10 +62,16 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   win: 'Good try! Have a crumb, rest a bit, and come back!',
   rematchIntro: ['Back again? My tiny team grew a little!'],
   note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
-// T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (optional battles: Dot, Lou and First Mate Fin).
+// T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (Dot, Lou and First Mate Fin).
 // Owner 2026-10-26: sink his 12 rowboats (four waves of three) with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
+// Owner 2026-10-27: and beat his three crew (once, kept forever).
 addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
-  gate: game => { const { sunk, need, done } = boatState(game); return done ? null : `Squawk! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`; },
+  gate: game => {
+    const { sunk, need, done } = boatState(game), left = crewLeft(game, 'pirate');
+    if (done && !left.length) return null;
+    if (done) return `Squawk! You sank my rowboats, but ${crewNames('pirate', left)} still ${left.length === 1 ? 'wants' : 'want'} a battle! Beat ${left.length === 1 ? 'that one' : 'them'} first!`;
+    return left.length ? `Squawk! Sink my ${need} rowboats and beat my crew first! (🚣 ${sunk} / ${need})` : `Squawk! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`;
+  },
   team: [['anchorclaw', 61, ['anchordrop', 'rumblerock', 'cannonball', 'hookswipe']], ['shipshape', 61],
     ['lookapus', 62, ['spyglass', 'soakshot', 'cannonball', 'walktheplank']],
     ['featherbeard', 63, ['broadside', 'swoop', 'jollyroger', 'cannonball']]], // top level 63, the easy side, four creatures
@@ -81,6 +90,7 @@ addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species
   ] });
 addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in racelive.js; he battles after you win it)
   id: 'race', name: 'Racer Rio', type: 'racer', title: 'Racer Rio · Race Track Boss',
+  gate: game => { const left = crewLeft(game, 'race'); return left.length ? `Great race! Now beat ${crewNames('race', left)} in a battle. Then we battle!` : null; }, // owner 2026-10-27: the race (racelive.js) and the crew
   colors: { shirt: 0xff8a2a, pants: 0x2a2a34, hair: 0x3a2418, skin: 0xf0c8a0 }, look: 'helmet',
   team: [['wheelie', 61], ['karthog', 62, ['pitcrew']], ['blastskate', 63], ['vroomster', 64, ['photofinish', 'fullthrottle']]],
   intro: ['Vroom! You beat me on the track...', "Now let's see if your team is fast too!"],
@@ -90,13 +100,13 @@ addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in raceliv
   note: 'I built this track for the festival race, but nobody ever raced on it. Thank you for racing!',
   crew: [
     { name: 'Pit Crew Pia', look: 'helmet', colors: { shirt: 0xffffff, pants: 0xff8a2a, hair: 0x2a1a10, skin: 0xd8a070 },
-      team: [['vroomlet', 60], ['wheelie', 61]], intro: ['Want a practice battle before the big race?'], line: 'Go go go! Rio is fast, but you can do it!' },
+      team: [['vroomlet', 60], ['wheelie', 61]], intro: ['Beat me before you battle Rio!'], line: 'Go go go! Rio is fast, but you can do it!' },
     { name: 'Pit Crew Max', look: 'helmet', colors: { shirt: 0x2a8ae8, pants: 0xffffff, hair: 0xc89a40, skin: 0xf0c8a0 },
-      team: [['zipskate', 60], ['pitpig', 61], ['blastskate', 62]], intro: ['Vroom vroom! Practice battle?'], line: 'Step on the boost pads. Zoom!' },
+      team: [['zipskate', 60], ['pitpig', 61], ['blastskate', 62]], intro: ['Vroom vroom! Beat me before you battle Rio!'], line: 'Step on the boost pads. Zoom!' },
   ],
 });
 /* ==== T40d ball ==== */
-addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 3 baskets: the gate reads the saved keys (stadium.js goalState).
+addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 5 goals and 5 baskets: the gate reads the saved keys (stadium.js goalState).
   id: 'stadium', name: 'Captain Kickley', type: 'ball', look: 'sport',
   colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x6a3a1a, skin: 0xf0c8a0 },
   gate: game => { // owner 2026-10-27: Wes and Hazel are trainers before the Captain (once), the goals and baskets come every match
@@ -107,7 +117,7 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
     return crew.length ? `Score ${need} goals and ${bneed} baskets, and beat ${who}! Then we battle. ${score}` : `Score ${need} goals and ${bneed} baskets first! Then we battle. ${score}`;
   },
   team: [['smashbird', 62], ['beachboomer', 63], ['strikehorn', 63], ['goalhound', 65, ['goldengoal', 'cannonroll', 'quickpass', 'teamhuddle']]],
-  intro: ['Three goals and three baskets! You can really play.', "Now let's see how your team plays!"],
+  intro: ['Five goals and five baskets! You can really play.', "Now let's see how your team plays!"],
   rematchIntro: ['Goals and baskets again! Ready for the second half?'],
   lose: 'What a match! The stadium is cheering again. Here is the star the Wizard hid in our trophy!',
   win: 'Good game! Score again and we play another match.',
@@ -231,9 +241,22 @@ export function createBosses(game, { startBattle, save }) {
   const dist = npc => Math.hypot(npc.pos.x - game.player.pos.x, npc.pos.z - game.player.pos.z);
   const usable = npc => game.npcs.list.includes(npc) && !game.inBattle;
   const gateText = def => (def.gate ?? def.ready)?.(game) ?? null;
+  // Owner 2026-10-27: "all bosses should have previous battle conditions": every Boss with helpers battles only once they are beaten
+  // (beaten once, kept forever; a gate may word it itself, like the Ball Stadium's).
+  const crewText = def => { const left = crewLeft(game, def.id); return left.length ? `Beat ${crewNames(def.id, left)} first! Then we battle.` : null; };
 
   const api = {
     winsOf,
+    // The guide in a Picture World whose Boss waits only for his helpers now (his own gate is passed): the nearest helper to beat, or null.
+    crewAim(p) {
+      const w = game.world, list = (w?.bosses || []).filter(b => !hasStar(b.id) && bossOf(b.id) && !gateText(bossOf(b.id)) && crewLeft(game, b.id).length);
+      for (const b of list) {
+        const left = crewLeft(game, b.id), people = game.npcs.list.filter(n => n.kind === 'crew' && n.def?.boss === b.id && left.includes(n.def.index));
+        const c = people.sort((x, y) => Math.hypot(x.pos.x - p.x, x.pos.z - p.z) - Math.hypot(y.pos.x - p.x, y.pos.z - p.z))[0];
+        if (c) return { x: c.pos.x, z: c.pos.z, text: (a, m) => `⚔️ Battle ${c.name} ${a} ${m}m` };
+      }
+      return null;
+    },
     get pending() { return pending; },
 
     // The player talked to a Boss or a crew person. Always handled (true).
@@ -246,7 +269,7 @@ export function createBosses(game, { startBattle, save }) {
         startBattle({ trainer: npc, team: crew.team, intro: crew.intro || ['Get past me first!'], picture: { id: def.id, crew: i, rematch: null } });
         return true;
       }
-      const why = gateText(def);
+      const why = gateText(def) ?? crewText(def);
       if (why) { toast(`${npc.name}: ${why}`); return true; }
       if (!hasStar(def.id)) {
         startBattle({ trainer: npc, team: def.team, intro: def.intro, boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: null } });

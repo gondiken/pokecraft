@@ -4,7 +4,7 @@ import { B, BLOCKS, isSolid } from './blocks.js';
 import { WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
 import { buildGiftWrap, giftPaperOf } from './shapes.js'; // T44
-import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
+import { condOf, condOk, afterOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
 import { Disguise } from './disguise.js';
 import { sound } from './sound.js';
 import { hash32 } from './traits.js'; // T40a
@@ -189,6 +189,7 @@ export class CreatureManager {
       perch: under || !env || this.world?.realm ? null : () => this.perchNear(playerPos),
       nook: this.world?.nooks?.length ? () => this.nookNear(playerPos) : null, // T40a
       allCrumbs: !!this.world?.allCrumbs, // T40a.5 (set by the Giant House's live part)
+      after: this.env?.after ?? null, // owner 2026-10-27: a Picture World's rare creatures wait for your progress there (wildafter.js)
     };
   }
 
@@ -199,11 +200,12 @@ export class CreatureManager {
   weights(biome, ctx) {
     ctx = CreatureManager.asCtx(ctx);
     const wx = this.weather;
-    return this.table(biome).filter(([, , when]) => condOk(when, ctx) && !condOf(when)?.share)
+    return this.table(biome).filter(([, , when, after]) => condOk(when, ctx) && afterOk(after, ctx) && !condOf(when)?.share)
       .map(e => [e, e[1] * (wx ? wx.boost(biome, SPECIES[e[0]].type) : 1)]);
   }
 
   pickFrom(table) {
+    if (!table.length) return [null, null]; // everything waits for a condition (a Picture World's rare ones: wildafter.js)
     const total = table.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
     for (const [e, w] of table) if ((r -= w) < 0) return [e[0], e[2]];
@@ -223,7 +225,8 @@ export class CreatureManager {
       if (!condOk(cond, ctx) || this.count(cond) >= (def.max ?? Infinity)) continue;
       const share = typeof def.share === 'function' ? def.share(ctx, cond.split(':')[1]) : def.share;
       if (Math.random() >= share) continue;
-      const table = this.table(biome).filter(x => x[2] === cond).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
+      const table = this.table(biome).filter(x => x[2] === cond && afterOk(x[3], ctx)).map(x => [x, x[1] * (wx ? wx.boost(biome, SPECIES[x[0]].type) : 1)]);
+      if (!table.length) continue;
       return this.pickFrom(table);
     }
     return this.pickFrom(this.weights(biome, ctx));
@@ -256,6 +259,7 @@ export class CreatureManager {
     if (!biome) return;
     if (!this.table(biome).length) return; // T38a: a realm with no wild creatures (the Swirl)
     const [species, when] = this.pickEntry(biome, ctx);
+    if (!species) return;
     // A condition with a `place` (near a home) says where the creature appears.
     if (this.spawnPlaced(species, when, ctx, spawnPoint)) return;
     const sp = SPECIES[species];
@@ -350,6 +354,7 @@ export class CreatureManager {
     const ctx = CreatureManager.asCtx(night);
     if (!this.table('cave').length) return; // T38a
     const [species, when] = this.pickEntry('cave', ctx);
+    if (!species) return;
     if (this.spawnPlaced(species, when, ctx, spawnPoint)) return; // a home visitor (T22): appears in its home
     const x = Math.floor(center.x + Math.cos(angle) * dist), z = Math.floor(center.z + Math.sin(angle) * dist);
     if (x < 2 || z < 2 || x >= this.world.W - 2 || z >= this.world.D - 2) return;
@@ -396,9 +401,10 @@ export class CreatureManager {
     this.viewer = playerPos;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
-      this.spawnTimer = 0.6;
+      const wild = this.world?.realm?.wild; // owner 2026-10-27: Picture Worlds have fewer wild creatures, coming out more slowly
+      this.spawnTimer = wild?.every ?? 0.6;
       const ctx = this.context(playerPos, night, under);
-      if (this.list.length < MAX_WILD) {
+      if (this.list.length < (wild?.max ?? MAX_WILD)) {
         if (under) for (let i = 0; i < 4; i++) this.trySpawnCave(playerPos, spawnPoint, ctx);
         else this.trySpawn(playerPos, spawnPoint, ctx);
       }

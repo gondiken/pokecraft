@@ -49,6 +49,7 @@ export const DRAW = {
   head: 2,                 // air needed above the line (you walk on it)
   leash: 5,                // the pencil waits when you are more than this far behind it (in x / z)
   turn: 2.0,               // rad / s: the most the pencil turns toward where you look
+  stuckTurn: 3.0,          // owner 2026-10-27 ("the pencil gets stuck at the edge"): a blocked pencil turns this fast, toward any point you look at
   near: 1.0,               // looking at a point this close to the pencil: it keeps its heading
   farAim: 40,              // a view ray that meets the line's floor further than this (or never) does not steer
   fence: 1,                // other pages (not the one you leave or the next one), grown by this: the pencil cannot draw there
@@ -117,14 +118,16 @@ export const inTarget = (c, x, z, row) => row >= c.rowB && inRect(c.target, x, z
 
 // Where the view ray meets the line's floor (row + 1) beyond the pencil, or null: then the pencil keeps its heading. Looking at the
 // pencil, short of it (at your feet, where you walk) or up at the sky never turns it: you look past the pencil to steer.
+// Owner 2026-10-27: a pencil that is stuck (st.blocked: an edge, a page, the side of an island) also follows a point short of it, so you
+// can turn it back the way you came (before, it could only turn toward points beyond it and stayed stuck facing the edge).
 export function aimPoint(st, eye, dir, player) {
-  const t = st.tip, y = t.row + 1;
+  const t = st.tip, y = Math.min(t.row + 1, eye[1] - 0.6); // (owner 2026-10-27: a climbing line's tip can be above your eyes: then aim at a level just below them, else no look could steer it)
   if (dir[1] >= -0.02) return null;
   const k = (y - eye[1]) / dir[1];
   if (!(k > 0 && k < DRAW.farAim)) return null;
   const P = [eye[0] + dir[0] * k, eye[2] + dir[2] * k];
   const tx = t.x - player[0], tz = t.z - player[2], tl = Math.hypot(tx, tz);
-  if (Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) return null; // nearer to you than the pencil: you look where you walk
+  if (!st.blocked && Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) return null; // nearer to you than the pencil: you look where you walk
   return P;
 }
 
@@ -173,7 +176,7 @@ function sub(st, inp) {
   const P = aimPoint(st, inp.eye, inp.dir, inp.player);
   st.aim = P;
   const dx = P ? P[0] - t.x : 0, dz = P ? P[1] - t.z : 0;
-  if (P && Math.hypot(dx, dz) > DRAW.near) { const d = wrap(Math.atan2(dz, dx) - t.h), m = DRAW.turn * h; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
+  if (P && Math.hypot(dx, dz) > DRAW.near) { const d = wrap(Math.atan2(dz, dx) - t.h), m = (st.blocked ? DRAW.stuckTurn : DRAW.turn) * h; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
   // 2. move (only while you are close behind and there is ink)
   st.waiting = Math.hypot(t.x - inp.player[0], t.z - inp.player[2]) > DRAW.leash;
   st.blocked = null;

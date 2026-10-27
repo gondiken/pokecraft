@@ -605,7 +605,7 @@ export default async function ({ browser, base, t }) {
         const wish = G.skilledWish(memo, live.bump);
         live.carObj.steer(wish.x, wish.z, 1, false); live.step(1 / 30); t += 1 / 30;
       }
-      out.secs = t; out.wins = live.bump.wins; out.side = R.said('Boing! Get behind it!'); out.popToast = R.said('🎈 Pop! 1 / 3') && R.said('🎈 Pop! 6 / 6');
+      out.secs = t; out.wins = live.bump.wins; out.side = R.said('Boing! Get behind it!'); out.popToast = R.said('🎈 Pop! 1 / 4') && R.said('🎈 Pop! 5 / 5') && R.said('🎈 Pop! 6 / 6'); // owner 2026-10-27: 4, 5 and 6 balloons
       out.rounds = R.said('Round 2: Zoomers!') && R.said('Round 3: Spinners'); out.zoom = R.said('Zoom! It saw you coming') && g.sound.played.includes('botzoom') || window.__toasts.some(m => /Zoom!/.test(m));
       out.ticket = g.beaten.includes('pw:fair:ticket1'); out.toast = R.said('Golden ticket! 🎟️ 1 / 3');
       out.board = [161, 165, 169].map(x => g.world.get(x, 16, 133)).join();
@@ -622,7 +622,7 @@ export default async function ({ browser, base, t }) {
     D2.out = await page.evaluate(() => { const R = window.__R, { live, p } = R; live.use(p); return { carry: !!p.carry, drive: live.drive, word: live.near(p) }; });
     console.log('  D2', JSON.stringify(D2));
     t.ok(D2.carried && D2.drive === 0 && D2.told && D2.moved && D2.glides && D2.posFollows, `Drive! puts you in the car (the first hint "Bump the balloon on the BACK of a car!"); the stick drives it and it glides on when you let go`);
-    t.ok(D2.idle.misses === 1 && D2.idle.again && D2.idle.round === 0 && Math.abs(D2.idle.secs - D2.idle.left0) < 0.2 && /Round 1\/3 · 🎈 0 \/ 3 · ⏱/.test(D2.idle.chip), `careless: sitting still in the car pops nothing; after ${D2.idle.secs.toFixed(0)} s "Time is up! Round 1 again." (the chip: "${D2.idle.chip}")`);
+    t.ok(D2.idle.misses === 1 && D2.idle.again && D2.idle.round === 0 && Math.abs(D2.idle.secs - D2.idle.left0) < 0.2 && /Round 1\/3 · 🎈 0 \/ 4 · ⏱/.test(D2.idle.chip), `careless: sitting still in the car pops nothing; after ${D2.idle.secs.toFixed(0)} s "Time is up! Round 1 again." (the chip: "${D2.idle.chip}")`);
     t.ok(D2.wins === 1 && D2.ticket && D2.toast && D2.popToast && D2.rounds && D2.secs < 400 && D2.honk, `a skilled driver wins the three rounds (warm-up, zoomers, spinners) in ${D2.secs.toFixed(0)} s: golden ticket 1; honk, pop, zoom and ticket sounds`);
     t.ok(D2.board.startsWith(String(B.LAMP)) && D2.saved, `the board's first slot lights (block ${D2.board}) and the ticket is saved at once`);
     t.ok(D2.out.carry === false && D2.out.drive === -1 && D2.out.word === 'Drive!', 'Get out parks the car and puts you beside it; Drive! is offered again');
@@ -797,6 +797,14 @@ export default async function ({ browser, base, t }) {
     await shot(page, 't43-coaster.png').catch(() => {});
     await page.evaluate(() => { const R = window.__R, { live, p } = R; for (let k = 0; k < 40 * 30 && live.coaster; k++) live.step(1 / 30); });
 
+    // owner 2026-10-27: every Boss battles only once his helpers are beaten
+    const crewGate = await page.evaluate(() => {
+      const R = window.__R, { g } = R; R.put(204.5, 24, 201.5); window.__toasts.length = 0;
+      g.talkTo(R.mae()); const gated = !g.inBattle && R.said('Beat Bumper Bea and Bouncy Ben first');
+      g.beaten.push('pw:fair:crew1', 'pw:fair:crew2'); // (their real battles are below)
+      return gated;
+    });
+    t.ok(crewGate, 'with three tickets but her helpers not beaten Merry Mae says: beat Bumper Bea and Bouncy Ben first');
     // Merry Mae, a lost battle first (stays on the stage), then the star
     await page.evaluate(async () => {
       const R = window.__R, { g, p } = R, S = await import('/src/species.js');
@@ -856,9 +864,10 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(H2.gate && !H2.inBattle, "a rematch needs the three tickets again: Mae's gate words (nothing is cleared in the save but the tickets)");
 
-    // the crew: optional battles, never in the gate
+    // the crew: battles before Mae (owner 2026-10-27), never in the tickets' gate
     await page.evaluate(async () => {
       const R = window.__R, { g, p } = R, S = await import('/src/species.js');
+      g.beaten = g.beaten.filter(k => !/^pw:fair:crew/.test(k)); // (set above to reach Mae: now Bea's real battle)
       g.party = [S.makeCreature('thunderwolf', 100)];
       const bea = R.crew(0); R.put(bea.pos.x + 1.5, 11, bea.pos.z); p.lookAt({ x: bea.pos.x, y: 12.5, z: bea.pos.z });
       g.talkTo(bea);

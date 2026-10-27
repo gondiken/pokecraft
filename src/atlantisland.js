@@ -73,7 +73,7 @@ export function dimAt(x, y, z, lit = [0, 0, 0]) {
   if (x >= BELL.x0 && x <= BELL.x1 && z >= BELL.z0 && z <= BELL.z1) return 1;
   if (Math.hypot(x - CITY.x, z - CITY.z) <= PALACE.plinth + 5) return 0.85;
   const d = districtAt(x, z);
-  const LOW = 0.38, BASE = 0.5;
+  const LOW = 0.22, BASE = 0.32; // owner 2026-10-27: a dark district is really dark, so lighting its lantern is a big change (was 0.38 / 0.5)
   if (d < 0) return BASE;
   return LOW + (1 - LOW) * Math.min(1, (lit[d] ?? 0) / PER_DISTRICT);
 }

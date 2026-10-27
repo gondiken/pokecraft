@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { wildAfter } from './wildafter.js';
 import { B, BLOCKS, HOTBAR, PLACEABLE, drawAtlas, flickerFire, swirlPortal, isLimited } from './blocks.js';
 import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } from './world.js';
 import { Player } from './player.js';
@@ -141,7 +142,8 @@ game.toldOnce = new Set();
 game.creatures.onTired = w => { if (game.started && !game.inBattle) game.ui.toast(`${w.species.name} is out of breath! Walk into it to battle.`); }; // T36
 game.creatures.onBlink = w => { if (game.started && !game.inBattle && !game.toldOnce.has('blink')) { game.toldOnce.add('blink'); game.ui.toast(`Poof! ${w.species.name} blinked away. Ninjas run from fast feet: walk up slowly!`); } }; // T37
 // Spawn conditions look at the time of day and at the other players (see spawnrules.js).
-game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []) }; // T31: only friends in the same place
+game.creatures.env = { time: () => game.time, homes: () => game.homes.ready(), friends: () => (game.mp?.active ? [...game.mp.others.values()].filter(a => a.here).map(a => a.pos) : []), // T31: only friends in the same place
+  after: id => wildAfter(game, id) }; // owner 2026-10-27: a Picture World's rare creatures wait for your progress there
 // Walking into a disguised Camo creature finds it (else you would walk through a "block"). Owner 2026-10-26: walking into any other
 // creature (a tired Racer, Parkour or Ninja creature, a Tiny peeker) never starts a battle: press E or tap it, like every creature.
 game.creatures.onBump = wild => { if (playing() && wild.disguise) startBattle({ wild }); };
@@ -996,6 +998,7 @@ function smoothstep(a, b, x) {
   return t * t * (3 - 2 * t);
 }
 
+let cityDimE = 1; // (eased: swimming from a dark district into a lit one fades)
 let uwFade = 0; // T41
 const UW_COLOR = new THREE.Color(), UW_DEEP = new THREE.Color();
 function updateSky(dt) {
@@ -1042,6 +1045,9 @@ function updateSky(dt) {
   if (uwFade > 0.01) {
     UW_COLOR.setHex(0x2aa0b0).lerp(UW_DEEP.setHex(0x0e4a62), depth);
     scene.background.lerp(UW_COLOR, uwFade);
+    const cityDim = game.world.skyDim ? game.world.skyDim(Math.floor(game.player.pos.x), Math.floor(game.player.pos.y), Math.floor(game.player.pos.z)) : 1; // owner 2026-10-27: the dark districts' water is dark too
+    cityDimE += (cityDim - cityDimE) * Math.min(1, dt * 2);
+    if (cityDimE < 0.999) scene.background.multiplyScalar(1 - (1 - cityDimE) * 0.75 * uwFade);
     scene.fog.color.copy(scene.background);
     scene.fog.near += (1.5 - scene.fog.near) * uwFade;
     scene.fog.far += ((34 - 12 * depth) - scene.fog.far) * uwFade;

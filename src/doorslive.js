@@ -14,7 +14,9 @@ import { Mover, PATHS } from './mover.js';
 import { sound } from './sound.js';
 import { PINATA, pinataPlan, newRun, pinataAt, topAt, whack, timeUp, hashStr } from './pinata.js';
 import { CATCH, catchPlan, newCatch, stepCatch, inAir, slowed, jacksLeft } from './jackcatch.js';
-import { RING, SIDES, bowKey, bowState } from './doorsland.js';
+import { RING, SIDES, bowKey, bowState, GIFT_KINDS, giftKey } from './doorsland.js';
+// The picture on the sign over an opened door (owner 2026-10-27)
+const SIGN = { slide: '🛝', ballpit: '🔴', confetti: '🎉', springs: '🪀', nested: '🚪', shop: '🎁', healer: '💖', trainer1: '⚔️', trainer2: '⚔️', popup: '🤡', gift: '🎀', wrapping: '🖼️' };
 
 export const DOORS = {
   cubes: 3,            // a gift chest
@@ -135,7 +137,63 @@ export class DoorsLive {
     this.pitBalls = this.makePitBalls();
     this.savedNooks = null;
     this.buildMeshes();
+    this.makeSigns();
     this.syncBlocks();
+  }
+
+  /* ---------------------------------- the door signs (owner 2026-10-27: "I didn't get why we needed all those rooms") ---------------------------------- */
+  // Every door you opened gets a sign over it with a picture of what is inside, and a green tick once it is done (a helper beaten, a
+  // gift box opened): the hall becomes your own map. Rooms done on an earlier visit show their sign at once. The two helpers hide
+  // behind two of the surprise doors, and Jolly Jax battles only after both (pictureboss.js crew gate): opening doors has a point.
+  makeSigns() {
+    this.signs = [];
+    const scene = this.game.scene;
+    if (!scene || typeof document === 'undefined') return;
+    const tex = new Map(), texOf = (pic, done) => {
+      const id = `${pic}|${done}`;
+      if (tex.has(id)) return tex.get(id);
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const x = c.getContext('2d');
+      x.fillStyle = done ? '#e8ffe0' : '#fff8e8'; x.strokeStyle = done ? '#3aa84a' : '#e8384a'; x.lineWidth = 10;
+      x.beginPath(); x.roundRect?.(6, 6, 116, 116, 22) ?? x.rect(6, 6, 116, 116); x.fill(); x.stroke();
+      x.font = '72px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(pic, 64, 70);
+      if (done) { x.font = 'bold 44px sans-serif'; x.fillStyle = '#2a9a3a'; x.fillText('✔', 104, 26); }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; tex.set(id, t); this.signTex.push(t);
+      return t;
+    };
+    this.signTex = [];
+    this.signTexOf = texOf;
+    const geo = new THREE.PlaneGeometry(1.6, 1.6); this.geos.push(geo);
+    for (const r of this.plan.rooms) {
+      const pic = SIGN[r.kind];
+      if (!pic) continue;
+      const o = SIDES[Math.floor(r.k / 3)].o, mat = new THREE.MeshBasicMaterial({ map: texOf(pic, false), transparent: true }); this.mats.push(mat);
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(r.door.centre[0] - o[0] * 0.56, 16.4, r.door.centre[1] - o[1] * 0.56);
+      m.rotation.y = Math.atan2(-o[0], -o[1]); // facing into the hall
+      m.visible = false; m.userData.doorSign = r.kind;
+      scene.add(m); this.meshes.push(m);
+      this.signs.push({ room: r, mesh: m, pic, shown: null });
+    }
+  }
+  // what a room is done by (null = nothing to finish there)
+  roomDone(kind) {
+    const b = this.game.beaten || [];
+    if (kind === 'trainer1' || kind === 'trainer2') return b.includes(`pw:doors:crew${kind === 'trainer1' ? 1 : 2}`);
+    if (GIFT_KINDS.includes(kind)) return b.includes(giftKey(kind));
+    if (kind === 'popup') return b.includes(bowKey(4));
+    if (kind === 'gift') return (this.game.stars || []).includes('doors');
+    return null;
+  }
+  syncSigns() {
+    for (const sg of this.signs || []) {
+      const door = this.doorList.find(d => d.id === `r${sg.room.k}`), done = this.roomDone(sg.room.kind);
+      const show = !!door?.opened || done === true || sg.room.kind === 'popup' || sg.room.kind === 'gift' || sg.room.kind === 'wrapping';
+      const key = `${show}|${done}`;
+      if (key === sg.shown) continue;
+      sg.shown = key; sg.mesh.visible = show;
+      if (show) sg.mesh.material.map = this.signTexOf(sg.pic, done === true);
+    }
   }
 
   /* ---------------------------------- small helpers ---------------------------------- */
@@ -225,7 +283,8 @@ export class DoorsLive {
     for (const m of this.meshes) { m.parent?.remove(m); m.dispose?.(); }
     for (const g of this.geos) g.dispose();
     for (const m of this.mats) m.dispose();
-    this.meshes = []; this.geos = []; this.mats = [];
+    for (const t of this.signTex || []) t.dispose();
+    this.meshes = []; this.geos = []; this.mats = []; this.signTex = [];
   }
 
   /* ---------------------------------- blocks: ribbons, the Big Gift's front, chests ---------------------------------- */
@@ -539,7 +598,7 @@ export class DoorsLive {
   /* ---------------------------------- the clock ---------------------------------- */
   update(dt) {
     this.cells.flush();
-    if ((this.syncAcc += dt) >= 0.25) { this.syncAcc = 0; this.syncBlocks(); }
+    if ((this.syncAcc += dt) >= 0.25) { this.syncAcc = 0; this.syncBlocks(); this.syncSigns(); }
     if (!this.manual && !this.paused()) this.step(dt);
     this.draw();
   }

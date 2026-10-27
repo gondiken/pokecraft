@@ -179,6 +179,7 @@ export const ROWBOATS = {
   turn: 1.1, near: 6, far: 28, fill: 2, // range from `near` to `far` blocks: up in `fill` seconds of holding, then back down
   hit: 1.8, reload: 1, sink: 1.5,
   waves: 4, speed: [1, 1.15, 1.3, 1.45], pause: 3, // 4 waves of the 3 boats; each wave rows faster; the next wave comes out `pause` s after the last boat sank
+  free: 2, freeBack: 4, // owner 2026-10-27: with all twelve sunk the boats keep rowing just for fun (wave 2's speed); a sunk one comes back after `freeBack` s (nothing saved)
 };
 // (`rowboat`, not the first version's `boat`: the boats got harder, so boats sunk the easy way count no more)
 // n = 0..11: the n-th boat of the trip (wave = floor(n / 3), the boat on the water = n % 3)
@@ -219,13 +220,13 @@ export function deckShot(at, yaw, pw = 0) {
   return { a, to, range, spec: { kind: 'arc', from, to, height: 1.5 + range * 0.12, time: 0.5 + range / 24 } };
 }
 // The boat of the current wave (still afloat, not hidden(i)) within `hit` of `to` at boat clock t, or -1.
+// With all twelve sunk (`done`) the free-play boats count instead (wave ROWBOATS.free; `hidden` says which are under water).
 export function boatHit(game, to, t, hidden = () => false) {
   let best = -1, bd = ROWBOATS.hit;
-  const st = boatState(game);
-  if (st.done) return -1;
+  const st = boatState(game), wave = st.done ? ROWBOATS.free : st.wave;
   ROWBOATS.boats.forEach((_, i) => {
-    if (boatSunk(game, i, st.wave) || hidden(i)) return;
-    const b = boatAt(i, t, st.wave), d = Math.hypot(b.x - to[0], b.z - to[2]);
+    if ((!st.done && boatSunk(game, i, st.wave)) || hidden(i)) return;
+    const b = boatAt(i, t, wave), d = Math.hypot(b.x - to[0], b.z - to[2]);
     if (d <= bd) { bd = d; best = i; }
   });
   return best;
@@ -298,9 +299,20 @@ export function pirateAim(world, p, game) {
     const here = Math.hypot(at.x - p.x, at.z - p.z) < 1.6;
     return { x: at.x, z: here ? at.z - 12 : at.z, text: (a, m) => (here ? `Aim at a rowboat and Fire! 🚣 ${sunk} / ${need} ${a}` : `💣 Deck cannon: sink the rowboats (${sunk} / ${need}) ${a} ${m} m`) };
   }
+  // owner 2026-10-27: the crew are trainers before the Captain: lead to the nearest one still to beat (pictureboss.js crewKey)
+  const crew = star ? [] : (game?.npcs?.list || []).filter(n => n.kind === 'crew' && n.def?.boss === 'pirate' && !game.beaten?.includes(`pw:pirate:crew${n.def.index + 1}`));
+  if (crew.length) {
+    const c = crew.find(n => placeOf(world, n.pos) === where) ?? nearest(p, crew.map(n => ({ x: n.pos.x, z: n.pos.z, n }))).n;
+    const to = placeOf(world, c.pos), e = to === where ? null : routeTo(world, where, to);
+    if (!e) return { x: c.pos.x, z: c.pos.z, text: (a, m) => `⚔️ Battle ${c.name} ${a} ${m} m` };
+    return edgeAim(e, p, d);
+  }
   if (where === goal) return pictureAim(world, p, { stars, via: game?.realms?.via });
   const e = routeTo(world, where, goal);
   if (!e) return pictureAim(world, p, { stars, via: game?.realms?.via });
+  return edgeAim(e, p, d);
+}
+function edgeAim(e, p, d) {
   const here = Math.hypot(e.x - p.x, e.z - p.z) < 1.6;
   if (e.kind === 'cannon') return { x: e.x, z: e.z, text: (a, m) => (here ? `Fire the cannon! ${a}` : e.id && d.cannons.find(c => c.id === e.id)?.home ? `💣 Home cannon ${a} ${m} m` : `💣 Cannon to ${e.name} ${a} ${m} m`) };
   if (e.kind === 'rope') return { x: e.x, z: e.z, text: (a, m) => (here ? `Swing! ${a}` : `🪢 Rope to ${e.name} ${a} ${m} m`) };

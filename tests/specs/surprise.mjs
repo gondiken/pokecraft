@@ -503,7 +503,7 @@ async function livePart({ browser, base, t, page }) {
   t.ok(frame.ready && frame.realm === 'doors' && frame.pic === 'function', 'the frame is ready (a picture of coloured doors and a gift) and opens the realm');
   const arrive = await page.evaluate(() => { const p = window.pokecraft.player.pos; return [p.x, p.y, p.z]; });
   t.ok(Math.abs(arrive[0] - 56.5) < 0.01 && Math.abs(arrive[2] - 79.5) < 0.01 && arrive[1] === 11, `you arrive in the Wrapping Room, in front of the way back (${arrive.map(v => v.toFixed(1))})`);
-  t.ok(await said(page, /Ta-da! The Room of Doors!/) && await said(page, /Win 4 golden bows/), 'the arrival words are said');
+  t.ok(await said(page, /Ta-da! The Room of Doors!/) && await said(page, /Win 4 golden bows, and find Jolly Jax's two helpers behind the doors/), 'the arrival words are said');
 
   /* ---- the doors ---- */
   const dr = await page.evaluate(() => {
@@ -519,8 +519,13 @@ async function livePart({ browser, base, t, page }) {
       if (g.gymLive.prompt({ x: c[0], y: c[1], z: c[2], id: 0 }, 'tap')) out.bad.push(`${r.kind}: an opened door still has a prompt`);
     }
     out.opened = L.info().opened.length;
+    // owner 2026-10-27: an opened door shows a sign with what is inside (a helper's room: crossed swords, later a green tick)
+    L.syncSigns();
+    out.signs = (L.signs || []).filter(sg => sg.mesh.visible).length;
+    out.signKinds = (L.signs || []).map(sg => sg.room.kind).sort().join();
     return out;
   });
+  t.ok(dr.signs === 12 && dr.signKinds.split(',').length === 12, `every opened door has a sign over it showing what is inside (${dr.signs} signs)`);
   t.ok(!dr.bad.length && dr.kinds.length === 11, `a hit opens each of the eleven other doors, all 12 cells (a prompt "Gift door ... open", the button word Open!) ${dr.bad.join('; ')}`);
   t.ok(dr.opened >= 11, `the live part remembers the opened doors (${dr.opened})`);
   t.ok(await said(page, /A door in a door|Surprise! Battle!|Healer Stella|Boing! A ball pit|Springs! Jump|A slide|So many presents/), 'each door says its surprise');
@@ -865,12 +870,16 @@ async function livePart({ browser, base, t, page }) {
       const g = window.pokecraft, S = await import('/src/species.js');
       for (let i = 1; i <= 4; i++) g.beaten.push(`pw:doors:bow${i}`);
       window.__live().syncBlocks();
+      window.__toasts = []; g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss')); // owner 2026-10-27: his two helpers first
+      window.__crewGate = !g.inBattle && /Beat Ribbon Rosa and Confetti Kit first/.test(window.__toasts.join('|'));
+      for (const k of ['pw:doors:crew1', 'pw:doors:crew2']) if (!g.beaten.includes(k)) g.beaten.push(k);
       g.party = [S.makeCreature('blazehound', 100), S.makeCreature('thunderwolf', 100)]; g.cubes = 0; // two: Jax's ace powers up at half HP and its Ta-Daa! can finish a tired lone creature
       window.__cele = null; const cf = g.ui.celebrate.bind(g.ui); g.ui.celebrate = (...a) => { window.__cele = a; cf(...a); };
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 30000);
-    const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join() }; });
+    const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join(), crewGate: window.__crewGate }; });
+    t.ok(bt.crewGate, 'owner 2026-10-27: with the four bows but his helpers not beaten Jax says to beat Ribbon Rosa and Confetti Kit first');
     t.ok(bt.boss && bt.foes === '61,62,62,63', `the Boss battle has Jax's four creatures at levels ${bt.foes}`);
     t.ok(await playBattle(page), 'the Boss battle is won');
     await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 180000).catch(async () => { console.log('  star missing: ' + JSON.stringify(await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, stars: window.pokecraft.stars, bows: window.pokecraft.beaten.filter(k => /doors/.test(k)), log: document.getElementById('b-log')?.textContent?.slice(-120) })))); });

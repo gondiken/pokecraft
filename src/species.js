@@ -2699,23 +2699,23 @@ for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...l
 /* ==== T40a tiny ==== */
 // Tiny creatures live only in the Giant House (REALMS.house.spawns), always in nooks (cups, flowers, under leaves).
 export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'crumbs'], // T40a.5: Pipsqueak after all 12 crumbs
-  ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
+  ['antlas', 0.12, 'nook', 'house'], ['spoolmouse', 0.12, 'nook', 'house'], ['fluffnado', 0.1, 'nook', 'house']]; // the 4th element: wildafter.js
 /* ==== end of T40a tiny ==== */
 
 /* ==== T42 portal ==== */
 // Portal creatures live only in the Swirl's Portal House (REALMS.swirl.spawns.portal, the calm rooms), never in the main world's SPAWNS.
-export const PORTAL_SPAWNS = [['doorbit', 1.2, 'housefloor'], ['hatbun', 1.2, 'housefloor'], ['hooplet', 1.0, 'housefloor'], ['peekhole', 0.15, 'housefloor'],
-  ['gatestrider', 0.12, 'housefloor'], ['topperoo', 0.12, 'housefloor'], ['loopwyrm', 0.1, 'housefloor']];
+export const PORTAL_SPAWNS = [['doorbit', 1.2, 'housefloor'], ['hatbun', 1.2, 'housefloor'], ['hooplet', 1.0, 'housefloor'], ['peekhole', 0.15, 'housefloor', 'portal'],
+  ['gatestrider', 0.12, 'housefloor', 'portal'], ['topperoo', 0.12, 'housefloor', 'portal'], ['loopwyrm', 0.1, 'housefloor', 'portal']]; // the 4th element: wildafter.js
 /* ==== end of T42 portal ==== */
 /* ==== T44 surprise ==== */
 // Surprise creatures live only in the Room of Doors (REALMS.doors.spawns), on the `gift` condition (spawnrules.js: the nook spots of shelves, the hall's walls, the stage sides);
 // every one starts wrapped in a gift box (creatures.js GAITS.gift). Gold paper always wraps a rarer one.
-export const SURPRISE_SPAWNS = [['giftle', 1.2, 'gift'], ['popjack', 1.1, 'gift'], ['pinpop', 1.1, 'gift'], ['partypop', 0.3, 'gift'],
-  ['bowtower', 0.12, 'gift'], ['jestergrin', 0.1, 'gift'], ['fiestallama', 0.1, 'gift']];
+export const SURPRISE_SPAWNS = [['giftle', 1.2, 'gift'], ['popjack', 1.1, 'gift'], ['pinpop', 1.1, 'gift'], ['partypop', 0.3, 'gift', 'doors'],
+  ['bowtower', 0.12, 'gift', 'doors'], ['jestergrin', 0.1, 'gift', 'doors'], ['fiestallama', 0.1, 'gift', 'doors']]; // the 4th element: wildafter.js
 /* ==== end of T44 surprise ==== */
 /* ==== T45 doodle ==== */
 // Doodle creatures live only in the Sketchbook (REALMS.doodle.spawns), on the pages' grass.
-export const DOODLE_SPAWNS = [['nibling', 1.2], ['rubbit', 1.2], ['sketchkit', 1.0], ['graphitan', 0.12], ['rubbadub', 0.12], ['outlynx', 0.1], ['notquite', 0.08]];
+export const DOODLE_SPAWNS = [['nibling', 1.2], ['rubbit', 1.2], ['sketchkit', 1.0], ['graphitan', 0.12, null, 'doodle'], ['rubbadub', 0.12, null, 'doodle'], ['outlynx', 0.1, null, 'doodle'], ['notquite', 0.08, null, 'doodle']]; // the 4th element: wildafter.js
 /* ==== end of T45 doodle ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);

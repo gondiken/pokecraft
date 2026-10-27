@@ -74,6 +74,8 @@ const MORE_TILES = [
   'PITCH_LIGHT', 'PITCH_DARK', 'PITCH_LINE', 'GOAL_POST', 'GOAL_NET', 'COURT_FLOOR', 'COURT_LINE', 'HOOP_RIM', 'BACKBOARD', 'SEAT_TOP', 'SEAT_SIDE',
   // T40c Race Track: asphalt, white line, chequer, kerb, boost pad (2), start light (3), tyre wall (2)
   'ASPHALT', 'TRACK_LINE', 'CHECKER', 'KERB', 'BOOST_PAD', 'BOOST_PAD_LIT', 'START_LIGHT', 'START_RED', 'START_GREEN', 'TYRE_SIDE', 'TYRE_TOP',
+  // Race Track v2 (owner 2026-10-27): the orange flyover, its rails, the jump ramp
+  'HOT_TRACK', 'HOT_SIDE', 'HOT_RAIL', 'KICKER',
   // T40a Giant House: kitchen floor (two), wallpaper, counter top / cupboard side, giant wood, cookie (top / side), crumb, fan grill, chrome,
   // fan switch (off / on), toy track, train remote button, tap handle, cat fur / sleeping eye / open eye, keyhole
   'FLOOR_TILE', 'FLOOR_TILE_DARK', 'WALLPAPER', 'COUNTER_TOP', 'CUPBOARD_SIDE', 'TABLE_WOOD', 'COOKIE_TOP', 'COOKIE_SIDE', 'CRUMB', 'FAN_GRILL',
@@ -164,6 +166,8 @@ export const B = {
   // 250: T40a.5, the Giant House's puzzle things are models (houseprops.js); this hidden block is what you stand on, bump into and
   // tap under a model (the cat, the plug, the wind-up key...). Taken from the top so it never meets the ids wave 15 takes from 204 up.
   HOUSE_PROP: 250,
+  // 251-253: Race Track v2 (owner 2026-10-27, none placeable, all fixed): orange flyover track, its rail, the jump ramp. Next free id: 254.
+  HOT_TRACK: 251, HOT_RAIL: 252, KICKER: 253,
   // 235: surprise wool (wave 15). 236-243: T44, the Room of Doors (none placeable, all fixed; POP_BOX_OPEN is drawn only with setLive)
   GIFT_WALL: 236, PARTY_FLOOR: 237, GIFT_DOOR: 238, GOLD_DOOR: 239, POP_BOX: 240, POP_BOX_OPEN: 241, BALL_PIT: 242, RIBBON: 243,
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
@@ -342,6 +346,9 @@ BLOCKS[B.START_LIGHT] = { name: 'Start Light', ...all(T.START_LIGHT), fixed: tru
 BLOCKS[B.START_RED] = { name: 'Start Light', ...all(T.START_RED), glow: true, noLight: true, fixed: true, wallText: 'The start lights. Wait for green!' };
 BLOCKS[B.START_GREEN] = { name: 'Start Light', ...all(T.START_GREEN), glow: true, noLight: true, fixed: true, wallText: 'The start lights. Wait for green!' };
 BLOCKS[B.TYRE_WALL] = { name: 'Tyre Wall', top: T.TYRE_TOP, side: T.TYRE_SIDE, bottom: T.TYRE_TOP, fixed: true, wallText: 'Bouncy tyres keep racers on the track.' };
+BLOCKS[B.HOT_TRACK] = { name: 'Orange Track', top: T.HOT_TRACK, side: T.HOT_SIDE, bottom: T.HOT_SIDE, fixed: true, wallText: 'The orange flyover! Race up it in your kart.' };
+BLOCKS[B.HOT_RAIL] = { name: 'Track Rail', top: T.HOT_RAIL, side: T.HOT_RAIL, bottom: T.HOT_SIDE, fixed: true, wallText: 'The rail keeps karts on the flyover.' };
+BLOCKS[B.KICKER] = { name: 'Jump Ramp', top: T.KICKER, side: T.HOT_SIDE, bottom: T.HOT_SIDE, fixed: true, wallText: 'A jump ramp! Go fast and fly over the pond.' };
 // T40a: the Giant House (everything is `fixed` except the crumbs, which you pick up with a click through houselive.js)
 {
   const HOUSE = "It's the Wizard's house. Everything is too big to change!", fx = { fixed: true };
@@ -1004,6 +1011,12 @@ export function drawAtlas() {
       put(T.TYRE_SIDE, x, y, y % 4 === 3 ? [10, 10, 14] : ring ? [236, 236, 232] : grain(x, y, [34, 34, 40], 0.25));
       const td = Math.hypot(x - 7.5, y - 7.5);
       put(T.TYRE_TOP, x, y, td < 2.5 ? [14, 14, 18] : td > 4.4 && td < 5.4 ? [236, 236, 232] : td > 7.4 ? [14, 14, 18] : grain(x, y, [38, 38, 44], 0.25));
+      // owner 2026-10-27, Race Track v2: shiny orange plastic track with a lighter middle line, its side, a rail with a white top, a ramp with yellow chevrons
+      const shine = y === 2 || y === 13 ? 1.12 : 1;
+      put(T.HOT_TRACK, x, y, x === 7 || x === 8 ? (y % 6 < 3 ? [255, 214, 120] : grain(x, y, [255, 120, 20], 0.06)) : shade(grain(x, y, [255, 120, 20], 0.06), shine));
+      put(T.HOT_SIDE, x, y, y < 2 ? [255, 170, 80] : grain(x, y, [220, 90, 10], 0.08));
+      put(T.HOT_RAIL, x, y, y < 3 ? [250, 250, 245] : grain(x, y, [255, 110, 15], 0.08));
+      put(T.KICKER, x, y, (y + Math.abs(x - 7.5)) % 6 < 2.4 ? [255, 228, 40] : grain(x, y, [255, 110, 15], 0.06));
     });
   }
   { // T40a Giant House blocks (own random numbers)

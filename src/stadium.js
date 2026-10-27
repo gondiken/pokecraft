@@ -11,15 +11,19 @@ import { placeBoss, placeCrew } from './picturelands.js';
 
 const WORLD_H = 48;
 export const G = 10;
-export const GOALS = { first: 3, rematch: 3 };      // goals the captain wants: the first star, then every rematch (owner 2026-10-26: 3, and 3 baskets too)
-export const BASKETS = { first: 3, rematch: 3 };    // baskets the captain wants as well
+export const GOALS = { first: 5, rematch: 5 };      // goals the captain wants: the first star, then every rematch (owner 2026-10-27: 5, and 5 baskets too; it was 3)
+export const BASKETS = { first: 5, rematch: 5 };    // baskets the captain wants as well
+export const MAX_SCORE = 5;                         // keys goal1..5 / basket1..5 (goal1..3 from the 3-goal days still count)
+export const SCORE_IDS = Array.from({ length: MAX_SCORE }, (_, i) => i + 1);
+// How hard the next goal / basket is (0, 1, 2: the HOLD / DIVE / defender tables) after n of need: the old 3-step climb spread over 5.
+export const stageOf = (n, need) => Math.max(0, Math.min(2, Math.floor(n * 3 / need)));
 export const BALL_R = 0.4;
 // Shoot!: from 3.2 to 15 blocks away; the arc clears the rim (a square sticking out 2 from the hole's middle, 3.4 on the diagonal with the ball's size) by 1 block.
 export const SHOT = { min: 3.6, max: 15, rim: 3.5, clear: 1.0, behind: 1.0, under: 3.6 }; // `behind`: a ball more than 1 behind the hole's middle (under the backboard) lobs instead
 // A ball may be shot when it is not behind the backboard and not under the rim (the rim sticks out 2 from the hole's middle, plus the ball's size).
 export const shootable = (h, p) => (p.x - h.hole[0]) * h.front > -SHOT.behind && Math.max(Math.abs(p.x - h.hole[0]), Math.abs(p.z - h.hole[1])) >= SHOT.under;
 // Wild Ball creatures of the stadium zone (playland.js reads this through PLAYLAND_PARTS.stadium.spawns): never in the main SPAWNS.
-export const STADIUM_SPAWNS = [['boinkle', 1.2], ['sealbop', 1], ['fuzzchick', 1.2], ['strikehorn', 0.7], ['goalhound', 0.1], ['beachboomer', 0.1], ['smashbird', 0.1]];
+export const STADIUM_SPAWNS = [['boinkle', 1.2], ['sealbop', 1], ['fuzzchick', 1.2], ['strikehorn', 0.7], ['goalhound', 0.1, null, 'stadium'], ['beachboomer', 0.1, null, 'stadium'], ['smashbird', 0.1, null, 'stadium']] // the 4th element: wildafter.js;
 
 export const STADIUM = {
   pitch: { x: 26, z: 136, field: { u0: 4, u1: 59, v0: 7, v1: 44 }, stripe: 4, centre: [32, 26], circle: 6, boxes: { v0: 17, v1: 34, w: 8 } },
@@ -47,8 +51,8 @@ const crewDone = (game, i) => game.beaten.includes(`pw:stadium:crew${i + 1}`); /
 export function goalState(game) {
   const again = game.stars.includes('stadium');
   const need = again ? GOALS.rematch : GOALS.first, bneed = again ? BASKETS.rematch : BASKETS.first;
-  const n = [1, 2, 3].filter(i => game.beaten.includes(goalKey(i))).length;
-  const b = [1, 2, 3].filter(i => game.beaten.includes(basketKey(i))).length;
+  const n = SCORE_IDS.filter(i => game.beaten.includes(goalKey(i))).length;
+  const b = SCORE_IDS.filter(i => game.beaten.includes(basketKey(i))).length;
   const crew = STADIUM.crew.map((_, i) => i).filter(i => !crewDone(game, i)), done = n >= need && b >= bneed;
   return { n, need, b, bneed, done, crew, ready: done && !crew.length };
 }
