@@ -12,8 +12,9 @@ import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 import { houseLand, houseAim } from './giantland.js'; // T40a
-import { TINY_SPAWNS, SURPRISE_SPAWNS } from './species.js'; // T40a, T44
+import { TINY_SPAWNS, SURPRISE_SPAWNS, DOODLE_SPAWNS } from './species.js'; // T40a, T44, T45
 import { doorsLand, doorsAim } from './doorsland.js'; // T44
+import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -134,6 +135,15 @@ REALMS.doors = pictureRealm({ id: 'doors', name: 'Room of Doors', seedSalt: 0xd0
   noHomeText: 'No homes in the Room of Doors! Build your home in your own world.', followText: 'Open it too',
   look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
 /* ==== end of T44 surprise ==== */
+/* ==== T45 doodle ==== */
+// The Sketchbook: a pencil drawing (the sketch look is switched on by its `look.sketch`, see sketch.js).
+REALMS.doodle = pictureRealm({ id: 'doodle', name: 'Sketchbook', seedSalt: 0xd0d1, size: [DOODLE_SIZE, DOODLE_SIZE], terrain: 'doodleLand', arrive: [80, 146], biome: 'doodle',
+  spawns: { doodle: DOODLE_SPAWNS, cave: [] }, walk: [B.GRASS, B.PLANKS],
+  look: { sky: 0xf6f2e8, fog: [18, 66], time: null, weather: false, light: 1, still: true, stars: false, sketch: { paper: 0xf6f2e8, ink: 0x3e3c46, edge: DOODLE_MIDDLE } },
+  clock: '✏️ Sketchbook', travelText: 'Drawing you in...', travelIcon: '✏️', enterText: 'Whoosh! You are inside a drawing!',
+  arriveHint: 'Stand on the star pad and press Draw! Keep your eyes on the pencil tip.',
+  noHomeText: 'No homes in a drawing! Build your home in your own world.', followText: 'Draw too' });
+/* ==== end of T45 doodle ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -154,6 +164,8 @@ TERRAINS.pirateLand = pirateLand; // T40b
 TERRAIN_AIMS.pirateLand = pirateAim; // T40b
 TERRAINS.doorsLand = doorsLand; // T44
 TERRAIN_AIMS.doorsLand = doorsAim; // T44
+TERRAINS.doodleLand = doodleLand; // T45
+TERRAIN_AIMS.doodleLand = doodleAim; // T45
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

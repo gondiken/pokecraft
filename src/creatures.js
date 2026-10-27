@@ -8,6 +8,7 @@ import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } fro
 import { Disguise } from './disguise.js';
 import { sound } from './sound.js';
 import { hash32 } from './traits.js'; // T40a
+import { sketchModel } from './sketch.js'; // T45
 
 const MAX_WILD = 16;
 const SING_RANGE = 18;
@@ -285,6 +286,7 @@ export class CreatureManager {
       if (block === null) return null;
     }
     const model = buildModel(species);
+    sketchModel(model); // T45: pencil in the Sketchbook
     const pos = d ? new THREE.Vector3(x + size / 2, y, z + size / 2) : new THREE.Vector3(x + 0.5, y, z + 0.5);
     const wild = new Wild(makeCreature(species, level), model, pos);
     wild.when = when;

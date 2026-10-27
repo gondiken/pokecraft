@@ -216,6 +216,10 @@ const SOUNDS = {
   atkick: () => { noise({ freq: 700, len: 0.18, vol: 0.12, q: 0.5 }); tone(260, { len: 0.18, vol: 0.06, slide: 140 }); },
   atlunge: () => { noise({ freq: 1800, len: 0.14, vol: 0.14, q: 0.8 }); tone(420, { len: 0.12, type: 'triangle', vol: 0.06, slide: -250 }); },
   atwobble: () => { tone(300, { len: 0.1, vol: 0.1, slide: 40 }); tone(330, { at: 0.12, len: 0.1, vol: 0.1, slide: -40 }); tone(300, { at: 0.24, len: 0.1, vol: 0.1, slide: 40 }); },
+  // T45 doodle: a quick pencil scribble (filtered noise ticks); the pencil's soft scratch while it draws a line; a rubbery squeak when Rubber rubs it out.
+  'fx:doodle': () => { for (let i = 0; i < 4; i++) noise({ at: i * 0.045, freq: 3200 + (i % 2) * 1400, len: 0.035, vol: 0.12, q: 1.6 }); },
+  doodlescratch: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05, freq: 3600 + i * 500, len: 0.04, vol: 0.05, q: 1.8 }); },
+  doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T43 funfair: a little organ arpeggio for attacks; a balloon pop, a gold ring ding, a bumper car honk, a coaster chain click, the
   // golden ticket jingle and a quiet fair tune (the live part plays it every few seconds while the fair is awake).

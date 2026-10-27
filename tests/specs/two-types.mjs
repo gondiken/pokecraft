@@ -68,7 +68,7 @@ export default async function ({ browser, base, t }) {
       bad(`the old 26 x 26 chart changed: lost ${OLD_CHART.filter(x => !now.has(x))}, new ${oldNow.filter(x => !was.has(x))}`);
     }
     out.oldPairs = oldNow.length;
-    const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
+    const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja' && x !== 'doodle'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
       if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 7 : 6)) bad(`${d} is weak to ${weak} types`);

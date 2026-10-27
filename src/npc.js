@@ -6,6 +6,7 @@ import { Disguise } from './disguise.js';
 import { B } from './blocks.js';
 import { sound } from './sound.js';
 import { bossOf } from './pictureboss.js'; // T40
+import { sketchModel } from './sketch.js'; // T45
 
 const AWAY = [0, -64, 0]; // where people who are not here yet are parked (T23)
 
@@ -129,6 +130,13 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     const d = box(head, 0.12, 0.12, 0.05, 0xfff6a0, 0, y, 0);
     d.rotation.z = Math.PI / 4;
   }
+  if (look === 'beret') { // T45: Artist Arlo: a flat black beret with a little stalk, and a pencil behind the ear
+    box(head, 0.62, 0.1, 0.6, 0x24222c, 0.02, 0.54, 0);
+    box(head, 0.5, 0.08, 0.5, 0x24222c, 0.04, 0.62, 0);
+    box(head, 0.06, 0.08, 0.06, 0x24222c, 0.04, 0.69, 0);
+    box(head, 0.05, 0.05, 0.3, 0xffd23a, 0.3, 0.3, 0.06);
+    box(head, 0.05, 0.05, 0.05, 0xf0a8b8, 0.3, 0.3, 0.22);
+  }
   if (look === 'chef') { // T33: a tall white chef's hat
     box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
     box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);
@@ -164,6 +172,7 @@ class Npc {
     this.homeHeading = heading;
     this.heading = heading;
     this.model = model ?? buildPerson(colors, { hat, cape, look });
+    sketchModel(this.model); // T45: drawn in pencil in the Sketchbook (a no-op everywhere else)
     this.creature = !!model; // T40: a Picture World Boss may be a big creature (no limbs to move)
     this.model.userData.npc = this;
     this.t = Math.random() * 10;

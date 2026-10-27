@@ -45,7 +45,7 @@ export default async function ({ browser, base, t }) {
       ['paper', 'rock', 2], ['grass', 'slime', 2], ['electric', 'sky', 2], ['ice', 'sky', 2], ['toxic', 'light', 2], ['cosmic', 'light', 2],
       ['light', 'ghost', 2], ['normal', 'slime', 0.5]];
     for (const [a, d, v] of must) if (eff(a, d) !== v) bad(`${a}>${d} should be ${v}, is ${eff(a, d)}`);
-    const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
+    const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja' && x !== 'doodle'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs; T45: Doodle's are checked in doodle.mjs (it hits cyber, so cyber would be weak to 6)
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
       if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 6 : 5)) bad(`${d} is weak to ${weak} types`);

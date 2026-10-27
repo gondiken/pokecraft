@@ -59,6 +59,20 @@ function drawAtlantisPicture(g, n = 128) {
   g.fillStyle = 'rgba(255,255,255,0.7)';
   for (const [x, y] of [[10, 20], [60, 12], [118, 16], [8, 70], [118, 90], [40, 50]]) { g.beginPath(); g.arc(x * k, y * k, 2.5 * k, 0, 7); g.fill(); }
 }
+// T45: the picture in the Sketchbook's frame: cream paper, a pencil-drawn floating page with a dotted line, a big pencil and one yellow star (128 px canvas).
+function drawDoodlePicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#f6f2e8'); for (let y = 16; y < 128; y += 16) r(0, y, 128, 1, '#cfd8ea');
+  g.strokeStyle = '#3e3c46'; g.lineWidth = 3 * k; g.lineJoin = 'round';
+  g.strokeRect(14 * k, 70 * k, 44 * k, 30 * k); g.strokeRect(74 * k, 40 * k, 40 * k, 26 * k); // two floating pages
+  g.fillStyle = '#7cb85a'; g.fillRect(16 * k, 72 * k, 40 * k, 6 * k); g.fillRect(76 * k, 42 * k, 36 * k, 6 * k);
+  g.fillStyle = '#3e3c46'; for (let i = 0; i < 6; i++) g.fillRect((58 + i * 3.4) * k, (84 - i * 5) * k, 2.4 * k, 2.4 * k); // the dotted line between them
+  g.save(); g.translate(40 * k, 36 * k); g.rotate(-0.6); // a big yellow pencil
+  g.fillStyle = '#ffd23a'; g.fillRect(-6 * k, -34 * k, 12 * k, 52 * k); g.fillStyle = '#e6c08a'; g.beginPath(); g.moveTo(-6 * k, 18 * k); g.lineTo(6 * k, 18 * k); g.lineTo(0, 32 * k); g.fill();
+  g.fillStyle = '#3e3c46'; g.beginPath(); g.moveTo(-2 * k, 27 * k); g.lineTo(2 * k, 27 * k); g.lineTo(0, 32 * k); g.fill(); g.fillStyle = '#f0a8b8'; g.fillRect(-6 * k, -42 * k, 12 * k, 8 * k);
+  g.restore();
+  g.fillStyle = '#ffd23a'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2 ? 4 : 9) * k; g.lineTo(100 * k + Math.cos(a) * rr, 20 * k + Math.sin(a) * rr); } g.fill();
+}
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
@@ -68,7 +82,7 @@ export const PICTURE_WORLDS = [
   { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: true, realm: 'playland', place: 'Playland', picture: drawFairPicture }, // T43: the third Playland world
   { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawDoorsPicture }, // T44
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
-  { id: 'secret1', name: 'Secret World', emoji: '❓', frame: [0xb8a0f0, 0xf8e8c8], ready: false, secret: true },
+  { id: 'doodle', name: 'Sketchbook', emoji: '✏️', frame: [0xb8a0f0, 0xf8e8c8], ready: true, realm: 'doodle', picture: drawDoodlePicture }, // T45 (was secret1: no save could hold its star)
   { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Pirate Seas', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas
   { id: 'secret3', name: 'Secret World', emoji: '❓', frame: [0xf8b8a0, 0xe8f0f8], ready: false, secret: true },
   { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },

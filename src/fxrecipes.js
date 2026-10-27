@@ -3055,6 +3055,52 @@ IMPACT.surprise = (k, from, to, { big }) => {
       flash.scale.setScalar(Math.max(0.01, 0.8 * m * Math.sin(Math.PI * clamp01(p * 1.8))));
       flash.material.rotation = p * 2;
       flash.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Ta-Daa!: a curtain of stars sweeps open beside the target with a big star in the middle that bursts out.
+SIG.tadaa = (k, from, to) => {
+  const N = 8;
+  const stars = k.points({ n: N, tex: 'star', size: 0.34, glow: true, colors: [0xffd23a, 0xff6a8a, 0xfff0d0] });
+  const big = k.sprite('star', { color: 0xffe14a, size: 0.1, glow: true });
+  const feet = feetOf(to);
+  return {
+    dur: 640,
+    step(p) {
+      const open = clamp01(p / 0.5), pop = clamp01((p - 0.5) / 0.5);
+      for (let i = 0; i < N; i++) {
+        const side = i < N / 2 ? -1 : 1, row = i % (N / 2), spread = (1 - open) * 0.35 + 0.35 + pop * 0.7;
+        stars.set(i, to.pos.x + k.side.x * side * spread, feet + 0.3 + row * 0.28 + pop * 0.3, to.pos.z + k.side.z * side * spread);
+      }
+      stars.fade(fadeOut(p, 0.8));
+      big.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
+      big.scale.setScalar(Math.max(0.01, (p < 0.5 ? open : 1 + pop * 1.2) * 1.1 * (p > 0.85 ? (1 - p) / 0.15 : 1)));
+      big.material.rotation = p * 4;
+    },
+  };
+};
+
+// Candy Burst: a piñata spray of sweets flies from the user at the target in a fan and bounces down.
+SIG.candyburst = (k, from, to) => {
+  const N = 12;
+  const sweets = k.points({ n: N, tex: 'dot', size: 0.26, glow: true, colors: [0xff6a8a, 0xffd23a, 0x3ac8e8, 0x6ae86a, 0xb05ae8] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 650,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.025) / 0.6);
+        if (t <= 0) { sweets.hide(i); continue; }
+        k.at(t, A, 0.5 + s[i * 2] * 0.6);
+        const fan = (s[i * 2 + 1] - 0.5) * 0.8 * Math.sin(Math.PI * t);
+        sweets.set(i, A.x + k.side.x * fan, A.y + (t > 0.9 ? Math.abs(Math.sin(p * 30 + i)) * 0.15 : 0), A.z + k.side.z * fan);
+      }
+      sweets.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+/* ==== end of T44 surprise ==== */
 /* ==== T41 atlantis ==== */
 // Teal rune light and old gold.
 FX_COLORS.atlantis = [0x5af0e0, 0xf2d27a, 0xffffff];
@@ -3081,24 +3127,6 @@ TRAVEL.atlantis = k => {
   };
 };
 
-// Ta-Daa!: a curtain of stars sweeps open beside the target with a big star in the middle that bursts out.
-SIG.tadaa = (k, from, to) => {
-  const N = 8;
-  const stars = k.points({ n: N, tex: 'star', size: 0.34, glow: true, colors: [0xffd23a, 0xff6a8a, 0xfff0d0] });
-  const big = k.sprite('star', { color: 0xffe14a, size: 0.1, glow: true });
-  const feet = feetOf(to);
-  return {
-    dur: 640,
-    step(p) {
-      const open = clamp01(p / 0.5), pop = clamp01((p - 0.5) / 0.5);
-      for (let i = 0; i < N; i++) {
-        const side = i < N / 2 ? -1 : 1, row = i % (N / 2), spread = (1 - open) * 0.35 + 0.35 + pop * 0.7;
-        stars.set(i, to.pos.x + k.side.x * side * spread, feet + 0.3 + row * 0.28 + pop * 0.3, to.pos.z + k.side.z * side * spread);
-      }
-      stars.fade(fadeOut(p, 0.8));
-      big.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
-      big.scale.setScalar(Math.max(0.01, (p < 0.5 ? open : 1 + pop * 1.2) * 1.1 * (p > 0.85 ? (1 - p) / 0.15 : 1)));
-      big.material.rotation = p * 4;
 // A rune burst: a teal ring spreads, six glints fly out, one rune sprite spins up.
 IMPACT.atlantis = (k, from, to, { big }) => {
   const m = big ? 1.4 : 1, N = 6;
@@ -3149,26 +3177,6 @@ SIG.sunkenbell = (k, from, to) => {
   };
 };
 
-// Candy Burst: a piñata spray of sweets flies from the user at the target in a fan and bounces down.
-SIG.candyburst = (k, from, to) => {
-  const N = 12;
-  const sweets = k.points({ n: N, tex: 'dot', size: 0.26, glow: true, colors: [0xff6a8a, 0xffd23a, 0x3ac8e8, 0x6ae86a, 0xb05ae8] });
-  const s = k.seeds(N, 2);
-  return {
-    dur: 650,
-    step(p) {
-      for (let i = 0; i < N; i++) {
-        const t = clamp01((p - i * 0.025) / 0.6);
-        if (t <= 0) { sweets.hide(i); continue; }
-        k.at(t, A, 0.5 + s[i * 2] * 0.6);
-        const fan = (s[i * 2 + 1] - 0.5) * 0.8 * Math.sin(Math.PI * t);
-        sweets.set(i, A.x + k.side.x * fan, A.y + (t > 0.9 ? Math.abs(Math.sin(p * 30 + i)) * 0.15 : 0), A.z + k.side.z * fan);
-      }
-      sweets.fade(fadeOut(p, 0.85));
-    },
-  };
-};
-/* ==== end of T44 surprise ==== */
 // Mosaic Storm: a swirl of coloured tiles circles the target and flies out.
 SIG.mosaicstorm = (k, from, to) => {
   const N = 12;
@@ -3190,3 +3198,139 @@ SIG.mosaicstorm = (k, from, to) => {
   };
 };
 /* ==== end of T41 atlantis ==== */
+/* ==== T45 doodle ==== */
+// Graphite grey, eraser pink, crayon yellow: pencil scribbles fly out and burst into eraser crumbs. (The fx stay in colour in the pencil-drawn
+// Sketchbook too: "coloured-pencil magic".)
+FX_COLORS.doodle = [0x4a4a56, 0xf0a8b8, 0xffd23a];
+
+// A pencil scribble: grey dots zig-zagging along the way to the target, a yellow crayon spark at the head.
+TRAVEL.doodle = k => {
+  const N = 14;
+  const pts = k.points({ n: N, tex: 'dot', size: 0.22, colors: [0x4a4a56, 0x6a6a76, 0x3a3a46] });
+  const spark = k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.45);
+        if (t < 0) { pts.hide(i); continue; }
+        k.at(t, A, 0.2);
+        const z = Math.sin(t * 26) * 0.18 * Math.sin(Math.PI * t); // the zig-zag of a quick scribble
+        pts.set(i, A.x + k.side.x * z, A.y + Math.cos(t * 26) * 0.08, A.z + k.side.z * z);
+      }
+      pts.fade(fadeOut(p, 0.8));
+      k.at(clamp01(p * 1.45), B, 0.2);
+      spark.position.copy(B);
+      spark.scale.setScalar(Math.max(0.01, 0.55 * Math.sin(Math.PI * clamp01(p * 1.2))));
+      spark.material.rotation = p * 5;
+      spark.material.opacity = p < 0.85 ? 1 : 0;
+    },
+  };
+};
+
+// A hit: a ring of pink eraser crumbs puffing out, grey scribble dashes and a yellow glint.
+IMPACT.doodle = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 8;
+  const crumbs = k.points({ n: N, tex: 'puff', size: 0.34 * m, colors: [0xf0a8b8, 0xf6d0d8, 0xe08aa0] });
+  const dashes = k.points({ n: 6, tex: 'dot', size: 0.2 * m, colors: [0x4a4a56, 0x6a6a76] });
+  const glint = k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i * 2], d = (to.r * 0.4 + 0.1 + s[i * 2 + 1] * 0.5) * k.ease(p) * m;
+        crumbs.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + p * 0.45 - p * p * 0.5, to.pos.z + Math.sin(ang) * d);
+      }
+      crumbs.fade(fadeOut(p, 0.55));
+      for (let i = 0; i < 6; i++) { // a quick scribbled X over the target
+        const u = i / 5 - 0.5, up = i % 2 ? 1 : -1;
+        dashes.set(i, to.pos.x + k.side.x * u * 0.9 * m, to.pos.y + up * u * 0.6 * m, to.pos.z + k.side.z * u * 0.9 * m);
+      }
+      dashes.fade(fadeOut(p, 0.5));
+      glint.position.copy(to.pos);
+      glint.scale.setScalar(Math.max(0.01, 0.9 * m * Math.sin(Math.PI * clamp01(p * 1.7))));
+      glint.material.rotation = p * 2;
+      glint.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Lead Lance: a long grey lance of dots shoots at the target with a bright lead tip, and a ring of dashes where it lands.
+SIG.leadlance = (k, from, to) => {
+  const N = 10;
+  const lance = k.points({ n: N, tex: 'dot', size: 0.3, colors: [0x6a6a76, 0xb8b8c4, 0x4a4a56] });
+  const tip = k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true });
+  const ring = k.points({ n: 8, tex: 'dot', size: 0.22, colors: [0x4a4a56] });
+  return {
+    dur: 560,
+    step(p) {
+      const fly = clamp01(p / 0.55), hit = clamp01((p - 0.55) / 0.45);
+      for (let i = 0; i < N; i++) {
+        k.at(clamp01(fly - i * 0.035), A, 0.3);
+        if (fly - i * 0.035 <= 0 || hit > 0.6) lance.hide(i); else lance.set(i, A.x, A.y, A.z);
+      }
+      lance.fade(1);
+      k.at(fly, B, 0.3);
+      tip.position.copy(B);
+      tip.scale.setScalar(Math.max(0.01, 0.6 + 0.6 * Math.sin(Math.PI * clamp01(hit * 1.5))));
+      tip.material.opacity = hit < 1 ? 1 : 0;
+      for (let i = 0; i < 8; i++) {
+        if (hit <= 0) { ring.hide(i); continue; }
+        const ang = (i / 8) * 6.283, d = 0.2 + hit * (to.r * 0.8 + 0.5);
+        ring.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y, to.pos.z + Math.sin(ang) * d);
+      }
+      ring.fade(fadeOut(hit, 0.4));
+    },
+  };
+};
+
+// Clean Slate: a big pink eraser block wipes across the user from side to side, leaving a cloud of white crumbs rising.
+SIG.cleanslate = (k, from, to) => {
+  const N = 12;
+  const wipe = k.sprite('puff', { color: 0xf0a8b8, size: 1.1 });
+  const crumbs = k.points({ n: N, tex: 'puff', size: 0.3, colors: [0xffffff, 0xf6d0d8, 0xf0a8b8] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 700,
+    step(p) {
+      const w = Math.sin(p * Math.PI * 3) * (from.r + 0.3), up = Math.sin(Math.PI * clamp01(p * 1.1));
+      wipe.position.set(from.pos.x + k.side.x * w, from.pos.y + 0.1, from.pos.z + k.side.z * w);
+      wipe.scale.setScalar(Math.max(0.01, 1.0 * up));
+      wipe.material.opacity = fadeOut(p, 0.7) * 0.9;
+      for (let i = 0; i < N; i++) {
+        const a = s[i * 2] * 6.283, d = (0.15 + s[i * 2 + 1] * 0.5) * (from.r + 0.4) * p;
+        crumbs.set(i, from.pos.x + Math.cos(a) * d, from.pos.y - 0.2 + p * (0.9 + s[i * 2 + 1] * 0.5), from.pos.z + Math.sin(a) * d);
+      }
+      crumbs.fade(fadeOut(p, 0.5));
+    },
+  };
+};
+
+// Squiggle Strike: three wild squiggles scribbled across the target one after the other, each with a yellow spark.
+SIG.squigglestrike = (k, from, to) => {
+  const N = 18;
+  const lines = k.points({ n: N, tex: 'dot', size: 0.2, colors: [0x4a4a56, 0x6a6a76, 0x3a3a46] });
+  const sparks = [0, 1, 2].map(() => k.sprite('star', { color: 0xffd23a, size: 0.1, glow: true }));
+  return {
+    dur: 720,
+    step(p) {
+      for (let j = 0; j < 3; j++) {
+        const t = clamp01((p - j * 0.22) / 0.3);
+        for (let i = 0; i < 6; i++) {
+          const u = (i / 5) * t, idx = j * 6 + i;
+          if (t <= 0) { lines.hide(idx); continue; }
+          const x = (u - 0.5) * 1.4 * (j === 1 ? -1 : 1), y = Math.sin(u * 14 + j) * 0.3 * (to.r + 0.2) + (j - 1) * 0.35;
+          lines.set(idx, to.pos.x + k.side.x * x, to.pos.y + y, to.pos.z + k.side.z * x);
+        }
+        const sp = sparks[j], x = (t - 0.5) * 1.4 * (j === 1 ? -1 : 1);
+        sp.position.set(to.pos.x + k.side.x * x, to.pos.y + (j - 1) * 0.35, to.pos.z + k.side.z * x);
+        sp.scale.setScalar(Math.max(0.01, 0.55 * Math.sin(Math.PI * t)));
+        sp.material.opacity = t > 0 && t < 1 ? 1 : 0;
+        sp.material.rotation = t * 4;
+      }
+      lines.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+/* ==== end of T45 doodle ==== */

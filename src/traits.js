@@ -14,6 +14,7 @@ export const TRAITS = {
       ...list('land', 'blazehound pyrolynx grovebeast thornox thunderwolf cragtusk woolumph blizzbear hornbeetle visionelk titanox lunaroo howlbone stompasaur slimehound solvixen topiphant dozeram prismfox vroomster karthog'), // T40c: + vroomster karthog
       ...list('water', 'tidalord torrentide shellby spectrafin shipshape'),
       ...list('land', 'guardlion'), // T41
+      ...list('land', 'outlynx'), // T45: Outlynx (a later change never takes a trait away)
       ...list('sky', 'scalewing stormwyvern skywyrm whaloft zeppeluff kitegale auroraptor sageowl boomwing jetfold ufomax duskmare'),
       ...list('land', 'galloprance'), // T43: a carousel horse you can really ride
     },

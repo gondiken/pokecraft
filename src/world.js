@@ -80,7 +80,18 @@ export function groundOf(biome, h) {
   }[biome] || [B.GRASS, B.DIRT];
 }
 
-function newBuffers() { return { pos: [], uv: [], col: [], idx: [] }; }
+function newBuffers(sketch = false) { return { pos: [], uv: [], col: [], idx: [], edge: sketch ? [] : null }; }
+
+// T45 (sketch worlds only): for each face, the world direction of its four edges (bit 0 / 1: the u = 0 / u = 1 edge, bit 2 / 3: v = 0 / v = 1),
+// worked out once from the corners. A drawing has lines where something changes, so edgeMask() sets a bit only there.
+const EDGE_DIRS = FACES.map(f => {
+  const mid = [0, 1, 2].map(k => f.corners.reduce((a, c) => a + c[k], 0) / 4);
+  const dirOf = (axis, val) => {
+    const cs = f.corners.filter(c => c[3 + axis] === val), m = [0, 1, 2].map(k => cs.reduce((a, c) => a + c[k], 0) / cs.length);
+    return [0, 1, 2].map(k => Math.sign(Math.round((m[k] - mid[k]) * 2)));
+  };
+  return [dirOf(0, 0), dirOf(0, 1), dirOf(1, 0), dirOf(1, 1)];
+});
 
 // Block light: glowing blocks (lamps, crystals, glowcaps) light the cells around them. Each chunk
 // stamps the glow blocks within 4 blocks of it into this buffer (24 x 48 x 24), reused every build.
@@ -98,6 +109,7 @@ export class World {
   constructor(seed, scene, materials, [W, D] = [WORLD_W, WORLD_D], realm = null) {
     this.seed = seed;
     this.realm = realm; // T31: a realm def (realms.js), or null for the main world
+    this.sketch = !!realm?.look?.sketch; // T45: the Sketchbook: chunks carry an edge mask for the pencil outlines
     this.scene = scene;
     this.materials = materials;
     this.W = W;
@@ -583,7 +595,7 @@ export class World {
   }
 
   // sky and blk: the light in the cell the face looks into, packed as r = shade x sky, g = shade x block light.
-  addFace(buf, x, y, z, face, tile, topScale = 1, sky = 1, blk = 1) {
+  addFace(buf, x, y, z, face, tile, topScale = 1, sky = 1, blk = 1, edge = 0) {
     const ndx = buf.pos.length / 3;
     const s = face.shade, r = s * sky, g = s * blk;
     for (const [cx, cy, cz, u, v] of face.corners) {
@@ -592,6 +604,19 @@ export class World {
       buf.col.push(r, g, s);
     }
     buf.idx.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
+    if (buf.edge) buf.edge.push(edge, edge, edge, edge);
+  }
+
+  // T45: the 4-bit outline mask of the face `fi` of the block `id` at (x, y, z): an edge is drawn when the block across it (in the face's plane)
+  // is another block, or its own same face is hidden (a step or a corner).
+  edgeMask(x, y, z, fi, id) {
+    const f = FACES[fi], ed = EDGE_DIRS[fi];
+    let m = 0;
+    for (let e = 0; e < 4; e++) {
+      const nx = x + ed[e][0], ny = y + ed[e][1], nz = z + ed[e][2];
+      if (this.get(nx, ny, nz) !== id || isOccluder(this.get(nx + f.dir[0], ny + f.dir[1], nz + f.dir[2]))) m |= 1 << e;
+    }
+    return m;
   }
 
   // Fills lightBuf with the block light of every glow block within 4 blocks of the chunk at (x0, z0).
@@ -633,9 +658,10 @@ export class World {
   }
 
   buildChunk(cx, cz) {
-    const solid = newBuffers();
-    const water = newBuffers();
-    const glow = newBuffers(); // blocks that light up at night
+    const sk = this.sketch;
+    const solid = newBuffers(sk);
+    const water = newBuffers(sk);
+    const glow = newBuffers(sk); // blocks that light up at night
     const x0 = cx * CHUNK, z0 = cz * CHUNK;
     this.stampLight(x0, z0);
     for (let y = 0; y < WORLD_H; y++) {
@@ -655,17 +681,18 @@ export class World {
           }
           const def = BLOCKS[id];
           if (def.hidden) continue; // T40a.5: solid but never drawn (a model shows it)
-          for (const f of FACES) {
+          for (let fi = 0; fi < 6; fi++) {
+            const f = FACES[fi];
             if (y === 0 && f.kind === 'bottom') continue;
             const n = this.get(x + f.dir[0], y + f.dir[1], z + f.dir[2]);
             if (isOccluder(n)) continue;
             const tile = f.kind === 'top' ? def.top : f.kind === 'bottom' ? def.bottom : def.side;
             if (id === B.FIREPLACE) this.hasFire = true; // T22: main.js flickers the fire only in worlds that have one
             if (id === B.PORTAL) this.hasPortal = true; // T38a: main.js turns the Portal Door's spiral only in worlds that have one
-            if (def.glow) this.addFace(glow, x, y, z, f, tile);
+            if (def.glow) this.addFace(glow, x, y, z, f, tile, 1, 1, 1, sk ? this.edgeMask(x, y, z, fi, id) : 0);
             else {
               const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];
-              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0));
+              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0), sk ? this.edgeMask(x, y, z, fi, id) : 0);
             }
           }
         }
@@ -683,6 +710,7 @@ export class World {
       geo.setAttribute('position', new THREE.Float32BufferAttribute(buf.pos, 3));
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(buf.uv, 2));
       geo.setAttribute('color', new THREE.Float32BufferAttribute(buf.col, 3));
+      if (buf.edge) geo.setAttribute('sketchEdge', new THREE.Float32BufferAttribute(buf.edge, 1)); // T45
       geo.setIndex(buf.idx);
       geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, mat);

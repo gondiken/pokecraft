@@ -625,14 +625,68 @@ export const swirlTint = {
   uSea: { value: Array.from({ length: 5 }, () => new THREE.Color(1, 1, 1)) },
 };
 
+// T45: the Sketchbook's pencil look. uSketchOn is 0 everywhere but the Sketchbook, where the output is exactly what it was before.
+// sketch.js fills the uniforms (paper and ink colours as linear colours, the boil step, the unfinished edge of the drawing).
+export const sketchLook = {
+  uSketchOn: { value: 0 },
+  uSketchStep: { value: 0 },                  // the boil: a whole number, 4 steps a second
+  uPaper: { value: new THREE.Color() },
+  uInk: { value: new THREE.Color() },
+  uSketchEdge: { value: new THREE.Vector4(0, 0, 1e9, 1e9) }, // x, z of the drawing's middle, r0, r1: the unfinished edge
+  uAtlas: swirlTint.uAtlas,                   // the same uniform object as the Swirl tint's
+};
+// The pencil part of a block shader: outlines where the world changes (vEdge: the face's edge mask, world.js), hatching where it is dark,
+// blank paper at the rim. `S` = the light factor of the face (1 for glowing blocks). Runs only while uSketchOn is 1.
+const SKETCH_VERT_PARS = 'attribute float sketchEdge;\nvarying float vEdge;';
+const SKETCH_FRAG_PARS = `varying float vEdge;
+uniform float uSketchOn;
+uniform float uSketchStep;
+uniform vec3 uPaper;
+uniform vec3 uInk;
+uniform vec4 uSketchEdge;
+uniform vec2 uAtlas;
+float skHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float skBit(float m, float k) { return mod(floor(m / exp2(k) + 0.001), 2.0); }`;
+const sketchFrag = S => `
+        if (uSketchOn > 0.5) {
+          float S = ${S};
+          vec2 f = fract(vec2(vMapUv.x * uAtlas.x, (1.0 - vMapUv.y) * uAtlas.y));
+          vec2 w = max(fwidth(f), vec2(0.0001));
+          vec3 cell = floor(vCavePos + 0.002);
+          float step_ = uSketchStep;
+          float rim = smoothstep(uSketchEdge.z, uSketchEdge.w, distance(vCavePos.xz, uSketchEdge.xy));
+          float far_ = mix(1.0, 0.3, smoothstep(30.0, 60.0, distance(vCavePos, cameraPosition)));
+          float ink = 0.0;
+          for (int e = 0; e < 4; e++) {
+            if (skBit(vEdge, float(e)) < 0.5) continue;
+            bool onU = e < 2;
+            float d = e == 0 ? f.x : e == 1 ? 1.0 - f.x : e == 2 ? 1.0 - f.y : f.y;
+            float along = onU ? f.y : f.x;
+            float px = (d + 0.035 * sin(along * 9.0 + skHash(cell + vec3(float(e), step_, 1.0)) * 6.283)) / (onU ? w.x : w.y);
+            float cover = 1.0 - smoothstep(0.8, 1.6, px);
+            float gap = step(0.82, skHash(cell + vec3(float(e) * 3.1, floor(along * 3.0), 7.0)));
+            ink = max(ink, cover * (1.0 - gap));
+          }
+          float hatch = 0.0, off = 0.02 * skHash(vec3(step_, 3.0, 5.0));
+          if (S < 0.8) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract((f.x + f.y) * 7.0 + off)));
+          if (S < 0.55) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract((f.x - f.y) * 7.0 + off)));
+          if (S < 0.35) hatch = max(hatch, 1.0 - smoothstep(0.1, 0.16, fract(f.x * 7.0 + 0.5 + off)));
+          diffuseColor.rgb = mix(diffuseColor.rgb, uInk, hatch * 0.45 * clamp((0.8 - S) / 0.8, 0.0, 1.0));
+          diffuseColor.rgb = mix(diffuseColor.rgb, uPaper, 0.9 * rim);
+          diffuseColor.rgb = mix(diffuseColor.rgb, uInk, 0.85 * far_ * ink * (1.0 - 0.5 * rim));
+        }`;
+
 // Vertex colours are packed as r = sky light x shade, g = block light x shade, b = shade.
-export function patchMaterial(mat) {
+// { sketch: false } leaves the pencil part out (for the spec's bit-for-bit check only).
+export function patchMaterial(mat, { sketch = true } = {}) {
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, caveLight, swirlTint);
+    if (sketch) Object.assign(shader.uniforms, sketchLook);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
 varying vec3 vCavePos;
 varying vec3 vTint;
+${sketch ? SKETCH_VERT_PARS : ''}
 uniform float uTintOn;
 uniform vec4 uTintU;
 uniform vec2 uAtlas;
@@ -644,6 +698,7 @@ uniform vec3 uHi[5];
 uniform vec3 uSea[5];`)
       .replace('#include <project_vertex>', `#include <project_vertex>
 vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+${sketch ? 'vEdge = sketchEdge;' : ''}
 vTint = vec3(1.0);
 float tileN = floor(uv.x * uAtlas.x) + floor((1.0 - uv.y) * uAtlas.y) * uAtlas.x;
 if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTintU.z && tileN < uTintU.w))) {
@@ -662,12 +717,28 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
   vTint *= min(inversesqrt(max(color.r, 0.25)), 1.9); // pastel: take back some of the face and overhang shading
 }`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;')
+      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;\n${sketch ? SKETCH_FRAG_PARS : ''}`)
       .replace('#include <color_fragment>', `
         float lan = uLantern * clamp(1.0 - distance(vCavePos, uPlayer) / 8.0, 0.0, 1.0);
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
-        diffuseColor.rgb *= vTint;`);
+        diffuseColor.rgb *= vTint;${sketch ? sketchFrag('max(vColor.r * uLit, max(vColor.g, vColor.b * lan))') : ''}`);
   };
-  mat.customProgramCacheKey = () => 'cave-light-3';
+  mat.customProgramCacheKey = () => (sketch ? 'cave-light-4' : 'cave-light-3');
+  mat.needsUpdate = true;
+}
+
+// T45: the glow material (lamps, the way back, frames) was never patched; it gets only the pencil part (cache key 'sketch-glow-1').
+// With uSketchOn = 0 its output is what it was before.
+export function patchSketch(mat) {
+  mat.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, sketchLook);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_VERT_PARS}`)
+      .replace('#include <project_vertex>', `#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvEdge = sketchEdge;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_FRAG_PARS}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>${sketchFrag('1.0')}`);
+  };
+  mat.customProgramCacheKey = () => 'sketch-glow-1';
   mat.needsUpdate = true;
 }
