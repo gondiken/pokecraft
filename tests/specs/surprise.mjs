@@ -815,7 +815,7 @@ async function livePart({ browser, base, t, page }) {
       const g = window.pokecraft, S = await import('/src/species.js');
       for (let i = 1; i <= 4; i++) g.beaten.push(`pw:doors:bow${i}`);
       window.__live().syncBlocks();
-      g.party = [S.makeCreature('blazehound', 100)]; g.cubes = 0;
+      g.party = [S.makeCreature('blazehound', 100), S.makeCreature('thunderwolf', 100)]; g.cubes = 0; // two: Jax's ace powers up at half HP and its Ta-Daa! can finish a tired lone creature
       window.__cele = null; const cf = g.ui.celebrate.bind(g.ui); g.ui.celebrate = (...a) => { window.__cele = a; cf(...a); };
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
@@ -990,6 +990,7 @@ async function ipadPart({ browser, base, t }) {
     const g = window.pokecraft, L = window.__live(), p = window.__plan(), pc = p.popup.pad.centre;
     L.pu = { phase: 'idle', plan: null, t: 0, done: new Set(), score: 0, resultT: 0, hit: new Map(), last: -1 };
     L.manual = true; L.playing = () => true;
+    g.creatures.clear(); // no wild gift box in front of the jack
     window.__log = [];
     if (!g.gymLive.__wrapped) { const t0 = g.gymLive.tap.bind(g.gymLive); g.gymLive.tap = (o, d) => { const r = t0(o, d); window.__log.push([o.x.toFixed(1), o.y.toFixed(1), o.z.toFixed(1), d.x.toFixed(2), d.y.toFixed(2), d.z.toFixed(2), r].join(' ')); return r; }; g.gymLive.__wrapped = true; }
     window.__at(pc[0], 11, pc[1], Math.atan2(-1, 0), 0.1); g.player.yaw = Math.atan2(-1, 0);
@@ -1012,7 +1013,7 @@ async function ipadPart({ browser, base, t }) {
     if (await ip.evaluate(() => window.__live().pu.score >= 1)) break;
   }
   const sc = await ip.evaluate(() => window.__live().pu.score);
-  const dbg = await ip.evaluate(() => ({ log: window.__log, phase: window.__live().pu.phase, paused: window.__live().paused() }));
+  const dbg = await ip.evaluate(() => ({ log: window.__log, phase: window.__live().pu.phase, paused: window.__live().paused(), playing: window.pokecraft.playing?.(), asking: !!window.pokecraft.ui.asking, wild: window.pokecraft.creatures.list?.length, pause: !document.getElementById('pause').classList.contains('hidden') }));
   t.ok(jack.onScreen && sc >= 1, `a tap on the popped jack on the screen boops it (score ${sc}) ${sc >= 1 ? '' : JSON.stringify({ jack, dbg })}`);
   await ip.evaluate(() => { const L = window.__live(); L.manual = true; L.playing = () => true; });
   await ip.screenshot({ path: path.join(SHOTS, 't44-ipad.png'), timeout: 180000 });
