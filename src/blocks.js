@@ -19,6 +19,7 @@ const WOOL_TYPES = [
   'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
   'ninja', // wave 12 (T37): id 113
   'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
+  'surprise', // wave 15 (T44): id 235
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -31,6 +32,7 @@ const WOOL_RGB = {
   food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
   ninja: [46, 40, 66],
   tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
+  surprise: [248, 168, 58],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -68,6 +70,8 @@ const MORE_TILES = [
   // fan switch (off / on), toy track, train remote button, tap handle, cat fur / sleeping eye / open eye, keyhole
   'FLOOR_TILE', 'FLOOR_TILE_DARK', 'WALLPAPER', 'COUNTER_TOP', 'CUPBOARD_SIDE', 'TABLE_WOOD', 'COOKIE_TOP', 'COOKIE_SIDE', 'CRUMB', 'FAN_GRILL',
   'CHROME', 'FAN_SWITCH', 'FAN_SWITCH_ON', 'TRACK_TOP', 'REMOTE_BUTTON', 'TAP_HANDLE', 'CAT_FUR', 'CAT_EYE', 'CAT_EYE_OPEN', 'KEYHOLE',
+  // T44 Room of Doors (wave 15): gift wrap, party floor, gift door (front / top), gold door, pop-up box (lid / side / open), ball pit, ribbon
+  'SU_WRAP', 'SU_FLOOR', 'SU_DOOR', 'SU_DOOR_TOP', 'SU_GOLD_DOOR', 'SU_BOX_TOP', 'SU_BOX_SIDE', 'SU_BOX_OPEN', 'SU_BALLS', 'SU_RIBBON',
   // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
@@ -140,13 +144,15 @@ export const B = {
   // 250: T40a.5, the Giant House's puzzle things are models (houseprops.js); this hidden block is what you stand on, bump into and
   // tap under a model (the cat, the plug, the wind-up key...). Taken from the top so it never meets the ids wave 15 takes from 204 up.
   HOUSE_PROP: 250,
+  // 235: surprise wool (wave 15). 236-243: T44, the Room of Doors (none placeable, all fixed; POP_BOX_OPEN is drawn only with setLive)
+  GIFT_WALL: 236, PARTY_FLOOR: 237, GIFT_DOOR: 238, GOLD_DOOR: 239, POP_BOX: 240, POP_BOX_OPEN: 241, BALL_PIT: 242, RIBBON: 243,
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143, surprise: 235 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -343,6 +349,18 @@ BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, sid
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
+// T44 Room of Doors: none placeable, all `fixed`. Opened doors, untied ribbons and open pop-up boxes are setLive cells (never edits).
+{
+  const WRAP = 'Gift wrap! The Room of Doors is wrapped up tight.', fx = { fixed: true };
+  BLOCKS[B.GIFT_WALL] = { name: 'Gift Wrap', ...all(T.SU_WRAP), ...fx, wallText: WRAP };
+  BLOCKS[B.PARTY_FLOOR] = { name: 'Party Floor', ...all(T.SU_FLOOR), ...fx, wallText: 'A party floor. Too much fun to dig!' };
+  BLOCKS[B.GIFT_DOOR] = { name: 'Gift Door', top: T.SU_DOOR_TOP, side: T.SU_DOOR, bottom: T.SU_DOOR_TOP, ...fx, wallText: 'Press Open! to see what is inside!' };
+  BLOCKS[B.GOLD_DOOR] = { name: 'Gold Door', ...all(T.SU_GOLD_DOOR), glow: true, noLight: true, ...fx, wallText: 'A golden door! Press Open! to see what is inside!' };
+  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
+  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
+  BLOCKS[B.BALL_PIT] = { name: 'Ball Pit', ...all(T.SU_BALLS), bounce: 3, ...fx, wallText: 'A ball pit! Jump to bob up and down.' };
+  BLOCKS[B.RIBBON] = { name: 'Ribbon', ...all(T.SU_RIBBON), glow: true, noLight: true, ...fx, wallText: 'A ribbon on the Big Gift. Win a golden bow to untie it!' };
+}
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -852,6 +870,37 @@ export function drawAtlas() {
       const seat = (x % 8 < 6) && (y % 8 < 6);
       put(T.SEAT_TOP, x, y, seat ? shade([50, 110, 230], 1 + (r9() - 0.5) * 0.06) : [28, 56, 130]);
       put(T.SEAT_SIDE, x, y, y < 10 ? (y === 9 ? [24, 50, 120] : shade([50, 108, 224], 1 + (r9() - 0.5) * 0.06)) : shade([156, 160, 168], 1 + (r9() - 0.5) * 0.08)); // a blue seat back over grey concrete
+    });
+  }
+  { // T44 Room of Doors tiles (own random numbers)
+    const r10 = mulberry32(4444);
+    const edge = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    const sh = (col, a) => shade(col, 1 + (r10() - 0.5) * a);
+    each((x, y) => {
+      const dx = x - 7.5, dy = y - 7.5, d = Math.hypot(dx, dy);
+      // gift wrap: warm orange with white diagonal stripes and pink dots
+      const stripe = ((x + y) % 8) < 2, dot = (x % 8 === 3 || x % 8 === 4) && (y % 8 === 3 || y % 8 === 4);
+      put(T.SU_WRAP, x, y, dot ? [255, 130, 160] : stripe ? [255, 238, 214] : sh([248, 168, 58], 0.05));
+      // party floor: big pastel checks
+      put(T.SU_FLOOR, x, y, edge(x, y) ? [210, 200, 230] : ((x >> 3) + (y >> 3)) % 2 ? sh([190, 232, 255], 0.04) : sh([255, 214, 232], 0.04));
+      // gift door: lilac wrapping with a cream ribbon across the middle and a darker border (the cells of one door read as a wrapped door)
+      const band = Math.abs(dy) < 1.6;
+      put(T.SU_DOOR, x, y, edge(x, y) ? [120, 70, 150] : band ? [255, 240, 200] : sh(x % 4 < 2 ? [176, 140, 232] : [166, 128, 224], 0.05));
+      put(T.SU_DOOR_TOP, x, y, edge(x, y) ? [120, 70, 150] : Math.abs(dx) < 1.6 ? [255, 240, 200] : sh([176, 140, 232], 0.05));
+      // gold door: bright gold with a darker frame, panels and a shiny knob
+      const knob = Math.hypot(x - 11.5, y - 8) < 1.6, panel = (x === 3 || x === 12 || y === 3 || y === 12) && x > 2 && x < 13 && y > 2 && y < 13;
+      put(T.SU_GOLD_DOOR, x, y, edge(x, y) ? [160, 110, 20] : knob ? [255, 255, 220] : panel ? [200, 140, 30] : sh([255, 214, 70], 0.06));
+      // pop-up box: red with white stars on top (a lid) and blue side with a yellow stripe
+      const star = (Math.abs(dx) < 0.9 && Math.abs(dy) < 3.4) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 3.4);
+      put(T.SU_BOX_TOP, x, y, edge(x, y) ? [150, 30, 40] : star ? [255, 244, 160] : sh([232, 60, 74], 0.05));
+      put(T.SU_BOX_SIDE, x, y, edge(x, y) ? [24, 60, 130] : y === 7 || y === 8 ? [255, 214, 70] : sh([58, 120, 232], 0.05));
+      put(T.SU_BOX_OPEN, x, y, edge(x, y) ? [150, 30, 40] : d < 5.6 ? sh([46, 20, 40], 0.1) : sh([232, 60, 74], 0.05));
+      // ball pit: a heap of coloured balls with a shine
+      const bx = (x >> 2) , by = (y >> 2), cols = [[232, 60, 74], [58, 140, 232], [255, 214, 70], [70, 200, 110], [176, 90, 232]];
+      const c = cols[(bx * 3 + by * 5 + ((bx + by) % 2)) % 5], cx = (x % 4) - 1.5, cy = (y % 4) - 1.5, rr = Math.hypot(cx, cy);
+      put(T.SU_BALLS, x, y, rr > 2 ? shade(c, 0.45) : (cx < 0 && cy < 0 && rr < 1.1) ? [255, 255, 255] : shade(c, 1 - rr * 0.1));
+      // ribbon: bright pink satin with a light stripe
+      put(T.SU_RIBBON, x, y, Math.abs(dx) < 1.5 ? [255, 235, 245] : sh(x < 4 || x > 11 ? [220, 40, 100] : [240, 70, 130], 0.05));
     });
   }
   { // T40c Race Track tiles (own random numbers): dark grain, a white edge line, a 4 x 4 chequer, red and white kerb, chevron boost pads, lamps, stacked tyres

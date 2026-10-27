@@ -2,6 +2,7 @@
 // Every model faces +Z and stands on y = 0. A builder gets (root, m, parts): root is the group to
 // build into, m the species' model recipe, and parts collects pieces for animateModel in species.js.
 import * as THREE from 'three';
+import { hash32 } from './traits.js'; // T44 (traits.js has no imports)
 
 export function box(parent, w, h, d, color, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
@@ -5618,3 +5619,281 @@ function barrelpus(root, m, parts) {
 const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
 Object.assign(SHAPES, SHAPES_PIRATE);
 /* ==== end of T40b pirate ==== */
+
+/* ==== T44 surprise ==== */
+// Surprise look: a ribbon bow (userData.gear = 'bow': two loops and a knot, in the model's accent colour) on every model, like the
+// Ninja's mask. Wild ones are dressed as one and the same gift box (buildGiftWrap, only the paper differs; gold paper = a rarer one).
+// Posed parts sit in plain pivots; nothing sets root.position. Springs are `parts.spring` (animateModel stretches them).
+const SU_CREAM = 0xfff0d0;
+function suBow(parent, color, x, y, z, s = 1) {
+  const g = pivot(parent, x, y, z);
+  for (const sx of [-1, 1]) {
+    const loop = pivot(g, sx * 0.1 * s, 0.03 * s, 0);
+    loop.rotation.z = sx * -0.45;
+    gear(box(loop, 0.16 * s, 0.1 * s, 0.07 * s, color, 0, 0, 0), 'bow');
+    gear(box(loop, 0.08 * s, 0.05 * s, 0.075 * s, SU_CREAM, 0.02 * sx * s, 0, 0), 'bow');
+  }
+  gear(box(g, 0.1 * s, 0.1 * s, 0.1 * s, color, 0, 0, 0), 'bow');
+  return g;
+}
+
+// Giftle / Bowtower: a wrapped present on stubby legs, eyes peeking from under the lid; the lid flaps when it talks.
+// Bowtower (`stack`) is three presents stacked, each lid a smiling mouth, a huge bow on top.
+function giftbox(root, m, parts) {
+  const stack = has(m, 'stack');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  parts.legs = [];
+  const w0 = stack ? 0.74 : 0.62;
+  for (const [x, z, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(lift, x * w0 * 0.3, 0.12, z * w0 * 0.3);
+    box(leg, 0.14, 0.12, 0.14, m.dark, 0, -0.06, 0);
+    box(leg, 0.16, 0.05, 0.2, m.dark, 0, -0.1, 0.02);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const levels = stack ? [[0.74, 0.34], [0.6, 0.3], [0.46, 0.26]] : [[0.62, 0.42]];
+  let y = 0.12;
+  levels.forEach(([w, h], i) => {
+    const top = i === levels.length - 1;
+    box(lift, w, h, w, m.body, 0, y + h / 2, 0);
+    for (const sx of [-1, 1]) for (const [dy, dz] of [[0.3, 0.25], [0.7, -0.2]]) box(lift, 0.02, 0.05, 0.05, m.belly, sx * (w / 2 + 0.01), y + h * dy, dz * w); // paper dots
+    box(lift, w + 0.03, h * 0.16, w + 0.03, m.accent, 0, y + h * 0.5, 0); // a ribbon round the middle...
+    box(lift, w * 0.16, h + 0.03, w + 0.03, m.accent, 0, y + h / 2, 0);   // ...and up the front and back
+    const lidY = y + h;
+    const lid = pivot(lift, 0, lidY, -w / 2); // hinged at the back so it can flap
+    swing(parts, lid, 'x', stack ? 0.06 : 0.14, 3 + i, i);
+    box(lid, w + 0.06, 0.1, w + 0.06, m.body, 0, 0.05, w / 2);
+    box(lid, w + 0.07, 0.06, w * 0.16, m.accent, 0, 0.06, w / 2);
+    box(lid, w * 0.16, 0.07, w + 0.07, m.accent, 0, 0.065, w / 2);
+    if (stack) { // a smile on the lid's front edge
+      box(lid, w * 0.5, 0.025, 0.03, m.dark, 0, 0.04, w + 0.035);
+      for (const sx of [-1, 1]) box(lid, 0.03, 0.05, 0.03, m.dark, sx * w * 0.27, 0.06, w + 0.035);
+    }
+    y = lidY + 0.1;
+    if (top) suBow(lift, m.accent, 0, y + 0.02, 0, stack ? 2.2 : 1.5); // the big bow on the very top
+  });
+  const faceY = stack ? 0.12 + 0.34 + 0.1 + 0.15 : 0.12 + 0.42 - 0.12, faceZ = (stack ? 0.6 : 0.62) / 2 + 0.01;
+  eyes(lift, faceY, faceZ, 0.12, stack ? 0.12 : 0.14); // peeking from under the lid
+  mouth(lift, faceY - (stack ? 0.1 : 0.12), faceZ + 0.005, stack ? 0.14 : 0.12);
+}
+
+// Popjack / Jestergrin: a crank box with a spring and a grinning head on top that boings. Jestergrin (`jester`) is a tall cloth
+// jester on a long spring: a two-horned hat with bells, a collar of bells, two spring arms.
+function jackbox(root, m, parts) {
+  const jester = has(m, 'jester');
+  const lift = pivot(root, 0, 0, 0);
+  const bw = jester ? 0.46 : 0.56, bh = jester ? 0.4 : 0.44;
+  box(lift, bw, bh, bw, m.body, 0, bh / 2, 0);
+  box(lift, bw + 0.03, 0.07, bw + 0.03, m.dark, 0, 0.04, 0);
+  box(lift, bw + 0.03, 0.05, bw + 0.03, m.accent, 0, bh - 0.04, 0);
+  for (const sx of [-1, 1]) box(lift, 0.025, bh * 0.5, bh * 0.5, m.dark, sx * (bw / 2 + 0.012), bh * 0.5, 0); // side panels
+  const crank = pivot(lift, bw / 2 + 0.04, bh * 0.5, 0); // the crank handle turns
+  spin(parts, crank, 'x', 3);
+  box(crank, 0.05, 0.04, 0.04, 0x888890, 0.02, 0, 0);
+  box(crank, 0.05, 0.2, 0.04, 0x888890, 0.04, 0.1, 0);
+  box(crank, 0.09, 0.07, 0.07, m.accent, 0.04, 0.2, 0);
+  // the spring: stacked thin discs, stretched by animateModel (parts.spring)
+  const coilH = jester ? 0.75 : 0.55, N = jester ? 8 : 6;
+  const coil = pivot(lift, 0, bh, 0);
+  for (let i = 0; i < N; i++) box(coil, bw * 0.55, coilH / N * 0.55, bw * 0.55, i % 2 ? 0xc8ccd8 : 0x9094a2, 0, (i + 0.5) * (coilH / N), 0);
+  const head = pivot(lift, 0, bh + coilH, 0);
+  parts.spring = [{ g: coil, head, h: coilH, y0: bh + coilH, amp: jester ? 0.12 : 0.2, speed: jester ? 2.6 : 3.4 }];
+  parts.head = head;
+  const hr = jester ? 0.24 : 0.28;
+  ball(head, hr, jester ? 0xfff0d8 : m.belly, 0, hr, 0);
+  eyes(head, hr + 0.04, hr * 1.05, 0.11, 0.13);
+  box(head, 0.2, 0.05, 0.03, m.dark, 0, hr - 0.1, hr * 1.05 + 0.01); // a big grin
+  for (const sx of [-1, 1]) { box(head, 0.04, 0.06, 0.03, m.dark, sx * 0.11, hr - 0.07, hr * 1.05 + 0.01); box(head, 0.07, 0.05, 0.025, 0xff9aa8, sx * 0.17, hr - 0.02, hr * 1.05); }
+  box(head, 0.08, 0.07, 0.05, 0xff6a8a, 0, hr, hr * 1.1 + 0.01); // a red nose
+  if (jester) {
+    const hat = pivot(head, 0, hr * 2 - 0.04, 0); // two floppy horns with bells
+    for (const [sx, col] of [[-1, m.body], [1, m.accent]]) {
+      const horn = pivot(hat, sx * 0.1, 0, 0);
+      horn.rotation.z = sx * -0.9;
+      swing(parts, horn, 'z', 0.12, 3, sx);
+      box(horn, 0.18, 0.2, 0.22, col, 0, 0.1, 0);
+      box(horn, 0.12, 0.16, 0.16, col, 0, 0.26, 0);
+      box(horn, 0.07, 0.07, 0.07, 0xffd23a, 0, 0.38, 0);
+    }
+    box(hat, 0.36, 0.08, 0.34, m.dark, 0, -0.02, 0);
+    suBow(lift, m.accent, 0, bh + coilH - 0.04, 0.2, 0.9); // the bow on the collar
+    for (let k = 0; k < 8; k++) { // the collar of bells
+      const a = (k / 8) * Math.PI * 2;
+      box(lift, 0.07, 0.07, 0.07, k % 2 ? 0xffd23a : m.accent, Math.cos(a) * 0.17, bh + coilH - 0.02, Math.sin(a) * 0.17);
+    }
+    for (const sx of [-1, 1]) { // two spring arms
+      const arm = pivot(lift, sx * 0.3, bh + coilH * 0.6, 0.02);
+      swing(parts, arm, 'z', 0.35, 2.4, sx * 1.3);
+      for (let i = 0; i < 4; i++) box(arm, 0.07, 0.04, 0.07, i % 2 ? 0xc8ccd8 : 0x9094a2, sx * 0.05 * i, 0.04 * i, 0);
+      box(arm, 0.12, 0.12, 0.12, 0xfff0d8, sx * 0.2, 0.18, 0);
+    }
+  } else {
+    suBow(lift, m.accent, 0, bh, bw / 2 + 0.02, 1.0); // a bow on the front of the box, like a gift
+    box(head, 0.5, 0.1, 0.5, m.dark, 0, hr * 2 - 0.02, 0); // a little cap
+    box(head, 0.28, 0.14, 0.28, m.accent, 0, hr * 2 + 0.08, 0);
+  }
+}
+
+// Pinpop / Fiestallama: a paper llama made of fringe stripes (thin stacked colour boxes) with a candy-pouch belly.
+// Fiestallama (`tassels`) is bigger, with streamers on its ears and sweets orbiting it.
+function pinata(root, m, parts) {
+  const big = has(m, 'tassels');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const L = big ? 0.64 : 0.54, W = big ? 0.44 : 0.38;
+  const by = big ? 0.62 : 0.55;
+  const layers = 6, lh = (big ? 0.34 : 0.3) / layers * 2;
+  for (let i = 0; i < layers; i++) { // fringe stripes: each layer a little wider on alternating sides
+    const col = i % 2 ? m.accent : m.body, out = i % 2 ? 0.03 : 0;
+    box(lift, W + out, lh * 0.9, L + out, col, 0, by - 0.16 + i * lh * 0.55, 0);
+  }
+  box(lift, W * 0.7, 0.2, 0.06, m.belly, 0, by - 0.1, L / 2 + 0.02); // the candy pouch
+  [[-0.08, 0.04, 0xff6a8a], [0.06, -0.02, 0x3ac8e8], [0.0, 0.1, 0xffd23a], [0.09, 0.07, 0x6ae86a]].forEach(([dx, dy, c]) => box(lift, 0.045, 0.045, 0.03, c, dx, by - 0.1 + dy, L / 2 + 0.05));
+  const neckH = big ? 0.42 : 0.34;
+  const neck = pivot(lift, 0, by + 0.05, L / 2 - 0.1);
+  box(neck, 0.18, neckH, 0.18, m.body, 0, neckH / 2, 0);
+  for (let i = 0; i < 3; i++) box(neck, 0.21, 0.05, 0.21, m.accent, 0, 0.08 + i * 0.1, 0);
+  const head = pivot(neck, 0, neckH + 0.04, 0.05);
+  parts.head = head;
+  box(head, 0.24, 0.22, 0.26, m.body, 0, 0, 0.02);
+  box(head, 0.16, 0.12, 0.14, m.belly, 0, -0.05, 0.17); // snout
+  box(head, 0.06, 0.04, 0.03, m.dark, 0, -0.02, 0.25);  // nose
+  eyes(head, 0.05, 0.15, 0.08, 0.1);
+  for (const sx of [-1, 1]) { // tall ears
+    const ear = pivot(head, sx * 0.08, 0.11, 0);
+    swing(parts, ear, 'z', 0.12, 3, sx);
+    box(ear, 0.07, 0.24, 0.05, m.accent, 0, 0.12, 0);
+    box(ear, 0.04, 0.16, 0.055, m.dark, 0, 0.12, 0.005);
+    if (big) { // streamers hanging from the ears
+      for (let k = 0; k < 3; k++) {
+        const st = pivot(ear, sx * (0.03 + k * 0.02), 0.22, 0);
+        swing(parts, st, 'z', 0.35, 4 + k, k + sx);
+        box(st, 0.025, 0.28, 0.01, [0xff6a8a, 0x3ac8e8, 0xffd23a][k], 0, -0.14, 0.03);
+      }
+    }
+  }
+  suBow(neck, m.accent, 0, 0.0, 0.12, 1.0); // the bow round its neck
+  parts.legs = [];
+  for (const [x, z, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(lift, x * W * 0.32, by - 0.16, z * L * 0.34);
+    box(leg, 0.1, by - 0.16, 0.1, m.dark, 0, -(by - 0.16) / 2, 0);
+    box(leg, 0.14, 0.06, 0.16, m.accent, 0, -(by - 0.16) + 0.03, 0.02);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const tail = pivot(lift, 0, by + 0.05, -L / 2);
+  parts.tail = tail;
+  for (let k = 0; k < 3; k++) box(tail, 0.03, 0.03, 0.18, [m.accent, m.body, m.dark][k], (k - 1) * 0.05, -0.04, -0.09);
+  if (big) { // sweets orbiting it on a ring that turns
+    const ring = pivot(lift, 0, by + 0.35, 0);
+    spin(parts, ring, 'y', 1.4);
+    [0xff6a8a, 0x3ac8e8, 0xffd23a, 0x6ae86a].forEach((c, k) => {
+      const a = (k / 4) * Math.PI * 2, can = pivot(ring, Math.cos(a) * 0.62, Math.sin(k * 1.7) * 0.1, Math.sin(a) * 0.62);
+      box(can, 0.11, 0.11, 0.11, c, 0, 0, 0);
+      box(can, 0.04, 0.04, 0.16, 0xffffff, 0, 0, 0);
+    });
+  }
+}
+
+// Partypop: a party popper: a cone with a face, streamer hair bursting out of the open top, a pull string with a ring.
+function partypopper(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  [0.3, 0.4, 0.5, 0.6].forEach((w, i) => box(lift, w, 0.13, w, i % 2 ? m.accent : m.body, 0, 0.12 + i * 0.1, 0)); // wider and wider up, striped
+  box(lift, 0.74, 0.06, 0.74, m.dark, 0, 0.12 + 4 * 0.1 + 0.02, 0); // the rim
+  eyes(lift, 0.4, 0.31, 0.11, 0.12);
+  mouth(lift, 0.3, 0.27, 0.12);
+  for (const sx of [-1, 1]) box(lift, 0.06, 0.04, 0.02, 0xff9aa8, sx * 0.17, 0.33, 0.29); // cheeks
+  const hair = pivot(lift, 0, 0.12 + 4 * 0.1 + 0.05, 0); // streamer hair: curly strips and confetti bits bursting out of the top
+  const cols = [0xff6a8a, 0x3ac8e8, 0xffd23a, 0x6ae86a, 0xb05ae8, m.accent];
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2, s = pivot(hair, Math.cos(a) * 0.14, 0, Math.sin(a) * 0.14);
+    swing(parts, s, 'z', 0.3, 3 + (k % 3), k);
+    s.rotation.y = -a;
+    const q = pivot(s, 0, 0, 0);
+    q.rotation.z = -0.6;
+    box(q, 0.05, 0.3 + (k % 2) * 0.1, 0.012, cols[k], 0, 0.16, 0);
+    const q2 = pivot(q, 0, 0.3, 0);
+    q2.rotation.z = 0.9;
+    box(q2, 0.05, 0.22, 0.012, cols[(k + 2) % 6], 0, 0.1, 0);
+  }
+  for (let k = 0; k < 5; k++) box(hair, 0.045, 0.045, 0.02, cols[(k + 1) % 6], (k - 2) * 0.13, 0.42 + (k % 2) * 0.1, (k % 3 - 1) * 0.1);
+  suBow(lift, m.accent, 0, 0.12 + 4 * 0.1 + 0.12, 0.22, 1.1);
+  const str = pivot(lift, 0, 0.3, -0.26); // the pull string: a thin line behind it with a ring at the end
+  swing(parts, str, 'x', 0.15, 2.4, 1);
+  box(str, 0.02, 0.02, 0.28, 0xfff0d0, 0, -0.04, -0.14);
+  box(str, 0.1, 0.1, 0.02, m.belly, 0, -0.06, -0.3);
+  box(str, 0.06, 0.06, 0.03, m.body, 0, -0.06, -0.3);
+  parts.arms = [];
+  for (const [sx, ph] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(lift, sx * 0.3, 0.38, 0.02);
+    parts.arms.push({ g: arm, phase: ph });
+    box(arm, 0.07, 0.2, 0.07, m.accent, sx * 0.02, -0.08, 0);
+    box(arm, 0.1, 0.09, 0.1, m.belly, sx * 0.02, -0.2, 0);
+  }
+  parts.legs = [];
+  for (const [sx, ph] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(lift, sx * 0.1, 0.12, 0);
+    parts.legs.push({ g: leg, phase: ph });
+    box(leg, 0.1, 0.1, 0.1, m.dark, 0, -0.04, 0);
+    box(leg, 0.14, 0.05, 0.2, m.dark, 0, -0.1, 0.04);
+  }
+}
+
+// The wild look: one gift box for every Surprise species (only the paper differs). A 0.9 cube: a body, a lid with a ribbon cross and a bow.
+// Geometry and material are shared per paper (never disposed: Wild removal only takes the box off the model).
+export const PAPERS = [
+  { name: 'red', body: 0xe8384a, dots: 0xff8a9a, ribbon: 0xfff0d0, bow: 0xffd23a },
+  { name: 'blue', body: 0x3a8ce8, dots: 0x8ac4ff, ribbon: 0xfff0d0, bow: 0xff6a8a },
+  { name: 'green', body: 0x3ac86a, dots: 0x9af0b0, ribbon: 0xfff0d0, bow: 0xe8384a },
+  { name: 'purple', body: 0xa05ae8, dots: 0xd0a8ff, ribbon: 0xffe08a, bow: 0x3ac8e8 },
+  { name: 'pink', body: 0xff7ab8, dots: 0xffc0dc, ribbon: 0xffffff, bow: 0xb05ae8 },
+  { name: 'gold', body: 0xf2b81c, dots: 0xffe27a, ribbon: 0xfff6c8, bow: 0xe8384a, gold: true },
+];
+// The paper of a wild creature: from its uid (so a box never changes), gold when the creature inside is a rarer one.
+export const giftPaperOf = (uid, rare) => (rare ? PAPERS[5] : PAPERS[hash32(String(uid || 'x')) % 5]);
+const WRAP_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+const WRAP_GEO = {};
+function suMerge(list) {
+  const pos = [], nor = [], col = [], idx = [], c = new THREE.Color();
+  for (const [w, h, d, color, x, y, z] of list) {
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(x, y, z);
+    const base = pos.length / 3;
+    pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array);
+    c.setHex(color);
+    for (let i = 0; i < g.attributes.position.count; i++) col.push(c.r, c.g, c.b);
+    idx.push(...Array.from(g.index.array, i => i + base));
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  return geo;
+}
+export const WRAP = { w: 0.9, bodyH: 0.62, lidH: 0.26 };
+export function buildGiftWrap(paper) {
+  let geos = WRAP_GEO[paper.name];
+  if (!geos) {
+    const { w, bodyH, lidH } = WRAP, body = [], lid = [];
+    body.push([w, bodyH, w, paper.body, 0, bodyH / 2, 0]);
+    body.push([w * 0.16, bodyH + 0.02, w + 0.02, paper.ribbon, 0, bodyH / 2, 0], [w + 0.02, bodyH + 0.02, w * 0.16, paper.ribbon, 0, bodyH / 2, 0]); // the ribbon cross
+    for (const [dx, dy] of [[-0.25, 0.18], [0.25, 0.4], [0.0, 0.5], [-0.3, 0.46], [0.3, 0.14]]) body.push([0.09, 0.09, w + 0.012, paper.dots, dx, dy, 0], [w + 0.012, 0.09, 0.09, paper.dots, 0, dy, dx]); // paper dots
+    lid.push([w + 0.08, lidH, w + 0.08, paper.body, 0, lidH / 2, 0], [w + 0.1, lidH + 0.02, (w + 0.08) * 0.16, paper.ribbon, 0, lidH / 2, 0], [(w + 0.08) * 0.16, lidH + 0.02, w + 0.1, paper.ribbon, 0, lidH / 2, 0]);
+    lid.push([0.22, 0.12, 0.22, paper.bow, 0, lidH + 0.06, 0]); // the knot
+    for (const sx of [-1, 1]) lid.push([0.3, 0.16, 0.12, paper.bow, sx * 0.2, lidH + 0.1, 0], [0.16, 0.08, 0.14, paper.ribbon, sx * 0.24, lidH + 0.1, 0]); // two bow loops
+    geos = WRAP_GEO[paper.name] = { body: suMerge(body), lid: suMerge(lid) };
+  }
+  const g = new THREE.Group();
+  const bodyMesh = new THREE.Mesh(geos.body, WRAP_MAT), lidMesh = new THREE.Mesh(geos.lid, WRAP_MAT);
+  lidMesh.position.y = WRAP.bodyH;
+  bodyMesh.userData.gear = lidMesh.userData.gear = 'wrap';
+  g.add(bodyMesh, lidMesh);
+  g.userData = { paper, body: bodyMesh, lid: lidMesh, lidY: WRAP.bodyH };
+  return g;
+}
+
+const SHAPES_SURPRISE = { giftbox, jackbox, pinata, partypopper };
+Object.assign(SHAPES, SHAPES_SURPRISE);
+/* ==== end of T44 surprise ==== */

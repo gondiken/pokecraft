@@ -2853,3 +2853,101 @@ SIG.anchordrop = (k, from, to) => {
   };
 };
 /* ==== end of T40b pirate ==== */
+/* ==== T44 surprise ==== */
+// Gift orange, party pink, cream.
+FX_COLORS.surprise = [0xffb04a, 0xff6a8a, 0xfff0d0];
+
+// A little wrapped box tumbles along a high arc (a square with a bow knot), with a streamer trail behind it.
+TRAVEL.surprise = k => {
+  const box = k.sprite('square', { color: 0xff6a8a, size: 0.42, glow: true });
+  const knot = k.sprite('dot', { color: 0xffd23a, size: 0.2, glow: true });
+  const N = 4;
+  const trail = k.points({ n: N, tex: 'square', size: 0.14, glow: true, colors: [0xffd23a, 0x3ac8e8, 0x6ae86a, 0xb05ae8] });
+  return {
+    dur: 400,
+    step(p) {
+      k.at(p, A, 0.7);
+      box.position.copy(A);
+      box.material.rotation = p * 9;
+      knot.position.set(A.x, A.y + 0.03, A.z);
+      for (let i = 0; i < N; i++) {
+        const t = p - 0.07 * (i + 1);
+        if (t <= 0) { trail.hide(i); continue; }
+        k.at(t, B, 0.7);
+        trail.set(i, B.x + Math.sin(t * 30 + i) * 0.08, B.y + 0.02 * i, B.z);
+      }
+      trail.fade(fadeOut(p, 0.75));
+    },
+  };
+};
+
+// The box bursts: a confetti puff and four streamers that curl out and fall.
+IMPACT.surprise = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10;
+  const conf = k.points({ n: N, tex: 'square', size: 0.16 * m, glow: true, colors: [0xff6a8a, 0xffd23a, 0x3ac8e8, 0x6ae86a, 0xb05ae8] });
+  const streamers = k.points({ n: 4, tex: 'square', size: 0.2 * m, glow: true, colors: [0xff6a8a, 0x3ac8e8, 0xffd23a, 0x6ae86a] });
+  const s = k.seeds(N, 2);
+  const flash = k.sprite('star', { color: 0xfff0d0, size: 0.1, glow: true });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i * 2], d = (to.r * 0.4 + 0.1 + s[i * 2 + 1] * 0.6) * k.ease(p) * m;
+        conf.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.2 + 0.9 * m * 4 * p * (1 - p) * (0.5 + s[i * 2 + 1] * 0.5) - p * 0.2, to.pos.z + Math.sin(ang) * d);
+      }
+      conf.fade(fadeOut(p, 0.7));
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * 6.283 + 0.6, d = (0.3 + 0.7 * k.ease(p)) * m;
+        streamers.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.55 * m * Math.sin(p * Math.PI) - p * 0.1 + Math.sin(p * 18 + i) * 0.05, to.pos.z + Math.sin(ang) * d);
+      }
+      streamers.fade(fadeOut(p, 0.6));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 0.8 * m * Math.sin(Math.PI * clamp01(p * 1.8))));
+      flash.material.rotation = p * 2;
+      flash.material.opacity = fadeOut(p, 0.5);
+    },
+  };
+};
+
+// Ta-Daa!: a curtain of stars sweeps open beside the target with a big star in the middle that bursts out.
+SIG.tadaa = (k, from, to) => {
+  const N = 8;
+  const stars = k.points({ n: N, tex: 'star', size: 0.34, glow: true, colors: [0xffd23a, 0xff6a8a, 0xfff0d0] });
+  const big = k.sprite('star', { color: 0xffe14a, size: 0.1, glow: true });
+  const feet = feetOf(to);
+  return {
+    dur: 640,
+    step(p) {
+      const open = clamp01(p / 0.5), pop = clamp01((p - 0.5) / 0.5);
+      for (let i = 0; i < N; i++) {
+        const side = i < N / 2 ? -1 : 1, row = i % (N / 2), spread = (1 - open) * 0.35 + 0.35 + pop * 0.7;
+        stars.set(i, to.pos.x + k.side.x * side * spread, feet + 0.3 + row * 0.28 + pop * 0.3, to.pos.z + k.side.z * side * spread);
+      }
+      stars.fade(fadeOut(p, 0.8));
+      big.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
+      big.scale.setScalar(Math.max(0.01, (p < 0.5 ? open : 1 + pop * 1.2) * 1.1 * (p > 0.85 ? (1 - p) / 0.15 : 1)));
+      big.material.rotation = p * 4;
+    },
+  };
+};
+
+// Candy Burst: a piñata spray of sweets flies from the user at the target in a fan and bounces down.
+SIG.candyburst = (k, from, to) => {
+  const N = 12;
+  const sweets = k.points({ n: N, tex: 'dot', size: 0.26, glow: true, colors: [0xff6a8a, 0xffd23a, 0x3ac8e8, 0x6ae86a, 0xb05ae8] });
+  const s = k.seeds(N, 2);
+  return {
+    dur: 650,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.025) / 0.6);
+        if (t <= 0) { sweets.hide(i); continue; }
+        k.at(t, A, 0.5 + s[i * 2] * 0.6);
+        const fan = (s[i * 2 + 1] - 0.5) * 0.8 * Math.sin(Math.PI * t);
+        sweets.set(i, A.x + k.side.x * fan, A.y + (t > 0.9 ? Math.abs(Math.sin(p * 30 + i)) * 0.15 : 0), A.z + k.side.z * fan);
+      }
+      sweets.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+/* ==== end of T44 surprise ==== */

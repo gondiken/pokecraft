@@ -505,7 +505,7 @@ export class Battle {
       g.player.lookAt(new THREE.Vector3(wild.pos.x, wild.pos.y + 0.5, wild.pos.z));
       this.refresh();
       this.cry(this.foe);
-      await this.say(was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
+      await this.say(was?.gift ? `Surprise! The gift was a wild ${nameOf(this.foe)}!` /* T44 */ : was ? `That ${was} block was a wild ${nameOf(this.foe)}!` : `A wild ${nameOf(this.foe)} appeared!`);
     } else if (this.coop) {
       const npc = this.trainer;
       this.foes = [makeBoss(this.coop.boss, this.allies, this.friends, this.coop.grow || 0)]; // T38c
