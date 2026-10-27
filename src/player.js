@@ -281,7 +281,7 @@ export class Player {
       // T43 (Funfair): every landing on a block with `trampoline` launches you again. Hold Jump to bounce higher (+step), let go to come down (-drop).
       if (this.onGround) {
         const tr = under?.trampoline;
-        if (tr) { this.trampH = Math.min(tr.max, Math.max(tr.min, (this.trampH || 0) + (k.Space ? tr.step : -tr.drop))); this.vel.y = Math.sqrt(2 * 28 * g * this.trampH); this.trampolined = true; }
+        if (tr) { this.trampH = Math.min(tr.max, Math.max(tr.min, (this.trampH || 0) + (k.Space ? tr.step : -tr.drop))); this.vel.y = Math.sqrt(2 * 28 * g * this.trampH); this.trampolined = true; this.trampN = (this.trampN || 0) + 1; } // (trampN: T43 harder games count the bounces)
         else this.trampH = 0;
       }
     }

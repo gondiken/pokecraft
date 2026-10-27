@@ -129,6 +129,7 @@ async function measureDream(profile) {
     const spots = { N: [sx, sz, 0], E: [sx, sz, -Math.PI / 2], S: [sx, sz, Math.PI], W: [sx, sz, Math.PI / 2] };
     if (w.isles) { const t = w.isles.list.find(i => i.id === 'tall'); spots.tall = [t.x, t.z, Math.PI / 4, t.top + 3]; }
     if (w.swirl) Object.assign(spots, { mist: [48, 54, 0, 28.6], ink: [75, 80, -Math.PI / 2, 22.6], dawn: [48, 106, Math.PI, 16.6] }); // T38d: the dim zone with its puffs, the bridge, the sunset side
+    if (w.swirl?.house) Object.assign(spots, { houseHall: [108, 28, Math.PI, 14.6], houseFling: [146, 11, -Math.PI / 2, 10.6], houseOut: [75, 60, -Math.PI / 2, 30] }); // T42: inside the Hall of Swirls, the Fling Room, and looking at the House from afar
     if (w.parts?.some(pt => pt.id === 'stadium')) Object.assign(spots, { stW: [58, 162, Math.PI / 2, 12.6], stE: [58, 162, -Math.PI / 2, 12.6], stCourt: [58, 203, Math.PI / 2, 12.6], stTunnel: [58, 133, Math.PI, 12.6] }); // T40d: the Ball Stadium: the centre spot looking at each goal, the court, the tunnel
     if (w.parts?.some(pt => pt.id === 'fair')) Object.assign(spots, { fairArch: [166, 126, Math.PI, 12.6], fairArena: [128, 139, Math.PI, 14], fairCarousel: [166, 139, Math.PI, 12.6], fairStage: [201, 200, -Math.PI / 2, 25.6] }); // T43: the Funfair: from the arrival, the arena, the carousel and the Star Stage
     if (w.pirate) Object.assign(spots, { ship: [104, 86, Math.PI, 19], sea: [30, 30, 0, 14.5] }); // T40b: Lookout Isle looking at the ship, and a spot at sea level

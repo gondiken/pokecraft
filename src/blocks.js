@@ -19,6 +19,7 @@ const WOOL_TYPES = [
   'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
   'ninja', // wave 12 (T37): id 113
   'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
+  'portal', // wave 15 (T42): id 215
   'funfair', // wave 15 (T43): id 224
   'surprise', // wave 15 (T44): id 235
   'atlantis', // wave 15 (T41): id 204
@@ -35,6 +36,7 @@ const WOOL_RGB = {
   food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
   ninja: [46, 40, 66],
   tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
+  portal: [150, 110, 235], // T42
   funfair: [255, 150, 200],
   surprise: [248, 168, 58],
   atlantis: [70, 170, 170], // T41
@@ -81,6 +83,8 @@ const MORE_TILES = [
   // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
+  // T42 portal (wave 15): the Portal House in the Swirl: lilac wall (top), swirl floor, white swirl pad, orange rim, roof (top / side), rail, shut door
+  'PO_WALL', 'PO_WALL_TOP', 'PO_FLOOR', 'PO_PANEL', 'PO_RIM', 'PO_ROOF', 'PO_ROOF_SIDE', 'PO_RAIL', 'PO_SHUT', 'PO_PEACH',
   /* ==== T43 funfair tiles ==== */
   // floor (top / side), bumper floor, bumper rail (top / side), trampoline (top / side), carousel deck, coaster rail, white lattice, marquee bulbs,
   // red and white stripe, star stage
@@ -165,6 +169,8 @@ export const B = {
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
+  // 215-223: T42, the Portal House in the Swirl (215 is the portal wool; none placeable, all fixed). 223 = the peach pad (owner 2026-10-27: your own orange swirl).
+  PO_WALL: 216, PO_FLOOR: 217, PO_PANEL: 218, PO_RIM: 219, PO_ROOF: 220, PO_RAIL: 221, PO_SHUT: 222, PO_PEACH: 223,
   // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
   FAIR_FLOOR: 225, BUMPER_FLOOR: 226, BUMPER_RAIL: 227, TRAMPOLINE: 228, CAROUSEL_DECK: 229, COASTER_RAIL: 230, COASTER_SUPPORT: 231,
   MARQUEE: 232, CANDY_STRIPE: 233, STAR_STAGE: 234,
@@ -178,6 +184,7 @@ export const B = {
 const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143, funfair: 224, surprise: 235 };
 Object.assign(WOOL_ID_OVERRIDE, { atlantis: 204 }); // T41
 Object.assign(WOOL_ID_OVERRIDE, { doodle: 244 }); // T45
+Object.assign(WOOL_ID_OVERRIDE, { portal: 215 }); // T42
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -374,6 +381,20 @@ BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, sid
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
+// T42 Portal House blocks (none can be placed, all fixed). None of them glows (owner 2026-10-27: a glowing block gives its chunk a second
+// mesh, one more draw call; the Swirl is bright everywhere anyway). PO_SHUT is a hall door that opens (setLive -> air) when the room
+// before it is done; PO_PEACH is the peach pad your own orange swirl sticks to.
+{
+  const HOUSE = 'This is the Portal House. Too magic to break!';
+  BLOCKS[B.PO_WALL] = { name: 'House Wall', top: T.PO_WALL_TOP, side: T.PO_WALL, bottom: T.PO_WALL, fixed: true, wallText: HOUSE };
+  BLOCKS[B.PO_FLOOR] = { name: 'Swirl Floor', ...all(T.PO_FLOOR), fixed: true, wallText: HOUSE };
+  BLOCKS[B.PO_PANEL] = { name: 'Swirl Pad', ...all(T.PO_PANEL), fixed: true, wallText: 'A white pad! Tap it to stick your swirl here.' };
+  BLOCKS[B.PO_RIM] = { name: 'Orange Rim', ...all(T.PO_RIM), fixed: true, wallText: 'The orange swirl is joined to yours!' };
+  BLOCKS[B.PO_ROOF] = { name: 'House Roof', top: T.PO_ROOF, side: T.PO_ROOF_SIDE, bottom: T.PO_ROOF_SIDE, fixed: true, wallText: HOUSE };
+  BLOCKS[B.PO_RAIL] = { name: 'Swirl Rail', ...all(T.PO_RAIL), fixed: true, wallText: 'Swirls slide along this rail.' };
+  BLOCKS[B.PO_PEACH] = { name: 'Peach Pad', ...all(T.PO_PEACH), fixed: true, wallText: 'A peach pad! Tap it to stick your orange swirl here.' };
+  BLOCKS[B.PO_SHUT] = { name: 'Shut Door', ...all(T.PO_SHUT), fixed: true, wallText: 'Finish the room before it to open this door!' };
+}
 // T45 Sketchbook blocks (none placeable, all fixed). The ink is drawn only with setLive (the pencil draws a line as you follow its tip).
 BLOCKS[B.DO_PAPER] = { name: 'Blank Page', ...all(T.DO_PAPER), fixed: true, wallText: "It's the blank page under the drawing." };
 BLOCKS[B.DO_INK] = { name: 'Pencil Line', ...all(T.DO_INK), fixed: true, wallText: "The pencil drew this. You can't rub it out!" };
@@ -400,8 +421,8 @@ BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: 
   BLOCKS[B.PARTY_FLOOR] = { name: 'Party Floor', ...all(T.SU_FLOOR), ...fx, wallText: 'A party floor. Too much fun to dig!' };
   BLOCKS[B.GIFT_DOOR] = { name: 'Gift Door', top: T.SU_DOOR_TOP, side: T.SU_DOOR, bottom: T.SU_DOOR_TOP, ...fx, wallText: 'Press Open! to see what is inside!' };
   BLOCKS[B.GOLD_DOOR] = { name: 'Gold Door', ...all(T.SU_GOLD_DOOR), glow: true, noLight: true, ...fx, wallText: 'A golden door! Press Open! to see what is inside!' };
-  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
-  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Boop the jack when it pops out!' };
+  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
+  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
   BLOCKS[B.BALL_PIT] = { name: 'Ball Pit', ...all(T.SU_BALLS), bounce: 3, ...fx, wallText: 'A ball pit! Jump to bob up and down.' };
   BLOCKS[B.RIBBON] = { name: 'Ribbon', ...all(T.SU_RIBBON), glow: true, noLight: true, ...fx, wallText: 'A ribbon on the Big Gift. Win a golden bow to untie it!' };
 }
@@ -1161,6 +1182,28 @@ export function drawAtlas() {
       const body = y >= 5 && y <= 10 && x >= 2, tip = x < 5 && Math.abs(y - 7.5) < x - 0.5; // a pencil lying down: yellow body, wood cone, dark lead
       put(T.DO_PAD_SIDE, x, y, y === 4 || y === 11 ? [90, 84, 100] : body && x >= 5 ? (y === 5 || y === 10 ? [214, 160, 20] : [255, 214, 60]) : tip ? (x < 2 ? [60, 58, 70] : [230, 190, 140]) : shade(CREAM, 1 + (r5() - 0.5) * 0.03));
       put(T.DO_BINDING, x, y, (y % 5 >= 1 && y % 5 <= 2 && x > 1 && x < 14) ? [196, 200, 214] : shade([150, 118, 84], 1 + (r5() - 0.5) * 0.1));
+    });
+  }
+  { // T42 portal blocks (own random numbers): lilac plaster with a faint swirl, teal-and-cream checks, a white pad with a grey ring, orange rim, violet shingles, rail, shut door
+    const r15 = mulberry32(4242);
+    const sh15 = (col, a) => shade(col, 1 + (r15() - 0.5) * a);
+    const edge15 = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    each((x, y) => {
+      const sw = Math.sin(Math.atan2(y - 7.5, x - 7.5) * 2 + Math.hypot(x - 7.5, y - 7.5) * 0.9);
+      put(T.PO_WALL, x, y, sw > 0.82 ? sh15([196, 172, 244], 0.06) : sh15([214, 196, 250], 0.08));
+      put(T.PO_WALL_TOP, x, y, edge15(x, y) ? [170, 146, 220] : sh15([226, 212, 255], 0.06));
+      put(T.PO_FLOOR, x, y, (x >> 2) + (y >> 2) & 1 ? sh15([110, 214, 206], 0.08) : sh15([250, 238, 214], 0.06));
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      put(T.PO_PANEL, x, y, edge15(x, y) ? [200, 200, 212] : d > 5 && d < 6.4 ? [170, 170, 190] : d < 1.5 ? [200, 220, 240] : sh15([252, 252, 255], 0.03));
+      const rim = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+      put(T.PO_RIM, x, y, rim > 5.5 ? [255, 190, 90] : rim > 3.5 ? [255, 150, 40] : [255, 220, 150]);
+      const shingle = (y + (x >> 3) * 2) % 4;
+      put(T.PO_ROOF, x, y, shingle === 0 ? sh15([92, 64, 170], 0.05) : sh15([130, 98, 220], 0.1));
+      put(T.PO_ROOF_SIDE, x, y, y % 4 === 0 ? [96, 68, 176] : sh15([126, 94, 214], 0.1));
+      put(T.PO_RAIL, x, y, y < 3 || y > 12 ? [255, 150, 40] : (x + y) % 4 === 0 ? [255, 235, 190] : [255, 190, 90]);
+      const knob = Math.hypot(x - 11, y - 8) < 1.4;
+      put(T.PO_SHUT, x, y, knob ? [255, 214, 90] : edge15(x, y) || x === 7 || x === 8 ? [92, 64, 170] : sh15([150, 118, 232], 0.08));
+      put(T.PO_PEACH, x, y, edge15(x, y) ? [236, 150, 90] : d > 5 && d < 6.4 ? [240, 130, 50] : d < 1.5 ? [255, 236, 210] : sh15([255, 204, 160], 0.04)); // peach, an orange ring
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.

@@ -102,6 +102,12 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.54, 0.025, 0.54, 0x1a1a1a, 0, 0.35, 0); // the eye patch's strap
     box(head, 0.14, 0.13, 0.03, 0x1a1a1a, -0.11, 0.28, 0.268);
   }
+  if (look === 'swirl') { // T42: a teal-and-orange swirl badge on the chest and a violet headband (the Portal keepers)
+    box(head, 0.55, 0.08, 0.55, 0x9a6aff, 0, 0.4, 0);
+    box(head, 0.1, 0.1, 0.04, 0xff9a3a, 0, 0.4, 0.29);
+    const sw = [[0, 0, 0xff9a3a], [0.07, 0.03, 0x5ae8e0], [0.03, 0.1, 0x9a6aff], [-0.07, 0.07, 0x5ae8e0], [-0.09, -0.03, 0x9a6aff]];
+    for (const [x, y, c] of sw) box(group, 0.07, 0.07, 0.03, c, 0.1 + x, 1.2 + y, 0.155);
+  }
   if (look === 'fair') { // T43: Merry Mae's red-and-white striped straw boater (a flat brim, a stripy crown, a red band) with a pink flower
     box(head, 0.7, 0.05, 0.7, 0xf2dc9a, 0, 0.5, 0);
     for (const x of [-0.18, 0, 0.18]) box(head, 0.09, 0.2, 0.46, x === 0 ? 0xf6efe0 : 0xe03a4a, x, 0.62, 0);

@@ -1,34 +1,37 @@
-// T44: the live part of the Room of Doors (LIVE.doors, plans/T44.md section 4). Surprise doors that open on a hit, twelve rooms (a slide,
-// a ball pit, a confetti shower, springs, doors in doors, a gift shop, Healer Stella, two trainers), the Shuffle Stage (follow the bow with
-// your eyes), the Pop-Up Room (boop the jacks), the Big Gift that four golden bows untie, and the gift chests.
+// T44: the live part of the Room of Doors (LIVE.doors, plans/T44.md section 4 and "Rework"). Surprise doors that open on a hit, twelve rooms
+// (a slide, a ball pit, a confetti shower, springs, doors in doors, a gift shop, Healer Stella, two trainers), the Piñata Party in the middle
+// of the hall (bows 1-3: whack a swinging piñata when it swings at you), Jack Catch in the Pop-Up Room (bow 4: run under the flying jacks,
+// dodge the pies), the Big Gift that four golden bows untie, and the gift chests.
 //
 // Everything is per player and in memory except the bows (`beaten` keys pw:doors:bow1..4, saved at once) and the gift chests (pw:doors:gift*).
 // Blocks change only through LiveCells / world.setLive (never an edit). Clocks are summed frame dt (frozen in a battle, a question, a panel
-// and the pause screen); every motion is a closed form of a clock, so 60 fps and 1 fps agree. `manual` + `step(dt)` are for tests.
-// No hold, no release: the Shuffle Stage and the Pop-Up Room take one press of the action button (E, a click, a tap, the big button).
+// and the pause screen); every motion is a closed form of a clock (pinata.js, jackcatch.js), so 60 fps and 1 fps agree. `manual` + `step(dt)`
+// are for tests. One press (Whack!), no hold: E, a click, the big button, or a tap on the screen (gymLive.tap: the stick swings that way).
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { Mover, PATHS } from './mover.js';
 import { sound } from './sound.js';
-import { SHUFFLE, shufflePlan, doorsAt, restDoors, pickDoor, helpLevel, lookOf, hashStr } from './shuffle.js';
-import { POPUP, popPlan, popAt, boopOk, popEnd, needOf } from './popup.js';
-import { STAGE, SIDES, bowKey, bowState } from './doorsland.js';
+import { PINATA, pinataPlan, newRun, pinataAt, topAt, whack, timeUp, hashStr } from './pinata.js';
+import { CATCH, catchPlan, newCatch, stepCatch, inAir, slowed, jacksLeft } from './jackcatch.js';
+import { RING, SIDES, bowKey, bowState } from './doorsland.js';
 
 export const DOORS = {
   cubes: 3,            // a gift chest
   hop: 0.3,            // a trainer jumps out of its door
-  resultShow: 1.4,     // a wrong door shows its surprise this long before "Again!"
-  win: 2.2,            // the bow flies to you, confetti, then the stage rests
-  boopR: 1.25,         // how close (blocks) a look ray must pass a jack to boop it
-  popRange: 30, stageRange: 48,
+  burst: 2.6,          // a popped piñata: candy, the surprise, the bow flies to you, then the rug rests
+  nap: 2.0,            // time up: the piñata floats up for a nap
+  stickSwing: 0.28,    // the party stick's swing (looks)
+  splat: 1.6,          // the cream on the screen fades in this long
+  clearR: 17,          // during a game no wild gift box stays this close to the rug (one never sits between you and the piñata)
+  hallRange: 40, popRange: 30,
   confetti: 160, balls: 120,
 };
 const SILLY = [
-  { id: 'duck', say: 'Quack! A rubber duck! The bow was here. Again?', sound: 'sillyhonk' },
-  { id: 'bubbles', say: 'Bubbles! Pop pop pop! The bow was here. Again?', sound: 'popout' },
-  { id: 'sock', say: 'Boing! A sock on a spring! The bow was here. Again?', sound: 'boing' },
-  { id: 'cloud', say: 'A little cloud! Puff! The bow was here. Again?', sound: 'smokepuff' },
+  { id: 'duck', say: 'Quack! A rubber duck fell out too!', sound: 'sillyhonk' },
+  { id: 'bubbles', say: 'Bubbles fell out too! Pop pop pop!', sound: 'popout' },
+  { id: 'sock', say: 'Boing! A sock on a spring fell out too!', sound: 'boing' },
+  { id: 'cloud', say: 'A little cloud fell out too! Puff!', sound: 'smokepuff' },
 ];
 const ROOM_SAY = {
   slide: 'A slide! Climb the stairs and press Slide!',
@@ -43,7 +46,6 @@ const ROOM_SAY = {
   wrapping: 'The Wrapping Room.', popup: 'The Pop-Up Room! Stand on the pad and press Play!', gift: 'The Big Gift room!',
 };
 const key = (x, y, z) => `${x},${y},${z}`;
-const HOT = new THREE.Color(2, 2, 0.6), PLAIN = new THREE.Color(1, 1, 1); // a booped jack's nose flashes
 const ease = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 const rand01 = (i, salt) => (hashStr(`${salt}|${i}`) % 10007) / 10007;
 
@@ -67,23 +69,39 @@ function merged(boxes) {
   geo.setIndex(idx);
   return geo;
 }
-const GOLD = 0xffd23a, CREAM = 0xfff0d0, WHITE = 0xffffff;
+const GOLD = 0xffd23a, WHITE = 0xffffff, INK = 0x16121a;
 // The golden bow: two loops, a knot and two tails (origin = the middle of the knot).
 const bowBoxes = (s = 1) => [[0.5 * s, 0.34 * s, 0.14 * s, GOLD, -0.3 * s, 0.12 * s, 0], [0.5 * s, 0.34 * s, 0.14 * s, GOLD, 0.3 * s, 0.12 * s, 0], [0.24 * s, 0.24 * s, 0.2 * s, 0xe8a81a, 0, 0.1 * s, 0],
   [0.12 * s, 0.4 * s, 0.1 * s, GOLD, -0.12 * s, -0.22 * s, 0], [0.12 * s, 0.4 * s, 0.1 * s, GOLD, 0.12 * s, -0.22 * s, 0], [0.2 * s, 0.16 * s, 0.08 * s, WHITE, -0.34 * s, 0.14 * s, 0.08], [0.2 * s, 0.16 * s, 0.08 * s, WHITE, 0.34 * s, 0.14 * s, 0.08]];
-// A stage door: a frame of gold (posts, lintel, a dark back so the bow shows) and a panel that swings on its left hinge.
-const frameBoxes = () => [[0.22, 3.2, 0.5, GOLD, -1.09, 1.6, 0], [0.22, 3.2, 0.5, GOLD, 1.09, 1.6, 0], [2.4, 0.22, 0.5, GOLD, 0, 3.09, 0], [2.0, 2.98, 0.06, 0x3a2a5a, 0, 1.49, -0.2], [2.4, 0.14, 0.6, 0xb8861a, 0, 0.07, 0]];
-const panelBoxes = () => [[2.0, 2.98, 0.12, WHITE, 1.0, 1.49, 0], [0.34, 2.98, 0.14, CREAM, 1.0, 1.49, 0.01], [2.0, 0.34, 0.14, CREAM, 1.0, 1.7, 0.01], [0.5, 0.4, 0.16, GOLD, 1.0, 1.7, 0.03], [0.14, 0.14, 0.2, 0xffffff, 1.7, 1.5, 0.04]];
-// A pop-up jack: a spring of three grey discs, a cream head with a grin, a red nose and a striped cap (origin = the top of its box).
-const jackBoxes = () => [[0.5, 0.12, 0.5, 0x9094a2, 0, 0.1, 0], [0.5, 0.12, 0.5, 0xc8ccd8, 0, 0.3, 0], [0.5, 0.12, 0.5, 0x9094a2, 0, 0.5, 0], [0.7, 0.62, 0.7, 0xfff0d8, 0, 0.98, 0],
-  [0.1, 0.1, 0.1, 0x16121a, -0.17, 1.08, 0.36], [0.1, 0.1, 0.1, 0x16121a, 0.17, 1.08, 0.36], [0.16, 0.14, 0.12, 0xff4a6a, 0, 0.94, 0.4], [0.34, 0.06, 0.06, 0x16121a, 0, 0.78, 0.36],
-  [0.76, 0.12, 0.76, 0xe8384a, 0, 1.34, 0], [0.46, 0.22, 0.46, 0xffd23a, 0, 1.5, 0], [0.12, 0.12, 0.12, 0xffffff, 0, 1.66, 0]];
+// A pop-up jack: a spring of three grey discs, a cream head with a grin, a red nose and a striped cap (origin = the middle of the jack).
+const jackBoxes = () => [[0.5, 0.12, 0.5, 0x9094a2, 0, -0.55, 0], [0.5, 0.12, 0.5, 0xc8ccd8, 0, -0.35, 0], [0.5, 0.12, 0.5, 0x9094a2, 0, -0.15, 0], [0.7, 0.62, 0.7, 0xfff0d8, 0, 0.33, 0],
+  [0.1, 0.1, 0.1, INK, -0.17, 0.43, 0.36], [0.1, 0.1, 0.1, INK, 0.17, 0.43, 0.36], [0.16, 0.14, 0.12, 0xff4a6a, 0, 0.29, 0.4], [0.34, 0.06, 0.06, INK, 0, 0.13, 0.36],
+  [0.76, 0.12, 0.76, 0xe8384a, 0, 0.69, 0], [0.46, 0.22, 0.46, 0xffd23a, 0, 0.85, 0], [0.12, 0.12, 0.12, 0xffffff, 0, 1.01, 0]];
+// A cream pie: a tin, the cream, a cherry.
+const pieBoxes = () => [[0.8, 0.16, 0.8, 0xb8b8c8, 0, -0.1, 0], [0.72, 0.2, 0.72, 0xfff6e0, 0, 0.06, 0], [0.4, 0.14, 0.4, 0xffffff, 0, 0.2, 0], [0.14, 0.14, 0.14, 0xe8243a, 0, 0.32, 0]];
+// The three piñatas (crepe-paper stripes; origin = the middle, the rope's knot on top at y 0.7).
+const PINATAS = {
+  llama: [[0.9, 0.5, 0.5, 0xff6a8a, 0, 0, 0], [0.9, 0.12, 0.52, 0xffd23a, 0, 0.12, 0], [0.9, 0.12, 0.52, 0x3ac8e8, 0, -0.12, 0], [0.26, 0.6, 0.26, 0xff6a8a, 0.38, 0.38, 0], [0.36, 0.22, 0.3, 0xffd23a, 0.5, 0.66, 0],
+    [0.08, 0.16, 0.08, 0xff6a8a, 0.36, 0.84, 0.08], [0.08, 0.16, 0.08, 0xff6a8a, 0.36, 0.84, -0.08], [0.06, 0.06, 0.06, INK, 0.6, 0.7, 0.12], [0.06, 0.06, 0.06, INK, 0.6, 0.7, -0.12],
+    [0.12, 0.34, 0.12, 0x6ae86a, -0.32, -0.38, 0.14], [0.12, 0.34, 0.12, 0xb05ae8, -0.32, -0.38, -0.14], [0.12, 0.34, 0.12, 0x6ae86a, 0.3, -0.38, 0.14], [0.12, 0.34, 0.12, 0xb05ae8, 0.3, -0.38, -0.14],
+    [0.12, 0.22, 0.12, 0xffd23a, -0.5, 0.12, 0], [0.04, 0.4, 0.04, 0xfff0d0, 0, 0.45, 0]],
+  star: [[0.4, 0.4, 0.3, 0xffd23a, 0, 0, 0], [0.3, 0.36, 0.26, 0xffd23a, 0, 0.36, 0], [0.3, 0.36, 0.26, 0xff8a1a, 0, -0.36, 0], [0.36, 0.3, 0.26, 0xffd23a, 0.36, 0.06, 0], [0.36, 0.3, 0.26, 0xff8a1a, -0.36, 0.06, 0],
+    [0.2, 0.2, 0.24, 0xff6a8a, 0.28, -0.32, 0], [0.2, 0.2, 0.24, 0xff6a8a, -0.28, -0.32, 0], [0.06, 0.06, 0.06, INK, -0.08, 0.06, 0.16], [0.06, 0.06, 0.06, INK, 0.08, 0.06, 0.16], [0.16, 0.04, 0.04, INK, 0, -0.06, 0.16],
+    [0.06, 0.3, 0.06, 0x3ac8e8, 0.5, -0.24, 0.06], [0.06, 0.3, 0.06, 0x6ae86a, -0.5, -0.24, 0.06], [0.04, 0.3, 0.04, 0xfff0d0, 0, 0.6, 0]],
+  rocket: [[0.44, 0.9, 0.44, 0xe8384a, 0, 0, 0], [0.46, 0.12, 0.46, WHITE, 0, 0.2, 0], [0.46, 0.12, 0.46, WHITE, 0, -0.16, 0], [0.3, 0.24, 0.3, 0x3ac8e8, 0, 0.56, 0], [0.14, 0.14, 0.14, 0x3ac8e8, 0, 0.72, 0],
+    [0.18, 0.18, 0.06, 0xbfe8ff, 0, 0.12, 0.23], [0.16, 0.28, 0.12, 0xffd23a, 0.3, -0.36, 0], [0.16, 0.28, 0.12, 0xffd23a, -0.3, -0.36, 0], [0.24, 0.16, 0.24, 0xff8a1a, 0, -0.52, 0], [0.12, 0.14, 0.12, 0xffd23a, 0, -0.64, 0]],
+};
+// The balloons that hold the rope (origin = the rope's top), the party stick (origin = your hand, pointing along -z).
+const balloonBoxes = () => [[0.7, 0.8, 0.7, 0xff6a8a, -0.35, 0.75, 0], [0.7, 0.8, 0.7, 0x3ac8e8, 0.35, 0.8, 0.1], [0.66, 0.76, 0.66, 0xffd23a, 0, 1.25, -0.1], [0.04, 0.5, 0.04, WHITE, 0, 0.2, 0]];
+const stickBoxes = () => { const out = []; for (let i = 0; i < 6; i++) out.push([0.07, 0.07, 0.22, i % 2 ? 0xff6a8a : 0xfff0d0, 0, 0, -0.11 - i * 0.22]); out.push([0.14, 0.14, 0.14, GOLD, 0, 0, -1.38]); return out; };
 const propBoxes = {
-  duck: [[0.7, 0.45, 0.8, 0xffd23a, 0, 0.3, 0], [0.5, 0.45, 0.5, 0xffd23a, 0, 0.75, 0.2], [0.3, 0.12, 0.3, 0xff8a1a, 0, 0.7, 0.55], [0.1, 0.1, 0.1, 0x16121a, -0.14, 0.85, 0.42], [0.1, 0.1, 0.1, 0x16121a, 0.14, 0.85, 0.42]],
+  duck: [[0.7, 0.45, 0.8, 0xffd23a, 0, 0.3, 0], [0.5, 0.45, 0.5, 0xffd23a, 0, 0.75, 0.2], [0.3, 0.12, 0.3, 0xff8a1a, 0, 0.7, 0.55], [0.1, 0.1, 0.1, INK, -0.14, 0.85, 0.42], [0.1, 0.1, 0.1, INK, 0.14, 0.85, 0.42]],
   bubbles: [[0.5, 0.5, 0.5, 0xbfe8ff, -0.5, 0.5, 0], [0.4, 0.4, 0.4, 0xdff4ff, 0.4, 1.0, 0.1], [0.55, 0.55, 0.55, 0xbfe8ff, 0.1, 1.7, 0], [0.3, 0.3, 0.3, 0xdff4ff, -0.3, 1.3, 0.2], [0.3, 0.3, 0.3, 0xbfe8ff, 0.6, 0.3, 0.3]],
   sock: [[0.2, 0.2, 0.2, 0x9094a2, 0, 0.1, 0], [0.2, 0.2, 0.2, 0xc8ccd8, 0, 0.35, 0], [0.2, 0.2, 0.2, 0x9094a2, 0, 0.6, 0], [0.5, 0.9, 0.5, 0xff6a8a, 0, 1.2, 0], [0.5, 0.2, 0.5, 0xffffff, 0, 1.4, 0], [0.7, 0.28, 0.5, 0xff6a8a, 0.3, 0.9, 0]],
   cloud: [[1.1, 0.5, 0.7, WHITE, 0, 0.6, 0], [0.7, 0.5, 0.6, WHITE, -0.5, 0.9, 0], [0.7, 0.55, 0.6, WHITE, 0.45, 1.0, 0], [0.5, 0.4, 0.5, 0xdff4ff, 0, 1.25, 0]],
 };
+const SHADOW_DARK = new THREE.Color(0.08, 0.05, 0.12), RING_PINK = new THREE.Color(1, 0.35, 0.6), RING_GOLD = new THREE.Color(1, 0.82, 0.2);
+const JACK_PLAIN = new THREE.Color(1, 1, 1), JACK_GOLD = new THREE.Color(1.5, 1.2, 0.35);
 
 export class DoorsLive {
   constructor(game, part) {
@@ -94,10 +112,9 @@ export class DoorsLive {
     this.cells = new LiveCells(game.world, () => game.player);
     this.playing = () => (game.playing ? game.playing() : true); // tests replace it (no pointer lock there)
     this.manual = false;                                          // tests set it and call step(dt) themselves
-    this.clock = 0; this.syncAcc = 1; this.chipAcc = 1;
+    this.clock = 0; this.syncAcc = 1; this.chipAcc = 1; this.clearAcc = 0;
     this.seed = hashStr(`${game.playerId ?? 'p'}|${game.world.seed ?? 1}`);
     this.meshes = []; this.geos = []; this.mats = [];
-    this.said = new Set();                         // hints given this trip
     this.hops = [];                                // trainers jumping out of their doors
     this.doorList = []; this.doorOf = new Map();
     for (const r of this.plan.rooms) this.addDoor({ id: `r${r.k}`, k: r.k, kind: r.kind, cells: r.door.cells, centre: r.door.centre, open: r.door.open });
@@ -105,17 +122,18 @@ export class DoorsLive {
     this.chestAt = new Map(this.plan.chests.map(c => [key(...c.cell), c]));
     this.giftAt = new Set(this.plan.gift.surface.map(c => key(...c)));
     this.popAt = new Map(this.plan.popup.boxes.map(b => [key(...b.cell), b]));
-    // the Shuffle Stage
-    this.sh = { phase: 'idle', round: 0, plan: null, t: 0, picked: null, win: false, resultT: 0, silly: 0, flyT: -1 };
+    // the Piñata Party (bows 1-3)
+    this.pn = { phase: 'idle', round: 0, run: null, t: 0, resultT: 0, swingT: 9, silly: 0, burstAt: null };
     this.attempts = [0, 0, 0, 0]; this.misses = [0, 0, 0, 0];
-    // the Pop-Up Room
-    this.pu = { phase: 'idle', plan: null, t: 0, done: new Set(), score: 0, resultT: 0, hit: new Map(), last: -1 };
-    this.puAttempt = 0; this.puMisses = 0;
+    // Jack Catch (bow 4)
+    this.jc = { phase: 'idle', run: null, t: 0, resultT: 0, splatT: 9, won: false, open: new Map() };
+    this.jcAttempt = 0; this.jcMisses = 0;
     // the slide
     this.slide = new Mover({ path: PATHS.line({ points: this.plan.slide.path, speed: this.pathLength() / this.plan.slide.time }), canLeave: false, run: 'ride', onEnd: () => this.slideEnd() });
     this.burst = null;
     this.inConfetti = false; this.giftWasDone = false; this.bossBounce = -1;
     this.pitBalls = this.makePitBalls();
+    this.savedNooks = null;
     this.buildMeshes();
     this.syncBlocks();
   }
@@ -131,10 +149,11 @@ export class DoorsLive {
   bows() { return bowState(this.game); }
   inBoxXZ(b, p = this.pos()) { return p.x >= b.x0 && p.x < b.x1 + 1 && p.z >= b.z0 && p.z < b.z1 + 1 && p.y >= b.y0 - 1 && p.y <= b.y1 + 2; }
   roomAt(p = this.pos()) { return this.plan.rooms.find(r => this.inBoxXZ({ ...r.inner, y0: 10, y1: 24 }, p)) ?? null; }
-  onPad(p = this.pos(), pad = STAGE.pad, r = 1.6) { return p.x >= pad.x0 - r && p.x < pad.x1 + 1 + r && p.z >= pad.z0 - r && p.z < pad.z1 + 1 + r && Math.abs(p.y - 11) < 1.5; }
+  onRing(p = this.pos(), r = RING.r + 0.5) { return Math.hypot(p.x - RING.x, p.z - RING.z) <= r && Math.abs(p.y - 11) < 2.5; }
   onPopPad(p = this.pos()) { const c = this.plan.popup.pad.centre; return Math.abs(p.x - c[0]) < 3 && Math.abs(p.z - c[1]) < 2.4 && Math.abs(p.y - 11) < 1.5; }
   inPopRoom(p = this.pos()) { return this.inBoxXZ({ ...this.plan.popup.room, y0: 10, y1: 24 }, p); }
-  eye() { return this.game.player.eyePos; }
+  onHall(p = this.pos()) { return p.x >= 40 && p.x < 73 && p.z >= 40 && p.z < 73; }
+  eye() { const e = this.game.player.eyePos; return { x: e.x, y: e.y, z: e.z }; }
   look() { const f = this.game.player.forward; return { x: f.x, y: f.y, z: f.z }; }
 
   /* ---------------------------------- meshes ---------------------------------- */
@@ -143,31 +162,45 @@ export class DoorsLive {
     if (!scene) return;
     const lam = () => { const m = new THREE.MeshLambertMaterial({ vertexColors: true }); this.mats.push(m); return m; };
     const add = (mesh, geo) => { scene.add(mesh); this.meshes.push(mesh); if (geo) this.geos.push(geo); return mesh; };
-    // the stage doors: a frame and a swinging panel, 5 instances each
-    const fg = merged(frameBoxes()), pg = merged(panelBoxes());
-    this.frames = add(new THREE.InstancedMesh(fg, lam(), 5), fg);
-    this.panels = add(new THREE.InstancedMesh(pg, lam(), 5), pg);
-    for (const m of [this.frames, this.panels]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.count = 0; }
-    this.panels.setColorAt(0, new THREE.Color(1, 1, 1));
-    // the bow (stage) and the Big Gift's bow
+    const inst = (geo, mat, n) => { const m = add(new THREE.InstancedMesh(geo, mat, n), geo); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.count = 0; return m; };
+    // the piñata (one mesh, its geometry swapped per round), its rope, the balloons, the party stick
+    this.pinataGeos = Object.fromEntries(Object.entries(PINATAS).map(([id, b]) => [id, merged(b)]));
+    for (const g of Object.values(this.pinataGeos)) this.geos.push(g);
+    this.pinata = add(new THREE.Mesh(this.pinataGeos.llama, lam())); this.pinata.visible = false;
+    const rg = new THREE.BoxGeometry(0.05, 1, 0.05); rg.translate(0, 0.5, 0);
+    const rm = new THREE.MeshLambertMaterial({ color: 0xfff0d0 }); this.mats.push(rm);
+    this.rope = add(new THREE.Mesh(rg, rm), rg); this.rope.visible = false;
+    const blg = merged(balloonBoxes());
+    this.balloons = add(new THREE.Mesh(blg, lam()), blg); this.balloons.visible = false;
+    const sg0 = merged(stickBoxes());
+    this.stick = add(new THREE.Mesh(sg0, lam()), sg0); this.stick.visible = false;
+    // shadows on the floor (the piñata's, each flying jack's) and rings (where a pie lands; where a jack lands, as help)
+    const shg = new THREE.CircleGeometry(0.55, 18); shg.rotateX(-Math.PI / 2);
+    const shm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }); this.mats.push(shm);
+    this.shadows = inst(shg, shm, 8);
+    const rng = new THREE.RingGeometry(0.62, 0.9, 24); rng.rotateX(-Math.PI / 2);
+    const rngm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); this.mats.push(rngm);
+    this.rings = inst(rng, rngm, 8);
+    for (let i = 0; i < 8; i++) { this.shadows.setColorAt(i, SHADOW_DARK); this.rings.setColorAt(i, RING_PINK); }
+    // the bow (from a piñata) and the Big Gift's bow
     const bg = merged(bowBoxes(1)), bigG = merged(bowBoxes(4));
     this.bow = add(new THREE.Mesh(bg, lam()), bg); this.bow.visible = false;
     this.bigBow = add(new THREE.Mesh(bigG, lam()), bigG);
     this.bigBow.position.set(this.plan.gift.bow[0], this.plan.gift.bow[2] + 0.4, this.plan.gift.bow[1]);
-    // the look outline of the door you are looking at
-    const eg = new THREE.EdgesGeometry(new THREE.BoxGeometry(2.7, 3.5, 0.9));
-    const em = new THREE.LineBasicMaterial({ color: 0xffffff }); this.mats.push(em);
-    this.outline = add(new THREE.LineSegments(eg, em), eg); this.outline.visible = false;
-    // the silly surprise behind a wrong door (one mesh, its geometry swapped)
+    // the silly surprise that falls out of a piñata with the candy (one mesh, its geometry swapped)
     this.propGeos = Object.fromEntries(Object.entries(propBoxes).map(([id, b]) => [id, merged(b)]));
     for (const g of Object.values(this.propGeos)) this.geos.push(g);
     this.prop = add(new THREE.Mesh(this.propGeos.duck, lam())); this.prop.visible = false;
-    // jacks: 9 instances
-    const jg = merged(jackBoxes());
-    this.jacks = add(new THREE.InstancedMesh(jg, lam(), 9), jg);
-    this.jacks.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.jacks.frustumCulled = false; this.jacks.count = 0;
-    for (let i = 0; i < 9; i++) this.jacks.setColorAt(i, new THREE.Color(1, 1, 1));
-    // confetti: camera-facing quads, one instanced mesh
+    // flying jacks and pies
+    const jg = merged(jackBoxes()), pg = merged(pieBoxes());
+    this.jacks = inst(jg, lam(), 6);
+    for (let i = 0; i < 6; i++) this.jacks.setColorAt(i, JACK_PLAIN);
+    this.pies = inst(pg, lam(), 4);
+    // the cream on the screen after a splat (in front of the camera)
+    const spg = new THREE.CircleGeometry(1, 20);
+    const spm = new THREE.MeshBasicMaterial({ color: 0xfff6e0, transparent: true, opacity: 0, depthTest: false, depthWrite: false }); this.mats.push(spm);
+    this.cream = add(new THREE.Mesh(spg, spm), spg); this.cream.visible = false; this.cream.renderOrder = 999;
+    // confetti (and candy): camera-facing quads, one instanced mesh
     const cg = new THREE.PlaneGeometry(0.2, 0.2);
     const cm = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }); this.mats.push(cm);
     this.confetti = add(new THREE.InstancedMesh(cg, cm, DOORS.confetti), cg);
@@ -181,11 +214,13 @@ export class DoorsLive {
     this.balls.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.balls.frustumCulled = false; this.balls.count = 0;
     const bc = [0xe8384a, 0x3a8ce8, 0xffd23a, 0x46c86e, 0xb05ae8];
     for (let i = 0; i < DOORS.balls; i++) this.balls.setColorAt(i, c.setHex(bc[i % bc.length]));
-    this.tmp = new THREE.Object3D(); this.tmpQ = new THREE.Quaternion();
+    this.tmp = new THREE.Object3D(); this.tmpV = new THREE.Vector3(); this.tmpQ = new THREE.Quaternion(); this.up = new THREE.Vector3(0, 1, 0);
   }
 
   dispose() {
     this.game.ui?.setScore?.(null);
+    this.unslow();
+    this.restoreNooks();
     if (this.slide.rider) this.slide.leave(false);
     for (const m of this.meshes) { m.parent?.remove(m); m.dispose?.(); }
     for (const g of this.geos) g.dispose();
@@ -213,14 +248,13 @@ export class DoorsLive {
     const d = this.doorOf.get(k);
     if (d) return d.opened ? null : `Gift door · ${how} to open`;
     if (this.chestAt.has(k)) return null;
-    if (this.popAt.has(k)) return this.pu.phase === 'run' ? `Boop the jack! · ${how}` : 'A pop-up box · stand on the pad and press Play!';
+    if (this.popAt.has(k)) return this.jc.phase === 'run' ? 'Run under the jacks!' : 'A pop-up box · stand on the pad and press Play!';
     if (this.giftAt.has(k)) return this.bows().done ? 'The Big Gift is open!' : `The Big Gift · ${how} to look`;
     return null;
   }
   action(block) {
     const k = key(block.x, block.y, block.z);
     if (this.doorOf.has(k)) return 'Open!';
-    if (this.popAt.has(k)) return 'Boop!';
     if (this.giftAt.has(k)) return 'Look!';
     return null;
   }
@@ -231,7 +265,7 @@ export class DoorsLive {
     if (d) { this.openDoor(d); return true; }
     const chest = this.chestAt.get(k);
     if (chest) { this.openChest(chest); return true; }
-    if (this.popAt.has(k) && this.pu.phase === 'run') { this.boopRay(this.eye(), this.look(), this.popAt.get(k)); return true; }
+    if (this.popAt.has(k)) { this.toast(this.jc.phase === 'run' ? 'Run under the jacks to catch them!' : 'Stand on the pad and press Play!'); return true; }
     if (this.giftAt.has(k)) {
       const st = this.bows();
       this.toast(st.done ? 'All the ribbons are untied! Open the Big Gift!' : `Jolly Jax: My gift has 4 ribbons. Win the golden bows to untie them! (🎀 ${st.n} / 4)`);
@@ -240,44 +274,29 @@ export class DoorsLive {
     return false;
   }
 
-  // A tap on the screen (touch.js tapAt, before it looks for blocks): a stage door in the pick phase, a popped jack.
+  // A tap on the screen (main.js tapAt, before it looks for blocks): while a piñata swings, the stick swings the way you tapped.
   tap(origin, dir) {
-    if (this.paused()) return false;
-    if (this.sh.phase === 'pick') { const d = pickDoor(this.stageDoors(), origin, dir); if (d != null) { this.choose(d); return true; } }
-    if (this.pu.phase === 'run' && this.inPopRoom()) return this.boopRay(origin, dir) !== false;
-    return false;
+    if (this.paused() || this.pn.phase !== 'run' || !this.onHall()) return false;
+    this.whackNow(origin, dir);
+    return true;
   }
 
   // The word on the big button (null = nothing here).
   near(p) {
     if (this.paused() || this.slide.rider) return null;
-    const pos = p.pos ?? p, sh = this.sh, st = this.bows();
+    const pos = p.pos ?? p, pn = this.pn, st = this.bows();
     if (this.slideSpot(p)) return 'Slide!';
-    if (this.onPad(pos)) {
-      if (sh.phase === 'pick') return 'This one!';
-      if (sh.phase === 'again') return 'Again!';
-      if (sh.phase === 'idle' && this.nextRound() > 0) return 'Play!';
-    }
-    if (this.inPopRoom(pos)) {
-      if (this.pu.phase === 'run') return 'Boop!';
-      if (this.onPopPad(pos) && !st.bows[3]) return this.pu.phase === 'result' ? 'Again!' : 'Play!';
-    }
+    if (pn.phase === 'run' && this.onHall(pos)) return 'Whack!';
+    if (this.onRing(pos) && pn.phase === 'idle' && this.nextRound() > 0) return this.misses[this.nextRound()] ? 'Again!' : 'Play!';
+    if (this.inPopRoom(pos) && this.onPopPad(pos) && !st.bows[3] && this.jc.phase !== 'run') return this.jcMisses ? 'Again!' : 'Play!';
     return null;
   }
   use(p) {
     const w = this.near(p);
     if (!w) return false;
     if (w === 'Slide!') return this.rideSlide();
-    if (w === 'Play!' || w === 'Again!') {
-      if (this.inPopRoom(p.pos ?? p)) return this.startPopup();
-      return this.startShuffle();
-    }
-    if (w === 'This one!') {
-      const d = pickDoor(this.stageDoors(), this.eye(), this.look());
-      if (d == null) { this.toast('Look at a door and press!'); return true; }
-      return this.choose(d);
-    }
-    if (w === 'Boop!') { this.boopRay(this.eye(), this.look()); return true; }
+    if (w === 'Whack!') { this.whackNow(this.eye(), this.look()); return true; }
+    if (w === 'Play!' || w === 'Again!') return this.inPopRoom(p.pos ?? p) ? this.startCatch() : this.startPinata();
     return false;
   }
 
@@ -291,7 +310,7 @@ export class DoorsLive {
     this.doBurst([c[0], 12.5, c[1]], 0.35);
     if (quiet) return;
     if (d.kind === 'nested') this.toast(d.nestedIndex === 2 ? 'The smallest door! What is behind it?' : ROOM_SAY.nested);
-    else if (ROOM_SAY[d.kind]) this.toast(d.kind === 'healer' ? ROOM_SAY.healer : ROOM_SAY[d.kind]);
+    else if (ROOM_SAY[d.kind]) this.toast(ROOM_SAY[d.kind]);
     if (d.kind === 'trainer1' || d.kind === 'trainer2') this.jumpOut(d);
   }
   jumpOut(d) {
@@ -337,150 +356,158 @@ export class DoorsLive {
   }
   slideEnd() { sound.play('popout'); }
 
-  /* ---------------------------------- the Shuffle Stage ---------------------------------- */
-  nextRound() { const b = this.bows().bows; for (let i = 0; i < 3; i++) if (!b[i]) return i + 1; return 0; }
-  // The doors now: a running or finished shuffle, else the next round's doors standing shut in a row.
-  stageDoors() {
-    const sh = this.sh, o = STAGE.origin;
-    if (sh.plan && sh.phase !== 'idle') return doorsAt(sh.plan, sh.phase === 'play' ? sh.t : sh.plan.over + 1, o);
-    return restDoors(SHUFFLE.rounds[(this.nextRound() || 3) - 1].n, o, 0);
-  }
-  // The colour of each door index (the round's look).
-  stageColours() {
-    const sh = this.sh, round = sh.plan && sh.phase !== 'idle' ? sh.round : this.nextRound() || 3, n = SHUFFLE.rounds[round - 1].n;
-    const same = SHUFFLE.rounds[round - 1].look === 'same';
-    return lookOf(round, n).map(k => (same ? 0xb05ae8 : SHUFFLE.colours[k % SHUFFLE.colours.length]));
-  }
-  startShuffle() {
-    const sh = this.sh;
-    const round = sh.phase === 'again' ? sh.round : this.nextRound();
-    if (!round) return false;
-    const attempt = this.attempts[round]++;
-    const plan = shufflePlan(this.seed, round, attempt, { help: helpLevel(this.misses[round]), hard: this.hard() });
-    Object.assign(sh, { phase: 'play', round, plan, t: 0, picked: null, win: false, resultT: 0, flyT: -1 });
-    this.bow.visible = true;
-    this.once('doors-eyes', 'Keep your eyes on the bow!');
-    sound.play('doorwhoosh');
-    return true;
-  }
-  choose(d) {
-    const sh = this.sh;
-    if (sh.phase !== 'pick' || !sh.plan) return false;
-    sh.picked = d; sh.win = d === sh.plan.prize; sh.phase = 'result'; sh.resultT = 0; sh.silly = (sh.round + sh.plan.attempt) % SILLY.length;
-    if (sh.win) {
-      const keyName = bowKey(sh.round);
-      if (!this.game.beaten.includes(keyName)) this.game.beaten.push(keyName);
-      this.misses[sh.round] = 0;
-      sound.play('rightdoor');
-      const st = this.bows();
-      this.toast(`You found it! 🎀 ${st.n} / 4`);
-      const dd = this.stageDoors()[sh.plan.prize];
-      this.doBurst([dd.x, dd.y + 2, dd.z + 1], 0.8);
-      sh.flyT = 0;
-      this.game.save?.();
-      this.syncBlocks();
-    } else {
-      this.misses[sh.round]++;
-      const s = SILLY[sh.silly];
-      sound.play(s.sound);
-      this.toast(s.say);
-    }
-    return true;
-  }
-  stepShuffle(dt) {
-    const sh = this.sh;
-    if (sh.phase === 'play') {
-      sh.t += dt;
-      if (sh.t >= sh.plan.stopped) { sh.phase = 'pick'; this.once('doors-pick', 'Which door? Look at it and press!'); }
-    } else if (sh.phase === 'result') {
-      sh.resultT += dt;
-      if (sh.flyT >= 0) sh.flyT += dt;
-      if (sh.resultT >= (sh.win ? DOORS.win : DOORS.resultShow)) {
-        if (sh.win) { sh.phase = 'idle'; sh.plan = null; this.bow.visible = false; } else sh.phase = 'again';
-      }
-    }
+  /* ---------------------------------- a game is on: keep the wild gift boxes away ---------------------------------- */
+  // While a piñata swings or the jacks fly, no wild creature spawns or stays near (so the crosshair, a tap or a bump never finds a gift box
+  // instead of the game). The nooks come back when the game ends.
+  gameOn() { return this.pn.phase === 'run' || this.jc.phase === 'run'; }
+  hideNooks() { if (this.savedNooks || !this.world.nooks) return; this.savedNooks = this.world.nooks; this.world.nooks = this.savedNooks.filter(n => !this.nearGame(n)); }
+  restoreNooks() { if (this.savedNooks) { if (this.world === this.game.world) this.world.nooks = this.savedNooks; this.savedNooks = null; } }
+  nearGame(q) { return (this.pn.phase === 'run' && Math.hypot(q.x - RING.x, q.z - RING.z) < DOORS.clearR) || (this.jc.phase === 'run' && this.inBoxXZ({ ...this.plan.popup.room, x0: this.plan.popup.room.x0 - 2, x1: this.plan.popup.room.x1 + 2, z0: this.plan.popup.room.z0 - 2, z1: this.plan.popup.room.z1 + 2, y0: 10, y1: 24 }, q)); }
+  clearWilds() {
+    const cm = this.game.creatures;
+    if (!cm?.list) return;
+    for (const w of [...cm.list]) if (!w.frozen && this.nearGame(w.pos)) cm.remove(w);
   }
 
-  /* ---------------------------------- the Pop-Up Room ---------------------------------- */
-  startPopup() {
-    const pu = this.pu;
-    if (this.bows().bows[3]) return false;
-    const plan = popPlan(this.seed, this.puAttempt++, { help: Math.min(2, this.puMisses), hard: this.hard() });
-    Object.assign(pu, { phase: 'run', plan, t: 0, done: new Set(), score: 0, resultT: 0, hit: new Map(), last: -1 });
-    this.once('doors-boop', 'Boop the jacks before they hide!');
+  /* ---------------------------------- the Piñata Party (bows 1-3) ---------------------------------- */
+  nextRound() { const b = this.bows().bows; for (let i = 0; i < 3; i++) if (!b[i]) return i + 1; return 0; }
+  startPinata() {
+    const pn = this.pn, round = this.nextRound();
+    if (!round || pn.phase !== 'idle') return false;
+    const attempt = this.attempts[round]++;
+    const plan = pinataPlan(this.seed, round, attempt, { help: this.misses[round], hard: this.hard() });
+    Object.assign(pn, { phase: 'run', round, run: newRun(plan), t: 0, resultT: 0, swingT: 9, burstAt: null });
+    this.pinata.geometry = this.pinataGeos[plan.id];
+    this.once('doors-whack', 'Whack the piñata when it swings AT you!');
+    this.toast(`${plan.name}! ⏱ ${plan.time} s`);
     sound.play('doorwhoosh');
+    this.hideNooks(); this.clearWilds();
     return true;
   }
-  // Which popped jack does this look ray pass closest to (within DOORS.boopR)? Boop it. `fallback` = a pop-up box block that was clicked.
-  boopRay(origin, dir, fallback = null) {
-    const pu = this.pu;
-    if (pu.phase !== 'run') return false;
-    let best = null, bd = DOORS.boopR + 0.0001;
-    for (const a of popAt(pu.plan, pu.t)) {
-      const box = this.plan.popup.boxes[pu.plan[a.n].box];
-      const cy = box.at[1] + (a.state === 'up' ? 0.9 * a.rise + 0.4 : 0.4);
-      const vx = box.at[0] - origin.x, vy = cy - origin.y, vz = box.at[2] - origin.z, t = vx * dir.x + vy * dir.y + vz * dir.z;
-      if (t < 0) continue;
-      const d = Math.hypot(vx - dir.x * t, vy - dir.y * t, vz - dir.z * t);
-      if (d < bd) { bd = d; best = a; }
-    }
-    if (!best && fallback) { // a click right on a box block counts for that box
-      const a = popAt(pu.plan, pu.t).find(q => q.box === fallback.i); if (a) best = a;
-    }
-    if (!best) return false;
-    return this.boop(pu.plan[best.n].box);
-  }
-  boop(boxIndex) {
-    const pu = this.pu, n = boopOk(pu.plan, pu.t, boxIndex, pu.done);
-    if (n < 0) {
-      const wob = popAt(pu.plan, pu.t).find(a => a.box === boxIndex && a.state === 'wobble');
-      if (wob) this.once('doors-cheeky', 'Cheeky box! Nothing in there.');
-      return false;
-    }
-    pu.done.add(n);
-    pu.score++;
-    pu.hit.set(n, pu.t);
-    sound.play('boop');
+  // One swing of the stick from `eye` towards `dir` (only its sideways part counts).
+  whackNow(eye, dir) {
+    const pn = this.pn;
+    if (pn.phase !== 'run') return false;
+    const res = whack(pn.run, pn.t, eye, dir);
+    if (!res.swung) return false;
+    pn.swingT = 0;
+    if (!res.hit) { sound.play('doorwhoosh'); this.once('doors-whoosh', 'Whoosh! Too soon. Wait for it to swing close.'); return true; }
+    if (res.big) {
+      sound.play('pinatawhack');
+      const left = pn.run.hp;
+      if (!res.burst) this.toast(left === 1 ? 'CRACK! 1 more!' : `CRACK! ${left} more!`);
+      const p = pinataAt(pn.run, res.tau);
+      this.doBurst([p.x, p.y, p.z], 0.25);
+    } else { sound.play('boop'); this.once('doors-bonk', 'Bonk! Whack it when it swings AT you, low down.'); }
+    if (res.dodge) this.toast('It dodged!');
     return true;
   }
-  stepPopup(dt) {
-    const pu = this.pu;
-    if (pu.phase === 'run') {
-      pu.t += dt;
-      // the boxes: open while a jack is out (or a cheeky box wobbles)
+  stepPinata(dt) {
+    const pn = this.pn;
+    if (pn.phase === 'run') {
+      pn.t += dt;
+      const run = pn.run;
+      if (!this.onHall()) { this.endPinata(false, true); return; } // you went into a room: the piñata waits
+      if (run.done && pn.t >= run.burstAt) this.popPinata();
+      else if (timeUp(run, pn.t)) this.endPinata(false);
+    } else if (pn.phase === 'burst' || pn.phase === 'nap') {
+      pn.resultT += dt;
+      if (pn.resultT >= (pn.phase === 'burst' ? DOORS.burst : DOORS.nap)) { pn.phase = 'idle'; pn.run = null; }
+    }
+  }
+  popPinata() {
+    const pn = this.pn, run = pn.run, g = this.game;
+    pn.phase = 'burst'; pn.resultT = 0; pn.burstAt = pinataAt(run, run.burstAt);
+    pn.silly = hashStr(`silly|${this.seed}|${pn.round}|${run.plan.attempt}`) % SILLY.length;
+    const k = bowKey(pn.round);
+    if (!g.beaten.includes(k)) g.beaten.push(k);
+    this.misses[pn.round] = 0;
+    sound.play('candyrain');
+    const s = SILLY[pn.silly];
+    setTimeout(() => sound.play(s.sound), 450);
+    this.toast(`Pop! Candy! 🎀 ${this.bows().n} / 4`);
+    setTimeout(() => this.toast(s.say), 900);
+    this.doBurst([pn.burstAt.x, pn.burstAt.y, pn.burstAt.z], 1.2);
+    g.save?.();
+    this.syncBlocks();
+    this.restoreNooks();
+  }
+  endPinata(won, quiet = false) {
+    const pn = this.pn;
+    if (!quiet) {
+      this.misses[pn.round]++;
+      sound.play('sillyhonk');
+      this.toast('The piñata went up for a nap. Again? It will swing slower.');
+    }
+    pn.phase = quiet ? 'idle' : 'nap'; pn.resultT = 0;
+    if (quiet) pn.run = null;
+    this.restoreNooks();
+  }
+
+  /* ---------------------------------- Jack Catch in the Pop-Up Room (bow 4) ---------------------------------- */
+  startCatch() {
+    const jc = this.jc, pu = this.plan.popup;
+    if (this.bows().bows[3] || jc.phase === 'run') return false;
+    const plan = catchPlan(this.seed, this.jcAttempt++, { help: this.jcMisses, hard: this.hard(), boxes: pu.boxes, floor: pu.floor, start: pu.pad.centre });
+    Object.assign(jc, { phase: 'run', run: newCatch(plan), t: 0, resultT: 0, splatT: 9, won: false, open: new Map() });
+    this.once('doors-catch', 'Catch the jacks! Run under their shadows. Dodge the pies!');
+    sound.play('doorwhoosh');
+    this.hideNooks(); this.clearWilds();
+    return true;
+  }
+  stepJacks(dt) {
+    const jc = this.jc;
+    if (jc.phase === 'run') {
+      if (!this.inPopRoom()) { jc.phase = 'idle'; jc.run = null; this.unslow(); this.syncPopBoxes(); this.restoreNooks(); return; } // you left: the jacks wait
+      jc.t += dt;
+      const p = this.game.player, events = stepCatch(jc.run, jc.t, p.pos, p.vel);
+      for (const e of events) this.onCatchEvent(e);
+      if (jc.splatT < 9) jc.splatT += dt;
+      // sticky shoes after a splat
+      if (slowed(jc.run, jc.t)) p.speedCap = CATCH.pies.cap; else this.unslow();
       this.syncPopBoxes();
-      if (pu.t >= popEnd(pu.plan) + 0.2) this.endPopup();
-    } else if (pu.phase === 'result') pu.resultT += dt;
+    } else if (jc.phase === 'result') { jc.resultT += dt; if (jc.splatT < 9) jc.splatT += dt; }
   }
-  syncPopBoxes() {
-    const pu = this.pu, up = new Map();
-    if (pu.phase === 'run') for (const a of popAt(pu.plan, pu.t)) up.set(a.box, a.state === 'up' ? true : Math.sin(pu.t * 28) > 0);
-    for (const b of this.plan.popup.boxes) this.cells.want(...b.cell, up.get(b.i) ? B.POP_BOX_OPEN : B.POP_BOX);
+  onCatchEvent(e) {
+    const jc = this.jc, l = jc.run.plan.launches.find(q => q.n === e.n);
+    if (e.type === 'launch') { jc.open.set(l.box, jc.t); sound.play(l.kind === 'pie' ? 'sillyhonk' : 'jackpop'); }
+    else if (e.type === 'catch') { sound.play('jackcatch'); if (e.gold) this.toast('Gold jack! +2'); }
+    else if (e.type === 'miss') sound.play('popout');
+    else if (e.type === 'splat') { sound.play('piesplat'); jc.splatT = 0; this.toast('Splat! A cream pie! Sticky shoes...'); }
+    else if (e.type === 'end') this.endCatch(e.won, e.score);
   }
-  endPopup() {
-    const pu = this.pu, need = needOf(this.hard());
-    const won = pu.score >= need;
-    pu.phase = 'result'; pu.resultT = 0; pu.won = won;
+  endCatch(won, score) {
+    const jc = this.jc, g = this.game;
+    jc.phase = 'result'; jc.resultT = 0; jc.won = won;
+    this.unslow();
     this.syncPopBoxes();
+    this.restoreNooks();
     if (won) {
-      this.puMisses = 0;
-      if (!this.game.beaten.includes(bowKey(4))) this.game.beaten.push(bowKey(4));
+      this.jcMisses = 0;
+      if (!g.beaten.includes(bowKey(4))) g.beaten.push(bowKey(4));
       sound.play('rightdoor');
-      this.toast(`You booped ${pu.score}! 🎀 ${this.bows().n} / 4`);
+      this.toast(`You caught ${score}! 🎀 ${this.bows().n} / 4`);
       const c = this.plan.popup.pad.centre;
       this.doBurst([c[0], 14, c[1]], 1);
-      this.game.save?.();
+      g.save?.();
       this.syncBlocks();
     } else {
-      this.puMisses++;
+      this.jcMisses++;
       sound.play('sillyhonk');
-      this.toast(`You booped ${pu.score}! Again? They will be a bit slower.`);
+      this.toast(`You caught ${score}! Again? They will fly slower.`);
     }
   }
-  popLeft() { const pu = this.pu; return pu.plan ? pu.plan.filter((p, n) => !p.wobble && !pu.done.has(n) && p.t0 + p.up + POPUP.grace >= pu.t).length : 0; }
+  unslow() { const p = this.game.player; if (p && p.speedCap === CATCH.pies.cap) p.speedCap = null; }
+  syncPopBoxes() {
+    const jc = this.jc;
+    for (const b of this.plan.popup.boxes) {
+      const at = jc.phase === 'run' ? jc.open.get(b.i) : null;
+      this.cells.want(...b.cell, at != null && jc.t - at < 0.4 ? B.POP_BOX_OPEN : B.POP_BOX);
+    }
+  }
 
   /* ---------------------------------- confetti, the pit, the Boss ---------------------------------- */
-  doBurst(at, scale = 1) { this.burst = { x: at[0], y: at[1], z: at[2], age: 0, scale }; }
+  doBurst(at, scale = 1) { this.burst = { x: at[0] ?? at.x, y: at[1] ?? at.y, z: at[2] ?? at.z, age: 0, scale }; }
   stepRooms(dt) {
     const room = this.roomAt();
     const inConf = room?.kind === 'confetti';
@@ -518,36 +545,43 @@ export class DoorsLive {
   }
   step(dt) {
     this.clock += dt;
-    this.stepShuffle(dt); this.stepPopup(dt); this.slide.update(dt); this.stepRooms(dt); this.stepHops(dt);
+    this.stepPinata(dt); this.stepJacks(dt); this.slide.update(dt); this.stepRooms(dt); this.stepHops(dt);
+    if (this.gameOn() && (this.clearAcc += dt) >= 0.5) { this.clearAcc = 0; this.clearWilds(); }
+    if (this.pn.swingT < 9) this.pn.swingT += dt;
     this.cells.flush();
     if ((this.chipAcc += dt) >= 0.2) { this.chipAcc = 0; this.chip(); }
   }
   chip() {
     const ui = this.game.ui;
     if (!ui?.setScore) return;
-    const st = this.bows(), pos = this.pos();
+    const st = this.bows(), pos = this.pos(), pn = this.pn, jc = this.jc;
     let s = null;
-    if (this.inPopRoom(pos) && this.pu.phase === 'run') s = { text: `🤡 ${this.pu.score} / ${needOf(this.hard())} · ${this.popLeft()} left`, done: false };
+    if (jc.phase === 'run' && this.inPopRoom(pos)) s = { text: `🤡 ${jc.run.score} / ${jc.run.plan.need} · ${jacksLeft(jc.run)} left`, done: false };
+    else if (pn.phase === 'run' && this.onHall(pos)) { const r = pn.run; s = { text: `🪅 CRACKs ${r.plan.hp - r.hp} / ${r.plan.hp} · ⏱ ${Math.max(0, Math.ceil(r.plan.time - pn.t))}`, done: false }; }
     else if (st.done) s = { text: 'Open the Big Gift!', done: true };
     else if (this.roomAt(pos) || this.onHall(pos)) s = { text: `🎀 ${st.n} / 4`, done: false };
     ui.setScore(s);
   }
-  onHall(p) { return p.x >= 40 && p.x < 73 && p.z >= 40 && p.z < 73; }
 
   /* ---------------------------------- drawing ---------------------------------- */
   draw() {
-    if (!this.frames) return;
+    if (!this.pinata) return;
     const p = this.pos(), near = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
-    // stage doors
-    const so = STAGE.origin;
-    const stageNear = near(so.x, so.z, DOORS.stageRange);
-    this.frames.visible = this.panels.visible = stageNear;
-    if (stageNear) this.drawStage();
-    else this.bow.visible = false;
-    // jacks
-    const pn = near(this.plan.popup.pad.centre[0], this.plan.popup.pad.centre[1], DOORS.popRange);
-    this.jacks.visible = pn;
-    if (pn) this.drawJacks();
+    let nShadow = 0, nRing = 0;
+    const shadow = (x, z, size, col = SHADOW_DARK) => { if (nShadow >= 8) return; const o = this.tmp; o.position.set(x, 11.03, z); o.rotation.set(0, 0, 0); o.scale.setScalar(Math.max(0.05, size)); o.updateMatrix(); this.shadows.setMatrixAt(nShadow, o.matrix); this.shadows.setColorAt(nShadow, col); nShadow++; };
+    const ring = (x, z, size, col) => { if (nRing >= 8) return; const o = this.tmp; o.position.set(x, 11.05, z); o.rotation.set(0, this.clock * 2, 0); o.scale.setScalar(size); o.updateMatrix(); this.rings.setMatrixAt(nRing, o.matrix); this.rings.setColorAt(nRing, col); nRing++; };
+    // the piñata
+    if (near(RING.x, RING.z, DOORS.hallRange)) this.drawPinata(shadow);
+    else { this.pinata.visible = this.rope.visible = this.balloons.visible = this.bow.visible = this.prop.visible = false; }
+    this.drawStick();
+    // the flying jacks and pies
+    if (near(this.plan.popup.pad.centre[0], this.plan.popup.pad.centre[1], DOORS.popRange)) this.drawJacks(shadow, ring);
+    else this.jacks.count = this.pies.count = 0;
+    this.shadows.count = nShadow; this.rings.count = nRing;
+    this.shadows.instanceMatrix.needsUpdate = this.rings.instanceMatrix.needsUpdate = true;
+    if (this.shadows.instanceColor) this.shadows.instanceColor.needsUpdate = true;
+    if (this.rings.instanceColor) this.rings.instanceColor.needsUpdate = true;
+    this.drawCream();
     // pit balls
     const pit = this.plan.pit, bn = near(pit.chest[0], pit.chest[2], 24);
     this.balls.visible = bn;
@@ -559,80 +593,106 @@ export class DoorsLive {
     if (this.bigBow.visible) this.bigBow.rotation.y = Math.sin(this.clock * 1.5) * 0.15;
   }
 
-  drawStage() {
-    const sh = this.sh, doors = this.stageDoors(), o = this.tmp, plan = sh.plan;
-    const colours = this.stageColours(), col = new THREE.Color();
-    this.frames.count = this.panels.count = doors.length;
-    doors.forEach((d, i) => {
-      let open = d.open;
-      if (sh.phase === 'result' || sh.phase === 'again') {
-        const k = ease(Math.min(1, sh.resultT / 0.35));
-        if (d.door === sh.plan.prize || d.door === sh.picked) open = k;
-      }
-      const wig = d.wiggle ? Math.sin(this.clock * 34) * 0.08 * d.wiggle : 0, tw = plan?.twinkle && d.door === plan?.prize && d.moving ? 1 + 0.06 * Math.sin(this.clock * 14) : 1;
-      o.position.set(d.x, d.y, d.z); o.rotation.set(0, wig, 0); o.scale.setScalar(tw); o.updateMatrix();
-      this.frames.setMatrixAt(i, o.matrix);
-      // the panel hinges on its left edge (local x -1) and swings out towards the player
-      const hx = -1.0 * Math.cos(wig), hz = 1.0 * Math.sin(wig);
-      o.position.set(d.x + hx * tw, d.y, d.z + 0.2 + hz * tw); o.rotation.set(0, wig - open * 1.75, 0); o.updateMatrix();
-      this.panels.setMatrixAt(i, o.matrix);
-      this.panels.setColorAt(i, col.setHex(colours[d.door]));
-    });
-    this.frames.instanceMatrix.needsUpdate = this.panels.instanceMatrix.needsUpdate = true;
-    if (this.panels.instanceColor) this.panels.instanceColor.needsUpdate = true;
-    // the bow: bobbing behind the prize door while the doors are open, flying to you when you found it
-    if (plan && sh.phase !== 'idle') {
-      const d = doors[plan.prize];
-      const showing = sh.phase === 'play' && sh.t < plan.closedAt, revealed = sh.phase === 'again' || (sh.phase === 'result' && !sh.win);
-      if (sh.phase === 'result' && sh.win && sh.flyT >= 0) {
-        const k = ease(Math.min(1, sh.flyT / 1.0)), eye = this.eye();
-        this.bow.visible = sh.flyT < 1.0;
-        this.bow.position.set(d.x + (eye.x - d.x) * k, d.y + 1.4 + (eye.y - d.y - 1.4) * k + Math.sin(Math.PI * k) * 1.2, d.z + 0.3 + (eye.z - d.z - 0.3) * k);
-        this.bow.scale.setScalar(1 + 0.5 * k);
-      } else if (showing || revealed) {
-        this.bow.visible = true;
-        this.bow.position.set(d.x, d.y + 1.3 + Math.sin(this.clock * 4) * 0.12, d.z - 0.05);
-        this.bow.scale.setScalar(1);
-        this.bow.rotation.y = Math.sin(this.clock * 2) * 0.2;
-      } else this.bow.visible = false;
-      // a silly surprise behind a wrong door
-      const wrong = sh.phase !== 'play' && !sh.win && sh.picked != null && (sh.phase === 'result' || sh.phase === 'again');
-      this.prop.visible = wrong;
-      if (wrong) {
-        const dd = doors[sh.picked];
-        this.prop.geometry = this.propGeos[SILLY[sh.silly].id];
-        const k = ease(Math.min(1, sh.resultT / 0.35));
-        this.prop.position.set(dd.x, dd.y + 0.1 + Math.abs(Math.sin(this.clock * 7)) * 0.2 * k, dd.z + 0.05);
-        this.prop.scale.setScalar(Math.max(0.01, k));
-      }
-    } else { this.bow.visible = false; this.prop.visible = false; }
-    // the door you look at in the pick phase
-    const look2 = sh.phase === 'pick' && this.onPad(this.pos());
-    if (look2) {
-      const d = pickDoor(doors, this.eye(), this.look());
-      this.outline.visible = d != null;
-      if (d != null) this.outline.position.set(doors[d].x, doors[d].y + 1.6, doors[d].z + 0.1);
-    } else this.outline.visible = false;
+  // The piñata, its rope and balloons: swinging in a game; resting high over the rug while you may press Play!; floating up for a nap.
+  drawPinata(shadow) {
+    const pn = this.pn, round = pn.round || this.nextRound();
+    const show = pn.phase !== 'idle' || round > 0;
+    this.pinata.visible = this.rope.visible = this.balloons.visible = show && pn.phase !== 'burst';
+    this.bow.visible = false; this.prop.visible = false;
+    if (!show) return;
+    let pos, top;
+    if (pn.phase === 'run' || pn.phase === 'nap') {
+      const t = pn.phase === 'run' ? pn.t : pn.run.plan.time;
+      const q = pinataAt(pn.run, t), up = pn.phase === 'nap' ? ease(pn.resultT / DOORS.nap) * 7 : 0;
+      pos = { x: q.x, y: q.y + up, z: q.z }; top = { x: q.top.x, y: PINATA.low + PINATA.rope + up, z: q.top.z };
+      this.pinata.geometry = this.pinataGeos[pn.run.plan.id];
+    } else if (pn.phase === 'idle') { // waiting: the next piñata hangs high over the middle of the rug and turns gently
+      const sway = Math.sin(this.clock * 1.3) * 0.5;
+      top = { x: RING.x, y: PINATA.low + PINATA.rope + 2.5, z: RING.z };
+      pos = { x: RING.x + sway, y: top.y - PINATA.rope + 0.03, z: RING.z };
+      this.pinata.geometry = this.pinataGeos[PINATA.rounds[round - 1].id];
+    }
+    if (pos) {
+      const dx = pos.x - top.x, dy = pos.y + 0.7 - top.y, dz = pos.z - top.z;
+      this.balloons.position.set(top.x, top.y, top.z); this.balloons.rotation.y = Math.sin(this.clock * 0.7) * 0.3;
+      // the piñata hangs along its rope and spins a bit; a fresh hit makes it wobble
+      const lastHit = pn.run?.log?.length ? pn.run.log[pn.run.log.length - 1] : null, since = lastHit?.hit && pn.phase === 'run' ? pn.t - lastHit.tau : 9;
+      const wob = since >= 0 && since < 0.4 ? Math.sin(since * 40) * 0.25 * (1 - since / 0.4) : 0;
+      this.pinata.position.set(pos.x, pos.y, pos.z);
+      this.pinata.rotation.set(Math.atan2(dz, -dy) * 0.6 + wob, this.clock * 0.6, -Math.atan2(dx, -dy) * 0.6);
+      const dmg = pn.run ? 1 - pn.run.hp / pn.run.plan.hp : 0;
+      this.pinata.scale.set(1 + dmg * 0.12, 1 - dmg * 0.18, 1 + dmg * 0.12);
+      // the rope: from the balloons to the piñata's knot (wherever its tilt puts it)
+      this.pinata.updateMatrix(); this.tmpV.set(0, 0.6, 0).applyMatrix4(this.pinata.matrix);
+      const kx = this.tmpV.x - top.x, ky = this.tmpV.y - top.y, kz = this.tmpV.z - top.z, len = Math.hypot(kx, ky, kz) || 1;
+      this.rope.position.set(top.x, top.y, top.z);
+      this.tmpV.set(kx / len, ky / len, kz / len); this.rope.quaternion.setFromUnitVectors(this.up, this.tmpV);
+      this.rope.scale.set(1, len, 1);
+      shadow(pos.x, pos.z, 1.3 - Math.min(0.8, (pos.y - PINATA.low) * 0.3));
+    }
+    if (pn.phase === 'burst') { // the bow drops out of the candy and flies to you; the silly surprise falls to the floor
+      const b = pn.burstAt, k = pn.resultT;
+      this.prop.visible = true;
+      this.prop.geometry = this.propGeos[SILLY[pn.silly].id];
+      const fall = Math.min(1, k / 0.7), py = b.y + (11.05 - b.y) * fall * fall;
+      this.prop.position.set(b.x + 0.8, py, b.z); this.prop.scale.setScalar(Math.max(0.01, Math.min(1, k * 3))); this.prop.rotation.set(0, k * 2, 0);
+      const fly = ease(Math.max(0, (k - 0.5) / 1.0)), eye = this.eye();
+      this.bow.visible = k < 1.5;
+      this.bow.position.set(b.x + (eye.x - b.x) * fly, b.y + (eye.y - b.y) * fly + Math.sin(Math.PI * fly) * 1.2, b.z + (eye.z - b.z) * fly);
+      this.bow.scale.setScalar(1 + 0.5 * fly); this.bow.rotation.set(0, k * 3, 0);
+    }
   }
 
-  drawJacks() {
-    const pu = this.pu, o = this.tmp, boxes = this.plan.popup.boxes;
-    const active = pu.phase === 'run' ? popAt(pu.plan, pu.t) : [];
-    let n = 0;
-    for (const a of active) {
-      const b = boxes[pu.plan[a.n].box];
-      if (a.state === 'wobble') continue;
-      const hitAt = pu.hit.get(a.n), hitK = hitAt != null ? Math.min(1, (pu.t - hitAt) / 0.35) : 1;
-      const bob = hitAt != null ? 1 + 0.25 * Math.sin(hitK * Math.PI) : 1 + 0.04 * Math.sin(pu.t * 14);
-      o.position.set(b.at[0], b.at[1], b.at[2]); o.rotation.set(0, Math.sin(pu.t * 3 + a.n) * 0.3, 0);
-      o.scale.set(1, Math.max(0.01, a.rise * bob), 1); o.updateMatrix();
-      this.jacks.setMatrixAt(n, o.matrix);
-      this.jacks.setColorAt(n, hitAt != null && hitK < 1 ? HOT : PLAIN);
-      n++;
+  // The party stick in your hand (only while a piñata is out): it rests to the right and swings across when you whack.
+  drawStick() {
+    const pn = this.pn, cam = this.game.camera;
+    const on = pn.phase === 'run' && this.onHall() && cam;
+    this.stick.visible = !!on;
+    if (!on) return;
+    const k = Math.min(1, pn.swingT / DOORS.stickSwing), arc = k < 1 ? Math.sin(k * Math.PI) : 0;
+    const o = this.tmp;
+    o.position.copy(cam.position); o.quaternion.copy(cam.quaternion);
+    o.translateX(0.3 - arc * 0.4); o.translateY(-0.26 + arc * 0.08); o.translateZ(-0.6);
+    o.rotateY(0.45 + arc * 1.0); o.rotateX(0.85 - arc * 0.7);
+    this.stick.position.copy(o.position); this.stick.quaternion.copy(o.quaternion); this.stick.scale.setScalar(0.32);
+  }
+
+  drawJacks(shadow, ring) {
+    const jc = this.jc, o = this.tmp;
+    let nj = 0, np = 0;
+    if (jc.phase === 'run') {
+      const helpRing = jc.run.plan.help >= 2;
+      for (const { l, q, to } of inAir(jc.run, jc.t)) {
+        const spin = (jc.t - l.t0) * 7 + l.n;
+        if (l.kind === 'pie') {
+          if (np >= 4) continue;
+          o.position.set(q.x, q.y, q.z); o.rotation.set(Math.sin(spin) * 0.3, spin * 0.5, 0); o.scale.setScalar(1); o.updateMatrix();
+          this.pies.setMatrixAt(np++, o.matrix);
+          ring(to[0], to[1], 0.9 + 0.3 * Math.sin(this.clock * 9), RING_PINK);
+        } else {
+          if (nj >= 6) continue;
+          o.position.set(q.x, q.y, q.z); o.rotation.set(spin * 0.6, spin, 0); o.scale.setScalar(l.kind === 'gold' ? 1.1 : 1); o.updateMatrix();
+          this.jacks.setMatrixAt(nj, o.matrix); this.jacks.setColorAt(nj, l.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); nj++;
+          shadow(q.x, q.z, 0.35 + 0.65 * q.s);            // the real shadow: right under it, bigger as it comes down
+          if (helpRing) ring(to[0], to[1], 0.8, RING_GOLD); // help: where it will land
+        }
+      }
     }
-    this.jacks.count = n;
-    this.jacks.instanceMatrix.needsUpdate = true;
+    this.jacks.count = nj; this.pies.count = np;
+    this.jacks.instanceMatrix.needsUpdate = this.pies.instanceMatrix.needsUpdate = true;
     if (this.jacks.instanceColor) this.jacks.instanceColor.needsUpdate = true;
+  }
+
+  drawCream() {
+    const jc = this.jc, cam = this.game.camera, k = jc.splatT;
+    const on = cam && k < DOORS.splat && (jc.phase === 'run' || jc.phase === 'result');
+    this.cream.visible = !!on;
+    if (!on) return;
+    const o = this.tmp;
+    o.position.copy(cam.position); o.quaternion.copy(cam.quaternion); o.translateZ(-0.5); o.translateX(0.06); o.translateY(0.03);
+    this.cream.position.copy(o.position); this.cream.quaternion.copy(o.quaternion);
+    this.cream.scale.setScalar(0.18 + 0.05 * Math.min(1, k * 8));
+    this.cream.material.opacity = 0.85 * (1 - ease(k / DOORS.splat));
   }
 
   drawBalls(p) {
@@ -673,19 +733,22 @@ export class DoorsLive {
   }
 
   /* ---------------------------------- after a Boss battle, tests ---------------------------------- */
-  // A won Boss battle uses the four bows up (a rematch is a new shuffle and a new pop-up round, a bit harder).
+  // A won Boss battle uses the four bows up (a rematch is three new piñatas and a new Jack Catch, a bit harder).
   battleEnded(result, opts) {
     if (result !== 'won' || opts?.picture?.id !== 'doors' || opts.picture.crew != null) return;
     const g = this.game;
     for (let i = 1; i <= 4; i++) { const k = g.beaten.indexOf(bowKey(i)); if (k >= 0) g.beaten.splice(k, 1); }
-    this.attempts = [0, 0, 0, 0]; this.misses = [0, 0, 0, 0]; this.puMisses = 0;
+    this.attempts = [0, 0, 0, 0]; this.misses = [0, 0, 0, 0]; this.jcMisses = 0;
     this.syncBlocks();
   }
 
   info() {
-    const sh = this.sh, pu = this.pu;
-    return { clock: this.clock, bows: this.bows(), shuffle: { phase: sh.phase, round: sh.round, attempt: sh.plan?.attempt, t: sh.t, prize: sh.plan?.prize, picked: sh.picked, win: sh.win, misses: [...this.misses] },
-      popup: { phase: pu.phase, t: pu.t, score: pu.score, left: pu.plan ? this.popLeft() : null, won: pu.won, misses: this.puMisses }, opened: this.doorList.filter(d => d.opened).map(d => d.id), sliding: !!this.slide.rider,
-      stageDoors: this.stageDoors().map(d => ({ door: d.door, slot: d.slot, x: +d.x.toFixed(2), z: +d.z.toFixed(2), open: +d.open.toFixed(2) })) };
+    const pn = this.pn, jc = this.jc, r = pn.run;
+    const q = r && pn.phase === 'run' ? pinataAt(r, pn.t) : null;
+    return { clock: this.clock, bows: this.bows(),
+      pinata: { phase: pn.phase, round: pn.round, attempt: r?.plan.attempt, t: pn.t, hp: r?.hp, need: r?.plan.hp, hits: r?.hits, big: r?.big, whiffs: r?.whiffs, time: r?.plan.time, misses: [...this.misses], at: q && { x: +q.x.toFixed(2), y: +q.y.toFixed(2), z: +q.z.toFixed(2) } },
+      catch: { phase: jc.phase, t: jc.t, score: jc.run?.score, need: jc.run?.plan.need, left: jc.run ? jacksLeft(jc.run) : null, splats: jc.run?.splats, won: jc.won, misses: this.jcMisses },
+      opened: this.doorList.filter(d => d.opened).map(d => d.id), sliding: !!this.slide.rider };
   }
+  topNow() { return this.pn.run ? topAt(this.pn.run, this.pn.t) : null; }
 }

@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { roomState } from './portalplay.js'; // T42
 import { ticketState } from './funfair.js'; // T43
 import { bowState } from './doorsland.js'; // T44
 import { lightState, LIGHTS } from './glowfish.js'; // T41
@@ -162,7 +163,7 @@ addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). 
 /* ==== end of T43 funfair ==== */
 /* ==== T44 surprise ==== */
 // Jolly Jax, a giant jack-in-the-box in the Big Gift of the Room of Doors, and two optional helpers behind surprise doors. The Big Gift opens
-// only when the four golden bows are won (the Shuffle Stage x3 and the Pop-Up Room: doorslive.js); a won battle uses the bows up again.
+// only when the four golden bows are won (three piñatas and Jack Catch: doorslive.js); a won battle uses the bows up again.
 addBoss({
   id: 'doors', name: 'Jolly Jax', title: 'Jolly Jax · Room of Doors Boss', type: 'surprise', model: { species: 'jestergrin', scale: 2.1 },
   gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! My gift has ${need} ribbons. Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} to untie them! (🎀 ${n} / ${need})`; },
@@ -174,9 +175,9 @@ addBoss({
   note: 'Jax was my favourite toy. I wrapped up gifts for every creature in the Swirl, but never got to give them out. Thank you for opening them!',
   crew: [
     { name: 'Ribbon Rosa', look: 'party', colors: { shirt: 0xe8384a, pants: 0xfff0d0, hair: 0x5a2a1a, skin: 0xf2c79a },
-      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Keep your eyes on the bow when the doors shuffle!' },
+      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Whack the piñata when it swings AT you!' },
     { name: 'Confetti Kit', look: 'party', colors: { shirt: 0x3a8ce8, pants: 0xffd23a, hair: 0xe8c03a, skin: 0xc68a5a },
-      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Boop the jacks fast!' },
+      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Run under the jacks. Dodge the pies!' },
   ],
 });
 /* ==== end of T44 surprise ==== */
@@ -201,6 +202,25 @@ addBoss({
   ],
 });
 /* ==== end of T45 doodle ==== */
+
+/* ==== T42 portal ==== */
+addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star
+  id: 'portal', name: 'Grandpa Arch', type: 'portal', model: { species: 'gatestrider', scale: 2.0 },
+  gate: game => { const { n, need, ready } = roomState(game); return ready ? null : `Finish all the swirl rooms first! (🌀 ${n} / ${need})`; },
+  team: [['peekhole', 60], ['topperoo', 61, ['hattrick', 'popthrough', 'shortcut', 'dizzyswirl']], ['loopwyrm', 62], ['gatestrider', 63, ['doorslam', 'popthrough', 'portalparty', 'shortcut']]], // top level 63, the easy side
+  intro: ['Hello, little traveller. I am Grandpa Arch, the oldest Portal creature.', 'I have watched the crack in the Swirl for a long, long time. Show me your team!'],
+  lose: 'Wonderful! Take the star. It will make the bridge a little longer.',
+  win: 'A good try! Rest a bit, then come back through the swirls.',
+  rematchIntro: ['Back again? My swirls trained too!'],
+  note: 'The Portal creatures were my very first helpers. They built the door that let you in. Thank you for the star!',
+  crew: [
+    { name: 'Keeper Kit', look: 'swirl', colors: { shirt: 0x7a4ad8, pants: 0xf6efe0, hair: 0x2a1a4a, skin: 0xf2d0b0 },
+      team: [['doorbit', 59], ['hatbun', 60]], intro: ['Hello! I keep the Hall of Swirls.', 'Want a practice battle?'], line: 'Your swirl and the orange swirl are joined: in one, out the other!' },
+    { name: 'Keeper Juno', look: 'swirl', colors: { shirt: 0x2ab8b0, pants: 0x3a2a6a, hair: 0xf0a040, skin: 0xc68a5a },
+      team: [['hooplet', 60], ['topperoo', 61]], intro: ['Quick taps! Look ahead while you fly!', 'Battle me first?'], line: 'Quick taps! Look ahead while you fly.' },
+  ],
+});
+/* ==== end of T42 portal ==== */
 
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen
@@ -285,7 +305,7 @@ export function createBosses(game, { startBattle, save }) {
         toast(`⭐ You won the star of the ${pw.name}! (${game.stars.length}/${PICTURE_WORLDS.length}) +${c} Capture Cubes`);
         game.ui.celebrate(`⭐ The ${pw.name} star!`, `🧙 "${def.note}"`, BOSS.noteMs);
         toast(`🧙 ${def.note}`);
-        toast('Go back to the Swirl: your star lights a stone of the star bridge!');
+        toast(game.place === 'swirl' ? 'Your star lights a stone of the star bridge, back on the hub!' : 'Go back to the Swirl: your star lights a stone of the star bridge!'); // T42: the Portal House is in the Swirl itself
         return;
       }
       const n = Math.min(BOSS.maxWins, winsOf(id) + 1); // a rematch

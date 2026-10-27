@@ -14,6 +14,7 @@ import { StadiumLive } from './stadiumlive.js'; // T40d
 import { RaceLive } from './racelive.js'; // T40c
 import { HouseLive } from './houselive.js'; // T40a
 import { PirateLive } from './pirateparts.js'; // T40b
+import { PortalHouseLive } from './portalhouselive.js'; // T42
 import { FairLive } from './funfairlive.js'; // T43
 import { DoorsLive } from './doorslive.js'; // T44
 import { AtlantisLive } from './atlantislive.js'; // T41
@@ -31,10 +32,11 @@ LIVE.stadium = StadiumLive; // T40d the Ball Stadium's balls and keepers (a live
 LIVE.race = RaceLive; // T40c the Race Track
 LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumbs
 LIVE.pirate = PirateLive; // T40b the Pirate Seas: cannons, ropes, the chest
+LIVE.portalhouse = PortalHouseLive; // T42 the Portal House in the Swirl: swirls, rooms, sparks
 LIVE.fair = FairLive; // T43 the Funfair: bumper cars, the trampoline, the carousel, the coaster
-LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Shuffle Stage, the Pop-Up Room, the Big Gift
+LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Piñata Party, Jack Catch, the Big Gift
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
-LIVE.doodle = DoodleLive; // T45 the Sketchbook: Trace! the pencil, the ink, Rubber the Eraser
+LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object
@@ -77,7 +79,7 @@ export function createGymLive(game) {
     // (then use(p) starts the hold); release(p) lets go (E up, mouse up, the finger up). Live parts without them are never held.
     holds(p) { return !!each(o => o.holds?.(p)); },
     release(p) { return !!each(o => o.release?.(p)); },
-    // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (a popped jack, a stage door)
+    // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (T44: a whack at the piñata)
     tap(origin, dir) { return !!each(o => o.tap?.(origin, dir)); },
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },

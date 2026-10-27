@@ -78,7 +78,7 @@ export const PICTURE_WORLDS = [
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
   { id: 'race', name: 'Race Track', emoji: '🏎️', frame: [0xd83a3a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' }, // place: the world it shares (owner 2026-10-26: the frames say so)
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },
-  { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: false, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
+  { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: true, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
   { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: true, realm: 'playland', place: 'Playland', picture: drawFairPicture }, // T43: the third Playland world
   { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawDoorsPicture }, // T44
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.

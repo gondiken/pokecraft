@@ -37,29 +37,48 @@ export function buildPortalDoor(world, tower) {
 // textures, nothing per frame but two uniforms). `open` eases between 0 (closed: a faint grey breath) and 1.
 // Works for any door: its surface cells and the spot you stand on in front of it (that side is the front).
 export class DoorGlow {
-  constructor(scene, cells, stand) {
-    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]), zs = cells.map(c => c[2]);
-    const [x0, x1, y0, y1, z0, z1] = [Math.min(...xs), Math.max(...xs) + 1, Math.min(...ys), Math.max(...ys) + 1, Math.min(...zs), Math.max(...zs) + 1];
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
-    const alongX = x1 - x0 > z1 - z0; // the door's width runs along x (so it faces z) or along z
-    const w = alongX ? x1 - x0 : z1 - z0, h = y1 - y0;
-    const toward = alongX ? Math.sign(stand[2] - cz) || 1 : Math.sign(stand[0] - cx) || 1;
+  // T42: an optional 4th argument { normal, centre, w, h, lite, colours } lays the vortex on a plane you name (a floor or ceiling swirl,
+  // or a wall swirl of the Portal House): `centre` = the middle of the front face, `normal` = the way it looks. `lite` builds only the
+  // vortex (1 draw call instead of 3). `colours` = [[r, g, b], [r, g, b]] (0..1) for the bright arms (default violet and pink).
+  constructor(scene, cells, stand, opts = null) {
+    let w, h, pos, rotY = 0, rotX = 0;
+    if (opts?.normal) {
+      const [nx, ny, nz] = opts.normal;
+      w = opts.w; h = opts.h;
+      pos = [opts.centre[0] + nx * 0.03, opts.centre[1] + ny * 0.03, opts.centre[2] + nz * 0.03];
+      if (ny > 0.5) rotX = -Math.PI / 2; else if (ny < -0.5) rotX = Math.PI / 2; else rotY = Math.atan2(nx, nz);
+    } else {
+      const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]), zs = cells.map(c => c[2]);
+      const [x0, x1, y0, y1, z0, z1] = [Math.min(...xs), Math.max(...xs) + 1, Math.min(...ys), Math.max(...ys) + 1, Math.min(...zs), Math.max(...zs) + 1];
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+      const alongX = x1 - x0 > z1 - z0; // the door's width runs along x (so it faces z) or along z
+      w = alongX ? x1 - x0 : z1 - z0; h = y1 - y0;
+      const toward = alongX ? Math.sign(stand[2] - cz) || 1 : Math.sign(stand[0] - cx) || 1;
+      pos = [cx + (alongX ? 0 : toward * 0.52), cy, cz + (alongX ? toward * 0.52 : 0)];
+      rotY = alongX ? (toward > 0 ? 0 : Math.PI) : (toward > 0 ? Math.PI / 2 : -Math.PI / 2);
+    }
     this.group = new THREE.Group();
-    this.group.position.set(cx + (alongX ? 0 : toward * 0.52), cy, cz + (alongX ? toward * 0.52 : 0));
-    this.group.rotation.y = alongX ? (toward > 0 ? 0 : Math.PI) : (toward > 0 ? Math.PI / 2 : -Math.PI / 2);
-    this.u = { t: { value: 0 }, open: { value: 0 }, size: { value: new THREE.Vector2(w, h) } };
+    this.group.position.set(...pos);
+    this.group.rotation.set(rotX, rotY, 0);
+    const cols = opts?.colours;
+    this.u = { t: { value: 0 }, open: { value: 0 }, size: { value: new THREE.Vector2(w, h) },
+      colA: { value: new THREE.Vector3(...(cols?.[0] ?? [0.62, 0.30, 1.0])) }, colB: { value: new THREE.Vector3(...(cols?.[1] ?? [1.0, 0.45, 0.85])) } };
     const add = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: this.u };
     const vortex = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.ShaderMaterial({ ...add, blending: THREE.NormalBlending, vertexShader: DOOR_VERT, fragmentShader: VORTEX_FRAG })); // covers the tile: dark gaps make the arms read
-    const halo = new THREE.Mesh(new THREE.PlaneGeometry(w + 3, h + 3), new THREE.ShaderMaterial({ ...add, vertexShader: DOOR_VERT, fragmentShader: HALO_FRAG }));
-    halo.position.z = -0.01; // just behind the vortex, glowing over the frame
-    const n = 48, seed = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { seed[i * 3] = (i * 0.618034) % 1; seed[i * 3 + 1] = (i * 0.414214) % 1; seed[i * 3 + 2] = (i * 0.732051) % 1; }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); // placed in the shader
-    g.setAttribute('seed', new THREE.BufferAttribute(seed, 3));
-    const sparks = new THREE.Points(g, new THREE.ShaderMaterial({ ...add, vertexShader: SPARK_VERT, fragmentShader: SPARK_FRAG }));
-    sparks.frustumCulled = false;
-    for (const m of [halo, vortex, sparks]) { m.renderOrder = 7; this.group.add(m); }
+    if (opts?.lite) {
+      vortex.renderOrder = 7; this.group.add(vortex);
+    } else {
+      const halo = new THREE.Mesh(new THREE.PlaneGeometry(w + 3, h + 3), new THREE.ShaderMaterial({ ...add, vertexShader: DOOR_VERT, fragmentShader: HALO_FRAG }));
+      halo.position.z = -0.01; // just behind the vortex, glowing over the frame
+      const n = 48, seed = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { seed[i * 3] = (i * 0.618034) % 1; seed[i * 3 + 1] = (i * 0.414214) % 1; seed[i * 3 + 2] = (i * 0.732051) % 1; }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); // placed in the shader
+      g.setAttribute('seed', new THREE.BufferAttribute(seed, 3));
+      const sparks = new THREE.Points(g, new THREE.ShaderMaterial({ ...add, vertexShader: SPARK_VERT, fragmentShader: SPARK_FRAG }));
+      sparks.frustumCulled = false;
+      for (const m of [halo, vortex, sparks]) { m.renderOrder = 7; this.group.add(m); }
+    }
     this.scene = scene;
     scene.add(this.group);
   }
@@ -73,14 +92,14 @@ export class DoorGlow {
   }
 }
 const DOOR_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-const VORTEX_FRAG = `uniform float t, open; uniform vec2 size; varying vec2 vUv;
+const VORTEX_FRAG = `uniform float t, open; uniform vec2 size; uniform vec3 colA, colB; varying vec2 vUv;
 void main() {
   vec2 p = (vUv - 0.5) * size / (0.5 * size.x); float r = length(p), a = atan(p.y, p.x);
   float sp = t * mix(0.35, 2.4, open);
   float arms = pow(0.5 + 0.5 * sin(a * 3.0 - r * 6.5 + sp * 2.0), 2.2);   // three bright arms winding in
   float fine = pow(0.5 + 0.5 * sin(a * 6.0 + r * 11.0 - sp * 3.0), 3.0);  // thin streaks turning the other way
   vec3 deep = vec3(0.10, 0.02, 0.24);
-  vec3 col = mix(deep, mix(vec3(0.62, 0.30, 1.0), vec3(1.0, 0.45, 0.85), 0.5 + 0.5 * sin(a + t)), arms);
+  vec3 col = mix(deep, mix(colA, colB, 0.5 + 0.5 * sin(a + t)), arms);
   col += vec3(0.35, 0.95, 1.0) * fine * 0.55 * smoothstep(1.7, 0.4, r);
   col += vec3(1.0, 0.95, 1.0) * smoothstep(0.42, 0.0, r) * (0.85 + 0.25 * sin(t * 3.0)); // the bright heart
   col = mix(vec3(dot(col, vec3(0.3))) * 0.8 + vec3(0.06, 0.04, 0.1), col, open);

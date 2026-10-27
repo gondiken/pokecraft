@@ -4,8 +4,10 @@
 //   Balloon Bounce  bounce on the trampoline (the block flag `trampoline`, player.js): hold Jump to go higher, let go to come down, pop six balloons
 //   Gold Ring Ride  ride the carousel, push the stick in or out to change horses, hop for the high rings, catch all ten gold rings
 //   Coaster       a Mover on PATHS.coaster (closed form) from the station to the stage; Slide! (PATHS.helix) takes you back down
-// None of them is hold-and-let-go, none can be failed (no timers, no lives); the tickets are saved at once as `beaten` keys
-// (pw:fair:ticket1..3); everything else (pops, rings caught) is per trip and in memory. Every clock is the sum of the game's clamped
+// None of them is hold-and-let-go. Owner 2026-10-27 "harder games": each game has three rounds that get harder (fairgames.js:
+// BumperGame / BounceGame / Seat, pure and in fixed steps or closed forms); a missed round (time up, a lap without enough points) simply
+// starts again, and after two misses the game slows down a little: never a fail. The tickets are saved at once as `beaten` keys
+// (pw:fair:ticket1..3); everything else (the round, pops, rings caught) is per trip and in memory. Every clock is the sum of the game's clamped
 // frame dt and stands still in a battle, a question, a panel and the pause screen, so a slow device slows the fair like it slows you.
 // `manual = true` + step(dt) lets a spec drive it by hand. Meshes are in fairprops.js (about 14 draw calls in the zone).
 import * as THREE from 'three';
@@ -14,7 +16,7 @@ import { LiveCells } from './livecells.js';
 import { Mover, PATHS } from './mover.js';
 import { sound } from './sound.js';
 import {
-  BumperCar, BAYS, BOTS, ARENA, botAt, BUMPER, balloonOfBot, TRAMP, balloonList, balloonAt, touchesBalloon, CAROUSEL, Seat, ringList, SILVER, omegaOf, carouselAngle, carouselAngleOf, spokeAngle,
+  BumperGame, BUMPER_ROUNDS, BAYS, BOTS, ARENA, BALLOON_STICK, TRAMP, BounceGame, BOUNCE_ROUNDS, CAROUSEL, Seat, RING_ROUNDS, omegaOf, carouselAngleOf, spokeAngle,
   horseBob, onCarousel, STAGE, STATION, SLIDE, COASTER, makeCoaster, makeHelix, registerFairPaths,
 } from './fairgames.js';
 import { buildBumperFleet, buildCarousel, buildRings, buildAirBalloons, buildCoasterCar, buildFerrisWheel, buildSlide, buildConfetti } from './fairprops.js';
@@ -37,16 +39,14 @@ export class FairLive {
     this.manual = false;                                          // tests set it and call step(dt) themselves
     this.clock = 0; this.syncT = 0; this.tuneT = FAIR_RULES.tuneEvery;
     this.told = new Set();
-    // Bumper Cars
-    this.car = new BumperCar();
+    // the three games (rounds, pops, rings: in memory for the trip)
+    this.newGames();
     this.drive = -1;                                  // the bay of the car you drive, or -1
     this.parked = BAYS.map(b => ({ x: b.x, z: b.z, yaw: b.yaw }));
-    this.popped = BOTS.map(() => false); this.pops = 0; this.wob = BOTS.map(() => 0);
-    this.wish = { x: 0, z: 0 }; this.spaceHeld = true; this.honkAt = -9; this.hitAt = -9; this.regrowAt = null;
-    // Balloon Bounce
-    this.airPopped = []; this.airPops = 0; this.airRegrowAt = null;
-    // Gold Ring Ride
-    this.seat = new Seat(this.hard); this.riding = false; this.spoke = 0; this.missedAt = -9;
+    this.wob = BOTS.map(() => 0);
+    this.wish = { x: 0, z: 0 }; this.spaceHeld = true; this.honkAt = -9; this.hitAt = -9;
+    this.trampN = game.player?.trampN ?? 0;
+    this.riding = false; this.spoke = 0; this.spin = 0; this.missedAt = -9;
     // the coaster and the slide
     this.coaster = null; this.slide = null;
     this.coasterPath = makeCoaster(COASTER);
@@ -58,12 +58,21 @@ export class FairLive {
   }
 
   get hard() { return this.game.stars.includes('fair'); }
+  // (new games: a fresh trip, or harder ones after the star)
+  newGames() {
+    const hard = this.hard;
+    this.bump = new BumperGame(hard); this.car = this.bump.car;
+    this.bounce = new BounceGame(hard);
+    this.seat = new Seat(hard);
+    this.gamesHard = hard;
+  }
+  get popped() { return this.bump.popped; }
+  get pops() { return this.bump.pops; }
   get awake() { return this.game.stars.includes('fair'); }
   paused() { const g = this.game; return !!(g.inBattle || g.ui?.asking || g.ui?.panelOpen || !this.playing()); }
   toast(m) { this.game.ui?.toast(m); }
   once(key, text) { if (this.told.has(key)) return; this.told.add(key); this.toast(text); }
   inZone(pos, margin = 0) { const a = this.part.area; return pos.x >= a.x0 - margin && pos.x <= a.x1 + 1 + margin && pos.z >= a.z0 - margin && pos.z <= a.z1 + 1 + margin; }
-  get botT() { return this.drive >= 0 ? this.car.t : this.clock; } // (while you drive, the bots follow the car's own sub-step clock)
 
   /* ---------------------------------------------- meshes ---------------------------------------------- */
   build() {
@@ -181,8 +190,7 @@ export class FairLive {
     if (result !== 'won' || opts?.picture?.id !== 'fair' || opts.picture.crew != null) return;
     const g = this.game;
     for (let i = 1; i <= TICKETS; i++) { const k = g.beaten.indexOf(ticketKey(i)); if (k >= 0) g.beaten.splice(k, 1); }
-    this.popped.fill(false); this.pops = 0; this.airPopped = []; this.airPops = 0; this.seat.caught = []; this.seat.silver = [];
-    this.seat.hard = this.hard;
+    if (this.drive < 0 && !this.riding) this.newGames(); // (the next tries are the harder rematch games)
     g.save?.();
   }
 
@@ -244,52 +252,72 @@ export class FairLive {
     p.pos.set(x, 11, z); p.vel.set(0, 0, 0);
   }
   honk() { if (this.clock - this.honkAt < 0.25) return; this.honkAt = this.clock; sound.play('honkhonk'); }
+  // Bumper Cars: the game steps the bots always (1/120 s sub-steps), your car and the round clock only while you drive.
   driveStep(dt) {
-    const hard = this.hard, car = this.car;
+    const driving = this.drive >= 0, car = this.car;
     const parked = this.parked.filter((_, i) => i !== this.drive);
-    const ev = car.update(dt, { wish: this.wish, hard, popped: this.popped, parked, home: this.parked[this.drive] });
+    const ev = this.bump.update(dt, { driving, wish: this.wish, parked, home: this.parked[Math.max(0, this.drive)] });
     for (const e of ev) {
-      if (e.type === 'pop') this.popBalloon(e.i);
+      if (e.type === 'pop') this.popBalloon(e.i, e.n, e.need);
       else if (e.type === 'bump' && e.kind === 'side') { this.once('side', 'Boing! Get behind it!'); this.wob[e.i] = 1; }
       else if (e.type === 'hit') { if (this.clock - this.hitAt > 0.2) { this.hitAt = this.clock; sound.play('boing'); } if (e.kind === 'bot') this.wob[e.i] = 1; }
-      else if (e.type === 'exit') { this.getOut({ x: ARENA.x1 + 2.2, z: this.car.z }); break; } // out through the gate: the car stays just inside
+      else if (e.type === 'zoom') { sound.play('botzoom'); this.once('zoom', 'Zoom! It saw you coming. Follow it, and bump it when it gets tired!'); }
+      else if (e.type === 'round') this.roundToast('bump', e.round);
+      else if (e.type === 'again') this.againToast('bump', e);
+      else if (e.type === 'done') this.gameDone(1, 'Bumper Cars');
+      else if (e.type === 'exit' && this.drive >= 0) { this.getOut({ x: ARENA.x1 + 2.2, z: car.z }); } // out through the gate: the car stays just inside
     }
     for (let i = 0; i < this.wob.length; i++) this.wob[i] = Math.max(0, this.wob[i] - dt * 2);
     const p = this.game.player;
     if (p.carry === this.carObj) { const w = this.carObj.where(); p.pos.set(w.x, w.y, w.z); }
   }
-  popBalloon(i) {
-    if (this.popped[i]) return;
-    this.popped[i] = true; this.pops++;
-    const b = botAt(i, this.botT, this.hard), at = balloonOfBot(b);
+  popBalloon(i, n = this.bump.pops, need = this.bump.need) {
+    const b = this.bump.fleet.at(i), at = { x: b.x - b.hx * BALLOON_STICK.back, y: BALLOON_STICK.y, z: b.z - b.hz * BALLOON_STICK.back };
     this.confetti.userData.parts.burst(at.x, at.y, at.z, this.clock, 10);
     sound.play('balloonpop');
-    const done = this.popped.every(Boolean);
-    this.toast(`🎈 Pop! ${this.popped.filter(Boolean).length} / ${BUMPER.pops}`);
-    if (done) {
-      this.regrowAt = this.clock + FAIR_RULES.regrow;
-      this.award(1);
-    }
+    this.toast(`🎈 Pop! ${n} / ${need}`);
+  }
+  // the words between rounds (all three games)
+  roundToast(game, round) {
+    sound.play('fairround');
+    const words = {
+      bump: ['', 'Round 2: Zoomers! They zoom off when they see you. Bump them when they get tired!', 'Round 3: Spinners turn to look at you! Line up behind and come in fast!'],
+      bounce: ['', 'Round 2: Wobbly balloons! Star balloons only pop when you land on top of them!', 'Round 3: Combo! Pop one on every bounce: x2, x3! Get 30 points!'],
+      ring: ['', 'Round 2: Faster! Hop for the high gold rings!', 'Round 3: Gold rush! Swap and hop quickly!'],
+    }[game];
+    this.toast(`🎉 ${words[round] || 'Next round!'}`);
+  }
+  againToast(game, e) {
+    sound.play('fairagain');
+    const n = e.round + 1, what = game === 'ring' ? `You got ${e.score} of ${e.need} points` : game === 'bounce' ? 'Time is up' : 'Time is up';
+    this.toast(`${what}! Round ${n} again. You can do it!${e.help ? ' (A bit slower now.)' : ''}`);
+  }
+  gameDone(ticket, name) {
+    if (!this.game.beaten.includes(ticketKey(ticket))) this.award(ticket);
+    else { sound.play('fairround'); this.toast(`🎉 You beat all 3 rounds of ${name} again!`); }
   }
 
   /* ---------------------------------------------- Balloon Bounce ---------------------------------------------- */
-  airStep() {
-    const p = this.game.player, hard = this.hard, list = balloonList(hard);
-    if (p.carry) return;
-    if (p.onGround && this.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) === B.TRAMPOLINE) this.once('tramp', 'Hold Jump to bounce higher. Let go to come down.');
-    if (p.pos.y > 16 && inRect({ x0: TRAMP.x0, x1: TRAMP.x1, z0: TRAMP.z0, z1: TRAMP.z1 }, p.pos.x, p.pos.z)) this.once('steer', 'Steer in the air!');
-    if (p.pos.x < TRAMP.x0 - 3 || p.pos.x > TRAMP.x1 + 4 || p.pos.z < TRAMP.z0 - 3 || p.pos.z > TRAMP.z1 + 4 || p.pos.y < 11.5) return;
-    list.forEach((_, i) => {
-      if (this.airPopped[i]) return;
-      const b = balloonAt(i, this.clock, hard);
-      if (!touchesBalloon(p.pos, b)) return;
-      this.airPopped[i] = true; this.airPops++;
-      this.confetti.userData.parts.burst(b.x, b.y, b.z, this.clock, 10);
-      sound.play('balloonpop');
-      const need = hard ? TRAMP.hardPops : TRAMP.pops, n = this.airPopped.filter(Boolean).length;
-      this.toast(`🎈 Pop! ${Math.min(n, need)} / ${need}`);
-      if (n >= need) { this.airRegrowAt = this.clock + FAIR_RULES.regrow; this.award(2); }
-    });
+  // The round clock runs only while you are on (or above) the trampoline; a launch of the trampoline (player.trampN) is a landing.
+  airStep(dt) {
+    const p = this.game.player, T = TRAMP;
+    const n = p.trampN ?? 0, landed = n !== this.trampN; this.trampN = n;
+    const active = !p.carry && p.pos.y >= 11 && p.pos.x >= T.x0 - 0.5 && p.pos.x <= T.x1 + 1.5 && p.pos.z >= T.z0 - 0.5 && p.pos.z <= T.z1 + 1.5;
+    if (active && p.onGround && this.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) === B.TRAMPOLINE) this.once('tramp', 'Hold Jump to bounce higher. Let go to come down. Pop all 5 balloons!');
+    if (active && p.pos.y > 16) this.once('steer', 'Steer in the air!');
+    const ev = this.bounce.update(dt, { pos: p.pos, vy: p.vel.y, landed, active });
+    for (const e of ev) {
+      if (e.type === 'pop') {
+        this.confetti.userData.parts.burst(e.at.x, e.at.y, e.at.z, this.clock, e.gold ? 16 : 10);
+        sound.play('balloonpop');
+        if (e.scored) { if (e.mult > 1) sound.play('faircombo'); this.toast(`🎈 +${e.pts}${e.mult > 1 ? ` (combo x${e.mult}!)` : ''}  ⭐ ${Math.min(e.n, e.need)} / ${e.need}`); }
+        else this.toast(`🎈 Pop! ${e.n} / ${e.need}`);
+      } else if (e.type === 'boop') { sound.play('fairboop'); this.once('boop', 'Boop! Star balloons only pop when you land on top of them.'); }
+      else if (e.type === 'chainEnd') this.once('chain', 'Combo over! Pop one on every bounce to keep it going.');
+      else if (e.type === 'round') this.roundToast('bounce', e.round);
+      else if (e.type === 'again') this.againToast('bounce', e);
+      else if (e.type === 'done') this.gameDone(2, 'Balloon Bounce');
+    }
   }
 
   /* ---------------------------------------------- Gold Ring Ride ---------------------------------------------- */
@@ -298,15 +326,14 @@ export class FairLive {
     g.riding?.stop('quiet');
     const phi = carouselAngleOf(p.pos.x, p.pos.z);
     let best = 0, bd = 9;
-    for (let k = 0; k < CAROUSEL.spokes; k++) { const d = Math.abs(wrap(spokeAngle(k, this.clock, hard) - phi)); if (d < bd) { bd = d; best = k; } }
+    for (let k = 0; k < CAROUSEL.spokes; k++) { const d = Math.abs(wrap(spokeAngle(k, this.spin) - phi)); if (d < bd) { bd = d; best = k; } }
     this.spoke = best;
-    this.seat.hard = hard;
-    this.seat.reset(this.clock, (best / CAROUSEL.spokes) * TAU, 2);
+    this.seat.reset(this.spin, (best / CAROUSEL.spokes) * TAU, 2); // (the round stays; a new lap starts)
     this.seat.jumpHeld = !!p.keys?.Space;
     this.riding = true;
     p.carry = this.seatObj; p.vel.set(0, 0, 0);
     const w = this.seatObj.where(); p.pos.set(w.x, w.y, w.z);
-    this.once('ride', 'Push the stick in or out to change horses. Jump for high rings!');
+    this.once('ride', 'Push the stick in or out to change horses. Jump for high rings! Catch enough points in one lap.');
   }
   getOff() {
     const p = this.game.player, at = this.seatObj.safe();
@@ -315,16 +342,21 @@ export class FairLive {
     p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0);
   }
   ringStep(dt) {
-    const hard = this.hard, ev = this.seat.update(dt), parts = this.confetti.userData.parts;
-    const need = ringList(hard).length, p = this.game.player;
+    const ev = this.seat.update(dt), parts = this.confetti.userData.parts, p = this.game.player, seat = this.seat;
+    this.spin = seat.spin;
+    const rings = RING_ROUNDS[ev.lap ? ev.lap.round : seat.round].rings;
     for (const c of ev.caught) {
-      const r = c.silver ? SILVER[c.i] : ringList(hard)[c.i], rad = CAROUSEL.lanes[r.lane], q = onCarousel(r.a, rad);
-      parts.burst(q.x, (r.high && !c.silver ? CAROUSEL.highY : CAROUSEL.ringY), q.z, this.clock, c.silver ? 4 : 8);
+      const r = rings[c.i], rad = CAROUSEL.lanes[r.lane], q = onCarousel(r.a, rad);
+      parts.burst(q.x, r.high ? CAROUSEL.highY : CAROUSEL.ringY, q.z, this.clock, r.gold ? 10 : 5);
       sound.play('ringding');
-      if (!c.silver) this.toast(`💍 ${Math.min(this.seat.caught.length, need)} / ${need}`);
+      this.toast(`💍 +${c.pts}${r.gold ? ' gold!' : ''}  ${Math.min(c.score, c.need)} / ${c.need}`);
     }
-    if (ev.missed.length && this.clock - this.missedAt > 8) { this.missedAt = this.clock; this.once('miss', 'It comes round again!'); }
-    if (this.seat.done) this.award(3);
+    if (ev.missed.length && this.clock - this.missedAt > 8) { this.missedAt = this.clock; this.once('miss', 'Be in the ring\'s lane when it comes! Jump for the high ones.'); }
+    if (ev.lap) {
+      if (ev.lap.done) this.gameDone(3, 'the Gold Ring Ride');
+      else if (ev.lap.won) this.roundToast('ring', ev.lap.next);
+      else this.againToast('ring', { round: ev.lap.round, score: ev.lap.score, need: ev.lap.need, help: ev.lap.help });
+    }
     if (p.carry === this.seatObj) { const w = this.seatObj.where(); p.pos.set(w.x, w.y, w.z); }
   }
 
@@ -389,17 +421,17 @@ export class FairLive {
   chip(pl) {
     const ui = this.game.ui;
     if (!ui?.setScore) return;
-    if (!this.inZone(pl.pos)) { if (this.chipOn) { ui.setScore(null); this.chipOn = false; } return; }
-    const st = ticketState(this.game), hard = this.hard;
+    if (!this.inZone(pl.pos)) { if (this.chipOn) { ui.setScore(null); this.chipOn = false; this.chipText = null; } return; }
+    const st = ticketState(this.game);
     let text = `🎟️ ${st.n} / ${TICKETS}`, done = false;
-    if (this.drive >= 0 && !st.have[0]) text = `🚗 ${this.popped.filter(Boolean).length} / ${BUMPER.pops}`;
-    else if (this.riding && !st.have[2]) text = `💍 ${this.seat.caught.length} / ${ringList(hard).length}`;
-    else if (!pl.carry && inRect({ x0: TRAMP.x0 - 1, x1: TRAMP.x1 + 1, z0: TRAMP.z0 - 1, z1: TRAMP.z1 + 1 }, pl.pos.x, pl.pos.z) && !st.have[1]) text = `🎈 ${this.airPopped.filter(Boolean).length} / ${hard ? TRAMP.hardPops : TRAMP.pops}`;
+    const T = TRAMP, onTramp = !pl.carry && pl.pos.x >= T.x0 - 1 && pl.pos.x <= T.x1 + 2 && pl.pos.z >= T.z0 - 1 && pl.pos.z <= T.z1 + 2;
+    if (this.drive >= 0) { const g = this.bump; text = `🚗 Round ${g.round + 1}/3 · 🎈 ${g.pops} / ${g.need} · ⏱ ${Math.ceil(g.left)}`; }
+    else if (this.riding) { const s = this.seat; text = `🎠 Round ${s.round + 1}/3 · 💍 ${s.score} / ${s.need} · lap ${Math.round(s.swept / TAU * 100)}%`; }
+    else if (onTramp) { const g = this.bounce; text = g.scored ? `🎈 Round 3/3 · ⭐ ${g.score} / ${g.need} · x${g.mult} · ⏱ ${Math.ceil(g.left)}` : `🎈 Round ${g.round + 1}/3 · ${g.pops} / ${g.need} · ⏱ ${Math.ceil(g.left)}`; }
     else if (st.done) { text = 'Ride the coaster! 🎢'; done = true; }
-    ui.setScore({ text, done });
+    if (text !== this.chipText) { this.chipText = text; ui.setScore({ text, done }); } // (the DOM only on a change)
     this.chipOn = true;
   }
-
   /* ---------------------------------------------- every frame ---------------------------------------------- */
   update(dt) { if (!this.manual) this.step(dt); }
   step(dt) {
@@ -407,14 +439,13 @@ export class FairLive {
     if (!p) return;
     if (!this.paused()) {
       this.clock += dt;
-      this.seat.hard = this.hard;
-      if (this.drive >= 0) this.driveStep(dt);
+      if (this.gamesHard !== this.hard && this.drive < 0 && !this.riding) this.newGames();
+      this.driveStep(dt);
       if (this.riding) this.ringStep(dt);
+      else this.spin += omegaOf(this.seat.hard, this.seat.round, this.seat.help.slow) * dt; // (the carousel turns at the speed of your next round)
       this.rideStep(dt);
       this.gateStep();
-      this.airStep();
-      if (this.regrowAt != null && this.clock >= this.regrowAt) { this.regrowAt = null; this.popped.fill(false); this.pops = 0; }
-      if (this.airRegrowAt != null && this.clock >= this.airRegrowAt) { this.airRegrowAt = null; this.airPopped = []; this.airPops = 0; }
+      this.airStep(dt);
       this.syncT += dt;
       if (this.syncT >= FAIR_RULES.syncEvery) { this.syncT = 0; this.syncBlocks(); }
       if (this.awake && this.inZone(p.pos)) { this.tuneT += dt; if (this.tuneT >= FAIR_RULES.tuneEvery) { this.tuneT = 0; sound.play('fairtune'); } }
@@ -431,7 +462,7 @@ export class FairLive {
 
   /* ---------------------------------------------- drawing ---------------------------------------------- */
   draw(first = false) {
-    const p = this.game.player, hard = this.hard, T = this.clock, bt = this.botT;
+    const p = this.game.player, T = this.clock, fl = this.bump.fleet;
     const far = !!p && !this.inZone(p.pos, FAIR_RULES.sleepDist);
     const fleet = this.fleet.userData.parts, air = this.airMesh.userData.parts, car = this.carouselMesh.userData.parts;
     for (const o of [this.fleet, this.ringMesh, this.airMesh, this.coasterCar, this.slideMesh, this.confetti]) o.visible = !far;
@@ -442,19 +473,20 @@ export class FairLive {
       else fleet.car(i, this.parked[i].x, 11, this.parked[i].z, this.parked[i].yaw);
     }
     BOTS.forEach((_, i) => {
-      const b = botAt(i, bt, hard), wob = Math.sin(T * 32) * 0.14 * this.wob[i];
+      const b = fl.at(i), tired = b.tired ? Math.sin(T * 9) * 0.06 : 0, wob = Math.sin(T * 32) * 0.14 * this.wob[i] + tired; // (a tired bot puffs and nods)
       fleet.car(6 + i, b.x, 11, b.z, b.yaw, wob);
       fleet.head(i, b.x, 11, b.z, b.yaw, wob);
-      if (this.popped[i]) fleet.hideBalloon(i);
-      else fleet.balloon(i, b.x - b.hx * 0.9, 12.1, b.z - b.hz * 0.9, 1 + 0.03 * Math.sin(T * 5 + i));
+      if (this.popped[i] || !fl.hasBalloon(i)) fleet.hideBalloon(i);
+      else fleet.balloon(i, b.x - b.hx * 0.9, 12.1, b.z - b.hz * 0.9, (b.zooming ? 1.12 : 1) + 0.03 * Math.sin(T * 5 + i));
     });
     // the carousel, the rings, the trampoline balloons
-    car.set(carouselAngle(T, hard), (k, lane) => horseBob(k, lane, T));
-    this.ringMesh.userData.parts.set(this.seat.caught, this.seat.silver, T, hard);
-    balloonList(true).forEach((_, i) => {
-      if (i >= balloonList(hard).length || this.airPopped[i]) air.set(i, null, false);
-      else air.set(i, balloonAt(i, T, hard), true, T * 0.3 + i);
-    });
+    car.set(this.spin, (k, lane) => horseBob(k, lane, T));
+    this.ringMesh.userData.parts.set(this.seat.rings, this.riding ? this.seat.caught : [], T);
+    const bg = this.bounce, list = bg.spec.balloons;
+    for (let i = 0; i < 8; i++) {
+      if (i >= list.length || !bg.shown(i)) air.set(i, null, false, 0, list[i]);
+      else air.set(i, bg.balloon(i), true, T * 0.3 + i, list[i]);
+    }
     // the coaster car (at the station, or wherever the ride is), the Ferris wheel, the confetti
     const cc = this.coasterCar, w = this.coaster ? this.coaster.where() : this.coasterPath.at(0);
     const ahead = this.coaster ? this.coasterPath.at(Math.min(this.coasterPath.time, this.coaster.clock + 0.15)) : this.coasterPath.at(0.4);
@@ -472,8 +504,11 @@ export class FairLive {
     const st = ticketState(this.game);
     return {
       clock: this.clock, drive: this.drive, car: { x: this.car.x, z: this.car.z, vx: this.car.vx, vz: this.car.vz, speed: this.car.speed, t: this.car.t },
-      pops: this.popped.filter(Boolean).length, popped: [...this.popped], airPops: this.airPopped.filter(Boolean).length, airPopped: [...this.airPopped],
-      riding: this.riding, lane: this.seat.laneNow, laneTo: this.seat.to, spoke: this.spoke, rings: [...this.seat.caught], silver: [...this.seat.silver], hop: this.seat.hopHeight,
+      pops: this.bump.pops, popped: [...this.bump.popped], bump: { round: this.bump.round, need: this.bump.need, left: this.bump.left, misses: this.bump.misses, wins: this.bump.wins, slow: this.bump.help.slow },
+      bounce: { round: this.bounce.round, need: this.bounce.need, got: this.bounce.got, score: this.bounce.score, pops: this.bounce.pops, mult: this.bounce.mult, left: this.bounce.left, misses: this.bounce.misses, wins: this.bounce.wins },
+      airPops: this.bounce.pops, airPopped: [...this.bounce.popped],
+      riding: this.riding, lane: this.seat.laneNow, laneTo: this.seat.to, spoke: this.spoke, rings: [...this.seat.caught], hop: this.seat.hopHeight,
+      ring: { round: this.seat.round, score: this.seat.score, need: this.seat.need, misses: this.seat.misses, wins: this.seat.wins, omega: this.seat.omega, swept: this.seat.swept },
       coaster: this.coaster ? this.coaster.clock : null, slide: this.slide ? this.slide.clock : null, tickets: st.have, n: st.n, hard: this.hard, awake: this.awake,
       lit: { ...this.lit }, parked: this.parked.map(c => ({ ...c })), meshes: this.groups.length, told: [...this.told],
     };

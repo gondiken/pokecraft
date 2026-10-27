@@ -31,6 +31,8 @@ export const TYPE_COLORS = {
   pirate: 'repeating-linear-gradient(90deg,#f6efe0 0 5px,#e07a6a 5px 10px)',
   racer: 'linear-gradient(90deg,#ffa24a 0 70%,#ffffff 70% 78%,#ffa24a 78%)',
   ball: 'radial-gradient(circle at 35% 35%,#ffffff 18%,#9fd6ff 19%)',
+  // Wave 15 (T42)
+  portal: 'conic-gradient(from 45deg,#c9a8ff,#8ff0ea,#ffc9a0,#c9a8ff)', // T42: light enough for the dark chip text
   // Wave 15 (T43): pink, cream and sky blue stripes, light enough for the dark chip text
   funfair: 'repeating-linear-gradient(90deg,#ff8ac8 0 6px,#fff2a0 6px 12px,#8ad8ff 12px 18px)',
   // Wave 15 (T44): light enough for the dark chip text
@@ -98,10 +100,19 @@ const EFFECTIVENESS = {
   racer: { pirate: 2, time: 2, parkour: 2, racer: 0.5, rock: 0.5, slime: 0.5 },
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
+/* ==== T42 portal ==== */
+// A shortcut beats any racer; a swirl slips through goo and bones; a mind and time were
+// there first, and two swirls just swap places. The cells where OTHER types hit a Portal creature are separate lines (no old cell changes).
+EFFECTIVENESS.portal = { racer: 2, slime: 2, bone: 2, portal: 0.5, mind: 0.5, time: 0.5 };
+EFFECTIVENESS.bone.portal = 2; // bones jam a swirl
+EFFECTIVENESS.alien.portal = 2; // aliens know other doors
+EFFECTIVENESS.cozy.portal = 2; // a cosy blanket over the door
+EFFECTIVENESS.racer.portal = 0.5; // you can't outrun a shortcut
+/* ==== end of T42 portal ==== */
 /* ==== T44 surprise: the chart ==== */
-// A jack-in-the-box makes a skeleton jump out of its bones, a pirate's chest pops open with a jack, a big surprise wakes any dreamer; a safe can't be
+// A jack popping out trips any runner, a pirate's chest pops open with a jack, a big surprise wakes any dreamer; a safe can't be
 // surprised and the clock always knew it was your birthday. Others' rows are separate lines (never an edit of an old row).
-EFFECTIVENESS.surprise = { bone: 2, pirate: 2, dream: 2, surprise: 0.5, metal: 0.5, time: 0.5 }; // wave 15 merge: mind and cyber were full
+EFFECTIVENESS.surprise = { parkour: 2, pirate: 2, dream: 2, surprise: 0.5, metal: 0.5, time: 0.5 }; // wave 15 merge: mind and cyber were full
 EFFECTIVENESS.paper.surprise = 2;  // paper tears the wrapping open (wave 15 merge: time already hit 4 types)
 EFFECTIVENESS.ball.surprise = 2;   // a ball knocks the box open
 EFFECTIVENESS.bug.surprise = 2;    // bugs nibble the wrapping paper
@@ -573,6 +584,22 @@ BIG_MOVES.pirate = [
   ['walktheplank', 'Walk the Plank', 'curse', 'The foe team wobbles on the plank and gets slower (sometimes).'],
 ];
 /* ==== end of T40b pirate ==== */
+/* ==== T42 portal ==== */
+// Portal creatures pop in and out of swirls. Pop Through comes out behind the foe; Shortcut gets there first.
+Object.assign(MOVES, {
+  swirlbop: mv('Swirl Bop', 'portal', 40, 1),
+  popthrough: mv('Pop Through', 'portal', 80, 0.9, { fx: { kind: 'flinch', chance: 0.2 } }),
+  shortcut: mv('Shortcut', 'portal', 50, 1, { priority: 1 }),
+  dizzyswirl: mv('Dizzy Swirl', 'portal', 0, 1, { fx: { kind: 'lower', stat: 'atk' } }),
+  hattrick: mv('Hat Trick', 'portal', 30, 1, { fx: { kind: 'multi', min: 2, max: 4 }, sig: true }),
+  doorslam: mv('Door Slam', 'portal', 95, 0.9, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
+});
+BIG_MOVES.portal = [
+  ['backdoor', 'Back Door', 'sacrifice', 'Pop! You slip out the back door. The next friend comes in fresh and strong.'],
+  ['portalparty', 'Portal Party', 'field', 'Swirls everywhere! Portal moves are stronger for 5 turns. Foes too!'],
+  ['lostinswirl', 'Lost in the Swirl', 'curse', 'The foe team gets lost in swirls and slows down (sometimes).'],
+];
+/* ==== end of T42 portal ==== */
 /* ==== T41 atlantis ==== */
 // Atlantis creatures are the Sunken City's old guardians: jars, statues and tiles that woke up when the city began to glow.
 Object.assign(MOVES, {
@@ -722,6 +749,7 @@ T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.nin
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
 T1.tiny = 'teenytap'; T2.tiny = 'mightymite'; T3.tiny = 'tinysteps'; T4.tiny = 'tuckaway'; // T40a
 T1.pirate = 'hookswipe'; T2.pirate = 'cannonball'; T3.pirate = 'swashbuckle'; T4.pirate = 'spyglass'; // T40b
+T1.portal = 'swirlbop'; T2.portal = 'popthrough'; T3.portal = 'shortcut'; T4.portal = 'dizzyswirl'; // T42
 T1.atlantis = 'jarbonk'; T2.atlantis = 'tiletoss'; T3.atlantis = 'runeglow'; T4.atlantis = 'stoneroar'; // T41
 T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4.doodle = 'rubout'; // T45
 function L(type, second, extra = []) {
@@ -2331,6 +2359,46 @@ export const SPECIES = {
     model: { shape: 'barrelpus', scale: 1.0, body: 0x9a5ad8, accent: 0xb07a3a, dark: 0x4a2a6a, belly: 0xf0d0ff, extras: [] },
   },
   /* ==== end of T40b pirate ==== */
+  /* ==== T42 portal ==== */
+  doorbit: {
+    name: 'Doorbit', type: 'portal', gait: 'pop', desc: 'A little door on four stubby legs. Nobody knows what is on the other side of Doorbit. Sometimes it is a sock.',
+    base: { hp: 50, atk: 60, def: 65, spd: 40 }, baseXp: 64, catchRate: 0.45, learn: L('portal', 'rock'),
+    evolve: { level: 30, into: 'gatestrider' },
+    model: { shape: 'walkdoor', scale: 0.8, body: 0x9a7aff, accent: 0x5ae8e0, dark: 0x4a2e8a, belly: 0xffd9b0, extras: [] },
+  },
+  gatestrider: {
+    name: 'Gatestrider', type: 'portal', gait: 'pop', desc: 'A tall stone arch that strides on long legs. It has seen every door there is, and slams the rude ones.',
+    base: { hp: 85, atk: 85, def: 105, spd: 55 }, baseXp: 168, catchRate: 0.12, learn: L('portal', 'rock', [[32, 'doorslam']]),
+    model: { shape: 'walkdoor', scale: 1.35, body: 0x9a9ab8, accent: 0x5ae8e0, dark: 0x6a6a8c, belly: 0xffd9b0, extras: ['arch'] },
+  },
+  hatbun: {
+    name: 'Hatbun', type: 'portal', gait: 'pop', desc: 'A top hat with long ears and a nose peeking out. When it gets shy it ducks all the way into the hat.',
+    base: { hp: 45, atk: 55, def: 45, spd: 70 }, baseXp: 64, catchRate: 0.45, learn: L('portal', 'pixie'),
+    evolve: { level: 28, into: 'topperoo' },
+    model: { shape: 'hatbunny', scale: 0.8, body: 0x6a4ab8, accent: 0xff9a3a, dark: 0x3a2a78, belly: 0xfff0e0, extras: [] },
+  },
+  topperoo: {
+    name: 'Topperoo', type: 'portal', gait: 'pop', desc: 'A tall rabbit magician with a hat on its head and a second hat in its paw. What comes out of it? Even Topperoo is surprised.',
+    base: { hp: 75, atk: 95, def: 70, spd: 95 }, baseXp: 168, catchRate: 0.12, learn: L('portal', 'pixie', [[30, 'hattrick']]),
+    model: { shape: 'hatbunny', scale: 1.3, body: 0x7a5ac8, accent: 0xff9a3a, dark: 0x3a2a78, belly: 0xfff0e0, extras: ['coat'] },
+  },
+  hooplet: {
+    name: 'Hooplet', type: 'portal', gait: 'pop', desc: 'A round worm that curls into a ring and slips its head into a swirl at its own tail. Round and round it goes!',
+    base: { hp: 50, atk: 55, def: 55, spd: 65 }, baseXp: 64, catchRate: 0.45, learn: L('portal', 'cosmic'),
+    evolve: { level: 32, into: 'loopwyrm' },
+    model: { shape: 'loopworm', scale: 0.8, body: 0x5ae8e0, accent: 0xff9a3a, dark: 0x2a8a8a, belly: 0xe0fffb, extras: [] },
+  },
+  loopwyrm: {
+    name: 'Loopwyrm', type: 'portal', gait: 'pop', desc: 'A long winged wyrm that flies in a figure eight, with a swirl in each loop. Nobody has ever found its end.',
+    base: { hp: 80, atk: 100, def: 75, spd: 95 }, baseXp: 170, catchRate: 0.12, learn: L('portal', 'cosmic'), flies: true,
+    model: { shape: 'loopworm', scale: 1.3, body: 0x7a5aff, accent: 0xff9a3a, dark: 0x3a2a8a, belly: 0xe0d8ff, extras: ['wings'] },
+  },
+  peekhole: {
+    name: 'Peekhole', type: 'portal', gait: 'pop', desc: 'A round hole in the air with two big eyes and little hands holding its edge. Often you only see the eyes.',
+    base: { hp: 65, atk: 70, def: 60, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('portal', 'mind'),
+    model: { shape: 'peephole', scale: 0.9, body: 0x2a1e5a, accent: 0xff9a3a, dark: 0x120c2a, belly: 0xfff0e0, extras: [] },
+  },
+  /* ==== end of T42 portal ==== */
   /* ==== T41 atlantis ==== */
   jarling: {
     name: 'Jarling', type: 'atlantis', desc: 'A shy little creature who lives in a clay jar and peeks over the rim. It only comes out when nobody is looking.',
@@ -2633,6 +2701,12 @@ for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...l
 export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'crumbs'], // T40a.5: Pipsqueak after all 12 crumbs
   ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
 /* ==== end of T40a tiny ==== */
+
+/* ==== T42 portal ==== */
+// Portal creatures live only in the Swirl's Portal House (REALMS.swirl.spawns.portal, the calm rooms), never in the main world's SPAWNS.
+export const PORTAL_SPAWNS = [['doorbit', 1.2, 'housefloor'], ['hatbun', 1.2, 'housefloor'], ['hooplet', 1.0, 'housefloor'], ['peekhole', 0.15, 'housefloor'],
+  ['gatestrider', 0.12, 'housefloor'], ['topperoo', 0.12, 'housefloor'], ['loopwyrm', 0.1, 'housefloor']];
+/* ==== end of T42 portal ==== */
 /* ==== T44 surprise ==== */
 // Surprise creatures live only in the Room of Doors (REALMS.doors.spawns), on the `gift` condition (spawnrules.js: the nook spots of shelves, the hall's walls, the stage sides);
 // every one starts wrapped in a gift box (creatures.js GAITS.gift). Gold paper always wraps a rarer one.

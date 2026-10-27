@@ -3007,6 +3007,147 @@ SIG.anchordrop = (k, from, to) => {
 // Gift orange, party pink, cream.
 FX_COLORS.surprise = [0xffb04a, 0xff6a8a, 0xfff0d0];
 
+/* ==== T42 portal ==== */
+// Violet, teal, orange.
+FX_COLORS.portal = [0x9a6aff, 0x5ae8e0, 0xff9a3a];
+
+// A ring opens beside the user, the shot (a small spiral spark) dives in and pops out of a second ring beside the target.
+TRAVEL.portal = k => {
+  const r1 = k.mesh('ring', { color: 0x5ae8e0, glow: true, opacity: 0.9 });
+  const r2 = k.mesh('ring', { color: 0xff9a3a, glow: true, opacity: 0.9 });
+  const spark = k.sprite('star', { color: 0xc9a8ff, size: 0.36, glow: true });
+  const trail = k.points({ n: 4, tex: 'dot', size: 0.2, glow: true, colors: [0x5ae8e0, 0xc9a8ff] });
+  return {
+    dur: 400,
+    step(p) {
+      const open1 = Math.sin(Math.PI * clamp01(p / 0.55)), open2 = Math.sin(Math.PI * clamp01((p - 0.45) / 0.55));
+      k.at(0, A, 0);
+      r1.position.set(A.x + k.dir.x * 0.5, A.y + 0.1, A.z + k.dir.z * 0.5);
+      r1.lookAt(r1.position.x + k.dir.x, r1.position.y, r1.position.z + k.dir.z);
+      r1.scale.setScalar(Math.max(0.01, 0.75 * open1));
+      r1.material.opacity = open1 * 0.9;
+      k.at(1, B, 0);
+      r2.position.set(B.x - k.dir.x * 0.5, B.y + 0.1, B.z - k.dir.z * 0.5);
+      r2.lookAt(r2.position.x - k.dir.x, r2.position.y, r2.position.z - k.dir.z);
+      r2.scale.setScalar(Math.max(0.01, 0.75 * open2));
+      r2.material.opacity = open2 * 0.9;
+      // the spark is inside the first ring until 0.3, gone between the rings, and out of the second from 0.7
+      const fly = clamp01((p - 0.25) / 0.5);
+      if (p < 0.25 || p > 0.75) {
+        const near1 = p < 0.25;
+        const q = near1 ? clamp01(p / 0.25) : clamp01((p - 0.75) / 0.25);
+        const at = near1 ? r1.position : r2.position;
+        spark.position.set(at.x + (near1 ? 1 : -1) * k.dir.x * (near1 ? (1 - q) : q) * 0.3, at.y, at.z + (near1 ? 1 : -1) * k.dir.z * (near1 ? (1 - q) : q) * 0.3);
+        spark.scale.setScalar(Math.max(0.01, near1 ? 0.5 * (1 - q * 0.6) : 0.15 + 0.35 * q));
+        spark.material.opacity = 1;
+        spark.material.rotation = p * 12;
+      } else { spark.material.opacity = 0; }
+      for (let i = 0; i < 4; i++) {
+        const t = clamp01(fly + (i - 1.5) * 0.03);
+        if (fly <= 0 || fly >= 1) { trail.hide(i); continue; }
+        k.at(t, C, 0.2);
+        trail.set(i, C.x, C.y, C.z);
+      }
+      trail.fade(0.8);
+    },
+  };
+};
+
+// The ring snaps shut: a teal ring closes in on the target, a flash and sparkles in the three colours.
+IMPACT.portal = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 6;
+  const ring = k.mesh('ring', { color: 0x5ae8e0, glow: true, opacity: 0.9 });
+  const ring2 = k.mesh('ring', { color: 0xff9a3a, glow: true, opacity: 0.8 });
+  const pts = k.points({ n: N, tex: 'star', size: 0.3 * m, glow: true, colors: [0x9a6aff, 0x5ae8e0, 0xff9a3a] });
+  const flash = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  return {
+    dur: 380,
+    step(p) {
+      const close = 1 - k.ease(clamp01(p / 0.6));
+      for (const [r, f, a] of [[ring, 1, 0.9], [ring2, 0.7, 0.8]]) {
+        r.position.copy(to.pos);
+        r.lookAt(r.position.x - k.dir.x, r.position.y, r.position.z - k.dir.z);
+        r.scale.setScalar(Math.max(0.01, (to.r + 0.4) * m * (0.2 + close * f)));
+        r.material.opacity = p < 0.6 ? a : a * fadeOut((p - 0.6) / 0.4, 0.3);
+      }
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 3, d = (to.r * 0.4 + 0.1 + k.ease(p) * 0.8) * m;
+        pts.set(i, to.pos.x + Math.cos(ang) * d * 0.9, to.pos.y + Math.sin(ang) * d * 0.9 * 0.7, to.pos.z + Math.sin(ang * 0.5) * d * 0.4);
+      }
+      pts.fade(fadeOut(p, 0.55));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 1.0 * m * Math.sin(Math.PI * clamp01((p - 0.5) * 2))));
+      flash.material.rotation = p * 2;
+      flash.material.opacity = p > 0.5 ? fadeOut((p - 0.5) / 0.5, 0.4) : 0;
+    },
+  };
+};
+
+// Hat Trick: three top hats pop out of rings above the target one after the other and drop on it, a flash each.
+SIG.hattrick = (k, from, to) => {
+  const hats = [0, 1, 2].map(() => k.sprite('square', { color: 0x4a3a7a, size: 0.5 }));
+  const flashes = [0, 1, 2].map(i => k.sprite('star', { color: [0xff9a3a, 0x5ae8e0, 0x9a6aff][i], size: 0.1, glow: true }));
+  const ring = k.mesh('ring', { color: 0xff9a3a, glow: true, opacity: 0.8 }); // (one ring over the middle hat: the draw-call budget)
+  return {
+    dur: 700,
+    step(p) {
+      const open = Math.sin(Math.PI * clamp01(p / 0.5));
+      ring.position.set(to.pos.x, to.top + 2.4, to.pos.z);
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.scale.setScalar(Math.max(0.01, 1.8 * open));
+      ring.material.opacity = open * 0.8;
+      for (let i = 0; i < 3; i++) {
+        const t = clamp01((p - i * 0.14) / 0.4), off = (i - 1) * 0.7;
+        const x = to.pos.x + k.side.x * off, z = to.pos.z + k.side.z * off, top = to.top + 2.4;
+        const h = hats[i];
+        if (t <= 0 || t >= 1) h.material.opacity = 0; else {
+          h.position.set(x, lerp(top, to.pos.y + 0.1, t * t), z);
+          h.material.opacity = 1;
+          h.material.rotation = (1 - t) * (i % 2 ? 1.2 : -1.2);
+        }
+        const u = clamp01((p - i * 0.14 - 0.4) / 0.25), f = flashes[i];
+        f.position.set(x, to.pos.y + 0.1 * i, z);
+        f.scale.setScalar(Math.max(0.01, 1.0 * Math.sin(Math.PI * u)));
+        f.material.opacity = u > 0 && u < 1 ? 1 : 0;
+        f.material.rotation = u * 2 + i;
+      }
+    },
+  };
+};
+
+// Door Slam: a big door swings in from the side and slams shut on the target, a ring spreads on the ground and sparks fly.
+SIG.doorslam = (k, from, to) => {
+  const door = k.sprite('square', { color: 0x8a8aa8, size: 1.5 });
+  const knob = k.sprite('dot', { color: 0xffd23c, size: 0.2 });
+  const ring = k.mesh('ring', { color: 0xc9a8ff, glow: true, opacity: 0.7 });
+  const N = 6;
+  const pts = k.points({ n: N, tex: 'star', size: 0.28, glow: true, colors: [0x5ae8e0, 0xff9a3a] });
+  const feet = feetOf(to);
+  return {
+    dur: 650,
+    step(p) {
+      const swing = clamp01(p / 0.4), hit = clamp01((p - 0.4) / 0.6);
+      const off = (1 - swing * swing) * 2.2;
+      door.position.set(to.pos.x + k.side.x * off, to.pos.y + 0.1, to.pos.z + k.side.z * off);
+      door.scale.set(Math.max(0.01, 1.5 * (0.35 + 0.65 * swing)), 1.5, 1);
+      door.material.opacity = p < 0.4 ? 1 : fadeOut((p - 0.4) / 0.6, 0.4);
+      knob.position.set(door.position.x + 0.3 * swing, door.position.y, door.position.z);
+      knob.material.opacity = door.material.opacity;
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, feet + 0.06, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, hit * (to.r + 1.1)));
+      ring.material.opacity = hit > 0 ? 0.7 * (1 - hit) : 0;
+      for (let i = 0; i < N; i++) {
+        if (hit <= 0) { pts.hide(i); continue; }
+        const ang = (i / N) * 6.283, d = 0.3 + hit * (to.r * 0.7 + 0.6);
+        pts.set(i, to.pos.x + Math.cos(ang) * d, feet + 0.2 + Math.sin(hit * Math.PI) * (0.5 + 0.1 * (i % 3)), to.pos.z + Math.sin(ang) * d);
+      }
+      pts.fade(fadeOut(hit, 0.5));
+    },
+  };
+};
+/* ==== end of T42 portal ==== */
+
 // A little wrapped box tumbles along a high arc (a square with a bow knot), with a streamer trail behind it.
 TRAVEL.surprise = k => {
   const box = k.sprite('square', { color: 0xff6a8a, size: 0.42, glow: true });

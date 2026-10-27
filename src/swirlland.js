@@ -8,7 +8,8 @@
 // T38d: the Wizard's paint-box look: four moods (ZONES, zoneWeights), painted deck tops, glow puffs and lanterns, sculptures made of
 // blocks (SCULPTURES), and the data for the sky's nebula puffs, sparks and floating oddities (decorList; swirlsky.js draws those).
 import { B, WOOL, mulberry32 } from './blocks.js';
-import { FRAME_WORLDS, BRIDGE_WORLDS } from './pictureworlds.js';
+import { FRAME_WORLDS, BRIDGE_WORLDS, pictureWorld } from './pictureworlds.js';
+import { buildPortalHouse, houseAim, HUB as HOUSE_HUB } from './portalhouse.js'; // T42: the Portal House in the north-east sky
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // T38d: the Swirl's moods. Four zones with their own pastel palettes blend over a constant haze (weights are smoothstep rings; the GLSL
@@ -168,7 +169,7 @@ export const wizardX = n => BRIDGE.x0 + (BRIDGE.len + BRIDGE.gap) * n + WIZARD.r
 // Every Swirl x/z cell of a lift, the middle of its box.
 export const liftCenter = l => [(l.x[0] + l.x[1] + 1) / 2, (l.z[0] + l.z[1] + 1) / 2];
 
-export function swirlLand(world, def) {
+export function swirlLand(world, def, { house = true } = {}) { // T42: `house: false` makes the version 4 Swirl (tests)
   const { W, D } = world;
   const put = (x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
   const ground = (x, z, y) => { if (x >= 0 && z >= 0 && x < W && z < D) world.ground[x + z * W] = y; };
@@ -409,6 +410,7 @@ export function swirlLand(world, def) {
     decks: DECKS, lifts: LIFTS, frames, bridge, spiral, loop: loopTops, lamps, zones: ZONES, decor: decorList(), sculptures, lanterns,
     wizard: { x: wx, z: wz, x0: wx - WIZARD.r, door: doorCells, star, box: { x0: wx - R, x1: wx + R, z0: wz - R, z1: wz + R, y0: wy + 1, y1: 47 } },
   };
+  if (house) buildPortalHouse(world); // T42 (version 5): writes only inside its own volume, never moves an old Swirl part
 }
 
 // The guide in the Swirl: { x, z, text(arrow, distance) }. On the cloud sea: the nearest lift; a ready Picture World you have no
@@ -423,6 +425,8 @@ export function frameReturn(id) {
 }
 
 export function swirlAim(world, p, game) {
+  const inHouse = houseAim(world, p, game); // T42: inside the Portal House its own guide leads the way
+  if (inHouse) return inHouse;
   const near = list => list.reduce((best, c) => (!best || Math.hypot(c.x - p.x, c.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z) ? c : best), null);
   if (p.y < 4 && world.lifts?.length) {
     const c = near(world.lifts.map(l => { const [x, z] = liftCenter(l); return { x, z }; }));
@@ -430,6 +434,8 @@ export function swirlAim(world, p, game) {
   }
   const open = (world.swirl?.frames || []).map(f => ({ f, w: FRAME_WORLDS.find(w => w.id === f.world) }))
     .filter(({ w }) => w?.ready && !game?.stars?.includes(w.id)).map(({ f, w }) => ({ x: f.stand[0] + 0.5, z: f.stand[2] + 0.5, w }));
+  const house = world.swirl?.house; // T42: the Portal House is one more open world (a floor swirl on the hub), until you hold its star
+  if (house && pictureWorld('portal')?.ready && !game?.stars?.includes('portal')) open.push({ x: (HOUSE_HUB.x[0] + HOUSE_HUB.x[1] + 1) / 2, z: (HOUSE_HUB.z[0] + HOUSE_HUB.z[1] + 1) / 2, w: pictureWorld('portal') });
   if (open.length) { const c = near(open); return { x: c.x, z: c.z, text: (a, m) => `${c.w.emoji} ${c.w.name} ${a} ${m}m` }; }
   const d = world.door, c = d.surface[Math.floor(d.surface.length / 2)];
   const x = c[0] + 0.5, z = c[2] + 0.5;

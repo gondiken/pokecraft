@@ -221,6 +221,10 @@ const SOUNDS = {
   doodlescratch: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05, freq: 3600 + i * 500, len: 0.04, vol: 0.05, q: 1.8 }); },
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
+  // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).
+  'fx:portal': () => { tone(300, { len: 0.22, type: 'sine', vol: 0.16, slide: 700 }); tone(1100, { at: 0.2, len: 0.06, type: 'triangle', vol: 0.18, slide: -500 }); },
+  swirlzip: () => { notes([880, 1175, 1568], 0.045, { len: 0.1, type: 'sine', vol: 0.2 }); noise({ freq: 5000, len: 0.12, vol: 0.06, q: 1 }); },
+  swirlwarp: () => { tone(500, { len: 0.18, type: 'sine', vol: 0.2, slide: -300 }); tone(250, { at: 0.16, len: 0.2, type: 'sine', vol: 0.22, slide: 800 }); noise({ at: 0.3, freq: 1800, len: 0.08, vol: 0.14, q: 1 }); },
   // T43 funfair: a little organ arpeggio for attacks; a balloon pop, a gold ring ding, a bumper car honk, a coaster chain click, the
   // golden ticket jingle and a quiet fair tune (the live part plays it every few seconds while the fair is awake).
   'fx:funfair': () => { notes([523, 659, 784, 1047], 0.06, { len: 0.1, type: 'square', vol: 0.08 }); notes([523, 659, 784, 1047], 0.06, { len: 0.12, type: 'triangle', vol: 0.12 }); },
@@ -230,6 +234,13 @@ const SOUNDS = {
   coasterclack: () => { noise({ freq: 3000, len: 0.03, vol: 0.22, q: 2 }); tone(120, { len: 0.05, type: 'square', vol: 0.1, slide: -30 }); },
   ticketprize: () => { notes([784, 988, 1175, 1568], 0.08, { len: 0.16, type: 'triangle', vol: 0.26 }); bell(1568, 0.34, 0.5, 0.2); },
   fairtune: () => notes([523, 659, 784, 659, 523, 784, 1047, 784], 0.17, { len: 0.22, type: 'triangle', vol: 0.09 }),
+  // T43 harder games (owner 2026-10-27): a new round (a little rising fanfare), a round to try again (a soft, friendly "wah-wah" up), a combo
+  // step (a higher blip each time), a star balloon booped from below, a bumper bot zooming off.
+  fairround: () => { notes([659, 784, 1047], 0.09, { len: 0.14, type: 'triangle', vol: 0.22 }); bell(1319, 0.3, 0.4, 0.16); },
+  fairagain: () => { tone(392, { len: 0.18, type: 'triangle', vol: 0.16, slide: -40 }); tone(523, { at: 0.2, len: 0.22, type: 'triangle', vol: 0.16, slide: 60 }); },
+  faircombo: () => { tone(1047, { len: 0.06, type: 'square', vol: 0.07 }); tone(1568, { at: 0.06, len: 0.1, type: 'triangle', vol: 0.14 }); },
+  fairboop: () => tone(260, { len: 0.12, type: 'sine', vol: 0.18, slide: 180 }),
+  botzoom: () => { tone(200, { len: 0.25, type: 'sawtooth', vol: 0.06, slide: 500 }); noise({ freq: 2200, len: 0.15, vol: 0.06, q: 1 }); },
   // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
   'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },
   // T44 surprise: a tiny drum roll and a ta-da; a gift opening (paper rip + pop), a giggle, a door whoosh, a fanfare for the right door,
@@ -242,6 +253,11 @@ const SOUNDS = {
   sillyhonk: () => { tone(330, { len: 0.12, type: 'sawtooth', vol: 0.12, slide: -60 }); tone(300, { at: 0.16, len: 0.16, type: 'sawtooth', vol: 0.12, slide: 120 }); },
   jackpop: () => { tone(180, { len: 0.2, type: 'triangle', vol: 0.3, slide: 700 }); tone(900, { at: 0.08, len: 0.14, type: 'sine', vol: 0.1, slide: -300 }); },
   boop: () => { tone(740, { len: 0.1, type: 'sine', vol: 0.3, slide: -200 }); tone(1100, { at: 0.05, len: 0.1, type: 'triangle', vol: 0.12 }); },
+  // T44 rework: a piñata CRACK (a paper thwack), the candy rain, a jack caught in your arms, a cream pie's splat.
+  pinatawhack: () => { noise({ freq: 900, len: 0.12, vol: 0.32, q: 0.9 }); tone(160, { len: 0.12, type: 'triangle', vol: 0.3, slide: -60 }); noise({ at: 0.04, freq: 3600, len: 0.08, vol: 0.12, q: 1.2 }); },
+  candyrain: () => { for (let i = 0; i < 7; i++) tone(1200 + ((i * 7) % 5) * 180, { at: i * 0.05, len: 0.06, type: 'triangle', vol: 0.08 }); [523, 659, 784, 1047].forEach((f, i) => tone(f, { at: 0.3 + i * 0.08, len: 0.14, type: 'triangle', vol: 0.14 })); },
+  jackcatch: () => { tone(520, { len: 0.08, type: 'triangle', vol: 0.2, slide: 300 }); bell(1319, 0.07, 0.25, 0.12); },
+  piesplat: () => { noise({ freq: 500, len: 0.22, vol: 0.3, q: 0.6 }); tone(220, { len: 0.18, type: 'sine', vol: 0.18, slide: -140 }); },
   racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),
   racego: () => tone(990, { len: 0.4, type: 'square', vol: 0.16 }),
   lapbell: () => { bell(1568, 0, 0.35, 0.2); bell(2093, 0.14, 0.4, 0.2); },
