@@ -126,6 +126,11 @@ The Boss waits on a giant cookie on the table.
 this world once the Wizard was gone. Fly from island to island by cannon, swing on ropes, and board the Captain's
 ship. The star is in his treasure chest.
 
+**Atlantis, the Sunken City** (in the Pirate Seas, east of the islands: the city the Captain never found). Deep in a
+glowing crater lies a city whose lights were its glowfish, and they swam away. Swim down, catch them with a net and
+light the city's three lanterns; then the palace dome opens, and **Queen Coralia** guards the star. Its creatures are
+the city's old guardians: jars, stone lions and mosaic snakes that came alive.
+
 **Playland.** The Wizard built it for a great festival: a race track, a football stadium and a fair with a roller
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
 and the fair leader, and Playland starts up again.
@@ -180,6 +185,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | The Shadow Dojo, 32 badges in an 8 x 4 grid | Ninja gym | 12 |
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
-| The Portal House, Playland's fair, the Room of Doors, the Sketchbook | Portal, Funfair, Surprise, Doodle Picture Worlds | 15 |
+| The Portal House, Playland's fair, the Room of Doors, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
 | The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |

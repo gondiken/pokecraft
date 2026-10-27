@@ -1260,7 +1260,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   entry's place: no save could hold that star). The Swirl (version 4) has 11 frames (the new one, N5, at the west end of the north
   gallery, which grew by 8) and 12 bridge stones; the Wizard's island moved 6 east (x 142). Old Swirl edits are dropped once.
 
-## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle
+## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle, Atlantis
 
 - **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
   the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
@@ -1290,6 +1290,16 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
     README), plus a terrain builder and a Boss.
   - Rejected: a full-screen post-processing pass (edge detection + greyscale). Less control and an extra full-screen
     pass on iPads.
+- **🔱 Atlantis, the Sunken City (T41, `plans/T41.md`; owner 2026-10-27)**: its own type and star, in the **Pirate Seas**,
+  which grow east to 320 x 224 (every island stays where it is; old Pirate Seas edits are converted, not dropped). Open from
+  the start: a whirlpool east of Palm Key, or its own frame (`secret2` becomes `atlantis`, "Pirate Seas · Atlantis"). A
+  glowing crater 11 blocks deep with a dark sunken city. **The skill game (the owner wants skill, not puzzles): Glowfish
+  Catch.** Swim freely in 3D (where you look, kicks for bursts, only in the crater), hold **Catch!** to coil and let go
+  to **lunge** with a net (judge the distance). Three districts, three tricks: shy fish pop out of jars (reaction),
+  darters must be herded into dead ends, a golden school is caught many at once when it bunches up. Your catch is your
+  light in the dark; 12 lights in three lanterns open the palace dome, and **Queen Coralia** battles for the star (in
+  the dry throne room). Type: the city's woken guardians, never fish or crabs: Jarling > Grand Urnling, Statuecub >
+  Guardlion (rideable), Tilesnek > Mosaicoil, Runestone; teal rune lines on every model.
 
 ## Wave 16 · The Wizard's Tower and the Custom type (the design option below is still open)
 
