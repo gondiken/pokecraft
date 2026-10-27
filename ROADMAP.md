@@ -1260,7 +1260,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   entry's place: no save could hold that star). The Swirl (version 4) has 11 frames (the new one, N5, at the west end of the north
   gallery, which grew by 8) and 12 bridge stones; the Wizard's island moved 6 east (x 142). Old Swirl edits are dropped once.
 
-## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle, Atlantis
+## Wave 15 · Picture Worlds 2: Portal, the Fair, Surprise, Doodle, Atlantis ✅ done (T41-T45, `plans/wave15.md`, `T41`-`T45`; owner 2026-10-27 reworks: the Room of Doors' Piñata Party and Jack Catch, Doodle's Draw! (you steer the pencil, Rubber chases), eight Portal House rooms in the spirit of Valve's Portal, harder Funfair rounds, a hand-drawn Sketchbook look; 9 of the 12 stars now have a world: `secret3`-`secret5` are still to be named)
 
 - **🌀 Portal:** the Portal **type** and its Picture World, not the Portal Door (that is built: T38a, it only leads into
   the Swirl). Creatures that pop in and out of swirls (a doorway with legs, a rabbit that jumps into its own hat).
