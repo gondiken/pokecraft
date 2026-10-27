@@ -12,7 +12,7 @@ import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 import { houseLand, houseAim } from './giantland.js'; // T40a
-import { TINY_SPAWNS } from './species.js'; // T40a
+import { TINY_SPAWNS, PORTAL_SPAWNS } from './species.js'; // T40a, T42
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -51,12 +51,13 @@ export const REALMS = {
   // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, eleven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: 4, size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star)
+    id: 'swirl', name: 'Swirl', version: 5, sameCells: [4], size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
-    spawns: { swirl: [], cave: [] },    // no wild creatures in wave 13
-    walk: [], gyms: [],
+    spawns: { swirl: [], portal: PORTAL_SPAWNS, cave: [] }, // T42: wild Portal creatures only in the Portal House's calm rooms (world.realmBiome says 'portal' there)
+    zoneNames: { portal: 'Portal House' }, levelBonus: 33, levelCap: 45, lose: 'stay', // T42: like a Picture World: a lost battle rests you at the nearest rest spot
+    walk: [B.PO_FLOOR], gyms: [],
     look: { sky: 0xd8c8ff, fog: [44, 125], time: null, weather: false, light: 0.85, still: true, stars: false, zones: true }, // T38d: the zones' sky, fog and light come from swirlsky.js
     arrive: [43, 80], arriveYaw: -Math.PI / 2, // 4 in front of the door back, facing east
     morning: false,                     // the morning never wakes you here
@@ -528,7 +529,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (def.parent) stash.up = { id: def.parent, ret: cleanRet(saved.realmUp?.ret), via: cleanVia(saved.realmUp?.via, def.id), edits: null }; // T40
       createWorld(realmSeed(w.seed, def.seedSalt), game.realmEdits[def.id], def.size, { realm: def });
       game.place = def.id;
-      const rp = (saved.realmVersions?.[def.id] ?? 1) === (def.version ?? 1) ? saved.realmPos : null; // T35: another version of the realm: arrive at the start
+      const sv = saved.realmVersions?.[def.id] ?? 1, rp = sv === (def.version ?? 1) || def.sameCells?.includes(sv) ? saved.realmPos : null; // T42: sameCells // T35: another version of the realm: arrive at the start
       const np = game.player;
       if (Array.isArray(rp) && rp.slice(0, 3).every(Number.isFinite)) { np.pos.set(rp[0], rp[1], rp[2]); np.yaw = rp[3] || 0; np.pitch = rp[4] || 0; }
       else np.pos.copy(game.spawnPoint);
@@ -593,7 +594,7 @@ export function cleanRealmEdits(saved, versions) {
   for (const [id, list] of Object.entries(saved)) {
     const def = realmOf(id);
     if (!def || !Array.isArray(list)) continue;
-    if ((versions?.[id] ?? 1) !== (def.version ?? 1)) continue;
+    if ((versions?.[id] ?? 1) !== (def.version ?? 1) && !def.sameCells?.includes(versions?.[id] ?? 1)) continue; // T42: sameCells = older versions whose cells line up with this one
     const max = def.size[0] * def.size[1] * 48;
     out[id] = list.filter(e => Array.isArray(e) && Number.isInteger(e[0]) && Number.isInteger(e[1]) && e[0] >= 0 && e[0] < max && e[1] >= 0 && e[1] < 256);
   }

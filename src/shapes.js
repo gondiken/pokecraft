@@ -5618,3 +5618,179 @@ function barrelpus(root, m, parts) {
 const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
 Object.assign(SHAPES, SHAPES_PIRATE);
 /* ==== end of T40b pirate ==== */
+
+/* ==== T42 portal ==== */
+// Portal look: every Portal model wears a little swirl badge (userData.gear = 'swirl'): a flat spiral of five small teal and violet
+// boxes that turns slowly. A spec checks it on every model (like the Pirate bandana). Posed parts sit inside a plain pivot.
+const PO_TEAL = 0x5ae8e0, PO_VIOLET = 0x9a6aff, PO_ORANGE = 0xff9a3a;
+// A spiral badge at (x, y, z) facing +z, size s. The pivot spins about z.
+function poSwirl(parent, parts, x, y, z, s = 1, speed = 1.1) {
+  const g = pivot(parent, x, y, z);
+  spin(parts, g, 'z', speed);
+  gear(box(g, 0.05 * s, 0.05 * s, 0.03, PO_ORANGE, 0, 0, 0), 'swirl');
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.25, r = (0.045 + i * 0.03) * s;
+    gear(box(g, 0.05 * s, 0.05 * s, 0.03, i % 2 ? PO_VIOLET : PO_TEAL, Math.cos(a) * r, Math.sin(a) * r, 0), 'swirl');
+  }
+  return g;
+}
+
+// Doorbit / Gatestrider: a door frame on four legs with a swirl inside it and a face on the lintel. Gatestrider (`arch`) is a tall
+// stone arch on long legs with a starry swirl and a small roof.
+function walkdoor(root, m, parts) {
+  const arch = has(m, 'arch');
+  const lh = arch ? 0.46 : 0.17, H = arch ? 1.0 : 0.66, W = arch ? 0.72 : 0.56;
+  parts.legs = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const hip = pivot(root, sx * W * 0.36, lh, sz * 0.13);
+    box(hip, arch ? 0.13 : 0.12, lh, arch ? 0.13 : 0.12, m.dark, 0, -lh / 2, 0);
+    box(hip, 0.17, 0.05, 0.2, m.dark, 0, -lh + 0.025, 0.03);
+    parts.legs.push({ g: hip, phase: sx * sz > 0 ? 0 : Math.PI });
+  }
+  const door = pivot(root, 0, lh, 0);
+  parts.head = door;
+  for (const s of [-1, 1]) box(door, 0.11, H, 0.17, m.body, s * (W / 2 - 0.055), H / 2, 0);
+  box(door, W, 0.15, 0.19, m.body, 0, H - 0.075, 0);
+  box(door, W - 0.2, 0.06, 0.17, m.dark, 0, 0.03, 0);
+  box(door, W - 0.2, H - 0.22, 0.05, m.dark, 0, H / 2 - 0.04, -0.03); // the dark inside
+  box(door, W - 0.28, H - 0.3, 0.02, arch ? 0x24185a : 0x3a2a7a, 0, H / 2 - 0.04, 0.0); // night-sky glow behind the swirl
+  poSwirl(door, parts, 0, H * 0.42, 0.03, arch ? 1.5 : 1.15);
+  if (arch) for (const [x, y] of [[-0.18, 0.7], [0.19, 0.78], [-0.12, 0.2], [0.2, 0.25], [0, 0.88]]) box(door, 0.03, 0.03, 0.02, 0xffffff, x, y, 0.025); // stars
+  eyes(door, H - 0.075, 0.1, 0.14, 0.1);
+  box(door, 0.1, 0.03, 0.03, 0x2a2a2a, 0, H - 0.135, 0.105); // a small mouth
+  box(door, 0.05, 0.05, 0.06, m.accent, W / 2 - 0.19, H * 0.42, 0.1); // doorknob
+  if (arch) { // stones along the top, a small roof
+    for (let i = 0; i < 4; i++) box(door, 0.09, 0.07, 0.2, m.dark, -W / 2 + 0.055 + i * (W - 0.11) / 3, H + 0.01, 0);
+    box(door, W + 0.12, 0.06, 0.3, m.dark, 0, H + 0.1, 0);
+    box(door, W - 0.14, 0.09, 0.24, m.body, 0, H + 0.17, 0);
+    box(door, W - 0.36, 0.08, 0.18, m.dark, 0, H + 0.24, 0);
+  }
+}
+
+// Hatbun / Topperoo: a top hat on two stubby feet, long rabbit ears and a face peeking out of the crown; it ducks in and out.
+// Topperoo (`coat`) is a tall rabbit magician in a tail coat, a hat on its head and a second hat in one paw.
+function hatbunny(root, m, parts) {
+  const coat = has(m, 'coat');
+  const hat = (parent, s, x, y, z) => { // a small top hat
+    const h = pivot(parent, x, y, z);
+    box(h, 0.5 * s, 0.05 * s, 0.5 * s, m.body, 0, 0, 0);
+    box(h, 0.34 * s, 0.34 * s, 0.34 * s, m.body, 0, 0.19 * s, 0);
+    box(h, 0.35 * s, 0.07 * s, 0.35 * s, m.accent, 0, 0.1 * s, 0);
+    return h;
+  };
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  if (!coat) {
+    for (const s of [-1, 1]) box(lift, 0.13, 0.1, 0.2, m.belly, s * 0.14, 0.05, 0.04); // feet
+    box(lift, 0.5, 0.05, 0.5, m.body, 0, 0.12, 0); // the brim
+    box(lift, 0.4, 0.34, 0.4, m.body, 0, 0.3, 0);
+    box(lift, 0.41, 0.07, 0.41, m.accent, 0, 0.22, 0); // band
+    const peek = pivot(lift, 0, 0.47, 0); // the rabbit rising out of the crown
+    swing(parts, peek, 'x', 0.18, 1.1);
+    parts.head = peek;
+    box(peek, 0.3, 0.2, 0.26, m.belly, 0, 0.08, 0.02);
+    eyes(peek, 0.12, 0.14, 0.07, 0.09);
+    box(peek, 0.06, 0.04, 0.03, m.accent, 0, 0.06, 0.16); // nose
+    for (const s of [-1, 1]) {
+      const ear = pivot(peek, s * 0.08, 0.17, 0);
+      swing(parts, ear, 'z', 0.14, 1.7, s);
+      box(ear, 0.07, 0.34, 0.05, m.belly, 0, 0.17, 0);
+      box(ear, 0.04, 0.26, 0.03, m.accent, 0, 0.17, 0.02);
+    }
+    poSwirl(lift, parts, 0, 0.27, 0.215, 0.8); // the badge on the hat's front
+  } else {
+    for (const s of [-1, 1]) { // long legs and big feet
+      box(lift, 0.13, 0.4, 0.14, m.dark, s * 0.11, 0.2, 0);
+      box(lift, 0.15, 0.06, 0.26, m.belly, s * 0.11, 0.03, 0.05);
+    }
+    const body = pivot(lift, 0, 0.4, 0);
+    box(body, 0.42, 0.5, 0.3, m.body, 0, 0.25, 0);
+    box(body, 0.16, 0.44, 0.04, m.belly, 0, 0.27, 0.16); // shirt front
+    for (const s of [-1, 1]) box(body, 0.1, 0.38, 0.04, m.dark, s * 0.1, 0.3, 0.17).rotation.z = -s * 0.15; // lapels
+    const tails = pivot(body, 0, 0.06, -0.15);
+    swing(parts, tails, 'x', 0.08, 2.2);
+    for (const s of [-1, 1]) box(tails, 0.17, 0.34, 0.05, m.body, s * 0.1, -0.12, -0.02);
+    box(body, 0.1, 0.1, 0.1, m.belly, 0, 0.06, -0.2); // fluffy tail
+    poSwirl(body, parts, -0.12, 0.42, 0.185, 0.7); // the badge on the coat
+    const head = pivot(body, 0, 0.62, 0.02);
+    parts.head = head;
+    box(head, 0.34, 0.3, 0.3, m.belly, 0, 0, 0.02);
+    eyes(head, 0.04, 0.17, 0.08, 0.1);
+    box(head, 0.07, 0.05, 0.03, m.accent, 0, -0.03, 0.18);
+    for (const s of [-1, 1]) {
+      const ear = pivot(head, s * 0.09, 0.14, 0);
+      swing(parts, ear, 'z', 0.12, 1.6, s);
+      box(ear, 0.07, 0.4, 0.05, m.belly, 0, 0.2, 0);
+      box(ear, 0.04, 0.3, 0.03, m.accent, 0, 0.2, 0.02);
+    }
+    hat(head, 0.7, 0, 0.17, -0.02).rotation.z = 0.2; // the hat on its head, a little tilted
+    const arm = pivot(body, 0.27, 0.42, 0.06); // the paw holding the second hat
+    swing(parts, arm, 'x', 0.35, 1.6);
+    box(arm, 0.09, 0.3, 0.09, m.body, 0, -0.14, 0);
+    hat(arm, 0.55, 0, -0.3, 0.02).rotation.x = Math.PI; // upside down: a trick
+    box(body, 0.09, 0.3, 0.09, m.body, -0.27, 0.27, 0);
+  }
+}
+
+// Hooplet / Loopwyrm: a round worm curled into a ring that stands on its edge, its head going into a swirl at its own tail.
+// Loopwyrm (`wings`) is a figure eight (two rings, a swirl in each loop) with two wings.
+function loopworm(root, m, parts) {
+  const wings = has(m, 'wings');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  parts.float = true; // hovers: the ring stays off the ground
+  const N = 10;
+  const ring = (cy, r, withHead) => {
+    const g = pivot(lift, 0, cy, 0);
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * 6.283, k = 0.2 - (i / N) * 0.05;
+      const seg = box(g, k, k, k, i % 3 === 0 ? m.accent : m.body, Math.cos(a) * r, Math.sin(a) * r, 0);
+      seg.rotation.z = a;
+    }
+    if (withHead) {
+      const head = pivot(g, r, 0, 0);
+      parts.head = head;
+      box(head, 0.3, 0.26, 0.28, m.body, 0.03, 0, 0.02);
+      eyes(head, 0.04, 0.15, 0.09, 0.1);
+      box(head, 0.1, 0.03, 0.03, 0x2a2a2a, 0.03, -0.07, 0.16);
+      for (const s of [-1, 1]) box(head, 0.05, 0.14, 0.05, m.accent, s * 0.08, 0.18, 0).rotation.z = s * 0.3;
+    }
+    poSwirl(g, parts, 0, 0, 0.02, r * 2.3, withHead ? 1.1 : -1.4);
+  };
+  if (!wings) {
+    ring(0.45, 0.3, true);
+  } else {
+    ring(0.34, 0.27, true);
+    ring(0.88, 0.27, false);
+    addWings(parts, lift, m, 0.2, 0.62, -0.05, 0.62, 0.34, m.belly, m.accent, { lift: 0.25, upright: true });
+  }
+}
+
+// Peekhole: a round hole in the air (a dark starry disc in a glowing rim) with two big eyes and little hands holding its edge.
+function peephole(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  parts.float = true;
+  const hole = pivot(lift, 0, 0.5, 0);
+  parts.head = hole;
+  const N = 12, R = 0.36;
+  for (let i = 0; i < N; i++) { // the glowing rim
+    const a = (i / N) * 6.283;
+    const seg = box(hole, 0.15, 0.15, 0.12, i % 2 ? m.accent : 0xffc27a, Math.cos(a) * R, Math.sin(a) * R, 0);
+    seg.rotation.z = a;
+  }
+  box(hole, 0.62, 0.62, 0.04, m.body, 0, 0, -0.01); // the dark inside
+  box(hole, 0.5, 0.5, 0.04, 0x1a1250, 0, 0, 0.0);
+  for (const [x, y] of [[-0.22, 0.2], [0.2, -0.22], [0.24, 0.24], [-0.2, -0.24]]) box(hole, 0.035, 0.035, 0.03, 0xffffff, x, y, 0.025); // stars
+  eyes(hole, 0.06, 0.04, 0.13, 0.17); // two big eyes looking out of the dark
+  for (const s of [-1, 1]) { // little hands holding the edge
+    const hand = pivot(hole, s * 0.4, -0.25, 0.04);
+    swing(parts, hand, 'z', 0.2, 2.4, s);
+    box(hand, 0.1, 0.1, 0.1, m.belly, 0, 0, 0);
+    for (const f of [-1, 0, 1]) box(hand, 0.025, 0.07, 0.03, m.belly, f * 0.03, 0.07, 0.04);
+  }
+  poSwirl(hole, parts, 0, -0.24, 0.04, 0.75);
+}
+const SHAPES_PORTAL = { walkdoor, hatbunny, loopworm, peephole };
+Object.assign(SHAPES, SHAPES_PORTAL);
+/* ==== end of T42 portal ==== */

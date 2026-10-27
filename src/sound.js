@@ -210,6 +210,10 @@ const SOUNDS = {
   cannonboom: () => { drum(70, 0, 0.45); drum(52, 0.07, 0.4); noise({ freq: 700, len: 0.35, vol: 0.28, q: 0.5 }); },
   seasplash: () => { noise({ freq: 2200, len: 0.35, vol: 0.2, q: 0.6 }); noise({ at: 0.08, freq: 900, len: 0.4, vol: 0.18, q: 0.5 }); tone(300, { len: 0.2, vol: 0.08, slide: -180 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
+  // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).
+  'fx:portal': () => { tone(300, { len: 0.22, type: 'sine', vol: 0.16, slide: 700 }); tone(1100, { at: 0.2, len: 0.06, type: 'triangle', vol: 0.18, slide: -500 }); },
+  swirlzip: () => { notes([880, 1175, 1568], 0.045, { len: 0.1, type: 'sine', vol: 0.2 }); noise({ freq: 5000, len: 0.12, vol: 0.06, q: 1 }); },
+  swirlwarp: () => { tone(500, { len: 0.18, type: 'sine', vol: 0.2, slide: -300 }); tone(250, { at: 0.16, len: 0.2, type: 'sine', vol: 0.22, slide: 800 }); noise({ at: 0.3, freq: 1800, len: 0.08, vol: 0.14, q: 1 }); },
   // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
   'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },
   racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),

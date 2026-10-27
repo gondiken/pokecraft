@@ -7,6 +7,7 @@ import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
 import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
+import { roomState } from './portalplay.js'; // T42
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -118,6 +119,25 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 
 });
 /* ==== end of T40d ball ==== */
 
+/* ==== T42 portal ==== */
+addBoss({ // the Portal House (in the Swirl itself): the four swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star
+  id: 'portal', name: 'Grandpa Arch', type: 'portal', model: { species: 'gatestrider', scale: 2.0 },
+  gate: game => { const { n, need, ready } = roomState(game); return ready ? null : `Finish all four swirl rooms first! (🌀 ${n} / ${need})`; },
+  team: [['peekhole', 60], ['topperoo', 61, ['hattrick', 'popthrough', 'shortcut', 'dizzyswirl']], ['loopwyrm', 62], ['gatestrider', 63, ['doorslam', 'popthrough', 'portalparty', 'shortcut']]], // top level 63, the easy side
+  intro: ['Hello, little traveller. I am Grandpa Arch, the oldest Portal creature.', 'I have watched the crack in the Swirl for a long, long time. Show me your team!'],
+  lose: 'Wonderful! Take the star. It will make the bridge a little longer.',
+  win: 'A good try! Rest a bit, then come back through the swirls.',
+  rematchIntro: ['Back again? My swirls trained too!'],
+  note: 'The Portal creatures were my very first helpers. They built the door that let you in. Thank you for the star!',
+  crew: [
+    { name: 'Keeper Kit', look: 'swirl', colors: { shirt: 0x7a4ad8, pants: 0xf6efe0, hair: 0x2a1a4a, skin: 0xf2d0b0 },
+      team: [['doorbit', 59], ['hatbun', 60]], intro: ['Hello! I keep the Hall of Swirls.', 'Want a practice battle?'], line: 'Your swirl and the orange swirl are joined: in one, out the other!' },
+    { name: 'Keeper Juno', look: 'swirl', colors: { shirt: 0x2ab8b0, pants: 0x3a2a6a, hair: 0xf0a040, skin: 0xc68a5a },
+      team: [['hooplet', 60], ['topperoo', 61]], intro: ['Quick taps! Look ahead while you fly!', 'Battle me first?'], line: 'Quick taps! Look ahead while you fly.' },
+  ],
+});
+/* ==== end of T42 portal ==== */
+
 export function createBosses(game, { startBattle, save }) {
   let pending = null; // { npc, at } while the rematch question is on screen
   const toast = m => game.ui.toast(m);
@@ -201,7 +221,7 @@ export function createBosses(game, { startBattle, save }) {
         toast(`⭐ You won the star of the ${pw.name}! (${game.stars.length}/${PICTURE_WORLDS.length}) +${c} Capture Cubes`);
         game.ui.celebrate(`⭐ The ${pw.name} star!`, `🧙 "${def.note}"`, BOSS.noteMs);
         toast(`🧙 ${def.note}`);
-        toast('Go back to the Swirl: your star lights a stone of the star bridge!');
+        toast(game.place === 'swirl' ? 'Your star lights a stone of the star bridge, back on the hub!' : 'Go back to the Swirl: your star lights a stone of the star bridge!'); // T42: the Portal House is in the Swirl itself
         return;
       }
       const n = Math.min(BOSS.maxWins, winsOf(id) + 1); // a rematch

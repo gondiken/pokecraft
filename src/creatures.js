@@ -63,6 +63,15 @@ Object.assign(GAITS, {
 });
 /* ==== end of T40a tiny ==== */
 
+/* ==== T42 portal ==== */
+// 'pop' (Portal): every `every` s (each creature at its own phase, from its uid) a small teal swirl opens under it, it sinks in (`sink` s)
+// and pops out of a second swirl `dists` blocks away on the same floor (`gap` s later, `rise` s to come up). The spot is chosen from fixed
+// angles by a hash of the uid and the cycle number (no Math.random), on a world.walk floor with air for body and head, at most 1 up / 1
+// down, within `leash` of where it spawned. While it is inside it is hidden and cannot be picked. It never reacts to you, and a bump never
+// battles (E / a tap does).
+Object.assign(GAITS, { pop: { every: 5, sink: 0.4, gap: 0.3, rise: 0.4, dists: [4, 3, 5, 6], leash: 12 } });
+/* ==== end of T42 portal ==== */
+
 export class Wild {
   constructor(data, model, pos) {
     this.data = data;
@@ -452,6 +461,7 @@ export class CreatureManager {
       if (w.blink) this.endBlink(w); // T37: never stuck invisible
       if (w.dash) { w.dash = null; w.model.rotation.x = 0; } // T40c: a dash ends when the battle starts
       if (w.hidden) this.endPeek(w); // T40a
+      if (w.pop) this.endPop(w); // T42
       return;
     }
     if (sp.gait) return this.updateGait(w, dt); // T36
@@ -538,6 +548,7 @@ export class CreatureManager {
     if (w.species.gait === 'blink') return this.updateBlink(w, dt); // T37
     if (w.species.gait === 'dash') return this.updateDash(w, dt); // T40c
     if (w.species.gait === 'peek') return this.updatePeek(w, dt); // T40a
+    if (w.species.gait === 'pop') return this.updatePop(w, dt); // T42
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -881,6 +892,74 @@ export class CreatureManager {
     w.model.position.copy(w.pos);
   }
   /* ==== end of T40a tiny ==== */
+
+  /* ==== T42 portal ==== */
+  // Where a pop in cycle n lands: { x, y, z } (a cell centre; y = the standing height) or null. Fixed angles from a hash, never Math.random.
+  popLanding(y0, cx, cz) {
+    const world = this.world;
+    if (cx < 1 || cz < 1 || cx >= world.W - 1 || cz >= world.D - 1) return null;
+    for (let y = Math.min(y0 + 1, WORLD_H - 3); y >= Math.max(1, y0 - 1); y--) {
+      const here = world.get(cx, y, cz), below = world.get(cx, y - 1, cz);
+      if (here !== B.AIR || world.get(cx, y + 1, cz) !== B.AIR || !(world.walk ?? GROUND).has(below)) continue;
+      return y;
+    }
+    return null;
+  }
+  choosePop(w, g, n) {
+    const x0 = Math.floor(w.pos.x), z0 = Math.floor(w.pos.z), y0 = Math.round(w.pos.y), h = hash32(`${w.data.uid || 'x'}|${n}`);
+    const a0 = (h % 360) * Math.PI / 180, p = this.viewer;
+    for (let i = 0; i < 8; i++) {
+      const a = a0 + (i * Math.PI) / 4;
+      for (const d of g.dists) {
+        const cx = Math.floor(w.pos.x + Math.sin(a) * d), cz = Math.floor(w.pos.z + Math.cos(a) * d);
+        if (cx === x0 && cz === z0) continue;
+        if (Math.hypot(cx + 0.5 - w.home.x, cz + 0.5 - w.home.z) > g.leash) continue;
+        if (p && Math.hypot(p.x - (cx + 0.5), p.z - (cz + 0.5)) < 1.2) continue; // never on top of you
+        const y = this.popLanding(y0, cx, cz);
+        if (y !== null) return { x: cx + 0.5, y, z: cz + 0.5 };
+      }
+    }
+    return null;
+  }
+  updatePop(w, dt) {
+    const g = GAITS.pop, model = w.model;
+    w.phase ??= ((hash32(w.data.uid || 'x') % 1000) / 1000) * g.every;
+    const tt = w.t + w.phase, n = Math.floor(tt / g.every), u = tt - n * g.every;
+    if (!w.pop || w.pop.n !== n) w.pop = { n, from: { x: w.pos.x, y: w.pos.y, z: w.pos.z }, to: this.choosePop(w, g, n), a: false, moved: false, b: false };
+    const P = w.pop;
+    let k = 1, dy = 0, shown = true;
+    if (P.to) {
+      if (u < g.sink) { // sinking into the first swirl
+        const f = u / g.sink;
+        k = Math.max(0.02, 1 - f); dy = -0.25 * f;
+        if (!P.a) { P.a = true; w.heading = Math.atan2(P.to.x - w.pos.x, P.to.z - w.pos.z); this.puff({ x: P.from.x, y: P.from.y + 0.05, z: P.from.z }, { color: 0x5ae8e0, sound: null }); }
+      } else {
+        if (!P.moved) { P.moved = true; w.pos.set(P.to.x, P.to.y, P.to.z); }
+        if (u < g.sink + g.gap) shown = false; // inside the swirl
+        else if (u < g.sink + g.gap + g.rise) { // coming up out of the second swirl
+          const f = (u - g.sink - g.gap) / g.rise;
+          k = Math.max(0.02, f); dy = -0.25 * (1 - f);
+          if (!P.b) { P.b = true; this.puff({ x: P.to.x, y: P.to.y + 0.05, z: P.to.z }, { color: 0xff9a3a, sound: null }); }
+        }
+      }
+    }
+    w.hidden = !shown;
+    model.visible = shown;
+    model.scale.setScalar(k);
+    model.position.set(w.pos.x, w.pos.y + dy, w.pos.z);
+    model.rotation.y = w.heading;
+    animateModel(model, w.t, false);
+  }
+  // A battle starts (or the creature goes): visible again, whole, at its spot.
+  endPop(w) {
+    const P = w.pop;
+    if (P?.to && !P.moved) { P.moved = true; w.pos.set(P.to.x, P.to.y, P.to.z); }
+    w.pop = null; w.hidden = false;
+    w.model.visible = true;
+    w.model.scale.setScalar(1);
+    w.model.position.copy(w.pos);
+  }
+  /* ==== end of T42 portal ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

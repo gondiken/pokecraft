@@ -246,3 +246,21 @@ addDestination({
       madeText: won ? 'The Boss is here! Talk to them for a rematch.' : 'The Boss is here! Talk to them.' });
   }),
 });
+
+/* ==== T42 portal ==== */
+// The Portal House, in the Swirl itself: a floor swirl on the hub (and, once inside, the Boss in the Study).
+addDestination({
+  id: 'portalhouse',
+  rows: game => {
+    const h = game.world.swirl?.house;
+    if (!h || !pictureWorld('portal')?.ready) return [];
+    const rows = [new SpotDestination({ id: 'portalhouse', group: 'realm', icon: '🌀', label: 'Portal House', where: () => [(h.hub.x[0] + h.hub.x[1] + 1) / 2, (h.hub.z[0] + h.hub.z[1] + 1) / 2], radius: 4,
+      madeText: 'The Hub Swirl! Step on it to go to the Portal House.' })];
+    if (game.player.pos.x > 90 && game.player.pos.z < 36 && game.player.pos.y > 4) {
+      const b = h.boss, won = game.stars?.includes('portal');
+      rows.push(new SpotDestination({ id: 'boss:portal', group: 'realm', icon: won ? '⭐' : '👑', label: 'Grandpa Arch', where: () => [b.pos[0], b.pos[2]], radius: 4, madeText: 'Grandpa Arch is here! Talk to him.' }));
+    }
+    return rows;
+  },
+});
+/* ==== end of T42 portal ==== */
