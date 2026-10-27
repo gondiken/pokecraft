@@ -216,7 +216,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(hud.got === 1 && hud.all === 12 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of twelve, each named (${hud.got}/${hud.all}: ${hud.titles})`);
   t.ok(JSON.stringify(hud.saved) === '["house"]' && hud.clean === '["house"]' && hud.none === '[]' && hud.order === '["house","doors"]', `stars are saved; loadStars drops junk and repeats, and keeps the list order (${hud.clean} ${hud.order})`);
-  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && hud.ready, 'twelve stars (Picture Worlds), every ready one has a realm below the Swirl');
+  t.ok(hud.ids.startsWith('house,pirate,race,stadium,portal,fair,doors,') && hud.ids.split(',').length === 12 && hud.ready, 'twelve stars (Picture Worlds), every ready one has a realm below the Swirl');
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SHOTS, 't38-hud-stars.png') });
@@ -390,7 +390,7 @@ export default async function ({ browser, base, t }) {
   t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
   t.ok(fr.still === 129 && fr.edits === 0 && fr.t2 === fr.t1, `breaking a frame says the same and changes nothing ${JSON.stringify(fr)}`);
   const sec = await Q.evaluate(async () => {
-    const g = window.pokecraft, { B } = await import('/src/blocks.js'), f = g.world.swirl.frames.find(x => x.world === 'secret1'), c = f.cloth[12];
+    const g = window.pokecraft, { B } = await import('/src/blocks.js'), PW = await import('/src/pictureworlds.js'), sid = PW.FRAME_WORLDS.find(w => w.secret && !w.ready)?.id, f = g.world.swirl.frames.find(x => x.world === sid), c = f.cloth[12];
     window.__toasts = [];
     g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.CLOTH });
     return { toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'E') };

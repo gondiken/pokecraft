@@ -145,6 +145,13 @@ export class DoodleLive {
     }
   }
 
+  // Marks lines 1..n as drawn (saved keys, ink at once). For the rematch reset and for tests.
+  drawUpTo(n) {
+    const g = this.game;
+    for (let i = 0; i < n; i++) { const key = lineKey(i + 1); if (!g.beaten.includes(key)) g.beaten.push(key); this.inkAll(i); }
+    this.syncDashes(); this.refreshChip();
+  }
+
   /* ---- helpers ---- */
   paused() { const g = this.game; return !!(g.inBattle || g.ui?.asking || g.ui?.panelOpen || !this.playing()); }
   toast(m) { this.game.ui?.toast(m); }
@@ -154,7 +161,7 @@ export class DoodleLive {
   padAt(pos) {
     for (let i = 0; i < this.pads.length; i++) {
       const p = this.pads[i];
-      if (p.cells.some(([x, y, z]) => Math.floor(pos.x) === x && Math.floor(pos.z) === z && Math.abs(pos.y - (y + 1)) < 1.3)) return i;
+      if (p.cells.some(([x, y, z]) => Math.abs(pos.x - (x + 0.5)) <= 0.95 && Math.abs(pos.z - (z + 0.5)) <= 0.95 && Math.abs(pos.y - (y + 1)) < 1.3)) return i; // on a pad cell or half a block beside it
     }
     return -1;
   }
@@ -162,13 +169,13 @@ export class DoodleLive {
   /* ---- hooks of the live-part interface ---- */
   near(p) {
     if (this.cur) return 'Stop';
-    const i = this.padAt(p), st = this.state();
+    const i = this.padAt(p.pos), st = this.state();
     if (i < 0 || st.drawn[i]) return null;
     return 'Draw!';
   }
   use(p) {
     if (this.cur) { this.stop(); this.toast('The pencil rests. Press Draw! to go on.'); return true; }
-    const i = this.padAt(p), st = this.state();
+    const i = this.padAt(p.pos), st = this.state();
     if (i < 0 || st.drawn[i]) return false;
     if (i > st.next) { this.toast(WORDS.first); return true; }
     this.start(i);
@@ -280,7 +287,7 @@ export class DoodleLive {
     else if (!st.done) { const l = this.lines[st.next], s0 = l.line.at(0); if (Math.hypot(s0[0] - p.pos.x, s0[2] - p.pos.z) < 70) at = s0; }
     if (at) {
       this.pencil.visible = true;
-      this.pencil.position.set(at[0], at[1] + 1, at[2]);
+      this.pencil.position.set(at[0], at[1] + TRACE.lift - 0.05, at[2]);
       const dx = at[0] - p.pos.x, dz = at[2] - p.pos.z, m = Math.hypot(dx, dz) || 1;
       this.pencil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / m * 0.4, 1, dz / m * 0.4).normalize());
       this.pencil.scale.setScalar(c ? 1 : 0.9);
@@ -290,7 +297,7 @@ export class DoodleLive {
       const t = c.line.line.at(c.st.s), cfg = TRACE[c.line.kind], ring = cfg.ring * (document.body.classList.contains('touch') ? TRACE.touch : 1);
       const cam = this.game.camera;
       this.ring.visible = true;
-      this.ring.position.set(t[0], t[1] + 1.1, t[2]);
+      this.ring.position.set(t[0], t[1] + TRACE.lift, t[2]);
       if (cam) this.ring.quaternion.copy(cam.quaternion);
       this.ring.scale.setScalar(ring * (c.st.on ? 1.08 : 1));
       this.ring.material.color.setHex(c.st.on ? PENCIL : 0xffffff);

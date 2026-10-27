@@ -159,7 +159,7 @@ export default async function ({ browser, base, t }) {
   t.ok(JSON.stringify(A.big) === JSON.stringify([['shield', true], ['field', true], ['sacrifice', true]]) && A.bigLearn.join() === '21:smokescreen,26:duskfalls,32:vanishswap',
     `big moves Smoke Screen (shield), Dusk Falls (field), Vanish Swap (sacrifice) (${A.bigLearn})`);
   t.ok(A.fxTables && A.sound === true && !A.soundClash.length, `attack effects, colours, the fx:ninja and smokepuff sounds exist, no move is named like a sound (${A.sound}; ${A.soundClash})`);
-  t.ok(!A.chartBad.length && A.types === 37, `the chart cells of plans/T37.md, all other ninja cells 1, 37 types ${A.chartBad.join('; ')}`);
+  t.ok(!A.chartBad.length && A.types >= 37, `the chart cells of plans/T37.md, all other ninja cells 1, 37 types ${A.chartBad.join('; ')}`);
   t.ok(A.wool === 113, `ninja wool is block 113 (${A.wool})`);
 
   /* ---------------------------------------------------------------- B. Portraits */

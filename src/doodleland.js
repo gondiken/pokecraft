@@ -66,8 +66,9 @@ export function doodleLines() {
     const rowOf = c => (b <= a ? rowA : rowA + (rowB - rowA) * Math.max(0, Math.min(1, (c - a) / (b - a))));
     const pts = xz.map((p, i) => [p[0], rowOf(cum[i]), p[1]]);
     const line = lineOf({ pts, kind: d.kind });
-    const pad = line.cells.filter(c => c.s <= 1.01).map(c => [c.x, c.y, c.z]);
-    return { ...d, rowA, rowB, line, pad, padCells: pad.slice(0, 4) };
+    const sx = Math.round(pts[0][0]), sz = Math.round(pts[0][2]); // the pad: the 2 x 2 cells round the line's start point, on the page it leaves
+    const padCells = [[sx - 1, rowA, sz - 1], [sx, rowA, sz - 1], [sx - 1, rowA, sz], [sx, rowA, sz]];
+    return { ...d, rowA, rowB, line, padCells };
   });
   return built;
 }
@@ -165,7 +166,7 @@ export function doodleLand(world, def) {
     const cells = l.padCells;
     for (const [x, y, z] of cells) { put(world, x, y, z, B.DO_PAD); for (let k = 1; k <= 3; k++) put(world, x, y + k, z, B.AIR); }
     const cx = cells.reduce((a, c) => a + c[0] + 0.5, 0) / cells.length, cz = cells.reduce((a, c) => a + c[2] + 0.5, 0) / cells.length, y = cells[0][1];
-    const pad = { n: l.n, cells, stand: [cx, y + 1, cz, 0] };
+    const pad = { n: l.n, cells, stand: [cx, y + 1, cz, 0] }; // the middle of the 2 x 2 pad
     pads.push(pad); rests.push(pad.stand);
     const xs = cells.map(c => c[0]), zs = cells.map(c => c[2]);
     keep(`pad-${l.n}`, box(Math.min(...xs), Math.max(...xs), y, y + 3, Math.min(...zs), Math.max(...zs)), 'The star pad is part of the drawing. Stand on it and press Draw!');

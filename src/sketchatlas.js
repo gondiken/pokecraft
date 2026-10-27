@@ -60,7 +60,7 @@ const SKETCH = {
   SNOW: ({ d, L }) => { for (const [x, y] of [[3, 4], [9, 10], [12, 3]]) d(x, y); for (const [x, y] of [[6, 7], [2, 13], [13, 13]]) { L(x - 1, y, x + 1, y); L(x, y - 1, x, y + 1); } },
   FLOWERS: ({ d, L, C }) => { for (const [x, y] of [[4, 5], [11, 9]]) { d(x, y); C(x, y, 2.4); L(x, y + 3, x, 15); } L(4, 11, 6, 9); L(11, 14, 13, 12); L(2, 13, 4, 12); },
   LAMP: ({ C, L }) => { C(7.5, 7.5, 2.8); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; L(7.5 + Math.cos(a) * 4.4, 7.5 + Math.sin(a) * 4.4, 7.5 + Math.cos(a) * 6.8, 7.5 + Math.sin(a) * 6.8); } },
-  DO_PAPER: ({ L, S }) => { S(2); L(0, 5, 15, 5); L(0, 11, 15, 11); },
+  DO_PAPER: ({ L, S }) => { S(2); L(0, 4, 15, 4); L(0, 9, 15, 9); L(0, 14, 15, 14); L(3, 0, 3, 15); },
   DO_INK: ({ L, S }) => { S(3); for (let y = 0; y < N; y++) L(0, y, 15, y); S(4); L(3, 4, 12, 4); L(4, 11, 10, 11); },
   DO_PAD_TOP: ({ C, L, d }) => { C(7.5, 7.5, 6.6); const p = i => [7.5 + Math.sin(i * 4 * Math.PI / 5) * 4.6, 7.5 - Math.cos(i * 4 * Math.PI / 5) * 4.6]; for (let i = 0; i < 5; i++) L(...p(i), ...p(i + 1)); },
   DO_PAD_SIDE: ({ L, d }) => { L(0, 4, 15, 4); L(0, 11, 15, 11); L(5, 4, 5, 11); L(0, 4, 0, 11); L(0, 4, 3, 7); L(0, 11, 3, 7); L(5, 5, 14, 5); d(2, 7); d(3, 7); },
@@ -86,6 +86,8 @@ function autoMask(m, luma, alpha, mean, rand) {
     for (let i = 0; i < N * N; i++) if (alpha[i] >= 128 && edge[i] > th) { m[i] = 1; n++; }
     if (n <= N * N * 0.34) break;
   }
+  let count = 0; for (let i = 0; i < N * N; i++) count += m[i] ? 1 : 0;
+  if (count < 4) for (const [x, y] of [[4, 4], [11, 7], [7, 12], [13, 13], [2, 10]]) m[y * N + x] = 1; // a smooth tile still gets a few pencil dots
   if (mean < 0.5) { // dark tiles: horizontal hatching, closer the darker (never the shader's diagonal)
     const gap = mean < 0.25 ? 2 : mean < 0.38 ? 3 : 4;
     for (let y = 0; y < N; y++) if (y % gap === 1) for (let x = 0; x < N; x++) if (alpha[y * N + x] >= 128 && (x + y * 3) % 7 !== 0) m[y * N + x] = 1;
@@ -131,7 +133,7 @@ export function drawSketchAtlas(atlas) {
       const g = 1 + (rand() - 0.5) * 0.3; // +-15% grain
       let c = base;
       if (m === 1) c = INK.map(v => v * g);
-      else if (m === 2) c = mix(base, INK, 0.38).map(v => v * g);
+      else if (m === 2) c = mix(base, INK, 0.62).map(v => v * g);
       else if (m === 3) c = INK.map(v => v * (0.8 + (g - 1) * 0.5));
       else if (m === 4) c = [196, 196, 210];
       o[i] = Math.max(0, Math.min(255, c[0])); o[i + 1] = Math.max(0, Math.min(255, c[1])); o[i + 2] = Math.max(0, Math.min(255, c[2]));

@@ -13,6 +13,7 @@ export const TRACE = {
   wait: 3,            // after 3 s off: "Look at the pencil tip!" and the tip glows
   step: 0.5,          // cells of a line are sampled every half block
   dtMax: 0.1,
+  lift: 1.05,       // the tip is this far above the line's ink row (just above the floor of the line you draw)
 };
 
 // def = { pts: [[x, y, z], ...], kind } -> a line you can ask for a place at any distance along it.
@@ -62,6 +63,7 @@ export function traceStep(st, dt, { eye, dir, touch = false }, line, kind = st.k
   if (st.done) return st;
   const cfg = TRACE[kind], d = Math.min(Math.max(dt, 0), TRACE.dtMax);
   const tip = line.at(st.s);
+  tip[1] += TRACE.lift;
   st.off = aimDist(eye, dir, tip);
   const inRing = st.off <= cfg.ring * (touch ? TRACE.touch : 1);
   st.offFor = inRing ? 0 : st.offFor + d;

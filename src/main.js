@@ -226,6 +226,7 @@ function createWorld(seed, edits, size, opts = {}) {
   if (edits) world.applyEdits(realm ? edits : convertEdits(edits, size));
   world.buildAll();
   game.world = world;
+  game.sketch?.reset(world); // T45: the pencil look, only in a sketch world (before the people and creatures are made: they are drawn in pencil too)
   game.player = new Player(world);
   game.creatures.setWorld(world);
   game.spawnPoint.copy(findSpawn(world));
@@ -234,7 +235,6 @@ function createWorld(seed, edits, size, opts = {}) {
   game.homes.reset(world);
   game.portal?.reset(world); // T38a
   game.swirlSky?.reset(world); // T38d
-  game.sketch?.reset(world); // T45: the pencil look, only in a sketch world
 }
 
 function findSpawn(world) {

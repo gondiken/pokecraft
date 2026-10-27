@@ -97,7 +97,7 @@ export function analyze(seed) {
   return out;
 }
 
-if (process.argv[1] && process.argv[1].endsWith('doodlecheck.mjs')) {
+if (typeof process !== 'undefined' && process.argv[1] && process.argv[1].endsWith('doodlecheck.mjs')) {
   const seed = Number(process.argv[2] ?? 1);
   const r = analyze(seed);
   console.log(JSON.stringify(r.info));

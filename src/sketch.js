@@ -20,9 +20,9 @@ function modelFrag(box, emissive) {
   return `
   if (uSketchOn > 0.5) {
     float g = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-    vec3 c = mix(uInk, uPaper, smoothstep(0.08, 0.9, g));
+    vec3 c = mix(uInk, uPaper, smoothstep(0.04, 0.5, g));
     float hz = fract((gl_FragCoord.x + gl_FragCoord.y) / 6.0 + uSketchStep * 0.3);
-    float hatch = g < 0.55 ? (1.0 - smoothstep(0.12, 0.2, hz)) * 0.5 * (0.55 - g) / 0.55 : 0.0;
+    float hatch = g < 0.4 ? (1.0 - smoothstep(0.12, 0.2, hz)) * 0.5 * (0.4 - g) / 0.4 : 0.0;
     c = mix(c, uInk, hatch);
     ${box ? `vec2 wv = max(fwidth(vSk), vec2(0.0001)); vec2 dd = min(vSk, 1.0 - vSk) / wv;
     float face = min(1.0 / wv.x, 1.0 / wv.y); // the face's size in pixels: small boxes (far away, or little parts) get no outline, so they do not turn black
