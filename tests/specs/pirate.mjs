@@ -104,7 +104,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.fx.every(Boolean) && A.sounds.every(Boolean) && !A.clash.length, `own attack effects, colours and sounds (fx:pirate, cannonboom, seasplash), no move named like a sound (${A.fx}; ${A.sounds}; ${A.clash})`);
     t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the parrots fly, wool 141`);
     t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Pirate Seas · islands') && A.rows.includes('Pirate Seas · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
-    t.ok(A.ready === true && A.types === 37, 'the Pirate Seas frame ships ready; 37 types');
+    t.ok(A.ready === true && A.types >= 37, 'the Pirate Seas frame ships ready; at least 37 types');
     t.ok(A.own === 'ball:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && A.onPirate === 'electric:2,racer:2', `chart: Pirate hits ball, treasure and water; electric and racer hit Pirate (${A.own} / ${A.onPirate})`);
   }
 

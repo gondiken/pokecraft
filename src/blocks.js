@@ -19,6 +19,7 @@ const WOOL_TYPES = [
   'food', 'squad', 'dream', 'parkour', // wave 11 (T33-T36): ids 79-82
   'ninja', // wave 12 (T37): id 113
   'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
+  'funfair', // wave 15 (T43): id 224
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -31,6 +32,7 @@ const WOOL_RGB = {
   food: [235, 110, 70], squad: [70, 150, 210], dream: [185, 150, 240], parkour: [225, 60, 60],
   ninja: [46, 40, 66],
   tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
+  funfair: [255, 150, 200],
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -71,6 +73,12 @@ const MORE_TILES = [
   // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
+  /* ==== T43 funfair tiles ==== */
+  // floor (top / side), bumper floor, bumper rail (top / side), trampoline (top / side), carousel deck, coaster rail, white lattice, marquee bulbs,
+  // red and white stripe, star stage
+  'FF_FLOOR_A', 'FF_FLOOR_B', 'FF_BUMPER_FLOOR', 'FF_RAIL_TOP', 'FF_RAIL_SIDE', 'FF_TRAMP_TOP', 'FF_TRAMP_SIDE', 'FF_DECK', 'FF_RAIL', 'FF_LATTICE',
+  'FF_MARQUEE', 'FF_STRIPE', 'FF_STAGE',
+  /* ==== end of T43 funfair tiles ==== */
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -143,10 +151,13 @@ export const B = {
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
+  // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
+  FAIR_FLOOR: 225, BUMPER_FLOOR: 226, BUMPER_RAIL: 227, TRAMPOLINE: 228, CAROUSEL_DECK: 229, COASTER_RAIL: 230, COASTER_SUPPORT: 231,
+  MARQUEE: 232, CANDY_STRIPE: 233, STAR_STAGE: 234,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
-const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143 };
+const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143, funfair: 224 };
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -343,6 +354,20 @@ BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, sid
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
+// T43 Funfair: all fixed, none placeable. The trampoline launches you again on every landing (player.js reads `trampoline`).
+{
+  const fx = { fixed: true };
+  BLOCKS[B.FAIR_FLOOR] = { name: 'Fair Floor', top: T.FF_FLOOR_A, side: T.FF_FLOOR_B, bottom: T.FF_FLOOR_B, ...fx, wallText: "The fair's floor. Play a game!" };
+  BLOCKS[B.BUMPER_FLOOR] = { name: 'Bumper Car Floor', top: T.FF_BUMPER_FLOOR, side: T.FF_BUMPER_FLOOR, bottom: T.FF_BUMPER_FLOOR, ...fx, wallText: 'The bumper car floor. Press Drive! by a car.' };
+  BLOCKS[B.BUMPER_RAIL] = { name: 'Bumper Rail', top: T.FF_RAIL_TOP, side: T.FF_RAIL_SIDE, bottom: T.FF_RAIL_SIDE, ...fx, wallText: 'The bumper car floor. Press Drive! by a car.' };
+  BLOCKS[B.TRAMPOLINE] = { name: 'Trampoline', top: T.FF_TRAMP_TOP, side: T.FF_TRAMP_SIDE, bottom: T.FF_TRAMP_SIDE, ...fx, trampoline: { min: 2, max: 13, step: 2, drop: 1.5 }, wallText: 'A trampoline! Hold Jump to bounce higher.' };
+  BLOCKS[B.CAROUSEL_DECK] = { name: 'Carousel Deck', top: T.FF_DECK, side: T.FF_DECK, bottom: T.FF_DECK, ...fx, wallText: 'The carousel! Press Ride! at its edge.' };
+  BLOCKS[B.COASTER_RAIL] = { name: 'Coaster Rail', ...all(T.FF_RAIL), ...fx, wallText: 'The roller coaster! Win 3 tickets to ride.' };
+  BLOCKS[B.COASTER_SUPPORT] = { name: 'Coaster Support', ...all(T.FF_LATTICE), ...fx, wallText: 'The roller coaster! Win 3 tickets to ride.' };
+  BLOCKS[B.MARQUEE] = { name: 'Fair Lights', ...all(T.FF_MARQUEE), ...fx, wallText: 'Fair lights! They come on when the fair wakes up.' };
+  BLOCKS[B.CANDY_STRIPE] = { name: 'Candy Stripe', ...all(T.FF_STRIPE), ...fx, wallText: 'A fair stall.' };
+  BLOCKS[B.STAR_STAGE] = { name: 'Star Stage', ...all(T.FF_STAGE), ...fx, wallText: 'The Star Stage! Merry Mae waits here.' };
+}
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -363,7 +388,7 @@ PLACEABLE.push(WOOL.cozy, WOOL.normal, WOOL.fire, WOOL.water, WOOL.grass, WOOL.e
 PLACEABLE.push(...MISSION_BLOCKS); // T29
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
-const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES, B.HOUSE_PROP]);
+const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES, B.HOUSE_PROP, B.COASTER_SUPPORT]);
 export const isOccluder = id => !SEE_THROUGH.has(id);
 // Blocks the player and creatures collide with.
 export const isSolid = id => id !== B.AIR && id !== B.WATER;
@@ -968,6 +993,43 @@ export function drawAtlas() {
       const fleck = r9() < 0.07;
       put(T.SHELL_SAND, x, y, fleck ? (r9() < 0.5 ? [250, 226, 226] : [240, 150, 160]) : sh9([226, 214, 170], 0.14));
     });
+  }
+  { // T43 Funfair tiles (own random numbers)
+    const rf = mulberry32(4343);
+    const shf = (col, a) => shade(col, 1 + (rf() - 0.5) * a);
+    const edgeF = (x, y) => x === 0 || y === 0 || x === 15 || y === 15;
+    g.clearRect(tileX(T.FF_LATTICE), tileY(T.FF_LATTICE), TILE, TILE); // the lattice has holes
+    each((x, y) => {
+      // FAIR_FLOOR: pastel pink and cream, 4 x 4 checks; the side is a cream edge with a pink line
+      put(T.FF_FLOOR_A, x, y, ((x >> 2) + (y >> 2)) % 2 ? shf([255, 206, 228], 0.05) : shf([255, 244, 214], 0.05));
+      put(T.FF_FLOOR_B, x, y, y < 2 ? [255, 160, 205] : shf([255, 244, 214], 0.06));
+      // BUMPER_FLOOR: dark metal, a faint grid, a few sparkles
+      put(T.FF_BUMPER_FLOOR, x, y, rf() < 0.05 ? [200, 220, 255] : x % 8 === 0 || y % 8 === 0 ? [30, 34, 48] : shf([52, 58, 78], 0.14));
+      // BUMPER_RAIL: yellow and black diagonal stripes on top, black rubber with a yellow band on the side
+      put(T.FF_RAIL_TOP, x, y, ((x + y) >> 2) % 2 ? [250, 214, 40] : [28, 28, 34]);
+      put(T.FF_RAIL_SIDE, x, y, y >= 6 && y <= 9 ? [250, 214, 40] : shf([32, 32, 38], 0.18));
+      // TRAMPOLINE: a blue mat with a lighter cross-stitch grid and silver springs round the edge; side = dark pad with spring coils
+      const dd = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+      put(T.FF_TRAMP_TOP, x, y, dd > 6.5 ? ((x + y) % 2 ? [190, 196, 210] : [90, 96, 112]) : dd > 5.5 ? [30, 40, 90] : (x % 4 === 0 || y % 4 === 0) ? [140, 190, 255] : shf([60, 120, 235], 0.08));
+      put(T.FF_TRAMP_SIDE, x, y, y < 3 ? [30, 40, 90] : (x + (y >> 1)) % 4 < 2 ? [200, 206, 220] : [86, 92, 108]);
+      // CAROUSEL_DECK: painted boards, red / white / gold, with gold dots
+      put(T.FF_DECK, x, y, (x === 3 || x === 12) && (y === 3 || y === 12) ? [255, 224, 90] : y % 8 < 4 ? shf([235, 70, 80], 0.08) : shf([252, 240, 224], 0.06));
+      // COASTER_RAIL: red steel with two silver rails
+      put(T.FF_RAIL, x, y, y === 3 || y === 12 ? [220, 224, 232] : y === 2 || y === 4 || y === 11 || y === 13 ? [110, 116, 130] : shf([220, 50, 60], 0.1));
+      // MARQUEE: a dark panel of unlit bulbs
+      const bulb = Math.hypot((x % 8) - 3.5, (y % 8) - 3.5) < 2.2;
+      put(T.FF_MARQUEE, x, y, bulb ? ((x % 8) - 3.5 < 0 && (y % 8) - 3.5 < 0 ? [250, 236, 190] : [214, 190, 120]) : shf([70, 34, 50], 0.1));
+      // CANDY_STRIPE: red and white vertical stripes
+      put(T.FF_STRIPE, x, y, (x >> 2) % 2 ? shf([252, 246, 240], 0.04) : shf([230, 50, 70], 0.06));
+      // STAR_STAGE: gold and pink, a gold star in a pink square
+      const star = Math.abs(x - 7.5) + Math.abs(y - 7.5) < 4.5 || (Math.abs(x - 7.5) < 1 && Math.abs(y - 7.5) < 7) || (Math.abs(y - 7.5) < 1 && Math.abs(x - 7.5) < 7);
+      put(T.FF_STAGE, x, y, edgeF(x, y) ? [255, 226, 110] : star ? [255, 214, 70] : shf([255, 140, 200], 0.08));
+    });
+    // the lattice: two white diagonals in every 8 x 8 cell and a white frame, the rest is clear
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const dx = x % 8, dy = y % 8;
+      if (dx === dy || dx + dy === 7 || dx === 0 || dy === 0) put(T.FF_LATTICE, x, y, shf([250, 250, 252], 0.04));
+    }
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);

@@ -210,6 +210,15 @@ const SOUNDS = {
   cannonboom: () => { drum(70, 0, 0.45); drum(52, 0.07, 0.4); noise({ freq: 700, len: 0.35, vol: 0.28, q: 0.5 }); },
   seasplash: () => { noise({ freq: 2200, len: 0.35, vol: 0.2, q: 0.6 }); noise({ at: 0.08, freq: 900, len: 0.4, vol: 0.18, q: 0.5 }); tone(300, { len: 0.2, vol: 0.08, slide: -180 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
+  // T43 funfair: a little organ arpeggio for attacks; a balloon pop, a gold ring ding, a bumper car honk, a coaster chain click, the
+  // golden ticket jingle and a quiet fair tune (the live part plays it every few seconds while the fair is awake).
+  'fx:funfair': () => { notes([523, 659, 784, 1047], 0.06, { len: 0.1, type: 'square', vol: 0.08 }); notes([523, 659, 784, 1047], 0.06, { len: 0.12, type: 'triangle', vol: 0.12 }); },
+  balloonpop: () => { noise({ freq: 1800, len: 0.06, vol: 0.3, q: 0.6 }); tone(900, { len: 0.05, type: 'square', vol: 0.08, slide: -600 }); },
+  ringding: () => { bell(2093, 0, 0.3, 0.2); bell(2637, 0.08, 0.4, 0.2); },
+  honkhonk: () => { tone(330, { len: 0.12, type: 'square', vol: 0.1 }); tone(294, { at: 0.15, len: 0.16, type: 'square', vol: 0.1 }); },
+  coasterclack: () => { noise({ freq: 3000, len: 0.03, vol: 0.22, q: 2 }); tone(120, { len: 0.05, type: 'square', vol: 0.1, slide: -30 }); },
+  ticketprize: () => { notes([784, 988, 1175, 1568], 0.08, { len: 0.16, type: 'triangle', vol: 0.26 }); bell(1568, 0.34, 0.5, 0.2); },
+  fairtune: () => notes([523, 659, 784, 659, 523, 784, 1047, 784], 0.17, { len: 0.22, type: 'triangle', vol: 0.09 }),
   // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
   'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },
   racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),
