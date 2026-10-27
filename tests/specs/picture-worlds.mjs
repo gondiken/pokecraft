@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   /* ---- 1. Types, wool, blocks (data) ---- */
   const d1 = await page.evaluate(async old => {
     const S = await import('/src/species.js'), Bk = await import('/src/blocks.js');
-    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'];
+    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair'];
     const e = (a, b) => S.effectiveness(a, b);
     const row = (a, want) => Object.entries(want).filter(([b, v]) => e(a, b) !== v).map(([b, v]) => `${a}>${b} ${e(a, b)} want ${v}`);
     const bad = [
@@ -48,11 +48,11 @@ export default async function ({ browser, base, t }) {
       ...row('fire', { tiny: 2 }), ...row('sky', { tiny: 2 }), ...row('electric', { pirate: 2 }), ...row('water', { racer: 2 }), ...row('ice', { racer: 2 }), ...row('grass', { ball: 2 }), ...row('ninja', { ball: 2 }),
     ];
     // the old 33 x 33 chart is unchanged: every old cell (and every cell not named above is still 1 against the old types)
-    const oldTypes = ['normal', ...types.filter(x => !news.includes(x))], added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
-    const changed = [];
+    const oldTypes = ['normal', ...types.filter(x => !news.includes(x) && !later.includes(x))], added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
+    const changed = [], later_ = (k) => k.split('>').some(x => later.includes(x));
     for (const a of oldTypes) for (const b of oldTypes) if (e(a, b) !== (old[a]?.[b] ?? 1)) changed.push(`${a}>${b}`);
     const extra = [];
-    for (const a of oldTypes) for (const b of news) if (e(a, b) !== 1 && !added.has(`${a}>${b}`)) extra.push(`${a}>${b}`);
+    for (const a of oldTypes) for (const b of news) if (e(a, b) !== 1 && !added.has(`${a}>${b}`) && !later_(`${a}>${b}`)) extra.push(`${a}>${b}`);
     // a defender is weak to at most 5 types (6 for mind / ghost / drake)
     const weak = {};
     for (const b of types) weak[b] = types.concat('normal').filter(a => e(a, b) > 1).length;
@@ -212,7 +212,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
   await intoSwirl(page);
-  for (const id of ['house', 'pirate', 'race', 'stadium']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
+  for (const id of ['house', 'pirate', 'race', 'stadium', 'fair']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);
