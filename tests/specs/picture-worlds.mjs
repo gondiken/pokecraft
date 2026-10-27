@@ -293,7 +293,7 @@ export default async function ({ browser, base, t }) {
   const rm = await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js'), PB = await import('/src/pictureboss.js'), RM = await import('/src/rematch.js'), bs = g.world.bosses[0];
     g.player.pos.set(bs.rest[0], bs.rest[1], bs.rest[2]); g.player.vel.set(0, 0, 0);
-    g.party = [S.makeCreature('thunderwolf', 100)];
+    g.party = [S.makeCreature('thunderwolf', 100), S.makeCreature('blazehound', 100)]; // two: a lone creature can lose to four of the Boss's at 62-65
     const npc = g.npcs.list.find(n => n.kind === 'boss'), def = PB.bossOf('house');
     const cubes0 = g.cubes;
     g.bosses.talk(npc);
