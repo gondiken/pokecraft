@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { B, BLOCKS, isSolid } from './blocks.js';
 import { WORLD_H, WATER_LEVEL } from './world.js';
 import { SPECIES, SPAWNS, makeCreature, buildModel, animateModel, disposeModel } from './species.js';
+import { buildGiftWrap, giftPaperOf } from './shapes.js'; // T44
 import { condOf, condOk, goldenHour, isEvening, TOGETHER_RANGE, HOME_RANGE } from './spawnrules.js';
 import { Disguise } from './disguise.js';
 import { sound } from './sound.js';
@@ -62,6 +63,14 @@ Object.assign(GAITS, {
   peek: { notice: 4.5, noticeUp: 3, every: 4.5, show: 1.4, keep: 3, bump: true },
 });
 /* ==== end of T40a tiny ==== */
+/* ==== T44 surprise ==== */
+// 'gift' (Surprise): a wild one starts wrapped in a gift box (shapes.js buildGiftWrap) and never moves. The box wobbles now and then and,
+// within `near`, hops and giggles; it never runs away. Opening it (E, a click or a tap = the battle start; walking into it only
+// notices) pops the lid and shows the creature. Closed form in w.t, no Math.random.
+Object.assign(GAITS, {
+  gift: { near: 3, wobbleEvery: 3.2, wobble: 0.5, bump: true },
+});
+/* ==== end of T44 surprise ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -86,6 +95,7 @@ export class Wild {
   get still() { return !!this.species.disguise; }
   // Drops the disguise and pops out of it. Returns the block's name, or null if there was no disguise.
   reveal() {
+    if (this.wrapped) return this.unwrap(); // T44: a wrapped Surprise creature (the gift box)
     const d = this.disguise;
     if (!d) return null;
     const name = BLOCKS[d.block].name;
@@ -98,6 +108,20 @@ export class Wild {
     sound.play('popout');
     return name;
   }
+  /* ==== T44 surprise ==== */
+  // The lid pops off the gift box: the box goes (the manager puffs confetti), the creature pops in. Returns { gift: true }.
+  unwrap() {
+    const box = this.wrapBox;
+    this.wrapped = false;
+    if (box) { box.parent?.remove(box); this.wrapBox = null; this.unwrapped?.(this, box); }
+    const root = this.model.userData.parts.root;
+    root.visible = true;
+    root.scale.setScalar(0.3);
+    this.popT = 0;
+    sound.play('giftopen');
+    return { gift: true };
+  }
+  /* ==== end of T44 surprise ==== */
   face(target) { this.heading = Math.atan2(target.x - this.pos.x, target.z - this.pos.z); }
 }
 
@@ -116,6 +140,7 @@ export class CreatureManager {
     this.onTired = null; // main.js (T36): a Parkour creature is out of breath: walk into it
     this.onBlink = null; this.puffs = []; // T37: a Ninja creature blinked away (main.js: a tip); its smoke puffs
     this.raycaster = new THREE.Raycaster();
+    this.gifts = []; // T44: opened gift boxes lying about for a few seconds
   }
 
   setWorld(world) {
@@ -126,6 +151,7 @@ export class CreatureManager {
   clear() {
     for (const w of [...this.list]) this.remove(w);
     this.clearPuffs(); // T37
+    this.clearGifts(); // T44
   }
 
   // T31: a realm has its own spawn tables (world.realm.spawns); the main world uses SPAWNS.
@@ -273,6 +299,7 @@ export class CreatureManager {
       model.userData.parts.root.visible = false;
     }
     model.position.copy(pos);
+    if (SPECIES[species].gait === 'gift') this.wrapGift(wild); // T44: starts wrapped in a gift box
     this.scene.add(model);
     this.list.push(wild);
     this.onSpawn?.(wild);
@@ -348,6 +375,7 @@ export class CreatureManager {
 
   remove(wild) {
     this.list = this.list.filter(w => w !== wild);
+    if (wild.wrapBox) { wild.model.remove(wild.wrapBox); wild.wrapBox = null; } // T44: the box's geometry is shared: never disposed
     wild.disguise?.dispose(); // first: disposeModel would free the world's shared block material
     this.scene.remove(wild.model);
     disposeModel(wild.model);
@@ -399,6 +427,7 @@ export class CreatureManager {
     }
     this.updateNotes(dt);
     this.updatePuffs(dt); // T37
+    this.updateGifts(dt); // T44
   }
 
   // Little glowing music notes that float up from a singing creature.
@@ -538,6 +567,7 @@ export class CreatureManager {
     if (w.species.gait === 'blink') return this.updateBlink(w, dt); // T37
     if (w.species.gait === 'dash') return this.updateDash(w, dt); // T40c
     if (w.species.gait === 'peek') return this.updatePeek(w, dt); // T40a
+    if (w.species.gait === 'gift') return this.updateGift(w, dt); // T44
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -881,6 +911,78 @@ export class CreatureManager {
     w.model.position.copy(w.pos);
   }
   /* ==== end of T40a tiny ==== */
+  /* ==== T44 surprise ==== */
+  // A wild Surprise creature is dressed as a gift box (the same box for every species: only the paper differs, and gold paper means a
+  // rarer one). The creature's own model is hidden until the lid pops (Wild.reveal / unwrap).
+  wrapGift(w) {
+    const sp = w.species, paper = giftPaperOf(w.data.uid, sp.baseXp >= 100);
+    const box = buildGiftWrap(paper);
+    w.model.add(box);
+    w.model.userData.parts.root.visible = false;
+    w.wrapBox = box; w.wrapped = true; w.paper = paper.name;
+    w.unwrapped = (wild, b) => this.openedGift(wild, b, paper);
+  }
+
+  // The closed form of a wrapped (or opened) Surprise creature: a wobble now and then, a hop and a giggle when you are close, never any walking.
+  updateGift(w, dt) {
+    const g = GAITS.gift, p = this.viewer, model = w.model;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
+    const near = !!p && dist <= g.near && Math.abs(p.y - w.pos.y) < 3;
+    if (p && dist < 10) { // it turns to look at you
+      let d = Math.atan2(dx, dz) - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 3);
+    }
+    if (w.wrapped && w.wrapBox) {
+      w.phase ??= ((hash32(w.data.uid || 'x') % 1000) / 1000) * g.wobbleEvery;
+      const u = (w.t + w.phase) % g.wobbleEvery;
+      let hop = 0, tilt = 0;
+      if (near) {
+        hop = Math.abs(Math.sin(w.t * 6)) * 0.14; tilt = Math.sin(w.t * 12) * 0.06;
+        if (!w.giggled) { w.giggled = true; sound.play('giftgiggle'); }
+      } else {
+        w.giggled = false;
+        if (u < g.wobble) tilt = Math.sin((u / g.wobble) * Math.PI * 4) * 0.12 * Math.sin((u / g.wobble) * Math.PI);
+      }
+      w.wrapBox.position.y = hop;
+      w.wrapBox.rotation.z = tilt;
+      const ud = w.wrapBox.userData; ud.lid.position.y = ud.lidY + (near ? 0.06 + 0.05 * Math.abs(Math.sin(w.t * 9)) : 0.02 * Math.sin(w.t * 2)); // the lid flaps when it giggles
+    }
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    if (!w.wrapped) animateModel(model, w.t, false);
+  }
+
+  // The lid flew off: a puff of confetti, the open box stays 4 s, the lid spins up and comes down beside it.
+  openedGift(w, box, paper) {
+    this.puff(w.pos, { color: paper.bow, sound: null });
+    this.puff({ x: w.pos.x, y: w.pos.y + 0.4, z: w.pos.z }, { color: 0xffffff, sound: null });
+    const g = new THREE.Group();
+    g.position.copy(w.pos);
+    g.rotation.y = w.heading;
+    const lid = box.userData.lid, body = box.userData.body;
+    body.position.set(0, 0, 0); body.rotation.set(0, 0, 0);
+    lid.position.set(0, box.userData.lidY, 0); lid.rotation.set(0, 0, 0);
+    g.add(body, lid);
+    this.scene.add(g);
+    this.gifts.push({ g, lid, lidY: box.userData.lidY, t: 0 });
+  }
+
+  updateGifts(dt) {
+    for (const f of this.gifts) {
+      f.t += dt;
+      const k = Math.min(1, f.t / 0.7);
+      f.lid.position.set(0.5 * k, f.lidY + 1.4 * 4 * k * (1 - k), 0.3 * k);
+      f.lid.rotation.set(k * 5, 0, k * 3);
+      if (f.t > 3.4) f.g.scale.setScalar(Math.max(0.01, 1 - (f.t - 3.4) / 0.6));
+    }
+    for (const f of this.gifts.filter(f => f.t >= 4)) this.scene.remove(f.g);
+    this.gifts = this.gifts.filter(f => f.t < 4);
+  }
+
+  clearGifts() { for (const f of this.gifts) this.scene.remove(f.g); this.gifts = []; }
+  /* ==== end of T44 surprise ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

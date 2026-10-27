@@ -33,6 +33,8 @@ export const TYPE_COLORS = {
   ball: 'radial-gradient(circle at 35% 35%,#ffffff 18%,#9fd6ff 19%)',
   // Wave 15 (T43): pink, cream and sky blue stripes, light enough for the dark chip text
   funfair: 'repeating-linear-gradient(90deg,#ff8ac8 0 6px,#fff2a0 6px 12px,#8ad8ff 12px 18px)',
+  // Wave 15 (T44): light enough for the dark chip text
+  surprise: 'repeating-linear-gradient(45deg,#ffb04a 0 6px,#ff6a8a 6px 9px,#ffb04a 9px 15px)',
 };
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -92,6 +94,16 @@ const EFFECTIVENESS = {
   racer: { pirate: 2, time: 2, parkour: 2, racer: 0.5, rock: 0.5, slime: 0.5 },
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
+/* ==== T44 surprise: the chart ==== */
+// You can't read a surprise's mind, a ninja is the one surprised for once, and you can't look up what is inside; a safe can't be
+// surprised and the clock always knew it was your birthday. Others' rows are separate lines (never an edit of an old row).
+EFFECTIVENESS.surprise = { mind: 2, ninja: 2, cyber: 2, surprise: 0.5, metal: 0.5, time: 0.5 };
+EFFECTIVENESS.time.surprise = 2;   // wait long enough and every gift is opened
+EFFECTIVENESS.ball.surprise = 2;   // a ball knocks the box open
+EFFECTIVENESS.bug.surprise = 2;    // bugs nibble the wrapping paper
+EFFECTIVENESS.ghost.surprise = 0.5; // a "boo!" is no surprise to a surprise
+EFFECTIVENESS.camo.surprise = 0.5;  // it already knows hide and seek
+/* ==== end of T44 surprise: the chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -465,6 +477,22 @@ BIG_MOVES.ball = [
   ['bigmatch', 'Big Match', 'field', 'Big match day! Ball moves are stronger for 5 turns. Foes too!'],
 ];
 /* ==== end of T40d ball ==== */
+/* ==== T44 surprise ==== */
+// Surprise creatures pop out, spring up and burst into confetti. (Ids are not sound names: 'surprise', 'confetti', 'peekaboo' are taken.)
+Object.assign(MOVES, {
+  ribbonwhip: mv('Ribbon Whip', 'surprise', 40, 1),
+  springpunch: mv('Spring Punch', 'surprise', 80, 0.9),
+  peekapop: mv('Peek-a-Pop', 'surprise', 50, 1, { priority: 1 }),
+  guesswhat: mv('Guess What?', 'surprise', 0, 0.95, { fx: { kind: 'lower', stat: 'atk' } }), // the foe is too curious to fight
+  tadaa: mv('Ta-Daa!', 'surprise', 95, 0.95, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  candyburst: mv('Candy Burst', 'surprise', 22, 1, { fx: { kind: 'multi', min: 3, max: 5 }, sure: true, sig: true }),
+});
+BIG_MOVES.surprise = [
+  ['surpriseparty', 'Surprise Party', 'rally', 'Everybody jumps out! Whole team hits harder. You get softer.'],
+  ['mysterybox', 'Mystery Box', 'risky', 'Half the time: a huge surprise! Or it is just socks.'],
+  ['wrapitup', 'Wrap It Up', 'shield', 'The whole team gets wrapped in paper. You rest next turn.'],
+];
+/* ==== end of T44 surprise ==== */
 /* ==== T37 ninja ==== */
 // Ninjas throw leaves, strike from the shadows and vanish in smoke.
 Object.assign(MOVES, {
@@ -637,6 +665,7 @@ const BTS = [[16, 'bedtimestory']]; // sleepy Cozy creatures learn Bedtime Story
 T1.parkour = 'wallhop'; T2.parkour = 'flipkick'; T3.parkour = 'quickvault'; T4.parkour = 'warmup';
 /* ==== end of T36 parkour ==== */
 T1.funfair = 'tickettoss'; T2.funfair = 'bumperbash'; T3.funfair = 'ziprider'; T4.funfair = 'funhouse'; // T43
+T1.surprise = 'ribbonwhip'; T2.surprise = 'springpunch'; T3.surprise = 'peekapop'; T4.surprise = 'guesswhat'; // T44
 T1.ball = 'bouncebop'; T2.ball = 'cannonroll'; T3.ball = 'quickpass'; T4.ball = 'dribble'; // T40d
 T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.ninja = 'twigtrip'; // T37
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
@@ -2047,6 +2076,48 @@ export const SPECIES = {
     model: { shape: 'bowlrhino', scale: 1.0, body: 0x2a4aa8, accent: 0xff4a4a, dark: 0x141e50, belly: 0xffffff, extras: [] },
   },
   /* ==== end of T40d ball ==== */
+  /* ==== T44 surprise ==== */
+  // The Wizard's gifts that were never handed out: boxes, toys and party things that came alive. Friendly and giggly, never spooky.
+  // Every model wears a ribbon bow (gear 'bow'); wild ones start wrapped in a gift box (gait 'gift', creatures.js).
+  giftle: {
+    name: 'Giftle', type: 'surprise', gait: 'gift', desc: 'Nobody knows what is inside Giftle. Not even Giftle.',
+    base: { hp: 55, atk: 45, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('surprise', 'normal'),
+    evolve: { level: 22, into: 'bowtower' },
+    model: { shape: 'giftbox', scale: 0.8, body: 0xff9a3a, accent: 0xe8384a, dark: 0x8a3a1a, belly: 0xfff0d0, extras: [] },
+  },
+  bowtower: {
+    name: 'Bowtower', type: 'surprise', gait: 'gift', desc: 'Three presents stacked up high, with a huge bow on top. Each lid is a different mouth.',
+    base: { hp: 95, atk: 80, def: 100, spd: 55 }, baseXp: 168, catchRate: 0.1, learn: L('surprise', 'normal'),
+    model: { shape: 'giftbox', scale: 0.95, body: 0xb06ae8, accent: 0xffd23a, dark: 0x4a2a7a, belly: 0xfff0d0, extras: ['stack'] },
+  },
+  popjack: {
+    name: 'Popjack', type: 'surprise', gait: 'gift', desc: 'A crank box with a springy head. Turn the handle and boing! Here it comes.',
+    base: { hp: 45, atk: 60, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('surprise', 'sound'),
+    evolve: { level: 22, into: 'jestergrin' },
+    model: { shape: 'jackbox', scale: 0.8, body: 0x3a8ce8, accent: 0xffd23a, dark: 0x1e3a7a, belly: 0xfff0d0, extras: [] },
+  },
+  jestergrin: {
+    name: 'Jestergrin', type: 'surprise', gait: 'gift', desc: 'A soft cloth jester on a very long spring. It only wants to make you smile.',
+    base: { hp: 75, atk: 105, def: 65, spd: 110 }, baseXp: 168, catchRate: 0.1, learn: L('surprise', 'sound', [[30, 'tadaa']]),
+    model: { shape: 'jackbox', scale: 0.95, body: 0xe8384a, accent: 0xffd23a, dark: 0x6a1a2a, belly: 0xfff0d0, extras: ['jester'] },
+  },
+  pinpop: {
+    name: 'Pinpop', type: 'surprise', gait: 'gift', desc: 'A paper llama full of sweets. Pop its tummy and it laughs the loudest.',
+    base: { hp: 60, atk: 55, def: 50, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('surprise', 'food'),
+    evolve: { level: 24, into: 'fiestallama' },
+    model: { shape: 'pinata', scale: 0.8, body: 0xff6a8a, accent: 0xffd23a, dark: 0x7a2a4a, belly: 0xfff0d0, extras: [] },
+  },
+  fiestallama: {
+    name: 'Fiestallama', type: 'surprise', gait: 'gift', desc: 'Streamers on its ears and sweets all around it. Every day with it is a party.',
+    base: { hp: 100, atk: 95, def: 80, spd: 70 }, baseXp: 170, catchRate: 0.1, learn: L('surprise', 'food', [[30, 'candyburst']]),
+    model: { shape: 'pinata', scale: 1.1, body: 0x3ac8b8, accent: 0xff6a8a, dark: 0x1a5a6a, belly: 0xfff0d0, extras: ['tassels'] },
+  },
+  partypop: {
+    name: 'Partypop', type: 'surprise', gait: 'gift', desc: 'A party popper with streamer hair. When it giggles too hard, POP! Confetti everywhere.',
+    base: { hp: 65, atk: 75, def: 55, spd: 90 }, baseXp: 100, catchRate: 0.3, learn: L('surprise', 'pixie'),
+    model: { shape: 'partypopper', scale: 0.95, body: 0xe8384a, accent: 0x3ac8e8, dark: 0x7a1a2a, belly: 0xffd23a, extras: [] },
+  },
+  /* ==== end of T44 surprise ==== */
   /* ==== T37 ninja ==== */
   hushcoon: {
     name: 'Hushcoon', type: 'ninja', desc: "A raccoon in a mask that tiptoes everywhere. Shh! If you run at it, it vanishes in a puff.", gait: 'blink',
@@ -2429,6 +2500,12 @@ for (const [biome, list] of Object.entries(SPAWN_NINJA)) SPAWNS[biome].push(...l
 export const TINY_SPAWNS = [['antsy', 1.2, 'nook'], ['thimbit', 1.2, 'nook'], ['dustbun', 1.2, 'nook'], ['pipsqueak', 0.8, 'crumbs'], // T40a.5: Pipsqueak after all 12 crumbs
   ['antlas', 0.12, 'nook'], ['spoolmouse', 0.12, 'nook'], ['fluffnado', 0.1, 'nook']];
 /* ==== end of T40a tiny ==== */
+/* ==== T44 surprise ==== */
+// Surprise creatures live only in the Room of Doors (REALMS.doors.spawns), on the `gift` condition (spawnrules.js: the nook spots of shelves, the hall's walls, the stage sides);
+// every one starts wrapped in a gift box (creatures.js GAITS.gift). Gold paper always wraps a rarer one.
+export const SURPRISE_SPAWNS = [['giftle', 1.2, 'gift'], ['popjack', 1.1, 'gift'], ['pinpop', 1.1, 'gift'], ['partypop', 0.3, 'gift'],
+  ['bowtower', 0.12, 'gift'], ['jestergrin', 0.1, 'gift'], ['fiestallama', 0.1, 'gift']];
+/* ==== end of T44 surprise ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 
@@ -3037,6 +3114,7 @@ export function animateModel(group, t, moving) {
   if (p.head) p.head.rotation.x = moving ? 0 : Math.sin(t * 1.5) * 0.06;
   for (const s of p.spin || []) s.g.rotation[s.axis] = t * s.speed;
   for (const w of p.wobble || []) w.g.rotation[w.axis] = Math.sin(t * w.speed + w.phase) * w.amp;
+  for (const sp of p.spring || []) { const k = 1 + Math.sin(t * sp.speed) * sp.amp; sp.g.scale.y = k; sp.head.position.y = sp.y0 + sp.h * (k - 1); } // T44: a jack-in-the-box spring boings
   for (const d of p.drift || []) { // T35: parts that float apart and bob on their own (Dream look)
     d.g.position.y = d.y0 + d.amp * (0.5 + 0.5 * Math.sin(t * d.speed + d.phase)); // only ever up: never under the ground
     d.g.rotation.z = Math.sin(t * d.speed * 0.7 + d.phase) * 0.06;

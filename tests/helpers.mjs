@@ -39,7 +39,7 @@ export async function openGame(browser, base, { query = '', contextOptions = {},
   }
   page.on('dialog', d => d.accept());
   await page.goto(base + '/' + query, { timeout: 120000 });
-  await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
+  await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
   return page;
 }
 

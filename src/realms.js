@@ -12,7 +12,8 @@ import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 import { houseLand, houseAim } from './giantland.js'; // T40a
-import { TINY_SPAWNS } from './species.js'; // T40a
+import { TINY_SPAWNS, SURPRISE_SPAWNS } from './species.js'; // T40a, T44
+import { doorsLand, doorsAim } from './doorsland.js'; // T44
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -122,6 +123,15 @@ REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91
 REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9a1d, size: PLAYLAND.size, terrain: 'playLand',
   arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });
 
+/* ==== T44 surprise ==== */
+// The Room of Doors (a Picture World behind the Swirl's gift-wrapped frame): a toy-box hall with twelve doors, the Shuffle Stage, the Pop-Up Room and the Big Gift.
+REALMS.doors = pictureRealm({ id: 'doors', name: 'Room of Doors', seedSalt: 0xd005, size: [112, 112], terrain: 'doorsLand', arrive: [56, 79], walk: [B.PARTY_FLOOR],
+  spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Room of Doors', travelText: 'Unwrapping...', travelIcon: '🎁',
+  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows to open the Big Gift! Start at the Shuffle Stage.',
+  noHomeText: 'No homes in the Room of Doors! Build your home in your own world.', followText: 'Open it too',
+  look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
+/* ==== end of T44 surprise ==== */
+
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
 // so a game loaded in a realm by day wakes up only after the clock is known.
@@ -139,6 +149,8 @@ export const TERRAIN_RETURNS = { swirlLand: frameReturn };
 TERRAIN_AIMS.houseLand = houseAim; // T40a
 TERRAINS.pirateLand = pirateLand; // T40b
 TERRAIN_AIMS.pirateLand = pirateAim; // T40b
+TERRAINS.doorsLand = doorsLand; // T44
+TERRAIN_AIMS.doorsLand = doorsAim; // T44
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

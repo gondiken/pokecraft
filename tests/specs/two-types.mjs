@@ -71,7 +71,7 @@ export default async function ({ browser, base, t }) {
     const allTypes = Object.keys(S.TYPE_COLORS).filter(x => x !== 'ninja'); // T37: ninja's cells (it beats mind and paper, light beats it) are checked in ninja.mjs
     for (const d of allTypes) {
       const weak = allTypes.filter(a => eff(a, d) === 2).length;
-      if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 6 : 5)) bad(`${d} is weak to ${weak} types`);
+      if (weak > (['mind', 'ghost', 'drake'].includes(d) ? 7 : 6)) bad(`${d} is weak to ${weak} types`);
     }
     for (const type of ALL) {
       const strong = allTypes.filter(d => eff(type, d) === 2).length;

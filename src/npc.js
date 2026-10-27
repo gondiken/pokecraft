@@ -110,6 +110,13 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.12, 0.12, 0.05, 0xff7ac0, 0.2, 0.58, 0.27);
     box(head, 0.05, 0.05, 0.06, 0xffe94a, 0.2, 0.58, 0.28);
   }
+  if (look === 'party') { // T44: a cone party hat (three stacked boxes, shirt-coloured) with a pompom and a thin chin strap
+    box(head, 0.4, 0.14, 0.4, c.shirt, 0, 0.57, 0);
+    box(head, 0.3, 0.14, 0.3, 0xffd23a, 0, 0.71, 0);
+    box(head, 0.2, 0.14, 0.2, c.shirt, 0, 0.85, 0);
+    box(head, 0.1, 0.1, 0.1, 0xffffff, 0, 0.97, 0);
+    box(head, 0.025, 0.2, 0.025, 0xffd23a, -0.2, 0.42, 0.1);
+  }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
     box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);

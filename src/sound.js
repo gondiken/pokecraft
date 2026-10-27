@@ -221,6 +221,16 @@ const SOUNDS = {
   fairtune: () => notes([523, 659, 784, 659, 523, 784, 1047, 784], 0.17, { len: 0.22, type: 'triangle', vol: 0.09 }),
   // T40c racer: an engine "vroom" (a sawtooth slide up) with a short skid; the race beeps, GO, a lap bell, a boost whoosh and a wild Racer's quiet dash.
   'fx:racer': () => { tone(90, { len: 0.3, type: 'sawtooth', vol: 0.12, slide: 150 }); noise({ at: 0.22, freq: 2600, len: 0.1, vol: 0.1, q: 1.4 }); },
+  // T44 surprise: a tiny drum roll and a ta-da; a gift opening (paper rip + pop), a giggle, a door whoosh, a fanfare for the right door,
+  // a rubber duck's honk for a wrong one, a jack springing out and a boop on the nose.
+  'fx:surprise': () => { for (let i = 0; i < 4; i++) drum(300 + i * 25, i * 0.03, 0.16); notes([784, 1047], 0.09, { at: 0.16, len: 0.12, type: 'triangle', vol: 0.14 }); },
+  giftopen: () => { noise({ freq: 5200, len: 0.16, vol: 0.2, q: 0.7 }); noise({ at: 0.05, freq: 3000, len: 0.1, vol: 0.14, q: 0.8 }); tone(300, { at: 0.16, len: 0.14, type: 'triangle', vol: 0.3, slide: 600 }); },
+  giftgiggle: () => notes([880, 1175, 988, 1319], 0.06, { len: 0.06, type: 'triangle', vol: 0.05 }),
+  doorwhoosh: () => { noise({ freq: 1200, len: 0.28, vol: 0.14, q: 0.5 }); tone(320, { len: 0.22, type: 'sine', vol: 0.07, slide: 400 }); },
+  rightdoor: () => { notes([523, 659, 784, 1047], 0.09, { len: 0.16, type: 'triangle', vol: 0.18 }); bell(1568, 0.36, 0.6, 0.16); },
+  sillyhonk: () => { tone(330, { len: 0.12, type: 'sawtooth', vol: 0.12, slide: -60 }); tone(300, { at: 0.16, len: 0.16, type: 'sawtooth', vol: 0.12, slide: 120 }); },
+  jackpop: () => { tone(180, { len: 0.2, type: 'triangle', vol: 0.3, slide: 700 }); tone(900, { at: 0.08, len: 0.14, type: 'sine', vol: 0.1, slide: -300 }); },
+  boop: () => { tone(740, { len: 0.1, type: 'sine', vol: 0.3, slide: -200 }); tone(1100, { at: 0.05, len: 0.1, type: 'triangle', vol: 0.12 }); },
   racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),
   racego: () => tone(990, { len: 0.4, type: 'square', vol: 0.16 }),
   lapbell: () => { bell(1568, 0, 0.35, 0.2); bell(2093, 0.14, 0.4, 0.2); },

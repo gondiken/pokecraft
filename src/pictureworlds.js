@@ -29,6 +29,21 @@ function drawFairPicture(g, n = 128) {
   g.fillStyle = '#fff2e0'; g.beginPath(); g.ellipse(44 * k, 84 * k, 9 * k, 7 * k, 0, 0, 7); g.fill(); g.fillRect(48 * k, 74 * k, 6 * k, 8 * k); r(34, 90, 3, 8, '#fff2e0'); r(50, 90, 3, 8, '#fff2e0');
   r(102, 96, 20, 12, '#fff2a0'); r(102, 96, 20, 3, '#e84a6a'); r(108, 100, 8, 5, '#ffd23a');
 }
+// T44: the picture in the Room of Doors' frame: a pink wall, a row of five coloured doors (the middle one gold, ajar) and a big gift with a bow on the floor (128 px canvas).
+function drawDoorsPicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#ffd8ec'); for (let x = 0; x < 128; x += 16) r(x, 0, 8, 128, '#ffcfe6'); r(0, 100, 128, 28, '#c9a6ee'); r(0, 100, 128, 4, '#b08ae0');
+  const doors = ['#e8384a', '#3a8ce8', '#ffd23a', '#3ac86a', '#b05ae8'];
+  doors.forEach((c, i) => {
+    const x = 6 + i * 24;
+    r(x, 22, 20, 60, '#8a3a1a'); r(x + 2, 24, 16, 56, c);
+    if (i === 2) { g.fillStyle = '#3a2a5a'; g.beginPath(); g.moveTo((x + 2) * k, 24 * k); g.lineTo((x + 12) * k, 28 * k); g.lineTo((x + 12) * k, 78 * k); g.lineTo((x + 2) * k, 80 * k); g.fill(); r(x + 4, 50, 5, 4, '#fff'); }
+    else r(x + 12, 52, 3, 3, '#fff0d0');
+  });
+  r(40, 70, 48, 38, '#e8384a'); r(40, 70, 48, 8, '#ff6a8a'); r(60, 70, 8, 38, '#ffd23a'); r(40, 86, 48, 6, '#ffd23a');
+  g.fillStyle = '#ffd23a'; g.beginPath(); g.ellipse(52 * k, 64 * k, 12 * k, 7 * k, -0.4, 0, 7); g.ellipse(76 * k, 64 * k, 12 * k, 7 * k, 0.4, 0, 7); g.fill();
+  r(60, 60, 8, 8, '#e8a81a');
+}
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
@@ -36,7 +51,7 @@ export const PICTURE_WORLDS = [
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },
   { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: false, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
   { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: true, realm: 'playland', place: 'Playland', picture: drawFairPicture }, // T43: the third Playland world
-  { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: false },
+  { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawDoorsPicture }, // T44
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'secret1', name: 'Secret World', emoji: '❓', frame: [0xb8a0f0, 0xf8e8c8], ready: false, secret: true },
   { id: 'secret2', name: 'Secret World', emoji: '❓', frame: [0x8adcc8, 0xf8f0d8], ready: false, secret: true },

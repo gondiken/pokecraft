@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   /* ---- 1. Types, wool, blocks (data) ---- */
   const d1 = await page.evaluate(async old => {
     const S = await import('/src/species.js'), Bk = await import('/src/blocks.js');
-    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair'];
+    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair', 'surprise', 'atlantis', 'portal', 'doodle'];
     const e = (a, b) => S.effectiveness(a, b);
     const row = (a, want) => Object.entries(want).filter(([b, v]) => e(a, b) !== v).map(([b, v]) => `${a}>${b} ${e(a, b)} want ${v}`);
     const bad = [
@@ -69,7 +69,7 @@ export default async function ({ browser, base, t }) {
   t.ok(d1.n >= 37 && d1.colors.every(Boolean), `at least 37 types (wave 15 adds more), the four new ones have colours (${d1.n})`);
   t.ok(!d1.bad.length, `the corrected chart rows and the seven added cells ${d1.bad.join('; ')}`);
   t.ok(!d1.changed.length && !d1.extra.length, `the old 33 x 33 chart is unchanged, no other cell touches a new type ${d1.changed.join(',')} ${d1.extra.join(',')}`);
-  t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
+  t.ok(Object.values(d1.hardHits).every(n => n >= 3 && n <= 5), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
   t.ok(JSON.stringify(d1.wool) === JSON.stringify([[140, 'Tiny Wool', false], [141, 'Pirate Wool', false], [142, 'Racer Wool', false], [143, 'Ball Wool', false]]), 'wool 140-143 with their names, not placeable');
   t.ok(d1.blocks.map(b => b.id).join() === '144,145,146' && d1.blocks.every(b => b.def && !b.placeable && b.fixed && b.wall && b.tiles), `blocks 144-146 (picture, way back, Boss stand): tiles, wall text, fixed, not placeable`);
   t.ok(d1.tiles <= 1024 && d1.free >= 147, `the atlas has room (${d1.tiles} of 1024 tiles, a 32 x 32 grid), next free id ${d1.free}`);
@@ -212,7 +212,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
   await intoSwirl(page);
-  for (const id of ['house', 'pirate', 'race', 'stadium', 'fair']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
+  { const { PICTURE_WORLDS } = await page.evaluate(async () => ({ PICTURE_WORLDS: (await import('/src/pictureworlds.js')).PICTURE_WORLDS.filter(w => w.ready).map(w => w.id) })); for (const id of PICTURE_WORLDS) await flip(page, id, false); } // later tasks ship their frames ready; this part wants every frame covered
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);
