@@ -2162,13 +2162,13 @@ export const SPECIES = {
   // Every model wears a ribbon bow (gear 'bow'); wild ones start wrapped in a gift box (gait 'gift', creatures.js).
   giftle: {
     name: 'Giftle', type: 'surprise', gait: 'gift', desc: 'Nobody knows what is inside Giftle. Not even Giftle.',
-    base: { hp: 55, atk: 45, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('surprise', 'normal'),
+    base: { hp: 55, atk: 45, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('surprise', 'cozy'),
     evolve: { level: 22, into: 'bowtower' },
     model: { shape: 'giftbox', scale: 0.8, body: 0xff9a3a, accent: 0xe8384a, dark: 0x8a3a1a, belly: 0xfff0d0, extras: [] },
   },
   bowtower: {
     name: 'Bowtower', type: 'surprise', gait: 'gift', desc: 'Three presents stacked up high, with a huge bow on top. Each lid is a different mouth.',
-    base: { hp: 95, atk: 80, def: 100, spd: 55 }, baseXp: 168, catchRate: 0.1, learn: L('surprise', 'normal'),
+    base: { hp: 95, atk: 80, def: 100, spd: 55 }, baseXp: 168, catchRate: 0.1, learn: L('surprise', 'cozy'),
     model: { shape: 'giftbox', scale: 0.95, body: 0xb06ae8, accent: 0xffd23a, dark: 0x4a2a7a, belly: 0xfff0d0, extras: ['stack'] },
   },
   popjack: {
