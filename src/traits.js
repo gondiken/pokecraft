@@ -21,6 +21,8 @@ export const TRAITS = {
   },
 };
 
+Object.assign(TRAITS.rideable.species, list('land', 'gatestrider')); // T42: Gatestrider strides along
+
 export function hash32(s) {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }

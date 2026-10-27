@@ -221,6 +221,10 @@ const SOUNDS = {
   doodlescratch: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05, freq: 3600 + i * 500, len: 0.04, vol: 0.05, q: 1.8 }); },
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
+  // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).
+  'fx:portal': () => { tone(300, { len: 0.22, type: 'sine', vol: 0.16, slide: 700 }); tone(1100, { at: 0.2, len: 0.06, type: 'triangle', vol: 0.18, slide: -500 }); },
+  swirlzip: () => { notes([880, 1175, 1568], 0.045, { len: 0.1, type: 'sine', vol: 0.2 }); noise({ freq: 5000, len: 0.12, vol: 0.06, q: 1 }); },
+  swirlwarp: () => { tone(500, { len: 0.18, type: 'sine', vol: 0.2, slide: -300 }); tone(250, { at: 0.16, len: 0.2, type: 'sine', vol: 0.22, slide: 800 }); noise({ at: 0.3, freq: 1800, len: 0.08, vol: 0.14, q: 1 }); },
   // T43 funfair: a little organ arpeggio for attacks; a balloon pop, a gold ring ding, a bumper car honk, a coaster chain click, the
   // golden ticket jingle and a quiet fair tune (the live part plays it every few seconds while the fair is awake).
   'fx:funfair': () => { notes([523, 659, 784, 1047], 0.06, { len: 0.1, type: 'square', vol: 0.08 }); notes([523, 659, 784, 1047], 0.06, { len: 0.12, type: 'triangle', vol: 0.12 }); },

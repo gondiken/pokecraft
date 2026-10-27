@@ -62,6 +62,8 @@ export const CONDITIONS = {
     toast: 'Look up! A sporty creature is on a high spot nearby.' },
   nook: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, // T40a: Tiny creatures hide in small places
     text: 'hiding in tiny places: in cups, flowers and under leaves' },
+  housefloor: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, // T42: wild Portal creatures live on the floors of the Portal House's calm rooms (world.nooks)
+    text: 'in the Portal House: the porch, the Hall of Swirls and the Study' },
   crumbs: { ok: c => !!c.nook && !!c.allCrumbs, place: c => c.nook(), outdoor: true, // T40a.5: Pipsqueak comes out once all 12 crumbs are found
     text: 'in tiny places, once you found all 12 cookie crumbs in the Giant House' },
   // T44: the Room of Doors' wild creatures sit in gift boxes in the same kind of spots (shelves, the hall's walls, the stage sides): the nook list, a different Book line

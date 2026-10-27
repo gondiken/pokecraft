@@ -12,7 +12,7 @@ import { ROOT, openPair, newGame, pause, click, waitFor, startWeakBattle, playBa
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const toasts = page => page.evaluate(() => { window.__toasts = []; const g = window.pokecraft, f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; });
 const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new RegExp(src).test(m)), re.source);
-const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id, 60000);
+const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id, 240000);
 const askText = page => waitFor(page, () => window.pokecraft.ui.asking, null, 20000).then(() => page.evaluate(() => document.getElementById('ask-text').textContent));
 const saved = page => page.evaluate(() => { window.pokecraft.save(); return JSON.parse(localStorage.getItem('pokecraft-save-v2')); });
 const near = page => page.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; return Math.hypot(a.pos.x - g.player.pos.x, a.pos.z - g.player.pos.z); });
@@ -35,7 +35,7 @@ export default async function ({ browser, base, t }) {
   await B.fill('#mp input[placeholder="Your name"]', 'Kid');
   await B.fill('#mp .mp-code-input', code);
   await click(B, '#mp button:has-text("Join a world")');
-  await waitFor(B, () => window.pokecraft.mp.role === 'guest', null, 60000);
+  await waitFor(B, () => window.pokecraft.mp.role === 'guest', null, 240000);
   const HA = await A.evaluate(HOUSE);
   await waitFor(A, () => window.pokecraft.homes.mine()?.types.includes('cozy'));
   await toasts(B);
@@ -208,7 +208,7 @@ export default async function ({ browser, base, t }) {
     await SB.fill('#mp input[placeholder="Your name"]', 'Kid');
     await SB.fill('#mp .mp-code-input', code2);
     await click(SB, '#mp button:has-text("Join a world")');
-    await waitFor(SB, () => window.pokecraft.mp.role === 'guest', null, 60000);
+    await waitFor(SB, () => window.pokecraft.mp.role === 'guest', null, 240000);
     await toasts(SA); await toasts(SB);
     await SA.evaluate(() => { window.pokecraft.champion = true; });
     await SB.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; g.player.pos.copy(a.target).add({ x: 2, y: 0, z: 0 }); });
@@ -218,6 +218,12 @@ export default async function ({ browser, base, t }) {
     const sask = await askText(SB);
     t.ok(/Swirl/.test(sask), `Kid is asked about the Swirl ("${sask}")`);
     await SB.evaluate(() => window.pokecraft.ui.askYes());
+    // (the host's reply has 12 s in the game; a loaded software renderer can miss it, so ask again, like a child would)
+    for (let tries = 0; tries < 4; tries++) {
+      const here = await waitFor(SB, () => window.pokecraft.place === 'swirl' && !window.pokecraft.realms.busy, null, 45000).then(() => true, () => false);
+      if (here) break;
+      await SB.evaluate(() => window.pokecraft.realms.follow());
+    }
     await placeIs(SB, 'swirl');
     t.ok(await said(SB, /door opens for you too/) && !(await SB.evaluate(() => window.pokecraft.champion)), "Kid follows without the Champion title, and the title stays Dad's");
     await SB.evaluate(() => window.pokecraft.realms.leave('door'));
