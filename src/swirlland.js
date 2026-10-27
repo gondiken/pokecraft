@@ -169,7 +169,7 @@ export const wizardX = n => BRIDGE.x0 + (BRIDGE.len + BRIDGE.gap) * n + WIZARD.r
 // Every Swirl x/z cell of a lift, the middle of its box.
 export const liftCenter = l => [(l.x[0] + l.x[1] + 1) / 2, (l.z[0] + l.z[1] + 1) / 2];
 
-export function swirlLand(world, def, { house = true } = {}) { // T42: `house: false` makes the version 4 Swirl (tests)
+export function swirlLand(world, def, { house = def?.house !== false } = {}) { // T42: `house: false` makes the version 4 Swirl (tests; and while wave 15 is closed: comingsoon.js)
   const { W, D } = world;
   const put = (x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
   const ground = (x, z, y) => { if (x >= 0 && z >= 0 && x < W && z < D) world.ground[x + z * W] = y; };

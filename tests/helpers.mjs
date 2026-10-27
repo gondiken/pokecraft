@@ -25,8 +25,10 @@ export const launch = () => chromium.launch({ executablePath: process.env.PC_CHR
 
 // Opens the game in a fresh browser context (its own localStorage).
 // online: false blocks Supabase so tests never touch the real project.
-export async function openGame(browser, base, { query = '', contextOptions = {}, online = false, setup } = {}) {
+// wave15: the specs play with wave 15's worlds open (src/comingsoon.js ships them closed); `wave15: false` sees the shipped state.
+export async function openGame(browser, base, { query = '', contextOptions = {}, online = false, setup, wave15 = true } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 760 }, ...contextOptions });
+  if (wave15) await ctx.addInitScript(() => { window.__pcWave15 = true; });
   if (setup) await setup(ctx);
   const page = await ctx.newPage();
   page.errors = [];

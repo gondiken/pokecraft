@@ -4,6 +4,7 @@
 // Needs only a world with W / D / data / ground / index / inBounds / get (the spec runs it in Node).
 import { B, WOOL } from './blocks.js';
 import { PICTURE_WORLDS } from './pictureworlds.js';
+import { wave15Open } from './comingsoon.js'; // wave 15 ships closed: no Funfair part, so the gate keeps its sign
 import { kit, flatLand, buildWayBack, placeBoss } from './picturelands.js';
 import { buildStadium, STADIUM_SPAWNS } from './stadium.js'; // T40d
 import { buildRaceTrack, RACER_SPAWNS, RACE_WALK } from './racetrack.js'; // T40c
@@ -26,7 +27,7 @@ const fill = (world, x0, x1, z0, z1, y, id) => { for (let x = x0; x <= x1; x++) 
 export const PLAYLAND_PARTS = {
   race: { build: buildRaceTrack, spawns: RACER_SPAWNS, walk: RACE_WALK }, // T40c
   stadium: { build: buildStadium, spawns: STADIUM_SPAWNS, walk: [B.PITCH_DARK, B.PITCH_LIGHT, B.PITCH_LINE] }, // T40d: the Ball Stadium (stadium.js)
-  fair: { build: buildFunfair, spawns: FUNFAIR_SPAWNS, walk: FAIR_WALK }, // T43: the Funfair (funfair.js)
+  fair: wave15Open ? { build: buildFunfair, spawns: FUNFAIR_SPAWNS, walk: FAIR_WALK } : null, // T43: the Funfair (funfair.js); null while wave 15 is closed
 };
 // The realm's wild creature tables by zone (read once by REALMS.playland; creatures read them through world.realmBiome).
 export function playlandSpawns() {

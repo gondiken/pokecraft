@@ -8,6 +8,7 @@ import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
 import { swirlLand, swirlAim, frameReturn } from './swirlland.js'; // T38a
 import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
+import { wave15Open } from './comingsoon.js'; // wave 15 ships closed: the Swirl stays version 4 and the Pirate Seas version 1 until it opens
 import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
@@ -53,7 +54,7 @@ export const REALMS = {
   // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, eleven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: 5, sameCells: [4], size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
+    id: 'swirl', name: 'Swirl', version: wave15Open ? 5 : 4, sameCells: wave15Open ? [4] : undefined, house: wave15Open, size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
@@ -117,8 +118,8 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
 // T41: the Sunken City's wild guardians (on the city floor, world.realmBiome 'atlantis')
 const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2], ['grandurnling', 0.12], ['guardlion', 0.12], ['mosaicoil', 0.12]];
-REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [320, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
-  version: 2, convert: { 1: [224, 224] }, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
+REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: wave15Open ? [320, 224] : [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
+  version: wave15Open ? 2 : 1, convert: wave15Open ? { 1: [224, 224] } : undefined, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
   spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
   zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea', atlantis: 'The Sunken City' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS, B.AT_MOSAIC, B.AT_BRICK],
   look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false, underwater: true }, // always a sunny noon; T41: under water in the crater the fog turns blue-green (main.js updateSky)
