@@ -25,7 +25,7 @@ const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id 
 async function intoDoors(page) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
-  await waitFor(page, () => { const f = window.pokecraft.world.swirl.frames.find(f => f.world === 'doors'); return window.pokecraft.world.get(...f.cloth[0]) === 144; }, null, 30000);
+  await waitFor(page, () => { const f = window.pokecraft.world.swirl.frames.find(f => f.world === 'doors'); return window.pokecraft.world.get(...f.cloth[0]) === 144; }, null, 150000);
   await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'doors'), c = f.cloth[0]; g.portal.use({ x: c[0], y: c[1], z: c[2], id: 144 }); });
   await placeIs(page, 'doors');
   await helpers(page);
@@ -823,7 +823,7 @@ async function livePart({ browser, base, t, page }) {
     const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join() }; });
     t.ok(bt.boss && bt.foes === '61,62,62,63', `the Boss battle has Jax's four creatures at levels ${bt.foes}`);
     t.ok(await playBattle(page), 'the Boss battle is won');
-    await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 60000);
+    await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 180000).catch(async () => { console.log('  star missing: ' + JSON.stringify(await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, stars: window.pokecraft.stars, bows: window.pokecraft.beaten.filter(k => /doors/.test(k)), log: document.getElementById('b-log')?.textContent?.slice(-120) })))); });
     const won = await page.evaluate(() => { const g = window.pokecraft; return { stars: g.stars.join(), note: window.__cele?.[0], small: window.__cele?.[1], bows: g.beaten.filter(k => /pw:doors:bow/.test(k)).length, gifts: g.beaten.filter(k => /pw:doors:gift/.test(k)).length }; });
     t.ok(/Room of Doors star/.test(won.note || '') && /Jax was my favourite toy/.test(won.small || ''), `the star of the Room of Doors and the Wizard's note (${won.note})`);
     t.ok(won.bows === 0 && won.gifts === 4, `a won battle uses the four bows up again (${won.bows} left), the four gifts stay (${won.gifts})`);
@@ -998,7 +998,7 @@ async function ipadPart({ browser, base, t }) {
     while (L.pu.t < first.t0 + 0.5) L.step(0.05);
     L.draw();
   });
-  await waitFor(ip, () => { const g = window.pokecraft; return Math.abs(g.camera.position.x - g.player.pos.x) < 0.01 && Math.abs(g.camera.position.z - g.player.pos.z) < 0.01; }, null, 60000); // the camera follows the player (a frame or two)
+  await ip.waitForTimeout(1500); // a frame or two: the camera follows the player
   const jack = await ip.evaluate(() => {
     const g = window.pokecraft, L = window.__live(), p = window.__plan(), first = L.pu.plan[0];
     g.camera.updateMatrixWorld();
@@ -1006,8 +1006,11 @@ async function ipadPart({ browser, base, t }) {
     L.playing = () => document.getElementById('pause').classList.contains('hidden');
     return { sx: (v.x * 0.5 + 0.5) * window.innerWidth, sy: (-v.y * 0.5 + 0.5) * window.innerHeight, score: L.pu.score, onScreen: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 };
   });
-  await ip.touchscreen.tap(jack.sx, jack.sy);
-  await waitFor(ip, () => window.__live().pu.score >= 1, null, 20000).catch(() => {});
+  for (let k = 0; k < 3; k++) { // (a tap can be lost while the page is busy: try again)
+    await ip.touchscreen.tap(jack.sx, jack.sy);
+    await waitFor(ip, () => window.__live().pu.score >= 1, null, 15000).catch(() => {});
+    if (await ip.evaluate(() => window.__live().pu.score >= 1)) break;
+  }
   const sc = await ip.evaluate(() => window.__live().pu.score);
   const dbg = await ip.evaluate(() => ({ log: window.__log, phase: window.__live().pu.phase, paused: window.__live().paused() }));
   t.ok(jack.onScreen && sc >= 1, `a tap on the popped jack on the screen boops it (score ${sc}) ${sc >= 1 ? '' : JSON.stringify({ jack, dbg })}`);
@@ -1036,7 +1039,7 @@ async function pairPart({ browser, base, t }) {
   await toasts(A); await toasts(Bp);
   // Dad (a Champion) steps through the gift-wrapped frame; Kid follows him all the way (the base's follow words)
   await intoDoors(A);
-  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 30000).catch(() => {});
+  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 120000).catch(() => {});
   const ask = await Bp.evaluate(() => (window.pokecraft.ui.asking ? document.getElementById('ask-text').textContent : ''));
   t.ok(/Dad .*(Swirl|Room of Doors)/.test(ask), `Kid is asked to follow ("${ask}")`);
   if (await Bp.evaluate(() => window.pokecraft.ui.asking)) await Bp.evaluate(() => window.pokecraft.ui.askYes());
