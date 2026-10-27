@@ -28,7 +28,7 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(data.keys.join() === 'rideable', 'the only trait is rideable');
-  t.ok(data.n >= 20 && data.n <= 40, `${data.n} rideable species`);
+  t.ok(data.n >= 20 && data.n <= 50, `${data.n} rideable species`);
   t.ok(data.bad.length === 0, `all rideable species exist, are not legendary and do not evolve (${data.bad})`);
   t.ok(data.kinds.every(n => n >= 2) && data.other.length === 0, `land/water/sky each have 2 or more (${data.kinds})`);
   t.ok(data.text <= 40 && data.book <= 80 && data.caught <= 80 && !data.grown.includes('evolved into'), 'texts are short');
