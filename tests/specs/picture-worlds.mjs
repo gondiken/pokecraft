@@ -66,7 +66,7 @@ export default async function ({ browser, base, t }) {
       tiles: Bk.TILE_COUNT, free: Math.max(...Object.values(Bk.B)) + 1,
     };
   }, OLD_CHART);
-  t.ok(d1.n === 37 && d1.colors.every(Boolean), `37 types, the four new ones have colours (${d1.n})`);
+  t.ok(d1.n >= 37 && d1.colors.every(Boolean), `at least 37 types (wave 15 adds more), the four new ones have colours (${d1.n})`);
   t.ok(!d1.bad.length, `the corrected chart rows and the seven added cells ${d1.bad.join('; ')}`);
   t.ok(!d1.changed.length && !d1.extra.length, `the old 33 x 33 chart is unchanged, no other cell touches a new type ${d1.changed.join(',')} ${d1.extra.join(',')}`);
   t.ok(Object.values(d1.hardHits).every(n => n === 3), `each new type hits 3 types hard (the weak-to-at-most-5 rule is checked by two-types / three-types / four-types) (${JSON.stringify(d1.hardHits)})`);
@@ -84,7 +84,7 @@ export default async function ({ browser, base, t }) {
     const hit = (a, b) => a.x0 <= b.x1 && a.x1 >= b.x0 && a.z0 <= b.z1 && a.z1 >= b.z0;
     const disjoint = [...boxes, hub].every((a, i, all) => all.every((b, j) => i === j || !hit(a, b)));
     return {
-      counts: [P.PICTURE_WORLDS.length, P.FRAME_WORLDS.length, P.BRIDGE_WORLDS.length], order: P.PICTURE_WORLDS.map(w => w.id).join(), ready: P.PICTURE_WORLDS.filter(w => w.ready).length,
+      counts: [P.PICTURE_WORLDS.length, P.FRAME_WORLDS.length, P.BRIDGE_WORLDS.length], order: P.PICTURE_WORLDS.map(w => w.id).join(), ready: P.PICTURE_WORLDS.filter(w => w.ready).length, withRealm: P.PICTURE_WORLDS.filter(w => w.realm).length, // (wave 15: the count comes from the data)
       realms: real.map(w => `${w.id}:${w.realm}`).join(), worlds: P.worldsOf('playland').map(w => w.id).join(),
       defs: real.map(w => { const r = R.REALMS[w.realm]; return r && r.parent === 'swirl' && r.entrance === 'frame' && r.morning === false && r.lose === 'stay' && Object.values(r.spawns).every(Array.isArray) && Object.keys(r.spawns).length > 1; }).every(Boolean),
       noGym: !gy.GYMS.some(g => ['house', 'pirate', 'playland'].includes(g.realm)) && gy.GYMS.length === 32, rematchCap: gy.REMATCH_CAP,
@@ -93,8 +93,8 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 4, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
-  t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
+  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= d2.withRealm, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), only worlds with a realm are ready (${d2.counts}, ${d2.ready} ready of ${d2.withRealm} with a realm)`); // wave 15: each task flips its own frame
+  t.ok(['house:house', 'pirate:pirate', 'race:playland', 'stadium:playland'].every(x => d2.realms.split(',').includes(x)) && ['race', 'stadium'].every(x => d2.worlds.split(',').includes(x)) && d2.defs, `the worlds with a realm (at least the four of wave 14; wave 15 adds more) have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
 
@@ -171,7 +171,7 @@ export default async function ({ browser, base, t }) {
   });
   for (const r of d3) {
     t.ok(r.same && !r.problems.length, `${r.id}, seed ${r.seed}: the same blocks twice; arrivals stand on ground with room; a door and keep each; the Boss is on its stand and reachable ${r.problems.join('; ')}`);
-    if (r.id === 'playland') t.ok(r.partOutside === 0 && r.biomes === 'race,stadium,hub' && r.hub && r.doors === 2, `playland, seed ${r.seed}: each part writes only inside its zone, the zone is the biome, both doors lie in the hub (${r.partOutside} cells outside, ${r.biomes})`);
+    if (r.id === 'playland') t.ok(r.partOutside === 0 && r.biomes === 'race,stadium,hub' && r.hub && r.doors >= 2, `playland, seed ${r.seed}: each part writes only inside its zone, the zone is the biome, the doors lie in the hub (${r.doors}, one per open zone; ${r.partOutside} cells outside, ${r.biomes})`);
   }
 
   /* ---- 4. Mover (pure) ---- */
