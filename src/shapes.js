@@ -5714,26 +5714,28 @@ function stonelion(root, m, parts) {
 // Tilesnek / Mosaicoil: a snake made of loose tiles in an S curve with small gaps; the tiles bob a little apart (drift, but tight). The
 // head tile has two eyes and a glowing rune stripe; every other tile has a pattern. Mosaicoil (`long`) is longer and has a raised head.
 function tilesnake(root, m, parts) {
-  const n = has(m, 'long') ? 13 : 9;
+  const long = has(m, 'long'), n = long ? 13 : 9, H = long ? 0.85 : 0.55; // the front of the snake rears up like a cobra
   for (let i = 0; i < n; i++) {
-    const head = i === n - 1, f = i / (n - 1);
-    const x = Math.sin(i * 0.75) * 0.3 * (0.4 + 0.6 * (1 - f)), z = -(n - 1 - i) * 0.19 + 0.3;
-    const y = 0.07 + (f > 0.78 ? (f - 0.78) * (has(m, 'long') ? 1.7 : 1.2) : 0);
+    const head = i === n - 1, f = i / (n - 1), lift = Math.max(0, (f - 0.4) / 0.6);
+    const x = Math.sin(i * 0.8) * 0.3 * (1 - lift), z = -(n - 1 - i) * 0.17 + 0.25 + lift * lift * 0.22;
+    const y = 0.07 + Math.pow(lift, 1.5) * H;
     const t = drift(parts, pivot(root, x, y, z), 0.02, 2.1, i * 0.8);
     const s = head ? 0.4 : 0.3 + f * 0.06; // tiles grow a little towards the head
+    if (!head) t.rotation.x = lift * 0.9; // the neck tiles lean back as they climb
     box(t, s, 0.1, 0.2, i % 2 ? m.body : m.accent, 0, 0, 0);
     box(t, s - 0.08, 0.025, 0.1, i % 2 ? m.accent : m.body, 0, 0.06, 0);
     box(t, s, 0.04, 0.2, m.dark, 0, -0.04, 0);
     if (i % 3 === 1) atRune(t, 0.04, 0.03, 0.1, 0, 0.075, 0); // glowing grooves on some tiles
     if (head) {
       parts.head = t;
-      box(t, 0.3, 0.14, 0.12, m.belly, 0, 0.04, 0.12);
-      eyes(t, 0.1, 0.14, 0.1, 0.1);
-      atRune(t, 0.05, 0.03, 0.2, 0, 0.1, 0);
-      box(t, 0.05, 0.03, 0.16, 0xe05a6a, 0, -0.01, 0.26); // a little forked tongue
+      t.rotation.x = 0;
+      box(t, 0.34, 0.2, 0.2, m.belly, 0, 0.1, 0.05);
+      eyes(t, 0.16, 0.16, 0.1, 0.1);
+      atRune(t, 0.05, 0.03, 0.2, 0, 0.21, 0.04);
+      box(t, 0.05, 0.03, 0.16, 0xe05a6a, 0, 0.03, 0.22); // a little forked tongue
     }
   }
-  atRune(root, 0.04, 0.03, 0.14, 0, 0.14, -(n - 1) * 0.19 + 0.3 - 0.1); // the tail's tip glows
+  atRune(root, 0.04, 0.03, 0.14, 0, 0.14, -(n - 1) * 0.17 + 0.25 - 0.1); // the tail's tip glows
 }
 
 // Runestone: a floating stone with a face made of glowing runes (two square eyes and a small mouth), two pebbles circling it.

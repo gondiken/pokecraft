@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   /* ---- 1. Types, wool, blocks (data) ---- */
   const d1 = await page.evaluate(async old => {
     const S = await import('/src/species.js'), Bk = await import('/src/blocks.js');
-    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'];
+    const types = Object.keys(S.TYPE_COLORS).filter(x => !['atlantis'].includes(x)), news = ['tiny', 'pirate', 'racer', 'ball']; // (wave 15's types have their own specs: the 37 old types and their chart stay as they were)
     const e = (a, b) => S.effectiveness(a, b);
     const row = (a, want) => Object.entries(want).filter(([b, v]) => e(a, b) !== v).map(([b, v]) => `${a}>${b} ${e(a, b)} want ${v}`);
     const bad = [
@@ -85,7 +85,7 @@ export default async function ({ browser, base, t }) {
     const disjoint = [...boxes, hub].every((a, i, all) => all.every((b, j) => i === j || !hit(a, b)));
     return {
       counts: [P.PICTURE_WORLDS.length, P.FRAME_WORLDS.length, P.BRIDGE_WORLDS.length], order: P.PICTURE_WORLDS.map(w => w.id).join(), ready: P.PICTURE_WORLDS.filter(w => w.ready).length,
-      realms: real.map(w => `${w.id}:${w.realm}`).join(), worlds: P.worldsOf('playland').map(w => w.id).join(),
+      realms: real.filter(w => !['atlantis'].includes(w.id)).map(w => `${w.id}:${w.realm}`).join(), worlds: P.worldsOf('playland').map(w => w.id).join(),
       defs: real.map(w => { const r = R.REALMS[w.realm]; return r && r.parent === 'swirl' && r.entrance === 'frame' && r.morning === false && r.lose === 'stay' && Object.values(r.spawns).every(Array.isArray) && Object.keys(r.spawns).length > 1; }).every(Boolean),
       noGym: !gy.GYMS.some(g => ['house', 'pirate', 'playland'].includes(g.realm)) && gy.GYMS.length === 32, rematchCap: gy.REMATCH_CAP,
       zones: boxes.every(within) && within(hub) && disjoint, gates: Object.values(L.ZONES).every(z => z.gate.x >= hub.x0 && z.gate.x <= hub.x1 && z.gate.z >= hub.z0 && z.gate.z <= hub.z1),
@@ -93,7 +93,7 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,11,12' && d2.order === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 4, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at most the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
+  t.ok(d2.counts.join() === '12,11,12' && d2.order.replace(/atlantis/, 'secret2').replace(/doodle/, 'secret1') === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= 9, `12 / 11 / 12 Picture Worlds in the old order (a secret world may have been named: secret1 = doodle, secret2 = atlantis; the Wizard gives no star), at most the wave 14 and 15 worlds ready (${d2.counts}, ${d2.ready} ready)`);
   t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
@@ -212,7 +212,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
   await intoSwirl(page);
-  for (const id of ['house', 'pirate', 'race', 'stadium']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
+  for (const id of await page.evaluate(async () => (await import('/src/pictureworlds.js')).PICTURE_WORLDS.filter(w => w.ready).map(w => w.id))) await flip(page, id, false); // the wave 14 and 15 tasks ship their frames ready; this part wants every frame covered
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);

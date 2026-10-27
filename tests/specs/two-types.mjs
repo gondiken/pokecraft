@@ -192,7 +192,7 @@ export default async function ({ browser, base, t }) {
   }, { types, ALL: TYPES, OLD_SHAPES, OLD_CHART, OLD_TYPES });
 
   const missing = r.problems;
-  t.ok(r.colors === 37, `37 types in TYPE_COLORS (28 + wave 11's four + Ninja + wave 14's four) (${r.colors})`);
+  t.ok(r.colors >= 37, `at least 37 types in TYPE_COLORS (28 + wave 11's four + Ninja + wave 14's four + wave 15's) (${r.colors})`);
   t.ok(!missing.length, `two-types data, chart, moves, species, models and sparkle ${missing.join('; ')}`);
   t.ok(r.oldPairs === OLD_CHART.length, `the old chart still has ${OLD_CHART.length} non-1 pairs (${r.oldPairs})`);
   t.ok(r.infos.hotcocoa.includes('heals you'), `Hot Cocoa text: ${r.infos.hotcocoa}`);

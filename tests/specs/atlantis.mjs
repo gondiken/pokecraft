@@ -194,10 +194,27 @@ async function dataPart(page, t) {
   t.ok(A.bl.every(([, id, ok]) => id >= 205 && id <= 214 && ok), `blocks 205-214 are defined (${A.bl.map(b => b[1])})`);
   t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('The Sunken City'), `in no SPAWNS table, every one in the Pirate Seas' Atlantis table; Book rows ${A.rows}`);
   t.ok(A.ready === true && A.name === 'Pirate Seas · Atlantis' && !A.secret2 && A.stars === 12 && A.types >= 38, `the Atlantis frame (the old secret2) is ready, "${A.name}", still 12 stars, ${A.types} types`);
-  t.ok(A.own === 'pirate:2,time:2,treasure:2,atlantis:0.5'.split(',').sort().join() && A.onIt.includes('cyber:2') && A.onIt.includes('ninja:2') && A.onIt.includes('pirate:0.5') && A.onIt.includes('ball:0.5') && !/water|fire/.test(A.onIt), `chart: Atlantis hits pirate, treasure and time; cyber and ninja hit it; pirate and ball resist; water stays neutral (${A.own} / ${A.onIt})`);
+  t.ok(A.own === 'pirate:2,time:2,camo:2,atlantis:0.5'.split(',').sort().join() && A.onIt.includes('cyber:2') && A.onIt.includes('ninja:2') && A.onIt.includes('pirate:0.5') && A.onIt.includes('ball:0.5') && !/water|fire/.test(A.onIt), `chart: Atlantis hits pirate, camo and time; cyber and ninja hit it; pirate and ball resist; water stays neutral (${A.own} / ${A.onIt})`);
   t.ok(A.old.fire === 2 && A.old.pirate === 2 && A.old.cyber === 2 && A.old.water === 2 && A.old.normal === 0 && A.old.cross === 2, 'the old chart cells are as they were');
   t.ok(A.realm.size.join() === '320,224' && A.realm.version === 2 && A.realm.convert[1].join() === '224,224' && A.realm.uw === true, `the Pirate Seas are 320 x 224, version 2, converting version 1 (${JSON.stringify(A.realm)})`);
   t.ok(JSON.stringify(A.conv) === JSON.stringify([[5 + 320 * (7 + 224 * 3), 9], [223 + 320 * (223 + 224 * 40), 4], [50, 3]]), `old edits move to the new indexes (the one above the map is dropped): ${JSON.stringify(A.conv)}`);
+  // the portraits of the seven creatures, for the owner
+  const grid = await page.evaluate(async ids => {
+    const { portrait } = await import('/src/ui.js');
+    const W = 300, H = 250, cv = document.createElement('canvas');
+    cv.width = W * 4; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#2a7a90'; ctx.fillRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < ids.length; i++) {
+      const img = new Image(); img.src = portrait(ids[i], W, H);
+      await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 3000))]);
+      ctx.drawImage(img, (i % 4) * W, Math.floor(i / 4) * H);
+    }
+    return cv.toDataURL();
+  }, A.ids);
+  fs.writeFileSync(path.join(SHOTS, 't41-creatures.png'), Buffer.from(grid.split(',')[1], 'base64'));
+  console.log('  screenshot t41-creatures.png');
+  t.ok(grid.length > 20000, 'portrait grid drawn');
 }
 
 /* ======================================================= browser: B. terrain ======================================================= */
@@ -523,6 +540,16 @@ async function playPart(page, t) {
     }
     return out;
   });
+  // wild guardians live on the city floor under the water
+  const wild = await page.evaluate(async () => {
+    const g = window.pokecraft, p = g.player, S = await import('/src/species.js');
+    p.pos.set(262.5, 5, 112.5); p.vel.set(0, 0, 0); g.creatures.clear();
+    for (let i = 0; i < 200; i++) g.creatures.trySpawn(p.pos, g.spawnPoint, false);
+    const list = g.creatures.list.map(w => ({ id: w.data.species, type: S.SPECIES[w.data.species].type, y: w.pos.y, lv: w.data.level }));
+    g.creatures.clear();
+    return { n: list.length, atl: list.filter(w => w.type === 'atlantis'), other: list.filter(w => w.type !== 'atlantis').length };
+  });
+  t.ok(wild.atl.length >= 3 && wild.atl.every(w => w.y >= 1.9 && w.y <= 3.6 && w.lv >= 40), `wild Atlantis creatures stand on the city floor under the water (${wild.atl.length} of ${wild.n}; heights ${wild.atl.map(w => w.y.toFixed(1)).join(' ')}; levels ${wild.atl.map(w => w.lv).join(' ')})`);
   t.ok(Math.abs(L2[0][0] - 1.5) < 0.2 && Math.abs(L2[1][0] - 2.75) < 0.3 && Math.abs(L2[2][0] - 4) < 0.3 && L2[2][1] > 0.15 && L2[2][2] > 0.9, `a tap lunges 1.5 blocks, a half coil 2.75, a full coil 4 (${L2.map(l => l[0].toFixed(2))}); holding makes the net glow brighter (+${L2[2][1].toFixed(2)})`);
 }
 

@@ -33,7 +33,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | Input | Action |
 | --- | --- |
 | WASD | Move |
-| Space | Jump / swim up (swim into a bank and hold it to climb out) |
+| Space | Jump / swim up (swim into a bank and hold it to climb out). In the Sunken City: a **kick** forward in the way you look |
 | Shift | Sprint |
 | Mouse | Look |
 | Left click | Break block, battle the creature under the crosshair, or talk to a person |
@@ -60,7 +60,7 @@ On a tablet:
 | Big round action button | Does what you look at, and its word says what: **Battle!**, **Talk**, **Heal**, **Open**, **Sleep**, **Press**, **Break**, or the **Yes** word while a question is showing. Greyed out when there is nothing to do |
 | Place button (above Jump) | Build the picked block at the crosshair (greyed out when you can't; tap it to hear why) |
 | Ride button (above the action button) | Get on your rideable creature (only there when you have one; says Land while flying) |
-| Jump button | Jump or swim up (says **Up** while flying, with a **Down** button right under it) |
+| Jump button | Jump or swim up (says **Up** while flying, with a **Down** button right under it, and **Swim** in the Sunken City: it kicks you forward) |
 | Tap the hotbar | Pick a block (tap the picked one again to change it) |
 | Tap the creature card (top left) | Your team |
 | Book button | Creature Book |
@@ -184,7 +184,7 @@ Stat changes and sleep go away when a creature is switched out. A few creatures 
 | Pirate | Ball, treasure, water | A pirate's hook pops the ball, grabs the treasure and rules the waves. Weak to electric (a shock on deck) and racer (outrun!) |
 | Racer | Pirate, time, parkour | A racer outruns the pirate, beats the clock and the runner. Weak to water (a wet track skids), ice and tiny |
 | Ball | Tiny, squad, bone | A ball squashes the tiny, bowls over the squad and knocks the bones down like pins. Weak to grass, pirate and ninja |
-| Atlantis | Pirate, treasure, time | The old city's guardians chase treasure hunters and old clocks away. Weak to cyber (a screen is not scary to a statue, but a hacker is) and ninja (it can't see them sneak); resists pirate and ball |
+| Atlantis | Pirate, camo, time | The old city's guardians chase pirates away, see through camouflage and are older than any clock. Weak to cyber (a screen is not scary to a statue, but a hacker is) and ninja (it can't see them sneak); resists pirate and ball |
 
 Cosmic beats sound, sound beats mind, and mind beats cosmic. Sky beats paper, paper beats light, light beats slime, and slime beats sky. Cozy beats cyber, cyber beats treasure, and treasure beats cozy. Food beats squad, squad beats parkour, parkour beats dream, and dream beats food. Mind and cosmic attacks are weak against aliens (space is their home).
 

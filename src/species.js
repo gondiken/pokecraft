@@ -92,8 +92,9 @@ const EFFECTIVENESS = {
   racer: { pirate: 2, time: 2, parkour: 2, racer: 0.5, rock: 0.5, slime: 0.5 },
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
-// Wave 15 (T41): the Sunken City's guardians chase treasure hunters and old clocks off, but are too old for screens and sneaking.
-EFFECTIVENESS.atlantis = { pirate: 2, treasure: 2, time: 2, atlantis: 0.5 };
+// Wave 15 (T41): the Sunken City's guardians chase pirates off, see through camouflage and are older than clocks, but are too old for screens and sneaking.
+// (The plan had Treasure instead of Camo: a defender may be weak to at most 5 types, and Treasure already has 5.)
+EFFECTIVENESS.atlantis = { pirate: 2, camo: 2, time: 2, atlantis: 0.5 };
 EFFECTIVENESS.cyber.atlantis = 2; EFFECTIVENESS.ninja.atlantis = 2; EFFECTIVENESS.pirate.atlantis = 0.5; EFFECTIVENESS.ball.atlantis = 0.5;
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
@@ -2189,12 +2190,12 @@ export const SPECIES = {
     name: 'Tilesnek', type: 'atlantis', desc: 'A little snake made of loose mosaic tiles. The tiles wiggle apart a tiny bit when it is curious.',
     base: { hp: 45, atk: 60, def: 50, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('atlantis', 'metal'),
     evolve: { level: 27, into: 'mosaicoil' },
-    model: { shape: 'tilesnake', scale: 0.85, body: 0x3ab8b4, accent: 0xf2d27a, dark: 0x2a6a78, belly: 0xf6efd8, extras: [] },
+    model: { shape: 'tilesnake', scale: 1.15, body: 0x3ab8b4, accent: 0xf2d27a, dark: 0x2a6a78, belly: 0xf6efd8, extras: [] },
   },
   mosaicoil: {
     name: 'Mosaicoil', type: 'atlantis', desc: 'A long coil of shiny tiles. When it rattles, the tiles flash like a whole mosaic floor waking up.',
     base: { hp: 75, atk: 95, def: 70, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('atlantis', 'metal', [[30, 'mosaicstorm']]),
-    model: { shape: 'tilesnake', scale: 1.25, body: 0x2aa0c8, accent: 0xff9ad0, dark: 0x1e5a8a, belly: 0xfff0b0, extras: ['long'] },
+    model: { shape: 'tilesnake', scale: 1.5, body: 0x2aa0c8, accent: 0xff9ad0, dark: 0x1e5a8a, belly: 0xfff0b0, extras: ['long'] },
   },
   runestone: {
     name: 'Runestone', type: 'atlantis', desc: 'A floating stone with a glowing mark. Nobody knows what the mark says, but it hums when you are near.',

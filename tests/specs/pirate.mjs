@@ -76,7 +76,7 @@ export default async function ({ browser, base, t }) {
       const rs = R.REALMS.pirate.spawns, inRealm = ids.every(id => Object.entries(rs).some(([k, l]) => k !== 'cave' && l.some(e => e[0] === id)));
       const rows = ids.flatMap(id => BK.spawnInfo(id).map(r => r.name)).filter((n, i, a) => a.indexOf(n) === i);
       const eff = S.effectiveness;
-      const keys = Object.keys(S.TYPE_COLORS);
+      const keys = Object.keys(S.TYPE_COLORS).filter(k => !['atlantis'].includes(k)); // wave 15's types have their own specs
       const own = keys.filter(d => eff('pirate', d) !== 1).map(d => `${d}:${eff('pirate', d)}`).sort().join();
       const onPirate = keys.filter(a => a !== 'pirate' && eff(a, 'pirate') !== 1).map(a => `${a}:${eff(a, 'pirate')}`).sort().join();
       return {
@@ -104,7 +104,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.fx.every(Boolean) && A.sounds.every(Boolean) && !A.clash.length, `own attack effects, colours and sounds (fx:pirate, cannonboom, seasplash), no move named like a sound (${A.fx}; ${A.sounds}; ${A.clash})`);
     t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the parrots fly, wool 141`);
     t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Pirate Seas · islands') && A.rows.includes('Pirate Seas · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
-    t.ok(A.ready === true && A.types === 37, 'the Pirate Seas frame ships ready; 37 types');
+    t.ok(A.ready === true && A.types === 37, 'the Pirate Seas frame ships ready; the 37 types of its day');
     t.ok(A.own === 'ball:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && A.onPirate === 'electric:2,racer:2', `chart: Pirate hits ball, treasure and water; electric and racer hit Pirate (${A.own} / ${A.onPirate})`);
   }
 
