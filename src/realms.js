@@ -129,10 +129,10 @@ REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9
   arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });
 
 /* ==== T44 surprise ==== */
-// The Room of Doors (a Picture World behind the Swirl's gift-wrapped frame): a toy-box hall with twelve doors, the Shuffle Stage, the Pop-Up Room and the Big Gift.
+// The Room of Doors (a Picture World behind the Swirl's gift-wrapped frame): a toy-box hall with twelve doors, the Piñata Party, Jack Catch in the Pop-Up Room and the Big Gift.
 REALMS.doors = pictureRealm({ id: 'doors', name: 'Room of Doors', seedSalt: 0xd005, size: [112, 112], terrain: 'doorsLand', arrive: [56, 79], walk: [B.PARTY_FLOOR],
   spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Room of Doors', travelText: 'Unwrapping...', travelIcon: '🎁',
-  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows to open the Big Gift! Start at the Shuffle Stage.',
+  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows to open the Big Gift! Start with the piñata in the middle.',
   noHomeText: 'No homes in the Room of Doors! Build your home in your own world.', followText: 'Open it too',
   look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
 /* ==== end of T44 surprise ==== */

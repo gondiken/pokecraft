@@ -246,6 +246,11 @@ const SOUNDS = {
   sillyhonk: () => { tone(330, { len: 0.12, type: 'sawtooth', vol: 0.12, slide: -60 }); tone(300, { at: 0.16, len: 0.16, type: 'sawtooth', vol: 0.12, slide: 120 }); },
   jackpop: () => { tone(180, { len: 0.2, type: 'triangle', vol: 0.3, slide: 700 }); tone(900, { at: 0.08, len: 0.14, type: 'sine', vol: 0.1, slide: -300 }); },
   boop: () => { tone(740, { len: 0.1, type: 'sine', vol: 0.3, slide: -200 }); tone(1100, { at: 0.05, len: 0.1, type: 'triangle', vol: 0.12 }); },
+  // T44 rework: a piñata CRACK (a paper thwack), the candy rain, a jack caught in your arms, a cream pie's splat.
+  pinatawhack: () => { noise({ freq: 900, len: 0.12, vol: 0.32, q: 0.9 }); tone(160, { len: 0.12, type: 'triangle', vol: 0.3, slide: -60 }); noise({ at: 0.04, freq: 3600, len: 0.08, vol: 0.12, q: 1.2 }); },
+  candyrain: () => { for (let i = 0; i < 7; i++) tone(1200 + ((i * 7) % 5) * 180, { at: i * 0.05, len: 0.06, type: 'triangle', vol: 0.08 }); [523, 659, 784, 1047].forEach((f, i) => tone(f, { at: 0.3 + i * 0.08, len: 0.14, type: 'triangle', vol: 0.14 })); },
+  jackcatch: () => { tone(520, { len: 0.08, type: 'triangle', vol: 0.2, slide: 300 }); bell(1319, 0.07, 0.25, 0.12); },
+  piesplat: () => { noise({ freq: 500, len: 0.22, vol: 0.3, q: 0.6 }); tone(220, { len: 0.18, type: 'sine', vol: 0.18, slide: -140 }); },
   racebeep: () => tone(660, { len: 0.12, type: 'square', vol: 0.14 }),
   racego: () => tone(990, { len: 0.4, type: 'square', vol: 0.16 }),
   lapbell: () => { bell(1568, 0, 0.35, 0.2); bell(2093, 0.14, 0.4, 0.2); },
