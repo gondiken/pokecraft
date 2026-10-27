@@ -99,10 +99,10 @@ const EFFECTIVENESS = {
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
 /* ==== T44 surprise: the chart ==== */
-// A ninja is the one surprised for once, a pirate's chest pops open with a jack, a big surprise wakes any dreamer; a safe can't be
+// A jack-in-the-box makes a skeleton jump out of its bones, a pirate's chest pops open with a jack, a big surprise wakes any dreamer; a safe can't be
 // surprised and the clock always knew it was your birthday. Others' rows are separate lines (never an edit of an old row).
-EFFECTIVENESS.surprise = { ninja: 2, pirate: 2, dream: 2, surprise: 0.5, metal: 0.5, time: 0.5 }; // wave 15 merge: mind and cyber were full
-EFFECTIVENESS.time.surprise = 2;   // wait long enough and every gift is opened
+EFFECTIVENESS.surprise = { bone: 2, pirate: 2, dream: 2, surprise: 0.5, metal: 0.5, time: 0.5 }; // wave 15 merge: mind and cyber were full
+EFFECTIVENESS.paper.surprise = 2;  // paper tears the wrapping open (wave 15 merge: time already hit 4 types)
 EFFECTIVENESS.ball.surprise = 2;   // a ball knocks the box open
 EFFECTIVENESS.bug.surprise = 2;    // bugs nibble the wrapping paper
 EFFECTIVENESS.ghost.surprise = 0.5; // a "boo!" is no surprise to a surprise
@@ -111,7 +111,8 @@ EFFECTIVENESS.camo.surprise = 0.5;  // it already knows hide and seek
 // Wave 15 (T41): the Sunken City's guardians chase pirates off, see through camouflage and are older than clocks, but are too old for screens and sneaking.
 // (The plan had Treasure instead of Camo: a defender may be weak to at most 5 types, and Treasure already has 5.)
 EFFECTIVENESS.atlantis = { pirate: 2, camo: 2, time: 2, atlantis: 0.5 };
-EFFECTIVENESS.cyber.atlantis = 2; EFFECTIVENESS.ninja.atlantis = 2; EFFECTIVENESS.pirate.atlantis = 0.5; EFFECTIVENESS.ball.atlantis = 0.5;
+EFFECTIVENESS.mind.atlantis = 2; EFFECTIVENESS.ninja.atlantis = 2; // wave 15 merge: mind reads the old runes (cyber already hit 4 types)
+ EFFECTIVENESS.pirate.atlantis = 0.5; EFFECTIVENESS.ball.atlantis = 0.5;
 /* ==== T45 doodle chart ==== */
 // Drawing an outline shows where a camo creature hides; pencil and paper never run out of battery; a drawing keeps the moment forever;
 // a pencil cannot scratch metal and paper burns. Others' cells are separate lines (no old cell changes).

@@ -41,8 +41,9 @@ to its own ids, names and sections below.
 
 - **Chart retune at the merge** (a defender is weak to at most 5 types, 6 for mind / ghost / drake, the `four-types` /
   `two-types` rule): the five new rows together hit mind, cyber, time and camo too often, so the new rows changed (old cells
-  untouched): Funfair `{ cozy, normal, rainbow }` (was time, camo, cozy), Surprise `{ ninja, pirate, dream }` (was mind,
-  ninja, cyber), Doodle `{ camo, tiny, sky }` (was camo, cyber, time); Atlantis keeps `{ pirate, camo, time }`. The spec
+  untouched): Funfair `{ cozy, normal, rainbow }` (was time, camo, cozy), Surprise `{ bone, pirate, dream }` (was mind,
+  ninja, cyber; the `ninja` spec allows no new ninja cells), weak to paper instead of time and Atlantis weak to mind instead
+  of cyber (an attacker hits at most 4 types hard, the `three-types` rule), Doodle `{ camo, tiny, sky }` (was camo, cyber, time); Atlantis keeps `{ pirate, camo, time }`. The spec
   exclusions and loosened limits the builders added to get around it are gone. Portal (T42) must fit into what is left.
 - `fxrecipes.js` came out of the T41 merge with an unclosed block (keep-both of two appended sections); rebuilt from the
   branches. Check every merged file as an ES module (`node --check` on a `.mjs` copy: plain `.js` is parsed as a script).
