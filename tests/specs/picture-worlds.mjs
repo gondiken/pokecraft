@@ -356,7 +356,7 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(c => { const g = window.pokecraft; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); }, cr);
   await placeIs(page, 'playland');
   const pl1 = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, d = g.world.doors.find(d => d.key === 'race'); g.updateGuide(); return { via: g.realms.via, z: p.z, door: d.stand[2], doors: g.world.doors.length, glow: g.portal.glow().count, guide: g.ui.guideText }; });
-  t.ok(pl1.via === 'race' && Math.abs(pl1.z - pl1.door) < 0.1 && pl1.doors === 2 && pl1.glow === 2 && /Race Track Boss/.test(pl1.guide || ''), `the race frame opens Playland at the race gate, two glowing doors, the guide names the Race Track Boss (${pl1.guide})`);
+  t.ok(pl1.via === 'race' && Math.abs(pl1.z - pl1.door) < 0.1 && pl1.doors >= 2 && pl1.glow === pl1.doors && /Race Track Boss/.test(pl1.guide || ''), `the race frame opens Playland at the race gate, a glowing door per Playland frame (${pl1.doors}), the guide names the Race Track Boss (${pl1.guide})`);
   await page.screenshot({ path: path.join(SHOTS, 't40-playland-hub.png'), timeout: 180000 });
   await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors.find(d => d.key === 'race'), m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(page, 'swirl');
