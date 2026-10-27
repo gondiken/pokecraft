@@ -36,3 +36,13 @@ to its own ids, names and sections below.
 - **Child-friendly words**, no Pokémon names, iPad: every action works with the one action button (`near` / `use` /
   `holds` / `release` hooks), skill games are never a fail.
 - Spec named after the type (`tests/specs/<type>.mjs`), screenshots `t4x-*.png`, runnable alone (`node run.mjs <type>`).
+
+## Merge notes (orchestrator)
+
+- **Chart retune at the merge** (a defender is weak to at most 5 types, 6 for mind / ghost / drake, the `four-types` /
+  `two-types` rule): the five new rows together hit mind, cyber, time and camo too often, so the new rows changed (old cells
+  untouched): Funfair `{ cozy, normal, rainbow }` (was time, camo, cozy), Surprise `{ ninja, pirate, dream }` (was mind,
+  ninja, cyber), Doodle `{ camo, tiny, sky }` (was camo, cyber, time); Atlantis keeps `{ pirate, camo, time }`. The spec
+  exclusions and loosened limits the builders added to get around it are gone. Portal (T42) must fit into what is left.
+- `fxrecipes.js` came out of the T41 merge with an unclosed block (keep-both of two appended sections); rebuilt from the
+  branches. Check every merged file as an ES module (`node --check` on a `.mjs` copy: plain `.js` is parsed as a script).

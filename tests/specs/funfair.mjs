@@ -384,7 +384,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.moves.every(m => m === 'funfair') && A.fine && A.t1, `the nine moves are Funfair moves; Zip Ride goes first, Fun House lowers attack (${A.moves})`);
     t.ok(A.sig && A.sigOnly === 'balloodle,galloprance', `Grand Gallop (Galloprance, flinch) and Balloon Burst (Balloodle, multi 2-5) are signature moves learned at 30 (${A.sigOnly})`);
     t.ok(JSON.stringify(A.big) === JSON.stringify([['rally', true], ['risky', true], ['field', true]]) && A.bigLearn.join() === '22:funforall,26:fairday,29:prizewheel', `big moves Fun for All (rally), Prize Wheel (risky), Fair Day (field) (${A.bigLearn})`);
-    t.ok(A.types >= 38 && A.ownRow === 'camo:2,cozy:2,funfair:0.5,metal:0.5,rock:0.5,time:2' && A.hits === 3, `the Funfair row: time, camo and cozy 2, metal and rock and itself 0.5 (${A.ownRow}); it hits 3 types hard`);
+    t.ok(A.types >= 38 && A.ownRow === 'cozy:2,funfair:0.5,metal:0.5,normal:2,rainbow:2,rock:0.5' && A.hits === 3, `the Funfair row: cozy, normal and rainbow 2, metal and rock and itself 0.5 (${A.ownRow}); it hits 3 types hard`);
     t.ok(A.vs === 'ball:0.5,electric:2,sound:0.5,toxic:2,water:2' && A.oldChart, `against it: water, toxic and electric 2, sound and ball 0.5 (${A.vs}); every cell of the old chart is unchanged`);
     t.ok(/repeating-linear-gradient/.test(A.color) && A.wool[0] === 224 && A.wool[1] === 'Funfair Wool' && A.wool[2] === false, `a type colour, wool block 224 "${A.wool[1]}" (not placeable)`);
     t.ok(A.fxOwn && A.sigFx, 'funfair attack effects, colours and the two signature effects exist');

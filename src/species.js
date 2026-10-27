@@ -99,9 +99,9 @@ const EFFECTIVENESS = {
   ball: { tiny: 2, squad: 2, bone: 2, ball: 0.5, grass: 0.5, pixie: 0.5 },
 };
 /* ==== T44 surprise: the chart ==== */
-// You can't read a surprise's mind, a ninja is the one surprised for once, and you can't look up what is inside; a safe can't be
+// A ninja is the one surprised for once, a pirate's chest pops open with a jack, a big surprise wakes any dreamer; a safe can't be
 // surprised and the clock always knew it was your birthday. Others' rows are separate lines (never an edit of an old row).
-EFFECTIVENESS.surprise = { mind: 2, ninja: 2, cyber: 2, surprise: 0.5, metal: 0.5, time: 0.5 };
+EFFECTIVENESS.surprise = { ninja: 2, pirate: 2, dream: 2, surprise: 0.5, metal: 0.5, time: 0.5 }; // wave 15 merge: mind and cyber were full
 EFFECTIVENESS.time.surprise = 2;   // wait long enough and every gift is opened
 EFFECTIVENESS.ball.surprise = 2;   // a ball knocks the box open
 EFFECTIVENESS.bug.surprise = 2;    // bugs nibble the wrapping paper
@@ -115,7 +115,7 @@ EFFECTIVENESS.cyber.atlantis = 2; EFFECTIVENESS.ninja.atlantis = 2; EFFECTIVENES
 /* ==== T45 doodle chart ==== */
 // Drawing an outline shows where a camo creature hides; pencil and paper never run out of battery; a drawing keeps the moment forever;
 // a pencil cannot scratch metal and paper burns. Others' cells are separate lines (no old cell changes).
-EFFECTIVENESS.doodle = { camo: 2, cyber: 2, time: 2, doodle: 0.5, fire: 0.5, metal: 0.5 };
+EFFECTIVENESS.doodle = { camo: 2, tiny: 2, sky: 2, doodle: 0.5, fire: 0.5, metal: 0.5 }; // wave 15 merge: cyber and time were full
 EFFECTIVENESS.water.doodle = 2;    // wet paper smudges the lines
 EFFECTIVENESS.rainbow.doodle = 2;  // colour fills in the black and white
 EFFECTIVENESS.paper.doodle = 0.5;  // more paper is just a fresh page
@@ -457,7 +457,7 @@ BIG_MOVES.parkour = [
 // The chart: time flies when you have fun, a camo creature cannot hide among all the lights and noise, a loud fair beats a cosy evening;
 // rides can't shake metal or rock. (The plan had mind and ghost instead of camo and cozy: the four-types / three-types specs let mind and
 // ghost be weak to at most 6 types and they were already at 6.) Others' cells against Funfair are separate lines (never an edit of another type's row).
-EFFECTIVENESS.funfair = { time: 2, camo: 2, cozy: 2, metal: 0.5, rock: 0.5, funfair: 0.5 };
+EFFECTIVENESS.funfair = { cozy: 2, normal: 2, rainbow: 2, metal: 0.5, rock: 0.5, funfair: 0.5 }; // wave 15 merge: time and camo were full (a defender is weak to at most 5)
 EFFECTIVENESS.water.funfair = 2; // rain closes the fair
 EFFECTIVENESS.toxic.funfair = 2; // too many sweets: a tummy ache
 EFFECTIVENESS.electric.funfair = 2; // a power cut stops the rides

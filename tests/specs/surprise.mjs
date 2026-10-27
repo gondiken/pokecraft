@@ -117,7 +117,7 @@ export default async function ({ browser, base, t }) {
       if (!SR.CONDITIONS.gift?.place || SR.CONDITIONS.gift.share || !/gift box/.test(SR.CONDITIONS.gift.text)) bad('gift condition');
       // the chart: its own row, the five lines, no old cell changed
       const E = S.effectiveness;
-      out.chart = ['mind', 'ninja', 'cyber', 'surprise', 'metal', 'time'].map(d => E('surprise', d)).join() + '|' + ['time', 'ball', 'bug', 'ghost', 'camo'].map(a => E(a, 'surprise')).join();
+      out.chart = ['ninja', 'pirate', 'dream', 'surprise', 'metal', 'time'].map(d => E('surprise', d)).join() + '|' + ['time', 'ball', 'bug', 'ghost', 'camo'].map(a => E(a, 'surprise')).join();
       const old = fixture.types; let changed = 0, cells = 0;
       for (const a of old) for (const d of old) { cells++; if (E(a, d) !== (fixture.chart[a][d] ?? 1)) changed++; }
       out.cells = cells; out.changed = changed;

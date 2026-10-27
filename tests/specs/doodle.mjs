@@ -137,7 +137,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.ride === 'land', 'Outlynx can be ridden on land');
     t.ok(A.spawns === 0 && A.inRealm && A.rows.some(r => /Sketchbook/.test(r)), `in no SPAWNS table, every one in the Sketchbook's table; Book rows ${A.rows}`);
     t.ok(A.ready === true && !A.secret1 && A.twelve === 12, `the Sketchbook frame ships ready (the old secret1 place); still 12 stars (${A.twelve})`);
-    t.ok(A.own === 'camo:2,cyber:2,doodle:0.5,fire:0.5,metal:0.5,time:2' && A.onD === 'paper:0.5,rainbow:2,water:2', `chart: Doodle hits camo, cyber, time; water and rainbow hit Doodle, paper is half (${A.own} / ${A.onD})`);
+    t.ok(A.own === 'camo:2,doodle:0.5,fire:0.5,metal:0.5,sky:2,tiny:2' && A.onD === 'paper:0.5,rainbow:2,water:2', `chart: Doodle hits camo, tiny, sky; water and rainbow hit Doodle, paper is half (${A.own} / ${A.onD})`);
     t.ok(A.book, 'the Book page can list where a Doodle creature lives');
     if (ONLY) { /* data only */ }
   }
