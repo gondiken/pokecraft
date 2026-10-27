@@ -1,6 +1,6 @@
 // T45: the Doodle type and the Sketchbook (plans/T45.md). A. type data. B. the pencil atlas. C. the sketch switch off = bit for bit
 // (main world, Dream, Swirl, and again after a trip to the Sketchbook). D. the look in the game. E. terrain for three seeds (the walk graph
-// from tests/doodlecheck.mjs). F. Trace! (pure, tracing.js). G. play: the frame, Draw!, ink, falling, saving, crew, Arlo, rematch, the ways
+// from tests/doodlecheck.mjs). F. Draw! (pure, tracing.js, the model players of tests/doodlecheck.mjs). G. play: the frame, Draw!, ink, falling, saving, crew, Arlo, rematch, the ways
 // back. H. iPad. I. two browsers. J. screenshots (tests/screenshots/t45-*.png).
 // DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots runs part of it.
 import fs from 'node:fs';
