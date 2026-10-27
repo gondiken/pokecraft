@@ -278,11 +278,11 @@ export function atlantisLand(world, ctx) {
   world.underground = () => false; // the dim city is not a cave: no cave fog, no "it's dark down here" (the net's glow is the light)
   const biome = world.realmBiome;
   world.realmBiome = (x, z) => (Math.hypot(x - CITY.x, z - CITY.z) <= CITY.flat ? 'atlantis' : biome ? biome(x, z) : 'pirateSea');
-  world.sunkenY = (x, z, sp) => { // wild Atlantis creatures stand on the city floor (creatures.groundY)
-    if (sp.type !== 'atlantis' || craterR(x, z) > CITY.flat) return null;
-    const fl = world.ground[Math.floor(x) + Math.floor(z) * W];
-    const top = world.get(Math.floor(x), fl, Math.floor(z));
-    if (top === B.AIR || top === B.WATER) return null;
+  world.sunkenY = (x, z, sp) => { // wild Atlantis creatures stand on the free city floor (creatures.groundY): a y, null (no room here) or undefined (not for this creature)
+    if (sp.type !== 'atlantis' || craterR(x, z) > CITY.flat) return undefined; // not ours: the usual rules (null = ours, but no room here)
+    const x0 = Math.floor(x), z0 = Math.floor(z), fl = world.ground[x0 + z0 * W];
+    if (x0 >= BELL.x0 - 1 && x0 <= BELL.x1 + 1 && z0 >= BELL.z0 - 1 && z0 <= BELL.z1 + 1) return null; // the dry diving bell is no home for them
+    if (!world.isSolid(x0, fl, z0) || world.isSolid(x0, fl + 1, z0) || world.isSolid(x0, fl + 2, z0)) return null; // only the free floor: not the steps, the plinth, a house
     return sp.floats ? fl + 1.5 : fl + 1;
   };
   world.parts.push({ id: 'atlantis', live: 'atlantis' });

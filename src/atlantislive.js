@@ -291,6 +291,7 @@ export class AtlantisLive {
   use() {
     if (!this.active()) return false;
     if (this.held || this.lunge) return true;            // a key repeat
+    if (this.knock()) return true;                       // Catch! at a jar right in front of you knocks it
     this.held = { t0: this.t };
     this.hint('catch', 'Hold Catch! to coil. Let go to lunge with the net!');
     return true;
@@ -307,6 +308,16 @@ export class AtlantisLive {
     pl.noSwim = true;
     sound.play('atlunge');
     return true;
+  }
+  // the jar you are looking at within 2.4 blocks (null when none): pressing Catch! there knocks it instead of coiling
+  knock() {
+    const e = this.eye(), f = this.game.player.forward;
+    let best = -1, bd = 1e9;
+    this.jars.forEach((j, i) => {
+      const dx = j.cell[0] + 0.5 - e[0], dy = j.cell[1] + 0.5 - e[1], dz = j.cell[2] + 0.5 - e[2], d = Math.hypot(dx, dy, dz);
+      if (d <= 2.4 && (dx * f.x + dy * f.y + dz * f.z) / (d || 1) > 0.85 && d < bd) { best = i; bd = d; }
+    });
+    return best >= 0 && this.bump(best);
   }
   // a click on a jar (gymLive.hit): knock it
   hit(block) {

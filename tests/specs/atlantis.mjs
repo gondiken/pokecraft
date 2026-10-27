@@ -286,11 +286,14 @@ async function terrainPart(page, t) {
       const sunk = [w.sinkAt({ x: L.WHIRL.x + 0.5, y: 8, z: L.WHIRL.z + 0.5 }), w.sinkAt({ x: 100, y: 8, z: 100 })];
       const dive = [w.deepAt({ x: C.x + 0.5, y: 6, z: C.z + 0.5 }), w.deepAt({ x: 100, y: 6, z: 100 }), w.deepAt({ x: 180, y: 8, z: 150 }), w.deepAt({ x: C.x + 0.5, y: 20, z: C.z + 0.5 })];
       const keeps = w.keeps.filter(k => /^atlantis-/.test(k.name)).map(k => k.name + (k.rideIn ? '*' : '')).sort().join();
-      const sunken = [w.sunkenY(250.5, 112.5, { type: 'atlantis' }), w.sunkenY(250.5, 112.5, { type: 'water' }), w.sunkenY(150, 100, { type: 'atlantis' })];
+      const sunken = [w.sunkenY(240.5, 104.5, { type: 'atlantis' }), w.sunkenY(240.5, 104.5, { type: 'water' }), w.sunkenY(150, 100, { type: 'atlantis' }), w.sunkenY(251.5, 112.5, { type: 'atlantis' })].map(v => (v === undefined ? 'u' : v)); // (u = not for this creature, the last: inside the lantern's pedestal: no room)
       const dim = [L.dimAt(250, 5, 112, [0, 0, 0]), L.dimAt(250, 5, 112, [4, 0, 0]), L.dimAt(150, 5, 112, [0, 0, 0]), L.dimAt(C.x, 5, C.z, [0, 0, 0]), L.dimAt(236, 5, 112, [0, 0, 0])];
       const bio = [w.biome(C.x, C.z + 20), w.biome(150, 100), w.biome(168, 150)];
       const people = w.bosses.map(b => [b.id, b.crew.length]);
-      out.push({ seed, ms: Math.round(ms), same: hashAll(w) === hashAll(w2), sameOld, floorOk, coral, dry: dry.length, standOk, doorOpen, doorKey: !!doorKey, doorSurface: doorKey?.surface.length, dryP, dome, gate: gate.join(), bstand, restDry, lan, jarsOk, darters, unreached, trapped, lifts, sunk, dive, keeps, sunken, dim, bio, people, de: A.deadEnds.length, reached: seen.size, probs });
+      // nobody is stuck in a wall: every Boss, helper and rest spot has room for a body, and something to stand on or water around it
+      const roomy = ([x, y, z]) => !w.isSolid(Math.floor(x), Math.floor(y), Math.floor(z)) && !w.isSolid(Math.floor(x), Math.floor(y) + 1, Math.floor(z));
+      const stuckAt = [...w.bosses.flatMap(b => [['boss ' + b.id, b.pos], ['rest ' + b.id, b.rest], ...b.crew.map(c => ['crew ' + b.id + c.i, c.pos])]), ...w.rests.map((r, i) => ['rest' + i, r])].filter(([, p]) => !roomy(p)).map(([n]) => n);
+      out.push({ seed, ms: Math.round(ms), same: hashAll(w) === hashAll(w2), sameOld, floorOk, coral, dry: dry.length, standOk, doorOpen, doorKey: !!doorKey, doorSurface: doorKey?.surface.length, dryP, dome, gate: gate.join(), bstand, restDry, lan, jarsOk, darters, unreached, trapped, lifts, sunk, dive, keeps, sunken, dim, bio, people, stuckAt, de: A.deadEnds.length, reached: seen.size, probs });
     }
     return out;
   });
@@ -306,8 +309,9 @@ async function terrainPart(page, t) {
     t.ok(b.trapped.every(([, ok, moved]) => ok && moved < 0.2), `${L}: every dead end traps a darter within 1.5 s and it stays put: ${b.trapped.map(x => `${x[0]}${x[1] ? '' : '!'}`).join(' ')}`);
     t.ok(b.lifts.length === 6 && b.lifts.every(l => l[0] === 2 && l[1] === 2) && b.sunk[0] && !b.sunk[1], `${L}: six bubble columns carry you up, the whirlpool pulls you down`);
     t.ok(b.dive[0] && !b.dive[1] && !b.dive[2] && !b.dive[3], `${L}: dive swimming only in the crater (${b.dive})`);
-    t.ok(b.keeps === 'atlantis-bell,atlantis-city*,atlantis-palace' && b.sunken[0] === 2 && b.sunken[1] === null && b.sunken[2] === null, `${L}: keeps ${b.keeps}; a guardian stands on the city floor (${b.sunken})`);
+    t.ok(b.keeps === 'atlantis-bell,atlantis-city*,atlantis-palace' && b.sunken[0] === 2 && b.sunken[1] === 'u' && b.sunken[2] === 'u' && b.sunken[3] === null, `${L}: keeps ${b.keeps}; a guardian stands on the city floor (${b.sunken})`);
     t.ok(b.dim[0] < b.dim[1] && b.dim[0] > 0.3 && b.dim[2] === 1 && b.dim[3] > b.dim[0] && b.dim[4] === 1 && b.bio[0] === 'atlantis' && b.bio[1] === 'pirateSea', `${L}: a dark district is dim, not black, and a lit one is bright; the sea outside is not touched; the crater has its own wild creatures (${b.dim.map(v => v.toFixed(2))}; ${b.bio})`);
+    t.ok(b.stuckAt.length === 0, `${L}: nobody and no rest spot is inside a wall (${b.stuckAt})`);
     t.ok(b.people.map(p => p.join(':')).join() === 'pirate:3,atlantis:2', `${L}: Captain Squawk and Queen Coralia, with their crews (${b.people.map(p => p.join(':'))})`);
   }
 }
@@ -395,6 +399,7 @@ async function playPart(page, t) {
   // arrival, the guide, the swim out
   const R = await page.evaluate(async () => {
     const g = window.pokecraft, p = g.player, step = window.__step, w = g.world, lv = g.gymLive.of('part:atlantis'), P = fn => window.__play(g, fn);
+    p.pos.set(...w.arrivals.atlantis.slice(0, 3)); p.vel.set(0, 0, 0); p.keys = {}; p.yaw = -Math.PI / 2; p.pitch = 0; p.kick = null; p.noSwim = false; step(g, 1 / 20, 2); // (the swimming part moved you: back to the bell)
     const out = { via: g.realms.via, place: g.place, inBell: p.pos.x > 230 && p.pos.x < 238 && p.pos.z > 108 && p.pos.z < 116 && p.pos.y > 4.5, live: !!lv, parts: w.parts.map(q => q.id).join() };
     step(g, 1 / 20, 4); g.updateGuide?.();
     out.guide = g.ui.guideText; out.chip = document.getElementById('score-chip')?.textContent;
@@ -728,7 +733,7 @@ async function ipadPart(browser, base, t) {
   t.ok(hold.on && hold.coil > 0.9 && hold.lunged > 3 && hold.off, `iPad: holding the big button coils the net (${hold.coil.toFixed(2)}), lifting the finger lunges ${hold.lunged.toFixed(1)} blocks`);
   const kick = await ip.evaluate(async () => {
     const g = window.pokecraft, p = g.player, el = document.getElementById('btn-jump');
-    p.pos.set(258.5, 7, 100.5); p.vel.set(0, 0, 0); p.yaw = Math.PI; p.pitch = 0; p.keys = {}; p.kickCool = 0; window.__step(g, 1 / 20, 2);
+    p.pos.set(258.5, 7, 100.5); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.keys = {}; p.kickCool = 0; window.__step(g, 1 / 20, 2);
     const z0 = p.pos.z;
     const ev = type => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 8, pointerType: 'touch', isPrimary: true }));
     ev('pointerdown'); window.__step(g, 1 / 20, 1); ev('pointerup'); window.__step(g, 1 / 20, 24);
