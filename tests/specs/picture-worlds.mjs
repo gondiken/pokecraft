@@ -48,7 +48,8 @@ export default async function ({ browser, base, t }) {
       ...row('fire', { tiny: 2 }), ...row('sky', { tiny: 2 }), ...row('electric', { pirate: 2 }), ...row('water', { racer: 2 }), ...row('ice', { racer: 2 }), ...row('grass', { ball: 2 }), ...row('ninja', { ball: 2 }),
     ];
     // the old 33 x 33 chart is unchanged: every old cell (and every cell not named above is still 1 against the old types)
-    const oldTypes = ['normal', ...types.filter(x => !news.includes(x))], added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
+    const oldTypes = ['normal', ...types.filter(x => !news.includes(x) && x !== 'doodle')], // T45: Doodle's cells are checked in doodle.mjs
+       added = new Set(['fire>tiny', 'sky>tiny', 'electric>pirate', 'water>racer', 'ice>racer', 'grass>ball', 'ninja>ball']);
     const changed = [];
     for (const a of oldTypes) for (const b of oldTypes) if (e(a, b) !== (old[a]?.[b] ?? 1)) changed.push(`${a}>${b}`);
     const extra = [];
@@ -94,7 +95,7 @@ export default async function ({ browser, base, t }) {
     };
   });
   t.ok(d2.counts.join() === '12,11,12' && d2.order.startsWith('house,pirate,race,stadium,portal,fair,doors,') && d2.order.split(',').length === d2.counts[0] && d2.ready >= 4, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), at least the four wave 14 worlds ready (${d2.counts}, ${d2.ready} ready)`);
-  t.ok(d2.realms === 'house:house,pirate:pirate,race:playland,stadium:playland' && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
+  t.ok(d2.realms.startsWith('house:house,pirate:pirate,race:playland,stadium:playland') && d2.worlds === 'race,stadium' && d2.defs, `four worlds have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
 
@@ -212,7 +213,7 @@ export default async function ({ browser, base, t }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
   await intoSwirl(page);
-  for (const id of ['house', 'pirate', 'race', 'stadium']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
+  for (const id of ['house', 'pirate', 'race', 'stadium', 'doodle']) await flip(page, id, false); // the wave 14 tasks ship their frames ready; this part wants every frame covered
   const block = await page.evaluate(() => { const g = window.pokecraft, x = 48, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); return [x, y, z]; });
   const cloth0 = await atFrame(page, 'house');
   const cov = await page.evaluate(c => ({ id: window.pokecraft.world.get(...c), pics: window.pokecraft.scene.children.filter(o => o.userData.swirlSky && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 5).length }), cloth0);

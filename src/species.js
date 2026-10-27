@@ -2181,13 +2181,13 @@ export const SPECIES = {
   },
   rubbit: {
     name: 'Rubbit', type: 'doodle', desc: 'A soft eraser bunny in a paper sleeve. It hops about and rubs out mistakes. Oops! Gone!',
-    base: { hp: 52, atk: 45, def: 60, spd: 62 }, baseXp: 64, catchRate: 0.45, learn: L('doodle', 'normal'),
+    base: { hp: 52, atk: 45, def: 60, spd: 62 }, baseXp: 64, catchRate: 0.45, learn: L('doodle', 'cozy'),
     evolve: { level: 26, into: 'rubbadub' },
     model: { shape: 'eraserbun', scale: 0.85, body: 0xf2e2e6, accent: 0xf4efe0, dark: 0x6a6870, belly: 0xffffff, extras: [] },
   },
   rubbadub: {
     name: 'Rubbadub', type: 'doodle', desc: 'A big round eraser bunny with crumbs flying off it. Everything it bounces on turns clean and white.',
-    base: { hp: 90, atk: 70, def: 95, spd: 70 }, baseXp: 168, catchRate: 0.12, learn: L('doodle', 'normal', [[30, 'cleanslate']]),
+    base: { hp: 90, atk: 70, def: 95, spd: 70 }, baseXp: 168, catchRate: 0.12, learn: L('doodle', 'cozy', [[30, 'cleanslate']]),
     model: { shape: 'eraserbun', scale: 1.25, body: 0xf0dce2, accent: 0xf4efe0, dark: 0x6a6870, belly: 0xffffff, extras: ['crumbs'] },
   },
   sketchkit: {
