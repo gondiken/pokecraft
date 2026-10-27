@@ -4,16 +4,16 @@
 //   G = the tone of the colour tile (its mean brightness: a dark block gets a little hatching even in the light),
 //   B = the auto detail (255 where the colour tile has an edge: a few faint strokes for blocks without a kind of their own),
 //   A = the colour tile's alpha, copied 1:1 (glass and leaf holes stay holes, so alphaTest still cuts them).
-// The face itself is paper and every mark is drawn by the block shader (caves.js skDraw) in world units, so lines run on across blocks,
-// stay smooth at any distance and boil with the drawing. The texture is uploaded without colour conversion (NoColorSpace, sketch.js).
-// Deterministic (no random numbers at all): the same atlas on every device.
+// The face itself is paper; outlines and hatching are drawn by the block shader (caves.js skDraw) in world units, and the doodled marks
+// of each kind come from a second, small texture (drawSketchMarks below: one cell per kind, mipmapped, so marks fade with distance).
+// The data atlas is uploaded without colour conversion (NoColorSpace, sketch.js). Both are deterministic: the same on every device.
 import { T, TILE_COUNT, tileX, tileY, mulberry32 } from './blocks.js';
 
 export const PAPER = [246, 242, 232];  // warm cream (the realm's look.sketch.paper)
 export const INK = [62, 60, 70];        // soft blue-grey graphite, never pure black (look.sketch.ink)
 const N = 16;
 
-// The kinds of pencil marks (the shader's numbers: keep them in step with caves.js skMarks).
+// The kinds of pencil marks (the number is the cell of the marks texture; 0 auto, 21 page and 22 ink are drawn by the shader itself).
 export const KIND = {
   auto: 0, grassTop: 1, grassSide: 2, dirt: 3, stone: 4, cobble: 5, sand: 6, gravel: 7, water: 8, bark: 9, rings: 10, leaves: 11,
   pine: 12, planks: 13, brick: 14, stoneBricks: 15, glass: 16, snow: 17, flowers: 18, sun: 19, wool: 20, page: 21, ink: 22,

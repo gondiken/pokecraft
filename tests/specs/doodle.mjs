@@ -12,7 +12,7 @@ const waitFor = (page, fn, arg, ms = 120000) => waitFor0(page, fn, arg, ms);
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const ONLY = process.env.DOODLE_ONLY || '';
 const want = part => !ONLY || ONLY === part;
-const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id);
+const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id, 300000); // software WebGL compiles the pencil shader on the way in
 const toasts = page => page.evaluate(() => { window.__toasts = []; const g = window.pokecraft; if (g.ui.__wrapped) return; const f = g.ui.toast.bind(g.ui); g.ui.toast = m => { window.__toasts.push(m); f(m); }; g.ui.__wrapped = true; });
 const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new RegExp(src).test(m)), re.source);
 const shot = async (page, name, spot, wait = 1500) => {
@@ -169,7 +169,16 @@ export default async function ({ browser, base, t }) {
       const p = detail('CHEST_SIDE'), q = detail('TROPHY_SIDE');
       let autoDiff = 0, autoInk = 0; for (let k = 0; k < 256; k++) { if (p[k] !== q[k]) autoDiff++; autoInk += p[k]; }
       const toneOf = n => sk[at(BL.T[n], 8, 8) + 1];
-      return { w: a.width === atlas.width, h: a.height === atlas.height, same, alphaBad, mixed, wrong, kinds: kinds.size, wool, autoDiff, autoInk, ms, ms2, dark: toneOf('COAL_ORE') < toneOf('SAND') };
+      // the marks texture: one cell per kind, every kind with marks has a few pencil strokes and is mostly empty
+      const M = SA.drawSketchMarks(), md = dat(M), T = SA.MARK_TILE, cells = [];
+      for (const [name, k] of Object.entries(SA.KIND)) {
+        if (['auto', 'page', 'ink'].includes(name)) continue;
+        let n = 0; const ox = (k % SA.MARK_GRID[0]) * T, oy = Math.floor(k / SA.MARK_GRID[0]) * T;
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) if (md[((oy + y) * M.width + ox + x) * 4 + 3] > 100) n++;
+        cells.push([name, n / (T * T)]);
+      }
+      const badCells = cells.filter(([n, f]) => f < (n === 'snow' ? 0.0003 : 0.002) || f > 0.3).map(([n, f]) => n + ':' + f.toFixed(3));
+      return { w: a.width === atlas.width, h: a.height === atlas.height, same, alphaBad, mixed, wrong, kinds: kinds.size, wool, autoDiff, autoInk, ms, ms2, cells: cells.length, badCells, dark: toneOf('COAL_ORE') < toneOf('SAND') };
     });
     t.ok(B.w && B.h, 'the pencil atlas has exactly the size of the colour atlas');
     t.ok(B.same, 'drawing it twice gives the same bytes');
@@ -179,6 +188,7 @@ export default async function ({ browser, base, t }) {
     t.ok(B.wool, 'wool tiles get the knit kind');
     t.ok(B.autoInk > 4 && B.autoDiff > 20, `auto tiles keep a little of their own detail (${B.autoInk} detail pixels, two tiles differ in ${B.autoDiff})`);
     t.ok(B.dark, 'the tone follows the colour tile (coal ore darker than sand)');
+    t.ok(B.cells >= 29 && B.badCells.length === 0, `the marks texture has a few strokes for each of ${B.cells} kinds and is mostly paper (${B.badCells.join(' ')})`);
     t.ok(B.ms < 120, `drawing the atlas takes ${B.ms.toFixed(0)} ms here the first time (${B.ms2.toFixed(0)} ms the second; software rendering, once per session)`);
     console.log(`  atlas draw ${B.ms.toFixed(1)} ms (first), ${B.ms2.toFixed(1)} ms (second)`);
   }
@@ -476,7 +486,7 @@ export default async function ({ browser, base, t }) {
         g.inBattle = true; document.body.classList.add('in-battle'); document.getElementById('pause').classList.add('hidden');
         g.battle.start({ wild });
       });
-      await waitFor(page, () => window.pokecraft.battle.allyModel && window.pokecraft.battle.foeModel, null, 60000);
+      await waitFor(page, () => window.pokecraft.battle.allyModel && window.pokecraft.battle.foeModel, null, 180000);
       const B = await page.evaluate(() => {
         const g = window.pokecraft, b = g.battle;
         const cnt = m => { let a = 0, c = 0; m?.traverse(o => { if (o.isMesh && !o.userData.keepColour) { if (o.material.userData.sketched) a++; else c++; } }); return [a, c]; };
@@ -617,9 +627,9 @@ export default async function ({ browser, base, t }) {
         g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0; window.__at(n.pos.x, n.pos.y, n.pos.z + 2.5, Math.PI, 0);
         g.bosses.talk(n);
       });
-      await waitFor(page, () => window.pokecraft.inBattle, null, 60000);
+      await waitFor(page, () => window.pokecraft.inBattle, null, 180000);
       await playBattle(page);
-      await waitFor(page, () => window.pokecraft.beaten.includes('pw:doodle:crew1'), null, 60000);
+      await waitFor(page, () => window.pokecraft.beaten.includes('pw:doodle:crew1'), null, 180000);
       const tr = await page.evaluate(() => { const g = window.pokecraft, n = g.npcs.list.find(n => /Tracey/.test(n.name)); g.bosses.talk(n); return { cubes: g.cubes, inBattle: g.inBattle }; });
       t.ok(tr.cubes === 2 && !tr.inBattle && await said(page, /Follow the dots, and keep your eyes on the tip/), `Tracey's battle gives 2 cubes once, then she says her line (${tr.cubes})`);
       // Artist Arlo: his team, losing keeps you here at a rest spot, healed, no star
@@ -632,10 +642,10 @@ export default async function ({ browser, base, t }) {
         return out;
       });
       t.ok(arlo.name === 'Artist Arlo' && arlo.top === 63 && arlo.team === 'notquite60,rubbadub61,graphitan62,outlynx63' && arlo.prompt?.action === 'Challenge!', `Artist Arlo's team ${arlo.team}, top level ${arlo.top}`);
-      await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 60000);
+      await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 180000);
       await shot(page, 'battle');
       await playBattle(page);
-      await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
+      await waitFor(page, () => !window.pokecraft.inBattle, null, 180000);
       const lost = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, b = g.world.bosses[0]; return { place: g.place, d: Math.hypot(p.x - b.rest[0], p.z - b.rest[2]), hp: g.party.every(c => c.hp > 0), stars: g.stars.includes('doodle') }; });
       t.ok(lost.place === 'doodle' && lost.d < 14 && lost.hp && !lost.stars, `losing to Arlo keeps you in the Sketchbook at a rest spot, healed, no star (${lost.d.toFixed(1)} from his rest)`);
       // win: the star, the Wizard's note, lines 6-8 cleared and 1-5 kept
@@ -644,9 +654,9 @@ export default async function ({ browser, base, t }) {
         g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0; window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), 0);
         g.bosses.talk(n);
       });
-      await waitFor(page, () => window.pokecraft.inBattle, null, 60000);
+      await waitFor(page, () => window.pokecraft.inBattle, null, 180000);
       await playBattle(page);
-      await waitFor(page, () => window.pokecraft.stars.includes('doodle'), null, 60000);
+      await waitFor(page, () => window.pokecraft.stars.includes('doodle'), null, 180000);
       const won = await page.evaluate(() => {
         const g = window.pokecraft, k = n => g.beaten.includes(`pw:doodle:line${n}`);
         return { note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, kept: [1, 2, 3, 4, 5].every(k), cleared: ![6, 7, 8].some(k), drawnNow: [...window.__live().drawnNow].length, gate: window.__live().state().count };
@@ -664,9 +674,9 @@ export default async function ({ browser, base, t }) {
       const ask = await page.evaluate(() => ({ asking: window.pokecraft.ui.asking, text: document.getElementById('ask-text')?.textContent }));
       t.ok(ask.asking && /rematch/i.test(ask.text || ''), `with all 8 lines drawn again Arlo offers a rematch ("${ask.text}")`);
       await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('thunderwolf', 100), S.makeCreature('thunderwolf', 100)]; g.ui.askYes(); });
-      await waitFor(page, () => window.pokecraft.inBattle, null, 60000);
+      await waitFor(page, () => window.pokecraft.inBattle, null, 180000);
       await playBattle(page);
-      await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
+      await waitFor(page, () => !window.pokecraft.inBattle, null, 180000);
       const rem = await page.evaluate(() => ({ wins: window.pokecraft.bossWins.doodle, six: window.pokecraft.beaten.includes('pw:doodle:line6') }));
       t.ok(rem.wins === 1 && !rem.six, `a rematch win counts (${rem.wins}) and clears the race lines again`);
       // both ways back lead to the Swirl in front of the Sketchbook frame
@@ -691,7 +701,8 @@ export default async function ({ browser, base, t }) {
       t.ok(page.errors.length === 0, `no page errors in play (${page.errors.slice(0, 2).join(' | ')})`);
     }
   }
-  if (!ONLY) { await ipadPart({ browser, base, t }); await pairPart({ browser, base, t }); await shotsPart({ browser, base, t }); }
+  // look v2: the main page would keep drawing the Sketchbook (software WebGL) while the other parts run: close it first
+  if (!ONLY) { await page.context().close(); await ipadPart({ browser, base, t }); await pairPart({ browser, base, t }); await shotsPart({ browser, base, t }); }
 }
 
 
@@ -705,7 +716,7 @@ async function ipadPart({ browser, base, t }) {
   await ip.evaluate(() => { const L = window.__live(); L.playing = () => window.pokecraft.started && document.getElementById('pause').classList.contains('hidden'); });
   const s = await stand(ip, 0);
   await ip.evaluate(() => { const p = window.pokecraft.player; p.pitch = -0.15; document.getElementById('pause').classList.add('hidden'); });
-  await waitFor(ip, () => /Draw/.test(document.getElementById('btn-act')?.textContent || ''), null, 60000);
+  await waitFor(ip, () => /Draw/.test(document.getElementById('btn-act')?.textContent || ''), null, 180000);
   const label = await ip.evaluate(() => document.getElementById('btn-act').textContent);
   const count = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
   t.ok(/Draw!/.test(label) && count === before, `iPad: on a star pad the big button says "${label}" and the number of touch buttons is unchanged (${before})`);
@@ -753,12 +764,12 @@ async function pairPart({ browser, base, t }) {
   await Bp.fill('#mp input[placeholder="Your name"]', 'Kid');
   await Bp.fill('#mp .mp-code-input', code);
   await Bp.click('#mp button:has-text("Join a world")');
-  await waitFor(Bp, () => window.pokecraft.mp.role === 'guest', null, 60000);
+  await waitFor(Bp, () => window.pokecraft.mp.role === 'guest', null, 180000);
   await toasts(Bp); await toasts(A);
   for (const pg of [A, Bp]) await pg.evaluate(() => { window.pokecraft.champion = true; });
   await A.evaluate(() => window.pokecraft.realms.enter('swirl', { back: window.pokecraft.world.portal.stand }));
   await placeIs(A, 'swirl');
-  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 60000);
+  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 180000);
   await Bp.evaluate(() => window.pokecraft.ui.askYes());
   await placeIs(Bp, 'swirl');
   const cell = await A.evaluate(() => {
@@ -768,7 +779,7 @@ async function pairPart({ browser, base, t }) {
   });
   await A.evaluate(c => { const g = window.pokecraft; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); }, cell);
   await placeIs(A, 'doodle');
-  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 60000);
+  await waitFor(Bp, () => window.pokecraft.ui.asking, null, 180000);
   const ask = await Bp.evaluate(() => document.getElementById('ask-text').textContent);
   t.ok(/Dad stepped into the Sketchbook\. Go too\?/.test(ask), `Kid is asked to follow Dad into the Sketchbook ("${ask}")`);
   await Bp.evaluate(() => window.pokecraft.ui.askYes());
@@ -851,7 +862,7 @@ async function shotsPart({ browser, base, t }) {
     g.inBattle = true; document.body.classList.add('in-battle');
     g.battle.start({ wild });
   });
-  await waitFor(page, () => window.pokecraft.battle.allyModel && window.pokecraft.battle.foeModel, null, 60000);
+  await waitFor(page, () => window.pokecraft.battle.allyModel && window.pokecraft.battle.foeModel, null, 180000);
   await shot(page, 'battle', null, 1500);
   t.ok(!page.errors.length, `no page errors (screenshots) ${page.errors.join('; ')}`);
   await page.context().close();

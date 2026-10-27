@@ -696,7 +696,7 @@ vec3 skDraw(vec4 data, vec2 uv, float S) {
   float rim = smoothstep(uSketchEdge.z, uSketchEdge.w, distance(P.xz, uSketchEdge.xy));
   // paper: warm, with a grain that runs on across blocks
   float grain = skGrain(P * 4.0);
-  vec3 paper = uPaper * (0.955 + 0.06 * grain);
+  vec3 paper = uPaper * (0.97 + 0.035 * grain);
   // hatching: darker faces (sides, undersides, shadow) and dark blocks get more strokes, crossing in the darkest places
   float D = clamp((1.0 - S) * 1.1 + (0.5 - data.g) * 0.45 - 0.05, 0.0, 1.0);
   vec2 q1 = vec2(pu + pv, pu - pv) * 0.7071, q2 = vec2(pu - pv, pu + pv) * 0.7071;
