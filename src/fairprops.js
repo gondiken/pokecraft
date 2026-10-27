@@ -3,11 +3,11 @@
 // the rings, the trampoline balloons, the coaster car, the Ferris wheel, the slide tube and a pool of confetti. Blocks still do the
 // walking (the arena floor, the deck, the mat, the rails); these meshes only show what a thing IS. Everything is made of a few merged
 // geometries with vertex colours and instanced where there are many (draw calls: cars 1, bot heads 1, bumper balloons 1, carousel 2,
-// rings 1, balloons 1, coaster car 1, Ferris wheel 3, slide 1, confetti 1).
+// rings 1, balloons 2 (a star on the star balloons), coaster car 1, Ferris wheel 3, slide 1, confetti 1).
 // Every builder returns a THREE.Group with `userData.parts` (named pieces the live part moves) and `userData.dispose()`.
 // Imports only three and fairgames.js numbers. No Math.random: confetti flies on hashes of its slot.
 import * as THREE from 'three';
-import { CAROUSEL, RINGS, RINGS_HARD, SILVER, STAGE, SLIDE, makeHelix, BOT_COLORS, BALLOON_COLORS, TRAMP, BAYS } from './fairgames.js';
+import { CAROUSEL, RING_ROUNDS, STAGE, SLIDE, makeHelix, BOT_COLORS, balloonColor, TRAMP, BAYS } from './fairgames.js';
 
 const TAU = Math.PI * 2;
 const lambert = (o = {}) => new THREE.MeshLambertMaterial({ vertexColors: true, ...o });
@@ -179,49 +179,60 @@ export function buildCarousel() {
 
 /* ------------------------------------------------ rings and balloons ------------------------------------------------ */
 
-// Gold rings (one instanced mesh: the ten of a normal round, the twelve of a rematch, then the silver ones). A ring hangs at
-// (angle a, lane radius) in the plane that you turn through.
+// The rings of the round you ride (one instanced mesh, as many slots as the biggest round): gold ones (3 points) and silver ones (1).
+// A ring hangs at (angle a, lane radius) in the plane that you turn through; high ones hang higher (only a hop reaches them).
 export function buildRings() {
   const C = CAROUSEL, group = new THREE.Group();
   const geo = merge([[new THREE.TorusGeometry(C.ringR, 0.07, 6, 16), 0xffffff], [new THREE.CylinderGeometry(0.02, 0.02, 1.5, 4), 0xaaaaaa, new THREE.Matrix4().makeTranslation(0, 0.75 + C.ringR, 0)]]);
-  const list = [...RINGS.map(r => ({ ...r, silver: false })), ...RINGS_HARD.map(r => ({ ...r, silver: false })), ...SILVER.map(r => ({ ...r, silver: true }))];
-  const nN = RINGS.length, nH = RINGS_HARD.length, total = list.length;
-  const rings = tag(new THREE.InstancedMesh(geo, lambert(), total), group);
-  list.forEach((r, i) => {
-    rings.setColorAt(i, _c.setHex(r.silver ? 0xd8dce8 : 0xffd23a));
-    const rad = C.lanes[r.lane], x = C.c[0] + rad * Math.cos(r.a), z = C.c[1] - rad * Math.sin(r.a), y = r.high && !r.silver ? C.highY : C.ringY;
-    // the torus axis (z) turns along the way you travel past it: forward = (-sin a, -cos a)
-    _q.setFromEuler(_e.set(0, Math.atan2(-Math.sin(r.a), -Math.cos(r.a)), 0));
-    rings.setMatrixAt(i, _m.compose(_p.set(x, y, z), _q, _s.set(1, 1, 1)));
-  });
-  const base = list.map((_, i) => { rings.getMatrixAt(i, _m); return _m.clone(); });
+  const total = Math.max(...RING_ROUNDS.map(r => r.rings.length));
+  const rings = tag(new THREE.InstancedMesh(geo, lambert({ emissive: 0x2a2410 }), total), group);
+  for (let i = 0; i < total; i++) { rings.setColorAt(i, _c.setHex(0xffd23a)); hide(rings, i); }
+  let shownList = null;
   const parts = {
     rings, total,
-    // caught = the gold ring indexes of this round (gone), silver = silver ring indexes (gone); t = a clock for the sway; hard = the rematch's table
-    set(caught, silver, t, hard = false) {
+    // list = the rings of the round; caught = indexes caught this lap (gone); t = a clock for the sway
+    set(list, caught, t) {
+      if (list !== shownList) { shownList = list; list.forEach((r, i) => rings.setColorAt(i, _c.setHex(r.gold ? 0xffd23a : 0xd8dce8))); rings.instanceColor.needsUpdate = true; }
       for (let i = 0; i < total; i++) {
-        const gold = i < nN + nH, mine = i < nN ? !hard : gold ? hard : true;
-        const gone = !mine || (i < nN ? caught.includes(i) : gold ? caught.includes(i - nN) : silver.includes(i - nN - nH));
-        if (gone) hide(rings, i);
-        else { base[i].decompose(_p, _q, _s); _e.set(Math.sin(t * 1.3 + i) * 0.08, 0, 0); _q.multiply(_q2.setFromEuler(_e)); rings.setMatrixAt(i, _m.compose(_p, _q, _s)); }
+        const r = list[i];
+        if (!r || caught.includes(i)) { hide(rings, i); continue; }
+        const rad = C.lanes[r.lane], x = C.c[0] + rad * Math.cos(r.a), z = C.c[1] - rad * Math.sin(r.a), y = r.high ? C.highY : C.ringY;
+        // the torus axis (z) turns along the way you travel past it: forward = (-sin a, -cos a); gold ones are a little bigger
+        _q.setFromEuler(_e.set(Math.sin(t * 1.3 + i) * 0.08, Math.atan2(-Math.sin(r.a), -Math.cos(r.a)), 0, 'YXZ'));
+        const k = r.gold ? 1.15 : 1;
+        rings.setMatrixAt(i, _m.compose(_p.set(x, y, z), _q, _s.set(k, k, k)));
       }
       rings.instanceMatrix.needsUpdate = true;
     },
   };
   return finish(group, parts);
 }
-// The trampoline balloons (up to 8, bobbing in the air): ids by BALLOON_COLORS.
+// The trampoline balloons (up to 8 a round, bobbing in the air), coloured by balloonColor (gold, star balloons pearly white); a star
+// balloon also wears a gold star on its top (a second instanced mesh: it pops only when you come down on it).
+function starGeometry() {
+  const L = [];
+  for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU; L.push(bx(0.16, 0.08, 0.42, Math.sin(a) * 0.17, 0, Math.cos(a) * 0.17, 0xffd23a, a)); }
+  L.push(cy(0.15, 0.15, 0.09, 0, 0, 0, 0xffe94a, 10));
+  return merge(L);
+}
 export function buildAirBalloons() {
   const group = new THREE.Group();
   const inst = tag(new THREE.InstancedMesh(balloonGeometry(TRAMP.r, 0.9), lambert({ emissive: 0x383838 }), 8), group);
-  for (let i = 0; i < 8; i++) { inst.setColorAt(i, _c.setHex(BALLOON_COLORS[i])); hide(inst, i); }
+  const stars = tag(new THREE.InstancedMesh(starGeometry(), lambert({ emissive: 0x6a5010 }), 8), group);
+  for (let i = 0; i < 8; i++) { inst.setColorAt(i, _c.setHex(0xffffff)); hide(inst, i); hide(stars, i); }
+  const cols = [];
   const parts = {
-    inst,
-    // b = { x, y, z } is the balloon's CENTRE; the model's centre sits 0.9 + r * 1.05 above its foot
-    set(i, b, on = true, wob = 0) {
-      if (!on) hide(inst, i);
-      else inst.setMatrixAt(i, _m.compose(_p.set(b.x, b.y - (0.9 + TRAMP.r * 1.05), b.z), _q.setFromEuler(_e.set(0, wob, 0)), _s.set(1, 1, 1)));
-      inst.instanceMatrix.needsUpdate = true;
+    inst, stars,
+    // b = { x, y, z, top, gold } is the balloon's CENTRE (or null: hidden); the model's centre sits 0.9 + r * 1.05 above its foot
+    set(i, b, on = true, wob = 0, spec = null) {
+      if (spec) { const c = balloonColor(spec, i); if (cols[i] !== c) { cols[i] = c; inst.setColorAt(i, _c.setHex(c)); inst.instanceColor.needsUpdate = true; } }
+      if (!on || !b) { hide(inst, i); hide(stars, i); }
+      else {
+        inst.setMatrixAt(i, _m.compose(_p.set(b.x, b.y - (0.9 + TRAMP.r * 1.05), b.z), _q.setFromEuler(_e.set(0, wob, 0)), _s.set(1, 1, 1)));
+        if (b.top) stars.setMatrixAt(i, _m.compose(_p.set(b.x, b.y + TRAMP.r * 1.05, b.z), _q.setFromEuler(_e.set(0, wob * 3, 0)), _s.set(1, 1, 1)));
+        else hide(stars, i);
+      }
+      inst.instanceMatrix.needsUpdate = true; stars.instanceMatrix.needsUpdate = true;
     },
   };
   return finish(group, parts);

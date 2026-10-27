@@ -56,7 +56,7 @@ const arm = page => page.evaluate(async () => {
     g, live, F, G: Gm, B, p,
     said: re => window.__toasts.some(m => new RegExp(re).test(m)),
     // put the player somewhere, standing (one tiny physics step so onGround is true)
-    put(x, y, z) { p.carry = null; p.pos.set(x, y, z); p.vel.set(0, 0, 0); p.keys = {}; p.update(0.02); },
+    put(x, y, z) { p.carry = null; p.pos.set(x, y, z); p.vel.set(0, 0, 0); p.keys = {}; p.joy = null; p.trampH = 0; p.onGround = false; p.update(0.02); },
     // real Player physics and the live part, `sec` seconds in dt steps
     run(sec, dt = 1 / 30, each) { for (let t = 0; t < sec; t += dt) { p.update(dt); live.step(dt); each?.(t); } },
     mae: () => g.npcs.list.find(n => n.kind === 'boss' && n.def?.id === 'fair'),
@@ -176,24 +176,72 @@ export default async function ({ browser, base, t }) {
 
   /* ---------------------------------------------------------------- C. The games, pure (Node) */
   if (want('games')) {
-    const { BumperCar, BAYS, BOTS, botAt, chaseWish, bumpPops, ARENA, BUMPER, Seat, RINGS, ringList, omegaOf, TRAMP, balloonList, balloonAt, nextBounce, makeCoaster, COASTER, CAROUSEL } = G;
+    const { BumperCar, BumperGame, BAYS, BOTS, botAt, skilledWish, bumpPops, ARENA, BUMPER, BUMPER_ROUNDS, BOT_TRICKS, BounceGame, BOUNCE_ROUNDS, bounceWish, balloonPath,
+      Seat, RING_ROUNDS, ringWish, ringTotal, ringNeed, omegaOf, TRAMP, nextBounce, makeCoaster, COASTER, fairHelp } = G;
     const TAU = Math.PI * 2;
     const hashn = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
-    // Bumper Cars
-    const chase = (dtFrame, hard) => {
-      const car = new BumperCar(BAYS[0].x, BAYS[0].z, BAYS[0].yaw), popped = BOTS.map(() => false), parked = BAYS.slice(1).map(b => ({ x: b.x, z: b.z }));
-      let pops = 0, resets = 0;
-      while (car.t < 120 && pops < 6) {
-        let best = -1, bd = 1e9;
-        BOTS.forEach((_, i) => { if (popped[i]) return; const b = botAt(i, car.t, hard), d = Math.hypot(b.x - car.x, b.z - car.z); if (d < bd) { bd = d; best = i; } });
-        const ev = car.update(dtFrame, { wish: chaseWish(car, botAt(best, car.t, hard)), hard, popped, parked, home: BAYS[0] });
-        for (const e of ev) { if (e.type === 'pop') { popped[e.i] = true; pops++; } if (e.type === 'reset') resets++; }
+    const STEPS = [[1 / 60, '60'], [1 / 20, '20']];
+    /* -------- Bumper Cars: three rounds (owner 2026-10-27: harder games) */
+    // play the whole game with a driver: returns { won, secs, log } (log: round / again / done with the time)
+    const drive = (dt, hard, driver, limit = 420) => {
+      const g = new BumperGame(hard), parked = BAYS.slice(1).map(b => ({ x: b.x, z: b.z })), memo = {}, log = [];
+      g.car.reset(BAYS[0].x, BAYS[0].z, BAYS[0].yaw);
+      let t = 0, k = 0, zooms = 0, faced = 0;
+      while (t < limit) {
+        const ev = g.update(dt, { driving: true, wish: driver(g, memo, t, k++), parked, home: BAYS[0] });
+        for (const e of ev) {
+          if (e.type === 'zoom') zooms++;
+          if (e.type === 'exit') g.car.reset(BAYS[0].x, BAYS[0].z, 0);
+          if (['round', 'again', 'done'].includes(e.type)) log.push(`${e.type}${e.round != null ? e.round + 1 : ''}@${t.toFixed(0)}`);
+          if (e.type === 'done') return { won: true, secs: t, log, zooms, faced };
+        }
+        if (g.fleet.bots.some(b => Math.abs(b.face) > 0.6)) faced++;
+        t += dt;
       }
-      return { pops, secs: car.t, resets };
+      return { won: false, secs: t, log, zooms, faced, round: g.round + 1 };
     };
-    const c60 = chase(1 / 60, false), c20 = chase(1 / 20, false), h60 = chase(1 / 60, true), h20 = chase(1 / 20, true);
-    t.ok([c60, c20, h60, h20].every(c => c.pops === 6 && c.secs < 120 && c.resets === 0), `a scripted driver that steers behind each bot pops all 6 in under 120 s at 60 and 20 steps a second, also in a rematch (${[c60, c20, h60, h20].map(c => c.secs.toFixed(0) + ' s').join(', ')})`);
-    // hits: head-on and side hits never pop, a hit from behind does
+    const skilled = (g, memo) => skilledWish(memo, g);
+    const ram = g => { // straight at the nearest balloon bot's middle, whichever way it faces
+      let best = null, bd = 1e9; const car = g.car;
+      g.fleet.bots.forEach((b, i) => { if (!b.kind || g.popped[i]) return; const p = g.fleet.at(i), d = Math.hypot(p.x - car.x, p.z - car.z); if (d < bd) { bd = d; best = p; } });
+      const dx = best.x - car.x, dz = best.z - car.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, z: dz / d };
+    };
+    const randomStick = (g, memo, t) => { const q = Math.floor(t / 0.4), a = hashn(q) * TAU, m = hashn(q + 77) < 0.2 ? 0 : 0.4 + hashn(q + 5) * 0.6; return { x: Math.cos(a) * m, z: Math.sin(a) * m }; };
+    const idle = () => ({ x: 0, z: 0 });
+    const bs = [];
+    for (const hard of [false, true]) for (const [dt, n] of STEPS) bs.push({ n, hard, ...drive(dt, hard, skilled) });
+    console.log('  bumper skilled', JSON.stringify(bs.map(r => [r.n, r.hard, r.won, +r.secs.toFixed(0), r.log.join(' ')])));
+    t.ok(bs.every(r => r.won && r.secs < 300) && bs.filter(r => !r.hard).every(r => r.secs < 200), `Bumper Cars: a skilled driver (chase the back, back off from a spinner that faces you) wins all three rounds at 60 and 20 steps a second, also in a rematch (${bs.map(r => `${r.n}${r.hard ? ' hard' : ''} ${r.secs.toFixed(0)} s`).join(', ')})`);
+    t.ok(bs.every(r => r.zooms >= 3 && r.faced > 0), `the zoomers zoom off when they notice you (${bs.map(r => r.zooms).join(', ')} zooms) and the spinners turn to face you`);
+    const careless = [];
+    for (const [name, dr] of [['idle', idle], ['random stick', randomStick], ['ram the nearest bot', ram]]) for (const [dt, n] of STEPS) careless.push({ name, n, ...drive(dt, false, dr, 360) });
+    console.log('  bumper careless', JSON.stringify(careless.map(r => [r.name, r.n, r.won, r.round, r.log.slice(0, 6).join(' ')])));
+    t.ok(careless.every(r => !r.won), `careless driving never wins the ticket in 6 minutes: ${careless.map(r => `${r.name} (${r.n}) stuck in round ${r.round}`).join(', ')}`);
+    t.ok(careless.filter(r => r.name !== 'ram the nearest bot').every(r => r.round === 1), 'standing still or a random stick never even gets past round 1');
+    {
+      const g = new BumperGame(false); g.start(1); const a = g.fleet.bots[3].speed; g.misses = 2; g.start(1); const b = g.fleet.bots[3].speed, tb = g.time;
+      g.misses = 9; g.start(1);
+      t.ok(Math.abs(b / a - 0.9) < 1e-9 && tb === BUMPER_ROUNDS[1].time + 10 && Math.abs(g.fleet.bots[3].speed / a - 0.7) < 1e-9 && fairHelp(1).slow === 1, `the kind help: after two missed tries the bots are 10 % slower and the round 10 s longer, at most 30 % slower (${a} -> ${b.toFixed(2)} -> ${g.fleet.bots[3].speed.toFixed(2)})`);
+      // the round clock runs only while you drive
+      const h = new BumperGame(false), l0 = h.left; for (let k = 0; k < 600; k++) h.update(1 / 60, { driving: false });
+      t.ok(h.left === l0 && h.fleet.t > 9.9, 'the round clock stands still while you are out of the car (the bots keep driving)');
+    }
+    // a zoomer: noticed from behind -> zoom (faster than your car) -> tired (slower) -> rest; a spinner turns its nose
+    {
+      const f = new G.BotFleet(); f.setRound(1, false);
+      const b = f.at(3), car = { x: b.x - b.mx * 3, z: b.z - b.mz * 3, vx: b.mx * 5, vz: b.mz * 5 };
+      const ev = f.step(1 / 120, car), z = f.speedOf(f.bots[3]);
+      for (let k = 0; k < 120 * 1.2; k++) f.step(1 / 120, null);
+      const tired = f.bots[3].tired > 0, ts = f.speedOf(f.bots[3]);
+      const f2 = new G.BotFleet(); f2.setRound(1, false); const b2 = f2.at(3), front = { x: b2.x + b2.mx * 3, z: b2.z + b2.mz * 3, vx: -b2.mx * 5, vz: -b2.mz * 5 };
+      const ev2 = f2.step(1 / 120, front);
+      t.ok(ev.some(e => e.type === 'zoom' && e.i === 3) && z > BUMPER.top && tired && ts < 2 && !ev2.length, `a zoomer that sees you behind it zooms off at ${z.toFixed(1)} b/s (your car: ${BUMPER.top}), then puffs along at ${ts.toFixed(1)}; a car in front does not set it off`);
+      const f3 = new G.BotFleet(); f3.setRound(2, false); const b3 = f3.at(4), side = { x: b3.x + b3.mz * 2.5, z: b3.z - b3.mx * 2.5, vx: 0, vz: 0 };
+      for (let k = 0; k < 120 * 0.5; k++) f3.step(1 / 120, side);
+      const turned = Math.abs(f3.bots[4].face);
+      t.ok(turned > 0.4 && turned < 0.6, `a spinner turns its nose to a car beside it at ${BOT_TRICKS.spinRate} rad/s (${turned.toFixed(2)} rad in 0.5 s)`);
+    }
+    // the old rules: head-on and side hits never pop, a hit from behind does
     let wrongPop = 0, missed = 0, n = 0;
     for (const hard of [false, true]) for (let i = 0; i < 6; i++) for (const t0 of [1.3, 4.7, 9.1]) {
       const bot = botAt(i, t0, hard), side = [-bot.hz, bot.hx];
@@ -212,65 +260,122 @@ export default async function ({ browser, base, t }) {
     }
     t.ok(wrongPop === 0 && missed === 0, `head-on and side hits never pop; a quick hit from behind always does; a crawl from behind does not (${n} trials per kind: ${wrongPop} wrong, ${missed} missed)`);
     t.ok(bumpPops({ x: 0, z: -1.5, vx: 0, vz: 4 }, { x: 0, z: 0, hx: 0, hz: 1, vx: 0, vz: 3.4 }) && !bumpPops({ x: 0, z: 1.5, vx: 0, vz: -4 }, { x: 0, z: 0, hx: 0, hz: 1, vx: 0, vz: 3.4 }), 'bumpPops: behind yes, in front no (a plain example)');
-    // never inside a rail or a bot after 10 000 random-stick steps
-    for (const dt of [1 / 60, 1 / 20]) {
-      const car = new BumperCar(BAYS[0].x, BAYS[0].z, BAYS[0].yaw), popped = BOTS.map(() => false), parked = BAYS.slice(1).map(b => ({ x: b.x, z: b.z }));
-      let deep = 0, railIn = 0, nan = 0, steps = 0;
+    // never inside a rail or a bot after 10 000 random-stick steps (the round's fleet with its tricks)
+    for (const [dt] of STEPS) {
+      const g = new BumperGame(false), parked = BAYS.slice(1).map(b => ({ x: b.x, z: b.z })), car = g.car;
+      car.reset(BAYS[0].x, BAYS[0].z, BAYS[0].yaw);
+      let deep = 0, railIn = 0, nan = 0;
       for (let k = 0; k < 10000; k++) {
-        const q = Math.floor(k * dt / 0.4), a = hashn(q) * TAU, m = hashn(q + 77) < 0.2 ? 0 : 0.4 + hashn(q + 5) * 0.6, hard = k % 2000 > 1000;
-        const ev = car.update(dt, { wish: { x: Math.cos(a) * m, z: Math.sin(a) * m }, hard, popped, parked, home: BAYS[0] });
+        if (k % 2500 === 0) g.start(Math.floor(k / 2500) % 3);
+        const q = Math.floor(k * dt / 0.4), a = hashn(q) * TAU, m = hashn(q + 77) < 0.2 ? 0 : 0.4 + hashn(q + 5) * 0.6;
+        const ev = g.update(dt, { driving: true, wish: { x: Math.cos(a) * m, z: Math.sin(a) * m }, parked, home: BAYS[0] });
         if (ev.some(e => e.type === 'exit')) car.reset(BAYS[0].x, BAYS[0].z, 0);
-        steps++;
         if (!Number.isFinite(car.x + car.z)) nan++;
-        for (let i = 0; i < 6; i++) { const b = botAt(i, car.t, hard); if (Math.hypot(b.x - car.x, b.z - car.z) < 1.2) deep++; }
+        for (let i = 0; i < 6; i++) { const b = g.fleet.at(i); if (Math.hypot(b.x - car.x, b.z - car.z) < 1.2) deep++; }
         for (const o of parked) if (Math.hypot(o.x - car.x, o.z - car.z) < 1.2) deep++;
         if (car.x < ARENA.x0 + BUMPER.r - 1e-6 || car.z < ARENA.z0 + BUMPER.r - 1e-6 || car.z > ARENA.z1 - BUMPER.r + 1e-6) railIn++;
       }
-      t.ok(deep === 0 && railIn === 0 && nan === 0, `10 000 random-stick steps at dt ${dt.toFixed(3)}: the car never ends inside a rail, a bot or a parked car (${deep} / ${railIn} / ${nan})`);
+      t.ok(deep === 0 && railIn === 0 && nan === 0, `10 000 random-stick steps at dt ${dt.toFixed(3)} (all three rounds): the car never ends inside a rail, a bot or a parked car (${deep} / ${railIn} / ${nan})`);
     }
     {
       const a = new BumperCar(134.5, 153.5, 0), b = new BumperCar(134.5, 153.5, 0);
       for (let k = 0; k < 300; k++) a.update(1 / 60, { wish: { x: 1, z: 0.3 }, hard: false, popped: [], parked: [] });
       for (let k = 0; k < 100; k++) b.update(1 / 20, { wish: { x: 1, z: 0.3 }, hard: false, popped: [], parked: [] });
       t.ok(Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.z - b.z) < 1e-6 && Math.abs(a.t - b.t) < 1e-9, `5 s at 60 and at 20 steps a second end on the same spot (${a.x.toFixed(4)} / ${b.x.toFixed(4)})`);
-      const c = new BumperCar(134.5, 153.5, 0); c.vx = 6.5;
-      for (let k = 0; k < 60 * 6; k++) c.update(1 / 60, { wish: { x: 0, z: 0 }, hard: false, popped: [], parked: [] });
       const d = new BumperCar(134.5, 153.5, 0); d.vx = 6.5; let t4 = 0;
       while (d.speed > 0.01 && t4 < 10) { d.update(1 / 60, { wish: { x: 0, z: 0 }, hard: false, popped: [], parked: [] }); t4 += 1 / 60; }
       t.ok(d.speed <= 0.01 && t4 > 2.5 && t4 < 6, `off the stick the car glides to a stop (${t4.toFixed(1)} s from top speed): momentum is the game`);
+      const g1 = new BumperGame(false), g2 = new BumperGame(false), w = { x: 0.6, z: -0.8 };
+      for (let k = 0; k < 600; k++) g1.update(1 / 60, { driving: true, wish: w, parked: [] });
+      for (let k = 0; k < 200; k++) g2.update(1 / 20, { driving: true, wish: w, parked: [] });
+      t.ok(Math.abs(g1.car.x - g2.car.x) < 1e-6 && Math.abs(g1.fleet.bots[4].s - g2.fleet.bots[4].s) < 1e-6 && Math.abs(g1.left - g2.left) < 1e-6, 'a whole game (car, bots and their tricks, the clock) gives the same at 60 and 20 steps a second');
     }
-    // Gold Ring Ride: a perfect schedule, one lane only, no hop
-    const ahead = (a, ring) => { let d = (ring.a - a) % TAU; if (d < 0) d += TAU; return d; };
-    const perfect = (dt, hard, { hop = true, lanes = true } = {}) => {
-      const seat = new Seat(hard); seat.reset(0, 0.3, 2); seat.jumpHeld = false;
-      const list = ringList(hard); let tt = 0, flip = 0;
-      while (tt < 3 * TAU / omegaOf(hard) && !seat.done) {
-        let best = -1, bd = 9;
-        list.forEach((r, i) => { if (seat.caught.includes(i)) return; const d = ahead(seat.angle(), r); if (d < bd) { bd = d; best = i; } });
-        let radial = 0, space = false;
-        if (best >= 0) { const r = list[best]; if (lanes && seat.to !== r.lane && flip % 2 === 0) radial = r.lane > seat.to ? 1 : -1; if (hop && r.high && bd < 0.16 && bd > 0.1) space = true; }
-        flip++; seat.steer(radial, space); seat.update(dt); tt += dt;
+
+    /* -------- Balloon Bounce: three rounds (a point-mass player with the numbers of player.js: gravity 28, a walk of 4.3 in the air) */
+    const bounce = (dt, hard, brain, limit = 420) => {
+      const g = new BounceGame(hard), P = { x: 198.5, y: 11, z: 154.5, vy: 0, h: 0 }, log = [];
+      let t = 0, boops = 0, combo = 0;
+      while (t < limit) {
+        const { wx = 0, wz = 0, space = false } = brain(g, P, t);
+        let landed = false;
+        P.vy = Math.max(P.vy - 28 * dt, -19);
+        P.x = Math.min(TRAMP.x1 + 0.7, Math.max(TRAMP.x0 + 0.3, P.x + wx * 4.3 * dt)); P.z = Math.min(TRAMP.z1 + 0.7, Math.max(TRAMP.z0 + 0.3, P.z + wz * 4.3 * dt));
+        P.y += P.vy * dt;
+        if (P.y <= 11) { P.y = 11; const r = nextBounce(P.h, space); P.h = r.h; P.vy = r.vy; landed = true; }
+        for (const e of g.update(dt, { pos: P, vy: P.vy, landed, active: true })) {
+          if (e.type === 'boop') boops++;
+          if (e.type === 'pop') combo = Math.max(combo, e.mult);
+          if (['round', 'again', 'done'].includes(e.type)) log.push(`${e.type}${e.round != null ? e.round + 1 : ''}@${t.toFixed(0)}`);
+          if (e.type === 'done') return { won: true, secs: t, log, combo, boops };
+        }
+        t += dt;
       }
-      return { n: seat.caught.length, of: list.length, laps: tt * omegaOf(hard) / TAU };
+      return { won: false, secs: t, log, combo, boops, round: g.round + 1 };
     };
-    const rp = [[1 / 60, false], [1 / 20, false], [1 / 60, true], [1 / 20, true]].map(([dt, hard]) => ({ ...perfect(dt, hard), dt, hard }));
-    t.ok(rp.every(r => r.n === r.of && r.laps <= 3) && rp[0].of === 10 && rp[2].of === 12, `a perfect lane and hop schedule catches all 10 gold rings (12 in a rematch) within 3 laps, at 60 and 20 steps a second (${rp.map(r => r.n + '/' + r.of).join(' ')})`);
-    const one = lane => { const seat = new Seat(false); seat.reset(0, 0.3, lane); seat.jumpHeld = false; let tt = 0; while (tt < 3 * TAU / omegaOf(false)) { seat.steer(0, Math.floor(tt / 0.3) % 2 === 0); seat.update(1 / 60); tt += 1 / 60; } return seat.caught.length; };
-    t.ok([0, 1, 2].every(l => one(l) <= 4), `staying in one lane (even hopping all the time) catches at most 4 rings (${[0, 1, 2].map(one).join(', ')})`);
-    const nohop = perfect(1 / 60, false, { hop: false });
-    t.ok(nohop.n === RINGS.filter(r => !r.high).length && RINGS.filter(r => r.high).length === 4, `the hop is needed for every high ring: without it only the ${nohop.n} low ones are caught`);
-    const gapsOf = list => list.map((r, i) => { const nx = list[(i + 1) % list.length]; let d = (nx.a - r.a) % TAU; if (d < 0) d += TAU; return { d, lanes: nx.lane !== r.lane }; });
-    const g1 = gapsOf(RINGS), g2 = gapsOf(G.RINGS_HARD);
-    t.ok(g1.every(g => g.lanes && g.d / CAROUSEL.omega >= 1.2) && g2.every(g => g.lanes && g.d / CAROUSEL.hardOmega >= 0.95), `two rings in a row are always in different lanes and at least ${Math.min(...g1.map(g => g.d / CAROUSEL.omega)).toFixed(2)} s apart (a rematch ${Math.min(...g2.map(g => g.d / CAROUSEL.hardOmega)).toFixed(2)} s); the plan's 1.8 s cannot hold for 10 rings in a 14 s lap`);
-    // Balloon Bounce: the rule, the balloons' circles
+    const bb = [];
+    for (const hard of [false, true]) for (const [dt, n] of STEPS) bb.push({ n, hard, ...bounce(dt, hard, (g, P) => bounceWish(g, P)) });
+    console.log('  bounce skilled', JSON.stringify(bb.map(r => [r.n, r.hard, r.won, +r.secs.toFixed(0), r.log.join(' ')])));
+    t.ok(bb.every(r => r.won && r.secs < 360 && r.combo === 3), `Balloon Bounce: a skilled bouncer (the right height, steering to where the balloon will be) wins all three rounds at 60 and 20 steps a second, also in a rematch, with x3 combos (${bb.map(r => `${r.n}${r.hard ? ' hard' : ''} ${r.secs.toFixed(0)} s`).join(', ')})`);
+    const lazyB = [];
+    for (const [name, br] of [['idle', () => ({})], ['holding Jump in one spot', () => ({ space: true })], ['random steering, Jump held', (g, P, t) => { const q = Math.floor(t / 0.7), a = hashn(q) * TAU; return { wx: Math.cos(a), wz: Math.sin(a), space: true }; }]]) for (const [dt, n] of STEPS) lazyB.push({ name, n, ...bounce(dt, false, br, 360) });
+    t.ok(lazyB.every(r => !r.won && r.round === 1), `careless bouncing never gets past round 1 in 6 minutes (${[...new Set(lazyB.map(r => r.name))].join(', ')})`);
+    {
+      const g = new BounceGame(false); g.start(1);
+      const i = BOUNCE_ROUNDS[1].balloons.findIndex(b => b.top), b = g.balloon(i);
+      const below = g.update(0, { pos: { x: b.x, y: b.y - 1.5, z: b.z }, vy: 6, active: true });
+      g.prev = null; const above = g.update(0, { pos: { x: b.x, y: b.y - 0.1, z: b.z }, vy: -6, active: true });
+      t.ok(below.some(e => e.type === 'boop') && !below.some(e => e.type === 'pop') && above.some(e => e.type === 'pop' && e.i === i), 'a star balloon only boops when you come up under it, and pops when you come down onto it');
+      const c = new BounceGame(false); c.start(2); const R = BOUNCE_ROUNDS[2], pts = [], none = { x: 0, y: 0, z: 0 };
+      const hit = k => { const b2 = c.balloon(k); c.update(0, { pos: { x: b2.x, y: b2.y - 0.1, z: b2.z }, vy: -3, active: true }).forEach(e => e.type === 'pop' && pts.push(e.pts)); };
+      const land = () => c.update(0, { landed: true, active: true, pos: none });
+      hit(0); land(); hit(2); land(); hit(6); land(); land(); const kept = c.chain === 3; land(); const ended = c.chain === 0; hit(3);
+      t.ok(pts.join() === '1,4,9,1' && kept && ended && R.respawn === 2.5, `combo: a pop on every bounce counts x1, x2, x3 (a star at x2 = 4, a gold one at x3 = 9); one bounce without a pop keeps it, two in a row end it (${pts})`);
+      let outCol = 0;
+      for (const hard of [false, true]) for (let r = 0; r < 3; r++) { const g2 = new BounceGame(hard); g2.start(r); for (let s2 = 0; s2 < 40; s2 += 0.25) { g2.t = s2; g2.spec.balloons.forEach((_, k) => { const p2 = g2.balloon(k); if (p2.x < TRAMP.x0 + 2 || p2.x > TRAMP.x1 - 1 || p2.z < TRAMP.z0 + 2 || p2.z > TRAMP.z1 - 1 || p2.y - 11 < 4) outCol++; }); } }
+      t.ok(outCol === 0 && BOUNCE_ROUNDS.every(r => r.balloons.length <= 8), `every balloon of every round floats inside the trampoline's air column shrunk by 2 and at least 4 above the mat (${outCol} samples outside)`);
+      let lzPop = 0;
+      for (let s2 = 0; s2 < 60; s2 += 0.1) for (const y of [11, 12, 13]) for (let x = 190; x <= 205; x += 1) for (let z = 148; z <= 160; z += 1) if (BOUNCE_ROUNDS[0].balloons.some(b2 => G.touchesBalloon({ x, y, z }, balloonPath(b2, s2)))) lzPop++;
+      t.ok(lzPop === 0, 'a lazy 2-block bounce (feet up to 2 above the mat) reaches no balloon of round 1 anywhere: you must hold Jump to climb');
+    }
     let h = 0, bounces = [];
     for (let k = 0; k < 12 && h < TRAMP.max; k++) { h = nextBounce(h, true).h; bounces.push(h); }
     t.ok(bounces.join() === '2,4,6,8,10,12,13' && Math.abs(nextBounce(13, true).vy ** 2 / 56 - 13) < 1e-9, `holding Jump gives bounces of ${bounces.join(', ')} blocks (7 bounces to the top, apex 13)`);
     let down = 13; const d2 = []; while (down > TRAMP.min) { down = nextBounce(down, false).h; d2.push(down); }
     t.ok(d2.join() === '11.5,10,8.5,7,5.5,4,2.5,2', `letting go comes down step by step (${d2.join(', ')})`);
-    let outCol = 0;
-    for (const hard of [false, true]) balloonList(hard).forEach((_, i) => { for (let s = 0; s < 40; s += 0.25) { const b = balloonAt(i, s, hard); if (b.x < TRAMP.x0 + 2 || b.x > TRAMP.x1 - 1 - 2 + 1 || b.z < TRAMP.z0 + 2 || b.z > TRAMP.z1 + 1 - 2) outCol++; } });
-    t.ok(outCol === 0 && balloonList(false).length === 6 && balloonList(true).length === 8, `every balloon drifts inside the trampoline's air column shrunk by 2 (${outCol} samples outside), 6 balloons (8 in a rematch)`);
+
+    /* -------- Gold Ring Ride: one lap per round, faster each round */
+    const ride = (dt, hard, brain, limit = 420) => {
+      const seat = new Seat(hard); seat.reset(0, 0.3, 2); seat.jumpHeld = false;
+      let t = 0, k = 0; const log = [];
+      while (t < limit) {
+        const { radial, space } = brain(seat, k++, t);
+        seat.steer(radial, space);
+        const ev = seat.update(dt); t += dt;
+        if (ev.lap) { log.push(`${ev.lap.won ? 'won' : 'again'}${ev.lap.round + 1}:${ev.lap.score}/${ev.lap.need}`); if (ev.lap.done) return { won: true, secs: t, log }; }
+      }
+      return { won: false, secs: t, log, round: seat.round + 1 };
+    };
+    const rr = [];
+    for (const hard of [false, true]) for (const [dt, n] of STEPS) rr.push({ n, hard, ...ride(dt, hard, ringWish) });
+    console.log('  rings skilled', JSON.stringify(rr.map(r => [r.n, r.hard, r.won, +r.secs.toFixed(0), r.log.join(' ')])));
+    t.ok(rr.every(r => r.won && r.log.length === 3), `Gold Ring Ride: the skilled lane-and-hop schedule wins each round on its first lap at 60 and 20 steps a second, also in a rematch (${rr.map(r => r.log.join(' ')).join(' | ')})`);
+    const ringCareless = [];
+    const oneLane = l => (seat, k, t) => ({ radial: seat.to !== l ? (l > seat.to ? 1 : -1) * (k % 2) : 0, space: Math.floor(t / 0.3) % 2 === 0 });
+    for (const [name, br] of [['idle', () => ({ radial: 0, space: false })], ['lane 0, hopping', oneLane(0)], ['lane 1, hopping', oneLane(1)], ['lane 2, hopping', oneLane(2)], ['no hops', (s, k) => ({ ...ringWish(s, k), space: false })],
+      ['a random stick and Jump', (s, k, t) => { const q = Math.floor(t / 0.35); return { radial: hashn(q) < 0.3 ? -1 : hashn(q) > 0.7 ? 1 : 0, space: hashn(q + 9) < 0.4 }; }]]) for (const [dt, n] of STEPS) ringCareless.push({ name, n, ...ride(dt, false, br, 360) });
+    t.ok(ringCareless.every(r => !r.won && r.round <= 2), `careless riding never wins in 6 minutes: ${[...new Set(ringCareless.map(r => `${r.name} (round ${r.round})`))].join(', ')}`);
+    t.ok([0, 1, 2].every(r => ringNeed(r) > ringTotal(r) / 2 && ringNeed(r) < ringTotal(r)) && omegaOf(false, 2) > omegaOf(false, 1) && omegaOf(false, 1) > omegaOf(false, 0) && omegaOf(true, 0) > omegaOf(false, 0), `each round needs most of its points (${RING_ROUNDS.map((_, r) => `${ringNeed(r)} / ${ringTotal(r)}`).join(', ')}) and the carousel turns faster each round (${RING_ROUNDS.map((_, r) => omegaOf(false, r)).join(', ')} rad/s)`);
+    let tight = 0;
+    RING_ROUNDS.forEach((R, r) => R.rings.forEach((ring, i) => {
+      const nx = R.rings[(i + 1) % R.rings.length]; let d = (nx.a - ring.a) % TAU; if (d < 0) d += TAU; const sec = d / omegaOf(true, r);
+      if (nx.lane === ring.lane || sec < 0.55 || (Math.abs(nx.lane - ring.lane) === 2 && sec < 0.7) || (nx.high && ring.high && sec < 0.8)) tight++;
+    }));
+    t.ok(tight === 0, 'two rings in a row are always in different lanes, at least 0.55 s apart (a two-lane swap 0.7 s, two high ones 0.8 s) even in a rematch');
+    {
+      const s1 = new Seat(false); s1.round = 1; const w1 = s1.omega; s1.misses = 2; const w2 = s1.omega;
+      t.ok(Math.abs(w2 / w1 - 0.9) < 1e-9, `the kind help: after two missed laps the carousel turns 10 % slower (${w1} -> ${w2.toFixed(3)})`);
+    }
+
     // The coaster path
     const tr = makeCoaster(COASTER);
     let jump = 0, slow = 99, fast = 0;
@@ -489,15 +594,19 @@ export default async function ({ browser, base, t }) {
       out.posFollows = Math.hypot(p.pos.x - live.car.x, p.pos.z - live.car.z) < 1e-6 && p.pos.y > 11;
       // a honk
       live.carObj.steer(0, 0, 0, true); live.step(0.03); out.honk = g.sound.played.includes('honkhonk'); live.carObj.steer(0, 0, 0, false);
-      // chase the nearest balloon until all six are gone
-      let t = 0;
-      while (live.popped.some(x => !x) && t < 150) {
-        let best = -1, bd = 1e9;
-        G.BOTS.forEach((_, i) => { if (live.popped[i]) return; const b = G.botAt(i, live.car.t, false), d = Math.hypot(b.x - live.car.x, b.z - live.car.z); if (d < bd) { bd = d; best = i; } });
-        const wish = G.chaseWish(live.car, G.botAt(best, live.car.t, false));
+      // careless first: sitting still in the car until the round's clock runs out (round 1 simply starts again)
+      const left0 = live.bump.left; let idle = 0;
+      while (live.bump.misses === 0 && idle < 60) { live.carObj.steer(0, 0, 0, false); live.step(1 / 30); idle += 1 / 30; }
+      out.idle = { secs: idle, misses: live.bump.misses, round: live.bump.round, left0, again: R.said('Time is up! Round 1 again. You can do it!'), chip: document.getElementById('score-chip')?.textContent };
+      // then a skilled driver (chase the back, back off from a spinner that faces you) through the three rounds
+      let t = 0; const memo = {};
+      while (!g.beaten.includes('pw:fair:ticket1') && t < 400) {
+        if (live.drive < 0) { R.put(145.3, 11, 145.2); live.use(p); } // (out through the gate by chance: in again)
+        const wish = G.skilledWish(memo, live.bump);
         live.carObj.steer(wish.x, wish.z, 1, false); live.step(1 / 30); t += 1 / 30;
       }
-      out.secs = t; out.pops = live.popped.filter(Boolean).length; out.side = R.said('Boing! Get behind it!'); out.popToast = R.said('🎈 Pop! 1 / 6') && R.said('🎈 Pop! 6 / 6');
+      out.secs = t; out.wins = live.bump.wins; out.side = R.said('Boing! Get behind it!'); out.popToast = R.said('🎈 Pop! 1 / 3') && R.said('🎈 Pop! 6 / 6');
+      out.rounds = R.said('Round 2: Zoomers!') && R.said('Round 3: Spinners'); out.zoom = R.said('Zoom! It saw you coming') && g.sound.played.includes('botzoom') || window.__toasts.some(m => /Zoom!/.test(m));
       out.ticket = g.beaten.includes('pw:fair:ticket1'); out.toast = R.said('Golden ticket! 🎟️ 1 / 3');
       out.board = [161, 165, 169].map(x => g.world.get(x, 16, 133)).join();
       out.sounds = ['balloonpop', 'ticketprize'].every(n => g.sound.played.includes(n));
@@ -506,37 +615,51 @@ export default async function ({ browser, base, t }) {
       out.chipWhileDriving = document.getElementById('score-chip')?.textContent;
       return out;
     });
-    // a picture from the driver's seat, then Get out
-    await page.evaluate(() => { const R = window.__R, { live, p, G } = R, b = G.botAt(2, live.botT, false); live.popped.fill(false); live.step(0.03); p.lookAt({ x: b.x, y: 12.2, z: b.z }); });
+    // a picture from the driver's seat (round 3: all six balloons), then Get out
+    await page.evaluate(() => { const R = window.__R, { live, p } = R; live.bump.start(2); live.car.reset(123.5, 160.5, 0); live.step(0.03); p.lookAt({ x: 136, y: 11.6, z: 151 }); });
     await frames(page, 2);
     await shot(page, 't43-bumper.png').catch(() => {});
     D2.out = await page.evaluate(() => { const R = window.__R, { live, p } = R; live.use(p); return { carry: !!p.carry, drive: live.drive, word: live.near(p) }; });
     console.log('  D2', JSON.stringify(D2));
     t.ok(D2.carried && D2.drive === 0 && D2.told && D2.moved && D2.glides && D2.posFollows, `Drive! puts you in the car (the first hint "Bump the balloon on the BACK of a car!"); the stick drives it and it glides on when you let go`);
-    t.ok(D2.pops === 6 && D2.ticket && D2.toast && D2.popToast && D2.secs < 150 && D2.honk, `six balloons popped from behind (${D2.secs.toFixed(0)} s) give golden ticket 1; honk, pop and ticket sounds play`);
+    t.ok(D2.idle.misses === 1 && D2.idle.again && D2.idle.round === 0 && Math.abs(D2.idle.secs - D2.idle.left0) < 0.2 && /Round 1\/3 · 🎈 0 \/ 3 · ⏱/.test(D2.idle.chip), `careless: sitting still in the car pops nothing; after ${D2.idle.secs.toFixed(0)} s "Time is up! Round 1 again." (the chip: "${D2.idle.chip}")`);
+    t.ok(D2.wins === 1 && D2.ticket && D2.toast && D2.popToast && D2.rounds && D2.secs < 400 && D2.honk, `a skilled driver wins the three rounds (warm-up, zoomers, spinners) in ${D2.secs.toFixed(0)} s: golden ticket 1; honk, pop, zoom and ticket sounds`);
     t.ok(D2.board.startsWith(String(B.LAMP)) && D2.saved, `the board's first slot lights (block ${D2.board}) and the ticket is saved at once`);
     t.ok(D2.out.carry === false && D2.out.drive === -1 && D2.out.word === 'Drive!', 'Get out parks the car and puts you beside it; Drive! is offered again');
 
-    // Balloon Bounce: the real Player on the trampoline
+    // Balloon Bounce: the real Player on the trampoline. Careless first (holding Jump in one spot until the clock runs out), then a skilled
+    // bouncer (fairgames.bounceWish) through the three rounds, at 60 and at 20 steps a second.
     const D3 = await page.evaluate(() => {
-      const R = window.__R, { g, live, p, G } = R, out = { pops: [], apex: [] };
-      const bot = i => {
-        let t = 0, apex = 0; const dt = 1 / 30, bl = G.balloonList(false)[i];
-        while (t < 60 && !live.airPopped[i]) {
-          const b = G.balloonAt(i, live.clock + 0.4, false), dx = b.x - p.pos.x, dz = b.z - p.pos.z, d = Math.hypot(dx, dz);
-          p.yaw = Math.atan2(-dx, -dz); p.keys.KeyW = d > 0.35; p.keys.Space = (p.trampH || 0) < bl.h - 1.2;
-          p.update(dt); live.step(dt); t += dt; apex = Math.max(apex, p.pos.y - 11);
+      const R = window.__R, { g, live, p, G } = R, out = {};
+      const runGame = (dt, limit, brain) => {
+        let t = 0; const w0 = live.bounce.wins;
+        while (t < limit && live.bounce.wins === w0) {
+          const c = brain();
+          p.yaw = Math.atan2(-c.wx, -c.wz); const k = Math.hypot(c.wx, c.wz);
+          p.joy = k > 0.16 ? { x: 0, y: -Math.min(0.94, k) } : null; p.keys = { Space: !!c.space };
+          p.update(dt); live.step(dt); t += dt;
         }
-        return { popped: !!live.airPopped[i], secs: t, apex };
+        p.joy = null; p.keys = {};
+        return { won: live.bounce.wins > w0, secs: t };
       };
-      for (let i = 0; i < 6; i++) {
-        R.put(198.5, 11, 154.5); live.airPopped = []; live.airPops = 0; live.airRegrowAt = null; p.trampH = 0;
-        const r = bot(i); out.pops.push(`${i}:${r.popped ? 'pop' : 'MISS'}@${r.secs.toFixed(0)}s`); if (!r.popped) out.fail = true;
-        p.keys = {}; for (let k = 0; k < 30; k++) { p.update(1 / 30); live.step(1 / 30); } // let go and settle
+      R.put(198.5, 11, 154.5); p.trampH = 0; live.bounce = new G.BounceGame(false);
+      const lazy = runGame(1 / 30, 75, () => ({ wx: 0, wz: 0, space: true }));
+      out.lazy = { ...lazy, misses: live.bounce.misses, round: live.bounce.round, again: R.said('Time is up! Round 1 again'), chip: document.getElementById('score-chip')?.textContent };
+      for (const [dt, n] of [[1 / 60, '60'], [1 / 20, '20']]) {
+        R.put(198.5, 11, 154.5); p.trampH = 0; live.bounce = new G.BounceGame(false); live.trampN = p.trampN;
+        const r = runGame(dt, 420, () => G.bounceWish(live.bounce, { x: p.pos.x, y: p.pos.y, z: p.pos.z, vy: p.vel.y, h: p.trampH || 0 }));
+        out[n] = { ...r, misses: live.bounce.misses };
+        for (let k = 0; k < 40; k++) { p.update(1 / 30); live.step(1 / 30); } // let go and settle
       }
+      out.ticket = g.beaten.includes('pw:fair:ticket2'); out.toast = R.said('Golden ticket! 🎟️ 2 / 3');
+      out.rounds = R.said('Round 2: Wobbly balloons!') && R.said('Round 3: Combo!'); out.combo = window.__toasts.some(m => /combo x3!/.test(m)); out.again = R.said('You beat all 3 rounds of Balloon Bounce again!');
+      out.board = [161, 165, 169].map(x => g.world.get(x, 16, 133)).join();
       return out;
     });
-    t.ok(!D3.fail, `real Player physics on the mat: a bot that holds Jump to the right height and steers pops every one of the six balloons (${D3.pops.join(' ')})`);
+    console.log('  D3', JSON.stringify(D3));
+    t.ok(!D3.lazy.won && D3.lazy.misses >= 1 && D3.lazy.round === 0 && D3.lazy.again, `careless: holding Jump in one spot for ${D3.lazy.secs.toFixed(0)} s never pops all five balloons of round 1; "Time is up! Round 1 again."`);
+    t.ok(D3['60'].won && D3['20'].won && D3.ticket && D3.toast && D3.rounds && D3.combo && D3.again && D3.board.split(',').slice(0, 2).every(v => +v === 43),
+      `real Player physics: a skilled bouncer wins the three rounds (warm-up, wobblers and star balloons, combo x3) at 60 steps (${D3['60'].secs.toFixed(0)} s) and at 20 (${D3['20'].secs.toFixed(0)} s): golden ticket 2, the second slot lights`);
     const D3b = await page.evaluate(() => {
       const R = window.__R, { g, live, p, G } = R, out = {};
       // the climb: hold Jump on the mat, apex of every bounce; then let go; then walk off
@@ -568,23 +691,8 @@ export default async function ({ browser, base, t }) {
     console.log('  D3b', JSON.stringify(D3b));
     t.ok(JSON.stringify(D3b.up60.slice(0, 7)) === '[2,4,6,8,10,12,13]' || (D3b.up60.slice(0, 7).every((a, i) => Math.abs(a - [2, 4, 6, 8, 10, 12, 13][i]) < 0.45) && D3b.up20.slice(0, 7).every((a, i) => Math.abs(a - [2, 4, 6, 8, 10, 12, 13][i]) < 0.8)), `holding Jump: the apex of each bounce is 2, 4, 6, 8, 10, 12, 13 blocks at 60 and at 20 steps a second (${D3b.up60.slice(0, 8)} / ${D3b.up20.slice(0, 8)})`);
     t.ok(D3b.top === 13 && D3b.down === 2 && D3b.downs >= 6 && D3b.off && D3b.stopped && D3b.afterH === 0, `letting go comes down step by step to 2 and landing off the mat stops the bouncing (top ${D3b.top}, down ${D3b.down}, steps ${D3b.downs}, stopped ${D3b.stopped})`);
-    // six pops in a row -> ticket 2 (the bot again, all balloons)
-    const D3c = await page.evaluate(() => {
-      const R = window.__R, { g, live, p, G } = R;
-      R.put(198.5, 11, 154.5); live.airPopped = []; live.airPops = 0; p.trampH = 0;
-      let t = 0; const dt = 1 / 30;
-      while (t < 240 && !g.beaten.includes('pw:fair:ticket2')) {
-        const i = live.airPopped.findIndex((x, k) => !x && k < 6) >= 0 ? live.airPopped.findIndex((x, k) => !x && k < 6) : [0, 1, 2, 3, 4, 5].find(k => !live.airPopped[k]);
-        const bl = G.balloonList(false)[i], b = G.balloonAt(i, live.clock + 0.4, false), dx = b.x - p.pos.x, dz = b.z - p.pos.z;
-        p.yaw = Math.atan2(-dx, -dz); p.keys.KeyW = Math.hypot(dx, dz) > 0.35; p.keys.Space = (p.trampH || 0) < bl.h - 1.2;
-        p.update(dt); live.step(dt); t += dt;
-      }
-      p.keys = {};
-      return { secs: t, ticket: g.beaten.includes('pw:fair:ticket2'), toast: R.said('Golden ticket! 🎟️ 2 / 3'), n: live.airPopped.filter(Boolean).length, board: [161, 165, 169].map(x => g.world.get(x, 16, 133)).join(), boing: g.sound.played.includes('boing') || true };
-    });
-    t.ok(D3c.ticket && D3c.toast && D3c.board.split(',').slice(0, 2).every(v => +v === 43), `six balloons popped give golden ticket 2 and the second slot lights (${D3c.secs.toFixed(0)} s)`);
-    await page.evaluate(() => { const R = window.__R; R.put(198.5, 11, 154.5); R.p.trampH = 0; R.live.airPopped = []; });
-    await page.evaluate(() => { const R = window.__R; R.p.pos.set(190.5, 19.5, 148.5); R.p.vel.set(0, 3, 0); R.p.lookAt({ x: 198, y: 20.5, z: 154 }); R.live.step(0.03); });
+    await page.evaluate(() => { const R = window.__R; R.put(198.5, 11, 154.5); R.p.trampH = 0; R.live.bounce.start(1); });
+    await page.evaluate(() => { const R = window.__R; R.p.pos.set(190.5, 19.5, 148.5); R.p.vel.set(0, 3, 0); R.p.lookAt({ x: 198, y: 18.5, z: 154 }); R.live.step(0.03); });
     await frames(page, 2);
     await shot(page, 't43-bounce.png').catch(() => {});
 
@@ -597,13 +705,12 @@ export default async function ({ browser, base, t }) {
       g.save(); { const at = JSON.parse(localStorage.getItem('pokecraft-save-v2')).realmPos; out.savedAt = [at[0], at[1], at[2]]; out.savedOnDeck = Math.hypot(at[0] - 166.5, at[2] - 153.5) < 9.5 && at[1] === 12; }
       out.startY = p.pos.y; out.radius = Math.hypot(p.pos.x - 166.5, p.pos.z - 153.5);
       // joystick style: the stick pushed outwards / inwards (world direction x radial)
-      const TAU = Math.PI * 2, list = G.ringList(false), ahead = (a, r) => { let d = (r.a - a) % TAU; if (d < 0) d += TAU; return d; };
+      // careless first: sitting on the outer horse for a whole lap (2 of round 1's 9 points): the lap starts again
+      let idle = 0; while (live.seat.misses === 0 && idle < 20) { live.seatObj.steer(0, 0, 0, false); live.step(1 / 30); idle += 1 / 30; }
+      out.idle = { secs: idle, misses: live.seat.misses, round: live.seat.round, again: R.said('You got 2 of 9 points! Round 1 again') };
       let t = 0, flip = 0; const dt = 1 / 30;
-      while (t < 60 && !g.beaten.includes('pw:fair:ticket3')) {
-        const seat = live.seat; let best = -1, bd = 9;
-        list.forEach((r, i) => { if (seat.caught.includes(i)) return; const d = ahead(seat.angle(), r); if (d < bd) { bd = d; best = i; } });
-        let radial = 0, space = false;
-        if (best >= 0) { const r = list[best]; if (seat.to !== r.lane && flip % 2 === 0) radial = r.lane > seat.to ? 1 : -1; if (r.high && bd < 0.16 && bd > 0.1) space = true; }
+      while (t < 120 && !g.beaten.includes('pw:fair:ticket3')) {
+        const { radial, space } = G.ringWish(live.seat, flip);
         flip++;
         // the same call Player.update makes: the stick as a world direction along the radius
         const dx = p.pos.x - 166.5, dz = p.pos.z - 153.5, d = Math.hypot(dx, dz) || 1;
@@ -611,7 +718,7 @@ export default async function ({ browser, base, t }) {
         live.step(dt); t += dt;
         if (p.carry !== live.seatObj) break;
       }
-      out.secs = t; out.rings = live.seat.caught.length; out.ticket = g.beaten.includes('pw:fair:ticket3'); out.toast = R.said('Golden ticket! 🎟️ 3 / 3'); out.toast10 = R.said('💍 10 / 10');
+      out.secs = t; out.rings = live.seat.caught.length; out.ticket = g.beaten.includes('pw:fair:ticket3'); out.toast = R.said('Golden ticket! 🎟️ 3 / 3'); out.toast10 = R.said('Round 2: Faster!') && R.said('Round 3: Gold rush!') && window.__toasts.some(m => /💍 \+3 gold!/.test(m));
       out.board = [161, 165, 169].map(x => g.world.get(x, 16, 133)).join(); out.sound = g.sound.played.includes('ringding');
       out.y = p.pos.y;
       live.use(p);
@@ -620,7 +727,8 @@ export default async function ({ browser, base, t }) {
     });
     console.log('  D4', JSON.stringify(D4));
     t.ok(D4.word === 'Ride!' && D4.carried && D4.told && D4.startY >= 12 && Math.abs(D4.radius - 8.5) < 0.2 && D4.savedOnDeck, `Ride! puts you on an outer horse of the carousel (radius ${D4.radius.toFixed(1)}) with the hint; a save while you ride puts you on the deck (${D4.savedAt?.map(v => +v.toFixed(1))})`);
-    t.ok(D4.rings === 10 && D4.ticket && D4.toast && D4.toast10 && D4.board.split(',').every(v => +v === 43), `lane changes and hops catch all ten gold rings (${D4.secs.toFixed(0)} s): golden ticket 3, all three slots lit`);
+    t.ok(D4.idle.misses === 1 && D4.idle.again && D4.idle.round === 0 && D4.idle.secs > 12 && D4.idle.secs < 16, `careless: sitting on one horse for a lap (${D4.idle.secs.toFixed(1)} s) gets 2 of 9 points: "Round 1 again"`);
+    t.ok(D4.ticket && D4.toast && D4.toast10 && D4.board.split(',').every(v => +v === 43) && D4.secs < 50, `lane changes and hops on time win the three rounds (one lap each, the carousel faster each time, gold rings 3 points) in ${D4.secs.toFixed(0)} s: golden ticket 3, all three slots lit`);
     t.ok(!D4.off.carry && !D4.off.riding && D4.off.onDeck && D4.off.y >= 12 && D4.off.y < 12.5, 'Get off puts you on the deck beside your horse');
     await page.evaluate(() => { const R = window.__R; R.put(175.6, 11, 153.5); R.live.use(R.p); R.p.lookAt({ x: 166.5, y: 14, z: 148 }); R.live.step(0.2); });
     await frames(page, 2);
@@ -630,6 +738,7 @@ export default async function ({ browser, base, t }) {
     // the three tickets: the ride, saved and reloaded
     const D5 = await page.evaluate(() => {
       const R = window.__R, { g, live, p, B } = R, out = {};
+      live.step(0.03);
       out.n = R.F.ticketState(g).n; out.chip = document.getElementById('score-chip')?.textContent;
       out.lights = live.lit.lights; out.total = live.part.coaster.lights.length;
       out.litBlocks = live.part.coaster.lights.filter(([x, y, z]) => g.world.get(x, y, z) === B.LAMP).length;
@@ -737,9 +846,9 @@ export default async function ({ browser, base, t }) {
     // a rematch needs the games again: harder (a faster carousel, more balloons, more rings)
     const H1 = await page.evaluate(() => {
       const R = window.__R, { g, live, G } = R;
-      return { balloons: G.balloonList(live.hard).length, rings: G.ringList(live.hard).length, omega: G.omegaOf(live.hard), gate: R.said('x') || true, ticketsBefore: R.F.ticketState(g).n };
+      return { hard: live.hard, games: [live.bump.hard, live.bounce.hard, live.seat.hard], omega: live.seat.omega, need: live.bounce.need, round: [live.bump.round, live.bounce.round, live.seat.round], bot: live.bump.fleet.bots[0].speed, time: live.bump.time, ticketsBefore: R.F.ticketState(g).n };
     });
-    t.ok(H1.balloons === 8 && H1.rings === 12 && H1.omega > 0.5 && H1.ticketsBefore === 0, `with the star the games are harder: ${H1.balloons} balloons, ${H1.rings} gold rings, a faster carousel`);
+    t.ok(H1.hard && H1.games.every(Boolean) && H1.round.join() === '0,0,0' && H1.omega > G.omegaOf(false, 0) && H1.bot > 3 && H1.time < 45 && H1.ticketsBefore === 0, `with the star the three games start again from round 1, harder: quicker bots (${H1.bot} b/s, ${H1.time} s), a faster carousel (${H1.omega.toFixed(2)} rad/s)`);
     const H2 = await page.evaluate(() => {
       const R = window.__R, { g } = R, w = window.__toasts.length;
       g.talkTo(R.mae());
@@ -872,11 +981,8 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { live, G } = R;
       R.put(145.3, 11, 145.2); live.use(R.p);
       let t = 0;
-      while (!live.popped.some(Boolean) && t < 100) {
-        let best = -1, bd = 1e9;
-        G.BOTS.forEach((_, i) => { if (live.popped[i]) return; const b = G.botAt(i, live.car.t, false), d = Math.hypot(b.x - live.car.x, b.z - live.car.z); if (d < bd) { bd = d; best = i; } });
-        const wish = G.chaseWish(live.car, G.botAt(best, live.car.t, false)); live.carObj.steer(wish.x, wish.z, 1, false); live.step(1 / 30); t += 1 / 30;
-      }
+      const memo = {};
+      while (!live.popped.some(Boolean) && t < 100) { const wish = G.skilledWish(memo, live.bump); live.carObj.steer(wish.x, wish.z, 1, false); live.step(1 / 30); t += 1 / 30; }
       return { pops: live.popped.filter(Boolean).length, drive: live.drive, pos: [R.p.pos.x, R.p.pos.y, R.p.pos.z] };
     });
     await Bp.evaluate(() => { const R = window.__R; R.put(150, 11, 141); R.live.step(0.2); });
