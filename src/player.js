@@ -2,6 +2,16 @@
 import * as THREE from 'three';
 import { B, BLOCKS } from './blocks.js';
 
+// T41: dive swimming (only in a world's `deepWater`, the Sunken City's crater): you swim where you look, up and down too; Jump kicks
+// forward in a burst that glides out (closed form: the distance of a step is the exact integral, so 60 and 20 steps a second go the same).
+export const DIVE = { speed: 3.2, sprint: 4.0, drift: -0.5, up: 3, kick: 7, kickTime: 0.8, kickGap: 0.5, lift: 5, sink: 5, coil: 0.4 };
+export const kickSpeed = t => (t >= DIVE.kickTime ? 0 : DIVE.kick * (1 - t / DIVE.kickTime) ** 2);
+// The distance a kick covers between t0 and t1.
+export const kickDist = (t0, t1) => {
+  const a = Math.min(DIVE.kickTime, Math.max(0, t0)), b = Math.min(DIVE.kickTime, Math.max(0, t1)), T = DIVE.kickTime;
+  return DIVE.kick * T / 3 * ((1 - a / T) ** 3 - (1 - b / T) ** 3);
+};
+
 export class Player {
   constructor(world) {
     this.world = world;
@@ -24,6 +34,13 @@ export class Player {
     this.trampolined = false; this.trampH = 0; // T43: launched by a Funfair trampoline this frame (main.js plays 'boing'); the height of the last bounce
     this._eye = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
+    this.diving = false;    // T41: dive swimming in a world's deepWater (the Sunken City): swim where you look, Jump kicks
+    this.kick = null;       // T41: a kick in progress { x, y, z (unit), t }
+    this.kickCool = 0;
+    this.kicked = false;    // T41: a kick started this frame (the Atlantis part plays the sound)
+    this.spaceWas = false;
+    this.noSwim = false;    // T41: the net is lunging (atlantislive.js moves the player)
+    this.held = 0;          // T41: set by the net (atlantislive.js) while Catch! is held: 0..1, slows the swim
   }
 
   // Shared vectors, refilled on every read: copy or clone them to keep a value.
@@ -124,6 +141,43 @@ export class Player {
     if (r.landing && (this.onGround || (fl.water && this.pos.y <= fl.y + 0.001))) this.landed = true;
   }
 
+  // T41: one step of dive swimming. f / s = forward and sideways input (-1..1), analog = stick strength.
+  dive(dt, f, s, analog, sprint) {
+    if (this.noSwim) { this.vel.set(0, 0, 0); this.kick = null; this.kicked = false; return; } // the net is lunging: the part moves you
+    const k = this.keys, fw = this.forward, fx = fw.x, fy = fw.y, fz = fw.z;
+    const rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
+    let dx = fx * f + rx * s, dy = fy * f, dz = fz * f + rz * s;
+    const len = Math.hypot(dx, dy, dz);
+    if (len > 1) { dx /= len; dy /= len; dz /= len; }
+    const slow = 1 - (1 - DIVE.coil) * Math.min(1, this.held || 0); // coiled for a lunge: slow
+    const speed = (sprint ? DIVE.sprint : DIVE.speed) * (len > 0 ? analog : 0) * slow;
+    let vx = dx * speed, vy = dy * speed, vz = dz * speed;
+    this.kicked = false;
+    this.kickCool = Math.max(0, this.kickCool - dt);
+    const space = !!k.Space, press = space && !this.spaceWas;
+    this.spaceWas = space;
+    if (press && this.kickCool <= 0) { // a kick: a burst along the look that glides out
+      this.kick = { x: fx, y: fy, z: fz, t: 0 };
+      this.kickCool = DIVE.kickGap; this.kicked = true;
+    }
+    if (this.kick) {
+      const K = this.kick, d = kickDist(K.t, K.t + dt) / dt;
+      vx += K.x * d; vy += K.y * d; vz += K.z * d;
+      K.t += dt;
+      if (K.t >= DIVE.kickTime) this.kick = null;
+    } else if (space && len === 0) vy = DIVE.up; // an old habit: holding Jump still swims up
+    else if (len === 0) vy = DIVE.drift; // idle: a slow drift down
+    const w = this.world;
+    if (w.liftAt?.(this.pos)) vy = Math.min(6, vy + DIVE.lift); // bubble columns carry you up
+    if (w.sinkAt?.(this.pos)) vy -= DIVE.sink; // the whirlpool pulls you down
+    this.vel.set(vx, vy, vz);
+    this.onGround = false;
+    this.hitWall = false;
+    this.moveAxis('x', vx * dt);
+    this.moveAxis('z', vz * dt);
+    this.moveAxis('y', vy * dt);
+  }
+
   // Would a block at (x, y, z) overlap the player?
   overlapsBlock(x, y, z) {
     const p = this.pos, hw = this.halfW;
@@ -186,6 +240,9 @@ export class Player {
 
     const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
     const water = this.inWater;
+    this.diving = !!(water && !r && this.world.deepAt?.(this.pos)); // T41
+    if (this.diving) return this.dive(dt, f, s, analog, stickSprint || k.ShiftLeft || k.ShiftRight);
+    this.kick = null; this.spaceWas = !!k.Space;
     const sprint = k.ShiftLeft || k.ShiftRight || stickSprint || this.forceSprint;
     let speed = (sprint ? 6.2 : 4.3) * analog * (this.speedK ?? 1); // speedK: a race's pace on foot (racelive.js)
     let jump = 8.6;

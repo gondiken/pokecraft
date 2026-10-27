@@ -164,7 +164,7 @@ export const DESTINATIONS = [
     rows: game => {
       const w = game.world;
       if (w.wake) return [new RealmWayDestination({ id: 'wake', icon: '🪨', label: 'Wake Stone', at: g => g.world.wake && [g.world.wake[0] + 0.5, g.world.wake[2] + 0.5] })];
-      if (w.door) return [new RealmWayDestination({ id: 'door', icon: w.realm?.parent ? '🖼️' : '🚪', label: w.realm?.parent ? 'Way back to the Swirl' : 'Door home', at: g => g.world.door && [g.world.door.stand[0], g.world.door.stand[2]] })]; // T40: a Picture World's way back
+      if (w.door) return [new RealmWayDestination({ id: 'door', icon: w.realm?.parent ? '🖼️' : '🚪', label: w.realm?.parent ? 'Way back to the Swirl' : 'Door home', at: g => { const d = g.world.doors?.find(q => q.key === g.realms?.via) ?? g.world.door; return d && [d.stand[0], d.stand[2]]; } })]; // T40: a Picture World's way back; T41: the door of the frame you came through (the Pirate Seas have two: its own and the Atlantis bell)
       return [];
     },
   },

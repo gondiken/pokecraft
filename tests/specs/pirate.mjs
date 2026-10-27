@@ -76,7 +76,7 @@ export default async function ({ browser, base, t }) {
       const rs = R.REALMS.pirate.spawns, inRealm = ids.every(id => Object.entries(rs).some(([k, l]) => k !== 'cave' && l.some(e => e[0] === id)));
       const rows = ids.flatMap(id => BK.spawnInfo(id).map(r => r.name)).filter((n, i, a) => a.indexOf(n) === i);
       const eff = S.effectiveness;
-      const keys = Object.keys(S.TYPE_COLORS);
+      const keys = Object.keys(S.TYPE_COLORS).filter(k => !['atlantis'].includes(k)); // wave 15's types have their own specs
       const own = keys.filter(d => eff('pirate', d) !== 1).map(d => `${d}:${eff('pirate', d)}`).sort().join();
       const onPirate = keys.filter(a => a !== 'pirate' && eff(a, 'pirate') !== 1).map(a => `${a}:${eff(a, 'pirate')}`).sort().join();
       return {
@@ -229,7 +229,7 @@ export default async function ({ browser, base, t }) {
         // people
         const feetOk = (p, what) => { const [x, y, z] = [Math.floor(p.pos[0]), p.pos[1], Math.floor(p.pos[2])]; if (!solid(x, y - 1, z) || solid(x, y, z) || solid(x, y + 1, z)) bad(`${what} stands badly`); };
         const gadgetCells = [...d.cannons.flatMap(c => [[c.pad[0], c.pad[1], 3], [c.target[0], c.target[1], 4.5]]), ...d.ropes.flatMap(r => [[r.a.x, r.a.z, 3], [r.b.x, r.b.z, 3]])];
-        for (const b of w.bosses) {
+        for (const b of w.bosses.filter(b => b.id === 'pirate')) { // (T41: Queen Coralia and her crew have their own spec)
           feetOk(b, 'boss');
           for (const c of b.crew) { feetOk(c, `crew ${c.i}`); for (const [gx, gz, r] of gadgetCells) if (Math.hypot(c.pos[0] - gx - 0.5, c.pos[2] - gz - 0.5) < r) bad(`crew ${c.i} too close to a gadget`); }
           if (b.crew.length !== 3) bad(`crew count ${b.crew.length}`);
@@ -577,6 +577,7 @@ export default async function ({ browser, base, t }) {
     await shot(page, 'chest-open');
     const after = await page.evaluate(async () => {
       const g = window.pokecraft, p = g.player, b = g.world.bosses[0], w = g.world;
+      if (!g.stars.includes('atlantis')) g.stars.push('atlantis'); // (the other Boss of the realm would be the next goal)
       p.pos.set(b.rest[0], b.rest[1], b.rest[2]); g.updateGuide?.(); const onShip = g.ui.guideText;
       const c = w.pirate.cannons.find(c => c.id === 'c3'); p.pos.set(150.5, 16, 70.5); g.updateGuide?.(); const cove = g.ui.guideText;
       const s = w.pirate.isles.find(i => i.id === 'start'); p.pos.set(s.x + 0.5, s.top + 1, s.z + 6.5); g.updateGuide?.(); const start = g.ui.guideText;

@@ -9,6 +9,7 @@ import { B, mulberry32 } from './blocks.js';
 import { makePath } from './mover.js';
 import { kit, buildWayBack, placeCrew, pictureAim } from './picturelands.js';
 import { SHIP, buildShip, buildDock, deckTop } from './pirateship.js';
+import { atlantisLand, atlantisAim, OLD_W, CITY, craterR } from './atlantisland.js'; // T41: the Sunken City in the east strip
 
 export const SEA = 12; // the top water block row (WATER_LEVEL): the surface is at 13
 // One island. Beach islands: a flat plateau of radius P at `top` (grass, sand round its rim), then sand going down one block per 1.25 cells,
@@ -283,6 +284,8 @@ export function pirateAim(world, p, game) {
   const d = world.pirate;
   if (!d) return null;
   if (game?.player?.carry) return { x: p.x, z: p.z, text: () => 'Wheee! 🏴‍☠️' };
+  const atl = atlantisAim(world, p, game); // T41: east of Palm Key, the whirlpool and the Sunken City
+  if (atl) return atl;
   const stars = game?.stars ?? [], star = stars.includes('pirate'), where = placeOf(world, p);
   if (where === 'sea') {
     const e = nearest(p, d.exits);
@@ -474,7 +477,7 @@ export function pirateLand(world, def) {
   }
 
   /* 7. the sea floor: coral and reef rocks (never above y 10), shells on the beaches */
-  for (let x = 2; x < W - 2; x++) for (let z = 2; z < D - 2; z++) {
+  for (let x = 2; x < Math.min(W, OLD_W) - 2; x++) for (let z = 2; z < D - 2; z++) { // T41: the old 224 map's own stretch (the strip east of it has its own pass below, so nothing old moves)
     const y = surf[idx(x, z)];
     if (reserved.has(idx(x, z))) continue;
     if (y <= 8 && !owner[idx(x, z)] && world.get(x, y + 1, z) === B.WATER) {
@@ -543,4 +546,18 @@ export function pirateLand(world, def) {
   world.pirate = { isles, cannons, ropes, walks, ship: { ...ship, box: ship.box }, exits, dockEnd: [Math.max(SHIP.dock.x0, dockEnd - 1), SHIP.dock.z0], lookout: LOOKOUT, reserved: [...reserved] };
   world.realmBiome = (x, z) => (world.ground[Math.floor(x) + Math.floor(z) * W] < SEA ? 'pirateSea' : 'pirate');
   world.parts.push({ id: 'seas', live: 'pirate' });
+
+  /* 11. T41: the east strip (x >= 224, only when the map is wider than the old 224): its own reef, then the Sunken City */
+  if (W > OLD_W) {
+    const rand2 = mulberry32((seed ^ 0xa71a) >>> 0);
+    for (let x = OLD_W; x < W - 2; x++) for (let z = 2; z < D - 2; z++) {
+      const y = surf[idx(x, z)];
+      if (y <= 8 && craterR(x, z) > CITY.rimTo + 2 && world.get(x, y + 1, z) === B.WATER) {
+        const r = rand2();
+        if (r < 0.012) put(world, x, y + 1, z, B.CORAL);
+        else if (r < 0.016) { put(world, x, y + 1, z, B.COBBLE); if (rand2() < 0.5) put(world, x, y + 2, z, B.COBBLE); }
+      }
+    }
+    atlantisLand(world, { surf, idx, noise });
+  }
 }

@@ -30,7 +30,7 @@ export class TouchControls {
     this.tap('btn-pause', () => actions.pause());
     this.tap('party-mini', () => actions.team()); // T39c: the creature card opens Team
     this.actBtn = document.getElementById('btn-act');
-    this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false };
+    this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false, swim: false };
   }
 
   // T39c: every button has one fixed place; they dim (never hide) when they can't act. DOM written only on change.
@@ -39,7 +39,7 @@ export class TouchControls {
     const o = this.state, n = {
       act: s.act?.label ?? o.act, actDim: !!s.act?.dim,
       placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '',
-      have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, sky: !!s.sky,
+      have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, sky: !!s.sky, swim: !!s.swim,
     };
     const $ = id => document.getElementById(id);
     if (n.act !== o.act) this.actBtn.textContent = n.act;
@@ -51,8 +51,8 @@ export class TouchControls {
     if (n.rideDim !== o.rideDim) $('btn-ride').classList.toggle('dim', n.rideDim);
     if (n.sky !== o.sky) {
       $('touch').classList.toggle('sky', n.sky);
-      $('btn-jump').textContent = n.sky ? 'Up' : 'Jump';
-    }
+      $('btn-jump').textContent = n.sky ? 'Up' : n.swim ? 'Swim' : 'Jump';
+    } else if (n.swim !== o.swim) $('btn-jump').textContent = n.swim ? 'Swim' : 'Jump'; // T41: Jump kicks you forward in the Sunken City
     this.state = n;
   }
 
@@ -61,7 +61,7 @@ export class TouchControls {
   setRide(s) { this.setButtons({ ...this.cur(), ride: { have: s.show, on: s.on, dim: this.state.rideDim, why: this.state.rideWhy }, sky: s.sky }); }
   cur() {
     const o = this.state;
-    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on }, sky: o.sky };
+    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on }, sky: o.sky, swim: o.swim };
   }
 
   // Fires on touch-down for snappy buttons; stops the touch turning into a look-drag or a click.

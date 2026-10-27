@@ -130,7 +130,7 @@ export default async function ({ browser, base, t }) {
     out.t1 = S.makeCreature('hushcoon', 1).moves.includes('leafstar');
     out.fxTables = !!R.TRAVEL.ninja && !!R.IMPACT.ninja && !!R.FX_COLORS.ninja;
     // the chart cells of plans/T37.md, and no other cell with ninja is not 1
-    const eff = S.effectiveness, types = Object.keys(S.TYPE_COLORS);
+    const eff = S.effectiveness, types = Object.keys(S.TYPE_COLORS).filter(x => !['atlantis'].includes(x)); // (wave 15's types have their own specs)
     const want = { 'ninja>mind': 2, 'ninja>paper': 2, 'ninja>squad': 2, 'ninja>ninja': 0.5, 'ninja>light': 0.5, 'ninja>metal': 0.5, 'ninja>ball': 2,
       'light>ninja': 2, 'sound>ninja': 2, 'ghost>ninja': 0.5, 'camo>ninja': 0.5 };
     out.chartBad = [];

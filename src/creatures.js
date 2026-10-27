@@ -227,7 +227,7 @@ export class CreatureManager {
     if (xi < 1 || zi < 1 || xi >= this.world.W - 1 || zi >= this.world.D - 1) return null;
     const s = this.world.surface(xi, zi);
     const airborne = sp.flies || sp.floats;
-    if (s.id === B.WATER) return sp.swims || airborne ? WATER_LEVEL + 0.55 : null;
+    if (s.id === B.WATER) { const sunk = this.world.sunkenY?.(x, z, sp); if (sunk !== undefined) return sunk; return sp.swims || airborne ? WATER_LEVEL + 0.55 : null; } // T41: the Sunken City's guardians stand on the city floor under the water
     if (sp.waterOnly) return null; // fish stay in the water
     // Only walk on natural ground (not trees, cacti, gyms or other buildings).
     if (!(this.world.walk ?? GROUND).has(s.id)) return airborne ? s.y + 1 : null;

@@ -200,12 +200,13 @@ export class World {
   // below the natural ground and under cover. Houses above the natural ground stay bright.
   skyAt(x, y, z) {
     if (x < 0 || z < 0 || x >= this.W || z >= this.D) return 1;
+    const dim = this.skyDim ? this.skyDim(x, y, z) : 1; // T41: a realm may dim a place (the Sunken City's dark districts); null everywhere else
     if (!this.topReady) this.computeTop();
     const c = x + z * this.W;
-    if (y > this.top[c] || this.litCol[c]) return 1;
-    for (const r of this.litRooms) if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1 && y >= r.y0 && y <= r.y1) return 1;
+    if (y > this.top[c] || this.litCol[c]) return dim;
+    for (const r of this.litRooms) if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1 && y >= r.y0 && y <= r.y1) return dim;
     const d = this.ground[c] - y;
-    return d <= 0 ? 1 : Math.max(0.06, 1 - 0.2 * d);
+    return (d <= 0 ? 1 : Math.max(0.06, 1 - 0.2 * d)) * dim;
   }
 
   // Is this position (feet) inside a lit cave gym room?

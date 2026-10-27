@@ -5,8 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, openGame as openGame0, openPair, newGame, pause, click, continueGame, waitFor, seedSave } from '../helpers.mjs';
-// Wave 14: the four Picture World frames ship ready (the Swirl's guide would point at them, the frames show pictures); these checks are about the wave 13 Swirl, so close them in each page (spec `picture-worlds` covers ready frames)
-const openGame = async (...a) => { const p = await openGame0(...a); await p.evaluate(async () => { const { PICTURE_WORLDS } = await import('/src/pictureworlds.js'); for (const w of PICTURE_WORLDS) w.ready = false; }); return p; };
+// Waves 14-15: the Picture World frames ship ready (the Swirl's guide would point at them, the frames show pictures); these checks are about the wave 13 Swirl, so close them in each page (spec `picture-worlds` covers ready frames)
+const openGame = async (...a) => { const p = await openGame0(...a); await p.evaluate(async () => { const { PICTURE_WORLDS } = await import('/src/pictureworlds.js'); for (const w of PICTURE_WORLDS) w.ready = false; }); return p; }; // (every Picture World that ships ready is closed, whatever wave made it)
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 
@@ -216,7 +216,7 @@ export default async function ({ browser, base, t }) {
   });
   t.ok(hud.got === 1 && hud.all === 12 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of twelve, each named (${hud.got}/${hud.all}: ${hud.titles})`);
   t.ok(JSON.stringify(hud.saved) === '["house"]' && hud.clean === '["house"]' && hud.none === '[]' && hud.order === '["house","doors"]', `stars are saved; loadStars drops junk and repeats, and keeps the list order (${hud.clean} ${hud.order})`);
-  t.ok(hud.ids === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && hud.ready, 'twelve stars (Picture Worlds), every ready one has a realm below the Swirl');
+  t.ok(hud.ids.replace(/atlantis/, 'secret2').replace(/doodle/, 'secret1') === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && hud.ready, 'twelve stars (Picture Worlds), every ready one has a realm below the Swirl');
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SHOTS, 't38-hud-stars.png') });

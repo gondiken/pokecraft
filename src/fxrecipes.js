@@ -3055,6 +3055,28 @@ IMPACT.surprise = (k, from, to, { big }) => {
       flash.scale.setScalar(Math.max(0.01, 0.8 * m * Math.sin(Math.PI * clamp01(p * 1.8))));
       flash.material.rotation = p * 2;
       flash.material.opacity = fadeOut(p, 0.5);
+/* ==== T41 atlantis ==== */
+// Teal rune light and old gold.
+FX_COLORS.atlantis = [0x5af0e0, 0xf2d27a, 0xffffff];
+
+// A glowing rune that glides to the target with a short tail of teal sparkles.
+TRAVEL.atlantis = k => {
+  const rune = k.sprite('rune', { color: 0x5af0e0, size: 0.55, glow: true });
+  const N = 4;
+  const trail = k.points({ n: N, tex: 'dot', size: 0.22, glow: true, colors: [0x5af0e0, 0xb8fff4, 0xf2d27a] });
+  return {
+    dur: 380,
+    step(p) {
+      k.at(p, A, 0.3 + 0.12 * Math.sin(p * Math.PI));
+      rune.position.copy(A);
+      rune.material.rotation = p * 3;
+      for (let i = 0; i < N; i++) {
+        const t = p - 0.07 * (i + 1);
+        if (t <= 0) { trail.hide(i); continue; }
+        k.at(t, B, 0.3 + 0.12 * Math.sin(t * Math.PI));
+        trail.set(i, B.x + Math.sin(i * 2 + p * 9) * 0.06, B.y, B.z);
+      }
+      trail.fade(fadeOut(p, 0.7));
     },
   };
 };
@@ -3077,6 +3099,52 @@ SIG.tadaa = (k, from, to) => {
       big.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
       big.scale.setScalar(Math.max(0.01, (p < 0.5 ? open : 1 + pop * 1.2) * 1.1 * (p > 0.85 ? (1 - p) / 0.15 : 1)));
       big.material.rotation = p * 4;
+// A rune burst: a teal ring spreads, six glints fly out, one rune sprite spins up.
+IMPACT.atlantis = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 6;
+  const ring = k.mesh('ring', { color: 0x5af0e0, glow: true, opacity: 0.7 });
+  const glints = k.points({ n: N, tex: 'star', size: 0.28 * m, glow: true, colors: [0x5af0e0, 0xf2d27a, 0xffffff] });
+  const rune = k.sprite('rune', { color: 0xb8fff4, size: 0.6 * m, glow: true });
+  return {
+    dur: 400,
+    step(p) {
+      ring.rotation.set(-Math.PI / 2, 0, 0);
+      ring.position.set(to.pos.x, to.pos.y - 0.1, to.pos.z);
+      ring.scale.setScalar(Math.max(0.01, p * (to.r + 0.9) * m));
+      ring.material.opacity = 0.7 * (1 - p);
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p, d = (to.r * 0.4 + 0.15 + k.ease(p) * 0.8) * m;
+        glints.set(i, to.pos.x + Math.cos(ang) * d, to.pos.y + 0.1 + p * 0.4 + (i % 2) * 0.15, to.pos.z + Math.sin(ang) * d);
+      }
+      glints.fade(fadeOut(p, 0.5));
+      rune.position.set(to.pos.x, to.pos.y + 0.2 + p * 0.5, to.pos.z);
+      rune.scale.setScalar(Math.max(0.01, 0.9 * m * Math.sin(Math.PI * clamp01(p * 1.6))));
+      rune.material.rotation = p * 2.5;
+      rune.material.opacity = fadeOut(p, 0.4);
+    },
+  };
+};
+
+// Sunken Bell: a big bell sinks down onto the target and rings; three teal rings spread from it.
+SIG.sunkenbell = (k, from, to) => {
+  const bell = k.sprite('bell', { color: 0xf2d27a, size: 1.2 });
+  const rings = [0, 1, 2].map(() => k.mesh('ring', { color: 0x5af0e0, glow: true, opacity: 0.6 }));
+  const feet = feetOf(to);
+  return {
+    dur: 750,
+    step(p) {
+      const fall = clamp01(p / 0.35), ring = clamp01((p - 0.35) / 0.65);
+      const y = lerp(to.top + 3, to.top + 0.6, fall * fall) + (ring > 0 ? Math.sin(ring * 30) * 0.05 * (1 - ring) : 0);
+      bell.position.set(to.pos.x, y, to.pos.z);
+      bell.material.rotation = ring > 0 ? Math.sin(ring * 26) * 0.2 * (1 - ring) : 0;
+      bell.material.opacity = p < 0.7 ? 1 : fadeOut((p - 0.7) / 0.3, 0.3);
+      rings.forEach((r, i) => {
+        const u = clamp01((ring - i * 0.18) / 0.6);
+        r.rotation.set(-Math.PI / 2, 0, 0);
+        r.position.set(to.pos.x, feet + 0.08 + i * 0.02, to.pos.z);
+        r.scale.setScalar(Math.max(0.01, u * (to.r + 0.8 + i * 0.5)));
+        r.material.opacity = u > 0 ? 0.6 * (1 - u) : 0;
+      });
     },
   };
 };
@@ -3101,3 +3169,24 @@ SIG.candyburst = (k, from, to) => {
   };
 };
 /* ==== end of T44 surprise ==== */
+// Mosaic Storm: a swirl of coloured tiles circles the target and flies out.
+SIG.mosaicstorm = (k, from, to) => {
+  const N = 12;
+  const tiles = k.points({ n: N, tex: 'square', size: 0.3, colors: [0x3ab8b4, 0xf2d27a, 0xff9ad0, 0x2aa0c8] });
+  const glow = k.sprite('star', { color: 0x5af0e0, size: 0.1, glow: true });
+  return {
+    dur: 700,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 9, r = (0.3 + 0.9 * Math.sin(Math.PI * clamp01(p * 1.05))) * (0.6 + 0.4 * ((i % 3) / 2)) + to.r * 0.3;
+        tiles.set(i, to.pos.x + Math.cos(ang) * r, to.pos.y - 0.2 + (i / N) * 0.9 + 0.3 * Math.sin(p * 8 + i), to.pos.z + Math.sin(ang) * r);
+      }
+      tiles.fade(p < 0.75 ? 1 : fadeOut((p - 0.75) / 0.25, 0.2));
+      glow.position.set(to.pos.x, to.pos.y + 0.2, to.pos.z);
+      glow.scale.setScalar(Math.max(0.01, 1.4 * Math.sin(Math.PI * clamp01(p))));
+      glow.material.opacity = 0.8;
+      glow.material.rotation = p * 4;
+    },
+  };
+};
+/* ==== end of T41 atlantis ==== */

@@ -132,6 +132,7 @@ async function measureDream(profile) {
     if (w.parts?.some(pt => pt.id === 'stadium')) Object.assign(spots, { stW: [58, 162, Math.PI / 2, 12.6], stE: [58, 162, -Math.PI / 2, 12.6], stCourt: [58, 203, Math.PI / 2, 12.6], stTunnel: [58, 133, Math.PI, 12.6] }); // T40d: the Ball Stadium: the centre spot looking at each goal, the court, the tunnel
     if (w.parts?.some(pt => pt.id === 'fair')) Object.assign(spots, { fairArch: [166, 126, Math.PI, 12.6], fairArena: [128, 139, Math.PI, 14], fairCarousel: [166, 139, Math.PI, 12.6], fairStage: [201, 200, -Math.PI / 2, 25.6] }); // T43: the Funfair: from the arrival, the arena, the carousel and the Star Stage
     if (w.pirate) Object.assign(spots, { ship: [104, 86, Math.PI, 19], sea: [30, 30, 0, 14.5] }); // T40b: Lookout Isle looking at the ship, and a spot at sea level
+    if (w.atlantis) Object.assign(spots, { city: [246, 112, -Math.PI / 2, 8.5], gardens: [270, 104, 0, 8.5], steps: [270, 100, Math.PI, 8.5] }); // T41: the Sunken City: from the bell door towards the palace, over the plaza towards the gardens, towards the temple steps
     const calls = {};
     for (const [k, [x, z, yaw, y]] of Object.entries(spots)) {
       cam.position.set(x + 0.5, y ?? w.surface(x, z).y + 2.6, z + 0.5); cam.rotation.set(-0.15, yaw, 0); cam.updateMatrixWorld();

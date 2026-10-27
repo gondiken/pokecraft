@@ -113,10 +113,13 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
   arriveHint: 'Nibbles is in a sugar fort on the table. Ride the toy train to the fan, and look for the yellow notes!',
   spawns: { house: TINY_SPAWNS, cave: [] },
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
-REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b
-  spawns: { pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
-  zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS],
-  look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false }, // always a sunny noon
+// T41: the Sunken City's wild guardians (on the city floor, world.realmBiome 'atlantis')
+const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2], ['grandurnling', 0.12], ['guardlion', 0.12], ['mosaicoil', 0.12]];
+REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: [320, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
+  version: 2, convert: { 1: [224, 224] }, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
+  spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12], ['featherbeard', 0.12]], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6], ['parroteer', 0.4], ['shipshape', 0.1]], cave: [] },
+  zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea', atlantis: 'The Sunken City' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS, B.AT_MOSAIC, B.AT_BRICK],
+  look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false, underwater: true }, // always a sunny noon; T41: under water in the crater the fog turns blue-green (main.js updateSky)
   clock: '🏴‍☠️ Pirate Seas', travelText: 'Sailing in...', travelIcon: '🏴‍☠️', enterText: 'Ahoy! Welcome to the Pirate Seas!',
   arriveHint: 'Stand on the cannon and press Fire! Captain Squawk has the star on his ship.',
   noHomeText: 'No homes at sea! Build your home in your own world.', followText: 'Sail too' });
@@ -540,7 +543,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (def.parent) stash.up = { id: def.parent, ret: cleanRet(saved.realmUp?.ret), via: cleanVia(saved.realmUp?.via, def.id), edits: null }; // T40
       createWorld(realmSeed(w.seed, def.seedSalt), game.realmEdits[def.id], def.size, { realm: def });
       game.place = def.id;
-      const rp = (saved.realmVersions?.[def.id] ?? 1) === (def.version ?? 1) ? saved.realmPos : null; // T35: another version of the realm: arrive at the start
+      const sv = saved.realmVersions?.[def.id] ?? 1, rp = sv === (def.version ?? 1) || def.convert?.[sv] ? saved.realmPos : null; // T41: a converted version keeps its spot (nothing moved) // T35: another version of the realm: arrive at the start
       const np = game.player;
       if (Array.isArray(rp) && rp.slice(0, 3).every(Number.isFinite)) { np.pos.set(rp[0], rp[1], rp[2]); np.yaw = rp[3] || 0; np.pitch = rp[4] || 0; }
       else np.pos.copy(game.spawnPoint);
@@ -597,6 +600,19 @@ export function createRealms(game, { createWorld, save, size }) {
   return self;
 }
 
+// T41: edits made on a map of size `from` ([W, D]) moved to a map of size `to` that has the same x / z for every old cell (a realm that
+// grew east or south): the index of a block is x + W * (z + D * y). Cells that fall outside the new map are dropped. Pure.
+export function convertRealmEdits(list, from, to) {
+  if (!Array.isArray(list)) return [];
+  const [w, d] = from, [W, D] = to, out = [];
+  for (const e of list) {
+    if (!Array.isArray(e) || !Number.isInteger(e[0]) || e[0] < 0) continue;
+    const i = e[0], x = i % w, z = Math.floor(i / w) % d, y = Math.floor(i / (w * d));
+    if (x < W && z < D && y < 48) out.push([x + W * (z + D * y), e[1]]);
+  }
+  return out;
+}
+
 // realmEdits from a save: only known realms, only [index, block] pairs of whole numbers. T35: a realm's list is dropped
 // when the save was made in another version of that realm (versions[id], missing = 1; the Dream is version 2).
 export function cleanRealmEdits(saved, versions) {
@@ -605,9 +621,15 @@ export function cleanRealmEdits(saved, versions) {
   for (const [id, list] of Object.entries(saved)) {
     const def = realmOf(id);
     if (!def || !Array.isArray(list)) continue;
-    if ((versions?.[id] ?? 1) !== (def.version ?? 1)) continue;
+    const v = versions?.[id] ?? 1;
+    let edits = list;
+    if (v !== (def.version ?? 1)) { // another version: dropped, unless the def says how to convert that one (T41: the Pirate Seas grew east)
+      const from = def.convert?.[v];
+      if (!from) continue;
+      edits = convertRealmEdits(list, from, def.size);
+    }
     const max = def.size[0] * def.size[1] * 48;
-    out[id] = list.filter(e => Array.isArray(e) && Number.isInteger(e[0]) && Number.isInteger(e[1]) && e[0] >= 0 && e[0] < max && e[1] >= 0 && e[1] < 256);
+    out[id] = edits.filter(e => Array.isArray(e) && Number.isInteger(e[0]) && Number.isInteger(e[1]) && e[0] >= 0 && e[0] < max && e[1] >= 0 && e[1] < 256);
   }
   return out;
 }

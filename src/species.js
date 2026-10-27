@@ -37,6 +37,8 @@ export const TYPE_COLORS = {
   surprise: 'repeating-linear-gradient(45deg,#ffb04a 0 6px,#ff6a8a 6px 9px,#ffb04a 9px 15px)',
 };
 
+TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
+
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
   normal: { rock: 0.5, metal: 0.5, ghost: 0, bone: 0.5, slime: 0.5, camo: 0.5, treasure: 0.5 },
@@ -104,6 +106,10 @@ EFFECTIVENESS.bug.surprise = 2;    // bugs nibble the wrapping paper
 EFFECTIVENESS.ghost.surprise = 0.5; // a "boo!" is no surprise to a surprise
 EFFECTIVENESS.camo.surprise = 0.5;  // it already knows hide and seek
 /* ==== end of T44 surprise: the chart ==== */
+// Wave 15 (T41): the Sunken City's guardians chase pirates off, see through camouflage and are older than clocks, but are too old for screens and sneaking.
+// (The plan had Treasure instead of Camo: a defender may be weak to at most 5 types, and Treasure already has 5.)
+EFFECTIVENESS.atlantis = { pirate: 2, camo: 2, time: 2, atlantis: 0.5 };
+EFFECTIVENESS.cyber.atlantis = 2; EFFECTIVENESS.ninja.atlantis = 2; EFFECTIVENESS.pirate.atlantis = 0.5; EFFECTIVENESS.ball.atlantis = 0.5;
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -556,6 +562,23 @@ BIG_MOVES.pirate = [
   ['walktheplank', 'Walk the Plank', 'curse', 'The foe team wobbles on the plank and gets slower (sometimes).'],
 ];
 /* ==== end of T40b pirate ==== */
+/* ==== T41 atlantis ==== */
+// Atlantis creatures are the Sunken City's old guardians: jars, statues and tiles that woke up when the city began to glow.
+Object.assign(MOVES, {
+  jarbonk: mv('Jar Bonk', 'atlantis', 40, 1),
+  tiletoss: mv('Tile Toss', 'atlantis', 80, 0.85),
+  runeglow: mv('Rune Glow', 'atlantis', 50, 1, { priority: 1 }),
+  stoneroar: mv('Stone Roar', 'atlantis', 0, 1, { fx: { kind: 'lower', stat: 'atk' } }),
+  ancientecho: mv('Ancient Echo', 'atlantis', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
+  sunkenbell: mv('Sunken Bell', 'atlantis', 90, 0.9, { fx: { kind: 'flinch', chance: 0.25 }, sig: true }),
+  mosaicstorm: mv('Mosaic Storm', 'atlantis', 30, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+});
+BIG_MOVES.atlantis = [
+  ['runeward', 'Rune Ward', 'shield', 'The old runes glow! Whole team takes less damage for 3 turns. You rest.'],
+  ['citywakes', 'The City Wakes', 'field', 'The whole Sunken City wakes up! Atlantis moves are stronger for 5 turns. Foes too!'],
+  ['lastlight', 'Last Light', 'lastword', 'One last bright glow, only when you are almost out of HP!'],
+];
+/* ==== end of T41 atlantis ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -671,6 +694,7 @@ T1.ninja = 'leafstar'; T2.ninja = 'shadowstrike'; T3.ninja = 'sneakstep'; T4.nin
 T1.racer = 'wheelspin'; T2.racer = 'rampjump'; T3.racer = 'zoomdash'; T4.racer = 'revup'; // T40c
 T1.tiny = 'teenytap'; T2.tiny = 'mightymite'; T3.tiny = 'tinysteps'; T4.tiny = 'tuckaway'; // T40a
 T1.pirate = 'hookswipe'; T2.pirate = 'cannonball'; T3.pirate = 'swashbuckle'; T4.pirate = 'spyglass'; // T40b
+T1.atlantis = 'jarbonk'; T2.atlantis = 'tiletoss'; T3.atlantis = 'runeglow'; T4.atlantis = 'stoneroar'; // T41
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2278,6 +2302,46 @@ export const SPECIES = {
     model: { shape: 'barrelpus', scale: 1.0, body: 0x9a5ad8, accent: 0xb07a3a, dark: 0x4a2a6a, belly: 0xf0d0ff, extras: [] },
   },
   /* ==== end of T40b pirate ==== */
+  /* ==== T41 atlantis ==== */
+  jarling: {
+    name: 'Jarling', type: 'atlantis', desc: 'A shy little creature who lives in a clay jar and peeks over the rim. It only comes out when nobody is looking.',
+    base: { hp: 55, atk: 40, def: 70, spd: 40 }, baseXp: 64, catchRate: 0.45, learn: L('atlantis', 'water'),
+    evolve: { level: 26, into: 'grandurnling' },
+    model: { shape: 'urn', scale: 0.8, body: 0xc4683f, accent: 0x3ab8b4, dark: 0x6a3420, belly: 0xffe2b0, extras: [] },
+  },
+  grandurnling: {
+    name: 'Grand Urnling', type: 'atlantis', desc: 'A tall painted vase with two handle arms. It guards the old market and hums an old song.',
+    base: { hp: 90, atk: 65, def: 110, spd: 50 }, baseXp: 165, catchRate: 0.12, learn: L('atlantis', 'water', [[30, 'ancientecho']]),
+    model: { shape: 'urn', scale: 1.2, body: 0xd4784a, accent: 0x3ae0d0, dark: 0x5a2a1a, belly: 0xffe2b0, extras: ['tall'] },
+  },
+  statuecub: {
+    name: 'Statuecub', type: 'atlantis', desc: 'A little stone lion that stepped down from its pillar. Its eyes glow teal when it is happy.',
+    base: { hp: 50, atk: 65, def: 60, spd: 50 }, baseXp: 64, catchRate: 0.45, learn: L('atlantis', 'rock'),
+    evolve: { level: 28, into: 'guardlion' },
+    model: { shape: 'stonelion', scale: 0.8, body: 0xc8bea4, accent: 0x7a7660, dark: 0x6a6652, belly: 0xe8e0c8, extras: [] },
+  },
+  guardlion: {
+    name: 'Guardlion', type: 'atlantis', desc: 'The great guardian lion of the palace. Its mane is carved like stone waves. Some of them let you ride!',
+    base: { hp: 95, atk: 110, def: 95, spd: 70 }, baseXp: 170, catchRate: 0.12, learn: L('atlantis', 'rock', [[32, 'sunkenbell']]),
+    model: { shape: 'stonelion', scale: 1.3, body: 0xd8cfb4, accent: 0x3ad8c8, dark: 0x8a8670, belly: 0xece4cc, extras: ['mane'] },
+  },
+  tilesnek: {
+    name: 'Tilesnek', type: 'atlantis', desc: 'A little snake made of loose mosaic tiles. The tiles wiggle apart a tiny bit when it is curious.',
+    base: { hp: 45, atk: 60, def: 50, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('atlantis', 'metal'),
+    evolve: { level: 27, into: 'mosaicoil' },
+    model: { shape: 'tilesnake', scale: 1.15, body: 0x3ab8b4, accent: 0xf2d27a, dark: 0x2a6a78, belly: 0xf6efd8, extras: [] },
+  },
+  mosaicoil: {
+    name: 'Mosaicoil', type: 'atlantis', desc: 'A long coil of shiny tiles. When it rattles, the tiles flash like a whole mosaic floor waking up.',
+    base: { hp: 75, atk: 95, def: 70, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('atlantis', 'metal', [[30, 'mosaicstorm']]),
+    model: { shape: 'tilesnake', scale: 1.5, body: 0x2aa0c8, accent: 0xff9ad0, dark: 0x1e5a8a, belly: 0xfff0b0, extras: ['long'] },
+  },
+  runestone: {
+    name: 'Runestone', type: 'atlantis', desc: 'A floating stone with a glowing mark. Nobody knows what the mark says, but it hums when you are near.',
+    base: { hp: 70, atk: 80, def: 80, spd: 60 }, baseXp: 110, catchRate: 0.25, learn: L('atlantis', 'light'), floats: true,
+    model: { shape: 'runestone', scale: 1.0, body: 0x8a9aa6, accent: 0x5af0e0, dark: 0x4a5a66, belly: 0xc0d0d8, extras: [] },
+  },
+  /* ==== end of T41 atlantis ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];

@@ -209,6 +209,13 @@ const SOUNDS = {
   'fx:pirate': () => { drum(96, 0, 0.3); noise({ freq: 1500, len: 0.1, vol: 0.14, q: 0.7 }); },
   cannonboom: () => { drum(70, 0, 0.45); drum(52, 0.07, 0.4); noise({ freq: 700, len: 0.35, vol: 0.28, q: 0.5 }); },
   seasplash: () => { noise({ freq: 2200, len: 0.35, vol: 0.2, q: 0.6 }); noise({ at: 0.08, freq: 900, len: 0.4, vol: 0.18, q: 0.5 }); tone(300, { len: 0.2, vol: 0.08, slide: -180 }); },
+  // T41 atlantis: a soft low bell with a shimmer; the glowfish sounds (a pling when one is caught, a rising chime when a lantern lights, a bubbly kick, a lunge whoosh, a wobbling jar).
+  'fx:atlantis': () => { tone(196, { len: 0.4, vol: 0.18, slide: -10 }); tone(392, { at: 0.02, len: 0.3, vol: 0.1 }); tone(1176, { at: 0.08, len: 0.25, type: 'triangle', vol: 0.05 }); },
+  atcatch: () => { tone(880, { len: 0.09, type: 'triangle', vol: 0.16 }); tone(1320, { at: 0.07, len: 0.14, type: 'triangle', vol: 0.14 }); },
+  atlight: () => { [392, 494, 587, 784].forEach((f, i) => tone(f, { at: i * 0.09, len: 0.4, vol: 0.14 })); tone(98, { len: 0.7, vol: 0.12 }); },
+  atkick: () => { noise({ freq: 700, len: 0.18, vol: 0.12, q: 0.5 }); tone(260, { len: 0.18, vol: 0.06, slide: 140 }); },
+  atlunge: () => { noise({ freq: 1800, len: 0.14, vol: 0.14, q: 0.8 }); tone(420, { len: 0.12, type: 'triangle', vol: 0.06, slide: -250 }); },
+  atwobble: () => { tone(300, { len: 0.1, vol: 0.1, slide: 40 }); tone(330, { at: 0.12, len: 0.1, vol: 0.1, slide: -40 }); tone(300, { at: 0.24, len: 0.1, vol: 0.1, slide: 40 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T43 funfair: a little organ arpeggio for attacks; a balloon pop, a gold ring ding, a bumper car honk, a coaster chain click, the
   // golden ticket jingle and a quiet fair tune (the live part plays it every few seconds while the fair is awake).

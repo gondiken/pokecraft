@@ -21,6 +21,7 @@ const WOOL_TYPES = [
   'tiny', 'pirate', 'racer', 'ball', // wave 14 (T40): ids 140-143
   'funfair', // wave 15 (T43): id 224
   'surprise', // wave 15 (T44): id 235
+  'atlantis', // wave 15 (T41): id 204
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -35,6 +36,7 @@ const WOOL_RGB = {
   tiny: [230, 192, 138], pirate: [200, 90, 80], racer: [255, 150, 60], ball: [120, 190, 255],
   funfair: [255, 150, 200],
   surprise: [248, 168, 58],
+  atlantis: [70, 170, 170], // T41
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -83,6 +85,8 @@ const MORE_TILES = [
   'FF_FLOOR_A', 'FF_FLOOR_B', 'FF_BUMPER_FLOOR', 'FF_RAIL_TOP', 'FF_RAIL_SIDE', 'FF_TRAMP_TOP', 'FF_TRAMP_SIDE', 'FF_DECK', 'FF_RAIL', 'FF_LATTICE',
   'FF_MARQUEE', 'FF_STRIPE', 'FF_STAGE',
   /* ==== end of T43 funfair tiles ==== */
+  // T41 Atlantis (wave 15): city bricks, mosaic floor, column (side / top), clay jar (side / top), district lantern (dark / lit), glass dome, glowing rim coral, small city lamp (dark / lit)
+  'AT_BRICK', 'AT_MOSAIC', 'AT_COLUMN', 'AT_COLUMN_TOP', 'AT_JAR', 'AT_JAR_TOP', 'AT_LANTERN_OFF', 'AT_LANTERN_ON', 'AT_DOME', 'AT_RIM_CORAL', 'AT_LAMP_OFF', 'AT_LAMP_ON',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -160,10 +164,13 @@ export const B = {
   // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
   FAIR_FLOOR: 225, BUMPER_FLOOR: 226, BUMPER_RAIL: 227, TRAMPOLINE: 228, CAROUSEL_DECK: 229, COASTER_RAIL: 230, COASTER_SUPPORT: 231,
   MARQUEE: 232, CANDY_STRIPE: 233, STAR_STAGE: 234,
+  // 204-214: T41, Atlantis (204 = its wool; none placeable, only in the Pirate Seas' crater). The lit lantern and lamp are drawn with setLive when a district is lit.
+  AT_BRICK: 205, AT_MOSAIC: 206, AT_COLUMN: 207, AT_JAR: 208, AT_LANTERN_OFF: 209, AT_LANTERN_ON: 210, AT_DOME: 211, AT_RIM_CORAL: 212, AT_LAMP_OFF: 213, AT_LAMP_ON: 214,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
 const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, camo: 55, cyber: 56, cozy: 68, treasure: 69, food: 79, squad: 80, dream: 81, parkour: 82, ninja: 113, tiny: 140, pirate: 141, racer: 142, ball: 143, funfair: 224, surprise: 235 };
+Object.assign(WOOL_ID_OVERRIDE, { atlantis: 204 }); // T41
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -386,6 +393,20 @@ BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
   BLOCKS[B.BALL_PIT] = { name: 'Ball Pit', ...all(T.SU_BALLS), bounce: 3, ...fx, wallText: 'A ball pit! Jump to bob up and down.' };
   BLOCKS[B.RIBBON] = { name: 'Ribbon', ...all(T.SU_RIBBON), glow: true, noLight: true, ...fx, wallText: 'A ribbon on the Big Gift. Win a golden bow to untie it!' };
 }
+// T41 Atlantis blocks (none can be placed, all `fixed`). The lit lantern, lamp and rim coral glow; the glow lights nothing around them (the city's light is the fish).
+{
+  const CITY = 'The Sunken City is part of the picture. It is too old to break!';
+  BLOCKS[B.AT_BRICK] = { name: 'City Brick', ...all(T.AT_BRICK), fixed: true, wallText: CITY };
+  BLOCKS[B.AT_MOSAIC] = { name: 'Mosaic Floor', ...all(T.AT_MOSAIC), fixed: true, wallText: CITY };
+  BLOCKS[B.AT_COLUMN] = { name: 'City Column', top: T.AT_COLUMN_TOP, side: T.AT_COLUMN, bottom: T.AT_COLUMN_TOP, fixed: true, wallText: CITY };
+  BLOCKS[B.AT_JAR] = { name: 'Clay Jar', top: T.AT_JAR_TOP, side: T.AT_JAR, bottom: T.AT_JAR_TOP, fixed: true, wallText: 'A clay jar. Something shy is inside! Bump it and get ready.' };
+  BLOCKS[B.AT_LANTERN_OFF] = { name: 'District Lantern', ...all(T.AT_LANTERN_OFF), fixed: true, wallText: 'A dark lantern. Swim into it with glowfish in your net!' };
+  BLOCKS[B.AT_LANTERN_ON] = { name: 'District Lantern', ...all(T.AT_LANTERN_ON), glow: true, noLight: true, fixed: true, wallText: 'This lantern is lit. The district is bright again!' };
+  BLOCKS[B.AT_DOME] = { name: 'Dome Glass', ...all(T.AT_DOME), fixed: true, wallText: 'The palace dome. The Queen keeps the sea out!' };
+  BLOCKS[B.AT_RIM_CORAL] = { name: 'Glow Coral', ...all(T.AT_RIM_CORAL), glow: true, noLight: true, fixed: true, wallText: CITY };
+  BLOCKS[B.AT_LAMP_OFF] = { name: 'City Lamp', ...all(T.AT_LAMP_OFF), fixed: true, wallText: CITY };
+  BLOCKS[B.AT_LAMP_ON] = { name: 'City Lamp', ...all(T.AT_LAMP_ON), glow: true, noLight: true, fixed: true, wallText: CITY };
+}
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
@@ -407,6 +428,7 @@ PLACEABLE.push(...MISSION_BLOCKS); // T29
 
 // Blocks you can see through, so they don't hide the faces of their neighbours.
 const SEE_THROUGH = new Set([B.AIR, B.WATER, B.LEAVES, B.PINE_LEAVES, B.FLOWER_BUSH, B.GLASS, B.MAPLE_LEAVES, B.HOUSE_PROP, B.COASTER_SUPPORT]);
+SEE_THROUGH.add(B.AT_DOME); // T41: the palace dome
 export const isOccluder = id => !SEE_THROUGH.has(id);
 // Blocks the player and creatures collide with.
 export const isSolid = id => id !== B.AIR && id !== B.WATER;
@@ -1079,6 +1101,41 @@ export function drawAtlas() {
       const dx = x % 8, dy = y % 8;
       if (dx === dy || dx + dy === 7 || dx === 0 || dy === 0) put(T.FF_LATTICE, x, y, shf([250, 250, 252], 0.04));
     }
+  }
+  { // T41 Atlantis blocks (own random numbers, so no older tile changes)
+    const r10 = mulberry32(4141 + 41);
+    const sh10 = (col, a) => shade(col, 1 + (r10() - 0.5) * a);
+    each((x, y) => {
+      // AT_BRICK: warm sandstone bricks with dark seams and a little green moss
+      const row = Math.floor(y / 4), seam = y % 4 === 0 || (x + (row % 2) * 4) % 8 === 0;
+      put(T.AT_BRICK, x, y, seam ? [96, 84, 66] : (x * 3 + y * 7) % 23 === 0 ? [90, 150, 110] : sh10([214, 190, 140], 0.16));
+      // AT_MOSAIC: little teal, cream and gold tiles in a pattern with dark grout
+      const tx = x % 4, ty = y % 4, cell = (Math.floor(x / 4) + Math.floor(y / 4)) % 3;
+      put(T.AT_MOSAIC, x, y, tx === 0 || ty === 0 ? [60, 74, 84] : cell === 0 ? sh10([60, 170, 176], 0.12) : cell === 1 ? sh10([240, 226, 190], 0.1) : sh10([232, 184, 70], 0.1));
+      // AT_COLUMN: pale stone with vertical fluting, a darker band top and bottom; top: a ring
+      put(T.AT_COLUMN, x, y, y < 2 || y > 13 ? sh10([150, 138, 112], 0.1) : x % 4 === 0 ? sh10([176, 164, 136], 0.1) : sh10([226, 216, 190], 0.1));
+      const dd = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+      put(T.AT_COLUMN_TOP, x, y, dd > 6.5 ? sh10([150, 138, 112], 0.1) : Math.floor(dd) % 2 ? sh10([226, 216, 190], 0.1) : sh10([200, 188, 160], 0.1));
+      // AT_JAR: terracotta with two painted teal bands and a wavy line; top: the dark mouth of the jar
+      const wave = Math.abs(y - (8 + Math.sin(x * 0.9) * 1.5)) < 0.8;
+      put(T.AT_JAR, x, y, y === 3 || y === 4 || y === 12 ? sh10([60, 170, 176], 0.08) : wave ? [250, 226, 150] : sh10([196, 104, 64], 0.16));
+      const dj = Math.hypot(x - 7.5, y - 7.5);
+      put(T.AT_JAR_TOP, x, y, dj < 3.6 ? [40, 30, 36] : dj < 5.2 ? sh10([150, 70, 44], 0.1) : sh10([196, 104, 64], 0.14));
+      // AT_LANTERN_OFF / ON: a glass lantern in a brass frame; dark = grey-blue glass, lit = warm gold light
+      const frame = x < 2 || x > 13 || y < 2 || y > 13 || x === 7 || x === 8 || y === 7 || y === 8;
+      put(T.AT_LANTERN_OFF, x, y, frame ? sh10([150, 120, 60], 0.12) : sh10([58, 86, 104], 0.12));
+      const glowD = Math.hypot(x - 7.5, y - 7.5);
+      put(T.AT_LANTERN_ON, x, y, frame ? sh10([232, 184, 70], 0.1) : glowD < 3 ? [255, 252, 220] : glowD < 6 ? [255, 228, 130] : [255, 190, 90]);
+      // AT_DOME: pale blue glass with a white shine line and thin frame bars
+      put(T.AT_DOME, x, y, x === 0 || y === 0 ? [236, 250, 255] : (x + y) % 11 === 0 ? [255, 255, 255] : sh10([150, 214, 230], 0.08));
+      // AT_RIM_CORAL: glowing pink-teal coral branches
+      const br2 = (Math.abs(x - 3) < 1.2 && y > 4) || (Math.abs(x - 8) < 1.5 && y > 1) || (Math.abs(x - 12.5) < 1.2 && y > 6) || (y === 5 && x > 2 && x < 9) || (y === 9 && x > 8 && x < 13);
+      put(T.AT_RIM_CORAL, x, y, br2 ? ((x + y) % 3 === 0 ? sh10([140, 255, 230], 0.1) : sh10([255, 150, 210], 0.1)) : sh10([40, 130, 140], 0.2));
+      // AT_LAMP_OFF / ON: a small brass post lamp; lit has a bright core
+      const core = Math.hypot(x - 7.5, y - 7.5);
+      put(T.AT_LAMP_OFF, x, y, core < 4 ? sh10([70, 96, 112], 0.1) : sh10([140, 112, 60], 0.14));
+      put(T.AT_LAMP_ON, x, y, core < 2.5 ? [255, 255, 235] : core < 4.5 ? [255, 232, 140] : sh10([232, 176, 70], 0.1));
+    });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
     const r4 = mulberry32(3535);
