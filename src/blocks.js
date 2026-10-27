@@ -84,7 +84,7 @@ const MORE_TILES = [
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
   // T42 portal (wave 15): the Portal House in the Swirl: lilac wall (top), swirl floor, white swirl pad, orange rim, roof (top / side), rail, shut door
-  'PO_WALL', 'PO_WALL_TOP', 'PO_FLOOR', 'PO_PANEL', 'PO_RIM', 'PO_ROOF', 'PO_ROOF_SIDE', 'PO_RAIL', 'PO_SHUT',
+  'PO_WALL', 'PO_WALL_TOP', 'PO_FLOOR', 'PO_PANEL', 'PO_RIM', 'PO_ROOF', 'PO_ROOF_SIDE', 'PO_RAIL', 'PO_SHUT', 'PO_PEACH',
   /* ==== T43 funfair tiles ==== */
   // floor (top / side), bumper floor, bumper rail (top / side), trampoline (top / side), carousel deck, coaster rail, white lattice, marquee bulbs,
   // red and white stripe, star stage
@@ -169,8 +169,8 @@ export const B = {
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
-  // 215-223: T42, the Portal House in the Swirl (215 is the portal wool; none placeable, all fixed; 223 is reserved). PO_RIM and PO_RAIL glow without lighting anything.
-  PO_WALL: 216, PO_FLOOR: 217, PO_PANEL: 218, PO_RIM: 219, PO_ROOF: 220, PO_RAIL: 221, PO_SHUT: 222,
+  // 215-223: T42, the Portal House in the Swirl (215 is the portal wool; none placeable, all fixed). 223 = the peach pad (owner 2026-10-27: your own orange swirl).
+  PO_WALL: 216, PO_FLOOR: 217, PO_PANEL: 218, PO_RIM: 219, PO_ROOF: 220, PO_RAIL: 221, PO_SHUT: 222, PO_PEACH: 223,
   // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
   FAIR_FLOOR: 225, BUMPER_FLOOR: 226, BUMPER_RAIL: 227, TRAMPOLINE: 228, CAROUSEL_DECK: 229, COASTER_RAIL: 230, COASTER_SUPPORT: 231,
   MARQUEE: 232, CANDY_STRIPE: 233, STAR_STAGE: 234,
@@ -381,16 +381,18 @@ BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, sid
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
-// T42 Portal House blocks (none can be placed, all fixed). The rim and the rail glow without lighting anything; PO_SHUT is a hall door
-// that opens (setLive -> air) when the room before it is done.
+// T42 Portal House blocks (none can be placed, all fixed). None of them glows (owner 2026-10-27: a glowing block gives its chunk a second
+// mesh, one more draw call; the Swirl is bright everywhere anyway). PO_SHUT is a hall door that opens (setLive -> air) when the room
+// before it is done; PO_PEACH is the peach pad your own orange swirl sticks to.
 {
   const HOUSE = 'This is the Portal House. Too magic to break!';
   BLOCKS[B.PO_WALL] = { name: 'House Wall', top: T.PO_WALL_TOP, side: T.PO_WALL, bottom: T.PO_WALL, fixed: true, wallText: HOUSE };
   BLOCKS[B.PO_FLOOR] = { name: 'Swirl Floor', ...all(T.PO_FLOOR), fixed: true, wallText: HOUSE };
   BLOCKS[B.PO_PANEL] = { name: 'Swirl Pad', ...all(T.PO_PANEL), fixed: true, wallText: 'A white pad! Tap it to stick your swirl here.' };
-  BLOCKS[B.PO_RIM] = { name: 'Orange Rim', ...all(T.PO_RIM), glow: true, noLight: true, fixed: true, wallText: 'The orange swirl is joined to yours!' };
+  BLOCKS[B.PO_RIM] = { name: 'Orange Rim', ...all(T.PO_RIM), fixed: true, wallText: 'The orange swirl is joined to yours!' };
   BLOCKS[B.PO_ROOF] = { name: 'House Roof', top: T.PO_ROOF, side: T.PO_ROOF_SIDE, bottom: T.PO_ROOF_SIDE, fixed: true, wallText: HOUSE };
-  BLOCKS[B.PO_RAIL] = { name: 'Swirl Rail', ...all(T.PO_RAIL), glow: true, noLight: true, fixed: true, wallText: 'The orange swirl slides along this rail.' };
+  BLOCKS[B.PO_RAIL] = { name: 'Swirl Rail', ...all(T.PO_RAIL), fixed: true, wallText: 'Swirls slide along this rail.' };
+  BLOCKS[B.PO_PEACH] = { name: 'Peach Pad', ...all(T.PO_PEACH), fixed: true, wallText: 'A peach pad! Tap it to stick your orange swirl here.' };
   BLOCKS[B.PO_SHUT] = { name: 'Shut Door', ...all(T.PO_SHUT), fixed: true, wallText: 'Finish the room before it to open this door!' };
 }
 // T45 Sketchbook blocks (none placeable, all fixed). The ink is drawn only with setLive (the pencil draws a line as you follow its tip).
@@ -1201,6 +1203,7 @@ export function drawAtlas() {
       put(T.PO_RAIL, x, y, y < 3 || y > 12 ? [255, 150, 40] : (x + y) % 4 === 0 ? [255, 235, 190] : [255, 190, 90]);
       const knob = Math.hypot(x - 11, y - 8) < 1.4;
       put(T.PO_SHUT, x, y, knob ? [255, 214, 90] : edge15(x, y) || x === 7 || x === 8 ? [92, 64, 170] : sh15([150, 118, 232], 0.08));
+      put(T.PO_PEACH, x, y, edge15(x, y) ? [236, 150, 90] : d > 5 && d < 6.4 ? [240, 130, 50] : d < 1.5 ? [255, 236, 210] : sh15([255, 204, 160], 0.04)); // peach, an orange ring
     });
   }
   { // T35 dream blocks (own random numbers). Bounce Block: a trampoline top (rings of pink and cyan round a white middle), striped sides.
