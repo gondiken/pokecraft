@@ -21,6 +21,7 @@ export class Player {
     this.landed = false;    // a gliding sky rider reached the floor
     this.onBounce = false;  // T35: standing on a Bounce Block (for the hint toast)
     this.bounced = false;   // T35: launched by a Bounce Block this frame (main.js plays 'boing')
+    this.trampolined = false; this.trampH = 0; // T43: launched by a Funfair trampoline this frame (main.js plays 'boing'); the height of the last bounce
     this._eye = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
   }
@@ -174,6 +175,7 @@ export class Player {
     if (len > 0) { wx /= len; wz /= len; }
 
     if (this.carry) { // T40: on a Mover (a toy train, a bottle cap, a cannon arc): it moves you, a fresh jump press gets you off
+      this.carry.steer?.(wx, wz, len > 0 ? analog : 0, k.Space); // T43: a ride may read the stick and the Jump key (the bumper car, the carousel seat)
       const w = this.carry.where();
       this.pos.set(w.x, w.y, w.z); this.vel.set(0, 0, 0); this.onGround = true;
       if (this.carry.wantsLeave(k.Space)) this.carry.leave(true);
@@ -219,6 +221,12 @@ export class Player {
       const under = this.onGround ? BLOCKS[this.world.get(Math.floor(this.pos.x), Math.floor(this.pos.y - 0.05), Math.floor(this.pos.z))] : null;
       this.onBounce = !!under?.bounce;
       if (under?.bounce && k.Space) { this.vel.y = Math.sqrt(2 * 28 * g * under.bounce); this.bounced = true; } // boing!
+      // T43 (Funfair): every landing on a block with `trampoline` launches you again. Hold Jump to bounce higher (+step), let go to come down (-drop).
+      if (this.onGround) {
+        const tr = under?.trampoline;
+        if (tr) { this.trampH = Math.min(tr.max, Math.max(tr.min, (this.trampH || 0) + (k.Space ? tr.step : -tr.drop))); this.vel.y = Math.sqrt(2 * 28 * g * this.trampH); this.trampolined = true; }
+        else this.trampH = 0;
+      }
     }
 
     this.onGround = false;

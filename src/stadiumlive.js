@@ -185,7 +185,9 @@ export class StadiumLive {
   next(st) { return st.crew.length ? `Battle ${st.crew.map(i => bossOf('stadium').crew[i].name.split(' ').at(-1)).join(' and ')}!` : 'Battle the Captain!'; }
   showScore(pl) {
     const on = b => pl.x > b.x0 && pl.x < b.x1 && pl.z > b.z0 && pl.z < b.z1;
-    this.game.ui.setScore?.(on(this.part.pitchBox) || on(this.part.courtBox) ? this.scoreText() : null);
+    const show = on(this.part.pitchBox) || on(this.part.courtBox);
+    if (show || this.scoreOn) this.game.ui.setScore?.(show ? this.scoreText() : null); // (T43: only clear what this part set; the Funfair has a chip of its own)
+    this.scoreOn = show;
   }
 
   noise(b, name) {

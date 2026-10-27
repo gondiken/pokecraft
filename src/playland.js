@@ -7,6 +7,7 @@ import { PICTURE_WORLDS } from './pictureworlds.js';
 import { kit, flatLand, buildWayBack, placeBoss } from './picturelands.js';
 import { buildStadium, STADIUM_SPAWNS } from './stadium.js'; // T40d
 import { buildRaceTrack, RACER_SPAWNS, RACE_WALK } from './racetrack.js'; // T40c
+import { buildFunfair, FUNFAIR_SPAWNS, FAIR_WALK } from './funfair.js'; // T43
 
 export const PLAYLAND = { size: [224, 224], y: 10 };       // ground top y 10 (you stand at 11)
 export const HUB = { x0: 8, x1: 215, z0: 96, z1: 131 };     // the promenade across the middle: base-owned
@@ -25,12 +26,12 @@ const fill = (world, x0, x1, z0, z1, y, id) => { for (let x = x0; x <= x1; x++) 
 export const PLAYLAND_PARTS = {
   race: { build: buildRaceTrack, spawns: RACER_SPAWNS, walk: RACE_WALK }, // T40c
   stadium: { build: buildStadium, spawns: STADIUM_SPAWNS, walk: [B.PITCH_DARK, B.PITCH_LIGHT, B.PITCH_LINE] }, // T40d: the Ball Stadium (stadium.js)
-  fair: null,                                  // wave 15
+  fair: { build: buildFunfair, spawns: FUNFAIR_SPAWNS, walk: FAIR_WALK }, // T43: the Funfair (funfair.js)
 };
 // The realm's wild creature tables by zone (read once by REALMS.playland; creatures read them through world.realmBiome).
 export function playlandSpawns() {
   const out = { hub: [], fair: [], cave: [] };
-  for (const k of ['race', 'stadium']) out[k] = PLAYLAND_PARTS[k]?.spawns ?? [];
+  for (const k of Object.keys(PLAYLAND_PARTS)) out[k] = PLAYLAND_PARTS[k]?.spawns ?? []; // T43: every part, not just the first two
   return out;
 }
 export function zoneAt(x, z) {
@@ -55,10 +56,13 @@ export function playLand(world, def) {
   }
   // the ways back (the door's front looks towards its zone, so you arrive in the hub looking at the gap in the hedge)
   for (const pw of open) { const g = ZONES[pw.id].gate; buildWayBack(world, pw.id, { x: g.x, y, z: g.z, facing: g.facing }); }
-  // the Funfair gate is closed until wave 15: a sign of planks
-  const fg = ZONES.fair.gate;
-  for (let x = fg.x - 2; x <= fg.x + 2; x++) for (let k = 1; k <= 3; k++) put(world, x, y + k, fg.z, B.PLANKS);
-  world.keeps.push({ name: 'fair-sign', protect: [{ x0: fg.x - 2, x1: fg.x + 2, y0: y + 1, y1: y + 3, z0: fg.z, z1: fg.z }], wallText: 'Coming soon!' });
+  // a gate without a part is closed: a sign of planks (T43: the Funfair has its part now, so it is open; a future gate starts as a sign)
+  for (const [k, zn] of Object.entries(ZONES)) {
+    if (PLAYLAND_PARTS[k]) continue;
+    const fg = zn.gate;
+    for (let x = fg.x - 2; x <= fg.x + 2; x++) for (let n = 1; n <= 3; n++) put(world, x, y + n, fg.z, B.PLANKS);
+    world.keeps.push({ name: `${k}-sign`, protect: [{ x0: fg.x - 2, x1: fg.x + 2, y0: y + 1, y1: y + 3, z0: fg.z, z1: fg.z }], wallText: 'Coming soon!' });
+  }
   // the zone parts, each inside its own box
   for (const [k, part] of Object.entries(PLAYLAND_PARTS)) part?.build(world, ZONES[k], def);
   world.extraWalk = Object.values(PLAYLAND_PARTS).flatMap(part => part?.walk ?? []); // a part may name blocks wild creatures walk on in its zone

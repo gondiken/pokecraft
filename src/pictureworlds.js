@@ -14,13 +14,28 @@ function drawHousePicture(g, n = 128) {
   g.fillStyle = '#f2a6c0'; g.beginPath(); g.arc(88 * k, 54 * k, 6 * k, 0, 7); g.arc(106 * k, 54 * k, 6 * k, 0, 7); g.fill();
   r(80, 68, 6, 6, '#16121a'); r(92, 68, 6, 6, '#16121a'); r(82, 69, 2, 2, '#fff'); r(94, 69, 2, 2, '#fff'); r(86, 76, 6, 4, '#f08aa0');
 }
+// T43: the picture in the Funfair's frame: a blue sky, a pink-and-cream Ferris wheel behind, a carousel under a red-and-white striped canopy,
+// string lights and a gold ticket (128 px canvas).
+function drawFairPicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#bfe6ff'); r(0, 96, 128, 32, '#ffd6ec'); for (let x = 0; x < 128; x += 16) r(x, 96, 8, 32, '#fff2d0');
+  g.strokeStyle = '#ff8ac8'; g.lineWidth = 3 * k; g.beginPath(); g.arc(88 * k, 52 * k, 34 * k, 0, 7); g.stroke();
+  g.lineWidth = 1.5 * k; for (let a = 0; a < 8; a++) { g.beginPath(); g.moveTo(88 * k, 52 * k); g.lineTo((88 + Math.cos(a * 0.785) * 34) * k, (52 + Math.sin(a * 0.785) * 34) * k); g.stroke(); }
+  for (let a = 0; a < 8; a++) r(88 + Math.cos(a * 0.785) * 34 - 3, 52 + Math.sin(a * 0.785) * 34 - 3, 6, 6, a % 2 ? '#ffe27a' : '#8ad8ff');
+  r(26, 54, 3, 44, '#ffd23a'); r(60, 54, 3, 44, '#ffd23a'); r(14, 96, 62, 6, '#e84a6a');
+  for (let i = 0; i < 6; i++) { r(10 + i * 11, 44, 11, 10, i % 2 ? '#fff6e6' : '#e03a4a'); }
+  r(6, 40, 70, 5, '#ffd23a');
+  for (let i = 0; i < 7; i++) r(8 + i * 11, 46, 4, 4, '#ffe27a');
+  g.fillStyle = '#fff2e0'; g.beginPath(); g.ellipse(44 * k, 84 * k, 9 * k, 7 * k, 0, 0, 7); g.fill(); g.fillRect(48 * k, 74 * k, 6 * k, 8 * k); r(34, 90, 3, 8, '#fff2e0'); r(50, 90, 3, 8, '#fff2e0');
+  r(102, 96, 20, 12, '#fff2a0'); r(102, 96, 20, 3, '#e84a6a'); r(108, 100, 8, 5, '#ffd23a');
+}
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
   { id: 'race', name: 'Race Track', emoji: '🏎️', frame: [0xd83a3a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' }, // place: the world it shares (owner 2026-10-26: the frames say so)
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },
   { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: false, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
-  { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: false },
+  { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: true, realm: 'playland', place: 'Playland', picture: drawFairPicture }, // T43: the third Playland world
   { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: false },
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'secret1', name: 'Secret World', emoji: '❓', frame: [0xb8a0f0, 0xf8e8c8], ready: false, secret: true },

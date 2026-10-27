@@ -101,6 +101,15 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.54, 0.025, 0.54, 0x1a1a1a, 0, 0.35, 0); // the eye patch's strap
     box(head, 0.14, 0.13, 0.03, 0x1a1a1a, -0.11, 0.28, 0.268);
   }
+  if (look === 'fair') { // T43: Merry Mae's red-and-white striped straw boater (a flat brim, a stripy crown, a red band) with a pink flower
+    box(head, 0.7, 0.05, 0.7, 0xf2dc9a, 0, 0.5, 0);
+    for (const x of [-0.18, 0, 0.18]) box(head, 0.09, 0.2, 0.46, x === 0 ? 0xf6efe0 : 0xe03a4a, x, 0.62, 0);
+    box(head, 0.48, 0.2, 0.09, 0xe03a4a, 0, 0.62, 0.18);
+    box(head, 0.48, 0.2, 0.09, 0xf6efe0, 0, 0.62, -0.18);
+    box(head, 0.5, 0.05, 0.5, 0xe03a4a, 0, 0.55, 0);
+    box(head, 0.12, 0.12, 0.05, 0xff7ac0, 0.2, 0.58, 0.27);
+    box(head, 0.05, 0.05, 0.06, 0xffe94a, 0.2, 0.58, 0.28);
+  }
   if (look === 'star') {
     const y = hat ? 0.82 : 0.62;
     box(head, 0.24, 0.08, 0.06, 0xffe94a, 0, y, 0);
@@ -268,6 +277,8 @@ export class NpcManager {
         if (at) this.add(new Npc({ kind: 'crew', name: c.name, colors: c.colors, pos: at.pos, heading: at.heading, hat: c.hat, look: c.look, def: { ...c, title: `${c.name} · ${pw}`, boss: def.id, index: i } }));
       });
     }
+    // T43: people of a Picture World who only talk (Ticket Tess): world.people = [{ name, title, colors, look, hat, line, pos, heading }]
+    for (const p of world.people || []) this.add(new Npc({ kind: 'guest', name: p.name, colors: p.colors, pos: p.pos, heading: p.heading ?? 0, hat: p.hat, look: p.look, def: p }));
     if (world.realm) { // T31: no Healer Hana in a realm (losing there wakes you up, rested); T35: a realm may have its own healer
       if (world.healer) this.add(new Npc({ kind: 'healer', name: 'Healer Stella', look: 'star', colors: { shirt: 0xc8b4ff, pants: 0xffffff, hair: 0xfff0a0, skin: 0xf2d0b0 }, pos: world.healer.slice(0, 3), heading: world.healer[3] }));
       return;
