@@ -1,6 +1,6 @@
 // T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge) and a short
 // note from the Wizard. Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
-// crew: bonus battles (never a gate before the Boss). The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
+// crew: bonus battles (a gate before the Boss only where its `gate` says so: the Ball Stadium). The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
 import { PICTURE_WORLDS, pictureWorld, loadStars } from './pictureworlds.js';
 import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
@@ -17,7 +17,7 @@ export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, a
 //   intro: [lines], lose: 'said when you win', win: 'said when you lose', rematchIntro?: [lines],
 //   note: "The Wizard's note: one or two short sentences",
 //   gate?: game => null | 'what the Boss says instead of battling' (alias: ready),
-//   crew?: [{ name, colors, look?, team, intro?, line }] }   // optional helpers, 2-4 levels below the Boss; never a gate
+//   crew?: [{ name, colors, look?, team, intro?, line }] }   // helpers, 2-4 levels below the Boss; optional unless `gate` asks for them (the Ball Stadium does)
 export const BOSSES = {};
 export function addBoss(def) { BOSSES[def.id] = { ...def, title: def.title ?? `${def.name} · ${pictureWorld(def.id).name} Boss` }; }
 export const bossOf = id => BOSSES[id] ?? null;
@@ -91,10 +91,16 @@ addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in raceliv
   ],
 });
 /* ==== T40d ball ==== */
-addBoss({ // the Ball Stadium (Playland). Score 3 goals and 3 baskets first: the gate reads the saved goal keys (stadium.js goalState).
+addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 3 goals and 3 baskets: the gate reads the saved keys (stadium.js goalState).
   id: 'stadium', name: 'Captain Kickley', type: 'ball', look: 'sport',
   colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x6a3a1a, skin: 0xf0c8a0 },
-  gate: game => { const { n, need, b, bneed, done } = goalState(game); return done ? null : `Score ${need} goals and ${bneed} baskets first! Then we battle. (⚽ ${n} / ${need} · 🏀 ${b} / ${bneed})`; },
+  gate: game => { // owner 2026-10-27: Wes and Hazel are trainers before the Captain (once), the goals and baskets come every match
+    const { n, need, b, bneed, done, crew, ready } = goalState(game);
+    if (ready) return null;
+    const who = crew.map(i => BOSSES.stadium.crew[i].name).join(' and '), score = `(⚽ ${n} / ${need} · 🏀 ${b} / ${bneed})`;
+    if (done) return `Great playing! Now beat ${who}. Then we battle!`;
+    return crew.length ? `Score ${need} goals and ${bneed} baskets, and beat ${who}! Then we battle. ${score}` : `Score ${need} goals and ${bneed} baskets first! Then we battle. ${score}`;
+  },
   team: [['smashbird', 62], ['beachboomer', 63], ['strikehorn', 63], ['goalhound', 65, ['goldengoal', 'cannonroll', 'quickpass', 'teamhuddle']]],
   intro: ['Three goals and three baskets! You can really play.', "Now let's see how your team plays!"],
   rematchIntro: ['Goals and baskets again! Ready for the second half?'],
@@ -103,11 +109,11 @@ addBoss({ // the Ball Stadium (Playland). Score 3 goals and 3 baskets first: the
   note: "This stadium was built for the festival's big match. Thank you for playing it!",
   crew: [
     { name: 'Winger Wes', colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'sport',
-      team: [['fuzzchick', 61], ['sealbop', 61], ['smashbird', 62]], intro: ["I'm the fastest winger in Playland! Battle?"],
-      line: 'Run into the ball to dribble. Tap Kick! for a big shot!' },
+      team: [['fuzzchick', 61], ['sealbop', 61], ['smashbird', 62]], intro: ["I'm the fastest winger in Playland!", 'Beat me before you battle the Captain!'],
+      line: 'Run into the ball to dribble. Hold Kick! and let go when the ring is green!' },
     { name: 'Hoops Hazel', colors: { shirt: 0xf07a28, pants: 0x2a2a2a, hair: 0x1a1a1a, skin: 0xf2c79a },
-      team: [['strikehorn', 62], ['beachboomer', 62], ['goalhound', 63]], intro: ['Nothing but net! Can your team keep up?'],
-      line: 'Stand next to the ball on the court and tap Shoot!' },
+      team: [['strikehorn', 62], ['beachboomer', 62], ['goalhound', 63]], intro: ['Nothing but net!', 'Beat me before you battle the Captain!'],
+      line: 'Hold Shoot! next to the ball and let go at the top of your jump!' },
   ],
 });
 /* ==== end of T40d ball ==== */
@@ -179,7 +185,7 @@ export function createBosses(game, { startBattle, save }) {
       const { id, crew } = opts.picture;
       const def = bossOf(id), pw = pictureWorld(id);
       if (!def || !pw) return;
-      if (crew != null) { // a helper: a bonus battle, never a gate
+      if (crew != null) { // a helper: a bonus battle (the Ball Stadium's gate also counts them)
         game.beaten.push(crewKey(id, crew));
         game.cubes += BOSS.crewCubes;
         sound.play('win');

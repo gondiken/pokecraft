@@ -40,13 +40,17 @@ export const STADIUM = {
 
 export const goalKey = i => `pw:stadium:goal${i}`;   // saved in `beaten`, like the helpers' keys
 export const basketKey = i => `pw:stadium:basket${i}`;
-// Goals scored for the next match: how many, how many are needed (2 for the star, 3 for a rematch) and whether that is enough.
+const crewDone = (game, i) => game.beaten.includes(`pw:stadium:crew${i + 1}`); // pictureboss.js crewKey('stadium', i)
+// Goals scored for the next match: how many, how many are needed and whether that is enough (`done`). Owner 2026-10-27: the two
+// helpers (Winger Wes, Hoops Hazel) are trainers before the Captain: `crew` = the helpers not beaten yet (indices; beaten once,
+// kept forever, so rematches only need goals and baskets), `ready` = the Captain battles.
 export function goalState(game) {
   const again = game.stars.includes('stadium');
   const need = again ? GOALS.rematch : GOALS.first, bneed = again ? BASKETS.rematch : BASKETS.first;
   const n = [1, 2, 3].filter(i => game.beaten.includes(goalKey(i))).length;
   const b = [1, 2, 3].filter(i => game.beaten.includes(basketKey(i))).length;
-  return { n, need, b, bneed, done: n >= need && b >= bneed };
+  const crew = STADIUM.crew.map((_, i) => i).filter(i => !crewDone(game, i)), done = n >= need && b >= bneed;
+  return { n, need, b, bneed, done, crew, ready: done && !crew.length };
 }
 export const inBox = (b, p) => p.x > b.x0 && p.x < b.x1 && p.z > b.z0 && p.z < b.z1 && p.y > b.y0 && p.y < b.y1;
 

@@ -621,12 +621,15 @@ async function browserPart({ browser, base, t }) {
     g.beaten = g.beaten.filter(k => !k.startsWith('pw:stadium:')); g.beaten.push('pw:stadium:goal1');
     const pitch = read(60, 150), court = read(55, 198), off = read(58, 128);
     for (const k of ['goal2', 'goal3', 'basket1', 'basket2', 'basket3']) g.beaten.push('pw:stadium:' + k);
+    const crewLeft = read(60, 150), notGreen = !chip.classList.contains('done');
+    g.beaten.push('pw:stadium:crew1', 'pw:stadium:crew2');
     const done = read(60, 150), green = chip.classList.contains('done');
     g.beaten = keep; read(58, 128);
-    return { pitch, court, off, done, green };
+    return { pitch, court, off, done, green, crewLeft, notGreen };
   });
   t.ok(d17c.pitch === '⚽ 1/3 · 🏀 0/3' && d17c.court === d17c.pitch && d17c.off === null, `17c: on the pitch or the court the corner shows the goals and baskets ("${d17c.pitch}"), off them nothing`);
-  t.ok(d17c.done === '⚽ 3/3 · 🏀 3/3 · Battle the Captain!' && d17c.green, `17c: with 3 and 3 it says "${d17c.done}"`);
+  t.ok(d17c.crewLeft === '⚽ 3/3 · 🏀 3/3 · Battle Wes and Hazel!' && d17c.notGreen, `17c: with 3 and 3 but the helpers not beaten it says "${d17c.crewLeft}"`);
+  t.ok(d17c.done === '⚽ 3/3 · 🏀 3/3 · Battle the Captain!' && d17c.green, `17c: with 3 and 3 and both helpers beaten it says "${d17c.done}"`);
 
   /* ---- 16. The Captain ---- */
   await page.evaluate(async () => {
@@ -643,13 +646,35 @@ async function browserPart({ browser, base, t }) {
     g.bosses.talk(npc);
     return { word, inBattle: g.inBattle, name: npc.name };
   });
-  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 3 goals and 3 baskets first! Then we battle\. \(⚽ 1 \/ 3 · 🏀 0 \/ 3\)/), '16: with 1 goal the Captain says to score 3 goals and 3 baskets first (⚽ 1 / 3 · 🏀 0 / 3), no battle, the button says Talk');
+  t.ok(d16a.name === 'Captain Kickley' && d16a.word === 'Talk' && !d16a.inBattle && await said(page, /Captain Kickley: Score 3 goals and 3 baskets, and beat Winger Wes and Hoops Hazel! Then we battle\. \(⚽ 1 \/ 3 · 🏀 0 \/ 3\)/), '16: with 1 goal the Captain says to score 3 goals and 3 baskets and beat both helpers first (⚽ 1 / 3 · 🏀 0 / 3), no battle, the button says Talk');
   const guide = await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 150); g.updateGuide(); return g.ui.guideText; });
   t.ok(/Kick the ball into a goal! \(1 \/ 3\)/.test(guide || ''), `16: the guide says "${guide}"`);
+  // owner 2026-10-27: the helpers are trainers before the Captain. 3 + 3 without them: the gate names them, the guide leads to them
+  const d16h = await page.evaluate(() => {
+    const g = window.pokecraft, npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
+    g.beaten.push('pw:stadium:goal2', 'pw:stadium:goal3', 'pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3');
+    const word = g.gymLive.talkPrompt(npc)?.action;
+    g.bosses.talk(npc);
+    g.player.pos.set(58.5, 11, 150); g.updateGuide();
+    const guide = g.ui.guideText;
+    g.beaten.push('pw:stadium:crew1');
+    g.updateGuide();
+    return { word, inBattle: g.inBattle, guide, guide2: g.ui.guideText };
+  });
+  t.ok(d16h.word === 'Talk' && !d16h.inBattle && await said(page, /Captain Kickley: Great playing! Now beat Winger Wes and Hoops Hazel\. Then we battle!/) && /Battle Winger Wes!/.test(d16h.guide || '') && /Battle Hoops Hazel!/.test(d16h.guide2 || ''),
+    `16: 3 goals and 3 baskets but the helpers not beaten: no battle, the guide leads to them ("${d16h.guide}", then "${d16h.guide2}")`);
+  // a real battle with Hoops Hazel opens the Captain
+  await page.evaluate(() => { const g = window.pokecraft; g.bosses.talk(g.npcs.list.find(n => n.kind === 'crew' && n.def.boss === 'stadium' && n.def.index === 1)); });
+  await waitFor(page, () => window.pokecraft.inBattle, null, 30000);
+  await playBattle(page);
+  await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
+  const d16c = await page.evaluate(() => { const g = window.pokecraft; return { hazel: g.beaten.includes('pw:stadium:crew2') }; });
+  t.ok(d16c.hazel, '16: beating Hoops Hazel is saved (pw:stadium:crew2)');
   // a lost battle: still in Playland, healed, the goals are kept
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js');
-    g.beaten.push('pw:stadium:goal2', 'pw:stadium:goal3');
+    g.beaten = g.beaten.filter(k => !/^pw:stadium:(goal|basket)/.test(k));
+    g.beaten.push('pw:stadium:goal1', 'pw:stadium:goal2', 'pw:stadium:goal3');
     window.__gateGoals = (await import('/src/pictureboss.js')).bossOf('stadium').gate(g); // 3 goals, no baskets: the gate is still shut
     g.beaten.push('pw:stadium:basket1', 'pw:stadium:basket2', 'pw:stadium:basket3');
     g.party = [S.makeCreature('fluffin', 2)];
@@ -660,7 +685,7 @@ async function browserPart({ browser, base, t }) {
   t.ok(Math.max(...foes.levels.split(',').map(Number)) === 65 && foes.last === 'goalhound' && /goldengoal/.test(foes.moves), `16: with 3 goals and 3 baskets the Captain battles: top level 65, Goalhound last with Golden Goal (${foes.levels}; ${foes.moves})`);
   await playBattle(page);
   await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
-  const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party.every(c => c.hp > 0), keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, star: g.stars.includes('stadium'), gate3: window.__gateGoals }; });
+  const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party.every(c => c.hp > 0), keys: g.beaten.filter(k => /^pw:stadium:(goal|basket)/.test(k)).length, star: g.stars.includes('stadium'), gate3: window.__gateGoals }; });
   t.ok(/🏀 0 \/ 3/.test(lost.gate3 || ''), `16: 3 goals but no baskets: the gate is still shut ("${lost.gate3}")`);
   t.ok(lost.place === 'playland' && lost.hp && lost.keys === 6 && !lost.star, `16: losing keeps you in Playland, healed, with all goals and baskets (${JSON.stringify(lost)})`);
   // a won battle: the star, the goal keys are gone, the next gate says 0 / 3
@@ -678,7 +703,7 @@ async function browserPart({ browser, base, t }) {
   const won = await page.evaluate(async () => {
     const g = window.pokecraft, PB = await import('/src/pictureboss.js'), npc = g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'stadium');
     const L = g.gymLive.of('part:stadium'), p = g.player; L.playing = () => true; p.pos.set(60, 11, 150); p.vel.set(0, 0, 0); L.update(0.05); const corner = document.getElementById('score-chip').textContent;
-    return { keys: g.beaten.filter(k => k.startsWith('pw:stadium:')).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action, corner };
+    return { keys: g.beaten.filter(k => /^pw:stadium:(goal|basket)/.test(k)).length, gate: PB.bossOf('stadium').gate(g), word: g.gymLive.talkPrompt(npc)?.action, corner };
   });
   t.ok(won.keys === 0 && /Score 3 goals and 3 baskets first!.*\(⚽ 0 \/ 3 · 🏀 0 \/ 3\)/.test(won.gate) && won.word === 'Talk' && won.corner === '⚽ 0/3 · 🏀 0/3', `16: winning gives the star and clears the goals and baskets: the rematch gate says "${won.gate}", the corner "${won.corner}"`);
   await page.waitForTimeout(500);
