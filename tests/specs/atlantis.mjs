@@ -616,7 +616,7 @@ async function lightsPart(page, t) {
   t.ok(L.temple[0] === '4,4,3' && L.temple[1] === 1 && L.temple[2] === 11 && L.temple[3] === 6 && await said(page, /Two school fish make one light|Temple Steps is lit|\+3 lights/), `seven school fish make 3 lights and the odd fish stays in the net (${L.temple})`);
   t.ok(L.gateShut && /still dark/.test(L.bossGate) && L.talkPrompt?.action === 'Talk', `with 11 of 12 the palace gate is shut and the Queen says "${L.bossGate}"`);
   t.ok(L.done[0] && L.done[1] === 12 && L.done[2] === 0 && L.gateOpen && L.bossGate2 === null && L.saved === 12 && /Lights 12 \/ 12 · To the palace!/.test(L.chip) && await said(page, /All three lanterns are lit! The palace dome opens/), `12 lights: the palace dome opens, the Queen is ready, "${L.chip}"`);
-  t.ok(/Queen Coralia|palace/.test(L.guide || ''), `the guide says "${L.guide}"`);
+  t.ok(/Battle Guard (Pelos|Talia)/.test(L.guide || ''), `with all 12 lights the guide leads to a guard still to beat (owner 2026-10-27): "${L.guide}"`);
   await stage(page, [245.5, 7.5, 112.5], [251.5, 5.5, 112.5]);
   await shot(page, 'lit');
 

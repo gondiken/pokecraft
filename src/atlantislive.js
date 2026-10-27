@@ -104,9 +104,9 @@ export class AtlantisLive {
     this.halo = {};
     for (const kind of ['shy', 'darter', 'school']) this.halo[kind] = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 12, 8), glowMat(COLORS[kind]), this.lists[kind].length));
     const n = DISTRICTS.length * PER_DISTRICT;
-    this.bulbs = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), n));
-    this.bulbGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.75, 12, 8), glowMat(0xffffff), n));
-    for (let i = 0; i < n; i++) { this.bulbs.setColorAt(i, new THREE.Color(0x30414a)); this.bulbGlow.setColorAt(i, new THREE.Color(0x000000)); }
+    this.bulbs = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), n));
+    this.bulbGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.55, 12, 8), glowMat(0xffffff), n));
+    for (let i = 0; i < n; i++) { this.bulbs.setColorAt(i, new THREE.Color(0xa8c8d0)); this.bulbGlow.setColorAt(i, new THREE.Color(0x000000)); }
     this.trail = this.mark(new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), glowMat(0xffffff), VIS.trail));
     this.trail.material.opacity = 0.75; this.trail.count = 0;
     this.flyMesh = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), VIS.fly));
@@ -450,7 +450,7 @@ export class AtlantisLive {
       for (let k = 0; k < PER_DISTRICT; k++) {
         const j = i * PER_DISTRICT + k, at = bulbAt(dist.lantern, k), lit = k < this.A.lit[i] && !busy.has(`${i}:${k}`), ghost = demo && demo.d === i && k === this.A.lit[i] && demo.glow;
         d.position.set(...at); d.rotation.set(0, 0, 0); d.scale.setScalar(1); d.updateMatrix();
-        this.bulbs.setMatrixAt(j, d.matrix); this.bulbs.setColorAt(j, col.setHex(lit ? COLORS[dist.kind] : ghost ? 0x7a8a90 : 0x30414a));
+        this.bulbs.setMatrixAt(j, d.matrix); this.bulbs.setColorAt(j, col.setHex(lit ? COLORS[dist.kind] : ghost ? 0xd8f0f4 : 0x8fb0ba)); // unlit: pale empty glass
         d.scale.setScalar(lit ? 1 + 0.1 * Math.sin(t * 3 + j) : ghost ? 0.8 * demo.glow : 0.0001); d.updateMatrix();
         this.bulbGlow.setMatrixAt(j, d.matrix); this.bulbGlow.setColorAt(j, col.setHex(COLORS[dist.kind]));
       }
