@@ -56,30 +56,30 @@ const helpers = page => page.evaluate(async () => {
     const cells = [...st.cells.values()].map(c => [c.x, c.y, c.z]);
     return { used, steps: i, info: L.info(), log: B.log, cells, pts: st.pts.map(p => [p.x, p.row, p.z]), done: st.done };
   };
-  // Draw line n while walking on it with real Player physics (the sticky line and the step-up hop on): when the pencil's heading is
-  // off the next point of the route, look 3 past the pencil toward it (steer); else look at your own line 2.5 ahead of your feet
-  // (walk). Walk forward while more than `close` from the pencil (-1 = always); careless = always steer at the route's last point.
+  // Draw line n while walking on it with real Player physics (the sticky line and the step-up hop on): face the next point of the
+  // route (owner 2026-10-29: the pencil draws the way you face) looking a little down at your line (while the pencil waits for you
+  // or you bump the edge of your line, face along your own line), and walk forward while more than `close` from the pencil (-1 = always). `steer` counts the frames your facing was off the pencil's heading (you were turning it).
   window.__drawReal = (n, dt = 0.05, { max = 3000, route = null, close = 2 } = {}) => {
     const L = window.__live(), p = g.player, T = window.__T; L.manual = true; L.guardInTests = true;
     const s = g.world.doodle.pads[n - 1].stand; window.__at(s[0], s[1], s[2]);
     L.use(p);
     if (!L.cur) return null;
-    const st = L.cur.st, pts = route ?? L.cur.course.route, backs = []; let wp = 0, i = 0, minY = 99, steer = 0;
+    const st = L.cur.st, pts = route ?? L.cur.course.route, backs = []; let wp = 0, i = 0, minY = 99, steer = 0, stall = 0;
     for (; i < max && L.cur; i++) {
       const t = st.tip, passed = q => { const dx = q[0] - t.x, dz = q[1] - t.z, d = Math.hypot(dx, dz); return d < 1.6 || (d < 4 && dx * Math.cos(t.h) + dz * Math.sin(t.h) < 0); };
       while (wp < pts.length - 1 && passed(pts[wp])) wp++;
-      const dx = pts[wp][0] - t.x, dz = pts[wp][1] - t.z, m = Math.hypot(dx, dz) || 1, err = Math.atan2(Math.sin(Math.atan2(dz, dx) - t.h), Math.cos(Math.atan2(dz, dx) - t.h));
-      let q;
-      if (route || Math.abs(err) > 0.12) { q = [t.x + dx / m * 3, t.row + 1, t.z + dz / m * 3]; steer++; }
-      else { const a = T.pointAt(st, Math.min(st.s, st.playerS + 2.5)); q = [a[0], a[1] + 1, a[2]]; }
-      const e = p.eyePos, v = [q[0] - e.x, q[1] - e.y, q[2] - e.z];
-      p.yaw = Math.atan2(-v[0], -v[2]); p.pitch = Math.atan2(v[1], Math.hypot(v[0], v[2]));
+      const own = T.pointAt(st, Math.min(st.s, st.playerS + 2.5));
+      stall = st.waiting || p.hitWall ? stall + dt : 0;
+      const goal = stall > 0.6 ? [own[0], own[2]] : pts[wp]; // face the next point of the route; the pencil waits for you (or you bump the line's edge) for a moment: face along your line ("The pencil waits for you. Walk on your line!")
+      const dx = goal[0] - p.pos.x, dz = goal[1] - p.pos.z, err = Math.atan2(Math.sin(Math.atan2(dz, dx) - t.h), Math.cos(Math.atan2(dz, dx) - t.h));
+      if (Math.abs(err) > 0.12) steer++;
+      p.yaw = Math.atan2(-dx, -dz); p.pitch = -0.4;
       p.keys.KeyW = Math.hypot(t.x - p.pos.x, t.z - p.pos.z) > close; p.keys.Space = false;
       p.update(dt); L.step(dt); minY = Math.min(minY, p.pos.y);
-      for (const ev of st.events) if (ev.kind === 'back') backs.push([ev.reason, i, +p.pos.x.toFixed(1), +p.pos.z.toFixed(1)]);
+      for (const ev of st.events) if (ev.kind === 'back') { backs.push([ev.reason, i, +p.pos.x.toFixed(1), +p.pos.z.toFixed(1)]); let k = 0; pts.forEach((q, j) => { if (Math.hypot(q[0] - st.tip.x, q[1] - st.tip.z) < Math.hypot(pts[k][0] - st.tip.x, pts[k][1] - st.tip.z)) k = j; }); wp = Math.min(pts.length - 1, k + 1); } // back at the star: the route on from there
     }
     p.keys = {}; L.guardInTests = false;
-    return { steps: i, done: st.done, setbacks: st.setbacks, backs, steer, guarded: L.guarded, info: L.info(), x: p.pos.x, y: p.pos.y, z: p.pos.z, minY, under: g.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) };
+    return { steps: i, end: [st.tip.x, st.tip.z], done: st.done, setbacks: st.setbacks, backs, steer, guarded: L.guarded, info: L.info(), x: p.pos.x, y: p.pos.y, z: p.pos.z, minY, under: g.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) };
   };
 });
 // the Champion goes into the Swirl and through the Sketchbook frame
@@ -324,13 +324,14 @@ export default async function ({ browser, base, t }) {
       // the same input twice: the same line (no Math.random)
       const a = C.simCourse(D.courseOf(3, solid)), b = C.simCourse(D.courseOf(3, solid));
       if (a.st.pts.length !== b.st.pts.length || a.st.pts.some((p, i) => p.x !== b.st.pts[i].x || p.z !== b.st.pts[i].z)) bad('two runs drew different lines');
-      // the pencil draws where you look: looking left of it bends the line left, looking at it keeps it straight
+      // owner 2026-10-29: the pencil draws the way you FACE: facing along it, it goes straight (looking level, down at it or at your feet
+      // all the same); facing to one side turns it, and how far you look up or down never matters
       const c1 = D.courseOf(1, solid), pl = c1.pad, look = (st, P) => { const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m), player: pl }; };
-      const h0 = T.newDraw(c1).tip.h, side = [-Math.sin(h0), Math.cos(h0)];
-      const s1 = T.newDraw(c1); for (let i = 0; i < 40; i++) T.drawStep(s1, 1 / 60, look(s1, [s1.tip.x, s1.tip.z])); // at the pencil
-      const s2 = T.newDraw(c1); for (let i = 0; i < 40; i++) T.drawStep(s2, 1 / 60, look(s2, [s2.tip.x + Math.cos(h0) * 4 + side[0] * 3, s2.tip.z + Math.sin(h0) * 4 + side[1] * 3])); // to one side of it
-      out.steer = [+(s1.tip.h - h0).toFixed(3), +(s2.tip.h - h0).toFixed(3)];
-      if (Math.abs(out.steer[0]) > 0.001 || Math.abs(out.steer[1]) < 0.3) bad(`steering: at the pencil it turned ${out.steer[0]}, looking to the side ${out.steer[1]}`);
+      const face = (yaw, pitch) => ({ eye: [pl[0], pl[1] + 1.6, pl[2]], dir: [Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch)], player: pl });
+      const h0 = T.newDraw(c1).tip.h, run = (yaw, pitch) => { const st = T.newDraw(c1); for (let i = 0; i < 40; i++) T.drawStep(st, 1 / 60, face(yaw, pitch)); return st.tip.h; };
+      const straight = [0, -0.4, -1.4, 0.3].map(pitch => +(run(h0, pitch) - h0).toFixed(4)), side = [0, -0.4, -1.4].map(pitch => +(run(h0 + 0.8, pitch) - h0).toFixed(4));
+      out.steer = [Math.max(...straight.map(Math.abs)), side[0]];
+      if (out.steer[0] > 0.001 || side[0] < 0.3 || side.some(v => v !== side[0])) bad(`steering: facing along it turned ${straight}, facing to the side ${side}`);
       // the leash: standing still on the pad, the pencil stops 5 blocks ahead; it uses ink only while it draws
       const s3 = T.newDraw(c1); for (let i = 0; i < 300; i++) T.drawStep(s3, 1 / 60, look(s3, [pl[0] + Math.cos(h0) * 20, pl[2] + Math.sin(h0) * 20]));
       out.leash = +Math.hypot(s3.tip.x - pl[0], s3.tip.z - pl[2]).toFixed(2);
@@ -341,23 +342,24 @@ export default async function ({ browser, base, t }) {
       out.blocks = [blk(2, aimBlot), blk(6, [40, 40], [45, 78]), blk(5, [24, 80])];
       if (out.blocks[0] !== 'blot') bad(`blocked by ${out.blocks}`);
       // the tower: aimed at it, the pencil glides round it (owner 2026-10-28) and never goes into it
-      { const c = { ...D.courseOf(5, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); let minR = 99; for (let i = 0; i < 900; i++) { const P = [24.5, 80.5], pl = [st.tip.x, c.rowA + 1, st.tip.z], e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); minR = Math.min(minR, Math.hypot(st.tip.x - 24.5, st.tip.z - 80.5)); }
-        out.towerR = +minR.toFixed(2); if (minR < D.TOWER.r + 0.4) bad(`the pencil went into the tower (${minR})`); }
+      { const c = { ...D.courseOf(5, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); let minR = 99, inside = 0; for (let i = 0; i < 900; i++) { const P = [24.5, 80.5], pl = [st.tip.x, c.rowA + 1, st.tip.z], e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); minR = Math.min(minR, Math.hypot(st.tip.x - 24.5, st.tip.z - 80.5)); for (let k = 1; k <= 2; k++) if (c.solid(Math.floor(st.tip.x), st.tip.row + k, Math.floor(st.tip.z))) inside++; }
+        out.towerR = +minR.toFixed(2); out.towerIn = inside; if (inside || minR < D.TOWER.r - 0.5) bad(`the pencil went into the tower (${minR}, ${inside} steps in a tower block)`); }
       // (owner 2026-10-28) another page does not stop the pencil dead any more: it glides along its edge, but never draws onto it
       { const c = { ...D.courseOf(6, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); for (let i = 0; i < 900; i++) { const P = i < 90 ? [45, 78] : [40, 40], pl = [st.tip.x, c.rowA + 1, st.tip.z], e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); }
         out.onPage = [...st.cells.values()].filter(q => c.fence.some(r => q.x >= r[0] && q.x <= r[1] && q.z >= r[2] && q.z <= r[3])).length; out.glided = st.glided || 0;
         if (out.onPage) bad(`the line was drawn onto another page (${out.onPage} cells)`); }
-      // owner 2026-10-27 ("the pencil gets stuck at the edge"): a stuck pencil turns round toward where you look, even a point short of it
+      // a pencil stopped by a blot turns round when you turn to face another way, and draws on (owner 2026-10-29: no special rule for a stuck pencil)
       {
         const c = { ...D.courseOf(2, solid), ink: 99, rubber: 0 }, st = T.newDraw(c);
         const lookAt = (P, pl) => { const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], Math.min(st.tip.row + 1, e[1] - 0.6) - e[1], P[1] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m), player: pl }; };
         const behind = () => { const p = st.pts[Math.max(0, st.pts.length - 7)]; return [p.x, p.row + 1, p.z]; }; // you walk 3 blocks behind the tip
         for (let i = 0; i < 900 && st.blocked !== 'blot'; i++) T.drawStep(st, 1 / 60, lookAt(aimBlot, behind()));
-        const h1 = st.tip.h, s1 = st.s, pl = behind(), back = [pl[0] - Math.sin(h1) * 3, pl[2] + Math.cos(h1) * 3]; // off to the side of you (owner 2026-10-28: a look along your own line between you and the pencil never turns it)
+        const h1 = st.tip.h, s1 = st.s, pl = behind(), back = [pl[0] - Math.sin(h1) * 3, pl[2] + Math.cos(h1) * 3]; // you turn to face off to the side
         for (let i = 0; i < 120; i++) T.drawStep(st, 1 / 60, lookAt(back, pl));
         out.unstuck = { was: 'blot', turned: +Math.abs(Math.atan2(Math.sin(st.tip.h - h1), Math.cos(st.tip.h - h1))).toFixed(2), moved: +(st.s - s1).toFixed(2) };
         if (out.unstuck.turned < 1 || out.unstuck.moved < 0.5) bad(`a stuck pencil does not turn back: ${JSON.stringify(out.unstuck)}`);
       }
+      out.face = checks.face;
       // a star: full ink again, and a setback after it keeps the line up to it (Rubber never rubs before it)
       const r6 = C.simCourse(D.courseOf(6, solid), { bot: 'lazy', lazy: 6, maxT: 40 });
       out.r6 = r6.backs;
@@ -379,10 +381,11 @@ export default async function ({ browser, base, t }) {
       return out;
     });
     t.ok(F.problems.length === 0, `Draw!: ${F.problems.length ? F.problems.join('; ') : `for every line a skilled player wins cleanly at 60 and 20 fps (about the same time), drawing straight at the page wins no line cleanly (the landing strip, blots, the tower, bees), the ink never reaches without a star, Rubber catches a player who stops on lines 6-8 and the line still gets drawn, a player who never waits for the bees gets nibbled, lines 6-8 need their stars, Rubber gets faster per rematch win but never as fast as walking, the gaps are keeps (${F.ms.toFixed(0)} ms)`}`);
-    t.ok(Math.abs(F.steer[0]) < 0.001 && Math.abs(F.steer[1]) > 0.3, `the pencil draws where you look: looking at the pencil it goes straight (turned ${F.steer[0]}), looking to one side bends the line (turned ${F.steer[1]} rad)`);
+    t.ok(F.steer[0] < 0.001 && F.steer[1] > 0.3, `owner 2026-10-29: the pencil draws the way you face: facing along it it goes straight whether you look level, down or at your feet (turned at most ${F.steer[0]}), facing to one side turns it (${F.steer[1]} rad, the same at every pitch)`);
+    t.ok(F.face && F.face.straight0 && F.face.straight0[0] <= 0.03, `owner 2026-10-29: walking straight the way you face draws a straight line that way, also when you started facing 0.5 rad off the pencil (heading error / off straight / length: ${JSON.stringify(F.face)}); turning turns it within ${F.face?.['turn0.8']?.[1]} s; the wind still pushes it ${F.face?.wind} rad`);
     t.ok(F.leash <= 5.2, `standing still the pencil waits ${F.leash} blocks ahead and uses ink only while it draws`);
-    t.ok(F.unstuck && F.unstuck.turned >= 1 && F.unstuck.moved >= 0.5, `owner 2026-10-27: a pencil stuck at the blot turns round toward a point you look at off to the side, and draws on (${JSON.stringify(F.unstuck)})`);
-    t.ok(F.blocks[0] === 'blot' && F.towerR >= 3.4 && F.onPage === 0, `an ink blot stops the pencil (${F.blocks[0]}); aimed at the tower it glides round it, never into it (nearest ${F.towerR}); a page that is not the next one is glided along, never drawn on (${F.onPage} cells on it, ${F.glided} glide steps)`);
+    t.ok(F.unstuck && F.unstuck.turned >= 1 && F.unstuck.moved >= 0.5, `a pencil stuck at the blot turns round when you turn to face off to the side, and draws on (${JSON.stringify(F.unstuck)})`);
+    t.ok(F.blocks[0] === 'blot' && F.towerIn === 0 && F.onPage === 0, `an ink blot stops the pencil (${F.blocks[0]}); aimed at the tower it glides round it, never into it (nearest ${F.towerR}); a page that is not the next one is glided along, never drawn on (${F.onPage} cells on it, ${F.glided} glide steps)`);
     t.ok(!!F.star.after, `a star fills the ink; caught after it you go back to it with the line up to it kept (${JSON.stringify(F.star)})`);
     console.log('  Draw! per line: ' + F.rows.map(r => JSON.stringify(r)).join('\n    '));
     if (ONLY === 'trace') return;
@@ -562,7 +565,7 @@ export default async function ({ browser, base, t }) {
       for (const dt of [1 / 60, 0.05]) {
         real.push(await page.evaluate(dt => {
           const r = window.__drawReal(1, dt), L = window.__live(), p = window.pokecraft.player;
-          const t1 = L.courseOf(0).target, w = window.__walk([[(t1[0] + t1[1] + 1) / 2, t1[2] - 3]], 400, dt); // and on along your line onto the page
+          const t1 = L.courseOf(0).target, w = window.__walk([r.end, [(t1[0] + t1[1] + 1) / 2, t1[2] - 3]], 400, dt); // and on along your line onto the page
           const out = { ...r, z: w.z, y: w.y, under: window.pokecraft.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z)) };
           if (r?.done && dt < 0.05) { L.drawnNow.delete(0); window.pokecraft.beaten = window.pokecraft.beaten.filter(k => k !== 'pw:doodle:line1'); }
           return out;
@@ -912,6 +915,28 @@ async function shotsPart({ browser, base, t }) {
   await half(1, 22);
   await shot(page, 'meadow', null, 800);
   await page.evaluate(() => window.__live().stop(true));
+  // owner 2026-10-29: the pencil draws the way you face: walk straight (doodle-steer-straight), then turn a little (doodle-steer-turn)
+  for (const [name, turnBy] of [['straight', 0], ['turn', 0.6]]) {
+    await page.evaluate(([turnBy]) => {
+      const g = window.pokecraft, L = window.__live(), T = window.__T; L.manual = true;
+      const s = g.world.doodle.pads[0].stand; window.__at(s[0], s[1], s[2]); L.use(g.player);
+      const st = L.cur.st, h0 = st.tip.h; let sp = 0;
+      for (let i = 0; i < 70 && L.cur; i++) {
+        const yaw = h0 + (i >= 30 ? turnBy : 0), f = T.pointAt(st, sp = Math.min(sp + 4.3 * 0.05, Math.max(0, st.s - 1.8)));
+        const feet = [f[0], st.playerRow + 1, f[2]], inp = { eye: [feet[0], feet[1] + 1.62, feet[2]], dir: [Math.cos(yaw) * 0.9, -0.44, Math.sin(yaw) * 0.9], player: feet };
+        g.player.pos.set(...feet); g.player.vel.set(0, 0, 0); L.step(0.05, inp);
+      }
+      const p = g.player, t = st.tip, a = st.pts[0]; // the camera high above the pad, looking along the whole line
+      p.pos.set(a.x - Math.cos(h0) * 6, a.row + 9, a.z - Math.sin(h0) * 6); p.vel.set(0, 0, 0);
+      p.lookAt({ x: (a.x + t.x) / 2 + Math.cos(h0) * 3, y: t.row + 1, z: (a.z + t.z) / 2 + Math.sin(h0) * 3 });
+      L.stepMeshes(p);
+    }, [turnBy]);
+    await page.evaluate(() => document.getElementById('pause')?.classList.add('hidden'));
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: path.join(SHOTS, `doodle-steer-${name}.png`), timeout: 180000 });
+    console.log(`  screenshot doodle-steer-${name}.png`);
+    await page.evaluate(() => window.__live().stop(true));
+  }
   // line 4: the bee, the ink blot and the star over the gap
   await page.evaluate(() => window.__live().drawUpTo(3));
   await half(4, 60, [74.5, 22, 33.5, 55, 20, 62]);
