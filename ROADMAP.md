@@ -1301,6 +1301,43 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   the dry throne room). Type: the city's woken guardians, never fish or crabs: Jarling > Grand Urnling, Statuecub >
   Guardlion (rideable), Tilesnek > Mosaicoil, Runestone; teal rune lines on every model.
 
+## The last three stars: ideas (owner, 2026-10-26 and 2026-10-28; not decided)
+
+Wave 15 gave 9 of the 12 stars a world; `secret3`-`secret5` still need one. Each should have **one new verb** (something
+no gym or world asks you to do yet), its own type, creatures, Boss and look. The owner wants skill, not quiet puzzles
+(2026-10-27). Candidates, best fit first:
+- **⚔️ Knight, the Castle** (owner: yes). Aim a catapult (the hold-and-let-go power ring) to knock down walls, then joust
+  on a rideable armoured horse against the Boss's squires. Creatures: a hedgehog with a shield, a snail in a helmet, an
+  armoured horse, a teapot squire (see "Types for later"). Look: banners, a moat, towers, torches at dusk.
+- **🫧 Bubble, the Bath Lagoon** (owner: yes, if it is clearly not Pirate or the Dream). The verb: **make your own way**
+  with a bubble wand. Blown bubbles rise slowly and pop after a few seconds; jump on them to climb (big ones slow and
+  sturdy, small ones fast and fragile), wind vents push them, thorns pop them. Other ideas: catch an object or a creature
+  in a bubble and float it somewhere (a key to a ledge); ride inside a bubble. Boss: a bath-time octopus or soap-bubble
+  walrus behind three bubble shields you pop by bouncing your own bubbles into them. Creatures: a rubber duck, a sponge
+  crab, a bubble-wand fairy, a fizzing bath bomb.
+- **🌍 Cube Planets (gravity)** (replaces the dropped Magnet: the gravity part without the magnets, so not like Metal).
+  Little cube-shaped planets in space: walk off an edge and you stand on the side face; jump to the next planet and its
+  gravity takes you. Creatures about pull, not stars (Cosmic has those): a comet dog that orbits you, a ringed-planet
+  turtle, a little satellite bird. The most expensive idea: the camera and walking must work on any face (the T35 notes
+  say no upside-down gravity so far).
+- **🪞 Mirror** (maybe: the son did not like Mirror before, so only with a lively version). Your reflection is a second
+  you that moves mirrored, and both must reach their pads; or funhouse mirrors that make you tall (jump over walls),
+  tiny (squeeze through holes) or wide (push big blocks). The size mirrors could also go into the Funfair.
+- **🦖 Dino** (undecided: Bone has fossils, Drake has dragons). To make it its own: **the giants are the land**. Huge
+  gentle dinosaurs walk slow loops; jump on a back, ride across a valley, hop to the next tail; the Boss on the biggest.
+  Moving things you stand on already exist (the toy train, the bottle cap).
+- **🎲 Board Game World** (new, not yet discussed). Roll a big die and walk the spaces of a giant board: a battle, a
+  ladder up, a slide down, a mini challenge, bonus cubes; fun taking turns with a friend. Creatures: a dice cube, a
+  playing-card bat, a domino snake, a spinner top. The Boss on the last square.
+- **🎭 Shadow Theatre** (new, not yet discussed). The whole world is a side-view stage: the camera locks to the side and
+  it plays like a 2D platform game, paper cut-out scenery, a spotlight that follows you. Creatures: hand-shadow animals,
+  a curtain ghost, a marionette. Boss: the Puppet Master.
+- **🔍 Mystery Manor** (new, not yet discussed; fits the story: the star is hidden). Talk to suspects, find clues and
+  pick who hid the star (like Guess Who), a new mystery each visit made from the same parts. Little new tech, a lot of
+  simple writing.
+
+Not wanted: Snow Globe, Farm (owner, 2026-10-26). Builder went to the backlog (probably chapter 3).
+
 ## Wave 16 · The Wizard's Tower and the Custom type (the design option below is still open)
 
 "Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). **The Wizard is chapter 2's
@@ -1353,6 +1390,9 @@ over the worlds; you are the **Wizard's ally**. Pieces so far:
   Wizard's creature in it.
 - **Scribbled zones** appear in places you already know (our world and the Picture Worlds), so old places get new life.
 - **Simple crafting** (from the backlog): the Wizard's workshop, e.g. crafting Capture Cubes.
+- **Mixing (owner, 2026-10-28; idea):** make your own potions, a magic or chemistry workshop where mixing two or three
+  things leads to something cool and fun (a colour change, a bounce, a glow, a tiny creature friend...). Fits chapter 3's
+  "making things" side, next to crafting. Not a size-changing potion world (that idea was dropped).
 - **Eggs, hatching and raising** (section below): a scribbled creature turned back into an egg; raise it to heal it.
 - **Gifts and trading** (section below): some eggs only hatch with a friend's help; presents and trades between friends.
 - **The ending:** help the Wizard finish drawing the Scribble, and it becomes a friend.
