@@ -1,10 +1,10 @@
 // T45: the Sketchbook's lines (pure, no imports, Node-runnable).
 // 1. lineOf(def): a fixed line (the neat bridge a saved line is drawn as on a later visit; doodleland.js LINES).
-// 2. Draw! (owner 2026-10-27, "Challenge rework" in plans/T45.md): the child draws the bridge themselves. The pencil draws where you
-//    look, a little faster than walking but never more than DRAW.leash ahead of you (you walk on your own line), with limited ink
-//    (refilled by star dots, which are also checkpoints), round ink blots and pages that are not the next one, past doodle bees that
-//    nibble the line, in the wind, and on the Eraser Hill with Rubber the Eraser coming along the line behind you. Never a fail: a fall,
-//    a catch or an empty pencil puffs you back to the last star dot and the line stays up to there.
+// 2. Draw! (owner 2026-10-27, "Challenge rework" in plans/T45.md): the child draws the bridge themselves. The pencil draws the way you
+//    FACE (owner 2026-10-29: FaceSteer below), a little faster than walking but never more than DRAW.leash ahead of you (you walk on your
+//    own line), with limited ink (refilled by star dots, which are also checkpoints), round ink blots and pages that are not the next one,
+//    past doodle bees that nibble the line, in the wind, and on the Eraser Hill with Rubber the Eraser coming along the line behind you.
+//    Never a fail: a fall, a catch or an empty pencil puffs you back to the last star dot and the line stays up to there.
 //    Everything is a function of the inputs and the drawing clock (summed dt, fixed 1/60 s sub-steps): 60 and 20 frames a second draw
 //    the same line (spec F).
 export const TRACE = { step: 0.5, star: 8 }; // fixed lines: cells every half block; star dots every 8 blocks on race lines (old checkpoints)
@@ -49,12 +49,9 @@ export const DRAW = {
   head: 2,                 // air needed above the line (you walk on it)
   core: 0,                 // the samples of the line that must be free (DRAW.across within this): only its centre (the rest is drawn where there is room)
   leash: 5,                // the pencil waits when you are more than this far behind it (in x / z)
-  turn: 2.0,               // rad / s: the most the pencil turns toward where you look
-  stuckTurn: 3.0,          // owner 2026-10-27 ("the pencil gets stuck at the edge"): a blocked pencil turns this fast, toward a point you look at
-  stuckSide: 0.6,          // (owner 2026-10-28) ... but only a point off to the side of it: not one along your own line between you and the pencil (where you look to walk)
-  glide: [0.3, 0.6, 0.9, 1.2, 1.45, 1.6, 1.85],  // owner 2026-10-28: at an edge, a page or a wall (not a blot) the pencil glides along it: it tries these turns (rad), the side you look first
-  near: 1.0,               // looking at a point this close to the pencil: it keeps its heading
-  farAim: 40,              // a view ray that meets the line's floor further than this (or never) does not steer
+  turn: 2.5,               // rad / s: the most the pencil turns toward the way you face (smooth, never a snap)
+  ahead: 4,                // owner 2026-10-29: the pencil heads for the point this far beyond it on the line you face along (FaceSteer)
+  glide: [0.3, 0.6, 0.9, 1.2, 1.45, 1.6, 1.85],  // owner 2026-10-28: at an edge, a page or a wall (not a blot) the pencil glides along it: it tries these turns (rad), the side you face first
   fence: 1,                // other pages (not the one you leave or the next one), grown by this: the pencil cannot draw there
   roam: 10,                // how far round the two pages the pencil may wander
   blotPad: 1.0,            // a blot of radius r stops the pencil within r + blotPad (the line is 3 wide)
@@ -120,25 +117,30 @@ export function blockedAt(st, x, z, row, h) {
 }
 export const inTarget = (c, x, z, row) => row >= c.rowB && inRect(c.target, x, z);
 
-// Where the view ray meets the line's floor (row + 1) beyond the pencil, or null: then the pencil keeps its heading. Looking at the
-// pencil, short of it (at your feet, where you walk) or up at the sky never turns it: you look past the pencil to steer.
-// Owner 2026-10-27: a pencil that is stuck (st.blocked: an edge, a page, the side of an island) also follows a point short of it, so you
-// can turn it back the way you came (before, it could only turn toward points beyond it and stayed stuck facing the edge).
-export function aimPoint(st, eye, dir, player) {
-  const t = st.tip, y = eye[1] > t.row + 1.4 ? t.row + 1 : eye[1] - 0.6; // the line's floor; (owner 2026-10-27) when that is not well below your eyes (a climbing line), a level just below them, else no look could steer it
-  if (dir[1] >= -0.02) return null;
-  const k = (y - eye[1]) / dir[1];
-  if (!(k > 0 && k < DRAW.farAim)) return null;
-  const P = [eye[0] + dir[0] * k, eye[2] + dir[2] * k];
-  const tx = t.x - player[0], tz = t.z - player[2], tl = Math.hypot(tx, tz);
-  if (Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) { // nearer to you than the pencil: you look where you walk
-    if (!st.blocked) return null;
-    // a stuck pencil follows it only when it is off to the side (owner 2026-10-28: looking at your own line while it was stuck for a moment swung it back at you)
-    const ax = P[0] - t.x, az = P[1] - t.z, bx = -tx, bz = -tz, am = Math.hypot(ax, az), bm = tl;
-    if (am < DRAW.near || bm < 1e-6 || Math.acos(Math.max(-1, Math.min(1, (ax * bx + az * bz) / (am * bm)))) < DRAW.stuckSide) return null;
+// Owner 2026-10-29 ("isn't it supposed to go where I face? I simply moved forward the way I was facing and it continued leftward"): the
+// pencil draws THE WAY YOU FACE. Only your look's left / right counts (looking up, down, at your feet or at the pencil is all the same).
+// It heads for a point on the line you face along, DRAW.ahead beyond the pencil: right behind it that is exactly your facing; a pencil
+// off to the side (the wind, a glide along an edge, you turned) comes back onto the way you are going, so the line ends up where you
+// walk. It turns at most DRAW.turn a second, so it eases round. One rule, no hidden cases.
+export class FaceSteer {
+  constructor(p = DRAW) { this.p = p; }
+  // The way you face (unit x / z): the last one when you look straight down (never happens with the game's pitch limit).
+  facing(st, dir) {
+    const m = Math.hypot(dir[0], dir[2]);
+    if (m > 1e-3) st.face = [dir[0] / m, dir[2] / m];
+    return st.face ?? [Math.cos(st.tip.h), Math.sin(st.tip.h)];
   }
-  return P;
+  // -> { h, at: [x, z] }: the heading the pencil turns toward and the point it heads for (drawn as the ring).
+  target(st, inp) {
+    const t = st.tip, [fx, fz] = this.facing(st, inp.dir), px = inp.player[0], pz = inp.player[2];
+    const along = Math.max(0, (t.x - px) * fx + (t.z - pz) * fz) + this.p.ahead;
+    const at = [px + fx * along, pz + fz * along];
+    return { h: Math.atan2(at[1] - t.z, at[0] - t.x), at };
+  }
+  // Turn the pencil toward the heading h, at most p.turn a second.
+  turn(st, h, dt) { const t = st.tip, d = wrap(h - t.h), m = this.p.turn * dt; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
 }
+export const STEER = new FaceSteer();
 
 // Back along the line to distance s (a nibble or a setback): later points and cells go.
 function backTo(st, s) {
@@ -160,7 +162,7 @@ function setback(st, reason, extra = {}) {
 // Is this cell of the line ink now? (Rubber rubs what lies between the last star and himself.)
 export const cellInk = (st, cell) => !(st.rubber && st.rubber.on && !st.done && cell.s > st.ckpt.s + 1e-9 && cell.s < st.rubber.s);
 
-// Advance by dt. inp = { eye: [x, y, z], dir: [x, y, z] (unit), player: [x, y, z] (feet) }. Events of this step are in st.events.
+// Advance by dt. inp = { eye: [x, y, z], dir: [x, y, z] (where you look; only its x / z count), player: [x, y, z] (feet) }. Events of this step are in st.events.
 export function drawStep(st, dt, inp) {
   st.events = [];
   if (st.done) return st;
@@ -181,11 +183,10 @@ export function drawStep(st, dt, inp) {
 function sub(st, inp) {
   const c = st.course, h = DRAW.h, t = st.tip;
   st.clock += h;
-  // 1. steer toward where you look
-  const P = aimPoint(st, inp.eye, inp.dir, inp.player);
-  st.aim = P;
-  const dx = P ? P[0] - t.x : 0, dz = P ? P[1] - t.z : 0;
-  if (P && Math.hypot(dx, dz) > DRAW.near) { const d = wrap(Math.atan2(dz, dx) - t.h), m = (st.blocked ? DRAW.stuckTurn : DRAW.turn) * h; t.h = wrap(t.h + Math.max(-m, Math.min(m, d))); }
+  // 1. turn toward the way you face
+  const aim = STEER.target(st, inp);
+  st.aim = aim.at;
+  STEER.turn(st, aim.h, h);
   // 2. move (only while you are close behind and there is ink)
   st.waiting = Math.hypot(t.x - inp.player[0], t.z - inp.player[2]) > DRAW.leash;
   st.blocked = null;
@@ -195,8 +196,8 @@ function sub(st, inp) {
       const g = gustAt(st.clock), vx = Math.cos(t.h) * c.speed + (c.wind?.[0] || 0) * g, vz = Math.sin(t.h) * c.speed + (c.wind?.[1] || 0) * g;
       const nx = t.x + vx * h, nz = t.z + vz * h, step = Math.hypot(vx, vz) * h;
       let why = inTarget(c, nx, nz, t.row) ? null : blockedAt(st, nx, nz, t.row, t.h), mx = nx, mz = nz, mstep = step;
-      if (why && why !== 'blot') { // glide along an edge, a page or a wall: a small turn that is free (the side you look at first)
-        const want = P ? wrap(Math.atan2(P[1] - t.z, P[0] - t.x) - t.h) : 0, sides = want < 0 ? [-1, 1] : [1, -1];
+      if (why && why !== 'blot') { // glide along an edge, a page or a wall: a small turn that is free (the side you face first)
+        const sides = wrap(aim.h - t.h) < 0 ? [-1, 1] : [1, -1];
         glide: for (const d of DRAW.glide) for (const sg of sides) {
           const h2 = t.h + sg * d, gx = Math.cos(h2) * c.speed + (c.wind?.[0] || 0) * g, gz = Math.sin(h2) * c.speed + (c.wind?.[1] || 0) * g;
           const qx = t.x + gx * h, qz = t.z + gz * h;

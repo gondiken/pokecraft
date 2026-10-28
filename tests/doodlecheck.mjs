@@ -99,9 +99,9 @@ export function analyze(seed) {
 }
 
 /* ---- Draw! played by a model player (no browser): the player walks along the drawn line at walking speed, never closer than 1.2
-   behind the pencil, and looks where a bot wants the line to go. Bots:
-   skilled  follows the course's route (through the stars, round the blots), waits for a gap when a bee is coming;
-   careless looks straight at the next page all the time;
+   behind the pencil, and faces where a bot wants the line to go (owner 2026-10-29: the pencil draws the way you face). Bots:
+   skilled  faces the next point of the course's route (through the stars, round the blots), waits for a gap when a bee is coming;
+   careless faces the next page all the time;
    nostar   the route without its star dots;
    idle     never walks;
    lazy     walks, but stands still from 1 s to `lazy` s (default 5) and then plays like skilled;
@@ -138,8 +138,8 @@ export class DrawBot {
     if (walk) this.sp += Math.min(WALK * dt, Math.max(0, st.s - 1.2 - this.sp));
     let f = this.feet(st);
     if (this.sp > st.s + 0.5) f = [f[0], f[1] - 3, f[2]]; // the line under you went: you fall
-    const ux = P[0] - tip.x, uz = P[1] - tip.z, um = Math.hypot(ux, uz) || 1, far = this.bot === 'careless' ? um : Math.max(3, Math.min(um, 6)); // look past the pencil toward the point
-    const eye = [f[0], f[1] + 1.62, f[2]], at = [tip.x + ux / um * far, tip.row + 1, tip.z + uz / um * far], d = [at[0] - eye[0], at[1] - eye[1], at[2] - eye[2]], m = Math.hypot(...d);
+    // face the bot's point (owner 2026-10-29: the pencil draws the way you face; where you look up or down does not matter)
+    const eye = [f[0], f[1] + 1.62, f[2]], at = [P[0], tip.row + 1, P[1]], d = [at[0] - eye[0], at[1] - eye[1], at[2] - eye[2]], m = Math.hypot(...d) || 1;
     this.t += dt;
     return { eye, dir: d.map(v => v / m), player: f };
   }
@@ -187,6 +187,57 @@ export function wobblyKid(course, { amp = 3, seed = 0, look = true, hz = 60, max
     t += dt;
   }
   return { done: st.done, t, longest, where };
+}
+// Owner 2026-10-29 ("I simply moved forward the way I was facing and it continued leftward"): a kid who just walks the way they face.
+// They face `yaw0` (radians off the course's start heading), turn by `turnBy` at `turnAt` s, and walk on their line 1.8 behind the
+// pencil, looking down at it (pitch does not matter). No blots, bees, stars or Rubber, ink to spare; the wind only with `wind`.
+// -> the line's points with the time they were drawn and the facing then.
+export function faceWalk(course, { yaw0 = 0, turnAt = null, turnBy = 0, wind = false, hz = 60, T = 6, pitch = -0.5 } = {}) {
+  const c = { ...course, ink: 999, rubber: 0, blots: [], bees: [], stars: [], wind: wind ? course.wind : null }, st = newDraw(c, 0), dt = 1 / hz;
+  const h0 = Math.atan2(c.dir[1], c.dir[0]), out = [];
+  let sp = 0, t = 0, seen = 0;
+  while (t < T - 1e-9 && !st.done) {
+    const yaw = h0 + yaw0 + (turnAt != null && t >= turnAt ? turnBy : 0);
+    sp += Math.min(WALK * dt, Math.max(0, st.s - 1.8 - sp));
+    const f = pointAt(st, sp); let row = st.pts[0].row; for (const p of st.pts) { if (p.s > sp + 1e-9) break; row = p.row; }
+    const feet = [f[0], row + 1, f[2]], cp = Math.cos(pitch);
+    drawStep(st, dt, { eye: [feet[0], feet[1] + 1.62, feet[2]], dir: [Math.cos(yaw) * cp, Math.sin(pitch), Math.sin(yaw) * cp], player: feet });
+    t += dt;
+    for (; seen < st.pts.length; seen++) out.push({ x: st.pts[seen].x, z: st.pts[seen].z, t, face: yaw });
+  }
+  return { pts: out, st };
+}
+// How straight a stretch of the line is and which way it goes: the chord's heading and the furthest point off the chord.
+export function stretch(pts, t0, t1) {
+  const ps = pts.filter(p => p.t >= t0 && p.t <= t1), a = ps[0], b = ps[ps.length - 1];
+  const h = Math.atan2(b.z - a.z, b.x - a.x), len = Math.hypot(b.x - a.x, b.z - a.z) || 1, nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len;
+  return { h, len, off: Math.max(...ps.map(p => Math.abs((p.x - a.x) * nx + (p.z - a.z) * nz))), face: b.face };
+}
+const angle = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+// The owner's case as checks: walking straight the way you face draws a straight line that way (also when you started facing a bit
+// off the pencil, at 60 and 20 fps, looking level or down); turning your facing turns the line within a second or so.
+export function faceChecks(seed = 1) {
+  const out = { problems: [], info: {} }, bad = m => out.problems.push(m);
+  const w = makeDoodle(seed), solid = solidOf(w), c = courseOf(7, solid);
+  for (const hz of [60, 20]) for (const yaw0 of [0, 0.5, -0.5]) for (const pitch of [0, -0.6]) {
+    const r = faceWalk(c, { yaw0, hz, pitch }), s = stretch(r.pts, 3, 6), err = angle(s.h, s.face);
+    if (err > 0.03 || s.off > 0.25) bad(`facing ${yaw0} rad off the pencil (${hz} fps, pitch ${pitch}): the line goes ${err.toFixed(3)} rad off the way you face, ${s.off.toFixed(2)} off straight`);
+    if (hz === 60 && pitch === 0) out.info[`straight${yaw0}`] = [+err.toFixed(3), +s.off.toFixed(2), +s.len.toFixed(1)];
+  }
+  for (const turnBy of [0.8, -0.8]) {
+    const r = faceWalk(c, { turnAt: 2.5, turnBy, T: 7 }), s = stretch(r.pts, 4, 7), err = angle(s.h, s.face);
+    const late = r.pts.find(p => p.t > 2.5 && angle(Math.atan2(p.z - r.pts[Math.max(0, r.pts.indexOf(p) - 2)].z, p.x - r.pts[Math.max(0, r.pts.indexOf(p) - 2)].x), p.face) < 0.1);
+    const lag = late ? late.t - 2.5 : 99;
+    out.info[`turn${turnBy}`] = [+err.toFixed(3), +lag.toFixed(2)];
+    if (err > 0.03 || s.off > 0.25) bad(`after turning ${turnBy} rad the line does not go the new way you face (${err.toFixed(3)} rad, ${s.off.toFixed(2)} off straight)`);
+    if (lag > 1.2) bad(`after turning ${turnBy} rad the pencil took ${lag.toFixed(2)} s to follow`);
+    if (lag < 0.2) bad(`after turning ${turnBy} rad the pencil snapped round in ${lag.toFixed(2)} s (twitchy)`);
+  }
+  // the wind still pushes (line 6): walking straight, the line drifts a little downwind (turn into it), never wildly
+  { const c6 = courseOf(6, solid), r = faceWalk(c6, { wind: true, T: 8 }), s = stretch(r.pts, 3, 8), err = angle(s.h, s.face);
+    out.info.wind = +err.toFixed(3);
+    if (err < 0.02 || err > 0.25) bad(`in the wind the line drifts ${err.toFixed(3)} rad off the way you face (want a little, 0.02-0.25)`); }
+  return out;
 }
 export { pointAt };
 export const solidOf = w => (x, y, z) => w.isSolid(x, y, z) && w.get(x, y, z) !== B.DO_INK;
@@ -238,6 +289,7 @@ export function drawChecks(seed = 1) {
     for (const b of c.bees) if (!inR(c.roam, ...b.a) || !inR(c.roam, ...b.b)) bad(`line ${n}: a bee flies out of the gap`);
     out.rows.push(row);
   }
+  { const f = faceChecks(seed); out.problems.push(...f.problems); out.face = f.info; }
   // the gaps are keeps: nobody builds a bridge there (every column next to no page is in a gap box), no page column is in one
   const gaps = w.keeps.filter(k => k.name === 'gap'), inGap = (x, y, z) => gaps.some(k => k.protect.some(b => inBox(b, x, y, z)));
   for (const [x, z] of [[100, 136], [114, 98], [98, 30], [60, 50], [80, 56], [84, 80], [57, 80]]) if (!inGap(x, 20, z)) bad(`the gap at ${x},${z} is not a keep`);
@@ -252,6 +304,7 @@ if (typeof process !== 'undefined' && process.argv[1] && process.argv[1].endsWit
   console.log(JSON.stringify(r.info));
   const d = drawChecks(seed);
   for (const row of d.rows) console.log(JSON.stringify(row));
+  console.log(`face ${JSON.stringify(d.face)}`);
   console.log(`draw checks ${d.ms} ms`);
   r.problems.push(...d.problems);
   console.log(r.problems.length ? r.problems.join('\n') : 'no problems');
