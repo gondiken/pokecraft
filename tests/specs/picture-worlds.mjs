@@ -305,6 +305,12 @@ export default async function ({ browser, base, t }) {
   await waitFor(page, () => window.pokecraft.inBattle, null, 30000);
   const lv = await page.evaluate(() => window.pokecraft.battle.foes.map(f => f.level).join());
   t.ok(lv === rm.team.map(x => x[1]).join(), `the rematch team follows bossTeam(def, 0) (${lv})`);
+  const up = await page.evaluate(async () => { // owner 2026-10-28: every star from another world makes a Boss 2 levels stronger (up to 95); its own star does not count
+    const PB = await import('/src/pictureboss.js'), team = [['pipsqueak', 59], ['antlas', 62, ['bodyslam']]];
+    return { none: PB.starTeam(team, ['house'], 'house'), three: PB.starTeam(team, ['house', 'pirate', 'race', 'fair'], 'house'), cap: PB.starTeam(team, Array.from({ length: 30 }, (_, i) => 'x' + i), 'house') };
+  });
+  t.ok((JSON.stringify(up.none) === '[["pipsqueak",59],["antlas",62,["bodyslam"]]]' && JSON.stringify(up.three) === '[["pipsqueak",65],["antlas",68,["bodyslam"]]]' && up.cap.every(x => x[1] === 95)),
+    `Bosses grow 2 levels per star from other worlds, up to 95 (${JSON.stringify(up.three)})`);
   await playBattle(page);
   await waitFor(page, () => window.pokecraft.bossWins.house === 1, null, 30000);
   const after = await page.evaluate(() => ({ wins: window.pokecraft.bossWins, cubes: window.pokecraft.cubes, stars: window.pokecraft.stars.length }));

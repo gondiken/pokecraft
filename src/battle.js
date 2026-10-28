@@ -1,7 +1,7 @@
 // Turn-based battles that play out in the 3D world with an HTML overlay.
 import * as THREE from 'three';
 import {
-  SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp,
+  SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp, MAX_LEVEL,
   xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo, multiHits,
   hpPower, crewHit, setModelHealth, // T34
 } from './species.js';
@@ -481,7 +481,7 @@ export class Battle {
     this.friendCard.classList.add('hidden');
     this.foeIdx = 0;
     // Battles between players use full-HP copies of each team, so nobody's real team gets hurt.
-    const copy = c => makeCreature(c.species, Math.max(1, Math.min(60, c.level | 0)), c.moves);
+    const copy = c => makeCreature(c.species, Math.max(1, Math.min(MAX_LEVEL, c.level | 0)), c.moves); // owner 2026-10-28: up to 100 (duel VERSION 12)
     this.allies = this.duel ? g.party.map(copy) : g.party;
     this.allyIdx = this.allies.findIndex(c => c.hp > 0);
     if (this.coop) {

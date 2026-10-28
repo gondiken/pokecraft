@@ -14,7 +14,8 @@ import { lightState, LIGHTS } from './glowfish.js'; // T41
 import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 import { castleState } from './castleland.js'; // T49
 
-export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
+export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999,
+  perStar: 2, starCap: 95 }; // owner 2026-10-28: every star you already hold makes the next Boss (and crew) 2 levels stronger, up to 95 (creatures now grow to 100)
 
 // A Boss def (one per Picture World, keyed by its PICTURE_WORLDS id):
 // { id, name, type, title?, colors: { shirt, pants, hair, skin }, hat?, cape?, look?,   // a person (buildPerson), or
@@ -51,6 +52,15 @@ export function loadBossWins(saved) {
 }
 
 const topLevel = team => Math.max(...team.map(t => t[1]));
+
+// Owner 2026-10-28: "the Bosses should get slightly stronger from one to the next". The worlds can be done in any order, so the step
+// comes from the stars you hold from OTHER worlds (a rematch of this world's Boss does not count its own star twice). Pure.
+export const starBonus = (stars, id) => BOSS.perStar * (stars || []).filter(s => s !== id).length;
+export function starTeam(team, stars, id) {
+  const up = starBonus(stars, id);
+  if (!up) return team;
+  return team.map(([s, L, moves]) => { const lv = Math.max(L, Math.min(BOSS.starCap, L + up)); return moves === undefined ? [s, lv] : [s, lv, moves]; });
+}
 
 // Stand-in Bosses with old species (each task replaces its own call with the real Boss).
 const NOTE = 'Thank you! Every star makes my Swirl a little stronger. Bring me more!';
@@ -290,17 +300,17 @@ export function createBosses(game, { startBattle, save }) {
       if (npc.kind === 'crew') {
         const i = npc.def.index, crew = def.crew[i];
         if (game.beaten.includes(crewKey(def.id, i))) { toast(`${npc.name}: ${crew.line}`); return true; }
-        startBattle({ trainer: npc, team: crew.team, intro: crew.intro || ['Get past me first!'], picture: { id: def.id, crew: i, rematch: null } });
+        startBattle({ trainer: npc, team: starTeam(crew.team, game.stars, def.id), intro: crew.intro || ['Get past me first!'], picture: { id: def.id, crew: i, rematch: null } });
         return true;
       }
       const why = gateText(def) ?? crewText(def);
       if (why) { toast(`${npc.name}: ${why}`); return true; }
       if (!hasStar(def.id)) {
-        startBattle({ trainer: npc, team: def.team, intro: def.intro, boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: null } });
+        startBattle({ trainer: npc, team: starTeam(def.team, game.stars, def.id), intro: def.intro, boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: null } });
         return true;
       }
       if (game.duels?.incoming) { toast('Answer the battle question first!'); return true; }
-      const wins = winsOf(def.id), top = topLevel(bossTeam(def, wins));
+      const wins = winsOf(def.id), top = topLevel(starTeam(bossTeam(def, wins), game.stars, def.id));
       pending = { npc, at: performance.now() };
       game.ui.ask({
         text: wins === 0 ? `${npc.name}: A rematch? My team trained too. Now they are up to level ${top}!`
@@ -316,7 +326,7 @@ export function createBosses(game, { startBattle, save }) {
       game.ui.closeAsk();
       if (!npc || !usable(npc) || dist(npc) > BOSS.askRange) return;
       const def = defOf(npc), wins = winsOf(def.id);
-      startBattle({ trainer: npc, team: bossTeam(def, wins), intro: def.rematchIntro || ["Back again? Let's go!"], boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: wins } });
+      startBattle({ trainer: npc, team: starTeam(bossTeam(def, wins), game.stars, def.id), intro: def.rematchIntro || ["Back again? Let's go!"], boss: true, xpBoost: BOSS.xpBoost, picture: { id: def.id, rematch: wins } });
     },
 
     // The words for the big action button: { verb, action } or null for people that are not mine.

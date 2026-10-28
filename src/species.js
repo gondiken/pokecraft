@@ -2793,6 +2793,7 @@ export const MEADOW_SPAWNS = [['pricklet', 1.2, 'guardpost'], ['visnail', 1.0, '
 /* ==== end of T49 knight ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
+export const MAX_LEVEL = 100; // owner 2026-10-28: was 60
 
 export function statsFor(c) {
   const b = SPECIES[c.species].base, L = c.level;
@@ -2892,7 +2893,7 @@ export function gainXp(c, amount, { ask = false } = {}) {
   // Creatures saved before the new moves existed: the old moves count as already offered.
   c.learned ??= [...new Set([...c.moves, ...OLD_MOVE_IDS])];
   c.xp += amount;
-  while (c.level < 60 && c.xp >= xpForLevel(c.level + 1)) {
+  while (c.level < MAX_LEVEL && c.xp >= xpForLevel(c.level + 1)) {
     const before = statsFor(c).maxHp;
     c.level++;
     c.hp += statsFor(c).maxHp - before;

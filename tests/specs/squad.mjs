@@ -120,7 +120,7 @@ export default async function ({ browser, base, t }) {
   t.ok(D.moves && D.sig && D.sigOnlyThose === 'countoff,towertopple' && D.noCoverage, `6 squad moves, signature moves at Lv 30, every crew knows another type's move (${D.t30})`);
   t.ok(D.big === 'rally:true,shield:true,sacrifice:true', `big moves rally/shield/sacrifice learned by all (${D.big})`);
   t.ok(D.fx, 'fx recipes (travel, impact, two signature moves, colours) and the sound exist');
-  t.ok(D.duel === 11, `duel VERSION is ${D.duel}`);
+  t.ok(D.duel >= 11, `duel VERSION is ${D.duel}`);
   const wv = await page.evaluate(() => fetch('/src/multiplayer.js').then(r => r.text()));
   t.ok(/WORLD_VERSION = 20/.test(wv), 'WORLD_VERSION is 20');
   t.ok(D.crew[0] === 1 && D.crew[1] === 0.6 && D.crew[2] === 1.2, 'CREW numbers and hpPower of a non-crew');

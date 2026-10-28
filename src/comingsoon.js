@@ -9,8 +9,8 @@ export const PREVIEW = typeof location !== 'undefined' && new URLSearchParams(lo
 export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefined' || globalThis.__pcWave15 === true;
 // Owner 2026-10-28: "we can switch on the Funfair in the real game, just that one". A world listed here is open for everyone
 // while the rest of wave 15 stays closed.
-export const OPEN_NOW = ['fair', 'atlantis', 'doodle', 'doors', 'castle']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle
+export const OPEN_NOW = ['fair', 'atlantis', 'doors', 'castle']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle; the Sketchbook closed again (owner 2026-10-29, pencil control)
 export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
-export const LATER = ['castle'];
+export const LATER = ['castle', 'doodle']; // owner 2026-10-29: the Sketchbook is back behind ?preview until its pencil is reworked (saves keep its star, lines and edits)

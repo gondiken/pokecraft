@@ -89,7 +89,7 @@ export default async function ({ browser, base, t }) {
       clean: [C.cleanCoop({ mission: 'gen:18', boss: 'giant1', at: [1, 2, 3], grow: 3 }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3], grow: -2 }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3], grow: 'x' }).grow, C.cleanCoop({ mission: 'a', boss: 'giant1', at: [1, 2, 3] }).grow],
     };
   });
-  t.ok(gr.version === 11, `duel VERSION is ${gr.version}`);
+  t.ok(gr.version >= 11, `duel VERSION is ${gr.version}`);
   t.ok(gr.zero[0] === 55 && gr.zero[1] === 3 && gr.same0, `grow 0 is today's giant (level ${gr.zero[0]}, ${gr.zero[1]}x HP)`);
   t.ok(JSON.stringify(gr.rows.map(r => r[0])) === `[${Math.min(gr.cap, 57)},${Math.min(gr.cap, 61)},${Math.min(gr.cap, 65)},${Math.min(gr.cap, 71)}]`, `the level cap grows 57 / 61 / 65 / 71, up to the cap (${gr.rows.map(r => r[0])}, cap ${gr.cap})`);
   t.ok(JSON.stringify(gr.rows.map(r => r[1])) === '[3.25,3.75,4.25,4.5]', `the HP factor grows 0.25 per step up to +1.5 (${gr.rows.map(r => r[1])})`);

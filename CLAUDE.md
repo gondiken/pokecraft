@@ -347,7 +347,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `battle.field`, `battle.round`.
 - **Duel safety:** both browsers work out each turn from a shared seed (`battle.rng`). Draw order in `useMove`: hit, number of hits,
   crit, damage roll, risky coin (7), curse roll (8), effect chance, sleep length; **nothing may branch on `side` before a draw.**
-  `duel.js` `VERSION` must be bumped when battle rules change; it is **11** (8 T24/T25, 9 coop ask, 10 Squad, 11 grown giants).
+  `duel.js` `VERSION` must be bumped when battle rules change; it is **12** (8 T24/T25, 9 coop ask, 10 Squad, 11 grown giants, 12 creatures up to Lv 100).
 - **Pointer lock:** with a mouse the browser only lets the game capture the mouse after a click. That's why battles end with a
   "Continue exploring" button and the pause screen exists.
 
@@ -433,7 +433,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   Keys `'pw:<id>:<name>'` in `beaten` pass `loadKeys`. A ride that carries the player is a `Mover` or a duck-typed `carry`
   (`where`, `wantsLeave`, `leave`, `steer`, `look`, `safe`); `world.people` are guests of a Picture World.
 - **Open worlds (owner 2026-10-28, `comingsoon.js`):** outside `?preview` only `OPEN_NOW` worlds are open (`fair`, `atlantis`,
-  `doodle`, `doors`, `castle`; `worldOpen(id)`; spec `comingsoon`); `worldOpen('atlantis')` sizes the Pirate Seas.
+  `doors`, `castle`; `worldOpen(id)`; spec `comingsoon`); `worldOpen('atlantis')` sizes the Pirate Seas. A `LATER` world (owner 2026-10-29:
+  the Sketchbook again, until its pencil is reworked) is a covered secret frame; saves keep its star, keys and edits.
+- **Levels (owner 2026-10-28):** creatures grow to `MAX_LEVEL` 100 (was 60; duel `VERSION` 12). Picture World Bosses and crews get
+  `BOSS.perStar` (2) levels per star held from other worlds, up to `BOSS.starCap` 95 (`starTeam`).
 - **The rules every world shares (owner 2026-10-27/28, `plans/T46.md`):** every Boss with helpers battles only once they are beaten
   (`crewLeft` / `crewText` / `bosses.crewAim`, the guide's first stop); clocks are summed dt with fixed sub-steps (60 and 20 fps the
   same), standing still in a battle / ask / panel / pause; a miss never fails, it starts the round again. **Kind help (owner
