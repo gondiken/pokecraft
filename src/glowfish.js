@@ -8,12 +8,14 @@
 
 export const FISH = {
   carry: 8,                                   // the net holds up to 8 (plan: 6; 8 so one lunge can take a whole tight school)
-  net: { r: 1.1, ahead: 1.2 },                // the net's sphere, its centre this far in front of the eyes
-  lunge: { min: 1.5, max: 4, hold: 0.9, time: 0.25, rest: 0.8 }, // length 1.5..4 by how long you held; it takes 0.25 s
+  net: { r: 1.0, ahead: 1.2 },                // the net's sphere, its centre this far in front of the eyes
+  // owner 2026-10-28 ("I caught all of them in 90 seconds"): every kind gets away better: a shy fish shoots out faster and further and
+  // hides again sooner, a darter notices you from further, is quicker and trembles in a dead end for less time, the school breathes faster
+  lunge: { min: 1.5, max: 4, hold: 0.9, time: 0.25, rest: 1.0 }, // length 1.5..4 by how long you held; it takes 0.25 s
   step: 1 / 120,
-  shy: { wobble: 0.6, speed: 6, run: 4, drift: 1.0, stay: 3.0, back: 1.0, turn: 0.55 }, // out for stay s after the wobble, then home in back s
-  darter: { sense: 7, flee: 10, wander: 0.9, stuck: 2.5, flip: 0.35, zig: 0.6, bolt: 1.0, boltSpeed: 11, leash: 7, look: 0.9, dirs: 16, progress: 0.3 },
-  school: { n: 8, rMin: 0.6, rMax: 2.2, cycle: 3, first: 4.5, drift: 40 },
+  shy: { wobble: 0.5, speed: 8, run: 5, drift: 1.6, stay: 2.2, back: 0.6, turn: 0.55 }, // out for stay s after the wobble, then home in back s
+  darter: { sense: 9, flee: 11.5, wander: 0.9, stuck: 1.6, flip: 0.35, zig: 0.6, bolt: 1.0, boltSpeed: 13, leash: 7, look: 0.9, dirs: 16, progress: 0.3 },
+  school: { n: 8, rMin: 0.6, rMax: 2.4, cycle: 2.2, first: 4.5, drift: 40 },
 };
 export const PER_DISTRICT = 4, DISTRICTS_N = 3, LIGHTS = PER_DISTRICT * DISTRICTS_N;
 export const KINDS = ['shy', 'darter', 'school'];  // district 0, 1, 2
@@ -103,8 +105,8 @@ export function schoolCentre(spec, t) {
   return [x, spec.y(z), z];
 }
 export function schoolRadius(t) {
-  const S = FISH.school, cyc = t < S.first ? S.first : S.cycle; // the first breath is slower
-  return S.rMin + (S.rMax - S.rMin) * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / cyc));
+  const S = FISH.school, u = t < S.first ? t / S.first : (t - S.first) / S.cycle; // the first breath is slower (and the next starts where it ended)
+  return S.rMin + (S.rMax - S.rMin) * (0.5 - 0.5 * Math.cos(2 * Math.PI * u));
 }
 // A fixed unit offset for fish i of n (a spread on a sphere, from the golden angle).
 export function schoolOffset(i, n = FISH.school.n) {
@@ -189,7 +191,7 @@ export class Darter {
     if (this.state !== 'stuck') { this.state = 'stuck'; this.stuckT = 0; }
     this.speed = 0;
     this.stuckT += h;
-    if (this.stuckT >= D.stuck) { // after 2.5 s it bolts past you along the way that gets it furthest from you
+    if (this.stuckT >= D.stuck) { // after FISH.darter.stuck s it bolts past you along the way that gets it furthest from you
       let pick = null, far = -1;
       for (let k = 0; k < D.dirs; k++) {
         const a = (k / D.dirs) * Math.PI * 2, c = [Math.sin(a), Math.cos(a)];

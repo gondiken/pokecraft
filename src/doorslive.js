@@ -14,7 +14,8 @@ import { Mover, PATHS } from './mover.js';
 import { sound } from './sound.js';
 import { PINATA, pinataPlan, newRun, pinataAt, topAt, whack, timeUp, hashStr } from './pinata.js';
 import { CATCH, catchPlan, newCatch, stepCatch, inAir, slowed, jacksLeft } from './jackcatch.js';
-import { RING, SIDES, bowKey, bowState, GIFT_KINDS, giftKey } from './doorsland.js';
+import { RING, SIDES, SLIDE, bowKey, bowState, GIFT_KINDS, giftKey, pointOf } from './doorsland.js';
+import { HUNT, huntRooms, slideSwing, springsAt, pitSlot, pitPick, pitPhase, touches } from './pinatahunt.js';
 // The picture on the sign over an opened door (owner 2026-10-27)
 const SIGN = { slide: '🛝', ballpit: '🔴', confetti: '🎉', springs: '🪀', nested: '🚪', shop: '🎁', healer: '💖', trainer1: '⚔️', trainer2: '⚔️', popup: '🤡', gift: '🎀', wrapping: '🖼️' };
 
@@ -46,6 +47,12 @@ const ROOM_SAY = {
   trainer1: 'Surprise! Battle!',
   trainer2: 'Surprise! Battle!',
   wrapping: 'The Wrapping Room.', popup: 'The Pop-Up Room! Stand on the pad and press Play!', gift: 'The Big Gift room!',
+};
+// a room that hides a piñata says what to do instead
+const HUNT_SAY = {
+  slide: 'A piñata swings over the slide! Slide down when it swings in, and grab it.',
+  springs: 'A piñata floats up high! Jump on the spring right under it.',
+  ballpit: 'Something wiggles in the balls... a piñata! Run to it when it pops up.',
 };
 const key = (x, y, z) => `${x},${y},${z}`;
 const ease = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
@@ -136,6 +143,9 @@ export class DoorsLive {
     this.inConfetti = false; this.giftWasDone = false; this.bossBounce = -1;
     this.pitBalls = this.makePitBalls();
     this.savedNooks = null;
+    // the Piñata Hunt (pinatahunt.js): each piñata of the party hides in one of three rooms until you find it (this trip)
+    this.hunt = { rooms: huntRooms(this.seed), found: new Set(), t: 0, pitT: 0, pitN: -1, pitCell: -1, missed: false, grabbed: false };
+    this.pitCells = this.plan.pit.cells.filter(([x, z]) => !(x === this.plan.pit.chest[0] && z === this.plan.pit.chest[2])).map(([x, z]) => [x + 0.5, z + 0.5]);
     this.buildMeshes();
     this.makeSigns();
     this.syncBlocks();
@@ -189,10 +199,11 @@ export class DoorsLive {
     for (const sg of this.signs || []) {
       const door = this.doorList.find(d => d.id === `r${sg.room.k}`), done = this.roomDone(sg.room.kind);
       const show = !!door?.opened || done === true || sg.room.kind === 'popup' || sg.room.kind === 'gift' || sg.room.kind === 'wrapping';
-      const key = `${show}|${done}`;
+      const hides = this.hiding(sg.room.kind) ? '🪅' : sg.pic; // a room that still hides a piñata shows a piñata on its sign
+      const key = `${show}|${done}|${hides}`;
       if (key === sg.shown) continue;
       sg.shown = key; sg.mesh.visible = show;
-      if (show) sg.mesh.material.map = this.signTexOf(sg.pic, done === true);
+      if (show) sg.mesh.material.map = this.signTexOf(hides, done === true && hides === sg.pic);
     }
   }
 
@@ -225,6 +236,7 @@ export class DoorsLive {
     this.pinataGeos = Object.fromEntries(Object.entries(PINATAS).map(([id, b]) => [id, merged(b)]));
     for (const g of Object.values(this.pinataGeos)) this.geos.push(g);
     this.pinata = add(new THREE.Mesh(this.pinataGeos.llama, lam())); this.pinata.visible = false;
+    this.hidden = Object.fromEntries(HUNT.rooms.map(kind => { const m = add(new THREE.Mesh(this.pinataGeos.llama, this.pinata.material)); m.visible = false; return [kind, m]; })); // the hiding piñatas
     const rg = new THREE.BoxGeometry(0.05, 1, 0.05); rg.translate(0, 0.5, 0);
     const rm = new THREE.MeshLambertMaterial({ color: 0xfff0d0 }); this.mats.push(rm);
     this.rope = add(new THREE.Mesh(rg, rm), rg); this.rope.visible = false;
@@ -346,7 +358,7 @@ export class DoorsLive {
     const pos = p.pos ?? p, pn = this.pn, st = this.bows();
     if (this.slideSpot(p)) return 'Slide!';
     if (pn.phase === 'run' && this.onHall(pos)) return 'Whack!';
-    if (this.onRing(pos) && pn.phase === 'idle' && this.nextRound() > 0) return this.misses[this.nextRound()] ? 'Again!' : 'Play!';
+    if (this.onRing(pos) && pn.phase === 'idle' && this.nextRound() > 0 && this.hunt.found.has(this.nextRound())) return this.misses[this.nextRound()] ? 'Again!' : 'Play!';
     if (this.inPopRoom(pos) && this.onPopPad(pos) && !st.bows[3] && this.jc.phase !== 'run') return this.jcMisses ? 'Again!' : 'Play!';
     return null;
   }
@@ -369,6 +381,7 @@ export class DoorsLive {
     this.doBurst([c[0], 12.5, c[1]], 0.35);
     if (quiet) return;
     if (d.kind === 'nested') this.toast(d.nestedIndex === 2 ? 'The smallest door! What is behind it?' : ROOM_SAY.nested);
+    else if (this.hiding(d.kind)) this.toast(HUNT_SAY[d.kind]);
     else if (ROOM_SAY[d.kind]) this.toast(ROOM_SAY[d.kind]);
     if (d.kind === 'trainer1' || d.kind === 'trainer2') this.jumpOut(d);
   }
@@ -409,11 +422,16 @@ export class DoorsLive {
   }
   rideSlide() {
     this.slide.board(this.game.player);
+    this.hunt.missed = !!this.hiding('slide');
     sound.play('boing');
     this.toast('Wheee!');
     return true;
   }
-  slideEnd() { sound.play('popout'); }
+  slideEnd() {
+    sound.play('popout');
+    if (this.hunt.missed && this.hiding('slide')) this.toast('Missed it! Climb up again and slide when the piñata swings in.');
+    this.hunt.missed = false;
+  }
 
   /* ---------------------------------- a game is on: keep the wild gift boxes away ---------------------------------- */
   // While a piñata swings or the jacks fly, no wild creature spawns or stays near (so the crosshair, a tap or a bump never finds a gift box
@@ -428,11 +446,78 @@ export class DoorsLive {
     for (const w of [...cm.list]) if (!w.frozen && this.nearGame(w.pos)) cm.remove(w);
   }
 
+  /* ---------------------------------- the Piñata Hunt (owner 2026-10-28: the slide, the springs and the ball pit have a point) ---------------------------------- */
+  // The round (1..3) whose piñata still hides in this room, or 0. A round whose bow is saved needs no piñata.
+  hiding(kind) {
+    const b = this.bows().bows;
+    for (const r of [1, 2, 3]) if (this.hunt.rooms[r] === kind && !b[r - 1] && !this.hunt.found.has(r)) return r;
+    return 0;
+  }
+  findAll() { for (const r of [1, 2, 3]) this.hunt.found.add(r); } // tests
+  // The guide (gymLive.aim, asked before doorsAim): while the next piñata still hides, to its room once that door is open, else to the
+  // nearest surprise door not opened yet (which one hides it is the surprise). null = doorsAim's own arrow.
+  aim(p) {
+    const r = this.nextRound();
+    if (!r || this.hunt.found.has(r) || this.pn.phase !== 'idle') return null;
+    const kind = this.hunt.rooms[r], name = PINATA.rounds[r - 1].name, room = this.plan.byKind[kind], here = this.roomAt(p.pos ?? p);
+    if (here?.kind === kind) return null; // in the room: the piñata is right there
+    const open = this.doorList.find(d => d.id === `r${room.k}`)?.opened;
+    if (open) return { x: room.door.centre[0], z: room.door.centre[1], text: (a, m) => `🪅 The ${name} ${a} ${m}m` };
+    const pos = p.pos ?? p, shut = this.doorList.filter(d => !d.opened && !d.nestedIndex && d.nestedIndex !== 0 && !this.plan.rooms[d.k].gold && d.id.startsWith('r'));
+    if (!shut.length) return null;
+    const d = shut.reduce((m, q) => (Math.hypot(q.centre[0] - pos.x, q.centre[1] - pos.z) < Math.hypot(m.centre[0] - pos.x, m.centre[1] - pos.z) ? q : m));
+    return { x: d.centre[0], z: d.centre[1], text: (a, m) => `🪅 Find the ${name}! Try this door ${a} ${m}m` };
+  }
+  // Where the hidden piñata of a room is now ({ x, y, z, up } or null: down in the balls).
+  huntAt(kind) {
+    const h = this.hunt, hard = this.hard();
+    if (kind === 'slide') {
+      const S = this.plan.slide, pts = S.path, len = this.pathLength();
+      let want = HUNT.slide.at * len, i = 0;
+      for (; i + 1 < pts.length; i++) { const d = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]); if (want <= d) break; want -= d; }
+      const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)], d = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) || 1, f = Math.min(1, want / d);
+      const x = a[0] + (b[0] - a[0]) * f, y = a[1] + (b[1] - a[1]) * f, z = a[2] + (b[2] - a[2]) * f;
+      const c = pointOf(S.k, SLIDE.centre[0], SLIDE.centre[1]), rx = x - c[0], rz = z - c[1], rm = Math.hypot(rx, rz) || 1, out = slideSwing(h.t, hard);
+      return { x: x + (rx / rm) * out, y: y + HUNT.slide.up, z: z + (rz / rm) * out, up: true };
+    }
+    if (kind === 'springs') { const q = springsAt(h.t, hard), [x, z] = pointOf(this.plan.springs.k, q.u + 0.5, q.v + 0.5); return { x, y: q.y, z, up: true }; }
+    if (kind === 'ballpit') {
+      if (h.pitCell < 0) return null;
+      const u = h.pitT - h.pitN * pitSlot(hard), ph = pitPhase(u, hard), c = this.pitCells[h.pitCell];
+      return { x: c[0], y: this.plan.pit.floorY + 0.7 + ph.rise * 1.2, z: c[1], up: ph.phase === 'up', phase: ph.phase };
+    }
+    return null;
+  }
+  stepHunt(dt) {
+    const h = this.hunt, p = this.game.player, pos = p.pos;
+    h.t += dt;
+    if (this.hiding('ballpit') && this.roomAt(pos)?.kind === 'ballpit') { // the ball pit's clock runs only while you are in it
+      h.pitT += dt;
+      const n = Math.floor(h.pitT / pitSlot(this.hard()));
+      if (n !== h.pitN) { h.pitN = n; h.pitCell = pitPick(this.seed, n, this.pitCells, [pos.x, pos.z]); }
+    }
+    for (const kind of HUNT.rooms) {
+      const r = this.hiding(kind);
+      if (!r) continue;
+      if (kind === 'slide' && this.slide.rider !== p) continue; // only on the way down the slide
+      const q = this.huntAt(kind);
+      if (q?.up && touches(pos, q)) this.found(r, q);
+    }
+  }
+  found(r, q) {
+    const h = this.hunt, name = PINATA.rounds[r - 1].name;
+    h.found.add(r); h.missed = false;
+    sound.play('rightdoor');
+    this.doBurst([q.x, q.y, q.z], 0.6);
+    this.toast(`You found the ${name}! 🪅 It flies to the party rug: go and play!`);
+    this.syncSigns();
+  }
+
   /* ---------------------------------- the Piñata Party (bows 1-3) ---------------------------------- */
   nextRound() { const b = this.bows().bows; for (let i = 0; i < 3; i++) if (!b[i]) return i + 1; return 0; }
   startPinata() {
     const pn = this.pn, round = this.nextRound();
-    if (!round || pn.phase !== 'idle') return false;
+    if (!round || pn.phase !== 'idle' || !this.hunt.found.has(round)) return false;
     const attempt = this.attempts[round]++;
     const plan = pinataPlan(this.seed, round, attempt, { help: this.misses[round], hard: this.hard() });
     Object.assign(pn, { phase: 'run', round, run: newRun(plan), t: 0, resultT: 0, swingT: 9, burstAt: null });
@@ -522,6 +607,7 @@ export class DoorsLive {
       const p = this.game.player, events = stepCatch(jc.run, jc.t, p.pos, p.vel);
       for (const e of events) this.onCatchEvent(e);
       if (jc.splatT < 9) jc.splatT += dt;
+      if (jc.phase !== 'run') return; // it just ended (endCatch took the sticky shoes off: a late splat must not put them back)
       // sticky shoes after a splat
       if (slowed(jc.run, jc.t)) p.speedCap = CATCH.pies.cap; else this.unslow();
       this.syncPopBoxes();
@@ -604,7 +690,7 @@ export class DoorsLive {
   }
   step(dt) {
     this.clock += dt;
-    this.stepPinata(dt); this.stepJacks(dt); this.slide.update(dt); this.stepRooms(dt); this.stepHops(dt);
+    this.stepPinata(dt); this.stepJacks(dt); this.slide.update(dt); this.stepHunt(dt); this.stepRooms(dt); this.stepHops(dt);
     if (this.gameOn() && (this.clearAcc += dt) >= 0.5) { this.clearAcc = 0; this.clearWilds(); }
     if (this.pn.swingT < 9) this.pn.swingT += dt;
     this.cells.flush();
@@ -618,6 +704,7 @@ export class DoorsLive {
     if (jc.phase === 'run' && this.inPopRoom(pos)) s = { text: `🤡 ${jc.run.score} / ${jc.run.plan.need} · ${jacksLeft(jc.run)} left`, done: false };
     else if (pn.phase === 'run' && this.onHall(pos)) { const r = pn.run; s = { text: `🪅 CRACKs ${r.plan.hp - r.hp} / ${r.plan.hp} · ⏱ ${Math.max(0, Math.ceil(r.plan.time - pn.t))}`, done: false }; }
     else if (st.done) s = { text: 'Open the Big Gift!', done: true };
+    else if (this.nextRound() && !this.hunt.found.has(this.nextRound()) && (this.roomAt(pos) || this.onHall(pos))) s = { text: `🪅 Find the ${PINATA.rounds[this.nextRound() - 1].name}! · 🎀 ${st.n} / 4`, done: false };
     else if (this.roomAt(pos) || this.onHall(pos)) s = { text: `🎀 ${st.n} / 4`, done: false };
     ui.setScore(s);
   }
@@ -641,9 +728,11 @@ export class DoorsLive {
     if (this.shadows.instanceColor) this.shadows.instanceColor.needsUpdate = true;
     if (this.rings.instanceColor) this.rings.instanceColor.needsUpdate = true;
     this.drawCream();
+    this.drawHunt(p);
     // pit balls
     const pit = this.plan.pit, bn = near(pit.chest[0], pit.chest[2], 24);
     this.balls.visible = bn;
+    { const q = this.hiding('ballpit') ? this.huntAt('ballpit') : null; this.pitShake = q && q.phase !== 'down' ? [q.x, q.z] : null; }
     if (bn) this.drawBalls(p);
     // confetti
     this.drawConfetti();
@@ -652,10 +741,22 @@ export class DoorsLive {
     if (this.bigBow.visible) this.bigBow.rotation.y = Math.sin(this.clock * 1.5) * 0.15;
   }
 
+  // The hiding piñatas: swinging over the slide, floating over the springs, popping out of the ball pit.
+  drawHunt(p) {
+    for (const kind of HUNT.rooms) {
+      const m = this.hidden[kind], r = this.hiding(kind), room = this.plan.byKind[kind], c = room && pointOf(room.k, 0.5, 5.5);
+      const q = r && c && Math.hypot(p.x - c[0], p.z - c[1]) < 30 ? this.huntAt(kind) : null;
+      m.visible = !!q && (kind !== 'ballpit' || q.phase !== 'jiggle');
+      if (!m.visible) continue;
+      m.geometry = this.pinataGeos[PINATA.rounds[r - 1].id];
+      m.position.set(q.x, q.y, q.z);
+      m.rotation.set(Math.sin(this.clock * 2.2) * 0.15, this.clock * 0.8, Math.cos(this.clock * 1.7) * 0.12);
+    }
+  }
   // The piñata, its rope and balloons: swinging in a game; resting high over the rug while you may press Play!; floating up for a nap.
   drawPinata(shadow) {
     const pn = this.pn, round = pn.round || this.nextRound();
-    const show = pn.phase !== 'idle' || round > 0;
+    const show = pn.phase !== 'idle' || (round > 0 && this.hunt.found.has(round));
     this.pinata.visible = this.rope.visible = this.balloons.visible = show && pn.phase !== 'burst';
     this.bow.visible = false; this.prop.visible = false;
     if (!show) return;
@@ -765,6 +866,8 @@ export class DoorsLive {
         const push = (R - d) * 0.85, ux = d > 1e-4 ? dx / d : Math.cos(i), uz = d > 1e-4 ? dz / d : Math.sin(i);
         x += ux * push; z += uz * push; y += Math.max(0, 1 - d / R) * 0.35;
       }
+      const hq = this.pitShake;
+      if (hq && Math.hypot(b.hx - hq[0], b.hz - hq[1]) < 1.3) { y += 0.12 + 0.12 * Math.sin(this.clock * 40 + i); x += Math.sin(this.clock * 31 + i) * 0.06; } // the balls shake where the piñata is coming up
       o.position.set(x, y, z); o.rotation.set(0, 0, 0); o.scale.setScalar(1); o.updateMatrix();
       this.balls.setMatrixAt(i, o.matrix);
     });
@@ -807,7 +910,8 @@ export class DoorsLive {
     return { clock: this.clock, bows: this.bows(),
       pinata: { phase: pn.phase, round: pn.round, attempt: r?.plan.attempt, t: pn.t, hp: r?.hp, need: r?.plan.hp, hits: r?.hits, big: r?.big, whiffs: r?.whiffs, time: r?.plan.time, misses: [...this.misses], at: q && { x: +q.x.toFixed(2), y: +q.y.toFixed(2), z: +q.z.toFixed(2) } },
       catch: { phase: jc.phase, t: jc.t, score: jc.run?.score, need: jc.run?.plan.need, left: jc.run ? jacksLeft(jc.run) : null, splats: jc.run?.splats, won: jc.won, misses: this.jcMisses },
-      opened: this.doorList.filter(d => d.opened).map(d => d.id), sliding: !!this.slide.rider };
+      opened: this.doorList.filter(d => d.opened).map(d => d.id), sliding: !!this.slide.rider,
+      hunt: { rooms: { ...this.hunt.rooms }, found: [...this.hunt.found].sort(), hiding: Object.fromEntries(HUNT.rooms.map(k => [k, this.hiding(k)])) } };
   }
   topNow() { return this.pn.run ? topAt(this.pn.run, this.pn.t) : null; }
 }

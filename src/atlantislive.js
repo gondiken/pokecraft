@@ -13,6 +13,41 @@ import { sound } from './sound.js';
 import { FISH, Darter, shyAt, popDir, schoolFish, lungeLength, netCentre, inNet, lightState, nextLights, lightsFor, fishFor, lightKey, LIGHT_KEY, PER_DISTRICT, LIGHTS } from './glowfish.js';
 import { CITY, WHIRL, BUBBLES, DISTRICTS, craterR, districtAt } from './atlantisland.js';
 
+// Owner 2026-10-28 ("what are these circles? they're drawn so poorly"): the glows are soft camera-facing sprites, not see-through
+// balls. One instanced quad each; the instance matrix gives the place and the size (its x scale = the diameter), the instance colour
+// (or the material's) the colour. `ring` = an empty glass bulb: a thin bright edge and a faint middle. Additive, fading with distance.
+const GLOW_VERT = `varying vec2 vUv; varying vec3 vCol; varying float vFar;
+void main() {
+  vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  c.xy += position.xy * length(instanceMatrix[0].xyz);
+  vUv = uv; vFar = -c.z;
+  #ifdef USE_INSTANCING_COLOR
+  vCol = instanceColor;
+  #else
+  vCol = vec3(1.0);
+  #endif
+  gl_Position = projectionMatrix * c;
+}`;
+const GLOW_FRAG = `uniform vec3 color; uniform float opacity; uniform float ring; uniform float far; varying vec2 vUv; varying vec3 vCol; varying float vFar;
+void main() {
+  float r = length(vUv - 0.5) * 2.0;
+  if (r > 1.0) discard;
+  float soft = pow(1.0 - r, 2.4) + 0.8 * smoothstep(0.32, 0.0, r);
+  float edge = smoothstep(0.62, 0.78, r) * smoothstep(1.0, 0.84, r) + 0.12 * (1.0 - r) + 0.35 * smoothstep(0.42, 0.3, length(vUv - vec2(0.38, 0.62)) * 2.0);
+  float a = mix(soft, edge, ring) * opacity * clamp(1.0 - vFar / far, 0.0, 1.0);
+  gl_FragColor = vec4(color * vCol * a, 1.0);
+}`;
+let glowQuad = null;
+function glowSprites(color, count, { opacity = 0.6, ring = 0, far = 45, blend = THREE.AdditiveBlending } = {}) {
+  glowQuad ??= new THREE.PlaneGeometry(1, 1);
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG, transparent: true, depthWrite: false, blending: blend,
+    uniforms: { color: { value: new THREE.Color(color) }, opacity: { value: opacity }, ring: { value: ring }, far: { value: far } },
+  });
+  const m = new THREE.InstancedMesh(glowQuad, mat, count);
+  return m;
+}
+
 export const LIVE_RULES = { jarMargin: 0.3, pourReach: 1.4, hintGap: 8, active: 80, saveGap: 0.25 };
 // The pictures that explain the game (owner 2026-10-27): bulbs over the lanterns, the trail to the lantern, the flight into a bulb, the ghost fish.
 export const VIS = { bulbR: 1.25, bulbUp: 1.4, trail: 16, trailLen: 26, fly: 12, flyTime: 0.8, demo: { period: 6, swim: 3.2, glow: 1.6, near: 30 } };
@@ -100,17 +135,16 @@ export class AtlantisLive {
     // A soft glow round every glowfish; four glass bulbs on each lantern that light up one by one; the fish in your net glowing round
     // you and a trail of light from you to the lantern they belong to; poured fish flying into their bulb; and, until you catch your
     // first one, a ghost glowfish that swims from the district's fish into the lantern and lights a bulb, over and over.
-    const glowMat = color => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
     this.halo = {};
-    for (const kind of ['shy', 'darter', 'school']) this.halo[kind] = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 12, 8), glowMat(COLORS[kind]), this.lists[kind].length));
+    for (const kind of ['shy', 'darter', 'school']) this.halo[kind] = this.mark(glowSprites(COLORS[kind], this.lists[kind].length, { opacity: 0.55 }));
     const n = DISTRICTS.length * PER_DISTRICT;
-    this.bulbs = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), n));
-    this.bulbGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.55, 12, 8), glowMat(0xffffff), n));
+    this.bulbs = this.mark(glowSprites(0xffffff, n, { opacity: 0.55, ring: 1, far: 60 }));
+    this.bulbGlow = this.mark(glowSprites(0xffffff, n, { opacity: 0.6, far: 60 }));
     for (let i = 0; i < n; i++) { this.bulbs.setColorAt(i, new THREE.Color(0xa8c8d0)); this.bulbGlow.setColorAt(i, new THREE.Color(0x000000)); }
-    this.trail = this.mark(new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), glowMat(0xffffff), VIS.trail));
-    this.trail.material.opacity = 0.75; this.trail.count = 0;
-    this.flyMesh = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), VIS.fly));
-    this.flyGlow = this.mark(new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 10, 8), glowMat(0xffffff), VIS.fly));
+    this.trail = this.mark(glowSprites(0xffffff, VIS.trail, { opacity: 0.8 }));
+    this.trail.count = 0;
+    this.flyMesh = this.mark(glowSprites(0xffffff, VIS.fly, { opacity: 1 }));
+    this.flyGlow = this.mark(glowSprites(0xffffff, VIS.fly, { opacity: 0.5 }));
     this.flyMesh.count = 0; this.flyGlow.count = 0;
     this.flying = [];                // { from, to, t0, d, k, kind } fish on their way into a bulb (drawn by the part's clock)
     this.dummy = new THREE.Object3D();
@@ -436,7 +470,7 @@ export class AtlantisLive {
       this.lists[kind].forEach((f, i) => {
         const p = f.pos, catchable = !f.out && this.catchable(f), peek = !f.out && kind === 'shy';
         d.position.set(p[0], p[1], p[2]); d.rotation.set(0, 0, 0);
-        d.scale.setScalar(f.out ? 0.0001 : (catchable ? 2.2 : peek ? 1.3 : 1.8) * (1 + 0.18 * Math.sin(t * 4 + i * 1.3)));
+        d.scale.setScalar(f.out ? 0.0001 : (catchable ? 1.7 : peek ? 1.0 : 1.3) * (1 + 0.12 * Math.sin(t * 4 + i * 1.3)));
         d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
       });
       mesh.instanceMatrix.needsUpdate = true;
@@ -449,9 +483,9 @@ export class AtlantisLive {
     this.A.districts.forEach((dist, i) => {
       for (let k = 0; k < PER_DISTRICT; k++) {
         const j = i * PER_DISTRICT + k, at = bulbAt(dist.lantern, k), lit = k < this.A.lit[i] && !busy.has(`${i}:${k}`), ghost = demo && demo.d === i && k === this.A.lit[i] && demo.glow;
-        d.position.set(...at); d.rotation.set(0, 0, 0); d.scale.setScalar(1); d.updateMatrix();
+        d.position.set(...at); d.rotation.set(0, 0, 0); d.scale.setScalar(0.5); d.updateMatrix();
         this.bulbs.setMatrixAt(j, d.matrix); this.bulbs.setColorAt(j, col.setHex(lit ? COLORS[dist.kind] : ghost ? 0xd8f0f4 : 0x8fb0ba)); // unlit: pale empty glass
-        d.scale.setScalar(lit ? 1 + 0.1 * Math.sin(t * 3 + j) : ghost ? 0.8 * demo.glow : 0.0001); d.updateMatrix();
+        d.scale.setScalar(lit ? 1.25 + 0.1 * Math.sin(t * 3 + j) : ghost ? 1.1 * demo.glow : 0.0001); d.updateMatrix();
         this.bulbGlow.setMatrixAt(j, d.matrix); this.bulbGlow.setColorAt(j, col.setHex(COLORS[dist.kind]));
       }
     });
@@ -461,11 +495,11 @@ export class AtlantisLive {
     let n = 0;
     if (target && this.inCity()) {
       const a = this.centre(), b = target.at, dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], len = Math.hypot(dx, dy, dz), shown = Math.min(len, VIS.trailLen);
-      this.trail.material.color.setHex(COLORS[target.kind]);
+      this.trail.material.uniforms.color.value.setHex(COLORS[target.kind]);
       for (let k = 0; k < VIS.trail && len > 2; k++) {
         const f = ((t * 0.5 + k / VIS.trail) % 1), s = 1.2 + f * (shown - 1.2), u = s / len;
         d.position.set(a[0] + dx * u, a[1] + dy * u + Math.sin(t * 3 + k) * 0.15, a[2] + dz * u); d.rotation.set(t + k, t * 0.7, 0);
-        d.scale.setScalar(Math.sin(Math.PI * f) * (s > shown - 2 && shown < len ? 0.4 : 1)); d.updateMatrix();
+        d.scale.setScalar(0.55 * Math.sin(Math.PI * f) * (s > shown - 2 && shown < len ? 0.4 : 1)); d.updateMatrix();
         this.trail.setMatrixAt(n++, d.matrix);
       }
     }
@@ -478,7 +512,7 @@ export class AtlantisLive {
     for (const f of fl.slice(0, VIS.fly)) {
       const e = f.k * f.k * (3 - 2 * f.k), arc = Math.sin(Math.PI * f.k) * 1.5;
       d.position.set(f.from[0] + (f.to[0] - f.from[0]) * e, f.from[1] + (f.to[1] - f.from[1]) * e + arc, f.from[2] + (f.to[2] - f.from[2]) * e);
-      d.rotation.set(0, 0, 0); d.scale.setScalar(f.a); d.updateMatrix();
+      d.rotation.set(0, 0, 0); d.scale.setScalar(0.45 * f.a); d.updateMatrix();
       this.flyMesh.setMatrixAt(n, d.matrix); this.flyMesh.setColorAt(n, col.setHex(COLORS[f.kind]));
       d.scale.setScalar(f.a * (1.2 + 0.2 * Math.sin(t * 8))); d.updateMatrix();
       this.flyGlow.setMatrixAt(n, d.matrix); this.flyGlow.setColorAt(n, col.setHex(COLORS[f.kind]));

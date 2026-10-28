@@ -10,7 +10,7 @@ import { B, isSolid } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { DRAW, newDraw, drawStep, cellInk, pointAt, beeAt } from './tracing.js';
-import { lineKey, lineState, LINE_COUNT, courseOf } from './doodleland.js';
+import { lineKey, lineState, LINE_COUNT, courseOf, COURSES } from './doodleland.js';
 
 export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8 };
 const WORDS = {
@@ -87,7 +87,9 @@ function starGeometry() { // a flat five-point star, standing up (it spins round
   for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.26 : 0.6; (i ? s.lineTo : s.moveTo).call(s, Math.cos(a) * r, Math.sin(a) * r); }
   return new THREE.ShapeGeometry(s);
 }
-const MAX_STARS = 4, MAX_BLOTS = 3, MAX_BEES = 3;
+// owner 2026-10-28: line 3 has 4 blots and only 3 were drawn, so the last one (by the landing strip) stopped the pencil unseen
+const MAX_OF = k => Math.max(1, ...COURSES.map(c => (c[k] || []).length));
+const MAX_STARS = MAX_OF('stars'), MAX_BLOTS = MAX_OF('blots'), MAX_BEES = MAX_OF('bees');
 
 export class DoodleLive {
   constructor(game, part) {

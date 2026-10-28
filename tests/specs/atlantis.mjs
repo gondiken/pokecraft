@@ -78,20 +78,20 @@ async function nodePart(t) {
   const st = G.lightState({ beaten: [G.lightKey(1), G.lightKey(2), G.lightKey(5), 'tower:guard1', G.lightKey(12)] });
   t.ok(st.lit.join() === '2,1,1' && st.total === 4 && !st.done && G.lightState({ beaten: Array.from({ length: 12 }, (_, i) => G.lightKey(i + 1)) }).done, `2: lightState reads the keys (${st.lit}); 12 keys = done`);
   t.ok(G.lightsFor('school', 8) === 4 && G.lightsFor('school', 1) === 0 && G.lightsFor('shy', 3) === 3 && G.fishFor('school', 4) === 8 && G.nextLights({ beaten: [G.lightKey(5)] }, 1, 2).join() === `${G.lightKey(6)},${G.lightKey(7)}`, '2: one light per shy fish and per darter, two school fish make one light, nextLights skips the lit ones');
-  // 3. shy fish: a closed form of the clock. wobble 0.6 s, out for 3 s (4 blocks at speed 6, then drifting), home after 4 s
-  const home = [10, 5, 10], dir = [0, 0, 1], pop = { t0: 2, dir };
-  const at = u => G.shyAt(home, 2 + u, pop);
-  t.ok(G.shyAt(home, 5, null).state === 'home' && at(0.3).state === 'wobble' && !at(0.3).catchable && at(0.3).pos === home, '3: a fish in its jar stays home; a bumped jar wobbles first and cannot be caught yet');
-  const s1 = at(0.6 + 0.4), s2 = at(0.6 + 1.0), s3 = at(0.6 + 2.9), s4 = at(0.6 + 3.5), s5 = at(4.7);
-  t.ok(s1.state === 'out' && near(s1.pos[2] - 10, 2.4, 0.01) && near(s2.pos[2] - 10, 4 + 1.0 * (1.0 - 4 / 6), 0.01) && s3.catchable && s4.state === 'back' && s4.pos[2] < s3.pos[2] && s5.state === 'home' && s5.over, `3: it shoots out at 6 blocks a second to 4 blocks, drifts on, swims back home after 3 s (${s1.pos[2] - 10}, ${s2.pos[2] - 10}, ${s4.pos[2] - 10})`);
+  // 3. shy fish: a closed form of the clock. a wobble, then out (S.run blocks at S.speed, then drifting), home after stay + back
+  const S = FISH.shy, home = [10, 5, 10], dir = [0, 0, 1], pop = { t0: 2, dir };
+  const at = u => G.shyAt(home, 2 + u, pop), tr = S.run / S.speed;
+  t.ok(G.shyAt(home, 5, null).state === 'home' && at(S.wobble / 2).state === 'wobble' && !at(S.wobble / 2).catchable && at(S.wobble / 2).pos === home, '3: a fish in its jar stays home; a bumped jar wobbles first and cannot be caught yet');
+  const s1 = at(S.wobble + tr / 2), s2 = at(S.wobble + tr + 0.3), s3 = at(S.wobble + S.stay - 0.1), s4 = at(S.wobble + S.stay + S.back / 2), s5 = at(S.wobble + S.stay + S.back + 0.1);
+  t.ok(s1.state === 'out' && near(s1.pos[2] - 10, S.run / 2, 0.01) && near(s2.pos[2] - 10, S.run + S.drift * 0.3, 0.01) && s3.catchable && s4.state === 'back' && s4.pos[2] < s3.pos[2] && s5.state === 'home' && s5.over, `3: it shoots out at ${S.speed} blocks a second to ${S.run} blocks, drifts on, swims back home after ${S.stay} s (${s1.pos[2] - 10}, ${s2.pos[2] - 10}, ${s4.pos[2] - 10})`);
   const open = (x, y, z) => !(x > 9 && x < 11 && z > 10 && z < 14); // a wall right in front of the fish
   const pd = G.popDir(home, [10, 5, 6], 0, open);
   let clear = true; for (let s = 0.5; s <= 6.8; s += 0.5) if (!open(10 + pd[0] * s, 5 + pd[1] * s, 10 + pd[2] * s)) clear = false;
   t.ok(clear && Math.abs(Math.hypot(pd[0], pd[2]) - 0.96) < 0.01, `3: a popped fish never shoots into a wall (it turns on until the way is open): ${pd.map(v => v.toFixed(2))}`);
   // 4. the school: 8 fish round a point that breathes between 0.6 and 2.2; a lunge catches everyone inside the net
   const spec = { a: [0, 0], b: [10, 10], y: () => 8 };
-  const tight = 6, spread = 7.5;
-  t.ok(near(G.schoolRadius(tight), 0.6, 1e-9) && near(G.schoolRadius(spread), 2.2, 1e-9) && near(G.schoolRadius(0), 0.6, 1e-9) && near(G.schoolRadius(2.25), 2.2, 1e-9), '4: the school breathes between 0.6 and 2.2 (the first breath is slower: 4.5 s, then 3 s)');
+  const SC = FISH.school, tight = SC.first + SC.cycle, spread = SC.first + 1.5 * SC.cycle;
+  t.ok(near(G.schoolRadius(tight), SC.rMin, 1e-9) && near(G.schoolRadius(spread), SC.rMax, 1e-9) && near(G.schoolRadius(0), SC.rMin, 1e-9) && near(G.schoolRadius(SC.first / 2), SC.rMax, 1e-9) && near(G.schoolRadius(SC.first), SC.rMin, 1e-9), `4: the school breathes between ${SC.rMin} and ${SC.rMax} (the first breath is slower: ${SC.first} s, then ${SC.cycle} s, no jump between them)`);
   const caught = tt => { const c = G.schoolCentre(spec, tt); let n = 0; for (let i = 0; i < FISH.school.n; i++) if (G.inNet(c, G.schoolFish(spec, tt, i))) n++; return n; };
   t.ok(caught(tight) === 8 && caught(spread) <= 2, `4: a net on a tight school catches all 8, on a spread one ${caught(spread)} (tight ${caught(tight)})`);
   let few = 0, many = 0; for (let k = 0; k < 40; k++) { const tt = 6 + k * 0.075; const n = caught(tt); if (n >= 6) many++; if (n <= 2) few++; }
@@ -134,8 +134,8 @@ async function nodePart(t) {
   const ran = chase(dead, [10, 0], [2, 0], 12, 1 / 60, 5);
   t.ok(ran.caughtAt > 0 && ran.caughtAt < 12, `5: a darter cornered in a dead end is caught (at ${ran.caughtAt.toFixed(2)} s; it trembled ${ran.stuck.toFixed(2)} s)`);
   const D2 = new G.Darter({ id: 'd', index: 0, home: [11, 0], y: 3.3 });
-  let was = null, moved = 0; for (let i = 0; i < 120 * 2; i++) { D2.step(FISH.step, [5.5, 3.3, 0], dead); if (i === 120) was = [...D2.pos]; if (i > 120) moved += Math.hypot(D2.pos[0] - was[0], D2.pos[1] - was[1]); }
-  t.ok(D2.state === 'stuck' && moved < 1e-6, `5: cornered it stands still and trembles (${D2.state}), for 2.5 s, then bolts past you`);
+  let was = null, moved = 0; for (let i = 0; i < 120 * 1.4; i++) { D2.step(FISH.step, [5.5, 3.3, 0], dead); if (i === 60) was = [...D2.pos]; if (i > 60) moved += Math.hypot(D2.pos[0] - was[0], D2.pos[1] - was[1]); }
+  t.ok(D2.state === 'stuck' && moved < 1e-6, `5: cornered it stands still and trembles (${D2.state}), for ${FISH.darter.stuck} s, then bolts past you`);
   let bolted = false; for (let i = 0; i < 120 * 4; i++) { D2.step(FISH.step, [5.5, 3.3, 0], dead); if (D2.state === 'bolt') bolted = true; }
   t.ok(bolted, '5: after the 2.5 s it bolts, so a missed catch is never the end');
   // 60 fps against 20 fps: the same sub-steps give the same fish
@@ -278,7 +278,7 @@ async function terrainPart(page, t) {
         const D = new G.Darter({ id: de.id, index: 0, home: de.deep, y: 3.3 }), pl = [de.mouth[0] + de.dir[0] * -0.5, 3.3, de.mouth[1] + de.dir[1] * -0.5];
         const open = (x, y, z) => !w.isSolid(Math.floor(x), Math.floor(y), Math.floor(z));
         let was = null, moved = 0, first = -1;
-        for (let i = 0; i < 120 * 3; i++) { D.step(G.FISH.step, pl, open); if (D.state === 'stuck' && first < 0) first = i / 120; if (first >= 0 && i / 120 > first + 0.3 && i / 120 < first + 2.0) { if (!was) was = [...D.pos]; moved = Math.max(moved, Math.hypot(D.pos[0] - was[0], D.pos[1] - was[1])); } }
+        for (let i = 0; i < 120 * 3; i++) { D.step(G.FISH.step, pl, open); if (D.state === 'stuck' && first < 0) first = i / 120; if (first >= 0 && i / 120 > first + 0.3 && i / 120 < first + Math.min(2.0, G.FISH.darter.stuck - 0.05)) { if (!was) was = [...D.pos]; moved = Math.max(moved, Math.hypot(D.pos[0] - was[0], D.pos[1] - was[1])); } }
         trapped.push([de.id, first >= 0 && first < 1.5, +moved.toFixed(2)]);
       }
       // closed corridors and houses: all in the gardens
@@ -440,8 +440,13 @@ async function playPart(page, t) {
     step(g, dt, Math.round(0.45 / dt)); log.mid = lv.info().fish[idx].state;
     step(g, dt, Math.round(0.3 / dt)); log.out = lv.info().fish[idx].state; log.cellBack = g.world.get(...jar.cell);
     // swim after it with a kick, coil for a moment, lunge at where it will be
-    { const q = G.shyAt(f.home, lv.t, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] }); p.keys.Space = true; step(g, dt, 1); p.keys.Space = false; }
-    for (let k = 0; k < Math.round(0.5 / dt); k++) { const q = G.shyAt(f.home, lv.t, f.pop).pos; p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] }); p.keys.KeyW = true; step(g, dt, 1); }
+    // (owner 2026-10-28: it shoots further and hides sooner now: kick after it twice, sprinting, until it is within a lunge)
+    for (let k = 0, kickAt = -1; k < Math.round(1.4 / dt); k++) {
+      const q = G.shyAt(f.home, lv.t, f.pop).pos, e0 = lv.eye(); p.lookAt({ x: q[0], y: q[1] - 0.2, z: q[2] });
+      if (Math.hypot(q[0] - e0[0], q[1] - e0[1], q[2] - e0[2]) < 4.4) break;
+      const kick = lv.t - kickAt >= 0.55; if (kick) kickAt = lv.t;
+      p.keys = { KeyW: true, ShiftLeft: true, Space: kick }; step(g, dt, 1);
+    }
     p.keys = {};
     // judge the distance: the lunge must reach where the fish will be (net 1.2 in front of the eyes, then the lunge); coil that long
     let hold = 0.5;
@@ -523,7 +528,7 @@ async function playPart(page, t) {
   const school = tight => page.evaluate(async tight => {
     const g = window.pokecraft, p = g.player, lv = g.gymLive.of('part:atlantis'), step = window.__step, G = await import('/src/glowfish.js'), A = g.world.atlantis, P = fn => window.__play(g, fn);
     lv.net = []; for (const f of lv.fish) { f.out = false; f.poured = false; }
-    lv.t = tight ? 6 : 7.5; lv.acc = 0; lv.lungeCool = 0; lv.lunge = null; p.noSwim = false;
+    const SC = G.FISH.school; lv.t = tight ? SC.first + SC.cycle : SC.first + 1.5 * SC.cycle; lv.acc = 0; lv.lungeCool = 0; lv.lunge = null; p.noSwim = false;
     const c = G.schoolCentre(A.school, lv.t + 0.12), L = 2.5;
     p.pos.set(c[0], c[1] - 1.62, c[2] - 1.2 - L / 2); p.vel.set(0, 0, 0); p.yaw = Math.PI; p.pitch = 0; p.keys = {}; p.kick = null;
     P(() => lv.use()); lv.held.t0 = lv.t - 0.5; p.yaw = Math.PI; p.pitch = 0;

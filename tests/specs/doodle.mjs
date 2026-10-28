@@ -574,6 +574,9 @@ export default async function ({ browser, base, t }) {
         L.stop(true); return out;
       });
       t.ok(!care.done && care.info.blocked === 'blot' && care.toasts.some(m => /Ink blot/.test(m)) && /Ink ▮/.test(care.chip || ''), `careless on line 2: looking straight at the page the pencil stops at the ink blot and the line goes nowhere (your line is sticky, you stay on it: ${care.setbacks} setbacks; "${care.toasts.slice(0, 3).join('" "')}"; chip "${care.chip}")`);
+      // every star, blot and bee of every line is drawn (owner 2026-10-28: line 3's fourth blot was not, and stopped the pencil unseen)
+      const shown = await page.evaluate(() => { const L = window.__live(); return [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const c = L.courseOf(i); return [c.stars.length <= L.stars.count, c.blots.length <= L.blots.count, c.bees.length <= L.bees.count]; }).flat().every(Boolean); });
+      t.ok(shown, 'every star dot, ink blot and doodle bee of every line has a mesh (line 3 has 4 blots)');
       // a skilled real-physics player steers round it, through the star
       const r2 = await page.evaluate(() => window.__drawReal(2, 0.05));
       t.ok(r2 && r2.done && r2.info.drawn[1], `steering round the blot (real physics) draws line 2 (${r2?.steps} steps, ${r2?.setbacks} setbacks ${JSON.stringify(r2?.backs)})`);
