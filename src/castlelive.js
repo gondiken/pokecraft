@@ -17,18 +17,25 @@ import { buildModel, animateModel, disposeModel } from './species.js';
 import { SIEGE, SIEGE_ROUNDS, SiegeRound, stoneAt, dirTo, throwAt, spotPos } from './siege.js';
 import { JOUST, JOUST_ROUNDS, JoustRound, gallopAt } from './joust.js';
 import { castleState, shieldKey, lanceKey, TILT, KEEP, SQUIRE_GATE, YARD, BRIDGE, liveCells, castleAim } from './castleland.js';
-import { inMaze } from './hedgemaze.js';
+import { inMaze, mazeExtras } from './hedgemaze.js';
 import { fairHelp } from './fairgames.js';
-import { buildThrows, buildStoneRings, buildCatapults, buildPracticeKnight, buildLance, buildHeldShield, buildDrawbridge, buildPortcullis } from './castleprops.js';
+import { buildThrows, buildStoneRings, buildCatapults, buildPracticeKnight, buildLance, buildHeldShield, buildDrawbridge, buildPortcullis, KNIGHT_SHIELD, buildHorseshoes, buildHedgeCritters, buildFountainSpray } from './castleprops.js';
 
 export const CASTLE_RULES = { sync: 0.25, mountR: 2.6, horseY: 0.95, knightY: 0, shieldY: 1.6, shieldOff: 1.0, gooTime: 1.1, bridgeTime: 3, portTime: 2, squireR: 7, dtMax: 0.1, sayGap: 3 };
+// The Joust's view (owner 2026-10-28: "it took me a while to even SEE what I was supposed to do"): during a pass the camera turns to
+// Sir Splinter's shield and zooms so it stays big in the middle of the screen; he meets you `lead` blocks ahead (not beside you), so the
+// view turns at most about 45 degrees. Only drawing: the rules (joust.js) and how the stick moves the tip are unchanged.
+export const JOUST_VIEW = { lead: 5, shieldUp: 2.3, shieldIn: 0.9, shieldOn: 0.5, turn: 6, fov: 75, fovMin: 38, fill: 0.2, thrust: 0.35, lance: 4.2, call: 1.4 };
+// The hedge maze's fun (owner 2026-10-28): horseshoes picked within `reach`, critters peek when you come within `peekR` (for `peekUp` s,
+// then not again for `peekRest` s), the fountain's drops fly `spray` s.
+export const MAZE_FUN = { reach: 1.3, peekR: 6, peekUp: 2.4, peekRest: 7, rise: 0.25, spray: 1.1, drops: 24 };
 const WORDS = {
   stone: 'Push the stick toward the danger. The arrows show where it is!',
   rounds: ['Round 1: pumpkins from the castle! Turn your shield to them.', 'Round 2: from all sides! Watch the arrows round the middle of the screen.', 'Round 3: look up for sky pumpkins (hold Jump)! Big pumpkins need a perfect block.'],
   splat: 'Splat! Yuck, sticky! Turn your shield to the glow!',
   sky: 'Look up! Shield up! (Jump)',
   hero: 'Hero! Three perfect blocks!',
-  joust: 'Move the stick to put the gold dot on the star!',
+  joust: 'Steer your lance tip onto the gold star!',
   passes: ['Round 1: the star stands still. Aim and hold steady!', 'Round 2: the star slides round the shield. Follow it!', 'Round 3: the star slides fast, and it hops! Watch it wiggle.'],
   bullseye: 'Bullseye! Sir Splinter fell off!',
   clang: 'Clang! On the shield.',
@@ -54,7 +61,7 @@ export class CastleLive {
     this.sg = null; this.stance = -1; this.sTries = [0, 0, 0]; this.sMiss = [0, 0, 0]; this.shieldIn = { ang: 0, up: false }; this.spaceWas = true; this.gooT = 9; this.gooAng = 0; this.lastResult = null;
     // the Joust
     this.jr = null; this.mounted = false; this.horse = { x: TILT.x0, dir: 1 }; this.ride = null; this.jTries = [0, 0, 0]; this.jMiss = [0, 0, 0];
-    this.lanceIn = { su: 0, sv: 0, du: 0, dv: 0 }; this.tumbleT = 9; this.lastMeet = null;
+    this.lanceIn = { su: 0, sv: 0, du: 0, dv: 0 }; this.tumbleT = 9; this.lastMeet = null; this.hits = []; this.hitsOf = null; this.callT = 0; this.lastCall = null;
     // the gates (null = not drawn yet; k = the animation 0 closed .. 1 open)
     this.drawn = { bridge: null, port: null, squire: null }; this.bridgeK = 0; this.portK = 0; this.announced = { bridge: false, port: false };
     this.stanceObj = this.makeStanceObj(); this.steedObj = this.makeSteedObj();
@@ -79,6 +86,7 @@ export class CastleLive {
     this.rings = add(buildStoneRings(SIEGE.stones));
     this.cats = add(buildCatapults(12));
     this.knight = add(buildPracticeKnight());
+    this.shieldRig = this.knight.userData.parts.shield; this.scene?.add(this.shieldRig);
     this.lance = add(buildLance()); this.lance.visible = false;
     this.held = add(buildHeldShield()); this.held.visible = false;
     this.bridgeMesh = add(buildDrawbridge(BRIDGE.x1 - BRIDGE.x0 + 1, BRIDGE.z1 - BRIDGE.z0 + 1));
@@ -87,6 +95,9 @@ export class CastleLive {
     this.portMesh.position.set((KEEP.door.x0 + KEEP.door.x1 + 1) / 2, KEEP.door.y0, KEEP.door.z + 0.5);
     this.steed = null;
     try { this.steed = buildModel('gallantrot'); this.scene?.add(this.steed); } catch { this.steed = null; }
+    this.fun = mazeExtras();
+    this.shoes = add(buildHorseshoes(this.fun.treats.length)); this.critters = add(buildHedgeCritters(this.fun.peeks.length)); this.spray = add(buildFountainSpray(MAZE_FUN.drops));
+    this.treatsGot = new Set(); this.peekT = this.fun.peeks.map(() => -99); // per trip: a new visit has the horseshoes back
     this.placeCatapults();
     this.drawKnight(); this.drawSteed();
   }
@@ -95,8 +106,11 @@ export class CastleLive {
     this.game.ui?.setScore?.(null);
     this.game.ui?.setPointers?.(null);
     this.goo?.remove(); this.goo = null;
+    this.callEl?.remove(); this.callEl = null;
+    if (this.shieldRig) this.scene?.remove(this.shieldRig);
     for (const g of this.groups) { this.scene?.remove(g); g.userData.dispose?.(); }
     this.groups = [];
+    this.setFov(JOUST_VIEW.fov);
     if (this.steed) { this.scene?.remove(this.steed); disposeModel(this.steed); this.steed = null; }
     if (this.game.rideShow === 'gallantrot') this.game.rideShow = null;
   }
@@ -108,6 +122,7 @@ export class CastleLive {
       p.carry = null; p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0);
     }
     this.stance = -1; this.sg = null; this.mounted = false; this.ride = null; this.jr = null;
+    this.setFov(JOUST_VIEW.fov);
     if (this.game.rideShow === 'gallantrot') this.game.rideShow = null;
   }
 
@@ -273,12 +288,14 @@ export class CastleLive {
     g.rideShow = 'gallantrot';
     this.once('joust', WORDS.joust);
     this.toast('Press Charge! to gallop at Sir Splinter.');
+    if (!this.told.has('joustCall')) { this.told.add('joustCall'); this.callout('🎯 Hit the gold star!', 'Steer your lance tip (the white ring) onto it.', '#ffd84a', 3); }
   }
   getOff() {
     const p = this.game.player, at = this.steedObj.safe();
     if (p.carry === this.steedObj) { p.carry = null; p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0); }
     this.mounted = false; this.ride = null;
     if (this.game.rideShow === 'gallantrot') this.game.rideShow = null;
+    this.setFov(JOUST_VIEW.fov);
   }
   charge() {
     const st = this.state();
@@ -293,6 +310,8 @@ export class CastleLive {
     this.ride = { phase: 'pass', tau: 0, x0: this.horse.x };
     this.lanceIn = { su: 0, sv: 0, du: 0, dv: 0 };
     sound.play('trumpet');
+    this.frameView(1); // the Charge! moment: the view snaps onto his shield
+    this.callout('Charge!', this.jr.pass === 0 ? WORDS.joust : '', '#ffffff', 1.1);
   }
   laneX(s) { return Math.max(TILT.x0, Math.min(TILT.x1, this.ride.x0 + this.horse.dir * s)); }
   stepJoust(dt) {
@@ -306,9 +325,10 @@ export class CastleLive {
       for (const e of ev) {
         if (e.type === 'meet') {
           this.lastMeet = e;
-          if (e.kind === 'bullseye') { sound.play('lanceclang'); sound.play('trumpet'); this.tumbleT = 0; this.toast(`${WORDS.bullseye} +2`); }
-          else if (e.kind === 'clang') { sound.play('lanceclang'); this.toast(`${WORDS.clang} +1`); }
-          else { sound.play('helmbonk'); this.say('whoosh', WORDS.whoosh, 0); }
+          const off = this.hitWhere(jr, e.kind);
+          if (e.kind === 'bullseye') { sound.play('lanceclang'); sound.play('trumpet'); this.tumbleT = 0; this.toast(`${WORDS.bullseye} +2`); this.callout('⭐ Bullseye! +2', 'Right on the star!', '#ffd84a'); }
+          else if (e.kind === 'clang') { sound.play('lanceclang'); this.toast(`${WORDS.clang} +1`); this.callout('Clang! +1', `${off.word}. The star was ${off.fix}.`, '#e8eefc'); }
+          else { sound.play('helmbonk'); this.say('whoosh', WORDS.whoosh, 0); this.callout('Whoosh!', `Missed: ${off.far}. The star was ${off.fix}.`, '#9fc8ff'); }
         } else if (e.type === 'passDone') ride.phase = 'return';
         else if (e.type === 'done') this.joustDone(e);
       }
@@ -321,13 +341,45 @@ export class CastleLive {
         if (ride.phase === 'return') { this.horse.dir = -this.horse.dir; this.ride = { phase: 'turn', tau: 0 }; }
       }
     }
-    // the camera looks along the lane while you gallop
-    const p = this.game.player;
-    if (this.ride && this.ride.phase !== 'idle' && p.carry === this.steedObj) {
-      const want = this.horse.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
-      p.yaw += wrap(want - p.yaw) * Math.min(1, dt * 6); p.pitch += (-0.05 - p.pitch) * Math.min(1, dt * 6);
-      const w = this.steedObj.where(); p.pos.set(w.x, w.y, w.z);
+    // the camera: on his shield while you charge at him, along the lane after the meeting and on the way back
+    if (this.ride && this.ride.phase !== 'idle' && this.game.player.carry === this.steedObj) this.frameView(Math.min(1, dt * JOUST_VIEW.turn));
+  }
+  // Where his shield is in the world (beside him, on your side of the tilt, a bit ahead of him).
+  shieldPos(kp = this.knightPose()) { return new THREE.Vector3(kp.x + kp.dir * JOUST_VIEW.shieldOn, 11 + JOUST_VIEW.shieldUp, TILT.knightZ - JOUST_VIEW.shieldIn); }
+  framing() { return !!(this.ride?.phase === 'pass' && this.jr && !this.jr.met); }
+  // Turns the view k of the way to what it should look at (k = 1: at once).
+  frameView(k) {
+    const p = this.game.player, w = this.steedObj.where();
+    p.pos.set(w.x, w.y, w.z);
+    let yaw = this.horse.dir > 0 ? -Math.PI / 2 : Math.PI / 2, pitch = -0.05;
+    if (this.framing()) {
+      const s = this.shieldPos(), dx = s.x - w.x, dz = s.z - w.z, dy = s.y - (w.y + (p.eye ?? 1.62));
+      yaw = Math.atan2(-dx, -dz); pitch = Math.atan2(dy, Math.hypot(dx, dz));
     }
+    p.yaw += wrap(yaw - p.yaw) * k; p.pitch += (pitch - p.pitch) * k;
+  }
+  setFov(fov) { const cam = this.game.camera; if (cam && Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix?.(); } }
+  // Where the last meeting hit, in words a child can use: { word: 'A bit too high', far: 'too high', fix: 'lower' }. On screen the
+  // shield's u runs right to left (the tip moves the other way to the stick's left and right: the "reverse thinking" the owner liked).
+  hitWhere(jr, kind) {
+    const hit = jr.tipNow(), star = jr.starNow().at, sx = -(hit[0] - star[0]), sy = hit[1] - star[1];
+    this.hits.push({ u: hit[0], v: hit[1], kind });
+    const side = Math.abs(sx) >= Math.abs(sy), dirW = side ? (sx > 0 ? 'right' : 'left') : (sy > 0 ? 'high' : 'low');
+    const fix = { right: 'more to the left', left: 'more to the right', high: 'lower', low: 'higher' }[dirW];
+    return { word: side ? `A bit too far ${dirW}` : `A bit too ${dirW}`, far: side ? `too far ${dirW}` : `too ${dirW}`, fix, sx, sy };
+  }
+  // A big short word at the top middle of the screen (Charge!, Bullseye!, Clang!...), never over the shield.
+  callout(big, small = '', colour = '#ffd84a', s = JOUST_VIEW.call) {
+    this.lastCall = { big, small }; this.callT = s;
+    if (typeof document === 'undefined') return;
+    let el = this.callEl;
+    if (!el) {
+      el = this.callEl = document.createElement('div'); el.id = 'joust-call';
+      el.style.cssText = 'position:fixed;left:0;right:0;top:61%;z-index:30;pointer-events:none;text-align:center;transition:opacity .25s;padding:0 16px';
+      el.innerHTML = '<div style="font-family:\'Press Start 2P\',monospace;font-size:clamp(20px,5.5vw,42px);text-shadow:3px 3px 0 #2a1a50,0 0 18px rgba(0,0,0,.6)"></div><div style="font-size:clamp(15px,3vw,22px);margin-top:8px;color:#fff;text-shadow:2px 2px 0 #000"></div>';
+      document.body.append(el);
+    }
+    el.children[0].textContent = big; el.children[0].style.color = colour; el.children[1].textContent = small; el.style.opacity = '1';
   }
   joustDone(e) {
     const r = this.jr.round;
@@ -347,10 +399,42 @@ export class CastleLive {
     const ride = this.ride, jr = this.jr;
     if (ride?.phase === 'pass' && jr) {
       const T = jr.plan.meet, v = jr.plan.gallop, sMeet = gallopAt(T, v), far = this.horse.dir > 0 ? TILT.x1 : TILT.x0;
-      const xMeet = this.laneX(sMeet), vk = Math.abs(far - xMeet) / T;
+      const xMeet = this.laneX(sMeet) + this.horse.dir * JOUST_VIEW.lead, vk = Math.abs(far - xMeet) / T; // he meets you a bit ahead (the view)
       return { x: far - this.horse.dir * vk * ride.tau, dir: -this.horse.dir };
     }
     return { x: this.horse.dir > 0 ? TILT.x1 : TILT.x0, dir: -this.horse.dir };
+  }
+
+  /* ---------------------------------------------- the hedge maze's fun ---------------------------------------------- */
+  stepMazeFun(p, dt) {
+    const F = MAZE_FUN, G = 11, t = this.clock; // G here = the maze's floor (y 11: the grass is y 10, the hedges 11..13)
+    // lucky horseshoes: +1 cube each, once per trip
+    this.fun.treats.forEach((h, i) => {
+      const o = this.shoes.userData.parts.list[i], got = this.treatsGot.has(i);
+      o.visible = !got;
+      if (got) return;
+      o.position.set(h.x, G + 1.1 + 0.12 * Math.sin(t * 2.5 + i), h.z); o.rotation.y = t * 2 + i;
+      if (!this.paused() && Math.hypot(p.pos.x - h.x, p.pos.z - h.z) < F.reach && p.pos.y < G + 2.5) {
+        this.treatsGot.add(i); this.game.cubes += 1; sound.play('keyfound');
+        this.toast(`🍀 A lucky horseshoe! +1 Capture Cube (${this.treatsGot.size} / ${this.fun.treats.length})`); this.game.ui?.renderHud?.();
+      }
+    });
+    // hedge critters: pop up over a hedge post when you come near, giggle, look at you, duck again
+    this.fun.peeks.forEach((c, i) => {
+      const o = this.critters.userData.parts.list[i], d = Math.hypot(p.pos.x - c.x - 0.5, p.pos.z - c.z - 0.5), since = t - this.peekT[i];
+      if (!this.paused() && d < F.peekR && since > F.peekUp + F.peekRest && inMaze(p.pos.x, p.pos.z)) { this.peekT[i] = t; sound.play('giftgiggle'); this.once('critter', '🌿 Hee hee! A hedge critter peeked at you!'); }
+      const s = t - this.peekT[i], up = s < 0 ? 0 : s < F.rise ? s / F.rise : s < F.peekUp ? 1 : s < F.peekUp + F.rise ? 1 - (s - F.peekUp) / F.rise : 0;
+      o.visible = up > 0.01;
+      o.position.set(c.x + 0.5, G + 3 + 0.55 * up + 0.4, c.z + 0.5); // on the post's top (y 14), sunk into it when down
+      o.rotation.y = Math.atan2(p.pos.x - c.x - 0.5, p.pos.z - c.z - 0.5); o.rotation.z = up * 0.15 * Math.sin(t * 9);
+    });
+    // the fountain's spray (closed form of the clock): drops in arcs from the spout, all round
+    const D = this.spray.userData.parts.drops, M = new THREE.Matrix4(), f = this.fun.fountain;
+    for (let k = 0; k < F.drops; k++) {
+      const u = ((t / F.spray + k / F.drops) % 1), a = k * 2.399, r = 1.3 * u, y = G + 1.05 + 4.0 * u - 5.15 * u * u; // up from the spout, down into the pool
+      M.makeTranslation(f.x + 0.5 + Math.cos(a) * r, y, f.z + 0.5 + Math.sin(a) * r); D.setMatrixAt(k, M);
+    }
+    D.instanceMatrix.needsUpdate = true;
   }
 
   /* ---------------------------------------------- the gates ---------------------------------------------- */
@@ -399,6 +483,7 @@ export class CastleLive {
     this.drawSiege(p);
     this.drawJoust(p, step);
     this.drawGates(step);
+    this.stepMazeFun(p, step);
     this.refreshChip();
   }
 
@@ -499,25 +584,51 @@ export class CastleLive {
   drawJoust(p, dt) {
     this.tumbleT += dt;
     this.drawSteed(); this.drawKnight();
-    const jr = this.jr, K = this.knight.userData.parts, sgn = this.knightPose().dir > 0 ? 1 : -1;
-    // the star and your aim dot on his shield (the shield faces you; u + = to your right on screen)
-    const star = jr && this.ride?.phase === 'pass' ? jr.starNow() : { at: [0, 0], wiggle: false }, tip = jr && this.ride?.phase === 'pass' ? jr.tipNow() : [0, 0];
-    const side = -this.horse.dir; // your right, in the shield's own z
-    K.star.position.set(0.05, star.at[1], star.at[0] * side * sgn);
+    const jr = this.jr, K = this.knight.userData.parts, pass = !!(jr && this.ride?.phase === 'pass'), kp = this.knightPose();
+    // his shield: beside him on your side, turned to face you, big (KNIGHT_SHIELD.scale); everything on it in the rules' units
+    const S = this.shieldRig, sp = this.shieldPos(kp), cam = this.game.camera;
+    S.position.copy(sp);
+    const eye = p?.carry === this.steedObj ? p.eyePos.clone() : cam?.position ?? new THREE.Vector3(this.horse.x, 13.5, TILT.z); // (the camera follows the eye each frame)
+    const wob = this.tumbleT < 1 ? Math.sin(this.tumbleT * 18) * 0.25 * (1 - this.tumbleT) : 0;
+    S.rotation.set(0, Math.atan2(-(eye.z - sp.z), eye.x - sp.x), wob); // local +x (its face) toward you
+    // the star and your aim dot (u + = the shield's local +z = the left of your screen, as before the view turned; v + = up)
+    const star = pass ? jr.starNow() : { at: [0, 0], wiggle: false }, tip = pass ? jr.tipNow() : [0, 0];
+    K.star.position.set(0.05, star.at[1], star.at[0]);
     K.star.rotation.x = star.wiggle ? Math.sin(this.clock * 40) * 0.4 : 0;
-    K.dot.visible = this.mounted && this.ride?.phase === 'pass';
-    K.dot.position.set(0.07, tip[1], tip[0] * side * sgn);
-    // your lance: from your right hand toward the aim point beside the tilt
-    const cam = this.game.camera, on = this.mounted && !!cam;
+    K.ring.scale.setScalar(jr?.plan.r ?? JOUST.r[0]); // the bullseye ring: exactly the round's radius
+    K.halo.scale.setScalar(1 + 0.18 * Math.sin(this.clock * 6));
+    K.dot.visible = this.mounted && pass;
+    K.dot.position.set(0.07, tip[1], tip[0]);
+    if (this.hitsOf !== jr) { this.hitsOf = jr; this.hits = []; }
+    K.marks.forEach((m, i) => {
+      const h = this.hits[i];
+      m.visible = !!h && h.kind !== 'whoosh' && this.mounted;
+      if (h) { m.position.set(0.04, h.v, h.u); m.material.color.setHex(h.kind === 'bullseye' ? 0xffe680 : 0x4a4a58); m.scale.setScalar(h.kind === 'bullseye' ? 1.5 : 1); }
+    });
+    // the zoom: while you charge, the shield is about JOUST_VIEW.fill of the screen's height (never wider than the normal view)
+    if (cam && this.mounted && p?.carry === this.steedObj) {
+      const d = Math.max(1, eye.distanceTo(sp)), R = 0.8 * KNIGHT_SHIELD.scale;
+      const want = this.framing() ? Math.max(JOUST_VIEW.fovMin, Math.min(JOUST_VIEW.fov, (2 * Math.atan(R / d) * 180 / Math.PI) / JOUST_VIEW.fill)) : JOUST_VIEW.fov;
+      this.setFov(cam.fov + (want - cam.fov) * Math.min(1, dt * 4));
+    }
+    // your lance: from your right hand on his side toward the white ring; in the last moment before the meeting it thrusts onto it
+    const on = this.mounted && !!cam;
     this.lance.visible = on;
     if (on) {
-      const hand = new THREE.Vector3(this.horse.x, 11 + CASTLE_RULES.horseY + 1.2, TILT.z + 0.45 * this.horse.dir * -1);
-      const aimAt = new THREE.Vector3(this.horse.x + this.horse.dir * 6, 11 + CASTLE_RULES.shieldY + tip[1], TILT.knightZ - 1 + 0 * tip[0]);
-      aimAt.z += tip[0] * (this.horse.dir > 0 ? 1 : -1);
+      const side = Math.sign(TILT.knightZ - TILT.z) || 1;
+      const hand = new THREE.Vector3(this.horse.x - this.horse.dir * 0.2, 11 + CASTLE_RULES.horseY + 0.95, TILT.z + 0.6 * side); // below and beside the eye: out of view
+      let aimAt;
+      if (pass) { S.updateMatrixWorld(true); aimAt = K.dot.getWorldPosition(new THREE.Vector3()); }
+      else aimAt = new THREE.Vector3(this.horse.x + this.horse.dir * 6, 11 + CASTLE_RULES.shieldY, TILT.z + 2 * side);
       this.lance.position.copy(hand);
       this.lance.lookAt(aimAt);
       this.lance.rotateY(Math.PI); // the lance points along its -z
+      const left = pass ? jr.plan.meet - Math.min(jr.tau, jr.plan.meet) : 9, k = Math.max(0, Math.min(1, 1 - left / JOUST_VIEW.thrust));
+      const len = Math.max(JOUST_VIEW.lance, JOUST_VIEW.lance + (hand.distanceTo(aimAt) - JOUST_VIEW.lance) * k * k * (jr?.met ? 0 : 1));
+      this.lance.scale.set(1, 1, len / JOUST_VIEW.lance);
     }
+    // the callout fades
+    if (this.callT > 0) { this.callT -= dt; if (this.callT <= 0 && this.callEl) this.callEl.style.opacity = '0'; }
   }
   drawGates(dt) {
     const bridge = !!this.drawn.bridge, port = !!this.drawn.port;
@@ -545,7 +656,7 @@ export class CastleLive {
     return {
       stance: this.stance, running: this.running(), round: sg?.round ?? null, blocks: sg?.blocks ?? 0, need: sg?.need ?? 0, time: sg?.time ?? 0, done: sg?.done ?? null, won: sg?.won ?? null,
       shield: { ...this.shieldIn }, mounted: this.mounted, ride: this.ride?.phase ?? null, horse: { ...this.horse }, joust: jr ? { round: jr.round, pass: jr.pass, points: jr.points, need: jr.need, done: jr.done, won: jr.won, tau: jr.tau, results: jr.results.slice() } : null,
-      drawn: { ...this.drawn }, mazeTime: this.mazeTime, sMiss: this.sMiss.slice(), jMiss: this.jMiss.slice(), lastResult: this.lastResult, lastMeet: this.lastMeet ? { kind: this.lastMeet.kind, d: this.lastMeet.d } : null, gooT: this.gooT,
+      drawn: { ...this.drawn }, mazeTime: this.mazeTime, treats: this.treatsGot.size, peeking: this.peekT.filter(x => this.clock - x < MAZE_FUN.peekUp).length, sMiss: this.sMiss.slice(), jMiss: this.jMiss.slice(), lastResult: this.lastResult, lastMeet: this.lastMeet ? { kind: this.lastMeet.kind, d: this.lastMeet.d } : null, gooT: this.gooT,
     };
   }
 }

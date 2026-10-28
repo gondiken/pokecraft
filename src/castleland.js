@@ -8,7 +8,7 @@ import { B, WOOL } from './blocks.js';
 import { kit, buildWayBack, placeBoss, placeCrew, pictureAim } from './picturelands.js';
 import { SIEGE, SIEGE_ROUNDS, spotPos, towerCell } from './siege.js';
 import { JOUST_ROUNDS } from './joust.js';
-import { MAZE, mazeCells, inMaze, mazeOf } from './hedgemaze.js';
+import { MAZE, mazeCells, inMaze, mazeOf, mazeExtras } from './hedgemaze.js';
 
 export const SIZE = 160;
 export const G = 10; // the ground's top block; people stand at y 11
@@ -25,7 +25,7 @@ export const YARD = { x0: 61, x1: 126, z0: 22, z1: 50, sand: [62, 117, 26, 46] }
 export const HEDGE_ROW = { x0: 61, x1: 101, z0: 51, z1: 52 };                   // between the courtyard and the Tilt Yard (3 high)
 export const SQUIRE_GATE = { x0: 63, x1: 64, y0: 11, y1: 13, z0: 51, z1: 52 }; // opens from the Tilt Yard's side (and for good with the lance won)
 // The Tilt Yard's lanes along x: yours (centre z 32.5) and the practice knight's (z 40.5), the tilt barrier between (z 36).
-export const TILT = { x0: 64.5, x1: 116.5, z: 32.5, knightZ: 40.5, barrier: { x0: 66, x1: 116, z: 36 }, pads: [[63, 65, 31, 33], [115, 117, 31, 33]], len: 52 };
+export const TILT = { x0: 64.5, x1: 116.5, z: 32.5, knightZ: 38.5, barrier: { x0: 66, x1: 116, z: 36 }, pads: [[63, 65, 31, 33], [115, 117, 31, 33]], len: 52 };
 export const FIELD = { x0: 58, x1: 103, z0: 110, z1: 150 };                     // the practice field (a keep)
 export const ARRIVAL = { x: 80, z: 156 };                                       // the way back frame (you arrive 3 in front of it, looking north)
 export const HERALD = { name: 'Herald Hugo', x: 84, z: 151, facing: [0, -1], colors: { shirt: 0x3a5ad8, pants: 0xf0c84a, hair: 0x8a5a2a, skin: 0xf2d0b0 }, look: 'squire' };
@@ -164,6 +164,12 @@ export function castleLand(world, def) {
   const mc = mazeCells();
   for (let x = mc.box.x0; x <= mc.box.x1; x++) for (let z = mc.box.z0; z <= mc.box.z1; z++) if (world.get(x, G + 1, z) === B.AIR) put(world, x, G, z, B.GRASS);
   for (const [x, z] of mc.hedge) if (world.get(x, G + 1, z) === B.AIR) fill(world, x, x, G + 1, G + MAZE.height, z, z, B.HEDGE);
+  // owner 2026-10-28: archways over some gaps (hedge on top, a rose bush in the middle), the fountain in the middle clearing (a low
+  // cobble spout in a sunken pool: never high enough to climb onto the hedges from), Gardener Gwen beside it
+  for (const row of mc.arches) { for (const [x, z] of row) put(world, x, G + MAZE.height, z, B.HEDGE); const [mx, mz] = row[1]; put(world, mx, G + MAZE.height + 1, mz, B.FLOWER_BUSH); }
+  const mx = mazeExtras(), F = mx.fountain;
+  for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) put(world, F.x + dx, G, F.z + dz, dx || dz ? B.WATER : B.COBBLE);
+  put(world, F.x, G + 1, F.z, B.COBBLE); // the spout (its spray is drawn by the live part)
   // 9. the Tilt Yard: sand, the tilt barrier, the start pads, bleachers
   const [sx0, sx1, sz0, sz1] = YARD.sand;
   for (let x = sx0; x <= sx1; x++) for (let z = sz0; z <= sz1; z++) if (world.get(x, G + 1, z) === B.AIR) put(world, x, G, z, B.SAND);
@@ -188,6 +194,7 @@ export function castleLand(world, def) {
   placeCrew(world, 'castle', 0, { x: 63, y: G, z: 25, facing: [1, 1] });           // Squire Pip in the Tilt Yard's corner (away from the pad: the big button there says Mount!)
   placeCrew(world, 'castle', 1, { x: 85, y: GH.top, z: 101, facing: [0, -1] });    // Archer Wren on the gatehouse roof
   world.people ??= [];
+  world.people.push({ name: mx.gardener.name, title: `${mx.gardener.name} · Castle`, colors: mx.gardener.colors, line: mx.gardener.line, pos: [mx.gardener.x + 0.5, G + 1, mx.gardener.z + 0.5], heading: Math.atan2(F.x - mx.gardener.x - 0.5, F.z - mx.gardener.z - 0.5) });
   world.people.push({ name: HERALD.name, title: `${HERALD.name} · Castle`, colors: HERALD.colors, look: HERALD.look, line: 'Block the pumpkins on the Shield Stone and the drawbridge comes down!', pos: [HERALD.x + 0.5, G + 1, HERALD.z + 0.5], heading: Math.atan2(HERALD.facing[0], HERALD.facing[1]) });
   // 14. nooks (where the wild Knights stand guard), rests, the part
   const nooks = [];
@@ -197,7 +204,7 @@ export function castleLand(world, def) {
   world.nooks = nooks;
   for (const r of [[80.5, G + 1, 138.5, Math.PI], [80.5, G + 1, 94.5, Math.PI], [66.5, G + 1, 30.5, 0]]) world.rests.push(r);
   for (const k of keeps) world.keeps.push(k);
-  world.castle = { castle: CASTLE, moat: MOAT, gatehouse: GH, bridge: BRIDGE, keep: KEEP, yard: YARD, tilt: TILT, maze: mc, mazeData: mazeOf(), field: FIELD, towers, stones: SIEGE.stones, live: liveCells(), squireGate: SQUIRE_GATE, stairs: STAIRS };
+  world.castle = { castle: CASTLE, moat: MOAT, gatehouse: GH, bridge: BRIDGE, keep: KEEP, yard: YARD, tilt: TILT, maze: mc, mazeData: mazeOf(), mazeExtras: mx, field: FIELD, towers, stones: SIEGE.stones, live: liveCells(), squireGate: SQUIRE_GATE, stairs: STAIRS };
   world.realmBiome = (x, z) => (x >= CASTLE.x0 && x <= CASTLE.x1 && z >= CASTLE.z0 && z <= CASTLE.z1 ? 'castle' : 'castleMeadow');
   world.parts.push({ id: 'castle', live: 'castle', area: box(0, W - 1, 0, 47, 0, D - 1) });
 }

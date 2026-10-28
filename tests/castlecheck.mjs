@@ -4,7 +4,7 @@
 import { B, isSolid } from '../src/blocks.js';
 import { castleLand, SIZE, G, CASTLE, KEEP, YARD, TILT, FIELD, MOAT, COURTYARD, liveCells } from '../src/castleland.js';
 import { SIEGE, throwAt, spotPos } from '../src/siege.js';
-import { MAZE, mazeOf, inMaze } from '../src/hedgemaze.js';
+import { MAZE, mazeOf, inMaze, mazeExtras, mazeCells } from '../src/hedgemaze.js';
 import { walkGraph, bfs } from './housecheck.mjs';
 
 export const WORLD_H = 48;
@@ -88,7 +88,16 @@ export function analyze(seed = 1) {
   while (q2.length) { const c = q2.shift(); for (const n of gm.neighbours(...c)) { const k = keyOf(...n); if (dist.has(k)) continue; dist.set(k, dist.get(keyOf(...c)) + 1); q2.push(n); } }
   const blocks = dist.get(keyOf(ex[0], G + 1, ex[1] - 1));
   if (!blocks || blocks < MAZE.minPath * MAZE.pitch - 6 || blocks > MAZE.maxPath * MAZE.pitch + 6) bad(`walking through the maze takes ${blocks} blocks`);
-  out.info.maze = { cells: m.path, deadEnds: m.deadEnds, loops: m.loopCount, blocks };
+  // owner 2026-10-28: the maze's fun never changes the way: the shortest way goes through the fountain clearing; every horseshoe, the
+  // gardener and the walk under every archway can be reached; nothing (the fountain's spout, an arch, a rose) lets you up onto the hedges
+  if (!m.way.some(c => m.clear.includes(c))) bad('the shortest way through the maze misses the fountain clearing');
+  const fx = mazeExtras();
+  if (fx.treats.length !== MAZE.treats) bad(`${fx.treats.length} horseshoes (want ${MAZE.treats})`);
+  for (const h of fx.treats) { if (!m.ends.includes(h.cell)) bad(`a horseshoe is not in a dead end (cell ${h.cell})`); if (!dist.has(keyOf(Math.floor(h.x), G + 1, Math.floor(h.z)))) bad(`the horseshoe at ${h.x},${h.z} cannot be reached`); }
+  if (!dist.has(keyOf(fx.gardener.x, G + 1, fx.gardener.z))) bad('Gardener Gwen\'s spot cannot be reached');
+  for (const row of mazeCells().arches) for (const [x, z] of row) if (!dist.has(keyOf(x, G + 1, z))) bad(`the way under the archway at ${x},${z} is blocked`);
+  for (const k of all.keys()) { const [x, y, z] = parse(k); if (inMaze(x + 0.5, z + 0.5) && y > G + 2) { bad(`you can stand on top of the maze at ${k}`); break; } }
+  out.info.maze = { cells: m.path, deadEnds: m.deadEnds, loops: m.loopCount, blocks, horseshoes: fx.treats.length, arches: mazeCells().arches.length, critters: fx.peeks.length };
   // 6. throws: every flight from every spot to both stones is clear (sampled every 0.02 s); the air over each stone is clear
   let blocked = 0;
   for (const stand of SIEGE.stones) for (let k = 0; k < 12; k++) for (const [kind, flight] of [['pumpkin', SIEGE.flight.pumpkin[0]], ['pumpkin', SIEGE.flight.pumpkin[2]], ['arrow', SIEGE.flight.arrow]]) {

@@ -59,7 +59,9 @@ export function buildCatapults(n = 12) {
 }
 
 // Sir Splinter, the practice knight: a wooden knight on a wooden horse on a little trolley, a shield on his arm with a gold star, a wooden lance.
-// Faces +x (the group is turned by the live part). The shield's centre is userData.parts.shield (a group at the shield plane).
+// Faces +x (the group is turned by the live part). His shield (userData.parts.shield) is NOT in the group: the live part adds it to the scene.
+// The practice knight's shield: how much bigger it is drawn than the rules' units (the hit test is in those units, so it stays the same game).
+export const KNIGHT_SHIELD = { scale: 1.6 };
 export function buildPracticeKnight() {
   const g = new THREE.Group(), wood = 0xc89a5a, dark = 0x7a5428;
   const add = (w, h, d, c, x, y, z, p = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lam(c)); m.position.set(x, y, z); p.add(m); return m; };
@@ -74,16 +76,32 @@ export function buildPracticeKnight() {
   add(0.3, 0.05, 0.02, 0x1e1e26, 0.19, 2.05, 0, body).rotation.y = Math.PI / 2;
   add(0.08, 0.2, 0.26, 0xd83a4a, 0, 2.3, 0, body);             // a red plume
   const lance = add(2.4, 0.08, 0.08, dark, 1.2, 1.5, 0.25, body); // his wooden lance
-  const shield = new THREE.Group(); shield.position.set(0.3, 1.6, -0.45); body.add(shield);
-  const face = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.06, 20), lam(0x3a5ad8)); face.rotation.z = Math.PI / 2; shield.add(face);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.05, 4, 24), lam(0xf0c84a)); rim.rotation.y = Math.PI / 2; shield.add(rim);
-  const s = new THREE.Shape();
-  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.12 : 0.3; (i ? s.lineTo : s.moveTo).call(s, Math.cos(a) * r, Math.sin(a) * r); }
-  const star = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: 0xffd23a, side: THREE.DoubleSide })); star.rotation.y = Math.PI / 2; star.position.x = 0.05; shield.add(star);
-  const dot = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.14, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, transparent: true }));
-  dot.rotation.y = Math.PI / 2; dot.position.x = 0.07; dot.renderOrder = 998; shield.add(dot);
-  g.userData.parts = { body, shield, star, dot, lance };
-  g.userData.dispose = disposer(g);
+  // His shield is its own group (owner 2026-10-28: "so small, on the other side of the screen"): the live part puts it beside him on
+  // your side, turns it to face your camera and scales it by KNIGHT_SHIELD.scale. Everything on it is in the shield's own units (the
+  // rules' units: the rim is JOUST.shield 0.8), so a bigger shield is the same game, only easier to see.
+  const shield = new THREE.Group(); shield.scale.setScalar(KNIGHT_SHIELD.scale);
+  const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, ...extra });
+  const face = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.06, 28), lam(0x2f52e0, { emissive: 0x0c1a50 })); face.rotation.z = Math.PI / 2; shield.add(face);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.06, 6, 32), lam(0xf0c84a, { emissive: 0x5a4210 })); rim.rotation.y = Math.PI / 2; shield.add(rim);
+  const starShape = (R, r0) => { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? r0 : R; (i ? s.lineTo : s.moveTo).call(s, Math.cos(a) * r, Math.sin(a) * r); } return new THREE.ShapeGeometry(s); };
+  // the star: a soft glow, the bullseye ring (scaled to the round's radius by the live part), a dark outline and the gold star
+  const star = new THREE.Group(); star.position.x = 0.05; shield.add(star);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), basic(0xfff2a0, { transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending })); halo.rotation.y = Math.PI / 2; star.add(halo);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 36), basic(0xfff6c8, { transparent: true, opacity: 0.85 })); ring.rotation.y = Math.PI / 2; ring.position.x = 0.012; star.add(ring);
+  const back = new THREE.Mesh(starShape(0.38, 0.16), basic(0x5a3a08)); back.rotation.y = Math.PI / 2; back.position.x = 0.006; star.add(back);
+  const gold = new THREE.Mesh(starShape(0.3, 0.12), basic(0xffd23a)); gold.rotation.y = Math.PI / 2; gold.position.x = 0.012; star.add(gold);
+  // your lance tip: a white ring in a black ring with a red middle, drawn over everything
+  const over = { depthTest: false, transparent: true };
+  const dot = new THREE.Group(); dot.position.x = 0.07; dot.renderOrder = 998; shield.add(dot);
+  for (const [geo, c] of [[new THREE.RingGeometry(0.15, 0.2, 24), 0x10141c], [new THREE.RingGeometry(0.09, 0.15, 24), 0xffffff], [new THREE.CircleGeometry(0.04, 12), 0xff3a4a]]) {
+    const m = new THREE.Mesh(geo, basic(c, over)); m.rotation.y = Math.PI / 2; m.renderOrder = 998; dot.add(m);
+  }
+  // where your last passes hit (a gold burst for a Bullseye, a dent for a Clang), cleared for a new round
+  const marks = [];
+  for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.CircleGeometry(0.075, 10), basic(0x6a6a7a)); m.rotation.y = Math.PI / 2; m.position.x = 0.04; m.visible = false; shield.add(m); marks.push(m); }
+  g.userData.parts = { body, shield, star, halo, ring, gold, dot, marks, lance };
+  const dg = disposer(g), ds = disposer(shield);
+  g.userData.dispose = () => { dg(); ds(); };
   return g;
 }
 
@@ -126,6 +144,43 @@ export function buildPortcullis(w = 5, h = 5) {
   for (let y = 0; y <= h; y++) bars.setMatrixAt(i++, m.compose(new THREE.Vector3(0, y + 0.02, 0), new THREE.Quaternion(), new THREE.Vector3(w, 0.1, 0.1)));
   bars.instanceMatrix.needsUpdate = true;
   g.add(bars);
+  g.userData.dispose = disposer(g);
+  return g;
+}
+
+// The hedge maze's little fun (owner 2026-10-28): lucky gold horseshoes (one group each, so a picked one simply hides), hedge critters
+// (a leafy ball with big eyes that peeks over a hedge post) and the fountain's spray (instanced drops, moved by the live part).
+export function buildHorseshoes(n) {
+  const g = new THREE.Group(), list = [];
+  const geo = new THREE.TorusGeometry(0.28, 0.075, 6, 18, Math.PI * 1.45), mat = lam(0xffd23a, { emissive: 0x6a4a08 });
+  const glowG = new THREE.CircleGeometry(0.55, 18), glowM = new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  for (let i = 0; i < n; i++) {
+    const o = new THREE.Group(), shoe = new THREE.Mesh(geo, mat), glow = new THREE.Mesh(glowG, glowM);
+    shoe.rotation.z = Math.PI / 2 + Math.PI * 0.275; o.add(glow); o.add(shoe); o.visible = false; g.add(o); list.push(o);
+  }
+  g.userData.parts = { list };
+  g.userData.dispose = () => { geo.dispose(); mat.dispose(); glowG.dispose(); glowM.dispose(); };
+  return g;
+}
+export function buildHedgeCritters(n) {
+  const g = new THREE.Group(), list = [];
+  const ball = new THREE.IcosahedronGeometry(0.42, 1), leaf = lam(0x3f9a3a, { flatShading: true }), eyeG = new THREE.SphereGeometry(0.12, 10, 8), eyeM = lam(0xffffff, { emissive: 0x333333 });
+  const pupG = new THREE.SphereGeometry(0.06, 8, 6), pupM = lam(0x14141c), tuftG = new THREE.ConeGeometry(0.12, 0.3, 5);
+  for (let i = 0; i < n; i++) {
+    const o = new THREE.Group(), body = new THREE.Mesh(ball, leaf); o.add(body);
+    for (const s of [-1, 1]) { const e = new THREE.Mesh(eyeG, eyeM); e.position.set(s * 0.15, 0.1, 0.34); o.add(e); const p = new THREE.Mesh(pupG, pupM); p.position.set(s * 0.15, 0.1, 0.45); o.add(p); }
+    const tuft = new THREE.Mesh(tuftG, leaf); tuft.position.y = 0.45; o.add(tuft);
+    o.visible = false; g.add(o); list.push(o);
+  }
+  g.userData.parts = { list };
+  g.userData.dispose = () => { for (const x of [ball, leaf, eyeG, eyeM, pupG, pupM, tuftG]) x.dispose(); };
+  return g;
+}
+export function buildFountainSpray(n = 14) {
+  const g = new THREE.Group();
+  const drops = inst(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0x8ccaff, transparent: true, opacity: 0.9 }), n);
+  g.add(drops);
+  g.userData.parts = { drops, n };
   g.userData.dispose = disposer(g);
   return g;
 }
