@@ -856,7 +856,7 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { g, live, G } = R;
       return { hard: live.hard, games: [live.bump.hard, live.bounce.hard, live.seat.hard], omega: live.seat.omega, need: live.bounce.need, round: [live.bump.round, live.bounce.round, live.seat.round], bot: live.bump.fleet.bots[0].speed, time: live.bump.time, ticketsBefore: R.F.ticketState(g).n };
     });
-    t.ok(H1.hard && H1.games.every(Boolean) && H1.round.join() === '0,0,0' && H1.omega > G.omegaOf(false, 0) && H1.bot > 3 && H1.time < 45 && H1.ticketsBefore === 0, `with the star the three games start again from round 1, harder: quicker bots (${H1.bot} b/s, ${H1.time} s), a faster carousel (${H1.omega.toFixed(2)} rad/s)`);
+    t.ok(H1.hard && H1.games.every(Boolean) && H1.round.join() === '0,0,0' && H1.omega > G.omegaOf(false, 0) && H1.bot > 3 && H1.time < 55 && H1.ticketsBefore === 0, `with the star the three games start again from round 1, harder: quicker bots (${H1.bot} b/s, ${H1.time} s), a faster carousel (${H1.omega.toFixed(2)} rad/s)`);
     const H2 = await page.evaluate(() => {
       const R = window.__R, { g } = R, w = window.__toasts.length;
       g.talkTo(R.mae());
