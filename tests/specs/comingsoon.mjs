@@ -11,6 +11,7 @@ const state = page => page.evaluate(async () => {
     oldReady: ['house', 'pirate', 'race', 'stadium'].filter(id => P.pictureWorld(id)?.ready),
     swirl: [R.REALMS.swirl.version, R.REALMS.swirl.house], pirate: [R.REALMS.pirate.version, ...R.REALMS.pirate.size],
     fair: !!L.PLAYLAND_PARTS.fair,
+    castle: !!P.pictureWorld('castle')?.ready && !P.pictureWorld('castle')?.secret,
   };
 });
 
@@ -18,7 +19,7 @@ export default async function ({ browser, base, t }) {
   const shut = await openGame(browser, base, { wave15: false });
   const a = await state(shut);
   t.ok(a.switchOff, 'the switch ships off (WAVE15_OPEN = false)');
-  t.ok(a.ready.join() === 'atlantis,fair,doodle' && a.oldReady.length === 4, `closed: of the five wave 15 worlds only the Funfair, Atlantis and the Sketchbook are ready (owner 2026-10-28: OPEN_NOW), the four of wave 14 are (${a.ready})`);
+  t.ok(a.ready.join() === 'atlantis,fair,doors,doodle' && a.oldReady.length === 4 && a.castle, `closed: of the five wave 15 worlds the Funfair, Atlantis, the Surprise Party and the Sketchbook are ready, and the Castle too (owner 2026-10-28: OPEN_NOW; only the Portal House waits), the four of wave 14 are (${a.ready})`);
   t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
   // the closed Swirl as a world: no House; Playland has the open Funfair
   const worlds = await shut.evaluate(async () => {

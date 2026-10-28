@@ -1217,7 +1217,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
   (2026-10-25, changed 2026-10-26): **12 stars, every one from a Picture World**, 11 frames (framed Picture Worlds; five are placeholder
   `secret1`..`secret5` still to be named; `secret1` will be Doodle, wave 15), 12 bridge stones (the eleven plus Portal, whose house is in
-  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 16). Their levels
+  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 17). Their levels
   sit above the Champion; `REMATCH_CAP` and Coach Dex are checked against the new top.
 
 ## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`) ✅ done (T39a-c)
@@ -1338,7 +1338,14 @@ no gym or world asks you to do yet), its own type, creatures, Boss and look. The
 
 Not wanted: Snow Globe, Farm (owner, 2026-10-26). Builder went to the backlog (probably chapter 3).
 
-## Wave 16 · The Wizard's Tower and the Custom type (the design option below is still open)
+## Wave 16 · Picture Worlds 3: Bubble Well and Cube Planets (owner, 2026-10-28)
+
+The last two stars (the Castle, T49, took `secret3` and is live): **Bubble Well** (`plans/bubble-well.md`, the `secret4` frame) and
+**Cube Planets / gravity** (`plans/cube-planets.md`, the `secret5` frame; its build starts with a gravity sandbox the owner plays
+first). With them all 12 stars have a world, so the star bridge to the Wizard can be finished. Block ids are shared out in
+`plans/bubble-well.md` section 7.
+
+## Wave 17 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28)
 
 "Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). **The Wizard is chapter 2's
 championship** (owner, 2026-10-26): he gives no star (all 12 come from Picture Worlds and are found before you can cross the bridge);

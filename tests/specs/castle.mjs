@@ -563,11 +563,11 @@ export default async function ({ browser, base, t }) {
     await A.context().close(); await Bp.context().close();
   }
 
-  /* ---------------------------------------------------------------- G. Closed without ?preview */
+  /* ---------------------------------------------------------------- G. Open without ?preview (owner 2026-10-28; it shipped closed) */
   if (want('closed')) {
     const shut = await openGame(browser, base, { wave15: false });
     const c = await shut.evaluate(async () => { const PW = await import('/src/pictureworlds.js'), C = await import('/src/comingsoon.js'), pb = await import('/src/pictureboss.js'); const w = PW.pictureWorld('castle'); return { ready: w.ready, secret: w.secret, name: w.name, emoji: w.emoji, open: C.worldOpen('castle'), boss: pb.bossOf('castle').title }; });
-    t.ok(!c.ready && c.secret && c.name === 'Secret World' && c.emoji === '❓' && !c.open && c.boss === 'Sir Clanksalot · Castle Boss', `without ?preview the Castle's frame is still the covered secret (${c.name} ${c.emoji}), nothing spoiled`);
+    t.ok(c.ready && !c.secret && c.name !== 'Secret World' && c.open && c.boss === 'Sir Clanksalot · Castle Boss', `owner 2026-10-28: the Castle is open for everyone, also without ?preview (${c.name} ${c.emoji})`);
     t.ok(!shut.errors.length, `no page errors when closed ${shut.errors.slice(0, 3).join(' | ')}`);
     await shut.context().close();
   }
