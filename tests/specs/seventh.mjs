@@ -13,7 +13,7 @@ const GROUPS = { A: ['stitchums', 'waxwobble', 'jellume', 'bonzoise', 'wattwink'
   W12: ['bambooze'], // wave 12 (T37: bambooze)
   W14: ['pipsqueak'], // wave 14 (T40a: pipsqueak; the other wave 14 tasks add theirs)
   W15: ['partypop'], // wave 15 (T44: partypop; the other wave 15 tasks add theirs)
-  W16: ['turrock'] }; // T49 (the Castle: Turrock)
+  W16: ['turrock', 'fizzbomb'] }; // T49 (the Castle: Turrock); the Bubble Well: Fizzbomb
 const OLD_SHAPES = ['quad', 'blob', 'biped', 'bird', 'serpent', 'bug', 'guardian', 'butterfly', 'moth', 'star', 'robe', 'hopper',
   'planet', 'comet', 'cloud', 'tall', 'squid', 'bat', 'drum', 'ape', 'bell', 'armadillo', 'wyvern', 'fish', 'nut', 'drone', 'wisp',
   'puff', 'crystal', 'skull', 'bonedog', 'dino', 'ufo', 'visitor', 'tripod'];

@@ -43,6 +43,7 @@ export const TYPE_COLORS = {
 
 TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
 TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
+TYPE_COLORS.bubble = 'radial-gradient(circle at 35% 35%,#ffffff 0 14%,#c8f0ff 15% 45%,#ffd6ef 46% 70%,#fff4b8 71%)'; // the Bubble Well: soap-film pastels, light enough for the dark chip text
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
@@ -144,6 +145,17 @@ EFFECTIVENESS.tiny.knight = 2;
 EFFECTIVENESS.bug.knight = 0.5;
 EFFECTIVENESS.drake.knight = 0.5;
 /* ==== end of T49 knight chart ==== */
+/* ==== Bubble chart ==== */
+// Soapy bubbles put out fire, wash off toxic goo and trap tiny things inside; they pop on metal pins, on thorny plants and on each
+// other. Lightning zaps through soapy water, pins and pirate hooks pop bubbles; water only makes them bigger and fire cannot burn a wet
+// bubble. Others' cells are separate lines (no old cell changes). (Rock, the plan's idea, is already weak to 5 types.)
+EFFECTIVENESS.bubble = { fire: 2, toxic: 2, tiny: 2, metal: 0.5, grass: 0.5, bubble: 0.5 };
+EFFECTIVENESS.electric.bubble = 2;
+EFFECTIVENESS.metal.bubble = 2;
+EFFECTIVENESS.pirate.bubble = 2;
+EFFECTIVENESS.water.bubble = 0.5;
+EFFECTIVENESS.fire.bubble = 0.5;
+/* ==== end of Bubble chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -662,6 +674,23 @@ BIG_MOVES.knight = [
   ['lastcharge', 'Last Charge', 'lastword', 'One last brave charge! Only when you are almost out.'],
 ];
 /* ==== end of T49 knight ==== */
+/* ==== Bubble ==== */
+// Bubble creatures bop with soap, crash in a wave of foam, fizz off first and fizz themselves up. (No id is a sound's name.)
+Object.assign(MOVES, {
+  soapbop: mv('Soap Bop', 'bubble', 40, 1),
+  foamcrash: mv('Foam Crash', 'bubble', 85, 0.9),
+  quickfizz: mv('Quick Fizz', 'bubble', 40, 1, { priority: 1 }),
+  fizzup: mv('Fizz Up', 'bubble', 0, 1, { fx: { kind: 'raise', stat: 'spd' } }),
+  duckfleet: mv('Duck Fleet', 'bubble', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+  bathtubwave: mv('Bathtub Wave', 'bubble', 95, 0.9, { fx: { kind: 'flinch', chance: 0.25 }, sig: true }),
+  soapjuggle: mv('Soap Juggle', 'bubble', 30, 1, { fx: { kind: 'multi', min: 2, max: 4 }, sig: true }),
+});
+BIG_MOVES.bubble = [
+  ['bubblebath', 'Bubble Bath', 'shield', 'A warm bubble bath for the whole team! Everyone takes less for 3 turns. You rest next turn.'],
+  ['fizzfest', 'Fizz Fest', 'field', 'Fizz everywhere! Bubble moves are stronger for 5 turns. Foes too!'],
+  ['lastbubble', 'Last Bubble', 'lastword', 'One last giant bubble! Only when you are almost out.'],
+];
+/* ==== end of Bubble ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -781,6 +810,7 @@ T1.portal = 'swirlbop'; T2.portal = 'popthrough'; T3.portal = 'shortcut'; T4.por
 T1.atlantis = 'jarbonk'; T2.atlantis = 'tiletoss'; T3.atlantis = 'runeglow'; T4.atlantis = 'stoneroar'; // T41
 T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4.doodle = 'rubout'; // T45
 T1.knight = 'shieldbash'; T2.knight = 'lancecharge'; T3.knight = 'quickparry'; T4.knight = 'bannerwave'; // T49
+T1.bubble = 'soapbop'; T2.bubble = 'foamcrash'; T3.bubble = 'quickfizz'; T4.bubble = 'fizzup'; // the Bubble Well
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2548,6 +2578,49 @@ export const SPECIES = {
     model: { shape: 'walkturret', scale: 1.0, body: 0xa8a8b0, accent: 0x8a5a30, dark: 0x3a3a44, belly: 0xc8c8d0, extras: [] },
   },
   /* ==== end of T49 knight ==== */
+  /* ==== Bubble ==== */
+  // Bath-time friends who came alive in the Bubble Well: a rubber duck, a sea otter with a bar of soap, a little hippo with a bathtub and
+  // a bath fizzer. Every model wears a soap film (gear 'film': three small rainbow bubbles that float round it, one merged mesh); wild ones
+  // float inside their own big bubble (gait 'float', creatures.js) until you pop it.
+  squeaklet: {
+    name: 'Squeaklet', type: 'bubble', desc: 'A little rubber duck that squeaks when it is happy. It floats on any puddle, even in its sleep.',
+    base: { hp: 48, atk: 50, def: 52, spd: 60 }, baseXp: 64, catchRate: 0.45, gait: 'float', learn: L('bubble', 'water'),
+    evolve: { level: 24, into: 'quackmiral' },
+    model: { shape: 'rubberduck', scale: 0.8, body: 0xffd83a, accent: 0xff8a2a, dark: 0x3a2a1a, belly: 0xfff0a0, extras: [] },
+  },
+  quackmiral: {
+    name: 'Quackmiral', type: 'bubble', desc: 'A big rubber duck admiral in a blue hat. A fleet of tiny ducks follows it all round the bath.',
+    base: { hp: 80, atk: 92, def: 80, spd: 88 }, baseXp: 168, catchRate: 0.12, gait: 'float', learn: L('bubble', 'water', [[30, 'duckfleet']]),
+    model: { shape: 'rubberduck', scale: 1.25, body: 0xffd02a, accent: 0xff7a1a, dark: 0x2a2a4a, belly: 0xfff0a0, extras: ['admiral'] },
+  },
+  suddly: {
+    name: 'Suddly', type: 'bubble', desc: 'A sea otter pup that floats on its back with a bar of soap on its tummy. It scrubs everything it meets.',
+    base: { hp: 52, atk: 55, def: 48, spd: 66 }, baseXp: 66, catchRate: 0.45, gait: 'float', learn: L('bubble', 'normal'),
+    evolve: { level: 26, into: 'lathotter' },
+    model: { shape: 'bathotter', scale: 0.85, body: 0x9a6a46, accent: 0xff9ac8, dark: 0x4a3020, belly: 0xe8cfb0, extras: [] },
+  },
+  lathotter: {
+    name: 'Lathotter', type: 'bubble', desc: 'A big otter with a beard of soap foam and a sailor cap. It juggles soap bars and never drops one.',
+    base: { hp: 85, atk: 98, def: 75, spd: 92 }, baseXp: 170, catchRate: 0.1, gait: 'float', learn: L('bubble', 'normal', [[30, 'soapjuggle']]),
+    model: { shape: 'bathotter', scale: 1.3, body: 0x8a5a3a, accent: 0x8ad8ff, dark: 0x3a2618, belly: 0xe0c4a0, extras: ['beard'] },
+  },
+  hippip: {
+    name: 'Hippip', type: 'bubble', desc: 'A tiny hippo with a bubble on its nose. Every time it yawns, out comes a new one.',
+    base: { hp: 62, atk: 54, def: 64, spd: 38 }, baseXp: 64, catchRate: 0.45, gait: 'float', learn: L('bubble', 'grass'),
+    evolve: { level: 25, into: 'bathemoth' },
+    model: { shape: 'tubhippo', scale: 0.85, body: 0xb8a0d8, accent: 0xff9ac0, dark: 0x4a3a5a, belly: 0xe8d8f4, extras: [] },
+  },
+  bathemoth: {
+    name: 'Bathemoth', type: 'bubble', desc: 'A huge hippo with a bathtub full of bubbles on its back. Some let you ride them across the water!',
+    base: { hp: 100, atk: 90, def: 95, spd: 45 }, baseXp: 172, catchRate: 0.1, gait: 'float', learn: L('bubble', 'grass', [[30, 'bathtubwave']]),
+    model: { shape: 'tubhippo', scale: 1.3, body: 0xa890cc, accent: 0xff8ab8, dark: 0x3a2a4a, belly: 0xe0d0f0, extras: ['tub'] },
+  },
+  fizzbomb: {
+    name: 'Fizzbomb', type: 'bubble', desc: 'A round bath fizzer with sprinkles. It bounces about, fizzing and giggling all day.',
+    base: { hp: 60, atk: 78, def: 60, spd: 80 }, baseXp: 110, catchRate: 0.3, gait: 'float', learn: L('bubble', 'fire'),
+    model: { shape: 'bathbomb', scale: 0.9, body: 0xff9ad0, accent: 0x9ae8ff, dark: 0x6a3a5a, belly: 0xfff0f8, extras: [] },
+  },
+  /* ==== end of Bubble ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2791,6 +2864,10 @@ export const DOODLE_SPAWNS = [['nibling', 1.2], ['rubbit', 1.2], ['sketchkit', 1
 export const CASTLE_SPAWNS = [['pricklet', 1.3, 'guardpost'], ['visnail', 1.2, 'guardpost'], ['clipclop', 1.0, 'guardpost'], ['bristleguard', 0.12, 'guardpost', 'castle'], ['ramparsnail', 0.12, 'guardpost', 'castle'], ['gallantrot', 0.1, 'guardpost', 'castle'], ['turrock', 0.15, 'guardpost', 'castle']];
 export const MEADOW_SPAWNS = [['pricklet', 1.2, 'guardpost'], ['visnail', 1.0, 'guardpost'], ['clipclop', 1.2, 'guardpost']];
 /* ==== end of T49 knight ==== */
+/* ==== Bubble ==== */
+// Bubble creatures live only in the Bubble Well (REALMS.bubble.spawns), floating in bubbles over its ledges (the bubbly condition). The 4th element: wildafter.js.
+export const BUBBLE_SPAWNS = [['squeaklet', 1.3, 'bubbly'], ['suddly', 1.2, 'bubbly'], ['hippip', 1.0, 'bubbly'], ['quackmiral', 0.12, 'bubbly', 'bubble'], ['lathotter', 0.12, 'bubbly', 'bubble'], ['bathemoth', 0.1, 'bubbly', 'bubble'], ['fizzbomb', 0.15, 'bubbly', 'bubble']];
+/* ==== end of Bubble ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

@@ -149,6 +149,12 @@ squishy pumpkins at anyone who stands on the Shield Stone, and Sir Splinter, a w
 the Tilt Yard. Block the pumpkins and the drawbridge comes down; find your way through the hedge maze and win the joust,
 and the portcullis rises. Sir Clanksalot waits in the throne room beside the empty throne for a challenger at last.
 
+**The Bubble Well.** The Wizard filled a deep round well with fizz, so his bath-time friends (a rubber duck, a sea otter with
+a bar of soap, a little hippo with a bathtub, a bath fizzer) could float all the way up to the sky on their bubbles: the **Bubble
+creatures**. Then the Scribble's scribbles let the fizz go flat, and the bubbles stopped rising. Bubble Bee lends you a bubble wand:
+blow your own steps and climb, float the sleepy ducklings home to their nest, ride a big bubble up the geyser chimney, and pop
+the three shield bubbles round Captain Suds on the rim. Then the bubbles rise again, and he has the star.
+
 ## The Wizard's Tower
 
 With every star found, the star bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
@@ -194,5 +200,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
 | The Portal House, Playland's fair, the Surprise Party, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
+| The Bubble Well | Bubble Picture World (behind ?preview until the owner opens it) | 16 |
 | The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |

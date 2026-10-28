@@ -20,6 +20,7 @@ import { PartyLive } from './partylive.js'; // T48 (was T44's Room of Doors)
 import { AtlantisLive } from './atlantislive.js'; // T41
 import { DoodleLive } from './doodlelive.js'; // T45
 import { CastleLive } from './castlelive.js'; // T49
+import { BubbleLive } from './bubblelive.js'; // the Bubble Well
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -39,6 +40,7 @@ LIVE.doors = PartyLive; // T48 Jolly Jax's Surprise Party: the Party Spinner, fo
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
 LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 LIVE.castle = CastleLive; // T49 the Castle: Shield Up!, the drawbridge, the hedge maze, the Joust, the portcullis
+LIVE.bubble = BubbleLive; // the Bubble Well: bubbles you stand on, the ducklings, the Chimney Ride, Captain Suds' shields
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

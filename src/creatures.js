@@ -88,6 +88,12 @@ Object.assign(GAITS, {
 // a bump never battles (E / a tap does).
 Object.assign(GAITS, { sentry: { notice: 4, speed: 1.2, turn: 0.6, run: 5, bump: true } });
 /* ==== end of T49 knight ==== */
+/* ==== Bubble ==== */
+// 'float' (Bubble): a wild one floats `lift` above its nook inside its own big soap bubble, bobbing (`bob`, `speed`) and turning to
+// look at you within `notice`. It never walks. Walking into the bubble only makes it wobble (`bump`: E, a click or a tap battles);
+// the battle pops the bubble (Wild.reveal) and the creature drops to the ground. Closed form in w.t, no Math.random.
+Object.assign(GAITS, { float: { lift: 0.7, bob: 0.15, speed: 1.6, notice: 6, bump: true } });
+/* ==== end of Bubble ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -113,6 +119,7 @@ export class Wild {
   // Drops the disguise and pops out of it. Returns the block's name, or null if there was no disguise.
   reveal() {
     if (this.wrapped) return this.unwrap(); // T44: a wrapped Surprise creature (the gift box)
+    if (this.bubbled) return this.popBubble(); // the Bubble Well: its bubble pops (the battle says "A wild ... appeared!")
     const d = this.disguise;
     if (!d) return null;
     const name = BLOCKS[d.block].name;
@@ -139,6 +146,16 @@ export class Wild {
     return { gift: true };
   }
   /* ==== end of T44 surprise ==== */
+  /* ==== Bubble ==== */
+  // The soap bubble round a floating Bubble creature pops and the creature drops to the ground. Returns null (no disguise words).
+  popBubble() {
+    this.bubbled = false;
+    if (this.bubble) { this.bubble.parent?.remove(this.bubble); this.bubble.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); this.bubble = null; }
+    this.model.position.copy(this.pos);
+    sound.play('soappop');
+    return null;
+  }
+  /* ==== end of Bubble ==== */
   face(target) { this.heading = Math.atan2(target.x - this.pos.x, target.z - this.pos.z); }
 }
 
@@ -322,6 +339,7 @@ export class CreatureManager {
     }
     model.position.copy(pos);
     if (SPECIES[species].gait === 'gift') this.wrapGift(wild); // T44: starts wrapped in a gift box
+    if (SPECIES[species].gait === 'float') this.bubbleUp(wild); // the Bubble Well: starts inside a soap bubble
     this.scene.add(model);
     this.list.push(wild);
     this.onSpawn?.(wild);
@@ -595,6 +613,7 @@ export class CreatureManager {
     if (w.species.gait === 'pop') return this.updatePop(w, dt); // T42
     if (w.species.gait === 'gift') return this.updateGift(w, dt); // T44
     if (w.species.gait === 'sentry') return this.updateSentry(w, dt); // T49
+    if (w.species.gait === 'float') return this.updateFloat(w, dt); // the Bubble Well
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -1121,6 +1140,39 @@ export class CreatureManager {
     animateModel(model, w.t, moving);
   }
   /* ==== end of T49 knight ==== */
+  /* ==== Bubble ==== */
+  // A wild Bubble creature floats inside a soap bubble: a see-through sphere round its model (sized to the model), a pale shine on top.
+  bubbleUp(w) {
+    const box = new THREE.Box3().setFromObject(w.model), size = box.getSize(new THREE.Vector3());
+    const r = Math.max(0.45, Math.max(size.x, size.y, size.z) * 0.62);
+    const g = new THREE.Group();
+    const skin = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), new THREE.MeshPhongMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.28, shininess: 90, specular: 0xffffff, emissive: 0x223344, depthWrite: false }));
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }));
+    shine.position.set(-r * 0.45, r * 0.5, r * 0.45);
+    g.add(skin, shine);
+    g.position.y = size.y * 0.5;
+    g.userData.r = r;
+    w.model.add(g);
+    w.bubble = g; w.bubbled = true;
+  }
+  // The closed form of a floating Bubble creature: it bobs over its spot inside the bubble, turns to look at you, wobbles when bumped.
+  updateFloat(w, dt) {
+    const g = GAITS.float, p = this.viewer, model = w.model;
+    const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
+    w.phase ??= ((hash32(w.data.uid || 'x') % 1000) / 1000) * Math.PI * 2;
+    if (p && dist < g.notice) {
+      let d = Math.atan2(dx, dz) - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 2.5);
+    }
+    const up = w.bubbled ? g.lift + g.bob * Math.sin(w.t * g.speed + w.phase) : 0;
+    model.position.set(w.pos.x, w.pos.y + up, w.pos.z);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    if (w.bubble) { const k = w.touching ? 0.08 * Math.sin(w.t * 18) : 0.03 * Math.sin(w.t * 2.3 + w.phase); w.bubble.scale.set(1 + k, 1 - k, 1 + k); }
+    animateModel(model, w.t, false);
+  }
+  /* ==== end of Bubble ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

@@ -25,6 +25,7 @@ const WOOL_TYPES = [
   'atlantis', // wave 15 (T41): id 204
   'doodle', // wave 15 (T45): id 244
   'knight', // T49 (the Castle): id 254
+  'bubble', // the Bubble Well: id 255
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -43,6 +44,7 @@ const WOOL_RGB = {
   atlantis: [70, 170, 170], // T41
   doodle: [236, 232, 220], // T45
   knight: [150, 165, 190], // T49: steel blue-grey with a gold cross
+  bubble: [176, 228, 250], // the Bubble Well: soap blue with rainbow bubble rings
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -101,6 +103,8 @@ const MORE_TILES = [
   'DO_PAPER', 'DO_INK', 'DO_PAD_TOP', 'DO_PAD_SIDE', 'DO_BINDING',
   // T49 the Castle: a clipped hedge (side / top)
   'KN_HEDGE', 'KN_HEDGE_TOP',
+  // the Bubble Well: foam (top / side) and the fizzy soda wall (side / top)
+  'BU_FOAM', 'BU_FOAM_SIDE', 'BU_FIZZ', 'BU_FIZZ_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -180,6 +184,8 @@ export const B = {
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
   // 182: T49, the Castle's clipped hedge (fixed, not placeable). 254: the knight wool. Ids still free: 137-139, 183, 249 (and 255).
   HEDGE: 182,
+  // 147-148: the Bubble Well (none placeable, all fixed; 255 is the bubble wool). Ids still free after it: 137-139, 149, 183, 249.
+  FOAM: 147, FIZZ_WALL: 148,
   // 215-223: T42, the Portal House in the Swirl (215 is the portal wool; none placeable, all fixed). 223 = the peach pad (owner 2026-10-27: your own orange swirl).
   PO_WALL: 216, PO_FLOOR: 217, PO_PANEL: 218, PO_RIM: 219, PO_ROOF: 220, PO_RAIL: 221, PO_SHUT: 222, PO_PEACH: 223,
   // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
@@ -197,6 +203,7 @@ Object.assign(WOOL_ID_OVERRIDE, { atlantis: 204 }); // T41
 Object.assign(WOOL_ID_OVERRIDE, { doodle: 244 }); // T45
 Object.assign(WOOL_ID_OVERRIDE, { portal: 215 }); // T42
 Object.assign(WOOL_ID_OVERRIDE, { knight: 254 }); // T49
+Object.assign(WOOL_ID_OVERRIDE, { bubble: 255 }); // the Bubble Well
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -417,6 +424,11 @@ BLOCKS[B.DO_PAD] = { name: 'Star Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, b
 BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: true, wallText: "The sketchbook's spiral rings. Too big to break!" };
 // T49 the Castle: a neat clipped hedge (the hedge garden and the maze). Solid, fixed, not placeable.
 BLOCKS[B.HEDGE] = { name: 'Castle Hedge', top: T.KN_HEDGE_TOP, side: T.KN_HEDGE, bottom: T.KN_HEDGE, fixed: true, wallText: 'A neat castle hedge. The gardener would be cross!' };
+/* ==== Bubble ==== */
+// The Bubble Well: soft foam ledges and the fizzy soda wall. Solid, fixed, not placeable.
+BLOCKS[B.FOAM] = { name: 'Soap Foam', top: T.BU_FOAM, side: T.BU_FOAM_SIDE, bottom: T.BU_FOAM_SIDE, fixed: true, wallText: 'Soft soap foam. Too squishy to dig!' };
+BLOCKS[B.FIZZ_WALL] = { name: 'Fizzy Wall', top: T.BU_FIZZ_TOP, side: T.BU_FIZZ, bottom: T.BU_FIZZ_TOP, fixed: true, wallText: 'The fizzy wall of the well. Bubbles only, no digging!' };
+/* ==== end of Bubble ==== */
 // T43 Funfair: all fixed, none placeable. The trampoline launches you again on every landing (player.js reads `trampoline`).
 {
   const fx = { fixed: true };
@@ -612,6 +624,7 @@ export function drawAtlas() {
                                 : t === 'food' ? (((x >> 2) + (y >> 2)) % 2 ? [250, 240, 230] : WOOL_RGB[t]) // tablecloth check (T33)
                                 : t === 'doodle' ? (y % 5 === 2 ? [176, 200, 232] : WOOL_RGB[t]) // T45: notebook paper with blue ruled lines
                                 : t === 'knight' ? ((x === 7 || x === 8 || y === 7 || y === 8) ? [232, 196, 90] : WOOL_RGB[t]) // T49: a gold cross on steel
+                                : t === 'bubble' ? ((d => (d > 4.2 && d < 5.4 ? STRIPES[(x + y) % STRIPES.length] : d < 1.3 ? [255, 255, 255] : WOOL_RGB[t]))(Math.hypot(((x + 4) % 16) - 7.5, ((y + 4) % 16) - 7.5))) // a rainbow bubble ring
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
@@ -1203,6 +1216,25 @@ export function drawAtlas() {
       put(T.KN_HEDGE_TOP, x, y, leaf ? shade([120, 180, 84], 1 + (v - 0.5) * 0.1) : shade([62, 132, 54], 1 + (r49() - 0.5) * 0.2));
     });
   }
+  /* ==== Bubble ==== */
+  { // the Bubble Well (own random numbers): white foam with soft round bubbles (the side has a foamy drip edge); the fizzy wall is
+    // soda pink and mint in wavy bands with rising fizz dots and a glitter speck here and there
+    const rb = mulberry32(5150);
+    const BUBS = [[3, 4, 2.6], [10, 3, 2.1], [7, 10, 3.0], [13, 12, 1.8], [2, 13, 1.6]];
+    each((x, y) => {
+      let b = null;
+      for (const [cx, cy, r] of BUBS) { const d = Math.hypot(x - cx, y - cy); if (d < r) b = d > r - 0.9 ? [214, 226, 240] : x < cx && y < cy ? [255, 255, 255] : [246, 250, 255]; }
+      put(T.BU_FOAM, x, y, b ?? shade([238, 244, 252], 1 + (rb() - 0.5) * 0.05));
+      const drip = y < 5 + Math.round(1.5 * Math.sin(x * 1.1) + (x % 5 === 2 ? 2 : 0));
+      put(T.BU_FOAM_SIDE, x, y, drip ? (b ?? [244, 248, 255]) : shade([178, 222, 246], 1 + (rb() - 0.5) * 0.08));
+      const band = Math.floor((y + 2 * Math.sin(x * 0.7)) / 4) % 3;
+      const fizz = (x * 7 + y * 3) % 13 === 0, glit = (x * 5 + y * 11) % 29 === 0;
+      const base = band === 0 ? [255, 176, 210] : band === 1 ? [255, 206, 226] : [176, 236, 214];
+      put(T.BU_FIZZ, x, y, glit ? [255, 255, 255] : fizz ? [255, 246, 252] : shade(base, 1 + (rb() - 0.5) * 0.08));
+      put(T.BU_FIZZ_TOP, x, y, glit ? [255, 255, 255] : (x + y) % 5 === 0 ? [255, 236, 246] : shade([255, 196, 222], 1 + (rb() - 0.5) * 0.06));
+    });
+  }
+  /* ==== end of Bubble ==== */
   { // T45 Sketchbook tiles (own random numbers): the colour versions; the pencil versions are drawn by sketchatlas.js
     const r5 = mulberry32(4545), CREAM = [244, 240, 228];
     each((x, y) => {

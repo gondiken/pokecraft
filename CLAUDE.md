@@ -139,6 +139,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/castlelive.js` | T49 `CastleLive` = `LIVE.castle`: the shield stance and the steed (`carry` objects), throws, gates with `LiveCells`, the Joust's view (`JOUST_VIEW`, owner 2026-10-28), the maze's fun (`MAZE_FUN`), `battleEnded`, `manual` + `step` |
 | `src/castleprops.js` | T49 the Castle's models (`buildPracticeKnight` with its `parts.shield`, catapults, lance, drawbridge, portcullis, horseshoes, critters, spray) |
 | `src/castlegate.js` | T49 the shared gates (owner 2026-10-28: physical): `createCastleGates` -> `game.castleGates`; play-together `castle` message, per session, never saved |
+| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160): `WELL`, `FLOOR`, `MESA`, `BENCH` (+ its overhang), `SHAFT1` / `SHAFT2`, `BREEZES`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS`, `CHIMNEY`, `RIM`, `VENTS` / `SHIELD`, `LIFTS`, `DRIPS`, `SOAP_FLOWERS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `bubbleAim`, `bubbleLand` |
+| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (Blow!, rise, pop, stand), `dripAt`, `DUCK` / `Duckling` (Puff! nudges), `RIDE` / `Ride` (the Chimney Ride: taps, plates, the arm), `SHOT` / `shieldShot` / `shieldSpot`, `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
+| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand, standing on a bubble (a `carry`: Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff), the vents and shields, the fizz lifts (in `world.lifts` only while on), `battleEnded`, `manual` + `step`, `info()` |
+| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), aim ring, wand, drips, streams, soap flowers, thorns, nest, the chimney's plates / fan / arm / stars, shields |
 | `src/bigtop.js` | T34 Big Top Gym (slot 6): `buildBigTop`, no live parts |
 | `src/missions.js` | T29 Champion missions: `MISSIONS` (12, append-only), `REWARDS`, `loadMissions`, `nextMission`, `missionOf`, `createMissions` -> `game.missions` |
 | `src/missiongen.js` | T38c the mission maker (pure): `makeMission(n, seed)`, `cleanSpec`, `roundKinds`, `roundOf`, pools, `MORE_SPOTS` |
@@ -531,6 +535,16 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   **The gates are physical** (owner 2026-10-28): `castlegate.js`, the host owns them; your keys record only what you won. Sir
   Clanksalot gates on both challenges and Squire Pip and Archer Wren; a won battle clears the six round keys. Generic lines:
   `Player.look` asks `carry.look`, `setButtons({ jump })`, `ui.setPointers`, `game.rideShow`.
+- **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
+  `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
+  only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
+  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Blow!** (one press, never
+  held): a bubble 1.6 in front of the eyes, standing on it is a `carry` (Jump = Bounce, extra high); a fall from a bubble puts you back on
+  your ledge. The plateau overhangs the bench and a fizzy breeze (`BREEZES`, vents for bubbles) blows bubbles off the cliff, so the narrow
+  shaft is the only way up (`bubblecheck.mjs` proves it). Keys `pw:bubble:stairs`, `duck1..3`, `chimney`, `shield1..3`; the two fizz
+  lifts run once you did a stretch (or hold the star). Captain Suds (a giant Lathotter) gates on the five stretch keys and the three
+  shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won battle clears the eight climb keys. Kind help only through
+  `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
 
 ## Supabase
 
@@ -580,6 +594,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `book`: Creature Book
 - `box`: storage box (T13): let go, sort, filter
 - `castle`: T49 type, terrain (`castlecheck.mjs`), Shield Up! and the Joust with `castlebots.mjs` at 60 / 20 fps, shared gates, play, iPad, two browsers, closed without `?preview`; `CASTLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
+- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the shields with `bubblebots.mjs` at 60 / 20 fps, the climb with the real Player, play, iPad, two browsers, closed without `?preview`; `BUBBLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
 - `caves`: T3/T8 caves and cave gyms
 - `champion`: tower, guards, coach, Champion (slow, about 5 min)
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms

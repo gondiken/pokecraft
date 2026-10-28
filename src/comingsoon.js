@@ -13,4 +13,4 @@ export const OPEN_NOW = ['fair', 'atlantis', 'doodle', 'doors', 'castle']; // ow
 export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
-export const LATER = ['castle'];
+export const LATER = ['castle', 'bubble']; // the Bubble Well ships behind ?preview too (owner 2026-10-28)

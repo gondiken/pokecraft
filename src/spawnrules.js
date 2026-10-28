@@ -70,6 +70,8 @@ export const CONDITIONS = {
   gift: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'wrapped in a gift box' },
   // T49: the Castle's wild Knights stand guard at its nooks (the garden, the courtyard, the meadow): the nook list, their own Book line
   guardpost: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'on guard at the castle' },
+  // the Bubble Well: wild Bubble creatures float in their own bubbles over its nooks (the ledges, the garden, the rim): their own Book line
+  bubbly: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'floating in a bubble in the Bubble Well' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,
@@ -93,6 +95,7 @@ export const AFTER_TEXT = {
   doodle: 'once you drew 4 lines',
   portal: 'once you finished 4 swirl rooms',
   castle: 'once you won 3 rounds of Shield Up! and the Joust', // T49
+  bubble: 'once you climbed the Bubble Stairs', // the Bubble Well
 };
 export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);
 
