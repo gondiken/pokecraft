@@ -252,6 +252,9 @@ const SOUNDS = {
   rightdoor: () => { notes([523, 659, 784, 1047], 0.09, { len: 0.16, type: 'triangle', vol: 0.18 }); bell(1568, 0.36, 0.6, 0.16); },
   sillyhonk: () => { tone(330, { len: 0.12, type: 'sawtooth', vol: 0.12, slide: -60 }); tone(300, { at: 0.16, len: 0.16, type: 'sawtooth', vol: 0.12, slide: 120 }); },
   jackpop: () => { tone(180, { len: 0.2, type: 'triangle', vol: 0.3, slide: 700 }); tone(900, { at: 0.08, len: 0.14, type: 'sine', vol: 0.1, slide: -300 }); },
+  // T48 the Surprise Party: the Party Spinner's click, the guests' cheer
+  spintick: () => { noise({ freq: 4200, len: 0.02, vol: 0.12, q: 3 }); tone(1500, { len: 0.03, type: 'square', vol: 0.03 }); },
+  partyyay: () => { notes([659, 784, 988, 1319], 0.07, { len: 0.12, type: 'triangle', vol: 0.12 }); noise({ at: 0.05, freq: 2400, len: 0.3, vol: 0.06, q: 0.4 }); },
   boop: () => { tone(740, { len: 0.1, type: 'sine', vol: 0.3, slide: -200 }); tone(1100, { at: 0.05, len: 0.1, type: 'triangle', vol: 0.12 }); },
   // T44 rework: a piñata CRACK (a paper thwack), the candy rain, a jack caught in your arms, a cream pie's splat.
   pinatawhack: () => { noise({ freq: 900, len: 0.12, vol: 0.32, q: 0.9 }); tone(160, { len: 0.12, type: 'triangle', vol: 0.3, slide: -60 }); noise({ at: 0.04, freq: 3600, len: 0.08, vol: 0.12, q: 1.2 }); },

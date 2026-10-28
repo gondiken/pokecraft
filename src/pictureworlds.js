@@ -30,20 +30,22 @@ function drawFairPicture(g, n = 128) {
   g.fillStyle = '#fff2e0'; g.beginPath(); g.ellipse(44 * k, 84 * k, 9 * k, 7 * k, 0, 0, 7); g.fill(); g.fillRect(48 * k, 74 * k, 6 * k, 8 * k); r(34, 90, 3, 8, '#fff2e0'); r(50, 90, 3, 8, '#fff2e0');
   r(102, 96, 20, 12, '#fff2a0'); r(102, 96, 20, 3, '#e84a6a'); r(108, 100, 8, 5, '#ffd23a');
 }
-// T44: the picture in the Room of Doors' frame: a pink wall, a row of five coloured doors (the middle one gold, ajar) and a big gift with a bow on the floor (128 px canvas).
-function drawDoorsPicture(g, n = 128) {
+// T48: the picture in the Surprise Party's frame: a pink party wall with bunting, a three-tier birthday cake with lit candles, two
+// balloons and a present with a bow (128 px canvas). (T44's Room of Doors had this frame before.)
+function drawPartyPicture(g, n = 128) {
   const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
-  r(0, 0, 128, 128, '#ffd8ec'); for (let x = 0; x < 128; x += 16) r(x, 0, 8, 128, '#ffcfe6'); r(0, 100, 128, 28, '#c9a6ee'); r(0, 100, 128, 4, '#b08ae0');
-  const doors = ['#e8384a', '#3a8ce8', '#ffd23a', '#3ac86a', '#b05ae8'];
-  doors.forEach((c, i) => {
-    const x = 6 + i * 24;
-    r(x, 22, 20, 60, '#8a3a1a'); r(x + 2, 24, 16, 56, c);
-    if (i === 2) { g.fillStyle = '#3a2a5a'; g.beginPath(); g.moveTo((x + 2) * k, 24 * k); g.lineTo((x + 12) * k, 28 * k); g.lineTo((x + 12) * k, 78 * k); g.lineTo((x + 2) * k, 80 * k); g.fill(); r(x + 4, 50, 5, 4, '#fff'); }
-    else r(x + 12, 52, 3, 3, '#fff0d0');
-  });
-  r(40, 70, 48, 38, '#e8384a'); r(40, 70, 48, 8, '#ff6a8a'); r(60, 70, 8, 38, '#ffd23a'); r(40, 86, 48, 6, '#ffd23a');
-  g.fillStyle = '#ffd23a'; g.beginPath(); g.ellipse(52 * k, 64 * k, 12 * k, 7 * k, -0.4, 0, 7); g.ellipse(76 * k, 64 * k, 12 * k, 7 * k, 0.4, 0, 7); g.fill();
-  r(60, 60, 8, 8, '#e8a81a');
+  r(0, 0, 128, 128, '#ffd8ec'); for (let x = 0; x < 128; x += 16) r(x, 0, 8, 128, '#ffcfe6'); r(0, 104, 128, 24, '#c9e6ff'); r(0, 104, 128, 4, '#a8d0f0');
+  const flags = ['#e8384a', '#ffd23a', '#3a8ce8', '#3ac86a', '#b05ae8', '#ff8a1a'];
+  for (let i = 0; i < 8; i++) { g.fillStyle = flags[i % flags.length]; const x = 4 + i * 16, y = 6 + Math.sin((i / 7) * Math.PI) * 8; g.beginPath(); g.moveTo(x * k, y * k); g.lineTo((x + 12) * k, y * k); g.lineTo((x + 6) * k, (y + 12) * k); g.fill(); }
+  // the cake
+  r(30, 84, 52, 22, '#f0c890'); r(30, 84, 52, 6, '#ff8ab0'); r(38, 66, 36, 18, '#f0c890'); r(38, 66, 36, 5, '#ff8ab0'); r(46, 52, 20, 14, '#f0c890'); r(46, 52, 20, 4, '#ff8ab0');
+  r(28, 104, 56, 4, '#ffffff');
+  for (const x of [40, 52, 64]) { r(x, 56 - (x === 52 ? 14 : 10), 4, x === 52 ? 10 : 10, '#3a8ce8'); g.fillStyle = '#ffd23a'; g.beginPath(); g.ellipse((x + 2) * k, (x === 52 ? 39 : 43) * k, 3 * k, 5 * k, 0, 0, 7); g.fill(); }
+  // two balloons on strings
+  for (const [x, y, c] of [[14, 40, '#e8384a'], [108, 34, '#3a8ce8']]) { g.strokeStyle = '#ffffff'; g.lineWidth = 1.5 * k; g.beginPath(); g.moveTo(x * k, (y + 12) * k); g.lineTo((x + 2) * k, 104 * k); g.stroke(); g.fillStyle = c; g.beginPath(); g.ellipse(x * k, y * k, 10 * k, 13 * k, 0, 0, 7); g.fill(); r(x - 4, y - 7, 3, 4, 'rgba(255,255,255,0.6)'); }
+  // a present with a bow
+  r(92, 84, 26, 22, '#3ac86a'); r(103, 84, 5, 22, '#ffd23a'); r(92, 92, 26, 5, '#ffd23a');
+  g.fillStyle = '#ffd23a'; g.beginPath(); g.ellipse(99 * k, 80 * k, 7 * k, 4 * k, -0.4, 0, 7); g.ellipse(111 * k, 80 * k, 7 * k, 4 * k, 0.4, 0, 7); g.fill();
 }
 // T41: the picture in the Atlantis frame: deep blue water, a sandy floor, columns, a palace dome with a golden glow and glowfish (128 px canvas).
 function drawAtlantisPicture(g, n = 128) {
@@ -81,7 +83,7 @@ export const PICTURE_WORLDS = [
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },
   { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: true, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
   { id: 'fair', name: 'Funfair', emoji: '🎡', frame: [0xf88ac8, 0xf8e83a], ready: true, realm: 'playland', place: 'Playland', picture: drawFairPicture }, // T43: the third Playland world
-  { id: 'doors', name: 'Room of Doors', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawDoorsPicture }, // T44
+  { id: 'doors', name: 'Surprise Party', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawPartyPicture }, // T44; T48 the Surprise Party (it replaced the Room of Doors)
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'doodle', name: 'Sketchbook', emoji: '✏️', frame: [0xb8a0f0, 0xf8e8c8], ready: true, realm: 'doodle', picture: drawDoodlePicture }, // T45 (was secret1: no save could hold its star)
   { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Pirate Seas', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas

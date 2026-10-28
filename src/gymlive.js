@@ -16,7 +16,7 @@ import { HouseLive } from './houselive.js'; // T40a
 import { PirateLive } from './pirateparts.js'; // T40b
 import { PortalHouseLive } from './portalhouselive.js'; // T42
 import { FairLive } from './funfairlive.js'; // T43
-import { DoorsLive } from './doorslive.js'; // T44
+import { PartyLive } from './partylive.js'; // T48 (was T44's Room of Doors)
 import { AtlantisLive } from './atlantislive.js'; // T41
 import { DoodleLive } from './doodlelive.js'; // T45
 
@@ -34,7 +34,7 @@ LIVE.house = HouseLive; // T40a the Giant House's fan, train, tap, cat and crumb
 LIVE.pirate = PirateLive; // T40b the Pirate Seas: cannons, ropes, the chest
 LIVE.portalhouse = PortalHouseLive; // T42 the Portal House in the Swirl: swirls, rooms, sparks
 LIVE.fair = FairLive; // T43 the Funfair: bumper cars, the trampoline, the carousel, the coaster
-LIVE.doors = DoorsLive; // T44 the Room of Doors: doors, the Piñata Party, Jack Catch, the Big Gift
+LIVE.doors = PartyLive; // T48 Jolly Jax's Surprise Party: the Party Spinner, four party games, the party crashers, the cake
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
 LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 

@@ -1,4 +1,4 @@
-# T48 · Jolly Jax's Surprise Party: the new Room of Doors (plan, not built yet)
+# T48 · Jolly Jax's Surprise Party: the new Room of Doors (built 2026-10-28, see "Decisions while building" at the end)
 
 Owner, 2026-10-28. On the Room of Doors: "Those emojis at the top of the doors are useless ... the piñata is half in the wall of the
 slide room ... the slide looks like stairs ... there's no real 'surprise' element in the world, it's just a few doors we break and a few
@@ -118,3 +118,51 @@ left in the whole game); `BALL_PIT` and `RIBBON` may get new looks or become cak
 
 Short, friendly words a child can read; iPad first (one big button, tap to whack); skill, not puzzles; a Surprise world may use plenty
 of randomness, but fairly; never repeat another world's challenge; never erase progress; nothing saved but the keys.
+
+## Decisions while building
+
+Where the plan did not fit in practice, decided the way the owner usually would (short words, iPad first, skill not puzzles, the
+easy side, nothing lost):
+
+- **The room is 42 x 50 inside, not about 48 x 40.** The Piñata Party's rug middle and size are part of `pinata.js` (`PINATA.ring`),
+  which stays as it is, so the party floor (25 x 25) is centred there and the room is built round it: the cake at the north end, the
+  frame home by the south wall (it is the entrance), the Spinner on the east wall, the long table on the west side.
+- **The Spinner turns 1.25 rounds a second and slows over 1.6 s (not about 1 s).** The slow-down then turns exactly one more round
+  (plus a seeded wobble of at most 0.12 rad of a 1.57 rad slice), so the slice under the arrow when you press Stop! is the one it
+  stops on: a child can aim with it. It stops by itself after 6 s if nobody presses Stop!.
+- **Party sweets are once until the next game is won**, not once per spin: with three games won, spinning again and again on a won
+  slice would hand out cubes forever. Every other landing on a won game says "Spin again!".
+- **Every round starts with Play! on the game's gold pad.** The surprise (the popper and Jolly Jax's words) comes when the round is
+  ready, so the child reads it before playing; a missed round keeps its surprise ("Again!").
+- **The help after a miss:** the Piñata Party and Jack Catch keep their own help (after one time-up they swing or fly slower, as
+  before: their rules stay as they are); Gift Stack and Pop-Up Whack use the Funfair's `fairHelp` after two misses, as planned.
+- **Jack Catch's rounds** are the first 10 / 13 / 16 jacks of a `catchPlan` with 6 / 9 / 12 to win (+2 each in a rematch party),
+  so the first round is the gentle start of a normal round and round 3 is today's whole round.
+- **"Two piñatas!"** adds a llama with the most help (3 CRACKs, a slower swing) next to the rocket; both must burst, with 15 s more.
+  **"Wobbly rope!"** swings 15 % further (25 % made the rocket too hard for the model kid). **"Pie party!"** adds a pie to every third
+  jack and all pies fly 30 % slower (more warning).
+- **A rematch party is harder when you hold the star** (like the Funfair), not after a rematch win (the Room of Doors' `bossWins > 0`
+  meant the first party after the star was not harder).
+- **Gift Stack's numbers** (tuned with the model players at 60 and 20 frames a second): presents 0.7 high, the base 3 x 3, Perfect!
+  within 0.25, thinner than 0.4 topples, the crane swings 2.6 each way in 3.2 / 2.8 / 2.5 s, "Tiny presents!" start at 2.4.
+  A tap anywhere on the screen also drops (iPad).
+- **Pop-Up Whack's numbers:** the stick reaches every box from the pad (it is a reflex game, not a walking one); a whack at nothing
+  rests the stick 1.1 s and the jacks stay up 1.3 / 1.1 / 0.9 s, so whacking all the time without looking almost never wins a round
+  (round 1 now and then, never all three). "Mirror!" sends 45 % of the jacks out of the box opposite the one that shook. The nine
+  boxes are the same grid as Jack Catch's, two rows nearer.
+- **The party crashers stand at the party floor's south edge** (never in a game's way). Beating them is needed before Jolly Jax (the
+  generic "helpers first" rule). A crasher beaten on this visit stays for the visit (you can talk to them); one beaten before stays away.
+- **Jolly Jax is hidden in the cake (`sendAway`) until the four bows**; the finale plays when the fourth bow is won. Arriving with
+  four bows already, he is on the cake with the candles lit, without the show.
+- **Blocks (no new ids):** 238 is a Present and 239 a Gold Present (the piles in the corners), 242 the Birthday Cake (no bounce), 243 a
+  Candle Flame (glow, drawn with setLive when lit); one new tile (`SU_CAKE_TOP`). Candle sticks are water wool, the tablecloth and the
+  cake plate normal wool, the table legs planks.
+- **The old bows are moved on the first visit to the party** (the live part), with a mark key `pw:doors:party` so it happens once and a
+  new party save is never moved again. Outside the party only the number of bows is read (the Boss's gate, the wild creatures), and that
+  number does not change.
+- **"Lights out!"** needed one generic hook: `game.lightsDim` (1 everywhere else), read by main.js `updateSky`.
+- **Four guests** (Party Polly, Balloon Bo, Cupcake Cass, Streamer Sam) stand by the table and the presents, cheer ("Yay!", arms up,
+  a hop: `npc.cheer`) when you win a round, and stand round the cake for the finale.
+- **The only rest spot is by the table** (the frame home's arrival is not one), so a lost battle always wakes you there, as the plan says.
+- **Leaving the party floor in the middle of a round** pauses it ("The game waits for you on the party floor!"), never a miss.
+- The two new sounds are `spintick` (the Spinner) and `partyyay` (the guests).

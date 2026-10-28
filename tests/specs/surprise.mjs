@@ -1,11 +1,14 @@
-// T44 (wave 15): the Surprise type and the Room of Doors (plans/T44.md section 11).
-// A: the type (data, models, chart, moves, fx, sounds, the wild gift box, spawns, the Book). B: the terrain for three seeds in Node (door layout, walk
-// graph, slide path, keeps, the Big Gift). C: the two skill games as pure rules in Node (the Piñata Party, Jack Catch; the bots are in
-// tests/doorsbots.mjs). D: live, in a browser (doors, chests, slide, ball pit, springs, a piñata and Jack Catch played by a skilled and a careless
-// bot at 60 and 20 steps a second, the Big Gift's ribbons, the gate, Jolly Jax, the crew, wild gift boxes, a reload). E: iPad (the one action
-// button, a whack by the big button and by a tap on the piñata). F: two browsers. G: the screenshots.
+// T44 + T48 (wave 15): the Surprise type and Jolly Jax's Surprise Party (plans/T44.md for the type, plans/T48-surprise-party.md for the party
+// that replaced the Room of Doors).
+// A: the type (data, models, chart, moves, fx, sounds, the wild gift box, spawns, the blocks). B: the party terrain for three seeds in Node
+// (the room, the sets, the walk graph, keeps, the cake), the old-bow mapping, the Spinner and the party surprises. C: the four games as pure
+// rules in Node with model players at 60 and 20 steps a second (tests/partybots.mjs). D: live, in a browser (the frame, the Spinner, each
+// game's three rounds played through the live part, the twists, the crashers, the sweets, the cake finale, the guide, the chip, an old
+// Room of Doors save, Jolly Jax, a rematch party, a reload). E: iPad (one big button: Spin! / Stop! / Play! / Whack! / Drop!, a tap on a
+// jack). F: two browsers. G: the screenshots.
 // SURPRISE_ONLY=data|land|games|live|ipad|pair|shots runs one part; SURPRISE_SKIP_BOSS=1 leaves out the long Boss battles.
-// Screenshots (tests/screenshots): t44-hall.png, t44-pinata.png, t44-catch.png, t44-giftbox.png, t44-giftopen.png, t44-bigift.png, t44-family.png, t44-ipad.png.
+// Screenshots (tests/screenshots): t48-party.png, t48-spinner.png, t48-pinata.png, t48-catch.png, t48-stack.png, t48-whack.png, t48-finale.png,
+// t48-giftbox.png, t48-family.png, t48-ipad.png.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -23,7 +26,7 @@ const toasts = page => page.evaluate(() => { window.__toasts = []; const g = win
 const said = (page, re) => page.evaluate(src => window.__toasts.some(m => new RegExp(src).test(m)), re.source);
 const placeIs = (page, id) => waitFor(page, id => window.pokecraft.place === id && !window.pokecraft.realms.busy, id);
 // the Swirl, then the gift-wrapped frame (the real way in)
-async function intoDoors(page) {
+async function intoParty(page) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
   await waitFor(page, () => { const f = window.pokecraft.world.swirl.frames.find(f => f.world === 'doors'); return window.pokecraft.world.get(...f.cloth[0]) === 144; }, null, 150000);
@@ -33,25 +36,92 @@ async function intoDoors(page) {
 }
 // in-page helpers: step the player and the live part by hand (the frame loop does not move the player while the page has no pointer lock)
 const helpers = page => page.evaluate(async () => {
-  const g = window.pokecraft, PN = await import('/src/pinata.js');
+  const g = window.pokecraft, Bt = await import('/tests/partybots.mjs'), SP = await import('/src/spinner.js'), PL = await import('/src/partyland.js'), PN = await import('/src/pinata.js'), PW = await import('/src/popupwhack.js');
+  window.__bots = Bt; window.__pinAt = (run, tt) => PN.pinataAt(run, tt); window.__headOf = (boxes, p) => PW.headOf(boxes, p, 1);
   const L = () => g.gymLive.of('part:doors');
   window.__live = L;
   L().playing = () => true; // the live part runs without pointer lock in the tests (the iPad test keeps the real rule)
-  window.__step = (n, dt = 0.05, each) => { for (let i = 0; i < n; i++) { g.player.update(dt); g.gymLive.update(dt); each?.(i); } };
   window.__at = (x, y, z, yaw = 0, pitch = 0) => { const p = g.player; p.carry?.leave?.(false); p.pos.set(x, y, z); p.vel.set(0, 0, 0); p.yaw = yaw; p.pitch = pitch; p.keys = {}; };
-  window.__look = (x, y, z) => g.player.lookAt({ x, y, z });
-  window.__blk = (x, y, z) => ({ x, y, z, id: g.world.get(x, y, z) });
-  window.__plan = () => g.world.doorsPlan;
-  window.__pinAt = tt => PN.pinataAt(L().pn.run, tt);
   window.__clearBows = () => { for (let i = 1; i <= 4; i++) { const k = `pw:doors:bow${i}`; const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); } };
-  window.__resetGames = () => { const lv = L(); lv.pn = { phase: 'idle', round: 0, run: null, t: 0, resultT: 0, swingT: 9, silly: 0, burstAt: null }; lv.attempts = [0, 0, 0, 0]; lv.misses = [0, 0, 0, 0]; lv.jc = { phase: 'idle', run: null, t: 0, resultT: 0, splatT: 9, won: false, open: new Map() }; lv.jcAttempt = 0; lv.jcMisses = 0; lv.restoreNooks(); lv.unslow(); lv.syncPopBoxes(); lv.findAll(); };
+  window.__setBows = list => { window.__clearBows(); for (const i of list) g.beaten.push(`pw:doors:bow${i}`); };
+  window.__reset = () => { const lv = L(); lv.gm = null; lv.sp.phase = 'idle'; lv.sp.spin = null; lv.finale = null; lv.restoreNooks(); lv.unslow(); for (const id of SP.GAMES) { lv.misses[id] = [0, 0, 0, 0]; } lv.sweetsReady = true; lv.dim = 1; g.lightsDim = 1; const s = lv.sets; for (const id of SP.GAMES) for (const c of lv.order[id]) lv.cells.want(c.x, c.y, c.z, c.base); lv.cells.flush(); };
+  window.__toPad = () => { const s = PL.SPINNER.stand; window.__at(s[0], s[1], s[2], s[3], 0.25); };
+  // Spin! and Stop! when slice k is under the arrow (its middle within 0.25 rad), then step until the game builds and is ready
+  window.__spinTo = (k, dt = 0.02) => {
+    const lv = L();
+    window.__toPad();
+    const w0 = lv.near(g.player);
+    if (w0 !== 'Spin!') return { w0 };
+    lv.use(g.player);
+    let n = 0;
+    const mid = (k + 0.5) * Math.PI / 2, off = () => { const th = ((-lv.wheelAngle()) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.abs(Math.atan2(Math.sin(th - mid), Math.cos(th - mid))); };
+    while (n++ < 400 && !(n > 5 && off() < 0.25)) lv.step(dt);
+    const w1 = lv.near(g.player);
+    lv.use(g.player);
+    for (let i = 0; i < 400 && lv.sp.phase !== 'idle'; i++) lv.step(dt);
+    return { w0, w1, slice: lv.sp.slice };
+  };
+  window.__ready = () => { const lv = L(); for (let i = 0; i < 400 && lv.gm && lv.gm.phase !== 'ready'; i++) lv.step(0.05); return lv.gm?.phase; };
+  // Play one round of the current game through the live part with a model player. -> { start, out: 'won' | 'missed' | phase, ... }
+  window.__playRound = (kind, dt) => {
+    const lv = L(), gm = lv.gm, set = lv.sets[gm.game], p = g.player;
+    window.__at(set.standAt[0], 11, set.standAt[1], 0, 0);
+    const start = lv.near(p);
+    if (start !== 'Play!' && start !== 'Again!') return { start, phase: gm.phase };
+    lv.use(p);
+    const game = gm.game, words = new Set();
+    let steps = 0, presses = 0;
+    const mind = game === 'pinata' ? Bt.pinataMind(kind) : game === 'catch' ? Bt.catchMind(kind) : game === 'stack' ? Bt.stackMind(kind) : Bt.whackMind(kind);
+    while (lv.gm && lv.gm.phase === 'run' && steps < 6000) {
+      const r = lv.gm.run;
+      if (game === 'pinata') {
+        const run = r.runs.find(q => !q.done) ?? r.runs[0], m = mind(run, r.t + dt, p.pos);
+        if (m.to) { const dx = m.to.x - p.pos.x, dz = m.to.z - p.pos.z, d = Math.hypot(dx, dz), s = Math.min(d, Bt.WALK * dt); if (d > 1e-6) { p.pos.x += (dx / d) * s; p.pos.z += (dz / d) * s; } }
+        p.yaw = Math.atan2(-m.face.x, -m.face.z); p.pitch = 0;
+        lv.step(dt); steps++;
+        const w = lv.near(p); words.add(w);
+        if (m.press && w === 'Whack!' && lv.gm?.phase === 'run') { if (lv.use(p)) presses++; }
+      } else if (game === 'catch') {
+        const to = mind(r.run, r.t, p.pos), x0 = p.pos.x, z0 = p.pos.z;
+        if (to) { const sp = Math.min(p.speedCap ?? 99, 4.6), dx = to.x - p.pos.x, dz = to.z - p.pos.z, d = Math.hypot(dx, dz), s = Math.min(d, sp * dt); if (d > 1e-6) { p.pos.x += (dx / d) * s; p.pos.z += (dz / d) * s; } }
+        p.vel.set((p.pos.x - x0) / dt, 0, (p.pos.z - z0) / dt);
+        lv.step(dt); steps++;
+      } else if (game === 'stack') {
+        lv.step(dt); steps++;
+        const w = lv.near(p); words.add(w);
+        if (lv.gm?.phase === 'run' && mind(lv.gm.run.st, lv.gm.run.t, dt) && w === 'Drop!') { if (lv.use(p)) presses++; }
+      } else {
+        lv.step(dt); steps++;
+        if (lv.gm?.phase !== 'run') break;
+        const e = p.eyePos, eye = { x: e.x, y: e.y, z: e.z }, dir = mind(lv.gm.run.st, lv.gm.run.t, set.boxes, eye);
+        const w = lv.near(p); words.add(w);
+        if (dir) { p.lookAt({ x: eye.x + dir.x, y: eye.y + dir.y, z: eye.z + dir.z }); if (w === 'Whack!' && lv.use(p)) presses++; }
+      }
+    }
+    p.vel.set(0, 0, 0);
+    const out = lv.gm?.phase;
+    return { start, out, words: [...words].join(), presses, steps, t: +(steps * dt).toFixed(2), info: lv.info() };
+  };
+  // Play a whole game (three rounds) with a model player; misses are retried. -> [round results]
+  window.__playGame = (kind, dt, maxTries = 4) => {
+    const lv = L(), game = lv.gm?.game, res = [];
+    for (let k = 0; k < 3 * maxTries && lv.gm && lv.gm.game === game && lv.gm.phase !== 'clear'; k++) {
+      window.__ready();
+      if (!lv.gm || lv.gm.phase !== 'ready') break;
+      const round = lv.gm.round, r = window.__playRound(kind, dt);
+      res.push(`${round}:${r.out}`);
+      for (let i = 0; i < 80 && lv.gm && (lv.gm.phase === 'won' || lv.gm.phase === 'missed'); i++) lv.step(0.05);
+    }
+    for (let i = 0; i < 60 && lv.gm; i++) lv.step(0.05); // the set goes back into the floor
+    return res;
+  };
 });
 async function shot(page, name, spot, wait = 2500) {
   if (spot) await page.evaluate(([x, y, z, yaw, pitch]) => window.__at(x, y, z, yaw, pitch), spot);
-  await page.evaluate(() => document.getElementById('pause')?.classList.add('hidden'));
+  await page.evaluate(() => { document.getElementById('pause')?.classList.add('hidden'); window.pokecraft.ui.toastBox?.replaceChildren?.(); });
   await page.waitForTimeout(wait);
-  await page.screenshot({ path: path.join(SHOTS, `t44-${name}.png`), timeout: 180000 });
-  console.log(`  screenshot t44-${name}.png`);
+  await page.screenshot({ path: path.join(SHOTS, `t48-${name}.png`), timeout: 180000 });
+  console.log(`  screenshot t48-${name}.png`);
 }
 
 export default async function ({ browser, base, t }) {
@@ -127,14 +197,14 @@ export default async function ({ browser, base, t }) {
       out.cells = cells; out.changed = changed;
       out.types = Object.keys(S.TYPE_COLORS).length;
       if (!S.TYPE_COLORS.surprise) bad('no type colour');
-      // blocks: 235-243, the tiles
+      // blocks: still 235-243 (T48 took no new id: the Room of Doors' ids got new jobs), the tiles
       const B = BK.B, W = BK.WOOL;
-      const ids2 = { 235: W.surprise, 236: B.GIFT_WALL, 237: B.PARTY_FLOOR, 238: B.GIFT_DOOR, 239: B.GOLD_DOOR, 240: B.POP_BOX, 241: B.POP_BOX_OPEN, 242: B.BALL_PIT, 243: B.RIBBON };
+      const ids2 = { 235: W.surprise, 236: B.GIFT_WALL, 237: B.PARTY_FLOOR, 238: B.PRESENT, 239: B.GOLD_PRESENT, 240: B.POP_BOX, 241: B.POP_BOX_OPEN, 242: B.CAKE, 243: B.CANDLE };
       for (const [k, v] of Object.entries(ids2)) if (+k !== v) bad(`block id ${k} is ${v}`);
       for (const id of [236, 237, 238, 239, 240, 241, 242, 243]) { const d = BK.BLOCKS[id]; if (!d || !d.fixed || BK.PLACEABLE.includes(id)) bad(`block ${id} is not fixed / is placeable`); }
-      if (BK.BLOCKS[B.BALL_PIT].bounce !== 3 || !BK.BLOCKS[B.GOLD_DOOR].glow || !BK.BLOCKS[B.RIBBON].glow) bad('block flags');
+      if (BK.BLOCKS[B.CAKE].bounce || !BK.BLOCKS[B.GOLD_PRESENT].glow || !BK.BLOCKS[B.CANDLE].glow || BK.BLOCKS[B.CAKE].name !== 'Birthday Cake' || BK.BLOCKS[B.PRESENT].name !== 'Present') bad('block flags and names');
       if (!BK.BLOCKS[W.surprise] || BK.BLOCKS[W.surprise].name !== 'Surprise Wool') bad('wool');
-      out.tiles = ['SU_WRAP', 'SU_FLOOR', 'SU_DOOR', 'SU_DOOR_TOP', 'SU_GOLD_DOOR', 'SU_BOX_TOP', 'SU_BOX_SIDE', 'SU_BOX_OPEN', 'SU_BALLS', 'SU_RIBBON'].every(n => BK.T[n] != null);
+      out.tiles = ['SU_WRAP', 'SU_FLOOR', 'SU_PRESENT', 'SU_PRESENT_TOP', 'SU_GOLD_PRESENT', 'SU_BOX_TOP', 'SU_BOX_SIDE', 'SU_BOX_OPEN', 'SU_CAKE', 'SU_FLAME', 'SU_CAKE_TOP'].every(n => BK.T[n] != null);
       return out;
     }, IDS);
     t.ok(a.sur === [...IDS].sort().join(), `seven Surprise creatures (${a.sur})`);
@@ -185,10 +255,10 @@ export default async function ({ browser, base, t }) {
     t.ok(w.nearHop > 0, 'close to a box it hops (and giggles)');
   }
 
-  /* ======================================== B. the terrain (Node) ======================================== */
+  /* ======================================== B. the terrain, the old bows, the Spinner (Node) ======================================== */
   if (want('land')) await landPart(t);
 
-  /* ======================================== C. the two games (Node) ======================================== */
+  /* ======================================== C. the four games (Node) ======================================== */
   if (want('games')) await gamesPart(t);
 
   /* ======================================== D. live ======================================== */
@@ -208,8 +278,8 @@ export default async function ({ browser, base, t }) {
 /* ============================================================================================ */
 
 async function landPart(t) {
-  const L = await src('doorsland.js'), Bk = await src('blocks.js');
-  const { B, WOOL, isSolid, BLOCKS } = Bk;
+  const L = await src('partyland.js'), Bk = await src('blocks.js'), SP = await src('spinner.js'), P = await src('pinata.js');
+  const { B, WOOL, isSolid } = Bk;
   const W = 112, D = 112, H = 48;
   const standIn = seed => {
     const w = { W, D, H, data: new Uint8Array(W * D * H), ground: new Int16Array(W * D), seed };
@@ -218,275 +288,252 @@ async function landPart(t) {
     w.get = (x, y, z) => (w.inBounds(x, y, z) ? w.data[w.index(x, y, z)] : 0);
     return w;
   };
-  const layouts = [];
+  const hashes = [];
+  const R = L.ROOM, S = L.SQUARE;
+  const inSq = (x, z) => x >= S.x0 && x <= S.x1 && z >= S.z0 && z <= S.z1;
   for (const seed of SEEDS) {
     const w = standIn(seed);
-    L.doorsLand(w, { id: 'doors' });
-    const plan = w.doorsPlan;
-    layouts.push(plan.kinds.join());
+    L.partyLand(w, { id: 'doors' });
     const tag = `seed ${seed}`;
-
-    // 1. the door layout: fixed gold doors, every kind once
-    const kinds = plan.kinds;
-    t.ok(kinds[1] === 'wrapping' && kinds[4] === 'popup' && kinds[7] === 'gift' && L.KINDS.every(k => kinds.filter(x => x === k).length === 1) && kinds.length === 12, `${tag}: slot 1 the Wrapping Room, 4 the Pop-Up Room, 7 the Big Gift, the nine kinds once each (${kinds.join(' ')})`);
-    // 2. the doors
-    let doorsOk = true, frames = new Set();
-    for (const r of plan.rooms) {
-      const want = r.kind === 'wrapping' ? B.AIR : r.gold ? B.GOLD_DOOR : B.GIFT_DOOR;
-      for (const [x, y, z] of r.door.cells) if (w.get(x, y, z) !== want) doorsOk = false;
-      if (r.door.cells.length !== 12) doorsOk = false;
-      if (!r.gold) frames.add(r.frame);
+    let h = 0; for (let i = 0; i < w.data.length; i++) h = (Math.imul(h, 31) + w.data[i]) | 0; hashes.push(h);
+    // 1. one room: gift-paper walls all round (no gap), the party floor inside, no ceiling (open lid), the frame home by the south wall
+    let gaps = 0, floorOk = true, roof = 0;
+    for (let x = R.x0 - 1; x <= R.x1 + 1; x++) for (let z = R.z0 - 1; z <= R.z1 + 1; z++) {
+      const wall = x < R.x0 || x > R.x1 || z < R.z0 || z > R.z1;
+      if (wall) { for (let y = 11; y <= L.WALL_TOP; y++) if (!isSolid(w.get(x, y, z))) gaps++; }
+      else { if (!isSolid(w.get(x, 10, z))) floorOk = false; for (let y = L.WALL_TOP + 1; y < H; y++) if (w.get(x, y, z) !== B.AIR) roof++; }
     }
-    t.ok(doorsOk && frames.size === 9, `${tag}: every door is 3 wide x 4 high (the Wrapping Room's stands open, the gold ones are gold, the other nine each have their own frame colour: ${frames.size})`);
-
-    // 3. the walk graph: a player box can reach every room with its door open, nobody is stuck, the Boss only through the opened Big Gift
-    const walk = buildGraph(w, plan, { Bk, L }, true);
-    const arrival = w.arrivals.doors, startKey = node(Math.floor(arrival[0]), Math.floor(arrival[1]), Math.floor(arrival[2]));
-    const seen = bfs(walk, [startKey]);
-    t.ok(seen.has(startKey), `${tag}: the arrival is a place you can stand`);
-    const missing = [];
-    for (const r of plan.rooms) { if (![...seen].some(k => inRoom(k, r))) missing.push(`${r.k}:${r.kind}`); }
-    const slideTop = node(Math.floor(plan.slide.stand[0]), plan.slide.stand[2], Math.floor(plan.slide.stand[1]));
-    const ledge = plan.springs.ledge[0], ledgeStand = node(ledge[0], 14, ledge[2]);
-    const pit = plan.pit.cells[0], pitStand = node(pit[0], 10, pit[1]);
-    t.ok(!missing.length, `${tag}: every room is reachable from the arrival ${missing.join(', ')}`);
-    t.ok(seen.has(slideTop) && seen.has(ledgeStand) && seen.has(pitStand), `${tag}: the slide's platform (up the stairs), the springs' balcony (bouncing) and the ball pit floor can be reached`);
-    const g = plan.gift, bossNode = node(Math.floor(g.bossAt[0]), 11, Math.floor(g.bossAt[1])); // bossAt = [x, z]
-    t.ok(!seen.has(bossNode), `${tag}: with the Big Gift shut nobody reaches the Boss`);
-    const open = buildGraph(w, plan, { Bk, L }, true, { giftOpen: true });
-    const seenOpen = bfs(open, [startKey]);
-    t.ok(seenOpen.has(bossNode), `${tag}: with the front open (4 bows) the Boss's stand can be reached`);
-    // nobody stuck: from every reachable place there is a way back to the hall (reverse graph)
+    t.ok(!gaps && floorOk && !roof && w.doors.length === 1 && w.doors[0].key === 'doors', `${tag}: one room ${R.x1 - R.x0 + 1} x ${R.z1 - R.z0 + 1} inside, walls all round (${gaps} gaps), a floor everywhere, the lid open, one frame home`);
+    // 2. the party floor: flat, nothing over it (the Piñata Party's rug and 3.5 blocks round it), its middle is the piñata's
+    let bumps = 0;
+    for (let x = S.x0; x <= S.x1; x++) for (let z = S.z0; z <= S.z1; z++) { if (!isSolid(w.get(x, 10, z))) bumps++; for (let y = 11; y <= 24; y++) if (w.get(x, y, z) !== B.AIR) bumps++; }
+    const ring = P.PINATA.ring;
+    t.ok(!bumps && Math.abs((S.x0 + S.x1 + 1) / 2 - ring.x) < 0.01 && Math.abs((S.z0 + S.z1 + 1) / 2 - ring.z) < 0.01 && S.x1 - S.x0 + 1 >= 2 * (ring.r + 3.5), `${tag}: the party floor (${S.x1 - S.x0 + 1} x ${S.z1 - S.z0 + 1}) is flat with open air above (${bumps} bumps), round the piñata's rug middle`);
+    // 3. the four sets: inside the party floor, only floor cells and blocks on air; the boxes and pads
+    const sets = w.parts[0].sets, setBad = [];
+    for (const id of SP.GAMES) {
+      const s = sets[id];
+      for (const [x, z] of [...s.floor, ...s.pad]) { if (!inSq(x, z) || w.get(x, 10, z) !== B.PARTY_FLOOR) setBad.push(`${id} floor ${x},${z}`); }
+      for (const [x, y, z] of s.up) if (!inSq(x, z) || y !== 11 || w.get(x, y, z) !== B.AIR) setBad.push(`${id} up ${x},${y},${z}`);
+      if (!inSq(Math.floor(s.standAt[0]), Math.floor(s.standAt[1]))) setBad.push(`${id} stand`);
+    }
+    const rim = sets.pinata.floor.filter(c => c[2] === WOOL.surprise).length;
+    t.ok(!setBad.length && sets.catch.boxes.length === 9 && sets.whack.boxes.length === 9 && sets.catch.catchFloor.length === 72 && rim >= 36 && sets.stack.up.length === 9, `${tag}: the four sets fit the party floor (the rug's rim ${rim} cells, Jack Catch 9 boxes and 72 free floor cells, Pop-Up Whack 9 boxes, the Gift Stack table 3 x 3) ${setBad.slice(0, 4).join('; ')}`);
+    // 4. the walk graph: from the arrival every set pad, the spinner pad, the cake's front, the rest, the crashers' and guests' spots; nobody stuck
+    const graph = buildGraph(w, Bk);
+    const node = (x, y, z) => `${Math.floor(x)},${y},${Math.floor(z)}`, arrival = w.arrivals.doors, start = node(arrival[0], 11, arrival[2]);
+    const seen = bfs(graph, [start]);
+    const goals = { spinner: node(L.SPINNER.stand[0], 11, L.SPINNER.stand[2]), rest: node(L.REST[0], 11, L.REST[2]), cakeFront: node(L.CAKE.x, 11, L.CAKE.z + 6), ...Object.fromEntries(SP.GAMES.map(id => [id, node(sets[id].standAt[0], 11, sets[id].standAt[1])])),
+      ...Object.fromEntries(L.CRASHERS.map(c => [`crasher${c.i}`, node(c.x, 11, c.z)])), ...Object.fromEntries(L.GUESTS.map((gst, i) => [`guest${i}`, node(gst.at[0], 11, gst.at[2])])), ...Object.fromEntries(L.GUESTS.map((gst, i) => [`cake${i}`, node(gst.cake[0], 11, gst.cake[2])])) };
+    const missing = Object.entries(goals).filter(([, k]) => !seen.has(k)).map(([n]) => n);
+    t.ok(!missing.length, `${tag}: from the arrival you walk to the Spinner, every game's pad, the cake, the rest spot and every person's spot ${missing.join(', ')}`);
     const rev = new Map();
-    for (const [a, bs] of seenOpen.size ? open : walk) for (const b of bs) { if (!rev.has(b)) rev.set(b, []); rev.get(b).push(a); }
-    const hallKey = node(56, 11, 60);
-    const back = bfs(rev, [hallKey]);
-    const stuck = [...seenOpen].filter(k => !back.has(k));
-    t.ok(!stuck.length, `${tag}: nobody is stuck in any room, the slide's end, the pit, the balcony or the Big Gift (${stuck.length} places with no way back${stuck.length ? ': ' + stuck.slice(0, 3).join(' ') : ''})`);
-
-    // 4. the slide: the path is clear for the player box at every 0.05 s and ends on the floor
-    const slide = plan.slide, N = 1;
-    void N;
-    const { PATHS } = await src('mover.js');
-    let len = 0; for (let i = 0; i + 1 < slide.path.length; i++) len += Math.hypot(...[0, 1, 2].map(a => slide.path[i + 1][a] - slide.path[i][a]));
-    const path_ = PATHS.line({ points: slide.path, speed: len / slide.time });
-    let hit = 0, last = null;
-    for (let s = 0; s <= path_.time + 1e-9; s += 0.05) {
-      const q = path_.at(s); last = q;
-      for (let x = Math.floor(q.x - 0.3); x <= Math.floor(q.x + 0.3); x++) for (let z = Math.floor(q.z - 0.3); z <= Math.floor(q.z + 0.3); z++) for (let y = Math.floor(q.y + 1e-6); y <= Math.floor(q.y + 1.8); y++) if (isSolid(w.get(x, y, z))) hit++;
+    for (const [a, bs] of graph) for (const b of bs) { if (!rev.has(b)) rev.set(b, []); rev.get(b).push(a); }
+    const back = bfs(rev, [start]);
+    const stuck = [...seen].filter(k => !back.has(k));
+    t.ok(!stuck.length, `${tag}: nobody is stuck anywhere (the presents, the table, the cake's plate) (${stuck.length} places with no way back${stuck.length ? ': ' + stuck.slice(0, 3).join(' ') : ''})`);
+    // with every set up the arrival can still reach the spinner and each set's pad
+    for (const id of SP.GAMES) {
+      const g2 = buildGraph(w, Bk, sets[id].up), s2 = bfs(g2, [start]);
+      if (!s2.has(goals.spinner) || !s2.has(goals[id])) t.ok(false, `${tag}: with the ${id} set up the pad or the Spinner cannot be reached`);
     }
-    t.ok(hit === 0 && Math.abs(last.y - 11) < 1e-6 && Math.abs(path_.time - 2.2) < 1e-6, `${tag}: the slide path is clear for the player box every 0.05 s, takes ${path_.time.toFixed(2)} s and ends on the floor (y ${last.y.toFixed(2)})`);
-
-    // 5. keeps cover the doors' frames, the stage, the pad, the gift, the grid, the slide, the springs and the pit
-    const covered = (x, y, z) => w.keeps.some(k => k.protect.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1));
-    const lists = {
-      frames: plan.rooms.flatMap(r => [-2, 2].map(u => { const [x, z] = L.cellOf(r.k, u, 0); return [x, 12, z]; })),
-      ring: [[Math.floor(L.RING.x), 10, Math.floor(L.RING.z)], [Math.floor(L.RING.x - L.RING.r) + 1, 12, Math.floor(L.RING.z)], [Math.floor(L.RING.x), 18, Math.floor(L.RING.z + L.RING.r) - 1]], pad: [[L.RING.pad.x0, 10, L.RING.pad.z0], [L.RING.pad.x1, 10, L.RING.pad.z1]],
-      gift: g.surface.slice(0, 30), grid: plan.popup.boxes.map(b => b.cell), slide: [...plan.slide.blocks.slice(0, 20), ...plan.slide.platform.slice(0, 10)], springs: plan.springs.pads.slice(0, 10), pit: plan.pit.cells.map(([x, z]) => [x, 9, z]),
-    };
-    const unc = Object.entries(lists).filter(([, l]) => l.some(c => !covered(...c))).map(([k]) => k);
-    t.ok(!unc.length, `${tag}: keeps cover ${Object.keys(lists).join(', ')} ${unc.join(', ')}`);
-
-    // 6. the Big Gift's ribbons and front
-    const cellsOf = list => list.every(([x, y, z]) => w.get(x, y, z) === B.RIBBON);
-    t.ok(g.ribbons.every(l => l.length > 6 && cellsOf(l)) && new Set(g.ribbons.flat().map(c => c.join())).size === g.ribbons.flat().length, `${tag}: four ribbons (${g.ribbons.map(l => l.length).join('/')} cells, all RIBBON, none shared)`);
-    t.ok(g.front.length === 25 && g.front.every(([x, y, z]) => w.get(x, y, z) === B.GIFT_WALL || w.get(x, y, z) === B.RIBBON), `${tag}: the front is 5 x 5 cells of wrap (${g.front.length})`);
+    // 5. the cake: three tiers of cake blocks, eight candles with air over them (the flames are setLive), Jolly Jax's stand on top, out of reach on foot
+    const C = L.CAKE, tierOk = C.tiers.every(tr => w.get(C.x + tr.r, tr.y0, C.z) === B.CAKE && w.get(C.x + tr.r + 1, tr.y0, C.z) !== B.CAKE);
+    const candles = C.candles.every(([dx, dz]) => isSolid(w.get(C.x + dx, C.candleY, C.z + dz)) && w.get(C.x + dx, C.candleY + 1, C.z + dz) === B.AIR);
     const boss = w.bosses[0];
-    t.ok(boss.id === 'doors' && w.get(Math.floor(boss.pos[0]), 10, Math.floor(boss.pos[2])) === B.BOSS_STAND && boss.crew.length === 2, `${tag}: Jolly Jax stands on a Boss stand inside the gift, two helpers behind surprise doors`);
-    const crewRooms = boss.crew.map(c => plan.rooms.find(r => ['trainer1', 'trainer2'].includes(r.kind) && L.inBox({ ...r.inner, y0: 10, y1: 30 }, Math.floor(c.pos[0]), 11, Math.floor(c.pos[2]))));
-    t.ok(crewRooms.every(Boolean) && crewRooms[0] !== crewRooms[1], `${tag}: the two helpers stand in the two trainer rooms`);
-    // 7. nooks: 12 spots, each an air cell on a solid one, none near the piñata's rug
+    t.ok(tierOk && candles && w.get(C.x, C.stand, C.z) === B.BOSS_STAND && boss.id === 'doors' && boss.pos[1] === C.stand + 1 && !seen.has(node(C.x, C.stand + 1, C.z)) && boss.crew.length === 2, `${tag}: the cake has three tiers and eight candles; Jolly Jax's stand is on its top (y ${boss.pos[1]}), not reachable on foot; two crew spots`);
+    t.ok(boss.rest.join() === L.REST.join() && w.rests.length === 1 && w.rests[0].join() === L.REST.join(), `${tag}: a lost battle rests you by the table (${boss.rest.slice(0, 3)}), never on the cake`);
+    // 6. keeps: nobody builds at the party
+    const covered = (x, y, z) => w.keeps.some(k => k.protect.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1));
+    const keepOk = [[R.x0, 11, R.z0], [R.x1, 11, R.z1], [56, 11, 53], [C.x, 16, C.z], [R.x0 - 1, 15, 50], [70, 11, 53]].every(c => covered(...c));
+    t.ok(keepOk, `${tag}: keeps cover the room, the walls, the party floor and the cake`);
+    // 7. nooks: wild gift boxes by the walls and the table, all far from the party floor's middle (a game keeps them away within 17)
     const nk = w.nooks;
-    t.ok(nk.length === 12 && nk.every(n => w.get(n.x, n.y, n.z) === B.AIR && isSolid(w.get(n.x, n.y - 1, n.z)) && Math.hypot(n.x + 0.5 - L.RING.x, n.z + 0.5 - L.RING.z) > L.RING.r + 3), `${tag}: ${nk.length} nook spots (4 in the shop, 8 by the hall's walls, all far from the rug), all on something solid`);
-    // 7b. the rug: flat floor, nothing to trip over, open sky for the balloons; the pad is on it
-    let bumps = 0, rimWool = 0;
-    for (let x = Math.floor(L.RING.x - L.RING.r) - 1; x <= Math.ceil(L.RING.x + L.RING.r); x++) for (let z = Math.floor(L.RING.z - L.RING.r) - 1; z <= Math.ceil(L.RING.z + L.RING.r); z++) {
-      const d = Math.hypot(x + 0.5 - L.RING.x, z + 0.5 - L.RING.z);
-      if (d > L.RING.r + 3.5) continue;
-      if (!isSolid(w.get(x, 10, z))) bumps++;
-      for (let y = 11; y <= 24; y++) if (w.get(x, y, z) !== B.AIR) bumps++;
-      if (d <= L.RING.r && d > L.RING.r - 0.9 && w.get(x, 10, z) === WOOL.surprise) rimWool++;
-    }
-    t.ok(!bumps && rimWool >= 36 && w.get(L.RING.pad.x0, 10, L.RING.pad.z0) === WOOL.treasure, `${tag}: the piñata's rug and 3.5 blocks round it are flat floor with open air above (${bumps} bumps), a wool rim of ${rimWool}, a gold start pad`);
-    // 8. rooms stay inside the map and the building is walls all round
-    const out = [];
-    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) for (let y = 11; y <= 22; y++) { const id = w.get(x, y, z); if (id !== B.AIR && (x < 20 || x > 92 || z < 5 || z > 95)) out.push([x, y, z]); }
-    t.ok(!out.length, `${tag}: the building stays inside its corner of the map`);
-    void WOOL; void BLOCKS;
+    t.ok(nk.length === 12 && nk.every(n => w.get(n.x, n.y, n.z) === B.AIR && isSolid(w.get(n.x, n.y - 1, n.z)) && Math.hypot(n.x + 0.5 - ring.x, n.z + 0.5 - ring.z) > 17), `${tag}: ${nk.length} nook spots for wild gift boxes, on something solid, all over 17 blocks from the party floor's middle`);
+    // 8. people: four guests in party hats (look party), on the floor, outside the party floor
+    t.ok(w.people.length === 4 && w.people.every(pp => pp.look === 'party' && pp.party && !inSq(Math.floor(pp.pos[0]), Math.floor(pp.pos[2]))), `${tag}: four party guests in party hats, none on the party floor`);
   }
-  t.ok(new Set(layouts).size >= 2, `the door layout differs between seeds (${new Set(layouts).size} different of ${SEEDS.length})`);
-  t.ok(JSON.stringify(L.doorLayout(7)) === JSON.stringify(L.doorLayout(7)) && L.doorLayout(7).length === 12, 'the layout is a pure function of the seed');
+  t.ok(new Set(hashes).size === 1, 'the party is the same for every seed (only the games and the Spinner use the seed)');
 
-  /* ---- the graph helpers (a player box walking: step up 1 with a jump, down any way, springs and the slide as gadgets) ---- */
-  function node(x, y, z) { return `${x},${y},${z}`; }
-  function parse(k) { return k.split(',').map(Number); }
-  function inRoom(k, r) { const [x, y, z] = parse(k); return x >= r.inner.x0 && x <= r.inner.x1 && z >= r.inner.z0 && z <= r.inner.z1 && y >= 10 && y <= 20; }
+  /* ---- the old Room of Doors' bows: the same NUMBER of bows, a won Jack Catch stays Jack Catch ---- */
+  const cases = [[[], []], [[1], [1]], [[2], [1]], [[4], [2]], [[1, 2], [1, 2]], [[1, 4], [1, 2]], [[2, 3], [1, 2]], [[1, 2, 3], [1, 2, 3]], [[1, 2, 4], [1, 2, 3]], [[3, 4], [1, 2]], [[1, 2, 3, 4], [1, 2, 3, 4]]];
+  const wrong = cases.filter(([o, n]) => JSON.stringify(L.partyBows(o)) !== JSON.stringify(n));
+  t.ok(!wrong.length, `old bows -> party bows: ${cases.map(([o, n]) => `[${o}]->[${L.partyBows(o)}]`).join(' ')} ${wrong.map(x => x[0]).join('|')}`);
+  const m1 = L.migrateBows(['x', 'pw:doors:bow4', 'pw:doors:crew1', 'pw:doors:gift2']), m2 = L.migrateBows(m1.beaten), m3 = L.migrateBows(['pw:doors:bow2', L.PARTY_MARK]);
+  t.ok(m1.changed && m1.beaten.includes('pw:doors:bow2') && !m1.beaten.includes('pw:doors:bow4') && m1.beaten.includes('pw:doors:crew1') && m1.beaten.includes('pw:doors:gift2') && m1.beaten.includes(L.PARTY_MARK) && !m2.changed && JSON.stringify(m2.beaten) === JSON.stringify(m1.beaten) && !m3.changed && m3.beaten.includes('pw:doors:bow2'),
+    'an old save is moved over once (old bow4 = Jack Catch = bow2 now; the crew and gift keys stay; the party mark is written), a second visit changes nothing, and a party save is never moved again');
+  for (let n = 0; n <= 4; n++) for (const set of combos(n)) if (L.partyBows(set).length !== n) t.ok(false, `old bows ${set} keep their number`);
+
+  /* ---- the Party Spinner (pure) ---- */
+  const half = Math.PI / 4;
+  let hits = 0, tries = 0, same = 0;
+  for (let seed = 1; seed <= 40; seed++) for (let k = 0; k < 4; k++) for (const press of [0, 0.37, 1.9]) {
+    // the moment slice k's middle is under the arrow (the wheel at angle a shows local -a under the arrow)
+    const want = (k + 0.5) * (Math.PI / 2), a0 = 0.3, s = SP.newSpin(a0, press, seed, 0), period = (2 * Math.PI) / SP.SPIN.turn;
+    let stop = press + (((-want - a0) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / SP.SPIN.turn;
+    if (stop - press < 0.5) stop += period;
+    const res = SP.spinStop(press, stop, seed, { a0, n: 0 }); tries++; if (res.slice === k) hits++;
+    if (SP.spinStop(press, stop, seed, { a0, n: 0 }).angle === res.angle && SP.spinAngle(s, press) === a0) same++;
+  }
+  t.ok(hits === tries && same === tries, `Stop! when a slice's middle is under the arrow always lands on it (${hits} / ${tries} for 40 seeds, 4 slices, 3 press times), and the same presses give the same stop`);
+  {
+    const s = SP.newSpin(0, 1, 5, 2); s.stop = 3;
+    let jumps = 0, last = SP.spinAngle(s, 0);
+    for (let tt = 0; tt <= 3 + SP.SPIN.slow + 0.5; tt += 1 / 120) { const a = SP.spinAngle(s, tt); if (Math.abs(a - last) > SP.SPIN.turn / 100) jumps++; last = a; }
+    const rest = SP.restAngle(s), moved = rest - SP.spinAngle(s, 3);
+    t.ok(!jumps && Math.abs(moved - 2 * Math.PI) <= SP.SPIN.wobble + 1e-9 && SP.spinDone(s, 3 + SP.SPIN.slow) && !SP.spinDone(s, 3 + SP.SPIN.slow - 0.01), `the wheel turns smoothly (no jumps in 1/120 s steps), slows down over ${SP.SPIN.slow} s and turns one more round (${(moved / (2 * Math.PI)).toFixed(3)}) plus at most a ${SP.SPIN.wobble} rad wobble`);
+    t.ok(SP.GAMES.join() === 'pinata,catch,stack,whack' && SP.spinStop(0, 1.2, 9).slice === SP.spinStop(0, 1.2, 9).slice, `the four slices are ${SP.GAMES.join(', ')} (bows 1-4); a stop is a closed form of the press times`);
+  }
+  /* ---- the party surprises ---- */
+  const tw = {};
+  for (const g of SP.GAMES) for (const round of [1, 2, 3]) for (let seed = 0; seed < 60; seed++) { const x = SP.twistOf(g, round, seed, 0); const k = `${g}${round}`; (tw[k] ||= new Set()).add(x?.id ?? 'none'); }
+  const fmt = k => [...tw[k]].sort().join('/');
+  t.ok(SP.GAMES.every(g => fmt(`${g}1`) === 'none') && !tw.pinata2.has('two') && tw.pinata3.has('two') && SP.GAMES.every(g => [2, 3].every(r => tw[`${g}${r}`].size >= 2 && !tw[`${g}${r}`].has('none'))), `round 1 never has a surprise; two piñatas only in round 3; round 2 and 3 always one (${SP.GAMES.map(g => `${g}: ${fmt(`${g}2`)} | ${fmt(`${g}3`)}`).join('; ')})`);
+  t.ok(SP.twistOf('stack', 2, 5, 1)?.id === SP.twistOf('stack', 2, 5, 1)?.id && Object.values(SP.TWISTS).flat().every(x => /^Surprise! /.test(x.say)), 'a surprise is a pure function of game, round, seed and party; every one says "Surprise! ..."');
+
+  /* ---- the graph helpers (a player box walking: up one block with a jump, down any way) ---- */
+  function combos(n) { const out = []; for (let m = 0; m < 16; m++) { const s = [1, 2, 3, 4].filter((_, i) => m & (1 << i)); if (s.length === n) out.push(s); } return out; }
   function bfs(graph, starts) {
-    const seen = new Set(starts.filter(s => graph.has(s) || true)), q = [...starts];
+    const seen = new Set(starts), q = [...starts];
     while (q.length) { const a = q.pop(); for (const b of graph.get(a) || []) if (!seen.has(b)) { seen.add(b); q.push(b); } }
     return seen;
   }
-  function buildGraph(w, plan, { Bk }, doorsOpen, { giftOpen = false } = {}) {
-    const { B, isSolid, BLOCKS } = Bk;
-    const get = (x, y, z) => {
-      const id = w.get(x, y, z);
-      if (doorsOpen && (id === B.GIFT_DOOR || id === B.GOLD_DOOR)) return B.AIR;
-      if (giftOpen && plan.gift.front.some(c => c[0] === x && c[1] === y && c[2] === z)) return B.AIR;
-      return id;
-    };
-    const solid = (x, y, z) => isSolid(get(x, y, z));
+  function buildGraph(w, { isSolid }, extra = []) {
+    const more = new Set(extra.map(([x, y, z]) => `${x},${y},${z}`));
+    const solid = (x, y, z) => more.has(`${x},${y},${z}`) || isSolid(w.get(x, y, z));
     const stand = (x, y, z) => solid(x, y - 1, z) && !solid(x, y, z) && !solid(x, y + 1, z);
-    const graph = new Map();
+    const graph = new Map(), node = (x, y, z) => `${x},${y},${z}`;
     const add = (a, b) => { if (!graph.has(a)) graph.set(a, []); graph.get(a).push(b); };
-    for (let x = 20; x < 93; x++) for (let z = 5; z < 96; z++) for (let y = 10; y <= 19; y++) {
+    for (let x = R.x0 - 2; x <= R.x1 + 2; x++) for (let z = R.z0 - 2; z <= R.z1 + 2; z++) for (let y = 11; y <= 20; y++) {
       if (!stand(x, y, z)) continue;
       const a = node(x, y, z);
       if (!graph.has(a)) graph.set(a, []);
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, nz = z + dz;
-        if (stand(nx, y, nz)) add(a, node(nx, y, nz));                                           // along
-        else if (!solid(nx, y, nz) && !solid(nx, y + 1, nz)) { for (let d = 1; d <= 6; d++) { if (solid(nx, y - d, nz)) { if (stand(nx, y - d + 1, nz)) add(a, node(nx, y - d + 1, nz)); break; } if (solid(nx, y - d + 1, nz)) break; } } // down
-        if (stand(nx, y + 1, nz) && !solid(x, y + 2, z)) add(a, node(nx, y + 1, nz));            // up one (a jump)
-      }
-      const below = get(x, y - 1, z);
-      if (BLOCKS[below]?.bounce) { // a bounce pad: a jump reaches up to `bounce` - 0.5 blocks over the next few cells
-        const up = BLOCKS[below].bounce - 0.5;
-        for (let ddx = -4; ddx <= 4; ddx++) for (let ddz = -4; ddz <= 4; ddz++) for (let yy = y; yy <= y + up; yy++) {
-          if (Math.hypot(ddx, ddz) > 4 || !stand(x + ddx, yy, z + ddz)) continue;
-          let clear = true; for (let c = y; c <= yy + 2; c++) if (solid(x, c, z)) clear = false;
-          for (const f of [0.25, 0.5, 0.75]) for (let c = yy + 1; c <= yy + 2; c++) if (solid(Math.round(x + ddx * f), c, Math.round(z + ddz * f))) clear = false; // no jumping through a wall
-          if (clear) add(a, node(x + ddx, yy, z + ddz));
-        }
+        if (stand(nx, y, nz)) add(a, node(nx, y, nz));
+        else if (!solid(nx, y, nz) && !solid(nx, y + 1, nz)) { for (let d = 1; d <= 8; d++) { if (solid(nx, y - d, nz)) { if (stand(nx, y - d + 1, nz)) add(a, node(nx, y - d + 1, nz)); break; } } }
+        if (stand(nx, y + 1, nz) && !solid(x, y + 2, z)) add(a, node(nx, y + 1, nz));
       }
     }
-    // the slide: from the platform to the floor at the end of its path
-    const s = plan.slide, end = s.path[s.path.length - 1];
-    add(node(Math.floor(s.stand[0]), s.stand[2], Math.floor(s.stand[1])), node(Math.floor(end[0]), Math.round(end[1]), Math.floor(end[2])));
     return graph;
   }
 }
 
 /* ============================================================================================ */
-/* C. the two games                                                                              */
+/* C. the four games                                                                             */
 /* ============================================================================================ */
 
 async function gamesPart(t) {
-  const P = await src('pinata.js'), J = await src('jackcatch.js'), L = await src('doorsland.js');
-  const Bt = await import(pathToFileURL(path.join(ROOT, 'tests', 'doorsbots.mjs')).href);
-  const { PINATA } = P;
+  const P = await src('pinata.js'), J = await src('jackcatch.js'), L = await src('partyland.js'), PR = await src('partyrounds.js'), GS = await src('giftstack.js'), PW = await src('popupwhack.js'), FG = await src('fairgames.js'), SP = await src('spinner.js');
+  const Bt = await import(pathToFileURL(path.join(ROOT, 'tests', 'partybots.mjs')).href);
+  const { PINATA } = P, sets = L.setsOf();
+  const both = f => [1 / 60, 1 / 20].map(f);
 
-  /* ---- the Piñata Party ---- */
-  // 1. a plan replays; another try or another player is another piñata
-  const a = JSON.stringify(P.pinataPlan(11, 2, 3)), b = JSON.stringify(P.pinataPlan(11, 2, 3)), c = JSON.stringify(P.pinataPlan(11, 2, 4)), d = JSON.stringify(P.pinataPlan(12, 2, 3));
-  t.ok(a === b && a !== c && a !== d, 'a piñata try is a pure function of seed / piñata / try (the same twice, another try or seed is another path and swing)');
-  t.ok(PINATA.rounds.map(r => r.id).join() === 'llama,star,rocket' && PINATA.rounds.map(r => r.hp).join() === '5,7,9', `three piñatas, harder each time (CRACKs ${PINATA.rounds.map(r => r.hp)}, swings ${PINATA.rounds.map(r => r.period)} s, balloons ${PINATA.rounds.map(r => r.speed)} b/s, dodge ${PINATA.rounds.map(r => r.dodge)})`);
-  // 2. the closed form: smooth, inside the rug, low in the middle of a swing and high at its ends; the hits and zips change it smoothly too
-  let jumps = 0, outside = 0, lowest = 99, highest = 0;
-  for (const seed of [1, 2, 3]) for (const round of [1, 2, 3]) {
-    const res = Bt.playPinata('kid', P.pinataPlan(seed, round, 0), 1 / 60), run = P.newRun(P.pinataPlan(seed, round, 0));
-    for (const [tp, eye, dir] of res.presses) P.whack(run, tp, eye, dir);
-    let last = null;
-    for (let tt = 0; tt <= res.t; tt += 1 / 120) {
-      const q = P.pinataAt(run, tt);
-      if (last && Math.hypot(q.x - last.x, q.y - last.y, q.z - last.z) > 0.25) jumps++;
-      if (Math.hypot(q.x - PINATA.ring.x, q.z - PINATA.ring.z) > PINATA.ring.r) outside++;
-      lowest = Math.min(lowest, q.y); highest = Math.max(highest, q.y); last = q;
-    }
-  }
-  t.ok(!jumps && !outside && Math.abs(lowest - PINATA.low) < 0.05 && highest > PINATA.low + 0.9 && highest < PINATA.low + PINATA.rope, `the piñata moves smoothly (no jumps in 1/120 s steps, hits and zips included), stays over the rug and swings from y ${lowest.toFixed(2)} up to ${highest.toFixed(2)}`);
-  // 3. a replay of the same presses gives the same piñata (the presses of a 60 fps try, replayed)
-  const plan3 = P.pinataPlan(42, 3, 1), r60 = Bt.playPinata('kid', plan3, 1 / 60), replay = P.newRun(plan3);
-  for (const [tp, eye, dir] of r60.presses) P.whack(replay, tp, eye, dir);
-  t.ok(JSON.stringify(replay.log) === JSON.stringify(r60.log) && replay.done === r60.won, `replaying a try's presses gives the same hits (${r60.hits} hits, ${r60.big} CRACKs)`);
-  // 4. the stick: in front and close = a hit; behind you, too far or too high = nothing; a whiff spins you round for 2 s
+  /* ---- the Piñata Party: pinata.js as it was, its three piñatas are the three rounds ---- */
+  const a = JSON.stringify(P.pinataPlan(11, 2, 3)), b = JSON.stringify(P.pinataPlan(11, 2, 3)), c = JSON.stringify(P.pinataPlan(11, 2, 4));
+  t.ok(a === b && a !== c && PINATA.rounds.map(r => r.id).join() === 'llama,star,rocket' && PINATA.rounds.map(r => r.hp).join() === '5,7,9' && PINATA.ring.x === 56.5 && PINATA.ring.z === 53.5, 'pinata.js is unchanged: a try is a pure function of seed / piñata / try; llama, star, rocket with 5 / 7 / 9 CRACKs; the rug in the middle of the party floor');
+  t.ok(JSON.stringify(PR.pinataRound(5, 2, 1)) === JSON.stringify([P.pinataPlan(5, 2, 1)]) && JSON.stringify(PR.pinataRound(5, 3, 0, { help: 1 })) === JSON.stringify([P.pinataPlan(5, 3, 0, { help: 1 })]), 'a round without a surprise is exactly pinata.js\'s plan (round 1 the llama, 2 the star, 3 the rocket)');
+  // the stick: a CRACK only when it swings at you, a Bonk from behind, a whiff costs 2 s (the old rules, unchanged)
   {
     const plan = P.pinataPlan(5, 1, 0), run = P.newRun(plan);
     let tl = 0; for (let tt = 0; tt < 6; tt += 0.01) { const q = P.pinataAt(run, tt); if (q.y < PINATA.low + 0.05) { tl = tt; break; } }
     const q = P.pinataAt(run, tl), v = Math.hypot(q.vx, q.vz), ux = q.vx / v, uz = q.vz / v;
     const front = { x: q.x + ux * 1.5, y: 11 + Bt.EYE, z: q.z + uz * 1.5 }, back = { x: q.x - ux * 1.5, y: 11 + Bt.EYE, z: q.z - uz * 1.5 };
     const toQ = e => ({ x: q.x - e.x, z: q.z - e.z }), away = e => ({ x: e.x - q.x, z: e.z - q.z });
-    const checks = [P.inReach(q, front, toQ(front)), !P.inReach(q, front, away(front)), !P.inReach(q, { x: q.x + ux * 3, y: front.y, z: q.z + uz * 3 }, toQ({ x: q.x + ux * 3, z: q.z + uz * 3 })), !P.inReach({ ...q, y: q.y + 2 }, front, toQ(front))];
-    const towardsFront = P.towards(q, front), towardsBack = P.towards(q, back);
-    t.ok(checks.every(Boolean) && towardsFront > PINATA.bigV && towardsBack < 0, `the stick hits in front within ${PINATA.reach} (not looking away, not 3 away, not 2 too high); it is coming at the one it swings towards (${towardsFront.toFixed(1)} b/s) and going away from the other (${towardsBack.toFixed(1)})`);
-    // a CRACK for the one it swings at, a Bonk (no crack) for the one behind it
-    const r1 = P.newRun(plan), w1 = P.whack(r1, tl, front, toQ(front));
-    const r2 = P.newRun(plan), w2 = P.whack(r2, tl, back, toQ(back));
-    t.ok(w1.hit && w1.big && r1.hp === plan.hp - 1 && w2.hit && !w2.big && r2.hp === plan.hp, `whacked as it swings at you = CRACK (${r1.hp} left of ${plan.hp}); whacked from behind = Bonk, no crack (${r2.hp})`);
-    // the knock goes the way you hit it, and the balloons zip on
-    const after = P.pinataAt(r1, tl + 0.3), top0 = P.topAt(P.newRun(plan), tl + 0.8), top1 = P.topAt(r1, tl + 0.8);
-    const kd = toQ(front), kl = Math.hypot(kd.x, kd.z), dot = ((after.x - P.pinataAt(r1, tl).x) * kd.x + (after.z - P.pinataAt(r1, tl).z) * kd.z) / kl;
-    const zip = Math.hypot(top1.x - top0.x, top1.z - top0.z);
-    t.ok(dot > 0.3 && zip > 1.5, `a hit knocks it the way you whack (${dot.toFixed(2)} blocks that way in 0.3 s) and the balloons zip on (${zip.toFixed(1)} blocks)`);
-    const r3 = P.newRun(plan), miss = P.whack(r3, tl, back, away(back)), again = P.whack(r3, tl + 1.0, front, toQ(front)), later = P.whack(r3, tl + PINATA.cool.miss + 0.01, front, toQ(front));
-    t.ok(miss.swung && !miss.hit && !again.swung && later.swung, `a whiff: the stick needs ${PINATA.cool.miss} s to come back (a press 1 s later does nothing, after ${PINATA.cool.miss} s it swings again)`);
+    const r1 = P.newRun(plan), w1 = P.whack(r1, tl, front, toQ(front)), r2 = P.newRun(plan), w2 = P.whack(r2, tl, back, toQ(back));
+    const r3 = P.newRun(plan), miss = P.whack(r3, tl, back, away(back)), again = P.whack(r3, tl + 1.0, front, toQ(front));
+    t.ok(w1.big && r1.hp === plan.hp - 1 && w2.hit && !w2.big && miss.swung && !miss.hit && !again.swung, 'the stick: whacked as it swings at you = CRACK; from behind = Bonk; a whiff spins you round for 2 s');
   }
-  // 5. dodges turn the knock (stars and rockets), never the llama
+  // the rounds with model players, at 60 and 20 steps a second
+  const win = (kind, round, opts = {}, n = 8, dt = 1 / 60) => { let w = 0; for (let k = 0; k < n; k++) if (Bt.playPinata(kind, PR.pinataRound(1000 + k, round, k, opts), dt).won) w++; return w; };
+  const pin = both(dt => [1, 2, 3].map(r => win('kid', r, {}, 8, dt)));
+  const still = [1, 2, 3].map(r => win('still', r)), mash = [1, 2, 3].map(r => win('masher', r));
+  t.ok(pin.every(l => l.every(n => n >= 7)) && still.every(n => n === 0) && mash[1] === 0 && mash[2] === 0, `Piñata Party: a skilled kid wins every round (60: ${pin[0]}, 20: ${pin[1]} of 8); standing still and whacking never (${still}); mashing under it only the llama (${mash})`);
+  // the surprises: two piñatas (both must burst, the second slower, 15 s more), a wobbly rope (it swings further)
   {
-    let llama = 0, star = 0, n = 0;
-    for (let s = 0; s < 30; s++) for (const round of [1, 2]) { const res = Bt.playPinata('kid', P.pinataPlan(100 + s, round, 0), 1 / 30); const d = res.log.filter(e => e.dodge).length; if (round === 1) llama += d; else { star += d; n += res.hits; } }
-    t.ok(llama === 0 && star > 0 && star < n, `the llama never dodges, the star sometimes does (${star} of ${n} hits)`);
+    const two = PR.pinataRound(3, 3, 0, { twist: 'two' }), one = PR.pinataRound(3, 3, 0);
+    const wob = PR.pinataRound(3, 2, 0, { twist: 'wobbly' })[0], plain = P.pinataPlan(3, 2, 0);
+    const twoWins = both(dt => win('kid', 3, { twist: 'two' }, 8, dt)), wobWins = both(dt => win('kid', 3, { twist: 'wobbly' }, 8, dt));
+    const r = two.map(P.newRun);
+    t.ok(two.length === 2 && two[1].period > two[0].period && two[1].hp === 3 && two[0].time === one[0].time + 15 && wob.first.amp > plain.first.amp && wob.hitAmp > plain.hitAmp, `"Two piñatas!": a second, slower llama (${two[1].hp} CRACKs, a ${two[1].period.toFixed(2)} s swing) and ${two[0].time} s; "Wobbly rope!": it swings out ${(wob.first.amp / plain.first.amp).toFixed(2)} x further`);
+    t.ok(twoWins.every(n => n >= 7) && wobWins.every(n => n >= 7), `a skilled kid still wins with two piñatas (${twoWins} of 8) and a wobbly rope (${wobWins} of 8), at 60 and 20 steps a second`);
+    // a press hits whichever piñata is in reach; the stick's rest is shared
+    const q0 = P.pinataAt(r[0], 2), eye = { x: q0.x + 1, y: q0.y, z: q0.z }, res = PR.whackRuns(r, 2, eye, { x: -1, y: 0, z: 0 });
+    t.ok(res.swung && r[0].ready === r[1].ready, 'with two piñatas one press swings at the one in reach, and the stick rests for both');
   }
-  // 6. who wins: a kid who watches and moves wins all three; whacking all the time standing still never; mashing under it only the first
-  const table = {};
-  for (const kind of ['kid', 'masher', 'still']) for (const round of [1, 2, 3]) {
-    let w = 0, secs = 0;
-    for (let k = 0; k < 8; k++) { const res = Bt.playPinata(kind, P.pinataPlan(1000 + k, round, k), 1 / 60); if (res.won) { w++; secs += res.t; } }
-    table[`${kind}${round}`] = [w, w ? Math.round(secs / w) : 0];
-  }
-  const fmt = k => `${table[k][0]}/8${table[k][0] ? ' ~' + table[k][1] + 's' : ''}`;
-  t.ok([1, 2, 3].every(r => table[`kid${r}`][0] >= 7) && [1, 2, 3].every(r => table[`still${r}`][0] === 0) && table.masher2[0] === 0 && table.masher3[0] === 0, `a skilled kid wins every piñata (${[1, 2, 3].map(r => fmt('kid' + r))}); standing still and whacking never (${[1, 2, 3].map(r => fmt('still' + r))}); mashing under it wins only the llama (${[1, 2, 3].map(r => fmt('masher' + r))})`);
-  // at 60 and 20 steps a second the kid wins the same piñatas
-  const fps = [1 / 60, 1 / 20].map(dt => [1, 2, 3].map(r => Bt.playPinata('kid', P.pinataPlan(7, r, 0), dt).won).join());
-  t.ok(fps[0] === fps[1] && fps[0] === 'true,true,true', `at 60 and 20 steps a second the kid pops all three (${fps.join(' | ')})`);
-  // 7. help after a time-up and a rematch
-  const h0 = P.pinataPlan(1, 1, 0), h1 = P.pinataPlan(1, 1, 1, { help: 1 }), h2 = P.pinataPlan(1, 1, 2, { help: 2 }), hd = P.pinataPlan(1, 1, 0, { hard: true });
-  t.ok(h1.period > h0.period && h2.period > h1.period && h1.speed < h0.speed && h2.hp === h0.hp - 2 && hd.hp === h0.hp + 2 && hd.period < h0.period, `after a time-up it swings slower (${h0.period} -> ${h1.period.toFixed(2)} -> ${h2.period.toFixed(2)} s), drifts slower and needs fewer CRACKs (${h0.hp} -> ${h1.hp} -> ${h2.hp}); a rematch needs ${hd.hp} and swings faster`);
-  let helped = 0; for (let k = 0; k < 8; k++) if (Bt.playPinata('masher', P.pinataPlan(2000 + k, 2, k, { help: 2 }), 1 / 60).won) helped++;
-  t.ok(helped >= 1, `with the most help even a whacker who does not watch pops the star sometimes (${helped} of 8)`);
 
-  /* ---- Jack Catch ---- */
-  const plan = L.doorsPlan(7), pu = plan.popup, opts = (x = {}) => ({ boxes: pu.boxes, floor: pu.floor, start: pu.pad.centre, ...x });
-  const c1 = J.catchPlan(5, 0, opts()), c2 = J.catchPlan(5, 0, opts()), c3 = J.catchPlan(5, 1, opts());
-  t.ok(JSON.stringify(c1) === JSON.stringify(c2) && JSON.stringify(c1) !== JSON.stringify(c3), 'a Jack Catch round is a pure function of seed / try');
-  const floorSet = new Set(pu.floor.map(([x, z]) => `${Math.floor(x)},${Math.floor(z)}`)), boxSet = new Set(pu.boxes.map(bx => `${bx.cell[0]},${bx.cell[2]}`));
-  let bad = 0, maxJump = 0, doubles = 0, closeDoubles = 0, gold = 0, pies = 0, jacks = 0, lastTo = null, firstF = 0, lastF = 0;
-  for (let s = 0; s < 20; s++) {
-    const cp = J.catchPlan(s, 0, opts()), js = cp.launches.filter(l => l.kind !== 'pie');
-    jacks += js.length; gold += js.filter(l => l.kind === 'gold').length; pies += cp.launches.length - js.length;
-    firstF += js[0].flight; lastF += js[js.length - 1].flight;
-    for (const l of js) { const k = `${Math.floor(l.to[0])},${Math.floor(l.to[1])}`; if (!floorSet.has(k) || boxSet.has(k)) bad++; }
-    for (let i = 1; i < js.length; i++) if (Math.abs(js[i].t0 - js[i - 1].t0) < 1e-9) { doubles++; if (Math.hypot(js[i].to[0] - js[i - 1].to[0], js[i].to[1] - js[i - 1].to[1]) < J.CATCH.doubleGap - 0.75) closeDoubles++; }
-    void lastTo; void maxJump;
-    if (js.length !== J.CATCH.jacks) bad++;
-  }
-  t.ok(!bad && doubles > 20 && !closeDoubles && gold > 20 && pies > 30 && lastF < firstF * 0.75, `every jack lands on the free floor (never in a box), 16 a round; two at once ${doubles} times (always apart), ${gold} gold jacks, ${pies} pies in 20 rounds; the flights get shorter (${(firstF / 20).toFixed(2)} -> ${(lastF / 20).toFixed(2)} s)`);
-  // a pie flies at where you will be: standing still it lands on you, a step aside and it misses
+  /* ---- Jack Catch: jackcatch.js as it was, three rounds of rising need ---- */
+  const cs = sets.catch, opts = (x = {}) => ({ boxes: cs.boxes, floor: cs.catchFloor, start: cs.start, ...x });
+  const c1 = J.catchPlan(5, 0, opts()), c2 = J.catchPlan(5, 0, opts());
+  t.ok(JSON.stringify(c1) === JSON.stringify(c2) && J.CATCH.need === 12 && J.CATCH.jacks === 16, 'jackcatch.js is unchanged: a round is a pure function of seed / try, 16 jacks and 12 to win');
+  const rounds = [1, 2, 3].map(r => PR.catchRound(9, r, 0, opts()));
+  t.ok(rounds.map(p => p.jacks).join() === '10,13,16' && rounds.map(p => p.need).join() === '6,9,12' && PR.catchRound(9, 3, 0, opts({ hard: true })).need === 14 && rounds.every(p => p.launches.every(l => l.kind === 'pie' || cs.catchFloor.some(f => Math.hypot(f[0] - l.to[0], f[1] - l.to[1]) < 0.9))), `three rounds: ${rounds.map(p => `${p.jacks} jacks, ${p.need} to win`).join('; ')} (a rematch party 14 in round 3); every jack lands on the carpet`);
   {
-    const cp = J.catchPlan(3, 0, opts()), pie = cp.launches.find(l => l.kind === 'pie');
-    const rm = pu.room, mid = [(rm.x0 + rm.x1 + 1) / 2, (rm.z0 + rm.z1 + 1) / 2];
-    const free = pu.floor.filter(f => pu.boxes.every(bx => Math.hypot(bx.at[0] - f[0], bx.at[2] - f[1]) > 1.2)).sort((p1, p2) => Math.hypot(p1[0] - mid[0], p1[1] - mid[1]) - Math.hypot(p2[0] - mid[0], p2[1] - mid[1]))[0];
-    const stay = J.newCatch(cp), at = { x: free[0], y: 11, z: free[1] };
-    let ev = []; for (let tt = 0; tt <= pie.t0 + pie.flight + 0.05; tt += 1 / 60) ev.push(...J.stepCatch(stay, tt, at));
-    const moved = J.newCatch(cp), at2 = { x: at.x, y: 11, z: at.z };
-    let ev2 = []; for (let tt = 0; tt <= pie.t0 + pie.flight + 0.05; tt += 1 / 60) { if (tt > pie.t0 + 0.3) at2.z = Math.min(at.z + 2, at2.z + 4.3 / 60); ev2.push(...J.stepCatch(moved, tt, at2, { x: 0, z: 0 })); }
-    const lead = J.newCatch(cp), at3 = { x: at.x, y: 11, z: at.z }, run3 = [];
-    for (let tt = 0; tt <= pie.t0 + 0.02; tt += 1 / 60) run3.push(...J.stepCatch(lead, tt, at3, { x: 0, y: 0, z: 2 }));
-    const aim = lead.pieTo.get(pie.n);
-    t.ok(ev.some(e => e.type === 'splat' && e.n === pie.n) && J.slowed(stay, pie.t0 + pie.flight + 0.5) && ev2.some(e => e.type === 'plop' && e.n === pie.n) && aim && Math.abs(aim[1] - Math.min(cp.box.z1, at.z + 2 * J.CATCH.pies.lead)) < 0.05 && Math.abs(aim[0] - at.x) < 0.05, `a pie lands on you if you stand still (SPLAT, sticky shoes for ${J.CATCH.pies.slow} s), a step aside and it plops on the floor; running, it aims ${J.CATCH.pies.lead} s ahead of you`);
+    const g0 = PR.catchRound(4, 2, 0, opts()), gg = PR.catchRound(4, 2, 0, opts({ twist: 'gold' })), gp = PR.catchRound(4, 3, 0, opts({ twist: 'pies' })), g3 = PR.catchRound(4, 3, 0, opts()), gs = PR.catchRound(4, 3, 0, opts({ twist: 'sticky' }));
+    const golds = p => p.launches.filter(l => l.kind === 'gold').length, pies = p => p.launches.filter(l => l.kind === 'pie'), fl = p => p.launches.filter(l => l.kind !== 'pie')[0].flight;
+    t.ok(golds(gg) > golds(g0) && pies(gp).length > pies(g3).length && pies(gp).every(l => l.flight > J.CATCH.pies.flight * 1.2) && fl(gs) > fl(g3) && gs.end > g3.end && gs.cap === 3.6 && g3.cap == null, `the surprises: Double gold (${golds(g0)} -> ${golds(gg)} gold jacks), Pie party (${pies(g3).length} -> ${pies(gp).length} pies, slower), Sticky floor (flights ${fl(g3).toFixed(2)} -> ${fl(gs).toFixed(2)} s, you run at 3.6)`);
   }
-  // who wins: a kid who runs under the shadows wins nearly always, standing on the pad never (and gets splatted)
-  let kid = 0, still = 0, splats = 0, kidScores = [];
-  for (let s = 0; s < 10; s++) {
-    const cp = J.catchPlan(500 + s, s, opts());
-    const k = Bt.playCatch('kid', cp, 1 / 60, pu.pad.centre), st = Bt.playCatch('still', cp, 1 / 60, pu.pad.centre);
-    if (k.won) kid++; if (st.won) still++; splats += st.splats; kidScores.push(k.score);
+  const cWin = (kind, round, x = {}, dt = 1 / 60) => { let w = 0; for (let s = 0; s < 10; s++) if (Bt.playCatch(kind, PR.catchRound(300 + s, round, s, opts(x)), dt, cs.start).won) w++; return w; };
+  const cat = both(dt => [1, 2, 3].map(r => cWin('kid', r, {}, dt))), catStill = [1, 2, 3].map(r => cWin('still', r));
+  const catTw = ['gold', 'pies', 'sticky'].map(tw => cWin('kid', 3, { twist: tw }));
+  t.ok(cat.every(l => l.every(n => n >= 8)) && catStill.every(n => n === 0) && catTw.every(n => n >= 7), `Jack Catch: a skilled kid wins every round (60: ${cat[0]}, 20: ${cat[1]} of 10) and with every surprise in round 3 (${catTw}); standing still never (${catStill})`);
+
+  /* ---- Gift Stack ---- */
+  {
+    const plan = GS.stackPlan(1, 1, 0), st = GS.newStack(plan);
+    // a drop right over the middle is Perfect! (it keeps its size), one off by 1 is cut, one that misses topples
+    let tt = 0; while (Math.abs(GS.craneAt(plan, tt).x) > 0.02) tt += 0.0005;
+    const p1 = GS.drop(st, tt), w1 = st.size.w;
+    let t2 = tt + GS.STACK.reload; while (Math.abs(GS.craneAt(plan, t2).x - 1) > 0.02) t2 += 0.0005;
+    const p2 = GS.drop(st, t2), w2 = st.size.w;
+    const early = GS.drop(st, t2 + 0.1);
+    t.ok(p1.perfect && w1 === GS.STACK.start && !p2.perfect && Math.abs(w2 - (GS.STACK.start - 1)) < 0.05 && p2.cut.length === 1 && Math.abs(p2.cut[0].w - 1) < 0.05 && !early.dropped, `Perfect! keeps the size (${w1}); a drop 1 off cuts 1 off (now ${w2.toFixed(2)} wide, the bit that hung over falls off); no present on the hook = nothing to drop`);
+    const st2 = GS.newStack(plan); let t3 = 0; while (Math.abs(GS.craneAt(plan, t3).x) < GS.STACK.amp - 0.05) t3 += 0.001;
+    GS.drop(st2, 0.0001); const bad = GS.newStack(GS.stackPlan(1, 1, 0)); bad.top = { x: 0, z: 0, w: 0.3, d: 3 }; const mres = GS.drop(bad, t3);
+    t.ok(mres.miss && bad.over === 'toppled', 'a present that misses the stack (or is cut thinner than the smallest) topples it: the round starts again');
+    const plans = [1, 2, 3].map(r => GS.stackPlan(2, r, 0));
+    t.ok(plans.map(p => p.need).join() === '5,7,9' && plans[0].period > plans[1].period && plans[1].period > plans[2].period && GS.stackPlan(2, 3, 0, { hard: true }).need === 10 && GS.stackPlan(2, 2, 0, { slow: FG.fairHelp(2).slow }).period > plans[1].period, `5 / 7 / 9 presents, the crane faster each round (${plans.map(p => p.period.toFixed(2))} s a swing); after two misses the Funfair's kind help slows it; a rematch needs one more`);
+    const wob = GS.stackPlan(2, 2, 0, { twist: 'wobbly' }), tiny = GS.stackPlan(2, 2, 0, { twist: 'tiny' }), windy = GS.stackPlan(2, 2, 0, { twist: 'windy' });
+    let zmax = 0, centres = new Set(); for (let tt2 = 0; tt2 < 20; tt2 += 0.05) { zmax = Math.max(zmax, Math.abs(GS.craneAt(wob, tt2).z)); centres.add(Math.round(GS.craneAt(windy, tt2).x - GS.STACK.amp * Math.sin((2 * Math.PI / windy.period) * tt2 + windy.phase))); }
+    t.ok(zmax > 0.5 && tiny.start < GS.STACK.start && centres.size >= 2 && Math.abs(GS.craneAt(plans[1], 3).z) < 1e-9, `the surprises: Wobbly crane (swings in and out too, up to ${zmax.toFixed(2)}), Tiny presents (they start ${tiny.start} wide), Windy (the middle of the swing drifts)`);
+    const sWin = (kind, r, x = {}, dt = 1 / 60) => { let w = 0; for (let s = 0; s < 12; s++) if (Bt.playStack(kind, GS.stackPlan(100 + s, r, 0, x), dt).won) w++; return w; };
+    const pro = both(dt => [1, 2, 3].map(r => sWin('pro', r, {}, dt))), kid = both(dt => [1, 2, 3].map(r => sWin('kid', r, {}, dt))), kidTw = ['wobbly', 'tiny', 'windy'].map(tw => sWin('kid', 3, { twist: tw }));
+    const mash = [1, 2, 3].map(r => sWin('masher', r)), stillS = Bt.playStack('still', GS.stackPlan(1, 1, 0), 1 / 60, 30);
+    t.ok(pro.every(l => l.every(n => n === 12)) && kid.every(l => l.every(n => n >= 10)) && kidTw.every(n => n >= 9) && mash.every(n => n === 0) && !stillS.won && stillS.placed === 0, `Gift Stack: a skilled player wins every round (60: ${pro[0]}, 20: ${pro[1]} of 12), a kid who is a bit off too (60: ${kid[0]}, 20: ${kid[1]}; with the surprises ${kidTw}); dropping at once never (${mash}); never dropping never`);
+    // the same presses give the same stack (a replay), at any frame rate
+    const r60 = Bt.playStack('kid', GS.stackPlan(7, 3, 0), 1 / 60), replay = GS.newStack(GS.stackPlan(7, 3, 0));
+    for (const tp of r60.drops) GS.drop(replay, tp);
+    t.ok(replay.placed === r60.placed && Math.abs(replay.size.w - r60.width) < 1e-12 && replay.over === r60.over, `replaying a round's drops gives the same stack (${r60.placed} presents, ${r60.width.toFixed(2)} wide at the top)`);
   }
-  t.ok(kid >= 7 && still === 0 && splats >= 10, `a skilled kid catches enough in ${kid} of 10 rounds (${kidScores.join(' ')} of about 18, ${J.CATCH.need} win); standing still never (${splats} splats)`);
-  const cf = [1 / 60, 1 / 20].map(dt => Bt.playCatch('kid', J.catchPlan(9, 0, opts()), dt, pu.pad.centre));
-  t.ok(cf[0].won === cf[1].won && Math.abs(cf[0].score - cf[1].score) <= 1, `at 60 and 20 steps a second the same round ends the same (${cf[0].score} / ${cf[1].score})`);
-  const ch1 = J.catchPlan(1, 1, opts({ help: 1 })), ch0 = J.catchPlan(1, 1, opts()), chh = J.catchPlan(1, 0, opts({ hard: true }));
-  const fl = cp => cp.launches.filter(l => l.kind !== 'pie')[0].flight;
-  t.ok(fl(ch1) > fl(ch0) && ch1.end > ch0.end && chh.need === 14 && fl(chh) < fl(J.catchPlan(1, 0, opts())), `after a miss the jacks fly slower (${fl(ch0).toFixed(2)} -> ${fl(ch1).toFixed(2)} s); a rematch needs ${chh.need}`);
+
+  /* ---- Pop-Up Whack ---- */
+  {
+    const wb = sets.whack.boxes, eye = { x: sets.whack.standAt[0], y: 11 + Bt.EYE, z: sets.whack.standAt[1] };
+    const p1 = PW.whackPlan(3, 1, 0), p1b = PW.whackPlan(3, 1, 0), p2 = PW.whackPlan(3, 1, 1);
+    const plans = [1, 2, 3].map(r => PW.whackPlan(3, r, 0));
+    t.ok(JSON.stringify(p1) === JSON.stringify(p1b) && JSON.stringify(p1) !== JSON.stringify(p2) && plans.map(p => p.need).join() === '8,11,14' && plans[0].up > plans[1].up && plans[1].up > plans[2].up && plans.every(p => p.time === 30 && p.pops.every(q => q.box >= 0 && q.box < 9) && p.pops.some(q => q.kind === 'pie') && p.pops.some(q => q.kind === 'gold') && p.most >= p.need + 4), `a round is a pure function of seed / round / try; 8 / 11 / 14 points in 30 s, the jacks stay up ${plans.map(p => p.up.toFixed(2))} s; pie jacks and gold jacks in every round`);
+    // no box pops twice at once
+    let overlap = 0; for (const p of plans) for (const a of p.pops) for (const b of p.pops) if (a !== b && a.box === b.box && a.t0 < b.t0 + b.up && b.t0 < a.t0 + a.up) overlap++;
+    t.ok(!overlap, 'a box never has two jacks at once');
+    // a whack: a plain jack +1, a gold one +2, a pie jack -1 (a splat), at nothing = a whiff and the stick needs a moment
+    const st = PW.newWhack(plans[0]), j = plans[0].pops.find(q => q.kind === 'jack'), pie = plans[0].pops.find(q => q.kind === 'pie'), gold = plans[0].pops.find(q => q.kind === 'gold');
+    const dirTo = (p, tt) => { const h = PW.headOf(wb, p, 1); return { x: h.x - eye.x, y: h.y - eye.y, z: h.z - eye.z }; };
+    const r1 = PW.whackAt(st, j.t0 + 0.3, wb, eye, dirTo(j));
+    const st2 = PW.newWhack(plans[0]); st2.score = 3; const r2 = PW.whackAt(st2, pie.t0 + 0.3, wb, eye, dirTo(pie));
+    const st3 = PW.newWhack(plans[0]), r3 = PW.whackAt(st3, gold.t0 + 0.3, wb, eye, dirTo(gold));
+    const st4 = PW.newWhack(plans[0]), r4 = PW.whackAt(st4, j.t0 - 0.6, wb, eye, dirTo(j)), r5 = PW.whackAt(st4, j.t0 - 0.6 + 0.5, wb, eye, dirTo(j));
+    t.ok(r1.hit && st.score === 1 && r2.pie && st2.score === 2 && st2.splats === 1 && r3.gold && st3.score === 2 && !r4.hit && r4.swung && !r5.swung, `whack a jack +1, a gold one +2, a pie jack is a splat -1, a whack at nothing makes the stick rest ${PW.WHACK.cool.miss} s`);
+    const mir = PW.whackPlan(3, 2, 0, { twist: 'mirror' }), speedy = PW.whackPlan(3, 2, 0, { twist: 'speedy' });
+    t.ok(mir.pops.some(q => q.shook === 8 - q.box && q.box !== 4) && plans[1].pops.every(q => q.shook === q.box) && speedy.up < plans[1].up && speedy.pops.length > plans[1].pops.length, `the surprises: Mirror (${mir.pops.filter(q => q.shook !== q.box).length} jacks come out of the box opposite the one that shook), Speedy (${speedy.pops.length} shorter pops instead of ${plans[1].pops.length}), Lights out (looks only)`);
+    const helped = PW.whackPlan(3, 2, 0, { help: FG.fairHelp(2) });
+    t.ok(helped.up > plans[1].up && helped.time === 40, `after two misses the jacks stay up longer (${plans[1].up.toFixed(2)} -> ${helped.up.toFixed(2)} s) and there are 10 s more`);
+    const wWin = (kind, r, x = {}, dt = 1 / 60) => { let w = 0; for (let s = 0; s < 12; s++) if (Bt.playWhack(kind, PW.whackPlan(100 + s, r, 0, x), dt, wb, eye).won) w++; return w; };
+    const kid = both(dt => [1, 2, 3].map(r => wWin('kid', r, {}, dt))), tw = ['dark', 'mirror', 'speedy'].map(x => wWin('kid', 3, { twist: x }));
+    const mash = [1, 2, 3].map(r => wWin('masher', r)), stillW = [1, 2, 3].map(r => wWin('still', r));
+    let allThree = 0; for (let s = 0; s < 12; s++) if ([1, 2, 3].every(r => Bt.playWhack('masher', PW.whackPlan(100 + s, r, 0), 1 / 60, wb, eye).won)) allThree++;
+    t.ok(kid.every(l => l.every(n => n >= 11)) && tw.every(n => n >= 11) && mash.every(n => n <= 5) && mash[2] <= 2 && !allThree && stillW.every(n => n === 0), `Pop-Up Whack: a kid who watches wins every round (60: ${kid[0]}, 20: ${kid[1]} of 12; with the surprises ${tw}); whacking all the time without looking rarely (${mash}) and never all three rounds; never whacking never`);
+  }
+  void SP;
 }
 
 /* ============================================================================================ */
@@ -496,381 +543,150 @@ async function gamesPart(t) {
 async function livePart({ browser, base, t, page }) {
   await newGame(page, 0); await pause(page);
   await toasts(page);
-  await intoDoors(page);
-  const clk = await page.evaluate(() => { const g = window.pokecraft; return { clock: document.getElementById('clock')?.textContent || '', place: g.place, realm: g.world.realm.id, parts: g.world.parts.map(p => p.live), star: g.stars.length }; });
-  t.ok(clk.place === 'doors' && clk.realm === 'doors' && clk.parts.join() === 'doors', `through the gift-wrapped frame into the Room of Doors (the realm has one live part: ${clk.parts})`);
-  const frame = await page.evaluate(async () => { const { pictureWorld, FRAME_WORLDS } = await import('/src/pictureworlds.js'); const w = pictureWorld('doors'); return { ready: w.ready, realm: w.realm, pic: typeof w.picture, frames: FRAME_WORLDS.filter(f => f.ready).length }; });
-  t.ok(frame.ready && frame.realm === 'doors' && frame.pic === 'function', 'the frame is ready (a picture of coloured doors and a gift) and opens the realm');
+  // an old Room of Doors save: bow1 (a piñata) and bow4 (Jack Catch) won there, a helper beaten and a gift opened
+  await page.evaluate(() => { const g = window.pokecraft; g.beaten.push('pw:doors:bow1', 'pw:doors:bow4', 'pw:doors:gift3'); });
+  await intoParty(page);
+  await waitFor(page, () => /Surprise Party/.test(document.getElementById('clock')?.textContent || ''), null, 60000).catch(() => {});
+  const clk = await page.evaluate(() => { const g = window.pokecraft; return { clock: document.getElementById('clock')?.textContent || '', place: g.place, realm: g.world.realm.id, name: g.world.realm.name, version: g.world.realm.version, parts: g.world.parts.map(p => p.live), keys: g.beaten.filter(k => /pw:doors/.test(k)).sort().join() }; });
+  t.ok(clk.place === 'doors' && clk.realm === 'doors' && clk.name === 'Surprise Party' && clk.version === 2 && clk.parts.join() === 'doors' && /Surprise Party/.test(clk.clock), `through the gift-wrapped frame into the Surprise Party (realm doors, version ${clk.version}, clock "${clk.clock}")`);
+  t.ok(clk.keys === 'pw:doors:bow1,pw:doors:bow2,pw:doors:gift3,pw:doors:party', `the old save's two bows are two bows now: the piñata's and Jack Catch's (${clk.keys}); the old gift key stays`);
+  const frame = await page.evaluate(async () => { const { pictureWorld } = await import('/src/pictureworlds.js'), R = await import('/src/realms.js'), w = pictureWorld('doors'); return { ready: w.ready, name: w.name, pic: typeof w.picture, clean: JSON.stringify(R.cleanRealmEdits({ doors: [[5, 1]] }, { doors: 1 })), keep: JSON.stringify(R.cleanRealmEdits({ doors: [[5, 1]] }, { doors: 2 })) }; });
+  t.ok(frame.ready && frame.name === 'Surprise Party' && frame.pic === 'function' && frame.clean === '{}' && frame.keep === '{"doors":[[5,1]]}', `the frame is ready and called Surprise Party; the Room of Doors' old edits (version 1) are dropped, the party's kept (${frame.clean} / ${frame.keep})`);
   const arrive = await page.evaluate(() => { const p = window.pokecraft.player.pos; return [p.x, p.y, p.z]; });
-  t.ok(Math.abs(arrive[0] - 56.5) < 0.01 && Math.abs(arrive[2] - 79.5) < 0.01 && arrive[1] === 11, `you arrive in the Wrapping Room, in front of the way back (${arrive.map(v => v.toFixed(1))})`);
-  t.ok(await said(page, /Ta-da! The Room of Doors!/) && await said(page, /Win 4 golden bows, and find Jolly Jax's two helpers behind the doors/), 'the arrival words are said');
+  t.ok(Math.abs(arrive[0] - 56.5) < 0.01 && Math.abs(arrive[2] - 72.5) < 0.01 && arrive[1] === 11, `you arrive by the frame home at the south wall (${arrive.map(v => v.toFixed(1))})`);
+  t.ok(await said(page, /SURPRISE! Welcome to the party!/) && await said(page, /Spin the Party Spinner to start a party game!/), 'the arrival words are said');
+  // the people: guests at the party, Ribbon Rosa crashed in already (one bow), Confetti Kit and Jax not yet
+  await page.evaluate(() => { const L = window.__live(); L.manual = true; for (let i = 0; i < 4; i++) { window.pokecraft.gymLive.update(0.3); } });
+  const ppl = await page.evaluate(() => { const g = window.pokecraft; return g.npcs.list.map(n => `${n.kind}:${n.name}:${n.away ? 'away' : 'here'}`).join(); });
+  t.ok(/guest:Party Polly:here/.test(ppl) && /crew:Ribbon Rosa:here/.test(ppl) && /crew:Confetti Kit:away/.test(ppl) && /boss:Jolly Jax:away/.test(ppl), `guests in party hats; with 2 bows Ribbon Rosa has crashed the party, Confetti Kit and Jolly Jax are not here yet (${ppl})`);
 
-  /* ---- the doors ---- */
-  const dr = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), out = { kinds: [], bad: [] };
-    for (const r of plan.rooms) {
-      if (r.kind === 'wrapping') continue;
-      const c = r.door.cells[5];
-      const before = g.world.get(...c), prompt = g.gymLive.prompt({ x: c[0], y: c[1], z: c[2], id: before }, 'tap'), act = g.gymLive.action({ x: c[0], y: c[1], z: c[2], id: before });
-      const handled = g.gymLive.hit({ x: c[0], y: c[1], z: c[2], id: before });
-      const after = r.door.cells.map(q => g.world.get(...q));
-      out.kinds.push(r.kind);
-      if (!handled || !after.every(id => id === 0) || !/Gift door/.test(prompt || '') || act !== 'Open!') out.bad.push(`${r.kind}: handled ${handled} after ${after.join()} prompt ${prompt} action ${act}`);
-      if (g.gymLive.prompt({ x: c[0], y: c[1], z: c[2], id: 0 }, 'tap')) out.bad.push(`${r.kind}: an opened door still has a prompt`);
-    }
-    out.opened = L.info().opened.length;
-    // owner 2026-10-27: an opened door shows a sign with what is inside (a helper's room: crossed swords, later a green tick)
-    L.syncSigns();
-    out.signs = (L.signs || []).filter(sg => sg.mesh.visible).length;
-    out.signKinds = (L.signs || []).map(sg => sg.room.kind).sort().join();
+  /* ---- the Spinner: Spin! / Stop!, good timing picks the game, a won slice gives sweets once ---- */
+  const sw = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(), out = {};
+    window.__toasts = []; g.cubes = 0;
+    out.spinWon = window.__spinTo(0); // the piñata: won already
+    out.cubes1 = g.cubes; out.gm1 = !!L.gm;
+    out.again = window.__spinTo(1);   // Jack Catch: won too
+    out.cubes2 = g.cubes; out.gm2 = !!L.gm;
+    out.toasts = window.__toasts.join('|');
+    out.real = window.__spinTo(2);    // Gift Stack: a real game
+    out.gm = L.gm?.game; out.phase = window.__ready();
+    out.toasts2 = window.__toasts.join('|');
+    // the set is up: the table, its pad
+    const set = L.sets.stack; out.table = set.up.every(([x, y, z]) => g.world.get(x, y, z) === 236); out.pad = set.pad.every(([x, z]) => g.world.get(x, 10, z) === 69);
+    out.chip = document.getElementById('score-chip')?.textContent;
     return out;
   });
-  t.ok(dr.signs === 12 && dr.signKinds.split(',').length === 12, `every opened door has a sign over it showing what is inside (${dr.signs} signs)`);
-  t.ok(!dr.bad.length && dr.kinds.length === 11, `a hit opens each of the eleven other doors, all 12 cells (a prompt "Gift door ... open", the button word Open!) ${dr.bad.join('; ')}`);
-  t.ok(dr.opened >= 11, `the live part remembers the opened doors (${dr.opened})`);
-  t.ok(await said(page, /A door in a door|Surprise! Battle!|Healer Stella|Boing! A ball pit|Springs! Jump|A slide|So many presents/), 'each door says its surprise');
+  t.ok(sw.spinWon.w0 === 'Spin!' && sw.spinWon.w1 === 'Stop!' && sw.spinWon.slice === 0 && sw.cubes1 === 2 && !sw.gm1 && /Party sweets! \+2 Capture Cubes/.test(sw.toasts), `on the pad the big button says Spin!, then Stop!; stopped with the piñata under the arrow it lands there, a game already won: party sweets (+${sw.cubes1} Capture Cubes)`);
+  t.ok(sw.again.slice === 1 && sw.cubes2 === 2 && !sw.gm2 && /You won Jack Catch already\. Spin again!/.test(sw.toasts), 'a second won slice gives no more sweets (only once until the next game is won): "Spin again!"');
+  t.ok(sw.real.slice === 2 && sw.gm === 'stack' && sw.phase === 'ready' && sw.table && sw.pad && /Surprise! It's Gift Stack!/.test(sw.toasts2) && /round 1 of 3/.test(sw.toasts2), `stopped on Gift Stack: "Surprise! It's Gift Stack!", the set whooshes up out of the floor (a table, a gold pad) and round 1 is ready ("${sw.chip}")`);
 
-  /* ---- a door never closes on you: LiveCells wait while you stand in the cell ---- */
-  const wait = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), f = plan.gift.front[12], [x, y, z] = f;
-    for (let i = 1; i <= 4; i++) { const k = `pw:doors:bow${i}`; if (!g.beaten.includes(k)) g.beaten.push(k); }
-    L.syncBlocks();
-    const open = g.world.get(x, y, z);
-    window.__at(x + 0.5, y, z + 0.5, 0, 0);
-    g.beaten.splice(g.beaten.indexOf('pw:doors:bow4'), 1);
-    L.syncBlocks();
-    const inside = g.world.get(x, y, z), waiting = L.cells.waiting.size;
-    window.__at(x + 0.5, y, z + 4.5, 0, 0);
-    L.cells.flush();
-    const after = g.world.get(x, y, z);
-    for (let i = 1; i <= 3; i++) { const k = `pw:doors:bow${i}`; const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); }
-    L.syncBlocks(); L.cells.flush();
-    return { open, inside, waiting, after, shut: g.world.get(x, y, z) };
-  });
-  t.ok(wait.open === 0 && wait.inside === 0 && wait.waiting > 0 && wait.after === 236 && wait.shut === 236, `the Big Gift's front never closes on you (open ${wait.open}, still open round you ${wait.inside}, ${wait.waiting} waiting, shut when you step out: ${wait.after})`);
+  /* ---- Gift Stack, all three rounds with a skilled player through the big button ---- */
+  const gs = await page.evaluate(() => { window.__toasts = []; const r = window.__playGame('pro', 1 / 60); const g = window.pokecraft, L = window.__live(); return { r, bows: L.bows().n, bow3: g.beaten.includes('pw:doors:bow3'), toasts: window.__toasts.join('|'), gm: L.gm, set: L.sets.stack.up.every(([x, y, z]) => g.world.get(x, y, z) === 0) }; });
+  t.ok(gs.r.join() === '1:won,2:won,3:won' && gs.bow3 && gs.bows === 3 && /A golden bow for Gift Stack! \(3 \/ 4\)/.test(gs.toasts) && /Yay!/.test(gs.toasts) && !gs.gm && gs.set, `Gift Stack: three rounds won with Drop! (${gs.r}), the third golden bow, the guests cheer, the set goes back into the floor`);
+  t.ok(/Surprise! (Wobbly crane|Tiny presents|Windy)!/.test(gs.toasts), `round 2 and 3 came with a party surprise ("${(gs.toasts.match(/Jolly Jax: Surprise! [^|]*/g) || []).join('" "')}")`);
+  // the third bow: Confetti Kit crashes the party
+  const kit = await page.evaluate(() => { const g = window.pokecraft; for (let i = 0; i < 3; i++) g.gymLive.update(0.3); return { kit: !g.npcs.list.find(n => n.name === 'Confetti Kit').away, toasts: window.__toasts.join('|') }; });
+  t.ok(kit.kit && /Surprise! A party crasher! Confetti Kit wants a battle!/.test(kit.toasts), 'after the third bow Confetti Kit crashes the party ("Surprise! A party crasher! ...")');
 
-  /* ---- the chests ---- */
-  const ch = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), out = { opens: [], keys: [] };
-    g.cubes = 0;
-    for (const c of plan.chests) {
-      const blk = { x: c.cell[0], y: c.cell[1], z: c.cell[2], id: g.world.get(...c.cell) };
-      const before = g.cubes, h = g.gymLive.hit(blk), after = g.cubes;
-      const h2 = g.gymLive.hit(blk), again = g.cubes;
-      out.opens.push([c.kind, blk.id, h, after - before, h2, again - after, g.world.get(...c.cell)].join(':'));
-      out.keys.push(g.beaten.includes(c.key));
+  /* ---- each game's rounds at 60 and 20 steps a second (Piñata Party, Jack Catch, Pop-Up Whack); a careless player misses ---- */
+  const games = [];
+  for (const [k, kind] of [[0, 'kid'], [1, 'pro'], [3, 'pro']]) for (const dt of [1 / 60, 1 / 20]) {
+    games.push(await page.evaluate(([k, kind, dt]) => {
+      const g = window.pokecraft, L = window.__live(), id = ['pinata', 'catch', 'stack', 'whack'][k];
+      window.__reset(); window.__setBows([1, 2, 3, 4].filter(i => i !== k + 1)); window.__toasts = [];
+      const spin = window.__spinTo(k), r = window.__playGame(kind, dt);
+      return { id, dt, slice: spin.slice, r: r.join(), bow: g.beaten.includes(`pw:doors:bow${k + 1}`), toasts: window.__toasts.join('|') };
+    }, [k, kind, dt]));
+  }
+  for (const r of games) t.ok(r.slice === ['pinata', 'catch', 'stack', 'whack'].indexOf(r.id) && r.r === '1:won,2:won,3:won' && r.bow, `${r.id} at ${Math.round(1 / r.dt)} steps a second: a good player wins round 1, 2 and 3 through the live part (${r.r}) and the bow`);
+  const words = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(), out = {};
+    for (const [k, id] of [[0, 'pinata'], [3, 'whack'], [1, 'catch']]) {
+      window.__reset(); window.__setBows([]); window.__spinTo(k); window.__ready();
+      const set = L.sets[id]; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0);
+      const play = L.near(g.player); L.use(g.player); L.step(0.05);
+      out[id] = `${play}/${L.near(g.player)}`;
     }
-    out.keyNames = plan.chests.map(c => c.key).join();
     return out;
   });
-  t.ok(ch.opens.length === 4 && ch.opens.every(s => /:true:3:true:0:/.test(s)) && ch.keys.every(Boolean), `each of the four gift chests gives 3 Capture Cubes once ever (${ch.opens.join(' | ')})`);
-  t.ok(ch.keyNames === 'pw:doors:gift1,pw:doors:gift2,pw:doors:gift3,pw:doors:gift4', 'the chest keys are by kind: ' + ch.keyNames);
-  const chOpen = await page.evaluate(() => window.__plan().chests.map(c => window.pokecraft.world.get(...c.cell)));
-  t.ok(chOpen.every(id => id === 48), `an opened chest is drawn open (setLive, block ${chOpen.join()})`);
-
-  /* ---- the slide ---- */
-  for (const dt of [1 / 60, 1 / 20]) {
-    const sl = await page.evaluate(dt => {
-      const g = window.pokecraft, L = window.__live(), plan = window.__plan(), s = plan.slide;
-      window.__at(s.stand[0], s.stand[2], s.stand[1], 0, 0);
-      const word = L.near(g.player), used = L.use(g.player), riding = !!g.player.carry;
-      let steps = 0, y0 = g.player.pos.y, maxDrop = 0;
-      while (g.player.carry && steps < 600) { window.__step(1, dt); steps++; maxDrop = Math.max(maxDrop, y0 - g.player.pos.y); }
-      const p = g.player.pos, end = s.path[s.path.length - 1];
-      return { word, used, riding, steps, secs: steps * dt, x: p.x, y: p.y, z: p.z, end, free: !g.player.carry };
-    }, dt);
-    t.ok(sl.word === 'Slide!' && sl.used && sl.riding && sl.free && Math.abs(sl.y - 11) < 0.01 && Math.hypot(sl.x - sl.end[0], sl.z - sl.end[2]) < 0.15 && Math.abs(sl.secs - 2.2) < dt * 2 + 0.05, `the slide at ${Math.round(1 / dt)} steps a second: "${sl.word}", ${sl.secs.toFixed(2)} s, you end on the floor at its end (${sl.x.toFixed(1)}, ${sl.y.toFixed(1)}, ${sl.z.toFixed(1)})`);
-  }
-
-  /* ---- the ball pit: you bounce, the balls roll away from your feet ---- */
-  const pit = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), c = plan.pit.cells[20];
-    window.__at(c[0] + 0.5, 10, c[1] + 0.5, 0, 0);
-    window.__step(4, 0.05);
-    const onPit = g.world.get(c[0], 9, c[1]);
-    g.player.keys.Space = true;
-    let peak = 10, bounced = false;
-    for (let i = 0; i < 60; i++) { window.__step(1, 1 / 30); peak = Math.max(peak, g.player.pos.y); if (g.player.bounced) bounced = true; if (i > 3) g.player.keys.Space = false; }
-    g.player.keys = {};
-    // the balls: one near the player's feet is pushed away, the same one far away is not
-    const mat = new g.scene.constructor().constructor === Object ? null : null; void mat;
-    const m = new (L.tmp.matrix.constructor)();
-    const near = L.pitBalls.findIndex(b => Math.hypot(b.hx - (c[0] + 0.5), b.hz - (c[1] + 0.5)) < 0.8);
-    window.__at(c[0] + 0.5, 10, c[1] + 0.5, 0, 0); L.draw(); L.balls.getMatrixAt(near, m); const a = [m.elements[12], m.elements[14]];
-    window.__at(c[0] + 14.5, 11, c[1] - 12.5, 0, 0); L.draw();
-    const home = L.pitBalls[near];
-    return { onPit, peak, bounced, moved: Math.hypot(a[0] - home.hx, a[1] - home.hz), count: L.pitBalls.length };
-  });
-  t.ok(pit.onPit === 242 && pit.bounced && pit.peak >= 12.5, `the pit floor is a Bounce block: jump and you rise ${(pit.peak - 10).toFixed(1)} blocks`);
-  t.ok(pit.moved > 0.3 && pit.count >= 60, `the balls roll out of the way of your feet (a ball moved ${pit.moved.toFixed(2)} of ${pit.count})`);
-
-  /* ---- the springs: up to the balcony and its chest ---- */
-  const spr = await page.evaluate(() => {
-    const g = window.pokecraft, plan = window.__plan(), s = plan.springs, pad = s.pads.find(p => Math.abs(p[0] + 0.5 - s.chest[0] - 0.5) <= 0 || true), led = s.ledge[3], [lx, , lz] = led;
-    // the pad nearest the ledge row, two cells from the back wall
-    let best = null;
-    for (const p of s.pads) { const d = Math.hypot(p[0] - lx, p[2] - lz); if (d >= 1 && (!best || d < best.d)) best = { p, d }; }
-    window.__at(best.p[0] + 0.5, 11, best.p[2] + 0.5, 0, 0);
-    window.__step(3, 0.05);
-    const toLed = [lx + 0.5 - g.player.pos.x, lz + 0.5 - g.player.pos.z]; g.player.yaw = Math.atan2(-toLed[0], -toLed[1]);
-    let landed = false, peak = 0;
-    g.player.keys.Space = true;
-    for (let i = 0; i < 80; i++) { g.player.keys.KeyW = i > 2 && i < 12; window.__step(1, 1 / 30); peak = Math.max(peak, g.player.pos.y); if (i > 2) g.player.keys.Space = false; if (g.player.onGround && g.player.pos.y >= 13.9 && i > 10) { landed = true; break; } }
-    g.player.keys = {};
-    void pad;
-    return { landed, peak, y: g.player.pos.y, over: s.ledge.length };
-  });
-  t.ok(spr.peak >= 14.5, `a jump on a spring reaches the balcony's height (peak ${spr.peak.toFixed(1)})`);
-
-  /* ---- the Piñata Hunt (owner 2026-10-28: "what's the purpose of the slide? the ball pit?"): each piñata hides in one of three rooms ---- */
-  const hunt0 = await page.evaluate(async () => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), H = await import('/src/pinatahunt.js');
-    window.__clearBows(); window.__resetGames(); L.hunt.found.clear(); L.manual = true;
-    const rooms = { ...L.hunt.rooms }, again = H.huntRooms(L.seed);
-    const pad = plan.ring.pad; window.__at((pad.x0 + pad.x1 + 1) / 2, 11, (pad.z0 + pad.z1 + 1) / 2, 0, 0);
-    L.chip();
-    const word = L.near(g.player), started = L.startPinata(), chip = document.getElementById('score-chip')?.textContent, aim = L.aim(g.player);
-    return { rooms, same: JSON.stringify(rooms) === JSON.stringify(again), word, started, chip, aim: aim ? aim.text('↑', 9) : null, hiding: L.info().hunt.hiding };
-  });
-  t.ok(Object.values(hunt0.rooms).sort().join() === 'ballpit,slide,springs' && hunt0.same, `the three piñatas hide in the slide room, the springs and the ball pit, shuffled from the seed (${JSON.stringify(hunt0.rooms)})`);
-  t.ok(hunt0.word === null && !hunt0.started && /Find the Llama Piñata/.test(hunt0.chip || '') && /Llama Piñata/.test(hunt0.aim || ''), `before it is found the rug has no Play! (${hunt0.word}), the chip says "${hunt0.chip}", the guide "${hunt0.aim}"`);
-  // each room's skill, with real Player physics at 60 and 20 steps a second; and the lazy way never finds it
-  for (const dt of [1 / 60, 1 / 20]) {
-    const hr = await page.evaluate(async dt => {
-      const g = window.pokecraft, L = window.__live(), plan = window.__plan(), H = await import('/src/pinatahunt.js'), p = g.player, out = {};
-      L.hunt.found.clear(); L.manual = true; window.__toasts = [];
-      const step = n => { for (let i = 0; i < n; i++) { p.update(dt); L.step(dt); } };
-      const roundOf = kind => +Object.keys(L.hunt.rooms).find(r => L.hunt.rooms[r] === kind);
-      // the slide: a slide started at the wrong moment misses; a kid who watches the swing and goes at the right moment grabs it
-      { const s = plan.slide, r = roundOf('slide'), tries = [];
-        for (let k = 0; k < 14 && !L.hunt.found.has(r); k++) {
-          window.__at(s.stand[0], s.stand[2], s.stand[1], 0, 0); step(1);
-          // the skilled kid: wait until the swing will be in when the slide reaches it (they learn it after a try or two: here k >= 2 waits)
-          const len = L.pathLength(), reach = (H.HUNT.slide.at * len) / (len / s.time);
-          if (k >= 2) { let w = 0; while (w < 400 && H.slideSwing(L.hunt.t + reach) > 0.35) { step(1); w++; } }
-          else { let w = 0; while (w < 400 && H.slideSwing(L.hunt.t + reach) < 1.3) { step(1); w++; } } // the first tries: go while it is swung out
-          L.use(p); let n = 0; while (p.carry && n < 600) { step(1); n++; }
-          tries.push(L.hunt.found.has(r) ? 'got' : 'miss');
-        }
-        out.slide = { tries, toasts: window.__toasts.filter(m => /Missed it|You found/.test(m)) }; }
-      // the springs: standing on the floor and jumping never reaches it; jumping on the spring right under where it will be does
-      { const r = roundOf('springs'), sk = plan.springs.k, D = await import('/src/doorsland.js');
-        const c = D.pointOf(sk, 0.5, 4.5); window.__at(c[0], 11, c[1], 0, 0);
-        // (the floor between the pads is springs too: a plain jump from the side ledge stand)
-        const led = plan.springs.ledge[3]; window.__at(led[0] + 0.5, 14, led[2] + 0.5, 0, 0);
-        for (let i = 0; i < 8; i++) { p.keys = { Space: true }; step(Math.round(0.1 / dt)); p.keys = {}; step(Math.round(1.0 / dt)); }
-        out.springsLedge = L.hunt.found.has(r);
-        let jumps = 0;
-        for (; jumps < 12 && !L.hunt.found.has(r); jumps++) {
-          const up = 0.95, q = H.springsAt(L.hunt.t + up), [x, z] = D.pointOf(sk, q.u + 0.5, q.v + 0.5);
-          window.__at(Math.floor(x) + 0.5, 11, Math.floor(z) + 0.5, 0, 0); step(1);
-          p.keys = { Space: true }; step(2); p.keys = {}; step(Math.round(2.0 / dt));
-        }
-        out.springs = { found: L.hunt.found.has(r), jumps }; }
-      // the ball pit: standing still it never comes up at your feet; running to where the balls shake finds it
-      { const r = roundOf('ballpit'), c = plan.pit.cells[30];
-        window.__at(c[0] + 0.5, 10, c[1] + 0.5, 0, 0); step(Math.round(10 / dt));
-        out.pitStill = L.hunt.found.has(r);
-        let tt = 0;
-        while (tt < 30 && !L.hunt.found.has(r)) {
-          const q = L.huntAt('ballpit');
-          if (q && q.phase !== 'down') { const dx = q.x - p.pos.x, dz = q.z - p.pos.z; p.yaw = Math.atan2(-dx, -dz); p.keys = { KeyW: Math.hypot(dx, dz) > 0.3, ShiftLeft: true }; }
-          else p.keys = {};
-          step(1); tt += dt;
-        }
-        p.keys = {}; out.pit = { found: L.hunt.found.has(r), t: +tt.toFixed(1) }; }
-      // all three found: the rug plays
-      const pad = plan.ring.pad; window.__at((pad.x0 + pad.x1 + 1) / 2, 11, (pad.z0 + pad.z1 + 1) / 2, 0, 0);
-      out.word = L.near(p); out.found = [...L.hunt.found].sort().join();
-      out.toasts = window.__toasts.filter(m => /You found/.test(m)).length;
-      return out;
-    }, dt);
-    const hz = Math.round(1 / dt);
-    t.ok(hr.slide.tries[0] === 'miss' && hr.slide.tries.at(-1) === 'got' && hr.slide.toasts.some(m => /Missed it/.test(m)), `${hz} steps a second, the slide: going without looking misses ("Missed it!"), sliding when the piñata swings in grabs it (${hr.slide.tries.join(' ')})`);
-    t.ok(!hr.springsLedge && hr.springs.found, `${hz} steps a second, the springs: jumping from the balcony never reaches it, a spring jump right under it does (${hr.springs.jumps} jumps)`);
-    t.ok(!hr.pitStill && hr.pit.found, `${hz} steps a second, the ball pit: standing still it never pops up at your feet, running to the shaking balls catches it (${hr.pit.t} s)`);
-    t.ok(hr.found === '1,2,3' && hr.word === 'Play!' && hr.toasts === 3, `all three found ("You found the ..." x ${hr.toasts}): the rug says ${hr.word}`);
-  }
-  await page.evaluate(() => { window.__live().findAll(); window.__live().manual = false; });
-
-  /* ---- the Piñata Party: a skilled kid at 60 and 20 steps a second, through the real live part (Whack! on the big button) ---- */
-  await page.evaluate(async () => {
-    // a whole try played by a bot through L.use: the bot walks the player (no walls on the rug), looks and presses; the live part does the rest
-    const Bt = await import('/tests/doorsbots.mjs');
-    window.__playPinata = (kind, dt, max = 70) => {
-      const g = window.pokecraft, L = window.__live(), mind = Bt.pinataMind(kind), out = { words: new Set(), presses: 0 };
-      L.manual = true;
-      const start = L.near(g.player);
-      if (start !== 'Play!' && start !== 'Again!') return { start };
-      L.use(g.player);
-      const run = L.pn.run;
-      let steps = 0;
-      while (L.pn.phase === 'run' && steps * dt < max) {
-        const m = mind(run, L.pn.t + dt, g.player.pos);
-        if (m.to) { const p = g.player.pos, dx = m.to.x - p.x, dz = m.to.z - p.z, d = Math.hypot(dx, dz), s = Math.min(d, Bt.WALK * dt); if (d > 1e-6) { p.x += (dx / d) * s; p.z += (dz / d) * s; } }
-        g.player.yaw = Math.atan2(-m.face.x, -m.face.z); g.player.pitch = 0;
-        L.step(dt); steps++;
-        const w = L.near(g.player); out.words.add(w);
-        if (m.press && w === 'Whack!' && L.pn.phase === 'run') { if (L.use(g.player)) out.presses++; }
-      }
-      const r = run;
-      return { start, phase: L.pn.phase, won: r.done, hits: r.hits, big: r.big, whiffs: r.whiffs, t: +L.pn.t.toFixed(2), words: [...out.words].join(), presses: out.presses, round: L.pn.round, log: JSON.stringify(r.log.map(e => [e.hit, e.big ?? null])) };
-    };
-  });
-  const pin = [];
-  for (const dt of [1 / 60, 1 / 20]) {
-    pin.push(await page.evaluate(dt => {
-      const g = window.pokecraft, L = window.__live(), plan = window.__plan();
-      window.__clearBows(); window.__resetGames(); window.__toasts = [];
-      const pad = plan.ring.pad;
-      window.__at((pad.x0 + pad.x1 + 1) / 2, 11, (pad.z0 + pad.z1 + 1) / 2, 0, 0);
-      const r = window.__playPinata('kid', dt);
-      for (let i = 0; i < 80; i++) L.step(dt > 0.03 ? 0.05 : 0.05); // the candy, the bow flying to you, the rug rests
-      return { ...r, after: L.pn.phase, bows: L.bows().n, key: g.beaten.includes('pw:doors:bow1'), toasts: window.__toasts.join('|'), nextWord: L.near(g.player) };
-    }, dt));
-  }
-  for (const [i, r] of pin.entries()) t.ok(r.start === 'Play!' && r.won && r.phase === 'burst' && r.key && r.bows === 1 && /Whack!/.test(r.words) && /Pop! Candy! 🎀 1 \/ 4/.test(r.toasts) && /CRACK!/.test(r.toasts) && r.after === 'idle' && r.nextWord === 'Play!', `at ${i ? 20 : 60} steps a second a skilled kid pops the llama with Whack! on the big button: ${r.big} CRACKs of ${r.hits} hits (${r.whiffs} whiffs) in ${r.t} s, the bow is saved, the star piñata is next ("${r.nextWord}")`);
-  t.ok(/Whack the piñata when it swings AT you!/.test(pin[0].toasts), 'the first piñata says how ("Whack the piñata when it swings AT you!")');
-
-  // standing still and whacking all the time: the piñata goes up for a nap, "Again!", the next try swings slower
-  const nap = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan();
-    window.__toasts = [];
-    window.__at(plan.ring.x, 11, plan.ring.z, 0, 0);
-    const r = window.__playPinata('still', 0.05);
-    const toast = window.__toasts.join('|'), period0 = L.pn.run?.plan.period;
-    for (let i = 0; i < 50; i++) L.step(0.05);
+  t.ok(words.pinata === 'Play!/Whack!' && words.whack === 'Play!/Whack!' && words.catch === 'Play!/null', `the big button: Play! on the gold pad, then Whack! (Piñata Party ${words.pinata}, Pop-Up Whack ${words.whack}; Jack Catch has no button, you run: ${words.catch})`);
+  // careless: whacking all the time in Pop-Up Whack misses the round, "Again!", and after two misses the jacks stay up longer
+  const careless = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live();
+    window.__reset(); window.__setBows([]); window.__toasts = [];
+    window.__spinTo(3); window.__ready();
+    const a = window.__playRound('still', 0.05); for (let i = 0; i < 60 && L.gm.phase === 'missed'; i++) L.step(0.05);
+    const up0 = L.gm && window.__playRound('still', 0.05); for (let i = 0; i < 60 && L.gm.phase === 'missed'; i++) L.step(0.05);
     const word = L.near(g.player);
     L.use(g.player);
-    const out = { ...r, toast, word, misses: L.misses[2], period0, period1: L.pn.run.plan.period, hp1: L.pn.run.plan.hp, round: L.pn.round, bows: L.bows().n };
-    window.__resetGames();
+    const up = L.gm.run.st.plan.up, time = L.gm.run.st.plan.time;
+    return { a: a.out, b: up0.out, word, misses: L.misses.whack[1], up, time, toasts: window.__toasts.join('|') };
+  });
+  t.ok(careless.a === 'missed' && careless.b === 'missed' && careless.misses === 2 && careless.word === 'Again!' && careless.time === 40 && careless.up > 1.3 && /You got \d+! Again\?/.test(careless.toasts) && /It will be a bit slower now/.test(careless.toasts), `Pop-Up Whack: never whacking misses the round (${careless.a}, ${careless.b}); "Again!", and after two misses the jacks stay up ${careless.up.toFixed(2)} s with ${careless.time} s on the clock`);
+  // leaving the party floor in the middle of a round: it waits (not a miss)
+  const leave = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(); window.__toasts = [];
+    const set = L.sets.whack; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0);
+    if (L.gm.phase !== 'run') L.use(g.player);
+    window.__at(40.5, 11, 53.5); L.step(0.05);
+    return { phase: L.gm.phase, misses: L.misses.whack[1], toast: window.__toasts.join('|') };
+  });
+  t.ok(leave.phase === 'ready' && /The game waits for you on the party floor!/.test(leave.toast), `walking off the party floor in a round: "${leave.toast}" (no miss)`);
+  // the Piñata Party with "Two piñatas!" in round 3; "Lights out!" dims the room and the piñata glows
+  const twists = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(), out = {};
+    window.__reset(); window.__setBows([]);
+    window.__spinTo(0); window.__ready();
+    L.gm.round = 3; L.gm.twistRound = 3; L.gm.twist = { id: 'two', say: 'Surprise! Two piñatas!' };
+    const r = window.__playRound('kid', 0.05); out.two = `${r.out} ${r.info.game?.phase}`; out.runs = L.gm.run?.runs.length;
+    window.__reset(); window.__spinTo(0); window.__ready();
+    L.gm.twist = { id: 'dark', say: 'Surprise! Lights out!' };
+    const set = L.sets.pinata; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0); L.use(g.player);
+    for (let i = 0; i < 40; i++) L.step(0.05);
+    L.draw(); out.dim = +L.dim.toFixed(2); out.lights = +g.lightsDim.toFixed(2); out.glow = L.pin[0].body.material === L.pinataGlow;
+    window.__reset(); L.step(0.05); out.after = g.lightsDim;
     return out;
   });
-  t.ok(!nap.won && nap.round === 2 && /went up for a nap\. Again\? It will swing slower\./.test(nap.toast) && nap.word === 'Again!' && nap.misses === 1 && nap.period1 > nap.period0 * 1.15 && nap.bows === 1, `standing still and whacking all the time never pops the star (${nap.hits} hits, ${nap.big} CRACKs, ${nap.whiffs} whiffs in ${nap.t} s): "${nap.toast.split('|').pop()}"; the button says ${nap.word} and the next star swings slower (${nap.period0.toFixed(2)} -> ${nap.period1.toFixed(2)} s, ${nap.hp1} CRACKs)`);
-
-  // the star and the rocket follow the bows; then the rug has no Play! any more
-  const rounds = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), out = [];
-    for (const round of [2, 3]) {
-      window.__at(plan.ring.x, 11, plan.ring.z + 7.5, 0, 0);
-      let r = null;
-      for (let k = 0; k < 4 && !(r && r.won); k++) { r = window.__playPinata('kid', 0.05, 80); for (let i = 0; i < 60; i++) L.step(0.05); }
-      out.push(`${r.round}:${r.won}:${L.bows().n}`);
-    }
-    window.__at(plan.ring.x, 11, plan.ring.z + 7.5, 0, 0);
-    out.push(String(L.near(g.player)));
-    return out;
-  });
-  t.ok(rounds.join() === '2:true:2,3:true:3,null', `the star and the rocket follow the bows; then the rug is done (${rounds.join(' ')})`);
-
-  // a wild gift box near the rug leaves while a piñata swings (none sits between you and the piñata), and the nooks come back after
+  t.ok(/^won/.test(twists.two) && twists.runs === 2, `"Two piñatas!": two piñatas swing on the rug and a kid pops both (${twists.two})`);
+  t.ok(twists.dim < 0.4 && twists.lights === twists.dim && twists.glow && twists.after === 1, `"Lights out!": the room dims to ${twists.dim} and the piñata glows; the lights come back after (${JSON.stringify(twists)})`);
+  // a wild gift box near the party floor leaves while a game runs, the nooks come back after
   const wild = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan();
-    window.__clearBows(); window.__resetGames();
+    const g = window.pokecraft, L = window.__live();
+    window.__reset(); window.__setBows([]);
     for (const w of [...g.creatures.list]) g.creatures.remove(w);
-    const near = g.creatures.spawnAt('giftle', Math.floor(plan.ring.x) + 3, 11, Math.floor(plan.ring.z) - 4, { level: 40, when: 'gift' });
+    const near = g.creatures.spawnAt('giftle', 60, 11, 46, { level: 40, when: 'gift' });
     const nooks0 = g.world.nooks.length;
-    window.__at(plan.ring.x, 11, plan.ring.z + 7.5, 0, 0);
-    L.use(g.player);
+    window.__spinTo(3); window.__ready();
+    const set = L.sets.whack; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0); L.use(g.player);
     for (let i = 0; i < 12; i++) L.step(0.05);
     const out = { gone: !g.creatures.list.includes(near), nooksDuring: g.world.nooks.length, nooks0 };
-    L.pn.run.done = true; L.pn.run.burstAt = L.pn.t; L.pn.round = 1; L.step(0.05); // pop it at once
-    out.nooksAfter = g.world.nooks.length;
-    window.__clearBows(); window.__resetGames();
+    window.__reset(); out.nooksAfter = g.world.nooks.length;
     return out;
   });
-  t.ok(wild.gone && wild.nooksAfter === wild.nooks0 && wild.nooksDuring <= wild.nooks0, `a wild gift box near the rug goes away while a piñata swings, and the nooks are back after (${wild.nooks0} -> ${wild.nooksDuring} -> ${wild.nooksAfter})`);
-
-  /* ---- Jack Catch in the Pop-Up Room ---- */
-  await page.evaluate(async () => {
-    const Bt = await import('/tests/doorsbots.mjs');
-    window.__playCatch = (kind, dt) => {
-      const g = window.pokecraft, L = window.__live(), mind = Bt.catchMind(kind), out = { lids: 0, slow: false };
-      L.manual = true;
-      const start = L.near(g.player);
-      if (start !== 'Play!' && start !== 'Again!') return { start };
-      L.use(g.player);
-      const run = L.jc.run, plan = window.__plan(), box = plan.popup.boxes[run.plan.launches[0].box];
-      let steps = 0;
-      while (L.jc.phase === 'run' && steps < 4000) {
-        const p = g.player.pos, to = mind(run, L.jc.t, p), x0 = p.x, z0 = p.z;
-        if (to) { const sp = g.player.speedCap != null ? Math.min(g.player.speedCap, 4.6) : 4.6, dx = to.x - p.x, dz = to.z - p.z, d = Math.hypot(dx, dz), s = Math.min(d, sp * dt); if (d > 1e-6) { p.x += (dx / d) * s; p.z += (dz / d) * s; } }
-        g.player.vel.set((p.x - x0) / dt, 0, (p.z - z0) / dt);
-        L.step(dt); steps++;
-        if (g.world.get(...box.cell) === 241) out.lids++;
-        if (g.player.speedCap != null) out.slow = true;
-      }
-      g.player.vel.set(0, 0, 0);
-      return { start, won: L.jc.won, score: run.score, need: run.plan.need, splats: run.splats, lids: out.lids, slow: out.slow, phase: L.jc.phase, cap: g.player.speedCap, bow4: g.beaten.includes('pw:doors:bow4') };
-    };
-  });
-  const jc = [];
-  for (const dt of [1 / 60, 1 / 20]) {
-    jc.push(await page.evaluate(dt => {
-      const g = window.pokecraft, L = window.__live(), plan = window.__plan(), pc = plan.popup.pad.centre;
-      window.__clearBows(); window.__resetGames(); window.__toasts = [];
-      window.__at(pc[0], 11, pc[1], Math.atan2(-1, 0), 0);
-      const r = window.__playCatch('pro', dt);
-      return { ...r, toasts: window.__toasts.join('|'), bows: L.bows().n };
-    }, dt));
-  }
-  for (const [i, r] of jc.entries()) t.ok(r.start === 'Play!' && r.won && r.bow4 && r.phase === 'result' && r.lids > 0 && r.cap == null && new RegExp(`You caught ${r.score}! 🎀 1 / 4`).test(r.toasts), `at ${i ? 20 : 60} steps a second a skilled player catches ${r.score} (${r.need} win, ${r.splats} splats): the fourth bow; the lids flip when a jack flies${r.won && r.bow4 && r.cap == null ? '' : ` [${r.start} ${r.phase} cap ${r.cap} lids ${r.lids} ${r.toasts.slice(-160)}]`}`);
-  t.ok(/Catch the jacks! Run under their shadows\. Dodge the pies!/.test(jc[0].toasts), 'Jack Catch says how');
-  // standing on the pad: pies land on you (sticky shoes, cream on the screen), not enough jacks, "Again!", slower next time
-  const jcBad = await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), pc = plan.popup.pad.centre;
-    window.__clearBows(); window.__resetGames(); window.__toasts = [];
-    window.__at(pc[0], 11, pc[1], Math.atan2(-1, 0), 0);
-    let cream = false, cap = null;
-    const r0 = (() => { L.manual = true; L.use(g.player); const run = L.jc.run; let n = 0; while (L.jc.phase === 'run' && n < 4000) { L.step(0.05); n++; L.draw(); if (L.cream.visible && L.cream.material.opacity > 0.2) cream = true; if (g.player.speedCap != null) cap = g.player.speedCap; } return { score: run.score, splats: run.splats, need: run.plan.need, f0: run.plan.launches.find(l => l.kind !== 'pie').flight }; })();
-    const toast = window.__toasts.join('|'), word = L.near(g.player);
-    L.use(g.player);
-    const out = { ...r0, toast, word, cream, cap, misses: L.jcMisses, f1: L.jc.run.plan.launches.find(l => l.kind !== 'pie').flight, after: g.player.speedCap };
-    window.__resetGames(); L.unslow();
-    return out;
-  });
-  t.ok(jcBad.score < jcBad.need && jcBad.splats >= 1 && jcBad.cream && jcBad.cap === 2 && new RegExp(`You caught ${jcBad.score}! Again\\? They will fly slower\\.`).test(jcBad.toast) && /Splat! A cream pie!/.test(jcBad.toast) && jcBad.word === 'Again!' && jcBad.misses === 1 && jcBad.f1 > jcBad.f0, `standing still catches ${jcBad.score} and gets ${jcBad.splats} pies (cream on the screen, sticky shoes: speed ${jcBad.cap}); "Again!" and the jacks fly slower (${jcBad.f0.toFixed(2)} -> ${jcBad.f1.toFixed(2)} s)`);
-  await page.evaluate(() => window.__clearBows());
-
-  /* ---- the Big Gift: ribbons follow the bows, the gate, Jolly Jax ---- */
-  const gift = await page.evaluate(async () => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan(), PB = await import('/src/pictureboss.js');
-    const out = { ribbons: [], gate: [] };
-    for (let i = 1; i <= 4; i++) { const k = `pw:doors:bow${i}`; const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); }
-    for (let n = 0; n <= 4; n++) {
-      if (n > 0) g.beaten.push(`pw:doors:bow${n}`);
-      L.syncBlocks(); L.cells.flush();
-      out.ribbons.push(plan.gift.ribbons.map(l => (l.every(c => g.world.get(...c) === 236) ? 1 : l.every(c => g.world.get(...c) === 243) ? 0 : 9)).join('') + '/' + (g.world.get(...plan.gift.front[0]) === 0 ? 'open' : 'shut')); // 1 = untied, 0 = tied
-      out.gate.push(PB.bossOf('doors').gate(g));
-    }
-    return out;
-  });
-  t.ok(gift.ribbons.join() === '0000/shut,1000/shut,1100/shut,1110/shut,1111/open', `the four ribbons follow the bows and the front opens at 4 (${gift.ribbons.join(' ')})`);
-  t.ok(/Win 4 more golden bows to untie them! \(🎀 0 \/ 4\)/.test(gift.gate[0]) && /Win 1 more golden bow to untie them! \(🎀 3 \/ 4\)/.test(gift.gate[3]) && gift.gate[4] === null, `the Boss's gate words: "${gift.gate[0]}"`);
+  t.ok(wild.gone && wild.nooksAfter === wild.nooks0 && wild.nooksDuring <= wild.nooks0, `a wild gift box near the party floor goes away while a game runs, and the nooks are back after (${wild.nooks0} -> ${wild.nooksDuring} -> ${wild.nooksAfter})`);
 
   // wild gift boxes: label, "Open!", the reveal text, seen in the Book only after
-  const wildT = await page.evaluate(async () => {
-    const g = window.pokecraft, S = await import('/src/species.js');
-    const bs = g.world.bosses[0];
-    window.__at(56.5, 11, 66.5, 0, 0);
-    const w = g.creatures.spawnAt('popjack', 56, 11, 62, { level: 40, when: 'gift' });
-    g.player.lookAt({ x: 56.5, y: 11.5, z: 62.5 });
+  const wildT = await page.evaluate(() => {
+    const g = window.pokecraft;
+    for (const w of [...g.creatures.list]) g.creatures.remove(w);
+    window.__at(40.5, 11, 72.5, 0, 0);
+    const w = g.creatures.spawnAt('popjack', 40, 11, 68, { level: 40, when: 'gift' });
+    g.player.lookAt({ x: 40.5, y: 11.5, z: 68.5 });
     return { wrapped: w.wrapped, seenBefore: g.book.seen.has('popjack') };
   });
-  await waitFor(page, () => /A gift box!/.test(document.getElementById('prompt').textContent) && document.getElementById('btn-act')?.textContent !== undefined, null, 60000);
-  const lab = await page.evaluate(() => ({ prompt: document.getElementById('prompt').textContent, wrapped: window.pokecraft.creatures.list.some(w => w.wrapped) }));
+  await waitFor(page, () => /A gift box!/.test(document.getElementById('prompt').textContent), null, 60000);
+  const lab = await page.evaluate(() => ({ prompt: document.getElementById('prompt').textContent }));
   t.ok(wildT.wrapped && !wildT.seenBefore && /A gift box! 🎁 · (tap|click or E) to open/.test(lab.prompt), `a wild Surprise creature: "${lab.prompt}"`);
   await page.evaluate(() => window.pokecraft.interact());
   await waitFor(page, () => window.pokecraft.inBattle && /Surprise! The gift was a wild Popjack!/.test(document.getElementById('b-log').textContent), null, 180000);
-  const rev = await page.evaluate(() => { const g = window.pokecraft, w = g.creatures.list.find(x => x.data.species === 'popjack'); return { wrapped: w.wrapped, root: w.model.userData.parts.root.visible, seen: g.book.seen.has('popjack'), log: document.getElementById('b-log').textContent.trim() }; });
-  t.ok(!rev.wrapped && rev.root && rev.seen, `opening it starts the battle ("${rev.log}"), the creature shows, and only now is it in the Book`);
+  const rev = await page.evaluate(() => { const g = window.pokecraft, w = g.creatures.list.find(x => x.data.species === 'popjack'); return { wrapped: w.wrapped, root: w.model.userData.parts.root.visible, seen: g.book.seen.has('popjack') }; });
+  t.ok(!rev.wrapped && rev.root && rev.seen, 'opening it starts the battle, the creature shows, and only now is it in the Book');
   await waitFor(page, () => !!document.querySelector('#b-actions button'), null, 180000);
   await page.evaluate(() => document.querySelector('#b-actions button:last-child').click()); // Run
   await waitFor(page, () => !window.pokecraft.inBattle, null, 120000).catch(() => {});
   if (await page.evaluate(() => window.pokecraft.inBattle)) await page.evaluate(() => { window.pokecraft.battle.active = false; });
   await page.evaluate(() => { const g = window.pokecraft; for (const w of [...g.creatures.list]) g.creatures.remove(w); g.inBattle = false; });
-
-  // the Book's line
   const book = await page.evaluate(async () => {
     const g = window.pokecraft;
     g.book.markSeen('giftle'); g.book.markCaught('giftle');
@@ -880,192 +696,187 @@ async function livePart({ browser, base, t, page }) {
     g.book.close?.();
     return txt;
   });
-  t.ok(/Room of Doors/.test(book) && /wrapped in a gift box/.test(book), `the Creature Book page of Giftle says "Room of Doors" and "wrapped in a gift box" (${book.slice(0, 160).replace(/\s+/g, ' ')})`);
+  t.ok(/Surprise Party/.test(book) && /wrapped in a gift box/.test(book), `the Creature Book page of Giftle says "Surprise Party" and "wrapped in a gift box" (${book.slice(0, 120).replace(/\s+/g, ' ')})`);
 
   /* ---- the guide and the score chip ---- */
   const guide = await page.evaluate(async () => {
-    const g = window.pokecraft, plan = window.__plan(), A = await import('/src/doorsland.js'), out = [];
-    const clear = () => { for (let i = 1; i <= 4; i++) { const k = `pw:doors:bow${i}`; const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); } };
-    clear(); window.__at(56.5, 11, 66.5, 0, 0);
-    const txt = (a) => a ? a.text('↑', 5) : null;
-    out.push(txt(A.doorsAim(g.world, g.player.pos, g)));
-    for (let i = 1; i <= 3; i++) g.beaten.push(`pw:doors:bow${i}`);
-    out.push(txt(A.doorsAim(g.world, g.player.pos, g)));
-    g.beaten.push('pw:doors:bow4');
-    out.push(txt(A.doorsAim(g.world, g.player.pos, g)));
-    g.stars.push('doors');
-    out.push(txt(A.doorsAim(g.world, g.player.pos, g)));
-    g.stars.pop();
-    // inside a surprise room it points back to that room's door
-    const r = plan.rooms.find(q => q.kind === 'springs'), c = L_inner(r);
-    window.__at(c[0], 11, c[1], 0, 0);
-    out.push(txt(A.doorsAim(g.world, g.player.pos, g)));
-    clear();
-    return out;
-    function L_inner(r) { return [(r.inner.x0 + r.inner.x1 + 1) / 2, (r.inner.z0 + r.inner.z1 + 1) / 2]; }
+    const g = window.pokecraft, L = window.__live(), A = await import('/src/partyland.js'), out = [];
+    const txt = a => (a ? a.text('↑', 5) : null);
+    window.__reset(); window.__setBows([]);
+    const crew = ['pw:doors:crew1', 'pw:doors:crew2'], had = crew.filter(k => g.beaten.includes(k));
+    for (const k of crew) { const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); }
+    for (const n of g.npcs.list) if (n.kind === 'crew') g.npcs.sendAway(n);
+    L.crashed.clear(); L.sync();
+    window.__at(56.5, 11, 72.5);
+    out.push(txt(A.partyAim(g.world, g.player.pos, g)));
+    window.__setBows([1]); L.sync(); // Rosa crashes in
+    out.push(txt(A.partyAim(g.world, g.player.pos, g)));
+    g.beaten.push('pw:doors:crew1', 'pw:doors:crew2'); L.sync();
+    out.push(txt(A.partyAim(g.world, g.player.pos, g)));
+    window.__spinTo(1); window.__at(40.5, 11, 72.5);
+    out.push(txt(A.partyAim(g.world, g.player.pos, g)));
+    window.__reset(); window.__setBows([1, 2, 3, 4]); L.sync();
+    out.push(txt(A.partyAim(g.world, g.player.pos, g)));
+    g.stars.push('doors'); out.push(txt(A.partyAim(g.world, g.player.pos, g))); g.stars.pop();
+    L.chip(); const chip = document.getElementById('score-chip')?.textContent;
+    window.__setBows([]); L.sync();
+    return { list: out, chip };
   });
-  t.ok(/Piñata Party/.test(guide[0]) && /Jack Catch/.test(guide[1]) && /Big Gift/.test(guide[2]) && /Way back|Boss|star/i.test(guide[3] || '') && /Back to the hall/.test(guide[4]), `the guide: ${guide.map(s => (s || '').replace(/[↑↓←→]/g, '').trim().slice(0, 28)).join(' | ')}`);
-  const chip = await page.evaluate(() => { const g = window.pokecraft; window.__at(56.5, 11, 60.5, 0, 0); const L = window.__live(); L.chip(); return document.getElementById('score-chip')?.textContent || ''; });
-  t.ok(/🎀 0 \/ 4/.test(chip), `the score chip in the hall says "${chip}"`);
+  const gl = guide.list;
+  t.ok(/Party Spinner/.test(gl[0]) && /Party crasher Ribbon Rosa/.test(gl[1]) && /Party Spinner .*1 \/ 4/.test(gl[2]) && /Jack Catch/.test(gl[3]) && /Jolly Jax on the cake/.test(gl[4]) && /Way back/.test(gl[5] || ''), `the guide: ${gl.slice(0, 6).map(s => (s || '').replace(/[↑↓←→]/g, '').trim().slice(0, 30)).join(' | ')}`);
+  t.ok(/Battle Jolly Jax on the cake!/.test(guide.chip), `the chip with four bows: "${guide.chip}"`);
+
+  /* ---- the finale: four bows light the candles, the guests gather, SURPRISE!, Jax bursts out of the cake ---- */
+  const fin = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live();
+    window.__reset(); window.__setBows([1, 2, 3]); L.sync(); window.__toasts = [];
+    const cells = [[54, 16, 29], [58, 16, 33]];
+    const before = { candles: cells.map(c => g.world.get(...c)).join(), jax: g.npcs.list.find(n => n.kind === 'boss').away };
+    // win the last game for real: Pop-Up Whack
+    window.__spinTo(3);
+    const r = window.__playGame('pro', 0.05);
+    for (let i = 0; i < 6; i++) g.gymLive.update(0.3);
+    const mid = { finale: L.finale ? L.finale.t : null };
+    for (let i = 0; i < 80; i++) L.step(0.05);
+    const jax = g.npcs.list.find(n => n.kind === 'boss'), guests = g.npcs.list.filter(n => n.kind === 'guest');
+    return { r: r.join(), before, mid, candles: cells.map(c => g.world.get(...c)).join(), jax: !jax.away && jax.model.visible && Math.abs(jax.model.position.y - 16) < 0.01, guestsZ: guests.map(n => n.pos.z.toFixed(1)).join(), toasts: window.__toasts.join('|') };
+  });
+  t.ok(fin.r === '1:won,2:won,3:won' && fin.before.candles === '0,0' && fin.before.jax && fin.mid.finale != null && fin.candles === '243,243' && fin.jax && /SURPRISE!/.test(fin.toasts) && /This party is for YOU/.test(fin.toasts) && fin.guestsZ.split(',').every(z => +z < 40), `the fourth bow: the candles light (${fin.before.candles} -> ${fin.candles}), the guests gather round the cake (z ${fin.guestsZ}), everybody shouts SURPRISE! and Jolly Jax bursts out of the top of the cake`);
 
   /* ---- Jolly Jax and the helpers ---- */
   const crew = await page.evaluate(async () => {
-    const g = window.pokecraft, S = await import('/src/species.js'), PB = await import('/src/pictureboss.js'), plan = window.__plan();
+    const g = window.pokecraft, S = await import('/src/species.js'), PB = await import('/src/pictureboss.js');
     const def = PB.bossOf('doors');
-    const out = { levels: def.team.map(t => t[1]).join(), names: def.team.map(t => t[0]).join(), look: def.crew.map(c => c.look).join(), crewLv: def.crew.map(c => c.team.map(t => t[1]).join('-')).join('/') };
+    const out = { levels: def.team.map(t => t[1]).join(), names: def.team.map(t => t[0]).join(), look: def.crew.map(c => c.look).join(), crewLv: def.crew.map(c => c.team.map(t => t[1]).join('-')).join('/'), title: def.title };
     out.movesOk = def.team.filter(t => t[2]).every(t => JSON.stringify(t[2]) === JSON.stringify(S.movesWith(t[0], t[1], ...(t[0] === 'fiestallama' ? ['candyburst', 'springpunch', 'surpriseparty'] : t[0] === 'jestergrin' ? ['tadaa', 'springpunch', 'surpriseparty', 'peekapop'] : []))));
-    out.type = def.type; out.model = JSON.stringify(def.model); out.title = def.title;
-    const npcs = g.npcs.list.filter(n => n.kind === 'crew' && n.def.boss === 'doors');
-    out.crewNpcs = npcs.length; out.talk = npcs.map(n => g.bosses.talkPrompt(n).action).join();
-    out.boss = !!g.npcs.list.find(n => n.kind === 'boss' && n.def.id === 'doors');
-    // open a trainer door: the helper jumps out one block
-    const r = plan.rooms.find(q => q.kind === 'trainer1'), npc = npcs.find(n => n.def.index === 0), p0 = npc.pos.clone();
-    window.__at(r.door.centre[0], 11, r.door.centre[1] + (r.side === 0 ? 3 : 0), 0, 0);
-    const L = window.__live(), td = L.doorList.find(d => d.kind === 'trainer1'); td.opened = false; for (const c of td.cells) L.cells.want(c[0], c[1], c[2], 238); L.openDoor(td); // (it was opened above: shut it for this check)
-    for (let i = 0; i < 20; i++) L.step(0.05);
-    out.jump = +p0.distanceTo(npc.pos).toFixed(2);
+    out.type = def.type; out.model = JSON.stringify(def.model);
+    const save = g.beaten.slice(); window.__setBows([]); out.gate0 = def.gate(g); window.__setBows([1, 2, 3]); out.gate3 = def.gate(g); window.__setBows([1, 2, 3, 4]); out.gate4 = def.gate(g); g.beaten.splice(0, g.beaten.length, ...save);
     return out;
   });
-  t.ok(crew.levels === '61,62,62,63' && crew.names === 'bowtower,fiestallama,partypop,jestergrin' && crew.type === 'surprise' && crew.movesOk && crew.model === '{"species":"jestergrin","scale":2.1}', `Jolly Jax is a giant Jestergrin with levels ${crew.levels} (${crew.title}); his move lists equal movesWith`);
-  t.ok(crew.look === 'party,party' && crew.crewLv === '59-60/60-61-61' && crew.crewNpcs === 2 && crew.boss && Math.abs(crew.jump - 1) < 0.05, `Ribbon Rosa and Confetti Kit (party hats, levels ${crew.crewLv}) wait behind surprise doors and jump out one block when theirs opens (${crew.jump})`);
-  t.ok(crew.talk === 'Battle!,Battle!', 'the helpers say Battle! on the big button');
+  t.ok(crew.levels === '61,62,62,63' && crew.names === 'bowtower,fiestallama,partypop,jestergrin' && crew.type === 'surprise' && crew.movesOk && crew.model === '{"species":"jestergrin","scale":2.1}' && crew.title === 'Jolly Jax · Surprise Party Boss', `Jolly Jax is a giant Jestergrin with levels ${crew.levels} (${crew.title}); his move lists equal movesWith`);
+  t.ok(/Win 4 more golden bows at my party games first! \(🎀 0 \/ 4\)/.test(crew.gate0) && /Win 1 more golden bow/.test(crew.gate3) && crew.gate4 === null && crew.look === 'party,party' && crew.crewLv === '59-60/60-61-61', `his gate: "${crew.gate0}"; Ribbon Rosa and Confetti Kit in party hats (${crew.crewLv})`);
   if (!process.env.SURPRISE_SKIP_BOSS) {
-    // the Big Gift shut: Jax says so; with 4 bows: the battle, and a win unties the bows again and gives the star
-    const gate = await page.evaluate(() => {
-      const g = window.pokecraft, npc = g.npcs.list.find(n => n.kind === 'boss'); window.__toasts = [];
-      g.bosses.talk(npc);
-      return { toast: window.__toasts.join('|'), inBattle: g.inBattle };
-    });
-    t.ok(/My gift has 4 ribbons/.test(gate.toast) && !gate.inBattle, `with no bows Jax will not battle ("${gate.toast}")`);
+    // the helpers not beaten: Jax says so; beaten: the battle; a win gives the star and uses the four bows up (a rematch is a new party)
     await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js');
-      for (let i = 1; i <= 4; i++) g.beaten.push(`pw:doors:bow${i}`);
-      window.__live().syncBlocks();
-      window.__toasts = []; g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss')); // owner 2026-10-27: his two helpers first
+      window.__setBows([1, 2, 3, 4]); window.__live().sync();
+      for (const k of ['pw:doors:crew1', 'pw:doors:crew2']) { const j = g.beaten.indexOf(k); if (j >= 0) g.beaten.splice(j, 1); }
+      window.__toasts = []; g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
       window.__crewGate = !g.inBattle && /Beat Ribbon Rosa and Confetti Kit first/.test(window.__toasts.join('|'));
-      for (const k of ['pw:doors:crew1', 'pw:doors:crew2']) if (!g.beaten.includes(k)) g.beaten.push(k);
-      g.party = [S.makeCreature('blazehound', 100), S.makeCreature('thunderwolf', 100)]; g.cubes = 0; // two: Jax's ace powers up at half HP and its Ta-Daa! can finish a tired lone creature
+      g.beaten.push('pw:doors:crew1', 'pw:doors:crew2');
+      g.party = [S.makeCreature('blazehound', 100), S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
       window.__cele = null; const cf = g.ui.celebrate.bind(g.ui); g.ui.celebrate = (...a) => { window.__cele = a; cf(...a); };
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 30000);
     const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, foes: b.foes.map(f => f.level).join(), crewGate: window.__crewGate }; });
-    t.ok(bt.crewGate, 'owner 2026-10-27: with the four bows but his helpers not beaten Jax says to beat Ribbon Rosa and Confetti Kit first');
+    t.ok(bt.crewGate, 'with the four bows but his helpers not beaten Jax says to beat Ribbon Rosa and Confetti Kit first');
     t.ok(bt.boss && bt.foes === '61,62,62,63', `the Boss battle has Jax's four creatures at levels ${bt.foes}`);
     t.ok(await playBattle(page), 'the Boss battle is won');
-    await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 180000).catch(async () => { console.log('  star missing: ' + JSON.stringify(await page.evaluate(() => ({ inBattle: window.pokecraft.inBattle, stars: window.pokecraft.stars, bows: window.pokecraft.beaten.filter(k => /doors/.test(k)), log: document.getElementById('b-log')?.textContent?.slice(-120) })))); });
-    const won = await page.evaluate(() => { const g = window.pokecraft; return { stars: g.stars.join(), note: window.__cele?.[0], small: window.__cele?.[1], bows: g.beaten.filter(k => /pw:doors:bow/.test(k)).length, gifts: g.beaten.filter(k => /pw:doors:gift/.test(k)).length }; });
-    t.ok(/Room of Doors star/.test(won.note || '') && /Jax was my favourite toy/.test(won.small || ''), `the star of the Room of Doors and the Wizard's note (${won.note})`);
-    t.ok(won.bows === 0 && won.gifts === 4, `a won battle uses the four bows up again (${won.bows} left), the four gifts stay (${won.gifts})`);
-    // losing: you stay in the room, rested
+    await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 180000).catch(() => {});
+    await page.waitForTimeout(500);
+    const won = await page.evaluate(() => { const g = window.pokecraft; for (let i = 0; i < 4; i++) g.gymLive.update(0.3); return { stars: g.stars.join(), note: window.__cele?.[0], small: window.__cele?.[1], bows: g.beaten.filter(k => /pw:doors:bow/.test(k)).length, crew: g.beaten.filter(k => /pw:doors:crew/.test(k)).length, jax: g.npcs.list.find(n => n.kind === 'boss').away, candles: g.world.get(54, 16, 29) }; });
+    t.ok(/Surprise Party star/.test(won.note || '') && /Jax was my favourite toy/.test(won.small || ''), `the star of the Surprise Party and the Wizard's note (${won.note})`);
+    t.ok(won.bows === 0 && won.crew === 2 && won.jax && won.candles === 0, `a won battle uses the four bows up (${won.bows} left; Jax back in his cake, the candles out); the helpers stay beaten (${won.crew})`);
+    // a rematch party is harder
+    const hard = await page.evaluate(() => { const L = window.__live(); window.__reset(); window.__spinTo(2); window.__ready(); const g = window.pokecraft; const set = L.sets.stack; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0); L.use(g.player); const out = { hard: L.hard(), need: L.gm.run.st.plan.need }; window.__reset(); return out; });
+    t.ok(hard.hard && hard.need === 6, `with the star the party's games are a bit harder (Gift Stack round 1 needs ${hard.need})`);
+    // losing: you stay at the party, rested by the table
     await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js');
       g.inBattle = false; document.body.classList.remove('in-battle');
       g.party = [S.makeCreature('fluffin', 3)];
-      for (let i = 1; i <= 4; i++) if (!g.beaten.includes(`pw:doors:bow${i}`)) g.beaten.push(`pw:doors:bow${i}`);
+      window.__setBows([1, 2, 3, 4]); window.__live().sync();
       g.stars = g.stars.filter(s => s !== 'doors'); g.bossWins.doors = 0;
       g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
     });
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 30000);
     await playBattle(page);
     await waitFor(page, () => !window.pokecraft.inBattle && !window.pokecraft.realms.busy, null, 60000);
-    const lost = await page.evaluate(() => { const g = window.pokecraft; return { place: g.place, hp: g.party[0].hp, max: null, star: g.stars.includes('doors') }; });
-    t.ok(lost.place === 'doors' && lost.hp > 0 && !lost.star, `losing keeps you in the Room of Doors, rested (hp ${lost.hp})`);
-    await page.evaluate(() => { const g = window.pokecraft; g.inBattle = false; for (let i = 1; i <= 4; i++) { const j = g.beaten.indexOf(`pw:doors:bow${i}`); if (j >= 0) g.beaten.splice(j, 1); } window.__live().syncBlocks(); });
+    const lost = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos; return { place: g.place, hp: g.party[0].hp, star: g.stars.includes('doors'), at: [p.x, p.y, p.z] }; });
+    t.ok(lost.place === 'doors' && lost.hp > 0 && !lost.star && Math.abs(lost.at[0] - 38.5) < 0.01 && Math.abs(lost.at[2] - 53.5) < 0.01, `losing keeps you at the party, rested by the table (${lost.at.map(v => v.toFixed(1))})`);
+    await page.evaluate(() => { const g = window.pokecraft; g.inBattle = false; });
   }
 
-  /* ---- a reload: the bows, the gifts and the star are kept ---- */
-  const before = await page.evaluate(() => { const g = window.pokecraft; for (const k of ['pw:doors:bow1', 'pw:doors:bow2']) if (!g.beaten.includes(k)) g.beaten.push(k); g.save(true); return g.beaten.filter(k => /pw:doors/.test(k)).sort().join(); });
+  /* ---- a reload: the bows, the crew and the mark are kept ---- */
+  const before = await page.evaluate(() => { const g = window.pokecraft; window.__reset(); window.__setBows([1, 3]); g.save(true); return g.beaten.filter(k => /pw:doors/.test(k)).sort().join(); });
   await page.reload();
   await page.waitForFunction(() => window.pokecraft && window.pokecraft.world);
   await continueGame(page);
-  const reloaded = await page.evaluate(() => { const g = window.pokecraft; return { keys: g.beaten.filter(k => /pw:doors/.test(k)).sort().join(), place: g.place, stars: g.stars.join() }; });
-  t.ok(reloaded.keys === before, `after a reload the bows and gifts are still there (${reloaded.keys})`);
-  if (reloaded.place === 'doors') {
-    await helpers(page);
-    const rl = await page.evaluate(() => { const g = window.pokecraft, L = window.__live(), plan = window.__plan(); L.syncBlocks(); return { chests: plan.chests.map(c => g.world.get(...c.cell)).join(), ribbons: g.world.get(...plan.gift.ribbons[0][0]), bowsUsed: L.bows().n }; });
-    t.ok(rl.ribbons === 236 && new Set(rl.chests.split(',')).size === 1 && rl.chests.split(',')[0] !== String(73) && rl.bowsUsed >= 2, `back in the room the opened chests and the first ribbons are as you left them (chests ${rl.chests}, ribbon ${rl.ribbons})`);
-  } else t.ok(true, `after a reload you are in ${reloaded.place}`);
-  await helpers(page).catch(() => {});
+  const reloaded = await page.evaluate(() => { const g = window.pokecraft; return { keys: g.beaten.filter(k => /pw:doors/.test(k)).sort().join(), place: g.place }; });
+  t.ok(reloaded.keys === before && reloaded.place === 'doors', `after a reload you are at the party and the bows are still there (${reloaded.keys})`);
+  if (reloaded.place !== 'doors') await intoParty(page); else await helpers(page);
+  await toasts(page);
+  const face = await page.evaluate(() => { const L = window.__live(); for (let i = 0; i < 3; i++) window.pokecraft.gymLive.update(0.3); return L.faceKey; });
+  t.ok(face === 'true,false,true,false', `the Spinner's face shows a bow on the won games (${face})`);
 
   /* ---- screenshots ---- */
-  if (reloaded.place !== 'doors') await intoDoors(page); else await helpers(page);
-  await page.evaluate(() => { const g = window.pokecraft; for (const k of [...g.beaten]) if (/pw:doors:bow/.test(k)) g.beaten.splice(g.beaten.indexOf(k), 1); window.__live().manual = false; });
-  await shot(page, 'hall', [56.5, 11, 69.5, 0, 0.12]);
+  await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); window.__reset(); window.__setBows([1, 3]); L.sync(); L.manual = false; for (const w of [...g.creatures.list]) g.creatures.remove(w); });
+  await shot(page, 'party', [56.5, 11, 74.2, 0, 0.12]);
+  await page.evaluate(() => { const L = window.__live(); L.manual = true; window.__toPad(); L.use(window.pokecraft.player); for (let i = 0; i < 9; i++) L.step(0.05); window.__at(65.5, 11.6, 53.5, -Math.PI / 2, 0.36); L.draw(); });
+  await shot(page, 'spinner', null, 1200);
   // the Piñata Party: the llama swinging at you, the stick in your hand
   await page.evaluate(() => {
-    const L = window.__live(), g = window.pokecraft, plan = window.__plan();
-    for (const w of [...g.creatures.list]) g.creatures.remove(w);
-    window.__resetGames();
-    L.manual = true;
-    window.__at(plan.ring.x, 11, plan.ring.z + 7.5, 0, 0);
-    L.use(g.player);
-    // a moment when it is low and coming: stand 2.6 in front of it and look at it, the stick half way through a swing
-    let tt = 0.6; for (; tt < 8; tt += 0.05) { const q = window.__pinAt(tt); if (q.y < 13.15 && Math.hypot(q.vx, q.vz) > 2) break; }
-    while (L.pn.t < tt) L.step(0.05);
-    const q = window.__pinAt(L.pn.t), v = Math.hypot(q.vx, q.vz);
+    const L = window.__live(), g = window.pokecraft;
+    window.__reset(); window.__setBows([]); window.__spinTo(0); window.__ready();
+    const set = L.sets.pinata; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0); L.use(g.player);
+    const run = L.gm.run.runs[0];
+    let tt = 0.6; for (; tt < 8; tt += 0.05) { const q = window.__pinAt(run, tt); if (q.y < 13.15 && Math.hypot(q.vx, q.vz) > 2) break; }
+    while (L.gm.run.t < tt) L.step(0.05);
+    const q = window.__pinAt(run, L.gm.run.t), v = Math.hypot(q.vx, q.vz);
     window.__at(q.x + (q.vx / v) * 2.6, 11, q.z + (q.vz / v) * 2.6, 0, 0.05);
     g.player.lookAt({ x: q.x, y: q.y + 0.2, z: q.z });
-    L.pn.swingT = 0.09;
-    L.draw();
+    L.gm.run.swingT = 0.09; L.draw();
   });
   await shot(page, 'pinata', null, 800);
   // Jack Catch: jacks in the air with their shadows, a pie and its pink ring
   await page.evaluate(() => {
-    const L = window.__live(), g = window.pokecraft, plan = window.__plan(), pc = plan.popup.pad.centre;
-    window.__resetGames();
-    window.__at(pc[0], 11, pc[1], -Math.PI / 2, 0.1);
-    L.manual = true;
-    L.use(g.player);
-    g.player.pitch = 0.1;
-    const run = L.jc.run, pie = run.plan.launches.find(l => l.kind === 'pie' && l.t0 > 4) || run.plan.launches.find(l => l.kind === 'pie');
+    const L = window.__live(), g = window.pokecraft;
+    window.__reset(); window.__setBows([]); window.__spinTo(1); window.__ready();
+    const set = L.sets.catch; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0.15); L.use(g.player);
+    const run = L.gm.run.run, pie = run.plan.launches.find(l => l.kind === 'pie' && l.t0 > 4) || run.plan.launches.find(l => l.kind === 'pie');
     const until = pie ? pie.t0 + pie.flight * 0.45 : 6;
-    while (L.jc.t < until) L.step(0.05);
-    L.draw();
+    while (L.gm.run.t < until && L.gm.phase === 'run') L.step(0.05);
+    window.__at(set.standAt[0], 11, set.standAt[1] + 1.5, 0, 0.25); L.draw();
   });
   await shot(page, 'catch', null, 800);
-  await page.evaluate(() => { window.__resetGames(); window.__clearBows(); });
-  // a wild gift box in the hall, then the lid pops off and the creature shows
+  // Gift Stack: a few presents stacked, one on the hook
   await page.evaluate(() => {
-    const g = window.pokecraft;
-    window.__live().manual = false;
-    for (const w of [...g.creatures.list]) g.creatures.remove(w);
-    g.creatures.spawnAt('popjack', 58, 11, 62, { level: 40, when: 'gift' });
-    g.creatures.spawnAt('giftle', 55, 11, 62, { level: 40, when: 'gift' });
-    window.__at(56.5, 11, 66.5, 0, 0.05);
-    g.creatures.viewer = g.player.pos;
+    const L = window.__live(), g = window.pokecraft;
+    window.__reset(); window.__setBows([]); window.__spinTo(2); window.__ready(); L.gm.round = 3;
+    const set = L.sets.stack; window.__at(set.standAt[0], 11, set.standAt[1] + 1, 0, 0.45); L.use(g.player);
+    const Bt = window.__bots, mind = Bt.stackMind('kid');
+    for (let i = 0; i < 2000 && L.gm.run.st.placed < 5; i++) { L.step(1 / 30); if (mind(L.gm.run.st, L.gm.run.t, 1 / 30)) L.use(g.player); }
+    for (let i = 0; i < 20; i++) L.step(1 / 30);
+    g.player.lookAt({ x: 56.5, y: 16.5, z: 52.5 }); L.draw();
   });
+  await shot(page, 'stack', null, 800);
+  // Pop-Up Whack: jacks up, one with a pie, a lid jiggling
+  await page.evaluate(() => {
+    const L = window.__live(), g = window.pokecraft;
+    window.__reset(); window.__setBows([]); window.__spinTo(3); window.__ready(); L.gm.round = 2;
+    const set = L.sets.whack; window.__at(set.standAt[0], 11, set.standAt[1] + 1, 0, 0.1); L.use(g.player);
+    const st = L.gm.run.st, pie = st.plan.pops.find(p => p.kind === 'pie' && p.t0 > 2);
+    while (L.gm.run.t < pie.t0 + 0.3) L.step(0.05);
+    g.player.lookAt({ x: 56.5, y: 12.2, z: 53 }); L.draw();
+  });
+  await shot(page, 'whack', null, 800);
+  // the finale: candles lit, Jolly Jax on the cake, the guests round it
+  await page.evaluate(() => { const L = window.__live(); window.__reset(); window.__setBows([1, 2, 3, 4]); L.sync(); for (let i = 0; i < 80; i++) L.step(0.05); L.chip(); window.__at(56.5, 11, 45.5, 0, 0.32); });
+  await shot(page, 'finale', null, 2500);
+  // a wild gift box, then the family
+  await page.evaluate(() => { const g = window.pokecraft; window.__setBows([]); window.__live().sync(); for (const w of [...g.creatures.list]) g.creatures.remove(w); g.creatures.spawnAt('popjack', 58, 11, 62, { level: 40, when: 'gift' }); g.creatures.spawnAt('giftle', 55, 11, 62, { level: 40, when: 'gift' }); window.__at(56.5, 11, 66.5, 0, 0.05); g.creatures.viewer = g.player.pos; });
   await shot(page, 'giftbox', null, 1500);
-  await page.evaluate(() => {
-    const g = window.pokecraft, w = g.creatures.list.find(x => x.data.species === 'popjack');
-    w.reveal();
-    for (let i = 0; i < 8; i++) { g.creatures.update(0.05, g.player.pos, g.spawnPoint, false, false); }
-  });
-  await shot(page, 'giftopen', null, 500);
-  // the seven creatures in a row
   await page.evaluate(async () => {
     const g = window.pokecraft, ids = ['giftle', 'bowtower', 'popjack', 'jestergrin', 'pinpop', 'fiestallama', 'partypop'];
     for (const w of [...g.creatures.list]) g.creatures.remove(w);
     ids.forEach((id, i) => { const w = g.creatures.spawnAt(id, 47 + i * 2.2, 11, 60, { level: 40, when: 'gift' }); w.heading = 0; w.unwrap(); w.life = 1e9; });
-    g.creatures.updateGifts(5); // the open boxes are gone
+    g.creatures.updateGifts(5);
     window.__at(56.5, 11, 71.5, 0, 0.08);
-    g.creatures.viewer = new (g.player.pos.constructor)(80, 11, 80); // far away: nobody turns to look
+    g.creatures.viewer = new (g.player.pos.constructor)(80, 11, 80);
   });
   await shot(page, 'family', null, 1200);
-  // the Big Gift, open, with Jolly Jax inside
-  await page.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), plan = window.__plan();
-    for (const w of [...g.creatures.list]) g.creatures.remove(w);
-    for (let i = 1; i <= 4; i++) if (!g.beaten.includes(`pw:doors:bow${i}`)) g.beaten.push(`pw:doors:bow${i}`);
-    L.syncBlocks(); L.cells.flush();
-    const b = plan.gift.bossAt;
-    // stand in the chamber, nine blocks in front of Jax (the hall is south of him), looking at him
-    window.__at(b[0], 11, b[1] + 9, 0, 0);
-    g.player.lookAt({ x: b[0], y: 13, z: b[1] });
-    g.npcs.update?.(0.1, g.player.pos);
-  });
-  await shot(page, 'bigift', null, 2000);
-  await page.evaluate(() => { const g = window.pokecraft; for (let i = 1; i <= 4; i++) { const j = g.beaten.indexOf(`pw:doors:bow${i}`); if (j >= 0) g.beaten.splice(j, 1); } window.__live().syncBlocks(); });
+  await page.evaluate(() => { const g = window.pokecraft; for (const w of [...g.creatures.list]) g.creatures.remove(w); window.__reset(); });
 }
 
 /* ============================================================================================ */
@@ -1076,92 +887,55 @@ async function ipadPart({ browser, base, t }) {
   const ip = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
   await newGame(ip, 0);
   const before = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
-  await intoDoors(ip);
+  await intoParty(ip);
+  const real = () => ip.evaluate(() => { window.__live().playing = () => document.getElementById('pause').classList.contains('hidden'); });
   // the word on the big button at a spot (the real rule: the live part runs only while the game is not paused)
-  const lookWord = async (pos, tgt, want) => {
-    await ip.evaluate(([pos, tgt]) => {
-      const g = window.pokecraft, L = window.__live();
-      L.playing = () => document.getElementById('pause').classList.contains('hidden');
-      for (const w of [...g.creatures.list]) g.creatures.remove(w); // (a wild gift box under the crosshair would make it "Open!")
-      L.findAll(); // (the Piñata Hunt is the main part's)
-      window.__at(pos[0], pos[1], pos[2], 0, 0); g.player.lookAt({ x: tgt[0], y: tgt[1], z: tgt[2] });
-    }, [pos, tgt]);
-    let text = '';
-    for (let i = 0; i < 80; i++) { await ip.waitForTimeout(150); text = await ip.evaluate(() => document.getElementById('btn-act')?.textContent || ''); if (text === want) break; }
-    return text;
-  };
-  const plan = await ip.evaluate(() => { const p = window.__plan(); return { pad: [(p.ring.pad.x0 + p.ring.pad.x1 + 1) / 2, 11, (p.ring.pad.z0 + p.ring.pad.z1 + 1) / 2], ring: [p.ring.x, p.ring.z], pop: p.popup.pad.centre, slide: p.slide.stand, box: p.popup.boxes[4] }; });
+  const word = async want => { let text = ''; for (let i = 0; i < 80; i++) { await ip.waitForTimeout(150); text = await ip.evaluate(() => document.getElementById('btn-act')?.textContent || ''); if (text === want) break; } return text; };
+  const tapButton = async () => { const b = await ip.evaluate(() => { const r = document.getElementById('btn-act').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }); await ip.touchscreen.tap(b.x, b.y); };
   const w = {};
-  const side = await ip.evaluate(() => { const p = window.__plan(), r = p.rooms.find(q => q.kind === 'springs'), c = r.door.cells[5]; const o = [[0, 1], [1, 0], [0, -1], [-1, 0]][r.side]; return { c, o }; });
-  w.open = await lookWord([side.c[0] + 0.5 - side.o[0] * 2.5, 11, side.c[2] + 0.5 - side.o[1] * 2.5], [side.c[0] + 0.5, 12.5, side.c[2] + 0.5], 'Open!');
-  w.play = await lookWord(plan.pad, [plan.ring[0], 14, plan.ring[1]], 'Play!');
-  // a piñata is out: the button says Whack!
-  await ip.evaluate(() => { const L = window.__live(), g = window.pokecraft; L.manual = true; L.use(g.player); L.manual = true; });
-  w.whack = await lookWord(plan.pad, [plan.ring[0], 14, plan.ring[1]], 'Whack!');
-  // the pop-up pad (the gold door is open from here on)
-  await ip.evaluate(() => { const L = window.__live(), d = L.doorList.find(q => q.kind === 'popup'); L.openDoor(d, true); window.__resetGames(); });
-  w.popPlay = await lookWord([plan.pop[0], 11, plan.pop[1]], [plan.box.at[0], 12.5, plan.box.at[2]], 'Play!');
-  w.slide = await lookWord([plan.slide[0], plan.slide[2], plan.slide[1]], [plan.slide[0], plan.slide[2] + 1, plan.slide[1] + 3], 'Slide!');
-  t.ok(w.open === 'Open!' && w.play === 'Play!' && w.whack === 'Whack!' && w.popPlay === 'Play!' && w.slide === 'Slide!', `the one big button says "${w.open}" at a door, "${w.play}" on the rug, "${w.whack}" while a piñata swings, "${w.popPlay}" in the Pop-Up Room and "${w.slide}" at the top of the slide`);
-  const buttons = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
-  t.ok(buttons === before, `the number of touch buttons did not change (${before})`);
-  // a real tap on the big button opens a door
-  const tapOpen = await ip.evaluate(async () => {
-    const g = window.pokecraft, L = window.__live(), p = window.__plan(), r = p.rooms.find(q => q.kind === 'shop'), c = r.door.cells[5], o = [[0, 1], [1, 0], [0, -1], [-1, 0]][r.side];
-    L.manual = false; L.playing = () => true;
-    window.__at(c[0] + 0.5 - o[0] * 2.5, 11, c[2] + 0.5 - o[1] * 2.5, 0, 0); g.player.lookAt({ x: c[0] + 0.5, y: 12.5, z: c[2] + 0.5 });
-    await new Promise(r => setTimeout(r, 1500));
-    L.playing = () => document.getElementById('pause').classList.contains('hidden');
-    const el = document.getElementById('btn-act'), b = el.getBoundingClientRect();
-    return { x: b.x + b.width / 2, y: b.y + b.height / 2, text: el.textContent, cell: c };
+  await ip.evaluate(() => { const g = window.pokecraft; for (const c of [...g.creatures.list]) g.creatures.remove(c); window.__toPad(); });
+  await real();
+  w.spin = await word('Spin!');
+  await tapButton();
+  await waitFor(ip, () => window.__live().sp.phase === 'spin', null, 20000);
+  w.stop = await word('Stop!');
+  await tapButton();
+  await waitFor(ip, () => window.__live().sp.phase !== 'spin', null, 20000);
+  // a game: Play! on its pad, then Drop! (Gift Stack) and Whack! (Pop-Up Whack)
+  await ip.evaluate(() => { const L = window.__live(); L.playing = () => true; window.__reset(); window.__spinTo(2); window.__ready(); const s = L.sets.stack; window.__at(s.standAt[0], 11, s.standAt[1], 0, 0.3); });
+  await real();
+  w.play = await word('Play!');
+  await tapButton();
+  await waitFor(ip, () => window.__live().gm?.phase === 'run', null, 20000);
+  w.drop = await word('Drop!');
+  const placed0 = await ip.evaluate(() => window.__live().gm.run.st.drops.length);
+  await tapButton();
+  await waitFor(ip, n => window.__live().gm?.run?.st.drops.length > n, placed0, 20000).catch(() => {});
+  w.dropped = await ip.evaluate(n => window.__live().gm?.run?.st.drops.length > n, placed0);
+  await ip.evaluate(() => { const L = window.__live(); L.playing = () => true; window.__reset(); window.__spinTo(3); window.__ready(); const s = L.sets.whack; window.__at(s.standAt[0], 11, s.standAt[1], 0, 0.1); L.manual = true; L.use(window.pokecraft.player); L.manual = true; });
+  await real();
+  w.whack = await word('Whack!');
+  t.ok(w.spin === 'Spin!' && w.stop === 'Stop!' && w.play === 'Play!' && w.drop === 'Drop!' && w.dropped && w.whack === 'Whack!', `the one big button says "${w.spin}" and "${w.stop}" at the Spinner (a tap spins and stops it), "${w.play}" on a game's pad, "${w.drop}" in Gift Stack (a tap drops) and "${w.whack}" in Pop-Up Whack`);
+  t.ok((await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length)) === before, `the number of touch buttons did not change (${before})`);
+  // a tap on a jack on the screen whacks it (gymLive.tap); the clock is held (manual)
+  const at = await ip.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(), st = L.gm.run.st, p = st.plan.pops.find(q => q.kind !== 'pie' && q.t0 > 1.5);
+    while (L.gm.run.t < p.t0 + 0.3) L.step(0.02);
+    L.gm.run.st.ready = 0;
+    const PW = window.__headOf(L.sets.whack.boxes, p);
+    g.player.lookAt({ x: 56.5, y: 12, z: 53 });
+    g.camera.updateMatrixWorld();
+    window.__score0 = st.score; window.__hits0 = st.hits.size;
+    return { head: PW, kind: p.kind };
   });
-  await ip.touchscreen.tap(tapOpen.x, tapOpen.y);
-  await waitFor(ip, c => window.pokecraft.world.get(c[0], c[1], c[2]) === 0, tapOpen.cell, 30000);
-  t.ok(true, 'a tap on the big button opens a door');
-  // the piñata, held still at a moment when it swings at you, low and close: a tap on the big button whacks it (a CRACK), and so does a
-  // tap on the piñata itself on the screen (gymLive.tap). The clock is held (manual), so a slow frame never moves it away; the wild
-  // gift boxes are gone while a piñata is out, so nothing else is under the finger.
-  const setup = async () => ip.evaluate(() => {
-    const g = window.pokecraft, L = window.__live(), p = window.__plan();
-    window.__resetGames();
-    L.manual = true; L.playing = () => document.getElementById('pause').classList.contains('hidden');
-    window.__at(p.ring.x, 11, p.ring.z + 7.5, 0, 0);
-    L.use(g.player);
-    let tt = 0.5; for (; tt < 12; tt += 0.02) { const q = window.__pinAt(tt); if (q.y < 13.0 && Math.hypot(q.vx, q.vz) > 2.5) break; }
-    while (L.pn.t < tt - 0.01) L.step(0.01);
-    L.pn.run.ready = 0;
-    const q = window.__pinAt(L.pn.t), v = Math.hypot(q.vx, q.vz);
-    window.__at(q.x + (q.vx / v) * 1.4, 11, q.z + (q.vz / v) * 1.4, 0, 0);
-    g.player.lookAt({ x: q.x, y: q.y, z: q.z });
-    for (const w of [...g.creatures.list]) g.creatures.remove(w);
-    return { hits: L.pn.run.hits, swings: L.pn.run.log.length };
-  });
-  const whackBy = async how => {
-    const s0 = await setup();
-    await ip.waitForTimeout(1200); // a frame or two: the camera and the button follow
-    const at = await ip.evaluate(how => {
-      const g = window.pokecraft;
-      if (how === 'button') { const b = document.getElementById('btn-act').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, word: document.getElementById('btn-act').textContent }; }
-      g.camera.updateMatrixWorld();
-      const q = window.__pinAt(window.__live().pn.t), v = new (g.camera.position.constructor)(q.x, q.y, q.z).project(g.camera);
-      return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight, on: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 };
-    }, how);
-    let r = null;
-    for (let k = 0; k < 3; k++) { // (a tap can be lost while the page is busy: try again)
-      await ip.touchscreen.tap(at.x, at.y);
-      await waitFor(ip, n => window.__live().pn.run.log.length > n, s0.swings, 10000).catch(() => {});
-      r = await ip.evaluate(() => { const run = window.__live().pn.run; return { swings: run.log.length, hits: run.hits, big: run.big, last: run.log[run.log.length - 1] }; });
-      if (r.swings > s0.swings) break;
-    }
-    return { ...r, at, s0 };
-  };
-  const byButton = await whackBy('button'), byTap = await whackBy('tap');
-  t.ok(byButton.at.word === 'Whack!' && byButton.big > byButton.s0.hits && byButton.last?.big, `a tap on the big button ("${byButton.at.word}") whacks the piñata: a CRACK (${JSON.stringify(byButton.last)})`);
-  t.ok(byTap.at.on && byTap.big > byTap.s0.hits && byTap.last?.big, `a tap on the piñata on the screen whacks it too: a CRACK (${JSON.stringify(byTap.last)})`);
-  await ip.evaluate(() => { const L = window.__live(); L.pn.swingT = 0.1; L.draw(); });
-  await ip.screenshot({ path: path.join(SHOTS, 't44-ipad.png'), timeout: 180000 });
-  console.log('  screenshot t44-ipad.png');
-  await ip.evaluate(() => { window.__resetGames(); });
+  await ip.waitForTimeout(1200);
+  const scr = await ip.evaluate(h => { const g = window.pokecraft; g.camera.updateMatrixWorld(); const v = new (g.camera.position.constructor)(h.x, h.y - 0.1, h.z).project(g.camera); return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight }; }, at.head);
+  let hit = false;
+  for (let k = 0; k < 3 && !hit; k++) { await ip.touchscreen.tap(scr.x, scr.y); await ip.waitForTimeout(600); hit = await ip.evaluate(() => window.__live().gm.run.st.hits.size > window.__hits0); }
+  t.ok(hit, `a tap on a jack on the screen whacks it (${at.kind})`);
+  await ip.screenshot({ path: path.join(SHOTS, 't48-ipad.png'), timeout: 180000 });
+  console.log('  screenshot t48-ipad.png');
+  await ip.evaluate(() => window.__reset());
   t.ok(!ip.errors.length, `no page errors on the iPad ${ip.errors.join('; ')}`);
 }
 
@@ -1182,31 +956,22 @@ async function pairPart({ browser, base, t }) {
   await click(Bp, '#mp button:has-text("Join a world")');
   await waitFor(Bp, () => window.pokecraft.mp.role === 'guest', null, 60000);
   await toasts(A); await toasts(Bp);
-  // Dad (a Champion) steps through the gift-wrapped frame; Kid follows him all the way (the base's follow words)
-  await intoDoors(A);
+  await intoParty(A);
   await waitFor(Bp, () => window.pokecraft.ui.asking, null, 120000).catch(() => {});
   const ask = await Bp.evaluate(() => (window.pokecraft.ui.asking ? document.getElementById('ask-text').textContent : ''));
-  t.ok(/Dad .*(Swirl|Room of Doors)/.test(ask), `Kid is asked to follow ("${ask}")`);
+  t.ok(/Dad .*(Swirl|Surprise Party)/.test(ask), `Kid is asked to follow ("${ask}")`);
   if (await Bp.evaluate(() => window.pokecraft.ui.asking)) await Bp.evaluate(() => window.pokecraft.ui.askYes());
   await waitFor(Bp, () => !window.pokecraft.realms.busy && window.pokecraft.place !== 'main', null, 60000).catch(() => {});
-  if ((await Bp.evaluate(() => window.pokecraft.place)) !== 'doors') {
-    // the ask took Kid as far as the Swirl, or nowhere: Dad is in the Room of Doors now, so follow him
-    await Bp.evaluate(() => window.pokecraft.realms.follow());
-    await placeIs(Bp, 'doors');
-  }
+  if ((await Bp.evaluate(() => window.pokecraft.place)) !== 'doors') { await Bp.evaluate(() => window.pokecraft.realms.follow()); await placeIs(Bp, 'doors'); }
   await helpers(Bp);
-  t.ok((await Bp.evaluate(() => window.pokecraft.place)) === 'doors' && (await Bp.evaluate(() => window.pokecraft.world.realm.id)) === 'doors', 'Kid followed Dad into the Room of Doors (the realm is the same, its follow words are the base ones)');
-  const seeds = await Promise.all([A, Bp].map(p => p.evaluate(() => { const L = window.__live(); return { seed: L.seed, plan: JSON.stringify(window.__plan().kinds) }; })));
-  t.ok(seeds[0].plan === seeds[1].plan && seeds[0].seed !== seeds[1].seed, 'both see the same rooms behind the same doors, but each has their own game seed (piñatas and jacks)');
-  // Dad opens a door: Kid's door stays shut
-  const door = await A.evaluate(() => { const g = window.pokecraft, r = window.__plan().rooms.find(q => q.kind === 'slide'); const c = r.door.cells[5]; g.gymLive.hit({ x: c[0], y: c[1], z: c[2], id: 238 }); return c; });
-  const ids = await Promise.all([A, Bp].map(p => p.evaluate(c => window.pokecraft.world.get(c[0], c[1], c[2]), door)));
-  t.ok(ids[0] === 0 && ids[1] === 238, 'one player opening a door does not open it for the other');
-  // each plays their own piñata
-  const plans = await Promise.all([A, Bp].map(p => p.evaluate(() => { const g = window.pokecraft, L = window.__live(), pl = window.__plan(); L.manual = true; L.findAll(); window.__at(pl.ring.x, 11, pl.ring.z + 7.5, 0, 0); L.use(g.player); return { phase: L.pn.phase, key: JSON.stringify(L.pn.run.plan.path) + JSON.stringify(L.pn.run.plan.first) }; })));
-  t.ok(plans[0].phase === 'run' && plans[1].phase === 'run' && plans[0].key !== plans[1].key, 'both play a piñata at once, each their own (another path and swing)');
-  // a bow won by Dad is not Kid's
-  const bow = await A.evaluate(() => { const g = window.pokecraft, L = window.__live(); L.pn.run.done = true; L.pn.run.burstAt = L.pn.t; L.step(0.05); return g.beaten.filter(k => /pw:doors:bow/.test(k)).length; });
+  t.ok((await Bp.evaluate(() => window.pokecraft.place)) === 'doors', 'Kid followed Dad to the party');
+  const seeds = await Promise.all([A, Bp].map(p => p.evaluate(() => window.__live().seed)));
+  t.ok(seeds[0] !== seeds[1], 'each player has their own game seed (their own Spinner wobble, piñatas, jacks, presents)');
+  // Dad spins and plays: Kid's party floor stays empty
+  const dad = await A.evaluate(() => { const L = window.__live(); L.manual = true; window.__spinTo(3); window.__ready(); const s = L.sets.whack; return s.up.map(([x, y, z]) => window.pokecraft.world.get(x, y, z)).every(id => id === 240); });
+  const kid = await Bp.evaluate(() => { const L = window.__live(), s = L.sets.whack; return { up: s.up.map(([x, y, z]) => window.pokecraft.world.get(x, y, z)).every(id => id === 0), gm: !!L.gm }; });
+  t.ok(dad && kid.up && !kid.gm, 'a game Dad spun builds its set on his party floor only; Kid sees none and can spin his own');
+  const bow = await A.evaluate(() => { const g = window.pokecraft, L = window.__live(); window.__playGame('pro', 0.05); return g.beaten.filter(k => /pw:doors:bow/.test(k)).length; });
   const kidBows = await Bp.evaluate(() => window.pokecraft.beaten.filter(k => /pw:doors:bow/.test(k)).length);
   t.ok(bow === 1 && kidBows === 0, `Dad's bow is Dad's (${bow}); Kid has none (${kidBows})`);
 }

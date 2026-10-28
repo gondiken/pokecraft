@@ -2708,7 +2708,7 @@ export const PORTAL_SPAWNS = [['doorbit', 1.2, 'housefloor'], ['hatbun', 1.2, 'h
   ['gatestrider', 0.12, 'housefloor', 'portal'], ['topperoo', 0.12, 'housefloor', 'portal'], ['loopwyrm', 0.1, 'housefloor', 'portal']]; // the 4th element: wildafter.js
 /* ==== end of T42 portal ==== */
 /* ==== T44 surprise ==== */
-// Surprise creatures live only in the Room of Doors (REALMS.doors.spawns), on the `gift` condition (spawnrules.js: the nook spots of shelves, the hall's walls, the stage sides);
+// Surprise creatures live only at the Surprise Party (REALMS.doors.spawns; T44's Room of Doors before), on the `gift` condition (spawnrules.js: the nook spots by the walls and the table);
 // every one starts wrapped in a gift box (creatures.js GAITS.gift). Gold paper always wraps a rarer one.
 export const SURPRISE_SPAWNS = [['giftle', 1.2, 'gift'], ['popjack', 1.1, 'gift'], ['pinpop', 1.1, 'gift'], ['partypop', 0.3, 'gift', 'doors'],
   ['bowtower', 0.12, 'gift', 'doors'], ['jestergrin', 0.1, 'gift', 'doors'], ['fiestallama', 0.1, 'gift', 'doors']]; // the 4th element: wildafter.js

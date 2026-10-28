@@ -1053,14 +1053,16 @@ function updateSky(dt) {
     scene.fog.far += ((34 - 12 * depth) - scene.fog.far) * uwFade;
   }
   const floor = game.swirlSky?.lit ?? look?.light ?? 0; // T35: a realm's lowest brightness (the Dream is only visited at night: keep it bright)
-  const lit = look?.still ? floor : Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4)); // T38a: a still realm is always the same brightness
+  const roomDim = game.lightsDim ?? 1; // T48: a live part may dim the lights for a moment (the Surprise Party's "Lights out!")
+  const lit = (look?.still ? floor : Math.max(floor, Math.min(1, brightness * wx.dim + wx.flash * 0.4))) * roomDim; // T38a: a still realm is always the same brightness
   caveLight.uLit.value = lit;
   caveLight.uLantern.value = Math.max(0.75 * underFade, game.netGlow ?? 0); // T41: the net's glow lights the Sunken City
   caveLight.uPlayer.value.copy(game.player.eyePos);
   const lightF = look?.still ? floor : Math.max(light, floor);
   const uwDim = 1 - 0.45 * uwFade * (0.4 + 0.6 * depth); // T41: the deeper in the Sunken City, the dimmer the light
-  hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade) * uwDim;
-  sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade) * uwDim;
+  hemi.intensity = (0.35 + 1.0 * lightF) * (1 - 0.6 * underFade) * uwDim * roomDim;
+  sun.intensity = (0.1 + 1.1 * lightF) * (1 - 0.6 * underFade) * uwDim * roomDim;
+  if (roomDim < 0.999) { scene.background.multiplyScalar(0.3 + 0.7 * roomDim); scene.fog.color.copy(scene.background); }
   const hours = (game.time * 24 + 6) % 24;
   const hh = String(Math.floor(hours)).padStart(2, '0');
   const mm = String(Math.floor((hours % 1) * 60 / 10) * 10).padStart(2, '0');

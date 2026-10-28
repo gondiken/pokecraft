@@ -14,7 +14,7 @@ import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
 import { houseLand, houseAim } from './giantland.js'; // T40a
 import { TINY_SPAWNS, SURPRISE_SPAWNS, DOODLE_SPAWNS, PORTAL_SPAWNS } from './species.js'; // T40a, T44, T45, T42
-import { doorsLand, doorsAim } from './doorsland.js'; // T44
+import { partyLand, partyAim } from './partyland.js'; // T48 (the Room of Doors' place)
 import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
 
 export const MAIN = 'main';
@@ -132,11 +132,13 @@ REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9
   arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });
 
 /* ==== T44 surprise ==== */
-// The Room of Doors (a Picture World behind the Swirl's gift-wrapped frame): a toy-box hall with twelve doors, the Piñata Party, Jack Catch in the Pop-Up Room and the Big Gift.
-REALMS.doors = pictureRealm({ id: 'doors', name: 'Room of Doors', seedSalt: 0xd005, size: [112, 112], terrain: 'doorsLand', arrive: [56, 79], walk: [B.PARTY_FLOOR],
-  spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Room of Doors', travelText: 'Unwrapping...', travelIcon: '🎁',
-  enterText: 'Ta-da! The Room of Doors! Every door is a surprise.', arriveHint: 'Win 4 golden bows, and find Jolly Jax\'s two helpers behind the doors! Start with the piñata in the middle.',
-  noHomeText: 'No homes in the Room of Doors! Build your home in your own world.', followText: 'Open it too',
+// T48 (owner 2026-10-28): Jolly Jax's Surprise Party (a Picture World behind the Swirl's gift-wrapped frame; it replaced T44's Room of Doors,
+// keeping its ids `doors`): a birthday party inside a giant present, the Party Spinner, four party games, the cake.
+// Version 2: new terrain (the Room of Doors' blocks were all fixed, so no player build is lost; its edits are dropped).
+REALMS.doors = pictureRealm({ id: 'doors', name: 'Surprise Party', seedSalt: 0xd005, size: [112, 112], terrain: 'partyLand', arrive: [56, 72], walk: [B.PARTY_FLOOR], version: 2,
+  spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Surprise Party', travelText: 'Unwrapping...', travelIcon: '🎁',
+  enterText: 'SURPRISE! Welcome to the party!', arriveHint: 'Spin the Party Spinner to start a party game!',
+  noHomeText: 'No homes at the party! Build your home in your own world.', followText: 'Party too',
   look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
 /* ==== end of T44 surprise ==== */
 /* ==== T45 doodle ==== */
@@ -166,8 +168,8 @@ export const TERRAIN_RETURNS = { swirlLand: frameReturn };
 TERRAIN_AIMS.houseLand = houseAim; // T40a
 TERRAINS.pirateLand = pirateLand; // T40b
 TERRAIN_AIMS.pirateLand = pirateAim; // T40b
-TERRAINS.doorsLand = doorsLand; // T44
-TERRAIN_AIMS.doorsLand = doorsAim; // T44
+TERRAINS.partyLand = partyLand; // T48
+TERRAIN_AIMS.partyLand = partyAim; // T48
 TERRAINS.doodleLand = doodleLand; // T45
 TERRAIN_AIMS.doodleLand = doodleAim; // T45
 

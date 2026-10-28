@@ -430,7 +430,11 @@ export class NpcManager {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       n.heading += d * Math.min(1, dt * 4);
       n.model.rotation.y = n.heading;
-      for (const a of p.arms) a.g.rotation.x = Math.sin(n.t * 1.6 + a.phase) * 0.06;
+      if (n.cheer > 0) { // T48: a party guest cheers (arms up, waving, a little hop) for a while
+        n.cheer -= dt;
+        for (const a of p.arms) a.g.rotation.x = -2.7 + Math.sin(n.t * 14 + a.phase * 3) * 0.35;
+        n.model.position.y = n.pos.y + (n.cheer > 0 ? Math.abs(Math.sin(n.t * 9)) * 0.18 : 0);
+      } else for (const a of p.arms) a.g.rotation.x = Math.sin(n.t * 1.6 + a.phase) * 0.06;
       p.head.rotation.x = Math.sin(n.t * 0.9) * 0.04;
     }
   }
