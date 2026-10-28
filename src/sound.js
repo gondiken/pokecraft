@@ -231,6 +231,22 @@ const SOUNDS = {
   lanceclang: () => { bell(980, 0, 0.35, 0.2); noise({ freq: 2600, len: 0.08, vol: 0.14, q: 1 }); },
   drawbridge: () => { for (let i = 0; i < 8; i++) noise({ at: i * 0.11, freq: 2200 + (i % 2) * 600, len: 0.05, vol: 0.07, q: 2 }); tone(90, { at: 0.9, len: 0.25, type: 'triangle', vol: 0.2, slide: -30 }); },
   helmbonk: () => { bell(620, 0, 0.18, 0.12); tone(200, { len: 0.1, type: 'triangle', vol: 0.12, slide: -60 }); },
+  /* ==== Bubble ==== */
+  // The Bubble Well: a bubbly glug for attacks; blowing a bubble (a soft airy whoo), a pop, landing on a bubble (a rubbery boing), soap
+  // filling up (a bright little run), a puff on a duckling, a duckling home (a happy squeak-squeak), a puff in the chimney ride, a fizz
+  // star, a shield bubble bursting, the fizz lift.
+  'fx:bubble': () => { for (let i = 0; i < 4; i++) tone(500 + i * 180, { at: i * 0.05, len: 0.07, type: 'sine', vol: 0.14, slide: 300 }); },
+  wandblow: () => { noise({ freq: 1400, len: 0.22, vol: 0.08, q: 0.6 }); tone(420, { at: 0.08, len: 0.16, type: 'sine', vol: 0.1, slide: 240 }); },
+  soappop: () => { noise({ freq: 2600, len: 0.04, vol: 0.18, q: 1.2 }); tone(1300, { len: 0.05, type: 'sine', vol: 0.12, slide: -600 }); },
+  bubbleland: () => tone(260, { len: 0.16, type: 'sine', vol: 0.16, slide: 160 }),
+  soapfill: () => notes([784, 988, 1175, 1568], 0.05, { len: 0.08, type: 'triangle', vol: 0.12 }),
+  duckpuff: () => { noise({ freq: 900, len: 0.12, vol: 0.1, q: 0.7 }); tone(700, { at: 0.03, len: 0.08, type: 'sine', vol: 0.08, slide: 200 }); },
+  duckhome: () => { tone(1200, { len: 0.08, type: 'square', vol: 0.06, slide: 300 }); tone(1300, { at: 0.12, len: 0.08, type: 'square', vol: 0.06, slide: 300 }); tone(784, { at: 0.25, len: 0.12, type: 'triangle', vol: 0.12 }); tone(1047, { at: 0.35, len: 0.14, type: 'triangle', vol: 0.12 }); },
+  chimneypuff: () => { noise({ freq: 700, len: 0.1, vol: 0.09, q: 0.6 }); tone(330, { len: 0.1, type: 'sine', vol: 0.08, slide: 180 }); },
+  fizzstar: () => { notes([1047, 1319, 1568], 0.06, { len: 0.1, type: 'triangle', vol: 0.12 }); noise({ freq: 6000, len: 0.15, vol: 0.05, q: 1 }); },
+  shieldburst: () => { noise({ freq: 1800, len: 0.18, vol: 0.2, q: 0.7 }); tone(900, { len: 0.2, type: 'sine', vol: 0.14, slide: -500 }); bell(1568, 0.12, 0.4, 0.1); },
+  fizzlift: () => { for (let i = 0; i < 6; i++) tone(400 + i * 120, { at: i * 0.05, len: 0.06, type: 'sine', vol: 0.08, slide: 200 }); },
+  /* ==== end of Bubble ==== */
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).

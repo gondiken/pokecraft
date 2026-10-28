@@ -15,3 +15,4 @@ export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle', 'doodle']; // owner 2026-10-29: the Sketchbook is back behind ?preview until its pencil is reworked (saves keep its star, lines and edits)
 LATER.push('gravity'); // Cube Planets (plans/cube-planets.md): step 0, the gravity sandbox, ships closed until the owner has played it
+LATER.push('bubble'); // the Bubble Well ships behind ?preview too (owner 2026-10-28)

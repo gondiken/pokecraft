@@ -6861,3 +6861,191 @@ function walkturret(root, m, parts) {
 const SHAPES_KNIGHT = { shieldhog, helmsnail, armourhorse, walkturret };
 Object.assign(SHAPES, SHAPES_KNIGHT);
 /* ==== end of T49 knight shapes ==== */
+/* ==== Bubble shapes ==== */
+// Bubble look: every model wears a soap film (userData.gear = 'film'): three little rainbow bubbles that float round it, ONE merged
+// mesh (vertex colours, see-through) on a pivot that turns slowly (parts.spin). Bath-time friends: a rubber duck, a sea otter on its
+// back with a bar of soap, a little hippo with a bathtub, a bath fizzer. Every model faces +z; nothing here uses Math.random.
+const BU_FILM = [0xbfefff, 0xffc8ec, 0xfff2a8];
+function buFilm(parent, y, spread = 0.42, size = 1, parts = null, speed = 0.8) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  [[0, 0.1, 0.09], [2.1, -0.05, 0.07], [4.2, 0.18, 0.06]].forEach(([a, dy, r], k) => {
+    const g = new THREE.SphereGeometry(r * size, 8, 6);
+    g.translate(Math.sin(a) * spread, dy * size, Math.cos(a) * spread);
+    const p = g.attributes.position, base = pos.length / 3;
+    c.setHex(BU_FILM[k]);
+    for (let i = 0; i < p.count; i++) {
+      pos.push(p.getX(i), p.getY(i), p.getZ(i));
+      const shine = 0.75 + 0.25 * Math.max(0, p.getY(i) - dy * size) / (r * size); // a pale top: a soap shine
+      col.push(Math.min(1, c.r * shine + 0.2), Math.min(1, c.g * shine + 0.2), Math.min(1, c.b * shine + 0.2));
+    }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const holder = pivot(parent, 0, y, 0);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, emissive: 0x334455 }));
+  mesh.userData.gear = 'film';
+  holder.add(mesh);
+  if (parts) spin(parts, holder, 'y', speed);
+  return mesh;
+}
+// a see-through soap bubble (a few crossed boxes, like glassBallA)
+const buBubble = (parent, r, x, y, z) => glassBallA(parent, r, 0xd8f4ff, 0.32, x, y, z);
+
+// Squeaklet / Quackmiral: a rubber duck: a round yellow body with a flat bottom, a raised tail, a round head with an orange beak and
+// little wing stubs that flap. It rocks side to side as if it floats. Quackmiral (`admiral`) wears a blue admiral's hat with gold trim
+// and gold shoulder knots, and two tiny ducks paddle behind it.
+function rubberduck(root, m, parts) {
+  const big = has(m, 'admiral');
+  const rock = pivot(root, 0, 0, 0);
+  swing(parts, rock, 'z', 0.08, 1.6, 0);
+  box(rock, 0.56, 0.3, 0.64, m.body, 0, 0.17, 0);             // the body
+  box(rock, 0.48, 0.1, 0.56, m.body, 0, 0.36, -0.02);
+  box(rock, 0.5, 0.06, 0.58, m.belly, 0, 0.03, 0);            // the paler bottom
+  box(rock, 0.3, 0.2, 0.16, m.body, 0, 0.36, -0.32);         // the tail, up at the back
+  box(rock, 0.18, 0.12, 0.1, m.body, 0, 0.48, -0.38);
+  const head = pivot(rock, 0, 0.5, 0.17);
+  parts.head = head;
+  box(head, 0.34, 0.32, 0.32, m.body, 0, 0.12, 0);
+  box(head, 0.24, 0.08, 0.16, m.accent, 0, 0.05, 0.22);       // the beak
+  box(head, 0.2, 0.05, 0.12, 0xff6a10, 0, 0.0, 0.2);
+  eyes(head, 0.18, 0.165, 0.09, 0.09);
+  for (const s of [-1, 1]) box(head, 0.06, 0.04, 0.02, 0xffb08a, s * 0.13, 0.08, 0.16); // rosy cheeks
+  parts.flap = [];
+  for (const s of [-1, 1]) {
+    const w = pivot(rock, s * 0.29, 0.28, -0.02);
+    box(w, 0.06, 0.16, 0.3, m.belly, s * 0.02, -0.04, 0);
+    parts.flap.push({ g: w, s });
+  }
+  if (big) {
+    const hat = pivot(head, 0, 0.29, 0);
+    box(hat, 0.5, 0.13, 0.16, 0x2a3a8a, 0, 0.05, 0);          // a bicorne, worn side to side
+    box(hat, 0.3, 0.1, 0.18, 0x2a3a8a, 0, 0.13, 0);
+    box(hat, 0.52, 0.025, 0.17, 0xf0c84a, 0, -0.01, 0);       // gold trim
+    box(hat, 0.07, 0.07, 0.02, 0xf0c84a, 0, 0.09, 0.09);      // a gold badge
+    for (const s of [-1, 1]) { box(rock, 0.12, 0.04, 0.14, 0xf0c84a, s * 0.24, 0.42, 0.06); box(rock, 0.02, 0.06, 0.12, 0xf0c84a, s * 0.3, 0.38, 0.06); }
+    for (const [x, z, ph] of [[-0.32, -0.62, 0], [0.32, -0.62, 1.4]]) { // the little fleet
+      const d = pivot(root, x, 0, z);
+      swing(parts, d, 'z', 0.12, 2.2, ph);
+      box(d, 0.16, 0.1, 0.18, m.body, 0, 0.05, 0);
+      box(d, 0.1, 0.09, 0.09, m.body, 0, 0.14, 0.05);
+      box(d, 0.06, 0.03, 0.05, m.accent, 0, 0.13, 0.11);
+    }
+  }
+  buFilm(root, big ? 0.55 : 0.45, big ? 0.5 : 0.42, 1, parts, 0.9);
+}
+
+// Suddly / Lathotter: a sea otter floating on its back: a long brown body lying along z with its pale tummy up, the head raised at
+// the front looking ahead, little paws holding a pink bar of soap on its tummy, feet up at the back and a flat tail. Lathotter
+// (`beard`) has a big beard of soap foam, a white sailor cap with a blue band and juggles two soap bars over its paws.
+function bathotter(root, m, parts) {
+  const big = has(m, 'beard');
+  const float = pivot(root, 0, 0, 0);
+  swing(parts, float, 'x', 0.05, 1.3, 0);
+  box(float, 0.36, 0.22, 0.66, m.body, 0, 0.15, -0.04);       // the body, lying down
+  box(float, 0.3, 0.05, 0.56, m.belly, 0, 0.28, -0.04);       // the tummy, up
+  const tail = pivot(float, 0, 0.16, -0.38);
+  parts.tail = tail;
+  box(tail, 0.18, 0.06, 0.3, m.dark, 0, 0, -0.14);           // a flat tail
+  for (const s of [-1, 1]) box(float, 0.1, 0.14, 0.08, m.dark, s * 0.12, 0.32, -0.3); // the feet, up
+  const head = pivot(float, 0, 0.26, 0.3);
+  parts.head = head;
+  box(head, 0.32, 0.28, 0.26, m.body, 0, 0.1, 0);
+  box(head, 0.2, 0.12, 0.08, m.belly, 0, 0.03, 0.14);         // the muzzle
+  box(head, 0.07, 0.05, 0.03, 0x1e1410, 0, 0.08, 0.18);       // the nose
+  for (const s of [-1, 1]) box(head, 0.03, 0.01, 0.06, 0xf6efe0, s * 0.09, 0.02, 0.17); // whiskers
+  eyes(head, 0.17, 0.135, 0.08, 0.075);
+  for (const s of [-1, 1]) box(head, 0.06, 0.06, 0.04, m.dark, s * 0.15, 0.24, -0.02); // round ears
+  parts.arms = [];
+  for (const s of [-1, 1]) {
+    const a = pivot(float, s * 0.12, 0.3, 0.1);
+    box(a, 0.07, 0.07, 0.14, m.dark, 0, 0.02, 0.02);
+    parts.arms.push({ g: a, phase: s });
+  }
+  const soap = (parent, x, y, z) => { const g = pivot(parent, x, y, z); box(g, 0.26, 0.1, 0.17, m.accent, 0, 0, 0); box(g, 0.18, 0.02, 0.09, 0xffffff, 0, 0.055, 0); return g; };
+  if (big) {
+    for (let i = 0; i < 6; i++) box(head, 0.1, 0.1, 0.08, 0xffffff, (i % 3 - 1) * 0.09, -0.05 - Math.floor(i / 3) * 0.07, 0.14); // the foam beard
+    box(head, 0.36, 0.06, 0.3, 0xffffff, 0, 0.27, 0);           // a sailor cap: white with a blue band
+    box(head, 0.37, 0.04, 0.31, 0x3a6ad8, 0, 0.24, 0);
+    box(head, 0.2, 0.06, 0.18, 0xffffff, 0, 0.32, 0);
+    const juggle = pivot(float, 0, 0.62, 0.1);
+    spin(parts, juggle, 'x', 3);
+    soap(juggle, 0, 0.16, 0); soap(juggle, 0, -0.16, 0);
+  } else { soap(float, 0, 0.36, -0.06); for (const [x, z] of [[-0.12, -0.2], [0.1, -0.24], [0.02, -0.32]]) box(float, 0.07, 0.07, 0.07, 0xffffff, x, 0.34, z); } // a bar of soap and a few suds on its tummy
+  buFilm(root, big ? 0.6 : 0.5, big ? 0.48 : 0.4, 1, parts, 0.7);
+}
+
+// Hippip / Bathemoth: a little round hippo on four short legs: a big head with a wide snout and two nostrils, tiny ears, a stubby
+// tail. Hippip carries a soap bubble on the end of its nose. Bathemoth (`tub`) is huge and carries a white bathtub with little claw
+// feet on its back, piled with foam bubbles.
+function tubhippo(root, m, parts) {
+  const big = has(m, 'tub');
+  const legH = 0.16, bodyY = legH + 0.18;
+  box(root, 0.5, 0.36, 0.62, m.body, 0, bodyY, -0.04);       // the round body
+  box(root, 0.42, 0.06, 0.54, m.belly, 0, bodyY - 0.2, -0.04);
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(root, sx * 0.16, legH, sz * 0.2 - 0.04);
+    box(leg, 0.14, legH, 0.14, m.body, 0, -legH / 2, 0);
+    box(leg, 0.15, 0.03, 0.15, m.dark, 0, -legH + 0.015, 0.005);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  const head = pivot(root, 0, bodyY + 0.06, 0.3);
+  parts.head = head;
+  box(head, 0.4, 0.3, 0.24, m.body, 0, 0.04, 0.04);
+  box(head, 0.44, 0.24, 0.2, m.belly, 0, -0.02, 0.22);        // the wide snout
+  for (const s of [-1, 1]) box(head, 0.05, 0.03, 0.02, m.dark, s * 0.1, 0.08, 0.33); // nostrils
+  mouth(head, -0.1, 0.325, 0.3);
+  for (const s of [-1, 1]) box(head, 0.05, 0.05, 0.02, 0xffffff, s * 0.08, -0.13, 0.31); // two little teeth
+  eyes(head, 0.15, 0.17, 0.1, 0.08);
+  for (const s of [-1, 1]) { const e = pivot(head, s * 0.15, 0.22, 0.02); swing(parts, e, 'z', 0.25, 3, s); box(e, 0.07, 0.07, 0.05, m.accent, 0, 0.03, 0); }
+  const tail = pivot(root, 0, bodyY, -0.36);
+  parts.tail = tail;
+  box(tail, 0.05, 0.12, 0.05, m.dark, 0, -0.05, -0.02);
+  if (big) {
+    const tub = pivot(root, 0, bodyY + 0.2, -0.06);
+    box(tub, 0.52, 0.2, 0.58, 0xf6f4ee, 0, 0.1, 0);              // the bathtub
+    box(tub, 0.56, 0.04, 0.62, 0xffffff, 0, 0.21, 0);
+    box(tub, 0.44, 0.03, 0.5, 0x9ad8ff, 0, 0.19, 0);              // the water
+    for (const [x, z] of [[-0.22, 0.24], [0.22, 0.24], [-0.22, -0.24], [0.22, -0.24]]) box(tub, 0.06, 0.08, 0.06, 0xf0c84a, x, -0.02, z); // gold claw feet
+    for (const [x, y, z] of [[-0.12, 0.28, 0.1], [0.1, 0.3, -0.08], [0.0, 0.36, 0.04], [0.16, 0.26, 0.16], [-0.16, 0.27, -0.16]]) ball(tub, 0.06, 0xffffff, x, y, z); // foam
+    box(tub, 0.04, 0.22, 0.04, 0xc8ccd8, -0.22, 0.32, -0.26);     // a little tap
+    box(tub, 0.12, 0.04, 0.04, 0xc8ccd8, -0.18, 0.43, -0.26);
+  } else {
+    const b = pivot(head, 0, 0.14, 0.38);
+    swing(parts, b, 'y', 0.3, 1.2, 0);
+    buBubble(b, 0.09, 0, 0.02, 0);
+  }
+  buFilm(root, big ? 0.7 : 0.5, big ? 0.5 : 0.42, 1, parts, 0.6);
+}
+
+// Fizzbomb: a round bath fizzer covered in sprinkles, with a happy face, fizzing a little crown of white fizz out of its top; it
+// bounces about on no legs at all. (Not a ball shape: sprinkles, a fizz crown and a crumbly ring round its middle.)
+function bathbomb(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const R = 0.3;
+  ball(lift, R, m.body, 0, R + 0.02, 0);
+  box(lift, R * 2.05, 0.06, R * 2.05, m.belly, 0, R + 0.02, 0); // the crumbly ring where the two halves meet
+  const SPR = [0xff4a6a, 0xffd23a, 0x4ac8ff, 0x7ad84a, 0xffffff, 0xb07aff];
+  for (let i = 0; i < 26; i++) { // sprinkles at fixed spots on the shell
+    const a = i * 2.4, e = -0.7 + (i % 7) * 0.26, r = R * 1.04;
+    const s = box(lift, 0.11, 0.04, 0.04, SPR[i % SPR.length], Math.cos(e) * Math.sin(a) * r, R + 0.02 + Math.sin(e) * r, Math.cos(e) * Math.cos(a) * r);
+    s.rotation.set(a, e, i);
+  }
+  eyes(lift, R + 0.1, R + 0.03, 0.1, 0.09);
+  box(lift, 0.12, 0.05, 0.03, 0x6a2a4a, 0, R - 0.04, R + 0.02);
+  box(lift, 0.08, 0.03, 0.03, 0xff7a9a, 0, R - 0.07, R + 0.025);  // a little tongue
+  for (const s of [-1, 1]) box(lift, 0.06, 0.04, 0.02, 0xff7aa8, s * 0.17, R, R - 0.02); // cheeks
+  const fizz = pivot(lift, 0, 2 * R + 0.02, 0);
+  spin(parts, fizz, 'y', 2.2);
+  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; box(fizz, 0.05 + (i % 2) * 0.02, 0.05 + (i % 2) * 0.02, 0.05, i % 2 ? m.accent : 0xffffff, Math.sin(a) * 0.1, 0.04 + (i % 3) * 0.05, Math.cos(a) * 0.1); }
+  buFilm(lift, R + 0.15, 0.48, 1, parts, 1.2);
+}
+const SHAPES_BUBBLE = { rubberduck, bathotter, tubhippo, bathbomb };
+Object.assign(SHAPES, SHAPES_BUBBLE);
+/* ==== end of Bubble shapes ==== */

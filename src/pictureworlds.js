@@ -110,6 +110,29 @@ function drawGravityPicture(g, n = 128) {
   g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5 * k; g.setLineDash([3 * k, 3 * k]);
   g.beginPath(); g.moveTo(58 * k, 60 * k); g.quadraticCurveTo(66 * k, 30 * k, 72 * k, 42 * k); g.stroke(); g.setLineDash([]); // a hop's curve
 }
+/* ==== Bubble ==== */
+// The picture in the Bubble Well's frame: a round pink-and-mint well seen from the top, a white foam rim, a pale blue sky circle, big
+// rainbow bubbles rising and a yellow rubber duck floating in one (128 px canvas).
+function drawBubblePicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#ffc8e0');
+  for (let y = 0; y < 128; y += 12) r(0, y, 128, 6, '#bff0dc');
+  g.fillStyle = '#c8ecff'; g.beginPath(); g.ellipse(64 * k, 30 * k, 46 * k, 18 * k, 0, 0, 7); g.fill();
+  g.strokeStyle = '#ffffff'; g.lineWidth = 6 * k; g.beginPath(); g.ellipse(64 * k, 30 * k, 48 * k, 20 * k, 0, 0, 7); g.stroke();
+  r(0, 110, 128, 18, '#f4f8ff'); for (let x = 4; x < 128; x += 14) { g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x * k, 110 * k, 6 * k, 0, 7); g.fill(); }
+  const bub = (x, y, rr) => {
+    const gr = g.createRadialGradient((x - rr * 0.3) * k, (y - rr * 0.3) * k, 1, x * k, y * k, rr * k);
+    gr.addColorStop(0, 'rgba(255,255,255,0.15)'); gr.addColorStop(0.7, 'rgba(200,240,255,0.25)'); gr.addColorStop(0.9, 'rgba(255,170,230,0.7)'); gr.addColorStop(1, 'rgba(255,240,160,0.9)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x * k, y * k, rr * k, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc((x - rr * 0.4) * k, (y - rr * 0.4) * k, rr * 0.18 * k, 0, 7); g.fill();
+  };
+  bub(30, 84, 13); bub(98, 70, 10); bub(80, 96, 7); bub(18, 50, 6); bub(108, 44, 5);
+  bub(62, 70, 22);
+  g.fillStyle = '#ffd83a'; g.beginPath(); g.ellipse(62 * k, 78 * k, 11 * k, 7 * k, 0, 0, 7); g.fill();
+  g.beginPath(); g.arc(68 * k, 67 * k, 6 * k, 0, 7); g.fill();
+  r(73, 66, 6, 3, '#ff8a2a'); r(68, 64, 2, 2, '#16121a');
+}
+/* ==== end of Bubble ==== */
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate', place: 'Deep Blue' }, // owner 2026-10-28: the Pirate Seas and Atlantis share one world, Deep Blue (like Playland)
@@ -122,7 +145,7 @@ export const PICTURE_WORLDS = [
   { id: 'doodle', name: 'Sketchbook', emoji: '✏️', frame: [0xb8a0f0, 0xf8e8c8], ready: true, realm: 'doodle', picture: drawDoodlePicture }, // T45 (was secret1: no save could hold its star)
   { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Deep Blue', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas
   { id: 'castle', name: 'Castle', emoji: '🏰', frame: [0xf8b8a0, 0xe8f0f8], ready: true, realm: 'castle', picture: drawCastlePicture }, // T49 (was secret3: no save could hold its star)
-  { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },
+  { id: 'bubble', name: 'Bubble Well', emoji: '🫧', frame: [0xa0c8f8, 0xf8e0f0], ready: true, realm: 'bubble', picture: drawBubblePicture }, // the Bubble Well (was secret4: no save could hold its star)
   // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world
   // (it took the place of the old `wizard` entry, which no save could hold).
   { id: 'gravity', name: 'Cube Planets', emoji: '🪐', frame: [0xf0d080, 0xd8c8f8], ready: true, realm: 'gravity', picture: drawGravityPicture }, // Cube Planets (was secret5: no save could hold its star); step 0, behind ?preview (comingsoon.js LATER)

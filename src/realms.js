@@ -19,6 +19,8 @@ import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } f
 import { castleLand, castleAim, SIZE as CASTLE_SIZE } from './castleland.js'; // T49
 import { CASTLE_SPAWNS, MEADOW_SPAWNS } from './species.js'; // T49
 import { cubeLand, cubeAim, SIZE as CUBE_SIZE, DOOR as CUBE_DOOR } from './cubeland.js'; // Cube Planets (step 0)
+import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; // the Bubble Well
+import { BUBBLE_SPAWNS } from './species.js'; // the Bubble Well
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -174,6 +176,16 @@ REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0
   arriveHint: 'Walk over the edge: down is wherever your feet are! Jump from a side to hop to the next planet.',
   noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too' });
 /* ==== end of Gravity ==== */
+/* ==== Bubble ==== */
+// The Bubble Well (behind the Swirl's pale blue frame, the old secret4): one climb up a fizzing well, the Bubble Stairs, the Duckling
+// Garden, the Chimney Ride, Captain Suds on the rim. The whole well is a keep (no building, no riding: your bubbles are the ride).
+REALMS.bubble = pictureRealm({ id: 'bubble', name: 'Bubble Well', seedSalt: 0xb0bb, size: [BUBBLE_SIZE, BUBBLE_SIZE], terrain: 'bubbleLand', arrive: [80, 131], biome: 'bubble',
+  walk: [B.FOAM], spawns: { bubble: BUBBLE_SPAWNS, cave: [] }, zoneNames: { bubble: 'Bubble Well' },
+  look: { sky: 0xc8ecff, fog: [60, 170], time: null, weather: false, light: 1, still: true, stars: false },
+  clock: '🫧 Bubble Well', travelText: 'Floating in...', travelIcon: '🫧', enterText: 'Pop! Welcome to the Bubble Well!',
+  arriveHint: 'Press Blow! and hop on your bubble. Climb all the way up to Captain Suds!',
+  noHomeText: 'No homes in the well! Build your home in your own world.', followText: 'Float in too' });
+/* ==== end of Bubble ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -200,6 +212,8 @@ TERRAINS.castleLand = castleLand; // T49
 TERRAIN_AIMS.castleLand = castleAim; // T49
 TERRAINS.cubeLand = cubeLand; // Cube Planets (step 0)
 TERRAIN_AIMS.cubeLand = cubeAim; // Cube Planets (step 0)
+TERRAINS.bubbleLand = bubbleLand; // the Bubble Well
+TERRAIN_AIMS.bubbleLand = bubbleAim; // the Bubble Well
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

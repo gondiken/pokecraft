@@ -249,3 +249,30 @@ Castle's spec does. Opening it later for everyone = adding the id to `OPEN_NOW` 
 - Should the ducklings be the rubber-duck creatures of the type (catchable later), or plain toys?
 - Is 40 blocks of climbing enough, or should the well be taller (that needs a taller world: a bigger change, see
   `plans/cube-planets.md` section 2)?
+
+## Built (2026-10-28): what the builder did differently, and why
+
+- **Names:** the world is the **Bubble Well** (frame, realm, Book); "fizzing" stays in the words. Captain Suds kept.
+- **Creatures** (checked against the game: crabs and fairies already exist, so no Spongecrab / Wandfairy): **Squeaklet > Quackmiral**
+  (rubber duck, admiral's hat and a little duck fleet, `rubberduck`), **Suddly > Lathotter** (a sea otter floating on its back with
+  a bar of soap; foam beard and sailor cap, juggles soap, `bathotter`), **Hippip > Bathemoth** (a little hippo with a bubble on its
+  nose; a huge one with a bathtub on its back, rideable on water, `tubhippo`), **Fizzbomb** (bath fizzer, `bathbomb`). Soap film gear
+  `film`. **Captain Suds is a giant Lathotter**, not a walrus (a walrus is too close to Sealbop, the beach-ball seal).
+- **The ducklings are sleepy Squeaklets** (the type's own baby: no rubber duck existed in the game), not catchable in the garden.
+- **Chart:** Bubble hits fire, toxic and **tiny** (trapped in a bubble) instead of rock (rock is already weak to 5 types); resisted by
+  metal, grass, bubble; weak to electric, metal, pirate; resists water and fire.
+- **Kind help:** none of the plan's own numbers. `bubbleHelp(misses)` is only `kindHelp` mapped onto levers (listed in kindhelp.js).
+- **The wand:** Bubble Bee lends it as soon as you arrive (no talk needed). Bubbles you stand on **sink and pop 2 s after you land**;
+  **Jump on a bubble = Bounce** (2.1 high), which is what makes chains of bubbles climbable. A faint ring shows where Blow! puts the next
+  bubble. The fall rule: only a fall **from a bubble** puts you back on your ledge (walking off a ledge on purpose is allowed).
+- **The well's shape:** a floor, a bench (shaft 1 in front of it), the plateau with the Duckling Garden and the chimney, the rim. The
+  plateau **overhangs the bench** and a visible **fizzy breeze** blows bubbles away from the cliff, so the narrow shaft is the only way
+  up (the plan's "only with the wand" check, `bubblecheck.mjs`). The whole map is a keep: no building, no riding.
+- **Fizz lifts** (not in the plan): after the stairs a lift runs from the floor to the plateau, after the chimney one to the rim, so a
+  saved stretch is never climbed twice (also for a star holder).
+- **Puff! strength** comes from how far you stand (close = big puff), since a one-press button cannot say how hard.
+- **The chimney's bar** is an arm from the middle to the wall (a clock hand) so there is always a way past; the ride's stars give a
+  cube the first time **per visit**; resting at the bottom 4 s hops you out.
+- **The shields:** each vent turns your bubble round by its own curl and it flies out the side it ends on; saved keys
+  `pw:bubble:shield1..3`, cleared with the others on a won battle.
+- **Duckling 2** has thorns where the stream meets the rim, so the stream matters (the stream alone could just be waited out).

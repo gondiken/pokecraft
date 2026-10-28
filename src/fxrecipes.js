@@ -3578,3 +3578,124 @@ SIG.quillvolley = (k, from, to) => {
   };
 };
 /* ==== end of T49 knight ==== */
+/* ==== Bubble ==== */
+// Soap-film pastels: a stream of wobbly rainbow bubbles floats to the target and pops in a ring of foam.
+FX_COLORS.bubble = [0xbfefff, 0xffc8ec, 0xfff2a8];
+
+// A string of soap bubbles of different sizes drifts along the way, bobbing up and down out of step.
+TRAVEL.bubble = k => {
+  const N = 9;
+  const bubs = k.points({ n: N, tex: 'bubble', size: 0.34, colors: [0xbfefff, 0xffc8ec, 0xfff2a8, 0xffffff] });
+  const s = k.seeds(N, 3);
+  return {
+    dur: 420,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.45);
+        if (t < 0) { bubs.hide(i); continue; }
+        k.at(t, A, 0.3);
+        bubs.set(i, A.x + k.side.x * Math.sin(t * 9 + s[i] * 6) * 0.12, A.y + Math.sin(t * 7 + s[i] * 4) * 0.12, A.z + k.side.z * Math.sin(t * 9 + s[i] * 6) * 0.12);
+      }
+      bubs.fade(fadeOut(p, 0.85));
+    },
+  };
+};
+
+// A hit: the bubbles pop into a ring of white foam that puffs out, with a few sparkles.
+IMPACT.bubble = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10;
+  const foam = k.points({ n: N, tex: 'puff', size: 0.4 * m, colors: [0xffffff, 0xeaf6ff, 0xffe8f6] });
+  const glints = k.points({ n: 6, tex: 'star', size: 0.18 * m, glow: true, colors: [0xbfefff, 0xffc8ec, 0xfff2a8] });
+  const s = k.seeds(N, 1);
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i] * 0.5, d = (to.r * 0.4 + 0.1 + 0.5 * k.ease(p)) * m;
+        foam.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.7, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      foam.fade(fadeOut(p, 0.4));
+      for (let i = 0; i < 6; i++) {
+        const ang = i * 1.05 + 0.5, d = (0.2 + 0.7 * p) * m;
+        glints.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + 0.2 + Math.sin(ang) * d * 0.6, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      glints.fade(fadeOut(p, 0.5));
+    },
+  };
+};
+
+// Duck Fleet: a line of little yellow rubber ducks paddles at the target one after another, each with a pop of foam where it bonks.
+SIG.duckfleet = (k, from, to) => {
+  const N = 6;
+  const ducks = k.points({ n: N, tex: 'square', size: 0.24, colors: [0xffd83a, 0xffc82a] });
+  const beaks = k.points({ n: N, tex: 'dot', size: 0.1, colors: [0xff8a2a] });
+  const pops = k.points({ n: N, tex: 'puff', size: 0.3, colors: [0xffffff, 0xeaf6ff] });
+  return {
+    dur: 660,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.07) / 0.5), bob = Math.abs(Math.sin(t * 14)) * 0.08;
+        if (t <= 0 || t >= 1) { ducks.hide(i); beaks.hide(i); } else {
+          k.at(t, A, 0.05);
+          ducks.set(i, A.x, A.y - 0.25 + bob, A.z);
+          k.at(Math.min(1, t + 0.03), B, 0.05);
+          beaks.set(i, B.x, B.y - 0.2 + bob, B.z);
+        }
+        if (t >= 1 && p - i * 0.07 < 0.78) pops.set(i, to.pos.x + k.side.x * (i - 2.5) * 0.08, to.pos.y - 0.1 + i * 0.05, to.pos.z + k.side.z * (i - 2.5) * 0.08); else pops.hide(i);
+      }
+      ducks.fade(1); beaks.fade(1);
+      pops.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// Bathtub Wave: a big curling wave of foamy bath water rolls along the ground and crashes over the target.
+SIG.bathtubwave = (k, from, to) => {
+  const N = 16;
+  const wave = k.points({ n: N, tex: 'puff', size: 0.42, colors: [0x9ad8ff, 0xffffff, 0xbfefff] });
+  const drops = k.points({ n: 8, tex: 'drop', size: 0.2, colors: [0x9ad8ff, 0xffffff] });
+  return {
+    dur: 640,
+    step(p) {
+      const run = clamp01(p / 0.6), crash = clamp01((p - 0.55) / 0.45);
+      for (let i = 0; i < N; i++) {
+        const col = i % 4, row = Math.floor(i / 4), t = clamp01(run - col * 0.06);
+        k.at(t, A, 0);
+        const lift = row * 0.22 * (1 - crash) + (row === 3 ? Math.sin(Math.PI * t) * 0.25 : 0);
+        wave.set(i, A.x + k.side.x * (col - 1.5) * 0.25, A.y - 0.35 + lift, A.z + k.side.z * (col - 1.5) * 0.25);
+      }
+      wave.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 8; i++) {
+        if (crash <= 0) { drops.hide(i); continue; }
+        const ang = i * 0.785, d = 0.2 + crash * (to.r + 0.5);
+        drops.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(Math.PI * crash) * 0.6 + Math.sin(ang) * 0.2, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      drops.fade(fadeOut(crash, 0.6));
+    },
+  };
+};
+
+// Soap Juggle: pink soap bars arc over to the target one after another, each landing with a slippery squeak of bubbles.
+SIG.soapjuggle = (k, from, to) => {
+  const N = 4;
+  const bars = k.points({ n: N, tex: 'square', size: 0.26, colors: [0xff9ac8, 0x8ad8ff] });
+  const fizz = k.points({ n: N * 3, tex: 'bubble', size: 0.18, colors: [0xffffff, 0xbfefff, 0xffc8ec] });
+  return {
+    dur: 620,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.1) / 0.45);
+        if (t <= 0 || t >= 1) bars.hide(i); else { k.at(t, A, 0.9); bars.set(i, A.x, A.y, A.z); }
+        for (let j = 0; j < 3; j++) {
+          const n = i * 3 + j, q = clamp01((p - i * 0.1 - 0.45) / 0.3);
+          if (q <= 0 || q >= 1) { fizz.hide(n); continue; }
+          const ang = j * 2.1 + i;
+          fizz.set(n, to.pos.x + k.side.x * Math.cos(ang) * q * 0.5, to.pos.y + q * 0.6, to.pos.z + k.side.z * Math.cos(ang) * q * 0.5);
+        }
+      }
+      bars.fade(1);
+      fizz.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+/* ==== end of Bubble ==== */

@@ -158,6 +158,13 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.42, 0.1, 0.42, 0xb8c0cc, 0, 0.64, 0);
     box(head, 0.05, 0.24, 0.1, c.shirt, 0.22, 0.7, -0.12);
   }
+  /* ==== Bubble ==== */
+  if (look === 'bubble') { // the Bubble Well's people: a puffy hat of soap foam and a big bubble wand (a ring on a stick) on the back
+    for (const [x, y, z, w] of [[0, 0.56, 0, 0.5], [-0.14, 0.66, 0.06, 0.26], [0.13, 0.68, -0.04, 0.28], [0.02, 0.76, 0.02, 0.22]]) box(head, w, w * 0.6, w, 0xffffff, x, y, z);
+    box(group, 0.05, 0.7, 0.05, 0xf0c84a, 0.12, 1.15, -0.2);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; box(group, 0.06, 0.06, 0.04, [0x8ad8ff, 0xff9ac8, 0xfff28a][k % 3], 0.12 + Math.cos(a) * 0.16, 1.62 + Math.sin(a) * 0.16, -0.2); }
+  }
+  /* ==== end of Bubble ==== */
   if (look === 'chef') { // T33: a tall white chef's hat
     box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
     box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);

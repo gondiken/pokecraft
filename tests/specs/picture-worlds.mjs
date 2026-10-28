@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   /* ---- 1. Types, wool, blocks (data) ---- */
   const d1 = await page.evaluate(async old => {
     const S = await import('/src/species.js'), Bk = await import('/src/blocks.js');
-    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair', 'surprise', 'atlantis', 'portal', 'doodle', 'knight']; // (T49: knight)
+    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair', 'surprise', 'atlantis', 'portal', 'doodle', 'knight', 'bubble']; // (T49: knight)
     const e = (a, b) => S.effectiveness(a, b);
     const row = (a, want) => Object.entries(want).filter(([b, v]) => e(a, b) !== v).map(([b, v]) => `${a}>${b} ${e(a, b)} want ${v}`);
     const bad = [
@@ -93,7 +93,7 @@ export default async function ({ browser, base, t }) {
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
-  t.ok(d2.counts.join() === '12,11,12' && d2.order.replace(/doodle/, 'secret1').replace(/atlantis/, 'secret2').replace(/castle/, 'secret3').replace(/gravity/, 'secret5') === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= d2.withRealm + 1, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), only worlds with a realm are ready (${d2.counts}, ${d2.ready} ready of ${d2.withRealm} with a realm)`); // wave 15: each task flips its own frame
+  t.ok(d2.counts.join() === '12,11,12' && d2.order.replace(/doodle/, 'secret1').replace(/atlantis/, 'secret2').replace(/castle/, 'secret3').replace(/gravity/, 'secret5').replace(/bubble/, 'secret4') === 'house,pirate,race,stadium,portal,fair,doors,secret1,secret2,secret3,secret4,secret5' && d2.ready <= d2.withRealm + 1, `12 / 11 / 12 Picture Worlds in the old order (the Wizard gives no star), only worlds with a realm are ready (${d2.counts}, ${d2.ready} ready of ${d2.withRealm} with a realm)`); // wave 15: each task flips its own frame
   t.ok(['house:house', 'pirate:pirate', 'race:playland', 'stadium:playland'].every(x => d2.realms.split(',').includes(x)) && ['race', 'stadium'].every(x => d2.worlds.split(',').includes(x)) && d2.defs, `the worlds with a realm (at least the four of wave 14; wave 15 adds more) have a realm, each a child of the Swirl entered by a frame, no morning, losing keeps you there (${d2.realms})`);
   t.ok(d2.noGym && d2.bosses && d2.swirlShow && d2.rematchCap === 70, `Picture Worlds are not gyms (32 gyms), every one has a Boss, REMATCH_CAP is ${d2.rematchCap}`);
   t.ok(d2.zones && d2.gates && d2.zoneAt === 'race,stadium,hub,fair', `Playland: zones and hub inside the map and apart, the gates in the hub (${d2.zoneAt})`);
