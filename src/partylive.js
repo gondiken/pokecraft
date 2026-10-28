@@ -30,6 +30,7 @@ export const PARTY = {
   rest: { won: 1.8, missed: 1.6, pinataWon: 2.6, pinataNap: 2.0 },
   stickSwing: 0.28, splat: 1.6,
   clearR: 17,          // while a game runs no wild gift box stays this close to the party floor's middle
+  away: 2.5,          // owner 2026-10-28 "I can't ever exit once I started a game": off the party floor and the Spinner this long, a waiting game folds away (its round is kept for the trip)
   dark: 0.3,           // "Lights out!": the light goes down to this
   candle: 0.2,         // the finale: a candle lights every 0.2 s, then SURPRISE!
   surprise: 1.9, rise: 0.8,
@@ -71,6 +72,7 @@ export class PartyLive {
     this.sp = { phase: 'idle', spin: null, n: 0, a: (3 * Math.PI) / 4, t: 0, slice: null, tick: -1, tickT: 0 };
     this.gm = null;
     this.played = Object.fromEntries(GAMES.map(g => [g, 0]));
+    this.reached = {};                                            // a game you walked away from: the round it was on (this trip only)
     this.misses = Object.fromEntries(GAMES.map(g => [g, [0, 0, 0, 0]]));
     this.attempts = Object.fromEntries(GAMES.map(g => [g, [0, 0, 0, 0]]));
     this.sweetsReady = true;
@@ -224,7 +226,8 @@ export class PartyLive {
     const pos = p.pos ?? p, g = this.gm;
     if (g) {
       // owner 2026-10-28: "I couldn't do anything with the piñata": Play! works anywhere in the party room (it whooshes you to the start)
-      if (g.phase === 'ready') return this.inRoom(pos) ? (this.misses[g.game][g.round] ? 'Again!' : 'Play!') : null;
+      // Play! on the party floor and at the Spinner, never elsewhere (the way home and the people keep their own button)
+      if (g.phase === 'ready') return this.onSquare(pos) || this.onSpinnerPad(pos) ? (this.misses[g.game][g.round] ? 'Play again!' : 'Play!') : null;
       if (!this.onSquare(pos)) return null;
       if (g.phase !== 'run') return null;
       if (g.game === 'pinata' || g.game === 'whack') return 'Whack!';
@@ -241,7 +244,7 @@ export class PartyLive {
     if (!w) return false;
     if (w === 'Spin!') return this.startSpin();
     if (w === 'Stop!') return this.stopSpin();
-    if (w === 'Play!' || w === 'Again!') { this.toStart(); return this.beginRound(); }
+    if (w === 'Play!' || w === 'Play again!') { this.toStart(); return this.beginRound(); }
     if (w === 'Whack!') { this.whackNow(this.eye(), this.look()); return true; }
     if (w === 'Drop!') return this.dropNow();
     return false;
@@ -298,7 +301,7 @@ export class PartyLive {
 
   /* ---------------------------------- a party game: build, rounds, the bow ---------------------------------- */
   startGame(game) {
-    this.gm = { game, round: 1, phase: 'build', t: 0, twist: null, twistRound: 0, run: null, n: this.played[game]++ };
+    this.gm = { game, round: this.reached[game] || 1, phase: 'build', t: 0, twist: null, twistRound: 0, run: null, n: this.played[game]++ };
     this.misses[game] = [0, 0, 0, 0];
     sound.play('doorwhoosh');
     this.toast(`Surprise! It's ${GAME_NAMES[game]}! ${ICON[game]}`);
@@ -351,7 +354,7 @@ export class PartyLive {
   stopRound() {
     const g = this.gm;
     this.unslow(); this.restoreNooks();
-    this.toast('The game waits for you on the party floor!');
+    this.toast('The game waits for you on the party floor! Walk away to stop playing.');
     this.roundReadyQuiet(g);
     this.syncBoxes();
   }
@@ -376,6 +379,7 @@ export class PartyLive {
   gameWon() {
     const g = this.gm, gm = this.game, k = bowKey(bowOf(g.game));
     if (!gm.beaten.includes(k)) gm.beaten.push(k);
+    delete this.reached[g.game];
     gm.save?.();
     const st = this.bows();
     sound.play('rightdoor');
@@ -390,6 +394,14 @@ export class PartyLive {
     const g = this.gm;
     if (!g) return;
     g.t += dt;
+    // walked away from a waiting game: it folds away, so the Spinner and the way home work again
+    if (g.phase === 'ready' && !this.onSquare() && !this.onSpinnerPad()) {
+      if ((g.awayT = (g.awayT || 0) + dt) >= PARTY.away) {
+        this.reached[g.game] = g.round;
+        this.toast(`${ICON[g.game]} ${GAME_NAMES[g.game]} will wait for you. Spin again to play!`);
+        g.phase = 'clear'; g.t = 0; return;
+      }
+    } else g.awayT = 0;
     if (g.phase === 'build') { this.buildStep(Math.min(1, g.t / PARTY.build), true); if (g.t >= PARTY.build) this.roundReady(); }
     else if (g.phase === 'run') {
       if (!this.onSquare()) { this.stopRound(); return; }

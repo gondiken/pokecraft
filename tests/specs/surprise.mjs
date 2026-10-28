@@ -67,7 +67,7 @@ const helpers = page => page.evaluate(async () => {
     const lv = L(), gm = lv.gm, set = lv.sets[gm.game], p = g.player;
     window.__at(set.standAt[0], 11, set.standAt[1], 0, 0);
     const start = lv.near(p);
-    if (start !== 'Play!' && start !== 'Again!') return { start, phase: gm.phase };
+    if (start !== 'Play!' && start !== 'Play again!') return { start, phase: gm.phase };
     lv.use(p);
     const game = gm.game, words = new Set();
     let steps = 0, presses = 0;
@@ -623,7 +623,7 @@ async function livePart({ browser, base, t, page }) {
     const up = L.gm.run.st.plan.up, time = L.gm.run.st.plan.time;
     return { a: a.out, b: up0.out, word, misses: L.misses.whack[1], up, time, toasts: window.__toasts.join('|') };
   });
-  t.ok(careless.a === 'missed' && careless.b === 'missed' && careless.misses === 2 && careless.word === 'Again!' && careless.time === 40 && careless.up > 1.3 && /You got \d+! Again\?/.test(careless.toasts) && /It will be a bit slower now/.test(careless.toasts), `Pop-Up Whack: never whacking misses the round (${careless.a}, ${careless.b}); "Again!", and after two misses the jacks stay up ${careless.up.toFixed(2)} s with ${careless.time} s on the clock`);
+  t.ok(careless.a === 'missed' && careless.b === 'missed' && careless.misses === 2 && careless.word === 'Play again!' && careless.time === 40 && careless.up > 1.3 && /You got \d+! Again\?/.test(careless.toasts) && /It will be a bit slower now/.test(careless.toasts), `Pop-Up Whack: never whacking misses the round (${careless.a}, ${careless.b}); "Again!", and after two misses the jacks stay up ${careless.up.toFixed(2)} s with ${careless.time} s on the clock`);
   // leaving the party floor in the middle of a round: it waits (not a miss)
   const leave = await page.evaluate(() => {
     const g = window.pokecraft, L = window.__live(); window.__toasts = [];
@@ -633,6 +633,18 @@ async function livePart({ browser, base, t, page }) {
     return { phase: L.gm.phase, misses: L.misses.whack[1], toast: window.__toasts.join('|') };
   });
   t.ok(leave.phase === 'ready' && /The game waits for you on the party floor!/.test(leave.toast), `walking off the party floor in a round: "${leave.toast}" (no miss)`);
+  // owner 2026-10-28: staying away folds the waiting game away, so the Spinner and the way home work again; its round is kept for the trip
+  const quit = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(); window.__toasts = [];
+    const round = L.gm.round;
+    for (let i = 0; i < 100; i++) L.step(0.05);
+    const gone = L.gm === null, near = L.near(g.player);
+    window.__at(L.sets.whack.standAt[0], 11, L.sets.whack.standAt[1], 0, 0); const onFloor = L.near(g.player);
+    window.__at(70.5, 11, 53.5); const spin = L.near(g.player);
+    L.startGame('whack'); const back = L.gm.round; for (let i = 0; i < 60; i++) L.step(0.05);
+    return { round, gone, near, onFloor, spin, back, reached: L.reached.whack, toast: window.__toasts.join('|') };
+  });
+  t.ok(quit.gone && quit.near === null && quit.onFloor === null && quit.spin === 'Spin!' && quit.back === quit.round && /will wait for you\. Spin again to play!/.test(quit.toast), `walking away from a waiting game folds it away ("${quit.toast}"): no Play! off the party floor, Spin! works again, and the game comes back on round ${quit.back}`);
   // the Piñata Party with "Two piñatas!" in round 3; "Lights out!" dims the room and the piñata glows
   const twists = await page.evaluate(() => {
     const g = window.pokecraft, L = window.__live(), out = {};
