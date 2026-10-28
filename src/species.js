@@ -2533,13 +2533,13 @@ export const SPECIES = {
   },
   clipclop: {
     name: 'Clipclop', type: 'knight', desc: 'A foal in a tin helmet that is much too big. Clip, clop, bonk! It falls over its eyes.',
-    base: { hp: 52, atk: 66, def: 56, spd: 76 }, baseXp: 66, catchRate: 0.45, gait: 'sentry', learn: L('knight', 'normal'),
+    base: { hp: 52, atk: 66, def: 56, spd: 76 }, baseXp: 66, catchRate: 0.45, gait: 'sentry', learn: L('knight', 'racer'),
     evolve: { level: 26, into: 'gallantrot' },
     model: { shape: 'armourhorse', scale: 0.85, body: 0xc8925a, accent: 0xc8ccd8, dark: 0x5a3a24, belly: 0xe8c89a, extras: [] },
   },
   gallantrot: {
     name: 'Gallantrot', type: 'knight', desc: 'A tall horse in shiny armour with a red-and-gold blanket. Some let you ride them, proud as a knight!',
-    base: { hp: 82, atk: 100, def: 82, spd: 96 }, baseXp: 170, catchRate: 0.1, gait: 'sentry', learn: L('knight', 'normal', [[30, 'grandjoust']]),
+    base: { hp: 82, atk: 100, def: 82, spd: 96 }, baseXp: 170, catchRate: 0.1, gait: 'sentry', learn: L('knight', 'racer', [[30, 'grandjoust']]),
     model: { shape: 'armourhorse', scale: 1.3, body: 0xf2ece0, accent: 0xd8dce6, dark: 0x6a5a4a, belly: 0xc83a3a, extras: ['barding'] },
   },
   turrock: {
@@ -2897,12 +2897,13 @@ export function gainXp(c, amount, { ask = false } = {}) {
     c.level++;
     c.hp += statsFor(c).maxHp - before;
     msgs.push(`${nameOf(c)} grew to Lv ${c.level}!`);
-    // 1. moves for this exact level; 2. catch-up: one older move this creature never had a chance at
-    for (const [l, m] of SPECIES[c.species].learn) if (l === c.level) offerMove(c, m, msgs, ask, offered);
-    const older = SPECIES[c.species].learn.filter(([l, m]) => l < c.level && !c.moves.includes(m) && !c.learned.includes(m) && !offered.has(m));
-    if (older.length) offerMove(c, older.sort((a, b) => a[0] - b[0])[0][1], msgs, ask, offered);
-    const evo = SPECIES[c.species].evolve;
-    if (evo && c.level >= evo.level) {
+    // 1. moves for this exact level; 2. catch-up: one older move this creature never had a chance at.
+    // Owner 2026-10-28: they are offered after an evolution at this level ("evolved into Karthog", then "Karthog wants to learn").
+    const wants = SPECIES[c.species].learn.filter(([l]) => l === c.level).map(([, m]) => m);
+    const older = SPECIES[c.species].learn.filter(([l, m]) => l < c.level && !c.moves.includes(m) && !c.learned.includes(m) && !offered.has(m) && !wants.includes(m));
+    if (older.length) wants.push(older.sort((a, b) => a[0] - b[0])[0][1]);
+    const evo = SPECIES[c.species].evolve, evolves = !!evo && c.level >= evo.level;
+    if (evolves) {
       const oldName = nameOf(c);
       const oldMax = statsFor(c).maxHp;
       c.species = evo.into;
@@ -2911,9 +2912,10 @@ export function gainXp(c, amount, { ask = false } = {}) {
       msgs.push(`${oldName} evolved into ${nameOf(c)}!`);
       for (const id of gainTraits(c)) msgs.push(TRAITS[id].grown(nameOf(c)));
       evolved = true;
-      // a move waiting at this level for the new species must not be lost
-      for (const [l, m] of SPECIES[c.species].learn) if (l === c.level) offerMove(c, m, msgs, ask, offered);
     }
+    for (const m of wants) offerMove(c, m, msgs, ask, offered);
+    // a move waiting at this level for the new species must not be lost
+    if (evolves) for (const [l, m] of SPECIES[c.species].learn) if (l === c.level) offerMove(c, m, msgs, ask, offered);
   }
   return { msgs, evolved };
 }
