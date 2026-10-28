@@ -62,7 +62,7 @@ export class DoorGlow {
     this.group.rotation.set(rotX, rotY, 0);
     const cols = opts?.colours;
     this.u = { t: { value: 0 }, open: { value: 0 }, size: { value: new THREE.Vector2(w, h) },
-      colA: { value: new THREE.Vector3(...(cols?.[0] ?? [0.62, 0.30, 1.0])) }, colB: { value: new THREE.Vector3(...(cols?.[1] ?? [1.0, 0.45, 0.85])) } };
+      colA: { value: new THREE.Vector3(...(cols?.[0] ?? [0.62, 0.30, 1.0])) }, colB: { value: new THREE.Vector3(...(cols?.[1] ?? [1.0, 0.45, 0.85])) }, tint: { value: cols ? 1 : 0 } }; // tint 1: the whole swirl in its own colours (owner 2026-10-28: the House's swirls looked alike)
     const add = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: this.u };
     const vortex = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.ShaderMaterial({ ...add, blending: THREE.NormalBlending, vertexShader: DOOR_VERT, fragmentShader: VORTEX_FRAG })); // covers the tile: dark gaps make the arms read
     if (opts?.lite) {
@@ -92,27 +92,27 @@ export class DoorGlow {
   }
 }
 const DOOR_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-const VORTEX_FRAG = `uniform float t, open; uniform vec2 size; uniform vec3 colA, colB; varying vec2 vUv;
+const VORTEX_FRAG = `uniform float t, open, tint; uniform vec2 size; uniform vec3 colA, colB; varying vec2 vUv;
 void main() {
   vec2 p = (vUv - 0.5) * size / (0.5 * size.x); float r = length(p), a = atan(p.y, p.x);
   float sp = t * mix(0.35, 2.4, open);
   float arms = pow(0.5 + 0.5 * sin(a * 3.0 - r * 6.5 + sp * 2.0), 2.2);   // three bright arms winding in
   float fine = pow(0.5 + 0.5 * sin(a * 6.0 + r * 11.0 - sp * 3.0), 3.0);  // thin streaks turning the other way
-  vec3 deep = vec3(0.10, 0.02, 0.24);
+  vec3 deep = mix(vec3(0.10, 0.02, 0.24), colA * 0.16, tint);
   vec3 col = mix(deep, mix(colA, colB, 0.5 + 0.5 * sin(a + t)), arms);
-  col += vec3(0.35, 0.95, 1.0) * fine * 0.55 * smoothstep(1.7, 0.4, r);
-  col += vec3(1.0, 0.95, 1.0) * smoothstep(0.42, 0.0, r) * (0.85 + 0.25 * sin(t * 3.0)); // the bright heart
+  col += mix(vec3(0.35, 0.95, 1.0), colB, tint) * fine * 0.55 * smoothstep(1.7, 0.4, r);
+  col += mix(vec3(1.0, 0.95, 1.0), mix(colB, vec3(1.0), 0.45), tint) * smoothstep(0.42, 0.0, r) * (0.85 + 0.25 * sin(t * 3.0)); // the bright heart
   col = mix(vec3(dot(col, vec3(0.3))) * 0.8 + vec3(0.06, 0.04, 0.1), col, open);
   float e = min(min(vUv.x, 1.0 - vUv.x) * size.x, min(vUv.y, 1.0 - vUv.y) * size.y);
   float alpha = smoothstep(0.0, 0.45, e) * mix(0.35 + 0.08 * sin(t * 1.3), 0.96, open);
   gl_FragColor = vec4(col, alpha);
 }`;
-const HALO_FRAG = `uniform float t, open; uniform vec2 size; varying vec2 vUv;
+const HALO_FRAG = `uniform float t, open, tint; uniform vec2 size; uniform vec3 colA, colB; varying vec2 vUv;
 void main() {
   vec2 q = (vUv - 0.5) * (size + 3.0); vec2 d = max(abs(q) - size * 0.5, 0.0);
   float g = exp(-length(d) * 1.6) * (1.0 - step(length(d), 0.001) * 0.6);
   float pulse = 0.75 + 0.25 * sin(t * 2.2);
-  vec3 col = mix(vec3(0.75, 0.4, 1.0), vec3(1.0, 0.55, 0.85), 0.5 + 0.5 * sin(t * 0.7));
+  vec3 col = mix(mix(vec3(0.75, 0.4, 1.0), vec3(1.0, 0.55, 0.85), 0.5 + 0.5 * sin(t * 0.7)), mix(colA, colB, 0.5 + 0.5 * sin(t * 0.7)), tint);
   gl_FragColor = vec4(col * g * pulse * mix(0.1, 0.8, open), 1.0);
 }`;
 const SPARK_VERT = `uniform float t, open; uniform vec2 size; attribute vec3 seed; varying float vK;
@@ -126,10 +126,10 @@ void main() {
   gl_PointSize = clamp((2.0 + 4.0 * seed.z) * (1.0 - life * 0.4) * 60.0 / -mv.z, 1.0, 14.0) * step(0.02, open);
   gl_Position = projectionMatrix * mv;
 }`;
-const SPARK_FRAG = `uniform float open; varying float vK;
+const SPARK_FRAG = `uniform float open, tint; uniform vec3 colA, colB; varying float vK;
 void main() {
   float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard;
-  vec3 col = mix(vec3(1.0, 0.6, 0.95), vec3(0.6, 0.95, 1.0), vK);
+  vec3 col = mix(mix(vec3(1.0, 0.6, 0.95), vec3(0.6, 0.95, 1.0), vK), mix(colB, vec3(1.0), 0.3 * vK), tint);
   gl_FragColor = vec4(col * (1.0 - d * 2.0) * open, 1.0);
 }`;
 

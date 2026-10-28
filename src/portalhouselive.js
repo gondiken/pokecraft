@@ -24,7 +24,9 @@ import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOOR_N, DOOR_E, DOORS, SWIRLS
 import { pictureWorld } from './pictureworlds.js';
 import { sound } from './sound.js';
 
-const COLOURS = { orange: [[1.0, 0.55, 0.12], [1.0, 0.85, 0.35]], teal: [[0.1, 0.78, 0.8], [0.5, 1.0, 0.95]], gold: [[1.0, 0.8, 0.3], [1.0, 1.0, 0.8]], pink: [[1.0, 0.35, 0.65], [1.0, 0.7, 0.9]], violet: null };
+// Owner 2026-10-28: the swirls must not look alike. Yours is blue, the orange one a deep orange, the doors between rooms green
+// (they were gold: too near orange), the pair pink; violet (null = DoorGlow's own colours) stays for the ways home, like the main world's.
+const COLOURS = { orange: [[1.0, 0.42, 0.02], [1.0, 0.68, 0.18]], teal: [[0.12, 0.38, 1.0], [0.5, 0.78, 1.0]], gold: [[0.2, 0.85, 0.3], [0.7, 1.0, 0.55]], pink: [[1.0, 0.35, 0.65], [1.0, 0.7, 0.9]], violet: null };
 const inBox = (b, p) => p.x >= b.x0 && p.x <= b.x1 + 1 && p.z >= b.z0 && p.z <= b.z1 + 1 && p.y >= b.bottom && p.y <= b.top + 2;
 const SPARK_MAX = 4;
 const isOrangeEnd = s => s.kind === 'orange' || s.kind === 'peach';
@@ -39,7 +41,7 @@ export class PortalHouseLive {
     this.clock = 0;               // the room clock: summed frame dt while playing
     this.manual = false;          // tests: only step(dt) moves the clock
     this.wand = false;            // the Swirl Wand (given in the Hall)
-    this.yours = null;            // the id of the white pad your teal swirl is on
+    this.yours = null;            // the id of the white pad your blue swirl is on
     this.orange = null;           // the id of the peach pad your orange swirl is on (rooms 5-8)
     this.lastOrange = null;       // the fixed orange swirl you went through last (the one your swirl leads to)
     this.mover = null; this.flight = null; this.flightHead = 0;
@@ -68,7 +70,7 @@ export class PortalHouseLive {
   mark(m) { m.userData.portalHouse = true; m.frustumCulled = false; this.game.scene?.add(m); this.meshes.push(m); return m; }
   build() {
     if (!this.game.scene) return;
-    this.aimMesh = this.mark(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x5ae8e0, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide })));
+    this.aimMesh = this.mark(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x4a8cff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })));
     this.aimMesh.visible = false; this.aimMesh.renderOrder = 8;
     const star = new THREE.OctahedronGeometry(0.28, 0);
     this.sparkMesh = this.mark(new THREE.InstancedMesh(star, new THREE.MeshBasicMaterial({ color: 0xffe27a }), SPARK_MAX));
@@ -159,7 +161,7 @@ export class PortalHouseLive {
     this.place(s);
     return true;
   }
-  // Your teal swirl onto a white pad, or your orange swirl onto a peach pad.
+  // Your blue swirl onto a white pad, or your orange swirl onto a peach pad.
   place(s) {
     const peach = s.kind === 'peach';
     if ((peach ? this.orange : this.yours) === s.id) return;
@@ -168,11 +170,11 @@ export class PortalHouseLive {
     this.chain = { key: null, n: 0 };
     this.armed[s.id] = !touches(s, c, this.feet(), true); // stepping onto a pad you just chose does not send you at once
     sound.play('swirlzip');
-    this.puff([c[0] + s.normal[0] * 0.5, c[1] + s.normal[1] * 0.5, c[2] + s.normal[2] * 0.5], peach ? 0xff9a3a : 0x5ae8e0);
+    this.puff([c[0] + s.normal[0] * 0.5, c[1] + s.normal[1] * 0.5, c[2] + s.normal[2] * 0.5], peach ? 0xff8a30 : 0x4a8cff);
     this.drop(peach ? 'mine' : 'yours');
     const room = this.isRoom(this.where()) ? this.room(this.where()) : null;
-    if (peach) this.once('placedPeach', this.yours ? 'Your orange swirl is on the peach pad! Both ends are yours now.' : 'Your orange swirl is on the peach pad! Now put your teal swirl on a white pad.');
-    else if (room?.peaches.length) this.once('placedTeal2', this.orange ? 'Both swirls are yours! In one, out the other.' : 'Your teal swirl is on! Now tap a peach pad for your orange swirl.');
+    if (peach) this.once('placedPeach', this.yours ? 'Your orange swirl is on the peach pad! Both ends are yours now.' : 'Your orange swirl is on the peach pad! Now put your blue swirl on a white pad.');
+    else if (room?.peaches.length) this.once('placedTeal2', this.orange ? 'Both swirls are yours! In one, out the other.' : 'Your blue swirl is on! Now tap a peach pad for your orange swirl.');
     else this.once('placed', 'Your swirl is on the pad! Now walk into the orange swirl.');
   }
   // a tapped / clicked block: a white pad or a peach pad
@@ -188,7 +190,7 @@ export class PortalHouseLive {
   }
   prompt(block, how) {
     if (!block) return null;
-    if (block.id === B.PO_PANEL) return this.wand ? `White pad · ${how} to put your teal swirl here` : 'White pad · get a Swirl Wand from Keeper Kit first';
+    if (block.id === B.PO_PANEL) return this.wand ? `White pad · ${how} to put your blue swirl here` : 'White pad · get a Swirl Wand from Keeper Kit first';
     if (block.id === B.PO_PEACH) return this.wand ? `Peach pad · ${how} to put your orange swirl here` : 'Peach pad · get a Swirl Wand from Keeper Kit first';
     return null;
   }
@@ -204,7 +206,7 @@ export class PortalHouseLive {
   }
 
   /* ---------- going through ---------- */
-  // The orange end your teal swirl leads to: your own orange swirl in a room with peach pads, else the fixed orange swirl you went
+  // The orange end your blue swirl leads to: your own orange swirl in a room with peach pads, else the fixed orange swirl you went
   // through last (else the room's first).
   orangeFor(room) {
     if (room.peaches.length) return this.orange ? swirlById(this.orange) : null;
@@ -226,11 +228,11 @@ export class PortalHouseLive {
     let target;
     if (isOrangeEnd(sw)) {
       const yours = this.yours && swirlById(this.yours);
-      if (!yours) { this.once('noswirl', 'Put your teal swirl on a white pad first! Look at a white pad and tap.'); this.armed[sw.id] = false; return; }
+      if (!yours) { this.once('noswirl', 'Put your blue swirl on a white pad first! Look at a white pad and tap.'); this.armed[sw.id] = false; return; }
       if (sw.kind === 'orange') this.lastOrange = sw.id;
       target = yours;
     } else {
-      target = this.orangeFor(room); // you went into your teal swirl: out of the orange end
+      target = this.orangeFor(room); // you went into your blue swirl: out of the orange end
       if (!target) { this.once('noorange', 'Put your orange swirl on a peach pad too! Then in one, out the other.'); this.armed[sw.id] = false; return; }
     }
     const key = `${sw.id}>${target.id}`;
@@ -530,8 +532,8 @@ export class PortalHouseLive {
         this.aimMesh.position.set(c[0] + nx * 0.07, c[1] + ny * 0.07, c[2] + nz * 0.07);
         this.aimMesh.rotation.set(ny > 0.5 ? -Math.PI / 2 : ny < -0.5 ? Math.PI / 2 : 0, ny === 0 ? Math.atan2(nx, nz) : 0, 0);
         this.aimMesh.scale.set(s.w, s.h, 1);
-        this.aimMesh.material.color.setHex(s.kind === 'peach' ? 0xffa060 : 0x5ae8e0);
-        this.aimMesh.material.opacity = 0.3 + 0.2 * Math.sin(this.clock * 8);
+        this.aimMesh.material.color.setHex(s.kind === 'peach' ? 0xff8a30 : 0x4a8cff);
+        this.aimMesh.material.opacity = 0.18; // owner 2026-10-28: a calm tint on the pad you aim at, no blinking (it gave the puzzles away)
       }
     }
     // the sliding white pad (it has no blocks)
@@ -605,7 +607,7 @@ export class PortalHouseLive {
     if (n === 'study') return pt(STUDY.boss.x + 0.5, STUDY.boss.z + 0.5, (a, m) => `Grandpa Arch ${a} ${m}m`);
     const room = this.room(n), y = this.yours && swirlById(this.yours), o = this.orange && swirlById(this.orange);
     if (room.peaches.length && (!o || o.room !== n)) { const s = swirlById(room.peaches.includes(room.first) ? room.first : room.peaches[0]); return pt(s.centre[0], s.centre[2], () => 'Tap a peach pad for your orange swirl!'); }
-    if (!y || y.room !== n) { const s = swirlById(room.slots.includes(room.first) ? room.first : room.slots[0]); const c = this.cen(s); return pt(c[0], c[2], () => 'Tap a white pad to put your teal swirl there!'); }
+    if (!y || y.room !== n) { const s = swirlById(room.slots.includes(room.first) ? room.first : room.slots[0]); const c = this.cen(s); return pt(c[0], c[2], () => 'Tap a white pad to put your blue swirl there!'); }
     if (room.ball && !this.pressed) { const b = room.ball.button; return pt(b[0], b[2], () => 'Get the Swirl Ball onto the button!'); }
     const ex = swirlById(room.exit);
     return pt(ex.centre[0], ex.centre[2], (a, m) => `Reach the door ${a} ${m}m`);
