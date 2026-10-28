@@ -339,14 +339,21 @@ export default async function ({ browser, base, t }) {
       const blk = (n, P0, via) => { const c = { ...D.courseOf(n, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); for (let i = 0; i < 900; i++) { const P = via && i < 90 ? via : P0; const pl = [st.tip.x, c.rowA + 1, st.tip.z]; const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); } return st.blocked; };
       const c2 = D.courseOf(2, solid), b0 = c2.blots[0], aimBlot = [c2.start[0] + (b0.x - c2.start[0]) * 2, c2.start[1] + (b0.z - c2.start[1]) * 2];
       out.blocks = [blk(2, aimBlot), blk(6, [40, 40], [45, 78]), blk(5, [24, 80])];
-      if (out.blocks.join() !== 'blot,page,low') bad(`blocked by ${out.blocks}`);
+      if (out.blocks[0] !== 'blot') bad(`blocked by ${out.blocks}`);
+      // the tower: aimed at it, the pencil glides round it (owner 2026-10-28) and never goes into it
+      { const c = { ...D.courseOf(5, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); let minR = 99; for (let i = 0; i < 900; i++) { const P = [24.5, 80.5], pl = [st.tip.x, c.rowA + 1, st.tip.z], e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); minR = Math.min(minR, Math.hypot(st.tip.x - 24.5, st.tip.z - 80.5)); }
+        out.towerR = +minR.toFixed(2); if (minR < D.TOWER.r + 0.4) bad(`the pencil went into the tower (${minR})`); }
+      // (owner 2026-10-28) another page does not stop the pencil dead any more: it glides along its edge, but never draws onto it
+      { const c = { ...D.courseOf(6, solid), ink: 99, rubber: 0 }, st = T.newDraw(c); for (let i = 0; i < 900; i++) { const P = i < 90 ? [45, 78] : [40, 40], pl = [st.tip.x, c.rowA + 1, st.tip.z], e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], st.tip.row + 1 - e[1], P[1] - e[2]], m = Math.hypot(...d); T.drawStep(st, 1 / 60, { eye: e, dir: d.map(v => v / m), player: [st.tip.x, st.tip.row + 1, st.tip.z] }); }
+        out.onPage = [...st.cells.values()].filter(q => c.fence.some(r => q.x >= r[0] && q.x <= r[1] && q.z >= r[2] && q.z <= r[3])).length; out.glided = st.glided || 0;
+        if (out.onPage) bad(`the line was drawn onto another page (${out.onPage} cells)`); }
       // owner 2026-10-27 ("the pencil gets stuck at the edge"): a stuck pencil turns round toward where you look, even a point short of it
       {
         const c = { ...D.courseOf(2, solid), ink: 99, rubber: 0 }, st = T.newDraw(c);
         const lookAt = (P, pl) => { const e = [pl[0], pl[1] + 1.6, pl[2]], d = [P[0] - e[0], Math.min(st.tip.row + 1, e[1] - 0.6) - e[1], P[1] - e[2]], m = Math.hypot(...d); return { eye: e, dir: d.map(v => v / m), player: pl }; };
         const behind = () => { const p = st.pts[Math.max(0, st.pts.length - 7)]; return [p.x, p.row + 1, p.z]; }; // you walk 3 blocks behind the tip
         for (let i = 0; i < 900 && st.blocked !== 'blot'; i++) T.drawStep(st, 1 / 60, lookAt(aimBlot, behind()));
-        const h1 = st.tip.h, s1 = st.s, pl = behind(), back = [pl[0] - Math.sin(h1) * 2 - Math.cos(h1) * 1, pl[2] + Math.cos(h1) * 2 - Math.sin(h1) * 1]; // to the side, a bit back toward you
+        const h1 = st.tip.h, s1 = st.s, pl = behind(), back = [pl[0] - Math.sin(h1) * 3, pl[2] + Math.cos(h1) * 3]; // off to the side of you (owner 2026-10-28: a look along your own line between you and the pencil never turns it)
         for (let i = 0; i < 120; i++) T.drawStep(st, 1 / 60, lookAt(back, pl));
         out.unstuck = { was: 'blot', turned: +Math.abs(Math.atan2(Math.sin(st.tip.h - h1), Math.cos(st.tip.h - h1))).toFixed(2), moved: +(st.s - s1).toFixed(2) };
         if (out.unstuck.turned < 1 || out.unstuck.moved < 0.5) bad(`a stuck pencil does not turn back: ${JSON.stringify(out.unstuck)}`);
@@ -374,8 +381,8 @@ export default async function ({ browser, base, t }) {
     t.ok(F.problems.length === 0, `Draw!: ${F.problems.length ? F.problems.join('; ') : `for every line a skilled player wins cleanly at 60 and 20 fps (about the same time), drawing straight at the page wins no line cleanly (the landing strip, blots, the tower, bees), the ink never reaches without a star, Rubber catches a player who stops on lines 6-8 and the line still gets drawn, a player who never waits for the bees gets nibbled, lines 6-8 need their stars, Rubber gets faster per rematch win but never as fast as walking, the gaps are keeps (${F.ms.toFixed(0)} ms)`}`);
     t.ok(Math.abs(F.steer[0]) < 0.001 && Math.abs(F.steer[1]) > 0.3, `the pencil draws where you look: looking at the pencil it goes straight (turned ${F.steer[0]}), looking to one side bends the line (turned ${F.steer[1]} rad)`);
     t.ok(F.leash <= 5.2, `standing still the pencil waits ${F.leash} blocks ahead and uses ink only while it draws`);
-    t.ok(F.unstuck && F.unstuck.turned >= 1 && F.unstuck.moved >= 0.5, `owner 2026-10-27: a pencil stuck at the blot turns round toward a point you look at short of it, and draws on (${JSON.stringify(F.unstuck)})`);
-    t.ok(F.blocks.join() === 'blot,page,low', `an ink blot, a page that is not the next one and the tower stop the pencil (${F.blocks})`);
+    t.ok(F.unstuck && F.unstuck.turned >= 1 && F.unstuck.moved >= 0.5, `owner 2026-10-27: a pencil stuck at the blot turns round toward a point you look at off to the side, and draws on (${JSON.stringify(F.unstuck)})`);
+    t.ok(F.blocks[0] === 'blot' && F.towerR >= 3.4 && F.onPage === 0, `an ink blot stops the pencil (${F.blocks[0]}); aimed at the tower it glides round it, never into it (nearest ${F.towerR}); a page that is not the next one is glided along, never drawn on (${F.onPage} cells on it, ${F.glided} glide steps)`);
     t.ok(!!F.star.after, `a star fills the ink; caught after it you go back to it with the line up to it kept (${JSON.stringify(F.star)})`);
     console.log('  Draw! per line: ' + F.rows.map(r => JSON.stringify(r)).join('\n    '));
     if (ONLY === 'trace') return;

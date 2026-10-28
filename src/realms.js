@@ -8,7 +8,7 @@ import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
 import { swirlLand, swirlAim, frameReturn } from './swirlland.js'; // T38a
 import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
-import { wave15Open } from './comingsoon.js'; // wave 15 ships closed: the Swirl stays version 4 and the Pirate Seas version 1 until it opens
+import { wave15Open, worldOpen } from './comingsoon.js'; // wave 15 ships closed: the Swirl stays version 4 and the Pirate Seas version 1 until it opens
 import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
@@ -120,8 +120,8 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
   look: { sky: 0xf7ecd8, fog: [50, 150], time: null, weather: false, light: 0.95, still: true, stars: false } });
 // T41: the Sunken City's wild guardians (on the city floor, world.realmBiome 'atlantis')
 const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2, null, 'atlantis'], ['grandurnling', 0.12, null, 'atlantis'], ['guardlion', 0.12, null, 'atlantis'], ['mosaicoil', 0.12, null, 'atlantis']]; // the 4th element: wildafter.js
-REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: wave15Open ? [320, 224] : [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
-  version: wave15Open ? 2 : 1, convert: wave15Open ? { 1: [224, 224] } : undefined, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
+REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Pirate Seas', seedSalt: 0x91a7, size: worldOpen('atlantis') ? [320, 224] : [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
+  version: worldOpen('atlantis') ? 2 : 1, convert: worldOpen('atlantis') ? { 1: [224, 224] } : undefined, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
   spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12, null, 'pirate'], ['featherbeard', 0.12, null, 'pirate']], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6, null, 'pirate'], ['parroteer', 0.4], ['shipshape', 0.1, null, 'pirate']], cave: [] },
   zoneNames: { pirate: 'Pirate Seas · islands', pirateSea: 'Pirate Seas · at sea', atlantis: 'The Sunken City' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS, B.AT_MOSAIC, B.AT_BRICK],
   look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false, underwater: true }, // always a sunny noon; T41: under water in the crater the fog turns blue-green (main.js updateSky)

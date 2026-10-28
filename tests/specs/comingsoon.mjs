@@ -18,8 +18,8 @@ export default async function ({ browser, base, t }) {
   const shut = await openGame(browser, base, { wave15: false });
   const a = await state(shut);
   t.ok(a.switchOff, 'the switch ships off (WAVE15_OPEN = false)');
-  t.ok(a.ready.join() === 'fair' && a.oldReady.length === 4, `closed: of the five wave 15 worlds only the Funfair is ready (owner 2026-10-28: OPEN_NOW), the four of wave 14 are (${a.ready})`);
-  t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '1,224,224' && a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 1 (224 x 224), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
+  t.ok(a.ready.join() === 'atlantis,fair' && a.oldReady.length === 4, `closed: of the five wave 15 worlds only the Funfair and Atlantis are ready (owner 2026-10-28: OPEN_NOW), the four of wave 14 are (${a.ready})`);
+  t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
   // the closed Swirl as a world: no House; Playland has the open Funfair
   const worlds = await shut.evaluate(async () => {
     const { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');

@@ -163,6 +163,31 @@ export function simCourse(course, { hz = 60, bot = 'skilled', maxT = 60, wins = 
   while (!st.done && B0.t < maxT) { drawStep(st, dt, B0.input(st, dt)); B0.after(st); }
   return { done: st.done, t: +B0.t.toFixed(2), setbacks: st.setbacks, nibbles: st.nibbles, ink: +st.ink.toFixed(1), s: +st.s.toFixed(1), ...B0.log, st };
 }
+// Owner 2026-10-28 ("it again got stuck near an edge"): a wobbly kid. Follows the route roughly (the look point drifts up to `amp`
+// blocks to the side), walks 1.8 behind the pencil and, with `look`, every other 1.2 s looks down at their own line where they walk.
+// -> the longest time the pencil stood stuck at something that is not an ink blot (an edge, a page, a wall).
+export function wobblyKid(course, { amp = 3, seed = 0, look = true, hz = 60, maxT = 90 } = {}) {
+  const c = course, st = newDraw(c, 0), dt = 1 / hz, pts = c.route, goal = [(c.target[0] + c.target[1] + 1) / 2, (c.target[2] + c.target[3] + 1) / 2];
+  let sp = 0, wp = 0, t = 0, cur = 0, longest = 0, where = null;
+  while (!st.done && t < maxT) {
+    const tip = st.tip;
+    const passed = q => { const dx = q[0] - tip.x, dz = q[1] - tip.z, d = Math.hypot(dx, dz); return d < 2.5 || (d < 5 && dx * Math.cos(tip.h) + dz * Math.sin(tip.h) < 0); };
+    while (wp < pts.length - 1 && passed(pts[wp])) wp++;
+    const P = wp >= pts.length - 2 ? goal : pts[wp];
+    sp += Math.min(WALK * dt, Math.max(0, st.s - 1.8 - sp));
+    const f = pointAt(st, sp); let row = st.pts[0].row; for (const p of st.pts) { if (p.s > sp + 1e-9) break; row = p.row; }
+    const feet = [f[0], row + 1, f[2]], ux = P[0] - tip.x, uz = P[1] - tip.z, um = Math.hypot(ux, uz) || 1, far = Math.max(3, Math.min(um, 7));
+    const wob = amp * Math.sin(t * 1.3 + seed) + amp * 0.5 * Math.sin(t * 3.1 + seed * 2);
+    let at = [tip.x + (ux / um) * far - (uz / um) * wob, tip.row + 1, tip.z + (uz / um) * far + (ux / um) * wob];
+    if (look && Math.floor(t / 1.2) % 2 === 1) { const a = pointAt(st, Math.min(st.s, sp + 2.2)); at = [a[0], a[1] + 1, a[2]]; }
+    const eye = [feet[0], feet[1] + 1.62, feet[2]], d = [at[0] - eye[0], at[1] - eye[1], at[2] - eye[2]], m = Math.hypot(...d);
+    drawStep(st, dt, { eye, dir: d.map(v => v / m), player: feet });
+    for (const e of st.events) if (e.kind === 'back') sp = st.ckpt.s;
+    if (st.blocked && st.blocked !== 'blot') { cur += dt; if (cur > longest) { longest = cur; where = [+st.tip.x.toFixed(1), +st.tip.z.toFixed(1), st.tip.row, st.blocked]; } } else cur = 0;
+    t += dt;
+  }
+  return { done: st.done, t, longest, where };
+}
 export { pointAt };
 export const solidOf = w => (x, y, z) => w.isSolid(x, y, z) && w.get(x, y, z) !== B.DO_INK;
 
@@ -189,7 +214,7 @@ export function drawChecks(seed = 1) {
     const care = simCourse(c, { bot: 'careless', maxT: 30 });
     row.careless = care.done ? `done ${care.t}s, ${care.setbacks} back` : `not done (${Object.keys(care.blocked).join() || care.backs.map(b => b[0]).slice(0, 3).join()})`;
     if (n >= 2 && care.done && care.setbacks === 0 && care.nibbles === 0) bad(`line ${n}: drawing straight at the page wins cleanly (${care.t} s)`);
-    if (n === 1 && !care.blocked.land) bad('line 1: drawing straight at the page is not stopped by its side (land on the dotted strip)');
+    if (n === 1 && !care.done) bad('line 1 (the easy first line): looking at the dotted strip does not land the line there (owner 2026-10-28: the pencil glides along a page edge onto it)');
     if (n >= 6) { const ns = simCourse(c, { bot: 'nostar', maxT: 30 }); row.nostar = ns.done ? `done, ${ns.setbacks} back` : 'not done'; if (ns.done && !ns.setbacks && !ns.nibbles) bad(`line ${n}: won cleanly without its stars`); }
     if (c.rubber) {
       const lazy = simCourse(c, { bot: 'lazy', lazy: 6, maxT: 40 }), idle = simCourse(c, { bot: 'idle', maxT: 10 });
@@ -202,6 +227,9 @@ export function drawChecks(seed = 1) {
     }
     if (c.bees.length) { let nib = 0; for (const clock of [0, 1.3, 2.9, 4.4, 6.1]) nib += simCourse(c, { bot: 'rush', clock, maxT: 60 }).nibbles; row.rush = `${nib} nibbles in 5 tries`; if (!nib) bad(`line ${n}: the bees never nibble a player who walks on without waiting`); }
     if (n >= 2) { const total = c.route.reduce((a, p, i) => a + Math.hypot(p[0] - (i ? c.route[i - 1][0] : c.start[0]), p[1] - (i ? c.route[i - 1][1] : c.start[1])), 0); if (total <= c.ink) bad(`line ${n}: the ink (${c.ink}) reaches without a star (${total.toFixed(0)})`); }
+    // a wobbly kid who also looks down at their own line never has the pencil stuck at an edge, a page or a wall for long (owner 2026-10-28)
+    if (!c.tower) { let worst = 0; for (const amp of [1.5, 3]) for (const seed of [0, 2]) for (const look of [false, true]) for (const hz of look && seed === 0 ? [60, 20] : [60]) { const r = wobblyKid(c, { amp, seed, look, hz }); if (r.longest > worst) { worst = r.longest; row.stuckAt = r.where; } }
+      row.wobbly = +worst.toFixed(2); if (worst > 2) bad(`line ${n}: a wobbly kid had the pencil stuck at an edge for ${worst.toFixed(1)} s`); }
     // the course sits in the gaps: stars, blots and bees inside the roam box, not on another page, not on the pad or the next page
     const other = (x, z) => c.fence.some(r => x >= r[0] - 1 && x <= r[1] + 2 && z >= r[2] - 1 && z <= r[3] + 2);
     const inR = (r, x, z) => x >= r[0] && x < r[1] + 1 && z >= r[2] && z < r[3] + 1;

@@ -47,9 +47,12 @@ export const DRAW = {
   sample: 0.5,             // a point of the line every half block
   across: [-1, -0.5, 0, 0.5, 1], // the line is 3 blocks wide (samples across, so a diagonal line has no holes)
   head: 2,                 // air needed above the line (you walk on it)
+  core: 0,                 // the samples of the line that must be free (DRAW.across within this): only its centre (the rest is drawn where there is room)
   leash: 5,                // the pencil waits when you are more than this far behind it (in x / z)
   turn: 2.0,               // rad / s: the most the pencil turns toward where you look
-  stuckTurn: 3.0,          // owner 2026-10-27 ("the pencil gets stuck at the edge"): a blocked pencil turns this fast, toward any point you look at
+  stuckTurn: 3.0,          // owner 2026-10-27 ("the pencil gets stuck at the edge"): a blocked pencil turns this fast, toward a point you look at
+  stuckSide: 0.6,          // (owner 2026-10-28) ... but only a point off to the side of it: not one along your own line between you and the pencil (where you look to walk)
+  glide: [0.3, 0.6, 0.9, 1.2, 1.45, 1.6, 1.85],  // owner 2026-10-28: at an edge, a page or a wall (not a blot) the pencil glides along it: it tries these turns (rad), the side you look first
   near: 1.0,               // looking at a point this close to the pencil: it keeps its heading
   farAim: 40,              // a view ray that meets the line's floor further than this (or never) does not steer
   fence: 1,                // other pages (not the one you leave or the next one), grown by this: the pencil cannot draw there
@@ -107,6 +110,7 @@ export function blockedAt(st, x, z, row, h) {
   for (const b of c.blots) if (Math.hypot(x - b.x, z - b.z) < b.r + DRAW.blotPad) return 'blot';
   const nx = -Math.sin(h), nz = Math.cos(h);
   for (const w of DRAW.across) {
+    if (Math.abs(w) > DRAW.core) continue; // owner 2026-10-28: only the middle of the line must be free; its outer edge may brush a page or a wall (it is not drawn there), else a pencil running beside an edge wedged itself on the smallest turn
     const cx = Math.floor(x + nx * w), cz = Math.floor(z + nz * w), own = st.cells.has(`${cx},${row},${cz}`);
     const floorOk = own || !c.solid(cx, row, cz) || (row === c.rowA && inRect(c.fromRect, cx, cz)) || (row === c.rowB && inRect(c.target, cx, cz));
     if (!floorOk) return inRect(c.target, cx, cz) || c.tower ? 'low' : c.toRect && inRect(c.toRect, cx, cz) ? 'land' : 'solid'; // 'low': the next page (or the tower) is still above the line; 'land': the next page, but not its landing strip
@@ -121,13 +125,18 @@ export const inTarget = (c, x, z, row) => row >= c.rowB && inRect(c.target, x, z
 // Owner 2026-10-27: a pencil that is stuck (st.blocked: an edge, a page, the side of an island) also follows a point short of it, so you
 // can turn it back the way you came (before, it could only turn toward points beyond it and stayed stuck facing the edge).
 export function aimPoint(st, eye, dir, player) {
-  const t = st.tip, y = Math.min(t.row + 1, eye[1] - 0.6); // (owner 2026-10-27: a climbing line's tip can be above your eyes: then aim at a level just below them, else no look could steer it)
+  const t = st.tip, y = eye[1] > t.row + 1.4 ? t.row + 1 : eye[1] - 0.6; // the line's floor; (owner 2026-10-27) when that is not well below your eyes (a climbing line), a level just below them, else no look could steer it
   if (dir[1] >= -0.02) return null;
   const k = (y - eye[1]) / dir[1];
   if (!(k > 0 && k < DRAW.farAim)) return null;
   const P = [eye[0] + dir[0] * k, eye[2] + dir[2] * k];
   const tx = t.x - player[0], tz = t.z - player[2], tl = Math.hypot(tx, tz);
-  if (!st.blocked && Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) return null; // nearer to you than the pencil: you look where you walk
+  if (Math.hypot(P[0] - player[0], P[1] - player[2]) < tl - 0.5) { // nearer to you than the pencil: you look where you walk
+    if (!st.blocked) return null;
+    // a stuck pencil follows it only when it is off to the side (owner 2026-10-28: looking at your own line while it was stuck for a moment swung it back at you)
+    const ax = P[0] - t.x, az = P[1] - t.z, bx = -tx, bz = -tz, am = Math.hypot(ax, az), bm = tl;
+    if (am < DRAW.near || bm < 1e-6 || Math.acos(Math.max(-1, Math.min(1, (ax * bx + az * bz) / (am * bm)))) < DRAW.stuckSide) return null;
+  }
   return P;
 }
 
@@ -185,9 +194,19 @@ function sub(st, inp) {
     else {
       const g = gustAt(st.clock), vx = Math.cos(t.h) * c.speed + (c.wind?.[0] || 0) * g, vz = Math.sin(t.h) * c.speed + (c.wind?.[1] || 0) * g;
       const nx = t.x + vx * h, nz = t.z + vz * h, step = Math.hypot(vx, vz) * h;
-      const why = inTarget(c, nx, nz, t.row) ? null : blockedAt(st, nx, nz, t.row, t.h);
+      let why = inTarget(c, nx, nz, t.row) ? null : blockedAt(st, nx, nz, t.row, t.h), mx = nx, mz = nz, mstep = step;
+      if (why && why !== 'blot') { // glide along an edge, a page or a wall: a small turn that is free (the side you look at first)
+        const want = P ? wrap(Math.atan2(P[1] - t.z, P[0] - t.x) - t.h) : 0, sides = want < 0 ? [-1, 1] : [1, -1];
+        glide: for (const d of DRAW.glide) for (const sg of sides) {
+          const h2 = t.h + sg * d, gx = Math.cos(h2) * c.speed + (c.wind?.[0] || 0) * g, gz = Math.sin(h2) * c.speed + (c.wind?.[1] || 0) * g;
+          const qx = t.x + gx * h, qz = t.z + gz * h;
+          if (inTarget(c, qx, qz, t.row) || !blockedAt(st, qx, qz, t.row, h2)) { t.h = wrap(h2); mx = qx; mz = qz; mstep = Math.hypot(gx, gz) * h; why = null; break glide; }
+        }
+        if (!why) st.glided = (st.glided || 0) + 1;
+      }
       if (why) st.blocked = why;
       else {
+        const nx = mx, nz = mz, step = mstep;
         t.x = nx; t.z = nz; st.s += step; st.ink = Math.max(0, st.ink - step); st.since += step;
         if (!t.off && !inRect(c.flatA, t.x, t.z)) t.off = true;
         while (st.since >= DRAW.sample - 1e-9) {
