@@ -1,7 +1,7 @@
 // T38a: the Picture Worlds that are stars (most hang as framed pictures in the Swirl). Data only (one import: the wave 15 switch).
 // Append-only: the ids are saved in `stars` (the worlds whose Boss you beat). Waves 14-15 flip `ready` and add a `realm`.
 // Until a world is ready, its frame in the Swirl is covered with a cloth. Frame colours: [border gem, trim].
-import { wave15Open, WAVE15 } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
+import { worldOpen, WAVE15 } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
 // T40a: the picture in the Giant House's frame: a cream wall, the edge of a brown table, a big cookie and a little grey mouse (128 px canvas).
 function drawHousePicture(g, n = 128) {
   const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
@@ -91,7 +91,7 @@ export const PICTURE_WORLDS = [
   // (it took the place of the old `wizard` entry, which no save could hold).
   { id: 'secret5', name: 'Secret World', emoji: '❓', frame: [0xf0d080, 0xd8c8f8], ready: false, secret: true },
 ];
-if (!wave15Open) for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
+for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id) && !worldOpen(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
 // 12 stars in all (PICTURE_WORLDS), every one from a Picture World; 11 hang as frames in the Swirl (all but the Portal House);
 // all 12 light a stone of the star bridge.
 export const FRAME_WORLDS = PICTURE_WORLDS.filter(w => w.door !== false);

@@ -18,9 +18,9 @@ export default async function ({ browser, base, t }) {
   const shut = await openGame(browser, base, { wave15: false });
   const a = await state(shut);
   t.ok(a.switchOff, 'the switch ships off (WAVE15_OPEN = false)');
-  t.ok(a.ready.length === 0 && a.oldReady.length === 4, `closed: none of the five wave 15 worlds is ready, the four of wave 14 are (${a.ready})`);
-  t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '1,224,224' && !a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 1 (224 x 224), no Funfair part (${a.swirl} / ${a.pirate} / ${a.fair})`);
-  // the closed Swirl and Playland as worlds: no House, the Funfair gate is a sign
+  t.ok(a.ready.join() === 'fair' && a.oldReady.length === 4, `closed: of the five wave 15 worlds only the Funfair is ready (owner 2026-10-28: OPEN_NOW), the four of wave 14 are (${a.ready})`);
+  t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '1,224,224' && a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 1 (224 x 224), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
+  // the closed Swirl as a world: no House; Playland has the open Funfair
   const worlds = await shut.evaluate(async () => {
     const { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');
     const sw = new World(7, null, null, REALMS.swirl.size, REALMS.swirl); sw.generate();
@@ -28,7 +28,7 @@ export default async function ({ browser, base, t }) {
     return { house: !!sw.swirl.house, houseParts: (sw.parts || []).filter(p => p.id === 'portalhouse').length, sign: (pl.keeps || []).some(k => k.name === 'fair-sign'), fairPart: (pl.parts || []).some(p => p.id === 'fair') };
   });
   t.ok(!worlds.house && !worlds.houseParts, 'closed: the Swirl has no Portal House and no hub swirl part');
-  t.ok(worlds.sign && !worlds.fairPart, 'closed: the Funfair gate in Playland is a "Coming soon!" sign and the fair is not built');
+  t.ok(!worlds.sign && worlds.fairPart, 'the Funfair is open for everyone: no "Coming soon!" sign, the fair is built');
   t.ok(shut.errors.length === 0, `no page errors when closed (${shut.errors.slice(0, 3).join(' | ')})`);
   await shut.context().close();
 

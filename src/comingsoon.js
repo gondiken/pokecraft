@@ -7,3 +7,7 @@ export const WAVE15_OPEN = false;
 export const WAVE15 = ['atlantis', 'portal', 'fair', 'doors', 'doodle'];
 export const PREVIEW = typeof location !== 'undefined' && new URLSearchParams(location.search).has('preview');
 export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefined' || globalThis.__pcWave15 === true;
+// Owner 2026-10-28: "we can switch on the Funfair in the real game, just that one". A world listed here is open for everyone
+// while the rest of wave 15 stays closed.
+export const OPEN_NOW = ['fair'];
+export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
