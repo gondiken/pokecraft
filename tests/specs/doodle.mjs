@@ -640,6 +640,55 @@ export default async function ({ browser, base, t }) {
         return { drawn, notDrawn, count: st.count, chip: document.getElementById('score-chip')?.textContent };
       });
       t.ok(reload.drawn.every(Boolean) && reload.notDrawn && reload.count === 3, `a new visit draws the saved lines at once (${reload.drawn}) and leaves the rest (${reload.chip})`);
+      // owner 2026-10-28: replay after winning. A saved line's pad says "Draw again!": the normal Draw! rules, its bridge lifted while
+      // you draw and always back (Stop half-way, a finish, walking away, a reload); nothing new is saved, no Neat line cube
+      const again = await page.evaluate(() => {
+        const g = window.pokecraft, L = window.__live(), p = g.player, s = g.world.doodle.pads[0].stand, cubes = g.cubes, keys = g.beaten.slice().sort().join();
+        let saves = 0; const save = g.save; g.save = () => { saves++; };
+        const inked = i => L.inkableOf(i).filter(c => g.world.get(c.x, c.y, c.z) === 246).length, all = L.inkableOf(0).length, all2 = L.inkableOf(1).length;
+        const under = () => g.world.get(Math.floor(p.pos.x), Math.floor(p.pos.y - 0.05), Math.floor(p.pos.z));
+        window.__at(s[0], s[1], s[2]); L.manual = true; window.__toasts.length = 0;
+        const out = { all, word: L.near(p), first: (() => { window.__at(...g.world.doodle.pads[3].stand); const w = L.near(p); window.__at(s[0], s[1], s[2]); return w; })() };
+        L.use(p); L.step(0.05, L.aimNow());
+        Object.assign(out, { fun: L.info().fun, lifted: inked(0), line2: inked(1) === all2, said: window.__toasts.join('|') });
+        L.stop(true);
+        // half-way: walking on the new line over the gap, then Stop
+        const half = window.__drawReal(1, 0.05, { max: 70 });
+        out.half = { drawing: !!L.cur, s: +half.info.s.toFixed(1), x: +p.pos.x.toFixed(1), z: +p.pos.z.toFixed(1) };
+        L.use(p); L.step(0.05, L.aimNow());
+        Object.assign(out, { stopBack: inked(0), stopSafe: under() !== 0, stopCur: !!L.cur });
+        // a full redraw: "Just for fun!", no key, no cube, no save, the old bridge back (with your new line)
+        window.__toasts.length = 0;
+        const r = window.__drawReal(1, 0.05);
+        Object.assign(out, { done: r?.done, doneSaid: window.__toasts.join('|'), doneBack: inked(0), fellSafe: under() !== 0 });
+        // walking away while redrawing: the pencil rests, the bridge is back
+        window.__at(s[0], s[1], s[2]); L.use(p); L.step(0.05, L.aimNow()); const liftedAgain = inked(0);
+        window.__at(...g.world.doodle.pads[2].stand); window.__toasts.length = 0; L.step(0.05, L.aimNow());
+        Object.assign(out, { liftedAgain, awayCur: !!L.cur, awayBack: inked(0), awaySaid: window.__toasts.join('|') });
+        // a fall while redrawing: puffed back to the pad, still drawing; Stop and the bridge is back
+        window.__drawReal(1, 0.05, { max: 40 }); window.__at(p.pos.x, 5, p.pos.z); L.step(0.05, L.aimNow());
+        Object.assign(out, { fallCur: !!L.cur, fallPad: Math.hypot(p.pos.x - s[0], p.pos.z - s[2]) < 1.5 });
+        L.use(p); L.step(0.05, L.aimNow()); out.fallBack = inked(0);
+        // leave a redraw running (its bridge lifted) for the reload below
+        window.__at(s[0], s[1], s[2]); L.use(p); L.step(0.05, L.aimNow()); out.leftLifted = inked(0);
+        g.save = save;
+        return { ...out, cubes: g.cubes - cubes, saves, same: g.beaten.slice().sort().join() === keys, count: L.state().count };
+      });
+      t.ok(again.word === 'Draw again!' && again.first === 'Draw!' && again.fun && again.lifted < again.all / 2 && again.line2 && /Draw this line again! Just for fun!/.test(again.said), `a drawn line's pad says "Draw again!" (the next one "${again.first}"): "Just for fun!", its bridge is lifted (${again.lifted} of ${again.all} cells left), the other bridges stay`);
+      t.ok(again.half.drawing && again.half.s > 3 && again.stopBack === again.all && again.stopSafe && !again.stopCur, `Stop half-way (${JSON.stringify(again.half)}): the old bridge is back (${again.stopBack} / ${again.all}) and you stand on something`);
+      t.ok(again.done && /You drew it again! ✏️ Just for fun!/.test(again.doneSaid) && !/Neat line|You drew a bridge/.test(again.doneSaid) && again.doneBack === again.all && again.fellSafe, `a finished redraw: "${again.doneSaid}", the old bridge is back (${again.doneBack} / ${again.all})`);
+      t.ok(again.liftedAgain < again.all / 2 && !again.awayCur && again.awayBack === again.all && /Your bridge is back/.test(again.awaySaid), `walking away from a redraw rests the pencil and puts the bridge back ("${again.awaySaid}")`);
+      t.ok(again.fallCur && again.fallPad && again.fallBack === again.all, 'a fall while redrawing puffs you back to the pad (the try goes on); Stop and the bridge is back');
+      t.ok(again.same && again.cubes === 0 && again.saves === 0 && again.count === 3 && again.leftLifted < again.all / 2, `replaying saves nothing new: the same keys, no cube (${again.cubes}), no save (${again.saves}), ${again.count} / 8`);
+      // a reload in the middle of a redraw: the saved bridge is there again
+      await page.evaluate(async () => { await window.pokecraft.realms.leave('door', { via: 'doodle' }); });
+      await placeIs(page, 'swirl');
+      await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'doodle'), p = g.player; p.pos.set(f.stand[0] + 0.5, f.stand[1], f.stand[2] + 0.5); p.lookAt({ x: f.spot.x + 0.5, y: f.spot.y + 3.5, z: f.spot.z + 0.5 }); const c = f.cloth[6]; g.portal.use({ x: c[0], y: c[1], z: c[2], id: 144 }); });
+      await placeIs(page, 'doodle');
+      await helpers(page);
+      await toasts(page);
+      const back = await page.evaluate(() => { const g = window.pokecraft, L = window.__live(); return { all: [0, 1, 2].every(i => L.inkableOf(i).every(c => g.world.get(c.x, c.y, c.z) === 246)), cur: !!L.cur, count: L.state().count }; });
+      t.ok(back.all && !back.cur && back.count === 3, `after a reload in the middle of a redraw every saved bridge is back (${back.count} / 8)`);
       // the gate before all 8
       const gate = await page.evaluate(() => { const g = window.pokecraft, def = window.__bossDef ??= null; return null; });
       const gateText = await page.evaluate(async () => { const B = await import('/src/pictureboss.js'); return B.bossOf('doodle').gate(window.pokecraft); });
