@@ -3475,3 +3475,106 @@ SIG.squigglestrike = (k, from, to) => {
   };
 };
 /* ==== end of T45 doodle ==== */
+
+/* ==== T49 knight ==== */
+// Steel, red and gold: a spinning shield flies at the target and a star of metal sparks clangs off it.
+FX_COLORS.knight = [0xd8dce6, 0xd83a4a, 0xf0c84a];
+
+// A spinning round shield (a gold sprite with a steel trail) flies along the way and wobbles a little.
+TRAVEL.knight = k => {
+  const N = 8;
+  const trail = k.points({ n: N, tex: 'dot', size: 0.2, colors: [0xd8dce6, 0xb8c0cc] });
+  const shield = k.sprite('star', { color: 0xf0c84a, size: 0.1, glow: true });
+  return {
+    dur: 380,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = trailT(p, i, N, 0.35);
+        if (t < 0) { trail.hide(i); continue; }
+        k.at(t, A, 0.25);
+        trail.set(i, A.x, A.y, A.z);
+      }
+      trail.fade(fadeOut(p, 0.8));
+      k.at(clamp01(p * 1.2), B, 0.25);
+      shield.position.copy(B);
+      shield.scale.setScalar(Math.max(0.01, 0.6 * Math.sin(Math.PI * clamp01(p * 1.15)) + 0.1));
+      shield.material.rotation = p * 14;
+      shield.material.opacity = p < 0.86 ? 1 : 0;
+    },
+  };
+};
+
+// A hit: a clang star of steel and gold sparks bursting out flat, and a little red pennant flash.
+IMPACT.knight = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10;
+  const sparks = k.points({ n: N, tex: 'dot', size: 0.22 * m, glow: true, colors: [0xffffff, 0xd8dce6, 0xf0c84a] });
+  const flash = k.sprite('star', { color: 0xffffff, size: 0.1, glow: true });
+  const s = k.seeds(N, 1);
+  return {
+    dur: 360,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + s[i] * 0.4, d = (to.r * 0.3 + 0.15 + 0.6 * k.ease(p)) * m;
+        sparks.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.8, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      sparks.fade(fadeOut(p, 0.5));
+      flash.position.copy(to.pos);
+      flash.scale.setScalar(Math.max(0.01, 1.1 * m * Math.sin(Math.PI * clamp01(p * 1.8))));
+      flash.material.opacity = fadeOut(p, 0.4);
+      flash.material.rotation = p * 3;
+    },
+  };
+};
+
+// Grand Joust: a long steel lance of dots charges at the target from low and far back, a gold tip, a big clang ring where it lands.
+SIG.grandjoust = (k, from, to) => {
+  const N = 12;
+  const lance = k.points({ n: N, tex: 'dot', size: 0.28, colors: [0xd8dce6, 0xb8c0cc, 0xd83a4a] });
+  const tip = k.sprite('star', { color: 0xf0c84a, size: 0.1, glow: true });
+  const ring = k.points({ n: 10, tex: 'dot', size: 0.24, glow: true, colors: [0xf0c84a, 0xffffff] });
+  return {
+    dur: 600,
+    step(p) {
+      const fly = clamp01(p / 0.5), hit = clamp01((p - 0.5) / 0.5);
+      for (let i = 0; i < N; i++) {
+        const t = clamp01(fly - i * 0.04);
+        k.at(t, A, 0.05);
+        if (fly - i * 0.04 <= 0 || hit > 0.5) lance.hide(i); else lance.set(i, A.x, A.y - 0.15, A.z);
+      }
+      lance.fade(1);
+      k.at(fly, B, 0.05);
+      tip.position.set(B.x, B.y - 0.15, B.z);
+      tip.scale.setScalar(Math.max(0.01, 0.5 + 0.8 * Math.sin(Math.PI * clamp01(hit * 1.4))));
+      tip.material.opacity = hit < 1 ? 1 : 0;
+      for (let i = 0; i < 10; i++) {
+        if (hit <= 0) { ring.hide(i); continue; }
+        const ang = (i / 10) * 6.283, d = 0.2 + hit * (to.r + 0.6);
+        ring.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.7, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      ring.fade(fadeOut(hit, 0.4));
+    },
+  };
+};
+
+// Quill Volley: quills fly in a fan from the hedgehog one after another, each with a little spark where it hits.
+SIG.quillvolley = (k, from, to) => {
+  const N = 9;
+  const quills = k.points({ n: N, tex: 'dot', size: 0.18, colors: [0x7a5a3a, 0x3a2a1e, 0xf0d8b0] });
+  const sparks = k.points({ n: N, tex: 'dot', size: 0.2, glow: true, colors: [0xf0c84a, 0xffffff] });
+  return {
+    dur: 640,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.05) / 0.45), fan = (i - (N - 1) / 2) * 0.12;
+        if (t <= 0 || t >= 1) { quills.hide(i); } else {
+          k.at(t, A, 0.3);
+          quills.set(i, A.x + k.side.x * fan * Math.sin(Math.PI * t), A.y + fan * 0.3, A.z + k.side.z * fan * Math.sin(Math.PI * t));
+        }
+        if (t >= 1 && p - i * 0.05 < 0.75) sparks.set(i, to.pos.x + k.side.x * fan, to.pos.y + fan * 0.4, to.pos.z + k.side.z * fan); else sparks.hide(i);
+      }
+      quills.fade(1);
+      sparks.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+/* ==== end of T49 knight ==== */

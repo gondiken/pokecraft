@@ -68,6 +68,8 @@ export const CONDITIONS = {
     text: 'in tiny places, once you found all 12 cookie crumbs in the Giant House' },
   // T44: the Surprise Party's wild creatures (T48; the Room of Doors' before) sit in gift boxes in the same kind of spots (by the walls, behind the table): the nook list, a different Book line
   gift: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'wrapped in a gift box' },
+  // T49: the Castle's wild Knights stand guard at its nooks (the garden, the courtyard, the meadow): the nook list, their own Book line
+  guardpost: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'on guard at the castle' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,
@@ -90,6 +92,7 @@ export const AFTER_TEXT = {
   doors: 'once you won 2 golden bows',
   doodle: 'once you drew 4 lines',
   portal: 'once you finished 4 swirl rooms',
+  castle: 'once you won 3 rounds of Shield Up! and the Joust', // T49
 };
 export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);
 

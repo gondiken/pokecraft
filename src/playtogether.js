@@ -6,6 +6,7 @@ import { Duels } from './duel.js';
 import { coopFor } from './coopboss.js'; // T29
 import { el } from './util.js';
 import { realmOf } from './realms.js'; // T31
+import { createCastleGates } from './castlegate.js'; // T49
 
 // deps: createWorld(seed, edits, size) swaps the world, save() / pushCloud() save the game,
 // startBattle(opts) begins a battle, pauseEl is the pause screen, resume() closes it (T38b).
@@ -38,6 +39,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),
     hs: p => game.hideSeek?.onMessage(p), // T30
+    castle: p => game.castleGates?.onMessage(p), // T49: the Castle's gates are shared
+    joined: () => game.castleGates?.joined(), // T49
     realm: p => game.realms.answer(p), // T38b: a guest asks to follow me into my realm
     left: id => { game.duels.left(id); game.hideSeek?.left(id); }, // T30
     ended: reason => {
@@ -49,6 +52,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     },
   });
 
+  createCastleGates(game); // T49
   game.duels = new Duels(game, {
     start: duel => startBattle(duel.coop ? { duel, boss: true } : { duel }), // T29: co-op boss
     toast: text => game.ui.toast(text),

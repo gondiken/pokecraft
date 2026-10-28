@@ -42,6 +42,7 @@ export const TYPE_COLORS = {
 };
 
 TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
+TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
@@ -132,6 +133,17 @@ EFFECTIVENESS.water.doodle = 2;    // wet paper smudges the lines
 EFFECTIVENESS.rainbow.doodle = 2;  // colour fills in the black and white
 EFFECTIVENESS.paper.doodle = 0.5;  // more paper is just a fresh page
 /* ==== end of T45 doodle chart ==== */
+/* ==== T49 knight chart ==== */
+// Knights catch pirates, face ninjas in the open and defend the castle from invaders; armour cannot dent metal or castle stone.
+// Water rusts the armour, lightning finds the metal, tiny things get inside it and tickle; bugs bounce off it and knights are brave
+// against drakes. Others' cells are separate lines (no old cell changes). (Drake would be the storybook choice but is already weak to 6.)
+EFFECTIVENESS.knight = { pirate: 2, ninja: 2, alien: 2, metal: 0.5, rock: 0.5, knight: 0.5 };
+EFFECTIVENESS.water.knight = 2;
+EFFECTIVENESS.electric.knight = 2;
+EFFECTIVENESS.tiny.knight = 2;
+EFFECTIVENESS.bug.knight = 0.5;
+EFFECTIVENESS.drake.knight = 0.5;
+/* ==== end of T49 knight chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -634,6 +646,22 @@ BIG_MOVES.doodle = [
   ['finishingtouch', 'Finishing Touch', 'lastword', 'One last perfect line! Only when you are almost out.'],
 ];
 /* ==== end of T45 doodle ==== */
+/* ==== T49 knight ==== */
+// Knight creatures bash with shields, charge with lances, parry quickly and wave their banners.
+Object.assign(MOVES, {
+  shieldbash: mv('Shield Bash', 'knight', 40, 1),
+  lancecharge: mv('Lance Charge', 'knight', 90, 0.9, { fx: { kind: 'recoil', amount: 0.25 } }),
+  quickparry: mv('Quick Parry', 'knight', 40, 1, { priority: 1 }),
+  bannerwave: mv('Banner Wave', 'knight', 0, 1, { fx: { kind: 'raise', stat: 'atk' } }),
+  grandjoust: mv('Grand Joust', 'knight', 100, 0.85, { fx: { kind: 'flinch', chance: 0.3 }, sig: true }),
+  quillvolley: mv('Quill Volley', 'knight', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+});
+BIG_MOVES.knight = [
+  ['roundtable', 'Round Table', 'rally', 'Everyone to the round table! Whole team hits harder. You get softer.'],
+  ['holdthegate', 'Hold the Gate', 'shield', 'Drawbridge up! The team takes less for 3 turns. You rest next turn.'],
+  ['lastcharge', 'Last Charge', 'lastword', 'One last brave charge! Only when you are almost out.'],
+];
+/* ==== end of T49 knight ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -752,6 +780,7 @@ T1.pirate = 'hookswipe'; T2.pirate = 'cannonball'; T3.pirate = 'swashbuckle'; T4
 T1.portal = 'swirlbop'; T2.portal = 'popthrough'; T3.portal = 'shortcut'; T4.portal = 'dizzyswirl'; // T42
 T1.atlantis = 'jarbonk'; T2.atlantis = 'tiletoss'; T3.atlantis = 'runeglow'; T4.atlantis = 'stoneroar'; // T41
 T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4.doodle = 'rubout'; // T45
+T1.knight = 'shieldbash'; T2.knight = 'lancecharge'; T3.knight = 'quickparry'; T4.knight = 'bannerwave'; // T49
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2479,6 +2508,46 @@ export const SPECIES = {
     model: { shape: 'halfdrawn', scale: 1.0, body: 0xf0e8d4, accent: 0xc8c2b4, dark: 0x4a4a56, belly: 0xffffff, extras: [] },
   },
   /* ==== end of T45 doodle ==== */
+  /* ==== T49 knight ==== */
+  pricklet: {
+    name: 'Pricklet', type: 'knight', desc: 'A round little hedgehog with a wooden shield. It curls up behind it and peeks out to say hello.',
+    base: { hp: 50, atk: 58, def: 70, spd: 48 }, baseXp: 66, catchRate: 0.45, gait: 'sentry', learn: L('knight', 'grass'),
+    evolve: { level: 24, into: 'bristleguard' },
+    model: { shape: 'shieldhog', scale: 0.85, body: 0x8a6a4a, accent: 0xc89a5a, dark: 0x4a3426, belly: 0xf0d8b0, extras: [] },
+  },
+  bristleguard: {
+    name: 'Bristleguard', type: 'knight', desc: 'A big hedgehog knight with a tall shield and a little helmet. Its quills stand up when it is brave.',
+    base: { hp: 78, atk: 88, def: 110, spd: 50 }, baseXp: 168, catchRate: 0.12, gait: 'sentry', learn: L('knight', 'grass', [[30, 'quillvolley']]),
+    model: { shape: 'shieldhog', scale: 1.25, body: 0x7a5a3a, accent: 0xe8e8f0, dark: 0x3a2a1e, belly: 0xf0d8b0, extras: ['kite'] },
+  },
+  visnail: {
+    name: 'Visnail', type: 'knight', desc: "A slow snail in a knight's helm with a plume. Its shell is a little castle tower, and it is very proud of it.",
+    base: { hp: 58, atk: 45, def: 80, spd: 25 }, baseXp: 64, catchRate: 0.45, gait: 'sentry', learn: L('knight', 'rock'),
+    evolve: { level: 22, into: 'ramparsnail' },
+    model: { shape: 'helmsnail', scale: 0.85, body: 0x9ad070, accent: 0xb8b8c4, dark: 0x5a5a66, belly: 0xc8e8a8, extras: [] },
+  },
+  ramparsnail: {
+    name: 'Ramparsnail', type: 'knight', desc: 'Its shell is a tall tower with arrow slits and a flag on top. Tiny birds live in the windows.',
+    base: { hp: 95, atk: 70, def: 125, spd: 30 }, baseXp: 166, catchRate: 0.12, gait: 'sentry', learn: L('knight', 'rock'),
+    model: { shape: 'helmsnail', scale: 1.25, body: 0x86c060, accent: 0xa8a8b4, dark: 0x4a4a56, belly: 0xc0e0a0, extras: ['tower'] },
+  },
+  clipclop: {
+    name: 'Clipclop', type: 'knight', desc: 'A foal in a tin helmet that is much too big. Clip, clop, bonk! It falls over its eyes.',
+    base: { hp: 52, atk: 66, def: 56, spd: 76 }, baseXp: 66, catchRate: 0.45, gait: 'sentry', learn: L('knight', 'normal'),
+    evolve: { level: 26, into: 'gallantrot' },
+    model: { shape: 'armourhorse', scale: 0.85, body: 0xc8925a, accent: 0xc8ccd8, dark: 0x5a3a24, belly: 0xe8c89a, extras: [] },
+  },
+  gallantrot: {
+    name: 'Gallantrot', type: 'knight', desc: 'A tall horse in shiny armour with a red-and-gold blanket. Some let you ride them, proud as a knight!',
+    base: { hp: 82, atk: 100, def: 82, spd: 96 }, baseXp: 170, catchRate: 0.1, gait: 'sentry', learn: L('knight', 'normal', [[30, 'grandjoust']]),
+    model: { shape: 'armourhorse', scale: 1.3, body: 0xf2ece0, accent: 0xd8dce6, dark: 0x6a5a4a, belly: 0xc83a3a, extras: ['barding'] },
+  },
+  turrock: {
+    name: 'Turrock', type: 'knight', desc: 'A round stone tower that walked off on two stubby legs. When it talks, its drawbridge mouth drops open.',
+    base: { hp: 70, atk: 75, def: 100, spd: 35 }, baseXp: 110, catchRate: 0.3, gait: 'sentry', learn: L('knight', 'metal'),
+    model: { shape: 'walkturret', scale: 1.0, body: 0xa8a8b0, accent: 0x8a5a30, dark: 0x3a3a44, belly: 0xc8c8d0, extras: [] },
+  },
+  /* ==== end of T49 knight ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2717,6 +2786,11 @@ export const SURPRISE_SPAWNS = [['giftle', 1.2, 'gift'], ['popjack', 1.1, 'gift'
 // Doodle creatures live only in the Sketchbook (REALMS.doodle.spawns), on the pages' grass.
 export const DOODLE_SPAWNS = [['nibling', 1.2], ['rubbit', 1.2], ['sketchkit', 1.0], ['graphitan', 0.12, null, 'doodle'], ['rubbadub', 0.12, null, 'doodle'], ['outlynx', 0.1, null, 'doodle'], ['notquite', 0.08, null, 'doodle']]; // the 4th element: wildafter.js
 /* ==== end of T45 doodle ==== */
+/* ==== T49 knight ==== */
+// Knight creatures live only in the Castle (REALMS.castle.spawns), on guard at its nooks (the guardpost condition). The 4th element: wildafter.js.
+export const CASTLE_SPAWNS = [['pricklet', 1.3, 'guardpost'], ['visnail', 1.2, 'guardpost'], ['clipclop', 1.0, 'guardpost'], ['bristleguard', 0.12, 'guardpost', 'castle'], ['ramparsnail', 0.12, 'guardpost', 'castle'], ['gallantrot', 0.1, 'guardpost', 'castle'], ['turrock', 0.15, 'guardpost', 'castle']];
+export const MEADOW_SPAWNS = [['pricklet', 1.2, 'guardpost'], ['visnail', 1.0, 'guardpost'], ['clipclop', 1.2, 'guardpost']];
+/* ==== end of T49 knight ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 

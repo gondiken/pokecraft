@@ -143,6 +143,21 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.05, 0.05, 0.3, 0xffd23a, 0.3, 0.3, 0.06);
     box(head, 0.05, 0.05, 0.05, 0xf0a8b8, 0.3, 0.3, 0.22);
   }
+  if (look === 'knight') { // T49: Sir Clanksalot: a steel bucket helm over the head (a dark visor slit, rivets), a red plume, a gold star on the tabard
+    box(head, 0.58, 0.6, 0.58, 0xc8ccd8, 0, 0.27, 0);
+    box(head, 0.46, 0.06, 0.02, 0x1e1e26, 0, 0.34, 0.295);
+    box(head, 0.05, 0.2, 0.02, 0x1e1e26, 0, 0.2, 0.295);
+    for (const sx of [-1, 1]) box(head, 0.05, 0.05, 0.02, 0xf0c84a, sx * 0.2, 0.12, 0.3);
+    box(head, 0.1, 0.22, 0.32, 0xd83a4a, 0, 0.66, -0.04);
+    box(head, 0.09, 0.14, 0.16, 0xd83a4a, 0, 0.62, -0.26);
+    box(group, 0.16, 0.16, 0.03, 0xf0c84a, 0, 1.18, 0.155);
+    box(group, 0.06, 0.26, 0.03, 0xf0c84a, 0, 1.18, 0.158); box(group, 0.26, 0.06, 0.03, 0xf0c84a, 0, 1.18, 0.158);
+  }
+  if (look === 'squire') { // T49: the Castle's helpers and herald: a small round steel cap with a feather
+    box(head, 0.54, 0.12, 0.54, 0xb8c0cc, 0, 0.55, 0);
+    box(head, 0.42, 0.1, 0.42, 0xb8c0cc, 0, 0.64, 0);
+    box(head, 0.05, 0.24, 0.1, c.shirt, 0.22, 0.7, -0.12);
+  }
   if (look === 'chef') { // T33: a tall white chef's hat
     box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
     box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);

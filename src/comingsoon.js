@@ -11,3 +11,6 @@ export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefin
 // while the rest of wave 15 stays closed.
 export const OPEN_NOW = ['fair', 'atlantis', 'doodle']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on")
 export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
+// T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
+// frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
+export const LATER = ['castle'];

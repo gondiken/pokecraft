@@ -198,6 +198,29 @@ export class UI {
     if (state) { c.textContent = state.text; c.classList.toggle('done', !!state.done); }
   }
 
+  // T49: up to 3 little arrows round the crosshair that point at a danger (the Castle's pumpkins): list = [{ angle, colour, size }] or null.
+  // angle = where it is relative to the view (0 = straight ahead, + = to the right), size 0..1. One element, written only on change.
+  setPointers(list) {
+    const tag = list?.length ? list.map(p => `${p.angle.toFixed(2)}/${p.colour}/${(p.size ?? 1).toFixed(1)}`).join('|') : '';
+    if (tag === this.pointersShown) return;
+    this.pointersShown = tag;
+    let box = this.pointersBox;
+    if (!box) {
+      if (typeof document === 'undefined') return;
+      box = this.pointersBox = document.createElement('div');
+      box.id = 'pointers';
+      box.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:6';
+      document.body.appendChild(box);
+    }
+    box.replaceChildren(...(list || []).slice(0, 3).map(p => {
+      const d = document.createElement('div'), r = 74, sz = 18 + 16 * Math.max(0, Math.min(1, p.size ?? 1));
+      d.className = 'pointer';
+      d.textContent = '▲';
+      d.style.cssText = `position:absolute;left:${Math.sin(p.angle) * r - sz / 2}px;top:${-Math.cos(p.angle) * r - sz / 2}px;width:${sz}px;height:${sz}px;font-size:${sz}px;line-height:${sz}px;text-align:center;color:${p.colour};transform:rotate(${p.angle}rad);text-shadow:0 0 3px #000,0 0 2px #000`;
+      return d;
+    }));
+  }
+
   setKeyCompass(state) {
     const c = this.keyCompass;
     if (!c) return;

@@ -12,6 +12,7 @@ import { ticketState } from './funfair.js'; // T43
 import { bowState } from './partyland.js'; // T48
 import { lightState, LIGHTS } from './glowfish.js'; // T41
 import { lineState, LINE_COUNT } from './doodleland.js'; // T45
+import { castleState } from './castleland.js'; // T49
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999 };
 
@@ -213,6 +214,28 @@ addBoss({
   ],
 });
 /* ==== end of T45 doodle ==== */
+
+/* ==== T49 castle ==== */
+// Sir Clanksalot, the Castle Champion, waits in the throne room beside the empty throne. His gate: Shield Up! and the Joust (three rounds
+// each, saved `beaten` keys, castleland.js castleState); his helpers Squire Pip and Archer Wren battle first (the base's crew rule).
+addBoss({
+  id: 'castle', name: 'Sir Clanksalot', type: 'knight', title: 'Sir Clanksalot · Castle Boss', look: 'knight', // (the title is spelled out: a closed Castle's frame is named "Secret World")
+  colors: { shirt: 0xd83a4a, pants: 0x8a8a96, hair: 0x3a2a1e, skin: 0xf2d0b0 },
+  gate: game => { const st = castleState(game); return st.done ? null : `Halt! Block the pumpkins and win the joust first! (🛡️ ${st.shield} / 3 · 🐴 ${st.lance} / 3)`; },
+  team: [['ramparsnail', 61], ['bristleguard', 62, ['seedvolley', 'bodyslam', 'holdthegate', 'quillvolley']], ['turrock', 63], ['gallantrot', 64, ['lancecharge', 'bodyslam', 'roundtable', 'grandjoust']]], // (the move lists are what movesWith gives: the spec checks)
+  intro: ['Halt! Who goes there?', 'A challenger! At last! I have trained for this every day!'],
+  lose: 'A true knight! The star is yours. Ta-ta-taa!',
+  win: 'Bravely done! Rest a moment and try again.',
+  rematchIntro: ['Back for another tournament? My knights trained harder!'],
+  note: 'I built this castle for my toy knights. They trained every day for a tournament, and nobody ever came to watch. Thank you for being their challenger!',
+  crew: [
+    { name: 'Squire Pip', look: 'squire', colors: { shirt: 0x3a5ad8, pants: 0x6a4a2a, hair: 0xe0b04a, skin: 0xf2d0b0 },
+      team: [['clipclop', 59], ['pricklet', 60]], intro: ['I look after the horses!', 'Battle me first!'], line: 'Point your lance at the gold star!' },
+    { name: 'Archer Wren', look: 'squire', colors: { shirt: 0x4a8a3a, pants: 0x6a4a2a, hair: 0x8a3a1a, skin: 0xc68a5a },
+      team: [['visnail', 60], ['bristleguard', 61]], intro: ['I load the catapults! Squishy pumpkins only.', 'Battle time!'], line: 'Push the stick toward the pumpkin! Jump for the sky ones!' },
+  ],
+});
+/* ==== end of T49 castle ==== */
 
 /* ==== T42 portal ==== */
 addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star

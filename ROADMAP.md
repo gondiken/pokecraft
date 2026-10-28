@@ -1306,9 +1306,9 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
 Wave 15 gave 9 of the 12 stars a world; `secret3`-`secret5` still need one. Each should have **one new verb** (something
 no gym or world asks you to do yet), its own type, creatures, Boss and look. The owner wants skill, not quiet puzzles
 (2026-10-27). Candidates, best fit first:
-- **⚔️ Knight, the Castle** (owner: yes). Aim a catapult (the hold-and-let-go power ring) to knock down walls, then joust
-  on a rideable armoured horse against the Boss's squires. Creatures: a hedgehog with a shield, a snail in a helmet, an
-  armoured horse, a teapot squire (see "Types for later"). Look: banners, a moat, towers, torches at dusk.
+- **⚔️ Knight, the Castle** ✅ built as T49 (`plans/T49-castle.md`, the `secret3` frame, behind `?preview`). Owner 2026-10-28:
+  the T49 plan replaces the catapult-aiming idea: Shield Up! (block soft pumpkins and arrows from every side), a hedge maze, the
+  Joust on the castle's armoured horse; creatures Pricklet, Visnail, Clipclop and Turrock.
 - **🫧 Bubble, the Bath Lagoon** (owner: yes, if it is clearly not Pirate or the Dream). The verb: **make your own way**
   with a bubble wand. Blown bubbles rise slowly and pop after a few seconds; jump on them to climb (big ones slow and
   sturdy, small ones fast and fragile), wind vents push them, thorns pop them. Other ideas: catch an object or a creature
@@ -1462,7 +1462,7 @@ what the rare mission blocks buy), **tricks** (teach your buddy a spin or a danc
 build your own bridge to where you need to go; diggers, cranes and cement-mixer creatures. Not a Picture World.
 
 **Types for later** (owner, 2026-10-21; same per-type cost as wave 11; Ninja went to wave 12; Knight could become a Swirl place, the Castle):
-- **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
+- **🏰 Knight** (now T49, the Castle Picture World in the old `secret3` frame: `plans/T49-castle.md`): armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
   castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
   wall, the leader in the throne room.
 

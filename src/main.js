@@ -1172,6 +1172,7 @@ function updateTarget() {
     ride: { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on },
     sky: riding.on && riding.kind === 'sky',
     swim: !!p.diving, // T41: Jump says Swim in the Sunken City
+    jump: p.carry?.jumpWord?.() ?? null, // T49: a ride may name the Jump button (the Castle: Shield, Off)
   });
 }
 

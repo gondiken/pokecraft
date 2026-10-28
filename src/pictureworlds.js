@@ -1,7 +1,7 @@
 // T38a: the Picture Worlds that are stars (most hang as framed pictures in the Swirl). Data only (one import: the wave 15 switch).
 // Append-only: the ids are saved in `stars` (the worlds whose Boss you beat). Waves 14-15 flip `ready` and add a `realm`.
 // Until a world is ready, its frame in the Swirl is covered with a cloth. Frame colours: [border gem, trim].
-import { worldOpen, WAVE15 } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
+import { worldOpen, WAVE15, LATER } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
 // T40a: the picture in the Giant House's frame: a cream wall, the edge of a brown table, a big cookie and a little grey mouse (128 px canvas).
 function drawHousePicture(g, n = 128) {
   const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
@@ -76,6 +76,22 @@ function drawDoodlePicture(g, n = 128) {
   g.restore();
   g.fillStyle = '#ffd23a'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2 ? 4 : 9) * k; g.lineTo(100 * k + Math.cos(a) * rr, 20 * k + Math.sin(a) * rr); } g.fill();
 }
+/* ==== T49 castle ==== */
+// T49: the picture in the Castle's frame: a blue sky, a grey castle with two round towers and red-and-gold pennants, the drawbridge down over
+// a blue moat, a pumpkin on the grass and a little hedgehog with a shield (128 px canvas).
+function drawCastlePicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#bfe0ff'); r(0, 92, 128, 36, '#7cc85a'); r(0, 88, 128, 8, '#4a8ad8');
+  r(30, 44, 68, 44, '#a8a8b4'); for (let x = 30; x < 98; x += 8) r(x, 38, 5, 6, '#a8a8b4');
+  for (const x of [18, 96]) { r(x, 26, 16, 62, '#9a9aa8'); for (let i = 0; i < 4; i++) r(x + i * 4, 21, 3, 5, '#9a9aa8'); r(x + 7, 8, 2, 14, '#6a4a2a'); g.fillStyle = '#d83a4a'; g.beginPath(); g.moveTo((x + 9) * k, 8 * k); g.lineTo((x + 22) * k, 11 * k); g.lineTo((x + 9) * k, 14 * k); g.fill(); r(x + 9, 11, 8, 3, '#f0c84a'); r(x + 5, 40, 5, 9, '#2a2a34'); }
+  r(54, 62, 20, 26, '#3a2a24'); r(52, 86, 24, 8, '#a8743a'); for (let x = 52; x < 76; x += 4) r(x, 86, 1, 8, '#7a5428');
+  r(46, 52, 36, 8, '#4a6ad8'); r(60, 50, 8, 12, '#f0c84a');
+  g.fillStyle = '#ff9a2a'; g.beginPath(); g.ellipse(22 * k, 108 * k, 9 * k, 7 * k, 0, 0, 7); g.fill(); r(21, 99, 2, 4, '#4a8a2a');
+  g.fillStyle = '#8a6a4a'; g.beginPath(); g.ellipse(100 * k, 110 * k, 10 * k, 8 * k, 0, 0, 7); g.fill();
+  g.fillStyle = '#c89a5a'; g.beginPath(); g.arc(91 * k, 110 * k, 6 * k, 0, 7); g.fill(); r(90, 109, 2, 2, '#f0c84a');
+  r(105, 106, 2, 2, '#16121a');
+}
+/* ==== end of T49 castle ==== */
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
@@ -87,13 +103,15 @@ export const PICTURE_WORLDS = [
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'doodle', name: 'Sketchbook', emoji: '✏️', frame: [0xb8a0f0, 0xf8e8c8], ready: true, realm: 'doodle', picture: drawDoodlePicture }, // T45 (was secret1: no save could hold its star)
   { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Pirate Seas', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas
-  { id: 'secret3', name: 'Secret World', emoji: '❓', frame: [0xf8b8a0, 0xe8f0f8], ready: false, secret: true },
+  { id: 'castle', name: 'Castle', emoji: '🏰', frame: [0xf8b8a0, 0xe8f0f8], ready: true, realm: 'castle', picture: drawCastlePicture }, // T49 (was secret3: no save could hold its star)
   { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },
   // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world
   // (it took the place of the old `wizard` entry, which no save could hold).
   { id: 'secret5', name: 'Secret World', emoji: '❓', frame: [0xf0d080, 0xd8c8f8], ready: false, secret: true },
 ];
 for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id) && !worldOpen(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
+// T49: the Castle ships behind ?preview, and while it is closed its frame is the old secret one (nothing spoiled on the cloth).
+for (const w of PICTURE_WORLDS) if (LATER.includes(w.id) && !worldOpen(w.id)) Object.assign(w, { ready: false, secret: true, realName: w.name, name: 'Secret World', emoji: '❓' });
 // 12 stars in all (PICTURE_WORLDS), every one from a Picture World; 11 hang as frames in the Swirl (all but the Portal House);
 // all 12 light a stone of the star bridge.
 export const FRAME_WORLDS = PICTURE_WORLDS.filter(w => w.door !== false);

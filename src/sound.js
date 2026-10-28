@@ -219,6 +219,18 @@ const SOUNDS = {
   // T45 doodle: a quick pencil scribble (filtered noise ticks); the pencil's soft scratch while it draws a line; a rubbery squeak when Rubber rubs it out.
   'fx:doodle': () => { for (let i = 0; i < 4; i++) noise({ at: i * 0.045, freq: 3200 + (i % 2) * 1400, len: 0.035, vol: 0.12, q: 1.6 }); },
   doodlescratch: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05, freq: 3600 + i * 500, len: 0.04, vol: 0.05, q: 1.8 }); },
+  // T49 knight / the Castle: a short trumpet fanfare; the catapult's creak and thunk; a bow's twang; a shield's clang; a soft pumpkin
+  // squelch ("yuck, sticky!", owner 2026-10-28: nothing that sounds like hurting); a lance on a shield; the drawbridge's chains; a bonk on the helm.
+  'fx:knight': () => notes([523, 523, 784], 0.1, { len: 0.12, type: 'square', vol: 0.09 }),
+  trumpet: () => { notes([523, 659, 784], 0.11, { len: 0.12, type: 'square', vol: 0.1 }); tone(1047, { at: 0.36, len: 0.3, type: 'square', vol: 0.11 }); },
+  catapultcreak: () => { for (let i = 0; i < 3; i++) tone(180 + i * 40, { at: i * 0.09, len: 0.07, type: 'sawtooth', vol: 0.05, slide: 30 }); },
+  catapultthunk: () => { noise({ freq: 300, len: 0.12, vol: 0.2, q: 0.8 }); tone(110, { len: 0.12, type: 'triangle', vol: 0.18, slide: -40 }); },
+  bowtwang: () => tone(300, { len: 0.18, type: 'triangle', vol: 0.12, slide: -120 }),
+  shieldclang: () => { bell(1240, 0, 0.3, 0.16); bell(1860, 0.01, 0.22, 0.08); noise({ freq: 4200, len: 0.05, vol: 0.08, q: 1.4 }); },
+  pumpkinsplat: () => { noise({ freq: 420, len: 0.24, vol: 0.26, q: 0.5 }); tone(260, { len: 0.2, type: 'sine', vol: 0.14, slide: -170 }); tone(520, { at: 0.12, len: 0.1, type: 'sine', vol: 0.06, slide: 200 }); },
+  lanceclang: () => { bell(980, 0, 0.35, 0.2); noise({ freq: 2600, len: 0.08, vol: 0.14, q: 1 }); },
+  drawbridge: () => { for (let i = 0; i < 8; i++) noise({ at: i * 0.11, freq: 2200 + (i % 2) * 600, len: 0.05, vol: 0.07, q: 2 }); tone(90, { at: 0.9, len: 0.25, type: 'triangle', vol: 0.2, slide: -30 }); },
+  helmbonk: () => { bell(620, 0, 0.18, 0.12); tone(200, { len: 0.1, type: 'triangle', vol: 0.12, slide: -60 }); },
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).

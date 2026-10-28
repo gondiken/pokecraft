@@ -52,6 +52,7 @@ export class Player {
   }
 
   look(dx, dy) {
+    if (this.carry?.look?.(dx, dy)) return; // T49: a ride may take the look input (the joust's lance tip)
     this.yaw -= dx * 0.0022;
     this.pitch = Math.max(-1.55, Math.min(1.55, this.pitch - dy * 0.0022));
   }

@@ -143,6 +143,12 @@ only know what's inside when they open. His old toy, Jolly Jax, has been keeping
 present of all, and the party is for you: play the party games, and Jax bursts out of the cake with the star. (It was the Room
 of Doors at first.)
 
+**The Castle** (T49). The Wizard built a castle for his toy knights to practise in, for a grand tournament. When he went
+away the drawbridge stayed up and nobody ever came. The knights kept training every day: the catapults still throw
+squishy pumpkins at anyone who stands on the Shield Stone, and Sir Splinter, a wooden practice knight, still rolls down
+the Tilt Yard. Block the pumpkins and the drawbridge comes down; find your way through the hedge maze and win the joust,
+and the portcullis rises. Sir Clanksalot waits in the throne room beside the empty throne for a challenger at last.
+
 ## The Wizard's Tower
 
 With every star found, the star bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
