@@ -105,7 +105,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the parrots fly, wool 141`);
     t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Deep Blue · Pirate Seas') && A.rows.includes('Deep Blue · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
     t.ok(A.ready === true && A.types >= 37, 'the Pirate Seas frame ships ready; at least 37 types');
-    t.ok(A.own === 'ball:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && /^electric:2,(knight:2,)?racer:2(,|$)/.test(A.onPirate), `chart: Pirate hits ball, treasure and water; electric and racer hit Pirate (wave 15's Surprise and T49's Knight too) (${A.own} / ${A.onPirate})`);
+    t.ok(A.own === 'ball:2,bubble:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && /^electric:2,(knight:2,)?racer:2(,|$)/.test(A.onPirate), `chart: Pirate hits ball, treasure and water (wave 16: bubble); electric and racer hit Pirate (wave 15's Surprise and T49's Knight too) (${A.own} / ${A.onPirate})`);
   }
 
   /* ================================ B. terrain ================================ */
@@ -750,7 +750,7 @@ async function pairPart({ browser, base, t }) {
   await placeIs(A, 'pirate');
   await waitFor(Bp, () => window.pokecraft.ui.asking, null, 60000);
   const ask = await Bp.evaluate(() => document.getElementById('ask-text').textContent);
-  t.ok(/Dad stepped into the Pirate Seas\. Go too\?/.test(ask), `Kid is asked to follow Dad into the Pirate Seas ("${ask}")`);
+  t.ok(/Dad stepped into the Deep Blue\. Go too\?/.test(ask), `Kid is asked to follow Dad into the Pirate Seas ("${ask}")`);
   await Bp.evaluate(() => window.pokecraft.ui.askYes());
   await placeIs(Bp, 'pirate');
   const k = await Bp.evaluate(() => { const g = window.pokecraft; return { via: g.realms.via, guest: g.realms.stash.guest, live: !!g.gymLive.of('part:seas'), cannons: g.world.pirate.cannons.length }; });
