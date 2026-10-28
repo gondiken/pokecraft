@@ -66,7 +66,7 @@ export const CONDITIONS = {
     text: 'in the Portal House: the porch, the Hall of Swirls and the Study' },
   crumbs: { ok: c => !!c.nook && !!c.allCrumbs, place: c => c.nook(), outdoor: true, // T40a.5: Pipsqueak comes out once all 12 crumbs are found
     text: 'in tiny places, once you found all 12 cookie crumbs in the Giant House' },
-  // T44: the Room of Doors' wild creatures sit in gift boxes in the same kind of spots (shelves, the hall's walls): the nook list, a different Book line
+  // T44: the Surprise Party's wild creatures (T48; the Room of Doors' before) sit in gift boxes in the same kind of spots (by the walls, behind the table): the nook list, a different Book line
   gift: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'wrapped in a gift box' },
   home: {
     ok: (c, type) => !!homeOf(c, type),

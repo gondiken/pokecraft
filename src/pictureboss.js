@@ -9,7 +9,7 @@ import { goalState } from './stadium.js'; // T40d
 import { boatState } from './pirateland.js'; // T40b
 import { roomState } from './portalplay.js'; // T42
 import { ticketState } from './funfair.js'; // T43
-import { bowState } from './doorsland.js'; // T44
+import { bowState } from './partyland.js'; // T48
 import { lightState, LIGHTS } from './glowfish.js'; // T41
 import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 
@@ -172,22 +172,23 @@ addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). 
 });
 /* ==== end of T43 funfair ==== */
 /* ==== T44 surprise ==== */
-// Jolly Jax, a giant jack-in-the-box in the Big Gift of the Room of Doors, and two optional helpers behind surprise doors. The Big Gift opens
-// only when the four golden bows are won (three piñatas and Jack Catch: doorslive.js); a won battle uses the bows up again.
+// T48: Jolly Jax, a giant jack-in-the-box, throws the Surprise Party (it replaced T44's Room of Doors, keeping the id `doors`). He bursts out of
+// the cake when the four golden bows of the four party games are won (partylive.js); his two helpers crash the party after the 1st and the
+// 3rd bow and must be beaten before him. A won battle uses the bows up again (a rematch is a new party).
 addBoss({
-  id: 'doors', name: 'Jolly Jax', title: 'Jolly Jax · Room of Doors Boss', type: 'surprise', model: { species: 'jestergrin', scale: 2.1 },
-  gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! My gift has ${need} ribbons. Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} to untie them! (🎀 ${n} / ${need})`; },
+  id: 'doors', name: 'Jolly Jax', title: 'Jolly Jax · Surprise Party Boss', type: 'surprise', model: { species: 'jestergrin', scale: 2.1 },
+  gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} at my party games first! (🎀 ${n} / ${need})`; },
   team: [['bowtower', 61], ['fiestallama', 62, ['sprinkles', 'surpriseparty', 'springpunch', 'candyburst']], ['partypop', 62], ['jestergrin', 63, ['shriek', 'surpriseparty', 'springpunch', 'tadaa']]], // top level 63, the easy side (the move lists are what movesWith(species, level, ...) gives: the surprise spec checks)
-  intro: ['SURPRISE! Ho ho! You untied all my ribbons!', 'The Wizard put his star in my box. Win it!'],
+  intro: ['SURPRISE! Ho ho! This party is for YOU!', 'The Wizard hid his star in my cake. Win it!'],
   lose: 'Ho ho! What a surprise: you win! The star is yours.',
-  win: 'Ho ho! Rest a bit and try again. I will still be in my box!',
-  rematchIntro: ['Boing! New ribbons, new tricks. Ready?'],
+  win: 'Ho ho! Have some cake, rest a bit and try again!',
+  rematchIntro: ['Boing! A new party, new tricks. Ready?'],
   note: 'Jax was my favourite toy. I wrapped up gifts for every creature in the Swirl, but never got to give them out. Thank you for opening them!',
   crew: [
     { name: 'Ribbon Rosa', look: 'party', colors: { shirt: 0xe8384a, pants: 0xfff0d0, hair: 0x5a2a1a, skin: 0xf2c79a },
-      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! You found me! Battle!'], line: 'Whack the piñata when it swings AT you!' },
+      team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! A party crasher! Battle!'], line: 'Spin the Party Spinner. Press Stop! when your game is under the arrow!' },
     { name: 'Confetti Kit', look: 'party', colors: { shirt: 0x3a8ce8, pants: 0xffd23a, hair: 0xe8c03a, skin: 0xc68a5a },
-      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! A battle was behind the door!'], line: 'Run under the jacks. Dodge the pies!' },
+      team: [['pinpop', 60], ['partypop', 61], ['bowtower', 61]], intro: ['Ta-da! I crashed the party! Battle!'], line: 'Whack the jacks, but never the ones with a pie!' },
   ],
 });
 /* ==== end of T44 surprise ==== */

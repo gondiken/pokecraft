@@ -11,7 +11,7 @@
 // turn, the first swing, the dodges) comes from a hash of seed | round | attempt (| hit number): no Math.random.
 
 export const PINATA = {
-  ring: { x: 56.5, z: 53.5, r: 9 },     // the party rug in the middle of the hall (doorsland.js draws it)
+  ring: { x: 56.5, z: 53.5, r: 9 },     // the party rug in the middle of the party floor (partyland.js builds the room round it)
   rope: 4.6,                           // rope length
   low: 12.9,                           // the piñata's middle at the bottom of a swing (your eyes are at 12.6)
   maxOut: 0.92,                        // a swing never goes further out than this x the rope

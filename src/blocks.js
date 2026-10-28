@@ -80,8 +80,8 @@ const MORE_TILES = [
   // fan switch (off / on), toy track, train remote button, tap handle, cat fur / sleeping eye / open eye, keyhole
   'FLOOR_TILE', 'FLOOR_TILE_DARK', 'WALLPAPER', 'COUNTER_TOP', 'CUPBOARD_SIDE', 'TABLE_WOOD', 'COOKIE_TOP', 'COOKIE_SIDE', 'CRUMB', 'FAN_GRILL',
   'CHROME', 'FAN_SWITCH', 'FAN_SWITCH_ON', 'TRACK_TOP', 'REMOTE_BUTTON', 'TAP_HANDLE', 'CAT_FUR', 'CAT_EYE', 'CAT_EYE_OPEN', 'KEYHOLE',
-  // T44 Room of Doors (wave 15): gift wrap, party floor, gift door (front / top), gold door, pop-up box (lid / side / open), ball pit, ribbon
-  'SU_WRAP', 'SU_FLOOR', 'SU_DOOR', 'SU_DOOR_TOP', 'SU_GOLD_DOOR', 'SU_BOX_TOP', 'SU_BOX_SIDE', 'SU_BOX_OPEN', 'SU_BALLS', 'SU_RIBBON',
+  // T44 / T48 Surprise Party (wave 15): gift wrap, party floor, present (side / top), gold present, pop-up box (lid / side / open), cake (side), candle flame, cake (top)
+  'SU_WRAP', 'SU_FLOOR', 'SU_PRESENT', 'SU_PRESENT_TOP', 'SU_GOLD_PRESENT', 'SU_BOX_TOP', 'SU_BOX_SIDE', 'SU_BOX_OPEN', 'SU_CAKE', 'SU_FLAME', 'SU_CAKE_TOP',
   // T40b pirate (wave 14): ship planks, deck, rope ladder, cannon pad, target, rope post, palm, flag, chest (closed / open), wheel, coral, shell sand
   'HULL', 'DECK', 'ROPE_LADDER', 'CANNON_PAD', 'TARGET', 'ROPE_POST', 'ROPE_POST_TOP', 'PALM', 'PALM_TOP', 'PALM_LEAVES',
   'PIRATE_FLAG', 'BIG_CHEST', 'BIG_CHEST_TOP', 'BIG_CHEST_OPEN', 'WHEEL', 'CORAL', 'SHELL_SAND',
@@ -168,8 +168,9 @@ export const B = {
   HOUSE_PROP: 250,
   // 251-253: Race Track v2 (owner 2026-10-27, none placeable, all fixed): orange flyover track, its rail, the jump ramp. Next free id: 254.
   HOT_TRACK: 251, HOT_RAIL: 252, KICKER: 253,
-  // 235: surprise wool (wave 15). 236-243: T44, the Room of Doors (none placeable, all fixed; POP_BOX_OPEN is drawn only with setLive)
-  GIFT_WALL: 236, PARTY_FLOOR: 237, GIFT_DOOR: 238, GOLD_DOOR: 239, POP_BOX: 240, POP_BOX_OPEN: 241, BALL_PIT: 242, RIBBON: 243,
+  // 235: surprise wool (wave 15). 236-243: T44, the Room of Doors; T48 (owner 2026-10-28) the Surprise Party took the same ids over (238 / 239
+  // were its doors, 242 the ball pit, 243 a ribbon). None placeable, all fixed; POP_BOX (in a game's set), POP_BOX_OPEN and CANDLE are drawn only with setLive.
+  GIFT_WALL: 236, PARTY_FLOOR: 237, PRESENT: 238, GOLD_PRESENT: 239, POP_BOX: 240, POP_BOX_OPEN: 241, CAKE: 242, CANDLE: 243,
   // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
@@ -421,17 +422,17 @@ BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: 
   BLOCKS[B.CANDY_STRIPE] = { name: 'Candy Stripe', ...all(T.FF_STRIPE), ...fx, wallText: 'A fair stall.' };
   BLOCKS[B.STAR_STAGE] = { name: 'Star Stage', ...all(T.FF_STAGE), ...fx, wallText: 'The Star Stage! Merry Mae waits here.' };
 }
-// T44 Room of Doors: none placeable, all `fixed`. Opened doors, untied ribbons and open pop-up boxes are setLive cells (never edits).
+// T44 / T48 Surprise Party: none placeable, all `fixed`. The games' sets, open pop-up boxes and lit candles are setLive cells (never edits).
 {
-  const WRAP = 'Gift wrap! The Room of Doors is wrapped up tight.', fx = { fixed: true };
+  const WRAP = 'Gift wrap! The whole party is inside a giant present.', fx = { fixed: true };
   BLOCKS[B.GIFT_WALL] = { name: 'Gift Wrap', ...all(T.SU_WRAP), ...fx, wallText: WRAP };
   BLOCKS[B.PARTY_FLOOR] = { name: 'Party Floor', ...all(T.SU_FLOOR), ...fx, wallText: 'A party floor. Too much fun to dig!' };
-  BLOCKS[B.GIFT_DOOR] = { name: 'Gift Door', top: T.SU_DOOR_TOP, side: T.SU_DOOR, bottom: T.SU_DOOR_TOP, ...fx, wallText: 'Press Open! to see what is inside!' };
-  BLOCKS[B.GOLD_DOOR] = { name: 'Gold Door', ...all(T.SU_GOLD_DOOR), glow: true, noLight: true, ...fx, wallText: 'A golden door! Press Open! to see what is inside!' };
-  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
-  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Catch the jacks that fly out!' };
-  BLOCKS[B.BALL_PIT] = { name: 'Ball Pit', ...all(T.SU_BALLS), bounce: 3, ...fx, wallText: 'A ball pit! Jump to bob up and down.' };
-  BLOCKS[B.RIBBON] = { name: 'Ribbon', ...all(T.SU_RIBBON), glow: true, noLight: true, ...fx, wallText: 'A ribbon on the Big Gift. Win a golden bow to untie it!' };
+  BLOCKS[B.PRESENT] = { name: 'Present', top: T.SU_PRESENT_TOP, side: T.SU_PRESENT, bottom: T.SU_PRESENT_TOP, ...fx, wallText: 'A present! It is for the party.' };
+  BLOCKS[B.GOLD_PRESENT] = { name: 'Gold Present', top: T.SU_PRESENT_TOP, side: T.SU_GOLD_PRESENT, bottom: T.SU_PRESENT_TOP, glow: true, noLight: true, ...fx, wallText: 'A golden present! It is for the party.' };
+  BLOCKS[B.POP_BOX] = { name: 'Pop-Up Box', top: T.SU_BOX_TOP, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Something jumps out of it in the party games!' };
+  BLOCKS[B.POP_BOX_OPEN] = { name: 'Pop-Up Box', top: T.SU_BOX_OPEN, side: T.SU_BOX_SIDE, bottom: T.SU_BOX_SIDE, ...fx, wallText: 'A pop-up box. Something jumps out of it in the party games!' };
+  BLOCKS[B.CAKE] = { name: 'Birthday Cake', top: T.SU_CAKE_TOP, side: T.SU_CAKE, bottom: T.SU_CAKE, ...fx, wallText: 'The birthday cake! Win four golden bows to light its candles.' };
+  BLOCKS[B.CANDLE] = { name: 'Candle Flame', ...all(T.SU_FLAME), glow: true, noLight: true, ...fx, wallText: 'A candle! Make a wish.' };
 }
 // T41 Atlantis blocks (none can be placed, all `fixed`). The lit lantern, lamp and rim coral glow; the glow lights nothing around them (the city's light is the fish).
 {
@@ -971,24 +972,24 @@ export function drawAtlas() {
       put(T.SU_WRAP, x, y, dot ? [255, 130, 160] : stripe ? [255, 238, 214] : sh([248, 168, 58], 0.05));
       // party floor: big pastel checks
       put(T.SU_FLOOR, x, y, edge(x, y) ? [210, 200, 230] : ((x >> 3) + (y >> 3)) % 2 ? sh([190, 232, 255], 0.04) : sh([255, 214, 232], 0.04));
-      // gift door: lilac wrapping with a cream ribbon across the middle and a darker border (the cells of one door read as a wrapped door)
-      const band = Math.abs(dy) < 1.6;
-      put(T.SU_DOOR, x, y, edge(x, y) ? [120, 70, 150] : band ? [255, 240, 200] : sh(x % 4 < 2 ? [176, 140, 232] : [166, 128, 224], 0.05));
-      put(T.SU_DOOR_TOP, x, y, edge(x, y) ? [120, 70, 150] : Math.abs(dx) < 1.6 ? [255, 240, 200] : sh([176, 140, 232], 0.05));
-      // gold door: bright gold with a darker frame, panels and a shiny knob
-      const knob = Math.hypot(x - 11.5, y - 8) < 1.6, panel = (x === 3 || x === 12 || y === 3 || y === 12) && x > 2 && x < 13 && y > 2 && y < 13;
-      put(T.SU_GOLD_DOOR, x, y, edge(x, y) ? [160, 110, 20] : knob ? [255, 255, 220] : panel ? [200, 140, 30] : sh([255, 214, 70], 0.06));
+      // present: lilac wrapping with a cream ribbon down the middle (and across the top: a ribbon cross), a darker border
+      const band = Math.abs(dx) < 1.6;
+      put(T.SU_PRESENT, x, y, edge(x, y) ? [120, 70, 150] : band ? [255, 240, 200] : sh(x % 4 < 2 ? [176, 140, 232] : [166, 128, 224], 0.05));
+      put(T.SU_PRESENT_TOP, x, y, edge(x, y) ? [120, 70, 150] : Math.abs(dx) < 1.6 || Math.abs(dy) < 1.6 ? [255, 240, 200] : sh([176, 140, 232], 0.05));
+      // gold present: bright gold paper with a red ribbon down the middle
+      put(T.SU_GOLD_PRESENT, x, y, edge(x, y) ? [160, 110, 20] : band ? [232, 56, 74] : sh([255, 214, 70], 0.06));
       // pop-up box: red with white stars on top (a lid) and blue side with a yellow stripe
       const star = (Math.abs(dx) < 0.9 && Math.abs(dy) < 3.4) || (Math.abs(dy) < 0.9 && Math.abs(dx) < 3.4);
       put(T.SU_BOX_TOP, x, y, edge(x, y) ? [150, 30, 40] : star ? [255, 244, 160] : sh([232, 60, 74], 0.05));
       put(T.SU_BOX_SIDE, x, y, edge(x, y) ? [24, 60, 130] : y === 7 || y === 8 ? [255, 214, 70] : sh([58, 120, 232], 0.05));
       put(T.SU_BOX_OPEN, x, y, edge(x, y) ? [150, 30, 40] : d < 5.6 ? sh([46, 20, 40], 0.1) : sh([232, 60, 74], 0.05));
-      // ball pit: a heap of coloured balls with a shine
-      const bx = (x >> 2) , by = (y >> 2), cols = [[232, 60, 74], [58, 140, 232], [255, 214, 70], [70, 200, 110], [176, 90, 232]];
-      const c = cols[(bx * 3 + by * 5 + ((bx + by) % 2)) % 5], cx = (x % 4) - 1.5, cy = (y % 4) - 1.5, rr = Math.hypot(cx, cy);
-      put(T.SU_BALLS, x, y, rr > 2 ? shade(c, 0.45) : (cx < 0 && cy < 0 && rr < 1.1) ? [255, 255, 255] : shade(c, 1 - rr * 0.1));
-      // ribbon: bright pink satin with a light stripe
-      put(T.SU_RIBBON, x, y, Math.abs(dx) < 1.5 ? [255, 235, 245] : sh(x < 4 || x > 11 ? [220, 40, 100] : [240, 70, 130], 0.05));
+      // cake: sponge with two cream layers and a pink icing drip at the top; its top is pink icing with sprinkles; a candle flame
+      const drip = y < 3 + ((x * 7) % 3);
+      put(T.SU_CAKE, x, y, drip ? sh([255, 150, 190], 0.04) : y === 7 || y === 12 ? [255, 246, 228] : sh([238, 196, 130], 0.06));
+      const sprinkle = ((x * 5 + y * 3) % 11) === 0, cols = [[255, 214, 70], [58, 140, 232], [70, 200, 110], [255, 255, 255]];
+      put(T.SU_CAKE_TOP, x, y, sprinkle ? cols[(x + y) % 4] : sh([255, 160, 196], 0.04));
+      const fl = Math.abs(dx) / Math.max(0.1, 1 - y / 16) / 7;
+      put(T.SU_FLAME, x, y, fl < 0.35 ? [255, 255, 220] : fl < 0.7 ? [255, 210, 70] : fl < 1 ? [255, 130, 40] : [255, 236, 200]);
     });
   }
   { // T40c Race Track tiles (own random numbers): dark grain, a white edge line, a 4 x 4 chequer, red and white kerb, chevron boost pads, lamps, stacked tyres

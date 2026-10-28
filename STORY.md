@@ -138,8 +138,10 @@ and the fair leader, and Playland starts up again.
 **The Portal House.** In the Swirl itself, the Portal creatures' oldest, who has been watching the crack the
 longest, is the Boss at the end of a chain of portal rooms.
 
-**The Room of Doors.** The Wizard locked away the gifts he never got to hand out: the **Surprise creatures**. You
-only know what's inside when they open, and every door in the room is a surprise too.
+**The Surprise Party.** The Wizard wrapped up the gifts he never got to hand out: the **Surprise creatures**. You
+only know what's inside when they open. His old toy, Jolly Jax, has been keeping a birthday party waiting inside the biggest
+present of all, and the party is for you: play the party games, and Jax bursts out of the cake with the star. (It was the Room
+of Doors at first.)
 
 ## The Wizard's Tower
 
@@ -185,6 +187,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | The Shadow Dojo, 32 badges in an 8 x 4 grid | Ninja gym | 12 |
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
-| The Portal House, Playland's fair, the Room of Doors, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
+| The Portal House, Playland's fair, the Surprise Party, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
 | The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |

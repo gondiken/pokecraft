@@ -6,7 +6,7 @@ import { crumbKey } from './houselive.js';
 import { goalState } from './stadium.js';
 import { boatState } from './pirateland.js';
 import { ticketState } from './funfair.js';
-import { bowState } from './doorsland.js';
+import { bowState } from './partyland.js';
 import { lightState } from './glowfish.js';
 import { lineState } from './doodleland.js';
 import { roomState } from './portalplay.js';
