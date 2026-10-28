@@ -94,7 +94,7 @@ function drawCastlePicture(g, n = 128) {
 /* ==== end of T49 castle ==== */
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
-  { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate' },
+  { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate', place: 'Deep Blue' }, // owner 2026-10-28: the Pirate Seas and Atlantis share one world, Deep Blue (like Playland)
   { id: 'race', name: 'Race Track', emoji: '🏎️', frame: [0xd83a3a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' }, // place: the world it shares (owner 2026-10-26: the frames say so)
   { id: 'stadium', name: 'Ball Stadium', emoji: '⚽', frame: [0x3aa84a, 0xf8f8f8], ready: true, realm: 'playland', place: 'Playland' },
   { id: 'portal', name: 'Portal House', emoji: '🌀', frame: [0x8a3ad8, 0x3ad8d8], ready: true, door: false }, // the Portal House is in the Swirl itself: no frame, but its star lights a stone
@@ -102,7 +102,7 @@ export const PICTURE_WORLDS = [
   { id: 'doors', name: 'Surprise Party', emoji: '🎁', frame: [0xf8a83a, 0x8a3a1a], ready: true, realm: 'doors', picture: drawPartyPicture }, // T44; T48 the Surprise Party (it replaced the Room of Doors)
   // Five worlds still to be named (owner 2026-10-25; the fifth since 2026-10-26): framed, covered, secret.
   { id: 'doodle', name: 'Sketchbook', emoji: '✏️', frame: [0xb8a0f0, 0xf8e8c8], ready: true, realm: 'doodle', picture: drawDoodlePicture }, // T45 (was secret1: no save could hold its star)
-  { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Pirate Seas', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas
+  { id: 'atlantis', name: 'Atlantis', emoji: '🔱', frame: [0x8adcc8, 0xf8f0d8], ready: true, realm: 'pirate', place: 'Deep Blue', picture: drawAtlantisPicture }, // T41: was secret2 (no save could hold its star): the Sunken City, in the Pirate Seas
   { id: 'castle', name: 'Castle', emoji: '🏰', frame: [0xf8b8a0, 0xe8f0f8], ready: true, realm: 'castle', picture: drawCastlePicture }, // T49 (was secret3: no save could hold its star)
   { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },
   // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world

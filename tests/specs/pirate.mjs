@@ -103,9 +103,9 @@ export default async function ({ browser, base, t }) {
     t.ok(A.big.every(Boolean) && A.sig.every(Boolean) && A.sigFx, `Raise the Flag (rally), Powder Keg (risky), Walk the Plank (curse); Broadside at 30 and Anchor Drop at 32 with effects (${A.bigLevels})`);
     t.ok(A.fx.every(Boolean) && A.sounds.every(Boolean) && !A.clash.length, `own attack effects, colours and sounds (fx:pirate, cannonboom, seasplash), no move named like a sound (${A.fx}; ${A.sounds}; ${A.clash})`);
     t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the parrots fly, wool 141`);
-    t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Pirate Seas · islands') && A.rows.includes('Pirate Seas · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
+    t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Deep Blue · Pirate Seas') && A.rows.includes('Deep Blue · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
     t.ok(A.ready === true && A.types >= 37, 'the Pirate Seas frame ships ready; at least 37 types');
-    t.ok(A.own === 'ball:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && /^electric:2,racer:2(,|$)/.test(A.onPirate), `chart: Pirate hits ball, treasure and water; electric and racer hit Pirate (wave 15's Surprise too) (${A.own} / ${A.onPirate})`);
+    t.ok(A.own === 'ball:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && /^electric:2,(knight:2,)?racer:2(,|$)/.test(A.onPirate), `chart: Pirate hits ball, treasure and water; electric and racer hit Pirate (wave 15's Surprise and T49's Knight too) (${A.own} / ${A.onPirate})`);
   }
 
   /* ================================ B. terrain ================================ */
