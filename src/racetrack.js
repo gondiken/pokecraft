@@ -1,9 +1,10 @@
-// T40c: the Race Track in Playland's `race` zone. Pure data and maths (imports only blocks.js and picturelands.js, so the spec runs it in Node):
+// T40c: the Race Track in Playland's `race` zone. Pure data and maths (imports only blocks.js, picturelands.js and kindhelp.js, so the spec runs it in Node):
 // the track as pieces of a centreline, `makeTrack()` (where a lap is, its height, flags, boost pads), Racer Rio's speed with the rubber
 // band (`bossSpeed`, `raceRun` to simulate a race), the wild Racers' spawn table and `buildRaceTrack`, the part builder that
 // Playland's PLAYLAND_PARTS.race calls (it writes only inside the race zone box). The live race is in racelive.js, your kart in kart.js.
 import { B, WOOL } from './blocks.js';
 import { kit, placeBoss, placeCrew } from './picturelands.js'; // pure too (blocks.js and pictureworlds.js only)
+import { kindHelp } from './kindhelp.js';
 
 // Race tunables. Rio's speed is a closed form of his track distance (see bossSpeed); lead = bossS - your progress.
 // Owner 2026-10-27 (Race Track v2): "the road is still too short ... think Hot Wheels ... there's not really any car mechanics":
@@ -15,7 +16,7 @@ export const RACE = {
   count: 3, hold: 1.2,                            // countdown seconds; how far you may move before GO
   // Rio's speed on each kind of piece (a kart's top speed on the road is 12, kart.js)
   speed: { straight: 11.6, tunnel: 11.6, snake: 10.8, kicker: 11, jump: 12.5, climb: 11, high: 11.4, drop: 13.5, corner: 9.4, hairpin: 7.8, chicane: 9 },
-  band: { near: 4, slow: 0.01, min: 0.93, behind: 4, fast: 0.02, max: 1.08, ease: 0.04, final: 45, cap: [1, 0.92, 0.84] }, // owner 2026-10-27: he waits for you only a little now
+  band: { near: 4, slow: 0.01, min: 0.93, behind: 4, fast: 0.02, max: 1.08 }, // owner 2026-10-27: he waits for you only a little now (lost races: the shared kind help, kindhelp.js)
   boost: { dist: 6, speed: 16, fade: 12 },        // a boost strip: Rio drives `speed` along its 6 blocks, then slows back over `fade` blocks (yours: kart.js KART.boost)
   offTrack: 4.3, fov: 82,                         // on foot (not racing) off the track: a walk; the view widens at race speed
   leave: 40,                                      // further than this from the track ends the race
@@ -161,15 +162,15 @@ export function makeTrack({ ox = TRACK_ORIGIN.ox, oz = TRACK_ORIGIN.oz, y = 10 }
 }
 
 // Rio's speed at track distance bossS when he leads by `lead` blocks (bossS - your progress) after `losses` lost races.
-// Ahead of you he slows down, far behind he speeds up a little, every lost race makes him gentler, and he waves to the crowd at the end.
+// Ahead of you he slows down, far behind he speeds up a little, and after a couple of lost races the shared kind help (kindhelp.js,
+// owner 2026-10-28: only ever so slightly) makes him a tiny bit slower.
 // A boost strip speeds him up like it speeds you up (owner 2026-10-27).
 export function bossSpeed(bossS, lead, losses, track) {
-  const b = RACE.band, end = RACE.laps * track.L;
+  const b = RACE.band;
   let f = 1;
   if (lead > b.near) f = Math.max(b.min, 1 - b.slow * (lead - b.near));          // ahead: slows down
   else if (lead < -b.behind) f = Math.min(b.max, 1 + b.fast * (-lead - b.behind)); // far behind: a little faster
-  f *= 1 - b.ease * Math.min(losses, 8);                                          // gentler after every lost race (up to 8: everyone wins in the end)
-  if (bossS > end - b.final && (losses > 0 || lead > 0)) f = Math.min(f, b.cap[Math.min(losses, 2)]); // waves to the crowd
+  f *= kindHelp(losses).slow;                                                     // the kind help after lost races
   const m = ((bossS % track.L) + track.L) % track.L, base = RACE.speed[track.pieces.find((p, i) => m >= p.s0 && (i === track.pieces.length - 1 || m < track.pieces[i + 1].s0)).kind];
   return (base + Math.max(0, RACE.boost.speed - base) * track.boostAt(bossS)) * f;
 }

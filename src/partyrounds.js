@@ -23,7 +23,7 @@ export function pinataRound(seed, round, attempt, { help = 0, hard = false, twis
   const main = pinataPlan(seed, round, attempt, { help, hard });
   if (twist === 'wobbly') { main.first = { ...main.first, amp: main.first.amp * ROUNDS.pinata.wobbly }; main.hitAmp *= ROUNDS.pinata.wobbly; }
   if (twist !== 'two') return [main];
-  const second = pinataPlan(`${seed}|two`, 1, attempt, { help: 2, hard });
+  const second = pinataPlan(`${seed}|two`, 1, attempt, { help, hard, lazy: true });
   main.time += ROUNDS.pinata.extra; second.time = main.time;
   return [main, second];
 }

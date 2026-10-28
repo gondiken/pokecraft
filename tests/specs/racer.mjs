@@ -215,11 +215,12 @@ export default async function ({ browser, base, t }) {
     const s60 = same(60), s20 = same(20);
     t.ok(s60.every((v, i) => Math.abs(v - s20[i]) < 0.02), `60 and 20 frames a second give the same drive (${s60.map(v => v.toFixed(2))} / ${s20.map(v => v.toFixed(2))})`);
     // a whole race against Rio with a driver of each skill (owner 2026-10-27, "too easy": a clean drive wins, a sloppy one loses the first race and wins after losing)
-    const races = [[1, 0, 0], [0.9, 0, 0], [0.9, 0.4, 0], [0.9, 0.4, 1], [0.6, 0.8, 4], [0.6, 0.8, 8]].map(([sk, wob, l]) => ({ sk, wob, l, ...autoRace(world, part, sk, l, { wobble: wob }) }));
+    // owner 2026-10-28: the kind help after lost races is the shared, small one (kindhelp.js): nothing after 1 lost race, at most 10 % slower
+    const races = [[1, 0, 0], [0.9, 0, 0], [0.9, 0.4, 0], [0.9, 0.4, 1], [0.9, 0.4, 6], [0.6, 0.8, 8]].map(([sk, wob, l]) => ({ sk, wob, l, ...autoRace(world, part, sk, l, { wobble: wob }) }));
     console.log('  races', JSON.stringify(races));
     t.ok(races[0].win && races[1].win && races[0].margin < 20, `a clean, quick drive wins, but only just (${races[0].margin}, ${races[1].margin} blocks ahead)`);
-    t.ok(!races[2].win && races[3].win, `a wobbly drive loses the first race (by ${races[2].margin}) and wins after a lost race (by ${races[3].margin})`);
-    t.ok(!races[4].win && races[5].win, `a very sloppy drive still loses after 4 lost races, but after 8 Rio is gentle enough (by ${races[5].margin})`);
+    t.ok(!races[2].win && !races[3].win && races[4].win, `a wobbly drive loses the first race (by ${races[2].margin}), still loses after one lost race (no help yet, by ${races[3].margin}) and wins with patience, after 6 (by ${races[4].margin})`);
+    t.ok(!races[5].win, `a very sloppy drive still loses even with the most help (by ${races[5].margin}): driving well is the skill`);
   }
 
   const page = await openGame(browser, base);
@@ -527,7 +528,7 @@ export default async function ({ browser, base, t }) {
     // owner 2026-10-27: really driving the kart round the whole race (the driver of the Node part, here on the real blocks)
     const D3k = await page.evaluate(() => {
       const R = window.__R, { live, g } = R, seq = [];
-      live.won = false; live.losses = 1; // (one lost race: a clean drive wins easily, so the result does not hang on the frame length)
+      live.won = false; live.losses = 6; // (six lost races, the most kind help: a clean drive wins easily, so the result does not hang on the frame length)
       g.talkTo(R.rio()); live.step(3.2);
       let last = live.next, bonks = 0, boosts = 0, air = 0, high = 0;
       const played = () => g.sound.played.length;
@@ -537,7 +538,7 @@ export default async function ({ browser, base, t }) {
       return { seq: seq.join(), won: live.won, state: live.state, secs, air, high, boost: /boostzoom/.test(sounds), fov: g.camera.fov };
     });
     console.log('  D3k', JSON.stringify(D3k));
-    t.ok(D3k.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4') && D3k.won && D3k.state === 'done', `a driver really steering the kart passes every flag three times and wins after a lost race (${D3k.secs.toFixed(0)} s)`);
+    t.ok(D3k.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4') && D3k.won && D3k.state === 'done', `a driver really steering the kart passes every flag three times and wins after lost races (${D3k.secs.toFixed(0)} s)`);
     t.ok(D3k.air > 5 && D3k.high > 20 && D3k.boost, `on the way it jumped (${D3k.air} frames in the air), drove the flyover (${D3k.high} frames up high) and hit the boost pads`);
     await page.evaluate(() => { const R = window.__R; R.live.step(3.2); R.live.losses = 0; });
 

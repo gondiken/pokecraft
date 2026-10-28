@@ -18,7 +18,7 @@ import { SIEGE, SIEGE_ROUNDS, SiegeRound, stoneAt, dirTo, throwAt, spotPos } fro
 import { JOUST, JOUST_ROUNDS, JoustRound, gallopAt } from './joust.js';
 import { castleState, shieldKey, lanceKey, TILT, KEEP, SQUIRE_GATE, YARD, BRIDGE, liveCells, castleAim } from './castleland.js';
 import { inMaze, mazeExtras } from './hedgemaze.js';
-import { fairHelp } from './fairgames.js';
+import { kindHelp } from './kindhelp.js';
 import { buildThrows, buildStoneRings, buildCatapults, buildPracticeKnight, buildLance, buildHeldShield, buildDrawbridge, buildPortcullis, KNIGHT_SHIELD, buildHorseshoes, buildHedgeCritters, buildFountainSpray } from './castleprops.js';
 
 export const CASTLE_RULES = { sync: 0.25, mountR: 2.6, horseY: 0.95, knightY: 0, shieldY: 1.6, shieldOff: 1.0, gooTime: 1.1, bridgeTime: 3, portTime: 2, squireR: 7, dtMax: 0.1, sayGap: 3 };
@@ -216,7 +216,7 @@ export class CastleLive {
     this.sg = new SiegeRound(this.seed, r, this.sTries[r]++, Math.max(0, this.stance), { help: this.sMiss[r], hard: this.hard });
     this.perfectRow = 0;
     sound.play('trumpet');
-    this.toast(`🛡️ ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!${fairHelp(this.sMiss[r]).on ? ' (A bit slower now.)' : ''}`);
+    this.toast(`🛡️ ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!${kindHelp(this.sMiss[r]).on ? ' (A bit slower now.)' : ''}`);
   }
   stepSiege(dt) {
     const sg = this.sg;
@@ -244,7 +244,7 @@ export class CastleLive {
       else this.toast('Press Shield! for the next round.');
     } else {
       this.sMiss[r]++;
-      this.toast(`So close! ${e.blocks} / ${e.need}. Press Shield! to try again.${fairHelp(this.sMiss[r]).on ? ' It will be a bit slower.' : ''}`);
+      this.toast(`So close! ${e.blocks} / ${e.need}. Press Shield! to try again.${kindHelp(this.sMiss[r]).on ? ' It will be a bit slower.' : ''}`);
     }
   }
   // the goo of a splat: orange and green blobs on the side of the screen it came from (owner 2026-10-28: never red)
@@ -304,7 +304,7 @@ export class CastleLive {
       const r = Math.min(st.lance, JOUST_ROUNDS - 1);
       if (st.lance >= JOUST_ROUNDS) { this.toast('You won the Joust! The portcullis is up.'); return; }
       this.jr = new JoustRound(this.seed, r, this.jTries[r]++, { help: this.jMiss[r], hard: this.hard });
-      this.toast(`🐴 ${WORDS.passes[r]} Get ${this.jr.need} points in 4 passes.${fairHelp(this.jMiss[r]).on ? ' (A bit easier now.)' : ''}`);
+      this.toast(`🐴 ${WORDS.passes[r]} Get ${this.jr.need} points in 4 passes.${kindHelp(this.jMiss[r]).on ? ' (A bit easier now.)' : ''}`);
     }
     this.jr.charge();
     this.ride = { phase: 'pass', tau: 0, x0: this.horse.x };
@@ -391,7 +391,7 @@ export class CastleLive {
       if (st.lance >= JOUST_ROUNDS) { this.toast(WORDS.port); sound.play('drawbridge'); this.sync(true); }
     } else {
       this.jMiss[r]++;
-      this.toast(`So close! ${e.points} / ${e.need} points. Press Charge! to try again.${fairHelp(this.jMiss[r]).on ? ' It will be a bit easier.' : ''}`);
+      this.toast(`So close! ${e.points} / ${e.need} points. Press Charge! to try again.${kindHelp(this.jMiss[r]).on ? ' It will be a bit easier.' : ''}`);
     }
   }
   // Sir Splinter's place: his lane, coming at you during a pass, waiting at the far end otherwise.

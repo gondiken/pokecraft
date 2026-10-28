@@ -3,7 +3,7 @@
 // (castlecheck.mjs: the drawbridge keeps the castle shut, swimming too; the Tilt Yard only through the hedge maze; the portcullis; nobody stuck;
 // the maze's numbers; every throw's flight clear; the lanes; keeps; nooks; block ids); C: the two challenges as pure rules in Node with the
 // model players of castlebots.mjs at 60 and 20 steps a second (skilled wins, still / spinner / jumpy / random never, a slow child wins round 3
-// with the kind help; replays; the plan rules) and the shared gates (castlegate.js); D: playing in a browser (the frame, the guide, Shield Up!
+// with patience and the small kind help; replays; the plan rules) and the shared gates (castlegate.js); D: playing in a browser (the frame, the guide, Shield Up!
 // through the live part, the drawbridge, the maze's gentle guide, the Joust, the portcullis, a reload, the gate words, the helpers, the Boss,
 // a lost battle, the star and the keys cleared, a wild Knight's sentry march, the Book); E: an iPad; F: two browsers (the drawbridge one
 // player lowers is down for both, a guest who joins later gets it); G: closed without ?preview. CASTLE_ONLY=data|land|rules|play|ipad|pair|closed|shots.
@@ -117,11 +117,11 @@ export default async function ({ browser, base, t }) {
     const sum = (bot, opts) => { let w = 0; for (let seed = 1; seed <= 20; seed++) w += playSiege(SIEGE_BOTS[bot](), { seed, ...opts }).won; return w; };
     for (const fps of [60, 20]) {
       const sk = [0, 1, 2].map(round => sum('skilled', { round, fps })), skH = [0, 1, 2].map(round => sum('skilled', { round, fps, hard: true }));
-      const never = ['still', 'spinner', 'jumpy'].map(b => [0, 1, 2].map(round => sum(b, { round, fps }) + sum(b, { round, fps, help: 3 })).reduce((a, c) => a + c, 0));
-      const slow = [sum('slow', { round: 2, fps }), sum('slow', { round: 2, fps, help: 3 }), sum('slow', { round: 0, fps })];
+      const never = ['still', 'spinner', 'jumpy'].map(b => [0, 1, 2].map(round => sum(b, { round, fps }) + sum(b, { round, fps, help: 6 })).reduce((a, c) => a + c, 0));
+      const slow = [sum('slow', { round: 2, fps }), sum('slow', { round: 2, fps, help: 3 }), sum('slow', { round: 0, fps }), sum('slow', { round: 2, fps, help: 6 })];
       t.ok(sk.every(n => n === 20) && skH.every(n => n === 20), `Shield Up! @${fps}: a skilled player (0.35 s to react) wins all three rounds, also the rematch's (${sk} / ${skH})`);
       t.ok(never.every(n => n === 0), `Shield Up! @${fps}: standing still, spinning the stick or holding Jump never wins, not even with the help (${never})`);
-      t.ok(slow[0] <= 14 && slow[1] === 20 && slow[2] === 20, `Shield Up! @${fps}: a slow child (1.5 s) wins round 1, often misses round 3 (${slow[0]} / 20) and wins it with the kind help (${slow[1]} / 20)`);
+      t.ok(slow[0] <= 14 && slow[1] <= 14 && slow[2] === 20 && slow[3] >= slow[0], `Shield Up! @${fps}: a slow child (1.5 s) wins round 1, often misses round 3 (${slow[0]} / 20), still does after 3 short rounds (the kind help is small: ${slow[1]} / 20) and does better with patience (6 short rounds: ${slow[3]} / 20)`);
     }
     // replays: the same inputs (decided on a 20 Hz grid) give the same result at 60 and 20 frames a second
     const grid = (bot) => { let last = -1, held = null; return g => { const k = Math.floor(g.time * 20 + 1e-9); if (k !== last) { last = k; held = bot(g); } return held; }; };
@@ -135,10 +135,10 @@ export default async function ({ browser, base, t }) {
     for (const fps of [60, 20]) {
       const sk = [0, 1, 2].map(round => jsum('skilled', { round, fps })), skH = [0, 1, 2].map(round => jsum('skilled', { round, fps, hard: true }));
       const still = [0, 1, 2].map(round => jsum('still', { round, fps })), rnd = [1, 2].map(round => jsum('random', { round, fps }));
-      const tr = [jsum('tracker', { round: 0, fps }), jsum('tracker', { round: 2, fps }), jsum('tracker', { round: 2, fps, help: 3 })];
+      const tr = [jsum('tracker', { round: 0, fps }), jsum('tracker', { round: 2, fps }), jsum('tracker', { round: 2, fps, help: 3 }), jsum('tracker', { round: 2, fps, help: 6 })];
       t.ok(sk.every(n => n === 20) && skH.every(n => n >= 19), `the Joust @${fps}: a skilled rider wins all three rounds (${sk}), also the rematch's (${skH})`);
       t.ok(still.every(n => n === 0) && rnd.every(n => n <= 2), `the Joust @${fps}: holding still never wins (${still}), a random stick almost never (${rnd} of 20 in rounds 2 and 3)`);
-      t.ok(tr[0] === 20 && tr[1] <= 4 && tr[2] >= 10, `the Joust @${fps}: a child who follows the star (but does not lead it) wins round 1, rarely round 3 (${tr[1]}), often with the help (${tr[2]})`);
+      t.ok(tr[0] === 20 && tr[1] <= 4 && tr[2] <= 6 && tr[3] >= tr[1], `the Joust @${fps}: a child who follows the star (but does not lead it) wins round 1, rarely round 3 (${tr[1]}); the kind help is small (${tr[2]} after 3 short rounds, ${tr[3]} after 6): leading the star is the skill`);
     }
     const jgrid = bot => { let last = -1, held = null; return g => { const k = Math.floor((g.pass * 100 + g.tau) * 20 + 1e-9); if (k !== last) { last = k; held = bot(g); } return held; }; };
     let jsame = 0;
