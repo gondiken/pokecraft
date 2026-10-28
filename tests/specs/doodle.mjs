@@ -637,20 +637,6 @@ export default async function ({ browser, base, t }) {
         return { drawn, notDrawn, count: st.count, chip: document.getElementById('score-chip')?.textContent };
       });
       t.ok(reload.drawn.every(Boolean) && reload.notDrawn && reload.count === 3, `a new visit draws the saved lines at once (${reload.drawn}) and leaves the rest (${reload.chip})`);
-      // owner 2026-10-28: a drawn line can be drawn again, just for fun: its bridge is lifted while you draw, comes back if you stop,
-      // and a finished redraw is the new bridge; nothing new is saved, no Neat line cube
-      const again = await page.evaluate(() => {
-        const g = window.pokecraft, L = window.__live(), p = g.player, s = g.world.doodle.pads[0].stand, cubes = g.cubes, keys = g.beaten.slice().sort().join();
-        const inked = i => L.inkableOf(i).filter(c => g.world.get(c.x, c.y, c.z) === 246).length, all = L.inkableOf(0).length;
-        window.__at(s[0], s[1], s[2]); L.manual = true;
-        const word = L.near(p); L.use(p); const cur = !!L.cur?.again; L.step(0.05, L.aimNow());
-        const lifted = inked(0);
-        L.use(p); L.step(0.05, L.aimNow()); const back = inked(0);
-        window.__toasts.length = 0;
-        const r = window.__drawReal(1, 0.05);
-        return { word, cur, all, lifted, back, done: r?.done, said: window.__toasts.join('|'), cubes: g.cubes - cubes, same: g.beaten.slice().sort().join() === keys, line2: inked(1) === L.inkableOf(1).length, count: L.state().count };
-      });
-      t.ok(again.word === 'Draw again!' && again.cur && again.lifted < again.all / 2 && again.back === again.all && again.done && /You drew it again! ✏️ Just for fun!/.test(again.said) && !/Neat line/.test(again.said) && again.cubes === 0 && again.same && again.line2 && again.count === 3, `a drawn line: "Draw again!" lifts its bridge (${again.lifted} of ${again.all} cells left), Stop puts it back (${again.back}), a redraw is "Just for fun!": no new key, no cube, the other bridges stay ${JSON.stringify(again).slice(0, 160)}`);
       // the gate before all 8
       const gate = await page.evaluate(() => { const g = window.pokecraft, def = window.__bossDef ??= null; return null; });
       const gateText = await page.evaluate(async () => { const B = await import('/src/pictureboss.js'); return B.bossOf('doodle').gate(window.pokecraft); });

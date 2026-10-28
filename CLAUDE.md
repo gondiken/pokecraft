@@ -444,8 +444,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   patience from players." A won Boss battle clears that world's round keys, so a rematch plays the challenge again.
   **For fun (owner 2026-10-28):** every skill game stays playable once won: it plays its rounds again just for fun (`forfun.js`
   `ForFun` / `FUN.tag`) and saves nothing new (no key, bow, light, first-time reward or gate change). The Party Spinner skips games
-  whose bow you hold (`skipTo`) until all four are won, then any slice is played for fun; Atlantis' fish swim back at 12 lights; a
-  drawn line can be drawn again; the Race Track races again while the crew wait or after a "Not now" (`gymLive.bossDeclined`).
+  whose bow you hold (`skipTo`) until all four are won, then any slice is played for fun; Atlantis' fish swim back at 12 lights; the
+  Race Track races again while the crew wait or after a "Not now" (`gymLive.bossDeclined`).
 - **Owner's smaller notes (2026-10-27/28, `plans/T46.md` parts 2-3):** Doodle: a stuck pencil turns toward any point you look at
   (`DRAW.stuckTurn`), stuck it follows only a look off to the side (`DRAW.stuckSide`), the aim plane is never above your eyes, mesh
   counts come from `COURSES`; Atlantis: `VIS` (halos, 4 bulbs per lantern, a trail to the lantern, ghost fish `demo` until the first

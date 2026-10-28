@@ -11,7 +11,6 @@ import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { DRAW, newDraw, drawStep, cellInk, pointAt, beeAt } from './tracing.js';
 import { lineKey, lineState, LINE_COUNT, courseOf, COURSES } from './doodleland.js';
-import { FUN } from './forfun.js';
 
 export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8 };
 const WORDS = {
@@ -46,7 +45,6 @@ const WORDS = {
   low: 'Ink is low! Find a star ⭐',
   wait: 'The pencil waits for you. Walk on your line!',
   stop: 'The pencil rests. Press Draw! to try again.',
-  again: `Draw this line again! ${FUN.tag} Your bridge comes back if you stop.`,
   fell: 'Whoops! Back up onto your page.',
 };
 
@@ -108,7 +106,6 @@ export class DoodleLive {
     this.cur = null;                // { k, course, st, applied: Map, said: Set }
     this.drawnNow = new Set();      // line indices drawn (this trip: includes those a rematch cleared from the keys)
     this.keepInk = new Set();       // cells of lines drawn this trip (a new try never rubs them out)
-    this.lineInk = new Map();       // line index -> the keys of its bridge's cells (a for-fun redraw lifts them, owner 2026-10-28)
     this.neatGiven = new Set();
     this.fellFor = 0; this.clock = 0;
     this.told = new Set();
@@ -190,14 +187,7 @@ export class DoodleLive {
     const l = this.lines[i];
     return l.inkable ??= l.line.cells.filter(c => this.world.get(c.x, c.y, c.z) === B.AIR || this.world.get(c.x, c.y, c.z) === B.DO_INK);
   }
-  inkAll(i) { const mine = new Set(); for (const c of this.inkableOf(i)) { const key = `${c.x},${c.y},${c.z}`; this.cells.want(c.x, c.y, c.z, B.DO_INK); this.keepInk.add(key); mine.add(key); } this.lineInk.set(i, mine); this.drawnNow.add(i); }
-  // Owner 2026-10-28: a drawn line can be drawn again just for fun. Its bridge is lifted while you draw (cells no other line keeps),
-  // and comes back as it was if you stop; a finished redraw is the new bridge. Nothing new is saved, no Neat line cube.
-  liftLine(i) {
-    const others = new Set(); for (const [k, set] of this.lineInk) if (k !== i) for (const key of set) others.add(key);
-    for (const key of this.lineInk.get(i) || []) { if (others.has(key)) continue; this.keepInk.delete(key); const [x, y, z] = key.split(',').map(Number); this.cells.want(x, y, z, B.AIR); }
-  }
-  restoreLine(i) { for (const key of this.lineInk.get(i) || []) { this.keepInk.add(key); const [x, y, z] = key.split(',').map(Number); this.cells.want(x, y, z, B.DO_INK); } }
+  inkAll(i) { for (const c of this.inkableOf(i)) { this.cells.want(c.x, c.y, c.z, B.DO_INK); this.keepInk.add(`${c.x},${c.y},${c.z}`); } this.drawnNow.add(i); }
   // The drawn line as blocks: ink where the line is (and Rubber has not rubbed it), air where a cell went (a nibble, a setback).
   applyInk() {
     const c = this.cur, st = c.st, seen = new Set();
@@ -242,16 +232,14 @@ export class DoodleLive {
   /* ---- hooks of the live-part interface ---- */
   near(p) {
     if (this.cur) return 'Stop';
-    const i = this.padAt(p.pos);
-    if (i < 0) return null;
-    return this.isDrawn(i) ? 'Draw again!' : 'Draw!';
+    const i = this.padAt(p.pos), st = this.state();
+    if (i < 0 || st.drawn[i]) return null;
+    return 'Draw!';
   }
-  isDrawn(i) { return !!this.state().drawn[i]; } // (a line a rematch cleared is drawn for the rematch again, as before: it counts)
   use(p) {
     if (this.cur) { this.stop(); this.toast(WORDS.stop); return true; }
     const i = this.padAt(p.pos), st = this.state();
-    if (i < 0) return false;
-    if (this.isDrawn(i)) { this.start(i, true); return true; } // just for fun
+    if (i < 0 || st.drawn[i]) return false;
     if (i > st.next) { this.toast(WORDS.first); return true; }
     this.start(i);
     return true;
@@ -274,14 +262,13 @@ export class DoodleLive {
   }
 
   /* ---- drawing ---- */
-  start(i, again = false) {
+  start(i) {
     this.stop(true);
-    if (again) { this.liftLine(i); this.toast(WORDS.again); }
     const course = this.courseOf(i), wins = this.game.bossWins?.doodle || 0;
     const st = newDraw(course, wins);
     st.clock = this.clock; // the bees keep flying where they were
     this.lastPos = null; this.lastGround = null; this.guarded = 0;
-    this.cur = { k: i, course, st, t0: st.clock, applied: new Map(), said: new Map(), scratchAt: 0, waitFor: 0, low: false, again };
+    this.cur = { k: i, course, st, t0: st.clock, applied: new Map(), said: new Map(), scratchAt: 0, waitFor: 0, low: false };
     this.applyInk();
     this.once('hint', WORDS.hint);
     if (WORDS.intro[i + 1]) this.once(`intro${i}`, WORDS.intro[i + 1]);
@@ -291,7 +278,6 @@ export class DoodleLive {
     if (!this.cur) return;
     this.rubAll();
     const k = this.cur.k, p = this.game.player;
-    if (this.cur.again) this.restoreLine(k); // a for-fun redraw stopped: the old bridge is back
     this.cur = null;
     this.pencil.visible = false; this.ring.visible = false; this.rubber.visible = false;
     if (!quiet) {
@@ -302,17 +288,14 @@ export class DoodleLive {
   finish() {
     const g = this.game, { k, st } = this.cur, n = k + 1;
     this.applyInk();
-    const mine = new Set();
-    for (const [key, id] of this.cur.applied) if (id === B.DO_INK) { this.keepInk.add(key); mine.add(key); }
-    this.lineInk.set(k, mine);
+    for (const [key, id] of this.cur.applied) if (id === B.DO_INK) this.keepInk.add(key);
     this.drawnNow.add(k);
-    const key = lineKey(n), again = this.cur.again;
+    const key = lineKey(n);
     if (!g.beaten.includes(key)) g.beaten.push(key);
     g.save?.();
     sound.play('goalcheer');
-    if (again) this.toast(`You drew it again! ✏️ ${FUN.tag}`);
-    else this.toast(`You drew a bridge! ✏️ ${this.state().count} / ${LINE_COUNT}`);
-    if (!again && st.setbacks === 0 && !this.neatGiven.has(k)) { this.neatGiven.add(k); g.cubes += 1; this.toast('Neat line! +1 Capture Cube'); }
+    this.toast(`You drew a bridge! ✏️ ${this.state().count} / ${LINE_COUNT}`);
+    if (st.setbacks === 0 && !this.neatGiven.has(k)) { this.neatGiven.add(k); g.cubes += 1; this.toast('Neat line! +1 Capture Cube'); }
     this.lastDone = { n, setbacks: st.setbacks, nibbles: st.nibbles, time: st.clock - this.cur.t0, len: st.s };
     this.cur = null;
     this.pencil.visible = false; this.ring.visible = false; this.rubber.visible = false;
