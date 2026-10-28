@@ -1,5 +1,5 @@
 // T45: the live part of the Sketchbook (LIVE.doodle): Draw! (owner 2026-10-27, plans/T45.md "Challenge rework"). Stand on a star pad,
-// press Draw!, and the giant pencil draws your bridge where you look while you walk on it: limited ink (star dots fill it and keep the
+// press Draw!, and the giant pencil draws your bridge the way you face (owner 2026-10-29) while you walk on it: limited ink (star dots fill it and keep the
 // line safe up to them), ink blots, doodle bees, wind and, on the Eraser Hill, Rubber the Eraser coming along the line behind you.
 // tracing.js has the rules (pure). Everything is per player and in memory except the finished lines, which are saved `beaten` keys
 // (pw:doodle:line1..8; a later visit draws them as the neat bridges of doodleland.js). The ink is never an edit: it is drawn with
@@ -14,24 +14,24 @@ import { lineKey, lineState, LINE_COUNT, courseOf, COURSES } from './doodleland.
 
 export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8 };
 const WORDS = {
-  hint: 'Look past the pencil to steer it. Look at your feet to walk!',
+  hint: 'The pencil draws the way you face! Turn to steer it.',
   first: 'Draw the line before this one first!',
   intro: {
     2: 'Ink blot ahead! Steer round it.',
     3: 'Not much ink! Draw through the star ⭐',
     4: 'A doodle bee! Stop, wait, then go.',
     5: 'Draw round and round the tower to climb up!',
-    6: 'Uh oh, Rubber the Eraser! Keep walking! And wind: aim into it.',
+    6: 'Uh oh, Rubber the Eraser! Keep walking! The wind pushes: turn into it.',
     7: 'Two bees and Rubber! Watch the bees.',
     8: 'Last line! Wind, a bee and Rubber.',
   },
   blocked: {
-    blot: 'Ink blot! Steer round it.',
-    page: 'Not that page! Look toward the next one to turn the pencil.',
+    blot: 'Ink blot! Turn to go round it.',
+    page: 'Not that page! Turn to face the next one.',
     land: 'Land on the dotted strip of the page!',
-    edge: 'Too far out! Look back where you want to go: the pencil turns round.',
+    edge: 'Too far out! Turn round: the pencil turns with you.',
     low: 'Too low! Go round to climb.',
-    solid: 'Something is in the way! Look the other way to turn the pencil.',
+    solid: 'Something is in the way! Turn to go round it.',
   },
   back: {
     caught: 'Hee hee! Rubber rubbed it out.',
@@ -123,8 +123,8 @@ export class DoodleLive {
     this.group = g;
     this.pencil = buildPencil();
     this.pencil.visible = false;
-    // where you look: a flat ring on the line's floor (yellow when the pencil steers toward it)
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.46, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+    // where the pencil heads: a flat ring on the line's floor, on the way you face (tracing.js FaceSteer)
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.46, 20), new THREE.MeshBasicMaterial({ color: PENCIL, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.visible = false;
     this.rubber = buildRubber();
@@ -351,8 +351,10 @@ export class DoodleLive {
   guard(p) {
     const last = this.lastPos, sup = (x, y, z) => isSolid(this.world.get(Math.floor(x), Math.floor(y - 0.05), Math.floor(z)));
     if (last && !p.onGround && p.vel.y <= 0.01 && Math.abs(p.pos.y - last.y) < 0.3 && Math.hypot(p.pos.x - last.x, p.pos.z - last.z) < 1 && !sup(p.pos.x, p.pos.y, p.pos.z) && sup(last.x, last.y, last.z)) {
-      const y = last.y;
-      if (sup(p.pos.x, y, last.z)) p.pos.set(p.pos.x, y, last.z);
+      const y = last.y, along = this.alongLine(last, p.pos.x - last.x, p.pos.z - last.z);
+      const slid = along?.find(q => sup(q[0], y, q[1]));
+      if (slid) p.pos.set(slid[0], y, slid[1]); // owner 2026-10-29: you face where you want the line, not always along it: your step slides along your line
+      else if (sup(p.pos.x, y, last.z)) p.pos.set(p.pos.x, y, last.z);
       else if (sup(last.x, y, p.pos.z)) p.pos.set(last.x, y, p.pos.z);
       else p.pos.set(last.x, y, last.z);
       p.vel.y = 0; p.onGround = true; this.guarded = (this.guarded || 0) + 1;
@@ -360,10 +362,21 @@ export class DoodleLive {
     // a hop up a step that came down beside the line: back where you last stood (if it is still there: Rubber may have rubbed it)
     const lg = this.lastGround;
     if (lg && !p.onGround && p.pos.y < lg.y - 0.3 && Math.hypot(p.pos.x - lg.x, p.pos.z - lg.z) < 2.5 && !sup(p.pos.x, p.pos.y, p.pos.z) && !sup(p.pos.x, p.pos.y - 1, p.pos.z) && !sup(p.pos.x, p.pos.y - 2, p.pos.z) && sup(lg.x, lg.y, lg.z)) { // (a step down is fine)
-      p.pos.set(lg.x, lg.y, lg.z); p.vel.set(0, 0, 0); p.onGround = true; this.guarded = (this.guarded || 0) + 1;
+      const slid = this.alongLine(lg, p.pos.x - lg.x, p.pos.z - lg.z)?.find(q => sup(q[0], lg.y, q[1])); // (owner 2026-10-29) slid along your line if it can
+      p.pos.set(slid ? slid[0] : lg.x, lg.y, slid ? slid[1] : lg.z); p.vel.set(0, 0, 0); p.onGround = true; this.guarded = (this.guarded || 0) + 1;
     }
     if (p.onGround && sup(p.pos.x, p.pos.y, p.pos.z)) this.lastGround = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     this.lastPos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+  }
+  // Your step (dx, dz) from `from` slid along your line there (its heading at the nearest drawn point): places to try, or null.
+  alongLine(from, dx, dz) {
+    let best = null, bd = 3;
+    for (const q of this.cur?.st.pts ?? []) { const d = Math.hypot(q.x - from.x, q.z - from.z); if (d < bd) { bd = d; best = q; } }
+    if (!best) return null;
+    const ux = Math.cos(best.h), uz = Math.sin(best.h), k = dx * ux + dz * uz;
+    if (Math.abs(k) < 1e-4) return null;
+    const e = (from.x - best.x) * -uz + (from.z - best.z) * ux; // how far you are off its middle (at its edge: a little toward the middle)
+    return [0, 0.25, 0.5, 0.8].map(m => Math.sign(e) * Math.min(Math.abs(e), m)).map(pull => [from.x + ux * k + uz * pull, from.z + uz * k - ux * pull]);
   }
   stepDraw(dt, inp) {
     const c = this.cur, st = c.st, before = st.s;
@@ -395,11 +408,13 @@ export class DoodleLive {
   // tablet should not need the Jump button for every step.
   stepUp(p) {
     if (!p?.onGround || !p.hitWall || !this.cur) return;
-    const f = p.forward, m = Math.hypot(f.x, f.z) || 1, y = Math.floor(p.pos.y + 0.05);
-    const x = Math.floor(p.pos.x + f.x / m * 0.6), z = Math.floor(p.pos.z + f.z / m * 0.6);
-    if (this.cur.applied.get(`${x},${y},${z}`) !== B.DO_INK) return;
-    if (isSolid(this.world.get(x, y + 1, z)) || isSolid(this.world.get(x, y + 2, z))) return;
-    p.vel.y = Math.max(p.vel.y, 8.6); // a normal jump (one block up)
+    // (owner 2026-10-29: you face where you want the line to go, not always along it, so the step may be a little to one side)
+    const f = p.forward, y = Math.floor(p.pos.y + 0.05), a0 = Math.atan2(f.z, f.x);
+    const step = [0, 0.5, -0.5, 0.9, -0.9].some(da => {
+      const x = Math.floor(p.pos.x + Math.cos(a0 + da) * 0.6), z = Math.floor(p.pos.z + Math.sin(a0 + da) * 0.6);
+      return this.cur.applied.get(`${x},${y},${z}`) === B.DO_INK && !isSolid(this.world.get(x, y + 1, z)) && !isSolid(this.world.get(x, y + 2, z));
+    });
+    if (step) p.vel.y = Math.max(p.vel.y, 8.6); // a normal jump (one block up)
   }
   stepMeshes(p) {
     const c = this.cur, st = this.state();
@@ -414,12 +429,11 @@ export class DoodleLive {
       this.pencil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / m * 0.4, 1, dz / m * 0.4).normalize());
       this.pencil.scale.setScalar(c ? 1 : 0.9);
     } else this.pencil.visible = false;
-    // where you look
-    if (c && c.st.aim) { // (null = you look at the pencil, at your feet or up: the pencil goes straight on)
-      const a = c.st.aim, d = Math.hypot(a[0] - c.st.tip.x, a[1] - c.st.tip.z);
-      this.ring.visible = d < 14;
+    // where the pencil heads (on the way you face)
+    if (c && c.st.aim) {
+      const a = c.st.aim;
+      this.ring.visible = true;
       this.ring.position.set(a[0], c.st.tip.row + 1.03, a[1]);
-      this.ring.material.color.setHex(d > DRAW.near ? PENCIL : 0xffffff);
     } else this.ring.visible = false;
     // Rubber: on the Eraser Hill while you draw, waiting at the last star (or the pad), then on his way along your line
     if (c && c.st.rubber) {

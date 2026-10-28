@@ -130,7 +130,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/sketchatlas.js` | T45 look v2: `drawSketchAtlas` (a DATA atlas, same grid as the colour atlas), `KIND` / `KIND_OF` (pencil mark kinds per tile), `drawSketchMarks`, `ROTATE_KINDS`, `PAPER`, `INK` |
 | `src/sketch.js` | T45 `createSketch` -> `game.sketch` (`reset(world)` swaps the block maps and the `SKETCH` define, `update` = the boil) and `sketchModel(group)` (pencil models; a no-op unless a sketch world is loaded) |
 | `src/doodleland.js` | T45 Sketchbook terrain (Node-runnable, 160 x 160): `PAGES`, `LINES`, `COURSES`, `lineKey(n)` = `pw:doodle:line<n>`, `lineState`, `courseOf`, `gapBoxes`, `doodleLand`, `doodleAim` |
-| `src/tracing.js` | T45, pure: `lineOf(def)` and **Draw!** (`DRAW`, `newDraw`, `drawStep` -> events, `aimPoint`) |
+| `src/tracing.js` | T45, pure: `lineOf(def)` and **Draw!** (`DRAW`, `newDraw`, `drawStep` -> events, `FaceSteer` / `STEER`) |
 | `src/doodlelive.js` | T45 `DoodleLive` = `LIVE.doodle`: Draw!, the pencil, Rubber, stars / blots / bees, ink with `LiveCells`, saved lines, `battleEnded` (clears lines 6-8), `manual` + `step` |
 | `src/castleland.js` | T49 the Castle as data (Node-runnable, TERRAINS.castleLand, 160 x 160): walls, moat, towers, gatehouse, drawbridge, keep, Tilt Yard, maze field; `shieldKey` / `lanceKey`, `castleState`, `liveCells`, `castleAim`, `castleLand` |
 | `src/hedgemaze.js` | T49 the hedge maze, pure: `MAZE` (seed 483; owner 2026-10-28: a way of 26 cells, 11 dead ends; it was seed 14), `mazeOf`, `mazeCells`, `mazeExtras` |
@@ -416,7 +416,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 - **Portal Door and the Swirl (T38a, spec `swirl`):** the Portal Door stands at `d 7, s 3..7` of the tower (its box appended to
   `tower.protect` and `world.newGymBoxes`), drawn with `setLive` for a Champion; `generate({ portal: false })` leaves it out
   (`old-saves` `SUM`; `SUM22`/`SURF` re-measured with the box left out). The Swirl (`REALMS.swirl`, 160 x 160, **version 5** with
-  `sameCells: [4]`; owner 2026-10-26: 12 stars, all from Picture Worlds, 11 frames, 12 bridge stones, the Wizard's island at x 142;
+  `sameCells: [4]`; owner 2026-10-26: 12 stars, all from Picture Worlds, 11 frames, 12 bridge stones, the Wizard's island at x 142; owner 2026-10-29: `FRAME_MOVED` / `frameSpotOf(id)` say which spot a frame hangs on (Giant House N5, Atlantis N0 beside the Pirate Seas, Gravity S2), the blocks stay the same;
   versions 3 and older are dropped): hub deck, galleries with picture frames, stairs, six **lift streams** (`world.lifts`,
   `world.liftAt(pos)` read by `Player.update`; no blocks), the **star bridge** (a `STAR_STONE` per star in `game.stars`, else a
   gold outline), the sealed Wizard's tower. Gravity 1, no morning. Save field `stars` (`loadStars`). `perf.mjs --swirl`.
@@ -452,9 +452,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `kindHelp(misses)` (no help for 0-1 misses, +2 % a miss, at most 10 %); each game only maps `slow` / `more` onto its own levers;
   no per-game help tables (the old ones are gone). A rematch's `hard` (you hold the star) is separate. "We should ask a bit of grit /
   patience from players." A won Boss battle clears that world's round keys, so a rematch plays the challenge again.
-- **Owner's smaller notes (2026-10-27/28, `plans/T46.md` parts 2-3):** Doodle: a stuck pencil turns toward any point you look at
-  (`DRAW.stuckTurn`), stuck it follows only a look off to the side (`DRAW.stuckSide`), the aim plane is never above your eyes, mesh
-  counts come from `COURSES`; Atlantis: `VIS` (halos, 4 bulbs per lantern, a trail to the lantern, ghost fish `demo` until the first
+- **Owner's smaller notes (2026-10-27/28, `plans/T46.md` parts 2-3):** Doodle: mesh counts come from `COURSES`; Atlantis: `VIS` (halos, 4 bulbs per lantern, a trail to the lantern, ghost fish `demo` until the first
   catch), darker districts (`dimAt` LOW 0.22, the water `cityDimE`), soft glow sprites, fish that get away better (`FISH`); Bumper
   Cars 4 / 5 / 6 balloons; the Portal House's aimed pad no longer blinks.
 - **Giant House and Tiny (T40a / T40a.5, spec `tiny`, `tests/housecheck.mjs`):** owner 2026-10-26: "more puzzles, less walking",
@@ -527,8 +525,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   hand-drawn"): paper faces, hand strokes on edges, hatching in world units, marks per block kind (a new kind = a `KIND` +
   `KIND_OF` entry and a `MARKS` painter). Models: `sketchModel(model)` after `buildModel` / `new Npc`; effects, the way-back door
   and all UI stay in colour (`userData.keepColour`).
-  **Draw!** (owner 2026-10-27): the lines between pages are air in the world data; the child draws each bridge, the pencil turns
-  toward where you look and is drawn per player with `setLive` (`DO_INK`); never a fail (back to the last star); limited ink, blots,
+  **Draw!** (owner 2026-10-27): the lines between pages are air in the world data; the child draws each bridge, the pencil draws
+  **the way you face** (owner 2026-10-29, `FaceSteer`: only the look's yaw counts, never pitch or where the crosshair hits; it heads
+  for the point `DRAW.ahead` 4 beyond it on the line you face along, turning at most `DRAW.turn` 2.5 rad/s; `faceChecks` in
+  `doodlecheck.mjs` = walk straight, get a straight line; your sticky line slides your step along it, `alongLine`) and is drawn per player with `setLive` (`DO_INK`); never a fail (back to the last star); limited ink, blots,
   bees, wind and on lines 6-8 Rubber the Eraser (always slower than walking). Lines `pw:doodle:line1..8`; the gaps are keeps (no
   block bridges); landing on the blank page (`DO_PAPER`, y 4) for 0.5 s puffs you back. Artist Arlo's `gate` = all lines; a won battle clears lines 6-8. Owner 2026-10-28: the pencil glides along edges
   (`DRAW.glide`), needs only its centre free (`DRAW.core`) and never wedges (`doodlecheck.mjs` `wobblyKid`).
