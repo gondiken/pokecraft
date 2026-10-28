@@ -205,15 +205,16 @@ non-grid player box (a capsule) against blocks: a separate plan.
 
 ## 7. Blocks: very few new ids
 
-Same budget as `plans/bubble-well.md` section 7 (ids stop at 255; free: 254, 255 and the reserved 137-139, 147-149,
-182-183, 249; the Knight and the Custom type need some). This world takes **the wool id** and **at most two more**
-(e.g. `PLANET_ROCK`, `STAR_GRASS`); every face's skin is existing grass, flowers, stone, crystal and leaves. Pick the
-exact ids at merge time, after the Knight's and the Bubble world's.
+Same budget as `plans/bubble-well.md` section 7 (ids stop at 255; the Castle took 254 and 182). This world's ids are
+fixed there: **149** = the gravity wool (`WOOL_ID_OVERRIDE`), **183** = `PLANET_ROCK`, **249** = `STAR_GRASS`; nothing
+else (every face's skin is existing grass, flowers, stone, crystal and leaves). Never take Bubble's 255 / 147 / 148, the
+Custom type's 137 or the spare 138-139.
 
 ## 8. Shipping closed (the preview switch)
 
-The same one line in `src/comingsoon.js` as the Bubble world (`PREVIEW_ONLY = ['bubble', 'gravity']`, `worldOpen` says
-no without `?preview` or the test flag); whichever task is built first adds it. Closed: the frame stays covered, the
+Add `'gravity'` to the Castle's `LATER` list in `src/comingsoon.js` (it already exists: `worldOpen` says no without
+`?preview` or the test flag, and the frame keeps its secret look; see `plans/bubble-well.md` section 8, do not add
+`PREVIEW_ONLY`). Closed: the frame stays covered, the
 guide never points into it. Opening it later = removing `'gravity'` from that list.
 
 ## 9. Build order (stop after step 0 for the owner to play)
@@ -228,8 +229,8 @@ guide never points into it. Opening it later = removing `'gravity'` from that li
 
 ## 10. Staying out of the Knight session's way
 
-- **Picture World slot:** Knight `secret3`, Bubble `secret4`, **Cube Planets `secret5`** (rename its id to `gravity`;
-  no save can hold a secret world's star). Check against what the Knight session actually took.
+- **Picture World slot:** Castle `secret3` (built, T49), Bubble `secret4`, **Cube Planets `secret5`** (rename its id to
+  `gravity`; no save can hold a secret world's star). That uses the last covered frame.
 - **Block ids:** section 7.
 - Shared files: append in their own sections only, never re-order old lines; merge `main` before starting and before
   pushing. `player.js` gets only the frame branch (a world with `gravityAt`); nothing in the old path moves.

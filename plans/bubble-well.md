@@ -168,13 +168,21 @@ line for `STORY.md` when built).
 
 ## 7. Blocks: very few new ids (read this before adding any)
 
-**Block ids are almost used up.** `world.data` is a `Uint8Array`, so ids stop at 255. Free today: only **254, 255**,
-plus the reserved **137-139, 147-149, 182-183, 249**. The Knight's Castle (being built now) and the wave 16 Custom type
-need some of these too. So:
+**Block ids are almost used up.** `world.data` is a `Uint8Array`, so ids stop at 255. The Castle (T49, built
+2026-10-28) took **254** (knight wool) and **182** (`HEDGE`). Free now: **255** and the reserved **137-139, 147-149, 183,
+249** (8 ids). They are shared out like this (2026-10-28), so the three worlds never pick the same id:
 
-- This world takes **one wool id** (the type's wool, required by the gym/roof code) and **at most two more** (e.g.
-  `FOAM` for the ledges and `FIZZ_WALL` for the glitter walls). Agree on the exact ids with whatever the Knight
-  session took at merge time; never pick an id the other session used.
+| Ids | For |
+| --- | --- |
+| 255 (wool), 147, 148 | Bubble Well: the bubble wool, `FOAM`, `FIZZ_WALL` |
+| 149 (wool), 183, 249 | Cube Planets: the gravity wool, `PLANET_ROCK`, `STAR_GRASS` |
+| 137 | wave 16, the Custom type's wool |
+| 138, 139 | spare (the last two ids in the game) |
+
+- This world takes **only its three**: 255 for the type's wool (required by the gym/roof code, `WOOL_ID_OVERRIDE`),
+  147 and 148 for two blocks. Do not take another world's row; the spare two need the owner's yes.
+- 255 is safe as a block id: nothing in the code uses it as a "no block" mark (checked 2026-10-28), but the `blocks`
+  spec's id checks (it allows 254 for the knight wool) need 255 added.
 - Everything else is **existing blocks** (white wool / clouds / quartz-like stone for foam, coloured wool for the
   soda walls) or **meshes** (bubbles, drips, ducklings, the shields, vents' streams). The Swirl tint trick
   (`swirlTint` in `caves.js`) could tint existing blocks pastel inside this world only, if the look needs it.
@@ -184,24 +192,23 @@ need some of these too. So:
 
 ## 8. Shipping closed (the preview switch)
 
-The owner wants to play it first. `src/comingsoon.js` gets **one line**, nothing else changed in it:
+The owner wants to play it first. The switch already exists (the Castle added it, T49): `LATER` in `src/comingsoon.js`.
+Add the id there, nothing else changed in it:
 
 ```js
-export const PREVIEW_ONLY = ['bubble', 'gravity']; // owner 2026-10-28: open only with ?preview until the owner has played them
+export const LATER = ['castle', 'bubble']; // Cube Planets adds 'gravity'
 ```
 
-and `worldOpen(id)` returns `false` for an id in `PREVIEW_ONLY` unless `PREVIEW` or a test flag
-(`globalThis.__pcPreview === true`, set by the spec's helpers) is on. While closed: the frame stays under its cloth, the
-guide never points into it, and the save keeps nothing from it (the realm can't be entered). Opening it later for
-everyone = removing the id from `PREVIEW_ONLY` (a one-line commit, like the Funfair's).
-
-The **Cube Planets** plan uses the same line (`'gravity'`), so whichever task is built first adds it and the second
-only checks it is there.
+`worldOpen(id)` is false for it unless `?preview` or the test flag (`window.__pcWave15`) is on, and `pictureworlds.js`
+keeps a closed `LATER` world's frame looking like the old secret one. While closed: the frame stays under its cloth, the
+guide never points into it, and the save keeps nothing from it (the realm can't be entered); check it the way the
+Castle's spec does. Opening it later for everyone = adding the id to `OPEN_NOW` (a one-line commit, like the Funfair's).
 
 ## 9. Staying out of the Knight session's way
 
-- **Picture World slot:** `PICTURE_WORLDS` has `secret3`, `secret4`, `secret5` (covered frames). Proposal: the Knight
-  takes `secret3`, **Bubble takes `secret4`**, Cube Planets takes `secret5`. Rename the entry's id to `bubble` (allowed:
+- **Picture World slot:** `PICTURE_WORLDS` has `secret4`, `secret5` left (the Castle took `secret3`, T49). **Bubble
+  takes `secret4`**, Cube Planets takes `secret5`. (The Portal Lab idea, `plans/T47-portal-lab.md`, named `secret4`
+  too; it gives it up and has no frame until there is one.) Rename the entry's id to `bubble` (allowed:
   no save can hold a secret world's star, as `doodle` and `atlantis` did) and keep its frame colours.
 - **Block ids:** section 7.
 - **Shared files** both sessions touch (`blocks.js`, `species.js`, `shapes.js`, `realms.js`, `pictureworlds.js`,

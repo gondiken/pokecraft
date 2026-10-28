@@ -19,7 +19,7 @@ If it means an incredible amount of work, then we can pause and think later."
 
 ## The proposal: the Portal Lab
 
-A Picture World of its own (it takes a free frame, `secret4`: no save can hold its star, like Doodle and Atlantis did; owner 2026-10-28: `secret3` went to the Castle, `plans/T49-castle.md`), or a
+A Picture World of its own (it would need a free frame: owner 2026-10-28: `secret3` went to the Castle, `plans/T49-castle.md`, and `secret4` / `secret5` are planned for Bubble Well and Cube Planets, so the Lab has no frame for now; a new frame would be a new `PICTURE_WORLDS` entry and a new star stone), or a
 bonus wing of the Portal House without a star (owner to choose, see below).
 
 - **Both swirls are yours.** Teal: the big button / E / a tap. Orange: the Ride button / R (on touch the Ride slot shows
