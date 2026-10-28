@@ -1,6 +1,7 @@
 // First-person player: movement, gravity, swimming and AABB collision.
 import * as THREE from 'three';
 import { B, BLOCKS } from './blocks.js';
+import { GRAV, FRAMES, toWorld, toLocal, upOf, downOf, turnTo, frameOf, frameWorld, centreOf, pivot } from './gravity.js'; // Cube Planets: the frame branch (only a world with gravityAt)
 
 // T41: dive swimming (only in a world's `deepWater`, the Sunken City's crater): you swim where you look, up and down too; Jump kicks
 // forward in a burst that glides out (closed form: the distance of a step is the exact integral, so 60 and 20 steps a second go the same).
@@ -11,6 +12,10 @@ export const kickDist = (t0, t1) => {
   const a = Math.min(DIVE.kickTime, Math.max(0, t0)), b = Math.min(DIVE.kickTime, Math.max(0, t1)), T = DIVE.kickTime;
   return DIVE.kick * T / 3 * ((1 - a / T) ** 3 - (1 - b / T) ** 3);
 };
+
+// Cube Planets: each frame's turn as a quaternion (the camera eases between them).
+const FRAME_Q = FRAMES.map(({ m }) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)));
+const smooth = k => k * k * (3 - 2 * k);
 
 export class Player {
   constructor(world) {
@@ -44,9 +49,13 @@ export class Player {
   }
 
   // Shared vectors, refilled on every read: copy or clone them to keep a value.
-  get eyePos() { return this._eye.set(this.pos.x, this.pos.y + this.eye, this.pos.z); }
+  get eyePos() {
+    if (this._fw) return this.frameEye(); // Cube Planets: the eye is "up" from the feet, up as the camera sees it
+    return this._eye.set(this.pos.x, this.pos.y + this.eye, this.pos.z);
+  }
 
   get forward() {
+    if (this._fw) return this.frameForward(); // Cube Planets: yaw and pitch are your own, on the face you stand on
     const cp = Math.cos(this.pitch);
     return this._fwd.set(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp);
   }
@@ -58,6 +67,7 @@ export class Player {
   }
 
   lookAt(target) {
+    if (this._fw) return this.frameLookAt(target); // Cube Planets
     const e = this.eyePos;
     const dx = target.x - e.x, dy = target.y - e.y, dz = target.z - e.z;
     this.yaw = Math.atan2(-dx, -dz);
@@ -66,6 +76,7 @@ export class Player {
 
   // Does the player's box at position p overlap any solid block?
   collides(p) {
+    if (this._fw) return this.frameCollides(p); // Cube Planets: a world position, the box stands on your face
     const hw = this.halfW;
     const x0 = Math.floor(p.x - hw), x1 = Math.floor(p.x + hw);
     const y0 = Math.floor(p.y), y1 = Math.floor(p.y + this.height);
@@ -211,6 +222,7 @@ export class Player {
   }
 
   update(dt) {
+    if (this.world.gravityAt && !this.carry) return this.frameUpdate(dt); // Cube Planets: down is wherever your feet are (only a world with gravityAt)
     const k = this.keys;
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
     let s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
@@ -292,5 +304,139 @@ export class Player {
     this.moveAxis('x', this.vel.x * dt);
     this.moveAxis('z', this.vel.z * dt);
     this.moveAxis('y', this.vel.y * dt);
+  }
+
+  /* ==== Gravity ==== */
+  // Cube Planets (plans/cube-planets.md 3.2): the frame branch. Only a world with `gravityAt` (cubeland.js) comes here; everywhere else
+  // the player moves exactly as before. The player keeps a FRAME (one of the 24 quarter-turns, gravity.js) whose local y is "up on this
+  // face". pos and vel stay in WORLD units for the rest of the game (camera, creatures, saves, the way back); each fixed 1/120 s
+  // sub-step turns them into the frame (exact: a swap of numbers and a sign flip), moves the usual box with the usual moveAxis against a
+  // view of the world in that frame (frameWorld), and turns them back. yaw / pitch are your own on the face, so the stick always means
+  // forward on the face you stand on. The camera's up (`_view`) eases to the frame's up over GRAV.turn (GRAV.bigTurn for a big turn).
+  frameNo() { return this._fw ? this.frame : null; }
+  viewQuat() { return this._fw ? this._view : null; }
+  // A saved frame (realmPos's 6th value; missing or junk = upright). Only a world with gravityAt reads it.
+  setFrame(n) {
+    if (!this.world.gravityAt) return;
+    const fi = Number.isInteger(n) && n >= 0 && n < FRAMES.length ? n : 0;
+    this.frameInit(fi);
+    const d = downOf(fi), axis = d.findIndex(v => v !== 0), gd = this.world.gravityAt(this.pos, null);
+    this.grav = this.world.gravityAt(this.pos, { ...gd, axis, sign: -d[axis] }); // the saved down wins while it still fits (hysteresis)
+  }
+  frameInit(fi) {
+    if (this._fOf !== this.world) { // a new world: the catch puff's first spot is the way back's stand (upright on top), until you stand somewhere
+      const r = this.world.rests?.[0];
+      this.lastFace = { pos: r ? new THREE.Vector3(r[0], r[1], r[2]) : this.pos.clone(), frame: 0 };
+    }
+    this.frame = fi; this._fw = true; this._fOf = this.world; this._views = [];
+    this._view = FRAME_Q[fi].clone(); this._vFrom = FRAME_Q[fi].clone(); this._vTo = fi; this._vT = 1; this._vDur = GRAV.turn;
+    this._fLast = this.pos.clone(); this._fAcc = 0; this.lostT = 0;
+    this._lp ??= new THREE.Vector3(); this._lv ??= new THREE.Vector3();
+  }
+  viewOf(fi) { return (this._views[fi] ??= frameWorld(this._fOf, fi)); }
+  // Runs `fn` with pos / vel / world swapped for the frame's local ones (moveAxis and collides then work unchanged), then swaps back.
+  inFrame(fi, fn) {
+    const w = this.world, wp = this.pos, wv = this.vel, lp = this._lp, lv = this._lv, a = [0, 0, 0];
+    toLocal(fi, [wp.x, wp.y, wp.z], a); lp.set(a[0], a[1], a[2]);
+    toLocal(fi, [wv.x, wv.y, wv.z], a); lv.set(a[0], a[1], a[2]);
+    this.pos = lp; this.vel = lv; this.world = this.viewOf(fi); this._fw = false;
+    try { return fn(lp, lv); } finally {
+      this.pos = wp; this.vel = wv; this.world = w; this._fw = true;
+      toWorld(fi, [lp.x, lp.y, lp.z], a); wp.set(a[0], a[1], a[2]);
+      toWorld(fi, [lv.x, lv.y, lv.z], a); wv.set(a[0], a[1], a[2]);
+    }
+  }
+  frameCollides(p) {
+    const keep = this.pos.clone();
+    const hit = this.inFrame(this.frame, lp => { const a = toLocal(this.frame, [p.x, p.y, p.z]); return this.collides(new THREE.Vector3(a[0], a[1], a[2])); });
+    this.pos.copy(keep);
+    return hit;
+  }
+  frameEye() { return this._eye.set(0, this.eye, 0).applyQuaternion(this._view).add(this.pos); }
+  frameForward() {
+    const cp = Math.cos(this.pitch);
+    return this._fwd.set(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp).applyQuaternion(this._view);
+  }
+  frameLookAt(target) {
+    const e = this.eyePos, l = toLocal(this.frame, [target.x - e.x, target.y - e.y, target.z - e.z]);
+    this.yaw = Math.atan2(-l[0], -l[2]);
+    this.pitch = Math.atan2(l[1], Math.hypot(l[0], l[2]));
+  }
+  // The camera's up eases to frame `fi` (never a snap): 0.45 s, or 0.8 s when the new up is far from the screen's up.
+  turnView(fi) {
+    const cur = new THREE.Vector3(0, 1, 0).applyQuaternion(this._view), u = upOf(fi), to = new THREE.Vector3(u[0], u[1], u[2]);
+    this._vFrom.copy(this._view); this._vTo = fi; this._vT = 0;
+    this._vDur = cur.angleTo(to) > GRAV.bigAngle * Math.PI / 180 ? GRAV.bigTurn : GRAV.turn;
+  }
+  easeView(dt) {
+    if (this._vT >= this._vDur) { this._view.copy(FRAME_Q[this._vTo]); return; }
+    this._vT = Math.min(this._vDur, this._vT + dt);
+    this._view.slerpQuaternions(this._vFrom, FRAME_Q[this._vTo], smooth(this._vT / this._vDur));
+  }
+  frameUpdate(dt) {
+    const w = this.world;
+    if (!this._fw || this._fOf !== w || this.pos.distanceTo(this._fLast) > 3) { // a new world, or the game moved you (a rest spot, a test): start from where you are
+      const gd = w.gravityAt(this.pos, null);
+      this.frameInit(frameOf(gd.down)); this.grav = gd;
+    }
+    const k = this.keys;
+    let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), analog = 1, stickSprint = false;
+    const j = this.joy;
+    if (j && Math.hypot(j.x, j.y) > 0.15) { f = -j.y; s = j.x; analog = Math.min(1, Math.hypot(j.x, j.y)); stickSprint = analog > 0.95; }
+    const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
+    let wx = -sin * f + cos * s, wz = -cos * f - sin * s;
+    const len = Math.hypot(wx, wz);
+    if (len > 0) { wx /= len; wz /= len; }
+    const sprint = !!(k.ShiftLeft || k.ShiftRight || stickSprint);
+    this.diving = false; this.onBounce = false;
+    this._fAcc += dt;
+    const n = Math.floor(this._fAcc / GRAV.step + 1e-6); // fixed sub-steps: 60 and 20 frames a second give the same ones
+    this._fAcc -= n * GRAV.step;
+    for (let i = 0; i < n; i++) this.frameStep(GRAV.step, wx, wz, len, analog, sprint);
+    this.easeView(dt);
+    this._fLast.copy(this.pos);
+  }
+  // One sub-step: the same rules and sums as gravity.js stepFlight (a flight with no stick lands where flightLand says).
+  frameStep(h, wx, wz, len, analog, sprint) {
+    const here = [this.pos.x, this.pos.y, this.pos.z];
+    const gd = this.world.gravityAt(this.pos, this.grav, centreOf(here, this.frame)), d0 = downOf(this.frame);
+    if (gd.down[0] !== d0[0] || gd.down[1] !== d0[1] || gd.down[2] !== d0[2]) {
+      const nf = turnTo(this.frame, gd.down), np = gd.hop ? pivot(here, this.frame, nf) : here; // into another planet's pull you turn round your middle, over an edge round your feet
+      this.pos.set(np[0], np[1], np[2]);
+      const blocked = this.inFrame(nf, lp => this.collides(lp)); // never turn into a wall: try again next sub-step
+      if (blocked) this.pos.set(here[0], here[1], here[2]);
+      else {
+        const edge = this.grav && this.grav.planet === gd.planet && this.grav.field && gd.field;
+        if (edge) { const v = toWorld(nf, toLocal(this.frame, [this.vel.x, this.vel.y, this.vel.z])); this.vel.set(v[0], v[1], v[2]); } // over an edge your speed turns with you
+        this.frame = nf; this.grav = gd; this.onGround = false;
+        this.turnView(nf);
+      }
+    } else this.grav = gd;
+    const G = GRAV.base * this.grav.g;
+    this.inFrame(this.frame, (lp, lv) => {
+      const speed = (sprint ? GRAV.sprint : GRAV.walk) * analog, tx = wx * speed, tz = wz * speed;
+      if (this.onGround) { lv.x = tx; lv.z = tz; }
+      else if (len > 0) { // in the air the stick steers gently; with no stick you keep your speed (a flight is a curve)
+        const dx = tx - lv.x, dz = tz - lv.z, m = Math.hypot(dx, dz), a = GRAV.air * h;
+        if (m <= a) { lv.x = tx; lv.z = tz; } else { lv.x += dx / m * a; lv.z += dz / m * a; }
+      }
+      if (this.keys.Space && this.onGround) lv.y = GRAV.jump;
+      const dy = lv.y * h - 0.5 * G * h * h;
+      lv.y -= G * h;
+      if (lv.y < -GRAV.fall) lv.y = -GRAV.fall;
+      this.onGround = false; this.hitWall = false;
+      this.moveAxis('x', lv.x * h);
+      this.moveAxis('z', lv.z * h);
+      this.moveAxis('y', dy);
+    });
+    if (this.onGround) { this.lastFace.pos.copy(this.pos); this.lastFace.frame = this.frame; this.lostT = 0; }
+    else if (this.grav.soft) { this.lostT += h; if (this.lostT >= GRAV.catchAfter) this.catchPuff(); }
+    else this.lostT = 0;
+  }
+  // Six seconds outside every planet's field: a puff takes you back to the last face you stood on (never a fail).
+  catchPuff() {
+    this.pos.copy(this.lastFace.pos); this.vel.set(0, 0, 0); this.onGround = false; this.lostT = 0;
+    this.setFrame(this.lastFace.frame);
+    this.caught = (this.caught || 0) + 1; // the live part (cubelive.js) says so and plays the puff
   }
 }

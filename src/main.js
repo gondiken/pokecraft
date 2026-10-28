@@ -180,6 +180,7 @@ function snapshot() {
   const main = game.realms?.mainPart();
   const at = p.carry?.safe?.() ?? p.pos; // T43: a ride (the Funfair's carousel, coaster, slide) may say where to save you instead of in the air
   const away = !game.homeWorld && main ? { place: game.place, realmPos: [at.x, at.y, at.z, p.yaw, p.pitch], ...(game.realms.upPart() ? { realmUp: game.realms.upPart() } : {}) /* T40 */ } : {};
+  if (away.realmPos && p.frameNo?.() != null) away.realmPos.push(p.frameNo()); // Cube Planets: the frame (0-23) as a 6th value (old saves: 5 values = upright)
   const home = game.homeWorld ?? (main ? {
     seed: main.seed, edits: main.edits, size: main.size, pos: main.pos, yaw: main.yaw, pitch: main.pitch, time: game.time, homes: main.homes,
   } : {
@@ -1222,6 +1223,7 @@ function frame(now) {
 
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);
+    const viewQ = p.viewQuat?.(); if (viewQ) camera.quaternion.premultiply(viewQ); // Cube Planets: the camera's up eases to the face you stand on (null everywhere else)
     if (!game.inBattle) updateTarget();
     game.weather.update(dt, now);
     updateSky(dt);

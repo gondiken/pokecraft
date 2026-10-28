@@ -157,6 +157,9 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/fx.js` | Battle effects (`game.fx`): time-based, closed form, never touches `battle.rng`; budgets: 6 live effects, 300 points, 12 draw calls; `hold` for test screenshots |
 | `src/fxrecipes.js` | `TRAVEL` / `IMPACT` per type, `SIG` per signature move, `FX_COLORS` |
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
+| `src/gravity.js` | Cube Planets (step 0), pure: `GRAV`, `FRAMES` (the 24 quarter-turns), `toWorld` / `toLocal` (exact), `turnTo` / `frameOf`, `downAt` (which planet by the body's middle, which side by the feet, hysteresis, soft pull), `centreOf` / `pivot`, `stepFlight` / `flightAt` / `flightLand` (the player's own sums), `frameWorld` |
+| `src/cubeland.js` | Cube Planets terrain (Node-runnable, `TERRAINS.cubeLand`, 224 x 224): `PLANETS` (3), `BOXES`, `HOPS`, `hopSpot`, `FACES`, `faceCell`, `DOOR`; sets `world.planets`, `world.gravityAt`, `world.cubes`; `cubeAim` (the arrow in your face's frame) |
+| `src/cubelive.js` | Cube Planets `CubeLive` = `LIVE.gravity`: the star sky (one `Points`), the planets you stood on (`visited`, the guide's tour), one-time words, the catch puff's toast |
 
 ## Key ideas
 
@@ -215,8 +218,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   140-143 Picture World wool, 144-146 `PICTURE` / `WAY_BACK` / `BOSS_STAND`; 150-203 belong to T40a-d: 150-167 Giant House,
   168-181 Pirate Seas (182-183 were reserved for it; 182 is now T49's `HEDGE`, 183 free), 184-193 Race Track; 194-203 Ball Stadium; 204 atlantis wool, 205-214 Atlantis; 215 portal wool, 216-223 Portal
   House; 224 funfair wool, 225-234 Funfair; 235 surprise wool, 236-243 Surprise Party (235-243 in all); 244 doodle wool, 245-248 Sketchbook;
-  249 free; 250 `HOUSE_PROP`; 251-253 Race Track v2 (`HOT_TRACK`, `HOT_RAIL`, `KICKER`); 254 knight wool; maybe 255 free. Ids are
-  nearly used up: free are 137-139, 183, 249, maybe 255.
+  249 `STAR_GRASS` (Cube Planets); 250 `HOUSE_PROP`; 251-253 Race Track v2 (`HOT_TRACK`, `HOT_RAIL`, `KICKER`); 254 knight wool; maybe 255 free. Ids are
+  nearly used up: free are 137-139, maybe 255 (Cube Planets took 183 `PLANET_ROCK` and 249 `STAR_GRASS`; 149 waits for its wool).
 - **Block flags:** `glow`, `noLight` (glows but lights nothing), `wallText` (toast when breaking), `fixed` (`editAllowed` refuses;
   saved edits on it are dropped), `bounce` (T35: apex in blocks; **jump to launch**, not on landing), `trampoline` (T43),
   `hidden` (250 `HOUSE_PROP`: solid, never drawn, no outline: what you stand on under a model), `limited`.
@@ -531,6 +534,18 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   **The gates are physical** (owner 2026-10-28): `castlegate.js`, the host owns them; your keys record only what you won. Sir
   Clanksalot gates on both challenges and Squire Pip and Archer Wren; a won battle clears the six round keys. Generic lines:
   `Player.look` asks `carry.look`, `setButtons({ jump })`, `ui.setPointers`, `game.rideShow`.
+- **Cube Planets, STEP 0 ONLY (spec `cube`, `tests/cubecheck.mjs`, `plans/cube-planets.md` section 9):** the gravity sandbox, waiting
+  for the owner to play it before steps 1-4 (games, crew, Boss, the Gravity type). Realm `gravity` (`PICTURE_WORLDS` `gravity` took the
+  `secret5` place, its colours kept), in `LATER` (only `?preview`). Three cube planets (13, 9, 17 across) with a skin on all six faces
+  and Planet Rock / cobble edges; hops are face to face across 4 blocks; the way back on the Meadow Cube's top; no wild creatures, no
+  riding, no building (one keep `space` round the whole sky, with `rideText`). **The player** (`player.js`, only when the world has
+  `gravityAt`; `frameUpdate` / `frameStep`): a frame (0-23); `pos` / `vel` stay in WORLD units for the rest of the game, each fixed
+  1/120 s sub-step turns them into the frame exactly and runs the usual `moveAxis` / `collides` against `frameWorld`; yaw / pitch are
+  your own on the face. Over an edge you turn round your feet and keep your local speed; into another planet's pull you turn round
+  your middle and keep your world speed. In the air the stick only steers (`GRAV.air`). **The camera:** `p.viewQuat()` eases 0.45 s
+  (0.8 s past 120 degrees); `main.js` premultiplies it (marked line); `eyePos` / `forward` / `lookAt` / `collides` follow the frame.
+  Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (`setFrame`; missing = upright). Off-world bit for bit:
+  `tests/cuberecord.mjs` against `tests/fixtures/cube-off-golden.json` (made with the player.js of before).
 
 ## Supabase
 
@@ -585,6 +600,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms
 - `cloud`: real online saves (skipped without `PC_TEST_EMAIL` / `PC_TEST_PASSWORD`)
 - `comingsoon`: wave 15 ships closed; `?preview` opens the worlds (the other specs play with them open)
+- `cube`: Cube Planets step 0: off (bit for bit elsewhere), the 24 frames, every edge of every planet at 60 / 20 fps, no flicker, corners, hops vs `flightLand`, the catch puff, land (3 seeds), play (reload keeps the frame), iPad, closed; `CUBE_ONLY=off|frames|gravity|land|play|closed|ipad|shots`
 - `dance`: Echo Gym dance-off, rematch dance, old saves keep badge / trainer / wins
 - `dojo`: T37b building for three seeds, `sneak.js`, spotted / puff / hiding / squeak, sneak attack, iPad; `DOJO_ONLY=shots|build`
 - `doodle`: T45 type, pencil atlas, sketch switch off = bit for bit, the look, terrain, Draw! with model players at 60 / 20 fps, play, iPad, two browsers; `DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots`

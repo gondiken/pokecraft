@@ -14,3 +14,4 @@ export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle'];
+LATER.push('gravity'); // Cube Planets (plans/cube-planets.md): step 0, the gravity sandbox, ships closed until the owner has played it
