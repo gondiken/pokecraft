@@ -18,6 +18,7 @@ import { B } from './blocks.js';
 import { DoorGlow } from './portal.js';
 import { LiveCells } from './livecells.js';
 import { Mover, makePath } from './mover.js';
+import { FUN } from './forfun.js';
 import { PORTAL, BALL, exitOf, exitSpeed, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, slotAimed, roomKey, roomState,
   ROOMS_NEED, flingPoint, ballStart, ballNext, inCup } from './portalplay.js';
 import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOOR_N, DOOR_E, DOORS, SWIRLS, swirlById, hallFront, doorTarget, exitTarget, LAST_ROOM } from './portalhouse.js';
@@ -307,7 +308,7 @@ export class PortalHouseLive {
         this.say(`Room ${n} done! 🌀 ${d.n} / ${d.need}`);
         if (d.ready) this.say('All the swirl rooms are done! The Study door is open: Grandpa Arch is waiting.');
         this.game.save?.(true);
-      }
+      } else { sound.play('win'); this.say(`Room ${n} done again! ${FUN.tag}`); } // (owner 2026-10-28: a done room plays again, nothing new is saved)
       this.forget();
       return this.warp(exitTarget(n));
     }

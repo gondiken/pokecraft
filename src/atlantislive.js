@@ -10,7 +10,8 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
-import { FISH, Darter, shyAt, popDir, schoolFish, lungeLength, netCentre, inNet, lightState, nextLights, lightsFor, fishFor, lightKey, LIGHT_KEY, PER_DISTRICT, LIGHTS } from './glowfish.js';
+import { FISH, Darter, shyAt, popDir, schoolFish, lungeLength, netCentre, inNet, lightState, nextLights, lightsFor, fishFor, goneCount, funLights, lightKey, LIGHT_KEY, PER_DISTRICT, LIGHTS } from './glowfish.js';
+import { FUN } from './forfun.js';
 import { CITY, WHIRL, BUBBLES, DISTRICTS, craterR, districtAt } from './atlantisland.js';
 
 // Owner 2026-10-28 ("what are these circles? they're drawn so poorly"): the glows are soft camera-facing sprites, not see-through
@@ -184,11 +185,11 @@ export class AtlantisLive {
     if (!force && this.t - this.lastSync < LIVE_RULES.saveGap) return;
     this.lastSync = this.t;
     const g = this.game, st = lightState(g), A = this.A, world = this.world;
-    // fish already poured away: the first ones by index (a reload, or the keys cleared after the Queen)
+    // fish already poured away: the first ones by index (a reload, or the keys cleared after the Queen); all lit: all back, for fun
     DISTRICTS.forEach((d, i) => {
-      const gone = fishFor(d.kind, st.lit[i]), list = this.lists[d.kind];
+      const gone = goneCount(d.kind, st.lit[i], st.done), list = this.lists[d.kind];
       const poured = list.filter(f => f.poured).length;
-      if (poured !== gone) list.forEach((f, k) => { f.poured = k < gone; f.out = f.poured || this.net.includes(f); });
+      if (poured !== gone) list.forEach((f, k) => { const was = f.out; f.poured = k < gone; f.out = f.poured || this.net.includes(f); if (was && !f.out) this.swimHome(f); });
     });
     const shown = this.forceLit ? [PER_DISTRICT, PER_DISTRICT, PER_DISTRICT] : st.lit;
     const open = this.forceLit || st.done || this.inPalace();
@@ -323,6 +324,7 @@ export class AtlantisLive {
         return;
       }
       const need = PER_DISTRICT - st.lit[i];
+      if (st.done) return this.pourForFun(i, mine, c);
       if (need <= 0) { if (this.t - this.lastHint > LIVE_RULES.hintGap) { this.lastHint = this.t; this.toast(`The ${d.name} is lit already. Try another lantern!`); } return; }
       const gain = Math.min(lightsFor(d.kind, mine.length), need);
       if (gain <= 0) { if (this.t - this.lastHint > LIVE_RULES.hintGap) { this.lastHint = this.t; this.toast('Two school fish make one light. Catch one more!'); } return; }
@@ -339,6 +341,22 @@ export class AtlantisLive {
       g.save?.(true);
       this.syncLights(true);
     });
+  }
+
+  // All twelve lights are in: a pour only makes the lantern sparkle (its bulbs flash as the fish fly in) and the fish swim home to be
+  // caught again, just for fun. No key, nothing saved.
+  pourForFun(i, mine, c) {
+    const d = DISTRICTS[i], gain = funLights(d.kind, mine.length);
+    this.net = this.net.filter(f => !mine.includes(f));
+    for (let k = 0; k < gain; k++) this.flying.push({ from: [...c], to: bulbAt(this.A.districts[i].lantern, k), t0: this.clock + k * 0.15, d: i, k, kind: d.kind });
+    for (const f of mine) { f.out = false; f.poured = false; this.swimHome(f); }
+    sound.play('atlight');
+    this.toast(`✨ The ${d.name} lantern sparkles! ${FUN.tag} The glowfish swim home again.`);
+  }
+  swimHome(f) {
+    f.pop = null;
+    if (f.kind === 'darter') { f.fish.goHome(); f.pos = f.fish.pos3; f.prev = f.pos; }
+    else if (f.kind === 'shy') { f.pos = [...f.home]; f.prev = f.pos; }
   }
 
   /* ---------- the net: Catch! (gymLive near / holds / use / release) ---------- */
@@ -408,7 +426,8 @@ export class AtlantisLive {
   /* ---------- the score chip, hints ---------- */
   showScore(city) {
     const ui = this.game.ui, st = lightState(this.game);
-    ui.setScore?.(city ? { text: st.done ? `Lights ${LIGHTS} / ${LIGHTS} · To the palace!` : `Lights ${st.total} / ${LIGHTS}`, done: st.done } : null);
+    const fun = st.done && this.game.stars?.includes('atlantis'); // (the Queen is beaten: the catch goes on just for fun)
+    ui.setScore?.(city ? { text: st.done ? `Lights ${LIGHTS} / ${LIGHTS} · ${fun ? 'Catch for fun!' : 'To the palace!'}` : `Lights ${st.total} / ${LIGHTS}`, done: st.done } : null);
   }
   hints() {
     const pl = this.game.player, p = pl.pos;

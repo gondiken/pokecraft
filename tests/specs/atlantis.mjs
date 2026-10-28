@@ -622,6 +622,17 @@ async function lightsPart(page, t) {
   t.ok(L.gateShut && /still dark/.test(L.bossGate) && L.talkPrompt?.action === 'Talk', `with 11 of 12 the palace gate is shut and the Queen says "${L.bossGate}"`);
   t.ok(L.done[0] && L.done[1] === 12 && L.done[2] === 0 && L.gateOpen && L.bossGate2 === null && L.saved === 12 && /Lights 12 \/ 12 · To the palace!/.test(L.chip) && await said(page, /All three lanterns are lit! The palace dome opens/), `12 lights: the palace dome opens, the Queen is ready, "${L.chip}"`);
   t.ok(/Battle Guard (Pelos|Talia)/.test(L.guide || ''), `with all 12 lights the guide leads to a guard still to beat (owner 2026-10-27): "${L.guide}"`);
+  // owner 2026-10-28: with all 12 lights the glowfish swim back and the catch goes on just for fun (a pour makes the lantern sparkle; nothing new saved)
+  const F = await page.evaluate(async () => {
+    const g = window.pokecraft, p = g.player, lv = g.gymLive.of('part:atlantis'), step = window.__step, G = await import('/src/glowfish.js'), A = g.world.atlantis;
+    window.__toasts = window.__toasts || []; const before = window.__toasts.length, keys = g.beaten.slice().sort().join();
+    lv.syncLights(true);
+    const back = lv.info().fish.filter(f => f.out || f.poured).length;
+    let k = 0; for (const f of lv.fish) if (f.kind === 'darter' && !f.out && k < 2) { f.out = true; lv.net.push(f); k++; }
+    const c = A.districts[1].lantern.centre, b = A.districts[1].lantern.box; p.pos.set(b.x0 - 1.2, c[1] - 1.0, c[2] - 0.5); p.vel.set(0, 0, 0); p.keys = {}; step(g, 1 / 20, 4);
+    return { back, net: lv.net.length, out: lv.info().fish.filter(f => f.out).length, same: g.beaten.slice().sort().join() === keys, total: G.lightState(g).total, flying: lv.info().show.flying, said: window.__toasts.slice(before).join('|') };
+  });
+  t.ok(F.back === 0 && F.net === 0 && F.out === 0 && F.same && F.total === 12 && /sparkles! Just for fun!/.test(F.said), `with all 12 lights every glowfish swims back (${F.back} still out) and the catch goes on: two darters poured at the Arch Gardens make its lantern sparkle "Just for fun!" and swim home; nothing new is saved (${F.total} lights) ${JSON.stringify(F).slice(0, 200)}`);
   await stage(page, [245.5, 7.5, 112.5], [251.5, 5.5, 112.5]);
   await shot(page, 'lit');
 

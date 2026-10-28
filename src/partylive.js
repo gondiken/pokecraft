@@ -3,6 +3,8 @@
 // rounds that get harder, round 2 and 3 with a party surprise (a twist); three rounds won = the game's golden bow (a `beaten` key, saved
 // at once). Jolly Jax's helpers crash the party after the 1st and the 3rd bow; with four bows the cake's candles light, the guests
 // gather, everybody shouts SURPRISE! and Jolly Jax bursts out of the top of the cake for the star battle.
+// Owner 2026-10-28: until the four bows are won the Spinner skips the games you won (it clicks on to the next slice, spinner.js skipTo);
+// with all four it picks any game and that game is played just for fun (no new bow, forfun.js).
 //
 // Everything is per player and in memory except the bows (and the crew keys pictureboss.js writes). Clocks are summed frame dt (frozen in
 // a battle, a question, a panel and the pause screen); every game is a closed form of its round clock (pinata.js, jackcatch.js,
@@ -17,7 +19,8 @@ import { CATCH, newCatch, stepCatch, inAir, slowed, jacksLeft } from './jackcatc
 import { pinataRound, catchRound, whackRuns } from './partyrounds.js';
 import { STACK, stackPlan, newStack, craneAt, drop, loaded } from './giftstack.js';
 import { WHACK, whackPlan, newWhack, upAt, headOf, whackAt, whackTimeUp, shaking } from './popupwhack.js';
-import { SPIN, GAMES, GAME_NAMES, newSpin, spinAngle, spinDone, restAngle, sliceAt, twistOf } from './spinner.js';
+import { SPIN, GAMES, GAME_NAMES, newSpin, spinAngle, spinDone, restAngle, sliceAt, twistOf, skipTo, skipAngle, skipAt, skipTime } from './spinner.js';
+import { FUN } from './forfun.js';
 import { kindHelp } from './kindhelp.js';
 import { bowKey, bowOf, bowState, migrateBows, CAKE, CRASHERS, GUESTS, SQUARE, SPINNER, TABLE, ROOM, FLOOR, C } from './partyland.js';
 import * as PP from './partyprops.js';
@@ -26,7 +29,6 @@ export const PARTY = {
   build: 2.0,          // seconds for a game's set to whoosh up out of the party floor (and `clear` to go back)
   clear: 1.5,
   landed: 0.9,         // the Spinner shows where it stopped this long before the game comes
-  sweets: 2,           // party sweets (Capture Cubes) when it lands on a game you won already: once till the next game is won
   rest: { won: 1.8, missed: 1.6, pinataWon: 2.6, pinataNap: 2.0 },
   stickSwing: 0.28, splat: 1.6,
   clearR: 17,          // while a game runs no wild gift box stays this close to the party floor's middle
@@ -75,7 +77,6 @@ export class PartyLive {
     this.reached = {};                                            // a game you walked away from: the round it was on (this trip only)
     this.misses = Object.fromEntries(GAMES.map(g => [g, [0, 0, 0, 0]]));
     this.attempts = Object.fromEntries(GAMES.map(g => [g, [0, 0, 0, 0]]));
-    this.sweetsReady = true;
     this.first = true; this.crashed = new Set(); this.finale = null; this.faceKey = null;
     this.dim = 1; this.burst = null; this.savedNooks = null;
     this.meshes = []; this.groups = []; this.geos = []; this.mats = [];
@@ -234,7 +235,7 @@ export class PartyLive {
       if (g.game === 'stack') return loaded(g.run.st, g.run.t) ? 'Drop!' : null;
       return null;
     }
-    if (!this.onSpinnerPad(pos) || this.bows().done) return null;
+    if (!this.onSpinnerPad(pos)) return null; // (with all four bows it spins on, just for fun)
     if (this.sp.phase === 'idle') return 'Spin!';
     if (this.sp.phase === 'spin') return 'Stop!';
     return null;
@@ -275,38 +276,44 @@ export class PartyLive {
       s.tickT += dt;
       if (k !== s.tick && s.tickT > 0.07) { s.tick = k; s.tickT = 0; sound.play('spintick'); }
       if (s.phase === 'slow' && spinDone(s.spin, this.clock)) {
-        s.a = restAngle(s.spin); s.slice = sliceAt(s.a); s.phase = 'show'; s.t = 0;
-        sound.play('rightdoor');
+        s.a = restAngle(s.spin); s.slice = sliceAt(s.a); s.t = 0;
+        const sk = skipTo(s.slice, this.bows().bows); // owner 2026-10-28: a game you won already is skipped (until all four bows are won)
+        if (sk.steps) {
+          s.phase = 'skip'; s.skip = { from: s.a, to: skipAngle(s.a, sk.slice), steps: sk.steps, won: s.slice };
+          this.toast(`You won ${GAME_NAMES[GAMES[s.slice]]} already! Click, click... the Spinner moves on.`);
+        } else { s.phase = 'show'; sound.play('rightdoor'); }
       }
+    } else if (s.phase === 'skip') {
+      s.t += dt; s.tickT += dt;
+      const k = sliceAt(this.wheelAngle());
+      if (k !== s.tick && s.tickT > 0.07) { s.tick = k; s.tickT = 0; sound.play('spintick'); }
+      if (s.t >= skipTime(s.skip.steps)) { s.a = s.skip.to; s.slice = sliceAt(s.a); s.skip = null; s.phase = 'show'; s.t = 0; sound.play('rightdoor'); }
     } else if (s.phase === 'show') {
       s.t += dt;
       if (s.t >= PARTY.landed) { s.phase = 'idle'; this.land(s.slice); }
     }
   }
-  wheelAngle() { const s = this.sp; return s.spin && (s.phase === 'spin' || s.phase === 'slow') ? spinAngle(s.spin, this.clock) : s.a; }
+  wheelAngle() {
+    const s = this.sp;
+    if (s.phase === 'skip' && s.skip) return skipAt(s.skip.from, s.skip.to, s.skip.steps, s.t);
+    return s.spin && (s.phase === 'spin' || s.phase === 'slow') ? spinAngle(s.spin, this.clock) : s.a;
+  }
+  // The Spinner stopped on slice k (skipTo moved it past the games won already): its game comes. With all four bows, just for fun.
   land(k) {
-    const game = GAMES[k], st = this.bows(), name = GAME_NAMES[game];
-    if (st.done) return;
-    if (st.bows[k]) {
-      if (this.sweetsReady) {
-        this.sweetsReady = false;
-        this.game.cubes += PARTY.sweets; this.game.ui?.renderHud?.();
-        sound.play('cube');
-        this.toast(`Party sweets! +${PARTY.sweets} Capture Cubes. You won ${name} already: spin again!`);
-      } else this.toast(`You won ${name} already. Spin again!`);
-      return;
-    }
-    this.startGame(game);
+    const game = GAMES[k], st = this.bows();
+    if (st.bows[k] && !st.done) { this.toast(`You won ${GAME_NAMES[game]} already. Spin again!`); return; } // (never: skipTo moved on)
+    this.startGame(game, st.done);
   }
 
   /* ---------------------------------- a party game: build, rounds, the bow ---------------------------------- */
-  startGame(game) {
-    this.gm = { game, round: this.reached[game] || 1, phase: 'build', t: 0, twist: null, twistRound: 0, run: null, n: this.played[game]++ };
+  // fun = all four bows are won: the game is played just the same, but no new bow (forfun.js)
+  startGame(game, fun = false) {
+    this.gm = { game, round: this.reached[game] || 1, phase: 'build', t: 0, twist: null, twistRound: 0, run: null, n: this.played[game]++, fun };
     this.misses[game] = [0, 0, 0, 0];
     sound.play('doorwhoosh');
-    this.toast(`Surprise! It's ${GAME_NAMES[game]}! ${ICON[game]}`);
+    this.toast(`Surprise! It's ${GAME_NAMES[game]}! ${ICON[game]}${fun ? ` ${FUN.tag}` : ''}`);
     // owner 2026-10-28: "I don't know how this works": say it big, once per game, with what to do
-    this.game.ui?.celebrate?.(`${ICON[game]} ${GAME_NAMES[game]}!`, `${HOW[game]} Win 3 rounds for a golden bow. Press Play!`, 4500);
+    this.game.ui?.celebrate?.(`${ICON[game]} ${GAME_NAMES[game]}!`, `${HOW[game]} ${fun ? `${FUN.tag} Win 3 rounds again.` : 'Win 3 rounds for a golden bow.'} Press Play!`, 4500);
     this.doBurst([C.x, 12, C.z], 0.8);
     return true;
   }
@@ -377,17 +384,18 @@ export class PartyLive {
     this.toast(text + (help ? ' It will be a bit slower now.' : ''));
   }
   gameWon() {
-    const g = this.gm, gm = this.game, k = bowKey(bowOf(g.game));
-    if (!gm.beaten.includes(k)) gm.beaten.push(k);
+    const g = this.gm, gm = this.game, k = bowKey(bowOf(g.game)), fun = g.fun || gm.beaten.includes(k);
     delete this.reached[g.game];
-    gm.save?.();
-    const st = this.bows();
     sound.play('rightdoor');
-    this.toast(`🎀 A golden bow for ${GAME_NAMES[g.game]}! (${st.n} / 4)`);
+    if (fun) this.toast(`🎉 You won ${GAME_NAMES[g.game]} again! ${FUN.tag} Spin for another game!`); // (nothing new is saved)
+    else {
+      gm.beaten.push(k);
+      gm.save?.();
+      this.toast(`🎀 A golden bow for ${GAME_NAMES[g.game]}! (${this.bows().n} / 4)`);
+    }
     this.doBurst([C.x, 14, C.z], 1.2);
     this.cheer();
     g.phase = 'clear'; g.t = 0;
-    this.sweetsReady = true;
     this.sync();
   }
   stepGame(dt) {
@@ -874,7 +882,6 @@ export class PartyLive {
     const g = this.game;
     for (let i = 1; i <= 4; i++) { const k = g.beaten.indexOf(bowKey(i)); if (k >= 0) g.beaten.splice(k, 1); }
     for (const id of GAMES) { this.attempts[id] = [0, 0, 0, 0]; this.misses[id] = [0, 0, 0, 0]; }
-    this.sweetsReady = true;
     setTimeout(() => this.sync(), 0);
   }
   info() {

@@ -86,6 +86,8 @@ export function createGymLive(game) {
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },
     battleEnded(result, opts) { for (const o of objects.values()) o.battleEnded?.(result, opts); },
+    // Owner 2026-10-28: the player said "Not now" to a Picture World Boss's rematch question (pictureboss.js): the Race Track races again.
+    bossDeclined(npc) { for (const o of objects.values()) o.bossDeclined?.(npc); },
     of(id) { return objects.get(id); },
   };
 }
