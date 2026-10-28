@@ -4,15 +4,17 @@
 // tracing.js has the rules (pure). Everything is per player and in memory except the finished lines, which are saved `beaten` keys
 // (pw:doodle:line1..8; a later visit draws them as the neat bridges of doodleland.js). The ink is never an edit: it is drawn with
 // world.setLive through LiveCells (never inside the player). Never a fail: a fall, a catch or an empty pencil puffs you back to the
-// last star dot (or the pad) and the line stays up to there.
+// last star dot (or the pad) and the line stays up to there. Owner 2026-10-28: a drawn line stays playable ("Draw again!", just for
+// fun once saved: forfun.js); its bridge is lifted while you redraw it and always comes back (Lift below).
 import * as THREE from 'three';
 import { B, isSolid } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { DRAW, newDraw, drawStep, cellInk, pointAt, beeAt } from './tracing.js';
 import { lineKey, lineState, LINE_COUNT, courseOf, COURSES } from './doodleland.js';
+import { ForFun, FUN } from './forfun.js';
 
-export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8 };
+export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8, away: 12 }; // away: a redraw rests when you walk this far from your line
 const WORDS = {
   hint: 'The pencil draws the way you face! Turn to steer it.',
   first: 'Draw the line before this one first!',
@@ -45,6 +47,9 @@ const WORDS = {
   low: 'Ink is low! Find a star ⭐',
   wait: 'The pencil waits for you. Walk on your line!',
   stop: 'The pencil rests. Press Draw! to try again.',
+  again: `Draw this line again! ${FUN.tag}`,
+  drewAgain: `You drew it again! ✏️ ${FUN.tag}`,
+  away: 'The pencil rests. Your bridge is back!',
   fell: 'Whoops! Back up onto your page.',
 };
 
@@ -91,6 +96,23 @@ function starGeometry() { // a flat five-point star, standing up (it spins round
 const MAX_OF = k => Math.max(1, ...COURSES.map(c => (c[k] || []).length));
 const MAX_STARS = MAX_OF('stars'), MAX_BLOTS = MAX_OF('blots'), MAX_BEES = MAX_OF('bees');
 
+// A line is one round of the "for fun" rule: once its key is saved it plays again just for fun and saves nothing new.
+const LINE_FUN = new ForFun(1);
+
+// Owner 2026-10-28: a line's bridge is lifted while you draw that line again (a for-fun redraw, or a rematch that cleared its key on
+// this trip), so it is neither in your way nor a free way across. It always comes back: Stop, a finish, walking away (DOODLE.away),
+// leaving the world or a reload (a lift is never saved: a fresh part draws the saved lines at once). Cells another line keeps stay.
+class Lift {
+  constructor(live, k) { this.live = live; this.k = k; this.keys = []; }
+  up() {
+    const L = this.live, others = new Set();
+    for (const [i, set] of L.lineInk) if (i !== this.k) for (const key of set) others.add(key);
+    for (const key of L.lineInk.get(this.k) ?? []) { if (others.has(key)) continue; L.keepInk.delete(key); this.keys.push(key); L.wantKey(key, B.AIR); }
+    return this;
+  }
+  down() { const L = this.live; for (const key of this.keys) { L.keepInk.add(key); L.wantKey(key, B.DO_INK); } this.keys = []; }
+}
+
 export class DoodleLive {
   constructor(game, part) {
     this.game = game;
@@ -106,6 +128,7 @@ export class DoodleLive {
     this.cur = null;                // { k, course, st, applied: Map, said: Set }
     this.drawnNow = new Set();      // line indices drawn (this trip: includes those a rematch cleared from the keys)
     this.keepInk = new Set();       // cells of lines drawn this trip (a new try never rubs them out)
+    this.lineInk = new Map();       // line index -> the keys of its bridge's cells (a Lift takes them away while you redraw it)
     this.neatGiven = new Set();
     this.fellFor = 0; this.clock = 0;
     this.told = new Set();
@@ -174,8 +197,8 @@ export class DoodleLive {
   syncDashes() {
     const m = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0), sc = new THREE.Vector3(1, 1, 1);
     this.dashLines.forEach((list, li) => {
-      const drawn = this.drawnNow.has(li), drawing = this.cur?.k === li; // while you draw, the landing outline (s -1) stays
-      for (const d of list) this.dashes.setMatrixAt(d.idx, drawn || (drawing && d.s >= 0) ? zero : m.compose(d.pos, d.q, sc));
+      const drawing = this.cur?.k === li, hide = drawing ? d => d.s >= 0 : () => this.drawnNow.has(li); // while you draw (also again), the landing outline (s -1) stays
+      for (const d of list) this.dashes.setMatrixAt(d.idx, hide(d) ? zero : m.compose(d.pos, d.q, sc));
     });
     this.dashes.instanceMatrix.needsUpdate = true;
     this.dashesKey = this.key();
@@ -187,7 +210,13 @@ export class DoodleLive {
     const l = this.lines[i];
     return l.inkable ??= l.line.cells.filter(c => this.world.get(c.x, c.y, c.z) === B.AIR || this.world.get(c.x, c.y, c.z) === B.DO_INK);
   }
-  inkAll(i) { for (const c of this.inkableOf(i)) { this.cells.want(c.x, c.y, c.z, B.DO_INK); this.keepInk.add(`${c.x},${c.y},${c.z}`); } this.drawnNow.add(i); }
+  inkAll(i) { this.keepLine(i, this.inkableOf(i).map(c => `${c.x},${c.y},${c.z}`)); this.drawnNow.add(i); }
+  keepLine(i, keys) { // these cells are line i's bridge: ink that a new try never rubs out
+    const mine = this.lineInk.get(i) ?? new Set();
+    for (const key of keys) { mine.add(key); this.keepInk.add(key); this.wantKey(key, B.DO_INK); }
+    this.lineInk.set(i, mine);
+  }
+  wantKey(key, id) { const [x, y, z] = key.split(',').map(Number); this.cells.want(x, y, z, id); }
   // The drawn line as blocks: ink where the line is (and Rubber has not rubbed it), air where a cell went (a nibble, a setback).
   applyInk() {
     const c = this.cur, st = c.st, seen = new Set();
@@ -232,15 +261,16 @@ export class DoodleLive {
   /* ---- hooks of the live-part interface ---- */
   near(p) {
     if (this.cur) return 'Stop';
-    const i = this.padAt(p.pos), st = this.state();
-    if (i < 0 || st.drawn[i]) return null;
-    return 'Draw!';
+    const i = this.padAt(p.pos);
+    if (i < 0) return null;
+    return this.forFun(i) ? 'Draw again!' : 'Draw!';
   }
+  forFun(i) { return LINE_FUN.done(this.state().drawn[i] ? 1 : 0); } // its key is saved: a redraw is just for fun
   use(p) {
     if (this.cur) { this.stop(); this.toast(WORDS.stop); return true; }
     const i = this.padAt(p.pos), st = this.state();
-    if (i < 0 || st.drawn[i]) return false;
-    if (i > st.next) { this.toast(WORDS.first); return true; }
+    if (i < 0) return false;
+    if (!this.forFun(i) && i > st.next) { this.toast(WORDS.first); return true; }
     this.start(i);
     return true;
   }
@@ -268,8 +298,10 @@ export class DoodleLive {
     const st = newDraw(course, wins);
     st.clock = this.clock; // the bees keep flying where they were
     this.lastPos = null; this.lastGround = null; this.guarded = 0;
-    this.cur = { k: i, course, st, t0: st.clock, applied: new Map(), said: new Map(), scratchAt: 0, waitFor: 0, low: false };
+    const fun = this.forFun(i), lift = this.lineInk.get(i)?.size ? new Lift(this, i).up() : null; // (a rematch's line drawn on this trip is lifted too)
+    this.cur = { k: i, course, st, t0: st.clock, applied: new Map(), said: new Map(), scratchAt: 0, waitFor: 0, low: false, fun, lift };
     this.applyInk();
+    if (fun) this.toast(WORDS.again);
     this.once('hint', WORDS.hint);
     if (WORDS.intro[i + 1]) this.once(`intro${i}`, WORDS.intro[i + 1]);
     this.syncDashes();
@@ -277,6 +309,7 @@ export class DoodleLive {
   stop(quiet = false) {
     if (!this.cur) return;
     this.rubAll();
+    this.cur.lift?.down(); // the old bridge is back
     const k = this.cur.k, p = this.game.player;
     this.cur = null;
     this.pencil.visible = false; this.ring.visible = false; this.rubber.visible = false;
@@ -286,22 +319,26 @@ export class DoodleLive {
     }
   }
   finish() {
-    const g = this.game, { k, st } = this.cur, n = k + 1;
+    const g = this.game, { k, st, fun, lift } = this.cur, n = k + 1;
     this.applyInk();
-    for (const [key, id] of this.cur.applied) if (id === B.DO_INK) this.keepInk.add(key);
+    lift?.down(); // the old bridge is back, with your new line beside it
+    this.keepLine(k, [...this.cur.applied].filter(([, id]) => id === B.DO_INK).map(([key]) => key));
     this.drawnNow.add(k);
-    const key = lineKey(n);
-    if (!g.beaten.includes(key)) g.beaten.push(key);
-    g.save?.();
     sound.play('goalcheer');
-    this.toast(`You drew a bridge! ✏️ ${this.state().count} / ${LINE_COUNT}`);
-    if (st.setbacks === 0 && !this.neatGiven.has(k)) { this.neatGiven.add(k); g.cubes += 1; this.toast('Neat line! +1 Capture Cube'); }
+    if (fun) this.toast(WORDS.drewAgain); // nothing new is saved: no key, no Neat line cube
+    else {
+      const key = lineKey(n);
+      if (!g.beaten.includes(key)) g.beaten.push(key);
+      g.save?.();
+      this.toast(`You drew a bridge! ✏️ ${this.state().count} / ${LINE_COUNT}`);
+      if (st.setbacks === 0 && !this.neatGiven.has(k)) { this.neatGiven.add(k); g.cubes += 1; this.toast('Neat line! +1 Capture Cube'); }
+    }
     this.lastDone = { n, setbacks: st.setbacks, nibbles: st.nibbles, time: st.clock - this.cur.t0, len: st.s };
     this.cur = null;
     this.pencil.visible = false; this.ring.visible = false; this.rubber.visible = false;
     this.syncDashes();
     this.refreshChip();
-    if (this.state().done) this.toast('All the lines are drawn! Go to the Desk and meet Artist Arlo.');
+    if (!fun && this.state().done) this.toast('All the lines are drawn! Go to the Desk and meet Artist Arlo.');
   }
   aimNow() { // where you look and where you stand (tests drive step() with their own)
     const p = this.game.player, e = p.eyePos, f = p.forward;
@@ -368,6 +405,10 @@ export class DoodleLive {
     if (p.onGround && sup(p.pos.x, p.pos.y, p.pos.z)) this.lastGround = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     this.lastPos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
   }
+  walkedAway(st, inp) { // far from every point of your line (and the pad) in x / z
+    const [x, , z] = inp.player, pad = this.pads[this.cur.k].stand;
+    return Math.hypot(x - pad[0], z - pad[2]) > DOODLE.away && !st.pts.some(q => Math.hypot(q.x - x, q.z - z) <= DOODLE.away);
+  }
   // Your step (dx, dz) from `from` slid along your line there (its heading at the nearest drawn point): places to try, or null.
   alongLine(from, dx, dz) {
     let best = null, bd = 3;
@@ -396,6 +437,7 @@ export class DoodleLive {
       }
     }
     if (st.done) return this.finish();
+    if (c.lift && this.walkedAway(st, inp)) { this.stop(); this.toast(WORDS.away); return; } // never stranded without your old bridge
     this.stepUp(this.game.player);
     if (st.blocked) this.say(`b:${st.blocked}`, c.course.tower && st.blocked === 'low' ? WORDS.intro[5] : WORDS.blocked[st.blocked]);
     if (!c.low && st.ink <= DRAW.lowInk && c.course.stars.some((s, i) => !st.taken.has(i))) { c.low = true; this.toast(WORDS.low); }
@@ -482,7 +524,7 @@ export class DoodleLive {
       drawing: !!c, line: c ? c.k + 1 : null, s: s ? s.s : 0, ink: s ? s.ink : 0, setbacks: s ? s.setbacks : 0, nibbles: s ? s.nibbles : 0,
       rubber: s?.rubber ? { s: s.rubber.s, on: s.rubber.on } : null, blocked: s?.blocked ?? null, waiting: !!s?.waiting, playerS: s ? s.playerS : 0,
       taken: s ? [...s.taken] : [], tip: s ? { ...s.tip } : null, aim: s?.aim ?? null, drawn: this.state().drawn, neat: [...this.neatGiven], last: this.lastDone ?? null,
-      fellFor: this.fellFor, cells: s ? s.cells.size : 0,
+      fellFor: this.fellFor, cells: s ? s.cells.size : 0, fun: !!c?.fun, lifted: c?.lift ? c.lift.keys.length : 0,
     };
   }
 }
