@@ -233,7 +233,7 @@ addBoss({
   id: 'castle', name: 'Sir Clanksalot', type: 'knight', title: 'Sir Clanksalot · Castle Boss', look: 'knight', // (the title is spelled out: a closed Castle's frame is named "Secret World")
   colors: { shirt: 0xd83a4a, pants: 0x8a8a96, hair: 0x3a2a1e, skin: 0xf2d0b0 },
   gate: game => { const st = castleState(game); return st.done ? null : `Halt! Block the pumpkins and win the joust first! (🛡️ ${st.shield} / 3 · 🐴 ${st.lance} / 3)`; },
-  team: [['ramparsnail', 61], ['bristleguard', 62, ['seedvolley', 'bodyslam', 'holdthegate', 'quillvolley']], ['turrock', 63], ['gallantrot', 64, ['lancecharge', 'bodyslam', 'roundtable', 'grandjoust']]], // (the move lists are what movesWith gives: the spec checks)
+  team: [['ramparsnail', 61], ['bristleguard', 62, ['seedvolley', 'bodyslam', 'holdthegate', 'quillvolley']], ['turrock', 63], ['gallantrot', 64, ['zoomdash', 'lancecharge', 'roundtable', 'grandjoust']]], // (the move lists are what movesWith gives: the spec checks)
   intro: ['Halt! Who goes there?', 'A challenger! At last! I have trained for this every day!'],
   lose: 'A true knight! The star is yours. Ta-ta-taa!',
   win: 'Bravely done! Rest a moment and try again.',

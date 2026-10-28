@@ -390,10 +390,16 @@ export default async function ({ browser, base, t }) {
   t.ok(fr.used && fr.t1 === "🏠 Giant House: this world isn't open yet. Come back soon!" && fr.prompt === 'Giant House · covered', `using a frame: "${fr.t1}" (${fr.prompt})`);
   t.ok(fr.still === 129 && fr.edits === 0 && fr.t2 === fr.t1, `breaking a frame says the same and changes nothing ${JSON.stringify(fr)}`);
   const sec = await Q.evaluate(async () => {
-    const g = window.pokecraft, { B } = await import('/src/blocks.js'), PW = await import('/src/pictureworlds.js'), sid = PW.FRAME_WORLDS.find(w => w.secret && !w.ready)?.id, f = g.world.swirl.frames.find(x => x.world === sid), c = f.cloth[12];
+    const g = window.pokecraft, { B } = await import('/src/blocks.js'), PW = await import('/src/pictureworlds.js');
+    // wave 16 gave the last secret frames a world (open in the tests): cover one as a closed LATER world is covered (pictureworlds.js)
+    const w = PW.FRAME_WORLDS.find(x => x.secret && !x.ready) ?? PW.pictureWorld('gravity'), was = { ready: w.ready, secret: w.secret };
+    Object.assign(w, { ready: false, secret: true });
+    const f = g.world.swirl.frames.find(x => x.world === w.id), c = f.cloth[12];
     window.__toasts = [];
     g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.CLOTH });
-    return { toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'E') };
+    const out = { toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.CLOTH }, 'E') };
+    Object.assign(w, was);
+    return out;
   });
   t.ok(sec.toast === '❓ A secret world! Nobody knows what is behind this cloth yet.' && sec.prompt === 'A secret world · covered', `a secret frame: "${sec.toast}" (${sec.prompt})`);
   t.ok(fr.placed === 0, `you cannot build into a picture frame's space (${fr.placed})`);
