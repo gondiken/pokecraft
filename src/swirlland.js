@@ -85,6 +85,15 @@ export const FRAME_SPOTS = [ // 11 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
   ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
   north(24, 5), // owner 2026-10-26: the 11th frame (the fifth secret world), west of N0
 ];
+// Which spot a world's frame hangs on: FRAME_WORLDS order (i -> FRAME_SPOTS[i]) unless moved here. Owner 2026-10-29: the Giant House
+// moved one left (N5), so Deep Blue's two frames hang side by side (Atlantis on N0, beside the Pirate Seas on N1); Gravity took Atlantis's
+// old spot (S2). Only which picture hangs where changes: the frame blocks (and their gem corners, by spot) are the same as before.
+export const FRAME_MOVED = { house: 10, atlantis: 0, gravity: 7 };
+export function frameSpotOf(id) { // -1: no frame (or a spot a moved frame took: never, the spec checks every spot is used once)
+  if (FRAME_MOVED[id] !== undefined) return FRAME_MOVED[id];
+  const i = FRAME_WORLDS.findIndex(w => w.id === id);
+  return i < 0 || Object.values(FRAME_MOVED).includes(i) ? -1 : i;
+}
 export const FRAME = { w: 7, h: 7 }; // PICTURE_FRAME border, 5x5 inside: CLOTH, or PORTAL when the world is ready (later waves)
 export const BRIDGE = { x0: 61, z: [79, 81], y: 20, len: 5, gap: 1 }; // star stone i: x 61+6i .. 65+6i, two layers (y 19-20)
 export const WIZARD = { z: 80, r: 9, y: 20, R: 4, wallTop: 39 };
@@ -262,8 +271,8 @@ export function swirlLand(world, def, { house = def?.house !== false } = {}) { /
 
   // 7. The picture frames: a PICTURE_FRAME border 7 x 7, two gem corners, CLOTH inside.
   const frames = [];
-  FRAME_WORLDS.forEach((pw, i) => {
-    const spot = FRAME_SPOTS[i];
+  FRAME_WORLDS.forEach(pw => {
+    const i = frameSpotOf(pw.id), spot = FRAME_SPOTS[i]; // i = the spot (it picks the gem corners, so the blocks never move)
     if (!spot) return;
     const cells = [], border = [], cloth = [];
     for (let dx = -3; dx <= 3; dx++) for (let dy = 0; dy < FRAME.h; dy++) {
@@ -418,7 +427,7 @@ export function swirlLand(world, def, { house = def?.house !== false } = {}) { /
 // Where you come back out when you leave a Picture World through the way back of `id` (owner 2026-10-26: each door of a shared
 // world, like Playland's, takes you out at its own frame): in front of that frame, facing it. Same as portal.js's way in.
 export function frameReturn(id) {
-  const i = FRAME_WORLDS.findIndex(w => w.id === id), spot = FRAME_SPOTS[i];
+  const spot = FRAME_SPOTS[frameSpotOf(id)];
   if (!spot) return null;
   const [fx, fz] = spot.facing;
   return [spot.stand[0] + 0.5, spot.stand[1], spot.stand[2] + 0.5, Math.atan2(-fx, -fz), 0];

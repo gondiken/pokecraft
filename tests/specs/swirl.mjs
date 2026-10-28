@@ -314,6 +314,13 @@ export default async function ({ browser, base, t }) {
   t.ok(data.same && data.other, 'the Swirl is the same for every seed, block for block (it is made of tables)');
   t.ok(data.decks.every(Boolean), `every deck is where DECKS says: Swirl Stone or Paint at its height (${data.decks.join()})`);
   t.ok(data.frames.length === 11 && data.frames.every(f => f.cloth === 25 && f.ok) && data.s3empty, `11 picture frames with cloth inside (5 x 5); 12 stars, 11 frames, 12 stones, no frame for Portal, no star from the Wizard (${data.frames.map(f => f.id).join()})`);
+  const hang = await Q.evaluate(async () => { // owner 2026-10-29: the Giant House one left, Deep Blue's two frames side by side, Gravity on Atlantis's old spot
+    const L = await import('/src/swirlland.js'), PW = await import('/src/pictureworlds.js'), at = id => L.FRAME_SPOTS[L.frameSpotOf(id)]?.id;
+    const used = PW.FRAME_WORLDS.map(w => L.frameSpotOf(w.id));
+    return { once: new Set(used).size === 11 && used.every(k => k >= 0 && k < 11), house: at('house'), atlantis: at('atlantis'), pirate: at('pirate'), gravity: at('gravity'), back: L.frameReturn('atlantis')?.[0] };
+  });
+  t.ok(hang.once && hang.house === 'N5' && hang.atlantis === 'N0' && hang.pirate === 'N1' && hang.gravity === 'S2' && Math.abs(hang.back - 32.5) < 0.01,
+    `every spot holds one frame; the Giant House on N5, Atlantis on N0 beside the Pirate Seas (N1), Gravity on S2, Atlantis's way back in front of N0 (${JSON.stringify(hang)})`);
   t.ok(data.bridgeAir && data.bridge === data.n, `the ${data.n} star-bridge stones are air until a star is won`);
   t.ok(data.sealed, "the Wizard's tower has no way in (a flood from inside never gets out)");
   t.ok(data.x12 <= 158 && data.island[0] === 133 && data.island[1] === 151, `the Wizard's island stays on the 160 map with 12 stones (x ${data.island.join('-')}, right edge ${data.x12})`);

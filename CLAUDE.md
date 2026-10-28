@@ -416,7 +416,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 - **Portal Door and the Swirl (T38a, spec `swirl`):** the Portal Door stands at `d 7, s 3..7` of the tower (its box appended to
   `tower.protect` and `world.newGymBoxes`), drawn with `setLive` for a Champion; `generate({ portal: false })` leaves it out
   (`old-saves` `SUM`; `SUM22`/`SURF` re-measured with the box left out). The Swirl (`REALMS.swirl`, 160 x 160, **version 5** with
-  `sameCells: [4]`; owner 2026-10-26: 12 stars, all from Picture Worlds, 11 frames, 12 bridge stones, the Wizard's island at x 142;
+  `sameCells: [4]`; owner 2026-10-26: 12 stars, all from Picture Worlds, 11 frames, 12 bridge stones, the Wizard's island at x 142; owner 2026-10-29: `FRAME_MOVED` / `frameSpotOf(id)` say which spot a frame hangs on (Giant House N5, Atlantis N0 beside the Pirate Seas, Gravity S2), the blocks stay the same;
   versions 3 and older are dropped): hub deck, galleries with picture frames, stairs, six **lift streams** (`world.lifts`,
   `world.liftAt(pos)` read by `Player.update`; no blocks), the **star bridge** (a `STAR_STONE` per star in `game.stars`, else a
   gold outline), the sealed Wizard's tower. Gravity 1, no morning. Save field `stars` (`loadStars`). `perf.mjs --swirl`.
