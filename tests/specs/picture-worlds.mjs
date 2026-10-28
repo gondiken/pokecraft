@@ -89,7 +89,7 @@ export default async function ({ browser, base, t }) {
       defs: real.map(w => { const r = R.REALMS[w.realm]; return r && r.parent === 'swirl' && r.entrance === 'frame' && r.morning === false && r.lose === 'stay' && Object.values(r.spawns).every(Array.isArray) && Object.keys(r.spawns).length > 1; }).every(Boolean),
       noGym: !gy.GYMS.some(g => ['house', 'pirate', 'playland'].includes(g.realm)) && gy.GYMS.length === 32, rematchCap: gy.REMATCH_CAP,
       zones: boxes.every(within) && within(hub) && disjoint, gates: Object.values(L.ZONES).every(z => z.gate.x >= hub.x0 && z.gate.x <= hub.x1 && z.gate.z >= hub.z0 && z.gate.z <= hub.z1),
-      bosses: real.filter(w => w.id !== 'gravity').map(w => !!B.bossOf(w.id)).every(Boolean), // (Cube Planets is step 0, the gravity sandbox: no Boss yet) swirlShow: R.REALMS.swirl.showStars === true, mover: Object.keys(M.PATHS).join(),
+      bosses: real.filter(w => w.id !== 'gravity').map(w => !!B.bossOf(w.id)).every(Boolean), swirlShow: R.REALMS.swirl.showStars === true, mover: Object.keys(M.PATHS).join(), // (Cube Planets is step 0, the gravity sandbox: no Boss yet)
       zoneAt: [L.zoneAt(112, 50), L.zoneAt(50, 170), L.zoneAt(112, 110), L.zoneAt(170, 170)].join(),
     };
   });
