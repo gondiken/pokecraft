@@ -92,6 +92,24 @@ function drawCastlePicture(g, n = 128) {
   r(105, 106, 2, 2, '#16121a');
 }
 /* ==== end of T49 castle ==== */
+/* ==== Gravity ==== */
+// Cube Planets: the picture in the frame: a dark-blue sky full of stars, three little cube planets with grass on their sides, one
+// with a tiny tree sticking out sideways and a little person standing on its side (128 px canvas).
+function drawGravityPicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  const sky = g.createLinearGradient(0, 0, 0, n); sky.addColorStop(0, '#0c1238'); sky.addColorStop(1, '#24306e');
+  g.fillStyle = sky; g.fillRect(0, 0, n, n);
+  for (const [x, y, s] of [[8, 10, 2], [30, 24, 1], [52, 8, 2], [76, 18, 1], [100, 6, 2], [118, 30, 1], [12, 60, 1], [64, 54, 2], [110, 70, 1], [24, 112, 2], [88, 118, 1], [120, 100, 2], [44, 90, 1]]) r(x, y, s, s, '#fff6c8');
+  const cube = (x, y, w, top, side, dark) => { r(x, y, w, w, side); r(x, y, w, w * 0.22, top); r(x + w * 0.78, y, w * 0.22, w, dark); r(x, y, w * 0.12, w * 0.12, '#a89cc0'); r(x + w * 0.88, y + w * 0.88, w * 0.12, w * 0.12, '#a89cc0'); };
+  cube(10, 64, 44, '#7ce0a0', '#46a078', '#357a5c');     // the meadow cube
+  cube(70, 30, 26, '#c8f0ff', '#8ac8e8', '#6aa4c8');     // the crystal cube
+  cube(78, 78, 36, '#dcd4ec', '#a098b8', '#7e7698');     // the moon cube
+  r(54, 80, 6, 4, '#7a5432'); r(60, 76, 8, 12, '#3a9a4a'); // a tree sticking out of the meadow cube's side
+  r(84, 40, 4, 6, '#fff3a0'); r(83, 38, 6, 2, '#ffd23a');   // a crystal
+  r(54, 100, 10, 4, '#ff8a3a'); r(64, 99, 4, 6, '#f2c9a0'); r(55, 104, 4, 2, '#3a5ad8'); // a little person standing on the side
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5 * k; g.setLineDash([3 * k, 3 * k]);
+  g.beginPath(); g.moveTo(58 * k, 60 * k); g.quadraticCurveTo(66 * k, 30 * k, 72 * k, 42 * k); g.stroke(); g.setLineDash([]); // a hop's curve
+}
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate', place: 'Deep Blue' }, // owner 2026-10-28: the Pirate Seas and Atlantis share one world, Deep Blue (like Playland)
@@ -107,7 +125,7 @@ export const PICTURE_WORLDS = [
   { id: 'secret4', name: 'Secret World', emoji: '❓', frame: [0xa0c8f8, 0xf8e0f0], ready: false, secret: true },
   // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world
   // (it took the place of the old `wizard` entry, which no save could hold).
-  { id: 'secret5', name: 'Secret World', emoji: '❓', frame: [0xf0d080, 0xd8c8f8], ready: false, secret: true },
+  { id: 'gravity', name: 'Cube Planets', emoji: '🪐', frame: [0xf0d080, 0xd8c8f8], ready: true, realm: 'gravity', picture: drawGravityPicture }, // Cube Planets (was secret5: no save could hold its star); step 0, behind ?preview (comingsoon.js LATER)
 ];
 for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id) && !worldOpen(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
 // T49: the Castle ships behind ?preview, and while it is closed its frame is the old secret one (nothing spoiled on the cloth).

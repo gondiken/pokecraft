@@ -160,6 +160,14 @@ export default async function ({ browser, base, t }) {
   await pause(page); // pausing saves
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')).hotbar);
   t.ok(Array.isArray(saved) && saved[0] === 12, 'the chosen hotbar is saved');
+  /* ==== Gravity ==== */
+  // Cube Planets (step 0): 183 Planet Rock and 249 Star Grass, the same on every side, fixed, not placeable; 149 (its wool) still free
+  const cube = await page.evaluate(async () => {
+    const { B, BLOCKS, PLACEABLE, TILE_COUNT, WOOL } = await import('/src/blocks.js');
+    const ok = id => BLOCKS[id] && BLOCKS[id].fixed && BLOCKS[id].wallText && !PLACEABLE.includes(id) && ['top', 'side', 'bottom'].every(f => BLOCKS[id][f] < TILE_COUNT) && BLOCKS[id].top === BLOCKS[id].side && BLOCKS[id].side === BLOCKS[id].bottom;
+    return { ids: B.PLANET_ROCK === 183 && B.STAR_GRASS === 249, ok: ok(B.PLANET_ROCK) && ok(B.STAR_GRASS), free149: !Object.values(B).includes(149) && !Object.values(WOOL).includes(149) };
+  });
+  t.ok(cube.ids && cube.ok && cube.free149, 'Cube Planets: Planet Rock (183) and Star Grass (249) look the same on every side, are fixed and cannot be built with; 149 waits for the gravity wool');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

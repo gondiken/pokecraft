@@ -18,6 +18,7 @@ import { partyLand, partyAim } from './partyland.js'; // T48 (the Room of Doors'
 import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
 import { castleLand, castleAim, SIZE as CASTLE_SIZE } from './castleland.js'; // T49
 import { CASTLE_SPAWNS, MEADOW_SPAWNS } from './species.js'; // T49
+import { cubeLand, cubeAim, SIZE as CUBE_SIZE, DOOR as CUBE_DOOR } from './cubeland.js'; // Cube Planets (step 0)
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -162,6 +163,17 @@ REALMS.castle = pictureRealm({ id: 'castle', name: 'Castle', seedSalt: 0xca57, s
   arriveHint: 'Stand on the Shield Stone and press Shield! Block the pumpkins to bring the drawbridge down.',
   noHomeText: 'No homes in the Castle! Build your home in your own world.', followText: 'Ride in too' });
 /* ==== end of T49 castle ==== */
+/* ==== Gravity ==== */
+// Cube Planets, step 0 (plans/cube-planets.md section 9): the gravity sandbox behind the Swirl's gold-and-lilac frame (the old secret5).
+// Three little cube planets in a starry sky; down is wherever your feet are (gravity.js, player.js's frame branch). No creatures yet
+// (the spawn table is empty), no Boss, no building and no riding (cubeland.js keeps the whole sky).
+REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0xc0be, size: [CUBE_SIZE, CUBE_SIZE], terrain: 'cubeLand', arrive: [CUBE_DOOR.x, CUBE_DOOR.z + 3], biome: 'gravity',
+  spawns: { gravity: [], cave: [] }, wild: { max: 0, every: 2 },
+  look: { sky: 0x141c4c, fog: [70, 220], time: null, weather: false, light: 1, still: true, stars: false },
+  clock: '🪐 Cube Planets', travelText: 'Floating in...', travelIcon: '🪐', enterText: 'Whoosh! You are on a little cube planet!',
+  arriveHint: 'Walk over the edge: down is wherever your feet are! Jump from a side to hop to the next planet.',
+  noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too' });
+/* ==== end of Gravity ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -186,6 +198,8 @@ TERRAINS.doodleLand = doodleLand; // T45
 TERRAIN_AIMS.doodleLand = doodleAim; // T45
 TERRAINS.castleLand = castleLand; // T49
 TERRAIN_AIMS.castleLand = castleAim; // T49
+TERRAINS.cubeLand = cubeLand; // Cube Planets (step 0)
+TERRAIN_AIMS.cubeLand = cubeAim; // Cube Planets (step 0)
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };
@@ -578,6 +592,7 @@ export function createRealms(game, { createWorld, save, size }) {
       const sv = saved.realmVersions?.[def.id] ?? 1, rp = sv === (def.version ?? 1) || def.convert?.[sv] || def.sameCells?.includes(sv) ? saved.realmPos : null; // T41: a converted version keeps its spot (nothing moved); T42: sameCells = an older version whose cells did not move // T35: another version of the realm: arrive at the start
       const np = game.player;
       if (Array.isArray(rp) && rp.slice(0, 3).every(Number.isFinite)) { np.pos.set(rp[0], rp[1], rp[2]); np.yaw = rp[3] || 0; np.pitch = rp[4] || 0; }
+      if (Array.isArray(rp) && rp.slice(0, 3).every(Number.isFinite)) np.setFrame?.(rp[5]); // Cube Planets: the 6th value is the frame (0-23; missing = upright); only a world with gravityAt reads it
       else np.pos.copy(game.spawnPoint);
       if (np.collides(np.pos)) np.pos.copy(game.spawnPoint);
       return true;

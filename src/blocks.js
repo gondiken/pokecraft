@@ -101,6 +101,9 @@ const MORE_TILES = [
   'DO_PAPER', 'DO_INK', 'DO_PAD_TOP', 'DO_PAD_SIDE', 'DO_BINDING',
   // T49 the Castle: a clipped hedge (side / top)
   'KN_HEDGE', 'KN_HEDGE_TOP',
+  /* ==== Gravity ==== */
+  // Cube Planets (step 0): Planet Rock (lilac-grey with craters) and Star Grass (blue-green grass with tiny stars, the same on every side)
+  'CP_ROCK', 'CP_STAR_GRASS',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -189,6 +192,10 @@ export const B = {
   AT_BRICK: 205, AT_MOSAIC: 206, AT_COLUMN: 207, AT_JAR: 208, AT_LANTERN_OFF: 209, AT_LANTERN_ON: 210, AT_DOME: 211, AT_RIM_CORAL: 212, AT_LAMP_OFF: 213, AT_LAMP_ON: 214,
   // 244-249: T45, the Sketchbook (244 is the doodle wool; 249 reserved; none placeable, all fixed). DO_INK is drawn only with setLive.
   DO_PAPER: 245, DO_INK: 246, DO_PAD: 247, DO_BINDING: 248,
+  /* ==== Gravity ==== */
+  // Cube Planets (plans/cube-planets.md section 7): 183 Planet Rock, 249 Star Grass (none placeable, all fixed). 149 is kept for the
+  // gravity wool, which comes with the Gravity type (step 3).
+  PLANET_ROCK: 183, STAR_GRASS: 249,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -417,6 +424,10 @@ BLOCKS[B.DO_PAD] = { name: 'Star Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, b
 BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: true, wallText: "The sketchbook's spiral rings. Too big to break!" };
 // T49 the Castle: a neat clipped hedge (the hedge garden and the maze). Solid, fixed, not placeable.
 BLOCKS[B.HEDGE] = { name: 'Castle Hedge', top: T.KN_HEDGE_TOP, side: T.KN_HEDGE, bottom: T.KN_HEDGE, fixed: true, wallText: 'A neat castle hedge. The gardener would be cross!' };
+/* ==== Gravity ==== */
+// Cube Planets (step 0): the planets' rock and grass. All faces look the same: a planet's side is as much a floor as its top.
+BLOCKS[B.PLANET_ROCK] = { name: 'Planet Rock', ...all(T.CP_ROCK), fixed: true, wallText: 'Planet rock! The little planets are too small to dig.' };
+BLOCKS[B.STAR_GRASS] = { name: 'Star Grass', ...all(T.CP_STAR_GRASS), fixed: true, wallText: 'Star grass! It grows on every side of the little planets.' };
 // T43 Funfair: all fixed, none placeable. The trampoline launches you again on every landing (player.js reads `trampoline`).
 {
   const fx = { fixed: true };
@@ -1201,6 +1212,19 @@ export function drawAtlas() {
       const v = r49(), leaf = (x * 5 + y * 3) % 7 === 0;
       put(T.KN_HEDGE, x, y, leaf ? shade([96, 160, 70], 1 + (v - 0.5) * 0.1) : shade([46, 112, 44], 1 + (v - 0.5) * 0.22));
       put(T.KN_HEDGE_TOP, x, y, leaf ? shade([120, 180, 84], 1 + (v - 0.5) * 0.1) : shade([62, 132, 54], 1 + (r49() - 0.5) * 0.2));
+    });
+  }
+  /* ==== Gravity ==== */
+  { // Cube Planets (own random numbers): Planet Rock = lilac-grey rock with two small round craters; Star Grass = blue-green grass with
+    // a few tiny yellow stars (the same on every side)
+    const rc = mulberry32(1830);
+    each((x, y) => {
+      const c1 = Math.hypot(x - 4.5, y - 5), c2 = Math.hypot(x - 11, y - 11.5);
+      const crater = c1 < 2.2 || c2 < 1.7, rim = (c1 >= 2.2 && c1 < 3) || (c2 >= 1.7 && c2 < 2.4);
+      put(T.CP_ROCK, x, y, crater ? shade([118, 108, 140], 1 + (rc() - 0.5) * 0.08) : rim ? shade([196, 188, 214], 1 + (rc() - 0.5) * 0.06) : shade([160, 152, 180], 1 + (rc() - 0.5) * 0.16));
+      const star = (x === 3 && y === 4) || (x === 11 && y === 2) || (x === 8 && y === 10) || (x === 13 && y === 13) || (x === 2 && y === 13);
+      const glint = [[3, 4], [11, 2], [8, 10], [13, 13], [2, 13]].some(([sx, sy]) => Math.abs(sx - x) + Math.abs(sy - y) === 1);
+      put(T.CP_STAR_GRASS, x, y, star ? [255, 236, 120] : glint ? [170, 220, 150] : shade([70, 160, 120], 1 + (rc() - 0.5) * 0.3));
     });
   }
   { // T45 Sketchbook tiles (own random numbers): the colour versions; the pencil versions are drawn by sketchatlas.js
