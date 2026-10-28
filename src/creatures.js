@@ -81,6 +81,13 @@ Object.assign(GAITS, {
   gift: { near: 3, wobbleEvery: 3.2, wobble: 0.5, bump: true },
 });
 /* ==== end of T44 surprise ==== */
+/* ==== T49 knight ==== */
+// 'sentry' (Knight): it marches a short straight line (the longest free run of walkable cells, at most `run`, along x or z through
+// its spawn cell; the uid hash breaks ties) back and forth at `speed`, with a smart `turn` s about-turn at each end, like a guard on
+// the castle walls. Within `notice` of you it stops, turns to face you and stands to attention. Closed form in w.t, no Math.random;
+// a bump never battles (E / a tap does).
+Object.assign(GAITS, { sentry: { notice: 4, speed: 1.2, turn: 0.6, run: 5, bump: true } });
+/* ==== end of T49 knight ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -587,6 +594,7 @@ export class CreatureManager {
     if (w.species.gait === 'peek') return this.updatePeek(w, dt); // T40a
     if (w.species.gait === 'pop') return this.updatePop(w, dt); // T42
     if (w.species.gait === 'gift') return this.updateGift(w, dt); // T44
+    if (w.species.gait === 'sentry') return this.updateSentry(w, dt); // T49
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -1070,6 +1078,49 @@ export class CreatureManager {
     w.model.position.copy(w.pos);
   }
   /* ==== end of T42 portal ==== */
+  /* ==== T49 knight ==== */
+  // The sentry's beat: { ax: 'x' | 'z', a, b } (world coordinates of the two ends, cell centres) from the free cells round its spawn.
+  sentryBeat(w) {
+    const world = this.world, g = GAITS.sentry, x0 = Math.floor(w.pos.x), z0 = Math.floor(w.pos.z), y = Math.round(w.pos.y);
+    const ok = (x, z) => x >= 1 && z >= 1 && x < world.W - 1 && z < world.D - 1 && world.get(x, y, z) === B.AIR && world.get(x, y + 1, z) === B.AIR
+      && (world.walk ?? GROUND).has(world.get(x, y - 1, z)); // (only on its world's walkable floor: never onto sand, water or a ledge)
+    const runs = ['x', 'z'].map(ax => {
+      let lo = 0, hi = 0;
+      while (lo < g.run && ok(ax === 'x' ? x0 - lo - 1 : x0, ax === 'z' ? z0 - lo - 1 : z0)) lo++;
+      while (hi + lo < g.run && ok(ax === 'x' ? x0 + hi + 1 : x0, ax === 'z' ? z0 + hi + 1 : z0)) hi++;
+      return { ax, a: -lo, b: hi, len: lo + hi };
+    });
+    const h = hash32(w.data.uid || 'x');
+    const r = runs[0].len === runs[1].len ? runs[h % 2] : runs[0].len > runs[1].len ? runs[0] : runs[1];
+    const c = r.ax === 'x' ? x0 + 0.5 : z0 + 0.5;
+    return { ax: r.ax, a: c + r.a, b: c + r.b, len: r.len, y, phase: ((h >> 3) % 1000) / 1000 };
+  }
+  // The closed form of a sentry: where on its beat it is at clock t (to and fro, a turn at each end), or standing to attention near you.
+  updateSentry(w, dt) {
+    const g = GAITS.sentry, p = this.viewer, model = w.model;
+    w.beat ??= this.sentryBeat(w);
+    const B_ = w.beat, dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, near = !!p && Math.hypot(dx, dz) <= g.notice && Math.abs(p.y - w.pos.y) < 3;
+    let moving = false;
+    if (near) { // attention: face you
+      let d = Math.atan2(dx, dz) - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 5);
+      w.sentryT = (w.sentryT ?? 0); // the beat clock waits
+    } else if (B_.len > 0) {
+      w.sentryT = (w.sentryT ?? 0) + dt;
+      const walk = B_.len / g.speed, period = 2 * (walk + g.turn), u = ((w.sentryT + B_.phase * period) % period + period) % period;
+      let s, dir;
+      if (u < walk) { s = u / walk; dir = 1; moving = true; } else if (u < walk + g.turn) { s = 1; dir = 1 - 2 * (u - walk) / g.turn; } else if (u < 2 * walk + g.turn) { s = 1 - (u - walk - g.turn) / walk; dir = -1; moving = true; } else { s = 0; dir = -1 + 2 * (u - 2 * walk - g.turn) / g.turn; }
+      const at = B_.a + (B_.b - B_.a) * s;
+      if (B_.ax === 'x') { w.pos.x = at; w.heading = dir >= 0 ? Math.PI / 2 : -Math.PI / 2; if (Math.abs(dir) < 1) w.heading = Math.PI / 2 * dir + (dir < 0 ? 0 : 0); }
+      else { w.pos.z = at; w.heading = dir >= 0 ? 0 : Math.PI; if (Math.abs(dir) < 1) w.heading = Math.PI / 2 * (1 - dir); }
+    }
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    animateModel(model, w.t, moving);
+  }
+  /* ==== end of T49 knight ==== */
 
   // Creature under the crosshair, if any, within maxDist.
   pick(origin, dir, maxDist) {

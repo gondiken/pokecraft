@@ -18,13 +18,33 @@ knight's shield while the castle's practice catapults lob squishy pumpkins and s
 stone. Block enough and, with a trumpet, the drawbridge comes down. Inside, in the **Tilt Yard**, the child climbs onto
 an armoured horse and **jousts** against a wooden practice knight on a trolley: gallop down the lane and **steer your
 lance tip onto the gold star** on his shield as he comes at you, the horse bobbing all the while. A bullseye knocks him
-off his trolley with a clang. Two trials of three rounds each, the two helpers, and the keep's portcullis rises: in the
+off his trolley with a clang. Between the courtyard and the Tilt Yard grows a **hedge maze** (middle difficulty: a few dead ends and loops, a couple of
+minutes). Two challenges of three rounds each, the two helpers, and the keep's portcullis rises: in the
 **throne room** beside the empty throne waits **Sir Clanksalot**, the Castle Champion, with the star.
 
 **Story (one paragraph for `STORY.md`):** The Wizard built a castle for his toy knights to practise in, for a grand
 tournament. When he went away the drawbridge stayed up and nobody ever came. The knights kept training every day, and
-Sir Clanksalot still waits in the throne room for a challenger brave enough to pass the two trials. Beat him and the
+Sir Clanksalot still waits in the throne room for a challenger brave enough to block the pumpkins and win the joust. Beat him and the
 castle's star goes onto the bridge.
+
+
+## Owner's answers 2026-10-28 (the plan below follows them)
+
+1. **Frame:** the Castle takes `secret3`; the Portal Lab moves to `secret4` (`plans/T47-portal-lab.md` updated).
+2. **A real hedge maze, middle difficulty**, on the way: it is the only way from the courtyard into the Tilt Yard. A few dead
+   ends and loops, through in a couple of minutes, no hidden switches. The terrain check proves it: solvable, the shortest path
+   in a middle band, a fixed number of dead ends, at least two loops. The guide only helps gently inside it (section 2.5).
+3. **The catapults throw at you:** OK.
+4. **No "trials" in the game's words.** Two challenges, called by their own names: **Shield Up!** and **the Joust**.
+5. **Soft pumpkins:** no damage and nothing red, no red flash, nothing that reads as blood. A hit is "Splat! Yuck, sticky!":
+   orange and green goo blobs at the screen edge and a squelch.
+6. **The lance:** the stick (mouse / a drag nudges it), as planned; the owner gives feedback after playing.
+7. **The drawbridge and the portcullis are physical:** when ANY player in the world lowers the drawbridge (or raises the
+   portcullis), it is down / up for everyone there. Multiplayer will become one shared world. Over the play-together channel:
+   a small `castle` message with the castle's gate state; the host owns it (like realm edits: guests send what they opened, the
+   host merges and sends the state to everyone), a guest that joins gets the current state. Your own saved keys still record
+   only what YOU won (section 8).
+8. **The castle's own horse:** fine.
 
 ---
 
@@ -61,8 +81,8 @@ castle's star goes onto the bridge.
 - **The ROADMAP's hedge maze is not a puzzle here.** A maze is the kind of puzzle the owner moved away from. The Castle
   has a **hedge garden** (clipped hedge rooms, topiary, flower beds) where the wild Knight creatures stand guard: a calm
   place to explore, catch, and find Squire Pip's horse. A real maze is open question 2.
-- **Never a fail.** A pumpkin that gets through is a soft "Splat!" (orange goo on the screen edge for a second, no
-  damage, no push). A missed lance is a "Whoosh!". A round that ends short of its number says "So close! Again!" and
+- **Never a fail.** A pumpkin that gets through is a soft "Splat! Yuck, sticky!" (orange and green goo blobs on the
+  screen edge for a second and a squelch; owner 2026-10-28: no damage, never anything red that could read as blood). A missed lance is a "Whoosh!". A round that ends short of its number says "So close! Again!" and
   starts again; after two short rounds the kind help comes in (section 3.4).
 - **Short:** a Shield Up! round is 25-40 s, a joust round is four passes of about 5 s each. Six rounds in all, each
   saved at once, so even a short visit leaves progress.
@@ -77,7 +97,7 @@ castle's star goes onto the bridge.
 | `kit`, `flatLand`, `buildWayBack`, `placeBoss`, `placeCrew` (picturelands.js) | the meadow, the frame home, the throne-room Boss stand, the two helpers |
 | `addBoss` (pictureboss.js), `crewLeft` / `crewText` | Sir Clanksalot with `gate(game)` and two crew (section 6) |
 | `world.parts` -> `LIVE.castle = CastleLive` (gymlive.js, one import + one line) | the stance, the throws, the steed, the practice knight, drawbridge, portcullis |
-| gymLive `near` / `use` / `aim` / `talkPrompt` / `battleEnded` | Shield! / Stop / Mount! / Charge!; the guide; clearing the trial keys after the star battle |
+| gymLive `near` / `use` / `aim` / `talkPrompt` / `battleEnded` | Shield! / Stop / Mount! / Charge!; the guide; clearing the round keys after the star battle |
 | `Player.carry` with `steer(wx, wz, analog, space)` (T43 line in player.js) | the stance on the Shield Stone and the steed in the Tilt Yard are duck-typed carry objects (like the Funfair's bumper car) |
 | `LiveCells` / `setLive` | the drawbridge deck, the raised drawbridge and the portcullis (never world edits, never inside the player) |
 | `HOUSE_PROP` (250, `hidden`, solid, never drawn) | the solid cells behind the raised-drawbridge mesh and the portcullis mesh (no new block id needed) |
@@ -124,79 +144,73 @@ TERRAINS.castleLand = castleLand; TERRAIN_AIMS.castleLand = castleAim;
 
 `world.realmBiome(x, z)` = `'castle'` inside the castle keep box (section 2.4), else `'castleMeadow'`.
 
-### 2.2 The layout (ground top G = 10, you stand at y 11; 1 char ~ 4 blocks)
+### 2.2 The layout (as built; ground top G = 10, you stand at y 11; 1 char ~ 4 blocks)
 
 ```
-z 14  ~~~~~~~~~~~~~~~~~~~~~~~~~~~ moat (x 27..133, z 15..19) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-z 20  T==============================[ KEEP ]===============================T     T = corner tower
-z 24  |  hedge garden     |   Great Hall + stairs (y 11)  |   TILT YARD           |
-z 30  |  x 36..60          |   THRONE ROOM above (y 19)    |   lane x 106..110 (you)|
-z 50  |  hedge rooms,      |=====[ portcullis x 78..82 ]===|   tilt x 112           |
-z 60  |  topiary, flowers  |                               |   lane x 114..118      |
-z 70  |  wild Knights      |     COURTYARD x 62..98        |   (practice knight)    |
-z 90  |                    |     well, stalls, banners     |   start pad z 94       |
-z 98  T=================[ GATEHOUSE x 72..88, gate x 78..82 ]=====================T
-z105  ~~~~~~~~~~~~~~~~~~~~~~~~ moat ~~~[ DRAWBRIDGE x 78..82, z 105..109 ]~~~~~~~~~~~~~~~
-z110  .........................  meadow  ...................................................
-z112        . tower k11   . tower k0 is the gatehouse roof   . tower k1
-z130   tower k9 .     ( Shield Stones (76.5, 130.5) and (84.5, 130.5) )     . tower k3      ring of 12 practice
-z148        . tower k7         . tower k6           . tower k5                           towers, r 18
-z156  ................................. [ way-back frame (80, 156), arrival z 153 ] .............
+z 14  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ moat (x 27..133, z 15..109, round the walls) ~~~~~~~~~~~~~~~~~~~~~~~~~
+z 20  T==================================================================================T  T = corner tower 9 x 9
+z 22  | strip | KEEP x 44..60   | TILT YARD x 61..126, z 22..50 (sand x 62..117, z 26..46)       |
+z 30  |       | Great Hall y 11 |   your lane z 30..34 (centre 32.5), pads x 63..65 / 115..117     |
+z 36  |       | stair to y 18   |   tilt barrier z 36, x 66..116                                  |
+z 40  |       | THRONE ROOM     |   knight's lane z 38..42 (centre 40.5); bleachers z 44..46       |
+z 50  |       |==[portcullis]== |================================================================|
+z 51  | GARDEN x 34..60        |  hedge row z 51..52 (x 61..101, squire gate x 63..64)  | maze exit x 111..113 (z 52)
+z 53  |   flowers, 3 topiary   |  COURTYARD x 61..101, z 53..102                        | HEDGE MAZE x 102..126
+z 70  |   knights, benches     |   well, three stalls                                   |   z 52..96, 6 x 11 cells
+z 90  |                        |                                         maze entrance  <=| x 102, z 89..91
+z 98  |                        |====[ GATEHOUSE x 72..88, z 98..104, roof y 22 ]====  stairs x 89..100, z 101..102 (to the roof)
+z104  T==================================================================================T  walls y 11..25 (2 thick)
+z105  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ moat ~~~[ DRAWBRIDGE x 78..82, z 105..109 ]~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+z110  ........................................ meadow (the practice field keep x 58..103, z 110..150) .........
+z115           . tower k11      (k0 = the catapult on the wall top over the gatehouse)      . tower k1
+z130   tower k9 .       ( Shield Stones (76.5, 130.5) and (84.5, 130.5) )       . tower k3     (12 spots, ring r 18)
+z148           . tower k7            . tower k6            . tower k5
+z156  .............................. [ way-back frame (80, 156), arrival (80.5, 153.5) ] Herald Hugo (84, 151) .....
 ```
 
 | Part | Cells (world) | Blocks |
 | --- | --- | --- |
-| Meadow | the whole map, `flatLand` y 10 (grass, dirt, stone); a few trees and flower patches outside the keeps (seeded) | old blocks |
-| Moat | ring x 27..133, z 15..109 minus the castle box: water y 8..9 (top one below the grass), floor stone y 7; stone banks | `WATER`, `STONE`, `COBBLE` |
-| Walls | outer face x 32 / 128, z 20 / 104, 2 thick, y 11..19, walkway top y 19 (stand 20), crenels y 20 every other cell on the outer edge | `STONE_BRICKS`, `COBBLE` |
-| Corner towers | 9 x 9 inside each corner (e.g. x 32..40, z 20..28), y 11..23, crenels y 24, a stepped pyramid roof of knight wool y 25..28 with a pennant mesh | `STONE_BRICKS`, knight wool |
-| Gatehouse | x 72..88, z 98..104, y 11..22; the gate tunnel x 78..82, y 11..15, z 98..104; roof walkway y 22 (stand 23) with crenels; stairs up the inside of the west tower from the courtyard (x 72..76, z 92..97) | `STONE_BRICKS` |
-| Drawbridge | deck cells x 78..82, y 10, z 105..109 (25): `PLANKS` via `LiveCells` when down, air when up. Raised: `HOUSE_PROP` cells x 78..82, y 11..15, z 104 (the gate mouth) + the drawbridge mesh (planks with iron bands, two chains) hinged at (80.5, 10.5, 104.5) | `PLANKS`, `HOUSE_PROP` (setLive only) |
-| Courtyard | x 62..98, z 54..97, gravel; a well (cobble ring with water), three stall canopies (wool), banners on the walls (knight wool 1 x 3) | `GRAVEL`, `COBBLE`, wool |
-| Hedge garden | x 36..60, z 26..96: clipped hedges 2 high in six open "rooms" joined by wide gaps (no dead ends, no maze), topiary knights (hedge blocks in a knight-on-horse silhouette, 3 of them), flower beds, two benches | `HEDGE` (new), `FLOWERS`, `PLANKS` |
-| Tilt Yard | x 100..124, z 26..96: floor `SAND` (jousting sand: wild creatures never walk there, `walk` has no sand); the tilt barrier x 112, z 32..90, y 11, red and white wool in pairs; your lane x 106..110 (centre 108.5), the knight's lane x 114..118 (centre 116.5); start pads (knight wool 3 x 3 in the floor) at z 93..95 and z 29..31 on your lane; bleachers x 101..103 and 121..123, z 40..84 (planks steps, wool cushions); a 1-high plank fence round it with a 3-wide gap at x 100, z 60..62 | `SAND`, wool, `PLANKS` |
-| The Keep | x 62..98, z 22..50, walls to y 28, crenels; Great Hall floor y 10 (stand 11); a wide stair (1 up per block, 3 wide) along the west wall to the Throne Room floor y 18 (stand 19), x 66..94, z 24..46; the throne (treasure wool + knight wool, 3 wide, 4 high) at x 79..81, z 24..26; the Boss stand `placeBoss(world, 'castle', { x: 80, y: 18, z: 30, facing: [0, 1] })` | `STONE_BRICKS`, `PLANKS`, wool |
-| Portcullis | the keep's door x 78..82, y 11..15, z 50: `HOUSE_PROP` cells via `LiveCells` while shut + the portcullis mesh (an iron grid that slides up 5 blocks in 2 s); air when open | `HOUSE_PROP` (setLive only) |
-| Shield Stones | two round pads at (76, 10, 130) and (84, 10, 130): a 5 x 5 cross of `COBBLE` in the floor with the round stone top as a mesh disc (a painted shield, 12 tick marks); a lamp-ring mesh of 12 segments round each | `COBBLE` + meshes |
-| Practice towers | 12 at `SPOTS` (section 3.1): 3 x 3 `PLANKS` bases 3 high (top y 13), each with a catapult mesh and an archer dummy mesh; spot 0 is the gatehouse roof (its catapult sits on the walkway) | `PLANKS` |
-| Way back | `buildWayBack(world, 'castle', { x: 80, y: 10, z: 156, facing: [0, -1] })`; you arrive at (80.5, 11, 153.5) looking north at the castle | base |
-
-The builder may tune cells; the spec checks the rules (section 10), not these exact numbers.
+| Meadow | the whole map y 10 (grass, dirt, stone); ten trees and flowers outside the keeps | old blocks |
+| Moat | ring x 27..133, z 15..109 outside the walls: water y 8..9 (its top one below the grass), stone y 7 | `WATER`, `STONE` |
+| Walls | x 32..128, z 20..104, 2 thick, y 11..25 (so tall that nobody walks along them: from the gatehouse roof, y 23, they are 3 too high), crenels y 26 | `STONE_BRICKS` |
+| Corner towers | 9 x 9 in each corner, y 10..29, crenels y 30, a knight-wool roof y 31..34 | `STONE_BRICKS`, knight wool |
+| Gatehouse | x 72..88, z 98..104, solid to y 22 (the walls run on over it at z 103..104), tunnel x 78..82, y 11..15; Archer Wren on the roof (85.5, 23, 101.5); stairs x 89..100 along the south wall (x 100: y 11 .. x 89: y 22) | `STONE_BRICKS` |
+| Drawbridge | deck x 78..82, y 10, z 105..109 (`PLANKS` with `LiveCells` when down); raised: `HOUSE_PROP` cells x 78..82, y 11..15, z 104 + the mesh on its hinge | setLive only |
+| Courtyard | x 61..101, z 53..102 gravel; a well, three stalls with striped wool canopies, banners on the south wall | `GRAVEL`, `COBBLE`, wool, `PLANKS` |
+| Garden | x 34..60, z 51..102 (and the strip x 34..43 west of the keep): flowers, three topiary knights (`HEDGE`), two benches; the keep's door opens onto it | `HEDGE`, `FLOWER_BUSH`, `PLANKS` |
+| Hedge row | z 51..52, x 61..101, 3 high: the courtyard never touches the Tilt Yard; the **squire gate** x 63..64 is hedge until it opens (setLive): from the yard's side, or for good with the Joust won | `HEDGE` |
+| Hedge maze | x 102..126, z 52..96: 6 x 11 cells, 3-wide paths, hedges 3 high (`hedgemaze.js`, a fixed seed); entrance from the courtyard at x 102, z 89..91, exit into the Tilt Yard at z 52, x 111..113 | `HEDGE`, `GRASS` |
+| Tilt Yard | x 61..126, z 22..50; sand x 62..117, z 26..46 (wild creatures never walk there); the tilt barrier z 36, x 66..116 (red and white wool); your lane z 30..34, the knight's z 38..42; start pads (knight wool) x 63..65 and 115..117, z 31..33; bleachers z 44..46; Squire Pip at (66.5, 11, 28.5) | `SAND`, wool, `PLANKS` |
+| The Keep | x 44..60, z 22..50, walls y 11..27, roof y 28 with crenels; the Great Hall (y 11); a 3-wide stair x 45..47 from z 48 up to the throne room floor y 18; the throne x 51..53, z 23..25, a red carpet; the Boss stand (52, 18, 28) facing south | `STONE_BRICKS`, `PLANKS`, `GLASS`, wool |
+| Portcullis | the keep's door x 50..54, y 11..15, z 50: `HOUSE_PROP` with `LiveCells` while shut + an iron grid mesh that slides up | setLive only |
+| Shield Stones | two 5 x 5 cobble crosses at (76, 10, 130) and (84, 10, 130); the painted shield top, gold rim and the 12-segment lamp ring are meshes | `COBBLE` + meshes |
+| Practice towers | spots 1..11: 3 x 3 `PLANKS` towers, 3 high; catapults and wooden archers are instanced meshes on them (spot 0 sits on the wall over the gatehouse) | `PLANKS` |
+| Way back | `buildWayBack(world, 'castle', { x: 80, y: 10, z: 156, facing: [0, -1] })` | base |
 
 ### 2.3 People
 
-- **Herald Hugo** (a `kind: 'guest'` person in `world.people`, `look: 'squire'`, by the moat at (72.5, 11, 113.5)): one
-  line, "Block the pumpkins on the Shield Stone and the drawbridge comes down!" Once the bridge is down: "Ta-ta-taa!
-  The Tilt Yard is inside. Joust well!"
-- **Squire Pip** (crew 0) at the Tilt Yard's south start pad (104.5, 11, 94.5); **Archer Wren** (crew 1) on the
-  gatehouse roof (85.5, 23, 101.5): she is the one who loads the practice catapults, which makes her a fun battle.
-- **Sir Clanksalot** (the Boss) on his stand in the throne room, facing the stair.
+- **Herald Hugo** (a `kind: 'guest'` person in `world.people`, `look: 'squire'`) by the arrival (84.5, 11, 151.5): "Block the
+  pumpkins on the Shield Stone and the drawbridge comes down!"
+- **Squire Pip** (crew 0) in the Tilt Yard; **Archer Wren** (crew 1) on the gatehouse roof (she loads the catapults).
+- **Sir Clanksalot** (the Boss) in the throne room, facing the stair and the carpet.
 
 ### 2.4 Keeps, rests, nooks
 
-- **Keeps** (`world.keeps`, nobody builds or breaks):
-  - `castle`: x 26..134, z 14..110, all y (walls, moat, everything inside). `wallText: 'This is the Castle! Knights do
-    not knock down walls.'`. **No `rideIn`**: a riding child is fenced out (`rideText: 'Hop off! Inside the castle you
-    ride the castle horse.'`) and nobody flies over the walls.
-  - `siege`: x 58..103, z 110..152, all y (the field, both stones and the 12 towers). `wallText: 'This is the practice
-    field. No building here, or the pumpkins could not reach you!'` (a roof over the stone would end the game).
-  - the way-back keep (base) and the Boss stand keep (base).
-- **Rests** (`world.rests`): the arrival (base), the field (80.5, 11, 138.5), the courtyard (80.5, 11, 90.5), the throne
-  room (base, from `placeBoss`).
-- **Nooks** (`world.nooks`, where the wild creatures stand guard): 8 in the hedge garden, 4 in the courtyard corners, 6
-  on the meadow outside the `siege` keep. None on the sand, on the stones or in the keep.
-- **Part** pushed to `world.parts`: `{ id: 'castle', live: 'castle', stones, spots, field, bridge, gate, portcullis,
-  tilt: { lane, knightLane, pads, z0, z1 }, keep, area }` (world coordinates).
-- `world.castle` = the same tables for the guide and the spec.
+- **Keeps:** `castle` x 26..134, z 14..109, all y (walls, moat and everything inside; **no `rideIn`**: riders are fenced out,
+  `rideText: 'Hop off! Inside the castle you ride the castle horse.'`), `field` x 58..103, z 110..150 (no roof over the stones),
+  each corner tower, the topiary, the throne, the Tilt Yard, the way back and the Boss stand (base).
+- **Rests:** the arrival (base), the field (80.5, 11, 138.5), the courtyard (80.5, 11, 94.5), the Tilt Yard (66.5, 11, 30.5), the
+  throne room (base).
+- **Nooks:** 8 in the garden, 4 in the courtyard, 6 on the meadow; never on sand, in the field or in the keep (the check proves it).
+- **Part:** `{ id: 'castle', live: 'castle', area }`; `world.castle` holds the tables (`maze`, `mazeData`, `towers`, `live` cells...).
 
-### 2.5 The guide (`castleAim(world, p, game)`, TERRAIN_AIMS; the live part's `aim` asks it)
+### 2.5 The guide (`castleAim`, TERRAIN_AIMS; the live part's `aim` asks it)
 
-1. Shield trial not done -> the nearer free Shield Stone: "🛡️ Shield Stone · block the pumpkins ↑ 12m".
-2. Joust not done -> the Tilt Yard start pad your horse stands at: "🐴 Tilt Yard · joust! ↑ 40m" (from outside: via
-   the drawbridge).
-3. A helper not beaten -> the nearest one (`crewLeft`), "⚔️ Archer Wren on the gatehouse ↑".
-4. -> the throne room (via the keep door): "⭐ 🏰 Castle Boss ↑ 30m".
-5. With the star -> the way back (`pictureAim`).
+1. Shield Up! not won and the drawbridge up -> the Shield Stone. 2. The Joust not won: outside -> the drawbridge; in the courtyard
+-> the maze's entrance; in the yard -> the start pad. **Inside the maze the guide only helps gently** (owner 2026-10-28): words
+only ("The hedge maze! Find the way out to the Tilt Yard."), after `MAZE.hintAfter` 45 s a tip ("keep one hand on the hedge and
+follow it!"), after `MAZE.compassAfter` 90 s an arrow to the way out as the crow flies (never a path through it). 3. The helpers
+(the base's `crewAim`), then Sir Clanksalot, then with the star the way back (the base).
 
 ---
 
@@ -245,7 +259,7 @@ The builder may tune cells; the spec checks the rules (section 10), not these ex
 - **Hard** (you hold the `castle` star: a rematch): +2 throws, need +1, every tell x 0.85.
 - A round lasts about 25-40 s; the chip shows "🛡️ 6 / 8 · Round 1" and the throws left.
 
-### 3.4 The kind help (both trials)
+### 3.4 The kind help (both challenges)
 
 `fairHelp(misses)` (misses = short rounds of this round in a row, kept for the trip): from the third try tells and
 flights x `1 / slow` (up to x 1.43), `cover` + 5° (+10° from the fourth try). A round won resets it. A missed round
@@ -267,7 +281,7 @@ never loses a saved key.
 
 `pw:castle:shield3` -> the trumpet, the drawbridge mesh comes down in 3 s, then the deck cells are drawn (`LiveCells`,
 never inside the player) and the raised-bridge cells leave. **The drawbridge is down** whenever `shield3` is saved
-**or** you hold the `castle` star (a rematch player walks straight in; the trial keys are cleared after the star,
+**or** you hold the `castle` star (a rematch player walks straight in; the round keys are cleared after the star,
 section 5). It is drawn per player from that rule every 0.25 s, like the Vault door.
 
 ---
@@ -337,10 +351,10 @@ once: `pw:castle:lance1..3`. With `lance3` the trumpet sounds and the keep's **p
 - `castleState(game)` (castleland.js, pure) -> `{ shield: n, lance: n, n, need: 6, done, crew, ready, bridge, gate }`
   (`bridge` = shield3 or star, `gate` = lance3 or star, `crew` = `crewLeft(game, 'castle')`, `ready` = `done &&
   !crew.length`).
-- Boss `gate(game)`: null when `ready`, else "Pass both knight trials first! (🛡️ s / 3 · 🐴 l / 3)" or the base's
+- Boss `gate(game)`: null when `ready`, else "Halt! Block the pumpkins and win the joust first! (🛡️ s / 3 · 🐴 l / 3)" or the base's
   `crewText`.
-- **A won Boss battle clears the six trial keys** (`CastleLive.battleEnded`, like the stadium's goals and the
-  rowboats), so a rematch plays the trials again, `hard`. The crew keys stay. The drawbridge and the portcullis stay
+- **A won Boss battle clears the six round keys** (`CastleLive.battleEnded`, like the stadium's goals and the
+  rowboats), so a rematch plays both challenges again, `hard`. The crew keys stay. The drawbridge and the portcullis stay
   open for a star holder.
 
 ---
@@ -419,7 +433,7 @@ wear the bulbs.
 - `CASTLE_SPAWNS = [['pricklet', 1.3, 'guardpost'], ['visnail', 1.2, 'guardpost'], ['clipclop', 1.0, 'guardpost'],
   ['bristleguard', 0.12, 'guardpost', 'castle'], ['ramparsnail', 0.12, 'guardpost', 'castle'], ['gallantrot', 0.1,
   'guardpost', 'castle'], ['turrock', 0.15, 'guardpost', 'castle']]`; `MEADOW_SPAWNS` = the three base forms only. The
-  4th element is the Picture World id (`wildafter.js`, rare until you passed half the trials).
+  4th element is the Picture World id (`wildafter.js`, rare until you won three of the six rounds).
 
 ---
 
@@ -438,10 +452,14 @@ wear the bulbs.
   pumpkins), the two stones' ring segments (1 mesh), the 12 catapult arms and archers (2 instanced meshes, the arm
   angle from the tell), the shield in front of the camera (1), the steed (1, merged), Sir Splinter + trolley + shield +
   star + aim dot (2), the lance (1), the drawbridge (1), the portcullis (1), banners after the star (1).
-- **Two browsers:** each player has their own trials, keys, drawbridge, portcullis and pumpkins (a friend's pumpkins
-  are not seen: they are theirs). The friend's avatar is seen on the other stone, or on a horse (`state.ride`). A guest
-  who follows the host in (T38b) still has to bring their own drawbridge down: the two stones are there so two players
-  can play the siege side by side (open question 7).
+- **Two browsers (owner 2026-10-28: the gates are physical):** the drawbridge, the portcullis are the same for everybody in a
+  play-together world: `castlegate.js` (`game.castleGates`) over a new play-together message `castle`. When a player's own keys
+  (or star) open a gate, the live part calls `castleGates.open('bridge' | 'port')`: a guest sends `{ type: 'up' }` to the host, the
+  host merges (OR) and sends `{ type: 'gate', bridge, port }` to everyone; a guest that joins asks (`{ type: 'ask' }`, from the
+  generic `joined` hook after `loadWorld`) and gets the current state. The live part draws a gate open when your own keys or
+  the shared state say so. Your own saved keys still record only the rounds YOU won (the Boss gate reads them). Pumpkins, the
+  horse, Sir Splinter and the rounds stay per player; the friend's avatar is seen on the other stone or on a horse
+  (`game.rideShow` feeds the state's `ride`). Nothing is saved; a new play-together session starts closed.
 - **Wild creatures** are kept off the field during a round (no nooks there) and a bump never starts a battle.
 - **Score chip** (`ui.setScore`): "🛡️ 1 / 3 · 🐴 0 / 3" anywhere in the castle; the round's own count while playing;
   green "The throne room is open!" when `ready`.
@@ -578,21 +596,33 @@ Portal Lab (`plans/T47-portal-lab.md`) would need a few. If the builder finds th
 4. `castleprops.js` + preview photos (show the owner the steed, Sir Splinter, the catapults and the stone).
 5. `castlelive.js`, the generic lines, the Boss, the frame + `LATER`; `play`, `ipad`, `pair`, `shots`; perf; docs.
 
-## Open questions for the owner (each has a planned default, so the builder can go ahead)
 
-1. **Which frame?** The Portal Lab idea (`plans/T47-portal-lab.md`) also names `secret3`. *Planned: the Castle takes
-   `secret3`; a Portal Lab world, if built, takes `secret4`.*
-2. **A real hedge maze?** The ROADMAP had one; mazes are puzzles. *Planned: a hedge garden to explore (no dead ends),
-   no maze.*
-3. **The catapult** launches pumpkins at you instead of launching you over the wall (the Pirate cannons already launch
-   you). *Planned: as written.*
-4. **Two trials, or a third?** A third could be a mounted **ring-and-shield gallop** later, but two trials of three
-   rounds each are about as long as the Funfair. *Planned: two.*
-5. **Being hit by pumpkins:** soft, no damage, orange goo for a second. OK for your son? *Planned: yes; arrows have
-   suction cups and just "plonk" off.*
-6. **The lance with the stick or with the view?** *Planned: the stick (and the mouse / a drag also nudges it); the view
-   is held along the lane so the star stays in front.*
-7. **Playing together:** should a friend's lowered drawbridge let you in too? *Planned: no; there are two Shield Stones
-   so you block pumpkins side by side, each for your own drawbridge.*
-8. **Your own Gallantrot:** if your team has one, should the joust use it ("your Gallantrot gets the armour")?
-   *Planned: no, the castle's own horse, so everybody can joust; a nice later touch.*
+The open questions of the first draft were answered by the owner on 2026-10-28 (section "Owner's answers" at the top).
+
+## As built (2026-10-28): the numbers and what differs from the sections above
+
+- **Files:** as in section 14, plus `src/hedgemaze.js` (the maze, pure) and `src/castlegate.js` (the shared gates). No
+  `tests/castle-preview.mjs`: the spec's screenshots `t49-*.png` show the models in place (creatures, arrival, the stone with the
+  held shield and a pumpkin, the maze from the gatehouse roof, a joust pass, the throne room, the iPad).
+- **Shield Up! numbers** (`SIEGE`, tuned with `tests/castlebots.mjs`): tells by round pumpkin 1.0 / 0.8 / 0.6 s, arrow 1.2 / 1.0 /
+  0.8 s, sky 0.8 s, big 1.0 / 0.9 / 0.8 s; flights pumpkin 1.5 / 1.3 / 1.05 s, arrow 0.6 s, sky 1.6 s; rounds need 8 of 10, 9 of 12,
+  **12 of 14** (11 let a 1.5 s child through too often). A "from behind" slot is never the second of a pair. Spot 0 is the
+  catapult on the wall top over the gatehouse (27.5 high), not the gatehouse roof (the walls run on over it).
+- **Joust numbers** (`JOUST`): `tipSpeed` 1.3, the star's ellipse 0.55 x 0.42 (never closer than 0.42 to the middle, so holding
+  still is never a bullseye even with the help), slide periods 3.2 s / 2.6 s, star radius 0.32 / 0.28 / 0.26, `rHelp` 0.04 per
+  help step, the help also slows the slide (`fairHelp().slow`); rounds need **6 / 6 / 7** points of 8.
+- **Model players** (20 seeds, 60 and 20 steps a second): Shield Up!: skilled (0.35 s) wins every round and the rematch's; still,
+  spinning the stick and holding Jump never win, not even with help; a slow child (1.5 s) wins rounds 1-2, round 3 5 times in 20
+  and 20 in 20 with the help. Joust: skilled wins all (rematch too); still never; a random stick at most 2 in 20; a child who
+  follows the star without leading it wins round 1, round 3 never alone, 14-15 in 20 with the help.
+- **The maze:** seed 14, 4 loops: the shortest way 22 cells (84 blocks of walking), 8 dead ends, 4 loops, all 66 cells reachable.
+- **The Boss's move lists** are what `movesWith` gives: Bristleguard `seedvolley, bodyslam, holdthegate, quillvolley`,
+  Gallantrot `lancecharge, bodyslam, roundtable, grandjoust`.
+- **Generic lines** (all marked `T49`): `Player.look` asks `carry.look` first; `touch.setButtons({ jump })`; `ui.setPointers`;
+  `main.js` passes `p.carry?.jumpWord?.()`; the mp state's `ride` falls back to `game.rideShow`; the `castle` event, `sendCastle`
+  and the `joined` hook in `multiplayer.js` / `playtogether.js`; `GAITS.sentry`; the `guardpost` condition and `AFTER_TEXT.castle`;
+  `npc.js` looks `knight` and `squire`. Specs touched: `blocks` (the wool id range allows 254), `picture-worlds` (knight is a later
+  type, `castle` reads as `secret3` in the old order), `seventh` (Turrock in a new group `W16`).
+- **The sentry gait** ignores keeps (the whole castle is a keep, which fences riders): it only marches on the world's `walk` floor.
+- **Not built:** banners unfurling on the keep after the star (the trumpet and the note only); the spec's perf numbers were not
+  measured with `perf.mjs` in this session (the part adds about 12 draw calls in the field and the yard, plus the steed's model).

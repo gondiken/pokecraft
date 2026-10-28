@@ -1422,7 +1422,7 @@ what the rare mission blocks buy), **tricks** (teach your buddy a spin or a danc
 build your own bridge to where you need to go; diggers, cranes and cement-mixer creatures. Not a Picture World.
 
 **Types for later** (owner, 2026-10-21; same per-type cost as wave 11; Ninja went to wave 12; Knight could become a Swirl place, the Castle):
-- **🏰 Knight:** armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
+- **🏰 Knight** (now T49, the Castle Picture World in the old `secret3` frame: `plans/T49-castle.md`): armoured animals (a hedgehog with a shield, a snail in a helmet, a horse in armour, rideable; a little
   castle with legs). Gym: the Castle: lower the drawbridge, a hedge maze, a **catapult** that launches you over the
   wall, the leader in the throne room.
 

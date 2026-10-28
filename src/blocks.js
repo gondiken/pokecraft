@@ -24,6 +24,7 @@ const WOOL_TYPES = [
   'surprise', // wave 15 (T44): id 235
   'atlantis', // wave 15 (T41): id 204
   'doodle', // wave 15 (T45): id 244
+  'knight', // T49 (the Castle): id 254
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -41,6 +42,7 @@ const WOOL_RGB = {
   surprise: [248, 168, 58],
   atlantis: [70, 170, 170], // T41
   doodle: [236, 232, 220], // T45
+  knight: [150, 165, 190], // T49: steel blue-grey with a gold cross
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -97,6 +99,8 @@ const MORE_TILES = [
   'AT_BRICK', 'AT_MOSAIC', 'AT_COLUMN', 'AT_COLUMN_TOP', 'AT_JAR', 'AT_JAR_TOP', 'AT_LANTERN_OFF', 'AT_LANTERN_ON', 'AT_DOME', 'AT_RIM_CORAL', 'AT_LAMP_OFF', 'AT_LAMP_ON',
   // T45 doodle (wave 15): the blank page under the drawing, a drawn line (ink), the star pad (top / side), the sketchbook's spiral rings
   'DO_PAPER', 'DO_INK', 'DO_PAD_TOP', 'DO_PAD_SIDE', 'DO_BINDING',
+  // T49 the Castle: a clipped hedge (side / top)
+  'KN_HEDGE', 'KN_HEDGE_TOP',
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -170,9 +174,11 @@ export const B = {
   HOT_TRACK: 251, HOT_RAIL: 252, KICKER: 253,
   // 235: surprise wool (wave 15). 236-243: T44, the Room of Doors (none placeable, all fixed; POP_BOX_OPEN is drawn only with setLive)
   GIFT_WALL: 236, PARTY_FLOOR: 237, GIFT_DOOR: 238, GOLD_DOOR: 239, POP_BOX: 240, POP_BOX_OPEN: 241, BALL_PIT: 242, RIBBON: 243,
-  // 168-181: T40b, the Pirate Seas (182-183 reserved; none placeable, only in the Pirate Seas)
+  // 168-181: T40b, the Pirate Seas (183 reserved; none placeable, only in the Pirate Seas). 182: T49 the Castle's hedge.
   HULL: 168, DECK: 169, ROPE_LADDER: 170, CANNON_PAD: 171, TARGET: 172, ROPE_POST: 173, PALM_LOG: 174, PALM_LEAVES: 175,
   PIRATE_FLAG: 176, BIG_CHEST: 177, BIG_CHEST_OPEN: 178, SHIP_WHEEL: 179, CORAL: 180, SHELL_SAND: 181,
+  // 182: T49, the Castle's clipped hedge (fixed, not placeable). 254: the knight wool. Ids still free: 137-139, 183, 249 (and 255).
+  HEDGE: 182,
   // 215-223: T42, the Portal House in the Swirl (215 is the portal wool; none placeable, all fixed). 223 = the peach pad (owner 2026-10-27: your own orange swirl).
   PO_WALL: 216, PO_FLOOR: 217, PO_PANEL: 218, PO_RIM: 219, PO_ROOF: 220, PO_RAIL: 221, PO_SHUT: 222, PO_PEACH: 223,
   // 224-234: T43, the Funfair (224 is the funfair wool; none placeable, all fixed). MARQUEE is drawn as LAMP with setLive when lit.
@@ -189,6 +195,7 @@ const WOOL_ID_OVERRIDE = { sky: 49, slime: 50, light: 51, paper: 52, time: 54, c
 Object.assign(WOOL_ID_OVERRIDE, { atlantis: 204 }); // T41
 Object.assign(WOOL_ID_OVERRIDE, { doodle: 244 }); // T45
 Object.assign(WOOL_ID_OVERRIDE, { portal: 215 }); // T42
+Object.assign(WOOL_ID_OVERRIDE, { knight: 254 }); // T49
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -407,6 +414,8 @@ BLOCKS[B.DO_PAPER] = { name: 'Blank Page', ...all(T.DO_PAPER), fixed: true, wall
 BLOCKS[B.DO_INK] = { name: 'Pencil Line', ...all(T.DO_INK), fixed: true, wallText: "The pencil drew this. You can't rub it out!" };
 BLOCKS[B.DO_PAD] = { name: 'Star Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, bottom: T.DO_PAD_SIDE, fixed: true, wallText: 'Stand on the star pad and press Draw!' };
 BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: true, wallText: "The sketchbook's spiral rings. Too big to break!" };
+// T49 the Castle: a neat clipped hedge (the hedge garden and the maze). Solid, fixed, not placeable.
+BLOCKS[B.HEDGE] = { name: 'Castle Hedge', top: T.KN_HEDGE_TOP, side: T.KN_HEDGE, bottom: T.KN_HEDGE, fixed: true, wallText: 'A neat castle hedge. The gardener would be cross!' };
 // T43 Funfair: all fixed, none placeable. The trampoline launches you again on every landing (player.js reads `trampoline`).
 {
   const fx = { fixed: true };
@@ -601,6 +610,7 @@ export function drawAtlas() {
                               : t === 'treasure' ? (x === 0 || y === 0 ? [255, 230, 140] : (x * 5 + y * 3) % 17 === 0 ? [230, 60, 80] : (x * 3 + y * 7) % 19 === 0 ? [80, 140, 240] : WOOL_RGB[t]) // gold with gems
                                 : t === 'food' ? (((x >> 2) + (y >> 2)) % 2 ? [250, 240, 230] : WOOL_RGB[t]) // tablecloth check (T33)
                                 : t === 'doodle' ? (y % 5 === 2 ? [176, 200, 232] : WOOL_RGB[t]) // T45: notebook paper with blue ruled lines
+                                : t === 'knight' ? ((x === 7 || x === 8 || y === 7 || y === 8) ? [232, 196, 90] : WOOL_RGB[t]) // T49: a gold cross on steel
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));
@@ -1182,6 +1192,14 @@ export function drawAtlas() {
       const core = Math.hypot(x - 7.5, y - 7.5);
       put(T.AT_LAMP_OFF, x, y, core < 4 ? sh10([70, 96, 112], 0.1) : sh10([140, 112, 60], 0.14));
       put(T.AT_LAMP_ON, x, y, core < 2.5 ? [255, 255, 235] : core < 4.5 ? [255, 232, 140] : sh10([232, 176, 70], 0.1));
+    });
+  }
+  { // T49 the Castle's hedge (own random numbers): dense clipped leaves, tiny lighter dots, no holes; the top a little lighter
+    const r49 = mulberry32(4949);
+    each((x, y) => {
+      const v = r49(), leaf = (x * 5 + y * 3) % 7 === 0;
+      put(T.KN_HEDGE, x, y, leaf ? shade([96, 160, 70], 1 + (v - 0.5) * 0.1) : shade([46, 112, 44], 1 + (v - 0.5) * 0.22));
+      put(T.KN_HEDGE_TOP, x, y, leaf ? shade([120, 180, 84], 1 + (v - 0.5) * 0.1) : shade([62, 132, 54], 1 + (r49() - 0.5) * 0.2));
     });
   }
   { // T45 Sketchbook tiles (own random numbers): the colour versions; the pencil versions are drawn by sketchatlas.js

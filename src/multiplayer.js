@@ -18,7 +18,7 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/L mix-ups
 // Bumped when the world's blocks change for the same seed (T8: big caves, the Fossil Gym in a cave; T10: four new gyms;
 // 4: the Saucer Gym floats in the sky; 6: T19 three slot gyms and blocks 57-64).
 const WORLD_VERSION = 20; // 20: T40 Picture Worlds (realm to realm trips, `up` on the realm part, new realm ids in state / block). 19: T38b realm requests (guests follow into realms). 18: T38a the Portal Door beside the tower (blocks 124-131). 17: wave 12 the Shadow Dojo (slot 8, blocks 114-123). 16: the Obstacle Course has no Exit Pad (the finish keeps its platform block). 15: the Obstacle Course has 4 flags instead of 9. 14: T36.5 the bigger Obstacle Course (blocks 89-90 and 95-104). 13: wave 11 south slot gyms (T33 Restaurant slot 5, blocks 83-86; T34 Big Top slot 6; T36 Obstacle Course slot 7, blocks 91-94). T32 12: the map is 288 x 368 (the south strip). T31 11: `place` on world / state / block (realms), the world part is always the main world. // T29 10: mission blocks 75-77. 7: T20 treasure blocks, 8: T22 home blocks, 9: T23 Treasure Vault, blocks 73-74
-const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs', 'realm']; // T30: 'hs' = hide and seek
+const EVENTS = ['hello', 'world', 'state', 'block', 'bye', 'duel', 'home', 'hs', 'realm', 'castle']; // T30: 'hs' = hide and seek
 
 const OUTFITS = [
   { shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a },
@@ -256,6 +256,7 @@ export class Multiplayer {
     this.role = 'guest';
     this.hooks.loadWorld(world);
     this.sendState();
+    this.hooks.joined?.(); // T49: the guest asks for shared state (the Castle's gates)
     return { hostName: world.hostName };
   }
 
@@ -304,6 +305,9 @@ export class Multiplayer {
     t.on('home', p => { // T22: another player placed / changed their home
       if (this.active && p.id !== this.id) this.hooks.home?.(p.home);
     });
+    t.on('castle', p => { // T49: the Castle's drawbridge and portcullis are the same for everybody (castlegate.js)
+      if (this.active && p.id !== this.id) this.hooks.castle?.(p);
+    });
     t.on('hs', p => { // T30
       if (this.active && p.to === this.id && p.from !== this.id) this.hooks.hs?.(p);
     });
@@ -345,6 +349,10 @@ export class Multiplayer {
     const edits = data.edits || [];
     const parts = Math.max(1, Math.ceil(edits.length / EDITS_PER_MESSAGE));
     for (let i = 0; i < parts; i++) this.t.send('realm', { ...data, from: this.id, to, part: i, parts, edits: edits.slice(i * EDITS_PER_MESSAGE, (i + 1) * EDITS_PER_MESSAGE) });
+  }
+
+  sendCastle(data) { // T49
+    if (this.active) this.t.send('castle', { ...data, id: this.id });
   }
 
   sendHs(to, data) { // T30
@@ -390,7 +398,7 @@ export class Multiplayer {
     this.t.send('state', {
       id: this.id, name: this.name, host: this.role === 'host', place: g.place || 'main', // T31
       x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +g.player.yaw.toFixed(2),
-      ride: g.riding?.species ?? null,
+      ride: g.riding?.species ?? g.rideShow ?? null, // T49: a live part may show you riding (the Castle's horse)
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,

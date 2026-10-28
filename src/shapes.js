@@ -6638,3 +6638,226 @@ function halfdrawn(root, m, parts) {
 const SHAPES_DOODLE = { pencil, eraserbun, outline, halfdrawn };
 Object.assign(SHAPES, SHAPES_DOODLE);
 /* ==== end of T45 doodle shapes ==== */
+
+/* ==== T49 knight shapes ==== */
+// Knight look: every model carries a little red-and-gold pennant on a thin pole (userData.gear = 'pennant'): ONE merged mesh with
+// vertex colours on a pivot that flaps (parts.wobble). Armoured animals and a castle that walked off. Every model faces +z; nothing
+// here uses Math.random.
+const KN_RED = 0xd83a4a, KN_GOLD = 0xf0c84a, KN_POLE = 0x6a4a2a;
+function knPennant(parent, x, y, z, h = 0.5, size = 1, parts = null, phase = 0) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  const addBox = (g, hex) => {
+    const p = g.attributes.position, base = pos.length / 3;
+    c.setHex(hex);
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); col.push(c.r, c.g, c.b); }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  };
+  const pole = new THREE.BoxGeometry(0.03 * size, h, 0.03 * size); pole.translate(0, h / 2, 0); addBox(pole, KN_POLE);
+  const knob = new THREE.BoxGeometry(0.06 * size, 0.06 * size, 0.06 * size); knob.translate(0, h + 0.02, 0); addBox(knob, KN_GOLD);
+  // the flag: two triangles (red above, gold below) pointing back (-z), both faces
+  const L = 0.32 * size, H = 0.2 * size, y0 = h - 0.02;
+  const tri = (a, b, d, hex) => { c.setHex(hex); const base = pos.length / 3; for (const v of [a, b, d]) { pos.push(...v); col.push(c.r, c.g, c.b); } idx.push(base, base + 1, base + 2, base, base + 2, base + 1); };
+  tri([0, y0, 0], [0, y0 - H / 2, 0], [0, y0 - H / 4, -L], KN_RED);
+  tri([0, y0 - H / 2, 0], [0, y0 - H, 0], [0, y0 - H / 4, -L], KN_GOLD);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const holder = pivot(parent, x, y, z);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  mesh.userData.gear = 'pennant';
+  holder.add(mesh);
+  if (parts) swing(parts, holder, 'y', 0.35, 3.2, phase);
+  return mesh;
+}
+// a knight's bucket helm: a box with a dark visor slit, rivets, a plume on top
+function knHelm(parent, m, w, h, d, y, plume = KN_RED) {
+  const g = pivot(parent, 0, y, 0);
+  box(g, w, h, d, m.accent, 0, h / 2, 0);
+  box(g, w * 0.8, 0.045, 0.02, 0x1e1e26, 0, h * 0.55, d / 2 + 0.005); // the visor slit
+  box(g, 0.035, h * 0.4, 0.02, 0x1e1e26, 0, h * 0.3, d / 2 + 0.005); // the breathing slot
+  for (const s of [-1, 1]) box(g, 0.04, 0.04, 0.02, KN_GOLD, s * w * 0.38, h * 0.2, d / 2 + 0.01);
+  box(g, 0.08, 0.16, 0.22, plume, 0, h + 0.07, -0.02);
+  box(g, 0.07, 0.1, 0.12, plume, 0, h + 0.12, -0.16);
+  return g;
+}
+
+// Pricklet / Bristleguard: a round hedgehog of short cone quills with a pointy snout and tiny feet, holding a round wooden shield
+// with a gold boss on its front-left. Bristleguard (`kite`) is bigger: a tall kite shield with a red cross, a little helmet, longer quills.
+function shieldhog(root, m, parts) {
+  const big = has(m, 'kite');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const R = 0.34;
+  ball(lift, R, m.body, 0, 0.42, -0.02); // the round body
+  box(lift, 0.5, 0.36, 0.16, m.belly, 0, 0.38, 0.24); // the soft belly
+  // quills: little cones on the back and the top, all pointing out and back
+  const ql = big ? 0.3 : 0.22, cone = new THREE.ConeGeometry(0.06, ql, 4);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 5; j++) {
+    const a = -1.0 + j * 0.5, e = 0.2 + i * 0.32;
+    const dir = new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e)).normalize();
+    if (dir.z > 0.35) continue;
+    const q = new THREE.Mesh(cone.clone(), new THREE.MeshLambertMaterial({ color: (i + j) % 2 ? m.dark : m.body }));
+    q.position.set(dir.x * R * 1.3, 0.42 + dir.y * R * 1.3, -0.02 + dir.z * R * 1.3);
+    q.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    lift.add(q);
+  }
+  cone.dispose();
+  const head = pivot(lift, 0, 0.44, 0.26);
+  parts.head = head;
+  box(head, 0.28, 0.24, 0.18, m.belly, 0, 0, 0.02);
+  box(head, 0.12, 0.1, 0.14, m.belly, 0, -0.04, 0.16); // the snout
+  box(head, 0.06, 0.05, 0.04, 0x1e1e26, 0, -0.03, 0.24); // the nose
+  eyes(head, 0.04, 0.115, 0.07, 0.07);
+  for (const s of [-1, 1]) box(head, 0.06, 0.06, 0.04, m.body, s * 0.12, 0.13, -0.02); // round ears
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(lift, sx * 0.17, 0.16, sz * 0.15);
+    box(leg, 0.1, 0.16, 0.1, m.dark, 0, -0.08, 0.01);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  // the shield on the front-left arm
+  const arm = pivot(lift, -0.27, 0.4, 0.22);
+  swing(parts, arm, 'y', 0.12, 2.2, 0.5);
+  if (big) {
+    box(arm, 0.04, 0.52, 0.34, 0xf2f0e6, -0.02, 0, 0.02); // a kite shield, white with a red cross
+    box(arm, 0.045, 0.1, 0.22, 0xf2f0e6, -0.02, -0.3, 0.02);
+    box(arm, 0.05, 0.5, 0.07, KN_RED, -0.03, -0.02, 0.02);
+    box(arm, 0.05, 0.07, 0.3, KN_RED, -0.03, 0.08, 0.02);
+    knHelm(head, { accent: m.accent }, 0.3, 0.14, 0.24, 0.1);
+  } else {
+    box(arm, 0.04, 0.34, 0.34, m.accent, -0.02, 0, 0.02); // a round wooden shield
+    box(arm, 0.045, 0.26, 0.4, m.accent, -0.02, 0, 0.02);
+    box(arm, 0.045, 0.4, 0.26, m.accent, -0.02, 0, 0.02);
+    box(arm, 0.05, 0.1, 0.1, KN_GOLD, -0.04, 0, 0.02); // the gold boss
+  }
+  knPennant(lift, 0.22, 0.6, -0.12, big ? 0.55 : 0.45, 1, parts, 0.3);
+}
+
+// Visnail / Ramparsnail: a soft green snail body with a knight's bucket helm (visor slit, plume) on its head; its shell is a round
+// castle turret with crenels. Ramparsnail (`tower`) has a taller turret with arrow slits and a flag on top. (Not a shell worn as a helmet.)
+function helmsnail(root, m, parts) {
+  const big = has(m, 'tower');
+  const body = pivot(root, 0, 0, 0);
+  parts.segments = [];
+  for (let i = 0; i < 4; i++) { // the foot, wobbling along
+    const s = pivot(body, 0, 0, 0.26 - i * 0.18);
+    box(s, 0.3 - i * 0.03, 0.14, 0.2, i % 2 ? m.body : m.belly, 0, 0.07, 0);
+    parts.segments.push({ g: s, i });
+  }
+  // the neck and head, upright at the front
+  const neck = pivot(body, 0, 0.12, 0.34);
+  box(neck, 0.22, 0.3, 0.2, m.body, 0, 0.15, 0);
+  const head = pivot(neck, 0, 0.3, 0.02);
+  parts.head = head;
+  box(head, 0.24, 0.12, 0.22, m.body, 0, 0.02, 0.02);
+  eyes(head, 0.02, 0.135, 0.06, 0.07);
+  for (const s of [-1, 1]) { // eye stalks poke out under the helm
+    const st = pivot(head, s * 0.08, 0.08, 0.04);
+    swing(parts, st, 'z', 0.2, 2.6, s);
+    box(st, 0.04, 0.12, 0.04, m.body, 0, 0.04, 0);
+  }
+  knHelm(head, m, 0.27, 0.2, 0.25, 0.07);
+  // the turret shell
+  const H = big ? 0.62 : 0.42, R = big ? 0.24 : 0.22, sh = pivot(body, 0, 0.14, -0.08);
+  for (let k = 0; k < 8; k++) { // a round tower of eight staves
+    const a = k * Math.PI / 4;
+    const st = box(sh, 0.18, H, 0.06, k % 2 ? 0xb8b4ac : 0xa8a49c, Math.sin(a) * R, H / 2, Math.cos(a) * R);
+    st.rotation.y = a;
+  }
+  box(sh, R * 1.6, 0.04, R * 1.6, 0x8a867e, 0, H, 0); // its top
+  for (let k = 0; k < 8; k += 2) { const a = k * Math.PI / 4 + 0.2; box(sh, 0.09, 0.1, 0.09, 0xb8b4ac, Math.sin(a) * R, H + 0.06, Math.cos(a) * R); } // crenels
+  for (const s of [-1, 1]) { const a = Math.PI / 2 * s; box(sh, 0.04, big ? 0.14 : 0.08, 0.02, 0x2a2a30, Math.sin(a) * (R + 0.035), H * 0.6, Math.cos(a) * (R + 0.035)).rotation.y = a; } // arrow slits / windows
+  if (big) { box(sh, 0.03, 0.24, 0.03, KN_POLE, 0, H + 0.14, 0); box(sh, 0.02, 0.12, 0.16, KN_RED, 0, H + 0.2, -0.08); }
+  knPennant(sh, R * 0.7, H * 0.3, -R * 0.7, 0.42, 0.9, parts, 1.1);
+}
+
+// Clipclop / Gallantrot: a blocky horse. Clipclop is a foal in a tin helmet much too big (it slips over its eyes now and then);
+// Gallantrot (`barding`) is tall, in plate barding: a chamfron face plate and a red-and-gold checked blanket down to the knees.
+function armourhorse(root, m, parts) {
+  const big = has(m, 'barding');
+  const L = big ? 0.86 : 0.62, legH = big ? 0.5 : 0.36, bodyY = legH + 0.16;
+  box(root, 0.36, 0.34, L, m.body, 0, bodyY, 0); // the body
+  parts.legs = [];
+  for (const [sx, sz, ph] of [[-1, 1, 0], [1, 1, Math.PI], [-1, -1, Math.PI], [1, -1, 0]]) {
+    const leg = pivot(root, sx * 0.12, legH, sz * (L / 2 - 0.08));
+    box(leg, 0.1, legH, 0.1, m.body, 0, -legH / 2, 0);
+    box(leg, 0.11, 0.07, 0.12, m.dark, 0, -legH + 0.03, 0.01); // the hoof
+    if (big) box(leg, 0.12, 0.1, 0.12, m.accent, 0, -legH * 0.35, 0); // a steel knee plate
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  if (big) { // the caparison: red and gold checks down both sides, a gold hem
+    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) {
+      box(root, 0.02, 0.15, L / 6, (i + j) % 2 ? KN_GOLD : m.belly, s * 0.19, bodyY - 0.02 - j * 0.15, -L / 2 + L / 12 + i * L / 6);
+    }
+    for (const s of [-1, 1]) box(root, 0.025, 0.03, L, KN_GOLD, s * 0.195, bodyY - 0.24, 0);
+    box(root, 0.38, 0.05, 0.3, m.dark, 0, bodyY + 0.19, 0.02); // the saddle
+  } else box(root, 0.38, 0.04, 0.22, m.belly, 0, bodyY + 0.18, 0.02); // a little blanket
+  const neck = pivot(root, 0, bodyY + 0.08, L / 2 - 0.04);
+  neck.rotation.x = 0.4;
+  box(neck, 0.18, 0.38, 0.2, m.body, 0, 0.17, 0);
+  for (let i = 0; i < 4; i++) box(neck, 0.06, 0.09, 0.08, m.dark, 0, 0.04 + i * 0.09, -0.12); // the mane
+  const head = pivot(neck, 0, 0.36, 0.04);
+  head.rotation.x = -0.4;
+  parts.head = head;
+  box(head, 0.2, 0.2, 0.3, m.body, 0, 0.02, 0.06);
+  box(head, 0.15, 0.13, 0.13, big ? 0xe8dcc8 : m.belly, 0, -0.06, 0.24); // the muzzle
+  for (const s of [-1, 1]) box(head, 0.03, 0.03, 0.02, 0x2a2a30, s * 0.04, -0.06, 0.31);
+  eyes(head, 0.06, 0.215, 0.075, 0.07);
+  mouth(head, -0.11, 0.25, 0.08);
+  for (const s of [-1, 1]) box(head, 0.05, 0.1, 0.04, m.body, s * 0.07, 0.16, -0.02); // ears
+  if (big) { // the chamfron: a steel face plate with a gold ridge and a little red plume
+    box(head, 0.21, 0.08, 0.3, m.accent, 0, 0.1, 0.08);
+    box(head, 0.04, 0.09, 0.3, KN_GOLD, 0, 0.12, 0.08);
+    box(head, 0.06, 0.14, 0.1, KN_RED, 0, 0.2, -0.04);
+  } else { // a tin helmet much too big: it covers the ears and tips forward over the eyes now and then
+    const helm = pivot(head, 0, 0.1, 0.0);
+    swing(parts, helm, 'x', 0.18, 1.6, 0);
+    box(helm, 0.28, 0.16, 0.28, m.accent, 0, 0.06, 0.04);
+    box(helm, 0.3, 0.03, 0.32, 0x9aa0ae, 0, -0.01, 0.06); // the brim
+    box(helm, 0.05, 0.1, 0.12, KN_RED, 0, 0.18, 0);
+  }
+  const tail = pivot(root, 0, bodyY + 0.08, -L / 2);
+  parts.tail = tail;
+  box(tail, 0.07, 0.3, 0.07, m.dark, 0, -0.12, -0.04);
+  knPennant(root, -0.16, bodyY + 0.16, -L / 2 + 0.06, big ? 0.6 : 0.42, big ? 1.1 : 0.9, parts, 0.7);
+}
+
+// Turrock: a single round grey stone turret on two stubby legs. Two arrow-slit eyes, crenels round the top, a pennant on top, and a
+// drawbridge mouth on two tiny chains that drops open and shut. (Not Fortsand: that is square sand with corner towers and a gate.)
+function walkturret(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const R = 0.3, H = 0.72, y0 = 0.2;
+  for (let k = 0; k < 10; k++) { // the round tower: ten stone staves with a brick pattern
+    const a = k * Math.PI / 5;
+    const st = box(lift, 0.2, H, 0.08, k % 2 ? m.body : m.belly, Math.sin(a) * R, y0 + H / 2, Math.cos(a) * R);
+    st.rotation.y = a;
+    for (let r = 1; r < 4; r++) { const ln = box(lift, 0.205, 0.015, 0.085, m.dark, Math.sin(a) * R, y0 + r * H / 4, Math.cos(a) * R); ln.rotation.y = a; }
+  }
+  box(lift, R * 1.7, 0.05, R * 1.7, m.dark, 0, y0 + H, 0);
+  for (let k = 0; k < 10; k += 2) { const a = k * Math.PI / 5 + 0.3; box(lift, 0.12, 0.13, 0.12, m.body, Math.sin(a) * R, y0 + H + 0.08, Math.cos(a) * R); } // crenels
+  // two big eyes peeping out of arrow-slit windows (a dark slit frame round each)
+  for (const s of [-1, 1]) box(lift, 0.15, 0.2, 0.03, 0x1e1e26, s * 0.11, y0 + H * 0.68, R + 0.03);
+  eyes(lift, y0 + H * 0.68, R + 0.05, 0.11, 0.11);
+  // the drawbridge mouth: an arch of dark, a plank door on a hinge at the bottom that drops open (parts.wobble on x), two chains
+  box(lift, 0.22, 0.24, 0.02, 0x1e1e26, 0, y0 + 0.2, R + 0.015);
+  const door = pivot(lift, 0, y0 + 0.08, R + 0.04);
+  swing(parts, door, 'x', 0.45, 2.4, 0);
+  box(door, 0.22, 0.24, 0.03, m.accent, 0, 0.12, 0);
+  for (let i = 0; i < 3; i++) box(door, 0.23, 0.015, 0.035, 0x5a3a20, 0, 0.04 + i * 0.08, 0.002);
+  for (const s of [-1, 1]) box(lift, 0.015, 0.2, 0.015, 0x6a6a74, s * 0.1, y0 + 0.28, R + 0.06);
+  parts.legs = [];
+  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
+    const leg = pivot(lift, s * 0.14, y0, 0);
+    box(leg, 0.13, 0.18, 0.13, m.dark, 0, -0.09, 0);
+    box(leg, 0.16, 0.05, 0.2, m.dark, 0, -0.18, 0.03);
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  knPennant(lift, 0, y0 + H + 0.02, 0, 0.42, 1, parts, 0);
+}
+const SHAPES_KNIGHT = { shieldhog, helmsnail, armourhorse, walkturret };
+Object.assign(SHAPES, SHAPES_KNIGHT);
+/* ==== end of T49 knight shapes ==== */

@@ -10,6 +10,7 @@ import { bowState } from './doorsland.js';
 import { lightState } from './glowfish.js';
 import { lineState } from './doodleland.js';
 import { roomState } from './portalplay.js';
+import { castleState } from './castleland.js'; // T49
 
 const star = (g, id) => !!g.stars?.includes(id);
 export const AFTER_CHECKS = {
@@ -22,5 +23,6 @@ export const AFTER_CHECKS = {
   doors: g => star(g, 'doors') || bowState(g).n >= 2,
   doodle: g => star(g, 'doodle') || lineState(g).count >= 4,
   portal: g => star(g, 'portal') || roomState(g).n >= 4,
+  castle: g => star(g, 'castle') || castleState(g).n >= 3, // T49: three of the six rounds
 };
 export const wildAfter = (game, id) => { try { return !!AFTER_CHECKS[id]?.(game); } catch { return false; } };

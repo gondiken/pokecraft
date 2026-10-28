@@ -22,6 +22,7 @@ export const TRAITS = {
 };
 
 Object.assign(TRAITS.rideable.species, list('land', 'gatestrider')); // T42: Gatestrider strides along
+Object.assign(TRAITS.rideable.species, list('land', 'gallantrot')); // T49: the horse in armour
 
 export function hash32(s) {
   let h = 0x811c9dc5;

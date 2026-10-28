@@ -16,6 +16,8 @@ import { houseLand, houseAim } from './giantland.js'; // T40a
 import { TINY_SPAWNS, SURPRISE_SPAWNS, DOODLE_SPAWNS, PORTAL_SPAWNS } from './species.js'; // T40a, T44, T45, T42
 import { doorsLand, doorsAim } from './doorsland.js'; // T44
 import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
+import { castleLand, castleAim, SIZE as CASTLE_SIZE } from './castleland.js'; // T49
+import { CASTLE_SPAWNS, MEADOW_SPAWNS } from './species.js'; // T49
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -148,6 +150,16 @@ REALMS.doodle = pictureRealm({ id: 'doodle', name: 'Sketchbook', seedSalt: 0xd0d
   arriveHint: 'Stand on the star pad and press Draw! Keep your eyes on the pencil tip.',
   noHomeText: 'No homes in a drawing! Build your home in your own world.', followText: 'Draw too' });
 /* ==== end of T45 doodle ==== */
+/* ==== T49 castle ==== */
+// The Castle (behind the Swirl's peach frame, the old secret3): Shield Up! on the meadow, the drawbridge, the hedge maze, the Joust in the
+// Tilt Yard, Sir Clanksalot in the throne room. Riders are fenced out of the castle (its keep has no rideIn).
+REALMS.castle = pictureRealm({ id: 'castle', name: 'Castle', seedSalt: 0xca57, size: [CASTLE_SIZE, CASTLE_SIZE], terrain: 'castleLand', arrive: [80, 153], biome: 'castle',
+  walk: [B.GRASS, B.GRAVEL], spawns: { castle: CASTLE_SPAWNS, castleMeadow: MEADOW_SPAWNS, cave: [] }, zoneNames: { castle: 'The Castle', castleMeadow: 'Castle meadow' },
+  look: { sky: 0xbfe0ff, fog: [50, 150], time: null, weather: false, light: 1, still: true, stars: false },
+  clock: '🏰 Castle', travelText: 'Riding in...', travelIcon: '🏰', enterText: 'Ta-ta-taa! Welcome to the Castle!',
+  arriveHint: 'Stand on the Shield Stone and press Shield! Block the pumpkins to bring the drawbridge down.',
+  noHomeText: 'No homes in the Castle! Build your home in your own world.', followText: 'Ride in too' });
+/* ==== end of T49 castle ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -170,6 +182,8 @@ TERRAINS.doorsLand = doorsLand; // T44
 TERRAIN_AIMS.doorsLand = doorsAim; // T44
 TERRAINS.doodleLand = doodleLand; // T45
 TERRAIN_AIMS.doodleLand = doodleAim; // T45
+TERRAINS.castleLand = castleLand; // T49
+TERRAIN_AIMS.castleLand = castleAim; // T49
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };
