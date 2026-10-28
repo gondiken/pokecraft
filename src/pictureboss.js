@@ -410,7 +410,8 @@ export function createBosses(game, { startBattle, save }) {
       if (!game.ui.asking) { pending = null; return; }
       if (performance.now() - at > BOSS.askTime * 1000 || dist(npc) > BOSS.askRange || !usable(npc) || !game.started) api.close();
     },
-    close() { pending = null; game.ui.closeAsk(); },
+    // Walking away or waiting too long is a "Not now" (T39b), so its onNo runs (the Race Track races again: gymLive.bossDeclined).
+    close() { if (pending && game.ui.asking) game.ui.askNo(); pending = null; game.ui.closeAsk(); },
   };
   game.bosses = api;
   return api;
