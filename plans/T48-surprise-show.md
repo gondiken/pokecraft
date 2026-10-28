@@ -1,9 +1,31 @@
-# T48 (proposal, not built) · Jolly Jax's Surprise Show: a new Room of Doors
+# T48 (proposal, not built) · Jolly Jax's Surprise Party: a new Room of Doors
 
 Owner, 2026-10-28: "Room of Doors is still so weird ... the emojis at the top of the doors are useless ... the piñata is half in the
 wall of the slide room ... the slide looks like stairs ... there's no real 'surprise' element in the world, it's just a few doors we
 break and a few games. I like catching the jack and smashing the piñata as small games but I don't like this world even as a concept.
 I need you to come up with a better version."
+
+## Owner's answer (2026-10-28) and the new frame
+
+"The wheel, the twists, and the new games sound good. I just don't like that it's a TV show. My son has never seen the wheel of
+fortune and doesn't know the concept of crowd cheering on a game show."
+
+So the same games, wheel and twists, in a place every child knows: **a surprise birthday party.**
+
+- **The place:** a giant party room inside an enormous present: bunting and balloons, a long party table, a huge birthday cake
+  on a stand at the far end, presents piled everywhere, creature guests in party hats dancing and clapping (not an audience: guests).
+- **The Party Spinner** (the wheel): a big spinning party plate on the wall with a picture of each game on its slices (a piñata, a
+  jack, a stack of presents, a pop-up box). Press Spin! and press again to stop it: it stops at the slice under the arrow. A game you
+  already won gives party sweets (cubes) and you spin again.
+- **Party surprises** (the twists): before a round a party popper goes off and Jolly Jax calls out a surprise ("Surprise! Lights out!",
+  "Surprise! Double gold!", "Surprise! The table spins!").
+- **The party games:** Piñata Party, Jack Catch, Gift Stack, Pop-Up Whack (as below).
+- **Party crashers** (the two helpers): Ribbon Rosa and Confetti Kit crash the party after the 1st and 3rd bow and want a battle.
+- **The finale:** with four bows the candles on the cake light up, everybody shouts "SURPRISE!" and Jolly Jax bursts out of the cake
+  for the star battle.
+
+Wherever the text below says "show", "studio", "stage", "stands" or "host", read: party, party room, party floor, the guests, the
+party's host.
 
 ## What went wrong
 
