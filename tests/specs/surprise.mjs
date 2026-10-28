@@ -554,7 +554,7 @@ async function livePart({ browser, base, t, page }) {
   t.ok(frame.ready && frame.name === 'Surprise Party' && frame.pic === 'function' && frame.clean === '{}' && frame.keep === '{"doors":[[5,1]]}', `the frame is ready and called Surprise Party; the Room of Doors' old edits (version 1) are dropped, the party's kept (${frame.clean} / ${frame.keep})`);
   const arrive = await page.evaluate(() => { const p = window.pokecraft.player.pos; return [p.x, p.y, p.z]; });
   t.ok(Math.abs(arrive[0] - 56.5) < 0.01 && Math.abs(arrive[2] - 72.5) < 0.01 && arrive[1] === 11, `you arrive by the frame home at the south wall (${arrive.map(v => v.toFixed(1))})`);
-  t.ok(await said(page, /SURPRISE! Welcome to the party!/) && await said(page, /Spin the Party Spinner to start a party game!/), 'the arrival words are said');
+  t.ok(await said(page, /SURPRISE! Welcome to the party!/) && await said(page, /Win 4 party games for 4 golden bows! Spin the Party Spinner to pick one\./), 'the arrival words are said');
   // the people: guests at the party, Ribbon Rosa crashed in already (one bow), Confetti Kit and Jax not yet
   await page.evaluate(() => { const L = window.__live(); L.manual = true; for (let i = 0; i < 4; i++) { window.pokecraft.gymLive.update(0.3); } });
   const ppl = await page.evaluate(() => { const g = window.pokecraft; return g.npcs.list.map(n => `${n.kind}:${n.name}:${n.away ? 'away' : 'here'}`).join(); });

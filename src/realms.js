@@ -139,7 +139,7 @@ REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9
 // Version 2: new terrain (the Room of Doors' blocks were all fixed, so no player build is lost; its edits are dropped).
 REALMS.doors = pictureRealm({ id: 'doors', name: 'Surprise Party', seedSalt: 0xd005, size: [112, 112], terrain: 'partyLand', arrive: [56, 72], walk: [B.PARTY_FLOOR], version: 2,
   spawns: { doors: SURPRISE_SPAWNS, cave: [] }, clock: '🎁 Surprise Party', travelText: 'Unwrapping...', travelIcon: '🎁',
-  enterText: 'SURPRISE! Welcome to the party!', arriveHint: 'Spin the Party Spinner to start a party game!',
+  enterText: 'SURPRISE! Welcome to the party!', arriveHint: 'Win 4 party games for 4 golden bows! Spin the Party Spinner to pick one.',
   noHomeText: 'No homes at the party! Build your home in your own world.', followText: 'Party too',
   look: { sky: 0xffd8ec, fog: [40, 120], time: null, weather: false, light: 0.95, still: true, stars: false } });
 /* ==== end of T44 surprise ==== */

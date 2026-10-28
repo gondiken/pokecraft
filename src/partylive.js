@@ -223,8 +223,9 @@ export class PartyLive {
     if (this.paused()) return null;
     const pos = p.pos ?? p, g = this.gm;
     if (g) {
+      // owner 2026-10-28: "I couldn't do anything with the piñata": Play! works anywhere in the party room (it whooshes you to the start)
+      if (g.phase === 'ready') return this.inRoom(pos) ? (this.misses[g.game][g.round] ? 'Again!' : 'Play!') : null;
       if (!this.onSquare(pos)) return null;
-      if (g.phase === 'ready') return this.onPad(pos, this.sets[g.game].pad) ? (this.misses[g.game][g.round] ? 'Again!' : 'Play!') : null;
       if (g.phase !== 'run') return null;
       if (g.game === 'pinata' || g.game === 'whack') return 'Whack!';
       if (g.game === 'stack') return loaded(g.run.st, g.run.t) ? 'Drop!' : null;
@@ -240,7 +241,7 @@ export class PartyLive {
     if (!w) return false;
     if (w === 'Spin!') return this.startSpin();
     if (w === 'Stop!') return this.stopSpin();
-    if (w === 'Play!' || w === 'Again!') return this.beginRound();
+    if (w === 'Play!' || w === 'Again!') { this.toStart(); return this.beginRound(); }
     if (w === 'Whack!') { this.whackNow(this.eye(), this.look()); return true; }
     if (w === 'Drop!') return this.dropNow();
     return false;
@@ -301,6 +302,8 @@ export class PartyLive {
     this.misses[game] = [0, 0, 0, 0];
     sound.play('doorwhoosh');
     this.toast(`Surprise! It's ${GAME_NAMES[game]}! ${ICON[game]}`);
+    // owner 2026-10-28: "I don't know how this works": say it big, once per game, with what to do
+    this.game.ui?.celebrate?.(`${ICON[game]} ${GAME_NAMES[game]}!`, `${HOW[game]} Win 3 rounds for a golden bow. Press Play!`, 4500);
     this.doBurst([C.x, 12, C.z], 0.8);
     return true;
   }
@@ -317,7 +320,15 @@ export class PartyLive {
       }
     }
     this.once(`party-how-${g.game}`, HOW[g.game]);
-    this.toast(`${ICON[g.game]} ${GAME_NAMES[g.game]}: round ${g.round} of 3. Stand on the gold pad and press Play!`);
+    this.toast(`${ICON[g.game]} ${GAME_NAMES[g.game]}: round ${g.round} of 3. Press Play!`);
+  }
+  // Play! from anywhere in the room: a puff, and you stand on the game's gold pad, facing the game
+  toStart() {
+    const g = this.gm, p = this.game.player, set = g && this.sets[g.game];
+    if (!set || this.onPad(p.pos, set.pad)) return;
+    const [x, z, yaw] = set.standAt;
+    this.game.creatures?.puff?.({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, { color: 0xffd0f0 });
+    p.pos.set(x, FLOOR + 1, z); p.vel.set(0, 0, 0); p.yaw = yaw; p.pitch = 0;
   }
   beginRound() {
     const g = this.gm;
@@ -636,9 +647,9 @@ export class PartyLive {
       else if (g.game === 'catch') s = { text: `${R}${r.run.score} / ${r.run.plan.need} · ${jacksLeft(r.run)} left`, done: false };
       else if (g.game === 'stack') s = { text: `${R}${r.st.placed} / ${r.st.plan.need} presents`, done: false };
       else s = { text: `${R}${r.st.score} / ${r.st.plan.need} · ⏱ ${Math.max(0, Math.ceil(r.st.plan.time - r.t))}`, done: false };
-    } else if (g) s = { text: `${ICON[g.game]} ${GAME_NAMES[g.game]} · round ${g.round} / 3 · 🎀 ${st.n} / 4`, done: false };
+    } else if (g) s = { text: `${ICON[g.game]} ${GAME_NAMES[g.game]} · round ${g.round} / 3${g.phase === 'ready' ? ' · Press Play!' : ''} · 🎀 ${st.n} / 4`, done: false };
     else if (st.done) s = { text: (this.game.stars || []).includes('doors') ? 'Jolly Jax is on the cake!' : 'Battle Jolly Jax on the cake!', done: true };
-    else s = { text: `🎀 ${st.n} / 4 · Spin the Party Spinner!`, done: false };
+    else s = { text: `🎀 ${st.n} / 4 golden bows · Spin the Party Spinner!`, done: false };
     ui.setScore(s);
   }
 
