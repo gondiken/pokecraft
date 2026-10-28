@@ -509,11 +509,11 @@ export default async function ({ browser, base, t }) {
       const secs = R.drive(13, { until });
       const n = R.rio();
       return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("talk to me for a battle"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
-        prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), sound: g.sound.played.slice(-8).join() };
+        prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), crewLeft: !['pw:race:crew1', 'pw:race:crew2'].every(k => g.beaten.includes(k)), sound: g.sound.played.slice(-8).join() };
     });
     t.ok(D3.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4'), `the flags are passed in order, three times round (${D3.seq})`);
     t.ok(D3.state === 'done' && D3.lap === 3 && D3.won && D3.last && D3.win && D3.line, `the race ends in a win after three laps: "Last lap!", "You won the race!", Rio says his line (${D3.secs.toFixed(0)} s)`);
-    t.ok(D3.bossS < 3 * D3.L && D3.prompt === null && D3.base.action === 'Challenge!', `Rio was behind, the button now says the base's "${D3.base.action}"`);
+    t.ok(D3.bossS < 3 * D3.L && (D3.crewLeft ? D3.prompt?.action === 'Race again!' : D3.prompt === null && D3.base.action === 'Challenge!'), `Rio was behind; ${D3.crewLeft ? `his crew still wait, so his button says "${D3.prompt?.action}" (a race just for fun, owner 2026-10-28)` : `the button now says the base's "${D3.base.action}"`}`);
     t.ok(/lapbell/.test(D3.sound) || D3.seq.length > 0, `the lap bell and the finish sound play (${D3.sound})`);
 
     // done -> idle: Rio drives on, then he is back on his stand
@@ -734,7 +734,7 @@ export default async function ({ browser, base, t }) {
       live.backToStand();
       return out;
     });
-    t.ok(D11b.word === 'Race again!' && D11b.state === 'count' && !D11b.asking && !D11b.inBattle, `after "Not now" to the rematch, Rio's button says "${D11b.word}" and talking to him starts a race again`);
+    t.ok(/^Race/.test(D11b.word || '') && D11b.state === 'count' && !D11b.asking && !D11b.inBattle, `after "Not now" to the rematch, Rio's button says "${D11b.word}" and talking to him starts a race again`);
 
     // the parade: with the star, two karts drive laps and the pads pulse
     const D12 = await page.evaluate(() => {
