@@ -1,0 +1,244 @@
+# 🫧 Bubble type and the Fizzing Well (plan, not built yet)
+
+Owner, 2026-10-28: picked from the "last three stars" ideas in `ROADMAP.md`; "I like both plans" (this one and
+`plans/cube-planets.md`). The Knight's Castle is being built in another session at the same time, so this plan is
+written to **stay out of its way** (section 9). Task number: give it the next free `T` number when it is built; this
+file has no number on purpose, so it never clashes with the Knight session's plan.
+
+**Build this in a fresh session.** Read first: `CLAUDE.md`, `STORY.md` "The Picture Worlds", `plans/T40.md` (the
+Picture World kit: `pictureRealm`, `buildWayBack`, `placeBoss`, `placeCrew`, live parts, `Mover`), `plans/T43.md` (the
+house style for a skill-game world: three games, never a fail, help after misses, harder rematch), `plans/T41.md`
+(a world with its own movement: diving) and `src/comingsoon.js` (the preview switch).
+
+## The owner's rules this plan follows
+
+- **The way to the Boss is a fun, unique skill challenge** (owner 2026-10-27). Aim, dexterity, timing and direction
+  beat puzzles. **Never repeat the same kind of challenge in another world.**
+- Skills already in the game (do not reuse as the main idea): hold-and-let-go power (Kick!, Fire!, the Atlantis lunge,
+  probably the Knight's catapult), letting go at a swing's phase (ropes, piñata, baskets), leading a moving target
+  (rowboats, darters), driving with momentum (kart, bumper cars), steering a path while chased (Draw!), standing where
+  a thing lands (Jack Catch), bouncing and steering in the air (Balloon Bounce), lanes to a beat (Gold Ring Ride),
+  spatial momentum (Portal House), sneaking, memory, logic (gyms).
+- **This world's three new skills:** making your own way as you go, moving a thing you do not hold (nudging), and
+  staying up with taps (a rhythm flier). **No hold-and-let-go anywhere** (owner: yes, leave it out).
+- Never a fail: a fall or a pop puts you back a little, a missed try simply starts again, `fairHelp`-style help after
+  two misses, a rematch is harder (`hard`).
+- Works on an iPad with the joystick, Jump and the one action button. Text short and kind.
+- **Ships closed:** only `?preview` (and tests) open it until the owner has played it (section 8).
+
+## What the child does
+
+Steps out of a picture frame in the Swirl into the bottom of a huge, round, fizzing well: soda-pop colours, foam
+ledges, glittering walls, bubbles drifting up everywhere, the sky a bright circle far above. **The whole world is one
+climb, from the foam pool at the bottom to the rim at the top**, where **Captain Suds**, a soap-bubble walrus, sits
+behind three shimmering shield bubbles. Bubble Bee, the wand-maker on the first ledge, hands over a **bubble wand**.
+On the way up there are three stretches, each a skill game, each with one of Captain Suds' crew at its top:
+
+1. **Bubble Stairs**: a shaft with nothing to stand on. Blow your own steps and climb them.
+2. **Float the Ducklings Home**: three sleepy rubber ducklings must go back to their nest. Bubble them and puff them
+   along through a thorny garden of coral and currents.
+3. **The Chimney Ride**: climb into a big bubble and fly it up a twisting geyser chimney, tap by tap.
+
+At the rim, Captain Suds' shields are popped by bubbles you send up on the wind. Then the battle, and the star.
+
+---
+
+## 1. Why the Fizzing Well and not a bath lagoon
+
+The roadmap said "Bath Lagoon". A giant bath is the Giant House again (a home at giant size), and a lagoon is the
+Pirate Seas and Atlantis again (water). The Dream is flat islands. **The well is vertical:** every other world is about
+going across; this one is about going **up**, and the bubbles are what make up possible. It also fits the story: the
+Scribble's scribbles let the fizz go flat, so the bubbles stopped rising; the child's wand gets them rising again (a
+line for `STORY.md` when built).
+
+## 2. The world (terrain as data, Node-runnable: `src/bubbleland.js`)
+
+- **Size and height.** Every world is 48 blocks tall (`WORLD_H`, it also sizes the light buffer), so the climb is
+  **about 40 blocks of height spread round a spiral**. Map about 160 x 160. The well: a round wall of radius ~70 at the
+  map's edge, the foam pool at the bottom (y 2-4), a spiral of foam ledges and terraces winding up the inside of the
+  wall, the rim walk at y 42-44 with the open sky above.
+- **Three stretches stacked on the spiral:**
+  - Bubble Stairs: y 6 -> 20, two shafts (a wide easy one, then a narrow one with drips and side vents).
+  - Duckling Garden: a broad terrace ring at y 20-24 (the flattest, widest part: room to nudge things about).
+  - Geyser Chimney: a hollow column from y 24 to the rim, twisting inside the well wall (open on one side so the camera
+    and the child can see the way).
+- **Looks:** pastel soda colours, foam-white ledges, glitter on the walls, slow bubbles rising everywhere (instanced
+  sprites, like the Swirl's puffs; decoration only, never solid). A gentle bright sky (`look.still`).
+- Each stretch has a `world.rests` spot (a lost crew battle keeps you there), a keep over every gadget, `world.nooks`
+  for wild creatures, and a way back (`buildWayBack`) at the bottom **and** at the rim (like the Sketchbook's two ways
+  back), so a finished climb never has to be walked down.
+- `bubbleAim` (TERRAIN_AIMS): the next unfinished stretch, then its crew member, then Captain Suds, then the way back.
+
+## 3. The wand and bubbles (pure rules: `src/bubbles.js`, no imports, fixed 1/120 s sub-steps)
+
+- **Blow!** (the big button, E, a click, a tap on the screen; one press, **no hold**): a bubble appears 1.6 blocks in
+  front of the eyes, at eye height, the way you look.
+- A bubble **rises** slowly (0.8 blocks a second), drifts with any current it is in, and **pops after 4 s**.
+- **Standing on a bubble:** it is a thing that carries you (like the bottle cap: the player box rests on its top). It
+  sinks 0.3 a second while you stand on it and pops 1.5 s after you landed. A soft wobble and a squeak warn 0.5 s
+  before a pop.
+- **At most 2 bubbles at once** (a third pops the oldest). The wand has 6 puffs of soap; **soap flowers** on the ledges
+  refill it (walk through one). Soap is shown as six dots on the score chip.
+- Things that pop bubbles: drips from the ceiling (closed-form schedule, a shadow shows where the drip lands), thorns
+  (coral spikes), and touching a wall for more than 0.2 s.
+- Wind vents (`world.lifts`-style boxes, but sideways too) push bubbles; the player is pushed only while standing on
+  one.
+- All of it is a closed form of the part's own clock plus the fixed sub-steps, so 60 and 20 fps give the same climb.
+- Bubbles are meshes (one `InstancedMesh`, a shiny rainbow shader), never blocks, never saved or sent.
+
+## 4. The three games
+
+### 4.1 Bubble Stairs: make your own way
+
+- Shaft 1 (wide, calm): blow, hop on, blow the next one a little higher, hop. The trick to learn: blow while standing
+  on a bubble, look up a little so the next one is higher. Soap flowers every few steps.
+- Shaft 2 (narrow): side vents blow bubbles sideways (blow on the upwind side), drips pop bubbles (blow between the drip
+  shadows), one gap where you must blow two bubbles quickly and use both.
+- A fall lands on the last foam ledge you stood on (never back to the bottom).
+- At the top, **Wanda Wand** (crew) waits. The stretch counts as done when you reach her ledge: `beaten` key
+  `pw:bubble:stairs`.
+- Help after two falls from the same ledge: bubbles last 1 s longer and drips slow (x0.8), shown with a kind toast.
+
+### 4.2 Float the Ducklings Home: nudge without holding
+
+- Three ducklings sleep on islands of the Duckling Garden. **Blow!** at a duckling (within 2 blocks) and a bubble
+  closes round it; it floats up to waist height and drifts.
+- You cannot carry it. **Puff!** (the same button while a bubbled duckling is within 2.5 blocks in front of you) gives
+  it a small push the way you look. It has momentum and slows only slowly (like a puck), so a push too hard sends it
+  past the nest.
+- Currents (slow streams of tiny bubbles) carry it; thorny coral pops its bubble (the duckling plops gently back onto
+  its own island, sleepy, never hurt); the nest is a ring of foam it must stop inside for 1 s.
+- Duckling 1 goes straight, duckling 2 must cross a current (push across it, aim upstream), duckling 3 goes round a
+  thorn maze where small taps beat big pushes.
+- Each duckling home is a `beaten` key `pw:bubble:duck1..3`, saved at once. **Mother Duck** (crew) at the nest says
+  thank you and battles when all three are home.
+- Help after two pops of the same duckling: currents x0.7 and the duckling's friction x1.5 (stops sooner).
+- Pure rules: `nudge(state, dir)`, `stepDuck(state, dt, currents, thorns)`, the nest check; a stand-in robot player in
+  the spec ("skilled": short taps toward the nest; "pusher": always full pushes) proves skill matters.
+
+### 4.3 The Chimney Ride: stay up with taps
+
+- At the bottom of the chimney, **Ride!** (the big button near the big bubble): you step inside it (a `carry` object,
+  like the Funfair's cars).
+- The bubble **always sinks slowly**. Each **tap** (Jump, the big button, a tap on the screen) is a puff: up 1.4 blocks
+  over 0.3 s and a little push the way you look. The stick steers a little too. So it is a rhythm: tap, tap, wait, tap.
+- The chimney twists up: rings of spikes with a gap to fly through, a fan that blows you sideways, fizz stars to
+  collect (checkpoints and a cube each the first time), a slow spinning bar near the top.
+- A spike pops the bubble: a soft puff and you are back inside a new bubble at the last fizz star. Never a fail.
+- Reaching the top lands you on the rim: `beaten` key `pw:bubble:chimney`. **Captain's Mate Fizz** (crew) waits there.
+- Help after two pops at the same part: the bubble sinks slower (x0.75) and the spike gaps are 1 block wider (drawn
+  with `setLive` or as mesh only, never a world edit).
+- Pure rules: `rideStep(state, dt, { tap, stick })`, closed-form hazards; the spec flies it with a robot that taps on a
+  rhythm, at 60 and 20 steps a second.
+
+## 5. Captain Suds (the Boss)
+
+- A creature Boss (a giant Bubble-type walrus, `model` scale ~2.2, top level 63 like the other wave 14-15 Bosses) on a
+  foam throne at the rim, inside **three shield bubbles**.
+- **Gate:** the three stretches done and the three crew beaten (`crewLeft`, as every Picture World Boss with helpers,
+  owner 2026-10-27).
+- **The shields:** three up-draught vents rise round the throne, their wind visible as streams of tiny bubbles. A
+  bubble you blow into a vent is carried up and round and hits a shield if you blew it from the right spot (each vent
+  curls a different way). Reading the wind, a little of every stretch. Three hits, the shields pop, he battles. This is
+  the finale, quick to do once the climb is learnt (no timer).
+- Won: the star, the Wizard's note (`ui.celebrate`), the shields come back for a rematch; a won battle clears the
+  `pw:bubble:*` keys (like the Stadium's goals), so a rematch is a new climb, harder (`hard`: bubbles last 0.5 s less,
+  more drips, faster currents, a faster sink in the chimney).
+- Lost: you stay at the rim rest (`lose: 'stay'`, healed).
+
+## 6. The Bubble type
+
+- Type id `bubble`. Creatures (7, the owner wants unique shapes, each family its own builder in `shapes.js`):
+  - **Duckling > Admiral Duck** (a rubber duck; the big one wears a captain's hat): shape `rubberduck`.
+  - **Spongelet > Spongecrab** (a sponge with claws, squeezes out bubbles): shape `spongecrab`.
+  - **Wisplet > Wandfairy** (a bubble-wand fairy, a ring for a body): shape `wandfairy`. Rideable? No: it is tiny.
+  - **Fizzbomb** (7th, single stage, a fizzing bath bomb that bounces): shape `bathbomb`.
+  - Every model wears `gear: 'shine'`-like **soap film**: one merged mesh of 2-3 small rainbow bubbles floating round it.
+- **The wild look:** wild Bubble creatures float inside their own bubble, bobbing (`gait: 'float'`, closed form like
+  `peek`/`gift`). Walk into the bubble or tap it: it pops (a soft `pop` sound) and the battle starts. They live only in
+  this world's `spawns` (`nook`-style spots on the ledges), rare like every Picture World (`wild: { max, every }`); the big
+  evolved forms only after the first stretch (`wildafter.js` `AFTER_CHECKS.bubble`).
+- Moves: Bubble Pop, Soap Slide, Foam Hug, Fizz Up (raise), sigs Rubber Ducky Rush (Admiral Duck) / Wand Waltz
+  (Wandfairy), big moves for the type's `BIG_LEVEL`s. Its own `TRAVEL` / `IMPACT` / `FX_COLORS` entries and an
+  `fx:bubble` sound. Never name a move like a sound effect.
+- Chart: its own row plus separate lines (never edit an old row; a defender may be weak to at most 5 types). Suggested:
+  Bubble hits fire, rock, toxic; is weak to electric, metal (pins), pirate (hooks); resists water. Check against the
+  chart rules when built.
+- `look: 'bubble'` for the crew in `npc.js` (a bubble-wand on the back, a little soap-foam hat).
+
+## 7. Blocks: very few new ids (read this before adding any)
+
+**Block ids are almost used up.** `world.data` is a `Uint8Array`, so ids stop at 255. Free today: only **254, 255**,
+plus the reserved **137-139, 147-149, 182-183, 249**. The Knight's Castle (being built now) and the wave 16 Custom type
+need some of these too. So:
+
+- This world takes **one wool id** (the type's wool, required by the gym/roof code) and **at most two more** (e.g.
+  `FOAM` for the ledges and `FIZZ_WALL` for the glitter walls). Agree on the exact ids with whatever the Knight
+  session took at merge time; never pick an id the other session used.
+- Everything else is **existing blocks** (white wool / clouds / quartz-like stone for foam, coloured wool for the
+  soda walls) or **meshes** (bubbles, drips, ducklings, the shields, vents' streams). The Swirl tint trick
+  (`swirlTint` in `caves.js`) could tint existing blocks pastel inside this world only, if the look needs it.
+- If that is not enough, the real fix is a separate task: widen block ids to 16 bits (`Uint16Array` data, edits, the
+  multiplayer `block` message; the atlas already has room for 1024 tiles). That is a big change with its own plan and
+  tests; do not start it inside this task.
+
+## 8. Shipping closed (the preview switch)
+
+The owner wants to play it first. `src/comingsoon.js` gets **one line**, nothing else changed in it:
+
+```js
+export const PREVIEW_ONLY = ['bubble', 'gravity']; // owner 2026-10-28: open only with ?preview until the owner has played them
+```
+
+and `worldOpen(id)` returns `false` for an id in `PREVIEW_ONLY` unless `PREVIEW` or a test flag
+(`globalThis.__pcPreview === true`, set by the spec's helpers) is on. While closed: the frame stays under its cloth, the
+guide never points into it, and the save keeps nothing from it (the realm can't be entered). Opening it later for
+everyone = removing the id from `PREVIEW_ONLY` (a one-line commit, like the Funfair's).
+
+The **Cube Planets** plan uses the same line (`'gravity'`), so whichever task is built first adds it and the second
+only checks it is there.
+
+## 9. Staying out of the Knight session's way
+
+- **Picture World slot:** `PICTURE_WORLDS` has `secret3`, `secret4`, `secret5` (covered frames). Proposal: the Knight
+  takes `secret3`, **Bubble takes `secret4`**, Cube Planets takes `secret5`. Rename the entry's id to `bubble` (allowed:
+  no save can hold a secret world's star, as `doodle` and `atlantis` did) and keep its frame colours.
+- **Block ids:** section 7.
+- **Shared files** both sessions touch (`blocks.js`, `species.js`, `shapes.js`, `realms.js`, `pictureworlds.js`,
+  `pictureboss.js`, `fxrecipes.js`, `sound.js`, `README.md`, `CLAUDE.md`): add new things in their **own sections at
+  the end** (`/* ==== Bubble ==== */`), never re-order or reformat existing lines, so the merge is only appends.
+- Merge `main` in before starting and again before pushing.
+
+## 10. Files
+
+| File | What |
+| --- | --- |
+| `src/bubbles.js` | pure: `BUBBLE` numbers, `blow`, `stepBubbles` (rise, drift, pop, standing), drips, vents, `nudge` / `stepDuck`, `rideStep`, `shieldShot`, `bubbleHelp(misses)`, `HARD` |
+| `src/bubbleland.js` | terrain as data (Node-runnable): `WELL`, `SPIRAL`, `STAIRS`, `GARDEN`, `CHIMNEY`, `RIM`, `bubbleLand(world, def)`, `bubbleAim` |
+| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: wand, bubbles mesh, ducklings, the chimney ride (`carry`), shields, chip, `near` / `use` (Blow! / Puff! / Ride!), `tap`, `battleEnded`, `manual` + `step(dt)`, `info()` |
+| `src/bubbleprops.js` | the models: bubble shader, ducklings, nest, vents' streams, shields, wand in hand; `tests/bubble-preview.mjs` photographs them |
+| `tests/bubble.mjs` + `tests/bubblecheck.mjs` | the spec (below) and the terrain check (stand-in world, walk graph with bubble edges) |
+
+## 11. Tests (spec `bubble`)
+
+- **data:** 7 creatures, 4 own shapes with the soap film, moves, big moves, fx, sound, chart (no old cell changed),
+  blocks.
+- **land:** three seeds in Node: only inside the map, every stretch reachable **only** with the wand (the walk graph
+  without bubble edges cannot climb; with them it can), nobody stuck, keeps, both ways back, nooks.
+- **rules:** pure bubbles at 60 and 20 steps a second the same; a skilled robot climbs both shafts, a robot that blows
+  straight ahead never climbs shaft 2; the duckling robots (skilled wins, full pushes lose duckling 3 without help, win
+  with help); the chimney rhythm robot gets through, a no-tap robot never does; help after misses.
+- **play:** the whole loop in the browser (the wand, a fall onto a ledge, ducklings saved and reloaded in a fresh
+  browser, the chimney, the crew, the shields, Captain Suds, a lost battle stays, the star, a rematch is new, both ways
+  back).
+- **closed:** without `?preview` the frame is covered and the realm can't be entered; with it, it opens.
+- **ipad:** Blow! / Puff! / Ride! on the big button, chimney taps on the screen; two browsers (a friend follows, each
+  climbs their own bubbles).
+- Screenshots `bubble-*.png` for the owner.
+
+## 12. Open questions for the owner (ask before building)
+
+- Name: "Fizzing Well" and "Captain Suds" are working names.
+- Should the ducklings be the rubber-duck creatures of the type (catchable later), or plain toys?
+- Is 40 blocks of climbing enough, or should the well be taller (that needs a taller world: a bigger change, see
+  `plans/cube-planets.md` section 2)?
