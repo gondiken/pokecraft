@@ -18,7 +18,7 @@ import { pinataRound, catchRound, whackRuns } from './partyrounds.js';
 import { STACK, stackPlan, newStack, craneAt, drop, loaded } from './giftstack.js';
 import { WHACK, whackPlan, newWhack, upAt, headOf, whackAt, whackTimeUp, shaking } from './popupwhack.js';
 import { SPIN, GAMES, GAME_NAMES, newSpin, spinAngle, spinDone, restAngle, sliceAt, twistOf } from './spinner.js';
-import { fairHelp } from './fairgames.js';
+import { kindHelp } from './kindhelp.js';
 import { bowKey, bowOf, bowState, migrateBows, CAKE, CRASHERS, GUESTS, SQUARE, SPINNER, TABLE, ROOM, FLOOR, C } from './partyland.js';
 import * as PP from './partyprops.js';
 
@@ -339,8 +339,8 @@ export class PartyLive {
       const plan = catchRound(this.seed, round, attempt, { help: misses, hard, twist, boxes: set.boxes, floor: set.catchFloor, start: set.start });
       g.run = { run: newCatch(plan), t: 0, splatT: 9, open: new Map() };
       if (plan.cap) this.game.player.speedCap = plan.cap;
-    } else if (game === 'stack') g.run = { st: newStack(stackPlan(this.seed, round, attempt, { twist, hard, slow: fairHelp(misses).slow })), t: 0, falls: [], endAt: null };
-    else g.run = { st: newWhack(whackPlan(this.seed, round, attempt, { twist, hard, help: fairHelp(misses) })), t: 0, swingT: 9, splatT: 9 };
+    } else if (game === 'stack') g.run = { st: newStack(stackPlan(this.seed, round, attempt, { twist, hard, slow: kindHelp(misses).slow })), t: 0, falls: [], endAt: null };
+    else g.run = { st: newWhack(whackPlan(this.seed, round, attempt, { twist, hard, help: kindHelp(misses) })), t: 0, swingT: 9, splatT: 9 };
     g.phase = 'run'; g.t = 0;
     sound.play('doorwhoosh');
     if (game === 'pinata') this.toast(`${PINATA.rounds[round - 1].name}! ⏱ ${g.run.runs[0].plan.time} s`);
@@ -370,7 +370,7 @@ export class PartyLive {
     g.phase = 'missed'; g.t = 0;
     this.unslow(); this.restoreNooks();
     sound.play('sillyhonk');
-    const help = g.game === 'stack' || g.game === 'whack' ? fairHelp(n).on : false;
+    const help = kindHelp(n).on; // (every party game has the same shared kind help now)
     this.toast(text + (help ? ' It will be a bit slower now.' : ''));
   }
   gameWon() {
@@ -743,7 +743,7 @@ export class PartyLive {
     const g = this.gm, o = this.tmp;
     let nj = 0, np = 0;
     if (g?.game === 'catch' && g.phase === 'run' && g.run) {
-      const c = g.run, helpRing = c.run.plan.help >= 2;
+      const c = g.run, helpRing = kindHelp(c.run.plan.help).on;
       for (const { l, q, to } of inAir(c.run, c.t)) {
         const spin = (c.t - l.t0) * 7 + l.n;
         if (l.kind === 'pie') {

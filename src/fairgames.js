@@ -1,7 +1,10 @@
-// T43: the rules of the Funfair's three games, the roller coaster and the slide. Pure maths, no imports (the spec runs it in Node).
+// T43: the rules of the Funfair's three games, the roller coaster and the slide. Pure maths, only the shared kind help (kindhelp.js, itself
+// pure), so the spec runs it in Node.
 // Every moving thing is a closed form of a clock or a fixed 1/120 s sub-step simulation, so 60 fps and 1-2 fps give the same results
 // (like ballphysics.js). No Math.random: everything is a hash of an index. Coordinates are world coordinates of Playland
 // (ground top y 10, you stand at y 11). The layout (blocks) is in funfair.js; this file owns the numbers both of them use.
+import { kindHelp } from './kindhelp.js';
+
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const wrap = a => { a %= TAU; return a < -Math.PI ? a + TAU : a > Math.PI ? a - TAU : a; }; // an angle difference in (-pi, pi]
@@ -149,7 +152,7 @@ export class BumperCar {
 //               1.1 s, then puffs along tired (40 % speed) for 1.8 s: chase, wait for the puff, then bump
 //   3 Spinners  all six: the outer ones zoom, the inner ones SPIN their nose towards you when you come within 4 blocks (1.8 rad/s),
 //               so a slow sneak never works: line up behind and come in fast (the last 2.3 blocks take 0.4 s at full speed)
-// After two missed tries of the same round the bots slow down a little (fairHelp, at most 30 %) and the round gets 10 s more.
+// After two missed tries of the same round the shared kind help (kindhelp.js) slows the bots down a tiny bit and gives the round a bit more time.
 export const BOT_TRICKS = {
   notice: 4.5, noticeCos: 0.2, noticeToward: 1,  // a zoomer notices a car within 4.5 that is behind it (within about 78 degrees of its back) and closing
   zoomAdd: 3.4, zoomTime: 1.1,                    // ... zooms off for 1.1 s (+3.4 b/s: faster than your car's top speed)
@@ -165,8 +168,8 @@ export const BUMPER_ROUNDS = [
   { name: 'Spinners', time: 75, kinds: ['zoom', 'zoom', 'zoom', 'spin', 'spin', 'spin'], speeds: [3.4, 3.4, 3.4, 3.6, 3.6, 3.6] },
 ];
 export const HARD = { botAdd: 0.4, time: 5, bounceScore: 4, ringOmega: 0.07, ringNeed: 1, balloonPeriod: 0.75 }; // a rematch (you hold the star)
-// The kind help of all three games: after two missed tries of the same round things go a little slower (and a timed round gets 10 s more).
-export const fairHelp = misses => (misses < 2 ? { slow: 1, extra: 0, on: false } : { slow: Math.max(0.7, 1 - 0.1 * (misses - 1)), extra: 10, on: true });
+// The kind help of all three games is the shared one (kindhelp.js, owner 2026-10-28: only ever so slightly easier): misses -> { slow, more, on }.
+// Bumper Cars: bots x slow, time x more; Balloon Bounce: balloons x slow, time x more; Gold Ring Ride: carousel x slow.
 
 // The six bumper bots of a round: each drives its ellipse (arc length `s`, integrated in the 1/120 s sub-steps, so 60 and 20 frames a
 // second give the same), with its own tricks. at(i) has the same fields as botAt (x, z, vx, vz, hx / hz = where its NOSE points, yaw).
@@ -233,11 +236,11 @@ export class BotFleet {
 export class BumperGame {
   constructor(hard = false) { this.hard = hard; this.fleet = new BotFleet(); this.car = new BumperCar(); this.acc = 0; this.misses = 0; this.wins = 0; this.start(0); }
   start(round) {
-    const R = BUMPER_ROUNDS[round], help = fairHelp(this.misses);
+    const R = BUMPER_ROUNDS[round], help = kindHelp(this.misses);
     this.round = round; this.help = help;
     this.fleet.setRound(round, this.hard, help.slow);
     this.popped = BOTS.map(() => false);
-    this.time = R.time - (this.hard ? HARD.time : 0) + help.extra; this.left = this.time;
+    this.time = (R.time - (this.hard ? HARD.time : 0)) * help.more; this.left = this.time;
   }
   get need() { return this.fleet.bots.filter(b => b.kind).length; }
   get pops() { return this.popped.filter(Boolean).length; }
@@ -315,7 +318,7 @@ export function nextBounce(h, space, flag = TRAMP) {
 //   2 Wobblers  2 figure-eights, 2 zigzags and 2 star balloons: pop all 6 in 70 s.
 //   3 Combo     7 balloons that come back 2.5 s after a pop: 30 points in 60 s. Every pop in a row multiplies (x1, x2, x3): a pop on
 //               every bounce keeps the combo; two bounces in a row without a pop end it.
-// The round clock runs only while you are on the trampoline (or above it); a missed round starts again, with the kind help (fairHelp).
+// The round clock runs only while you are on the trampoline (or above it); a missed round starts again, with the kind help (kindhelp.js).
 export const BOUNCE_ROUNDS = [
   { name: 'Warm-up', time: 60, need: 5, balloons: [
     { h: 5, c: [194, 151], r: 1.5, period: 9 }, { h: 6, c: [201, 157], r: 1.8, period: 10 }, { h: 7, c: [195, 157], r: 1.2, period: 8 },
@@ -355,11 +358,11 @@ export const balloonAt = (i, t, hard = false, round = 0) => balloonPath(BOUNCE_R
 export class BounceGame {
   constructor(hard = false) { this.hard = hard; this.t = 0; this.misses = 0; this.wins = 0; this.start(0); }
   start(round) {
-    const R = BOUNCE_ROUNDS[round], help = fairHelp(this.misses);
+    const R = BOUNCE_ROUNDS[round], help = kindHelp(this.misses);
     this.round = round; this.help = help;
     this.speed = help.slow * (this.hard ? 1 / HARD.balloonPeriod : 1);
     this.popped = R.balloons.map(() => false); this.back = R.balloons.map(() => 0); this.boopAt = R.balloons.map(() => -9);
-    this.time = R.time - (this.hard ? HARD.time : 0) + help.extra; this.left = this.time;
+    this.time = (R.time - (this.hard ? HARD.time : 0)) * help.more; this.left = this.time;
     this.pops = 0; this.score = 0; this.chain = 0; this.empty = 0; this.airPops = 0; this.best = 0;
   }
   get spec() { return BOUNCE_ROUNDS[this.round]; }
@@ -450,7 +453,7 @@ export const CAROUSEL = {
 // ---- Harder Gold Ring Ride (owner 2026-10-27) ---- rings hang at fixed angles (they do not turn, you turn past them): `lane` 0..2
 // (inner, middle, outer), `high` ones only during a hop, `gold` ones are worth 3 points (all high ones and a few hard-to-reach low ones),
 // silver ones 1. A round is ONE lap of the carousel: catch enough points before the lap is over, or the lap starts again (never a fail;
-// after two missed laps of a round the carousel turns a little slower, fairHelp). Each round the carousel turns faster:
+// after two missed laps of a round the carousel turns a tiny bit slower, kindhelp.js). Each round the carousel turns faster:
 //   1 Warm-up       0.45 rad/s (a lap in 14 s), 8 low rings 1.75 s apart, the gold ones on the inner lane: 9 of 12 points
 //   2 Hop and swap  0.55 rad/s (11.4 s), 10 rings 1.1 s apart, 4 high gold ones, jumps of two lanes: 13 of 18 points
 //   3 Gold rush     0.65 rad/s (9.7 s), 12 rings in quick pairs (0.6 s), swaps and hops together, 6 gold: 19 of 24 points
@@ -484,7 +487,7 @@ export class Seat {
     this.prev = this.angle(); this.startLap();
   }
   startLap() { this.caught = []; this.seen = []; this.swept = 0; this.score = 0; }
-  get help() { return fairHelp(this.misses); }
+  get help() { return kindHelp(this.misses); }
   get omega() { return omegaOf(this.hard, this.round, this.help.slow); }
   get need() { return ringNeed(this.round, this.hard); }
   get rings() { return RING_ROUNDS[this.round].rings; }

@@ -4,7 +4,7 @@
 // stack: the part that hangs over the box below is cut off (it tumbles to the floor), so the next present is that much smaller. A drop
 // close enough to the middle is Perfect!: the present snaps on and keeps its size. Stack N presents (5 / 7 / 9) and the round is won; a
 // present that misses, or one cut thinner than STACK.min, topples the stack: the round starts again (never a loss), and after two misses
-// the crane swings slower (the Funfair's kind help, fairHelp in fairgames.js, passed in as `slow`).
+// the crane swings a tiny bit slower (the shared kind help, kindhelp.js, passed in as `slow`).
 //
 // Release timing on a moving crane (not aim, not power). The crane is a closed form of the round clock `t` (seconds since Play!), and a
 // drop's result is pure maths on the overlap, so the same presses give the same stack at 60 and 20 frames a second.
@@ -33,7 +33,7 @@ export function hashStr(str) {
   return h >>> 0;
 }
 
-// One try of round `round` (1..3). slow = fairHelp(misses).slow (1 = no help; 0.7 = 30 % slower).
+// One try of round `round` (1..3). slow = kindHelp(misses).slow (1 = no help; 0.9 = 10 % slower, the most).
 export function stackPlan(seed, round, attempt, { twist = null, hard = false, slow = 1 } = {}) {
   const r = Math.min(3, Math.max(1, round | 0)) - 1, H = hard ? STACK.hard : { period: 1, perfect: 1, need: 0 };
   return {

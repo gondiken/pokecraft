@@ -424,7 +424,7 @@ async function landPart(t) {
 /* ============================================================================================ */
 
 async function gamesPart(t) {
-  const P = await src('pinata.js'), J = await src('jackcatch.js'), L = await src('partyland.js'), PR = await src('partyrounds.js'), GS = await src('giftstack.js'), PW = await src('popupwhack.js'), FG = await src('fairgames.js'), SP = await src('spinner.js');
+  const P = await src('pinata.js'), J = await src('jackcatch.js'), L = await src('partyland.js'), PR = await src('partyrounds.js'), GS = await src('giftstack.js'), PW = await src('popupwhack.js'), FG = await src('kindhelp.js'), SP = await src('spinner.js');
   const Bt = await import(pathToFileURL(path.join(ROOT, 'tests', 'partybots.mjs')).href);
   const { PINATA } = P, sets = L.setsOf();
   const both = f => [1 / 60, 1 / 20].map(f);
@@ -492,7 +492,7 @@ async function gamesPart(t) {
     GS.drop(st2, 0.0001); const bad = GS.newStack(GS.stackPlan(1, 1, 0)); bad.top = { x: 0, z: 0, w: 0.3, d: 3 }; const mres = GS.drop(bad, t3);
     t.ok(mres.miss && bad.over === 'toppled', 'a present that misses the stack (or is cut thinner than the smallest) topples it: the round starts again');
     const plans = [1, 2, 3].map(r => GS.stackPlan(2, r, 0));
-    t.ok(plans.map(p => p.need).join() === '5,7,9' && plans[0].period > plans[1].period && plans[1].period > plans[2].period && GS.stackPlan(2, 3, 0, { hard: true }).need === 10 && GS.stackPlan(2, 2, 0, { slow: FG.fairHelp(2).slow }).period > plans[1].period, `5 / 7 / 9 presents, the crane faster each round (${plans.map(p => p.period.toFixed(2))} s a swing); after two misses the Funfair's kind help slows it; a rematch needs one more`);
+    t.ok(plans.map(p => p.need).join() === '5,7,9' && plans[0].period > plans[1].period && plans[1].period > plans[2].period && GS.stackPlan(2, 3, 0, { hard: true }).need === 10 && GS.stackPlan(2, 2, 0, { slow: FG.kindHelp(2).slow }).period > plans[1].period && GS.stackPlan(2, 2, 0, { slow: FG.kindHelp(99).slow }).period <= plans[1].period / (1 - FG.KIND_HELP.max) + 1e-9, `5 / 7 / 9 presents, the crane faster each round (${plans.map(p => p.period.toFixed(2))} s a swing); after two misses the shared kind help slows it a tiny bit (never more than ${FG.KIND_HELP.max * 100} %); a rematch needs one more`);
     const wob = GS.stackPlan(2, 2, 0, { twist: 'wobbly' }), tiny = GS.stackPlan(2, 2, 0, { twist: 'tiny' }), windy = GS.stackPlan(2, 2, 0, { twist: 'windy' });
     let zmax = 0, centres = new Set(); for (let tt2 = 0; tt2 < 20; tt2 += 0.05) { zmax = Math.max(zmax, Math.abs(GS.craneAt(wob, tt2).z)); centres.add(Math.round(GS.craneAt(windy, tt2).x - GS.STACK.amp * Math.sin((2 * Math.PI / windy.period) * tt2 + windy.phase))); }
     t.ok(zmax > 0.5 && tiny.start < GS.STACK.start && centres.size >= 2 && Math.abs(GS.craneAt(plans[1], 3).z) < 1e-9, `the surprises: Wobbly crane (swings in and out too, up to ${zmax.toFixed(2)}), Tiny presents (they start ${tiny.start} wide), Windy (the middle of the swing drifts)`);
@@ -525,8 +525,8 @@ async function gamesPart(t) {
     t.ok(r1.hit && st.score === 1 && r2.pie && st2.score === 2 && st2.splats === 1 && r3.gold && st3.score === 2 && !r4.hit && r4.swung && !r5.swung, `whack a jack +1, a gold one +2, a pie jack is a splat -1, a whack at nothing makes the stick rest ${PW.WHACK.cool.miss} s`);
     const mir = PW.whackPlan(3, 2, 0, { twist: 'mirror' }), speedy = PW.whackPlan(3, 2, 0, { twist: 'speedy' });
     t.ok(mir.pops.some(q => q.shook === 8 - q.box && q.box !== 4) && plans[1].pops.every(q => q.shook === q.box) && speedy.up < plans[1].up && speedy.pops.length > plans[1].pops.length, `the surprises: Mirror (${mir.pops.filter(q => q.shook !== q.box).length} jacks come out of the box opposite the one that shook), Speedy (${speedy.pops.length} shorter pops instead of ${plans[1].pops.length}), Lights out (looks only)`);
-    const helped = PW.whackPlan(3, 2, 0, { help: FG.fairHelp(2) });
-    t.ok(helped.up > plans[1].up && helped.time === 40, `after two misses the jacks stay up longer (${plans[1].up.toFixed(2)} -> ${helped.up.toFixed(2)} s) and there are 10 s more`);
+    const helped = PW.whackPlan(3, 2, 0, { help: FG.kindHelp(2) });
+    t.ok(helped.up > plans[1].up && helped.up <= plans[1].up / (1 - FG.KIND_HELP.max) + 1e-9 && helped.time > plans[1].time && helped.time <= plans[1].time * (1 + FG.KIND_HELP.max) + 1e-9, `after two misses the jacks stay up a tiny bit longer (${plans[1].up.toFixed(2)} -> ${helped.up.toFixed(2)} s) and there is a bit more time (${plans[1].time} -> ${helped.time.toFixed(1)} s)`);
     const wWin = (kind, r, x = {}, dt = 1 / 60) => { let w = 0; for (let s = 0; s < 12; s++) if (Bt.playWhack(kind, PW.whackPlan(100 + s, r, 0, x), dt, wb, eye).won) w++; return w; };
     const kid = both(dt => [1, 2, 3].map(r => wWin('kid', r, {}, dt))), tw = ['dark', 'mirror', 'speedy'].map(x => wWin('kid', 3, { twist: x }));
     const mash = [1, 2, 3].map(r => wWin('masher', r)), stillW = [1, 2, 3].map(r => wWin('still', r));
@@ -623,7 +623,7 @@ async function livePart({ browser, base, t, page }) {
     const up = L.gm.run.st.plan.up, time = L.gm.run.st.plan.time;
     return { a: a.out, b: up0.out, word, misses: L.misses.whack[1], up, time, toasts: window.__toasts.join('|') };
   });
-  t.ok(careless.a === 'missed' && careless.b === 'missed' && careless.misses === 2 && careless.word === 'Again!' && careless.time === 40 && careless.up > 1.3 && /You got \d+! Again\?/.test(careless.toasts) && /It will be a bit slower now/.test(careless.toasts), `Pop-Up Whack: never whacking misses the round (${careless.a}, ${careless.b}); "Again!", and after two misses the jacks stay up ${careless.up.toFixed(2)} s with ${careless.time} s on the clock`);
+  t.ok(careless.a === 'missed' && careless.b === 'missed' && careless.misses === 2 && careless.word === 'Again!' && careless.time > 30 && careless.time < 31 && careless.up > 1.3 && careless.up < 1.35 && /You got \d+! Again\?/.test(careless.toasts) && /It will be a bit slower now/.test(careless.toasts), `Pop-Up Whack: never whacking misses the round (${careless.a}, ${careless.b}); "Again!", and after two misses the jacks stay up a tiny bit longer, ${careless.up.toFixed(2)} s, with ${careless.time.toFixed(1)} s on the clock`);
   // leaving the party floor in the middle of a round: it waits (not a miss)
   const leave = await page.evaluate(() => {
     const g = window.pokecraft, L = window.__live(); window.__toasts = [];

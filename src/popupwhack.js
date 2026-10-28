@@ -4,7 +4,7 @@
 // Whack! (the party stick: E, a click, the big button, or a tap on the jack) a jack before it hides: 1 point, a gold jack 2. A pie jack
 // holds a cream pie: do NOT whack it (a splat: cream on the screen, a point off). A whack at nothing spins the stick round for a moment,
 // so whacking all the time does not work. Rounds need 8 / 11 / 14 points in 30 s, and the jacks stay up shorter each round. A missed
-// round simply starts again; after two misses the jacks stay up longer and there is more time (fairHelp, passed in as `help`).
+// round simply starts again; after two misses the jacks stay up a tiny bit longer and there is a bit more time (kindhelp.js, passed in as `help`).
 //
 // Reflexes with a "do not hit that one" rule. The pops are a plan from a hash of seed | round | attempt (no Math.random) and every jack
 // is a closed form of the round clock, so a replay of the same presses is the same game at 60 and 20 frames a second.
@@ -41,13 +41,13 @@ function seeded(key) {
   return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-// One try of round `round` (1..3). help = fairHelp(misses) ({ slow, extra }); twist = null | 'dark' | 'mirror' | 'speedy'.
+// One try of round `round` (1..3). help = kindHelp(misses) ({ slow, more }); twist = null | 'dark' | 'mirror' | 'speedy'.
 // -> { pops: [{ n, box, shook, t0, up, kind: 'jack' | 'gold' | 'pie' }], time, need, ... }
-export function whackPlan(seed, round, attempt, { twist = null, hard = false, help = { slow: 1, extra: 0 } } = {}) {
+export function whackPlan(seed, round, attempt, { twist = null, hard = false, help = { slow: 1, more: 1 } } = {}) {
   const r = Math.min(3, Math.max(1, round | 0)) - 1, rnd = seeded(`whack|${seed}|${round}|${attempt}`);
   const H = hard ? WHACK.hard : { up: 1, need: 0 }, S = twist === 'speedy' ? WHACK.speedy : { up: 1, gap: 1 };
   const up = (WHACK.up[r] * H.up * S.up) / Math.max(0.3, help.slow ?? 1), gap = WHACK.gap[r] * S.gap;
-  const time = WHACK.time + (help.extra || 0), pops = [];
+  const time = WHACK.time * (help.more ?? 1), pops = [];
   let t = 1.0, n = 0, jacks = 0, last = -1, nextGold = WHACK.goldEvery[0] + Math.floor(rnd() * (WHACK.goldEvery[1] - WHACK.goldEvery[0] + 1));
   const busyAt = (box, t0) => pops.some(p => p.box === box && t0 < p.t0 + p.up + 0.3 && t0 + up + 0.3 > p.t0);
   const pick = (avoid) => { let b = 0; for (let k = 0; k < 30; k++) { b = Math.floor(rnd() * 9); if (!avoid.includes(b)) break; } return b; };

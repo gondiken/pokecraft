@@ -12,6 +12,7 @@ import { buildPerson } from './npc.js';
 import { bossOf } from './pictureboss.js';
 import { disposeModel } from './species.js';
 import { sound } from './sound.js';
+import { kindHelp } from './kindhelp.js';
 
 const KEEPER_REACH = 2.9; // a keeper stays 0.4 inside each post (the walk's own reach, KEEPER.A)
 export const LIVE_RULES = { clearOut: 1.2, sleepDist: 60, goalPause: 1.5, outPause: 0.8, highY: 12.5, highFor: 1, bonusMax: 3, saveGap: 4, soundGap: 0.15 };
@@ -54,6 +55,7 @@ export class StadiumLive {
     this.bonus = 0;           // cubes from baskets this trip
     this.goalAt = null;       // foot.time of the goal being celebrated
     this.outAt = { foot: null, hoop: null };
+    this.misses = { foot: 0, hoop: 0 }; // kicks put back without a goal / shots that did not go in, in a row (the kind help, kindhelp.js)
     this.told = false;
     this.lastSave = -99; this.lastSound = -99;
     this.hoopPrevY = this.hoop.pos.y;
@@ -119,6 +121,11 @@ export class StadiumLive {
   get hard() { return this.game.stars.includes('stadium'); }
   get goalsIn() { const st = goalState(this.game); return stageOf(st.n, st.need); }   // how hard the next goal / basket is (0..2): goals and baskets already in make it harder
   get basketsIn() { const st = goalState(this.game); return stageOf(st.b, st.bneed); }
+  // The shared kind help (owner 2026-10-28: only ever so slightly easier after a few misses in a row): football = Dee and the keepers'
+  // dives x slow and the green of the power ring x more round its middle; basketball = the good moment of a shot x more.
+  helpOf(key) { return kindHelp(this.misses[key]); }
+  zoneNow() { const [lo, hi] = kickZone(this.goalsIn, this.hard), m = (lo + hi) / 2, h = ((hi - lo) / 2) * this.helpOf('foot').more; return [m - h, m + h]; }
+  windowNow(d) { return shotWindow(this.basketsIn, d, this.hard) * this.helpOf('hoop').more; }
   toast(m) { this.game.ui.toast(m); }
   frozen() { const g = this.game; return !!(g.inBattle || g.ui.asking || g.ui.panelOpen || !this.playing()); }
   playerBox(p = this.game.player) {
@@ -154,7 +161,7 @@ export class StadiumLive {
     part.keepers.forEach((k, i) => { this.keeperPos[i] = this.keeperAt(i, this.foot.time); });
     // a goal (an over-hit ball goes over the bar instead)
     if (this.overAt != null) {
-      if (this.foot.time - this.overAt > LIVE_RULES.outPause) { this.foot.reset(); this.overAt = null; this.wild = false; this.touched = false; this.clearedAt = null; }
+      if (this.foot.time - this.overAt > LIVE_RULES.outPause) { this.foot.reset(); this.misses.foot++; this.overAt = null; this.wild = false; this.touched = false; this.clearedAt = null; }
     } else if (this.goalAt == null) {
       if (this.wild && part.goals.some(gl => (gl.side < 0 ? this.foot.pos.x < gl.line - BALL_R : this.foot.pos.x > gl.line + BALL_R))) {
         this.overAt = this.foot.time; this.toast('Too much power! It flew over the bar. Let go sooner!');
@@ -204,7 +211,7 @@ export class StadiumLive {
     const chase = this.touched && this.goalAt == null && this.outAt.foot == null && this.overAt == null && d.rest <= 0;
     if (d.rest > 0) d.rest -= dt;
     const tx = chase ? b.pos.x : home[0], tz = chase ? b.pos.z : home[2] + 3;
-    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (D.speed[Math.min(2, this.goalsIn)] + (this.hard ? D.hardAdd : 0)) * dt;
+    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz), step = (D.speed[Math.min(2, this.goalsIn)] + (this.hard ? D.hardAdd : 0)) * this.helpOf('foot').slow * dt;
     d.moving = dist > 0.2 && d.rest <= 0;
     if (d.moving) { const k = Math.min(1, step / dist); d.x += dx * k; d.z += dz * k; d.yaw = Math.atan2(dx, dz); }
     if (!chase || dist > D.reach || b.pos.y > home[1] + 1.2) return;
@@ -251,7 +258,7 @@ export class StadiumLive {
 
   goal() {
     const g = this.game;
-    this.goalAt = this.foot.time;
+    this.goalAt = this.foot.time; this.misses.foot = 0;
     sound.play('goalcheer');
     const { n: before, need } = goalState(g);
     let n = before;
@@ -272,14 +279,14 @@ export class StadiumLive {
     if (key === 'foot' && this.goalAt != null) { this.outAt.foot = null; return; }
     if (!out) { this.outAt[key] = null; return; }
     if (this.outAt[key] == null) { this.outAt[key] = b.time; if (key === 'foot' && !cleared) this.toast('Out! The ball goes back to the middle.'); else this.toast('Out! The ball goes back to the middle of the court.'); return; }
-    if (b.time - this.outAt[key] > LIVE_RULES.outPause) { b.reset(); this.outAt[key] = null; if (key === 'foot') { this.touched = false; this.clearedAt = null; } }
+    if (b.time - this.outAt[key] > LIVE_RULES.outPause) { b.reset(); this.outAt[key] = null; if (key === 'foot') { if (this.touched) this.misses.foot++; this.touched = false; this.clearedAt = null; } }
   }
 
   wants(st) { return st.ready ? 'Captain Kickley wants to battle you!' : `Now ${this.next(st).replace('Battle', 'battle')}`; }
 
   basket() {
     const g = this.game;
-    sound.play('netswish');
+    sound.play('netswish'); this.misses.hoop = 0;
     const st = goalState(g); // owner 2026-10-26: the captain wants baskets too (saved at once, like goals)
     let counted = '';
     if (st.b < st.bneed) {
@@ -332,13 +339,14 @@ export class StadiumLive {
     const pl = this.playerBox(p), f = [-Math.sin(pl.yaw), -Math.cos(pl.yaw)];
     if (h.key === 'foot') {
       if (!canBoot(this.foot, pl)) return true; // it rolled away while you held
-      const v = kickPower(Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, this.foot.pos, f, kickZone(this.goalsIn, this.hard), this.part.goals.map(gl => ({ x: gl.line })));
+      const v = kickPower(Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, this.foot.pos, f, this.zoneNow(), this.part.goals.map(gl => ({ x: gl.line })));
       boot(this.foot, v);
       this.wild = v.kind === 'over';
       this.lastKick = v.kind;
     } else {
       const err = this.t - h.apex, d = this.hoopDist(f);
-      const miss = d == null ? 0 : shotMiss(err, shotWindow(this.basketsIn, d, this.hard));
+      const miss = d == null ? 0 : shotMiss(err, this.windowNow(d));
+      this.misses.hoop++; // (a basket sets it back to 0)
       boot(this.hoop, this.shoot(f, miss));
       this.lastShot = { err, miss };
     }
@@ -385,7 +393,7 @@ export class StadiumLive {
       const z1 = Math.max(k.c - KEEPER_REACH, Math.min(k.c + KEEPER_REACH, zc)), old = this.dives[i];
       if (old && t < old.until && Math.abs(old.z1 - z1) < DIVE.again) return;
       const t0 = t + DIVE.react;
-      this.dives[i] = { t0, z0: this.keeperAt(i, t0).z, z1, speed: DIVE.speed[Math.min(2, this.goalsIn)] + (this.hard ? DIVE.hard : 0), until: t0 + DIVE.hold };
+      this.dives[i] = { t0, z0: this.keeperAt(i, t0).z, z1, speed: (DIVE.speed[Math.min(2, this.goalsIn)] + (this.hard ? DIVE.hard : 0)) * this.helpOf('foot').slow, until: t0 + DIVE.hold };
     });
   }
 
@@ -429,14 +437,14 @@ export class StadiumLive {
     const h = this.held, r = this.ring;
     r.g.visible = h?.key === 'foot';
     if (r.g.visible) {
-      const b = this.foot, p = Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, [lo, hi] = kickZone(this.goalsIn, this.hard);
+      const b = this.foot, p = Math.min(HOLD.foot.max, this.t - h.t0) / HOLD.foot.fill, [lo, hi] = this.zoneNow();
       r.g.position.set(b.pos.x, b.pos.y - BALL_R + 0.04, b.pos.z);
       r.fill.geometry.setDrawRange(0, 6 * Math.round(48 * Math.min(1, p)));
       r.fill.material.color.setHex(p < lo ? 0xffffff : p <= hi ? 0x40e060 : 0xff4a3a);
       r.zone.geometry.setDrawRange(6 * Math.round(48 * lo), 6 * Math.round(48 * (hi - lo)));
     }
     let glow = 0;
-    if (h?.key === 'hoop') { const d = this.hoopDist([-Math.sin(this.game.player.yaw), -Math.cos(this.game.player.yaw)]); if (d != null && Math.abs(this.t - h.apex) <= shotWindow(this.basketsIn, d, this.hard)) glow = 0.55; }
+    if (h?.key === 'hoop') { const d = this.hoopDist([-Math.sin(this.game.player.yaw), -Math.cos(this.game.player.yaw)]); if (d != null && Math.abs(this.t - h.apex) <= this.windowNow(d)) glow = 0.55; }
     this.meshes.hoop.material.emissive.setRGB(glow, glow, glow * 0.4);
   }
   drawAll() {

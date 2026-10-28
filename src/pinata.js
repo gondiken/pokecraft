@@ -1,4 +1,4 @@
-// T44 rework (owner 2026-10-27, plans/T44.md "Rework"): the Piñata Party's rules. Pure, no imports, Node-runnable.
+// T44 rework (owner 2026-10-27, plans/T44.md "Rework"): the Piñata Party's rules. Pure (only the shared kind help, kindhelp.js), Node-runnable.
 //
 // A piñata hangs on a rope from a bunch of balloons that drift round the ring in the middle of the hall. It swings like a pendulum
 // (low = in reach, at the ends of a swing it is up out of reach). You whack it with a party stick: one press, the stick swings the way
@@ -9,6 +9,8 @@
 // Everything is a closed form of the round's own clock `t` (seconds since Play!): the balloons' path, the swing since the last hit
 // (`segs`), so a replay with the same presses gives the same piñata at 60 and at 20 steps a second. The randomness (the path, its
 // turn, the first swing, the dodges) comes from a hash of seed | round | attempt (| hit number): no Math.random.
+
+import { kindHelp } from './kindhelp.js';
 
 export const PINATA = {
   ring: { x: 56.5, z: 53.5, r: 9 },     // the party rug in the middle of the party floor (partyland.js builds the room round it)
@@ -32,11 +34,12 @@ export const PINATA = {
     { id: 'star', name: 'Star Piñata', hp: 7, period: 2.35, speed: 1.4, path: 'eight', size: [4.2, 2.6], amp: 2.5, wide: 1.0, hitAmp: 2.8, zip: [2.8, 4.2], dodge: 0.25, zipBack: 0, time: 45 },
     { id: 'rocket', name: 'Rocket Piñata', hp: 9, period: 1.95, speed: 2.1, path: 'wander', size: [4.2, 3.8], amp: 2.7, wide: 1.4, hitAmp: 3.0, zip: [3.2, 5], dodge: 0.35, zipBack: 0.3, time: 55 },
   ],
-  // the rubber band: after a miss (time up) the next try swings slower, the balloons drift slower and it needs a hit less; after two, more so
-  help: [{ period: 1, speed: 1, hp: 0, zip: 1 }, { period: 1.2, speed: 0.7, hp: -1, zip: 0.75 }, { period: 1.4, speed: 0.45, hp: -2, zip: 0.5 }],
+  // the kind help after misses (time up) is the shared one (kindhelp.js, owner 2026-10-28): the swing period x more, the drift and zips x slow
+  // "Two piñatas!"'s second llama is a slower, weaker one by design (not a help): its numbers
+  lazy: { period: 1.4, speed: 0.45, hp: -2, zip: 0.5 },
   hard: { hp: 2, period: 0.9, speed: 1.2, zip: 1.15 },   // a rematch (Jolly Jax beaten before)
 };
-export const helpOf = misses => Math.min(2, Math.max(0, misses | 0));
+export const helpOf = misses => Math.max(0, misses | 0); // (the misses in a row; kindHelp turns them into the ease)
 
 export function hashStr(str) {
   let h = 1779033703 ^ str.length;
@@ -49,9 +52,12 @@ export function seeded(key) {
   return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-// One try at piñata `round` (1..3): its numbers and the random parts of its path and first swing.
-export function pinataPlan(seed, round, attempt, { help = 0, hard = false } = {}) {
-  const R = PINATA.rounds[round - 1], H = PINATA.help[helpOf(help)], X = hard ? PINATA.hard : { hp: 0, period: 1, speed: 1, zip: 1 };
+// One try at piñata `round` (1..3): its numbers and the random parts of its path and first swing. `help` = misses in a row (kind help),
+// `lazy` = "Two piñatas!"'s slower second llama.
+export function pinataPlan(seed, round, attempt, { help = 0, hard = false, lazy = false } = {}) {
+  const K = kindHelp(help), L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
+  const H = { period: L.period * K.more, speed: L.speed * K.slow, hp: L.hp, zip: L.zip * K.slow };
+  const R = PINATA.rounds[round - 1], X = hard ? PINATA.hard : { hp: 0, period: 1, speed: 1, zip: 1 };
   const rnd = seeded(`pinata|${seed}|${round}|${attempt}`);
   const period = R.period * H.period * X.period, speed = R.speed * H.speed * X.speed;
   const turn = rnd() * Math.PI * 2, sign = rnd() < 0.5 ? -1 : 1;

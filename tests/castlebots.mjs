@@ -62,11 +62,11 @@ export function playJoust(bot, { seed = 7, round = 0, attempt = 0, fps = 60, hel
 
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('castlebots.mjs')) {
   for (const fps of [60, 20]) for (let r = 0; r < SIEGE_ROUNDS; r++) {
-    const row = Object.keys(SIEGE_BOTS).flatMap(n => [0, 3].map(help => [n, help])).map(([n, help]) => { let w = 0, s = 0; for (let seed = 1; seed <= 20; seed++) { const x = playSiege(SIEGE_BOTS[n](), { seed, round: r, fps, help }); w += x.won; s += x.score; } return `${n}${help ? '+h' : ''} ${w}/20 (${(s / 20).toFixed(1)})`; });
+    const row = Object.keys(SIEGE_BOTS).flatMap(n => [0, 6].map(help => [n, help])).map(([n, help]) => { let w = 0, s = 0; for (let seed = 1; seed <= 20; seed++) { const x = playSiege(SIEGE_BOTS[n](), { seed, round: r, fps, help }); w += x.won; s += x.score; } return `${n}${help ? '+h' : ''} ${w}/20 (${(s / 20).toFixed(1)})`; });
     console.log(`siege r${r + 1} @${fps}: ${row.join(' | ')}`);
   }
   for (const fps of [60, 20]) for (let r = 0; r < JOUST_ROUNDS; r++) {
-    const row = Object.keys(JOUST_BOTS).flatMap(n => [0, 3].map(help => [n, help])).map(([n, help]) => { let w = 0, s = 0; for (let seed = 1; seed <= 20; seed++) { const x = playJoust(JOUST_BOTS[n](), { seed, round: r, fps, help }); w += x.won; s += x.score; } return `${n}${help ? '+h' : ''} ${w}/20 (${(s / 20).toFixed(1)})`; });
+    const row = Object.keys(JOUST_BOTS).flatMap(n => [0, 6].map(help => [n, help])).map(([n, help]) => { let w = 0, s = 0; for (let seed = 1; seed <= 20; seed++) { const x = playJoust(JOUST_BOTS[n](), { seed, round: r, fps, help }); w += x.won; s += x.score; } return `${n}${help ? '+h' : ''} ${w}/20 (${(s / 20).toFixed(1)})`; });
     console.log(`joust r${r + 1} @${fps}: ${row.join(' | ')}`);
   }
 }

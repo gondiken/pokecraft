@@ -166,3 +166,7 @@ easy side, nothing lost):
 - **The only rest spot is by the table** (the frame home's arrival is not one), so a lost battle always wakes you there, as the plan says.
 - **Leaving the party floor in the middle of a round** pauses it ("The game waits for you on the party floor!"), never a miss.
 - The two new sounds are `spintick` (the Spinner) and `partyyay` (the guests).
+
+## Kind help (owner 2026-10-28)
+
+"Making it easier a bit each time something goes wrong, but only ever so slightly; with the shield game, after failing 6 times it became pretty easy. We should ask a bit of grit / patience." Every skill game now takes its help from the one shared rule in `src/kindhelp.js` (`KIND_HELP = { after: 2, step: 0.02, max: 0.10 }`: nothing for 0-1 misses, then 2 / 6 / 10 % easier after 2 / 4 / 6 misses, never more); this game only maps `kindHelp(misses).slow` / `.more` onto its own levers (the table is in the module comment). The older, stronger help numbers here are replaced by it; a rematch's `hard` is unchanged. Spec `kindhelp`.

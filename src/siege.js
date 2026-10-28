@@ -1,11 +1,11 @@
-// T49: Shield Up! (the Castle, plans/T49-castle.md section 3), pure: no game imports (only fairgames.js's fairHelp, itself pure), so it
+// T49: Shield Up! (the Castle, plans/T49-castle.md section 3), pure: no game imports (only kindhelp.js's kindHelp, itself pure), so it
 // runs in Node. You stand on a Shield Stone; the castle's practice catapults lob squishy pumpkins and its archers shoot suction-cup
 // arrows at you from twelve spots all round. Push the stick toward the danger (the shield points where the stick points; with no stick
 // it points where you look), hold Jump to lift it over your head for a pumpkin falling from the sky. A throw is judged at the moment it
 // arrives (a closed-form time) with the shield as it is in that frame: so the same presses give the same result at any frame rate.
 // Never a fail: a pumpkin that gets through is only a soft "Splat! Yuck, sticky!", and a round that ends short of its number starts
-// again (after two short rounds the kind help slows it down).
-import { fairHelp } from './fairgames.js';
+// again (after two short rounds the shared kind help slows it down a tiny bit).
+import { kindHelp } from './kindhelp.js';
 
 const D = Math.PI / 180;
 export const SIEGE = {
@@ -24,7 +24,6 @@ export const SIEGE = {
     { n: 14, need: 12, kinds: { pumpkin: 6, arrow: 4, sky: 2, big: 2 }, pairs: 3, gap: 1.05, pairGap: 0.5, behind: 3 },
   ],
   hard: { extra: 2, need: 1, tell: 0.85 },
-  coverHelp: [0, 5 * D, 10 * D],                 // + cover from the third / fourth short round of the same round
   dt: 1 / 120,
 };
 export const SIEGE_ROUNDS = SIEGE.rounds.length;
@@ -52,10 +51,10 @@ export function stoneAt(pos) {
 }
 
 // The throws of round r (0-based) for one try: { throws: [{ i, at, k, kind, tell, flight }], need, n, end }. `help` = how many short tries of
-// this round in a row (fairHelp), `hard` = a rematch (you hold the star). Pure: a seed and the same numbers give the same list.
+// this round in a row (kindHelp: every throw's timing / (1 - ease), the cover x (1 + ease)), `hard` = a rematch (you hold the star). Pure: a seed and the same numbers give the same list.
 export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } = {}) {
   const R = SIEGE.rounds[round], rnd = seeded(hashStr(`siege|${seed}|${round}|${attempt}`));
-  const slow = fairHelp(help).slow, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
+  const kh = kindHelp(help), slow = kh.slow, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
   const n = R.n + (hard ? SIEGE.hard.extra : 0), need = R.need + (hard ? SIEGE.hard.need : 0);
   // the kinds, in a shuffled order
   const kinds = [];
@@ -102,7 +101,7 @@ export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } =
   // a tell may not start before the round does: push everything later if needed
   const early = Math.min(...throws.map(t => t.at - t.flight - t.tell));
   if (early < 0.3) for (const t of throws) t.at += 0.3 - early;
-  return { throws, need, n, end: throws[n - 1].at + SIEGE.end, round, help, hard, cover: SIEGE.cover + (SIEGE.coverHelp[Math.min(2, Math.max(0, help - 1))] || 0) };
+  return { throws, need, n, end: throws[n - 1].at + SIEGE.end, round, help, hard, cover: SIEGE.cover * kh.more };
 }
 
 // The result of one throw arriving at a stand point with the shield at angle `ang` (atan2(x, z)) and `up` (held over the head).

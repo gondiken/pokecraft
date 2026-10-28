@@ -1,11 +1,11 @@
-// T49: the Joust (the Castle, plans/T49-castle.md section 4), pure: only fairgames.js's fairHelp (itself pure), so it runs in Node.
+// T49: the Joust (the Castle, plans/T49-castle.md section 4), pure: only kindhelp.js's kindHelp (itself pure), so it runs in Node.
 // You ride the castle's horse down your lane; a wooden practice knight on a trolley comes the other way and you meet at a fixed time
 // (`meet`). The stick moves your lance tip (u = sideways, v = up, in blocks, in the plane of his shield); the gallop bobs it (a closed
 // form); a gold star sits on his shield (still, sliding, or sliding and hopping once late). At the meeting the tip's distance to the
 // star decides: Bullseye! (2 points), Clang! on the shield (1), or Whoosh! (0, a bonk on your helmet, nothing more). Never a fail: a round
-// is four passes; short of its number it simply starts again, and after two short rounds the kind help gives more time and a bigger star.
+// is four passes; short of its number it simply starts again, and after two short rounds the shared kind help gives a tiny bit more time and a bigger star.
 // The tip moves in fixed 1/120 s sub-steps with the frame's input held, so the same presses give the same result at any frame rate.
-import { fairHelp } from './fairgames.js';
+import { kindHelp } from './kindhelp.js';
 import { seeded, hashStr } from './siege.js';
 
 export const JOUST = {
@@ -18,27 +18,26 @@ export const JOUST = {
   amp: [[0.05, 0.08], [0.08, 0.13], [0.10, 0.16]], // the gallop bob (u, v)
   spots: [[0.5, 0], [-0.5, 0], [0, 0.45], [0, -0.45]], // round 1: the star stands still at one of these (never the middle)
   ellipse: [0.55, 0.42], omega: [0, 2 * Math.PI / 3.2, 2 * Math.PI / 2.6],
-  hop: 0.9, hopHelp: 1.2, hopTell: 0.25,          // round 3: the star hops to the other side this long before the meeting
-  r: [0.32, 0.28, 0.26], rHelp: 0.04, shield: 0.8,
+  hop: 0.9, hopTell: 0.25,                                 // round 3: the star hops to the other side this long before the meeting
+  r: [0.32, 0.28, 0.26], shield: 0.8,
   need: [6, 6, 7],
   hard: { meet: 0.9, need: 1, r: -0.03, gallop: 1 },
-  meetHelp: 0.3,
   dt: 1 / 120,
 };
 export const JOUST_ROUNDS = JOUST.need.length;
 
 // The plan of one try of round r: per pass the star's spot (round 1) or phase, and the bob phases. Pure.
 export function joustPlan(seed, round, attempt = 0, { help = 0, hard = false } = {}) {
-  const rnd = seeded(hashStr(`joust|${seed}|${round}|${attempt}`)), steps = fairHelp(help).on ? Math.min(2, help - 1) : 0;
+  const rnd = seeded(hashStr(`joust|${seed}|${round}|${attempt}`)), kind = kindHelp(help); // the kind help: meeting time, star and hop warning x more, the slide x slow
   const passes = Array.from({ length: JOUST.passes }, () => ({ spot: JOUST.spots[Math.floor(rnd() * JOUST.spots.length)], phi: rnd() * Math.PI * 2, phiU: rnd() * Math.PI * 2, phiV: rnd() * 0.5 }));
   return {
     round, help, hard, passes,
-    meet: JOUST.meet[round] * (hard ? JOUST.hard.meet : 1) + JOUST.meetHelp * steps,
-    r: JOUST.r[round] + (hard ? JOUST.hard.r : 0) + JOUST.rHelp * steps,
+    meet: JOUST.meet[round] * (hard ? JOUST.hard.meet : 1) * kind.more,
+    r: (JOUST.r[round] + (hard ? JOUST.hard.r : 0)) * kind.more,
     need: JOUST.need[round] + (hard ? JOUST.hard.need : 0),
     gallop: JOUST.gallop[round] + (hard ? JOUST.hard.gallop : 0),
-    hop: steps ? JOUST.hopHelp : JOUST.hop,
-    slow: fairHelp(help).slow,               // the help slows the star's slide too
+    hop: JOUST.hop * kind.more,
+    slow: kind.slow,                         // the help slows the star's slide too
   };
 }
 // How far your horse has gone at pass time tau (blocks): accelerates for `accel` s, then gallops on.

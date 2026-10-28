@@ -626,3 +626,7 @@ The open questions of the first draft were answered by the owner on 2026-10-28 (
 - **The sentry gait** ignores keeps (the whole castle is a keep, which fences riders): it only marches on the world's `walk` floor.
 - **Not built:** banners unfurling on the keep after the star (the trumpet and the note only); the spec's perf numbers were not
   measured with `perf.mjs` in this session (the part adds about 12 draw calls in the field and the yard, plus the steed's model).
+
+## Kind help (owner 2026-10-28)
+
+"Making it easier a bit each time something goes wrong, but only ever so slightly; with the shield game, after failing 6 times it became pretty easy. We should ask a bit of grit / patience." Every skill game now takes its help from the one shared rule in `src/kindhelp.js` (`KIND_HELP = { after: 2, step: 0.02, max: 0.10 }`: nothing for 0-1 misses, then 2 / 6 / 10 % easier after 2 / 4 / 6 misses, never more); this game only maps `kindHelp(misses).slow` / `.more` onto its own levers (the table is in the module comment). The older, stronger help numbers here are replaced by it; a rematch's `hard` is unchanged. Spec `kindhelp`.

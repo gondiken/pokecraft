@@ -9,6 +9,7 @@
 // A round is a plan from a hash of seed | attempt (no Math.random): every launch is a closed form of the round clock. A pie's target is
 // the only thing that depends on you (where you stood at its launch), and `stepCatch` takes it from the position it is given.
 import { seeded } from './pinata.js';
+import { kindHelp } from './kindhelp.js';
 
 export const CATCH = {
   jacks: 16, need: 12, goldWorth: 2, goldEvery: [4, 7],     // a gold jack every 4-7 jacks
@@ -23,7 +24,7 @@ export const CATCH = {
                                     // aimed where you will be in `lead` s if you keep running the same way (so change your way!)
   catchR: 0.95, catchFrom: 0.75,    // you catch a jack within this of your middle, in the last quarter of its flight
   land: 11.35,                      // the height a jack lands at (feet 11)
-  help: [{ flight: 1, gap: 1, pies: 1, jump: 1 }, { flight: 1.2, gap: 1.15, pies: 0.5, jump: 0.8 }, { flight: 1.4, gap: 1.3, pies: 0.2, jump: 0.65 }],
+  // the kind help after misses is the shared one (kindhelp.js, owner 2026-10-28): flights and gaps x more, landing jumps and pie share x slow
   hard: { need: 14, flight: 0.9, pies: 1.2 },
 };
 export const needOf = (hard = false) => (hard ? CATCH.hard.need : CATCH.need);
@@ -32,7 +33,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 // One round. `boxes` = [{ at: [x, y, z] }] (the top middle of each box), `floor` = [[x, z]] the middles of the free floor cells,
 // `start` = [x, z] (the pad). -> { launches: [{ n, kind: 'jack' | 'gold' | 'pie', box, t0, flight, apex, from, to }], need, end, ... }
 export function catchPlan(seed, attempt, { help = 0, hard = false, boxes, floor, start }) {
-  const H = CATCH.help[Math.min(2, Math.max(0, help | 0))], X = hard ? CATCH.hard : { need: CATCH.need, flight: 1, pies: 1 };
+  const K = kindHelp(help), H = { flight: K.more, gap: K.more, pies: K.slow, jump: K.slow }, X = hard ? CATCH.hard : { need: CATCH.need, flight: 1, pies: 1 };
   const rnd = seeded(`jacks|${seed}|${attempt}`);
   const pick = list => list[Math.floor(rnd() * list.length) % list.length];
   const launches = [];
@@ -76,7 +77,7 @@ export function catchPlan(seed, attempt, { help = 0, hard = false, boxes, floor,
   const end = Math.max(...launches.map(l => l.t0 + l.flight)) + 0.6;
   const jacks = launches.filter(l => l.kind !== 'pie');
   const box = { x0: Math.min(...floor.map(f => f[0])), x1: Math.max(...floor.map(f => f[0])), z0: Math.min(...floor.map(f => f[1])), z1: Math.max(...floor.map(f => f[1])) };
-  return { seed, attempt, help: Math.min(2, Math.max(0, help | 0)), hard: !!hard, launches, end, box, need: X.need, most: jacks.reduce((s, l) => s + (l.kind === 'gold' ? CATCH.goldWorth : 1), 0), jacks: jacks.length };
+  return { seed, attempt, help: Math.max(0, help | 0), hard: !!hard, launches, end, box, need: X.need, most: jacks.reduce((s, l) => s + (l.kind === 'gold' ? CATCH.goldWorth : 1), 0), jacks: jacks.length };
 }
 
 // Where a launch is at `t` (null before it starts or after it lands): { x, y, z, s } (s = 0..1 of the flight). `to` = the target (pies: from the run).
