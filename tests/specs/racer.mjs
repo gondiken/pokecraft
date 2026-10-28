@@ -509,11 +509,11 @@ export default async function ({ browser, base, t }) {
       const secs = R.drive(13, { until });
       const n = R.rio();
       return { seq: seq.join(), state: live.state, lap: live.lap, won: live.won, secs, last: R.said('^Last lap!$'), win: R.said('You won the race'), line: R.said("talk to me for a battle"), bossS: live.bossS, L: live.track.L, rioNear: Math.hypot(n.pos.x, 0) >= 0,
-        prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), sound: g.sound.played.slice(-8).join() };
+        prompt: g.gymLive.talkPrompt(n), base: g.bosses.talkPrompt(n), crewLeft: !['pw:race:crew1', 'pw:race:crew2'].every(k => g.beaten.includes(k)), sound: g.sound.played.slice(-8).join() };
     });
     t.ok(D3.seq.startsWith('1,2,3,4,1,2,3,4,1,2,3,4'), `the flags are passed in order, three times round (${D3.seq})`);
     t.ok(D3.state === 'done' && D3.lap === 3 && D3.won && D3.last && D3.win && D3.line, `the race ends in a win after three laps: "Last lap!", "You won the race!", Rio says his line (${D3.secs.toFixed(0)} s)`);
-    t.ok(D3.bossS < 3 * D3.L && D3.prompt === null && D3.base.action === 'Challenge!', `Rio was behind, the button now says the base's "${D3.base.action}"`);
+    t.ok(D3.bossS < 3 * D3.L && (D3.crewLeft ? D3.prompt?.action === 'Race again!' : D3.prompt === null && D3.base.action === 'Challenge!'), `Rio was behind; ${D3.crewLeft ? `his crew still wait, so his button says "${D3.prompt?.action}" (a race just for fun, owner 2026-10-28)` : `the button now says the base's "${D3.base.action}"`}`);
     t.ok(/lapbell/.test(D3.sound) || D3.seq.length > 0, `the lap bell and the finish sound play (${D3.sound})`);
 
     // done -> idle: Rio drives on, then he is back on his stand
@@ -682,16 +682,20 @@ export default async function ({ browser, base, t }) {
       // owner 2026-10-27: the race AND his two crew before Rio battles
       for (const k of ['pw:race:crew1', 'pw:race:crew2']) { const i = g.beaten.indexOf(k); if (i >= 0) g.beaten.splice(i, 1); }
       const aim = live.aim(R.p.pos)?.text('↑', 9);
+      // owner 2026-10-28: the race stays playable once won: while the crew wait, talking to Rio is a race again just for fun (the win is kept)
+      const word = g.gymLive.talkPrompt(R.rio())?.action;
       window.__toasts = []; g.talkTo(R.rio());
-      const gated = !g.inBattle && R.said('beat Pit Crew Pia and Pit Crew Max in a battle');
+      const gated = !g.inBattle && live.state === 'count' && live.won && R.said('Just for fun! One more race\\? Vroom! Then beat Pit Crew Pia and Pit Crew Max for our battle');
+      live.step(3.2); R.drive(13, {}); const funWin = live.won && R.said('You won again! Just for fun!'); live.step(3.2);
       g.beaten.push('pw:race:crew1');
       window.__toasts = []; g.talkTo(R.rio());
-      const gated2 = !g.inBattle && R.said('beat Pit Crew Max in a battle');
+      const gated2 = !g.inBattle && live.state === 'count' && R.said('Then beat Pit Crew Max for our battle') && funWin && word === 'Race again!';
+      live.backToStand();
       g.beaten.push('pw:race:crew2');
       g.talkTo(R.rio()); // the Boss battle
       return { won, state, crewLine, aim, gated, gated2, inBattle: g.inBattle, boss: g.battle.boss, foes: g.battle.foes?.map(f => `${f.species}:${f.level}`).join(), trainer: g.battle.trainer?.name, moves: g.battle.foes?.map(f => f.moves.join('/')).join(' ') };
     });
-    t.ok(D9.won && D9.crewLine && /Now battle Pit Crew/.test(D9.aim || '') && D9.gated && D9.gated2, `after a won race Rio wants his two crew beaten first; the guide leads to them (${D9.aim})`);
+    t.ok(D9.won && D9.crewLine && /Now battle Pit Crew/.test(D9.aim || '') && D9.gated && D9.gated2, `after a won race Rio wants his two crew beaten first; the guide leads to them (${D9.aim}); meanwhile talking to him is a race again, just for fun, and the win is kept`);
     t.ok(D9.state === 'done' && D9.inBattle && D9.boss && /Rio/.test(D9.trainer), `with the race won and both crew beaten, talking to Rio starts the Boss battle (${D9.foes})`);
     t.ok(D9.foes === 'wheelie:61,karthog:62,blastskate:63,vroomster:64', `Rio's team is wheelie 61, karthog 62, blastskate 63, vroomster 64 (${D9.foes})`);
     console.log('  Rio moves:', D9.moves);
@@ -720,6 +724,17 @@ export default async function ({ browser, base, t }) {
     t.ok(D11.raced && D11.again, 'with the star, talking to Rio races first ("Race me again?")');
     t.ok(D11.asking && /rematch/i.test(D11.text || '') && D11.base === 'Rematch!', `after that race the base's rematch question comes (${D11.text})`);
     await page.evaluate(() => window.pokecraft.ui.askNo());
+    // owner 2026-10-28: "Not now" to the rematch: Rio races again (a won race asks once more)
+    const D11b = await page.evaluate(() => {
+      const R = window.__R, { live, g } = R;
+      const word = g.gymLive.talkPrompt(R.rio())?.action;
+      live.backToStand(); R.p.pos.set(...live.part.grid.player);
+      g.talkTo(R.rio());
+      const out = { word, state: live.state, asking: g.ui.asking, inBattle: g.inBattle };
+      live.backToStand();
+      return out;
+    });
+    t.ok(/^Race/.test(D11b.word || '') && D11b.state === 'count' && !D11b.asking && !D11b.inBattle, `after "Not now" to the rematch, Rio's button says "${D11b.word}" and talking to him starts a race again`);
 
     // the parade: with the star, two karts drive laps and the pads pulse
     const D12 = await page.evaluate(() => {

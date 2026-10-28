@@ -346,7 +346,7 @@ export function createBosses(game, { startBattle, save }) {
           : `${npc.name}: Rematch number ${wins + 1}? You beat me ${wins} ${wins === 1 ? 'time' : 'times'}! My team is up to level ${top} now.`,
         yes: 'Battle!', no: 'Not now', kind: 'mine',
         onYes: () => api.accept(npc),
-        onNo: () => { pending = null; toast(`${npc.name}: OK! Come back any time.`); },
+        onNo: () => { pending = null; toast(`${npc.name}: OK! Come back any time.`); game.gymLive?.bossDeclined?.(npc); },
       });
       return true;
     },

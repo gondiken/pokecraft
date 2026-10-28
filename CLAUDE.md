@@ -63,6 +63,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/playland.js` | T40 Playland: one 224 x 224 world for Race Track, Ball Stadium, Funfair: `HUB`, `ZONES`, `PLAYLAND_PARTS = { race, stadium, fair }` (each writes only inside its zone box; no part = a "Coming soon" sign), `playlandSpawns`, `zoneAt`, `playLand`; `world.realmBiome` = the zone |
 | `src/pictureboss.js` | T40 Bosses: `BOSS`, `addBoss(def)` / `bossOf` (person or `model: { species, scale }`, `team`, optional `gate(game)` / `crew`), `bossTeam(def, wins)` (cap `REMATCH_CAP`), `loadBossWins`, `crewKey`, `crewLeft` / `crewText`, `createBosses` -> `game.bosses` |
 | `src/mover.js` | T40 `Mover` (a ride carrying the player: `Player.carry`, `canLeave: false` ignores Space) and closed-form `PATHS` (open registry) |
+| `src/forfun.js` | Owner 2026-10-28, pure: `ForFun` (rounds again in turn once all are won) and `FUN.tag`: every won skill game stays playable just for fun |
 | `src/kindhelp.js` | Owner 2026-10-28, pure: the ONE kind help of every Picture World skill game: `KIND_HELP = { after: 2, step: 0.02, max: 0.10 }`, `KindHelp`, `KIND`, `kindHelp(misses)` -> `{ misses, ease, on, slow, more }`; each game's levers are listed in the file's comment |
 | `src/giantland.js` | T40a Giant House terrain as data (Node-runnable, 192 x 192): counter, sink, tap, groove, shelf, fan, table, cookie, fort, seesaw, cat, track, mouse hole, keyhole, crumbs, nooks; `houseLand` (TERRAINS.houseLand), `houseAim` (one puzzle step at a time) |
 | `src/houselive.js` | T40a `HouseLive` = `LIVE.house`: the four puzzles (towel + wind-up key / fan, plug + tap / river, yarn + cat, marble + spoon fling), the train, the bottle cap, crumbs (`pw:house:crumb<i>`, `crumbKey`); puzzle words via `near` / `use` |
@@ -119,7 +120,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/funfairlive.js` | T43 `FairLive` = `LIVE.fair`: the three games, the coaster and the slide; `carry` objects (`carObj`, `seatObj`) and `Mover`s; `manual` + `step(dt)` for tests |
 | `src/fairprops.js` | T43 the Funfair's models (instanced, vertex colours); `tests/funfair-preview.mjs` photographs them |
 | `src/partyland.js` | T48 the Surprise Party terrain (Node-runnable, `TERRAINS.partyLand`, realm `doors`): `ROOM`, `SQUARE`, `SPINNER`, `CAKE`, `GUESTS`, `CRASHERS`, `setsOf()`, `bowKey` / `bowState`, `PARTY_MARK`, `partyBows` / `migrateBows`, `partyLand`, `partyAim` |
-| `src/spinner.js` | T48, pure: the Party Spinner (`SPIN`, Stop! lands on the slice under the arrow), `GAMES`, `TWISTS` / `twistOf` |
+| `src/spinner.js` | T48, pure: the Party Spinner (`SPIN`, Stop! lands on the slice under the arrow; `skipTo` / `skipAngle`: it clicks on past won games), `GAMES`, `TWISTS` / `twistOf` |
 | `src/partyrounds.js` | T48, pure: rounds and surprises wrapped round the unchanged piñata and Jack Catch rules |
 | `src/pinata.js` | T44 rework (unchanged by T48), pure: the Piñata Party's rules (`PINATA`, `pinataPlan`, `whack`; `hashStr` / `seeded` shared with jackcatch.js) |
 | `src/jackcatch.js` | T44 rework (unchanged by T48), pure: Jack Catch (`CATCH`, `catchPlan`, `stepCatch`) |
@@ -452,6 +453,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `kindHelp(misses)` (no help for 0-1 misses, +2 % a miss, at most 10 %); each game only maps `slow` / `more` onto its own levers;
   no per-game help tables (the old ones are gone). A rematch's `hard` (you hold the star) is separate. "We should ask a bit of grit /
   patience from players." A won Boss battle clears that world's round keys, so a rematch plays the challenge again.
+  **For fun (owner 2026-10-28):** every skill game stays playable once won: it plays its rounds again just for fun (`forfun.js`
+  `ForFun` / `FUN.tag`) and saves nothing new (no key, bow, light, first-time reward or gate change). The Party Spinner skips games
+  whose bow you hold (`skipTo`) until all four are won, then any slice is played for fun; Atlantis' fish swim back at 12 lights; the
+  Race Track races again while the crew wait or after a "Not now" (`gymLive.bossDeclined`).
 - **Owner's smaller notes (2026-10-27/28, `plans/T46.md` parts 2-3):** Doodle: mesh counts come from `COURSES`; Atlantis: `VIS` (halos, 4 bulbs per lantern, a trail to the lantern, ghost fish `demo` until the first
   catch), darker districts (`dimAt` LOW 0.22, the water `cityDimE`), soft glow sprites, fish that get away better (`FISH`); Bumper
   Cars 4 / 5 / 6 balloons; the Portal House's aimed pad no longer blinks.

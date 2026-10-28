@@ -6,6 +6,8 @@
 // States: idle (Rio on his stand) -> count (on the grid, lamps 3-2-1-GO) -> race (flags, laps, boost pads) -> done (the result, Rio drives
 // on) -> idle. Rio's position is a closed form of one number, bossS (racetrack.js bossSpeed); clocks are summed frame dt and stand still
 // in a battle, a question, a panel and the pause screen. With the star, two karts drive laps forever, the pads pulse and the lamps cycle.
+// Owner 2026-10-28: the race stays playable once won: while Rio's helpers still wait, talking to him is a race again just for fun
+// (the win is kept), and a "Not now" to his rematch question lets you race him again too.
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
@@ -13,6 +15,7 @@ import { sound } from './sound.js';
 import { RACE, bossSpeed } from './racetrack.js';
 import { Kart, KART } from './kart.js';
 import { crewLeft, crewNames } from './pictureboss.js';
+import { FUN } from './forfun.js';
 
 export const RACE_LINES = {
   hello: "Vroom! I'm Racer Rio. Nobody has raced here since the festival stopped. Hop in your kart: three laps!",
@@ -139,10 +142,12 @@ export class RaceLive {
   hasStar() { return this.game.stars?.includes('race'); }
 
   /* ---- hooks of the live-part interface ---- */
+  // The race is won, but Rio's battle waits for his helpers: a race now is just for fun (the win is kept).
+  funRace() { return this.won && crewLeft(this.game, 'race').length > 0; }
   talk(npc) {
     if (!this.isRio(npc)) return false;
     if (this.state === 'count' || this.state === 'race') return true;      // talking does nothing during the race
-    if (this.won) return false;                  // the base's Boss battle (or the rematch question), also right after the finish
+    if (this.won && !this.funRace()) return false; // the base's Boss battle (or the rematch question), also right after the finish
     if (this.state === 'done') this.backToStand(); // a lost race: Rio comes back at once for the next one
     return this.start();
   }
@@ -150,9 +155,11 @@ export class RaceLive {
     if (!this.isRio(npc)) return null;
     if (this.state === 'count') return { verb: 'wait', action: 'Ready...' };
     if (this.state === 'race') return { verb: 'race', action: 'Go go go!' };
-    if (this.won) return null;                   // the base's Challenge! / Rematch!
-    return { verb: 'race', action: this.losses > 0 ? 'Race again!' : 'Race!' };
+    if (this.won && !this.funRace()) return null; // the base's Challenge! / Rematch!
+    return { verb: 'race', action: this.losses > 0 || this.won ? 'Race again!' : 'Race!' };
   }
+  // "Not now" to Rio's rematch question: the next talk is a race again (and a won race asks for the rematch once more).
+  bossDeclined(npc) { if (this.isRio(npc) && this.won && this.state !== 'count' && this.state !== 'race') this.won = false; }
   battleEnded(result, opts) {
     const pic = opts?.picture;
     if (pic?.id !== 'race' || pic.crew != null) return;     // only Rio's own battle (the first one or a rematch)
@@ -213,7 +220,8 @@ export class RaceLive {
     if (n) { n.steer = true; n.moving = false; n.pos.set(grid.boss[0], grid.boss[1] + 0.35, grid.boss[2]); n.heading = n.homeHeading = grid.heading; }
     this.ensureKart();
     this.drawKart();
-    this.say(this.hasStar() ? RACE_LINES.again : RACE_LINES.hello);
+    const left = this.won ? crewLeft(g, 'race') : [];
+    this.say(this.won ? `${FUN.tag} One more race? Vroom!${left.length ? ` Then beat ${crewNames('race', left)} for our battle.` : ''}` : this.hasStar() ? RACE_LINES.again : RACE_LINES.hello);
     return true;
   }
 
@@ -309,6 +317,7 @@ export class RaceLive {
   }
 
   finish(youWon) {
+    this.wonBefore = this.won;
     this.state = 'done';
     this.doneT = 0;
     if (youWon) {
@@ -316,6 +325,7 @@ export class RaceLive {
       this.toast('You won the race! 🏆');
       sound.play('win');
       const left = crewLeft(this.game, 'race'); // owner 2026-10-27: his crew battle you before he does
+      if (this.wonBefore) this.toast(`You won again! ${FUN.tag}`);
       this.say(left.length ? `Wow, you're fast! Now beat ${crewNames('race', left)}, then talk to me for a battle!` : RACE_LINES.win);
     } else {
       this.losses++;

@@ -526,6 +526,15 @@ export default async function ({ browser, base, t }) {
     await toasts(page);
     await page.evaluate(() => { const p = window.pokecraft.player; p.pos.set(108.5, 13, 24.5); p.vel.set(0, 0, 0); window.__step(window.pokecraft, 1 / 20, 20); });
     t.ok(await state() === 'open,open,open,open,open,open,open,open,open' && await page.evaluate(() => window.pokecraft.place === 'swirl' && window.__lv().info().done === 8), `after a reload you are still in the Swirl and every door is open (${await state()})`);
+    // owner 2026-10-28: a done room plays again, just for fun: through door 1 into the Gap Room, out of its exit swirl; nothing new saved
+    const replay = await page.evaluate(() => {
+      const g = window.pokecraft, lv = window.__lv(), p = g.player, keys = g.beaten.slice().sort().join(), d1 = lv.house.swirls.find(q => q.id === 'hall.d1');
+      const walk = s => { const [nx, , nz] = s.normal, t0 = lv.info().trips; p.pos.set(s.centre[0] + nx * 1.2, s.centre[1] - s.h / 2, s.centre[2] + nz * 1.2); p.vel.set(0, 0, 0); p.yaw = Math.atan2(nx, nz); p.keys = {}; window.__step(g, 1 / 20, 2); p.keys = { KeyW: true }; window.__step(g, 1 / 20, 30, () => lv.info().trips > t0); p.keys = {}; };
+      walk(d1); const inRoom = lv.info().part;
+      window.__toasts = []; walk(lv.house.swirls.find(q => q.id === 'gap.exit'));
+      return { inRoom, after: lv.info().part, said: window.__toasts.join('|'), same: g.beaten.slice().sort().join() === keys, done: lv.info().done };
+    });
+    t.ok(replay.inRoom === 1 && /Room 1 done again! Just for fun!/.test(replay.said) && replay.same && replay.done === 8 && replay.after === 2, `a done room plays again: into the Gap Room and out of its exit swirl, "Room 1 done again! Just for fun!", nothing new is saved (${JSON.stringify(replay).slice(0, 200)})`);
     // old saves: the first four rooms' keys (room1..4) still open doors 2-5
     const oldKeys = await page.evaluate(() => { const g = window.pokecraft, lv = window.__lv(), saved = g.beaten.slice(); g.beaten = g.beaten.filter(k => !k.startsWith('pw:portal:room')).concat(['pw:portal:room1', 'pw:portal:room2', 'pw:portal:room3', 'pw:portal:room4']); const r = [1, 2, 3, 4, 5, 6, 9].map(k => lv.doorIsOpen(k)); g.beaten = saved; return r.join(); });
     t.ok(oldKeys === 'true,true,true,true,true,false,false', `a save from the four-room House: rooms 1-4 count, the door of room 5 is open (${oldKeys})`);

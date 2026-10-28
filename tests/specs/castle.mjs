@@ -16,6 +16,7 @@ import * as S from '../../src/siege.js';
 import * as J from '../../src/joust.js';
 import * as M from '../../src/hedgemaze.js';
 import * as CL from '../../src/castleland.js';
+import { ForFun, FUN } from '../../src/forfun.js';
 import { createCastleGates } from '../../src/castlegate.js';
 import { analyze } from '../castlecheck.mjs';
 import { SIEGE_BOTS, JOUST_BOTS, playSiege, playJoust } from '../castlebots.mjs';
@@ -156,6 +157,12 @@ export default async function ({ browser, base, t }) {
     late.castleGates.joined(); deliver();
     const l1 = late.castleGates.shared();
     guest.mp.active = false; const off = guest.castleGates.shared();
+    // owner 2026-10-28: once all three rounds are saved, the rounds come again in turn, just for fun (forfun.js, shared by every world)
+    { const f = new ForFun(3), seen = [];
+      const counting = [0, 1, 2].map(n => f.round(n)); // still counting: the first round not won
+      for (let i = 0; i < 7; i++) { const r = f.round(3); seen.push(r + 1); f.won(r, 3); }
+      const g = new ForFun(3); g.won(2, 3 - 1); // a counting win changes nothing
+      t.ok(counting.join() === '0,1,2' && seen.join() === '1,2,3,1,2,3,1' && g.round(3) === 0 && f.tag(2) === '' && f.tag(3) === ` ${FUN.tag}` && !f.done(2) && f.done(3), `ForFun: while rounds count they come in order (${counting.map(r => r + 1)}), once all are won they come again in turn just for fun (${seen}), tagged "${FUN.tag}"`); }
     t.ok(h1.bridge && !h1.port && g1.bridge && l1.bridge && !l1.port && !off.bridge, `the shared gates: a guest lowers the drawbridge, the host merges it and tells everyone, a guest who joins later asks and gets it; alone nothing is shared (${JSON.stringify([h1, l1, off])})`);
   }
 
@@ -318,7 +325,20 @@ export default async function ({ browser, base, t }) {
         out.word = live.near(p); p.keys = {}; p.update(0.03); p.keys = { Space: true }; p.update(0.03); p.keys = {}; out.off = p.carry === null && live.stance === -1;
         return out;
       });
-      t.ok(D3.r2.won && D3.r3.won && D3.st.shield === 3 && D3.bridgeSaid && D3.deck && D3.gate && D3.word === null && D3.off, `rounds 2 and 3 won; the drawbridge comes down (planks over the moat, the gate open); Jump steps off the stone ${JSON.stringify(D3).slice(0, 400)}`);
+      t.ok(D3.r2.won && D3.r3.won && D3.st.shield === 3 && D3.bridgeSaid && D3.deck && D3.gate && D3.word === 'Shield!' && D3.off, `rounds 2 and 3 won; the drawbridge comes down (planks over the moat, the gate open); the stone still says Shield! (for fun); Jump steps off the stone ${JSON.stringify(D3).slice(0, 400)}`);
+      // owner 2026-10-28: Shield Up! stays playable once won: round 1 again, just for fun; nothing new saved, the drawbridge stays down
+      const F3 = await page.evaluate(() => {
+        const R = window.__R, { g, live, p, S } = R, s = S.SIEGE.stones[0], out = {}, keys = g.beaten.slice().sort().join();
+        window.__toasts = [];
+        R.put(s[0], s[1], s[2]); out.word = live.near(p); live.use(p); out.round = live.info().round; out.still = R.siege('still'); out.missed = R.said('So close!');
+        live.use(p); out.won = R.siege('skilled'); out.next = live.near(p); live.use(p); out.round2 = live.info().round; out.won2 = R.siege('skilled');
+        out.fun = R.said('Just for fun!'); out.again = R.said('Round 1 won again!'); out.bridgeAgain = R.said('drawbridge is coming down');
+        live.step(0.3); out.deck = live.L.deck.every(c => g.world.get(...c) === R.B.PLANKS); out.same = g.beaten.slice().sort().join() === keys;
+        p.keys = {}; p.update(0.03); p.keys = { Space: true }; p.update(0.03); p.keys = {}; out.off = p.carry === null && live.stance === -1;
+        out.still = out.still.won; out.won = out.won.won; out.won2 = out.won2.won;
+        return out;
+      });
+      t.ok(F3.word === 'Shield!' && F3.round === 0 && !F3.still && F3.missed && F3.won && F3.round2 === 1 && F3.won2 && F3.fun && F3.again && !F3.bridgeAgain && F3.deck && F3.same && F3.off, `Shield Up! won: the stone plays the rounds again in turn just for fun (round 1, then round 2; a miss still starts again), nothing new is saved and the drawbridge stays down ${JSON.stringify(F3)}`);
       // walk over the drawbridge with real physics, into the courtyard; the maze's gentle guide
       const D4 = await page.evaluate(() => {
         const R = window.__R, { g, live, p } = R, out = {};
@@ -391,6 +411,18 @@ export default async function ({ browser, base, t }) {
       t.ok(D5.word === 'Mount!' && D5.mounted && D5.ride === 'gallantrot' && D5.charge === 'Charge!' && D5.offWord === 'Off', `by the castle horse the big button says Mount!, then Charge! (Jump = Off); friends see you on a Gallantrot ${JSON.stringify(D5).slice(0, 300)}`);
       t.ok(!D5.still.joust.won && D5.again && D5.r1.joust.won && D5.r2.joust.won && D5.r3.joust.won && D5.st.lance === 3 && D5.bull && D5.clang, `holding still loses softly (${D5.still.joust.points} points: only Clangs); a skilled rider wins the three rounds (Bullseye! said)`);
       t.ok(D5.portSaid && D5.port && D5.off, 'with the Joust won the portcullis rises; Jump gets you off the horse');
+      // owner 2026-10-28: the Joust stays playable once won: Mount! and Charge! again, round 1 just for fun, nothing new saved
+      const F5 = await page.evaluate(() => {
+        const R = window.__R, { g, live, p, CL } = R, out = {}, keys = g.beaten.slice().sort().join();
+        window.__toasts = []; live.jr = null;
+        R.put(66.5, 11, 32.5); out.word = live.near(p); live.use(p); out.charge = live.near(p);
+        out.r = R.joust('skilled'); out.round = out.r.joust.round; out.fun = R.said('Just for fun!'); out.again = R.said('Round 1 won again!');
+        out.portAgain = R.said('The portcullis is up'); out.same = g.beaten.slice().sort().join() === keys; out.st = CL.castleState(g);
+        live.step(0.3); out.port = live.L.port.every(c => g.world.get(...c) === R.B.AIR);
+        p.keys = {}; p.update(0.03); p.keys = { Space: true }; p.update(0.03); p.keys = {}; out.off = !live.mounted;
+        return out;
+      });
+      t.ok(F5.word === 'Mount!' && F5.charge === 'Charge!' && F5.round === 0 && F5.r.joust.won && F5.fun && F5.again && !F5.portAgain && F5.same && F5.st.lance === 3 && F5.port && F5.off, `the Joust won: Mount! and Charge! still work, round 1 again just for fun; nothing new saved, the portcullis stays up ${JSON.stringify(F5).slice(0, 300)}`);
       // the Boss: the crew first, a lost battle stays in the throne room, the star clears the six keys
       const B1 = await page.evaluate(async () => {
         const R = window.__R, { g } = R, Sp = await import('/src/species.js'), out = {};
@@ -412,6 +444,19 @@ export default async function ({ browser, base, t }) {
       t.ok(await playBattle(page), 'the Boss battle is won');
       const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.3); const st = R.CL.castleState(g); return { star: g.stars.includes('castle'), keys: g.beaten.filter(k => /pw:castle:(shield|lance)/.test(k)).length, crew: g.beaten.filter(k => /pw:castle:crew/.test(k)).length, bridge: live.L.deck.every(c => g.world.get(...c) === R.B.PLANKS), port: live.L.port.every(c => g.world.get(...c) === R.B.AIR), note: R.said('toy knights') }; });
       t.ok(W1.star && W1.keys === 0 && W1.crew === 2 && W1.bridge && W1.port && W1.note, 'the star and the Wizard\'s note; the six rounds are cleared for a rematch (the helpers stay beaten), the drawbridge and portcullis stay open for a star holder');
+      // a reload of a save with every round won (a rematch's rounds won again, the star held): both games still play, just for fun
+      await page.evaluate(() => { const R = window.__R; R.live.winUpTo(3, 3); window.pokecraft.save(); });
+      await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
+      await continueGame(page); await pause(page);
+      await placeIs(page, 'castle'); await arm(page);
+      const RL = await page.evaluate(() => {
+        const R = window.__R, { g, live, p, S } = R, s = S.SIEGE.stones[0], out = {};
+        out.st = R.CL.castleState(g);
+        R.put(s[0], s[1], s[2]); out.shield = live.near(p); live.use(p); out.sround = live.info().round; out.sfun = R.said('Just for fun!'); live.giveBack();
+        R.put(66.5, 11, 32.5); out.mount = live.near(p); live.use(p); out.charge = live.near(p); live.charge(); out.jround = live.jr?.round; live.giveBack(); live.jr = null;
+        return out;
+      });
+      t.ok(RL.st.done && RL.st.star && RL.shield === 'Shield!' && RL.sround === 0 && RL.sfun && RL.mount === 'Mount!' && RL.charge === 'Charge!' && RL.jround === 0, `after a reload with all six rounds won and the star: Shield! and Mount! / Charge! still play round 1, just for fun ${JSON.stringify(RL).slice(0, 200)}`);
       // a wild Knight on its beat
       const S1 = await page.evaluate(() => {
         const g = window.pokecraft, n = g.world.nooks[0];

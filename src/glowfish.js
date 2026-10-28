@@ -38,8 +38,11 @@ export function nextLights(game, d, n) {
 // How many lights n fish of a kind pour: 1 each, but two school fish make one.
 export const lightsFor = (kind, n) => (kind === 'school' ? Math.floor(n / 2) : n);
 export const fishFor = (kind, lights) => (kind === 'school' ? lights * 2 : lights);
-// Fish already poured away (gone) in a district with `lit` lights: the first ones by index.
-export const goneCount = (kind, lit) => fishFor(kind, lit);
+// Fish already poured away (gone) in a district with `lit` lights: the first ones by index. Owner 2026-10-28: with all LIGHTS lit
+// (`done`) they all swim back and the catch goes on just for fun (a pour then only makes its lantern sparkle; nothing new is saved).
+export const goneCount = (kind, lit, done = false) => (done ? 0 : fishFor(kind, lit));
+// The bulbs a for-fun pour of n fish makes sparkle (at least one, at most a lantern's).
+export const funLights = (kind, n) => Math.min(PER_DISTRICT, Math.max(1, lightsFor(kind, n)));
 
 // A small hash in 0..1 of two integers (a fish index and a purpose).
 export function hash(a, b = 0) {
@@ -136,6 +139,8 @@ export class Darter {
     this.speed = 0;
   }
   get pos3() { return [this.pos[0], this.y, this.pos[1]]; }
+  // Back home and calm (a fish poured for fun swims back to its own dead end).
+  goHome() { this.pos = [this.home[0], this.home[1]]; this.state = 'wander'; this.stuckT = 0; this.boltT = 0; this.turnT = 0; this.speed = 0; }
   get catchable() { return true; }
   free(open, x, z) { return open(x, this.y, z) && open(x, this.y + 1, z); }
   // Is the way along unit c open for `len` blocks?

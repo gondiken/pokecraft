@@ -16,6 +16,7 @@ export const SPIN = {
   wobble: 0.12,              // radians (at most) the stop lands off that, from the seed (a slice is pi / 2 = 1.57 wide)
   auto: 6,                   // nobody pressed Stop!: it stops by itself after this many seconds
   slices: 4,
+  skip: 0.45,                // seconds a slice when it clicks on past a won game (owner 2026-10-28)
 };
 export const GAMES = ['pinata', 'catch', 'stack', 'whack'];   // slice i = game i = golden bow i + 1
 export const GAME_NAMES = { pinata: 'Piñata Party', catch: 'Jack Catch', stack: 'Gift Stack', whack: 'Pop-Up Whack' };
@@ -52,6 +53,25 @@ export function spinStop(pressT, stopT, seed, { a0 = 0, n = 0 } = {}) {
   const angle = restAngle(s);
   return { slice: sliceAt(angle), angle };
 }
+
+// Owner 2026-10-28: the Spinner still decides the next game, but until all four golden bows are won it skips the games you won already:
+// stopped on a won slice, it clicks on (the way it turns) to the next slice whose bow is still to win. With all four bows any slice is
+// played, just for fun. `won` = [bool x 4] (bowState(game).bows). -> { slice, steps } (steps = slices it clicks on, 0 = stays).
+export function skipTo(slice, won = []) {
+  const n = SPIN.slices;
+  if (!won[slice] || won.slice(0, n).filter(Boolean).length >= n) return { slice, steps: 0 };
+  for (let steps = 1; steps < n; steps++) { const k = mod(slice - steps, n); if (!won[k]) return { slice: k, steps }; } // (the angle grows: the slice number falls)
+  return { slice, steps: 0 };
+}
+// The angle a wheel resting at `a` clicks on to so that slice k is under the arrow, in its middle (always forward: more than a).
+export function skipAngle(a, k) {
+  const q = TAU / SPIN.slices, want = -(k + 0.5) * q;
+  const d = mod(want - a, TAU);
+  return a + (d < 1e-9 ? TAU : d);
+}
+// The click-on: from a0 to a1 in SPIN.skip seconds a slice (eased), -> the angle at time u since it began.
+export const skipTime = steps => SPIN.skip * Math.max(1, steps);
+export function skipAt(a0, a1, steps, u) { const k = Math.min(1, Math.max(0, u / skipTime(steps))); return a0 + (a1 - a0) * (1 - (1 - k) * (1 - k)); }
 
 /* ---------------------------------------- the party surprises ---------------------------------------- */
 

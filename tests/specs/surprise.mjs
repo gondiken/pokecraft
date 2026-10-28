@@ -3,7 +3,7 @@
 // A: the type (data, models, chart, moves, fx, sounds, the wild gift box, spawns, the blocks). B: the party terrain for three seeds in Node
 // (the room, the sets, the walk graph, keeps, the cake), the old-bow mapping, the Spinner and the party surprises. C: the four games as pure
 // rules in Node with model players at 60 and 20 steps a second (tests/partybots.mjs). D: live, in a browser (the frame, the Spinner, each
-// game's three rounds played through the live part, the twists, the crashers, the sweets, the cake finale, the guide, the chip, an old
+// game's three rounds played through the live part, the twists, the crashers, the Spinner skipping won games, for-fun games with four bows, the cake finale, the guide, the chip, an old
 // Room of Doors save, Jolly Jax, a rematch party, a reload). E: iPad (one big button: Spin! / Stop! / Play! / Whack! / Drop!, a tap on a
 // jack). F: two browsers. G: the screenshots.
 // SURPRISE_ONLY=data|land|games|live|ipad|pair|shots runs one part; SURPRISE_SKIP_BOSS=1 leaves out the long Boss battles.
@@ -384,6 +384,21 @@ async function landPart(t) {
     t.ok(!jumps && Math.abs(moved - 2 * Math.PI) <= SP.SPIN.wobble + 1e-9 && SP.spinDone(s, 3 + SP.SPIN.slow) && !SP.spinDone(s, 3 + SP.SPIN.slow - 0.01), `the wheel turns smoothly (no jumps in 1/120 s steps), slows down over ${SP.SPIN.slow} s and turns one more round (${(moved / (2 * Math.PI)).toFixed(3)}) plus at most a ${SP.SPIN.wobble} rad wobble`);
     t.ok(SP.GAMES.join() === 'pinata,catch,stack,whack' && SP.spinStop(0, 1.2, 9).slice === SP.spinStop(0, 1.2, 9).slice, `the four slices are ${SP.GAMES.join(', ')} (bows 1-4); a stop is a closed form of the press times`);
   }
+  /* ---- owner 2026-10-28: the Spinner skips won games until all four bows are won; then any slice is played (for fun) ---- */
+  {
+    let bad = 0, cases = 0;
+    for (let mask = 0; mask < 16; mask++) for (let k = 0; k < 4; k++) for (const a of [0.1, 2.0, -4.4, 9.7]) {
+      const won = [0, 1, 2, 3].map(i => !!(mask & (1 << i))), all = mask === 15, r = SP.skipTo(k, won); cases++;
+      const ok = all || !won[k] ? r.slice === k && r.steps === 0 // an open slice (or all won: for fun) is played as it is
+        : !won[r.slice] && r.steps >= 1 && r.slice === (((k - r.steps) % 4) + 4) % 4 && [...Array(r.steps - 1)].every((_, j) => won[(((k - j - 1) % 4) + 4) % 4]); // the first open one the way it turns
+      // the click-on lands in the middle of that slice, ahead of where it rests, no more than the steps (+ a slice) further
+      const rest = a, to = SP.skipAngle(rest, r.slice), q = Math.PI / 2;
+      const turned = to - rest, mid = ((((-to) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / q - r.slice;
+      if (!ok || SP.sliceAt(to) !== r.slice || turned <= 0 || Math.abs(mid - 0.5) > 1e-9 || turned > 2 * Math.PI + 1e-9) bad++;
+      if (r.steps && (SP.skipAt(rest, to, r.steps, 0) !== rest || Math.abs(SP.skipAt(rest, to, r.steps, SP.skipTime(r.steps)) - to) > 1e-12)) bad++;
+    }
+    t.ok(!bad, `the Spinner's skip (pure): stopped on a won game it clicks on, the way it turns, to the first game still to win and rests in that slice's middle; open slices, and every slice once all four bows are won, are played as they land (${cases - bad} / ${cases})`);
+  }
   /* ---- the party surprises ---- */
   const tw = {};
   for (const g of SP.GAMES) for (const round of [1, 2, 3]) for (let seed = 0; seed < 60; seed++) { const x = SP.twistOf(g, round, seed, 0); const k = `${g}${round}`; (tw[k] ||= new Set()).add(x?.id ?? 'none'); }
@@ -560,15 +575,17 @@ async function livePart({ browser, base, t, page }) {
   const ppl = await page.evaluate(() => { const g = window.pokecraft; return g.npcs.list.map(n => `${n.kind}:${n.name}:${n.away ? 'away' : 'here'}`).join(); });
   t.ok(/guest:Party Polly:here/.test(ppl) && /crew:Ribbon Rosa:here/.test(ppl) && /crew:Confetti Kit:away/.test(ppl) && /boss:Jolly Jax:away/.test(ppl), `guests in party hats; with 2 bows Ribbon Rosa has crashed the party, Confetti Kit and Jolly Jax are not here yet (${ppl})`);
 
-  /* ---- the Spinner: Spin! / Stop!, good timing picks the game, a won slice gives sweets once ---- */
+  /* ---- the Spinner: Spin! / Stop!, good timing picks the game, a won slice is skipped (owner 2026-10-28) ---- */
   const sw = await page.evaluate(() => {
     const g = window.pokecraft, L = window.__live(), out = {};
     window.__toasts = []; g.cubes = 0;
-    out.spinWon = window.__spinTo(0); // the piñata: won already
-    out.cubes1 = g.cubes; out.gm1 = !!L.gm;
-    out.again = window.__spinTo(1);   // Jack Catch: won too
-    out.cubes2 = g.cubes; out.gm2 = !!L.gm;
+    out.spinWon = window.__spinTo(0); // the piñata: won already -> the Spinner clicks on past it to Pop-Up Whack (Jack Catch is won too)
+    out.cubes1 = g.cubes; out.gm1 = L.gm?.game; out.fun1 = L.gm?.fun;
     out.toasts = window.__toasts.join('|');
+    window.__reset();
+    out.again = window.__spinTo(1);   // Jack Catch: won too -> past the piñata (won) to Pop-Up Whack
+    out.gm2 = L.gm?.game;
+    window.__reset(); window.__toasts = [];
     out.real = window.__spinTo(2);    // Gift Stack: a real game
     out.gm = L.gm?.game; out.phase = window.__ready();
     out.toasts2 = window.__toasts.join('|');
@@ -577,8 +594,8 @@ async function livePart({ browser, base, t, page }) {
     out.chip = document.getElementById('score-chip')?.textContent;
     return out;
   });
-  t.ok(sw.spinWon.w0 === 'Spin!' && sw.spinWon.w1 === 'Stop!' && sw.spinWon.slice === 0 && sw.cubes1 === 2 && !sw.gm1 && /Party sweets! \+2 Capture Cubes/.test(sw.toasts), `on the pad the big button says Spin!, then Stop!; stopped with the piñata under the arrow it lands there, a game already won: party sweets (+${sw.cubes1} Capture Cubes)`);
-  t.ok(sw.again.slice === 1 && sw.cubes2 === 2 && !sw.gm2 && /You won Jack Catch already\. Spin again!/.test(sw.toasts), 'a second won slice gives no more sweets (only once until the next game is won): "Spin again!"');
+  t.ok(sw.spinWon.w0 === 'Spin!' && sw.spinWon.w1 === 'Stop!' && sw.spinWon.slice === 3 && sw.gm1 === 'whack' && !sw.fun1 && sw.cubes1 === 0 && /You won Piñata Party already! Click, click/.test(sw.toasts), `on the pad the big button says Spin!, then Stop!; stopped with the piñata (won already) under the arrow, the Spinner clicks on to the next game still to win: ${sw.gm1} (slice ${sw.spinWon.slice}), no sweets`);
+  t.ok(sw.again.slice === 3 && sw.gm2 === 'whack', `stopped on Jack Catch (won), it clicks on past the piñata (won) to Pop-Up Whack (slice ${sw.again.slice})`);
   t.ok(sw.real.slice === 2 && sw.gm === 'stack' && sw.phase === 'ready' && sw.table && sw.pad && /Surprise! It's Gift Stack!/.test(sw.toasts2) && /round 1 of 3/.test(sw.toasts2), `stopped on Gift Stack: "Surprise! It's Gift Stack!", the set whooshes up out of the floor (a table, a gold pad) and round 1 is ready ("${sw.chip}")`);
 
   /* ---- Gift Stack, all three rounds with a skilled player through the big button ---- */
@@ -754,6 +771,19 @@ async function livePart({ browser, base, t, page }) {
     return { r: r.join(), before, mid, candles: cells.map(c => g.world.get(...c)).join(), jax: !jax.away && jax.model.visible && Math.abs(jax.model.position.y - 16) < 0.01, guestsZ: guests.map(n => n.pos.z.toFixed(1)).join(), toasts: window.__toasts.join('|') };
   });
   t.ok(fin.r === '1:won,2:won,3:won' && fin.before.candles === '0,0' && fin.before.jax && fin.mid.finale != null && fin.candles === '243,243' && fin.jax && /SURPRISE!/.test(fin.toasts) && /This party is for YOU/.test(fin.toasts) && fin.guestsZ.split(',').every(z => +z < 40), `the fourth bow: the candles light (${fin.before.candles} -> ${fin.candles}), the guests gather round the cake (z ${fin.guestsZ}), everybody shouts SURPRISE! and Jolly Jax bursts out of the top of the cake`);
+
+  /* ---- owner 2026-10-28: with all four bows the Spinner goes on: whatever it picks is played, just for fun (no new bow, nothing lost) ---- */
+  const fun = await page.evaluate(() => {
+    const g = window.pokecraft, L = window.__live(); window.__toasts = [];
+    const before = L.bows().n, keys = g.beaten.length, cubes = g.cubes;
+    window.__toPad(); const word = L.near(g.player);
+    const spin = window.__spinTo(2);
+    const game = L.gm?.game, fun = L.gm?.fun;
+    const r = window.__playGame('pro', 0.05);
+    for (let i = 0; i < 6; i++) g.gymLive.update(0.3);
+    return { word, slice: spin.slice, game, fun, r: r.join(), before, after: L.bows().n, keys: g.beaten.length - keys, cubes: g.cubes - cubes, gm: L.gm, toasts: window.__toasts.join('|') };
+  });
+  t.ok(fun.word === 'Spin!' && fun.slice === 2 && fun.game === 'stack' && fun.fun && fun.r === '1:won,2:won,3:won' && fun.before === 4 && fun.after === 4 && fun.keys === 0 && fun.cubes === 0 && /Just for fun!/.test(fun.toasts) && /You won Gift Stack again!/.test(fun.toasts) && !/A golden bow/.test(fun.toasts), `with four bows the Spinner still spins and its game is played just for fun: ${fun.game} ${fun.r}, bows ${fun.before} -> ${fun.after}, no new keys or cubes`);
 
   /* ---- Jolly Jax and the helpers ---- */
   const crew = await page.evaluate(async () => {

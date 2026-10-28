@@ -21,6 +21,7 @@ import {
 } from './fairgames.js';
 import { buildBumperFleet, buildCarousel, buildRings, buildAirBalloons, buildCoasterCar, buildFerrisWheel, buildSlide, buildConfetti } from './fairprops.js';
 import { ticketState, ticketKey, TICKETS } from './funfair.js';
+import { FUN } from './forfun.js';
 
 registerFairPaths(PATHS);
 export const FAIR_RULES = { sleepDist: 60, syncEvery: 0.25, tuneEvery: 9, regrow: 3.5, reach: 2.2, deckReach: 2, coasterReach: 3.2, slideReach: 2.4, camEase: 0.6, wheelTurn: 60, gateOpenFor: 8 };
@@ -294,7 +295,7 @@ export class FairLive {
   }
   gameDone(ticket, name) {
     if (!this.game.beaten.includes(ticketKey(ticket))) this.award(ticket);
-    else { sound.play('fairround'); this.toast(`🎉 You beat all 3 rounds of ${name} again!`); }
+    else { sound.play('fairround'); this.toast(`🎉 You beat all 3 rounds of ${name} again! ${FUN.tag}`); } // (owner 2026-10-28: no new ticket)
   }
 
   /* ---------------------------------------------- Balloon Bounce ---------------------------------------------- */

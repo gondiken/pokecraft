@@ -7,6 +7,7 @@
 //    passes (pw:castle:lance1..3). Round 3 raises the keep's portcullis.
 //  - the drawbridge, the portcullis and the squire gate are drawn with LiveCells (never an edit, never inside you): down / up when YOU won
 //    them (or hold the star) or a friend in this play-together world did (castlegate.js, owner 2026-10-28: the gates are physical).
+// Owner 2026-10-28: both stay playable once won (forfun.js): the rounds come again in turn, just for fun, and nothing new is saved.
 // Never a fail: a splat is only goo on the screen, a short round starts again (kind help after two). Clocks are summed frame dt and stand
 // still in a battle / an ask / a panel / the pause. `manual` + step(dt, input) for tests; info() for tests.
 import * as THREE from 'three';
@@ -19,6 +20,7 @@ import { JOUST, JOUST_ROUNDS, JoustRound, gallopAt } from './joust.js';
 import { castleState, shieldKey, lanceKey, TILT, KEEP, SQUIRE_GATE, YARD, BRIDGE, liveCells, castleAim } from './castleland.js';
 import { inMaze, mazeExtras } from './hedgemaze.js';
 import { kindHelp } from './kindhelp.js';
+import { ForFun } from './forfun.js';
 import { buildThrows, buildStoneRings, buildCatapults, buildPracticeKnight, buildLance, buildHeldShield, buildDrawbridge, buildPortcullis, KNIGHT_SHIELD, buildHorseshoes, buildHedgeCritters, buildFountainSpray } from './castleprops.js';
 
 export const CASTLE_RULES = { sync: 0.25, mountR: 2.6, horseY: 0.95, knightY: 0, shieldY: 1.6, shieldOff: 1.0, gooTime: 1.1, bridgeTime: 3, portTime: 2, squireR: 7, dtMax: 0.1, sayGap: 3 };
@@ -58,9 +60,9 @@ export class CastleLive {
     this.L = liveCells();
     this.seed = (this.world.seed ?? 1) >>> 0;
     // Shield Up!
-    this.sg = null; this.stance = -1; this.sTries = [0, 0, 0]; this.sMiss = [0, 0, 0]; this.shieldIn = { ang: 0, up: false }; this.spaceWas = true; this.gooT = 9; this.gooAng = 0; this.lastResult = null;
+    this.sg = null; this.stance = -1; this.sFun = new ForFun(SIEGE_ROUNDS); this.sTries = [0, 0, 0]; this.sMiss = [0, 0, 0]; this.shieldIn = { ang: 0, up: false }; this.spaceWas = true; this.gooT = 9; this.gooAng = 0; this.lastResult = null;
     // the Joust
-    this.jr = null; this.mounted = false; this.horse = { x: TILT.x0, dir: 1 }; this.ride = null; this.jTries = [0, 0, 0]; this.jMiss = [0, 0, 0];
+    this.jr = null; this.jFun = new ForFun(JOUST_ROUNDS); this.mounted = false; this.horse = { x: TILT.x0, dir: 1 }; this.ride = null; this.jTries = [0, 0, 0]; this.jMiss = [0, 0, 0];
     this.lanceIn = { su: 0, sv: 0, du: 0, dv: 0 }; this.tumbleT = 9; this.lastMeet = null; this.hits = []; this.hitsOf = null; this.callT = 0; this.lastCall = null;
     // the gates (null = not drawn yet; k = the animation 0 closed .. 1 open)
     this.drawn = { bridge: null, port: null, squire: null }; this.bridgeK = 0; this.portK = 0; this.announced = { bridge: false, port: false };
@@ -165,12 +167,11 @@ export class CastleLive {
   /* ---------------------------------------------- the hooks of the live-part interface ---------------------------------------------- */
   near(p = this.game.player) {
     if (!p || this.game.inBattle || this.game.world !== this.world) return null;
-    const st = this.state();
-    if (this.stance >= 0) return this.running() ? 'Stop' : st.shield < SIEGE_ROUNDS ? 'Shield!' : null;
-    if (this.mounted) return this.ride?.phase === 'idle' && !(this.jr?.done && st.lance >= JOUST_ROUNDS) ? 'Charge!' : null;
+    if (this.stance >= 0) return this.running() ? 'Stop' : 'Shield!'; // (won: again, just for fun)
+    if (this.mounted) return this.ride?.phase === 'idle' ? 'Charge!' : null;
     if (p.carry) return null;
-    if (stoneAt(p.pos) >= 0 && st.shield < SIEGE_ROUNDS) return 'Shield!';
-    if (this.nearSteed(p.pos) && st.lance < JOUST_ROUNDS) return 'Mount!';
+    if (stoneAt(p.pos) >= 0) return 'Shield!';
+    if (this.nearSteed(p.pos)) return 'Mount!';
     return null;
   }
   use(p = this.game.player) {
@@ -211,12 +212,11 @@ export class CastleLive {
     this.game.ui?.setPointers?.(null);
   }
   startRound() {
-    const st = this.state(), r = st.shield;
-    if (r >= SIEGE_ROUNDS) { this.toast('You won Shield Up! The drawbridge is down.'); return; }
+    const st = this.state(), r = this.sFun.round(st.shield);
     this.sg = new SiegeRound(this.seed, r, this.sTries[r]++, Math.max(0, this.stance), { help: this.sMiss[r], hard: this.hard });
     this.perfectRow = 0;
     sound.play('trumpet');
-    this.toast(`🛡️ ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!${kindHelp(this.sMiss[r]).on ? ' (A bit slower now.)' : ''}`);
+    this.toast(`🛡️${this.sFun.tag(st.shield)} ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!${kindHelp(this.sMiss[r]).on ? ' (A bit slower now.)' : ''}`);
   }
   stepSiege(dt) {
     const sg = this.sg;
@@ -234,7 +234,11 @@ export class CastleLive {
   }
   roundDone(e) {
     const r = this.sg.round;
-    if (e.won) {
+    if (e.won && this.sFun.done(this.state().shield)) { // all won already: just for fun (nothing new is saved)
+      this.sMiss[r] = 0; this.sFun.won(r, SIEGE_ROUNDS);
+      sound.play('trumpet');
+      this.toast(`🛡️ Round ${r + 1} won again! ${e.blocks} blocks. Just for fun! Press Shield! to play on.`);
+    } else if (e.won) {
       this.sMiss[r] = 0;
       this.addKey(shieldKey(r + 1));
       sound.play('trumpet');
@@ -301,10 +305,9 @@ export class CastleLive {
     const st = this.state();
     if (!this.mounted || this.ride?.phase !== 'idle') return;
     if (!this.jr || this.jr.done) {
-      const r = Math.min(st.lance, JOUST_ROUNDS - 1);
-      if (st.lance >= JOUST_ROUNDS) { this.toast('You won the Joust! The portcullis is up.'); return; }
+      const r = this.jFun.round(st.lance);
       this.jr = new JoustRound(this.seed, r, this.jTries[r]++, { help: this.jMiss[r], hard: this.hard });
-      this.toast(`🐴 ${WORDS.passes[r]} Get ${this.jr.need} points in 4 passes.${kindHelp(this.jMiss[r]).on ? ' (A bit easier now.)' : ''}`);
+      this.toast(`🐴${this.jFun.tag(st.lance)} ${WORDS.passes[r]} Get ${this.jr.need} points in 4 passes.${kindHelp(this.jMiss[r]).on ? ' (A bit easier now.)' : ''}`);
     }
     this.jr.charge();
     this.ride = { phase: 'pass', tau: 0, x0: this.horse.x };
@@ -383,7 +386,10 @@ export class CastleLive {
   }
   joustDone(e) {
     const r = this.jr.round;
-    if (e.won) {
+    if (e.won && this.jFun.done(this.state().lance)) { // all won already: just for fun (nothing new is saved)
+      this.jMiss[r] = 0; this.jFun.won(r, JOUST_ROUNDS);
+      this.toast(`🐴 Round ${r + 1} won again! ${e.points} points. Just for fun! Press Charge! to play on.`);
+    } else if (e.won) {
       this.jMiss[r] = 0;
       this.addKey(lanceKey(r + 1));
       const st = this.state();
@@ -644,8 +650,8 @@ export class CastleLive {
     const ui = this.game.ui;
     if (!ui?.setScore || this.game.world !== this.world) return;
     const st = this.state(), sg = this.sg, jr = this.jr;
-    if (sg && !sg.done) { ui.setScore({ text: `🛡️ Round ${sg.round + 1} · ${sg.blocks} / ${sg.need} · ${sg.left} to come`, done: false }); return; }
-    if (this.mounted && jr && !jr.done) { ui.setScore({ text: `🐴 Round ${jr.round + 1} · Pass ${Math.max(1, jr.pass + 1)} / 4 · ⭐ ${jr.points} / ${jr.need}`, done: false }); return; }
+    if (sg && !sg.done) { ui.setScore({ text: `🛡️ Round ${sg.round + 1} · ${sg.blocks} / ${sg.need} · ${sg.left} to come${this.sFun.done(st.shield) ? ' · for fun' : ''}`, done: false }); return; }
+    if (this.mounted && jr && !jr.done) { ui.setScore({ text: `🐴 Round ${jr.round + 1} · Pass ${Math.max(1, jr.pass + 1)} / 4 · ⭐ ${jr.points} / ${jr.need}${this.jFun.done(st.lance) ? ' · for fun' : ''}`, done: false }); return; }
     const ready = st.done && !this.game.bosses?.crewAim?.(this.game.player.pos);
     ui.setScore({ text: ready && !st.star ? '🏰 The throne room is open!' : `🛡️ ${st.shield} / 3 · 🐴 ${st.lance} / 3`, done: !!(ready && !st.star) });
   }
