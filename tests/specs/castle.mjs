@@ -335,6 +335,46 @@ export default async function ({ browser, base, t }) {
       });
       t.ok(D4.z < 100 && Math.abs(D4.y - 11) < 0.1 && /hedge maze/.test(D4.aimCourt), `walking over the drawbridge leads into the castle (z ${D4.z.toFixed(1)}); the guide points at the hedge maze ("${D4.aimCourt}")`);
       t.ok(D4.inMaze && D4.aim0x === undefined && /hedge maze/.test(D4.aim0t) && D4.aim1x === undefined && /hand on the hedge/.test(D4.aim1t) && D4.aim2?.x !== undefined && /way out/.test(D4.aim2t), `in the maze the guide is gentle: words only ("${D4.aim0t}"), then a tip ("${D4.aim1t}"), then after 90 s an arrow to the way out ("${D4.aim2t}")`);
+      // the hedge maze's fun (owner 2026-10-28): a lucky horseshoe in a dead end gives one cube once per trip, a critter peeks when you
+      // come near, Gardener Gwen stands by the fountain
+      const M4 = await page.evaluate(() => {
+        const R = window.__R, { g, live } = R, fx = live.fun, h = fx.treats[0], c = fx.peeks[0], out = {};
+        const c0 = g.cubes; R.put(h.x, 11, h.z); live.step(0.05); out.got = g.cubes - c0; live.step(0.05); R.put(h.x, 11, h.z); live.step(0.05); out.again = g.cubes - c0;
+        out.toast = R.said('lucky horseshoe'); out.hidden = !live.shoes.userData.parts.list[0].visible;
+        R.put(c.x + 2.5, 11, c.z + 2.5); live.step(0.05); live.step(0.3); out.peek = live.info().peeking; out.critter = live.critters.userData.parts.list[0].visible;
+        out.gwen = !!g.npcs.list.find(n => n.kind === 'guest' && n.name === 'Gardener Gwen');
+        const F = fx.fountain; out.fountain = g.world.get(F.x, 11, F.z) === R.B.COBBLE && g.world.get(F.x + 1, 10, F.z) === R.B.WATER && g.world.get(F.x, 12, F.z) === R.B.AIR;
+        return out;
+      });
+      t.ok(M4.got === 1 && M4.again === 1 && M4.toast && M4.hidden && M4.peek > 0 && M4.critter && M4.gwen && M4.fountain, `the hedge maze's fun: a lucky horseshoe gives +1 cube once per trip; a hedge critter peeks when you come near; Gardener Gwen stands by the fountain ${JSON.stringify(M4)}`);
+      // the Joust's view (owner 2026-10-28: the target was small and at the side): the camera keeps his big shield in the middle while
+      // you charge, zooms in while he is far, and the stick still moves the tip the other way on screen (the "reverse thinking"), both ways down the lane
+      const V5 = await page.evaluate(() => {
+        const R = window.__R, { g, live, p, CL } = R, cam = g.camera, K = live.knight.userData.parts, out = { passes: [] };
+        const ndc = v => { cam.position.copy(p.eyePos); cam.rotation.set(p.pitch, p.yaw, 0); cam.updateMatrixWorld(true); return v.clone().project(cam); };
+        const dotAt = () => { live.shieldRig.updateMatrixWorld(true); return ndc(K.dot.getWorldPosition(K.dot.position.clone())); };
+        R.put(66.5, 11, 32.5); live.use(p);
+        for (let pass = 0; pass < 2; pass++) {
+          live.charge(); out.passes.push({ dir: live.horse.dir, call: live.lastCall?.big });
+          const o = out.passes[pass];
+          for (let i = 0; i < 30; i++) live.step(1 / 30, { lance: { su: 0, sv: 0 } });
+          const s0 = ndc(live.shieldPos()); o.centre = Math.hypot(s0.x, s0.y); o.fov = cam.fov;
+          const d0 = dotAt(), u0 = live.jr.tip[0];
+          for (let i = 0; i < 9; i++) live.step(1 / 30, { lance: { su: 1, sv: 0 } });
+          const d1 = dotAt(); o.du = live.jr.tip[0] - u0; o.dx = d1.x - d0.x;
+          for (let i = 0; i < 9; i++) live.step(1 / 30, { lance: { su: 0, sv: 1 } });
+          o.dy = dotAt().y - d1.y;
+          let n = 0; while (!live.lastMeet || live.jr.pass !== pass || live.jr.results.length <= pass) { live.step(1 / 30, { lance: { su: 0, sv: 0 } }); if (n++ > 400) break; }
+          o.meet = live.lastCall?.big; o.small = live.lastCall?.small; o.marks = K.marks.filter(m => m.visible).length;
+          n = 0; while (live.ride?.phase !== 'idle' && n++ < 600) live.step(1 / 30, { lance: { su: 0, sv: 0 } });
+          o.fovBack = cam.fov;
+        }
+        out.ring = K.ring.scale.x; out.r = live.jr.plan.r;
+        live.giveBack(); live.jr = null; live.horse.dir = 1; live.horse.x = CL.TILT.x0; out.fovOff = cam.fov;
+        return out;
+      });
+      const V5ok = V5.passes.every(o => o.centre < 0.25 && o.fov < 70 && o.du > 0 && o.dx < -0.01 && o.dy > 0.01 && /Bullseye|Clang|Whoosh/.test(o.meet) && o.fovBack > 74) && V5.passes[0].dir !== V5.passes[1].dir && V5.passes[0].call === 'Charge!' && Math.abs(V5.ring - V5.r) < 1e-9 && V5.fovOff === 75;
+      t.ok(V5ok, `the Joust's view: Charge! frames his shield in the middle (${V5.passes.map(o => o.centre.toFixed(2)).join(' / ')} from the centre, zoomed to ${V5.passes.map(o => o.fov.toFixed(0)).join(' / ')} degrees) both ways down the lane; stick right moves the tip left on screen as before (${V5.passes.map(o => o.dx.toFixed(3)).join(' / ')}), forward moves it up; the meeting says "${V5.passes.map(o => `${o.meet} ${o.small}`).join('" / "')}"; the bullseye ring is the round's radius ${V5.r}`);
       // the Joust
       const D5 = await page.evaluate(() => {
         const R = window.__R, { g, live, p, CL } = R, out = {};
@@ -395,8 +435,17 @@ export default async function ({ browser, base, t }) {
       await frames(page, 2); await page.evaluate(() => { const R = window.__R; R.live.step(1 / 30, { shield: window.__shieldB(R.live.sg) }); }); await frames(page, 1); await shot(page, 't49-shield.png');
       await page.evaluate(() => { const R = window.__R, { live, p } = R; live.giveBack(); R.put(87.5, 23, 98.5); p.lookAt({ x: 112, y: 11, z: 70 }); live.step(0.05); });
       await frames(page, 3); await shot(page, 't49-maze.png');
-      await page.evaluate(() => { const R = window.__R, { g, live, p } = R; g.beaten = g.beaten.filter(k => !/lance/.test(k)); R.put(66.5, 11, 32.5); live.use(p); live.charge(); const b = R.Bots.JOUST_BOTS.skilled(); for (let i = 0; i < 80; i++) live.step(1 / 30, { lance: { ...b(live.jr), du: 0, dv: 0 } }); });
+      await page.evaluate(() => { const R = window.__R, { live, p } = R, F = live.fun.fountain; R.put(F.x + 3.5, 11, F.z + 3.5); p.lookAt({ x: F.x - 2, y: 12.2, z: F.z - 2.5 }); live.step(0.05); });
+      await frames(page, 3); await shot(page, 't49-maze-fountain.png');
+      await page.evaluate(() => { const R = window.__R, { live, p } = R, c = live.fun.peeks[1]; R.put(c.x - 2.5, 11, c.z - 1.5); /* a cell's middle beside the post */ p.lookAt({ x: c.x + 0.5, y: 14.3, z: c.z + 0.5 }); live.step(0.05); live.step(0.4); });
+      await frames(page, 3); await shot(page, 't49-maze-critter.png');
+      // the Joust (owner 2026-10-28: the target must be obvious): just after Charge!, just before the meeting, and the callout after it
+      await page.evaluate(() => { const R = window.__R, { g, live, p } = R; g.beaten = g.beaten.filter(k => !/lance/.test(k)); R.put(66.5, 11, 32.5); live.use(p); live.charge(); window.__lanceB = R.Bots.JOUST_BOTS.skilled(); for (let i = 0; i < 9; i++) live.step(1 / 30, { lance: { ...window.__lanceB(live.jr), du: 0, dv: 0 } }); });
+      await frames(page, 3); await shot(page, 't49-joust-start.png');
+      await page.evaluate(() => { const R = window.__R, { live } = R; for (let i = 0; i < 71; i++) live.step(1 / 30, { lance: { ...window.__lanceB(live.jr), du: 0, dv: 0 } }); });
       await frames(page, 3); await shot(page, 't49-joust.png');
+      await page.evaluate(() => { const R = window.__R, { live } = R; for (let i = 0; i < 25 && !live.lastMeet; i++) live.step(1 / 30, { lance: { ...window.__lanceB(live.jr), du: 0, dv: 0 } }); live.step(1 / 30, { lance: { su: 0, sv: 0 } }); });
+      await frames(page, 3); await shot(page, 't49-joust-meet.png');
       await page.evaluate(() => { const R = window.__R, { g, live, p } = R; live.giveBack(); const b = g.world.bosses[0]; R.put(b.rest[0], b.rest[1], b.rest[2] + 3); p.lookAt({ x: b.pos[0], y: b.pos[1] + 1.4, z: b.pos[2] }); live.step(0.05); });
       await frames(page, 3); await shot(page, 't49-throne.png');
     }

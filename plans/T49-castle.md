@@ -626,3 +626,55 @@ The open questions of the first draft were answered by the owner on 2026-10-28 (
 - **The sentry gait** ignores keeps (the whole castle is a keep, which fences riders): it only marches on the world's `walk` floor.
 - **Not built:** banners unfurling on the keep after the star (the trumpet and the note only); the spec's perf numbers were not
   measured with `perf.mjs` in this session (the part adds about 12 draw calls in the field and the yard, plus the steed's model).
+
+## Owner's notes 2026-10-28 (after playing): the Joust's view and a more fun maze
+
+The owner: the Joust "took me a while to understand and even SEE what I was supposed to do. It's so much on the other side of the screen
+and so small that I didn't see it until after 5-6 rounds. Once I noticed it was still hard but enough to be interesting and fun as it
+required me to reverse my thinking. Improve its visual, and maybe a little gameplay, but it shouldn't be made easier." The maze: "ok,
+maybe a little too easy. It could be made more fun and just a tiny bit harder."
+
+**The Joust: only the view changed, the rules did not** (`joust.js` untouched, so `tests/castlebots.mjs` gives exactly the same table
+before and after: skilled 20 / 20 in every round at 60 and 20 steps; sloppy 20 / 0 / 0, tracker 20 / 15 / 0, with the help 20 / 20 / 15
+(14 at 20 steps); still never; random at most 3 in 20).
+- Why it was hard to see: the camera looked straight down the lane, Sir Splinter rode 8 blocks to the side and met you right beside you
+  (90 degrees off the view), and his shield (radius 0.8) faced along the lane, so you saw it small and from the side.
+- Now (`JOUST_VIEW` in castlelive.js): his lane is 2 blocks nearer (`TILT.knightZ` 38.5, the lane check still passes), he meets you
+  `lead` 5 blocks ahead, his shield is its own group (castleprops.js `KNIGHT_SHIELD.scale` 1.6) beside him on your side, always turned
+  to face you, and while you charge the camera turns to keep it in the middle of the screen and zooms in (`fill` 0.2 of the screen's
+  height, between 38 and 75 degrees) so it is big even far away; after the meeting the view eases back along the lane. **Charge!**
+  snaps the view onto the shield and says "Charge!" in big letters (the first pass of a round adds "Steer your lance tip onto the gold
+  star!"; the first mount once a session: "Hit the gold star!").
+- On the shield, all in the rules' units (so a bigger shield is the same game): the gold star with a dark outline and a soft glow, the
+  bullseye ring (exactly the round's `plan.r`), your lance tip as a white ring in a black ring with a red middle, marks where your
+  passes of this round hit (gold for a Bullseye, a dent for a Clang). Your lance now comes from your hand on his side and points at your
+  tip ring; just before the meeting it thrusts onto it.
+- Feedback per pass (a big callout under the middle of the screen, never over the shield): "Bullseye! +2 Right on the star!", "Clang!
+  +1 A bit too high. The star was lower.", "Whoosh! Missed: too far left. The star was more to the right." (words from where the tip
+  hit compared with the star, on screen).
+- **The stick still moves the tip the same way:** stick right moves the tip LEFT on the screen (it always did: the old drawing mirrored
+  u; that is the "reverse thinking" the owner liked), forward moves it up; the spec projects the drawn ring through the camera both ways
+  down the lane to prove it. The "where it will be" ring was left out on purpose: the bob is a closed form, so showing the tip at the
+  meeting would take the bob's challenge away (an easier game).
+- Spec: "the Joust's view" (play): the shield within 0.25 of the screen's middle, zoomed, both lane directions, the sign of the stick,
+  the callout, the ring = `plan.r`, the view back at 75 after the pass and after `giveBack`. Screenshots `t49-joust-before.png` (the
+  old view), `t49-joust-start.png` (Charge!), `t49-joust.png` (just before the meeting), `t49-joust-meet.png` (Bullseye!).
+
+**The hedge maze: a tiny bit harder, and more fun** (`hedgemaze.js`; no new block ids, only HEDGE, COBBLE, WATER, FLOWER_BUSH, and meshes):
+- New numbers: seed 483 with 2 knocked-out hedges and a 2 x 2 **fountain clearing** (cells i 2-3, j 4-5): the shortest way **26 cells
+  (96 blocks of walking; it was 22 / 84)**, **11 dead ends (was 8)**, 4 loops (the clearing makes one), all 66 cells reachable; the band
+  is now 24-32 cells. The shortest way goes through the clearing (a landmark: "I found the middle!").
+- The fountain (x 114, z 72): a low cobble spout in a sunken 3 x 3 pool with a spray of drops (instanced, a closed form of the clock).
+  Low on purpose: from its top you cannot get onto the hedges (the terrain check tests that no place on top of the maze can be reached).
+  **Gardener Gwen** stands by it ("Lucky horseshoes hide in the dead ends!").
+- **Lucky horseshoes** (gold, spinning) in 4 dead ends (the furthest from the entrance, 3+ cells apart): +1 Capture Cube each, once per
+  trip (in memory, never saved), so a dead end is not only a punishment.
+- **Hedge critters**: 4 leafy balls with big eyes on hedge posts pop up when you come within 6 blocks, giggle, look at you and duck
+  (2.4 s up, then 7 s rest); the first one says "Hee hee! A hedge critter peeked at you!".
+- **Archways**: hedge over 4 gaps inside (picked evenly from the joins, never in the clearing) and over both doors, a rose bush on top
+  of each; you walk under them.
+- The guide is unchanged (words, the tip at 45 s, the arrow at 90 s).
+- `castlecheck.mjs`: the numbers above, the clearing on the shortest way, every horseshoe in a dead end and reachable, Gwen's spot, the
+  way under every arch, nothing on top of the maze. Spec "the hedge maze's fun" (play): a horseshoe once, a critter peeks, Gwen, the
+  fountain's blocks. Screenshots `t49-maze-before.png`, `t49-maze.png`, `t49-maze-fountain.png`, `t49-maze-critter.png`.
+- Old saves: the castle and the maze are one keep (nobody could build there), so no edit is lost; `REALMS.castle.version` is unchanged.
