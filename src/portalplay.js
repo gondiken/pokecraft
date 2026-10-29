@@ -5,7 +5,7 @@
 //   { id, room, kind: 'slot' | 'peach' | 'orange' | 'door' | 'warp' | 'pair', colour, face: 'wall' | 'floor' | 'ceiling',
 //     normal: [nx, ny, nz] (the way you come out), centre: [x, y, z] (the middle of the front face), w, h (the disc: a wall swirl is w wide
 //     and h tall; a floor or ceiling one is w along x and h along z), cells (the solid slab behind it), lean?: { dir: [dx, dz], deg },
-//     soft?: true (you always come out gently), pair?: id (a pink pair), to?: [x, y, z, yaw] (a warp),
+//     soft?: true (you always come out gently), pair?: id (a pink pair), to?: [x, y, z, yaw] (a warp; back?: true = a room's back swirl, to its start), decoy?: true (a decoy white pad),
 //     move?: { axis: 'x' | 'y' | 'z', from, to, period } (it slides to and fro with the room clock; the old form { y0, y1, period } is the y axis) }
 // "In one, out the other": your teal swirl (on a white pad, kind 'slot') and the orange end are joined. The orange end is the room's
 // fixed orange swirl(s), or (rooms 5-8, owner 2026-10-27) YOUR orange swirl, which sticks only on a peach pad (kind 'peach'): the pad
