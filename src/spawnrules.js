@@ -97,7 +97,7 @@ export const AFTER_TEXT = {
   doodle: 'once you drew 4 lines',
   portal: 'once you finished 4 swirl rooms',
   castle: 'once you won 3 rounds of Shield Up! and the Joust', // T49
-  bubble: 'once you climbed the Bubble Stairs', // the Bubble Well
+  bubble: 'once you climbed the Fizz Ledges', // the Bubble Well
   gravity: 'once you tagged an Orbikit', // Cube Planets
 };
 export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);

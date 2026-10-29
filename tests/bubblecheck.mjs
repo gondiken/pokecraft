@@ -1,30 +1,39 @@
 // The Bubble Well terrain checks that need no browser: a stand-in world for bubbleLand and the walk graph of housecheck.mjs, plus three
-// kinds of extra edges: bubbles (from a ledge you can climb up to BUBBLE_UP blocks through open air), the fizz lifts (when on) and the
-// Chimney Ride (from its floor to the rim). Used by tests/specs/bubble.mjs and run by hand with `node tests/bubblecheck.mjs [seed]`.
-import { B, BLOCKS, isSolid, WOOL } from '../src/blocks.js';
-import { bubbleLand, SIZE, WELL, FLOOR, MESA, BENCH, RIM, GARDEN, NEST, ISLANDS, THORNS, CURRENTS, CHIMNEY, COURT, courtOf, STEP1, LIFTS, DRIPS, VENT2, BREEZES, SHAFT2, SOAP_FLOWERS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
-import { RIDE, DUCK, BUBBLE, BANK, gapOf, bankShot } from '../src/bubbles.js';
+// kinds of extra edges: bubbles (redesign 2026-10-29: only from a floor with a soap pot, since one dip = one bubble and a jump shakes the
+// film off; a bubble climbs at most bubbles.js rideUp() with the most kind help, up through open air, then over to a ledge at most 3 away),
+// the fizz lifts (when on) and the Chimney Ride (from its floor to the rim). Used by tests/specs/bubble.mjs and run by hand with
+// `node tests/bubblecheck.mjs [seed]`.
+import { B, BLOCKS, WOOL } from '../src/blocks.js';
+import { bubbleLand, SIZE, WELL, FLOOR, MESA, RIM, GARDEN, NEST, ISLANDS, THORNS, CHIMNEY, LEDGES, SOAP_POTS, SHIELDS, LIFTS, DRIPS, WINDS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
+import { RIDE, DUCK, gapOf, rideUp } from '../src/bubbles.js';
+import { kindHelp } from '../src/kindhelp.js';
 import { walkGraph, bfs } from './housecheck.mjs';
 import { standIn } from './castlecheck.mjs';
 
-// The most a wand climbs from a ledge: six puffs of soap, each at most a Bounce plus the top part of a bubble you hop into (a perfect hop
-// every time), then a last Bounce onto a ledge (rework 2026-10-29: about 13; a hop right away gains only about half a block).
-export const BUBBLE_UP = Math.ceil(BUBBLE.soap * (BUBBLE.bounce + BUBBLE.r - BUBBLE.scoop) + BUBBLE.bounce) - 1;
+// The most one bubble lifts your feet (the most kind help: a bubble lasts 10 % longer), as whole blocks you can land on.
+export const BUBBLE_UP = Math.floor(rideUp(kindHelp(99).more) - 0.02);
 export function makeWell(seed) { const w = standIn(seed, [SIZE, SIZE]); bubbleLand(w, { id: 'bubble', size: [SIZE, SIZE] }); return w; }
 const at = p => [Math.floor(p[0]), Math.round(p[1]), Math.floor(p[2])];
 const parse = k => k.split(',').map(Number);
 
-// The walk graph with extra edges: bubbles (open air straight up from a ledge, then over to a ledge at most 3 away), lifts, the ride.
-export function graphOf(w, { bubbles = false, lifts = [false, false], ride = false } = {}) {
+// The walk graph with extra edges: bubbles (from a cell on a soap pot's own floor: open air straight up, then over to a ledge at most 3
+// away), lifts, the ride. skipPots: pots (indexes into SOAP_POTS) whose floor gives no bubbles (to prove each ledge is needed).
+export function graphOf(w, { bubbles = false, lifts = [false, false], ride = false, skipPots = [] } = {}) {
   const g = walkGraph(w);
   const liftBoxes = LIFTS.filter((l, i) => lifts[i]);
+  // the floors you can walk to with a wet wand: every cell reached from a pot without leaving that floor (no fall, no step up)
+  const wet = new Set();
+  if (bubbles) SOAP_POTS.forEach((pot, i) => {
+    if (skipPots.includes(i)) return;
+    const s = at(pot), q = [s]; wet.add(g.key(...s));
+    while (q.length) { const c = q.shift(); for (const n of g.neighbours(...c)) { if (n[1] !== c[1]) continue; const k = g.key(...n); if (wet.has(k) || Math.hypot(n[0] - s[0], n[2] - s[2]) > 14) continue; wet.add(k); q.push(n); } }
+  });
   g.edges = (x, y, z) => {
     const out = [];
-    if (bubbles) {
-      let top = y; // how high the air is open over this cell (the fizzy breeze blows bubbles away: as good as a wall)
-      const windy = (x, y, z) => BREEZES.some(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && z >= b.z0 && z <= b.z1);
-      while (top < y + BUBBLE_UP && !g.solid(x, top + 2, z) && !windy(x, top + 2, z)) top++;
-      for (let dy = 2; dy <= top - y; dy++) for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) if (g.standOk(x + dx, y + dy, z + dz)) out.push([x + dx, y + dy, z + dz]);
+    if (bubbles && wet.has(g.key(x, y, z))) {
+      let top = y; // how high the air is open over this cell
+      while (top < y + BUBBLE_UP && !g.solid(x, top + 2, z)) top++;
+      for (let dy = 1; dy <= top - y; dy++) for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) if (Math.hypot(dx, dz) <= 4.2 && g.standOk(x + dx, y + dy, z + dz)) out.push([x + dx, y + dy, z + dz]);
     }
     for (const l of liftBoxes) if (x >= l.x[0] - 1 && x <= l.x[1] + 1 && z >= l.z[0] - 1 && z <= l.z[1] + 1 && y >= l.y[0] && y <= l.y[0] + 1) {
       const ty = l.y[1] + 1; // up the stream, then step off onto a ledge beside it
@@ -42,7 +51,7 @@ export function analyze(seed = 1) {
   const w = makeWell(seed), w2 = makeWell(seed);
   for (let i = 0; i < w.data.length; i++) if (w.data[i] !== w2.data[i]) { bad('not deterministic'); break; }
   const ids = [...new Set(w.data)].sort((a, b) => a - b);
-  out.info.ids = ids;
+  out.info.ids = ids; out.info.up = BUBBLE_UP;
   const unknown = ids.filter(id => id !== B.AIR && !BLOCKS[id]);
   if (unknown.length) bad(`unknown block ids ${unknown}`);
   const newIds = ids.filter(id => id > 136 && ![B.PICTURE, B.WAY_BACK, B.BOSS_STAND, B.PICTURE_FRAME].includes(id));
@@ -58,33 +67,31 @@ export function analyze(seed = 1) {
   if (!w.keeps.some(k => k.name === 'well' && k.protect[0].x0 === 0 && k.protect[0].x1 === w.W - 1 && k.protect[0].y1 >= 47)) bad('the whole well is not a keep');
   if (!w.nooks.length || w.nooks.some(n => !standOk(n.x, n.y, n.z))) bad('nooks');
   out.info.nooks = w.nooks.length;
-  // 1. no wand: from the bottom you never get up (the bench, the plateau, the rim)
+  for (const p of SOAP_POTS) if (!standOk(...at(p))) bad(`a soap pot in the air or a wall at ${p}`);
+  // 0. one bubble never climbs 6 (so no ledge can be skipped); the ledges are 3 and 4 apart (a bubble needed, never a jump)
+  if (BUBBLE_UP >= 6) bad(`one bubble climbs ${BUBBLE_UP}`);
+  const tops = [FLOOR, ...LEDGES.map(l => l.top), MESA.top];
+  tops.slice(1).forEach((t, i) => { const d = t - tops[i]; if (d < 2 || d > BUBBLE_UP) bad(`ledge ${i + 1} is ${d} up`); });
+  // 1. no wand: from the bottom you never get up
   const none = bfs(graphOf(w), [arrive]);
   const maxY = Math.max(...[...none.keys()].map(k => parse(k)[1]));
   out.info.walkTop = maxY;
   if (maxY > FLOOR + 2) bad(`without bubbles you get up to y ${maxY}`);
-  // 2. with the wand: the bench, then the plateau by the narrow shaft (the stairs' top); not the rim (that is the Chimney Ride)
-  const wand = bfs(graphOf(w, { bubbles: true }), [arrive]);
+  // 2. with the wand: every ledge, then the plateau; not the rim (that is the Chimney Ride)
   const has = (seen, f) => { for (const k of seen.keys()) { const [x, y, z] = parse(k); if (f(x, y, z)) return true; } return false; };
-  if (!has(wand, (x, y, z) => y === BENCH.top + 1 && x >= BENCH.x0 && x <= BENCH.x1 && z >= BENCH.z0 && z <= BENCH.z1)) bad('bubbles do not reach the bench');
+  const wand = bfs(graphOf(w, { bubbles: true }), [arrive]);
+  for (const l of LEDGES) if (!has(wand, (x, y, z) => y === l.top + 1 && x >= l.x0 && x <= l.x1 && z >= l.z0 && z <= l.z1)) bad(`bubbles do not reach ledge ${l.n}`);
   if (!has(wand, (x, y, z) => y === MESA.top + 1)) bad('bubbles do not reach the plateau');
   if (has(wand, (x, y, z) => y >= RIM.y + 1)) bad('bubbles alone reach the rim (the chimney should be the only way)');
-  // the bench only from in front of it (shaft 1) and the plateau only from the narrow shaft (the plateau overhangs the rest of the bench)
-  const bub = graphOf(w, { bubbles: true }), without = skip => bfs({ ...bub, edges: (x, y, z) => (skip(x, y, z) ? [] : bub.edges(x, y, z)) }, [arrive]);
-  if (has(without((x, y, z) => x >= 92 && x <= 128 && z >= 66 && z <= 81), (x, y, z) => y >= BENCH.top + 1)) bad('you can bubble up to the bench somewhere else than by it');
-  if (has(without((x, y, z) => x >= SHAFT2.x0 && x <= SHAFT2.x1 && z >= SHAFT2.z0 && z <= SHAFT2.z1), (x, y, z) => y >= MESA.top + 1)) bad('you can bubble up to the plateau somewhere else than the narrow shaft');
-  // 3. the lifts and the ride: the rim, the Boss, the vents, both ways back; nobody stuck (every rest and crew spot gets to a way back)
+  // every ledge is needed: without the bubbles from any one floor's pot (the floor, ledge 1, 2, 3) nobody gets onto the plateau
+  for (let i = 0; i <= LEDGES.length; i++) if (has(bfs(graphOf(w, { bubbles: true, skipPots: [i] }), [arrive]), (x, y, z) => y === MESA.top + 1)) bad(`the plateau without ${i ? `ledge ${i}'s` : "the floor's"} soap pot`);
+  // 3. the lifts and the ride: the rim, the Boss, both ways back; nobody stuck (every rest and crew spot gets to a way back)
   const all = graphOf(w, { bubbles: true, lifts: [true, true], ride: true });
   const full = bfs(all, [arrive]);
   out.info.reach = full.size;
   if (!full.has(all.key(...at(boss.rest)))) bad('Captain Suds cannot be reached');
   if (!full.has(all.key(...rimArrive))) bad('the rim way back cannot be reached');
-  COURT.rounds.forEach((r, k) => { // the gold pads: standable, reachable, and no straight shot from them gets past the foam fence
-    if (!standOk(...at([r.pad.x, RIM.y + 1, r.pad.z])) || !full.has(all.key(...at([r.pad.x, RIM.y + 1, r.pad.z])))) bad(`gold pad ${k + 1} is not standable or reachable`);
-    const c = courtOf(k), straight = bankShot({ ...c, cushions: [], slider: null }, r.pad, { x: c.target.x - r.pad.x, z: c.target.z - r.pad.z });
-    if (straight.hit) bad(`pad ${k + 1}: a straight shot hits the shield`);
-  });
-  for (let x = COURT.fence.x0; x < COURT.fence.x1; x++) for (let y = RIM.y + 1; y <= RIM.y + 2; y++) if (w.get(x, y, COURT.fence.z0) !== B.FOAM) { bad('the foam fence has a hole'); y = 99; x = 999; }
+  if (!full.has(all.key(...at(SOAP_POTS.at(-1))))) bad('the rim soap pot cannot be reached');
   const onlyLifts = bfs(graphOf(w, { lifts: [true, true] }), [arrive]);
   if (!has(onlyLifts, (x, y, z) => y === MESA.top + 1) || !has(onlyLifts, (x, y, z) => y === RIM.y + 1)) bad('the fizz lifts do not take you up to the plateau and the rim');
   const doors = [arrive, rimArrive].map(d => all.key(...d));
@@ -92,24 +99,32 @@ export function analyze(seed = 1) {
     const seen = bfs(all, [s]);
     if (!doors.some(d => seen.has(d))) bad(`stuck at ${s}`);
   }
-  // 4. the garden: nothing solid where the ducklings float; islands, nest and thorns inside its rim; the current inside
+  // 4. the shields: never reachable by a jump from anything you can stand on (only from a bubble), but a bubble from the rim's pot climbs
+  //    above every one of them
+  const rimPot = SOAP_POTS.at(-1);
+  SHIELDS.forEach((s, k) => {
+    const low = s.y - (s.ay || 0) + s.r; // its top at its lowest
+    for (let x = Math.floor(s.x - s.ax - s.r - 3); x <= s.x + s.ax + s.r + 3; x++) for (let z = Math.floor(s.z - s.az - s.r - 3); z <= s.z + s.az + s.r + 3; z++) for (let y = RIM.y; y <= 47; y++) {
+      if (standOk(x, y, z) && y + 8.6 * 8.6 / 56 + 0.1 >= low) { bad(`shield ${k + 1} can be jumped onto from ${x},${y},${z}`); x = 999; break; }
+    }
+    if (rimPot[1] + rideUp() < s.y + (s.ay || 0) + s.r + 0.3) bad(`shield ${k + 1} is out of reach of a bubble from the rim`);
+    if (!onRim(s.x, s.z)) bad(`shield ${k + 1} is not over the rim`);
+  });
+  // 5. the garden: nothing solid where the ducklings float; islands, nest and thorns inside its rim
   for (let x = GARDEN.x0; x < GARDEN.x1; x++) for (let z = GARDEN.z0; z < GARDEN.z1; z++) if (w.isSolid(x, MESA.top + 1, z) || w.isSolid(x, MESA.top + 2, z) || !w.isSolid(x, MESA.top, z)) { bad(`the garden is not clear at ${x},${z}`); break; }
   for (const [x, z] of [...ISLANDS, [NEST.x, NEST.z], ...THORNS]) if (!inGarden(x, z)) bad(`${x},${z} is outside the garden`);
   for (const [x, z] of ISLANDS) if (THORNS.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < DUCK.r + DUCK.thorn + 0.3)) bad('a thorn by an island');
   if (THORNS.some(([tx, tz]) => Math.hypot(tx - NEST.x, tz - NEST.z) < NEST.r + 1.5)) bad('a thorn by the nest');
-  // 5. the chimney: open inside from its floor to the sky, a door, the plates' gaps and the stars inside, the landing on the rim
+  // 6. the chimney: open inside from its floor to the sky, the plates' gaps inside, the landing on the rim
   for (let y = CHIMNEY.floor; y < 48; y++) for (let x = Math.floor(CHIMNEY.x - CHIMNEY.r); x <= Math.ceil(CHIMNEY.x + CHIMNEY.r); x++) for (let z = Math.floor(CHIMNEY.z - CHIMNEY.r); z <= Math.ceil(CHIMNEY.z + CHIMNEY.r); z++) if (rChim(x, z) < CHIMNEY.r - 0.5 && w.isSolid(x, y, z)) { bad(`the chimney is blocked at ${x},${y},${z}`); y = 99; break; }
   if (!w.isSolid(Math.floor(CHIMNEY.x), CHIMNEY.floor - 1, Math.floor(CHIMNEY.z))) bad('the chimney has no floor');
   for (const p of CHIMNEY.plates) { const g = gapOf(CHIMNEY, p); if (Math.hypot(g.x - CHIMNEY.x, g.z - CHIMNEY.z) > CHIMNEY.r - RIDE.R) bad('a gap the ride cannot reach'); }
   if (!standOk(...at([CHIMNEY.landing[0], RIM.y + 1, CHIMNEY.landing[1]]))) bad('the chimney landing is not standable');
-  if (!has(bfs(graphOf(w, { bubbles: true }), [arrive]), (x, y, z) => y === CHIMNEY.floor && rChim(x, z) < CHIMNEY.r)) bad('the chimney floor cannot be reached with bubbles');
-  // 6. the pads on the rim, the drips and the side wind inside the narrow shaft, soap flowers on ground
-  for (const r of COURT.rounds) if (!onRim(r.pad.x, r.pad.z)) bad('a gold pad is not on the rim');
-  if (!standOk(Math.floor((STEP1.x0 + STEP1.x1) / 2), STEP1.top + 1, STEP1.z0)) bad('the low step in the wide shaft is not standable');
-  for (const d of DRIPS) if (d.x < SHAFT2.x0 || d.x > SHAFT2.x1 + 1 || d.z < SHAFT2.z0 || d.z > SHAFT2.z1 + 1) bad('a drip outside the narrow shaft');
-  if (VENT2.x0 < SHAFT2.x0 || VENT2.x1 > SHAFT2.x1) bad('the side wind outside the narrow shaft');
-  for (const [x, y, z] of SOAP_FLOWERS) if (!standOk(Math.floor(x), y, Math.floor(z))) bad(`a soap flower in the air or a wall at ${x},${y},${z}`);
-  // 7. inside the map, nothing above y 47, the wall all round
+  if (!has(wand, (x, y, z) => y === CHIMNEY.floor && rChim(x, z) < CHIMNEY.r)) bad('the chimney floor cannot be reached with bubbles');
+  // 7. the drips over ledge 3's way up, the winds inside the well
+  for (const d of DRIPS) if (!(d.z > MESA.z1 + 0.5 && d.z < MESA.z1 + 2 && d.top <= MESA.top + 1)) bad('a drip not by the plateau edge');
+  for (const v of WINDS) if (rWell(v.x0, v.z0) >= WELL.r || rWell(v.x1, v.z1) >= WELL.r) bad(`the wind ${v.id} is outside the well`);
+  // 8. the wall all round
   for (let x = 0; x < w.W; x += 7) for (let z = 0; z < w.D; z += 7) if (rWell(x, z) >= WELL.r && w.get(x, WELL.top, z) !== B.FIZZ_WALL) { bad(`the wall has a hole at ${x},${z}`); break; }
   return out;
 }
