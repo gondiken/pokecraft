@@ -1,6 +1,7 @@
 // The Bubble Well's rules (plans/bubble-well.md), pure: no imports but the shared kind help, Node-runnable. Every clock is summed frame
 // time cut into fixed 1/120 s sub-steps, so 60 and 20 frames a second give the same climb. No Math.random anywhere.
-//  - BubbleField: the bubbles YOU blow with the wand (Blow!: one press, never held). A bubble appears in front of your eyes, rises slowly,
+//  - BubbleField: the bubbles YOU blow with the wand (Blow!: one press, never held). A bubble appears in front of your eyes, waits there a
+//    moment (BUBBLE.hang: time to hop on), rises slowly,
 //    drifts in a vent's wind and pops when it is old, when a drip hits it, when it rubs a wall, or a little while after you landed on it.
 //    At most two at once; the wand holds six puffs of soap (soap flowers fill it up). Standing on one is the live part's `carry` object.
 //  - Duckling: a sleepy rubber duckling in a bubble that you never hold: Puff! nudges it the way you look, harder the closer you stand.
@@ -15,8 +16,28 @@ import { kindHelp } from './kindhelp.js';
 export const STEP = 1 / 120;
 // r radius, ahead how far in front of your eyes it appears, rise (blocks a second) while free, life (s) while free, sink while you stand
 // on it, stand (s) from landing to the pop, warn (s) of wobble before that pop, max at once, soap puffs, bounce (blocks: the jump off a
-// bubble), wall (s of rubbing a wall before it pops), catch (how far from its middle your feet may land), onTop (how far you may walk on it).
-export const BUBBLE = { r: 0.55, ahead: 1.6, rise: 0.6, life: 4, sink: 0.25, stand: 2.0, warn: 0.6, max: 2, soap: 6, bounce: 2.1, wall: 0.2, catch: 0.8, onTop: 0.45 };
+// bubble), wall (s of rubbing a wall before it pops), catch (how far from its middle your feet may land), onTop (how far you may walk on it),
+// hang (s a new bubble waits where you blew it before it starts to rise: time to hop on; owner 2026-10-29 "I could never jump on a bubble"),
+// scoop (your feet anywhere from `scoop` below its middle up to its top also land you on it: a bubble blown under your feet mid-jump, or
+// one you hop up into, catches you; only a bubble below your middle can, so a straight-ahead one stays too high to hop on from the ground),
+// lift (a bubble blown at the floor is lifted up to this far to sit just on top of it, so looking down at your feet and blowing works),
+// under (in the air, a bubble you blow right under your feet catches you at once if your feet are no more than this below its middle).
+export const BUBBLE = { r: 0.55, ahead: 1.6, rise: 0.6, life: 4, sink: 0.25, stand: 2.0, warn: 0.6, max: 2, soap: 6, bounce: 2.1, wall: 0.2, catch: 0.8, onTop: 0.45, hang: 0.6, scoop: 0.15, lift: 1.1, under: 0.6 };
+// How high your feet get over where they are now: a jump from the ground (the Player's jump speed 8.6), a Bounce off a bubble, or what is
+// left of a jump in the air (vy). g = the world's gravity.
+export const JUMP = 8.6;
+export const hopHeight = ({ ground = false, onBubble = false, vy = 0, g = 1 } = {}) =>
+  onBubble ? BUBBLE.bounce : ground ? JUMP * JUMP / (2 * 28 * g) : Math.max(0, vy) ** 2 / (2 * 28 * g);
+// Do your feet land on bubble b? feet / prev: the feet's height now and a frame ago; (x, z) where you are; vy your speed up. Two ways:
+//  - from above: the feet came down through its top since the last frame (any frame rate);
+//  - from inside: the feet are in its upper part (from `scoop` below its middle to its top), you are not shooting up fast.
+// inside = false: only from above (the bubble you just stepped or bounced off never scoops you up again).
+export function landsOn(b, { x, z, feet, prev = feet, vy = 0, inside = true }) {
+  if (Math.hypot(x - b.x, z - b.z) > BUBBLE.catch) return false;
+  const top = b.y + BUBBLE.r;
+  if (vy <= 0.5 && prev >= top - 0.12 && feet <= top + 0.15 && feet >= top - 1.2) return true;
+  return inside && vy <= 6 && feet >= b.y - BUBBLE.scoop && feet <= top + 0.15;
+}
 // A rematch (you hold the star) is a new climb, a bit harder (separate from the kind help).
 export const HARD = { life: 0.85, stand: 0.85, drip: 1.25, current: 1.3, friction: 0.85, sink: 1.2, bar: 1.2, catch: 0.85 };
 
@@ -68,7 +89,13 @@ export class BubbleField {
   // Blow! from the eye (x, y, z) along the unit direction d. solid(x, y, z) = a whole cell is solid. -> { ok, b?, why?, popped? }
   blow(eye, d, solid = () => false) {
     if (this.soap <= 0) return { ok: false, why: 'soap' };
-    const x = eye.x + d.x * BUBBLE.ahead, y = eye.y + d.y * BUBBLE.ahead, z = eye.z + d.z * BUBBLE.ahead;
+    const x = eye.x + d.x * BUBBLE.ahead, z = eye.z + d.z * BUBBLE.ahead;
+    const y0 = eye.y + d.y * BUBBLE.ahead, R = BUBBLE.r + 0.02;
+    let y = y0;
+    if (sphereTouches(solid, x, y, z, R)) { // blown at the floor: it sits just on top of it (never through a wall or a ceiling)
+      while (y < y0 + BUBBLE.lift && sphereTouches(solid, x, y, z, R)) y += 0.05;
+      if (sphereTouches(solid, x, y, z, R)) y = y0;
+    }
     if (sphereTouches(solid, x, y, z, BUBBLE.r * 0.8)) return { ok: false, why: 'wall' };
     let popped = null;
     if (this.list.length >= BUBBLE.max) { // the oldest one you are not standing on makes room
@@ -89,15 +116,17 @@ export class BubbleField {
     const ev = [], R = BUBBLE.r;
     this.acc = substeps(this.acc, dt, h => {
       for (const b of [...this.list]) {
+        const was = { x: b.x, y: b.y, z: b.z };
         if (b.stand) {
           b.standT += h; b.y -= BUBBLE.sink * h;
           if (!b.warned && b.standT >= this.standLife - BUBBLE.warn) { b.warned = true; ev.push({ type: 'warn', b }); }
           if (b.standT >= this.standLife) { this.pop(b); ev.push({ type: 'pop', b, why: 'stood' }); continue; }
         } else {
-          b.age += h; b.y += BUBBLE.rise * h;
+          b.age += h; if (b.age > BUBBLE.hang + 1e-9) b.y += BUBBLE.rise * h; // it waits a moment where you blew it, then rises
           if (b.age >= this.life) { this.pop(b); ev.push({ type: 'pop', b, why: 'old' }); continue; }
         }
         for (const v of env.vents || []) if (inBox(v, b.x, b.y, b.z)) { b.x += (v.vx || 0) * h; b.y += (v.vy || 0) * h; b.z += (v.vz || 0) * h; }
+        if (b.stand && b.y < was.y && env.solid && sphereTouches(env.solid, b.x, b.y, b.z, R) && !sphereTouches(env.solid, b.x, was.y, b.z, R)) b.y = was.y; // one you stand on rests on the floor (it pops on its own time)
         if (env.solid && sphereTouches(env.solid, b.x, b.y, b.z, R)) {
           b.wallT += h;
           if (b.wallT >= BUBBLE.wall) { this.pop(b); ev.push({ type: 'pop', b, why: 'wall' }); continue; }

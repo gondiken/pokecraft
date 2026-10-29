@@ -574,8 +574,11 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
   only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
   (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Blow!** (one press, never
-  held): a bubble 1.6 in front of the eyes, standing on it is a `carry` (Jump = Bounce, extra high); a fall from a bubble puts you back on
-  your ledge. The plateau overhangs the bench and a fizzy breeze (`BREEZES`, vents for bubbles) blows bubbles off the cliff, so the narrow
+  held): a bubble 1.6 in front of the eyes (blown at the floor it sits on it), waits `BUBBLE.hang` 0.6 s, then rises; standing on it is a
+  `carry` (Jump = Bounce, extra high); a fall from a bubble puts you back on your ledge. **Landing (owner 2026-10-29 "I could never jump
+  on a bubble"):** `landsOn` = down through its top, or feet inside its top half (`scoop`; never the bubble you just left); one blown
+  under your feet in the air catches you at once (`under`); the aim ring is green when a hop reaches it; the stick waits `settle` 0.5 s
+  after landing. Spec part `real` plays with real keys and the game's own loop (the old robot climb drove the rules directly). The plateau overhangs the bench and a fizzy breeze (`BREEZES`, vents for bubbles) blows bubbles off the cliff, so the narrow
   shaft is the only way up (`bubblecheck.mjs` proves it). Keys `pw:bubble:stairs`, `duck1..3`, `chimney`, `shield1..3`; the two fizz
   lifts run once you did a stretch (or hold the star). Captain Suds (a giant Lathotter) gates on the five stretch keys and the three
   shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won battle clears the eight climb keys. Kind help only through
@@ -629,7 +632,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `book`: Creature Book
 - `box`: storage box (T13): let go, sort, filter
 - `castle`: T49 type, terrain (`castlecheck.mjs`), Shield Up! and the Joust with `castlebots.mjs` at 60 / 20 fps, shared gates, play, iPad, two browsers, closed without `?preview`; `CASTLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
-- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the shields with `bubblebots.mjs` at 60 / 20 fps, the climb with the real Player, play, iPad, two browsers, closed without `?preview`; `BUBBLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
+- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the shields with `bubblebots.mjs` at 60 / 20 fps, the climb with the real Player, play, iPad, two browsers, real keys and taps through the game's own loop (`real`), closed without `?preview`; `BUBBLE_ONLY=data|land|rules|play|ipad|pair|real|closed|shots`
 - `caves`: T3/T8 caves and cave gyms
 - `champion`: tower, guards, coach, Champion (slow, about 5 min)
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms
