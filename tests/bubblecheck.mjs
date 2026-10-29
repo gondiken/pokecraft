@@ -2,12 +2,14 @@
 // kinds of extra edges: bubbles (from a ledge you can climb up to BUBBLE_UP blocks through open air), the fizz lifts (when on) and the
 // Chimney Ride (from its floor to the rim). Used by tests/specs/bubble.mjs and run by hand with `node tests/bubblecheck.mjs [seed]`.
 import { B, BLOCKS, isSolid, WOOL } from '../src/blocks.js';
-import { bubbleLand, SIZE, WELL, FLOOR, MESA, BENCH, RIM, GARDEN, NEST, ISLANDS, THORNS, CURRENTS, CHIMNEY, VENTS, VENT_SPOTS, LIFTS, DRIPS, VENT2, BREEZES, SHAFT2, SOAP_FLOWERS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
-import { RIDE, DUCK, gapOf } from '../src/bubbles.js';
+import { bubbleLand, SIZE, WELL, FLOOR, MESA, BENCH, RIM, GARDEN, NEST, ISLANDS, THORNS, CURRENTS, CHIMNEY, COURT, courtOf, STEP1, LIFTS, DRIPS, VENT2, BREEZES, SHAFT2, SOAP_FLOWERS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
+import { RIDE, DUCK, BUBBLE, BANK, gapOf, bankShot } from '../src/bubbles.js';
 import { walkGraph, bfs } from './housecheck.mjs';
 import { standIn } from './castlecheck.mjs';
 
-export const BUBBLE_UP = 9; // six puffs of soap, about 1.5 blocks a bubble
+// The most a wand climbs from a ledge: six puffs of soap, each at most a Bounce plus the top part of a bubble you hop into (a perfect hop
+// every time), then a last Bounce onto a ledge (rework 2026-10-29: about 13; a hop right away gains only about half a block).
+export const BUBBLE_UP = Math.ceil(BUBBLE.soap * (BUBBLE.bounce + BUBBLE.r - BUBBLE.scoop) + BUBBLE.bounce) - 1;
 export function makeWell(seed) { const w = standIn(seed, [SIZE, SIZE]); bubbleLand(w, { id: 'bubble', size: [SIZE, SIZE] }); return w; }
 const at = p => [Math.floor(p[0]), Math.round(p[1]), Math.floor(p[2])];
 const parse = k => k.split(',').map(Number);
@@ -77,7 +79,12 @@ export function analyze(seed = 1) {
   out.info.reach = full.size;
   if (!full.has(all.key(...at(boss.rest)))) bad('Captain Suds cannot be reached');
   if (!full.has(all.key(...rimArrive))) bad('the rim way back cannot be reached');
-  for (const s of VENT_SPOTS) { const back = [s.x + Math.cos(s.a) * 1.6, RIM.y + 1, s.z + Math.sin(s.a) * 1.6]; if (!standOk(...at(back))) bad(`the spot to blow into a vent from (${back.map(v => v.toFixed(1))}) is not standable`); }
+  COURT.rounds.forEach((r, k) => { // the gold pads: standable, reachable, and no straight shot from them gets past the foam fence
+    if (!standOk(...at([r.pad.x, RIM.y + 1, r.pad.z])) || !full.has(all.key(...at([r.pad.x, RIM.y + 1, r.pad.z])))) bad(`gold pad ${k + 1} is not standable or reachable`);
+    const c = courtOf(k), straight = bankShot({ ...c, cushions: [], slider: null }, r.pad, { x: c.target.x - r.pad.x, z: c.target.z - r.pad.z });
+    if (straight.hit) bad(`pad ${k + 1}: a straight shot hits the shield`);
+  });
+  for (let x = COURT.fence.x0; x < COURT.fence.x1; x++) for (let y = RIM.y + 1; y <= RIM.y + 2; y++) if (w.get(x, y, COURT.fence.z0) !== B.FOAM) { bad('the foam fence has a hole'); y = 99; x = 999; }
   const onlyLifts = bfs(graphOf(w, { lifts: [true, true] }), [arrive]);
   if (!has(onlyLifts, (x, y, z) => y === MESA.top + 1) || !has(onlyLifts, (x, y, z) => y === RIM.y + 1)) bad('the fizz lifts do not take you up to the plateau and the rim');
   const doors = [arrive, rimArrive].map(d => all.key(...d));
@@ -96,8 +103,9 @@ export function analyze(seed = 1) {
   for (const p of CHIMNEY.plates) { const g = gapOf(CHIMNEY, p); if (Math.hypot(g.x - CHIMNEY.x, g.z - CHIMNEY.z) > CHIMNEY.r - RIDE.R) bad('a gap the ride cannot reach'); }
   if (!standOk(...at([CHIMNEY.landing[0], RIM.y + 1, CHIMNEY.landing[1]]))) bad('the chimney landing is not standable');
   if (!has(bfs(graphOf(w, { bubbles: true }), [arrive]), (x, y, z) => y === CHIMNEY.floor && rChim(x, z) < CHIMNEY.r)) bad('the chimney floor cannot be reached with bubbles');
-  // 6. the vents on the rim, the drips and the side wind inside the narrow shaft, soap flowers on ground
-  for (const v of VENTS) if (!onRim(v.x, v.z) || !w.isSolid(Math.floor(v.x), RIM.y, Math.floor(v.z)) || w.isSolid(Math.floor(v.x), RIM.y + 1, Math.floor(v.z))) bad('a vent is not on the rim');
+  // 6. the pads on the rim, the drips and the side wind inside the narrow shaft, soap flowers on ground
+  for (const r of COURT.rounds) if (!onRim(r.pad.x, r.pad.z)) bad('a gold pad is not on the rim');
+  if (!standOk(Math.floor((STEP1.x0 + STEP1.x1) / 2), STEP1.top + 1, STEP1.z0)) bad('the low step in the wide shaft is not standable');
   for (const d of DRIPS) if (d.x < SHAFT2.x0 || d.x > SHAFT2.x1 + 1 || d.z < SHAFT2.z0 || d.z > SHAFT2.z1 + 1) bad('a drip outside the narrow shaft');
   if (VENT2.x0 < SHAFT2.x0 || VENT2.x1 > SHAFT2.x1) bad('the side wind outside the narrow shaft');
   for (const [x, y, z] of SOAP_FLOWERS) if (!standOk(Math.floor(x), y, Math.floor(z))) bad(`a soap flower in the air or a wall at ${x},${y},${z}`);

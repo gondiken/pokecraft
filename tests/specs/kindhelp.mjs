@@ -10,8 +10,8 @@ import { catchPlan } from '../../src/jackcatch.js';
 import { stackPlan } from '../../src/giftstack.js';
 import { whackPlan } from '../../src/popupwhack.js';
 import { bossSpeed, makeTrack } from '../../src/racetrack.js';
-import { BubbleField, Duckling, Ride, shieldShot } from '../../src/bubbles.js'; // the Bubble Well
-import { GARDEN_RULES, ISLANDS, CHIMNEY, VENTS, VENT_SPOTS, SHIELD } from '../../src/bubbleland.js';
+import { BubbleField, Duckling, Ride, bubbleHelp } from '../../src/bubbles.js'; // the Bubble Well
+import { GARDEN_RULES, ISLANDS, CHIMNEY } from '../../src/bubbleland.js';
 
 export default async function ({ t }) {
   const { after, step, max } = KIND_HELP;
@@ -42,10 +42,10 @@ export default async function ({ t }) {
     whack: m => { const a = whackPlan(4, 2, 0, { help: kindHelp(m) }), b = whackPlan(4, 2, 0); return Math.max(a.up / b.up - 1, a.time / b.time - 1); },
     siege: m => { const a = siegePlan(4, 2, 0, { help: m }), b = siegePlan(4, 2, 0); return Math.max(a.throws[0].flight / b.throws[0].flight - 1, a.cover / b.cover - 1); },
     joust: m => { const a = joustPlan(4, 2, 0, { help: m }), b = joustPlan(4, 2, 0); return Math.max(a.meet / b.meet - 1, a.r / b.r - 1, a.hop / b.hop - 1, 1 - a.slow); },
-    bubbleStairs: m => { const a = new BubbleField({ help: m }), b = new BubbleField(); return Math.max(a.life / b.life - 1, a.standLife / b.standLife - 1, 1 - a.drip / b.drip); },
-    ducklings: m => { const a = new Duckling(GARDEN_RULES, ISLANDS[1], { help: m }), b = new Duckling(GARDEN_RULES, ISLANDS[1]); return Math.max(1 - a.current / b.current, a.friction / b.friction - 1, a.nestR / b.nestR - 1); },
+    bubbleStairs: m => { const a = new BubbleField({ help: m }), b = new BubbleField(); return Math.max(1 - a.rise / b.rise, a.standLife / b.standLife - 1, 1 - a.drip / b.drip); },
+    ducklings: m => { const a = new Duckling(GARDEN_RULES, ISLANDS[1], { help: m }), b = new Duckling(GARDEN_RULES, ISLANDS[1]); return Math.max(1 - a.current / b.current, 1 - a.gust / b.gust, a.friction / b.friction - 1, a.nestR / b.nestR - 1, a.life / b.life - 1); },
     chimney: m => { const a = new Ride(CHIMNEY, { help: m }), b = new Ride(CHIMNEY); return Math.max(1 - a.sink / b.sink, a.gap / b.gap - 1, 1 - a.barSpeed / b.barSpeed); },
-    shields: m => shieldShot(VENTS[0], VENT_SPOTS[0], SHIELD, { help: m }).catchR / shieldShot(VENTS[0], VENT_SPOTS[0], SHIELD).catchR - 1,
+    shields: m => { const h = bubbleHelp(m); return Math.max(h.catch - 1, 1 - h.slide); },
   };
   const rows = Object.entries(games).map(([n, f]) => [n, [0, 2, 4, 6, 20].map(m => f(m))]);
   console.log('  ease after 0 / 2 / 4 / 6 / 20 misses:', rows.map(([n, e]) => `${n} ${e.map(x => (x * 100).toFixed(1)).join('/')} %`).join(', '));

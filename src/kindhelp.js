@@ -26,11 +26,12 @@
 //   Shield Up! (siege.js)      a round short of its blocks                every throw's timing / (1 - e), shield cover x (1 + e)
 //   Joust (joust.js)           a round short of its points                meeting time, star size and the hop's warning x (1 + e),
 //                                                                           the star's slide x (1 - e)
-//   Bubble Stairs (bubbles.js) a fall from a bubble                       a bubble's life and how long you may stand on it x (1 + e),
-//                                                                           the drips x (1 - e)
-//   Ducklings (bubbles.js)     a duckling's bubble popped on a thorn      currents x (1 - e), the glide stops x (1 + e) sooner, the nest x (1 + e)
+//   Bubble Stairs (bubbles.js) a fall from a bubble                       a new bubble rises x (1 - e) (a longer moment to hop on), how
+//                                                                           long you may stand on one x (1 + e), the drips x (1 - e)
+//   Ducklings (bubbles.js)     a duckling's bubble popped (thorn / timer)  currents and gusts x (1 - e), the glide stops x (1 + e) sooner,
+//                                                                           the nest x (1 + e), the bubble lasts x (1 + e)
 //   Chimney Ride (bubbles.js)  the ride's bubble popped                   the sink x (1 - e), the spike gaps x (1 + e), the bar x (1 - e)
-//   Shields (bubbles.js)       a vent's bubble that flew past             the shield's catch x (1 + e)
+//   Shields (bubbles.js)       a bank shot that missed                    the shield x (1 + e), the sliding cushion x (1 - e)
 export const KIND_HELP = { after: 2, step: 0.02, max: 0.10 };
 
 export class KindHelp {

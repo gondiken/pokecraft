@@ -283,3 +283,70 @@ Castle's spec does. Opening it later for everyone = adding the id to `OPEN_NOW` 
   inside its top half also land you on it (never the one you just stepped off), one blown under your feet in the air catches you at once,
   the aim ring turns green when a hop reaches it, and the stick waits 0.5 s after landing (a child still holding W stays on). The spec's
   `real` part plays it with real keys and taps through the game's own loop.
+
+## Rework 2026-10-29: easy to understand, hard to master
+
+The owner played it: "Bubble games are way too easy now. Especially stairs and duck ones. Stairs: I could just jump and build under me,
+just like how I did with the saucer gym or sky gym before in chapter 1. No challenge. Duck was a bit more interesting but not really much.
+The Chimney Ride was a good game, but it wasn't clear to understand in the beginning (the bubble didn't look like a different,
+nice-looking bubble). I didn't understand the last one with the 'fizz bubble send' (the shields). It should be easy to understand, hard
+to master!! Never forget this rule!" The world, story, type, creatures, crew, Boss, keys, lifts, ways back and the `?preview` closure
+stay; the four games changed like this.
+
+**1. Bubble Stairs: "Blow a bubble ahead, hop on, hop again!"**
+
+- **Why the pillar worked:** Blow! went where you looked, and a bubble blown under your feet in the air caught you (the `under` rule of
+  "Getting onto a bubble"). Jump + look down + Blow!, again and again, was the chapter-1 sky-gym pillar.
+- **Now:** Blow! puts the bubble at **one fixed spot**: `BUBBLE.ahead` 2 blocks ahead of your feet, the flat way you face, its top just over
+  your feet (looking up or down changes nothing; a green ghost bubble shows the spot). It works **only with your feet on something**
+  (the ground or a bubble); in the air nothing happens and a word says "Land first!". So every bubble is two blocks away from the last:
+  no column, ever. A bubble waits `hang` 0.3 s, then **floats up** at `rise` 1.3 blocks a second: hop at once and you gain about half a
+  block, let it float up a moment and you gain about 1.2, wait too long and it is out of reach (a word says "hop a little sooner").
+  The bubble you stand on pops `stand` 1.6 s after you land, so it is a rhythm: blow, watch, hop. Two bubbles that touch both pop
+  (blowing twice in one place wastes soap). Six puffs a chain; standing on any ledge fills the wand again.
+- **Why it is hard to master:** the gain per bubble is the timing. Shaft 2 (8 blocks) needs about 1.1 a bubble from six bubbles in its
+  short length, so only well-timed hops make it; the drips fall over its west half and the side wind pushes bubbles toward them, so
+  you blow on the east side and hop a little sooner in the wind.
+- **The tutorial:** shaft 1 got a low foam step (`STEP1`, stand at 7): from the floor one bubble and any hop gets you on it (the hint
+  read literally works). From the step the bench is straight ahead but too close for a bubble: turn to the side, blow, hop, turn back,
+  blow, hop, hop onto the bench (the first trick: the way you face decides where it goes).
+- **Proved with kids that only press keys** (`tests/bubblebots.mjs` `makeKid`, real Player in the page, 60 and 20 fps): the pillar kid
+  never leaves the floor or the bench; a kid who hops the moment it blows never gets up shaft 2 (it gains ~0.5 a bubble); a spammer
+  (random waits, wobbly aim, double blows) got up 0 times in 8 runs of 40 s; a skilled kid climbs both shafts every time (~4 s and
+  ~7.5 s); the first-time kid gets onto the step at once. The spec's `real` part does it with real keys (E, W, Space, mouse moves).
+
+**2. Float the Ducklings Home: the same nudge, more to read**
+
+- A **yellow arrow** on the floor shows where a Puff! sends it and how far it glides (`glideOf`).
+- **The gusty gap** (`GUSTS`): between the thorn pen's rows a lane where little bubbles gather (0.8 s) and then a gust blows south
+  toward row A for 1 s, every 4.5 s. Duckling 3 must cross it in one quick, strong puff right after a gust.
+- A duckling's bubble lasts `DUCK.life` 45 s (it wobbles thin the last 6 s); then it **wakes and waddles home** to its island (blow
+  again to catch it on the way). Both a thorn and the timer count as misses for the kind help.
+- Bots (8 moments of the gust's beat, 60 / 20 fps): the skilled player gets all three home with no pop (duckling 3 in ~25 s); big puffs
+  straight at the nest only work for duckling 1; a player who knows the way but ignores the gusts got duckling 3 through 4 times in 37
+  tries (11 %).
+- Once all three are home, Blow! by the nest sends one back to play again just for fun.
+
+**3. The Chimney Ride (the owner liked it): now it looks like what it is**
+
+- The ride bubble is big, golden-rainbow, glowing and pulsing, with a foam seat and a little rubber duck in it, and a **"Ride!" sign**
+  with an arrow bobbing over it. The first words: "Tap Jump to float up. Fly through the gold rings!"
+- The rings are fat and gold; **the next one pulses** and has a soft beam of light under it. The first ring is right over the start
+  (the obvious first gap). Rules unchanged; the spammer now gets through ring 1 and always pops on ring 2.
+
+**4. Captain Suds' shields: a bank shot** (replaces the fizz vents, which nobody could read)
+
+- One line: "Stand on the gold pad, bounce your bubble off the pink cushion into the shield!" A foam fence (blocks) hides the throne
+  from the balcony, so a straight shot always splats. On the round's **gold pad**, Blow! sends a bubble flying flat the way you look
+  (one press, no hold); it bounces off the pink soap cushion like a ball off a wall (`bankShot`: fixed 1/120 s steps, worked out at
+  once). A **dotted line** shows its way to the first bounce and a short stub after it (`aimLine`).
+- Round 1: a cushion near the pad (an 8 degree window); round 2: the cushion across the rim (5 degrees); round 3: a cushion that
+  **slides** up and down (the line shows the bounce only while it will be there: wait, then blow).
+- Unique in the game: nobody else banks a shot off a wall; it is not hold-and-let-go, not leading a moving target.
+- Bots: straight at the shield 0 hits; random shots 1-3 %; a player who follows the dotted line's bounce stub 5 / 5 in every round;
+  a hand that wobbles 3 degrees always hits round 1 but misses rounds 2-3 now and then.
+- Keys `pw:bubble:shield1..3` keep their meaning (a popped shield stays popped), so old saves lose nothing.
+
+**Shared:** kind help only through `bubbleHelp` (= `kindHelp`): stairs rise slower, ducklings' winds weaker and bubble longer, ride as
+before, shields bigger and the slider slower; `HARD` (rematch) makes them faster / smaller. Every game replays for fun once won
+(the stairs and the ride by nature, the ducklings from the nest, the shields with `ForFun`).

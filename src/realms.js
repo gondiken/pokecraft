@@ -184,7 +184,7 @@ REALMS.bubble = pictureRealm({ id: 'bubble', name: 'Bubble Well', seedSalt: 0xb0
   walk: [B.FOAM], spawns: { bubble: BUBBLE_SPAWNS, cave: [] }, zoneNames: { bubble: 'Bubble Well' },
   look: { sky: 0xc8ecff, fog: [60, 170], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🫧 Bubble Well', travelText: 'Floating in...', travelIcon: '🫧', enterText: 'Pop! Welcome to the Bubble Well!',
-  arriveHint: 'Press Blow! and hop on your bubble. Climb all the way up to Captain Suds!',
+  arriveHint: 'Blow a bubble ahead, hop on, hop again! Climb all the way up to Captain Suds.',
   noHomeText: 'No homes in the well! Build your home in your own world.', followText: 'Float in too' });
 /* ==== end of Bubble ==== */
 

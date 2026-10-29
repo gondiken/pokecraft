@@ -1,13 +1,16 @@
-// The Bubble type and the Bubble Well (plans/bubble-well.md). A: the Bubble type data (7 creatures, 4 own shapes with the soap film,
-// moves, big moves, fx, sounds, the chart's new cells only, Captain Suds and his crew, the frame that was secret4); B: the well as terrain
-// in Node (bubblecheck.mjs: nobody climbs without the wand, the bench only from in front of it, the plateau only by the narrow shaft, the
-// lifts, the chimney, the vents, nobody stuck, block ids); C: the rules in Node with the model players of bubblebots.mjs at 60 and 20
-// steps a second (bubbles, the ducklings, the Chimney Ride, the shields, the kind help); D: playing in a browser with the real Player
-// (the climb, a fall back to the ledge, the ducklings, the ride, the shields, the crew, Captain Suds, a lost battle, the star and the
-// keys cleared, a reload, a wild Bubble creature's bubble); E: an iPad; F: two browsers (each blows their own bubbles); H: real input
-// (owner 2026-10-29: real keys and mouse moves through the game's own handlers and frame loop: hop onto a bubble, one blown under you
-// mid-jump, up shaft 1; the iPad's buttons); G: closed without ?preview. BUBBLE_ONLY=data|land|rules|play|ipad|pair|real|closed|shots.
-// Screenshots: tests/screenshots/bubble-*.png.
+// The Bubble type and the Bubble Well (plans/bubble-well.md and its "Rework 2026-10-29": "Easy to understand, hard to master"). A: the
+// Bubble type data (7 creatures, 4 own shapes with the soap film, moves, big moves, fx, sounds, the chart's new cells only, Captain Suds
+// and his crew, the frame that was secret4); B: the well as terrain in Node (bubblecheck.mjs: nobody climbs without the wand, the bench
+// only from in front of it, the plateau only by the narrow shaft, the lifts, the chimney, the gold pads behind the foam fence, nobody
+// stuck, block ids); C: the rules in Node with the model players of bubblebots.mjs at 60 and 20 steps a second (Blow! only from your
+// feet, two blocks ahead; the ducklings with their gusty gap and bubble timer; the Chimney Ride; the bank shots; the kind help), every game
+// with a naive player that fails or rarely wins and a skilled one that wins; S: the Bubble Stairs climbed in the page with the real Player
+// by kids that only press keys and the big button (a pillar kid never climbs, a masher and a spammer rarely, a skilled kid always, a
+// first-time kid gets the first step); D: playing in a browser (the climb, a fall back to the ledge, the ducklings, the ride, the shields,
+// the crew, Captain Suds, a lost battle, the star and the keys cleared, a reload, a wild Bubble creature's bubble, for-fun replays);
+// E: an iPad; F: two browsers (each blows their own bubbles); H: real input (real keys and mouse moves through the game's own handlers and
+// frame loop: the pillar trick fails, up shaft 1, a bank shot; the iPad's buttons); G: closed without ?preview.
+// BUBBLE_ONLY=data|land|rules|stairs|play|ipad|pair|real|closed|shots. Screenshots: tests/screenshots/bubble-*.png.
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -16,7 +19,7 @@ import * as Bu from '../../src/bubbles.js';
 import * as BL from '../../src/bubbleland.js';
 import { KIND_HELP } from '../../src/kindhelp.js';
 import { analyze } from '../bubblecheck.mjs';
-import { DUCK_BOTS, RIDE_BOTS, playDuck, playRide, shotFrom } from '../bubblebots.mjs';
+import { DUCK_BOTS, RIDE_BOTS, SHOT_BOTS, playDuck, playRide, playShots, hitWindows } from '../bubblebots.mjs';
 
 const SHOTS = path.join(ROOT, 'tests', 'screenshots');
 const IDS = ['squeaklet', 'quackmiral', 'suddly', 'lathotter', 'hippip', 'bathemoth', 'fizzbomb'];
@@ -28,7 +31,7 @@ const frames = (page, n = 2) => page.evaluate(async n => {
   const g = window.pokecraft;
   for (let i = 0; i < n; i++) { const t0 = g.time; await new Promise(res => { const f = () => (g.time !== t0 ? res() : requestAnimationFrame(f)); f(); }); }
 }, n);
-const shot = async (page, name) => { await page.evaluate(() => { document.getElementById('pause')?.classList.add('hidden'); window.pokecraft.ui.toastBox?.replaceChildren(); }); await page.screenshot({ path: path.join(SHOTS, name), timeout: 180000 }); console.log(`  screenshot ${name}`); };
+const shot = async (page, name) => { await page.evaluate(() => { document.getElementById('pause')?.classList.add('hidden'); window.pokecraft.ui.toastBox?.replaceChildren(); document.getElementById('celebrate')?.remove(); }); await page.screenshot({ path: path.join(SHOTS, name), timeout: 180000 }); console.log(`  screenshot ${name}`); };
 const retry = async (fn, n = 3) => { for (let i = 0; ; i++) { try { return await fn(); } catch (e) { if (i >= n - 1 || !/Timeout/.test(e.message)) throw e; console.log('  (the page was slow to start: trying again)'); } } };
 
 // A Champion in the Bubble Well, through its frame in the Swirl.
@@ -58,13 +61,23 @@ const arm = page => page.evaluate(async () => {
     put(x, y, z, yaw = null) { live.giveBack(); p.carry = null; p.pos.set(x, y, z); p.vel.set(0, 0, 0); p.keys = {}; p.joy = null; p.onGround = false; if (yaw !== null) p.yaw = yaw; p.update(0.02); live.ledge = null; live.fromBubble = false; live.prevFeet = p.pos.y; },
     frame(dt = 1 / 60) { p.update(dt); live.step(dt); },
     run(s, dt = 1 / 60) { for (let i = 0; i < s / dt; i++) { p.update(dt); live.step(dt); } },
-    // a whole climb with the real Player and the climber robot: 'done' | 'fail' | 'time'
-    climb(name, opts = {}) {
-      const c = Bots.CLIMB[name], tick = Bots.makeClimber(c.moves, opts);
-      this.put(...c.start); this.run(0.3);
-      live.field.refill();
-      for (let i = 0; i < 60 * 30; i++) { const r = tick({ p, live, dt: 1 / 60 }); if (r === 'done' || r === 'fail') { p.keys = {}; this.run(0.6); return r; } this.frame(); }
-      return 'time';
+    // a whole climb with the real Player and a kid of bubblebots.mjs (only keys and the big button): { done, t, y }
+    kid(kind, route, { seed = 1, budget = 40, dt = 1 / 60 } = {}) {
+      const c = Bots.ROUTES[route], tick = Bots.makeKid(kind, c, { seed });
+      for (const b of [...live.field.list]) live.field.pop(b);
+      this.put(...c.start, 0); this.run(0.3, dt); live.field.refill();
+      let t = 0, done = false, top = p.pos.y, was = null;
+      const trace = [];
+      while (t < budget) {
+        if (tick({ p, live, dt }) === 'done') { done = true; break; }
+        p.update(dt); live.step(dt); t += dt;
+        if (p.onGround && !p.carry) top = Math.max(top, p.pos.y);
+        const now = p.carry ? 'b' : p.onGround ? 'g' : 'a';
+        if (now !== was && now !== 'a' && trace.length < 40) trace.push(now + p.pos.y.toFixed(1) + '@' + t.toFixed(1));
+        was = now;
+      }
+      p.keys = {}; this.run(0.2, dt);
+      return { done, t: +t.toFixed(1), top: +top.toFixed(1), trace: trace.join(' ') };
     },
     // a duckling home through the live part: the robot says where to stand and which way to puff; the big button does it
     duck(i, bot = 'skilled', s = 120) {
@@ -85,15 +98,17 @@ const arm = page => page.evaluate(async () => {
       while (t < s && live.ride) { const r = live.ride, q = b(r); if (q.tap) live.use(p); live.step(1 / 30, { ride: { sx: q.sx, sz: q.sz } }); p.update(1 / 30); t += 1 / 30; }
       return { t, done: !live.ride };
     },
-    // a bubble blown into vent k from the right spot (or another): the player stands 1.6 back and blows
-    vent(k, how = 'right') {
-      const e = Bots.VENT_TRIES[how](k), v = L.VENTS[k], a = Math.atan2(e.z - v.z, e.x - v.x), bx = e.x + Math.cos(a) * 1.6, bz = e.z + Math.sin(a) * 1.6;
-      this.put(bx, L.RIM.y + 1, bz); this.run(0.2);
-      p.lookAt({ x: e.x, y: L.RIM.y + 1 + 1.62, z: e.z });
-      live.field.refill();
-      const n = live.shots.length, ok = live.use(p);
-      for (let i = 0; i < 60 * 5 && (live.shots.length || i < 3); i++) live.step(1 / 60);
-      return { ok, captured: live.shots.length > n || live.info().state.shield[k] || live.ventMiss[k] > 0 };
+    // a bank shot from round k's pad: the player stands on it, turns to `yaw` (or the bot's choice) and presses the big button
+    shot(k, yaw = null) {
+      const pad = L.COURT.rounds[k].pad;
+      this.put(pad.x, L.RIM.y + 1, pad.z); this.run(0.2);
+      const y = yaw ?? Bots.SHOT_BOTS.skilled(k)(live.courtT);
+      if (y === null) return { ok: false, wait: true };
+      p.yaw = y; p.pitch = 0;
+      const n = live.shots.length, word = live.near(p), ok = live.use(p) && live.shots.length > n;
+      const sh = live.shots.at(-1);
+      for (let i = 0; i < 60 * 6 && live.shots.length; i++) live.step(1 / 60);
+      return { ok, word, hit: !!sh?.s.hit, end: sh?.s.end };
     },
     boss: () => g.npcs.list.find(n => n.kind === 'boss' && n.def?.id === 'bubble'),
     crew: i => g.npcs.list.find(n => n.kind === 'crew' && n.def?.boss === 'bubble' && n.def.index === i),
@@ -109,76 +124,84 @@ export default async function ({ browser, base, t }) {
   if (want('land')) {
     for (const seed of [1, 2, 3]) {
       const t0 = Date.now(), r = analyze(seed);
-      t.ok(!r.problems.length, `seed ${seed}: without the wand nobody leaves the floor (up to y ${r.info.walkTop}), the bench only from in front of it, the plateau only by the narrow shaft (the fizzy breeze blows bubbles off the cliff elsewhere), the fizz lifts, the chimney to the rim, the vents, Captain Suds, both ways back, nobody stuck (${r.info.reach} places), the garden clear, ${r.info.nooks} nooks, ids ${r.info.ids.filter(i => i > 100)} (${Date.now() - t0} ms) ${r.problems.join('; ')}`);
+      t.ok(!r.problems.length, `seed ${seed}: without the wand nobody leaves the floor (up to y ${r.info.walkTop}), the bench only from in front of it, the plateau only by the narrow shaft (the fizzy breeze blows bubbles off the cliff elsewhere), the fizz lifts, the chimney to the rim, the gold pads behind the foam fence (no straight shot), Captain Suds, both ways back, nobody stuck (${r.info.reach} places), the garden clear, ${r.info.nooks} nooks, ids ${r.info.ids.filter(i => i > 100)} (${Date.now() - t0} ms) ${r.problems.join('; ')}`);
     }
   }
 
   /* ---------------------------------------------------------------- C. The rules (Node) */
   if (want('rules')) {
-    // the bubbles you blow
-    const f = new Bu.BubbleField(), eye = { x: 10.5, y: 6.6, z: 10.5 }, fwd = { x: 0, y: 0, z: -1 };
-    const r1 = f.blow(eye, fwd), r2 = f.blow(eye, { x: 1, y: 0, z: 0 }), r3 = f.blow(eye, { x: -1, y: 0, z: 0 });
-    t.ok(r1.ok && Math.abs(r1.b.z - (10.5 - Bu.BUBBLE.ahead)) < 1e-9 && Math.abs(r1.b.y - 6.6) < 1e-9 && r3.popped === r1.b && f.list.length === 2 && f.soap === 3, `Blow! puts a bubble ${Bu.BUBBLE.ahead} in front of your eyes; at most two (a third pops the oldest); each costs one of the six puffs of soap`);
+    const B = Bu.BUBBLE, fwd = { x: 0, y: -0.9, z: -0.4 }; // (looking down: it does not matter, only the flat way you face counts)
+    // Blow!: two blocks ahead of your feet, just above them; only with your feet on something; at most two; soap
+    const f = new Bu.BubbleField(), feet = { x: 10.5, y: 6, z: 10.5 };
+    const r1 = f.blow(feet, fwd, undefined, 'bubble'), r2 = f.blow(feet, { x: 1, y: 0, z: 0 }, undefined, 'bubble'), r3 = f.blow(feet, { x: -1, y: 0, z: 0 }, undefined, 'bubble');
+    t.ok(r1.ok && Math.abs(r1.b.x - 10.5) < 1e-9 && Math.abs(r1.b.z - (10.5 - B.ahead)) < 1e-9 && Math.abs(r1.b.y + B.r - (6 + B.step)) < 1e-9 && r3.popped === r1.b && f.list.length === 2 && f.soap === 3,
+      `Blow! puts a bubble ${B.ahead} blocks ahead of your feet (the flat way you face, looking down changes nothing), its top ${B.step} over your feet; at most two; a puff of soap each`);
+    const air = new Bu.BubbleField(), ra = air.blow(feet, fwd, undefined, null);
+    t.ok(!ra.ok && ra.why === 'air' && air.soap === B.soap && !air.list.length, 'in the air Blow! does nothing (no bubble, no soap): jumping and blowing under yourself never builds a pillar');
+    const tw = new Bu.BubbleField(), a1 = tw.blow(feet, fwd, undefined, 'ground'), a2 = tw.blow(feet, fwd, undefined, 'ground');
+    t.ok(a1.ok && !a2.ok && a2.why === 'touch' && !tw.list.length && tw.soap === B.soap - 2, 'two bubbles that touch both pop (blowing twice at one spot wastes two puffs of soap)');
     const empty = new Bu.BubbleField(); empty.soap = 0;
-    t.ok(!empty.blow(eye, fwd).ok && empty.blow(eye, fwd).why === 'soap' && !new Bu.BubbleField().blow(eye, fwd, (x, y, z) => z === 8).ok && empty.refill() && empty.soap === 6, 'no soap, no bubble (a soap flower fills the wand); never a bubble inside a wall');
-    // timings at 60 and 20 frames a second: a free bubble rises and pops when old; one you stand on sinks and pops after its time
+    t.ok(empty.blow(feet, fwd).why === 'soap' && new Bu.BubbleField().blow(feet, fwd, (x, y, z) => z === 8).why === 'wall' && empty.refill() && empty.soap === 6, 'no soap, no bubble (a soap flower fills the wand); never a bubble inside a wall');
+    const fl = new Bu.BubbleField(), fb = fl.blow({ x: 0.5, y: 5, z: 0.5 }, fwd, (x, y, z) => y < 5, 'ground');
+    t.ok(fb.ok && fb.b.y - B.r >= 5 && fb.b.y - B.r < 5.15, `on flat ground the bubble sits on the floor ahead (its bottom ${(fb.b.y - B.r - 5).toFixed(2)} up)`);
+    // timings at 60 and 20 frames a second
     const times = fps => {
       const g = new Bu.BubbleField(), out = [];
-      g.blow(eye, fwd); const b2 = g.blow({ x: 20.5, y: 6.6, z: 10.5 }, fwd).b; g.standOn(b2);
+      g.blow({ x: 10.5, y: 6, z: 10.5 }, fwd); const b2 = g.blow({ x: 20.5, y: 6, z: 10.5 }, fwd).b; g.standOn(b2);
       let t2 = 0; while (t2 < 6) { for (const e of g.step(1 / fps)) out.push(`${e.type}:${e.why ?? ''}@${(Math.round(t2 * 120) / 120).toFixed(3)}`); t2 += 1 / fps; }
       return out;
     };
     const a60 = times(60), a20 = times(20);
-    t.ok(a60.join() === 'warn:@1.400,pop:stood@2.000,pop:old@4.000', `a bubble you stand on wobbles at 1.4 s and pops at 2 s; a free one pops when 4 s old (${a60})`);
-    t.ok(a60.map(x => x.split('@')[0]).join() === a20.map(x => x.split('@')[0]).join() && a60.every((x, i) => Math.abs(parseFloat(x.split('@')[1]) - parseFloat(a20[i].split('@')[1])) <= 0.05 + 1e-9), `the same pops at 60 and 20 frames a second (${a60} / ${a20})`);
-    const g3 = new Bu.BubbleField(); const b3 = g3.blow(eye, fwd).b; const y3 = []; for (let i = 0; i < 120 * 2; i++) { g3.step(1 / 120); if (i === 119) y3.push(b3.y); }
-    y3.push(b3.y);
-    t.ok(Math.abs(y3[0] - (6.6 + Bu.BUBBLE.rise * (1 - Bu.BUBBLE.hang))) < 0.01 && Math.abs(y3[1] - y3[0] - Bu.BUBBLE.rise) < 1e-6, `a free bubble waits ${Bu.BUBBLE.hang} s where you blew it (time to hop on), then rises ${Bu.BUBBLE.rise} blocks a second (${(y3[0] - 6.6).toFixed(3)} after 1 s)`);
-    // owner 2026-10-29 "I could never jump on a bubble": landing from above, from inside (blown under your feet mid-jump), a bubble blown at the floor sits on it
-    const lb = { x: 0, y: 5, z: 0 }, top = 5 + Bu.BUBBLE.r;
-    const L1 = [
-      Bu.landsOn(lb, { x: 0.3, z: 0, feet: top - 0.05, prev: top + 0.2, vy: -3 }),   // down through its top
-      Bu.landsOn(lb, { x: 0, z: 0, feet: 5.02, prev: 5.02, vy: 0 }),                  // blown right under your feet at the top of a jump
-      Bu.landsOn(lb, { x: 0, z: 0, feet: 4.9, prev: 4.7, vy: 3 }),                    // hopped up into it
-      !Bu.landsOn(lb, { x: 0, z: 0, feet: 4.6, prev: 4.5, vy: 3 }),                   // below its middle: not yet
-      !Bu.landsOn(lb, { x: 1.0, z: 0, feet: 5.2, prev: 5.2, vy: 0 }),                 // beside it
-      !Bu.landsOn(lb, { x: 0, z: 0, feet: top + 0.4, prev: top + 0.5, vy: -1 }),     // still above it
-    ];
-    const fl = new Bu.BubbleField(), floor = (x, y, z) => y < 5, fb = fl.blow({ x: 0.5, y: 6.62, z: 0.5 }, { x: 0, y: -1, z: 0 }, floor);
-    const hop = Bu.hopHeight({ ground: true }), fe = Bu.BUBBLE;
-    t.ok(L1.every(Boolean) && fb.ok && fb.b.y - fe.r >= 5 && fb.b.y - fe.r < 5.15 && fb.b.y - fe.scoop <= 5 + hop && 1.62 - fe.scoop > hop, `you land on a bubble from above, from inside its top half (blown under you mid-jump, or hopped up into), never from beside or below its middle; one blown at your feet sits on the floor (bottom ${(fb.b.y - fe.r - 5).toFixed(2)} up) and a hop (${hop.toFixed(2)}) reaches it; one blown straight ahead stays out of a hop's reach (${L1.map(Number).join('')})`);
-    const drip = BL.DRIPS[0], g4 = new Bu.BubbleField(); g4.blow({ x: drip.x, y: 14 + 1.0, z: drip.z + Bu.BUBBLE.ahead }, fwd);
+    t.ok(a60.join() === `warn:@${(B.stand - B.warn).toFixed(3)},pop:stood@${B.stand.toFixed(3)},pop:old@${B.life.toFixed(3)}`, `a bubble you stand on wobbles, then pops ${B.stand} s after you landed; a free one pops when ${B.life} s old (${a60})`);
+    t.ok(a60.map(x => x.split('@')[0]).join() === a20.map(x => x.split('@')[0]).join() && a60.every((x, i) => Math.abs(parseFloat(x.split('@')[1]) - parseFloat(a20[i].split('@')[1])) <= 0.05 + 1e-9), `the same pops at 60 and 20 frames a second (${a20})`);
+    const g3 = new Bu.BubbleField(); const b3 = g3.blow(feet, fwd).b, y0 = b3.y; for (let i = 0; i < 120; i++) g3.step(1 / 120);
+    t.ok(Math.abs(b3.y - y0 - B.rise * (1 - B.hang)) < 0.01, `a new bubble waits ${B.hang} s, then floats up ${B.rise} blocks a second: hop at once and you gain a little, wait and it lifts you higher`);
+    const top = 5 + B.r, lb = { x: 0, y: 5, z: 0 };
+    const L1 = [Bu.landsOn(lb, { x: 0.3, z: 0, feet: top - 0.05, prev: top + 0.2, vy: -3 }), Bu.landsOn(lb, { x: 0, z: 0, feet: 5.4, prev: 5.3, vy: 2 }),
+      !Bu.landsOn(lb, { x: 0, z: 0, feet: 5.0, prev: 4.9, vy: 2 }), !Bu.landsOn(lb, { x: 1.0, z: 0, feet: 5.4, prev: 5.4, vy: 0 }), !Bu.landsOn(lb, { x: 0, z: 0, feet: top + 0.4, prev: top + 0.5, vy: -1 })];
+    t.ok(L1.every(Boolean), `you land on a bubble from above or by hopping up into its top part, never from its lower half or beside it (${L1.map(Number).join('')})`);
+    const drip = BL.DRIPS[0], g4 = new Bu.BubbleField(); g4.blow({ x: drip.x, y: 14, z: drip.z + B.ahead }, { x: 0, y: 0, z: -1 });
     let dpop = null; for (let i = 0; i < 600 && !dpop; i++) for (const e of g4.step(1 / 60, { drips: [drip] })) if (e.type === 'pop') dpop = e.why;
     t.ok(dpop === 'drip', `a drip pops a bubble under its spout (${dpop})`);
-    const g5 = new Bu.BubbleField(); const b5 = g5.blow({ x: 10.5, y: 6.6, z: 10.5 }, fwd).b; for (let i = 0; i < 60; i++) g5.step(1 / 60, { vents: [{ x0: 0, x1: 20, y0: 0, y1: 20, z0: 0, z1: 20, vx: -1, vy: 0, vz: 0 }] });
-    t.ok(Math.abs(b5.x - 9.5) < 1e-6, 'a vent\'s wind carries a bubble');
-    // the ducklings, model players at 60 and 20 steps a second
+    // the ducklings, model players at 60 and 20 steps a second (each started at 8 moments of the gusty gap's beat)
+    const phases = [0, 1, 2, 3, 4, 5, 6, 7].map(k => k * BL.GUSTS[0].period / 8);
     for (const fps of [60, 20]) {
-      const sk = [0, 1, 2].map(i => playDuck(DUCK_BOTS.skilled(i), { i, fps })), skH = [0, 1, 2].map(i => playDuck(DUCK_BOTS.skilled(i), { i, fps, hard: true }));
+      const sk = [0, 1, 2].map(i => phases.map(c => playDuck(DUCK_BOTS.skilled(i), { i, fps, clock: c, time: 60 }))), skH = [0, 1, 2].map(i => playDuck(DUCK_BOTS.skilled(i), { i, fps, hard: true, time: 60 }));
+      t.ok(sk.every(l => l.every(r => r.won && !r.pops && !r.wakes)) && skH.every(r => r.won), `the ducklings @${fps}: a player who reads them gets all three home without a pop, at any moment of the gusts, before the bubble wears thin (${sk.map(l => `${Math.max(...l.map(r => r.time)).toFixed(0)} s`).join(', ')} at most), also in a rematch`);
       const push = [0, 1, 2].map(i => playDuck(DUCK_BOTS.pusher(i), { i, fps, help: 6 })), str = [1, 2].map(i => playDuck(DUCK_BOTS.straight(i), { i, fps, help: 6 }));
-      t.ok(sk.every(r => r.won && !r.pops) && skH.every(r => r.won), `the ducklings @${fps}: a player who reads them gets all three home without a pop (${sk.map(r => `${r.puffs} puffs ${r.time.toFixed(0)} s`).join(', ')}), also in a rematch`);
-      t.ok(push[0].won && !push[1].won && !push[2].won && !str.some(r => r.won), `the ducklings @${fps}: big puffs straight at the nest only work for the first; across the current and through the thorns they never do, not even with the kind help (${push.map(r => `${r.won ? 'home' : 'no'} ${r.pops} pops`).join(', ')}; little straight puffs ${str.map(r => `${r.won ? 'home' : 'no'} ${r.pops} pops`).join(', ')})`);
+      t.ok(push[0].won && !push[1].won && !push[2].won && !str.some(r => r.won), `the ducklings @${fps}: big puffs straight at the nest only work for the first (the easy one); across the stream and through the thorns they never do, not even with the kind help (${push.map(r => `${r.won ? 'home' : 'no'} ${r.pops} pops`).join(', ')})`);
+      const ng = phases.map(c => playDuck(DUCK_BOTS.noGust(2), { i: 2, fps, clock: c, time: 120 })), tries = ng.reduce((a, r) => a + r.pops + (r.won ? 1 : 0), 0), wins = ng.filter(r => r.won).length;
+      t.ok(wins / tries < 0.3, `the gusty gap @${fps}: a player who knows the way but ignores the gusts gets duckling 3 through only ${wins} times in ${tries} tries (${(100 * wins / tries).toFixed(0)} %)`);
     }
+    const lazy = new Bu.Duckling(BL.GARDEN_RULES, BL.ISLANDS[0]); lazy.blow(0); const ev = []; for (let i = 0; i < 60 * 80; i++) ev.push(...lazy.step(1 / 60).map(e => e.type));
+    t.ok(ev.includes('hurry') && ev.includes('wake') && ev.includes('asleep') && lazy.state === 'sleep' && lazy.x === BL.ISLANDS[0][0], `a duckling's bubble lasts ${Bu.DUCK.life} s: it wobbles thin, then the duckling wakes and waddles home to its island (${[...new Set(ev)].join(', ')})`);
     // the Chimney Ride
     for (const fps of [60, 20]) {
       const sk = playRide(RIDE_BOTS.skilled(), { fps }), skH = playRide(RIDE_BOTS.skilled(), { fps, hard: true });
       const still = playRide(RIDE_BOTS.still(), { fps, help: 6 }), spam = playRide(RIDE_BOTS.spammer(), { fps, help: 6 });
-      t.ok(sk.won && sk.pops === 0 && skH.won, `the Chimney Ride @${fps}: a rider who hovers under each gap, goes up through it and waits for the arm gets to the top (${sk.time.toFixed(0)} s, ${sk.pops} pops; rematch ${skH.won})`);
-      t.ok(!still.won && still.stars === 0 && !spam.won && spam.pops > 10, `the Chimney Ride @${fps}: never tapping never rises, tapping all the time without steering always pops on the first plate (${spam.pops} pops), even with the kind help`);
+      t.ok(sk.won && sk.pops === 0 && skH.won, `the Chimney Ride @${fps}: a rider who hovers under each gold ring, goes up through it and waits for the arm gets to the top (${sk.time.toFixed(0)} s, ${sk.pops} pops; rematch ${skH.won})`);
+      t.ok(!still.won && still.stars === 0 && !spam.won && spam.stars === 1 && spam.pops > 10, `the Chimney Ride @${fps}: never tapping never rises; tapping all the time without steering gets through the first gold ring (right over the start) and always pops on the second (${spam.pops} pops)`);
     }
     const r0 = new Bu.Ride(BL.CHIMNEY); for (let i = 0; i < 120; i++) r0.step(1 / 60);
     t.ok(r0.resting() && Math.abs(r0.y - (BL.CHIMNEY.floor + Bu.RIDE.R)) < 1e-9, 'the ride bubble always sinks and rests on the chimney floor');
-    // the shields
-    const right = [0, 1, 2].map(k => shotFrom(k, 'right').hit), south = [0, 1, 2].map(k => shotFrom(k, 'south').hit), mid = [0, 1, 2].map(k => shotFrom(k, 'middle').hit);
-    t.ok(right.every(Boolean) && south.join() === 'false,true,false' && mid.every(h => !h), `the shields: from the right side of each vent the bubble curls round onto the shield (${right}); blowing from the throne's side works only for the middle vent (${south}); the vents' middles never (${mid})`);
-    const s0 = shotFrom(0, 'right'), p0 = s0.path(0), p1 = s0.path(s0.time);
-    t.ok(p1.y > p0.y + 2 && Math.hypot(p1.x - BL.SHIELD.x, p1.z - BL.SHIELD.z) < Math.hypot(p0.x - BL.SHIELD.x, p0.z - BL.SHIELD.z), 'a shot rises in the vent and flies to the shield');
+    // the shields: bank shots
+    const deg = r => (r * 180 / Math.PI).toFixed(1);
+    for (let k = 0; k < 3; k++) {
+      const naive = playShots(SHOT_BOTS.naive(k), k, { tries: 10 }), rnd = playShots(SHOT_BOTS.random(k), k, { tries: 200 }), reader = playShots(SHOT_BOTS.reader(k), k, { tries: 5 }), sk = playShots(SHOT_BOTS.skilled(k), k, { tries: 5 });
+      const w = hitWindows(k, 0);
+      t.ok(!naive.hits && rnd.hits / rnd.shots < 0.05 && reader.hits === 5 && sk.hits === 5, `shield ${k + 1}: straight at the shield always splats on the foam fence (${naive.hits} / 10); random shots hit ${rnd.hits} / 200; a player who follows the dotted line's bounce hits ${reader.hits} / 5 (now: ${w.map(([a, b]) => `${deg(a)}..${deg(b)}°`).join(' ') || 'wait for the slider'})`);
+    }
+    const sl = BL.COURT.rounds[2].slider, open = Array.from({ length: 20 }, (_, i) => hitWindows(2, i * sl.period / 20, 0.005).some(([a, b]) => b - a > 0.03)).filter(Boolean).length;
+    const wob = [0, 1, 2].map(k => playShots(SHOT_BOTS.skilled(k), k, { tries: 30, wobble: 3 * Math.PI / 180 }));
+    t.ok(open > 2 && open < 14 && wob[0].hits === 30 && wob[1].hits < 30 && wob[2].hits < 30, `round 3's cushion slides: it bounces a shot into the shield with a wide enough angle only part of the time (${open} / 20 moments): wait for it; a hand that wobbles 3 degrees still always hits shield 1 but not always 2 and 3 (${wob.map(r => r.hits).join(' / ')} of 30)`);
+    const s60 = Bu.bankShot(BL.courtOf(0), BL.COURT.rounds[0].pad, { x: Math.cos(-0.3), z: Math.sin(-0.3) });
+    t.ok(['guard', 'wall', 'old', 'shield', 'bounces'].includes(s60.end) && s60.path(0).x === BL.COURT.rounds[0].pad.x, 'a shot is worked out at once in fixed steps (any frame rate draws the same flight)');
     // the kind help: only kindHelp, every lever within KIND_HELP.max
     const lev = m => {
       const fld = new Bu.BubbleField({ help: m }), f0 = new Bu.BubbleField(), dk = new Bu.Duckling(BL.GARDEN_RULES, BL.ISLANDS[1], { help: m }), d0 = new Bu.Duckling(BL.GARDEN_RULES, BL.ISLANDS[1]);
       const rd = new Bu.Ride(BL.CHIMNEY, { help: m }), r00 = new Bu.Ride(BL.CHIMNEY);
-      const sh = Bu.shieldShot(BL.VENTS[0], BL.VENT_SPOTS[0], BL.SHIELD, { help: m }), sh0 = Bu.shieldShot(BL.VENTS[0], BL.VENT_SPOTS[0], BL.SHIELD);
-      return [fld.life / f0.life - 1, fld.standLife / f0.standLife - 1, 1 - fld.drip / f0.drip, 1 - dk.current / d0.current, dk.friction / d0.friction - 1, dk.nestR / d0.nestR - 1, 1 - rd.sink / r00.sink, rd.gap / r00.gap - 1, 1 - rd.barSpeed / r00.barSpeed, sh.catchR / sh0.catchR - 1];
+      const bh = Bu.bubbleHelp(m);
+      return [1 - fld.rise / f0.rise, fld.standLife / f0.standLife - 1, 1 - fld.drip / f0.drip, 1 - dk.current / d0.current, 1 - dk.gust / d0.gust, dk.friction / d0.friction - 1, dk.nestR / d0.nestR - 1, dk.life / d0.life - 1, 1 - rd.sink / r00.sink, rd.gap / r00.gap - 1, 1 - rd.barSpeed / r00.barSpeed, bh.catch - 1, 1 - bh.slide];
     };
     const e0 = lev(0), e2 = lev(2), e6 = lev(6), e20 = lev(20);
     t.ok(e0.every(x => Math.abs(x) < 1e-12) && e2.every(x => x > 0) && e20.every(x => x <= KIND_HELP.max + 1e-12) && e6.every((x, i) => x >= e2[i]), `the kind help (kindhelp.js only): nothing at first, a little from 2 misses, never more than ${KIND_HELP.max * 100} % (${e20.map(x => (x * 100).toFixed(0)).join('/')} %)`);
@@ -295,40 +318,71 @@ export default async function ({ browser, base, t }) {
   }
 
   /* ---------------------------------------------------------------- D. Playing the Bubble Well */
-  if (want('play') || want('shots')) {
+  /* ---------------------------------------------------------------- S. The Bubble Stairs: kids with keys and the big button */
+  // Owner 2026-10-29: "Stairs: I could just jump and build under me, just like the saucer gym." Every kid only sets keys (W, Space), the
+  // view and presses the big button (live.use, the E / tap path); the real Player and the live part run frame by frame.
+  if (want('stairs') || !ONLY) {
     await intoWell(page);
     await arm(page);
+    const S = await page.evaluate(() => {
+      const R = window.__R, out = {};
+      out.first = R.kid('masher', 'shaft1', { budget: 5 });                                       // the hint read literally: blow, hop on
+      out.pillar = [60, 20].flatMap(f => ['shaft1', 'shaft2'].map(r => R.kid('pillar', r, { budget: 30, dt: 1 / f })));
+      out.masher = [1, 2, 3].map(s => R.kid('masher', 'shaft2', { seed: s, budget: 40 }));
+      out.spam = [1, 2, 3, 4, 5, 6, 7, 8].map(s => R.kid('spam', 'shaft2', { seed: s, budget: 40 }));
+      out.skilled = [60, 20].flatMap(f => [1, 2].flatMap(s => ['shaft1', 'shaft2'].map(r => R.kid('skilled', r, { seed: s, budget: 40, dt: 1 / f }))));
+      out.mash1 = [1, 2].map(s => R.kid('masher', 'shaft1', { seed: s, budget: 40 }));
+      R.g.beaten = R.g.beaten.filter(k => k !== 'pw:bubble:stairs'); R.live.sync(true);
+      return out;
+    });
+    const fmt = l => l.map(r => `${r.done ? 'up' : 'no'} ${r.done ? r.t + ' s' : 'top ' + r.top}`).join(', ');
+    t.ok(S.first.top >= 7, `a first-time kid who does what the hint says (blow a bubble ahead, hop on) gets onto the first foam step at once (top y ${S.first.top})`);
+    t.ok(S.pillar.every((r, i) => !r.done && r.top < [5, 11][i % 2] + 0.6), `the pillar trick (jump, look down, Blow! under your feet, again) never leaves the floor or the bench, at 60 and 20 fps (${fmt(S.pillar)})`);
+    t.ok(S.masher.every(r => !r.done), `a kid who hops the moment it has blown never gets up the narrow shaft (it gains too little for its six puffs of soap) (${fmt(S.masher)})`);
+    t.ok(S.spam.filter(r => r.done).length <= 2, `a kid who blows and hops at random gets up the narrow shaft only ${S.spam.filter(r => r.done).length} times in ${S.spam.length} (${fmt(S.spam)})`);
+    t.ok(S.skilled.every(r => r.done), `a skilled kid (lets each bubble float up before it hops, blows beside a drip) climbs both shafts every time, at 60 and 20 fps (${fmt(S.skilled)})`);
+    console.log(`  stairs: masher up shaft 1 ${fmt(S.mash1)}`);
+    if (process.env.BUBBLE_TRACE) for (const k of ['skilled', 'masher', 'spam']) for (const r of S[k]) console.log('   ', k, r.trace);
+    if (ONLY === 'stairs') { await page.context().close(); return; }
+  }
+
+  if (want('play') || want('shots')) {
+    if (!(want('stairs') || !ONLY)) { await intoWell(page); await arm(page); }
     const D0 = await page.evaluate(() => {
       const R = window.__R, { g, live, p } = R;
-      R.run(0.1);
+      R.put(80.5, 5, 131.5); R.run(0.1);
       const aim = live.aim(p.pos)?.text('↑', 20);
       return { place: g.place, parts: g.world.parts.map(x => x.id).join(), aim, st: R.L.bubbleState(g), bee: !!R.bee(), boss: !!R.boss(), crew: [0, 1, 2].map(i => R.crew(i)?.name).join(), chip: document.getElementById('score-chip')?.textContent, word: live.near(p), lifts: live.info().lifts, wand: R.said('bubble wand'), keep: g.world.keeps.some(k => k.name === 'well'), edit: g.world.editAllowed?.(80, 5, 120, R.B.STONE) };
     });
     t.ok(D0.place === 'bubble' && D0.parts === 'bubble' && D0.bee && D0.boss && D0.crew === 'Wanda Wand,Duckherd Daisy,Mate Fizz' && D0.wand, `the Bubble Well frame opens the well; Bubble Bee lends you a wand; Captain Suds and his crew are there (${D0.crew})`);
     t.ok(D0.word === 'Blow!' && /Bubble Stairs/.test(D0.aim) && /Stairs ○ · 🦆 0 \/ 3/.test(D0.chip) && D0.lifts.join() === 'false,false' && D0.keep && D0.edit === false, `the big button says Blow!, the guide leads to the Bubble Stairs ("${D0.aim}"), the chip ${D0.chip}; the lifts are off; nobody builds in the well`);
     if (want('play')) {
-      // the climb with the real Player: a straight-ahead blower never gets up; the robot that looks down a little climbs both shafts
+      // the climb with the real Player (a skilled kid), a fall back to the ledge
       const C1 = await page.evaluate(() => {
         const R = window.__R, { g, live, p } = R, out = {};
-        out.straight = R.climb('shaft1', { straight: true }); out.straightY = p.pos.y;
-        out.s1 = R.climb('shaft1'); out.y1 = p.pos.y; out.z1 = p.pos.z; out.bench = live.ledge?.y;
-        out.landed = R.said('You are on a bubble');
+        out.s1 = R.kid('skilled', 'shaft1'); out.y1 = p.pos.y;
+        out.landed = R.said('On a bubble');
+        // jump and blow in the air: nothing happens (a word says why)
+        R.put(104.5, 5, 77.5, 0); R.run(0.3); live.field.refill();
+        p.keys = { Space: true }; R.frame(); p.keys = {}; for (let i = 0; i < 12; i++) R.frame();
+        const n = live.field.n; p.pitch = -1.5; live.use(p); out.air = { none: live.field.n === n, said: R.said('Land first') };
+        R.run(1);
         // a step off a bubble over the edge of the bench: back on the bench, never down to the floor
         R.put(110.5, 11, 69.5, Math.PI); R.run(0.3); live.field.refill();
-        p.pitch = -0.8; live.use(p); const b = live.field.list[live.field.list.length - 1];
+        live.use(p); const b = live.field.list[live.field.list.length - 1];
         p.keys = { Space: true, KeyW: true }; for (let i = 0; i < 90 && live.stood !== b; i++) { R.frame(); p.keys.Space = false; }
-        out.onIt = live.stood === b;
-        p.keys = { KeyS: false }; for (let i = 0; i < 60 * 4 && (p.carry || !p.onGround || p.pos.y < 6); i++) { p.joy = { x: 0, y: -1 }; R.frame(); }
+        out.onIt = !!b && live.stood === b;
+        p.keys = {}; for (let i = 0; i < 60 * 4 && (p.carry || !p.onGround || p.pos.y < 6); i++) { p.joy = { x: 0, y: -1 }; R.frame(); }
         p.joy = null; R.run(0.5);
         out.back = { y: p.pos.y, said: R.said('Back on the ledge'), miss: live.stairMiss.slice() };
-        out.s2 = R.climb('shaft2'); out.y2 = p.pos.y;
+        out.s2 = R.kid('skilled', 'shaft2'); out.y2 = p.pos.y;
         out.st = R.L.bubbleState(g); out.lifts = live.info().lifts; out.stairsSaid = R.said('climbed the Bubble Stairs');
         return out;
       });
-      t.ok(C1.straight !== 'done' && C1.straightY < 6, `blowing straight ahead (no looking down) never gets you up: the bubble is too high to hop on (${C1.straight}, y ${C1.straightY.toFixed(1)})`);
-      t.ok(C1.s1 === 'done' && Math.abs(C1.y1 - 11) < 0.05 && C1.landed, `shaft 1: blow, hop on, blow, bounce: three bubbles and a bounce up onto the bench (y ${C1.y1.toFixed(2)})`);
+      t.ok(C1.s1.done && Math.abs(C1.y1 - 11) < 0.05 && C1.landed, `shaft 1: a bubble and a hop onto the low step, then to the side and back and a hop onto the bench (${C1.s1.t} s)`);
+      t.ok(C1.air.none && C1.air.said, 'jump, look down, Blow!: nothing in the air, and a word says to land first');
       t.ok(C1.onIt && Math.abs(C1.back.y - 11) < 0.05 && C1.back.said, `walking off a bubble over the bench's edge puts you back on the bench (y ${C1.back.y.toFixed(2)}), never down on the floor`);
-      t.ok(C1.s2 === 'done' && C1.y2 > 18.9 && C1.st.stairs && C1.stairsSaid && C1.lifts[0] === true, `shaft 2: four bubbles up the narrow shaft (the drips and the side wind) and a bounce onto the plateau: the Bubble Stairs are done and the first fizz lift runs (${C1.s2}, y ${C1.y2.toFixed(1)})`);
+      t.ok(C1.s2.done && C1.y2 > 18.9 && C1.st.stairs && C1.stairsSaid && C1.lifts[0] === true, `shaft 2: bubble by bubble up the narrow shaft (drips, the side wind) and a hop onto the plateau: the Bubble Stairs are done and the first fizz lift runs (${C1.s2.t} s)`);
       // a reload keeps the stairs
       await page.evaluate(() => window.pokecraft.save());
       await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
@@ -345,9 +399,11 @@ export default async function ({ browser, base, t }) {
         R.put(d.x + 1.2, y, d.z, Math.PI / 2); out.word = live.near(p); live.use(p); out.state = d.state; out.puffWord = live.near(p);
         out.r = [0, 1, 2].map(i => R.duck(i));
         out.st = R.L.bubbleState(g); out.home = R.said('All the ducklings are home');
+        R.put(R.L.NEST.x + 2, y, R.L.NEST.z, Math.PI / 2); R.run(0.1); const keys = g.beaten.length; live.use(p); out.again = live.ducks.filter(d => d.state === 'sleep').length === 1 && R.said('Float it home again') && g.beaten.length === keys;
         return out;
       });
       t.ok(D3.word === 'Blow!' && D3.state === 'float' && D3.puffWord === 'Puff!', `by a sleeping duckling the big button says Blow! (a bubble closes round it), then Puff! (${D3.word} / ${D3.puffWord})`);
+      t.ok(D3.again, 'with all three home, Blow! by the nest sends one back to its island to float home again just for fun (nothing new saved)');
       t.ok(D3.r.every(r => r.home) && D3.st.ducks === 3 && D3.home, `all three ducklings floated home (${D3.r.map(r => `${r.uses} presses, ${r.t.toFixed(0)} s`).join('; ')})`);
       // the Chimney Ride: Ride!, the robot's taps on the big button, the top
       const D4 = await page.evaluate(() => {
@@ -360,16 +416,25 @@ export default async function ({ browser, base, t }) {
       });
       t.ok(D4.word === 'Ride!' && D4.riding && D4.jump === 'Puff' && D4.puff === 'Puff!', `by the chimney the big button says Ride!, then Puff! (Jump says Puff)`);
       t.ok(D4.r.done && D4.st.chimney && D4.y > 41.9 && D4.lifts[1] && D4.said, `the Chimney Ride to the top in ${D4.r.t.toFixed(0)} s: on the rim, the chimney done, the second fizz lift runs`);
-      // the shields: from the wrong side the bubble flies past (a miss, never a fail), from the right side each vent pops a shield
+      // the shields: bank shots from the gold pads; straight at the shield splats on the foam fence (a miss, never a fail)
       const D5 = await page.evaluate(() => {
-        const R = window.__R, { g, live } = R, out = {};
-        out.wrong = R.vent(0, 'south'); out.missed = live.ventMiss[0] === 1 && !R.L.bubbleState(g).shield[0] && R.said('flew past');
-        out.right = [0, 1, 2].map(k => R.vent(k, 'right'));
+        const R = window.__R, { g, live, p } = R, out = {};
+        const pad = R.L.COURT.rounds[0].pad;
+        R.put(pad.x + 3, R.L.RIM.y + 1, pad.z + 1.5); R.run(0.1); const n0 = live.shots.length; live.use(p); out.off = { none: live.shots.length === n0, said: R.said('Stand on the glowing gold pad') };
+        out.straight = R.shot(0, Math.atan2(-(R.L.SHIELD.x - pad.x), -(R.L.SHIELD.z - pad.z)));
+        out.missed = live.shotMiss[0] === 1 && !R.L.bubbleState(g).shield[0] && R.said('foam fence');
+        R.put(pad.x, R.L.RIM.y + 1, pad.z); R.run(0.2); p.yaw = -1.27; R.run(0.05); out.aim = live.aimDots.visible;
+        out.hits = [];
+        for (let k = 0; k < 3; k++) { let r = R.shot(k); for (let i = 0; i < 80 && r.wait; i++) { live.step(0.1); r = R.shot(k); } out.hits.push(r); }
         out.st = R.L.bubbleState(g); out.all = R.said('All three shields popped');
+        // all popped: the rounds play again just for fun (nothing new saved)
+        const keys = g.beaten.length; let fun = R.shot(0); out.fun = fun.hit && R.said('Just for fun') && g.beaten.length === keys;
         return out;
       });
-      t.ok(D5.wrong.captured && D5.missed, 'a bubble blown into a vent from the wrong side flies past the shield (a miss to try again)');
-      t.ok(D5.right.every(r => r.ok) && D5.st.shields === 3 && D5.st.ready && D5.all, `from the right side every vent pops a shield: 🛡️ ${D5.st.shields} / 3`);
+      t.ok(D5.off.none && D5.off.said, 'off the gold pad, Blow! by the throne says where to stand');
+      t.ok(D5.straight.ok && D5.straight.word === 'Blow!' && !D5.straight.hit && D5.straight.end === 'guard' && D5.missed, 'straight at the shield the bubble splats on the foam fence (a miss to try again)');
+      t.ok(D5.aim && D5.hits.every(r => r.ok && r.hit) && D5.st.shields === 3 && D5.st.ready && D5.all, `on the pad the dotted line shows the way; a bank shot off the pink cushion pops each shield (round 3 waits for the sliding cushion): 🛡️ ${D5.st.shields} / 3`);
+      t.ok(D5.fun, 'with all three popped the rounds play again just for fun (nothing new saved)');
       // Captain Suds: his crew first, a lost battle stays on the rim, the star clears the climb's keys
       const B1 = await page.evaluate(async () => {
         const R = window.__R, { g } = R, Sp = await import('/src/species.js'), out = {};
@@ -409,13 +474,15 @@ export default async function ({ browser, base, t }) {
     if (want('shots') || !ONLY) {
       await page.evaluate(() => { const R = window.__R, { p, live } = R; R.put(80.5, 5, 131.5); p.lookAt({ x: 80.5, y: 16, z: 70 }); live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-arrival.png');
-      await page.evaluate(() => { const R = window.__R, { p, live } = R; R.put(104.5, 5, 76.5, 0); R.run(0.2); live.field.refill(); p.pitch = -0.8; live.use(p); p.keys = { Space: true, KeyW: true }; const b = live.field.list.at(-1); for (let i = 0; i < 90 && live.stood !== b; i++) { R.frame(); p.keys.Space = false; } p.keys = {}; p.yaw = 0; p.pitch = -0.36; live.use(p); R.run(0.15); p.yaw = 0.35; p.pitch = 0.15; live.step(0.01); });
+      await page.evaluate(() => { const R = window.__R, { p, live } = R; R.put(104.5, 7, 72.5, -Math.PI / 2); R.run(0.3); live.field.refill(); live.use(p); R.run(0.5); p.keys = { Space: true, KeyW: true }; const b = live.field.list.at(-1); for (let i = 0; i < 90 && live.stood !== b; i++) { R.frame(); p.keys.Space = false; } p.keys = {}; p.yaw = Math.PI / 2; R.run(0.1); live.use(p); R.run(0.3); p.yaw = Math.PI / 2 + 0.5; p.pitch = -0.25; live.step(0.01); });
       await frames(page, 3); await shot(page, 'bubble-stairs.png');
-      await page.evaluate(() => { const R = window.__R, { p, live } = R, d = live.ducks[1]; live.giveBack(); for (const x of live.ducks) x.backHome(); live.ducks[0].blow(); R.put(76.5, 19, 58.5); p.lookAt({ x: 80.5, y: 19.5, z: 46 }); live.step(0.05); });
+      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/duck/.test(k)); for (const x of live.ducks) x.backHome(); const d = live.ducks[2]; d.blow(live.gardenT); d.x = 93.4; d.z = 52.6; R.put(95.2, 19, 53.4); p.lookAt({ x: 90, y: 19.2, z: 52 }); live.gardenT = 3.8; live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-garden.png');
       await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; R.put(C.x + C.wall + 1.2, 19, C.z, Math.PI / 2); live.startRide(); const b = R.Bots.RIDE_BOTS.skilled(); for (let i = 0; i < 60 * 4; i++) { const q = b(live.ride); if (q.tap) live.puff(); live.step(1 / 60, { ride: { sx: q.sx, sz: q.sz } }); p.update(1 / 60); } p.pitch = 0.9; });
       await frames(page, 3); await shot(page, 'bubble-chimney.png');
-      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/shield/.test(k)); R.put(80.5, 42, 35.5); p.lookAt({ x: 80.5, y: 43.5, z: 25.5 }); live.step(0.05); });
+      await page.evaluate(() => { const R = window.__R, { g, p, live } = R, C = R.L.CHIMNEY; live.giveBack(); R.put(C.x + C.wall + 3.5, 19, C.z + 0.5); p.lookAt({ x: C.x, y: 20.6, z: C.z }); live.step(0.05); });
+      await frames(page, 3); await shot(page, 'bubble-ride-bubble.png');
+      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/shield/.test(k)); const pad = R.L.COURT.rounds[0].pad; R.put(pad.x, 42, pad.z); p.yaw = R.Bots.SHOT_BOTS.skilled(0)(live.courtT) + 0.12; p.pitch = -0.1; live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-rim.png');
     }
   }
@@ -430,15 +497,15 @@ export default async function ({ browser, base, t }) {
     await intoWell(ip);
     await arm(ip);
     const before = await ip.evaluate(() => document.querySelectorAll('#touch button, #touch .tbtn').length);
-    await ip.evaluate(() => { const R = window.__R; R.put(104.5, 5, 76.5, 0); R.p.pitch = -0.8; R.live.step(0.03); });
+    await ip.evaluate(() => { const R = window.__R; R.put(104.5, 5, 77.5, 0); R.p.pitch = -0.8; R.live.step(0.03); });
     await frames(ip, 2);
     const w1 = await ip.evaluate(() => document.getElementById('btn-act')?.textContent.trim());
     const n0 = await ip.evaluate(() => window.__R.live.field.n);
     await ip.tap('#btn-act');
     await waitFor(ip, n0 => window.__R.live.field.n > n0, n0, 30000);
     // a tap on the screen blows a bubble where you tap
-    const I1 = await ip.evaluate(() => { const R = window.__R, { g, live } = R, n = live.field.n; const cam = g.camera; const ok = g.gymLive.tap(cam.position.clone(), R.p.forward.clone()); return { ok, more: live.field.n > n }; });
-    t.ok(w1 === 'Blow!' && I1.ok && I1.more, `iPad: Blow! on the big button blows a bubble; a tap on the screen blows one where you tap (${w1})`);
+    const I1 = await ip.evaluate(() => { const R = window.__R, { g, live } = R, n = live.field.n; R.p.yaw = Math.PI; const cam = g.camera; const ok = g.gymLive.tap(cam.position.clone(), R.p.forward.clone()); return { ok, more: live.field.n > n }; });
+    t.ok(w1 === 'Blow!' && I1.ok && I1.more, `iPad: Blow! on the big button blows a bubble; a tap on the screen blows one too, two blocks ahead of where you face (${w1})`);
     // on a bubble the Jump button says Bounce; in the ride it says Puff and a tap on the screen puffs
     const I2 = await ip.evaluate(() => {
       const R = window.__R, { g, live, p } = R, out = {};
@@ -488,7 +555,7 @@ export default async function ({ browser, base, t }) {
     await Bp.evaluate(() => window.pokecraft.ui.askYes());
     await placeIs(Bp, 'bubble'); console.log('  pair: both in the Bubble Well');
     await arm(A); await arm(Bp);
-    const k1 = await Bp.evaluate(() => { const R = window.__R, { live, p } = R; R.put(104.5, 5, 76.5, 0); R.run(0.2); p.pitch = -0.8; live.use(p); live.use(p); window.pokecraft.mp.sendState(); return { mine: live.field.list.length, sum: (() => { let s = 0; const d = R.g.world.data; for (let i = 0; i < d.length; i += 97) s = (s * 31 + d[i]) >>> 0; return s; })() }; });
+    const k1 = await Bp.evaluate(() => { const R = window.__R, { live, p } = R; R.put(104.5, 5, 77.5, 0); R.run(0.2); live.use(p); p.yaw = Math.PI; live.use(p); window.pokecraft.mp.sendState(); return { mine: live.field.list.length, sum: (() => { let s = 0; const d = R.g.world.data; for (let i = 0; i < d.length; i += 97) s = (s * 31 + d[i]) >>> 0; return s; })() }; });
     await A.waitForTimeout(1500);
     const a1 = await A.evaluate(() => { const R = window.__R, { live } = R; live.step(0.1); const o = [...window.pokecraft.mp.others.values()][0]; return { mine: live.field.list.length, here: o?.here, sum: (() => { let s = 0; const d = R.g.world.data; for (let i = 0; i < d.length; i += 97) s = (s * 31 + d[i]) >>> 0; return s; })() }; });
     t.ok(k1.mine === 2 && a1.mine === 0 && a1.here && a1.sum === k1.sum, `two players: the Kid blows two bubbles, Dad has none of them (bubbles are each player's own, never blocks or messages); the well's blocks are the same for both; Dad sees the Kid in the well`);
@@ -496,7 +563,7 @@ export default async function ({ browser, base, t }) {
     await A.context().close(); await Bp.context().close();
   }
 
-  /* ---------------------------------------------------------------- H. Real input (owner 2026-10-29: "I could never jump on a bubble") */
+  /* ---------------------------------------------------------------- H. Real input (owner 2026-10-29: the pillar trick, "easy to understand, hard to master") */
   // Like a child plays: real key presses (E, W, Space) and mouse moves through the game's own handlers, the game's own frame loop and
   // clock (no manual live part, no direct carry, no robot); only the spot you start on is set. The mouse capture is faked (headless
   // Chromium never grants it), so the game's own pointerlockchange handler runs as when a player clicks into the game.
@@ -513,7 +580,7 @@ export default async function ({ browser, base, t }) {
       window.__T = 0; gl.update = dt => { up(dt); window.__T += dt; };
     });
     const waitT = (pg, s) => pg.evaluate(s => new Promise(r => { const t0 = window.__T, w0 = Date.now(); const f = () => (window.__T - t0 >= s || Date.now() - w0 > 120000 ? r() : requestAnimationFrame(f)); f(); }), s);
-    const live = pg => pg.evaluate(() => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'), p = g.player; return { stood: l.stood?.id ?? null, on: p.carry === l.standObj, y: p.pos.y, ground: p.onGround, n: l.field.n, ring: l.aimRing.visible && l.aimRing.userData.parts.ring.material.color.getHex() }; });
+    const live = pg => pg.evaluate(() => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'), p = g.player; return { stood: l.stood?.id ?? null, on: p.carry === l.standObj, y: p.pos.y, ground: p.onGround, n: l.field.n, ring: l.ghost.visible && l.ghost.userData.parts.ring.material.color.getHex(), said: (window.__said || []).join(' | ') }; });
     // the look, by mouse moves through the game's mousemove handler (yaw, pitch in radians)
     const look = (pg, yaw, pitch) => pg.evaluate(([yaw, pitch]) => {
       const p = window.pokecraft.player, k = 0.0022, w = a => Math.atan2(Math.sin(a), Math.cos(a));
@@ -533,57 +600,56 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(() => document.getElementById('game').requestPointerLock());
     await waitFor(page, () => !!document.pointerLockElement && window.pokecraft.started && document.getElementById('pause').classList.contains('hidden'), null, 20000);
     await clockOn(page);
-    const S1 = [104.5, 5, 76.5], hop = async (pitch, delay, name) => {
-      await start(page, S1); await look(page, 0, pitch); await waitT(page, 0.3);
-      const ring = (await live(page)).ring;
-      await key(page, 'KeyE');
-      if (delay) await waitT(page, delay);
-      await page.keyboard.down('KeyW'); await key(page, 'Space', 0.12); await waitT(page, 0.45); await page.keyboard.up('KeyW');
-      await waitT(page, 0.4);
-      const r = await live(page);
-      return { name, on: r.on && r.stood !== null, y: r.y, ring };
-    };
-    const H1 = [await hop(-0.5, 0.15, 'look down a little'), await hop(-0.8, 0.5, 'look down more, hop a moment later'), await hop(-1.2, 0.3, 'look at the floor')];
-    t.ok(H1.every(h => h.on && h.ring === 0x7dffa0), `real keys: look down a little (or a lot), press E for Blow!, hold W and Space: you land on your bubble every time; the aim ring is green first (${H1.map(h => `${h.name}: ${h.on ? 'on it' : 'missed'} y ${h.y.toFixed(2)}`).join('; ')})`);
-    // jump first, then look down and Blow! under your feet: it catches you
-    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3);
-    await key(page, 'Space', 0.1); await waitT(page, 0.12); await look(page, 0, -1.5); await key(page, 'KeyE'); await waitT(page, 0.5);
-    const H2 = await live(page);
-    t.ok(H2.on && H2.y > 5.4, `real keys: jump, look down, press E: the bubble catches you under your feet (y ${H2.y.toFixed(2)})`);
-    // straight ahead at the top of a hop: too high, the ring says so (white) and a word says what to do
-    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3);
-    const H3 = await live(page);
     await page.evaluate(() => { window.__said = []; const ui = window.pokecraft.ui, f = ui.toast.bind(ui); ui.toast = (m, ...r) => { window.__said.push(m); return f(m, ...r); }; });
-    await key(page, 'KeyE'); await waitT(page, 0.1);
-    const said = await page.evaluate(() => window.__said.join(' | '));
-    t.ok(H3.ring === 0xffffff && /Look down a little/.test(said), `straight ahead from the ground the ring is white (too high to hop on) and Blow! says "${said}"`);
-    // up shaft 1 with real keys: three bubbles (Bounce off each) and a hop onto the bench
-    await start(page, S1); await waitT(page, 0.3);
-    const steps = [];
-    for (const [yaw, pitch] of [[0, -0.6], [0, -0.2], [0, -0.2]]) { // (from a bubble: just a little down)
-      await look(page, yaw, pitch); await waitT(page, 0.05);
+    const S1 = [104.5, 5, 77.5], onBub = () => waitFor(page, () => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'); return (g.player.carry === l.standObj && l.stood) || g.player.onGround; }, null, 60000);
+    // a hop onto the bubble just blown: E, wait `wait` game seconds, then hold W and tap Space
+    const blowHop = async (yaw, wait) => {
+      await look(page, yaw, -0.3); await waitT(page, 0.05);
       const n0 = (await live(page)).n;
-      await key(page, 'KeyE');
+      await key(page, 'KeyE'); if (wait) await waitT(page, wait);
       await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.3); await page.keyboard.up('KeyW');
-      await waitFor(page, () => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'); return (g.player.carry === l.standObj && l.stood) || g.player.onGround; }, null, 60000);
-      const r = await live(page); steps.push(r.on && r.stood > n0 ? 'on' : `missed@${r.y.toFixed(1)}`);
-      if (!r.on) break;
-      await waitT(page, 0.1);
-    }
-    await look(page, 0, 0); await waitT(page, 0.1);
-    await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.6); await page.keyboard.up('KeyW'); await waitT(page, 0.3);
-    const H4 = await live(page);
-    t.ok(steps.join() === 'on,on,on' && H4.ground && Math.abs(H4.y - 11) < 0.05, `real keys up shaft 1: blow, hop on, blow, Bounce, blow, Bounce, hop onto the bench (${steps.join()}, y ${H4.y.toFixed(2)})`);
-    await start(page, S1); await waitT(page, 0.2);
-    await look(page, 0, -0.6); await waitT(page, 0.2); await key(page, 'KeyE');
-    await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.3); await page.keyboard.up('KeyW'); await waitT(page, 0.2);
-    const onIt = await live(page);
-    await look(page, Math.PI * 0.8, -1.05); await waitT(page, 0.05); // looking back down at the bubble you stand on
+      await onBub(); await waitT(page, 0.05);
+      const r = await live(page); return r.on && r.stood > n0 ? 'on' : `missed@${r.y.toFixed(1)}`;
+    };
+    const toLedge = async yaw => { await look(page, yaw, 0); await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.6); await page.keyboard.up('KeyW'); await waitT(page, 0.3); return live(page); };
+    // the ghost bubble shows where Blow! puts it, whatever the pitch; E, W and Space: on it
+    const H1 = [];
+    for (const [pitch, wait] of [[-0.5, 0], [0.4, 0.2], [-1.3, 0.1]]) { await start(page, S1); await look(page, 0, pitch); await waitT(page, 0.3); const ring = (await live(page)).ring; H1.push({ ring, r: await blowHop(0, wait) }); }
+    t.ok(H1.every(h => h.r === 'on' && h.ring === 0x7dffa0), `real keys: looking down, up or at the floor, E puts the bubble on the green ghost two blocks ahead; W and Space: you land on it every time (${H1.map(h => h.r).join(', ')})`);
+    // the pillar trick (owner: "I could just jump and build under me"): jump, look down, E in the air: nothing, a word says to land first
+    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3);
+    await page.evaluate(() => { window.__said = []; });
+    const n0 = (await live(page)).n;
+    for (let i = 0; i < 3; i++) { await key(page, 'Space', 0.1); await waitT(page, 0.15); await look(page, 0, -1.5); await key(page, 'KeyE'); await waitT(page, 0.6); }
+    const H2 = await live(page);
+    t.ok(H2.n === n0 && !H2.on && H2.y < 5.1 && /Land first/.test(H2.said), `real keys: jump, look down, E, three times: no bubble ever comes in the air, you stay on the floor ("${H2.said.split(' | ')[0]}")`);
+    // E twice at once: the two bubbles touch and both pop
+    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3); await page.evaluate(() => { window.__said = []; });
+    await key(page, 'KeyE'); await key(page, 'KeyE'); await waitT(page, 0.1);
+    const H3 = await page.evaluate(() => ({ n: window.pokecraft.gymLive.of('part:bubble').field.list.length, said: window.__said.join(' | ') }));
+    t.ok(H3.n === 0 && /Pop-pop/.test(H3.said), `real keys: E twice in a row: the two bubbles touch and both pop ("${H3.said}")`);
+    // up shaft 1 with real keys: a bubble and a hop onto the low step; east, west (each let float up a little), a hop onto the bench
+    await start(page, S1); await waitT(page, 0.3);
+    const steps = [await blowHop(0, 0)];
+    const P1 = steps[0] === 'on' ? await toLedge(0) : null;
+    if (P1?.ground) { steps.push(await blowHop(-Math.PI / 2, 0.5)); if (steps.at(-1) === 'on') steps.push(await blowHop(Math.PI / 2, 0.6)); }
+    const H4 = steps.length === 3 && steps.every(x => x === 'on') ? await toLedge(0) : await live(page);
+    t.ok(steps.join() === 'on,on,on' && Math.abs(P1?.y - 7) < 0.05 && H4.ground && Math.abs(H4.y - 11) < 0.05, `real keys up shaft 1: blow, hop on, hop onto the step; turn east, blow, wait, hop; turn west, blow, wait, hop; hop onto the bench (${steps.join()}, y ${H4.y.toFixed(2)})`);
+    // a bank shot with real keys: stand on gold pad 1, turn with the mouse, E: the bubble bounces off the pink cushion into the shield
+    const yawShot = await page.evaluate(async () => { const Bots = await import('/tests/bubblebots.mjs'), L = await import('/src/bubbleland.js'), g = window.pokecraft, p = g.player, pad = L.COURT.rounds[0].pad; g.gymLive.of('part:bubble').giveBack(); p.pos.set(pad.x, L.RIM.y + 1, pad.z); p.vel.set(0, 0, 0); return Bots.SHOT_BOTS.skilled(0)(0); });
+    await waitT(page, 0.3); await look(page, yawShot, 0); await waitT(page, 0.2);
+    const aimed = await page.evaluate(() => window.pokecraft.gymLive.of('part:bubble').aimDots.visible);
+    await key(page, 'KeyE'); await waitFor(page, () => !window.pokecraft.gymLive.of('part:bubble').shots.length, null, 120000); await waitT(page, 0.2);
+    const H5 = await page.evaluate(() => window.pokecraft.beaten.includes('pw:bubble:shield1'));
+    t.ok(aimed && H5, 'real keys: on gold pad 1 the dotted line shows the way; turn, E: a bank shot off the cushion pops shield 1');
+    await page.evaluate(() => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'), p = g.player; l.giveBack(); for (const b of [...l.field.list]) l.field.pop(b); l.field.refill(); p.pos.set(104.5, 5, 77.5); l.ledge = null; });
+    await waitT(page, 0.3); const onShot = await blowHop(0, 0);
+    await look(page, -0.5, -0.35); await waitT(page, 0.05); // the low step and the bench ahead, from the bubble you stand on
     await shot(page, 'bubble-on-a-bubble.png');
-    t.ok(onIt.on, `standing on a bubble for the screenshot (y ${onIt.y.toFixed(2)})`);
+    t.ok(onShot === 'on', `standing on a bubble for the screenshot (${onShot})`);
     t.ok(!page.errors.length, `no page errors (real keys) ${page.errors.slice(0, 3).join(' | ')}`);
     await page.context().close();
-    // the iPad: hold Jump, look down, tap Blow! on the big button: you land on the bubble
+    // the iPad: Jump, look down, tap Blow! in the air: nothing; on the floor tap Blow!, then Jump: you land on the bubble
     const ip = await retry(() => openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] }));
     await newGame(ip, 0);
     await ip.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; document.getElementById('pause')?.classList.add('hidden'); });
@@ -591,12 +657,19 @@ export default async function ({ browser, base, t }) {
     await clockOn(ip);
     const press = (pg, id, down) => pg.evaluate(([id, down]) => { const el = document.getElementById(id), r = el.getBoundingClientRect(); el.dispatchEvent(new PointerEvent(down ? 'pointerdown' : 'pointerup', { pointerId: 7, pointerType: 'touch', bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })); }, [id, down]);
     await start(ip, S1); await ip.evaluate(() => { const p = window.pokecraft.player; p.yaw = 0; p.pitch = 0; }); await waitT(ip, 0.3);
-    await press(ip, 'btn-jump', true); await waitT(ip, 0.12); await press(ip, 'btn-jump', false); await waitT(ip, 0.1);
+    const m0 = (await live(ip)).n;
+    await press(ip, 'btn-jump', true); await waitT(ip, 0.12); await press(ip, 'btn-jump', false); await waitT(ip, 0.05);
     await ip.evaluate(() => window.pokecraft.player.look(0, 1.5 / 0.0022)); await waitT(ip, 0.03);
+    await ip.tap('#btn-act'); await waitT(ip, 0.6);
+    const I0 = await live(ip);
+    await ip.evaluate(() => window.pokecraft.player.look(0, -1.2 / 0.0022)); await waitT(ip, 0.2);
     const word = await ip.evaluate(() => document.getElementById('btn-act')?.textContent.trim());
-    await ip.tap('#btn-act'); await waitT(ip, 0.5);
+    await ip.tap('#btn-act'); await waitT(ip, 0.1);
+    await ip.keyboard.down('KeyW');
+    await press(ip, 'btn-jump', true); await waitT(ip, 0.12); await press(ip, 'btn-jump', false); await waitT(ip, 0.3);
+    await ip.keyboard.up('KeyW'); await waitT(ip, 0.4);
     const I1 = await live(ip);
-    t.ok(word === 'Blow!' && I1.on, `iPad: Jump, look down, tap Blow! on the big button: the bubble catches you (${word}, y ${I1.y.toFixed(2)})`);
+    t.ok(I0.n === m0 && !I0.on && word === 'Blow!' && I1.on, `iPad: Jump, then tap Blow! in the air: no bubble; on the floor tap Blow!, walk ahead and tap Jump: on the bubble (${word}, y ${I1.y.toFixed(2)})`);
     t.ok(!ip.errors.length, `no page errors (iPad, real taps) ${ip.errors.slice(0, 3).join(' | ')}`);
     await ip.context().close();
   }
