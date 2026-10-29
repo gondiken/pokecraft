@@ -40,7 +40,7 @@ export class TouchControls {
     const o = this.state, n = {
       act: s.act?.label ?? o.act, actDim: !!s.act?.dim,
       placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '',
-      have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, rideLabel: s.ride?.label || '', sky: !!s.sky, // Cube Planets: a world may give the Ride slot another word ('Camera') swim: !!s.swim, jump: s.jump || null, // T49: a ride may name the Jump button ('Shield', 'Off')
+      have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, rideLabel: s.ride?.label || '', sky: !!s.sky, swim: !!s.swim, jump: s.jump || null, // T49: a ride may name the Jump button ('Shield', 'Off'); Cube Planets: a world may give the Ride slot another word ('Camera')
     };
     const $ = id => document.getElementById(id);
     if (n.act !== o.act) this.actBtn.textContent = n.act;

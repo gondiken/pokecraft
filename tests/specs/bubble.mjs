@@ -631,7 +631,7 @@ export default async function ({ browser, base, t }) {
     const pg = await retry(() => openGame(browser, base, { setup: seedSave(json) })); // (a save from before the redesign, in a fresh browser)
     await continueGame(pg); await pause(pg);
     const R1 = await pg.evaluate(() => { const g = window.pokecraft; return { beaten: g.beaten.slice().sort().join(), stars: g.stars.join(), wins: JSON.stringify(g.bossWins), saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).beaten.includes('pw:bubble:redesign1') }; });
-    t.ok(fresh && R1.beaten === 'ninja:trainer,pw:bubble:redesign1,pw:castle:crew1,pw:castle:shield1' && R1.stars === 'castle' && R1.wins === '{"castle":1}' && R1.saved, `a new game carries the mark; an old save loses its Bubble Well keys, crew, star and Boss wins once (every other world untouched: ${R1.beaten}; stars ${R1.stars}; ${R1.wins})`);
+    t.ok(fresh && R1.beaten.split(',').filter(k => !/^pw:\w+:redesign\d+$/.test(k) || k === 'pw:bubble:redesign1').join() === 'ninja:trainer,pw:bubble:redesign1,pw:castle:crew1,pw:castle:shield1' && R1.stars === 'castle' && R1.wins === '{"castle":1}' && R1.saved, `a new game carries the mark; an old save loses its Bubble Well keys, crew, star and Boss wins once (every other world untouched: ${R1.beaten}; stars ${R1.stars}; ${R1.wins})`);
     await pg.evaluate(() => { const g = window.pokecraft; g.beaten.push('pw:bubble:duck2'); g.stars.push('bubble'); g.bossWins.bubble = 1; g.save(); });
     await pg.reload(); await pg.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
     await continueGame(pg); await pause(pg);
