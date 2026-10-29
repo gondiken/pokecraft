@@ -1,28 +1,30 @@
-// The Bubble Well's rules (plans/bubble-well.md), pure: no imports but the shared kind help, Node-runnable. Every clock is summed frame
-// time cut into fixed 1/120 s sub-steps, so 60 and 20 frames a second give the same climb. No Math.random anywhere.
-//  - BubbleField: the bubbles YOU blow with the wand (Blow!: one press, never held). A bubble appears in front of your eyes, waits there a
-//    moment (BUBBLE.hang: time to hop on), rises slowly,
-//    drifts in a vent's wind and pops when it is old, when a drip hits it, when it rubs a wall, or a little while after you landed on it.
-//    At most two at once; the wand holds six puffs of soap (soap flowers fill it up). Standing on one is the live part's `carry` object.
-//  - Duckling: a sleepy rubber duckling in a bubble that you never hold: Puff! nudges it the way you look, harder the closer you stand.
-//    It glides like a puck, a current carries it, a thorn pops its bubble (it plops back onto its island, never hurt), the nest stops it.
+// The Bubble Well's rules (plans/bubble-well.md, "Rework 2026-10-29"), pure: no imports but the shared kind help, Node-runnable. Every
+// clock is summed frame time cut into fixed 1/120 s sub-steps, so 60 and 20 frames a second give the same climb. No Math.random anywhere.
+// Owner 2026-10-29: "Easy to understand, hard to master. Never forget this rule!"
+//  - BubbleField (the Bubble Stairs): Blow! (one press, never held) puts a bubble at ONE place you can always see: two blocks ahead of your
+//    feet, just above them, the way you face (looking up or down does not change it). It only works with your feet on something (the
+//    ground or a bubble): in the air nothing happens, so jumping and blowing under yourself (the chapter-1 sky-gym pillar) never climbs.
+//    A new bubble waits a moment, then floats up: hop on it right away and you gain a little, wait till it has floated up and you gain a
+//    lot, wait too long and it is out of reach. The bubble you stand on sinks and pops soon after you land (keep going!). Two bubbles that
+//    touch both pop (blowing twice at the same spot wastes soap). Six puffs of soap from ledge to ledge. Drips and winds pop or push them.
+//  - Duckling: a sleepy rubber duckling in a bubble that you never hold: Puff! nudges it the way you look, harder the closer you stand
+//    (an arrow shows where it will glide). It glides like a puck, a current carries it, a gust lane blows now and then, a thorn pops its
+//    bubble (it plops back onto its island), and the bubble only lasts a while: then the duckling wakes up and waddles home to its island.
 //  - Ride: the Chimney Ride inside a big bubble that always sinks a little: every tap is a puff up (no hold), the stick steers. Spike
-//    plates with one gap, a fan, a spinning bar near the top; a pop puts you back at the last fizz star.
-//  - shieldShot: a bubble blown into a fizz vent is carried up and round (each vent curls its own way) and flies out the side it ends
-//    on: from the right spot it pops one of Captain Suds' shields.
+//    plates with one gold-ringed gap, a fan, a spinning bar near the top; a pop puts you back at the last fizz star.
+//  - bankShot (Captain Suds' shields): from a gold pad, Blow! sends a bubble flying flat the way you look; it bounces off the pink soap
+//    cushions and pops on the foam guards that hide the shield. Bounce it into the shield. A dotted line shows the way to the first bounce.
 // The kind help after misses comes only from kindhelp.js (bubbleHelp maps it onto each game's levers); a rematch's `hard` is separate.
 import { kindHelp } from './kindhelp.js';
 
 export const STEP = 1 / 120;
-// r radius, ahead how far in front of your eyes it appears, rise (blocks a second) while free, life (s) while free, sink while you stand
-// on it, stand (s) from landing to the pop, warn (s) of wobble before that pop, max at once, soap puffs, bounce (blocks: the jump off a
-// bubble), wall (s of rubbing a wall before it pops), catch (how far from its middle your feet may land), onTop (how far you may walk on it),
-// hang (s a new bubble waits where you blew it before it starts to rise: time to hop on; owner 2026-10-29 "I could never jump on a bubble"),
-// scoop (your feet anywhere from `scoop` below its middle up to its top also land you on it: a bubble blown under your feet mid-jump, or
-// one you hop up into, catches you; only a bubble below your middle can, so a straight-ahead one stays too high to hop on from the ground),
-// lift (a bubble blown at the floor is lifted up to this far to sit just on top of it, so looking down at your feet and blowing works),
-// under (in the air, a bubble you blow right under your feet catches you at once if your feet are no more than this below its middle).
-export const BUBBLE = { r: 0.55, ahead: 1.6, rise: 0.6, life: 4, sink: 0.25, stand: 2.0, warn: 0.6, max: 2, soap: 6, bounce: 2.1, wall: 0.2, catch: 0.8, onTop: 0.45, hang: 0.6, scoop: 0.15, lift: 1.1, under: 0.6 };
+// r radius; ahead how far in front of your feet (flat, the way you face) a new bubble appears; step its top over your feet when it appears
+// (one blown at a floor is lifted up to `lift` to sit on it); hang (s) it waits there, then rises `rise` blocks a second while free; life (s)
+// while free; sink while you stand on it, stand (s) from landing to its pop, warn (s) of wobble before that pop; max at once; soap puffs;
+// bounce (blocks: the jump off a bubble); wall (s of rubbing a wall before it pops); catch (how far from its middle your feet may land);
+// onTop (how far you may walk on it); scoop (your feet from `scoop` over its middle up to its top also land you on it: a hop up into the
+// top of a bubble lifts you onto it, a hop that only reaches its lower half does not).
+export const BUBBLE = { r: 0.55, ahead: 2.0, step: 0.2, lift: 1.2, hang: 0.3, rise: 1.3, life: 4, sink: 0.3, stand: 1.6, warn: 0.5, max: 2, soap: 6, bounce: 1.6, wall: 0.2, catch: 0.8, onTop: 0.45, scoop: 0.2 };
 // How high your feet get over where they are now: a jump from the ground (the Player's jump speed 8.6), a Bounce off a bubble, or what is
 // left of a jump in the air (vy). g = the world's gravity.
 export const JUMP = 8.6;
@@ -30,25 +32,33 @@ export const hopHeight = ({ ground = false, onBubble = false, vy = 0, g = 1 } = 
   onBubble ? BUBBLE.bounce : ground ? JUMP * JUMP / (2 * 28 * g) : Math.max(0, vy) ** 2 / (2 * 28 * g);
 // Do your feet land on bubble b? feet / prev: the feet's height now and a frame ago; (x, z) where you are; vy your speed up. Two ways:
 //  - from above: the feet came down through its top since the last frame (any frame rate);
-//  - from inside: the feet are in its upper part (from `scoop` below its middle to its top), you are not shooting up fast.
+//  - from inside: the feet are in its top part (from `scoop` over its middle to its top), you are not shooting up fast.
 // inside = false: only from above (the bubble you just stepped or bounced off never scoops you up again).
 export function landsOn(b, { x, z, feet, prev = feet, vy = 0, inside = true }) {
   if (Math.hypot(x - b.x, z - b.z) > BUBBLE.catch) return false;
   const top = b.y + BUBBLE.r;
   if (vy <= 0.5 && prev >= top - 0.12 && feet <= top + 0.15 && feet >= top - 1.2) return true;
-  return inside && vy <= 6 && feet >= b.y - BUBBLE.scoop && feet <= top + 0.15;
+  return inside && vy <= 6 && feet >= b.y + BUBBLE.scoop && feet <= top + 0.15;
+}
+// Where Blow! puts a bubble from feet (x, y, z) facing look (only its flat part counts): the middle, before a floor lifts it.
+export function blowSpot(feet, look) {
+  const l = Math.hypot(look.x, look.z);
+  if (l < 1e-6) return null;
+  return { x: feet.x + look.x / l * BUBBLE.ahead, y: feet.y + BUBBLE.step - BUBBLE.r, z: feet.z + look.z / l * BUBBLE.ahead };
 }
 // A rematch (you hold the star) is a new climb, a bit harder (separate from the kind help).
-export const HARD = { life: 0.85, stand: 0.85, drip: 1.25, current: 1.3, friction: 0.85, sink: 1.2, bar: 1.2, catch: 0.85 };
+export const HARD = { life: 0.85, stand: 0.85, drip: 1.25, rise: 1.15, current: 1.3, friction: 0.85, duckLife: 0.85, gust: 1.2, sink: 1.2, bar: 1.2, catch: 0.85, slide: 1.2 };
 
 // The ONE kind help of the Bubble Well's games: kindHelp(misses) mapped onto each game's levers (slow = 1 - e, more = 1 + e, e <= 0.10).
-//   stairs  (a fall from a bubble)              bubbles' life and the time you may stand on one x more, drips x slow
-//   ducks   (a duckling's bubble popped)        currents x slow, the duckling's glide stops x more sooner, the nest x more wider
-//   chimney (the ride's bubble popped)          the sink x slow, the gaps x more wider, the bar x slow
-//   shields (a bubble from a vent that missed)  the shield's catch x more
+//   stairs  (a fall from a bubble)               a new bubble rises x slow (a longer moment to hop), the time you may stand on one x more,
+//                                                drips x slow
+//   ducks   (a duckling's bubble popped)         currents and gusts x slow, the glide stops x more sooner, the nest x more wider, the
+//                                                bubble lasts x more
+//   chimney (the ride's bubble popped)           the sink x slow, the gaps x more wider, the bar x slow
+//   shields (a shot that missed)                 the shield x more bigger, the sliding cushion x slow
 export function bubbleHelp(misses) {
   const k = kindHelp(misses);
-  return { ...k, life: k.more, stand: k.more, drip: k.slow, current: k.slow, friction: k.more, nest: k.more, sink: k.slow, gap: k.more, bar: k.slow, catch: k.more };
+  return { ...k, rise: k.slow, life: k.more, stand: k.more, drip: k.slow, current: k.slow, gust: k.slow, friction: k.more, nest: k.more, duckLife: k.more, sink: k.slow, gap: k.more, bar: k.slow, catch: k.more, slide: k.slow };
 }
 const H = (help, key) => (typeof help === 'object' && help ? help[key] ?? 1 : bubbleHelp(help || 0)[key]);
 
@@ -85,26 +95,36 @@ export class BubbleField {
   }
   get life() { return BUBBLE.life * H(this.help, 'life') * (this.hard ? HARD.life : 1); }
   get standLife() { return BUBBLE.stand * H(this.help, 'stand') * (this.hard ? HARD.stand : 1); }
+  get rise() { return BUBBLE.rise * H(this.help, 'rise') * (this.hard ? HARD.rise : 1); }
   get drip() { return H(this.help, 'drip') * (this.hard ? HARD.drip : 1); }
-  // Blow! from the eye (x, y, z) along the unit direction d. solid(x, y, z) = a whole cell is solid. -> { ok, b?, why?, popped? }
-  blow(eye, d, solid = () => false) {
-    if (this.soap <= 0) return { ok: false, why: 'soap' };
-    const x = eye.x + d.x * BUBBLE.ahead, z = eye.z + d.z * BUBBLE.ahead;
-    const y0 = eye.y + d.y * BUBBLE.ahead, R = BUBBLE.r + 0.02;
-    let y = y0;
-    if (sphereTouches(solid, x, y, z, R)) { // blown at the floor: it sits just on top of it (never through a wall or a ceiling)
-      while (y < y0 + BUBBLE.lift && sphereTouches(solid, x, y, z, R)) y += 0.05;
-      if (sphereTouches(solid, x, y, z, R)) y = y0;
+  // Where Blow! would put a bubble now (null: no room there), from feet (x, y, z) facing look. solid(x, y, z) = a whole cell is solid.
+  spot(feet, look, solid = () => false) {
+    const s = blowSpot(feet, look);
+    if (!s) return null;
+    const R = BUBBLE.r + 0.02, y0 = s.y;
+    if (sphereTouches(solid, s.x, s.y, s.z, R)) { // at a floor: it sits just on top of it (never through a wall or a ceiling)
+      while (s.y < y0 + BUBBLE.lift && sphereTouches(solid, s.x, s.y, s.z, R)) s.y += 0.05;
+      if (sphereTouches(solid, s.x, s.y, s.z, R)) s.y = y0;
     }
-    if (sphereTouches(solid, x, y, z, BUBBLE.r * 0.8)) return { ok: false, why: 'wall' };
+    return sphereTouches(solid, s.x, s.y, s.z, BUBBLE.r * 0.8) ? null : s;
+  }
+  // Blow! from your feet facing `look`. footing: 'ground' | 'bubble' | null (in the air: nothing happens, no soap used).
+  // -> { ok, b?, why?, popped?, burst? } (burst: the bubbles that touched the new one; they all pop and the soap is used)
+  blow(feet, look, solid = () => false, footing = 'ground') {
+    if (!footing) return { ok: false, why: 'air' };
+    if (this.soap <= 0) return { ok: false, why: 'soap' };
+    const s = this.spot(feet, look, solid);
+    if (!s) return { ok: false, why: 'wall' };
+    const touch = this.list.filter(b => !b.stand && Math.hypot(b.x - s.x, b.y - s.y, b.z - s.z) < BUBBLE.r * 2);
+    this.soap--;
+    if (touch.length) { for (const b of touch) this.pop(b); return { ok: false, why: 'touch', burst: touch, at: s }; }
     let popped = null;
     if (this.list.length >= BUBBLE.max) { // the oldest one you are not standing on makes room
       const old = this.list.find(b => !b.stand) ?? this.list[0];
       this.list.splice(this.list.indexOf(old), 1); popped = old;
     }
-    const b = { id: ++this.n, x, y, z, age: 0, stand: false, standT: 0, wallT: 0, warned: false };
+    const b = { id: ++this.n, x: s.x, y: s.y, z: s.z, age: 0, stand: false, standT: 0, wallT: 0, warned: false };
     this.list.push(b);
-    this.soap--;
     return { ok: true, b, popped };
   }
   refill() { const was = this.soap; this.soap = BUBBLE.soap; return this.soap > was; }
@@ -122,7 +142,7 @@ export class BubbleField {
           if (!b.warned && b.standT >= this.standLife - BUBBLE.warn) { b.warned = true; ev.push({ type: 'warn', b }); }
           if (b.standT >= this.standLife) { this.pop(b); ev.push({ type: 'pop', b, why: 'stood' }); continue; }
         } else {
-          b.age += h; if (b.age > BUBBLE.hang + 1e-9) b.y += BUBBLE.rise * h; // it waits a moment where you blew it, then rises
+          b.age += h; if (b.age > BUBBLE.hang + 1e-9) b.y += this.rise * h; // it waits a moment where you blew it, then floats up
           if (b.age >= this.life) { this.pop(b); ev.push({ type: 'pop', b, why: 'old' }); continue; }
         }
         for (const v of env.vents || []) if (inBox(v, b.x, b.y, b.z)) { b.x += (v.vx || 0) * h; b.y += (v.vy || 0) * h; b.z += (v.vz || 0) * h; }
@@ -146,23 +166,38 @@ export class BubbleField {
 // float: its height over the floor; r its bubble; reach (Puff!) and blowReach (Blow! to bubble it); near / far: the puff is strongest
 // (max blocks a second) when you stand `near` and weakest (min) at `far`; friction (a second) while it glides, nest (friction inside
 // the nest); stop: slower than this counts as stopped; stay (s) stopped in the nest = home; cone (radians): it must be in front of you;
-// thorn: a coral thorn's radius; bounce: how much speed the garden's rim gives back; carry: how fast a current takes it over.
-export const DUCK = { float: 0.9, r: 0.45, reach: 2.5, blowReach: 2.0, near: 0.8, far: 2.5, max: 3.6, min: 1.0, friction: 0.55, nest: 2.4, stop: 0.4, stay: 1.0, cone: 0.9, thorn: 0.45, bounce: 0.5, carry: 1.5 };
+// thorn: a coral thorn's radius; bounce: how much speed the garden's rim gives back; carry: how fast a current takes it over; gustCarry:
+// how fast a blowing gust takes it over; life (s): how long its bubble lasts from the Blow!, hurry (s): the wobble before that; waddle:
+// how fast it waddles home to its island once awake.
+export const DUCK = { float: 0.9, r: 0.45, reach: 2.5, blowReach: 2.0, near: 0.8, far: 2.5, max: 3.6, min: 1.0, friction: 0.55, nest: 2.4, stop: 0.4, stay: 1.0, cone: 0.9, thorn: 0.45, bounce: 0.5, carry: 1.5, gustCarry: 2.5, life: 45, hurry: 6, waddle: 1.0 };
 export function puffSpeed(dist) {
   const k = Math.max(0, Math.min(1, (dist - DUCK.near) / (DUCK.far - DUCK.near)));
   return DUCK.max + (DUCK.min - DUCK.max) * k;
 }
-// garden = { bounds: { x0, x1, z0, z1 }, nest: { x, z, r }, currents: [{ x0, x1, z0, z1, vx, vz }], thorns: [[x, z]] }; island = [x, z]
+// How far a puff from `dist` away glides on calm floor (the arrow you see): speed / friction.
+export const glideOf = (dist, friction = DUCK.friction) => puffSpeed(dist) / friction;
+// A gust lane: { x0, x1, z0, z1, vx, vz, period, on, warn, phase }: calm, then `warn` s of gathering puffs, then it blows for `on` s.
+// -> 0 calm, 0.5 warning, 1 blowing, at the garden clock t.
+export function gustAt(g, t) {
+  const u = (((t + (g.phase || 0)) % g.period) + g.period) % g.period, start = g.period - g.on;
+  return u >= start ? 1 : u >= start - g.warn ? 0.5 : 0;
+}
+// garden = { bounds: { x0, x1, z0, z1 }, nest: { x, z, r }, currents: [{ x0, x1, z0, z1, vx, vz }], gusts: [gust], thorns: [[x, z]] }
+// island = [x, z]. States: 'sleep' on its island, 'float' in its bubble, 'waddle' (awake, walking home), 'home' in the nest.
 export class Duckling {
   constructor(garden, island, { help = 0, hard = false } = {}) {
     this.g = garden; this.island = island; this.help = help; this.hard = hard;
-    this.x = island[0]; this.z = island[1]; this.vx = 0; this.vz = 0; this.state = 'sleep'; this.homeT = 0; this.acc = 0; this.t = 0;
+    this.x = island[0]; this.z = island[1]; this.vx = 0; this.vz = 0; this.state = 'sleep'; this.homeT = 0; this.acc = 0; this.t = 0; this.age = 0;
   }
   get friction() { return DUCK.friction * H(this.help, 'friction') * (this.hard ? HARD.friction : 1); }
   get current() { return H(this.help, 'current') * (this.hard ? HARD.current : 1); }
+  get gust() { return H(this.help, 'gust') * (this.hard ? HARD.gust : 1); }
   get nestR() { return this.g.nest.r * H(this.help, 'nest'); }
+  get life() { return DUCK.life * H(this.help, 'duckLife') * (this.hard ? HARD.duckLife : 1); }
+  get left() { return this.state === 'float' ? Math.max(0, this.life - this.age) : 0; }
   get speed() { return Math.hypot(this.vx, this.vz); }
-  blow() { if (this.state !== 'sleep') return false; this.state = 'float'; this.vx = 0; this.vz = 0; this.homeT = 0; return true; }
+  // Blow! round it (asleep, or waddling home: it floats up where it is). clock: the garden's clock now (the gusts keep their beat).
+  blow(clock = this.t) { if (this.state !== 'sleep' && this.state !== 'waddle') return false; this.state = 'float'; this.vx = 0; this.vz = 0; this.homeT = 0; this.age = 0; this.t = clock; return true; }
   // A puff along (dx, dz) (any length) from `dist` blocks away: the push adds to how it moves now.
   puff(dx, dz, dist) {
     if (this.state !== 'float') return false;
@@ -170,18 +205,30 @@ export class Duckling {
     this.vx += dx / l * v; this.vz += dz / l * v;
     return true;
   }
-  backHome() { this.x = this.island[0]; this.z = this.island[1]; this.vx = 0; this.vz = 0; this.state = 'sleep'; this.homeT = 0; }
-  // -> events [{ type: 'pop' | 'home' | 'bonk' }]
+  backHome() { this.x = this.island[0]; this.z = this.island[1]; this.vx = 0; this.vz = 0; this.state = 'sleep'; this.homeT = 0; this.age = 0; }
+  // -> events [{ type: 'pop' | 'home' | 'bonk' | 'wake' | 'asleep' | 'hurry' }]
   step(dt) {
     const ev = [];
-    if (this.state !== 'float') return ev;
+    if (this.state !== 'float' && this.state !== 'waddle') return ev;
     const g = this.g, R = DUCK.r;
     this.acc = substeps(this.acc, dt, h => {
-      if (this.state !== 'float') return;
       this.t += h;
+      if (this.state === 'waddle') { // awake: it waddles straight back to its island and falls asleep there
+        const dx = this.island[0] - this.x, dz = this.island[1] - this.z, d = Math.hypot(dx, dz), s = DUCK.waddle * h;
+        if (d <= s) { this.backHome(); ev.push({ type: 'asleep' }); } else { this.x += dx / d * s; this.z += dz / d * s; }
+        return;
+      }
+      if (this.state !== 'float') return;
+      this.age += h;
+      if (this.age >= this.life - DUCK.hurry && this.age - h < this.life - DUCK.hurry) ev.push({ type: 'hurry' });
+      if (this.age >= this.life) { this.state = 'waddle'; this.vx = 0; this.vz = 0; ev.push({ type: 'wake', at: [this.x, this.z] }); return; }
       const inNest = Math.hypot(this.x - g.nest.x, this.z - g.nest.z) < this.nestR;
       const cur = (g.currents || []).find(c => this.x >= c.x0 && this.x < c.x1 && this.z >= c.z0 && this.z < c.z1);
-      if (cur && !inNest) { // the current takes it over: it moves toward the current's own speed
+      const gust = (g.gusts || []).find(c => this.x >= c.x0 && this.x < c.x1 && this.z >= c.z0 && this.z < c.z1 && gustAt(c, this.t) === 1);
+      if (gust && !inNest) { // a gust blowing: it takes the duckling along for a moment
+        const k = Math.exp(-DUCK.gustCarry * h), cx = gust.vx * this.gust, cz = gust.vz * this.gust;
+        this.vx = cx + (this.vx - cx) * k; this.vz = cz + (this.vz - cz) * k;
+      } else if (cur && !inNest) { // the current takes it over: it moves toward the current's own speed
         const k = Math.exp(-DUCK.carry * h), cx = cur.vx * this.current, cz = cur.vz * this.current;
         this.vx = cx + (this.vx - cx) * k; this.vz = cz + (this.vz - cz) * k;
       } else { const k = Math.exp(-(inNest ? DUCK.nest : this.friction) * h); this.vx *= k; this.vz *= k; }
@@ -272,34 +319,78 @@ export class Ride {
   burst(ev, why) { this.popT = 0; this.pops++; this.puffs = []; this.vx = 0; this.vz = 0; ev.push({ type: 'pop', why }); }
 }
 
-/* ------------------------------------------------------------------ the shields */
-// A bubble that floats into a fizz vent (within ventR of its middle, below rise above its floor) rises at `up` blocks a second while
-// it is carried round the vent by the vent's curl, then flies out the side it ends on at `out` blocks a second for at most `far` blocks.
-// It pops Captain Suds' shield if its way out passes within catchR of his middle. minR: an entry closer to the middle than this counts
-// as the vent's lazy side.
-export const SHOT = { up: 2.5, rise: 3, out: 3, far: 12, catchR: 3.0, minR: 0.25, ventR: 1.2 };
-// vent = { x, z, y (its floor: you stand at y), curl (radians), lazy (radians) }; entry = { x, z } where the bubble came in; target = { x, z }
-export function shieldShot(vent, entry, target, { help = 0, hard = false } = {}) {
-  const dx = entry.x - vent.x, dz = entry.z - vent.z, r0 = Math.hypot(dx, dz);
-  const a0 = r0 < SHOT.minR ? vent.lazy : Math.atan2(dz, dx), aOut = a0 + vent.curl;
-  const ux = Math.cos(aOut), uz = Math.sin(aOut), rr = Math.max(0.5, Math.min(SHOT.ventR, r0));
-  const sx = vent.x + ux * rr, sz = vent.z + uz * rr; // where it leaves the column
-  const tx = target.x - sx, tz = target.z - sz, proj = tx * ux + tz * uz, perp = Math.abs(-uz * tx + ux * tz);
-  const catchR = SHOT.catchR * H(help, 'catch') * (hard ? HARD.catch : 1);
-  const hit = proj > 0 && proj < SHOT.far && perp < catchR;
-  const T1 = SHOT.rise / SHOT.up, dist = hit ? Math.max(0, proj - Math.sqrt(Math.max(0, catchR * catchR - perp * perp)) * 0.5) : SHOT.far * 0.6;
-  const T2 = dist / SHOT.out;
-  const y0 = vent.y + 1.6;
-  // where the bubble is t seconds after it came in (closed form)
-  const path = t => {
-    if (t <= T1) { const a = a0 + vent.curl * (t / T1); return { x: vent.x + Math.cos(a) * rr, y: y0 + SHOT.up * t, z: vent.z + Math.sin(a) * rr }; }
-    const s = Math.min(t - T1, T2) * SHOT.out;
-    return { x: sx + ux * s, y: y0 + SHOT.rise, z: sz + uz * s };
-  };
-  return { hit, a0, aOut, perp, proj, catchR, time: T1 + T2, path };
+
+/* ------------------------------------------------------------------ Captain Suds' shields: bank shots */
+// From a gold pad on the rim, Blow! sends a shot bubble flying flat the way you look (one press). It bounces off the pink soap cushions
+// (like a ball off a wall: the angle in is the angle out), pops on a foam guard, and pops a shield when it reaches it. The foam guards
+// hide the shield from every pad, so every shot is a bank shot. speed (blocks a second), r (the shot's radius), life (s), bounces (at most;
+// one more pops it), from (how far in front of your feet it starts), h (its height over the rim's floor), pad (how near a pad's middle you
+// stand to blow from it), stub (how far the aim line goes on after its first bounce).
+export const BANK = { speed: 6, r: 0.3, life: 4, bounces: 3, from: 0.5, h: 1.3, pad: 1.0, stub: 1.6 };
+// A box (blocks) { x0, x1, z0, z1 } in world units (cell x covers x..x+1, so a one-block wall at x = 87 is { x0: 87, x1: 88 }).
+// court = { target: { x, z }, radius (the shield in the shot's plane), cushions: [box], guards: [box], slider?: { box, dx, dz, period },
+//          wall?: { x, z, r } (a round wall: a shot pops on it) }
+// The slider: a cushion that slides to and fro (dx, dz at most each way), a closed form of the court's clock t.
+export function sliderBox(s, t, f = 1) {
+  const k = Math.sin(2 * Math.PI * t * f / s.period);
+  return { x0: s.box.x0 + s.dx * k, x1: s.box.x1 + s.dx * k, z0: s.box.z0 + s.dz * k, z1: s.box.z1 + s.dz * k };
 }
-// The spot a bubble must come in at, to pop the shield from this vent (for the guide's words and the robots): r blocks from its middle.
-export function shieldSpot(vent, target, r = 0.6) {
-  const want = Math.atan2(target.z - vent.z, target.x - vent.x) - vent.curl;
-  return { x: vent.x + Math.cos(want) * r, z: vent.z + Math.sin(want) * r, a: want };
+// The push out of box b for a circle at (x, z) of radius r: { d, nx, nz } (d <= 0: its middle is inside), or null when it does not touch.
+function touchBox(x, z, r, b) {
+  const qx = Math.max(b.x0, Math.min(b.x1, x)), qz = Math.max(b.z0, Math.min(b.z1, z)), dx = x - qx, dz = z - qz, d = Math.hypot(dx, dz);
+  if (d >= r) return null;
+  if (d > 1e-9) return { d, nx: dx / d, nz: dz / d };
+  const opts = [[x - b.x0, -1, 0], [b.x1 - x, 1, 0], [z - b.z0, 0, -1], [b.z1 - z, 0, 1]].sort((a, c) => a[0] - c[0]); // inside: out the nearest side
+  return { d: -opts[0][0], nx: opts[0][1], nz: opts[0][2] };
+}
+const shieldR = (court, help, hard) => court.radius * H(help, 'catch') * (hard ? HARD.catch : 1);
+const slideF = (help, hard) => H(help, 'slide') * (hard ? HARD.slide : 1);
+// The cushions at court clock t (the slider's place is a closed form of t).
+export const cushionsAt = (court, t, help = 0, hard = false) => [...court.cushions, ...(court.slider ? [sliderBox(court.slider, t, slideF(help, hard))] : [])];
+// A shot from (x, z) along (dx, dz) blown at court clock t0. -> { hit, end: 'shield' | 'guard' | 'wall' | 'old' | 'bounces', bounces, time,
+// at: [x, z] where it ended, path(t) -> { x, z }, turns: [[x, z]] where it bounced } (worked out at once in fixed sub-steps, so any frame
+// rate draws the same flight).
+export function bankShot(court, from, dir, { t0 = 0, help = 0, hard = false, stub = 0 } = {}) {
+  const l = Math.hypot(dir.x, dir.z) || 1, R = BANK.r, sr = shieldR(court, help, hard), tx = court.target.x, tz = court.target.z, wall = court.wall;
+  const fixed = court.cushions || [], slider = court.slider, sf = slider ? slideF(help, hard) : 1, guards = court.guards || [];
+  let x = from.x, z = from.z, vx = dir.x / l * BANK.speed, vz = dir.z / l * BANK.speed, t = 0, bounces = 0, end = 'old', stopAt = Infinity;
+  const pts = new Float64Array((Math.ceil(BANK.life / STEP) + 3) * 2), turns = [];
+  let n = 1; pts[0] = x; pts[1] = z;
+  const bounce = c => { // off a cushion: back out of it, the speed into it turned round
+    const k = touchBox(x, z, R, c);
+    if (!k) return false;
+    const vn = vx * k.nx + vz * k.nz;
+    x += k.nx * (R - k.d); z += k.nz * (R - k.d);
+    if (vn < 0) { vx -= 2 * vn * k.nx; vz -= 2 * vn * k.nz; return true; }
+    return false;
+  };
+  const put = () => { pts[2 * n] = x; pts[2 * n + 1] = z; n++; };
+  while (t < BANK.life - 1e-9 && t < stopAt) {
+    x += vx * STEP; z += vz * STEP; t += STEP;
+    if (Math.hypot(x - tx, z - tz) < sr + R) { end = 'shield'; put(); break; }
+    let fence = false;
+    for (let i = 0; i < guards.length && !fence; i++) fence = !!touchBox(x, z, R, guards[i]);
+    if (fence) { end = 'guard'; put(); break; }
+    if (wall && Math.hypot(x - wall.x, z - wall.z) + R >= wall.r) { end = 'wall'; put(); break; } // the well's round wall
+    let bounced = false;
+    for (let i = 0; i < fixed.length; i++) if (bounce(fixed[i])) bounced = true;
+    if (slider && bounce(sliderBox(slider, t0 + t, sf))) bounced = true;
+    put();
+    if (bounced) {
+      turns.push([x, z]);
+      if (stub && turns.length === 1) stopAt = t + stub / BANK.speed; // (the aim line only needs the way to the first bounce and a stub)
+      if (++bounces > BANK.bounces) { end = 'bounces'; break; }
+    }
+  }
+  const time = (n - 1) * STEP;
+  const path = tt => { const i = Math.max(0, Math.min(n - 1, tt / STEP)), a = Math.floor(i), b = Math.min(n - 1, a + 1), f = i - a; return { x: pts[2 * a] + (pts[2 * b] - pts[2 * a]) * f, z: pts[2 * a + 1] + (pts[2 * b + 1] - pts[2 * a + 1]) * f }; };
+  return { hit: end === 'shield', end, bounces, time, at: [pts[2 * n - 2], pts[2 * n - 1]], turns, path };
+}
+// The dotted aim line: from (x, z) the way you look to the first thing the shot meets (a cushion, a guard or the shield), and after a
+// cushion a short stub the way it bounces off. -> [[x, z], [x, z]] or [[x, z], [x, z], [x, z]]
+export function aimLine(court, from, dir, opts = {}) {
+  const s = bankShot(court, from, dir, { ...opts, stub: BANK.stub });
+  if (!s.turns.length) return [[from.x, from.z], s.at];
+  const [tx, tz] = s.turns[0], tTurn = Math.hypot(tx - from.x, tz - from.z) / BANK.speed, stub = s.path(Math.min(s.time, tTurn + BANK.stub / BANK.speed));
+  return [[from.x, from.z], [tx, tz], [stub.x, stub.z]];
 }

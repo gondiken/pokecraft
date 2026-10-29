@@ -258,7 +258,7 @@ addBoss({
   gate: game => {
     const st = bubbleState(game);
     if (!st.done) return `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
-    return st.shields < 3 ? `My shields are up! Blow bubbles into my fizz vents to pop them. (🛡️ ${st.shields} / 3)` : null;
+    return st.shields < 3 ? `My shields are up! Stand on the gold pad and bounce a bubble off my pink cushion to pop them. (🛡️ ${st.shields} / 3)` : null;
   },
   team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'bodyslam', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
   intro: ['Ahoy-hoy! You climbed my whole well and popped my shields!', 'Now, a bubbly battle!'],
@@ -268,11 +268,11 @@ addBoss({
   note: 'I filled this well with fizz so my bath-time friends could float all the way up to the sky. Thank you for getting the bubbles rising again!',
   crew: [
     { name: 'Wanda Wand', look: 'bubble', colors: { shirt: 0x8ad8ff, pants: 0xf6efe0, hair: 0xe0a040, skin: 0xf2d0b0 },
-      team: [['squeaklet', 59], ['suddly', 60]], intro: ['You climbed the Bubble Stairs! Pop!', 'Battle me!'], line: 'Look down a little, blow, and hop on. Then jump to bounce!' },
+      team: [['squeaklet', 59], ['suddly', 60]], intro: ['You climbed the Bubble Stairs! Pop!', 'Battle me!'], line: 'Blow a bubble ahead, let it float up a little, then hop on. Up you go!' },
     { name: 'Duckherd Daisy', look: 'bubble', colors: { shirt: 0xffd83a, pants: 0x6ab8e8, hair: 0x6a3a1a, skin: 0xc68a5a },
       team: [['hippip', 60], ['squeaklet', 61]], intro: ['My ducklings! Thank you for bringing them home.', 'Now a little battle?'], line: 'Stand far away for a little puff, close for a big one!' },
     { name: 'Mate Fizz', look: 'bubble', colors: { shirt: 0xff9ac8, pants: 0x3a3a6a, hair: 0x1a1a1a, skin: 0xf0c8a0 },
-      team: [['suddly', 60], ['fizzbomb', 61]], intro: ['Ahoy! Up the chimney already?', 'Battle stations!'], line: 'Each fizz vent spins your bubble round. Watch the little bubbles, then blow from the right side!' },
+      team: [['suddly', 60], ['fizzbomb', 61]], intro: ['Ahoy! Up the chimney already?', 'Battle stations!'], line: 'A bubble bounces off a pink cushion like a ball off a wall. Watch the dotted line, then blow!' },
   ],
 });
 /* ==== end of Bubble ==== */

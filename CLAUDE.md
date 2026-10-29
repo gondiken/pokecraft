@@ -145,10 +145,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/castlelive.js` | T49 `CastleLive` = `LIVE.castle`: the shield stance and the steed (`carry` objects), throws, gates with `LiveCells`, the Joust's view (`JOUST_VIEW`, owner 2026-10-28), the maze's fun (`MAZE_FUN`), `battleEnded`, `manual` + `step` |
 | `src/castleprops.js` | T49 the Castle's models (`buildPracticeKnight` with its `parts.shield`, catapults, lance, drawbridge, portcullis, horseshoes, critters, spray) |
 | `src/castlegate.js` | T49 the shared gates (owner 2026-10-28: physical): `createCastleGates` -> `game.castleGates`; play-together `castle` message, per session, never saved |
-| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160): `WELL`, `FLOOR`, `MESA`, `BENCH` (+ its overhang), `SHAFT1` / `SHAFT2`, `BREEZES`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS`, `CHIMNEY`, `RIM`, `VENTS` / `SHIELD`, `LIFTS`, `DRIPS`, `SOAP_FLOWERS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `bubbleAim`, `bubbleLand` |
-| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (Blow!, rise, pop, stand), `dripAt`, `DUCK` / `Duckling` (Puff! nudges), `RIDE` / `Ride` (the Chimney Ride: taps, plates, the arm), `SHOT` / `shieldShot` / `shieldSpot`, `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
-| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand, standing on a bubble (a `carry`: Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff), the vents and shields, the fizz lifts (in `world.lifts` only while on), `battleEnded`, `manual` + `step`, `info()` |
-| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), aim ring, wand, drips, streams, soap flowers, thorns, nest, the chimney's plates / fan / arm / stars, shields |
+| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160): `WELL`, `FLOOR`, `MESA`, `BENCH` (+ its overhang), `SHAFT1` / `SHAFT2`, `BREEZES`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS`, `CHIMNEY`, `RIM`, `SHIELD` / `COURT` / `courtOf` (bank shots), `STEP1`, `GUSTS`, `LIFTS`, `DRIPS`, `SOAP_FLOWERS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `bubbleAim`, `bubbleLand` |
+| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (Blow!, rise, pop, stand), `dripAt`, `DUCK` / `Duckling` (Puff! nudges), `RIDE` / `Ride` (the Chimney Ride: taps, plates, the arm), `BANK` / `bankShot` / `aimLine` (the shields), `gustAt`, `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
+| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand, standing on a bubble (a `carry`: Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff), the bank shots (pads, cushions, aim dots), the fizz lifts (in `world.lifts` only while on), `battleEnded`, `manual` + `step`, `info()` |
+| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, aim dots, Puff! arrow, ride bubble + "Ride!" sign, cushions, gold pads, wand, drips, streams, soap flowers, thorns, nest, the chimney's plates / fan / arm / stars, shields |
 | `src/bigtop.js` | T34 Big Top Gym (slot 6): `buildBigTop`, no live parts |
 | `src/missions.js` | T29 Champion missions: `MISSIONS` (12, append-only), `REWARDS`, `loadMissions`, `nextMission`, `missionOf`, `createMissions` -> `game.missions` |
 | `src/missiongen.js` | T38c the mission maker (pure): `makeMission(n, seed)`, `cleanSpec`, `roundKinds`, `roundOf`, pools, `MORE_SPOTS` |
@@ -231,7 +231,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   168-181 Pirate Seas (182-183 were reserved for it; 182 is now T49's `HEDGE`, 183 free), 184-193 Race Track; 194-203 Ball Stadium; 204 atlantis wool, 205-214 Atlantis; 215 portal wool, 216-223 Portal
   House; 224 funfair wool, 225-234 Funfair; 235 surprise wool, 236-243 Surprise Party (235-243 in all); 244 doodle wool, 245-248 Sketchbook;
   249 `STAR_GRASS` (Cube Planets); 250 `HOUSE_PROP`; 251-253 Race Track v2 (`HOT_TRACK`, `HOT_RAIL`, `KICKER`); 254 knight wool; 255 bubble wool (147 `FOAM`, 148
-  `FIZZ_WALL`); 149 gravity wool. Ids are used up: free are only 137 (wave 17's Custom wool) and 138-139 (spare);
+  `FIZZ_WALL`); 149 gravity wool. Ids are used up: free are only 137 (wave 18's Custom wool) and 138-139 (spare);
   Cube Planets took 149, 183 `PLANET_ROCK` and 249 `STAR_GRASS`.
 - **Block flags:** `glow`, `noLight` (glows but lights nothing), `wallText` (toast when breaking), `fixed` (`editAllowed` refuses;
   saved edits on it are dropped), `bounce` (T35: apex in blocks; **jump to launch**, not on landing), `trampoline` (T43),
@@ -590,16 +590,26 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 - **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
   only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
-  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Blow!** (one press, never
-  held): a bubble 1.6 in front of the eyes (blown at the floor it sits on it), waits `BUBBLE.hang` 0.6 s, then rises; standing on it is a
-  `carry` (Jump = Bounce, extra high); a fall from a bubble puts you back on your ledge. **Landing (owner 2026-10-29 "I could never jump
-  on a bubble"):** `landsOn` = down through its top, or feet inside its top half (`scoop`; never the bubble you just left); one blown
-  under your feet in the air catches you at once (`under`); the aim ring is green when a hop reaches it; the stick waits `settle` 0.5 s
-  after landing. Spec part `real` plays with real keys and the game's own loop (the old robot climb drove the rules directly). The plateau overhangs the bench and a fizzy breeze (`BREEZES`, vents for bubbles) blows bubbles off the cliff, so the narrow
-  shaft is the only way up (`bubblecheck.mjs` proves it). Keys `pw:bubble:stairs`, `duck1..3`, `chimney`, `shield1..3`; the two fizz
-  lifts run once you did a stretch (or hold the star). Captain Suds (a giant Lathotter) gates on the five stretch keys and the three
-  shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won battle clears the eight climb keys. Kind help only through
-  `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
+  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Rework 2026-10-29** (owner:
+  "way too easy", the stairs were a chapter-1 pillar; "easy to understand, hard to master"; `plans/bubble-well.md` "Rework"):
+  **Bubble Stairs:** **Blow!** (one press) puts a bubble at ONE fixed spot, `BUBBLE.ahead` 2 blocks ahead of your feet the flat way you
+  face (pitch ignored; a green ghost bubble shows it), and **only with your feet on something** (`footing`: ground or a bubble; in the
+  air nothing, "Land first!"), so no pillar. It waits `hang`, then rises `rise` 1.3/s: hop at once = a small gain, let it float up = a
+  big one, too late = gone. The bubble you stand on pops `stand` 1.6 s after landing; two that touch both pop; six puffs a chain, any
+  ledge refills the wand. Shaft 1 has a low foam step (`STEP1`: the tutorial first hop; then side, back, bench); shaft 2 has drips over
+  its west half and a gentle side wind. Kids in the page (`makeKid`: only keys and `live.use`) prove it: pillar never, masher and
+  spammer never up shaft 2, skilled always. **Ducklings:** Puff! shows a glide arrow; a gusty gap (`GUSTS`, warn then blow toward
+  row A) must be crossed between gusts; a bubble lasts `DUCK.life` 45 s, then the duckling wakes and waddles home. **Chimney Ride:**
+  a golden ride bubble with a duck on its seat and a "Ride!" sign; fat gold rings, the next one pulses with a beam; the first ring is
+  right over the start. **Shields = bank shots** (`COURT`, `courtOf`, `bankShot`, `aimLine`): a foam fence (blocks) hides the throne;
+  from the round's gold pad Blow! sends a shot flat the way you look, it bounces off the pink cushion (meshes, only the current round's)
+  into the shield; round 3's cushion slides. A dotted line shows the way to the first bounce and a short stub. Keys unchanged
+  (`pw:bubble:stairs`, `duck1..3`, `chimney`, `shield1..3`: old shield keys still count). Every game replays for fun once won.
+  Landing: `landsOn` = down through its top, or feet in its top part (`scoop`); the stick waits `settle` after landing. The plateau
+  overhangs the bench and a fizzy breeze (`BREEZES`) blows bubbles off the cliff, so the narrow shaft is the only way up
+  (`bubblecheck.mjs`). The two fizz lifts run once you did a stretch (or hold the star). Captain Suds (a giant Lathotter) gates on the
+  five stretch keys and the three shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won battle clears the eight climb
+  keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
 
 ## Supabase
 
@@ -649,7 +659,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `book`: Creature Book
 - `box`: storage box (T13): let go, sort, filter
 - `castle`: T49 type, terrain (`castlecheck.mjs`), Shield Up! and the Joust with `castlebots.mjs` at 60 / 20 fps, shared gates, play, iPad, two browsers, closed without `?preview`; `CASTLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
-- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the shields with `bubblebots.mjs` at 60 / 20 fps, the climb with the real Player, play, iPad, two browsers, real keys and taps through the game's own loop (`real`), closed without `?preview`; `BUBBLE_ONLY=data|land|rules|play|ipad|pair|real|closed|shots`
+- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the bank shots with `bubblebots.mjs` at 60 / 20 fps (naive vs skilled), the stairs kids with the real Player (`stairs`), play, iPad, two browsers, real keys and taps through the game's own loop (`real`), closed without `?preview`; `BUBBLE_ONLY=data|land|rules|stairs|play|ipad|pair|real|closed|shots`
 - `caves`: T3/T8 caves and cave gyms
 - `champion`: tower, guards, coach, Champion (slow, about 5 min)
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms
@@ -730,7 +740,7 @@ Other test tools: `tests/perf.mjs` (load, memory, draw calls, fps; `--swirl`, `-
   Portal Door and the Swirl, realms together, missions that never end, the pastel Swirl), 13.5 (T39a-c), 14 (T40-T40d: Picture
   World base, Giant House, Pirate Seas, Race Track, Ball Stadium), 14.5 (the atlas grid), 15 (T41-T45 + T48: Atlantis, Portal House,
   Funfair, Surprise Party, Sketchbook; plans `wave15.md`, `T41`-`T45`) and T49 (the Castle). Next: wave 16 (Bubble Well and Cube
-  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), then wave 17 (the Wizard's Tower and the Custom type); chapter 3 = the
+  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), then wave 17 (gifts and trading between friends), wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
   Scribble as the Wizard's ally (battling beside him, crafting, eggs and raising, gifts and trading); the backlog (maybe a Swirl
   place, S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). The Portal Lab idea is
   `plans/T47-portal-lab.md` (not built).
