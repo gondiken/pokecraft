@@ -180,13 +180,14 @@ REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0
   noRide: 'No riding on the little planets! Walk and jump instead.' }); // owner 2026-10-29: riding is off here (riding.js; you get off on arrival)
 /* ==== end of Gravity ==== */
 /* ==== Bubble ==== */
-// The Bubble Well (behind the Swirl's pale blue frame, the old secret4): one climb up a fizzing well, the Bubble Stairs, the Duckling
+// The Bubble Well (behind the Swirl's pale blue frame, the old secret4): one climb up a fizzing well, the Fizz Ledges, the Duckling
 // Garden, the Chimney Ride, Captain Suds on the rim. The whole well is a keep (no building, no riding: your bubbles are the ride).
 REALMS.bubble = pictureRealm({ id: 'bubble', name: 'Bubble Well', seedSalt: 0xb0bb, size: [BUBBLE_SIZE, BUBBLE_SIZE], terrain: 'bubbleLand', arrive: [80, 131], biome: 'bubble',
   walk: [B.FOAM], spawns: { bubble: BUBBLE_SPAWNS, cave: [] }, zoneNames: { bubble: 'Bubble Well' },
   look: { sky: 0xc8ecff, fog: [60, 170], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🫧 Bubble Well', travelText: 'Floating in...', travelIcon: '🫧', enterText: 'Pop! Welcome to the Bubble Well!',
-  arriveHint: 'Blow a bubble ahead, hop on, hop again! Climb all the way up to Captain Suds.',
+  arriveHint: 'Dip your wand, blow a bubble, hop on!',
+  version: 2, // redesign 2026-10-29 (natural rules): the Fizz Ledges replaced the bench and the shafts (nothing can be built here, so no edit is lost; an old spot arrives at the start)
   noHomeText: 'No homes in the well! Build your home in your own world.', followText: 'Float in too' });
 /* ==== end of Bubble ==== */
 

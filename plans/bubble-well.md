@@ -350,3 +350,51 @@ stay; the four games changed like this.
 **Shared:** kind help only through `bubbleHelp` (= `kindHelp`): stairs rise slower, ducklings' winds weaker and bubble longer, ride as
 before, shields bigger and the slider slower; `HARD` (rematch) makes them faster / smaller. Every game replays for fun once won
 (the stairs and the ride by nature, the ducklings from the nest, the shields with `ForFun`).
+
+## Redesign 2026-10-29 (natural rules)
+
+The owner played the rework: "Climbing is definitely harder but it's a bit counter-intuitive ... what made it difficult wasn't skill
+either, it's about understanding the limitations of the game, which was mostly about turning around and finding a place to blow the
+bubble ... I don't want more instructions ... the lack of understanding isn't because we're lacking instructions. It's because they're
+not typically expected physics or expected logic. We're imposing them and asking the player to obey them ... Those rules should be
+natural to the game." Also: the ducklings could not be replayed in `?preview`; the Chimney Ride was "overly bright" from inside and
+"finishes in 10 seconds"; the bank shots were "pretty easy ... it even tells me where to stand"; and "is it a deliberate choice that I
+can blow many many bubbles and never run out of soap normally, but I do run out when I'm climbing?"
+
+**The binding rule from now on:** every rule is something a child already expects from real bubbles and wands, visible in the world, so
+it needs no explanation text. Words: only the big button's word ("Blow!", "Puff!", "Ride!") and at most one short line the first time.
+
+- **The wand and soap, the same everywhere:** a real wand must be dipped. Soap pots (a lilac tub of foam with a wand leaning in it) stand on
+  the floor, on every ledge, in the garden and on the balcony. Walk up to one (feet on its floor) and the wand dips: a shiny film in its
+  ring, the button says **Blow!**. One dip = one bubble. A dry wand only **puffs** air (natural), which pushes light things: bubbles, a
+  duckling in its bubble. Leaving the ground (a jump) shakes the film off, so a bubble is always blown from where you stand: no pillar, no
+  chaining bubbles in the air, no soap counter (the six dots are gone).
+- **The Fizz Ledges (replaced the Bubble Stairs; the roomy start the owner asked for):** the bench and both shafts are gone. Three wide
+  foam ledges (4 x 4, a soap pot each) stand out from the plateau's cliff: the floor -> 1 -> 2 -> 3 -> the plateau, 3, 3, 3 and 5 up.
+  A bubble comes out 1.5 in front of you (closer if something is in the way), waits a moment, floats up 0.95 a second, drifts with the
+  air you can see (fizz streams), wobbles and pops 3.6 s after it was blown, or on a wall or under a drip. Hop on and it carries you up;
+  lean with the stick to steer it a little (0.5 a second); Jump hops off. One bubble lifts you at most 5.65 (5.99 with all the kind
+  help), so no ledge can be skipped. Ledge 0 and 1 are still air (the obvious thing works). From ledge 2 a stream blows south, away from
+  ledge 3: blow from the north corner. From ledge 3 the plateau is 5 up (ride to the very end, hop off as it wobbles), next to the cliff
+  (you can't blow into it: blow along it), with drips falling from the edge and a gust that blows you off now and then (blow right after
+  one). Skill = where you blow (upwind), when you blow, and when you hop off. Lean the stick, never into a wall (a bubble rubbing a wall
+  pops).
+- **Ducklings:** unchanged rules, plus soap pots in the garden: bubbling a sleeping duckling needs a wet wand, a dry wand only ruffles it;
+  every push is a puff of air. The gust a little stronger (2.0).
+- **Chimney Ride:** from inside, the ride bubble is only a faint soap rim (the glow, gold body, sparks, seat and band are hidden while
+  you ride). Longer: the chimney is a little wider (r 4.5), five gold rings that alternate sides (the fourth turns slowly; a star counts
+  once you are up past it), two fans, steering 0.8: the best robot needs 24-29 s, a child about half a minute or more.
+- **Captain Suds' shields (replaced the bank shots):** three big shield bubbles bob on the rim's breeze (each its own loop, a gold star on
+  top). A bubble pops when you drop onto it from above (a stomp, Mario-style: what a child expects); from the side or below it only bumps
+  you. They are out of a jump's reach from anything you stand on; a soap pot under each lets you ride a bubble up past it, hop off and
+  drop onto its top. Skill = when to blow (as it comes over), when to hop off (late enough to be above it), steering onto its top. No pads,
+  no aim lines. Popped shields float back 6 s later just for fun once all three are popped.
+- **Keys kept** (`pw:bubble:stairs` now means the Fizz Ledges, `shield1..3` a stomped shield); **`REALMS.bubble` version 2** (an old spot
+  arrives at the start; nothing can be built there). **Old progress was cleared once** (owner: "reset my progress in ... bubble worlds"):
+  `worldreset.js` clears a save's `pw:bubble:*` keys, star and Boss wins once and keeps the mark `pw:bubble:redesign1`; allowed only
+  because the well was preview-only. **?preview "Start this world over"** (generic, the pause screen inside any Picture World).
+- **Proved** (`tests/specs/bubble.mjs` parts `kids`, `real`; the real Player and BubbleLive in Node, `tests/bubblenode.mjs`, at 60 and 20
+  fps): a skilled kid makes every leg with one bubble; a first-time kid (dip, face the ledge, blow, hop on, hop off once above it) gets
+  ledges 1 and 2 at once and not the windy ones; a kid who blows and hops at random makes the windy ledges about 1 time in 40 bubbles;
+  the pillar kid never leaves the floor. Shields: skilled pops each one every time (62-100 % of bubbles), random 5-28 % of bubbles, hopping
+  straight off never.

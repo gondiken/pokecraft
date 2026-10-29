@@ -10,8 +10,8 @@ import { catchPlan } from '../../src/jackcatch.js';
 import { stackPlan } from '../../src/giftstack.js';
 import { whackPlan } from '../../src/popupwhack.js';
 import { bossSpeed, makeTrack } from '../../src/racetrack.js';
-import { BubbleField, Duckling, Ride, bubbleHelp } from '../../src/bubbles.js'; // the Bubble Well
-import { GARDEN_RULES, ISLANDS, CHIMNEY } from '../../src/bubbleland.js';
+import { BubbleField, Duckling, Ride, shieldSize, shieldSway } from '../../src/bubbles.js'; // the Bubble Well
+import { GARDEN_RULES, ISLANDS, CHIMNEY, SHIELDS } from '../../src/bubbleland.js';
 import { PupRun, gravityHelp, PAD_SCALE } from '../../src/orbits.js'; // Cube Planets
 import { PUPS, BOXES } from '../../src/cubeland.js';
 
@@ -44,10 +44,10 @@ export default async function ({ t }) {
     whack: m => { const a = whackPlan(4, 2, 0, { help: kindHelp(m) }), b = whackPlan(4, 2, 0); return Math.max(a.up / b.up - 1, a.time / b.time - 1); },
     siege: m => { const a = siegePlan(4, 2, 0, { help: m }), b = siegePlan(4, 2, 0); return Math.max(a.throws[0].flight / b.throws[0].flight - 1, a.cover / b.cover - 1); },
     joust: m => { const a = joustPlan(4, 2, 0, { help: m }), b = joustPlan(4, 2, 0); return Math.max(a.meet / b.meet - 1, a.r / b.r - 1, a.hop / b.hop - 1, 1 - a.slow); },
-    bubbleStairs: m => { const a = new BubbleField({ help: m }), b = new BubbleField(); return Math.max(1 - a.rise / b.rise, a.standLife / b.standLife - 1, 1 - a.drip / b.drip); },
+    fizzLedges: m => { const a = new BubbleField({ help: m }), b = new BubbleField(); return Math.max(a.life / b.life - 1, 1 - a.drip / b.drip, 1 - a.wind / b.wind); },
     ducklings: m => { const a = new Duckling(GARDEN_RULES, ISLANDS[1], { help: m }), b = new Duckling(GARDEN_RULES, ISLANDS[1]); return Math.max(1 - a.current / b.current, 1 - a.gust / b.gust, a.friction / b.friction - 1, a.nestR / b.nestR - 1, a.life / b.life - 1); },
     chimney: m => { const a = new Ride(CHIMNEY, { help: m }), b = new Ride(CHIMNEY); return Math.max(1 - a.sink / b.sink, a.gap / b.gap - 1, 1 - a.barSpeed / b.barSpeed); },
-    shields: m => { const h = bubbleHelp(m); return Math.max(h.catch - 1, 1 - h.slide); },
+    shields: m => Math.max(shieldSize(SHIELDS[0], m) / shieldSize(SHIELDS[0]) - 1, 1 - shieldSway(m)),
     orbikitChase: m => { const q = PUPS[0], a = new PupRun(q.loop, BOXES[q.planet], { help: m }), b = new PupRun(q.loop, BOXES[q.planet]); return Math.max(1 - a.boost / b.boost, a.tagR / b.tagR - 1, a.button / b.button - 1); }, // Cube Planets
     planetHop: m => gravityHelp(m).pad / PAD_SCALE,
     moonRide: m => Math.max(1 - gravityHelp(m).moon, gravityHelp(m).ring - 1),

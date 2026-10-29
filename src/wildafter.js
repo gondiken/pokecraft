@@ -26,7 +26,7 @@ export const AFTER_CHECKS = {
   doodle: g => star(g, 'doodle') || lineState(g).count >= 4,
   portal: g => star(g, 'portal') || roomState(g).n >= 4,
   castle: g => star(g, 'castle') || castleState(g).n >= 3, // T49: three of the six rounds
-  bubble: g => star(g, 'bubble') || bubbleState(g).stairs, // the Bubble Well: once you climbed the Bubble Stairs
+  bubble: g => star(g, 'bubble') || bubbleState(g).stairs, // the Bubble Well: once you climbed the Fizz Ledges (key pw:bubble:stairs)
   gravity: g => star(g, 'gravity') || gravityState(g).tags >= 1, // Cube Planets: once you tagged an Orbikit
 };
 export const wildAfter = (game, id) => { try { return !!AFTER_CHECKS[id]?.(game); } catch { return false; } };
