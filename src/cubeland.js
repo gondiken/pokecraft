@@ -304,7 +304,7 @@ export function cubeAim(world, p, game) {
     }
     goal = P.meadow; words = '🖼️ Back to the Meadow Cube: the way back is there';
   }
-  if (on === goal || (BRANCH[on] === 'hop' && BRANCH[goal] === 'hop' && on !== P.hop0)) return null; // there: the live part's words (or the base)
+  if (on === goal || (BRANCH[on] === 'hop' && BRANCH[goal] === 'hop' && on !== P.hop0)) return { text: () => `${words} is here!` }; // there (the live part's words come first when a game is going on)
   // the Planet Hop's pebbles have no plain way out: a home flower
   if (BRANCH[on] === 'hop' && on !== P.hop0) { const h = HOME_FLOWERS.find(f => f.planet === on); if (h) return at([h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5], (a, m) => `💠 The blue flower takes you home ${a} ${m}m`); }
   if (on === P.great && goal !== P.great) { const h = HOME_FLOWERS.find(f => f.planet === on); if (h) return at([h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5], (a, m) => `💠 The blue flower takes you home ${a} ${m}m`); }
