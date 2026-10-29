@@ -13,9 +13,14 @@
 // Meshes: the swirls of the part you are in (DoorGlow vortices, lite: 1 call each), your two swirls, the Hub / Porch swirl, an aim
 // glow on the pad you look at, the sparks (one instanced mesh), the sliding pad, the ball and its button: all with
 // userData.portalHouse, removed in dispose(). The House's people are drawn only while you are in their part (draw calls).
+// Owner 2026-10-29 (portalprops.js): you hold the Swirl Wand (a wizard's wand with a star, drawn over the world in front of the camera:
+// 3 calls, only in the Hall and the rooms) and a tap shoots a bolt from its star to the pad; doors are wooden door frames with warm
+// light (one merged frame mesh per part, one light per open door), no longer swirls; violet back swirls on some ledges take you to
+// the room's start.
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { DoorGlow } from './portal.js';
+import { buildWand, buildBolt, buildDoorFrames, DoorLight, WAND_COLOURS } from './portalprops.js';
 import { LiveCells } from './livecells.js';
 import { Mover, makePath } from './mover.js';
 import { FUN } from './forfun.js';
@@ -25,9 +30,13 @@ import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOOR_N, DOOR_E, DOORS, SWIRLS
 import { pictureWorld } from './pictureworlds.js';
 import { sound } from './sound.js';
 
-// Owner 2026-10-28: the swirls must not look alike. Yours is blue, the orange one a deep orange, the doors between rooms green
-// (they were gold: too near orange), the pair pink; violet (null = DoorGlow's own colours) stays for the ways home, like the main world's.
-const COLOURS = { orange: [[1.0, 0.42, 0.02], [1.0, 0.68, 0.18]], teal: [[0.12, 0.38, 1.0], [0.5, 0.78, 1.0]], gold: [[0.2, 0.85, 0.3], [0.7, 1.0, 0.55]], pink: [[1.0, 0.35, 0.65], [1.0, 0.7, 0.9]], violet: null };
+// Owner 2026-10-28: the swirls must not look alike. Yours is blue, the orange one a deep orange, the pair pink; violet (null =
+// DoorGlow's own colours) stays for the ways home and back, like the main world's. Owner 2026-10-29: the doors between rooms were
+// green swirls, too like your blue one: now they are no swirl at all but wooden door frames with warm light (portalprops.js).
+const COLOURS = { orange: [[1.0, 0.42, 0.02], [1.0, 0.68, 0.18]], teal: [[0.12, 0.38, 1.0], [0.5, 0.78, 1.0]], pink: [[1.0, 0.35, 0.65], [1.0, 0.7, 0.9]], violet: null };
+// The wand in front of the camera (camera space: x right, y up, -z ahead): the grip low on the right, the star up and a little left.
+const WAND_AT = { x: 0.37, y: -0.42, z: -0.62, tilt: -0.45, lean: 0.35, size: 0.62, flick: 0.6, flickTime: 0.32 }; // (the star stays clear of the crosshair)
+const BOLT = { fly: 0.16, fade: 0.32 }; // seconds: the star flies to the pad, then the beam fades
 const inBox = (b, p) => p.x >= b.x0 && p.x <= b.x1 + 1 && p.z >= b.z0 && p.z <= b.z1 + 1 && p.y >= b.bottom && p.y <= b.top + 2;
 const SPARK_MAX = 4;
 const isOrangeEnd = s => s.kind === 'orange' || s.kind === 'peach';
@@ -64,6 +73,10 @@ export class PortalHouseLive {
     this.pressed = false;         // the Ball Room's button (this trip)
     this.balls = 0;               // balls dropped (tests)
     this.hold = null;             // tests: a moving swirl or pad stays at this value along its rail (the Clock Room's y, the Slider's x)
+    this.frames = new Map();      // part -> its merged door frames (owner 2026-10-29)
+    this.bolt = null;             // the bolt from the wand to a pad: { from, to, colour, t }
+    this.flick = 9;               // seconds since the wand last cast (its flick)
+    this.wandShown = false;
     this.build();
   }
 
@@ -93,12 +106,40 @@ export class PortalHouseLive {
     this.ballMesh.visible = false;
     this.buttonMesh = this.mark(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.3, 18), new THREE.MeshBasicMaterial({ color: 0xff7a3a })));
     this.buttonMesh.visible = false;
+    // the Swirl Wand, held in front of the camera (its matrices are set just before it is drawn, from the camera of that frame)
+    this.wandModel = buildWand();
+    this.wandMat = new THREE.Matrix4();
+    const self = this;
+    for (const m of this.wandModel.children) {
+      const local = new THREE.Matrix4().compose(m.position, m.quaternion, m.scale);
+      m.matrixAutoUpdate = false; m.frustumCulled = false; m.visible = false; m.userData.portalHouse = true;
+      m.onBeforeRender = function (renderer, scene, cam) { this.matrixWorld.multiplyMatrices(cam.matrixWorld, self.wandMat).multiply(local); };
+    }
+    this.wandParts = [...this.wandModel.children];
+    for (const m of this.wandParts) this.game.scene.add(m);
+    const { beam, head } = buildBolt();
+    this.boltBeam = this.mark(beam); this.boltHead = this.mark(head);
+    beam.visible = head.visible = false;
+  }
+  // The wand's star in the world now (for the bolt), from the camera of the last frame.
+  wandTip() {
+    const cam = this.game.camera;
+    if (!cam || !this.wandModel) return null;
+    this.wandPose(this.flick);
+    const v = this.wandModel.userData.tip.clone().applyMatrix4(this.wandMat).applyMatrix4(cam.matrixWorld);
+    return [v.x, v.y, v.z];
+  }
+  wandPose(since) {
+    const k = since < WAND_AT.flickTime ? Math.sin((since / WAND_AT.flickTime) * Math.PI) : 0; // a quick flick forward and back
+    const v = this.p?.vel, bob = this.p?.onGround && v ? Math.sin(this.clock * 9) * Math.min(1, Math.hypot(v.x, v.z) / 4) * 0.012 : 0;
+    this.wandMat.compose(new THREE.Vector3(WAND_AT.x, WAND_AT.y + bob, WAND_AT.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(WAND_AT.tilt - k * WAND_AT.flick, 0, WAND_AT.lean, 'XYZ')), new THREE.Vector3(WAND_AT.size, WAND_AT.size, WAND_AT.size));
   }
   drop(id) { const g = this.glows.get(id); if (g) { g.dispose(); this.glows.delete(id); } }
   glow(id, sw, opts = {}) {
     let g = this.glows.get(id);
+    if (!g && this.game.scene && sw.kind === 'door') { g = new DoorLight(this.game.scene, sw); this.glows.set(id, g); return g; } // a door: warm light, no swirl
     if (!g && this.game.scene) {
-      const lite = !(sw.kind === 'warp');
+      const lite = !(sw.kind === 'warp' && !sw.back);
       g = new DoorGlow(this.game.scene, null, null, { normal: sw.normal, centre: this.cen(sw), w: sw.w, h: sw.h, lite, colours: COLOURS[opts.colour ?? sw.colour] });
       g.group.userData.portalHouse = true;
       this.glows.set(id, g);
@@ -172,6 +213,9 @@ export class PortalHouseLive {
     this.armed[s.id] = !touches(s, c, this.feet(), true); // stepping onto a pad you just chose does not send you at once
     sound.play('swirlzip');
     this.puff([c[0] + s.normal[0] * 0.5, c[1] + s.normal[1] * 0.5, c[2] + s.normal[2] * 0.5], peach ? 0xff8a30 : 0x4a8cff);
+    this.flick = 0;
+    const from = this.wandTip();
+    if (from) this.bolt = { from, to: [c[0] + s.normal[0] * 0.1, c[1] + s.normal[1] * 0.1, c[2] + s.normal[2] * 0.1], colour: peach ? WAND_COLOURS.orange : WAND_COLOURS.teal, t: 0 };
     this.drop(peach ? 'mine' : 'yours');
     const room = this.isRoom(this.where()) ? this.room(this.where()) : null;
     if (peach) this.once('placedPeach', this.yours ? 'Your orange swirl is on the peach pad! Both ends are yours now.' : 'Your orange swirl is on the peach pad! Now put your blue swirl on a white pad.');
@@ -219,7 +263,7 @@ export class PortalHouseLive {
   through(sw, drop) {
     const n = this.where(), room = this.isRoom(n) ? this.room(n) : null;
     this.game.riding?.stop?.('quiet');
-    if (sw.kind === 'warp') return this.warp(sw.to);
+    if (sw.kind === 'warp') { if (sw.back) this.once('back', 'Back to the start of this room!'); return this.warp(sw.to); } // (a back swirl keeps your swirls)
     if (sw.kind === 'door') return this.door(sw);
     if (sw.kind === 'pair') {
       const other = swirlById(sw.pair), out = exitOf(other, other.centre, 0);
@@ -524,9 +568,12 @@ export class PortalHouseLive {
     if (this.isRoom(n) && this.yours) { const y = swirlById(this.yours); if (y.room === n) show('yours', y, 1, 'teal'); }
     if (this.isRoom(n) && this.orange) { const o = swirlById(this.orange); if (o.room === n) show('mine', o, this.yours ? 1 : 0.4, 'orange'); }
     for (const id of [...this.glows.keys()]) if (!want.has(id)) this.drop(id);
+    this.drawFrames(n);
     // the aim glow on the pad you look at
+    const aimedNow = this.isRoom(n) && this.wand && this.running() ? this.aimed() : null;
+    this.drawWand(dt, n, aimedNow);
     if (this.aimMesh) {
-      const s = this.isRoom(n) && this.wand && this.running() ? this.aimed() : null;
+      const s = aimedNow;
       this.aimMesh.visible = !!s;
       if (s) {
         const [nx, ny, nz] = s.normal, c = this.cen(s);
@@ -572,6 +619,51 @@ export class PortalHouseLive {
     }
     this.people(n);
     this.score(n);
+  }
+  // The door frames of the part you are in: built once per part, one merged mesh each, always drawn (a shut door shows its frame).
+  drawFrames(n) {
+    if (!this.game.scene) return;
+    const key = n === 'hall' || n === 'study' || this.isRoom(n) ? String(n) : null;
+    if (key && !this.frames.has(key)) {
+      const m = buildDoorFrames(SWIRLS.filter(s => s.kind === 'door' && s.alcove && String(s.room) === key));
+      if (m) this.mark(m);
+      this.frames.set(key, m);
+    }
+    for (const [k, m] of this.frames) if (m) m.visible = k === key;
+  }
+  // The Swirl Wand in your hand (in the Hall and the rooms, while you play) and the bolt it shot.
+  drawWand(dt, n, aimed) {
+    if (!this.wandParts) return;
+    this.flick += dt;
+    const show = this.wand && (n === 'hall' || this.isRoom(n)) && !this.game.inBattle && !!this.game.camera;
+    this.wandShown = show;
+    for (const m of this.wandParts) m.visible = show;
+    if (show) {
+      this.wandPose(this.flick);
+      const { star, halo } = this.wandModel.userData.parts;
+      const col = aimed ? (aimed.kind === 'peach' ? WAND_COLOURS.orange : WAND_COLOURS.teal) : WAND_COLOURS.idle;
+      star.material.color.setHex(col); halo.material.color.setHex(col);
+      halo.material.opacity = (aimed ? 0.5 : 0.25) + 0.12 * Math.sin(this.clock * 5);
+    }
+    const b = this.bolt;
+    if (!b) { this.boltBeam.visible = this.boltHead.visible = false; return; }
+    b.t = this.boltHold ?? b.t + dt; // (boltHold: tests freeze the bolt for a picture)
+    if (b.t > BOLT.fly + BOLT.fade) { this.bolt = null; this.boltBeam.visible = this.boltHead.visible = false; return; }
+    const k = Math.min(1, b.t / BOLT.fly), F = new THREE.Vector3(...b.from), T = new THREE.Vector3(...b.to), H = F.clone().lerp(T, k);
+    const len = F.distanceTo(H);
+    this.boltBeam.visible = len > 0.05;
+    if (len > 0.05) {
+      this.boltBeam.position.copy(F).lerp(H, 0.5);
+      this.boltBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), H.clone().sub(F).normalize());
+      this.boltBeam.scale.set(1, len, 1);
+      this.boltBeam.material.color.setHex(b.colour);
+      this.boltBeam.material.opacity = 0.85 * (b.t < BOLT.fly ? 1 : 1 - (b.t - BOLT.fly) / BOLT.fade);
+    }
+    this.boltHead.visible = b.t < BOLT.fly + 0.05;
+    this.boltHead.position.copy(H);
+    this.boltHead.lookAt(this.game.camera.position);
+    this.boltHead.rotateZ(this.clock * 12);
+    this.boltHead.material.color.setHex(b.t < BOLT.fly ? 0xffffff : b.colour);
   }
   // The House's people (Grandpa Arch is a giant model of 38 meshes, each keeper about 25) are drawn only in their own part: from the
   // hub they would be far-off specks costing 100 draw calls. From the porch you see into the Hall.
@@ -625,7 +717,7 @@ export class PortalHouseLive {
 
   info() {
     return { part: this.partKey, wand: this.wand, yours: this.yours, orange: this.orange, clock: this.clock, trips: this.trips, sparks: this.sparksGot.size, done: this.done.n, chain: { ...this.chain }, flying: !!this.mover, last: this.lastTrip, glows: this.glows.size, meshes: this.meshes.length, peak: this.peak,
-      ball: this.ball ? { at: this.ballAt(), rest: this.ball.rest != null } : null, pressed: this.pressed, balls: this.balls, misses: { ...this.misses } };
+      ball: this.ball ? { at: this.ballAt(), rest: this.ball.rest != null } : null, pressed: this.pressed, balls: this.balls, misses: { ...this.misses }, wandShown: this.wandShown, bolt: !!this.bolt, frames: [...this.frames.keys()] };
   }
 
   dispose() {
@@ -635,5 +727,8 @@ export class PortalHouseLive {
     for (const id of [...this.glows.keys()]) this.drop(id);
     for (const m of this.meshes) { this.game.scene?.remove(m); m.geometry?.dispose(); m.material?.map?.dispose?.(); m.material?.dispose(); }
     this.meshes = [];
+    for (const m of this.wandParts ?? []) this.game.scene?.remove(m);
+    this.wandModel?.userData.dispose();
+    this.wandParts = null;
   }
 }

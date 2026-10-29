@@ -21,6 +21,8 @@ import { TouchControls } from './touch.js';
 import { createRiding, rideKind } from './riding.js';
 import { createHideSeek } from './hideseek.js'; // T30
 import { createPlayTogether } from './playtogether.js';
+import { createSwaps } from './swaps.js'; // wave 17: gifts and trades
+import { createSwapUi } from './swapui.js'; // wave 17
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
@@ -200,6 +202,7 @@ function snapshot() {
     blockCounts: game.blockCounts,
     missions: game.missionState, // T29
     keys: game.keys,
+    swaps: game.swaps?.toSave(), // wave 17: gifts and trades on the way (swapcore.js)
     toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
@@ -300,6 +303,7 @@ function startNew(starterId) {
   game.party = [makeCreature(starterId, 6)];
   game.box = [];
   game.book.reset(); game.book.syncTeam();
+  game.swaps?.load(null); // wave 17
   game.cubes = 10;
   game.time = 0.05;
   game.badges = [];
@@ -342,6 +346,7 @@ function continueGame(saved) {
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
+  game.swaps?.load(saved.swaps); // wave 17: old saves have none
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
@@ -523,6 +528,13 @@ game.openNav = () => {
   if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking && !game.hideSeek?.frozen && !dark && !game.realms.busy) togglePanel('nav');
 };
 game.closeNav = () => { if (game.ui.navOpen) togglePanel(); };
+// Wave 17: the Swap panel (gifts and trades); swaps.js opens it, it refreshes when it is already open
+game.openSwap = () => {
+  if (game.swapUi.isOpen) { game.swapUi.refresh(); return; }
+  if (game.ui.panelOpen) game.ui.closePanel();
+  if (game.started && !game.inBattle) togglePanel('swap');
+};
+document.getElementById('swap-close').addEventListener('click', () => { if (game.swapUi.isOpen) togglePanel('swap'); });
 document.getElementById('nav-close').addEventListener('click', () => togglePanel('nav'));
 
 document.addEventListener('pointerlockchange', () => {
@@ -1225,6 +1237,7 @@ function frame(now) {
     game.npcs.update(dt, p.pos);
     game.mp.update(dt);
     game.hideSeek.update(dt); // T30
+    game.swaps?.update(dt); // wave 17
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
     if (game.battle.friendModel) animateModel(game.battle.friendModel, now / 1000 + 2, false); // T29: the co-op friend's creature
     if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
@@ -1298,6 +1311,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 /* ----------------------------- play together ----------------------------- */
 
 const { goHome } = createPlayTogether(game, { createWorld, save, pushCloud, startBattle, pauseEl, resume });
+game.swaps = createSwaps(game, { save }); // wave 17: gifts and trades between friends
+game.swapUi = createSwapUi(game); // wave 17
 
 showTitle();
 requestAnimationFrame(frame);
