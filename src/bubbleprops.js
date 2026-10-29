@@ -200,10 +200,16 @@ export function buildChimney(chim, gapOf) {
       spikes.setMatrixAt(i * 2 + 1, M.compose(new THREE.Vector3(x, p.y - 0.22, z), Q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI), S));
     });
     spikes.frustumCulled = false;
-    const glowRing = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.06, 6, 24), new THREE.MeshBasicMaterial({ color: 0xfff28a }));
-    glowRing.rotation.x = Math.PI / 2; glowRing.position.set(gp.x, p.y + 0.32, gp.z);
-    g.add(disc, spikes, glowRing);
-    plates.push({ disc, spikes, glowRing });
+    // the gold ring round the gap (rework 2026-10-29: fat and bright, so "fly through the gold rings" reads at a glance), a soft halo and a
+    // beam of light under it (the live part shows the beam and pulses the ring only for the next ring)
+    const glowRing = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.16, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
+    glowRing.rotation.x = Math.PI / 2; glowRing.position.set(gp.x, p.y + 0.36, gp.z);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.42, 6, 32), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.28, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.rotation.x = Math.PI / 2; halo.position.copy(glowRing.position); halo.renderOrder = 5;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 3.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    beam.position.set(gp.x, p.y - 1.6, gp.z); beam.renderOrder = 5; beam.visible = false;
+    g.add(disc, spikes, glowRing, halo, beam);
+    plates.push({ disc, spikes, glowRing, halo, beam });
   }
   // the fan: four blades on a hub on the wall, turning
   const fan = new THREE.Group(), side = Math.atan2(chim.fan.vz, chim.fan.vx);
@@ -258,6 +264,120 @@ export function buildShields(shield) {
     g.add(s); list.push({ g: s, ring, r });
   });
   g.userData.parts = { list };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+
+/* ---------------------------------------------- rework 2026-10-29: each game's key object stands out ---------------------------------------------- */
+// A canvas word on a sprite (always faces you): the "Ride!" sign over the ride bubble.
+export function buildSign(text, { color = '#ff4f9a', w = 2.2, h = 1.1, arrow = true } = {}) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,255,255,0.92)'; x.strokeStyle = color; x.lineWidth = 10;
+  x.beginPath(); if (x.roundRect) x.roundRect(8, 8, 240, arrow ? 84 : 112, 30); else x.rect(8, 8, 240, arrow ? 84 : 112); x.fill(); x.stroke();
+  x.fillStyle = color; x.font = 'bold 60px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, arrow ? 52 : 66);
+  if (arrow) { x.beginPath(); x.moveTo(104, 96); x.lineTo(152, 96); x.lineTo(128, 124); x.closePath(); x.fill(); }
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sprite.scale.set(w, h, 1); sprite.renderOrder = 6;
+  const g = new THREE.Group(); g.add(sprite);
+  g.userData.parts = { sprite };
+  g.userData.dispose = () => { tex.dispose(); sprite.material.dispose(); };
+  return g;
+}
+// The Chimney Ride's bubble (owner 2026-10-29: "the bubble didn't look like a different, nice-looking bubble"): a big golden-rainbow
+// bubble with a soft glow round it, a gold band and a foam seat inside (the live part sits a little rubber duck on it while nobody rides).
+export function buildRideBubble(r = 1) {
+  const g = new THREE.Group();
+  const film = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), soapMaterial(1.25));
+  film.renderOrder = 2;
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(r * 0.17, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
+  shine.position.set(-r * 0.42, r * 0.52, r * 0.42); shine.renderOrder = 3;
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(r * 1.25, 24, 14), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending }));
+  glow.renderOrder = 1;
+  const band = new THREE.Mesh(new THREE.TorusGeometry(r * 1.02, 0.05, 6, 40), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
+  band.rotation.x = Math.PI / 2;
+  const seat = new THREE.Mesh(new THREE.TorusGeometry(r * 0.42, r * 0.13, 8, 20), lam(0xffffff, { emissive: 0x404048 }));
+  seat.rotation.x = Math.PI / 2; seat.position.y = -r * 0.62;
+  g.add(glow, film, shine, band, seat);
+  g.userData.parts = { film, shine, glow, band, seat };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+// Where Blow! will put your next bubble (the Bubble Stairs): a faint ghost bubble with a ring round its middle.
+export function buildGhost(r = 0.55) {
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.035, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
+  ring.rotation.x = Math.PI / 2;
+  ball.renderOrder = 4; ring.renderOrder = 4;
+  g.add(ball, ring);
+  g.userData.parts = { ball, ring };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+// n little dots (a dotted aim line: the shields' bank shot).
+export function buildDots(n = 40, color = 0xffffff, size = 0.07) {
+  const g = new THREE.Group();
+  const dots = inst(new THREE.SphereGeometry(size, 6, 4), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }), n);
+  dots.renderOrder = 6;
+  g.add(dots);
+  g.userData.parts = { dots, n };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+// Puts the dots along a polyline [[x, z]...] at height y, one every `gap` blocks (the rest hidden); shift slides them along (a march).
+export function drawDots(g, pts, y, gap = 0.4, shift = 0) {
+  const { dots, n } = g.userData.parts, M = new THREE.Matrix4();
+  let i = 0;
+  for (let k = 1; k < pts.length && i < n; k++) {
+    const [ax, az] = pts[k - 1], [bx, bz] = pts[k], len = Math.hypot(bx - ax, bz - az);
+    if (len < 1e-6) continue;
+    for (let s = (k === 1 ? shift % gap : 0); s <= len && i < n; s += gap) dots.setMatrixAt(i++, M.makeTranslation(ax + (bx - ax) * s / len, y, az + (bz - az) * s / len));
+  }
+  for (; i < n; i++) dots.setMatrixAt(i, ZERO);
+  dots.instanceMatrix.needsUpdate = true;
+}
+// The Puff! arrow on the floor: which way and how far a puff sends the duckling (length 1 along +x: the live part scales and turns it).
+export function buildArrow(color = 0xfff28a) {
+  const g = new THREE.Group(), sh = new THREE.Shape();
+  sh.moveTo(0, -0.12); sh.lineTo(0.8, -0.12); sh.lineTo(0.8, -0.3); sh.lineTo(1, 0); sh.lineTo(0.8, 0.3); sh.lineTo(0.8, 0.12); sh.lineTo(0, 0.12); sh.closePath();
+  const geo = new THREE.ShapeGeometry(sh); geo.rotateX(-Math.PI / 2);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
+  mesh.renderOrder = 4;
+  g.add(mesh);
+  g.userData.parts = { mesh };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+// The shield game's soap cushions: plump pink pillows with white stripes (a box in world units from bubbleland.js COURT), y0 its floor.
+export function buildCushion(box, y0, h = 2) {
+  const g = new THREE.Group(), w = box.x1 - box.x0, d = box.z1 - box.z0;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lam(0xff7ab8, { emissive: 0x501030 }));
+  body.position.set(w / 2, h / 2, d / 2);
+  const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), lam(0xffa0cc, { emissive: 0x401028 }));
+  puff.scale.set(w * 0.62, h * 0.55, d * 0.55); puff.position.copy(body.position);
+  g.add(body, puff);
+  const long = d >= w;
+  for (let s = 0.5; s < (long ? d : w); s += 1.4) {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(long ? w + 0.04 : 0.16, h * 0.9, long ? 0.16 : d + 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    st.position.set(long ? w / 2 : s, h / 2, long ? s : d / 2); g.add(st);
+  }
+  g.position.set(box.x0, y0, box.z0);
+  g.userData.parts = { body, puff };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+// A gold pad on the floor (the shield game): a gold ring with a pale middle; y its floor's top.
+export function buildPad(x, y, z, r = 1.0) {
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.72, r, 32), new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.95, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2;
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(r * 0.72, 32), new THREE.MeshBasicMaterial({ color: 0xfff6c0, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
+  fill.rotation.x = -Math.PI / 2; fill.position.y = -0.005;
+  g.add(ring, fill);
+  g.position.set(x, y + 0.03, z);
+  g.userData.parts = { ring, fill };
   g.userData.dispose = disposer(g);
   return g;
 }
