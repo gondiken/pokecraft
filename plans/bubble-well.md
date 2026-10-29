@@ -176,7 +176,7 @@ line for `STORY.md` when built).
 | --- | --- |
 | 255 (wool), 147, 148 | Bubble Well: the bubble wool, `FOAM`, `FIZZ_WALL` |
 | 149 (wool), 183, 249 | Cube Planets: the gravity wool, `PLANET_ROCK`, `STAR_GRASS` |
-| 137 | wave 17, the Custom type's wool |
+| 137 | wave 18 (was 17), the Custom type's wool |
 | 138, 139 | spare (the last two ids in the game) |
 
 - This world takes **only its three**: 255 for the type's wool (required by the gym/roof code, `WOOL_ID_OVERRIDE`),

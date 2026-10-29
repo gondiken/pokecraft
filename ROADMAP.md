@@ -1217,7 +1217,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
   (2026-10-25, changed 2026-10-26): **12 stars, every one from a Picture World**, 11 frames (framed Picture Worlds; five are placeholder
   `secret1`..`secret5` still to be named; `secret1` will be Doodle, wave 15), 12 bridge stones (the eleven plus Portal, whose house is in
-  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 17). Their levels
+  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 18). Their levels
   sit above the Champion; `REMATCH_CAP` and Coach Dex are checked against the new top.
 
 ## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`) ✅ done (T39a-c)
@@ -1345,7 +1345,17 @@ The last two stars (the Castle, T49, took `secret3` and is live): **Bubble Well*
 first). With them all 12 stars have a world, so the star bridge to the Wizard can be finished. Block ids are shared out in
 `plans/bubble-well.md` section 7.
 
-## Wave 17 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28)
+## Wave 17 · Gifts and trading (owner, 2026-10-29: next after Bubble Well and Cube Planets are fully ready)
+
+Moved here from "Sharing" below (owner 2026-10-29: "let's make trading and gifting wave 17"). Between friends playing together:
+- **Gifts:** give a friend blocks or Capture Cubes; they arrive as a **present box** that the friend opens.
+- **Trading:** swap creatures between two players.
+- Plan it in its own `plans/` file before building: play-together messages (host / guest, old clients), the save (what moves
+  between two saves, never lost or duplicated if a browser closes halfway), creatures' `uid` / traits / `learned`, the Book's
+  caught list, the Box, iPad, and the two-browser specs (`openPair`). Chapter 3's "eggs that only hatch with a friend's help"
+  stay in chapter 3 and can build on it later.
+
+## Wave 18 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29)
 
 "Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). **The Wizard is chapter 2's
 championship** (owner, 2026-10-26): he gives no star (all 12 come from Picture Worlds and are found before you can cross the bridge);
@@ -1401,14 +1411,13 @@ over the worlds; you are the **Wizard's ally**. Pieces so far:
   things leads to something cool and fun (a colour change, a bounce, a glow, a tiny creature friend...). Fits chapter 3's
   "making things" side, next to crafting. Not a size-changing potion world (that idea was dropped).
 - **Eggs, hatching and raising** (section below): a scribbled creature turned back into an egg; raise it to heal it.
-- **Gifts and trading** (section below): some eggs only hatch with a friend's help; presents and trades between friends.
+- **Gifts and trading** (wave 17 builds presents and trades between friends): some eggs only hatch with a friend's help.
 - **The ending:** help the Wizard finish drawing the Scribble, and it becomes a friend.
 - Not wanted: more "custom" design features (owner, 2026-10-24).
 
 ## Sharing and the world around you (owner, 2026-10-20)
 
-- **Gifts and trading:** give a friend blocks or a Capture Cube (arrives as a present box), and trade creatures
-  between players.
+- **Gifts and trading:** moved to **wave 17** (owner 2026-10-29).
 - **Dreaming together** (moved to wave 13 as "realms together"): today a guest cannot follow the host into the Dream realm
   (T31 toast), so a visiting friend can't catch Dream creatures or earn that badge; let a guest come along.
 - **Photo mode.**
