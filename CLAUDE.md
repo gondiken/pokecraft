@@ -145,10 +145,11 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/castlelive.js` | T49 `CastleLive` = `LIVE.castle`: the shield stance and the steed (`carry` objects), throws, gates with `LiveCells`, the Joust's view (`JOUST_VIEW`, owner 2026-10-28), the maze's fun (`MAZE_FUN`), `battleEnded`, `manual` + `step` |
 | `src/castleprops.js` | T49 the Castle's models (`buildPracticeKnight` with its `parts.shield`, catapults, lance, drawbridge, portcullis, horseshoes, critters, spray) |
 | `src/castlegate.js` | T49 the shared gates (owner 2026-10-28: physical): `createCastleGates` -> `game.castleGates`; play-together `castle` message, per session, never saved |
-| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160): `WELL`, `FLOOR`, `MESA`, `BENCH` (+ its overhang), `SHAFT1` / `SHAFT2`, `BREEZES`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS`, `CHIMNEY`, `RIM`, `SHIELD` / `COURT` / `courtOf` (bank shots), `STEP1`, `GUSTS`, `LIFTS`, `DRIPS`, `SOAP_FLOWERS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `bubbleAim`, `bubbleLand` |
-| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (Blow!, rise, pop, stand), `dripAt`, `DUCK` / `Duckling` (Puff! nudges), `RIDE` / `Ride` (the Chimney Ride: taps, plates, the arm), `BANK` / `bankShot` / `aimLine` (the shields), `gustAt`, `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
-| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand, standing on a bubble (a `carry`: Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff), the bank shots (pads, cushions, aim dots), the fizz lifts (in `world.lifts` only while on), `battleEnded`, `manual` + `step`, `info()` |
-| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, aim dots, Puff! arrow, ride bubble + "Ride!" sign, cushions, gold pads, wand, drips, streams, soap flowers, thorns, nest, the chimney's plates / fan / arm / stars, shields |
+| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160; redesign 2026-10-29): `WELL`, `FLOOR`, `MESA`, `LEDGES` (the Fizz Ledges), `SOAP_POTS` / `RIM_POTS`, `WINDS` (a stream, a gust, the rim breeze), `DRIPS`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS` / `GUSTS`, `CHIMNEY` (5 rings, 2 fans, the arm), `RIM`, `SHIELDS`, `LIFTS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `ledgeAt`, `bubbleAim`, `bubbleLand` |
+| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (out of the wand, rise, drift, wobble, pop, puffs of air), `rideUp`, `dripAt`, `gustAt`, `DUCK` / `Duckling`, `RIDE` / `Ride` (the Chimney Ride: taps, plates (one turns), fans, the arm), `shieldAt` / `stomp` / `shieldSize` / `shieldSway` (the shields), `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
+| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand (`wet`: dips by a soap pot, a jump shakes it off; Blow! / Puff!), riding a bubble (a `carry`: the stick leans it, Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff; from inside only a faint rim), the shields (stomps, bumps, for-fun returns), the fizz lifts, `battleEnded`, `manual` + `step`, `info()` |
+| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, the wand (its film only while wet), puffs of air, soap pots, Puff! arrow, ride bubble + "Ride!" sign, drips, streams, thorns, nest, the chimney's plates / fans / arm / stars, shields |
+| `src/worldreset.js` | Owner 2026-10-29: `WORLD_RESETS` (a redesigned preview-only world's old progress is cleared once per save, then a mark key is kept: the Bubble Well, `pw:bubble:redesign1`), `clearWorlds`, `runWorldResets` (main.js), `createWorldReset` -> `game.worldReset`: ?preview's pause-screen "Start this world over" inside a Picture World |
 | `src/bigtop.js` | T34 Big Top Gym (slot 6): `buildBigTop`, no live parts |
 | `src/missions.js` | T29 Champion missions: `MISSIONS` (12, append-only), `REWARDS`, `loadMissions`, `nextMission`, `missionOf`, `createMissions` -> `game.missions` |
 | `src/missiongen.js` | T38c the mission maker (pure): `makeMission(n, seed)`, `cleanSpec`, `roundKinds`, `roundOf`, pools, `MORE_SPOTS` |
@@ -587,29 +588,38 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   2026-10-29:** the steady camera (a dip to the sky colour) was tried and removed ("just a blink"); no round planets; no bevelled edges (a
   1-block bevel is a step down from both faces). **No riding** (realm def `noRide`, generic). Off-world bit for bit: `tests/cuberecord.mjs`
   against `tests/fixtures/cube-off-golden.json`.
-- **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
+- **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `tests/bubblenode.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
   only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
-  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Rework 2026-10-29** (owner:
-  "way too easy", the stairs were a chapter-1 pillar; "easy to understand, hard to master"; `plans/bubble-well.md` "Rework"):
-  **Bubble Stairs:** **Blow!** (one press) puts a bubble at ONE fixed spot, `BUBBLE.ahead` 2 blocks ahead of your feet the flat way you
-  face (pitch ignored; a green ghost bubble shows it), and **only with your feet on something** (`footing`: ground or a bubble; in the
-  air nothing, "Land first!"), so no pillar. It waits `hang`, then rises `rise` 1.3/s: hop at once = a small gain, let it float up = a
-  big one, too late = gone. The bubble you stand on pops `stand` 1.6 s after landing; two that touch both pop; six puffs a chain, any
-  ledge refills the wand. Shaft 1 has a low foam step (`STEP1`: the tutorial first hop; then side, back, bench); shaft 2 has drips over
-  its west half and a gentle side wind. Kids in the page (`makeKid`: only keys and `live.use`) prove it: pillar never, masher and
-  spammer never up shaft 2, skilled always. **Ducklings:** Puff! shows a glide arrow; a gusty gap (`GUSTS`, warn then blow toward
-  row A) must be crossed between gusts; a bubble lasts `DUCK.life` 45 s, then the duckling wakes and waddles home. **Chimney Ride:**
-  a golden ride bubble with a duck on its seat and a "Ride!" sign; fat gold rings, the next one pulses with a beam; the first ring is
-  right over the start. **Shields = bank shots** (`COURT`, `courtOf`, `bankShot`, `aimLine`): a foam fence (blocks) hides the throne;
-  from the round's gold pad Blow! sends a shot flat the way you look, it bounces off the pink cushion (meshes, only the current round's)
-  into the shield; round 3's cushion slides. A dotted line shows the way to the first bounce and a short stub. Keys unchanged
-  (`pw:bubble:stairs`, `duck1..3`, `chimney`, `shield1..3`: old shield keys still count). Every game replays for fun once won.
-  Landing: `landsOn` = down through its top, or feet in its top part (`scoop`); the stick waits `settle` after landing. The plateau
-  overhangs the bench and a fizzy breeze (`BREEZES`) blows bubbles off the cliff, so the narrow shaft is the only way up
-  (`bubblecheck.mjs`). The two fizz lifts run once you did a stretch (or hold the star). Captain Suds (a giant Lathotter) gates on the
-  five stretch keys and the three shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won battle clears the eight climb
-  keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
+  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Redesign 2026-10-29
+  ("natural rules", `plans/bubble-well.md`):** owner: "the lack of understanding isn't because we're lacking instructions. It's because
+  they're not typically expected physics ... Those rules should be natural to the game", and "I don't want more instructions". **Every
+  rule is one a child already expects from real bubbles and a real wand; no explaining text** (only the big button's word and one short
+  line the first time). **The wand** (`wet`): walk up to a soap pot (`SOAP_POTS`, meshes) and it dips (a film in its ring); one dip = one
+  bubble (Blow!), a dry wand only puffs air (Puff!: pushes bubbles and a duckling's bubble); leaving the ground (a jump) shakes the film
+  off, so there is no pillar and no mid-air chaining. Same everywhere (the six-dot soap chip is gone). **The Fizz Ledges** (replaced the
+  Bubble Stairs; key `pw:bubble:stairs` kept): a bubble comes out `BUBBLE.ahead` 1.5 in front (closer when something is in the way),
+  waits `hang`, floats up `rise` 0.95/s, drifts with the visible `WINDS`, wobbles, pops at `life` 3.6 s (or on a wall or a drip). Hop on
+  and it carries you (the stick leans it at `steer` 0.5); Jump hops off. One bubble lifts at most `rideUp()` 5.65 (< 6 even with the
+  kind help), so every ledge is needed (`bubblecheck.mjs` proves it); gaps 3, 3, 3, 5: the floor and ledge 1 are still air (a first-time
+  kid gets them), ledge 2 has a stream blowing away from ledge 3 (blow from the north corner), ledge 3 -> the plateau needs a ride to
+  the very end, drips and a gust (blow right after one). Kids with the real Player in Node (`bubblenode.mjs`, `makeKid`) prove skilled
+  always, first-time the first two, random rarely, pillar never. **Ducklings:** as before plus soap pots in the garden (a wet wand to
+  bubble one), the gust a little stronger. **Chimney Ride:** from inside the ride bubble is only a faint rim (`RP.*` hidden); five gold
+  rings (the fourth turns, `spin`; a star counts once you are up past it), two fans, `RIDE.steer` 0.8, about 25 s for the best robot.
+  **Shields** (replaced the bank shots; keys `shield1..3` kept): three big shield bubbles bob on the rim breeze (`SHIELDS`, `shieldAt`); a
+  soap pot under each (`RIM_POTS`); ride a bubble up, hop off above one and drop onto its top (`stomp`: pop; from the side or below it
+  bumps); out of a jump's reach from anything you stand on. Popped ones float back `funBack` 6 s later just for fun. **The one-time
+  reset** (`worldreset.js`, owner: "reset my progress in ... bubble worlds"): a save without `pw:bubble:redesign1` loses its old
+  `pw:bubble:*` keys (crew too), the `bubble` star and `bossWins.bubble` once, then keeps the mark; allowed only because the Bubble Well
+  was preview-only (nobody else could play it); every other world untouched. `REALMS.bubble` version 2. Landing: `landsOn` = down
+  through its top, or feet in its top part (`scoop`). The two fizz lifts run once you did a stretch (or hold the star). Captain Suds (a
+  giant Lathotter) gates on the five stretch keys and the three shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won
+  battle clears the eight climb keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
+- **"Start this world over" (owner 2026-10-29, `worldreset.js`):** only with `?preview` (`comingsoon.js` `PREVIEW`), in the pause screen
+  while inside a Picture World (a realm with `parent`): two taps clear that world's `pw:<id>:*` keys (crew too; never a reset mark), its
+  star and `bossWins` entry (the world you came in through; a shared world without one: all of its worlds), save, rebuild the live parts
+  (`gymLive.reset`) and put you at its arrival. Generic: any Picture World (Cube Planets too).
 
 ## Supabase
 
@@ -659,7 +669,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `book`: Creature Book
 - `box`: storage box (T13): let go, sort, filter
 - `castle`: T49 type, terrain (`castlecheck.mjs`), Shield Up! and the Joust with `castlebots.mjs` at 60 / 20 fps, shared gates, play, iPad, two browsers, closed without `?preview`; `CASTLE_ONLY=data|land|rules|play|ipad|pair|closed|shots`
-- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), bubbles / ducklings / the Chimney Ride / the bank shots with `bubblebots.mjs` at 60 / 20 fps (naive vs skilled), the stairs kids with the real Player (`stairs`), play, iPad, two browsers, real keys and taps through the game's own loop (`real`), closed without `?preview`; `BUBBLE_ONLY=data|land|rules|stairs|play|ipad|pair|real|closed|shots`
+- `bubble`: the Bubble type, the well as terrain (`bubblecheck.mjs`), the rules (bubbles, ducklings, the Chimney Ride, stomps) with `bubblebots.mjs` at 60 / 20 fps, kids with the real Player in Node (`bubblenode.mjs`: the Fizz Ledges leg by leg and the shields, naive vs skilled, `kids`), play, iPad, two browsers, real keys and taps through the game's own loop (`real`), the one-time reset and ?preview's "Start this world over" (`reset`), closed without `?preview`; `BUBBLE_ONLY=data|land|rules|kids|play|ipad|pair|real|reset|closed|shots`
 - `caves`: T3/T8 caves and cave gyms
 - `champion`: tower, guards, coach, Champion (slow, about 5 min)
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms

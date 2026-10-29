@@ -1,11 +1,11 @@
 // Model players for the Bubble Well (pure, Node and page), like castlebots.mjs (plans/bubble-well.md "Rework 2026-10-29": every game
 // has a naive kid that must fail or rarely win and a skilled one that must win). The ducklings, the Chimney Ride and the shields are played
 // on the pure rules (bubbles.js) at `fps` frames a second (the input is decided once per frame, like a real player, and held for the
-// frame); the Bubble Stairs are climbed in the page with the real Player physics by kids that only press keys (p.keys) and the big button
-// (live.use, the E / tap path), see makeKid.
+// frame); the Fizz Ledges and the shields are played in the page with the real Player physics by kids that only press keys (p.keys)
+// and the big button (live.use, the E / tap path), see makeKid and makeShieldKid.
 //   node tests/bubblebots.mjs   prints a table (calibration)
-import { Duckling, DUCK, puffSpeed, gustAt, Ride, RIDE, gapOf, BUBBLE, BANK, bankShot, aimLine } from '../src/bubbles.js';
-import { GARDEN_RULES, ISLANDS, NEST, CHIMNEY, GUSTS, COURT, courtOf, DRIPS, VENT2 } from '../src/bubbleland.js';
+import { Duckling, DUCK, puffSpeed, gustAt, Ride, RIDE, gapOf, BUBBLE, shieldAt } from '../src/bubbles.js';
+import { GARDEN_RULES, ISLANDS, NEST, CHIMNEY, GUSTS, LEDGES, SOAP_POTS, RIM_POTS, WINDS, SHIELDS, MESA, RIM, FLOOR } from '../src/bubbleland.js';
 
 // A small seeded random (mulberry32), so every robot run is the same.
 export function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -95,19 +95,20 @@ export const RIDE_BOTS = {
       while (k < c.plates.length && r.y > c.plates[k].y + RIDE.plate + R * 0.8) { k++; go = false; }
       if (k > 0 && r.star < k) k = r.star; // popped back below a plate
       if (k < c.plates.length) {
-        const p = c.plates[k], g = gapOf(c, p);
+        const p = c.plates[k], g = gapOf(c, p, r.t + 0.4), now = gapOf(c, p, r.t); // (a turning plate: steer to where its gap will be in a moment)
         tx = g.x; tz = g.z;
-        if (Math.hypot(r.x - g.x, r.z - g.z) < 0.2) go = true;
-        if (go) { ty = p.y + RIDE.plate + R + 0.9; gap = 0.16; } else ty = p.y - R - 1.6;
+        if (Math.hypot(r.x - now.x, r.z - now.z) < 0.3) go = true;
+        const prev = c.plates[k - 1], floorY = prev ? prev.y + RIDE.plate + R * 0.7 + 0.45 : -1e9; // (hover above the plate below, too)
+        if (go) { ty = p.y + RIDE.plate + R + 0.9; gap = 0.16; } else ty = Math.max(p.y - R - 1.6, floorY);
       } else { // the arm: wait across the chimney from it, then go up when it has just gone past
         tx = c.x + Math.cos(2.6) * 2.4; tz = c.z + Math.sin(2.6) * 2.4;
         const a = Math.atan2(r.z - c.z, r.x - c.x), behind = (((r.barAngle() - a) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); // how far the arm has gone past you
         if (r.y > c.bar.y + RIDE.barSlab + R * 0.7) { ty = c.top + 1; gap = 0.16; }
         else if (go || (behind > 0.9 && behind < 2.2 && Math.hypot(r.x - tx, r.z - tz) < 0.5)) { go = true; ty = c.top + 1; gap = 0.16; }
-        else ty = c.bar.y - R - 1.4;
+        else { const last = c.plates.at(-1); ty = Math.max(c.bar.y - R - 1.4, last.y + RIDE.plate + R * 0.7 + 0.45); }
       }
       const ex = tx - r.x, ez = tz - r.z, l = Math.hypot(ex, ez), s = Math.min(1, l * 1.6);
-      const fx = c.fan && r.y >= c.fan.y0 - 0.5 && r.y < c.fan.y1 + 0.5 ? c.fan.vx / RIDE.steer : 0, fz = c.fan && r.y >= c.fan.y0 - 0.5 && r.y < c.fan.y1 + 0.5 ? c.fan.vz / RIDE.steer : 0;
+      const fan = (c.fans || [c.fan]).find(f => r.y >= f.y0 - 0.5 && r.y < f.y1 + 0.5), fx = fan ? fan.vx / RIDE.steer : 0, fz = fan ? fan.vz / RIDE.steer : 0;
       let sx = (l > 1e-6 ? ex / l * s : 0) - fx, sz = (l > 1e-6 ? ez / l * s : 0) - fz;
       const sl = Math.hypot(sx, sz); if (sl > 1) { sx /= sl; sz /= sl; }
       const tap = r.y < ty && r.t - last > gap;
@@ -130,159 +131,151 @@ export function playRide(bot, { fps = 60, help = 0, hard = false, time = 120 } =
   return { won: r.done, pops: r.pops, stars, time: t };
 }
 
-/* ---------------------------------------------------------------- Captain Suds' shields (bank shots) */
-// Shooters stand on round k's pad and decide a yaw (radians, 0 = north, as the Player's yaw) at court clock t, or null (wait a moment).
-const dirOf = yaw => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) });
-const fromOf = (pad, d) => ({ x: pad.x + d.x * BANK.from, z: pad.z + d.z * BANK.from });
-export const shotAt = (k, yaw, t0 = 0, opts = {}) => { const c = courtOf(k), d = dirOf(yaw); return bankShot(c, fromOf(c.pad, d), d, { t0, ...opts }); };
-const yawTo = (from, to) => Math.atan2(-(to.x - from.x), -(to.z - from.z));
-// The yaws (step in radians) that hit from round k's pad when blown at court clock t0: [[from, to]...] (only the front half).
-export function hitWindows(k, t0 = 0, step = 0.004, opts = {}) {
-  const c = courtOf(k), out = [];
-  let cur = null;
-  for (let y = -Math.PI; y < Math.PI; y += step) {
-    if (shotAt(k, y, t0, opts).hit) { if (cur && Math.abs(cur[1] + step - y) < 1e-9) cur[1] = y; else { cur = [y, y]; out.push(cur); } } else cur = null;
-  }
-  return out;
-}
-export const SHOT_BOTS = {
-  // blows straight at the shield (the first thing a child tries)
-  naive: (k) => () => yawTo(COURT.rounds[k].pad, courtOf(k).target),
-  // blows any old way in front (random, seeded)
-  random: (k, seed = 7) => { const r = rng(seed), base = yawTo(COURT.rounds[k].pad, courtOf(k).target); return () => base + (r() - 0.5) * Math.PI; },
-  // reads the dotted line: turns until its bounce stub points at the shield (only what the aim line shows), then blows; waits while
-  // the line shows no bounce toward it (the slider is not there yet)
-  reader: (k) => (t0) => {
-    const c = courtOf(k);
-    let best = null;
-    for (let y = -Math.PI; y < Math.PI; y += 0.004) {
-      const d = dirOf(y), line = aimLine(c, fromOf(c.pad, d), d, { t0 });
-      if (line.length < 3) continue;
-      const [ax, az] = line[1], [bx, bz] = line[2], ux = bx - ax, uz = bz - az, l = Math.hypot(ux, uz) || 1;
-      const tx = c.target.x - ax, tz = c.target.z - az, along = (tx * ux + tz * uz) / l, off = Math.abs(-uz / l * tx + ux / l * tz);
-      if (along > 0 && (!best || off < best.off)) best = { y, off };
-    }
-    return best && best.off < c.radius * 0.5 ? best.y : null;
-  },
-  // knows the court: the middle of the widest window that hits now (waits for the slider when there is none)
-  skilled: (k) => (t0) => { const w = hitWindows(k, t0, 0.004).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0]; return w && w[1] - w[0] > 0.01 ? (w[0] + w[1]) / 2 : null; },
-};
-// Plays round k: `tries` shots (a shot every `gap` seconds of court clock, a wait counts no shot), aim noise `wobble` radians (a child's
-// hand). -> { hits, shots, first (the shot that first hit, 1-based, or 0) }
-export function playShots(bot, k, { tries = 20, gap = 1.5, wobble = 0, seed = 3, help = 0, hard = false, t0 = 0 } = {}) {
-  const r = rng(seed);
-  let t = t0, hits = 0, shots = 0, first = 0, waits = 0;
-  while (shots < tries && waits < 400) {
-    const y = bot(t);
-    if (y === null) { t += 0.1; waits++; continue; }
-    shots++;
-    const s = shotAt(k, y + (r() - 0.5) * 2 * wobble, t, { help, hard });
-    if (s.hit) { hits++; if (!first) first = shots; }
-    t += gap;
-  }
-  return { hits, shots, first };
-}
 
-/* ---------------------------------------------------------------- the Bubble Stairs (in the page, with the real Player) */
-// The two shafts as legs from each ledge (by the height you stand at): which ways to blow, in turn, and where the ledge to hop onto is.
-// shaft 1: from the floor one bubble north and a hop onto the low step; from the step east, west, east... (the bench is right ahead,
-// too close for a bubble) and a hop north onto the bench. shaft 2: north up the narrow shaft (back south when the wall is in the way)
-// and a hop north onto the plateau.
+/* ---------------------------------------------------------------- the Fizz Ledges and the shields (in the page, with the real Player) */
+// Redesign 2026-10-29 ("natural rules"). Kids that only press keys (p.keys W / Space, the look) and the big button (live.use, the E / tap
+// path), like a child with a keyboard or a tablet; the caller runs p.update(dt) and live.step(dt) after each tick. A leg: from the floor
+// you stand on (feet y `from`), walk to its soap pot (the wand dips), walk to `stand`, face `yaw`, Blow!, hop on the bubble, ride it,
+// hop off onto the box `to` (its top block `top`). `gust`: the leg's air is blown by a gust now and then (WINDS). Kinds:
+//   skilled    waits for a calm moment after a gust, leans its bubble toward the next ledge, hops off when it is high and close enough
+//   firsttime  does the obvious and nothing more: dips, faces the ledge, blows, hops on, hops off once its feet are above the ledge
+//   nowind     the skilled kid's timing, but it never leans and never minds the gusts
+//   masher     hops onto its bubble and straight off again toward the ledge (no ride)
+//   random     blows any old way, hops off at a random moment, never leans
+//   pillar     the chapter-1 sky-gym trick: jump, look down, press the button in the air, again and again
 export const YAW = { n: 0, w: Math.PI / 2, s: Math.PI, e: -Math.PI / 2 };
-export const ROUTES = {
-  shaft1: { start: [104.5, 5, 77.5], goal: 11, legs: { 5: { dirs: ['n'], ledge: { dir: 'n', y: 7 } }, 7: { dirs: ['e', 'w'], ledge: { dir: 'n', y: 11 } } } },
-  shaft2: { start: [112.5, 11, 70.6], goal: 19, legs: { 11: { dirs: ['n'], ledge: { dir: 'n', y: 19 }, aimX: 113.6 } } }, // (aimX: a skilled kid blows on the east side: off the drips' line, and the side wind carries it toward the middle, not into the west wall)
-};
-// The kids (what they do between Blow! and the hop):
-//   skilled  lets each bubble float up until its top is well above its feet (`want`), blows beside a drip's spout, steers at its bubble
-//   masher   hops the moment it has blown (the hint read too literally: "blow, hop on, hop again")
-//   spam     random waits, a wobbly aim, sometimes blows twice
-//   pillar   the chapter-1 sky-gym trick: jump, look down, Blow! under its feet, again and again
-export const KIDS = {
-  skilled: { want: { ground: 1.0, bubble: 1.15, wind: 0.8 }, dodge: true, steer: true },
-  masher: { want: { ground: -9, bubble: -9 }, dodge: false, steer: true },
-  spam: { random: true, dodge: false, steer: true },
+const PLATEAU = { x0: 104, x1: 124, z0: 56, z1: 66, top: MESA.top };
+const box = l => ({ x0: l.x0, x1: l.x1, z0: l.z0, z1: l.z1, top: l.top });
+export const LEGS = [
+  { from: FLOOR + 1, pot: SOAP_POTS[0], stand: [100.5, 80.4], yaw: YAW.n, to: box(LEDGES[0]) },
+  { from: LEDGES[0].top + 1, pot: SOAP_POTS[1], stand: [102.6, 75.4], yaw: YAW.e, to: box(LEDGES[1]) },
+  { from: LEDGES[1].top + 1, pot: SOAP_POTS[2], stand: [109.6, 70.5], yaw: YAW.e, to: box(LEDGES[2]) }, // (the stream blows south: blow from the north corner)
+  { from: LEDGES[2].top + 1, pot: SOAP_POTS[3], stand: [114.0, 68.5], yaw: YAW.w, to: PLATEAU, gust: WINDS.find(w => w.id === 'gust') },
+];
+export const KIDS = { // spot: where it blows from ('best' = the leg's stand and yaw; 'pot' = right by the pot, facing the next ledge)
+  skilled: { lean: true, gust: true, hop: 'ready', spot: 'best' },
+  firsttime: { lean: false, gust: false, hop: 'above', spot: 'pot' },
+  nowind: { lean: false, gust: false, hop: 'ready', spot: 'pot' },
+  nolean: { lean: false, gust: false, hop: 'ready', spot: 'best' }, // (blows from the right corner, but never leans and never minds the gusts)
+  masher: { lean: false, gust: false, hop: 'now', spot: 'pot' },
+  random: { lean: false, gust: false, hop: 'random', wobble: 0.8, spot: 'pot' },
   pillar: { pillar: true },
 };
-const solidAt = (live, x, y, z) => live.world.isSolid(Math.floor(x), Math.floor(y), Math.floor(z));
-// The tick for one kid: ({ p, live, dt }) -> null | 'done' (stands on the goal ledge). It only sets p.keys / p.yaw / p.pitch and presses
-// the big button (live.use), like a child with a keyboard or a tablet. The caller then runs p.update(dt) and live.step(dt).
-export function makeKid(kind, route, { seed = 1 } = {}) {
-  const K = KIDS[kind], r = rng(seed);
-  let phase = 'aim', t = 0, target = null, wait = 0, idx = 0, legY = null, want = 0, flip = 1, jumped = false, lastBlow = -9, clock = 0;
-  const leg = y => route.legs[Math.round(y)];
+const yawTo = (from, x, z) => Math.atan2(-(x - from.x), -(z - from.z));
+// The point of box b nearest to (x, z), pulled `inside` blocks into it.
+const nearIn = (b, x, z, inside = 0.9) => ({ x: Math.max(b.x0 + inside, Math.min(b.x1 + 1 - inside, x)), z: Math.max(b.z0 + inside, Math.min(b.z1 + 1 - inside, z)) });
+// The tick for one kid on `legs` (LEGS, or a slice): ({ p, live, dt }) -> null | 'done' (it stands on the last leg's goal).
+export function makeKid(kind, legs = LEGS, { seed = 1 } = {}) {
+  const K = KIDS[kind], r = rng(seed), goal = legs.at(-1).to.top + 1;
+  let phase = 'pot', t = 0, target = null, hopAt = 0, wait = 0, legY = null, clock = 0, jumped = false;
   return ({ p, live, dt = 1 / 60 }) => {
     clock += dt; t += dt;
     const on = p.carry === live.standObj && !!live.stood, ground = p.onGround && !p.carry;
-    if (ground && Math.round(p.pos.y) >= route.goal) { p.keys = {}; return 'done'; }
     p.keys.Space = false;
-    if (K.pillar) { // jump, and at the top of the jump look down and Blow!; on the ground also blow down and hop straight up
-      p.pitch = -1.5;
-      if (ground) { p.keys.KeyW = false; if ((wait += dt) > 0.2) { live.use(p); p.keys.Space = true; wait = 0; jumped = true; } return null; }
+    if (ground && Math.abs(p.pos.y - goal) < 0.3) { p.keys = {}; return 'done'; }
+    if (K.pillar) {
+      p.pitch = -1.5; p.keys.KeyW = false;
+      if (ground) { if ((wait += dt) > 0.25) { live.use(p); p.keys.Space = true; wait = 0; jumped = true; } return null; }
       if (on) { live.use(p); p.keys.Space = true; return null; }
       if (jumped && p.vel.y < 1.5) { live.use(p); jumped = false; }
       return null;
     }
-    if (ground && legY !== Math.round(p.pos.y)) { legY = Math.round(p.pos.y); idx = 0; flip = 1; phase = 'aim'; } // on a ledge (a new one, or back after a fall)
-    const L = leg(legY ?? p.pos.y);
+    if (ground && legY !== Math.round(p.pos.y) && phase !== 'walk') { legY = Math.round(p.pos.y); phase = 'pot'; t = 0; } // on a floor (a new one, or back after a fall)
+    if (ground && (phase === 'ride' || phase === 'hop' || phase === 'air') && t > 0.3) { phase = 'pot'; t = 0; } // landed somewhere: start over from there
+    const L = legs.find(l => Math.abs(l.from - (legY ?? p.pos.y)) < 0.3);
     if (!L) return null;
+    const walkTo = (x, z, next) => {
+      const d = Math.hypot(x - p.pos.x, z - p.pos.z);
+      if (d < 0.22) { p.keys.KeyW = false; phase = next; t = 0; return; }
+      p.yaw = yawTo(p.pos, x, z); p.pitch = -0.2; p.keys.KeyW = true;
+    };
+    if (phase === 'pot') { if (!ground) return null; walkTo(L.pot[0], L.pot[2], 'walk'); return null; }
+    if (phase === 'walk') { if (K.spot === 'best') walkTo(L.stand[0], L.stand[1], 'aim'); else { phase = 'aim'; t = 0; } return null; }
     if (phase === 'aim') {
-      if (!on && !ground) return null; // still landing
       p.keys.KeyW = false;
-      if ((wait += dt) < (K.random ? 0.1 + r() * 0.4 : 0.12)) return null;
-      // on a bubble: is the ledge in reach? then hop onto it
-      if (on) {
-        const d = L.ledge.dir, fx = -Math.sin(YAW[d]), fz = -Math.cos(YAW[d]);
-        const near = [0.8, 1.6, 2.4].some(s => solidAt(live, p.pos.x + fx * s, L.ledge.y - 1, p.pos.z + fz * s) && !solidAt(live, p.pos.x + fx * s, L.ledge.y, p.pos.z + fz * s));
-        if (near && p.pos.y + BUBBLE.bounce >= L.ledge.y + 0.15) { p.yaw = YAW[d]; p.pitch = 0; p.keys.Space = true; p.keys.KeyW = true; phase = 'ledge'; t = 0; return null; }
-      }
-      if (!on && ground && L.dirs.length === 1 && L.ledge.y - p.pos.y <= 1.2) { p.yaw = YAW[L.ledge.dir]; p.keys.Space = true; p.keys.KeyW = true; phase = 'ledge'; t = 0; return null; }
-      const dir = L.dirs[idx % L.dirs.length], solid = (x, y, z) => live.world.isSolid(x, y, z);
-      const spotOf = y => live.field.spot(p.pos, { x: -Math.sin(y), z: -Math.cos(y) }, solid);
-      // a skilled kid blows toward the leg's side line (off the drips) and a little to the side of a drip's spout
-      const adjust = y => {
-        if (!K.dodge) return y;
-        if (L.aimX != null && Math.abs(Math.cos(y)) > 0.9) { const dx = Math.max(-1.6, Math.min(1.6, L.aimX - p.pos.x)), fz = -Math.cos(y); return Math.atan2(-dx / BUBBLE.ahead, -fz * Math.sqrt(1 - (dx / BUBBLE.ahead) ** 2)); }
-        const sp = spotOf(y), dr = sp && DRIPS.find(q => Math.hypot(q.x - sp.x, q.z - sp.z) < 0.8);
-        return dr ? y + 0.5 * (p.pos.x < dr.x ? 1 : -1) * (Math.cos(y) > 0 ? 1 : -1) : y;
-      };
-      let yaw = YAW[dir] + (flip < 0 ? Math.PI : 0);
-      if (K.random) { yaw += (r() - 0.5) * 1.0; if (!spotOf(yaw)) { flip = -flip; yaw += Math.PI; } } // (a wall ahead: it turns round, too)
-      else { // the way it means to go, else back the other way (a wall ahead), else a little to either side
-        const tries = [yaw, yaw + Math.PI, yaw + 0.6, yaw - 0.6, yaw + Math.PI + 0.6, yaw + Math.PI - 0.6].map(adjust);
-        const k = tries.findIndex(y => spotOf(y));
-        if (k >= 0) { if (k === 1 || k >= 4) flip = -flip; yaw = tries[k]; }
-      }
-      p.yaw = yaw; p.pitch = -0.3;
+      const c = { x: (L.to.x0 + L.to.x1 + 1) / 2, z: (L.to.z0 + L.to.z1 + 1) / 2 }, yaw = K.spot === 'best' ? L.yaw : yawTo(p.pos, c.x, Math.min(c.z, p.pos.z + 99));
+      p.yaw = yaw + (K.wobble ? (r() - 0.5) * 2 * K.wobble : 0); p.pitch = -0.25;
+      if (t < 0.15) return null;
+      if (K.gust && L.gust) { const c = live.field.clock, g = L.gust; if (!(gustAt(g, c) === 0 && gustAt(g, c - 0.25) === 1)) return null; } // right after a gust
+      if (!live.wet) { phase = 'pot'; return null; }
       const n0 = live.field.n;
-      live.use(p); lastBlow = clock;
-      if (K.random && r() < 0.25) live.use(p); // blows twice
+      live.use(p);
       target = live.field.list.find(b => b.id > n0) || null;
-      idx++;
-      if (!target) { wait = 0; return null; }
-      want = K.random ? -1 + r() * 2.6 : on ? K.want.bubble : K.want.ground;
-      if (!K.random && K.dodge && VENT2 && target.y + 1.4 >= VENT2.y0 && target.y - 0.6 <= VENT2.y1 + 1 && target.z >= VENT2.z0 && target.z <= VENT2.z1 + 1) want = Math.min(want, K.want.wind); // in the side wind: hop a little sooner
-      phase = 'wait'; t = 0; return null;
-    }
-    if (phase === 'wait') {
-      if (!live.field.list.includes(target)) { phase = 'aim'; wait = 0; return null; } // it popped (a drip, a touch): blow again
-      const stoodLeft = live.stood ? live.field.standLife - live.stood.standT : 9;
-      if (target.y + BUBBLE.r - p.pos.y >= want || stoodLeft < 0.3 || t > 2.5) { // hop now
-        p.yaw = Math.atan2(-(target.x - p.pos.x), -(target.z - p.pos.z)); p.keys.Space = true; p.keys.KeyW = true; phase = 'hop'; t = 0;
-      }
+      if (!target) { phase = 'pot'; return null; }
+      p.yaw = yawTo(p.pos, target.x, target.z); p.keys.KeyW = true; p.keys.Space = true; phase = 'hop'; t = 0; // hop on at once
       return null;
     }
     if (phase === 'hop') {
-      if (K.steer && live.field.list.includes(target)) { const dx = target.x - p.pos.x, dz = target.z - p.pos.z; if (Math.hypot(dx, dz) > 0.25) p.yaw = Math.atan2(-dx, -dz); p.keys.KeyW = Math.hypot(dx, dz) > 0.25; }
-      if (t > 0.1 && on && live.stood) { p.keys.KeyW = false; phase = 'aim'; wait = 0; return null; }
-      if (t > 0.2 && ground) { p.keys.KeyW = false; phase = 'aim'; wait = 0; return null; }
+      if (live.field.list.includes(target)) { const dx = target.x - p.pos.x, dz = target.z - p.pos.z; p.yaw = Math.atan2(-dx, -dz); p.keys.KeyW = Math.hypot(dx, dz) > 0.2; }
+      if (on && live.stood) { p.keys.KeyW = false; phase = 'ride'; t = 0; hopAt = K.hop === 'random' ? 0.3 + r() * 2.7 : 0; }
       return null;
     }
-    if (phase === 'ledge') {
-      p.keys.KeyW = true;
-      if (t > 0.15 && (ground || on)) { p.keys.KeyW = false; phase = 'aim'; wait = 0; }
+    if (phase === 'ride') {
+      if (!on) { phase = 'air'; t = 0; return null; }
+      const b = live.stood, to = L.to, q = nearIn(to, p.pos.x, p.pos.z), d = Math.hypot(q.x - p.pos.x, q.z - p.pos.z);
+      const up = BUBBLE.bounce + (p.pos.y - (to.top + 1)); // how far above the ledge's top a Bounce now gets your feet
+      p.yaw = yawTo(p.pos, q.x, q.z);
+      const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), wall = [0, -0.5].some(dy => live.world.isSolid(Math.floor(b.x + fx * (BUBBLE.r + 0.4)), Math.floor(b.y + dy), Math.floor(b.z + fz * (BUBBLE.r + 0.4))));
+      p.keys.KeyW = !!K.lean && !wall && d > 0.5; // (a skilled kid never leans its bubble into a wall)
+      const late = b.age > live.field.life - 0.3;
+      const hop = K.hop === 'now' ? t > 0.1 : K.hop === 'random' ? t > hopAt : K.hop === 'above' ? (p.pos.y > to.top + 1 + 0.1 || late) : ((up > 0.35 && d < 2.0) || (late && up > 0.1));
+      if (hop) { p.keys.Space = true; p.keys.KeyW = true; phase = 'air'; t = 0; }
       return null;
     }
+    if (phase === 'air') { const q = nearIn(L.to, p.pos.x, p.pos.z, 1.2); p.yaw = yawTo(p.pos, q.x, q.z); p.keys.KeyW = Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > 0.3; return null; }
+    return null;
+  };
+}
+
+// Captain Suds' shields: a kid on the rim. From the balcony's soap pot it faces a shield, Blow!, hops on, rides, hops off and steers
+// down onto it. Kinds: skilled (blows when the shield will be just over its bubble's way up, leans toward it, hops off once high enough
+// and close, then steers onto its top), random (any way, any moment), masher (straight off again). -> tick returning null | 'pop'
+export const RIM_LEG = { from: RIM.y + 1, pots: RIM_POTS };
+export function makeShieldKid(kind, k, { seed = 1 } = {}) {
+  const r = rng(seed);
+  let phase = 'pot', t = 0, target = null, hopAt = 0, start = 0;
+  const S = SHIELDS[k], pot = RIM_POTS[k];
+  return ({ p, live, dt = 1 / 60 }) => {
+    t += dt;
+    const on = p.carry === live.standObj && !!live.stood, ground = p.onGround && !p.carry;
+    p.keys.Space = false;
+    if (!live.shieldUp(k)) { p.keys = {}; return 'pop'; }
+    if (ground && (phase === 'ride' || phase === 'air' || phase === 'hop') && t > 0.3) { phase = 'pot'; t = 0; }
+    const sh = live.shieldNow(k), future = s => shieldAt(S, live.courtT + s);
+    if (phase === 'pot') {
+      const d = Math.hypot(pot[0] - p.pos.x, pot[2] - p.pos.z);
+      if (d < 0.22 && live.wet) { p.keys.KeyW = false; phase = 'aim'; t = 0; start = 0; return null; }
+      p.yaw = yawTo(p.pos, pot[0], pot[2]); p.keys.KeyW = d >= 0.22; return null;
+    }
+    if (phase === 'aim') {
+      p.keys.KeyW = false;
+      if (kind === 'skilled') { // the shield where it will be when the bubble is up, the bubble's way (blown 1.5 out, carried by the breeze)
+        const f = future(2.8); p.yaw = yawTo(p.pos, f.x, f.z + 1.2); p.pitch = -0.2;
+        const dir = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) }, bx = p.pos.x + dir.x * BUBBLE.ahead, bz = p.pos.z + dir.z * BUBBLE.ahead - 0.45 * 2.8;
+        if (Math.hypot(f.x - bx, f.z - bz) > 2.2 && t < 6) return null; // wait for a moment when it comes over
+      } else { p.yaw = yawTo(p.pos, sh.c.x, sh.c.z) + (r() - 0.5) * 2; if (t < 0.3 + r() * 0.5) return null; }
+      const n0 = live.field.n;
+      live.use(p);
+      target = live.field.list.find(b => b.id > n0) || null;
+      if (!target) { phase = 'pot'; return null; }
+      p.yaw = yawTo(p.pos, target.x, target.z); p.keys.KeyW = true; p.keys.Space = true; phase = 'hop'; t = 0;
+      return null;
+    }
+    if (phase === 'hop') {
+      if (live.field.list.includes(target)) { const dx = target.x - p.pos.x, dz = target.z - p.pos.z; p.yaw = Math.atan2(-dx, -dz); p.keys.KeyW = Math.hypot(dx, dz) > 0.2; }
+      if (on) { p.keys.KeyW = false; phase = 'ride'; t = 0; hopAt = kind === 'masher' ? 0.1 : 0.3 + r() * 3; }
+      return null;
+    }
+    if (phase === 'ride') {
+      if (!on) { phase = 'air'; t = 0; return null; }
+      const b = live.stood, d = Math.hypot(sh.c.x - p.pos.x, sh.c.z - p.pos.z), top = sh.c.y + sh.r;
+      p.yaw = yawTo(p.pos, sh.c.x, sh.c.z); p.keys.KeyW = kind === 'skilled' && d > 1.0;
+      const late = b.age > live.field.life - 0.3;
+      const hop = kind === 'skilled' ? ((p.pos.y + BUBBLE.bounce > top + 0.3 && d < 2.4) || late) : t > hopAt;
+      if (hop) { p.keys.Space = true; p.keys.KeyW = true; phase = 'air'; t = 0; }
+      return null;
+    }
+    if (phase === 'air') { const d = Math.hypot(sh.c.x - p.pos.x, sh.c.z - p.pos.z); p.yaw = yawTo(p.pos, sh.c.x, sh.c.z); p.keys.KeyW = d > 0.25; return null; } // (any child steers at it in the air)
     return null;
   };
 }
@@ -292,9 +285,5 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('bubblebots.mj
     const row = (name, f) => console.log(`@${fps} ${name}: ${f()}`);
     for (let i = 0; i < 3; i++) for (const b of ['skilled', 'pusher', 'straight', 'noGust']) row(`duck ${i + 1} ${b}`, () => { const r = playDuck(DUCK_BOTS[b](i), { i, fps }); const h = playDuck(DUCK_BOTS[b](i), { i, fps, help: 6 }); const hd = playDuck(DUCK_BOTS[b](i), { i, fps, hard: true }); return `${JSON.stringify(r)} help ${h.won} hard ${hd.won} ${hd.time.toFixed(0)}`; });
     for (const b of ['skilled', 'still', 'spammer']) row(`ride ${b}`, () => { const r = playRide(RIDE_BOTS[b](), { fps }); const hd = playRide(RIDE_BOTS[b](), { fps, hard: true }); return `${JSON.stringify(r)} hard ${hd.won} ${hd.pops}`; });
-  }
-  for (let k = 0; k < 3; k++) {
-    const w = hitWindows(k, 0).map(([a, b]) => `${(a * 180 / Math.PI).toFixed(1)}..${(b * 180 / Math.PI).toFixed(1)}`);
-    console.log(`shield ${k + 1}: windows ${w.join(' ')}`, ['naive', 'random', 'reader', 'skilled'].map(b => `${b} ${JSON.stringify(playShots(SHOT_BOTS[b](k), k, { tries: b === 'random' ? 100 : 10 }))}`).join(' | '), `| skilled wobbly 3° ${JSON.stringify(playShots(SHOT_BOTS.skilled(k), k, { tries: 30, wobble: 3 * Math.PI / 180 }))}`);
   }
 }

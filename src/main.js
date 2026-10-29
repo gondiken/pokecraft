@@ -38,6 +38,7 @@ import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
 import { createPortal } from './portal.js'; // T38a
 import { createSwirlSky } from './swirlsky.js'; // T38d
 import { loadStars, PICTURE_WORLDS } from './pictureworlds.js'; // T38a
+import { runWorldResets, createWorldReset } from './worldreset.js'; // owner 2026-10-29: one-time resets of a redesigned preview world; ?preview "Start this world over"
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -302,6 +303,7 @@ function startNew(starterId) {
   game.time = 0.05;
   game.badges = [];
   game.beaten = [];
+  runWorldResets(game, { fresh: true }); // (worldreset.js: a new game gets every reset mark, nothing to clear)
   game.champion = false;
   game.stars = []; // T38a
   game.rematchWins = {};
@@ -335,6 +337,7 @@ function continueGame(saved) {
   game.stars = loadStars(saved.stars); // T38a: old saves have none
   game.rematchWins = loadWins(saved.rematchWins); // old saves have none
   game.bossWins = loadBossWins(saved.bossWins); // T40: old saves have none
+  runWorldResets(game); // owner 2026-10-29 (worldreset.js): a redesigned preview world's old progress is cleared once (the Bubble Well)
   game.blockCounts = loadCounts(saved.blockCounts); // old saves have none
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
@@ -1083,6 +1086,7 @@ game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
+game.worldReset = createWorldReset(game, { save: () => save(true) }); // owner 2026-10-29: ?preview only, the pause screen's "Start this world over"
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
 game.sketch = createSketch(game, { materials, texture, atlas }); // T45: the Sketchbook's pencil look

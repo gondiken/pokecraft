@@ -251,14 +251,14 @@ addBoss({
 
 /* ==== Bubble ==== */
 // Captain Suds, a giant Lathotter with a foam beard, sits on his foam throne on the rim of the Bubble Well behind three shield bubbles. His
-// gate: the three stretches of the climb (the Bubble Stairs, the three ducklings, the Chimney Ride) and his three shields (all saved
+// gate: the three stretches of the climb (the Fizz Ledges, the three ducklings, the Chimney Ride) and his three shields (all saved
 // `beaten` keys, bubbleland.js bubbleState); his crew Wanda Wand, Duckherd Daisy and Mate Fizz battle first (the base's crew rule).
 addBoss({
   id: 'bubble', name: 'Captain Suds', type: 'bubble', title: 'Captain Suds · Bubble Well Boss', model: { species: 'lathotter', scale: 2.2 }, // (the title is spelled out: a closed well's frame is named "Secret World")
   gate: game => {
     const st = bubbleState(game);
     if (!st.done) return `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
-    return st.shields < 3 ? `My shields are up! Stand on the gold pad and bounce a bubble off my pink cushion to pop them. (🛡️ ${st.shields} / 3)` : null;
+    return st.shields < 3 ? `My shields are up! Pop them from above! (🛡️ ${st.shields} / 3)` : null; // (redesign 2026-10-29: drop onto them)
   },
   team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'bodyslam', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
   intro: ['Ahoy-hoy! You climbed my whole well and popped my shields!', 'Now, a bubbly battle!'],
@@ -268,11 +268,11 @@ addBoss({
   note: 'I filled this well with fizz so my bath-time friends could float all the way up to the sky. Thank you for getting the bubbles rising again!',
   crew: [
     { name: 'Wanda Wand', look: 'bubble', colors: { shirt: 0x8ad8ff, pants: 0xf6efe0, hair: 0xe0a040, skin: 0xf2d0b0 },
-      team: [['squeaklet', 59], ['suddly', 60]], intro: ['You climbed the Bubble Stairs! Pop!', 'Battle me!'], line: 'Blow a bubble ahead, let it float up a little, then hop on. Up you go!' },
+      team: [['squeaklet', 59], ['suddly', 60]], intro: ['You climbed the Fizz Ledges! Pop!', 'Battle me!'], line: 'Hop off before your bubble pops!' },
     { name: 'Duckherd Daisy', look: 'bubble', colors: { shirt: 0xffd83a, pants: 0x6ab8e8, hair: 0x6a3a1a, skin: 0xc68a5a },
-      team: [['hippip', 60], ['squeaklet', 61]], intro: ['My ducklings! Thank you for bringing them home.', 'Now a little battle?'], line: 'Stand far away for a little puff, close for a big one!' },
+      team: [['hippip', 60], ['squeaklet', 61]], intro: ['My ducklings! Thank you for bringing them home.', 'Now a little battle?'], line: 'Stand close for a big puff!' },
     { name: 'Mate Fizz', look: 'bubble', colors: { shirt: 0xff9ac8, pants: 0x3a3a6a, hair: 0x1a1a1a, skin: 0xf0c8a0 },
-      team: [['suddly', 60], ['fizzbomb', 61]], intro: ['Ahoy! Up the chimney already?', 'Battle stations!'], line: 'A bubble bounces off a pink cushion like a ball off a wall. Watch the dotted line, then blow!' },
+      team: [['suddly', 60], ['fizzbomb', 61]], intro: ['Ahoy! Up the chimney already?', 'Battle stations!'], line: 'Big bubbles pop when you land on top!' },
   ],
 });
 /* ==== end of Bubble ==== */
