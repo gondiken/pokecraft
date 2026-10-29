@@ -161,6 +161,9 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
 | `src/multiplayer.js` | Play together: share code, avatars, block sync; T38b `realm` event |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
+| `src/swapcore.js` | Wave 17, pure save rules of gifts and trades: `SWAP`, `PARCELS` / `addParcel` (only `creature` built), `cleanCreature`, `loadSwaps`, `commitOut` / `receive` / `settle` |
+| `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: the `swap` messages (`hi`, `offer`, `yes` / `no`, `pick`, `cancel`, `give`, `got`), asks, re-sends, `drop` / `info()` for tests |
+| `src/swapui.js` | Wave 17 `createSwapUi(game)` -> `game.swapUi`: the `#swap` panel (pick, last yes, waiting, "on the way") |
 | `src/traits.js` | T26 traits (no imports): `TRAITS` (only `rideable`), `hash32`, `drawTraits`, `cleanTraits`, `fixTraits`, `gainTraits`, `hasTrait` |
 | `src/riding.js` | T27 riding: `RIDE`, `rideKind`, `rideSpecies`, `createRiding` -> `game.riding` |
 | `src/weather.js` | Weather: shared phase, per-biome kind, particles, rainbow, lightning, spawn boosts (`game.weather.set` / `skip` / `info` for tests) |
@@ -387,6 +390,15 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   old code path, the access golden stays identical). A gym row's arrow IS `game.access.of(gym).aim(p)`. Food ingredients, vault keys,
   treasure spots, the hide-and-seek friend, Camo creatures and Dojo guards are never destinations. The choice is not saved. A new
   place = a source in `DESTINATIONS`.
+- **Gifts and trades (wave 17, `plans/wave17-gifts-trading.md`, spec `swap`):** pause -> Play together -> "🎁 Give X a creature" /
+  "🔁 Trade with X" -> the `#swap` panel. One new play-together event `swap` (old games never subscribe to it; `SWAP.version` 1 in every
+  message; friends are known by the saved `playerId` from a `hi`, so a friend without `hi` gets no buttons). **Never lost or doubled:**
+  only three save changes, each `save(true)` at once: the giver's `commitOut` (items into escrow, save field `swaps.out`), the
+  receiver's `receive` (only for a yes given in this page; the answer kept in `swaps.seen`, a repeated `give` is answered from it),
+  the giver's `settle` (`got` = escrow gone + what it gets comes in, `no` = back where it was). A committed `give` is re-sent every
+  3 s and whenever that friend comes back. Nothing applies in a battle (queued). Creatures keep `uid` / traits / `learned` (cleaned,
+  never made up); a legendary never moves; your last team creature stays. Blocks and Capture Cubes later = one `addParcel` + a panel
+  tab; no `WORLD_VERSION` / duel `VERSION` bump.
 - **Hide and seek (T30, spec `hide-seek`):** two players over the `hs` event (`HS.VERSION` 1); the inviter leads (clock, score,
   times sent as ms left, never clock times); roles swap each round (hide 60 s with a dark screen, seek 180 s with a hot/cold
   compass); the play area is a circle of radius 40 plus gym boxes (`fence`); a disguised Camo creature near the hider sends `help`. No battles or riding during a game; nothing saved, no world change.
@@ -707,6 +719,8 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `spawn-rules`: T18 conditions, golden hour, Camo disguises, Cyber with two players
 - `squad`: T34 crews, `weakensWithHp`, the Big Top Gym
 - `surprise`: T44 + T48 type (chart vs `tests/fixtures/chart-before-t44.json`), gift boxes, party terrain, `partyBows`, the Spinner, the four games with `partybots.mjs` at 60 / 20 fps, live play, iPad, two browsers; `SURPRISE_ONLY=data|land|games|live|ipad|pair|shots`, `SURPRISE_SKIP_BOSS=1`
+- `swap`: wave 17 gifts and trades on two browsers: the save rules, gift / trade with real buttons, Not now / No thanks, three
+  "browser closes halfway" cases (each uid in exactly one save), an older friend's game, iPad; `SWAP_ONLY=rules|gift|trade|crash|old|ipad`
 - `swirl`: T38a/d the Portal Door, stars, travel, Swirl terrain, lifts, frames, bridge, looks
 - `three-types`: T18 Time / Camo / Cyber; `T18_TYPE=time|camo|cyber`
 - `tiny`: T40a type, Giant House terrain (`housecheck.mjs`), live puzzles, Nibbles, iPad; `TINY_ONLY=type|land|live|ipad`, `TINY_SKIP_BOSS=1`
@@ -740,7 +754,7 @@ Other test tools: `tests/perf.mjs` (load, memory, draw calls, fps; `--swirl`, `-
   Portal Door and the Swirl, realms together, missions that never end, the pastel Swirl), 13.5 (T39a-c), 14 (T40-T40d: Picture
   World base, Giant House, Pirate Seas, Race Track, Ball Stadium), 14.5 (the atlas grid), 15 (T41-T45 + T48: Atlantis, Portal House,
   Funfair, Surprise Party, Sketchbook; plans `wave15.md`, `T41`-`T45`) and T49 (the Castle). Next: wave 16 (Bubble Well and Cube
-  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), then wave 17 (gifts and trading between friends), wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
+  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), wave 17 is built for creatures (gifts and trades, spec `swap`; blocks and Capture Cubes as gifts are one `addParcel` away), then wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
   Scribble as the Wizard's ally (battling beside him, crafting, eggs and raising, gifts and trading); the backlog (maybe a Swirl
   place, S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). The Portal Lab idea is
   `plans/T47-portal-lab.md` (not built).

@@ -1354,6 +1354,9 @@ Moved here from "Sharing" below (owner 2026-10-29: "let's make trading and gifti
   between two saves, never lost or duplicated if a browser closes halfway), creatures' `uid` / traits / `learned`, the Book's
   caught list, the Box, iPad, and the two-browser specs (`openPair`). Chapter 3's "eggs that only hatch with a friend's help"
   stay in chapter 3 and can build on it later.
+- **Built 2026-10-29 (creatures):** `plans/wave17-gifts-trading.md`, spec `swap`. Gifts and trades of creatures from the pause
+  screen's Play together box; the `swap` message, escrow in the save (`swaps`), never lost or doubled. **Still open:** blocks and
+  Capture Cubes as gifts (one `addParcel` kind each + a tab in the Swap panel), and the present box as a thing in the world.
 
 ## Wave 18 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29)
 

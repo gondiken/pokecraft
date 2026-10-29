@@ -610,3 +610,23 @@ body.touch #guide { min-height: 44px; display: flex; align-items: center; paddin
 body.touch #nav .nav-row { min-height: 64px; }
 body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 @media (max-width: 700px) { #nav .nav-tiles { grid-template-columns: repeat(4, 1fr); } }
+
+/* Wave 17: gifts and trades (#swap, swapui.js) */
+#swap h2 { margin: 0 0 6px; }
+#swap h3 { margin: 14px 0 6px; font-size: 20px; color: var(--muted); font-weight: 600; }
+#swap .swap-sub, #swap .swap-msg { font-size: 22px; margin: 4px 0 8px; }
+#swap .swap-note { min-height: 1em; margin: 4px 0; color: #ffd27a; font-size: 20px; }
+#swap .swap-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+#swap .swap-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 120px; padding: 6px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.15); color: inherit; cursor: pointer; font-size: 18px; }
+#swap .swap-tile.on { border-color: #ffd23a; background: rgba(255, 210, 58, .18); }
+#swap .swap-tile.dim { opacity: .45; }
+#swap .st-name { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+#swap .swap-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px; margin: 6px 0; background: rgb(30, 34, 46); border: 3px solid #ffd23a; font-size: 22px; }
+#swap .swap-bar span { flex: 1; min-width: 140px; }
+#swap button.big { font-size: 14px; min-height: 56px; padding: 12px 18px; }
+#swap .swap-card { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); font-size: 20px; }
+#swap .swap-pair { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+#swap .swap-arrow { font-size: 22px; }
+#swap .swap-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+#swap .swap-way { display: flex; align-items: center; gap: 8px; font-size: 20px; margin: 4px 0; }
+#mp .swap-btn { display: block; margin: 6px auto; min-height: 44px; }

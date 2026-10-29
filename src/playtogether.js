@@ -39,10 +39,11 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),
     hs: p => game.hideSeek?.onMessage(p), // T30
+    swap: p => game.swaps?.onMessage(p), // wave 17: gifts and trades
     castle: p => game.castleGates?.onMessage(p), // T49: the Castle's gates are shared
     joined: () => game.castleGates?.joined(), // T49
     realm: p => game.realms.answer(p), // T38b: a guest asks to follow me into my realm
-    left: id => { game.duels.left(id); game.hideSeek?.left(id); }, // T30
+    left: id => { game.duels.left(id); game.hideSeek?.left(id); game.swaps?.left(id); }, // T30; wave 17
     ended: reason => {
       if (reason !== 'host-left') return;
       game.hostLeft = true;
@@ -85,6 +86,15 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
   }
 
+  // Wave 17: per friend, Give and Trade (a friend whose game is older gets one line instead).
+  function swapButtons() {
+    if (!game.swaps) return [];
+    return game.swaps.friends().flatMap(f => (f.ok ? [
+      el('button', { class: 'small swap-btn', 'data-swap': 'gift', onclick: e => { e.stopPropagation(); game.swaps.start('gift', f.avatar); } }, `🎁 Give ${f.name} a creature`),
+      el('button', { class: 'small swap-btn', 'data-swap': 'trade', onclick: e => { e.stopPropagation(); game.swaps.start('trade', f.avatar); } }, `🔁 Trade with ${f.name}`),
+    ] : f.old ? [el('div', { class: 'mp-who' }, `${f.name}'s game is older: reload it to give and trade.`)] : []));
+  }
+
   // T38b, host: one line for every player who is in another place.
   function awayLines() {
     const mine = game.place || 'main';
@@ -115,6 +125,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', {}, 'The other player picks "Join a world" and types this code.'),
         el('div', { class: 'mp-who' }, who),
         ...hideSeekButtons(), // T30
+        ...swapButtons(), // wave 17
         ...awayLines(), // T38b
         el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
         msg);
@@ -126,6 +137,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
         el('div', { class: 'mp-who' }, who),
         ...hideSeekButtons(), // T30
+        ...swapButtons(), // wave 17
         ...followButton(), // T38b
         el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
         el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),

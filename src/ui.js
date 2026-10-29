@@ -452,7 +452,7 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden') || !this.navPanel.classList.contains('hidden'); } // T29: + missions; T39a: + nav
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden') || !this.navPanel.classList.contains('hidden') || !!this.game.swapUi?.isOpen; } // T29: + missions; T39a: + nav; wave 17: + swap
   get missionsOpen() { return !this.missionsPanel.classList.contains('hidden'); } // T29
   get navOpen() { return !this.navPanel.classList.contains('hidden'); } // T39a
   get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
@@ -477,6 +477,11 @@ export class UI {
     if (which === 'nav') { // T39a: navUi.open() fills #nav-body
       this.navPanel.classList.remove('hidden');
       this.game.navUi.open();
+      return;
+    }
+    if (which === 'swap') { // wave 17: swapUi.open() fills #swap-body
+      document.getElementById('swap').classList.remove('hidden');
+      this.game.swapUi.open();
       return;
     }
     if (which === 'blocks') {
@@ -544,5 +549,6 @@ export class UI {
     this.game.missionUi?.close();
     this.navPanel.classList.add('hidden'); // T39a
     this.game.navUi?.close();
+    if (this.game.swapUi?.isOpen) { document.getElementById('swap').classList.add('hidden'); this.game.swapUi.close(); } // wave 17
   }
 }
