@@ -17,6 +17,11 @@ this file is for working on the code.
   the race was a good idea but stayed too simple and easy; the Giant House puzzles worked because the place is so unique.
   Never repeat the same kind of challenge in another world. Mind + skill together is fine when it fits the game's own play
   (e.g. the Portal House in the spirit of Valve's Portal). A Surprise world may use plenty of randomness.
+- **"Easy to understand, hard to master. Never forget this rule!"** (owner 2026-10-29). A child must get what to do in a few
+  seconds (one clear look + at most one short line), and the obvious shortcut must never beat it: e.g. jumping and building
+  (or blowing a bubble) under yourself like a pillar is the chapter-1 sky-gym trick and must never solve a Picture World
+  challenge. Test every game with real keys through the game's own loop, with a "naive kid" bot that must fail and a skilled
+  one that must win.
 - **No Google sign-in.** It was tried and removed (needs Google Cloud console setup the owner
   didn't want). Email + password and "Forgot password?" are the sign-in options.
 - Prefer free services. Deployed on GitHub Pages; backend is a free Supabase project.
