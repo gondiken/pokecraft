@@ -28,8 +28,8 @@ export const PLANETS = [
   { id: 'hop1', name: 'Pebble', emoji: '🔵', x: 101, y: 21, z: 112, n: 7, g: 0.45, reach: 8, skin: 'crystal', role: 'hop', hop: 1 },
   { id: 'hop2', name: 'Far Pebble', emoji: '🟣', x: 84, y: 21, z: 114, n: 7, g: 0.45, reach: 8, skin: 'crystal', role: 'hop', hop: 2 },
   { id: 'hop3', name: 'Sky Pebble', emoji: '🟡', x: 85, y: 33, z: 108, n: 5, g: 0.45, reach: 8, skin: 'crystal', role: 'hop', hop: 3 },
-  { id: 'hop4', name: 'Last Pebble', emoji: '🟢', x: 84, y: 18, z: 92, n: 7, g: 0.45, reach: 8, skin: 'meadow', role: 'hop', hop: 4 },
-  { id: 'great', name: 'Great Cube', emoji: '🪐', x: 78, y: 8, z: 67, n: 21, g: 0.7, reach: 8, skin: 'great', role: 'great' },
+  { id: 'hop4', name: 'Last Pebble', emoji: '🟢', x: 84, y: 18, z: 89, n: 7, g: 0.45, reach: 8, skin: 'meadow', role: 'hop', hop: 4 },
+  { id: 'great', name: 'Great Cube', emoji: '🪐', x: 78, y: 8, z: 64, n: 21, g: 0.7, reach: 8, skin: 'great', role: 'great' },
 ];
 export const P = Object.fromEntries(PLANETS.map((p, i) => [p.id, i]));
 export const sizeOf = Pl => Pl.s ?? [Pl.n, Pl.n, Pl.n];
@@ -40,7 +40,7 @@ export const HOPS = [
   ...pair('meadow', 'base', 0, -1), ...pair('meadow', 'hop0', 2, -1), ...pair('hop4', 'great', 2, -1),
 ];
 export const DOOR = { x: 104, z: 143, facing: [0, 1] }; // the way back on top of the Meadow Cube (you arrive 3 in front of it, looking south)
-export const DOOR2 = { x: 95, z: 80, facing: [-1, 0] }; // a second way back on top of the Great Cube (beside Professor Orbit)
+export const DOOR2 = { x: 95, z: 77, facing: [-1, 0] }; // a second way back on top of the Great Cube (beside Professor Orbit)
 // The solid box of a planet in world units (x1 = its last block + 1), as gravity.js wants it.
 export const boxOf = Pl => { const [nx, ny, nz] = sizeOf(Pl); return { id: Pl.id, x0: Pl.x, y0: Pl.y, z0: Pl.z, x1: Pl.x + nx, y1: Pl.y + ny, z1: Pl.z + nz, reach: Pl.reach, g: Pl.g }; };
 export const BOXES = PLANETS.map(boxOf);
@@ -95,14 +95,14 @@ export const PUPS = [
 // does it (the tests' skilled robot): run-up mode (still / walk / sprint) and the way to run (world yaw, radians).
 export const FLOWERS = [
   { planet: P.hop0, axis: 1, sign: 1, cell: [104, 24, 128], push: 12, to: P.hop1, solution: { mode: 'walk', dir: [0, -1] } },
-  { planet: P.hop1, axis: 1, sign: 1, cell: [101, 27, 115], push: 12, to: P.hop2, solution: { mode: 'sprint', dir: [-1, 0] } },
+  { planet: P.hop1, axis: 1, sign: 1, cell: [101, 27, 115], push: 12, to: P.hop2, solution: { mode: 'walk', dir: [-1, 0] } },
   { planet: P.hop2, axis: 1, sign: 1, cell: [87, 27, 114], push: 12, to: P.hop3, land: null, solution: { mode: 'still', dir: [0, -1] } },
   { planet: P.hop3, axis: 1, sign: -1, cell: [87, 33, 108], push: 12, to: P.hop4, solution: { mode: 'sprint', dir: [0, -1] } },
 ]
 // Home flowers (blue): stand on one and you are puffed home to the Meadow Cube (cubelive.js). One on each pebble and on the Great Cube.
 export const HOME_FLOWERS = [
   { planet: P.hop1, cell: [106, 27, 117] }, { planet: P.hop2, cell: [89, 27, 119] }, { planet: P.hop3, cell: [87, 37, 111] },
-  { planet: P.hop4, cell: [85, 24, 97] }, { planet: P.great, cell: [82, 28, 84] },
+  { planet: P.hop4, cell: [85, 24, 94] }, { planet: P.great, cell: [82, 28, 81] },
 ];
 // The Moon Ride: a little moon circles over the Moon Base on an ellipse (orbits.js moonAt); it stops for `stop` s at its slow end beside
 // the base's east edge, low enough to hop on. Rings on the base's top (landing rings: land inside after a jump off the moon).
@@ -181,8 +181,8 @@ export function cubeLand(world, def) {
   const back2 = buildWayBack(world, 'gravity-great', { x: DOOR2.x, y: top(G), z: DOOR2.z, facing: DOOR2.facing });
   delete world.arrivals['gravity-great']; // (you never arrive there; it only takes you home)
   back2.key = 'gravity';
-  placeBoss(world, 'gravity', { x: 88, y: top(G), z: 72, facing: [0, 1] });
-  const crewAt = [[P.long, 140, 161, [0, 1]], [P.hop4, 88, 94, [0, 1]], [P.base, 92, 144, [-1, 0]]];
+  placeBoss(world, 'gravity', { x: 88, y: top(G), z: 69, facing: [0, 1] });
+  const crewAt = [[P.long, 140, 161, [0, 1]], [P.hop4, 88, 91, [0, 1]], [P.base, 92, 144, [-1, 0]]];
   crewAt.forEach(([pi, x, z, facing], i) => placeCrew(world, 'gravity', i, { x, y: top(PLANETS[pi]), z, facing }));
   const near = (w, pad) => world.keeps.some(k => k.protect.some(b => w[0] >= b.x0 - pad && w[0] <= b.x1 + pad && w[1] >= b.y0 - pad && w[1] <= b.y1 + pad && w[2] >= b.z0 - pad && w[2] <= b.z1 + pad));
   const people = [...(world.bosses || []).flatMap(b => [b.pos, ...b.crew.map(c => c.pos)])];

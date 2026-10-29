@@ -55,7 +55,7 @@ export class CubeLive {
     this.pups = PUPS.map(() => ({ run: null, tagT: -99 }));
     this.pMiss = [0, 0, 0]; this.tagPress = false;
     // the Planet Hop
-    this.flight = null; this.hMiss = FLOWERS.map(() => 0); this.backT = 0; this.backTo = null; this.homeT = 0; this.hopLast = -1;
+    this.flight = null; this.hMiss = FLOWERS.map(() => 0); this.backT = 0; this.backTo = null; this.moonBackT = 0; this.homeT = 0; this.hopLast = -1;
     // the Moon Ride
     this.moonT = 0; this.moonK = 1; this.onMoon = false; this.jump = null; this.mMiss = [0, 0, 0]; this.mFun = new ForFun(RINGS.length); this.ringNow = 0;
     this.M = { ...MOON, top: BOXES[MOON.base].y1 };
@@ -331,7 +331,7 @@ export class CubeLive {
       const k = FLOWERS.findIndex(f => f.planet === p.grav?.planet);
       if (k !== this.padsFor) { this.padsFor = k; this.setPads(k); }
     }
-    if (this.backT > 0) {
+    if (this.backT > 0 && typeof this.backTo === 'number') {
       this.backT -= dt;
       if (this.backT <= 0) this.puffTo(this.flowerStand(this.backTo));
     }
@@ -381,11 +381,11 @@ export class CubeLive {
         } else {
           this.mMiss[r]++;
           this.toast(`${WORDS.ringMiss}${kindHelp(this.mMiss[r]).on ? ' (The moon is a little slower now.)' : ''}`);
-          this.backT = CUBE_RULES.back + 0.3; this.backTo = 'moon';
+          this.moonBackT = CUBE_RULES.back + 0.3;
         }
       } else if (this.jump && this.jump.t > 6) this.jump = null;
     }
-    if (this.backTo === 'moon' && this.backT > 0) { this.backT -= dt; if (this.backT <= 0) { this.backTo = null; const s = this.moonObj.safe(); this.puffTo({ pos: [s.x, s.y, s.z], frame: 0, look: [this.M.cx + this.M.rx, s.y, this.M.cz] }); } }
+    if (this.moonBackT > 0) { this.moonBackT -= dt; if (this.moonBackT <= 0) { const s = this.moonObj.safe(); this.puffTo({ pos: [s.x, s.y, s.z], frame: 0, look: [this.M.cx + this.M.rx, s.y, this.M.cz] }); } }
   }
   drawMoon() {
     const m = this.moonNow();
