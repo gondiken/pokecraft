@@ -44,6 +44,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | H | Home screen, while you stand on a Doormat |
 | P / Tab | Team & storage screen |
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
+| V | Steady camera on / off on the little Cube Planets (the view blinks to the new side instead of turning; tablets: the Steady button; also in the pause screen) |
 | C | Creature Book: every creature you've seen and caught |
 | G | Where to go: pick a gym or place and the arrow follows it (on a tablet, tap the arrow line at the top right) |
 | M | Champion missions (after you are the Champion) |

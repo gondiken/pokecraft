@@ -174,7 +174,8 @@ REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0
   look: { sky: 0x141c4c, fog: [70, 220], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🪐 Cube Planets', travelText: 'Floating in...', travelIcon: '🪐', enterText: 'Whoosh! You are on a little cube planet!',
   arriveHint: 'Walk over the edge: down is wherever your feet are! Jump from a side to hop to the next planet.',
-  noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too' });
+  noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too',
+  noRide: 'No riding on the little planets! Walk and jump instead.' }); // owner 2026-10-29: riding is off here (riding.js; you get off on arrival)
 /* ==== end of Gravity ==== */
 /* ==== Bubble ==== */
 // The Bubble Well (behind the Swirl's pale blue frame, the old secret4): one climb up a fizzing well, the Bubble Stairs, the Duckling
@@ -514,6 +515,7 @@ export function createRealms(game, { createWorld, save, size }) {
         }
         if (joinDeep) stash.up = { id: def.parent, ret: cleanRet(follow.up?.ret), via: cleanVia(follow.up?.via, def.id), edits: null };
       }
+      const rode = !!game.riding?.on; // owner 2026-10-29: a realm with `noRide` says why you got off
       game.riding?.stop('quiet');
       game.ui.closeAsk?.();
       show(def.travelText || 'Travelling...', def.travelIcon);
@@ -539,6 +541,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (game.world.gyms.some(g => !game.badges.includes(g.def.id))) game.ui.toast('Everything is light here: jump high! An upside-down house floats somewhere. Follow the arrow.');
       else if (def.arriveHint) game.ui.toast(def.arriveHint);
       else if (game.world.wake) game.ui.toast('Touch the glowing Wake Stone to wake up.');
+      if (rode && def.noRide) game.ui.toast(def.noRide);
       game.mp?.sendState();
       save(true);
       return true;

@@ -23,6 +23,7 @@ import { createPlayTogether } from './playtogether.js';
 import { UI, portrait } from './ui.js';
 import { el } from './util.js';
 import { sound } from './sound.js';
+import { steadyCam } from './steadycam.js'; // owner 2026-10-29: the steady camera on Cube Planets
 import { Fx } from './fx.js';
 import { Weather } from './weather.js';
 import { createGuide } from './guide.js';
@@ -552,6 +553,22 @@ const fxBtn = document.getElementById('fx-btn');
 const showFx = () => { fxBtn.textContent = game.fx.on ? '✨ Effects on' : '✨ Effects off'; };
 fxBtn.addEventListener('click', e => { e.stopPropagation(); game.fx.setOn(!game.fx.on); showFx(); });
 showFx();
+// Owner 2026-10-29: the steady camera (steadycam.js, per device like Sound). Only shown where down can change (a world with gravityAt).
+const steadyBtn = document.getElementById('steady-btn');
+function showSteady() {
+  steadyBtn.textContent = `🎥 Steady camera ${steadyCam.on ? 'on' : 'off'}`;
+  steadyBtn.classList.toggle('hidden', !game.world?.gravityAt);
+}
+game.steadyCam = steadyCam;
+game.toggleSteady = () => {
+  steadyCam.setOn(!steadyCam.on); showSteady();
+  game.ui.toast(steadyCam.on ? 'Steady camera on: over an edge the view blinks to the new side instead of turning.' : 'Steady camera off: the view turns round over an edge.');
+};
+steadyBtn.addEventListener('click', e => { e.stopPropagation(); game.toggleSteady(); });
+showSteady();
+const dipEl = document.getElementById('dip');
+let dipShown = 0;
+let steadyWorld = null;
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
 for (const [id, fn] of [['pb-team', toggleTeam], ['pb-blocks', toggleBlocks], ['pb-book', toggleBook],
   ['pb-missions', () => game.openMissions('view')], ['pb-where', () => game.openNav()], ['pb-home', () => game.openHome()]]) {
@@ -615,6 +632,7 @@ document.addEventListener('keydown', e => {
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
   if (e.code === 'KeyR' && !e.repeat) game.riding.toggle(); // T27
+  if (e.code === 'KeyV' && !e.repeat && game.world.gravityAt) game.toggleSteady(); // owner 2026-10-29: the steady camera (Cube Planets only)
   if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
@@ -761,7 +779,7 @@ game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { game.player.keys.Space = down && playing(); },
-  ride: () => { if (!playing()) return; if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); },
+  ride: () => { if (!playing()) return; if (game.world.gravityAt) game.toggleSteady(); else if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); }, // owner 2026-10-29: on Cube Planets this slot is Steady
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
   place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
   // T39c: one button = "do the thing I look at": answer a question, else use the target, else break the block, else My home
@@ -1163,7 +1181,7 @@ function updateTarget() {
   const placeWhy = !target.block ? 'Look at a block to build on it!' : noneLeft ? `No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}` : '';
   game.touchWhy.place = placeWhy;
   const riding = game.riding, have = game.party.some(c => rideKind(c));
-  const rideWhy = riding.on ? '' : game.hideSeek?.active ? 'No riding in hide and seek!'
+  const rideWhy = riding.on ? '' : game.world.realm?.noRide ? game.world.realm.noRide : game.hideSeek?.active ? 'No riding in hide and seek!'
     : !riding.first() ? 'Your rideable friends are too tired. Visit Healer Hana!'
     : game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)) ? 'No riding right here. Walk a little further first!' : '';
   game.touchWhy.ride = rideWhy;
@@ -1174,6 +1192,7 @@ function updateTarget() {
     sky: riding.on && riding.kind === 'sky',
     swim: !!p.diving, // T41: Jump says Swim in the Sunken City
     jump: p.carry?.jumpWord?.() ?? null, // T49: a ride may name the Jump button (the Castle: Shield, Off)
+    steady: game.world.gravityAt ? steadyCam.on : null, // owner 2026-10-29: on Cube Planets the Ride slot is the steady camera
   });
 }
 
@@ -1192,6 +1211,8 @@ function frame(now) {
   } else {
     p.joy = game.touch.joy;
     const before = p.pos.clone(); // T30
+    p.steady = steadyCam.on; // owner 2026-10-29: Cube Planets' steady camera (player.js turnView)
+    if (steadyWorld !== game.world) { steadyWorld = game.world; showSteady(); } // its pause-screen button only where down can change
     if (playing()) p.update(dt);
     if (p.bounced) { p.bounced = false; sound.play('boing'); game.realms.onBounce(); } // T35: launched by a Bounce Block
     if (p.trampolined) { p.trampolined = false; sound.play('boing'); } // T43: a trampoline of the Funfair (no Dream hint)
@@ -1224,6 +1245,8 @@ function frame(now) {
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);
     const viewQ = p.viewQuat?.(); if (viewQ) camera.quaternion.premultiply(viewQ); // Cube Planets: the camera's up eases to the face you stand on (null everywhere else)
+    const dip = p.dipAmount?.() ?? 0; // owner 2026-10-29: the steady camera's dip to the sky colour (0 everywhere else)
+    if (dip !== dipShown) { if (!dipShown) dipEl.style.background = `#${scene.background.getHexString()}`; dipShown = dip; dipEl.style.opacity = String(dip); dipEl.classList.toggle('hidden', !dip); }
     if (!game.inBattle) updateTarget();
     game.weather.update(dt, now);
     updateSky(dt);

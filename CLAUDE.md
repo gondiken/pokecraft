@@ -152,7 +152,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/features.js` | T29 feature helpers (`count`, `hasBlock`, `atLeast`, `mostly`, `reach`, `different`, `checkAll`), used by homes and builds |
 | `src/missionui.js` | T29 `createMissionUi` -> `game.missionUi`: the `#missions` panel and the `#mission-chip` |
 | `src/ui.js` | HUD, team screen, creature portraits, `ui.ask`, `ui.celebrate`, chips (`setScore`, `setKeyCompass`, `setPointers`...) |
-| `src/touch.js` | Tablet controls. **T39c fixed-slot rule: buttons never move or disappear, they dim** (`setButtons({ act, place, ride, jump, swim, sky })` once per frame from `updateTarget`; DOM written only on change). Bottom right: Jump, the round Action button `#btn-act` (its word = what it does; it replaced Break), Place above Jump, Ride above Action (only with a rideable creature), Down only while flying. A tap on a dimmed button toasts why (`game.touchWhy`). Top bar = only `#btn-pause` and `#btn-book`; Team = tap `#party-mini`, Blocks = tap the picked slot again, both also in the pause screen |
+| `src/touch.js` | Tablet controls. **T39c fixed-slot rule: buttons never move or disappear, they dim** (`setButtons({ act, place, ride, jump, swim, sky, steady })` once per frame from `updateTarget`; DOM written only on change). Bottom right: Jump, the round Action button `#btn-act` (its word = what it does; it replaced Break), Place above Jump, Ride above Action (only with a rideable creature; in a world with `gravityAt` the same slot is **Steady**: lit = the steady camera on, dim = off), Down only while flying. A tap on a dimmed button toasts why (`game.touchWhy`). Top bar = only `#btn-pause` and `#btn-book`; Team = tap `#party-mini`, Blocks = tap the picked slot again, both also in the pause screen |
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
 | `src/multiplayer.js` | Play together: share code, avatars, block sync; T38b `realm` event |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
@@ -165,6 +165,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/gravity.js` | Cube Planets (step 0), pure: `GRAV`, `FRAMES` (the 24 quarter-turns), `toWorld` / `toLocal` (exact), `turnTo` / `frameOf`, `downAt` (which planet by the body's middle, which side by the feet, hysteresis, soft pull), `centreOf` / `pivot`, `stepFlight` / `flightAt` / `flightLand` (the player's own sums), `frameWorld` |
 | `src/cubeland.js` | Cube Planets terrain (Node-runnable, `TERRAINS.cubeLand`, 224 x 224): `PLANETS` (3), `BOXES`, `HOPS`, `hopSpot`, `FACES`, `faceCell`, `DOOR`; sets `world.planets`, `world.gravityAt`, `world.cubes`; `cubeAim` (the arrow in your face's frame) |
 | `src/cubelive.js` | Cube Planets `CubeLive` = `LIVE.gravity`: the star sky (one `Points`), the planets you stood on (`visited`, the guide's tour), one-time words, the catch puff's toast |
+| `src/steadycam.js` | Owner 2026-10-29: `steadyCam` (`on`, `setOn`), the steady camera setting, per device in localStorage `pokecraft-steady` like Sound (never in the game save) |
 
 ## Key ideas
 
@@ -558,7 +559,16 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   your own on the face. Over an edge you turn round your feet and keep your local speed; into another planet's pull you turn round
   your middle and keep your world speed. In the air the stick only steers (`GRAV.air`). **The camera:** `p.viewQuat()` eases 0.45 s
   (0.8 s past 120 degrees); `main.js` premultiplies it (marked line); `eyePos` / `forward` / `lookAt` / `collides` follow the frame.
-  Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (`setFrame`; missing = upright). Off-world bit for bit:
+  Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (`setFrame`; missing = upright).
+  **Owner 2026-10-29 (played step 0):** keep the eased camera turn as the default; **steady camera** option: `p.steady` (main.js from
+  `steadycam.js`) makes `turnView` a dip instead of a roll: the `#dip` overlay fades to the sky colour (`GRAV.dipOut` 0.12 s), the view
+  snaps to the new up while hidden, then clears (`GRAV.dipIn` 0.18 s); `p.dipAmount()`. Toggles: the pause screen's `#steady-btn` (shown
+  only in a world with `gravityAt`), **V**, and on tablets the Ride slot (says Steady there). **No riding** (realm def `noRide` = its
+  words, generic): `riding.start` refuses, `riding.update` gets you off, `realms.enter` says it when you arrived riding. Before, a rider
+  could get on because `frameWorld` had no fences (`fenced: () => false`); it now passes `fenced` / `fenceAt` through to the world.
+  **Bevelled edges were tried and dropped:** with whole blocks a one-step bevel is a step DOWN seen from both faces, so at walking speed
+  you fly over the 1-wide step, the down turns above it and you stand in the notch facing a 1-block wall (a jump at every edge); fixing it
+  would need a new turn rule mirrored in `flightLand`. Off-world bit for bit:
   `tests/cuberecord.mjs` against `tests/fixtures/cube-off-golden.json` (made with the player.js of before).
 - **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
@@ -625,7 +635,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms
 - `cloud`: real online saves (skipped without `PC_TEST_EMAIL` / `PC_TEST_PASSWORD`)
 - `comingsoon`: wave 15 ships closed; `?preview` opens the worlds (the other specs play with them open)
-- `cube`: Cube Planets step 0: off (bit for bit elsewhere), the 24 frames, every edge of every planet at 60 / 20 fps, no flicker, corners, hops vs `flightLand`, the catch puff, land (3 seeds), play (reload keeps the frame), iPad, closed; `CUBE_ONLY=off|frames|gravity|land|play|closed|ipad|shots`
+- `cube`: Cube Planets step 0: off (bit for bit elsewhere), the 24 frames, every edge of every planet at 60 / 20 fps, no flicker, corners, hops vs `flightLand`, the catch puff, the steady camera (no part-way roll, the dip), land (3 seeds), play (no riding, arriving on a creature, the Steady button kept after a reload, reload keeps the frame), iPad (the Steady slot, V), closed; `CUBE_ONLY=off|frames|gravity|land|play|closed|ipad|shots`
 - `dance`: Echo Gym dance-off, rematch dance, old saves keep badge / trainer / wins
 - `dojo`: T37b building for three seeds, `sneak.js`, spotted / puff / hiding / squeak, sneak attack, iPad; `DOJO_ONLY=shots|build`
 - `doodle`: T45 type, pencil atlas, sketch switch off = bit for bit, the look, terrain, Draw! with model players at 60 / 20 fps, play, iPad, two browsers; `DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots`

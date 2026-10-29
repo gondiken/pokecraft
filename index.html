@@ -25,6 +25,7 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="dip" class="hidden"></div> <!-- owner 2026-10-29: the steady camera's dip to the sky colour (Cube Planets), under the HUD -->
 
   <!-- In-world HUD -->
   <div id="hud" class="hidden">
@@ -136,7 +137,7 @@
         <button id="pb-team">Team</button> <button id="pb-blocks">Blocks</button> <button id="pb-book">Book</button>
         <button id="pb-missions" class="hidden">Missions</button> <button id="pb-where">Where to go</button> <button id="pb-home" class="hidden">My home</button>
       </div>
-      <p class="pause-btns"><button id="resume" class="primary">Resume</button> <button id="menu">Main menu</button> <button id="sound-btn"></button> <button id="fx-btn"></button></p>
+      <p class="pause-btns"><button id="resume" class="primary">Resume</button> <button id="menu">Main menu</button> <button id="sound-btn"></button> <button id="fx-btn"></button> <button id="steady-btn" class="hidden"></button></p>
       <p class="hint"><span class="desktop-only">Or click</span><span class="touch-only">Or tap</span> anywhere outside the boxes</p>
       <div id="cloud-status"></div>
       <div id="mp"></div>
@@ -144,7 +145,7 @@
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
         <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> use / talk / battle · <b>P</b> team · <b>C</b> creature book<br>
-        <b>G</b> where to go · <b>M</b> missions · <b>H</b> home (on a Doormat) · <b>R</b> ride / get off · <b>Esc</b> cancel / pause
+        <b>G</b> where to go · <b>M</b> missions · <b>H</b> home (on a Doormat) · <b>R</b> ride / get off · <b>V</b> steady camera (little planets) · <b>Esc</b> cancel / pause
       </div>
     </div>
   </div>

@@ -184,6 +184,31 @@ export default async function ({ browser, base, t }) {
       });
       t.ok(N.along.turns === 0 && N.along.down === '0,-1,0' && N.astride.turns === 0 && N.astride.ground && N.over.turns === 1 && N.still.turns === 0 && N.back.turns === 1 && N.back.down === '0,-1,0' && N.still2.turns === 0,
         `no flicker: walking along an edge (just inside: ${N.along.turns} turns; standing 0.2 over it: ${N.astride.turns}), over an edge and stopping (${N.over.turns} turn, then ${N.still.turns}), and back (${N.back.turns}, then ${N.still2.turns})`);
+      // the steady camera (owner 2026-10-29): over an edge no rolling turn; the view dips to the sky colour, snaps while hidden, comes back
+      const SC = await page.evaluate(() => {
+        const C = window.__C, w = C.make(1), b = C.CL.BOXES[0], out = {};
+        const run = (steady, fps) => {
+          const p = C.player(w); p.steady = steady; C.place(p, [b.x1 - 1.5, b.y1, b.z0 + 6.5]); C.settle(p); C.yawToward(p, [1, 0, 0]);
+          const rows = []; let f0 = p.frame, turnAt = -1;
+          for (let i = 0; i < Math.round(1.5 * fps); i++) {
+            p.keys = { KeyW: true }; p.update(1 / fps);
+            if (p.frame !== f0 && turnAt < 0) turnAt = i;
+            const u = C.G.upOf(p.frame), cu = new p.pos.constructor(0, 1, 0).applyQuaternion(p.viewQuat());
+            rows.push({ a: Math.acos(Math.max(-1, Math.min(1, cu.x * u[0] + cu.y * u[1] + cu.z * u[2]))) * 180 / Math.PI, dip: p.dipAmount() });
+          }
+          return { rows: rows.slice(turnAt), pos: p.pos.toArray().join(), frame: p.frame };
+        };
+        const s60 = run(true, 60), s20 = run(true, 20), e60 = run(false, 60);
+        const mid = r => r.rows.filter(x => x.a > 1 && x.a < 89).length; // a frame with the view part-way round = a rolling turn
+        out.steadyMid = mid(s60) + mid(s20); out.easedMid = mid(e60);
+        out.peak = Math.max(...s60.rows.map(x => x.dip)); const snapDip = r => { const i = r.rows.findIndex(x => x.a < 1); return i > 0 ? r.rows[i].dip : 0; }; out.snapDip = Math.min(snapDip(s60), snapDip(s20)); out.hiddenSnap = out.snapDip > 0.8;
+        const back = s60.rows.findIndex(x => x.a < 1), clear = s60.rows.findIndex((x, i) => i > back && x.dip === 0);
+        out.snapT = back / 60; out.clearT = clear / 60; out.same = s60.pos === e60.pos && s60.frame === e60.frame;
+        out.easedDip = Math.max(...e60.rows.map(x => x.dip));
+        return out;
+      });
+      t.ok(SC.steadyMid === 0 && SC.easedMid >= 10 && SC.peak > 0.9 && SC.hiddenSnap && SC.snapT <= 0.13 && SC.clearT > 0.25 && SC.clearT <= 0.33 && SC.same && SC.easedDip === 0,
+        `steady camera: over an edge the view never rolls part-way (${SC.steadyMid} frames part-way at 60 / 20 fps, the eased turn has ${SC.easedMid}); it dips to the sky colour (peak ${SC.peak.toFixed(2)}), snaps to the new up while hidden (after ${SC.snapT.toFixed(2)} s, at ${SC.snapDip.toFixed(2)} sky) and is clear again after ${SC.clearT.toFixed(2)} s; the walk itself is the same; off (the default) never dips`);
       // stepping off a corner
       const K = await page.evaluate(() => {
         const C = window.__C, w = C.make(1), P = C.CL.BOXES[2], res = [];
@@ -243,9 +268,20 @@ export default async function ({ browser, base, t }) {
   if (want('play') || want('shots')) {
     const page = await retry(() => openGame(browser, base));
     await newGame(page, 0); await pause(page);
-    await page.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; });
-    await intoCubes(page);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.weather.set('clear'); g.time = 0.25; const c = S.makeCreature('blazehound', 30); c.traits = ['rideable']; g.party.unshift(c); });
+    const rode = await intoCubes(page, { ride: true });
     await harness(page);
+    // owner 2026-10-29: no riding here. Arriving on a creature gets you off with a word; you can't get on (R, the button, the team card)
+    const RD = await page.evaluate(() => {
+      const g = window.pokecraft, toasts = () => [...document.querySelectorAll('#toast div')].map(d => d.textContent).join(' | '), out = {};
+      out.on = g.riding.on; out.ride = !!g.player.ride; out.arrive = toasts();
+      document.getElementById('toast').replaceChildren();
+      out.start = g.riding.start(); out.after = g.riding.on || !!g.player.ride; out.startToast = toasts();
+      out.fence = g.player.inFrame ? (() => { const p = g.player; p.ride = { kind: 'land', speed: 7, sprint: 9.5, jump: 11.2 }; const hit = p.collides(p.pos); p.ride = null; return hit; })() : null;
+      return out;
+    });
+    t.ok(rode && !RD.on && !RD.ride && /No riding on the little planets/.test(RD.arrive), `arriving on a creature (riding in the Swirl: ${rode}) gets you off, with a word: "${RD.arrive}"`);
+    t.ok(RD.start === false && !RD.after && /No riding on the little planets/.test(RD.startToast) && RD.fence === true, `trying to get on here says "${RD.startToast}" and you stay on foot; a rider's box is fenced on every face too (it was not before: the frame's view of the world had no fences)`);
     const D0 = await page.evaluate(async () => {
       const g = window.pokecraft, p = g.player, live = g.gymLive.of('part:gravity'), C = window.__C, out = {};
       for (let i = 0; i < 6; i++) { p.update(1 / 60); live.update(1 / 60); }
@@ -298,11 +334,19 @@ export default async function ({ browser, base, t }) {
       await shot(page, 'cube-under.png');
     }
     if (want('play')) {
+      // the steady camera's pause-screen button (owner 2026-10-29): only here, per device (localStorage), never in the game save
+      await page.waitForFunction(() => document.getElementById('btn-ride').textContent === 'Steady', null, { timeout: 60000 });
+      const B0 = await page.evaluate(() => { const b = document.getElementById('steady-btn'), r = document.getElementById('btn-ride'); window.pokecraft.ui.toastBox.replaceChildren(); const before = { text: b.textContent, hidden: b.classList.contains('hidden'), slot: r.textContent, dim: r.classList.contains('dim') }; b.click(); return { before, after: b.textContent, on: window.pokecraft.steadyCam.on, stored: localStorage.getItem('pokecraft-steady'), toast: document.getElementById('toast').textContent }; });
+      await page.waitForFunction(() => !document.getElementById('btn-ride').classList.contains('dim'), null, { timeout: 60000 });
+      t.ok(!B0.before.hidden && /Steady camera off/.test(B0.before.text) && /Steady camera on/.test(B0.after) && B0.on && B0.stored === 'on' && /Steady camera on/.test(B0.toast) && B0.before.slot === 'Steady' && B0.before.dim,
+        `the pause screen has "${B0.before.text}" here; a click turns it on ("${B0.after}", kept on this device); the Ride slot says ${B0.before.slot} (dim while off, lit once on)`);
+      if (want('shots') || process.env.CUBE_SHOTS) { await page.evaluate(() => { window.pokecraft.ui.toastBox.replaceChildren(); document.getElementById('pause').classList.remove('hidden'); }); await page.waitForTimeout(1500); await page.screenshot({ path: path.join(SHOTS, 'cube-pause-steady.png'), timeout: 180000 }); console.log('  screenshot cube-pause-steady.png'); }
       // stand on the Crystal Cube's north side, save, reload: the same spot and the same frame
       const S0 = await page.evaluate(() => { const g = window.pokecraft, p = g.player, C = window.__C, h = C.CL.HOPS[2]; C.place(p, C.hopFree(g.world, h)); C.settle(p); p.yaw = 1.1; g.save(); return { pos: p.pos.toArray(), frame: p.frameNo(), yaw: p.yaw, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).realmPos }; });
       await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
       await continueGame(page); await pause(page); await placeIs(page, 'gravity');
-      const S1 = await page.evaluate(() => { const p = window.pokecraft.player; return { pos: p.pos.toArray(), frame: p.frameNo(), yaw: p.yaw }; });
+      const S1 = await page.evaluate(() => { const p = window.pokecraft.player; return { pos: p.pos.toArray(), frame: p.frameNo(), yaw: p.yaw, steady: window.pokecraft.steadyCam.on, inSave: /steady/i.test(localStorage.getItem('pokecraft-save-v2')) }; });
+      t.ok(S1.steady && !S1.inSave, `the steady camera is still on after a reload (kept on this device, not in the game save)`);
       t.ok(S0.saved.length === 6 && S0.saved[5] === S0.frame && S1.frame === S0.frame && S1.pos.every((v, k) => Math.abs(v - S0.pos[k]) < 1e-9) && Math.abs(S1.yaw - S0.yaw) < 1e-9 && S0.frame !== 0, `a save on the Crystal Cube's north side keeps the frame as a 6th value (${S0.saved.slice(3).map(v => +v.toFixed(2))}); after a reload you stand on the same spot of the same side (frame ${S1.frame})`);
       // an old 5-value realmPos (from before this change) loads upright
       await page.context().addInitScript(() => { // (after the page's own save on unload)
@@ -318,7 +362,9 @@ export default async function ({ browser, base, t }) {
       await harness(page);
       await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors[0], c = d.surface[Math.floor(d.surface.length / 2)]; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); });
       await placeIs(page, 'swirl');
-      const S3 = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), p = g.player; return { d: Math.hypot(p.pos.x - f.stand[0] - 0.5, p.pos.z - f.stand[2] - 0.5), frame: p.frameNo(), view: p.viewQuat() }; });
+      await page.waitForFunction(() => document.getElementById('btn-ride').textContent !== 'Steady', null, { timeout: 60000 });
+      const S3 = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), p = g.player, r = document.getElementById('btn-ride'); return { d: Math.hypot(p.pos.x - f.stand[0] - 0.5, p.pos.z - f.stand[2] - 0.5), frame: p.frameNo(), view: p.viewQuat(), slot: r.textContent, steadyCls: r.classList.contains('steady'), btn: document.getElementById('steady-btn').classList.contains('hidden') }; });
+      t.ok(S3.slot === 'Ride' && !S3.steadyCls && S3.btn, `back in the Swirl the slot is ${S3.slot} again and the pause screen has no steady button`);
       t.ok(S3.d < 4 && S3.frame === null && S3.view === null, `the way back puts you in front of the Cube Planets frame in the Swirl (${S3.d.toFixed(1)} away), upright again (no frame there)`);
     }
     t.ok(!page.errors.length, `no page errors ${page.errors.slice(0, 3).join(' | ')}`);
@@ -329,7 +375,7 @@ export default async function ({ browser, base, t }) {
   if (want('ipad')) {
     const ip = await retry(() => openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] }));
     await newGame(ip, 0);
-    await ip.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; });
+    await ip.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.weather.set('clear'); g.time = 0.25; const c = S.makeCreature('blazehound', 30); c.traits = ['rideable']; g.party.unshift(c); });
     await intoCubes(ip);
     await harness(ip);
     const I = await ip.evaluate(() => {
@@ -362,6 +408,24 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(I.down === '1,0,0' && I.dot > 0.98 && I.normal < 1e-9 && I.right > 0.98, `iPad: on the Moon Cube's west side the stick pushed up moves you where you look along the face (${I.dot.toFixed(3)}), right is right (${I.right.toFixed(3)}), never off the face`);
     t.ok(I.turned && I.a0 > 80 && I.a02 > 10 && I.a02 < 80 && I.a05 < 1 && Math.abs(I.big - 0.8) < 1e-9, `iPad: over an edge the camera's up turns slowly: ${I.a0.toFixed(0)}° at the turn, ${I.a02.toFixed(0)}° after 0.2 s, ${I.a05.toFixed(1)}° after 0.5 s; a turn upside down takes 0.8 s`);
+    // owner 2026-10-29: here the Ride slot is the steady camera (same place, dim = off, lit = on); a tap and the V key switch it
+    await ip.evaluate(() => { const p = window.pokecraft.player, C = window.__C, b = C.CL.BOXES[0]; C.place(p, [b.x0 + 6.5, b.y1, b.z0 + 9.5]); C.settle(p); p.yaw = 2.6; p.pitch = -0.1; });
+    await ip.waitForFunction(() => document.getElementById('btn-ride').textContent === 'Steady', null, { timeout: 60000 });
+    const box = id => ip.evaluate(id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width)]; }, id);
+    const T0 = await ip.evaluate(() => { const r = document.getElementById('btn-ride'); return { dim: r.classList.contains('dim'), hidden: r.classList.contains('hidden'), on: window.pokecraft.steadyCam.on }; });
+    const at0 = await box('btn-ride');
+    await ip.evaluate(() => window.pokecraft.ui.toastBox.replaceChildren());
+    await ip.tap('#btn-ride');
+    await ip.waitForFunction(() => !document.getElementById('btn-ride').classList.contains('dim'), null, { timeout: 60000 });
+    const T1 = await ip.evaluate(() => ({ on: window.pokecraft.steadyCam.on, steady: document.getElementById('btn-ride').classList.contains('steady'), riding: window.pokecraft.riding.on, toast: document.getElementById('toast').textContent }));
+    const at1 = await box('btn-ride');
+    await ip.evaluate(() => window.pokecraft.ui.toastBox.replaceChildren());
+    await shot(ip, 'cube-ipad-steady.png');
+    await ip.keyboard.press('KeyV');
+    await ip.waitForFunction(() => document.getElementById('btn-ride').classList.contains('dim'), null, { timeout: 60000 }).catch(() => {});
+    const T2 = await ip.evaluate(() => ({ on: window.pokecraft.steadyCam.on, stored: localStorage.getItem('pokecraft-steady') }));
+    t.ok(!T0.hidden && T0.dim && !T0.on && T1.on && T1.steady && !T1.riding && /Steady camera on/.test(T1.toast) && at0.join() === at1.join() && !T2.on && T2.stored === 'off',
+      `iPad: the Ride slot says Steady here (dim = off), a tap turns the steady camera on (lit, "${T1.toast}", never a ride), it stays in its place (${at0}), and V turns it off again`);
     t.ok(!ip.errors.length, `no page errors on the iPad ${ip.errors.slice(0, 3).join(' | ')}`);
     await ip.context().close();
   }
@@ -390,15 +454,19 @@ export default async function ({ browser, base, t }) {
 }
 
 // A Champion steps into Cube Planets through its frame in the Swirl.
-async function intoCubes(page) {
+// ride: get on a rideable team creature in the Swirl first (owner 2026-10-29: you get off on arrival) -> whether you were riding.
+async function intoCubes(page, { ride = false } = {}) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
-  const cell = await page.evaluate(() => {
+  const { cell, rode } = await page.evaluate(ride => {
     const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), p = g.player;
     p.pos.set(f.stand[0] + 0.5, f.stand[1], f.stand[2] + 0.5); p.vel.set(0, 0, 0);
     p.lookAt({ x: f.spot.x + 0.5, y: f.spot.y + 3.5, z: f.spot.z + 0.5 });
-    return f.cloth[Math.floor(f.cloth.length / 2)];
-  });
+    let rode = false;
+    if (ride) { const s = g.player.pos.clone(); p.pos.set(s.x, s.y, s.z + 3); rode = g.riding.start(); p.pos.copy(s); } // (a step away from the frame's keep)
+    return { cell: f.cloth[Math.floor(f.cloth.length / 2)], rode };
+  }, ride);
   await page.evaluate(c => { const g = window.pokecraft; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); }, cell);
   await placeIs(page, 'gravity');
+  return rode;
 }

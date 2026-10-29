@@ -330,6 +330,7 @@ export class Player {
     }
     this.frame = fi; this._fw = true; this._fOf = this.world; this._views = [];
     this._view = FRAME_Q[fi].clone(); this._vFrom = FRAME_Q[fi].clone(); this._vTo = fi; this._vT = 1; this._vDur = GRAV.turn;
+    this._dip = null;
     this._fLast = this.pos.clone(); this._fAcc = 0; this.lostT = 0;
     this._lp ??= new THREE.Vector3(); this._lv ??= new THREE.Vector3();
   }
@@ -363,12 +364,34 @@ export class Player {
     this.pitch = Math.atan2(l[1], Math.hypot(l[0], l[2]));
   }
   // The camera's up eases to frame `fi` (never a snap): 0.45 s, or 0.8 s when the new up is far from the screen's up.
+  // The steady camera (owner 2026-10-29, `this.steady`, set by main.js from steadycam.js): no rolling turn; the view dips to the sky
+  // colour (GRAV.dipOut), snaps to the new up while hidden, and comes back (GRAV.dipIn), like a comfort "blink" turn in VR games.
   turnView(fi) {
+    if (this.steady) {
+      const d = this._dip;
+      if (d && d.t < GRAV.dipOut) d.to = fi; // still dipping: snap to the newest up
+      else this._dip = { t: d ? this.dipAmount() * GRAV.dipOut : 0, to: fi }; // (coming back already: dip again from where it is)
+      this._vTo = fi; this._vT = this._vDur = 0;
+      return;
+    }
     const cur = new THREE.Vector3(0, 1, 0).applyQuaternion(this._view), u = upOf(fi), to = new THREE.Vector3(u[0], u[1], u[2]);
     this._vFrom.copy(this._view); this._vTo = fi; this._vT = 0;
     this._vDur = cur.angleTo(to) > GRAV.bigAngle * Math.PI / 180 ? GRAV.bigTurn : GRAV.turn;
   }
+  // How far the steady camera's dip is (0 = clear, 1 = all sky colour): main.js draws it.
+  dipAmount() {
+    const d = this._fw && this._dip;
+    if (!d) return 0;
+    return d.t < GRAV.dipOut ? d.t / GRAV.dipOut : Math.max(0, 1 - (d.t - GRAV.dipOut) / GRAV.dipIn);
+  }
   easeView(dt) {
+    const d = this._dip;
+    if (d) { // the steady camera
+      d.t += dt;
+      if (d.t >= GRAV.dipOut) this._view.copy(FRAME_Q[d.to]);
+      if (d.t >= GRAV.dipOut + GRAV.dipIn) this._dip = null;
+      return;
+    }
     if (this._vT >= this._vDur) { this._view.copy(FRAME_Q[this._vTo]); return; }
     this._vT = Math.min(this._vDur, this._vT + dt);
     this._view.slerpQuaternions(this._vFrom, FRAME_Q[this._vTo], smooth(this._vT / this._vDur));

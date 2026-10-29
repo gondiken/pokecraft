@@ -26,6 +26,8 @@ export const GRAV = {
   turn: 0.45,        // seconds: the camera eases to a new up
   bigTurn: 0.8,      // ... and more slowly when the new up is far from the screen's up
   bigAngle: 120,     // degrees
+  dipOut: 0.12,      // the steady camera (owner 2026-10-29): over this long the view dips to the sky colour, then snaps to the new up...
+  dipIn: 0.18,       // ... and comes back over this long (no rolling turn at all: kinder to the stomach)
   mid: 0.9,          // the middle of the body above the feet (half the player's 1.8)
 };
 
@@ -185,6 +187,7 @@ export function frameWorld(world, fi) {
     frame: fi, world,
     get(x, y, z) { const w = W(x, y, z); return world.get(w[0], w[1], w[2]); },
     isSolid(x, y, z) { const w = W(x, y, z); return world.isSolid(w[0], w[1], w[2]); },
-    fenced: () => false, fenceAt: () => null,
+    fenced(x, y, z) { const w = W(x, y, z); return !!world.fenced?.(w[0], w[1], w[2]); }, // a rider is fenced out of keeps on any face (owner 2026-10-29)
+    fenceAt(x, y, z) { const w = W(x, y, z); return world.fenceAt?.(w[0], w[1], w[2]) ?? null; },
   };
 }
