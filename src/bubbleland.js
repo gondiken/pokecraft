@@ -39,7 +39,7 @@ export const THORNS = thornRows();
 export const GARDEN_RULES = { bounds: GARDEN, nest: NEST, currents: CURRENTS, gusts: GUSTS, thorns: THORNS };
 // The chimney: a tube of fizzy wall (inside radius 4) on the plateau up to the rim, a glass strip toward the well's middle, a door east.
 export const CHIMNEY = {
-  x: 46.5, z: 40.5, r: 4, wall: 5.8, floor: 19, top: 41.8, door: { a: 0, w: 0.4, y1: 21 }, window: { w: 0.5, y0: 22, y1: 40 },
+  x: 46.5, z: 40.5, r: 4, wall: 5.8, floor: 19, top: 41.8, door: { a: 0, w: 0.4, y1: 23 }, window: { w: 0.5, y0: 22, y1: 40 },
   plates: [{ y: 25, a: 0, d: 0 }, { y: 30, a: 2.8, d: 2.0 }, { y: 34.5, a: 4.6, d: 2.0 }], // (rework 2026-10-29: the first gold ring right over the start)
   fan: { y0: 35.4, y1: 37.2, vx: Math.cos(2.0) * 1.4, vz: Math.sin(2.0) * 1.4 }, bar: { y: 39.3 },
 };

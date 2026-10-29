@@ -289,18 +289,27 @@ export function buildSign(text, { color = '#ff4f9a', w = 2.2, h = 1.1, arrow = t
 // bubble with a soft glow round it, a gold band and a foam seat inside (the live part sits a little rubber duck on it while nobody rides).
 export function buildRideBubble(r = 1) {
   const g = new THREE.Group();
-  const film = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), soapMaterial(1.25));
+  const film = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), soapMaterial(0.8));
   film.renderOrder = 2;
   const shine = new THREE.Mesh(new THREE.SphereGeometry(r * 0.17, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
   shine.position.set(-r * 0.42, r * 0.52, r * 0.42); shine.renderOrder = 3;
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(r * 1.25, 24, 14), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending }));
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(r * 1.3, 24, 14), new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending }));
   glow.renderOrder = 1;
   const band = new THREE.Mesh(new THREE.TorusGeometry(r * 1.02, 0.05, 6, 40), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
-  band.rotation.x = Math.PI / 2;
+  band.rotation.x = Math.PI / 2; band.position.y = -r * 0.72; band.scale.setScalar(0.7); // (a gold rim low round it, under the duck)
   const seat = new THREE.Mesh(new THREE.TorusGeometry(r * 0.42, r * 0.13, 8, 20), lam(0xffffff, { emissive: 0x404048 }));
   seat.rotation.x = Math.PI / 2; seat.position.y = -r * 0.62;
-  g.add(glow, film, shine, band, seat);
-  g.userData.parts = { film, shine, glow, band, seat };
+  // a warm gold body (not the stairs' clear soap look) and gold sparkles circling it (the live part turns `sparks`)
+  const gold = new THREE.Mesh(new THREE.SphereGeometry(r * 0.98, 28, 18), new THREE.MeshBasicMaterial({ color: 0xffc83a, transparent: true, opacity: 0.22, depthWrite: false }));
+  gold.renderOrder = 1;
+  const sparks = new THREE.Group(), sg = new THREE.OctahedronGeometry(r * 0.07);
+  for (let i = 0; i < 16; i++) {
+    const a = i * 2.399, y = Math.sin(i * 1.7) * r * 0.8, rr = r * 1.18 + 0.08 * (i % 3);
+    const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: i % 3 ? 0xffe066 : 0xffffff }));
+    m.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); sparks.add(m);
+  }
+  g.add(glow, gold, film, shine, band, seat, sparks);
+  g.userData.parts = { film, shine, glow, band, seat, gold, sparks };
   g.userData.dispose = disposer(g);
   return g;
 }

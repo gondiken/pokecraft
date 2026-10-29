@@ -73,6 +73,7 @@ const WORDS = {
 const DOOR_IDS = new Set([B.WAY_BACK, B.PICTURE_FRAME]);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const SHOT_Y = COURT.y + BANK.h;
+const RIDE_LOOK = { wait: 1.35 }; // the waiting ride bubble's drawn radius (blocks)
 
 export class BubbleLive {
   constructor(game, part) {
@@ -129,7 +130,7 @@ export class BubbleLive {
     this.pads = COURT.rounds.map(r => add(buildPad(r.pad.x, COURT.y, r.pad.z, BANK.pad)));
     this.duckModels = this.ducks.map(() => { try { const m = buildModel('squeaklet'); m.scale.setScalar(0.8); this.scene?.add(m); return m; } catch { return null; } });
     this.duckBubbles = this.ducks.map(() => add(buildBigBubble(0.62)));
-    try { this.rideDuck = buildModel('squeaklet'); this.rideDuck.scale.setScalar(0.45); this.scene?.add(this.rideDuck); } catch { this.rideDuck = null; }
+    try { this.rideDuck = buildModel('squeaklet'); this.rideDuck.scale.setScalar(1.25); this.scene?.add(this.rideDuck); } catch { this.rideDuck = null; }
   }
   dispose() {
     this.giveBack();
@@ -634,14 +635,19 @@ export class BubbleLive {
     // the ride bubble: waiting (it pulses, a little duck sits on its seat, the "Ride!" sign bobs over it) or carrying you
     const rb = this.rideBubble, r = this.ride, RP = rb.userData.parts;
     rb.visible = !r || r.popT === null;
+    // (lead 2026-10-29: waiting, it is drawn big, ~2.7 blocks wide, so it reads from across the room; while you ride it is drawn at the
+    // ride's own size RIDE.R, so the gold rings still fit round it. Only the drawing: the ride's rules and sizes are unchanged.)
+    const big = RIDE_LOOK.wait / RIDE.R, bob = 0.12 * Math.sin(t * 1.8);
     if (r) { rb.position.set(r.x, r.y, r.z); rb.scale.setScalar(1); }
-    else { rb.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE.R + 0.05 * Math.sin(t * 2), CHIMNEY.z); rb.scale.setScalar(1 + 0.06 * Math.sin(t * 3)); }
-    RP.film.material.uniforms.uTime.value = t * 2; RP.glow.material.opacity = r ? 0.1 : 0.16 + 0.1 * Math.sin(t * 3);
+    else { rb.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE_LOOK.wait + 0.1 + bob, CHIMNEY.z); rb.scale.setScalar(big * (1 + 0.04 * Math.sin(t * 3))); }
+    RP.film.material.uniforms.uTime.value = t * 2; RP.glow.material.opacity = r ? 0.12 : 0.25 + 0.12 * Math.sin(t * 3);
+    RP.gold.material.opacity = r ? 0.12 : 0.22 + 0.06 * Math.sin(t * 3);
+    RP.sparks.rotation.y = t * 0.9; RP.sparks.children.forEach((m, k) => m.scale.setScalar(0.6 + 0.5 * Math.abs(Math.sin(t * 3 + k))));
     this.rideSign.visible = !r;
-    this.rideSign.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE.R * 2 + 1.1 + 0.15 * Math.sin(t * 2.5), CHIMNEY.z);
+    this.rideSign.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE_LOOK.wait * 2 + 1.0 + bob, CHIMNEY.z);
     if (this.rideDuck) {
       this.rideDuck.visible = !r;
-      if (!r) { this.rideDuck.position.set(rb.position.x, rb.position.y - RIDE.R * 0.6, rb.position.z); this.rideDuck.rotation.set(0, Math.PI / 2 + 0.3 * Math.sin(t), 0); animateModel(this.rideDuck, t, false); }
+      if (!r) { this.rideDuck.position.set(rb.position.x, rb.position.y - RIDE_LOOK.wait * 0.62, rb.position.z); this.rideDuck.rotation.set(0, Math.PI / 2 + 0.4 * Math.sin(t * 0.8), 0); animateModel(this.rideDuck, t, false); }
     }
     // the shields (a burst grows and fades for half a second)
     this.shields.userData.parts.list.forEach((s, k) => {

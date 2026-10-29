@@ -482,6 +482,8 @@ export default async function ({ browser, base, t }) {
       await frames(page, 3); await shot(page, 'bubble-chimney.png');
       await page.evaluate(() => { const R = window.__R, { g, p, live } = R, C = R.L.CHIMNEY; live.giveBack(); R.put(C.x + C.wall + 3.5, 19, C.z + 0.5); p.lookAt({ x: C.x, y: 20.6, z: C.z }); live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-ride-bubble.png');
+      await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; R.put(C.x + C.r + 0.6, 19, C.z + 0.5); p.lookAt({ x: C.x, y: 20.4, z: C.z }); live.step(0.05); });
+      await frames(page, 3); await shot(page, 'bubble-ride-entrance.png');
       await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/shield/.test(k)); const pad = R.L.COURT.rounds[0].pad; R.put(pad.x, 42, pad.z); p.yaw = R.Bots.SHOT_BOTS.skilled(0)(live.courtT) + 0.12; p.pitch = -0.1; live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-rim.png');
     }
