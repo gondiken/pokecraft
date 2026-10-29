@@ -69,10 +69,10 @@ export const LIFTS = [ // switched on by the live part (they are in world.lifts 
   { id: 'lift2', x: [109, 110], z: [40, 41], y: [19, 41] },
 ];
 export const DRIPS = [ // in the narrow shaft, from spouts on its rim
-  { x: 112.5, z: 66.5, top: 18.6, bottom: 11, period: 2.2, phase: 0, speed: 7 },   // (rework 2026-10-29: right over the straight way up,
-  { x: 112.5, z: 62.5, top: 18.6, bottom: 11, period: 2.2, phase: 1.1, speed: 7 }, //  so you blow between drips or a little to the side)
+  { x: 111.4, z: 66.5, top: 18.6, bottom: 11, period: 2.2, phase: 0, speed: 7 },   // (rework 2026-10-29: over the west half of the way up,
+  { x: 111.4, z: 62.5, top: 18.6, bottom: 11, period: 2.2, phase: 1.1, speed: 7 }, //  where the side wind blows: blow on the east side and keep going)
 ];
-export const VENT2 = { x0: 110, x1: 114, y0: 13, y1: 15, z0: 60, z1: 66, vx: -1.0, vy: 0, vz: 0 }; // the narrow shaft's side wind
+export const VENT2 = { x0: 110, x1: 114, y0: 13, y1: 15, z0: 60, z1: 66, vx: -0.5, vy: 0, vz: 0 }; // the narrow shaft's side wind
 // The fizzy breeze that blows out of the plateau's cliff over the bench: bubbles higher than the bench are blown away from the cliff, so
 // the narrow shaft (sheltered) is the only way up to the plateau. You can see it: little bubbles streaming out.
 export const BREEZES = [ // in front of the bench, and beside its two ends (the narrow shaft stays sheltered)

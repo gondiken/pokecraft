@@ -1,7 +1,7 @@
 // The Bubble Well's models (THREE only; never world blocks, never saved or sent): the soap bubbles (one rainbow soap-film shader, instanced),
-// the aim ring that shows where your next bubble appears, the wand in your hand, drips and their shadows, little rising bubble streams
-// (the vents, the current, the fizz lifts), the soap flowers, the garden's thorny coral and the nest, the chimney's spike plates, fan, bar
-// and fizz stars, the ride bubble, and Captain Suds' three shield bubbles. Each builder returns a Group with userData.parts and
+// the ghost bubble that shows where your next bubble appears, the wand in your hand, drips and their shadows, little rising bubble streams
+// (the side wind, the gusts, the current, the fizz lifts), the soap flowers, the garden's thorny coral and the nest, the chimney's spike plates, fan, bar
+// and fizz stars, the golden ride bubble and its sign, the Puff! arrow, the bank shot's cushions, gold pads and aim dots, and Captain Suds' three shield bubbles. Each builder returns a Group with userData.parts and
 // userData.dispose(). The bubble spec's screenshots (tests/screenshots/bubble-*.png) show them for the owner.
 import * as THREE from 'three';
 

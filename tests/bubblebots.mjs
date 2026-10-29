@@ -5,7 +5,7 @@
 // (live.use, the E / tap path), see makeKid.
 //   node tests/bubblebots.mjs   prints a table (calibration)
 import { Duckling, DUCK, puffSpeed, gustAt, Ride, RIDE, gapOf, BUBBLE, BANK, bankShot, aimLine } from '../src/bubbles.js';
-import { GARDEN_RULES, ISLANDS, NEST, CHIMNEY, GUSTS, COURT, courtOf, DRIPS } from '../src/bubbleland.js';
+import { GARDEN_RULES, ISLANDS, NEST, CHIMNEY, GUSTS, COURT, courtOf, DRIPS, VENT2 } from '../src/bubbleland.js';
 
 // A small seeded random (mulberry32), so every robot run is the same.
 export function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -190,8 +190,8 @@ export function playShots(bot, k, { tries = 20, gap = 1.5, wobble = 0, seed = 3,
 // and a hop north onto the plateau.
 export const YAW = { n: 0, w: Math.PI / 2, s: Math.PI, e: -Math.PI / 2 };
 export const ROUTES = {
-  shaft1: { start: [104.5, 5, 76.5], goal: 11, legs: { 5: { dirs: ['n'], ledge: { dir: 'n', y: 7 } }, 7: { dirs: ['e', 'w'], ledge: { dir: 'n', y: 11 } } } },
-  shaft2: { start: [112.5, 11, 69.5], goal: 19, legs: { 11: { dirs: ['n'], ledge: { dir: 'n', y: 19 } } } },
+  shaft1: { start: [104.5, 5, 77.5], goal: 11, legs: { 5: { dirs: ['n'], ledge: { dir: 'n', y: 7 } }, 7: { dirs: ['e', 'w'], ledge: { dir: 'n', y: 11 } } } },
+  shaft2: { start: [112.5, 11, 70.6], goal: 19, legs: { 11: { dirs: ['n'], ledge: { dir: 'n', y: 19 }, aimX: 113.6 } } }, // (aimX: a skilled kid blows on the east side: off the drips' line, and the side wind carries it toward the middle, not into the west wall)
 };
 // The kids (what they do between Blow! and the hop):
 //   skilled  lets each bubble float up until its top is well above its feet (`want`), blows beside a drip's spout, steers at its bubble
@@ -199,7 +199,7 @@ export const ROUTES = {
 //   spam     random waits, a wobbly aim, sometimes blows twice
 //   pillar   the chapter-1 sky-gym trick: jump, look down, Blow! under its feet, again and again
 export const KIDS = {
-  skilled: { want: { ground: 1.0, bubble: 1.3 }, dodge: true, steer: true },
+  skilled: { want: { ground: 1.0, bubble: 1.15, wind: 0.8 }, dodge: true, steer: true },
   masher: { want: { ground: -9, bubble: -9 }, dodge: false, steer: true },
   spam: { random: true, dodge: false, steer: true },
   pillar: { pillar: true },
@@ -223,7 +223,7 @@ export function makeKid(kind, route, { seed = 1 } = {}) {
       if (jumped && p.vel.y < 1.5) { live.use(p); jumped = false; }
       return null;
     }
-    if (ground && legY !== Math.round(p.pos.y)) { legY = Math.round(p.pos.y); idx = 0; phase = 'aim'; } // on a ledge (a new one, or back after a fall)
+    if (ground && legY !== Math.round(p.pos.y)) { legY = Math.round(p.pos.y); idx = 0; flip = 1; phase = 'aim'; } // on a ledge (a new one, or back after a fall)
     const L = leg(legY ?? p.pos.y);
     if (!L) return null;
     if (phase === 'aim') {
@@ -237,14 +237,21 @@ export function makeKid(kind, route, { seed = 1 } = {}) {
         if (near && p.pos.y + BUBBLE.bounce >= L.ledge.y + 0.15) { p.yaw = YAW[d]; p.pitch = 0; p.keys.Space = true; p.keys.KeyW = true; phase = 'ledge'; t = 0; return null; }
       }
       if (!on && ground && L.dirs.length === 1 && L.ledge.y - p.pos.y <= 1.2) { p.yaw = YAW[L.ledge.dir]; p.keys.Space = true; p.keys.KeyW = true; phase = 'ledge'; t = 0; return null; }
-      let dir = L.dirs[idx % L.dirs.length], yaw = YAW[dir] * 1 + (flip < 0 ? Math.PI : 0);
-      if (K.random) yaw += (r() - 0.5) * 1.0;
-      const look = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
-      let spot = live.field.spot(p.pos, look, (x, y, z) => live.world.isSolid(x, y, z));
-      if (!spot && !K.random) { flip = -flip; yaw += Math.PI; spot = live.field.spot(p.pos, { x: -look.x, z: -look.z }, (x, y, z) => live.world.isSolid(x, y, z)); } // a wall ahead: the other way
-      if (spot && K.dodge) { // a drip's spout right over the spot: blow a little to the side
-        const dr = DRIPS.find(q => Math.hypot(q.x - spot.x, q.z - spot.z) < 0.8);
-        if (dr) yaw += 0.5 * (p.pos.x < dr.x ? 1 : -1) * (Math.cos(yaw) > 0 ? 1 : -1);
+      const dir = L.dirs[idx % L.dirs.length], solid = (x, y, z) => live.world.isSolid(x, y, z);
+      const spotOf = y => live.field.spot(p.pos, { x: -Math.sin(y), z: -Math.cos(y) }, solid);
+      // a skilled kid blows toward the leg's side line (off the drips) and a little to the side of a drip's spout
+      const adjust = y => {
+        if (!K.dodge) return y;
+        if (L.aimX != null && Math.abs(Math.cos(y)) > 0.9) { const dx = Math.max(-1.6, Math.min(1.6, L.aimX - p.pos.x)), fz = -Math.cos(y); return Math.atan2(-dx / BUBBLE.ahead, -fz * Math.sqrt(1 - (dx / BUBBLE.ahead) ** 2)); }
+        const sp = spotOf(y), dr = sp && DRIPS.find(q => Math.hypot(q.x - sp.x, q.z - sp.z) < 0.8);
+        return dr ? y + 0.5 * (p.pos.x < dr.x ? 1 : -1) * (Math.cos(y) > 0 ? 1 : -1) : y;
+      };
+      let yaw = YAW[dir] + (flip < 0 ? Math.PI : 0);
+      if (K.random) { yaw += (r() - 0.5) * 1.0; if (!spotOf(yaw)) { flip = -flip; yaw += Math.PI; } } // (a wall ahead: it turns round, too)
+      else { // the way it means to go, else back the other way (a wall ahead), else a little to either side
+        const tries = [yaw, yaw + Math.PI, yaw + 0.6, yaw - 0.6, yaw + Math.PI + 0.6, yaw + Math.PI - 0.6].map(adjust);
+        const k = tries.findIndex(y => spotOf(y));
+        if (k >= 0) { if (k === 1 || k >= 4) flip = -flip; yaw = tries[k]; }
       }
       p.yaw = yaw; p.pitch = -0.3;
       const n0 = live.field.n;
@@ -254,6 +261,7 @@ export function makeKid(kind, route, { seed = 1 } = {}) {
       idx++;
       if (!target) { wait = 0; return null; }
       want = K.random ? -1 + r() * 2.6 : on ? K.want.bubble : K.want.ground;
+      if (!K.random && K.dodge && VENT2 && target.y + 1.4 >= VENT2.y0 && target.y - 0.6 <= VENT2.y1 + 1 && target.z >= VENT2.z0 && target.z <= VENT2.z1 + 1) want = Math.min(want, K.want.wind); // in the side wind: hop a little sooner
       phase = 'wait'; t = 0; return null;
     }
     if (phase === 'wait') {

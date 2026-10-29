@@ -124,7 +124,7 @@ export class BubbleLive {
     ]));
     this.gusts = add(buildStreams(GUSTS.map(g => ({ x0: g.x0, x1: g.x1 - 1, y0: MESA.top + 1, y1: MESA.top + 1.6, z0: g.z0, z1: g.z1 - 1, vx: g.vx, vy: 0, vz: g.vz, n: 60, colour: 0xe8fbff })), 0.09));
     this.arrow = add(buildArrow());
-    this.aimDots = add(buildDots(48, 0xffffff, 0.07));
+    this.aimDots = add(buildDots(48, 0xffe066, 0.06));
     this.cushions = COURT.rounds.map(r => [...r.cushions, ...(r.slider ? [r.slider.box] : [])].map(b => add(buildCushion(b, COURT.y))));
     this.pads = COURT.rounds.map(r => add(buildPad(r.pad.x, COURT.y, r.pad.z, BANK.pad)));
     this.duckModels = this.ducks.map(() => { try { const m = buildModel('squeaklet'); m.scale.setScalar(0.8); this.scene?.add(m); return m; } catch { return null; } });
@@ -360,6 +360,7 @@ export class BubbleLive {
       }
     }
     this.ledge = { x, y, z };
+    if (this.field.soap < BUBBLE.soap) this.field.refill(); // (rework 2026-10-29: six bubbles from ledge to ledge: any ledge fills the wand)
   }
   fallBack(k) {
     const p = this.game.player, l = this.ledge;
@@ -662,7 +663,9 @@ export class BubbleLive {
     const aimOn = court && !!cam && this.onPad(p, k) && !(p.carry && p.carry !== this.standObj);
     if (aimOn) {
       const look = this.flatLook(p), from = { x: p.pos.x + look.x * BANK.from, z: p.pos.z + look.z * BANK.from };
-      drawDots(this.aimDots, aimLine(courtOf(k), from, look, { t0: this.courtT, help: this.shotMiss[k], hard: this.hard }), SHOT_Y, 0.45, t * 0.9);
+      const line = aimLine(courtOf(k), from, look, { t0: this.courtT, help: this.shotMiss[k], hard: this.hard });
+      line[0] = [from.x + look.x * 0.8, from.z + look.z * 0.8]; // (not right under your eyes)
+      drawDots(this.aimDots, line, SHOT_Y - 0.25, 0.45, t * 0.9);
     }
     this.aimDots.visible = aimOn;
   }

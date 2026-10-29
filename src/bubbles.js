@@ -24,7 +24,7 @@ export const STEP = 1 / 120;
 // bounce (blocks: the jump off a bubble); wall (s of rubbing a wall before it pops); catch (how far from its middle your feet may land);
 // onTop (how far you may walk on it); scoop (your feet from `scoop` over its middle up to its top also land you on it: a hop up into the
 // top of a bubble lifts you onto it, a hop that only reaches its lower half does not).
-export const BUBBLE = { r: 0.55, ahead: 2.0, step: 0.2, lift: 1.2, hang: 0.3, rise: 1.0, life: 4, sink: 0.3, stand: 1.5, warn: 0.5, max: 2, soap: 6, bounce: 1.6, wall: 0.2, catch: 0.8, onTop: 0.45, scoop: 0.2 };
+export const BUBBLE = { r: 0.55, ahead: 2.0, step: 0.2, lift: 1.2, hang: 0.3, rise: 1.3, life: 4, sink: 0.3, stand: 1.6, warn: 0.5, max: 2, soap: 6, bounce: 1.6, wall: 0.2, catch: 0.8, onTop: 0.45, scoop: 0.2 };
 // How high your feet get over where they are now: a jump from the ground (the Player's jump speed 8.6), a Bounce off a bubble, or what is
 // left of a jump in the air (vy). g = the world's gravity.
 export const JUMP = 8.6;
