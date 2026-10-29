@@ -13,6 +13,12 @@ export const kickDist = (t0, t1) => {
   return DIVE.kick * T / 3 * ((1 - a / T) ** 3 - (1 - b / T) ** 3);
 };
 
+// Owner 2026-10-29: walking, jumping and falling are the same at every frame rate. Every course was calibrated at 60 fps, where a
+// jump's arc is a parabola whose start speed is half a 60 fps gravity step above the jump speed (the old per-frame sums). A frame is
+// cut into sub-steps of at most 1/60 s (20 and 30 fps then make exactly the 60 fps steps) and a step on land moves along that parabola
+// exactly (any step size lands on the same arc). vel.y keeps its old meaning (the 60 fps per-frame velocity), so code that sets it is unchanged.
+export const STEP = { max: 1 / 60, cal: 1 / 60 };
+
 // Cube Planets: each frame's turn as a quaternion (the camera eases between them).
 const FRAME_Q = FRAMES.map(({ m }) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)));
 const smooth = k => k * k * (3 - 2 * k);
@@ -222,6 +228,12 @@ export class Player {
   }
 
   update(dt) {
+    // A Jump tap (keydown / touch down, main.js) counts for one whole update even when the key or finger was already up again before
+    // this frame (a tap shorter than one frame: a slow iPad, a quick child). A held Jump is unchanged.
+    if (this.keys.jumpTap) {
+      this.keys.jumpTap = false;
+      if (!this.keys.Space) { this.keys.Space = true; try { return this.update(dt); } finally { this.keys.Space = false; } }
+    }
     if (this.world.gravityAt && !this.carry) return this.frameUpdate(dt); // Cube Planets: down is wherever your feet are (only a world with gravityAt)
     const k = this.keys;
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
@@ -251,11 +263,26 @@ export class Player {
     const r = this.ride;
     if (r && r.kind === 'sky') return this.fly(dt, wx, wz, len, analog);
 
-    const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
-    const water = this.inWater;
-    this.diving = !!(water && !r && this.world.deepAt?.(this.pos)); // T41
+    const water0 = this.inWater;
+    this.diving = !!(water0 && !r && this.world.deepAt?.(this.pos)); // T41
     if (this.diving) return this.dive(dt, f, s, analog, stickSprint || k.ShiftLeft || k.ShiftRight);
     this.kick = null; this.spaceWas = !!k.Space;
+    const n = Math.max(1, Math.ceil(dt / STEP.max - 0.05)), h = dt / n; // sub-steps of at most 1/60 s (a 60 fps frame a little long stays one)
+    // A landing ends the frame on the ground (what stands on a pad, a flag or a home sees, as at 60 fps): no new launch (a held Jump,
+    // a Bounce Block, a trampoline) before the next frame.
+    let wait = false;
+    for (let i = 0; i < n; i++) {
+      const was = this.onGround;
+      this.walkStep(h, wx, wz, len, analog, stickSprint, wait);
+      if (!was && this.onGround) wait = true;
+    }
+  }
+
+  // One sub-step on foot, swimming at the surface or riding on land / water (the rules of before, `dt` = the sub-step).
+  walkStep(dt, wx, wz, len, analog, stickSprint, wait = false) {
+    const k = this.keys, r = this.ride;
+    const g = this.world.gravity ?? 1; // T35: a place's own gravity (the Dream realm: 0.5, moon jumps)
+    const water = this.inWater;
     const sprint = k.ShiftLeft || k.ShiftRight || stickSprint || this.forceSprint;
     let speed = (sprint ? 6.2 : 4.3) * analog * (this.speedK ?? 1); // speedK: a race's pace on foot (racelive.js)
     let jump = 8.6;
@@ -285,25 +312,37 @@ export class Player {
     } else if (this.world.liftAt?.(this.pos)) {
       this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T38a: an upward river in the Swirl lifts you
     } else {
-      this.vel.y = Math.max(this.vel.y - 28 * g * dt, -19);
-      if (k.Space && this.onGround) this.vel.y = jump;
+      // On land: the exact 60 fps arc (STEP). c = the true speed now; a launch at speed V starts at V + half (as at 60 fps).
+      const G = 28 * g, half = G * STEP.cal / 2;
+      let c = this.vel.y - half;
+      if (k.Space && this.onGround && !wait) c = jump + half;
       // T35: jump on a Bounce Block to launch (not on landing, so walking over a pad never traps you in a loop)
       const under = this.onGround ? BLOCKS[this.world.get(Math.floor(this.pos.x), Math.floor(this.pos.y - 0.05), Math.floor(this.pos.z))] : null;
       this.onBounce = !!under?.bounce;
-      if (under?.bounce && k.Space) { this.vel.y = Math.sqrt(2 * 28 * g * under.bounce); this.bounced = true; } // boing!
+      if (under?.bounce && k.Space && !wait) { c = Math.sqrt(2 * 28 * g * under.bounce) + half; this.bounced = true; } // boing!
       // T43 (Funfair): every landing on a block with `trampoline` launches you again. Hold Jump to bounce higher (+step), let go to come down (-drop).
-      if (this.onGround) {
+      if (this.onGround && !wait) {
         const tr = under?.trampoline;
-        if (tr) { this.trampH = Math.min(tr.max, Math.max(tr.min, (this.trampH || 0) + (k.Space ? tr.step : -tr.drop))); this.vel.y = Math.sqrt(2 * 28 * g * this.trampH); this.trampolined = true; this.trampN = (this.trampN || 0) + 1; } // (trampN: T43 harder games count the bounces)
+        if (tr) { this.trampH = Math.min(tr.max, Math.max(tr.min, (this.trampH || 0) + (k.Space ? tr.step : -tr.drop))); c = Math.sqrt(2 * 28 * g * this.trampH) + half; this.trampolined = true; this.trampN = (this.trampN || 0) + 1; } // (trampN: T43 harder games count the bounces)
         else this.trampH = 0;
       }
+      let dy = c * dt - G * dt * dt / 2, c1 = c - G * dt;
+      if (c1 < -19) { // falling as fast as you can
+        const t1 = Math.max(0, (c + 19) / G);
+        dy = c >= -19 ? c * t1 - G * t1 * t1 / 2 - 19 * (dt - t1) : -19 * dt;
+        c1 = -19;
+      }
+      this.vel.y = c1 + half;
+      return this.moveStep(dt, dy);
     }
-
+    this.moveStep(dt, this.vel.y * dt);
+  }
+  moveStep(dt, dy) {
     this.onGround = false;
     this.hitWall = false;
     this.moveAxis('x', this.vel.x * dt);
     this.moveAxis('z', this.vel.z * dt);
-    this.moveAxis('y', this.vel.y * dt);
+    this.moveAxis('y', dy);
   }
 
   /* ==== Gravity ==== */
