@@ -435,10 +435,10 @@ export default async function ({ browser, base, t }) {
       const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|ring)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('walking round every one'), hard: live.hard }; });
       t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star and the Wizard\'s note; the seven keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
       // a rematch: the games are needed again, then the Professor asks
-      const RM = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.winUpTo(3, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: g.ui.asking }; });
-      if (RM.asking) { await page.evaluate(() => window.pokecraft.ui.askYes()); await playBattle(page); }
+      const RM = await page.evaluate(async () => { const R = window.__R, { g, live } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.ui.closeAsk?.(); live.winUpTo(3, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: !!g.bosses.pending && g.ui.asking, said: window.__toasts.slice(-2).join('|'), inBattle: g.inBattle }; });
+      if (RM.asking) { await page.evaluate(() => window.pokecraft.bosses.accept()); await playBattle(page); }
       const RW = await page.evaluate(() => window.pokecraft.bossWins.gravity || 0);
-      t.ok(RM.asking && RW === 1, `with the star and the games won again, Professor Orbit asks for a rematch and it is won (${RW})`);
+      t.ok(RM.asking && RW === 1, `with the star and the games won again, Professor Orbit asks for a rematch and it is won (${RW}) ${RM.asking ? '' : JSON.stringify(RM)}`);
       // stand on the Crystal Cube's north side, save, reload: the same spot, the same frame
       const S0 = await page.evaluate(() => { const g = window.pokecraft, p = g.player, C = window.__C, h = C.CL.HOPS.find(h => h.from === C.CL.P.crystal && h.axis === 2); C.place(p, C.hopFree(g.world, h)); C.settle(p); p.yaw = 1.1; g.beaten.push('pw:gravity:tag2'); g.save(); return { pos: p.pos.toArray(), frame: p.frameNo(), yaw: p.yaw, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).realmPos }; });
       await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
@@ -682,7 +682,7 @@ function PUP_FAST(O, h) { return 7.0 * h.sprint > 6.2; }
 // A Champion steps into Cube Planets through its frame in the Swirl.
 // ride: get on a rideable team creature in the Swirl first (owner 2026-10-29: you get off on arrival) -> whether you were riding.
 async function intoCubes(page, { ride = false } = {}) {
-  await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
+  await page.evaluate(() => { const g = window.pokecraft; g.champion = true; if (g.place !== 'swirl') g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await placeIs(page, 'swirl');
   const { cell, rode } = await page.evaluate(ride => {
     const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), p = g.player;
