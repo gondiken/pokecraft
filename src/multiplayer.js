@@ -9,6 +9,9 @@ import { rideSpecies, fitRide } from './riding.js';
 import { WORLD_W, WORLD_D } from './world.js';
 import { realtimeChannel } from './cloud.js';
 import { realmOf } from './realms.js'; // T31
+import { FRAMES } from './gravity.js'; // Cube Planets: a friend's avatar stands on its own face
+const FRAME_Q = FRAMES.map(({ m }) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)));
+const YAW_Q = new THREE.Quaternion(), Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 const SEND_EVERY = 0.2;   // seconds between position updates (5 per second)
 const GONE_AFTER = 8;     // seconds without news before a player counts as gone
@@ -108,6 +111,7 @@ class Avatar {
   update(info) {
     this.target.set(info.x, info.y, info.z);
     this.yaw = info.yaw;
+    this.frame = Number.isInteger(info.f) && info.f > 0 && info.f < FRAMES.length ? info.f : 0; // Cube Planets: the face they stand on (old clients send none: upright)
     this.heard = 0;
     if (info.lead !== this.leadSpecies) this.setLead(info.lead);
     const r = rideSpecies(info.ride);
@@ -152,7 +156,8 @@ class Avatar {
     const moving = before.distanceTo(this.pos) / Math.max(dt, 1e-3) > 0.5;
     this.model.position.copy(this.pos);
     // Players' cameras face -Z at yaw 0, but people models face +Z.
-    this.model.rotation.y = this.yaw + Math.PI;
+    this.model.rotation.set(0, this.yaw + Math.PI, 0); // (set all three: an avatar back from a sideways face stands up again)
+    if (this.frame) this.model.quaternion.copy(FRAME_Q[this.frame]).multiply(YAW_Q.setFromAxisAngle(Y_AXIS, this.yaw + Math.PI)); // Cube Planets: turned to their face
     const p = this.model.userData.parts;
     const riding = !!this.rideModel;
     if (riding) {
@@ -179,6 +184,7 @@ class Avatar {
       animateModel(this.lead, this.t, moving);
     }
     this.tag.visible = !this.hiding; // T30
+    if (this.lead && this.frame) this.lead.visible = false; // Cube Planets: no follower on a sideways face
     if (this.lead && this.hiding) this.lead.visible = false;
     this.model.visible = this.here && !this.unseen; // T31: a player in another place is not drawn (T30: nor a hider in the head start)
     if (!this.here) { if (this.lead) this.lead.visible = false; if (this.rideModel) this.rideModel.visible = false; }
@@ -399,6 +405,7 @@ export class Multiplayer {
       id: this.id, name: this.name, host: this.role === 'host', place: g.place || 'main', // T31
       x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +g.player.yaw.toFixed(2),
       ride: g.riding?.species ?? g.rideShow ?? null, // T49: a live part may show you riding (the Castle's horse)
+      f: g.player.frameNo?.() || undefined, // Cube Planets: the face you stand on (0-23; only off upright, only in a world with gravityAt)
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,

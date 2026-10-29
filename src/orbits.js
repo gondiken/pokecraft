@@ -30,9 +30,10 @@ export function gravityHelp(misses) {
 
 /* ================================================================ the Orbikit Chase */
 export const PUP = {
-  tagR: 1.3,       // touching: the Orbikit within this of your body (feet to head)
-  button: 2.3,     // Tag! (the big button) reaches this far
+  tagR: 1.1,       // touching: the Orbikit within this of your body (feet to head)
+  button: 1.6,     // Tag! (the big button) reaches this far
   see: 6.5,        // it sees you on its own face, in front of it, this close (and nothing in between)
+  hear: 2.2,       // ... and hears you on its own face this close, whichever way it looks (a wanderer bumping into it from the side is heard)
   cone: 0.35,      // ... within this of straight ahead (the cosine: about 70 degrees each side)
   chase: 5,        // behind it (or beside) on its planet this close: it sprints
   flee: 1.0,       // after it saw you it sprints away this long
@@ -123,7 +124,7 @@ export class PupRun {
       const head = pl.feet.map((v, k) => v + pl.up[k] * 0.9), to = sub(head, mid), dist = len(to), fwd = this.heading();
       const sameFace = pl.face && pl.face[0] === a.seg.face[0] && pl.face[1] === a.seg.face[1];
       const front = dist > 1e-9 && dot(to, fwd) / dist > PUP.cone;
-      if (sameFace && front && dist < PUP.see && this.coolT <= 0 && this.seen(mid, head)) {
+      if (sameFace && (front && dist < PUP.see || dist < PUP.hear) && this.coolT <= 0 && this.seen(mid, head)) {
         this.dir = -this.dir; this.coolT = PUP.cool; this.fleeT = PUP.flee; this.spots++;
         ev.push({ type: 'spotted' });
       }

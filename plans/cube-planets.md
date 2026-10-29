@@ -1,4 +1,4 @@
-# 🌍 Gravity type and the Little Cubes (plan, not built yet)
+# 🌍 Gravity type and Cube Planets (built 2026-10-29, behind ?preview; see "Built" at the end)
 
 Owner, 2026-10-28: picked from the "last three stars" ideas in `ROADMAP.md`; "I like both plans" (this one and
 `plans/bubble-well.md`). **"For cube, for now cube is fine. I'll just have to play it to see if it'll work. Yes we
@@ -265,3 +265,43 @@ guide never points into it. Opening it later = removing `'gravity'` from that li
 - After the sandbox (step 0): is the turning camera fun or dizzying? Do you want the "steady camera" option?
 - Names: "Little Cubes", "Professor Orbit", "Comet Pup" are working names.
 - Should the Moon Ride be the finale instead of the Planet Hop (it is the newest skill)?
+
+## Built (2026-10-29, steps 0-4; behind `?preview` until the owner plays it)
+
+Owner's feedback on step 0 first: the eased camera turn stays; the **steady camera was removed** ("just a blink"); no round planets,
+no bevelled edges; riding stays off (`noRide`). Then "build the rest of gravity", with the rule **"easy to understand, hard to master"**.
+
+**The world** (`cubeland.js`, realm version 2: step 0's planets moved; nothing can be built there, so no edit is lost and a step-0 spot
+arrives at the start). 11 box planets spread flat in 224 x 224: the Meadow Cube (hub, way back), east the Crystal Cube, Tree Cube and Long
+Rock (21 x 7 x 7) for the chase, west the Moon Base (23 x 5 x 23, a flat planet the moon circles over), north the Flower Cube and four
+pebbles (light: g 0.45) for the Planet Hop, far north the Great Cube (21) with Professor Orbit and a second way back. Hub planets are joined
+by plain jumps face to face across 4 (`HOPS`, proven both ways); the pebbles and the Great Cube are reached only by the flowers
+(`cubecheck.mjs` builds the plain-jump graph from every face and checks it).
+
+**The games** (`orbits.js` pure, `cubelive.js`; bots `tests/cubebots.mjs` with the real Player and the real CubeLive in Node, 60 and 20 fps):
+- **Orbikit Chase** (the plan's Comet Pup): a little comet cheetah runs a fixed loop of faces (a belt, a slanted hexagon round all six
+  faces of the Tree Cube, the long belt of the Long Rock), its whole loop dotted faintly, a bright trail behind it. Behind you it sprints
+  (7 b/s, faster than your 6.2); in front of you on its own face it sees you (6.5, trees hide you) and turns; it also hears you within 2.2.
+  Only round a corner does it run into you. Bots: chasing 0/6, camping on its loop 0/6, wandering ≤ 1/6 in 45 s, waiting round a corner 6/6.
+- **Planet Hop**: launch flowers are gravity-wool pads; **Jump on one** (a decision: not on stepping) pushes you 12 along up
+  (`world.launchAt` in player.js's frame step). How you run onto it (stand / walk / run) and which way decides where the pulls bend the
+  flight. A flight that lands anywhere but the next pebble is a miss: a puff takes you back. Hop 1 teaches (walk or run), hop 2 needs a
+  WALK (running overshoots and the Sky Pebble catches you), hop 3 flies up to land upside down under the Sky Pebble, hop 4 launches from
+  that underside and needs a RUN. Bots: the right runs 4/4; running straight at the next pebble fails hop 2, walking straight at it fails
+  hop 4; random runs land 3-17 of 24 per hop, the whole chain by luck < 0.5 %.
+- **Moon Ride**: the moon (a mesh, a `carry`) circles the Moon Base on an ellipse, slow by its stop (it waits 2.5 s), fast across; Hop on!
+  at the stop, Jump keeps the moon's speed (`jumpOff`); land in the gold ring (one at a time: under the slow part, the fast part, the far
+  turn). Only a landing straight from a moon jump counts (walking into the ring does nothing). Bots: the right moment 100 %, jumping right
+  over the ring 0 %, a random moment ~6 %.
+- Never a fail; kind help only `gravityHelp` (= kindHelp; listed in kindhelp.js); `HARD` (rematch) x1.15; just for fun after all won;
+  a won Boss battle clears the seven keys.
+
+**Departures from the plan** (and why): the pup is the type's Orbikit (a comet cheetah), not a dog (too many dogs, and Comethorn is
+already a comet); the turtle Ringshell became the owl **Saturnowl** (turtles exist twice; Ringling was too close to Ringlet), Satlet and
+Moonmole were replaced by **Danglet > Turvysloth** (a sloth hanging from its own tiny planet: down is wherever its claws are) and
+**Wallibex** (Magmole is a mole; a satellite bird would be the second bird). **No turning planets** (not robust with grid frames; the plan
+allowed dropping them); the hop's variety comes from run-up speed, direction and the upside-down launch. Moon rings are on the Moon Base
+itself (a side-face ring was tried: landings on an edge are too fiddly), not on other planets. The finale is the last hop onto the Great
+Cube's side and walking round its edge to the top (no extra moon there). Keys are 7 (3 tags + hop + 3 rings), not 5. Wild Gravity creatures
+circle on TOP faces only (so battles stay upright; the plan said "one face"). People stand on top faces. `GRAV.soft` 0.15 -> 0.3 and a
+planet `pad` (the hop's kind help) in `downAt`.

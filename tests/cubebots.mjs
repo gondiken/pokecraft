@@ -169,7 +169,7 @@ export function playMoon(env, kind, { fps = 60, seed = 1 } = {}) {
   return { hit: false, ring: r, nojump: !jumped };
 }
 
-if (process.argv[1]?.endsWith('cubebots.mjs')) {
+if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('cubebots.mjs')) {
   const { cubeEnv } = await import('./cubenode.mjs');
   const only = process.env.ONLY || 'chase,hop,moon';
   for (const fps of [60, 20]) {

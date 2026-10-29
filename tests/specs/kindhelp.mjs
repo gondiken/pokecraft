@@ -12,6 +12,8 @@ import { whackPlan } from '../../src/popupwhack.js';
 import { bossSpeed, makeTrack } from '../../src/racetrack.js';
 import { BubbleField, Duckling, Ride, shieldShot } from '../../src/bubbles.js'; // the Bubble Well
 import { GARDEN_RULES, ISLANDS, CHIMNEY, VENTS, VENT_SPOTS, SHIELD } from '../../src/bubbleland.js';
+import { PupRun, gravityHelp, PAD_SCALE } from '../../src/orbits.js'; // Cube Planets
+import { PUPS, BOXES } from '../../src/cubeland.js';
 
 export default async function ({ t }) {
   const { after, step, max } = KIND_HELP;
@@ -46,6 +48,9 @@ export default async function ({ t }) {
     ducklings: m => { const a = new Duckling(GARDEN_RULES, ISLANDS[1], { help: m }), b = new Duckling(GARDEN_RULES, ISLANDS[1]); return Math.max(1 - a.current / b.current, a.friction / b.friction - 1, a.nestR / b.nestR - 1); },
     chimney: m => { const a = new Ride(CHIMNEY, { help: m }), b = new Ride(CHIMNEY); return Math.max(1 - a.sink / b.sink, a.gap / b.gap - 1, 1 - a.barSpeed / b.barSpeed); },
     shields: m => shieldShot(VENTS[0], VENT_SPOTS[0], SHIELD, { help: m }).catchR / shieldShot(VENTS[0], VENT_SPOTS[0], SHIELD).catchR - 1,
+    orbikitChase: m => { const q = PUPS[0], a = new PupRun(q.loop, BOXES[q.planet], { help: m }), b = new PupRun(q.loop, BOXES[q.planet]); return Math.max(1 - a.boost / b.boost, a.tagR / b.tagR - 1, a.button / b.button - 1); }, // Cube Planets
+    planetHop: m => gravityHelp(m).pad / PAD_SCALE,
+    moonRide: m => Math.max(1 - gravityHelp(m).moon, gravityHelp(m).ring - 1),
   };
   const rows = Object.entries(games).map(([n, f]) => [n, [0, 2, 4, 6, 20].map(m => f(m))]);
   console.log('  ease after 0 / 2 / 4 / 6 / 20 misses:', rows.map(([n, e]) => `${n} ${e.map(x => (x * 100).toFixed(1)).join('/')} %`).join(', '));

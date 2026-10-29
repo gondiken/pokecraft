@@ -159,7 +159,7 @@ export function analyze(seed = 1) {
   return { problems, info, world: w };
 }
 
-if (process.argv[1]?.endsWith('cubecheck.mjs')) {
+if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('cubecheck.mjs')) {
   const r = analyze(Number(process.argv[2] ?? 1));
   console.log(JSON.stringify(r.info, null, 1));
   console.log(r.problems.length ? r.problems.join('\n') : 'all good');
