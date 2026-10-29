@@ -610,6 +610,7 @@ document.addEventListener('keydown', e => {
   if (!playing()) return;
   if (e.code === 'Space') e.preventDefault();
   game.player.keys[e.code] = true;
+  if (e.code === 'Space' && !e.repeat) game.player.keys.jumpTap = true; // a tap shorter than one frame still jumps (player.js)
   if (e.code.startsWith('Digit')) {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
@@ -760,7 +761,7 @@ function tapAt(x, y) {
 game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
-  jump: down => { game.player.keys.Space = down && playing(); },
+  jump: down => { const k = game.player.keys; k.Space = down && playing(); if (k.Space) k.jumpTap = true; }, // a tap shorter than one frame still jumps (player.js)
   ride: () => { if (!playing()) return; if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); },
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
   place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },

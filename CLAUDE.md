@@ -343,6 +343,14 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `chance`, no extra `Math.random`) and saved, so a later list or chance change never takes one away. Old saves: `continueGame` runs
   `fixTraits` (missing `uid` -> `'o' + hash32('where:index:species:level')`) so every device gets the same result. Evolution only
   adds. Only `rideable` exists (`TRAITS.rideable.species[id]` = land / water / sky). Duels send and clean traits; no `VERSION` bump.
+- **Jumping is the same at every frame rate (owner 2026-10-29, spec `jump`):** `Player.update` cuts a frame into sub-steps of at most
+  1/60 s (`STEP`, `walkStep`), and on land a step moves along the exact parabola of the old 60 fps sums (a launch at V starts at
+  V + half a 60 fps gravity step; `vel.y` keeps its old per-frame meaning, so code that sets it is unchanged). 20 / 30 fps now give
+  exactly the 60 fps steps (before, a 20 fps jump reached 1.54 instead of 1.39), 120 fps the same arc. A landing ends the frame on
+  the ground (no new launch before the next frame), so stand hooks still see it. Carry rides, sky riding, the dive and the Cube
+  Planets frame branch are not sub-stepped (they have their own rules). `tests/fixtures/cube-off-golden.json` was re-recorded for
+  this (its script has uneven frames; at a steady 60 fps old and new agree). **Jump latch:** a Space keydown / Jump touch down sets
+  `keys.jumpTap`; the next `update` treats Space as held for that one update even if it is already up again (a tap shorter than a frame).
 - **Riding (T27, spec `riding`):** physics in `Player`; riders are fenced out of every `protect` box (`world.fenced`); sky cap =
   floor + 6 (`WORLD_H` is 48). Not saved; visitors get `state.ride` (or `game.rideShow`).
 - **Squad crews (T34, spec `squad`):** `weakensWithHp: true` (never a type check): `hpPower(c)` = 0.6 + 0.4 x HP fraction,
@@ -618,7 +626,7 @@ Browser tests live in `tests/` (Playwright + software WebGL):
 ```bash
 cd tests && npm install && npm test        # all specs, quick ones first, each spec's time printed
 node run.mjs gym touch                     # just some
-node run.mjs --fast                        # only the quick group (roster, seventh, four-types, bone-alien, icon, blocks, map, kindhelp)
+node run.mjs --fast                        # only the quick group (roster, seventh, four-types, bone-alien, icon, blocks, map, kindhelp, jump)
 node run.mjs --skip champion               # everything but some (a spec that hangs is stopped after 15-30 minutes)
 PC_TEST_EMAIL=... PC_TEST_PASSWORD=... node run.mjs cloud   # real online-save test
 ```
@@ -658,6 +666,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `homes`: T22 room rules, re-checks, Doormats, visitors, test-only type, save/load, two browsers
 - `icon`: tab and home-screen icons
 - `kindhelp`: the shared kind help in Node, every game's levers within `KIND_HELP.max`
+- `jump`: the jump arc, falls, Springs, a Dream Bounce Block, trampolines and lifts at 20 / 30 / 60 / 120 fps against the old 60 fps numbers; a Jump tap shorter than one frame (key, iPad button) still jumps; a held Jump still hops
 - `map`: old-save migration (the 192 map)
 - `missions`: T29/T38c data, treasure spots, map / build / swap / rare blocks / catch / rematch, the pure maker, old saves at 12, iPad; `CATCH_TYPE`
 - `missions-coop`: T29/T38c co-op giant on two browsers (same trace), growth, duel `VERSION` 11
