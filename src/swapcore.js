@@ -93,15 +93,16 @@ const keyOf = item => `${item.kind}:${PARCELS[item.kind].key(item)}`;
 export const sameKeys = (a, b) => a.length === b.length && a.every((x, i) => keyOf(x) === keyOf(b[i]));
 const cleanSpot = s => (s && (s.where === 'party' || s.where === 'box') ? { where: s.where, i: Math.max(0, s.i | 0) } : null);
 
-// The ledger (save field `swaps`): out = my committed swaps waiting for an answer, seen = answers I gave as a receiver.
+// A trade moves `give` (the asker's items) one way and `get` (the friend's) the other; either list may be empty, never both:
+// an empty side makes it a present. The ledger (save field `swaps`): out = my committed swaps waiting for an answer, seen = answers I gave as a receiver.
 export const newLedger = () => ({ out: {}, seen: [] });
 
 export function loadSwaps(saved) {
   const led = newLedger();
   for (const [sid, e] of Object.entries(saved?.out && typeof saved.out === 'object' ? saved.out : {})) {
     if (!isId(sid) || !e || !isId(e.to)) continue;
-    const give = cleanItems(e.give), get = cleanItems(e.get || [], { min: 0 });
-    if (!give || !get) continue;
+    const give = cleanItems(e.give || [], { min: 0 }), get = cleanItems(e.get || [], { min: 0 });
+    if (!give || !get || !(give.length + get.length)) continue;
     led.out[sid] = { to: e.to, name: typeof e.name === 'string' ? e.name.slice(0, 16) : '', kind: e.kind === 'trade' ? 'trade' : 'gift',
       give, get, from: (Array.isArray(e.from) ? e.from : []).map(cleanSpot), at: Number(e.at) || 0 };
   }
@@ -130,7 +131,7 @@ export function canGive(game, give) {
 
 // 1. The giver's commit: the items leave the team / Box into escrow. -> true, or false (nothing changed).
 export function commitOut(game, led, { sid, to, name, kind, give, get = [] }, now = Date.now()) {
-  if (led.out[sid] || canGive(game, give)) return false;
+  if (led.out[sid] || !(give.length + get.length) || canGive(game, give)) return false; // a trade; one side may be empty (= a present)
   const from = give.map(item => PARCELS[item.kind].take(game, item));
   led.out[sid] = { to, name: name || '', kind: kind === 'trade' ? 'trade' : 'gift', give, get, from, at: now };
   return true;
@@ -142,7 +143,8 @@ export function receive(game, led, { sid, give, get }, deal, now = Date.now()) {
   const old = seenOf(led, sid);
   if (old) return { answer: old, fresh: false };
   const no = () => { remember(led, sid, 'no', now); return { answer: 'no', fresh: true }; };
-  if (!deal || !give || !get || !sameKeys(give, deal.give) || !sameKeys(get, deal.get)) return no();
+  if (!deal || !give || !get || !(give.length + get.length) || !sameKeys(give, deal.give) || !sameKeys(get, deal.get)) return no();
+  if (!give.length && canGive(game, get) === 'last') return no(); // a present from me never empties my team
   // what I give back must still be here, unchanged
   for (const item of get) {
     const P = PARCELS[item.kind], at = P.find(game, item);
