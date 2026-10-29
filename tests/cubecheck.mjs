@@ -2,8 +2,9 @@
 // (walking over every edge, jumping onto a 1-block bump, dropping off anything), and the plain jumps between planets from gravity.js
 // flightLand (the same sums as the player). Used by tests/specs/cube.mjs and run by hand with `node tests/cubecheck.mjs [seed]`.
 import { B, WOOL, isSolid } from '../src/blocks.js';
-import { cubeLand, SIZE, PLANETS, P, BOXES, HOPS, FACES, faceCell, faceSize, faceCentre, hopSpot, DOOR, FLOWERS, HOME_FLOWERS, RINGS, MOON, PUPS, sizeOf } from '../src/cubeland.js';
-import { GRAV, flightLand, downAt, upOf, frameOf } from '../src/gravity.js';
+import { cubeLand, SIZE, PLANETS, P, BOXES, HOPS, FACES, faceCell, faceSize, faceCentre, hopSpot, DOOR, FLOWERS, HOME_FLOWERS, LENSES, MOON, PUPS, sizeOf } from '../src/cubeland.js';
+import { ferryAt } from '../src/orbits.js';
+import { GRAV, flightLand, downAt, upOf, frameOf, toWorld } from '../src/gravity.js';
 
 export const WORLD_H = 48;
 export function standIn(seed, [W, D] = [SIZE, SIZE]) {
@@ -116,7 +117,20 @@ export function analyze(seed = 1) {
   // 3. the Planet Hop is the only way to the pebbles and the Great Cube: walking and plain jumps from the Meadow Cube never get there
   const reach = plainReach(P.meadow, [...extra].map(e => e.split('>').map(Number)));
   info.plain = [...reach].map(i => PLANETS[i].id);
-  for (const id of ['hop1', 'hop2', 'hop3', 'hop4', 'great']) if (reach.has(P[id])) problems.push(`${id} can be reached without the flowers`);
+  for (const id of ['hop1', 'hop2', 'hop3', 'hop4', 'great', 'lens1', 'lens2', 'lens3']) if (reach.has(P[id])) problems.push(`${id} can be reached without the flowers / the moon`);
+  // ... nor by a running jump off any edge of the Moon Dock's top toward a Lens Rock (the rocks are too far to jump to: you need the moon)
+  const D = BOXES[P.base], lensHits = [];
+  for (const L of LENSES) {
+    const b = BOXES[L.planet], c = [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2];
+    for (let k = 0; k <= 20; k++) for (const mode of [GRAV.walk, GRAV.sprint]) {
+      // from a spot on the dock's rim nearest the rock, running at it and jumping at the very edge
+      const x = Math.max(D.x0 + 0.31, Math.min(D.x1 - 0.31, c[0] + (k - 10) * 0.8)), z = Math.max(D.z0 + 0.31, Math.min(D.z1 - 0.31, c[1] + (k - 10) * 0.8));
+      const d = [c[0] - x, c[1] - z], n = Math.hypot(...d), v = [d[0] / n * mode, GRAV.jump, d[1] / n * mode];
+      const r = flightLand([x, D.y1 + 1e-3, z], v, BOXES, { maxT: 10 });
+      if (r && r.planet === L.planet) lensHits.push(`${PLANETS[L.planet].id} from ${x.toFixed(1)},${z.toFixed(1)}`);
+    }
+  }
+  if (lensHits.length) problems.push(`a Lens Rock can be reached by a running jump off the Moon Dock: ${lensHits.slice(0, 3).join('; ')}`);
   // 4. the blocks: only these ids, the new ones only 149, 183 and 249
   const ids = new Set();
   for (let i = 0; i < w.data.length; i++) ids.add(w.data[i]);
@@ -130,13 +144,8 @@ export function analyze(seed = 1) {
     const air = [1, 2].every(k => !isSolid(w.get(f.cell[0] + up[0] * k, f.cell[1] + up[1] * k, f.cell[2] + up[2] * k)));
     if (!isSolid(w.get(...f.cell)) || !air) problems.push(`a flower at ${f.cell} has no room`);
   }
-  const base = BOXES[P.base];
-  for (const r of RINGS) {
-    const inside = r.x - r.r > base.x0 + 1 && r.x + r.r < base.x1 - 1 && r.z - r.r > base.z0 + 1 && r.z + r.r < base.z1 - 1;
-    let clear = true;
-    for (let x = Math.floor(r.x - r.r); x <= Math.floor(r.x + r.r); x++) for (let z = Math.floor(r.z - r.r); z <= Math.floor(r.z + r.r); z++) if (isSolid(w.get(x, base.y1, z))) clear = false;
-    if (!inside || !clear) problems.push(`a ring at ${r.x},${r.z} is not on a clear part of the Moon Base`);
-  }
+  // the lenses lie on clear tops (the middle of each Lens Rock)
+  for (const L of LENSES) if (isSolid(w.get(Math.floor(L.at[0]), L.at[1], Math.floor(L.at[2]))) || !isSolid(w.get(Math.floor(L.at[0]), L.at[1] - 1, Math.floor(L.at[2])))) problems.push(`the lens at ${L.at} has no clear top`);
   for (const q of PUPS) for (let i = 0; i < q.loop.length; i++) {
     const a = q.loop[i], b = q.loop[(i + 1) % q.loop.length];
     for (let k = 0.05; k < 1; k += 0.05) {
@@ -145,10 +154,12 @@ export function analyze(seed = 1) {
       if (isSolid(w.get(...out.map(Math.floor)))) { problems.push(`a bump on ${PLANETS[q.planet].id}'s Orbikit loop at ${out.map(v => v.toFixed(1))}`); break; }
     }
   }
-  // the moon flies over the Moon Base without touching anything
-  for (let t = 0; t < MOON.period + MOON.stop; t += 0.1) {
-    const phi = t < MOON.stop ? MOON.phase0 : MOON.phase0 + (2 * Math.PI) * (t - MOON.stop) / MOON.period, x = MOON.cx + MOON.rx * Math.cos(phi), z = MOON.cz + MOON.rz * Math.sin(phi);
-    for (let dy = 0; dy < 2 * MOON.half; dy++) for (const dx of [-MOON.half, 0, MOON.half]) for (const dz of [-MOON.half, 0, MOON.half]) if (isSolid(w.get(Math.floor(x + dx), base.y1 + Math.floor(MOON.low) - dy - 1 + 1, Math.floor(z + dz))) && dy < MOON.low - 0.5) { problems.push(`the moon hits a block at ${x.toFixed(1)},${z.toFixed(1)}`); t = 1e9; break; }
+  // the moon flies round its orbit without touching anything (its box: half across, `thick` under its top)
+  for (let ph = 0; ph < 1; ph += 1 / 400) {
+    const m = ferryAt(MOON, ph);
+    let hit = false;
+    for (const dx of [-MOON.half, 0, MOON.half]) for (const dz of [-MOON.half, 0, MOON.half]) for (const dy of [0.05, MOON.thick / 2, MOON.thick - 0.05]) if (isSolid(w.get(Math.floor(m.pos[0] + dx * 0.98), Math.floor(m.pos[1] - dy), Math.floor(m.pos[2] + dz * 0.98)))) hit = true;
+    if (hit) { problems.push(`the moon hits a block at ${m.pos.map(v => v.toFixed(1))}`); break; }
   }
   // 6. keeps: the whole sky (no building, no riding), the doors; rests on the planets
   if (!w.keeps.some(k => k.name === 'space' && k.rideText) || !w.keeps.some(k => k.name === 'door-gravity')) problems.push('the keeps');

@@ -413,7 +413,7 @@ export class Player {
     this._vT = Math.min(this._vDur, this._vT + dt);
     this._view.slerpQuaternions(this._vFrom, FRAME_Q[this._vTo], smooth(this._vT / this._vDur));
   }
-  // A ride that carries you on Cube Planets (the Moon Ride's moon, cubelive.js): the usual carry rules, in the frame you stood in when you
+  // A ride that carries you on Cube Planets (the Moon Ferry's moon, cubelive.js): the usual carry rules, in the frame you stood in when you
   // got on (the camera keeps easing). Getting off, the ride sets your speed (the moon's) and onGround = false: you fly on in frameUpdate.
   frameCarry(dt) {
     if (!this._fw || this._fOf !== this.world) { const gd = this.world.gravityAt(this.pos, null); this.frameInit(frameOf(gd.down)); this.grav = gd; }

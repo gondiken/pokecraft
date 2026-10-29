@@ -169,9 +169,10 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
 | `src/gravity.js` | Cube Planets, pure: `GRAV`, `FRAMES` (the 24 quarter-turns), `toWorld` / `toLocal` (exact), `turnTo` / `frameOf`, `downAt` (which planet by the body's middle, which side by the feet, hysteresis, soft pull, a planet's `pad`), `centreOf` / `pivot`, `stepFlight` / `flightAt` / `flightLand` (the player's own sums), `frameWorld` |
 | `src/cubeland.js` | Cube Planets terrain (Node-runnable, `TERRAINS.cubeLand`, 224 x 224): `PLANETS` (11, `P` by id, `sizeOf`), `BOXES`, `HOPS` (plain jumps between hub planets), `hopSpot`, `FACES`, `faceCell` / `faceSize`, `DOOR` / `DOOR2`, `PUPS` (the Orbikits' loops), `FLOWERS` (launch flowers, `solution` = the bots' run), `HOME_FLOWERS`, `MOON`, `RINGS`, keys `tagKey` / `HOP_KEY` / `ringKey`, `gravityState`; sets `world.planets`, `gravityAt`, `launchAt`, `homeAt`, `cubes`, `nooks`; `cubeAim` (the arrow in your face's frame, crew and Boss too) |
-| `src/orbits.js` | Cube Planets' games, pure: `PupRun` (the Orbikit Chase, `PUP`), `loopOf` / `loopAt` / `loopNearest`, `moonAt` / `jumpOff` / `ringHit` (the Moon Ride), `gravityHelp` (= `kindHelp`, `PAD_SCALE`), `HARD`, `STEP` |
+| `src/orbits.js` | Cube Planets' games, pure: `PupRun` (the Orbikit Chase, `PUP`, per-round `see` / `tagR` / `flip`), `loopOf` / `loopAt` / `loopNearest`, `ferryAt` / `solveKepler` / `sunOf` / `jumpOff` (the Moon Ferry, a real orbit), `gravityHelp` (= `kindHelp`, `PAD_SCALE`), `HARD`, `STEP` |
 | `src/cubelive.js` | Cube Planets `CubeLive` = `LIVE.gravity`: the star sky, the Orbikit Chase (models, loop dots, trail, Tag!), the Planet Hop (flights from `p.launched`, misses puff back, home flowers), the Moon Ride (the moon a `carry`, Hop on! / Jump, rings), `aim`, `battleEnded`, chip, `manual` + `step`, `info`, `winUpTo` |
-| `src/cubeprops.js` | Cube Planets' models: `buildFlower`, `buildMoon`, `buildRing`, `buildDots` |
+| `src/cubeprops.js` | Cube Planets' models: `buildFlower` (blue home flowers), `buildSpring` (spring flowers), `buildMoon`, `buildSun`, `buildLens`, `buildDots` |
+| `src/cubecam.js` | Cube Planets: `createCubeCam(game)` -> `game.cubeCam`, the optional third-person steady camera (`CAM`, `can`, `toggle`, `update(camera, dt)`, the avatar, `#cam-btn`) |
 
 ## Key ideas
 
@@ -564,29 +565,40 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   Clanksalot gates on both challenges and Squire Pip and Archer Wren; a won battle clears the six round keys. Generic lines:
   `Player.look` asks `carry.look`, `setButtons({ jump })`, `ui.setPointers`, `game.rideShow`.
 - **Gravity type and Cube Planets (spec `cube`, `tests/cubecheck.mjs`, `tests/cubebots.mjs`, `tests/cubenode.mjs`, `plans/cube-planets.md`
-  "Built"):** realm `gravity` (`PICTURE_WORLDS` `gravity` took the `secret5` place, its colours kept), **version 2** (step 0's three planets
-  moved; nothing can be built there, so no edit is lost; a step-0 spot arrives at the start), in `LATER` (only `?preview`). 11 box planets
-  (cubes, the 21 x 7 x 7 Long Rock, the flat Moon Base) spread flat; plain jumps face to face across 4 blocks join the hub planets (`HOPS`).
-  Type `gravity` (`gear: 'orbit'`: two little moons, one merged mesh; `gait: 'orbit'`: wild ones circle on TOP faces only, so battles stay
-  upright; condition `orbiting`); creatures Orbikit > Orbitah (comet cheetah, rideable elsewhere), Hootiter > Saturnowl (planet owl, the
-  Boss's giant), Danglet > Turvysloth (a sloth hanging from its own tiny planet), Wallibex (7th, a goat). **The three games**
-  (`orbits.js`, owner "easy to understand, hard to master"; bots prove naive fails / skilled wins at 60 and 20 fps with the real Player and
-  CubeLive in Node, `cubenode.mjs`): the **Orbikit Chase** (a pup runs a loop round its planet faster than you sprint; it sees you in front
-  on its own face and turns; wait round a corner on its loop: `pw:gravity:tag1..3`), the **Planet Hop** (Jump on a launch flower =
-  `world.launchAt` in `frameStep`, push 12; how you run onto it decides where you land; a flight that misses the next pebble is puffed back;
-  `pw:gravity:hop` on the Last Pebble; blue home flowers puff you home), the **Moon Ride** (the moon is a `carry` handled by player.js
-  `frameCarry`; Jump keeps the moon's speed; land in the ring: `pw:gravity:ring1..3`). Professor Orbit (look `orbit`) on the Great Cube's
-  top, crew Stargazer Stella, Captain Comet, Moon Mechanic Milo; realm def `crewAim: false` (the terrain's own aim knows the crew on your
-  face). Kind help only `gravityHelp`; `HARD` the rematch; a won Boss battle clears the seven keys; for fun afterwards. Play together: `state`
-  carries `f` (the frame) only off upright; the avatar is turned with it. **The player** (`player.js`, only when the world has `gravityAt`;
-  `frameUpdate` / `frameStep` / `frameCarry`): a frame (0-23); `pos` / `vel` stay in WORLD units, each fixed 1/120 s sub-step turns them into
-  the frame exactly and runs the usual `moveAxis` / `collides` against `frameWorld`; yaw / pitch are your own on the face. Over an edge you turn
-  round your feet and keep your local speed; into another planet's pull you turn round your middle and keep your world speed. In the air the
-  stick only steers (`GRAV.air`); `GRAV.soft` 0.3. **The camera:** `p.viewQuat()` eases 0.45 s (0.8 s past 120 degrees); `main.js`
-  premultiplies it (marked line). Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (missing = upright). **Owner
-  2026-10-29:** the steady camera (a dip to the sky colour) was tried and removed ("just a blink"); no round planets; no bevelled edges (a
-  1-block bevel is a step down from both faces). **No riding** (realm def `noRide`, generic). Off-world bit for bit: `tests/cuberecord.mjs`
-  against `tests/fixtures/cube-off-golden.json`.
+  "Built" and "Redesign 2026-10-29"):** realm `gravity` (`PICTURE_WORLDS` `gravity` took the `secret5` place, its colours kept), **version 3**
+  (2: step 0's planets moved; 3: the redesign's layout; nothing can be built there, so no edit is lost; an older spot arrives at the start),
+  in `LATER` (only `?preview`). Box planets spread flat in 224 x 224, **every planet pulls the same** (`GRAV.g` 0.5; before the redesign
+  0.7 / 0.6 / 0.45 with no visible reason), hub planets 6 apart (`HOPS`, plain jumps), the stick only nudges you in the air (`GRAV.air` 1.5:
+  in space you keep your speed). **Redesign 2026-10-29 (owner: "rules must be natural to the game", too much text):** every rule is natural
+  space physics with a reason in the story (Professor Orbit's little-planet observatory), told by the scene and the crew's lines; the guide
+  and the toasts only say where / what happened, never how. **The redesign's one-time reset** (owner "reset my progress"; fine only because
+  the world was preview-only): `cubeReset(save)` (cubeland.js) runs on load (main.js) and when the live part starts: a save without the
+  mark `pw:gravity:redesign1` loses every `pw:gravity:*` key, the `gravity` star and `bossWins.gravity` once, then is marked; `cubeMark`
+  puts the mark back before any key is saved (so a generic "Start this world over" that clears `pw:gravity:*` never lets a later load wipe
+  new progress). Type `gravity` (`gear: 'orbit'`, `gait: 'orbit'`: wild ones circle on TOP faces only; condition `orbiting`); creatures
+  Orbikit > Orbitah, Hootiter > Saturnowl (the Boss's giant), Danglet > Turvysloth, Wallibex. **The three games** (`orbits.js`; bots prove
+  naive fails / skilled wins at 60 and 20 fps with the real Player and CubeLive in Node, `cubenode.mjs`): the **Orbikit Chase** (a pup runs a
+  loop round its planet faster than you sprint; it sees you in front on its own face and turns; wait round a corner: `pw:gravity:tag1..3`;
+  each round's numbers in `PUPS` (`base`, `boost`, `see`, `tagR`, `flip`: the Long Rock's pup turns back by itself every 7 s, never toward
+  you when you are within 8); the ramp is measured with `playChaseKid`, a child bot that sees only what is in view), the **Planet Hop**
+  (spring flowers (`buildSpring`: a bloom on a coil that squashes under you, `springsquish` / `springboing`); Jump on one = `world.launchAt`
+  push `SPRING` 12; the run-up carries on: hop 1 walk only, hop 2 straight up to land upside down under the Sky Pebble, hop 3 sprint only;
+  a miss (another planet, or floating `CUBE_RULES.lost` 1.5 s in space) is puffed back; `pw:gravity:hop`), the **Moon Ferry** (replaced the
+  Moon Ride: three Lens Rocks (`LENSES`, role `lens`) too far to jump to (`cubecheck.mjs` proves it, running jumps too); the moon goes round
+  a little sun on a real Kepler orbit (`ferryAt(MOON, phase, k)`, slow at its far end over the Moon Dock, fast round the sun, never stops);
+  it scoops you up as it passes (`scoops`) or Hop on! beside it; Jump lets go with its speed (`jumpOff`); land on a Lens Rock =
+  `pw:gravity:lens1..3`, any order; the windows shrink rock by rock (`ferryWindows`); faint dots show its way). Professor Orbit (look `orbit`)
+  on the Great Cube's top, crew Stargazer Stella, Captain Comet, Moon Mechanic Milo; realm def `crewAim: false`. Kind help only
+  `gravityHelp` (`tag`, `sprint`, `pad`, `moon`, `lens`); `HARD` the rematch; a won Boss battle clears the seven keys; for fun afterwards.
+  **The steady camera** (`cubecam.js`, `game.cubeCam`; owner: "a steady cam from third person view, not a blink"): optional, realm def
+  `camera: true`; V, the pause screen's `#cam-btn`, and on tablets the Ride slot says "Camera" there (`setButtons({ ride: { label } })`);
+  remembered in localStorage `pokecraft-cube-cam`. The camera floats behind and above your blocky avatar (`buildPerson`), its up holds 0.35 s
+  at an edge and then eases 1.4 s (no snap, no roll) while the avatar turns at once; aiming still comes from your avatar's eyes. Default:
+  the first-person eased turn. Play together: `state` carries `f` (the frame) only off upright. **The player** (`player.js`, only when the
+  world has `gravityAt`; `frameUpdate` / `frameStep` / `frameCarry`): a frame (0-23); `pos` / `vel` in WORLD units, fixed 1/120 s sub-steps
+  in the frame; over an edge you turn round your feet, into another planet's pull round your middle. Catch puff: 6 s outside every field.
+  Save: `realmPos[5]` = the frame. **No riding** (realm def `noRide`). Off-world bit for bit: `tests/cuberecord.mjs` against
+  `tests/fixtures/cube-off-golden.json`.
 - **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
   only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`

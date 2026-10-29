@@ -5,20 +5,23 @@
 // data (a page): the Gravity type: 7 creatures with 4 shapes of their own and the 'orbit' gear, the gait, moves / sigs / big moves, the chart
 //   (separate lines, at most 5 weaknesses), effects and the fx:gravity sound, the spawns and AFTER_CHECKS, the wool, Professor Orbit.
 // games (Node, cubebots.mjs, the real Player and the real CubeLive at 60 and 20 frames a second): the Orbikit Chase (chasing, camping and
-//   wandering never tag it; waiting round a corner on its loop does), the Planet Hop (the skilled run lands every pebble; running straight
-//   at the next pebble or walking straight at it each fail one hop; a random run seldom lands), the Moon Ride (jumping at the right moment
-//   lands in each ring; jumping right over the ring or at random seldom does), the kind help (gentle, and chasing still never works), just
-//   for fun after all is won, a won Boss battle clears the keys.
+//   wandering never tag it; waiting round a corner on its loop does; a skilled child bot shows the ramp easy -> medium -> harder), the
+//   Planet Hop (the skilled run lands every pebble; running straight at the next pebble or walking straight at it each fail one hop; a
+//   random run seldom lands), the Moon Ferry (letting go at the right moment lands on each Lens Rock; jumping when the rock is closest never
+//   does, a random moment seldom; the windows get shorter rock by rock), the kind help (gentle, and chasing still never works), just for
+//   fun after all is won, a won Boss battle clears the keys. uniform: every planet pulls the same (redesign 2026-10-29).
+// reset: the redesign's one-time reset (an old save loses its Cube Planets progress once and gets the mark; a marked save keeps it).
+// camera: the third-person steady camera (V, the pause button, remembered; it does not roll over an edge, aiming still works).
 // off: the main world, the Dream and the Swirl move the player bit for bit as the golden says (tests/cuberecord.mjs).
 // gravity (a page, the real Player): walking round every edge of every cube planet at 60 and 20 frames a second, no flicker, a corner,
 //   jumps between planets land where flightLand said, the catch puff, standing on every face.
 // play (the game): the frame, the arrival, the people, wild Gravity creatures circling on top of the planets, no riding / building, the
 //   guide on a side face, the three games through the game's own live part, the crew, the Boss (a loss, the star, the keys cleared, a
 //   rematch), a reload keeps the frame and the keys, an old 5-value spot loads upright, a step-0 save arrives at the start, the way back.
-// real: real key presses through the game's own loop (a flower hop, the Moon Ride with E and Space). ipad: the stick on a side face, the
-// camera turn, the Ride slot dims with the no-riding words, Tag! / Hop on! on the action button. pair: a friend on a side face is drawn
+// real: real key presses through the game's own loop (a flower hop, the Moon Ferry with Space, V for the camera). ipad: the stick on a side face, the
+// camera turn, the Ride slot says Camera here, Hop on! on the action button. pair: a friend on a side face is drawn
 // turned to it. closed: without ?preview the frame is the old secret one. Screenshots tests/screenshots/cube-*.png.
-// CUBE_ONLY=frames|land|data|games|off|gravity|play|real|ipad|pair|closed|shots
+// CUBE_ONLY=frames|land|data|games|uniform|reset|off|gravity|play|camera|real|ipad|pair|closed|shots
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -168,8 +171,16 @@ export default async function ({ browser, base, t }) {
         for (let i = 0; i < 3; i++) for (const seed of [1, 2]) { const env = await cubeEnv(seed); chase[kind].push(B.playChase(env, i, kind, { fps, seed: seed + i * 10, maxT: 45 })); }
       }
       const tags = k => chase[k].filter(r => r.tagged).length;
-      t.ok(tags('chaser') === 0 && tags('camper') === 0 && tags('random') <= 1 && tags('skilled') === 6 && chase.skilled.every(r => r.spots === 0),
-        `Orbikit Chase @${fps}: running after it never tags it (${tags('chaser')}/6 in 45 s), standing on its loop never does (${tags('camper')}/6: it sees you and turns ${chase.camper.map(r => r.spots).join(',')} times), wandering about almost never (${tags('random')}/6); waiting round a corner on its loop tags it every time (${tags('skilled')}/6, in ${chase.skilled.map(r => r.t.toFixed(1)).join(' / ')} s, never seen)`);
+      // the ramp (owner 2026-10-29: 1 easy, 2 medium, 3 harder but fair), with the skilled child bot (sees only what is in view, thinks
+      // every 0.5 s, presses Tag! a bit late, stands a little off the perfect spot)
+      const kid = [0, 1, 2].map(() => []);
+      for (let i = 0; i < 3; i++) for (let seed = 1; seed <= 6; seed++) { const env = await cubeEnv(seed); kid[i].push(B.playChaseKid(env, i, { fps, seed, err: 1.0 })); }
+      const med = a => { const v = a.map(r => (r.tagged ? r.t : 120)).sort((x, y) => x - y); return (v[2] + v[3]) / 2; }, rate = a => a.filter(r => r.tagged).length;
+      const m3 = kid.map(med);
+      t.ok(rate(kid[0]) === 6 && rate(kid[1]) >= 5 && rate(kid[2]) >= 4 && m3[0] < m3[1] && m3[1] <= m3[2] * 1.15 && m3[2] <= 4 * m3[0],
+        `Orbikit Chase @${fps}, the ramp with a skilled child: round 1 ${rate(kid[0])}/6 in ${m3[0].toFixed(0)} s, round 2 ${rate(kid[1])}/6 in ${m3[1].toFixed(0)} s, round 3 ${rate(kid[2])}/6 in ${m3[2].toFixed(0)} s (medians; round 3 = ${(m3[2] / m3[0]).toFixed(1)} x round 1)`);
+      t.ok(tags('chaser') === 0 && tags('camper') === 0 && tags('random') <= 2 && tags('skilled') === 6 && chase.skilled.every(r => r.spots === 0),
+        `Orbikit Chase @${fps}: running after it never tags it (${tags('chaser')}/6 in 45 s), standing on its loop never does (${tags('camper')}/6: it sees you and turns ${chase.camper.map(r => r.spots).join(',')} times), wandering about seldom (${tags('random')}/6${chase.random.some(r => r.tagged) ? `, after ${chase.random.filter(r => r.tagged).map(r => r.t.toFixed(0)).join(' / ')} s` : ''}); waiting round a corner on its loop tags it every time (${tags('skilled')}/6, in ${chase.skilled.map(r => r.t.toFixed(1)).join(' / ')} s, never seen)`);
       // the Planet Hop: each flower, each kind
       const hop = {};
       for (const kind of ['skilled', 'sprinter', 'walker', 'random']) {
@@ -181,16 +192,17 @@ export default async function ({ browser, base, t }) {
       const randRate = hop.random.map(n => n / 24), chain = randRate.reduce((a, b) => a * b, 1);
       t.ok(chainOf('skilled') && !chainOf('sprinter') && !chainOf('walker') && randRate[1] <= 0.3 && randRate[3] <= 0.35 && chain < 0.02,
         `Planet Hop @${fps}: the right run lands every pebble (${hop.skilled.join('/')} of 2 each); running straight at the next pebble fails (${hop.sprinter.join('/')}: too fast, the Sky Pebble catches you), walking straight at it fails (${hop.walker.join('/')}: too slow), a random run seldom lands (${hop.random.join('/')} of 24: the whole chain by luck ${(chain * 100).toFixed(2)} %)`);
-      // the Moon Ride
-      const moon = {};
-      for (const kind of ['skilled', 'over', 'random']) {
-        moon[kind] = [0, 0, 0];
-        const N = kind === 'random' ? 12 : 2;
-        for (let r = 0; r < 3; r++) { const env = await cubeEnv(1); env.live.winUpTo(0, false, r); for (let s = 1; s <= N; s++) { const res = B.playMoon(env, kind, { fps, seed: s * 31 + r }); if (res.hit) moon[kind][r]++; env.game.beaten = env.game.beaten.filter(x => x !== CL.ringKey(r + 1)); } }
+      // the Moon Ferry
+      const fer = {}, win = [];
+      { const env = await cubeEnv(1); for (let n = 0; n < 3; n++) win.push(Math.max(...B.ferryWindows(env.live, n).map(w => w.secs))); }
+      for (const kind of ['skilled', 'kid', 'naive', 'random']) {
+        fer[kind] = [0, 0, 0];
+        const N = kind === 'random' || kind === 'kid' ? 8 : 2;
+        for (let n = 0; n < 3; n++) for (let s = 1; s <= N; s++) { const env = await cubeEnv(1); if (B.playFerry(env, kind, { fps, seed: s * 31 + n, lens: n }).hit) fer[kind][n]++; }
       }
-      const mr = moon.random.reduce((a, b) => a + b, 0) / 36;
-      t.ok(moon.skilled.every(n => n === 2) && moon.over.every(n => n === 0) && mr <= 0.2,
-        `Moon Ride @${fps}: jumping off at the right moment lands in every ring (${moon.skilled.join('/')} of 2); jumping right over the ring never does (${moon.over.join('/')}: you keep the moon's speed), a random moment seldom (${moon.random.join('/')} of 12, ${(mr * 100).toFixed(0)} %)`);
+      const fr = fer.random.reduce((a, b) => a + b, 0) / 24;
+      t.ok(fer.skilled.every(n => n === 2) && fer.naive.every(n => n === 0) && fr <= 0.2 && win[0] > win[1] && win[1] > win[2] && win[2] >= 0.3 && fer.kid[0] >= fer.kid[2],
+        `Moon Ferry @${fps}: letting go at the right moment lands on every Lens Rock (${fer.skilled.join('/')} of 2); jumping when the rock is closest never does (${fer.naive.join('/')}: you keep the moon's speed and sail past), a random moment seldom (${fer.random.join('/')} of 8, ${(fr * 100).toFixed(0)} %); the moments get shorter rock by rock (${win.map(w => w.toFixed(2)).join(' / ')} s), a child's timing (+- 0.4 s) ${fer.kid.join('/')} of 8`);
     }
     // 60 and 20 frames a second: the same flight lands on the same spot
     const land = [];
@@ -198,7 +210,7 @@ export default async function ({ browser, base, t }) {
     t.ok(land[0] === land[1], `a flower flight at 60 and at 20 frames a second lands on exactly the same spot (${land[0]})`);
     // the kind help: gentle, and chasing still never works
     const h0 = O.gravityHelp(0), h2 = O.gravityHelp(2), h6 = O.gravityHelp(6), h20 = O.gravityHelp(20);
-    t.ok(h0.ease === 0 && h2.ease > 0 && h20.ease <= 0.1 + 1e-12 && h20.pad <= 0.8 + 1e-9 && PUP_FAST(O, h20), `the kind help only through kindHelp: none at first, ${h2.ease} after 2 misses, at most ${h20.ease} (the Orbikit's sprint x${h20.sprint.toFixed(2)} = ${(7 * h20.sprint).toFixed(2)} b/s: still faster than your 6.2 sprint; tag reach x${h20.tag.toFixed(2)}; a pebble pulls ${h20.pad.toFixed(2)} further; the moon x${h20.moon.toFixed(2)}, the ring x${h20.ring.toFixed(2)})`);
+    t.ok(h0.ease === 0 && h2.ease > 0 && h20.ease <= 0.1 + 1e-12 && h20.pad <= 0.8 + 1e-9 && h20.lens <= 0.8 + 1e-9 && CL.PUPS.every(q => q.boost * h20.sprint > 6.2), `the kind help only through kindHelp: none at first, ${h2.ease} after 2 misses, at most ${h20.ease} (every Orbikit's sprint x${h20.sprint.toFixed(2)}: ${CL.PUPS.map(q => (q.boost * h20.sprint).toFixed(2)).join(' / ')} b/s, still faster than your 6.2 sprint; tag reach x${h20.tag.toFixed(2)}; a pebble pulls ${h20.pad.toFixed(2)} further; the moon x${h20.moon.toFixed(2)}, a Lens Rock pulls ${h20.lens.toFixed(2)} further)`);
     {
       const env = await cubeEnv(1); env.live.pMiss = [20, 20, 20];
       const r = B.playChase(env, 0, 'chaser', { maxT: 45 });
@@ -209,19 +221,46 @@ export default async function ({ browser, base, t }) {
       const env = await cubeEnv(1), { live, game } = env;
       for (let i = 0; i < 3; i++) B.playChase(env, i, 'skilled');
       for (let k = 0; k < 4; k++) B.playHop(env, k, 'skilled');
-      for (let r = 0; r < 3; r++) B.playMoon(env, 'skilled');
+      for (let n = 0; n < 3; n++) B.playFerry(env, 'skilled', { lens: n });
       const st = live.state(), keys = game.beaten.slice().sort().join();
-      const again = [B.playChase(env, 0, 'skilled').tagged, B.playHop(env, 3, 'skilled').ok, B.playMoon(env, 'skilled').hit], keys2 = game.beaten.slice().sort().join();
+      const again = [B.playChase(env, 0, 'skilled').tagged, B.playHop(env, 3, 'skilled').ok, B.playFerry(env, 'skilled', { lens: 1 }).hit], keys2 = game.beaten.slice().sort().join();
       const fun = env.toasts.filter(m => /Just for fun/.test(m)).length;
       live.battleEnded('won', { picture: { id: 'gravity', crew: 0 } });
-      const crewKeep = game.beaten.length;
+      const games = () => game.beaten.filter(k => k !== CL.REDESIGN_MARK).length, crewKeep = games();
       live.battleEnded('won', { picture: { id: 'gravity' } });
-      t.ok(st.done && st.n === 7 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 7 && game.beaten.length === 0,
+      t.ok(st.done && st.n === 7 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 7 && games() === 0 && game.beaten.includes(CL.REDESIGN_MARK),
         `all seven games won with the bots (${keys}); afterwards every game still plays just for fun and saves nothing new (${fun} for-fun words); a crew battle keeps the keys, the Boss battle clears all seven (a rematch plays them again)`);
       game.stars = ['gravity'];
       const hard = new (live.constructor)(game, env.world.parts[0]);
       t.ok(hard.hard && B.playChase({ ...env, live: hard, step: dt => { env.player.update(dt); hard.step(dt); } }, 0, 'skilled').tagged, 'a rematch (you hold the star) is harder (the Orbikit and the moon x1.15) and a skilled player still wins it');
     }
+  }
+
+  /* ------------------------------------------------------------ uniform (Node): every planet pulls the same */
+  if (want('uniform')) {
+    const { cubeEnv } = await import('../cubenode.mjs');
+    const env = await cubeEnv(1), gs = new Set(env.world.planets.map(b => b.g)), reach = new Set(env.world.planets.map(b => b.reach));
+    // the same jump on the Meadow Cube, a pebble, the Moon Dock and a Lens Rock reaches the same height and lasts as long
+    const jumps = [CL.P.meadow, CL.P.hop1, CL.P.base, CL.P.lens1].map(pi => {
+      const b = CL.BOXES[pi], p = env.player; p.carry = null; p.pos.set(Math.floor((b.x0 + b.x1) / 2) + 0.5 + (pi === CL.P.meadow ? 2 : 0), b.y1, Math.floor((b.z0 + b.z1) / 2) + 0.5 + (pi === CL.P.lens1 ? 1 : 0)); p.vel.set(0, 0, 0); p.keys = {};
+      for (let i = 0; i < 20; i++) env.step(1 / 60);
+      const y0 = p.pos.y; let top = 0, n = 0; p.keys = { Space: true }; env.step(1 / 60); p.keys = {};
+      for (; n < 400 && !p.onGround; n++) { env.step(1 / 60); top = Math.max(top, p.pos.y - y0); }
+      return { top: +top.toFixed(4), t: n };
+    });
+    t.ok(gs.size === 1 && [...gs][0] === G.GRAV.g && G.GRAV.g < 0.7 && reach.size === 1 && jumps.every(j => j.top === jumps[0].top && j.t === jumps[0].t),
+      `every planet pulls the same (g ${[...gs].join()} of the main world's, a bit floatier than the old hub planets' 0.7; before: 0.7 / 0.6 / 0.45 with no reason you could see): a jump on the Meadow Cube, a pebble, the Moon Dock and a Lens Rock goes ${jumps[0].top} high for ${jumps[0].t} frames on each (${jumps.map(j => `${j.top}/${j.t}`).join(', ')})`);
+  }
+
+  /* ------------------------------------------------------------ reset (Node): the redesign's one-time reset */
+  if (want('reset')) {
+    const old = { beaten: ['pw:gravity:tag1', 'pw:gravity:ring2', 'pw:gravity:crew1', 'pw:gravity:hop', 'pw:castle:shield1', 'red:trainer'], stars: ['castle', 'gravity'], bossWins: { gravity: 2, castle: 1 } };
+    const did = CL.cubeReset(old);
+    const marked = { beaten: [CL.REDESIGN_MARK, 'pw:gravity:tag2', 'pw:gravity:lens1', 'pw:gravity:crew2'], stars: ['gravity'], bossWins: { gravity: 1 } }, keep = JSON.stringify(marked);
+    const did2 = CL.cubeReset(marked);
+    const fresh = { beaten: [], stars: [], bossWins: {} }, did3 = CL.cubeReset(fresh);
+    t.ok(did && old.beaten.join() === `pw:castle:shield1,red:trainer,${CL.REDESIGN_MARK}` && old.stars.join() === 'castle' && JSON.stringify(old.bossWins) === '{"castle":1}' && !did2 && JSON.stringify(marked) === keep && !did3 && fresh.beaten.join() === CL.REDESIGN_MARK,
+      `an old save loses its Cube Planets keys, crew, star and Boss wins once and is marked (other worlds untouched: ${old.beaten.join(', ')}); a marked save keeps everything; a fresh one just gets the mark`);
   }
 
   /* ------------------------------------------------------------ data, off, gravity (a page, no game started) */
@@ -261,7 +300,7 @@ export default async function ({ browser, base, t }) {
       t.ok(D.moves.length >= 10 && D.nSig === 3 && D.nBig === 3 && D.fx && D.sound, `moves: ${D.moves.join(', ')} (3 signature moves, 3 big moves), effects and the fx:gravity sound`);
       t.ok(D.spawns && D.wild.max === 4 && D.after && /Orbikit/.test(D.afterText) && D.wool === 149 && D.woolName === 'Gravity Wool' && D.ride === 'land',
         `wild ones only on Cube Planets (at most ${D.wild.max} at once), the big ones only "${D.afterText}"; the gravity wool is block 149; Orbitah can be ridden (in other worlds)`);
-      t.ok(D.boss.name === 'Professor Orbit' && D.boss.type === 'gravity' && D.boss.look === 'orbit' && D.boss.top === 63 && D.boss.sig === 'saturnowl' && D.boss.crew === 'Stargazer Stella,Captain Comet,Moon Mechanic Milo' && /Orbikits/.test(D.boss.gate) && D.frame.realm === 'gravity' && D.frame.idx === 11 && D.version === 2,
+      t.ok(D.boss.name === 'Professor Orbit' && D.boss.type === 'gravity' && D.boss.look === 'orbit' && D.boss.top === 63 && D.boss.sig === 'saturnowl' && D.boss.crew === 'Stargazer Stella,Captain Comet,Moon Mechanic Milo' && /Orbikits/.test(D.boss.gate) && D.frame.realm === 'gravity' && D.frame.idx === 11 && D.version === 3,
         `Professor Orbit (top level 63, his giant Saturnowl last), his helpers ${D.boss.crew}, his gate "${D.boss.gate}"; the frame (place ${D.frame.idx}) opens the realm, version ${D.version}`);
     }
     if (want('off')) {
@@ -405,19 +444,19 @@ export default async function ({ browser, base, t }) {
         const ai = g.realms.aim(p.pos); out.arrow = ai && Number.isFinite(ai.x);
         return out;
       });
-      t.ok(D1.down === '-1,0,0' && /Crystal Cube/.test(D1.guide) && D1.arrow, `on the Meadow Cube's east side the guide still points the way on your own face: "${D1.guide}"`);
+      t.ok(D1.down === '-1,0,0' && /Crystal Cube|💎 Jump/.test(D1.guide) && D1.arrow, `on the Meadow Cube's east side the guide still points the way on your own face: "${D1.guide}"`);
       // the three games through the game's own live part (the bots of cubebots.mjs on the game's player)
       const GM = await page.evaluate(() => {
         const R = window.__R, { live, env, Bots } = R, out = {};
         out.chase = [0, 1, 2].map(i => Bots.playChase(env, i, 'skilled').tagged);
         out.tagSaid = R.said('Tagged!');
         out.hop = [0, 1, 2, 3].map(k => Bots.playHop(env, k, 'skilled').ok);
-        out.hopSaid = R.said('hopped every pebble');
-        out.moon = [0, 1, 2].map(() => Bots.playMoon(env, 'skilled').hit);
+        out.hopSaid = R.said('Every pebble');
+        out.moon = [0, 1, 2].map(n => Bots.playFerry(env, 'skilled', { lens: n }).hit);
         out.st = live.state(); R.g.updateGuide(); out.guide = document.getElementById('guide')?.textContent;
         return out;
       });
-      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: three Orbikits tagged, four flower hops to the Last Pebble, three rings from the moon: all seven keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
+      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: three Orbikits tagged, four spring-flower hops to the Last Pebble, three lenses from the moon ferry: all seven keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
       // the Boss's gate (the helpers first), the helpers, a lost battle, the star, the keys cleared
       const G0 = await page.evaluate(() => { const R = window.__R, { g } = R; R.near(R.boss()); window.__toasts.length = 0; g.talkTo(R.boss()); return { battle: g.inBattle, said: window.__toasts.join('|') }; });
       t.ok(!G0.battle && /Stargazer Stella/.test(G0.said), `Professor Orbit waits for his helpers first: "${G0.said}"`);
@@ -432,7 +471,7 @@ export default async function ({ browser, base, t }) {
       t.ok(C3 === 3 && lost && L1.place === 'gravity' && !L1.star && L1.said, `the three helpers battle and are beaten (${C3}); a weak team loses to Professor Orbit and stays on the little planets`);
       await page.evaluate(async () => { const R = window.__R, { g } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; R.near(R.boss()); g.talkTo(R.boss()); });
       await playBattle(page);
-      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|ring)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('walking round every one'), hard: live.hard }; });
+      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|lens)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('walking round every one'), hard: live.hard }; });
       t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star and the Wizard\'s note; the seven keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
       // a rematch: the games are needed again, then the Professor asks
       const RM = await page.evaluate(async () => { const R = window.__R, { g, live } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.ui.closeAsk?.(); live.winUpTo(3, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: !!g.bosses.pending && g.ui.asking, said: window.__toasts.slice(-2).join('|'), inBattle: g.inBattle }; });
@@ -464,6 +503,17 @@ export default async function ({ browser, base, t }) {
       await continueGame(page); await pause(page); await placeIs(page, 'gravity');
       const S3 = await page.evaluate(() => { const g = window.pokecraft, p = g.player, a = g.world.arrivals.gravity; return { d: Math.hypot(p.pos.x - a[0], p.pos.z - a[2]), y: p.pos.y - a[1], star: g.stars.includes('gravity') }; });
       t.ok(S3.d < 0.01 && Math.abs(S3.y) < 0.01 && S3.star, `a save from step 0 (the old planets, realm version 1) arrives at the start, nothing else lost`);
+      // a save from before the redesign (realm version 2, no mark): it arrives at the start and its Cube Planets progress is reset once
+      await page.context().addInitScript(() => {
+        if (sessionStorage.getItem('cubev2')) return;
+        const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); s.realmPos = [125.5, 28, 130.5, 0.3, 0, 8]; s.realmVersions = { ...(s.realmVersions || {}), gravity: 2 };
+        s.beaten = (s.beaten || []).filter(k => k !== 'pw:gravity:redesign1').concat(['pw:gravity:ring1', 'pw:gravity:tag1']); s.bossWins = { ...(s.bossWins || {}), gravity: 3 };
+        localStorage.setItem('pokecraft-save-v2', JSON.stringify(s)); sessionStorage.setItem('cubev2', '1');
+      });
+      await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
+      await continueGame(page); await pause(page); await placeIs(page, 'gravity');
+      const S5 = await page.evaluate(() => { const g = window.pokecraft, p = g.player, a = g.world.arrivals.gravity; return { d: Math.hypot(p.pos.x - a[0], p.pos.z - a[2]), keys: g.beaten.filter(k => k.startsWith('pw:gravity:')), star: g.stars.includes('gravity'), wins: g.bossWins.gravity || 0, other: g.beaten.length }; });
+      t.ok(S5.d < 0.01 && S5.keys.join() === 'pw:gravity:redesign1' && !S5.star && !S5.wins, `a save from before the redesign (version 2, no mark) arrives at the start and starts Cube Planets over once (keys ${S5.keys.join()}, no star, no Boss wins)`);
       // the way back (on the Great Cube too)
       await harness(page); await arm(page);
       await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors[1], c = d.surface[Math.floor(d.surface.length / 2)]; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); });
@@ -481,13 +531,13 @@ export default async function ({ browser, base, t }) {
       // the Orbikit Chase: the pup on its loop, its trail, waiting round a corner
       await page.evaluate(() => { const R = window.__R, { live, p, env } = R, C = window.__C, b = C.CL.BOXES[C.CL.P.crystal]; C.place(p, [b.x0 + 4.5, b.y1, b.z1 - 0.5]); C.settle(p); for (let i = 0; i < 40; i++) env.step(1 / 30); const r = live.pups[0].run; if (r) { r.s = 2; r.dir = 1; } live.step(0.05); p.lookAt({ x: b.x0 + 3, y: b.y1, z: b.z0 + 4.5 }); p.pitch -= 0.2; });
       await shot(page, 'cube-chase.png');
-      // a launch flower, then mid-flight to the next pebble
-      await page.evaluate(() => { const R = window.__R, { live, p } = R; live.puffTo(live.flowerStand(1)); p.update(0.5); p.pitch = -0.2; live.step(0.05); });
+      // a spring flower (squashed under you, then the boing), then mid-flight to the next pebble
+      await page.evaluate(() => { const R = window.__R, { live, p } = R; live.puffTo(live.flowerStand(1)); p.update(0.5); p.pitch = -0.45; live.step(0.05); });
       await shot(page, 'cube-flower.png');
       await page.evaluate(() => { const R = window.__R, { live, p, env } = R, f = R.CL.FLOWERS[1]; live.puffTo(live.flowerStand(1)); p.keys = { KeyW: true }; for (let i = 0; i < 120 && !live.flight; i++) { p.keys = { KeyW: true, Space: R.g.world.launchAt(p.pos, p.frameNo()) > 0 }; env.step(1 / 60); } p.keys = {}; for (let i = 0; i < 40; i++) env.step(1 / 60); });
       await shot(page, 'cube-hop.png');
-      // riding the moon toward a ring
-      await page.evaluate(() => { const R = window.__R, { live, p, env } = R; live.moonT = 0; const s = live.moonObj.safe(); live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0 }); live.board(); live.moonT = 5; env.step(0.02); const r = R.CL.RINGS[0]; p.lookAt({ x: r.x, y: live.M.top, z: r.z }); });
+      // riding the moon ferry past a far Lens Rock
+      await page.evaluate(() => { const R = window.__R, { live, p, env } = R, L = R.CL.LENSES[1]; live.phase = 0.5; const s = live.dockSpot(); live.puffTo({ pos: [s.x, s.y, s.z], frame: 0 }); live.board(); const w = R.Bots.ferryWindows(live, 1).sort((a, b) => b.secs - a.secs)[0]; live.phase = (((w.from + w.to) / 2) % 1 + 0.985) % 1; env.step(0.02); p.lookAt({ x: L.at[0], y: L.at[1] + 1, z: L.at[2] }); });
       await shot(page, 'cube-moon.png');
       await page.evaluate(() => { window.__R.live.getOff(true); });
       // Professor Orbit on the Great Cube
@@ -507,6 +557,55 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(() => { for (const m of window.__models || []) m.parent?.remove(m); });
     }
     t.ok(!page.errors.length, `no page errors ${page.errors.slice(0, 3).join(' | ')}`);
+    await page.context().close();
+  }
+
+
+  /* ------------------------------------------------------------ camera: the third-person steady camera */
+  if (want('camera')) {
+    const page = await retry(() => openGame(browser, base));
+    await newGame(page, 0); await pause(page);
+    await page.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; });
+    const off = await page.evaluate(() => ({ can: window.pokecraft.cubeCam.can(), btn: document.getElementById('cam-btn')?.classList.contains('hidden') ?? true }));
+    await intoCubes(page); await harness(page); await arm(page);
+    const C1 = await page.evaluate(async () => {
+      const g = window.pokecraft, p = g.player, C = window.__C, R = window.__R, THREE = await import('three'), cam = new THREE.PerspectiveCamera(70, 1.5, 0.1, 300), b = C.CL.BOXES[0], out = {};
+      g.cubeCam.refresh(); out.btn = document.getElementById('cam-btn')?.textContent; out.can = g.cubeCam.can();
+      g.cubeCam.set(true); out.saved = localStorage.getItem('pokecraft-cube-cam'); out.btn2 = document.getElementById('cam-btn')?.textContent;
+      // walk east over the Meadow Cube's edge at 60 frames a second; the camera is worked out each frame as main.js does
+      C.place(p, [b.x1 - 2.5, b.y1, b.z0 + 6.5]); C.settle(p); C.yawToward(p, [1, 0, 0]);
+      const ups = [], frames = [], dist = [];
+      const step = keys => { p.keys = keys; R.env.step(1 / 60); cam.position.copy(p.eyePos); cam.rotation.set(p.pitch, p.yaw, 0); const q = p.viewQuat?.(); if (q) cam.quaternion.premultiply(q); g.cubeCam.update(cam, 1 / 60); ups.push(cam.up.clone()); frames.push(p.frameNo()); dist.push(cam.position.distanceTo(p.pos)); };
+      for (let i = 0; i < 70; i++) step({ KeyW: true });
+      for (let i = 0; i < 150; i++) step({});
+      const turnAt = frames.findIndex(f => f !== frames[0]), deg = (a, b2) => Math.acos(Math.max(-1, Math.min(1, a.dot(b2)))) * 180 / Math.PI;
+      out.turned = turnAt > 0; out.down = C.G.downOf(p.frame).join();
+      out.holdUp = deg(ups[turnAt], ups[0]); out.after02 = deg(ups[Math.min(ups.length - 1, turnAt + 12)], ups[0]);
+      out.maxStep = Math.max(...ups.slice(1).map((u, i) => deg(u, ups[i])));
+      const u = C.G.upOf(p.frame); out.end = deg(ups[ups.length - 1], new THREE.Vector3(u[0], u[1], u[2]));
+      out.behind = Math.min(...dist.slice(5)) > 2; out.avatar = g.cubeCam.info().avatar;
+      const av = g.scene.children.find(o => o.userData?.parts && o.visible && o.position.distanceTo(p.pos) < 1e-6);
+      out.avUp = av ? new THREE.Vector3(0, 1, 0).applyQuaternion(av.quaternion).dot(new THREE.Vector3(u[0], u[1], u[2])) : 0;
+      // aiming in third person: the moon passing beside you still offers Hop on! (worked out from your avatar, not the camera)
+      const s = R.live.dockSpot(); R.live.puffTo({ pos: [s.x - 1.5, s.y, s.z], frame: 0 }); R.live.phase = 0.5; R.live.step(0.01); out.near = R.live.near(p); out.eye = p.eyePos.distanceTo(p.pos);
+      return out;
+    });
+    t.ok(!off.can && off.btn && C1.can && /eyes/.test(C1.btn) && /behind/.test(C1.btn2) && C1.saved === 'behind',
+      `the steady camera can be switched only in Cube Planets (pause button "${C1.btn}" -> "${C1.btn2}"); the choice is kept on this device`);
+    t.ok(C1.turned && C1.down === '-1,0,0' && C1.holdUp < 0.01 && C1.after02 < 15 && C1.maxStep < 3 && C1.end < 0.5 && C1.behind && C1.avatar && C1.avUp > 0.99,
+      `third person over an edge: your avatar turns onto the side at once (up ${C1.avUp.toFixed(3)}), the camera's up holds still at the turn (${C1.holdUp.toFixed(2)} deg) and eases slowly (${C1.after02.toFixed(1)} deg after 0.2 s, never more than ${C1.maxStep.toFixed(2)} deg a frame: no roll, no snap), then sits on the new face (${C1.end.toFixed(2)} deg), always behind you ${C1.turned && C1.behind ? '' : JSON.stringify(C1)}`);
+    t.ok(C1.near === 'Hop on!' && Math.abs(C1.eye - 1.62) < 1e-9, `aiming still works from your avatar in third person (beside the moon: "${C1.near}") ${C1.near ? '' : JSON.stringify(C1)}`);
+    await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
+    await continueGame(page); await pause(page); await placeIs(page, 'gravity');
+    const C2 = await page.evaluate(() => window.pokecraft.cubeCam.on);
+    t.ok(C2, 'after a reload the camera is still behind you (remembered on this device)');
+    if (want('shots') || process.env.CUBE_SHOTS) {
+      await harness(page); await arm(page);
+      await page.evaluate(() => { const g = window.pokecraft, p = g.player, C = window.__C, b = C.CL.BOXES[0]; C.place(p, [b.x1 - 1.5, b.y1, b.z0 + 6.5]); C.settle(p); C.yawToward(p, [1, 0, 0]); p.keys = { KeyW: true }; for (let i = 0; i < 40; i++) window.__R.env.step(1 / 60); p.keys = {}; });
+      await page.evaluate(() => document.exitPointerLock()); await page.waitForTimeout(400);
+      await shot(page, 'cube-third-edge.png');
+    }
+    t.ok(!page.errors.length, `no page errors with the steady camera ${page.errors.slice(0, 3).join(' | ')}`);
     await page.context().close();
   }
 
@@ -536,17 +635,22 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => { const R = window.__R; return !R.live.flight && R.p.onGround; }, null, 90000).catch(() => {});
     const K1 = await page.evaluate(() => { const R = window.__R; return { on: R.p.grav.planet, want: R.CL.P.hop1, said: window.__toasts.join('|') }; });
     t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Pebble ("${K1.said.slice(0, 80)}")`);
-    // the Moon Ride: E at the stop to hop on, Space at the right moment
-    await page.evaluate(() => { const R = window.__R, s = R.live.moonObj.safe(); R.live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] }); });
-    await waitFor(page, () => window.__R.live.near(window.__R.p) === 'Hop on!', null, 120000);
-    await page.keyboard.press('KeyE');
-    await waitFor(page, () => window.__R.live.onMoon, null, 30000);
-    const plan = await page.evaluate(() => { const R = window.__R, b = R.Bots.bestJump(R.live, R.live.ringRound()); return { u: b.u, cyc: R.live.moonNow().cycle }; });
-    await waitFor(page, ({ u, cyc }) => { const L = window.__R.live, v = ((L.moonT % cyc) + cyc) % cyc; return v >= u - 0.03 && v < u + 0.2; }, plan, 120000);
+    // the Moon Ferry: wait on the dock where the moon passes (it scoops you up), press Space at the right moment
+    await page.evaluate(() => { const R = window.__R, s = R.live.dockSpot(); R.live.puffTo({ pos: [s.x, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] }); });
+    await waitFor(page, () => window.__R.live.onMoon, null, 120000);
+    const plan = await page.evaluate(() => { const R = window.__R, w = R.Bots.ferryWindows(R.live, 0).sort((a, b) => b.secs - a.secs)[0]; return { ph: ((w.from + w.to) / 2) % 1, w: w.secs / R.live.M.period * 0.4 }; });
+    await waitFor(page, ({ ph, w }) => { const d = ((window.__R.live.phase - ph) % 1 + 1) % 1; return d < w || d > 1 - w * 0.2; }, plan, 120000);
     await page.keyboard.press('Space');
     await waitFor(page, () => !window.__R.live.onMoon && !window.__R.live.jump, null, 60000).catch(() => {});
-    const K2 = await page.evaluate(() => ({ rings: window.__R.live.state().rings, said: window.__toasts.slice(-2).join('|') }));
-    t.ok(K2.rings >= 1, `real keys: E at the moon stop hops on, Space at the right moment lands in the ring (${K2.rings} ring, "${K2.said}")`);
+    const K2 = await page.evaluate(() => ({ lenses: window.__R.live.state().lenses, said: window.__toasts.slice(-2).join('|') }));
+    t.ok(K2.lenses >= 1, `real keys: the moon scoops you up as it passes, Space at the right moment lands you on the Lens Rock (${K2.lenses} lens, "${K2.said}")`);
+    // V switches the steady camera (and back)
+    const v0 = await page.evaluate(() => window.pokecraft.cubeCam.on);
+    await page.keyboard.press('KeyV'); await page.waitForTimeout(300);
+    const v1 = await page.evaluate(() => ({ on: window.pokecraft.cubeCam.on, av: window.pokecraft.cubeCam.info().avatar, saved: localStorage.getItem('pokecraft-cube-cam') }));
+    await page.keyboard.press('KeyV'); await page.waitForTimeout(300);
+    const v2 = await page.evaluate(() => window.pokecraft.cubeCam.on);
+    t.ok(!v0 && v1.on && v1.saved === 'behind' && !v2, `real keys: V switches the camera behind you (${JSON.stringify(v1)}) and back`);
     t.ok(!page.errors.length, `no page errors with real keys ${page.errors.slice(0, 3).join(' | ')}`);
     await page.context().close();
   }
@@ -580,23 +684,26 @@ export default async function ({ browser, base, t }) {
     t.ok(I.turned && I.a0 > 80 && I.a02 > 10 && I.a02 < 80 && I.a05 < 1, `iPad: over an edge the camera's up turns slowly: ${I.a0.toFixed(0)}° at the turn, ${I.a02.toFixed(0)}° after 0.2 s, ${I.a05.toFixed(1)}° after 0.5 s`);
     // the Ride slot dims with the no-riding words; the action button says Tag! and Hop on!
     await ip.evaluate(() => { const g = window.pokecraft, C = window.__C, b = C.CL.BOXES[0]; C.place(g.player, [b.x0 + 6.5, b.y1, b.z0 + 9.5]); C.settle(g.player); });
-    await ip.waitForFunction(() => document.getElementById('btn-ride').classList.contains('dim'), null, { timeout: 60000 });
+    await ip.waitForFunction(() => document.getElementById('btn-ride').textContent === 'Camera', null, { timeout: 60000 });
     await ip.evaluate(() => window.pokecraft.ui.toastBox.replaceChildren());
     await ip.tap('#btn-ride');
     const T1 = await ip.evaluate(() => ({ text: document.getElementById('btn-ride').textContent, riding: window.pokecraft.riding.on, toast: document.getElementById('toast').textContent }));
-    t.ok(T1.text === 'Ride' && !T1.riding && /No riding on the little planets/.test(T1.toast), `iPad: the Ride slot is dim here; a tap says "${T1.toast}" (no steady camera any more)`);
+    const T2 = await ip.evaluate(() => ({ on: window.pokecraft.cubeCam.on, dim: document.getElementById('btn-ride').classList.contains('dim') }));
+    await ip.tap('#btn-ride');
+    const T3 = await ip.evaluate(() => window.pokecraft.cubeCam.on);
+    t.ok(T1.text === 'Camera' && !T1.riding && T2.on && !T2.dim && !T3, `iPad: in Cube Planets the Ride slot (same place) says "${T1.text}" and switches the steady camera (on, then off again); riding stays off`);
     await arm(ip);
     const A1 = await ip.evaluate(() => {
       const R = window.__R, { live, p, env } = R, out = {};
-      const s = live.moonObj.safe(); live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] });
-      live.moonT = 0.2; env.step(0.02); out.moon = live.near(p);
+      const s = live.dockSpot(); live.puffTo({ pos: [s.x - 1.5, s.y, s.z], frame: 0, look: [s.x - 1.5, s.y, s.z + 5] });
+      live.phase = 0.5; env.step(0.02); out.moon = live.near(p);
       return out;
     });
-    await ip.evaluate(() => { window.__R.live.manual = false; });
+    await ip.evaluate(() => { const L = window.__R.live; L.manual = false; L.paused = () => true; }); // (the moon holds still beside you)
     await ip.waitForFunction(() => document.getElementById('btn-act').textContent === 'Hop on!', null, { timeout: 60000 }).catch(() => {});
     const A2 = await ip.evaluate(() => document.getElementById('btn-act').textContent);
-    await ip.evaluate(() => { window.__R.live.manual = true; });
-    t.ok(A1.moon === 'Hop on!' && A2 === 'Hop on!', `iPad: at the moon stop the big action button says "${A2}"`);
+    await ip.evaluate(() => { const L = window.__R.live; L.manual = true; delete L.paused; });
+    t.ok(A1.moon === 'Hop on!' && A2 === 'Hop on!', `iPad: beside the passing moon the big action button says "${A2}"`);
     await shot(ip, 'cube-ipad.png');
     t.ok(!ip.errors.length, `no page errors on the iPad ${ip.errors.slice(0, 3).join(' | ')}`);
     await ip.context().close();

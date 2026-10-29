@@ -50,7 +50,7 @@ export default async function ({ t }) {
     shields: m => { const h = bubbleHelp(m); return Math.max(h.catch - 1, 1 - h.slide); },
     orbikitChase: m => { const q = PUPS[0], a = new PupRun(q.loop, BOXES[q.planet], { help: m }), b = new PupRun(q.loop, BOXES[q.planet]); return Math.max(1 - a.boost / b.boost, a.tagR / b.tagR - 1, a.button / b.button - 1); }, // Cube Planets
     planetHop: m => gravityHelp(m).pad / PAD_SCALE,
-    moonRide: m => Math.max(1 - gravityHelp(m).moon, gravityHelp(m).ring - 1),
+    moonFerry: m => Math.max(1 - gravityHelp(m).moon, gravityHelp(m).lens / PAD_SCALE), // (redesign 2026-10-29: the Moon Ride became the Moon Ferry)
   };
   const rows = Object.entries(games).map(([n, f]) => [n, [0, 2, 4, 6, 20].map(m => f(m))]);
   console.log('  ease after 0 / 2 / 4 / 6 / 20 misses:', rows.map(([n, e]) => `${n} ${e.map(x => (x * 100).toFixed(1)).join('/')} %`).join(', '));

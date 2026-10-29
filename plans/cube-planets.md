@@ -305,3 +305,33 @@ itself (a side-face ring was tried: landings on an edge are too fiddly), not on 
 Cube's side and walking round its edge to the top (no extra moon there). Keys are 7 (3 tags + hop + 3 rings), not 5. Wild Gravity creatures
 circle on TOP faces only (so battles stay upright; the plan said "one face"). People stand on top faces. `GRAV.soft` 0.15 -> 0.3 and a
 planet `pad` (the hop's kind help) in `downAt`.
+
+## Redesign 2026-10-29 (natural rules)
+
+The owner played the built world: the Moon Ride was "the perfect example of the problem" (a moon that stops in one place, rings to jump
+into: hard to understand, then far too easy), the chase's ramp was wrong (rounds 1-2 very easy, round 3 very hard), the Planet Hop was fun
+but "the flower rule (why?)" and "were the gravities different?" were confusing, more lore was wanted, the "steady cam" he asked for was a
+third-person camera, and there was too much instruction text. The binding principle: every rule is natural space / gravity physics a
+child expects, visible in the world, with a reason in the story, needing no rule text.
+
+- **Gravity:** yes, it was different (hub planets 0.7, the Moon Base 0.6, the pebbles 0.45, nothing showed why). Now every planet pulls
+  the same, `GRAV.g` 0.5 (floatier: a plain jump goes 2.64 high for 1.2 s instead of 1.89 / 0.88 s), the hub planets are 6 apart instead
+  of 4, and in the air the stick only nudges you (`GRAV.air` 1.5, was 10): in space you keep your speed, so flights are readable. We chose
+  "the same everywhere" over "bigger pulls harder" because the hops stayed predictable and the bots tested cleanly with one number.
+- **Lore** (STORY.md): Professor Orbit's little-planet observatory; his pet Orbikits got loose; spring flowers grow on his pebbles; his
+  telescope's three lenses fell onto far Lens Rocks that only the moon ferry passes. Told by the helpers' lines and the gate, not by chips.
+- **Spring flowers:** a big bloom on a fat green coil (`buildSpring`) that squashes under you with a creak and boings when you jump.
+  The hop chain was re-placed for the one gravity (hop 1 walk only, hop 2 straight up onto the Sky Pebble's underside, hop 3 sprint only).
+- **The Moon Ferry** replaced the Moon Ride: a little moon goes round a little sun on a real (Kepler) orbit over the Moon Dock and out
+  into space, slow at its far end, fast round the sun, never stopping; it scoops you up as it passes. Three Lens Rocks float out there,
+  too far to jump to (proven in `cubecheck.mjs`); jump off and you keep the moon's speed, so you let go early, like a sling. The moments
+  that work get shorter rock by rock (0.93 / 0.74 / 0.45 s); jumping when the rock is closest never works; random moments ~8 %.
+- **The chase ramp:** each round has its own numbers in `PUPS` (round 1 slower with a bigger touch, round 3's Orbikit is playful and
+  turns back by itself every 7 s, never toward you when you are close). Measured with `playChaseKid` (a child bot that sees only what is
+  in view, thinks every 0.5 s, presses Tag! late, stands off the perfect spot): medians about 17 / 32 / 41 s.
+- **Steady camera** (`cubecam.js`): optional third person behind your own blocky avatar; over an edge the avatar turns at once while the
+  camera holds 0.2 s and swings round the edge in 1.4 s (no snap, no roll). V, the pause button, the Ride slot ("Camera") on tablets;
+  remembered per device. Default stays the first-person eased turn.
+- **Less text:** the guide names only where (an emoji, a name, an arrow); toasts only say what happened.
+- **Saves:** realm version 3 (an older spot arrives at the start); the owner asked for his progress to be reset, so a save without
+  `pw:gravity:redesign1` loses its Cube Planets keys, crew, star and Boss wins once (fine only because the world was preview-only).

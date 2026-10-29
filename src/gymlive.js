@@ -41,7 +41,7 @@ LIVE.doors = PartyLive; // T48 Jolly Jax's Surprise Party: the Party Spinner, fo
 LIVE.atlantis = AtlantisLive; // T41 the Sunken City: Glowfish Catch (a part of the Pirate Seas)
 LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the pencil, Rubber the Eraser
 LIVE.castle = CastleLive; // T49 the Castle: Shield Up!, the drawbridge, the hedge maze, the Joust, the portcullis
-LIVE.gravity = CubeLive; // Cube Planets: the starry sky, the Orbikit Chase, the Planet Hop, the Moon Ride
+LIVE.gravity = CubeLive; // Cube Planets: the starry sky, the Orbikit Chase, the Planet Hop, the Moon Ferry
 LIVE.bubble = BubbleLive; // the Bubble Well: bubbles you stand on, the ducklings, the Chimney Ride, Captain Suds' shields
 
 export function createGymLive(game) {

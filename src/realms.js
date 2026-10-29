@@ -168,16 +168,18 @@ REALMS.castle = pictureRealm({ id: 'castle', name: 'Castle', seedSalt: 0xca57, s
 /* ==== end of T49 castle ==== */
 /* ==== Gravity ==== */
 // Cube Planets (plans/cube-planets.md): the little planets behind the Swirl's gold-and-lilac frame (the old secret5). Down is wherever your
-// feet are (gravity.js, player.js's frame branch). The Orbikit Chase, the Planet Hop, the Moon Ride (cubelive.js), Professor Orbit on the
-// Great Cube. No building and no riding (cubeland.js keeps the whole sky). Version 2: the planets of step 0 moved (nothing was ever built
-// here, so no edit is lost; a step-0 spot puts you at the arrival). The arrow is worked out on the face you stand on (cubeAim, crewAim: false).
+// feet are (gravity.js, player.js's frame branch). The Orbikit Chase, the Planet Hop, the Moon Ferry (cubelive.js), Professor Orbit on the
+// Great Cube. No building and no riding (cubeland.js keeps the whole sky). Version 2: the planets of step 0 moved; version 3 (the redesign
+// 2026-10-29: planets further apart, the Moon Dock and the Lens Rocks): nothing was ever built here, so no edit is lost, and an older
+// spot puts you at the arrival. The arrow is worked out on the face you stand on (cubeAim, crewAim: false). `camera`: the Ride slot (and
+// V, and the pause screen) switch the third-person steady camera here (cubecam.js).
 REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0xc0be, size: [CUBE_SIZE, CUBE_SIZE], terrain: 'cubeLand', arrive: [CUBE_DOOR.x, CUBE_DOOR.z + 3], biome: 'gravity',
-  version: 2, spawns: { gravity: GRAVITY_SPAWNS, cave: [] }, wild: { max: 4, every: 2 }, crewAim: false, zoneNames: { gravity: 'Cube Planets' },
+  version: 3, spawns: { gravity: GRAVITY_SPAWNS, cave: [] }, wild: { max: 4, every: 2 }, crewAim: false, zoneNames: { gravity: 'Cube Planets' }, camera: true,
   look: { sky: 0x141c4c, fog: [70, 220], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🪐 Cube Planets', travelText: 'Floating in...', travelIcon: '🪐', enterText: 'Whoosh! You are on a little cube planet!',
-  arriveHint: 'Walk over the edge: down is wherever your feet are! Professor Orbit waits on the Great Cube.',
+  arriveHint: 'Professor Orbit needs help!',
   noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too',
-  noRide: 'No riding on the little planets! Walk and jump instead.' }); // owner 2026-10-29: riding is off here (riding.js; you get off on arrival)
+  noRide: 'No riding on the little planets!' }); // owner 2026-10-29: riding is off here (riding.js; you get off on arrival)
 /* ==== end of Gravity ==== */
 /* ==== Bubble ==== */
 // The Bubble Well (behind the Swirl's pale blue frame, the old secret4): one climb up a fizzing well, the Bubble Stairs, the Duckling

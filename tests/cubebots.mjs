@@ -2,9 +2,9 @@
 // They play with the real Player (keys and yaw, as a child does) and the real CubeLive, frame by frame at `fps`, in Node (tests/cubenode.mjs)
 // or in the page (the game's own player and live part). Each bot returns what happened; tests/specs/cube.mjs counts.
 //   node tests/cubebots.mjs   prints a table (calibration)
-import { PLANETS, P, PUPS, FLOWERS, RINGS, BOXES, MOON } from '../src/cubeland.js';
+import { PLANETS, P, PUPS, FLOWERS, LENSES, BOXES, MOON } from '../src/cubeland.js';
 import { toLocal, upOf, GRAV, flightLand } from '../src/gravity.js';
-import { loopAt, moonAt, jumpOff, ringHit } from '../src/orbits.js';
+import { loopAt, loopNearest, ferryAt, jumpOff } from '../src/orbits.js';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const P3 = v => [v.x, v.y, v.z];
@@ -99,6 +99,64 @@ export function playChase(env, i, kind, { fps = 60, maxT = 60, seed = 1 } = {}) 
   return { tagged: false, t, spots: live.pMiss[i] };
 }
 
+// A skilled CHILD (owner 2026-10-29: "1 easy, 2 medium, 3 harder but fair"; the ramp is measured with this one, not with the perfect
+// robot above): it knows the dotted way but sees the Orbikit only when nothing is in between (else it guesses from where it last saw it),
+// thinks again only every `think` s, presses Tag! a `react` s late, and stands a little off the perfect spot (up to `err` blocks along
+// and across), so on a planet that is easy to read it wins at once and on a harder one it needs a few goes. -> { tagged, t, spots }
+export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0.5, react = 0.25, err = Number(process.env.KID_ERR ?? 0.5) } = {}) {
+  const { live, player: pl } = env, q = PUPS[i], box = BOXES[q.planet], dt = 1 / fps, r0 = rng(seed * 131 + i);
+  const c = [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2, (box.z0 + box.z1) / 2], start = c.slice();
+  const pole = [0, 1, 2].find(a => q.loop.every(p => Math.abs(p[a] - q.loop[0][a]) < 1e-9));
+  if (pole != null) start[pole] = [box.x1, box.y1, box.z1][pole]; else start[1] = box.y1;
+  start[0] = Math.floor(start[0]) + 0.5; start[2] = Math.floor(start[2]) + 0.5; if (pole === 0 || pole === 2) start[1] = Math.floor(start[1]) + 0.5;
+  standAt(env, start);
+  live.pups[i].run = null; live.pups[i].tagT = -99;
+  const tagsBefore = live.state().tags, keyBefore = live.state().tag[i];
+  let t = 0, plan = null, nextThink = 0, mem = null, pressAt = -1, spots = 0;
+  for (let n = 0; n < maxT * fps; n++) {
+    const r = live.pups[i].run, k = {};
+    if (r && !r.tagged) {
+      const L = r.L, mypos = P3(pl.pos), a = r.at, mid = a.pos.map((v, j) => v + a.up[j] * 0.6), head = mypos.map((v, j) => v + upOf(pl.frame ?? 0)[j] * 1.5);
+      if (live.seen(head, mid)) mem = { s: r.s, dir: r.dir, t };
+      if (live.pMiss[i] > spots) { spots = live.pMiss[i]; plan = null; nextThink = t + think; } // it saw me: think again (a moment later)
+      if (t >= nextThink || !plan) {
+        nextThink = t + think;
+        const est = mem ? { s: mem.s + mem.dir * r.base * (t - mem.t), dir: mem.dir } : null;
+        if (est && (!plan || plan.look || plan.dir !== est.dir || plan.passed)) {
+          let best = null;
+          L.pts.forEach((pt, ci) => {
+            const sC = L.segs[ci].at, arc = est.dir > 0 ? ((sC - est.s) % L.total + L.total) % L.total : ((est.s - sC) % L.total + L.total) % L.total;
+            const out = est.dir > 0 ? L.segs[ci] : L.segs[(ci - 1 + L.segs.length) % L.segs.length], od = est.dir > 0 ? out.dir : out.dir.map(v => -v);
+            const side = [out.up[1] * od[2] - out.up[2] * od[1], out.up[2] * od[0] - out.up[0] * od[2], out.up[0] * od[1] - out.up[1] * od[0]];
+            const along = 0.75 + (r0() * 2 - 1) * err * 0.6, across = (r0() * 2 - 1) * err * 0.6;
+            const amb = pt.map((v, j) => v + od[j] * along + side[j] * across), dist = Math.hypot(...sub(amb, mypos)) * 1.35;
+            const tPup = arc / r.base, tMe = dist / GRAV.sprint + 0.8;
+            if (tPup > tMe && (!best || tPup < best.tPup)) best = { amb, tPup, edge: pt, sAt: sC };
+          });
+          plan = best ? { dir: est.dir, wp: route(box, pl, best.amb), edge: best.edge, sAt: best.sAt } : null;
+        }
+      }
+      if (!mem) { // not seen it yet: walk round the planet on its dotted way to look for it
+        if (!plan || !plan.look) { const sNear = loopNearest(L, mypos).s, aim = loopAt(L, sNear + 4).pos; plan = { look: true, wp: route(box, pl, aim) }; }
+      }
+      if (plan) {
+        const wp = plan.wp[0], d = Math.hypot(...sub(wp, mypos));
+        if (d > 0.35) { face(pl, wp, box); k.KeyW = true; k.ShiftLeft = d > 1.2; }
+        else if (plan.wp.length > 1) plan.wp.shift();
+        else if (plan.look) plan = null;
+        else face(pl, plan.edge, box);
+        if (mem && plan && !plan.look) { const arcNow = plan.dir > 0 ? ((plan.sAt - (mem.s + mem.dir * r.base * (t - mem.t))) % L.total + L.total) % L.total : (((mem.s + mem.dir * r.base * (t - mem.t)) - plan.sAt) % L.total + L.total) % L.total; if (arcNow > L.total - 1.5) plan.passed = true; }
+      }
+      if (live.pupNear(pl) >= 0) { if (pressAt < 0) pressAt = t + react; } else pressAt = -1;
+      if (pressAt >= 0 && t >= pressAt) { live.use(pl); pressAt = -1; }
+    }
+    pl.keys = k;
+    env.step(dt); t += dt;
+    if (live.state().tags > tagsBefore || (keyBefore && live.pups[i].tagT > -99 && !live.pups[i].run)) return { tagged: true, t, spots: live.pMiss[i] };
+  }
+  return { tagged: false, t, spots: live.pMiss[i] };
+}
+
 /* ================================================================ the Planet Hop */
 // One flight from flower k. kinds: 'skilled' (its solution), 'sprinter' / 'walker' (straight at the next pebble), 'random' (a random way and
 // a random run). -> { landed (planet index), ok (on flower.to) }
@@ -128,51 +186,71 @@ export function playHop(env, k, kind, { fps = 60, seed = 1 } = {}) {
   return { landed: -1, ok: false };
 }
 
-/* ================================================================ the Moon Ride */
-// The jump time of a lap that lands in ring r (closest to its middle), from the physics (what a child learns by trying): the moon's
-// clock within its lap, or null.
-export function bestJump(live, r) {
-  const M = live.M, k = live.moonK, cyc = moonAt(M, 0, k).cycle, ring = RINGS[r];
-  let best = null;
-  for (let u = M.stop; u < cyc; u += 1 / 120) {
-    const m = moonAt(M, u, k), land = flightLand(m.pos, jumpOff(m.vel, GRAV.jump), live.world.planets, { frame: 0 });
-    if (!land || land.planet !== P.base || land.axis !== 1) continue;
-    const d = Math.hypot(land.pos[0] - ring.x, land.pos[2] - ring.z);
-    if (!best || d < best.d) best = { u, d };
-  }
-  return best;
+/* ================================================================ the Moon Ferry */
+// Where a jump off the moon at `phase` lands (the physics a child learns by trying): the planet index or -1 (floats off).
+export function ferryLand(live, phase) {
+  const m = ferryAt(live.M, phase, live.moonK), L = flightLand(m.pos, jumpOff(m.vel, GRAV.jump), live.world.planets, { frame: 0, maxT: 8 });
+  return L ? L.planet : -1;
 }
-// Ride from the stop and jump once. kinds: 'skilled' (at bestJump), 'over' (when the moon is right over the ring: the naive way),
-// 'random' (a random moment of the lap). -> { hit, ring }
-export function playMoon(env, kind, { fps = 60, seed = 1 } = {}) {
-  const { live, player: pl } = env, dt = 1 / fps, r = live.ringRound(), ring = RINGS[r];
-  // wait at the stop until the moon is there, hop on
-  const stop = [live.M.cx + live.M.rx + 2.5, live.M.top, live.M.cz];
-  standAt(env, stop);
-  for (let n = 0; n < 40 * fps && !live.nearMoon(pl.pos); n++) env.step(dt);
-  live.board();
-  const cyc = live.moonNow().cycle, lap0 = live.moonT - (((live.moonT % cyc) + cyc) % cyc);
-  const plan = kind === 'skilled' ? bestJump(live, r)?.u : kind === 'random' ? live.M.stop + rng(seed)() * (cyc - live.M.stop) : null;
-  let lastD = Infinity, jumped = false;
-  const hitsBefore = live.state().rings, missBefore = live.mMiss[r];
-  for (let n = 0; n < 2 * cyc * fps; n++) {
-    const u = live.moonT - lap0, m = live.moonNow(), k = {};
+// The moments of one lap whose jump lands on Lens Rock `n` (0..2): [{ from, to }] in phase (0..1), and their length in seconds.
+export function ferryWindows(live, n) {
+  const want = LENSES[n].planet, step = 1 / (120 * live.M.period), out = [];
+  let cur = null;
+  for (let ph = 0.5; ph < 1.5; ph += step) { // (from the far end round: a window never wraps)
+    const hit = ferryLand(live, ph % 1) === want;
+    if (hit && !cur) cur = { from: ph }; else if (!hit && cur) { cur.to = ph; out.push(cur); cur = null; }
+  }
+  if (cur) { cur.to = 1.5; out.push(cur); }
+  return out.map(w => ({ ...w, secs: (w.to - w.from) * live.M.period / live.moonK }));
+}
+// Ride from the dock and jump once, aiming at Lens Rock `lens`. kinds: 'skilled' (the middle of its window), 'kid' (the window's middle
+// with a human's timing: +- `jitter` s), 'naive' (when the moon is closest to the rock, as a child who waits until it is "right there"),
+// 'random' (a random moment of the lap). -> { hit (landed on that rock), any (on any rock), landed, t }
+export function playFerry(env, kind, { fps = 60, seed = 1, lens = 0, jitter = 0.4 } = {}) {
+  const { live, player: pl } = env, dt = 1 / fps, r = rng(seed * 977 + lens), want = LENSES[lens].planet, rock = LENSES[lens].at;
+  // wait on the dock where the moon's far end passes: it scoops you up
+  const s = live.dockSpot();
+  live.jump = null; live.moonBackT = 0;
+  standAt(env, [s.x, s.y, s.z]);
+  for (let n = 0; n < 40 * fps && !live.onMoon; n++) { pl.keys = {}; env.step(dt); }
+  if (!live.onMoon) return { hit: false, any: false, landed: -2, noboard: true };
+  const w = ferryWindows(live, lens).sort((a, b) => b.secs - a.secs)[0];
+  let plan = null;
+  if (kind === 'skilled' && w) plan = ((w.from + w.to) / 2) % 1;
+  if (kind === 'kid' && w) plan = ((w.from + w.to) / 2 + (r() * 2 - 1) * jitter * live.moonK / live.M.period + 1) % 1;
+  if (kind === 'random') plan = r();
+  const lensesBefore = live.state().lenses, keysBefore = env.game.beaten.length;
+  let jumped = false, lastD = Infinity, t = 0;
+  for (let n = 0; n < 2.2 * live.M.period * fps; n++) {
+    const k = {};
     if (!jumped && live.onMoon) {
-      if (kind === 'over') { const d = Math.hypot(m.pos[0] - ring.x, m.pos[2] - ring.z); if (!m.stopped && d > lastD && lastD < 4) k.Space = true; lastD = d; }
-      else if (plan != null && u >= plan - dt / 2) k.Space = true;
+      const m = live.moonNow();
+      if (kind === 'naive') { const d = Math.hypot(m.pos[0] - rock[0], m.pos[2] - rock[2]); if (d > lastD && lastD < 20) k.Space = true; lastD = d; }
+      else if (plan != null) { const dph = ((live.phase - plan) % 1 + 1) % 1; if (dph < 1.5 * dt * live.moonK / live.M.period) k.Space = true; }
     }
     pl.keys = k;
-    env.step(dt);
+    env.step(dt); t += dt;
     if (k.Space) jumped = true;
-    if (jumped && !live.jump && !live.onMoon) return { hit: live.state().rings > hitsBefore || (live.mMiss[r] === missBefore && live.mFun.done(hitsBefore)), ring: r, miss: live.mMiss[r] > missBefore };
+    if (jumped && !live.jump && !live.onMoon && (pl.onGround || live.moonBackT <= 0)) {
+      for (let i = 0; i < 4; i++) env.step(dt);
+      const landed = pl.grav?.planet ?? -1;
+      return { hit: landed === want, any: LENSES.some(L => L.planet === landed), landed, t, found: live.state().lenses > lensesBefore || env.game.beaten.length > keysBefore };
+    }
   }
-  return { hit: false, ring: r, nojump: !jumped };
+  return { hit: false, any: false, landed: -1, nojump: !jumped };
 }
 
 if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('cubebots.mjs')) {
   const { cubeEnv } = await import('./cubenode.mjs');
   const only = process.env.ONLY || 'chase,hop,moon';
   for (const fps of [60, 20]) {
+    if (process.env.FLIP) PUPS[2].flip = Number(process.env.FLIP); // (tuning)
+    if (only.includes('kid')) for (let i = 0; i < 3; i++) {
+      const res = [];
+      for (let s = 1; s <= Number(process.env.N ?? 8); s++) { const env = await cubeEnv(s); res.push(playChaseKid(env, i, { fps, seed: s })); }
+      const ok = res.filter(r => r.tagged), mean = a => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+      console.log(`chase ${i} kid ${fps}fps: ${ok.length}/${res.length} tagged, mean ${mean(ok.map(r => r.t)).toFixed(1)} s, mean ${mean(res.map(r => r.spots)).toFixed(1)} times seen  (${res.map(r => (r.tagged ? r.t.toFixed(0) : 'no')).join(' ')})`);
+    }
     if (only.includes('chase')) for (let i = 0; i < 3; i++) for (const kind of ['chaser', 'camper', 'random', 'skilled']) {
       const res = [];
       for (let s = 1; s <= Number(process.env.N ?? 3); s++) { const env = await cubeEnv(s); res.push(playChase(env, i, kind, { fps, seed: s })); }
@@ -183,11 +261,13 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('cubebots.mjs'
       for (let s = 1; s <= N; s++) if (playHop(env, k, kind, { fps, seed: s }).ok) ok++;
       console.log(`hop ${k} ${kind.padEnd(8)} ${fps}fps: ${ok}/${N}`);
     }
-    if (only.includes('moon')) for (let r = 0; r < 3; r++) for (const kind of ['skilled', 'over', 'random']) {
-      const env = await cubeEnv(1), N = kind === 'random' ? 12 : 3; let ok = 0;
-      env.live.winUpTo(0, false, r);
-      for (let s = 1; s <= N; s++) { const res = playMoon(env, kind, { fps, seed: s }); if (res.hit) ok++; if (res.hit && kind !== 'skilled') { /* keep the ring */ } env.game.beaten = env.game.beaten.filter(x => x !== `pw:gravity:ring${r + 1}`); }
-      console.log(`moon ring ${r + 1} ${kind.padEnd(8)} ${fps}fps: ${ok}/${N}`);
+    if (only.includes('moon')) {
+      { const env = await cubeEnv(1); console.log('ferry windows (s):', [0, 1, 2].map(n => ferryWindows(env.live, n).map(w => w.secs.toFixed(2)).join('+')).join(' | ')); }
+      for (let n = 0; n < 3; n++) for (const kind of ['skilled', 'kid', 'naive', 'random']) {
+        const N = kind === 'random' || kind === 'kid' ? 12 : 2; let ok = 0, any = 0;
+        for (let s = 1; s <= N; s++) { const env = await cubeEnv(1); const res = playFerry(env, kind, { fps, seed: s, lens: n }); if (res.hit) ok++; if (res.any) any++; }
+        console.log(`ferry lens ${n + 1} ${kind.padEnd(8)} ${fps}fps: ${ok}/${N} (any rock ${any})`);
+      }
     }
   }
 }

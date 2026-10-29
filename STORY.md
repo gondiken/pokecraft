@@ -135,7 +135,7 @@ the city's old guardians: jars, stone lions and mosaic snakes that came alive.
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
 and the fair leader, and Playland starts up again.
 
-**Cube Planets.** Little planets that are cubes, floating in a starry sky, where down is wherever your feet are. **Professor Orbit** made them so the Wizard's star creatures would have somewhere to play; his helpers' Orbikits race round the planets, launch flowers fling you from pebble to pebble and a little moon gives rides. The star is in orbit round his hat, on top of the Great Cube.
+**Cube Planets.** Little planets that are cubes, floating in a starry sky, where down is wherever your feet are and every planet pulls the same. They are **Professor Orbit**'s little-planet observatory, made so the Wizard's star creatures would have somewhere to play. But his pet Orbikits got loose and race round and round their planets, the spring flowers on his pebbles fling anyone who jumps on them, and his telescope's three lenses fell onto far little rocks that only the moon ferry passes (it goes round a little sun and never stops: you keep its speed when you jump off). The star is in orbit round his hat, on top of the Great Cube.
 
 **The Portal House.** In the Swirl itself, the Portal creatures' oldest, who has been watching the crack the
 longest, is the Boss at the end of a chain of portal rooms.
