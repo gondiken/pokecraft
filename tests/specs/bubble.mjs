@@ -4,8 +4,10 @@
 // lifts, the chimney, the vents, nobody stuck, block ids); C: the rules in Node with the model players of bubblebots.mjs at 60 and 20
 // steps a second (bubbles, the ducklings, the Chimney Ride, the shields, the kind help); D: playing in a browser with the real Player
 // (the climb, a fall back to the ledge, the ducklings, the ride, the shields, the crew, Captain Suds, a lost battle, the star and the
-// keys cleared, a reload, a wild Bubble creature's bubble); E: an iPad; F: two browsers (each blows their own bubbles); G: closed without
-// ?preview. BUBBLE_ONLY=data|land|rules|play|ipad|pair|closed|shots. Screenshots: tests/screenshots/bubble-*.png.
+// keys cleared, a reload, a wild Bubble creature's bubble); E: an iPad; F: two browsers (each blows their own bubbles); H: real input
+// (owner 2026-10-29: real keys and mouse moves through the game's own handlers and frame loop: hop onto a bubble, one blown under you
+// mid-jump, up shaft 1; the iPad's buttons); G: closed without ?preview. BUBBLE_ONLY=data|land|rules|play|ipad|pair|real|closed|shots.
+// Screenshots: tests/screenshots/bubble-*.png.
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -129,8 +131,22 @@ export default async function ({ browser, base, t }) {
     const a60 = times(60), a20 = times(20);
     t.ok(a60.join() === 'warn:@1.400,pop:stood@2.000,pop:old@4.000', `a bubble you stand on wobbles at 1.4 s and pops at 2 s; a free one pops when 4 s old (${a60})`);
     t.ok(a60.map(x => x.split('@')[0]).join() === a20.map(x => x.split('@')[0]).join() && a60.every((x, i) => Math.abs(parseFloat(x.split('@')[1]) - parseFloat(a20[i].split('@')[1])) <= 0.05 + 1e-9), `the same pops at 60 and 20 frames a second (${a60} / ${a20})`);
-    const g3 = new Bu.BubbleField(); const b3 = g3.blow(eye, fwd).b; for (let i = 0; i < 60; i++) g3.step(1 / 60);
-    t.ok(Math.abs(b3.y - (6.6 + Bu.BUBBLE.rise)) < 1e-6, `a free bubble rises ${Bu.BUBBLE.rise} blocks a second (${(b3.y - 6.6).toFixed(3)})`);
+    const g3 = new Bu.BubbleField(); const b3 = g3.blow(eye, fwd).b; const y3 = []; for (let i = 0; i < 120 * 2; i++) { g3.step(1 / 120); if (i === 119) y3.push(b3.y); }
+    y3.push(b3.y);
+    t.ok(Math.abs(y3[0] - (6.6 + Bu.BUBBLE.rise * (1 - Bu.BUBBLE.hang))) < 0.01 && Math.abs(y3[1] - y3[0] - Bu.BUBBLE.rise) < 1e-6, `a free bubble waits ${Bu.BUBBLE.hang} s where you blew it (time to hop on), then rises ${Bu.BUBBLE.rise} blocks a second (${(y3[0] - 6.6).toFixed(3)} after 1 s)`);
+    // owner 2026-10-29 "I could never jump on a bubble": landing from above, from inside (blown under your feet mid-jump), a bubble blown at the floor sits on it
+    const lb = { x: 0, y: 5, z: 0 }, top = 5 + Bu.BUBBLE.r;
+    const L1 = [
+      Bu.landsOn(lb, { x: 0.3, z: 0, feet: top - 0.05, prev: top + 0.2, vy: -3 }),   // down through its top
+      Bu.landsOn(lb, { x: 0, z: 0, feet: 5.02, prev: 5.02, vy: 0 }),                  // blown right under your feet at the top of a jump
+      Bu.landsOn(lb, { x: 0, z: 0, feet: 4.9, prev: 4.7, vy: 3 }),                    // hopped up into it
+      !Bu.landsOn(lb, { x: 0, z: 0, feet: 4.6, prev: 4.5, vy: 3 }),                   // below its middle: not yet
+      !Bu.landsOn(lb, { x: 1.0, z: 0, feet: 5.2, prev: 5.2, vy: 0 }),                 // beside it
+      !Bu.landsOn(lb, { x: 0, z: 0, feet: top + 0.4, prev: top + 0.5, vy: -1 }),     // still above it
+    ];
+    const fl = new Bu.BubbleField(), floor = (x, y, z) => y < 5, fb = fl.blow({ x: 0.5, y: 6.62, z: 0.5 }, { x: 0, y: -1, z: 0 }, floor);
+    const hop = Bu.hopHeight({ ground: true }), fe = Bu.BUBBLE;
+    t.ok(L1.every(Boolean) && fb.ok && fb.b.y - fe.r >= 5 && fb.b.y - fe.r < 5.15 && fb.b.y - fe.scoop <= 5 + hop && 1.62 - fe.scoop > hop, `you land on a bubble from above, from inside its top half (blown under you mid-jump, or hopped up into), never from beside or below its middle; one blown at your feet sits on the floor (bottom ${(fb.b.y - fe.r - 5).toFixed(2)} up) and a hop (${hop.toFixed(2)}) reaches it; one blown straight ahead stays out of a hop's reach (${L1.map(Number).join('')})`);
     const drip = BL.DRIPS[0], g4 = new Bu.BubbleField(); g4.blow({ x: drip.x, y: 14 + 1.0, z: drip.z + Bu.BUBBLE.ahead }, fwd);
     let dpop = null; for (let i = 0; i < 600 && !dpop; i++) for (const e of g4.step(1 / 60, { drips: [drip] })) if (e.type === 'pop') dpop = e.why;
     t.ok(dpop === 'drip', `a drip pops a bubble under its spout (${dpop})`);
@@ -478,6 +494,111 @@ export default async function ({ browser, base, t }) {
     t.ok(k1.mine === 2 && a1.mine === 0 && a1.here && a1.sum === k1.sum, `two players: the Kid blows two bubbles, Dad has none of them (bubbles are each player's own, never blocks or messages); the well's blocks are the same for both; Dad sees the Kid in the well`);
     t.ok(!A.errors.length && !Bp.errors.length, `no page errors in the pair ${A.errors.concat(Bp.errors).slice(0, 3).join('; ')}`);
     await A.context().close(); await Bp.context().close();
+  }
+
+  /* ---------------------------------------------------------------- H. Real input (owner 2026-10-29: "I could never jump on a bubble") */
+  // Like a child plays: real key presses (E, W, Space) and mouse moves through the game's own handlers, the game's own frame loop and
+  // clock (no manual live part, no direct carry, no robot); only the spot you start on is set. The mouse capture is faked (headless
+  // Chromium never grants it), so the game's own pointerlockchange handler runs as when a player clicks into the game.
+  if (want('real')) {
+    const fakeLock = () => {
+      Object.defineProperty(Document.prototype, 'pointerLockElement', { configurable: true, get() { return window.__lock ? document.getElementById('game') : null; } });
+      const change = on => { window.__lock = on; setTimeout(() => document.dispatchEvent(new Event('pointerlockchange')), 0); };
+      HTMLCanvasElement.prototype.requestPointerLock = function () { change(true); return Promise.resolve(); };
+      Document.prototype.exitPointerLock = function () { change(false); };
+    };
+    // the game clock: summed frame dt of the live part (waits are in game seconds, whatever the frame rate)
+    const clockOn = pg => pg.evaluate(() => {
+      const g = window.pokecraft, gl = g.gymLive, up = gl.update.bind(gl);
+      window.__T = 0; gl.update = dt => { up(dt); window.__T += dt; };
+    });
+    const waitT = (pg, s) => pg.evaluate(s => new Promise(r => { const t0 = window.__T, w0 = Date.now(); const f = () => (window.__T - t0 >= s || Date.now() - w0 > 120000 ? r() : requestAnimationFrame(f)); f(); }), s);
+    const live = pg => pg.evaluate(() => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'), p = g.player; return { stood: l.stood?.id ?? null, on: p.carry === l.standObj, y: p.pos.y, ground: p.onGround, n: l.field.n, ring: l.aimRing.visible && l.aimRing.userData.parts.ring.material.color.getHex() }; });
+    // the look, by mouse moves through the game's mousemove handler (yaw, pitch in radians)
+    const look = (pg, yaw, pitch) => pg.evaluate(([yaw, pitch]) => {
+      const p = window.pokecraft.player, k = 0.0022, w = a => Math.atan2(Math.sin(a), Math.cos(a));
+      document.dispatchEvent(new MouseEvent('mousemove', { movementX: -w(yaw - p.yaw) / k, movementY: -(pitch - p.pitch) / k }));
+      return { yaw: p.yaw, pitch: p.pitch };
+    }, [yaw, pitch]);
+    const start = (pg, at) => pg.evaluate(at => { // the spot (and a fresh wand); nothing else is touched
+      const g = window.pokecraft, p = g.player, l = g.gymLive.of('part:bubble');
+      l.giveBack(); for (const b of [...l.field.list]) l.field.pop(b); l.field.refill();
+      p.pos.set(...at); p.vel.set(0, 0, 0); l.ledge = null; l.fromBubble = false;
+    }, at);
+    const key = async (pg, k, s = 0) => { await pg.keyboard.down(k); if (s) await waitT(pg, s); await pg.keyboard.up(k); };
+    const page = await retry(() => openGame(browser, base, { setup: ctx => ctx.addInitScript(fakeLock) }));
+    await newGame(page, 0);
+    await page.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; });
+    await intoWell(page);
+    await page.evaluate(() => document.getElementById('game').requestPointerLock());
+    await waitFor(page, () => !!document.pointerLockElement && window.pokecraft.started && document.getElementById('pause').classList.contains('hidden'), null, 20000);
+    await clockOn(page);
+    const S1 = [104.5, 5, 76.5], hop = async (pitch, delay, name) => {
+      await start(page, S1); await look(page, 0, pitch); await waitT(page, 0.3);
+      const ring = (await live(page)).ring;
+      await key(page, 'KeyE');
+      if (delay) await waitT(page, delay);
+      await page.keyboard.down('KeyW'); await key(page, 'Space', 0.12); await waitT(page, 0.45); await page.keyboard.up('KeyW');
+      await waitT(page, 0.4);
+      const r = await live(page);
+      return { name, on: r.on && r.stood !== null, y: r.y, ring };
+    };
+    const H1 = [await hop(-0.5, 0.15, 'look down a little'), await hop(-0.8, 0.5, 'look down more, hop a moment later'), await hop(-1.2, 0.3, 'look at the floor')];
+    t.ok(H1.every(h => h.on && h.ring === 0x7dffa0), `real keys: look down a little (or a lot), press E for Blow!, hold W and Space: you land on your bubble every time; the aim ring is green first (${H1.map(h => `${h.name}: ${h.on ? 'on it' : 'missed'} y ${h.y.toFixed(2)}`).join('; ')})`);
+    // jump first, then look down and Blow! under your feet: it catches you
+    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3);
+    await key(page, 'Space', 0.1); await waitT(page, 0.12); await look(page, 0, -1.5); await key(page, 'KeyE'); await waitT(page, 0.5);
+    const H2 = await live(page);
+    t.ok(H2.on && H2.y > 5.4, `real keys: jump, look down, press E: the bubble catches you under your feet (y ${H2.y.toFixed(2)})`);
+    // straight ahead at the top of a hop: too high, the ring says so (white) and a word says what to do
+    await start(page, S1); await look(page, 0, 0); await waitT(page, 0.3);
+    const H3 = await live(page);
+    await page.evaluate(() => { window.__said = []; const ui = window.pokecraft.ui, f = ui.toast.bind(ui); ui.toast = (m, ...r) => { window.__said.push(m); return f(m, ...r); }; });
+    await key(page, 'KeyE'); await waitT(page, 0.1);
+    const said = await page.evaluate(() => window.__said.join(' | '));
+    t.ok(H3.ring === 0xffffff && /Look down a little/.test(said), `straight ahead from the ground the ring is white (too high to hop on) and Blow! says "${said}"`);
+    // up shaft 1 with real keys: three bubbles (Bounce off each) and a hop onto the bench
+    await start(page, S1); await waitT(page, 0.3);
+    const steps = [];
+    for (const [yaw, pitch] of [[0, -0.6], [0, -0.2], [0, -0.2]]) { // (from a bubble: just a little down)
+      await look(page, yaw, pitch); await waitT(page, 0.05);
+      const n0 = (await live(page)).n;
+      await key(page, 'KeyE');
+      await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.3); await page.keyboard.up('KeyW');
+      await waitFor(page, () => { const g = window.pokecraft, l = g.gymLive.of('part:bubble'); return (g.player.carry === l.standObj && l.stood) || g.player.onGround; }, null, 60000);
+      const r = await live(page); steps.push(r.on && r.stood > n0 ? 'on' : `missed@${r.y.toFixed(1)}`);
+      if (!r.on) break;
+      await waitT(page, 0.1);
+    }
+    await look(page, 0, 0); await waitT(page, 0.1);
+    await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.6); await page.keyboard.up('KeyW'); await waitT(page, 0.3);
+    const H4 = await live(page);
+    t.ok(steps.join() === 'on,on,on' && H4.ground && Math.abs(H4.y - 11) < 0.05, `real keys up shaft 1: blow, hop on, blow, Bounce, blow, Bounce, hop onto the bench (${steps.join()}, y ${H4.y.toFixed(2)})`);
+    await start(page, S1); await waitT(page, 0.2);
+    await look(page, 0, -0.6); await waitT(page, 0.2); await key(page, 'KeyE');
+    await page.keyboard.down('KeyW'); await key(page, 'Space', 0.1); await waitT(page, 0.3); await page.keyboard.up('KeyW'); await waitT(page, 0.2);
+    const onIt = await live(page);
+    await look(page, Math.PI * 0.8, -1.05); await waitT(page, 0.05); // looking back down at the bubble you stand on
+    await shot(page, 'bubble-on-a-bubble.png');
+    t.ok(onIt.on, `standing on a bubble for the screenshot (y ${onIt.y.toFixed(2)})`);
+    t.ok(!page.errors.length, `no page errors (real keys) ${page.errors.slice(0, 3).join(' | ')}`);
+    await page.context().close();
+    // the iPad: hold Jump, look down, tap Blow! on the big button: you land on the bubble
+    const ip = await retry(() => openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] }));
+    await newGame(ip, 0);
+    await ip.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; document.getElementById('pause')?.classList.add('hidden'); });
+    await intoWell(ip);
+    await clockOn(ip);
+    const press = (pg, id, down) => pg.evaluate(([id, down]) => { const el = document.getElementById(id), r = el.getBoundingClientRect(); el.dispatchEvent(new PointerEvent(down ? 'pointerdown' : 'pointerup', { pointerId: 7, pointerType: 'touch', bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })); }, [id, down]);
+    await start(ip, S1); await ip.evaluate(() => { const p = window.pokecraft.player; p.yaw = 0; p.pitch = 0; }); await waitT(ip, 0.3);
+    await press(ip, 'btn-jump', true); await waitT(ip, 0.12); await press(ip, 'btn-jump', false); await waitT(ip, 0.1);
+    await ip.evaluate(() => window.pokecraft.player.look(0, 1.5 / 0.0022)); await waitT(ip, 0.03);
+    const word = await ip.evaluate(() => document.getElementById('btn-act')?.textContent.trim());
+    await ip.tap('#btn-act'); await waitT(ip, 0.5);
+    const I1 = await live(ip);
+    t.ok(word === 'Blow!' && I1.on, `iPad: Jump, look down, tap Blow! on the big button: the bubble catches you (${word}, y ${I1.y.toFixed(2)})`);
+    t.ok(!ip.errors.length, `no page errors (iPad, real taps) ${ip.errors.slice(0, 3).join(' | ')}`);
+    await ip.context().close();
   }
 
   /* ---------------------------------------------------------------- G. Closed without ?preview (it ships closed) */

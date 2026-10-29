@@ -126,7 +126,7 @@ export function makeClimber(moves, { straight = false } = {}) {
       if ((wait += dt) < 0.1) return null;
       p.yaw = YAW[m.dir];
       if (m.kind === 'ledge') { p.pitch = 0; p.keys.Space = true; p.keys.KeyW = true; phase = 'ledge'; t = 0; return null; }
-      const top = m.top ?? (on ? 1.6 : 1.0);
+      const top = m.top ?? (on ? 1.9 : 1.0); // (from a bubble a little higher: a new bubble waits before it rises)
       p.pitch = straight ? 0 : Math.asin(Math.max(-1, Math.min(1, (top - 0.55 - 1.62) / 1.6)));
       n0 = live.field.n;
       live.blow(p.eyePos, p.forward);
@@ -153,7 +153,7 @@ export function makeClimber(moves, { straight = false } = {}) {
 }
 // The two shafts: from the floor in front of the bench, and from the bench into the narrow shaft.
 export const CLIMB = {
-  shaft1: { start: [104.5, 5, 76.5], moves: [{ dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'e', kind: 'bubble' }, { dir: 'n', kind: 'ledge' }] },
+  shaft1: { start: [104.5, 5, 76.5], moves: [{ dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'ledge' }] },
   shaft2: { start: [112.5, 11, 69.5], moves: [{ dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'n', kind: 'bubble' }, { dir: 'e', kind: 'ledge' }] },
 };
 

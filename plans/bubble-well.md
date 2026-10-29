@@ -276,3 +276,10 @@ Castle's spec does. Opening it later for everyone = adding the id to `OPEN_NOW` 
 - **The shields:** each vent turns your bubble round by its own curl and it flies out the side it ends on; saved keys
   `pw:bubble:shield1..3`, cleared with the others on a won battle.
 - **Duckling 2** has thorns where the stream meets the rim, so the stream matters (the stream alone could just be waited out).
+- **Getting onto a bubble (owner 2026-10-29: "I could never jump on a bubble"):** the first build only caught you when your feet came
+  down through a bubble's top, while a new bubble rose at once: one blown a little down was out of a hop's reach within a moment, and one
+  blown under your feet mid-jump was already above your feet, so it passed you by. The robot climb never saw it (it blew and jumped in
+  the same frame at an exactly computed angle). Now a bubble waits 0.6 s before it rises, one blown at the floor sits on it, your feet
+  inside its top half also land you on it (never the one you just stepped off), one blown under your feet in the air catches you at once,
+  the aim ring turns green when a hop reaches it, and the stick waits 0.5 s after landing (a child still holding W stays on). The spec's
+  `real` part plays it with real keys and taps through the game's own loop.

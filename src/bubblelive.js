@@ -18,17 +18,21 @@ import { B } from './blocks.js';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { kindHelp } from './kindhelp.js';
-import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHOT, shieldShot, dripAt, gapOf } from './bubbles.js';
-import { bubbleState, bubbleAim, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, VENTS, SHIELD, LIFTS, DRIPS, VENT2, BREEZES, SOAP_FLOWERS, MESA, BENCH, RIM, STAIRS_TOP, THORNS, CURRENTS, inChimney } from './bubbleland.js';
+import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHOT, shieldShot, dripAt, gapOf, landsOn, hopHeight } from './bubbles.js';
+import { bubbleState, bubbleAim, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, VENTS, SHIELD, LIFTS, DRIPS, VENT2, BREEZES, SOAP_FLOWERS, MESA, BENCH, RIM, STAIRS_TOP, THORNS, CURRENTS, inChimney, inStairs } from './bubbleland.js';
 import { buildBubbles, buildAimRing, buildWand, buildDrips, buildStreams, drawStreams, buildFlowers, buildThorns, buildNest, buildChimney, buildBigBubble, buildShields, hideAll } from './bubbleprops.js';
 
 // dtMax: the longest frame step; flower: how near a soap flower fills your wand; fall: how far below your ledge a fall from a bubble
 // puts you back; restOut: seconds resting at the chimney's bottom before you hop out; rideR: how near the chimney's big bubble Ride!
-// shows; reach: how far the big button looks for a door in front of you (a way back is used, not blown at).
-export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, flower: 1.1, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, off: 1.6 };
+// shows; reach: how far the big button looks for a door in front of you (a way back is used, not blown at); off: how fast the stick
+// walks you about on a bubble's top; settle: seconds after landing on a bubble before the stick walks you (a child still holding W from
+// the hop stays on it).
+export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, flower: 1.1, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, off: 1.6, settle: 0.5 };
 const WORDS = {
   wand: '🫧 Bubble Bee lends you a bubble wand! Press Blow!, then hop on your bubble.',
-  first: 'Look down a little when you blow, so the bubble is low enough to hop on!',
+  first: 'Look down a little, Blow!, then hop on! A green ring means you can reach it.',
+  high: 'Too high to hop on! Look down a little more, then Blow!',
+  down: 'Jump first, then Blow! a bubble under your feet!',
   land: 'You are on a bubble! Jump to bounce off it, extra high. Blow the next one first!',
   warn: 'Wobble! That bubble is about to pop!',
   back: 'Whoops! Back on the ledge. Try again!',
@@ -60,7 +64,7 @@ export class BubbleLive {
     this.manual = false;
     this.clock = 0; this.syncT = 0; this.told = new Set(); this.said = new Map();
     this.field = new BubbleField({ hard: this.hard });
-    this.stood = null; this.off = { x: 0, z: 0 }; this.stick = { wx: 0, wz: 0, analog: 0 }; this.stepOff = false; this.spaceWas = true;
+    this.stood = null; this.left = null; this.off = { x: 0, z: 0 }; this.stick = { wx: 0, wz: 0, analog: 0 }; this.stepOff = false; this.spaceWas = true;
     this.ledge = null; this.fromBubble = false; this.prevFeet = null; this.stairMiss = [0, 0];
     this.ducks = ISLANDS.map(i => new Duckling(GARDEN_RULES, i, { hard: this.hard })); this.duckMiss = [0, 0, 0];
     this.ride = null; this.rideMiss = 0; this.rideIn = { sx: 0, sz: 0 }; this.restT = 0; this.rideOut = false; this.starsGot = new Set();
@@ -233,15 +237,19 @@ export class BubbleLive {
   blow(eye, dir) {
     const p = this.game.player;
     const r = this.field.blow({ x: eye.x, y: eye.y, z: eye.z }, { x: dir.x, y: dir.y, z: dir.z }, (x, y, z) => this.world.isSolid(x, y, z));
-    if (!r.ok) { if (r.why === 'soap') this.say('nosoap', WORDS.noSoap); else this.say('wall', WORDS.wall); return false; }
+    if (!r.ok) { if (r.why === 'soap') this.say('nosoap', WORDS.noSoap); else if (p?.onGround && !p.carry && dir.y < -0.75) this.say('down', WORDS.down); else this.say('wall', WORDS.wall); return false; }
     if (r.popped === this.stood && r.popped) this.dropOff();
     sound.play('wandblow');
+    if (p && !p.carry && !p.onGround && !this.game.riding?.on && Math.hypot(p.pos.x - r.b.x, p.pos.z - r.b.z) <= BUBBLE.catch && p.pos.y >= r.b.y - BUBBLE.under && p.pos.y <= r.b.y + BUBBLE.r + 0.15) {
+      this.land(r.b); return true; // blown under your feet in the air (even when you are already coming down): it catches you
+    }
     if (!this.told.has('first') && p && !p.carry && p.onGround) { this.told.add('first'); this.toast(WORDS.first); }
+    else if (p && inStairs(p.pos.x, p.pos.y, p.pos.z) && !this.canReach(p, r.b)) this.say('high', WORDS.high, 6);
     return true;
   }
   land(b) {
     const p = this.game.player;
-    this.stood = b; this.field.standOn(b);
+    this.stood = b; this.field.standOn(b); this.left = null;
     const ox = p.pos.x - b.x, oz = p.pos.z - b.z, l = Math.hypot(ox, oz), m = Math.min(l, BUBBLE.onTop);
     this.off = l > 1e-6 ? { x: ox / l * m, z: oz / l * m } : { x: 0, z: 0 };
     this.stepOff = false; this.spaceWas = !!p.keys?.Space;
@@ -256,6 +264,7 @@ export class BubbleLive {
     if (b && p.collides?.(p.pos)) p.pos.set(b.x, p.pos.y, b.z); // (never inside a wall the bubble was rubbing)
     p.onGround = false;
     p.vel.y = jump ? Math.sqrt(2 * 28 * (this.world.gravity ?? 1) * BUBBLE.bounce) : 0;
+    this.left = b; // (it can still catch you from above, never from inside: stepping off really steps off)
     this.stood = null; this.stepOff = false; this.fromBubble = true;
     if (jump) sound.play('boing');
   }
@@ -267,18 +276,23 @@ export class BubbleLive {
   stepStand(dt) {
     const p = this.game.player, b = this.stood;
     if (!b || p.carry !== this.standObj) return;
+    if (b.standT < BUBBLE_RULES.settle) return; // just landed: the stick still held from the hop does not walk you off
     const s = this.stick, k = BUBBLE_RULES.off * dt * (s.analog || 0);
     const nx = this.off.x + s.wx * k, nz = this.off.z + s.wz * k;
     if (Math.hypot(nx, nz) > BUBBLE.onTop) { this.off = { x: nx, z: nz }; this.stepOff = true; } else this.off = { x: nx, z: nz };
   }
-  // landing on a bubble: the feet came down through its top (any frame rate) and you are over it
+  // landing on a bubble (bubbles.js landsOn): the feet came down through its top (any frame rate), or they are in its upper part (a
+  // bubble blown under you mid-jump, or one you hop up into), and you are over it
   checkLanding() {
     const p = this.game.player, feet = p.pos.y, prev = this.prevFeet ?? feet;
-    if (p.carry || this.game.riding?.on || p.onGround || p.vel.y > 0.5) return;
-    for (const b of this.field.list) {
-      const top = b.y + BUBBLE.r;
-      if (prev >= top - 0.12 && feet <= top + 0.15 && feet >= top - 1.2 && Math.hypot(p.pos.x - b.x, p.pos.z - b.z) <= BUBBLE.catch) { this.land(b); return; }
-    }
+    if (p.carry || this.game.riding?.on || p.onGround) return;
+    for (const b of this.field.list) if (landsOn(b, { x: p.pos.x, z: p.pos.z, feet, prev, vy: p.vel.y, inside: b !== this.left })) { this.land(b); return; }
+  }
+  // Can you get onto a bubble at (x, y, z) from where you are now? (its middle no higher than a hop takes your feet; the aim ring's colour)
+  canReach(p, at) {
+    const on = p.carry === this.standObj && !!this.stood;
+    const h = hopHeight({ ground: p.onGround && !p.carry, onBubble: on, vy: p.vel.y, g: this.world.gravity ?? 1 });
+    return at.y - BUBBLE.scoop <= p.pos.y + h;
   }
   // standing on the ground: the ledge you are on; after a fall from a bubble, the stairs' top or back to your ledge
   checkGround() {
@@ -499,7 +513,12 @@ export class BubbleLive {
     // the aim ring: where Blow! puts your next bubble
     const showAim = !!cam && !this.ride && this.field.soap > 0 && !(p.carry && p.carry !== this.standObj) && !this.duckAhead(p) && !this.nearRide(p) && !this.doorAhead(p.eyePos, p.forward);
     this.aimRing.visible = showAim;
-    if (showAim) { const e = p.eyePos, f = p.forward; this.aimRing.position.set(e.x + f.x * BUBBLE.ahead, e.y + f.y * BUBBLE.ahead, e.z + f.z * BUBBLE.ahead); this.aimRing.quaternion.copy(cam.quaternion); }
+    if (showAim) { // green: you can hop onto a bubble there; white: too high from here
+      const e = p.eyePos, f = p.forward, at = this.aimRing.position.set(e.x + f.x * BUBBLE.ahead, e.y + f.y * BUBBLE.ahead, e.z + f.z * BUBBLE.ahead);
+      this.aimRing.quaternion.copy(cam.quaternion);
+      const ok = this.canReach(p, at), ring = this.aimRing.userData.parts.ring;
+      ring.material.color.setHex(ok ? 0x7dffa0 : 0xffffff); ring.material.opacity = ok ? 0.75 : 0.35;
+    }
     // the wand in your hand
     this.wand.visible = !!cam && !this.ride;
     if (this.wand.visible) { const o = this.wand; o.position.copy(cam.position); o.quaternion.copy(cam.quaternion); o.translateX(0.32); o.translateY(-0.26); o.translateZ(-0.6); o.rotateZ(0.35); o.rotateX(-0.2); }
