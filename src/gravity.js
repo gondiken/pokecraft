@@ -19,8 +19,10 @@ export const GRAV = {
   soft: 0.3,         // outside every field: this share of the nearest planet's pull (0.15 in step 0; owner 2026-10-29 "hops a bit easy": flights now curve back sooner)
   catchAfter: 6,     // seconds outside every field before the catch puff takes you back to the last face you stood on
   base: 28,          // the main world's gravity (player.js: 28 * g)
+  g: 0.5,            // owner 2026-10-29 "were the gravities different?": they were (0.7 / 0.6 / 0.45). Now every planet pulls the same, a bit
+                     // less than the old hub planets (floaty, space-like, slower flights you can read); cubeland.js gives every planet this g
   jump: 8.6, walk: 4.3, sprint: 6.2, // as everywhere
-  air: 10,           // blocks/s^2: how fast the stick changes your speed in the air (with no stick you keep your speed)
+  air: 1.5,          // blocks/s^2: the stick only nudges you in the air (in space you keep your speed: a flight is a flight; was 10)
   fall: 19,          // the fastest fall (as in player.js)
   step: 1 / 120,     // the fixed sub-step (60 and 20 frames a second give the same sub-steps)
   turn: 0.45,        // seconds: the camera eases to a new up

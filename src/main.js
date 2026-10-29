@@ -12,6 +12,7 @@ import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
 import { createRematch, loadWins } from './rematch.js';
 import { createBosses, loadBossWins } from './pictureboss.js'; // T40
+import { createCubeCam } from './cubecam.js'; // Cube Planets: the third-person steady camera
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
 import { createNavUi } from './navui.js'; // T39a
@@ -619,6 +620,7 @@ document.addEventListener('keydown', e => {
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
   if (e.code === 'KeyR' && !e.repeat) game.riding.toggle(); // T27
+  if (e.code === 'KeyV' && !e.repeat && game.cubeCam.can()) game.cubeCam.toggle(); // Cube Planets: the steady camera
   if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
@@ -765,7 +767,7 @@ game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { const k = game.player.keys; k.Space = down && playing(); if (k.Space) k.jumpTap = true; }, // a tap shorter than one frame still jumps (player.js)
-  ride: () => { if (!playing()) return; if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); },
+  ride: () => { if (!playing()) return; if (game.cubeCam.can()) { game.cubeCam.toggle(); return; } if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); }, // (Cube Planets: that slot is the camera)
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
   place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
   // T39c: one button = "do the thing I look at": answer a question, else use the target, else break the block, else My home
@@ -1089,6 +1091,7 @@ game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }
 game.worldReset = createWorldReset(game, { save: () => save(true) }); // owner 2026-10-29: ?preview only, the pause screen's "Start this world over"
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
+game.cubeCam = createCubeCam(game); // Cube Planets: V / the pause screen / the Ride slot there switch the third-person steady camera
 game.sketch = createSketch(game, { materials, texture, atlas }); // T45: the Sketchbook's pencil look
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
@@ -1175,7 +1178,7 @@ function updateTarget() {
   game.touch.setButtons({
     act: { label: act, dim },
     place: { dim: !!placeWhy, why: placeWhy },
-    ride: { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on },
+    ride: game.cubeCam.can() ? { have: true, dim: false, why: '', on: false, label: 'Camera' } : { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on }, // Cube Planets: the Ride slot is the camera there
     sky: riding.on && riding.kind === 'sky',
     swim: !!p.diving, // T41: Jump says Swim in the Sunken City
     jump: p.carry?.jumpWord?.() ?? null, // T49: a ride may name the Jump button (the Castle: Shield, Off)
@@ -1229,6 +1232,7 @@ function frame(now) {
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);
     const viewQ = p.viewQuat?.(); if (viewQ) camera.quaternion.premultiply(viewQ); // Cube Planets: the camera's up eases to the face you stand on (null everywhere else)
+    game.cubeCam.update(camera, dt); // Cube Planets: the third-person steady camera, when chosen (does nothing anywhere else)
     if (!game.inBattle) updateTarget();
     game.weather.update(dt, now);
     updateSky(dt);
