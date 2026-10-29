@@ -442,8 +442,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   Keys `'pw:<id>:<name>'` in `beaten` pass `loadKeys`. A ride that carries the player is a `Mover` or a duck-typed `carry`
   (`where`, `wantsLeave`, `leave`, `steer`, `look`, `safe`); `world.people` are guests of a Picture World.
 - **Open worlds (owner 2026-10-28, `comingsoon.js`):** outside `?preview` only `OPEN_NOW` worlds are open (`fair`, `atlantis`,
-  `doors`, `castle`; `worldOpen(id)`; spec `comingsoon`); `worldOpen('atlantis')` sizes the Pirate Seas. A `LATER` world (owner 2026-10-29:
-  the Sketchbook again, until its pencil is reworked) is a covered secret frame; saves keep its star, keys and edits.
+  `doors`, `castle`, `doodle`; `worldOpen(id)`; spec `comingsoon`); `worldOpen('atlantis')` sizes the Pirate Seas. A `LATER` world (wave 16's
+  `bubble` and `gravity`) is a covered secret frame; saves keep its star, keys and edits.
 - **Levels (owner 2026-10-28):** creatures grow to `MAX_LEVEL` 100 (was 60; duel `VERSION` 12). Picture World Bosses and crews get
   `BOSS.perStar` (2) levels per star held from other worlds, up to `BOSS.starCap` 95 (`starTeam`).
 - **The rules every world shares (owner 2026-10-27/28, `plans/T46.md`):** every Boss with helpers battles only once they are beaten
