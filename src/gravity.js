@@ -16,7 +16,7 @@
 export const GRAV = {
   hys: 0.4,          // a new down axis on the same planet must win by this much (blocks): no flicker on an edge
   hysPlanet: 0.4,    // the same between two planets' fields
-  soft: 0.15,        // outside every field: this share of the nearest planet's pull
+  soft: 0.3,         // outside every field: this share of the nearest planet's pull (0.15 in step 0; owner 2026-10-29 "hops a bit easy": flights now curve back sooner)
   catchAfter: 6,     // seconds outside every field before the catch puff takes you back to the last face you stood on
   base: 28,          // the main world's gravity (player.js: 28 * g)
   jump: 8.6, walk: 4.3, sprint: 6.2, // as everywhere
@@ -26,8 +26,6 @@ export const GRAV = {
   turn: 0.45,        // seconds: the camera eases to a new up
   bigTurn: 0.8,      // ... and more slowly when the new up is far from the screen's up
   bigAngle: 120,     // degrees
-  dipOut: 0.12,      // the steady camera (owner 2026-10-29): over this long the view dips to the sky colour, then snaps to the new up...
-  dipIn: 0.18,       // ... and comes back over this long (no rolling turn at all: kinder to the stomach)
   mid: 0.9,          // the middle of the body above the feet (half the player's 1.8)
 };
 
@@ -97,7 +95,7 @@ export function downAt(planets, pos, prev = null, centre = null) {
   const p = P3(pos), c = centre ? P3(centre) : p;
   let best = -1, bestD = Infinity, prevD = Infinity;
   for (let i = 0; i < planets.length; i++) {
-    const d = boxDist(planets[i], c);
+    const d = boxDist(planets[i], c) - (planets[i].pad || 0); // (pad: a planet that catches a little further, the Planet Hop's kind help)
     if (d < bestD) { bestD = d; best = i; }
     if (prev && i === prev.planet) prevD = d;
   }

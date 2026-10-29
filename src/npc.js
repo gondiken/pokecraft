@@ -165,6 +165,16 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; box(group, 0.06, 0.06, 0.04, [0x8ad8ff, 0xff9ac8, 0xfff28a][k % 3], 0.12 + Math.cos(a) * 0.16, 1.62 + Math.sin(a) * 0.16, -0.2); }
   }
   /* ==== end of Bubble ==== */
+  /* ==== Gravity ==== */
+  if (look === 'orbit') { // Cube Planets: round glasses and a ringed-planet hat (a lilac dome with a gold ring round it)
+    for (const sx of [-1, 1]) { box(head, 0.16, 0.16, 0.03, 0x2a2a34, sx * 0.13, 0.04, 0.3); box(head, 0.11, 0.11, 0.035, 0xd8ecff, sx * 0.13, 0.04, 0.305); }
+    box(head, 0.1, 0.03, 0.03, 0x2a2a34, 0, 0.06, 0.305);
+    box(head, 0.5, 0.16, 0.5, 0xb8a8f0, 0, 0.58, 0);
+    box(head, 0.36, 0.12, 0.36, 0xb8a8f0, 0, 0.7, 0);
+    box(head, 0.76, 0.04, 0.2, 0xf2d27a, 0, 0.6, 0); box(head, 0.2, 0.04, 0.76, 0xf2d27a, 0, 0.6, 0);
+    box(head, 0.56, 0.04, 0.56, 0xf2d27a, 0, 0.6, 0);
+  }
+  /* ==== end of Gravity ==== */
   if (look === 'chef') { // T33: a tall white chef's hat
     box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
     box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);

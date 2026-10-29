@@ -72,6 +72,8 @@ export const CONDITIONS = {
   guardpost: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'on guard at the castle' },
   // the Bubble Well: wild Bubble creatures float in their own bubbles over its nooks (the ledges, the garden, the rim): their own Book line
   bubbly: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'floating in a bubble in the Bubble Well' },
+  // Cube Planets: wild Gravity creatures circle slowly round a spot on top of a little planet (world.nooks): their own Book line
+  orbiting: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'circling on top of a little planet' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,
@@ -96,6 +98,7 @@ export const AFTER_TEXT = {
   portal: 'once you finished 4 swirl rooms',
   castle: 'once you won 3 rounds of Shield Up! and the Joust', // T49
   bubble: 'once you climbed the Bubble Stairs', // the Bubble Well
+  gravity: 'once you tagged an Orbikit', // Cube Planets
 };
 export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);
 

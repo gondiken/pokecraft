@@ -3699,3 +3699,118 @@ SIG.soapjuggle = (k, from, to) => {
   };
 };
 /* ==== end of Bubble ==== */
+/* ==== Gravity ==== */
+// Space lilac and gold: two little moons circle along the way, and the hit pulls a ring of dust into the target.
+FX_COLORS.gravity = [0xc4b4f4, 0xf2d27a, 0xe8e4f4];
+
+// Two little moons spiral round each other along the way (an orbit that travels).
+TRAVEL.gravity = k => {
+  const N = 2, T = 8;
+  const moons = k.points({ n: N, tex: 'dot', size: 0.3, colors: [0xe8e4f4, 0xc4b4f4] });
+  const dust = k.points({ n: T, tex: 'star', size: 0.12, glow: true, colors: [0xf2d27a, 0xc4b4f4] });
+  return {
+    dur: 440,
+    step(p) {
+      k.at(p, A, 0.35);
+      for (let i = 0; i < N; i++) {
+        const ang = p * 14 + i * Math.PI, r = 0.3;
+        moons.set(i, A.x + k.side.x * Math.cos(ang) * r, A.y + Math.sin(ang) * r, A.z + k.side.z * Math.cos(ang) * r);
+      }
+      for (let i = 0; i < T; i++) {
+        const t = p - (i + 1) * 0.04;
+        if (t <= 0) { dust.hide(i); continue; }
+        k.at(t, B, 0.35);
+        const ang = t * 14 + (i % 2) * Math.PI;
+        dust.set(i, B.x + k.side.x * Math.cos(ang) * 0.3, B.y + Math.sin(ang) * 0.3, B.z + k.side.z * Math.cos(ang) * 0.3);
+      }
+      moons.fade(fadeOut(p, 0.9)); dust.fade(fadeOut(p, 0.7));
+    },
+  };
+};
+
+// A hit: a ring of space dust round the target is pulled in to its middle and flashes.
+IMPACT.gravity = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 12;
+  const dust = k.points({ n: N, tex: 'puff', size: 0.3 * m, colors: [0xc4b4f4, 0xe8e4f4, 0xb0a0e0] });
+  const flash = k.points({ n: 4, tex: 'star', size: 0.3 * m, glow: true, colors: [0xf2d27a, 0xfff4c0] });
+  return {
+    dur: 400,
+    step(p) {
+      const pull = k.ease(clamp01(p / 0.7));
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 4, d = ((to.r + 0.6) * (1 - pull) + 0.05) * m;
+        dust.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.6, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      dust.fade(fadeOut(p, 0.6));
+      const f = clamp01((p - 0.6) / 0.4);
+      for (let i = 0; i < 4; i++) { if (f <= 0) { flash.hide(i); continue; } const ang = i * 1.57 + 0.4; flash.set(i, to.pos.x + k.side.x * Math.cos(ang) * f * 0.5, to.pos.y + Math.sin(ang) * f * 0.5, to.pos.z + k.side.z * Math.cos(ang) * f * 0.5); }
+      flash.fade(fadeOut(f, 0.4));
+    },
+  };
+};
+
+// Comet Tail: the cheetah becomes a comet: a golden head with a long sparkly tail zooms over and hits again and again, the tail coiling.
+SIG.cometail = (k, from, to) => {
+  const N = 10;
+  const head = k.points({ n: 1, tex: 'star', size: 0.42, glow: true, colors: [0xfff4a0] });
+  const tail = k.points({ n: N, tex: 'puff', size: 0.24, colors: [0xf2d27a, 0xffffff, 0xc4b4f4] });
+  return {
+    dur: 680,
+    step(p) {
+      const q = p < 0.5 ? p / 0.5 : 1, loop = p < 0.5 ? 0 : (p - 0.5) / 0.5;
+      const at = t => {
+        if (t < 1) { k.at(t, A, 0.6); return [A.x, A.y, A.z]; }
+        const ang = (t - 1) * 12;
+        return [to.pos.x + k.side.x * Math.cos(ang) * 0.5, to.pos.y + 0.2 + Math.sin(ang) * 0.35, to.pos.z + k.side.z * Math.cos(ang) * 0.5];
+      };
+      const h = at(q + loop);
+      head.set(0, h[0], h[1], h[2]);
+      for (let i = 0; i < N; i++) { const t = q + loop - (i + 1) * 0.05; if (t <= 0) { tail.hide(i); continue; } const c = at(t); tail.set(i, c[0], c[1], c[2]); }
+      head.fade(fadeOut(p, 0.9)); tail.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Ring Toss: the owl's golden ring spins off, flies over flat like a frisbee and lands round the target with a clang of stars.
+SIG.ringtoss = (k, from, to) => {
+  const N = 14;
+  const ring = k.points({ n: N, tex: 'dot', size: 0.16, glow: true, colors: [0xf2d27a, 0xffe08a] });
+  const stars = k.points({ n: 6, tex: 'star', size: 0.22, glow: true, colors: [0xfff4c0, 0xc4b4f4] });
+  return {
+    dur: 620,
+    step(p) {
+      const t = clamp01(p / 0.7), r = 0.35 + (p > 0.7 ? (to.r * 0.6) * clamp01((p - 0.7) / 0.15) : 0);
+      k.at(t, A, 0.8);
+      const drop = p > 0.7 ? -0.2 * clamp01((p - 0.7) / 0.3) : 0;
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 16;
+        ring.set(i, A.x + k.side.x * Math.cos(ang) * r + k.dir.x * Math.sin(ang) * r * 0.5, A.y + drop + Math.sin(ang) * r * 0.25, A.z + k.side.z * Math.cos(ang) * r + k.dir.z * Math.sin(ang) * r * 0.5);
+      }
+      ring.fade(fadeOut(p, 0.85));
+      const f = clamp01((p - 0.7) / 0.3);
+      for (let i = 0; i < 6; i++) { if (f <= 0) { stars.hide(i); continue; } const ang = i * 1.05; stars.set(i, to.pos.x + k.side.x * Math.cos(ang) * (0.3 + f), to.pos.y + 0.3 + f * 0.4, to.pos.z + k.side.z * Math.cos(ang) * (0.3 + f)); }
+      stars.fade(fadeOut(f, 0.5));
+    },
+  };
+};
+
+// Upside Hug: a little rocky planet pops up over the target, its pull lifts the target a little (dust falling UP), then lets go.
+SIG.upsidehug = (k, from, to) => {
+  const N = 12;
+  const rock = k.points({ n: 1, tex: 'square', size: 0.5, colors: [0xa89cc0] });
+  const dust = k.points({ n: N, tex: 'puff', size: 0.2, colors: [0xc4b4f4, 0xe8dcc0, 0x6ac46a] });
+  return {
+    dur: 640,
+    step(p) {
+      const up = Math.sin(Math.PI * clamp01(p / 0.9));
+      rock.set(0, to.pos.x, to.top + 0.6 + up * 0.3, to.pos.z);
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.03) / 0.6), ang = i * 0.52;
+        if (t <= 0 || t >= 1) { dust.hide(i); continue; }
+        dust.set(i, to.pos.x + k.side.x * Math.cos(ang) * 0.4, to.pos.y - 0.3 + t * (to.top - to.pos.y + 0.9), to.pos.z + k.side.z * Math.cos(ang) * 0.4);
+      }
+      rock.fade(fadeOut(p, 0.85)); dust.fade(fadeOut(p, 0.75));
+    },
+  };
+};
+/* ==== end of Gravity ==== */

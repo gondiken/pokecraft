@@ -94,6 +94,12 @@ Object.assign(GAITS, { sentry: { notice: 4, speed: 1.2, turn: 0.6, run: 5, bump:
 // the battle pops the bubble (Wild.reveal) and the creature drops to the ground. Closed form in w.t, no Math.random.
 Object.assign(GAITS, { float: { lift: 0.7, bob: 0.15, speed: 1.6, notice: 6, bump: true } });
 /* ==== end of Bubble ==== */
+/* ==== Gravity ==== */
+// 'orbit' (Gravity, Cube Planets): a wild one circles slowly round the spot it came out at (radius `r`, `speed` rad/s, each one at its own
+// phase from its uid) on top of its little planet, like a moon round a planet. Within `notice` of you it stops and turns to look at you
+// (its clock waits). It never walks off the face. Closed form in its own clock, no Math.random; a bump never battles (E / a tap does).
+Object.assign(GAITS, { orbit: { r: 1.1, speed: 0.55, notice: 4.5, bump: true } });
+/* ==== end of Gravity ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -614,6 +620,7 @@ export class CreatureManager {
     if (w.species.gait === 'gift') return this.updateGift(w, dt); // T44
     if (w.species.gait === 'sentry') return this.updateSentry(w, dt); // T49
     if (w.species.gait === 'float') return this.updateFloat(w, dt); // the Bubble Well
+    if (w.species.gait === 'orbit') return this.updateOrbit(w, dt); // Cube Planets
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -1140,6 +1147,31 @@ export class CreatureManager {
     animateModel(model, w.t, moving);
   }
   /* ==== end of T49 knight ==== */
+  /* ==== Gravity ==== */
+  // The closed form of an orbiting Gravity creature: round its spot at its own phase, facing along its circle; within `notice` of you it
+  // stops (the clock waits) and turns to you.
+  updateOrbit(w, dt) {
+    const g = GAITS.orbit, p = this.viewer, model = w.model;
+    w.orbitC ??= { x: w.pos.x, z: w.pos.z, phase: (hash32(w.data.uid || 'x') % 628) / 100 };
+    const C = w.orbitC, dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, near = !!p && Math.hypot(dx, dz) <= g.notice && Math.abs(p.y - w.pos.y) < 3;
+    let moving = false;
+    if (near) {
+      let d = Math.atan2(dx, dz) - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * 5);
+    } else {
+      w.orbitT = (w.orbitT ?? 0) + dt;
+      const a = C.phase + w.orbitT * g.speed;
+      w.pos.x = C.x + Math.cos(a) * g.r; w.pos.z = C.z + Math.sin(a) * g.r;
+      w.heading = Math.atan2(-Math.sin(a), Math.cos(a)); // along the circle
+      moving = true;
+    }
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    animateModel(model, w.t, moving);
+  }
+  /* ==== end of Gravity ==== */
   /* ==== Bubble ==== */
   // A wild Bubble creature floats inside a soap bubble: a see-through sphere round its model (sized to the model), a pale shine on top.
   bubbleUp(w) {

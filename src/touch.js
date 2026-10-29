@@ -30,30 +30,26 @@ export class TouchControls {
     this.tap('btn-pause', () => actions.pause());
     this.tap('party-mini', () => actions.team()); // T39c: the creature card opens Team
     this.actBtn = document.getElementById('btn-act');
-    this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false, swim: false, jump: null, steady: null };
-    this.rideView = { hidden: true, text: 'Ride', dim: false, steady: false };
+    this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false, swim: false, jump: null };
+    this.rideView = { hidden: true, text: 'Ride', dim: false };
   }
 
   // T39c: every button has one fixed place; they dim (never hide) when they can't act. DOM written only on change.
-  // s = { act: { label, dim }, place: { dim, why }, ride: { have, dim, why, on }, sky, steady }
-  // steady (owner 2026-10-29): null, or on Cube Planets true / false: the Ride slot is then "Steady" (lit = on, dim = off), same place.
+  // s = { act: { label, dim }, place: { dim, why }, ride: { have, dim, why, on }, sky }
   setButtons(s) {
     const o = this.state, n = {
       act: s.act?.label ?? o.act, actDim: !!s.act?.dim,
       placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '',
       have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, sky: !!s.sky, swim: !!s.swim, jump: s.jump || null, // T49: a ride may name the Jump button ('Shield', 'Off')
-      steady: s.steady == null ? null : !!s.steady,
     };
     const $ = id => document.getElementById(id);
     if (n.act !== o.act) this.actBtn.textContent = n.act;
     if (n.actDim !== o.actDim) this.actBtn.classList.toggle('dim', n.actDim);
     if (n.placeDim !== o.placeDim) $('btn-place').classList.toggle('dim', n.placeDim);
-    const rv = n.steady != null ? { hidden: false, text: 'Steady', dim: !n.steady, steady: true }
-      : { hidden: !n.have, text: n.on ? (n.sky ? 'Land' : 'Get off') : 'Ride', dim: n.rideDim, steady: false }, ov = this.rideView, rb = $('btn-ride');
+    const rv = { hidden: !n.have, text: n.on ? (n.sky ? 'Land' : 'Get off') : 'Ride', dim: n.rideDim }, ov = this.rideView, rb = $('btn-ride');
     if (rv.hidden !== ov.hidden) rb.classList.toggle('hidden', rv.hidden);
     if (rv.text !== ov.text) rb.textContent = rv.text;
     if (rv.dim !== ov.dim) rb.classList.toggle('dim', rv.dim);
-    if (rv.steady !== ov.steady) rb.classList.toggle('steady', rv.steady);
     this.rideView = rv;
     if (n.sky !== o.sky) $('touch').classList.toggle('sky', n.sky);
     if (n.sky !== o.sky || n.swim !== o.swim || n.jump !== o.jump) $('btn-jump').textContent = n.sky ? 'Up' : n.jump || (n.swim ? 'Swim' : 'Jump'); // T41: Swim in the Sunken City; T49: a ride's word
@@ -65,7 +61,7 @@ export class TouchControls {
   setRide(s) { this.setButtons({ ...this.cur(), ride: { have: s.show, on: s.on, dim: this.state.rideDim, why: this.state.rideWhy }, sky: s.sky }); }
   cur() {
     const o = this.state;
-    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on }, sky: o.sky, swim: o.swim, jump: o.jump, steady: o.steady };
+    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on }, sky: o.sky, swim: o.swim, jump: o.jump };
   }
 
   // Fires on touch-down for snappy buttons; stops the touch turning into a look-drag or a click.

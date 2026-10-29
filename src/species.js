@@ -44,6 +44,7 @@ export const TYPE_COLORS = {
 TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
 TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
 TYPE_COLORS.bubble = 'radial-gradient(circle at 35% 35%,#ffffff 0 14%,#c8f0ff 15% 45%,#ffd6ef 46% 70%,#fff4b8 71%)'; // the Bubble Well: soap-film pastels, light enough for the dark chip text
+TYPE_COLORS.gravity = 'radial-gradient(ellipse at 50% 50%,#fff6cc 0 14%,#c4b4f4 15% 38%,#f2d27a 39% 46%,#c4b4f4 47%)'; // Cube Planets: a lilac planet with a gold ring, light enough for the dark chip text
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
@@ -156,6 +157,16 @@ EFFECTIVENESS.pirate.bubble = 2;
 EFFECTIVENESS.water.bubble = 0.5;
 EFFECTIVENESS.fire.bubble = 0.5;
 /* ==== end of Bubble chart ==== */
+/* ==== Gravity chart ==== */
+// Gravity pulls flyers down, slows racers and trips up runners; rock and metal are too heavy to move, and two pulls cancel out. A swirl
+// lets it slip away, aliens float in zero gravity and minds lift things with a thought; rock does not care about a pull. Others' cells are
+// separate lines (no old cell changes). (Sky, racer and parkour were weak to 4 types each; now 5.)
+EFFECTIVENESS.gravity = { sky: 2, racer: 2, parkour: 2, rock: 0.5, metal: 0.5, gravity: 0.5 };
+EFFECTIVENESS.portal.gravity = 2;
+EFFECTIVENESS.alien.gravity = 2;
+EFFECTIVENESS.mind.gravity = 2;
+EFFECTIVENESS.rock.gravity = 0.5;
+/* ==== end of Gravity chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -691,6 +702,23 @@ BIG_MOVES.bubble = [
   ['lastbubble', 'Last Bubble', 'lastword', 'One last giant bubble! Only when you are almost out.'],
 ];
 /* ==== end of Bubble ==== */
+/* ==== Gravity ==== */
+// Gravity creatures pull foes in, spin round them, dash like a comet and stamp so hard everything slows down. (No id is a sound's name.)
+Object.assign(MOVES, {
+  pullin: mv('Pull In', 'gravity', 40, 1),
+  orbitspin: mv('Orbit Spin', 'gravity', 85, 0.9),
+  cometdash: mv('Comet Dash', 'gravity', 40, 1, { priority: 1 }),
+  heavystep: mv('Heavy Step', 'gravity', 0, 1, { fx: { kind: 'lower', stat: 'spd' } }),
+  cometail: mv('Comet Tail', 'gravity', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+  ringtoss: mv('Ring Toss', 'gravity', 95, 0.9, { fx: { kind: 'flinch', chance: 0.25 }, sig: true }),
+  upsidehug: mv('Upside Hug', 'gravity', 80, 1, { fx: { kind: 'lower', stat: 'spd', chance: 0.5 }, sig: true }),
+});
+BIG_MOVES.gravity = [
+  ['zerog', 'Zero G', 'field', 'No gravity! Gravity moves are stronger for 5 turns. Foes too!'],
+  ['moonshield', 'Moon Shield', 'shield', 'Little moons circle the whole team! Everyone takes less for 3 turns. You rest next turn.'],
+  ['lastorbit', 'Last Orbit', 'lastword', 'One last giant orbit! Only when you are almost out.'],
+];
+/* ==== end of Gravity ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -811,6 +839,7 @@ T1.atlantis = 'jarbonk'; T2.atlantis = 'tiletoss'; T3.atlantis = 'runeglow'; T4.
 T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4.doodle = 'rubout'; // T45
 T1.knight = 'shieldbash'; T2.knight = 'lancecharge'; T3.knight = 'quickparry'; T4.knight = 'bannerwave'; // T49
 T1.bubble = 'soapbop'; T2.bubble = 'foamcrash'; T3.bubble = 'quickfizz'; T4.bubble = 'fizzup'; // the Bubble Well
+T1.gravity = 'pullin'; T2.gravity = 'orbitspin'; T3.gravity = 'cometdash'; T4.gravity = 'heavystep'; // Cube Planets
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2621,6 +2650,49 @@ export const SPECIES = {
     model: { shape: 'bathbomb', scale: 0.9, body: 0xff9ad0, accent: 0x9ae8ff, dark: 0x6a3a5a, belly: 0xfff0f8, extras: [] },
   },
   /* ==== end of Bubble ==== */
+  /* ==== Gravity ==== */
+  // The little planets' own creatures (Cube Planets): a comet cheetah that runs round and round its planet, an owl that looks like a
+  // striped planet, a sloth that hangs from its own tiny planet, and a goat that walks up the sides of planets. Every model has little
+  // moons circling it (gear 'orbit', one merged mesh); wild ones circle slowly round a spot on top of a planet (gait 'orbit', creatures.js).
+  orbikit: {
+    name: 'Orbikit', type: 'gravity', desc: 'A little comet cheetah. It runs round and round its planet so fast that its tail sparkles like a comet.',
+    base: { hp: 46, atk: 56, def: 44, spd: 74 }, baseXp: 64, catchRate: 0.45, gait: 'orbit', learn: L('gravity', 'normal'),
+    evolve: { level: 25, into: 'orbitah' },
+    model: { shape: 'orbicat', scale: 0.8, body: 0xf2c25a, accent: 0xfff2a0, dark: 0x3a2a1a, belly: 0xfff0d6, extras: [] },
+  },
+  orbitah: {
+    name: 'Orbitah', type: 'gravity', desc: 'The fastest runner in the sky. It races round a planet in a blink and leaves a trail of stars behind.',
+    base: { hp: 72, atk: 98, def: 66, spd: 114 }, baseXp: 168, catchRate: 0.12, gait: 'orbit', learn: L('gravity', 'normal', [[30, 'cometail']]),
+    model: { shape: 'orbicat', scale: 1.25, body: 0xeab44a, accent: 0xfff6b0, dark: 0x2a1e14, belly: 0xfff0d6, extras: ['streak'] },
+  },
+  hootiter: {
+    name: 'Hootiter', type: 'gravity', desc: 'A round little owl with stripes like a planet. Tiny moons follow it wherever it flutters.',
+    base: { hp: 54, atk: 48, def: 56, spd: 52 }, baseXp: 64, catchRate: 0.45, gait: 'orbit', learn: L('gravity', 'sky'),
+    evolve: { level: 26, into: 'saturnowl' },
+    model: { shape: 'planetowl', scale: 0.8, body: 0xd8a070, accent: 0xf6e0b0, dark: 0x5a3a2a, belly: 0xb87850, extras: [] },
+  },
+  saturnowl: {
+    name: 'Saturnowl', type: 'gravity', desc: 'A wise old owl with a golden ring round its middle, just like a planet. Professor Orbit never goes anywhere without it.',
+    base: { hp: 92, atk: 88, def: 90, spd: 70 }, baseXp: 172, catchRate: 0.1, gait: 'orbit', learn: L('gravity', 'sky', [[30, 'ringtoss']]),
+    model: { shape: 'planetowl', scale: 1.3, body: 0xe8c48a, accent: 0xf2d27a, dark: 0x6a4a2a, belly: 0xc89a60, extras: ['ring'] },
+  },
+  danglet: {
+    name: 'Danglet', type: 'gravity', desc: 'A baby sloth that hangs from its own tiny planet. Down is wherever its claws are.',
+    base: { hp: 62, atk: 50, def: 60, spd: 30 }, baseXp: 64, catchRate: 0.45, gait: 'orbit', learn: L('gravity', 'grass'),
+    evolve: { level: 25, into: 'turvysloth' },
+    model: { shape: 'sloth', scale: 0.85, body: 0xa08a70, accent: 0xe8dcc0, dark: 0x4a3a2a, belly: 0xc8b494, extras: [] },
+  },
+  turvysloth: {
+    name: 'Turvysloth', type: 'gravity', desc: 'A big sleepy sloth that hangs upside down from a rocky little moon. It never falls off, not even in its sleep.',
+    base: { hp: 104, atk: 86, def: 96, spd: 40 }, baseXp: 170, catchRate: 0.1, gait: 'orbit', learn: L('gravity', 'grass', [[30, 'upsidehug']]),
+    model: { shape: 'sloth', scale: 1.3, body: 0x8a7458, accent: 0xe0d2b4, dark: 0x3a2c1e, belly: 0xb8a282, extras: ['big'] },
+  },
+  wallibex: {
+    name: 'Wallibex', type: 'gravity', desc: 'A brave little goat with curly horns. It walks up the sides of planets as if they were floors.',
+    base: { hp: 66, atk: 80, def: 64, spd: 70 }, baseXp: 110, catchRate: 0.3, gait: 'orbit', learn: L('gravity', 'rock'),
+    model: { shape: 'ibex', scale: 0.9, body: 0xe8e0d0, accent: 0xb89a6a, dark: 0x4a3e30, belly: 0xf6f0e4, extras: [] },
+  },
+  /* ==== end of Gravity ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2868,6 +2940,10 @@ export const MEADOW_SPAWNS = [['pricklet', 1.2, 'guardpost'], ['visnail', 1.0, '
 // Bubble creatures live only in the Bubble Well (REALMS.bubble.spawns), floating in bubbles over its ledges (the bubbly condition). The 4th element: wildafter.js.
 export const BUBBLE_SPAWNS = [['squeaklet', 1.3, 'bubbly'], ['suddly', 1.2, 'bubbly'], ['hippip', 1.0, 'bubbly'], ['quackmiral', 0.12, 'bubbly', 'bubble'], ['lathotter', 0.12, 'bubbly', 'bubble'], ['bathemoth', 0.1, 'bubbly', 'bubble'], ['fizzbomb', 0.15, 'bubbly', 'bubble']];
 /* ==== end of Bubble ==== */
+/* ==== Gravity ==== */
+// Gravity creatures live only on Cube Planets (REALMS.gravity.spawns), circling on top of the planets (the orbiting condition). The 4th element: wildafter.js.
+export const GRAVITY_SPAWNS = [['orbikit', 1.3, 'orbiting'], ['hootiter', 1.2, 'orbiting'], ['danglet', 1.0, 'orbiting'], ['orbitah', 0.12, 'orbiting', 'gravity'], ['saturnowl', 0.12, 'orbiting', 'gravity'], ['turvysloth', 0.1, 'orbiting', 'gravity'], ['wallibex', 0.15, 'orbiting', 'gravity']];
+/* ==== end of Gravity ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 export const MAX_LEVEL = 100; // owner 2026-10-28: was 60
