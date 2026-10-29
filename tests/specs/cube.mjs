@@ -360,7 +360,7 @@ export default async function ({ browser, base, t }) {
   }
 
   /* ------------------------------------------------------------ play, real, shots (the game) */
-  if (want('play') || want('shots') || want('real')) {
+  if (want('play') || want('shots')) {
     const page = await retry(() => openGame(browser, base));
     await newGame(page, 0); await pause(page);
     await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.weather.set('clear'); g.time = 0.25; const c = S.makeCreature('blazehound', 30); c.traits = ['rideable']; g.party.unshift(c); });
@@ -470,35 +470,7 @@ export default async function ({ browser, base, t }) {
       await placeIs(page, 'swirl');
       const S4 = await page.evaluate(() => { const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), p = g.player; return { d: Math.hypot(p.pos.x - f.stand[0] - 0.5, p.pos.z - f.stand[2] - 0.5), frame: p.frameNo(), view: p.viewQuat() }; });
       t.ok(S4.d < 4 && S4.frame === null && S4.view === null, `the way back on the Great Cube puts you in front of the Cube Planets frame in the Swirl, upright again`);
-      if (want('shots') || want('real')) { await intoCubes(page); await harness(page); await arm(page); }
-    }
-    if (want('real')) {
-      // real key presses through the game's own loop (the game unpaused, the live part on its own clock)
-      await page.evaluate(() => { const R = window.__R; R.live.manual = false; R.live.playing = () => true; window.pokecraft.started = true; });
-      const playing = () => page.evaluate(() => { const g = window.pokecraft; document.getElementById('pause')?.classList.add('hidden'); });
-      await playing();
-      // a flower hop: stand behind the flower, hold W, press Space on the pad
-      await page.evaluate(() => { const R = window.__R, s = R.live.flowerStand(0); R.live.puffTo(s); window.__toasts.length = 0; R.live.hMiss = [0, 0, 0, 0]; });
-      const K0 = await page.evaluate(() => ({ playing: window.pokecraft.playing(), }));
-      await page.keyboard.down('KeyW');
-      await waitFor(page, () => { const g = window.pokecraft; return g.world.launchAt(g.player.pos, g.player.frameNo()) > 0 || g.player.pos.z < 126; }, null, 60000);
-      await page.keyboard.press('Space');
-      await page.keyboard.up('KeyW');
-      await waitFor(page, () => { const R = window.__R; return !R.live.flight && R.p.onGround && R.live.hopLast >= 0; }, null, 90000).catch(() => {});
-      const K1 = await page.evaluate(() => { const R = window.__R; return { on: R.p.grav.planet, want: R.CL.P.hop1, said: window.__toasts.join('|') }; });
-      t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Pebble ("${K1.said.slice(0, 80)}") (game running: ${K0.playing})`);
-      // the Moon Ride: E at the stop to hop on, Space at the right moment
-      await page.evaluate(() => { const R = window.__R, s = R.live.moonObj.safe(); R.live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] }); R.game = window.pokecraft; });
-      await waitFor(page, () => window.__R.live.nearMoon(window.__R.p.pos), null, 120000);
-      await page.keyboard.press('KeyE');
-      await waitFor(page, () => window.__R.live.onMoon, null, 30000);
-      const plan = await page.evaluate(() => { const R = window.__R, b = R.Bots.bestJump(R.live, R.live.ringRound()); const cyc = R.live.moonNow().cycle; return { u: b.u, cyc }; });
-      await waitFor(page, ({ u, cyc }) => { const L = window.__R.live, v = ((L.moonT % cyc) + cyc) % cyc; return v >= u - 0.03; }, plan, 120000);
-      await page.keyboard.press('Space');
-      await waitFor(page, () => !window.__R.live.onMoon && !window.__R.live.jump, null, 60000).catch(() => {});
-      const K2 = await page.evaluate(() => ({ rings: window.__R.live.state().rings, miss: window.__R.live.mMiss.slice(), said: window.__toasts.slice(-2).join('|') }));
-      t.ok(K2.rings >= 1, `real keys: E at the moon stop hops on, Space at the right moment lands in the ring (${K2.rings} ring, "${K2.said}")`);
-      await page.evaluate(() => { const R = window.__R; R.live.manual = true; });
+      if (want('shots')) { await intoCubes(page); await harness(page); await arm(page); }
     }
     if (want('shots')) {
       const S = page => page.evaluate(fn => window.__shotPos = fn, null);
@@ -515,7 +487,7 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(() => { const R = window.__R, { live, p, env } = R, f = R.CL.FLOWERS[1]; live.puffTo(live.flowerStand(1)); p.keys = { KeyW: true }; for (let i = 0; i < 120 && !live.flight; i++) { p.keys = { KeyW: true, Space: R.g.world.launchAt(p.pos, p.frameNo()) > 0 }; env.step(1 / 60); } p.keys = {}; for (let i = 0; i < 40; i++) env.step(1 / 60); });
       await shot(page, 'cube-hop.png');
       // riding the moon toward a ring
-      await page.evaluate(() => { const R = window.__R, { live, p, env } = R; live.moonT = 0; const s = live.moonObj.safe(); live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0 }); live.board(); live.moonT = 8; env.step(0.02); p.yaw = 2.2; p.pitch = -0.35; });
+      await page.evaluate(() => { const R = window.__R, { live, p, env } = R; live.moonT = 0; const s = live.moonObj.safe(); live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0 }); live.board(); live.moonT = 5; env.step(0.02); const r = R.CL.RINGS[0]; p.lookAt({ x: r.x, y: live.M.top, z: r.z }); });
       await shot(page, 'cube-moon.png');
       await page.evaluate(() => { window.__R.live.getOff(true); });
       // Professor Orbit on the Great Cube
@@ -535,6 +507,47 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(() => { for (const m of window.__models || []) m.parent?.remove(m); });
     }
     t.ok(!page.errors.length, `no page errors ${page.errors.slice(0, 3).join(' | ')}`);
+    await page.context().close();
+  }
+
+  /* ------------------------------------------------------------ real: real key presses through the game's own handlers and loop */
+  if (want('real')) {
+    const fakeLock = () => {
+      Object.defineProperty(Document.prototype, 'pointerLockElement', { configurable: true, get() { return window.__lock ? document.getElementById('game') : null; } });
+      const change = on => { window.__lock = on; setTimeout(() => document.dispatchEvent(new Event('pointerlockchange')), 0); };
+      HTMLCanvasElement.prototype.requestPointerLock = function () { change(true); return Promise.resolve(); };
+      Document.prototype.exitPointerLock = function () { change(false); };
+    };
+    const page = await retry(() => openGame(browser, base, { setup: ctx => ctx.addInitScript(fakeLock) }));
+    await newGame(page, 0);
+    await page.evaluate(() => { const g = window.pokecraft; g.weather.set('clear'); g.time = 0.25; });
+    await intoCubes(page);
+    await harness(page); await arm(page);
+    await page.evaluate(() => { const R = window.__R; R.live.manual = false; R.live.playing = () => window.pokecraft.playing(); });
+    await page.evaluate(() => document.getElementById('game').requestPointerLock());
+    await waitFor(page, () => !!document.pointerLockElement && window.pokecraft.started && document.getElementById('pause').classList.contains('hidden'), null, 20000);
+    // a flower hop: stand behind the first flower facing the next pebble, hold W, press Space on the pad
+    await page.evaluate(() => { const R = window.__R; R.live.puffTo(R.live.flowerStand(0)); window.__toasts.length = 0; });
+    await page.keyboard.down('KeyW');
+    await waitFor(page, () => { const g = window.pokecraft; return g.world.launchAt(g.player.pos, g.player.frameNo()) > 0; }, null, 60000);
+    await page.keyboard.press('Space');
+    await waitFor(page, () => !!window.__R.live.flight, null, 30000).catch(() => {});
+    await page.keyboard.up('KeyW');
+    await waitFor(page, () => { const R = window.__R; return !R.live.flight && R.p.onGround; }, null, 90000).catch(() => {});
+    const K1 = await page.evaluate(() => { const R = window.__R; return { on: R.p.grav.planet, want: R.CL.P.hop1, said: window.__toasts.join('|') }; });
+    t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Pebble ("${K1.said.slice(0, 80)}")`);
+    // the Moon Ride: E at the stop to hop on, Space at the right moment
+    await page.evaluate(() => { const R = window.__R, s = R.live.moonObj.safe(); R.live.puffTo({ pos: [s.x - 1.2, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] }); });
+    await waitFor(page, () => window.__R.live.near(window.__R.p) === 'Hop on!', null, 120000);
+    await page.keyboard.press('KeyE');
+    await waitFor(page, () => window.__R.live.onMoon, null, 30000);
+    const plan = await page.evaluate(() => { const R = window.__R, b = R.Bots.bestJump(R.live, R.live.ringRound()); return { u: b.u, cyc: R.live.moonNow().cycle }; });
+    await waitFor(page, ({ u, cyc }) => { const L = window.__R.live, v = ((L.moonT % cyc) + cyc) % cyc; return v >= u - 0.03 && v < u + 0.2; }, plan, 120000);
+    await page.keyboard.press('Space');
+    await waitFor(page, () => !window.__R.live.onMoon && !window.__R.live.jump, null, 60000).catch(() => {});
+    const K2 = await page.evaluate(() => ({ rings: window.__R.live.state().rings, said: window.__toasts.slice(-2).join('|') }));
+    t.ok(K2.rings >= 1, `real keys: E at the moon stop hops on, Space at the right moment lands in the ring (${K2.rings} ring, "${K2.said}")`);
+    t.ok(!page.errors.length, `no page errors with real keys ${page.errors.slice(0, 3).join(' | ')}`);
     await page.context().close();
   }
 

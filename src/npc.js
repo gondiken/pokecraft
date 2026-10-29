@@ -167,8 +167,8 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
   /* ==== end of Bubble ==== */
   /* ==== Gravity ==== */
   if (look === 'orbit') { // Cube Planets: round glasses and a ringed-planet hat (a lilac dome with a gold ring round it)
-    for (const sx of [-1, 1]) { box(head, 0.16, 0.16, 0.03, 0x2a2a34, sx * 0.13, 0.04, 0.3); box(head, 0.11, 0.11, 0.035, 0xd8ecff, sx * 0.13, 0.04, 0.305); }
-    box(head, 0.1, 0.03, 0.03, 0x2a2a34, 0, 0.06, 0.305);
+    for (const sx of [-1, 1]) { const x = sx * 0.12; box(head, 0.17, 0.025, 0.02, 0x2a2a34, x, 0.345, 0.262); box(head, 0.17, 0.025, 0.02, 0x2a2a34, x, 0.195, 0.262); box(head, 0.025, 0.17, 0.02, 0x2a2a34, x - 0.075, 0.27, 0.262); box(head, 0.025, 0.17, 0.02, 0x2a2a34, x + 0.075, 0.27, 0.262); } // round glasses (rims only)
+    box(head, 0.1, 0.03, 0.03, 0x2a2a34, 0, 0.3, 0.265);
     box(head, 0.5, 0.16, 0.5, 0xb8a8f0, 0, 0.58, 0);
     box(head, 0.36, 0.12, 0.36, 0xb8a8f0, 0, 0.7, 0);
     box(head, 0.76, 0.04, 0.2, 0xf2d27a, 0, 0.6, 0); box(head, 0.2, 0.04, 0.76, 0xf2d27a, 0, 0.6, 0);
