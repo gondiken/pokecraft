@@ -674,7 +674,7 @@ export default async function ({ browser, base, t }) {
     const D9 = await page.evaluate(async () => {
       const R = window.__R, { live, g } = R, S = await import('/src/species.js');
       live.backToStand(); live.won = false;
-      g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
+      g.party = [S.makeCreature('thunderwolf', 100), S.makeCreature('blazehound', 100)]; // two, like picture-worlds: a lone creature can lose to four of the Boss's g.cubes = 0;
       g.talkTo(R.rio()); live.step(3.2);
       R.drive(13, {});
       const won = live.won, state = live.state, crewLine = R.said('Now beat Pit Crew Pia and Pit Crew Max');
@@ -712,7 +712,7 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { live, g } = R, S = await import('/src/species.js');
       await new Promise(r => setTimeout(r, 300));
       g.ui.closeAsk?.();
-      live.backToStand(); g.party = [S.makeCreature('thunderwolf', 100)];
+      live.backToStand(); g.party = [S.makeCreature('thunderwolf', 100), S.makeCreature('blazehound', 100)]; // two, like picture-worlds: a lone creature can lose to four of the Boss's
       R.p.pos.set(...live.part.grid.player);
       g.talkTo(R.rio());
       const raced = live.state === 'count' && !g.ui.asking;
