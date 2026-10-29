@@ -14,6 +14,7 @@ import { lightState, LIGHTS } from './glowfish.js'; // T41
 import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 import { castleState } from './castleland.js'; // T49
 import { bubbleState } from './bubbleland.js'; // the Bubble Well
+import { gravityState } from './cubeland.js'; // Cube Planets
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999,
   perStar: 2, starCap: 95 }; // owner 2026-10-28: every star you already hold makes the next Boss (and crew) 2 levels stronger, up to 95 (creatures now grow to 100)
@@ -275,6 +276,30 @@ addBoss({
   ],
 });
 /* ==== end of Bubble ==== */
+/* ==== Gravity ==== */
+// Professor Orbit waits on top of the Great Cube with his giant Saturnowl. His gate: the three Orbikit tags, the Planet Hop and the three moon
+// rings (saved `beaten` keys, cubeland.js gravityState); his helpers Stargazer Stella, Captain Comet and Moon Mechanic Milo battle first
+// (the base's crew rule). A won battle clears the seven keys (cubelive.js battleEnded): a rematch plays the games again, a bit harder.
+addBoss({
+  id: 'gravity', name: 'Professor Orbit', type: 'gravity', title: 'Professor Orbit · Cube Planets Boss', look: 'orbit', // (the title is spelled out: a closed world's frame is named "Secret World")
+  colors: { shirt: 0x4a3a8a, pants: 0x2a2a3a, hair: 0xe8e8f0, skin: 0xf2d0b0 },
+  gate: game => { const st = gravityState(game); return st.done ? null : `Hello there! First tag the Orbikits, hop the pebbles and ride the moon! (🐱 ${st.tags} / 3 · 🌸 ${st.hop ? 1 : 0} / 1 · 🌙 ${st.rings} / 3)`; },
+  team: [['wallibex', 61], ['turvysloth', 62], ['orbitah', 62], ['saturnowl', 63]], // top level 63, the easy side
+  intro: ['Splendid! You tagged, hopped and rode the moon!', 'Down is wherever your feet are... and now, a battle!'],
+  lose: 'Marvellous! The star is yours. It was in orbit round my hat all along!',
+  win: 'A fine try! Rest a moment, then come back for another go.',
+  rematchIntro: ['Back again? My planets spin a little faster now!'],
+  note: 'I made these little planets so my star creatures would have somewhere to play. Thank you for walking round every one of them!',
+  crew: [
+    { name: 'Stargazer Stella', look: 'orbit', colors: { shirt: 0x2a4a8a, pants: 0xf0d080, hair: 0x2a1a10, skin: 0xc68a5a },
+      team: [['orbikit', 59], ['hootiter', 60]], intro: ['You tagged all my Orbikits! They like you.', 'Now a battle!'], line: 'Wait round a corner on its sparkly trail. Then it runs right into you!' },
+    { name: 'Captain Comet', look: 'orbit', colors: { shirt: 0xe8e8f0, pants: 0x3a5ad8, hair: 0xe0a040, skin: 0xf2d0b0 },
+      team: [['danglet', 60], ['orbikit', 61]], intro: ['You hopped all my pebbles! Woohoo!', 'Battle me!'], line: 'Stand on a flower and jump. Each pebble needs its own run: stand, walk or run!' },
+    { name: 'Moon Mechanic Milo', look: 'orbit', colors: { shirt: 0xd8783a, pants: 0x4a4a56, hair: 0x1a1a1a, skin: 0xe8c09a },
+      team: [['hootiter', 60], ['wallibex', 61], ['danglet', 61]], intro: ['My moon runs like clockwork!', 'And so does my team. Battle!'], line: 'You keep the moon\'s speed! Jump before you are over the ring.' },
+  ],
+});
+/* ==== end of Gravity ==== */
 
 /* ==== T42 portal ==== */
 addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star

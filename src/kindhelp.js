@@ -32,6 +32,9 @@
 //                                                                           the nest x (1 + e), the bubble lasts x (1 + e)
 //   Chimney Ride (bubbles.js)  the ride's bubble popped                   the sink x (1 - e), the spike gaps x (1 + e), the bar x (1 - e)
 //   Shields (bubbles.js)       a bank shot that missed                    the shield x (1 + e), the sliding cushion x (1 - e)
+//   Orbikit Chase (orbits.js)  it saw you and ran back                    its sprint x (1 - e) (still faster than you), tag reach x (1 + e)
+//   Planet Hop (orbits.js)     a flower flight that missed the pebble     the next pebble's pull reaches e x 8 blocks further (gravity.js pad)
+//   Moon Ride (orbits.js)      a jump off the moon outside the ring       the moon x (1 - e), the ring x (1 + e)
 export const KIND_HELP = { after: 2, step: 0.02, max: 0.10 };
 
 export class KindHelp {

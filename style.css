@@ -307,9 +307,6 @@ body.in-battle #touch { display: none; }
 #btn-place { right: calc(28px + env(safe-area-inset-right)); bottom: 194px; }
 #btn-ride { right: calc(124px + env(safe-area-inset-right)); bottom: 194px; background: rgba(255,170,60,.88) !important; }
 #btn-ride.dim { background: rgba(10,12,18,.82) !important; }
-#btn-ride.steady { background: rgba(70,140,230,.92) !important; font-size: 14px !important; } /* owner 2026-10-29: Cube Planets' Steady (lit = on) */
-#btn-ride.steady.dim { background: rgba(10,12,18,.82) !important; }
-#dip { position: fixed; inset: 0; pointer-events: none; }
 #btn-down { right: calc(30px + env(safe-area-inset-right)); bottom: 14px; }
 #touch:not(.sky) #btn-down { display: none; }
 .mon button.ride { background: #ffd27a; color: #3a2a00; }

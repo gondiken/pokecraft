@@ -18,7 +18,8 @@ import { partyLand, partyAim } from './partyland.js'; // T48 (the Room of Doors'
 import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
 import { castleLand, castleAim, SIZE as CASTLE_SIZE } from './castleland.js'; // T49
 import { CASTLE_SPAWNS, MEADOW_SPAWNS } from './species.js'; // T49
-import { cubeLand, cubeAim, SIZE as CUBE_SIZE, DOOR as CUBE_DOOR } from './cubeland.js'; // Cube Planets (step 0)
+import { cubeLand, cubeAim, SIZE as CUBE_SIZE, DOOR as CUBE_DOOR } from './cubeland.js'; // Cube Planets
+import { GRAVITY_SPAWNS } from './species.js'; // Cube Planets
 import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; // the Bubble Well
 import { BUBBLE_SPAWNS } from './species.js'; // the Bubble Well
 
@@ -166,14 +167,15 @@ REALMS.castle = pictureRealm({ id: 'castle', name: 'Castle', seedSalt: 0xca57, s
   noHomeText: 'No homes in the Castle! Build your home in your own world.', followText: 'Ride in too' });
 /* ==== end of T49 castle ==== */
 /* ==== Gravity ==== */
-// Cube Planets, step 0 (plans/cube-planets.md section 9): the gravity sandbox behind the Swirl's gold-and-lilac frame (the old secret5).
-// Three little cube planets in a starry sky; down is wherever your feet are (gravity.js, player.js's frame branch). No creatures yet
-// (the spawn table is empty), no Boss, no building and no riding (cubeland.js keeps the whole sky).
+// Cube Planets (plans/cube-planets.md): the little planets behind the Swirl's gold-and-lilac frame (the old secret5). Down is wherever your
+// feet are (gravity.js, player.js's frame branch). The Orbikit Chase, the Planet Hop, the Moon Ride (cubelive.js), Professor Orbit on the
+// Great Cube. No building and no riding (cubeland.js keeps the whole sky). Version 2: the planets of step 0 moved (nothing was ever built
+// here, so no edit is lost; a step-0 spot puts you at the arrival). The arrow is worked out on the face you stand on (cubeAim, crewAim: false).
 REALMS.gravity = pictureRealm({ id: 'gravity', name: 'Cube Planets', seedSalt: 0xc0be, size: [CUBE_SIZE, CUBE_SIZE], terrain: 'cubeLand', arrive: [CUBE_DOOR.x, CUBE_DOOR.z + 3], biome: 'gravity',
-  spawns: { gravity: [], cave: [] }, wild: { max: 0, every: 2 },
+  version: 2, spawns: { gravity: GRAVITY_SPAWNS, cave: [] }, wild: { max: 4, every: 2 }, crewAim: false, zoneNames: { gravity: 'Cube Planets' },
   look: { sky: 0x141c4c, fog: [70, 220], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🪐 Cube Planets', travelText: 'Floating in...', travelIcon: '🪐', enterText: 'Whoosh! You are on a little cube planet!',
-  arriveHint: 'Walk over the edge: down is wherever your feet are! Jump from a side to hop to the next planet.',
+  arriveHint: 'Walk over the edge: down is wherever your feet are! Professor Orbit waits on the Great Cube.',
   noHomeText: 'No homes on the little planets! Build your home in your own world.', followText: 'Float in too',
   noRide: 'No riding on the little planets! Walk and jump instead.' }); // owner 2026-10-29: riding is off here (riding.js; you get off on arrival)
 /* ==== end of Gravity ==== */
@@ -211,8 +213,8 @@ TERRAINS.doodleLand = doodleLand; // T45
 TERRAIN_AIMS.doodleLand = doodleAim; // T45
 TERRAINS.castleLand = castleLand; // T49
 TERRAIN_AIMS.castleLand = castleAim; // T49
-TERRAINS.cubeLand = cubeLand; // Cube Planets (step 0)
-TERRAIN_AIMS.cubeLand = cubeAim; // Cube Planets (step 0)
+TERRAINS.cubeLand = cubeLand; // Cube Planets
+TERRAIN_AIMS.cubeLand = cubeAim; // Cube Planets
 TERRAINS.bubbleLand = bubbleLand; // the Bubble Well
 TERRAIN_AIMS.bubbleLand = bubbleAim; // the Bubble Well
 
@@ -645,7 +647,7 @@ export function createRealms(game, { createWorld, save, size }) {
     // The realm's own guide arrow when no realm gym is left: to the home island, then the Wake Stone.
     aim(p) {
       const w = game.world, wake = w?.wake;
-      if (w?.realm?.parent && game.bosses?.crewAim) { const c = game.bosses.crewAim(p); if (c) return c; } // owner 2026-10-27: the Boss waits for his helpers
+      if (w?.realm?.parent && w.realm.crewAim !== false && game.bosses?.crewAim) { const c = game.bosses.crewAim(p); if (c) return c; } // owner 2026-10-27: the Boss waits for his helpers (crewAim: false = the terrain's own aim knows them: Cube Planets)
       const own = TERRAIN_AIMS[w?.realm?.terrain]?.(w, p, game); // T38a
       if (own) return own;
       if (w?.realm?.parent && (w.bosses?.length || w.doors?.length)) return game.gymLive?.aim?.(p) ?? pictureAim(w, p, { stars: game.stars, via: self.via }); // T40: a live part (a race) may point the arrow first

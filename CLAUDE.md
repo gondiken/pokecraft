@@ -10,7 +10,7 @@ this file is for working on the code.
   friendly and readable by a child; error messages should say what to do next.
 - **No Pokémon names or exact Pokémon terms.** All creatures, moves and gym names are original.
   Types that came from Pokémon were renamed: Poison → **Toxic**, Fairy → **Pixie**,
-  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 44 types in all (T49 added **Knight**, the Castle's type, wave 16 **Bubble**): **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo**, **Cyber**, **Cozy**, **Treasure**, **Food**, **Squad**, **Dream**, **Parkour**, **Ninja**, **Tiny**, **Pirate**, **Racer**, **Ball**, **Portal**, **Funfair**, **Surprise**, **Doodle** and **Atlantis** are our own too; Tiny to Ball came with wave 14, Portal to Atlantis with wave 15).
+  Dragon → **Drake** (Psychic is **Mind**, Steel is **Metal**, and **Rainbow**, **Bone** and **Alien** are our own; 45 types in all (T49 added **Knight**, the Castle's type, wave 16 **Bubble** and **Gravity**): **Sky**, **Slime**, **Light**, **Paper**, **Time**, **Camo**, **Cyber**, **Cozy**, **Treasure**, **Food**, **Squad**, **Dream**, **Parkour**, **Ninja**, **Tiny**, **Pirate**, **Racer**, **Ball**, **Portal**, **Funfair**, **Surprise**, **Doodle** and **Atlantis** are our own too; Tiny to Ball came with wave 14, Portal to Atlantis with wave 15).
 - Gym difficulty should stay on the easy side; the owner already asked once for easier gyms.
 - **The way to a Picture World Boss must be a fun, unique skill challenge** (owner 2026-10-27): aim, dexterity, timing and
   directional tactics beat puzzles. The rowboat sinking was the best so far; the latest football and basketball were good;
@@ -157,7 +157,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/features.js` | T29 feature helpers (`count`, `hasBlock`, `atLeast`, `mostly`, `reach`, `different`, `checkAll`), used by homes and builds |
 | `src/missionui.js` | T29 `createMissionUi` -> `game.missionUi`: the `#missions` panel and the `#mission-chip` |
 | `src/ui.js` | HUD, team screen, creature portraits, `ui.ask`, `ui.celebrate`, chips (`setScore`, `setKeyCompass`, `setPointers`...) |
-| `src/touch.js` | Tablet controls. **T39c fixed-slot rule: buttons never move or disappear, they dim** (`setButtons({ act, place, ride, jump, swim, sky, steady })` once per frame from `updateTarget`; DOM written only on change). Bottom right: Jump, the round Action button `#btn-act` (its word = what it does; it replaced Break), Place above Jump, Ride above Action (only with a rideable creature; in a world with `gravityAt` the same slot is **Steady**: lit = the steady camera on, dim = off), Down only while flying. A tap on a dimmed button toasts why (`game.touchWhy`). Top bar = only `#btn-pause` and `#btn-book`; Team = tap `#party-mini`, Blocks = tap the picked slot again, both also in the pause screen |
+| `src/touch.js` | Tablet controls. **T39c fixed-slot rule: buttons never move or disappear, they dim** (`setButtons({ act, place, ride, jump, swim, sky })` once per frame from `updateTarget`; DOM written only on change). Bottom right: Jump, the round Action button `#btn-act` (its word = what it does; it replaced Break), Place above Jump, Ride above Action (only with a rideable creature; dim with the realm's `noRide` words where riding is off), Down only while flying. A tap on a dimmed button toasts why (`game.touchWhy`). Top bar = only `#btn-pause` and `#btn-book`; Team = tap `#party-mini`, Blocks = tap the picked slot again, both also in the pause screen |
 | `src/cloud.js` | Supabase: accounts, online saves, realtime channel |
 | `src/multiplayer.js` | Play together: share code, avatars, block sync; T38b `realm` event |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
@@ -167,10 +167,11 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/fx.js` | Battle effects (`game.fx`): time-based, closed form, never touches `battle.rng`; budgets: 6 live effects, 300 points, 12 draw calls; `hold` for test screenshots |
 | `src/fxrecipes.js` | `TRAVEL` / `IMPACT` per type, `SIG` per signature move, `FX_COLORS` |
 | `src/sound.js` | Quiet Web Audio sound effects (`sound.play(name)`), on/off in the pause screen |
-| `src/gravity.js` | Cube Planets (step 0), pure: `GRAV`, `FRAMES` (the 24 quarter-turns), `toWorld` / `toLocal` (exact), `turnTo` / `frameOf`, `downAt` (which planet by the body's middle, which side by the feet, hysteresis, soft pull), `centreOf` / `pivot`, `stepFlight` / `flightAt` / `flightLand` (the player's own sums), `frameWorld` |
-| `src/cubeland.js` | Cube Planets terrain (Node-runnable, `TERRAINS.cubeLand`, 224 x 224): `PLANETS` (3), `BOXES`, `HOPS`, `hopSpot`, `FACES`, `faceCell`, `DOOR`; sets `world.planets`, `world.gravityAt`, `world.cubes`; `cubeAim` (the arrow in your face's frame) |
-| `src/cubelive.js` | Cube Planets `CubeLive` = `LIVE.gravity`: the star sky (one `Points`), the planets you stood on (`visited`, the guide's tour), one-time words, the catch puff's toast |
-| `src/steadycam.js` | Owner 2026-10-29: `steadyCam` (`on`, `setOn`), the steady camera setting, per device in localStorage `pokecraft-steady` like Sound (never in the game save) |
+| `src/gravity.js` | Cube Planets, pure: `GRAV`, `FRAMES` (the 24 quarter-turns), `toWorld` / `toLocal` (exact), `turnTo` / `frameOf`, `downAt` (which planet by the body's middle, which side by the feet, hysteresis, soft pull, a planet's `pad`), `centreOf` / `pivot`, `stepFlight` / `flightAt` / `flightLand` (the player's own sums), `frameWorld` |
+| `src/cubeland.js` | Cube Planets terrain (Node-runnable, `TERRAINS.cubeLand`, 224 x 224): `PLANETS` (11, `P` by id, `sizeOf`), `BOXES`, `HOPS` (plain jumps between hub planets), `hopSpot`, `FACES`, `faceCell` / `faceSize`, `DOOR` / `DOOR2`, `PUPS` (the Orbikits' loops), `FLOWERS` (launch flowers, `solution` = the bots' run), `HOME_FLOWERS`, `MOON`, `RINGS`, keys `tagKey` / `HOP_KEY` / `ringKey`, `gravityState`; sets `world.planets`, `gravityAt`, `launchAt`, `homeAt`, `cubes`, `nooks`; `cubeAim` (the arrow in your face's frame, crew and Boss too) |
+| `src/orbits.js` | Cube Planets' games, pure: `PupRun` (the Orbikit Chase, `PUP`), `loopOf` / `loopAt` / `loopNearest`, `moonAt` / `jumpOff` / `ringHit` (the Moon Ride), `gravityHelp` (= `kindHelp`, `PAD_SCALE`), `HARD`, `STEP` |
+| `src/cubelive.js` | Cube Planets `CubeLive` = `LIVE.gravity`: the star sky, the Orbikit Chase (models, loop dots, trail, Tag!), the Planet Hop (flights from `p.launched`, misses puff back, home flowers), the Moon Ride (the moon a `carry`, Hop on! / Jump, rings), `aim`, `battleEnded`, chip, `manual` + `step`, `info`, `winUpTo` |
+| `src/cubeprops.js` | Cube Planets' models: `buildFlower`, `buildMoon`, `buildRing`, `buildDots` |
 
 ## Key ideas
 
@@ -230,8 +231,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   168-181 Pirate Seas (182-183 were reserved for it; 182 is now T49's `HEDGE`, 183 free), 184-193 Race Track; 194-203 Ball Stadium; 204 atlantis wool, 205-214 Atlantis; 215 portal wool, 216-223 Portal
   House; 224 funfair wool, 225-234 Funfair; 235 surprise wool, 236-243 Surprise Party (235-243 in all); 244 doodle wool, 245-248 Sketchbook;
   249 `STAR_GRASS` (Cube Planets); 250 `HOUSE_PROP`; 251-253 Race Track v2 (`HOT_TRACK`, `HOT_RAIL`, `KICKER`); 254 knight wool; 255 bubble wool (147 `FOAM`, 148
-  `FIZZ_WALL`). Ids are used up: free are only 137 (wave 18's Custom wool), 138-139 (spare) and 149 (Cube Planets' wool, waits for its type);
-  Cube Planets took 183 `PLANET_ROCK` and 249 `STAR_GRASS`.
+  `FIZZ_WALL`); 149 gravity wool. Ids are used up: free are only 137 (wave 18's Custom wool) and 138-139 (spare);
+  Cube Planets took 149, 183 `PLANET_ROCK` and 249 `STAR_GRASS`.
 - **Block flags:** `glow`, `noLight` (glows but lights nothing), `wallText` (toast when breaking), `fixed` (`editAllowed` refuses;
   saved edits on it are dropped), `bounce` (T35: apex in blocks; **jump to launch**, not on landing), `trampoline` (T43),
   `hidden` (250 `HOUSE_PROP`: solid, never drawn, no outline: what you stand on under a model), `limited`.
@@ -562,27 +563,30 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   **The gates are physical** (owner 2026-10-28): `castlegate.js`, the host owns them; your keys record only what you won. Sir
   Clanksalot gates on both challenges and Squire Pip and Archer Wren; a won battle clears the six round keys. Generic lines:
   `Player.look` asks `carry.look`, `setButtons({ jump })`, `ui.setPointers`, `game.rideShow`.
-- **Cube Planets, STEP 0 ONLY (spec `cube`, `tests/cubecheck.mjs`, `plans/cube-planets.md` section 9):** the gravity sandbox, waiting
-  for the owner to play it before steps 1-4 (games, crew, Boss, the Gravity type). Realm `gravity` (`PICTURE_WORLDS` `gravity` took the
-  `secret5` place, its colours kept), in `LATER` (only `?preview`). Three cube planets (13, 9, 17 across) with a skin on all six faces
-  and Planet Rock / cobble edges; hops are face to face across 4 blocks; the way back on the Meadow Cube's top; no wild creatures, no
-  riding, no building (one keep `space` round the whole sky, with `rideText`). **The player** (`player.js`, only when the world has
-  `gravityAt`; `frameUpdate` / `frameStep`): a frame (0-23); `pos` / `vel` stay in WORLD units for the rest of the game, each fixed
-  1/120 s sub-step turns them into the frame exactly and runs the usual `moveAxis` / `collides` against `frameWorld`; yaw / pitch are
-  your own on the face. Over an edge you turn round your feet and keep your local speed; into another planet's pull you turn round
-  your middle and keep your world speed. In the air the stick only steers (`GRAV.air`). **The camera:** `p.viewQuat()` eases 0.45 s
-  (0.8 s past 120 degrees); `main.js` premultiplies it (marked line); `eyePos` / `forward` / `lookAt` / `collides` follow the frame.
-  Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (`setFrame`; missing = upright).
-  **Owner 2026-10-29 (played step 0):** keep the eased camera turn as the default; **steady camera** option: `p.steady` (main.js from
-  `steadycam.js`) makes `turnView` a dip instead of a roll: the `#dip` overlay fades to the sky colour (`GRAV.dipOut` 0.12 s), the view
-  snaps to the new up while hidden, then clears (`GRAV.dipIn` 0.18 s); `p.dipAmount()`. Toggles: the pause screen's `#steady-btn` (shown
-  only in a world with `gravityAt`), **V**, and on tablets the Ride slot (says Steady there). **No riding** (realm def `noRide` = its
-  words, generic): `riding.start` refuses, `riding.update` gets you off, `realms.enter` says it when you arrived riding. Before, a rider
-  could get on because `frameWorld` had no fences (`fenced: () => false`); it now passes `fenced` / `fenceAt` through to the world.
-  **Bevelled edges were tried and dropped:** with whole blocks a one-step bevel is a step DOWN seen from both faces, so at walking speed
-  you fly over the 1-wide step, the down turns above it and you stand in the notch facing a 1-block wall (a jump at every edge); fixing it
-  would need a new turn rule mirrored in `flightLand`. Off-world bit for bit:
-  `tests/cuberecord.mjs` against `tests/fixtures/cube-off-golden.json` (made with the player.js of before).
+- **Gravity type and Cube Planets (spec `cube`, `tests/cubecheck.mjs`, `tests/cubebots.mjs`, `tests/cubenode.mjs`, `plans/cube-planets.md`
+  "Built"):** realm `gravity` (`PICTURE_WORLDS` `gravity` took the `secret5` place, its colours kept), **version 2** (step 0's three planets
+  moved; nothing can be built there, so no edit is lost; a step-0 spot arrives at the start), in `LATER` (only `?preview`). 11 box planets
+  (cubes, the 21 x 7 x 7 Long Rock, the flat Moon Base) spread flat; plain jumps face to face across 4 blocks join the hub planets (`HOPS`).
+  Type `gravity` (`gear: 'orbit'`: two little moons, one merged mesh; `gait: 'orbit'`: wild ones circle on TOP faces only, so battles stay
+  upright; condition `orbiting`); creatures Orbikit > Orbitah (comet cheetah, rideable elsewhere), Hootiter > Saturnowl (planet owl, the
+  Boss's giant), Danglet > Turvysloth (a sloth hanging from its own tiny planet), Wallibex (7th, a goat). **The three games**
+  (`orbits.js`, owner "easy to understand, hard to master"; bots prove naive fails / skilled wins at 60 and 20 fps with the real Player and
+  CubeLive in Node, `cubenode.mjs`): the **Orbikit Chase** (a pup runs a loop round its planet faster than you sprint; it sees you in front
+  on its own face and turns; wait round a corner on its loop: `pw:gravity:tag1..3`), the **Planet Hop** (Jump on a launch flower =
+  `world.launchAt` in `frameStep`, push 12; how you run onto it decides where you land; a flight that misses the next pebble is puffed back;
+  `pw:gravity:hop` on the Last Pebble; blue home flowers puff you home), the **Moon Ride** (the moon is a `carry` handled by player.js
+  `frameCarry`; Jump keeps the moon's speed; land in the ring: `pw:gravity:ring1..3`). Professor Orbit (look `orbit`) on the Great Cube's
+  top, crew Stargazer Stella, Captain Comet, Moon Mechanic Milo; realm def `crewAim: false` (the terrain's own aim knows the crew on your
+  face). Kind help only `gravityHelp`; `HARD` the rematch; a won Boss battle clears the seven keys; for fun afterwards. Play together: `state`
+  carries `f` (the frame) only off upright; the avatar is turned with it. **The player** (`player.js`, only when the world has `gravityAt`;
+  `frameUpdate` / `frameStep` / `frameCarry`): a frame (0-23); `pos` / `vel` stay in WORLD units, each fixed 1/120 s sub-step turns them into
+  the frame exactly and runs the usual `moveAxis` / `collides` against `frameWorld`; yaw / pitch are your own on the face. Over an edge you turn
+  round your feet and keep your local speed; into another planet's pull you turn round your middle and keep your world speed. In the air the
+  stick only steers (`GRAV.air`); `GRAV.soft` 0.3. **The camera:** `p.viewQuat()` eases 0.45 s (0.8 s past 120 degrees); `main.js`
+  premultiplies it (marked line). Catch puff: 6 s outside every field. Save: `realmPos[5]` = the frame (missing = upright). **Owner
+  2026-10-29:** the steady camera (a dip to the sky colour) was tried and removed ("just a blink"); no round planets; no bevelled edges (a
+  1-block bevel is a step down from both faces). **No riding** (realm def `noRide`, generic). Off-world bit for bit: `tests/cuberecord.mjs`
+  against `tests/fixtures/cube-off-golden.json`.
 - **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
   only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
@@ -661,7 +665,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `clock-tower`, `hidden-hill`, `firewall-maze`: the T19 gyms
 - `cloud`: real online saves (skipped without `PC_TEST_EMAIL` / `PC_TEST_PASSWORD`)
 - `comingsoon`: wave 15 ships closed; `?preview` opens the worlds (the other specs play with them open)
-- `cube`: Cube Planets step 0: off (bit for bit elsewhere), the 24 frames, every edge of every planet at 60 / 20 fps, no flicker, corners, hops vs `flightLand`, the catch puff, the steady camera (no part-way roll, the dip), land (3 seeds), play (no riding, arriving on a creature, the Steady button kept after a reload, reload keeps the frame), iPad (the Steady slot, V), closed; `CUBE_ONLY=off|frames|gravity|land|play|closed|ipad|shots`
+- `cube`: Cube Planets: the 24 frames, land (3 seeds, `cubecheck.mjs`), data (the Gravity type, chart, Boss), games (`cubebots.mjs` at 60 / 20 fps: chase / hop / moon, naive vs skilled, kind help, for fun, keys cleared, rematch), off (bit for bit elsewhere), gravity (every edge of every cube planet, flicker, plain jumps vs `flightLand`, the catch puff), play (the whole loop, crew, Boss, star, rematch, reloads, a step-0 save, the way back), real (keys through the game's loop), iPad, pair, closed; `CUBE_ONLY=frames|land|data|games|off|gravity|play|real|ipad|pair|closed|shots`
 - `dance`: Echo Gym dance-off, rematch dance, old saves keep badge / trainer / wins
 - `dojo`: T37b building for three seeds, `sneak.js`, spotted / puff / hiding / squeak, sneak attack, iPad; `DOJO_ONLY=shots|build`
 - `doodle`: T45 type, pencil atlas, sketch switch off = bit for bit, the look, terrain, Draw! with model players at 60 / 20 fps, play, iPad, two browsers; `DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots`
@@ -736,7 +740,7 @@ Other test tools: `tests/perf.mjs` (load, memory, draw calls, fps; `--swirl`, `-
   Portal Door and the Swirl, realms together, missions that never end, the pastel Swirl), 13.5 (T39a-c), 14 (T40-T40d: Picture
   World base, Giant House, Pirate Seas, Race Track, Ball Stadium), 14.5 (the atlas grid), 15 (T41-T45 + T48: Atlantis, Portal House,
   Funfair, Surprise Party, Sketchbook; plans `wave15.md`, `T41`-`T45`) and T49 (the Castle). Next: wave 16 (Bubble Well and Cube
-  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`), then wave 17 (gifts and trading between friends), wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
+  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), then wave 17 (gifts and trading between friends), wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
   Scribble as the Wizard's ally (battling beside him, crafting, eggs and raising, gifts and trading); the backlog (maybe a Swirl
   place, S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). The Portal Lab idea is
   `plans/T47-portal-lab.md` (not built).

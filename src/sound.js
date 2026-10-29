@@ -247,6 +247,18 @@ const SOUNDS = {
   shieldburst: () => { noise({ freq: 1800, len: 0.18, vol: 0.2, q: 0.7 }); tone(900, { len: 0.2, type: 'sine', vol: 0.14, slide: -500 }); bell(1568, 0.12, 0.4, 0.1); },
   fizzlift: () => { for (let i = 0; i < 6; i++) tone(400 + i * 120, { at: i * 0.05, len: 0.06, type: 'sine', vol: 0.08, slide: 200 }); },
   /* ==== end of Bubble ==== */
+  /* ==== Gravity ==== */
+  // Cube Planets: a wobbly pull for attacks (a tone that sinks and comes back), the Orbikit tagged (a bright chime), seen (a little meep and
+  // a zoom), a launch flower (a springy whoosh), landing on a pebble (a soft thump and a twinkle), hopping on the moon (a hollow boop),
+  // a ring hit (rising stars).
+  'fx:gravity': () => { tone(520, { len: 0.16, type: 'sine', vol: 0.14, slide: -260 }); tone(260, { at: 0.15, len: 0.16, type: 'sine', vol: 0.12, slide: 380 }); },
+  orbitag: () => notes([880, 1175, 1568, 2093], 0.06, { len: 0.12, type: 'triangle', vol: 0.12 }),
+  orbiseen: () => { tone(1400, { len: 0.06, type: 'square', vol: 0.05, slide: 300 }); noise({ at: 0.06, freq: 2400, len: 0.18, vol: 0.06, q: 0.8 }); },
+  flowerpop: () => { tone(220, { len: 0.25, type: 'triangle', vol: 0.14, slide: 520 }); noise({ freq: 1600, len: 0.2, vol: 0.06, q: 0.6 }); },
+  pebbleland: () => { tone(140, { len: 0.12, type: 'sine', vol: 0.2, slide: -40 }); bell(1760, 0.06, 0.3, 0.08); },
+  moonhop: () => { tone(330, { len: 0.12, type: 'sine', vol: 0.14, slide: -80 }); tone(495, { at: 0.08, len: 0.1, type: 'sine', vol: 0.1 }); },
+  ringstar: () => notes([659, 880, 1175, 1568], 0.07, { len: 0.12, type: 'triangle', vol: 0.12 }),
+  /* ==== end of Gravity ==== */
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).

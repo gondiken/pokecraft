@@ -26,6 +26,7 @@ const WOOL_TYPES = [
   'doodle', // wave 15 (T45): id 244
   'knight', // T49 (the Castle): id 254
   'bubble', // the Bubble Well: id 255
+  'gravity', // Cube Planets: id 149
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -45,6 +46,7 @@ const WOOL_RGB = {
   doodle: [236, 232, 220], // T45
   knight: [150, 165, 190], // T49: steel blue-grey with a gold cross
   bubble: [176, 228, 250], // the Bubble Well: soap blue with rainbow bubble rings
+  gravity: [92, 70, 168], // Cube Planets: deep violet with a gold orbit ring and a little moon
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -199,8 +201,8 @@ export const B = {
   // 244-249: T45, the Sketchbook (244 is the doodle wool; 249 reserved; none placeable, all fixed). DO_INK is drawn only with setLive.
   DO_PAPER: 245, DO_INK: 246, DO_PAD: 247, DO_BINDING: 248,
   /* ==== Gravity ==== */
-  // Cube Planets (plans/cube-planets.md section 7): 183 Planet Rock, 249 Star Grass (none placeable, all fixed). 149 is kept for the
-  // gravity wool, which comes with the Gravity type (step 3).
+  // Cube Planets (plans/cube-planets.md section 7): 183 Planet Rock, 249 Star Grass (none placeable, all fixed); 149 is the gravity wool
+  // (the launch flowers' pads). Ids still free after it: 137-139.
   PLANET_ROCK: 183, STAR_GRASS: 249,
 };
 // Block id of each type's wool block.
@@ -211,6 +213,7 @@ Object.assign(WOOL_ID_OVERRIDE, { doodle: 244 }); // T45
 Object.assign(WOOL_ID_OVERRIDE, { portal: 215 }); // T42
 Object.assign(WOOL_ID_OVERRIDE, { knight: 254 }); // T49
 Object.assign(WOOL_ID_OVERRIDE, { bubble: 255 }); // the Bubble Well
+Object.assign(WOOL_ID_OVERRIDE, { gravity: 149 }); // Cube Planets
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -636,6 +639,7 @@ export function drawAtlas() {
                                 : t === 'doodle' ? (y % 5 === 2 ? [176, 200, 232] : WOOL_RGB[t]) // T45: notebook paper with blue ruled lines
                                 : t === 'knight' ? ((x === 7 || x === 8 || y === 7 || y === 8) ? [232, 196, 90] : WOOL_RGB[t]) // T49: a gold cross on steel
                                 : t === 'bubble' ? ((d => (d > 4.2 && d < 5.4 ? STRIPES[(x + y) % STRIPES.length] : d < 1.3 ? [255, 255, 255] : WOOL_RGB[t]))(Math.hypot(((x + 4) % 16) - 7.5, ((y + 4) % 16) - 7.5))) // a rainbow bubble ring
+                                : t === 'gravity' ? ((d => (Math.abs(d - 5.6) < 0.6 ? [240, 200, 90] : Math.hypot(x - 12.5, y - 4.5) < 1.6 ? [235, 235, 250] : WOOL_RGB[t]))(Math.hypot((x - 7.5) * 1.6, (y - 7.5) * 0.7))) // Cube Planets: a gold orbit ring and a little moon
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));

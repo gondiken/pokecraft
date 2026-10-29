@@ -234,7 +234,7 @@ export class Player {
       this.keys.jumpTap = false;
       if (!this.keys.Space) { this.keys.Space = true; try { return this.update(dt); } finally { this.keys.Space = false; } }
     }
-    if (this.world.gravityAt && !this.carry) return this.frameUpdate(dt); // Cube Planets: down is wherever your feet are (only a world with gravityAt)
+    if (this.world.gravityAt) return this.carry ? this.frameCarry(dt) : this.frameUpdate(dt); // Cube Planets: down is wherever your feet are (only a world with gravityAt)
     const k = this.keys;
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
     let s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
@@ -369,7 +369,6 @@ export class Player {
     }
     this.frame = fi; this._fw = true; this._fOf = this.world; this._views = [];
     this._view = FRAME_Q[fi].clone(); this._vFrom = FRAME_Q[fi].clone(); this._vTo = fi; this._vT = 1; this._vDur = GRAV.turn;
-    this._dip = null;
     this._fLast = this.pos.clone(); this._fAcc = 0; this.lostT = 0;
     this._lp ??= new THREE.Vector3(); this._lv ??= new THREE.Vector3();
   }
@@ -403,37 +402,34 @@ export class Player {
     this.pitch = Math.atan2(l[1], Math.hypot(l[0], l[2]));
   }
   // The camera's up eases to frame `fi` (never a snap): 0.45 s, or 0.8 s when the new up is far from the screen's up.
-  // The steady camera (owner 2026-10-29, `this.steady`, set by main.js from steadycam.js): no rolling turn; the view dips to the sky
-  // colour (GRAV.dipOut), snaps to the new up while hidden, and comes back (GRAV.dipIn), like a comfort "blink" turn in VR games.
+  // (Owner 2026-10-29: a "steady camera" that dipped to the sky colour instead was tried and removed: "just a blink".)
   turnView(fi) {
-    if (this.steady) {
-      const d = this._dip;
-      if (d && d.t < GRAV.dipOut) d.to = fi; // still dipping: snap to the newest up
-      else this._dip = { t: d ? this.dipAmount() * GRAV.dipOut : 0, to: fi }; // (coming back already: dip again from where it is)
-      this._vTo = fi; this._vT = this._vDur = 0;
-      return;
-    }
     const cur = new THREE.Vector3(0, 1, 0).applyQuaternion(this._view), u = upOf(fi), to = new THREE.Vector3(u[0], u[1], u[2]);
     this._vFrom.copy(this._view); this._vTo = fi; this._vT = 0;
     this._vDur = cur.angleTo(to) > GRAV.bigAngle * Math.PI / 180 ? GRAV.bigTurn : GRAV.turn;
   }
-  // How far the steady camera's dip is (0 = clear, 1 = all sky colour): main.js draws it.
-  dipAmount() {
-    const d = this._fw && this._dip;
-    if (!d) return 0;
-    return d.t < GRAV.dipOut ? d.t / GRAV.dipOut : Math.max(0, 1 - (d.t - GRAV.dipOut) / GRAV.dipIn);
-  }
   easeView(dt) {
-    const d = this._dip;
-    if (d) { // the steady camera
-      d.t += dt;
-      if (d.t >= GRAV.dipOut) this._view.copy(FRAME_Q[d.to]);
-      if (d.t >= GRAV.dipOut + GRAV.dipIn) this._dip = null;
-      return;
-    }
     if (this._vT >= this._vDur) { this._view.copy(FRAME_Q[this._vTo]); return; }
     this._vT = Math.min(this._vDur, this._vT + dt);
     this._view.slerpQuaternions(this._vFrom, FRAME_Q[this._vTo], smooth(this._vT / this._vDur));
+  }
+  // A ride that carries you on Cube Planets (the Moon Ride's moon, cubelive.js): the usual carry rules, in the frame you stood in when you
+  // got on (the camera keeps easing). Getting off, the ride sets your speed (the moon's) and onGround = false: you fly on in frameUpdate.
+  frameCarry(dt) {
+    if (!this._fw || this._fOf !== this.world) { const gd = this.world.gravityAt(this.pos, null); this.frameInit(frameOf(gd.down)); this.grav = gd; }
+    const k = this.keys, j = this.joy;
+    let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), analog = 1;
+    if (j && Math.hypot(j.x, j.y) > 0.15) { f = -j.y; s = j.x; analog = Math.min(1, Math.hypot(j.x, j.y)); }
+    const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
+    let wx = -sin * f + cos * s, wz = -cos * f - sin * s;
+    const len = Math.hypot(wx, wz);
+    if (len > 0) { wx /= len; wz /= len; }
+    this.carry.steer?.(wx, wz, len > 0 ? analog : 0, k.Space);
+    const w = this.carry.where();
+    this.pos.set(w.x, w.y, w.z); this.vel.set(0, 0, 0); this.onGround = true;
+    if (this.carry.wantsLeave(k.Space)) this.carry.leave(true);
+    this.easeView(dt);
+    this._fLast.copy(this.pos); this._fAcc = 0; this.lostT = 0;
   }
   frameUpdate(dt) {
     const w = this.world;
@@ -474,7 +470,7 @@ export class Player {
         this.turnView(nf);
       }
     } else this.grav = gd;
-    const G = GRAV.base * this.grav.g;
+    const G = GRAV.base * this.grav.g, push = this.onGround && this.keys.Space ? (this.world.launchAt?.(this.pos, this.frame) || 0) : 0; // Jump on a launch flower (cubeland.js): a big push
     this.inFrame(this.frame, (lp, lv) => {
       const speed = (sprint ? GRAV.sprint : GRAV.walk) * analog, tx = wx * speed, tz = wz * speed;
       if (this.onGround) { lv.x = tx; lv.z = tz; }
@@ -482,7 +478,8 @@ export class Player {
         const dx = tx - lv.x, dz = tz - lv.z, m = Math.hypot(dx, dz), a = GRAV.air * h;
         if (m <= a) { lv.x = tx; lv.z = tz; } else { lv.x += dx / m * a; lv.z += dz / m * a; }
       }
-      if (this.keys.Space && this.onGround) lv.y = GRAV.jump;
+      if (push) { lv.y = push; this.launched = push; } // (cubelive.js plays the sound and counts the hop)
+      else if (this.keys.Space && this.onGround) lv.y = GRAV.jump;
       const dy = lv.y * h - 0.5 * G * h * h;
       lv.y -= G * h;
       if (lv.y < -GRAV.fall) lv.y = -GRAV.fall;

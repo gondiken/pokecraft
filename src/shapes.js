@@ -7049,3 +7049,183 @@ function bathbomb(root, m, parts) {
 const SHAPES_BUBBLE = { rubberduck, bathotter, tubhippo, bathbomb };
 Object.assign(SHAPES, SHAPES_BUBBLE);
 /* ==== end of Bubble shapes ==== */
+/* ==== Gravity shapes ==== */
+// Gravity look (Cube Planets): every model has two little moons circling it (userData.gear = 'orbit'): ONE merged mesh (vertex colours)
+// on a tilted holder that turns slowly (parts.spin), so it reads as an orbit. The little planets' own creatures: a comet cheetah, an owl
+// that looks like a striped planet, a sloth hanging from its own tiny planet, a goat that walks up the sides of planets. Every model faces
+// +z; nothing here uses Math.random.
+function orbitGear(parent, y, radius = 0.5, parts = null, speed = 1.1, size = 1) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  [[radius, 0, 0, 0.075, 0xe8e4f4, 0x9a92b4], [-radius * 0.85, 0.06, 0.1, 0.055, 0xc4b4f4, 0x7a68c0]].forEach(([x, dy, z, r, lite, dark]) => {
+    const g = new THREE.BoxGeometry(r * 2 * size, r * 2 * size, r * 2 * size, 1, 1, 1);
+    g.rotateY(0.6); g.rotateX(0.5);
+    g.translate(x, dy * size, z);
+    const p = g.attributes.position, base = pos.length / 3;
+    for (let i = 0; i < p.count; i++) {
+      pos.push(p.getX(i), p.getY(i), p.getZ(i));
+      c.setHex(p.getY(i) > dy * size ? lite : dark); // a lit top, a shadowed bottom: a little moon
+      col.push(c.r, c.g, c.b);
+    }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const tilt = pivot(parent, 0, y, 0);
+  tilt.rotation.x = 0.35; tilt.rotation.z = 0.15;
+  const holder = pivot(tilt, 0, 0, 0);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x2a2440 }));
+  mesh.userData.gear = 'orbit';
+  holder.add(mesh);
+  if (parts) spin(parts, holder, 'y', speed);
+  return mesh;
+}
+
+// Orbikit / Orbitah: a cheetah cub: a long low golden body with dark spots, black tear lines under the eyes, round ears, four legs and a
+// long tail whose tip glows like a comet. Orbitah (`streak`) is long and lean with a star on its forehead and a comet streak of light
+// trailing behind its tail.
+function orbicat(root, m, parts) {
+  const big = has(m, 'streak');
+  const L = big ? 0.74 : 0.6;
+  box(root, 0.32, 0.25, L, m.body, 0, 0.38, 0);                               // the body
+  box(root, 0.26, 0.05, L - 0.08, m.belly, 0, 0.255, 0);                       // the pale belly
+  const spots = [[-0.1, 0.51, 0.18], [0.08, 0.51, 0.04], [-0.05, 0.51, -0.14], [0.11, 0.51, -0.22], [0.165, 0.42, 0.12], [-0.165, 0.42, -0.04], [0.165, 0.36, -0.18], [-0.165, 0.38, 0.2]];
+  for (const [x, y, z] of spots) box(root, x * x > 0.02 ? 0.02 : 0.06, 0.05, 0.06, m.dark, x, y, z * L / 0.6);
+  parts.legs = [];
+  [[-0.11, L / 2 - 0.1, 0], [0.11, L / 2 - 0.1, Math.PI], [-0.11, -L / 2 + 0.1, Math.PI], [0.11, -L / 2 + 0.1, 0]].forEach(([x, z, phase]) => {
+    const leg = pivot(root, x, 0.3, z);
+    box(leg, 0.08, 0.3, 0.08, m.body, 0, -0.15, 0);
+    box(leg, 0.09, 0.05, 0.11, m.belly, 0, -0.28, 0.02);
+    parts.legs.push({ g: leg, phase });
+  });
+  const head = pivot(root, 0, 0.5, L / 2 + 0.06);
+  parts.head = head;
+  box(head, 0.3, 0.25, 0.24, m.body, 0, 0.05, 0.04);
+  box(head, 0.16, 0.1, 0.06, m.belly, 0, -0.02, 0.18);                         // the muzzle
+  box(head, 0.06, 0.04, 0.03, 0x241812, 0, 0.02, 0.215);                        // the nose
+  eyes(head, 0.08, 0.165, 0.08, 0.08);
+  for (const s of [-1, 1]) {
+    box(head, 0.025, 0.09, 0.02, 0x1a1210, s * 0.06, -0.03, 0.175);             // the tear lines
+    box(head, 0.08, 0.08, 0.04, m.body, s * 0.11, 0.2, 0.0);                    // round ears
+    box(head, 0.04, 0.04, 0.02, m.dark, s * 0.11, 0.21, 0.02);
+  }
+  if (big) { const star = box(head, 0.07, 0.07, 0.02, 0xfff4a0, 0, 0.15, 0.165); star.rotation.z = Math.PI / 4; glow(star, 0x8a7020); }
+  const tail = pivot(root, 0, 0.44, -L / 2);
+  parts.tail = tail;
+  const n = big ? 5 : 4;
+  for (let i = 0; i < n; i++) box(tail, 0.07, 0.07, 0.12, i % 2 ? m.dark : m.body, 0, 0.02 + i * 0.035, -0.07 - i * 0.11);
+  const tip = box(tail, 0.12, 0.12, 0.12, m.accent, 0, 0.04 + n * 0.035, -0.12 - n * 0.11);
+  tip.rotation.z = Math.PI / 4; glow(tip, 0xb08a20);                            // the comet head of the tail
+  if (big) for (let i = 0; i < 4; i++) { const s = box(tail, 0.08 - i * 0.015, 0.08 - i * 0.015, 0.1, m.accent, 0, 0.06 + n * 0.035 + i * 0.02, -0.28 - n * 0.11 - i * 0.12); glow(s, 0x8a6a10); } // the streak
+  orbitGear(root, big ? 0.95 : 0.8, big ? 0.55 : 0.45, parts, 1.4);
+}
+
+// Hootiter / Saturnowl: a round owl that is a little striped planet: bands of colour round its body, big round eye discs, ear tufts and
+// small wings that flap. Saturnowl (`ring`) wears a golden ring round its middle, tipped like a planet's.
+function planetowl(root, m, parts) {
+  const big = has(m, 'ring');
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.5, 0.5, 0.44, m.body, 0, 0.36, 0);                               // the round body
+  box(body, 0.42, 0.1, 0.36, m.body, 0, 0.66, 0);
+  box(body, 0.42, 0.06, 0.36, m.body, 0, 0.08, 0);
+  for (const [y, c] of [[0.2, m.belly], [0.34, m.dark], [0.5, m.belly]]) box(body, 0.52, 0.06, 0.46, c, 0, y, 0); // planet bands
+  for (const s of [-1, 1]) {
+    box(body, 0.16, 0.16, 0.04, m.accent, s * 0.11, 0.52, 0.22);                // the eye discs
+    box(body, 0.06, 0.12, 0.08, m.dark, s * 0.17, 0.75, -0.02);                 // ear tufts
+  }
+  eyes(body, 0.52, 0.24, 0.11, 0.1);
+  box(body, 0.07, 0.08, 0.06, 0xf0a030, 0, 0.42, 0.25);                         // the beak
+  parts.flap = [];
+  for (const s of [-1, 1]) {
+    const w = pivot(body, s * 0.25, 0.48, 0);
+    box(w, 0.05, 0.28, 0.3, m.dark, s * 0.02, -0.12, 0);
+    parts.flap.push({ g: w, s });
+  }
+  for (const s of [-1, 1]) box(root, 0.1, 0.04, 0.12, 0xf0a030, s * 0.1, 0.02, 0.06); // the feet
+  if (big) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.035, 6, 28), new THREE.MeshLambertMaterial({ color: m.accent, emissive: 0x3a2a08 }));
+    ring.rotation.x = Math.PI / 2 - 0.25; ring.position.set(0, 0.36, 0);
+    body.add(ring);
+    box(body, 0.1, 0.04, 0.1, m.accent, 0, 0.73, 0.02);                         // a little gold crown of a moon on its head
+  }
+  orbitGear(root, big ? 1.0 : 0.85, big ? 0.6 : 0.45, parts, 1.0);
+}
+
+// Danglet / Turvysloth: a sloth hanging under its own tiny planet (a lilac rock with a tuft of grass on its underside). Danglet holds on
+// with its long arms; Turvysloth (`big`) hangs upside down by its feet from a bigger, cratered moon. Both sway gently.
+function sloth(root, m, parts) {
+  const big = has(m, 'big');
+  const rockY = big ? 1.25 : 1.12, R = big ? 0.24 : 0.2;
+  const rock = box(root, R * 2, R * 1.6, R * 2, 0xa89cc0, 0, rockY, 0);         // the little planet
+  box(rock, R * 1.6, 0.04, R * 1.6, 0x6ac46a, 0, -R * 0.8 - 0.01, 0);           // its grass, on the underside
+  if (big) { box(rock, 0.08, 0.02, 0.08, 0x7a6e94, 0.08, R * 0.8 + 0.005, 0.05); box(rock, 0.06, 0.02, 0.06, 0x7a6e94, -0.1, R * 0.8 + 0.005, -0.06); } // craters
+  const hang = pivot(root, 0, rockY - R * 0.8, 0);
+  swing(parts, hang, 'z', 0.12, 1.1, 0);
+  if (!big) { // by the arms: arms up, head under the rock, body, legs dangling
+    for (const s of [-1, 1]) box(hang, 0.06, 0.34, 0.06, m.body, s * 0.12, -0.15, 0);
+    for (const s of [-1, 1]) box(hang, 0.07, 0.04, 0.07, m.dark, s * 0.12, -0.01, 0); // claws round the rock's grass
+    const head = pivot(hang, 0, -0.38, 0.02);
+    parts.head = head;
+    box(head, 0.24, 0.2, 0.2, m.body, 0, 0, 0);
+    box(head, 0.2, 0.14, 0.04, m.accent, 0, -0.01, 0.1);                        // the pale face
+    for (const s of [-1, 1]) box(head, 0.07, 0.04, 0.02, m.dark, s * 0.05, 0.01, 0.12); // the dark eye stripes
+    eyes(head, 0.015, 0.13, 0.05, 0.05);
+    box(head, 0.05, 0.03, 0.02, 0x2a1e14, 0, -0.04, 0.125);
+    box(hang, 0.24, 0.3, 0.18, m.body, 0, -0.62, 0);                            // the body
+    box(hang, 0.16, 0.22, 0.04, m.belly, 0, -0.62, 0.09);
+    for (const s of [-1, 1]) box(hang, 0.07, 0.2, 0.07, m.body, s * 0.07, -0.86, 0);  // legs dangling
+  } else { // by the feet: upside down, its arms hanging below its head
+    for (const s of [-1, 1]) box(hang, 0.08, 0.22, 0.08, m.body, s * 0.1, -0.1, 0);  // legs up to the moon
+    for (const s of [-1, 1]) box(hang, 0.09, 0.04, 0.09, m.dark, s * 0.1, -0.01, 0);
+    box(hang, 0.34, 0.4, 0.26, m.body, 0, -0.42, 0);                            // the body
+    box(hang, 0.24, 0.3, 0.04, m.belly, 0, -0.42, 0.13);
+    const head = pivot(hang, 0, -0.74, 0.02);
+    parts.head = head;
+    head.rotation.z = Math.PI;                                                  // upside down
+    box(head, 0.3, 0.26, 0.24, m.body, 0, 0, 0);
+    box(head, 0.24, 0.18, 0.04, m.accent, 0, 0.01, 0.12);
+    for (const s of [-1, 1]) box(head, 0.08, 0.05, 0.02, m.dark, s * 0.06, 0.03, 0.145);
+    eyes(head, 0.03, 0.155, 0.06, 0.06);
+    box(head, 0.06, 0.03, 0.02, 0x2a1e14, 0, -0.05, 0.15);
+    for (const s of [-1, 1]) box(hang, 0.07, 0.2, 0.07, m.body, s * 0.2, -0.76, 0.02);  // arms hanging down
+  }
+  orbitGear(root, rockY + 0.05, big ? 0.6 : 0.5, parts, 0.9);
+}
+
+// Wallibex: a stocky little goat with big curly horns, a beard and hooves made for walking up the sides of planets.
+function ibex(root, m, parts) {
+  box(root, 0.34, 0.3, 0.54, m.body, 0, 0.44, 0);                              // the body
+  box(root, 0.3, 0.06, 0.4, m.dark, 0, 0.6, -0.02);                             // a darker saddle
+  box(root, 0.28, 0.05, 0.46, m.belly, 0, 0.29, 0);
+  parts.legs = [];
+  [[-0.11, 0.18, 0], [0.11, 0.18, Math.PI], [-0.11, -0.18, Math.PI], [0.11, -0.18, 0]].forEach(([x, z, phase]) => {
+    const leg = pivot(root, x, 0.3, z);
+    box(leg, 0.08, 0.26, 0.08, m.body, 0, -0.13, 0);
+    box(leg, 0.09, 0.06, 0.09, m.dark, 0, -0.27, 0);                            // the hooves
+    parts.legs.push({ g: leg, phase });
+  });
+  const head = pivot(root, 0, 0.64, 0.28);
+  parts.head = head;
+  box(head, 0.22, 0.22, 0.26, m.body, 0, 0.02, 0.06);
+  box(head, 0.14, 0.1, 0.08, m.belly, 0, -0.04, 0.2);                          // the muzzle
+  box(head, 0.05, 0.03, 0.02, 0x2a2018, 0, -0.01, 0.245);
+  box(head, 0.06, 0.12, 0.05, m.dark, 0, -0.14, 0.16);                          // the beard
+  eyes(head, 0.06, 0.19, 0.07, 0.07);
+  for (const s of [-1, 1]) {
+    box(head, 0.1, 0.04, 0.05, m.body, s * 0.14, 0.06, 0.02);                   // ears
+    [[0.06, 0.14, 0.02], [0.1, 0.24, -0.06], [0.14, 0.29, -0.16], [0.17, 0.26, -0.26], [0.17, 0.16, -0.3], [0.15, 0.08, -0.25]].forEach(([x, y, z], i) => {
+      box(head, 0.07, 0.07, 0.07, i % 2 ? m.accent : 0xcbb07e, s * x, y, z);    // the curly horns, ridged
+    });
+  }
+  const tail = pivot(root, 0, 0.56, -0.27);
+  parts.tail = tail;
+  box(tail, 0.06, 0.1, 0.05, m.dark, 0, 0.04, -0.02);
+  orbitGear(root, 0.98, 0.48, parts, 1.2);
+}
+const SHAPES_GRAVITY = { orbicat, planetowl, sloth, ibex };
+Object.assign(SHAPES, SHAPES_GRAVITY);
+/* ==== end of Gravity shapes ==== */

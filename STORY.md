@@ -135,6 +135,8 @@ the city's old guardians: jars, stone lions and mosaic snakes that came alive.
 coaster. The festival never happened, and everything has stood still, waiting. Beat the racer, the football captain
 and the fair leader, and Playland starts up again.
 
+**Cube Planets.** Little planets that are cubes, floating in a starry sky, where down is wherever your feet are. **Professor Orbit** made them so the Wizard's star creatures would have somewhere to play; his helpers' Orbikits race round the planets, launch flowers fling you from pebble to pebble and a little moon gives rides. The star is in orbit round his hat, on top of the Great Cube.
+
 **The Portal House.** In the Swirl itself, the Portal creatures' oldest, who has been watching the crack the
 longest, is the Boss at the end of a chain of portal rooms.
 
@@ -200,6 +202,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | Chapter 2: missions that never end, the Portal Door by the tower, the Swirl, the far-away tower and the broken bridge, friends can come along | Mission maker, Portal Door, Swirl hub, realms together | 13 |
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
 | The Portal House, Playland's fair, the Surprise Party, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
-| The Bubble Well | Bubble Picture World (behind ?preview until the owner opens it) | 16 |
+| The Bubble Well, Cube Planets | Bubble and Gravity Picture Worlds (behind ?preview until the owner opens them) | 16 |
 | The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |
