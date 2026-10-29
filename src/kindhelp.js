@@ -26,12 +26,12 @@
 //   Shield Up! (siege.js)      a round short of its blocks                every throw's timing / (1 - e), shield cover x (1 + e)
 //   Joust (joust.js)           a round short of its points                meeting time, star size and the hop's warning x (1 + e),
 //                                                                           the star's slide x (1 - e)
-//   Bubble Stairs (bubbles.js) a fall from a bubble                       a new bubble rises x (1 - e) (a longer moment to hop on), how
-//                                                                           long you may stand on one x (1 + e), the drips x (1 - e)
+//   Fizz Ledges (bubbles.js)   a fall from a bubble                       a bubble lasts x (1 + e) (a longer ride), the drips and the
+//                                                                           fizz streams / gusts x (1 - e)
 //   Ducklings (bubbles.js)     a duckling's bubble popped (thorn / timer)  currents and gusts x (1 - e), the glide stops x (1 + e) sooner,
 //                                                                           the nest x (1 + e), the bubble lasts x (1 + e)
 //   Chimney Ride (bubbles.js)  the ride's bubble popped                   the sink x (1 - e), the spike gaps x (1 + e), the bar x (1 - e)
-//   Shields (bubbles.js)       a bank shot that missed                    the shield x (1 + e), the sliding cushion x (1 - e)
+//   Shields (bubbles.js)       a ride from the rim that popped no shield  the shields x (1 + e) bigger, their sway x (1 - e)
 //   Orbikit Chase (orbits.js)  it saw you and ran back                    its sprint x (1 - e) (still faster than you), tag reach x (1 + e)
 //   Planet Hop (orbits.js)     a flower flight that missed the pebble     the next pebble's pull reaches e x 8 blocks further (gravity.js pad)
 //   Moon Ferry (orbits.js)     a jump off the moon that missed every      the moon x (1 - e), the Lens Rocks' pull reaches e x 8 blocks

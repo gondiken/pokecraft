@@ -15,7 +15,7 @@
 // Every planet pulls the same (GRAV.g; owner 2026-10-29: before it was 0.7 on the hub planets, 0.6 on the Moon Base and 0.45 on the
 // pebbles, with no reason you could see). Between hub planets the ways are plain jumps face to face across a gap of 6 (HOPS). The games'
 // rules are pure: orbits.js; cubelive.js wires them. Saved keys (in `beaten`): pw:gravity:tag1..3, pw:gravity:hop, pw:gravity:lens1..3
-// (gravityState), and the redesign's mark pw:gravity:redesign1 (cubeReset).
+// (gravityState), and the redesign's reset mark pw:gravity:redesign1 (worldreset.js).
 import { B, WOOL, mulberry32 } from './blocks.js';
 import { kit, buildWayBack, placeBoss, placeCrew } from './picturelands.js';
 import { downAt, toLocal, upOf, GRAV } from './gravity.js';
@@ -81,24 +81,9 @@ export function gravityState(game) {
   const tags = tag.filter(Boolean).length, lenses = lens.filter(Boolean).length, hop = has(HOP_KEY), n = tags + (hop ? 1 : 0) + lenses;
   return { tag, tags, hop, lens, lenses, n, need: 7, done: n === 7, star: !!game?.stars?.includes('gravity') };
 }
-// Owner 2026-10-29 "reset my progress in the gravity world": the redesign starts Cube Planets over ONCE. A save without the mark loses
-// every pw:gravity:* key (games, crew), the gravity star and its Boss wins, then gets the mark; whatever is won after that is kept for
-// ever. This is fine only because Cube Planets was preview-only (?preview) until now: no child's real progress is lost. Pure: changes
-// `save` ({ beaten, stars, bossWins }) in place; -> true when something was reset. main.js runs it on load, cubelive.js when you arrive
-// and whenever it saves a key (so a "Start this world over" that clears the mark never lets a later load wipe new progress).
+// Owner 2026-10-29 "reset my progress in the gravity world": the redesign started Cube Planets over ONCE for every save (worldreset.js
+// WORLD_RESETS, mark pw:gravity:redesign1: old keys, crew, star and Boss wins cleared once; fine only because it was preview-only).
 export const REDESIGN_MARK = 'pw:gravity:redesign1';
-export function cubeReset(save) {
-  if (!save || !Array.isArray(save.beaten) || save.beaten.includes(REDESIGN_MARK)) return false;
-  const old = save.beaten.filter(k => typeof k === 'string' && k.startsWith('pw:gravity:'));
-  const star = Array.isArray(save.stars) && save.stars.includes('gravity'), wins = !!save.bossWins?.gravity;
-  save.beaten = save.beaten.filter(k => !old.includes(k));
-  save.beaten.push(REDESIGN_MARK);
-  if (star) save.stars = save.stars.filter(s => s !== 'gravity');
-  if (wins) delete save.bossWins.gravity;
-  return old.length > 0 || star || wins;
-}
-// After the mark is gone (the generic "Start this world over" clears pw:gravity:*): put it back without resetting anything.
-export function cubeMark(game) { if (Array.isArray(game?.beaten) && !game.beaten.includes(REDESIGN_MARK)) game.beaten.push(REDESIGN_MARK); }
 
 /* ---------------------------------------------------------------- the games' places */
 // The Orbikit Chase: the loop each pup runs (corner points on the surface; each two in a row lie on one face). A belt round a pole axis at

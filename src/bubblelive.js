@@ -1,79 +1,52 @@
-// The live part of the Bubble Well (LIVE.bubble, made by gymLive.reset for the part in world.parts), plans/bubble-well.md (and its
-// "Rework 2026-10-29": "Easy to understand, hard to master"). It wires the pure rules (bubbles.js) to the player, the meshes
-// (bubbleprops.js) and the world:
-//  - the Bubble Stairs: Blow! (the big button, E, a click, a tap on the screen; one press, never held) puts a bubble two blocks ahead of
-//    your feet (a ghost bubble shows where). Only with your feet on something: in the air nothing happens (no pillar of bubbles under
-//    you). It waits a moment, then floats up: hop on it (sooner = a little higher, later = a lot higher, too late = gone). Land on it and
-//    it holds you (a `carry` object: walk about on its top, Jump = Bounce off it); it pops soon after. Two bubbles that touch both pop.
-//    Six puffs of soap; soap flowers fill the wand. A fall from a bubble puts you back on the ledge you started from. Landing on the
-//    plateau by the narrow shaft from a bubble = the Bubble Stairs (pw:bubble:stairs). Then the first fizz lift runs.
-//  - the ducklings: Blow! round a sleeping one, then Puff! nudges it the way you look (an arrow on the floor shows how far it glides);
-//    the bubble lasts a while, then the duckling wakes and waddles home to its island; a gust lane blows across the thorn pen now and
-//    then. Home in the nest = pw:bubble:duck1..3 (saved at once). Once all three are home, Blow! by the nest sends one back to play again.
-//  - the Chimney Ride: Ride! by the big golden bubble ("Ride!" sign); every tap (Jump, the big button, a tap on the screen) is a puff up;
-//    the stick steers; fly through the gold rings. The top = pw:bubble:chimney (and the second fizz lift runs).
-//  - Captain Suds' shields: a bank shot. Stand on the round's gold pad, Blow! sends a bubble flying flat the way you look (a dotted line
-//    shows its way to the first bounce); it bounces off the pink soap cushion and pops the shield (pw:bubble:shield1..3). With all three
-//    popped (and the crew beaten) Captain Suds battles. Then the rounds play again just for fun (forfun.js).
-// Never a fail: a pop or a fall only puts you back a little, a miss starts the try again, the kind help comes after misses (kindhelp.js
-// through bubbleHelp). Clocks are summed frame dt and stand still in a battle / an ask / a panel / the pause. Bubbles are meshes, never
-// blocks, never saved or sent. `manual` + step(dt, input) for tests; info() for tests.
+// The live part of the Bubble Well (LIVE.bubble, made by gymLive.reset for the part in world.parts), plans/bubble-well.md and its
+// "Redesign 2026-10-29 (natural rules)" (owner: "Those rules should be natural to the game"; "I don't want more instructions"). It wires
+// the pure rules (bubbles.js) to the player, the meshes (bubbleprops.js) and the world. Every rule is one a child already expects:
+//  - The wand: walk up to a soap pot and the wand dips (its ring gets a shiny soap film). One dip = one bubble: Blow! (the big button, E,
+//    a click, a tap on the screen; one press) and the bubble comes out just in front of you. A dry wand only puffs air (the big button says
+//    Puff!), which pushes light things: bubbles, a duckling in its bubble. A jump shakes the film off the wand.
+//  - The Fizz Ledges: the bubble waits a moment, then floats up, drifting with the fizz streams you can see. Hop on and it carries you up
+//    (lean with the stick to steer it a little); it wobbles, then pops. Hop off onto the next ledge in time (Jump = Bounce). A fall puts
+//    you back on the ledge you blew from. Landing on the plateau from a bubble = pw:bubble:stairs; then the first fizz lift runs.
+//  - The ducklings: Blow! round a sleeping one (a wet wand: the garden has soap pots), then puffs of air push it (an arrow on the floor
+//    shows how far it glides). Home in the nest = pw:bubble:duck1..3. Once all three are home, Blow! by the nest sends one back to play.
+//  - The Chimney Ride: Ride! by the big golden bubble; every tap (Jump, the big button, a tap on the screen) is a puff up; the stick steers;
+//    fly through the gold rings. From inside, the bubble is only a faint rim (owner: "overly bright"). The top = pw:bubble:chimney.
+//  - Captain Suds' shields: three big shield bubbles bob over the rim. Ride your own bubble up from the balcony's soap pot and drop onto
+//    one from above: it pops (pw:bubble:shield1..3); from the side it only bumps you. Popped ones come back later just for fun.
+// Never a fail: a pop or a fall only puts you back a little, the kind help comes after misses (kindhelp.js through bubbleHelp). Clocks
+// are summed frame dt and stand still in a battle / an ask / a panel / the pause. Bubbles are meshes, never blocks, never saved or sent.
+// Words: only a word on the big button and one very short line the first time. `manual` + step(dt, input) and info() for tests.
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
-import { kindHelp } from './kindhelp.js';
-import { ForFun, FUN } from './forfun.js';
-import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, BANK, bankShot, aimLine, cushionsAt, gustAt, glideOf, dripAt, gapOf, landsOn, hopHeight } from './bubbles.js';
-import { bubbleState, bubbleAim, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, SHIELD, COURT, courtOf, LIFTS, DRIPS, VENT2, BREEZES, SOAP_FLOWERS, MESA, BENCH, RIM, STAIRS_TOP, THORNS, CURRENTS, GUSTS, inChimney, inStairs } from './bubbleland.js';
-import { buildBubbles, buildGhost, buildWand, buildDrips, buildStreams, drawStreams, buildFlowers, buildThorns, buildNest, buildChimney, buildBigBubble, buildRideBubble, buildSign, buildShields, buildDots, drawDots, buildArrow, buildCushion, buildPad, hideAll } from './bubbleprops.js';
+import { FUN } from './forfun.js';
+import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHIELD_RULES, gustAt, glideOf, dripAt, gapOf, landsOn, shieldAt, stomp, shieldSize, shieldSway } from './bubbles.js';
+import { bubbleState, bubbleAim, ledgeAt, inClimb, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, SHIELDS, LIFTS, DRIPS, WINDS, SOAP_POTS, MESA, RIM, STAIRS_TOP, THORNS, CURRENTS, GUSTS, inChimney } from './bubbleland.js';
+import { buildBubbles, buildGhost, buildWand, buildDrips, buildStreams, drawStreams, buildThorns, buildNest, buildChimney, buildBigBubble, buildRideBubble, buildSign, buildShields, buildArrow, buildPots, buildPuff, hideAll } from './bubbleprops.js';
 
-// dtMax: the longest frame step; flower: how near a soap flower fills your wand; fall: how far below your ledge a fall from a bubble
-// puts you back; restOut: seconds resting at the chimney's bottom before you hop out; rideR: how near the chimney's big bubble Ride!
-// shows; reach: how far the big button looks for a door in front of you (a way back is used, not blown at); off: how fast the stick
-// walks you about on a bubble's top; settle: seconds after landing on a bubble before the stick walks you (a child still holding W from
-// the hop stays on it); court: the rim's part where Blow! means the shield game (x0, x1, z0, z1); nestR: how near the nest Blow! sends a
-// homed duckling back to play again (once all three are home).
-export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, flower: 1.1, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, off: 1.6, settle: 0.5, court: { x0: 64, x1: 98, z0: 22, z1: 38 }, nestR: 3.2 };
-const WORDS = {
-  wand: '🫧 Bubble Bee lends you a bubble wand! Blow a bubble ahead, hop on, hop again!',
-  first: 'Hop on your bubble! (Let it float up a little first and it lifts you higher.)',
-  air: 'Land first! You can only blow from the ground or from a bubble.',
-  touch: 'Pop-pop! Two bubbles touched. Let one float up before you blow the next.',
-  late: 'Too high! It floated away. Hop a little sooner.',
-  land: 'On a bubble! It pops soon: blow the next one, let it float up a little, then Bounce on!',
-  warn: 'Wobble! That bubble is about to pop!',
-  back: 'Whoops! Back on the ledge. Try again!',
-  soap: 'Soap! Your wand is full again.',
-  noSoap: 'No soap left! Walk through a soap flower to fill your wand.',
-  wall: 'No room there! Turn to an open side and blow.',
-  stairs: '🫧 You climbed the Bubble Stairs! Wanda Wand is waiting. The fizz lift runs now.',
-  duckBlow: 'Now Puff! it toward the nest. The arrow shows how far it glides: stand far for a little puff, close for a big one!',
-  duckPop: n => `Pop! Duckling ${n} plopped back onto its island. Blow a new bubble round it!`,
-  duckHurry: n => `Hurry! Duckling ${n}'s bubble is getting thin.`,
-  duckWake: n => `Yawn! Duckling ${n}'s bubble popped and it woke up. It waddles home: blow a bubble round it again!`,
-  duckHome: (n, k) => `🦆 Duckling ${n} is home! (🦆 ${k} / 3)`,
-  allHome: '🦆 All the ducklings are home! Duckherd Daisy wants to say thank you.',
-  again: n => `🦆 Duckling ${n} hops back to its island. Float it home again! ${FUN.tag}`,
-  stream: 'Whee! The bubble stream carries it away. Puff it across, a little up the stream!',
-  gust: 'Whoosh! A gust blows across the thorn pen now and then. Puff when it is calm!',
-  ride: '🫧 Tap Jump to float up. Fly through the gold rings!',
-  ridePop: 'Pop! Back to the last fizz star.',
-  rideOut: 'You hopped out of the bubble.',
-  chimney: '🫧 Up the chimney! Mate Fizz is on the rim. The second fizz lift runs now.',
-  court: '🛡️ Stand on the gold pad and Blow!: bounce your bubble off the pink cushion into the shield!',
-  pad: 'Stand on the glowing gold pad to blow at the shields!',
-  slider: 'This cushion slides up and down. Blow when the dotted line bounces toward the shield!',
-  shieldHit: k => `🛡️ Pop! A shield burst! (🛡️ ${k} / 3)`,
-  shieldMiss: 'Boing! It missed. Try a slightly different angle!',
-  shieldFence: 'Splat! The foam fence. Bounce it off the pink cushion!',
-  allShields: 'All three shields popped! Captain Suds is ready to battle.',
-  funShield: '🛡️ Pop! Right in!',
+// dtMax: the longest frame step; dip: how near a soap pot (and how near its floor) the wand dips; fall: how far below your ledge a fall
+// from a bubble puts you back; restOut: seconds resting at the chimney's bottom before you hop out; rideR: how near the chimney's big
+// bubble Ride! shows; reach: how far the big button looks for a door in front of you; settle: seconds after landing on a bubble before
+// the stick leans it (a child still holding W from the hop stays on); nestR: how near the nest Blow! sends a homed duckling back to play;
+// funBack: seconds after a popped shield (all three popped) before it floats back just for fun; puffTime: how long a puff's wisps fly;
+// bump: how far a shield pushes you a frame.
+export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, dip: 1.0, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, settle: 0.4, nestR: 3.2, funBack: 6, puffTime: 0.45, bump: 0.12 };
+const WORDS = { // (owner 2026-10-29: "I don't want more instructions": one short line the first time, then nothing but the button's word)
+  ride: 'Tap Jump to float up!',
+  stairs: '🫧 Up the Fizz Ledges!',
+  duckHome: (n, k) => `🦆 Home! (${k} / 3)`,
+  allHome: '🦆 All the ducklings are home!',
+  again: n => `🦆 Again! ${FUN.tag}`,
+  chimney: '🫧 Up the chimney!',
+  shieldHit: k => `🛡️ Pop! (${k} / 3)`,
+  allShields: 'Captain Suds is ready!',
+  funShield: `🛡️ Pop! ${FUN.tag}`,
 };
 const DOOR_IDS = new Set([B.WAY_BACK, B.PICTURE_FRAME]);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
-const SHOT_Y = COURT.y + BANK.h;
 const RIDE_LOOK = { wait: 1.35 }; // the waiting ride bubble's drawn radius (blocks)
+const CLIMB_WINDS = WINDS;
 
 export class BubbleLive {
   constructor(game, part) {
@@ -82,11 +55,12 @@ export class BubbleLive {
     this.manual = false;
     this.clock = 0; this.syncT = 0; this.told = new Set(); this.said = new Map();
     this.field = new BubbleField({ hard: this.hard });
-    this.stood = null; this.left = null; this.off = { x: 0, z: 0 }; this.stick = { wx: 0, wz: 0, analog: 0 }; this.stepOff = false; this.spaceWas = true;
-    this.ledge = null; this.fromBubble = false; this.prevFeet = null; this.stairMiss = [0, 0]; this.blown = null;
+    this.wet = false; this.wasGround = false; this.shook = 9; this.puffT = 9; this.puffAt = null;
+    this.stood = null; this.left = null; this.stick = { wx: 0, wz: 0, analog: 0 }; this.spaceWas = true;
+    this.ledge = null; this.fromBubble = false; this.prevFeet = null; this.stairMiss = [0, 0, 0, 0]; this.blown = null; this.fromRim = false; this.stomped = false;
     this.ducks = ISLANDS.map(i => new Duckling(GARDEN_RULES, i, { hard: this.hard })); this.duckMiss = [0, 0, 0]; this.duckFun = [false, false, false]; this.gardenT = 0;
     this.ride = null; this.rideMiss = 0; this.rideIn = { sx: 0, sz: 0 }; this.restT = 0; this.rideOut = false; this.starsGot = new Set();
-    this.shots = []; this.shotMiss = [0, 0, 0]; this.burst = [9, 9, 9]; this.courtT = 0; this.shieldFun = new ForFun(3);
+    this.shieldMiss = 0; this.burst = [9, 9, 9]; this.courtT = 0;
     this.liftsOn = [null, null];
     this.standObj = this.makeStandObj(); this.rideObj = this.makeRideObj();
     this.groups = [];
@@ -98,36 +72,34 @@ export class BubbleLive {
   paused() { const g = this.game; return !!(g.inBattle || g.ui?.asking || g.ui?.panelOpen || !this.playing()); }
   toast(m) { this.game.ui?.toast(m); }
   once(key, m) { if (this.told.has(key)) return; this.told.add(key); this.toast(m); }
-  say(key, m, gap = BUBBLE_RULES.sayGap) { const t = this.clock; if (t - (this.said.get(key) ?? -1e9) < gap) return; this.said.set(key, t); this.toast(m); }
   save() { this.game.save?.(); }
   addKey(k) { const g = this.game; if (!g.beaten.includes(k)) g.beaten.push(k); this.save(); }
 
   /* ---------------------------------------------- meshes ---------------------------------------------- */
   build() {
     const add = o => { this.groups.push(o); this.scene?.add(o); return o; };
-    this.bubbles = add(buildBubbles(4));       // 0..1 your bubbles, 2..3 shot bubbles
+    this.bubbles = add(buildBubbles(BUBBLE.max));
     this.ghost = add(buildGhost(BUBBLE.r));
     this.wand = add(buildWand());
+    this.puffs = add(buildPuff(7));
+    this.pots = add(buildPots(SOAP_POTS));
     this.drips = add(buildDrips(DRIPS.length));
-    this.flowers = add(buildFlowers(SOAP_FLOWERS));
     this.thorns = add(buildThorns(THORNS, MESA.top + 1));
     this.nest = add(buildNest(NEST, MESA.top + 1));
     this.chim = add(buildChimney(CHIMNEY, gapOf));
     this.rideBubble = add(buildRideBubble(RIDE.R));
     this.rideSign = add(buildSign('Ride!'));
-    this.shields = add(buildShields(SHIELD));
-    const c = CURRENTS[0];
+    this.shields = add(buildShields(SHIELDS));
+    const c = CURRENTS[0], steady = CLIMB_WINDS.filter(w => !w.period);
     this.streams = add(buildStreams([
-      { ...VENT2, n: 18 },
-      ...BREEZES.map((b, i) => ({ ...b, n: i ? 16 : 70, colour: 0xffffff })),
+      ...steady.map(w => ({ ...w, n: w.id === 'rim' ? 50 : 40, colour: 0xffffff })),
       { x0: c.x0, x1: c.x1 - 1, y0: MESA.top + 1, y1: MESA.top + 1, z0: c.z0, z1: c.z1 - 1, vx: 0, vy: 0, vz: c.vz, n: 48, colour: 0xbfefff },
       ...LIFTS.map(l => ({ x0: l.x[0], x1: l.x[1], y0: l.y[0], y1: l.y[1], z0: l.z[0], z1: l.z[1], vx: 0, vy: 3, vz: 0, n: 40 })),
     ]));
-    this.gusts = add(buildStreams(GUSTS.map(g => ({ x0: g.x0, x1: g.x1 - 1, y0: MESA.top + 1, y1: MESA.top + 1.6, z0: g.z0, z1: g.z1 - 1, vx: g.vx, vy: 0, vz: g.vz, n: 60, colour: 0xe8fbff })), 0.09));
+    this.streamOn = [...steady.map(() => true), true, ...LIFTS.map(() => false)];
+    this.gustWinds = [...CLIMB_WINDS.filter(w => w.period), ...GUSTS.map(g => ({ x0: g.x0, x1: g.x1 - 1, y0: MESA.top + 1, y1: MESA.top + 1.6, z0: g.z0, z1: g.z1 - 1, vx: g.vx, vy: 0, vz: g.vz, period: g.period, on: g.on, warn: g.warn, phase: g.phase, garden: true }))];
+    this.gusts = add(buildStreams(this.gustWinds.map(g => ({ ...g, n: 60, colour: 0xe8fbff })), 0.09));
     this.arrow = add(buildArrow());
-    this.aimDots = add(buildDots(48, 0xffe066, 0.06));
-    this.cushions = COURT.rounds.map(r => [...r.cushions, ...(r.slider ? [r.slider.box] : [])].map(b => add(buildCushion(b, COURT.y))));
-    this.pads = COURT.rounds.map(r => add(buildPad(r.pad.x, COURT.y, r.pad.z, BANK.pad)));
     this.duckModels = this.ducks.map(() => { try { const m = buildModel('squeaklet'); m.scale.setScalar(0.8); this.scene?.add(m); return m; } catch { return null; } });
     this.duckBubbles = this.ducks.map(() => add(buildBigBubble(0.62)));
     try { this.rideDuck = buildModel('squeaklet'); this.rideDuck.scale.setScalar(1.25); this.scene?.add(this.rideDuck); } catch { this.rideDuck = null; }
@@ -157,10 +129,10 @@ export class BubbleLive {
   makeStandObj() {
     const me = this;
     return {
-      where: () => { const b = me.stood; return b ? { x: b.x + me.off.x, y: b.y + BUBBLE.r, z: b.z + me.off.z } : me.ledgeSafe(); },
+      where: () => { const b = me.stood; return b ? { x: b.x, y: b.y + BUBBLE.r, z: b.z } : me.ledgeSafe(); },
       steer(wx, wz, analog) { me.stick = { wx, wz, analog }; },
-      wantsLeave(space) { const fresh = !!space && !me.spaceWas; me.spaceWas = !!space; return fresh || me.stepOff || !me.stood; },
-      leave() { me.leaveBubble(!me.stepOff && !!me.stood); },
+      wantsLeave(space) { const fresh = !!space && !me.spaceWas; me.spaceWas = !!space; return fresh || !me.stood; },
+      leave() { me.leaveBubble(!!me.stood); },
       jumpWord: () => 'Bounce',
       safe: () => me.ledgeSafe(),
     };
@@ -193,8 +165,7 @@ export class BubbleLive {
     return false;
   }
   flatLook(p) { const f = p.forward, l = Math.hypot(f.x, f.z) || 1; return { x: f.x / l, z: f.z / l }; }
-  // What your feet are on: 'bubble', 'ground' or null (in the air: Blow! does nothing there).
-  footing(p) { return p.carry === this.standObj && this.stood ? 'bubble' : p.onGround && !p.carry ? 'ground' : null; }
+  onGround(p) { return !!p.onGround && !p.carry; }
   // The duckling the big button means: { i, d, word } or null.
   duckAhead(p) {
     if (p.pos.y < MESA.top + 0.5 || p.pos.y > MESA.top + 3) return null;
@@ -207,7 +178,7 @@ export class BubbleLive {
       if (dist > reach) return;
       const ang = dist < 0.4 ? 0 : Math.abs(wrap(Math.atan2(dz, dx) - Math.atan2(look.z, look.x)));
       if (ang > DUCK.cone) return;
-      if (!best || dist < best.dist) best = { i, d, dist, word: d.state === 'float' ? 'Puff!' : 'Blow!' };
+      if (!best || dist < best.dist) best = { i, d, dist, word: d.state === 'float' ? 'Puff!' : this.wet ? 'Blow!' : 'Puff!' };
     });
     return best;
   }
@@ -220,11 +191,6 @@ export class BubbleLive {
     if (this.ride || p.pos.y < MESA.top + 0.5 || p.pos.y > MESA.top + 3) return false;
     return Math.hypot(p.pos.x - CHIMNEY.x, p.pos.z - CHIMNEY.z) < CHIMNEY.r + 0.2 || Math.hypot(p.pos.x - (CHIMNEY.x + CHIMNEY.wall + 1), p.pos.z - CHIMNEY.z) < BUBBLE_RULES.rideR;
   }
-  // On the rim by Captain Suds' throne: Blow! is the shield game there.
-  inCourt(p) { const c = BUBBLE_RULES.court; return p.pos.y >= RIM.y + 0.5 && p.pos.y < RIM.y + 3 && p.pos.x >= c.x0 && p.pos.x <= c.x1 && p.pos.z >= c.z0 && p.pos.z <= c.z1; }
-  // The shield round to play: the first shield still up, or (all popped) the next one just for fun. -> 0..2
-  round() { const st = this.state(), k = st.shield.findIndex(s => !s); return k >= 0 ? k : this.shieldFun.round(3); }
-  onPad(p, k = this.round()) { const pad = COURT.rounds[k].pad; return Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z) <= BANK.pad; }
   near(p = this.game.player) {
     if (!p || this.game.inBattle || this.game.world !== this.world) return null;
     if (this.ride && p.carry === this.rideObj) return 'Puff!';
@@ -233,7 +199,8 @@ export class BubbleLive {
     if (this.nearRide(p)) return 'Ride!';
     const d = this.duckAhead(p);
     if (d) return d.word;
-    return 'Blow!';
+    if (this.nestAgain(p)) return 'Blow!';
+    return this.wet ? 'Blow!' : 'Puff!';
   }
   use(p = this.game.player) {
     const w = this.near(p);
@@ -242,10 +209,11 @@ export class BubbleLive {
     if (w === 'Ride!') { this.startRide(); return true; }
     const d = this.duckAhead(p);
     if (d && d.word === w) { this.duckUse(p, d); return true; }
-    this.blowAt(p);
+    if (this.nestAgain(p)) { this.duckAgain(p); return true; }
+    if (this.wet) this.blow(p); else this.airPuff(p);
     return true;
   }
-  // a tap on the screen (iPad): a puff while you ride, else the same as the big button (the bubble goes where you face)
+  // a tap on the screen (iPad): a puff while you ride, else the same as the big button
   tap(origin, dir) {
     const p = this.game.player;
     if (!p || this.paused() || this.game.world !== this.world) return false;
@@ -260,56 +228,58 @@ export class BubbleLive {
     if (pic?.id !== 'bubble' || pic.crew != null || result !== 'won') return;
     const g = this.game; // a won battle with Captain Suds clears the climb: a rematch is a new climb (harder)
     for (const k of BUBBLE_KEYS()) { const at = g.beaten.indexOf(k); if (at >= 0) g.beaten.splice(at, 1); }
-    this.stairMiss = [0, 0]; this.duckMiss = [0, 0, 0]; this.rideMiss = 0; this.shotMiss = [0, 0, 0]; this.duckFun = [false, false, false];
+    this.stairMiss = [0, 0, 0, 0]; this.duckMiss = [0, 0, 0]; this.rideMiss = 0; this.shieldMiss = 0; this.duckFun = [false, false, false];
+    this.burst = [9, 9, 9];
     for (const d of this.ducks) d.backHome();
     this.save();
     this.sync(true);
   }
 
   /* ---------------------------------------------- the wand and your bubbles ---------------------------------------------- */
-  // The big button's Blow! (not at a duckling): the shield game on the rim by the throne, else a bubble for the stairs; the nest's
-  // play-again once all ducklings are home.
-  blowAt(p) {
-    if (this.nestAgain(p)) { this.duckAgain(p); return true; }
-    if (this.inCourt(p)) return this.shoot(p);
-    return this.blow(p);
+  // The wand dips while your feet are on the floor by a soap pot; a jump (any leaving of the ground) shakes the film off.
+  stepWand(p) {
+    const ground = this.onGround(p);
+    if (ground) {
+      const pot = SOAP_POTS.find(([x, y, z]) => Math.hypot(p.pos.x - x, p.pos.z - z) < BUBBLE_RULES.dip && Math.abs(p.pos.y - y) < 0.6);
+      if (pot && !this.wet) { this.wet = true; sound.play('soapfill'); }
+    } else if (this.wasGround && this.wet) { this.wet = false; this.shook = 0; }
+    this.wasGround = ground;
   }
-  // Blow! a bubble two blocks ahead of your feet (only with your feet on something). -> true if a bubble came out.
+  // Blow! through the wet wand: a bubble just in front of you. -> true if a bubble came out.
   blow(p = this.game.player) {
-    const foot = this.footing(p);
-    const r = this.field.blow({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, this.flatLook(p), (x, y, z) => this.world.isSolid(x, y, z), foot);
-    if (!r.ok) {
-      if (r.why === 'air') this.say('air', WORDS.air, 2);
-      else if (r.why === 'soap') this.say('nosoap', WORDS.noSoap);
-      else if (r.why === 'touch') { sound.play('soappop'); this.say('touch', WORDS.touch, 2); }
-      else this.say('wall', WORDS.wall, 2);
-      return false;
-    }
-    if (r.popped === this.stood && r.popped) this.dropOff();
+    this.wet = false;
+    const r = this.field.blow({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, this.flatLook(p), (x, y, z) => this.world.isSolid(x, y, z));
+    if (!r.ok) { sound.play('soappop'); this.shook = 0; return false; } // no room in front: it pops on the wall at once
+    if (r.popped && r.popped === this.stood) this.dropOff();
     sound.play('wandblow');
-    this.blown = r.b; this.blownLate = false;
-    if (!this.told.has('first') && foot === 'ground') { this.told.add('first'); this.toast(WORDS.first); }
+    this.blown = r.b; this.stomped = false;
+    return true;
+  }
+  // A dry wand: a puff of air that pushes bubbles (and a duckling in front, see duckUse) the way you face.
+  airPuff(p = this.game.player) {
+    const look = this.flatLook(p);
+    this.field.puff({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, look, this.stood);
+    this.puffT = 0; this.puffAt = { x: p.eyePos.x, y: p.eyePos.y - 0.3, z: p.eyePos.z, dx: look.x, dz: look.z };
+    sound.play('duckpuff');
     return true;
   }
   land(b) {
     const p = this.game.player;
     this.stood = b; this.field.standOn(b); this.left = null;
-    const ox = p.pos.x - b.x, oz = p.pos.z - b.z, l = Math.hypot(ox, oz), m = Math.min(l, BUBBLE.onTop);
-    this.off = l > 1e-6 ? { x: ox / l * m, z: oz / l * m } : { x: 0, z: 0 };
-    this.stepOff = false; this.spaceWas = !!p.keys?.Space;
+    this.spaceWas = !!p.keys?.Space; this.stick = { wx: 0, wz: 0, analog: 0 };
     p.carry = this.standObj; p.vel.set(0, 0, 0);
     sound.play('bubbleland');
-    this.once('land', WORDS.land);
   }
-  // off the bubble you stand on: a bounce (jump = true) or a step off the edge
+  // off the bubble you stand on: a bounce (jump = true)
   leaveBubble(jump) {
     const p = this.game.player, b = this.stood;
     if (p.carry === this.standObj) p.carry = null;
     if (b && p.collides?.(p.pos)) p.pos.set(b.x, p.pos.y, b.z); // (never inside a wall the bubble was rubbing)
+    if (b) { b.sx = 0; b.sz = 0; }
     p.onGround = false;
     p.vel.y = jump ? Math.sqrt(2 * 28 * (this.world.gravity ?? 1) * BUBBLE.bounce) : 0;
-    this.left = b; // (it can still catch you from above, never from inside: stepping off really steps off)
-    this.stood = null; this.stepOff = false; this.fromBubble = true;
+    this.left = b; // (it can still catch you from above, never from inside)
+    this.stood = null; this.fromBubble = true;
     if (jump) sound.play('boing');
   }
   dropOff() { // the bubble under you popped
@@ -317,35 +287,22 @@ export class BubbleLive {
     if (p.carry === this.standObj) { const b = this.stood; p.carry = null; if (b && p.collides?.(p.pos)) p.pos.set(b.x, p.pos.y, b.z); p.vel.set(0, 0, 0); p.onGround = false; }
     this.stood = null; this.fromBubble = true;
   }
-  stepStand(dt) {
+  // on a bubble: the stick leans it (after a moment); if it carries you into a wall, it pops
+  stepStand() {
     const p = this.game.player, b = this.stood;
     if (!b || p.carry !== this.standObj) return;
-    if (b.standT < BUBBLE_RULES.settle) return; // just landed: the stick still held from the hop does not walk you off
-    const s = this.stick, k = BUBBLE_RULES.off * dt * (s.analog || 0);
-    const nx = this.off.x + s.wx * k, nz = this.off.z + s.wz * k;
-    if (Math.hypot(nx, nz) > BUBBLE.onTop) { this.off = { x: nx, z: nz }; this.stepOff = true; } else this.off = { x: nx, z: nz };
+    const s = this.stick, on = b.standT >= BUBBLE_RULES.settle;
+    b.sx = on ? s.wx * (s.analog || 0) : 0; b.sz = on ? s.wz * (s.analog || 0) : 0;
+    const w = this.standObj.where();
+    if (p.collides?.(new THREE.Vector3(w.x, w.y, w.z))) { this.field.pop(b); sound.play('soappop'); this.dropOff(); }
   }
-  // landing on a bubble (bubbles.js landsOn): the feet came down through its top (any frame rate), or they are in its top part (a hop
-  // up into it), and you are over it
+  // landing on a bubble (bubbles.js landsOn): the feet came down through its top (any frame rate), or they are in its top part
   checkLanding() {
     const p = this.game.player, feet = p.pos.y, prev = this.prevFeet ?? feet;
     if (p.carry || this.game.riding?.on || p.onGround) return;
     for (const b of this.field.list) if (landsOn(b, { x: p.pos.x, z: p.pos.z, feet, prev, vy: p.vel.y, inside: b !== this.left })) { this.land(b); return; }
   }
-  // Can you still get onto a bubble whose middle is at `at` from where you stand now? (its top part no higher than a hop takes your feet)
-  canReach(p, at) {
-    const on = p.carry === this.standObj && !!this.stood;
-    const h = hopHeight({ ground: p.onGround && !p.carry, onBubble: on, vy: p.vel.y, g: this.world.gravity ?? 1 });
-    return at.y + BUBBLE.scoop <= p.pos.y + h;
-  }
-  // the bubble you just blew floated out of reach while you stood still: say so once in a while (the stairs' one timing word)
-  checkLate(p) {
-    const b = this.blown;
-    if (!b || this.blownLate || !this.field.list.includes(b) || b.stand) return;
-    if (!this.footing(p) || !inStairs(p.pos.x, p.pos.y, p.pos.z) || this.canReach(p, b)) return;
-    this.blownLate = true; this.say('late', WORDS.late, 6);
-  }
-  // standing on the ground: the ledge you are on; after a fall from a bubble, the stairs' top or back to your ledge
+  // standing on the ground: the ledge you are on; after a fall from a bubble, the climb's top or back to your ledge
   checkGround() {
     const p = this.game.player;
     if (p.carry || !p.onGround) return;
@@ -353,40 +310,42 @@ export class BubbleLive {
     if (this.fromBubble) {
       this.fromBubble = false;
       const fx = Math.floor(x), fz = Math.floor(z);
-      if (!st.stairs && y >= MESA.top + 0.9 && fx >= STAIRS_TOP.x0 && fx <= STAIRS_TOP.x1 && fz >= STAIRS_TOP.z0 && fz <= BENCH.z1) { this.stairsDone(); }
-      else if (this.ledge && y < this.ledge.y - 0.4) {
-        const k = this.ledge.y < BENCH.top + 0.5 ? 0 : 1;
-        if (this.ledge.y < MESA.top + 0.5) this.stairMiss[k]++;
-        if (y < this.ledge.y - BUBBLE_RULES.fall) { this.fallBack(k); return; }
+      if (y >= MESA.top + 0.9 && y < MESA.top + 1.5 && fx >= STAIRS_TOP.x0 && fx <= STAIRS_TOP.x1 && fz >= STAIRS_TOP.z0 && fz <= STAIRS_TOP.z1 && this.ledge && this.ledge.y < MESA.top) {
+        if (!st.stairs) this.stairsDone(); else this.toast(`${WORDS.stairs} ${FUN.tag}`);
+      } else if (this.ledge && y < this.ledge.y - 0.4) {
+        const k = ledgeAt(this.ledge.x, this.ledge.y, this.ledge.z);
+        if (k != null) this.stairMiss[k]++;
+        if (y < this.ledge.y - BUBBLE_RULES.fall) { this.fallBack(); return; }
       }
+      if (this.fromRim && !this.stomped && Math.abs(y - (RIM.y + 1)) < 0.6) this.shieldMiss++; // a ride from the rim that popped no shield
+      this.fromRim = false;
     }
     this.ledge = { x, y, z };
-    if (this.field.soap < BUBBLE.soap) this.field.refill(); // (rework 2026-10-29: six bubbles from ledge to ledge: any ledge fills the wand)
   }
-  fallBack(k) {
+  fallBack() {
     const p = this.game.player, l = this.ledge;
     p.pos.set(l.x, l.y, l.z); p.vel.set(0, 0, 0);
     sound.play('soappop');
-    this.say('back', `${WORDS.back}${kindHelp(this.stairMiss[k]).on ? ' (Your bubbles float up a bit slower now.)' : ''}`, 2);
+    if (this.fromRim && !this.stomped) this.shieldMiss++;
+    this.fromRim = false;
   }
   stairsDone() {
     this.addKey(stairsKey);
-    this.stairMiss = [0, 0];
+    this.stairMiss = [0, 0, 0, 0];
     sound.play('fizzstar');
     this.toast(WORDS.stairs);
     this.sync(true);
   }
-  stepFlowers(p) {
-    for (const [x, y, z] of SOAP_FLOWERS) if (Math.hypot(p.pos.x - x, p.pos.z - z) < BUBBLE_RULES.flower && Math.abs(p.pos.y - y) < 1.5) {
-      if (this.field.refill()) { sound.play('soapfill'); this.say('soap', WORDS.soap, 1); }
-    }
-  }
 
   /* ---------------------------------------------- the ducklings ---------------------------------------------- */
   duckUse(p, a) {
-    const d = a.d, i = a.i;
-    if (d.state === 'sleep' || d.state === 'waddle') { d.blow(this.gardenT); sound.play('wandblow'); this.once('duckBlow', WORDS.duckBlow); if (i === 2) this.once('gust', WORDS.gust); return; }
-    const look = this.flatLook(p);
+    const d = a.d, look = this.flatLook(p);
+    if (d.state === 'sleep' || d.state === 'waddle') {
+      if (this.wet) { this.wet = false; d.blow(this.gardenT); sound.play('wandblow'); return; }
+      this.airPuff(p); return; // a dry wand only ruffles its feathers
+    }
+    this.wet = false; // (a wet wand's bubble just joins the duckling's: the same push)
+    this.puffT = 0; this.puffAt = { x: p.eyePos.x, y: p.eyePos.y - 0.3, z: p.eyePos.z, dx: look.x, dz: look.z };
     if (d.puff(look.x, look.z, a.dist)) sound.play('duckpuff');
   }
   // all three are home: the nearest one in the nest hops back to its island, just for fun (no key, nothing saved)
@@ -404,19 +363,15 @@ export class BubbleLive {
       if (st.duck[i] && d.state !== 'home' && !this.duckFun[i]) { d.state = 'home'; d.x = NEST.x; d.z = NEST.z; }
       if (!st.duck[i] && d.state === 'home') { d.backHome(); this.duckFun[i] = false; }
       d.help = this.duckMiss[i]; d.hard = this.hard;
-      if (d.state === 'float' && CURRENTS.some(c => d.x >= c.x0 && d.x < c.x1 && d.z >= c.z0 && d.z < c.z1)) this.once('stream', WORDS.stream);
       for (const e of d.step(step)) {
-        if (e.type === 'pop') { this.duckMiss[i]++; sound.play('soappop'); this.say(`duckpop${i}`, `${WORDS.duckPop(i + 1)}${kindHelp(this.duckMiss[i]).on ? ' (The wind is a bit gentler now.)' : ''}`, 1); }
-        else if (e.type === 'hurry') this.say(`duckhurry${i}`, WORDS.duckHurry(i + 1), 4);
-        else if (e.type === 'wake') { this.duckMiss[i]++; sound.play('soappop'); this.say(`duckwake${i}`, WORDS.duckWake(i + 1), 1); }
+        if (e.type === 'pop' || e.type === 'wake') { this.duckMiss[i]++; sound.play('soappop'); }
         else if (e.type === 'home') {
           this.duckMiss[i] = 0;
-          if (this.duckFun[i]) { this.duckFun[i] = false; sound.play('duckhome'); this.toast(`🦆 Home again! ${FUN.tag}`); continue; }
+          if (this.duckFun[i]) { this.duckFun[i] = false; sound.play('duckhome'); this.toast(`🦆 Home! ${FUN.tag}`); continue; }
           this.addKey(duckKey(i + 1));
           sound.play('duckhome');
           const k = this.state().ducks;
-          this.toast(WORDS.duckHome(i + 1, k));
-          if (k >= 3) this.toast(WORDS.allHome);
+          this.toast(k >= 3 ? WORDS.allHome : WORDS.duckHome(i + 1, k));
         }
       }
     });
@@ -450,13 +405,13 @@ export class BubbleLive {
     if (!r) return;
     r.help = this.rideMiss; r.hard = this.hard;
     for (const e of r.step(step, this.rideIn)) {
-      if (e.type === 'pop') { this.rideMiss++; sound.play('soappop'); this.say('ridepop', `${WORDS.ridePop}${kindHelp(this.rideMiss).on ? ' (It sinks a bit slower now.)' : ''}`, 1); }
+      if (e.type === 'pop') { this.rideMiss++; sound.play('soappop'); }
       else if (e.type === 'star') {
         sound.play('fizzstar');
-        if (!this.starsGot.has(e.k)) { this.starsGot.add(e.k); this.game.cubes += 1; this.game.ui?.renderHud?.(); this.toast(`⭐ A fizz star! +1 Capture Cube (${e.k} / ${CHIMNEY.stars.length - 1})`); }
+        if (!this.starsGot.has(e.k)) { this.starsGot.add(e.k); this.game.cubes += 1; this.game.ui?.renderHud?.(); this.toast(`⭐ +1 Capture Cube (${e.k} / ${CHIMNEY.stars.length - 1})`); }
       } else if (e.type === 'top') this.chimneyDone();
     }
-    if (this.ride && this.ride.resting() && this.ride.star === 0) { this.restT += step; if (this.restT >= BUBBLE_RULES.restOut) { this.rideOut = true; this.toast(WORDS.rideOut); } }
+    if (this.ride && this.ride.resting() && this.ride.star === 0) { this.restT += step; if (this.restT >= BUBBLE_RULES.restOut) this.rideOut = true; }
     else this.restT = 0;
   }
   chimneyDone() {
@@ -467,39 +422,40 @@ export class BubbleLive {
     p.pos.set(lx, RIM.y + 1, lz); p.vel.set(0, 0, 0);
     this.ride = null; this.rideOut = false; this.ledge = { x: lx, y: RIM.y + 1, z: lz };
     sound.play('fizzstar');
-    this.toast(again ? `🫧 Up the chimney again! ${FUN.tag}` : WORDS.chimney);
-    if (!again) this.once('court', WORDS.court);
+    this.toast(again ? `${WORDS.chimney} ${FUN.tag}` : WORDS.chimney);
     this.sync(true);
   }
 
-  /* ---------------------------------------------- Captain Suds' shields: bank shots ---------------------------------------------- */
-  // Blow! on the rim by the throne: from the round's gold pad a shot bubble flies the way you look (bubbles.js bankShot).
-  shoot(p) {
-    const k = this.round();
-    if (!this.onPad(p, k)) { this.say('pad', WORDS.pad, 2); return false; }
-    if (this.shots.length >= 2) return false;
-    const look = this.flatLook(p), from = { x: p.pos.x + look.x * BANK.from, z: p.pos.z + look.z * BANK.from };
-    const s = bankShot(courtOf(k), from, look, { t0: this.courtT, help: this.shotMiss[k], hard: this.hard });
-    this.shots.push({ k, s, t: 0, fun: this.state().shields >= 3 });
-    sound.play('wandblow');
-    this.once(`slider${k}`, COURT.rounds[k].slider ? WORDS.slider : WORDS.court);
-    return true;
-  }
-  stepShots(step) {
-    for (const sh of [...this.shots]) {
-      sh.t += step;
-      if (sh.t < sh.s.time) continue;
-      this.shots.splice(this.shots.indexOf(sh), 1);
-      if (sh.s.hit) {
-        this.shotMiss[sh.k] = 0; this.burst[sh.k] = 0;
-        sound.play('shieldburst');
-        if (sh.fun) { this.shieldFun.won(sh.k, 3); this.toast(`${WORDS.funShield} ${FUN.tag}`); continue; }
-        this.addKey(shieldKey(sh.k + 1));
-        const n = this.state().shields;
-        this.toast(WORDS.shieldHit(n));
-        if (n >= 3) this.toast(WORDS.allShields);
-      } else { this.shotMiss[sh.k]++; sound.play('soappop'); this.say('shotmiss', sh.s.end === 'guard' ? WORDS.shieldFence : WORDS.shieldMiss, 2); }
+  /* ---------------------------------------------- Captain Suds' shields: drop onto them ---------------------------------------------- */
+  // Is shield k up? (not popped yet; or, all three popped, back again just for fun a while after its last pop)
+  shieldUp(k, st = this.state()) { return !st.shield[k] ? this.burst[k] > 0.5 : st.shields >= 3 && this.burst[k] > BUBBLE_RULES.funBack; }
+  shieldNow(k) { const s = SHIELDS[k]; return { c: shieldAt(s, this.courtT, shieldSway(this.shieldMiss, this.hard)), r: shieldSize(s, this.shieldMiss, this.hard) }; }
+  stepShields() {
+    const p = this.game.player, st = this.state();
+    if (p.carry === this.standObj && this.stood && this.ledge && Math.abs(this.ledge.y - (RIM.y + 1)) < 0.6) this.fromRim = true; // a ride from the rim
+    for (let k = 0; k < SHIELDS.length; k++) {
+      if (!this.shieldUp(k, st)) continue;
+      const { c, r } = this.shieldNow(k);
+      if (p.carry === this.standObj && this.stood) { // your bubble bumps off a shield (it is much bigger)
+        const b = this.stood, d = Math.hypot(b.x - c.x, b.y - c.y, b.z - c.z);
+        if (d < r + BUBBLE.r) { const h = Math.hypot(b.x - c.x, b.z - c.z) || 1; b.vx += (b.x - c.x) / h * 1.5; b.vz += (b.z - c.z) / h * 1.5; }
+        continue;
+      }
+      if (p.carry) continue;
+      const hit = stomp(c, r, { x: p.pos.x, z: p.pos.z, feet: p.pos.y, prev: this.prevFeet ?? p.pos.y, vy: p.vel.y });
+      if (hit === 'pop') this.popShield(k, st);
+      else if (hit?.bump) { const nx = p.pos.x + hit.bump[0] * BUBBLE_RULES.bump, nz = p.pos.z + hit.bump[1] * BUBBLE_RULES.bump, at = new THREE.Vector3(nx, p.pos.y, nz); if (!p.collides?.(at)) { p.pos.x = nx; p.pos.z = nz; } }
     }
+  }
+  popShield(k, st) {
+    const p = this.game.player;
+    this.burst[k] = 0; this.stomped = true; this.shieldMiss = 0;
+    p.vel.y = SHIELD_RULES.rise; p.onGround = false;
+    sound.play('shieldburst');
+    if (st.shield[k]) { this.toast(WORDS.funShield); return; }
+    this.addKey(shieldKey(k + 1));
+    const n = this.state().shields;
+    this.toast(n >= 3 ? WORDS.allShields : WORDS.shieldHit(n));
   }
 
   /* ---------------------------------------------- the lifts ---------------------------------------------- */
@@ -532,24 +488,20 @@ export class BubbleLive {
     if (input?.ride) this.rideIn = { sx: input.ride.sx || 0, sz: input.ride.sz || 0 };
     const step = Math.min(dt, BUBBLE_RULES.dtMax);
     if (!this.paused()) {
-      this.clock += step; this.gardenT += step; this.courtT += step;
-      this.once('wand', WORDS.wand);
-      const st = this.state();
-      this.field.help = this.stairMiss[this.ledge && this.ledge.y >= BENCH.top + 0.5 ? 1 : 0]; this.field.hard = this.hard;
-      for (const e of this.field.step(step, { solid: (x, y, z) => this.world.isSolid(x, y, z), vents: [VENT2, ...BREEZES], drips: DRIPS })) {
+      this.clock += step; this.gardenT += step; this.courtT += step; this.puffT += step; this.shook += step;
+      const l = this.ledge ? ledgeAt(this.ledge.x, this.ledge.y, this.ledge.z) : null;
+      this.field.help = l != null && inClimb(p.pos.x, p.pos.y, p.pos.z) ? this.stairMiss[l] : 0; this.field.hard = this.hard;
+      this.stepWand(p);
+      for (const e of this.field.step(step, { solid: (x, y, z) => this.world.isSolid(x, y, z), winds: CLIMB_WINDS, drips: DRIPS })) {
         if (e.type === 'pop') { sound.play('soappop'); if (e.b === this.stood) this.dropOff(); }
-        else if (e.type === 'warn' && e.b === this.stood) this.say('warn', WORDS.warn, 6);
       }
-      this.stepStand(step);
+      this.stepStand();
       this.checkLanding();
       this.checkGround();
-      this.checkLate(p);
-      this.stepFlowers(p);
+      this.stepShields();
       this.stepDucks(step);
       this.stepRide(step);
-      this.stepShots(step);
       for (let k = 0; k < 3; k++) this.burst[k] += step;
-      if (!st.ready && st.done && this.inCourt(p)) this.once('court', WORDS.court);
     }
     this.prevFeet = p.pos.y;
     this.syncT -= dt;
@@ -562,32 +514,41 @@ export class BubbleLive {
   draw(p) {
     const t = this.clock, M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), P = new THREE.Vector3();
     const st = this.state(), cam = this.game.camera;
-    // your bubbles (a wobble before a stood one pops) and the shot bubbles
+    // your bubbles: a slow wobble, a fast one the last moment before they pop
     const BP = this.bubbles.userData.parts;
     hideAll(BP.film); hideAll(BP.shine);
     let i = 0;
     for (const b of this.field.list) {
-      const wob = b.stand && b.standT > this.field.standLife - BUBBLE.warn ? 0.12 * Math.sin(t * 40) : 0.03 * Math.sin(t * 3 + b.id);
+      const wob = b.age > this.field.life - BUBBLE.warn ? 0.12 * Math.sin(t * 40) : 0.03 * Math.sin(t * 3 + b.id);
       S.set(BUBBLE.r * (1 + wob), BUBBLE.r * (1 - wob), BUBBLE.r * (1 + wob)); P.set(b.x, b.y, b.z);
       M.compose(P, Q, S); BP.film.setMatrixAt(i, M); BP.shine.setMatrixAt(i, M); i++;
     }
-    i = 2;
-    for (const sh of this.shots) { const q = sh.s.path(sh.t); S.setScalar(BANK.r * 1.6); P.set(q.x, SHOT_Y, q.z); M.compose(P, Q, S); BP.film.setMatrixAt(i, M); BP.shine.setMatrixAt(i, M); i++; }
     BP.film.instanceMatrix.needsUpdate = true; BP.shine.instanceMatrix.needsUpdate = true;
     BP.film.material.uniforms.uTime.value = t;
-    // the ghost bubble: where Blow! puts your next bubble (green: you can blow now; grey: land first)
-    const court = this.inCourt(p);
-    const showGhost = !!cam && !this.ride && this.field.soap > 0 && !court && !(p.carry && p.carry !== this.standObj) && !this.duckAhead(p) && !this.nearRide(p) && !this.nestAgain(p) && !this.doorAhead(p.eyePos, p.forward);
+    // the ghost bubble: where a wet wand's bubble comes out (only with soap on the wand and your feet on the floor)
+    const showGhost = !!cam && this.wet && !this.ride && this.onGround(p) && !this.duckAhead(p) && !this.nearRide(p) && !this.nestAgain(p) && !this.doorAhead(p.eyePos, p.forward);
     const spot = showGhost ? this.field.spot(p.pos, this.flatLook(p), (x, y, z) => this.world.isSolid(x, y, z)) : null;
     this.ghost.visible = !!spot;
-    if (spot) {
-      const ok = !!this.footing(p), gp = this.ghost.userData.parts;
-      this.ghost.position.set(spot.x, spot.y, spot.z);
-      gp.ring.material.color.setHex(ok ? 0x7dffa0 : 0xbbbbbb); gp.ring.material.opacity = ok ? 0.85 : 0.35; gp.ball.material.opacity = ok ? 0.14 : 0.06;
-    }
-    // the wand in your hand
+    if (spot) { const gp = this.ghost.userData.parts; this.ghost.position.set(spot.x, spot.y, spot.z); gp.ring.material.color.setHex(0x7dffa0); gp.ring.material.opacity = 0.6; gp.ball.material.opacity = 0.1; }
+    // the wand in your hand: a shiny soap film in its ring while wet, an empty ring while dry
     this.wand.visible = !!cam && !this.ride;
-    if (this.wand.visible) { const o = this.wand; o.position.copy(cam.position); o.quaternion.copy(cam.quaternion); o.translateX(0.32); o.translateY(-0.26); o.translateZ(-0.6); o.rotateZ(0.35); o.rotateX(-0.2); }
+    if (this.wand.visible) {
+      const o = this.wand; o.position.copy(cam.position); o.quaternion.copy(cam.quaternion); o.translateX(0.32); o.translateY(-0.26); o.translateZ(-0.6); o.rotateZ(0.35); o.rotateX(-0.2);
+      const WP = o.userData.parts; WP.film.visible = this.wet || this.shook < 0.12; WP.film.scale.setScalar(this.wet ? 1 + 0.05 * Math.sin(t * 5) : 1.4);
+      WP.film.material.opacity = 0.5 + 0.12 * Math.sin(t * 4);
+    }
+    // a puff of air: a few wisps fly out of the wand and fade
+    const PW = this.puffs.userData.parts, pa = this.puffAt, pt = this.puffT / BUBBLE_RULES.puffTime;
+    if (pa && pt < 1) {
+      for (let k = 0; k < PW.n; k++) {
+        const s = 0.4 + 2.2 * pt * (0.7 + 0.1 * k), side = (k - 3) * 0.12 * (0.3 + pt);
+        P.set(pa.x + pa.dx * s - pa.dz * side, pa.y + 0.08 * Math.sin(k * 1.7) + 0.2 * pt, pa.z + pa.dz * s + pa.dx * side); S.setScalar(0.6 + 1.4 * pt);
+        PW.wisps.setMatrixAt(k, M.compose(P, Q, S));
+      }
+      PW.wisps.material.opacity = 0.7 * (1 - pt); PW.wisps.instanceMatrix.needsUpdate = true;
+    } else hideAll(PW.wisps);
+    // the soap pots' little bubbles bob
+    this.pots.userData.parts.pots.forEach((pot, k) => pot.bubs.forEach((b, j) => { b.position.y = 0.7 + 0.08 * Math.sin(t * 2 + k + j * 2); b.material.uniforms.uTime.value = t; }));
     // drips and shadows
     const DP = this.drips.userData.parts;
     DRIPS.forEach((d, k) => {
@@ -597,9 +558,10 @@ export class BubbleLive {
       DP.shadows.setMatrixAt(k, M.compose(P.set(d.x, d.bottom + 0.02, d.z), Q, S.set(near, 1, near)));
     });
     DP.drops.instanceMatrix.needsUpdate = true; DP.shadows.instanceMatrix.needsUpdate = true;
-    // streams: the narrow shaft's wind, the current, the lifts (only while on); the gust lane (only while it gathers or blows)
-    drawStreams(this.streams, t, [true, true, true, true, true, !!this.liftsOn[0], !!this.liftsOn[1]]);
-    drawStreams(this.gusts, this.gardenT * 1.6, GUSTS.map(gg => gustAt(gg, this.gardenT) > 0));
+    // streams: the steady winds, the garden's current, the lifts (only while on); the gusts (only while they gather or blow)
+    const on = this.streamOn.slice(); on[on.length - 2] = !!this.liftsOn[0]; on[on.length - 1] = !!this.liftsOn[1];
+    drawStreams(this.streams, t, on);
+    drawStreams(this.gusts, t * 1.6, this.gustWinds.map(gw => gustAt(gw, gw.garden ? this.gardenT : this.field.clock) > 0));
     // the ducklings: asleep on their islands, floating in a bubble (it wobbles when it gets thin), waddling home, or home in the nest
     this.ducks.forEach((d, k) => {
       const m = this.duckModels[k], bub = this.duckBubbles[k], y0 = MESA.top + 1;
@@ -617,31 +579,33 @@ export class BubbleLive {
     });
     // the Puff! arrow: which way and how far a puff sends the duckling in front of you
     const da = !this.ride && cam ? this.duckAhead(p) : null;
-    this.arrow.visible = !!da && da.word === 'Puff!';
+    this.arrow.visible = !!da && da.d.state === 'float';
     if (this.arrow.visible) {
       const look = this.flatLook(p), len = Math.min(9, glideOf(da.dist, da.d.friction));
       this.arrow.position.set(da.d.x, MESA.top + 1.06, da.d.z); this.arrow.rotation.set(0, -Math.atan2(look.z, look.x), 0); this.arrow.scale.set(len, 1, 1);
     }
-    // the chimney: the gaps (drawn wider with the kind help; the next one pulses with a beam of light), the fan, the bar, the stars
-    const CP = this.chim.userData.parts, gapK = (this.ride?.gap ?? RIDE.gap) / RIDE.gap, nextK = this.ride ? CHIMNEY.plates.findIndex(q => this.ride.y < q.y + 1) : 0;
+    // the chimney: the gaps (drawn wider with the kind help; the next one pulses with a beam of light), a turning plate, the fans, the bar, the stars
+    const CP = this.chim.userData.parts, rt = this.ride ? this.ride.t : t, gapK = (this.ride?.gap ?? RIDE.gap) / RIDE.gap, nextK = this.ride ? CHIMNEY.plates.findIndex(q => this.ride.y < q.y + 1) : 0;
     CP.plates.forEach((pl, k) => {
       const pulse = k === nextK ? 1 + 0.08 * Math.sin(t * 6) : 1;
+      pl.g.rotation.y = -pl.spin * rt;
       pl.glowRing.scale.set(gapK * pulse, gapK * pulse, 1); pl.halo.scale.set(gapK * pulse, gapK * pulse, 1);
       pl.beam.visible = k === nextK; pl.halo.material.opacity = k === nextK ? 0.35 + 0.15 * Math.sin(t * 6) : 0.18;
     });
-    CP.fan.rotation.z = t * 6;
+    CP.fans.forEach((f, k) => { f.rotation.z = t * (6 + k); });
     CP.bar.rotation.y = -(this.ride ? this.ride.barAngle() : t * RIDE.bar);
-    CP.stars.forEach((s, k) => { s.rotation.y = t * 1.5 + k; s.visible = k > 0; s.material.color.setHex(this.ride && this.ride.star >= k ? 0xfff6c0 : 0xffd23a); });
-    // the ride bubble: waiting (it pulses, a little duck sits on its seat, the "Ride!" sign bobs over it) or carrying you
+    CP.stars.forEach((s, k) => { const pl = CHIMNEY.plates[k - 1]; if (pl?.spin) { const g = gapOf(CHIMNEY, pl, rt); s.position.x = g.x; s.position.z = g.z; } s.rotation.y = t * 1.5 + k; s.visible = k > 0; s.material.color.setHex(this.ride && this.ride.star >= k ? 0xfff6c0 : 0xffd23a); });
+    // the ride bubble: waiting (big, golden, a little duck on its seat, the "Ride!" sign over it) or carrying you. From inside it is only
+    // a faint soap rim (owner 2026-10-29: "once I'm in the bubble, it became overly bright ... I have no idea what I'm seeing").
     const rb = this.rideBubble, r = this.ride, RP = rb.userData.parts;
     rb.visible = !r || r.popT === null;
-    // (lead 2026-10-29: waiting, it is drawn big, ~2.7 blocks wide, so it reads from across the room; while you ride it is drawn at the
-    // ride's own size RIDE.R, so the gold rings still fit round it. Only the drawing: the ride's rules and sizes are unchanged.)
     const big = RIDE_LOOK.wait / RIDE.R, bob = 0.12 * Math.sin(t * 1.8);
-    if (r) { rb.position.set(r.x, r.y, r.z); rb.scale.setScalar(1); }
+    if (r) { rb.position.set(r.x, r.y, r.z); rb.scale.setScalar(1.6); }
     else { rb.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE_LOOK.wait + 0.1 + bob, CHIMNEY.z); rb.scale.setScalar(big * (1 + 0.04 * Math.sin(t * 3))); }
-    RP.film.material.uniforms.uTime.value = t * 2; RP.glow.material.opacity = r ? 0.12 : 0.25 + 0.12 * Math.sin(t * 3);
-    RP.gold.material.opacity = r ? 0.12 : 0.22 + 0.06 * Math.sin(t * 3);
+    const inside = !!r && p.carry === this.rideObj;
+    RP.film.material.uniforms.uTime.value = t * 2; RP.film.material.uniforms.uAlpha.value = inside ? 0.22 : 0.8;
+    for (const o of [RP.glow, RP.gold, RP.sparks, RP.band, RP.seat, RP.shine]) o.visible = !inside;
+    RP.glow.material.opacity = 0.25 + 0.12 * Math.sin(t * 3); RP.gold.material.opacity = 0.22 + 0.06 * Math.sin(t * 3);
     RP.sparks.rotation.y = t * 0.9; RP.sparks.children.forEach((m, k) => m.scale.setScalar(0.6 + 0.5 * Math.abs(Math.sin(t * 3 + k))));
     this.rideSign.visible = !r;
     this.rideSign.position.set(CHIMNEY.x, CHIMNEY.floor + RIDE_LOOK.wait * 2 + 1.0 + bob, CHIMNEY.z);
@@ -649,51 +613,36 @@ export class BubbleLive {
       this.rideDuck.visible = !r;
       if (!r) { this.rideDuck.position.set(rb.position.x, rb.position.y - RIDE_LOOK.wait * 0.62, rb.position.z); this.rideDuck.rotation.set(0, Math.PI / 2 + 0.4 * Math.sin(t * 0.8), 0); animateModel(this.rideDuck, t, false); }
     }
-    // the shields (a burst grows and fades for half a second)
+    // the shields: bobbing on the breeze; a burst grows and fades for half a second; popped ones float back later just for fun
     this.shields.userData.parts.list.forEach((s, k) => {
-      const up = !st.shield[k], b = this.burst[k];
+      const up = this.shieldUp(k, st), b = this.burst[k], { c, r: rr } = this.shieldNow(k);
       s.g.visible = up || b < 0.5;
-      if (!up && b < 0.5) s.g.scale.setScalar(1 + b * 1.2); else s.g.scale.setScalar(1 + 0.02 * Math.sin(t * 2 + k));
-      s.ring.rotation.z = t * (0.4 + k * 0.2);
+      s.g.position.set(c.x, c.y, c.z);
+      s.g.scale.setScalar(up ? rr / SHIELDS[k].r * (1 + 0.02 * Math.sin(t * 2 + k)) : 1 + b * 1.2);
+      s.ring.rotation.z = t * (0.4 + k * 0.2); s.cap.rotation.y = t * 2;
       s.g.children[0].material.uniforms.uTime.value = t;
-      s.g.children[0].material.uniforms.uAlpha.value = up ? 0.8 + k * 0.1 : Math.max(0, 1 - b * 2);
+      s.g.children[0].material.uniforms.uAlpha.value = up ? 0.9 : Math.max(0, 1 - b * 2);
     });
-    // the shield game: only this round's cushions (the slider where it is now) and pad; the dotted aim line from the pad
-    const k = this.round();
-    this.cushions.forEach((list, j) => list.forEach((c, n) => {
-      c.visible = j === k;
-      const rd = COURT.rounds[j];
-      if (rd.slider && n === rd.cushions.length) { const sb = cushionsAt(courtOf(j), this.courtT, this.shotMiss[j], this.hard).at(-1); c.position.set(sb.x0, COURT.y, sb.z0); } // (where bankShot has it)
-    }));
-    this.pads.forEach((pd, j) => { pd.visible = j === k; pd.scale.setScalar(j === k ? 1 + 0.06 * Math.sin(t * 4) : 1); });
-    const aimOn = court && !!cam && this.onPad(p, k) && !(p.carry && p.carry !== this.standObj);
-    if (aimOn) {
-      const look = this.flatLook(p), from = { x: p.pos.x + look.x * BANK.from, z: p.pos.z + look.z * BANK.from };
-      const line = aimLine(courtOf(k), from, look, { t0: this.courtT, help: this.shotMiss[k], hard: this.hard });
-      line[0] = [from.x + look.x * 0.8, from.z + look.z * 0.8]; // (not right under your eyes)
-      drawDots(this.aimDots, line, SHOT_Y - 0.25, 0.45, t * 0.9);
-    }
-    this.aimDots.visible = aimOn;
   }
   refreshChip() {
     const ui = this.game.ui;
     if (!ui?.setScore || this.game.world !== this.world) return;
-    const st = this.state(), soap = '●'.repeat(this.field.soap) + '○'.repeat(BUBBLE.soap - this.field.soap);
-    if (this.ride) { ui.setScore({ text: `🫧 Chimney · ⭐ ${this.ride.star} / ${CHIMNEY.stars.length - 1} · tap Jump to float up`, done: false }); return; }
+    const st = this.state();
+    if (this.ride) { ui.setScore({ text: `🫧 ⭐ ${this.ride.star} / ${CHIMNEY.stars.length - 1}`, done: false }); return; }
     const ready = st.ready && !this.game.bosses?.crewAim?.(this.game.player.pos);
-    if (ready && !st.star) { ui.setScore({ text: '🫧 Captain Suds is ready to battle!', done: true }); return; }
-    ui.setScore({ text: `🫧 ${soap} · Stairs ${st.stairs ? '✓' : '○'} · 🦆 ${st.ducks} / 3 · Chimney ${st.chimney ? '✓' : '○'} · 🛡️ ${st.shields} / 3`, done: false });
+    if (ready && !st.star) { ui.setScore({ text: '🫧 Captain Suds is ready!', done: true }); return; }
+    ui.setScore({ text: `🫧 Ledges ${st.stairs ? '✓' : '○'} · 🦆 ${st.ducks} / 3 · Chimney ${st.chimney ? '✓' : '○'} · 🛡️ ${st.shields} / 3`, done: false });
   }
 
   // For tests.
   info() {
     const r = this.ride;
     return {
-      soap: this.field.soap, bubbles: this.field.list.map(b => ({ id: b.id, x: b.x, y: b.y, z: b.z, stand: b.stand, age: b.age, standT: b.standT })),
+      wet: this.wet, bubbles: this.field.list.map(b => ({ id: b.id, x: b.x, y: b.y, z: b.z, stand: b.stand, age: b.age, standT: b.standT })),
       stood: this.stood?.id ?? null, ledge: this.ledge ? { ...this.ledge } : null, stairMiss: this.stairMiss.slice(), fromBubble: this.fromBubble,
       ducks: this.ducks.map(d => ({ state: d.state, x: d.x, z: d.z, vx: d.vx, vz: d.vz, left: d.left })), duckMiss: this.duckMiss.slice(),
-      ride: r ? { x: r.x, y: r.y, z: r.z, star: r.star, done: r.done, pops: r.pops, popT: r.popT } : null, rideMiss: this.rideMiss,
-      shots: this.shots.length, shotMiss: this.shotMiss.slice(), round: this.round(), courtT: this.courtT, lifts: this.liftsOn.slice(), state: this.state(),
+      ride: r ? { x: r.x, y: r.y, z: r.z, star: r.star, done: r.done, pops: r.pops, popT: r.popT, t: r.t } : null, rideMiss: this.rideMiss,
+      shieldMiss: this.shieldMiss, shields: SHIELDS.map((s, k) => ({ up: this.shieldUp(k), ...this.shieldNow(k) })), courtT: this.courtT, lifts: this.liftsOn.slice(), state: this.state(),
     };
   }
 }

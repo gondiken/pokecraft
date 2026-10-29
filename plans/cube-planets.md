@@ -334,4 +334,5 @@ child expects, visible in the world, with a reason in the story, needing no rule
   remembered per device. Default stays the first-person eased turn.
 - **Less text:** the guide names only where (an emoji, a name, an arrow); toasts only say what happened.
 - **Saves:** realm version 3 (an older spot arrives at the start); the owner asked for his progress to be reset, so a save without
-  `pw:gravity:redesign1` loses its Cube Planets keys, crew, star and Boss wins once (fine only because the world was preview-only).
+  `pw:gravity:redesign1` loses its Cube Planets keys, crew, star and Boss wins once (worldreset.js, shared with the Bubble Well; fine only
+  because the world was preview-only). ?preview's "Start this world over" works here too (it keeps the mark).

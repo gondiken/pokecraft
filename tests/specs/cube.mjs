@@ -228,7 +228,7 @@ export default async function ({ browser, base, t }) {
       live.battleEnded('won', { picture: { id: 'gravity', crew: 0 } });
       const games = () => game.beaten.filter(k => k !== CL.REDESIGN_MARK).length, crewKeep = games();
       live.battleEnded('won', { picture: { id: 'gravity' } });
-      t.ok(st.done && st.n === 7 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 7 && games() === 0 && game.beaten.includes(CL.REDESIGN_MARK),
+      t.ok(st.done && st.n === 7 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 7 && games() === 0,
         `all seven games won with the bots (${keys}); afterwards every game still plays just for fun and saves nothing new (${fun} for-fun words); a crew battle keeps the keys, the Boss battle clears all seven (a rematch plays them again)`);
       game.stars = ['gravity'];
       const hard = new (live.constructor)(game, env.world.parts[0]);
@@ -252,15 +252,20 @@ export default async function ({ browser, base, t }) {
       `every planet pulls the same (g ${[...gs].join()} of the main world's, a bit floatier than the old hub planets' 0.7; before: 0.7 / 0.6 / 0.45 with no reason you could see): a jump on the Meadow Cube, a pebble, the Moon Dock and a Lens Rock goes ${jumps[0].top} high for ${jumps[0].t} frames on each (${jumps.map(j => `${j.top}/${j.t}`).join(', ')})`);
   }
 
-  /* ------------------------------------------------------------ reset (Node): the redesign's one-time reset */
+  /* ------------------------------------------------------------ reset (Node): the redesign's one-time reset (worldreset.js) */
   if (want('reset')) {
-    const old = { beaten: ['pw:gravity:tag1', 'pw:gravity:ring2', 'pw:gravity:crew1', 'pw:gravity:hop', 'pw:castle:shield1', 'red:trainer'], stars: ['castle', 'gravity'], bossWins: { gravity: 2, castle: 1 } };
-    const did = CL.cubeReset(old);
-    const marked = { beaten: [CL.REDESIGN_MARK, 'pw:gravity:tag2', 'pw:gravity:lens1', 'pw:gravity:crew2'], stars: ['gravity'], bossWins: { gravity: 1 } }, keep = JSON.stringify(marked);
-    const did2 = CL.cubeReset(marked);
-    const fresh = { beaten: [], stars: [], bossWins: {} }, did3 = CL.cubeReset(fresh);
-    t.ok(did && old.beaten.join() === `pw:castle:shield1,red:trainer,${CL.REDESIGN_MARK}` && old.stars.join() === 'castle' && JSON.stringify(old.bossWins) === '{"castle":1}' && !did2 && JSON.stringify(marked) === keep && !did3 && fresh.beaten.join() === CL.REDESIGN_MARK,
-      `an old save loses its Cube Planets keys, crew, star and Boss wins once and is marked (other worlds untouched: ${old.beaten.join(', ')}); a marked save keeps everything; a fresh one just gets the mark`);
+    const WR = await import('../../src/worldreset.js');
+    const old = { beaten: ['pw:gravity:tag1', 'pw:gravity:ring2', 'pw:gravity:crew1', 'pw:gravity:hop', 'pw:castle:shield1', 'red:trainer', 'pw:bubble:redesign1'], stars: ['castle', 'gravity'], bossWins: { gravity: 2, castle: 1 } };
+    const did = WR.runWorldResets(old);
+    const marked = { beaten: ['pw:bubble:redesign1', CL.REDESIGN_MARK, 'pw:gravity:tag2', 'pw:gravity:lens1', 'pw:gravity:crew2'], stars: ['gravity'], bossWins: { gravity: 1 } }, keep = JSON.stringify(marked);
+    const did2 = WR.runWorldResets(marked);
+    const fresh = { beaten: [], stars: [], bossWins: {} }; WR.runWorldResets(fresh, { fresh: true });
+    t.ok(did.join() === 'gravity' && old.beaten.join() === `pw:castle:shield1,red:trainer,pw:bubble:redesign1,${CL.REDESIGN_MARK}` && old.stars.join() === 'castle' && JSON.stringify(old.bossWins) === '{"castle":1}' && !did2.length && JSON.stringify(marked) === keep && fresh.beaten.includes(CL.REDESIGN_MARK) && WR.WORLD_RESETS.some(r => r.id === 'gravity' && r.mark === CL.REDESIGN_MARK),
+      `an old save loses its Cube Planets keys, crew, star and Boss wins once and is marked (other worlds untouched: ${old.beaten.join(', ')}); a marked save keeps everything; a new game just gets the mark`);
+    // "Start this world over" (?preview): clears Cube Planets' keys, star and Boss wins, never the mark, never another world's keys
+    const g = { beaten: [CL.REDESIGN_MARK, 'pw:gravity:tag1', 'pw:gravity:lens2', 'pw:gravity:crew3', 'pw:castle:shield1'], stars: ['gravity', 'castle'], bossWins: { gravity: 1 }, keys: [] };
+    WR.clearWorlds(g, ['gravity']);
+    t.ok(g.beaten.join() === `${CL.REDESIGN_MARK},pw:castle:shield1` && g.stars.join() === 'castle' && !g.bossWins.gravity, `"Start this world over" in Cube Planets clears its games, crew, star and Boss wins and keeps the mark (${g.beaten.join(', ')}), so a later load never resets again`);
   }
 
   /* ------------------------------------------------------------ data, off, gravity (a page, no game started) */

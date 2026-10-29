@@ -11,14 +11,13 @@
 //    is found (pw:gravity:lens1..3, any order). A jump that floats off into space is puffed back to the dock.
 // Never a fail (a miss tries again), kind help only through orbits.js gravityHelp (= kindhelp.js), a harder rematch when you hold the star
 // (orbits.js HARD). Once all are won every game plays on just for fun (forfun.js) and saves nothing new. A won battle with Professor Orbit
-// clears the seven keys (battleEnded). The redesign's one-time reset (cubeland.js cubeReset) runs when the part starts, and the mark is
-// put back before any key is saved. Clocks are summed frame dt with fixed sub-steps (orbits.js STEP) and stand still in a battle, an ask,
-// a panel or the pause. `manual` + step(dt) for tests; info() for tests.
+// clears the seven keys (battleEnded). The redesign's one-time reset is worldreset.js's (mark pw:gravity:redesign1). Clocks are summed
+// frame dt with fixed sub-steps (orbits.js STEP) and stand still in a battle, an ask, a panel or the pause. `manual` + step(dt) for tests; info() for tests.
 import * as THREE from 'three';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { sketchModel } from './sketch.js';
-import { PLANETS, P, PUPS, FLOWERS, HOME_FLOWERS, MOON, SUN, LENSES, BOXES, tagKey, HOP_KEY, lensKey, GRAVITY_KEYS, gravityState, cubeReset, cubeMark } from './cubeland.js';
+import { PLANETS, P, PUPS, FLOWERS, HOME_FLOWERS, MOON, SUN, LENSES, BOXES, tagKey, HOP_KEY, lensKey, GRAVITY_KEYS, gravityState } from './cubeland.js';
 import { GRAV, upOf, frameOf, toLocal } from './gravity.js';
 import { PupRun, PUP, loopNearest, loopAt, ferryAt, jumpOff, gravityHelp, HARD } from './orbits.js';
 import { FUN } from './forfun.js';
@@ -49,7 +48,6 @@ export class CubeLive {
     this.manual = false;
     this.told = {}; this.said = new Map(); this.clock = 0;
     this.caught = 0;
-    if (cubeReset(game)) this.save(); // the redesign's one-time reset (cubeland.js; Cube Planets was preview-only until then)
     // the Orbikit Chase
     this.pups = PUPS.map(() => ({ run: null, tagT: -99 }));
     this.pMiss = [0, 0, 0]; this.tagPress = false;
@@ -72,7 +70,7 @@ export class CubeLive {
   play(name) { try { sound.play(name); } catch { /* sound is optional */ } }
   save() { this.game.save?.(); }
   has(k) { return !!this.game.beaten?.includes(k); }
-  addKey(k) { const g = this.game; cubeMark(g); if (!g.beaten.includes(k)) g.beaten.push(k); this.save(); }
+  addKey(k) { const g = this.game; if (!g.beaten.includes(k)) g.beaten.push(k); this.save(); }
 
   /* ---------------------------------------------- meshes ---------------------------------------------- */
   buildSky() {
@@ -225,9 +223,7 @@ export class CubeLive {
   }
   battleEnded(result, opts) {
     const pic = opts?.picture, g = this.game;
-    if (pic?.id !== 'gravity') return;
-    cubeMark(g); // (a crew or Boss win is progress: the mark must be there before it is saved)
-    if (pic.crew != null || result !== 'won') return;
+    if (pic?.id !== 'gravity' || pic.crew != null || result !== 'won') return;
     for (const k of GRAVITY_KEYS) { const at = g.beaten.indexOf(k); if (at >= 0) g.beaten.splice(at, 1); } // a won battle with Professor Orbit clears the seven keys: a rematch plays the games again (harder)
     this.pMiss = [0, 0, 0]; this.hMiss = FLOWERS.map(() => 0); this.fMiss = 0;
     this.pups.forEach(q => { q.run = null; });
