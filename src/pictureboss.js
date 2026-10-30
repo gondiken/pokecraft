@@ -250,15 +250,15 @@ addBoss({
 /* ==== end of T49 castle ==== */
 
 /* ==== Bubble ==== */
-// Captain Suds, a giant Lathotter with a foam beard, sits on his foam throne on the rim of the Bubble Well behind three shield bubbles. His
-// gate: the three stretches of the climb (the Fizz Ledges, the three ducklings, the Chimney Ride) and his three shields (all saved
+// Captain Suds, a giant Lathotter with a foam beard, sits on his foam throne on the rim of the Bubble Well, sealed in a big bubble that his
+// three shield bubbles hold up (bubblelive.js). His gate: his three shields, then the three stretches of the climb (the Fizz Ledges, the three ducklings, the Chimney Ride) (all saved
 // `beaten` keys, bubbleland.js bubbleState); his crew Wanda Wand, Duckherd Daisy and Mate Fizz battle first (the base's crew rule).
 addBoss({
   id: 'bubble', name: 'Captain Suds', type: 'bubble', title: 'Captain Suds · Bubble Well Boss', model: { species: 'lathotter', scale: 2.2 }, // (the title is spelled out: a closed well's frame is named "Secret World")
-  gate: game => {
+  gate: game => { // (owner 2026-10-30: he sits sealed in a big bubble while any shield is up: one line, in his own words, from inside it)
     const st = bubbleState(game);
-    if (!st.done) return `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
-    return st.shields < 3 ? `My shields are up! Pop them from above! (🛡️ ${st.shields} / 3)` : null; // (redesign 2026-10-29: drop onto them)
+    if (st.shields < 3) return '(from inside his bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!';
+    return st.done ? null : `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
   },
   team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'bodyslam', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
   intro: ['Ahoy-hoy! You climbed my whole well and popped my shields!', 'Now, a bubbly battle!'],

@@ -398,3 +398,32 @@ it needs no explanation text. Words: only the big button's word ("Blow!", "Puff!
   ledges 1 and 2 at once and not the windy ones; a kid who blows and hops at random makes the windy ledges about 1 time in 40 bubbles;
   the pillar kid never leaves the floor. Shields: skilled pops each one every time (62-100 % of bubbles), random 5-28 % of bubbles, hopping
   straight off never.
+
+## Owner's play 2026-10-30: the shields explain themselves, a longer ride, no stars
+
+The owner: "Bubble Well challenges are sooo much better! Both climbing, ducklings, and chimney ride. You can make the chimney ride
+slightly longer as well. I didn't understand what I was supposed to do with Captain Suds' shields. They didn't seem to be preventing him
+from battling, and I didn't get that I was supposed to jump on top of them. Only realized this after reading the notes. The idea is good
+though ... Btw collecting stars on the way up and also with Captain Suds' shields could be confusing, as the Wizard tower bridge requires
+stars as well."
+
+- **Captain Suds sealed in his bubble** (`DOME`, `buildDome`): a big three-skinned bubble over his throne. It boings you back (you never
+  get in; a bubble you ride pops on it) and he giggles in there; walking up, or talking to him, gets his one line: "(from inside his
+  bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!" (lore in his own words, not a rule list; his gate in
+  `pictureboss.js` says the same). Trails of little bubbles run from each shield into it, in that shield's colour; every popped shield
+  pops its skin; the last pop bursts the dome and he is free to battle (after his crew, as before).
+- **"Land on top" is found by doing it:** shield 1 rests low on the balcony's foam right in front of him (a bubble sitting on a soapy
+  floor is a dome; its top 1.05 over the floor, a jump climbs 1.32). Walk into it and it boings you back (pushed out, a little hop, it
+  squashes, a boing sound); jump at it and you land on top: pop, and his bubble loses a skin. `stomp` now tells three cases: over its
+  top falling = pop, onto its shoulder or into its side or from under = boing (`{ bump, up }`), still above it = nothing yet (before, the
+  feet just over its top already "bumped", so a jump from the side could never land). Shields 2 and 3 bob high over a soap pot each and
+  need the bubble ride (out of a jump's reach from anything you stand on, `bubblecheck.mjs`).
+- **Kids** (`makeLowShieldKid`, real Player in Node at 60 and 20 fps): a first-time kid who walks at it and jumps (from a step to three
+  away, or right after a boing) pops it 10 times in 10 within 4 s; a kid who only walks into it is boinged back 16-19 times in 15 s and
+  never pops it; jumping under a high shield never reaches it; walking at Captain Suds for 4 s never gets inside his bubble. The high
+  shields' skilled / random / masher kids as before.
+- **The Chimney Ride a bit longer:** the chimney now stands up out of the rim as a glass-fronted stack to y 47 with one more stretch in
+  it: a sixth gold ring that turns the other way, then a second, slower arm that turns the other way too (the same pieces mirrored:
+  variety, not harder). The best robot 37 s at 60 and 20 fps (was 24 / 29), never a pop; the spammer still pops on ring 2.
+- **No stars in the well but Captain Suds' own:** the ride's checkpoints are **bars of soap** (a pink bar with foam and two bubbles; chip
+  `🧼 n / 6`, toast `🧼 +1 Capture Cube`); the shields' gold caps became a heap of foam. Saved keys unchanged.

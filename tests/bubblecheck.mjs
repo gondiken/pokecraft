@@ -4,8 +4,8 @@
 // the fizz lifts (when on) and the Chimney Ride (from its floor to the rim). Used by tests/specs/bubble.mjs and run by hand with
 // `node tests/bubblecheck.mjs [seed]`.
 import { B, BLOCKS, WOOL } from '../src/blocks.js';
-import { bubbleLand, SIZE, WELL, FLOOR, MESA, RIM, GARDEN, NEST, ISLANDS, THORNS, CHIMNEY, LEDGES, SOAP_POTS, SHIELDS, LIFTS, DRIPS, WINDS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
-import { RIDE, DUCK, gapOf, rideUp } from '../src/bubbles.js';
+import { bubbleLand, SIZE, WELL, FLOOR, MESA, RIM, GARDEN, NEST, ISLANDS, THORNS, CHIMNEY, LEDGES, SOAP_POTS, RIM_POTS, SHIELDS, DOME, BOSS_AT, LIFTS, DRIPS, WINDS, rWell, rChim, onRim, inGarden } from '../src/bubbleland.js';
+import { RIDE, DUCK, gapOf, rideUp, hopHeight } from '../src/bubbles.js';
 import { kindHelp } from '../src/kindhelp.js';
 import { walkGraph, bfs } from './housecheck.mjs';
 import { standIn } from './castlecheck.mjs';
@@ -91,7 +91,7 @@ export function analyze(seed = 1) {
   out.info.reach = full.size;
   if (!full.has(all.key(...at(boss.rest)))) bad('Captain Suds cannot be reached');
   if (!full.has(all.key(...rimArrive))) bad('the rim way back cannot be reached');
-  if (!full.has(all.key(...at(SOAP_POTS.at(-1))))) bad('the rim soap pot cannot be reached');
+  for (const pot of RIM_POTS.filter(Boolean)) if (!full.has(all.key(...at(pot)))) bad('a rim soap pot cannot be reached');
   const onlyLifts = bfs(graphOf(w, { lifts: [true, true] }), [arrive]);
   if (!has(onlyLifts, (x, y, z) => y === MESA.top + 1) || !has(onlyLifts, (x, y, z) => y === RIM.y + 1)) bad('the fizz lifts do not take you up to the plateau and the rim');
   const doors = [arrive, rimArrive].map(d => all.key(...d));
@@ -99,23 +99,38 @@ export function analyze(seed = 1) {
     const seen = bfs(all, [s]);
     if (!doors.some(d => seen.has(d))) bad(`stuck at ${s}`);
   }
-  // 4. the shields: never reachable by a jump from anything you can stand on (only from a bubble), but a bubble from the rim's pot climbs
-  //    above every one of them
-  const rimPot = SOAP_POTS.at(-1);
+  // 4. the shields (owner 2026-10-30): the low first one rests on the balcony's foam, a plain jump from the balcony gets your feet well over
+  //    its top (and it is no step: it stands up more than half a block); the high ones are never reachable by a jump from anything you can
+  //    stand on (only from a bubble), and a bubble from the soap pot under each climbs above it. Captain Suds' dome stands clear of them all.
+  const jump = hopHeight({ ground: true });
+  out.info.lowShield = +(SHIELDS[0].y + SHIELDS[0].r - (RIM.y + 1)).toFixed(2);
   SHIELDS.forEach((s, k) => {
+    if (!onRim(s.x, s.z)) bad(`shield ${k + 1} is not over the rim`);
+    const span = [-1, 1].flatMap(a => [-1, 1].map(b => [s.x + a * (s.ax || 0), s.z + b * (s.az || 0)]));
+    if (span.some(([x, z]) => Math.hypot(x - DOME.x, z - DOME.z) < DOME.r + s.r + 0.5)) bad(`shield ${k + 1} touches Captain Suds' dome`);
+    if (s.low) {
+      const top = s.y + (s.ay || 0) + s.r - (RIM.y + 1);
+      if (top > jump - 0.25 || top < 0.6) bad(`the low shield's top is ${top.toFixed(2)} over the balcony (a jump climbs ${jump.toFixed(2)})`);
+      for (const [x, z] of span) if (!standOk(Math.floor(x), RIM.y + 1, Math.floor(z))) bad('the low shield is not over the balcony floor');
+      return;
+    }
     const low = s.y - (s.ay || 0) + s.r; // its top at its lowest
     for (let x = Math.floor(s.x - s.ax - s.r - 3); x <= s.x + s.ax + s.r + 3; x++) for (let z = Math.floor(s.z - s.az - s.r - 3); z <= s.z + s.az + s.r + 3; z++) for (let y = RIM.y; y <= 47; y++) {
-      if (standOk(x, y, z) && y + 8.6 * 8.6 / 56 + 0.1 >= low) { bad(`shield ${k + 1} can be jumped onto from ${x},${y},${z}`); x = 999; break; }
+      if (standOk(x, y, z) && y + jump + 0.1 >= low) { bad(`shield ${k + 1} can be jumped onto from ${x},${y},${z}`); x = 999; break; }
     }
-    if (rimPot[1] + rideUp() < s.y + (s.ay || 0) + s.r + 0.3) bad(`shield ${k + 1} is out of reach of a bubble from the rim`);
-    if (!onRim(s.x, s.z)) bad(`shield ${k + 1} is not over the rim`);
+    const pot = RIM_POTS[k];
+    if (!pot || pot[1] + rideUp() < s.y + (s.ay || 0) + s.r + 0.3 || Math.hypot(pot[0] - s.x, pot[2] - s.z) > 4.5) bad(`shield ${k + 1} has no soap pot under it`);
   });
+  if (Math.hypot(DOME.x - BOSS_AT.x - 0.5, DOME.z - BOSS_AT.z - 0.5) > 0.1) bad('the dome is not round Captain Suds');
   // 5. the garden: nothing solid where the ducklings float; islands, nest and thorns inside its rim
   for (let x = GARDEN.x0; x < GARDEN.x1; x++) for (let z = GARDEN.z0; z < GARDEN.z1; z++) if (w.isSolid(x, MESA.top + 1, z) || w.isSolid(x, MESA.top + 2, z) || !w.isSolid(x, MESA.top, z)) { bad(`the garden is not clear at ${x},${z}`); break; }
   for (const [x, z] of [...ISLANDS, [NEST.x, NEST.z], ...THORNS]) if (!inGarden(x, z)) bad(`${x},${z} is outside the garden`);
   for (const [x, z] of ISLANDS) if (THORNS.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < DUCK.r + DUCK.thorn + 0.3)) bad('a thorn by an island');
   if (THORNS.some(([tx, tz]) => Math.hypot(tx - NEST.x, tz - NEST.z) < NEST.r + 1.5)) bad('a thorn by the nest');
-  // 6. the chimney: open inside from its floor to the sky, the plates' gaps inside, the landing on the rim
+  // 6. the chimney: open inside from its floor to the sky, the plates' gaps inside, the landing on the rim; the stack stands up out of the
+  //    rim to the top of the world (owner 2026-10-30: a longer ride), its walls all round
+  for (let y = RIM.y + 1; y <= CHIMNEY.stack; y++) if (w.get(Math.floor(CHIMNEY.x + CHIMNEY.r + 0.7), y, Math.floor(CHIMNEY.z)) === B.AIR) { bad(`the stack has a hole at y ${y}`); break; }
+  if (CHIMNEY.top <= CHIMNEY.stack + 1) bad('the ride ends inside the stack');
   for (let y = CHIMNEY.floor; y < 48; y++) for (let x = Math.floor(CHIMNEY.x - CHIMNEY.r); x <= Math.ceil(CHIMNEY.x + CHIMNEY.r); x++) for (let z = Math.floor(CHIMNEY.z - CHIMNEY.r); z <= Math.ceil(CHIMNEY.z + CHIMNEY.r); z++) if (rChim(x, z) < CHIMNEY.r - 0.5 && w.isSolid(x, y, z)) { bad(`the chimney is blocked at ${x},${y},${z}`); y = 99; break; }
   if (!w.isSolid(Math.floor(CHIMNEY.x), CHIMNEY.floor - 1, Math.floor(CHIMNEY.z))) bad('the chimney has no floor');
   for (const p of CHIMNEY.plates) { const g = gapOf(CHIMNEY, p); if (Math.hypot(g.x - CHIMNEY.x, g.z - CHIMNEY.z) > CHIMNEY.r - RIDE.R) bad('a gap the ride cannot reach'); }

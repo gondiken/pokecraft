@@ -1,5 +1,6 @@
-// Wave 17 gifts and trading between friends playing together (plans/wave17-gifts-trading.md): the `swap` messages, the
-// questions and the waiting. The save changes themselves are in swapcore.js. Nothing here knows a world or a realm:
+// Wave 17 trading between friends playing together (plans/wave17-gifts-trading.md): the `swap` messages, the questions and
+// the waiting. There is ONE way (owner 2026-10-29): a trade, where either side may give nothing; giving nothing back makes it a
+// present (and offering nothing asks for one). The save changes themselves are in swapcore.js. Nothing here knows a world or a realm:
 // only the team, the Box, the save and the play-together channel, so it works the same in every place.
 import { SWAP, PARCELS, isId, cleanItems, creatureItem, canGive, loadSwaps, newLedger, commitOut, receive, settle } from './swapcore.js';
 import { sound } from './sound.js';
@@ -8,11 +9,18 @@ const newId = () => Math.random().toString(36).slice(2, 10);
 const say = items => items.map(i => PARCELS[i.kind].label(i)).join(', ');
 const nameOf = items => items.map(i => PARCELS[i.kind].name(i)).join(', ');
 
+// The words for what one side gets: 'Sparky' or '' (nothing).
+export function tradeWords(give, get, friend) {
+  if (give.length && get.length) return { big: `🔁 ${nameOf(get)} is yours!`, small: `You swapped ${nameOf(give)} with ${friend}.` };
+  if (get.length) return { big: `🎁 ${nameOf(get)}!`, small: `A present from ${friend}.` };
+  return { toast: `🎁 ${friend} got ${nameOf(give)}! What a nice present.` };
+}
+
 // deps: save(important) saves the game now.
 export function createSwaps(game, { save }) {
   let led = newLedger();
-  let mine = null;      // my offer before my commit: { sid, to, pid, name, kind, give, get, stage: 'yes' | 'pick' | 'decide', timer }
-  let theirs = null;    // an offer to me: { sid, from, pid, name, kind, give, get, stage: 'ask' | 'pick' | 'wait', timer }
+  let mine = null;      // my offer before my commit: { sid, to, pid, name, give, get, stage: 'pick' | 'decide', timer }
+  let theirs = null;    // an offer to me: { sid, from, pid, name, give, get, stage: 'ask' | 'pick' | 'wait', timer }
   const deals = new Map(); // sid -> { give, get }: what I said yes to in this page (never saved: a reload forgets it)
   const greeted = new Set(); // avatar ids I said hi to
   const queue = [];        // give / got / no messages waiting for the end of a battle
@@ -46,22 +54,22 @@ export function createSwaps(game, { save }) {
     const a = avatarOf(pid);
     if (!a) return;
     for (const [sid, e] of Object.entries(led.out)) {
-      if (e.to === pid) send(a.id, { type: 'give', sid, kind: e.kind, give: e.give, get: e.get, pid: game.playerId, name: mp().name });
+      if (e.to === pid) send(a.id, { type: 'give', sid, give: e.give, get: e.get, pid: game.playerId, name: mp().name });
     }
   }
 
   // ---- my offer ----
-  // Start a gift or a trade with an avatar, from items I picked (the Swap panel).
-  function offer(avatar, kind, give) {
-    if (mine || theirs) { toast('Finish the swap you started first!'); return false; }
+  // Start a trade with an avatar: give = what I offer ([] = nothing: I ask for a present).
+  function offer(avatar, give) {
+    if (mine || theirs) { toast('Finish the trade you started first!'); return false; }
     if (!avatar?.swapPid || !mp()?.others.has(avatar.id)) { toast('Your friend is not here any more.'); return false; }
     const why = canGive(game, give);
     if (why) { toast(why === 'last' ? 'Keep one friend in your team!' : 'That one is not here any more.'); return false; }
     const sid = newId();
-    mine = { sid, to: avatar.id, pid: avatar.swapPid, name: avatar.name, kind, give, get: [], stage: kind === 'gift' ? 'yes' : 'pick' };
-    mine.timer = setTimeout(() => stopMine(`${avatar.name} didn't answer. Try again later!`), (kind === 'gift' ? SWAP.answer : SWAP.pick) * 1000);
-    send(avatar.id, { type: 'offer', sid, kind, give, name: mp().name });
-    view = { mode: 'wait', friend: avatar.name, note: kind === 'gift' ? `Waiting for ${avatar.name} to open your present...` : `Waiting for ${avatar.name} to pick one to swap...` };
+    mine = { sid, to: avatar.id, pid: avatar.swapPid, name: avatar.name, give, get: [], stage: 'pick' };
+    mine.timer = setTimeout(() => stopMine(`${avatar.name} didn't answer. Try again later!`), SWAP.pick * 1000);
+    send(avatar.id, { type: 'offer', sid, give, name: mp().name });
+    view = { mode: 'wait', friend: avatar.name, note: `Waiting for ${avatar.name} to pick...` };
     refresh();
     return true;
   }
@@ -81,7 +89,7 @@ export function createSwaps(game, { save }) {
     if (!m) return;
     clearTimeout(m.timer);
     mine = null;
-    if (game.inBattle || !commitOut(game, led, { sid: m.sid, to: m.pid, name: m.name, kind: m.kind, give: m.give, get: m.get })) {
+    if (game.inBattle || !commitOut(game, led, { sid: m.sid, to: m.pid, name: m.name, kind: 'trade', give: m.give, get: m.get })) {
       send(m.to, { type: 'cancel', sid: m.sid });
       view = { mode: 'note', note: 'That one is not here any more.' };
       refresh();
@@ -90,7 +98,7 @@ export function createSwaps(game, { save }) {
     if (game.riding?.on && !game.party.includes(game.riding.creature)) game.riding.stop('quiet'); // it was the one I ride
     commit();
     resend(m.pid);
-    view = { mode: 'wait', note: `Sending ${nameOf(m.give)} to ${m.name}...` };
+    view = { mode: 'wait', note: `Trading with ${m.name}...` };
     game.ui.renderHud?.();
     refresh();
   }
@@ -102,19 +110,14 @@ export function createSwaps(game, { save }) {
   }
 
   function onOffer(p) {
-    const a = mp().others.get(p.from), give = cleanItems(p.give);
+    const a = mp().others.get(p.from), give = cleanItems(p.give, { min: 0 });
     if (!a || !give || busy()) { send(p.from, { type: 'no', sid: p.sid, busy: true }); return; }
-    const t = theirs = { sid: p.sid, from: p.from, pid: a.swapPid, name: a.name, kind: p.kind === 'trade' ? 'trade' : 'gift', give, get: [], stage: 'ask' };
+    const t = theirs = { sid: p.sid, from: p.from, pid: a.swapPid, name: a.name, give, get: [], stage: 'ask' };
     t.timer = setTimeout(() => stopTheirs(true), SWAP.answer * 1000);
-    if (t.kind === 'gift') {
-      game.ui.ask({ kind: 'incoming', yes: 'Open!', no: 'Not now', text: `🎁 ${a.name} sent you a present! Open it?`,
-        onYes: () => { if (theirs !== t) return; deals.set(t.sid, { give: t.give, get: [] }); t.stage = 'wait'; restart(t); send(t.from, { type: 'yes', sid: t.sid }); },
-        onNo: () => stopTheirs(true) });
-    } else {
-      game.ui.ask({ kind: 'incoming', yes: 'Pick one!', no: 'Not now', text: `🔁 ${a.name} wants to trade! They offer ${say(give)}.`,
-        onYes: () => { if (theirs !== t) return; t.stage = 'pick'; restart(t); view = { mode: 'pick', friend: a.name }; game.openSwap?.(); },
-        onNo: () => stopTheirs(true) });
-    }
+    game.ui.ask({ kind: 'incoming', yes: 'Pick!', no: 'Not now',
+      text: give.length ? `🔁 ${a.name} wants to trade! They offer ${say(give)}.` : `🔁 ${a.name} wants to trade! They would love a present from you.`,
+      onYes: () => { if (theirs !== t) return; t.stage = 'pick'; restart(t); view = { mode: 'pick', friend: a.name }; game.openSwap?.(); },
+      onNo: () => stopTheirs(true) });
     t.box = game.ui.asked;
     sound.play('ask');
   }
@@ -124,7 +127,8 @@ export function createSwaps(game, { save }) {
   // I picked mine for their trade: tell them, then wait for their last yes.
   function pickBack(get) {
     const t = theirs;
-    if (!t || t.stage !== 'pick') return;
+    if (!t || t.stage !== 'pick' || !(t.give.length + get.length)) return;
+    if (!t.give.length && canGive(game, get) === 'last') { toast('Keep one friend in your team!'); return; }
     const at = get.map(i => PARCELS[i.kind].find(game, i));
     if (at.some(x => !x)) return;
     t.get = get;
@@ -151,17 +155,16 @@ export function createSwaps(game, { save }) {
 
   // ---- the commits ----
   function onGive(p) {
-    const give = cleanItems(p.give), get = cleanItems(p.get || [], { min: 0 });
+    const give = cleanItems(p.give || [], { min: 0 }), get = cleanItems(p.get || [], { min: 0 });
     const res = receive(game, led, { sid: p.sid, give, get }, deals.get(p.sid));
     if (res.fresh) {
       commit();
       deals.delete(p.sid);
       if (theirs?.sid === p.sid) { clearTimeout(theirs.timer); theirs = null; if (res.answer === 'no') view = { mode: 'note', note: "The swap didn't happen. Try again!" }; }
       if (res.answer === 'got') {
-        const who = p.name || 'Your friend';
-        view = { mode: 'note', note: `${nameOf(give)} joined you!` };
-        game.ui.celebrate(get.length ? `🔁 ${nameOf(give)} is yours!` : `🎁 ${nameOf(give)}!`, get.length ? `You swapped ${nameOf(get)} with ${who}.` : `A present from ${who}.`, 4000);
-        sound.play('caught');
+        const w = tradeWords(get, give, p.name || 'your friend'); // I gave `get`, I got `give`
+        view = { mode: 'note', note: w.big ? `${nameOf(give)} joined you!` : w.toast };
+        if (w.big) { game.ui.celebrate(w.big, w.small, 4000); sound.play('caught'); } else toast(w.toast);
         game.ui.renderHud?.();
         if (game.ui.partyPanel && !game.ui.partyPanel.classList.contains('hidden')) game.ui.refreshPanel();
       }
@@ -177,14 +180,13 @@ export function createSwaps(game, { save }) {
     if (!res) return;
     commit();
     if (res === 'done') {
-      if (e.get.length) {
-        game.ui.celebrate(`🔁 ${nameOf(e.get)} is yours!`, `You swapped ${nameOf(e.give)} with ${e.name}.`, 4000);
-        sound.play('caught');
-      } else toast(`🎁 ${e.name} got ${nameOf(e.give)}!`);
-      view = { mode: 'note', note: e.get.length ? `${nameOf(e.get)} joined you!` : `${e.name} got ${nameOf(e.give)}!` };
+      const w = tradeWords(e.give, e.get, e.name || 'your friend');
+      if (w.big) { game.ui.celebrate(w.big, w.small, 4000); sound.play('caught'); } else toast(w.toast);
+      view = { mode: 'note', note: w.big ? `${nameOf(e.get)} joined you!` : w.toast };
     } else {
-      toast(`${nameOf(e.give)} came back to you. The swap didn't happen.`);
-      view = { mode: 'note', note: `${nameOf(e.give)} came back to you.` };
+      const note = e.give.length ? `${nameOf(e.give)} came back to you. The trade didn't happen.` : "The trade didn't happen. Try again!";
+      toast(note);
+      view = { mode: 'note', note };
     }
     game.ui.renderHud?.();
     if (game.ui.partyPanel && !game.ui.partyPanel.classList.contains('hidden')) game.ui.refreshPanel();
@@ -209,13 +211,10 @@ export function createSwaps(game, { save }) {
         game.swapUi?.refresh();
         return;
       case 'offer': onOffer(p); return;
-      case 'yes':
-        if (mine?.sid === p.sid && mine.stage === 'yes') goMine();
-        return;
       case 'pick': {
         if (mine?.sid !== p.sid || mine.stage !== 'pick') return;
-        const get = cleanItems(p.get);
-        if (!get) { stopMine(`${mine.name}'s game could not send that one.`); return; }
+        const get = cleanItems(p.get, { min: 0 });
+        if (!get || !(get.length + mine.give.length)) { stopMine(`${mine.name}'s game could not send that one.`); return; }
         mine.get = get;
         mine.stage = 'decide';
         clearTimeout(mine.timer);
@@ -233,7 +232,7 @@ export function createSwaps(game, { save }) {
       case 'no':
         if (mine?.sid === p.sid) {
           const n = mine.name;
-          stopMine(p.old ? `${n} needs to reload the game to swap (it was updated).` : p.busy ? `${n} is busy right now. Try again soon!` : `${n} said not now.`, false);
+          stopMine(p.old ? `${n} needs to reload the game to trade (it was updated).` : p.busy ? `${n} is busy right now. Try again soon!` : `${n} said not now.`, false);
           return;
         }
         if (led.out[p.sid]) queue.push(p);
@@ -266,19 +265,21 @@ export function createSwaps(game, { save }) {
   }
 
   // ---- the panel's calls ----
-  // mode 'gift' | 'trade' with an avatar: open the panel to pick
-  function start(mode, avatar) {
-    if (mine || theirs) { view = view || { mode: 'note', note: 'Finish the swap you started first!' }; game.openSwap?.(); return; }
-    view = { mode, friend: avatar.name, avatarId: avatar.id };
+  // The pause screen's "Trade with ..." button: open the panel to pick what I offer.
+  function start(avatar) {
+    if (mine || theirs) { view = view || { mode: 'note', note: 'Finish the trade you started first!' }; game.openSwap?.(); return; }
+    view = { mode: 'offer', friend: avatar.name, avatarId: avatar.id };
     game.openSwap?.();
   }
 
-  function choose(c) { // the panel's big yes for the creature c of mine
-    const item = creatureItem(c);
-    if (!item || !view) return;
-    if (view.mode === 'pick') { pickBack([item]); return; }
-    const a = mp()?.others.get(view.avatarId);
-    offer(a, view.mode === 'gift' ? 'gift' : 'trade', [item]);
+  // The panel's big yes for my creature c, or null = nothing.
+  function choose(c) {
+    if (!view) return;
+    const item = c && creatureItem(c);
+    if (c && !item) return;
+    const give = item ? [item] : [];
+    if (view.mode === 'pick') { pickBack(give); return; }
+    offer(mp()?.others.get(view.avatarId), give);
   }
 
   // The panel closed: a swap not yet committed stops (after a commit it goes on by itself).
@@ -294,13 +295,13 @@ export function createSwaps(game, { save }) {
     get mine() { return mine; },
     get theirs() { return theirs; },
     friends, start, choose, closed, update, onMessage,
-    yes: () => goMine(),                       // the giver's last yes to a trade
+    yes: () => goMine(),                       // the asker's last yes
     no: () => stopMine('You said no thanks.'), // ... or not
     load(saved) {
       led = loadSwaps(saved);
       mine = theirs = view = null;
       deals.clear(); queue.length = 0; greeted.clear();
-      const out = Object.values(led.out);
+      const out = Object.values(led.out).filter(e => e.give.length);
       if (out.length) setTimeout(() => toast(`${out.map(e => nameOf(e.give)).join(', ')} ${out.length > 1 ? 'are' : 'is'} on the way to ${out[0].name || 'a friend'}. Play together again to finish!`), 1500);
     },
     toSave: () => led,

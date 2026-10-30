@@ -86,13 +86,12 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
   }
 
-  // Wave 17: per friend, Give and Trade (a friend whose game is older gets one line instead).
+  // Wave 17: per friend, one Trade button (a present = a trade with nothing back; a friend whose game is older gets one line instead).
   function swapButtons() {
     if (!game.swaps) return [];
     return game.swaps.friends().flatMap(f => (f.ok ? [
-      el('button', { class: 'small swap-btn', 'data-swap': 'gift', onclick: e => { e.stopPropagation(); game.swaps.start('gift', f.avatar); } }, `🎁 Give ${f.name} a creature`),
-      el('button', { class: 'small swap-btn', 'data-swap': 'trade', onclick: e => { e.stopPropagation(); game.swaps.start('trade', f.avatar); } }, `🔁 Trade with ${f.name}`),
-    ] : f.old ? [el('div', { class: 'mp-who' }, `${f.name}'s game is older: reload it to give and trade.`)] : []));
+      el('button', { class: 'small swap-btn', 'data-swap': 'trade', onclick: e => { e.stopPropagation(); game.swaps.start(f.avatar); } }, `🔁 Trade with ${f.name}`),
+    ] : f.old ? [el('div', { class: 'mp-who' }, `${f.name}'s game is older: reload it to trade.`)] : []));
   }
 
   // T38b, host: one line for every player who is in another place.

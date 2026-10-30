@@ -1,5 +1,11 @@
 # Wave 17 · Gifts and trading (plan, 2026-10-29)
 
+> **Changed the same day (owner):** "I'm not sure if we needed two separate options. Something becomes a gift simply by trading an
+> empty item." There is now ONE button, **🔁 Trade with Dad**, and the panel has a **📦 Nothing** tile: offering Nothing asks for a
+> present, picking Nothing back keeps the offer as a present (never Nothing for Nothing). The asker always says the last yes. The
+> save rules below are unchanged (a side's item list may simply be empty); the `yes` message is gone. The sections below describe
+> the first version where they differ.
+
 Between friends playing together (ROADMAP "Wave 17"): **give a creature** to a friend, and **trade** one creature for one of
 theirs. Blocks and Capture Cubes are not built yet, but the parts below are made so they are one more entry later.
 

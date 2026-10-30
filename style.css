@@ -630,3 +630,5 @@ body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 #swap .swap-btns { display: flex; gap: 12px; flex-wrap: wrap; }
 #swap .swap-way { display: flex; align-items: center; gap: 8px; font-size: 20px; margin: 4px 0; }
 #mp .swap-btn { display: block; margin: 6px auto; min-height: 44px; }
+#swap .swap-tile.nothing { border-style: dashed; }
+#swap .st-box { font-size: 46px; line-height: 72px; }

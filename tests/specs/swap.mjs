@@ -94,6 +94,12 @@ export default async function ({ browser, base, t }) {
       const saved = X.loadSwaps(JSON.parse(JSON.stringify({ out: { s9: { to: 'pB', name: 'Kid', kind: 'gift', give, get: [], from: [{ where: 'box', i: 0 }] }, bad: 1 }, seen: [['s1', 'got', 1], ['x y', 'got'], ['s2', 'maybe']] })));
       out.load = Object.keys(saved.out).join() === 's9' && saved.seen.length === 1 && JSON.stringify(X.loadSwaps(null)) === '{"out":{},"seen":[]}';
       out.parcels = Object.keys(X.PARCELS).join() === 'creature' && typeof X.addParcel === 'function';
+      out.nothingForNothing = !X.commitOut(ga, la, { sid: 's5', to: 'pB', kind: 'trade', give: [], get: [] }) && X.receive(gb, lb, { sid: 's5', give: [], get: [] }, { give: [], get: [] }).answer === 'no';
+      const solo = game(); const soloGet = [X.creatureItem(solo.party[0])];
+      out.presentKeepsLast = X.receive(solo, X.newLedger(), { sid: 's6', give: [], get: soloGet }, { give: [], get: soloGet }).answer === 'no' && solo.party.length === 1;
+      const ask = S.makeCreature('fluffin', 4); gb.box.push(ask); const askGet = [X.creatureItem(ask)];
+      const asked = X.commitOut(ga, la, { sid: 's7', to: 'pB', kind: 'trade', give: [], get: askGet }) && X.receive(gb, lb, { sid: 's7', give: [], get: askGet }, { give: [], get: askGet }).answer === 'got' && X.settle(ga, la, 's7', 'got') === 'done';
+      out.askPresent = asked && [...ga.party, ...ga.box].some(x => x.uid === ask.uid) && ![...gb.party, ...gb.box].some(x => x.uid === ask.uid);
       return out;
     });
     for (const [k, v] of Object.entries(r)) t.ok(v, `rules: ${k}`);
@@ -107,34 +113,61 @@ export default async function ({ browser, base, t }) {
     t.ok(true, 'both games said hi (they know each other\'s playerId)');
 
     if (want('gift')) {
+      // A present = a trade with Nothing back (owner 2026-10-29: one way, not two). Screenshots of every step for the owner.
       const before = await creature(A, 'abox2');
       await showPause(A);
-      await waitFor(A, () => !!document.querySelector('#mp button[data-swap="gift"]'), null, 20000);
-      t.ok(await A.evaluate(() => [...document.querySelectorAll('#mp .swap-btn')].map(b => b.textContent).join('|') === '🎁 Give Kid a creature|🔁 Trade with Kid'), 'the pause screen has Give and Trade buttons for the friend');
-      await click(A, '#mp button[data-swap="gift"]');
+      await waitFor(A, () => !!document.querySelector('#mp button[data-swap="trade"]'), null, 20000);
+      t.ok(await A.evaluate(() => [...document.querySelectorAll('#mp .swap-btn')].map(b => b.textContent).join('|') === '🔁 Trade with Kid'), 'the pause screen has one Trade button for the friend');
+      await A.screenshot({ path: 'screenshots/w17-1-pause.png' });
+      await click(A, '#mp button[data-swap="trade"]');
       await waitFor(A, () => window.pokecraft.swapUi.isOpen);
-      t.ok(await A.evaluate(() => document.querySelectorAll('#swap .swap-tile').length === window.pokecraft.party.length + window.pokecraft.box.length), 'the Swap panel shows every creature of the team and the Box');
+      t.ok(await A.evaluate(() => document.querySelectorAll('#swap .swap-tile').length === window.pokecraft.party.length + window.pokecraft.box.length + 1), 'the panel shows Nothing plus every creature of the team and the Box');
       t.ok(await A.evaluate(() => document.querySelector(`#swap .swap-tile[data-where="party"]`).classList.contains('dim')), 'the last team creature is dim (it stays with you)');
       await click(A, '#swap .swap-tile[data-uid="abox2"]');
+      await A.screenshot({ path: 'screenshots/w17-2-offer.png' });
       await click(A, '#swap-go');
-      await asked(B, 'sent you a present');
-      t.ok(true, 'the friend is asked: a present! Open it?');
+      await asked(B, 'wants to trade');
+      await B.screenshot({ path: 'screenshots/w17-3-asked.png' });
       await B.evaluate(() => window.pokecraft.ui.askYes());
+      await waitFor(B, () => window.pokecraft.swapUi.isOpen && !!document.querySelector('#swap .swap-tile[data-uid="nothing"]'));
+      await click(B, '#swap .swap-tile[data-uid="nothing"]');
+      await B.screenshot({ path: 'screenshots/w17-4-pick-nothing.png' });
+      await click(B, '#swap-go');
+      await waitFor(A, () => !!document.getElementById('swap-yes'), null, 30000);
+      t.ok(await A.evaluate(() => document.getElementById('swap-yes').textContent.includes('anyway')), 'nothing back: the asker says the last yes ("Give it anyway!")');
+      await A.screenshot({ path: 'screenshots/w17-5-last-yes.png' });
+      await click(A, '#swap-yes');
       await waitFor(B, () => [...window.pokecraft.party, ...window.pokecraft.box].some(c => c.uid === 'abox2'), null, 30000);
+      await B.screenshot({ path: 'screenshots/w17-6-present.png' });
       await idle(A);
       const after = await creature(B, 'abox2');
       if (JSON.stringify(after) !== JSON.stringify(before)) console.log('   ', JSON.stringify(before), '\n   ', JSON.stringify(after));
-      t.ok(JSON.stringify(after) === JSON.stringify(before), `the creature arrives unchanged: uid, traits ${JSON.stringify(after?.traits)}, learned, moves, level, xp`);
+      t.ok(JSON.stringify(after) === JSON.stringify(before), `a present arrives unchanged: uid, traits ${JSON.stringify(after?.traits)}, learned, moves, level, xp`);
       const [wa, wb] = [await where(A, 'abox2'), await where(B, 'abox2')];
       t.ok(wa.live + wa.saved + wa.escrow + wa.savedEscrow === 0 && wb.live === 1 && wb.saved === 1, `in exactly one save (giver ${JSON.stringify(wa)}, friend ${JSON.stringify(wb)})`);
       t.ok(await B.evaluate(() => window.pokecraft.book.caught.has('blazehound')), "the friend's Creature Book has it as caught");
-      await A.evaluate(() => document.getElementById('swap-close').click());
+      for (const P of [A, B]) await P.evaluate(() => { if (window.pokecraft.swapUi.isOpen) document.getElementById('swap-close').click(); });
+      // Asking for a present: Nothing offered, the friend gives one
+      await showPause(A); await waitFor(A, () => !!document.querySelector('#mp button[data-swap="trade"]'), null, 20000);
+      await click(A, '#mp button[data-swap="trade"]'); await waitFor(A, () => window.pokecraft.swapUi.isOpen);
+      await click(A, '#swap .swap-tile[data-uid="nothing"]'); await click(A, '#swap-go');
+      await asked(B, 'would love a present');
+      await B.evaluate(() => window.pokecraft.ui.askYes());
+      await waitFor(B, () => window.pokecraft.swapUi.isOpen && !!document.querySelector('#swap .swap-tile[data-uid="bbox1"]'));
+      t.ok(await B.evaluate(() => !document.querySelector('#swap .swap-tile[data-uid="nothing"]')), 'nothing for nothing is not offered');
+      await click(B, '#swap .swap-tile[data-uid="bbox1"]'); await click(B, '#swap-go');
+      await waitFor(A, () => !!document.getElementById('swap-yes'), null, 30000);
+      await click(A, '#swap-yes');
+      await waitFor(A, () => [...window.pokecraft.party, ...window.pokecraft.box].some(c => c.uid === 'bbox1'), null, 30000);
+      await idle(A); await idle(B);
+      t.ok((await where(A, 'bbox1')).saved === 1 && (await where(B, 'bbox1')).saved === 0, 'asking for a present: it arrives, in exactly one save');
+      for (const P of [A, B]) await P.evaluate(() => { if (window.pokecraft.swapUi.isOpen) document.getElementById('swap-close').click(); });
       // Not now: nothing moves
-      await showPause(A); await waitFor(A, () => !!document.querySelector('#mp button[data-swap="gift"]'), null, 20000);
-      await click(A, '#mp button[data-swap="gift"]');
+      await showPause(A); await waitFor(A, () => !!document.querySelector('#mp button[data-swap="trade"]'), null, 20000);
+      await click(A, '#mp button[data-swap="trade"]');
       await waitFor(A, () => window.pokecraft.swapUi.isOpen);
       await click(A, '#swap .swap-tile[data-uid="abox1"]'); await click(A, '#swap-go');
-      await asked(B, 'sent you a present');
+      await asked(B, 'wants to trade');
       await B.evaluate(() => window.pokecraft.ui.askNo());
       await waitFor(A, () => window.pokecraft.swaps.info().view === 'note', null, 20000);
       const w1 = await where(A, 'abox1');
@@ -155,6 +188,7 @@ export default async function ({ browser, base, t }) {
       await click(A, '#swap .swap-tile[data-uid="abox1"]'); await click(A, '#swap-go');
       await waitFor(B, () => !!document.getElementById('swap-yes'), null, 30000);
       t.ok(await B.evaluate(() => document.querySelector('#swap .swap-pair').textContent.includes('Fluffin')), 'the one who asked sees the offer back and says the last yes');
+      await B.screenshot({ path: 'screenshots/w17-7-trade-last-yes.png' });
       await click(B, '#swap-yes');
       await idle(B); await idle(A);
       await waitFor(A, () => window.pokecraft.box.some(c => c.uid === 'bbox3'), null, 30000);
@@ -165,14 +199,14 @@ export default async function ({ browser, base, t }) {
       // No thanks at the last yes: nothing moves
       await showPause(B); await waitFor(B, () => !!document.querySelector('#mp button[data-swap="trade"]'), null, 20000);
       await click(B, '#mp button[data-swap="trade"]'); await waitFor(B, () => window.pokecraft.swapUi.isOpen);
-      await click(B, '#swap .swap-tile[data-uid="bbox1"]'); await click(B, '#swap-go');
+      await click(B, '#swap .swap-tile[data-uid="bbox2"]'); await click(B, '#swap-go');
       await asked(A, 'wants to trade'); await A.evaluate(() => window.pokecraft.ui.askYes());
       await waitFor(A, () => !!document.querySelector('#swap .swap-tile[data-uid="abox3"]'));
       await click(A, '#swap .swap-tile[data-uid="abox3"]'); await click(A, '#swap-go');
       await waitFor(B, () => !!document.getElementById('swap-no'), null, 30000);
       await click(B, '#swap-no');
       await waitFor(A, () => window.pokecraft.swaps.info().theirs === null, null, 20000);
-      t.ok((await where(A, 'abox3')).live === 1 && (await where(B, 'bbox1')).live === 1 && (await where(A, 'bbox1')).live === 0, '"No thanks" moves nothing');
+      t.ok((await where(A, 'abox3')).live === 1 && (await where(B, 'bbox2')).live === 1 && (await where(A, 'bbox2')).live === 0, '"No thanks" moves nothing');
       for (const P of [A, B]) await P.evaluate(() => { if (window.pokecraft.swapUi.isOpen) document.getElementById('swap-close').click(); });
     }
 
@@ -185,8 +219,10 @@ export default async function ({ browser, base, t }) {
       const join = P => P.evaluate(async code => { await window.pokecraft.mp.join(code, 'Kid'); }, code);
       const rejoin = async P => { await reopen(P); await join(P); };
       const gift = async (from, to, uid) => {
-        await from.evaluate(uid => { const g = window.pokecraft; const a = [...g.mp.others.values()].find(x => x.swapPid); g.swaps.start('gift', a); g.swaps.choose([...g.party, ...g.box].find(c => c.uid === uid)); }, uid);
-        await asked(to, 'sent you a present'); await to.evaluate(() => window.pokecraft.ui.askYes());
+        await from.evaluate(uid => { const g = window.pokecraft; const a = [...g.mp.others.values()].find(x => x.swapPid); g.swaps.start(a); g.swaps.choose([...g.party, ...g.box].find(c => c.uid === uid)); }, uid);
+        await asked(to, 'wants to trade'); await to.evaluate(() => window.pokecraft.ui.askYes());
+        await waitFor(to, () => window.pokecraft.swaps.view?.mode === 'pick'); await to.evaluate(() => window.pokecraft.swaps.choose(null)); // Nothing back: a present
+        await waitFor(from, () => window.pokecraft.swaps.mine?.stage === 'decide', null, 30000); await from.evaluate(() => window.pokecraft.swaps.yes());
       };
       // 1. the giver commits, its give never leaves, the giver's browser closes: the creature waits in its save, then comes back
       await B.evaluate(() => window.pokecraft.swaps.drop.add('give'));
@@ -235,7 +271,7 @@ export default async function ({ browser, base, t }) {
       await waitFor(A, () => window.pokecraft.mp.others.size === 1 && !![...window.pokecraft.mp.others.values()].find(a => !a.swapPid), null, 90000);
       await showPause(A);
       await waitFor(A, () => document.querySelector('#mp')?.textContent.includes('game is older'), null, 30000);
-      t.ok(await A.evaluate(() => !document.querySelector('#mp .swap-btn')), "an older friend's game gets no Give / Trade buttons, just one line");
+      t.ok(await A.evaluate(() => !document.querySelector('#mp .swap-btn')), "an older friend's game gets no Trade button, just one line");
     }
     t.ok(A.errors.length === 0 && B.errors.length === 0, `no page errors (${[...A.errors, ...B.errors].slice(0, 2).join(' / ')})`);
     await A.context().close(); await B.context().close();
@@ -247,17 +283,21 @@ export default async function ({ browser, base, t }) {
     await stock(A, 'a'); await stock(B, 'b');
     await hello(A, B);
     await A.tap('#btn-pause');
-    await waitFor(A, () => !!document.querySelector('#mp button[data-swap="gift"]'), null, 20000);
-    const at = await A.evaluate(() => { const r = document.querySelector('#mp button[data-swap="gift"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
-    await A.touchscreen.tap(at[0], at[1]); // a real finger tap (the box is redrawn every second, so no "stable" wait)
+    await waitFor(A, () => !!document.querySelector('#mp button[data-swap="trade"]'), null, 20000);
+    const tapAt = async (P, sel) => { const at = await P.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel); await P.touchscreen.tap(at[0], at[1]); };
+    await tapAt(A, '#mp button[data-swap="trade"]'); // a real finger tap (the box is redrawn every second, so no "stable" wait)
     await waitFor(A, () => window.pokecraft.swapUi.isOpen);
     t.ok(await A.evaluate(() => { const r = document.querySelector('#swap .swap-tile').getBoundingClientRect(); return r.width >= 100 && r.height >= 100; }), 'iPad: the tiles are big enough to tap');
     await A.tap('#swap .swap-tile[data-uid="abox1"]');
-    t.ok(await A.evaluate(() => parseFloat(getComputedStyle(document.getElementById('swap-go')).minHeight) >= 44), 'iPad: the Give! button is big enough to tap');
+    t.ok(await A.evaluate(() => parseFloat(getComputedStyle(document.getElementById('swap-go')).minHeight) >= 44), 'iPad: the Offer! button is big enough to tap');
     await A.screenshot({ path: 'screenshots/w17-swap-ipad.png' });
     await A.tap('#swap-go');
-    await asked(B, 'sent you a present');
+    await asked(B, 'wants to trade');
     await B.tap('#ask-yes');
+    await waitFor(B, () => window.pokecraft.swapUi.isOpen && !!document.querySelector('#swap .swap-tile[data-uid="nothing"]'));
+    await B.tap('#swap .swap-tile[data-uid="nothing"]'); await B.tap('#swap-go');
+    await waitFor(A, () => !!document.getElementById('swap-yes'), null, 30000);
+    await A.tap('#swap-yes');
     await waitFor(B, () => [...window.pokecraft.party, ...window.pokecraft.box].some(c => c.uid === 'abox1'), null, 30000);
     await idle(A);
     t.ok((await where(A, 'abox1')).saved === 0 && (await where(B, 'abox1')).saved === 1, 'iPad: the present arrives, in exactly one save');

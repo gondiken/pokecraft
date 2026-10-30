@@ -1,6 +1,6 @@
 // T42: the live part of the Portal House (LIVE.portalhouse in gymlive.js, made for the world.parts entry `portalhouse` of the Swirl).
 // Everything is per player and in memory: your two swirls, the Swirl Wand, the sparks, the room clock and the Swirl Ball are never
-// saved or sent (only the eight room keys `pw:portal:room1..8` in game.beaten are). A swirl trip is "set the player's position"; a
+// saved or sent (only the ten room keys `pw:portal:room1..10` in game.beaten are). A swirl trip is "set the player's position"; a
 // fling is a Mover on the closed-form PATHS.fling (portalplay.js), so 60 and 20 frames a second land on the same spot. The big action
 // button is "Swirl!" (gymLive near / use): one quick tap, nothing is held. The clock only runs while the game is playing (not paused,
 // not in a battle).
@@ -15,8 +15,9 @@
 // userData.portalHouse, removed in dispose(). The House's people are drawn only while you are in their part (draw calls).
 // Owner 2026-10-29 (portalprops.js): you hold the Swirl Wand (a wizard's wand with a star, drawn over the world in front of the camera:
 // 3 calls, only in the Hall and the rooms) and a tap shoots a bolt from its star to the pad; doors are wooden door frames with warm
-// light (one merged frame mesh per part, one light per open door), no longer swirls; violet back swirls on some ledges take you to
-// the room's start.
+// light (one merged frame mesh per part, one light per open door), no longer swirls. Owner 2026-10-29 too: room 9's button opens its
+// door for a moment (the door's light fades as the time runs out), room 10's bridge of light (portalplay.js bridgeCells) is drawn as
+// a mesh over hidden solid cells (B.HOUSE_PROP with LiveCells, never saved), and the guide never points at the right white pad (decoys).
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { DoorGlow } from './portal.js';
@@ -25,8 +26,8 @@ import { LiveCells } from './livecells.js';
 import { Mover, makePath } from './mover.js';
 import { FUN } from './forfun.js';
 import { PORTAL, BALL, exitOf, exitSpeed, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, slotAimed, roomKey, roomState,
-  ROOMS_NEED, flingPoint, ballStart, ballNext, inCup } from './portalplay.js';
-import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOOR_N, DOOR_E, DOORS, SWIRLS, swirlById, hallFront, doorTarget, exitTarget, LAST_ROOM } from './portalhouse.js';
+  ROOMS_NEED, flingPoint, ballStart, ballNext, inCup, bridgeCells } from './portalplay.js';
+import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOORS, SWIRLS, swirlById, doorTarget, exitTarget, LAST_ROOM } from './portalhouse.js';
 import { pictureWorld } from './pictureworlds.js';
 import { sound } from './sound.js';
 
@@ -39,6 +40,8 @@ const WAND_AT = { x: 0.37, y: -0.42, z: -0.62, tilt: -0.45, lean: 0.35, size: 0.
 const BOLT = { fly: 0.16, fade: 0.32 }; // seconds: the star flies to the pad, then the beam fades
 const inBox = (b, p) => p.x >= b.x0 && p.x <= b.x1 + 1 && p.z >= b.z0 && p.z <= b.z1 + 1 && p.y >= b.bottom && p.y <= b.top + 2;
 const SPARK_MAX = 4;
+const BRIDGE_MAX = 60; // cells of the bridge of light drawn at once (room 10)
+const QUICK = 9, BRIDGE = 10; // the rooms with a button (a door open for a moment) and with the bridge of light
 const isOrangeEnd = s => s.kind === 'orange' || s.kind === 'peach';
 
 export class PortalHouseLive {
@@ -77,6 +80,11 @@ export class PortalHouseLive {
     this.bolt = null;             // the bolt from the wand to a pad: { from, to, colour, t }
     this.flick = 9;               // seconds since the wand last cast (its flick)
     this.wandShown = false;
+    this.gateUntil = -1;          // room 9: the door is open until this room clock (the button)
+    this.onButton = false;
+    this.bridge = [];             // room 10: the cells of the bridge of light now ([x, y, z])
+    this.bridgeSet = new Set();
+    this.bridgeKey = '';
     this.build();
   }
 
@@ -120,6 +128,16 @@ export class PortalHouseLive {
     const { beam, head } = buildBolt();
     this.boltBeam = this.mark(beam); this.boltHead = this.mark(head);
     beam.visible = head.visible = false;
+    // room 9: the big button on the floor (red, green while the door is open)
+    this.quickButton = this.mark(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.3, 20), new THREE.MeshBasicMaterial({ color: 0xff4a3a })));
+    this.quickButton.visible = false;
+    // room 10: the bridge of light (one instanced mesh of glowing tiles) and the strip it comes out of
+    this.bridgeMesh = this.mark(new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.12, 1), new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.62, depthWrite: false }), BRIDGE_MAX));
+    this.bridgeMesh.count = 0; this.bridgeMesh.visible = false;
+    const b = ROOMS[BRIDGE - 1].bridge, zs = b.lane.map(c => c[1]), xs = b.lane.map(c => c[0]);
+    this.emitter = this.mark(new THREE.Mesh(new THREE.BoxGeometry(b.dir[0] ? 0.2 : xs.length, 0.3, b.dir[0] ? zs.length : 0.2), new THREE.MeshBasicMaterial({ color: 0xdffaff })));
+    this.emitter.position.set(Math.min(...xs) + (b.dir[0] ? 0 : xs.length / 2), b.level + 1.0, Math.min(...zs) + (b.dir[0] ? zs.length / 2 : 0));
+    this.emitter.visible = false;
   }
   // The wand's star in the world now (for the bolt), from the camera of the last frame.
   wandTip() {
@@ -139,7 +157,7 @@ export class PortalHouseLive {
     let g = this.glows.get(id);
     if (!g && this.game.scene && sw.kind === 'door') { g = new DoorLight(this.game.scene, sw); this.glows.set(id, g); return g; } // a door: warm light, no swirl
     if (!g && this.game.scene) {
-      const lite = !(sw.kind === 'warp' && !sw.back);
+      const lite = sw.kind !== 'warp';
       g = new DoorGlow(this.game.scene, null, null, { normal: sw.normal, centre: this.cen(sw), w: sw.w, h: sw.h, lite, colours: COLOURS[opts.colour ?? sw.colour] });
       g.group.userData.portalHouse = true;
       this.glows.set(id, g);
@@ -166,7 +184,7 @@ export class PortalHouseLive {
   room(n) { return ROOMS[n - 1]; }
   isRoom(n) { return typeof n === 'number' && n >= 1 && n <= LAST_ROOM; }
 
-  // Which part of the House a point is in: 'porch' | 'hall' | 1..8 (a swirl room) | 'study' | 'hub' (near the Hub Swirl) | null.
+  // Which part of the House a point is in: 'porch' | 'hall' | 1..10 (a swirl room) | 'study' | 'hub' (near the Hub Swirl) | null.
   where(p = this.p.pos) {
     for (const r of ROOMS) if (inBox(r.box, p)) return r.n;
     if (inBox(STUDY_ROOM.box, p)) return 'study';
@@ -263,7 +281,7 @@ export class PortalHouseLive {
   through(sw, drop) {
     const n = this.where(), room = this.isRoom(n) ? this.room(n) : null;
     this.game.riding?.stop?.('quiet');
-    if (sw.kind === 'warp') { if (sw.back) this.once('back', 'Back to the start of this room!'); return this.warp(sw.to); } // (a back swirl keeps your swirls)
+    if (sw.kind === 'warp') return this.warp(sw.to);
     if (sw.kind === 'door') return this.door(sw);
     if (sw.kind === 'pair') {
       const other = swirlById(sw.pair), out = exitOf(other, other.centre, 0);
@@ -408,6 +426,8 @@ export class PortalHouseLive {
     }
     if (n === 'porch' && !this.told.has('porch')) { this.told.add('porch'); this.say('The Portal House! Its rooms float apart, joined by swirls.'); }
     if (n === 7) this.ballTick();
+    if (n === QUICK) this.buttonTick();
+    if (n === BRIDGE || this.bridge.length) this.bridgeTick(n);
     this.hallDoors(n);
     if (p.carry || this.mover) return;
     // re-arm the swirls you left
@@ -437,6 +457,7 @@ export class PortalHouseLive {
   enterPart(n, from) {
     this.lastPart = n;
     if (from === 7 && n !== 7) this.resetBall();
+    if (from === QUICK && n !== QUICK) this.gateUntil = -1; // the door shuts behind you
     if (this.isRoom(n)) { // your swirls stay in the room they were made in
       if (this.yours && swirlById(this.yours).room !== n) this.yours = null;
       if (this.orange && swirlById(this.orange).room !== n) this.orange = null;
@@ -458,6 +479,7 @@ export class PortalHouseLive {
       if (s.kind === 'peach' && s.id !== this.orange) continue;
       if (s.kind === 'door' && s.door && !this.doorIsOpen(s.door)) { if (touches(s, s.centre, pos, false)) this.shutHint(); continue; }
       if (s.kind === 'door' && s.needs === 'ball' && !this.pressed) continue;
+      if (s.kind === 'door' && s.needs === 'button' && !this.gateOpen()) continue;
       if (s.id === 'hub' && !ready) continue;
       if (!touches(s, this.cen(s), pos, false)) continue;
       return s;
@@ -465,21 +487,53 @@ export class PortalHouseLive {
     return null;
   }
   shutHint() { if (this.clock - this.shutToastAt > 4) { this.shutToastAt = this.clock; this.say('Finish the room before it to open this door!'); } }
-  // Hall door k (1..9): room 1's is always open, room k's once room k - 1 is done, the Study's (9) once every room is done.
+  // Hall door k (1..DOORS): room 1's is always open, room k's once room k - 1 is done, the Study's (the last) once every room is done.
   doorIsOpen(k) { const d = this.done; return k === 1 || (k === DOORS ? d.ready : d.done[k - 2] === true); }
   leaveHouse() {
     this.game.ui.setScore?.(null);
     this.misses = {};
   }
   hallDoors(n) {
-    const key = `${this.done.done.join('')}|${this.pressed}`;
-    if (key === this.hallKey && n !== 'hall' && n !== 7) return;
+    const key = `${this.done.done.join('')}|${this.pressed}|${this.gateOpen()}`;
+    if (key === this.hallKey && n !== 'hall' && n !== 7 && n !== QUICK) return;
     this.hallKey = key;
     SWIRLS.filter(s => s.room === 'hall' && s.door).forEach(s => {
       const open = this.doorIsOpen(s.door);
       for (const [x, y, z] of s.cells) this.cells.want(x, y, z, open ? B.AIR : B.PO_SHUT);
     });
     for (const s of SWIRLS) if (s.needs === 'ball') for (const [x, y, z] of s.cells) this.cells.want(x, y, z, this.pressed ? B.AIR : B.PO_SHUT);
+    for (const s of SWIRLS) if (s.needs === 'button') for (const [x, y, z] of s.cells) this.cells.want(x, y, z, this.gateOpen() ? B.AIR : B.PO_SHUT);
+  }
+
+  /* ---------- the button (room 9) ---------- */
+  // Standing on the button keeps the door open; it shuts `open` seconds after you step off.
+  gateOpen() { return this.clock < this.gateUntil; }
+  gateLeft() { return Math.max(0, this.gateUntil - this.clock) / this.room(QUICK).button.open; } // 1 -> 0 while it is open
+  buttonTick() {
+    const b = this.room(QUICK).button, p = this.p.pos;
+    const on = this.p.onGround && Math.hypot(p.x - b.at[0], p.z - b.at[2]) <= b.r && Math.abs(p.y - b.at[1]) < 0.4;
+    if (on) {
+      if (!this.onButton) { sound.play('checkpoint'); this.once('button', 'The door up there is open! Quick!'); }
+      this.gateUntil = this.clock + b.open;
+    }
+    this.onButton = on;
+  }
+
+  /* ---------- the bridge of light (room 10) ---------- */
+  // The bridge for your swirls as they are: hidden solid cells (B.HOUSE_PROP through LiveCells) under a mesh. Only the world's own
+  // blocks stop it, never the bridge itself (solidNoBridge).
+  solidNoBridge = (x, y, z) => !this.bridgeSet.has(`${x},${y},${z}`) && this.world.isSolid(x, y, z);
+  bridgeTick(n) {
+    const here = n === BRIDGE, key = here ? `${this.yours}|${this.orange}` : '';
+    if (key === this.bridgeKey) return;
+    this.bridgeKey = key;
+    const ends = [this.yours && swirlById(this.yours), this.orange && swirlById(this.orange)].map(s => (s && s.room === BRIDGE ? s : null));
+    const next = here ? bridgeCells(this.solidNoBridge, this.room(BRIDGE).bridge, ends) : [];
+    const nextSet = new Set(next.map(c => c.join(',')));
+    for (const [x, y, z] of this.bridge) if (!nextSet.has(`${x},${y},${z}`)) this.cells.want(x, y, z, B.AIR);
+    for (const [x, y, z] of next) this.cells.want(x, y, z, B.HOUSE_PROP);
+    if (here && next.length > this.bridge.length && this.bridge.length) { sound.play('swirlzip'); this.once('bridge', 'The bridge goes through your swirls!'); }
+    this.bridge = next; this.bridgeSet = nextSet;
   }
   pickSparks(n, pos) {
     if (!this.isRoom(n)) return;
@@ -562,6 +616,7 @@ export class PortalHouseLive {
       for (const s of SWIRLS.filter(q => q.room === n)) {
         if (s.kind === 'slot' || s.kind === 'peach') continue;
         if (s.needs === 'ball' && !this.pressed) continue;
+        if (s.needs === 'button') { if (this.gateOpen()) show(s.id, s, this.gateLeft()); continue; } // its light fades as the time runs out
         show(s.id, s, s.kind === 'orange' ? (this.yours ? 1 : 0.3) : 1);
       }
     }
@@ -601,6 +656,20 @@ export class PortalHouseLive {
       }
       this.buttonMesh.visible = n === 7;
       if (n === 7) { const b = spec.button; this.buttonMesh.position.set(b[0], b[1] + (this.pressed ? 0.06 : 0.15), b[2]); this.buttonMesh.material.color.setHex(this.pressed ? 0x6ae86a : 0xff7a3a); }
+    }
+    // room 9's button and room 10's bridge of light
+    if (this.quickButton) {
+      this.quickButton.visible = n === QUICK;
+      if (n === QUICK) { const b = this.room(QUICK).button.at, open = this.gateOpen(); this.quickButton.position.set(b[0], b[1] + (open ? 0.06 : 0.15), b[2]); this.quickButton.material.color.setHex(open ? 0x6ae86a : 0xff4a3a); }
+    }
+    if (this.bridgeMesh) {
+      const show = n === BRIDGE, list = show ? this.bridge.slice(0, BRIDGE_MAX) : [];
+      list.forEach(([x, y, z], i) => { this.dummy.position.set(x + 0.5, y + 0.94, z + 0.5); this.dummy.rotation.set(0, 0, 0); this.dummy.scale.set(1, 1, 1); this.dummy.updateMatrix(); this.bridgeMesh.setMatrixAt(i, this.dummy.matrix); });
+      this.bridgeMesh.count = list.length;
+      this.bridgeMesh.visible = list.length > 0;
+      this.bridgeMesh.instanceMatrix.needsUpdate = true;
+      this.bridgeMesh.material.opacity = 0.55 + 0.1 * Math.sin(this.clock * 3);
+      this.emitter.visible = show;
     }
     // the sparks
     if (this.sparkMesh) {
@@ -698,11 +767,12 @@ export class PortalHouseLive {
       return pt(door.centre[0], door.centre[2], (a, m) => (k === DOORS ? `Grandpa Arch is in the Study ${a} ${m}m` : `Room ${k} ${a} ${m}m`));
     }
     if (n === 'study') return pt(STUDY.boss.x + 0.5, STUDY.boss.z + 0.5, (a, m) => `Grandpa Arch ${a} ${m}m`);
-    const room = this.room(n), y = this.yours && swirlById(this.yours), o = this.orange && swirlById(this.orange);
-    if (room.peaches.length && (!o || o.room !== n)) { const s = swirlById(room.peaches.includes(room.first) ? room.first : room.peaches[0]); return pt(s.centre[0], s.centre[2], () => 'Tap a peach pad for your orange swirl!'); }
-    if (!y || y.room !== n) { const s = swirlById(room.slots.includes(room.first) ? room.first : room.slots[0]); const c = this.cen(s); return pt(c[0], c[2], () => 'Tap a white pad to put your blue swirl there!'); }
+    // Owner 2026-10-29 (decoy pads): the arrow never points at the right white pad. It shows the door; the words say what to do.
+    const room = this.room(n), y = this.yours && swirlById(this.yours), o = this.orange && swirlById(this.orange), ex = swirlById(room.exit);
+    if (room.peaches.length && (!o || o.room !== n)) return pt(ex.centre[0], ex.centre[2], () => 'Tap a peach pad for your orange swirl!');
+    if (!y || y.room !== n) return pt(ex.centre[0], ex.centre[2], () => 'Tap a white pad to put your blue swirl there!');
     if (room.ball && !this.pressed) { const b = room.ball.button; return pt(b[0], b[2], () => 'Get the Swirl Ball onto the button!'); }
-    const ex = swirlById(room.exit);
+    if (room.button && !this.gateOpen()) { const b = room.button.at; return pt(b[0], b[2], () => 'Step on the button, then quick!'); }
     return pt(ex.centre[0], ex.centre[2], (a, m) => `Reach the door ${a} ${m}m`);
   }
 
@@ -717,7 +787,8 @@ export class PortalHouseLive {
 
   info() {
     return { part: this.partKey, wand: this.wand, yours: this.yours, orange: this.orange, clock: this.clock, trips: this.trips, sparks: this.sparksGot.size, done: this.done.n, chain: { ...this.chain }, flying: !!this.mover, last: this.lastTrip, glows: this.glows.size, meshes: this.meshes.length, peak: this.peak,
-      ball: this.ball ? { at: this.ballAt(), rest: this.ball.rest != null } : null, pressed: this.pressed, balls: this.balls, misses: { ...this.misses }, wandShown: this.wandShown, bolt: !!this.bolt, frames: [...this.frames.keys()] };
+      ball: this.ball ? { at: this.ballAt(), rest: this.ball.rest != null } : null, pressed: this.pressed, balls: this.balls, misses: { ...this.misses }, wandShown: this.wandShown, bolt: !!this.bolt, frames: [...this.frames.keys()],
+      gate: this.gateOpen(), bridge: this.bridge.length };
   }
 
   dispose() {

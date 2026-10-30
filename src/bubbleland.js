@@ -32,9 +32,9 @@ export const SOAP_POTS = [
   [100.5, FLOOR + 1, 82.5],
   ...LEDGES.map(l => [l.pot[0], l.top + 1, l.pot[1]]),
   [83.5, MESA.top + 1, 60.5], [67.5, MESA.top + 1, 56.5], [97.5, MESA.top + 1, 61.5],
-  [74.5, 42, 34.5], [86.5, 42, 34.5], [80.5, 42, 34.0], // the rim: one under each shield's way (SHIELDS)
+  [74.5, 42, 34.5], [86.5, 42, 34.5], // the rim: one under each high shield's way (SHIELDS 2 and 3; the low first one needs none)
 ];
-export const RIM_POTS = SOAP_POTS.slice(-3);
+export const RIM_POTS = [null, ...SOAP_POTS.slice(-2)]; // (by shield: RIM_POTS[k] is the pot under shield k)
 // Moving air you can see (streams of little bubbles): bubbles drift with it, you only while you ride one. period / on / warn: a gust.
 export const WINDS = [
   { id: 'stream', x0: 110, x1: 112, y0: 11, y1: 13, z0: 67, z1: 77, vx: 0, vy: 0, vz: 1.2 },                                      // ledge 2 -> 3: away from the cliff
@@ -62,27 +62,36 @@ const thornRows = () => {
 };
 export const THORNS = thornRows();
 export const GARDEN_RULES = { bounds: GARDEN, nest: NEST, currents: CURRENTS, gusts: GUSTS, thorns: THORNS };
-// The chimney: a tube of fizzy wall (inside radius 4) on the plateau up to the rim, a glass strip toward the well's middle, a door east.
+// The chimney: a tube of fizzy wall (inside radius 4.5) on the plateau up to the rim, a glass strip toward the well's middle, a door east.
 // Redesign 2026-10-29 (owner: "this could be a little longer; it finishes in 10 seconds"): five gold rings on the way up (the first right
-// over the start, the fourth turns slowly), two fans, the arm near the top: about half a minute for a good flier.
+// over the start, the fourth turns slowly), two fans, the arm near the top. Owner 2026-10-30 ("you can make the chimney ride slightly
+// longer as well"): the chimney now stands up out of the rim as a glass-fronted stack (to y 47, the top of the world) with one more
+// stretch in it: a sixth gold ring that turns the other way, then a second, slower arm that turns the other way too. The same pieces,
+// mirrored: gentle variety, not harder. A bar of soap floats over every ring (the ride's checkpoints).
 export const CHIMNEY = {
-  x: 46.5, z: 40.5, r: 4.5, wall: 5.8, floor: 19, top: 41.8, door: { a: 0, w: 0.4, y1: 23 }, window: { w: 0.5, y0: 22, y1: 40 },
-  plates: [{ y: 22.6, a: 0, d: 0 }, { y: 25.9, a: Math.PI, d: 2.8 }, { y: 29.2, a: 0.2, d: 2.8 }, { y: 32.5, a: 0.4, d: 2.5, spin: 0.3 }, { y: 36.0, a: 2.4, d: 2.8 }],
+  x: 46.5, z: 40.5, r: 4.5, wall: 5.8, floor: 19, top: 48.3, stack: 47, door: { a: 0, w: 0.4, y1: 23 }, window: { w: 0.5, y0: 22, y1: 46 },
+  plates: [{ y: 22.6, a: 0, d: 0 }, { y: 25.9, a: Math.PI, d: 2.8 }, { y: 29.2, a: 0.2, d: 2.8 }, { y: 32.5, a: 0.4, d: 2.5, spin: 0.3 }, { y: 36.0, a: 2.4, d: 2.8 }, { y: 42.9, a: 4.0, d: 2.6, spin: -0.22 }],
   fans: [{ y0: 33.3, y1: 34.9, vx: Math.cos(2.0) * 0.8, vz: Math.sin(2.0) * 0.8 }, { y0: 37.6, y1: 38.8, vx: Math.cos(5.0) * 0.6, vz: Math.sin(5.0) * 0.6 }],
-  bar: { y: 39.6 },
+  bars: [{ y: 39.6, speed: 1 }, { y: 45.9, speed: -0.75, a0: 4.0 }],
 };
-CHIMNEY.fan = CHIMNEY.fans[0];
+CHIMNEY.fan = CHIMNEY.fans[0]; CHIMNEY.bar = CHIMNEY.bars[0];
 CHIMNEY.stars = [{ x: CHIMNEY.x, y: CHIMNEY.floor + 1.0, z: CHIMNEY.z }, ...CHIMNEY.plates.map(p => ({ ...gapOf(CHIMNEY, { ...p, spin: 0 }), y: p.y + 1.6 }))];
 CHIMNEY.window.a = Math.atan2(WELL.z - CHIMNEY.z, WELL.x - CHIMNEY.x);
 CHIMNEY.landing = (() => { const rx = (CHIMNEY.x - WELL.x), rz = (CHIMNEY.z - WELL.z), l = Math.hypot(rx, rz); return [CHIMNEY.x + (-rz / l) * -7, CHIMNEY.z + (rx / l) * -7]; })();
 export const RIM = { r0: 50, y: 41, balcony: { x0: 74, x1: 87, z0: 30, z1: 36 } }; // the rim walk (stand at 42): a ring r0..WELL.r and a balcony
 export const BOSS_AT = { x: 80, z: 25 };
-// Captain Suds' three shield bubbles (redesign 2026-10-29: they bob on the breeze over the rim; drop onto one from above and it pops).
-// Too high to jump onto from the rim or the throne; a bubble from the balcony's soap pot carries you above them.
+// Owner 2026-10-30: "I didn't understand what I was supposed to do with Captain Suds' shields. They didn't seem to be preventing him from
+// battling, and I didn't get that I was supposed to jump on top of them." Now Captain Suds sits sealed inside a big bubble (DOME) over his
+// throne: you can see him waving in there and you can't get in (it boings you back). Each shield bubble sends a trail of little bubbles
+// into the dome; every popped shield pops one of the dome's three skins; the last one bursts it and he is free to battle.
+// Shield 1 rests low on the balcony's foam right in front of him (a bubble on a soapy floor is a dome): walk into it and it boings you
+// back, jump onto it and it pops. Shields 2 and 3 bob high on the breeze (too high for a jump from anything you stand on): a bubble from
+// the soap pot under each carries you above it, hop off and drop onto its top.
+export const DOME = { x: 80.5, y: 42.6, z: 25.5, r: 3.4, skin: 0.22 }; // its middle, its outer radius, the gap between its three skins
 export const SHIELDS = [
+  { x: 80.5, y: 41.75, z: 32.6, r: 1.3, ax: 0.35, ay: 0, az: 0.2, period: 6, phase: 0, low: true },
   { x: 74.5, y: 45.5, z: 31.0, r: 1.3, ax: 1.9, ay: 0.3, az: 0.7, period: 6.5, phase: 0 },
   { x: 86.5, y: 45.7, z: 31.0, r: 1.2, ax: 1.1, ay: 0.4, az: 1.7, period: 5, phase: 2 },
-  { x: 80.5, y: 45.8, z: 30.5, r: 1.1, ax: 2.2, ay: 0.4, az: 1.1, period: 4.2, phase: 4 },
 ];
 export const SHIELD = { x: 80.5, y: 45, z: 30.5, radii: SHIELDS.map(s => s.r) }; // (where the shields are, for the guide and the pictures)
 export const LIFTS = [ // switched on by the live part (they are in world.lifts only while on): after the ledges, after the chimney
@@ -118,7 +127,7 @@ const box = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 export const rWell = (x, z) => Math.hypot(x + 0.5 - WELL.x, z + 0.5 - WELL.z);
 export const rChim = (x, z) => Math.hypot(x + 0.5 - CHIMNEY.x, z + 0.5 - CHIMNEY.z);
 const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-export const inChimney = (x, y, z) => rChim(Math.floor(x), Math.floor(z)) < CHIMNEY.r && y >= CHIMNEY.floor - 0.5 && y < WELL.top + 3;
+export const inChimney = (x, y, z) => rChim(Math.floor(x), Math.floor(z)) < CHIMNEY.r && y >= CHIMNEY.floor - 0.5 && y < CHIMNEY.top + 1;
 export const onRim = (x, z) => { const r = rWell(Math.floor(x), Math.floor(z)), b = RIM.balcony, fx = Math.floor(x), fz = Math.floor(z); return (r >= RIM.r0 && r < WELL.r) || (fx >= b.x0 && fx <= b.x1 && fz >= b.z0 && fz <= b.z1); };
 export const inGarden = (x, z) => x >= GARDEN.x0 && x < GARDEN.x1 && z >= GARDEN.z0 && z < GARDEN.z1;
 export const inClimb = (x, y, z) => x >= CLIMB.x0 && x <= CLIMB.x1 + 1 && z >= CLIMB.z0 && z <= CLIMB.z1 + 1 && y < MESA.top + 0.5;
@@ -136,7 +145,7 @@ export function bubbleAim(world, p, game) {
   const ride = game?.gymLive?.of?.('part:bubble')?.ride;
   if (ride) { // in the Chimney Ride: the next gold ring (or past the arm to the top)
     const p0 = CHIMNEY.plates.find(q => ride.y < q.y + 1);
-    if (p0) { const g = gapOf(CHIMNEY, p0, ride.t); return { x: g.x, z: g.z, text: () => '🫧 Up through the gold ring!' }; }
+    if (p0 && !CHIMNEY.bars.some(b => ride.y < b.y + 1 && b.y < p0.y)) { const g = gapOf(CHIMNEY, p0, ride.t); return { x: g.x, z: g.z, text: () => '🫧 Up through the gold ring!' }; }
     return { text: () => '🫧 Up to the top!' };
   }
   if (!st.stairs && !st.star && p.y < MESA.top + 0.5) {
@@ -156,7 +165,7 @@ export function bubbleAim(world, p, game) {
   if (st.shields < 3 && !st.star) {
     if (p.y < RIM.y) return st.lift2 ? word(LIFTS[1].x[0] + 1, LIFTS[1].z[0] + 1, '⬆️ The fizz lift to the rim') : word(CHIMNEY.x + CHIMNEY.r + 1, CHIMNEY.z, '🫧 The Chimney Ride');
     const k = st.shield.findIndex(s => !s), s = SHIELDS[k];
-    return word(s.x, s.z, `🛡️ Shield ${k + 1}`);
+    return word(s.x, s.z, k === 0 ? '🫧 Captain Suds' : '🫧 Shield bubble'); // (the low first shield is right in front of him)
   }
   if (p.y < RIM.y && !game?.stars?.includes('bubble')) return st.lift2 ? word(LIFTS[1].x[0] + 1, LIFTS[1].z[0] + 1, '⬆️ The fizz lift to the rim') : null;
   return null; // the base: the crew, then Captain Suds, then the way back
@@ -204,10 +213,10 @@ export function bubbleLand(world, def) {
     const r = rChim(x, z), a = Math.atan2(z + 0.5 - C.z, x + 0.5 - C.x);
     if (r < C.r) { fill(world, x, x, C.floor, WELL.top + 3, z, z, B.AIR); continue; }
     if (r >= C.wall) continue;
-    for (let y = C.floor; y <= RIM.y; y++) {
+    for (let y = C.floor; y <= C.stack; y++) { // (owner 2026-10-30: up out of the rim as a stack, its top course foam)
       const door = angDiff(a, C.door.a) < C.door.w && y <= C.door.y1;
       const glass = angDiff(a, C.window.a) < C.window.w && y >= C.window.y0 && y <= C.window.y1;
-      put(world, x, y, z, door ? B.AIR : glass ? B.GLASS : y === RIM.y ? B.FOAM : B.FIZZ_WALL);
+      put(world, x, y, z, door ? B.AIR : glass ? B.GLASS : y === RIM.y || y === C.stack ? B.FOAM : B.FIZZ_WALL);
     }
   }
   // 9. the rim: Captain Suds' foam throne
@@ -226,7 +235,7 @@ export function bubbleLand(world, def) {
   placeBoss(world, 'bubble', { x: BOSS_AT.x, y: RIM.y, z: BOSS_AT.z, facing: [0, 1] });
   placeCrew(world, 'bubble', 0, { x: 106, y: MESA.top, z: 57, facing: [1, 1] });                                  // Wanda Wand at the top of the ledges
   placeCrew(world, 'bubble', 1, { x: 77, y: MESA.top, z: 46, facing: [1, -1] });                                  // Duckherd Daisy by the nest
-  placeCrew(world, 'bubble', 2, { x: Math.floor(C.landing[0]) + 2, y: RIM.y, z: Math.floor(C.landing[1]) - 1, facing: [-1, 0] }); // Mate Fizz by the chimney's top
+  placeCrew(world, 'bubble', 2, { x: Math.floor(C.landing[0]) - 2, y: RIM.y, z: Math.floor(C.landing[1]), facing: [1, 0] }); // Mate Fizz by the chimney's stack (where the ride lands you)
   world.people ??= [];
   world.people.push({ name: BEE.name, title: `${BEE.name} · Bubble Well`, colors: BEE.colors, look: BEE.look, line: 'Dip your wand in a soap pot, blow, hop on!', pos: [BEE.x + 0.5, FLOOR + 1, BEE.z + 0.5], heading: Math.atan2(BEE.facing[0], BEE.facing[1]) });
   // 12. nooks (where the wild Bubble creatures float), rests, the part

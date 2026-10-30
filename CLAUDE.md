@@ -79,8 +79,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/atlantisland.js` | T41 the Sunken City as data (Node-runnable): `CITY` (centre 270, 112), `BELL`, `WHIRL`, `BUBBLES`, `PALACE`, `DISTRICTS`, houses + `CORRIDORS` (7 dead ends); `atlantisLand` (called by `pirateLand` for maps wider than 224: sets `world.atlantis`, `deepAt`, `sinkAt`, `skyDim`, `sunkenY`), `dimAt`, `atlantisAim` |
 | `src/glowfish.js` | T41, pure (no imports): `FISH`, the 12 saved lights (`lightKey`, `lightState`), lunge / net, shy jar fish, the school, `Darter` (1/120 s sub-steps) |
 | `src/atlantislive.js` | T41 `AtlantisLive` = `LIVE.atlantis`: fish meshes, net, jars, whirlpool, bubbles, lanterns; Catch! (`holds` / `use` / `release`), `pour`, `syncLights`, `battleEnded`, `info()` |
-| `src/portalhouse.js` | T42 the Portal House in the Swirl's north-east sky (Node-runnable; `buildPortalHouse` from `swirlLand`): `R` (x 85..159, z 0..31, y 1..47; owner 2026-10-27: no House block at z 32+ and none glows), `HUB`, `PORCH`, `HOUSE_LIFT`, `HALL`, `SWIRLS` (records with `kind`, `move`, `needs`), `ROOMS` (8), `houseAim` |
-| `src/portalplay.js` | T42 pure swirl rules (imports only `mover.js`): `PORTAL`, `exitSpeed`, `exitOf`, `PATHS.fling`, `flingFlight` (checked every 0.02 s), `slotAimed`, the Swirl Ball, `roomKey(n)` = `pw:portal:room<n>`, `ROOMS_NEED` 8, `roomState` |
+| `src/portalhouse.js` | T42 the Portal House in the Swirl's north-east sky (Node-runnable; `buildPortalHouse` from `swirlLand`): `R` (x 80..159, z 0..31, y 1..47; owner 2026-10-27: no House block at z 32+ and none glows; x0 was 85 until the Quick Room), `HUB`, `PORCH`, `HOUSE_LIFT`, `HALL`, `HALL_DOORS` (11), `SWIRLS` (records with `kind`, `move`, `needs`, `decoy`), `ROOMS` (10), `DECOYS_MAX`, `houseAim` |
+| `src/portalplay.js` | T42 pure swirl rules (imports only `mover.js`): `PORTAL`, `exitSpeed`, `exitOf`, `PATHS.fling`, `flingFlight` (checked every 0.02 s), `slotAimed`, the Swirl Ball, `bridgeCells` (the Bridge Room's bridge of light), `roomKey(n)` = `pw:portal:room<n>`, `ROOMS_NEED` 10, `roomState` |
 | `src/portalprops.js` | Portal House models (owner 2026-10-29): `buildWand` (the Swirl Wand, drawn over the world in front of the camera), `buildBolt`, `buildDoorFrames` (doors are wooden frames with warm light, merged per part), `DoorLight`, `WAND_COLOURS` |
 | `src/portalhouselive.js` | T42 `PortalHouseLive` = `LIVE.portalhouse`: the Wand, "Swirl!" (one tap, no hold), pads, going through and flings, doors and warps, the soft catch, the 4-loop stop, the Swirl Ball, sparks, `people` (drawn only in their own part), `battleEnded`, `manual` / `step` / `hold` for tests |
 | `src/dreamland.js` | T35 Dream terrain (Node-runnable): `ISLES` (15), `LINKS`, `GIANTS`, `dreamLand` (cloud sea, islands, Bounce pads, Wake Stone, `world.isles`) |
@@ -146,11 +146,11 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/castlelive.js` | T49 `CastleLive` = `LIVE.castle`: the shield stance and the steed (`carry` objects), throws, gates with `LiveCells`, the Joust's view (`JOUST_VIEW`, owner 2026-10-28), the maze's fun (`MAZE_FUN`), `battleEnded`, `manual` + `step` |
 | `src/castleprops.js` | T49 the Castle's models (`buildPracticeKnight` with its `parts.shield`, catapults, lance, drawbridge, portcullis, horseshoes, critters, spray) |
 | `src/castlegate.js` | T49 the shared gates (owner 2026-10-28: physical): `createCastleGates` -> `game.castleGates`; play-together `castle` message, per session, never saved |
-| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160; redesign 2026-10-29): `WELL`, `FLOOR`, `MESA`, `LEDGES` (the Fizz Ledges), `SOAP_POTS` / `RIM_POTS`, `WINDS` (a stream, a gust, the rim breeze), `DRIPS`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS` / `GUSTS`, `CHIMNEY` (5 rings, 2 fans, the arm), `RIM`, `SHIELDS`, `LIFTS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `ledgeAt`, `bubbleAim`, `bubbleLand` |
-| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (out of the wand, rise, drift, wobble, pop, puffs of air), `rideUp`, `dripAt`, `gustAt`, `DUCK` / `Duckling`, `RIDE` / `Ride` (the Chimney Ride: taps, plates (one turns), fans, the arm), `shieldAt` / `stomp` / `shieldSize` / `shieldSway` (the shields), `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
-| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand (`wet`: dips by a soap pot, a jump shakes it off; Blow! / Puff!), riding a bubble (a `carry`: the stick leans it, Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff; from inside only a faint rim), the shields (stomps, bumps, for-fun returns), the fizz lifts, `battleEnded`, `manual` + `step`, `info()` |
-| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, the wand (its film only while wet), puffs of air, soap pots, Puff! arrow, ride bubble + "Ride!" sign, drips, streams, thorns, nest, the chimney's plates / fans / arm / stars, shields |
-| `src/worldreset.js` | Owner 2026-10-29: `WORLD_RESETS` (a redesigned preview-only world's old progress is cleared once per save, then a mark key is kept: the Bubble Well, `pw:bubble:redesign1`), `clearWorlds`, `runWorldResets` (main.js), `createWorldReset` -> `game.worldReset`: ?preview's pause-screen "Start this world over" inside a Picture World |
+| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160; redesign 2026-10-29): `WELL`, `FLOOR`, `MESA`, `LEDGES` (the Fizz Ledges), `SOAP_POTS` / `RIM_POTS`, `WINDS` (a stream, a gust, the rim breeze), `DRIPS`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS` / `GUSTS`, `CHIMNEY` (6 rings, 2 fans, 2 arms, the stack over the rim; `stars` = the soap bars' spots), `RIM`, `SHIELDS` (the first `low`), `DOME`, `LIFTS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `ledgeAt`, `bubbleAim`, `bubbleLand` |
+| `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (out of the wand, rise, drift, wobble, pop, puffs of air), `rideUp`, `dripAt`, `gustAt`, `DUCK` / `Duckling`, `RIDE` / `Ride` (the Chimney Ride: taps, plates (two turn), fans, the arms, `barsOf`), `shieldAt` / `stomp` (pop or boing) / `clearOf` / `shieldSize` / `shieldSway` (the shields), `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
+| `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand (`wet`: dips by a soap pot, a jump shakes it off; Blow! / Puff!), riding a bubble (a `carry`: the stick leans it, Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff; from inside only a faint rim), the shields (stomps, boings, for-fun returns), Captain Suds' dome (boings you back, a skin per shield, bursts; he giggles), the fizz lifts, `battleEnded`, `manual` + `step`, `info()` |
+| `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, the wand (its film only while wet), puffs of air, soap pots, Puff! arrow, ride bubble + "Ride!" sign, drips, streams, thorns, nest, the chimney's plates / fans / arms / bars of soap (`buildSoapBar`), shields, `buildDome` (Suds' bubble: three skins + the trails) |
+| `src/worldreset.js` | Owner 2026-10-29: `WORLD_RESETS` (a redesigned preview-only world's old progress is cleared once per save, then a mark key is kept: the Bubble Well, `pw:bubble:redesign1`; the Portal House, `pw:portal:redesign1`), `clearWorlds`, `runWorldResets` (main.js), `createWorldReset` -> `game.worldReset`: ?preview's pause-screen "Start this world over" inside a Picture World |
 | `src/bigtop.js` | T34 Big Top Gym (slot 6): `buildBigTop`, no live parts |
 | `src/missions.js` | T29 Champion missions: `MISSIONS` (12, append-only), `REWARDS`, `loadMissions`, `nextMission`, `missionOf`, `createMissions` -> `game.missions` |
 | `src/missiongen.js` | T38c the mission maker (pure): `makeMission(n, seed)`, `cleanSpec`, `roundKinds`, `roundOf`, pools, `MORE_SPOTS` |
@@ -164,7 +164,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/multiplayer.js` | Play together: share code, avatars, block sync; T38b `realm` event |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
 | `src/swapcore.js` | Wave 17, pure save rules of gifts and trades: `SWAP`, `PARCELS` / `addParcel` (only `creature` built), `cleanCreature`, `loadSwaps`, `commitOut` / `receive` / `settle` |
-| `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: the `swap` messages (`hi`, `offer`, `yes` / `no`, `pick`, `cancel`, `give`, `got`), asks, re-sends, `drop` / `info()` for tests |
+| `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: one trade flow (a side may be Nothing = a present), the `swap` messages (`hi`, `offer`, `no`, `pick`, `cancel`, `give`, `got`), asks, re-sends, `drop` / `info()` for tests |
 | `src/swapui.js` | Wave 17 `createSwapUi(game)` -> `game.swapUi`: the `#swap` panel (pick, last yes, waiting, "on the way") |
 | `src/traits.js` | T26 traits (no imports): `TRAITS` (only `rideable`), `hash32`, `drawTraits`, `cleanTraits`, `fixTraits`, `gainTraits`, `hasTrait` |
 | `src/riding.js` | T27 riding: `RIDE`, `rideKind`, `rideSpecies`, `createRiding` -> `game.riding` |
@@ -393,8 +393,9 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   old code path, the access golden stays identical). A gym row's arrow IS `game.access.of(gym).aim(p)`. Food ingredients, vault keys,
   treasure spots, the hide-and-seek friend, Camo creatures and Dojo guards are never destinations. The choice is not saved. A new
   place = a source in `DESTINATIONS`.
-- **Gifts and trades (wave 17, `plans/wave17-gifts-trading.md`, spec `swap`):** pause -> Play together -> "🎁 Give X a creature" /
-  "🔁 Trade with X" -> the `#swap` panel. One new play-together event `swap` (old games never subscribe to it; `SWAP.version` 1 in every
+- **Gifts and trades (wave 17, `plans/wave17-gifts-trading.md`, spec `swap`):** pause -> Play together -> "🔁 Trade with X" -> the
+  `#swap` panel. **One way only (owner 2026-10-29):** a trade where either side may be **Nothing**; nothing back = a present, nothing
+  offered = asking for one (never both). One new play-together event `swap` (old games never subscribe to it; `SWAP.version` 1 in every
   message; friends are known by the saved `playerId` from a `hi`, so a friend without `hi` gets no buttons). **Never lost or doubled:**
   only three save changes, each `save(true)` at once: the giver's `commitOut` (items into escrow, save field `swaps.out`), the
   receiver's `receive` (only for a yes given in this page; the answer kept in `swaps.seen`, a repeated `give` is answered from it),
@@ -533,11 +534,11 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   out; Dee's speed and the green part shrink with every goal of the match.
 - **Portal type and the Portal House (T42, spec `portal`, `tests/portalcheck.mjs`):** type `portal` (`gear: 'swirl'`, `GAITS.pop`),
   only in `REALMS.swirl.spawns.portal`. The House is **part of the Swirl world** (no frame, `PICTURE_WORLDS.portal` has
-  `door: false`), reached by the Hub Swirl or `HOUSE_LIFT`. The Hall of Swirls and eight rooms, one idea each (owner 2026-10-27 rework:
-  Gap, Fling, Clock, Skip Hall, Pair, Slider, Ball, Loop), then the Study (Grandpa Arch, a giant Gatestrider). **Rules
+  `door: false`), reached by the Hub Swirl or `HOUSE_LIFT`. The Hall of Swirls and ten rooms, one idea each (owner 2026-10-27 rework:
+  Gap, Fling, Clock, Skip Hall, Pair, Slider, Ball, Loop; owner 2026-10-29: + 9 Quick Room, 10 Bridge Room), then the Study (Grandpa Arch, a giant Gatestrider). **Rules
   (`portalplay.js`, one tap, no hold):** the Wand puts YOUR swirl on a white pad (peach pads take your orange one); speed in =
   `3.2 x sqrt(drop)`, flings on `PATHS.fling` checked every 0.02 s; the same pair 4 times in a row ends gently; falls are caught.
-  Swirls are blue (yours), orange, pink, violet (ways back); room doors are wooden doorways with warm light, no swirl (owner 2026-10-29). You hold the Swirl Wand; Swirl! shoots a bolt to the pad. Decoy white pads (`decoy: true`, `DECOYS_MAX` 5, none in rooms 1-2; `portalcheck` `decoyRows`: none helps). Back swirls (`kind: 'warp', back: true`, violet) take you to the room's start, keeping your swirls; `portalcheck` `fallOnly` proves no place in a room needs a fall into the cloud to go on. Progress `pw:portal:room1..8`
+  Swirls are blue (yours), orange, pink, violet (ways back); room doors are wooden doorways with warm light, no swirl (owner 2026-10-29). You hold the Swirl Wand; Swirl! shoots a bolt to the pad. Decoy white pads (owner 2026-10-29: "max 5 in each room": `decoy: true`, 1 2 2 3 3 4 4 5 5 5 by room, `DECOYS_MAX` 5; `portalcheck` `decoyRows` + `decoyProblems`: none helps, none loops, each can be aimed at), and the guide's arrow never points at the right pad (it shows the door, the words say what to tap). No place in a room needs a fall into the cloud to go on (`portalcheck` `fallOnly`), with plain stairs and steps (the Fling Room: stairs and a walkway, its three jumping ledges unchanged; the Clock Room: stairs; the Ball Room: a step down), never an extra kind of swirl (the back swirls were tried and removed). **Quick Room** (9, not a pit room): stand on its button (a mesh) and the door up on the ledge (`needs: 'button'`) stays open `button.open` 4 s after you step off; your swirl by the door, set first, gets you there in about 1.7 s, the stairs take 7 (`portalcheck` `quickTime`, a timed search). **Bridge Room** (10): a bridge of light (`room.bridge`, `bridgeCells`) goes straight from the start ledge's edge; it goes into your blue swirl where it hits a wall and out of your orange one; drawn as a mesh over hidden solid `HOUSE_PROP` cells (`LiveCells`, never saved); `reachable` treats it as ground. The Swirl's version stays 5 (nothing can be built in the House). Owner 2026-10-29: everyone's old Portal House progress was reset once (`worldreset.js`, mark `pw:portal:redesign1`; the House is behind ?preview). Progress `pw:portal:room1..10`
   (old four-room saves keep rooms 1-4); sparks, the Wand and your swirl are never saved. `portalcheck.mjs` proves each room needs its trick.
 - **Funfair (T43, spec `funfair`):** type `funfair` (`gear: 'bulbs'`, ONE merged mesh). Playland's third zone. **Three skill games,
   a golden ticket each (`pw:fair:ticket1..3`), none is hold-and-let-go and none can be failed**; owner 2026-10-27 "harder games":
@@ -629,16 +630,25 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   kid gets them), ledge 2 has a stream blowing away from ledge 3 (blow from the north corner), ledge 3 -> the plateau needs a ride to
   the very end, drips and a gust (blow right after one). Kids with the real Player in Node (`bubblenode.mjs`, `makeKid`) prove skilled
   always, first-time the first two, random rarely, pillar never. **Ducklings:** as before plus soap pots in the garden (a wet wand to
-  bubble one), the gust a little stronger. **Chimney Ride:** from inside the ride bubble is only a faint rim (`RP.*` hidden); five gold
-  rings (the fourth turns, `spin`; a star counts once you are up past it), two fans, `RIDE.steer` 0.8, about 25 s for the best robot.
-  **Shields** (replaced the bank shots; keys `shield1..3` kept): three big shield bubbles bob on the rim breeze (`SHIELDS`, `shieldAt`); a
-  soap pot under each (`RIM_POTS`); ride a bubble up, hop off above one and drop onto its top (`stomp`: pop; from the side or below it
-  bumps); out of a jump's reach from anything you stand on. Popped ones float back `funBack` 6 s later just for fun. **The one-time
+  bubble one), the gust a little stronger. **Chimney Ride:** from inside the ride bubble is only a faint rim (`RP.*` hidden); six gold
+  rings (the fourth and sixth turn, `spin`), two fans, two arms (`CHIMNEY.bars`; the second turns the other way, slower), `RIDE.steer` 0.8;
+  owner 2026-10-30 "slightly longer": the chimney stands up out of the rim as a stack to y 47 (`CHIMNEY.stack`, `top` 48.3), about 37 s for
+  the best robot (was 24). **No stars in the well but Captain Suds' real one** (owner 2026-10-30: the Wizard's bridge needs stars): the
+  ride's checkpoints are **bars of soap** (`buildSoapBar`, chip `🧼 n / 6`; the data keeps the name `stars` and the event `star`), the
+  shields wear a heap of foam, not a gold star. **Shields** (owner 2026-10-30: "I didn't get that I was supposed to jump on top of them";
+  keys `shield1..3` kept): Captain Suds sits sealed in a big bubble (`DOME`, three skins, one per shield, `domeUp` / `domeR`): it boings you
+  back, a bubble you ride pops on it, he giggles "Hee hee!" (one line, `WORDS.sealed`, also his gate's words) and trails of little bubbles
+  run into it from each shield; each pop pops a skin, the last bursts it. Shield 1 (`low`) rests on the balcony's foam right in front of him,
+  its top 1.05 over the floor: walking into it boings you back (`stomp` -> `{ bump }`, `boingOff`: pushed out to `clearOf`, a hop, a squash,
+  the `boing` sound), a plain jump onto its top pops it (a shoulder landing boings). Shields 2-3 bob high (out of a jump's reach) over a
+  soap pot each (`RIM_POTS[1..2]`): ride a bubble up, hop off above one and drop onto its top. Bots: `makeLowShieldKid` (first-time pops it
+  every time, walker never, jumping under a high one never), `makeShieldKid` for the high ones. Popped ones float back `funBack` 6 s later
+  just for fun (the dome stays gone). **The one-time
   reset** (`worldreset.js`, owner: "reset my progress in ... bubble worlds"): a save without `pw:bubble:redesign1` loses its old
   `pw:bubble:*` keys (crew too), the `bubble` star and `bossWins.bubble` once, then keeps the mark; allowed only because the Bubble Well
   was preview-only (nobody else could play it); every other world untouched. `REALMS.bubble` version 2. Landing: `landsOn` = down
   through its top, or feet in its top part (`scoop`). The two fizz lifts run once you did a stretch (or hold the star). Captain Suds (a
-  giant Lathotter) gates on the five stretch keys and the three shields, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won
+  giant Lathotter) gates on the three shields (his muffled line) and the five stretch keys, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won
   battle clears the eight climb keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
 - **"Start this world over" (owner 2026-10-29, `worldreset.js`):** only with `?preview` (`comingsoon.js` `PREVIEW`), in the pause screen
   while inside a Picture World (a realm with `parent`): two taps clear that world's `pw:<id>:*` keys (crew too; never a reset mark), its
@@ -729,7 +739,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `parkour`: T36 creatures, `high` condition, the run-away walk, the Obstacle Course
 - `picture-worlds`: T40 base: types, blocks, stand-in terrains, the Mover, the whole loop, Boss rematches, two browsers, old saves, iPad; `PW_ONLY`
 - `pirate`: T40b type, terrain for three seeds, gadgets with real physics at 60 / 20 fps, the challenges, play loop, iPad, two browsers; `PIRATE_ONLY=data|terrain|gadgets|challenge|play|ipad|pair|shots`
-- `portal`: T42 type, the House as terrain (`portalcheck.mjs`), physics at 60 / 20 fps, play, iPad, two browsers; `PORTAL_ONLY=data|land|physics|play|ipad|pair|shots`
+- `portal`: T42 type, the House as terrain (`portalcheck.mjs`: tricks, decoys, no fall needed, the Quick Room's times, the bridge), physics at 60 / 20 fps (rooms 9 and 10 too), play (ten rooms, the one-time reset), iPad, two browsers; `PORTAL_ONLY=data|land|physics|play|ipad|pair|shots`
 - `pvp`: duels between two browsers
 - `racer`: T40c type, track maths, builder, the race, the dash gait, Book, iPad, two browsers; `RACER_ONLY=data|track|race|gait|book|ipad|pair`
 - `realms`: T31/T35 realm seed, bed rules, there and back, morning, save/load, old saves, two browsers
@@ -741,8 +751,8 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `spawn-rules`: T18 conditions, golden hour, Camo disguises, Cyber with two players
 - `squad`: T34 crews, `weakensWithHp`, the Big Top Gym
 - `surprise`: T44 + T48 type (chart vs `tests/fixtures/chart-before-t44.json`), gift boxes, party terrain, `partyBows`, the Spinner, the four games with `partybots.mjs` at 60 / 20 fps, live play, iPad, two browsers; `SURPRISE_ONLY=data|land|games|live|ipad|pair|shots`, `SURPRISE_SKIP_BOSS=1`
-- `swap`: wave 17 gifts and trades on two browsers: the save rules, gift / trade with real buttons, Not now / No thanks, three
-  "browser closes halfway" cases (each uid in exactly one save), an older friend's game, iPad; `SWAP_ONLY=rules|gift|trade|crash|old|ipad`
+- `swap`: wave 17 gifts and trades on two browsers: the save rules, a present (Nothing back), asking for one, a trade, Not now / No thanks, three
+  "browser closes halfway" cases (each uid in exactly one save), screenshots `w17-*.png`, an older friend's game, iPad; `SWAP_ONLY=rules|gift|trade|crash|old|ipad`
 - `swirl`: T38a/d the Portal Door, stars, travel, Swirl terrain, lifts, frames, bridge, looks
 - `three-types`: T18 Time / Camo / Cyber; `T18_TYPE=time|camo|cyber`
 - `tiny`: T40a type, Giant House terrain (`housecheck.mjs`), live puzzles, Nibbles, iPad; `TINY_ONLY=type|land|live|ipad`, `TINY_SKIP_BOSS=1`
