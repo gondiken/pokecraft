@@ -277,15 +277,15 @@ addBoss({
 });
 /* ==== end of Bubble ==== */
 /* ==== Gravity ==== */
-// Professor Orbit waits on top of the Great Cube (his little-planet observatory) with his giant Saturnowl. His gate: the three Orbikit
+// Professor Orbit waits on top of the Great Cube (his little-planet observatory) with his giant Saturnowl. His gate: the five Orbikit
 // tags, the Planet Hop and the three telescope pieces with their lenses (saved `beaten` keys, cubeland.js gravityState); his helpers
 // Stargazer Stella, Captain Comet and Saucer Mechanic Milo battle first (the base's crew rule). Owner 2026-10-30: the moon ferry is a
-// little flying saucer now, the lenses are telescope pieces that look like 🔭, and Stella's line says what the Orbikit's "!" means. A won battle clears the seven keys (cubelive.js battleEnded):
+// little flying saucer now, the lenses are telescope pieces that look like 🔭, and Stella's line says what the Orbikit's "!" means. A won battle clears the nine keys (cubelive.js battleEnded):
 // a rematch plays the games again, a bit harder. Redesign 2026-10-29: the story is told here (the helpers' words), never by rule text.
 addBoss({
   id: 'gravity', name: 'Professor Orbit', type: 'gravity', title: 'Professor Orbit · Cube Planets Boss', look: 'orbit', // (the title is spelled out: a closed world's frame is named "Secret World")
   colors: { shirt: 0x4a3a8a, pants: 0x2a2a3a, hair: 0xe8e8f0, skin: 0xf2d0b0 },
-  gate: game => { const st = gravityState(game); return st.done ? null : `Oh dear! My Orbikits got loose and my telescope fell to pieces! (🐱 ${st.tags} / 3 · 🌸 ${st.hop ? 1 : 0} / 1 · 🔭 ${st.lenses} / 3)`; },
+  gate: game => { const st = gravityState(game); return st.done ? null : `Oh dear! My Orbikits got loose and my telescope fell to pieces! (🐱 ${st.tags} / ${st.tagNeed} · 🌸 ${st.hop ? 1 : 0} / 1 · 🔭 ${st.lenses} / 3)`; },
   team: [['wallibex', 61], ['turvysloth', 62], ['orbitah', 62], ['saturnowl', 63]], // top level 63, the easy side
   intro: ['My Orbikits are back and my telescope is whole again!', 'Now, a battle!'],
   lose: 'Marvellous! The star is yours. It was in orbit round my hat all along!',

@@ -7,7 +7,8 @@
 // little-planet observatory. His pet Orbikits got loose, spring flowers grow on his pebbles, and his telescope's three lenses fell onto
 // far little rocks that only the moon ferry passes.
 //  - the Meadow Cube in the middle (you arrive on top, the way back stands there),
-//  - east: the Orbikit Chase on three planets (the Crystal Cube, the Tree Cube, the Long Rock), Stargazer Stella on the last,
+//  - east: the Orbikit Chase on five planets (the Crystal Cube, the Tree Cube, the Long Rock, then the Twirl Cube and the Zigzag Rock),
+//    Stargazer Stella on the Long Rock,
 //  - west: the Saucer Dock, a wide flat planet the Professor's little saucer ferry circles over on a real orbit round a little sun
 //    (orbits.js ferryAt; owner 2026-10-30: it was a little moon, now a flying saucer); three Lens Rocks out in space south of it, too far
 //    to jump to, each holding a piece of his telescope (the Moon Ferry, its old name in the code), Saucer Mechanic Milo on the dock,
@@ -16,7 +17,7 @@
 //  - far north: the Great Cube (21 across), Professor Orbit on top (a second way back there).
 // Every planet pulls the same (GRAV.g; owner 2026-10-29: before it was 0.7 on the hub planets, 0.6 on the Moon Base and 0.45 on the
 // pebbles, with no reason you could see). Between hub planets the ways are plain jumps face to face across a gap of 6 (HOPS). The games'
-// rules are pure: orbits.js; cubelive.js wires them. Saved keys (in `beaten`): pw:gravity:tag1..3, pw:gravity:hop, pw:gravity:lens1..3
+// rules are pure: orbits.js; cubelive.js wires them. Saved keys (in `beaten`): pw:gravity:tag1..5, pw:gravity:hop, pw:gravity:lens1..3
 // (gravityState), and the redesign's reset mark pw:gravity:redesign1 (worldreset.js).
 import { B, WOOL, mulberry32 } from './blocks.js';
 import { kit, buildWayBack, placeBoss, placeCrew } from './picturelands.js';
@@ -43,6 +44,9 @@ export const PLANETS = [
   { id: 'lens1', name: 'Lens Rock', emoji: '🔭', x: 76, y: 10, z: 174, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 0 },
   { id: 'lens2', name: 'Lens Rock', emoji: '🔭', x: 60, y: 10, z: 172, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 1 },
   { id: 'lens3', name: 'Lens Rock', emoji: '🔭', x: 36, y: 8, z: 150, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 2 },
+  // Owner 2026-10-30: two more Orbikit rounds past the Long Rock, harder only because their trails twist more (PUPS 4 and 5)
+  { id: 'twist', name: 'Twister Rock', emoji: '🌪️', x: 161, y: 15, z: 151, s: [11, 11, 25], g: G, reach: 8, skin: 'moon', role: 'pup', pup: 3 },
+  { id: 'eight', name: 'Twirl Cube', emoji: '🎀', x: 159, y: 13, z: 182, n: 14, g: G, reach: 8, skin: 'crystal', role: 'pup', pup: 4 },
 ];
 export const P = Object.fromEntries(PLANETS.map((p, i) => [p.id, i]));
 // Owner 2026-10-30: the pebbles' one strong colour each (their faces are that wool), the blooms of the flowers that fling you there and the
@@ -54,6 +58,7 @@ const pair = (a, b, axis, sign) => [{ from: P[a], to: P[b], axis, sign }, { from
 export const HOPS = [
   ...pair('meadow', 'crystal', 0, 1), ...pair('crystal', 'tree', 2, 1), ...pair('tree', 'long', 0, 1),
   ...pair('meadow', 'base', 0, -1), ...pair('meadow', 'hop0', 2, -1), ...pair('hop4', 'great', 2, -1),
+  ...pair('long', 'twist', 0, 1), ...pair('twist', 'eight', 2, 1),
 ];
 export const DOOR = { x: 104, z: 143, facing: [0, 1] }; // the way back on top of the Meadow Cube (you arrive 3 in front of it, looking south)
 export const DOOR2 = { x: 96, z: 74, facing: [-1, 0] }; // a second way back on top of the Great Cube (beside Professor Orbit)
@@ -78,13 +83,15 @@ export function hopSpot(h) {
 export const tagKey = n => `pw:gravity:tag${n}`;
 export const HOP_KEY = 'pw:gravity:hop';
 export const lensKey = n => `pw:gravity:lens${n}`;
-export const GRAVITY_KEYS = [tagKey(1), tagKey(2), tagKey(3), HOP_KEY, lensKey(1), lensKey(2), lensKey(3)];
-// -> { tags, hop, lenses, n, need, done, star }: own keys (the tags and the lenses may come in any order).
+// Owner 2026-10-30: five Orbikit rounds (tag4 and tag5 came later; a save with tag1..3 keeps them and plays the two new rounds).
+export const TAGS = 5;
+export const GRAVITY_KEYS = [...Array.from({ length: TAGS }, (_, i) => tagKey(i + 1)), HOP_KEY, lensKey(1), lensKey(2), lensKey(3)];
+// -> { tag, tags, tagNeed, hop, lens, lenses, n, need, done, star }: own keys (the tags and the lenses may come in any order).
 export function gravityState(game) {
   const has = k => !!game?.beaten?.includes(k);
-  const tag = [1, 2, 3].map(n => has(tagKey(n))), lens = [1, 2, 3].map(n => has(lensKey(n)));
-  const tags = tag.filter(Boolean).length, lenses = lens.filter(Boolean).length, hop = has(HOP_KEY), n = tags + (hop ? 1 : 0) + lenses;
-  return { tag, tags, hop, lens, lenses, n, need: 7, done: n === 7, star: !!game?.stars?.includes('gravity') };
+  const tag = Array.from({ length: TAGS }, (_, i) => has(tagKey(i + 1))), lens = [1, 2, 3].map(n => has(lensKey(n)));
+  const tags = tag.filter(Boolean).length, lenses = lens.filter(Boolean).length, hop = has(HOP_KEY), n = tags + (hop ? 1 : 0) + lenses, need = TAGS + 4;
+  return { tag, tags, tagNeed: TAGS, hop, lens, lenses, n, need, done: n === need, star: !!game?.stars?.includes('gravity') };
 }
 // Owner 2026-10-29 "reset my progress in the gravity world": the redesign started Cube Planets over ONCE for every save (worldreset.js
 // WORLD_RESETS, mark pw:gravity:redesign1: old keys, crew, star and Boss wins cleared once; fine only because it was preview-only).
@@ -105,11 +112,43 @@ function hexagon(Pl) {
 // Each round's own numbers (owner 2026-10-29: "the first two were very easy and the last one was very hard"; now 1 easy, 2 medium,
 // 3 harder but fair): base / boost = its trot and its sprint (blocks/s; you sprint at 6.2), see = how far it sees you on its own face,
 // tagR = how close counts as a touch, surprise = seen this close ahead on its way it cannot stop and skids into you (owner 2026-10-30:
-// "I have no idea how I won"; orbits.js PUP), flip = the last one is playful: it turns back by itself every so often (watch it, then hide).
+// "I have no idea how I won"; orbits.js PUP), flip = the third one is playful: it turns back by itself every so often (watch it, then hide),
+// hear = it hears your running feet this close (owner 2026-10-30: "we can keep the Orbikit hearing us ... it should be obvious somehow";
+// running shows rings round your feet that reach exactly this far, cubelive.js; walking and standing are quiet).
+// Rounds 4 and 5 (owner 2026-10-30: "add two more ... where the trail of the Orbikit is more complex, so we have to calculate properly ...
+// not somehow better perception"): round 3's eyes, ears and legs, no playful turning; only the way they run is harder to read.
+//  - the Twirl Cube: a figure-eight of two belts round the cube that cross in the middle of the top and of the bottom. In the middle of the
+//    top it always switches belts (a turn), in the middle of the bottom it runs straight on: which belt comes round next?
+//  - the Zigzag Rock: along a long rock it zigzags over one long edge (top, side, top, side: over the same edge four times, back and forth),
+//    over the end, and zigzags back over the opposite edge (bottom, other side). Round a zigzag's first corner you are hidden; round a later
+//    one it sees you from the zig before (it is on the same face, coming your way): count the zigzags.
+export function figureEight(Pl) {
+  const b = boxOf(Pl), [nx, ny, nz] = sizeOf(Pl), hx = nx / 2, hz = nz / 2, at = (u, v, w) => [b.x0 + u, b.y0 + v, b.z0 + w];
+  return [at(hx, ny, hz), at(hx, ny, nz), at(hx, 0, nz), at(hx, 0, 0), at(hx, ny, 0), at(hx, ny, hz), at(nx, ny, hz), at(nx, 0, hz), at(0, 0, hz), at(0, ny, hz)];
+}
+// Two corkscrews that wind opposite ways: one goes once round the rock from the near end to the far end, over the far end, and the other
+// winds back once round the other way, so they cross in an X on two sides. u = the way round the rock (0 = the top's west edge, then the
+// top, east, bottom, west faces, n each), w = along it. Each corkscrew is straight when you unfold the rock (a chaser cannot cut it).
+export function twister(Pl) {
+  const b = boxOf(Pl), [n, , L] = sizeOf(Pl), C = 4 * n, h = n / 2;
+  const on = (u, w) => { // the point at u (round) and w (along) on the four long faces
+    const k = ((u % C) + C) % C, f = Math.floor(k / n + 1e-9) % 4, t = k - f * n;
+    const xy = [[t, n], [n, n - t], [n - t, 0], [0, t]][f];
+    return [b.x0 + xy[0], b.y0 + xy[1], b.z0 + w];
+  };
+  const out = [on(h, 0)];
+  for (let u = n; u <= C; u += n) out.push(on(u, (u - h) * L / C)); // the first corkscrew: its edges
+  out.push(on(C + h, L), on(3 * n - h, L)); // the top middle of the far end, then down it to the bottom middle
+  for (let k = 1; k <= 4; k++) { const u = (2 + k) * n; out.push(on(u, L - (u - (3 * n - h)) * L / C)); } // back the other way round
+  out.push(on(3 * n - h, 0)); // the bottom middle of the near end (then up it to the start)
+  return out;
+}
 export const PUPS = [
-  { planet: P.crystal, loop: belt(PLANETS[P.crystal], 2, 142 + 4.5), base: 4.0, boost: 7.0, see: 5, tagR: 1.3, surprise: 3.0 },
-  { planet: P.tree, loop: hexagon(PLANETS[P.tree]), base: 4.4, boost: 7.0, see: 6, tagR: 1.35, surprise: 2.8 },
-  { planet: P.long, loop: belt(PLANETS[P.long], 2, 160 + 3.5, true), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, surprise: 2.2, flip: 7 },
+  { planet: P.crystal, loop: belt(PLANETS[P.crystal], 2, 142 + 4.5), base: 4.0, boost: 7.0, see: 5, tagR: 1.3, surprise: 3.0, hear: 3.5 },
+  { planet: P.tree, loop: hexagon(PLANETS[P.tree]), base: 4.4, boost: 7.0, see: 6, tagR: 1.35, surprise: 2.8, hear: 4 },
+  { planet: P.long, loop: belt(PLANETS[P.long], 2, 160 + 3.5, true), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, surprise: 2.2, flip: 7, hear: 4.5 },
+  { planet: P.twist, loop: twister(PLANETS[P.twist]), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, surprise: 2.2, flip: 7, hear: 4.5 },
+  { planet: P.eight, loop: figureEight(PLANETS[P.eight]), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, surprise: 2.2, flip: 7, hear: 4.5 },
 ];
 // The Planet Hop: one spring flower on each of hop0..hop3 (the cell of the pad in its skin, on the face [axis, sign]); Jump on it and it
 // flings you `push` along that face's up (player.js launchAt). `to` = the planet it is meant to reach. `solution` = how a good player
@@ -263,7 +302,7 @@ export function cubeLand(world, def) {
   for (const [pi, Pl] of PLANETS.entries()) {
     const [nx, , nz] = sizeOf(Pl), t = top(Pl) + 1;
     if ((Pl.role !== 'hop' || Pl.hop === 0) && Pl.role !== 'lens') world.rests.push([Pl.x + Math.floor(nx / 2) + 0.5, t, Pl.z + Math.floor(nz / 2) + 0.5, 0]);
-    if (!['hub', 'dock', 'great', 'pup'].includes(Pl.role) || pi === P.long) continue;
+    if (!['hub', 'dock', 'great', 'pup'].includes(Pl.role) || Pl.pup >= 2) continue;
     for (let i = 3; i < nx - 3; i += 3) for (let k = 3; k < nz - 3; k += 3) {
       const w = [Pl.x + i, t, Pl.z + k];
       if (world.get(...w) !== B.AIR || world.get(w[0], t + 1, w[2]) !== B.AIR || near(w, 2) || busy(w)) continue;
@@ -295,10 +334,10 @@ export const planetAt = (world, p, prev = null) => downAt(world.planets ?? BOXES
 // Owner 2026-10-29 "too much instruction text": the guide only names where (an emoji, a name, the arrow); the scene says how.
 // Over another planet the arrow leads to the hop side that faces the next planet on the way (ROUTE).
 const ROUTE = { // next planet on the way from `from` to `to`'s branch: the hub is the Meadow Cube
-  [P.crystal]: { home: P.meadow, out: P.tree }, [P.tree]: { home: P.crystal, out: P.long }, [P.long]: { home: P.tree },
+  [P.crystal]: { home: P.meadow, out: P.tree }, [P.tree]: { home: P.crystal, out: P.long }, [P.long]: { home: P.tree, out: P.twist }, [P.twist]: { home: P.long, out: P.eight }, [P.eight]: { home: P.twist },
   [P.base]: { home: P.meadow }, [P.hop0]: { home: P.meadow }, [P.great]: { home: P.hop4 },
 };
-const BRANCH = { [P.lens1]: 'lens', [P.lens2]: 'lens', [P.lens3]: 'lens', [P.crystal]: 'pup', [P.tree]: 'pup', [P.long]: 'pup', [P.base]: 'base', [P.hop0]: 'hop', [P.hop1]: 'hop', [P.hop2]: 'hop', [P.hop3]: 'hop', [P.hop4]: 'hop', [P.great]: 'great' };
+const BRANCH = { [P.lens1]: 'lens', [P.lens2]: 'lens', [P.lens3]: 'lens', [P.crystal]: 'pup', [P.tree]: 'pup', [P.long]: 'pup', [P.eight]: 'pup', [P.twist]: 'pup', [P.base]: 'base', [P.hop0]: 'hop', [P.hop1]: 'hop', [P.hop2]: 'hop', [P.hop3]: 'hop', [P.hop4]: 'hop', [P.great]: 'great' };
 // The planet you should walk to next to reach planet `goal` from planet `on` (connectors only), or null when there is no plain way.
 export function nextPlanet(on, goal) {
   if (on === goal) return on;
@@ -323,7 +362,7 @@ export function cubeAim(world, p, game) {
   // where to go: the next unfinished game, then the crew, then the Professor; with the star, home
   const crewLeftList = (game?.bosses ? (world.bosses?.[0]?.crew || []).filter(c => !game.beaten?.includes(`pw:gravity:crew${c.i + 1}`)) : []);
   let goal = null, words = null;
-  if (!star && st.tags < 3) { goal = PUPS.find((q, i) => !st.tag[i])?.planet ?? P.crystal; words = '🐱 Orbikits'; }
+  if (!star && st.tags < st.tagNeed) { goal = PUPS.find((q, i) => !st.tag[i])?.planet ?? P.crystal; words = '🐱 Orbikits'; }
   else if (!star && !st.hop) { goal = P.hop0; words = '🌸 Spring flowers'; }
   else if (!star && st.lenses < 3) { goal = P.base; words = '🔭 Telescope'; }
   else if (!star && crewLeftList.length) { const c = crewLeftList[0], planetOf = [P.long, P.hop4, P.base][c.i]; if (on === planetOf) return at(c.pos, (a, m) => `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Saucer Mechanic Milo'][c.i]} ${a} ${m}m`); goal = planetOf; words = `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Saucer Mechanic Milo'][c.i]}`; }

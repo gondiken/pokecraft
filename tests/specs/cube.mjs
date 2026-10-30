@@ -4,12 +4,15 @@
 //   Great Cube only by the launch flowers, blocks (the only new ids 149 / 183 / 249), the games' places, keeps, nooks.
 // data (a page): the Gravity type: 7 creatures with 4 shapes of their own and the 'orbit' gear, the gait, moves / sigs / big moves, the chart
 //   (separate lines, at most 5 weaknesses), effects and the fx:gravity sound, the spawns and AFTER_CHECKS, the wool, Professor Orbit.
-// games (Node, cubebots.mjs, the real Player and the real CubeLive at 60 and 20 frames a second): the Orbikit Chase (chasing, camping and
-//   wandering never tag it; waiting round a corner on its loop does; a skilled child bot shows the ramp easy -> medium -> harder), the
+// games (Node, cubebots.mjs, the real Player and the real CubeLive at 60 and 20 frames a second): the Orbikit Chase, five rounds (chasing,
+//   camping, running feet and wandering never or seldom tag it; reading its way, walking quietly and waiting round the right corner does;
+//   walking in just as it comes tags it, running in it hears you; a skilled child bot shows the ramp over the five rounds), the
 //   Planet Hop (the skilled run lands every pebble; running straight at the next pebble or walking straight at it each fail one hop; a
 //   random run seldom lands), the Moon Ferry (letting go at the right moment lands on each Lens Rock; jumping when the rock is closest never
 //   does, a random moment seldom; the windows get shorter rock by rock), the kind help (gentle, and chasing still never works), just for
 //   fun after all is won, a won Boss battle clears the keys. uniform: every planet pulls the same (redesign 2026-10-29).
+// hear (Node, owner 2026-10-30): running feet make rings as far as the Orbikit hears, walking (a light push on an iPad) none; its "?" and
+//   startled hop; five rounds (the gate, an old save with three tags, the guide), the new ways shown whole by the dots and crossing themselves.
 // reset: the redesign's one-time reset (an old save loses its Cube Planets progress once and gets the mark; a marked save keeps it).
 // camera: the third-person steady camera (V, the pause button, remembered; it does not roll over an edge, aiming still works).
 // off: the main world, the Dream and the Swirl move the player bit for bit as the golden says (tests/cuberecord.mjs).
@@ -21,7 +24,7 @@
 // real: real key presses through the game's own loop (a flower hop, the Moon Ferry with Space, V for the camera). ipad: the stick on a side face, the
 // camera turn, the Ride slot says Camera here, Hop on! on the action button. pair: a friend on a side face is drawn
 // turned to it. closed: without ?preview the frame is the old secret one. Screenshots tests/screenshots/cube-*.png.
-// CUBE_ONLY=frames|land|data|games|uniform|reset|off|gravity|play|camera|real|ipad|pair|closed|shots
+// CUBE_ONLY=frames|land|data|games|hear|uniform|reset|off|gravity|play|camera|real|ipad|pair|closed|shots
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -164,37 +167,43 @@ export default async function ({ browser, base, t }) {
     const B = await import('../cubebots.mjs');
     const O = await import('../../src/orbits.js');
     for (const fps of [60, 20]) {
-      // the Orbikit Chase
-      const chase = {};
-      for (const kind of ['chaser', 'camper', 'random', 'skilled']) {
+      // the Orbikit Chase: five rounds (owner 2026-10-30: two more planets whose ways twist more; the same eyes and ears as round 3)
+      const NP = CL.PUPS.length, chase = {};
+      for (const kind of ['chaser', 'camper', 'random', 'noisy', 'skilled']) {
         chase[kind] = [];
-        for (let i = 0; i < 3; i++) for (const seed of [1, 2]) { const env = await cubeEnv(seed); chase[kind].push(B.playChase(env, i, kind, { fps, seed: seed + i * 10, maxT: 45 })); }
+        for (let i = 0; i < NP; i++) for (const seed of [1, 2]) { const env = await cubeEnv(seed); chase[kind].push(B.playChase(env, i, kind, { fps, seed: seed + i * 10, maxT: 45 })); }
       }
-      const tags = k => chase[k].filter(r => r.tagged).length;
-      // the ramp (owner 2026-10-29: 1 easy, 2 medium, 3 harder but fair), with the skilled child bot (sees only what is in view, thinks
-      // every 0.5 s, presses Tag! a bit late, stands a little off the perfect spot)
-      const kid = [0, 1, 2].map(() => []);
-      for (let i = 0; i < 3; i++) for (let seed = 1; seed <= 6; seed++) { const env = await cubeEnv(seed); kid[i].push(B.playChaseKid(env, i, { fps, seed, err: 1.0 })); }
-      const med = a => { const v = a.map(r => (r.tagged ? r.t : 120)).sort((x, y) => x - y); return (v[2] + v[3]) / 2; }, rate = a => a.filter(r => r.tagged).length;
-      const m3 = kid.map(med);
-      t.ok(rate(kid[0]) === 6 && rate(kid[1]) >= 5 && rate(kid[2]) >= 4 && m3[0] < m3[1] && m3[1] <= m3[2] * 1.15 && m3[2] <= 4.5 * m3[0],
-        `Orbikit Chase @${fps}, the ramp with a skilled child: round 1 ${rate(kid[0])}/6 in ${m3[0].toFixed(0)} s, round 2 ${rate(kid[1])}/6 in ${m3[1].toFixed(0)} s, round 3 ${rate(kid[2])}/6 in ${m3[2].toFixed(0)} s (medians; round 3 = ${(m3[2] / m3[0]).toFixed(1)} x round 1)`);
-      t.ok(tags('chaser') === 0 && tags('camper') === 0 && tags('random') <= 2 && tags('skilled') === 6 && chase.skilled.every(r => r.spots === 0),
-        `Orbikit Chase @${fps}: running after it never tags it (${tags('chaser')}/6 in 45 s), standing on its loop never does (${tags('camper')}/6: it sees you and turns ${chase.camper.map(r => r.spots).join(',')} times), wandering about seldom (${tags('random')}/6${chase.random.some(r => r.tagged) ? `, after ${chase.random.filter(r => r.tagged).map(r => r.t.toFixed(0)).join(' / ')} s` : ''}); waiting round a corner on its loop tags it every time (${tags('skilled')}/6, in ${chase.skilled.map(r => r.t.toFixed(1)).join(' / ')} s, never seen)`);
+      const tags = k => chase[k].filter(r => r.tagged).length, all = 2 * NP;
+      // the ramp (owner 2026-10-29: 1 easy, 2 medium, 3 harder but fair; 2026-10-30: 4 and 5 harder only by their ways), with the skilled
+      // child bot: it sees only what is in view, thinks every 0.5 s, presses Tag! a bit late, stands a little off the perfect spot, walks
+      // when it guesses the Orbikit is close, may follow the wrong strand where a way crosses itself, lands where a jump from the planet
+      // before puts it and looks round first for a moment of up to a lap (so the seeds start at different moments)
+      const KN = 12, kid = CL.PUPS.map(() => []);
+      for (let i = 0; i < NP; i++) for (let seed = 1; seed <= KN; seed++) { const env = await cubeEnv(seed); kid[i].push(B.playChaseKid(env, i, { fps, seed, err: 1.0 })); }
+      const med = a => { const v = a.map(r => (r.tagged ? r.t : 120)).sort((x, y) => x - y); return (v[KN / 2 - 1] + v[KN / 2]) / 2; }, rate = a => a.filter(r => r.tagged).length;
+      const m = kid.map(med), rates = kid.map(rate);
+      t.ok(rates[0] === KN && rates.every(n => n >= KN * 0.6) && m[0] < m[2] && m[2] < m[4] && m[3] < m[4] && m[1] <= m[3] && m[4] <= 5 * m[0],
+        `Orbikit Chase @${fps}, the ramp with a skilled child (medians of ${KN}): ${m.map((v, i) => `round ${i + 1} ${rates[i]}/${KN} in ${v.toFixed(0)} s`).join(', ')} (round 5 = ${(m[4] / m[0]).toFixed(1)} x round 1)`);
+      t.ok(tags('chaser') === 0 && tags('camper') === 0 && tags('noisy') === 0 && tags('random') <= 3 && tags('skilled') === all && chase.skilled.every(r => r.spots === 0),
+        `Orbikit Chase @${fps}, all ${NP} rounds: running after it never tags it (${tags('chaser')}/${all} in 45 s), standing on its way never does (${tags('camper')}/${all}: it sees you and turns ${chase.camper.map(r => r.spots).join(',')} times), the right corner with running feet never does (${tags('noisy')}/${all}: it hears you ${chase.noisy.map(r => r.spots).join(',')} times), wandering about seldom (${tags('random')}/${all}${chase.random.some(r => r.tagged) ? `, after ${chase.random.filter(r => r.tagged).map(r => r.t.toFixed(0)).join(' / ')} s` : ''}); reading its way, walking quietly and waiting round the right corner tags it every time (${tags('skilled')}/${all}, in ${chase.skilled.map(r => r.t.toFixed(1)).join(' / ')} s, never seen or heard)`);
       // Owner 2026-10-30 "no idea how I won": the ambush must be readable. On every planet, round two corners, standing still on its way
       // up to `surprise` from the edge always tags it (it shows its "!" and skids into you), further back it always sees you ("!") and runs;
       // a step off its way the "!" comes too and Tag! (offered only in reach) tags it when pressed. The same at 60 and 20 frames a second.
+      // Hearing (owner 2026-10-30): walking up to that spot just as it comes is quiet and tags it; running up to it, it hears you ("?").
       {
         const rows = [], bad = []; let vain = 0;
-        for (let i = 0; i < 3; i++) for (const ci of [1, 2]) {
+        for (let i = 0; i < NP; i++) for (const ci of [1, 2]) {
           const S = CL.PUPS[i].surprise, env = await cubeEnv(1);
           for (const D of [0.3, 1, 1.6, S * 0.75, S - 0.3]) { const r = B.playCorner(env, i, { ci, D, press: true, fps }); vain += r.offered || 0; if (r.result !== 'tag' || (D >= 1.8 && !r.bang)) bad.push(`#${i + 1} corner ${ci} at ${D.toFixed(1)}: ${r.result}${r.bang ? '' : ' (no "!")'}`); }
           for (const D of [S + 0.4, S + 1.5]) { const r = B.playCorner(env, i, { ci, D, press: true, fps }); vain += r.offered || 0; if (r.result !== 'seen' || !r.bang) bad.push(`#${i + 1} corner ${ci} at ${D.toFixed(1)}: ${r.result} (should be seen)`); }
           const off = B.playCorner(env, i, { ci, D: 1.0, across: 1.6, press: true, fps }); vain += off.offered || 0;
           if (off.result !== 'seen' || !off.bang) bad.push(`#${i + 1} corner ${ci} a step off its way: ${off.result}`);
+          const walk = B.playCorner(env, i, { ci, D: 1.0, press: true, fps, approach: 'walk' }), run = B.playCorner(env, i, { ci, D: 1.0, press: true, fps, approach: 'run' });
+          if (walk.result !== 'tag' || walk.heard) bad.push(`#${i + 1} corner ${ci} walking in: ${walk.result}`);
+          if (run.result !== 'heard' || run.bang) bad.push(`#${i + 1} corner ${ci} running in: ${run.result}`);
           rows.push(`#${i + 1}: ${S}`);
         }
-        t.ok(!bad.length && !vain, `Orbikit @${fps}: one readable rule round every corner of every planet: standing on its way up to its surprise distance from the edge always tags it (right at the edge it simply runs into you; from 1.5 blocks back it shows "!" and skids into you; ${rows.join(', ')} blocks), further back or a step off its way it always shows "!" and runs; Tag! (pressed whenever offered) never failed (${vain} in vain) ${bad.slice(0, 4).join('; ')}`);
+        t.ok(!bad.length && !vain, `Orbikit @${fps}: one readable rule round every corner of every planet: standing on its way up to its surprise distance from the edge always tags it (right at the edge it simply runs into you; from 1.5 blocks back it shows "!" and skids into you; ${rows.join(', ')} blocks), further back or a step off its way it always shows "!" and runs; walking up to the spot just as it comes is quiet and tags it, running up to it it hears you (its "?") and runs; Tag! (pressed whenever offered) never failed (${vain} in vain) ${bad.slice(0, 4).join('; ')}`);
       }
       // the Planet Hop: each flower, each kind
       const hop = {};
@@ -227,14 +236,14 @@ export default async function ({ browser, base, t }) {
     const h0 = O.gravityHelp(0), h2 = O.gravityHelp(2), h6 = O.gravityHelp(6), h20 = O.gravityHelp(20);
     t.ok(h0.ease === 0 && h2.ease > 0 && h20.ease <= 0.1 + 1e-12 && h20.pad <= 0.8 + 1e-9 && h20.lens <= 0.8 + 1e-9 && CL.PUPS.every(q => q.boost * h20.sprint > 6.2), `the kind help only through kindHelp: none at first, ${h2.ease} after 2 misses, at most ${h20.ease} (every Orbikit's sprint x${h20.sprint.toFixed(2)}: ${CL.PUPS.map(q => (q.boost * h20.sprint).toFixed(2)).join(' / ')} b/s, still faster than your 6.2 sprint; tag reach x${h20.tag.toFixed(2)}; a pebble pulls ${h20.pad.toFixed(2)} further; the moon x${h20.moon.toFixed(2)}, a Lens Rock pulls ${h20.lens.toFixed(2)} further)`);
     {
-      const env = await cubeEnv(1); env.live.pMiss = [20, 20, 20];
+      const env = await cubeEnv(1); env.live.pMiss = CL.PUPS.map(() => 20);
       const r = B.playChase(env, 0, 'chaser', { maxT: 45 });
       t.ok(!r.tagged, 'with the most kind help, chasing the Orbikit still never tags it');
     }
     // just for fun and the Boss clearing the keys
     {
       const env = await cubeEnv(1), { live, game } = env;
-      for (let i = 0; i < 3; i++) B.playChase(env, i, 'skilled');
+      for (let i = 0; i < CL.PUPS.length; i++) B.playChase(env, i, 'skilled');
       for (let k = 0; k < 4; k++) B.playHop(env, k, 'skilled');
       for (let n = 0; n < 3; n++) B.playFerry(env, 'skilled', { lens: n });
       const st = live.state(), keys = game.beaten.slice().sort().join();
@@ -243,12 +252,57 @@ export default async function ({ browser, base, t }) {
       live.battleEnded('won', { picture: { id: 'gravity', crew: 0 } });
       const games = () => game.beaten.filter(k => k !== CL.REDESIGN_MARK).length, crewKeep = games();
       live.battleEnded('won', { picture: { id: 'gravity' } });
-      t.ok(st.done && st.n === 7 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 7 && games() === 0,
-        `all seven games won with the bots (${keys}); afterwards every game still plays just for fun and saves nothing new (${fun} for-fun words); a crew battle keeps the keys, the Boss battle clears all seven (a rematch plays them again)`);
+      t.ok(st.done && st.n === 9 && st.need === 9 && again.every(Boolean) && keys === keys2 && fun >= 3 && crewKeep === 9 && games() === 0,
+        `all nine games won with the bots (${keys}); afterwards every game still plays just for fun and saves nothing new (${fun} for-fun words); a crew battle keeps the keys, the Boss battle clears all nine (a rematch plays them again)`);
       game.stars = ['gravity'];
       const hard = new (live.constructor)(game, env.world.parts[0]);
       t.ok(hard.hard && B.playChase({ ...env, live: hard, step: dt => { env.player.update(dt); hard.step(dt); } }, 0, 'skilled').tagged, 'a rematch (you hold the star) is harder (the Orbikit and the moon x1.15) and a skilled player still wins it');
     }
+  }
+
+  /* ------------------------------------------------------------ hear (Node): running feet are noisy, and it shows (owner 2026-10-30) */
+  if (want('hear')) {
+    const { cubeEnv } = await import('../cubenode.mjs');
+    const B = await import('../cubebots.mjs'), O = await import('../../src/orbits.js'), CR = (await import('../../src/cubelive.js')).CUBE_RULES;
+    const env = await cubeEnv(1), { live, player: p } = env, b = CL.BOXES[CL.PUPS[0].planet], M = CL.BOXES[CL.P.meadow];
+    const go = (keys, joy, secs = 1) => { p.keys = keys; p.joy = joy; let rings = 0, noisy = false, r = 0; for (let i = 0; i < secs * 60; i++) { env.step(1 / 60); rings = Math.max(rings, live.rings.length); noisy ||= live.noisy; for (const g of live.rings) r = Math.max(r, g.r); } p.keys = {}; p.joy = null; return { rings, noisy, r }; };
+    const on = (box, d = 0) => { B.standAt(env, [Math.floor((box.x0 + box.x1) / 2) + 0.5, box.y1, Math.floor((box.z0 + box.z1) / 2) + 0.5 + d]); live.pups.forEach(q => { q.run = null; q.tagT = live.clock; }); live.rings = []; }; // (the Orbikit stays napping: only the feet count here)
+    on(b, -2); p.yaw = Math.PI; const walk = go({ KeyW: true });
+    on(b, -2); p.yaw = Math.PI; const run = go({ KeyW: true, ShiftLeft: true });
+    on(b); const still = go({ ShiftLeft: true });
+    on(b, -2); p.yaw = Math.PI; const light = go({}, { x: 0, y: -0.6 });
+    on(b, -2); p.yaw = Math.PI; const full = go({}, { x: 0, y: -1 });
+    on(M); const meadow = go({ KeyW: true, ShiftLeft: true });
+    t.ok(!walk.noisy && !walk.rings && run.noisy && run.rings >= 2 && Math.abs(run.r - CL.PUPS[0].hear) < 1e-9 && !still.rings && !light.noisy && !light.rings && full.noisy && full.rings >= 2 && !meadow.rings,
+      `running feet are noisy and show it: on a chase planet walking makes no rings (${walk.rings}), running does (${run.rings} at once, each growing to ${run.r} blocks: exactly as far as this Orbikit hears), Shift standing still none (${still.rings}); on an iPad a light push of the stick is a quiet walk (${light.rings}), a full push a noisy run (${full.rings}); on the Meadow Cube no rings (${meadow.rings})`);
+    // the reaction: running in round a corner just as it comes, it hears you: its ears go up ("?", not the "!"), it hops round to look at
+    // you, then it bolts away from you; nothing else counts as hearing
+    const r1 = B.playCorner(env, 0, { ci: 1, D: 1.0, fps: 60, approach: 'run' }), P0 = live.pups[0], run0 = P0.run;
+    const reaction = { result: r1.result, q: live.ears[0].visible, bang: live.bangs[0].visible, hop: run0?.earT > 0, heardN: run0?.heardN };
+    const d0 = run0 ? Math.hypot(...run0.at.pos.map((v, k) => v - [p.pos.x, p.pos.y, p.pos.z][k])) : 0;
+    p.keys = {}; for (let i = 0; i < 30; i++) env.step(1 / 60);
+    const d1 = run0 ? Math.hypot(...run0.at.pos.map((v, k) => v - [p.pos.x, p.pos.y, p.pos.z][k])) : 0;
+    t.ok(reaction.result === 'heard' && reaction.q && !reaction.bang && reaction.hop && reaction.heardN === 1 && d1 > d0 + 1 && live.heard >= 1,
+      `when it hears you its "?" pops up (not the "!": ${reaction.bang}), it gives a startled little hop round toward you and bolts away (${d0.toFixed(1)} -> ${d1.toFixed(1)} blocks in 0.5 s) ${JSON.stringify(reaction)}`);
+    // five rounds: the gate and the chip need 5 tags; an old save with tag1..3 keeps them (the two new planets wait); the guide leads on
+    const WR = await import('../../src/worldreset.js'), PB = await import('../../src/pictureboss.js');
+    const others = WR.WORLD_RESETS.map(r => r.mark), keys = ['pw:gravity:tag1', 'pw:gravity:tag2', 'pw:gravity:tag3', 'pw:gravity:hop', 'pw:gravity:lens1', 'pw:gravity:lens2', 'pw:gravity:lens3', 'pw:gravity:crew1', 'pw:gravity:crew2', 'pw:gravity:crew3'];
+    const old = { beaten: [...others, ...keys], stars: [], bossWins: {} }, did = WR.runWorldResets(old), st = CL.gravityState(old), gate = PB.bossOf('gravity').gate(old);
+    const five = { beaten: [...old.beaten, 'pw:gravity:tag4', 'pw:gravity:tag5'] }, st5 = CL.gravityState(five);
+    const next = CL.PUPS.find((q, i) => !st.tag[i]);
+    t.ok(!did.length && keys.every(k => old.beaten.includes(k)) && st.tags === 3 && st.tagNeed === 5 && !st.done && st.n === 7 && st.need === 9 && /3 \/ 5/.test(gate) && st5.done && !PB.bossOf('gravity').gate(five) && next.planet === CL.P.twist && CL.nextPlanet(CL.P.long, CL.P.twist) === CL.P.twist && CL.nextPlanet(CL.P.meadow, CL.P.eight) === CL.P.crystal && CL.GRAVITY_KEYS.length === 9,
+      `five Orbikit rounds: an old save with three tags keeps them (${st.tags} / ${st.tagNeed}, nothing reset), Professor Orbit now waits for five ("${gate}"), the guide leads on to the ${CL.PLANETS[next.planet].name} past the Long Rock (plain jumps: Long Rock -> Twister Rock -> Twirl Cube); with tag4 and tag5 the gate opens; a won Boss battle clears all nine keys`);
+    // the new planets: their ways are shown whole (the faint dots cover every bit of the way), they cross themselves, and they are harder
+    // only by their ways: round 3's eyes, ears, legs and reach
+    const cover = CL.PUPS.map((q, i) => {
+      const L = live.loops[i]; let worst = 0;
+      for (let s = 0; s < L.total; s += 0.1) { const k = Math.round(s / CR.dotGap) * CR.dotGap, a = O.loopAt(L, s).pos, d = O.loopAt(L, Math.min(k, L.total - 1e-9)).pos; worst = Math.max(worst, Math.hypot(...a.map((v, j) => v - d[j]))); }
+      return worst;
+    });
+    const same = ['base', 'boost', 'see', 'tagR', 'surprise', 'flip', 'hear'].every(k => CL.PUPS[3][k] === CL.PUPS[2][k] && CL.PUPS[4][k] === CL.PUPS[2][k]);
+    const crosses = CL.PUPS.map((q, i) => B.crossingsOf(live.loops[i]).length / 2), faces = CL.PUPS.map((q, i) => new Set(live.loops[i].segs.map(g => g.face.join())).size), edges = CL.PUPS.map((q, i) => live.loops[i].segs.filter((g, j, a) => g.face.join() !== a[(j + 1) % a.length].face.join()).length);
+    t.ok(cover.every(w => w <= CR.dotGap / 2 + 0.01) && same && crosses[3] >= 2 && crosses[4] >= 2 && crosses.slice(0, 3).every(n => n === 0) && faces[3] === 6 && faces[4] === 6 && live.loopDots.userData.mesh.count >= CL.PUPS.reduce((a, q, i) => a + Math.floor(live.loops[i].total / CR.dotGap), 0),
+      `the faint dots show every way whole (never more than ${Math.max(...cover).toFixed(2)} blocks from a dot); rounds 4 and 5 run with round 3's numbers (${same}) on ways that cross themselves (${crosses.join(' / ')} crossings) over all six faces (${faces.join(' / ')} faces, ${edges.join(' / ')} edge crossings a lap)`);
   }
 
   /* ------------------------------------------------------------ uniform (Node): every planet pulls the same */
@@ -441,7 +495,7 @@ export default async function ({ browser, base, t }) {
         return out;
       });
       t.ok(rode && !D0.rideOn && D0.start === false && /No riding on the little planets/.test(D0.rideMsg), `arriving on a creature gets you off and you can't get on again here ("No riding on the little planets")`);
-      t.ok(D0.place === 'gravity' && D0.frame === 0 && D0.ground && D0.y === D0.top && /Crystal Cube/.test(D0.guide) && D0.people === 'Captain Comet,Professor Orbit,Saucer Mechanic Milo,Stargazer Stella' && /0 \/ 3/.test(D0.chip) && D0.edit === false && D0.stars,
+      t.ok(D0.place === 'gravity' && D0.frame === 0 && D0.ground && D0.y === D0.top && /Crystal Cube/.test(D0.guide) && D0.people === 'Captain Comet,Professor Orbit,Saucer Mechanic Milo,Stargazer Stella' && /0 \/ 5/.test(D0.chip) && D0.edit === false && D0.stars,
         `the gold-and-lilac frame opens Cube Planets: upright on the Meadow Cube, the guide leads to the Orbikit Chase ("${D0.guide}"), Professor Orbit and his three helpers are there, the chip says "${D0.chip}", no building, a starry sky`);
       // wild Gravity creatures circle on top of the planets (the game's own spawner, while the game runs)
       await page.evaluate(() => { const g = window.pokecraft, n = g.world.nooks[0]; g.player.pos.set(n.x + 8.5, n.y, n.z + 0.5); });
@@ -469,7 +523,7 @@ export default async function ({ browser, base, t }) {
       // the three games through the game's own live part (the bots of cubebots.mjs on the game's player)
       const GM = await page.evaluate(() => {
         const R = window.__R, { live, env, Bots } = R, out = {};
-        out.chase = [0, 1, 2].map(i => Bots.playChase(env, i, 'skilled').tagged);
+        out.chase = R.CL.PUPS.map((q, i) => Bots.playChase(env, i, 'skilled').tagged);
         out.tagSaid = R.said('Tagged!');
         out.hop = [0, 1, 2, 3].map(k => Bots.playHop(env, k, 'skilled').ok);
         out.hopSaid = R.said('Every pebble');
@@ -477,7 +531,7 @@ export default async function ({ browser, base, t }) {
         out.st = live.state(); R.g.updateGuide(); out.guide = document.getElementById('guide')?.textContent;
         return out;
       });
-      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: three Orbikits tagged, four spring-flower hops to the Green Pebble, three telescope pieces from the saucer ferry: all seven keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
+      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: five Orbikits tagged, four spring-flower hops to the Green Pebble, three telescope pieces from the saucer ferry: all nine keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
       // the Boss's gate (the helpers first), the helpers, a lost battle, the star, the keys cleared
       const G0 = await page.evaluate(() => { const R = window.__R, { g } = R; R.near(R.boss()); window.__toasts.length = 0; g.talkTo(R.boss()); return { battle: g.inBattle, said: window.__toasts.join('|') }; });
       t.ok(!G0.battle && /Stargazer Stella/.test(G0.said), `Professor Orbit waits for his helpers first: "${G0.said}"`);
@@ -493,9 +547,9 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(async () => { const R = window.__R, { g } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; R.near(R.boss()); g.talkTo(R.boss()); });
       await playBattle(page);
       const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|lens)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('walking round every one'), hard: live.hard }; });
-      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star and the Wizard\'s note; the seven keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
+      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star and the Wizard\'s note; the nine keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
       // a rematch: the games are needed again, then the Professor asks
-      const RM = await page.evaluate(async () => { const R = window.__R, { g, live } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.ui.closeAsk?.(); live.winUpTo(3, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: !!g.bosses.pending && g.ui.asking, said: window.__toasts.slice(-2).join('|'), inBattle: g.inBattle }; });
+      const RM = await page.evaluate(async () => { const R = window.__R, { g, live } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.ui.closeAsk?.(); live.winUpTo(5, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: !!g.bosses.pending && g.ui.asking, said: window.__toasts.slice(-2).join('|'), inBattle: g.inBattle }; });
       if (RM.asking) { await page.evaluate(() => window.pokecraft.bosses.accept()); await playBattle(page); }
       const RW = await page.evaluate(() => window.pokecraft.bossWins.gravity || 0);
       t.ok(RM.asking && RW === 1, `with the star and the games won again, Professor Orbit asks for a rematch and it is won (${RW}) ${RM.asking ? '' : JSON.stringify(RM)}`);
@@ -586,6 +640,29 @@ export default async function ({ browser, base, t }) {
       });
       console.log('  orbikit shot', JSON.stringify(OB));
       await shot(page, 'cube-orbikit-sees-you.png');
+      // owner 2026-10-30: running feet make rings, and the Orbikit that heard you ("?", a startled hop), seen from behind you
+      const HR = await page.evaluate(() => {
+        const R = window.__R, { live, p, env, Bots } = R, seg = live.loops[1].segs[1];
+        live.backT = 0; live.flight = null;
+        const r = Bots.playCorner(env, 1, { ci: 1, D: 1.0, fps: 60, approach: 'run' });
+        const run = live.pups[1].run; if (run) p.lookAt({ x: run.at.pos[0], y: run.at.pos[1] + 0.5, z: run.at.pos[2] });
+        p.pitch -= 0.25; live.step(0.02);
+        return { result: r.result, rings: live.rings.length, q: live.ears[1].visible, seg: seg.a };
+      });
+      console.log('  hear shot', JSON.stringify(HR));
+      await shot(page, 'cube-hear.png');
+      // the two new planets with their whole way dotted: the Twister Rock (two corkscrews that cross) and the Twirl Cube (two belts that cross)
+      for (const [id, name] of [['twist', 'cube-twister.png'], ['eight', 'cube-twirl.png']]) {
+        await page.evaluate(id => {
+          const R = window.__R, { live, p, env } = R, b = R.CL.BOXES[R.CL.P[id]], i = R.CL.PUPS.findIndex(q => q.planet === R.CL.P[id]);
+          window.pokecraft.cubeCam.set(false);
+          live.puffTo({ pos: [b.x0 + 2.5, b.y1, b.z0 + 2.5], frame: 0 }); for (let k = 0; k < 20; k++) env.step(1 / 60); // (its Orbikit wakes up)
+          const r = live.pups[i].run; if (r) { r.s = r.L.total * 0.3; r.coolT = 9; }
+          p.pos.set(b.x1 + 7, b.y1 + 7, b.z0 - 7); p.vel.set(0, 0, 0); p.setFrame?.(0); p._fLast?.copy?.(p.pos); // (a look from out in space, a little above it)
+          live.step(0.02); p.lookAt({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 + 1, z: (b.z0 + b.z1) / 2 });
+        }, id);
+        await shot(page, name);
+      }
       await page.evaluate(() => window.pokecraft.cubeCam.set(false));
       // Professor Orbit on the Great Cube
       await page.evaluate(() => { const R = window.__R, { p } = R, b = R.boss(); R.near(b); p.lookAt({ x: b.pos.x, y: b.pos.y + 1.4, z: b.pos.z }); });
@@ -693,6 +770,21 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => { const R = window.__R; return !R.live.flight && R.p.onGround; }, null, 90000).catch(() => {});
     const K1 = await page.evaluate(() => { const R = window.__R; return { on: R.p.grav.planet, want: R.CL.P.hop1, said: window.__toasts.join('|') }; });
     t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Orange Pebble ("${K1.said.slice(0, 80)}")`);
+    // Owner 2026-10-30 (hearing must show itself): real keys on the Crystal Cube: holding W (a walk) makes no rings round your feet,
+    // Shift + W (a run) does
+    const feet = async keys => {
+      await page.evaluate(() => { const R = window.__R, b = R.CL.BOXES[R.CL.P.crystal], x = Math.floor((b.x0 + b.x1) / 2) + 0.5; R.live.puffTo({ pos: [x, b.y1, b.z0 + 1.5], frame: 0, look: [x, b.y1, b.z1] }); R.live.rings = []; window.__feet = { rings: 0, moved: 0, z: R.p.pos.z }; });
+      for (const k of keys) await page.keyboard.down(k);
+      for (let n = 0; n < 30; n++) {
+        const f = await page.evaluate(() => { const R = window.__R, f = window.__feet; f.rings = Math.max(f.rings, R.live.rings.length); f.moved = R.p.pos.z - f.z; return f; });
+        if (f.moved > 4) break;
+        await page.waitForTimeout(100);
+      }
+      for (const k of keys) await page.keyboard.up(k);
+      return page.evaluate(() => window.__feet);
+    };
+    const F1 = await feet(['KeyW']), F2 = await feet(['ShiftLeft', 'KeyW']);
+    t.ok(F1.moved > 1 && !F1.rings && F2.moved > 1 && F2.rings > 0, `real keys on the Crystal Cube: walking (W) makes no rings round your feet (${F1.rings}, ${F1.moved.toFixed(1)} blocks), running (Shift + W) does (${F2.rings})`);
     // Owner 2026-10-30 "it would either randomly get tagged or randomly see me": the Orbikit through the game's own loop, with the steady
     // camera on (third person): waiting 2 blocks round a corner on its way it shows "!" and skids into you (E pressed whenever Tag! shows);
     // 4.5 blocks back it shows "!" and runs. What the child sees (its model, its "!") is where the rule has it.
@@ -767,6 +859,17 @@ export default async function ({ browser, base, t }) {
       p.joy = null;
       return out;
     });
+    await arm(ip);
+    const IH = await ip.evaluate(() => {
+      const R = window.__R, { live, p, env } = R, b = R.CL.BOXES[R.CL.P.crystal], x = Math.floor((b.x0 + b.x1) / 2) + 0.5, out = {};
+      for (const [name, y] of [['light', -0.6], ['full', -1]]) {
+        live.puffTo({ pos: [x, b.y1, b.z0 + 1.5], frame: 0, look: [x, b.y1, b.z1] }); live.rings = []; let n = 0;
+        p.joy = { x: 0, y }; for (let i = 0; i < 40; i++) { env.step(1 / 60); n = Math.max(n, live.rings.length); } p.joy = null;
+        out[name] = n;
+      }
+      return out;
+    });
+    t.ok(!IH.light && IH.full > 0, `iPad: on a chase planet a light push of the stick walks quietly (${IH.light} rings), pushed all the way you run and your feet make rings (${IH.full})`);
     t.ok(I.down === '1,0,0' && I.dot > 0.98 && I.normal < 1e-9, `iPad: on a side face the stick pushed up moves you where you look along the face (${I.dot.toFixed(3)}), never off the face`);
     t.ok(I.turned && I.a0 > 80 && I.a02 > 10 && I.a02 < 80 && I.a05 < 1, `iPad: over an edge the camera's up turns slowly: ${I.a0.toFixed(0)}° at the turn, ${I.a02.toFixed(0)}° after 0.2 s, ${I.a05.toFixed(1)}° after 0.5 s`);
     // the Ride slot dims with the no-riding words; the action button says Tag! and Hop on!

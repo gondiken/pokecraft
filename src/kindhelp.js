@@ -32,7 +32,7 @@
 //                                                                           the nest x (1 + e), the bubble lasts x (1 + e)
 //   Chimney Ride (bubbles.js)  the ride's bubble popped                   the sink x (1 - e), the spike gaps x (1 + e), the bar x (1 - e)
 //   Shields (bubbles.js)       a ride (or a landing on a shield's edge) that popped none  the shields x (1 + e) bigger, their sway x (1 - e)
-//   Orbikit Chase (orbits.js)  it saw you and ran back                    its sprint x (1 - e) (still faster than you), tag reach x (1 + e)
+//   Orbikit Chase (orbits.js)  it saw or heard you and ran off            its sprint x (1 - e) (still faster than you), tag reach x (1 + e)
 //   Planet Hop (orbits.js)     a flower flight that missed the pebble     the next pebble's pull reaches e x 8 blocks further (gravity.js pad)
 //   Moon Ferry (orbits.js)     a jump off the moon that missed every      the moon x (1 - e), the Lens Rocks' pull reaches e x 8 blocks
 //                                Lens Rock                                  further (gravity.js pad)

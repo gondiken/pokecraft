@@ -262,6 +262,9 @@ const SOUNDS = {
   springsquish: () => { tone(180, { len: 0.14, type: 'triangle', vol: 0.14, slide: -70 }); noise({ freq: 700, len: 0.1, vol: 0.04, q: 1.2 }); },
   springboing: () => { tone(160, { len: 0.18, type: 'triangle', vol: 0.22, slide: 520 }); tone(340, { at: 0.16, len: 0.12, type: 'triangle', vol: 0.12, slide: -160 }); tone(300, { at: 0.27, len: 0.1, type: 'triangle', vol: 0.08, slide: 140 }); },
   lensfound: () => notes([784, 988, 1319, 1568, 1976], 0.06, { len: 0.14, type: 'sine', vol: 0.12 }),
+  // Owner 2026-10-30: running feet on a chase planet (a soft pat with each ring) and an Orbikit that heard you (a rising "hm?")
+  orbistep: () => { noise({ freq: 500, len: 0.05, vol: 0.05, q: 1.5 }); tone(110, { len: 0.05, type: 'sine', vol: 0.06, slide: -30 }); },
+  orbiheard: () => { tone(700, { len: 0.08, type: 'triangle', vol: 0.1, slide: -80 }); tone(760, { at: 0.12, len: 0.16, type: 'triangle', vol: 0.12, slide: 520 }); },
   /* ==== end of Gravity ==== */
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
