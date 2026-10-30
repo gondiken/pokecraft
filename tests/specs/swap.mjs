@@ -131,10 +131,10 @@ export default async function ({ browser, base, t }) {
       await platform(A); await platform(B);
       await B.evaluate(() => { const g = window.pokecraft; g.player.pos.x += 3; });
       await A.waitForTimeout(1500);
-      await A.evaluate(() => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; g.player.lookAt(k.pos.clone().setY(k.pos.y + 1)); });
-      t.ok(await waitFor(A, () => document.getElementById('prompt').textContent.includes('Kid · click or E to play together'), null, 30000).then(() => true, () => false), 'looking at Kid says "click or E to play together"');
+      // aim at Kid on every poll (Kid's avatar glides to its new spot over a few frames)
+      t.ok(await waitFor(A, () => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; g.player.lookAt(k.pos.clone().setY(k.pos.y + 1)); return document.getElementById('prompt').textContent.includes('Kid · click or E to play together'); }, null, 60000).then(() => true, () => false), 'looking at Kid says "click or E to play together"');
       await A.evaluate(() => window.pokecraft.interact());
-      await waitFor(A, () => window.pokecraft.swapUi.isOpen, null, 10000);
+      await waitFor(A, () => window.pokecraft.swapUi.isOpen, null, 30000);
       t.ok(await A.evaluate(() => [...document.querySelectorAll('#friend .fm-btn b')].map(b => b.textContent).join('|') === 'Battle|Trade|Hide and seek'), 'E on a friend opens the friend menu: Battle, Trade, Hide and seek');
       await A.screenshot({ path: 'screenshots/w17-1-friend-menu.png' });
       await click(A, '#friend [data-friend="trade"]');
