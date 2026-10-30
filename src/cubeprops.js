@@ -170,11 +170,12 @@ export function buildBeacon() {
 
 // The Orbikit's "!" (owner 2026-10-30: "it would randomly see me"; now you see the moment it sees you): a white bubble with an orange "!"
 // over its head. A Sprite (it always faces you); in Node an empty group.
-export function buildBang() {
+// Its "?" (owner 2026-10-30: it heard your running feet): the same bubble in blue, buildBang('?', '#2a7cff').
+export function buildBang(mark = '!', colour = '#ff6a00', rim = '#ff8a1a') {
   const g = new THREE.Group(), tex = canvasTex(64, 64, (x, w) => {
-    x.fillStyle = '#ffffff'; x.strokeStyle = '#ff8a1a'; x.lineWidth = 6;
+    x.fillStyle = '#ffffff'; x.strokeStyle = rim; x.lineWidth = 6;
     x.beginPath(); x.arc(w / 2, w / 2, w / 2 - 4, 0, Math.PI * 2); x.fill(); x.stroke();
-    x.fillStyle = '#ff6a00'; x.font = 'bold 46px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('!', w / 2, w / 2 + 2);
+    x.fillStyle = colour; x.font = 'bold 46px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(mark, w / 2, w / 2 + 2);
   });
   if (tex) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); s.scale.set(1.3, 1.3, 1); s.renderOrder = 5; g.add(s); }
   g.visible = false;
@@ -189,5 +190,21 @@ export function buildDots(n, color, size = 0.1, opacity = 1) {
   for (let i = 0; i < n; i++) m.setMatrixAt(i, Z);
   const g = new THREE.Group();
   g.add(m); g.userData.mesh = m;
+  return disposer(g);
+}
+
+// Owner 2026-10-30 (hearing must show itself, with no text): running feet make rings on the ground, like footsteps in a puddle. Each ring
+// grows from your feet to exactly as far as the Orbikit hears (cubelive.js), and fades. One InstancedMesh of flat rings (unit radius, in
+// the XZ plane: the caller turns each to the face's up); `fade` per ring through the instance colour (additive, so dark = gone).
+export function buildRipples(n, colour = 0xbfe8ff) {
+  const geo = new THREE.RingGeometry(0.93, 1, 48);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+  const m = new THREE.InstancedMesh(geo, mat, n);
+  m.frustumCulled = false;
+  const Z = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color(colour);
+  for (let i = 0; i < n; i++) { m.setMatrixAt(i, Z); m.setColorAt(i, c); }
+  const g = new THREE.Group();
+  g.add(m); g.userData.mesh = m; g.userData.colour = c;
   return disposer(g);
 }

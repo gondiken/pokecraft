@@ -11,7 +11,12 @@
 //    and turned while nearly touching you (and it also "heard" you from any side within 2.2). Now there is ONE readable rule: when it first
 //    sees you it shows a "!" (cubelive.js). Seen from afar it turns and runs (`spotted`). Seen up close on its own lane (`surprise`
 //    ahead, `lane` to the side: it comes round the corner right at you) it is too surprised to stop: it skids into you (`bump`) and is
-//    tagged. Running after it from behind only makes it sprint (it is faster than you); nothing else notices you.
+//    tagged. Running after it from behind only makes it sprint (it is faster than you).
+//    Owner 2026-10-30 ("we can keep the Orbikit hearing us ... it should be obvious somehow, without yet another instruction text ... a good
+//    idea when the topic is sneaking"): it also HEARS running feet. Running (sprinting on the ground: Shift, or the stick pushed all the
+//    way) is noisy and walking or standing is quiet, as in real sneaking. Noisy feet show rings on the ground that reach exactly as far as
+//    it hears (`hear`, cubelive.js); when a ring reaches it, its ears go up, a "?" pops up, it looks your way and bolts away from you
+//    (`heard`, a miss like being seen). Rounds 4 and 5 hear and see exactly as round 3 does; only their ways are harder to read.
 //  - Planet Hop: spring flowers grow on the pebbles. Stand on one and it squashes; jump and it flings you up (a spring). Your run-up
 //    (stand, walk, run) and its direction carry on into the flight (the flights are player.js's own sums; nothing here but the help).
 //  - Moon Ferry: the Professor's three telescope lenses fell onto far little rocks, too far to jump to. A little moon circles past on an
@@ -24,7 +29,7 @@ export const STEP = 1 / 120; // the fixed sub-step of every clock here (60 and 2
 export const HARD = { pup: 1.15, moon: 1.15, pad: -0.5 }; // a rematch (you hold the star): the Orbikits and the moon x1.15, pebbles and lens rocks catch a bit less
 
 // The kind help (owner 2026-10-28: only kindhelp.js, only gently): e = kindHelp(misses).ease.
-//   Orbikit Chase  a miss = it saw you and ran back   tag reach x (1 + e), its sprint x (1 - e) (still faster than you: chasing never works)
+//   Orbikit Chase  a miss = it saw or heard you      tag reach x (1 + e), its sprint x (1 - e) (still faster than you: chasing never works)
 //   Planet Hop     a miss = a flight that did not      the next pebble's pull reaches e x PAD_SCALE blocks further (gravity.js `pad`)
 //                  land on the next pebble
 //   Moon Ferry     a miss = a jump off the moon that   the moon x (1 - e), the lens rock's pull reaches e x PAD_SCALE further
@@ -48,6 +53,9 @@ export const PUP = {
   flee: 1.0,       // after it saw you it sprints away this long
   cool: 1.5,       // and does not turn again this soon
   sit: 0.6,        // how high its middle is over the face
+  hear: 4.5,       // it hears running feet this close (feet to feet; each round may have its own: PUPS)
+  ear: 0.4,        // after it heard you: its little startled hop toward you (cubelive.js draws it; it keeps running all the same)
+  listen: 0.3,     // while it runs from you it listens again this often
 };
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const len = v => Math.hypot(v[0], v[1], v[2]);
@@ -104,7 +112,8 @@ export class PupRun {
     this.base = (opts.base ?? 4.6) * hard; this.boost = (opts.boost ?? 7.0) * hard * h.sprint; this.tagR0 = opts.tagR ?? PUP.tagR; this.tagR = this.tagR0 * h.tag; this.button = PUP.button * h.tag;
     this.see = opts.see ?? PUP.see; // (each round's own numbers: cubeland.js PUPS)
     this.surprise0 = opts.surprise ?? PUP.surprise; this.surprise = this.surprise0 * h.tag; this.lane = PUP.lane * h.tag; this.bumpT = 0;
-    this.flip = opts.flip ?? 0; this.flipT = this.flip; // the playful one: it turns back by itself every `flip` s (0 = never); watch it before you hide
+    this.flip = opts.flip ?? 0; this.flipT = this.flip;
+    this.hear = opts.hear ?? PUP.hear; this.earT = 0; this.earCool = 0; this.heardAt = null; this.heardN = 0; // (hearing: no kind help, it is shown by the rings) // the playful one: it turns back by itself every `flip` s (0 = never); watch it before you hide
     this.s = opts.start ?? 0; this.dir = 1; this.time = 0; this.acc = 0; this.coolT = 0; this.fleeT = 0; this.speed = this.base;
     this.seen = opts.seen ?? (() => true);
     this.tagged = false; this.spots = 0; this.running = false;
@@ -112,6 +121,12 @@ export class PupRun {
   // the kind help (cubelive.js, after a miss): its sprint and every reach
   help(boost, tag) { this.boost = boost; this.tagR = this.tagR0 * tag; this.button = PUP.button * tag; this.surprise = this.surprise0 * tag; this.lane = PUP.lane * tag; }
   get skidding() { return this.bumpT > 0; }
+  // The way round its loop that keeps it furthest from `p` over the next 1.5 s of its sprint (it bolts away from what it heard).
+  awayFrom(p) {
+    const far = d => { let m = Infinity; for (let t = 0.25; t <= 1.5 + 1e-9; t += 0.25) m = Math.min(m, len(sub(loopAt(this.L, this.s + d * this.boost * t).pos, p))); return m; };
+    const fw = far(this.dir), bw = far(-this.dir);
+    return bw > fw + 1e-9 ? -this.dir : this.dir;
+  }
   get at() { return loopAt(this.L, this.s); }
   // where it heads (its running direction, unit)
   heading() { const a = this.at; return a.dir.map(v => v * this.dir); }
@@ -131,7 +146,7 @@ export class PupRun {
     return ev;
   }
   stepOnce(h, pl, ev, pressed) {
-    this.time += h; this.coolT = Math.max(0, this.coolT - h); this.fleeT = Math.max(0, this.fleeT - h);
+    this.time += h; this.coolT = Math.max(0, this.coolT - h); this.fleeT = Math.max(0, this.fleeT - h); this.earT = Math.max(0, this.earT - h); this.earCool = Math.max(0, this.earCool - h);
     const a = this.at, mid = a.pos.map((v, k) => v + a.up[k] * PUP.sit);
     if (pl?.mine) {
       const d = bodyDist(mid, pl.feet, pl.up);
@@ -155,6 +170,15 @@ export class PupRun {
         }
         this.dir = -this.dir; this.coolT = PUP.cool; this.fleeT = PUP.flee; this.spots++;
         ev.push({ type: 'spotted' });
+      }
+      // it hears running feet (pl.noisy) within `hear` (from its feet to yours): ears up, "?", and it bolts away from you
+      // (while it is still running from you it keeps listening: noisy feet close by keep it running the way that gets it furthest away; on a
+      // twisty way that may be back the other way, so running after it never works, not even across a figure-eight)
+      if (pl.noisy && this.earCool <= 0 && len(sub(pl.feet, a.pos)) < this.hear && (this.fleeT > 0 || this.coolT <= 0)) {
+        const fresh = this.fleeT <= 0;
+        this.dir = this.awayFrom(pl.feet);
+        this.coolT = PUP.cool; this.fleeT = PUP.flee; this.earCool = PUP.listen;
+        if (fresh) { this.spots++; this.heardN++; this.earT = PUP.ear; this.heardAt = pl.feet.slice(); ev.push({ type: 'heard' }); }
       }
       const chased = !front && dist < PUP.chase;
       // the playful one turns back by itself now and then, but never toward you when you are close (chasing must never work)

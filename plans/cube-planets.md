@@ -360,3 +360,31 @@ child expects, visible in the world, with a reason in the story, needing no rule
   skids into you: tagged, with a burst of sparkles. No hearing; running after it only makes it sprint. Tag! is offered exactly when a press
   tags. `playCorner` (tests/cubebots.mjs) proves it round two corners of each planet at 60 and 20 fps; the ramp is kept by `surprise`
   3 / 2.8 / 2.2 per round.
+
+## Owner's notes after that round (2026-10-30): hearing you can see, two more Orbikit rounds
+
+Owner: "We can keep the Orbikit hearing us if that was a rule before. I didn't know it was (which is problematic, it should be obvious
+somehow, without yet another instruction text), but otherwise it's actually a good idea when the topic is sneaking in 3D space. Maybe we keep
+these current Orbikit ones but add two more (planets and Orbikit challenges) where the trail of the Orbikit is more complex, so we have to
+calculate properly. That will be the difficulty change (not somehow better perception from the Orbikit in those two new challenges)."
+
+- **Hearing, shown by the world, no text.** Running is noisy, walking and standing are quiet, as in real sneaking. On a chase planet each
+  running step (on the ground faster than a walk: Shift, or the stick pushed all the way; a light push of the stick walks) leaves a ring on
+  the ground (`buildRipples`, a soft pat `orbistep`) that grows to exactly as far as that round's Orbikit hears (`hear` 3.5 / 4 / 4.5 / 4.5 /
+  4.5, feet to feet). If a ring reaches it, its ears go up: a blue "?" (not the orange "!" of seeing), a startled little hop round to look at
+  you (`orbiheard`), and it bolts the way round its loop that gets it furthest from you (`awayFrom`), listening again while it flees, so
+  running after it never works, not even across a figure-eight. It counts as a miss like being seen (the kind help). Walking up to the
+  corner just as it comes tags it every time; running up to it, it always hears you (`playCorner({ approach })`, every corner of every round).
+- **Two more rounds** past the Long Rock, reached by plain jumps: the **Twister Rock** (11 x 11 x 25: two corkscrews round it, winding opposite
+  ways, crossing in an X on two sides; each corkscrew is straight when you unfold the rock, so no chaser can cut it) and the **Twirl Cube**
+  (14 across: two belts round it that cross on top and underneath; on top it always switches belts, underneath it runs straight on). Both
+  Orbikits have round 3's numbers exactly (`base`, `boost`, `see`, `tagR`, `surprise`, `flip`, `hear`). What makes them harder is the way:
+  it crosses itself, so another strand can see a hiding spot, and a child must follow the dots past a crossing to know which corner comes
+  next. The faint dots show the whole way (never more than 0.4 blocks from a dot). Keys `pw:gravity:tag4` / `tag5`; the gate and the chip
+  need five tags (`TAGS`, `gravityState().tagNeed`), nine keys in all; an old save with tag1..3 keeps them and plays the two new rounds.
+  A first try at a zigzag way was dropped (a chaser cut across the zigzags), and so was a tighter corkscrew (too many hiding corners: easy).
+- **The child bot** (`playChaseKid`) now lands where a plain jump from the planet before puts it, looks round for a moment first (up to one
+  lap: the seeds start at different moments), walks when it guesses the Orbikit is close and may follow the wrong strand where a way crosses
+  itself (`crossingsOf`, 0.3 a crossing). Medians (30 seeds, err 1.0) at 60 fps: 10 / 14 / 17 / 22 / 40 s, at 20 fps: 12 / 11 / 22 / 23 /
+  45 s (round 5 under 4x round 1); the spec's 12 seeds: about 12 / 13 / 16 / 24 / 30 s. `chaser`, `camper`, `noisy` never tag; `skilled`
+  (reads the way with `hiddenOnTheWay`, walks when close) always.
