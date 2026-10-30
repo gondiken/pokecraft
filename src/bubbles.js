@@ -11,9 +11,11 @@
 //  - Duckling: a sleepy rubber duckling in a bubble that you never hold: puffs of air push it (harder the closer you stand); it glides,
 //    a current carries it, a gust lane blows now and then, a thorn pops its bubble, and the bubble only lasts a while.
 //  - Ride: the Chimney Ride inside a big bubble that always sinks a little: every tap is a puff up (no hold), the stick steers. Spike
-//    plates with one gold-ringed gap (one of them turns), two fans, a spinning arm near the top; a pop puts you back at the last fizz star.
-//  - Shields: Captain Suds' three big shield bubbles bob on the wind over the rim. A bubble pops when you drop onto it from above (a stomp);
-//    from the side or below it only bumps you away.
+//    plates with one gold-ringed gap (two of them turn), two fans, two spinning arms (owner 2026-10-30: "slightly longer"); a pop puts
+//    you back at the last bar of soap you floated past (the chimney's checkpoints; never stars: stars are the Wizard's).
+//  - Shields: Captain Suds' three shield bubbles feed the big bubble he sits sealed in. A bubble pops when you come down onto its top (a
+//    stomp); from the side, from below or onto its shoulder it only boings you away (owner 2026-10-30: "from the side = boing, from above
+//    = pop" is learnt by doing it, on the low first shield).
 // The kind help after misses comes only from kindhelp.js (bubbleHelp maps it onto each game's levers); a rematch's `hard` is separate.
 import { kindHelp } from './kindhelp.js';
 
@@ -257,10 +259,12 @@ export class Duckling {
 // R the ride bubble's radius; sink (blocks a second, always); a tap is a puff: `puff` blocks up over puffTime s and a `push` (blocks a
 // second) the way you look; the stick steers (steer blocks a second, eased in at `relax` a second); a wall gives back `wall` of its speed;
 // a spike plate's gap has radius gap (you pass with your middle within gap - pass of its centre); the arm (from the middle to the wall) is
-// barHalf thick each side and turns at bar radians a second; a fizz star is touched within starR; after a pop you wait popWait s in the star's new bubble.
+// barHalf thick each side and turns at bar radians a second (times each arm's own `speed`); a bar of soap (the checkpoint: `stars` in the
+// data, never drawn or named as a star) is touched within starR; after a pop you wait popWait s in a new bubble at the last one.
 export const RIDE = { R: 0.8, sink: 0.75, puff: 1.2, puffTime: 0.3, push: 0.6, steer: 0.8, relax: 3, wall: 0.5, gap: 1.35, pass: 0.35, plate: 0.4, barHalf: 0.3, barSlab: 0.4, bar: 1.0, starR: 1.2, popWait: 0.6, maxPuffs: 6 };
 // chim = { x, z, r (inside radius), floor (y of the floor's top face), top (done above this), plates: [{ y, a, d }], fan: { y0, y1, vx, vz },
-//          fans?: [{ y0, y1, vx, vz }], bar: { y }, stars: [{ x, y, z }] }
+//          fans?: [{ y0, y1, vx, vz }], bar: { y }, bars?: [{ y, speed }], stars: [{ x, y, z }] }  (stars = the soap bars' spots)
+export const barsOf = c => c.bars || (c.bar ? [c.bar] : []);
 // A plate's gap at ride clock t (a plate with `spin` turns slowly, radians a second).
 export const gapOf = (chim, p, t = 0) => ({ x: chim.x + Math.cos(p.a + (p.spin || 0) * t) * p.d, z: chim.z + Math.sin(p.a + (p.spin || 0) * t) * p.d });
 export class Ride {
@@ -273,7 +277,7 @@ export class Ride {
   get gap() { return RIDE.gap * H(this.help, 'gap'); }
   get barSpeed() { return RIDE.bar * H(this.help, 'bar') * (this.hard ? HARD.bar : 1); }
   toStar(k) { const s = this.c.stars[k]; this.x = s.x; this.y = s.y; this.z = s.z; this.vx = 0; this.vz = 0; this.puffs = []; }
-  barAngle(t = this.t) { return t * this.barSpeed; }
+  barAngle(t = this.t, k = 0) { const b = barsOf(this.c)[k]; return t * this.barSpeed * (b?.speed ?? 1) + (b?.a0 || 0); }
   // A tap: a puff up and a little push the way you look (lx, lz: your look, flat).
   tap(lx = 0, lz = 0) {
     if (this.done || this.popT !== null) return false;
@@ -313,13 +317,16 @@ export class Ride {
         const g = gapOf(c, p, this.t);
         if (Math.hypot(this.x - g.x, this.z - g.z) > this.gap - RIDE.pass) { this.burst(ev, 'spike'); return; }
       }
-      // the spinning arm: from the middle to the wall, turning like a clock hand
-      if (c.bar && this.y + R * 0.7 >= c.bar.y && this.y - R * 0.7 <= c.bar.y + RIDE.barSlab) {
-        const a = this.barAngle(), dx = this.x - c.x, dz = this.z - c.z, along = Math.cos(a) * dx + Math.sin(a) * dz, off = Math.abs(-Math.sin(a) * dx + Math.cos(a) * dz);
+      // the spinning arms: from the middle to the wall, turning like clock hands
+      const bars = barsOf(c);
+      for (let k = 0; k < bars.length; k++) {
+        const bar = bars[k];
+        if (this.y + R * 0.7 < bar.y || this.y - R * 0.7 > bar.y + RIDE.barSlab) continue;
+        const a = this.barAngle(this.t, k), dx = this.x - c.x, dz = this.z - c.z, along = Math.cos(a) * dx + Math.sin(a) * dz, off = Math.abs(-Math.sin(a) * dx + Math.cos(a) * dz);
         if (along > -R * 0.6 && off < RIDE.barHalf + R * 0.6) { this.burst(ev, 'bar'); return; }
       }
       const nx = c.stars[this.star + 1];
-      if (nx && (Math.hypot(this.x - nx.x, this.y - nx.y, this.z - nx.z) < RIDE.starR || this.y >= nx.y - 1.0)) { this.star++; ev.push({ type: 'star', k: this.star }); } // (up past a ring's star counts too: a turning ring carries its star round)
+      if (nx && (Math.hypot(this.x - nx.x, this.y - nx.y, this.z - nx.z) < RIDE.starR || this.y >= nx.y - 1.0)) { this.star++; ev.push({ type: 'star', k: this.star }); } // (up past a ring's soap bar counts too: a turning ring carries it round)
       if (this.y >= c.top) { this.done = true; ev.push({ type: 'top' }); }
     });
     return ev;
@@ -329,23 +336,40 @@ export class Ride {
 
 
 /* ------------------------------------------------------------------ Captain Suds' shields: drop onto them from above */
-// Three big shield bubbles bob on the wind over the rim (owner 2026-10-29: the bank shots were rules that needed explaining; a bubble
-// popping when you jump down onto it is what every child expects). A shield { x, y, z, r, ax, ay, az, period, phase }: its middle at
-// clock t loops round (x, y, z) (ax / az across, ay up and down) once a `period`. f > 1 sways faster (a rematch), < 1 slower (the help).
-export const SHIELD_RULES = { top: 0.65, body: 0.3, height: 1.8, rise: 7.5 }; // top: how near its middle (share of r) a stomp must land;
-// body / height: your box for a bump; rise: how fast a stomp bounces you back up (blocks a second)
+// Captain Suds sits sealed in a big bubble (DOME in bubbleland.js) that his three shield bubbles feed (owner 2026-10-30: "they didn't seem
+// to be preventing him from battling"). A shield { x, y, z, r, ax, ay, az, period, phase }: its middle at clock t loops round (x, y, z)
+// (ax / az across, ay up and down) once a `period`. f > 1 sways faster (a rematch), < 1 slower (the help). The first one rests low on the
+// balcony's foam (a bubble on a soapy floor is a dome): a plain jump lands on it and walking into it boings you back, so a child learns
+// "from the side = boing, from above = pop" by doing it. The other two bob high: a bubble ride from a soap pot under each.
+// top: how near its middle (share of r) a stomp must land (beyond it, on its shoulder, you slide off with a boing); body: your half-width;
+// height: your height; rise: how fast a stomp bounces you back up (blocks a second); push: how fast a boing pushes you out (blocks a second).
+export const SHIELD_RULES = { top: 0.7, body: 0.3, height: 1.8, rise: 7.5, push: 9 };
 export function shieldAt(s, t, f = 1) {
   const w = 2 * Math.PI * t * f / s.period + (s.phase || 0);
   return { x: s.x + (s.ax || 0) * Math.sin(w), y: s.y + (s.ay || 0) * Math.sin(2 * w), z: s.z + (s.az || 0) * Math.cos(w) };
 }
-// Your feet meet a shield at middle c with radius r: 'pop' (you came down onto its top, near the middle), { bump: [nx, nz] } (you touch
-// it anywhere else: it pushes you away), or null. feet / prev = your feet now and a frame ago, vy your speed up.
+// Your feet meet a sphere at middle c with radius r: 'pop' (you came down onto its top, near the middle), { bump: [nx, nz], up } (your
+// body touches it anywhere else: beside it, under it, or your feet come down onto its shoulder: it boings you away; up = from above),
+// or null (not touching; also while you are still above its top). feet / prev = your feet now and a frame ago, vy your speed up. Any
+// frame rate: a stomp is the feet coming down through its surface since the last frame.
 export function stomp(c, r, { x, z, feet, prev = feet, vy = 0 }) {
-  const d = Math.hypot(x - c.x, z - c.z), top = c.y + Math.sqrt(Math.max(0, r * r - d * d));
-  if (vy <= 0 && d <= r * SHIELD_RULES.top && prev >= top - 0.15 && feet <= top + 0.2) return 'pop';
-  const y = Math.max(feet, Math.min(feet + SHIELD_RULES.height, c.y)), dy = y - c.y; // the nearest point of your body to its middle
-  if (Math.hypot(d, dy) < r + SHIELD_RULES.body) return { bump: d > 1e-6 ? [(x - c.x) / d, (z - c.z) / d] : [1, 0] };
-  return null;
+  const d = Math.hypot(x - c.x, z - c.z), n = d > 1e-6 ? [(x - c.x) / d, (z - c.z) / d] : [1, 0];
+  const R = SHIELD_RULES, surf = d < r ? c.y + Math.sqrt(r * r - d * d) : null; // its top surface right under your middle
+  if (surf !== null && feet >= surf - 0.05) { // over it
+    if (vy > 0 || feet > surf + 0.2) return null; // still above it (or rising off it)
+    if (prev < surf - 0.15) return null;
+    return d <= r * R.top ? 'pop' : { bump: n, up: true }; // down onto its top: pop; onto its shoulder: you slide off, boing
+  }
+  // beside or under it: does your body (a column `body` wide each side, `height` tall) reach into it?
+  const e = Math.max(0, d - R.body); // the nearest your column gets to its middle, across
+  if (e >= r) return null;
+  const h = Math.sqrt(r * r - e * e);
+  return feet < c.y + h && feet + R.height > c.y - h ? { bump: n, up: false } : null;
+}
+// How far out (across, from its middle) you stand clear of a sphere at middle c, radius r, with your feet at `feet`: the boing's push.
+export function clearOf(c, r, feet) {
+  const lo = feet, hi = feet + SHIELD_RULES.height, dy = c.y < lo ? lo - c.y : c.y > hi ? c.y - hi : 0;
+  return dy >= r ? 0 : Math.sqrt(r * r - dy * dy) + SHIELD_RULES.body + 0.02;
 }
 export const shieldSize = (s, help = 0, hard = false) => s.r * H(help, 'shield') * (hard ? HARD.shield : 1);
 export const shieldSway = (help = 0, hard = false) => H(help, 'sway') * (hard ? HARD.sway : 1);

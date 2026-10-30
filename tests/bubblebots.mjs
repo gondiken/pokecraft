@@ -4,7 +4,7 @@
 // frame); the Fizz Ledges and the shields are played in the page with the real Player physics by kids that only press keys (p.keys)
 // and the big button (live.use, the E / tap path), see makeKid and makeShieldKid.
 //   node tests/bubblebots.mjs   prints a table (calibration)
-import { Duckling, DUCK, puffSpeed, gustAt, Ride, RIDE, gapOf, BUBBLE, shieldAt } from '../src/bubbles.js';
+import { Duckling, DUCK, puffSpeed, gustAt, Ride, RIDE, gapOf, barsOf, BUBBLE, shieldAt } from '../src/bubbles.js';
 import { GARDEN_RULES, ISLANDS, NEST, CHIMNEY, GUSTS, LEDGES, SOAP_POTS, RIM_POTS, WINDS, SHIELDS, MESA, RIM, FLOOR } from '../src/bubbleland.js';
 
 // A small seeded random (mulberry32), so every robot run is the same.
@@ -85,31 +85,35 @@ export function playDuck(bot, { i = 0, fps = 60, help = 0, hard = false, time = 
 /* ---------------------------------------------------------------- the Chimney Ride */
 // A rider decides { tap, sx, sz } every frame.
 export const RIDE_BOTS = {
-  // lines up under each gap while hovering, rises through, waits beside the bar until it has gone round, then rises past it
+  // lines up under each gap while hovering, rises through, waits beside each arm until it has gone round, then rises past it (the
+  // pieces in the order they come on the way up: owner 2026-10-30, a gold ring and a second arm above the first arm)
   skilled: () => {
-    let last = -9, k = 0, go = false;
+    let last = -9, k = 0, go = false, star = 0;
     return (r) => {
       const c = r.c, R = RIDE.R;
+      const pieces = [...c.plates.map(p => ({ plate: p, y: p.y, top: p.y + RIDE.plate })), ...barsOf(c).map((b, i) => ({ bar: b, i, y: b.y, top: b.y + RIDE.barSlab }))].sort((a, b) => a.y - b.y);
       let tx, tz, ty, gap = 0.45; // gap: the least time between taps (hovering wants gentle taps, going up quick ones)
       if (r.popT !== null) { go = false; return { tap: false, sx: 0, sz: 0 }; }
-      while (k < c.plates.length && r.y > c.plates[k].y + RIDE.plate + R * 0.8) { k++; go = false; }
-      if (k > 0 && r.star < k) k = r.star; // popped back below a plate
-      if (k < c.plates.length) {
-        const p = c.plates[k], g = gapOf(c, p, r.t + 0.4), now = gapOf(c, p, r.t); // (a turning plate: steer to where its gap will be in a moment)
+      if (r.star < star) { k = pieces.findIndex(q => q.plate === c.plates[r.star]) + 1; go = false; } // popped back to the last soap bar
+      star = r.star;
+      while (k < pieces.length && r.y > pieces[k].top + R * 0.8) { k++; go = false; }
+      const q = pieces[k], prev = pieces[k - 1], floorY = prev ? prev.top + R * 0.7 + 0.45 : -1e9; // (hover above the piece below, too)
+      if (q?.plate) {
+        const p = q.plate, g = gapOf(c, p, r.t + 0.4), now = gapOf(c, p, r.t); // (a turning plate: steer to where its gap will be in a moment)
         tx = g.x; tz = g.z;
         if (Math.hypot(r.x - now.x, r.z - now.z) < 0.3) go = true;
-        const prev = c.plates[k - 1], floorY = prev ? prev.y + RIDE.plate + R * 0.7 + 0.45 : -1e9; // (hover above the plate below, too)
         if (go) { ty = p.y + RIDE.plate + R + 0.9; gap = 0.16; } else ty = Math.max(p.y - R - 1.6, floorY);
-      } else { // the arm: wait across the chimney from it, then go up when it has just gone past
+      } else if (q?.bar) { // an arm: wait across the chimney from it, then go up when it has just gone past
         tx = c.x + Math.cos(2.6) * 2.4; tz = c.z + Math.sin(2.6) * 2.4;
-        const a = Math.atan2(r.z - c.z, r.x - c.x), behind = (((r.barAngle() - a) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); // how far the arm has gone past you
-        if (r.y > c.bar.y + RIDE.barSlab + R * 0.7) { ty = c.top + 1; gap = 0.16; }
-        else if (go || (behind > 0.9 && behind < 2.2 && Math.hypot(r.x - tx, r.z - tz) < 0.5)) { go = true; ty = c.top + 1; gap = 0.16; }
-        else { const last = c.plates.at(-1); ty = Math.max(c.bar.y - R - 1.4, last.y + RIDE.plate + R * 0.7 + 0.45); }
-      }
-      const ex = tx - r.x, ez = tz - r.z, l = Math.hypot(ex, ez), s = Math.min(1, l * 1.6);
+        const s = Math.sign(q.bar.speed ?? 1) || 1, a = Math.atan2(r.z - c.z, r.x - c.x);
+        const behind = ((((r.barAngle(r.t, q.i) - a) * s) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); // how far the arm has gone past you
+        const fast = Math.abs(q.bar.speed ?? 1) >= 0.9, lo = fast ? 0.9 : 0.6, hi = fast ? 2.2 : 1.7;
+        if (go || (behind > lo && behind < hi && Math.hypot(r.x - tx, r.z - tz) < 0.5)) { go = true; ty = q.top + R + 1.2; gap = 0.16; }
+        else ty = Math.max(q.y - R - 1.4, floorY);
+      } else { tx = c.x; tz = c.z; ty = c.top + 1; gap = 0.16; } // the top
+      const ex = tx - r.x, ez = tz - r.z, l = Math.hypot(ex, ez), sp = Math.min(1, l * 1.6);
       const fan = (c.fans || [c.fan]).find(f => r.y >= f.y0 - 0.5 && r.y < f.y1 + 0.5), fx = fan ? fan.vx / RIDE.steer : 0, fz = fan ? fan.vz / RIDE.steer : 0;
-      let sx = (l > 1e-6 ? ex / l * s : 0) - fx, sz = (l > 1e-6 ? ez / l * s : 0) - fz;
+      let sx = (l > 1e-6 ? ex / l * sp : 0) - fx, sz = (l > 1e-6 ? ez / l * sp : 0) - fz;
       const sl = Math.hypot(sx, sz); if (sl > 1) { sx /= sl; sz /= sl; }
       const tap = r.y < ty && r.t - last > gap;
       if (tap) last = r.t;
@@ -227,10 +231,29 @@ export function makeKid(kind, legs = LEGS, { seed = 1 } = {}) {
   };
 }
 
-// Captain Suds' shields: a kid on the rim. From the balcony's soap pot it faces a shield, Blow!, hops on, rides, hops off and steers
-// down onto it. Kinds: skilled (blows when the shield will be just over its bubble's way up, leans toward it, hops off once high enough
-// and close, then steers onto its top), random (any way, any moment), masher (straight off again). -> tick returning null | 'pop'
+// Captain Suds' shields (owner 2026-10-30: the high ones need a bubble ride; the low first one rests on the balcony right in front of him):
+// a kid on the rim. The high ones (k = 1, 2): from the soap pot under it the kid faces its shield, Blow!, hops on, rides, hops off and
+// steers down onto it. Kinds: skilled (blows when the shield will be just over its bubble's way up, leans toward it, hops off once high
+// enough and close, then steers onto its top), random (any way, any moment), masher (straight off again). -> tick returning null | 'pop'
 export const RIM_LEG = { from: RIM.y + 1, pots: RIM_POTS };
+// The low first shield: a kid walks at it from the balcony's front, as a child walks toward Captain Suds. Kinds: firsttime (walks at it
+// and jumps once it is a step or two away: what a child does when a bubble is in its way; each try at a new distance), walker (only walks
+// into it: boing, boing), underjump (stands under a high shield, k, and jumps at it again and again: the chapter-1 trick, never a pop).
+export function makeLowShieldKid(kind, { seed = 1, k = 0 } = {}) {
+  const r = rng(seed), next = () => 1.2 + r() * 1.8;
+  let t = 0, at = next(), boings = null;
+  return ({ p, live, dt = 1 / 60 }) => {
+    t += dt; p.keys.Space = false;
+    if (!live.shieldUp(k)) { p.keys = {}; return 'pop'; }
+    const { c } = live.shieldNow(k), d = Math.hypot(c.x - p.pos.x, c.z - p.pos.z), ground = p.onGround && !p.carry;
+    if (boings !== null && live.boings > boings && kind === 'firsttime') at = 9; // boing! (a child jumps at it next)
+    boings = live.boings;
+    p.yaw = yawTo(p.pos, c.x, c.z); p.keys.KeyW = kind !== 'underjump' || d > 0.3;
+    if (kind === 'walker' || !ground || t < 0.35) return null;
+    if (kind === 'underjump' ? d < 0.6 : d <= at) { p.keys.Space = true; t = 0; at = next(); }
+    return null;
+  };
+}
 export function makeShieldKid(kind, k, { seed = 1 } = {}) {
   const r = rng(seed);
   let phase = 'pot', t = 0, target = null, hopAt = 0, start = 0;

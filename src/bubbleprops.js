@@ -1,8 +1,9 @@
 // The Bubble Well's models (THREE only; never world blocks, never saved or sent): the soap bubbles (one rainbow soap-film shader, instanced),
 // the ghost bubble that shows where your next bubble appears, the wand in your hand, drips and their shadows, little rising bubble streams
-// (the side wind, the gusts, the current, the fizz lifts), the soap flowers, the garden's thorny coral and the nest, the chimney's spike plates, fan, bar
-// and fizz stars, the golden ride bubble and its sign, the Puff! arrow, the bank shot's cushions, gold pads and aim dots, and Captain Suds' three shield bubbles. Each builder returns a Group with userData.parts and
-// userData.dispose(). The bubble spec's screenshots (tests/screenshots/bubble-*.png) show them for the owner.
+// (the side wind, the gusts, the current, the fizz lifts), the garden's thorny coral and the nest, the chimney's spike plates, fans, arms
+// and floating bars of soap (owner 2026-10-30: nothing in the well looks like a star; stars are the Wizard's), the golden ride bubble and
+// its sign, the Puff! arrow, Captain Suds' three shield bubbles, the big bubble he sits sealed in and the trails that feed it. Each builder
+// returns a Group with userData.parts and userData.dispose(). The bubble spec's screenshots (tests/screenshots/bubble-*.png) show them.
 import * as THREE from 'three';
 
 const lam = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
@@ -152,7 +153,21 @@ export function buildNest(nest, y) {
   return g;
 }
 
-// The chimney's spike plates (a disc with one round gap, spikes up and down on it), the fan, the spinning bar and the fizz stars.
+// A bar of soap (the Chimney Ride's checkpoints): a rounded pink bar with a heap of foam and two little bubbles on it.
+export function buildSoapBar() {
+  const g = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.32, 4, 10), new THREE.MeshBasicMaterial({ color: 0xff9ad0 }));
+  bar.rotation.z = Math.PI / 2; bar.scale.set(1, 1, 1.45);
+  const foam = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  foam.scale.set(1.5, 0.5, 1.1); foam.position.y = 0.17;
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 6), soapMaterial(1)); b1.position.set(0.12, 0.33, 0.04); b1.renderOrder = 2;
+  const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), soapMaterial(1)); b2.position.set(-0.1, 0.3, -0.05); b2.renderOrder = 2;
+  g.add(bar, foam, b1, b2);
+  g.userData.parts = { bar, foam, bubbles: [b1, b2] };
+  return g;
+}
+
+// The chimney's spike plates (a disc with one round gap, spikes up and down on it), the fans, the spinning arms and the bars of soap.
 // chim from bubbleland.js; gapR = the gap's radius drawn (the kind help widens it).
 export function buildChimney(chim, gapOf) {
   const g = new THREE.Group(), plates = [];
@@ -203,21 +218,21 @@ export function buildChimney(chim, gapOf) {
     g.add(fan);
     return blades;
   });
-  // the spinning arm: a striped arm from the middle to the wall (like a clock hand) with soft spikes
-  const bar = new THREE.Group();
-  bar.position.set(chim.x, chim.bar.y + 0.2, chim.z);
-  const beam = new THREE.Mesh((() => { const b = new THREE.BoxGeometry(chim.r, 0.4, 0.5); b.translate(chim.r / 2, 0, 0); return b; })(), lam(0xff7aa8, { emissive: 0x301020 }));
-  bar.add(beam);
-  for (let k = 1; k <= 6; k++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.35, 5), lam(0xffffff)); s.position.set(k * 0.6, 0.36, 0); bar.add(s); const d = s.clone(); d.position.y = -0.36; d.rotation.x = Math.PI; bar.add(d); }
-  bar.add(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.6, 10), lam(0xf0c84a)));
-  g.add(bar);
-  // fizz stars: flat gold stars that turn
-  const starShape = new THREE.Shape();
-  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 0.16 : 0.38; if (i) starShape.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else starShape.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-  const sg = new THREE.ExtrudeGeometry(starShape, { depth: 0.08, bevelEnabled: false });
-  const stars = chim.stars.map(s => { const m = new THREE.Mesh(sg.clone(), new THREE.MeshBasicMaterial({ color: 0xffd23a })); m.position.set(s.x, s.y, s.z); g.add(m); return m; });
-  sg.dispose();
-  g.userData.parts = { plates, fan: fans[0], fans, bar, stars };
+  // the spinning arms: a striped arm from the middle to the wall (like a clock hand) with soft spikes (owner 2026-10-30: a second one,
+  // pale blue, turning the other way, in the stack above the rim)
+  const bars = (chim.bars || [chim.bar]).map((b, i) => {
+    const bar = new THREE.Group();
+    bar.position.set(chim.x, b.y + 0.2, chim.z);
+    const beam = new THREE.Mesh((() => { const q = new THREE.BoxGeometry(chim.r, 0.4, 0.5); q.translate(chim.r / 2, 0, 0); return q; })(), lam(i ? 0x7ac8ff : 0xff7aa8, { emissive: i ? 0x102838 : 0x301020 }));
+    bar.add(beam);
+    for (let k = 1; k <= 6; k++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.35, 5), lam(0xffffff)); s.position.set(k * 0.6, 0.36, 0); bar.add(s); const d = s.clone(); d.position.y = -0.36; d.rotation.x = Math.PI; bar.add(d); }
+    bar.add(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.6, 10), lam(0xf0c84a)));
+    g.add(bar);
+    return bar;
+  });
+  // the bars of soap over the rings (the ride's checkpoints; not stars: owner 2026-10-30)
+  const soaps = chim.stars.map(s => { const m = buildSoapBar(); m.position.set(s.x, s.y, s.z); m.scale.setScalar(1.4); g.add(m); return m; });
+  g.userData.parts = { plates, fan: fans[0], fans, bar: bars[0], bars, soaps };
   g.userData.dispose = disposer(g);
   return g;
 }
@@ -235,16 +250,17 @@ export function buildBigBubble(r = 1, alpha = 1) {
   return g;
 }
 
-// Captain Suds' three shield bubbles (redesign 2026-10-29: each bobs on its own over the rim; the live part places them), each with a
-// slowly turning ring of sparkles and a little gold star on top (where a stomp pops it).
+// Captain Suds' three shield bubbles (the live part places them), each with a slowly turning coloured ring (its colour = its skin of
+// Captain Suds' dome) and a little heap of foam on top. (Owner 2026-10-30: no gold star on top any more: stars are the Wizard's.)
+export const SHIELD_COLOURS = [0x7fdcff, 0xff8fd0, 0xffd860];
 export function buildShields(list0) {
   const g = new THREE.Group(), list = [];
   list0.forEach((sh, i) => {
     const r = sh.r, s = buildBigBubble(r, 0.85);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 4, 32), new THREE.MeshBasicMaterial({ color: [0xbfefff, 0xffc8ec, 0xfff2a8][i % 3], transparent: true, opacity: 0.8 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.06, 4, 32), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[i % 3], transparent: true, opacity: 0.85 }));
     ring.rotation.x = Math.PI / 2 - 0.3 * i;
-    const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
-    cap.position.y = r + 0.12;
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+    cap.scale.set(1.3, 0.45, 1.3); cap.position.y = r + 0.02;
     s.add(ring, cap);
     g.add(s); list.push({ g: s, ring, cap, r });
   });
@@ -351,6 +367,32 @@ export function buildArrow(color = 0xfff28a) {
   mesh.renderOrder = 4;
   g.add(mesh);
   g.userData.parts = { mesh };
+  g.userData.dispose = disposer(g);
+  return g;
+}
+
+// Captain Suds' dome (owner 2026-10-30: "they didn't seem to be preventing him from battling"): the big bubble he sits sealed in, three
+// soap skins, one per shield (its colour band on each), and the trails of little bubbles that flow from each shield into it. The live part
+// hides a skin when its shield pops, wobbles the dome when it boings you, and bursts it (grows and fades) when the last skin goes.
+export function buildDome(dome, n = 3, per = 12) {
+  const g = new THREE.Group(), skins = [];
+  for (let k = 0; k < n; k++) {
+    const r = dome.r - k * dome.skin, s = new THREE.Group();
+    const film = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), soapMaterial(0.75)); film.renderOrder = 2;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 4, 48), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[k % 3], transparent: true, opacity: 0.7, depthWrite: false }));
+    band.rotation.x = Math.PI / 2 - 0.35 + 0.35 * k; band.rotation.y = k * 1.1; band.renderOrder = 3;
+    s.add(film, band); s.position.set(dome.x, dome.y, dome.z);
+    g.add(s); skins.push({ g: s, film, band, r });
+  }
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(dome.r * 0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
+  shine.position.set(dome.x - dome.r * 0.45, dome.y + dome.r * 0.55, dome.z + dome.r * 0.4); shine.renderOrder = 3;
+  g.add(shine);
+  const trail = inst(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }), n * per);
+  const col = new THREE.Color();
+  for (let i = 0; i < n * per; i++) trail.setColorAt(i, col.setHex(i % 3 ? SHIELD_COLOURS[Math.floor(i / per) % 3] : 0xffffff));
+  trail.renderOrder = 4;
+  g.add(trail);
+  g.userData.parts = { skins, shine, trail, per };
   g.userData.dispose = disposer(g);
   return g;
 }
