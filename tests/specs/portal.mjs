@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, openPair, newGame, pause, click, waitFor as waitFor0, playBattle, continueGame, seedSave } from '../helpers.mjs';
-import { makeSwirl, houseGraph, reachable, exitReached, stuckCells, layoutProblems, roomAt, run, landing, roomRows, ballPresses, decoyRows, decoyProblems, fallOnly, quickTime, PHASES } from '../portalcheck.mjs';
+import { makeSwirl, houseGraph, reachable, exitReached, stuckCells, layoutProblems, roomAt, run, landing, roomRows, ballPresses, decoyRows, decoyProblems, fallOnly, quickTime, PHASES, footSparks } from '../portalcheck.mjs';
 import { R, ROOMS, SWIRLS, PARTS, swirlById, HUB, PORCH, HALL, HOUSE_LIFT, PLATFORMS, DECOYS_MAX, decoysIn, DOORS } from '../../src/portalhouse.js';
 import { exitOf, exitSpeed, touches, boxHits, PORTAL, ballRun, flingFlight, headOf, slotAimed, bridgeCells, ROOMS_NEED } from '../../src/portalplay.js';
 import { BLOCKS } from '../../src/blocks.js';
@@ -223,11 +223,14 @@ export default async function ({ browser, base, t }) {
     const dp = decoyProblems(g);
     t.ok(!dp.length, `every decoy can be aimed at from somewhere you walk in its room (it looks like a real choice) and none sends you round and round (${dp.join('; ')})`);
     // owner 2026-10-29: a fall into the cloud may happen (a miss) but is never needed to go on: from every place in a room the exit or the
-    // way home is reachable without one (owner 2026-10-29: plain stairs and steps, no extra kind of swirl)
+    // way home is reachable without one (owner 2026-10-30: a violet back swirl where stairs would let your feet reach a flight's sparks or ledges)
     const fall = ROOMS.map(r => { const ph = PHASES[r.n], k = ph && Object.keys(ph)[0]; return [r.n, new Set((ph ? ph[k] : [null]).flatMap(v => fallOnly(g, r, k ? { [k]: v } : {})))]; });
     t.ok(fall.every(([, s]) => s.size === 0), `no place in a room needs a fall to go on (${fall.map(([n, s]) => `${n}:${s.size}${s.size ? ' ' + [...s].slice(0, 3).join(' ') : ''}`).join(' ')})`);
     const warps = SWIRLS.filter(s => s.kind === 'warp').map(s => s.id);
-    t.ok(warps.join() === 'hub,porch' && !SWIRLS.some(s => s.back) && PLATFORMS.fling.length > 6 && PLATFORMS.clock.length > 6 && PLATFORMS.ball.length === 3, `no back swirls: the only warps are the Hub and Porch Swirls; the Fling, Clock and Ball Rooms have stairs or a step instead (${warps})`);
+    t.ok(warps.join() === 'hub,porch,fling.b,fling.b2,clock.b' && SWIRLS.filter(s => s.back).every(s => s.colour === 'violet' && s.to === ROOMS[s.room - 1].start) && PLATFORMS.fling.length === 5 && PLATFORMS.clock.length === 5 && PLATFORMS.ball.length === 3,
+      `owner 2026-10-30: no stairs in the Fling and Clock Rooms (they gave your feet the sparks and the low ledge); violet back swirls take you to the room's start there; the Ball Room keeps its step down (${warps})`);
+    const fs = footSparks(g);
+    t.ok(!fs.length, `no spark (a little Capture Cube) can be caught on foot in any room: only with a swirl (${fs.join(' ')})`);
     t.ok(SWIRLS.filter(s => s.kind === 'door').every(s => s.colour === 'warm'), 'every door is a warm doorway (no green door swirl)');
     // the lift reaches the porch: the cells above the cloud sea at the lift are lifted to the porch deck
     const lift = w5.lifts.find(l => l.id === 'house');
@@ -598,9 +601,13 @@ export default async function ({ browser, base, t }) {
       const pad = sw('fling.high'); p.lookAt({ x: pad.centre[0], y: pad.centre[1], z: pad.centre[2] }); window.__step(g, 1 / 20, 1);
       const old = g.playing; g.playing = () => true; const used = lv.use(); g.playing = old;
       const shot = lv.info().bolt; window.__step(g, 1 / 20, 12);
-      return { used, shot, after: lv.info().bolt, yours: lv.yours, part: lv.info().part };
+      const b = sw('fling.b'); window.__t0 = lv.info().trips;
+      p.pos.set(b.centre[0] + 0.4, b.centre[1], b.centre[2] + 2.2); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.keys = { KeyW: true }; // walk north onto it
+      window.__step(g, 1 / 20, 40, () => lv.info().trips > window.__t0); p.keys = {};
+      return { used, shot, after: lv.info().bolt, yours: lv.yours, pos: [p.pos.x, p.pos.y, p.pos.z], part: lv.info().part };
     });
-    t.ok(bolt.used && bolt.shot && !bolt.after && bolt.yours === 'fling.high' && bolt.part === 2, `Swirl! shoots a bolt from the wand to the pad (it fades) (${JSON.stringify(bolt)})`);
+    t.ok(bolt.used && bolt.shot && !bolt.after && bolt.yours === 'fling.high' && Math.hypot(bolt.pos[0] - 156.5, bolt.pos[2] - 4.5) < 0.6 && Math.abs(bolt.pos[1] - 21) < 0.2 && bolt.part === 2,
+      `Swirl! shoots a bolt from the wand to the pad (it fades); the violet back swirl on the landing shelf takes you up to the start, your swirl stays on the high pad (${JSON.stringify(bolt)})`);
     await at(page, 108.5, 13, 24.5, 0);
     await page.evaluate(() => window.__step(window.pokecraft, 1 / 20, 4));
     // the Hall's guide points at room 1's door; in a room the words say what to tap, the arrow shows the door (owner 2026-10-29: it never
@@ -728,11 +735,11 @@ export default async function ({ browser, base, t }) {
     // the ball room, with a ball in the air between your swirls
     await view('ball', 115.0, 11, 2.6, 124, 13.5, 8.5, `window.__lv().hold = null; ${put(['ball.w1', 'ball.k1'])} const g = window.pokecraft; window.__lv().resetBall(); window.__step(g, 1 / 20, 200, () => { const b = window.__lv().ball; return b && b.piece.p0[0] < 115 && window.__lv().clock - b.t0 > 0.28; });`);
     await view('loop', 116.0, 33, 2.6, 124, 36, 9, put(['loop.k', 'loop.top']));
-    // owner 2026-10-29: the wand's bolt in mid-flight (frozen), the doors of a room, a back swirl on the Fling Room's landing shelf
+    // owner 2026-10-29: the wand's bolt in mid-flight (frozen), the doors of a room, the back swirl on the Fling Room's landing shelf
     await view('bolt', 127.5, 13, 23.5, 149, 21, 22, `const lv = window.__lv(); lv.boltHold = 0.09; lv.yours = null; const g = window.pokecraft, old = g.playing, c = g.camera; window.__step(g, 1 / 20, 1); c.position.copy(g.player.eyePos); c.rotation.set(g.player.pitch, g.player.yaw, 0); c.updateMatrixWorld(); g.playing = () => true; lv.place(lv.house.swirls.find(s => s.id === 'gap.p3')); g.playing = old;`);
     await page.evaluate(() => { window.__lv().boltHold = null; });
     await view('doors', 141.5, 43, 6.0, 146, 44, 2, put([]));
-    await view('fling-stairs', 146.0, 9, 11.5, 151, 13, 3, put(['fling.high']));
+    await view('fling-back', 146.0, 9, 11.5, 151, 9, 8, put(['fling.high']));
     await view('quick', 86.2, 18, 25.9, 83.5, 4, 28.8, `${put(['quick.p'])}`);
     await view('bridge', 87.0, 36, 3.5, 92, 35, 9, put(['bridge.p', 'bridge.k1']));
     await view('decoys', 116.0, 33, 2.6, 127, 38, 9, put([]));
@@ -750,7 +757,7 @@ export default async function ({ browser, base, t }) {
     });
     await shot(page, 'creatures');
     await page.evaluate(() => { const cm = window.pokecraft.creatures; for (const w of [...cm.list]) cm.remove(w); });
-    t.ok(true, 'screenshots t42-house-outside, hall, gap, fling, clock, skip, pair, slide, ball, loop, bolt, doors, fling-stairs, quick, bridge, decoys, boss, creatures');
+    t.ok(true, 'screenshots t42-house-outside, hall, gap, fling, clock, skip, pair, slide, ball, loop, bolt, doors, fling-back, quick, bridge, decoys, boss, creatures');
   }
   await finish();
   async function finish() { /* (the iPad and the pair parts are separate) */ }

@@ -76,6 +76,8 @@ export function createGymLive(game) {
     talkPrompt(npc) { return each(o => o.talkPrompt?.(npc)); },
     // T40: the word the big action button shows for a live block ("Ride!", "Fire!"), or null.
     action(block) { return each(o => o.action?.(block)); },
+    // Owner 2026-10-30: true = no block outline on this block (the Portal House's door back plates, seen through the doorway's light).
+    noOutline(block) { return !!each(o => o.noOutline?.(block)); },
     // T40: hooks without a targeted block. near(p) -> a short action word or null (asked when the crosshair hits nothing usable:
     // "Fire!" on a cannon pad, "Kick!" beside a ball); use(p) -> true if handled (the action key / tap / E path, when near gave a word);
     // aim(p) -> a guide arrow { x, z, text(arrow, metres) } that the realm guide asks before the Picture World's default aim.

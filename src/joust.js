@@ -1,7 +1,7 @@
 // T49: the Joust (the Castle, plans/T49-castle.md section 4), pure: only kindhelp.js's kindHelp (itself pure), so it runs in Node.
 // You ride the castle's horse down your lane; a wooden practice knight on a trolley comes the other way and you meet at a fixed time
 // (`meet`). The stick moves your lance tip (u = sideways, v = up, in blocks, in the plane of his shield); the gallop bobs it (a closed
-// form); a gold star sits on his shield (still, sliding, or sliding and hopping once late). At the meeting the tip's distance to the
+// form); a gold spot sits on his shield (a gold star until 2026-10-30; the code still calls it the star) (still, sliding, or sliding and hopping once late). At the meeting the tip's distance to the
 // star decides: Bullseye! (2 points), Clang! on the shield (1), or Whoosh! (0, a bonk on your helmet, nothing more). Never a fail: a round
 // is four passes; short of its number it simply starts again, and after two short rounds the shared kind help gives a tiny bit more time and a bigger star.
 // The tip moves in fixed 1/120 s sub-steps with the frame's input held, so the same presses give the same result at any frame rate.

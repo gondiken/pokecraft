@@ -3,7 +3,7 @@
 // the rings, the trampoline balloons, the coaster car, the Ferris wheel, the slide tube and a pool of confetti. Blocks still do the
 // walking (the arena floor, the deck, the mat, the rails); these meshes only show what a thing IS. Everything is made of a few merged
 // geometries with vertex colours and instanced where there are many (draw calls: cars 1, bot heads 1, bumper balloons 1, carousel 2,
-// rings 1, balloons 2 (a star on the star balloons), coaster car 1, Ferris wheel 3, slide 1, confetti 1).
+// rings 1, balloons 2 (a target on the target balloons), coaster car 1, Ferris wheel 3, slide 1, confetti 1).
 // Every builder returns a THREE.Group with `userData.parts` (named pieces the live part moves) and `userData.dispose()`.
 // Imports only three and fairgames.js numbers. No Math.random: confetti flies on hashes of its slot.
 import * as THREE from 'three';
@@ -207,13 +207,11 @@ export function buildRings() {
   };
   return finish(group, parts);
 }
-// The trampoline balloons (up to 8 a round, bobbing in the air), coloured by balloonColor (gold, star balloons pearly white); a star
-// balloon also wears a gold star on its top (a second instanced mesh: it pops only when you come down on it).
+// The trampoline balloons (up to 8 a round, bobbing in the air), coloured by balloonColor (gold, target balloons pearly white); a target
+// balloon also wears a red-and-white target on its top (a second instanced mesh: it pops only when you come down on it). Owner
+// 2026-10-30: it was a gold star; only the Wizard's star is a star.
 function starGeometry() {
-  const L = [];
-  for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU; L.push(bx(0.16, 0.08, 0.42, Math.sin(a) * 0.17, 0, Math.cos(a) * 0.17, 0xffd23a, a)); }
-  L.push(cy(0.15, 0.15, 0.09, 0, 0, 0, 0xffe94a, 10));
-  return merge(L);
+  return merge([cy(0.34, 0.34, 0.05, 0, 0, 0, 0xe8384a, 18), cy(0.24, 0.24, 0.07, 0, 0, 0, 0xffffff, 16), cy(0.12, 0.12, 0.09, 0, 0, 0, 0xe8384a, 12)]);
 }
 export function buildAirBalloons() {
   const group = new THREE.Group();

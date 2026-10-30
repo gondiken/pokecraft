@@ -3,7 +3,7 @@
 //  - Shield Up!: on a Shield Stone press Shield!: you stand your ground (a `carry` object: the stick points the shield, Jump lifts it);
 //    pumpkins and arrows come from twelve spots; three rounds, each saved at once (pw:castle:shield1..3). Round 3 brings the drawbridge down.
 //  - the hedge maze (the only way into the Tilt Yard): the guide only helps gently (castleAim reads mazeTime).
-//  - the Joust: Mount! the castle's horse on its pad, Charge!, the stick steers the lance tip onto the gold star; three rounds of four
+//  - the Joust: Mount! the castle's horse on its pad, Charge!, the stick steers the lance tip onto the gold spot (owner 2026-10-30: it was a gold star; only the Wizard's star is a star); three rounds of four
 //    passes (pw:castle:lance1..3). Round 3 raises the keep's portcullis.
 //  - the drawbridge, the portcullis and the squire gate are drawn with LiveCells (never an edit, never inside you): down / up when YOU won
 //    them (or hold the star) or a friend in this play-together world did (castlegate.js, owner 2026-10-28: the gates are physical).
@@ -37,11 +37,11 @@ const WORDS = {
   splat: 'Splat! Yuck, sticky! Turn your shield to the glow!',
   sky: 'Look up! Shield up! (Jump)',
   hero: 'Hero! Three perfect blocks!',
-  joust: 'Steer your lance tip onto the gold star!',
-  passes: ['Round 1: the star stands still. Aim and hold steady!', 'Round 2: the star slides round the shield. Follow it!', 'Round 3: the star slides fast, and it hops! Watch it wiggle.'],
+  joust: 'Steer your lance tip onto the gold spot!',
+  passes: ['Round 1: the gold spot stands still. Aim and hold steady!', 'Round 2: the gold spot slides round the shield. Follow it!', 'Round 3: the gold spot slides fast, and it hops! Watch it wiggle.'],
   bullseye: 'Bullseye! Sir Splinter fell off!',
   clang: 'Clang! On the shield.',
-  whoosh: 'Whoosh! Point your lance at the gold star!',
+  whoosh: 'Whoosh! Point your lance at the gold spot!',
   bridge: 'Ta-ta-taa! The drawbridge is coming down!',
   port: 'The portcullis is up! Sir Clanksalot waits in the throne room.',
   maze: 'The hedge maze! The Tilt Yard is on the other side.',
@@ -292,7 +292,7 @@ export class CastleLive {
     g.rideShow = 'gallantrot';
     this.once('joust', WORDS.joust);
     this.toast('Press Charge! to gallop at Sir Splinter.');
-    if (!this.told.has('joustCall')) { this.told.add('joustCall'); this.callout('🎯 Hit the gold star!', 'Steer your lance tip (the white ring) onto it.', '#ffd84a', 3); }
+    if (!this.told.has('joustCall')) { this.told.add('joustCall'); this.callout('🎯 Hit the gold spot!', 'Steer your lance tip (the white ring) onto it.', '#ffd84a', 3); }
   }
   getOff() {
     const p = this.game.player, at = this.steedObj.safe();
@@ -329,9 +329,9 @@ export class CastleLive {
         if (e.type === 'meet') {
           this.lastMeet = e;
           const off = this.hitWhere(jr, e.kind);
-          if (e.kind === 'bullseye') { sound.play('lanceclang'); sound.play('trumpet'); this.tumbleT = 0; this.toast(`${WORDS.bullseye} +2`); this.callout('⭐ Bullseye! +2', 'Right on the star!', '#ffd84a'); }
-          else if (e.kind === 'clang') { sound.play('lanceclang'); this.toast(`${WORDS.clang} +1`); this.callout('Clang! +1', `${off.word}. The star was ${off.fix}.`, '#e8eefc'); }
-          else { sound.play('helmbonk'); this.say('whoosh', WORDS.whoosh, 0); this.callout('Whoosh!', `Missed: ${off.far}. The star was ${off.fix}.`, '#9fc8ff'); }
+          if (e.kind === 'bullseye') { sound.play('lanceclang'); sound.play('trumpet'); this.tumbleT = 0; this.toast(`${WORDS.bullseye} +2`); this.callout('🎯 Bullseye! +2', 'Right on the gold spot!', '#ffd84a'); }
+          else if (e.kind === 'clang') { sound.play('lanceclang'); this.toast(`${WORDS.clang} +1`); this.callout('Clang! +1', `${off.word}. The gold spot was ${off.fix}.`, '#e8eefc'); }
+          else { sound.play('helmbonk'); this.say('whoosh', WORDS.whoosh, 0); this.callout('Whoosh!', `Missed: ${off.far}. The gold spot was ${off.fix}.`, '#9fc8ff'); }
         } else if (e.type === 'passDone') ride.phase = 'return';
         else if (e.type === 'done') this.joustDone(e);
       }
@@ -597,7 +597,7 @@ export class CastleLive {
     const eye = p?.carry === this.steedObj ? p.eyePos.clone() : cam?.position ?? new THREE.Vector3(this.horse.x, 13.5, TILT.z); // (the camera follows the eye each frame)
     const wob = this.tumbleT < 1 ? Math.sin(this.tumbleT * 18) * 0.25 * (1 - this.tumbleT) : 0;
     S.rotation.set(0, Math.atan2(-(eye.z - sp.z), eye.x - sp.x), wob); // local +x (its face) toward you
-    // the star and your aim dot (u + = the shield's local +z = the left of your screen, as before the view turned; v + = up)
+    // the gold spot (parts.star) and your aim dot (u + = the shield's local +z = the left of your screen, as before the view turned; v + = up)
     const star = pass ? jr.starNow() : { at: [0, 0], wiggle: false }, tip = pass ? jr.tipNow() : [0, 0];
     K.star.position.set(0.05, star.at[1], star.at[0]);
     K.star.rotation.x = star.wiggle ? Math.sin(this.clock * 40) * 0.4 : 0;
@@ -651,7 +651,7 @@ export class CastleLive {
     if (!ui?.setScore || this.game.world !== this.world) return;
     const st = this.state(), sg = this.sg, jr = this.jr;
     if (sg && !sg.done) { ui.setScore({ text: `🛡️ Round ${sg.round + 1} · ${sg.blocks} / ${sg.need} · ${sg.left} to come${this.sFun.done(st.shield) ? ' · for fun' : ''}`, done: false }); return; }
-    if (this.mounted && jr && !jr.done) { ui.setScore({ text: `🐴 Round ${jr.round + 1} · Pass ${Math.max(1, jr.pass + 1)} / 4 · ⭐ ${jr.points} / ${jr.need}${this.jFun.done(st.lance) ? ' · for fun' : ''}`, done: false }); return; }
+    if (this.mounted && jr && !jr.done) { ui.setScore({ text: `🐴 Round ${jr.round + 1} · Pass ${Math.max(1, jr.pass + 1)} / 4 · 🎯 ${jr.points} / ${jr.need}${this.jFun.done(st.lance) ? ' · for fun' : ''}`, done: false }); return; }
     const ready = st.done && !this.game.bosses?.crewAim?.(this.game.player.pos);
     ui.setScore({ text: ready && !st.star ? '🏰 The throne room is open!' : `🛡️ ${st.shield} / 3 · 🐴 ${st.lance} / 3`, done: !!(ready && !st.star) });
   }

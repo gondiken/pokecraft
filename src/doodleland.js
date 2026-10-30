@@ -163,7 +163,7 @@ export function doodleAim(world, p, game) {
   if (st.done) return null; // the base's aim: the Boss, then the way back
   const l = lines[st.next], c = l.padCells[0];
   const x = c[0] + 0.5, z = c[2] + 0.5;
-  return { x, z, text: (a, m) => `✏️ Line ${l.n} of ${LINES.length}: go to the star pad ${a} ${m}m` };
+  return { x, z, text: (a, m) => `✏️ Line ${l.n} of ${LINES.length}: go to the pencil pad ${a} ${m}m` };
 }
 
 // The air over the blank page beside the pages, as a few boxes (y FLOOR + 1 .. 47).
@@ -262,7 +262,7 @@ export function doodleLand(world, def) {
     const pad = { n: l.n, cells, stand: [cx, y + 1, cz, 0] }; // the middle of the 2 x 2 pad
     pads.push(pad); rests.push(pad.stand);
     const xs = cells.map(c => c[0]), zs = cells.map(c => c[2]);
-    keep(`pad-${l.n}`, box(Math.min(...xs), Math.max(...xs), y, y + 3, Math.min(...zs), Math.max(...zs)), 'The star pad is part of the drawing. Stand on it and press Draw!');
+    keep(`pad-${l.n}`, box(Math.min(...xs), Math.max(...xs), y, y + 3, Math.min(...zs), Math.max(...zs)), 'The pencil pad is part of the drawing. Stand on it and press Draw!');
     // the line itself: groups of 6 cells in a keep (nobody builds a bridge across the pencil's work)
     for (let i = 0; i < l.line.cells.length; i += 6) {
       const g = l.line.cells.slice(i, i + 6), ys = g.map(c => c.y);

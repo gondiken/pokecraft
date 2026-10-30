@@ -132,7 +132,7 @@ export default async function ({ browser, base, t }) {
     }
     t.ok(bare === 0 && part.coaster.rails.length > 200, `every rail above the floor has a white support column to the floor within 3 blocks (${part.coaster.rails.length} rails, ${part.coaster.supports.length} support blocks)`);
     const end = track.samples.at(-1);
-    t.ok(Math.hypot(end[0] - 206.5, end[2] - 201.5) < 0.05 && Math.abs(end[1] - 24) < 0.05 && w.get(Math.floor(end[0]), 23, Math.floor(end[2])) === B.STAR_STAGE, 'the ride ends on the Star Stage (206.5, 24, 201.5)');
+    t.ok(Math.hypot(end[0] - 206.5, end[2] - 201.5) < 0.05 && Math.abs(end[1] - 24) < 0.05 && w.get(Math.floor(end[0]), 23, Math.floor(end[2])) === B.STAR_STAGE, 'the ride ends on the Sky Stage (206.5, 24, 201.5)');
     t.ok(track.time >= 30 && track.time <= 40, `the ride takes ${track.time.toFixed(1)} s (30-40)`);
     let clash = 0;
     for (const [x, y, z] of part.coaster.rails) {
@@ -158,16 +158,16 @@ export default async function ({ browser, base, t }) {
     t.ok(reach(166, 11, 136) && reach(166, 11, 138) && reach(150, 11, 153) && reach(134, 11, 153) && G.BAYS.every(b => reach(Math.floor(b.x), 11, Math.floor(b.z))), 'walking from the arch you reach the plaza, Ticket Tess, the arena gate, the inside of the arena and every parked car');
     t.ok(reach(197, 11, 153) && reach(175, 12, 153) && reach(166, 12, 172) && reach(189, 11, 189), 'the trampoline, the carousel deck, the coaster station and the slide\'s foot are reachable');
     const high = [...seen.keys()].filter(k => +k.split(',')[1] >= 20 && +k.split(',')[0] >= 190 && +k.split(',')[2] >= 190);
-    t.ok(high.length === 0, `no way to walk up to the Star Stage (the shutter keeps walkers off the rails; ${high.length} stand cells up there are reachable)`);
+    t.ok(high.length === 0, `no way to walk up to the Sky Stage (the shutter keeps walkers off the rails; ${high.length} stand cells up there are reachable)`);
     let loose = 0, total = 0;
     for (let x = Z.x0; x <= Z.x1; x++) for (let z = Z.z0; z <= Z.z1; z++) if (g.standOk(x, 11, z)) { total++; if (!reach(x, 11, z)) loose++; }
     t.ok(loose === 0 && total > 7000, `nobody can get stuck: every one of the ${total} floor cells in the zone is reachable (${loose} not)`);
     // 7. the rest: Merry Mae on the stage, the crew, Ticket Tess, rests, keeps
     const boss = w.bosses.find(b => b.id === 'fair');
-    t.ok(boss && boss.pos[1] === 24 && w.get(201, 23, 201) === B.BOSS_STAND && boss.crew.length === 2 && w.people.length === 1 && w.people[0].name === 'Ticket Tess', 'Merry Mae stands on the Star Stage (y 24) on her stand with two crew; Ticket Tess is a person of the world');
+    t.ok(boss && boss.pos[1] === 24 && w.get(201, 23, 201) === B.BOSS_STAND && boss.crew.length === 2 && w.people.length === 1 && w.people[0].name === 'Ticket Tess', 'Merry Mae stands on the Sky Stage (y 24) on her stand with two crew; Ticket Tess is a person of the world');
     const keep = w.keeps.find(k => k.name === 'fair');
     t.ok(keep && keep.protect[0].x0 === Z.x0 && keep.protect[0].z1 === Z.z1 && keep.rideText && !keep.rideIn, 'one keep for the whole zone, riders are fenced out with a kind word (no rideIn)');
-    t.ok(w.rests.some(r => r[1] >= 24 && r[0] > 196) && w.rests.some(r => Math.abs(r[2] - 138.5) < 1), 'rest spots: on the Star Stage (a lost battle stays there) and the entry plaza');
+    t.ok(w.rests.some(r => r[1] >= 24 && r[0] > 196) && w.rests.some(r => Math.abs(r[2] - 138.5) < 1), 'rest spots: on the Sky Stage (a lost battle stays there) and the entry plaza');
     t.ok(part.board.length === 3 && part.board.every(s => (s.x1 - s.x0 + 1) === 3 && (s.y1 - s.y0 + 1) === 2 && w.get(s.x0, s.y0, s.z) === B.MARQUEE), 'the ticket board: three slots of unlit fair lights on the arch');
     t.ok(part.coaster.lights.length >= 12 && part.coaster.lights.every(([x, y, z]) => w.get(x, y, z) === B.MARQUEE), `the coaster has ${part.coaster.lights.length} fair lights on poles`);
     t.ok(w.parts.length === 3 && w.parts.map(p => p.id).join() === 'race,stadium,fair', 'the Race Track and the Ball Stadium parts are still there beside the fair');
@@ -327,7 +327,7 @@ export default async function ({ browser, base, t }) {
       const i = BOUNCE_ROUNDS[1].balloons.findIndex(b => b.top), b = g.balloon(i);
       const below = g.update(0, { pos: { x: b.x, y: b.y - 1.5, z: b.z }, vy: 6, active: true });
       g.prev = null; const above = g.update(0, { pos: { x: b.x, y: b.y - 0.1, z: b.z }, vy: -6, active: true });
-      t.ok(below.some(e => e.type === 'boop') && !below.some(e => e.type === 'pop') && above.some(e => e.type === 'pop' && e.i === i), 'a star balloon only boops when you come up under it, and pops when you come down onto it');
+      t.ok(below.some(e => e.type === 'boop') && !below.some(e => e.type === 'pop') && above.some(e => e.type === 'pop' && e.i === i), 'a target balloon only boops when you come up under it, and pops when you come down onto it');
       const c = new BounceGame(false); c.start(2); const R = BOUNCE_ROUNDS[2], pts = [], none = { x: 0, y: 0, z: 0 };
       const hit = k => { const b2 = c.balloon(k); c.update(0, { pos: { x: b2.x, y: b2.y - 0.1, z: b2.z }, vy: -3, active: true }).forEach(e => e.type === 'pop' && pts.push(e.pts)); };
       const land = () => c.update(0, { landed: true, active: true, pos: none });
@@ -662,7 +662,7 @@ export default async function ({ browser, base, t }) {
     console.log('  D3', JSON.stringify(D3));
     t.ok(!D3.lazy.won && D3.lazy.misses >= 1 && D3.lazy.round === 0 && D3.lazy.again, `careless: holding Jump in one spot for ${D3.lazy.secs.toFixed(0)} s never pops all five balloons of round 1; "Time is up! Round 1 again."`);
     t.ok(D3['60'].won && D3['20'].won && D3.ticket && D3.toast && D3.rounds && D3.combo && D3.again && D3.board.split(',').slice(0, 2).every(v => +v === 43),
-      `real Player physics: a skilled bouncer wins the three rounds (warm-up, wobblers and star balloons, combo x3) at 60 steps (${D3['60'].secs.toFixed(0)} s) and at 20 (${D3['20'].secs.toFixed(0)} s): golden ticket 2, the second slot lights`);
+      `real Player physics: a skilled bouncer wins the three rounds (warm-up, wobblers and target balloons, combo x3) at 60 steps (${D3['60'].secs.toFixed(0)} s) and at 20 (${D3['20'].secs.toFixed(0)} s): golden ticket 2, the second slot lights`);
     const D3b = await page.evaluate(() => {
       const R = window.__R, { g, live, p, G } = R, out = {};
       // the climb: hold Jump on the mat, apex of every bounce; then let go; then walk off
@@ -776,7 +776,7 @@ export default async function ({ browser, base, t }) {
         out.minY = Math.min(out.minY, p.pos.y); out.maxY = Math.max(out.maxY, p.pos.y);
       }
       out.secs = t; out.end = [p.pos.x, p.pos.y, p.pos.z]; out.carry = !!p.carry; out.shutterAfter = g.world.get(156, 13, 173);
-      out.clack = g.sound.played.includes('coasterclack'); out.told = R.said('Merry Mae is waiting on the Star Stage!');
+      out.clack = g.sound.played.includes('coasterclack'); out.told = R.said('Merry Mae is waiting on the Sky Stage!');
       return out;
     });
     console.log('  D6', JSON.stringify(D6));
@@ -821,7 +821,7 @@ export default async function ({ browser, base, t }) {
     t.ok(await playBattle(page), 'a weak team loses the Boss battle');
     await pause(page);
     const L1 = await page.evaluate(() => { const g = window.pokecraft, p = g.player; return { aim: window.__R.live.aim(p.pos)?.text('↑', 5), place: g.place, y: p.pos.y, x: p.pos.x, z: p.pos.z, star: g.stars.includes('fair'), tickets: window.__R.F.ticketState(g).n, hp: g.party[0].hp > 0, said: window.__R.said('Good try! Have some candy floss and try again.') }; });
-    t.ok(/Battle Merry Mae/.test(L1.aim) && L1.place === 'playland' && L1.y >= 23.9 && L1.x > 195 && !L1.star && L1.tickets === 3 && L1.hp && L1.said, `a lost battle keeps you on the Star Stage (y ${L1.y.toFixed(1)}), healed, with the three tickets and Mae's kind words`);
+    t.ok(/Battle Merry Mae/.test(L1.aim) && L1.place === 'playland' && L1.y >= 23.9 && L1.x > 195 && !L1.star && L1.tickets === 3 && L1.hp && L1.said, `a lost battle keeps you on the Sky Stage (y ${L1.y.toFixed(1)}), healed, with the three tickets and Mae's kind words`);
     await page.evaluate(async () => {
       const R = window.__R, { g, p } = R, S = await import('/src/species.js');
       g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0; window.__toasts.length = 0;

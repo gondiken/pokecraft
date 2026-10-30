@@ -354,6 +354,34 @@ export function quickTime(g, room, { pre = [null], tricks = true, retap = true, 
   return found;
 }
 
+// Owner 2026-10-30 ("I could get the stars without even using the portal, by simply jumping on the stairs"): no spark of a room can be
+// caught on foot. From every place your feet reach in the room (no swirl at all), walks, jumps and falls in 8 directions at every speed:
+// none passes a spark (the live part's 1.4 from your middle). A sparksOpen spark (the Quick Room, by its door) is only out while the door
+// is open, and the stairs never get you there in time (quickTime). Returns the sparks caught on foot ('n:i from x,y,z').
+export function footSparks(g, rooms = ROOMS) {
+  const bad = [];
+  for (const room of rooms) {
+    if (room.sparksOpen && quickTime(g, room, { tricks: false }) > room.button.open) continue;
+    const ph = PHASES[room.n], k = ph && Object.keys(ph)[0];
+    const feet = [...reachable(g, cellOf(room.start), { tricks: false, stayIn: room, ...(k ? { [k]: ph[k][0] } : {}) }).cells]
+      .map(c => c.split(',').map(Number)).filter(c => roomAt(c) === room);
+    room.sparks.forEach((s, i) => {
+      const near = p => (Math.hypot(p[0] - s[0], p[1] + 0.9 - s[1], p[2] - s[2]) <= 1.4 ? 'spark' : null);
+      const from = feet.find(c => {
+        const st = [c[0] + 0.5, c[1], c[2] + 0.5];
+        if (near(st)) return true;
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [0.7, -0.7], [-0.7, 0.7], [-0.7, -0.7]]) for (const sp of [0.01, 2.2, 4.3, 6.2]) for (const mode of ['walk', 'jump']) {
+          if (sp < 1 && mode === 'walk') continue;
+          if (run(g.solid, st, dx * sp, dz * sp, { mode, seek: near }).hit) return true;
+        }
+        return false;
+      });
+      if (from) bad.push(`${room.n}:${i} from ${key(from)}`);
+    });
+  }
+  return bad;
+}
+
 // Did the search walk into the room's exit door? (`res` = what reachable() returned.)
 export const exitReached = (res, room) => res.exits.has(room.exit);
 
@@ -383,6 +411,7 @@ if (process.argv[1] && process.argv[1].endsWith('portalcheck.mjs')) {
   console.log('stuck:', stuck.length, stuck.slice(0, 12).join(' '));
   const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
   const rooms = only ? ROOMS.filter(x => only.includes(x.n)) : ROOMS;
+  console.log('sparks caught on foot:', footSparks(g, rooms).join(' ') || '-');
   console.log('decoys:', ROOMS.map(r => r.slots.filter(id => swirlById(id).decoy).length).join(' '), '| problems:', decoyProblems(g).join(' ') || '-');
   for (const d of decoyRows(g, rooms)) console.log(`decoys room ${d.n}: ${d.decoys} | only decoys reach the exit ${d.onlyDecoys} | pinned ${d.pinned.join(' ') || '-'} | ball ${d.ball.join(' ') || '-'}`);
   for (const r of rooms) { const t0 = Date.now(), ph = PHASES[r.n], k = ph && Object.keys(ph)[0], bad = new Set((ph ? ph[k] : [null]).flatMap(v => fallOnly(g, r, k ? { [k]: v } : {}))); console.log(`room ${r.n} fall-only cells: ${bad.size} ${[...bad].slice(0, 8).join(' ')} (${Date.now() - t0} ms)`); }

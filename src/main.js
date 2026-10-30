@@ -1145,7 +1145,7 @@ function updateTarget() {
     highlight.visible = true;
     highlight.scale.set(1, 2, 1);
     highlight.position.set(target.npc.pos.x, target.npc.pos.y + 1, target.npc.pos.z);
-  } else if (target.block && !BLOCKS[target.block.id]?.hidden) { // T40a.5: a hidden block is under a model: no box outline
+  } else if (target.block && !BLOCKS[target.block.id]?.hidden && !game.gymLive.noOutline?.(target.block)) { // owner 2026-10-30: + a live part may hide it (the Portal House's doorways) // T40a.5: a hidden block is under a model: no box outline
     highlight.visible = true;
     highlight.scale.setScalar(1);
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);

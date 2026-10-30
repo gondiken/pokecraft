@@ -430,7 +430,7 @@ BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
 // T45 Sketchbook blocks (none placeable, all fixed). The ink is drawn only with setLive (the pencil draws a line as you follow its tip).
 BLOCKS[B.DO_PAPER] = { name: 'Blank Page', ...all(T.DO_PAPER), fixed: true, wallText: "It's the blank page under the drawing." };
 BLOCKS[B.DO_INK] = { name: 'Pencil Line', ...all(T.DO_INK), fixed: true, wallText: "The pencil drew this. You can't rub it out!" };
-BLOCKS[B.DO_PAD] = { name: 'Star Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, bottom: T.DO_PAD_SIDE, fixed: true, wallText: 'Stand on the star pad and press Draw!' };
+BLOCKS[B.DO_PAD] = { name: 'Pencil Pad', top: T.DO_PAD_TOP, side: T.DO_PAD_SIDE, bottom: T.DO_PAD_SIDE, fixed: true, wallText: 'Stand on the pencil pad and press Draw!' }; // owner 2026-10-30: was a star pad (only the Wizard's star is a star)
 BLOCKS[B.DO_BINDING] = { name: 'Sketchbook Rings', ...all(T.DO_BINDING), fixed: true, wallText: "The sketchbook's spiral rings. Too big to break!" };
 // T49 the Castle: a neat clipped hedge (the hedge garden and the maze). Solid, fixed, not placeable.
 BLOCKS[B.HEDGE] = { name: 'Castle Hedge', top: T.KN_HEDGE_TOP, side: T.KN_HEDGE, bottom: T.KN_HEDGE, fixed: true, wallText: 'A neat castle hedge. The gardener would be cross!' };
@@ -455,7 +455,7 @@ BLOCKS[B.FIZZ_WALL] = { name: 'Fizzy Wall', top: T.BU_FIZZ_TOP, side: T.BU_FIZZ,
   BLOCKS[B.COASTER_SUPPORT] = { name: 'Coaster Support', ...all(T.FF_LATTICE), ...fx, wallText: 'The roller coaster! Win 3 tickets to ride.' };
   BLOCKS[B.MARQUEE] = { name: 'Fair Lights', ...all(T.FF_MARQUEE), ...fx, wallText: 'Fair lights! They come on when the fair wakes up.' };
   BLOCKS[B.CANDY_STRIPE] = { name: 'Candy Stripe', ...all(T.FF_STRIPE), ...fx, wallText: 'A fair stall.' };
-  BLOCKS[B.STAR_STAGE] = { name: 'Star Stage', ...all(T.FF_STAGE), ...fx, wallText: 'The Star Stage! Merry Mae waits here.' };
+  BLOCKS[B.STAR_STAGE] = { name: 'Sky Stage', ...all(T.FF_STAGE), ...fx, wallText: 'The Sky Stage! Merry Mae waits here.' }; // owner 2026-10-30: was the Star Stage
 }
 // T44 / T48 Surprise Party: none placeable, all `fixed`. The games' sets, open pop-up boxes and lit candles are setLive cells (never edits).
 {
@@ -1269,8 +1269,9 @@ export function drawAtlas() {
       put(T.DO_PAPER, x, y, y === 5 || y === 11 ? [176, 200, 232] : shade(CREAM, 1 + (r5() - 0.5) * 0.03)); // a notebook page: faint blue ruled lines
       const hi = (x + y) % 9 === 0 && x > 2 && x < 13; // the drawn line: dark graphite with one bright stroke
       put(T.DO_INK, x, y, hi ? [150, 150, 170] : shade([56, 54, 66], 1 + (r5() - 0.5) * 0.2));
-      const d = Math.hypot(x - 7.5, y - 7.5), star = Math.abs(Math.sin(Math.atan2(y - 7.5, x - 7.5) * 2.5 + 1.57)) > 0.5 && d < 5 - Math.abs(Math.sin(Math.atan2(y - 7.5, x - 7.5) * 2.5)) * 2;
-      put(T.DO_PAD_TOP, x, y, d > 6.4 ? [90, 84, 100] : star || d < 1.4 ? [255, 214, 60] : shade(CREAM, 1 + (r5() - 0.5) * 0.03)); // a yellow star in a circle
+      const d = Math.hypot(x - 7.5, y - 7.5), u = x - y, v = x + y - 15; // owner 2026-10-30: a pencil in a circle (it was a star): along the diagonal u
+      const cone = Math.abs(v) <= (u + 8) * 0.55, lead = cone && u >= -8 && u < -5.5, cWood = cone && u >= -5.5 && u < -2, stick = Math.abs(v) <= 2.8 && u >= -2 && u <= 8, rubber = stick && u > 6;
+      put(T.DO_PAD_TOP, x, y, d > 6.4 ? [90, 84, 100] : lead ? [60, 58, 70] : cWood ? [230, 190, 140] : rubber ? [255, 140, 170] : stick ? (Math.abs(v) > 1.6 ? [214, 160, 20] : [255, 214, 60]) : shade(CREAM, 1 + (r5() - 0.5) * 0.03));
       const body = y >= 5 && y <= 10 && x >= 2, tip = x < 5 && Math.abs(y - 7.5) < x - 0.5; // a pencil lying down: yellow body, wood cone, dark lead
       put(T.DO_PAD_SIDE, x, y, y === 4 || y === 11 ? [90, 84, 100] : body && x >= 5 ? (y === 5 || y === 10 ? [214, 160, 20] : [255, 214, 60]) : tip ? (x < 2 ? [60, 58, 70] : [230, 190, 140]) : shade(CREAM, 1 + (r5() - 0.5) * 0.03));
       put(T.DO_BINDING, x, y, (y % 5 >= 1 && y % 5 <= 2 && x > 1 && x < 14) ? [196, 200, 214] : shade([150, 118, 84], 1 + (r5() - 0.5) * 0.1));

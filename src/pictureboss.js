@@ -166,7 +166,7 @@ addBoss({ // Queen Coralia in the palace of the Sunken City (in the Pirate Seas)
 /* ==== end of T41 atlantis ==== */
 
 /* ==== T43 funfair ==== */
-addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). Win three golden tickets at the games and ride the coaster up: the gate reads the saved keys (funfair.js ticketState).
+addBoss({ // Merry Mae, the Fairkeeper, on the Sky Stage (Playland's Funfair). Win three golden tickets at the games and ride the coaster up: the gate reads the saved keys (funfair.js ticketState).
   id: 'fair', name: 'Merry Mae', type: 'funfair', title: 'Merry Mae · the Fairkeeper', look: 'fair',
   colors: { shirt: 0xff7ac0, pants: 0xf6efe0, hair: 0xc8902a, skin: 0xf2d0b0 },
   gate: game => { const { n, done } = ticketState(game); return done ? null : `Win 3 golden tickets at the games! Then ride the coaster up to me. (🎟️ ${n} / 3)`; },

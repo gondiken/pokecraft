@@ -83,10 +83,25 @@ export function buildBolt() {
   return { beam, head };
 }
 
+/* ---------- a little Capture Cube (the Portal House's sparks) ---------- */
+// Owner 2026-10-30: a star is only ever the Wizard's star (the star bridge), so what you catch in a flight is what it gives: a Capture Cube
+// (the battle's cube: red top, white bottom, a dark band, a white button), small, for an InstancedMesh with vertex colours.
+export function buildMiniCube(s = 0.42) {
+  const h = s / 2, pieces = [];
+  pieces.push({ geo: new THREE.BoxGeometry(s, h, s), color: 0xe33b3b, m: M(0, h / 2) });
+  pieces.push({ geo: new THREE.BoxGeometry(s, h, s), color: 0xf2f2f2, m: M(0, -h / 2) });
+  pieces.push({ geo: new THREE.BoxGeometry(s * 1.06, s * 0.1, s * 1.06), color: 0x262626, m: M() });
+  for (const r of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) pieces.push({ geo: new THREE.BoxGeometry(s * 0.26, s * 0.26, s * 0.06), color: 0xffffff, m: M(Math.sin(r) * s * 0.53, 0, Math.cos(r) * s * 0.53, 0, r) });
+  return merged(pieces);
+}
+
 /* ---------- doorways ---------- */
 // The wooden frames of the doors in a list of door swirls (wall swirls with an alcove), merged into one mesh (one draw call per part).
 // A door is w wide and h tall; its frame stands on the wall's face round the opening (posts outside it, the lintel and the rounded
-// corners inside its top), so it never pokes into a ceiling right above a door.
+// corners inside its top), so it never pokes into a ceiling right above a door. Owner 2026-10-30 (a flicker on a post seen up close):
+// no face of the frame lies in the plane of a block face: every piece starts FRONT (in front of the wall) and the posts stand a hair
+// outside the opening, so the alcove's side walls never meet a post face.
+const FRONT = 0.012; // how far in front of the wall's face every piece of a door frame starts
 export function buildDoorFrames(doors) {
   const wood = 0x9a6436, light = 0xc58a4e, gold = 0xffd257, pieces = [];
   for (const s of doors) {
@@ -94,16 +109,17 @@ export function buildDoorFrames(doors) {
     const yaw = Math.atan2(nx, nz); // local +z = out of the wall, local x = across the door
     const base = M(c[0], c[1], c[2], 0, yaw, 0);
     const add = (geo, color, x, y, z, rz = 0) => pieces.push({ geo, color, m: base.clone().multiply(M(x, y, z, 0, 0, rz)) });
+    const back = d => FRONT + d / 2; // a piece d deep, its back face FRONT in front of the wall
     for (const sx of [-1, 1]) {
-      add(new THREE.BoxGeometry(0.3, h + 0.05, 0.22), wood, sx * (w / 2 + 0.15), -0.025, 0.08);   // the posts
-      add(new THREE.BoxGeometry(0.42, 0.14, 0.28), light, sx * (w / 2 + 0.15), -h / 2 + 0.07, 0.1); // their feet
+      add(new THREE.BoxGeometry(0.3, h + 0.05, 0.21), wood, sx * (w / 2 + 0.16), -0.025, back(0.21));   // the posts (a hair outside the opening)
+      add(new THREE.BoxGeometry(0.42, 0.14, 0.27), light, sx * (w / 2 + 0.16), -h / 2 + 0.075, back(0.27)); // their feet
       for (let k = 0; k < 3; k++) { // the rounded top corners, three steps inside the opening
         const sz = 0.34 - k * 0.11;
-        add(new THREE.BoxGeometry(sz, 0.11, 0.2), wood, sx * (w / 2 - sz / 2), h / 2 - 0.27 - k * 0.11, 0.08);
+        add(new THREE.BoxGeometry(sz, 0.11, 0.19), wood, sx * (w / 2 - sz / 2), h / 2 - 0.27 - k * 0.11, back(0.19));
       }
     }
-    add(new THREE.BoxGeometry(w + 0.72, 0.24, 0.26), light, 0, h / 2 - 0.1, 0.1);                       // the lintel
-    add(new THREE.ExtrudeGeometry(starShape(0.16, 0.07), { depth: 0.06, bevelEnabled: false }), gold, 0, h / 2 - 0.1, 0.24); // a gold star on it
+    add(new THREE.BoxGeometry(w + 0.74, 0.24, 0.25), light, 0, h / 2 - 0.1, back(0.25));                       // the lintel
+    add(new THREE.CylinderGeometry(0.15, 0.15, 0.06, 16).rotateX(Math.PI / 2), gold, 0, h / 2 - 0.1, back(0.25) + 0.17); // a round gold knob on it (owner 2026-10-30: no star but the Wizard's)
   }
   if (!pieces.length) return null;
   return new THREE.Mesh(merged(pieces), new THREE.MeshBasicMaterial({ vertexColors: true }));

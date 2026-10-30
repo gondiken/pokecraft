@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { DoorGlow } from './portal.js';
-import { buildWand, buildBolt, buildDoorFrames, DoorLight, WAND_COLOURS } from './portalprops.js';
+import { buildWand, buildBolt, buildDoorFrames, DoorLight, WAND_COLOURS, buildMiniCube } from './portalprops.js';
 import { LiveCells } from './livecells.js';
 import { Mover, makePath } from './mover.js';
 import { FUN } from './forfun.js';
@@ -94,8 +94,8 @@ export class PortalHouseLive {
     if (!this.game.scene) return;
     this.aimMesh = this.mark(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x4a8cff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })));
     this.aimMesh.visible = false; this.aimMesh.renderOrder = 8;
-    const star = new THREE.OctahedronGeometry(0.28, 0);
-    this.sparkMesh = this.mark(new THREE.InstancedMesh(star, new THREE.MeshBasicMaterial({ color: 0xffe27a }), SPARK_MAX));
+    // owner 2026-10-30: a star is only ever the Wizard's star (the bridge), so a "spark" is a little spinning Capture Cube (what it gives you)
+    this.sparkMesh = this.mark(new THREE.InstancedMesh(buildMiniCube(), new THREE.MeshBasicMaterial({ vertexColors: true }), SPARK_MAX));
     this.sparkMesh.count = 0; this.sparkMesh.visible = false;
     this.dummy = new THREE.Object3D();
     // the sliding white pad (room 6): a white square with a grey ring, drawn under the ceiling
@@ -157,7 +157,7 @@ export class PortalHouseLive {
     let g = this.glows.get(id);
     if (!g && this.game.scene && sw.kind === 'door') { g = new DoorLight(this.game.scene, sw); this.glows.set(id, g); return g; } // a door: warm light, no swirl
     if (!g && this.game.scene) {
-      const lite = sw.kind !== 'warp';
+      const lite = !(sw.kind === 'warp' && !sw.back);
       g = new DoorGlow(this.game.scene, null, null, { normal: sw.normal, centre: this.cen(sw), w: sw.w, h: sw.h, lite, colours: COLOURS[opts.colour ?? sw.colour] });
       g.group.userData.portalHouse = true;
       this.glows.set(id, g);
@@ -281,7 +281,7 @@ export class PortalHouseLive {
   through(sw, drop) {
     const n = this.where(), room = this.isRoom(n) ? this.room(n) : null;
     this.game.riding?.stop?.('quiet');
-    if (sw.kind === 'warp') return this.warp(sw.to);
+    if (sw.kind === 'warp') { if (sw.back) this.once('back', 'Back to the start of this room!'); return this.warp(sw.to); } // (a back swirl keeps your swirls)
     if (sw.kind === 'door') return this.door(sw);
     if (sw.kind === 'pair') {
       const other = swirlById(sw.pair), out = exitOf(other, other.centre, 0);
@@ -535,8 +535,22 @@ export class PortalHouseLive {
     if (here && next.length > this.bridge.length && this.bridge.length) { sound.play('swirlzip'); this.once('bridge', 'The bridge goes through your swirls!'); }
     this.bridge = next; this.bridgeSet = nextSet;
   }
+  // gymLive hook (owner 2026-10-30): no block outline round a doorway (its back plate showed through the warm light as thin lines, and
+  // the blocks behind the wooden frame drew lines round the posts): the opening, its back plate, the alcove's sides and the wall round it.
+  noOutline(b) {
+    if (!this.plates) {
+      this.plates = new Set();
+      for (const s of SWIRLS) if (s.alcove) {
+        const [nx, , nz] = s.normal, lx = nx ? 0 : 1, lz = nx ? 1 : 0;
+        for (const [x, y, z] of s.cells) for (const d of [0, 1]) for (const l of [-1, 0, 1]) for (const dy of [0, 1]) this.plates.add(`${x - nx * d + lx * l},${y + dy},${z - nz * d + lz * l}`);
+      }
+    }
+    return this.plates.has(`${b.x},${b.y},${b.z}`);
+  }
+  // A room's sparks are out (sparksOpen: only while its door is open, the Quick Room).
+  sparksOut(n) { return !this.room(n).sparksOpen || this.gateOpen(); }
   pickSparks(n, pos) {
-    if (!this.isRoom(n)) return;
+    if (!this.isRoom(n) || !this.sparksOut(n)) return;
     this.room(n).sparks.forEach((s, i) => {
       const k = `${n}:${i}`;
       if (this.sparksGot.has(k)) return;
@@ -544,7 +558,7 @@ export class PortalHouseLive {
       this.sparksGot.add(k);
       this.game.cubes += 1;
       sound.play('keyfound');
-      this.say('✨ A spark! +1 Capture Cube');
+      this.say('A Capture Cube! +1');
       this.game.ui.renderHud?.();
     });
   }
@@ -674,11 +688,11 @@ export class PortalHouseLive {
     // the sparks
     if (this.sparkMesh) {
       let c = 0;
-      if (this.isRoom(n)) this.room(n).sparks.forEach((s, i) => {
+      if (this.isRoom(n) && this.sparksOut(n)) this.room(n).sparks.forEach((s, i) => {
         if (this.sparksGot.has(`${n}:${i}`) || c >= SPARK_MAX) return;
         this.dummy.position.set(s[0], s[1] + Math.sin(this.clock * 2 + i) * 0.15, s[2]);
-        this.dummy.rotation.set(0, this.clock * 1.5 + i, 0);
-        this.dummy.scale.setScalar(1 + 0.15 * Math.sin(this.clock * 5 + i));
+        this.dummy.rotation.set(0.35, this.clock * 1.5 + i, 0.2);
+        this.dummy.scale.setScalar(1 + 0.08 * Math.sin(this.clock * 5 + i));
         this.dummy.updateMatrix();
         this.sparkMesh.setMatrixAt(c++, this.dummy.matrix);
       });
@@ -751,7 +765,8 @@ export class PortalHouseLive {
     const ui = this.game.ui;
     if (!this.isRoom(n) && n !== 'hall' && n !== 'porch' && n !== 'study') { ui.setScore?.(null); return; }
     const d = this.done;
-    ui.setScore?.(d.ready ? { text: `🌀 ${d.n} / ${d.need} · ✨ ${this.sparksGot.size} · To Grandpa Arch!`, done: true } : { text: `🌀 Rooms ${d.n} / ${d.need} · ✨ ${this.sparksGot.size}`, done: false });
+    const cubes = this.sparksGot.size ? ` · +${this.sparksGot.size} Cubes` : ''; // owner 2026-10-30: no star here but the Wizard's
+    ui.setScore?.(d.ready ? { text: `🌀 ${d.n} / ${d.need}${cubes} · To Grandpa Arch!`, done: true } : { text: `🌀 Rooms ${d.n} / ${d.need}${cubes}`, done: false });
   }
 
   /* ---------- the guide arrow ---------- */
