@@ -255,12 +255,13 @@ export default async function ({ browser, base, t }) {
   /* ------------------------------------------------------------ reset (Node): the redesign's one-time reset (worldreset.js) */
   if (want('reset')) {
     const WR = await import('../../src/worldreset.js');
-    const old = { beaten: ['pw:gravity:tag1', 'pw:gravity:ring2', 'pw:gravity:crew1', 'pw:gravity:hop', 'pw:castle:shield1', 'red:trainer', 'pw:bubble:redesign1'], stars: ['castle', 'gravity'], bossWins: { gravity: 2, castle: 1 } };
+    const others = WR.WORLD_RESETS.filter(r => r.id !== 'gravity').map(r => r.mark); // other worlds' own one-time resets (Bubble Well, Portal House...) are already done in these saves
+    const old = { beaten: ['pw:gravity:tag1', 'pw:gravity:ring2', 'pw:gravity:crew1', 'pw:gravity:hop', 'pw:castle:shield1', 'red:trainer', ...others], stars: ['castle', 'gravity'], bossWins: { gravity: 2, castle: 1 } };
     const did = WR.runWorldResets(old);
-    const marked = { beaten: ['pw:bubble:redesign1', CL.REDESIGN_MARK, 'pw:gravity:tag2', 'pw:gravity:lens1', 'pw:gravity:crew2'], stars: ['gravity'], bossWins: { gravity: 1 } }, keep = JSON.stringify(marked);
+    const marked = { beaten: [...others, CL.REDESIGN_MARK, 'pw:gravity:tag2', 'pw:gravity:lens1', 'pw:gravity:crew2'], stars: ['gravity'], bossWins: { gravity: 1 } }, keep = JSON.stringify(marked);
     const did2 = WR.runWorldResets(marked);
     const fresh = { beaten: [], stars: [], bossWins: {} }; WR.runWorldResets(fresh, { fresh: true });
-    t.ok(did.join() === 'gravity' && old.beaten.join() === `pw:castle:shield1,red:trainer,pw:bubble:redesign1,${CL.REDESIGN_MARK}` && old.stars.join() === 'castle' && JSON.stringify(old.bossWins) === '{"castle":1}' && !did2.length && JSON.stringify(marked) === keep && fresh.beaten.includes(CL.REDESIGN_MARK) && WR.WORLD_RESETS.some(r => r.id === 'gravity' && r.mark === CL.REDESIGN_MARK),
+    t.ok(did.join() === 'gravity' && old.beaten.join() === ['pw:castle:shield1', 'red:trainer', ...others, CL.REDESIGN_MARK].join() && old.stars.join() === 'castle' && JSON.stringify(old.bossWins) === '{"castle":1}' && !did2.length && JSON.stringify(marked) === keep && fresh.beaten.includes(CL.REDESIGN_MARK) && WR.WORLD_RESETS.some(r => r.id === 'gravity' && r.mark === CL.REDESIGN_MARK),
       `an old save loses its Cube Planets keys, crew, star and Boss wins once and is marked (other worlds untouched: ${old.beaten.join(', ')}); a marked save keeps everything; a new game just gets the mark`);
     // "Start this world over" (?preview): clears Cube Planets' keys, star and Boss wins, never the mark, never another world's keys
     const g = { beaten: [CL.REDESIGN_MARK, 'pw:gravity:tag1', 'pw:gravity:lens2', 'pw:gravity:crew3', 'pw:castle:shield1'], stars: ['gravity', 'castle'], bossWins: { gravity: 1 }, keys: [] };
