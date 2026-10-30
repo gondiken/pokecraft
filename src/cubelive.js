@@ -2,13 +2,17 @@
 // three skill games (rules: orbits.js; owner 2026-10-29: "easy to understand, hard to master", every rule natural space physics with a
 // reason in Professor Orbit's observatory, and as little text as can be: the scene says how, the helpers tell the story):
 //  - the Orbikit Chase (the Crystal Cube, the Tree Cube, the Long Rock): the Professor's comet cheetahs got loose. Each runs round its
-//    planet, its way dotted faintly on the faces and a sparkly trail behind it. Touch it (or Tag! within reach): pw:gravity:tag1..3.
+//    planet, its way dotted faintly on the faces and a sparkly trail behind it. When it sees you a "!" pops up over it (owner 2026-10-30:
+//    "I have no idea how I won"): from afar it turns and runs; up close round a corner it skids right into you (orbits.js). Touch it (or
+//    Tag! within reach, offered only then): sparkles, pw:gravity:tag1..3.
 //  - the Planet Hop (the Flower Cube, then four pebbles): spring flowers. Standing on one squashes its coil; Jump and it flings you
 //    (player.js launchAt). Land on the next pebble; a flight that lands anywhere else (or floats off into space) is a miss and a puff takes
-//    you back. The Last Pebble saves pw:gravity:hop. Blue home flowers puff you home.
-//  - the Moon Ferry (the Moon Dock and three Lens Rocks): a little moon goes round a little sun on a real orbit (orbits.js ferryAt) and
-//    never stops. Walk or jump onto it as it passes (it scoops you up), Jump to let go: you keep its speed. Land on a Lens Rock: its lens
-//    is found (pw:gravity:lens1..3, any order). A jump that floats off into space is puffed back to the dock.
+//    you back. The Green Pebble saves pw:gravity:hop. Owner 2026-10-30: every pebble has its own colour, each flower's bloom the colour of
+//    the pebble it sends you to, and the next pebble glows (buildBeacon). Swirl doors (BACK_SWIRLS) take you back to the Meadow Cube.
+//  - the Moon Ferry (the Saucer Dock and three Lens Rocks; owner 2026-10-30: the moon is a little flying saucer now): it goes round a little
+//    sun on a real orbit (orbits.js ferryAt) and never stops. Walk or jump onto it as it passes (it scoops you up), Jump to let go: you keep
+//    its speed. Land on a Lens Rock: its telescope piece is found (pw:gravity:lens1..3, any order) and comes back on the Professor's big
+//    telescope. A jump that floats off into space is puffed back to the dock.
 // Never a fail (a miss tries again), kind help only through orbits.js gravityHelp (= kindhelp.js), a harder rematch when you hold the star
 // (orbits.js HARD). Once all are won every game plays on just for fun (forfun.js) and saves nothing new. A won battle with Professor Orbit
 // clears the seven keys (battleEnded). The redesign's one-time reset is worldreset.js's (mark pw:gravity:redesign1). Clocks are summed
@@ -17,25 +21,26 @@ import * as THREE from 'three';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { sketchModel } from './sketch.js';
-import { PLANETS, P, PUPS, FLOWERS, HOME_FLOWERS, MOON, SUN, LENSES, BOXES, tagKey, HOP_KEY, lensKey, GRAVITY_KEYS, gravityState } from './cubeland.js';
+import { PLANETS, P, PUPS, FLOWERS, BACK_SWIRLS, MOON, SUN, LENSES, BOXES, PEBBLE_COLOURS, TELESCOPE, tagKey, HOP_KEY, lensKey, GRAVITY_KEYS, gravityState } from './cubeland.js';
 import { GRAV, upOf, frameOf, toLocal } from './gravity.js';
-import { PupRun, PUP, loopNearest, loopAt, ferryAt, jumpOff, gravityHelp, HARD } from './orbits.js';
+import { PupRun, PUP, loopNearest, loopAt, ferryAt, jumpOff, gravityHelp, HARD, bodyDist } from './orbits.js';
 import { FUN } from './forfun.js';
-import { buildFlower, buildSpring, buildMoon, buildSun, buildLens, buildDots } from './cubeprops.js';
+import { buildBackSwirl, buildSpring, buildSaucer, buildSun, buildLensPrize, buildBigTelescope, buildBeacon, buildBang, buildDots } from './cubeprops.js';
 
 const STARS = 700, R = 240;
 // dtMax: the longest frame step; sayGap: the same words again after; back: a missed hop puffs you back after; lost: a game flight floating
-// outside every planet's field this long is a miss; homeAfter: stand on a home flower this long; retagAfter: a new Orbikit round after a tag;
+// outside every planet's field this long is a miss; homeAfter: stand in a back swirl this long; retagAfter: a new Orbikit round after a tag;
 // boardR: Hop on! reaches this far; trail / trailGap: the Orbikit's sparkles; dotGap: its way's dots; orbitDots: dots on the moon's way.
-export const CUBE_RULES = { dtMax: 0.1, sayGap: 3, back: 1.0, lost: 1.5, homeAfter: 0.6, retagAfter: 3, boardR: 2.2, trail: 14, trailGap: 0.32, dotGap: 0.9, orbitDots: 90 };
+// bang: the "!" over an Orbikit that saw you shows this long; pressFor: a Tag! press counts this long; pop: the sparkle burst of a tag.
+export const CUBE_RULES = { bang: 1.1, pressFor: 0.25, pop: 0.8, popN: 18, dtMax: 0.1, sayGap: 3, back: 1.0, lost: 1.5, homeAfter: 0.6, retagAfter: 3, boardR: 2.2, trail: 14, trailGap: 0.32, dotGap: 0.9, orbitDots: 90 };
 // Owner 2026-10-29: "too much instruction text". Only results, never rules (the scene and the helpers say how).
 const WORDS = {
   tagged: n => `🐱 Tagged! ${n} / 3`,
   seen: '🐱 It saw you!',
   hopLand: name => `🌸 ${name}!`,
   hopDone: '🌸 Every pebble!',
-  home: '💠 Home!',
-  lens: n => `🔭 A lens! ${n} / 3`,
+  home: '🌀 Back to the Meadow Cube!',
+  lens: n => `🔭 A telescope piece! ${n} / 3`,
   lost: '🌌 Poof!',
 };
 const CSS_FUN = ` ${FUN.tag}`;
@@ -50,10 +55,10 @@ export class CubeLive {
     this.caught = 0;
     // the Orbikit Chase
     this.pups = PUPS.map(() => ({ run: null, tagT: -99 }));
-    this.pMiss = [0, 0, 0]; this.tagPress = false;
+    this.pMiss = [0, 0, 0]; this.tagPress = 0; this.popAt = null;
     // the Planet Hop
     this.flight = null; this.hMiss = FLOWERS.map(() => 0); this.backT = 0; this.backTo = null; this.homeT = 0; this.hopLast = -1; this.padsFor = -2;
-    this.onSpring = -1; this.boing = FLOWERS.map(() => 9);
+    this.onSpring = -1; this.boing = FLOWERS.map(() => 9); this.beaconOn = -2;
     // the Moon Ferry
     this.phase = 0.5; this.moonK = 1; this.onMoon = false; this.jump = null; this.fMiss = 0; this.moonBackT = 0; this.spaceWas = false;
     this.M = MOON;
@@ -105,22 +110,28 @@ export class CubeLive {
     loopDots.forEach(([p, u], i) => this.loopDots.userData.mesh.setMatrixAt(i, TMP.makeTranslation(p[0] + u[0] * 0.04, p[1] + u[1] * 0.04, p[2] + u[2] * 0.04)));
     this.loopDots.userData.mesh.instanceMatrix.needsUpdate = true;
     this.trail = add(buildDots(PUPS.length * CUBE_RULES.trail, 0xffd84a, 0.14));
-    // the spring flowers (on their pads, turned to their face's up) and the blue home flowers
+    this.bangs = PUPS.map(() => add(buildBang())); // their "!"
+    this.pop = add(buildDots(CUBE_RULES.popN, 0xfff3a0, 0.16)); // the sparkles of a tag
+    // the spring flowers (on their pads, turned to their face's up; each bloom the colour of the pebble it sends you to), the glow round
+    // the next pebble, the swirl doors back to the Meadow Cube
     this.springs = FLOWERS.map(f => {
-      const g = add(buildSpring()), up = [0, 0, 0]; up[f.axis] = f.sign;
+      const g = add(buildSpring(PEBBLE_COLOURS[f.to])), up = [0, 0, 0]; up[f.axis] = f.sign;
       const c = f.cell.map(v => v + 0.5); c[f.axis] = f.sign > 0 ? f.cell[f.axis] + 1 : f.cell[f.axis];
       g.position.set(c[0], c[1], c[2]); g.quaternion.copy(Q.setFromUnitVectors(Y, new THREE.Vector3(...up)));
       return g;
     });
-    this.homeMeshes = HOME_FLOWERS.map(h => { const g = add(buildFlower(true)); g.position.set(h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5); return g; });
-    // the moon, the little sun it goes round, its way (faint dots), the lenses
-    this.moonMesh = add(buildMoon(MOON.half, MOON.thick));
+    this.beacon = add(buildBeacon());
+    this.backMeshes = BACK_SWIRLS.map((h, i) => { const g = add(buildBackSwirl()); g.position.set(h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5); g.userData.spin.rotation.y = i; return g; });
+    // the saucer ferry, the little sun it goes round, its way (faint dots), the telescope pieces, the Professor's big telescope
+    this.moonMesh = add(buildSaucer(MOON.half, MOON.thick));
     this.sunMesh = add(buildSun());
     this.sunMesh.position.set(SUN[0], SUN[1] + 1.5, SUN[2]);
     const od = add(buildDots(CUBE_RULES.orbitDots, 0xf0e4b0, 0.12, 0.45));
     for (let i = 0; i < CUBE_RULES.orbitDots; i++) { const m = ferryAt(MOON, i / CUBE_RULES.orbitDots); od.userData.mesh.setMatrixAt(i, TMP.makeTranslation(m.pos[0], m.pos[1] - MOON.thick - 0.4, m.pos[2])); }
     od.userData.mesh.instanceMatrix.needsUpdate = true;
-    this.lensMeshes = LENSES.map(L => { const g = add(buildLens()); g.position.set(...L.at); return g; });
+    this.lensMeshes = LENSES.map(L => { const g = add(buildLensPrize(L.n)); g.position.set(...L.at); return g; });
+    this.telescope = add(buildBigTelescope());
+    this.telescope.position.set(...TELESCOPE); this.telescope.rotation.y = -0.6;
   }
   dispose() {
     this.getOff(false);
@@ -188,7 +199,7 @@ export class CubeLive {
   }
   use(p = this.game.player) {
     const w = this.near(p);
-    if (w === 'Tag!') { this.tagPress = true; return true; }
+    if (w === 'Tag!') { this.tagPress = CUBE_RULES.pressFor; return true; }
     if (w === 'Hop on!') { this.board(); return true; }
     return false;
   }
@@ -198,8 +209,8 @@ export class CubeLive {
     if (!gd) return -1;
     const i = PUPS.findIndex(q => q.planet === gd.planet), r = this.pups[i]?.run;
     if (i < 0 || !r || r.tagged) return -1;
-    const a = r.at, mid = a.pos.map((v, k) => v + a.up[k] * PUP.sit), u = upOf(p.frame ?? 0);
-    const feet = [p.pos.x, p.pos.y, p.pos.z], d = Math.min(...[0, 0.9, 1.8].map(h => Math.hypot(mid[0] - feet[0] - u[0] * h, mid[1] - feet[1] - u[1] * h, mid[2] - feet[2] - u[2] * h)));
+    // (the very same distance the rule uses: Tag! is offered exactly when a press would tag it)
+    const a = r.at, mid = a.pos.map((v, k) => v + a.up[k] * PUP.sit), d = bodyDist(mid, [p.pos.x, p.pos.y, p.pos.z], upOf(p.frameNo?.() ?? 0));
     return d <= r.button ? i : -1;
   }
   // The guide while a game is going on (cubeland.js cubeAim asks first). `at(worldPoint, text)` makes an arrow on your face. Only where,
@@ -213,12 +224,12 @@ export class CubeLive {
     const f = FLOWERS.find(x => x.planet === gd.planet);
     if (f && (!st.hop || this.flight || this.hopLast >= 0)) {
       const c = f.cell.map(v => v + 0.5); c[f.axis] = f.sign > 0 ? f.cell[f.axis] + 1 : f.cell[f.axis];
-      if (Math.hypot(c[0] - p.x, c[1] - p.y, c[2] - p.z) < 1.2) return { text: () => `🌸 ${PLANETS[f.to].emoji}${st.hop ? CSS_FUN : ''}` };
+      if (Math.hypot(c[0] - p.x, c[1] - p.y, c[2] - p.z) < 1.2) { const b = this.world.planets[f.to]; return at([(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2], (a, m) => `✨ ${a} ${m}m${st.hop ? CSS_FUN : ''}`); } // (on the flower: the arrow shows the glowing pebble)
       return at(c, (a, m) => `🌸 ${a} ${m}m${st.hop ? CSS_FUN : ''}`);
     }
     const lensLeft = LENSES.filter(L => !st.lens[L.n]), fun = !lensLeft.length;
     if (this.onMoon) { const L = (fun ? LENSES : lensLeft).reduce((b, L) => (!b || Math.hypot(L.at[0] - p.x, L.at[2] - p.z) < Math.hypot(b.at[0] - p.x, b.at[2] - p.z) ? L : b), null); return at(L.at, (a, m) => `🔭 ${a} ${m}m${fun ? CSS_FUN : ''}`); }
-    if (gd.planet === MOON.dock && (lensLeft.length || this.jump)) { const m = this.moonNow(); return at(m.pos, (a, d) => `🌙 ${a} ${d}m`); }
+    if (gd.planet === MOON.dock && (lensLeft.length || this.jump)) { const m = this.moonNow(); return at(m.pos, (a, d) => `🛸 ${a} ${d}m`); }
     return null;
   }
   battleEnded(result, opts) {
@@ -238,10 +249,10 @@ export class CubeLive {
   }
   stepPups(dt) {
     const p = this.game.player, gd = p.grav, st = this.state(), up = upOf(p.frameNo?.() ?? 0);
-    const press = this.tagPress; this.tagPress = false;
+    const press = this.tagPress > 0; this.tagPress = Math.max(0, this.tagPress - dt); // (Tag! counts for a moment: never lost between sub-steps)
     PUPS.forEach((q, i) => {
       const P_ = this.pups[i], mine = !!gd && gd.planet === q.planet && gd.field && !p.carry;
-      const opts = () => ({ base: q.base, boost: q.boost, see: q.see, tagR: q.tagR, flip: q.flip, help: this.pMiss[i], hard: this.hard, seen: (a, b) => this.seen(a, b) });
+      const opts = () => ({ base: q.base, boost: q.boost, see: q.see, tagR: q.tagR, surprise: q.surprise, flip: q.flip, help: this.pMiss[i], hard: this.hard, seen: (a, b) => this.seen(a, b) });
       if (!P_.run && mine && this.clock - P_.tagT >= CUBE_RULES.retagAfter) { // a new round: it starts on the far side of its loop from you
         const box = BOXES[q.planet], tmp = new PupRun(q.loop, box), s0 = loopNearest(tmp.L, [p.pos.x, p.pos.y, p.pos.z]).s;
         P_.run = new PupRun(q.loop, box, { ...opts(), start: s0 + tmp.L.total / 2 });
@@ -251,16 +262,18 @@ export class CubeLive {
       const ev = r.update(dt, { mine, feet: [p.pos.x, p.pos.y, p.pos.z], up, face: gd ? [gd.axis, gd.sign] : null, press: press && mine });
       for (const e of ev) {
         if (e.type === 'tag') {
-          P_.tagT = this.clock; P_.run = null; this.pMiss[i] = 0;
+          const a = r.at; this.popAt = { i, t: 0, pos: a.pos.map((v, k) => v + a.up[k] * PUP.sit), up: a.up };
+          P_.tagT = this.clock; P_.run = null; this.pMiss[i] = 0; P_.bang = 0;
           this.play('orbitag');
           if (st.tag[i]) this.toast(`🐱 Tagged!${CSS_FUN}`);
           else { this.addKey(tagKey(i + 1)); this.toast(WORDS.tagged(this.state().tags)); }
         } else if (e.type === 'spotted') {
-          this.pMiss[i]++; this.play('orbiseen');
+          this.pMiss[i]++; this.play('orbiseen'); P_.bang = CUBE_RULES.bang; // its "!" (owner 2026-10-30: you must see when it saw you)
           this.say('seen', WORDS.seen, 8);
           const h = gravityHelp(this.pMiss[i]); // (the kind help grows within the round)
-          r.boost = q.boost * (this.hard ? HARD.pup : 1) * h.sprint; r.tagR = q.tagR * h.tag; r.button = PUP.button * h.tag;
-        }
+          r.help(q.boost * (this.hard ? HARD.pup : 1) * h.sprint, h.tag);
+        } else if (e.type === 'surprised') { P_.bang = CUBE_RULES.bang; this.play('orbiseen'); } // too close to stop: "!" and it skids into you
+        else if (e.type === 'sprint' && e.chased) P_.bang = Math.max(P_.bang || 0, CUBE_RULES.bang * 0.6); // you ran after it: it noticed (and is faster)
       }
     });
   }
@@ -337,8 +350,8 @@ export class CubeLive {
       this.backT -= dt;
       if (this.backT <= 0) this.puffTo(this.flowerStand(this.backTo));
     }
-    // a home flower: stand on it a moment and you are puffed home
-    const home = this.world.homeAt?.(p.pos, p.frameNo?.() ?? 0);
+    // a swirl door back to the Meadow Cube: stand in it a moment and you are puffed back there
+    const home = this.world.backAt?.(p.pos, p.frameNo?.() ?? 0);
     if (home && p.onGround) { this.homeT += dt; if (this.homeT >= CUBE_RULES.homeAfter) { this.homeT = 0; this.flight = null; this.toast(WORDS.home); this.puffTo(this.homeStand()); } } else this.homeT = 0;
   }
   hopMiss(k) { this.hMiss[k]++; this.backT = CUBE_RULES.back; this.backTo = k; this.play('puff'); }
@@ -388,15 +401,48 @@ export class CubeLive {
     this.moonMesh.position.set(m.pos[0], m.pos[1], m.pos[2]);
     this.moonMesh.rotation.y = this.clock * 0.3;
     this.sunMesh.rotation.y = this.clock * 0.2;
+    this.moonMesh.userData.tick?.(this.clock);
     const all = st.lenses >= 3;
     LENSES.forEach((L, i) => { const g = this.lensMeshes[i]; g.visible = all || !st.lens[L.n]; g.userData.spin.rotation.y = this.clock * 1.2 + i; });
+    this.telescope.userData.show(st.lens);
   }
   drawSprings(dt) {
     this.springs.forEach((g, k) => {
       this.boing[k] += dt;
-      const t = this.boing[k], lift = t < 1.2 ? 0.55 * Math.exp(-t * 3.5) * Math.cos(t * 16) + 0.2 * Math.exp(-t * 3.5) : 0;
-      g.userData.set(this.onSpring === k && t > 0.3 ? 1 : 0, lift);
+      const t = this.boing[k], lift = t < 1.6 ? 0.8 * Math.exp(-t * 3) * Math.cos(t * 15) + 0.25 * Math.exp(-t * 3) : 0;
+      const on = this.onSpring === k && t > 0.3, idle = on ? 0 : 0.07 * Math.sin(this.clock * 5.5 + k * 1.7); // (it bounces a little by itself: it is a spring)
+      g.userData.set(on ? 1 : 0, lift, idle);
     });
+    // the next pebble glows: the one the flower you stand by (or flew from) sends you to; on the way to the hop, the first one
+    const p = this.game.player, here = p?.grav?.planet, k = this.flight ? this.flight.k : FLOWERS.findIndex(f => f.planet === here);
+    const next = k >= 0 ? FLOWERS[k].to : here === P.meadow && !this.state().hop ? FLOWERS[0].to : -1;
+    if (next !== this.beaconOn) { this.beaconOn = next; this.beacon.userData.place(next >= 0 ? this.world.planets[next] : null, PEBBLE_COLOURS[next]); }
+    this.beacon.userData.tick(this.clock);
+    for (const g of this.backMeshes) { g.userData.spin.rotation.y += dt * 0.6; g.userData.disc.rotation.z -= dt * 3; }
+  }
+  // the "!" over an Orbikit that saw you, and the sparkles of a tag
+  drawBangs(dt) {
+    PUPS.forEach((q, i) => {
+      const P_ = this.pups[i], b = this.bangs[i], r = P_.run;
+      P_.bang = Math.max(0, (P_.bang || 0) - dt);
+      b.visible = !!r && P_.bang > 0;
+      if (!b.visible) return;
+      const a = r.at, h = 1.8 + 0.12 * Math.sin(this.clock * 20) * Math.min(1, P_.bang * 3);
+      b.position.set(a.pos[0] + a.up[0] * h, a.pos[1] + a.up[1] * h, a.pos[2] + a.up[2] * h);
+      b.scale.setScalar(Math.min(1, (CUBE_RULES.bang - P_.bang) * 8 + 0.3));
+    });
+    const M = this.pop.userData.mesh, n = CUBE_RULES.popN, Z = new THREE.Matrix4().makeScale(0, 0, 0);
+    if (this.popAt) this.popAt.t += dt;
+    const pa = this.popAt, live = pa && pa.t < CUBE_RULES.pop;
+    for (let j = 0; j < n; j++) {
+      if (!live) { M.setMatrixAt(j, Z); continue; }
+      const k = pa.t / CUBE_RULES.pop, a = j / n * Math.PI * 2, u = pa.up, side = Math.abs(u[1]) > 0.5 ? [[1, 0, 0], [0, 0, 1]] : Math.abs(u[0]) > 0.5 ? [[0, 1, 0], [0, 0, 1]] : [[1, 0, 0], [0, 1, 0]];
+      const r = 0.3 + k * 1.6, lift = 0.4 + Math.sin(k * Math.PI) * 0.9 + (j % 3) * 0.2, sc = 1 - k * 0.7;
+      const x = pa.pos.map((v, d) => v + (side[0][d] * Math.cos(a) + side[1][d] * Math.sin(a)) * r + u[d] * lift);
+      M.setMatrixAt(j, TMP.makeScale(sc, sc, sc).setPosition(x[0], x[1], x[2]));
+    }
+    M.instanceMatrix.needsUpdate = true;
+    if (pa && !live) this.popAt = null;
   }
 
   /* ---------------------------------------------- the frame ---------------------------------------------- */
@@ -416,6 +462,7 @@ export class CubeLive {
     }
     if ((p.caught || 0) > this.caught) { this.caught = p.caught; this.play('puff'); this.toast(WORDS.lost); }
     this.drawPups();
+    this.drawBangs(this.paused() ? 0 : h);
     this.drawMoon();
     this.drawSprings(h);
     this.refreshChip();
@@ -438,7 +485,8 @@ export class CubeLive {
     const p = this.game.player, m = this.moonNow();
     return {
       caught: this.caught, frame: p?.frameNo?.() ?? null,
-      pups: this.pups.map(q => (q.run ? { s: q.run.s, dir: q.run.dir, speed: q.run.speed, spots: q.run.spots, tagR: q.run.tagR } : null)), pMiss: this.pMiss.slice(),
+      pups: this.pups.map(q => (q.run ? { s: q.run.s, dir: q.run.dir, speed: q.run.speed, spots: q.run.spots, tagR: q.run.tagR, skid: q.run.skidding, bang: q.bang || 0 } : null)), pMiss: this.pMiss.slice(), pop: !!this.popAt,
+      beacon: this.beaconOn,
       flight: this.flight ? { ...this.flight } : null, hMiss: this.hMiss.slice(), hopLast: this.hopLast, pads: this.world.planets.map(w => w.pad || 0),
       moon: { pos: m.pos, vel: m.vel, speed: m.speed, phase: this.phase, k: this.moonK }, onMoon: this.onMoon, jump: this.jump ? { ...this.jump } : null, fMiss: this.fMiss,
       state: this.state(),

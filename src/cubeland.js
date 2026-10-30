@@ -8,9 +8,11 @@
 // far little rocks that only the moon ferry passes.
 //  - the Meadow Cube in the middle (you arrive on top, the way back stands there),
 //  - east: the Orbikit Chase on three planets (the Crystal Cube, the Tree Cube, the Long Rock), Stargazer Stella on the last,
-//  - west: the Moon Dock, a wide flat planet a little moon circles over on a real orbit round a little sun (orbits.js ferryAt); three
-//    Lens Rocks out in space south of it, too far to jump to (the Moon Ferry), Moon Mechanic Milo on the dock,
-//  - north: the Planet Hop, a chain of small pebbles you fly between on spring flowers, Captain Comet on the last,
+//  - west: the Saucer Dock, a wide flat planet the Professor's little saucer ferry circles over on a real orbit round a little sun
+//    (orbits.js ferryAt; owner 2026-10-30: it was a little moon, now a flying saucer); three Lens Rocks out in space south of it, too far
+//    to jump to, each holding a piece of his telescope (the Moon Ferry, its old name in the code), Saucer Mechanic Milo on the dock,
+//  - north: the Planet Hop, a chain of small pebbles you fly between on spring flowers, Captain Comet on the last. Owner 2026-10-30: each
+//    pebble has one strong colour (PEBBLE_COLOURS), each flower's bloom the colour of the pebble it flings you to, and the next one glows,
 //  - far north: the Great Cube (21 across), Professor Orbit on top (a second way back there).
 // Every planet pulls the same (GRAV.g; owner 2026-10-29: before it was 0.7 on the hub planets, 0.6 on the Moon Base and 0.45 on the
 // pebbles, with no reason you could see). Between hub planets the ways are plain jumps face to face across a gap of 6 (HOPS). The games'
@@ -31,18 +33,21 @@ export const PLANETS = [
   { id: 'crystal', name: 'Crystal Cube', emoji: '💎', x: 117, y: 16, z: 142, n: 9, g: G, reach: 8, skin: 'crystal', role: 'pup', pup: 0 },
   { id: 'tree', name: 'Tree Cube', emoji: '🌳', x: 115, y: 14, z: 157, n: 13, g: G, reach: 8, skin: 'meadow', role: 'pup', pup: 1, trees: true },
   { id: 'long', name: 'Long Rock', emoji: '🪨', x: 134, y: 17, z: 160, s: [21, 7, 7], g: G, reach: 8, skin: 'moon', role: 'pup', pup: 2 },
-  { id: 'base', name: 'Moon Dock', emoji: '🌙', x: 59, y: 14, z: 135, s: [33, 5, 21], g: G, reach: 8, skin: 'moon', role: 'dock' },
+  { id: 'base', name: 'Saucer Dock', emoji: '🛸', x: 59, y: 14, z: 135, s: [33, 5, 21], g: G, reach: 8, skin: 'moon', role: 'dock' },
   { id: 'hop0', name: 'Flower Cube', emoji: '🌸', x: 100, y: 16, z: 125, n: 9, g: G, reach: 8, skin: 'meadow', role: 'hop', hop: 0 },
-  { id: 'hop1', name: 'Pebble', emoji: '🔵', x: 101, y: 21, z: 110, n: 7, g: G, reach: 8, skin: 'crystal', role: 'hop', hop: 1 },
-  { id: 'hop2', name: 'Far Pebble', emoji: '🟣', x: 85, y: 20, z: 113, n: 7, g: G, reach: 8, skin: 'crystal', role: 'hop', hop: 2 },
-  { id: 'hop3', name: 'Sky Pebble', emoji: '🟡', x: 86, y: 32, z: 107, n: 5, g: G, reach: 8, skin: 'crystal', role: 'hop', hop: 3 },
-  { id: 'hop4', name: 'Last Pebble', emoji: '🟢', x: 85, y: 17, z: 88, n: 7, g: G, reach: 8, skin: 'meadow', role: 'hop', hop: 4 },
+  { id: 'hop1', name: 'Orange Pebble', emoji: '🟠', x: 101, y: 21, z: 110, n: 7, g: G, reach: 8, skin: 'pebble', wool: 'fire', role: 'hop', hop: 1 },
+  { id: 'hop2', name: 'Blue Pebble', emoji: '🔵', x: 85, y: 20, z: 113, n: 7, g: G, reach: 8, skin: 'pebble', wool: 'water', role: 'hop', hop: 2 },
+  { id: 'hop3', name: 'Yellow Pebble', emoji: '🟡', x: 86, y: 32, z: 107, n: 5, g: G, reach: 8, skin: 'pebble', wool: 'electric', role: 'hop', hop: 3 },
+  { id: 'hop4', name: 'Green Pebble', emoji: '🟢', x: 85, y: 17, z: 88, n: 7, g: G, reach: 8, skin: 'pebble', wool: 'grass', role: 'hop', hop: 4 },
   { id: 'great', name: 'Great Cube', emoji: '🪐', x: 79, y: 7, z: 61, n: 21, g: G, reach: 8, skin: 'great', role: 'great' },
   { id: 'lens1', name: 'Lens Rock', emoji: '🔭', x: 76, y: 10, z: 174, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 0 },
   { id: 'lens2', name: 'Lens Rock', emoji: '🔭', x: 60, y: 10, z: 172, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 1 },
   { id: 'lens3', name: 'Lens Rock', emoji: '🔭', x: 36, y: 8, z: 150, n: 5, g: G, reach: 8, skin: 'crystal', role: 'lens', lens: 2 },
 ];
 export const P = Object.fromEntries(PLANETS.map((p, i) => [p.id, i]));
+// Owner 2026-10-30: the pebbles' one strong colour each (their faces are that wool), the blooms of the flowers that fling you there and the
+// glow round the next one: the same colour, so you see where to go. (Colours as numbers for the models: blocks.js WOOL_RGB's.)
+export const PEBBLE_COLOURS = { [P.hop1]: 0xff7a2a, [P.hop2]: 0x3c78f0, [P.hop3]: 0xffd030, [P.hop4]: 0x52c040 };
 export const sizeOf = Pl => Pl.s ?? [Pl.n, Pl.n, Pl.n];
 // The plain jumps between planets (each way): from planet `from`'s face [axis, sign] to planet `to`, across a gap of 6.
 const pair = (a, b, axis, sign) => [{ from: P[a], to: P[b], axis, sign }, { from: P[b], to: P[a], axis, sign: -sign }];
@@ -99,11 +104,12 @@ function hexagon(Pl) {
 }
 // Each round's own numbers (owner 2026-10-29: "the first two were very easy and the last one was very hard"; now 1 easy, 2 medium,
 // 3 harder but fair): base / boost = its trot and its sprint (blocks/s; you sprint at 6.2), see = how far it sees you on its own face,
-// tagR = how close counts as a touch, flip = the last one is playful: it turns back by itself every so often (watch it, then hide).
+// tagR = how close counts as a touch, surprise = seen this close ahead on its way it cannot stop and skids into you (owner 2026-10-30:
+// "I have no idea how I won"; orbits.js PUP), flip = the last one is playful: it turns back by itself every so often (watch it, then hide).
 export const PUPS = [
-  { planet: P.crystal, loop: belt(PLANETS[P.crystal], 2, 142 + 4.5), base: 4.0, boost: 7.0, see: 5, tagR: 1.3 },
-  { planet: P.tree, loop: hexagon(PLANETS[P.tree]), base: 4.4, boost: 7.0, see: 6, tagR: 1.35 },
-  { planet: P.long, loop: belt(PLANETS[P.long], 2, 160 + 3.5, true), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, flip: 7 },
+  { planet: P.crystal, loop: belt(PLANETS[P.crystal], 2, 142 + 4.5), base: 4.0, boost: 7.0, see: 5, tagR: 1.3, surprise: 3.0 },
+  { planet: P.tree, loop: hexagon(PLANETS[P.tree]), base: 4.4, boost: 7.0, see: 6, tagR: 1.35, surprise: 2.8 },
+  { planet: P.long, loop: belt(PLANETS[P.long], 2, 160 + 3.5, true), base: 4.6, boost: 7.1, see: 6, tagR: 1.15, surprise: 2.2, flip: 7 },
 ];
 // The Planet Hop: one spring flower on each of hop0..hop3 (the cell of the pad in its skin, on the face [axis, sign]); Jump on it and it
 // flings you `push` along that face's up (player.js launchAt). `to` = the planet it is meant to reach. `solution` = how a good player
@@ -115,18 +121,23 @@ export const FLOWERS = [
   { planet: P.hop2, axis: 1, sign: 1, cell: [88, 26, 113], push: SPRING, to: P.hop3, solution: { mode: 'still', dir: [0, -1] } },
   { planet: P.hop3, axis: 1, sign: -1, cell: [88, 32, 107], push: SPRING, to: P.hop4, solution: { mode: 'sprint', dir: [0, -1] } },
 ];
-// Home flowers (blue): stand on one and you are puffed home to the Meadow Cube (cubelive.js). On each pebble, each Lens Rock, the Great Cube.
-export const HOME_FLOWERS = [
+// The ways back to the Meadow Cube (owner 2026-10-30: they were blue "home flowers"; "why home? it's not our cozy home, it's just the starting
+// point"): little swirl doors in the Meadow Cube's green and gold (cubeprops.js buildBackSwirl). Step into one (stand in it a moment) and
+// you are puffed back to the Meadow Cube (cubelive.js). On each pebble, each Lens Rock, the Great Cube.
+export const BACK_SWIRLS = [
   { planet: P.hop1, cell: [106, 27, 115] }, { planet: P.hop2, cell: [90, 26, 118] }, { planet: P.hop3, cell: [88, 36, 110] },
   { planet: P.hop4, cell: [86, 23, 93] }, { planet: P.great, cell: [83, 27, 78] },
   { planet: P.lens1, cell: [77, 14, 175] }, { planet: P.lens2, cell: [61, 14, 173] }, { planet: P.lens3, cell: [37, 12, 151] },
 ];
-// The Moon Ferry: a little moon goes round a little sun on a real orbit (orbits.js ferryAt) over the Moon Dock and out into space; slow at
-// its far end (over the dock's east end, where you hop on), fast round the sun. It never stops. y = its top (where you stand), 1.6
+// The Moon Ferry (the code's name; owner 2026-10-30: it looks like a little flying saucer now, buildSaucer): it goes round a little sun on a
+// real orbit (orbits.js ferryAt) over the Saucer Dock and out into space; slow at its far end (over the dock's east end, where you hop on),
+// fast round the sun. It never stops. y = its top (where you stand), 1.6
 // above the dock (a plain jump gets you on). sz -1: it runs round the south side, where the Lens Rocks float.
 export const MOON = { dock: P.base, cx: 72, cz: 145.5, a: 18, e: 0.5, period: 24, y: 20.6, sx: 1, sz: -1, half: 1.25, thick: 1.2 };
 export const SUN = sunOf(MOON);
-// The lenses lie in the middle of each Lens Rock's top.
+// The telescope pieces (each with its lens) lie in the middle of each Lens Rock's top. The big telescope stands on the Great Cube beside
+// Professor Orbit (cubeprops.js buildBigTelescope): its pieces come back as you find them.
+export const TELESCOPE = [84.5, 28, 66.5];
 export const LENSES = PLANETS.map((Pl, i) => (Pl.role === 'lens' ? { planet: i, n: Pl.lens, at: [Pl.x + Pl.n / 2, Pl.y + Pl.n, Pl.z + Pl.n / 2] } : null)).filter(Boolean);
 
 /* ---------------------------------------------------------------- building */
@@ -136,6 +147,7 @@ const SKINS = {
   crystal: { face: B.ICE, edge: B.PLANET_ROCK },
   moon: { face: B.PLANET_ROCK, edge: B.COBBLE },
   great: { face: B.STAR_GRASS, edge: WOOL.gravity },
+  pebble: { face: null, edge: B.PLANET_ROCK }, // (face: the planet's own `wool`)
 };
 // Face cells: for a face [axis, sign], the in-face coordinates (u, v) along the other two axes (in order), 0..size-1; cell(u, v, out) = the
 // world cell `out` blocks outside the surface (out 0 = the skin block itself, 1 = the first cell of air above it).
@@ -173,27 +185,27 @@ export function cubeLand(world, def) {
   world.planets = BOXES.map(b => ({ ...b })); // (a copy: the live part may grow a planet's catch zone a little, the kind help)
   world.gravityAt = (p, prev, centre) => downAt(world.planets, p, prev, centre); // player.js: a world with gravityAt moves the player in a frame
   world.underground = () => false; // space is never a cave (under a planet is not dark)
-  world.cubes = { planets: PLANETS, hops: HOPS, bumps: [], flowers: FLOWERS, homes: HOME_FLOWERS, pups: PUPS, moon: MOON, sun: SUN, lenses: LENSES };
+  world.cubes = { planets: PLANETS, hops: HOPS, bumps: [], flowers: FLOWERS, backs: BACK_SWIRLS, pups: PUPS, moon: MOON, sun: SUN, lenses: LENSES };
   // 1. the planets: Planet Rock inside, the skin on every face, the edges and corners in the edge block
   for (const Pl of PLANETS) {
-    const S = SKINS[Pl.skin], [nx, ny, nz] = sizeOf(Pl);
+    const S = Pl.wool ? { ...SKINS[Pl.skin], face: WOOL[Pl.wool] } : SKINS[Pl.skin], [nx, ny, nz] = sizeOf(Pl);
     for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
       const onB = (i === 0 || i === nx - 1) + (j === 0 || j === ny - 1) + (k === 0 || k === nz - 1);
       put(world, Pl.x + i, Pl.y + j, Pl.z + k, onB >= 2 ? S.edge : onB === 1 ? S.face : B.PLANET_ROCK);
     }
   }
-  // 2. the launch flowers' pads (gravity wool) and the home flowers' pads (crystal)
+  // 2. the launch flowers' pads (gravity wool) and the back swirls' pads (crystal)
   const pads = new Map();
   for (const f of FLOWERS) { put(world, ...f.cell, WOOL.gravity); pads.set(f.cell.join(), f); }
-  for (const h of HOME_FLOWERS) put(world, ...h.cell, B.CRYSTAL);
+  for (const h of BACK_SWIRLS) put(world, ...h.cell, B.CRYSTAL);
   // Jump on a launch flower: its push (only standing on its own face). Read by player.js's frame branch.
   world.launchAt = (pos, frame) => {
     const u = upOf(frame), f = pads.get([Math.floor(pos.x - u[0] * 0.05), Math.floor(pos.y - u[1] * 0.05), Math.floor(pos.z - u[2] * 0.05)].join());
     return f && u[f.axis] === f.sign ? f.push * (world.pushK ?? 1) : 0;
   };
-  world.homeAt = (pos, frame) => {
+  world.backAt = (pos, frame) => { // standing in a back swirl (on its pad)
     const u = upOf(frame), c = [Math.floor(pos.x - u[0] * 0.05), Math.floor(pos.y - u[1] * 0.05), Math.floor(pos.z - u[2] * 0.05)].join();
-    return HOME_FLOWERS.find(h => h.cell.join() === c) ?? null;
+    return BACK_SWIRLS.find(h => h.cell.join() === c) ?? null;
   };
   // 3. the ways back (the Meadow Cube's top, the Great Cube's top), the Boss, the crew
   const M = PLANETS[P.meadow], GC = PLANETS[P.great], top = Pl => Pl.y + sizeOf(Pl)[1] - 1;
@@ -202,12 +214,12 @@ export function cubeLand(world, def) {
   delete world.arrivals['gravity-great']; // (you never arrive there; it only takes you home)
   back2.key = 'gravity';
   placeBoss(world, 'gravity', { x: 89, y: top(GC), z: 66, facing: [0, 1] });
-  const crewAt = [[P.long, 144, 163, [0, 1]], [P.hop4, 89, 90, [0, 1]], [P.base, 84, 145, [1, 0]]]; // (Milo inside the moon's ellipse, never under its way)
+  const crewAt = [[P.long, 144, 163, [0, 1]], [P.hop4, 89, 90, [0, 1]], [P.base, 84, 145, [1, 0]]]; // (Milo inside the saucer's ellipse, never under its way)
   crewAt.forEach(([pi, x, z, facing], i) => placeCrew(world, 'gravity', i, { x, y: top(PLANETS[pi]), z, facing }));
   const near = (w, pad) => world.keeps.some(k => k.protect.some(b => w[0] >= b.x0 - pad && w[0] <= b.x1 + pad && w[1] >= b.y0 - pad && w[1] <= b.y1 + pad && w[2] >= b.z0 - pad && w[2] <= b.z1 + pad));
-  const people = [...(world.bosses || []).flatMap(b => [b.pos, ...b.crew.map(c => c.pos)])];
+  const people = [...(world.bosses || []).flatMap(b => [b.pos, ...b.crew.map(c => c.pos)]), TELESCOPE];
   const busy = w => people.some(p => Math.abs(p[0] - w[0] - 0.5) < 3 && Math.abs(p[2] - w[2] - 0.5) < 3 && Math.abs(p[1] - w[1]) < 3)
-    || FLOWERS.some(f => Math.hypot(f.cell[0] - w[0], f.cell[1] - w[1] + 1, f.cell[2] - w[2]) < 3.5) || HOME_FLOWERS.some(f => Math.hypot(f.cell[0] - w[0], f.cell[1] - w[1] + 1, f.cell[2] - w[2]) < 2.5)
+    || FLOWERS.some(f => Math.hypot(f.cell[0] - w[0], f.cell[1] - w[1] + 1, f.cell[2] - w[2]) < 3.5) || BACK_SWIRLS.some(f => Math.hypot(f.cell[0] - w[0], f.cell[1] - w[1] + 1, f.cell[2] - w[2]) < 2.5)
     || (Math.abs(w[1] - top(PLANETS[P.base]) - 1) < 3 && orbitDist(w[0] + 0.5, w[2] + 0.5) < MOON.half * 1.5 + 1.5); // (nothing under the moon's way)
   // 4. each face's little things, sticking out of it (from the realm's seed): never near an edge, never near each other, never at a door,
   // a person, a flower, under the moon or on a pup's loop. The Tree Cube has a tree on every face (the Orbikit hides behind them).
@@ -243,7 +255,7 @@ export function cubeLand(world, def) {
     if (Pl.trees) { trees(2); one(1, B.FLOWER_BUSH, 'flower'); continue; }
     if (Pl.skin === 'meadow' || Pl.skin === 'great') { trees(Pl.role === 'great' ? 3 : 2); one(4, B.FLOWER_BUSH, 'flower'); one(1, B.PLANET_ROCK, 'rock'); }
     else if (Pl.skin === 'crystal') { one(2, B.CRYSTAL, 'crystal'); flat(1, B.STAR_GRASS); }
-    else if (Pl.role === 'dock' && axis === 1 && sign === 1) { flat(4, B.GRAVEL); one(3, B.GLOWCAP, 'glowcap'); } // the Moon Dock's top: craters, glowcaps (never under the moon)
+    else if (Pl.role === 'dock' && axis === 1 && sign === 1) { flat(4, B.GRAVEL); one(3, B.GLOWCAP, 'glowcap'); } // the Saucer Dock's top: craters, glowcaps (never under the saucer)
     else { flat(2, B.GRAVEL); one(2, B.PLANET_ROCK, 'rock'); one(1, B.GLOWCAP, 'glowcap'); }
   }
   // 5. rests on top of every planet (a lost battle), nooks (the wild Gravity creatures circle on top faces), the ground of every column
@@ -313,8 +325,8 @@ export function cubeAim(world, p, game) {
   let goal = null, words = null;
   if (!star && st.tags < 3) { goal = PUPS.find((q, i) => !st.tag[i])?.planet ?? P.crystal; words = '🐱 Orbikits'; }
   else if (!star && !st.hop) { goal = P.hop0; words = '🌸 Spring flowers'; }
-  else if (!star && st.lenses < 3) { goal = P.base; words = '🔭 Lenses'; }
-  else if (!star && crewLeftList.length) { const c = crewLeftList[0], planetOf = [P.long, P.hop4, P.base][c.i]; if (on === planetOf) return at(c.pos, (a, m) => `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Moon Mechanic Milo'][c.i]} ${a} ${m}m`); goal = planetOf; words = `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Moon Mechanic Milo'][c.i]}`; }
+  else if (!star && st.lenses < 3) { goal = P.base; words = '🔭 Telescope'; }
+  else if (!star && crewLeftList.length) { const c = crewLeftList[0], planetOf = [P.long, P.hop4, P.base][c.i]; if (on === planetOf) return at(c.pos, (a, m) => `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Saucer Mechanic Milo'][c.i]} ${a} ${m}m`); goal = planetOf; words = `⚔️ ${['Stargazer Stella', 'Captain Comet', 'Saucer Mechanic Milo'][c.i]}`; }
   else if (!star) { if (on === P.great) { const b = world.bosses?.[0]; if (b) return at(b.pos, (a, m) => `⭐ Professor Orbit ${a} ${m}m`); } goal = P.great; words = '⭐ Professor Orbit'; }
   else {
     const d = world.doors?.find(x => world.planets.findIndex(b => x.surface[0][0] >= b.x0 - 1 && x.surface[0][0] <= b.x1 && x.surface[0][2] >= b.z0 - 1 && x.surface[0][2] <= b.z1) === on) ?? world.doors?.[0];
@@ -326,9 +338,9 @@ export function cubeAim(world, p, game) {
     goal = P.meadow; words = '🖼️ Way back';
   }
   if (on === goal || (BRANCH[on] === 'hop' && BRANCH[goal] === 'hop' && on !== P.hop0)) return { text: () => words }; // there (the live part's words come first when a game is going on)
-  // the pebbles and the Lens Rocks have no plain way out: a blue home flower
-  const homeFlower = () => { const h = HOME_FLOWERS.find(f => f.planet === on); return h ? at([h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5], (a, m) => `💠 Home ${a} ${m}m`) : null; };
-  if ((BRANCH[on] === 'hop' && on !== P.hop0) || BRANCH[on] === 'lens' || (on === P.great && goal !== P.great)) return homeFlower();
+  // the pebbles and the Lens Rocks have no plain way out: a swirl door back to the Meadow Cube
+  const backSwirl = () => { const h = BACK_SWIRLS.find(f => f.planet === on); return h ? at([h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] + 0.5], (a, m) => `🌀 ${PLANETS[P.meadow].emoji} ${a} ${m}m`) : null; };
+  if ((BRANCH[on] === 'hop' && on !== P.hop0) || BRANCH[on] === 'lens' || (on === P.great && goal !== P.great)) return backSwirl();
   const target = goal === P.great && on !== P.hop4 ? P.hop0 : goal, next = nextPlanet(on, target === P.great && on === P.hop4 ? P.great : target);
   if (next == null || next === on) return null;
   return hopAim(world, p, gd, on, next, at, words);
