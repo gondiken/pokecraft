@@ -1,6 +1,6 @@
 // T49: the Castle's models (THREE only, vertex colours or a few plain materials; never world blocks): the pumpkins and arrows (instanced),
 // the stones' lamp rings, the practice catapults with their wooden archers (instanced), the practice knight on his trolley with the
-// shield, the gold star and your aim dot, the lance and the shield you hold, the drawbridge and the portcullis. Each builder returns a
+// shield, the gold spot (owner 2026-10-30: it was a gold star; only the Wizard's star is a star) and your aim dot, the lance and the shield you hold, the drawbridge and the portcullis. Each builder returns a
 // Group with userData.parts and userData.dispose(). tests/castle-preview.mjs photographs them for the owner.
 import * as THREE from 'three';
 
@@ -58,7 +58,7 @@ export function buildCatapults(n = 12) {
   return g;
 }
 
-// Sir Splinter, the practice knight: a wooden knight on a wooden horse on a little trolley, a shield on his arm with a gold star, a wooden lance.
+// Sir Splinter, the practice knight: a wooden knight on a wooden horse on a little trolley, a shield on his arm with a gold spot, a wooden lance.
 // Faces +x (the group is turned by the live part). His shield (userData.parts.shield) is NOT in the group: the live part adds it to the scene.
 // The practice knight's shield: how much bigger it is drawn than the rules' units (the hit test is in those units, so it stays the same game).
 export const KNIGHT_SHIELD = { scale: 1.6 };
@@ -83,13 +83,14 @@ export function buildPracticeKnight() {
   const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, ...extra });
   const face = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.06, 28), lam(0x2f52e0, { emissive: 0x0c1a50 })); face.rotation.z = Math.PI / 2; shield.add(face);
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.06, 6, 32), lam(0xf0c84a, { emissive: 0x5a4210 })); rim.rotation.y = Math.PI / 2; shield.add(rim);
-  const starShape = (R, r0) => { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? r0 : R; (i ? s.lineTo : s.moveTo).call(s, Math.cos(a) * r, Math.sin(a) * r); } return new THREE.ShapeGeometry(s); };
-  // the star: a soft glow, the bullseye ring (scaled to the round's radius by the live part), a dark outline and the gold star
+  // the target (the parts keep their old names: star, gold): a soft glow, the bullseye ring (scaled to the round's radius by the live
+  // part), a dark outline and the gold spot with a shine (owner 2026-10-30: a round gold spot, no longer a star)
   const star = new THREE.Group(); star.position.x = 0.05; shield.add(star);
   const halo = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), basic(0xfff2a0, { transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending })); halo.rotation.y = Math.PI / 2; star.add(halo);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 36), basic(0xfff6c8, { transparent: true, opacity: 0.85 })); ring.rotation.y = Math.PI / 2; ring.position.x = 0.012; star.add(ring);
-  const back = new THREE.Mesh(starShape(0.38, 0.16), basic(0x5a3a08)); back.rotation.y = Math.PI / 2; back.position.x = 0.006; star.add(back);
-  const gold = new THREE.Mesh(starShape(0.3, 0.12), basic(0xffd23a)); gold.rotation.y = Math.PI / 2; gold.position.x = 0.012; star.add(gold);
+  const back = new THREE.Mesh(new THREE.CircleGeometry(0.34, 28), basic(0x5a3a08)); back.rotation.y = Math.PI / 2; back.position.x = 0.006; star.add(back);
+  const gold = new THREE.Mesh(new THREE.CircleGeometry(0.27, 28), basic(0xffd23a)); gold.rotation.y = Math.PI / 2; gold.position.x = 0.012; star.add(gold);
+  const shine = new THREE.Mesh(new THREE.CircleGeometry(0.09, 14), basic(0xfff6c8)); shine.rotation.y = Math.PI / 2; shine.position.set(0.016, 0.09, -0.08); star.add(shine);
   // your lance tip: a white ring in a black ring with a red middle, drawn over everything
   const over = { depthTest: false, transparent: true };
   const dot = new THREE.Group(); dot.position.x = 0.07; dot.renderOrder = 998; shield.add(dot);

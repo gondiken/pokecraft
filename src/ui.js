@@ -333,7 +333,8 @@ export class UI {
     const frac = c.hp / st.maxHp;
     const xpFrac = (c.xp - xpForLevel(c.level)) / (xpForLevel(c.level + 1) - xpForLevel(c.level));
     const btns = [];
-    if (inParty) {
+    if (this.tradeView) btns.push(...this.tradeView.buttons(c, inParty)); // wave 17: trading, the card's one button is Offer / Take back
+    else if (inParty) {
       if (i > 0) btns.push(el('button', { onclick: () => { g.party.unshift(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'Make lead'));
       if (rideKind(c)) btns.push(el('button', { class: 'ride', 'data-ride': c.uid, onclick: () => g.riding.toggle(c) }, g.riding?.creature === c ? 'Get off' : 'Ride'));
       if (g.party.length > 1) btns.push(el('button', { onclick: () => { g.box.push(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'To box'));
@@ -360,6 +361,8 @@ export class UI {
 
   refreshPanel() {
     const g = this.game;
+    this.partyPanel.classList.toggle('trading', !!this.tradeView); // wave 17: the trade bar on top, the badges hidden
+    document.getElementById('trade-bar')?.replaceChildren(...(this.tradeView ? [this.tradeView.bar()] : []));
     document.getElementById('badge-list').replaceChildren(...GYMS.map(gym => {
       const got = g.badges.includes(gym.id);
       return el('div', { class: `badge-card${got ? '' : ' missing'}` }, this.badgeIcon(gym, got),
@@ -479,8 +482,8 @@ export class UI {
       this.game.navUi.open();
       return;
     }
-    if (which === 'swap') { // wave 17: swapUi.open() fills #swap-body
-      document.getElementById('swap').classList.remove('hidden');
+    if (which === 'friend') { // wave 17: the friend menu (Battle, Trade, Hide and seek); swapUi.open() fills #friend-body
+      document.getElementById('friend').classList.remove('hidden');
       this.game.swapUi.open();
       return;
     }
@@ -549,6 +552,7 @@ export class UI {
     this.game.missionUi?.close();
     this.navPanel.classList.add('hidden'); // T39a
     this.game.navUi?.close();
-    if (this.game.swapUi?.isOpen) { document.getElementById('swap').classList.add('hidden'); this.game.swapUi.close(); } // wave 17
+    if (this.game.swapUi?.isOpen) { document.getElementById('friend').classList.add('hidden'); this.game.swapUi.close(); } // wave 17: the friend menu
+    if (this.tradeView) { this.tradeView = null; this.partyPanel.classList.remove('trading'); this.game.swapUi?.closed(); } // wave 17: closing the trade screen stops a trade not yet going
   }
 }

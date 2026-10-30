@@ -4,7 +4,7 @@
 import { B, isSolid } from '../src/blocks.js';
 import { swirlLand } from '../src/swirlland.js';
 import { R, SWIRLS, ROOMS, doorTarget, exitTarget, swirlById, PORCH } from '../src/portalhouse.js';
-import { PORTAL, exitSpeed, exitOf, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, clearLine, ballRun, inCup, bridgeCells } from '../src/portalplay.js';
+import { BALL, PORTAL, exitSpeed, exitOf, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, clearLine, ballRun, inCup, bridgeCells } from '../src/portalplay.js';
 
 export const WORLD_H = 48;
 export const SIZE = [160, 160];
@@ -354,6 +354,137 @@ export function quickTime(g, room, { pre = [null], tricks = true, retap = true, 
   return found;
 }
 
+// The House Run (owner 2026-10-30, src/houserun.js): the fewest seconds through a room, from its start to its exit door, for a skilled
+// player in this model of the physics: Dijkstra over (stand cell, your blue swirl, your orange swirl) with the runs' and flights' own
+// times; a tap costs `tap` s (aim and tap); a moving swirl (rooms 3 and 6) is caught at its best phase plus `wait` of its period
+// (on average a skilled player waits half of it); the Ball Room's door needs the ball on its button (+ one pipe interval); the
+// Quick Room is quickTime from its button with your swirl set first, plus the walk to the button. Infinity: no way.
+export function roomTime(g, room, { tap = 0.6, wait = 0.5, tricks = true, speeds = [0.01, 2.2, 4.3, 6.2] } = {}) {
+  if (room.button) { // the Quick Room: walk to the button, then quickTime with your swirl set first (one tap)
+    const walkIn = timedRoom(g, { ...room, exit: null, goal: cellOf(room.button.at) }, { tap, tricks: false, speeds });
+    const quick = quickTime(g, room, { pre: tricks ? room.slots.filter(id => !swirlById(id).decoy) : [null], tricks, tap });
+    return quick > room.button.open ? Infinity : walkIn + (tricks ? tap : 0) + quick; // (the door shuts again: too slow is no way)
+  }
+  const ph = PHASES[room.n], name = ph && Object.keys(ph)[0], values = ph ? ph[name] : [null];
+  let best = Infinity;
+  for (const v of values) best = Math.min(best, timedRoom(g, room, { tap, tricks, speeds, ...(name ? { [name]: v } : {}) }));
+  if (ph && Number.isFinite(best)) best += wait * SWIRLS.find(s => s.room === room.n && s.move).move.period;
+  return best;
+}
+function timedRoom(g, room, { tap, tricks, speeds, orangeY = null, slideX = null }) {
+  const { solid } = g;
+  const at = o => {
+    if (!o.move) return o.centre;
+    const axis = o.move.axis ?? 'y';
+    if (axis === 'y' && orangeY != null) return [o.centre[0], orangeY, o.centre[2]];
+    if (axis === 'x' && slideX != null) return [slideX, o.centre[1], o.centre[2]];
+    return centreAt(o, 0);
+  };
+  const ctxMemo = new Map();
+  const ctxOf = (teal, orange) => {
+    if (!room.bridge) return { S: solid, isNode: c => g.nodes.has(key(c)) };
+    const k = `${teal}|${orange}`;
+    if (!ctxMemo.has(k)) {
+      const cells = new Set(bridgeCells(solid, room.bridge, tricks ? [teal && swirlById(teal), orange && swirlById(orange)] : []).map(key));
+      const S = (x, y, z) => solid(x, y, z) || cells.has(`${x},${y},${z}`);
+      ctxMemo.set(k, { S, isNode: c => g.nodes.has(key(c)) || (cells.has(`${c[0]},${c[1] - 1},${c[2]}`) && !S(c[0], c[1], c[2]) && !S(c[0], c[1] + 1, c[2])) });
+    }
+    return ctxMemo.get(k);
+  };
+  const others = (into, teal, orange) => {
+    const out = [];
+    if (isOrangeEnd(into)) { for (const T of [teal, ...room.slots.filter(id => id !== teal)]) if (T) out.push({ sw: swirlById(T), teal: T, orange }); }
+    else if (room.peaches.length) { for (const O of [orange, ...room.peaches.filter(id => id !== orange)]) if (O) out.push({ sw: swirlById(O), teal, orange: O }); }
+    else { const fixed = room.oranges.map(swirlById); if (fixed.length) out.push({ sw: fixed[0], teal, orange }); }
+    return out;
+  };
+  const activeOf = (teal, orange) => [...room.oranges.map(swirlById), ...(teal ? [swirlById(teal)] : []), ...(orange ? [swirlById(orange)] : [])];
+  const CATCH = 1.0; // a fall onto the soft cloud puffs you back to the room's start (the clock keeps running)
+  const settle = (p, ctx) => { const r = run(ctx.S, p, 0, 0, { mode: 'walk', maxT: 6 }), c = cellOf(r.end); return caught(g, room, c) ? { cell: cellOf(room.start), t: r.t + CATCH } : ctx.isNode(c) ? { cell: c, t: r.t } : null; };
+  const trips = (teal, orange, exitSw, speed, depth, t0, out) => {
+    const ex = exitOf(exitSw, at(exitSw), speed), ctx = ctxOf(teal, orange);
+    if (!ex.vel) { const s = settle(ex.pos, ctx); if (s) out.push({ cell: s.cell, teal, orange, t: t0 + s.t }); return; }
+    if (depth > 6) return;
+    const act = activeOf(teal, orange);
+    const seek = q => { for (const o of act) if (o.id !== exitSw.id && touches(o, at(o), q, true)) return o; return null; };
+    const f = flingFlight(ctx.S, ex.pos, ex.vel, PORTAL.flingG, seek);
+    if (!f.hit) { const s = settle(f.end, ctx); if (s) out.push({ cell: s.cell, teal, orange, t: t0 + f.time + s.t }); return; }
+    const drop = flightDrop(f, at(f.hit)[1], headOf(exitSw, speed));
+    for (const o of others(f.hit, teal, orange)) trips(o.teal, o.orange, o.sw, exitSpeed(drop), depth + 1, t0 + f.time, out);
+  };
+  const best = new Map(), heap = [];
+  const sk = (c, t, o) => `${key(c)}|${t ?? '-'}|${o ?? '-'}`;
+  const push = (c, teal, orange, t) => { const k = sk(c, teal, orange); if ((best.get(k) ?? Infinity) <= t) return; best.set(k, t); heap.push([t, c, teal, orange]); };
+  push(cellOf(room.start), null, null, 0);
+  let found = Infinity;
+  const exitSw = room.exit && swirlById(room.exit);
+  while (heap.length) {
+    let bi = 0;
+    for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[bi][0]) bi = i;
+    const [t, c, teal, orange] = heap.splice(bi, 1)[0];
+    if (t >= found || t > (best.get(sk(c, teal, orange)) ?? Infinity)) continue;
+    if (room.goal && key(c) === key(room.goal)) { found = t; continue; }
+    const start = [c[0] + 0.5, c[1], c[2] + 0.5];
+    if (exitSw && touches(exitSw, exitSw.centre, [start[0] - exitSw.normal[0] * 0.2, c[1], start[2] - exitSw.normal[2] * 0.2], false)
+      && (exitSw.needs !== 'ball' || (tricks && ballPresses(g, room, teal, orange)))) { found = t + (exitSw.needs === 'ball' ? BALL.every : 0); continue; }
+    if (tricks) {
+      for (const id of room.slots) if (id !== teal && losTo(solid, eyeOf(c), swirlById(id), at)) push(c, id, orange, t + tap);
+      for (const id of room.peaches) if (id !== orange && losTo(solid, eyeOf(c), swirlById(id), at)) push(c, teal, id, t + tap);
+    }
+    const active = tricks ? activeOf(teal, orange) : [], ctx = ctxOf(teal, orange);
+    const seek = q => { for (const s of active) if (touches(s, at(s), q, false)) return s; return null; };
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const sp of speeds) for (const mode of ['walk', 'jump']) {
+      if (sp < 1 && mode === 'walk') continue;
+      const r = run(ctx.S, start, dx * sp, dz * sp, { mode, seek });
+      if (r.hit) {
+        const out = [], drop = Math.max(0, r.peak - r.end[1]);
+        for (const o of others(r.hit, teal, orange).slice(0, 1)) trips(o.teal, o.orange, o.sw, exitSpeed(drop), 0, t + r.t, out);
+        for (const o of out) push(o.cell, o.teal, o.orange, o.t);
+        continue;
+      }
+      if (!r.landed) continue;
+      const cc = cellOf(r.end);
+      if (caught(g, room, cc)) push(cellOf(room.start), teal, orange, t + r.t + CATCH);
+      else if (ctx.isNode(cc)) push(cc, teal, orange, t + r.t);
+    }
+  }
+  return found;
+}
+// Every room's skilled time and the run's total (the walk from the start plate into door 1 included).
+export const RUN_PLATE_WALK = 1.0;
+export function runTimes(g, opts = {}) {
+  const rooms = ROOMS.map(r => ({ n: r.n, t: roomTime(g, r, opts) }));
+  return { rooms, total: RUN_PLATE_WALK + rooms.reduce((a, r) => a + r.t, 0) };
+}
+
+// Owner 2026-10-30 ("I could get the stars without even using the portal, by simply jumping on the stairs"): no spark of a room can be
+// caught on foot. From every place your feet reach in the room (no swirl at all), walks, jumps and falls in 8 directions at every speed:
+// none passes a spark (the live part's 1.4 from your middle). A sparksOpen spark (the Quick Room, by its door) is only out while the door
+// is open, and the stairs never get you there in time (quickTime). Returns the sparks caught on foot ('n:i from x,y,z').
+export function footSparks(g, rooms = ROOMS) {
+  const bad = [];
+  for (const room of rooms) {
+    if (room.sparksOpen && quickTime(g, room, { tricks: false }) > room.button.open) continue;
+    const ph = PHASES[room.n], k = ph && Object.keys(ph)[0];
+    const feet = [...reachable(g, cellOf(room.start), { tricks: false, stayIn: room, ...(k ? { [k]: ph[k][0] } : {}) }).cells]
+      .map(c => c.split(',').map(Number)).filter(c => roomAt(c) === room);
+    room.sparks.forEach((s, i) => {
+      const near = p => (Math.hypot(p[0] - s[0], p[1] + 0.9 - s[1], p[2] - s[2]) <= 1.4 ? 'spark' : null);
+      const from = feet.find(c => {
+        const st = [c[0] + 0.5, c[1], c[2] + 0.5];
+        if (near(st)) return true;
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [0.7, -0.7], [-0.7, 0.7], [-0.7, -0.7]]) for (const sp of [0.01, 2.2, 4.3, 6.2]) for (const mode of ['walk', 'jump']) {
+          if (sp < 1 && mode === 'walk') continue;
+          if (run(g.solid, st, dx * sp, dz * sp, { mode, seek: near }).hit) return true;
+        }
+        return false;
+      });
+      if (from) bad.push(`${room.n}:${i} from ${key(from)}`);
+    });
+  }
+  return bad;
+}
+
 // Did the search walk into the room's exit door? (`res` = what reachable() returned.)
 export const exitReached = (res, room) => res.exits.has(room.exit);
 
@@ -383,8 +514,10 @@ if (process.argv[1] && process.argv[1].endsWith('portalcheck.mjs')) {
   console.log('stuck:', stuck.length, stuck.slice(0, 12).join(' '));
   const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
   const rooms = only ? ROOMS.filter(x => only.includes(x.n)) : ROOMS;
+  console.log('sparks caught on foot:', footSparks(g, rooms).join(' ') || '-');
   console.log('decoys:', ROOMS.map(r => r.slots.filter(id => swirlById(id).decoy).length).join(' '), '| problems:', decoyProblems(g).join(' ') || '-');
   for (const d of decoyRows(g, rooms)) console.log(`decoys room ${d.n}: ${d.decoys} | only decoys reach the exit ${d.onlyDecoys} | pinned ${d.pinned.join(' ') || '-'} | ball ${d.ball.join(' ') || '-'}`);
   for (const r of rooms) { const t0 = Date.now(), ph = PHASES[r.n], k = ph && Object.keys(ph)[0], bad = new Set((ph ? ph[k] : [null]).flatMap(v => fallOnly(g, r, k ? { [k]: v } : {}))); console.log(`room ${r.n} fall-only cells: ${bad.size} ${[...bad].slice(0, 8).join(' ')} (${Date.now() - t0} ms)`); }
   for (const r of roomRows(g, rooms)) console.log(`room ${r.n} ${r.id}: tricks ${r.values.map((v, i) => `${v ?? ''}:${r.withTricks[i]}`).join(' ')} | no tricks ${r.without} | no retap ${r.noRetap} (${r.ms} ms)`);
+  if (!only) { const s = runTimes(g); console.log(`house run, skilled: ${s.rooms.map(x => `${x.n}:${x.t.toFixed(1)}`).join(' ')} | total ${s.total.toFixed(1)} s`); }
 }

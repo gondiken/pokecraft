@@ -258,6 +258,8 @@ export function makeShieldKid(kind, k, { seed = 1 } = {}) {
   const r = rng(seed);
   let phase = 'pot', t = 0, target = null, hopAt = 0, start = 0;
   const S = SHIELDS[k], pot = RIM_POTS[k];
+  // the breeze over its pot (the rim's, or the side breeze at its far end): where a bubble drifts while it rises
+  const wind = WINDS.find(w => pot[0] >= w.x0 && pot[0] <= w.x1 + 1 && pot[2] >= w.z0 && pot[2] <= w.z1 + 1 && pot[1] + 1 >= w.y0 && pot[1] + 1 <= w.y1) || { vx: 0, vz: 0 };
   return ({ p, live, dt = 1 / 60 }) => {
     t += dt;
     const on = p.carry === live.standObj && !!live.stood, ground = p.onGround && !p.carry;
@@ -273,8 +275,8 @@ export function makeShieldKid(kind, k, { seed = 1 } = {}) {
     if (phase === 'aim') {
       p.keys.KeyW = false;
       if (kind === 'skilled') { // the shield where it will be when the bubble is up, the bubble's way (blown 1.5 out, carried by the breeze)
-        const f = future(2.8); p.yaw = yawTo(p.pos, f.x, f.z + 1.2); p.pitch = -0.2;
-        const dir = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) }, bx = p.pos.x + dir.x * BUBBLE.ahead, bz = p.pos.z + dir.z * BUBBLE.ahead - 0.45 * 2.8;
+        const f = future(2.8); p.yaw = yawTo(p.pos, f.x - wind.vx * 2.8, f.z - wind.vz * 2.8); p.pitch = -0.2;
+        const dir = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) }, bx = p.pos.x + dir.x * BUBBLE.ahead + wind.vx * 2.8, bz = p.pos.z + dir.z * BUBBLE.ahead + wind.vz * 2.8;
         if (Math.hypot(f.x - bx, f.z - bz) > 2.2 && t < 6) return null; // wait for a moment when it comes over
       } else { p.yaw = yawTo(p.pos, sh.c.x, sh.c.z) + (r() - 0.5) * 2; if (t < 0.3 + r() * 0.5) return null; }
       const n0 = live.field.n;

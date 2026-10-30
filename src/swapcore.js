@@ -6,7 +6,7 @@ import { SPECIES, MOVES, MAX_LEVEL, xpForLevel, statsFor, autoMoves } from './sp
 import { cleanTraits } from './traits.js';
 
 export const SWAP = {
-  version: 1,      // in every `swap` message; another version gets 'no' with old: true
+  version: 2,      // in every `swap` message; another version gets 'no' with old: true (2: owner 2026-10-30, the trade screen both open at once)
   answer: 30,      // seconds to answer an offer
   pick: 90,        // seconds to pick a creature for a trade / to say the last yes
   retry: 3,        // seconds between re-sends of a committed `give` while the friend is there

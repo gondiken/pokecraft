@@ -7,12 +7,13 @@
 // speed and the tap while you fall, tips after misses; owner 2026-10-29: the Quick Room's button and door, the Bridge Room's bridge of
 // light). D. play (the Wand, the ten rooms and their saved keys, old four-room keys, the one-time reset, a
 // reload, the gate, Grandpa Arch, the star, a lost battle, sparks, the guide). E. iPad. F. two browsers. G. screenshots for the owner.
-// PORTAL_ONLY=data|land|physics|play|ipad|pair|shots runs part of it. Screenshots: tests/screenshots/t42-*.png.
+// H. the House Run (owner 2026-10-30: houserun.js, its medals from the House physics, the plate, splits, records, pauses and stops).
+// PORTAL_ONLY=data|land|physics|play|ipad|pair|shots|run runs part of it. Screenshots: tests/screenshots/t42-*.png.
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, openPair, newGame, pause, click, waitFor as waitFor0, playBattle, continueGame, seedSave } from '../helpers.mjs';
-import { makeSwirl, houseGraph, reachable, exitReached, stuckCells, layoutProblems, roomAt, run, landing, roomRows, ballPresses, decoyRows, decoyProblems, fallOnly, quickTime, PHASES } from '../portalcheck.mjs';
+import { makeSwirl, houseGraph, reachable, exitReached, stuckCells, layoutProblems, roomAt, run, landing, roomRows, ballPresses, decoyRows, decoyProblems, fallOnly, quickTime, PHASES, footSparks, runTimes, roomTime } from '../portalcheck.mjs';
 import { R, ROOMS, SWIRLS, PARTS, swirlById, HUB, PORCH, HALL, HOUSE_LIFT, PLATFORMS, DECOYS_MAX, decoysIn, DOORS } from '../../src/portalhouse.js';
 import { exitOf, exitSpeed, touches, boxHits, PORTAL, ballRun, flingFlight, headOf, slotAimed, bridgeCells, ROOMS_NEED } from '../../src/portalplay.js';
 import { BLOCKS } from '../../src/blocks.js';
@@ -223,11 +224,14 @@ export default async function ({ browser, base, t }) {
     const dp = decoyProblems(g);
     t.ok(!dp.length, `every decoy can be aimed at from somewhere you walk in its room (it looks like a real choice) and none sends you round and round (${dp.join('; ')})`);
     // owner 2026-10-29: a fall into the cloud may happen (a miss) but is never needed to go on: from every place in a room the exit or the
-    // way home is reachable without one (owner 2026-10-29: plain stairs and steps, no extra kind of swirl)
+    // way home is reachable without one (owner 2026-10-30: a violet back swirl where stairs would let your feet reach a flight's sparks or ledges)
     const fall = ROOMS.map(r => { const ph = PHASES[r.n], k = ph && Object.keys(ph)[0]; return [r.n, new Set((ph ? ph[k] : [null]).flatMap(v => fallOnly(g, r, k ? { [k]: v } : {})))]; });
     t.ok(fall.every(([, s]) => s.size === 0), `no place in a room needs a fall to go on (${fall.map(([n, s]) => `${n}:${s.size}${s.size ? ' ' + [...s].slice(0, 3).join(' ') : ''}`).join(' ')})`);
     const warps = SWIRLS.filter(s => s.kind === 'warp').map(s => s.id);
-    t.ok(warps.join() === 'hub,porch' && !SWIRLS.some(s => s.back) && PLATFORMS.fling.length > 6 && PLATFORMS.clock.length > 6 && PLATFORMS.ball.length === 3, `no back swirls: the only warps are the Hub and Porch Swirls; the Fling, Clock and Ball Rooms have stairs or a step instead (${warps})`);
+    t.ok(warps.join() === 'hub,porch,fling.b,fling.b2,clock.b' && SWIRLS.filter(s => s.back).every(s => s.colour === 'violet' && s.to === ROOMS[s.room - 1].start) && PLATFORMS.fling.length === 5 && PLATFORMS.clock.length === 5 && PLATFORMS.ball.length === 3,
+      `owner 2026-10-30: no stairs in the Fling and Clock Rooms (they gave your feet the sparks and the low ledge); violet back swirls take you to the room's start there; the Ball Room keeps its step down (${warps})`);
+    const fs = footSparks(g);
+    t.ok(!fs.length, `no spark (a little Capture Cube) can be caught on foot in any room: only with a swirl (${fs.join(' ')})`);
     t.ok(SWIRLS.filter(s => s.kind === 'door').every(s => s.colour === 'warm'), 'every door is a warm doorway (no green door swirl)');
     // the lift reaches the porch: the cells above the cloud sea at the lift are lifted to the porch deck
     const lift = w5.lifts.find(l => l.id === 'house');
@@ -267,6 +271,126 @@ export default async function ({ browser, base, t }) {
     t.ok(old.place === 'swirl' && old.d < 1.5 && old.outside === 8 && !old.inside && old.deck === 217, `a version 4 Swirl save still loads in the Swirl where you were; its edit on the hub stays, the ones inside the House are dropped (${JSON.stringify(old)})`);
     t.ok(old.clean === '1,1,0,0', `cleanRealmEdits keeps version 4 and 5 edits and drops older ones (${old.clean})`);
     await pg2.context().close();
+  }
+
+  /* ================================ H. the House Run (owner 2026-10-30) ================================ */
+  if (want('run')) {
+    // Node: the pure rules (houserun.js)
+    const HR = await import('../../src/houserun.js');
+    const goAt = dt => { const c = new HR.RunClock(); c.arm(); let n = 0, evs = []; while (!c.running && n < 1000) { const e = c.tick(dt); if (e) evs.push(e); n++; } for (let i = 0; i < Math.round(2 / dt); i++) c.tick(dt); return { n, t: c.t, evs: evs.join() }; };
+    const g60 = goAt(1 / 60), g20 = goAt(1 / 20);
+    t.ok(g60.evs === 'count,count,go' && g20.evs === 'count,count,go' && Math.abs(g60.t - 2) < 1e-6 && Math.abs(g20.t - 2) < 1e-6 && Math.abs(g60.n / 60 - 3) < 0.02 && Math.abs(g20.n / 20 - 3) < 0.06,
+      `the countdown 3-2-1 then Go, the same at 60 and 20 steps a second; then the clock is summed time (${g60.evs} ${g60.t.toFixed(3)} / ${g20.t.toFixed(3)})`);
+    const c = new HR.RunClock(); c.arm(); c.tick(4); const s1 = c.done(1), wrong = c.done(3);
+    t.ok(s1 === 1 && wrong === null && c.next === 2 && c.splits.length === 1 && !c.finished, `a split per room in order; a room out of order gives none (${s1}, ${wrong})`);
+    t.ok(HR.medalOf(59.9) === 'gold' && HR.medalOf(60) === 'gold' && HR.medalOf(60.1) === 'silver' && HR.medalOf(150) === 'bronze' && HR.medalOf(181) === null && HR.fmtTime(83.46) === '1:23.4' && HR.fmtTime(9.05) === '9.0' && HR.fmtTime(60) === '1:00.0',
+      `medals by time (🥇 ${HR.RUN.medals.map(m => m[1]).join(' / ')} s), times shown in tenths (${HR.fmtTime(83.46)})`);
+    const recs = {}, sp = Array.from({ length: 10 }, (_, i) => 5 + i * 0.1);
+    const r1 = HR.recordRun(recs, 'portal:run', 80, sp), r2 = HR.recordRun(recs, 'portal:run', 70, sp.map(v => v + 1)), r3 = HR.recordRun(recs, 'portal:run', 50, sp.map(v => v - 2)), r4 = HR.recordRun(recs, 'portal:run', 55, sp);
+    t.ok(r1.newBest && r1.medal === 'silver' && r2.newBest && r3.firstGold && !r4.firstGold && !r4.newBest && recs['portal:run'].best === 50 && recs['portal:run'].medal === 'gold' && recs['portal:run'].paid && recs['portal:run'].bests[0] === sp[0] - 2,
+      `the records: best time, its splits, each room's best split, the best medal, the gold reward only once (${JSON.stringify(recs['portal:run']).slice(0, 120)})`);
+    const loaded = HR.loadRecords({ 'portal:run': { best: 61.2, splits: [1, 'x'], medal: 'platinum', paid: 1 }, 'bad key': { best: 3 }, 'x:y': { best: -1 }, 'a:b': null });
+    t.ok(JSON.stringify(Object.keys(loaded)) === '["portal:run"]' && loaded['portal:run'].medal === null && loaded['portal:run'].paid === false && loaded['portal:run'].splits[1] === null && JSON.stringify(HR.loadRecords('junk')) === '{}',
+      `old or broken records are cleaned on load (${JSON.stringify(loaded)})`);
+    // Node: the medals come from the House's own physics (portalcheck runTimes, a timed search per room)
+    const g = houseGraph(makeSwirl()), t0 = Date.now();
+    const skilled = runTimes(g), careful = runTimes(g, { tap: 3, wait: 1, speeds: [0.01, 2.2, 4.3] }), slow = runTimes(g, { tap: 6, wait: 1.5, speeds: [0.01, 2.2, 4.3] });
+    const slowMisses = slow.total + 4 * ROOMS.length; // and one miss (a puff back to the room's start) in every room
+    const naive = ROOMS.map(r => roomTime(g, r, { tricks: false }));
+    t.ok(HR.medalOf(skilled.total) === 'gold' && HR.medalOf(careful.total) === 'silver' && HR.medalOf(slowMisses) === 'bronze' && naive.every(v => !Number.isFinite(v)),
+      `medals from the House's physics: a skilled run (quick taps, sprints, the fast tricks) ${HR.fmtTime(skilled.total)} = gold (${skilled.rooms.map(r => r.t.toFixed(1)).join(' ')}); a careful one (slow aiming, no sprint) ${HR.fmtTime(careful.total)} = silver; a slow one missing once a room ${HR.fmtTime(slowMisses)} = bronze; without the swirl tricks no room is done (${Date.now() - t0} ms)`);
+
+    // the browser: the plate, the countdown, the splits, a finish, the records, the pauses and the stops
+    await renew();
+    await intoSwirl(page);
+    await page.evaluate(() => { const lv = window.__lv(); lv.wand = true; });
+    const P = (await import('../../src/portalhouse.js')).RUN_PLATE;
+    for (const dt of [1 / 60, 1 / 20]) {
+      const tag = `${Math.round(1 / dt)} steps a second`;
+      await at(page, P.at[0], P.at[1], P.at[2], 0);
+      const cd = await page.evaluate(([dt]) => { const g = window.pokecraft, lv = window.__lv(), chips = []; for (let i = 0; i < Math.round(3.5 / dt); i++) { window.__step(g, dt, 1); const s = document.getElementById('score-chip')?.textContent ?? ''; if (!chips.includes(s)) chips.push(s); } return { state: lv.run.state, t: lv.run.t, chips }; }, [dt]);
+      t.ok(cd.state === 'run' && cd.t > 0.3 && cd.t < 0.6 && cd.chips.some(s => /⏱ 3/.test(s)) && cd.chips.some(s => /⏱ 1/.test(s)) && cd.chips.some(s => /Into door 1/.test(s)), `${tag}: standing on the gold plate counts 3-2-1, then the clock runs (${cd.chips.join(' | ')})`);
+      // step off during a countdown: it stops; stand still on it again later: it starts again
+      await page.evaluate(() => window.__lv().stopRun());
+      await at(page, P.at[0] + 3, P.at[1], P.at[2], 0);
+      await page.evaluate(([dt]) => window.__step(window.pokecraft, dt, 2), [dt]);
+      await at(page, P.at[0], P.at[1], P.at[2], 0);
+      const off = await page.evaluate(([dt, P]) => { const g = window.pokecraft, lv = window.__lv(); window.__step(g, dt, Math.round(1 / dt)); const was = lv.run.state; g.player.pos.set(P[0] + 3, P[1], P[2]); window.__step(g, dt, 2); return [was, lv.run.state]; }, [dt, P.at]);
+      t.ok(off.join() === 'count,idle', `${tag}: stepping off the plate during the countdown stops it (${off})`);
+    }
+    // a whole run: on the plate, Go, through door 1, then each room's exit leads into the next room; room 10's exit back in the Hall
+    const before = await page.evaluate(() => ({ cubes: window.pokecraft.cubes, saved: JSON.parse((window.pokecraft.save(true), localStorage.getItem('pokecraft-save-v2'))).records ?? null }));
+    // the board and the plate as you see them from the Hall (toasts cleared for the picture)
+    const boardShot = async (name, pitch = 0.36) => {
+      await page.evaluate(pitch => { const g = window.pokecraft, p = g.player; p.pos.set(109.5, 13, 23.6); p.vel.set(0, 0, 0); p.yaw = 0.12; p.pitch = pitch; p.keys = {}; window.__step(g, 1 / 20, 2); g.player.pos.set(109.5, 13, 23.6); document.getElementById('toast')?.replaceChildren(); document.getElementById('celebrate')?.remove(); }, pitch);
+      await shot(page, name).catch(() => {});
+    };
+    await boardShot('run-board-empty', 0);
+    const runAll = (wait = 0) => page.evaluate(async ([P, wait]) => {
+      const g = window.pokecraft, lv = window.__lv(), p = g.player, step = n => window.__step(g, 1 / 20, n);
+      p.pos.set(P[0], P[1], P[2]); p.vel.set(0, 0, 0); p.keys = {}; step(Math.round(3.2 * 20));
+      const go = lv.run.state;
+      // walk from the plate into door 1 (north-west of it)
+      const d1 = lv.house.swirls.find(s => s.id === 'hall.d1'); window.__t0 = lv.info().trips;
+      p.lookAt({ x: d1.centre[0], y: p.pos.y + 1.62, z: d1.centre[2] }); p.keys = { KeyW: true }; step(60, () => lv.info().trips > window.__t0); p.keys = {};
+      const inRoom1 = lv.info().part;
+      if (wait) step(Math.round(wait * 20)); // (a slow run: standing about in room 1)
+      const splits = [];
+      for (let n = 1; n <= 10; n++) {
+        const id = ['gap.exit', 'fling.exit', 'clock.exit', 'skip.exit', 'pair.exit', 'slide.exit', 'ball.exit', 'loop.exit', 'quick.exit', 'bridge.exit'][n - 1];
+        const s = lv.house.swirls.find(q => q.id === id), [nx, , nz] = s.normal; window.__t0 = lv.info().trips;
+        p.pos.set(s.centre[0] + nx * 1.2, s.centre[1] - s.h / 2, s.centre[2] + nz * 1.2); p.vel.set(0, 0, 0); p.yaw = Math.atan2(nx, nz); p.keys = {}; step(2);
+        if (s.needs) { lv.pressed = true; lv.gateUntil = lv.clock + 99; lv.hallKey = ''; step(2); }
+        p.keys = { KeyW: true }; step(30, () => lv.info().trips > window.__t0); p.keys = {};
+        splits.push(lv.info().run.splits.length || lv.info().run.last?.splits.length);
+      }
+      step(10);
+      const i = lv.info();
+      return { go, inRoom1, splits, part: i.part, state: i.run.state, last: i.run.last, rec: g.records['portal:run'], chip: document.getElementById('score-chip')?.textContent, cubes: g.cubes };
+    }, [P.at, wait]);
+    const fast = await runAll();
+    t.ok(fast.go === 'run' && fast.inRoom1 === 1 && fast.part === 'hall' && fast.state === 'idle' && fast.last?.splits.length === 10 && fast.last.splits.every(s => s > 0) && fast.rec?.best === fast.last.total && fast.rec.medal === 'gold',
+      `a whole run: Go, through door 1, every exit straight into the next room, room 10's exit back in the Hall: the clock stops, ten splits, the best time and its medal are kept (${fast.last && fast.last.splits.map(s => s.toFixed(1)).join(' ')}; ${fast.last?.total.toFixed(1)} s, ${fast.rec?.medal})`);
+    t.ok(fast.cubes >= before.cubes + 5 && await page.evaluate(() => window.__toasts.filter(m => /🥇 Gold! \+5 Capture Cubes/.test(m)).length === 1), `the first gold gives 5 Capture Cubes (${before.cubes} -> ${fast.cubes}, sparks too)`);
+    const saved1 = await page.evaluate(() => JSON.parse((window.pokecraft.save(true), localStorage.getItem('pokecraft-save-v2'))).records?.['portal:run']);
+    t.ok(before.saved == null || !before.saved['portal:run'], 'before the first run there was no record');
+    t.ok(saved1?.best === fast.rec.best && saved1.splits.length === 10 && saved1.paid === true, `the record is in the save (best ${saved1?.best?.toFixed(2)}, ${saved1?.splits.length} splits)`);
+    await boardShot('run-board');
+    // a slow run (standing about 100 s in room 1): not a new best, a slower medal, no cubes again
+    const slowRun = await runAll(100);
+    t.ok(slowRun.last?.total > 100 && !slowRun.last.newBest && slowRun.last.medal === 'bronze' && slowRun.rec.best === fast.rec.best && await page.evaluate(() => window.__toasts.filter(m => /Gold!/.test(m)).length === 1) && await said(page, /your best: /),
+      `a slow run (${slowRun.last?.total.toFixed(1)} s): bronze, the best stays, no cubes again`);
+    // the clock stands still while the game is paused (a panel, the pause screen); a battle or leaving the House stops the run, nothing saved
+    const stops = await page.evaluate(([P]) => {
+      const g = window.pokecraft, lv = window.__lv(), p = g.player, step = n => window.__step(g, 1 / 20, n), rec0 = JSON.stringify(g.records);
+      p.pos.set(P[0], P[1], P[2]); p.vel.set(0, 0, 0); p.keys = {}; step(70);
+      const t0 = lv.run.t, old = g.playing; g.playing = () => false; for (let i = 0; i < 40; i++) lv.update(1 / 20); g.playing = old; const t1 = lv.run.t;
+      g.inBattle = true; lv.update(1 / 20); g.inBattle = false; const afterBattle = lv.run.state;
+      p.pos.set(P[0] + 3, P[1], P[2]); step(2); p.pos.set(P[0], P[1], P[2]); step(70); const again = lv.run.state;
+      p.pos.set(51.5, 21, 78.5); p.vel.set(0, 0, 0); step(3); const afterLeave = lv.run.state;
+      return { t0, t1, afterBattle, again, afterLeave, same: JSON.stringify(g.records) === rec0, chip: document.getElementById('score-chip')?.classList.contains('hidden') };
+    }, [P.at]);
+    t.ok(stops.t0 > 0 && stops.t1 === stops.t0 && stops.afterBattle === 'idle' && stops.again === 'run' && stops.afterLeave === 'idle' && stops.same && await said(page, /Run stopped/),
+      `paused, the run's clock stands still (${stops.t0.toFixed(2)} = ${stops.t1.toFixed(2)}); a battle stops it, so does leaving the House; nothing is saved (${JSON.stringify(stops)})`);
+    // another way than the next room (the Hall's way home from room 2) stops it too
+    const offWay = await page.evaluate(([P]) => {
+      const g = window.pokecraft, lv = window.__lv(), p = g.player, step = n => window.__step(g, 1 / 20, n);
+      p.pos.set(108.5, 13, 24.5); p.vel.set(0, 0, 0); step(4); p.pos.set(P[0], P[1], P[2]); p.vel.set(0, 0, 0); step(70);
+      const d2 = lv.house.swirls.find(s => s.id === 'hall.d2'); lv.warp([108.5, 13, 24.5, 0]); lv.door(d2); step(3);
+      return { state: lv.run.state, part: lv.info().part };
+    }, [P.at]);
+    t.ok(offWay.state === 'idle', `going into another room than the next one stops the run (${JSON.stringify(offWay)})`);
+    // a reload keeps the record and the board shows it
+    await page.evaluate(() => window.pokecraft.save(true));
+    await page.reload();
+    await page.waitForFunction(() => window.pokecraft?.world);
+    await continueGame(page);
+    await helpers(page);
+    const kept = await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(108.3, 13, 23); window.__step(g, 1 / 20, 4); return { rec: g.records['portal:run'], board: window.__lv().boardMesh?.visible }; });
+    t.ok(kept.rec?.best === fast.rec.best && kept.rec.medal === 'gold' && kept.board, `after a reload the record is kept and the board shows it (${kept.rec?.best?.toFixed(2)})`);
+    t.ok(!page.errors.length, `no page errors ${page.errors.slice(0, 3).join('; ')}`);
+    if (ONLY === 'run') { await finish(); return; }
+    await renew(); // (the parts below start a new game)
   }
 
   if (!want('physics') && !want('play') && !want('shots')) { await finish(); return; }
@@ -598,9 +722,13 @@ export default async function ({ browser, base, t }) {
       const pad = sw('fling.high'); p.lookAt({ x: pad.centre[0], y: pad.centre[1], z: pad.centre[2] }); window.__step(g, 1 / 20, 1);
       const old = g.playing; g.playing = () => true; const used = lv.use(); g.playing = old;
       const shot = lv.info().bolt; window.__step(g, 1 / 20, 12);
-      return { used, shot, after: lv.info().bolt, yours: lv.yours, part: lv.info().part };
+      const b = sw('fling.b'); window.__t0 = lv.info().trips;
+      p.pos.set(b.centre[0] + 0.4, b.centre[1], b.centre[2] + 2.2); p.vel.set(0, 0, 0); p.yaw = 0; p.pitch = 0; p.keys = { KeyW: true }; // walk north onto it
+      window.__step(g, 1 / 20, 40, () => lv.info().trips > window.__t0); p.keys = {};
+      return { used, shot, after: lv.info().bolt, yours: lv.yours, pos: [p.pos.x, p.pos.y, p.pos.z], part: lv.info().part };
     });
-    t.ok(bolt.used && bolt.shot && !bolt.after && bolt.yours === 'fling.high' && bolt.part === 2, `Swirl! shoots a bolt from the wand to the pad (it fades) (${JSON.stringify(bolt)})`);
+    t.ok(bolt.used && bolt.shot && !bolt.after && bolt.yours === 'fling.high' && Math.hypot(bolt.pos[0] - 156.5, bolt.pos[2] - 4.5) < 0.6 && Math.abs(bolt.pos[1] - 21) < 0.2 && bolt.part === 2,
+      `Swirl! shoots a bolt from the wand to the pad (it fades); the violet back swirl on the landing shelf takes you up to the start, your swirl stays on the high pad (${JSON.stringify(bolt)})`);
     await at(page, 108.5, 13, 24.5, 0);
     await page.evaluate(() => window.__step(window.pokecraft, 1 / 20, 4));
     // the Hall's guide points at room 1's door; in a room the words say what to tap, the arrow shows the door (owner 2026-10-29: it never
@@ -728,11 +856,11 @@ export default async function ({ browser, base, t }) {
     // the ball room, with a ball in the air between your swirls
     await view('ball', 115.0, 11, 2.6, 124, 13.5, 8.5, `window.__lv().hold = null; ${put(['ball.w1', 'ball.k1'])} const g = window.pokecraft; window.__lv().resetBall(); window.__step(g, 1 / 20, 200, () => { const b = window.__lv().ball; return b && b.piece.p0[0] < 115 && window.__lv().clock - b.t0 > 0.28; });`);
     await view('loop', 116.0, 33, 2.6, 124, 36, 9, put(['loop.k', 'loop.top']));
-    // owner 2026-10-29: the wand's bolt in mid-flight (frozen), the doors of a room, a back swirl on the Fling Room's landing shelf
+    // owner 2026-10-29: the wand's bolt in mid-flight (frozen), the doors of a room, the back swirl on the Fling Room's landing shelf
     await view('bolt', 127.5, 13, 23.5, 149, 21, 22, `const lv = window.__lv(); lv.boltHold = 0.09; lv.yours = null; const g = window.pokecraft, old = g.playing, c = g.camera; window.__step(g, 1 / 20, 1); c.position.copy(g.player.eyePos); c.rotation.set(g.player.pitch, g.player.yaw, 0); c.updateMatrixWorld(); g.playing = () => true; lv.place(lv.house.swirls.find(s => s.id === 'gap.p3')); g.playing = old;`);
     await page.evaluate(() => { window.__lv().boltHold = null; });
     await view('doors', 141.5, 43, 6.0, 146, 44, 2, put([]));
-    await view('fling-stairs', 146.0, 9, 11.5, 151, 13, 3, put(['fling.high']));
+    await view('fling-back', 146.0, 9, 11.5, 151, 9, 8, put(['fling.high']));
     await view('quick', 86.2, 18, 25.9, 83.5, 4, 28.8, `${put(['quick.p'])}`);
     await view('bridge', 87.0, 36, 3.5, 92, 35, 9, put(['bridge.p', 'bridge.k1']));
     await view('decoys', 116.0, 33, 2.6, 127, 38, 9, put([]));
@@ -750,7 +878,7 @@ export default async function ({ browser, base, t }) {
     });
     await shot(page, 'creatures');
     await page.evaluate(() => { const cm = window.pokecraft.creatures; for (const w of [...cm.list]) cm.remove(w); });
-    t.ok(true, 'screenshots t42-house-outside, hall, gap, fling, clock, skip, pair, slide, ball, loop, bolt, doors, fling-stairs, quick, bridge, decoys, boss, creatures');
+    t.ok(true, 'screenshots t42-house-outside, hall, gap, fling, clock, skip, pair, slide, ball, loop, bolt, doors, fling-back, quick, bridge, decoys, boss, creatures');
   }
   await finish();
   async function finish() { /* (the iPad and the pair parts are separate) */ }

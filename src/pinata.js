@@ -31,7 +31,7 @@ export const PINATA = {
   zipTime: 0.6,                        // after a hit the balloons zip on along their path (the round's `zip` blocks) in this many seconds
   rounds: [
     { id: 'llama', name: 'Llama Piñata', hp: 5, period: 2.8, speed: 0.8, path: 'circle', size: [2.5, 2.5], amp: 2.3, wide: 0.6, hitAmp: 2.5, zip: [2.4, 3.6], dodge: 0, zipBack: 0, time: 40 },
-    { id: 'star', name: 'Star Piñata', hp: 7, period: 2.35, speed: 1.4, path: 'eight', size: [4.2, 2.6], amp: 2.5, wide: 1.0, hitAmp: 2.8, zip: [2.8, 4.2], dodge: 0.25, zipBack: 0, time: 45 },
+    { id: 'star', name: 'Fish Piñata', /* owner 2026-10-30: it was a star (only the Wizard's star is a star); the id stays */ hp: 7, period: 2.35, speed: 1.4, path: 'eight', size: [4.2, 2.6], amp: 2.5, wide: 1.0, hitAmp: 2.8, zip: [2.8, 4.2], dodge: 0.25, zipBack: 0, time: 45 },
     { id: 'rocket', name: 'Rocket Piñata', hp: 9, period: 1.95, speed: 2.1, path: 'wander', size: [4.2, 3.8], amp: 2.7, wide: 1.4, hitAmp: 3.0, zip: [3.2, 5], dodge: 0.35, zipBack: 0.3, time: 55 },
   ],
   // the kind help after misses (time up) is the shared one (kindhelp.js, owner 2026-10-28): the swing period x more, the drift and zips x slow

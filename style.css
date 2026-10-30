@@ -611,24 +611,33 @@ body.touch #nav .nav-row { min-height: 64px; }
 body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 @media (max-width: 700px) { #nav .nav-tiles { grid-template-columns: repeat(4, 1fr); } }
 
-/* Wave 17: gifts and trades (#swap, swapui.js) */
-#swap h2 { margin: 0 0 6px; }
-#swap h3 { margin: 14px 0 6px; font-size: 20px; color: var(--muted); font-weight: 600; }
-#swap .swap-sub, #swap .swap-msg { font-size: 22px; margin: 4px 0 8px; }
-#swap .swap-note { min-height: 1em; margin: 4px 0; color: #ffd27a; font-size: 20px; }
-#swap .swap-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
-#swap .swap-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 120px; padding: 6px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.15); color: inherit; cursor: pointer; font-size: 18px; }
-#swap .swap-tile.on { border-color: #ffd23a; background: rgba(255, 210, 58, .18); }
-#swap .swap-tile.dim { opacity: .45; }
-#swap .st-name { font-family: 'Press Start 2P', monospace; font-size: 9px; }
-#swap .swap-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px; margin: 6px 0; background: rgb(30, 34, 46); border: 3px solid #ffd23a; font-size: 22px; }
-#swap .swap-bar span { flex: 1; min-width: 140px; }
-#swap button.big { font-size: 14px; min-height: 56px; padding: 12px 18px; }
-#swap .swap-card { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); font-size: 20px; }
-#swap .swap-pair { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
-#swap .swap-arrow { font-size: 22px; }
-#swap .swap-btns { display: flex; gap: 12px; flex-wrap: wrap; }
-#swap .swap-way { display: flex; align-items: center; gap: 8px; font-size: 20px; margin: 4px 0; }
-#mp .swap-btn { display: block; margin: 6px auto; min-height: 44px; }
-#swap .swap-tile.nothing { border-style: dashed; }
-#swap .st-box { font-size: 46px; line-height: 72px; }
+/* Wave 17: the friend menu (#friend) and the team screen in trade mode (#trade-bar), swapui.js */
+#friend .panel { max-width: 460px; }
+#friend h2 { margin: 0 0 4px; }
+#friend .fm-sub { font-size: 22px; margin: 0 0 10px; }
+#friend .fm-list { display: flex; flex-direction: column; gap: 8px; }
+#friend .fm-btn { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 8px 16px; text-align: left; font-size: 22px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.18); color: inherit; cursor: pointer; }
+#friend .fm-btn.dim { opacity: .5; }
+#friend .fm-icon { font-size: 32px; }
+#friend .fm-text { display: flex; flex-direction: column; }
+#friend .fm-text small { font-size: 18px; color: var(--muted); }
+#friend .fm-note { min-height: 1em; color: #ffd27a; font-size: 20px; margin: 8px 0 0; }
+#party.trading #badge-list, #party.trading .panel > h2 { display: none; }
+#trade-bar { position: sticky; top: -24px; z-index: 2; } /* stays in view while you scroll down to your Box */
+#trade-bar .tb { background: rgb(30, 34, 46); border: 3px solid #ffd23a; padding: 8px 12px; margin-bottom: 10px; box-shadow: 0 6px 12px rgba(0,0,0,.5); }
+#trade-bar h2 { margin: 0 0 6px; }
+#trade-bar .tb-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+#trade-bar .tb-side { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 18px; }
+#trade-bar .tb-card { display: flex; flex-direction: column; align-items: center; min-width: 130px; min-height: 120px; padding: 6px 10px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); font-size: 18px; }
+#trade-bar .tb-card.nothing { border-style: dashed; justify-content: center; }
+#trade-bar .tb-box { font-size: 44px; }
+#trade-bar .tb-arrow { font-size: 34px; }
+#trade-bar .tb-ready { font-size: 18px; color: var(--muted); }
+#trade-bar .tb-ready.on { color: #6fe07a; font-weight: bold; }
+#trade-bar .tb-note { text-align: center; min-height: 1em; font-size: 20px; color: #ffd27a; margin: 6px 0; }
+#trade-bar .tb-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 0; }
+#trade-bar button.big { font-size: 14px; min-height: 52px; padding: 10px 18px; }
+#trade-bar button.on { background: #2f8a3a; }
+.mon .btns button.offer { background: #ffd27a; color: #3a2a00; }
+.mon .btns button.offer.on { background: #2f8a3a; color: #fff; }
+.mon .btns button.offer.dim { opacity: .5; }

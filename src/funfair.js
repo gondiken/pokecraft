@@ -5,7 +5,7 @@
 // From north to south (z grows southwards), 1 char about 3 blocks:
 //   hub hedge z 131 (the gap x 163..169) | striped arch z 133..134 with the ticket board | the entry plaza x 156..176, z 135..141 (Ticket Tess)
 //   bumper arena x 120..148, z 142..164 | the carousel (centre 166.5, 153.5, r 9.5) | the trampoline x 188..207, z 146..161
-//   the walkway z 166..169 | the coaster station x 160..172, z 170..176 | three stalls | the Star Stage x 196..206, z 196..206 (top y 23)
+//   the walkway z 166..169 | the coaster station x 160..172, z 170..176 | three stalls | the Sky Stage (the Star Stage until 2026-10-30) x 196..206, z 196..206 (top y 23)
 //   the Ferris wheel is a mesh in the plane x = 118; the coaster runs west (lift hill), down the big drop, along z 209 and up to the stage.
 import { B, WOOL } from './blocks.js';
 import { placeBoss, placeCrew, kit } from './picturelands.js';
@@ -123,7 +123,7 @@ export function buildFunfair(world, zone) {
   const gate = [];
   for (let z = 172; z <= 174; z++) for (let y = G + 3; y <= G + 5; y++) { put(156, y, z, B.CANDY_STRIPE); gate.push([156, y, z]); } // (the rails west of x 156 are at stand 13 and up, so they can be walked up only from the track itself)
 
-  // the Star Stage: a deck on four legs, a rail all round except the coaster's way in (east) and the slide's way out (north-west)
+  // the Sky Stage: a deck on four legs, a rail all round except the coaster's way in (east) and the slide's way out (north-west)
   const T = STAGE;
   fill(T.x0, T.x1, T.top, T.top, T.z0, T.z1, B.STAR_STAGE);
   for (const [x, z] of T.legs) fill(x, x, G + 1, T.top - 1, z, z, B.COASTER_SUPPORT);

@@ -1,5 +1,6 @@
 // T43: the live part of the Funfair (LIVE.fair, made by gymLive.reset for the part in world.parts): three skill games, each gives a
-// golden ticket, and the roller coaster to Merry Mae's Star Stage that opens with the three tickets.
+// golden ticket, and the roller coaster to Merry Mae's Sky Stage that opens with the three tickets (owner 2026-10-30: it was the Star Stage;
+// only the Wizard's star is a star: the balloons with a star on top are target balloons, the points a 🎯).
 //   Bumper Cars   drive a car that slides and bounces (momentum) and bump the balloon off the BACK of six bumper bots' cars
 //   Balloon Bounce  bounce on the trampoline (the block flag `trampoline`, player.js): hold Jump to go higher, let go to come down, pop six balloons
 //   Gold Ring Ride  ride the carousel, push the stick in or out to change horses, hop for the high rings, catch all ten gold rings
@@ -283,7 +284,7 @@ export class FairLive {
     sound.play('fairround');
     const words = {
       bump: ['', 'Round 2: Zoomers! They zoom off when they see you. Bump them when they get tired!', 'Round 3: Spinners turn to look at you! Line up behind and come in fast!'],
-      bounce: ['', 'Round 2: Wobbly balloons! Star balloons only pop when you land on top of them!', 'Round 3: Combo! Pop one on every bounce: x2, x3! Get 30 points!'],
+      bounce: ['', 'Round 2: Wobbly balloons! Target balloons only pop when you land on top of them!', 'Round 3: Combo! Pop one on every bounce: x2, x3! Get 30 points!'],
       ring: ['', 'Round 2: Faster! Hop for the high gold rings!', 'Round 3: Gold rush! Swap and hop quickly!'],
     }[game];
     this.toast(`🎉 ${words[round] || 'Next round!'}`);
@@ -311,9 +312,9 @@ export class FairLive {
       if (e.type === 'pop') {
         this.confetti.userData.parts.burst(e.at.x, e.at.y, e.at.z, this.clock, e.gold ? 16 : 10);
         sound.play('balloonpop');
-        if (e.scored) { if (e.mult > 1) sound.play('faircombo'); this.toast(`🎈 +${e.pts}${e.mult > 1 ? ` (combo x${e.mult}!)` : ''}  ⭐ ${Math.min(e.n, e.need)} / ${e.need}`); }
+        if (e.scored) { if (e.mult > 1) sound.play('faircombo'); this.toast(`🎈 +${e.pts}${e.mult > 1 ? ` (combo x${e.mult}!)` : ''}  🎯 ${Math.min(e.n, e.need)} / ${e.need}`); }
         else this.toast(`🎈 Pop! ${e.n} / ${e.need}`);
-      } else if (e.type === 'boop') { sound.play('fairboop'); this.once('boop', 'Boop! Star balloons only pop when you land on top of them.'); }
+      } else if (e.type === 'boop') { sound.play('fairboop'); this.once('boop', 'Boop! Target balloons only pop when you land on top of them.'); }
       else if (e.type === 'chainEnd') this.once('chain', 'Combo over! Pop one on every bounce to keep it going.');
       else if (e.type === 'round') this.roundToast('bounce', e.round);
       else if (e.type === 'again') this.againToast('bounce', e);
@@ -368,7 +369,7 @@ export class FairLive {
     g.riding?.stop('quiet');
     sound.play('coasterclack');
     this.toast('All aboard! Hold on tight!');
-    const m = new Mover({ path: this.coasterPath, run: 'ride', canLeave: false, onEnd: () => { this.coaster = null; this.toast('Merry Mae is waiting on the Star Stage!'); } });
+    const m = new Mover({ path: this.coasterPath, run: 'ride', canLeave: false, onEnd: () => { this.coaster = null; this.toast('Merry Mae is waiting on the Sky Stage!'); } });
     m.safe = () => ({ x: STATION.car[0], y: STATION.car[1], z: STATION.car[2] + 2.2 });
     this.coaster = m; this.clackAt = 0;
     m.board(p);
@@ -428,7 +429,7 @@ export class FairLive {
     const T = TRAMP, onTramp = !pl.carry && pl.pos.x >= T.x0 - 1 && pl.pos.x <= T.x1 + 2 && pl.pos.z >= T.z0 - 1 && pl.pos.z <= T.z1 + 2;
     if (this.drive >= 0) { const g = this.bump; text = `🚗 Round ${g.round + 1}/3 · 🎈 ${g.pops} / ${g.need} · ⏱ ${Math.ceil(g.left)}`; }
     else if (this.riding) { const s = this.seat; text = `🎠 Round ${s.round + 1}/3 · 💍 ${s.score} / ${s.need} · lap ${Math.round(s.swept / TAU * 100)}%`; }
-    else if (onTramp) { const g = this.bounce; text = g.scored ? `🎈 Round 3/3 · ⭐ ${g.score} / ${g.need} · x${g.mult} · ⏱ ${Math.ceil(g.left)}` : `🎈 Round ${g.round + 1}/3 · ${g.pops} / ${g.need} · ⏱ ${Math.ceil(g.left)}`; }
+    else if (onTramp) { const g = this.bounce; text = g.scored ? `🎈 Round 3/3 · 🎯 ${g.score} / ${g.need} · x${g.mult} · ⏱ ${Math.ceil(g.left)}` : `🎈 Round ${g.round + 1}/3 · ${g.pops} / ${g.need} · ⏱ ${Math.ceil(g.left)}`; }
     else if (st.done) { text = 'Ride the coaster! 🎢'; done = true; }
     if (text !== this.chipText) { this.chipText = text; ui.setScore({ text, done }); } // (the DOM only on a change)
     this.chipOn = true;

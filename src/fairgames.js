@@ -312,10 +312,10 @@ export function nextBounce(h, space, flag = TRAMP) {
 // ---- Harder Balloon Bounce (owner 2026-10-27) ---- three rounds; each balloon floats on its own closed-form pattern (`move`):
 //   circle   a small circle (r, period)                 eight  a figure of eight across the mat (ax, az)
 //   zig      a zigzag from side to side (ax), quick       rise   a circle that also rises and sinks (dh)
-// A `top` balloon (a star balloon) pops only when you come DOWN onto it (falling, your feet at its middle or higher); from below or the
+// A `top` balloon (a target balloon) pops only when you come DOWN onto it (falling, your feet at its middle or higher); from below or the
 // side it just boops away. A `gold` one is worth 3 points, a star one 2, the others 1.
 //   1 Warm-up   5 balloons, slow circles 5-9 high (out of reach of a lazy bounce): pop all 5 in 60 s. Learn to hold Jump and steer.
-//   2 Wobblers  2 figure-eights, 2 zigzags and 2 star balloons: pop all 6 in 70 s.
+//   2 Wobblers  2 figure-eights, 2 zigzags and 2 target balloons: pop all 6 in 70 s.
 //   3 Combo     7 balloons that come back 2.5 s after a pop: 30 points in 60 s. Every pop in a row multiplies (x1, x2, x3): a pop on
 //               every bounce keeps the combo; two bounces in a row without a pop end it.
 // The round clock runs only while you are on the trampoline (or above it); a missed round starts again, with the kind help (kindhelp.js).
@@ -354,7 +354,7 @@ export function balloonPath(b, t, speed = 1) {
 export const balloonAt = (i, t, hard = false, round = 0) => balloonPath(BOUNCE_ROUNDS[round].balloons[i], t, hard ? 1 / HARD.balloonPeriod : 1);
 
 // The whole Balloon Bounce game. update(dt, { pos (feet), vy, landed (a trampoline launch this step), active (on or above the mat) })
-// -> events: pop { i, pts, mult }, boop { i } (a star balloon from below), chainEnd, round, again, done.
+// -> events: pop { i, pts, mult }, boop { i } (a target balloon from below), chainEnd, round, again, done.
 export class BounceGame {
   constructor(hard = false) { this.hard = hard; this.t = 0; this.misses = 0; this.wins = 0; this.start(0); }
   start(round) {
@@ -557,7 +557,7 @@ export function ringWish(seat, k) {
 /* ============================== 4. The roller coaster and the slide ============================== */
 
 // The coaster: you stand at the station (166.5, 12, 173.5), go up the lift hill to the west end (chain, 2.5 b/s), swoop down the big
-// drop, along z 208, over a camel hump, round a banked turn north at x 212 and climb gently to the east edge of the Star Stage.
+// drop, along z 208, over a camel hump, round a banked turn north at x 212 and climb gently to the east edge of the Sky Stage.
 export const STAGE = { x0: 196, x1: 206, z0: 196, z1: 206, top: 23, stand: 24, legs: [[199, 199], [203, 199], [199, 203], [203, 203]], end: [206.5, 24, 201.5] };
 export const STATION = { x0: 160, x1: 172, z0: 170, z1: 176, y: 11, car: [166.5, 12, 173.5] };
 export const COASTER = {
@@ -627,7 +627,7 @@ export function makeCoaster(spec = COASTER) {
   return { time, loop: false, length: L, samples: pts, speeds: v, times: t, topIdx, at };
 }
 
-// The slide: from the Star Stage's north-west corner a short run out over the edge, then a helix (2.5 turns) down to the ground (the
+// The slide: from the Sky Stage's north-west corner a short run out over the edge, then a helix (2.5 turns) down to the ground (the
 // player's feet; about 6.6 s). The helix is centred well away from the stage so nothing is in the way, and turns away from it.
 export const SLIDE = { c: [192.3, 192.3], radius: 4.2, a0: Math.PI / 4, turns: 2.5, from: [197.5, 24, 197.5], to: [189.33, 11, 189.33], lead: 0.6, time: 6.6, dir: -1 };
 export function makeHelix(S = SLIDE) {

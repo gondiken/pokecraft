@@ -3,7 +3,7 @@
 // One big climb inside a round well of fizzy soda walls (redesign 2026-10-29, "natural rules"): the foam floor with the way back, the Fizz
 // Ledges (wide foam ledges up the plateau's cliff, a soap pot on each; ride a bubble from one to the next), the Duckling Garden on the
 // plateau (islands, a current, thorny coral, a gust lane, the nest), the Geyser Chimney (a glass-sided tube up to the rim), the rim walk
-// with Captain Suds' throne and his three shield bubbles bobbing on the breeze, and a second way back. Two fizz lifts (lift streams) carry
+// with Captain Suds' throne and his five shield bubbles bobbing on the breeze, and a second way back. Two fizz lifts (lift streams) carry
 // you up once you did a stretch, so a finished climb is never done twice.
 // The rules are pure (bubbles.js); bubblelive.js wires them. Every block here is fixed: the whole well is a keep (no building, no riding).
 import { B, WOOL } from './blocks.js';
@@ -26,20 +26,20 @@ export const LEDGES = [
   { n: 3, x0: 113, x1: 116, z0: 68, z1: 71, top: 13, pot: [116.4, 71.4] },
 ];
 export const CLIMB = { x0: 92, x1: 124, z0: 67, z1: 90 };       // the Fizz Ledges' part of the well (cells), floor to plateau
-export const STAIRS_TOP = { x0: 100, x1: 124, z0: 50, z1: 66 }; // landing on the plateau here from a bubble = the climb done (pw:bubble:stairs)
 // The soap pots (feet height y): the floor's by the first ledge, one on every ledge, the garden's by the islands, three on the balcony.
 export const SOAP_POTS = [
   [100.5, FLOOR + 1, 82.5],
   ...LEDGES.map(l => [l.pot[0], l.top + 1, l.pot[1]]),
   [83.5, MESA.top + 1, 60.5], [67.5, MESA.top + 1, 56.5], [97.5, MESA.top + 1, 61.5],
-  [74.5, 42, 34.5], [86.5, 42, 34.5], // the rim: one under each high shield's way (SHIELDS 2 and 3; the low first one needs none)
+  [74.5, 42, 34.5], [86.5, 42, 34.5], [94.0, 42, 35.8], [101.0, 42, 36.4], // the rim: one under each high shield's way (SHIELDS 2-5; the low first one needs none)
 ];
-export const RIM_POTS = [null, ...SOAP_POTS.slice(-2)]; // (by shield: RIM_POTS[k] is the pot under shield k)
+export const RIM_POTS = [null, ...SOAP_POTS.slice(-4)]; // (by shield: RIM_POTS[k] is the pot under shield k)
 // Moving air you can see (streams of little bubbles): bubbles drift with it, you only while you ride one. period / on / warn: a gust.
 export const WINDS = [
   { id: 'stream', x0: 110, x1: 112, y0: 11, y1: 13, z0: 67, z1: 77, vx: 0, vy: 0, vz: 1.2 },                                      // ledge 2 -> 3: away from the cliff
   { id: 'gust', x0: 109, x1: 121, y0: 14, y1: 23, z0: 67, z1: 72, vx: 0, vy: 0, vz: 1.5, period: 5, on: 1.0, warn: 0.9, phase: 0 }, // ledge 3: off the cliff now and then
-  { id: 'rim', x0: 68, x1: 93, y0: 42, y1: 50, z0: 26, z1: 37, vx: 0, vy: 0, vz: -0.45 },                                         // the rim: a breeze toward the throne
+  { id: 'rim', x0: 70, x1: 96, y0: 42, y1: 50, z0: 26, z1: 38, vx: 0, vy: 0, vz: -0.45 },                                         // the rim: a breeze toward the throne
+  { id: 'rim2', x0: 97, x1: 104, y0: 42, y1: 50, z0: 28, z1: 38, vx: 0.6, vy: 0, vz: -0.2 },                                      // the rim's far end (shield 5): a side breeze, away from it (blow upwind)
 ];
 export const DRIPS = [ // from spouts on the plateau's edge over ledge 3's way up: they pop a bubble under them
   { x: 113.6, z: 67.9, top: 18.4, bottom: 14, period: 2.4, phase: 0, speed: 6 },
@@ -68,8 +68,11 @@ export const GARDEN_RULES = { bounds: GARDEN, nest: NEST, currents: CURRENTS, gu
 // longer as well"): the chimney now stands up out of the rim as a glass-fronted stack (to y 47, the top of the world) with one more
 // stretch in it: a sixth gold ring that turns the other way, then a second, slower arm that turns the other way too. The same pieces,
 // mirrored: gentle variety, not harder. A bar of soap floats over every ring (the ride's checkpoints).
+// Owner 2026-10-30: "I had to do an entire round walk after I finished the chimney to reach Captain Suds. Why?" The chimney now stands
+// in the plateau's north-west corner right beside his balcony (it was at x 46.5, z 40.5, half the well away): the ride puts you down on
+// the balcony's west end (`landing`), facing him, a few steps from his first shield.
 export const CHIMNEY = {
-  x: 46.5, z: 40.5, r: 4.5, wall: 5.8, floor: 19, top: 48.3, stack: 47, door: { a: 0, w: 0.4, y1: 23 }, window: { w: 0.5, y0: 22, y1: 46 },
+  x: 64.5, z: 29.5, r: 4.5, wall: 5.8, floor: 19, top: 48.3, stack: 47, door: { a: 0, w: 0.4, y1: 23 }, window: { w: 0.5, y0: 22, y1: 46 },
   plates: [{ y: 22.6, a: 0, d: 0 }, { y: 25.9, a: Math.PI, d: 2.8 }, { y: 29.2, a: 0.2, d: 2.8 }, { y: 32.5, a: 0.4, d: 2.5, spin: 0.3 }, { y: 36.0, a: 2.4, d: 2.8 }, { y: 42.9, a: 4.0, d: 2.6, spin: -0.22 }],
   fans: [{ y0: 33.3, y1: 34.9, vx: Math.cos(2.0) * 0.8, vz: Math.sin(2.0) * 0.8 }, { y0: 37.6, y1: 38.8, vx: Math.cos(5.0) * 0.6, vz: Math.sin(5.0) * 0.6 }],
   bars: [{ y: 39.6, speed: 1 }, { y: 45.9, speed: -0.75, a0: 4.0 }],
@@ -77,48 +80,54 @@ export const CHIMNEY = {
 CHIMNEY.fan = CHIMNEY.fans[0]; CHIMNEY.bar = CHIMNEY.bars[0];
 CHIMNEY.stars = [{ x: CHIMNEY.x, y: CHIMNEY.floor + 1.0, z: CHIMNEY.z }, ...CHIMNEY.plates.map(p => ({ ...gapOf(CHIMNEY, { ...p, spin: 0 }), y: p.y + 1.6 }))];
 CHIMNEY.window.a = Math.atan2(WELL.z - CHIMNEY.z, WELL.x - CHIMNEY.x);
-CHIMNEY.landing = (() => { const rx = (CHIMNEY.x - WELL.x), rz = (CHIMNEY.z - WELL.z), l = Math.hypot(rx, rz); return [CHIMNEY.x + (-rz / l) * -7, CHIMNEY.z + (rx / l) * -7]; })();
-export const RIM = { r0: 50, y: 41, balcony: { x0: 74, x1: 87, z0: 30, z1: 36 } }; // the rim walk (stand at 42): a ring r0..WELL.r and a balcony
+CHIMNEY.landing = [74.5, 33.5]; // where the ride puts you: the balcony's west end, beside the stack, facing Captain Suds
+export const RIM = { r0: 50, y: 41, balcony: { x0: 73, x1: 101, z0: 29, z1: 37 } }; // the rim walk (stand at 42): a ring r0..WELL.r and Captain Suds' balcony
 export const BOSS_AT = { x: 80, z: 25 };
 // Owner 2026-10-30: "I didn't understand what I was supposed to do with Captain Suds' shields. They didn't seem to be preventing him from
 // battling, and I didn't get that I was supposed to jump on top of them." Now Captain Suds sits sealed inside a big bubble (DOME) over his
 // throne: you can see him waving in there and you can't get in (it boings you back). Each shield bubble sends a trail of little bubbles
-// into the dome; every popped shield pops one of the dome's three skins; the last one bursts it and he is free to battle.
+// into the dome; every popped shield pops one of the dome's skins (one per shield); the last one bursts it and he is free to battle.
 // Shield 1 rests low on the balcony's foam right in front of him (a bubble on a soapy floor is a dome): walk into it and it boings you
-// back, jump onto it and it pops. Shields 2 and 3 bob high on the breeze (too high for a jump from anything you stand on): a bubble from
+// back, jump onto it and it pops. Shields 2 to 5 bob high on the breeze (too high for a jump from anything you stand on): a bubble from
 // the soap pot under each carries you above it, hop off and drop onto its top.
-export const DOME = { x: 80.5, y: 42.6, z: 25.5, r: 3.4, skin: 0.22 }; // its middle, its outer radius, the gap between its three skins
+// Owner 2026-10-30: "Captain Suds is now a great game. In fact, let's add 2 more shields. The first one should still be that simple one."
+// Five shields: 1 the low one, 2 and 3 as before (saved keys keep their meaning), 4 and 5 a little harder: smaller, swaying further and
+// faster, a little further from their pot; 5 in a side breeze off the wall (blow upwind). Fair: a skilled kid pops each every time.
+export const DOME = { x: 80.5, y: 42.6, z: 25.5, r: 3.4, skin: 0.15 }; // its middle, its outer radius, the gap between its skins (one per shield)
 export const SHIELDS = [
   { x: 80.5, y: 41.75, z: 32.6, r: 1.3, ax: 0.35, ay: 0, az: 0.2, period: 6, phase: 0, low: true },
   { x: 74.5, y: 45.5, z: 31.0, r: 1.3, ax: 1.9, ay: 0.3, az: 0.7, period: 6.5, phase: 0 },
   { x: 86.5, y: 45.7, z: 31.0, r: 1.2, ax: 1.1, ay: 0.4, az: 1.7, period: 5, phase: 2 },
+  { x: 93.0, y: 45.6, z: 32.0, r: 1.15, ax: 2.2, ay: 0.4, az: 0.9, period: 5.5, phase: 1 },
+  { x: 98.5, y: 45.6, z: 34.0, r: 1.05, ax: 1.8, ay: 0.5, az: 1.6, period: 4.2, phase: 3 },
 ];
 export const SHIELD = { x: 80.5, y: 45, z: 30.5, radii: SHIELDS.map(s => s.r) }; // (where the shields are, for the guide and the pictures)
 export const LIFTS = [ // switched on by the live part (they are in world.lifts only while on): after the ledges, after the chimney
   { id: 'lift1', x: [124, 125], z: [67, 68], y: [5, 18] },
-  { id: 'lift2', x: [109, 110], z: [40, 41], y: [19, 41] },
+  { id: 'lift2', x: [71, 72], z: [35, 36], y: [19, 41] }, // (owner 2026-10-30: by the chimney's foot, up to Captain Suds' balcony)
 ];
 export const SOAP_FLOWERS = []; // (redesign 2026-10-29: the soap pots replaced them)
 export const ARRIVAL = { x: 80, z: 134 };                      // the bottom way back (you arrive 3 in front of it, looking north)
-export const RIM_DOOR = { x: 100, z: 27 };                     // the way back on the rim (facing south, onto the walk)
+export const RIM_DOOR = { x: 55, z: 30 };                      // the way back on the rim (facing south, onto the walk; owner 2026-10-30: west of the chimney, away from the shields)
 export const BEE = { name: 'Bubble Bee', x: 84, z: 130, facing: [-1, -1], colors: { shirt: 0xffd23a, pants: 0x3a3a4a, hair: 0x3a2a1a, skin: 0xf2d0b0 }, look: 'bubble' };
 
 // The saved keys (in `beaten`) and what is drawn from them. (Redesign 2026-10-29: the keys and their names stay; `stairs` now means the
-// Fizz Ledges and `shield1..3` a shield popped by a stomp: a saved key always still counts.)
+// Fizz Ledges and `shield1..3` a shield popped by a stomp: a saved key always still counts. Owner 2026-10-30: shield4 and shield5 are new; a
+// save with shield1..3 keeps them and only needs the two new ones.)
 export const stairsKey = 'pw:bubble:stairs';
 export const duckKey = n => `pw:bubble:duck${n}`;
 export const chimneyKey = 'pw:bubble:chimney';
 export const shieldKey = n => `pw:bubble:shield${n}`;
-export const BUBBLE_KEYS = () => [stairsKey, duckKey(1), duckKey(2), duckKey(3), chimneyKey, shieldKey(1), shieldKey(2), shieldKey(3)];
-// -> { stairs, ducks (0..3), duck: [bool x3], chimney, shields (0..3), shield: [bool x3], n (stretch steps 0..5), need, done (the three
+export const BUBBLE_KEYS = () => [stairsKey, duckKey(1), duckKey(2), duckKey(3), chimneyKey, ...SHIELDS.map((s, k) => shieldKey(k + 1))];
+// -> { stairs, ducks (0..3), duck: [bool x3], chimney, shields (0..5), shield: [bool x5], n (stretch steps 0..5), need, done (the three
 //      stretches), ready (and the shields), star, lift1, lift2 }
 export function bubbleState(game) {
   const has = k => !!game?.beaten?.includes(k);
-  const duck = [1, 2, 3].map(n => has(duckKey(n))), shield = [1, 2, 3].map(n => has(shieldKey(n)));
+  const duck = [1, 2, 3].map(n => has(duckKey(n))), shield = SHIELDS.map((s, k) => has(shieldKey(k + 1)));
   const stairs = has(stairsKey), chimney = has(chimneyKey), star = !!game?.stars?.includes('bubble');
   const ducks = duck.filter(Boolean).length, shields = shield.filter(Boolean).length;
   const n = (stairs ? 1 : 0) + ducks + (chimney ? 1 : 0), done = n === 5;
-  return { stairs, duck, ducks, chimney, shield, shields, n, need: 5, done, ready: done && shields === 3, star, lift1: stairs || star, lift2: chimney || star };
+  return { stairs, duck, ducks, chimney, shield, shields, n, need: 5, done, ready: done && shields === SHIELDS.length, star, lift1: stairs || star, lift2: chimney || star };
 }
 
 const put = (world, x, y, z, id) => { if (world.inBounds(x, y, z)) world.data[world.index(x, y, z)] = id; };
@@ -150,7 +159,7 @@ export function bubbleAim(world, p, game) {
   }
   if (!st.stairs && !st.star && p.y < MESA.top + 0.5) {
     const l = LEDGES.find(q => q.top + 1 > p.y + 0.5);
-    return l ? word(l.x0 + 2, l.z0 + 2, `🫧 Ledge ${l.n}`) : word(114, 64, '🫧 Up to the top!');
+    return l ? word(l.x0 + 2, l.z0 + 2, `🫧 Climb ${l.n} / 3`) : word(114, 64, '🫧 Up to the top!'); // (owner 2026-10-30: "What is 'ledge'?": the chip and the guide say Climb)
   }
   if (p.y < MESA.top + 0.5) { // down on the floor or a ledge: the fizz lift (on once you did the ledges)
     if (st.lift1) return word(LIFTS[0].x[0] + 1, LIFTS[0].z[0] + 1, '⬆️ The fizz lift');
@@ -162,7 +171,7 @@ export function bubbleAim(world, p, game) {
     return word(at[0], at[1], `🦆 Duckling ${i + 1}`);
   }
   if (!st.chimney && p.y < RIM.y) return word(CHIMNEY.x + CHIMNEY.r + 1, CHIMNEY.z, '🫧 The Chimney Ride');
-  if (st.shields < 3 && !st.star) {
+  if (st.shields < SHIELDS.length && !st.star) {
     if (p.y < RIM.y) return st.lift2 ? word(LIFTS[1].x[0] + 1, LIFTS[1].z[0] + 1, '⬆️ The fizz lift to the rim') : word(CHIMNEY.x + CHIMNEY.r + 1, CHIMNEY.z, '🫧 The Chimney Ride');
     const k = st.shield.findIndex(s => !s), s = SHIELDS[k];
     return word(s.x, s.z, k === 0 ? '🫧 Captain Suds' : '🫧 Shield bubble'); // (the low first shield is right in front of him)
@@ -235,7 +244,7 @@ export function bubbleLand(world, def) {
   placeBoss(world, 'bubble', { x: BOSS_AT.x, y: RIM.y, z: BOSS_AT.z, facing: [0, 1] });
   placeCrew(world, 'bubble', 0, { x: 106, y: MESA.top, z: 57, facing: [1, 1] });                                  // Wanda Wand at the top of the ledges
   placeCrew(world, 'bubble', 1, { x: 77, y: MESA.top, z: 46, facing: [1, -1] });                                  // Duckherd Daisy by the nest
-  placeCrew(world, 'bubble', 2, { x: Math.floor(C.landing[0]) - 2, y: RIM.y, z: Math.floor(C.landing[1]), facing: [1, 0] }); // Mate Fizz by the chimney's stack (where the ride lands you)
+  placeCrew(world, 'bubble', 2, { x: Math.floor(C.landing[0]) + 1, y: RIM.y, z: Math.floor(C.landing[1]) + 2, facing: [-1, 0] }); // Mate Fizz by the chimney's stack (where the ride lands you)
   world.people ??= [];
   world.people.push({ name: BEE.name, title: `${BEE.name} · Bubble Well`, colors: BEE.colors, look: BEE.look, line: 'Dip your wand in a soap pot, blow, hop on!', pos: [BEE.x + 0.5, FLOOR + 1, BEE.z + 0.5], heading: Math.atan2(BEE.facing[0], BEE.facing[1]) });
   // 12. nooks (where the wild Bubble creatures float), rests, the part

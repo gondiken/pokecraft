@@ -279,7 +279,7 @@ const SOUNDS = {
   ticketprize: () => { notes([784, 988, 1175, 1568], 0.08, { len: 0.16, type: 'triangle', vol: 0.26 }); bell(1568, 0.34, 0.5, 0.2); },
   fairtune: () => notes([523, 659, 784, 659, 523, 784, 1047, 784], 0.17, { len: 0.22, type: 'triangle', vol: 0.09 }),
   // T43 harder games (owner 2026-10-27): a new round (a little rising fanfare), a round to try again (a soft, friendly "wah-wah" up), a combo
-  // step (a higher blip each time), a star balloon booped from below, a bumper bot zooming off.
+  // step (a higher blip each time), a target balloon booped from below, a bumper bot zooming off.
   fairround: () => { notes([659, 784, 1047], 0.09, { len: 0.14, type: 'triangle', vol: 0.22 }); bell(1319, 0.3, 0.4, 0.16); },
   fairagain: () => { tone(392, { len: 0.18, type: 'triangle', vol: 0.16, slide: -40 }); tone(523, { at: 0.2, len: 0.22, type: 'triangle', vol: 0.16, slide: 60 }); },
   faircombo: () => { tone(1047, { len: 0.06, type: 'square', vol: 0.07 }); tone(1568, { at: 0.06, len: 0.1, type: 'triangle', vol: 0.14 }); },

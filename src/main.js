@@ -203,6 +203,7 @@ function snapshot() {
     missions: game.missionState, // T29
     keys: game.keys,
     swaps: game.swaps?.toSave(), // wave 17: gifts and trades on the way (swapcore.js)
+    records: game.records, // owner 2026-10-30: time trials (houserun.js; cleaned by its loadRecords when a world uses them)
     toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
@@ -304,6 +305,7 @@ function startNew(starterId) {
   game.box = [];
   game.book.reset(); game.book.syncTeam();
   game.swaps?.load(null); // wave 17
+  game.records = {}; // owner 2026-10-30: time trials (houserun.js)
   game.cubes = 10;
   game.time = 0.05;
   game.badges = [];
@@ -347,6 +349,7 @@ function continueGame(saved) {
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
   game.swaps?.load(saved.swaps); // wave 17: old saves have none
+  game.records = saved.records ?? {}; // owner 2026-10-30: time trials (houserun.js loadRecords cleans them; old saves have none)
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
@@ -528,13 +531,21 @@ game.openNav = () => {
   if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking && !game.hideSeek?.frozen && !dark && !game.realms.busy) togglePanel('nav');
 };
 game.closeNav = () => { if (game.ui.navOpen) togglePanel(); };
-// Wave 17: the Swap panel (gifts and trades); swaps.js opens it, it refreshes when it is already open
-game.openSwap = () => {
-  if (game.swapUi.isOpen) { game.swapUi.refresh(); return; }
-  if (game.ui.panelOpen) game.ui.closePanel();
-  if (game.started && !game.inBattle) togglePanel('swap');
+// Wave 17 (owner 2026-10-30): E / a tap on a friend opens the friend menu (Battle, Trade, Hide and seek); a trade happens in the
+// team screen (P) in trade mode, opened on both sides at once (swaps.js calls openTrade / closeTrade).
+game.openFriend = avatar => {
+  if (!game.started || game.inBattle || game.ui.panelOpen || game.ui.asking) return;
+  game.swapUi.menuFor(avatar);
+  togglePanel('friend');
 };
-document.getElementById('swap-close').addEventListener('click', () => { if (game.swapUi.isOpen) togglePanel('swap'); });
+game.closeFriend = () => { if (game.swapUi.isOpen) togglePanel(); };
+game.openTrade = () => {
+  if (game.ui.panelOpen) game.ui.closePanel();
+  game.ui.tradeView = game.swapUi.view;
+  if (!game.ui.panelOpen) togglePanel('team');
+};
+game.closeTrade = () => { if (game.ui.tradeView && game.ui.panelOpen) togglePanel(); else game.ui.tradeView = null; };
+document.getElementById('friend-close').addEventListener('click', () => { if (game.swapUi.isOpen) togglePanel(); });
 document.getElementById('nav-close').addEventListener('click', () => togglePanel('nav'));
 
 document.addEventListener('pointerlockchange', () => {
@@ -664,7 +675,7 @@ document.addEventListener('mouseup', e => { if (e.button === 0 && game.player) g
 // Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
 // use (T31): E / tap / the touch action button, not a mouse click (a click on a Bed breaks it, a use sleeps in it).
 function interact(use = false) {
-  if (target.player) { if (!game.hideSeek.tag(target.player)) game.duels.challenge(target.player); return true; } // T30
+  if (target.player) { if (!game.hideSeek.tag(target.player)) game.openFriend(target.player); return true; } // T30; wave 17: the friend menu
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   if (target.near && game.gymLive.use(game.player)) return true; // T40: a live part's own action ("Fire!", "Kick!")
@@ -764,7 +775,7 @@ function tapAt(x, y) {
   const other = game.mp.pick(origin, direction, reach);
   const block = raycastVoxel(game.world, origin, direction, reach);
   const wall = block ? block.t : Infinity;
-  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.duels.challenge(other.player); } // T30
+  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.openFriend(other.player); } // T30; wave 17: the friend menu
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
   else if (game.gymLive.tap(origin, direction)) { /* T44: a whack at the piñata */ }
@@ -1145,7 +1156,7 @@ function updateTarget() {
     highlight.visible = true;
     highlight.scale.set(1, 2, 1);
     highlight.position.set(target.npc.pos.x, target.npc.pos.y + 1, target.npc.pos.z);
-  } else if (target.block && !BLOCKS[target.block.id]?.hidden) { // T40a.5: a hidden block is under a model: no box outline
+  } else if (target.block && !BLOCKS[target.block.id]?.hidden && !game.gymLive.noOutline?.(target.block)) { // owner 2026-10-30: + a live part may hide it (the Portal House's doorways) // T40a.5: a hidden block is under a model: no box outline
     highlight.visible = true;
     highlight.scale.setScalar(1);
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
@@ -1153,7 +1164,7 @@ function updateTarget() {
   const how = touchMode ? 'tap' : 'click or E';
   const talk = target.npc && (game.gymLive.talkPrompt(target.npc) ?? game.bosses.talkPrompt(target.npc)); // T33, T40
   const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
-  game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to ask for a battle`)
+  game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to play together`) // wave 17: the friend menu
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild?.wrapped ? `A gift box! 🎁 · ${how} to open` // T44
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
@@ -1166,7 +1177,7 @@ function updateTarget() {
   // T39c: the fixed-slot buttons. The action button's word says what it will do; the rest dim, never hide.
   const p = game.player;
   const reach = target.block && target.block.t <= REACH;
-  let act = target.player ? (game.hideSeek.action(target.player) ?? 'Battle!')
+  let act = target.player ? (game.hideSeek.action(target.player) ?? 'Play!') // wave 17: the friend menu
     : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : target.npc.kind === 'guest' || target.npc.kind === 'tower' ? 'Talk' : 'Battle!'))
     : target.wild?.wrapped ? 'Open!' // T44
     : target.wild ? 'Battle!'

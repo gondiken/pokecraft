@@ -21,13 +21,14 @@
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { DoorGlow } from './portal.js';
-import { buildWand, buildBolt, buildDoorFrames, DoorLight, WAND_COLOURS } from './portalprops.js';
+import { buildWand, buildBolt, buildDoorFrames, DoorLight, WAND_COLOURS, buildMiniCube } from './portalprops.js';
 import { LiveCells } from './livecells.js';
 import { Mover, makePath } from './mover.js';
 import { FUN } from './forfun.js';
 import { PORTAL, BALL, exitOf, exitSpeed, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, slotAimed, roomKey, roomState,
   ROOMS_NEED, flingPoint, ballStart, ballNext, inCup, bridgeCells } from './portalplay.js';
-import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOORS, SWIRLS, swirlById, doorTarget, exitTarget, LAST_ROOM } from './portalhouse.js';
+import { R, ROOMS, STUDY_ROOM, STUDY, PORCH, HALL, DOORS, SWIRLS, swirlById, doorTarget, exitTarget, LAST_ROOM, RUN_PLATE, RUN_BOARD } from './portalhouse.js';
+import { RUN, RunClock, MEDAL_ICON, fmtTime, recordRun, loadRecords } from './houserun.js'; // owner 2026-10-30: the House Run
 import { pictureWorld } from './pictureworlds.js';
 import { sound } from './sound.js';
 
@@ -85,6 +86,11 @@ export class PortalHouseLive {
     this.bridge = [];             // room 10: the cells of the bridge of light now ([x, y, z])
     this.bridgeSet = new Set();
     this.bridgeKey = '';
+    this.run = new RunClock();    // the House Run (houserun.js): one timed run through all ten rooms
+    this.lastRun = null;          // the last finished run: { total, splits, medal, newBest }
+    this.plateWait = false;       // after a run stops or ends on the plate: step off before it counts again
+    this.boardKey = null;
+    game.records = loadRecords(game.records); // (the save field `records`, cleaned)
     this.build();
   }
 
@@ -94,8 +100,8 @@ export class PortalHouseLive {
     if (!this.game.scene) return;
     this.aimMesh = this.mark(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x4a8cff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide })));
     this.aimMesh.visible = false; this.aimMesh.renderOrder = 8;
-    const star = new THREE.OctahedronGeometry(0.28, 0);
-    this.sparkMesh = this.mark(new THREE.InstancedMesh(star, new THREE.MeshBasicMaterial({ color: 0xffe27a }), SPARK_MAX));
+    // owner 2026-10-30: a star is only ever the Wizard's star (the bridge), so a "spark" is a little spinning Capture Cube (what it gives you)
+    this.sparkMesh = this.mark(new THREE.InstancedMesh(buildMiniCube(), new THREE.MeshBasicMaterial({ vertexColors: true }), SPARK_MAX));
     this.sparkMesh.count = 0; this.sparkMesh.visible = false;
     this.dummy = new THREE.Object3D();
     // the sliding white pad (room 6): a white square with a grey ring, drawn under the ceiling
@@ -138,6 +144,52 @@ export class PortalHouseLive {
     this.emitter = this.mark(new THREE.Mesh(new THREE.BoxGeometry(b.dir[0] ? 0.2 : xs.length, 0.3, b.dir[0] ? zs.length : 0.2), new THREE.MeshBasicMaterial({ color: 0xdffaff })));
     this.emitter.position.set(Math.min(...xs) + (b.dir[0] ? 0 : xs.length / 2), b.level + 1.0, Math.min(...zs) + (b.dir[0] ? zs.length / 2 : 0));
     this.emitter.visible = false;
+    // the House Run: a gold plate on the Hall's floor (a disc and a ring) and the clock board above doors 1 and 2
+    const [px, py, pz] = RUN_PLATE.at;
+    this.plateMesh = this.mark(new THREE.Mesh(new THREE.CylinderGeometry(RUN_PLATE.r, RUN_PLATE.r + 0.05, 0.08, 28), new THREE.MeshBasicMaterial({ color: 0xffc83a })));
+    this.plateMesh.position.set(px, py + 0.04, pz);
+    this.plateRing = this.mark(new THREE.Mesh(new THREE.RingGeometry(RUN_PLATE.r - 0.2, RUN_PLATE.r - 0.08, 28), new THREE.MeshBasicMaterial({ color: 0xa8761a, side: THREE.DoubleSide })));
+    this.plateRing.rotation.x = -Math.PI / 2; this.plateRing.position.set(px, py + 0.085, pz);
+    this.plateMesh.visible = this.plateRing.visible = false;
+    if (typeof document !== 'undefined') {
+      this.boardCanvas = document.createElement('canvas'); this.boardCanvas.width = 1024; this.boardCanvas.height = 488;
+      this.boardTex = new THREE.CanvasTexture(this.boardCanvas); this.boardTex.colorSpace = THREE.SRGBColorSpace;
+      const bw = RUN_BOARD.x[1] - RUN_BOARD.x[0], bh = RUN_BOARD.y[1] - RUN_BOARD.y[0];
+      this.boardMesh = this.mark(new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: this.boardTex })));
+      this.boardMesh.position.set((RUN_BOARD.x[0] + RUN_BOARD.x[1]) / 2, (RUN_BOARD.y[0] + RUN_BOARD.y[1]) / 2, RUN_BOARD.z);
+      this.boardMesh.visible = false;
+    }
+  }
+  // The clock board: the run's name, how to start, your best and medal, the medal times and the rooms of your last run.
+  drawBoard() {
+    const rec = this.game.records?.[RUN.key] ?? null, last = this.lastRun;
+    const key = JSON.stringify([rec, last]);
+    if (!this.boardCanvas || key === this.boardKey) return;
+    this.boardKey = key;
+    const c = this.boardCanvas.getContext('2d'), W = c.canvas.width, H = c.canvas.height;
+    c.fillStyle = '#3a2a5a'; c.fillRect(0, 0, W, H);
+    c.strokeStyle = '#ffc83a'; c.lineWidth = 14; c.strokeRect(7, 7, W - 14, H - 14);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ffffff';
+    c.font = 'bold 64px sans-serif'; c.fillText('⏱ House Run', W / 2, 62);
+    c.font = '32px sans-serif'; c.fillStyle = '#e8dcff'; c.fillText('Step on the gold plate: all ten rooms in a row!', W / 2, 118);
+    c.font = 'bold 40px sans-serif'; c.fillStyle = '#ffe9a8';
+    c.fillText(`Best: ${rec ? `${fmtTime(rec.best)} ${rec.medal ? MEDAL_ICON[rec.medal] : ''}` : '-'}`, W / 2, 172);
+    c.font = '32px sans-serif'; c.fillStyle = '#ffffff';
+    c.fillText(RUN.medals.map(([m, s]) => `${MEDAL_ICON[m]} ${fmtTime(s).replace(/\.0$/, '')}`).join('     '), W / 2, 222);
+    const splits = last?.splits ?? rec?.splits ?? [];
+    if (splits.length) {
+      c.font = '28px sans-serif'; c.fillStyle = '#e8dcff';
+      c.fillText(last ? `Your last run: ${fmtTime(last.total)}${last.medal ? ' ' + MEDAL_ICON[last.medal] : ''}` : 'Your best run', W / 2, 270);
+      c.font = 'bold 30px sans-serif';
+      splits.forEach((s, i) => {
+        const col = i % 5, row = Math.floor(i / 5), x = 120 + col * 196, y = 330 + row * 62;
+        const best = rec?.bests?.[i] != null && Math.abs(rec.bests[i] - s) < 1e-6;
+        c.fillStyle = best ? '#9dffb0' : '#ffffff';
+        c.fillText(`${i + 1}: ${fmtTime(s)}`, x, y);
+      });
+      c.font = '24px sans-serif'; c.fillStyle = '#9dffb0'; c.fillText('green = your best for that room', W / 2, 448);
+    }
+    this.boardTex.needsUpdate = true;
   }
   // The wand's star in the world now (for the bolt), from the camera of the last frame.
   wandTip() {
@@ -157,7 +209,7 @@ export class PortalHouseLive {
     let g = this.glows.get(id);
     if (!g && this.game.scene && sw.kind === 'door') { g = new DoorLight(this.game.scene, sw); this.glows.set(id, g); return g; } // a door: warm light, no swirl
     if (!g && this.game.scene) {
-      const lite = sw.kind !== 'warp';
+      const lite = !(sw.kind === 'warp' && !sw.back);
       g = new DoorGlow(this.game.scene, null, null, { normal: sw.normal, centre: this.cen(sw), w: sw.w, h: sw.h, lite, colours: COLOURS[opts.colour ?? sw.colour] });
       g.group.userData.portalHouse = true;
       this.glows.set(id, g);
@@ -281,7 +333,7 @@ export class PortalHouseLive {
   through(sw, drop) {
     const n = this.where(), room = this.isRoom(n) ? this.room(n) : null;
     this.game.riding?.stop?.('quiet');
-    if (sw.kind === 'warp') return this.warp(sw.to);
+    if (sw.kind === 'warp') { if (sw.back) this.once('back', 'Back to the start of this room!'); return this.warp(sw.to); } // (a back swirl keeps your swirls)
     if (sw.kind === 'door') return this.door(sw);
     if (sw.kind === 'pair') {
       const other = swirlById(sw.pair), out = exitOf(other, other.centre, 0);
@@ -359,10 +411,13 @@ export class PortalHouseLive {
 
   forget() { this.yours = null; this.orange = null; this.chain = { key: null, n: 0 }; }
   door(sw) {
-    if (sw.home) { this.forget(); return this.warp(sw.to); } // back to the Hall
+    if (sw.home) { if (this.run.running) this.stopRun(); this.forget(); return this.warp(sw.to); } // back to the Hall
     if (sw.exit) { // the room is done
       const n = sw.room;
       const key = roomKey(n);
+      const onRun = this.run.running && this.run.done(n) != null; // the House Run: this room's split
+      if (onRun && this.run.finished) this.finishRun();
+      if (onRun && this.game.beaten.includes(key)) { sound.play('checkpoint'); this.forget(); return this.warp(exitTarget(n)); } // (no "done again" toast on a run)
       if (!this.game.beaten.includes(key)) {
         this.game.beaten.push(key);
         const d = roomState(this.game);
@@ -407,6 +462,7 @@ export class PortalHouseLive {
   /* ---------- every frame ---------- */
   step(dt) { this.advance(dt); } // tests drive the clock (manual = true)
   update(dt) {
+    if (this.game.inBattle && this.run.state !== 'idle') this.stopRun(); // a battle stops the House Run (nothing is saved)
     if (!this.game.scene && !this.manual) return;
     if (!this.manual && this.running()) this.advance(dt);
     this.cells.flush();
@@ -419,6 +475,7 @@ export class PortalHouseLive {
     const n = this.where();
     if (n !== this.lastPart) this.enterPart(n, this.lastPart);
     if (n === null || n === 'hub') this.leaveHouse();
+    this.runTick(dt, n);
     // the Hall hands out the Wand
     if (n === 'hall' || this.isRoom(n)) {
       if (!this.wand) { if (n === 'hall') this.giveWand(); else this.wand = true; }
@@ -456,6 +513,7 @@ export class PortalHouseLive {
   // You went from part `from` into part `n`: say the room's rule, start the Ball Room afresh when you leave it.
   enterPart(n, from) {
     this.lastPart = n;
+    if (this.run.running && n !== from && (n === 'hall' ? this.run.next > 1 : !this.isRoom(n) || n !== this.run.next)) this.stopRun(); // off the run's way
     if (from === 7 && n !== 7) this.resetBall();
     if (from === QUICK && n !== QUICK) this.gateUntil = -1; // the door shuts behind you
     if (this.isRoom(n)) { // your swirls stay in the room they were made in
@@ -492,6 +550,43 @@ export class PortalHouseLive {
   leaveHouse() {
     this.game.ui.setScore?.(null);
     this.misses = {};
+    if (this.run.state !== 'idle') this.stopRun();
+  }
+
+  /* ---------- the House Run (houserun.js) ---------- */
+  onPlate(n = this.where()) {
+    const p = this.p, [x, y, z] = RUN_PLATE.at;
+    return n === 'hall' && p.onGround && Math.hypot(p.pos.x - x, p.pos.z - z) <= RUN_PLATE.r && Math.abs(p.pos.y - y) < 0.4;
+  }
+  runTick(dt, n) {
+    const r = this.run, on = this.onPlate(n);
+    if (!on) this.plateWait = false;
+    if (r.state === 'idle' && on && !this.plateWait) { r.arm(); sound.play('cube'); this.once('runplate', 'The House Run! Wait for Go, then all ten rooms in a row. Quick!'); }
+    if (r.counting && !on) { r.disarm(); return; }
+    const ev = r.tick(dt);
+    if (ev === 'count') sound.play('cube');
+    if (ev === 'go') { sound.play('whistle'); this.forget(); }
+  }
+  // The run stops quietly (a battle, leaving the House, another way than the next room): nothing is saved.
+  stopRun() {
+    const was = this.run.stop();
+    this.plateWait = true;
+    if (was === 'run') this.say('Run stopped. Step on the gold plate to try again!');
+  }
+  finishRun() {
+    const g = this.game, r = this.run, total = r.t, splits = [...r.splits];
+    r.stop();
+    this.plateWait = true;
+    g.records ??= {};
+    const before = g.records[RUN.key]?.best ?? null;
+    const res = recordRun(g.records, RUN.key, total, splits);
+    this.lastRun = { total, splits, medal: res.medal, newBest: res.newBest };
+    const icon = res.medal ? ` ${MEDAL_ICON[res.medal]}` : '';
+    sound.play(res.newBest ? 'badge' : 'win');
+    if (res.newBest) g.ui.celebrate?.(`⏱ ${fmtTime(total)}${icon}`, before == null ? 'Your first House Run! Your rooms are on the board.' : 'A new best House Run! Your rooms are on the board.', 4500);
+    else this.say(`⏱ ${fmtTime(total)}${icon} (your best: ${fmtTime(res.record.best)}). Your rooms are on the board.`);
+    if (res.firstGold) { g.cubes += RUN.cubes; this.say(`🥇 Gold! +${RUN.cubes} Capture Cubes`); g.ui.renderHud?.(); }
+    g.save?.(true);
   }
   hallDoors(n) {
     const key = `${this.done.done.join('')}|${this.pressed}|${this.gateOpen()}`;
@@ -535,8 +630,22 @@ export class PortalHouseLive {
     if (here && next.length > this.bridge.length && this.bridge.length) { sound.play('swirlzip'); this.once('bridge', 'The bridge goes through your swirls!'); }
     this.bridge = next; this.bridgeSet = nextSet;
   }
+  // gymLive hook (owner 2026-10-30): no block outline round a doorway (its back plate showed through the warm light as thin lines, and
+  // the blocks behind the wooden frame drew lines round the posts): the opening, its back plate, the alcove's sides and the wall round it.
+  noOutline(b) {
+    if (!this.plates) {
+      this.plates = new Set();
+      for (const s of SWIRLS) if (s.alcove) {
+        const [nx, , nz] = s.normal, lx = nx ? 0 : 1, lz = nx ? 1 : 0;
+        for (const [x, y, z] of s.cells) for (const d of [0, 1]) for (const l of [-1, 0, 1]) for (const dy of [0, 1]) this.plates.add(`${x - nx * d + lx * l},${y + dy},${z - nz * d + lz * l}`);
+      }
+    }
+    return this.plates.has(`${b.x},${b.y},${b.z}`);
+  }
+  // A room's sparks are out (sparksOpen: only while its door is open, the Quick Room).
+  sparksOut(n) { return !this.room(n).sparksOpen || this.gateOpen(); }
   pickSparks(n, pos) {
-    if (!this.isRoom(n)) return;
+    if (!this.isRoom(n) || !this.sparksOut(n)) return;
     this.room(n).sparks.forEach((s, i) => {
       const k = `${n}:${i}`;
       if (this.sparksGot.has(k)) return;
@@ -544,7 +653,7 @@ export class PortalHouseLive {
       this.sparksGot.add(k);
       this.game.cubes += 1;
       sound.play('keyfound');
-      this.say('✨ A spark! +1 Capture Cube');
+      this.say('A Capture Cube! +1');
       this.game.ui.renderHud?.();
     });
   }
@@ -674,17 +783,24 @@ export class PortalHouseLive {
     // the sparks
     if (this.sparkMesh) {
       let c = 0;
-      if (this.isRoom(n)) this.room(n).sparks.forEach((s, i) => {
+      if (this.isRoom(n) && this.sparksOut(n)) this.room(n).sparks.forEach((s, i) => {
         if (this.sparksGot.has(`${n}:${i}`) || c >= SPARK_MAX) return;
         this.dummy.position.set(s[0], s[1] + Math.sin(this.clock * 2 + i) * 0.15, s[2]);
-        this.dummy.rotation.set(0, this.clock * 1.5 + i, 0);
-        this.dummy.scale.setScalar(1 + 0.15 * Math.sin(this.clock * 5 + i));
+        this.dummy.rotation.set(0.35, this.clock * 1.5 + i, 0.2);
+        this.dummy.scale.setScalar(1 + 0.08 * Math.sin(this.clock * 5 + i));
         this.dummy.updateMatrix();
         this.sparkMesh.setMatrixAt(c++, this.dummy.matrix);
       });
       this.sparkMesh.count = c;
       this.sparkMesh.visible = c > 0;
       this.sparkMesh.instanceMatrix.needsUpdate = true;
+    }
+    // the House Run's plate (it glows while the countdown runs) and its board, in the Hall
+    if (this.plateMesh) {
+      const hall = n === 'hall' || n === 'porch';
+      this.plateMesh.visible = this.plateRing.visible = hall;
+      if (hall) this.plateMesh.material.color.setHex(this.run.counting ? (Math.sin(this.clock * 12) > 0 ? 0xfff2a0 : 0xffc83a) : 0xffc83a);
+      if (this.boardMesh) { this.boardMesh.visible = hall; if (hall) this.drawBoard(); }
     }
     this.people(n);
     this.score(n);
@@ -750,8 +866,11 @@ export class PortalHouseLive {
   score(n) {
     const ui = this.game.ui;
     if (!this.isRoom(n) && n !== 'hall' && n !== 'porch' && n !== 'study') { ui.setScore?.(null); return; }
-    const d = this.done;
-    ui.setScore?.(d.ready ? { text: `🌀 ${d.n} / ${d.need} · ✨ ${this.sparksGot.size} · To Grandpa Arch!`, done: true } : { text: `🌀 Rooms ${d.n} / ${d.need} · ✨ ${this.sparksGot.size}`, done: false });
+    const d = this.done, run = this.run;
+    if (run.counting) { ui.setScore?.({ text: `⏱ ${run.shown}...`, done: false }); return; } // the House Run's countdown
+    if (run.running) { ui.setScore?.({ text: `⏱ ${fmtTime(run.t)} · ${run.next === 1 ? 'Into door 1!' : `Room ${run.next} / ${RUN.rooms}`}`, done: false }); return; }
+    const cubes = this.sparksGot.size ? ` · +${this.sparksGot.size} Cubes` : ''; // owner 2026-10-30: no star here but the Wizard's
+    ui.setScore?.(d.ready ? { text: `🌀 ${d.n} / ${d.need}${cubes} · To Grandpa Arch!`, done: true } : { text: `🌀 Rooms ${d.n} / ${d.need}${cubes}`, done: false });
   }
 
   /* ---------- the guide arrow ---------- */
@@ -762,7 +881,7 @@ export class PortalHouseLive {
     const pt = (x, z, text) => ({ x, z, text });
     if (n === 'porch') return pt(HALL.entrance.x + 0.5, 24.5, (a, m) => `Into the Hall of Swirls ${a} ${m}m`);
     if (n === 'hall') {
-      const k = d.ready ? DOORS : d.done.findIndex(v => !v) + 1;
+      const k = this.run.state !== 'idle' ? 1 : d.ready ? DOORS : d.done.findIndex(v => !v) + 1; // (the House Run starts at door 1)
       const door = swirlById(`hall.d${k}`);
       return pt(door.centre[0], door.centre[2], (a, m) => (k === DOORS ? `Grandpa Arch is in the Study ${a} ${m}m` : `Room ${k} ${a} ${m}m`));
     }
@@ -788,7 +907,7 @@ export class PortalHouseLive {
   info() {
     return { part: this.partKey, wand: this.wand, yours: this.yours, orange: this.orange, clock: this.clock, trips: this.trips, sparks: this.sparksGot.size, done: this.done.n, chain: { ...this.chain }, flying: !!this.mover, last: this.lastTrip, glows: this.glows.size, meshes: this.meshes.length, peak: this.peak,
       ball: this.ball ? { at: this.ballAt(), rest: this.ball.rest != null } : null, pressed: this.pressed, balls: this.balls, misses: { ...this.misses }, wandShown: this.wandShown, bolt: !!this.bolt, frames: [...this.frames.keys()],
-      gate: this.gateOpen(), bridge: this.bridge.length };
+      gate: this.gateOpen(), bridge: this.bridge.length, run: { state: this.run.state, t: this.run.t, next: this.run.next, splits: [...this.run.splits], left: this.run.left, last: this.lastRun } };
   }
 
   dispose() {

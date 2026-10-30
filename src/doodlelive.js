@@ -1,10 +1,11 @@
-// T45: the live part of the Sketchbook (LIVE.doodle): Draw! (owner 2026-10-27, plans/T45.md "Challenge rework"). Stand on a star pad,
-// press Draw!, and the giant pencil draws your bridge the way you face (owner 2026-10-29) while you walk on it: limited ink (star dots fill it and keep the
+// T45: the live part of the Sketchbook (LIVE.doodle): Draw! (owner 2026-10-27, plans/T45.md "Challenge rework"). Stand on a pencil pad,
+// press Draw!, and the giant pencil draws your bridge the way you face (owner 2026-10-29) while you walk on it: limited ink (ink pots fill it and keep the
 // line safe up to them), ink blots, doodle bees, wind and, on the Eraser Hill, Rubber the Eraser coming along the line behind you.
 // tracing.js has the rules (pure). Everything is per player and in memory except the finished lines, which are saved `beaten` keys
 // (pw:doodle:line1..8; a later visit draws them as the neat bridges of doodleland.js). The ink is never an edit: it is drawn with
 // world.setLive through LiveCells (never inside the player). Never a fail: a fall, a catch or an empty pencil puffs you back to the
-// last star dot (or the pad) and the line stays up to there. Owner 2026-10-28: a drawn line stays playable ("Draw again!", just for
+// last ink pot (or the pad) and the line stays up to there. Owner 2026-10-30: only the Wizard's star looks like a star, so the old
+// "star dots" are little ink pots (the data still calls them stars) and the star pad is a pencil pad. Owner 2026-10-28: a drawn line stays playable ("Draw again!", just for
 // fun once saved: forfun.js); its bridge is lifted while you redraw it and always comes back (Lift below).
 import * as THREE from 'three';
 import { B, isSolid } from './blocks.js';
@@ -20,7 +21,7 @@ const WORDS = {
   first: 'Draw the line before this one first!',
   intro: {
     2: 'Ink blot ahead! Steer round it.',
-    3: 'Not much ink! Draw through the star ⭐',
+    3: 'Not much ink! Draw through the ink pot 🖋️',
     4: 'A doodle bee! Stop, wait, then go.',
     5: 'Draw round and round the tower to climb up!',
     6: 'Uh oh, Rubber the Eraser! Keep walking! The wind pushes: turn into it.',
@@ -41,10 +42,10 @@ const WORDS = {
     overrun: 'Stay behind your pencil!',
     dry: 'Out of ink!',
   },
-  star: '⭐ Star! Full of ink.',
+  star: '🖋️ An ink pot! Full of ink.',
   nibble: 'Bzz! A bee nibbled your line!',
   rubberGo: 'Here comes Rubber the Eraser! Keep walking!',
-  low: 'Ink is low! Find a star ⭐',
+  low: 'Ink is low! Find an ink pot 🖋️',
   wait: 'The pencil waits for you. Walk on your line!',
   stop: 'The pencil rests. Press Draw! to try again.',
   again: `Draw this line again! ${FUN.tag}`,
@@ -87,10 +88,27 @@ export function buildRubber() { // Rubber the Eraser: a pink eraser block with a
   g.userData.dispose = () => g.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   return g;
 }
-function starGeometry() { // a flat five-point star, standing up (it spins round y)
-  const s = new THREE.Shape();
-  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.26 : 0.6; (i ? s.lineTo : s.moveTo).call(s, Math.cos(a) * r, Math.sin(a) * r); }
-  return new THREE.ShapeGeometry(s);
+// A little ink pot (owner 2026-10-30: no stars but the Wizard's): a round blue-black jar with a shine, a cork and a drop of ink on its
+// lip; one geometry with vertex colours (the instanced mesh keeps its colour in the pencil drawing).
+function inkPotGeometry() {
+  const parts = [
+    [new THREE.CylinderGeometry(0.42, 0.46, 0.62, 14), 0x23326e, 0, -0.08, 0],  // the jar
+    [new THREE.CylinderGeometry(0.24, 0.3, 0.16, 12), 0x23326e, 0, 0.3, 0],     // its shoulder
+    [new THREE.CylinderGeometry(0.18, 0.18, 0.2, 10), 0xc8935a, 0, 0.46, 0],    // the cork
+    [new THREE.BoxGeometry(0.12, 0.3, 0.05), 0xdfe8ff, -0.2, -0.02, 0.44],      // a shine on the glass
+    [new THREE.SphereGeometry(0.09, 8, 6), 0x3a56d8, 0.2, 0.32, 0.12],         // a drop of ink
+  ];
+  const pos = [], col = [], c = new THREE.Color();
+  for (const [geo, hex, x, y, z] of parts) {
+    const g = (geo.index ? geo.toNonIndexed() : geo).translate(x, y, z), P = g.attributes.position;
+    c.set(hex);
+    for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); col.push(c.r, c.g, c.b); }
+    geo.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return out;
 }
 // owner 2026-10-28: line 3 has 4 blots and only 3 were drawn, so the last one (by the landing strip) stopped the pencil unseen
 const MAX_OF = k => Math.max(1, ...COURSES.map(c => (c[k] || []).length));
@@ -153,7 +171,7 @@ export class DoodleLive {
     this.rubber = buildRubber();
     this.rubber.visible = false;
     const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; m.count = n; return m; };
-    this.stars = inst(starGeometry(), new THREE.MeshBasicMaterial({ color: PENCIL, side: THREE.DoubleSide }), MAX_STARS);
+    this.stars = inst(inkPotGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true }), MAX_STARS); // the ink pots
     this.stars.userData.keepColour = true;
     this.blots = inst(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x24222c }), MAX_BLOTS);
     this.bees = inst(new THREE.BoxGeometry(0.7, 0.45, 0.45), new THREE.MeshBasicMaterial({ color: 0xffc83a }), MAX_BEES);
@@ -274,11 +292,11 @@ export class DoodleLive {
     this.start(i);
     return true;
   }
-  aimTip() { // the guide while you draw: the next star, else the next page
+  aimTip() { // the guide while you draw: the next ink pot, else the next page
     const c = this.cur;
     if (!c) return null;
     const star = c.course.stars.find((s, i) => !c.st.taken.has(i));
-    if (star) return { x: star.x, z: star.z, text: () => 'Draw through the star ⭐ for more ink!' };
+    if (star) return { x: star.x, z: star.z, text: () => 'Draw through the ink pot 🖋️ for more ink!' };
     const t = c.course.target;
     return { x: (t[0] + t[1] + 1) / 2, z: (t[2] + t[3] + 1) / 2, text: () => '✏️ Draw your line to the next page!' };
   }
@@ -430,7 +448,7 @@ export class DoodleLive {
       else if (e.kind === 'back') {
         const atPad = st.ckpt.s === 0;
         if (e.reason === 'caught') sound.play('doodlerub'); // (the puff has its own sound)
-        this.toast(`${WORDS.back[e.reason]} Back to the ${atPad ? 'pad' : 'star'}.`);
+        this.toast(`${WORDS.back[e.reason]} Back to the ${atPad ? 'pad' : 'ink pot'}.`);
         this.applyInk();
         this.puffTo(e.stand, st.tip.h);
         c.low = false;
@@ -477,18 +495,18 @@ export class DoodleLive {
       this.ring.visible = true;
       this.ring.position.set(a[0], c.st.tip.row + 1.03, a[1]);
     } else this.ring.visible = false;
-    // Rubber: on the Eraser Hill while you draw, waiting at the last star (or the pad), then on his way along your line
+    // Rubber: on the Eraser Hill while you draw, waiting at the last ink pot (or the pad), then on his way along your line
     if (c && c.st.rubber) {
       const r = c.st.rubber, q = pointAt(c.st, r.on ? r.s : c.st.ckpt.s);
       this.rubber.visible = true;
       this.rubber.position.set(q[0], q[1] + 1, q[2]);
       this.rubber.rotation.y = -q[3];
     } else this.rubber.visible = false;
-    // the stars, blots and bees of the line you draw (or the next one)
+    // the ink pots, blots and bees of the line you draw (or the next one)
     const k = this.shownLine(), course = k >= 0 ? this.courseOf(k) : null, clock = c ? c.st.clock : this.clock;
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
     const put = (mesh, i, show, x, y, z, s, yaw = 0) => { Q.setFromAxisAngle(Y, yaw); P.set(x, y, z); S.set(show ? s[0] : 0, show ? s[1] : 0, show ? s[2] : 0); mesh.setMatrixAt(i, M.compose(P, Q, S)); };
-    for (let i = 0; i < MAX_STARS; i++) { const sd = course?.stars[i]; put(this.stars, i, !!sd && !(c && c.st.taken.has(i)), sd?.x ?? 0, (sd?.y ?? 0) + 0.6 + 0.15 * Math.sin(clock * 3 + i), sd?.z ?? 0, [1, 1, 1], clock * 2 + i); }
+    for (let i = 0; i < MAX_STARS; i++) { const sd = course?.stars[i]; put(this.stars, i, !!sd && !(c && c.st.taken.has(i)), sd?.x ?? 0, (sd?.y ?? 0) + 0.55 + 0.15 * Math.sin(clock * 3 + i), sd?.z ?? 0, [1, 1, 1], clock * 1.2 + i); }
     for (let i = 0; i < MAX_BLOTS; i++) { const b = course?.blots[i]; put(this.blots, i, !!b, b?.x ?? 0, b?.y ?? 0, b?.z ?? 0, b ? [b.r, 0.9 + 0.08 * Math.sin(clock * 2 + i), b.r] : [0, 0, 0]); }
     for (let i = 0; i < MAX_BEES; i++) {
       const b = course?.bees[i], q = b ? beeAt(b, clock) : [0, 0], q2 = b ? beeAt(b, clock + 0.05) : [0, 1], yaw = Math.atan2(-(q2[1] - q[1]), q2[0] - q[0]), y = (b?.y ?? 0) + 0.25 * Math.sin(clock * 6 + i);

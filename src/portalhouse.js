@@ -10,7 +10,8 @@
 //     10 Bridge Room (a bridge of light goes through your swirls too: blue where it hits, orange where it should come out)
 //   -> the Study (Grandpa Arch, the Boss), up on top of the porch.
 // Owner 2026-10-29: every room has a few decoy white pads (1 in room 1, up to 5 from room 8), and no place in a room needs a fall
-// into the cloud to go on (plain stairs and steps, no extra kind of swirl).
+// into the cloud to go on. Owner 2026-10-30: stairs that let your feet reach what a flight should earn (the Fling Room's sparks, the
+// Clock Room's low ledge) were taken out again; there a violet back swirl takes you to the room's start (your swirls stay).
 // Everything is fixed blocks (nobody can break or build there); a swirl is a record (portalplay.js) plus, for most of them, a solid slab
 // of blocks behind the disc (PO_PANEL = a white pad for YOUR teal swirl, PO_PEACH = a peach pad for YOUR orange swirl, PO_RIM = a fixed
 // orange swirl). A door is a doorway into a small alcove (air + a back plate): the live part draws a wooden frame and warm light in it (owner 2026-10-29: no longer a swirl). Every room
@@ -68,6 +69,10 @@ export const HALL_DOORS = [...DOOR_N.map(N_DOOR), ...DOOR_E.slice(0, 3).map(E_DO
 export const DOORS = HALL_DOORS.length; // the last one is the Study's
 // Where you come out in the Hall when you go back through a room's Hall swirl: in front of its own door, facing into the Hall.
 export const hallFront = n => HALL_DOORS[n - 1].front;
+// The House Run (owner 2026-10-30, houserun.js): the gold start plate on the Hall's floor near door 1, and the clock board on the north
+// wall above doors 1 and 2 (meshes, no blocks).
+export const RUN_PLATE = { at: [109.0, 13, 21.0], r: 0.8 };
+export const RUN_BOARD = { x: [105.35, 111.35], y: [16.06, 18.9], z: 16.04 };
 
 // Room shells: x0..x1, z0..z1 (the walls), bottom..top (the whole shell: under the floor to the roof). floorTop / roofBottom: the floor
 // layer (a cloud in the pit rooms) and the ceiling layer.
@@ -89,18 +94,9 @@ export const STUDY = { top: 30, boss: { x: 90, y: 30, z: 27, facing: [0, -1] }, 
 // Platforms: [x0, x1, z0, z1, top, taper = 1] (a 2-thick slab: the top block and one under it, then a short taper).
 export const PLATFORMS = {
   gap: [[125, 130, 18, 29, 12], [137, 141, 18, 21, 12], [143, 147, 27, 29, 12], [148, 151, 19, 26, 17]],
-  // owner 2026-10-29: no ledge may need a fall to go on, and no extra swirl for it: plain stairs and steps back to the start. The Fling
-  // Room keeps its three jumping ledges over the orange swirl (20, 13, 8); stairs climb from the landing shelf in its free north-west
-  // corner and a walkway along the north wall (over the low ledges, at the start ledge's height) leads back to the start.
-  fling: [[156, 157, 2, 7, 20], [154, 155, 2, 7, 13], [152, 153, 2, 7, 8], [142, 151, 8, 13, 8], [141, 145, 8, 13, 21],
-    [151, 151, 7, 7, 8, 0],                                                         // the lowest ledge joins the landing shelf
-    ...[9, 10, 11, 12, 13].map((top, i) => [151, 151, 6 - i, 6 - i, top, 0]),      // stairs north from the shelf...
-    ...[14, 15, 16, 17, 18, 19].map((top, i) => [150 - i, 150 - i, 2, 2, top, 0]), // ...west along the north wall...
-    [145, 155, 3, 3, 20, 0]],                                                       // ...and the walkway back east to the start ledge
+  fling: [[156, 157, 2, 7, 20], [154, 155, 2, 7, 13], [152, 153, 2, 7, 8], [142, 151, 8, 13, 8], [141, 145, 8, 13, 21]],
   clock: [[99, 103, 2, 3, 24], [99, 103, 4, 8, 14], [104, 108, 5, 9, 19, 0], [104, 108, 5, 9, 27, 0], // the two landing ledges have no taper: a flat underside; too low an orange swirl just sends you back to your own pad
-    [99, 100, 9, 10, 14, 0], // a little step south of the pad
-    ...[15, 16, 17, 18, 19].map((top, i) => [104 + i, 104 + i, 4, 4, top, 0]), [108, 108, 2, 3, 20, 0], // stairs from the pad up beside ledge 19...
-    ...[21, 22, 23, 24].map((top, i) => [107 - i, 107 - i, 2, 3, top, 0])],                                  // ...and along the north wall to the start
+    [99, 100, 9, 10, 14, 0]], // a little step south of the pad (its back swirl)
   skip: [[101, 105, 21, 29, 34], [113, 117, 21, 29, 34], [125, 129, 21, 29, 34], [137, 141, 21, 29, 34], [149, 153, 21, 29, 34]],
   pair: [[87, 92, 2, 4, 14, 0], [87, 92, 8, 10, 20, 0]],               // the start ledge and the high shelf (6 up: no jump gets there)
   slide: [[141, 143, 2, 12, 42, 0], [149, 151, 2, 12, 42, 0]],          // the start ledge and the middle ledge (5 cells of cloud between)
@@ -119,6 +115,9 @@ const PAD_X = [[114, 116], [126, 128], [138, 140], [150, 152]]; // and its four 
 
 // ---- all swirls ----
 const gh = n => ({ to: hallFront(n), home: true }); // a door back to the Hall
+// Owner 2026-10-30: a back swirl (violet, like the ways home) on a ledge your feet cannot leave without a fall takes you back to the room's
+// start, your swirls staying where they are. Only where stairs would hand your feet what a flight should earn. `to` is set below.
+const back = (id, room, x, z, top) => floor(id, room, 'warp', 'violet', x, z, top, { slab: false, back: true });
 // Owner 2026-10-29: decoy white pads look like any other pad and take your swirl like any other, but no way through them helps
 // (tests/portalcheck.mjs proves it): 1 in room 1, more in each room after, at most DECOYS_MAX in one room.
 const decoy = { decoy: true };
@@ -140,6 +139,8 @@ export const SWIRLS = [
   wall('gap.d1', 1, 'slot', 'teal', 'z', 18, +1, [133, 134], [15, 17], decoy), // on the north wall over the pit
   // room 2: the Fling Room (from how high?)
   floor('fling.o', 2, 'orange', 'orange', [152, 157], [8, 13], 4),
+  back('fling.b', 2, [150, 151], [8, 8], 8),       // on the landing shelf (flights land along z 11)
+  back('fling.b2', 2, [153, 153], [2, 2], 8),      // in the far corner of the lowest jumping ledge (off the way to the orange swirl)
   wall('fling.low', 2, 'slot', 'teal', 'x', 158, -1, [10, 11], [18, 20]),
   wall('fling.high', 2, 'slot', 'teal', 'x', 158, -1, [10, 11], [30, 32]),
   wall('fling.home', 2, 'door', 'warm', 'z', 2, +1, [156, 157], [21, 23], { alcove: true, ...gh(2) }),
@@ -149,6 +150,7 @@ export const SWIRLS = [
   // room 3: the Clock Room (wait for it): the orange swirl slides up and down its rail
   wall('clock.o', 3, 'orange', 'orange', 'x', 97, +1, [6, 7], [16, 18], { slab: false, move: { y0: 17.5, y1: 37.5, period: 5 } }),
   floor('clock.p', 3, 'slot', 'teal', [99, 103], [4, 8], 14),
+  back('clock.b', 3, [99, 100], [9, 10], 14),      // on the step south of the pad
   wall('clock.home', 3, 'door', 'warm', 'z', 2, +1, [100, 101], [25, 27], { alcove: true, ...gh(3) }),
   wall('clock.exit', 3, 'door', 'warm', 'x', 109, -1, [6, 7], [28, 30], { alcove: true, exit: true }),
   wall('clock.d1', 3, 'slot', 'teal', 'z', 11, -1, [101, 102], [21, 23], decoy), // decoys: one across the pit (nothing can fall into it)
@@ -235,30 +237,32 @@ export const swirlById = id => SWIRLS.find(s => s.id === id);
 // start: where a door puts you ([x, y, z, yaw]); exit: the swirl that counts the room as done; catch: resting below `catchY` inside the
 // room puts you back at the start. slots: white pads (your teal swirl), peaches: peach pads (your orange swirl), oranges: fixed orange
 // swirls. rule: said when you arrive; hint: after PORTAL.misses soft catches; hintLoop: when the loop stops (loopBack: back to the start).
+// sparks (little Capture Cubes, +1 each): owner 2026-10-30, never reachable on foot, only with a swirl (portalcheck footSparks proves it);
+// sparksOpen: only there while the room's door is open (the Quick Room: by its door, so only the quick way gets it).
 export const ROOMS = [
   { n: 1, id: 'gap', name: 'Gap Room', idea: 'aim far', box: ROOM_BOXES.gap, start: [127.5, 13, 23.5, -PI / 2], hall: 'gap.home', exit: 'gap.exit', catchY: 3.4,
     rule: 'Put your swirl across the gap, then walk into the orange one!', hint: 'Tip: look at the far white pad up high and tap. Then walk into the orange swirl.',
     sparks: [[139.5, 14.6, 19.5], [145.5, 14.6, 28.5], [149.5, 19.6, 22.5]], slots: ['gap.p1', 'gap.p2', 'gap.p3'], peaches: [], oranges: ['gap.o'], first: 'gap.p3' },
   { n: 2, id: 'fling', name: 'Fling Room', idea: 'higher in, faster out', box: ROOM_BOXES.fling, start: [156.5, 21, 4.5, PI], hall: 'fling.home', exit: 'fling.exit', catchY: 5.4,
     rule: 'Speedy in, speedy out! Jump from higher to fly further.', hint: 'Tip: put your swirl on the HIGH pad and jump from the TOP ledge.',
-    sparks: [[149.5, 10.8, 11], [146.3, 10.8, 11], [142.8, 10.8, 11]], slots: ['fling.low', 'fling.high'], peaches: [], oranges: ['fling.o'], first: 'fling.high' },
+    sparks: [[148.5, 10.0, 11.5], [146.3, 10.8, 11], [142.8, 10.8, 11]], slots: ['fling.low', 'fling.high'], peaches: [], oranges: ['fling.o'], first: 'fling.high' },
   { n: 3, id: 'clock', name: 'Clock Room', idea: 'wait for the right moment', box: ROOM_BOXES.clock, start: [101.5, 25, 3.0, PI], hall: 'clock.home', exit: 'clock.exit', catchY: 7.4,
     rule: 'The orange swirl goes up and down. Jump in while it goes up!', hint: 'Tip: jump in just as the orange swirl starts going up.',
-    sparks: [[106.0, 21.6, 7.0], [106.0, 29.4, 7.0]], slots: ['clock.p'], peaches: [], oranges: ['clock.o'], first: 'clock.p' },
+    sparks: [[107.5, 21.0, 7.5], [106.0, 29.4, 7.0]], slots: ['clock.p'], peaches: [], oranges: ['clock.o'], first: 'clock.p' },
   { n: 4, id: 'skip', name: 'Skip Hall', idea: 're-aim while you fly', box: ROOM_BOXES.skip, start: [103.0, 35, 25.5, -PI / 2], hall: 'skip.home', exit: 'skip.exit', catchY: 28.4,
     rule: 'Quick! While you fly, tap the next white pad!', hint: 'Tip: look ahead while you fly and tap the next white pad.', hintLoop: 'Tap the next white pad while you fly!',
     sparks: [[118.3, 38.0, 25.5], [130.3, 38.0, 25.5], [142.3, 38.0, 25.5]], // where the arcs from pads 1-3 peak
     slots: ['skip.p1', 'skip.p2', 'skip.p3', 'skip.p4'], peaches: [], oranges: ['skip.o1', 'skip.o2', 'skip.o3', 'skip.o4'], first: 'skip.p1' },
   { n: 5, id: 'pair', name: 'Pair Room', idea: 'you make both ends', box: ROOM_BOXES.pair, start: [89.0, 15, 3.0, PI], hall: 'pair.home', exit: 'pair.exit', catchY: 10.4,
     rule: 'Peach pads take YOUR orange swirl! Put one swirl where you are and one where you want to go.', hint: 'Tip: one swirl down here by you, the other one up on the high shelf!',
-    sparks: [[89.5, 12.5, 6.0], [91.5, 21.6, 9.0]], slots: ['pair.w1', 'pair.w2'], peaches: ['pair.k1', 'pair.k2'], oranges: [], first: 'pair.k2' },
+    sparks: [[89.5, 22.0, 8.5], [91.5, 21.6, 9.0]], slots: ['pair.w1', 'pair.w2'], peaches: ['pair.k1', 'pair.k2'], oranges: [], first: 'pair.k2' },
   { n: 6, id: 'slide', name: 'Slider Room', idea: 'your pad moves: step in on time', box: ROOM_BOXES.slide, start: [142.5, 43, 7.0, PI / 2], hall: 'slide.home', exit: 'slide.exit', catchY: 42.4,
     rule: 'Your white pad slides along the ceiling! Walk into the orange swirl when it is over the middle ledge.', hint: 'Tip: watch your pad. Walk in just before it gets over the middle ledge!',
     sparks: [[150.5, 43.6, 9.5]], slots: ['slide.p'], peaches: [], oranges: ['slide.o'], first: 'slide.p' },
   { n: 7, id: 'ball', name: 'Ball Room', idea: 'things go through swirls too', box: ROOM_BOXES.ball, start: [116.5, 11, 3.0, PI], hall: 'ball.home', exit: 'ball.exit', catchY: 4.4,
     rule: 'The pipe drops Swirl Balls. Get a ball onto the button up on the shelf to open the door!', hint: 'Tip: your white pad under the pipe, your orange swirl facing the shelf.',
     ball: { mouth: [117.5, 17.0, 7.5], cup: { x0: 121, x1: 135, y0: 13, y1: 16, z0: 5, z1: 10 }, button: [128.5, 13, 7.5], pipe: { x: [116, 118], y: [17, 18], z: [6, 8] } },
-    sparks: [[123.0, 13.6, 3.0]], slots: ['ball.w1', 'ball.w2'], peaches: ['ball.k1', 'ball.k2'], oranges: [], first: 'ball.w1' },
+    sparks: [[123.5, 14.0, 5.5]], slots: ['ball.w1', 'ball.w2'], peaches: ['ball.k1', 'ball.k2'], oranges: [], first: 'ball.w1' },
   { n: 8, id: 'loop', name: 'Loop Room', idea: 'out of a ceiling you keep your speed', box: ROOM_BOXES.loop, start: [117.0, 33, 3.0, PI], hall: 'loop.home', exit: 'loop.exit', catchY: 26.4, loopBack: true,
     rule: 'Out of a ceiling swirl you keep your speed! Go round once, then tap the wall pad while you fall.', hint: 'Tip: white pad on the ceiling first. Jump in, and while you fall out of the ceiling, tap the wall pad!',
     hintLoop: 'Now tap the white pad on the wall while you fall!',
@@ -266,13 +270,14 @@ export const ROOMS = [
   { n: 9, id: 'quick', name: 'Quick Room', idea: 'a swirl is quicker than your feet', box: ROOM_BOXES.quick, start: [86.5, 4, 24.2, PI], hall: 'quick.home', exit: 'quick.exit', catchY: 0,
     rule: 'Step on the button and the door up there opens, but only for a moment!', hint: 'Tip: put your blue swirl by that door FIRST. Then step on the button and run into the orange swirl!',
     button: { at: [84.5, 4, 26.5], r: 0.8, open: 4 }, // the button on the floor (a mesh): the door stays open `open` seconds after you step off it
-    sparks: [[84.5, 15.9, 27.5]], slots: ['quick.p'], peaches: [], oranges: ['quick.o'], first: 'quick.p' },
+    sparks: [[82.8, 19.3, 23.9]], sparksOpen: true, slots: ['quick.p'], peaches: [], oranges: ['quick.o'], first: 'quick.p' },
   { n: 10, id: 'bridge', name: 'Bridge Room', idea: 'light goes through swirls too', box: ROOM_BOXES.bridge, start: [87.0, 36, 3.5, -PI / 2], hall: 'bridge.home', exit: 'bridge.exit', catchY: 32.4,
     rule: 'The light makes a bridge! It goes through your swirls too.', hint: 'Tip: your blue swirl where the light hits the wall, your orange swirl where the bridge should come out!',
     bridge: { lane: [[89, 3], [89, 4]], level: 35, dir: [1, 0] }, // the bridge starts here (cells [x, z] at y = level) and goes along dir (portalplay.js bridgeCells)
-    sparks: [[90.5, 36.9, 7.0]], slots: ['bridge.p'], peaches: ['bridge.k1', 'bridge.k2'], oranges: [], first: 'bridge.k1' },
+    sparks: [[90.5, 37.0, 10.5]], slots: ['bridge.p'], peaches: ['bridge.k1', 'bridge.k2'], oranges: [], first: 'bridge.k1' },
 ];
 // Decoy pads (owner 2026-10-29: "max 5 decoy white pads in each room": 1 in room 1, more later): they join their room's white pads here.
+for (const s of SWIRLS) if (s.back) s.to = ROOMS[s.room - 1].start; // a back swirl: to its room's start
 for (const s of SWIRLS) if (s.decoy && !ROOMS[s.room - 1].slots.includes(s.id)) ROOMS[s.room - 1].slots.push(s.id);
 export const DECOYS_MAX = 5;
 export const decoysIn = n => ROOMS[n - 1].slots.filter(id => swirlById(id).decoy).length;

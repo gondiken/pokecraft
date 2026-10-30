@@ -13,7 +13,7 @@ import { bowState } from './partyland.js'; // T48
 import { lightState, LIGHTS } from './glowfish.js'; // T41
 import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 import { castleState } from './castleland.js'; // T49
-import { bubbleState } from './bubbleland.js'; // the Bubble Well
+import { bubbleState, SHIELDS as BUBBLE_SHIELDS } from './bubbleland.js'; // the Bubble Well
 import { gravityState } from './cubeland.js'; // Cube Planets
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999,
@@ -166,7 +166,7 @@ addBoss({ // Queen Coralia in the palace of the Sunken City (in the Pirate Seas)
 /* ==== end of T41 atlantis ==== */
 
 /* ==== T43 funfair ==== */
-addBoss({ // Merry Mae, the Fairkeeper, on the Star Stage (Playland's Funfair). Win three golden tickets at the games and ride the coaster up: the gate reads the saved keys (funfair.js ticketState).
+addBoss({ // Merry Mae, the Fairkeeper, on the Sky Stage (Playland's Funfair). Win three golden tickets at the games and ride the coaster up: the gate reads the saved keys (funfair.js ticketState).
   id: 'fair', name: 'Merry Mae', type: 'funfair', title: 'Merry Mae · the Fairkeeper', look: 'fair',
   colors: { shirt: 0xff7ac0, pants: 0xf6efe0, hair: 0xc8902a, skin: 0xf2d0b0 },
   gate: game => { const { n, done } = ticketState(game); return done ? null : `Win 3 golden tickets at the games! Then ride the coaster up to me. (🎟️ ${n} / 3)`; },
@@ -251,13 +251,13 @@ addBoss({
 
 /* ==== Bubble ==== */
 // Captain Suds, a giant Lathotter with a foam beard, sits on his foam throne on the rim of the Bubble Well, sealed in a big bubble that his
-// three shield bubbles hold up (bubblelive.js). His gate: his three shields, then the three stretches of the climb (the Fizz Ledges, the three ducklings, the Chimney Ride) (all saved
+// five shield bubbles hold up (bubblelive.js; owner 2026-10-30: five, was three). His gate: his five shields, then the three stretches of the climb (the Fizz Ledges, the three ducklings, the Chimney Ride) (all saved
 // `beaten` keys, bubbleland.js bubbleState); his crew Wanda Wand, Duckherd Daisy and Mate Fizz battle first (the base's crew rule).
 addBoss({
   id: 'bubble', name: 'Captain Suds', type: 'bubble', title: 'Captain Suds · Bubble Well Boss', model: { species: 'lathotter', scale: 2.2 }, // (the title is spelled out: a closed well's frame is named "Secret World")
   gate: game => { // (owner 2026-10-30: he sits sealed in a big bubble while any shield is up: one line, in his own words, from inside it)
     const st = bubbleState(game);
-    if (st.shields < 3) return '(from inside his bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!';
+    if (st.shields < BUBBLE_SHIELDS.length) return '(from inside his bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!';
     return st.done ? null : `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
   },
   team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'bodyslam', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)

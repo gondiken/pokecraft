@@ -19,8 +19,8 @@ export default async function ({ browser, base, t }) {
   const shut = await openGame(browser, base, { wave15: false });
   const a = await state(shut);
   t.ok(a.switchOff, 'the switch ships off (WAVE15_OPEN = false)');
-  t.ok(a.ready.join() === 'atlantis,fair,doors,doodle' && a.oldReady.length === 4 && a.castle, `closed: of the five wave 15 worlds the Funfair, Atlantis, the Surprise Party and the Sketchbook are ready, and the Castle too (owner 2026-10-28/29: OPEN_NOW; only the Portal House waits), the four of wave 14 are (${a.ready})`);
-  t.ok(a.swirl.join() === '4,false' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 4 without the Portal House, the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
+  t.ok(a.ready.join() === 'atlantis,portal,fair,doors,doodle' && a.oldReady.length === 4 && a.castle, `closed: all five wave 15 worlds are open for everyone (owner 2026-10-28/30: OPEN_NOW; the Portal House since 2026-10-30), and the Castle too, the four of wave 14 are (${a.ready})`);
+  t.ok(a.swirl.join() === '5,true' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 5 with the Portal House (open for everyone), the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
   // the closed Swirl as a world: no House; Playland has the open Funfair
   const worlds = await shut.evaluate(async () => {
     const { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');
@@ -28,7 +28,7 @@ export default async function ({ browser, base, t }) {
     const pl = new World(7, null, null, REALMS.playland.size, REALMS.playland); pl.generate();
     return { house: !!sw.swirl.house, houseParts: (sw.parts || []).filter(p => p.id === 'portalhouse').length, sign: (pl.keeps || []).some(k => k.name === 'fair-sign'), fairPart: (pl.parts || []).some(p => p.id === 'fair') };
   });
-  t.ok(!worlds.house && !worlds.houseParts, 'closed: the Swirl has no Portal House and no hub swirl part');
+  t.ok(worlds.house && worlds.houseParts, 'the Portal House is open for everyone: the Swirl has it and its hub swirl part');
   t.ok(!worlds.sign && worlds.fairPart, 'the Funfair is open for everyone: no "Coming soon!" sign, the fair is built');
   t.ok(shut.errors.length === 0, `no page errors when closed (${shut.errors.slice(0, 3).join(' | ')})`);
   await shut.context().close();

@@ -1,5 +1,11 @@
 # Wave 17 · Gifts and trading (plan, 2026-10-29)
 
+> **Changed again 2026-10-30 (owner):** "I thought it'd just be the same as my team view (P) with its sorting... Why is it 'trade with
+> X' only? What if there are more players? Better: press E on a friend, choose trade / battle / hide and seek, then upon acceptance both
+> do it at the same time." Now: E on a friend -> the friend menu; Trade -> the friend says yes -> both team screens open in trade mode
+> (a bar on top: you give / they give, Ready). One item a side or Nothing (a present); both Ready on the same two offers = the trade;
+> a changed offer un-readies both. The inviter leads and commits first; the save rules below are unchanged (`SWAP.version` 2).
+
 > **Changed the same day (owner):** "I'm not sure if we needed two separate options. Something becomes a gift simply by trading an
 > empty item." There is now ONE button, **🔁 Trade with Dad**, and the panel has a **📦 Nothing** tile: offering Nothing asks for a
 > present, picking Nothing back keeps the offer as a present (never Nothing for Nothing). The asker always says the last yes. The

@@ -427,3 +427,33 @@ stars as well."
   variety, not harder). The best robot 37 s at 60 and 20 fps (was 24 / 29), never a pop; the spammer still pops on ring 2.
 - **No stars in the well but Captain Suds' own:** the ride's checkpoints are **bars of soap** (a pink bar with foam and two bubbles; chip
   `🧼 n / 6`, toast `🧼 +1 Capture Cube`); the shields' gold caps became a heap of foam. Saved keys unchanged.
+
+## Owner's play 2026-10-30 (second): five shields, the ride ends by Captain Suds, the climb always counts
+
+The owner: "Can we just slightly dim that light coming from the chimney holes?"; "I had to do an entire round walk after I finished the
+chimney to reach Captain Suds. Why did I have to do that?"; "Captain Suds is now a great game. In fact, let's add 2 more shields. The
+first one should still be that simple one."; "What is 'ledge'? ... I did climb those initial stair-like areas with bubbles: was that the
+ledge? Did I complete it?" (the chip read "Ledges ○ · 🦆 3/3 · Chimney ✓ · 🛡 0/3").
+
+- **The climb that was not counted (root cause):** `pw:bubble:stairs` was saved only when, straight after a bubble, your feet landed on
+  the plateau with your middle over the box `STAIRS_TOP` (z 50..66). Hopping off the last bubble onto the plateau's lip leaves your middle
+  just past its last row (z 67.2: the body is 0.6 wide, so you stand on the edge block), so the box test failed; the "just off a bubble"
+  flag was then used up and the climb could never count again (only a lost battle or the lifts brought you up later, and the lift needs
+  the key). A kid who rides without leaning lands there every time (`nolean` in Node: 12 of 12 up, 0 counted). **Fix:** standing at the
+  plateau's height or higher counts the first time, anywhere and by any route; in a rematch (the star: the lifts run) only a bubble up
+  from a ledge counts. An old save with a duckling, the chimney or a shield but no climb key gets it once (`sync`; never with the star).
+  The spec's `kids` part has the exact lip case and the any-route / rematch / old-save cases.
+- **"Climb" instead of "Ledges":** the chip says `🫧 Climb ✓ · 🦆 3 / 3 · Chimney ✓ · 🛡️ 0 / 5`, the guide `🫧 Climb 1 / 3`.
+- **The ride ends by Captain Suds:** the chimney moved from the plateau's west (x 46.5, z 40.5, half the well away) to its north-west
+  corner (x 64.5, z 29.5), right beside his balcony (now x 73..101, z 29..37). The ride puts you down at the balcony's west end
+  (`CHIMNEY.landing` 74.5, 33.5), looking at him: about 7 blocks from his bubble, 6 from his first shield. The second fizz lift stands by
+  the chimney's foot (up to the same spot), the rim way back moved west of the chimney (it stood where the new shields bob; its top could
+  be jumped from). The ride itself is unchanged (relative to the chimney): 37 s for the best robot, the same order and gates.
+- **Five shields:** 1 the low one (unchanged), 2 and 3 as before (their saved keys keep their meaning), 4 and 5 new along the balcony to
+  the east: smaller (1.15, 1.05), swaying further and faster, the pot a little further off; 5 in a side breeze that blows away from it
+  (blow upwind). Captain Suds' bubble has five skins (one per shield, `DOME.skin` 0.15), five colours. Bots in Node at 60 and 20 fps: the
+  skilled kid pops 2-5 every time (4-7 bubbles for 4 pops); the random kid 6-32 % of bubbles on 2-4, 2-7 % on 5; the masher never; the
+  low shield as before. Old saves with shield1..3 keep them and need only 4 and 5 (the Boss gate needs all five).
+- **Dimmer light in the chimney:** the halo round the next gold ring 0.22 +- 0.08 (was 0.35 +- 0.15), the others 0.12 (was 0.18), the beam
+  under it 0.08 and only drawn from outside it (it was 0.16 on both sides, so from inside it washed the ring and the hole out). The gold
+  ring itself is unchanged, so it still reads at a glance.
