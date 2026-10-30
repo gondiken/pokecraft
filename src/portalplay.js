@@ -5,7 +5,7 @@
 //   { id, room, kind: 'slot' | 'peach' | 'orange' | 'door' | 'warp' | 'pair', colour, face: 'wall' | 'floor' | 'ceiling',
 //     normal: [nx, ny, nz] (the way you come out), centre: [x, y, z] (the middle of the front face), w, h (the disc: a wall swirl is w wide
 //     and h tall; a floor or ceiling one is w along x and h along z), cells (the solid slab behind it), lean?: { dir: [dx, dz], deg },
-//     soft?: true (you always come out gently), pair?: id (a pink pair), to?: [x, y, z, yaw] (a warp; back?: true = a room's back swirl, to its start), decoy?: true (a decoy white pad),
+//     soft?: true (you always come out gently), pair?: id (a pink pair), to?: [x, y, z, yaw] (a warp), decoy?: true (a decoy white pad), needs?: 'ball' | 'button' (a door that opens only then),
 //     move?: { axis: 'x' | 'y' | 'z', from, to, period } (it slides to and fro with the room clock; the old form { y0, y1, period } is the y axis) }
 // "In one, out the other": your teal swirl (on a white pad, kind 'slot') and the orange end are joined. The orange end is the room's
 // fixed orange swirl(s), or (rooms 5-8, owner 2026-10-27) YOUR orange swirl, which sticks only on a peach pad (kind 'peach'): the pad
@@ -188,9 +188,38 @@ export function ballRun(solid, mouth, pair) {
 }
 export const inCup = (cup, p) => p[0] >= cup.x0 && p[0] <= cup.x1 + 1 && p[1] >= cup.y0 && p[1] <= cup.y1 && p[2] >= cup.z0 && p[2] <= cup.z1 + 1;
 
+/* ---------- the bridge of light (the Bridge Room) ---------- */
+// A flat bridge of light (owner 2026-10-29, room 10): it starts at bridge.lane (cells [x, z] at y = bridge.level) and goes on along
+// bridge.dir, a cell at a time, until a block at its height or just above it stops it. Where it runs into the disc of one of your two
+// swirls (ends = [teal, orange] swirl records or null: a wall swirl facing it, its bottom row just above the bridge, at least as wide as
+// the bridge), it comes out of the other one (a wall swirl: the row in front of its bottom, along its normal) and goes on from there.
+// Only the world's own blocks stop it (two bridges may cross). Returns the bridge's cells [x, y, z], each once.
+export function bridgeCells(solid, bridge, ends, max = 40) {
+  const out = [], seen = new Set();
+  let lane = bridge.lane, level = bridge.level, dir = bridge.dir;
+  for (let pass = 0; pass < 3; pass++) {
+    let into = null;
+    for (let step = 0; step < max; step++) {
+      const row = lane.map(([x, z]) => [x + dir[0] * step, z + dir[1] * step]);
+      into = ends.find(s => s && s.face === 'wall' && s.normal[0] === -dir[0] && s.normal[2] === -dir[1] && s.yr[0] === level + 1
+        && row.every(([x, z]) => s.cells.some(([cx, cy, cz]) => cx === x && cy === level + 1 && cz === z))) ?? null;
+      if (into) break;
+      if (row.some(([x, z]) => solid(x, level, z) || solid(x, level + 1, z))) break;
+      for (const [x, z] of row) { const k = `${x},${level},${z}`; if (!seen.has(k)) { seen.add(k); out.push([x, level, z]); } }
+    }
+    const from = into && ends.find(s => s && s !== into);
+    if (!from || from.face !== 'wall') break;
+    const [nx, , nz] = from.normal;
+    dir = [nx, nz]; level = from.yr[0] - 1;
+    lane = [];
+    for (let l = from.lat[0]; l <= from.lat[1]; l++) lane.push(from.axis === 'x' ? [from.wallCell + nx, l] : [l, from.wallCell + nz]);
+  }
+  return out;
+}
+
 /* ---------- progress ---------- */
-export const roomKey = n => `pw:portal:room${n}`; // saved in `beaten`, n = 1..8 (rooms 1-4 kept their keys when the House grew to eight)
-export const ROOMS_NEED = 8;
+export const roomKey = n => `pw:portal:room${n}`; // saved in `beaten`, n = 1..10 (the House grew from 4 to 8 to 10 rooms; owner 2026-10-29: old progress was reset once, worldreset.js)
+export const ROOMS_NEED = 10;
 export function roomState(game) {
   const done = Array.from({ length: ROOMS_NEED }, (_, i) => game.beaten.includes(roomKey(i + 1)));
   const n = done.filter(Boolean).length;

@@ -4,7 +4,7 @@
 import { B, isSolid } from '../src/blocks.js';
 import { swirlLand } from '../src/swirlland.js';
 import { R, SWIRLS, ROOMS, doorTarget, exitTarget, swirlById, PORCH } from '../src/portalhouse.js';
-import { PORTAL, exitSpeed, exitOf, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, clearLine, ballRun, inCup } from '../src/portalplay.js';
+import { PORTAL, exitSpeed, exitOf, centreAt, touches, flingFlight, flightDrop, headOf, boxHits, clearLine, ballRun, inCup, bridgeCells } from '../src/portalplay.js';
 
 export const WORLD_H = 48;
 export const SIZE = [160, 160];
@@ -97,6 +97,18 @@ export function reachable(g, startCell, { tricks = true, retap = true, place = t
   const adj = new Map(), exitAt = new Map(); // edges: true records every move (from -> [to, by a fall into the cloud]) and which doors each state walks into
   const slotsOf = room => (slotOk ? room.slots.filter(slotOk) : room.slots); // slotOk: only these white pads count (the decoy checks)
   const sk = (c, t, o) => `${key(c)}|${t ?? '-'}|${o ?? '-'}`;
+  // the blocks and stand cells with your swirls as they are: the Bridge Room's bridge of light is solid (no tricks: only its first stretch)
+  const ctxMemo = new Map();
+  const ctxOf = (room, teal, orange) => {
+    if (!room?.bridge) return { S: solid, isNode: c => g.nodes.has(key(c)) };
+    const k = `${tricks ? teal : '-'}|${tricks ? orange : '-'}`;
+    if (!ctxMemo.has(k)) {
+      const cells = new Set(bridgeCells(solid, room.bridge, tricks ? [teal && swirlById(teal), orange && swirlById(orange)] : []).map(key));
+      const S = (x, y, z) => solid(x, y, z) || cells.has(`${x},${y},${z}`);
+      ctxMemo.set(k, { S, cells, isNode: c => g.nodes.has(key(c)) || (cells.has(`${c[0]},${c[1] - 1},${c[2]}`) && !S(c[0], c[1], c[2]) && !S(c[0], c[1] + 1, c[2])) });
+    }
+    return ctxMemo.get(k);
+  };
   const push = (c, teal, orange, from, fell = false) => { const k = sk(c, teal, orange); if (edges && from) { if (!adj.has(from)) adj.set(from, []); adj.get(from).push([k, fell]); } if (seen.has(k)) return; seen.add(k); parent.set(k, from); queue.push([c, teal, orange]); };
   const at = o => {
     if (!o.move) return o.centre;
@@ -105,10 +117,10 @@ export function reachable(g, startCell, { tricks = true, retap = true, place = t
     if (axis === 'x' && slideX != null) return [slideX, o.centre[1], o.centre[2]];
     return centreAt(o, 0);
   };
-  const settle = (p, room) => { // where a flight that ends at p ends up: a stand cell, or the room's start (caught on the cloud)
-    const r = run(solid, p, 0, 0, { mode: 'walk', maxT: 6 }), c = cellOf(r.end);
+  const settle = (p, room, ctx) => { // where a flight that ends at p ends up: a stand cell, or the room's start (caught on the cloud)
+    const r = run(ctx.S, p, 0, 0, { mode: 'walk', maxT: 6 }), c = cellOf(r.end);
     if (caught(g, room, c)) return catches ? { cell: cellOf(room.start), fell: true } : null;
-    if (g.nodes.has(key(c))) return { cell: c };
+    if (ctx.isNode(c)) return { cell: c };
     return null;
   };
   // the other end of the swirl you went into (your swirls may move while you fly: retap lists every choice)
@@ -121,13 +133,13 @@ export function reachable(g, startCell, { tricks = true, retap = true, place = t
   };
   const activeOf = (room, teal, orange) => [...room.oranges.map(swirlById), ...(teal ? [swirlById(teal)] : []), ...(orange ? [swirlById(orange)] : [])];
   const trips = (room, teal, orange, exitSw, speed, depth, out) => { // out of exitSw at `speed`, following the swirls the flight runs into
-    const ex = exitOf(exitSw, at(exitSw), speed);
-    if (!ex.vel) { const s = settle(ex.pos, room); if (s) out.push({ ...s, teal, orange }); return; }
+    const ex = exitOf(exitSw, at(exitSw), speed), ctx = ctxOf(room, teal, orange);
+    if (!ex.vel) { const s = settle(ex.pos, room, ctx); if (s) out.push({ ...s, teal, orange }); return; }
     if (depth > 6) return;
     const act = activeOf(room, teal, orange);
     const seek = q => { for (const o of act) if (o.id !== exitSw.id && touches(o, at(o), q, true)) return o; return null; };
-    const f = flingFlight(solid, ex.pos, ex.vel, PORTAL.flingG, seek);
-    if (!f.hit) { const s = settle(f.end, room); if (s) out.push({ ...s, teal, orange }); return; }
+    const f = flingFlight(ctx.S, ex.pos, ex.vel, PORTAL.flingG, seek);
+    if (!f.hit) { const s = settle(f.end, room, ctx); if (s) out.push({ ...s, teal, orange }); return; }
     const drop = flightDrop(f, at(f.hit)[1], headOf(exitSw, speed));
     for (const o of others(room, f.hit, teal, orange)) trips(room, o.teal, o.orange, o.sw, exitSpeed(drop), depth + 1, out);
   };
@@ -140,12 +152,12 @@ export function reachable(g, startCell, { tricks = true, retap = true, place = t
       for (const id of slotsOf(room)) if (id !== teal && losTo(solid, eyeOf(c), swirlById(id), at)) push(c, id, orange, from);
       for (const id of room.peaches) if (id !== orange && losTo(solid, eyeOf(c), swirlById(id), at)) push(c, teal, id, from);
     }
-    const active = tricks && room ? activeOf(room, teal, orange) : [];
+    const active = tricks && room ? activeOf(room, teal, orange) : [], ctx = ctxOf(room, teal, orange);
     const seek = q => { for (const s of active) if (touches(s, at(s), q, false)) return s; return null; };
     const start = [c[0] + 0.5, c[1], c[2] + 0.5];
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const sp of [0.01, 2.2, 4.3, 6.2]) for (const mode of ['walk', 'jump']) {
       if (sp < 1 && mode === 'walk') continue;
-      const r = run(solid, start, dx * sp, dz * sp, { mode, seek });
+      const r = run(ctx.S, start, dx * sp, dz * sp, { mode, seek });
       if (r.hit && room) { // into one end: out of the other
         const out = [], drop = Math.max(0, r.peak - r.end[1]);
         for (const o of others(room, r.hit, teal, orange).slice(0, 1)) trips(room, o.teal, o.orange, o.sw, exitSpeed(drop), 0, out);
@@ -156,19 +168,20 @@ export function reachable(g, startCell, { tricks = true, retap = true, place = t
       if (!r.landed) continue;
       const cc = cellOf(r.end);
       if (caught(g, room, cc)) { if (catches) push(cellOf(room.start), teal, orange, from, true); } // caught: back to the start (catches: false = a fall is no way)
-      else if (g.nodes.has(key(cc))) push(cc, teal, orange, from);
+      else if (ctx.isNode(cc)) push(cc, teal, orange, from);
     }
     for (const s of SWIRLS) { // doors: the exit of a room, the way home, the Hall's doors
       if (s.kind !== 'door' || !s.alcove) continue;
       const q = [start[0] - s.normal[0] * 0.2, c[1], start[2] - s.normal[2] * 0.2];
       if (!touches(s, s.centre, q, false)) continue;
       if (s.needs === 'ball' && !(tricks && ballPresses(g, room, teal, orange))) continue; // shut until the ball is on the button
+      if (s.needs === 'button') continue; // the Quick Room's door: open only for a moment (quickTime checks it)
       const to = doorTo(s);
       if (to) { exits.add(s.id); if (edges) { if (!exitAt.has(from)) exitAt.set(from, new Set()); exitAt.get(from).add(s.id); } push(cellOf(to), null, null, from); }
     }
-    for (const s of SWIRLS) { // the warps: porch <-> hub, and a room's back swirls (to its start; your swirls stay)
+    for (const s of SWIRLS) { // the warps: porch <-> hub
       if (s.kind !== 'warp' || !touches(s, s.centre, start, false)) continue;
-      if (s.back) push(cellOf(s.to), teal, orange, from); else push(cellOf(s.to), null, null, from);
+      push(cellOf(s.to), null, null, from);
     }
   }
   const cells = new Set([...seen].map(k => k.split('|')[0]));
@@ -198,6 +211,10 @@ export function decoyRows(g, rooms = ROOMS) {
   return rooms.filter(r => r.slots.some(id => swirlById(id).decoy)).map(room => {
     const c = cellOf(room.start), ph = PHASES[room.n], name = ph && Object.keys(ph)[0], values = ph ? ph[name] : [null];
     const decoys = room.slots.filter(id => swirlById(id).decoy), isDecoy = id => decoys.includes(id);
+    if (room.button) { // the Quick Room: no decoy (set before the button, or tapped on the way) gets you to the door in time
+      const t = quickTime(g, room, { pre: [null, ...decoys], slotOk: isDecoy });
+      return { n: room.n, id: room.id, decoys, onlyDecoys: t <= room.button.open, pinned: decoys.filter(d => quickTime(g, room, { pre: [d], retap: false }) <= room.button.open), ball: [], time: t };
+    }
     const onlyDecoys = values.some(v => exitReached(reachable(g, c, { stayIn: room, slotOk: isDecoy, ...(name ? { [name]: v } : {}) }), room));
     const pinned = [];
     for (const d of decoys) for (const o of [null, ...room.peaches]) for (const v of values) {
@@ -206,6 +223,38 @@ export function decoyRows(g, rooms = ROOMS) {
     const ball = room.ball ? decoys.flatMap(d => [null, ...room.peaches].filter(o => ballPresses(g, room, d, o)).map(o => `${d}+${o}`)) : [];
     return { n: room.n, id: room.id, decoys, onlyDecoys, pinned, ball };
   });
+}
+
+// Decoys look like real choices: each one can be aimed at from somewhere you can walk to in its room. And none sends you round and round: with your blue
+// swirl on a decoy and each orange end, a trip in (after falls of 0..16 blocks) never comes back into the same two swirls six times.
+// Returns the problems ('id: not seen from the start', 'id+orange@fall: loops').
+export function decoyProblems(g) {
+  const bad = [], seenFrom = new Map();
+  const at = s => (s.move ? centreAt(s, 0) : s.centre);
+  for (const room of ROOMS) for (const d of room.slots.filter(id => swirlById(id).decoy)) {
+    const teal = swirlById(d);
+    const walk = seenFrom.get(room) ?? seenFrom.set(room, [...reachable(g, cellOf(room.start), { tricks: false, stayIn: room }).cells].map(k => k.split(',').map(Number)).filter(c => roomAt(c) === room)).get(room);
+    if (!walk.some(c => losTo(g.solid, eyeOf(c), teal, at))) bad.push(`${d}: never seen`);
+    for (const o of room.peaches.length ? room.peaches : room.oranges.slice(0, 1)) {
+      const orange = swirlById(o), ends = [teal, orange], other = s => (s === teal ? orange : teal);
+      for (const fall of [0, 3, 6, 10, 16]) {
+        let out = teal, speed = exitSpeed(fall), n = 0;
+        for (; n < 6; n++) {
+          const ex = exitOf(out, at(out), speed), from = out;
+          let hit = null, drop = 0;
+          if (ex.vel) {
+            const f = flingFlight(g.solid, ex.pos, ex.vel, PORTAL.flingG, q => ends.find(s => s !== from && touches(s, at(s), q, true)) ?? null);
+            if (f.hit) { hit = f.hit; drop = flightDrop(f, at(f.hit)[1], headOf(from, speed)); }
+            else { const r = run(g.solid, f.end, 0, 0, { mode: 'walk', maxT: 6, seek: q => ends.find(s => s !== from && touches(s, at(s), q, false)) ?? null }); hit = r.hit; drop = r.peak - r.end[1]; }
+          } else { const r = run(g.solid, ex.pos, 0, 0, { mode: 'walk', maxT: 6, seek: q => ends.find(s => s !== from && touches(s, at(s), q, false)) ?? null }); hit = r.hit; drop = r.peak - r.end[1]; }
+          if (!hit) break;
+          out = other(hit); speed = exitSpeed(Math.max(0, drop));
+        }
+        if (n >= 6) bad.push(`${d}+${o}@${fall}: loops`);
+      }
+    }
+  }
+  return bad;
 }
 
 // ---- the layout rules (no browser): returns a list of problems ----
@@ -246,7 +295,7 @@ export function stuckCells(g) {
         const q = [start[0] - s.normal[0] * 0.2, c[1], start[2] - s.normal[2] * 0.2];
         if (touches(s, s.centre, q, false)) { const to = doorTo(s); if (to) add(k, key(cellOf(to))); }
       }
-      if (s.kind === 'warp' && touches(s, s.centre, start, false)) { if (s.back) add(k, key(cellOf(s.to))); else sinks.add(k); } // a back swirl: to the room's start; the Porch Swirl: to the hub, out of the House
+      if (s.kind === 'warp' && touches(s, s.centre, start, false)) sinks.add(k); // the Porch Swirl: to the hub, out of the House
     }
   }
   const back = new Map();
@@ -265,6 +314,46 @@ export function landing(g, exitSw, centre, drop) {
   return { cell: cellOf(r.end), fling: true, end: f.end, onCloud: g.cloud(...cellOf(r.end)) };
 }
 
+// The Quick Room (room 9): the fewest seconds from stepping off the button to walking into its door (Infinity: never). pre: where your
+// blue swirl may already be when you step on the button (null = nowhere); retap: you may tap a pad on the way (`tap` s each).
+// A search over (stand cell, your blue swirl) with the runs' own times, like reachable() but timed (Dijkstra).
+export function quickTime(g, room, { pre = [null], tricks = true, retap = true, slotOk = null, tap = 0.6 } = {}) {
+  const { solid } = g, door = swirlById(room.exit), oranges = room.oranges.map(swirlById), slots = slotOk ? room.slots.filter(slotOk) : room.slots;
+  const best = new Map(), heap = [];
+  const push = (c, teal, t) => { const k = `${key(c)}|${teal ?? '-'}`; if ((best.get(k) ?? Infinity) <= t) return; best.set(k, t); heap.push([t, c, teal]); };
+  for (const p of pre) push(cellOf(room.button.at), p, 0);
+  let found = Infinity;
+  while (heap.length) {
+    let bi = 0;
+    for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[bi][0]) bi = i;
+    const [t, c, teal] = heap.splice(bi, 1)[0];
+    if (t >= found || t > (best.get(`${key(c)}|${teal ?? '-'}`) ?? Infinity)) continue;
+    const at = [c[0] + 0.5, c[1], c[2] + 0.5];
+    if (touches(door, door.centre, [at[0] - door.normal[0] * 0.2, c[1], at[2] - door.normal[2] * 0.2], false)) { found = t; continue; }
+    if (tricks && retap) for (const id of slots) if (id !== teal && losTo(solid, eyeOf(c), swirlById(id), s => s.centre)) push(c, id, t + tap);
+    const active = tricks ? [...oranges, ...(teal ? [swirlById(teal)] : [])] : [];
+    const seek = q => { for (const s of active) if (touches(s, s.centre, q, false)) return s; return null; };
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const sp of [0.01, 2.2, 4.3, 6.2]) for (const mode of ['walk', 'jump']) {
+      if (sp < 1 && mode === 'walk') continue;
+      const r = run(solid, at, dx * sp, dz * sp, { mode, seek });
+      if (r.hit) {
+        const other = isOrangeEnd(r.hit) ? (teal ? swirlById(teal) : null) : oranges[0];
+        if (!other) continue;
+        const ex = exitOf(other, other.centre, exitSpeed(Math.max(0, r.peak - r.end[1])));
+        let p = ex.pos, ft = 0;
+        if (ex.vel) { const f = flingFlight(solid, ex.pos, ex.vel, PORTAL.flingG, null); p = f.end; ft = f.time; }
+        const s = run(solid, p, 0, 0, { mode: 'walk', maxT: 6 }), cc = cellOf(s.end);
+        if (g.nodes.has(key(cc))) push(cc, teal, t + r.t + ft + s.t);
+        continue;
+      }
+      if (!r.landed) continue;
+      const cc = cellOf(r.end);
+      if (g.nodes.has(key(cc))) push(cc, teal, t + r.t);
+    }
+  }
+  return found;
+}
+
 // Did the search walk into the room's exit door? (`res` = what reachable() returned.)
 export const exitReached = (res, room) => res.exits.has(room.exit);
 
@@ -274,6 +363,10 @@ export function roomRows(g, rooms = ROOMS) {
   return rooms.map(room => {
     const c = cellOf(room.start), ph = PHASES[room.n], name = ph && Object.keys(ph)[0], values = ph ? ph[name] : [null];
     const t0 = Date.now();
+    if (room.button) { // the Quick Room: in time with your swirl set first; never on foot; not when the swirl is only tapped after the button
+      const skilled = quickTime(g, room, { pre: [null, ...room.slots] }), naive = quickTime(g, room, { tricks: false }), late = quickTime(g, room, { pre: [null] });
+      return { n: room.n, id: room.id, phase: 'time', values: [`${skilled.toFixed(2)}s/${naive.toFixed(2)}s/${late.toFixed(2)}s`], withTricks: [skilled <= room.button.open - 1], without: naive <= room.button.open + 1, noRetap: late <= room.button.open, ms: Date.now() - t0, skilled, naive, late };
+    }
     const withTricks = values.map(v => exitReached(reachable(g, c, { stayIn: room, ...(name ? { [name]: v } : {}) }), room));
     const without = exitReached(reachable(g, c, { tricks: false, stayIn: room, ...(name ? { [name]: values[0] } : {}) }), room);
     const noRetap = exitReached(reachable(g, c, { retap: false, stayIn: room, ...(name ? { [name]: values[Math.floor(values.length / 2)] } : {}) }), room);
@@ -290,7 +383,7 @@ if (process.argv[1] && process.argv[1].endsWith('portalcheck.mjs')) {
   console.log('stuck:', stuck.length, stuck.slice(0, 12).join(' '));
   const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
   const rooms = only ? ROOMS.filter(x => only.includes(x.n)) : ROOMS;
-  console.log('decoys:', ROOMS.map(r => r.slots.filter(id => swirlById(id).decoy).length).join(' '));
+  console.log('decoys:', ROOMS.map(r => r.slots.filter(id => swirlById(id).decoy).length).join(' '), '| problems:', decoyProblems(g).join(' ') || '-');
   for (const d of decoyRows(g, rooms)) console.log(`decoys room ${d.n}: ${d.decoys} | only decoys reach the exit ${d.onlyDecoys} | pinned ${d.pinned.join(' ') || '-'} | ball ${d.ball.join(' ') || '-'}`);
   for (const r of rooms) { const t0 = Date.now(), ph = PHASES[r.n], k = ph && Object.keys(ph)[0], bad = new Set((ph ? ph[k] : [null]).flatMap(v => fallOnly(g, r, k ? { [k]: v } : {}))); console.log(`room ${r.n} fall-only cells: ${bad.size} ${[...bad].slice(0, 8).join(' ')} (${Date.now() - t0} ms)`); }
   for (const r of roomRows(g, rooms)) console.log(`room ${r.n} ${r.id}: tricks ${r.values.map((v, i) => `${v ?? ''}:${r.withTricks[i]}`).join(' ')} | no tricks ${r.without} | no retap ${r.noRetap} (${r.ms} ms)`);

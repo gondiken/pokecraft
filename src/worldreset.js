@@ -14,6 +14,9 @@ export const WORLD_RESETS = [
   { id: 'bubble', mark: 'pw:bubble:redesign1' }, // the Bubble Well's natural-rules redesign (2026-10-29); it was behind ?preview until then
   { id: 'gravity', mark: 'pw:gravity:redesign1' }, // Cube Planets' natural-rules redesign (2026-10-29, owner: "reset my progress in both gravity and bubble worlds"); preview-only until then
 ];
+// The Portal House grew to ten rooms with decoy pads (owner 2026-10-29: "reset my progress which I now had in the ?preview"); it is
+// behind ?preview (comingsoon.js: not in OPEN_NOW), so only preview players had progress there.
+WORLD_RESETS.push({ id: 'portal', mark: 'pw:portal:reset10' });
 const MARKS = () => new Set(WORLD_RESETS.map(r => r.mark));
 
 // Clears the progress of the Picture Worlds `ids` (keys in `beaten` and `keys`, stars, bossWins), never a reset mark. Pure on `game`.
