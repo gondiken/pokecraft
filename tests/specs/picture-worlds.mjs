@@ -244,7 +244,7 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(async () => {
     const g = window.pokecraft, S = await import('/src/species.js'), bs = g.world.bosses[0];
     g.player.pos.set(bs.rest[0], bs.rest[1], bs.rest[2]); g.player.vel.set(0, 0, 0);
-    g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0;
+    g.party = [S.makeCreature('thunderwolf', 100), S.makeCreature('blazehound', 100)]; g.cubes = 0; // two: a lone creature can lose to four of the Boss's
     g.bosses.talk(g.npcs.list.find(n => n.kind === 'boss'));
   });
   await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 30000);

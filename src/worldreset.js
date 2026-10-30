@@ -12,6 +12,7 @@ import { PREVIEW } from './comingsoon.js';
 
 export const WORLD_RESETS = [
   { id: 'bubble', mark: 'pw:bubble:redesign1' }, // the Bubble Well's natural-rules redesign (2026-10-29); it was behind ?preview until then
+  { id: 'gravity', mark: 'pw:gravity:redesign1' }, // Cube Planets' natural-rules redesign (2026-10-29, owner: "reset my progress in both gravity and bubble worlds"); preview-only until then
 ];
 const MARKS = () => new Set(WORLD_RESETS.map(r => r.mark));
 

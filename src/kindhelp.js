@@ -34,7 +34,8 @@
 //   Shields (bubbles.js)       a ride from the rim that popped no shield  the shields x (1 + e) bigger, their sway x (1 - e)
 //   Orbikit Chase (orbits.js)  it saw you and ran back                    its sprint x (1 - e) (still faster than you), tag reach x (1 + e)
 //   Planet Hop (orbits.js)     a flower flight that missed the pebble     the next pebble's pull reaches e x 8 blocks further (gravity.js pad)
-//   Moon Ride (orbits.js)      a jump off the moon outside the ring       the moon x (1 - e), the ring x (1 + e)
+//   Moon Ferry (orbits.js)     a jump off the moon that missed every      the moon x (1 - e), the Lens Rocks' pull reaches e x 8 blocks
+//                                Lens Rock                                  further (gravity.js pad)
 export const KIND_HELP = { after: 2, step: 0.02, max: 0.10 };
 
 export class KindHelp {
