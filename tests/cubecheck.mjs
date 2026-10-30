@@ -2,7 +2,7 @@
 // (walking over every edge, jumping onto a 1-block bump, dropping off anything), and the plain jumps between planets from gravity.js
 // flightLand (the same sums as the player). Used by tests/specs/cube.mjs and run by hand with `node tests/cubecheck.mjs [seed]`.
 import { B, WOOL, isSolid } from '../src/blocks.js';
-import { cubeLand, SIZE, PLANETS, P, BOXES, HOPS, FACES, faceCell, faceSize, faceCentre, hopSpot, DOOR, FLOWERS, HOME_FLOWERS, LENSES, MOON, PUPS, sizeOf } from '../src/cubeland.js';
+import { cubeLand, SIZE, PLANETS, P, BOXES, HOPS, FACES, faceCell, faceSize, faceCentre, hopSpot, DOOR, FLOWERS, BACK_SWIRLS, LENSES, MOON, PUPS, sizeOf } from '../src/cubeland.js';
 import { ferryAt } from '../src/orbits.js';
 import { GRAV, flightLand, downAt, upOf, frameOf, toWorld } from '../src/gravity.js';
 
@@ -118,7 +118,7 @@ export function analyze(seed = 1) {
   const reach = plainReach(P.meadow, [...extra].map(e => e.split('>').map(Number)));
   info.plain = [...reach].map(i => PLANETS[i].id);
   for (const id of ['hop1', 'hop2', 'hop3', 'hop4', 'great', 'lens1', 'lens2', 'lens3']) if (reach.has(P[id])) problems.push(`${id} can be reached without the flowers / the moon`);
-  // ... nor by a running jump off any edge of the Moon Dock's top toward a Lens Rock (the rocks are too far to jump to: you need the moon)
+  // ... nor by a running jump off any edge of the Saucer Dock's top toward a Lens Rock (the rocks are too far to jump to: you need the moon)
   const D = BOXES[P.base], lensHits = [];
   for (const L of LENSES) {
     const b = BOXES[L.planet], c = [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2];
@@ -130,16 +130,16 @@ export function analyze(seed = 1) {
       if (r && r.planet === L.planet) lensHits.push(`${PLANETS[L.planet].id} from ${x.toFixed(1)},${z.toFixed(1)}`);
     }
   }
-  if (lensHits.length) problems.push(`a Lens Rock can be reached by a running jump off the Moon Dock: ${lensHits.slice(0, 3).join('; ')}`);
+  if (lensHits.length) problems.push(`a Lens Rock can be reached by a running jump off the Saucer Dock: ${lensHits.slice(0, 3).join('; ')}`);
   // 4. the blocks: only these ids, the new ones only 149, 183 and 249
   const ids = new Set();
   for (let i = 0; i < w.data.length; i++) ids.add(w.data[i]);
   info.ids = [...ids].sort((x, y) => x - y);
-  const allowed = new Set([B.AIR, B.PLANET_ROCK, B.STAR_GRASS, B.ICE, B.COBBLE, B.GRAVEL, B.CRYSTAL, B.GLOWCAP, B.FLOWER_BUSH, B.LOG, B.LEAVES, B.PICTURE_FRAME, B.WAY_BACK, B.BOSS_STAND, WOOL.gravity]);
+  const allowed = new Set([B.AIR, B.PLANET_ROCK, B.STAR_GRASS, B.ICE, B.COBBLE, B.GRAVEL, B.CRYSTAL, B.GLOWCAP, B.FLOWER_BUSH, B.LOG, B.LEAVES, B.PICTURE_FRAME, B.WAY_BACK, B.BOSS_STAND, WOOL.gravity, WOOL.fire, WOOL.water, WOOL.electric, WOOL.grass]); // (the pebbles: one strong colour each, owner 2026-10-30)
   const odd = info.ids.filter(i => !allowed.has(i));
   if (odd.length) problems.push(`unexpected blocks ${odd}`);
   // 5. the games' places: every flower's pad, every home flower, every ring with room to stand; the pups' loops free of bumps
-  for (const f of [...FLOWERS, ...HOME_FLOWERS]) {
+  for (const f of [...FLOWERS, ...BACK_SWIRLS]) {
     const up = [0, 0, 0]; up[f.axis ?? 1] = f.sign ?? 1;
     const air = [1, 2].every(k => !isSolid(w.get(f.cell[0] + up[0] * k, f.cell[1] + up[1] * k, f.cell[2] + up[2] * k)));
     if (!isSolid(w.get(...f.cell)) || !air) problems.push(`a flower at ${f.cell} has no room`);

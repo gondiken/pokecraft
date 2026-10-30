@@ -103,7 +103,7 @@ export function playChase(env, i, kind, { fps = 60, maxT = 60, seed = 1 } = {}) 
 // robot above): it knows the dotted way but sees the Orbikit only when nothing is in between (else it guesses from where it last saw it),
 // thinks again only every `think` s, presses Tag! a `react` s late, and stands a little off the perfect spot (up to `err` blocks along
 // and across), so on a planet that is easy to read it wins at once and on a harder one it needs a few goes. -> { tagged, t, spots }
-export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0.5, react = 0.25, err = Number(process.env.KID_ERR ?? 0.5) } = {}) {
+export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0.5, react = 0.25, freezeFor = 1.2, err = Number(process.env.KID_ERR ?? 0.5) } = {}) {
   const { live, player: pl } = env, q = PUPS[i], box = BOXES[q.planet], dt = 1 / fps, r0 = rng(seed * 131 + i);
   const c = [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2, (box.z0 + box.z1) / 2], start = c.slice();
   const pole = [0, 1, 2].find(a => q.loop.every(p => Math.abs(p[a] - q.loop[0][a]) < 1e-9));
@@ -112,14 +112,14 @@ export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0
   standAt(env, start);
   live.pups[i].run = null; live.pups[i].tagT = -99;
   const tagsBefore = live.state().tags, keyBefore = live.state().tag[i];
-  let t = 0, plan = null, nextThink = 0, mem = null, pressAt = -1, spots = 0;
+  let t = 0, plan = null, nextThink = 0, mem = null, pressAt = -1, spots = 0, freeze = -1;
   for (let n = 0; n < maxT * fps; n++) {
     const r = live.pups[i].run, k = {};
     if (r && !r.tagged) {
       const L = r.L, mypos = P3(pl.pos), a = r.at, mid = a.pos.map((v, j) => v + a.up[j] * 0.6), head = mypos.map((v, j) => v + upOf(pl.frame ?? 0)[j] * 1.5);
       if (live.seen(head, mid)) mem = { s: r.s, dir: r.dir, t };
-      if (live.pMiss[i] > spots) { spots = live.pMiss[i]; plan = null; nextThink = t + think; } // it saw me: think again (a moment later)
-      if (t >= nextThink || !plan) {
+      if (live.pMiss[i] > spots) { spots = live.pMiss[i]; plan = null; nextThink = t + think; freeze = t + freezeFor; } // it saw me ("!"): stop a moment, then think again
+      if (t < freeze) { /* (a child stops when the Orbikit shouts "!" at it) */ } else if (t >= nextThink || !plan) {
         nextThink = t + think;
         const est = mem ? { s: mem.s + mem.dir * r.base * (t - mem.t), dir: mem.dir } : null;
         if (est && (!plan || plan.look || plan.dir !== est.dir || plan.passed)) {
@@ -139,7 +139,7 @@ export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0
       if (!mem) { // not seen it yet: walk round the planet on its dotted way to look for it
         if (!plan || !plan.look) { const sNear = loopNearest(L, mypos).s, aim = loopAt(L, sNear + 4).pos; plan = { look: true, wp: route(box, pl, aim) }; }
       }
-      if (plan) {
+      if (plan && t >= freeze) {
         const wp = plan.wp[0], d = Math.hypot(...sub(wp, mypos));
         if (d > 0.35) { face(pl, wp, box); k.KeyW = true; k.ShiftLeft = d > 1.2; }
         else if (plan.wp.length > 1) plan.wp.shift();
@@ -155,6 +155,35 @@ export function playChaseKid(env, i, { fps = 60, maxT = 120, seed = 1, think = 0
     if (live.state().tags > tagsBefore || (keyBefore && live.pups[i].tagT > -99 && !live.pups[i].run)) return { tagged: true, t, spots: live.pMiss[i] };
   }
   return { tagged: false, t, spots: live.pMiss[i] };
+}
+
+// Owner 2026-10-30 ("I have no idea how I won ... it would either randomly get tagged or randomly see me"): one ambush, the way a child
+// does it. Stand still on the next face round corner `ci` of its loop, `D` blocks from the edge and `across` blocks to the side of its way,
+// looking at the edge; the Orbikit comes over that edge. `press`: press Tag! whenever the game offers it. -> { result: 'tag' | 'seen' | 'none',
+// bang (its "!" showed first), skid, d (how far it was when it saw you), offered (Tag! was offered and then not honoured: must never happen) }
+export function playCorner(env, i, { ci = 1, D = 1, across = 0, press = false, fps = 60 } = {}) {
+  const { live, player: pl } = env, q = PUPS[i], box = BOXES[q.planet], L = live.loops[i], seg = L.segs[ci], dt = 1 / fps;
+  const side = [seg.up[1] * seg.dir[2] - seg.up[2] * seg.dir[1], seg.up[2] * seg.dir[0] - seg.up[0] * seg.dir[2], seg.up[0] * seg.dir[1] - seg.up[1] * seg.dir[0]];
+  standAt(env, seg.a.map((v, j) => v + seg.dir[j] * D + side[j] * across + seg.up[j] * 0.01));
+  live.pups.forEach(p => { p.run = null; p.tagT = -99; p.bang = 0; });
+  live.pMiss[i] = 0;
+  env.step(dt);
+  const r = live.pups[i].run;
+  if (!r) return { result: 'none' };
+  r.s = seg.at - 6; r.dir = 1; r.coolT = 0; r.flipT = 99;
+  face(pl, seg.a, box);
+  let bang = false, skid = false, d = 0, offered = 0, pressedAt = -1, t = 0;
+  for (let n = 0; n < 4 * fps; n++) {
+    if (press && live.near(pl) === 'Tag!' && pressedAt < 0) { live.use(pl); pressedAt = t; }
+    env.step(dt); t += dt;
+    const run = live.pups[i].run;
+    if (!run) return { result: 'tag', bang, skid, d, offered };
+    if (pressedAt >= 0 && t - pressedAt > 0.3) { offered++; pressedAt = -1; }
+    if ((live.pups[i].bang || 0) > 0 && !bang) { bang = true; const a = run.at; d = Math.hypot(a.pos[0] - pl.pos.x, a.pos[1] - pl.pos.y, a.pos[2] - pl.pos.z); }
+    if (run.skidding) skid = true;
+    if (live.pMiss[i] > 0) return { result: 'seen', bang, skid, d, offered };
+  }
+  return { result: 'none', bang, skid, d, offered };
 }
 
 /* ================================================================ the Planet Hop */

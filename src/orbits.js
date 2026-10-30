@@ -6,6 +6,12 @@
 //  - Orbikit Chase: the Professor's pet comet cheetahs got loose. An Orbikit runs round and round its planet (its sparkly trail shows
 //    where); it is faster than you, and it runs away from what it sees. Round a corner it cannot see you: wait there and it runs into you.
 //    Three planets, easy -> medium -> harder (PUPS in cubeland.js carry each round's numbers).
+//    Owner 2026-10-30 ("I have no idea how I won ... it would either randomly get tagged or randomly see me"): the old rule turned it the
+//    instant it came over the edge and saw you, so only a child standing within about 1 block of the edge won; 1.5 blocks back it saw you
+//    and turned while nearly touching you (and it also "heard" you from any side within 2.2). Now there is ONE readable rule: when it first
+//    sees you it shows a "!" (cubelive.js). Seen from afar it turns and runs (`spotted`). Seen up close on its own lane (`surprise`
+//    ahead, `lane` to the side: it comes round the corner right at you) it is too surprised to stop: it skids into you (`bump`) and is
+//    tagged. Running after it from behind only makes it sprint (it is faster than you); nothing else notices you.
 //  - Planet Hop: spring flowers grow on the pebbles. Stand on one and it squashes; jump and it flings you up (a spring). Your run-up
 //    (stand, walk, run) and its direction carry on into the flight (the flights are player.js's own sums; nothing here but the help).
 //  - Moon Ferry: the Professor's three telescope lenses fell onto far little rocks, too far to jump to. A little moon circles past on an
@@ -34,8 +40,10 @@ export const PUP = {
   tagR: 1.1,       // touching: the Orbikit within this of your body (feet to head)
   button: 1.6,     // Tag! (the big button) reaches this far
   see: 6.5,        // it sees you on its own face, in front of it, this close (and nothing in between)
-  hear: 2.2,       // ... and hears you on its own face this close, whichever way it looks (a wanderer bumping into it from the side is heard)
   cone: 0.35,      // ... within this of straight ahead (the cosine: about 70 degrees each side)
+  surprise: 2.8,   // seen this close ahead (it came round a corner or past a tree right at you) ... (each round may have its own: PUPS)
+  lane: 1.0,       // ... and this close to its way, to the side: it cannot stop and skids into you (a tag)
+  bump: 0.9,       // the skid lasts at most this long (it slows from its trot to a stop); step away and it turns and runs after all
   chase: 5,        // behind it (or beside) on its planet this close: it sprints
   flee: 1.0,       // after it saw you it sprints away this long
   cool: 1.5,       // and does not turn again this soon
@@ -83,7 +91,7 @@ export function loopNearest(L, p) {
   return { s: best, d: bd };
 }
 // Distance from a point to the segment feet..head (the player's body).
-function bodyDist(q, feet, up, h = 1.8) {
+export function bodyDist(q, feet, up, h = 1.8) {
   const w = sub(q, feet), k = Math.max(0, Math.min(h, dot(w, up)));
   return len(sub(w, up.map(v => v * k)));
 }
@@ -95,11 +103,15 @@ export class PupRun {
     const h = gravityHelp(opts.help ?? 0), hard = opts.hard ? HARD.pup : 1;
     this.base = (opts.base ?? 4.6) * hard; this.boost = (opts.boost ?? 7.0) * hard * h.sprint; this.tagR0 = opts.tagR ?? PUP.tagR; this.tagR = this.tagR0 * h.tag; this.button = PUP.button * h.tag;
     this.see = opts.see ?? PUP.see; // (each round's own numbers: cubeland.js PUPS)
+    this.surprise0 = opts.surprise ?? PUP.surprise; this.surprise = this.surprise0 * h.tag; this.lane = PUP.lane * h.tag; this.bumpT = 0;
     this.flip = opts.flip ?? 0; this.flipT = this.flip; // the playful one: it turns back by itself every `flip` s (0 = never); watch it before you hide
     this.s = opts.start ?? 0; this.dir = 1; this.time = 0; this.acc = 0; this.coolT = 0; this.fleeT = 0; this.speed = this.base;
     this.seen = opts.seen ?? (() => true);
     this.tagged = false; this.spots = 0; this.running = false;
   }
+  // the kind help (cubelive.js, after a miss): its sprint and every reach
+  help(boost, tag) { this.boost = boost; this.tagR = this.tagR0 * tag; this.button = PUP.button * tag; this.surprise = this.surprise0 * tag; this.lane = PUP.lane * tag; }
+  get skidding() { return this.bumpT > 0; }
   get at() { return loopAt(this.L, this.s); }
   // where it heads (its running direction, unit)
   heading() { const a = this.at; return a.dir.map(v => v * this.dir); }
@@ -123,11 +135,24 @@ export class PupRun {
     const a = this.at, mid = a.pos.map((v, k) => v + a.up[k] * PUP.sit);
     if (pl?.mine) {
       const d = bodyDist(mid, pl.feet, pl.up);
-      if (d <= this.tagR || (pressed && d <= this.button)) { this.tagged = true; ev.push({ type: 'tag', d }); return; }
+      if (d <= this.tagR || (pressed && d <= this.button)) { this.tagged = true; ev.push({ type: 'tag', d, skid: this.bumpT > 0 }); return; }
+      if (this.bumpT > 0) { // skidding into you: it slows from its trot to a stop; you stepped out of its way = it turns and runs after all
+        this.bumpT -= h;
+        this.speed = this.base * Math.max(0, this.bumpT / PUP.bump);
+        if (this.bumpT <= 0) { this.bumpT = 0; this.dir = -this.dir; this.coolT = PUP.cool; this.fleeT = PUP.flee; this.spots++; ev.push({ type: 'spotted', late: true }); }
+        else { this.s = ((this.s + this.dir * this.speed * h) % this.L.total + this.L.total) % this.L.total; return; }
+      }
       const head = pl.feet.map((v, k) => v + pl.up[k] * 0.9), to = sub(head, mid), dist = len(to), fwd = this.heading();
       const sameFace = pl.face && pl.face[0] === a.seg.face[0] && pl.face[1] === a.seg.face[1];
-      const front = dist > 1e-9 && dot(to, fwd) / dist > PUP.cone;
-      if (sameFace && (front && dist < this.see || dist < PUP.hear) && this.coolT <= 0 && this.seen(mid, head)) {
+      const ahead = dot(to, fwd), front = dist > 1e-9 && ahead / dist > PUP.cone;
+      if (sameFace && front && dist < this.see && this.coolT <= 0 && this.seen(mid, head)) {
+        const side = sub(to, fwd.map(v => v * ahead)), across = Math.hypot(...side.map((v, k) => v - a.up[k] * dot(side, a.up)));
+        if (ahead <= this.surprise && across <= this.lane) { // too close to stop: it skids into you
+          this.bumpT = PUP.bump; this.coolT = PUP.cool;
+          ev.push({ type: 'surprised' });
+          this.s = ((this.s + this.dir * this.speed * h) % this.L.total + this.L.total) % this.L.total;
+          return;
+        }
         this.dir = -this.dir; this.coolT = PUP.cool; this.fleeT = PUP.flee; this.spots++;
         ev.push({ type: 'spotted' });
       }
@@ -135,17 +160,17 @@ export class PupRun {
       // the playful one turns back by itself now and then, but never toward you when you are close (chasing must never work)
       if (this.flip > 0 && (this.flipT -= h) <= 0) { this.flipT += this.flip; if (this.fleeT <= 0 && dist > 8) { this.dir = -this.dir; ev.push({ type: 'flip' }); } }
       const want = chased || this.fleeT > 0 ? this.boost : this.base;
-      if (want > this.speed && this.speed <= this.base) ev.push({ type: 'sprint' });
+      if (want > this.speed && this.speed <= this.base) ev.push({ type: 'sprint', chased: chased && this.fleeT <= 0 });
       this.speed = want;
       this.running = true;
-    } else { this.speed = this.base; }
+    } else { this.speed = this.base; this.bumpT = 0; }
     if (this.running) this.s = ((this.s + this.dir * this.speed * h) % this.L.total + this.L.total) % this.L.total;
   }
 }
 
 /* ================================================================ the Moon Ferry */
 // A real orbit (Kepler): the moon goes round an ellipse whose one focus is the little sun; equal areas in equal times, so it is slow at
-// its far end (where you hop on, beside the Moon Dock) and fast as it swings round the sun. M = cubeland.js MOON:
+// its far end (where you hop on, beside the Saucer Dock) and fast as it swings round the sun. M = cubeland.js MOON:
 // { cx, cz (the ellipse's middle), a (half its length, along x), e, period (s), y (the moon's top, where you stand), sx (+1: the slow
 // far end is at +x) }. phase = how far round (0..1, the mean anomaly / 2 pi); k = a speed factor (the kind help, the rematch).
 // -> { pos: [x, y, z] (the middle of the moon's top), vel: [x, y, z] (blocks/s), E (eccentric anomaly), speed }

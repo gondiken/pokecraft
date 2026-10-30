@@ -79,7 +79,7 @@ const harness = page => page.evaluate(async () => {
     lane(w, pi, axis, sign, a, s) {
       const P = CLm.PLANETS[pi], b = [0, 1, 2].find(k => k !== axis && k !== a), base = [P.x, P.y, P.z], mid = Math.floor(P.n / 2), m = P.n - 1;
       const air = (fax, fsg, cell) => [1, 2].every(out => { const o = [0, 1, 2].filter(k => k !== fax), uv = o.map(k => cell[k] - base[k]); return !w.isSolid(...CLm.faceCell(P, fax, fsg, uv[0], uv[1], out)); });
-      const pad = (fax, fsg, cell) => { const o = [0, 1, 2].filter(k => k !== fax), uv = o.map(k => cell[k] - base[k]), c = CLm.faceCell(P, fax, fsg, uv[0], uv[1], 0); const k = c.join(); return [...CLm.FLOWERS, ...CLm.HOME_FLOWERS].some(f => f.cell.join() === k); };
+      const pad = (fax, fsg, cell) => { const o = [0, 1, 2].filter(k => k !== fax), uv = o.map(k => cell[k] - base[k]), c = CLm.faceCell(P, fax, fsg, uv[0], uv[1], 0); const k = c.join(); return [...CLm.FLOWERS, ...CLm.BACK_SWIRLS].some(f => f.cell.join() === k); };
       const cands = Array.from({ length: P.n - 2 }, (_, i) => i + 1).sort((x, y) => Math.abs(x - mid) - Math.abs(y - mid));
       for (const c of cands) {
         let ok = true;
@@ -177,10 +177,25 @@ export default async function ({ browser, base, t }) {
       for (let i = 0; i < 3; i++) for (let seed = 1; seed <= 6; seed++) { const env = await cubeEnv(seed); kid[i].push(B.playChaseKid(env, i, { fps, seed, err: 1.0 })); }
       const med = a => { const v = a.map(r => (r.tagged ? r.t : 120)).sort((x, y) => x - y); return (v[2] + v[3]) / 2; }, rate = a => a.filter(r => r.tagged).length;
       const m3 = kid.map(med);
-      t.ok(rate(kid[0]) === 6 && rate(kid[1]) >= 5 && rate(kid[2]) >= 4 && m3[0] < m3[1] && m3[1] <= m3[2] * 1.15 && m3[2] <= 4 * m3[0],
+      t.ok(rate(kid[0]) === 6 && rate(kid[1]) >= 5 && rate(kid[2]) >= 4 && m3[0] < m3[1] && m3[1] <= m3[2] * 1.15 && m3[2] <= 4.5 * m3[0],
         `Orbikit Chase @${fps}, the ramp with a skilled child: round 1 ${rate(kid[0])}/6 in ${m3[0].toFixed(0)} s, round 2 ${rate(kid[1])}/6 in ${m3[1].toFixed(0)} s, round 3 ${rate(kid[2])}/6 in ${m3[2].toFixed(0)} s (medians; round 3 = ${(m3[2] / m3[0]).toFixed(1)} x round 1)`);
       t.ok(tags('chaser') === 0 && tags('camper') === 0 && tags('random') <= 2 && tags('skilled') === 6 && chase.skilled.every(r => r.spots === 0),
         `Orbikit Chase @${fps}: running after it never tags it (${tags('chaser')}/6 in 45 s), standing on its loop never does (${tags('camper')}/6: it sees you and turns ${chase.camper.map(r => r.spots).join(',')} times), wandering about seldom (${tags('random')}/6${chase.random.some(r => r.tagged) ? `, after ${chase.random.filter(r => r.tagged).map(r => r.t.toFixed(0)).join(' / ')} s` : ''}); waiting round a corner on its loop tags it every time (${tags('skilled')}/6, in ${chase.skilled.map(r => r.t.toFixed(1)).join(' / ')} s, never seen)`);
+      // Owner 2026-10-30 "no idea how I won": the ambush must be readable. On every planet, round two corners, standing still on its way
+      // up to `surprise` from the edge always tags it (it shows its "!" and skids into you), further back it always sees you ("!") and runs;
+      // a step off its way the "!" comes too and Tag! (offered only in reach) tags it when pressed. The same at 60 and 20 frames a second.
+      {
+        const rows = [], bad = []; let vain = 0;
+        for (let i = 0; i < 3; i++) for (const ci of [1, 2]) {
+          const S = CL.PUPS[i].surprise, env = await cubeEnv(1);
+          for (const D of [0.3, 1, 1.6, S * 0.75, S - 0.3]) { const r = B.playCorner(env, i, { ci, D, press: true, fps }); vain += r.offered || 0; if (r.result !== 'tag' || (D >= 1.8 && !r.bang)) bad.push(`#${i + 1} corner ${ci} at ${D.toFixed(1)}: ${r.result}${r.bang ? '' : ' (no "!")'}`); }
+          for (const D of [S + 0.4, S + 1.5]) { const r = B.playCorner(env, i, { ci, D, press: true, fps }); vain += r.offered || 0; if (r.result !== 'seen' || !r.bang) bad.push(`#${i + 1} corner ${ci} at ${D.toFixed(1)}: ${r.result} (should be seen)`); }
+          const off = B.playCorner(env, i, { ci, D: 1.0, across: 1.6, press: true, fps }); vain += off.offered || 0;
+          if (off.result !== 'seen' || !off.bang) bad.push(`#${i + 1} corner ${ci} a step off its way: ${off.result}`);
+          rows.push(`#${i + 1}: ${S}`);
+        }
+        t.ok(!bad.length && !vain, `Orbikit @${fps}: one readable rule round every corner of every planet: standing on its way up to its surprise distance from the edge always tags it (right at the edge it simply runs into you; from 1.5 blocks back it shows "!" and skids into you; ${rows.join(', ')} blocks), further back or a step off its way it always shows "!" and runs; Tag! (pressed whenever offered) never failed (${vain} in vain) ${bad.slice(0, 4).join('; ')}`);
+      }
       // the Planet Hop: each flower, each kind
       const hop = {};
       for (const kind of ['skilled', 'sprinter', 'walker', 'random']) {
@@ -191,7 +206,7 @@ export default async function ({ browser, base, t }) {
       const chainOf = k => hop[k].every((n, i) => n === (k === 'random' ? 24 : 2));
       const randRate = hop.random.map(n => n / 24), chain = randRate.reduce((a, b) => a * b, 1);
       t.ok(chainOf('skilled') && !chainOf('sprinter') && !chainOf('walker') && randRate[1] <= 0.3 && randRate[3] <= 0.35 && chain < 0.02,
-        `Planet Hop @${fps}: the right run lands every pebble (${hop.skilled.join('/')} of 2 each); running straight at the next pebble fails (${hop.sprinter.join('/')}: too fast, the Sky Pebble catches you), walking straight at it fails (${hop.walker.join('/')}: too slow), a random run seldom lands (${hop.random.join('/')} of 24: the whole chain by luck ${(chain * 100).toFixed(2)} %)`);
+        `Planet Hop @${fps}: the right run lands every pebble (${hop.skilled.join('/')} of 2 each); running straight at the next pebble fails (${hop.sprinter.join('/')}: too fast, the Yellow Pebble catches you), walking straight at it fails (${hop.walker.join('/')}: too slow), a random run seldom lands (${hop.random.join('/')} of 24: the whole chain by luck ${(chain * 100).toFixed(2)} %)`);
       // the Moon Ferry
       const fer = {}, win = [];
       { const env = await cubeEnv(1); for (let n = 0; n < 3; n++) win.push(Math.max(...B.ferryWindows(env.live, n).map(w => w.secs))); }
@@ -240,7 +255,7 @@ export default async function ({ browser, base, t }) {
   if (want('uniform')) {
     const { cubeEnv } = await import('../cubenode.mjs');
     const env = await cubeEnv(1), gs = new Set(env.world.planets.map(b => b.g)), reach = new Set(env.world.planets.map(b => b.reach));
-    // the same jump on the Meadow Cube, a pebble, the Moon Dock and a Lens Rock reaches the same height and lasts as long
+    // the same jump on the Meadow Cube, a pebble, the Saucer Dock and a Lens Rock reaches the same height and lasts as long
     const jumps = [CL.P.meadow, CL.P.hop1, CL.P.base, CL.P.lens1].map(pi => {
       const b = CL.BOXES[pi], p = env.player; p.carry = null; p.pos.set(Math.floor((b.x0 + b.x1) / 2) + 0.5 + (pi === CL.P.meadow ? 2 : 0), b.y1, Math.floor((b.z0 + b.z1) / 2) + 0.5 + (pi === CL.P.lens1 ? 1 : 0)); p.vel.set(0, 0, 0); p.keys = {};
       for (let i = 0; i < 20; i++) env.step(1 / 60);
@@ -249,7 +264,7 @@ export default async function ({ browser, base, t }) {
       return { top: +top.toFixed(4), t: n };
     });
     t.ok(gs.size === 1 && [...gs][0] === G.GRAV.g && G.GRAV.g < 0.7 && reach.size === 1 && jumps.every(j => j.top === jumps[0].top && j.t === jumps[0].t),
-      `every planet pulls the same (g ${[...gs].join()} of the main world's, a bit floatier than the old hub planets' 0.7; before: 0.7 / 0.6 / 0.45 with no reason you could see): a jump on the Meadow Cube, a pebble, the Moon Dock and a Lens Rock goes ${jumps[0].top} high for ${jumps[0].t} frames on each (${jumps.map(j => `${j.top}/${j.t}`).join(', ')})`);
+      `every planet pulls the same (g ${[...gs].join()} of the main world's, a bit floatier than the old hub planets' 0.7; before: 0.7 / 0.6 / 0.45 with no reason you could see): a jump on the Meadow Cube, a pebble, the Saucer Dock and a Lens Rock goes ${jumps[0].top} high for ${jumps[0].t} frames on each (${jumps.map(j => `${j.top}/${j.t}`).join(', ')})`);
   }
 
   /* ------------------------------------------------------------ reset (Node): the redesign's one-time reset (worldreset.js) */
@@ -306,7 +321,7 @@ export default async function ({ browser, base, t }) {
       t.ok(D.moves.length >= 10 && D.nSig === 3 && D.nBig === 3 && D.fx && D.sound, `moves: ${D.moves.join(', ')} (3 signature moves, 3 big moves), effects and the fx:gravity sound`);
       t.ok(D.spawns && D.wild.max === 4 && D.after && /Orbikit/.test(D.afterText) && D.wool === 149 && D.woolName === 'Gravity Wool' && D.ride === 'land',
         `wild ones only on Cube Planets (at most ${D.wild.max} at once), the big ones only "${D.afterText}"; the gravity wool is block 149; Orbitah can be ridden (in other worlds)`);
-      t.ok(D.boss.name === 'Professor Orbit' && D.boss.type === 'gravity' && D.boss.look === 'orbit' && D.boss.top === 63 && D.boss.sig === 'saturnowl' && D.boss.crew === 'Stargazer Stella,Captain Comet,Moon Mechanic Milo' && /Orbikits/.test(D.boss.gate) && D.frame.realm === 'gravity' && D.frame.idx === 11 && D.version === 3,
+      t.ok(D.boss.name === 'Professor Orbit' && D.boss.type === 'gravity' && D.boss.look === 'orbit' && D.boss.top === 63 && D.boss.sig === 'saturnowl' && D.boss.crew === 'Stargazer Stella,Captain Comet,Saucer Mechanic Milo' && /Orbikits/.test(D.boss.gate) && D.frame.realm === 'gravity' && D.frame.idx === 11 && D.version === 3,
         `Professor Orbit (top level 63, his giant Saturnowl last), his helpers ${D.boss.crew}, his gate "${D.boss.gate}"; the frame (place ${D.frame.idx}) opens the realm, version ${D.version}`);
     }
     if (want('off')) {
@@ -426,7 +441,7 @@ export default async function ({ browser, base, t }) {
         return out;
       });
       t.ok(rode && !D0.rideOn && D0.start === false && /No riding on the little planets/.test(D0.rideMsg), `arriving on a creature gets you off and you can't get on again here ("No riding on the little planets")`);
-      t.ok(D0.place === 'gravity' && D0.frame === 0 && D0.ground && D0.y === D0.top && /Crystal Cube/.test(D0.guide) && D0.people === 'Captain Comet,Moon Mechanic Milo,Professor Orbit,Stargazer Stella' && /0 \/ 3/.test(D0.chip) && D0.edit === false && D0.stars,
+      t.ok(D0.place === 'gravity' && D0.frame === 0 && D0.ground && D0.y === D0.top && /Crystal Cube/.test(D0.guide) && D0.people === 'Captain Comet,Professor Orbit,Saucer Mechanic Milo,Stargazer Stella' && /0 \/ 3/.test(D0.chip) && D0.edit === false && D0.stars,
         `the gold-and-lilac frame opens Cube Planets: upright on the Meadow Cube, the guide leads to the Orbikit Chase ("${D0.guide}"), Professor Orbit and his three helpers are there, the chip says "${D0.chip}", no building, a starry sky`);
       // wild Gravity creatures circle on top of the planets (the game's own spawner, while the game runs)
       await page.evaluate(() => { const g = window.pokecraft, n = g.world.nooks[0]; g.player.pos.set(n.x + 8.5, n.y, n.z + 0.5); });
@@ -462,7 +477,7 @@ export default async function ({ browser, base, t }) {
         out.st = live.state(); R.g.updateGuide(); out.guide = document.getElementById('guide')?.textContent;
         return out;
       });
-      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: three Orbikits tagged, four spring-flower hops to the Last Pebble, three lenses from the moon ferry: all seven keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
+      t.ok(GM.chase.every(Boolean) && GM.hop.every(Boolean) && GM.moon.every(Boolean) && GM.st.done && GM.tagSaid && GM.hopSaid, `in the game: three Orbikits tagged, four spring-flower hops to the Green Pebble, three telescope pieces from the saucer ferry: all seven keys saved (${JSON.stringify(GM.st)}); the guide now says "${GM.guide}"`);
       // the Boss's gate (the helpers first), the helpers, a lost battle, the star, the keys cleared
       const G0 = await page.evaluate(() => { const R = window.__R, { g } = R; R.near(R.boss()); window.__toasts.length = 0; g.talkTo(R.boss()); return { battle: g.inBattle, said: window.__toasts.join('|') }; });
       t.ok(!G0.battle && /Stargazer Stella/.test(G0.said), `Professor Orbit waits for his helpers first: "${G0.said}"`);
@@ -546,6 +561,32 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(() => { const R = window.__R, { live, p, env } = R, L = R.CL.LENSES[1]; live.phase = 0.5; const s = live.dockSpot(); live.puffTo({ pos: [s.x, s.y, s.z], frame: 0 }); live.board(); const w = R.Bots.ferryWindows(live, 1).sort((a, b) => b.secs - a.secs)[0]; live.phase = (((w.from + w.to) / 2) % 1 + 0.985) % 1; env.step(0.02); p.lookAt({ x: L.at[0], y: L.at[1] + 1, z: L.at[2] }); });
       await shot(page, 'cube-moon.png');
       await page.evaluate(() => { window.__R.live.getOff(true); });
+      // owner 2026-10-30's looks: the saucer ferry from the dock, a telescope piece, the big telescope, a swirl door back, the glowing next
+      // pebble (and a flower mid-boing), the Orbikit's "!"
+      await page.evaluate(() => { const R = window.__R, { live, p } = R; live.phase = 0.42; const s = live.dockSpot(); live.puffTo({ pos: [s.x - 6, s.y, s.z - 3], frame: 0 }); p.update(0.3); live.step(0.01); const m = live.moonNow(); p.lookAt({ x: m.pos[0], y: m.pos[1] - 0.6, z: m.pos[2] }); });
+      await shot(page, 'cube-saucer.png');
+      await page.evaluate(() => { const R = window.__R, { live, p } = R, L = R.CL.LENSES[0]; live.puffTo({ pos: [L.at[0] - 2.2, L.at[1], L.at[2] + 1.2], frame: 0 }); p.update(0.3); live.step(0.01); p.lookAt({ x: L.at[0], y: L.at[1] + 1.1, z: L.at[2] }); });
+      await shot(page, 'cube-telescope-piece.png');
+      await page.evaluate(() => { const R = window.__R, { live, p, g } = R, T = R.CL.TELESCOPE; g.beaten.push('pw:gravity:lens1'); live.puffTo({ pos: [T[0] + 4, T[1], T[2] + 3.5], frame: 0 }); p.update(0.3); live.step(0.01); p.lookAt({ x: T[0], y: T[1] + 2.2, z: T[2] }); });
+      await shot(page, 'cube-big-telescope.png');
+      await page.evaluate(() => { const R = window.__R, { live, p } = R, h = R.CL.BACK_SWIRLS[1]; live.puffTo({ pos: [h.cell[0] + 0.5, h.cell[1] + 1, h.cell[2] - 2.5], frame: 0 }); p.update(0.3); live.step(0.05); p.lookAt({ x: h.cell[0] + 0.5, y: h.cell[1] + 2, z: h.cell[2] + 0.5 }); });
+      await shot(page, 'cube-back-swirl.png');
+      await page.evaluate(() => { const R = window.__R, { live, p } = R, f = R.CL.FLOWERS[0], b = R.CL.BOXES[f.to], c = f.cell; live.puffTo({ pos: [c[0] + 3.5, c[1] + 1, c[2] + 3.5], frame: 0 }); p.update(0.3); live.boing[0] = 0.02; live.step(0.02); p.lookAt({ x: (b.x0 + b.x1) / 2, y: c[1] + 3, z: (b.z0 + b.z1) / 2 + 3 }); });
+      await shot(page, 'cube-next-pebble.png');
+      const OB = await page.evaluate(() => {
+        const R = window.__R, { live, p, env } = R, i = 0, seg = live.loops[i].segs[1];
+        window.pokecraft.cubeCam.set(true); live.backT = 0; live.flight = null; // (a missed hop of an earlier shot would puff you back)
+        live.puffTo({ pos: seg.a.map((v, j) => v + seg.dir[j] * 4.5 + seg.up[j] * 0.01), frame: R.G.frameOf(seg.up.map(v => -v || 0)) });
+        live.pups[i].run = null; live.pups[i].tagT = -99;
+        for (let k = 0; k < 30; k++) env.step(1 / 60);
+        const r = live.pups[i].run; if (!r) return { err: 'no run', planet: p.grav?.planet, frame: p.frameNo() };
+        r.s = seg.at - 4; r.dir = 1; r.coolT = 0; p.lookAt({ x: seg.a[0], y: seg.a[1], z: seg.a[2] });
+        let k = 0; for (; k < 180 && !(live.pups[i].bang > 0.75); k++) env.step(1 / 60);
+        return { k, bang: live.pups[i].bang, planet: p.grav?.planet, frame: p.frameNo() };
+      });
+      console.log('  orbikit shot', JSON.stringify(OB));
+      await shot(page, 'cube-orbikit-sees-you.png');
+      await page.evaluate(() => window.pokecraft.cubeCam.set(false));
       // Professor Orbit on the Great Cube
       await page.evaluate(() => { const R = window.__R, { p } = R, b = R.boss(); R.near(b); p.lookAt({ x: b.pos.x, y: b.pos.y + 1.4, z: b.pos.z }); });
       await shot(page, 'cube-boss.png');
@@ -592,6 +633,15 @@ export default async function ({ browser, base, t }) {
       out.behind = Math.min(...dist.slice(5)) > 2; out.avatar = g.cubeCam.info().avatar;
       const av = g.scene.children.find(o => o.userData?.parts && o.visible && o.position.distanceTo(p.pos) < 1e-6);
       out.avUp = av ? new THREE.Vector3(0, 1, 0).applyQuaternion(av.quaternion).dot(new THREE.Vector3(u[0], u[1], u[2])) : 0;
+      // owner 2026-10-30 "a wider shot ... the camera turn when the user turns is even less dizzying": far back and high, a quick look round
+      // hardly moves it, turning round brings it round slowly, it never rolls
+      C.place(p, [Math.floor((b.x0 + b.x1) / 2) + 0.5, b.y1, Math.floor((b.z0 + b.z1) / 2) + 0.5]); C.settle(p); p.yaw = 0;
+      for (let i = 0; i < 240; i++) step({});
+      const cy = () => g.cubeCam.info().yaw, y0 = cy(), wide = cam.position.distanceTo(p.pos), lift = cam.position.y - p.pos.y;
+      for (let i = 0; i < 18; i++) { p.yaw = Math.sin(i / 18 * Math.PI * 2) * 0.7; step({}); } // a quick look left and right (0.3 s)
+      out.wiggle = Math.abs(cy() - y0); p.yaw = Math.PI - 0.01;
+      let half = -1; for (let i = 0; i < 360; i++) { step({}); if (half < 0 && Math.abs(Math.atan2(Math.sin(cy()), Math.cos(cy()))) > Math.PI / 2) half = (i + 1) / 60; }
+      out.wide = wide; out.lift = lift; out.halfTurn = half; out.roll = Math.max(...ups.slice(-360).map(v => Math.abs(1 - v.y)));
       // aiming in third person: the moon passing beside you still offers Hop on! (worked out from your avatar, not the camera)
       const s = R.live.dockSpot(); R.live.puffTo({ pos: [s.x - 1.5, s.y, s.z], frame: 0 }); R.live.phase = 0.5; R.live.step(0.01); out.near = R.live.near(p); out.eye = p.eyePos.distanceTo(p.pos);
       return out;
@@ -600,7 +650,9 @@ export default async function ({ browser, base, t }) {
       `the steady camera can be switched only in Cube Planets (pause button "${C1.btn}" -> "${C1.btn2}"); the choice is kept on this device`);
     t.ok(C1.turned && C1.down === '-1,0,0' && C1.holdUp < 0.01 && C1.after02 < 15 && C1.maxStep < 3 && C1.end < 0.5 && C1.behind && C1.avatar && C1.avUp > 0.99,
       `third person over an edge: your avatar turns onto the side at once (up ${C1.avUp.toFixed(3)}), the camera's up holds still at the turn (${C1.holdUp.toFixed(2)} deg) and eases slowly (${C1.after02.toFixed(1)} deg after 0.2 s, never more than ${C1.maxStep.toFixed(2)} deg a frame: no roll, no snap), then sits on the new face (${C1.end.toFixed(2)} deg), always behind you ${C1.turned && C1.behind ? '' : JSON.stringify(C1)}`);
-    t.ok(C1.near === 'Hop on!' && Math.abs(C1.eye - 1.62) < 1e-9, `aiming still works from your avatar in third person (beside the moon: "${C1.near}") ${C1.near ? '' : JSON.stringify(C1)}`);
+    t.ok(C1.wide > 8 && C1.lift > 4 && C1.wiggle < 0.12 && C1.halfTurn > 1.2 && C1.halfTurn < 4 && C1.roll < 1e-6,
+      `a wide, calm shot (owner 2026-10-30): ${C1.wide.toFixed(1)} blocks from you and ${C1.lift.toFixed(1)} above; a quick look left and right turns it only ${(C1.wiggle * 180 / Math.PI).toFixed(1)} deg; turning right round it takes ${C1.halfTurn.toFixed(1)} s to swing half way behind you; it never rolls`);
+    t.ok(C1.near === 'Hop on!' && Math.abs(C1.eye - 1.62) < 1e-9, `aiming still works from your avatar in third person (beside the saucer: "${C1.near}") ${C1.near ? '' : JSON.stringify(C1)}`);
     await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
     await continueGame(page); await pause(page); await placeIs(page, 'gravity');
     const C2 = await page.evaluate(() => window.pokecraft.cubeCam.on);
@@ -640,7 +692,36 @@ export default async function ({ browser, base, t }) {
     await page.keyboard.up('KeyW');
     await waitFor(page, () => { const R = window.__R; return !R.live.flight && R.p.onGround; }, null, 90000).catch(() => {});
     const K1 = await page.evaluate(() => { const R = window.__R; return { on: R.p.grav.planet, want: R.CL.P.hop1, said: window.__toasts.join('|') }; });
-    t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Pebble ("${K1.said.slice(0, 80)}")`);
+    t.ok(K1.on === K1.want, `real keys through the game's own loop: hold W, press Space on the flower: you land on the Orange Pebble ("${K1.said.slice(0, 80)}")`);
+    // Owner 2026-10-30 "it would either randomly get tagged or randomly see me": the Orbikit through the game's own loop, with the steady
+    // camera on (third person): waiting 2 blocks round a corner on its way it shows "!" and skids into you (E pressed whenever Tag! shows);
+    // 4.5 blocks back it shows "!" and runs. What the child sees (its model, its "!") is where the rule has it.
+    const ambush = D => page.evaluate(async D => {
+      const R = window.__R, { live, p } = R, L = live.loops[0], seg = L.segs[1];
+      window.pokecraft.cubeCam.set(true);
+      live.puffTo({ pos: seg.a.map((v, j) => v + seg.dir[j] * D + seg.up[j] * 0.01), frame: R.G.frameOf(seg.up.map(v => -v || 0)) });
+      live.pups[0].run = null; live.pups[0].tagT = -99; live.pMiss[0] = 0; window.__amb = { bang: false, modelOff: 0, d: 0 };
+      return true;
+    }, D);
+    const ambushResult = async () => {
+      await waitFor(page, () => !!window.__R.live.pups[0].run, null, 60000);
+      await page.evaluate(() => { const R = window.__R, r = R.live.pups[0].run, seg = R.live.loops[0].segs[1]; r.s = seg.at - 5; r.dir = 1; r.coolT = 0; R.p.lookAt({ x: seg.a[0], y: seg.a[1], z: seg.a[2] }); window.__amb.clock = R.live.clock; });
+      for (let n = 0; n < 400; n++) {
+        const s = await page.evaluate(() => { // (the model is drawn each frame: compared only once a frame has run since the test moved it)
+          const R = window.__R, live = R.live, P_ = live.pups[0], r = P_.run, m = live.pupModels[0];
+          if (r && live.clock > window.__amb.clock) { if (P_.bang > 0) window.__amb.bang = true; window.__amb.modelOff = Math.max(window.__amb.modelOff, m ? Math.hypot(m.position.x - r.at.pos[0], m.position.y - r.at.pos[1], m.position.z - r.at.pos[2]) : 0); }
+          return { done: !r || live.pMiss[0] > 0, tag: !r, seen: live.pMiss[0] > 0, near: live.near(R.p) };
+        });
+        if (s.done) return { ...s, ...(await page.evaluate(() => window.__amb)) };
+        if (s.near === 'Tag!') await page.keyboard.press('KeyE');
+        await page.waitForTimeout(100);
+      }
+      return { done: false };
+    };
+    await ambush(2); const A1 = await ambushResult();
+    await ambush(4.5); const A2 = await ambushResult();
+    await page.evaluate(() => window.pokecraft.cubeCam.set(false));
+    t.ok(A1.tag && A2.seen && A2.bang && A1.modelOff < 0.6 && A2.modelOff < 0.6, `real play, third person: 2 blocks round a corner on its way the Orbikit ${A1.tag ? 'skids into you (tagged)' : 'did NOT get tagged'}${A1.bang ? ' after its "!"' : ''}; 4.5 blocks back it ${A2.seen ? 'sees you' : 'did not see you'} (its "!": ${A2.bang}) and runs; its model is where the rule has it (${Math.max(A1.modelOff || 0, A2.modelOff || 0).toFixed(2)} apart) ${JSON.stringify([A1, A2])}`);
     // the Moon Ferry: wait on the dock where the moon passes (it scoops you up), press Space at the right moment
     await page.evaluate(() => { const R = window.__R, s = R.live.dockSpot(); R.live.puffTo({ pos: [s.x, s.y, s.z], frame: 0, look: [s.x - 5, s.y, s.z] }); });
     await waitFor(page, () => window.__R.live.onMoon, null, 120000);

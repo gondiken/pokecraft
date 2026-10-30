@@ -336,3 +336,27 @@ child expects, visible in the world, with a reason in the story, needing no rule
 - **Saves:** realm version 3 (an older spot arrives at the start); the owner asked for his progress to be reset, so a save without
   `pw:gravity:redesign1` loses its Cube Planets keys, crew, star and Boss wins once (worldreset.js, shared with the Bubble Well; fine only
   because the world was preview-only). ?preview's "Start this world over" works here too (it keeps the mark).
+
+## Owner's notes after playing the redesign (2026-10-30)
+
+- **Steady camera** ("still follows the person quite closely ... a wider shot ... even less dizzying"): `cubecam.js` is now a wide shot
+  (9 blocks back, high, your planet and the next one in view) whose yaw follows yours lazily (`yawRate` 0.8/s, at most `yawMax` 1.2 rad/s:
+  a quick look round barely moves it; turning right round brings it round in a couple of seconds); pitch only tilts it a little. Edges as
+  before (hold 0.2 s, ease 1.6 s, no roll). Default stays first person.
+- **Looks:** the moon ferry is now Professor Orbit's little flying saucer (`buildSaucer`; the Saucer Dock, Saucer Mechanic Milo; the orbit
+  and every rule unchanged); the lenses are telescope pieces drawn like 🔭 (a blue tube with gold rings and a glowing lens, tilted up), and
+  each one found comes back on his big telescope beside him on the Great Cube; spring flowers have a bigger coil, bounce by themselves,
+  squash wide under you and stretch tall on the boing.
+- **Ways back:** the blue "home flowers" became little swirl doors in the Meadow Cube's green and gold (`BACK_SWIRLS`); the words say
+  "Back to the Meadow Cube", never "home".
+- **Planet Hop colours:** the four pebbles are coloured wool (Orange, Blue, Yellow, Green Pebble), each flower's bloom has the colour of the
+  pebble it sends you to, and the next pebble glows (a pulsing shell and a beam, `buildBeacon`); the guide no longer shows colour emojis
+  (on the flower its arrow points at the glowing pebble).
+- **Orbikit Chase: a bug-like rule, found with real play.** The old rule turned the Orbikit the very instant it came over the edge and saw
+  you, unless it was already touching you: standing within about 1 block of the edge won, 1.5 blocks back it saw you and turned while
+  nearly touching you (and Tag! was on screen but came too late); it also "heard" you from any side within 2.2. So the same move (waiting
+  round a corner) won or lost by half a block, which felt random. Now: whenever it sees you a "!" pops up over it. Seen from afar (more than
+  `surprise` ahead, or off its way) it turns and runs. Seen up close on its way (it came round the corner right at you) it cannot stop and
+  skids into you: tagged, with a burst of sparkles. No hearing; running after it only makes it sprint. Tag! is offered exactly when a press
+  tags. `playCorner` (tests/cubebots.mjs) proves it round two corners of each planet at 60 and 20 fps; the ramp is kept by `surprise`
+  3 / 2.8 / 2.2 per round.
