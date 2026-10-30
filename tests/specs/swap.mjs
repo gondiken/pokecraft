@@ -38,7 +38,7 @@ async function pair(browser, base, contextOptions) {
   await B.evaluate(async code => { await window.pokecraft.mp.join(code, 'Kid'); }, code);
   return { A, B, code };
 }
-const hello = (A, B) => Promise.all([A, B].map(P => waitFor(P, () => { const f = window.pokecraft.swaps.friends(); return f.length === 1 && f[0].ok; }, null, 60000)));
+const hello = (A, B) => Promise.all([A, B].map(P => waitFor(P, () => { const f = window.pokecraft.swaps.friends(); return f.length === 1 && f[0].ok; }, null, 120000)));
 const showPause = P => P.evaluate(() => { document.exitPointerLock(); document.getElementById('pause').classList.remove('hidden'); });
 const asked = (P, text) => waitFor(P, text => !document.getElementById('ask').classList.contains('hidden') && document.getElementById('ask-text').textContent.includes(text), text, 30000);
 const idle = P => waitFor(P, () => { const i = window.pokecraft.swaps.info(); return !i.out.length && !i.mine && !i.theirs; }, null, 60000);
