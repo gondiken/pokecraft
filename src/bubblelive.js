@@ -301,7 +301,7 @@ export class BubbleLive {
     p.vel.y = jump ? Math.sqrt(2 * 28 * (this.world.gravity ?? 1) * BUBBLE.bounce) : 0;
     this.left = b; // (it can still catch you from above, never from inside)
     this.stood = null; this.fromBubble = true;
-    if (jump) sound.play('boing');
+    if (jump) sound.play('bubblebounce');
   }
   dropOff() { // the bubble under you popped
     const p = this.game.player;
@@ -469,7 +469,7 @@ export class BubbleLive {
     if (hit.up || p.onGround) { p.vel.y = Math.max(p.vel.y, hit.up ? BUBBLE_RULES.boingHop * 1.6 : BUBBLE_RULES.boingHop); p.onGround = false; }
     this.boing = { nx, nz, t: 0 };
     this.wob[k] = 0;
-    if (this.boingGap >= BUBBLE_RULES.boingGap) { sound.play('boing'); this.boingGap = 0; this.boings++; if (k < NS && hit.up) this.shieldMiss++; }
+    if (this.boingGap >= BUBBLE_RULES.boingGap) { sound.play('bubblebounce'); this.boingGap = 0; this.boings++; if (k < NS && hit.up) this.shieldMiss++; }
   }
   stepShields(step) {
     const p = this.game.player, st = this.state();

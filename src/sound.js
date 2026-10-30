@@ -239,6 +239,13 @@ const SOUNDS = {
   wandblow: () => { noise({ freq: 1400, len: 0.22, vol: 0.08, q: 0.6 }); tone(420, { at: 0.08, len: 0.16, type: 'sine', vol: 0.1, slide: 240 }); },
   soappop: () => { noise({ freq: 2600, len: 0.04, vol: 0.18, q: 1.2 }); tone(1300, { len: 0.05, type: 'sine', vol: 0.12, slide: -600 }); },
   bubbleland: () => tone(260, { len: 0.16, type: 'sine', vol: 0.16, slide: 160 }),
+  // Owner 2026-10-30 "more bouncy / funnier": a cartoon boi-oi-oi-oing for bouncing off a bubble (and a shield's side): a springy sweep
+  // up, then a wobble that rings down and fades, plus a little rubbery squeak on top.
+  bubblebounce: () => {
+    tone(150, { len: 0.12, type: 'triangle', vol: 0.26, slide: 360 });
+    [520, 430, 470, 390, 420, 360].forEach((f, i) => tone(f, { at: 0.1 + i * 0.065, len: 0.08, type: 'triangle', vol: 0.2 * (1 - i * 0.13), slide: i % 2 ? 70 : -70 }));
+    tone(1300, { at: 0.02, len: 0.06, type: 'sine', vol: 0.06, slide: 500 });
+  },
   soapfill: () => notes([784, 988, 1175, 1568], 0.05, { len: 0.08, type: 'triangle', vol: 0.12 }),
   duckpuff: () => { noise({ freq: 900, len: 0.12, vol: 0.1, q: 0.7 }); tone(700, { at: 0.03, len: 0.08, type: 'sine', vol: 0.08, slide: 200 }); },
   duckhome: () => { tone(1200, { len: 0.08, type: 'square', vol: 0.06, slide: 300 }); tone(1300, { at: 0.12, len: 0.08, type: 'square', vol: 0.06, slide: 300 }); tone(784, { at: 0.25, len: 0.12, type: 'triangle', vol: 0.12 }); tone(1047, { at: 0.35, len: 0.14, type: 'triangle', vol: 0.12 }); },
