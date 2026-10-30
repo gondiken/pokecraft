@@ -10,9 +10,13 @@
 //  - The ducklings: Blow! round a sleeping one (a wet wand: the garden has soap pots), then puffs of air push it (an arrow on the floor
 //    shows how far it glides). Home in the nest = pw:bubble:duck1..3. Once all three are home, Blow! by the nest sends one back to play.
 //  - The Chimney Ride: Ride! by the big golden bubble; every tap (Jump, the big button, a tap on the screen) is a puff up; the stick steers;
-//    fly through the gold rings. From inside, the bubble is only a faint rim (owner: "overly bright"). The top = pw:bubble:chimney.
-//  - Captain Suds' shields: three big shield bubbles bob over the rim. Ride your own bubble up from the balcony's soap pot and drop onto
-//    one from above: it pops (pw:bubble:shield1..3); from the side it only bumps you. Popped ones come back later just for fun.
+//    fly through the gold rings (a bar of soap floats over each: the checkpoints). From inside, the bubble is only a faint rim (owner:
+//    "overly bright"). Owner 2026-10-30: a little longer (the stack over the rim). The top = pw:bubble:chimney.
+//  - Captain Suds' shields (owner 2026-10-30: they must explain themselves): Captain Suds sits sealed in a big bubble (the dome) that
+//    boings you back; trails of little bubbles run into it from his three shield bubbles. The first rests low on the balcony right in front
+//    of him: walk into it and it boings you back, jump onto it and it pops. Each pop pops one of the dome's three skins; the last bursts
+//    it. The other two bob high: ride your own bubble up from the soap pot under each and drop onto it (pw:bubble:shield1..3). Popped
+//    ones come back later just for fun (the dome stays gone).
 // Never a fail: a pop or a fall only puts you back a little, the kind help comes after misses (kindhelp.js through bubbleHelp). Clocks
 // are summed frame dt and stand still in a battle / an ask / a panel / the pause. Bubbles are meshes, never blocks, never saved or sent.
 // Words: only a word on the big button and one very short line the first time. `manual` + step(dt, input) and info() for tests.
@@ -21,17 +25,18 @@ import { B } from './blocks.js';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { FUN } from './forfun.js';
-import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHIELD_RULES, gustAt, glideOf, dripAt, gapOf, landsOn, shieldAt, stomp, shieldSize, shieldSway } from './bubbles.js';
-import { bubbleState, bubbleAim, ledgeAt, inClimb, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, SHIELDS, LIFTS, DRIPS, WINDS, SOAP_POTS, MESA, RIM, STAIRS_TOP, THORNS, CURRENTS, GUSTS, inChimney } from './bubbleland.js';
-import { buildBubbles, buildGhost, buildWand, buildDrips, buildStreams, drawStreams, buildThorns, buildNest, buildChimney, buildBigBubble, buildRideBubble, buildSign, buildShields, buildArrow, buildPots, buildPuff, hideAll } from './bubbleprops.js';
+import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHIELD_RULES, gustAt, glideOf, dripAt, gapOf, barsOf, landsOn, shieldAt, stomp, clearOf, shieldSize, shieldSway } from './bubbles.js';
+import { bubbleState, bubbleAim, ledgeAt, inClimb, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, SHIELDS, DOME, LIFTS, DRIPS, WINDS, SOAP_POTS, MESA, RIM, STAIRS_TOP, THORNS, CURRENTS, GUSTS, inChimney } from './bubbleland.js';
+import { buildBubbles, buildGhost, buildWand, buildDrips, buildStreams, drawStreams, buildThorns, buildNest, buildChimney, buildBigBubble, buildRideBubble, buildSign, buildShields, buildDome, buildArrow, buildPots, buildPuff, hideAll } from './bubbleprops.js';
 
 // dtMax: the longest frame step; dip: how near a soap pot (and how near its floor) the wand dips; fall: how far below your ledge a fall
 // from a bubble puts you back; restOut: seconds resting at the chimney's bottom before you hop out; rideR: how near the chimney's big
 // bubble Ride! shows; reach: how far the big button looks for a door in front of you; settle: seconds after landing on a bubble before
 // the stick leans it (a child still holding W from the hop stays on); nestR: how near the nest Blow! sends a homed duckling back to play;
 // funBack: seconds after a popped shield (all three popped) before it floats back just for fun; puffTime: how long a puff's wisps fly;
-// bump: how far a shield pushes you a frame.
-export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, dip: 1.0, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, settle: 0.4, nestR: 3.2, funBack: 6, puffTime: 0.45, bump: 0.12 };
+// boing: seconds a boing (a shield or the dome pushing you back) lasts, its little hop (blocks a second) and how long before the next one
+// sounds; giggle: seconds Captain Suds giggles in his bubble after you bump it or talk to him; burstTime: the dome's burst.
+export const BUBBLE_RULES = { dtMax: 0.1, sayGap: 3, sync: 0.25, dip: 1.0, fall: 2.5, restOut: 4, rideR: 2.8, reach: 5.5, settle: 0.4, nestR: 3.2, funBack: 6, puffTime: 0.45, boing: 0.18, boingHop: 3.2, boingGap: 0.5, giggle: 1.6, burstTime: 0.8 };
 const WORDS = { // (owner 2026-10-29: "I don't want more instructions": one short line the first time, then nothing but the button's word)
   ride: 'Tap Jump to float up!',
   stairs: '🫧 Up the Fizz Ledges!',
@@ -39,9 +44,12 @@ const WORDS = { // (owner 2026-10-29: "I don't want more instructions": one shor
   allHome: '🦆 All the ducklings are home!',
   again: n => `🦆 Again! ${FUN.tag}`,
   chimney: '🫧 Up the chimney!',
-  shieldHit: k => `🛡️ Pop! (${k} / 3)`,
-  allShields: 'Captain Suds is ready!',
-  funShield: `🛡️ Pop! ${FUN.tag}`,
+  shieldHit: k => `🫧 Pop! (${k} / 3)`,
+  allShields: "🫧 Pop! Captain Suds' bubble burst! Captain Suds is ready!",
+  funShield: `🫧 Pop! ${FUN.tag}`,
+  soap: (k, n) => `🧼 +1 Capture Cube (${k} / ${n})`,
+  // the one line, in his own words (lore, not a rule list), the first time his bubble boings you (and when you talk to him: pictureboss.js)
+  sealed: 'Captain Suds: (from inside his bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!',
 };
 const DOOR_IDS = new Set([B.WAY_BACK, B.PICTURE_FRAME]);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
@@ -61,6 +69,7 @@ export class BubbleLive {
     this.ducks = ISLANDS.map(i => new Duckling(GARDEN_RULES, i, { hard: this.hard })); this.duckMiss = [0, 0, 0]; this.duckFun = [false, false, false]; this.gardenT = 0;
     this.ride = null; this.rideMiss = 0; this.rideIn = { sx: 0, sz: 0 }; this.restT = 0; this.rideOut = false; this.starsGot = new Set();
     this.shieldMiss = 0; this.burst = [9, 9, 9]; this.courtT = 0;
+    this.boing = null; this.boingGap = 9; this.wob = [9, 9, 9, 9]; this.giggleT = 9; this.domeBurst = 9; this.boings = 0; // (wob: the shields' and the dome's last boing)
     this.liftsOn = [null, null];
     this.standObj = this.makeStandObj(); this.rideObj = this.makeRideObj();
     this.groups = [];
@@ -90,6 +99,7 @@ export class BubbleLive {
     this.rideBubble = add(buildRideBubble(RIDE.R));
     this.rideSign = add(buildSign('Ride!'));
     this.shields = add(buildShields(SHIELDS));
+    this.dome = add(buildDome(DOME, SHIELDS.length));
     const c = CURRENTS[0], steady = CLIMB_WINDS.filter(w => !w.period);
     this.streams = add(buildStreams([
       ...steady.map(w => ({ ...w, n: w.id === 'rim' ? 50 : 40, colour: 0xffffff })),
@@ -121,7 +131,7 @@ export class BubbleLive {
       const at = p.carry.safe();
       p.carry = null; p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0);
     }
-    this.stood = null; this.ride = null; this.rideOut = false;
+    this.stood = null; this.ride = null; this.rideOut = false; this.boing = null;
   }
   ledgeSafe() { const l = this.ledge; return l ? { x: l.x, y: l.y, z: l.z } : { x: 80.5, y: 5, z: 131.5 }; }
 
@@ -223,13 +233,18 @@ export class BubbleLive {
     return this.use(p);
   }
   aim(p) { return bubbleAim(this.world, p, this.game); }
+  // Talking to Captain Suds while he is sealed in his bubble: he giggles in there (his words come from his gate in pictureboss.js).
+  talk(npc) {
+    if (npc?.kind === 'boss' && npc.def?.id === 'bubble' && this.domeUp()) this.giggleT = 0;
+    return false;
+  }
   battleEnded(result, opts) {
     const pic = opts?.picture;
     if (pic?.id !== 'bubble' || pic.crew != null || result !== 'won') return;
     const g = this.game; // a won battle with Captain Suds clears the climb: a rematch is a new climb (harder)
     for (const k of BUBBLE_KEYS()) { const at = g.beaten.indexOf(k); if (at >= 0) g.beaten.splice(at, 1); }
     this.stairMiss = [0, 0, 0, 0]; this.duckMiss = [0, 0, 0]; this.rideMiss = 0; this.shieldMiss = 0; this.duckFun = [false, false, false];
-    this.burst = [9, 9, 9];
+    this.burst = [9, 9, 9]; this.domeBurst = 9; this.nearDome = false; this.wob = [9, 9, 9, 9];
     for (const d of this.ducks) d.backHome();
     this.save();
     this.sync(true);
@@ -408,7 +423,7 @@ export class BubbleLive {
       if (e.type === 'pop') { this.rideMiss++; sound.play('soappop'); }
       else if (e.type === 'star') {
         sound.play('fizzstar');
-        if (!this.starsGot.has(e.k)) { this.starsGot.add(e.k); this.game.cubes += 1; this.game.ui?.renderHud?.(); this.toast(`⭐ +1 Capture Cube (${e.k} / ${CHIMNEY.stars.length - 1})`); }
+        if (!this.starsGot.has(e.k)) { this.starsGot.add(e.k); this.game.cubes += 1; this.game.ui?.renderHud?.(); this.toast(WORDS.soap(e.k, CHIMNEY.stars.length - 1)); } // (a bar of soap: never a star)
       } else if (e.type === 'top') this.chimneyDone();
     }
     if (this.ride && this.ride.resting() && this.ride.star === 0) { this.restT += step; if (this.restT >= BUBBLE_RULES.restOut) this.rideOut = true; }
@@ -426,13 +441,39 @@ export class BubbleLive {
     this.sync(true);
   }
 
-  /* ---------------------------------------------- Captain Suds' shields: drop onto them ---------------------------------------------- */
+  /* ---------------------------------------------- Captain Suds' shields and his bubble ---------------------------------------------- */
   // Is shield k up? (not popped yet; or, all three popped, back again just for fun a while after its last pop)
   shieldUp(k, st = this.state()) { return !st.shield[k] ? this.burst[k] > 0.5 : st.shields >= 3 && this.burst[k] > BUBBLE_RULES.funBack; }
-  shieldNow(k) { const s = SHIELDS[k]; return { c: shieldAt(s, this.courtT, shieldSway(this.shieldMiss, this.hard)), r: shieldSize(s, this.shieldMiss, this.hard) }; }
-  stepShields() {
+  shieldNow(k) {
+    const s = SHIELDS[k], c = shieldAt(s, this.courtT, shieldSway(this.shieldMiss, this.hard)), r = shieldSize(s, this.shieldMiss, this.hard);
+    if (s.low) c.y += s.r - r; // the low one sits in the foam: bigger (the kind help) or smaller (a rematch), its top stays a jump high
+    return { c, r };
+  }
+  // Captain Suds' bubble: up while any shield is (one skin per shield); its outer radius is the outermost skin left.
+  domeUp(st = this.state()) { return st.shields < SHIELDS.length; }
+  domeR(st = this.state()) { const k = st.shield.findIndex(s => !s); return k < 0 ? 0 : DOME.r - k * DOME.skin; }
+  // A boing: a shield (k) or the dome (k = 3) pushes you straight out to where you stand clear of it (c, r), then on a little way, with a
+  // hop and a boing sound (owner 2026-10-30: "side bumps visibly boing you off"). up: you came down onto it (its shoulder, or the dome's top).
+  boingOff(k, c, r, hit) {
+    const p = this.game.player, [nx, nz] = hit.bump, d = Math.hypot(p.pos.x - c.x, p.pos.z - c.z);
+    const out = Math.max(d, hit.up ? r + SHIELD_RULES.body + 0.02 : clearOf(c, r, p.pos.y));
+    const at = new THREE.Vector3(c.x + nx * out, p.pos.y, c.z + nz * out);
+    if (!p.collides?.(at)) { p.pos.x = at.x; p.pos.z = at.z; }
+    if (hit.up || p.onGround) { p.vel.y = Math.max(p.vel.y, hit.up ? BUBBLE_RULES.boingHop * 1.6 : BUBBLE_RULES.boingHop); p.onGround = false; }
+    this.boing = { nx, nz, t: 0 };
+    this.wob[k] = 0;
+    if (this.boingGap >= BUBBLE_RULES.boingGap) { sound.play('boing'); this.boingGap = 0; this.boings++; if (k < 3 && hit.up) this.shieldMiss++; }
+  }
+  stepShields(step) {
     const p = this.game.player, st = this.state();
     if (p.carry === this.standObj && this.stood && this.ledge && Math.abs(this.ledge.y - (RIM.y + 1)) < 0.6) this.fromRim = true; // a ride from the rim
+    this.boingGap += step;
+    if (this.boing) { // the boing carries you on outward a moment
+      const b = this.boing; b.t += step;
+      const at = new THREE.Vector3(p.pos.x + b.nx * SHIELD_RULES.push * step, p.pos.y, p.pos.z + b.nz * SHIELD_RULES.push * step);
+      if (!p.carry && !p.collides?.(at)) { p.pos.x = at.x; p.pos.z = at.z; }
+      if (b.t >= BUBBLE_RULES.boing) this.boing = null;
+    }
     for (let k = 0; k < SHIELDS.length; k++) {
       if (!this.shieldUp(k, st)) continue;
       const { c, r } = this.shieldNow(k);
@@ -444,18 +485,40 @@ export class BubbleLive {
       if (p.carry) continue;
       const hit = stomp(c, r, { x: p.pos.x, z: p.pos.z, feet: p.pos.y, prev: this.prevFeet ?? p.pos.y, vy: p.vel.y });
       if (hit === 'pop') this.popShield(k, st);
-      else if (hit?.bump) { const nx = p.pos.x + hit.bump[0] * BUBBLE_RULES.bump, nz = p.pos.z + hit.bump[1] * BUBBLE_RULES.bump, at = new THREE.Vector3(nx, p.pos.y, nz); if (!p.collides?.(at)) { p.pos.x = nx; p.pos.z = nz; } }
+      else if (hit?.bump) this.boingOff(k, c, r, hit);
     }
+    this.stepDome(step, st);
+  }
+  // Captain Suds' bubble: nobody gets in (it boings you back, a bubble you ride pops on it); he giggles when you come close.
+  stepDome(step, st) {
+    const p = this.game.player;
+    this.giggleT += step; this.domeBurst += step;
+    if (!this.domeUp(st)) return;
+    const c = { x: DOME.x, y: DOME.y, z: DOME.z }, r = this.domeR(st), d = Math.hypot(p.pos.x - c.x, p.pos.z - c.z);
+    if (p.carry === this.standObj && this.stood) {
+      const b = this.stood;
+      if (Math.hypot(b.x - c.x, b.y - c.y, b.z - c.z) < r + BUBBLE.r) { this.field.pop(b); sound.play('soappop'); this.dropOff(); this.wob[3] = 0; }
+      return;
+    }
+    if (p.carry) return;
+    const near = d < r + 2.2 && Math.abs(p.pos.y - (RIM.y + 1)) < 3;
+    if (near && !this.nearDome) { this.giggleT = 0; this.once('sealed', WORDS.sealed); }
+    this.nearDome = near || (this.nearDome && d < r + 4);
+    const hit = stomp(c, r, { x: p.pos.x, z: p.pos.z, feet: p.pos.y, prev: this.prevFeet ?? p.pos.y, vy: p.vel.y });
+    if (hit === 'pop') this.boingOff(3, c, r, { bump: d > 1e-6 ? [(p.pos.x - c.x) / d, (p.pos.z - c.z) / d] : [0, 1], up: true }); // (his bubble never pops from a stomp: his shields hold it)
+    else if (hit?.bump) { this.boingOff(3, c, r, hit); this.giggleT = 0; }
   }
   popShield(k, st) {
     const p = this.game.player;
-    this.burst[k] = 0; this.stomped = true; this.shieldMiss = 0;
+    this.burst[k] = 0; this.stomped = true; this.shieldMiss = 0; this.boing = null;
     p.vel.y = SHIELD_RULES.rise; p.onGround = false;
     sound.play('shieldburst');
     if (st.shield[k]) { this.toast(WORDS.funShield); return; }
     this.addKey(shieldKey(k + 1));
     const n = this.state().shields;
-    this.toast(n >= 3 ? WORDS.allShields : WORDS.shieldHit(n));
+    this.wob[3] = 0; this.giggleT = 0;
+    if (n >= SHIELDS.length) { this.domeBurst = 0; sound.play('shieldburst'); }
+    this.toast(n >= SHIELDS.length ? WORDS.allShields : WORDS.shieldHit(n));
   }
 
   /* ---------------------------------------------- the lifts ---------------------------------------------- */
@@ -498,10 +561,11 @@ export class BubbleLive {
       this.stepStand();
       this.checkLanding();
       this.checkGround();
-      this.stepShields();
+      this.stepShields(step);
       this.stepDucks(step);
       this.stepRide(step);
       for (let k = 0; k < 3; k++) this.burst[k] += step;
+      for (let k = 0; k < 4; k++) this.wob[k] += step;
     }
     this.prevFeet = p.pos.y;
     this.syncT -= dt;
@@ -593,8 +657,15 @@ export class BubbleLive {
       pl.beam.visible = k === nextK; pl.halo.material.opacity = k === nextK ? 0.35 + 0.15 * Math.sin(t * 6) : 0.18;
     });
     CP.fans.forEach((f, k) => { f.rotation.z = t * (6 + k); });
-    CP.bar.rotation.y = -(this.ride ? this.ride.barAngle() : t * RIDE.bar);
-    CP.stars.forEach((s, k) => { const pl = CHIMNEY.plates[k - 1]; if (pl?.spin) { const g = gapOf(CHIMNEY, pl, rt); s.position.x = g.x; s.position.z = g.z; } s.rotation.y = t * 1.5 + k; s.visible = k > 0; s.material.color.setHex(this.ride && this.ride.star >= k ? 0xfff6c0 : 0xffd23a); });
+    CP.bars.forEach((b, k) => { const bar = barsOf(CHIMNEY)[k]; b.rotation.y = -(this.ride ? this.ride.barAngle(this.ride.t, k) : t * RIDE.bar * (bar.speed ?? 1) + (bar.a0 || 0)); });
+    // the bars of soap over the rings (the ride's checkpoints): they turn slowly and bob; one you floated past goes pale
+    CP.soaps.forEach((s, k) => {
+      const pl = CHIMNEY.plates[k - 1], at = CHIMNEY.stars[k];
+      if (pl?.spin) { const g = gapOf(CHIMNEY, pl, rt); s.position.x = g.x; s.position.z = g.z; }
+      s.position.y = at.y + 0.08 * Math.sin(t * 2 + k); s.rotation.y = t * 1.2 + k; s.visible = k > 0;
+      s.userData.parts.bar.material.color.setHex(this.ride && this.ride.star >= k ? 0xfff0f8 : 0xff9ad0);
+      for (const b of s.userData.parts.bubbles) b.material.uniforms.uTime.value = t;
+    });
     // the ride bubble: waiting (big, golden, a little duck on its seat, the "Ride!" sign over it) or carrying you. From inside it is only
     // a faint soap rim (owner 2026-10-29: "once I'm in the bubble, it became overly bright ... I have no idea what I'm seeing").
     const rb = this.rideBubble, r = this.ride, RP = rb.userData.parts;
@@ -613,22 +684,63 @@ export class BubbleLive {
       this.rideDuck.visible = !r;
       if (!r) { this.rideDuck.position.set(rb.position.x, rb.position.y - RIDE_LOOK.wait * 0.62, rb.position.z); this.rideDuck.rotation.set(0, Math.PI / 2 + 0.4 * Math.sin(t * 0.8), 0); animateModel(this.rideDuck, t, false); }
     }
-    // the shields: bobbing on the breeze; a burst grows and fades for half a second; popped ones float back later just for fun
+    // the shields: bobbing on the breeze; a boing squashes one for a moment; a burst grows and fades for half a second; popped ones
+    // float back later just for fun
+    const squash = w => (w < 0.5 ? 0.16 * Math.sin(w * 25) * (1 - w / 0.5) : 0);
     this.shields.userData.parts.list.forEach((s, k) => {
-      const up = this.shieldUp(k, st), b = this.burst[k], { c, r: rr } = this.shieldNow(k);
+      const up = this.shieldUp(k, st), b = this.burst[k], { c, r: rr } = this.shieldNow(k), q = squash(this.wob[k]);
       s.g.visible = up || b < 0.5;
       s.g.position.set(c.x, c.y, c.z);
-      s.g.scale.setScalar(up ? rr / SHIELDS[k].r * (1 + 0.02 * Math.sin(t * 2 + k)) : 1 + b * 1.2);
-      s.ring.rotation.z = t * (0.4 + k * 0.2); s.cap.rotation.y = t * 2;
+      const sc = up ? rr / SHIELDS[k].r * (1 + 0.02 * Math.sin(t * 2 + k)) : 1 + b * 1.2;
+      s.g.scale.set(sc * (1 + q), sc * (1 - q), sc * (1 + q));
+      s.ring.rotation.z = t * (0.4 + k * 0.2);
       s.g.children[0].material.uniforms.uTime.value = t;
       s.g.children[0].material.uniforms.uAlpha.value = up ? 0.9 : Math.max(0, 1 - b * 2);
     });
+    // Captain Suds' bubble: one skin per shield still up; it wobbles when it boings you; trails of little bubbles run into it from every
+    // shield still up; the last pop bursts it (it grows and fades)
+    const OP = this.dome.userData.parts, domeOn = this.domeUp(st), bt = this.domeBurst / BUBBLE_RULES.burstTime, dq = squash(this.wob[3]) * 0.5;
+    OP.skins.forEach((sk, k) => {
+      const on = domeOn ? !st.shield[k] : bt < 1;
+      sk.g.visible = on;
+      if (!on) return;
+      const grow = domeOn ? 1 + 0.012 * Math.sin(t * 1.7 + k) : 1 + 0.5 * bt;
+      sk.g.scale.set(grow * (1 + dq), grow * (1 - dq), grow * (1 + dq));
+      sk.film.material.uniforms.uTime.value = t * 0.8 + k;
+      sk.film.material.uniforms.uAlpha.value = domeOn ? 0.75 : 0.75 * (1 - bt);
+      sk.band.material.opacity = domeOn ? 0.7 : 0.7 * (1 - bt);
+      sk.band.rotation.z = t * (0.15 + 0.07 * k);
+    });
+    OP.shine.visible = domeOn;
+    hideAll(OP.trail);
+    if (domeOn) {
+      const R0 = this.domeR(st);
+      for (let k = 0; k < SHIELDS.length; k++) {
+        if (st.shield[k] || !this.shieldUp(k, st)) continue;
+        const { c } = this.shieldNow(k), dx = c.x - DOME.x, dy = c.y - DOME.y, dz = c.z - DOME.z, l = Math.hypot(dx, dy, dz) || 1;
+        const ex = DOME.x + dx / l * R0, ey = DOME.y + dy / l * R0, ez = DOME.z + dz / l * R0, rr = this.shieldNow(k).r;
+        const sx = c.x - dx / l * rr, sy = c.y - dy / l * rr, sz = c.z - dz / l * rr;
+        for (let i = 0; i < OP.per; i++) {
+          const u = (t * 0.45 + i / OP.per) % 1, arc = Math.sin(u * Math.PI) * 0.7;
+          P.set(sx + (ex - sx) * u, sy + (ey - sy) * u + arc, sz + (ez - sz) * u); S.setScalar(0.7 + 0.5 * Math.sin(u * Math.PI));
+          OP.trail.setMatrixAt(k * OP.per + i, M.compose(P, Q, S));
+        }
+      }
+      OP.trail.instanceMatrix.needsUpdate = true;
+    }
+    // Captain Suds giggles in his bubble (a little hop) when you come close, bump it or talk to him, and hops for joy when it bursts
+    const boss = this.game.npcs?.list?.find?.(n => n.kind === 'boss' && n.def?.id === 'bubble');
+    if (boss?.model && !this.game.inBattle) {
+      const jig = this.giggleT < BUBBLE_RULES.giggle ? Math.abs(Math.sin(this.giggleT * 9)) * 0.3 * (1 - this.giggleT / BUBBLE_RULES.giggle) : 0;
+      if (jig > 0 || this.jigged) boss.model.position.y = boss.pos.y + jig;
+      this.jigged = jig > 0;
+    }
   }
   refreshChip() {
     const ui = this.game.ui;
     if (!ui?.setScore || this.game.world !== this.world) return;
     const st = this.state();
-    if (this.ride) { ui.setScore({ text: `🫧 ⭐ ${this.ride.star} / ${CHIMNEY.stars.length - 1}`, done: false }); return; }
+    if (this.ride) { ui.setScore({ text: `🧼 ${this.ride.star} / ${CHIMNEY.stars.length - 1}`, done: false }); return; } // (bars of soap: owner 2026-10-30, no stars here)
     const ready = st.ready && !this.game.bosses?.crewAim?.(this.game.player.pos);
     if (ready && !st.star) { ui.setScore({ text: '🫧 Captain Suds is ready!', done: true }); return; }
     ui.setScore({ text: `🫧 Ledges ${st.stairs ? '✓' : '○'} · 🦆 ${st.ducks} / 3 · Chimney ${st.chimney ? '✓' : '○'} · 🛡️ ${st.shields} / 3`, done: false });
@@ -642,7 +754,7 @@ export class BubbleLive {
       stood: this.stood?.id ?? null, ledge: this.ledge ? { ...this.ledge } : null, stairMiss: this.stairMiss.slice(), fromBubble: this.fromBubble,
       ducks: this.ducks.map(d => ({ state: d.state, x: d.x, z: d.z, vx: d.vx, vz: d.vz, left: d.left })), duckMiss: this.duckMiss.slice(),
       ride: r ? { x: r.x, y: r.y, z: r.z, star: r.star, done: r.done, pops: r.pops, popT: r.popT, t: r.t } : null, rideMiss: this.rideMiss,
-      shieldMiss: this.shieldMiss, shields: SHIELDS.map((s, k) => ({ up: this.shieldUp(k), ...this.shieldNow(k) })), courtT: this.courtT, lifts: this.liftsOn.slice(), state: this.state(),
+      shieldMiss: this.shieldMiss, shields: SHIELDS.map((s, k) => ({ up: this.shieldUp(k), ...this.shieldNow(k) })), courtT: this.courtT, dome: { up: this.domeUp(), r: this.domeR(), skins: this.dome.userData.parts.skins.filter(s => s.g.visible).length }, boings: this.boings, lifts: this.liftsOn.slice(), state: this.state(),
     };
   }
 }
