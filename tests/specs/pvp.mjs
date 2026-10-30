@@ -29,8 +29,7 @@ async function playDuel(pages, avoid = 'Give up') {
 
 // Wave 17: E on a friend opens the friend menu; its Battle asks for the battle.
 async function askBattle(page) {
-  await page.evaluate(() => window.pokecraft.interact());
-  await waitFor(page, () => window.pokecraft.swapUi.isOpen);
+  await waitFor(page, () => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; g.player.lookAt(k.pos.clone().setY(k.pos.y + 1)); return g.interact() && g.swapUi.isOpen; }, 60000);
   await page.evaluate(() => document.querySelector('#friend [data-friend="battle"]').click());
 }
 
@@ -83,7 +82,7 @@ export default async function ({ browser, base, t }) {
     const kid = [...g.mp.others.values()][0];
     g.player.lookAt(kid.pos.clone().setY(kid.pos.y + 1));
   });
-  t.ok(await waitFor(A, () => document.getElementById('prompt').textContent.includes('Kid · click or E to play together')),
+  t.ok(await waitFor(A, () => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; g.player.lookAt(k.pos.clone().setY(k.pos.y + 1)); return document.getElementById('prompt').textContent.includes('Kid · click or E to play together'); }, 60000), // aim on every poll: Kid's avatar glides to its spot
     'looking at the other player shows "click or E to play together" (wave 17: the friend menu)');
   const teamA = await teamKey(A), teamB = await teamKey(B);
   const cubesA = await cubes(A), cubesB = await cubes(B);
