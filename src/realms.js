@@ -60,7 +60,7 @@ export const REALMS = {
   // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, eleven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: wave15Open ? 5 : 4, sameCells: wave15Open ? [4] : undefined, house: wave15Open, size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
+    id: 'swirl', name: 'Swirl', version: worldOpen('portal') ? 5 : 4, sameCells: worldOpen('portal') ? [4] : undefined, house: worldOpen('portal'), /* owner 2026-10-30: the Portal House opens on its own (OPEN_NOW), not only with all of wave 15 */ size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
