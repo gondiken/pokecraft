@@ -195,6 +195,25 @@ export default async function ({ browser, base, t }) {
       const whole = env.run(makeKid('skilled', LEGS, { seed: 2 }), { budget: 90, dt: 1 / fps });
       t.ok(whole.done && env.game.beaten.includes(BL.stairsKey), `@${fps} the whole climb, floor to plateau, by a skilled kid in ${whole.t} s: the Fizz Ledges are done`);
       env.game.beaten = [];
+      // owner 2026-10-30: "I did climb those ... did I complete it?" (the chip said "Ledges ○"). A kid who hops off its last bubble onto the
+      // plateau's very edge (its middle still over the cliff: the old rule only counted a middle over the plateau) is counted now
+      const edge = [1, 2, 3].map(s => { env.game.beaten = []; const L = LEGS[3]; env.put(L.pot[0] - 0.8, L.from, L.pot[2] - 0.3); const r = env.run(makeKid('nolean', [L], { seed: s }), { budget: 40, dt: 1 / fps }); return { up: !!r.done, z: +env.player.pos.z.toFixed(2), counted: env.game.beaten.includes(BL.stairsKey) }; });
+      // the exact case: off a bubble from ledge 3 onto the plateau's lip, your middle past its end (z 67.2; the old rule wanted z < 67)
+      env.game.beaten = []; env.put(114.5, BL.LEDGES[2].top + 1, 69.5); for (let i = 0; i < 6; i++) env.step(1 / fps);
+      env.player.pos.set(114.5, BL.MESA.top + 1.6, BL.MESA.z1 + 1.2); env.player.vel.set(0, 0, 0); env.player.onGround = false; env.live.fromBubble = true;
+      for (let i = 0; i < 2 * fps && !(env.player.onGround && !env.player.carry); i++) env.step(1 / fps);
+      const lip = { y: env.player.pos.y, z: env.player.pos.z, counted: env.game.beaten.includes(BL.stairsKey) };
+      t.ok(lip.counted && Math.abs(lip.y - (BL.MESA.top + 1)) < 0.05 && lip.z > BL.MESA.z1 + 1 && edge.every(r => r.up && r.counted), `@${fps} hopping off onto the plateau's very lip counts the climb (the owner's "climbed but not counted": standing at z ${lip.z.toFixed(2)}, past the plateau's last row, never counted before); kids who ride without leaning and hop onto the edge: all counted (feet at z ${edge.map(r => r.z).join(', ')})`);
+      // by any route the first time (a lost battle's rest, a reload mid-ride); in a rematch (the star) only a bubble up from a ledge counts
+      env.game.beaten = []; env.put(110.5, BL.MESA.top + 1, 60.5); for (let i = 0; i < 12; i++) env.step(1 / fps); const anyRoute = env.game.beaten.includes(BL.stairsKey);
+      env.game.beaten = []; env.game.stars = ['bubble']; env.put(110.5, BL.MESA.top + 1, 60.5); for (let i = 0; i < 12; i++) env.step(1 / fps); const rematchWalk = env.game.beaten.includes(BL.stairsKey);
+      const L4 = LEGS[3]; env.put(L4.pot[0] - 0.8, L4.from, L4.pot[2] - 0.3); const rem = env.run(makeKid('skilled', [L4], { seed: 1 }), { budget: 40, dt: 1 / fps }); const rematchClimb = !!rem.done && env.game.beaten.includes(BL.stairsKey);
+      env.game.stars = [];
+      // an old save that already has later progress but no climb key gets it once (never with the star: a rematch climbs again)
+      env.game.beaten = [BL.duckKey(1), BL.chimneyKey]; env.live.sync(true); const oldSave = env.game.beaten.includes(BL.stairsKey);
+      env.game.beaten = [BL.duckKey(1)]; env.game.stars = ['bubble']; env.live.sync(true); const oldStar = env.game.beaten.includes(BL.stairsKey); env.game.stars = [];
+      t.ok(anyRoute && !rematchWalk && rematchClimb && oldSave && !oldStar, `@${fps} up on the plateau by any route counts the first time; in a rematch only a bubble up from a ledge does (a lift ride never); an old save with a duckling and the chimney but no climb key gets it once`);
+      env.game.beaten = [];
       const first = [0, 1].map(n => rate('firsttime', n, fps, 3)), firstLate = [2, 3].map(n => rate('firsttime', n, fps, 3));
       t.ok(first.every(r => r.up === r.runs) && firstLate.every(r => r.per < 0.25), `@${fps} a first-time kid who only does the obvious (dip, face the ledge, blow, hop on, hop off once above it) gets onto ledges 1 and 2 at once (${first.map(fmt).join(', ')}); the windy ledges ask for more (${firstLate.map(fmt).join(', ')})`);
       const rnd = [2, 3].map(n => rate('random', n, fps, 5)), nolean = rate('nolean', 3, fps, 5);
@@ -203,14 +222,15 @@ export default async function ({ browser, base, t }) {
       env.put(LEGS[0].pot[0], LEGS[0].from, LEGS[0].pot[2], 0); const pil = env.run(makeKid('pillar', LEGS, { seed: 1 }), { budget: 20, dt: 1 / fps });
       t.ok(!mash.up && !pil.done && pil.top < 5.6, `@${fps} the pillar trick (jump, look down, press, again: a jump shakes the soap off the wand, so nothing but a puff of air) never leaves the floor (top ${pil.top}); hopping straight off the bubble never reaches ledge 1 (${fmt(mash)})`);
       // the shields
-      const shRate = (kind, k, runs) => { let up = 0, blows = 0; for (let s = 1; s <= runs; s++) { env.game.beaten = []; env.live.burst = [9, 9, 9]; env.live.shieldMiss = 0; const pot = RIM_LEG.pots[k]; env.put(pot[0], pot[1], pot[2] + 1, 0); env.live.courtT = s * 2.3; const n0 = env.live.field.n; const r = env.run(makeShieldKid(kind, k, { seed: s * 5 + k }), { budget: 30, dt: 1 / fps }); up += !!r.done; blows += env.live.field.n - n0; } return { up, runs, blows, per: up / Math.max(1, blows) }; };
-      const ssk = [1, 2].map(k => shRate('skilled', k, 4)), srnd = [1, 2].map(k => shRate('random', k, 6)), smash = shRate('masher', 2, 2), late = (srnd[0].up + srnd[1].up) / (srnd[0].blows + srnd[1].blows);
-      t.ok(ssk.every(r => r.up === r.runs && r.per >= 0.5) && srnd.every(r => r.per < 0.35) && late < 0.2 && !smash.up, `@${fps} the high shields: a skilled kid (blows when its shield comes over, rides up, hops off above it and drops on its top) pops each one every time (${ssk.map(fmt).join(', ')}); a kid who blows and hops at random rarely does (${srnd.map(fmt).join(', ')}); hopping straight off never (${fmt(smash)})`);
+      const shRate = (kind, k, runs) => { let up = 0, blows = 0; for (let s = 1; s <= runs; s++) { env.game.beaten = []; env.live.burst = BL.SHIELDS.map(() => 9); env.live.shieldMiss = 0; const pot = RIM_LEG.pots[k]; env.put(pot[0], pot[1], pot[2] + 1, 0); env.live.courtT = s * 2.3; const n0 = env.live.field.n; const r = env.run(makeShieldKid(kind, k, { seed: s * 5 + k }), { budget: 30, dt: 1 / fps }); up += !!r.done; blows += env.live.field.n - n0; } return { up, runs, blows, per: up / Math.max(1, blows) }; };
+      // owner 2026-10-30: "let's add 2 more shields": shields 2-5 (4 and 5 a little harder: smaller, swaying more, 5 in a side breeze)
+      const ssk = [1, 2, 3, 4].map(k => shRate('skilled', k, 4)), srnd = [1, 2, 3, 4].map(k => shRate('random', k, 6)), smash = [2, 4].map(k => shRate('masher', k, 2)), late = srnd.reduce((a, r) => a + r.up, 0) / srnd.reduce((a, r) => a + r.blows, 0);
+      t.ok(ssk.every(r => r.up === r.runs && r.per >= 0.5) && srnd.every(r => r.per < 0.35) && late < 0.2 && srnd[3].per < 0.15 && !smash.some(r => r.up), `@${fps} the high shields 2-5: a skilled kid (blows when its shield comes over, upwind in a breeze, rides up, hops off above it and drops on its top) pops each one every time (${ssk.map(fmt).join(', ')}); a kid who blows and hops at random rarely does (${srnd.map(fmt).join(', ')}; the fifth in its side breeze hardly ever); hopping straight off never (${smash.map(fmt).join(', ')})`);
       // the low first shield (owner 2026-10-30: "land on top" must be found by doing it): a first-time kid who walks at it and jumps
       // (any distance from a step to three, and again after a boing) pops it; a kid who only walks into it gets boinged back, never a pop;
       // jumping under a high one never reaches it
-      const low = (kind, s, k = 0) => { env.game.beaten = []; env.live.burst = [9, 9, 9]; env.live.shieldMiss = 0; env.live.boings = 0; const S = BL.SHIELDS[k]; if (kind === 'underjump') env.put(S.x + 0.5, BL.RIM.y + 1, S.z, 0); else env.put(80.5 + (s % 3 - 1) * 1.5, BL.RIM.y + 1, 36.3, 0); env.live.courtT = s * 1.7; const r = env.run(makeLowShieldKid(kind, { seed: s, k }), { budget: 15, dt: 1 / fps }); return { pop: !!r.done, t: r.t, boings: env.live.boings }; };
-      const firstK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => low('firsttime', s)), walk = [1, 2, 3].map(s => low('walker', s)), under = [1, 2].map(k => low('underjump', k, k));
+      const low = (kind, s, k = 0) => { env.game.beaten = []; env.live.burst = BL.SHIELDS.map(() => 9); env.live.shieldMiss = 0; env.live.boings = 0; const S = BL.SHIELDS[k]; if (kind === 'underjump') env.put(S.x + 0.5, BL.RIM.y + 1, S.z, 0); else env.put(80.5 + (s % 3 - 1) * 1.5, BL.RIM.y + 1, 36.3, 0); env.live.courtT = s * 1.7; const r = env.run(makeLowShieldKid(kind, { seed: s, k }), { budget: 15, dt: 1 / fps }); return { pop: !!r.done, t: r.t, boings: env.live.boings }; };
+      const firstK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => low('firsttime', s)), walk = [1, 2, 3].map(s => low('walker', s)), under = [1, 2, 3, 4].map(k => low('underjump', k, k));
       t.ok(firstK.every(r => r.pop && r.t < 4) && walk.every(r => !r.pop && r.boings >= 5) && under.every(r => !r.pop), `@${fps} the low shield: a first-time kid who walks at it and jumps pops it every time (${firstK.map(r => `${r.t} s/${r.boings} boing`).join(', ')}); walking into it only boings you back (${walk.map(r => r.boings).join(', ')} boings in 15 s); jumping under a high one never reaches it`);
       // Captain Suds' bubble: walking at him you are boinged back, never inside
       env.game.beaten = []; env.put(BL.DOME.x, BL.RIM.y + 1, BL.DOME.z + 6, 0); env.player.keys = { KeyW: true }; let inside = 0; for (let i = 0; i < 4 * fps; i++) { env.step(1 / fps); if (Math.hypot(env.player.pos.x - BL.DOME.x, env.player.pos.z - BL.DOME.z) < BL.DOME.r) inside++; } env.player.keys = {};
@@ -340,7 +360,7 @@ export default async function ({ browser, base, t }) {
       return { place: g.place, parts: g.world.parts.map(x => x.id).join(), aim, st: R.L.bubbleState(g), bee: !!R.bee(), boss: !!R.boss(), crew: [0, 1, 2].map(i => R.crew(i)?.name).join(), wand: R.said('Dip your wand') || !!live.wand, chip: document.getElementById('score-chip')?.textContent, word: live.near(p), wet: live.wet, lifts: live.info().lifts, keep: g.world.keeps.some(k => k.name === 'well'), edit: g.world.editAllowed?.(80, 5, 120, R.B.STONE), toasts: window.__toasts.length };
     });
     t.ok(D0.place === 'bubble' && D0.parts === 'bubble' && D0.bee && D0.boss && D0.crew === 'Wanda Wand,Duckherd Daisy,Mate Fizz' && D0.wand, `the Bubble Well frame opens the well; a bubble wand; Captain Suds and his crew are there (${D0.crew})`);
-    t.ok(D0.word === 'Puff!' && !D0.wet && /Ledge 1/.test(D0.aim) && /Ledges ○ · 🦆 0 \/ 3/.test(D0.chip) && !/●|○○/.test(D0.chip) && D0.lifts.join() === 'false,false' && D0.keep && D0.edit === false, `a dry wand: the big button says Puff! (only air); the guide leads to the first ledge ("${D0.aim}"), the chip has no soap dots (${D0.chip}); the lifts are off; nobody builds in the well`);
+    t.ok(D0.word === 'Puff!' && !D0.wet && /Climb 1/.test(D0.aim) && /Climb ○ · 🦆 0 \/ 3 · Chimney ○ · 🛡️ 0 \/ 5/.test(D0.chip) && !/Ledge/.test(D0.chip) && !/●|○○/.test(D0.chip) && D0.lifts.join() === 'false,false' && D0.keep && D0.edit === false, `a dry wand: the big button says Puff! (only air); the guide leads to the first ledge ("${D0.aim}"), the chip has no soap dots (${D0.chip}); the lifts are off; nobody builds in the well`);
     if (want('play') || !ONLY) {
       // the soap pot: walk up to it and the wand dips (Blow!); a bubble; a jump shakes the film off (Puff! again)
       const P1 = await page.evaluate(() => {
@@ -405,10 +425,15 @@ export default async function ({ browser, base, t }) {
         const said = window.__toasts.slice(t0); out.soapSaid = said.find(m => /🧼/.test(m)); out.soap = !!out.soapSaid && out.chip.some(c => /🧼 \d \/ 6/.test(c));
         out.star = [...said, ...out.chip].some(m => /⭐|star/i.test(m));
         out.st = R.L.bubbleState(g); out.y = p.pos.y; out.lifts = live.info().lifts; out.said = R.said('Up the chimney');
+        // owner 2026-10-30: "Why did I have to do an entire round walk?": you step out on Captain Suds' balcony, looking at him
+        const D = R.L.DOME, fw = p.forward; out.toSuds = Math.hypot(p.pos.x - D.x, p.pos.z - D.z) - D.r; out.toShield = Math.hypot(p.pos.x - R.L.SHIELDS[0].x, p.pos.z - R.L.SHIELDS[0].z);
+        out.facing = (fw.x * (D.x - p.pos.x) + fw.z * (D.z - p.pos.z)) / Math.hypot(fw.x, fw.z) / Math.hypot(D.x - p.pos.x, D.z - p.pos.z);
+        out.aim = live.aim(p.pos)?.text('↑', 7);
         return out;
       });
       t.ok(D4.word === 'Ride!' && D4.riding && D4.jump === 'Puff' && D4.puff === 'Puff!' && D4.outside && D4.inside, `by the chimney the big button says Ride!, then Puff! (Jump says Puff); golden from outside, only a faint soap rim from inside (no glare)`);
       t.ok(D4.r.done && D4.st.chimney && D4.y > 41.9 && D4.lifts[1] && D4.said && D4.r.t > 30 && D4.soap && !D4.star, `the Chimney Ride to the top in ${D4.r.t.toFixed(0)} s: on the rim, the chimney done, the second fizz lift runs; its checkpoints are bars of soap ("${D4.soapSaid}"), nothing says star`);
+      t.ok(D4.toSuds < 8 && D4.toShield < 7 && D4.facing > 0.95, `the ride puts you down on Captain Suds' balcony, looking at him: ${D4.toSuds.toFixed(1)} blocks from his bubble, ${D4.toShield.toFixed(1)} from his first shield (it was a walk of about 60 round the rim); the guide: "${D4.aim}"`);
       // Captain Suds sealed in his bubble (owner 2026-10-30): you can't get in (boing), talking gets a giggle from inside, never a battle
       const D5a = await page.evaluate(() => {
         const R = window.__R, { g, live, p } = R, D = R.L.DOME, out = {};
@@ -418,22 +443,22 @@ export default async function ({ browser, base, t }) {
         g.talkTo(R.boss()); out.talk = !g.inBattle && /Hee hee|land on top/.test(window.__toasts.at(-1) || ''); out.giggle = live.giggleT < 1;
         return out;
       });
-      t.ok(D5a.d >= 3.39 && D5a.boings > 0 && D5a.hee && D5a.dome.up && D5a.dome.skins === 3 && D5a.talk && D5a.giggle, `Captain Suds sits sealed in his bubble (three skins): walking at him boings you back (${D5a.d.toFixed(1)} from his middle), he giggles "Hee hee!" from inside; talking to him gets no battle`);
+      t.ok(D5a.d >= 3.39 && D5a.boings > 0 && D5a.hee && D5a.dome.up && D5a.dome.skins === 5 && D5a.talk && D5a.giggle, `Captain Suds sits sealed in his bubble (five skins, one per shield): walking at him boings you back (${D5a.d.toFixed(1)} from his middle), he giggles "Hee hee!" from inside; talking to him gets no battle`);
       // the shields: walk at the low first one and it boings you; jump on it: pop, and one skin of his bubble pops; the high ones by a
       // bubble ride from the soap pot under each; the last bursts his bubble
       const D5 = await page.evaluate(() => {
         const R = window.__R, { g, live, p } = R, out = {};
         live.boings = 0; R.put(80.5, R.L.RIM.y + 1, 36.3, 0); out.walk = R.kid(R.Bots.makeLowShieldKid('walker', { seed: 1 }), { budget: 3 }); out.walkBoings = live.boings;
         out.low = R.kid(R.Bots.makeLowShieldKid('firsttime', { seed: 2 }), { budget: 10 }); out.skins1 = live.info().dome.skins;
-        out.r = [1, 2].map(k => R.shield(k));
+        out.r = [1, 2, 3, 4].map(k => R.shield(k));
         out.st = R.L.bubbleState(g); out.all = R.said('Captain Suds is ready'); out.dome = live.info().dome;
         R.run(1); out.after = live.info().dome.skins;
-        live.burst = [9, 9, 9]; const keys = g.beaten.length; const fun = R.shield(1); out.fun = !!fun.done && R.said('Just for fun') && g.beaten.length === keys && !live.info().dome.up; // (all popped: back just for fun)
+        live.burst = R.L.SHIELDS.map(() => 9); const keys = g.beaten.length; const fun = R.shield(1); out.fun = !!fun.done && R.said('Just for fun') && g.beaten.length === keys && !live.info().dome.up; // (all popped: back just for fun)
         return out;
       });
-      t.ok(!D5.walk.done && D5.walkBoings > 0 && D5.low.done && D5.skins1 === 2, `walking into the low shield only boings you back (${D5.walkBoings} boings); a jump onto it pops it in ${D5.low.t} s, and one skin of his bubble pops with it`);
-      t.ok(D5.r.every(r => r.done) && D5.st.shields === 3 && D5.st.ready && D5.all && !D5.dome.up && D5.after === 0, `ride a bubble up from the soap pot under a high shield, hop off above it and drop onto it: pop! (🛡️ ${D5.st.shields} / 3, ${D5.r.map(r => `${r.t} s`).join(', ')}); the last one bursts Captain Suds' bubble`);
-      t.ok(D5.fun, 'with all three popped the shields float back and pop again just for fun (nothing new saved, his bubble stays gone)');
+      t.ok(!D5.walk.done && D5.walkBoings > 0 && D5.low.done && D5.skins1 === 4, `walking into the low shield only boings you back (${D5.walkBoings} boings); a jump onto it pops it in ${D5.low.t} s, and one skin of his bubble pops with it`);
+      t.ok(D5.r.every(r => r.done) && D5.st.shields === 5 && D5.st.ready && D5.all && !D5.dome.up && D5.after === 0, `ride a bubble up from the soap pot under a high shield, hop off above it and drop onto it: pop! (🛡️ ${D5.st.shields} / 5, ${D5.r.map(r => `${r.t} s`).join(', ')}); the last one bursts Captain Suds' bubble`);
+      t.ok(D5.fun, 'with all five popped the shields float back and pop again just for fun (nothing new saved, his bubble stays gone)');
       // Captain Suds: his crew first, a lost battle stays on the rim, the star clears the climb's keys
       const B1 = await page.evaluate(async () => {
         const R = window.__R, { g } = R, Sp = await import('/src/species.js'), out = {};
@@ -490,13 +515,22 @@ export default async function ({ browser, base, t }) {
       // a bar of soap over a gold ring, close up inside the ride (owner 2026-10-30: the ride's checkpoints are no stars)
       await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; R.put(C.x + C.wall + 1.2, 19, C.z, Math.PI / 2); live.startRide(); live.step(0.05); p.update(0.05); const s = C.stars[1]; p.lookAt({ x: s.x + 0.4, y: s.y, z: s.z }); live.step(0.01); });
       await frames(page, 3); await shot(page, 'bubble-soap.png');
+      // owner 2026-10-30: "slightly dim that light coming from the chimney holes": inside the ride, looking straight up under the next ring
+      await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; live.giveBack(); R.put(C.x + C.wall + 1.2, 19, C.z, Math.PI / 2); live.startRide(); const b = R.Bots.RIDE_BOTS.skilled(); for (let i = 0; i < 60 * 3; i++) { const q = b(live.ride); if (q.tap) live.puff(); live.step(1 / 60, { ride: { sx: q.sx, sz: q.sz } }); p.update(1 / 60); } const q = C.plates.find(q => live.ride.y < q.y + 1) ?? C.plates.at(-1), g = R.Bu.gapOf(C, q, live.ride.t); p.lookAt({ x: g.x + (g.x - C.x) * 0.6, y: q.y + 1.2, z: g.z + (g.z - C.z) * 0.6 }); live.step(0.01); });
+      await frames(page, 3); await shot(page, 'bubble-chimney-up.png');
+      // owner 2026-10-30: "Why did I have to do an entire round walk?": the ride ends on Captain Suds' balcony, looking at him (the chip: Climb ✓)
+      await page.evaluate(() => { const R = window.__R, { g, live } = R; g.beaten = g.beaten.filter(k => !/pw:bubble:(shield|chimney)/.test(k)); for (const k of ['pw:bubble:stairs', 'pw:bubble:duck1', 'pw:bubble:duck2', 'pw:bubble:duck3']) if (!g.beaten.includes(k)) g.beaten.push(k); live.burst = R.L.SHIELDS.map(() => 9); live.domeBurst = 9; live.chimneyDone(); live.step(0.05); });
+      await frames(page, 3); await shot(page, 'bubble-landing.png');
       // the chimney's stack standing up out of the rim (a longer ride), from the rim walk
-      await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; live.giveBack(); R.put(66, 42, 28); p.lookAt({ x: C.x, y: 43, z: C.z }); live.step(0.05); });
+      await page.evaluate(() => { const R = window.__R, { p, live } = R, C = R.L.CHIMNEY; live.giveBack(); R.put(80.5, 42, 37.3); p.lookAt({ x: C.x, y: 43, z: C.z }); live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-stack.png');
       // Captain Suds sealed in his bubble, from the rim walk: the low first shield in front of him, the high ones over the soap pots, the
       // trails of little bubbles from each shield into his bubble
-      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/shield/.test(k)); live.burst = [9, 9, 9]; live.domeBurst = 9; R.put(80.5, 42, 38.6); p.lookAt({ x: 80.5, y: 43.6, z: 26 }); live.step(0.05); });
+      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/shield/.test(k)); live.burst = R.L.SHIELDS.map(() => 9); live.domeBurst = 9; R.put(80.5, 42, 37.4); p.lookAt({ x: 80.5, y: 43.6, z: 26 }); live.step(0.05); });
       await frames(page, 3); await shot(page, 'bubble-suds-sealed.png');
+      // owner 2026-10-30: "let's add 2 more shields": all five along the balcony (the low one in front of him, four bobbing high over their pots)
+      await page.evaluate(() => { const R = window.__R, { p, live } = R; R.put(76.5, 42, 37.4); p.lookAt({ x: 90, y: 44.2, z: 30 }); live.step(0.05); });
+      await frames(page, 3); await shot(page, 'bubble-five-shields.png');
       // walking into the low shield: boing (it squashes)
       await page.evaluate(() => { const R = window.__R, { p, live } = R, s = live.shieldNow(0).c; R.put(s.x, 42, s.z + 3.2, 0); p.keys = { KeyW: true }; for (let i = 0; i < 60 && live.wob[0] > 0.1; i++) R.frame(); p.keys = {}; R.frame(); p.lookAt({ x: s.x, y: 42.4, z: s.z }); live.step(0.01); });
       await frames(page, 3); await shot(page, 'bubble-shield-boing.png');
@@ -507,7 +541,7 @@ export default async function ({ browser, base, t }) {
       await page.evaluate(() => { const R = window.__R, { p, live } = R, pot = R.Bots.RIM_LEG.pots[1]; R.put(pot[0], pot[1], pot[2] + 0.5, 0); R.run(0.2); live.use(p); const b = live.field.list.at(-1); p.keys = { Space: true, KeyW: true }; for (let i = 0; i < 90 && live.stood !== b; i++) { R.frame(); p.keys.Space = false; } p.keys = {}; R.run(2.0); const s = live.shieldNow(1).c; p.lookAt({ x: s.x, y: s.y - 0.5, z: s.z }); live.step(0.01); });
       await frames(page, 3); await shot(page, 'bubble-shield-ride.png');
       // all three popped: his bubble bursts
-      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); for (const k of ['pw:bubble:shield2', 'pw:bubble:shield3']) if (!g.beaten.includes(k)) g.beaten.push(k); live.burst = [0.3, 0.3, 0.3]; live.domeBurst = 0.25; live.giggleT = 0.3; R.put(80.5, 42, 36.5); p.lookAt({ x: 80.5, y: 43.6, z: 26 }); live.step(0.01); });
+      await page.evaluate(() => { const R = window.__R, { g, p, live } = R; live.giveBack(); for (const k of ['pw:bubble:shield2', 'pw:bubble:shield3', 'pw:bubble:shield4', 'pw:bubble:shield5']) if (!g.beaten.includes(k)) g.beaten.push(k); live.burst = R.L.SHIELDS.map(() => 0.3); live.domeBurst = 0.25; live.giggleT = 0.3; R.put(80.5, 42, 36.5); p.lookAt({ x: 80.5, y: 43.6, z: 26 }); live.step(0.01); });
       await frames(page, 3); await shot(page, 'bubble-suds-free.png');
     }
   }

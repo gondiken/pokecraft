@@ -147,7 +147,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/castlelive.js` | T49 `CastleLive` = `LIVE.castle`: the shield stance and the steed (`carry` objects), throws, gates with `LiveCells`, the Joust's view (`JOUST_VIEW`, owner 2026-10-28), the maze's fun (`MAZE_FUN`), `battleEnded`, `manual` + `step` |
 | `src/castleprops.js` | T49 the Castle's models (`buildPracticeKnight` with its `parts.shield`, catapults, lance, drawbridge, portcullis, horseshoes, critters, spray) |
 | `src/castlegate.js` | T49 the shared gates (owner 2026-10-28: physical): `createCastleGates` -> `game.castleGates`; play-together `castle` message, per session, never saved |
-| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160; redesign 2026-10-29): `WELL`, `FLOOR`, `MESA`, `LEDGES` (the Fizz Ledges), `SOAP_POTS` / `RIM_POTS`, `WINDS` (a stream, a gust, the rim breeze), `DRIPS`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS` / `GUSTS`, `CHIMNEY` (6 rings, 2 fans, 2 arms, the stack over the rim; `stars` = the soap bars' spots), `RIM`, `SHIELDS` (the first `low`), `DOME`, `LIFTS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `ledgeAt`, `bubbleAim`, `bubbleLand` |
+| `src/bubbleland.js` | The Bubble Well as data (Node-runnable, `TERRAINS.bubbleLand`, 160 x 160; redesign 2026-10-29): `WELL`, `FLOOR`, `MESA`, `LEDGES` (the Fizz Ledges), `SOAP_POTS` / `RIM_POTS`, `WINDS` (a stream, a gust, the rim breeze, a side breeze), `DRIPS`, `GARDEN` / `NEST` / `ISLANDS` / `THORNS` / `CURRENTS` / `GUSTS`, `CHIMNEY` (6 rings, 2 fans, 2 arms, the stack over the rim; `stars` = the soap bars' spots), `RIM`, `SHIELDS` (five, the first `low`), `DOME`, `LIFTS`; keys `stairsKey` / `duckKey` / `chimneyKey` / `shieldKey`, `bubbleState`, `ledgeAt`, `bubbleAim`, `bubbleLand` |
 | `src/bubbles.js` | The Bubble Well's rules, pure: `BUBBLE` / `BubbleField` (out of the wand, rise, drift, wobble, pop, puffs of air), `rideUp`, `dripAt`, `gustAt`, `DUCK` / `Duckling`, `RIDE` / `Ride` (the Chimney Ride: taps, plates (two turn), fans, the arms, `barsOf`), `shieldAt` / `stomp` (pop or boing) / `clearOf` / `shieldSize` / `shieldSway` (the shields), `HARD`, `bubbleHelp` (= the `kindHelp` mapping) |
 | `src/bubblelive.js` | `BubbleLive` = `LIVE.bubble`: the wand (`wet`: dips by a soap pot, a jump shakes it off; Blow! / Puff!), riding a bubble (a `carry`: the stick leans it, Jump = Bounce), falls back to your ledge, the ducklings, the ride (`carry`, Jump = Puff; from inside only a faint rim), the shields (stomps, boings, for-fun returns), Captain Suds' dome (boings you back, a skin per shield, bursts; he giggles), the fizz lifts, `battleEnded`, `manual` + `step`, `info()` |
 | `src/bubbleprops.js` | The Bubble Well's models: one soap-film shader (`soapMaterial`), bubbles (instanced), ghost bubble, the wand (its film only while wet), puffs of air, soap pots, Puff! arrow, ride bubble + "Ride!" sign, drips, streams, thorns, nest, the chimney's plates / fans / arms / bars of soap (`buildSoapBar`), shields, `buildDome` (Suds' bubble: three skins + the trails) |
@@ -653,27 +653,36 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   kind help), so every ledge is needed (`bubblecheck.mjs` proves it); gaps 3, 3, 3, 5: the floor and ledge 1 are still air (a first-time
   kid gets them), ledge 2 has a stream blowing away from ledge 3 (blow from the north corner), ledge 3 -> the plateau needs a ride to
   the very end, drips and a gust (blow right after one). Kids with the real Player in Node (`bubblenode.mjs`, `makeKid`) prove skilled
-  always, first-time the first two, random rarely, pillar never. **Ducklings:** as before plus soap pots in the garden (a wet wand to
+  always, first-time the first two, random rarely, pillar never. **The climb counts** (owner 2026-10-30: "did I complete it?", the chip said
+  "Ledges ○"): the old rule only counted a landing whose middle was over a box of the plateau, so hopping off onto its very lip never
+  counted; now standing at the plateau's height or higher counts the first time by any route (`checkGround`), in a rematch (the star) only
+  a bubble up from a ledge; `sync` gives an old save with a duckling, the chimney or a shield but no climb key the key once (never with the
+  star). The chip says `🫧 Climb ✓ · 🦆 n / 3 · Chimney ✓ · 🛡️ n / 5`, the guide `🫧 Climb n / 3`. **Ducklings:** as before plus soap pots in the garden (a wet wand to
   bubble one), the gust a little stronger. **Chimney Ride:** from inside the ride bubble is only a faint rim (`RP.*` hidden); six gold
   rings (the fourth and sixth turn, `spin`), two fans, two arms (`CHIMNEY.bars`; the second turns the other way, slower), `RIDE.steer` 0.8;
   owner 2026-10-30 "slightly longer": the chimney stands up out of the rim as a stack to y 47 (`CHIMNEY.stack`, `top` 48.3), about 37 s for
-  the best robot (was 24). **No stars in the well but Captain Suds' real one** (owner 2026-10-30: the Wizard's bridge needs stars): the
+  the best robot (was 24); the rings' halo and the beam under the next ring are dimmer (the beam only seen from outside it). Owner 2026-10-30
+  ("an entire round walk after the chimney"): the chimney now stands in the plateau's north-west corner (x 64.5, z 29.5) right beside
+  Captain Suds' balcony; `CHIMNEY.landing` [74.5, 33.5] is on the balcony, facing him (about 7 from his bubble); the second fizz lift is by
+  the chimney's foot, the rim way back west of the chimney. **No stars in the well but Captain Suds' real one** (owner 2026-10-30: the Wizard's bridge needs stars): the
   ride's checkpoints are **bars of soap** (`buildSoapBar`, chip `🧼 n / 6`; the data keeps the name `stars` and the event `star`), the
   shields wear a heap of foam, not a gold star. **Shields** (owner 2026-10-30: "I didn't get that I was supposed to jump on top of them";
-  keys `shield1..3` kept): Captain Suds sits sealed in a big bubble (`DOME`, three skins, one per shield, `domeUp` / `domeR`): it boings you
+  keys `shield1..3` kept; owner 2026-10-30 "let's add 2 more shields. The first one should still be that simple one": five, `shield4/5`
+  new, a save with 1-3 keeps them): Captain Suds sits sealed in a big bubble (`DOME`, five skins, one per shield, `domeUp` / `domeR`): it boings you
   back, a bubble you ride pops on it, he giggles "Hee hee!" (one line, `WORDS.sealed`, also his gate's words) and trails of little bubbles
   run into it from each shield; each pop pops a skin, the last bursts it. Shield 1 (`low`) rests on the balcony's foam right in front of him,
   its top 1.05 over the floor: walking into it boings you back (`stomp` -> `{ bump }`, `boingOff`: pushed out to `clearOf`, a hop, a squash,
-  the `boing` sound), a plain jump onto its top pops it (a shoulder landing boings). Shields 2-3 bob high (out of a jump's reach) over a
-  soap pot each (`RIM_POTS[1..2]`): ride a bubble up, hop off above one and drop onto its top. Bots: `makeLowShieldKid` (first-time pops it
+  the `boing` sound), a plain jump onto its top pops it (a shoulder landing boings). Shields 2-5 bob high (out of a jump's reach) over a
+  soap pot each (`RIM_POTS[1..4]`): ride a bubble up, hop off above one and drop onto its top; 4 and 5 are smaller and sway more, 5 sits
+  in a side breeze (`WINDS` `rim2`, blow upwind; `makeShieldKid` reads the breeze over its pot). Bots: `makeLowShieldKid` (first-time pops it
   every time, walker never, jumping under a high one never), `makeShieldKid` for the high ones. Popped ones float back `funBack` 6 s later
   just for fun (the dome stays gone). **The one-time
   reset** (`worldreset.js`, owner: "reset my progress in ... bubble worlds"): a save without `pw:bubble:redesign1` loses its old
   `pw:bubble:*` keys (crew too), the `bubble` star and `bossWins.bubble` once, then keeps the mark; allowed only because the Bubble Well
   was preview-only (nobody else could play it); every other world untouched. `REALMS.bubble` version 2. Landing: `landsOn` = down
   through its top, or feet in its top part (`scoop`). The two fizz lifts run once you did a stretch (or hold the star). Captain Suds (a
-  giant Lathotter) gates on the three shields (his muffled line) and the five stretch keys, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won
-  battle clears the eight climb keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
+  giant Lathotter) gates on the five shields (his muffled line) and the five stretch keys, then the crew Wanda Wand, Duckherd Daisy, Mate Fizz; a won
+  battle clears the ten climb keys. Kind help only through `bubbleHelp` (= `kindHelp`); `HARD` is the rematch.
 - **"Start this world over" (owner 2026-10-29, `worldreset.js`):** only with `?preview` (`comingsoon.js` `PREVIEW`), in the pause screen
   while inside a Picture World (a realm with `parent`): two taps clear that world's `pw:<id>:*` keys (crew too; never a reset mark), its
   star and `bossWins` entry (the world you came in through; a shared world without one: all of its worlds), save, rebuild the live parts

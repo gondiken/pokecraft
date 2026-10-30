@@ -195,9 +195,9 @@ export function buildChimney(chim, gapOf) {
     // beam of light under it (the live part shows the beam and pulses the ring only for the next ring)
     const glowRing = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.16, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
     glowRing.rotation.x = Math.PI / 2; glowRing.position.set(gp.x, p.y + 0.36, gp.z);
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.42, 6, 32), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.28, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.42, 6, 32), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending }));
     halo.rotation.x = Math.PI / 2; halo.position.copy(glowRing.position); halo.renderOrder = 5;
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 3.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 3.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.FrontSide, blending: THREE.AdditiveBlending })); // (owner 2026-10-30: "slightly dim that light": fainter, and only seen from outside it)
     beam.position.set(gp.x, p.y - 1.6, gp.z); beam.renderOrder = 5; beam.visible = false;
     for (const o of [glowRing, halo, beam]) { o.position.x -= chim.x; o.position.z -= chim.z; }
     // (redesign 2026-10-29: each plate is a group round the chimney's middle, so a turning plate turns as one: rotation.y = -spin x t)
@@ -252,12 +252,12 @@ export function buildBigBubble(r = 1, alpha = 1) {
 
 // Captain Suds' three shield bubbles (the live part places them), each with a slowly turning coloured ring (its colour = its skin of
 // Captain Suds' dome) and a little heap of foam on top. (Owner 2026-10-30: no gold star on top any more: stars are the Wizard's.)
-export const SHIELD_COLOURS = [0x7fdcff, 0xff8fd0, 0xffd860];
+export const SHIELD_COLOURS = [0x7fdcff, 0xff8fd0, 0xffd860, 0x8dffb0, 0xc8a0ff]; // (one per shield: five since 2026-10-30)
 export function buildShields(list0) {
   const g = new THREE.Group(), list = [];
   list0.forEach((sh, i) => {
     const r = sh.r, s = buildBigBubble(r, 0.85);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.06, 4, 32), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[i % 3], transparent: true, opacity: 0.85 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.06, 4, 32), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[i % SHIELD_COLOURS.length], transparent: true, opacity: 0.85 }));
     ring.rotation.x = Math.PI / 2 - 0.3 * i;
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
     cap.scale.set(1.3, 0.45, 1.3); cap.position.y = r + 0.02;
@@ -379,7 +379,7 @@ export function buildDome(dome, n = 3, per = 12) {
   for (let k = 0; k < n; k++) {
     const r = dome.r - k * dome.skin, s = new THREE.Group();
     const film = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), soapMaterial(0.75)); film.renderOrder = 2;
-    const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 4, 48), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[k % 3], transparent: true, opacity: 0.7, depthWrite: false }));
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 4, 48), new THREE.MeshBasicMaterial({ color: SHIELD_COLOURS[k % SHIELD_COLOURS.length], transparent: true, opacity: 0.7, depthWrite: false }));
     band.rotation.x = Math.PI / 2 - 0.35 + 0.35 * k; band.rotation.y = k * 1.1; band.renderOrder = 3;
     s.add(film, band); s.position.set(dome.x, dome.y, dome.z);
     g.add(s); skins.push({ g: s, film, band, r });
@@ -389,7 +389,7 @@ export function buildDome(dome, n = 3, per = 12) {
   g.add(shine);
   const trail = inst(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }), n * per);
   const col = new THREE.Color();
-  for (let i = 0; i < n * per; i++) trail.setColorAt(i, col.setHex(i % 3 ? SHIELD_COLOURS[Math.floor(i / per) % 3] : 0xffffff));
+  for (let i = 0; i < n * per; i++) trail.setColorAt(i, col.setHex(i % 3 ? SHIELD_COLOURS[Math.floor(i / per) % SHIELD_COLOURS.length] : 0xffffff));
   trail.renderOrder = 4;
   g.add(trail);
   g.userData.parts = { skins, shine, trail, per };
