@@ -744,19 +744,19 @@ export default async function ({ browser, base, t }) {
   if (want('closed')) {
     const shut = await openGame(browser, base, { wave15: false });
     const c = await shut.evaluate(async () => { const PW = await import('/src/pictureworlds.js'), C = await import('/src/comingsoon.js'), pb = await import('/src/pictureboss.js'), sl = await import('/src/swirlland.js'); const w = PW.pictureWorld('bubble'); return { ready: w.ready, secret: w.secret, name: w.name, emoji: w.emoji, open: C.worldOpen('bubble'), later: C.LATER.includes('bubble'), boss: pb.bossOf('bubble').title, castle: C.worldOpen('castle') }; });
-    t.ok(!c.ready && c.secret && c.name === 'Secret World' && c.emoji === '❓' && !c.open && c.later && c.boss === 'Captain Suds · Bubble Well Boss' && c.castle, `without ?preview the Bubble Well's frame is still the covered secret (${c.name} ${c.emoji}): nothing spoiled, it cannot be entered; the Castle stays open`);
-    // the closed frame says it is a secret and opens nothing
+    t.ok(c.ready && !c.secret && c.name === 'Bubble Well' && c.open && !c.later && c.boss === 'Captain Suds · Bubble Well Boss' && c.castle, `owner 2026-10-30: the Bubble Well is open for everyone, also without ?preview (${c.name})`);
+    // its frame in the Swirl takes you in
     await newGame(shut, 0); await pause(shut);
     const c2 = await shut.evaluate(async () => {
       const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand });
       for (let i = 0; i < 600 && (g.place !== 'swirl' || g.realms.busy); i++) await new Promise(r => setTimeout(r, 100));
-      const f = g.world.swirl.frames.find(f => f.world === 'bubble'), cell = f.cloth[Math.floor(f.cloth.length / 2)];
+      const f = g.world.swirl.frames.find(f => f.world === 'bubble'), cell = f.cells[Math.floor(f.cells.length / 2)];
       const used = g.portal.use({ x: cell[0], y: cell[1], z: cell[2], id: g.world.get(...cell) });
-      await new Promise(r => setTimeout(r, 1500));
-      return { used, place: g.place, cloth: g.world.get(...cell) };
+      for (let i = 0; i < 900 && (g.place !== 'bubble' || g.realms.busy); i++) await new Promise(r => setTimeout(r, 100));
+      return { used, place: g.place };
     });
-    t.ok(c2.used && c2.place === 'swirl', `the covered frame in the Swirl only says it is a secret: you stay in the Swirl (${c2.place})`);
-    t.ok(!shut.errors.length, `no page errors when closed ${shut.errors.slice(0, 3).join(' | ')}`);
+    t.ok(c2.used && c2.place === 'bubble', `its frame in the Swirl takes you into the Bubble Well (${c2.place})`);
+    t.ok(!shut.errors.length, `no page errors without ?preview ${shut.errors.slice(0, 3).join(' | ')}`);
     await shut.context().close();
     const pre = await openGame(browser, base, { wave15: false, query: '?preview' });
     const o = await pre.evaluate(async () => { const PW = await import('/src/pictureworlds.js'); const w = PW.pictureWorld('bubble'); return { ready: w.ready, name: w.name }; });

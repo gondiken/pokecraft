@@ -653,8 +653,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `tests/fixtures/cube-off-golden.json`.
 - **Bubble type and the Bubble Well (spec `bubble`, `tests/bubblecheck.mjs`, `tests/bubblebots.mjs`, `tests/bubblenode.mjs`, `plans/bubble-well.md`):** type
   `bubble` (`gear: 'film'`, `gait: 'float'`: wild ones float inside their own bubble, `Wild.reveal` pops it; condition `bubbly`); the
-  only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; it is in `LATER`
-  (closed without `?preview`). One climb up a round well (the whole map is a keep: no building, no riding). **Redesign 2026-10-29
+  only new ids are wool **255**, **147** `FOAM`, **148** `FIZZ_WALL`. `PICTURE_WORLDS` `bubble` took the `secret4` place; open for everyone since 2026-10-30 (`OPEN_NOW`)
+  One climb up a round well (the whole map is a keep: no building, no riding). **Redesign 2026-10-29
   ("natural rules", `plans/bubble-well.md`):** owner: "the lack of understanding isn't because we're lacking instructions. It's because
   they're not typically expected physics ... Those rules should be natural to the game", and "I don't want more instructions". **Every
   rule is one a child already expects from real bubbles and a real wand; no explaining text** (only the big button's word and one short
