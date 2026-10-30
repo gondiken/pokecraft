@@ -164,8 +164,8 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/multiplayer.js` | Play together: share code, avatars, block sync; T38b `realm` event |
 | `src/duel.js` | Player-vs-player battles over the play-together channel |
 | `src/swapcore.js` | Wave 17, pure save rules of gifts and trades: `SWAP`, `PARCELS` / `addParcel` (only `creature` built), `cleanCreature`, `loadSwaps`, `commitOut` / `receive` / `settle` |
-| `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: one trade flow (a side may be Nothing = a present), the `swap` messages (`hi`, `offer`, `no`, `pick`, `cancel`, `give`, `got`), asks, re-sends, `drop` / `info()` for tests |
-| `src/swapui.js` | Wave 17 `createSwapUi(game)` -> `game.swapUi`: the `#swap` panel (pick, last yes, waiting, "on the way") |
+| `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: the trade session both players share (`invite`, `put`, `setReady`; a side may be Nothing = a present), the `swap` messages (`hi`, `ask`, `yes` / `no`, `offer`, `ready`, `leave`, `give`, `got`), re-sends, `drop` / `info()` for tests |
+| `src/swapui.js` | Wave 17 `createSwapUi(game)` -> `game.swapUi`: the friend menu `#friend` (Battle / Trade / Hide and seek) and the team screen's trade mode (`view` = `ui.tradeView`: the trade bar, each card's Offer button) |
 | `src/traits.js` | T26 traits (no imports): `TRAITS` (only `rideable`), `hash32`, `drawTraits`, `cleanTraits`, `fixTraits`, `gainTraits`, `hasTrait` |
 | `src/riding.js` | T27 riding: `RIDE`, `rideKind`, `rideSpecies`, `createRiding` -> `game.riding` |
 | `src/weather.js` | Weather: shared phase, per-biome kind, particles, rainbow, lightning, spawn boosts (`game.weather.set` / `skip` / `info` for tests) |
@@ -393,12 +393,18 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   old code path, the access golden stays identical). A gym row's arrow IS `game.access.of(gym).aim(p)`. Food ingredients, vault keys,
   treasure spots, the hide-and-seek friend, Camo creatures and Dojo guards are never destinations. The choice is not saved. A new
   place = a source in `DESTINATIONS`.
-- **Gifts and trades (wave 17, `plans/wave17-gifts-trading.md`, spec `swap`):** pause -> Play together -> "🔁 Trade with X" -> the
-  `#swap` panel. **One way only (owner 2026-10-29):** a trade where either side may be **Nothing**; nothing back = a present, nothing
-  offered = asking for one (never both). One new play-together event `swap` (old games never subscribe to it; `SWAP.version` 1 in every
-  message; friends are known by the saved `playerId` from a `hi`, so a friend without `hi` gets no buttons). **Never lost or doubled:**
-  only three save changes, each `save(true)` at once: the giver's `commitOut` (items into escrow, save field `swaps.out`), the
-  receiver's `receive` (only for a yes given in this page; the answer kept in `swaps.seen`, a repeated `give` is answered from it),
+- **Gifts and trades (wave 17, `plans/wave17-gifts-trading.md`, spec `swap`):** owner 2026-10-30: **E / a tap on a friend opens the friend
+  menu** (`#friend`, `game.openFriend(avatar)`: ⚔️ Battle = `duels.challenge`, 🔁 Trade = `swaps.invite`, 🙈 Hide and seek = `hideSeek.invite`,
+  dim with words when not possible; the prompt says "to play together", the action button "Play!"; a hide-and-seek game's `tag` still comes
+  first). A yes opens **both players' own team screens in trade mode** (`ui.tradeView` from `swapui.js`: the trade bar `#trade-bar` on top,
+  each card's one button Offer / Take back; sorting and type chips as ever). One item a side, **Nothing = a present**; **Ready** on both
+  sides with the same two offers (`ready` carries both offers' keys) = the trade; any changed offer un-readies both; closing the screen stops
+  it (`leave`); a friend in a trade answers "Kid is trading with Dad right now". The inviter is the session's **leader** and commits first.
+  One play-together event `swap` (old games never subscribe to it; **`SWAP.version` 2**; friends are known by the saved `playerId` from a
+  `hi`). **Never lost or doubled:**
+  only three save changes, each `save(true)` at once: the leader's `commitOut` (items into escrow, save field `swaps.out`, commit id
+  `<session>-<fresh>`), the friend's `receive` (only for the pair it said Ready to in this page, kept per session; the answer kept in
+  `swaps.seen`, a repeated `give` is answered from it),
   the giver's `settle` (`got` = escrow gone + what it gets comes in, `no` = back where it was). A committed `give` is re-sent every
   3 s and whenever that friend comes back. Nothing applies in a battle (queued). Creatures keep `uid` / traits / `learned` (cleaned,
   never made up); a legendary never moves; your last team creature stays. Blocks and Capture Cubes later = one `addParcel` + a panel
@@ -757,7 +763,7 @@ Specs (`tests/specs/`; each file's header comment says more). "Two browsers" = `
 - `spawn-rules`: T18 conditions, golden hour, Camo disguises, Cyber with two players
 - `squad`: T34 crews, `weakensWithHp`, the Big Top Gym
 - `surprise`: T44 + T48 type (chart vs `tests/fixtures/chart-before-t44.json`), gift boxes, party terrain, `partyBows`, the Spinner, the four games with `partybots.mjs` at 60 / 20 fps, live play, iPad, two browsers; `SURPRISE_ONLY=data|land|games|live|ipad|pair|shots`, `SURPRISE_SKIP_BOSS=1`
-- `swap`: wave 17 gifts and trades on two browsers: the save rules, a present (Nothing back), asking for one, a trade, Not now / No thanks, three
+- `swap`: wave 17 trades on two browsers: the save rules, E on a friend -> the friend menu, both team screens in trade mode, a present (Nothing back), asking for one, a trade, a changed offer un-readies, Not now, closing the screen, three
   "browser closes halfway" cases (each uid in exactly one save), screenshots `w17-*.png`, an older friend's game, iPad; `SWAP_ONLY=rules|gift|trade|crash|old|ipad`
 - `swirl`: T38a/d the Portal Door, stars, travel, Swirl terrain, lifts, frames, bridge, looks
 - `three-types`: T18 Time / Camo / Cyber; `T18_TYPE=time|camo|cyber`

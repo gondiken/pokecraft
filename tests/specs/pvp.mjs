@@ -27,6 +27,13 @@ async function playDuel(pages, avoid = 'Give up') {
   return false;
 }
 
+// Wave 17: E on a friend opens the friend menu; its Battle asks for the battle.
+async function askBattle(page) {
+  await page.evaluate(() => window.pokecraft.interact());
+  await waitFor(page, () => window.pokecraft.swapUi.isOpen);
+  await page.evaluate(() => document.querySelector('#friend [data-friend="battle"]').click());
+}
+
 async function waitFor(page, fn, ms = 15000) {
   for (let t = 0; t < ms; t += 300) {
     if (await page.evaluate(fn)) return true;
@@ -76,13 +83,13 @@ export default async function ({ browser, base, t }) {
     const kid = [...g.mp.others.values()][0];
     g.player.lookAt(kid.pos.clone().setY(kid.pos.y + 1));
   });
-  t.ok(await waitFor(A, () => document.getElementById('prompt').textContent.includes('Kid · click or E to ask for a battle')),
-    'looking at the other player shows "click or E to ask for a battle"');
+  t.ok(await waitFor(A, () => document.getElementById('prompt').textContent.includes('Kid · click or E to play together')),
+    'looking at the other player shows "click or E to play together" (wave 17: the friend menu)');
   const teamA = await teamKey(A), teamB = await teamKey(B);
   const cubesA = await cubes(A), cubesB = await cubes(B);
 
   // Asking, and saying "Not now".
-  await A.evaluate(() => window.pokecraft.interact());
+  await askBattle(A);
   t.ok(await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')
     && document.getElementById('ask-text').textContent.includes('Dad wants')), 'the other player is asked "Dad wants to have a creature battle"');
   await click(B, '#ask-no');
@@ -92,7 +99,7 @@ export default async function ({ browser, base, t }) {
   // Asking again and saying yes, then a full battle. The kid has the team screen open (the invite
   // is drawn above it) and Dad has the Book open while waiting: both close when the battle starts.
   await B.keyboard.press('p');
-  await A.evaluate(() => window.pokecraft.interact());
+  await askBattle(A);
   await A.keyboard.press('c');
   t.ok(await B.evaluate(() => window.pokecraft.ui.panelOpen) && await A.evaluate(() => window.pokecraft.ui.panelOpen), 'the kid has the team screen open, Dad the Book');
   await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden'));

@@ -86,13 +86,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
   }
 
-  // Wave 17: per friend, one Trade button (a present = a trade with nothing back; a friend whose game is older gets one line instead).
-  function swapButtons() {
-    if (!game.swaps) return [];
-    return game.swaps.friends().flatMap(f => (f.ok ? [
-      el('button', { class: 'small swap-btn', 'data-swap': 'trade', onclick: e => { e.stopPropagation(); game.swaps.start(f.avatar); } }, `🔁 Trade with ${f.name}`),
-    ] : f.old ? [el('div', { class: 'mp-who' }, `${f.name}'s game is older: reload it to trade.`)] : []));
-  }
+  // Wave 17: how to battle, trade or play hide and seek with a friend (the friend menu).
+  const friendHint = () => (game.mp.others.size ? el('div', { class: 'mp-who' }, game.isTouch?.() ? 'Tap a friend to battle, trade or play hide and seek.' : 'Look at a friend and press E to battle, trade or play hide and seek.') : '');
 
   // T38b, host: one line for every player who is in another place.
   function awayLines() {
@@ -123,8 +118,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('div', { class: 'mp-code' }, mp.code),
         el('div', {}, 'The other player picks "Join a world" and types this code.'),
         el('div', { class: 'mp-who' }, who),
+        friendHint(), // wave 17
         ...hideSeekButtons(), // T30
-        ...swapButtons(), // wave 17
         ...awayLines(), // T38b
         el('button', { class: 'small', onclick: () => { mp.close(); setMpMessage('You stopped sharing your world.'); } }, 'Stop sharing'),
         msg);
@@ -135,8 +130,8 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
         el('h3', {}, 'Play together'),
         el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
         el('div', { class: 'mp-who' }, who),
+        friendHint(), // wave 17
         ...hideSeekButtons(), // T30
-        ...swapButtons(), // wave 17
         ...followButton(), // T38b
         el('div', {}, 'Your team, badges and items are still yours and keep saving.'),
         el('button', { class: 'small', onclick: goHome }, 'Go back to my world'),

@@ -1,15 +1,16 @@
-// Wave 17 trading between friends playing together (plans/wave17-gifts-trading.md): the `swap` messages, the questions and
-// the waiting. There is ONE way (owner 2026-10-29): a trade, where either side may give nothing; giving nothing back makes it a
-// present (and offering nothing asks for one). The save changes themselves are in swapcore.js. Nothing here knows a world or a realm:
-// only the team, the Box, the save and the play-together channel, so it works the same in every place.
+// Wave 17 trading between friends playing together (plans/wave17-gifts-trading.md). Owner 2026-10-30: look at a friend, press E
+// (or tap them), pick Trade; when they say yes you BOTH open your team screen in trade mode at the same time. Each puts one
+// creature on the table (or Nothing: then it is a present), sees the other's offer live, and presses Ready. When both are ready
+// with the same two offers, the trade happens. The save changes themselves are in swapcore.js (never lost or doubled).
+// Nothing here knows a world or a realm: only the team, the Box, the save and the play-together channel.
 import { SWAP, PARCELS, isId, cleanItems, creatureItem, canGive, loadSwaps, newLedger, commitOut, receive, settle } from './swapcore.js';
 import { sound } from './sound.js';
 
 const newId = () => Math.random().toString(36).slice(2, 10);
-const say = items => items.map(i => PARCELS[i.kind].label(i)).join(', ');
 const nameOf = items => items.map(i => PARCELS[i.kind].name(i)).join(', ');
+const keys = items => items.map(i => `${i.kind}:${PARCELS[i.kind].key(i)}`).join('|');
 
-// The words for what one side gets: 'Sparky' or '' (nothing).
+// The words for what one side gets after a trade: give = what I gave, get = what I got.
 export function tradeWords(give, get, friend) {
   if (give.length && get.length) return { big: `🔁 ${nameOf(get)} is yours!`, small: `You swapped ${nameOf(give)} with ${friend}.` };
   if (get.length) return { big: `🎁 ${nameOf(get)}!`, small: `A present from ${friend}.` };
@@ -19,13 +20,13 @@ export function tradeWords(give, get, friend) {
 // deps: save(important) saves the game now.
 export function createSwaps(game, { save }) {
   let led = newLedger();
-  let mine = null;      // my offer before my commit: { sid, to, pid, name, give, get, stage: 'pick' | 'decide', timer }
-  let theirs = null;    // an offer to me: { sid, from, pid, name, give, get, stage: 'ask' | 'pick' | 'wait', timer }
-  const deals = new Map(); // sid -> { give, get }: what I said yes to in this page (never saved: a reload forgets it)
+  let asking = null;   // my invite waiting for an answer: { sid, to, name, timer }
+  let incoming = null; // an invite to me: { sid, from, name, box, timer }
+  let session = null;  // the trade both of us are in: { sid, with, pid, name, leader, mine, theirs, ready, theirReady, state, note, rev }
+  const deals = new Map(); // session id -> { give, get }: the pair I said Ready to in this page (never saved: a reload forgets it)
   const greeted = new Set(); // avatar ids I said hi to
   const queue = [];        // give / got / no messages waiting for the end of a battle
   let retry = 0;
-  let view = null;      // what the Swap panel shows: { mode, friend, note }
   const drop = new Set(); // tests: message types not sent (a browser that closes halfway)
 
   const mp = () => game.mp;
@@ -34,13 +35,15 @@ export function createSwaps(game, { save }) {
   const send = (to, data) => { if (!drop.has(data.type)) mp()?.sendSwap?.(to, { v: SWAP.version, ...data }); };
   const avatarOf = pid => [...(mp()?.others.values() || [])].find(a => a.swapPid === pid);
   const commit = () => save(true);
+  const sessionOf = id => String(id).split('-')[0]; // a commit id is '<session id>-<fresh part>' (the leader makes one per try)
 
   // ---- friends ----
-  // Friends whose game can swap (they said hi): [{ avatar, name }]; others: their game is older.
-  function friends() {
-    const now = performance.now();
-    return [...(mp()?.others.values() || [])].map(a => ({ avatar: a, name: a.name, ok: !!a.swapPid && a.swapPid !== game.playerId,
-      old: !a.swapPid && (a.swapOld || now - (a.swapAsked ?? now) > 4000) })); // no hi back: an older game (it never hears 'swap')
+  // Can I trade with this avatar? null = yes, else the words why not.
+  function whyNot(a) {
+    if (!a?.swapPid) return a?.swapOld || (a && performance.now() - (a.swapAsked ?? performance.now()) > 4000)
+      ? `${a.name}'s game is older: reload it to trade.` : 'Just a moment...';
+    if (a.swapPid === game.playerId) return 'That is you on another device!';
+    return null;
   }
 
   function greet(a) {
@@ -53,121 +56,132 @@ export function createSwaps(game, { save }) {
   function resend(pid) {
     const a = avatarOf(pid);
     if (!a) return;
-    for (const [sid, e] of Object.entries(led.out)) {
-      if (e.to === pid) send(a.id, { type: 'give', sid, give: e.give, get: e.get, pid: game.playerId, name: mp().name });
+    for (const [id, e] of Object.entries(led.out)) {
+      if (e.to === pid) send(a.id, { type: 'give', sid: id, give: e.give, get: e.get, pid: game.playerId, name: mp().name });
     }
   }
 
-  // ---- my offer ----
-  // Start a trade with an avatar: give = what I offer ([] = nothing: I ask for a present).
-  function offer(avatar, give) {
-    if (mine || theirs) { toast('Finish the trade you started first!'); return false; }
-    if (!avatar?.swapPid || !mp()?.others.has(avatar.id)) { toast('Your friend is not here any more.'); return false; }
-    const why = canGive(game, give);
-    if (why) { toast(why === 'last' ? 'Keep one friend in your team!' : 'That one is not here any more.'); return false; }
+  // ---- asking ----
+  // null = free; '' = busy; a name = trading with them.
+  function busyWith() {
+    const g = game;
+    if (session) return session.name;
+    if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || asking || incoming) return '';
+    return null;
+  }
+
+  // The friend menu's Trade: ask the avatar.
+  function invite(a) {
+    const why = whyNot(a);
+    if (why) { toast(why); return false; }
+    if (session) { toast('Finish this trade first!'); return false; }
+    if (asking) { toast(`Still waiting for ${asking.name} to answer.`); return false; }
     const sid = newId();
-    mine = { sid, to: avatar.id, pid: avatar.swapPid, name: avatar.name, give, get: [], stage: 'pick' };
-    mine.timer = setTimeout(() => stopMine(`${avatar.name} didn't answer. Try again later!`), SWAP.pick * 1000);
-    send(avatar.id, { type: 'offer', sid, give, name: mp().name });
-    view = { mode: 'wait', friend: avatar.name, note: `Waiting for ${avatar.name} to pick...` };
-    refresh();
+    asking = { sid, to: a.id, name: a.name, timer: setTimeout(() => { send(a.id, { type: 'leave', sid }); asking = null; toast(`${a.name} didn't answer. Try again later!`); }, SWAP.answer * 1000) };
+    send(a.id, { type: 'ask', sid, name: mp().name });
+    toast(`You asked ${a.name} to trade. Waiting...`);
     return true;
   }
 
-  function stopMine(note, tell = true) {
-    if (!mine) return;
-    clearTimeout(mine.timer);
-    if (tell) send(mine.to, { type: 'cancel', sid: mine.sid });
-    mine = null;
-    if (note) { view = { mode: 'note', note }; toast(note); }
-    refresh();
-  }
-
-  // Commit my side (the last yes) and send it off.
-  function goMine() {
-    const m = mine;
-    if (!m) return;
-    clearTimeout(m.timer);
-    mine = null;
-    if (game.inBattle || !commitOut(game, led, { sid: m.sid, to: m.pid, name: m.name, kind: 'trade', give: m.give, get: m.get })) {
-      send(m.to, { type: 'cancel', sid: m.sid });
-      view = { mode: 'note', note: 'That one is not here any more.' };
-      refresh();
-      return;
-    }
-    if (game.riding?.on && !game.party.includes(game.riding.creature)) game.riding.stop('quiet'); // it was the one I ride
-    commit();
-    resend(m.pid);
-    view = { mode: 'wait', note: `Trading with ${m.name}...` };
-    game.ui.renderHud?.();
-    refresh();
-  }
-
-  // ---- an offer to me ----
-  function busy() {
-    const g = game;
-    return !g.started || g.inBattle || g.ui.asking || g.ui.panelOpen || g.hideSeek?.active || mine || theirs;
-  }
-
-  function onOffer(p) {
-    const a = mp().others.get(p.from), give = cleanItems(p.give, { min: 0 });
-    if (!a || !give || busy()) { send(p.from, { type: 'no', sid: p.sid, busy: true }); return; }
-    const t = theirs = { sid: p.sid, from: p.from, pid: a.swapPid, name: a.name, give, get: [], stage: 'ask' };
-    t.timer = setTimeout(() => stopTheirs(true), SWAP.answer * 1000);
-    game.ui.ask({ kind: 'incoming', yes: 'Pick!', no: 'Not now',
-      text: give.length ? `🔁 ${a.name} wants to trade! They offer ${say(give)}.` : `🔁 ${a.name} wants to trade! They would love a present from you.`,
-      onYes: () => { if (theirs !== t) return; t.stage = 'pick'; restart(t); view = { mode: 'pick', friend: a.name }; game.openSwap?.(); },
-      onNo: () => stopTheirs(true) });
+  function onAsk(p) {
+    const a = mp().others.get(p.from);
+    const busy = busyWith();
+    if (!a || busy !== null) { send(p.from, { type: 'no', sid: p.sid, busy: true, with: busy || '' }); return; }
+    const t = incoming = { sid: p.sid, from: p.from, name: a.name };
+    t.timer = setTimeout(() => { if (incoming !== t) return; incoming = null; if (t.box && game.ui.asked === t.box) game.ui.closeAsk(); send(t.from, { type: 'no', sid: t.sid }); }, SWAP.answer * 1000);
+    game.ui.ask({ kind: 'incoming', yes: 'Trade!', no: 'Not now', text: `🔁 ${a.name} wants to trade with you!`,
+      onYes: () => { if (incoming !== t) return; clearTimeout(t.timer); incoming = null; send(t.from, { type: 'yes', sid: t.sid }); open(t.sid, a, false); },
+      onNo: () => { if (incoming !== t) return; clearTimeout(t.timer); incoming = null; send(t.from, { type: 'no', sid: t.sid }); } });
     t.box = game.ui.asked;
     sound.play('ask');
   }
 
-  const restart = t => { clearTimeout(t.timer); t.timer = setTimeout(() => stopTheirs(true), SWAP.pick * 1000); };
-
-  // I picked mine for their trade: tell them, then wait for their last yes.
-  function pickBack(get) {
-    const t = theirs;
-    if (!t || t.stage !== 'pick' || !(t.give.length + get.length)) return;
-    if (!t.give.length && canGive(game, get) === 'last') { toast('Keep one friend in your team!'); return; }
-    const at = get.map(i => PARCELS[i.kind].find(game, i));
-    if (at.some(x => !x)) return;
-    t.get = get;
-    t.stage = 'wait';
-    restart(t);
-    deals.set(t.sid, { give: t.give, get });
-    send(t.from, { type: 'pick', sid: t.sid, get });
-    view = { mode: 'wait', note: `Waiting for ${t.name} to say yes...` };
+  // ---- the session ----
+  function open(sid, a, leader) {
+    session = { sid, with: a.id, pid: a.swapPid, name: a.name, leader, mine: [], theirs: [], ready: false, theirReady: false, state: 'pick', note: '', rev: 0 };
+    game.openTrade?.();
     refresh();
   }
 
-  function stopTheirs(tell, note) {
-    const t = theirs;
-    if (!t) return;
-    clearTimeout(t.timer);
-    theirs = null;
-    deals.delete(t.sid); // a give that still comes is answered 'no' (and remembered)
-    if (tell) send(t.from, { type: t.stage === 'ask' ? 'no' : 'cancel', sid: t.sid });
-    if (t.box && game.ui.asked === t.box) game.ui.closeAsk();
-    if (note) { toast(note); view = { mode: 'note', note }; }
-    else if (view?.mode === 'pick' || view?.mode === 'wait') view = null;
+  function end(note, tell = true) {
+    const s = session;
+    if (!s) return;
+    if (tell && s.state === 'pick') send(s.with, { type: 'leave', sid: s.sid });
+    session = null;
+    if (note) toast(note);
+    game.closeTrade?.();
     refresh();
   }
+
+  // Both sides un-ready whenever an offer changes; a new rev = a new commit id.
+  function unready() {
+    const s = session;
+    deals.delete(s.sid);
+    s.ready = false; s.theirReady = false; s.rev++;
+  }
+
+  const tellOffer = s => send(s.with, { type: 'offer', sid: s.sid, items: s.mine, rev: s.rev });
+
+  // My offer: a creature of mine, or null = nothing.
+  function put(c) {
+    const s = session;
+    if (!s || s.state !== 'pick') return;
+    const item = c && creatureItem(c);
+    if (c && !item) return;
+    const mine = item ? [item] : [];
+    if (mine.length && canGive(game, mine) === 'last') { s.note = 'Keep one friend in your team!'; refresh(); return; }
+    s.note = '';
+    if (keys(mine) === keys(s.mine)) { refresh(); return; }
+    s.mine = mine;
+    unready();
+    tellOffer(s);
+    refresh();
+  }
+
+  function setReady(on) {
+    const s = session;
+    if (!s || s.state !== 'pick') return;
+    if (on && !(s.mine.length + s.theirs.length)) { s.note = 'Put something on the table first!'; refresh(); return; }
+    if (on && s.mine.length && canGive(game, s.mine)) { s.note = 'That one is not here any more.'; s.mine = []; unready(); tellOffer(s); refresh(); return; }
+    s.ready = on;
+    s.note = '';
+    if (on && !s.leader) deals.set(s.sid, { give: s.theirs, get: s.mine }); // the leader commits first: its offer is `give`
+    else if (!on) deals.delete(s.sid);
+    send(s.with, { type: 'ready', sid: s.sid, on, rev: s.rev, mine: keys(s.mine), theirs: keys(s.theirs) });
+    maybeGo();
+    refresh();
+  }
+
+  // The leader commits once both are ready with the same two offers.
+  function maybeGo() {
+    const s = session;
+    if (!s || !s.leader || !s.ready || !s.theirReady || s.state !== 'pick') return;
+    if (game.inBattle || !commitOut(game, led, { sid: `${s.sid}-${newId().slice(0, 6)}`, to: s.pid, name: s.name, kind: 'trade', give: s.mine, get: s.theirs })) {
+      s.note = 'That one is not here any more.'; s.mine = []; unready(); tellOffer(s); refresh(); return;
+    }
+    if (game.riding?.on && !game.party.includes(game.riding.creature)) game.riding.stop('quiet'); // it was the one I ride
+    commit();
+    s.state = 'going';
+    resend(s.pid);
+    refresh();
+  }
+
+  const ours = sid => session && sid.startsWith(`${session.sid}-`) ? session : null;
 
   // ---- the commits ----
   function onGive(p) {
     const give = cleanItems(p.give || [], { min: 0 }), get = cleanItems(p.get || [], { min: 0 });
-    const res = receive(game, led, { sid: p.sid, give, get }, deals.get(p.sid));
+    const res = receive(game, led, { sid: p.sid, give, get }, deals.get(sessionOf(p.sid)));
     if (res.fresh) {
       commit();
-      deals.delete(p.sid);
-      if (theirs?.sid === p.sid) { clearTimeout(theirs.timer); theirs = null; if (res.answer === 'no') view = { mode: 'note', note: "The swap didn't happen. Try again!" }; }
+      deals.delete(sessionOf(p.sid)); // one try per Ready: a new try needs a new Ready
+      const s = ours(p.sid);
       if (res.answer === 'got') {
         const w = tradeWords(get, give, p.name || 'your friend'); // I gave `get`, I got `give`
-        view = { mode: 'note', note: w.big ? `${nameOf(give)} joined you!` : w.toast };
         if (w.big) { game.ui.celebrate(w.big, w.small, 4000); sound.play('caught'); } else toast(w.toast);
-        game.ui.renderHud?.();
-        if (game.ui.partyPanel && !game.ui.partyPanel.classList.contains('hidden')) game.ui.refreshPanel();
-      }
+        if (s) { s.state = 'done'; end(null, false); }
+      } else if (s) { s.note = "That didn't work. Try again!"; unready(); }
+      game.ui.renderHud?.();
       refresh();
     }
     send(p.from, { type: res.answer, sid: p.sid });
@@ -179,17 +193,16 @@ export function createSwaps(game, { save }) {
     const res = settle(game, led, p.sid, p.type);
     if (!res) return;
     commit();
+    const s = ours(p.sid);
     if (res === 'done') {
       const w = tradeWords(e.give, e.get, e.name || 'your friend');
       if (w.big) { game.ui.celebrate(w.big, w.small, 4000); sound.play('caught'); } else toast(w.toast);
-      view = { mode: 'note', note: w.big ? `${nameOf(e.get)} joined you!` : w.toast };
+      if (s) { s.state = 'done'; end(null, false); }
     } else {
-      const note = e.give.length ? `${nameOf(e.give)} came back to you. The trade didn't happen.` : "The trade didn't happen. Try again!";
-      toast(note);
-      view = { mode: 'note', note };
+      toast(e.give.length ? `${nameOf(e.give)} came back to you. The trade didn't happen.` : "The trade didn't happen. Try again!");
+      if (s) { s.state = 'pick'; s.note = "That didn't work. Try again!"; s.mine = s.mine.filter(i => PARCELS[i.kind].find(game, i)); unready(); tellOffer(s); }
     }
     game.ui.renderHud?.();
-    if (game.ui.partyPanel && !game.ui.partyPanel.classList.contains('hidden')) game.ui.refreshPanel();
     refresh();
   }
 
@@ -199,44 +212,55 @@ export function createSwaps(game, { save }) {
     const a = mp().others.get(p.from);
     if (p.v !== SWAP.version) {
       if (a) a.swapOld = true;
-      if (p.type === 'offer') send(p.from, { type: 'no', sid: p.sid, old: true });
+      if (p.type === 'ask') send(p.from, { type: 'no', sid: p.sid, old: true });
       return;
     }
+    const s = session && session.sid === p.sid && session.with === p.from ? session : null;
     switch (p.type) {
       case 'hi':
         if (!a || !isId(p.pid)) return;
         a.swapPid = p.pid;
         if (!greeted.has(a.id)) greet(a);
         resend(p.pid);
-        game.swapUi?.refresh();
-        return;
-      case 'offer': onOffer(p); return;
-      case 'pick': {
-        if (mine?.sid !== p.sid || mine.stage !== 'pick') return;
-        const get = cleanItems(p.get, { min: 0 });
-        if (!get || !(get.length + mine.give.length)) { stopMine(`${mine.name}'s game could not send that one.`); return; }
-        mine.get = get;
-        mine.stage = 'decide';
-        clearTimeout(mine.timer);
-        mine.timer = setTimeout(() => stopMine('Too slow! The trade stopped. Try again.'), SWAP.pick * 1000);
-        view = { mode: 'decide' };
-        game.openSwap?.();
         refresh();
         return;
-      }
-      case 'cancel':
-        if (theirs?.sid === p.sid) stopTheirs(false, `${theirs.name} stopped the swap.`);
-        else if (mine?.sid === p.sid) stopMine(`${mine.name} stopped the swap.`, false);
-        deals.delete(p.sid);
+      case 'ask': onAsk(p); return;
+      case 'yes':
+        if (asking?.sid !== p.sid || !a) return;
+        clearTimeout(asking.timer); asking = null;
+        open(p.sid, a, true);
         return;
       case 'no':
-        if (mine?.sid === p.sid) {
-          const n = mine.name;
-          stopMine(p.old ? `${n} needs to reload the game to trade (it was updated).` : p.busy ? `${n} is busy right now. Try again soon!` : `${n} said not now.`, false);
+        if (asking?.sid === p.sid) {
+          const n = asking.name;
+          clearTimeout(asking.timer); asking = null;
+          toast(p.old ? `${n} needs to reload the game to trade (it was updated).` : p.with ? `${n} is trading with ${p.with} right now. Try again soon!` : p.busy ? `${n} is busy right now. Try again soon!` : `${n} said not now.`);
           return;
         }
         if (led.out[p.sid]) queue.push(p);
         return;
+      case 'leave':
+        if (incoming?.sid === p.sid) { clearTimeout(incoming.timer); if (incoming.box && game.ui.asked === incoming.box) game.ui.closeAsk(); incoming = null; }
+        if (s && s.state === 'pick') end(`${s.name} stopped the trade.`, false);
+        return;
+      case 'offer': {
+        if (!s || s.state !== 'pick') return;
+        const items = cleanItems(p.items || [], { min: 0 });
+        if (!items) return;
+        s.theirs = items;
+        unready();
+        s.rev = Math.max(s.rev, p.rev | 0);
+        refresh();
+        return;
+      }
+      case 'ready': {
+        if (!s || s.state !== 'pick') return;
+        const same = p.mine === keys(s.theirs) && p.theirs === keys(s.mine); // they are ready for the two offers I see
+        s.theirReady = !!p.on && same;
+        maybeGo();
+        refresh();
+        return;
+      }
       case 'give': case 'got':
         queue.push(p);
         return;
@@ -246,11 +270,10 @@ export function createSwaps(game, { save }) {
   // ---- every frame ----
   function update(dt) {
     const m = mp();
-    if (!m?.active) { greeted.clear(); return; }
+    if (!m?.active) { greeted.clear(); if (session) end(null, false); return; }
     for (const a of m.others.values()) if (!greeted.has(a.id)) greet(a);
     for (const id of [...greeted]) if (!m.others.has(id)) greeted.delete(id);
-    if (mine && !m.others.has(mine.to)) stopMine(`${mine.name} left.`, false);
-    if (theirs && !m.others.has(theirs.from)) stopTheirs(false, `${theirs.name} left.`);
+    if (session && !m.others.has(session.with) && session.state === 'pick') end(`${session.name} left.`, false);
     if (!game.inBattle) {
       while (queue.length) {
         const p = queue.shift();
@@ -264,51 +287,28 @@ export function createSwaps(game, { save }) {
     }
   }
 
-  // ---- the panel's calls ----
-  // The pause screen's "Trade with ..." button: open the panel to pick what I offer.
-  function start(avatar) {
-    if (mine || theirs) { view = view || { mode: 'note', note: 'Finish the trade you started first!' }; game.openSwap?.(); return; }
-    view = { mode: 'offer', friend: avatar.name, avatarId: avatar.id };
-    game.openSwap?.();
-  }
-
-  // The panel's big yes for my creature c, or null = nothing.
-  function choose(c) {
-    if (!view) return;
-    const item = c && creatureItem(c);
-    if (c && !item) return;
-    const give = item ? [item] : [];
-    if (view.mode === 'pick') { pickBack(give); return; }
-    offer(mp()?.others.get(view.avatarId), give);
-  }
-
-  // The panel closed: a swap not yet committed stops (after a commit it goes on by itself).
-  function closed() {
-    if (mine) stopMine(null);
-    if (theirs && theirs.stage === 'pick') stopTheirs(true);
-    if (view?.mode !== 'wait') view = null;
-  }
-
   return {
     get ledger() { return led; },
-    get view() { return view; },
-    get mine() { return mine; },
-    get theirs() { return theirs; },
-    friends, start, choose, closed, update, onMessage,
-    yes: () => goMine(),                       // the asker's last yes
-    no: () => stopMine('You said no thanks.'), // ... or not
+    get session() { return session; },
+    whyNot, invite, put, setReady,
+    // The trade screen closed: a trade not yet going stops (after the leader's commit it goes on by itself).
+    closed() { if (session && session.state === 'pick') end(null); },
+    update, onMessage,
     load(saved) {
       led = loadSwaps(saved);
-      mine = theirs = view = null;
+      asking = incoming = session = null;
       deals.clear(); queue.length = 0; greeted.clear();
       const out = Object.values(led.out).filter(e => e.give.length);
       if (out.length) setTimeout(() => toast(`${out.map(e => nameOf(e.give)).join(', ')} ${out.length > 1 ? 'are' : 'is'} on the way to ${out[0].name || 'a friend'}. Play together again to finish!`), 1500);
     },
     toSave: () => led,
-    left(id) { if (mine?.to === id) stopMine(null, false); if (theirs?.from === id) stopTheirs(false); },
-    reset() { if (mine) stopMine(null); if (theirs) stopTheirs(true); view = null; },
+    left(id) {
+      if (asking?.to === id) { clearTimeout(asking.timer); asking = null; }
+      if (incoming?.from === id) { clearTimeout(incoming.timer); if (incoming.box && game.ui.asked === incoming.box) game.ui.closeAsk(); incoming = null; }
+    },
+    reset() { if (session) end(null); asking = incoming = null; },
     // tests
     drop,
-    info: () => ({ out: Object.keys(led.out), seen: led.seen.map(s => s[1]), mine: mine?.stage ?? null, theirs: theirs?.stage ?? null, queue: queue.length, view: view?.mode ?? null }),
+    info: () => ({ out: Object.keys(led.out), seen: led.seen.map(s => s[1]), session: session && { state: session.state, ready: session.ready, theirReady: session.theirReady, mine: keys(session.mine), theirs: keys(session.theirs), leader: session.leader }, asking: !!asking, incoming: !!incoming, queue: queue.length }),
   };
 }
