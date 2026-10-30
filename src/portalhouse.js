@@ -69,6 +69,10 @@ export const HALL_DOORS = [...DOOR_N.map(N_DOOR), ...DOOR_E.slice(0, 3).map(E_DO
 export const DOORS = HALL_DOORS.length; // the last one is the Study's
 // Where you come out in the Hall when you go back through a room's Hall swirl: in front of its own door, facing into the Hall.
 export const hallFront = n => HALL_DOORS[n - 1].front;
+// The House Run (owner 2026-10-30, houserun.js): the gold start plate on the Hall's floor near door 1, and the clock board on the north
+// wall above doors 1 and 2 (meshes, no blocks).
+export const RUN_PLATE = { at: [109.0, 13, 21.0], r: 0.8 };
+export const RUN_BOARD = { x: [105.35, 111.35], y: [16.06, 18.9], z: 16.04 };
 
 // Room shells: x0..x1, z0..z1 (the walls), bottom..top (the whole shell: under the floor to the roof). floorTop / roofBottom: the floor
 // layer (a cloud in the pit rooms) and the ceiling layer.

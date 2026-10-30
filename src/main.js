@@ -203,6 +203,7 @@ function snapshot() {
     missions: game.missionState, // T29
     keys: game.keys,
     swaps: game.swaps?.toSave(), // wave 17: gifts and trades on the way (swapcore.js)
+    records: game.records, // owner 2026-10-30: time trials (houserun.js; cleaned by its loadRecords when a world uses them)
     toldCaveGym: true,
     ...game.book.toSave(),
     savedAt: Date.now(),
@@ -304,6 +305,7 @@ function startNew(starterId) {
   game.box = [];
   game.book.reset(); game.book.syncTeam();
   game.swaps?.load(null); // wave 17
+  game.records = {}; // owner 2026-10-30: time trials (houserun.js)
   game.cubes = 10;
   game.time = 0.05;
   game.badges = [];
@@ -347,6 +349,7 @@ function continueGame(saved) {
   game.missionState = loadMissions(saved.missions); // T29: old saves have none
   game.keys = loadKeys(saved.keys); // old saves have none
   game.swaps?.load(saved.swaps); // wave 17: old saves have none
+  game.records = saved.records ?? {}; // owner 2026-10-30: time trials (houserun.js loadRecords cleans them; old saves have none)
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
