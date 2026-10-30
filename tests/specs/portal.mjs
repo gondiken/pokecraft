@@ -118,8 +118,8 @@ export default async function ({ browser, base, t }) {
       const fresh = { beaten: [] }; W.runWorldResets(fresh, { fresh: true });
       return { first, after: JSON.parse(after), again, same: JSON.stringify(game) === after, fresh: fresh.beaten, closed: !CS.OPEN_NOW.includes('portal') };
     });
-    t.ok(RS.closed && RS.first.includes('portal') && !RS.after.beaten.some(k => /^pw:portal:(room\d|crew)/.test(k)) && RS.after.beaten.includes('pw:portal:reset10') && RS.after.beaten.includes('pw:fair:ticket1')
-      && RS.after.stars.join() === 'fair' && RS.after.bossWins.portal === undefined && RS.after.bossWins.fair === 1 && !RS.again.length && RS.same && RS.fresh.includes('pw:portal:reset10'),
+    t.ok(RS.closed && RS.first.includes('portal') && !RS.after.beaten.some(k => /^pw:portal:(room\d|crew)/.test(k)) && RS.after.beaten.includes('pw:portal:redesign1') && RS.after.beaten.includes('pw:fair:ticket1')
+      && RS.after.stars.join() === 'fair' && RS.after.bossWins.portal === undefined && RS.after.bossWins.fair === 1 && !RS.again.length && RS.same && RS.fresh.includes('pw:portal:redesign1'),
       `the Portal House is behind ?preview and its old progress (rooms, crew, star, Boss wins) is cleared once; other worlds keep theirs; a new game gets the mark (${JSON.stringify(RS.after)})`);
   }
 

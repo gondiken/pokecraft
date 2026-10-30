@@ -16,7 +16,7 @@ export const WORLD_RESETS = [
 ];
 // The Portal House grew to ten rooms with decoy pads (owner 2026-10-29: "reset my progress which I now had in the ?preview"); it is
 // behind ?preview (comingsoon.js: not in OPEN_NOW), so only preview players had progress there.
-WORLD_RESETS.push({ id: 'portal', mark: 'pw:portal:reset10' });
+WORLD_RESETS.push({ id: 'portal', mark: 'pw:portal:redesign1' });
 const MARKS = () => new Set(WORLD_RESETS.map(r => r.mark));
 
 // Clears the progress of the Picture Worlds `ids` (keys in `beaten` and `keys`, stars, bossWins), never a reset mark. Pure on `game`.
