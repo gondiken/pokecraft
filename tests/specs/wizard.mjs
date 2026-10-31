@@ -739,7 +739,7 @@ export default async function ({ browser, base, t }) {
     await stand();
     await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js');
-      g.party = ['spectrion', 'stormwyvern', 'comethorn', 'visionelk', 'grandtome', 'loopwyrm'].map(id => S.makeCreature(id, 100)); g.cubes = 10; g.box = [];
+      g.party = ['spectrion', 'stormwyvern', 'comethorn', 'visionelk', 'grandtome'].map(id => S.makeCreature(id, 100)); g.cubes = 10; g.box = [];
       window.__toasts.length = 0;
       g.talkTo(g.npcs.list.find(q => q.def?.wizard));
     });
@@ -847,8 +847,11 @@ export default async function ({ browser, base, t }) {
       const talkOut = await page.evaluate(() => { const g = window.pokecraft, n = g.npcs.list.find(q => q.def?.allyWizard); window.__toasts.length = 0; g.talkTo(n); return { toasts: window.__toasts.slice(), asking: g.ui.asking, prompt: g.studio.talkPrompt(n)?.action }; });
       t.ok(talkOut.toasts.some(m => /I'm out! The air is lovely/.test(m)) && talkOut.asking && talkOut.prompt === 'Rematch!', 'talking to him there says so and offers a rematch');
       await page.evaluate(() => window.pokecraft.ui.askNo());
-      await page.evaluate(() => { const g = window.pokecraft, wz = g.world.swirl.wizard, p = g.player; p.pos.set(wz.x - 14, 26, wz.z + 3); p.vel.set(0, 0, 0); p.lookAt({ x: wz.x, y: 38, z: wz.z }); g.ui.toastBox?.replaceChildren(); });
+      await page.evaluate(async () => { const g = window.pokecraft, WT = await import('/src/wizardtower.js'), s = WT.towerStand(g.world), p = g.player; p.pos.set(s[0] - 3.5, s[1], s[2]); p.vel.set(0, 0, 0); p.lookAt({ x: s[0] - 0.5, y: s[1] + 1.4, z: s[2] }); g.ui.toastBox?.replaceChildren(); });
       await page.waitForTimeout(2500); await shot(page, 'w19-island.png');
+      await waitFor(page, () => { const i = window.pokecraft.studio.info().island, wz = window.pokecraft.world.swirl.wizard; return i?.at && i.at[0] < wz.x - 6 && Math.abs(i.at[2] - wz.z) < 5; }, null, 120000); // the guardian is on this side of the tower
+      await page.evaluate(async () => { const g = window.pokecraft, WT = await import('/src/wizardtower.js'), s = WT.towerStand(g.world), p = g.player, at = g.studio.info().island.at; p.pos.set(s[0] - 7, s[1], s[2]); p.vel.set(0, 0, 0); p.lookAt({ x: at[0], y: at[1], z: at[2] }); g.ui.toastBox?.replaceChildren(); });
+      await page.waitForTimeout(1500); await shot(page, 'w19-island-guardian.png');
       // old saves: no `wizard` field, junk
       const clean = await page.evaluate(async () => {
         const SU = await import('/src/studio.js'), c = SU.loadStudio;
@@ -856,8 +859,10 @@ export default async function ({ browser, base, t }) {
       });
       t.ok(clean[0].won === false && clean[1].ally === false && clean[2].design === null && clean[3].ally === false && clean[4].ally === false, 'missing or junk fields are all empty');
       t.ok(clean[5].ally && clean[5].paint === null && clean[5].wins === 0 && !clean[6].won && clean[6].wins === 0 && clean[7].paint.join() === '1,2,3' && clean[7].wins === 12 && clean[8].wins === 0, `cleaned on load: ${JSON.stringify(clean.slice(5))}`);
+      await page.reload({ waitUntil: 'commit' }); // (leaving the page saves, so the field is removed AFTER the reload, at the title screen)
+      await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
       await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); delete s.wizard; localStorage.setItem('pokecraft-save-v2', JSON.stringify(s)); });
-      await page.reload({ waitUntil: 'commit' });
+      await page.reload({ waitUntil: 'commit' }); // (the title screen reads the save when the page loads; nothing is saved from the title screen)
       await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
       await continueGame(page);
       const noWiz = await page.evaluate(() => { const g = window.pokecraft; return { info: g.studio.info(), place: g.place }; });
@@ -996,6 +1001,28 @@ export default async function ({ browser, base, t }) {
     const edits = await ip.evaluate(() => [...window.pokecraft.world.edits].length);
     t.ok(edits === 0, 'iPad: nothing was built');
     await shot(ip, 'w19-ipad-floor1.png');
+    // stage C: the Wizard's button, the drawing board and its question all work by tap
+    await ip.evaluate(async () => {
+      const g = window.pokecraft, WT = await import('/src/wizardtower.js');
+      for (let n = 1; n <= 5; n++) if (!g.beaten.includes(WT.floorKey(n))) g.beaten.push(WT.floorKey(n));
+      g.studio.paint = [6, 8, 2]; g.studio.won = true;
+      g.player.pos.set(24.5, 34, 22.5); g.player.vel.set(0, 0, 0); g.player.lookAt({ x: 24.5, y: 35.5, z: 26.5 });
+    });
+    await frames(3);
+    await waitFor(ip, () => /Draw!/.test(document.getElementById('btn-act')?.textContent || ''), null, 30000);
+    t.ok(true, 'iPad: with the Wizard\'s battle won, the big button says Draw!');
+    await ip.tap('#btn-act');
+    await waitFor(ip, () => window.pokecraft.ui.boardOpen, null, 30000);
+    const bd = await ip.evaluate(() => { const cs = [...document.querySelectorAll('#drawboard .db-card')].map(c => c.getBoundingClientRect()); return { n: cs.length, minW: Math.min(...cs.map(c => c.width)), minH: Math.min(...cs.map(c => c.height)), vw: window.innerWidth }; });
+    t.ok(bd.n === 6 && bd.minW >= 120 && bd.minH >= 120, `iPad: the board opens with six cards of at least 120 px (${Math.round(bd.minW)} x ${Math.round(bd.minH)})`);
+    await shot(ip, 'w19-ipad-board.png');
+    await ip.tap('#drawboard .db-card[data-design="framesaur"]');
+    await waitFor(ip, () => window.pokecraft.ui.asking, null, 30000);
+    await ip.waitForTimeout(500);
+    await ip.tap('#ask-yes');
+    await waitFor(ip, () => window.pokecraft.studio.ally, null, 30000);
+    const iall = await ip.evaluate(() => { const g = window.pokecraft, c = [...g.party, ...g.box].find(q => q.species === 'framesaur'); return { design: g.studio.design, paint: c?.paint, board: g.ui.boardOpen }; });
+    t.ok(iall.design === 'framesaur' && iall.paint.join() === '6,8,2' && !iall.board, `iPad: a tap on a card and on Yes makes the guardian (${iall.design}, ${iall.paint})`);
     t.ok(!ip.errors.length, `no page errors (iPad) ${ip.errors.join('; ')}`);
     await ip.context().close();
   }

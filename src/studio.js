@@ -259,7 +259,7 @@ export function createStudio(game, { startBattle, save }) {
     },
     // after the Wizard's person moved with the manager's list (a world change rebuilds the list): the manager drops it itself
     info() {
-      return { ...this.toSave(), pending: !!pending, island: island ? { npc: !!island.npc, model: !!island.model } : null, boardOpen: this.boardOpen, hasGuardian: hasGuardian() };
+      return { ...this.toSave(), pending: !!pending, island: island ? { npc: !!island.npc, model: !!island.model, at: island.model ? island.model.position.toArray() : null } : null, boardOpen: this.boardOpen, hasGuardian: hasGuardian() };
     },
   };
 
