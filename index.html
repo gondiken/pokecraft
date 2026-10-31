@@ -134,6 +134,7 @@
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <h2>Paused</h2>
+      <p id="rank-line" class="hidden"></p><!-- wave 19: Wizard's Ally -->
       <div class="pause-big">
         <button id="pb-team">Team</button> <button id="pb-blocks">Blocks</button> <button id="pb-book">Book</button>
         <button id="pb-missions" class="hidden">Missions</button> <button id="pb-where">Where to go</button> <button id="pb-home" class="hidden">My home</button>
@@ -208,6 +209,14 @@
     <div class="panel">
       <div id="friend-body"></div>
       <p class="hint"><button id="friend-close" class="primary">Close</button><span class="desktop-only"> or press <b>Esc</b></span></p>
+    </div>
+  </div>
+
+  <!-- Wave 19: the Wizard's drawing board (studio.js) -->
+  <div id="drawboard" class="overlay hidden">
+    <div class="panel wide">
+      <div id="drawboard-body"></div>
+      <p class="hint"><button id="drawboard-close" class="primary">Not now</button><span class="desktop-only"> or press <b>Esc</b></span></p>
     </div>
   </div>
 

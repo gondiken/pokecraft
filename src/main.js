@@ -13,6 +13,7 @@ import { NpcManager } from './npc.js';
 import { GYMS, TOWER, ORIGINAL_GYMS, REMATCH_CAP, trainersOf, trainerKey } from './gyms.js';
 import { createRematch, loadWins } from './rematch.js';
 import { createBosses, loadBossWins } from './pictureboss.js'; // T40
+import { createStudio } from './studio.js'; // wave 19: the Wizard's battle, the drawing board, the ending (game.studio)
 import { createCubeCam } from './cubecam.js'; // Cube Planets: the third-person steady camera
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
@@ -204,6 +205,7 @@ function snapshot() {
     missions: game.missionState, // T29
     keys: game.keys,
     swaps: game.swaps?.toSave(), // wave 17: gifts and trades on the way (swapcore.js)
+    wizard: game.studio?.toSave(), // wave 19: the Wizard's battle won, your guardian's design and painted colours, rematch wins (studio.js loadStudio cleans it)
     records: game.records, // owner 2026-10-30: time trials (houserun.js; cleaned by its loadRecords when a world uses them)
     toldCaveGym: true,
     ...game.book.toSave(),
@@ -308,6 +310,7 @@ function startNew(starterId) {
   game.book.reset(); game.book.syncTeam();
   game.swaps?.load(null); // wave 17
   game.records = {}; // owner 2026-10-30: time trials (houserun.js)
+  game.studio.load(null); // wave 19
   game.cubes = 10;
   game.time = 0.05;
   game.badges = [];
@@ -353,6 +356,7 @@ function continueGame(saved) {
   game.keys = loadKeys(saved.keys); // old saves have none
   game.swaps?.load(saved.swaps); // wave 17: old saves have none
   game.records = saved.records ?? {}; // owner 2026-10-30: time trials (houserun.js loadRecords cleans them; old saves have none)
+  game.studio.load(saved.wizard); // wave 19: old saves have none
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
@@ -463,6 +467,8 @@ function afterOverlay() {
 
 // T39c: the pause screen's big buttons (touch): each opens its panel; Missions only for Champions, My home on a mat.
 function showPauseButtons() {
+  const rank = game.studio?.rankText() ?? '', rankEl = document.getElementById('rank-line'); // wave 19: Champion / Wizard's Ally under "Paused"
+  if (rankEl) { rankEl.textContent = rank; rankEl.classList.toggle('hidden', !game.studio?.ally); }
   document.getElementById('pb-missions').classList.toggle('hidden', !game.champion);
   document.getElementById('pb-home').classList.toggle('hidden', !game.homes.matPos);
 }
@@ -542,6 +548,12 @@ game.openFriend = avatar => {
   togglePanel('friend');
 };
 game.closeFriend = () => { if (game.swapUi.isOpen) togglePanel(); };
+/* ==== Wizard ==== */
+// wave 19: the Wizard's drawing board (studio.js fills #drawboard-body): six designs in your colours
+game.openBoard = () => { if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking) togglePanel('drawboard'); };
+game.closeBoard = () => { if (game.ui.boardOpen) togglePanel(); };
+document.getElementById('drawboard-close').addEventListener('click', () => { if (game.ui.boardOpen) togglePanel(); });
+/* ==== end of Wizard ==== */
 game.openTrade = () => {
   if (game.ui.panelOpen) game.ui.closePanel();
   game.ui.tradeView = game.swapUi.view;
@@ -830,7 +842,7 @@ function talkTo(npc) {
   }
   if (npc.kind === 'tower') { talkTower(npc); return; }
   if (npc.kind === 'boss' || npc.kind === 'crew') { if (!game.gymLive.talk(npc)) game.bosses.talk(npc); return; } // T40: a live part (the race) may take the talk first
-  if (npc.kind === 'guest' && !npc.gym) { if (!game.gymLive.talk(npc)) ui.toast(`${npc.name}: ${npc.def?.line || 'Hello!'}`); return; } // T43: a Picture World guest (Ticket Tess)
+  if (npc.kind === 'guest' && !npc.gym) { if (!game.gymLive.talk(npc) && !game.studio.talk(npc)) ui.toast(`${npc.name}: ${npc.def?.line || 'Hello!'}`); return; } // T43: a Picture World guest (Ticket Tess)
   const gym = npc.gym.def;
   const closed = game.access.of(npc.gym).closedText(npc);
   if (closed) { ui.toast(closed); return; }
@@ -981,11 +993,13 @@ game.onBattleEnd = (result, opts) => {
     if (opts.trainer?.kind === 'tower') game.ui.toast(TOWER.people.at(-1).hint);
     if (opts.rematch) game.rematch.lost(opts.trainer);
     if (opts.picture) game.bosses.lost(opts.trainer, opts); // T40
+    if (opts.wizard) game.studio.battleLost(opts.trainer); // wave 19
   }
   if (result === 'caught' && opts.wild) for (const id of opts.wild.data.traits || []) if (TRAITS[id]?.caught) game.ui.toast(TRAITS[id].caught(SPECIES[opts.wild.data.species].name));
   const npc = opts.trainer;
   if (result === 'won' && npc?.kind === 'tower') towerWon(npc);
   else if (result === 'won' && opts.picture) game.bosses.won(npc, opts); // T40: a Picture World Boss or helper
+  else if (result === 'won' && opts.wizard) game.studio.battleWon(npc, opts); // wave 19: the Wizard (his hand-over, or a rematch)
   else if (result === 'won' && npc) {
     const gym = npc.gym.def;
     if (npc.kind === 'trainer') {
@@ -1109,6 +1123,7 @@ let mpHud = null;
 game.access = createAccess(game, { dayLength: DAY_LENGTH, smoothstep });
 game.rematch = createRematch(game, { startBattle }); // T28
 createBosses(game, { startBattle, save }); // T40 -> game.bosses
+createStudio(game, { startBattle, save }); // wave 19 -> game.studio
 game.missions = createMissions(game, { save }); // T29
 game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?? game.world.seed; // T38c: the maker's seed is your own main world's, never a visited world's or a realm's
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
@@ -1165,7 +1180,7 @@ function updateTarget() {
     highlight.position.set(target.block.x + 0.5, target.block.y + 0.5, target.block.z + 0.5);
   } else highlight.visible = false;
   const how = touchMode ? 'tap' : 'click or E';
-  const talk = target.npc && (game.gymLive.talkPrompt(target.npc) ?? game.bosses.talkPrompt(target.npc)); // T33, T40
+  const talk = target.npc && (game.gymLive.talkPrompt(target.npc) ?? game.bosses.talkPrompt(target.npc) ?? game.studio.talkPrompt(target.npc)); // T33, T40
   const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
   game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to play together`) // wave 17: the friend menu
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`

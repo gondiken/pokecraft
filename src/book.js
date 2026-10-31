@@ -306,6 +306,7 @@ export class Book {
     const parts = [];
     if (this.trail.length) parts.push(this.topBar());
     parts.push(filters);
+    if (this.game.studio?.ally) parts.push(el('p', { id: 'book-rank', class: 'book-note' }, this.game.studio.rankText())); // wave 19: Champion / Wizard's Ally
     if (this.filter !== 'all') {
       const mine = bookOrder().filter(id => SPECIES[id].type === this.filter && !this.hidden(id));
       const s = mine.filter(id => this.seen.has(id)).length, c = mine.filter(id => this.caught.has(id)).length;

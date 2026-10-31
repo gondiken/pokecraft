@@ -1374,6 +1374,12 @@ Bounce-Back (`bounceback.js`), the Looking-Glass Rooms (`lookingglass.js`, with 
 
 ## Wave 19 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29, wave 18 until 2026-10-31)
 
+**Status 2026-10-31: built, behind `?preview`.** Stage A (the Custom type, six designs, the `paint` field, duel `VERSION` 13), stage B (the painting
+tower, the Swirl door and bridge rules) and stage C (the Wizard's battle and rematches, the drawing board, the guardian, the Wizard's Ally title, the
+save field `wizard`, the Wizard and the guardian on his island in the Swirl) are in; spec `wizard`, `tests/wizardcheck.mjs`. Opening it for everyone
+= `OPEN_NOW.push('wizard')` in `comingsoon.js`, after the owner has played it (options chosen: calm tap-painting, six designs, title "Wizard's Ally",
+his team 82-88, guardian level = your best - 5).
+
 Plan: `plans/wave19-wizard-tower.md` (planned 2026-10-31 in parallel with wave 18; the tower opens when the bridge is complete by
 data, never a hard-coded star count, so it works with or without Mirror).
 

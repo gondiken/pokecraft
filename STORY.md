@@ -184,6 +184,11 @@ You design your own creature, unlike any other. It becomes the Swirl's guardian,
 can finally come out. That is your win, like becoming Champion was in chapter 1: you are now the **Wizard's ally**.
 That ends chapter 2.
 
+*How it plays (wave 19):* the Wizard's battle is the hardest in the game; when you win, the six designs on his drawing board are
+already in the colours **you** painted on the top floor. The one you pick hops off the board and joins your team, closes the crack,
+and circles his tower for good. The Wizard walks out of his tower onto his island ("I'm out! The air is lovely."), you are his ally,
+and he says, a little worried: *"Something scribbly is still out there... I will need your help again."* That is chapter 3.
+
 # Chapter 3: The Scribble
 
 (The outline; it will be filled in over time.)
