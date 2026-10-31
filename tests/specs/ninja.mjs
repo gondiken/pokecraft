@@ -132,7 +132,8 @@ export default async function ({ browser, base, t }) {
     // the chart cells of plans/T37.md, and no other cell with ninja is not 1
     const eff = S.effectiveness, types = Object.keys(S.TYPE_COLORS).filter(x => !['atlantis'].includes(x)); // (wave 15's types have their own specs)
     const want = { 'ninja>mind': 2, 'ninja>paper': 2, 'ninja>squad': 2, 'ninja>ninja': 0.5, 'ninja>light': 0.5, 'ninja>metal': 0.5, 'ninja>ball': 2,
-      'light>ninja': 2, 'sound>ninja': 2, 'ghost>ninja': 0.5, 'camo>ninja': 0.5 };
+      'light>ninja': 2, 'sound>ninja': 2, 'ghost>ninja': 0.5, 'camo>ninja': 0.5,
+      'knight>ninja': 2, 'mirror>ninja': 2 }; // T49 and wave 18 added their own cells
     out.chartBad = [];
     for (const a of ['normal', ...types]) for (const d of types) {
       if (a !== 'ninja' && d !== 'ninja') continue;
