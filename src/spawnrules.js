@@ -74,6 +74,8 @@ export const CONDITIONS = {
   bubbly: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'floating in a bubble in the Bubble Well' },
   // Cube Planets: wild Gravity creatures circle slowly round a spot on top of a little planet (world.nooks): their own Book line
   orbiting: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'circling on top of a little planet' },
+  // the Mirror Palace: wild Mirror creatures stand in front of the funny mirrors and by the garden hedges (world.nooks) and copy you: their own Book line
+  preening: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'preening in front of the mirrors in the Mirror Palace' },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,
@@ -100,6 +102,7 @@ export const AFTER_TEXT = {
   bubble: 'once you climbed the Fizz Ledges', // the Bubble Well
   gravity: 'once you tagged an Orbikit', // Cube Planets
 };
+AFTER_TEXT.mirror = 'once you won 3 rounds in the Mirror Palace'; // the Mirror Palace (own line: the object above is not edited)
 export const afterOk = (id, ctx) => !id || !!ctx?.after?.(id);
 
 // 'name' or 'name:arg' (T21: 'home:cozy').

@@ -100,6 +100,14 @@ Object.assign(GAITS, { float: { lift: 0.7, bob: 0.15, speed: 1.6, notice: 6, bum
 // (its clock waits). It never walks off the face. Closed form in its own clock, no Math.random; a bump never battles (E / a tap does).
 Object.assign(GAITS, { orbit: { r: 1.1, speed: 0.55, notice: 4.5, bump: true } });
 /* ==== end of Gravity ==== */
+/* ==== Mirror ==== */
+// 'mimic' (Mirror): within `notice` of you a wild one copies you the other way round: it stands where your reflection would be in a mirror
+// halfway between you and its home (the plane is fixed when you come within range: step left and it steps its right, step toward it and it
+// steps toward you, so walking straight at it you meet in the middle), at most `leash` from home, only over floor with air above it, and
+// never closer to you than `stop`. It walks at `speed`; `forget` s after you leave it goes back home (at `back`) and drops the plane. It
+// always faces you. Closed form in the player's place and dt, no Math.random; a bump never battles (E / a tap does).
+Object.assign(GAITS, { mimic: { notice: 7, leash: 4, speed: 4.2, back: 2, stop: 0.8, forget: 1.5, turn: 6, bump: true } });
+/* ==== end of Mirror ==== */
 
 export class Wild {
   constructor(data, model, pos) {
@@ -621,6 +629,7 @@ export class CreatureManager {
     if (w.species.gait === 'sentry') return this.updateSentry(w, dt); // T49
     if (w.species.gait === 'float') return this.updateFloat(w, dt); // the Bubble Well
     if (w.species.gait === 'orbit') return this.updateOrbit(w, dt); // Cube Planets
+    if (w.species.gait === 'mimic') return this.updateMimic(w, dt); // the Mirror Palace
     const g = GAITS[w.species.gait], p = this.viewer, model = w.model;
     let moving = false, panting = false;
     const dx = p ? p.x - w.pos.x : 0, dz = p ? p.z - w.pos.z : 0, dist = Math.hypot(dx, dz);
@@ -1172,6 +1181,60 @@ export class CreatureManager {
     animateModel(model, w.t, moving);
   }
   /* ==== end of Gravity ==== */
+  /* ==== Mirror ==== */
+  // The closed form of a mimic: its target is your reflection across the plane halfway between you and its home (fixed when you came in
+  // range), kept within `leash` of home; it walks there over legal floor and faces you. Out of range it goes home.
+  updateMimic(w, dt) {
+    const g = GAITS.mimic, p = this.viewer, model = w.model, world = this.world;
+    const H = (w.mimHome ??= { x: w.pos.x, z: w.pos.z }), y = Math.round(w.pos.y);
+    const legal = (x, z) => {
+      const cx = Math.floor(x), cz = Math.floor(z);
+      return cx >= 1 && cz >= 1 && cx < world.W - 1 && cz < world.D - 1 && world.get(cx, y, cz) === B.AIR && world.get(cx, y + 1, cz) === B.AIR && isSolid(world.get(cx, y - 1, cz));
+    };
+    const step = (tx, tz, speed) => { // one slide-along-walls step toward (tx, tz); returns how far it moved
+      const dx = tx - w.pos.x, dz = tz - w.pos.z, d = Math.hypot(dx, dz);
+      if (d < 1e-4) return 0;
+      const m = Math.min(d, speed * dt);
+      let nx = w.pos.x + (dx / d) * m, nz = w.pos.z + (dz / d) * m;
+      if (!legal(nx, nz)) { if (legal(nx, w.pos.z)) nz = w.pos.z; else if (legal(w.pos.x, nz)) nx = w.pos.x; else return 0; }
+      if (p) { const now = Math.hypot(p.x - nx, p.z - nz); if (now < g.stop && now < Math.hypot(p.x - w.pos.x, p.z - w.pos.z)) return 0; } // never into you
+      const moved = Math.hypot(nx - w.pos.x, nz - w.pos.z);
+      w.pos.x = nx; w.pos.z = nz;
+      return moved;
+    };
+    const near = !!p && Math.hypot(p.x - H.x, p.z - H.z) <= g.notice && Math.abs(p.y - w.pos.y) < 3;
+    let moved = 0, face = null;
+    if (near) {
+      w.mimGone = 0;
+      if (!w.mim) { // the plane: through the point halfway between its home and you, facing you
+        const dx = p.x - H.x, dz = p.z - H.z, d = Math.hypot(dx, dz), nx = d > 0.05 ? dx / d : 0, nz = d > 0.05 ? dz / d : 1;
+        w.mim = { nx, nz, cx: H.x + nx * d / 2, cz: H.z + nz * d / 2 };
+      }
+      const M = w.mim, s = (p.x - M.cx) * M.nx + (p.z - M.cz) * M.nz;
+      let tx = p.x - 2 * s * M.nx, tz = p.z - 2 * s * M.nz;
+      const ox = tx - H.x, oz = tz - H.z, od = Math.hypot(ox, oz);
+      if (od > g.leash) { tx = H.x + (ox / od) * g.leash; tz = H.z + (oz / od) * g.leash; }
+      moved = step(tx, tz, g.speed);
+      face = Math.atan2(p.x - w.pos.x, p.z - w.pos.z);
+    } else {
+      w.mimGone = (w.mimGone ?? 0) + dt;
+      if (w.mimGone > g.forget) {
+        w.mim = null;
+        moved = step(H.x, H.z, g.back);
+        if (moved > 0) face = Math.atan2(H.x - w.pos.x, H.z - w.pos.z);
+      }
+    }
+    if (face != null) {
+      let d = face - w.heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      w.heading += Math.sign(d) * Math.min(Math.abs(d), dt * g.turn);
+    }
+    model.position.copy(w.pos);
+    model.rotation.y = w.heading;
+    if (model.scale.x !== 1 || model.scale.y !== 1) model.scale.set(1, 1, 1);
+    animateModel(model, w.t, moved > 1e-4);
+  }
+  /* ==== end of Mirror ==== */
   /* ==== Bubble ==== */
   // A wild Bubble creature floats inside a soap bubble: a see-through sphere round its model (sized to the model), a pale shine on top.
   bubbleUp(w) {
