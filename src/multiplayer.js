@@ -3,7 +3,8 @@
 // challenge each other to battles (see duel.js).
 import * as THREE from 'three';
 import { buildPerson } from './npc.js';
-import { buildModel, animateModel, disposeModel } from './species.js';
+import { SPECIES, buildModel, animateModel, disposeModel } from './species.js';
+import { cleanPaint } from './custom.js';
 import { isSolid } from './blocks.js';
 import { rideSpecies, fitRide } from './riding.js';
 import { WORLD_W, WORLD_D } from './world.js';
@@ -113,7 +114,8 @@ class Avatar {
     this.yaw = info.yaw;
     this.frame = Number.isInteger(info.f) && info.f > 0 && info.f < FRAMES.length ? info.f : 0; // Cube Planets: the face they stand on (old clients send none: upright)
     this.heard = 0;
-    if (info.lead !== this.leadSpecies) this.setLead(info.lead);
+    const leadPaint = Array.isArray(info.leadPaint) ? info.leadPaint.slice(0, 3) : null; // the Custom guardians' paint (old games send none: default colours)
+    if (info.lead !== this.leadSpecies || String(leadPaint) !== String(this.leadPaint)) this.setLead(info.lead, leadPaint);
     const r = rideSpecies(info.ride);
     if (r !== this.rideSpecies) this.setRide(r);
   }
@@ -136,12 +138,13 @@ class Avatar {
     if (this.lead) this.lead.visible = !this.isDueling && !this.rideModel;
   }
 
-  setLead(species) {
+  setLead(species, paint = null) {
     if (this.lead) { this.scene.remove(this.lead); disposeModel(this.lead); this.lead = null; }
     this.leadSpecies = species;
+    this.leadPaint = paint;
     if (!species) return;
     try {
-      this.lead = buildModel(species);
+      this.lead = buildModel(species, cleanPaint(paint, species, SPECIES) ?? undefined);
       this.lead.scale.setScalar(0.8);
       this.lead.position.copy(this.pos);
       this.scene.add(this.lead);
@@ -414,6 +417,7 @@ export class Multiplayer {
       ride: g.riding?.species ?? g.rideShow ?? null, // T49: a live part may show you riding (the Castle's horse)
       f: g.player.frameNo?.() || undefined, // Cube Planets: the face you stand on (0-23; only off upright, only in a world with gravityAt)
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
+      leadPaint: (g.party.find(c => c.hp > 0) ?? g.party[0])?.paint || undefined, // only when the lead is a designed guardian
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,
     });

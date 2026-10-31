@@ -1,6 +1,7 @@
 // Creature data (types, moves, species), stat/XP math and blocky 3D models.
 import * as THREE from 'three';
 import { B } from './blocks.js';
+import { paintColours, paintModel } from './custom.js'; // the Custom type (the Wizard's Tower): pure, no imports
 import { TRAITS, drawTraits, gainTraits } from './traits.js';
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
 
@@ -44,6 +45,9 @@ export const TYPE_COLORS = {
 TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
 TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
 TYPE_COLORS.bubble = 'radial-gradient(circle at 35% 35%,#ffffff 0 14%,#c8f0ff 15% 45%,#ffd6ef 46% 70%,#fff4b8 71%)'; // the Bubble Well: soap-film pastels, light enough for the dark chip text
+/* ==== Custom ==== */
+TYPE_COLORS.custom = 'radial-gradient(circle at 30% 35%,#e13c3c 0 10%,transparent 11%),radial-gradient(circle at 58% 30%,#f0c828 0 10%,transparent 11%),radial-gradient(circle at 72% 60%,#3c6edc 0 10%,transparent 11%),#f2ead8'; // cream with three paint dots, light enough for the dark chip text
+/* ==== end of Custom ==== */
 TYPE_COLORS.gravity = 'radial-gradient(ellipse at 50% 50%,#fff6cc 0 14%,#c4b4f4 15% 38%,#f2d27a 39% 46%,#c4b4f4 47%)'; // Cube Planets: a lilac planet with a gold ring, light enough for the dark chip text
 
 // attacker type -> defender type -> multiplier (missing = 1)
@@ -167,6 +171,17 @@ EFFECTIVENESS.alien.gravity = 2;
 EFFECTIVENESS.mind.gravity = 2;
 EFFECTIVENESS.rock.gravity = 0.5;
 /* ==== end of Gravity chart ==== */
+/* ==== Custom chart ==== */
+// A guardian seals a swirl shut, a finished painting beats a sketch, and colour beats plain; paint slides off metal and goes right through
+// a ghost. Water washes wet paint off, toxic goo stains it and time fades it; a sketch cannot spoil a finished painting and a rainbow is
+// made of colours too. Others' cells are separate lines (no old cell changes; every defender stays weak to at most 5 types).
+EFFECTIVENESS.custom = { portal: 2, doodle: 2, normal: 2, metal: 0.5, ghost: 0.5, custom: 0.5 };
+EFFECTIVENESS.water.custom = 2;
+EFFECTIVENESS.toxic.custom = 2;
+EFFECTIVENESS.time.custom = 2;
+EFFECTIVENESS.doodle.custom = 0.5;
+EFFECTIVENESS.rainbow.custom = 0.5;
+/* ==== end of Custom chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -719,6 +734,22 @@ BIG_MOVES.gravity = [
   ['lastorbit', 'Last Orbit', 'lastword', 'One last giant orbit! Only when you are almost out.'],
 ];
 /* ==== end of Gravity ==== */
+/* ==== Custom ==== */
+// Custom creatures dab, splash and paint over things; Quick Stroke is a fast little line and Fresh Coat toughens the paint. Swirl Seal is the
+// guardian's own move (learned by all six at 40: it seals the crack in the Swirl, and hits hard). (No id is a sound's name.)
+Object.assign(MOVES, {
+  brushdab: mv('Brush Dab', 'custom', 40, 1),
+  paletteblast: mv('Palette Blast', 'custom', 85, 0.9),
+  quickstroke: mv('Quick Stroke', 'custom', 40, 1, { priority: 1 }),
+  freshcoat: mv('Fresh Coat', 'custom', 0, 1, { fx: { kind: 'raise', stat: 'def' } }),
+  swirlseal: mv('Swirl Seal', 'custom', 90, 1, { sure: true, sig: true }),
+});
+BIG_MOVES.custom = [
+  ['bigmural', 'Big Mural', 'field', 'A giant painting behind the whole team! Custom moves are stronger for 5 turns. Foes too!'],
+  ['paintshield', 'Paint Shield', 'shield', 'A coat of thick paint for the whole team! Everyone takes less for 3 turns. You rest next turn.'],
+  ['finaltouch', 'Final Touch', 'lastword', 'One last big brush stroke! Only when you are almost out.'],
+];
+/* ==== end of Custom ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -840,6 +871,7 @@ T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4
 T1.knight = 'shieldbash'; T2.knight = 'lancecharge'; T3.knight = 'quickparry'; T4.knight = 'bannerwave'; // T49
 T1.bubble = 'soapbop'; T2.bubble = 'foamcrash'; T3.bubble = 'quickfizz'; T4.bubble = 'fizzup'; // the Bubble Well
 T1.gravity = 'pullin'; T2.gravity = 'orbitspin'; T3.gravity = 'cometdash'; T4.gravity = 'heavystep'; // Cube Planets
+T1.custom = 'brushdab'; T2.custom = 'paletteblast'; T3.custom = 'quickstroke'; T4.custom = 'freshcoat'; // the Custom type
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -847,6 +879,9 @@ function L(type, second, extra = []) {
        [23, UTIL[type] || 'bodyslam'], [28, T4[type]]];
   return [...base, ...extra, ...(BIG[type] || [])].filter(([, m]) => m).sort((a, b) => a[0] - b[0]); // no slot for a type = no move
 }
+
+// The Custom type: a design's model recipe from its default paint (body, accent, belly = PAINTS indices; custom.js).
+const designModel = (shape, scale, paint) => ({ shape, scale, ...paintColours(paint), extras: [] });
 
 export const SPECIES = {
   emberpup: {
@@ -2693,6 +2728,41 @@ export const SPECIES = {
     model: { shape: 'ibex', scale: 0.9, body: 0xe8e0d0, accent: 0xb89a6a, dark: 0x4a3e30, belly: 0xf6f0e4, extras: [] },
   },
   /* ==== end of Gravity ==== */
+  /* ==== Custom ==== */
+  // The Wizard's guardians (plans/wave19-wizard-tower.md 8.1): six one-of-a-kind designs a child chooses from after beating the Wizard, each
+  // with its own body shape and a gold swirl badge (gear 'swirlbadge'). Never wild, never traded, never let go (`designed`). Their model colours
+  // come from three paints (custom.js; `defaultPaint` until you paint your own: buildModel(species, paint)).
+  brushtail: {
+    name: 'Brushtail', type: 'custom', legendary: true, designed: true, desc: 'A little fox whose big fluffy tail is a paintbrush. Its tip is always dipped in a fresh colour.',
+    base: { hp: 90, atk: 105, def: 85, spd: 120 }, baseXp: 200, catchRate: 0, defaultPaint: [1, 6, 2], learn: L('custom', 'pixie', [[40, 'swirlseal']]),
+    model: designModel('brushfox', 0.95, [1, 6, 2]),
+  },
+  palettoad: {
+    name: 'Palettoad', type: 'custom', legendary: true, designed: true, desc: 'A round toad with a painter\'s palette on its back. Every spot on it is a drop of paint.',
+    base: { hp: 120, atk: 90, def: 110, spd: 80 }, baseXp: 200, catchRate: 0, defaultPaint: [3, 0, 2], learn: L('custom', 'water', [[40, 'swirlseal']]),
+    model: designModel('palettefrog', 0.95, [3, 0, 2]),
+  },
+  inkwing: {
+    name: 'Inkwing', type: 'custom', legendary: true, designed: true, desc: 'A bird whose feathers are quills dipped in ink. It writes in the sky when it flies.',
+    base: { hp: 85, atk: 110, def: 80, spd: 125 }, baseXp: 200, catchRate: 0, defaultPaint: [6, 7, 5], learn: L('custom', 'sky', [[40, 'swirlseal']]),
+    model: designModel('quillbird', 0.95, [6, 7, 5]),
+  },
+  crayonix: {
+    name: 'Crayonix', type: 'custom', legendary: true, designed: true, desc: 'A little dragon whose back spikes are crayon tips. It can draw with its tail.',
+    base: { hp: 95, atk: 120, def: 95, spd: 90 }, baseXp: 200, catchRate: 0, defaultPaint: [0, 2, 1], learn: L('custom', 'drake', [[40, 'swirlseal']]),
+    model: designModel('crayondrake', 1, [0, 2, 1]),
+  },
+  framesaur: {
+    name: 'Framesaur', type: 'custom', legendary: true, designed: true, desc: 'A gentle dino with a picture frame on its back like a sail. The picture changes with its mood.',
+    base: { hp: 115, atk: 95, def: 125, spd: 65 }, baseXp: 200, catchRate: 0, defaultPaint: [4, 1, 2], learn: L('custom', 'rock', [[40, 'swirlseal']]),
+    model: designModel('framesaur', 1, [4, 1, 2]),
+  },
+  blotbun: {
+    name: 'Blotbun', type: 'custom', legendary: true, designed: true, desc: 'A bunny made of one big blot of paint. Its drippy ears leave little puddles behind.',
+    base: { hp: 105, atk: 100, def: 90, spd: 105 }, baseXp: 200, catchRate: 0, defaultPaint: [7, 8, 5], learn: L('custom', 'slime', [[40, 'swirlseal']]),
+    model: designModel('blotbun', 0.95, [7, 8, 5]),
+  },
+  /* ==== end of Custom ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -3010,6 +3080,7 @@ export function makeCreature(species, level, knownMoves) {
   c.learned = keep.length ? [...c.moves] : [...new Set(moves)]; // moves already offered (see gainXp)
   c.hp = statsFor(c).maxHp;
   c.traits = drawTraits(c); // T26: drawn once from the uid, then saved
+  if (sp.designed) c.paint = [...sp.defaultPaint]; // the Custom guardians: three paints (custom.js); the Wizard's drawing board sets yours
   return c;
 }
 
@@ -3472,9 +3543,10 @@ function buildBug(root, m, parts) {
   parts.abdomen = abdomen;
 }
 
-export function buildModel(species) {
+// `paint` (optional, [body, accent, belly]) only means something to a `designed` species (the Custom guardians): its colours replace the model's.
+export function buildModel(species, paint) {
   const sp = SPECIES[species];
-  const m = sp.model;
+  const m = sp.designed ? paintModel(sp.model, paint) : sp.model;
   const group = new THREE.Group();
   const root = new THREE.Group();
   group.add(root);

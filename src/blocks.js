@@ -27,6 +27,7 @@ const WOOL_TYPES = [
   'knight', // T49 (the Castle): id 254
   'bubble', // the Bubble Well: id 255
   'gravity', // Cube Planets: id 149
+  'custom', // the Wizard's Tower (Custom type): id 137, Canvas Wool
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -47,6 +48,7 @@ const WOOL_RGB = {
   knight: [150, 165, 190], // T49: steel blue-grey with a gold cross
   bubble: [176, 228, 250], // the Bubble Well: soap blue with rainbow bubble rings
   gravity: [92, 70, 168], // Cube Planets: deep violet with a gold orbit ring and a little moon
+  custom: [242, 234, 216], // the Custom type: cream linen
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -214,6 +216,7 @@ Object.assign(WOOL_ID_OVERRIDE, { portal: 215 }); // T42
 Object.assign(WOOL_ID_OVERRIDE, { knight: 254 }); // T49
 Object.assign(WOOL_ID_OVERRIDE, { bubble: 255 }); // the Bubble Well
 Object.assign(WOOL_ID_OVERRIDE, { gravity: 149 }); // Cube Planets
+Object.assign(WOOL_ID_OVERRIDE, { custom: 137 }); // the Custom type (Canvas Wool)
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -487,6 +490,7 @@ export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });
+BLOCKS[WOOL.custom].name = 'Canvas Wool'; // the Custom type (137)
 
 // The starting hotbar. Players can swap any slot for another block in the Blocks panel.
 export const HOTBAR = [B.GRASS, B.DIRT, B.STONE, B.COBBLE, B.PLANKS, B.LOG, B.GLASS, B.BRICK, B.LAMP];
@@ -640,6 +644,7 @@ export function drawAtlas() {
                                 : t === 'knight' ? ((x === 7 || x === 8 || y === 7 || y === 8) ? [232, 196, 90] : WOOL_RGB[t]) // T49: a gold cross on steel
                                 : t === 'bubble' ? ((d => (d > 4.2 && d < 5.4 ? STRIPES[(x + y) % STRIPES.length] : d < 1.3 ? [255, 255, 255] : WOOL_RGB[t]))(Math.hypot(((x + 4) % 16) - 7.5, ((y + 4) % 16) - 7.5))) // a rainbow bubble ring
                                 : t === 'gravity' ? ((d => (Math.abs(d - 5.6) < 0.6 ? [240, 200, 90] : Math.hypot(x - 12.5, y - 4.5) < 1.6 ? [235, 235, 250] : WOOL_RGB[t]))(Math.hypot((x - 7.5) * 1.6, (y - 7.5) * 0.7))) // Cube Planets: a gold orbit ring and a little moon
+                                : t === 'custom' ? (x % 4 === 0 || y % 4 === 0 ? [222, 212, 190] : WOOL_RGB[t]) // the Custom type: a cream linen weave
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));

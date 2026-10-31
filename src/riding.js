@@ -65,7 +65,7 @@ export function createRiding(game, { scene, closePanel }) {
       }
       this.creature = c; this.species = c.species; this.kind = kind;
       try {
-        this.model = buildModel(c.species); sketchModel(this.model); // T45
+        this.model = buildModel(c.species, c.paint); sketchModel(this.model); // T45
         this.fit = fitRide(this.model);
         scene.add(this.model);
         this.place();

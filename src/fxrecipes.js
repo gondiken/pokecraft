@@ -3814,3 +3814,73 @@ SIG.upsidehug = (k, from, to) => {
   };
 };
 /* ==== end of Gravity ==== */
+/* ==== Custom ==== */
+// Paint red, yellow and blue: three paint blobs fly over in an arc, and the hit is a splat of dots. Swirl Seal draws a ring of paint that
+// closes like a lens round the target.
+FX_COLORS.custom = [0xe13c3c, 0xf0c828, 0x3c6edc];
+const PAINT_BLOBS = [0xe13c3c, 0xf0c828, 0x3c6edc];
+
+// Three blobs of paint, one of each colour, fly over in a high arc one after the other.
+TRAVEL.custom = k => {
+  const N = 3;
+  const blobs = k.points({ n: N, tex: 'drop', size: 0.34, colors: PAINT_BLOBS });
+  const dots = k.points({ n: 6, tex: 'dot', size: 0.12, colors: PAINT_BLOBS });
+  return {
+    dur: 440,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01(p * 1.3 - i * 0.14);
+        if (t <= 0 || t >= 1) { blobs.hide(i); continue; }
+        k.at(t, A, 0.35);
+        blobs.set(i, A.x, A.y + Math.sin(Math.PI * t) * 0.55, A.z);
+      }
+      for (let i = 0; i < 6; i++) { // a few drips left behind
+        const t = clamp01(p * 1.3 - (i % N) * 0.14 - 0.12);
+        if (t <= 0.02 || t >= 1) { dots.hide(i); continue; }
+        k.at(t, B, 0.35);
+        dots.set(i, B.x + k.side.x * (i - 2.5) * 0.02, B.y + Math.sin(Math.PI * t) * 0.55 - (p - t) * 0.5, B.z + k.side.z * (i - 2.5) * 0.02);
+      }
+      blobs.fade(fadeOut(p, 0.8)); dots.fade(fadeOut(p, 0.6));
+    },
+  };
+};
+
+// A hit: a splat of paint dots thrown out round the target.
+IMPACT.custom = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 12;
+  const splat = k.points({ n: N, tex: 'dot', size: 0.2 * m, colors: PAINT_BLOBS });
+  const mid = k.points({ n: 1, tex: 'splat', size: 0.55 * m, colors: [0xf0c828, 0xe13c3c] });
+  return {
+    dur: 380,
+    step(p) {
+      const f = k.ease(clamp01(p / 0.6));
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + 0.3, d = (0.2 + f * (0.6 + (i % 3) * 0.15)) * m;
+        splat.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + Math.sin(ang) * d * 0.8 - f * f * 0.15, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      mid.set(0, to.pos.x, to.pos.y, to.pos.z);
+      splat.fade(fadeOut(p, 0.6)); mid.fade(fadeOut(p, 0.4));
+    },
+  };
+};
+
+// Swirl Seal: a ring of paint appears round the target and closes in like a camera lens, ending in a flash of gold.
+SIG.swirlseal = (k, from, to) => {
+  const N = 16;
+  const ring = k.points({ n: N, tex: 'dot', size: 0.18, glow: true, colors: PAINT_BLOBS });
+  const flash = k.points({ n: 1, tex: 'star', size: 0.6, glow: true, colors: [0xffe890] });
+  return {
+    dur: 700,
+    step(p) {
+      const open = clamp01(p / 0.3), close = clamp01((p - 0.3) / 0.45), r = (to.r + 0.7) * open * (1 - close * 0.95);
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * 6.283 + p * 5 + close * 2;
+        ring.set(i, to.pos.x + k.side.x * Math.cos(ang) * r, to.pos.y + Math.sin(ang) * r * 0.8, to.pos.z + k.side.z * Math.cos(ang) * r);
+      }
+      const f = clamp01((p - 0.75) / 0.25);
+      if (f <= 0) flash.hide(0); else flash.set(0, to.pos.x, to.pos.y, to.pos.z);
+      ring.fade(p < 0.75 ? 1 : 0); flash.fade(fadeOut(f, 0.3));
+    },
+  };
+};
+/* ==== end of Custom ==== */

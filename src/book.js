@@ -257,11 +257,17 @@ export class Book {
       if (renderId !== this.renderId) return;
       for (let i = 0; i < 4 && queue.length; i++) {
         const { img, id, w, h, silhouette } = queue.shift();
-        img.src = portrait(id, w, h, silhouette);
+        img.src = portrait(id, w, h, silhouette, this.paintOf(id)); // a designed guardian you own shows in your colours
       }
       if (queue.length) setTimeout(step, 0);
     };
     setTimeout(step, 0);
+  }
+
+  // The paint of YOUR creature of a designed species (the Custom guardians), or null (the design's own colours).
+  paintOf(id) {
+    if (!SPECIES[id]?.designed) return null;
+    return [...(this.game.party || []), ...(this.game.box || [])].find(c => c.species === id)?.paint || null;
   }
 
   picture(id, w, h, queue, alt = '') {
@@ -296,6 +302,7 @@ export class Book {
       const mine = bookOrder().filter(id => SPECIES[id].type === this.filter);
       const s = mine.filter(id => this.seen.has(id)).length, c = mine.filter(id => this.caught.has(id)).length;
       parts.push(el('p', { id: 'book-typeinfo' }, `${cap(this.filter)}: ${s} seen · ${c} caught (of ${mine.length})`));
+      if (mine.length && mine.every(id => SPECIES[id].designed)) parts.push(el('p', { id: 'book-designed-note', class: 'book-note' }, 'No wild ' + cap(this.filter) + ' creatures. Beat the Wizard and design your own!'));
       parts.push(this.matchupSection(this.filter, 'book-typematch'));
     }
     parts.push(el('div', { id: 'book-grid' }, ...ids.map(id => {
@@ -330,16 +337,17 @@ export class Book {
     if (seen) left.append(this.typeLink(sp.type));
     const info = el('div', { class: 'book-info' });
     if (!seen) {
-      info.append(el('p', {}, "You haven't met this creature yet. Keep exploring!"));
+      info.append(el('p', {}, sp.designed ? "Designed in the Wizard's studio. Beat the Wizard and make it yours!" : "You haven't met this creature yet. Keep exploring!"));
     } else if (!caught) {
-      info.append(el('p', {}, 'Catch one to fill in this page!'));
+      info.append(el('p', {}, sp.designed ? "Designed in the Wizard's studio. Beat the Wizard and make it yours!" : 'Catch one to fill in this page!'));
     } else {
       info.append(el('p', { class: 'book-desc' }, sp.desc));
+      if (sp.designed) info.append(el('p', { class: 'book-note book-designed' }, this.paintOf(id) ? 'Designed by you' : "Designed in the Wizard's studio"));
       for (const [tid, t] of Object.entries(TRAITS)) if (t.species[id]) info.append(el('p', { class: 'book-note book-trait', 'data-trait': tid }, t.book));
       if (sp.weakensWithHp) info.append(el('p', { class: 'book-note book-crew' }, CREW.book)); // T34
       const yours = this.yoursSection(id);
       if (yours) info.append(yours);
-      info.append(this.livesSection(id), this.evolutionSection(id, queue), this.movesSection(id), this.matchupSection(sp.type));
+      info.append(...(sp.designed ? [] : [this.livesSection(id)]), this.evolutionSection(id, queue), this.movesSection(id), this.matchupSection(sp.type));
     }
     this.body.replaceChildren(top, el('div', { id: 'book-detail' }, left, info));
     this.fillImages(queue, renderId);

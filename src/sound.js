@@ -273,6 +273,14 @@ const SOUNDS = {
   orbistep: () => { noise({ freq: 500, len: 0.05, vol: 0.05, q: 1.5 }); tone(110, { len: 0.05, type: 'sine', vol: 0.06, slide: -30 }); },
   orbiheard: () => { tone(700, { len: 0.08, type: 'triangle', vol: 0.1, slide: -80 }); tone(760, { at: 0.12, len: 0.16, type: 'triangle', vol: 0.12, slide: 520 }); },
   /* ==== end of Gravity ==== */
+  /* ==== Custom ==== */
+  // The Custom type: a brush swish (a noise slide) and a soft plop for attacks; the painting tower's paint pot picked up (a little pop),
+  // a dab on a canvas (a soft plop), a finished canvas (a rising brush chime). (No move id is one of these names.)
+  'fx:custom': () => { noise({ freq: 2600, len: 0.14, vol: 0.08, q: 0.6 }); tone(420, { at: 0.12, len: 0.1, type: 'sine', vol: 0.14, slide: -220 }); },
+  paintpick: () => tone(660, { len: 0.06, type: 'triangle', vol: 0.12, slide: 200 }),
+  paintdab: () => { tone(300, { len: 0.07, type: 'sine', vol: 0.14, slide: -120 }); noise({ freq: 900, len: 0.05, vol: 0.04, q: 1 }); },
+  paintdone: () => notes([523, 659, 784, 1047, 1319], 0.07, { len: 0.14, type: 'triangle', vol: 0.12 }),
+  /* ==== end of Custom ==== */
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).
