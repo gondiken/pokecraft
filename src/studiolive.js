@@ -11,10 +11,9 @@ import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { raycastVoxel } from './world.js';
 import { PAINTS, WASH } from './custom.js';
-import { FLOORS, HINT, WORDS, checkCanvas, startCells, targetOf, floorKey, finishedCells, palette, starCount } from './wizardtower.js';
+import { FLOORS, HINT, WORDS, checkCanvas, startCells, targetOf, floorKey, finishedCells, palette } from './wizardtower.js';
 import { floorAt, cast, REACH } from './wizardland.js';
 import { buildEasel, buildPotRims, buildBrush, buildRug, pictureCanvas } from './studioprops.js';
-import { bridgeDone } from './pictureworlds.js';
 
 const BRUSH_AT = { x: 0.34, y: -0.4, z: -0.6, tilt: -0.35, lean: 0.4, size: 0.9 }; // the brush in front of the camera (x right, y up, -z ahead)
 const BLINK_PERIOD = 0.3;
@@ -86,7 +85,7 @@ export class StudioLive {
     const h = this.pick({ x: origin.x, y: origin.y, z: origin.z }, { x: dir.x, y: dir.y, z: dir.z });
     return h ? this.act(h) : false;
   }
-  locked(n) { return n < FLOORS.length && this.done(n); } // floors 1-4 are finished for good; floor 5 stays paintable (until Stage C's design)
+  locked(n) { return this.done(n) && (n < FLOORS.length || !!this.game.studio?.ally); } // floors 1-4 are finished for good; floor 5 stays paintable until you chose your guardian (then its colours are final)
 
   act(h) {
     if (h.far) { this.say(WORDS.closer); return true; }
@@ -121,19 +120,20 @@ export class StudioLive {
     if (this.blinkOn) this.blinkDraw(n, false); // a blink in progress follows the new squares
     if (!r.done) return;
     const first = !this.done(n);
+    let changed = false;
+    if (f.palette) { // floor 5's three colours are your creature's palette (stage C keeps them in the save field `wizard`)
+      const pal = palette(f, st.cells);
+      changed = !!pal && JSON.stringify(pal) !== JSON.stringify(this.game.studio?.paint ?? this.paint);
+      this.paint = pal;
+      if (pal && this.game.studio) this.game.studio.paint = pal;
+    }
     if (first) {
       this.game.beaten.push(floorKey(n));
-      this.game.save?.(true);
       sound.play('paintdone');
       this.openDoor(n);
     }
-    if (f.palette) {
-      const pal = palette(f, st.cells);
-      const changed = JSON.stringify(pal) !== JSON.stringify(this.paint);
-      this.paint = pal;
-      if (this.game.studio) this.game.studio.paint = pal; // stage C keeps it in the save
-      if (!first && changed) this.say(WORDS.repaint);
-    }
+    if (first || changed) this.game.save?.(true);
+    if (f.palette && !first && changed) this.say(WORDS.repaint);
     if (first) this.say(n === FLOORS.length ? 'Lovely colours! Come and talk to me.' : WORDS.done);
   }
 
@@ -174,15 +174,14 @@ export class StudioLive {
     }
   }
 
-  /* ---- the Wizard (stage B: only his gate words) ---- */
+  /* ---- the Wizard (stage C: game.studio holds his gate words, the battle, the board and the ending) ---- */
   talk(npc) {
     if (!npc?.def?.wizard) return false;
-    if (!this.done(FLOORS.length)) this.say(`The Wizard: ${WORDS.wizardGate5}`);
-    else if (!bridgeDone(this.game.stars) && !this.game.studio?.ally) this.say(`The Wizard: ${WORDS.wizardGateStars(starCount(this.game.stars))}`);
-    else this.say(`The Wizard: ${WORDS.almost}`);
+    if (this.game.studio) return this.game.studio.talk(npc);
+    this.say(`The Wizard: ${WORDS.almost}`);
     return true;
   }
-  talkPrompt(npc) { return npc?.def?.wizard ? { verb: 'talk', action: 'Talk' } : null; }
+  talkPrompt(npc) { return npc?.def?.wizard ? (this.game.studio?.talkPrompt(npc) ?? { verb: 'talk', action: 'Talk' }) : null; }
   aim() { return null; } // the terrain's wizardAim leads the way (realms.js TERRAIN_AIMS)
 
   /* ---- the HUD: the brush chip and the easel card ---- */

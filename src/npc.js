@@ -438,6 +438,15 @@ export class NpcManager {
     this.list.push(npc);
   }
 
+  /* ==== Wizard ==== */
+  // wave 19: a person who only talks, added to the loaded world later (the Wizard on his island once you are his ally). `p` = a `world.people` entry.
+  addGuest(p) {
+    const npc = new Npc({ kind: 'guest', name: p.name, colors: p.colors, pos: p.pos, heading: p.heading ?? 0, hat: p.hat, look: p.look, def: p });
+    this.add(npc);
+    return npc;
+  }
+  /* ==== end of Wizard ==== */
+
   update(dt, playerPos) {
     for (const s of this.saucers) {
       s.t += dt;

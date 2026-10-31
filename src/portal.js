@@ -165,6 +165,7 @@ export function createPortal(game) {
     update(dt) {
       const w = game.world;
       for (const g of glows) g.update(dt, game.place !== 'main' || openFor(game) ? 1 : 0);
+      game.studio?.update(dt); // wave 19 stage C: the Wizard's rematch question, his island and your guardian in the Swirl
       if (!w || game.place !== 'main') { swirlUpdate(game, dt); return; }
       if (!w.portal) return;
       acc += dt;

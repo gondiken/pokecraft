@@ -652,3 +652,15 @@ body.touch #easel { pointer-events: auto; cursor: pointer; width: 84px; height: 
 #easel.big { width: min(60vh, 320px); height: min(60vh, 320px); top: 12vh; transition: all .15s; pointer-events: auto; }
 body.touch #easel.big { width: min(60vh, 320px); height: min(60vh, 320px); top: 12vh; }
 /* ==== end of Wizard ==== */
+
+/* Wave 19 stage C: the Wizard's drawing board (#drawboard, studio.js) and the title line in the pause screen */
+#rank-line { margin: -6px 0 8px; font-size: 20px; color: #ffd27a; text-align: center; }
+#rank-line.hidden { display: none; }
+#drawboard .db-sub { font-size: 22px; margin: 0 0 10px; }
+#drawboard .db-grid { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; }
+#drawboard .db-card { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 200px; padding: 8px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); color: inherit; cursor: pointer; text-align: center; font-size: 18px; }
+#drawboard .db-card:hover, #drawboard .db-card:focus-visible { border-color: #ffd23a; background: rgba(255,210,58,.12); }
+#drawboard .db-card img { max-width: 100%; height: auto; }
+#drawboard .db-card small { font-size: 14px; color: var(--muted); }
+#drawboard .db-types { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+@media (max-width: 760px) { #drawboard .db-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }

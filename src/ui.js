@@ -456,7 +456,8 @@ export class UI {
   }
 
   // The team panel or the Blocks panel.
-  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden') || !this.navPanel.classList.contains('hidden') || !!this.game.swapUi?.isOpen; } // T29: + missions; T39a: + nav; wave 17: + swap
+  get panelOpen() { return !this.partyPanel.classList.contains('hidden') || !this.blocksPanel.classList.contains('hidden') || !this.bookPanel.classList.contains('hidden') || !this.homePanel.classList.contains('hidden') || !this.missionsPanel.classList.contains('hidden') || !this.navPanel.classList.contains('hidden') || !!this.game.swapUi?.isOpen || this.boardOpen; } // T29: + missions; T39a: + nav; wave 17: + swap; wave 19: + the Wizard's drawing board
+  get boardOpen() { const b = document.getElementById('drawboard'); return !!b && !b.classList.contains('hidden'); } // wave 19
   get missionsOpen() { return !this.missionsPanel.classList.contains('hidden'); } // T29
   get navOpen() { return !this.navPanel.classList.contains('hidden'); } // T39a
   get homeOpen() { return !this.homePanel.classList.contains('hidden'); }
@@ -481,6 +482,11 @@ export class UI {
     if (which === 'nav') { // T39a: navUi.open() fills #nav-body
       this.navPanel.classList.remove('hidden');
       this.game.navUi.open();
+      return;
+    }
+    if (which === 'drawboard') { // wave 19: the Wizard's drawing board; studio.renderBoard() fills #drawboard-body
+      document.getElementById('drawboard').classList.remove('hidden');
+      this.game.studio.renderBoard();
       return;
     }
     if (which === 'friend') { // wave 17: the friend menu (Battle, Trade, Hide and seek); swapUi.open() fills #friend-body
@@ -554,6 +560,7 @@ export class UI {
     this.navPanel.classList.add('hidden'); // T39a
     this.game.navUi?.close();
     if (this.game.swapUi?.isOpen) { document.getElementById('friend').classList.add('hidden'); this.game.swapUi.close(); } // wave 17: the friend menu
+    document.getElementById('drawboard')?.classList.add('hidden'); // wave 19
     if (this.tradeView) { this.tradeView = null; this.partyPanel.classList.remove('trading'); this.game.swapUi?.closed(); } // wave 17: closing the trade screen stops a trade not yet going
   }
 }
