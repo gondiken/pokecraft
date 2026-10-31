@@ -124,6 +124,21 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.1, 0.1, 0.1, 0xffffff, 0, 0.97, 0);
     box(head, 0.025, 0.2, 0.025, 0xffd23a, -0.2, 0.42, 0.1);
   }
+  if (look === 'wizard') { // wave 19: the Wizard: a tall violet pointed hat of stacked boxes with a gold band and a little gold moon, a long white beard, a robe down to the feet (shirt colour); no stars on him: only his star is a star
+    box(head, 0.72, 0.06, 0.72, c.shirt, 0, 0.5, 0);
+    box(head, 0.5, 0.2, 0.5, c.shirt, 0, 0.62, 0);
+    box(head, 0.54, 0.07, 0.54, 0xf2c23c, 0, 0.56, 0);
+    box(head, 0.38, 0.2, 0.38, c.shirt, 0, 0.82, 0);
+    box(head, 0.26, 0.2, 0.26, c.shirt, 0, 1.02, 0);
+    box(head, 0.14, 0.18, 0.14, c.shirt, 0.03, 1.2, 0);
+    box(head, 0.07, 0.12, 0.07, c.shirt, 0.08, 1.35, 0);
+    box(head, 0.13, 0.13, 0.02, 0xf2c23c, 0, 0.75, 0.2);        // a little gold crescent moon on the hat
+    box(head, 0.11, 0.11, 0.025, c.shirt, 0.035, 0.76, 0.205);
+    box(head, 0.52, 0.22, 0.1, 0xf4f0ea, 0, 0.1, 0.28);          // the long white beard
+    box(head, 0.4, 0.3, 0.1, 0xf4f0ea, 0, -0.14, 0.28);
+    box(head, 0.26, 0.28, 0.1, 0xf4f0ea, 0, -0.42, 0.28);
+    box(group, 0.62, 0.62, 0.36, c.shirt, 0, 0.45, 0);            // the robe
+  }
   if (look === 'crown') { // T41: Queen Coralia's gold crown (a band with five points and a teal gem); her trident is added below
     box(head, 0.56, 0.1, 0.56, 0xf2c23c, 0, 0.55, 0);
     for (const x of [-0.2, -0.1, 0, 0.1, 0.2]) box(head, 0.07, x === 0 ? 0.22 : 0.15, 0.07, 0xf2c23c, x, 0.67 + (x === 0 ? 0.03 : 0), 0);

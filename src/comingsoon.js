@@ -25,3 +25,6 @@ export const worldOpen = id => !worldRemoved(id) && (wave15Open || OPEN_NOW.incl
 export const LATER = ['castle'];
 LATER.push('gravity'); // Cube Planets (plans/cube-planets.md): step 0, the gravity sandbox, ships closed until the owner has played it
 LATER.push('mirror'); // wave 18, the Mirror Palace: ships closed until the owner has played it (`OPEN_NOW.push('mirror')` opens it for everyone)
+/* ==== Wizard ==== */
+LATER.push('wizard'); // wave 19, the Wizard's Tower: ships closed (behind ?preview) until the owner has played it (`OPEN_NOW.push('wizard')` opens it for everyone)
+/* ==== end of Wizard ==== */

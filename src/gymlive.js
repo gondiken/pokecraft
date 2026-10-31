@@ -22,6 +22,9 @@ import { DoodleLive } from './doodlelive.js'; // T45
 import { CastleLive } from './castlelive.js'; // T49
 import { CubeLive } from './cubelive.js'; // Cube Planets
 import { BubbleLive } from './bubblelive.js'; // the Bubble Well
+/* ==== Wizard ==== */
+import { StudioLive } from './studiolive.js'; // wave 19, the Wizard's Tower
+/* ==== end of Wizard ==== */
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -43,6 +46,9 @@ LIVE.doodle = DoodleLive; // T45 the Sketchbook: Draw! your own bridges with the
 LIVE.castle = CastleLive; // T49 the Castle: Shield Up!, the drawbridge, the hedge maze, the Joust, the portcullis
 LIVE.gravity = CubeLive; // Cube Planets: the starry sky, the Orbikit Chase, the Planet Hop, the Moon Ferry
 LIVE.bubble = BubbleLive; // the Bubble Well: bubbles you stand on, the ducklings, the Chimney Ride, Captain Suds' shields
+/* ==== Wizard ==== */
+LIVE.studio = StudioLive; // wave 19, the Wizard's Tower: paint pots, the canvas, the stairs doors
+/* ==== end of Wizard ==== */
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

@@ -11,6 +11,7 @@ import { B, WOOL, mulberry32 } from './blocks.js';
 import { FRAME_WORLDS, BRIDGE_WORLDS, pictureWorld } from './pictureworlds.js';
 import { worldRemoved } from './comingsoon.js'; // wave 18: the Mirror Palace's frame, deck and lift exist unless the owner removed it
 import { buildPortalHouse, houseAim, HUB as HOUSE_HUB } from './portalhouse.js'; // T42: the Portal House in the north-east sky
+import { towerAim } from './wizardtower.js'; // wave 19: the Wizard's tower guide arrow
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // T38d: the Swirl's moods. Four zones with their own pastel palettes blend over a constant haze (weights are smoothstep rings; the GLSL
@@ -457,6 +458,8 @@ export function swirlAim(world, p, game) {
   const house = world.swirl?.house; // T42: the Portal House is one more open world (a floor swirl on the hub), until you hold its star
   if (house && pictureWorld('portal')?.ready && !game?.stars?.includes('portal')) open.push({ x: (HOUSE_HUB.x[0] + HOUSE_HUB.x[1] + 1) / 2, z: (HOUSE_HUB.z[0] + HOUSE_HUB.z[1] + 1) / 2, w: pictureWorld('portal') });
   if (open.length) { const c = near(open); return { x: c.x, z: c.z, text: (a, m) => `${c.w.emoji} ${c.w.name} ${a} ${m}m` }; }
+  const tower = towerAim(world, p, game); // wave 19: the Wizard's tower, once the bridge is whole (null while it is sealed or you are his ally)
+  if (tower) return tower;
   const d = world.door, c = d.surface[Math.floor(d.surface.length / 2)];
   const x = c[0] + 0.5, z = c[2] + 0.5;
   if (Math.hypot(x - p.x, z - p.z) < 3) return { x, z, text: () => 'Portal Door: step in to go home' };
