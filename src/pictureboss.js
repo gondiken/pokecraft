@@ -261,7 +261,7 @@ addBoss({
     if (st.shields < BUBBLE_SHIELDS.length) return '(from inside his bubble) Hee hee! Nobody can pop my bubbles! ...unless they land on top. Oops!';
     return st.done ? null : `Ahoy-hoy! Climb the whole Bubble Well first! (🫧 ${st.n} / ${st.need})`;
   },
-  team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'bodyslam', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
+  team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'soakshot', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
   intro: ['Ahoy-hoy! You climbed my whole well and popped my shields!', 'Now, a bubbly battle!'],
   lose: 'Splish splash, you win! The star was in my bubble bath all along.',
   win: 'A good try, little bubble! Rest a bit and try again.',
