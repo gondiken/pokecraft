@@ -273,6 +273,10 @@ const SOUNDS = {
   orbistep: () => { noise({ freq: 500, len: 0.05, vol: 0.05, q: 1.5 }); tone(110, { len: 0.05, type: 'sine', vol: 0.06, slide: -30 }); },
   orbiheard: () => { tone(700, { len: 0.08, type: 'triangle', vol: 0.1, slide: -80 }); tone(760, { at: 0.12, len: 0.16, type: 'triangle', vol: 0.12, slide: 520 }); },
   /* ==== end of Gravity ==== */
+  /* ==== Mirror ==== */
+  // The Mirror Palace: a bright glassy "ting" up a fifth for attacks (the rest of its sounds come with its games).
+  'fx:mirror': () => { bell(1319, 0, 0.5, 0.2); bell(1976, 0.09, 0.6, 0.18); },
+  /* ==== end of Mirror ==== */
   doodlerub: () => { tone(900, { len: 0.1, type: 'triangle', vol: 0.12, slide: 500 }); tone(1300, { at: 0.1, len: 0.1, type: 'triangle', vol: 0.1, slide: -400 }); },
   smokepuff: () => { noise({ freq: 900, len: 0.22, vol: 0.14, q: 0.5 }); tone(520, { len: 0.1, type: 'sine', vol: 0.08, slide: 300 }); },
   // T42 portal: a rising "vwoop" and a pop; the House: swirlzip (your swirl sticks to a pad: a quick sparkle up), swirlwarp (through a swirl: a falling-then-rising whoosh and a pop).

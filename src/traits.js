@@ -25,6 +25,7 @@ Object.assign(TRAITS.rideable.species, list('land', 'gatestrider')); // T42: Gat
 Object.assign(TRAITS.rideable.species, list('land', 'gallantrot')); // T49: the horse in armour
 Object.assign(TRAITS.rideable.species, list('water', 'bathemoth')); // the Bubble Well: the hippo with the bathtub swims
 Object.assign(TRAITS.rideable.species, list('land', 'orbitah')); // Cube Planets: the comet cheetah runs (never on the little planets: no riding there)
+Object.assign(TRAITS.rideable.species, list('land', 'lynxlook')); // the Mirror Palace: the big lynx glazed with mirror tiles (riding is allowed in its garden)
 
 export function hash32(s) {
   let h = 0x811c9dc5;

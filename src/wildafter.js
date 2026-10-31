@@ -29,4 +29,10 @@ export const AFTER_CHECKS = {
   bubble: g => star(g, 'bubble') || bubbleState(g).stairs, // the Bubble Well: once you climbed the Fizz Ledges (key pw:bubble:stairs)
   gravity: g => star(g, 'gravity') || gravityState(g).tags >= 1, // Cube Planets: once you tagged an Orbikit
 };
+/* ==== Mirror ==== */
+// The Mirror Palace: once you won 3 rounds of its three games (keys pw:mirror:court1..3 / twin1..3 / beam1..3 in `beaten`; the same count as
+// mirrorState(g).n in mirrorland.js, read here from the keys so this file does not wait for that one).
+const MIRROR_KEYS = ['court', 'twin', 'beam'].flatMap(k => [1, 2, 3].map(n => `pw:mirror:${k}${n}`));
+AFTER_CHECKS.mirror = g => star(g, 'mirror') || MIRROR_KEYS.filter(k => g.beaten?.includes(k)).length >= 3;
+/* ==== end of Mirror ==== */
 export const wildAfter = (game, id) => { try { return !!AFTER_CHECKS[id]?.(game); } catch { return false; } };

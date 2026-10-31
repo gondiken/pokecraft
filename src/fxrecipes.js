@@ -3814,3 +3814,133 @@ SIG.upsidehug = (k, from, to) => {
   };
 };
 /* ==== end of Gravity ==== */
+/* ==== Mirror ==== */
+// Silver and lilac glints: a flash zigzags once as if it bounced off an invisible pane of glass, and a hit sprays glints and a ripple.
+FX_COLORS.mirror = [0xf4f4ff, 0xc8c8e8, 0xe8e0ff];
+
+// A silver flash with a tail of glints: it flies out sideways, bounces at the middle (a sharp turn, as off a pane) and hits the target.
+TRAVEL.mirror = k => {
+  const N = 7;
+  const head = k.points({ n: 1, tex: 'star', size: 0.4, glow: true, colors: [0xffffff] });
+  const tail = k.points({ n: N, tex: 'dot', size: 0.16, glow: true, colors: [0xe8e0ff, 0xc8c8e8, 0xffffff] });
+  const zig = t => 0.55 * (1 - Math.abs(2 * clamp01(t) - 1)); // out to one side, back at the middle: one sharp turn
+  const put = (pts, i, t) => { k.at(t, A, 0.1); const z = zig(t); pts.set(i, A.x + k.side.x * z, A.y, A.z + k.side.z * z); };
+  return {
+    dur: 430,
+    step(p) {
+      put(head, 0, p);
+      for (let i = 0; i < N; i++) { const t = p - (i + 1) * 0.045; if (t <= 0) tail.hide(i); else put(tail, i, t); }
+      head.fade(fadeOut(p, 0.9)); tail.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// A hit: a spray of glints flies out in a fan and a ripple ring spreads on the target, like a pebble on a still mirror.
+IMPACT.mirror = (k, from, to, { big }) => {
+  const m = big ? 1.4 : 1, N = 10, R = 12;
+  const glints = k.points({ n: N, tex: 'star', size: 0.2 * m, glow: true, colors: [0xffffff, 0xe8e0ff, 0xc8c8e8] });
+  const ripple = k.points({ n: R, tex: 'dot', size: 0.1 * m, colors: [0xc8c8e8, 0xf4f4ff] });
+  const s = k.seeds(N, 1);
+  return {
+    dur: 400,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const ang = ((i + s[i] * 0.4) / N) * 3.1416 + 0.0, d = k.ease(p) * (0.5 + 0.5 * s[i]) * (to.r + 0.5) * m;
+        glints.set(i, to.pos.x + k.side.x * Math.cos(ang) * d, to.pos.y + 0.1 + Math.sin(ang) * d * 1.1, to.pos.z + k.side.z * Math.cos(ang) * d);
+      }
+      glints.fade(fadeOut(p, 0.55));
+      const rr = (0.15 + k.ease(p) * (to.r + 0.7)) * m;
+      for (let i = 0; i < R; i++) { const ang = (i / R) * 6.283; ripple.set(i, to.pos.x + k.side.x * Math.cos(ang) * rr, to.pos.y + Math.sin(ang) * rr * 0.8, to.pos.z + k.side.z * Math.cos(ang) * rr); }
+      ripple.fade(fadeOut(p, 0.4));
+    },
+  };
+};
+
+// Mirror Mirror: a tall pale pane stands up beside the target, a flash flies at it and comes back off the glass twice as bright.
+SIG.mirrormirror = (k, from, to) => {
+  const pane = k.points({ n: 1, tex: 'square', size: 1.0, colors: [0xdfe6ff], opacity: 0.55 });
+  const beam = k.points({ n: 6, tex: 'star', size: 0.3, glow: true, colors: [0xffffff, 0xfff4c0] });
+  const sparks = k.points({ n: 8, tex: 'star', size: 0.16, glow: true, colors: [0xffffff, 0xc8c8e8] });
+  return {
+    dur: 650,
+    step(p) {
+      const px = to.pos.x + k.side.x * 0.9, pz = to.pos.z + k.side.z * 0.9, py = to.pos.y + 0.2;
+      pane.set(0, px, py, pz); pane.fade(fadeOut(p, 0.6) * Math.min(1, p / 0.15));
+      for (let i = 0; i < 6; i++) {
+        const t = clamp01((p - i * 0.04) / 0.5), back = clamp01((p - 0.45 - i * 0.04) / 0.4);
+        if (t <= 0 || back >= 1) { beam.hide(i); continue; }
+        if (back <= 0) beam.set(i, lerp(from.pos.x, px, t), lerp(from.pos.y + 0.3, py, t), lerp(from.pos.z, pz, t));
+        else beam.set(i, lerp(px, to.pos.x, back), lerp(py, to.pos.y, back), lerp(pz, to.pos.z, back));
+      }
+      beam.fade(fadeOut(p, 0.85));
+      const f = clamp01((p - 0.8) / 0.2);
+      for (let i = 0; i < 8; i++) { if (f <= 0) { sparks.hide(i); continue; } const ang = i * 0.785; sparks.set(i, to.pos.x + k.side.x * Math.cos(ang) * f * 0.7, to.pos.y + Math.sin(ang) * f * 0.7, to.pos.z + k.side.z * Math.cos(ang) * f * 0.7); }
+      sparks.fade(fadeOut(f, 0.4));
+    },
+  };
+};
+
+// Copycat Combo: a bright paw and its pale twin fly over from opposite sides, hit together, again and again (the twin always the other way round).
+SIG.copycatcombo = (k, from, to) => {
+  const N = 5;
+  const real = k.points({ n: N, tex: 'dot', size: 0.26, glow: true, colors: [0xffffff, 0xc8c8e8] });
+  const twin = k.points({ n: N, tex: 'dot', size: 0.26, colors: [0xe8e0ff, 0xdff0ff], opacity: 0.55 });
+  const pops = k.points({ n: N, tex: 'star', size: 0.2, glow: true, colors: [0xffffff, 0xff9ad8] });
+  return {
+    dur: 700,
+    step(p) {
+      for (let i = 0; i < N; i++) {
+        const t = clamp01((p - i * 0.12) / 0.3);
+        if (t <= 0 || t >= 1) { real.hide(i); twin.hide(i); }
+        else { k.at(t, A, 0.2); const off = 0.45 * (1 - t); real.set(i, A.x + k.side.x * off, A.y, A.z + k.side.z * off); twin.set(i, A.x - k.side.x * off, A.y, A.z - k.side.z * off); }
+        const q = clamp01((p - i * 0.12 - 0.3) / 0.25);
+        if (q <= 0 || q >= 1) pops.hide(i); else pops.set(i, to.pos.x + k.side.x * Math.sin(i * 2.1) * 0.4, to.pos.y + q * 0.5, to.pos.z + k.side.z * Math.sin(i * 2.1) * 0.4);
+      }
+      real.fade(1); twin.fade(1); pops.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+
+// Funhouse Squish: a wobbly pane of glass (a block of points that is tall, then wide, in turns) rolls over the target and squashes it.
+SIG.funhousesquish = (k, from, to) => {
+  const G = 4, N = G * G;
+  const glass = k.points({ n: N, tex: 'square', size: 0.24, colors: [0xcfe6ff, 0xe8e0ff, 0xffffff] });
+  const spark = k.points({ n: 6, tex: 'star', size: 0.2, glow: true, colors: [0xffffff, 0xf0a0e0] });
+  return {
+    dur: 680,
+    step(p) {
+      const go = clamp01(p / 0.55), sq = clamp01((p - 0.5) / 0.5), wob = Math.sin(p * 22);
+      const w = 1 + 0.7 * wob * (1 - sq * 0.5), h = 1 / w; // tall and thin, then short and wide
+      k.at(go, A, 0.5);
+      for (let i = 0; i < N; i++) {
+        const gx = (i % G) - (G - 1) / 2, gy = Math.floor(i / G) - (G - 1) / 2;
+        glass.set(i, A.x + k.side.x * gx * 0.22 * w, A.y + gy * 0.22 * h * (1 - 0.6 * sq), A.z + k.side.z * gx * 0.22 * w);
+      }
+      glass.fade(fadeOut(p, 0.8));
+      for (let i = 0; i < 6; i++) { if (sq <= 0) { spark.hide(i); continue; } const ang = i * 1.05; spark.set(i, to.pos.x + k.side.x * Math.cos(ang) * sq * 0.6, to.pos.y + 0.2 + Math.sin(ang) * sq * 0.5, to.pos.z + k.side.z * Math.cos(ang) * sq * 0.6); }
+      spark.fade(fadeOut(sq, 0.5));
+    },
+  };
+};
+
+// Round the Corner: a glint peeks out sideways first, turns a sharp corner and then goes straight in: it can never miss.
+SIG.roundthecorner = (k, from, to) => {
+  const N = 8;
+  const head = k.points({ n: 1, tex: 'star', size: 0.4, glow: true, colors: [0xffffff] });
+  const tail = k.points({ n: N, tex: 'dot', size: 0.16, glow: true, colors: [0xe8e0ff, 0xc8c8e8] });
+  const corner = 0.6, side = 1.1; // the corner it peeks round: out `side` sideways over the first 60% of the way
+  const at = (t, out) => { // out first (a straight line sideways), then a sharp turn toward the target
+    if (t < corner) { const u = t / corner; k.at(corner * u * 0.5, out, 0.0); out.x += k.side.x * side * u; out.z += k.side.z * side * u; }
+    else { const u = (t - corner) / (1 - corner); k.at(corner * 0.5 + (1 - corner * 0.5) * u, out, 0.0); out.x += k.side.x * side * (1 - u); out.z += k.side.z * side * (1 - u); }
+    return out;
+  };
+  return {
+    dur: 620,
+    step(p) {
+      at(p, A); head.set(0, A.x, A.y, A.z);
+      for (let i = 0; i < N; i++) { const t = p - (i + 1) * 0.04; if (t <= 0) tail.hide(i); else { at(t, A); tail.set(i, A.x, A.y, A.z); } }
+      head.fade(fadeOut(p, 0.9)); tail.fade(fadeOut(p, 0.8));
+    },
+  };
+};
+/* ==== end of Mirror ==== */

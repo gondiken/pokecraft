@@ -45,6 +45,9 @@ TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T
 TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
 TYPE_COLORS.bubble = 'radial-gradient(circle at 35% 35%,#ffffff 0 14%,#c8f0ff 15% 45%,#ffd6ef 46% 70%,#fff4b8 71%)'; // the Bubble Well: soap-film pastels, light enough for the dark chip text
 TYPE_COLORS.gravity = 'radial-gradient(ellipse at 50% 50%,#fff6cc 0 14%,#c4b4f4 15% 38%,#f2d27a 39% 46%,#c4b4f4 47%)'; // Cube Planets: a lilac planet with a gold ring, light enough for the dark chip text
+/* ==== Mirror colour ==== */
+TYPE_COLORS.mirror = 'linear-gradient(135deg,#f4f4ff,#c8c8e8 40%,#ffffff 50%,#c8c8e8 60%,#e8e0ff)'; // the Mirror Palace: a silver sheen, light enough for the dark chip text
+/* ==== end of Mirror colour ==== */
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
@@ -167,6 +170,16 @@ EFFECTIVENESS.alien.gravity = 2;
 EFFECTIVENESS.mind.gravity = 2;
 EFFECTIVENESS.rock.gravity = 0.5;
 /* ==== end of Gravity chart ==== */
+/* ==== Mirror chart ==== */
+// There is nowhere to hide from a mirror (ninja), you see the surprise coming, a drawing comes out backwards; a ghost has no
+// reflection, metal is as shiny as it is and two mirrors only look at each other. Stones, balls and a high note crack glass; light just
+// bounces off it. Others' cells are separate lines (no old cell changes); no defender ends up weak to more than 5 types.
+EFFECTIVENESS.mirror = { ninja: 2, surprise: 2, doodle: 2, ghost: 0.5, metal: 0.5, mirror: 0.5 };
+EFFECTIVENESS.rock.mirror = 2;
+EFFECTIVENESS.ball.mirror = 2;
+EFFECTIVENESS.sound.mirror = 2;
+EFFECTIVENESS.light.mirror = 0.5;
+/* ==== end of Mirror chart ==== */
 export const effectiveness = (moveType, defType) => EFFECTIVENESS[moveType]?.[defType] ?? 1;
 
 // Moves. One small effect each (fx), shown in the battle log and on the move buttons:
@@ -719,6 +732,25 @@ BIG_MOVES.gravity = [
   ['lastorbit', 'Last Orbit', 'lastword', 'One last giant orbit! Only when you are almost out.'],
 ];
 /* ==== end of Gravity ==== */
+/* ==== Mirror ==== */
+// Mirror creatures shoot glints, flash back what they got, copy a move a moment too soon and dazzle with a stare. (No id is a sound's name;
+// the plan's "funhouse" big move is `wobblyfunhouse`: `funhouse` is the Funfair's Fun House.)
+Object.assign(MOVES, {
+  glintshot: mv('Glint Shot', 'mirror', 40, 1),
+  flashback: mv('Flash Back', 'mirror', 85, 0.9),
+  quickcopy: mv('Quick Copy', 'mirror', 40, 1, { priority: 1 }),
+  dazzlestare: mv('Dazzle Stare', 'mirror', 0, 1, { fx: { kind: 'lower', stat: 'atk' } }),
+  mirrormirror: mv('Mirror Mirror', 'mirror', 90, 0.9, { fx: { kind: 'flinch', chance: 0.2 }, sig: true }),
+  copycatcombo: mv('Copycat Combo', 'mirror', 25, 1, { fx: { kind: 'multi', min: 2, max: 5 }, sig: true }),
+  funhousesquish: mv('Funhouse Squish', 'mirror', 95, 0.9, { fx: { kind: 'flinch', chance: 0.25 }, sig: true }),
+  roundthecorner: mv('Round the Corner', 'mirror', 80, 1, { sure: true, sig: true }),
+});
+BIG_MOVES.mirror = [
+  ['shinyshield', 'Shiny Shield', 'shield', 'A shiny shield covers the whole team! Everyone takes less for 3 turns. You rest next turn.'],
+  ['wobblyfunhouse', 'Wobbly Funhouse', 'field', 'Everything goes wobbly! Mirror moves are stronger for 5 turns. Foes too!'],
+  ['lastlook', 'Last Look', 'lastword', 'One last dazzling look! Only when you are almost out.'],
+];
+/* ==== end of Mirror ==== */
 for (const [type, list] of Object.entries(BIG_MOVES)) for (const [id, name, kind, book] of list) {
   const power = kind === 'risky' ? 60 : kind === 'lastword' ? 140 : 0;
   MOVES[id] = mv(name, type, power, 1, { fx: { kind, ...BIG_FX[kind] }, sure: kind !== 'risky', big: true, book });
@@ -840,6 +872,7 @@ T1.doodle = 'pencilpoke'; T2.doodle = 'sketchswipe'; T3.doodle = 'quickdraw'; T4
 T1.knight = 'shieldbash'; T2.knight = 'lancecharge'; T3.knight = 'quickparry'; T4.knight = 'bannerwave'; // T49
 T1.bubble = 'soapbop'; T2.bubble = 'foamcrash'; T3.bubble = 'quickfizz'; T4.bubble = 'fizzup'; // the Bubble Well
 T1.gravity = 'pullin'; T2.gravity = 'orbitspin'; T3.gravity = 'cometdash'; T4.gravity = 'heavystep'; // Cube Planets
+T1.mirror = 'glintshot'; T2.mirror = 'flashback'; T3.mirror = 'quickcopy'; T4.mirror = 'dazzlestare'; // the Mirror Palace
 function L(type, second, extra = []) {
   const base = type === 'normal'
     ? [[1, 'tackle'], [1, 'quickjab'], [8, T1[second]], [12, 'bodyslam'], [19, T3[second]], [23, 'restup'], [28, 'hyperstrike']]
@@ -2693,6 +2726,49 @@ export const SPECIES = {
     model: { shape: 'ibex', scale: 0.9, body: 0xe8e0d0, accent: 0xb89a6a, dark: 0x4a3e30, belly: 0xf6f0e4, extras: [] },
   },
   /* ==== end of Gravity ==== */
+  /* ==== Mirror ==== */
+  // The Mirror Palace's creatures: a hand mirror that makes funny faces, a silver kitten with a see-through twin, a funhouse mirror that
+  // squashes and bends, and a periscope that peeks round corners. Every model wears a sheen (gear 'sheen': two glints sliding across its
+  // shiny part, one merged mesh); wild ones copy you the other way round (gait 'mimic', creatures.js). Lynxlook can be ridden on land.
+  lookit: {
+    name: 'Lookit', type: 'mirror', desc: 'A little hand mirror that hops about on its handle. It pulls a new funny face every time you look away.',
+    base: { hp: 50, atk: 50, def: 56, spd: 58 }, baseXp: 64, catchRate: 0.45, gait: 'mimic', learn: L('mirror', 'light'),
+    evolve: { level: 24, into: 'grandlooker' },
+    model: { shape: 'handmirror', scale: 0.9, body: 0xd8d8ee, accent: 0xf2d27a, dark: 0x5a5a82, belly: 0xe8f4ff, extras: [] },
+  },
+  grandlooker: {
+    name: 'Grandlooker', type: 'mirror', desc: 'A tall dressing-table mirror on lion-claw feet, with a curly gold frame and a curly moustache. It looks at itself all day.',
+    base: { hp: 84, atk: 84, def: 98, spd: 66 }, baseXp: 168, catchRate: 0.12, gait: 'mimic', learn: L('mirror', 'light', [[30, 'mirrormirror']]),
+    model: { shape: 'handmirror', scale: 0.85, body: 0xe8c45a, accent: 0xfff0b0, dark: 0x8a5a2a, belly: 0xdff0ff, extras: ['grand'] },
+  },
+  copykit: {
+    name: 'Copykit', type: 'mirror', desc: 'A silver kitten with a see-through twin that copies every move the other way round. Which one is the real one?',
+    base: { hp: 46, atk: 56, def: 44, spd: 72 }, baseXp: 64, catchRate: 0.45, gait: 'mimic', learn: L('mirror', 'ninja'),
+    evolve: { level: 26, into: 'lynxlook' },
+    model: { shape: 'twincat', scale: 0.85, body: 0xc8cde0, accent: 0xf4f6ff, dark: 0x4a4a6a, belly: 0xf0f2fa, extras: [] },
+  },
+  lynxlook: {
+    name: 'Lynxlook', type: 'mirror', desc: 'A big lynx glazed with mirror tiles. Its twin floats beside it and copies every step. You can ride it!',
+    base: { hp: 76, atk: 96, def: 70, spd: 100 }, baseXp: 168, catchRate: 0.12, gait: 'mimic', learn: L('mirror', 'ninja', [[30, 'copycatcombo']]),
+    model: { shape: 'twincat', scale: 1.25, body: 0xb0b8d0, accent: 0xe8f0ff, dark: 0x3a3a5a, belly: 0xe8ecf6, extras: ['big'] },
+  },
+  wobblet: {
+    name: 'Wobblet', type: 'mirror', desc: 'A wobbly funhouse mirror on stubby feet. It makes everything look tall, wide or tiny, even itself.',
+    base: { hp: 64, atk: 52, def: 58, spd: 42 }, baseXp: 66, catchRate: 0.45, gait: 'mimic', learn: L('mirror', 'funfair'),
+    evolve: { level: 25, into: 'bendabout' },
+    model: { shape: 'funmirror', scale: 0.9, body: 0xa8d8e8, accent: 0xf0a0e0, dark: 0x4a5a7a, belly: 0xe0f4ff, extras: [] },
+  },
+  bendabout: {
+    name: 'Bendabout', type: 'mirror', desc: 'A tall funhouse mirror that bends itself into an S. First it is tall and thin, then short and wide, then tall again.',
+    base: { hp: 98, atk: 88, def: 82, spd: 52 }, baseXp: 172, catchRate: 0.1, gait: 'mimic', learn: L('mirror', 'funfair', [[30, 'funhousesquish']]),
+    model: { shape: 'funmirror', scale: 0.95, body: 0x8ac0e0, accent: 0xf2d27a, dark: 0x3a4a6a, belly: 0xe0f4ff, extras: ['big'] },
+  },
+  periscoot: {
+    name: 'Periscoot', type: 'mirror', desc: 'A brass periscope on one wheel. It rolls up to corners and peeks round them with its mirror head.',
+    base: { hp: 62, atk: 76, def: 66, spd: 74 }, baseXp: 110, catchRate: 0.15, gait: 'mimic', learn: L('mirror', 'pirate', [[30, 'roundthecorner']]),
+    model: { shape: 'periscope', scale: 0.95, body: 0xc8a050, accent: 0xf2d27a, dark: 0x5a4020, belly: 0xe8f0ff, extras: [] },
+  },
+  /* ==== end of Mirror ==== */
 };
 
 export const STARTERS = ['emberpup', 'sproutle', 'bubbuck'];
@@ -2944,6 +3020,11 @@ export const BUBBLE_SPAWNS = [['squeaklet', 1.3, 'bubbly'], ['suddly', 1.2, 'bub
 // Gravity creatures live only on Cube Planets (REALMS.gravity.spawns), circling on top of the planets (the orbiting condition). The 4th element: wildafter.js.
 export const GRAVITY_SPAWNS = [['orbikit', 1.3, 'orbiting'], ['hootiter', 1.2, 'orbiting'], ['danglet', 1.0, 'orbiting'], ['orbitah', 0.12, 'orbiting', 'gravity'], ['saturnowl', 0.12, 'orbiting', 'gravity'], ['turvysloth', 0.1, 'orbiting', 'gravity'], ['wallibex', 0.15, 'orbiting', 'gravity']];
 /* ==== end of Gravity ==== */
+/* ==== Mirror ==== */
+// Mirror creatures live only in the Mirror Palace (REALMS.mirror.spawns, wired by the realm code), standing in front of its funny mirrors and by
+// the garden hedges (the preening condition). The 4th element: wildafter.js.
+export const MIRROR_SPAWNS = [['lookit', 1.3, 'preening'], ['copykit', 1.2, 'preening'], ['wobblet', 1.0, 'preening'], ['grandlooker', 0.12, 'preening', 'mirror'], ['lynxlook', 0.12, 'preening', 'mirror'], ['bendabout', 0.1, 'preening', 'mirror'], ['periscoot', 0.15, 'preening', 'mirror']];
+/* ==== end of Mirror ==== */
 
 export const xpForLevel = L => Math.floor(0.6 * L * L * L);
 export const MAX_LEVEL = 100; // owner 2026-10-28: was 60
@@ -3594,6 +3675,18 @@ export function animateModel(group, t, moving) {
     m.g.rotation.z = -m.side * k * 2.5;
   }
   if (p.members?.length > 1 && p.membersOn === 1) p.members[0].g.rotation.z = Math.sin(t * 24) * 0.06;
+  /* ==== Mirror ==== */
+  // slide: a glint crosses its shiny part in the first 55% of its period (a pause after); swap: a mirror's two faces take turns;
+  // squash: a funhouse mirror squashes and stretches (volume kept); bend: its slabs bend into an S (the base stays put).
+  for (const s of p.slide || []) {
+    const u = (((t / s.period + s.phase) % 1) + 1) % 1, k = u / 0.55;
+    s.mesh.visible = k < 1;
+    s.g.position[s.axis] = s.a0 + (s.a1 - s.a0) * Math.min(1, k);
+  }
+  for (const f of p.swap || []) { const on = Math.floor(t / f.period) % 2 === 0; f.a.visible = on; f.b.visible = !on; }
+  for (const q of p.squash || []) { const sy = 1 + q.amp * Math.sin(t * q.speed + q.phase), sx = 1 / Math.sqrt(sy); q.g.scale.set(sx, sy, sx); }
+  for (const b of p.bend || []) b.g.position.x = Math.sin(t * b.speed - b.i * 0.9) * b.amp * (b.i / 4);
+  /* ==== end of Mirror ==== */
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
 }
 

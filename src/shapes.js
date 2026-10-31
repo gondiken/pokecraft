@@ -7229,3 +7229,255 @@ function ibex(root, m, parts) {
 const SHAPES_GRAVITY = { orbicat, planetowl, sloth, ibex };
 Object.assign(SHAPES, SHAPES_GRAVITY);
 /* ==== end of Gravity shapes ==== */
+/* ==== Mirror shapes ==== */
+// Mirror look: every model wears a sheen (userData.gear = 'sheen'): two thin slanted glints, ONE merged unlit mesh, that slide across
+// its shiny part now and then (parts.slide; animateModel moves it). The creatures are funny: a hand mirror whose face in the glass
+// changes (parts.swap), a kitten with a see-through twin that copies it the other way round, a funhouse mirror that squashes and
+// bends (parts.squash / parts.bend), a periscope that peeks. Every model faces +z; nothing here uses Math.random.
+// `side`: the glints slide along z over a flank (x is the flank) instead of along x over a front.
+function sheenGear(parent, parts, { x = 0, y = 0.5, z = 0.1, w = 0.5, h = 0.4, period = 2.8, phase = 0, side = false } = {}) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  [[-0.05, 0.07, 0xffffff], [0.07, 0.03, 0xdff4ff]].forEach(([dx, bw, hex]) => {
+    const g = new THREE.BoxGeometry(bw, h, 0.012);
+    g.applyMatrix4(new THREE.Matrix4().makeShear(0.45, 0, 0, 0, 0, 0)); // slanted: the top leans over to one side
+    g.translate(dx, 0, 0);
+    const p = g.attributes.position, base = pos.length / 3;
+    c.setHex(hex);
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); col.push(c.r, c.g, c.b); }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  const holder = pivot(parent, x, y, z);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false }));
+  mesh.userData.gear = 'sheen';
+  if (side) mesh.rotation.y = Math.PI / 2;
+  holder.add(mesh);
+  const at = side ? z : x;
+  (parts.slide ||= []).push({ g: holder, mesh, axis: side ? 'z' : 'x', a0: at - w / 2, a1: at + w / 2, period, phase });
+  return holder;
+}
+// two faces in a mirror's glass, swapped by the idle animation: a smile, then a silly one (tongue out, one eye big)
+function mirrorFaces(parent, parts, y, z, s = 1, period = 1.7) {
+  const A = pivot(parent, 0, y, z), B = pivot(parent, 0, y, z);
+  eyes(A, 0.07 * s, 0, 0.1 * s, 0.1 * s);
+  box(A, 0.18 * s, 0.035 * s, 0.02, 0x4a2a3a, 0, -0.07 * s, 0.005);
+  box(A, 0.06 * s, 0.035 * s, 0.02, 0x4a2a3a, -0.1 * s, -0.045 * s, 0.005);
+  box(A, 0.06 * s, 0.035 * s, 0.02, 0x4a2a3a, 0.1 * s, -0.045 * s, 0.005);
+  for (const k of [-1, 1]) box(A, 0.07 * s, 0.04 * s, 0.015, 0xffa8b8, k * 0.17 * s, -0.025 * s, 0.003); // rosy cheeks
+  eyes(B, 0.08 * s, 0, -0.1 * s, 0.07 * s);                                   // a small eye
+  box(B, 0.15 * s, 0.15 * s, 0.03, 0xffffff, 0.1 * s, 0.075 * s, 0.002).userData.eye = true; // and a big one
+  box(B, 0.07 * s, 0.07 * s, 0.03, 0x111111, 0.11 * s, 0.07 * s, 0.03).userData.eye = true;
+  box(B, 0.2 * s, 0.035 * s, 0.02, 0x4a2a3a, 0, -0.06 * s, 0.005);
+  box(B, 0.07 * s, 0.1 * s, 0.02, 0xff6a8a, 0.04 * s, -0.12 * s, 0.006);       // the tongue
+  B.visible = false;
+  (parts.swap ||= []).push({ a: A, b: B, period });
+}
+
+// Lookit / Grandlooker: a little hand mirror that hops about on its handle: a round silver frame with gold trim round a glass that shows a
+// funny face (it changes). Grandlooker (`grand`) is a tall dressing-table mirror on four lion-claw feet with a curly gold frame, a big
+// face with a curly moustache and little hands on the frame.
+function handmirror(root, m, parts) {
+  const big = has(m, 'grand');
+  if (!big) {
+    const body = pivot(root, 0, 0, 0);
+    parts.bounce = body;
+    box(body, 0.1, 0.4, 0.09, m.accent, 0, 0.2, 0);                           // the handle
+    box(body, 0.16, 0.08, 0.14, m.accent, 0, 0.04, 0);                        // a foot
+    box(body, 0.14, 0.05, 0.12, m.dark, 0, 0.36, 0);                          // the collar
+    box(body, 0.7, 0.5, 0.1, m.body, 0, 0.72, 0);                             // the round frame: crossed boxes
+    box(body, 0.5, 0.7, 0.1, m.body, 0, 0.72, 0);
+    box(body, 0.6, 0.6, 0.1, m.body, 0, 0.72, 0);
+    for (const [x, y, w, h] of [[0, 1.075, 0.46, 0.05], [0, 0.365, 0.46, 0.05], [-0.355, 0.72, 0.05, 0.46], [0.355, 0.72, 0.05, 0.46]]) box(body, w, h, 0.13, m.accent, x, y, 0.005); // gold trim
+    glow(box(body, 0.58, 0.44, 0.04, m.belly, 0, 0.72, 0.06), 0x405070);      // the glass
+    glow(box(body, 0.44, 0.58, 0.04, m.belly, 0, 0.72, 0.062), 0x405070);
+    mirrorFaces(body, parts, 0.7, 0.085, 1);
+    parts.arms = [];
+    for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+      const arm = pivot(body, s * 0.1, 0.34, 0);
+      box(arm, 0.05, 0.16, 0.05, m.dark, s * 0.04, -0.06, 0);
+      box(arm, 0.08, 0.08, 0.08, 0xffffff, s * 0.06, -0.15, 0);               // a glove
+      parts.arms.push({ g: arm, phase });
+    }
+    sheenGear(body, parts, { y: 0.72, z: 0.1, w: 0.46, h: 0.5, period: 2.6 });
+    return;
+  }
+  const body = pivot(root, 0, 0, 0);
+  swing(parts, body, 'z', 0.025, 1.3, 0);
+  parts.legs = [];
+  [[-0.34, 0.14, 0], [0.34, 0.14, Math.PI], [-0.34, -0.14, Math.PI], [0.34, -0.14, 0]].forEach(([x, z, phase]) => {
+    const leg = pivot(body, x, 0.24, z);                                     // a lion-claw foot
+    box(leg, 0.12, 0.2, 0.12, m.body, 0, -0.1, 0);
+    box(leg, 0.14, 0.05, 0.2, m.body, 0, -0.22, 0.04);
+    for (const k of [-1, 0, 1]) box(leg, 0.03, 0.04, 0.06, m.dark, k * 0.04, -0.225, 0.15); // the claws
+    parts.legs.push({ g: leg, phase });
+  });
+  box(body, 0.96, 0.14, 0.44, m.body, 0, 0.3, 0);                            // the base
+  box(body, 1.0, 0.04, 0.48, m.accent, 0, 0.38, 0);
+  box(body, 0.84, 1.5, 0.14, m.body, 0, 1.14, 0);                            // the frame
+  box(body, 0.68, 0.2, 0.14, m.body, 0, 2.0, 0);                             // the arch on top
+  box(body, 0.44, 0.14, 0.14, m.body, 0, 2.15, 0);
+  for (const s of [-1, 1]) {
+    box(body, 0.08, 1.52, 0.17, m.accent, s * 0.43, 1.14, 0.005);            // gold edges
+    for (const [y, r] of [[2.08, 0.1], [1.66, 0.09], [0.78, 0.09]]) {          // curly scrolls: little turned cubes
+      const c = box(body, r, r, 0.17, m.accent, s * (0.47 + r * 0.4), y, 0.005); c.rotation.z = Math.PI / 4;
+      box(body, r * 0.5, r * 0.5, 0.18, m.dark, s * (0.47 + r * 0.4), y, 0.006).rotation.z = Math.PI / 4;
+    }
+  }
+  box(body, 0.5, 0.05, 0.17, m.accent, 0, 2.24, 0.005);                      // a gold crest
+  box(body, 0.12, 0.12, 0.17, m.accent, 0, 2.32, 0.005).rotation.z = Math.PI / 4;
+  glow(box(body, 0.64, 1.36, 0.04, m.belly, 0, 1.14, 0.08), 0x405070);       // the glass
+  glow(box(body, 0.46, 0.2, 0.04, m.belly, 0, 2.0, 0.08), 0x405070);
+  mirrorFaces(body, parts, 1.3, 0.105, 1.9, 2.1);
+  for (const s of [-1, 1]) {                                                 // a curly moustache
+    box(body, 0.2, 0.05, 0.03, 0x3a2a1a, s * 0.12, 1.14, 0.1);
+    box(body, 0.06, 0.1, 0.03, 0x3a2a1a, s * 0.23, 1.17, 0.1);
+  }
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const arm = pivot(body, s * 0.5, 0.95, 0.04);
+    box(arm, 0.1, 0.44, 0.1, m.body, s * 0.06, -0.2, 0);
+    box(arm, 0.14, 0.14, 0.14, 0xffffff, s * 0.06, -0.46, 0);                // a glove
+    parts.arms.push({ g: arm, phase });
+  }
+  sheenGear(body, parts, { y: 1.14, z: 0.1, w: 0.56, h: 1.2, period: 3.2 });
+}
+
+// Copykit / Lynxlook: a silver kitten (a pink bow and a dark patch over one eye) with a see-through reflection kitten beside it that has
+// the bow and the patch on the other side and moves the other way. Lynxlook (`big`) is a lean lynx, glazed with mirror tiles, tufted
+// ears and a bobbed tail, with its twin floating beside it.
+function catBody(g, m, o) {
+  const { big, sign, parts } = o, L = big ? 0.74 : 0.56, H = big ? 0.5 : 0.4;
+  box(g, 0.3, 0.26, L, m.body, 0, H, 0);                                      // the body
+  box(g, 0.24, 0.05, L - 0.08, m.belly, 0, H - 0.12, 0);
+  box(g, 0.26, 0.05, L - 0.1, m.accent, 0, H + 0.14, 0);                      // a shiny stripe along the back
+  if (big) for (const [z, k] of [[0.2, 1], [0, -1], [-0.2, 1]]) for (const s of [-1, 1]) box(g, 0.02, 0.1, 0.1, k > 0 ? m.accent : m.belly, s * 0.155, H + 0.02, z); // mirror tiles
+  o.legs.forEach(([x, z, phase]) => {
+    const leg = pivot(g, x * sign, H - 0.06, z * L);
+    box(leg, 0.09, H - 0.06, 0.09, m.body, 0, -(H - 0.06) / 2, 0);
+    box(leg, 0.1, 0.05, 0.13, m.belly, 0, -(H - 0.09), 0.02);
+    parts.legs.push({ g: leg, phase: phase + (o.ghost ? Math.PI : 0) });
+  });
+  const head = pivot(g, 0, H + 0.12, L / 2 + 0.06);
+  if (!o.ghost) parts.head = head;
+  box(head, 0.3, 0.26, 0.24, m.body, 0, 0.04, 0.03);
+  box(head, 0.16, 0.1, 0.06, m.belly, 0, -0.03, 0.17);
+  box(head, 0.06, 0.04, 0.03, 0xff9ab8, 0, 0.01, 0.2);                        // a pink nose
+  eyes(head, 0.08, 0.15, 0.08, big ? 0.08 : 0.1);
+  box(head, 0.09, 0.07, 0.03, m.dark, -0.08 * sign, 0.1, 0.165);              // the dark patch (on the other side in the twin)
+  for (const s of [-1, 1]) {
+    box(head, 0.08, big ? 0.14 : 0.1, 0.05, m.body, s * 0.1, 0.2, 0);          // ears
+    if (big) { box(head, 0.04, 0.12, 0.04, m.dark, s * 0.1, 0.32, 0); box(head, 0.06, 0.06, 0.08, m.belly, s * 0.17, -0.04, 0.03); } // tufts and cheek ruffs
+  }
+  const bow = pivot(head, 0.1 * sign, 0.27, 0.02);                            // the bow
+  box(bow, 0.05, 0.05, 0.03, 0xff7ab8, -0.04, 0, 0); box(bow, 0.05, 0.05, 0.03, 0xff7ab8, 0.04, 0, 0); box(bow, 0.03, 0.03, 0.04, 0xffffff, 0, 0, 0);
+  const tail = pivot(g, 0, H + 0.1, -L / 2);
+  if (!o.ghost) parts.tail = tail;
+  const n = big ? 2 : 4;
+  for (let i = 0; i < n; i++) box(tail, 0.07, 0.07, 0.11, i % 2 ? m.belly : m.body, 0, 0.02 + i * 0.04, -0.06 - i * 0.1);
+  return g;
+}
+function twincat(root, m, parts) {
+  const big = has(m, 'big');
+  parts.legs = [];
+  const legs = [[-0.11, 0.35, 0], [0.11, 0.35, Math.PI], [-0.11, -0.35, Math.PI], [0.11, -0.35, 0]];
+  catBody(pivot(root, 0, 0, 0), m, { big, sign: 1, parts, legs });
+  const twin = pivot(root, big ? 1.0 : 0.62, big ? 0.3 : 0, big ? -0.1 : -0.18);
+  catBody(twin, m, { big, sign: -1, parts, legs, ghost: true });
+  twin.traverse(o => {                                                         // the reflection: pale and see-through
+    if (!o.isMesh) return;
+    o.material.color.lerp(new THREE.Color(0xe8f4ff), 0.55);
+    o.material.transparent = true; o.material.opacity = 0.42; o.material.depthWrite = false;
+  });
+  if (big) drift(parts, twin, 0.1, 1.5, 0);
+  sheenGear(root, parts, { x: 0.155, y: big ? 0.52 : 0.42, z: 0, w: big ? 0.6 : 0.44, h: big ? 0.26 : 0.2, period: 2.5, side: true }); // along its left flank
+}
+
+// Wobblet / Bendabout: a funhouse mirror on stubby feet: a wobbly slab of glass with a lumpy top edge and a face that is all out of
+// proportion (one eye big, one small, a wide wobbly mouth). It squashes and stretches (parts.squash). Bendabout (`big`) is a tall funhouse
+// mirror made of five slabs that bend into an S (parts.bend) while it grows tall, then wide, in turns.
+function funmirror(root, m, parts) {
+  const big = has(m, 'big');
+  const body = pivot(root, 0, big ? 0.2 : 0.14, 0);
+  (parts.squash ||= []).push({ g: body, amp: big ? 0.2 : 0.16, speed: big ? 1.7 : 2.4, phase: 0 });
+  parts.legs = [];
+  for (const [x, ph] of [[-0.18, 0], [0.18, Math.PI]]) {
+    const leg = pivot(root, x * (big ? 1.2 : 1), big ? 0.2 : 0.14, 0);
+    box(leg, 0.14, big ? 0.2 : 0.14, 0.2, m.dark, 0, -(big ? 0.1 : 0.07), 0.03);                // stubby feet
+    parts.legs.push({ g: leg, phase: ph });
+  }
+  if (!big) {
+    box(body, 0.62, 0.6, 0.2, m.body, 0, 0.32, 0);                           // the lumpy slab
+    for (const [x, w, h] of [[-0.2, 0.2, 0.14], [0, 0.22, 0.24], [0.2, 0.2, 0.1]]) box(body, w, h, 0.2, m.body, x, 0.62 + h / 2, 0);
+    for (const [y, w] of [[0.1, 0.7], [0.5, 0.68]]) box(body, w, 0.1, 0.22, m.accent, 0, y, 0);  // trim, a bit crooked
+    glow(box(body, 0.5, 0.46, 0.04, m.belly, 0, 0.34, 0.11), 0x405070);
+    glow(box(body, 0.34, 0.2, 0.04, m.belly, 0.02, 0.68, 0.11), 0x405070);
+    eyes(body, 0.4, 0.14, -0.12, 0.08);                                       // the face, all out of proportion
+    box(body, 0.17, 0.17, 0.03, 0xffffff, 0.1, 0.46, 0.133).userData.eye = true;
+    box(body, 0.08, 0.08, 0.03, 0x111111, 0.11, 0.45, 0.16).userData.eye = true;
+    box(body, 0.34, 0.04, 0.03, 0x4a2a3a, 0, 0.22, 0.135);
+    box(body, 0.06, 0.05, 0.03, 0x4a2a3a, -0.18, 0.25, 0.135); box(body, 0.06, 0.05, 0.03, 0x4a2a3a, 0.18, 0.2, 0.135);
+    sheenGear(body, parts, { y: 0.34, z: 0.14, w: 0.48, h: 0.42, period: 2.4 });
+    return;
+  }
+  parts.bend = [];
+  for (let i = 0; i < 5; i++) {
+    const slab = pivot(body, 0, i * 0.34, 0);
+    const w = i % 2 ? 0.74 : 0.62;
+    box(slab, w, 0.36, 0.22, m.body, 0, 0.18, 0);
+    box(slab, w + 0.04, 0.05, 0.24, m.accent, 0, 0.02, 0);                   // a gold band between slabs
+    glow(box(slab, w - 0.14, 0.26, 0.04, m.belly, 0, 0.19, 0.12), 0x405070);
+    parts.bend.push({ g: slab, i, amp: 0.22, speed: 1.7 });
+    if (i === 3) {
+      eyes(slab, 0.27, 0.15, -0.14, 0.09);                                    // the face is on the fourth slab
+      box(slab, 0.2, 0.2, 0.03, 0xffffff, 0.13, 0.28, 0.14).userData.eye = true;
+      box(slab, 0.09, 0.09, 0.03, 0x111111, 0.14, 0.27, 0.17).userData.eye = true;
+      box(slab, 0.4, 0.04, 0.03, 0x4a2a3a, 0, 0.1, 0.145);
+    }
+    if (i === 1) sheenGear(slab, parts, { y: 0.19, z: 0.14, w: 0.5, h: 0.24, period: 2.9 });
+  }
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {                          // noodly arms
+    const arm = pivot(body, s * 0.42, 0.8, 0);
+    box(arm, 0.07, 0.5, 0.07, m.dark, s * 0.05, -0.2, 0);
+    box(arm, 0.12, 0.12, 0.12, 0xffffff, s * 0.05, -0.48, 0);
+    parts.arms.push({ g: arm, phase });
+  }
+}
+
+// Periscoot: a brass periscope on one wheel: a tall tube that bends over at the top into a head with two eyes, a lens and a mirror like
+// a visor, that turns to peek round corners. Gold bands, little knobs and a wheel with spokes that rocks as it rolls.
+function periscope(root, m, parts) {
+  const wheel = pivot(root, 0, 0.25, 0);
+  parts.legs = [{ g: wheel, phase: 0 }];
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.12, 14), new THREE.MeshLambertMaterial({ color: m.dark }));
+  rim.rotation.z = Math.PI / 2; wheel.add(rim);
+  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.15, 12), new THREE.MeshLambertMaterial({ color: m.body }));
+  tyre.rotation.z = Math.PI / 2; wheel.add(tyre);
+  for (const k of [0, 1, 2]) { const sp = box(wheel, 0.17, 0.46, 0.04, m.accent, 0, 0, 0); sp.rotation.x = (k * Math.PI) / 3; } // spokes (the shiny part)
+  box(wheel, 0.2, 0.1, 0.1, m.body, 0, 0, 0);
+  box(root, 0.16, 0.18, 0.16, m.body, 0, 0.55, 0);                            // the lower tube
+  box(root, 0.2, 0.05, 0.2, m.accent, 0, 0.48, 0);                            // gold bands
+  box(root, 0.2, 0.05, 0.2, m.accent, 0, 0.86, 0);
+  box(root, 0.14, 0.5, 0.14, m.body, 0, 0.9, 0);                              // the tall tube
+  for (const s of [-1, 1]) box(root, 0.07, 0.07, 0.07, m.accent, s * 0.12, 0.62, 0);   // knobs
+  const head = pivot(root, 0, 1.28, 0);
+  parts.head = head;
+  swing(parts, head, 'y', 0.55, 1.1, 0);                                       // it peeks left and right
+  box(head, 0.2, 0.16, 0.2, m.body, 0, -0.1, 0);                              // the elbow
+  box(head, 0.36, 0.3, 0.34, m.body, 0, 0.1, 0.1);                            // the head box
+  box(head, 0.38, 0.05, 0.36, m.accent, 0, 0.27, 0.1);
+  eyes(head, 0.1, 0.275, 0.09, 0.13);                                         // an eye each side of the lens
+  const lens = glow(box(head, 0.12, 0.12, 0.05, m.belly, 0, 0.0, 0.285), 0x405070); // a round lens under the eyes
+  lens.rotation.z = Math.PI / 4;
+  const visor = glow(box(head, 0.3, 0.3, 0.03, m.belly, 0, 0.38, 0.22), 0x405070); // the mirror, tilted like a visor
+  visor.rotation.x = -0.7;
+  box(head, 0.34, 0.03, 0.04, m.accent, 0, 0.52, 0.28).rotation.x = -0.7;
+  sheenGear(head, parts, { y: 0.4, z: 0.24, w: 0.24, h: 0.22, period: 2.2 }).rotation.x = -0.7;
+}
+const SHAPES_MIRROR = { handmirror, twincat, funmirror, periscope };
+Object.assign(SHAPES, SHAPES_MIRROR);
+/* ==== end of Mirror shapes ==== */
