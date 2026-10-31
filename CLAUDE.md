@@ -542,7 +542,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   (`player.js` `DIVE`): inside `world.deepAt` a swimmer dives where you look, Jump kicks (the distance is the exact integral, so 60
   and 20 fps match), bubble columns lift, the whirlpool sinks; outside `deepAt` nothing changed. Looks: underwater fog,
   `world.skyDim` per district, `world.underground = () => false` there. **Glowfish Catch:** hold Catch! to coil, let go to lunge;
-  shy jar fish (bump a jar), darters (never caught in open water, only in the 7 dead ends), the breathing school. Fish go to their
+  shy jar fish (bump a jar), darters (never caught in open water, only in the 7 dead ends), the breathing school (owner 2026-10-31: a jar fish at home is drawn IN its jar and ducks right in when you come close or your net reaches it, `JAR_LOOK`, drawing only). Fish go to their
   own district's lantern; 12 lights = `pw:atlantis:light1..12` (saved at once). With 12 the palace gate opens and Queen Coralia
   battles; a won battle clears the keys. No `WORLD_VERSION` change.
 - **Race Track (T40c, spec `racer`; v2 owner 2026-10-27):** the race is the gate to Racer Rio (and his two Pit Crew); 3 laps,
@@ -609,7 +609,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 - **Knight type and the Castle (T49, spec `castle`, `tests/castlecheck.mjs`, `tests/castlebots.mjs`):** type `knight` (`gear:
   'pennant'`, `gait: 'sentry'`, condition `guardpost`; wool 254, block 182 `HEDGE`: the only new ids). `PICTURE_WORLDS` `castle` took
   the never-ready `secret3` place. **Shield Up!** (`siege.js`) on a Shield Stone: the stick points the shield, Jump = over your head;
-  three rounds `pw:castle:shield1..3`; a splat is goo, never red (owner 2026-10-28). Round 3 lowers the drawbridge. The **hedge maze**
+  three rounds `pw:castle:shield1..3`; a splat is goo, never red (owner 2026-10-28); owner 2026-10-31 (front and back were confusing): `ui.setPointers(list, shield)` draws your shield as a blue arc on the arrows' ring, a sky throw as a purple circle in the middle. Round 3 lowers the drawbridge. The **hedge maze**
   is the only way to the Tilt Yard (the guide gives only words, a tip at 45 s, an arrow out at 90 s). **The Joust** (`joust.js`):
   steer the lance tip onto the star at the meeting time; `pw:castle:lance1..3`; round 3 raises the portcullis; owner 2026-10-28: the
   camera keeps Sir Splinter's shield in the middle and zooms, only the view changed (stick right = tip LEFT on screen, as before).

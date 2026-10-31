@@ -32,9 +32,9 @@ export const JOUST_VIEW = { lead: 5, shieldUp: 2.3, shieldIn: 0.9, shieldOn: 0.5
 // then not again for `peekRest` s), the fountain's drops fly `spray` s.
 export const MAZE_FUN = { reach: 1.3, peekR: 6, peekUp: 2.4, peekRest: 7, rise: 0.25, spray: 1.1, drops: 24 };
 const WORDS = {
-  stone: 'Push the stick toward the danger. The arrows show where it is!',
-  rounds: ['Round 1: pumpkins from the castle! Turn your shield to them.', 'Round 2: from all sides! Watch the arrows round the middle of the screen.', 'Round 3: look up for sky pumpkins (hold Jump)! Big pumpkins need a perfect block.'],
-  splat: 'Splat! Yuck, sticky! Turn your shield to the glow!',
+  stone: 'Push the stick to move your blue shield onto the arrows!',
+  rounds: ['Round 1: pumpkins from the castle! Turn your shield to them.', 'Round 2: from all sides! An arrow at the bottom is behind you: pull the stick back.', 'Round 3: a purple circle = a sky pumpkin: hold Jump! Big pumpkins need a perfect block.'],
+  splat: 'Splat! Yuck, sticky! Put the blue shield on the arrow!',
   sky: 'Look up! Shield up! (Jump)',
   hero: 'Hero! Three perfect blocks!',
   joust: 'Steer your lance tip onto the gold spot!',
@@ -558,7 +558,10 @@ export class CastleLive {
     // the pointers round the crosshair (the next three, where they are)
     if (this.stance >= 0 && list.length) {
       const next = list.slice().sort((a, b) => a.t.at - b.t.at).slice(0, 3);
-      this.game.ui?.setPointers?.(next.map(a => ({ angle: a.t.kind === 'sky' ? 0 : this.relAngle(dirTo(stand, a.t.k), p), colour: CSS(KIND_COLOUR[a.t.kind] ?? 0xff8a1a), size: a.phase === 'fly' ? 1 : 0.4 })));
+      // your shield on the same ring (owner 2026-10-31: front and back were confusing): put the blue arc on the arrows
+      const cover = this.sg.plan.cover;
+      this.game.ui?.setPointers?.(next.map(a => ({ angle: a.t.kind === 'sky' ? 0 : this.relAngle(dirTo(stand, a.t.k), p), sky: a.t.kind === 'sky', colour: CSS(KIND_COLOUR[a.t.kind] ?? 0xff8a1a), size: a.phase === 'fly' ? 1 : 0.4 })),
+        { angle: this.relAngle(this.shieldIn.ang, p), up: !!this.shieldIn.up, cover });
     } else this.game.ui?.setPointers?.(null);
     // the shield you hold (in front of the camera, turned toward where it points; overhead while Jump is held)
     const cam = this.game.camera, on = this.stance >= 0 && !!cam;

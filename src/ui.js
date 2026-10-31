@@ -200,8 +200,13 @@ export class UI {
 
   // T49: up to 3 little arrows round the crosshair that point at a danger (the Castle's pumpkins): list = [{ angle, colour, size }] or null.
   // angle = where it is relative to the view (0 = straight ahead, + = to the right), size 0..1. One element, written only on change.
-  setPointers(list) {
-    const tag = list?.length ? list.map(p => `${p.angle.toFixed(2)}/${p.colour}/${(p.size ?? 1).toFixed(1)}`).join('|') : '';
+  // Pointers round the crosshair (Shield Up!): list = [{ angle, colour, size, sky }] (angle 0 = straight ahead, + = to the right, PI =
+  // behind you). Owner 2026-10-31 ("sometimes I confused what back meant and what front meant"): `shield` = { angle, up, cover } draws YOUR
+  // shield on the same ring (a blue arc, `cover` each side), so a child only puts the blue arc on the arrows; a faint track shows the ring
+  // is round you. A sky throw (`sky`) is a purple circle in the middle (over your head), and a shield held up fills the middle in blue.
+  setPointers(list, shield = null) {
+    const sh = list?.length && shield ? `${shield.up ? 'up' : shield.angle.toFixed(2)}/${(shield.cover ?? 0.6).toFixed(2)}` : '';
+    const tag = list?.length ? list.map(p => `${p.sky ? 'sky' : p.angle.toFixed(2)}/${p.colour}/${(p.size ?? 1).toFixed(1)}`).join('|') + '#' + sh : '';
     if (tag === this.pointersShown) return;
     this.pointersShown = tag;
     let box = this.pointersBox;
@@ -212,13 +217,34 @@ export class UI {
       box.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:6';
       document.body.appendChild(box);
     }
-    box.replaceChildren(...(list || []).slice(0, 3).map(p => {
-      const d = document.createElement('div'), r = 74, sz = 18 + 16 * Math.max(0, Math.min(1, p.size ?? 1));
+    const R = 74, IN = 36, NS = 'http://www.w3.org/2000/svg', kids = [];
+    if (list?.length) {
+      const svg = document.createElementNS(NS, 'svg'), W = 2 * R + 30;
+      svg.setAttribute('width', W); svg.setAttribute('height', W); svg.setAttribute('viewBox', `${-W / 2} ${-W / 2} ${W} ${W}`);
+      svg.style.cssText = `position:absolute;left:${-W / 2}px;top:${-W / 2}px;overflow:visible`;
+      const el = (name, at) => { const e = document.createElementNS(NS, name); for (const [k, v] of Object.entries(at)) e.setAttribute(k, v); svg.appendChild(e); return e; };
+      el('circle', { cx: 0, cy: 0, r: R - 12, fill: 'none', stroke: 'rgba(255,255,255,0.22)', 'stroke-width': 3 }); // the track round you
+      for (const p of list) if (p.sky) {
+        const k = Math.max(0, Math.min(1, p.size ?? 1));
+        el('circle', { cx: 0, cy: 0, r: IN, fill: 'none', stroke: p.colour, 'stroke-width': 3 + 4 * k, 'stroke-dasharray': '7 5', opacity: 0.55 + 0.4 * k });
+      }
+      if (shield?.up) el('circle', { cx: 0, cy: 0, r: IN - 4, fill: 'rgba(90,138,255,0.35)', stroke: '#6a9aff', 'stroke-width': 6 });
+      else if (shield) {
+        const c = Math.min(1.4, shield.cover ?? 0.6), r = R - 12, a0 = shield.angle - c, a1 = shield.angle + c;
+        const pt = a => `${(Math.sin(a) * r).toFixed(1)} ${(-Math.cos(a) * r).toFixed(1)}`;
+        el('path', { d: `M ${pt(a0)} A ${r} ${r} 0 0 1 ${pt(a1)}`, fill: 'none', stroke: '#6a9aff', 'stroke-width': 11, 'stroke-linecap': 'round', opacity: 0.9 });
+        el('path', { d: `M ${pt(a0)} A ${r} ${r} 0 0 1 ${pt(a1)}`, fill: 'none', stroke: '#ffd84a', 'stroke-width': 2, 'stroke-linecap': 'round' });
+      }
+      kids.push(svg);
+    }
+    for (const p of (list || []).filter(p => !p.sky).slice(0, 3)) {
+      const d = document.createElement('div'), r = R, sz = 18 + 16 * Math.max(0, Math.min(1, p.size ?? 1));
       d.className = 'pointer';
       d.textContent = '▲';
       d.style.cssText = `position:absolute;left:${Math.sin(p.angle) * r - sz / 2}px;top:${-Math.cos(p.angle) * r - sz / 2}px;width:${sz}px;height:${sz}px;font-size:${sz}px;line-height:${sz}px;text-align:center;color:${p.colour};transform:rotate(${p.angle}rad);text-shadow:0 0 3px #000,0 0 2px #000`;
-      return d;
-    }));
+      kids.push(d);
+    }
+    box.replaceChildren(...kids);
   }
 
   setKeyCompass(state) {

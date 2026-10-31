@@ -117,15 +117,14 @@ export function buildTelescopePiece(n, ghost = false) {
   if (!ghost) { const gl = add(g, new THREE.CircleGeometry(P.r0 * 1.5, 20), basic(0xe8fbff, 0.3), P.L / 2 + 0.03, 0, 0); gl.rotation.y = Math.PI / 2; gl.material.side = THREE.DoubleSide; } // its glint
   return disposer(g);
 }
-// The prize on a Lens Rock: telescope piece n tilted up like 🔭 on a little gold stand, under a soft beam of light (you see where it is from
-// the dock); it turns slowly (userData.spin).
+// The prize on a Lens Rock: telescope piece n tilted up like 🔭 on a little gold stand; it turns slowly (userData.spin). (Owner 2026-10-31:
+// no beam of light over it any more, the telescope is obvious enough.)
 export function buildLensPrize(n) {
   const g = new THREE.Group(), spin = new THREE.Group();
   spin.position.y = 1.05; g.add(spin);
   const piece = buildTelescopePiece(n); piece.rotation.z = 0.5; piece.scale.setScalar(1.6); spin.add(piece);
   add(g, new THREE.CylinderGeometry(0.05, 0.05, 0.85, 6), lam(0xd8a840, 0x3a2a08), 0, 0.42, 0);
   add(g, new THREE.CylinderGeometry(0.3, 0.36, 0.1, 10), lam(0xd8a840, 0x3a2a08), 0, 0.05, 0);
-  add(g, new THREE.CylinderGeometry(0.22, 0.22, 12, 10, 1, true), basic(0xffe68a, 0.22), 0, 6.5, 0); // a soft beam of light: seen from far away
   g.userData.spin = spin;
   return disposer(g);
 }
@@ -148,12 +147,13 @@ export function buildBigTelescope() {
 }
 
 // The next pebble of the Planet Hop glows (owner 2026-10-30: "I didn't know which flowers to jump to ... I wonder if those planets being those
-// colours would've worked better"): a soft shell of its own colour round it and a beam of light up from its top, both pulsing.
+// colours would've worked better"): a soft shell of its own colour round it, pulsing (owner 2026-10-31: no beam of light up from it any more,
+// the blinking shell is enough).
 // userData.place(box, colour) puts it round a planet box (null hides it); userData.tick(t) pulses it.
 export function buildBeacon() {
   const g = new THREE.Group();
   const mat = () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
-  const shell = add(g, new THREE.BoxGeometry(1, 1, 1), mat()), beam = add(g, new THREE.CylinderGeometry(0.5, 0.8, 10, 12, 1, true), mat());
+  const shell = add(g, new THREE.BoxGeometry(1, 1, 1), mat());
   g.visible = false;
   g.userData.place = (box, colour) => {
     if (!box) { g.visible = false; return; }
@@ -161,10 +161,9 @@ export function buildBeacon() {
     const sx = box.x1 - box.x0, sy = box.y1 - box.y0, sz = box.z1 - box.z0;
     g.position.set((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2, (box.z0 + box.z1) / 2);
     shell.scale.set(sx + 0.9, sy + 0.9, sz + 0.9);
-    beam.position.y = sy / 2 + 5; beam.scale.set(sx / 3, 1, sz / 3);
-    shell.material.color.setHex(colour); beam.material.color.setHex(colour);
+    shell.material.color.setHex(colour);
   };
-  g.userData.tick = t => { const k = 0.5 + 0.5 * Math.sin(t * 4); shell.material.opacity = 0.12 + 0.16 * k; beam.material.opacity = 0.1 + 0.14 * k; };
+  g.userData.tick = t => { const k = 0.5 + 0.5 * Math.sin(t * 4); shell.material.opacity = 0.12 + 0.16 * k; };
   return disposer(g);
 }
 

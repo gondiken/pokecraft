@@ -50,6 +50,11 @@ function glowSprites(color, count, { opacity = 0.6, ring = 0, far = 45, blend = 
 }
 
 export const LIVE_RULES = { jarMargin: 0.3, pourReach: 1.4, hintGap: 8, active: 80, saveGap: 0.25 };
+// Owner 2026-10-31 ("I pass through it without a catch ... it's not really obvious that their base protects them"): a jar fish that is
+// home is drawn sitting IN its jar (only its top half out, `peek`), and it ducks right down (`duck`, only its fin peeks) while you are
+// within `near` or your net reaches it, so the jar plainly hides it; knocked, it wobbles down there and then shoots out. Only the drawing
+// changes (sink eases at `rate` per second); its home and the catch rule are the same.
+export const JAR_LOOK = { peek: 0.3, duck: 0.58, near: 3, rate: 12 };
 // The pictures that explain the game (owner 2026-10-27): bulbs over the lanterns, the trail to the lantern, the flight into a bulb, the ghost fish.
 export const VIS = { bulbR: 1.25, bulbUp: 1.4, trail: 16, trailLen: 26, fly: 12, flyTime: 0.8, demo: { period: 6, swim: 3.2, glow: 1.6, near: 30 } };
 // The bulb k (0..3) of a lantern: on a ring over its top.
@@ -98,7 +103,7 @@ export class AtlantisLive {
     this.forceLit = false;           // after the Queen's defeat the city stays lit for the trip
     this.shown = null;
     // the fish
-    this.shy = this.A.shy.map((j, i) => ({ id: `shy${i}`, kind: 'shy', index: i, jar: j, home: j.home, pop: null, out: false, pos: [...j.home], prev: [...j.home], yaw: 0 }));
+    this.shy = this.A.shy.map((j, i) => ({ id: `shy${i}`, kind: 'shy', index: i, jar: j, home: j.home, pop: null, out: false, pos: [...j.home], prev: [...j.home], yaw: 0, sink: JAR_LOOK.peek, scared: -9 }));
     this.darters = this.A.darters.map((d, i) => { const fish = new Darter({ id: d.id, index: i, home: d.home, y: d.y }); return { id: d.id, kind: 'darter', index: i, fish, out: false, pos: fish.pos3, prev: fish.pos3, yaw: 0 }; });
     this.school = Array.from({ length: FISH.school.n }, (_, i) => ({ id: `school${i}`, kind: 'school', index: i, out: false, pos: [0, 0, 0], prev: [0, 0, 0], yaw: 0 }));
     this.fish = [...this.shy, ...this.darters, ...this.school];
@@ -254,6 +259,11 @@ export class AtlantisLive {
       const s = shyAt(f.home, this.t, f.pop);
       if (s.over) f.pop = null;
       f.pos = s.pos;
+      // in its jar: half out, or ducked right in when you are close (or your net just reached it); out of it: no sink
+      const inJar = s.state === 'home' || s.state === 'wobble';
+      const close = Math.hypot(c[0] - f.home[0], c[1] - f.home[1], c[2] - f.home[2]) < JAR_LOOK.near || this.t - f.scared < 1.2;
+      const want = !inJar ? 0 : s.state === 'wobble' || close ? JAR_LOOK.duck : JAR_LOOK.peek;
+      f.sink += (want - f.sink) * Math.min(1, h * JAR_LOOK.rate);
     }
     for (const f of this.school) if (!f.out) f.pos = schoolFish(this.A.school, this.t, f.index);
     this.bumps(c);
@@ -271,7 +281,14 @@ export class AtlantisLive {
     if (L.t >= T) this.endLunge();
   }
   catchAt(c) {
-    for (const f of this.fish) if (this.catchable(f) && inNet(c, f.pos)) this.take(f);
+    for (const f of this.fish) {
+      if (this.catchable(f) && inNet(c, f.pos)) this.take(f);
+      else if (f.kind === 'shy' && !f.out && inNet(c, f.pos)) { // your net reached a fish in its jar: it ducks right in
+        if (this.t - f.scared > 1.2) sound.play('atwobble');
+        f.scared = this.t;
+        this.hint('hides', 'It hides in its jar! Knock the jar, then catch it when it swims out.');
+      }
+    }
   }
   take(f) {
     if (this.net.length >= FISH.carry) { this.hint('full', 'Your net is full! Take the glowfish to a lantern.'); return; }
@@ -453,7 +470,7 @@ export class AtlantisLive {
         const hide = f.out;
         const p = f.pos, dx = p[0] - f.prev[0], dz = p[2] - f.prev[2];
         if (Math.abs(dx) + Math.abs(dz) > 1e-4) f.yaw = Math.atan2(dx, dz);
-        d.position.set(p[0], p[1], p[2]);
+        d.position.set(p[0], p[1] - (f.sink || 0), p[2]);
         d.rotation.set(0, f.yaw, Math.sin(t * 9 + i) * 0.25);
         const trem = kind === 'darter' && f.fish.state === 'stuck' ? 1 + 0.15 * Math.sin(t * 60) : 1;
         d.scale.setScalar(hide ? 0.0001 : SIZE[kind] * 2 * trem);
