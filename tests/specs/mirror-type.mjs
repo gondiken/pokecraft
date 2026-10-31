@@ -1,4 +1,4 @@
-// Wave 18 stage 2: the Mirror type (plans/wave18-mirror.md section 6). Part `data`: 46 types, 7 creatures, 4 own shapes each with ONE sheen mesh
+// Wave 18 stage 2: the Mirror type (plans/wave18-mirror.md section 6). Part `data`: 47 types (46 + the Custom type of wave 19), 7 creatures, 4 own shapes each with ONE sheen mesh
 // (and the idle animations), moves, big moves, T1..T4, the chart (no old cell changed against tests/fixtures/chart-before-mirror.json, no
 // defender weak to more than 5), fx and sounds, the spawn table, the after-check, the lookup of Lynxlook as rideable. Part `gait`: the
 // `mimic` gait in the browser (mirrored copy, meet in the middle, leash, legal floor, same at 20 and 60 steps a second, no Math.random).
@@ -83,7 +83,7 @@ export default async function ({ browser, base, t }) {
       // no old cell changed: every cell between two types that are not Mirror equals the fixture, and the fixture lists them all
       const olds = fixture.types;
       out.oldChart = olds.every(a => olds.every(d => Sp.effectiveness(a, d) === (fixture.chart[a]?.[d] ?? 1)));
-      out.oldTypes = olds.length === types.length - 1 && olds.every(x => types.includes(x));
+      out.oldTypes = olds.length === types.length - 2 && olds.every(x => types.includes(x));
       const weak = d => types.filter(a => Sp.effectiveness(a, d) > 1).length;
       out.weak = ['mirror', 'ninja', 'surprise', 'doodle'].filter(d => weak(d) > 5).map(d => `${d}:${weak(d)}`).join(); // the defenders this type touches (ghost, mind, drake, paper were already weak to 6-7 before)
       out.weakCounts = ['mirror', 'ninja', 'surprise', 'doodle'].map(d => `${d}:${weak(d)}`).join();
@@ -110,7 +110,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.moves.every(m => m === 'mirror') && A.fine && A.sig && JSON.stringify(A.big) === JSON.stringify([['shield', true], ['field', true], ['lastword', true]]), 'the moves: Glint Shot, Flash Back, Quick Copy (first), Dazzle Stare (attack down), the four signatures at 30, the big moves Shiny Shield, Wobbly Funhouse, Last Look');
     t.ok(A.funfair && !A.dupMoveNames.length, `the Funfair's Fun House is untouched and no two moves share a name (${A.dupMoveNames})`);
     t.ok(A.t1.every(Boolean), 'a Lookit knows Glint Shot early and Flash Back by Lv 14');
-    t.ok(A.types === 46, `${A.types} types`);
+    t.ok(A.types === 47, `${A.types} types (46 with the Mirror type, 47 with wave 19's Custom)`);
     t.ok(A.ownRow === 'doodle:2,ghost:0.5,metal:0.5,mirror:0.5,ninja:2,surprise:2' && A.vs === 'ball:2,light:0.5,rock:2,sound:2', `the chart: its own row (${A.ownRow}), the cells against it (${A.vs})`);
     t.ok(A.oldChart && A.oldTypes && !A.weak, `no old cell changed (against tests/fixtures/chart-before-mirror.json); no defender it touches weak to more than 5 types (${A.weak || 'none'}; ${A.weakCounts})`);
     t.ok(/gradient/.test(A.color), 'a type colour (a silver sheen gradient)');

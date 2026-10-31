@@ -544,6 +544,7 @@ export default async function ({ browser, base, t }) {
       // the helpers, the Boss: crew first, a lost battle stays, the star clears the nine keys, the rematch is harder
       const K1 = await page.evaluate(async () => {
         const R = window.__R, { g } = R, Sp = await import('/src/species.js'), { bossOf } = await import('/src/pictureboss.js'), out = {};
+        R.live.giveBack(); R.put(80.5, 12, 30.5); // (a kid steps off the dais and walks to the Grand Mirror Hall)
         g.beaten = g.beaten.filter(k => !/pw:mirror:crew/.test(k));
         out.gate = bossOf('mirror').gate(g); g.talkTo(R.boss()); out.crewFirst = !g.inBattle && R.said('first');
         g.party = [Sp.makeCreature('thunderwolf', 100)]; g.talkTo(R.crew(0));
