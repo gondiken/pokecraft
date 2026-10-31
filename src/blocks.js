@@ -49,7 +49,7 @@ const WOOL_RGB = {
   knight: [150, 165, 190], // T49: steel blue-grey with a gold cross
   bubble: [176, 228, 250], // the Bubble Well: soap blue with rainbow bubble rings
   gravity: [92, 70, 168], // Cube Planets: deep violet with a gold orbit ring and a little moon
-  custom: [242, 234, 216], // the Custom type: cream linen
+  custom: [250, 245, 230], // the Custom type: cream linen
   mirror: [206, 204, 234], // wave 18, the Mirror Palace: lilac-silver with a white diagonal sheen
 };
 // More tiles after the wool ones.
@@ -657,7 +657,7 @@ export function drawAtlas() {
                                 : t === 'bubble' ? ((d => (d > 4.2 && d < 5.4 ? STRIPES[(x + y) % STRIPES.length] : d < 1.3 ? [255, 255, 255] : WOOL_RGB[t]))(Math.hypot(((x + 4) % 16) - 7.5, ((y + 4) % 16) - 7.5))) // a rainbow bubble ring
                                 : t === 'mirror' ? (((x + y) % 16 < 2 || (x + y) % 16 === 15) ? [255, 255, 255] : (x + y) % 16 < 4 ? [228, 226, 248] : WOOL_RGB[t]) // wave 18: lilac-silver with a white diagonal sheen
                                 : t === 'gravity' ? ((d => (Math.abs(d - 5.6) < 0.6 ? [240, 200, 90] : Math.hypot(x - 12.5, y - 4.5) < 1.6 ? [235, 235, 250] : WOOL_RGB[t]))(Math.hypot((x - 7.5) * 1.6, (y - 7.5) * 0.7))) // Cube Planets: a gold orbit ring and a little moon
-                                : t === 'custom' ? (x % 4 === 0 || y % 4 === 0 ? [222, 212, 190] : WOOL_RGB[t]) // the Custom type: a cream linen weave
+                                : t === 'custom' ? (x % 4 === 0 || y % 4 === 0 ? [236, 228, 208] : WOOL_RGB[t]) // the Custom type: a cream linen weave
                                 : WOOL_RGB[t];
     put(T.WOOL0 + i, x, y, shade(base, f));
   }));

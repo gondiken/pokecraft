@@ -249,6 +249,7 @@ function createWorld(seed, edits, size, opts = {}) {
 }
 
 function findSpawn(world) {
+  if (world.realm && world.spawnAt) return new THREE.Vector3(...world.spawnAt); // wave 19: a roofed realm (the Wizard's Tower) names its own arrival spot
   if (world.realm) { const [x, z] = world.realm.arrive; return new THREE.Vector3(x + 0.5, world.surface(x, z).y + 1, z + 0.5); } // T31
   const cx = MID_X, cz = MID_Z; // the old middle (T17: the map grew, the start did not move)
   for (let r = 0; r < 60; r++) {

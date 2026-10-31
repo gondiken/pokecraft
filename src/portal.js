@@ -6,6 +6,12 @@
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { PICTURE_WORLDS, FRAME_WORLDS, STAR_WORLDS, fullName } from './pictureworlds.js'; // wave 18: STAR_WORLDS for the HUD board
+/* ==== Wizard ==== */
+import { bridgeDone, stoneAsleep } from './pictureworlds.js'; // wave 19: the bridge needs only the stars of the open worlds
+import { towerOpen, towerStand, WORDS as WIZ, starCount } from './wizardtower.js';
+import { worldOpen } from './comingsoon.js';
+import { sound } from './sound.js';
+/* ==== end of Wizard ==== */
 
 // The door stands flat against the tower's front wall, right of the rainbow pillar, in the row d = 7 (the tower's own
 // protected box, +-7, already holds it: no player build can be lost). d = distance in front of the tower centre,
@@ -219,7 +225,7 @@ export function createPortal(game) {
     // For tests and the HUD: what the Swirl is showing right now.
     info() {
       const st = SWIRL.get(game);
-      return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told } } : null;
+      return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told }, towerGlow: !!st.towerGlow, cloud: st.cloud.size } : null; // wave 19: the tower door's glow and the cloud stones
     },
     // The board the HUD shows: one entry per Picture World.
     stars() { return STAR_WORLDS.map(w => ({ id: w.id, name: w.name, won: game.stars.includes(w.id) })); },
@@ -328,11 +334,12 @@ function swirlReset(game, world) {
     for (const m of old.lifts) { game.scene?.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
     dropOutline(game, old);
     dropPictures(game, old);
+    old.towerGlow?.dispose(); // wave 19
     old.tex?.dispose();
     SWIRL.delete(game);
   }
   if (!world?.swirl || !game.scene) return;
-  const st = { world, lifts: [], tex: liftTexture(), outline: null, lit: null, told: {}, acc: 0, t: 0, frameAt: new Map(), pictures: [], ready: null };
+  const st = { world, lifts: [], tex: liftTexture(), outline: null, lit: null, told: {}, acc: 0, t: 0, frameAt: new Map(), pictures: [], ready: null, cloud: new Set(), towerGlow: null };
   for (const l of world.lifts || []) {
     const w = l.x[1] - l.x[0] + 1, d = l.z[1] - l.z[0] + 1, h = l.y[1] + 1 - l.y[0];
     const map = st.tex.clone();
@@ -355,19 +362,26 @@ function swirlUpdate(game, dt) {
   if (!st) return;
   const w = game.world;
   st.t += dt;
+  st.towerGlow?.update(dt, 1); // wave 19
   st.lifts.forEach((m, i) => { m.material.map.offset.y = -(st.t * 0.8) % 1; m.material.color.setHSL((st.t * 0.04 + i / 6) % 1, 0.9, 0.5); }); // T38d: each stream slowly changes pastel colour
   st.acc += dt;
   if (st.acc < 0.25 && st.lit !== null) return;
   st.acc = 0;
   updateFrames(game, st); // T40
-  const stars = game.stars || [], key = stars.join();
-  if (key !== st.lit || (w.swirl.bridge[0] && w.get(...w.swirl.bridge[0].cells[0]) === (stars.includes(w.swirl.bridge[0].world) ? B.AIR : B.STAR_STONE))) {
+  /* ==== Wizard ==== */
+  // wave 19: a stone is a star stone once its star is won; while the bridge is not whole an empty stone is an outline (air); once every star the bridge needs
+  // (the open worlds) is won, a stone whose world is still asleep (Cube Planets outside ?preview) is a soft cloud stone so the bridge can be walked.
+  const stars = game.stars || [], whole = bridgeDone(stars), tower = towerOpen(game);
+  const wantOf = s => (stars.includes(s.world) ? B.STAR_STONE : whole && stoneAsleep(PICTURE_WORLDS.find(p => p.id === s.world) ?? {}) ? B.CLOUD : B.AIR);
+  const key = `${stars.join()}|${whole ? 1 : 0}`;
+  if (key !== st.lit || w.swirl.bridge.some(s => w.get(...s.cells[0]) !== wantOf(s))) {
     st.lit = key;
     const unlit = [];
+    st.cloud = new Set();
     for (const s of w.swirl.bridge) {
-      const lit = stars.includes(s.world);
-      for (const [x, y, z] of s.cells) w.setLive(x, y, z, lit ? B.STAR_STONE : B.AIR);
-      if (!lit) unlit.push(s.box);
+      const id = wantOf(s);
+      for (const [x, y, z] of s.cells) { w.setLive(x, y, z, id); if (id === B.CLOUD) st.cloud.add(keyOf({ x, y, z })); }
+      if (id === B.AIR) unlit.push(s.box);
     }
     dropOutline(game, st);
     if (unlit.length) {
@@ -376,6 +390,17 @@ function swirlUpdate(game, dt) {
       game.scene.add(st.outline);
     }
   }
+  const wz = w.swirl.wizard; // the sealed door: swirling once the tower is open (drawn live; a DoorGlow over it), else Wizard Stone as built
+  if (wz?.door?.length) {
+    const open = tower && !!game.scene, c0 = wz.door[0];
+    if (open && w.get(...c0) !== B.PORTAL) for (const [x, y, z] of wz.door) w.setLive(x, y, z, B.PORTAL);
+    if (open && !st.towerGlow) { const s = towerStand(w); st.towerGlow = new DoorGlow(game.scene, wz.door, s); st.towerGlow.group.userData.swirlSky = true; }
+    if (!tower && w.get(...c0) === B.PORTAL) for (const [x, y, z] of wz.door) w.setLive(x, y, z, B.WIZARD_STONE);
+  }
+  if (tower && !game.studio?.ally && worldOpen('wizard') && game.started && !game.inBattle && !game.toldOnce.has('bridge-whole')) {
+    game.toldOnce.add('bridge-whole'); game.ui.toast(WIZ.bridgeWhole); sound.play('champion');
+  }
+  /* ==== end of Wizard ==== */
   if (game.started && !game.inBattle) {
     const p = game.player.pos;
     if (!st.told.bridge && p.x >= 57 && p.x < 61 && p.z >= 77 && p.z < 84 && p.y > 18) { st.told.bridge = true; game.ui.toast('A star bridge will grow here: one stone for every star from a Picture World.'); }
@@ -407,16 +432,36 @@ function swirlUse(game, block) {
     game.ui.toast(`${pw.emoji} ${pw.name}: this world isn't open yet. Come back soon!`);
     return true;
   }
-  if (inWizard(game, block)) { game.ui.toast('The Wizard is inside, holding the Swirl together. Bring him stars!'); return true; }
+  /* ==== Wizard ==== */
+  const st = stateOf(game);
+  if (st?.cloud.has(keyOf(block)) && block.id === B.CLOUD) { game.ui.toast(WIZ.stone); return true; } // a cloud stone: its world still sleeps
+  if (towerDoor(game, block)) {
+    if (game.mp?.role === 'guest' && game.realms.guestEntrance('tower')) return true; // a guest follows the host into the tower (or is told how)
+    if (!towerOpen(game)) { game.ui.toast(sealedWords(game)); return true; }
+    game.realms.enter('wizard', { back: towerStand(game.world) });
+    return true;
+  }
+  /* ==== end of Wizard ==== */
+  if (inWizard(game, block)) { game.ui.toast(sealedWords(game)); return true; }
   return false;
+}
+// wave 19: the sealed door's words: today's, plus the count (⭐ n / need) when the tower can open in this build.
+function sealedWords(game) { const c = starCount(game.stars); return worldOpen('wizard') ? WIZ.sealedCount(c.have, c.need) : WIZ.sealed; }
+// wave 19: the Swirl tower's door cells (the exact cells of world.swirl.wizard.door; whatever block they show: Wizard Stone sealed, a swirl when open).
+function towerDoor(game, b) {
+  const wz = game.world?.swirl?.wizard;
+  return !!wz && !!b && wz.door.some(c => c[0] === b.x && c[1] === b.y && c[2] === b.z) && worldOpen('wizard');
 }
 function swirlPrompt(game, block, how) {
   const f = frameOf(game, block);
   if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `${pw.ready ? `${pw.emoji} ${fullName(pw)}` : pw.secret ? 'A secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
+  if (game.place !== 'main' && game.world?.swirl && towerDoor(game, block)) return towerOpen(game) ? `The Wizard's tower · ${how} to go in` : "The Wizard's tower · sealed"; // wave 19
+  if (game.place !== 'main' && game.world?.swirl && block.id === B.CLOUD && stateOf(game)?.cloud.has(keyOf(block))) return WIZ.stonePrompt; // wave 19
   if (game.place !== 'main' && game.world?.swirl && inWizard(game, block)) return "The Wizard's tower · sealed";
   return '';
 }
 function swirlAction(game, block) {
+  if (game.world?.swirl && towerDoor(game, block) && towerOpen(game)) return WIZ.doorAction; // wave 19
   const f = frameOf(game, block);
   return f && PICTURE_WORLDS.find(p => p.id === f.world)?.ready ? 'Step in!' : '';
 }

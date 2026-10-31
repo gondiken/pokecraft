@@ -23,6 +23,7 @@ import { GRAVITY_SPAWNS } from './species.js'; // Cube Planets
 import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; // the Bubble Well
 import { mirrorLand, mirrorAim, SIZE as MIRROR_SIZE, ARRIVAL as MIRROR_ARRIVAL } from './mirrorland.js'; // wave 18, the Mirror Palace
 import { BUBBLE_SPAWNS } from './species.js'; // the Bubble Well
+import { wizardLand, wizardAim } from './wizardland.js'; // wave 19, the Wizard's Tower
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -205,6 +206,20 @@ if (!worldRemoved('mirror')) REALMS.mirror = pictureRealm({ id: 'mirror', name: 
   arriveHint: 'Three games, three helpers, then Duke Dazzle!',
   noHomeText: 'No homes in the palace! Build your home in your own world.', followText: 'Look in too' });
 /* ==== end of Mirror ==== */
+/* ==== Wizard ==== */
+// Wave 19 (plans/wave19-wizard-tower.md sections 3 and 10), the Wizard's Tower: a small realm of its own (48 x 48), entered through the Swirl's sealed door once
+// the star bridge is whole (portal.js, wizardtower.js `towerOpen`). Not registered at all while it is closed (comingsoon.js: `?preview` or OPEN_NOW), so a save made inside
+// it loads in the main world. Nothing can be built (one keep over the whole map), so there are never realm edits to convert.
+if (worldOpen('wizard')) REALMS.wizard = pictureRealm({ id: 'wizard', name: "Wizard's Tower", seedSalt: 0x3172d, size: [48, 48], terrain: 'wizardLand', arrive: [24, 28], arriveYaw: 0 /* north, at the first canvas */, biome: 'wizard',
+  entrance: 'tower', spawns: { wizard: [], cave: [] }, wild: { max: 0, every: 60 }, walk: [B.PLANKS], noRide: 'No riding inside the tower!', crewAim: false,
+  look: { sky: 0xd8c8ff, fog: [40, 120], time: null, weather: false, light: 1, still: true, stars: false },
+  clock: "🧙 Wizard's Tower", travelText: 'Up to the studio...', travelIcon: '🧙', enterText: "Welcome to the Wizard's studio!",
+  arriveHint: 'Tap a paint pot, then tap the canvas. Copy the picture!', doorName: 'Way back', doorVerb: 'go back to the Swirl', doorAction: 'Back!',
+  backText: 'You stepped out of the tower, back into the Swirl.',
+  noHomeText: "No homes in the Wizard's studio!", followText: 'Go up too',
+  askFollow: n => `${n} went into the Wizard's tower. Go too?`, joined: n => `You followed ${n} into the Wizard's tower!`,
+  guestNote: n => `Follow ${n} when they go into the tower!` });
+/* ==== end of Wizard ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -235,6 +250,7 @@ TERRAINS.bubbleLand = bubbleLand; // the Bubble Well
 TERRAIN_AIMS.bubbleLand = bubbleAim; // the Bubble Well
 TERRAINS.mirrorLand = mirrorLand; // wave 18, the Mirror Palace
 TERRAIN_AIMS.mirrorLand = mirrorAim; // wave 18
+TERRAINS.wizardLand = wizardLand; TERRAIN_AIMS.wizardLand = wizardAim; // wave 19, the Wizard's Tower
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

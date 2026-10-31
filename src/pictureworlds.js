@@ -204,3 +204,12 @@ export function loadStars(saved) {
   const set = new Set(Array.isArray(saved) ? saved.filter(s => typeof s === 'string') : []);
   return PICTURE_WORLDS.filter(w => set.has(w.id)).map(w => w.id);
 }
+/* ==== Wizard ==== */
+// Wave 19 (plans/wave19-wizard-tower.md section 2): the stars the star bridge needs here and now: every bridge world that is open on this page and
+// not switched off. A world is "asleep" only when it is a closed wave 15 world or a `LATER` one (comingsoon.js; Cube Planets outside `?preview`);
+// the first four worlds have no switch (`worldOpen` only speaks for the switched ones), so they always count. Never a number of stars in the code.
+const asleep = id => (WAVE15.includes(id) || LATER.includes(id)) && !worldOpen(id);
+export const bridgeNeed = () => BRIDGE_WORLDS.filter(w => w.removed !== true && !asleep(w.id));
+export const bridgeDone = stars => bridgeNeed().every(w => (stars || []).includes(w.id));
+export const stoneAsleep = w => w.removed !== true && asleep(w.id); // a stone whose world sleeps: a soft cloud once the bridge is whole
+/* ==== end of Wizard ==== */

@@ -449,7 +449,7 @@ export default async function ({ browser, base, t }) {
     const used = g.portal.use({ x: c[0], y: c[1], z: c[2], id: B.WIZARD_STONE });
     return { used, toast: window.__toasts.at(-1), prompt: g.portal.prompt({ x: c[0], y: c[1], z: c[2], id: B.WIZARD_STONE }, 'E') };
   });
-  t.ok(wz.used && wz.toast === 'The Wizard is inside, holding the Swirl together. Bring him stars!' && /sealed/.test(wz.prompt), `the Wizard's door: "${wz.toast}" (${wz.prompt})`);
+  t.ok(wz.used && /^The Wizard is inside, holding the Swirl together. Bring him stars!( \(⭐ \d+ \/ \d+\))?$/.test(wz.toast) && /sealed/.test(wz.prompt), `the Wizard's door: "${wz.toast}" (${wz.prompt})`);
 
   // ===== T38d: the looks =====
   // 15. Zones (pure): weights add up to 1, change smoothly, the right zone is the biggest in the right place, palettes are sane, and the
