@@ -2692,13 +2692,13 @@ export const SPECIES = {
   },
   suddly: {
     name: 'Suddly', type: 'bubble', desc: 'A sea otter pup that floats on its back with a bar of soap on its tummy. It scrubs everything it meets.',
-    base: { hp: 52, atk: 55, def: 48, spd: 66 }, baseXp: 66, catchRate: 0.45, gait: 'float', learn: L('bubble', 'normal'),
+    base: { hp: 52, atk: 55, def: 48, spd: 66 }, baseXp: 66, catchRate: 0.45, gait: 'float', learn: L('bubble', 'water'),
     evolve: { level: 26, into: 'lathotter' },
     model: { shape: 'bathotter', scale: 0.85, body: 0x9a6a46, accent: 0xff9ac8, dark: 0x4a3020, belly: 0xe8cfb0, extras: [] },
   },
   lathotter: {
     name: 'Lathotter', type: 'bubble', desc: 'A big otter with a beard of soap foam and a sailor cap. It juggles soap bars and never drops one.',
-    base: { hp: 85, atk: 98, def: 75, spd: 92 }, baseXp: 170, catchRate: 0.1, gait: 'float', learn: L('bubble', 'normal', [[30, 'soapjuggle']]),
+    base: { hp: 85, atk: 98, def: 75, spd: 92 }, baseXp: 170, catchRate: 0.1, gait: 'float', learn: L('bubble', 'water', [[30, 'soapjuggle']]),
     model: { shape: 'bathotter', scale: 1.3, body: 0x8a5a3a, accent: 0x8ad8ff, dark: 0x3a2618, belly: 0xe0c4a0, extras: ['beard'] },
   },
   hippip: {
@@ -2724,13 +2724,13 @@ export const SPECIES = {
   // moons circling it (gear 'orbit', one merged mesh); wild ones circle slowly round a spot on top of a planet (gait 'orbit', creatures.js).
   orbikit: {
     name: 'Orbikit', type: 'gravity', desc: 'A little comet cheetah. It runs round and round its planet so fast that its tail sparkles like a comet.',
-    base: { hp: 46, atk: 56, def: 44, spd: 74 }, baseXp: 64, catchRate: 0.45, gait: 'orbit', learn: L('gravity', 'normal'),
+    base: { hp: 46, atk: 56, def: 44, spd: 74 }, baseXp: 64, catchRate: 0.45, gait: 'orbit', learn: L('gravity', 'cosmic'),
     evolve: { level: 25, into: 'orbitah' },
     model: { shape: 'orbicat', scale: 0.8, body: 0xf2c25a, accent: 0xfff2a0, dark: 0x3a2a1a, belly: 0xfff0d6, extras: [] },
   },
   orbitah: {
     name: 'Orbitah', type: 'gravity', desc: 'The fastest runner in the sky. It races round a planet in a blink and leaves a trail of stars behind.',
-    base: { hp: 72, atk: 98, def: 66, spd: 114 }, baseXp: 168, catchRate: 0.12, gait: 'orbit', learn: L('gravity', 'normal', [[30, 'cometail']]),
+    base: { hp: 72, atk: 98, def: 66, spd: 114 }, baseXp: 168, catchRate: 0.12, gait: 'orbit', learn: L('gravity', 'cosmic', [[30, 'cometail']]),
     model: { shape: 'orbicat', scale: 1.25, body: 0xeab44a, accent: 0xfff6b0, dark: 0x2a1e14, belly: 0xfff0d6, extras: ['streak'] },
   },
   hootiter: {
