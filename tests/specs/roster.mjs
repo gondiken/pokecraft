@@ -29,7 +29,8 @@ export default async function ({ browser, base, t }) {
     return {
       count: ids.length,
       sizes: Object.fromEntries(Object.entries(byType).map(([t, l]) => [t, l.length])),
-      types: Object.keys(S.TYPE_COLORS).filter(x => !pending.includes(x)),
+      // a type whose creatures are all `designed` (the Custom guardians, wave 19) is checked by the wizard spec, not by the 7-per-type rule
+      types: Object.keys(S.TYPE_COLORS).filter(x => !pending.includes(x) && !allIds.some(id => S.SPECIES[id].type === x && S.SPECIES[id].designed)),
       notFound: ids.filter(id => !spawns.has(id) && !ids.some(o => S.SPECIES[o].evolve?.into === id && spawns.has(o))),
       badConds: [...Object.values(S.SPAWNS).flat(), ...realmSpawns].filter(e => e[2] && !condOf(e[2])).map(e => `${e[0]}:${e[2]}`),
       badSpawns: [...spawns].filter(id => !S.SPECIES[id]),

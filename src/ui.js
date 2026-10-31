@@ -18,8 +18,8 @@ let portraitRenderer = null;
 const portraitCache = new Map();
 
 // Renders a creature model to a small image (cached per species).
-export function portrait(species, w = 140, h = 120, silhouette = false) {
-  const key = `${species}:${w}x${h}${silhouette ? ':s' : ''}`;
+export function portrait(species, w = 140, h = 120, silhouette = false, paint = null) {
+  const key = `${species}:${w}x${h}${silhouette ? ':s' : ''}${paint ? `:p${paint.join('.')}` : ''}`; // a designed guardian's paint is part of its picture
   if (portraitCache.has(key)) return portraitCache.get(key);
   if (!portraitRenderer) {
     portraitRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -30,7 +30,7 @@ export function portrait(species, w = 140, h = 120, silhouette = false) {
   const sun = new THREE.DirectionalLight(0xffffff, 1.4);
   sun.position.set(2, 4, 3);
   scene.add(sun);
-  const model = buildModel(species);
+  const model = buildModel(species, paint || undefined);
   if (silhouette) model.traverse(o => { if (o.isMesh) { o.material.dispose(); o.material = new THREE.MeshBasicMaterial({ color: 0x0d0f16 }); } });
   scene.add(model);
   const box = new THREE.Box3().setFromObject(model);
@@ -341,12 +341,13 @@ export class UI {
     } else {
       // i is the real index in game.box (the box view may be sorted or filtered).
       if (g.party.length < 6) btns.push(el('button', { onclick: () => { g.party.push(...g.box.splice(i, 1)); this.refreshPanel(); } }, 'To team'));
-      btns.push(el('button', { class: 'letgo', onclick: () => this.askLetGo(c) }, 'Let go'));
+      btns.push(sp.designed ? el('button', { class: 'letgo dim', title: 'Your guardian is one of a kind' }, 'Stays with you') // a designed guardian never goes (the Wizard's Tower)
+        : el('button', { class: 'letgo', onclick: () => this.askLetGo(c) }, 'Let go'));
     }
     return el('div', { class: `mon${inParty && i === 0 ? ' lead' : ''}` },
       el('div', { class: 'top' },
         el('button', { class: 'wlink pic', 'data-species': c.species, title: `${sp.name} in the Creature Book`, onclick: () => this.openBook({ species: c.species }) },
-          el('img', { src: portrait(c.species, 70, 60), width: 70, height: 60, alt: sp.name })),
+          el('img', { src: portrait(c.species, 70, 60, false, c.paint), width: 70, height: 60, alt: sp.name })),
         el('div', { style: 'flex:1;margin-left:8px' },
           el('button', { class: 'wlink nm', 'data-species': c.species, onclick: () => this.openBook({ species: c.species }) }, sp.name),
           el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`),
@@ -419,7 +420,7 @@ export class UI {
   askLetGo(c) {
     const name = SPECIES[c.species].name;
     document.getElementById('box-confirm-text').replaceChildren(
-      el('img', { src: portrait(c.species, 100, 86), width: 100, height: 86, alt: '' }),
+      el('img', { src: portrait(c.species, 100, 86, false, c.paint), width: 100, height: 86, alt: '' }),
       `Say goodbye to ${name} (Lv ${c.level})? It goes back to the wild.`);
     this.confirmYes = () => {
       const g = this.game;

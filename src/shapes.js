@@ -7481,3 +7481,244 @@ function periscope(root, m, parts) {
 const SHAPES_MIRROR = { handmirror, twincat, funmirror, periscope };
 Object.assign(SHAPES, SHAPES_MIRROR);
 /* ==== end of Mirror shapes ==== */
+
+/* ==== Custom shapes ==== */
+// Custom look (the Wizard's Tower, plans/wave19-wizard-tower.md 8.1): six one-of-a-kind guardians a child designs after beating the Wizard.
+// Each body shape is its own (no other type uses it) and is built only from m.body / m.accent / m.belly / m.dark, so a painted palette
+// recolours the whole creature (species.js `buildModel(species, paint)`). Every model wears a small gold swirl badge on its chest
+// (userData.gear = 'swirlbadge': ONE merged mesh, vertex colours). Every model faces +z; nothing here uses Math.random.
+const CU_WOOD = 0xb88a58, CU_GOLD = 0xe8c050, CU_METAL = 0xc8ced6;
+function swirlBadge(parent, x, y, z, size = 1) {
+  const pos = [], col = [], idx = [], c = new THREE.Color();
+  for (let k = 0; k < 9; k++) { // a little flat spiral of cubes
+    const a = k * 0.95 + 0.4, r = (0.012 + k * 0.0095) * size, s = (0.036 - k * 0.0012) * size;
+    const g = new THREE.BoxGeometry(s, s, 0.025 * size);
+    g.translate(Math.cos(a) * r, Math.sin(a) * r, 0);
+    const p = g.attributes.position, base = pos.length / 3;
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); c.setHex(k % 2 ? 0xffe890 : CU_GOLD); col.push(c.r, c.g, c.b); }
+    for (const i of g.index.array) idx.push(base + i);
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x4a3808 }));
+  mesh.position.set(x, y, z);
+  mesh.userData.gear = 'swirlbadge';
+  parent.add(mesh);
+  return mesh;
+}
+const cuLegs = (root, m, spots, y, h, w = 0.09) => spots.map(([x, z, phase]) => {
+  const leg = pivot(root, x, y, z);
+  box(leg, w, h, w, m.body, 0, -h / 2, 0);
+  box(leg, w + 0.01, 0.05, w + 0.04, m.dark, 0, -h + 0.02, 0.02);
+  return { g: leg, phase };
+});
+
+// Brushtail: a fox whose big fluffy tail is a paintbrush: a wooden handle sticking up and back, a metal band, bristles dipped in the accent.
+function brushfox(root, m, parts) {
+  box(root, 0.3, 0.26, 0.52, m.body, 0, 0.4, 0);                               // the body
+  box(root, 0.24, 0.05, 0.44, m.belly, 0, 0.275, 0.02);
+  parts.legs = cuLegs(root, m, [[-0.1, 0.17, 0], [0.1, 0.17, Math.PI], [-0.1, -0.17, Math.PI], [0.1, -0.17, 0]], 0.3, 0.3, 0.08);
+  box(root, 0.18, 0.12, 0.04, m.belly, 0, 0.42, 0.265);                         // the pale chest
+  const head = pivot(root, 0, 0.55, 0.3);
+  parts.head = head;
+  box(head, 0.3, 0.24, 0.24, m.body, 0, 0.04, 0.02);
+  box(head, 0.16, 0.12, 0.14, m.belly, 0, -0.02, 0.16);                          // the snout
+  box(head, 0.06, 0.05, 0.03, m.dark, 0, 0.02, 0.24);                            // the nose
+  eyes(head, 0.1, 0.15, 0.08, 0.075);
+  for (const s of [-1, 1]) {
+    const e = box(head, 0.09, 0.16, 0.06, m.body, s * 0.1, 0.23, -0.01); e.rotation.z = -s * 0.15; // pointy ears
+    box(head, 0.045, 0.1, 0.03, m.dark, s * 0.1, 0.22, 0.02);
+    box(head, 0.06, 0.04, 0.03, m.accent, s * 0.14, -0.01, 0.12);                // a dab of paint on each cheek
+  }
+  const tail = pivot(root, 0, 0.45, -0.28);                                       // the paintbrush tail
+  parts.tail = tail;
+  const arm = pivot(tail, 0, 0, 0); arm.rotation.x = 0.9;
+  box(arm, 0.05, 0.05, 0.4, CU_WOOD, 0, 0, -0.2);                               // the handle
+  box(arm, 0.075, 0.075, 0.1, CU_METAL, 0, 0, -0.44);                           // the metal band
+  box(arm, 0.17, 0.17, 0.3, m.body, 0, 0, -0.64);                               // the bristles
+  box(arm, 0.19, 0.19, 0.12, m.accent, 0, 0, -0.84);                            // the dipped tip
+  box(arm, 0.1, 0.1, 0.06, m.accent, 0, 0, -0.93);
+  swirlBadge(root, 0, 0.42, 0.285, 1);
+}
+
+// Palettoad: a round toad with a painter's palette on its back: a wooden board with a thumb hole and blobs of paint.
+function palettefrog(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.5, 0.34, 0.46, m.body, 0, 0.3, 0);                                // the round body
+  box(body, 0.42, 0.1, 0.38, m.body, 0, 0.5, 0);
+  box(body, 0.38, 0.2, 0.04, m.belly, 0, 0.26, 0.24);                           // the pale tummy
+  for (const [x, y, z, c] of [[-0.2, 0.38, 0.1, m.accent], [0.21, 0.32, -0.05, m.dark], [0.17, 0.44, 0.14, m.accent]]) box(body, 0.07, 0.07, 0.07, c, x, y, z); // paint-drop spots
+  const pal = pivot(body, 0, 0.58, -0.04);                                      // the palette on its back
+  pal.rotation.x = -0.25;
+  box(pal, 0.4, 0.04, 0.3, CU_WOOD, 0, 0.02, 0);
+  box(pal, 0.18, 0.04, 0.16, CU_WOOD, 0.12, 0.02, 0.2);
+  box(pal, 0.07, 0.05, 0.07, 0x4a3a2a, -0.12, 0.03, 0.04);                       // the thumb hole
+  [[-0.14, -0.1, 0xe13c3c], [0, -0.1, 0xf0c828], [0.14, -0.1, 0x3c6edc], [0.14, 0.08, m.accent], [-0.1, 0.1, 0x50aa46]].forEach(([x, z, c]) => box(pal, 0.07, 0.05, 0.07, c, x, 0.05, z));
+  const head = pivot(body, 0, 0.42, 0.22);
+  parts.head = head;
+  box(head, 0.4, 0.2, 0.22, m.body, 0, 0.02, 0.06);
+  box(head, 0.3, 0.05, 0.04, m.belly, 0, -0.06, 0.18);                          // the wide smile
+  for (const s of [-1, 1]) {
+    box(head, 0.12, 0.12, 0.12, m.body, s * 0.13, 0.15, 0.04);                  // eyes on top
+    box(head, 0.09, 0.1, 0.04, 0xffffff, s * 0.13, 0.16, 0.11).userData.eye = true;
+    box(head, 0.045, 0.06, 0.03, 0x111111, s * 0.13, 0.15, 0.135).userData.eye = true;
+  }
+  parts.legs = [];
+  for (const s of [-1, 1]) {
+    const f = pivot(body, s * 0.2, 0.2, 0.2);
+    box(f, 0.08, 0.2, 0.08, m.body, 0, -0.1, 0.02);
+    box(f, 0.12, 0.04, 0.14, m.dark, 0, -0.19, 0.05);
+    parts.legs.push({ g: f, phase: s > 0 ? Math.PI : 0 });
+    const b = pivot(body, s * 0.28, 0.22, -0.14);
+    box(b, 0.12, 0.2, 0.2, m.body, 0, -0.08, 0);
+    box(b, 0.14, 0.04, 0.22, m.dark, 0, -0.19, 0.03);
+    parts.legs.push({ g: b, phase: s > 0 ? 0 : Math.PI });
+  }
+  swirlBadge(root, 0, 0.3, 0.262, 0.95);
+}
+
+// Inkwing: a bird whose feathers are quills dipped in ink: quill feathers on its wings and tail, a tuft of quills on its head.
+function quillbird(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.34, 0.32, 0.46, m.body, 0, 0.5, 0);                               // the body
+  box(body, 0.26, 0.22, 0.04, m.belly, 0, 0.46, 0.24);                          // the pale chest
+  const head = pivot(body, 0, 0.78, 0.18);
+  parts.head = head;
+  box(head, 0.24, 0.22, 0.24, m.body, 0, 0, 0);
+  box(head, 0.1, 0.07, 0.14, CU_GOLD, 0, -0.03, 0.17);                           // the nib-shaped beak
+  box(head, 0.04, 0.04, 0.05, m.dark, 0, -0.06, 0.25);
+  eyes(head, 0.04, 0.125, 0.07, 0.07);
+  for (let i = 0; i < 3; i++) {                                                 // a crest of three quills
+    const up = i === 1 ? 0.04 : 0;
+    box(head, 0.025, 0.2, 0.03, m.accent, (i - 1) * 0.05, 0.2 + up, -0.04).rotation.x = -0.3;
+    box(head, 0.03, 0.05, 0.035, m.dark, (i - 1) * 0.05, 0.31 + up, -0.09).rotation.x = -0.3;
+  }
+  parts.wings = [];
+  for (const s of [-1, 1]) {
+    const w = pivot(body, s * 0.18, 0.62, -0.02);
+    box(w, 0.4, 0.04, 0.3, m.body, s * 0.2, 0, 0);
+    for (let i = 0; i < 4; i++) {                                               // long quills along the edge, each dipped in ink
+      box(w, 0.2 + i * 0.02, 0.025, 0.06, m.accent, s * (0.5 + i * 0.01), 0, 0.12 - i * 0.08);
+      box(w, 0.07, 0.03, 0.07, m.dark, s * (0.65 + i * 0.02), 0, 0.12 - i * 0.08);
+    }
+    parts.wings.push({ g: w, s, lift: 0.1 });
+  }
+  const tail = pivot(root, 0, 0.5, -0.24);
+  parts.tail = tail;
+  for (let i = -1; i <= 1; i++) {
+    box(tail, 0.035, 0.035, 0.38, m.accent, i * 0.07, 0.02 - Math.abs(i) * 0.02, -0.2).rotation.y = -i * 0.15;
+    box(tail, 0.05, 0.05, 0.08, m.dark, i * 0.07 - i * 0.05, 0.02 - Math.abs(i) * 0.02, -0.42);
+  }
+  parts.legs = [];
+  for (const s of [-1, 1]) {
+    const leg = pivot(root, s * 0.08, 0.34, 0.02);
+    box(leg, 0.04, 0.3, 0.04, CU_GOLD, 0, -0.15, 0);
+    box(leg, 0.1, 0.03, 0.12, CU_GOLD, 0, -0.3, 0.03);
+    parts.legs.push({ g: leg, phase: s > 0 ? Math.PI : 0 });
+  }
+  swirlBadge(root, 0, 0.5, 0.262, 0.9);
+}
+
+// Crayonix: a little dragon whose back spikes are crayon tips: each spike is a paper-wrapped stub with a cone of colour on top.
+function crayondrake(root, m, parts) {
+  box(root, 0.3, 0.28, 0.56, m.body, 0, 0.42, 0);                               // the body
+  box(root, 0.22, 0.05, 0.5, m.belly, 0, 0.29, 0.02);
+  box(root, 0.18, 0.2, 0.04, m.belly, 0, 0.42, 0.285);
+  parts.legs = cuLegs(root, m, [[-0.11, 0.2, 0], [0.11, 0.2, Math.PI], [-0.11, -0.2, Math.PI], [0.11, -0.2, 0]], 0.32, 0.32, 0.09);
+  box(root, 0.16, 0.26, 0.16, m.body, 0, 0.62, 0.28).rotation.x = 0.25;           // a short neck up
+  const head = pivot(root, 0, 0.8, 0.36);
+  parts.head = head;
+  box(head, 0.26, 0.22, 0.26, m.body, 0, 0, 0);
+  box(head, 0.16, 0.1, 0.14, m.belly, 0, -0.05, 0.18);                          // the snout
+  box(head, 0.03, 0.03, 0.02, m.dark, 0.04, -0.01, 0.255);
+  box(head, 0.03, 0.03, 0.02, m.dark, -0.04, -0.01, 0.255);
+  eyes(head, 0.06, 0.135, 0.075, 0.075);
+  for (const s of [-1, 1]) box(head, 0.05, 0.14, 0.05, m.accent, s * 0.1, 0.17, -0.06).rotation.x = -0.5; // little horns
+  const bands = [m.accent, 0xffffff, m.dark];
+  for (let i = 0; i < 4; i++) {                                                 // the crayon spikes down the back
+    const z = 0.2 - i * 0.14, y = 0.56 + (i === 1 ? 0.03 : 0);
+    box(root, 0.06, 0.1, 0.06, 0xf2ecd8, 0, y + 0.04, z);                       // the paper wrapper
+    box(root, 0.06, 0.04, 0.062, bands[i % 3], 0, y + 0.1, z);                   // its coloured band
+    box(root, 0.045, 0.1, 0.045, m.accent, 0, y + 0.17, z).rotation.y = 0.78;
+    box(root, 0.025, 0.06, 0.025, m.accent, 0, y + 0.24, z).rotation.y = 0.78;   // the pointed tip
+  }
+  const tail = pivot(root, 0, 0.42, -0.28);
+  parts.tail = tail;
+  box(tail, 0.14, 0.12, 0.3, m.body, 0, 0, -0.14);
+  box(tail, 0.09, 0.09, 0.26, m.body, 0, -0.01, -0.4);
+  box(tail, 0.12, 0.12, 0.06, m.accent, 0, 0, -0.56);                           // a crayon-tip tail end
+  addWings(parts, root, m, 0.14, 0.58, -0.04, 0.26, 0.22, m.dark, m.accent, { lift: 0.5 });
+  swirlBadge(root, 0, 0.42, 0.31, 0.9);
+}
+
+// Framesaur: a gentle dino with a picture frame on its back like a sail: a gold frame with a tiny painting of a hill and a sun in it.
+function framesaur(root, m, parts) {
+  box(root, 0.4, 0.34, 0.66, m.body, 0, 0.44, 0);                               // the big gentle body
+  box(root, 0.3, 0.06, 0.56, m.belly, 0, 0.29, 0.02);
+  box(root, 0.24, 0.2, 0.04, m.belly, 0, 0.42, 0.335);
+  parts.legs = cuLegs(root, m, [[-0.15, 0.22, 0], [0.15, 0.22, Math.PI], [-0.15, -0.22, Math.PI], [0.15, -0.22, 0]], 0.3, 0.3, 0.12);
+  box(root, 0.2, 0.3, 0.2, m.body, 0, 0.62, 0.36).rotation.x = 0.3;              // the neck
+  const head = pivot(root, 0, 0.8, 0.44);
+  parts.head = head;
+  box(head, 0.26, 0.2, 0.28, m.body, 0, 0, 0);
+  box(head, 0.18, 0.12, 0.08, m.belly, 0, -0.04, 0.17);
+  eyes(head, 0.04, 0.145, 0.08, 0.07);
+  box(head, 0.1, 0.03, 0.03, m.dark, 0, -0.08, 0.2);                            // a gentle smile
+  const f = pivot(root, 0, 0.72, -0.02);                                         // the frame, standing along the back
+  box(f, 0.05, 0.06, 0.6, CU_GOLD, 0, 0.0, 0);
+  box(f, 0.05, 0.06, 0.6, CU_GOLD, 0, 0.5, 0);
+  for (const s of [-1, 1]) box(f, 0.05, 0.56, 0.06, CU_GOLD, 0, 0.25, s * 0.27);
+  box(f, 0.03, 0.44, 0.48, m.belly, 0, 0.25, 0);                                 // the canvas
+  box(f, 0.035, 0.16, 0.48, m.accent, 0, 0.11, 0);                               // a hill
+  box(f, 0.04, 0.1, 0.1, 0xf8e070, 0, 0.4, -0.1);                                // a sun
+  box(f, 0.04, 0.12, 0.05, m.dark, 0, 0.23, 0.14);                               // a tree
+  const tail = pivot(root, 0, 0.42, -0.33);
+  parts.tail = tail;
+  box(tail, 0.2, 0.18, 0.3, m.body, 0, 0, -0.14);
+  box(tail, 0.12, 0.12, 0.3, m.body, 0, -0.02, -0.4);
+  box(tail, 0.1, 0.1, 0.06, m.accent, 0, -0.02, -0.57);
+  swirlBadge(root, 0, 0.44, 0.355, 1);
+}
+
+// Blotbun: a bunny made of one big paint blot with drippy ears: a wobbly pile of boxes, long ears that end in drops, drips on the ground.
+function blotbun(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  box(body, 0.5, 0.2, 0.46, m.body, 0, 0.12, 0);                                // the blot, wide at the bottom
+  box(body, 0.44, 0.22, 0.42, m.body, 0, 0.32, 0);
+  box(body, 0.34, 0.16, 0.34, m.body, 0, 0.5, 0.02);
+  box(body, 0.6, 0.06, 0.5, m.body, 0, 0.03, 0);                                // splashed out round the bottom
+  box(body, 0.3, 0.2, 0.04, m.belly, 0, 0.24, 0.225);                           // the pale tummy
+  for (const [x, z, y, s] of [[0.33, 0.08, 0.04, 0.09], [-0.34, -0.1, 0.04, 0.07], [0.12, 0.3, 0.03, 0.08]]) box(body, s, 0.03, s, m.body, x, y, z); // puddle drips
+  for (const [x, y, z, s] of [[-0.24, 0.35, 0.1, 0.06], [0.23, 0.2, -0.1, 0.05]]) box(body, s, s * 1.8, s, m.body, x, y, z).rotation.z = 0.1; // dripping down its side
+  const head = pivot(body, 0, 0.58, 0.1);
+  parts.head = head;
+  box(head, 0.3, 0.2, 0.26, m.body, 0, 0.02, 0.02);
+  box(head, 0.06, 0.05, 0.03, m.accent, 0, 0.0, 0.155);                          // the nose
+  eyes(head, 0.06, 0.145, 0.08, 0.08);
+  box(head, 0.1, 0.03, 0.02, m.dark, 0, -0.05, 0.145);
+  for (const s of [-1, 1]) {
+    const e = pivot(head, s * 0.09, 0.1, -0.02);                                 // ears: long, drippy, ending in a drop
+    const ear = pivot(e, 0, 0, 0);
+    ear.rotation.z = -s * 0.22;
+    box(ear, 0.09, 0.3, 0.05, m.body, 0, 0.17, 0);
+    box(ear, 0.05, 0.22, 0.03, m.accent, 0, 0.17, 0.03);
+    box(ear, 0.06, 0.12, 0.05, m.body, s * 0.01, 0.38, 0);
+    box(ear, 0.07, 0.07, 0.06, m.accent, s * 0.01, 0.45, 0);                     // the drop on the tip
+    swing(parts, e, 'z', 0.12, 2.2, s);
+  }
+  const tail = pivot(root, 0, 0.2, -0.28);
+  parts.tail = tail;
+  box(tail, 0.14, 0.14, 0.12, m.belly, 0, 0.02, -0.06);                          // a blob of a tail
+  for (const s of [-1, 1]) box(root, 0.14, 0.05, 0.2, m.body, s * 0.15, 0.025, 0.25); // big blotty feet
+  swirlBadge(root, 0, 0.3, 0.234, 0.9);
+}
+const SHAPES_CUSTOM = { brushfox, palettefrog, quillbird, crayondrake, blotbun, framesaur };
+Object.assign(SHAPES, SHAPES_CUSTOM);
+/* ==== end of Custom shapes ==== */

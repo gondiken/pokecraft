@@ -70,7 +70,7 @@ export function createSwapUi(game) {
     if (!s) return [];
     const on = s.mine.some(i => i.c?.uid === c.uid);
     if (on) return [el('button', { class: 'offer on', 'data-offer': c.uid, onclick: () => game.swaps.put(null) }, '✓ Offered (take back)')];
-    const last = inParty && canGive(game, [creatureItem(c)]) === 'last';
+    const last = SPECIES[c.species]?.designed || (inParty && canGive(game, [creatureItem(c)]) === 'last'); // a designed guardian never moves
     return [el('button', { class: `offer${last ? ' dim' : ''}`, 'data-offer': c.uid, onclick: () => game.swaps.put(c) }, last ? 'Stays with you' : '🔁 Offer')];
   }
 

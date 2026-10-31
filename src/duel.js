@@ -8,11 +8,11 @@ import { cleanCoop, bossName, COOP_RANGE } from './coopboss.js'; // T29
 
 const ANSWER_TIME = 30; // seconds to answer a challenge
 const WAIT_TIME = 90; // seconds without an answer in a battle before we treat the other player as gone
-export const VERSION = 12; // 12: creatures grow to Lv 100 (duel copies were clamped at 60). 11: T38c giants grow (coop.grow). 8: wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump). 9: T29 co-op boss battles (the coop field). 10: T34 crews (weakensWithHp: attack shrinks with HP, multi-hit x1.2 against them)
+export const VERSION = 13; // 13: the Custom type + a creature's `paint` (the Wizard's guardians; a team may hold species and a chart row an older game lacks).  12: creatures grow to Lv 100 (duel copies were clamped at 60). 11: T38c giants grow (coop.grow). 8: wave 9 (T24 multi-hit 1-5 + sleep turns; T25 adds to this without another bump). 9: T29 co-op boss battles (the coop field). 10: T34 crews (weakensWithHp: attack shrinks with HP, multi-hit x1.2 against them)
 
 const newId = () => Math.random().toString(36).slice(2, 10);
-const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])] }));
-const teamIn = team => (Array.isArray(team) ? team : []).map(c => ({ ...c, traits: cleanTraits(c?.traits, c?.species) }));
+const teamOf = party => party.map(c => ({ species: c.species, level: c.level, moves: [...c.moves], traits: [...(c.traits || [])], ...(c.paint ? { paint: [...c.paint] } : {}) })); // paint: the Custom guardians' three colours
+const teamIn = team => (Array.isArray(team) ? team : []).map(c => ({ ...c, traits: cleanTraits(c?.traits, c?.species), paint: Array.isArray(c?.paint) ? c.paint.slice(0, 3) : undefined })); // battle.js `copy` cleans the paint against the species
 
 export class Duels {
   // hooks: { start(duel), toast(text) }

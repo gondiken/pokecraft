@@ -5,6 +5,7 @@ import { World, WORLD_W, WORLD_D, MID_X, MID_Z, raycastVoxel, convertEdits } fro
 import { Player } from './player.js';
 import { CreatureManager } from './creatures.js';
 import { TRAITS, fixTraits } from './traits.js';
+import { fixPaint } from './custom.js'; // the Custom guardians' paint
 import { SPECIES, STARTERS, TYPE_COLORS, makeCreature, statsFor, animateModel } from './species.js';
 import { Battle } from './battle.js';
 import { Book } from './book.js';
@@ -335,6 +336,7 @@ function continueGame(saved) {
   game.party = saved.party || [];
   game.box = saved.box || [];
   const drawn = fixTraits(game.party, 'party') + fixTraits(game.box, 'box'); // T26: old saves get a uid + traits
+  fixPaint(game.party, SPECIES); fixPaint(game.box, SPECIES); // junk paint -> the design's colours; paint on any other creature is dropped
   game.book.load(saved);
   game.cubes = saved.cubes ?? 10;
   game.time = saved.time ?? 0.05;

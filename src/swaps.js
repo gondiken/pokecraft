@@ -5,6 +5,7 @@
 // Nothing here knows a world or a realm: only the team, the Box, the save and the play-together channel.
 import { SWAP, PARCELS, isId, cleanItems, creatureItem, canGive, loadSwaps, newLedger, commitOut, receive, settle } from './swapcore.js';
 import { sound } from './sound.js';
+import { SPECIES } from './species.js';
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const nameOf = items => items.map(i => PARCELS[i.kind].name(i)).join(', ');
@@ -127,7 +128,7 @@ export function createSwaps(game, { save }) {
     const s = session;
     if (!s || s.state !== 'pick') return;
     const item = c && creatureItem(c);
-    if (c && !item) return;
+    if (c && !item) { if (SPECIES[c.species]?.designed) { s.note = 'Your guardian stays with you!'; refresh(); } return; } // a designed creature is one of a kind (cleanCreature refuses it)
     const mine = item ? [item] : [];
     if (mine.length && canGive(game, mine) === 'last') { s.note = 'Keep one friend in your team!'; refresh(); return; }
     s.note = '';
