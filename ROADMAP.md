@@ -1217,7 +1217,7 @@ New types keep the shared cost from wave 11: 7 creatures, 3+ new shapes, chart, 
   tower (one thing, not a journal page plus a bridge piece). The HUD shows stars, not more badge squares. The owner fixed the numbers
   (2026-10-25, changed 2026-10-26): **12 stars, every one from a Picture World**, 11 frames (framed Picture Worlds; five are placeholder
   `secret1`..`secret5` still to be named; `secret1` will be Doodle, wave 15), 12 bridge stones (the eleven plus Portal, whose house is in
-  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 18). Their levels
+  the Swirl, no frame). **The Wizard gives no star** (owner 2026-10-26): beating him is chapter 2's championship (see wave 19). Their levels
   sit above the Champion; `REMATCH_CAP` and Coach Dex are checked against the new top.
 
 ## Wave 13.5 · Where to go, one-button answers, a calmer tablet screen (owner, 2026-10-25; plan `plans/T39.md`) ✅ done (T39a-c)
@@ -1358,7 +1358,18 @@ Moved here from "Sharing" below (owner 2026-10-29: "let's make trading and gifti
   screen's Play together box; the `swap` message, escrow in the save (`swaps`), never lost or doubled. **Still open:** blocks and
   Capture Cubes as gifts (one `addParcel` kind each + a tab in the Swap panel), and the present box as a thing in the world.
 
-## Wave 18 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29)
+## Wave 18 · Picture World 4: Mirror, the 13th star (owner, 2026-10-31)
+
+Owner 2026-10-31: "Let's make Mirror the 13th star / 12th world (I'm counting portal as a house and not a world)", and "I want to
+have the option to close / remove this world if my son doesn't like it." The son did not like a Mirror *type* before, so this one
+must be lively: skill and moving, not quiet reflection puzzles. Plan: `plans/wave18-mirror.md` (the world, its three skill games,
+the 13th frame and bridge stone, and **one switch that closes or removes the world**: removed = the game is exactly as before, the
+bridge needs only the other stars, old saves with Mirror creatures still load). Ships behind `?preview` until the owner plays it.
+
+## Wave 19 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29, wave 18 until 2026-10-31)
+
+Plan: `plans/wave19-wizard-tower.md` (planned 2026-10-31 in parallel with wave 18; the tower opens when the bridge is complete by
+data, never a hard-coded star count, so it works with or without Mirror).
 
 "Doodle" is no longer this wave's name (owner, 2026-10-25: Doodle is a Picture World in wave 15). **The Wizard is chapter 2's
 championship** (owner, 2026-10-26): he gives no star (all 12 come from Picture Worlds and are found before you can cross the bridge);

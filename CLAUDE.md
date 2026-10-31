@@ -238,7 +238,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   168-181 Pirate Seas (182-183 were reserved for it; 182 is now T49's `HEDGE`, 183 free), 184-193 Race Track; 194-203 Ball Stadium; 204 atlantis wool, 205-214 Atlantis; 215 portal wool, 216-223 Portal
   House; 224 funfair wool, 225-234 Funfair; 235 surprise wool, 236-243 Surprise Party (235-243 in all); 244 doodle wool, 245-248 Sketchbook;
   249 `STAR_GRASS` (Cube Planets); 250 `HOUSE_PROP`; 251-253 Race Track v2 (`HOT_TRACK`, `HOT_RAIL`, `KICKER`); 254 knight wool; 255 bubble wool (147 `FOAM`, 148
-  `FIZZ_WALL`); 149 gravity wool. Ids are used up: free are only 137 (wave 18's Custom wool) and 138-139 (spare);
+  `FIZZ_WALL`); 149 gravity wool. Ids are used up: free are only 137 (wave 19's Custom wool) and 138-139 (wave 18's Mirror);
   Cube Planets took 149, 183 `PLANET_ROCK` and 249 `STAR_GRASS`.
 - **Block flags:** `glow`, `noLight` (glows but lights nothing), `wallText` (toast when breaking), `fixed` (`editAllowed` refuses;
   saved edits on it are dropped), `bounce` (T35: apex in blocks; **jump to launch**, not on landing), `trampoline` (T43),
@@ -848,7 +848,7 @@ Other test tools: `tests/perf.mjs` (load, memory, draw calls, fps; `--swirl`, `-
   Portal Door and the Swirl, realms together, missions that never end, the pastel Swirl), 13.5 (T39a-c), 14 (T40-T40d: Picture
   World base, Giant House, Pirate Seas, Race Track, Ball Stadium), 14.5 (the atlas grid), 15 (T41-T45 + T48: Atlantis, Portal House,
   Funfair, Surprise Party, Sketchbook; plans `wave15.md`, `T41`-`T45`) and T49 (the Castle). Next: wave 16 (Bubble Well and Cube
-  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), wave 17 is built for creatures (gifts and trades, spec `swap`; blocks and Capture Cubes as gifts are one `addParcel` away), then wave 18 (the Wizard's Tower and the Custom type); chapter 3 = the
+  Planets, `plans/bubble-well.md`, `plans/cube-planets.md`; both built, behind `?preview` until the owner plays them), wave 17 is built for creatures (gifts and trades, spec `swap`; blocks and Capture Cubes as gifts are one `addParcel` away), then wave 18 (Mirror, the 13th star, `plans/wave18-mirror.md`, removable by one switch) and wave 19 (the Wizard's Tower and the Custom type, `plans/wave19-wizard-tower.md`); chapter 3 = the
   Scribble as the Wizard's ally (battling beside him, crafting, eggs and raising, gifts and trading); the backlog (maybe a Swirl
   place, S1–S2: shared maze lasers and shared wild creatures when playing together, host is the authority). The Portal Lab idea is
   `plans/T47-portal-lab.md` (not built).
