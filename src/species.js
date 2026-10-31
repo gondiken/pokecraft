@@ -186,12 +186,11 @@ EFFECTIVENESS.light.mirror = 0.5;
 /* ==== end of Mirror chart ==== */
 /* ==== Custom chart ==== */
 // A guardian seals a swirl shut, a finished painting beats a sketch, and colour beats plain; paint slides off metal and goes right through
-// a ghost. Water washes wet paint off, toxic goo stains it and time fades it; a sketch cannot spoil a finished painting and a rainbow is
+// a ghost. Water washes wet paint off and toxic goo stains it (time does not: it already hits four types hard); a sketch cannot spoil a finished painting and a rainbow is
 // made of colours too. Others' cells are separate lines (no old cell changes; every defender stays weak to at most 5 types).
 EFFECTIVENESS.custom = { portal: 2, doodle: 2, normal: 2, metal: 0.5, ghost: 0.5, custom: 0.5 };
 EFFECTIVENESS.water.custom = 2;
 EFFECTIVENESS.toxic.custom = 2;
-EFFECTIVENESS.time.custom = 2;
 EFFECTIVENESS.doodle.custom = 0.5;
 EFFECTIVENESS.rainbow.custom = 0.5;
 /* ==== end of Custom chart ==== */

@@ -144,7 +144,7 @@ export default async function ({ browser, base, t }) {
         const E = S.effectiveness, types = Object.keys(S.TYPE_COLORS);
         const out = {};
         out.row = ['portal', 'doodle', 'normal', 'metal', 'ghost', 'custom', 'fire'].map(d => E('custom', d)).join();
-        out.cells = ['water', 'toxic', 'time'].map(a => E(a, 'custom')).join() + '|' + ['doodle', 'rainbow'].map(a => E(a, 'custom')).join();
+        out.cells = ['water', 'toxic'].map(a => E(a, 'custom')).join() + '|' + ['doodle', 'rainbow'].map(a => E(a, 'custom')).join();
         let changed = 0, cells = 0;
         const odd = [];
         for (const a of fixture.types) for (const d of fixture.types) { cells++; if (E(a, d) !== (fixture.chart[a]?.[d] ?? 1)) { changed++; odd.push(`${a}>${d}`); } }
@@ -158,7 +158,7 @@ export default async function ({ browser, base, t }) {
         return out;
       });
       t.ok(c.row === '2,2,2,0.5,0.5,0.5,1', `the custom row (${c.row})`);
-      t.ok(c.cells === '2,2,2|0.5,0.5', `the five separate cells (${c.cells})`);
+      t.ok(c.cells === '2,2|0.5,0.5', `the four separate cells (time hits four types already) (${c.cells})`);
       t.ok(c.changed === 0, `no old chart cell changed (${c.cells2} cells of the ${c.old} old types, changed: ${c.odd.join()})`);
       t.ok(c.types === c.old + 2, `one new type, plus wave 18's Mirror (${c.types})`);
       t.ok(c.grew === 'doodle,ninja,normal,portal,surprise', `only portal, doodle and normal became weak to one more type (and ninja, surprise and doodle again through wave 18's Mirror) (${c.grew})`);
