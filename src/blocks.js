@@ -28,6 +28,7 @@ const WOOL_TYPES = [
   'bubble', // the Bubble Well: id 255
   'gravity', // Cube Planets: id 149
   'custom', // the Wizard's Tower (Custom type): id 137, Canvas Wool
+  'mirror', // wave 18, the Mirror Palace: id 138
 ];
 const WOOL_RGB = {
   normal: [200, 196, 170], fire: [222, 96, 40], water: [60, 110, 220], grass: [80, 170, 70], electric: [240, 200, 40],
@@ -49,6 +50,7 @@ const WOOL_RGB = {
   bubble: [176, 228, 250], // the Bubble Well: soap blue with rainbow bubble rings
   gravity: [92, 70, 168], // Cube Planets: deep violet with a gold orbit ring and a little moon
   custom: [242, 234, 216], // the Custom type: cream linen
+  mirror: [206, 204, 234], // wave 18, the Mirror Palace: lilac-silver with a white diagonal sheen
 };
 // More tiles after the wool ones.
 const MORE_TILES = [
@@ -112,6 +114,8 @@ const MORE_TILES = [
   'CP_ROCK', 'CP_STAR_GRASS',
   // the Bubble Well: foam (top / side) and the fizzy soda wall (side / top)
   'BU_FOAM', 'BU_FOAM_SIDE', 'BU_FIZZ', 'BU_FIZZ_TOP',
+  /* ==== Mirror ==== */
+  'MI_PANE', // wave 18: the Mirror Palace's mirror pane (block 139): silver glass with a white diagonal sheen
 ];
 MORE_TILES.forEach((name, i) => { T[name] = T.WOOL0 + WOOL_TYPES.length + i; });
 export const TILE_COUNT = T.WOOL0 + WOOL_TYPES.length + MORE_TILES.length;
@@ -206,6 +210,9 @@ export const B = {
   // Cube Planets (plans/cube-planets.md section 7): 183 Planet Rock, 249 Star Grass (none placeable, all fixed); 149 is the gravity wool
   // (the launch flowers' pads). Ids still free after it: 137-139.
   PLANET_ROCK: 183, STAR_GRASS: 249,
+  /* ==== Mirror ==== */
+  // Wave 18, the Mirror Palace: 139 MIRROR_PANE (solid, fixed; light bounces off it); 138 is the mirror wool. After this only 137 is free (wave 19's Custom wool).
+  MIRROR_PANE: 139,
 };
 // Block id of each type's wool block.
 // The first 19 are 20 + i; the T10 ones can't continue there (39-48 are other blocks), so they sit at 49-52.
@@ -217,6 +224,7 @@ Object.assign(WOOL_ID_OVERRIDE, { knight: 254 }); // T49
 Object.assign(WOOL_ID_OVERRIDE, { bubble: 255 }); // the Bubble Well
 Object.assign(WOOL_ID_OVERRIDE, { gravity: 149 }); // Cube Planets
 Object.assign(WOOL_ID_OVERRIDE, { custom: 137 }); // the Custom type (Canvas Wool)
+Object.assign(WOOL_ID_OVERRIDE, { mirror: 138 }); // wave 18, the Mirror Palace (137 stays free: wave 19's Custom wool)
 export const WOOL = Object.fromEntries(WOOL_TYPES.map((t, i) => [t, WOOL_ID_OVERRIDE[t] ?? 20 + i]));
 
 const all = t => ({ top: t, side: t, bottom: t });
@@ -446,6 +454,10 @@ BLOCKS[B.STAR_GRASS] = { name: 'Star Grass', ...all(T.CP_STAR_GRASS), fixed: tru
 BLOCKS[B.FOAM] = { name: 'Soap Foam', top: T.BU_FOAM, side: T.BU_FOAM_SIDE, bottom: T.BU_FOAM_SIDE, fixed: true, wallText: 'Soft soap foam. Too squishy to dig!' };
 BLOCKS[B.FIZZ_WALL] = { name: 'Fizzy Wall', top: T.BU_FIZZ_TOP, side: T.BU_FIZZ, bottom: T.BU_FIZZ_TOP, fixed: true, wallText: 'The fizzy wall of the well. Bubbles only, no digging!' };
 /* ==== end of Bubble ==== */
+/* ==== Mirror ==== */
+// Wave 18, the Mirror Palace: a mirror pane (silver glass with a white diagonal sheen). Solid, fixed, not placeable; the Moonlit Gallery's beam bounces off it.
+BLOCKS[B.MIRROR_PANE] = { name: 'Mirror', ...all(T.MI_PANE), fixed: true, wallText: 'A shiny mirror! It is too pretty to break.' };
+/* ==== end of Mirror ==== */
 // T43 Funfair: all fixed, none placeable. The trampoline launches you again on every landing (player.js reads `trampoline`).
 {
   const fx = { fixed: true };
@@ -643,6 +655,7 @@ export function drawAtlas() {
                                 : t === 'doodle' ? (y % 5 === 2 ? [176, 200, 232] : WOOL_RGB[t]) // T45: notebook paper with blue ruled lines
                                 : t === 'knight' ? ((x === 7 || x === 8 || y === 7 || y === 8) ? [232, 196, 90] : WOOL_RGB[t]) // T49: a gold cross on steel
                                 : t === 'bubble' ? ((d => (d > 4.2 && d < 5.4 ? STRIPES[(x + y) % STRIPES.length] : d < 1.3 ? [255, 255, 255] : WOOL_RGB[t]))(Math.hypot(((x + 4) % 16) - 7.5, ((y + 4) % 16) - 7.5))) // a rainbow bubble ring
+                                : t === 'mirror' ? (((x + y) % 16 < 2 || (x + y) % 16 === 15) ? [255, 255, 255] : (x + y) % 16 < 4 ? [228, 226, 248] : WOOL_RGB[t]) // wave 18: lilac-silver with a white diagonal sheen
                                 : t === 'gravity' ? ((d => (Math.abs(d - 5.6) < 0.6 ? [240, 200, 90] : Math.hypot(x - 12.5, y - 4.5) < 1.6 ? [235, 235, 250] : WOOL_RGB[t]))(Math.hypot((x - 7.5) * 1.6, (y - 7.5) * 0.7))) // Cube Planets: a gold orbit ring and a little moon
                                 : t === 'custom' ? (x % 4 === 0 || y % 4 === 0 ? [222, 212, 190] : WOOL_RGB[t]) // the Custom type: a cream linen weave
                                 : WOOL_RGB[t];
@@ -1268,6 +1281,15 @@ export function drawAtlas() {
     });
   }
   /* ==== end of Bubble ==== */
+  /* ==== Mirror ==== */
+  { // wave 18: the mirror pane (own random numbers): pale silver glass, a bright white diagonal sheen, a thin darker frame line
+    const rm = mulberry32(1818);
+    each((x, y) => {
+      const d = (x + y) % 16, frame = x === 0 || y === 0 || x === 15 || y === 15;
+      put(T.MI_PANE, x, y, frame ? [170, 170, 204] : d < 2 ? [255, 255, 255] : d < 5 ? [236, 238, 252] : shade([210, 214, 236], 1 + (rm() - 0.5) * 0.04));
+    });
+  }
+  /* ==== end of Mirror ==== */
   { // T45 Sketchbook tiles (own random numbers): the colour versions; the pencil versions are drawn by sketchatlas.js
     const r5 = mulberry32(4545), CREAM = [244, 240, 228];
     each((x, y) => {

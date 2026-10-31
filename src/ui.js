@@ -6,7 +6,7 @@ import { rideKind } from './riding.js';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, nameOf, xpForLevel, buildModel, disposeModel } from './species.js';
 import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
-import { PICTURE_WORLDS } from './pictureworlds.js'; // T38a
+import { STAR_WORLDS, starsWon } from './pictureworlds.js'; // T38a; wave 18: the row and the count are the worlds of the bridge (a removed world's star stays in the save, unseen)
 import { typeLink } from './book.js';
 import { Glint } from './glint.js';
 
@@ -126,12 +126,12 @@ export class UI {
       this.badgeRow.classList.toggle('hidden', GYMS.every(gym => g.badges.includes(gym.id)));
     }
     // T38a: the Picture World stars: only in the Swirl or once you have one (owner 2026-10-25: a calm HUD; no Champion label)
-    const starKey = g.world?.realm?.showStars || g.stars.length ? g.stars.join() : null;
+    const won = starsWon(g.stars), starKey = g.world?.realm?.showStars || won.length ? won.join() : null;
     if (this.starKey !== starKey) {
       this.starKey = starKey;
-      this.starsShown = starKey === null ? null : `${g.stars.length}/${PICTURE_WORLDS.length}`;
+      this.starsShown = starKey === null ? null : `${won.length}/${STAR_WORLDS.length}`;
       this.starsRow.classList.toggle('hidden', starKey === null);
-      this.starsRow.replaceChildren(...(starKey === null ? [] : PICTURE_WORLDS.map(w => el('span', { class: `star${g.stars.includes(w.id) ? ' got' : ''}`, title: w.name }, g.stars.includes(w.id) ? '★' : '☆'))));
+      this.starsRow.replaceChildren(...(starKey === null ? [] : STAR_WORLDS.map(w => el('span', { class: `star${g.stars.includes(w.id) ? ' got' : ''}`, title: w.name }, g.stars.includes(w.id) ? '★' : '☆'))));
     }
     this.partyMini.replaceChildren(...g.party.map((c, i) => {
       const st = statsFor(c);

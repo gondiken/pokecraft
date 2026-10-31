@@ -193,7 +193,7 @@ async function dataPart(page, t) {
   t.ok(A.ride === 'land' && A.wool === 204, 'Guardlion can be ridden on land; wool 204');
   t.ok(A.bl.every(([, id, ok]) => id >= 205 && id <= 214 && ok), `blocks 205-214 are defined (${A.bl.map(b => b[1])})`);
   t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Deep Blue · Atlantis'), `in no SPAWNS table, every one in the Pirate Seas' Atlantis table; Book rows ${A.rows}`);
-  t.ok(A.ready === true && A.name === 'Deep Blue · Atlantis' && !A.secret2 && A.stars === 12 && A.types >= 38, `the Atlantis frame (the old secret2) is ready, "${A.name}", still 12 stars, ${A.types} types`);
+  t.ok(A.ready === true && A.name === 'Deep Blue · Atlantis' && !A.secret2 && A.stars === 13 && A.types >= 38, `the Atlantis frame (the old secret2) is ready, "${A.name}", 13 stars (wave 18 added the Mirror Palace), ${A.types} types`);
   t.ok(A.own === 'pirate:2,time:2,camo:2,atlantis:0.5'.split(',').sort().join() && A.onIt.includes('mind:2') && A.onIt.includes('ninja:2') && A.onIt.includes('pirate:0.5') && A.onIt.includes('ball:0.5') && !/water|fire/.test(A.onIt), `chart: Atlantis hits pirate, camo and time; mind and ninja hit it; pirate and ball resist; water stays neutral (${A.own} / ${A.onIt})`);
   t.ok(A.old.fire === 2 && A.old.pirate === 2 && A.old.cyber === 2 && A.old.water === 2 && A.old.normal === 0 && A.old.cross === 2, 'the old chart cells are as they were');
   t.ok(A.realm.size.join() === '320,224' && A.realm.version === 2 && A.realm.convert[1].join() === '224,224' && A.realm.uw === true, `the Pirate Seas are 320 x 224, version 2, converting version 1 (${JSON.stringify(A.realm)})`);
