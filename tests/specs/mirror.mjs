@@ -1,7 +1,7 @@
 // Wave 18: the Mirror Palace (plans/wave18-mirror.md). STAGE 1 parts: swirl (the 13th frame S5, the 13 stones, the pinned island, the Swirl's
 // version 6), removed (the owner's switch: REMOVED = ['mirror'] gives today's Swirl block for block, tests/fixtures/swirl-v5.json; no realm;
 // the HUD says x / 12; the Book hides unseen creatures of the type; an old save with the Mirror's star, keys and wins loads in main and round-trips;
-// un-removed it all comes back), closed (a covered secret frame without ?preview, open with it), land (mirrorcheck.mjs in Node for three seeds and
+// un-removed it all comes back), closed (owner 2026-10-31: open for everyone; without ?preview its frame takes you in), land (mirrorcheck.mjs in Node for three seeds and
 // the real realm in a browser: keeps, parts, the Boss, the crew, the guide), old (a save from before wave 18 loads, its Swirl edits kept).
 // STAGE 3 parts: rules (the three games' pure rules in Node with the model players of tests/mirrorbots.mjs at 60 and 20 steps a second: naive fails, skilled wins, kind help,
 // the rematch, for fun), kids (the real Player + MirrorLive in Node, tests/mirrornode.mjs: a skilled player with real keys wins the three twin rooms, the stances, Jump spam),
@@ -193,7 +193,7 @@ export default async function ({ browser, base, t }) {
         fixtureOk: true,
       };
     }, FIXTURE);
-    t.ok(r.removed === 'mirror' && !r.open && r.later, 'the switch (__pcRemoved) removes the Mirror Palace: worldOpen is false even though it is open in tests');
+    t.ok(r.removed === 'mirror' && !r.open, 'the switch (__pcRemoved) removes the Mirror Palace: worldOpen is false even though it is open for everyone');
     t.ok(r.flags === 'true,false,false,false' && r.frames === 11 && r.bridge === 12 && r.starWorlds === 12 && r.all === 13, `its entry stays (ids are saved) but has removed: true, ready: false, door: false, bridge: false; 11 frames, 12 stones, 12 stars (${r.flags} / ${r.frames} / ${r.bridge} / ${r.starWorlds})`);
     t.ok(r.won === 'house' && r.kept === 'house,mirror', `starsWon counts only the stars of the bridge ("${r.won}"), loadStars still keeps the Mirror star ("${r.kept}")`);
     t.ok(!r.realm && r.of === null && r.version === 5 && r.same === '4,6' && r.keeps === '0,1,1,1', `no realm; the Swirl is version 5 with sameCells [4, 6] (a v4, v5 and v6 save keep their edits) (${r.version} / ${r.same} / ${r.keeps})`);
@@ -270,21 +270,18 @@ export default async function ({ browser, base, t }) {
       g.stars = []; g.ui.renderHud?.();
       return { ready: w.ready, secret: w.secret, name: w.name, emoji: w.emoji, open: C.worldOpen('mirror'), later: C.LATER.includes('mirror'), openNow: C.OPEN_NOW.includes('mirror'), boss: pb.bossOf('mirror').title, frames: PW.FRAME_WORLDS.length, stones: PW.BRIDGE_WORLDS.length, spot: L.frameSpotOf('mirror') };
     });
-    t.ok(!c.ready && c.secret && c.name === 'Secret World' && c.emoji === '❓' && !c.open && c.later && !c.openNow, `without ?preview the frame is a covered secret one ("${c.name}" ${c.emoji}), LATER has the world, OPEN_NOW does not`);
-    t.ok(c.frames === 12 && c.stones === 13 && c.spot === 11 && c.boss === 'Duke Dazzle · Mirror Palace Boss', `the covered frame and the 13th stone are there for everyone, so friends see the same Swirl (${c.frames} frames, ${c.stones} stones); the Boss title is spelled out`);
+    t.ok(c.ready && !c.secret && c.name === 'Mirror Palace' && c.open && !c.later && c.openNow, `owner 2026-10-31: the Mirror Palace is open for everyone, also without ?preview ("${c.name}"; OPEN_NOW has it, LATER does not)`);
+    t.ok(c.frames === 12 && c.stones === 13 && c.spot === 11 && c.boss === 'Duke Dazzle · Mirror Palace Boss', `the 13th frame and the 13th stone are there for everyone (${c.frames} frames, ${c.stones} stones); the Boss title is spelled out`);
     await intoSwirl(shut);
     const s = await shut.evaluate(async () => {
-      const g = window.pokecraft, sw = g.world.swirl, f = sw.frames.find(x => x.world === 'mirror'), { B } = await import('/src/blocks.js');
-      const first = f.cloth[Math.floor(f.cloth.length / 2)];
-      const said = []; const orig = g.ui.toast.bind(g.ui); g.ui.toast = (m, ...rest) => { said.push(m); return orig(m, ...rest); };
-      g.portal.use({ x: first[0], y: first[1], z: first[2], id: g.world.get(...first) });
-      await new Promise(r => setTimeout(r, 300));
-      const toast = said.join('|');
-      g.ui.renderHud?.(); return { place: g.place, busy: g.realms.busy, toast, hud: g.ui.starsShown, cloth: g.world.get(...first) === B.CLOTH, realm: !!(g.realms.versions().mirror), aim: g.realms.aim?.(g.player.pos)?.text?.('↑', 5) ?? null };
+      const g = window.pokecraft, f = g.world.swirl.frames.find(x => x.world === 'mirror'), cell = f.cells[Math.floor(f.cells.length / 2)];
+      g.ui.renderHud?.(); const hud = g.ui.starsShown;
+      const used = g.portal.use({ x: cell[0], y: cell[1], z: cell[2], id: g.world.get(...cell) });
+      for (let i = 0; i < 900 && (g.place !== 'mirror' || g.realms.busy); i++) await new Promise(r => setTimeout(r, 100));
+      return { used, place: g.place, hud };
     });
-    t.ok(s.place === 'swirl' && /secret world/i.test(s.toast) && s.hud === '0/13' && s.realm, `without ?preview you cannot enter: "${s.toast.slice(0, 60)}", the HUD says x / 13 (${s.hud})`);
-    t.ok(!/Mirror/.test(String(s.aim)), `the guide never points at the closed frame (${s.aim})`);
-    t.ok(!shut.errors.length, `no page errors when closed ${shut.errors.slice(0, 3).join(' | ')}`);
+    t.ok(s.used && s.place === 'mirror' && s.hud === '0/13', `its frame in the Swirl takes you into the Mirror Palace (${s.place}); the HUD counts x / 13 (${s.hud})`);
+    t.ok(!shut.errors.length, `no page errors without ?preview ${shut.errors.slice(0, 3).join(' | ')}`);
     await shut.context().close();
     const pre = await openGame(browser, base, { wave15: false, query: '?preview' });
     const p = await pre.evaluate(async () => { const PW = await import('/src/pictureworlds.js'), w = PW.pictureWorld('mirror'); return { ready: w.ready, secret: !!w.secret, name: w.name }; });

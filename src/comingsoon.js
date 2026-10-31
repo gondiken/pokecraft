@@ -9,7 +9,7 @@ export const PREVIEW = typeof location !== 'undefined' && new URLSearchParams(lo
 export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefined' || globalThis.__pcWave15 === true;
 // Owner 2026-10-28: "we can switch on the Funfair in the real game, just that one". A world listed here is open for everyone
 // while the rest of wave 15 stays closed.
-export const OPEN_NOW = ['fair', 'atlantis', 'doors', 'castle', 'doodle', 'portal', 'bubble']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle; the Sketchbook closed 2026-10-29 for its pencil and open again the same day ("we can switch on the sketchbook for everyone now"); the Portal House 2026-10-30 ("we can switch on the portal world for everyone"); the Bubble Well 2026-10-30 ("you can open the bubble world for everyone")
+export const OPEN_NOW = ['fair', 'atlantis', 'doors', 'castle', 'doodle', 'portal', 'bubble', 'mirror', 'gravity']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle; the Sketchbook closed 2026-10-29 for its pencil and open again the same day ("we can switch on the sketchbook for everyone now"); the Portal House 2026-10-30 ("we can switch on the portal world for everyone"); the Bubble Well 2026-10-30 ("you can open the bubble world for everyone"); the Mirror Palace and Cube Planets 2026-10-31 ("we can make the mirror world live", "the gravity world / cube planets live ... as well")
 /* ==== Mirror ==== */
 // Wave 18 (plans/wave18-mirror.md section 9): the owner's switch to take a world OUT of the game for everyone. `REMOVED = ['mirror']` and the
 // Mirror Palace is gone: no frame, no stone, no realm, no wild creatures (pictureworlds.js, swirlland.js, realms.js read `worldRemoved`);
@@ -23,8 +23,6 @@ export const worldOpen = id => !worldRemoved(id) && (wave15Open || OPEN_NOW.incl
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle'];
-LATER.push('gravity'); // Cube Planets (plans/cube-planets.md): step 0, the gravity sandbox, ships closed until the owner has played it
-LATER.push('mirror'); // wave 18, the Mirror Palace: ships closed until the owner has played it (`OPEN_NOW.push('mirror')` opens it for everyone)
 /* ==== Wizard ==== */
 LATER.push('wizard'); // wave 19, the Wizard's Tower: ships closed (behind ?preview) until the owner has played it (`OPEN_NOW.push('wizard')` opens it for everyone)
 /* ==== end of Wizard ==== */

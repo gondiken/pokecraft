@@ -872,14 +872,19 @@ export default async function ({ browser, base, t }) {
     await page.context().close();
   }
 
-  // the wizard opened for everyone while the Cube Planets world (and the Mirror Palace) still sleep: wave 15 closed, no ?preview, 'wizard' in OPEN_NOW (the state after the owner opens the tower)
+  // the wizard opened for everyone: wave 15 closed, no ?preview, 'wizard' in OPEN_NOW (the state after the owner opens the tower). Owner 2026-10-31: every
+  // Picture World is open now, so `sleepySetup` (the bridge part) also puts Cube Planets back to sleep, to test the cloud stones a closed world gets
   const openedSetup = ctx => ctx.route('**/src/comingsoon.js', async route => {
     const res = await route.fetch();
     await route.fulfill({ response: res, body: (await res.text()) + "\nOPEN_NOW.push('wizard');\n" });
   });
+  const sleepySetup = ctx => ctx.route('**/src/comingsoon.js', async route => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, body: (await res.text()) + "\nOPEN_NOW.push('wizard'); OPEN_NOW.splice(OPEN_NOW.indexOf('gravity'), 1); LATER.push('gravity');\n" });
+  });
 
   if (want('bridge')) {
-    const page = await retry(() => openGame(browser, base, { wave15: false, setup: openedSetup }));
+    const page = await retry(() => openGame(browser, base, { wave15: false, setup: sleepySetup }));
     await newGame(page, 0);
     await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.weather?.set?.('clear'); g.time = 0.25; });
     await intoSwirl(page);
@@ -927,8 +932,8 @@ export default async function ({ browser, base, t }) {
       const need = PW.bridgeNeed().map(w => w.id), all = PW.BRIDGE_WORLDS.map(w => w.id);
       console.log(JSON.stringify({ need, all, done: PW.bridgeDone(need), shortDone: PW.bridgeDone(need.slice(1)), ally: WT.towerOpen({ stars: [], studio: { ally: true } }), open: WT.towerOpen({ stars: need }), asleep: PW.BRIDGE_WORLDS.filter(w => PW.stoneAsleep(w)).map(w => w.id) }));
     `], { maxBuffer: 1 << 24 }).toString());
-    t.ok(!child.need.includes('gravity') && !child.need.includes('mirror') && ['house', 'pirate', 'race', 'stadium'].every(id => child.need.includes(id)), `Node, shipped state: the bridge needs the first four worlds and every open one, not Cube Planets or the Mirror Palace (${child.need.length} of ${child.all.length})`);
-    t.ok(child.done && !child.shortDone && child.ally && child.open && child.asleep.join() === 'gravity,mirror', `bridgeDone / towerOpen / the sleeping stones (${child.asleep})`);
+    t.ok(child.need.length === child.all.length && ['house', 'pirate', 'race', 'stadium', 'gravity', 'mirror'].every(id => child.need.includes(id)), `Node, shipped state (owner 2026-10-31: every world open): the bridge needs every star (${child.need.length} of ${child.all.length})`);
+    t.ok(child.done && !child.shortDone && child.ally && child.open && child.asleep.length === 0, `bridgeDone / towerOpen / the sleeping stones (${child.asleep})`);
     // a world switched off (REMOVED) is not needed either
     const rem = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
       globalThis.__pcRemoved = ['mirror'];

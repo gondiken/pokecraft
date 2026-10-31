@@ -955,21 +955,18 @@ export default async function ({ browser, base, t }) {
   if (want('closed')) {
     const shut = await retry(() => openGame(browser, base, { wave15: false }));
     const c = await shut.evaluate(async () => { const PW = await import('/src/pictureworlds.js'), C = await import('/src/comingsoon.js'); const w = PW.pictureWorld('gravity'); return { ready: w.ready, secret: w.secret, name: w.name, emoji: w.emoji, open: C.worldOpen('gravity'), later: C.LATER.includes('gravity'), frame: w.frame.map(x => x.toString(16)).join() }; });
-    t.ok(!c.ready && c.secret && c.name === 'Secret World' && c.emoji === '❓' && !c.open && c.later && c.frame === 'f0d080,d8c8f8', `closed without ?preview: the frame is the old secret one (${c.name} ${c.emoji}, colours ${c.frame})`);
+    t.ok(c.ready && !c.secret && c.name === 'Cube Planets' && c.open && !c.later, `owner 2026-10-31: Cube Planets is open for everyone, also without ?preview (${c.name})`);
     await newGame(shut, 0); await pause(shut);
     await shut.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
     await placeIs(shut, 'swirl');
-    const r = await shut.evaluate(async () => {
-      const g = window.pokecraft, { B } = await import('/src/blocks.js'), f = g.world.swirl.frames.find(f => f.world === 'gravity'), c = f.cloth[12];
-      const cloth = f.cloth.every(x => g.world.get(...x) === B.CLOTH);
-      g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) });
-      g.updateGuide(); const guide = document.getElementById('guide')?.textContent || '';
-      return { cloth, guide };
+    const used = await shut.evaluate(() => {
+      const g = window.pokecraft, f = g.world.swirl.frames.find(f => f.world === 'gravity'), c = f.cells[Math.floor(f.cells.length / 2)];
+      return g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) });
     });
-    await shut.waitForTimeout(1500);
+    await placeIs(shut, 'gravity');
     const place = await shut.evaluate(() => window.pokecraft.place);
-    t.ok(r.cloth && place === 'swirl' && !/Cube Planets/.test(r.guide), `closed: its frame in the Swirl stays under the cloth, stepping to it does not open it, the guide never points in`);
-    t.ok(!shut.errors.length, `no page errors when closed ${shut.errors.slice(0, 3).join(' | ')}`);
+    t.ok(used && place === 'gravity', `its frame in the Swirl takes you onto Cube Planets (${place})`);
+    t.ok(!shut.errors.length, `no page errors without ?preview ${shut.errors.slice(0, 3).join(' | ')}`);
     await shut.context().close();
   }
 }
