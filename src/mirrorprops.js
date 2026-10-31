@@ -154,16 +154,97 @@ export function buildPoofs(n = 40) {
   g.add(m);
   return wrap(g, { m, n });
 }
-// a funny mirror: a dark alcove (a back panel and two sides) with a pale silver glass in front; the reflection avatar stands inside. w = width in blocks, h = height.
-export function buildAlcove(w = 3, h = 4.2, depth = 1.0) {
+// owner 2026-10-31: a "!" over a Gloomy while the light is on it (it shivers and squeaks): you see your banked shot worked without sound
+export function buildBangs(n = 4) {
+  const g = new THREE.Group(), list = [];
+  let map = null;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
+    x.font = 'bold 112px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+    x.lineWidth = 14; x.strokeStyle = '#3a2a10'; x.strokeText('!', 32, 68); x.fillStyle = '#ffe14a'; x.fillText('!', 32, 68);
+    map = new THREE.CanvasTexture(c);
+  }
+  for (let i = 0; i < n; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, depthTest: false }));
+    sp.scale.set(0.8, 1.6, 1); sp.visible = false; sp.renderOrder = 5; g.add(sp); list.push(sp);
+  }
+  g.userData.parts = { list };
+  g.userData.dispose = () => { map?.dispose(); list.forEach(sp => sp.material.dispose()); };
+  return g;
+}
+// owner 2026-10-31 ("we can do way better than this"): a REAL funny mirror. The hall is drawn again from the mirror's side into a texture (like three's
+// Reflector, with the oblique clip plane), and the shader bends where it reads that picture: tall, wide, tiny, wobbly, upside down, two of you. Only the
+// one mirror you face draws (`active`); the others show a silver sheen. w x h blocks, its local x across, y up, the floor `floorY` below its middle.
+export const FUN_BEND = { tall: 1, wide: 2, tiny: 3, wobbly: 4, upside: 5, twins: 6 };
+export function buildFunMirror(kind, w, h, floorY, size = 512) {
   const g = new THREE.Group();
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lam(0x40305a, { emissive: 0x201838 })); back.position.set(0, h / 2, 0.02); g.add(back);
-  for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(depth, h), lam(0x34284c)); side.rotation.y = -s * Math.PI / 2; side.position.set(s * w / 2, h / 2, depth / 2); g.add(side); }
-  const lid = new THREE.Mesh(new THREE.PlaneGeometry(w, depth), lam(0x2a203c)); lid.rotation.x = Math.PI / 2; lid.position.set(0, h, depth / 2); g.add(lid);
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), basic(0xe6eaff, { transparent: true, opacity: 0.32, depthWrite: false })); glass.position.set(0, h / 2, depth); g.add(glass);
-  const sheen = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.16, h * 1.1), basic(0xffffff, { transparent: true, opacity: 0.5, depthWrite: false })); sheen.rotation.z = -0.45; sheen.position.set(-w * 0.18, h / 2, depth + 0.01); g.add(sheen);
-  const sheen2 = sheen.clone(); sheen2.scale.set(0.45, 0.9, 1); sheen2.position.x = w * 0.05; g.add(sheen2);
-  return wrap(g, { back, glass, sheen });
+  const rt = typeof document === 'undefined' ? null : new THREE.WebGLRenderTarget(size, size, { type: THREE.HalfFloatType });
+  const tm = new THREE.Matrix4();
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: rt?.texture ?? null }, textureMatrix: { value: tm }, bend: { value: FUN_BEND[kind] || 0 }, size: { value: new THREE.Vector2(w, h) }, floorY: { value: floorY }, time: { value: 0 }, tint: { value: new THREE.Color(0xeef2ff) } },
+    vertexShader: 'varying vec2 vLocal; void main() { vLocal = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform mat4 textureMatrix; uniform float bend; uniform vec2 size; uniform float floorY; uniform float time; uniform vec3 tint; varying vec2 vLocal;
+      void main() {
+        vec2 p = vLocal, q = p; float fy = floorY;
+        if (bend == 1.0) { q.x = p.x * 1.3; q.y = fy + (p.y - fy) / 1.65; }
+        else if (bend == 2.0) { q.x = p.x / 1.8; q.y = fy + (p.y - fy) * 1.45; }
+        else if (bend == 3.0) { q.x = p.x * 2.1; q.y = fy + (p.y - fy) * 2.1; }
+        else if (bend == 4.0) { q.x = p.x + 0.35 * sin(p.y * 2.2 + time * 2.3); q.y = p.y + 0.22 * sin(p.x * 2.8 + time * 1.7); }
+        else if (bend == 5.0) { q.y = -p.y; }
+        else if (bend == 6.0) { float u = (p.x + size.x * 0.5) / size.x; q.x = (fract(u * 2.0) - 0.5) * size.x * 0.55; }
+        vec4 c = textureMatrix * vec4(q, 0.0, 1.0);
+        vec2 uv = clamp(c.xy / c.w, 0.002, 0.998);
+        vec3 col = texture2D(tDiffuse, uv).rgb * tint;
+        vec2 e = abs(p) / (size * 0.5); float edge = smoothstep(0.82, 1.0, max(e.x, e.y));
+        float sheen = smoothstep(0.06, 0.0, abs(p.x * 0.55 + p.y * 0.35 - size.x * 0.12)) * 0.12;
+        gl_FragColor = vec4(mix(col, vec3(0.86, 0.88, 0.96), edge * 0.35) + sheen, 1.0);
+        #include <colorspace_fragment>
+      }`,
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); glass.position.y = h / 2; g.add(glass);
+  // what an idle mirror shows: a silver face with two soft streaks (still looks like a mirror from across the hall)
+  const idle = new THREE.Mesh(new THREE.PlaneGeometry(w, h), basic(0xc9cfe4)); idle.position.set(0, h / 2, -0.005); g.add(idle);
+  for (const [dx, sw, o] of [[-0.18, 0.2, 0.35], [0.06, 0.09, 0.25]]) { const st = new THREE.Mesh(new THREE.PlaneGeometry(w * sw, h * 1.05), basic(0xffffff, { transparent: true, opacity: o, depthWrite: false })); st.rotation.z = -0.5; st.position.set(w * dx, h / 2, 0.004); idle.add(st); st.position.set(w * dx, 0, 0.004); }
+  // the gold frame: a moulding all round (it covers the wall's frame blocks), round knobs at the corners, a gem on a crest
+  const goldM = lam(GOLD, { emissive: 0x3a2a00 }), lipM = lam(0xfff0b0, { emissive: 0x403010 }), side = 0.55, bot = 0.25, d = 0.3;
+  for (const [x, y, bw, bh] of [[0, h + side / 2, w + 2 * side, side], [0, -bot / 2, w + 2 * side, bot], [-(w + side) / 2, h / 2, side, h], [(w + side) / 2, h / 2, side, h]]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, d), goldM); bar.position.set(x, y, d / 2 - 0.1); g.add(bar);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(bw > bh ? bw - 0.1 : bh * 0 + 0.12, bh > bw ? bh : Math.min(0.12, bh), 0.05), lipM); lip.position.set(x, y, d - 0.08); g.add(lip);
+  }
+  const knob = new THREE.SphereGeometry(0.3, 12, 8);
+  for (const [x, y] of [[-1, -bot / 2], [1, -bot / 2], [-1, h + side / 2], [1, h + side / 2]]) { const k = new THREE.Mesh(knob, goldM); k.position.set(x * (w / 2 + side / 2), y, d / 2 + 0.05); g.add(k); }
+  const crest = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.3, 20, 1, false, -Math.PI / 2, Math.PI), goldM); crest.rotation.x = Math.PI / 2; crest.position.set(0, h + side, d / 2); g.add(crest);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), lam(0xa8e8ff, { emissive: 0x2a6080 })); gem.position.set(0, h + side + 0.25, d / 2 + 0.2); g.add(gem);
+  // the reflection: drawn from the mirror image of the camera, just before the glass is drawn (only while `active`)
+  const P = { plane: new THREE.Plane(), n: new THREE.Vector3(), at: new THREE.Vector3(), cam: new THREE.Vector3(), rot: new THREE.Matrix4(), look: new THREE.Vector3(), clip: new THREE.Vector4(), view: new THREE.Vector3(), target: new THREE.Vector3(), q: new THREE.Vector4(), vc: new THREE.PerspectiveCamera() };
+  const parts = { glass, idle, rt, mat, gem, active: false, before: null, after: null, renders: 0 };
+  glass.onBeforeRender = (renderer, scene, camera) => {
+    if (!parts.active || !rt) return;
+    const { plane, n, at, cam, rot, look, clip, view, target, q, vc } = P;
+    at.setFromMatrixPosition(glass.matrixWorld); cam.setFromMatrixPosition(camera.matrixWorld);
+    rot.extractRotation(glass.matrixWorld); n.set(0, 0, 1).applyMatrix4(rot);
+    view.subVectors(at, cam); if (view.dot(n) > 0) return;
+    view.reflect(n).negate().add(at);
+    rot.extractRotation(camera.matrixWorld); look.set(0, 0, -1).applyMatrix4(rot).add(cam);
+    target.subVectors(at, look).reflect(n).negate().add(at);
+    vc.position.copy(view); vc.up.set(0, 1, 0).applyMatrix4(rot).reflect(n); vc.lookAt(target);
+    vc.far = camera.far; vc.updateMatrixWorld(); vc.projectionMatrix.copy(camera.projectionMatrix);
+    tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse).multiply(glass.matrixWorld);
+    plane.setFromNormalAndCoplanarPoint(n, at).applyMatrix4(vc.matrixWorldInverse);
+    clip.set(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant);
+    const e = vc.projectionMatrix.elements;
+    q.set((Math.sign(clip.x) + e[8]) / e[0], (Math.sign(clip.y) + e[9]) / e[5], -1, (1 + e[10]) / e[14]);
+    clip.multiplyScalar(2 / clip.dot(q));
+    e[2] = clip.x; e[6] = clip.y; e[10] = clip.z + 1; e[14] = clip.w;
+    const was = renderer.getRenderTarget(), vis = g.visible;
+    g.visible = false; parts.before?.();
+    renderer.setRenderTarget(rt); renderer.state.buffers.depth.setMask(true); if (renderer.autoClear === false) renderer.clear();
+    renderer.render(scene, vc);
+    renderer.setRenderTarget(was); if (camera.viewport) renderer.state.viewport(camera.viewport);
+    parts.after?.(); g.visible = vis; parts.renders++;
+  };
+  wrap(g, parts); const d0 = g.userData.dispose; g.userData.dispose = () => { d0(); rt?.dispose(); };
+  return g;
 }
 // the reflections: how each funny mirror draws you. sx / sy / sz = scale of the person (1 = you), flip = upside down, twin = a second one beside, wobble = it bends.
 export const FUNNY_LOOKS = {

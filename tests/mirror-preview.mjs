@@ -30,8 +30,7 @@ const data = await page.evaluate(async () => {
         for (const [k, sd] of [[0, -1], [1, 1]]) { m.compose(new THREE.Vector3(x + sd * 0.33, y + 0.18, 0.7), q, new THREE.Vector3(s, s, s)); pt.whites.setMatrixAt(i * 2 + k, m); m.compose(new THREE.Vector3(x + sd * 0.33 + 0.05, y + 0.14, 0.88), q, one); pt.pupils.setMatrixAt(i * 2 + k, m); }
         for (let k = 0; k < 3; k++) { m.compose(new THREE.Vector3(x + (k - 1) * 0.3, y + 0.93, 0.05), q, new THREE.Vector3(s, s, s)); pt.tufts.setMatrixAt(i * 3 + k, m); } });
       for (const k of ['bodies', 'whites', 'pupils', 'tufts']) pt[k].instanceMatrix.needsUpdate = true; return g; }, { dist: 1.0 }],
-    ['funny mirror: tall you', () => { const g = new THREE.Group(), al = P.buildAlcove(3, 5.2, 1.0), a = buildPerson({ shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a }); a.scale.set(0.75, 1.55, 0.5); a.position.set(0, 0, 0.5); al.add(a); g.add(al); return g; }, { dist: 0.8, centre: [0, 2.4, 0] }],
-    ['funny mirror: wide you', () => { const g = new THREE.Group(), al = P.buildAlcove(5, 5.2, 1.0), a = buildPerson({ shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a }); a.scale.set(1.7, 0.7, 0.5); a.position.set(0, 0, 0.5); al.add(a); g.add(al); return g; }, { dist: 0.9, centre: [0, 2.4, 0] }],
+    ['funny mirror (gold frame; in the game it reflects the hall)', () => P.buildFunMirror('tall', 3.9, 5.2, -2.85), { dist: 0.9, centre: [0, 2.6, 0] }],
   ];
   const cv = document.createElement('canvas'), rows = Math.ceil(items.length / COLS);
   cv.width = W * COLS; cv.height = (H + LABEL) * rows;

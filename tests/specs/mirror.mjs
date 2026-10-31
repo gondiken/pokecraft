@@ -489,19 +489,21 @@ export default async function ({ browser, base, t }) {
       return { place: g.place, parts: g.world.parts.map(x => x.id).join(), doors: live.info().doors.join(), chip: document.getElementById('score-chip')?.textContent, boss: !!R.boss(), crew: [0, 1, 2].map(i => R.crew(i)?.name).join(), aim: live.aim(p.pos)?.text('↑', 9) };
     });
     t.ok(D0.place === 'mirror' && D0.parts === 'mirror' && D0.boss && D0.crew === 'Copycat Cleo,Glazier Gwen,Lamplighter Lux' && /🏓 0 \/ 3 · 👯 0 \/ 3 · 🔦 0 \/ 3/.test(D0.chip) && D0.doors === 'false,false,false', `the frame opens the Mirror Palace; Duke Dazzle and his three helpers are there; the chip says ${D0.chip}; the three room doors are shut (${D0.doors})`);
-    // the Hall of Funny Mirrors: a tall you, a wide you, only close to the glass
+    // the Hall of Funny Mirrors (owner 2026-10-31: real reflections, seen from anywhere in the hall): the mirror you look at draws; the others are silver
     const F0 = await page.evaluate(() => {
-      const R = window.__R, { live, p } = R, out = {};
-      R.put(64.5, 11, 119.5, 0); live.step(0.05); const tall = live.funny[0]; out.tall = tall.a.visible && tall.a.scale.y > 1.4 && tall.a.scale.x < 0.85;
-      R.put(70.5, 11, 119.5, 0); live.step(0.05); const wide = live.funny[1]; out.wide = wide.a.visible && wide.a.scale.x > 1.5 && wide.a.scale.y < 0.8;
-      R.put(89.5, 11, 119.5, 0); live.step(0.05); out.tiny = live.funny[2].a.visible && live.funny[2].a.scale.y < 0.5;
-      R.put(93.5, 11, 128.5, Math.PI); live.step(0.05); out.twins = live.funny[5].a.visible && live.funny[5].b.visible && live.funny[5].a.position.x !== live.funny[5].b.position.x;
-      R.put(66.5, 11, 128.5, Math.PI); live.step(0.05); out.upside = live.funny[4].a.visible && live.funny[4].a.scale.y < 0;
-      R.put(95.5, 11, 119.5, 0); live.step(0.05); const w0 = live.funny[3].a.scale.x; live.clock += 0.5; live.step(0.01); out.wobble = Math.abs(live.funny[3].a.scale.x - w0) > 0.05;
-      R.put(80.5, 11, 125.5, 0); live.step(0.05); out.far = live.info().funny.every(v => !v);
+      const R = window.__R, { live, p } = R, out = {}, act = () => live.info().funny.map((v, i) => v ? i : -1).filter(i => i >= 0).join();
+      R.put(64.5, 11, 119.5, 0); live.step(0.05); out.tall = act();
+      R.put(70.5, 11, 125.5, 0); live.step(0.05); out.wideFar = act();
+      R.put(93.5, 11, 128.5, Math.PI); live.step(0.05); out.twins = act();
+      R.put(66.5, 11, 128.5, Math.PI); live.step(0.05); out.upside = act();
+      R.put(80.5, 11, 110.5, 0); live.step(0.05); out.out = act();
+      R.put(89.5, 11, 120.5, 0); live.step(0.05); out.tiny = act();
       return out;
     });
-    t.ok(F0.tall && F0.wide && F0.tiny && F0.twins && F0.upside && F0.wobble && F0.far, `the funny mirrors show you tall, wide, tiny, upside down, two of you and wobbly, only close to the glass ${JSON.stringify(F0)}`);
+    await frames(page, 3);
+    const F1 = await page.evaluate(() => { const live = window.__R.live, f = live.funny[2].m.userData.parts; return { renders: f.renders, me: live.me.visible, idle: live.funny.filter((x, i) => i !== 2).every(x => x.m.userData.parts.idle.visible) }; });
+    t.ok(F0.tall === '0' && F0.wideFar === '1' && F0.twins === '5' && F0.upside === '4' && F0.tiny === '2' && F0.out === '' && F0.wideFar && F1.renders > 0 && !F1.me && F1.idle,
+      `the funny mirrors: the one you look at reflects the hall and you (tall ${F0.tall}, wide from 10 blocks back ${F0.wideFar}, twins ${F0.twins}, upside down ${F0.upside}, tiny ${F0.tiny}; none from outside the hall: "${F0.out}"); it drew ${F1.renders} reflections, your body only inside them`);
     if (want('play')) {
       // Bounce-Back: Play!, a round lost by standing still ("Cleo won"), a round won by a skilled player, the key saved at once
       const C1 = await page.evaluate(() => {
@@ -598,6 +600,9 @@ export default async function ({ browser, base, t }) {
       await look(64.5, 11, 119.5, 64.5, 13.5, 114); await frames(page, 3); await shot(page, 'mirror-funny-tall.png');
       await look(70.5, 11, 119.5, 70.5, 13.5, 114); await frames(page, 3); await shot(page, 'mirror-funny-wide.png');
       await look(93.5, 11, 128.5, 93.5, 13.5, 134); await frames(page, 3); await shot(page, 'mirror-funny-twins.png');
+      await look(66.5, 11, 129, 66.5, 13.5, 134); await frames(page, 3); await shot(page, 'mirror-funny-upside.png');
+      await look(89.5, 11, 118.5, 89.5, 13.5, 114); await frames(page, 3); await shot(page, 'mirror-funny-tiny.png');
+      await look(95.5, 11, 118.5, 95.5, 13.5, 114); await frames(page, 3); await shot(page, 'mirror-funny-wobbly.png');
       await look(80.5, 11, 128, 80.5, 14, 114); await frames(page, 3); await shot(page, 'mirror-hall.png');
       // Bounce-Back mid-rally: Cleo, the ball, the hand mirror in front of you
       await page.evaluate(() => { const R = window.__R, { live, p } = R; R.put(27.5, 11, 119.8); live.use(p); for (let i = 0; i < 60; i++) live.step(1 / 30, R.courtIn()); p.yaw = -0.05; p.pitch = -0.22; live.step(1 / 30, R.courtIn()); });
@@ -612,6 +617,9 @@ export default async function ({ browser, base, t }) {
       // the gallery: the Gloomies on the wall, the spot of light, the beam (a banked one too)
       await page.evaluate(() => { const R = window.__R, { g, live, p } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/beam/.test(k)); live.sync(true); R.put(80.5, 11, 106.6); live.use(p); const b = R.Bots.SPOT_BOTS.skilled(); for (let i = 0; i < 20; i++) live.step(1 / 30, b(live.sr, 1 / 30)); const t = live.sr.target(0.03); p.yaw = t.yaw; p.pitch = t.pitch; live.step(1 / 30, { yaw: t.yaw, pitch: t.pitch }); });
       await frames(page, 3); await shot(page, 'mirror-gallery.png');
+      // owner 2026-10-31: a "!" over a lit Gloomy (you see the hit without the sound)
+      const bang = await page.evaluate(() => { const R = window.__R, { live } = R, lit = live.sr.gloomies.some(g => g.lit && !g.gone); return { lit, shown: live.bangs.userData.parts.list.filter(b => b.visible).length }; });
+      t.ok(!bang.lit || bang.shown > 0, `a "!" hangs over each lit Gloomy (${bang.shown} shown, lit ${bang.lit})`);
       await page.evaluate(() => { const R = window.__R, { g, live, p } = R; live.giveBack(); g.beaten = g.beaten.filter(k => !/beam/.test(k)); R.put(80.5, 11, 106.6); live.use(p); p.yaw = 0.05; p.pitch = 0.1; live.step(1 / 30, { yaw: 0.05, pitch: 0.1 }); });
       await frames(page, 3); await shot(page, 'mirror-gallery-aim.png');
       await page.evaluate(() => { const R = window.__R, { g, live, p } = R; live.giveBack(); R.put(80.5, 11, 106.6); live.use(p); const y = p.yaw = 0.58, a = R.Bots.SPOT_BOTS; p.pitch = 0.02; live.step(1 / 30, { yaw: y, pitch: 0.02 }); });
