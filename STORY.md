@@ -107,8 +107,8 @@ The worlds behind the frames are the **Picture Worlds**: you step into a picture
 are not gyms, and there are no more badges. Explore them as much as you like; at the end of each one waits a
 **Boss**. Beat the Boss and you win that world's **star**, the one the Wizard hid there. Bring it back and it becomes
 a glowing stepping stone on the **star bridge** to his tower. (Each star comes with a little note from the Wizard.)
-There are **12 stars**, and every one comes from a Picture World: eleven hang as frames in the Swirl (five of them are
-still secret), and the Portal House is in the Swirl itself. The 12 stars light the 12 stones of the star bridge. The
+There are **13 stars**, and every one comes from a Picture World: twelve hang as frames in the Swirl (some of them are
+still secret), and the Portal House is in the Swirl itself. The 13 stars light the 13 stones of the star bridge. The
 Wizard has no star to give: reaching him and winning is the end of chapter 2 itself.
 
 ## The Picture Worlds
@@ -157,6 +157,15 @@ creatures**. Then the Scribble's scribbles let the fizz go flat, and the bubbles
 blow your own steps and climb, float the sleepy ducklings home to their nest, ride a big bubble up the geyser chimney, and pop
 the three shield bubbles round Captain Suds on the rim. Then the bubbles rise again, and he has the star.
 
+**The Mirror Palace** (wave 18, the 13th star). The Wizard built a palace of mirrors so his creatures could pull funny faces at themselves: the
+**Mirror creatures** (a hand mirror on its handle, a silver kitten with a twin that copies it, a wobbly funhouse mirror, a periscope). When the Swirl
+cracked, the Scribble's smudges crept onto the glass as **Gloomies**, little grey scribble-balls with googly eyes, and the reflections stopped
+copying and started doing things their own way. **Duke Dazzle**, who loves his mirrors more than anything, shut himself in the Grand Mirror Hall until
+his palace shines again. Walk through the Hall of Funny Mirrors (a tall you, a wide you, a tiny you), then make the three wings shine: win the
+mirror-ball rally against **Copycat Cleo**, who copies everything you do; step through the Looking-Glass Rooms with your silver twin, who copies
+every step the other way round (**Glazier Gwen** keeps them); and turn the big sun mirror to shine the Gloomies off the wall in the Moonlit Gallery
+(**Lamplighter Lux** keeps it). Then the palace shines again, and Duke Dazzle has the star.
+
 ## The Wizard's Tower
 
 With every star found, the star bridge is whole and you can cross. The tower is the Wizard's **studio**. Before he made any creature, he
@@ -203,5 +212,6 @@ In the end you don't destroy the Scribble. You help the Wizard **finish drawing 
 | The Giant House, the Pirate Seas, Playland's race track and stadium | Tiny, Pirate, Racer, Ball Picture Worlds (a Boss and a star each) | 14 |
 | The Portal House, Playland's fair, the Surprise Party, the Sketchbook, Atlantis under the Pirate Seas | Portal, Funfair, Surprise, Doodle, Atlantis Picture Worlds | 15 |
 | The Bubble Well, Cube Planets | Bubble and Gravity Picture Worlds (behind ?preview until the owner opens them) | 16 |
-| The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 16 |
+| The Mirror Palace | Mirror Picture World, the 13th star (behind ?preview; the owner can close or remove it with one line) | 18 |
+| The studio, the Wizard, designing the guardian | The Wizard's Tower, the Custom type | 19 |
 | Chapter 3: the Scribble, battling beside the Wizard, crafting, eggs and raising, gifts and trading | To be planned | Later |

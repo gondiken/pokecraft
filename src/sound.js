@@ -276,6 +276,18 @@ const SOUNDS = {
   /* ==== Mirror ==== */
   // The Mirror Palace: a bright glassy "ting" up a fifth for attacks (the rest of its sounds come with its games).
   'fx:mirror': () => { bell(1319, 0, 0.5, 0.2); bell(1976, 0.09, 0.6, 0.18); },
+  // The games (stage 3): the shine ball off any mirror (a short glassy ping), your point (a rising run), Cleo's point (a cheeky "copy that": the same notes, a little late and
+  // a bit low), a pad pair glowing (a warm two-note chime), the twin plopping into ink (a gloopy blub), a bonk (a rubbery thud), a lit Gloomy shivering (a squeaky trill: the
+  // page repeats it while it is lit), a Gloomy poofing (a bright pop and sparkles), one ducking into a shadow (a tiny giggle).
+  shineping: () => { bell(1760, 0, 0.14, 0.1); bell(2637, 0.02, 0.1, 0.05); },
+  mirrorpoint: () => { notes([784, 988, 1319], 0.07, { len: 0.12, type: 'triangle', vol: 0.14 }); bell(1976, 0.2, 0.4, 0.12); },
+  cleopoint: () => { tone(523, { len: 0.1, type: 'square', vol: 0.07 }); tone(494, { at: 0.12, len: 0.1, type: 'square', vol: 0.07 }); tone(392, { at: 0.26, len: 0.2, type: 'square', vol: 0.08, slide: -30 }); },
+  padglow: () => { bell(880, 0, 0.35, 0.14); bell(1319, 0.1, 0.45, 0.14); },
+  twinplop: () => { tone(300, { len: 0.18, type: 'sine', vol: 0.2, slide: -160 }); tone(180, { at: 0.12, len: 0.2, type: 'sine', vol: 0.16, slide: 80 }); noise({ at: 0.05, freq: 500, len: 0.1, vol: 0.08, q: 0.6 }); },
+  twinbonk: () => { tone(160, { len: 0.16, type: 'triangle', vol: 0.24, slide: -70 }); bell(540, 0, 0.14, 0.1); },
+  gloomyshiver: () => { for (let i = 0; i < 4; i++) tone(1100 + (i % 2) * 260, { at: i * 0.05, len: 0.05, type: 'sine', vol: 0.05 }); },
+  gloomypoof: () => { noise({ freq: 2400, len: 0.07, vol: 0.12, q: 1.2 }); notes([1047, 1319, 1568, 2093], 0.04, { len: 0.1, type: 'sine', vol: 0.1 }); },
+  gloomygiggle: () => { for (let i = 0; i < 3; i++) tone(900 + i * 110, { at: i * 0.07, len: 0.05, type: 'triangle', vol: 0.07 }); },
   /* ==== end of Mirror ==== */
   /* ==== Custom ==== */
   // The Custom type: a brush swish (a noise slide) and a soft plop for attacks; the painting tower's paint pot picked up (a little pop),

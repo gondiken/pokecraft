@@ -50,6 +50,7 @@ export class Player {
     this.kickCool = 0;
     this.kicked = false;    // T41: a kick started this frame (the Atlantis part plays the sound)
     this.spaceWas = false;
+    this.stepHook = null;   // wave 18: called after each walk sub-step with the real move (dx, dz, h); only the Looking-Glass Rooms set it
     this.noSwim = false;    // T41: the net is lunging (atlantislive.js moves the player)
     this.held = 0;          // T41: set by the net (atlantislive.js) while Catch! is held: 0..1, slows the swim
   }
@@ -272,8 +273,9 @@ export class Player {
     // a Bounce Block, a trampoline) before the next frame.
     let wait = false;
     for (let i = 0; i < n; i++) {
-      const was = this.onGround;
+      const was = this.onGround, hx = this.pos.x, hz = this.pos.z;
       this.walkStep(h, wx, wz, len, analog, stickSprint, wait);
+      if (this.stepHook) this.stepHook(this.pos.x - hx, this.pos.z - hz, h); // wave 18 (Mirror Palace): your silver twin copies every sub-step (null everywhere else)
       if (!was && this.onGround) wait = true;
     }
   }
