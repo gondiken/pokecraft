@@ -25,6 +25,7 @@ import { BubbleLive } from './bubblelive.js'; // the Bubble Well
 /* ==== Wizard ==== */
 import { StudioLive } from './studiolive.js'; // wave 19, the Wizard's Tower
 /* ==== end of Wizard ==== */
+import { MirrorLive } from './mirrorlive.js'; // the Mirror Palace
 
 // Interface of a live object: constructor(game, gym), update(dt), optional stand(x, y, z, id), hit(block),
 // prompt(block, how) and dispose(). T33 adds optional talk(npc), talkPrompt(npc), broke(block), battleEnded(result, opts)
@@ -49,6 +50,7 @@ LIVE.bubble = BubbleLive; // the Bubble Well: bubbles you stand on, the duckling
 /* ==== Wizard ==== */
 LIVE.studio = StudioLive; // wave 19, the Wizard's Tower: paint pots, the canvas, the stairs doors
 /* ==== end of Wizard ==== */
+LIVE.mirror = MirrorLive; // the Mirror Palace: Bounce-Back, the Looking-Glass Rooms, the Moonlit Gallery, the funny mirrors
 
 export function createGymLive(game) {
   let objects = new Map(); // gym id -> live object

@@ -51,12 +51,13 @@ export const yourX = u => TWIN.glass - u;      // continuous x of your u
 // (`side`, along u 1..17 at v, period s, phase s), the mop (room 3), dressers (blocks on a side, `u: [u0, u1]`, `v`, 2 high).
 export const TWIN_ROOMS = [
   { n: 1, name: 'Hello, Twin!', start: [16.5, 3.5], pads: [{ you: [6, 12], its: [6, 12] }, { you: [3, 4], its: [3, 4] }],
-    puddles: [{ side: 'its', u: 6, v: 7, r: 1.1 }, { side: 'its', u: 4, v: 2, r: 1.1 }], balls: [], mop: null, dressers: [] },
-  { n: 2, name: 'Bonk Balls!', start: [15, 14], pads: [{ you: [12, 10], its: [12, 10] }, { you: [8, 4], its: [8, 4] }, { you: [4, 11], its: [4, 11] }],
-    puddles: [], balls: [{ side: 'you', v: 6, period: 5, phase: 0 }, { side: 'its', v: 6, period: 5, phase: 2.5 }, { side: 'its', v: 11, period: 4, phase: 0 }], mop: null, dressers: [] },
-  { n: 3, name: 'Out of Step!', start: [15, 14], pads: [{ you: [4, 13], its: [4, 9] }, { you: [10, 3], its: [10, 3] }],
-    puddles: [], balls: [{ side: 'you', v: 8, period: 5, phase: 1 }], mop: { side: 'its', u: 12, v: 11, len: 3.5, rate: 0.7 },
-    dressers: [{ side: 'its', u: [1, 8], v: 5 }] },
+    puddles: [{ side: 'its', u: 11.2, v: 7.7, r: 1.3 }, { side: 'its', u: 4.5, v: 8, r: 1.3 }, { side: 'its', u: 10, v: 3.8, r: 1.2 }], balls: [], mop: null, dressers: [] },
+  { n: 2, name: 'Bonk Balls!', start: [15, 14.5], pads: [{ you: [12, 9.5], its: [12, 9.5] }, { you: [8, 4.5], its: [8, 4.5] }, { you: [4, 9.5], its: [4, 9.5] }],
+    puddles: [{ side: 'its', u: 13.5, v: 12, r: 1.2 }, { side: 'its', u: 10, v: 7, r: 1.2 }, { side: 'its', u: 6, v: 7, r: 1.2 }], balls: [{ side: 'you', v: 12, period: 4, phase: 0 }, { side: 'its', v: 12, period: 4, phase: 1.3 }, { side: 'you', v: 7, period: 5, phase: 0 }, { side: 'its', v: 7, period: 5, phase: 2.5 }], mop: null, dressers: [] },
+  // Room 3: the twin's dresser (u 0..9, v 7..8) stops it from walking down; pad A is below it (go round its end, u 10+), pad B is where a twin pinned on top of it stands.
+  { n: 3, name: 'Out of Step!', start: [15, 14], pads: [{ you: [6, 2.5], its: [6, 2.5] }, { you: [2.5, 4.5], its: [2.5, 8.3] }],
+    puddles: [], balls: [{ side: 'you', v: 8, period: 5, phase: 1 }], mop: { side: 'its', u: 12.5, v: 5, len: 3, rate: 0.7 },
+    dressers: [{ side: 'its', u: [0, 8], v: 7 }] },
 ];
 // The Moonlit Gallery (north). Walls 2 thick: x 56..57 / 102..103, z 52..53 / 107..108; the west strip (x 58..60) is the only way along it to
 // the Grand Mirror Hall; the pool (x 62..101, z 54..99) has a low gold rail round it. The Gloomy wall is the back wall's face (z 54).
@@ -65,7 +66,7 @@ export const GALLERY = { x0: 56, x1: 103, z0: 52, z1: 108, in: { x0: 58, x1: 101
 export const DAIS = { x: 80, z: 104, box: { x0: 78, x1: 82, z0: 102, z1: 106 }, y: G + 1 }; // one step up (stand y 12)
 export const GLOOMY_WALL = { x0: 62, x1: 97, y0: 13, y1: 26, z: 53 };                       // wall cells (the face you see is z 54)
 export const PILLARS = [{ x0: 68, x1: 70, z0: 62, z1: 64, y1: 26 }, { x0: 89, x1: 91, z0: 62, z1: 64, y1: 26 }];
-export const PANES = [{ x: 57, z0: 58, z1: 80, y0: 12, y1: 20 }, { x: 102, z0: 58, z1: 80, y0: 12, y1: 20 }]; // beam-bouncing panels on the side walls
+export const PANES = [{ x: 57, z0: 58, z1: 80, y0: 12, y1: 26 }, { x: 102, z0: 58, z1: 80, y0: 12, y1: 26 }]; // beam-bouncing panels on the side walls
 // The Grand Mirror Hall (Duke Dazzle). Its door is in the SW corner, above the gallery's west strip (x 58..60).
 export const GRAND = { x0: 56, x1: 103, z0: 14, z1: 48, in: { x0: 58, x1: 101, z0: 16, z1: 46 }, door: { x0: 58, x1: 60, z0: 47, z1: 53 }, stage: { x0: 74, x1: 86, z0: 17, z1: 23 }, duke: [80, 19] };
 export const RESTS = { funhall: [80, 124], court: [28, 124], twin: [118, 126], gallery: [74, 105], grand: [80, 42] };

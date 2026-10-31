@@ -1,4 +1,4 @@
-// Wave 18 stage 2: the Mirror type (plans/wave18-mirror.md section 6). Part `data`: 46 types, 7 creatures, 4 own shapes each with ONE sheen mesh
+// Wave 18 stage 2: the Mirror type (plans/wave18-mirror.md section 6). Part `data`: 47 types (46 + the Custom type of wave 19), 7 creatures, 4 own shapes each with ONE sheen mesh
 // (and the idle animations), moves, big moves, T1..T4, the chart (no old cell changed against tests/fixtures/chart-before-mirror.json, no
 // defender weak to more than 5), fx and sounds, the spawn table, the after-check, the lookup of Lynxlook as rideable. Part `gait`: the
 // `mimic` gait in the browser (mirrored copy, meet in the middle, leash, legal floor, same at 20 and 60 steps a second, no Math.random).

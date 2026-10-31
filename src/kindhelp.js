@@ -36,6 +36,13 @@
 //   Planet Hop (orbits.js)     a flower flight that missed the pebble     the next pebble's pull reaches e x 8 blocks further (gravity.js pad)
 //   Moon Ferry (orbits.js)     a jump off the moon that missed every      the moon x (1 - e), the Lens Rocks' pull reaches e x 8 blocks
 //                                Lens Rock                                  further (gravity.js pad)
+//   Bounce-Back (bounceback.js) a round Cleo won (she got 3 first)        the ball's speed and Cleo's slide and reaction time x (1 - e),
+//                                                                           the goal mouth x (1 + e)
+//   Looking-Glass Rooms        a plop or a bonk in this room               the bonk balls' and the mop's speed x (1 - e), the ink puddles
+//     (lookingglass.js)                                                     x (1 - e) smaller, the gold pads x (1 + e) bigger
+//   Moonlit Gallery            a round whose 45 s ran out                  the Gloomies' speed x (1 - e), the time one must be held in the
+//     (spotlight.js)                                                        light x (1 - e), the spot of light x (1 + e) bigger
+//   (all three through mirrorHelp(misses) in bounceback.js, which is kindHelp(misses) mapped onto those levers)
 export const KIND_HELP = { after: 2, step: 0.02, max: 0.10 };
 
 export class KindHelp {

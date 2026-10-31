@@ -1366,6 +1366,12 @@ must be lively: skill and moving, not quiet reflection puzzles. Plan: `plans/wav
 the 13th frame and bridge stone, and **one switch that closes or removes the world**: removed = the game is exactly as before, the
 bridge needs only the other stars, old saves with Mirror creatures still load). Ships behind `?preview` until the owner plays it.
 
+**Built 2026-10-31** in three stages (stage 1 the switch, the Swirl's 13th frame / stone and the palace terrain; stage 2 the Mirror type; stage 3 the games):
+Bounce-Back (`bounceback.js`), the Looking-Glass Rooms (`lookingglass.js`, with `Player.stepHook`) and the Moonlit Gallery (`spotlight.js`), their live part
+(`mirrorlive.js`) and models (`mirrorprops.js`), bots `tests/mirrorbots.mjs` / `tests/mirrornode.mjs`, spec `mirror` (parts rules, kids, play, real, ipad, pair, shots), and
+`tests/mirror-preview.mjs`. The numbers were tuned with the bots (naive fails, skilled wins at 60 and 20 fps). **Still open:** the owner plays it with `?preview`; then
+`OPEN_NOW.push('mirror')` (open for everyone) or `REMOVED = ['mirror']` (take it out).
+
 ## Wave 19 · The Wizard's Tower and the Custom type (the design option below is still open; it was wave 16 until 2026-10-28, wave 17 until 2026-10-29, wave 18 until 2026-10-31)
 
 Plan: `plans/wave19-wizard-tower.md` (planned 2026-10-31 in parallel with wave 18; the tower opens when the bridge is complete by
