@@ -489,21 +489,28 @@ export default async function ({ browser, base, t }) {
       return { place: g.place, parts: g.world.parts.map(x => x.id).join(), doors: live.info().doors.join(), chip: document.getElementById('score-chip')?.textContent, boss: !!R.boss(), crew: [0, 1, 2].map(i => R.crew(i)?.name).join(), aim: live.aim(p.pos)?.text('↑', 9) };
     });
     t.ok(D0.place === 'mirror' && D0.parts === 'mirror' && D0.boss && D0.crew === 'Copycat Cleo,Glazier Gwen,Lamplighter Lux' && /🏓 0 \/ 3 · 👯 0 \/ 3 · 🔦 0 \/ 3/.test(D0.chip) && D0.doors === 'false,false,false', `the frame opens the Mirror Palace; Duke Dazzle and his three helpers are there; the chip says ${D0.chip}; the three room doors are shut (${D0.doors})`);
-    // the Hall of Funny Mirrors (owner 2026-10-31: real reflections, seen from anywhere in the hall): the mirror you look at draws; the others are silver
+    // the Hall of Funny Mirrors (owner 2026-10-31: real reflections, seen from anywhere in the hall): the mirror you look at most is live and sharp,
+    // a second one live at half size, the others keep a still picture of the hall; a slow frame rate in the hall leaves only one live
     const F0 = await page.evaluate(() => {
-      const R = window.__R, { live, p } = R, out = {}, act = () => live.info().funny.map((v, i) => v ? i : -1).filter(i => i >= 0).join();
-      R.put(64.5, 11, 119.5, 0); live.step(0.05); out.tall = act();
-      R.put(70.5, 11, 125.5, 0); live.step(0.05); out.wideFar = act();
-      R.put(93.5, 11, 128.5, Math.PI); live.step(0.05); out.twins = act();
-      R.put(66.5, 11, 128.5, Math.PI); live.step(0.05); out.upside = act();
-      R.put(80.5, 11, 110.5, 0); live.step(0.05); out.out = act();
-      R.put(89.5, 11, 120.5, 0); live.step(0.05); out.tiny = act();
+      const R = window.__R, { live, p } = R, out = {}, hi = () => live.info().funnyHi, n = () => live.info().funny.filter(Boolean).length;
+      R.put(64.5, 11, 119.5, 0); live.step(0.05); out.tall = hi();
+      R.put(70.5, 11, 125.5, 0); live.step(0.05); out.wideFar = hi(); out.two = n();
+      R.put(93.5, 11, 128.5, Math.PI); live.step(0.05); out.twins = hi();
+      R.put(66.5, 11, 128.5, Math.PI); live.step(0.05); out.upside = hi();
+      R.put(89.5, 11, 120.5, 0); live.step(0.05); out.tiny = hi();
+      R.put(80.5, 11, 110.5, 0); live.step(0.05); out.out = n();
       return out;
     });
+    await page.evaluate(() => { const R = window.__R; R.put(80.5, 11, 131.5, 0); R.p.lookAt({ x: 80, y: 13, z: 114 }); R.live.step(0.05); });
     await frames(page, 3);
-    const F1 = await page.evaluate(() => { const live = window.__R.live, f = live.funny[2].m.userData.parts; return { renders: f.renders, me: live.me.visible, idle: live.funny.filter((x, i) => i !== 2).every(x => x.m.userData.parts.idle.visible) }; });
-    t.ok(F0.tall === '0' && F0.wideFar === '1' && F0.twins === '5' && F0.upside === '4' && F0.tiny === '2' && F0.out === '' && F0.wideFar && F1.renders > 0 && !F1.me && F1.idle,
-      `the funny mirrors: the one you look at reflects the hall and you (tall ${F0.tall}, wide from 10 blocks back ${F0.wideFar}, twins ${F0.twins}, upside down ${F0.upside}, tiny ${F0.tiny}; none from outside the hall: "${F0.out}"); it drew ${F1.renders} reflections, your body only inside them`);
+    const F1 = await page.evaluate(() => {
+      const live = window.__R.live, I = live.info(), parts = live.funny.map(f => f.m.userData.parts), lives = parts.filter(x => x.mode !== 'still');
+      const out = { live: lives.length, sizes: lives.map(x => x.lastSize).sort().join(), renders: lives.every(x => x.renders > 0), stills: I.stills.filter(Boolean).length, me: live.me.visible };
+      for (let k = 0; k < 60; k++) live.step(0.05); out.slowMax = live.info().funMax; out.slowLive = live.info().funny.filter(Boolean).length;
+      live.funMax = 2; return out;
+    });
+    t.ok(F0.tall === 0 && F0.wideFar === 1 && F0.twins === 5 && F0.upside === 4 && F0.tiny === 2 && F0.two === 2 && F0.out === 0 && F1.live === 2 && F1.sizes === '256,512' && F1.renders && F1.stills >= 1 && !F1.me && F1.slowMax === 1 && F1.slowLive <= 1,
+      `the funny mirrors: the one you look at most is live (tall ${F0.tall}, wide from 10 blocks back ${F0.wideFar}, twins ${F0.twins}, upside down ${F0.upside}, tiny ${F0.tiny}), a second one live at half size (${F1.sizes}), others keep a still picture (${F1.stills}); none from outside the hall; your body only inside the reflections; at 20 fps only ${F1.slowLive} stays live`);
     if (want('play')) {
       // Bounce-Back: Play!, a round lost by standing still ("Cleo won"), a round won by a skilled player, the key saved at once
       const C1 = await page.evaluate(() => {

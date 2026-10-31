@@ -176,12 +176,14 @@ export function buildBangs(n = 4) {
 // Reflector, with the oblique clip plane), and the shader bends where it reads that picture: tall, wide, tiny, wobbly, upside down, two of you. Only the
 // one mirror you face draws (`active`); the others show a silver sheen. w x h blocks, its local x across, y up, the floor `floorY` below its middle.
 export const FUN_BEND = { tall: 1, wide: 2, tiny: 3, wobbly: 4, upside: 5, twins: 6 };
-export function buildFunMirror(kind, w, h, floorY, size = 512) {
+let funDrawing = false; // a mirror seen inside another's reflection shows its last picture (no mirror draws inside another)
+export const FUN_RES = { hi: 512, lo: 256 }; // the mirror you look at most / the second one and the still pictures
+export function buildFunMirror(kind, w, h, floorY) {
   const g = new THREE.Group();
-  const rt = typeof document === 'undefined' ? null : new THREE.WebGLRenderTarget(size, size, { type: THREE.HalfFloatType });
+  const rts = {}, rtOf = k => typeof document === 'undefined' ? null : (rts[k] ||= new THREE.WebGLRenderTarget(FUN_RES[k], FUN_RES[k]));
   const tm = new THREE.Matrix4();
   const mat = new THREE.ShaderMaterial({
-    uniforms: { tDiffuse: { value: rt?.texture ?? null }, textureMatrix: { value: tm }, bend: { value: FUN_BEND[kind] || 0 }, size: { value: new THREE.Vector2(w, h) }, floorY: { value: floorY }, time: { value: 0 }, tint: { value: new THREE.Color(0xeef2ff) } },
+    uniforms: { tDiffuse: { value: null }, textureMatrix: { value: tm }, bend: { value: FUN_BEND[kind] || 0 }, size: { value: new THREE.Vector2(w, h) }, floorY: { value: floorY }, time: { value: 0 }, tint: { value: new THREE.Color(0xeef2ff) } },
     vertexShader: 'varying vec2 vLocal; void main() { vLocal = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D tDiffuse; uniform mat4 textureMatrix; uniform float bend; uniform vec2 size; uniform float floorY; uniform float time; uniform vec3 tint; varying vec2 vLocal;
       void main() {
@@ -215,15 +217,16 @@ export function buildFunMirror(kind, w, h, floorY, size = 512) {
   for (const [x, y] of [[-1, -bot / 2], [1, -bot / 2], [-1, h + side / 2], [1, h + side / 2]]) { const k = new THREE.Mesh(knob, goldM); k.position.set(x * (w / 2 + side / 2), y, d / 2 + 0.05); g.add(k); }
   const crest = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.3, 20, 1, false, -Math.PI / 2, Math.PI), goldM); crest.rotation.x = Math.PI / 2; crest.position.set(0, h + side, d / 2); g.add(crest);
   const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), lam(0xa8e8ff, { emissive: 0x2a6080 })); gem.position.set(0, h + side + 0.25, d / 2 + 0.2); g.add(gem);
-  // the reflection: drawn from the mirror image of the camera, just before the glass is drawn (only while `active`)
+  // the reflection: drawn from the mirror image of a camera into a texture. `mode` (set by the live part each frame): 'hi' / 'lo' = live from your
+  // camera at that size; 'still' = once from `stillCam` (straight in front, no you in it) at 'lo', then kept: a still picture of the hall that
+  // stays right for any angle (the texture matrix is kept with it)
   const P = { plane: new THREE.Plane(), n: new THREE.Vector3(), at: new THREE.Vector3(), cam: new THREE.Vector3(), rot: new THREE.Matrix4(), look: new THREE.Vector3(), clip: new THREE.Vector4(), view: new THREE.Vector3(), target: new THREE.Vector3(), q: new THREE.Vector4(), vc: new THREE.PerspectiveCamera() };
-  const parts = { glass, idle, rt, mat, gem, active: false, before: null, after: null, renders: 0 };
-  glass.onBeforeRender = (renderer, scene, camera) => {
-    if (!parts.active || !rt) return;
+  const parts = { glass, idle, mat, gem, mode: null, still: false, stillCam: null, before: null, after: null, renders: 0, lastSize: 0 };
+  const draw = (renderer, scene, camera, rt) => {
     const { plane, n, at, cam, rot, look, clip, view, target, q, vc } = P;
     at.setFromMatrixPosition(glass.matrixWorld); cam.setFromMatrixPosition(camera.matrixWorld);
     rot.extractRotation(glass.matrixWorld); n.set(0, 0, 1).applyMatrix4(rot);
-    view.subVectors(at, cam); if (view.dot(n) > 0) return;
+    view.subVectors(at, cam); if (view.dot(n) > 0) return false;
     view.reflect(n).negate().add(at);
     rot.extractRotation(camera.matrixWorld); look.set(0, 0, -1).applyMatrix4(rot).add(cam);
     target.subVectors(at, look).reflect(n).negate().add(at);
@@ -237,13 +240,22 @@ export function buildFunMirror(kind, w, h, floorY, size = 512) {
     clip.multiplyScalar(2 / clip.dot(q));
     e[2] = clip.x; e[6] = clip.y; e[10] = clip.z + 1; e[14] = clip.w;
     const was = renderer.getRenderTarget(), vis = g.visible;
-    g.visible = false; parts.before?.();
+    g.visible = false;
     renderer.setRenderTarget(rt); renderer.state.buffers.depth.setMask(true); if (renderer.autoClear === false) renderer.clear();
     renderer.render(scene, vc);
     renderer.setRenderTarget(was); if (camera.viewport) renderer.state.viewport(camera.viewport);
-    parts.after?.(); g.visible = vis; parts.renders++;
+    g.visible = vis; mat.uniforms.tDiffuse.value = rt.texture; parts.renders++; parts.lastSize = rt.width;
+    return true;
   };
-  wrap(g, parts); const d0 = g.userData.dispose; g.userData.dispose = () => { d0(); rt?.dispose(); };
+  glass.onBeforeRender = (renderer, scene, camera) => {
+    if (funDrawing) return;
+    funDrawing = true; try { drawNow(renderer, scene, camera); } finally { funDrawing = false; }
+  };
+  const drawNow = (renderer, scene, camera) => {
+    if (parts.mode === 'hi' || parts.mode === 'lo') { const rt = rtOf(parts.mode); if (!rt) return; parts.before?.(); draw(renderer, scene, camera, rt); parts.after?.(); return; }
+    if (parts.mode === 'still' && !parts.still && parts.stillCam) { const rt = rtOf('lo'); if (rt && draw(renderer, scene, parts.stillCam, rt)) parts.still = true; }
+  };
+  wrap(g, parts); const d0 = g.userData.dispose; g.userData.dispose = () => { d0(); for (const k in rts) rts[k].dispose(); };
   return g;
 }
 // the reflections: how each funny mirror draws you. sx / sy / sz = scale of the person (1 = you), flip = upside down, twin = a second one beside, wobble = it bends.

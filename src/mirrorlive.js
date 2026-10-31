@@ -24,7 +24,7 @@ import { kindHelp } from './kindhelp.js';
 import { ForFun } from './forfun.js';
 import * as P from './mirrorprops.js';
 
-export const MIRROR_RULES = { dtMax: 0.1, sync: 0.25, plateAt: [27.5, 119.5], plateR: 3.5, startR: 0.9, sunR: [3.0, 2.8], funnyLook: 0.35, wave: 1.4, shiverGap: 0.45, poofTime: 0.7, outTwin: 0.6, jumpCool: 0.35 };
+export const MIRROR_RULES = { dtMax: 0.1, sync: 0.25, plateAt: [27.5, 119.5], plateR: 3.5, startR: 0.9, sunR: [3.0, 2.8], funnyLook: 0.35, funWarm: 1.5, funSlow: 1 / 40, wave: 1.4, shiverGap: 0.45, poofTime: 0.7, outTwin: 0.6, jumpCool: 0.35 };
 const WORDS = {
   court: 'Bounce it past Cleo! She copies you.', twin: 'You and your twin: both on the gold pads!', beam: 'Shine on the Gloomies till they pop!',
   puff: ['Blub! Back to the last gold pad.', 'Bonk! Back to the last gold pad.'],
@@ -52,7 +52,7 @@ export class MirrorLive {
     // the Moonlit Gallery
     this.sr = null; this.shining = false; this.bFun = new ForFun(SPOT_ROUNDS); this.bTries = [0, 0, 0]; this.bMiss = [0, 0, 0]; this.stick = { yaw: 0, pitch: 0 }; this.shiverT = 0; this.poofs = []; this.lastSpot = null;
     this.railObj = this.makeRailObj(); this.sunObj = this.makeSunObj();
-    this.groups = []; this.funny = [];
+    this.groups = []; this.funny = []; this.funMax = 2; this.funT = 0; this.funDt = 1 / 60;
     this.beamWorld = { isSolid: (x, y, z) => this.world.isSolid(x, y, z), isPane: (x, y, z) => this.world.get(x, y, z) === B.MIRROR_PANE };
     this.build();
     this.sync(true);
@@ -106,6 +106,7 @@ export class MirrorLive {
       const m = add(P.buildFunMirror(f.kind, w, h, -h / 2 - 0.25));
       m.position.set(f.x + 0.5, G1 + 0.25, face + (north ? 0.03 : -0.03)); m.rotation.y = north ? 0 : Math.PI;
       const parts = m.userData.parts; parts.before = () => { this.me.visible = true; }; parts.after = () => { this.me.visible = false; };
+      const cam = new THREE.PerspectiveCamera(70, 1, 0.1, 200), fz = north ? 1 : -1; cam.position.set(f.x + 0.5, G1 + 1.6, face + fz * 6); cam.lookAt(f.x + 0.5, G1 + 2.6, face); cam.updateMatrixWorld(); parts.stillCam = cam; parts.mode = 'still';
       this.funny.push({ f, m, face, north, active: false });
     }
     this.placeStarts();
@@ -478,21 +479,27 @@ export class MirrorLive {
     pm.instanceMatrix.needsUpdate = true;
   }
   drawFunny(p, dt) {
-    // the one mirror you look at draws a reflection (the nearest in front of you, roughly in view); the others show their silver sheen
-    let best = null, bd = Infinity;
-    const H = FUNHALL, inHall = this.game.world === this.world && p.pos.x > H.x0 && p.pos.x < H.x1 + 1 && p.pos.z > H.z0 && p.pos.z < H.z1 + 1 && p.pos.y < G1 + 6;
+    // owner 2026-10-31: up to two live reflections, the one you look at most sharp ('hi'), the next at half size ('lo'); the others keep a still
+    // picture of the hall (drawn once from straight in front, without you). If the frame rate drops in the hall, only one stays live (this visit on).
+    const H = FUNHALL, R = MIRROR_RULES, inHall = this.game.world === this.world && p.pos.x > H.x0 && p.pos.x < H.x1 + 1 && p.pos.z > H.z0 && p.pos.z < H.z1 + 1 && p.pos.y < G1 + 6;
+    const ranked = [];
     if (inHall) {
       const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
       for (const fm of this.funny) {
         if ((p.pos.z - fm.face) * (fm.north ? 1 : -1) <= 0.3) continue;
         const dx = fm.f.x + 0.5 - p.pos.x, dz = fm.face - p.pos.z, d = Math.hypot(dx, dz) || 1, look = (fx * dx + fz * dz) / d;
-        if (look < MIRROR_RULES.funnyLook) continue;
-        const score = d * (1.6 - look); if (score < bd) { bd = score; best = fm; }
+        if (look >= R.funnyLook) ranked.push({ fm, score: d * (1.6 - look) });
       }
-    }
+      ranked.sort((a, b) => a.score - b.score);
+      this.funT += dt; this.funDt += (dt - this.funDt) * 0.1;
+      if (this.funT > R.funWarm && this.funDt > R.funSlow) this.funMax = 1;
+    } else { this.funT = 0; this.funDt = 1 / 60; }
+    const live = ranked.slice(0, inHall ? this.funMax : 0).map(r => r.fm);
     for (const fm of this.funny) {
-      const P_ = fm.m.userData.parts; fm.active = fm === best;
-      P_.active = fm.active; P_.glass.visible = fm.active; P_.idle.visible = !fm.active; P_.mat.uniforms.time.value = this.clock;
+      const P_ = fm.m.userData.parts, k = live.indexOf(fm), mode = k === 0 ? 'hi' : k === 1 ? 'lo' : 'still';
+      if (mode === 'still' && P_.mode !== 'still') P_.still = false; // it showed you live: draw the still picture again
+      P_.mode = mode; fm.active = mode !== 'still'; fm.hi = mode === 'hi';
+      P_.glass.visible = true; P_.idle.visible = false; P_.mat.uniforms.time.value = this.clock;
       P_.gem.rotation.y += dt * 1.5;
     }
     // you in the mirror: where you stand, the way you face, walking when you walk
@@ -522,7 +529,7 @@ export class MirrorLive {
       room: r ? { n: this.roomN, lit: r.lit.slice(), you: { ...r.you }, twin: { ...r.twin }, won: r.won, misses: r.misses, t: r.t } : null,
       beam: sr ? { round: sr.round, left: sr.alive().length, done: sr.done, won: sr.won, spot: sr.spot && { ...sr.spot }, time: sr.time, yaw: sr.yaw, pitch: sr.pitch, gloomies: sr.gloomies.map(g => ({ x: g.x, y: g.y, gone: g.gone, shiver: g.shiver, shade: g.shade, lit: g.lit })) } : null,
       doors: this.drawnDoors.slice(), cMiss: this.cMiss.slice(), tMiss: this.tMiss.slice(), bMiss: this.bMiss.slice(), hasHook: this.game.player?.stepHook === this.hook,
-      funny: this.funny.map(f => f.active),
+      funny: this.funny.map(f => f.active), funnyHi: this.funny.findIndex(f => f.hi), funMax: this.funMax, stills: this.funny.map(f => f.m.userData.parts.still),
     };
   }
 }
