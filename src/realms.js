@@ -17,7 +17,7 @@ import { TINY_SPAWNS, SURPRISE_SPAWNS, DOODLE_SPAWNS, PORTAL_SPAWNS } from './sp
 import { partyLand, partyAim } from './partyland.js'; // T48 (the Room of Doors' place)
 import { doodleLand, doodleAim, SIZE as DOODLE_SIZE, MIDDLE as DOODLE_MIDDLE } from './doodleland.js'; // T45
 import { castleLand, castleAim, SIZE as CASTLE_SIZE } from './castleland.js'; // T49
-import { CASTLE_SPAWNS, MEADOW_SPAWNS } from './species.js'; // T49
+import { CASTLE_SPAWNS, MEADOW_SPAWNS, MIRROR_SPAWNS } from './species.js'; // T49; wave 18
 import { cubeLand, cubeAim, SIZE as CUBE_SIZE, DOOR as CUBE_DOOR } from './cubeland.js'; // Cube Planets
 import { GRAVITY_SPAWNS } from './species.js'; // Cube Planets
 import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; // the Bubble Well
@@ -197,9 +197,9 @@ REALMS.bubble = pictureRealm({ id: 'bubble', name: 'Bubble Well', seedSalt: 0xb0
 // Wave 18, the Mirror Palace (behind the Swirl's lilac-and-gold frame, S5; plans/wave18-mirror.md): the Hall of Funny Mirrors, three wings (Bounce-Back,
 // the Looking-Glass Rooms, the Moonlit Gallery) and Duke Dazzle in the Grand Mirror Hall. The whole map is a keep (no building); the palace keeps riders
 // out, the garden lets them in. Not registered at all while the owner's switch has it REMOVED (comingsoon.js): nobody can enter, a save made inside
-// it loads in the main world. `spawns` stays empty until the Mirror creatures exist (stage 2 puts MIRROR_SPAWNS here).
+// it loads in the main world. Wild Mirror creatures live only here (MIRROR_SPAWNS; the big ones after the first rounds, wildafter.js).
 if (!worldRemoved('mirror')) REALMS.mirror = pictureRealm({ id: 'mirror', name: 'Mirror Palace', seedSalt: 0x3177, size: [MIRROR_SIZE, MIRROR_SIZE], terrain: 'mirrorLand', arrive: [MIRROR_ARRIVAL.x, MIRROR_ARRIVAL.z - 4], biome: 'mirror',
-  walk: [B.STONE_BRICKS, B.GRASS], zoneNames: { mirror: 'Mirror Palace' },
+  walk: [B.STONE_BRICKS, B.GRASS], zoneNames: { mirror: 'Mirror Palace' }, spawns: { mirror: MIRROR_SPAWNS, cave: [] },
   look: { sky: 0xf2e6ff, fog: [60, 160], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🪞 Mirror Palace', travelText: 'Looking in...', travelIcon: '🪞', enterText: 'Hello, hello! Welcome to the Mirror Palace!',
   arriveHint: 'Three games, three helpers, then Duke Dazzle!',

@@ -306,13 +306,12 @@ addBoss({
 /* ==== Mirror ==== */
 // Wave 18 (plans/wave18-mirror.md section 5): Duke Dazzle waits in the Grand Mirror Hall, in front of a wall of mirrors, until the three wings shine again
 // (Bounce-Back, the Looking-Glass Rooms, the Moonlit Gallery: nine saved `beaten` keys, mirrorland.js mirrorState); his helpers Copycat Cleo, Glazier Gwen and
-// Lamplighter Lux battle first (the base's crew rule). STAGE 1: the teams are stand-ins of old species (and the type is Light's); stage 2 puts in the Mirror
-// creatures (periscoot 61, bendabout 62, lynxlook 62, grandlooker 63; crew: copykit / lookit, wobblet / copykit, lookit / periscoot).
+// Lamplighter Lux battle first (the base's crew rule).
 addBoss({
-  id: 'mirror', name: 'Duke Dazzle', type: 'light', title: 'Duke Dazzle · Mirror Palace Boss', look: 'dazzle', // (the title is spelled out: a closed world's frame is named "Secret World")
+  id: 'mirror', name: 'Duke Dazzle', type: 'mirror', title: 'Duke Dazzle · Mirror Palace Boss', look: 'dazzle', // (the title is spelled out: a closed world's frame is named "Secret World")
   colors: { shirt: 0xd8d8f0, pants: 0x5a4a8a, hair: 0xe8c070, skin: 0xf2d0b0 },
   gate: game => { const st = mirrorState(game); return st.done ? null : `Oh, my poor smudgy palace! I can't come out like THIS. (🏓 ${st.court} / 3 · 👯 ${st.twin} / 3 · 🔦 ${st.beam} / 3)`; },
-  team: [['owlucid', 61], ['visionelk', 62], ['starbelle', 62], ['lumitower', 63]], // top level 63, the easy side (stand-ins until stage 2)
+  team: [['periscoot', 61], ['bendabout', 62], ['lynxlook', 62], ['grandlooker', 63]], // top level 63, the easy side
   intro: ['Look at my palace! It SHINES again!', 'Now, a dazzling battle!'],
   lose: 'Simply dazzling! The star was in my best mirror all along.',
   win: 'A lovely try! Fix your hair, rest a bit, and come back.',
@@ -320,11 +319,11 @@ addBoss({
   note: 'I built this palace so my creatures could pull funny faces at themselves. Thank you for making the mirrors shine again!',
   crew: [
     { name: 'Copycat Cleo', look: 'mirror', colors: { shirt: 0xff9ad8, pants: 0x4a4a6a, hair: 0x2a1a10, skin: 0xc68a5a },
-      team: [['thinkit', 59], ['sunnykit', 60]], intro: ['You beat me at Bounce-Back! Copy that!', 'Battle!'], line: "Don't hit it where you are!" },
+      team: [['copykit', 59], ['lookit', 60]], intro: ['You beat me at Bounce-Back! Copy that!', 'Battle!'], line: "Don't hit it where you are!" },
     { name: 'Glazier Gwen', look: 'mirror', colors: { shirt: 0x8ad8e8, pants: 0xf6efe0, hair: 0xc8902a, skin: 0xf2d0b0 },
-      team: [['dreamlet', 60], ['twinklet', 61]], intro: ['You and your twin did it!', 'Now a battle?'], line: 'Your twin gets stuck. Use that!' },
+      team: [['wobblet', 60], ['copykit', 61]], intro: ['You and your twin did it!', 'Now a battle?'], line: 'Your twin gets stuck. Use that!' },
     { name: 'Lamplighter Lux', look: 'mirror', colors: { shirt: 0xffe08a, pants: 0x3a3a6a, hair: 0x1a1a1a, skin: 0xe8c09a },
-      team: [['beacub', 60], ['cerebrix', 61]], intro: ['No more Gloomies! Thank you!', 'Battle me!'], line: 'Light bounces off the shiny walls!' },
+      team: [['lookit', 60], ['periscoot', 61]], intro: ['No more Gloomies! Thank you!', 'Battle me!'], line: 'Light bounces off the shiny walls!' },
   ],
 });
 /* ==== end of Mirror ==== */
