@@ -208,6 +208,27 @@ export const SPOT_BOTS = {
     const seen = mem[0][1];
     return seen ? aimAt(g, seen[0], seen[1]) : { yaw: g.yaw, pitch: g.pitch };
   }; },
+  // owner 2026-10-31: a real person. Sees the wall `lag` s late and the hand follows with time constant `tau` (no robot reflexes).
+  // 'herd' keeps the light a little on the open side of its Gloomy, so it runs into its nearest corner (where it is stuck) and banks
+  // for the shaded ones; 'chase' aims where the Gloomy was and never banks.
+  person: (mode = 'herd', lag = 0.45, tau = 0.2, push = 0.3) => { const mem = [], W = SPOT_RULES.wall; let ax = null, ay = null, tgt = null, corner = null; return (g, dt) => {
+    const snap = g.alive().map(x => ({ i: x.i, x: x.x, y: x.y, shade: x.shade, strip: x.strip }));
+    mem.push([g.time, snap]); while (mem.length > 2 && mem[1][0] <= g.time - lag) mem.shift();
+    const seen = mem[0][1].filter(s => mode === 'herd' || !s.shade); if (!seen.length) return { yaw: g.yaw, pitch: g.pitch };
+    const sp = ax == null ? { x: 80, y: 20 } : { x: ax, y: ay };
+    let t = seen.find(s => s.i === tgt); if (!t) { t = seen.slice().sort((a, b) => Math.hypot(a.x - sp.x, a.y - sp.y) - Math.hypot(b.x - sp.x, b.y - sp.y))[0]; tgt = t.i; corner = null; }
+    let wx = t.x, wy = t.y;
+    if (mode === 'herd') {
+      const y1 = t.strip ? SPOT_RULES.shadeY : W.y1;
+      if (!corner) corner = [t.strip ? null : (t.x - W.x0 < W.x1 - t.x ? W.x0 : W.x1), t.y - W.y0 < y1 - t.y ? W.y0 : y1];
+      const dx = (corner[0] ?? t.x) - t.x, dy = corner[1] - t.y, d = Math.hypot(dx, dy);
+      if (d > 0.6) { wx = t.x - dx / d * push; wy = t.y - dy / d * push; }
+    }
+    if (ax == null) { ax = wx; ay = wy; } const f = Math.min(1, (dt || 1 / 60) / tau); ax += (wx - ax) * f; ay += (wy - ay) * f;
+    return (mode === 'herd' && g.solve(ax, ay)) || aimAt(g, ax, ay);
+  }; },
+  steady: () => SPOT_BOTS.person('herd', 0.45, 0.2),      // a steady player who herds them into corners and banks
+  distracted: () => SPOT_BOTS.person('chase', 0.6, 0.25),  // a kid who points late and wobbly at whichever is nearest
   // sweeps the light slowly over the wall
   sweeper: () => (g) => ({ yaw: Math.sin(g.time * 0.5) * 0.4, pitch: -0.15 + Math.sin(g.time * 0.31) * 0.12 }),
   still: () => (g) => ({ yaw: 0, pitch: -0.2 }),
@@ -226,6 +247,6 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('mirrorbots.mjs'
   for (const fps of [60, 20]) {
     for (let r = 0; r < 3; r++) console.log(`bounce r${r + 1} @${fps}: ` + ['skilled', 'firstTime', 'still', 'random'].map(n => `${n} ${wins(s => playBounce(COURT_BOTS[n](s), { seed: s, round: r, fps }))}`).join(' | '));
     for (const n of [1, 2, 3]) console.log(`twin room ${n} @${fps}: ` + ['straight', 'random', 'watcher', 'skilled'].map(b => `${b} ${wins(s => playTwin(TWIN_BOTS[b](s), n, { fps, phase: s * 1.37, budget: b === 'watcher' ? 240 : 90 }), 6)}`).join(' | '));
-    for (let r = 0; r < 3; r++) console.log(`spot r${r + 1} @${fps}: ` + ['skilled', 'lagging', 'sweeper', 'still'].map(b => `${b} ${wins(s => playSpot(SPOT_BOTS[b](), { seed: s, round: r, fps, world }), 20)}`).join(' | '));
+    for (let r = 0; r < 3; r++) console.log(`spot r${r + 1} @${fps}: ` + ['skilled', 'steady', 'lagging', 'distracted', 'sweeper', 'still'].map(b => `${b} ${wins(s => playSpot(SPOT_BOTS[b](), { seed: s, round: r, fps, world }), 20)}`).join(' | '));
   }
 }

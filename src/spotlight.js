@@ -6,15 +6,15 @@
 import { mirrorHelp } from './bounceback.js';
 
 export const SPOT_RULES = {
-  step: 1 / 120, scare: 0.7, spotR: 1.2, gloomyR: 0.6, roundTime: 45, stick: 1.4, bounces: 2, maxLen: 160,
+  step: 1 / 120, scare: 0.7, edge: 0.15, edgePad: 0.35, spotR: 1.2, gloomyR: 0.6, roundTime: 45, stick: 1.4, bounces: 2, maxLen: 160,
   sun: [80.5, 15, 104.5],                                              // the sun mirror's middle (over the dais)
   wall: { x0: 62.7, x1: 97.3, y0: 13.7, y1: 26.3, z: 54 },             // where a Gloomy's middle can be (the wall face is z 54)
   shade: [{ x0: 65.7, x1: 68.0 }, { x0: 91.8, x1: 94.0 }], shadeY: 26.3,            // the strips the two pillars' shadows cover: no straight beam from the mirror lands in them
   panes: [58, 102],                                                    // the side panes' faces (x): what a banked beam bounces off
   rounds: [
     { name: 'Gloomy!', n: 3, wander: 0.8, flee: 0, hold: 1.0, shaded: 0 },
-    { name: 'They run!', n: 4, wander: 1.2, flee: 3.4, hold: 1.4, shaded: 0 },
-    { name: 'Hide and seek!', n: 4, wander: 1.2, flee: 3.6, hold: 1.4, shaded: 2 },
+    { name: 'They run! Corner them!', n: 4, wander: 1.2, flee: 2.3, hold: 1.4, shaded: 0 }, // owner 2026-10-31: 3.4 needed a robot's reflexes; 2.3 a steady hand
+    { name: 'Hide and seek!', n: 4, wander: 1.2, flee: 2.6, hold: 1.4, shaded: 2 },
   ],
 };
 export const HARD = { beam: { flee: 1.12, hold: 0.2 } }; // a rematch (you hold the star)
@@ -116,7 +116,14 @@ export class SpotRound {
         const a = Math.atan2(ay, ax) + g.zig * 0.9;
         sx = Math.cos(a) * this.flee; sy = Math.sin(a) * this.flee;
         if (g.shade) { sx *= 0.3; sy = Math.abs(sy) < 1 ? Math.sign(sy || (g.r() - 0.5)) * Math.max(1, Math.abs(sy)) : sy; } // (a shaded one only runs up and down its strip)
+        // owner 2026-10-31: chased against the wall's edge it can only creep along it, and in a corner it is stuck (it shivers there):
+        // herding one into a corner is the trick that beats its speed. (A shaded one's edges are its strip's ends, top and bottom.)
+        const m = R.edgePad, ex0 = g.strip ? -Infinity : W.x0, ex1 = g.strip ? Infinity : W.x1, ey1 = g.strip ? R.shadeY : W.y1;
+        const bx = (g.x <= ex0 + m && sx < 0) || (g.x >= ex1 - m && sx > 0), by = (g.y <= W.y0 + m && sy < 0) || (g.y >= ey1 - m && sy > 0);
+        g.cornered = bx && by;
+        if (g.cornered) { sx = 0; sy = 0; } else if (bx) { sx = 0; sy *= R.edge; } else if (by) { sy = 0; sx *= R.edge; }
       } else {
+        g.cornered = false;
         if (g.turnIn <= 0) { g.turnIn = 1.2 + g.r() * 1.4; g.ang += (g.r() - 0.5) * 2.4; if (this.plan.flee > 0) { g.go = !g.go; g.phase = g.go ? 0.8 + g.r() * 0.6 : 0.5 + g.r() * 0.5; g.turnIn = g.phase; } }
         const moving = this.plan.flee <= 0 || g.go;
         if (moving) { const s = this.wander * (g.shade ? 0.6 : 1); sx = Math.cos(g.ang) * s; sy = Math.sin(g.ang) * s; }

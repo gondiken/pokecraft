@@ -415,8 +415,16 @@ export default async function ({ browser, base, t }) {
     t.ok(direct === 0 && bank === 20, `nothing in the pillars' shadow strips can be lit by a straight beam (${direct} of 20 spots) but a banked one reaches all of them (${bank} of 20)`);
     for (const fps of [60, 20]) {
       const w = (bot, r, o = {}, n = 20) => { let c = 0; for (let s = 1; s <= n; s++) if (playSpot(SPOT_BOTS[bot](), { seed: s, round: r, fps, world, ...o }).won) c++; return c; };
-      const sk = [0, 1, 2].map(r => w('skilled', r)), lag = [0, 1, 2].map(r => w('lagging', r)), sw = [0, 1, 2].map(r => w('sweeper', r, {}, 8)), st = w('still', 0, {}, 8);
-      t.ok(sk.every(c => c === 20) && lag[0] >= 18 && lag[1] === 0 && lag[2] === 0 && sw.every(c => c === 0) && st === 0, `Moonlit Gallery at ${fps} fps: the skilled player wins every round (${sk}/20); aiming where a Gloomy WAS (0.4 s late, never banking) wins round 1 (${lag[0]}/20) but not 2 (${lag[1]}) or 3 (${lag[2]}); sweeping the light or standing still never wins`);
+      const sk = [0, 1, 2].map(r => w('skilled', r)), sd = [0, 1, 2].map(r => w('steady', r)), lag = [0, 1, 2].map(r => w('lagging', r)), di = [0, 1, 2].map(r => w('distracted', r)), sw = [0, 1, 2].map(r => w('sweeper', r, {}, 8)), st = w('still', 0, {}, 8);
+      // owner 2026-10-31: round 2 was "impossible" (Gloomies at 3.4 needed a robot's reflexes). Now a real person (sees 0.45 s late, a soft
+      // hand) who herds them into a corner wins every round; a distracted kid (0.6 s late, aims where it was, never banks) seldom wins round 2
+      t.ok(sk.every(c => c === 20) && sd[0] === 20 && sd[1] === 20 && sd[2] >= 14 && lag[0] >= 18 && lag[2] === 0 && di[0] >= 18 && di[1] <= 8 && di[2] === 0 && sw.every(c => c === 0) && st === 0, `Moonlit Gallery at ${fps} fps: the skilled player wins every round (${sk}/20), a steady person who corners them too (${sd}/20); aiming where a Gloomy WAS 0.4 s late wins rounds 1-2 (${lag[0]}, ${lag[1]}) but never round 3 (${lag[2]}: no banking); a distracted kid wins round 1 (${di[0]}) but seldom 2 (${di[1]}) and never 3 (${di[2]}); sweeping or standing still never wins`);
+    }
+    { // owner 2026-10-31: a Gloomy chased into a corner is stuck there (and creeps along an edge); in the open it runs
+      const W = SL.SPOT_RULES.wall, trial = (x, y, sx, sy) => { const r = new SL.SpotRound(4, 1, 0, { world: null }); r.gloomies.forEach((g, k) => { if (k) g.gone = true; }); const g = r.gloomies[0]; g.x = x; g.y = y;
+        const a = SL.aimAt(r, sx, sy); for (let k = 0; k < 30; k++) r.update(1 / 60, a); return { d: Math.hypot(g.x - x, g.y - y), cornered: !!g.cornered }; };
+      const corner = trial(W.x0 + 0.1, W.y0 + 0.1, W.x0 + 0.9, W.y0 + 0.9), open = trial(80, 20, 80.8, 20.8);
+      t.ok(corner.d < 0.15 && open.d > 0.8, `a lit Gloomy in a corner is stuck (moved ${corner.d.toFixed(2)}), one in the open runs (${open.d.toFixed(2)} in 0.5 s)`);
     }
     const sh = new SL.SpotRound(5, 1, 0, { help: 6, world }), s0 = new SL.SpotRound(5, 1, 0, { world }), shh = new SL.SpotRound(5, 1, 0, { hard: true, world });
     t.ok(sh.flee < s0.flee * 0.91 && sh.hold < s0.hold * 0.91 && sh.spotR > s0.spotR * 1.09 && shh.flee > s0.flee * 1.1 && shh.hold > s0.hold + 0.19, 'Gloomies: kind help after six misses (they run slower, need less light time, the spot is bigger); the rematch is harder (+12 % speed, +0.2 s)');
