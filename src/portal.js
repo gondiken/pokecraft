@@ -5,7 +5,7 @@
 // Imports only blocks.js (world.js and gymplace.js import this file, so it must not import them back).
 import * as THREE from 'three';
 import { B } from './blocks.js';
-import { PICTURE_WORLDS, FRAME_WORLDS, fullName } from './pictureworlds.js';
+import { PICTURE_WORLDS, FRAME_WORLDS, STAR_WORLDS, fullName } from './pictureworlds.js'; // wave 18: STAR_WORLDS for the HUD board
 
 // The door stands flat against the tower's front wall, right of the rainbow pillar, in the row d = 7 (the tower's own
 // protected box, +-7, already holds it: no player build can be lost). d = distance in front of the tower centre,
@@ -222,7 +222,7 @@ export function createPortal(game) {
       return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told } } : null;
     },
     // The board the HUD shows: one entry per Picture World.
-    stars() { return PICTURE_WORLDS.map(w => ({ id: w.id, name: w.name, won: game.stars.includes(w.id) })); },
+    stars() { return STAR_WORLDS.map(w => ({ id: w.id, name: w.name, won: game.stars.includes(w.id) })); },
   };
   return self;
 }

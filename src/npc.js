@@ -175,6 +175,19 @@ export function buildPerson(c, { cape = null, hat = null, look = null } = {}) {
     box(head, 0.56, 0.04, 0.56, 0xf2d27a, 0, 0.6, 0);
   }
   /* ==== end of Gravity ==== */
+  /* ==== Mirror ==== */
+  if (look === 'dazzle') { // Duke Dazzle (wave 18): a white ruff collar, a silver coat with gold buttons, tall curly hair and a curly gold hand mirror he keeps looking into
+    box(group, 0.74, 0.12, 0.74, 0xffffff, 0, 1.4, 0); box(group, 0.62, 0.1, 0.62, 0xf0eef8, 0, 1.49, 0);
+    for (const y of [1.18, 1.02, 0.86]) box(group, 0.07, 0.07, 0.03, 0xf0c84a, 0, y, 0.16);
+    box(group, 0.5, 0.16, 0.5, c.hair, 0, 0.62, 0); box(head, 0.44, 0.16, 0.44, c.hair, 0, 0.76, 0);
+    for (const [x, z] of [[-0.24, 0], [0.24, 0], [0, 0.24], [0, -0.24]]) box(head, 0.14, 0.14, 0.14, c.hair, x, 0.68, z);
+    box(group, 0.3, 0.3, 0.04, 0xf0c84a, 0.38, 1.0, 0.24); box(group, 0.22, 0.22, 0.05, 0xdfe6ff, 0.38, 1.0, 0.245); box(group, 0.05, 0.2, 0.05, 0xf0c84a, 0.38, 0.78, 0.24);
+  }
+  if (look === 'mirror') { // the palace's helpers (wave 18): a silver sash across the chest and a little round hand mirror on the belt
+    const sash = box(group, 0.12, 0.62, 0.03, 0xdfe0ee, 0.0, 1.0, 0.16); sash.rotation.z = 0.7;
+    box(group, 0.2, 0.2, 0.05, 0xf0c84a, -0.2, 0.8, 0.17); box(group, 0.15, 0.15, 0.06, 0xdfe6ff, -0.2, 0.8, 0.175);
+  }
+  /* ==== end of Mirror ==== */
   if (look === 'chef') { // T33: a tall white chef's hat
     box(head, 0.54, 0.12, 0.54, 0xffffff, 0, 0.56, 0);
     box(head, 0.62, 0.34, 0.62, 0xffffff, 0, 0.8, 0);

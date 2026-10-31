@@ -1,7 +1,7 @@
 // T38a: the Picture Worlds that are stars (most hang as framed pictures in the Swirl). Data only (one import: the wave 15 switch).
 // Append-only: the ids are saved in `stars` (the worlds whose Boss you beat). Waves 14-15 flip `ready` and add a `realm`.
 // Until a world is ready, its frame in the Swirl is covered with a cloth. Frame colours: [border gem, trim].
-import { worldOpen, WAVE15, LATER } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
+import { worldOpen, WAVE15, LATER, worldRemoved } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
 // T40a: the picture in the Giant House's frame: a cream wall, the edge of a brown table, a big cookie and a little grey mouse (128 px canvas).
 function drawHousePicture(g, n = 128) {
   const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
@@ -133,6 +133,30 @@ function drawBubblePicture(g, n = 128) {
   r(73, 66, 6, 3, '#ff8a2a'); r(68, 64, 2, 2, '#16121a');
 }
 /* ==== end of Bubble ==== */
+/* ==== Mirror ==== */
+// Wave 18: the picture in the Mirror Palace's frame: a lilac palace wall, a big gold oval mirror with a silver kitten sitting in front of it
+// and its reflection inside, and a pearl ball with a dotted bounce off the mirror's edge (no star shapes: only the Wizard's star is a star; 128 px canvas).
+function drawMirrorPicture(g, n = 128) {
+  const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  r(0, 0, 128, 128, '#e4d8fa'); for (let x = 0; x < 128; x += 16) r(x, 0, 8, 128, '#ddd0f6');
+  r(0, 104, 128, 24, '#f4eefc'); r(0, 104, 128, 3, '#c8b8e8');
+  const oval = (cx, cy, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(cx * k, cy * k, rx * k, ry * k, 0, 0, 7); g.fill(); };
+  oval(64, 54, 40, 46, '#e8b83a'); oval(64, 54, 35, 41, '#f8e8a0'); oval(64, 54, 32, 38, '#d6dcf6'); // the gold frame, the silver glass
+  g.strokeStyle = '#ffffff'; g.lineWidth = 4 * k; g.beginPath(); g.moveTo(44 * k, 36 * k); g.lineTo(60 * k, 22 * k); g.stroke(); // a white sheen
+  g.lineWidth = 2 * k; g.beginPath(); g.moveTo(40 * k, 48 * k); g.lineTo(48 * k, 40 * k); g.stroke();
+  const kitten = (cx, cy, c, ear, flip) => { // a sitting kitten: body, head, two ears, eyes, a tail
+    const f = flip ? -1 : 1;
+    oval(cx, cy + 12, 11, 12, c); oval(cx, cy - 4, 9, 8, c);
+    g.fillStyle = c; for (const s of [-1, 1]) { g.beginPath(); g.moveTo((cx + s * 8) * k, (cy - 8) * k); g.lineTo((cx + s * 4) * k, (cy - 18) * k); g.lineTo((cx + s * 1) * k, (cy - 9) * k); g.fill(); }
+    r(cx - 5, cy - 6, 2.5, 3, ear); r(cx + 3, cy - 6, 2.5, 3, ear);
+    g.strokeStyle = c; g.lineWidth = 4 * k; g.beginPath(); g.moveTo((cx + 10 * f) * k, (cy + 18) * k); g.quadraticCurveTo((cx + 22 * f) * k, (cy + 12) * k, (cx + 18 * f) * k, (cy + 2) * k); g.stroke();
+  };
+  kitten(36, 70, '#c4c8d8', '#2a2a3a', false);   // the real kitten, in front of the mirror
+  kitten(74, 40, '#b4bcdc', '#4a4a6a', true);    // its reflection, a little paler, the other way round
+  g.fillStyle = '#fffaf0'; g.beginPath(); g.arc(100 * k, 96 * k, 5 * k, 0, 7); g.fill(); g.strokeStyle = '#c8b8e8'; g.lineWidth = 1 * k; g.stroke(); // the pearl ball
+  g.fillStyle = '#b090d8'; for (const [x, y] of [[92, 88], [84, 82], [78, 78]]) { g.beginPath(); g.arc(x * k, y * k, 1.8 * k, 0, 7); g.fill(); } // its dotted bounce
+}
+/* ==== end of Mirror ==== */
 export const PICTURE_WORLDS = [
   { id: 'house', name: 'Giant House', emoji: '🏠', frame: [0xc89a3a, 0x7a4a1a], ready: true, realm: 'house', picture: drawHousePicture }, // T40a; T40a.5 the puzzle house (owner 2026-10-26)
   { id: 'pirate', name: 'Pirate Seas', emoji: '🏴‍☠️', frame: [0x3a6aa8, 0xe8d8a8], ready: true, realm: 'pirate', place: 'Deep Blue' }, // owner 2026-10-28: the Pirate Seas and Atlantis share one world, Deep Blue (like Playland)
@@ -149,14 +173,26 @@ export const PICTURE_WORLDS = [
   // Owner 2026-10-26: the Wizard gives no star (beating him is chapter 2's championship); the 12th star is a fifth secret world
   // (it took the place of the old `wizard` entry, which no save could hold).
   { id: 'gravity', name: 'Cube Planets', emoji: '🪐', frame: [0xf0d080, 0xd8c8f8], ready: true, realm: 'gravity', picture: drawGravityPicture }, // Cube Planets (was secret5: no save could hold its star); step 0, behind ?preview (comingsoon.js LATER)
+  /* ==== Mirror ==== */
+  // Wave 18 (plans/wave18-mirror.md): the 13th star, the 12th world; appended last, so it is FRAME_WORLDS[11] -> frame spot S5 (swirlland.js) and its
+  // gem corners are GEMS[11 % 7]. Behind ?preview (comingsoon.js LATER) and removable with the owner's switch (REMOVED, below).
+  { id: 'mirror', name: 'Mirror Palace', emoji: '🪞', type: 'mirror', frame: [0xd8d0f8, 0xf8e8a0], ready: true, realm: 'mirror', picture: drawMirrorPicture },
+  /* ==== end of Mirror ==== */
 ];
 for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id) && !worldOpen(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
 // T49: the Castle ships behind ?preview, and while it is closed its frame is the old secret one (nothing spoiled on the cloth).
-for (const w of PICTURE_WORLDS) if (LATER.includes(w.id) && !worldOpen(w.id)) Object.assign(w, { ready: false, secret: true, realName: w.name, name: 'Secret World', emoji: '❓' });
-// 12 stars in all (PICTURE_WORLDS), every one from a Picture World; 11 hang as frames in the Swirl (all but the Portal House);
-// all 12 light a stone of the star bridge.
+// Wave 18: a REMOVED world (comingsoon.js; the owner's switch) stays in the list (its id is saved: stars, keys, bossWins) but has no frame, no stone and no realm.
+for (const w of PICTURE_WORLDS) if (worldRemoved(w.id)) Object.assign(w, { removed: true, ready: false, door: false, bridge: false });
+for (const w of PICTURE_WORLDS) if (LATER.includes(w.id) && !w.removed && !worldOpen(w.id)) Object.assign(w, { ready: false, secret: true, realName: w.name, name: 'Secret World', emoji: '❓' });
+// 13 stars in all (PICTURE_WORLDS; 12 while the Mirror Palace is removed), every one from a Picture World; 12 hang as frames in the Swirl (all but the
+// Portal House); all of them light a stone of the star bridge.
 export const FRAME_WORLDS = PICTURE_WORLDS.filter(w => w.door !== false);
 export const BRIDGE_WORLDS = PICTURE_WORLDS.filter(w => w.bridge !== false);
+/* ==== Mirror ==== */
+// The stars that count (the HUD's row and x / n, the star toast, the Bosses' star bonus): the worlds of the bridge, so a REMOVED world's star stays in the save, unseen.
+export const STAR_WORLDS = BRIDGE_WORLDS;
+export const starsWon = stars => (Array.isArray(stars) ? stars : []).filter(id => !PICTURE_WORLDS.some(w => w.id === id && w.removed)); // (all of them but a removed world's)
+/* ==== end of Mirror ==== */
 // T40: the Picture Worlds that open a realm (`realm` = a REALMS id; Race Track and Ball Stadium share Playland, each frame has its own arrival).
 export const worldsOf = realm => PICTURE_WORLDS.filter(w => w.realm === realm);
 export const pictureWorld = id => PICTURE_WORLDS.find(w => w.id === id) ?? null;

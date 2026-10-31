@@ -20,7 +20,7 @@ export default async function ({ browser, base, t }) {
   const a = await state(shut);
   t.ok(a.switchOff, 'the switch ships off (WAVE15_OPEN = false)');
   t.ok(a.ready.join() === 'atlantis,portal,fair,doors,doodle' && a.oldReady.length === 4 && a.castle, `closed: all five wave 15 worlds are open for everyone (owner 2026-10-28/30: OPEN_NOW; the Portal House since 2026-10-30), and the Castle too, the four of wave 14 are (${a.ready})`);
-  t.ok(a.swirl.join() === '5,true' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 5 with the Portal House (open for everyone), the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
+  t.ok(a.swirl.join() === '6,true' && a.pirate.join() === '2,320,224' && a.fair, `closed: the Swirl is version 6 (the Mirror Palace's frame, wave 18) with the Portal House (open for everyone), the Pirate Seas version 2 (320 wide: Atlantis is open), the Funfair part is there (${a.swirl} / ${a.pirate} / ${a.fair})`);
   // the closed Swirl as a world: no House; Playland has the open Funfair
   const worlds = await shut.evaluate(async () => {
     const { World } = await import('/src/world.js'), { REALMS } = await import('/src/realms.js');
@@ -35,7 +35,7 @@ export default async function ({ browser, base, t }) {
 
   const pre = await openGame(browser, base, { wave15: false, query: '?preview' });
   const b = await state(pre);
-  t.ok(b.ready.length === 5 && b.swirl.join() === '5,true' && b.pirate.join() === '2,320,224' && b.fair, `?preview: all five open, Swirl 5, Pirate Seas 2 (320 wide), the Funfair (${b.ready})`);
+  t.ok(b.ready.length === 5 && b.swirl.join() === '6,true' && b.pirate.join() === '2,320,224' && b.fair, `?preview: all five open, Swirl 6, Pirate Seas 2 (320 wide), the Funfair (${b.ready})`);
   const remembered = await pre.evaluate(() => Object.keys(localStorage).filter(k => /preview|wave15/i.test(k)));
   t.ok(remembered.length === 0, 'the preview is never remembered on the device');
   t.ok(pre.errors.length === 0, `no page errors in preview (${pre.errors.slice(0, 3).join(' | ')})`);

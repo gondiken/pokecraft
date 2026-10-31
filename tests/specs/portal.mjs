@@ -110,7 +110,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.own === 'bone:2,gravity:2,mind:0.5,portal:0.5,racer:2,slime:2,time:0.5' && /bone:2/.test(A.onPortal) && /alien:2/.test(A.onPortal) && /cozy:2/.test(A.onPortal) && /racer:0.5/.test(A.onPortal) && !/ninja|mind:|time:/.test(A.onPortal), `chart: Portal hits racer, slime, bone (and gravity, wave 16); bone, alien and cozy hit Portal, racer barely does (${A.own} / ${A.onPortal})`);
     t.ok(A.pw.ready === true && A.pw.door === false && !A.pw.realm && A.frames >= 11 && A.bridge >= 12, 'the Portal House is a ready world with no frame (no realm), the frames and stones are as before');
     t.ok(A.bossOk && A.bossModel.species === 'gatestrider' && A.crew.join() === 'swirl,swirl' && /0 \/ 10/.test(A.gate) && A.gateDone === null && /8 \/ 10/.test(A.gate8) && /4 \/ 10/.test(A.gateOld), `Grandpa Arch: a giant Gatestrider, top level 63, two keepers with the swirl look; the gate says "${A.gate}", eight rooms are not enough now ("${A.gate8}"), old room keys 1-4 still count ("${A.gateOld}")`);
-    t.ok(A.version === 5 && A.same?.join() === '4' && A.lose === 'stay' && A.levelCap === 45, 'the Swirl is version 5 (version 4 cells kept), a lost battle rests you in the Swirl');
+    t.ok(A.version === 6 && A.same?.join() === '4,5' && A.lose === 'stay' && A.levelCap === 45, 'the Swirl is version 6 (wave 18: the Mirror Palace; versions 4 and 5 cells kept), a lost battle rests you in the Swirl');
     // owner 2026-10-29: "reset my progress which I now had in the ?preview": the Portal House (behind ?preview) is started over once
     const RS = await page.evaluate(async () => {
       const W = await import('/src/worldreset.js'), CS = await import('/src/comingsoon.js');

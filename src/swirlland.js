@@ -9,6 +9,7 @@
 // blocks (SCULPTURES), and the data for the sky's nebula puffs, sparks and floating oddities (decorList; swirlsky.js draws those).
 import { B, WOOL, mulberry32 } from './blocks.js';
 import { FRAME_WORLDS, BRIDGE_WORLDS, pictureWorld } from './pictureworlds.js';
+import { worldRemoved } from './comingsoon.js'; // wave 18: the Mirror Palace's frame, deck and lift exist unless the owner removed it
 import { buildPortalHouse, houseAim, HUB as HOUSE_HUB } from './portalhouse.js'; // T42: the Portal House in the north-east sky
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -57,13 +58,18 @@ export function zoneMix(x, z, key) {
   return out;
 }
 
+/* ==== Mirror ==== */
+// Wave 18 (plans/wave18-mirror.md section 8): the 13th frame (spot S5, x 24 on the south gallery) needs the south deck to reach x 20 and lift `southW` at x 18-19
+// (the same move N5 made on the north side). Removed (comingsoon.js REMOVED): today's deck, lift and 12 stones, block for block (tests/fixtures/swirl-v5.json).
+export const MIRROR_IN = !worldRemoved('mirror');
+/* ==== end of Mirror ==== */
 export const SEA = 0; // B.SWIRL_CLOUD at y 0 everywhere, ground 0: a soft landing
 export const DECKS = [ // round: [cx, cz, r]; box: [x0, x1, z0, z1]; the top block is at y (you stand at y + 1)
   { id: 'hub', round: [48, 80, 11], y: 20 },        // arrival, door home, start of the star bridge
   { id: 'north', box: [20, 68, 52, 57], y: 26 },    // north gallery: frames N0-N5 hang above its north edge (x 20-27 since 2026-10-26, for N5)
-  { id: 'south', box: [28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S4 hang beyond its south edge
+  { id: 'south', box: [MIRROR_IN ? 20 : 28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S4 hang beyond its south edge (x 20 since wave 18, for S5 at x 24)
   { id: 'loopbase', box: [56, 64, 84, 92], y: 20 }, // the looping stairs stand here, joined to the hub
-  { id: 'wizard', round: [142, 80, 9], y: 20 },     // the Wizard's island (its x = wizardX(12), the number of bridge stones)
+  { id: 'wizard', round: [142, 80, 9], y: 20 },     // the Wizard's island (pinned at x 142 = WIZARD.x since wave 18, whatever the number of bridge stones)
 ];
 export const DOOR = { x: 39, z: [78, 82], y: [21, 25], facing: [1, 0] }; // PORTAL 5 wide x 5 tall, frame round it (z 77/83, y 26)
 export const STAIRS = [
@@ -76,14 +82,15 @@ export const LIFTS = [ // upward rivers: boxes (cells x0..x1, z0..z1), feet insi
   { id: 'north', x: [69, 70], z: [54, 55], y: [1, 28] },
   { id: 'northW', x: [18, 19], z: [54, 55], y: [1, 28] }, // beside the gallery's west end
   { id: 'south', x: [69, 70], z: [105, 106], y: [1, 16] },
-  { id: 'southW', x: [26, 27], z: [105, 106], y: [1, 16] },
+  { id: 'southW', x: MIRROR_IN ? [18, 19] : [26, 27], z: [105, 106], y: [1, 16] }, // (x 18-19 since wave 18)
   { id: 'wizard', x: [59, 60], z: [82, 83], y: [1, 22] }, // beside the bridge's start: a fall from the bridge is never far from here
 ];
 const north = (x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] }); // hangs 1 above the north deck (y 27 is air)
-export const FRAME_SPOTS = [ // 11 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
+export const FRAME_SPOTS = [ // 11 places (12 with S5 while the Mirror Palace is in); FRAME_WORLDS[i] -> FRAME_SPOTS[i]
   ...[32, 40, 48, 56, 64].map(north),
   ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
   north(24, 5), // owner 2026-10-26: the 11th frame (the fifth secret world), west of N0
+  ...(MIRROR_IN ? [{ id: 'S5', x: 24, z: 109, y: 16, facing: [0, -1], stand: [24, 15, 108] }] : []), // wave 18: the 12th frame (the Mirror Palace), west of S0 (FRAME_SPOTS[11])
 ];
 // Which spot a world's frame hangs on: FRAME_WORLDS order (i -> FRAME_SPOTS[i]) unless moved here. Owner 2026-10-29: the Giant House
 // moved one left (N5), so Deep Blue's two frames hang side by side (Atlantis on N0, beside the Pirate Seas on N1); Gravity took Atlantis's
@@ -96,7 +103,7 @@ export function frameSpotOf(id) { // -1: no frame (or a spot a moved frame took:
 }
 export const FRAME = { w: 7, h: 7 }; // PICTURE_FRAME border, 5x5 inside: CLOTH, or PORTAL when the world is ready (later waves)
 export const BRIDGE = { x0: 61, z: [79, 81], y: 20, len: 5, gap: 1 }; // star stone i: x 61+6i .. 65+6i, two layers (y 19-20)
-export const WIZARD = { z: 80, r: 9, y: 20, R: 4, wallTop: 39 };
+export const WIZARD = { x: 142, z: 80, r: 9, y: 20, R: 4, wallTop: 39 }; // wave 18: the island is PINNED at x 142 (wave 19 builds the Wizard's Tower on it); the bridge's stones are spread over the span before it (stoneBox)
 // Little floating islets: scenery only, nobody needs them.
 export const ISLETS = [[14, 20, 3, 30], [24, 128, 4, 22], [86, 36, 3, 34], [90, 122, 4, 18], [126, 40, 3, 26], [132, 118, 5, 30], [152, 60, 3, 34], [78, 14, 4, 20], [76, 148, 3, 26]]; // (T38d: the one at 10, 82 is the paint palette now)
 
@@ -173,8 +180,12 @@ export function decorList() {
 const GEMS = ['electric', 'water', 'fire', 'grass', 'mind', 'pixie', 'rock'];
 
 // The first block of the star bridge for world i, and the Wizard's island x for n worlds.
-export const stoneX = i => BRIDGE.x0 + (BRIDGE.len + BRIDGE.gap) * i;
-export const wizardX = n => BRIDGE.x0 + (BRIDGE.len + BRIDGE.gap) * n + WIZARD.r;
+export const stoneX = i => BRIDGE.x0 + (BRIDGE.len + BRIDGE.gap) * i; // the n = 12 formula (old callers); stoneBox is the real one
+export const wizardX = () => WIZARD.x; // pinned (wave 18): the same for any number of stones
+// Wave 18: the stones always fill the same span x 61..132, whatever their number n: stone i of n runs from x0 = 61 + floor(i * 72 / n) to
+// 61 + floor((i + 1) * 72 / n) - 2 (a one-cell gap after it). For n = 12 that is exactly today's stones (61-65, 67-71, ... 127-131); for
+// n = 13 they are 4 and 5 long in turn. Stones are live cells (air in the world data): no block moves.
+export const stoneBox = (i, n) => ({ x0: BRIDGE.x0 + Math.floor(i * 72 / n), x1: BRIDGE.x0 + Math.floor((i + 1) * 72 / n) - 2 });
 // Every Swirl x/z cell of a lift, the middle of its box.
 export const liftCenter = l => [(l.x[0] + l.x[1] + 1) / 2, (l.z[0] + l.z[1] + 1) / 2];
 
@@ -210,11 +221,11 @@ export function swirlLand(world, def, { house = def?.house !== false } = {}) { /
     }
   };
   for (const d of DECKS) {
-    if (d.id === 'wizard') continue; // placed below (its x depends on the number of worlds)
+    if (d.id === 'wizard') continue; // placed below
     if (d.round) round(d.round[0], d.round[1], d.round[2], d.y); else box(...d.box, d.y);
   }
   const n = BRIDGE_WORLDS.length;
-  const wx = wizardX(n);
+  const wx = wizardX(n); // pinned at x 142
   round(wx, WIZARD.z, WIZARD.r, WIZARD.y);
 
   // A short post with a lamp on top (fixed stone, a glowing lamp).
@@ -287,7 +298,7 @@ export function swirlLand(world, def, { house = def?.house !== false } = {}) { /
 
   // 8. The star bridge: n stones of air (drawn with setLive when won), the island after them.
   const bridge = BRIDGE_WORLDS.map((pw, i) => {
-    const x0 = stoneX(i), x1 = x0 + BRIDGE.len - 1, [z0, z1] = BRIDGE.z, cells = [];
+    const { x0, x1 } = stoneBox(i, n), [z0, z1] = BRIDGE.z, cells = [];
     for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) for (let y = BRIDGE.y - 1; y <= BRIDGE.y; y++) cells.push([x, y, z]);
     return { world: pw.id, cells, box: { x0, x1, z0, z1, y0: BRIDGE.y - 1, y1: BRIDGE.y } };
   });

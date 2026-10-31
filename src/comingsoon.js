@@ -10,8 +10,18 @@ export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefin
 // Owner 2026-10-28: "we can switch on the Funfair in the real game, just that one". A world listed here is open for everyone
 // while the rest of wave 15 stays closed.
 export const OPEN_NOW = ['fair', 'atlantis', 'doors', 'castle', 'doodle', 'portal', 'bubble']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle; the Sketchbook closed 2026-10-29 for its pencil and open again the same day ("we can switch on the sketchbook for everyone now"); the Portal House 2026-10-30 ("we can switch on the portal world for everyone"); the Bubble Well 2026-10-30 ("you can open the bubble world for everyone")
-export const worldOpen = id => wave15Open || OPEN_NOW.includes(id);
+/* ==== Mirror ==== */
+// Wave 18 (plans/wave18-mirror.md section 9): the owner's switch to take a world OUT of the game for everyone. `REMOVED = ['mirror']` and the
+// Mirror Palace is gone: no frame, no stone, no realm, no wild creatures (pictureworlds.js, swirlland.js, realms.js read `worldRemoved`);
+// saves keep everything (star, keys, bossWins, creatures), so `REMOVED = []` puts it all back. Tests may add ids through
+// `globalThis.__pcRemoved` before the modules load (like `__pcWave15`).
+export const REMOVED = []; // owner switch: ['mirror'] takes the Mirror Palace out of the game for everyone
+if (Array.isArray(globalThis.__pcRemoved)) REMOVED.push(...globalThis.__pcRemoved.filter(id => !REMOVED.includes(id)));
+export const worldRemoved = id => REMOVED.includes(id);
+/* ==== end of Mirror ==== */
+export const worldOpen = id => !worldRemoved(id) && (wave15Open || OPEN_NOW.includes(id));
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle'];
 LATER.push('gravity'); // Cube Planets (plans/cube-planets.md): step 0, the gravity sandbox, ships closed until the owner has played it
+LATER.push('mirror'); // wave 18, the Mirror Palace: ships closed until the owner has played it (`OPEN_NOW.push('mirror')` opens it for everyone)

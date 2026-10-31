@@ -2,14 +2,16 @@
 // BEFORE the Mirror Palace existed; the removed state (REMOVED = ['mirror'], comingsoon.js) must give the same record again, block for
 // block. Used by tests/specs/mirror.mjs (part `removed`). `snapshot(world)` only reads what swirlLand sets on a stand-in world.
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { makeSwirl } from './portalcheck.mjs';
 
-export function snapshot(w = makeSwirl({ house: true })) {
+export function snapshot(w = makeSwirl({ house: true }), { data = false } = {}) {
   const S = w.swirl, boxes = a => a.map(b => b.box);
   return {
     sha: crypto.createHash('sha256').update(Buffer.from(w.data)).digest('hex'),
     ground: crypto.createHash('sha256').update(Buffer.from(w.ground)).digest('hex'),
     size: [w.W, w.D],
+    ...(data ? { data: zlib.gzipSync(Buffer.from(w.data)).toString('base64') } : {}), // (tests only: the whole block array, to diff two states)
     decks: S.decks,
     lifts: w.lifts,
     frames: S.frames.map(f => ({ world: f.world, spot: f.spot, box: f.box })),

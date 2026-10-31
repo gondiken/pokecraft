@@ -1,7 +1,7 @@
 // T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge) and a short
 // note from the Wizard. Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
 // crew: trainers before the Boss where its `gate` says so (the Ball Stadium, the Race Track, the Pirate Seas), bonus battles elsewhere. The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
-import { PICTURE_WORLDS, pictureWorld, loadStars } from './pictureworlds.js';
+import { PICTURE_WORLDS, pictureWorld, loadStars, starsWon, STAR_WORLDS } from './pictureworlds.js'; // wave 18: starsWon (a removed world's star is not counted)
 import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
@@ -15,6 +15,7 @@ import { lineState, LINE_COUNT } from './doodleland.js'; // T45
 import { castleState } from './castleland.js'; // T49
 import { bubbleState, SHIELDS as BUBBLE_SHIELDS } from './bubbleland.js'; // the Bubble Well
 import { gravityState } from './cubeland.js'; // Cube Planets
+import { mirrorState } from './mirrorland.js'; // wave 18, the Mirror Palace
 
 export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999,
   perStar: 2, starCap: 95 }; // owner 2026-10-28: every star you already hold makes the next Boss (and crew) 2 levels stronger, up to 95 (creatures now grow to 100)
@@ -57,7 +58,7 @@ const topLevel = team => Math.max(...team.map(t => t[1]));
 
 // Owner 2026-10-28: "the Bosses should get slightly stronger from one to the next". The worlds can be done in any order, so the step
 // comes from the stars you hold from OTHER worlds (a rematch of this world's Boss does not count its own star twice). Pure.
-export const starBonus = (stars, id) => BOSS.perStar * (stars || []).filter(s => s !== id).length;
+export const starBonus = (stars, id) => BOSS.perStar * starsWon(stars).filter(s => s !== id).length; // (a removed world's star stays in the save but counts for nothing: wave 18)
 export function starTeam(team, stars, id) {
   const up = starBonus(stars, id);
   if (!up) return team;
@@ -302,6 +303,31 @@ addBoss({
   ],
 });
 /* ==== end of Gravity ==== */
+/* ==== Mirror ==== */
+// Wave 18 (plans/wave18-mirror.md section 5): Duke Dazzle waits in the Grand Mirror Hall, in front of a wall of mirrors, until the three wings shine again
+// (Bounce-Back, the Looking-Glass Rooms, the Moonlit Gallery: nine saved `beaten` keys, mirrorland.js mirrorState); his helpers Copycat Cleo, Glazier Gwen and
+// Lamplighter Lux battle first (the base's crew rule). STAGE 1: the teams are stand-ins of old species (and the type is Light's); stage 2 puts in the Mirror
+// creatures (periscoot 61, bendabout 62, lynxlook 62, grandlooker 63; crew: copykit / lookit, wobblet / copykit, lookit / periscoot).
+addBoss({
+  id: 'mirror', name: 'Duke Dazzle', type: 'light', title: 'Duke Dazzle · Mirror Palace Boss', look: 'dazzle', // (the title is spelled out: a closed world's frame is named "Secret World")
+  colors: { shirt: 0xd8d8f0, pants: 0x5a4a8a, hair: 0xe8c070, skin: 0xf2d0b0 },
+  gate: game => { const st = mirrorState(game); return st.done ? null : `Oh, my poor smudgy palace! I can't come out like THIS. (🏓 ${st.court} / 3 · 👯 ${st.twin} / 3 · 🔦 ${st.beam} / 3)`; },
+  team: [['owlucid', 61], ['visionelk', 62], ['starbelle', 62], ['lumitower', 63]], // top level 63, the easy side (stand-ins until stage 2)
+  intro: ['Look at my palace! It SHINES again!', 'Now, a dazzling battle!'],
+  lose: 'Simply dazzling! The star was in my best mirror all along.',
+  win: 'A lovely try! Fix your hair, rest a bit, and come back.',
+  rematchIntro: ['Back again? I polished my team!'],
+  note: 'I built this palace so my creatures could pull funny faces at themselves. Thank you for making the mirrors shine again!',
+  crew: [
+    { name: 'Copycat Cleo', look: 'mirror', colors: { shirt: 0xff9ad8, pants: 0x4a4a6a, hair: 0x2a1a10, skin: 0xc68a5a },
+      team: [['thinkit', 59], ['sunnykit', 60]], intro: ['You beat me at Bounce-Back! Copy that!', 'Battle!'], line: "Don't hit it where you are!" },
+    { name: 'Glazier Gwen', look: 'mirror', colors: { shirt: 0x8ad8e8, pants: 0xf6efe0, hair: 0xc8902a, skin: 0xf2d0b0 },
+      team: [['dreamlet', 60], ['twinklet', 61]], intro: ['You and your twin did it!', 'Now a battle?'], line: 'Your twin gets stuck. Use that!' },
+    { name: 'Lamplighter Lux', look: 'mirror', colors: { shirt: 0xffe08a, pants: 0x3a3a6a, hair: 0x1a1a1a, skin: 0xe8c09a },
+      team: [['beacub', 60], ['cerebrix', 61]], intro: ['No more Gloomies! Thank you!', 'Battle me!'], line: 'Light bounces off the shiny walls!' },
+  ],
+});
+/* ==== end of Mirror ==== */
 
 /* ==== T42 portal ==== */
 addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open the Study; Grandpa Arch, the oldest Portal creature, battles for the star
@@ -415,7 +441,7 @@ export function createBosses(game, { startBattle, save }) {
         game.cubes += c;
         sound.play('champion');
         toast(`${npc.name}: ${def.lose}`);
-        toast(`⭐ You won the star of the ${pw.name}! (${game.stars.length}/${PICTURE_WORLDS.length}) +${c} Capture Cubes`);
+        toast(`⭐ You won the star of the ${pw.name}! (${starsWon(game.stars).length}/${STAR_WORLDS.length}) +${c} Capture Cubes`);
         game.ui.celebrate(`⭐ The ${pw.name} star!`, `🧙 "${def.note}"`, BOSS.noteMs);
         toast(`🧙 ${def.note}`);
         toast(game.place === 'swirl' ? 'Your star lights a stone of the star bridge, back on the hub!' : 'Go back to the Swirl: your star lights a stone of the star bridge!'); // T42: the Portal House is in the Swirl itself
