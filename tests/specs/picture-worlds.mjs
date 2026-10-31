@@ -39,7 +39,7 @@ export default async function ({ browser, base, t }) {
   /* ---- 1. Types, wool, blocks (data) ---- */
   const d1 = await page.evaluate(async old => {
     const S = await import('/src/species.js'), Bk = await import('/src/blocks.js');
-    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair', 'surprise', 'atlantis', 'portal', 'doodle', 'knight', 'bubble', 'gravity']; // (T49: knight)
+    const types = Object.keys(S.TYPE_COLORS), news = ['tiny', 'pirate', 'racer', 'ball'], later = ['funfair', 'surprise', 'atlantis', 'portal', 'doodle', 'knight', 'bubble', 'gravity', 'mirror', 'custom']; // (T49: knight; waves 18-19: mirror, custom)
     const e = (a, b) => S.effectiveness(a, b);
     const row = (a, want) => Object.entries(want).filter(([b, v]) => e(a, b) !== v).map(([b, v]) => `${a}>${b} ${e(a, b)} want ${v}`);
     const bad = [

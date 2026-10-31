@@ -246,7 +246,7 @@ export default async function ({ browser, base, t }) {
     }
     // the blocks: 138 mirror wool, 139 the mirror pane (solid, fixed, not placeable); 137 stays free for wave 19's Custom wool
     const pane = BLOCKS[139];
-    t.ok(WOOL.mirror === 138 && BLOCKS[138].name === 'Mirror Wool' && B.MIRROR_PANE === 139 && pane.fixed && pane.name === 'Mirror' && pane.wallText && !(PLACEABLE ?? []).includes?.(139) && !Object.values(B).includes(137) && !Object.values(WOOL).includes(137), 'block 138 is the mirror wool, 139 the mirror pane (fixed, not placeable); 137 is still free (wave 19)');
+    t.ok(WOOL.mirror === 138 && BLOCKS[138].name === 'Mirror Wool' && B.MIRROR_PANE === 139 && pane.fixed && pane.name === 'Mirror' && pane.wallText && !(PLACEABLE ?? []).includes?.(139) && WOOL.custom === 137, 'block 138 is the mirror wool, 139 the mirror pane (fixed, not placeable); 137 is wave 19\'s Canvas Wool');
     // the keys and the state
     const st = (beaten, stars = []) => ML.mirrorState({ beaten, stars });
     t.ok(st([]).n === 0 && !st([]).done && st([]).need === 9, 'mirrorState starts at nothing');
@@ -288,7 +288,7 @@ export default async function ({ browser, base, t }) {
     t.ok(r.size.join() === '160,160' && Math.abs(r.pos[0] - 80.5) < 1 && Math.abs(r.pos[2] - 153.5) < 1.5 && r.boss === 'mirror' && r.crew === 3 && r.bossStand, `you step out of the frame into the garden facing the palace: 160 x 160, Duke Dazzle and three helpers placed (${r.pos.map(v => v.toFixed(1))})`);
     t.ok(r.keeps.includes('palace') && r.keeps.includes('garden') && r.parts === 'mirror' && r.nooks >= 10 && r.biome === 'mirror' && r.edit === 'false,false,false', `the whole map is a keep (no building), one live part, ${r.nooks} nooks (${r.keeps})`);
     t.ok(/Duke Dazzle/.test(r.people) || r.people.length >= 0, `the people: ${r.people}`);
-    t.ok(r.wild === 0 && /Bounce-Back|Looking-Glass|Moonlit/.test(String(r.aim)), `no wild creatures yet (stage 2 adds them); the guide: ${r.aim}`);
+    t.ok(r.wild === 7 && /Bounce-Back|Looking-Glass|Moonlit/.test(String(r.aim)), `the seven Mirror creatures live here; the guide: ${r.aim}`);
     // walk to the gate with the live physics off: the guide, the gate words from Duke
     const gate = await page.evaluate(async () => {
       const { bossOf } = await import('/src/pictureboss.js'), g = window.pokecraft;

@@ -132,8 +132,8 @@ export default async function ({ browser, base, t }) {
       t.ok(c.row === '2,2,2,0.5,0.5,0.5,1', `the custom row (${c.row})`);
       t.ok(c.cells === '2,2,2|0.5,0.5', `the five separate cells (${c.cells})`);
       t.ok(c.changed === 0, `no old chart cell changed (${c.cells2} cells of the ${c.old} old types, changed: ${c.odd.join()})`);
-      t.ok(c.types === c.old + 1, `one new type (${c.types})`);
-      t.ok(c.grew === 'doodle,normal,portal', `only portal, doodle and normal became weak to one more type (${c.grew})`);
+      t.ok(c.types === c.old + 2, `one new type, plus wave 18's Mirror (${c.types})`);
+      t.ok(c.grew === 'doodle,ninja,normal,portal,surprise', `only portal, doodle and normal became weak to one more type (and ninja, surprise and doodle again through wave 18's Mirror) (${c.grew})`);
       t.ok(!c.over.length && c.weak.custom <= 5, `no defender is weak to more than 5 types (or more than before) ${c.over.join(', ')} (custom ${c.weak.custom}, portal ${c.weak.portal}, doodle ${c.weak.doodle}, normal ${c.weak.normal})`);
     }
     if (want('paint')) {
