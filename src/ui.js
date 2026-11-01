@@ -1,5 +1,4 @@
 // HUD, toasts, team screen and creature portraits.
-import { DOODLE_INK } from './doodleink.js';
 import * as THREE from 'three';
 import { BLOCKS, PLACEABLE, drawBlockIcon } from './blocks.js';
 import { TRAITS } from './traits.js';
@@ -40,9 +39,7 @@ export function portrait(species, w = 140, h = 120, silhouette = false, paint = 
   const cam = new THREE.PerspectiveCamera(35, w / h, 0.1, 50);
   cam.position.set(center.x + size * 0.95, center.y + size * 0.5, center.z + size * 1.45);
   cam.lookAt(center);
-  const ink = DOODLE_INK.uDoodleInk.value; DOODLE_INK.uDoodleInk.value = 1; // a Doodle portrait is always inked (also while in the Sketchbook)
   portraitRenderer.render(scene, cam);
-  DOODLE_INK.uDoodleInk.value = ink;
   const url = portraitRenderer.domElement.toDataURL();
   disposeModel(model);
   portraitCache.set(key, url);
