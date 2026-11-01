@@ -1,6 +1,6 @@
-// Wave 18 (Mirror): the Swirl's data as a fixture. `node tests/swirlrecord.mjs > tests/fixtures/swirl-v5.json` was run on the code
-// BEFORE the Mirror Palace existed; the removed state (REMOVED = ['mirror'], comingsoon.js) must give the same record again, block for
-// block. Used by tests/specs/mirror.mjs (part `removed`). `snapshot(world)` only reads what swirlLand sets on a stand-in world.
+// Wave 18 (Mirror): the Swirl's data as a record. `node tests/swirlrecord.mjs > tests/fixtures/swirl-v5.json` was run on the code
+// BEFORE the Mirror Palace existed (a frozen record now: the owner's "remove it" switch is gone since 2026-11-01). Used by
+// tests/specs/mirror.mjs (part `swirl`: nothing old moved). `snapshot(world)` only reads what swirlLand sets on a stand-in world.
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { makeSwirl } from './portalcheck.mjs';

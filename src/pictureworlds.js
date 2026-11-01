@@ -1,7 +1,7 @@
 // T38a: the Picture Worlds that are stars (most hang as framed pictures in the Swirl). Data only (one import: the wave 15 switch).
 // Append-only: the ids are saved in `stars` (the worlds whose Boss you beat). Waves 14-15 flip `ready` and add a `realm`.
 // Until a world is ready, its frame in the Swirl is covered with a cloth. Frame colours: [border gem, trim].
-import { worldOpen, WAVE15, LATER, worldRemoved } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
+import { worldOpen, WAVE15, LATER } from './comingsoon.js'; // wave 15 ships closed until the owner opens it
 // T40a: the picture in the Giant House's frame: a cream wall, the edge of a brown table, a big cookie and a little grey mouse (128 px canvas).
 function drawHousePicture(g, n = 128) {
   const k = n / 128, r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
@@ -175,24 +175,20 @@ export const PICTURE_WORLDS = [
   { id: 'gravity', name: 'Cube Planets', emoji: '🪐', frame: [0xf0d080, 0xd8c8f8], ready: true, realm: 'gravity', picture: drawGravityPicture }, // Cube Planets (was secret5: no save could hold its star); step 0, behind ?preview (comingsoon.js LATER)
   /* ==== Mirror ==== */
   // Wave 18 (plans/wave18-mirror.md): the 13th star, the 12th world; appended last, so it is FRAME_WORLDS[11] -> frame spot S5 (swirlland.js) and its
-  // gem corners are GEMS[11 % 7]. Behind ?preview (comingsoon.js LATER) and removable with the owner's switch (REMOVED, below).
+  // gem corners are GEMS[11 % 7]. Behind ?preview (comingsoon.js LATER).
   { id: 'mirror', name: 'Mirror Palace', emoji: '🪞', type: 'mirror', frame: [0xd8d0f8, 0xf8e8a0], ready: true, realm: 'mirror', picture: drawMirrorPicture },
   /* ==== end of Mirror ==== */
 ];
 for (const w of PICTURE_WORLDS) if (WAVE15.includes(w.id) && !worldOpen(w.id)) w.ready = false; // wave 15 ships closed (comingsoon.js)
 // T49: the Castle ships behind ?preview, and while it is closed its frame is the old secret one (nothing spoiled on the cloth).
-// Wave 18: a REMOVED world (comingsoon.js; the owner's switch) stays in the list (its id is saved: stars, keys, bossWins) but has no frame, no stone and no realm.
-for (const w of PICTURE_WORLDS) if (worldRemoved(w.id)) Object.assign(w, { removed: true, ready: false, door: false, bridge: false });
-for (const w of PICTURE_WORLDS) if (LATER.includes(w.id) && !w.removed && !worldOpen(w.id)) Object.assign(w, { ready: false, secret: true, realName: w.name, name: 'Secret World', emoji: '❓' });
-// 13 stars in all (PICTURE_WORLDS; 12 while the Mirror Palace is removed), every one from a Picture World; 12 hang as frames in the Swirl (all but the
+for (const w of PICTURE_WORLDS) if (LATER.includes(w.id) && !worldOpen(w.id)) Object.assign(w, { ready: false, secret: true, realName: w.name, name: 'Secret World', emoji: '❓' });
+// 13 stars in all (PICTURE_WORLDS), every one from a Picture World; 12 hang as frames in the Swirl (all but the
 // Portal House); all of them light a stone of the star bridge.
 export const FRAME_WORLDS = PICTURE_WORLDS.filter(w => w.door !== false);
 export const BRIDGE_WORLDS = PICTURE_WORLDS.filter(w => w.bridge !== false);
-/* ==== Mirror ==== */
-// The stars that count (the HUD's row and x / n, the star toast, the Bosses' star bonus): the worlds of the bridge, so a REMOVED world's star stays in the save, unseen.
+// The stars that count (the HUD's row and x / n, the star toast, the Bosses' star bonus): the worlds of the bridge.
 export const STAR_WORLDS = BRIDGE_WORLDS;
-export const starsWon = stars => (Array.isArray(stars) ? stars : []).filter(id => !PICTURE_WORLDS.some(w => w.id === id && w.removed)); // (all of them but a removed world's)
-/* ==== end of Mirror ==== */
+export const starsWon = stars => (Array.isArray(stars) ? stars : []);
 // T40: the Picture Worlds that open a realm (`realm` = a REALMS id; Race Track and Ball Stadium share Playland, each frame has its own arrival).
 export const worldsOf = realm => PICTURE_WORLDS.filter(w => w.realm === realm);
 export const pictureWorld = id => PICTURE_WORLDS.find(w => w.id === id) ?? null;
@@ -206,10 +202,10 @@ export function loadStars(saved) {
 }
 /* ==== Wizard ==== */
 // Wave 19 (plans/wave19-wizard-tower.md section 2): the stars the star bridge needs here and now: every bridge world that is open on this page and
-// not switched off. A world is "asleep" only when it is a closed wave 15 world or a `LATER` one (comingsoon.js; Cube Planets outside `?preview`);
+// A world is "asleep" only when it is a closed wave 15 world or a `LATER` one (comingsoon.js; Cube Planets outside `?preview`);
 // the first four worlds have no switch (`worldOpen` only speaks for the switched ones), so they always count. Never a number of stars in the code.
 const asleep = id => (WAVE15.includes(id) || LATER.includes(id)) && !worldOpen(id);
-export const bridgeNeed = () => BRIDGE_WORLDS.filter(w => w.removed !== true && !asleep(w.id));
+export const bridgeNeed = () => BRIDGE_WORLDS.filter(w => !asleep(w.id));
 export const bridgeDone = stars => bridgeNeed().every(w => (stars || []).includes(w.id));
-export const stoneAsleep = w => w.removed !== true && asleep(w.id); // a stone whose world sleeps: a soft cloud once the bridge is whole
+export const stoneAsleep = w => asleep(w.id); // a stone whose world sleeps: a soft cloud once the bridge is whole
 /* ==== end of Wizard ==== */

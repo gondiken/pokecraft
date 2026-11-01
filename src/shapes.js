@@ -6439,18 +6439,10 @@ const SHAPES_ATLANTIS = { urn, stonelion, tilesnake, runestone };
 Object.assign(SHAPES, SHAPES_ATLANTIS);
 /* ==== end of T41 atlantis ==== */
 /* ==== T45 doodle shapes ==== */
-// Doodle creatures are drawings that came alive: paper cream and graphite grey, careful lines, and every model wears a yellow crayon star
-// (userData.gear = 'crayon', userData.keepColour = true: it stays yellow even in the pencil-drawn Sketchbook). Every model faces +z.
-const DO_YELLOW = 0xffd23a, DO_PINK = 0xf0a8b8, DO_METAL = 0xb8bcc8, DO_WOOD = 0xe6c08a;
-function doStar(parent, x, y, z, s = 0.08) { // a little four-armed crayon star, flat on the body
-  const g = pivot(parent, x, y, z);
-  for (const r of [0, Math.PI / 4, Math.PI / 2, -Math.PI / 4]) {
-    const b = glow(box(g, s * 2.2, s * 0.5, 0.03, DO_YELLOW, 0, 0, 0), 0x6a5000);
-    b.rotation.z = r;
-    b.userData.gear = 'crayon'; b.userData.keepColour = true;
-  }
-  return g;
-}
+// Doodle creatures are drawings that came alive: paper cream and graphite grey, careful lines. Owner 2026-11-01: no crayon star on the
+// body any more (it looked like a necklace); instead every Doodle model is inked everywhere (doodleink.js, called by buildModel), and fully
+// pencil-drawn in the Sketchbook (sketch.js). Every model faces +z.
+const DO_PINK = 0xf0a8b8, DO_METAL = 0xb8bcc8, DO_WOOD = 0xe6c08a;
 
 // Nibling / Graphitan: a stubby pencil standing on two little legs. The nib is its nose, an eraser cap is its hat; Graphitan (`knight`) is a
 // tall pencil knight with a helmet, a pink plume and a lead lance.
@@ -6493,7 +6485,6 @@ function pencil(root, m, parts) {
       box(lance, 0.09, 0.09, 0.14, 0x3a3a44, 0, 0, 0.8);
     } else parts.arms.push({ g: arm, phase: ph });
   }
-  doStar(lift, 0, y0 + h * 0.3, w * 0.45 + 0.03, 0.07);
 }
 
 // Rubbit / Rubbadub: a soft eraser block with long ears and a paper sleeve belt. Rubbadub (`crumbs`) is big and round and little crumbs
@@ -6508,7 +6499,6 @@ function eraserbun(root, m, parts) {
   box(lift, bw + 0.02, 0.2, 0.48, m.accent, 0, 0.42, 0); // the paper sleeve belt
   for (const y of [0.38, 0.46]) box(lift, bw + 0.03, 0.015, 0.49, m.dark, 0, y, 0);
   box(lift, 0.36, 0.14, 0.03, m.belly, 0, 0.42, 0.245); // a label
-  doStar(lift, 0, 0.42, 0.265, 0.06);
   const head = pivot(lift, 0, 0.88, 0.04);
   parts.head = head;
   box(head, 0.4, 0.32, 0.36, m.body, 0, 0, 0);
@@ -6596,7 +6586,6 @@ function outline(root, m, parts) {
   const stripes = lynx ? 3 : 2; // half-drawn stripes: solid on the left side only
   for (let i = 0; i < stripes; i++) box(lift, 0.025, 0.2, 0.07, m.dark, 0.235, 0.4, -0.2 + i * 0.2);
   for (let i = 0; i < stripes; i++) box(lift, 0.025, 0.1, 0.07, m.accent, -0.235, 0.4, -0.2 + i * 0.2); // faint on the other side
-  doStar(lift, 0.236, 0.46, 0.17, 0.05).rotation.y = Math.PI / 2;
 }
 
 // Notquite: a round creature that is only half finished: the left half is drawn and coloured in, the right half is faint boxes and dotted
@@ -6633,7 +6622,6 @@ function halfdrawn(root, m, parts) {
   const tuft = pivot(lift, -0.1, 1.1, 0);
   swing(parts, tuft, 'z', 0.15, 2.6, 0);
   box(tuft, 0.06, 0.16, 0.06, m.dark, 0, 0.08, 0);
-  doStar(lift, -0.17, 0.46, 0.3, 0.06);
 }
 const SHAPES_DOODLE = { pencil, eraserbun, outline, halfdrawn };
 Object.assign(SHAPES, SHAPES_DOODLE);

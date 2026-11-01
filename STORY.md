@@ -106,7 +106,7 @@ there is no bridge yet, only an empty row of stepping-stone spots leading out to
 The worlds behind the frames are the **Picture Worlds**: you step into a picture, and you're somewhere else. They
 are not gyms, and there are no more badges. Explore them as much as you like; at the end of each one waits a
 **Boss**. Beat the Boss and you win that world's **star**, the one the Wizard hid there. Bring it back and it becomes
-a glowing stepping stone on the **star bridge** to his tower. (Each star comes with a little note from the Wizard.)
+a glowing stepping stone on the **star bridge** to his tower.
 There are **13 stars**, and every one comes from a Picture World: twelve hang as frames in the Swirl (some of them are
 still secret), and the Portal House is in the Swirl itself. The 13 stars light the 13 stones of the star bridge. The
 Wizard has no star to give: reaching him and winning is the end of chapter 2 itself.

@@ -478,7 +478,7 @@ export default async function ({ browser, base, t }) {
       out.zone = RL.REALMS.playland.zoneNames.fair;
       // Merry Mae: top level 64, four creatures, the move lists are what movesWith gives
       const mae = Pb.bossOf('fair');
-      out.mae = { name: mae.name, top: Math.max(...mae.team.map(x => x[1])), n: mae.team.length, type: mae.type, look: mae.look, crew: mae.crew.map(c => c.name).join(), gate: typeof mae.gate, notes: !!mae.note && !!mae.lose && !!mae.win && mae.intro.length === 2 && !!mae.rematchIntro };
+      out.mae = { name: mae.name, top: Math.max(...mae.team.map(x => x[1])), n: mae.team.length, type: mae.type, look: mae.look, crew: mae.crew.map(c => c.name).join(), gate: typeof mae.gate, notes: !!mae.lose && !!mae.win && mae.intro.length === 2 && !!mae.rematchIntro };
       out.maeMoves = mae.team.filter(x => x[2]).every(([id, lv, mv]) => JSON.stringify(S.movesWith(id, lv, 'grandgallop', 'funforall', 'bumperbash').slice().sort()) === JSON.stringify(mv.slice().sort()));
       out.maeSpecies = [...mae.team, ...mae.crew.flatMap(c => c.team)].every(x => S.SPECIES[x[0]]);
       out.frame = (await import('/src/pictureworlds.js')).pictureWorld('fair');
@@ -833,10 +833,10 @@ export default async function ({ browser, base, t }) {
     await pause(page);
     const W1 = await page.evaluate(() => {
       const R = window.__R, { g, live } = R; live.step(0.05); const i = live.info();
-      return { star: g.stars.includes('fair'), cubes: g.cubes, tickets: R.F.ticketState(g).n, awake: i.awake, wheelLit: live.wheelMesh.userData.parts.lights.visible, note: R.said('I built this fair for the festival'), lose: R.said('What a ride!'), starToast: R.said('You won the star of the Funfair'),
+      return { star: g.stars.includes('fair'), cubes: g.cubes, tickets: R.F.ticketState(g).n, awake: i.awake, wheelLit: live.wheelMesh.userData.parts.lights.visible, note: !R.said('I built this fair for the festival'), lose: R.said('What a ride!'), starToast: R.said('You won the star of the Funfair'),
         lights: live.part.coaster.lights.filter(([x, y, z]) => g.world.get(x, y, z) === R.B.LAMP).length, total: live.part.coaster.lights.length, celebrate: !!document.getElementById('celebrate') };
     });
-    t.ok(W1.star && W1.cubes >= 10 && W1.note && W1.lose && W1.starToast, `the star of the Funfair, the Wizard's note and 10 Capture Cubes (${W1.cubes})`);
+    t.ok(W1.star && W1.cubes >= 10 && W1.note && W1.lose && W1.starToast, `the star of the Funfair, no Wizard's note, and 10 Capture Cubes (${W1.cubes})`);
     t.ok(W1.tickets === 0 && W1.awake && W1.wheelLit, `the three tickets are used up; the fair is awake: the Ferris wheel's bulbs are on (${W1.lights} of ${W1.total} coaster lights lit until the next sync)`);
     await page.evaluate(() => { const R = window.__R; R.live.step(0.3); });
     const W2 = await page.evaluate(() => { const R = window.__R, { g, live } = R; return { lights: live.part.coaster.lights.filter(([x, y, z]) => g.world.get(x, y, z) === R.B.LAMP).length, total: live.part.coaster.lights.length, board: [161, 165, 169].map(x => g.world.get(x, 16, 133)).join(), hard: live.hard, rings: live.seat.hard }; });

@@ -592,7 +592,7 @@ export default async function ({ browser, base, t }) {
       return { chest: lv.info().chest, block: g.world.get(x, y, z), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, boats: g.beaten.filter(k => /pw:pirate:rowboat/.test(k)).length };
     });
     t.ok(won.boats === 0, 'a won Captain battle clears the rowboats (a rematch needs them sunk again)');
-    t.ok(won.chest === 'open' && won.block === 178 && /Pirate Seas star/.test(won.note || '') && /Captain Squawk was my parrot/.test(won.small || ''), `the star comes out of the chest, the chest opens and the Wizard's note shows (${won.note})`);
+    t.ok(won.chest === 'open' && won.block === 178 && /Pirate Seas star/.test(won.note || '') && /stars for the star bridge/.test(won.small || ''), `the star comes out of the chest, the chest opens and the star count shows (${won.note})`);
     await shot(page, 'chest-open');
     const after = await page.evaluate(async () => {
       const g = window.pokecraft, p = g.player, b = g.world.bosses[0], w = g.world;

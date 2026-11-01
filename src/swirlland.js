@@ -9,7 +9,6 @@
 // blocks (SCULPTURES), and the data for the sky's nebula puffs, sparks and floating oddities (decorList; swirlsky.js draws those).
 import { B, WOOL, mulberry32 } from './blocks.js';
 import { FRAME_WORLDS, BRIDGE_WORLDS, pictureWorld } from './pictureworlds.js';
-import { worldRemoved } from './comingsoon.js'; // wave 18: the Mirror Palace's frame, deck and lift exist unless the owner removed it
 import { buildPortalHouse, houseAim, HUB as HOUSE_HUB } from './portalhouse.js'; // T42: the Portal House in the north-east sky
 import { towerAim } from './wizardtower.js'; // wave 19: the Wizard's tower guide arrow
 
@@ -59,16 +58,13 @@ export function zoneMix(x, z, key) {
   return out;
 }
 
-/* ==== Mirror ==== */
 // Wave 18 (plans/wave18-mirror.md section 8): the 13th frame (spot S5, x 24 on the south gallery) needs the south deck to reach x 20 and lift `southW` at x 18-19
-// (the same move N5 made on the north side). Removed (comingsoon.js REMOVED): today's deck, lift and 12 stones, block for block (tests/fixtures/swirl-v5.json).
-export const MIRROR_IN = !worldRemoved('mirror');
-/* ==== end of Mirror ==== */
+// (the same move N5 made on the north side).
 export const SEA = 0; // B.SWIRL_CLOUD at y 0 everywhere, ground 0: a soft landing
 export const DECKS = [ // round: [cx, cz, r]; box: [x0, x1, z0, z1]; the top block is at y (you stand at y + 1)
   { id: 'hub', round: [48, 80, 11], y: 20 },        // arrival, door home, start of the star bridge
   { id: 'north', box: [20, 68, 52, 57], y: 26 },    // north gallery: frames N0-N5 hang above its north edge (x 20-27 since 2026-10-26, for N5)
-  { id: 'south', box: [MIRROR_IN ? 20 : 28, 68, 103, 108], y: 14 },  // south gallery: frames S0-S4 hang beyond its south edge (x 20 since wave 18, for S5 at x 24)
+  { id: 'south', box: [20, 68, 103, 108], y: 14 },  // south gallery: frames S0-S4 hang beyond its south edge (x 20 since wave 18, for S5 at x 24)
   { id: 'loopbase', box: [56, 64, 84, 92], y: 20 }, // the looping stairs stand here, joined to the hub
   { id: 'wizard', round: [142, 80, 9], y: 20 },     // the Wizard's island (pinned at x 142 = WIZARD.x since wave 18, whatever the number of bridge stones)
 ];
@@ -83,15 +79,15 @@ export const LIFTS = [ // upward rivers: boxes (cells x0..x1, z0..z1), feet insi
   { id: 'north', x: [69, 70], z: [54, 55], y: [1, 28] },
   { id: 'northW', x: [18, 19], z: [54, 55], y: [1, 28] }, // beside the gallery's west end
   { id: 'south', x: [69, 70], z: [105, 106], y: [1, 16] },
-  { id: 'southW', x: MIRROR_IN ? [18, 19] : [26, 27], z: [105, 106], y: [1, 16] }, // (x 18-19 since wave 18)
+  { id: 'southW', x: [18, 19], z: [105, 106], y: [1, 16] }, // (x 18-19 since wave 18)
   { id: 'wizard', x: [59, 60], z: [82, 83], y: [1, 22] }, // beside the bridge's start: a fall from the bridge is never far from here
 ];
 const north = (x, k) => ({ id: `N${k}`, x, z: 51, y: 28, facing: [0, 1], stand: [x, 27, 52] }); // hangs 1 above the north deck (y 27 is air)
-export const FRAME_SPOTS = [ // 11 places (12 with S5 while the Mirror Palace is in); FRAME_WORLDS[i] -> FRAME_SPOTS[i]
+export const FRAME_SPOTS = [ // 12 places; FRAME_WORLDS[i] -> FRAME_SPOTS[i]
   ...[32, 40, 48, 56, 64].map(north),
   ...[32, 40, 48, 56, 64].map((x, k) => ({ id: `S${k}`, x, z: 109, y: 16, facing: [0, -1], stand: [x, 15, 108] })),
   north(24, 5), // owner 2026-10-26: the 11th frame (the fifth secret world), west of N0
-  ...(MIRROR_IN ? [{ id: 'S5', x: 24, z: 109, y: 16, facing: [0, -1], stand: [24, 15, 108] }] : []), // wave 18: the 12th frame (the Mirror Palace), west of S0 (FRAME_SPOTS[11])
+  { id: 'S5', x: 24, z: 109, y: 16, facing: [0, -1], stand: [24, 15, 108] }, // wave 18: the 12th frame (the Mirror Palace), west of S0 (FRAME_SPOTS[11])
 ];
 // Which spot a world's frame hangs on: FRAME_WORLDS order (i -> FRAME_SPOTS[i]) unless moved here. Owner 2026-10-29: the Giant House
 // moved one left (N5), so Deep Blue's two frames hang side by side (Atlantis on N0, beside the Pirate Seas on N1); Gravity took Atlantis's

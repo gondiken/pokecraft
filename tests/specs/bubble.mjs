@@ -313,7 +313,7 @@ export default async function ({ browser, base, t }) {
       out.rideable = Tr.TRAITS.rideable.species.bathemoth;
       out.levels = [RL.REALMS.bubble.levelBonus, RL.REALMS.bubble.levelCap, RL.REALMS.bubble.parent, RL.REALMS.bubble.lose];
       const boss = Pb.bossOf('bubble');
-      out.boss = { name: boss.name, title: boss.title, top: Math.max(...boss.team.map(x => x[1])), n: boss.team.length, type: boss.type, model: boss.model?.species, crew: boss.crew.map(c => c.name).join(), gate: typeof boss.gate, notes: !!boss.note && !!boss.lose && !!boss.win && !!boss.rematchIntro };
+      out.boss = { name: boss.name, title: boss.title, top: Math.max(...boss.team.map(x => x[1])), n: boss.team.length, type: boss.type, model: boss.model?.species, crew: boss.crew.map(c => c.name).join(), gate: typeof boss.gate, notes: !!boss.lose && !!boss.win && !!boss.rematchIntro };
       out.bossMoves = boss.team.filter(x => x[2]).every(([id, lv, mv]) => JSON.stringify(Sp.movesWith(id, lv, ...mv).slice().sort()) === JSON.stringify(mv.slice().sort()));
       const pw = PW.pictureWorld('bubble');
       out.frame = { ready: pw?.ready, realm: pw?.realm, name: pw?.name, idx: PW.PICTURE_WORLDS.findIndex(w => w.id === 'bubble'), frame: pw?.frame?.map(c => c.toString(16)).join(), secret4: !!PW.pictureWorld('secret4'), stars: PW.loadStars(['bubble', 'secret4', 'fair']).join() };
@@ -480,8 +480,8 @@ export default async function ({ browser, base, t }) {
       t.ok(L2.place === 'bubble' && L2.d < 2 && !L2.star && L2.said, `losing keeps you on the rim (${L2.d.toFixed(1)} from the rest spot)`);
       await page.evaluate(async () => { const R = window.__R, { g } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100), Sp.makeCreature('blazehound', 100)]; g.talkTo(R.boss()); }); // two: a lone creature can lose to four
       t.ok(await playBattle(page), 'the Boss battle is won');
-      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.3); return { star: g.stars.includes('bubble'), keys: g.beaten.filter(k => /pw:bubble:(stairs|duck|chimney|shield)/.test(k)).length, crew: g.beaten.filter(k => /pw:bubble:crew/.test(k)).length, lifts: live.info().lifts, ducks: live.ducks.map(d => d.state).join(), note: R.said('bath-time friends'), gate: R.L.bubbleState(g).ready, mark: g.beaten.includes('pw:bubble:redesign1') }; });
-      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.lifts.join() === 'true,true' && W1.ducks === 'sleep,sleep,sleep' && W1.note && !W1.gate && W1.mark, `the star and the Wizard's note; the climb's keys are cleared for a rematch (the crew stays beaten, the lifts keep running for a star holder, the ducklings asleep on their islands again)`);
+      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.3); return { star: g.stars.includes('bubble'), keys: g.beaten.filter(k => /pw:bubble:(stairs|duck|chimney|shield)/.test(k)).length, crew: g.beaten.filter(k => /pw:bubble:crew/.test(k)).length, lifts: live.info().lifts, ducks: live.ducks.map(d => d.state).join(), note: R.said('You won the star of the Bubble Well'), gate: R.L.bubbleState(g).ready, mark: g.beaten.includes('pw:bubble:redesign1') }; });
+      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.lifts.join() === 'true,true' && W1.ducks === 'sleep,sleep,sleep' && W1.note && !W1.gate && W1.mark, `the star; the climb's keys are cleared for a rematch (the crew stays beaten, the lifts keep running for a star holder, the ducklings asleep on their islands again)`);
       // a wild Bubble creature floats in its bubble; the battle pops it
       const S1 = await page.evaluate(() => {
         const g = window.pokecraft, n = g.world.nooks[0];

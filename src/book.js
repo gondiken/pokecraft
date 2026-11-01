@@ -6,7 +6,6 @@ import { BLOCKS } from './blocks.js';
 import { condOf, condText, AFTER_TEXT } from './spawnrules.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
-import { PICTURE_WORLDS } from './pictureworlds.js'; // wave 18: a removed world's type
 
 // One-of-a-kind legendaries (never wild, never caught) go last and are not part of the totals.
 const bookOrder = () => {
@@ -14,11 +13,6 @@ const bookOrder = () => {
   return [...ids.filter(id => !SPECIES[id].legendary), ...ids.filter(id => SPECIES[id].legendary)];
 };
 export const TYPES = () => Object.keys(TYPE_COLORS);
-/* ==== Mirror ==== */
-// Wave 18: while the owner has a world REMOVED (comingsoon.js), its creatures you never saw are not listed (no "???" cards, no chip, no count);
-// the ones you saw or caught stay, with their pages. `PICTURE_WORLDS[i].type` names the world's type.
-const removedTypes = () => PICTURE_WORLDS.filter(w => w.removed && w.type).map(w => w.type);
-/* ==== end of Mirror ==== */
 const BIOME_NAMES = {
   plains: 'Plains', meadow: 'Flower meadows', forest: 'Forests', swamp: 'Swamps', beach: 'Beaches', water: 'Lakes and sea',
   desert: 'Deserts', mountain: 'Mountains', snow: 'Snowy hills', taiga: 'Snowy forests', peak: 'Mountain peaks', cave: 'Caves',
@@ -174,7 +168,7 @@ export class Book {
   }
 
   counts() {
-    const ids = bookOrder().filter(id => !SPECIES[id].legendary && !this.hidden(id));
+    const ids = bookOrder().filter(id => !SPECIES[id].legendary);
     return { seen: ids.filter(id => this.seen.has(id)).length, caught: ids.filter(id => this.caught.has(id)).length, total: ids.length };
   }
 
@@ -253,10 +247,8 @@ export class Book {
   get scroller() { return this.body.closest('.panel') || this.panel; }
 
   visibleIds() {
-    return bookOrder().filter(id => (this.filter === 'all' || SPECIES[id].type === this.filter) && !this.hidden(id));
+    return bookOrder().filter(id => this.filter === 'all' || SPECIES[id].type === this.filter);
   }
-  // Wave 18: an unseen creature of a removed world's type is not in the Book at all.
-  hidden(id) { return removedTypes().includes(SPECIES[id].type) && !this.seen.has(id); }
 
   // Fills in picture src values a few at a time so the page stays responsive.
   fillImages(items, renderId) {
@@ -297,7 +289,7 @@ export class Book {
     const renderId = this.renderId;
     const queue = [];
     const filters = el('div', { id: 'book-filters' },
-      ...['all', ...TYPES().filter(t => !removedTypes().includes(t) || bookOrder().some(id => SPECIES[id].type === t && this.seen.has(id)))].map(f => el('button', {
+      ...['all', ...TYPES()].map(f => el('button', {
         class: 'book-filter' + (this.filter === f ? ' sel' : ''), 'data-filter': f,
         style: f === 'all' ? '' : `background:${TYPE_COLORS[f]}`,
         onclick: () => { this.filter = f; this.render({ kind: 'list' }, 0); },
@@ -308,7 +300,7 @@ export class Book {
     parts.push(filters);
     if (this.game.studio?.ally) parts.push(el('p', { id: 'book-rank', class: 'book-note' }, this.game.studio.rankText())); // wave 19: Champion / Wizard's Ally
     if (this.filter !== 'all') {
-      const mine = bookOrder().filter(id => SPECIES[id].type === this.filter && !this.hidden(id));
+      const mine = bookOrder().filter(id => SPECIES[id].type === this.filter);
       const s = mine.filter(id => this.seen.has(id)).length, c = mine.filter(id => this.caught.has(id)).length;
       parts.push(el('p', { id: 'book-typeinfo' }, `${cap(this.filter)}: ${s} seen · ${c} caught (of ${mine.length})`));
       if (mine.length && mine.every(id => SPECIES[id].designed)) parts.push(el('p', { id: 'book-designed-note', class: 'book-note' }, 'No wild ' + cap(this.filter) + ' creatures. Beat the Wizard and design your own!'));

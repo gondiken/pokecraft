@@ -802,7 +802,7 @@ export default async function ({ browser, base, t }) {
     });
     await page.evaluate(() => { window.pokecraft.inBattle = false; document.body.classList.remove('in-battle'); });
     const won = await page.evaluate(() => { const g = window.pokecraft; return { note: window.__cele?.[0], small: window.__cele?.[1], keys: g.beaten.filter(k => k.startsWith('pw:portal:room')).length, cubes: g.cubes, toasts: window.__toasts.slice(-6) }; });
-    t.ok(/Portal House star/.test(won.note || '') && /very first helpers/.test(won.small || ''), `the star of the Portal House and the Wizard's note (${won.note})`);
+    t.ok(/Portal House star/.test(won.note || '') && /stars for the star bridge/.test(won.small || ''), `the star of the Portal House and the star count (${won.note})`);
     t.ok(won.keys === 0 && won.toasts.some(m => /star lights a stone of the star bridge, back on the hub/.test(m)), `the ten room keys are cleared (a rematch is a new run); the star lights a stone back on the hub (${won.keys} keys)`);
     await page.evaluate(() => { const p = window.pokecraft.player; p.pos.set(60.5, 21, 80.0); p.vel.set(0, 0, 0); });
     await waitFor(page, () => { const w = window.pokecraft.world, s = w.swirl.bridge[4]; return w.get(...s.cells[0]) === 130 && s.world === 'portal'; }, null, 240000);

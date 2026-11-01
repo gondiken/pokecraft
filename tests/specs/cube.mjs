@@ -546,8 +546,8 @@ export default async function ({ browser, base, t }) {
       t.ok(C3 === 3 && lost && L1.place === 'gravity' && !L1.star && L1.said, `the three helpers battle and are beaten (${C3}); a weak team loses to Professor Orbit and stays on the little planets`);
       await page.evaluate(async () => { const R = window.__R, { g } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; R.near(R.boss()); g.talkTo(R.boss()); });
       await playBattle(page);
-      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|lens)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('walking round every one'), hard: live.hard }; });
-      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star and the Wizard\'s note; the nine keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
+      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.1); return { star: g.stars.includes('gravity'), keys: g.beaten.filter(k => /pw:gravity:(tag|hop|lens)/.test(k)).length, crew: g.beaten.filter(k => /pw:gravity:crew/.test(k)).length, note: R.said('You won the star'), hard: live.hard }; });
+      t.ok(W1.star && W1.keys === 0 && W1.crew === 3 && W1.note && W1.hard, 'the star; the nine keys are cleared for a rematch (the helpers stay beaten); the games are now a bit harder');
       // a rematch: the games are needed again, then the Professor asks
       const RM = await page.evaluate(async () => { const R = window.__R, { g, live } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.ui.closeAsk?.(); live.winUpTo(5, true, 3); R.near(R.boss()); g.talkTo(R.boss()); return { asking: !!g.bosses.pending && g.ui.asking, said: window.__toasts.slice(-2).join('|'), inBattle: g.inBattle }; });
       if (RM.asking) { await page.evaluate(() => window.pokecraft.bosses.accept()); await playBattle(page); }

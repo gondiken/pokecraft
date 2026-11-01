@@ -1,6 +1,7 @@
 // Creature data (types, moves, species), stat/XP math and blocky 3D models.
 import * as THREE from 'three';
 import { B } from './blocks.js';
+import { doodleInk } from './doodleink.js'; // owner 2026-11-01: Doodle creatures are inked everywhere (imports only three)
 import { paintColours, paintModel } from './custom.js'; // the Custom type (the Wizard's Tower): pure, no imports
 import { TRAITS, drawTraits, gainTraits } from './traits.js';
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
@@ -3685,6 +3686,7 @@ export function buildModel(species, paint) {
       parts.sparkle.push({ g, spots, phase: k * 0.37, period: 1.1 + (k % 3) * 0.2 });
     }
   }
+  if (sp.type === 'doodle') doodleInk(root); // pencil outlines and hatching in their own colours (the Sketchbook draws them fully in pencil)
   root.scale.setScalar(m.scale);
   group.userData.parts = parts;
   group.userData.species = species;

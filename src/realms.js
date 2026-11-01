@@ -8,7 +8,7 @@ import { dreamLand } from './dreamland.js';
 import { buildDreamHouse } from './dreamhouse.js';
 import { swirlLand, swirlAim, frameReturn } from './swirlland.js'; // T38a
 import { PICTURE_WORLDS } from './pictureworlds.js'; // T40
-import { wave15Open, worldOpen, worldRemoved } from './comingsoon.js'; // wave 15 ships closed: the Swirl stays version 4 and the Pirate Seas version 1 until it opens
+import { wave15Open, worldOpen } from './comingsoon.js'; // wave 15 ships closed: the Swirl stays version 4 and the Pirate Seas version 1 until it opens
 import { pictureStub, pictureAim } from './picturelands.js'; // T40
 import { pirateLand, pirateAim } from './pirateland.js'; // T40b
 import { PLAYLAND, playLand, playlandSpawns, PLAYLAND_ZONE_NAMES } from './playland.js'; // T40
@@ -62,7 +62,7 @@ export const REALMS = {
   // T38a: the Swirl, a purple sky with floating decks, lift streams, stairs, eleven covered picture frames and the sealed
   // Wizard's tower behind an empty row of star-bridge spots. You get there through the Portal Door (Champions only).
   swirl: {
-    id: 'swirl', name: 'Swirl', version: !worldOpen('portal') ? 4 : worldRemoved('mirror') ? 5 : 6, sameCells: !worldOpen('portal') ? undefined : worldRemoved('mirror') ? [4, 6] : [4, 5], /* wave 18: version 6 has the Mirror Palace's frame (S5), deck and lift (every old cell is where it was); removed = version 5 again (a v6 save keeps its edits) */ house: worldOpen('portal'), /* owner 2026-10-30: the Portal House opens on its own (OPEN_NOW), not only with all of wave 15 */ size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
+    id: 'swirl', name: 'Swirl', version: !worldOpen('portal') ? 4 : 6, sameCells: !worldOpen('portal') ? undefined : [4, 5], /* wave 18: version 6 has the Mirror Palace's frame (S5), deck and lift (every old cell is where it was) */ house: worldOpen('portal'), /* owner 2026-10-30: the Portal House opens on its own (OPEN_NOW), not only with all of wave 15 */ size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
     terrain: 'swirlLand', biome: 'swirl',
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
@@ -197,9 +197,8 @@ REALMS.bubble = pictureRealm({ id: 'bubble', name: 'Bubble Well', seedSalt: 0xb0
 /* ==== Mirror ==== */
 // Wave 18, the Mirror Palace (behind the Swirl's lilac-and-gold frame, S5; plans/wave18-mirror.md): the Hall of Funny Mirrors, three wings (Bounce-Back,
 // the Looking-Glass Rooms, the Moonlit Gallery) and Duke Dazzle in the Grand Mirror Hall. The whole map is a keep (no building); the palace keeps riders
-// out, the garden lets them in. Not registered at all while the owner's switch has it REMOVED (comingsoon.js): nobody can enter, a save made inside
-// it loads in the main world. Wild Mirror creatures live only here (MIRROR_SPAWNS; the big ones after the first rounds, wildafter.js).
-if (!worldRemoved('mirror')) REALMS.mirror = pictureRealm({ id: 'mirror', name: 'Mirror Palace', seedSalt: 0x3177, size: [MIRROR_SIZE, MIRROR_SIZE], terrain: 'mirrorLand', arrive: [MIRROR_ARRIVAL.x, MIRROR_ARRIVAL.z - 4], biome: 'mirror',
+// out, the garden lets them in. Wild Mirror creatures live only here (MIRROR_SPAWNS; the big ones after the first rounds, wildafter.js).
+REALMS.mirror = pictureRealm({ id: 'mirror', name: 'Mirror Palace', seedSalt: 0x3177, size: [MIRROR_SIZE, MIRROR_SIZE], terrain: 'mirrorLand', arrive: [MIRROR_ARRIVAL.x, MIRROR_ARRIVAL.z - 4], biome: 'mirror',
   walk: [B.STONE_BRICKS, B.GRASS], zoneNames: { mirror: 'Mirror Palace' }, spawns: { mirror: MIRROR_SPAWNS, cave: [] },
   look: { sky: 0xf2e6ff, fog: [60, 160], time: null, weather: false, light: 1, still: true, stars: false },
   clock: '🪞 Mirror Palace', travelText: 'Looking in...', travelIcon: '🪞', enterText: 'Hello, hello! Welcome to the Mirror Palace!',

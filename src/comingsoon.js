@@ -10,16 +10,7 @@ export const wave15Open = WAVE15_OPEN || PREVIEW || typeof location === 'undefin
 // Owner 2026-10-28: "we can switch on the Funfair in the real game, just that one". A world listed here is open for everyone
 // while the rest of wave 15 stays closed.
 export const OPEN_NOW = ['fair', 'atlantis', 'doors', 'castle', 'doodle', 'portal', 'bubble', 'mirror', 'gravity']; // owner 2026-10-28: the Funfair, then Atlantis ("we can switch it on"), then the Surprise Party and the Castle; the Sketchbook closed 2026-10-29 for its pencil and open again the same day ("we can switch on the sketchbook for everyone now"); the Portal House 2026-10-30 ("we can switch on the portal world for everyone"); the Bubble Well 2026-10-30 ("you can open the bubble world for everyone"); the Mirror Palace and Cube Planets 2026-10-31 ("we can make the mirror world live", "the gravity world / cube planets live ... as well")
-/* ==== Mirror ==== */
-// Wave 18 (plans/wave18-mirror.md section 9): the owner's switch to take a world OUT of the game for everyone. `REMOVED = ['mirror']` and the
-// Mirror Palace is gone: no frame, no stone, no realm, no wild creatures (pictureworlds.js, swirlland.js, realms.js read `worldRemoved`);
-// saves keep everything (star, keys, bossWins, creatures), so `REMOVED = []` puts it all back. Tests may add ids through
-// `globalThis.__pcRemoved` before the modules load (like `__pcWave15`).
-export const REMOVED = []; // owner switch: ['mirror'] takes the Mirror Palace out of the game for everyone
-if (Array.isArray(globalThis.__pcRemoved)) REMOVED.push(...globalThis.__pcRemoved.filter(id => !REMOVED.includes(id)));
-export const worldRemoved = id => REMOVED.includes(id);
-/* ==== end of Mirror ==== */
-export const worldOpen = id => !worldRemoved(id) && (wave15Open || OPEN_NOW.includes(id));
+export const worldOpen = id => wave15Open || OPEN_NOW.includes(id); // (owner 2026-11-01: the Mirror Palace's "remove it" switch is gone: it stays)
 // T49 (owner 2026-10-28): the Castle ships behind `?preview` too, until the owner opens it (add 'castle' to OPEN_NOW). While it is closed its
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle'];

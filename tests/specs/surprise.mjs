@@ -818,7 +818,7 @@ async function livePart({ browser, base, t, page }) {
     await waitFor(page, () => window.pokecraft.stars.includes('doors'), null, 180000).catch(() => {});
     await page.waitForTimeout(500);
     const won = await page.evaluate(() => { const g = window.pokecraft; for (let i = 0; i < 4; i++) g.gymLive.update(0.3); return { stars: g.stars.join(), note: window.__cele?.[0], small: window.__cele?.[1], bows: g.beaten.filter(k => /pw:doors:bow/.test(k)).length, crew: g.beaten.filter(k => /pw:doors:crew/.test(k)).length, jax: g.npcs.list.find(n => n.kind === 'boss').away, candles: g.world.get(54, 16, 29) }; });
-    t.ok(/Surprise Party star/.test(won.note || '') && /Jax was my favourite toy/.test(won.small || ''), `the star of the Surprise Party and the Wizard's note (${won.note})`);
+    t.ok(/Surprise Party star/.test(won.note || '') && /stars for the star bridge/.test(won.small || ''), `the star of the Surprise Party and the star count (${won.note})`);
     t.ok(won.bows === 0 && won.crew === 2 && won.jax && won.candles === 0, `a won battle uses the four bows up (${won.bows} left; Jax back in his cake, the candles out); the helpers stay beaten (${won.crew})`);
     // a rematch party is harder
     const hard = await page.evaluate(() => { const L = window.__live(); window.__reset(); window.__spinTo(2); window.__ready(); const g = window.pokecraft; const set = L.sets.stack; window.__at(set.standAt[0], 11, set.standAt[1], 0, 0); L.use(g.player); const out = { hard: L.hard(), need: L.gm.run.st.plan.need }; window.__reset(); return out; });

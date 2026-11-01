@@ -518,7 +518,7 @@ export default async function ({ browser, base, t }) {
       t.ok(await playBattle(page), 'the Boss battle is won');
       await waitFor(page, () => window.pokecraft.stars.includes('house'), null, 60000);
       const won = await page.evaluate(() => ({ stars: window.pokecraft.stars.join(), note: window.__cele?.[0], small: window.__cele?.[1] }));
-      t.ok(/Giant House star/.test(won.note || '') && /Everything looks big when you are small/.test(won.small || ''), `the star of the Giant House and the Wizard's note (${won.note})`);
+      t.ok(/Giant House star/.test(won.note || '') && /stars for the star bridge/.test(won.small || ''), `the star of the Giant House and the star count (${won.note})`);
     }
 
     // ---- the secret ways, with real physics

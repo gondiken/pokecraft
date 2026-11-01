@@ -119,10 +119,10 @@ export default async function ({ browser, base, t }) {
       const shapes = [...new Set(ids.map(i => S.SPECIES[i].model.shape))].sort();
       const otherShapes = new Set(Object.values(S.SPECIES).filter(s => s.type !== 'doodle').map(s => s.model.shape));
       const crayon = ids.map(id => {
-        const m = S.buildModel(id); let star = 0, keep = 0, meshes = 0;
-        m.traverse(o => { if (o.isMesh) meshes++; if (o.userData.gear === 'crayon') { star++; if (o.userData.keepColour) keep++; } });
+        const m = S.buildModel(id); let star = 0, inked = 0, meshes = 0;
+        m.traverse(o => { if (o.isMesh) { meshes++; if (o.material.userData.doodleInk) inked++; } if (o.userData.gear === 'crayon') star++; });
         S.disposeModel(m);
-        return [id, star > 0 && star === keep, meshes];
+        return [id, star === 0 && inked >= meshes * 0.8, meshes];
       });
       const mv = id => S.MOVES[id];
       const learns = id => S.SPECIES[id].learn.map(([l, m]) => `${l}:${m}`);
@@ -156,7 +156,7 @@ export default async function ({ browser, base, t }) {
     t.ok(A.ids.length === 7 && A.ids.join() === 'nibling,graphitan,rubbit,rubbadub,sketchkit,outlynx,notquite', `seven Doodle creatures (${A.ids})`);
     t.ok(A.evo === 'nibling:27>graphitan,graphitan:-,rubbit:26>rubbadub,rubbadub:-,sketchkit:28>outlynx,outlynx:-,notquite:-', `three families of two and a single-stage 7th (${A.evo})`);
     t.ok(A.shapes.join() === 'eraserbun,halfdrawn,outline,pencil' && A.ownShapes && A.registered, `four own shapes used by no other type (${A.shapes})`);
-    t.ok(A.crayon.every(c => c[1]), `every model wears the yellow crayon star that keeps its colour (${A.crayon.map(c => c[0] + ':' + c[2]).join(' ')} meshes)`);
+    t.ok(A.crayon.every(c => c[1]), `no crayon star any more, and every model is inked everywhere (doodleink.js, owner 2026-11-01) (${A.crayon.map(c => c[0] + ':' + c[2]).join(' ')} meshes)`);
     t.ok(A.crayon.every(c => c[2] <= 60), 'the models stay small (at most 60 meshes: the outline shape merges its sticks)');
     t.ok(A.moves.every(Boolean) && A.mvs[0] === 1 && A.mvs[1]?.kind === 'lower' && A.mvs[2] && A.mvs[3] && A.mvs[4]?.kind === 'multi' && A.mvs[4].min === 2 && A.mvs[4].max === 5 && A.mvs[5], `the seven moves are as planned (${JSON.stringify(A.mvs)})`);
     t.ok(A.big.every(Boolean) && A.sig.every(Boolean) && A.sigFx, 'Masterpiece (rally), Tracing Paper (shield), Finishing Touch (lastword); the three signature moves at 30 with effects');
@@ -421,10 +421,10 @@ export default async function ({ browser, base, t }) {
         g.sketch.hold = true; const frozen = sketchLook.uSketchStep.value; g.sketch.update(0.05, 99999); out.frozen = frozen === sketchLook.uSketchStep.value;
         out.moved = moved;
         const wasPlaying = g.playing; g.sketch.hold = false; const s0 = sketchLook.uSketchStep.value; g.playing = () => false; g.sketch.update(0.05, 123456); out.pausedStill = s0 === sketchLook.uSketchStep.value; g.playing = wasPlaying; g.sketch.hold = true;
-        // creatures: a wild one, Arlo and a crew person are patched, the crayon star keeps its colour
+        // creatures: a wild one, Arlo and a crew person are patched; the everyday ink is off here
         const p = g.player.pos, w = g.creatures.spawnAt('nibling', Math.floor(p.x) + 3, Math.floor(p.y), Math.floor(p.z) + 3);
         const patched = grp => { let a = 0, b = 0, star = 0, starKept = 0; grp.traverse(o => { if (!o.isMesh) return; if (o.userData.keepColour) { star++; if (!o.material.userData.sketched) starKept++; } else if (o.material.userData.sketched) a++; else b++; }); return { a, b, star, starKept }; };
-        out.wild = w ? patched(w.model) : null;
+        out.wild = w ? patched(w.model) : null; out.ink = (await import('/src/doodleink.js')).DOODLE_INK.uDoodleInk.value;
         const boss = g.npcs.list.find(n => n.kind === 'boss'), crew = g.npcs.list.find(n => n.kind === 'crew');
         out.boss = patched(boss.model); out.crew = patched(crew.model);
         out.bossName = boss.name;
@@ -444,7 +444,7 @@ export default async function ({ browser, base, t }) {
       });
       t.ok(L.on === 1 && L.maps && L.bg === 0xf6f2e8 && L.fog === 0xf6f2e8 && L.fogRange[0] === 18 && L.fogRange[1] === 66, `in the Sketchbook the switch is on, the maps are the pencil texture, the sky and fog are paper (fog ${L.fogRange})`);
       t.ok(L.moved >= 6 && L.frozen && L.pausedStill, `the lines boil about 4 times a second (${L.moved} different steps in 8 quarter-seconds), and stand still with hold and when paused`);
-      t.ok(L.wild && L.wild.a > 5 && L.wild.star >= 1 && L.wild.starKept === L.wild.star, `a wild Doodle creature is drawn in pencil and its crayon star keeps its colour (${JSON.stringify(L.wild)})`);
+      t.ok(L.wild && L.wild.a > 5 && L.wild.star === 0 && L.ink === 0, `a wild Doodle creature is drawn in pencil (its everyday ink steps aside) (${JSON.stringify(L.wild)})`);
       t.ok(L.boss.a > 5 && L.crew.a > 5, `${L.bossName} and a crew person are patched too (${L.boss.a}, ${L.crew.a} meshes)`);
       t.ok(L.flash > 3, `a hit flash (tintModel) still reaches the patched materials (${L.flash} meshes)`);
       t.ok(L.maskField === 0 && L.maskLone !== 0 && L.maskLone !== 15 && L.maskStep !== undefined, `the edge mask: none inside the flat grass field (${L.maskField}), lines round a stone block (${L.maskLone}), the long sides of a pair`);
@@ -756,7 +756,7 @@ export default async function ({ browser, base, t }) {
       await waitFor(page, () => !window.pokecraft.inBattle, null, 180000);
       const lost = await page.evaluate(() => { const g = window.pokecraft, p = g.player.pos, b = g.world.bosses[0]; return { place: g.place, d: Math.hypot(p.x - b.rest[0], p.z - b.rest[2]), hp: g.party.every(c => c.hp > 0), stars: g.stars.includes('doodle') }; });
       t.ok(lost.place === 'doodle' && lost.d < 14 && lost.hp && !lost.stars, `losing to Arlo keeps you in the Sketchbook at a rest spot, healed, no star (${lost.d.toFixed(1)} from his rest)`);
-      // win: the star, the Wizard's note, lines 6-8 cleared and 1-5 kept
+      // win: the star, lines 6-8 cleared and 1-5 kept
       await page.evaluate(async () => {
         const g = window.pokecraft, S = await import('/src/species.js'), n = g.npcs.list.find(n => n.kind === 'boss'), r = g.world.bosses[0].rest;
         g.party = [S.makeCreature('thunderwolf', 100)]; g.cubes = 0; window.__at(r[0], r[1], r[2], Math.atan2(-(n.pos.x - r[0]), -(n.pos.z - r[2])), 0);
@@ -769,7 +769,7 @@ export default async function ({ browser, base, t }) {
         const g = window.pokecraft, k = n => g.beaten.includes(`pw:doodle:line${n}`);
         return { note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, kept: [1, 2, 3, 4, 5].every(k), cleared: ![6, 7, 8].some(k), drawnNow: [...window.__live().drawnNow].length, gate: window.__live().state().count };
       });
-      t.ok(/Sketchbook star/.test(won.note || '') && /My first sketchbook/.test(won.small || '') && won.cubes >= 10, `the star, the Wizard's note and cubes (${won.note})`);
+      t.ok(/Sketchbook star/.test(won.note || '') && /stars for the star bridge/.test(won.small || '') && won.cubes >= 10, `the star, the star count and cubes (${won.note})`);
       t.ok(won.kept && won.cleared && won.gate === 5, `a won battle clears lines 6-8 (a rematch is a new race) and keeps 1-5 (${won.gate} / 8 drawn)`);
       // the rematch: the gate wants lines 6-8 again; draw them, then the rematch is offered
       const gate2 = await page.evaluate(async () => { const g = window.pokecraft, B = await import('/src/pictureboss.js'); const n = g.npcs.list.find(n => n.kind === 'boss'); g.bosses.talk(n); return { gate: B.bossOf('doodle').gate(g), asking: g.ui.asking }; });

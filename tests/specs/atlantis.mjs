@@ -684,7 +684,7 @@ async function lightsPart(page, t) {
     return { lights: g.beaten.filter(k => /pw:atlantis:light/.test(k)).length, forceLit: lv.forceLit, lit: A.lit.join(), note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent || document.querySelector('#celebrate')?.textContent, cubes: g.cubes, fishBack: lv.info().fish.filter(f => f.out).length, stars: g.stars.length };
   });
   t.ok(won.lights === 0 && won.forceLit && won.lit === '4,4,4' && won.fishBack === 0, `a won Queen battle clears the 12 lights (a rematch is a new catch), the city stays lit for the trip, the fish are back (${won.lights}, ${won.lit})`);
-  t.ok(/Atlantis star/.test(won.note || '') && /Sunken City from a dream/.test(won.small || '') && won.stars === 1 && won.cubes >= 10, `the star, the Wizard's note and cubes (${won.note})`);
+  t.ok(/Atlantis star/.test(won.note || '') && /stars for the star bridge/.test(won.small || '') && won.stars === 1 && won.cubes >= 10, `the star, the star count and cubes (${won.note})`);
   await page.evaluate(() => document.getElementById('celebrate')?.remove());
   await stage(page, [CITYX - 4.5, 4, 112.5], [CITYX + 3.5, 5.2, 112.5]);
   await shot(page, 'palace');

@@ -253,7 +253,7 @@ export default async function ({ browser, base, t }) {
   t.ok(await playBattle(page), 'the Boss battle is won');
   await waitFor(page, () => window.pokecraft.stars.includes('house'), null, 30000);
   const won = await page.evaluate(() => { const g = window.pokecraft; g.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { cubes: g.cubes, note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent, place: s.place, up: s.realmUp, stars: s.stars }; });
-  t.ok(won.stars.includes('house') && /Giant House star/.test(won.note || '') && /little mouse/.test(won.small || ''), `the star and the Wizard's note (${won.note}: ${won.small})`);
+  t.ok(won.stars.includes('house') && /Giant House star/.test(won.note || '') && /stars for the star bridge/.test(won.small || ''), `the star and the star count (${won.note}: ${won.small})`);
   t.ok(won.cubes >= 10 && won.place === 'house' && won.up.id === 'swirl' && won.up.via === 'house', `10 Capture Cubes; the save has place house and realmUp swirl via house`);
   await page.screenshot({ path: path.join(SHOTS, 't40-star-note.png'), timeout: 180000 });
   await pause(page);

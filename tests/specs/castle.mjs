@@ -240,7 +240,7 @@ export default async function ({ browser, base, t }) {
       out.rideable = Tr.TRAITS.rideable.species.gallantrot;
       out.levels = [RL.REALMS.castle.levelBonus, RL.REALMS.castle.levelCap, RL.REALMS.castle.parent, RL.REALMS.castle.lose];
       const boss = Pb.bossOf('castle');
-      out.boss = { name: boss.name, title: boss.title, top: Math.max(...boss.team.map(x => x[1])), n: boss.team.length, type: boss.type, look: boss.look, crew: boss.crew.map(c => c.name).join(), gate: typeof boss.gate, notes: !!boss.note && !!boss.lose && !!boss.win && !!boss.rematchIntro };
+      out.boss = { name: boss.name, title: boss.title, top: Math.max(...boss.team.map(x => x[1])), n: boss.team.length, type: boss.type, look: boss.look, crew: boss.crew.map(c => c.name).join(), gate: typeof boss.gate, notes: !!boss.lose && !!boss.win && !!boss.rematchIntro };
       out.bossMoves = boss.team.filter(x => x[2]).every(([id, lv, mv]) => JSON.stringify(Sp.movesWith(id, lv, ...mv).slice().sort()) === JSON.stringify(mv.slice().sort()));
       const pw = PW.pictureWorld('castle');
       out.frame = { ready: pw?.ready, realm: pw?.realm, name: pw?.name, idx: PW.PICTURE_WORLDS.findIndex(w => w.id === 'castle'), frame: pw?.frame?.map(c => c.toString(16)).join(), secret3: !!PW.pictureWorld('secret3'), stars: PW.loadStars(['castle', 'secret3', 'fair']).join() };
@@ -442,8 +442,8 @@ export default async function ({ browser, base, t }) {
       t.ok(L1.place === 'castle' && L1.d < 2 && !L1.star && L1.said, `losing keeps you in the throne room (${L1.d.toFixed(1)} from the rest spot)`);
       await page.evaluate(async () => { const R = window.__R, { g } = R, Sp = await import('/src/species.js'); g.party = [Sp.makeCreature('thunderwolf', 100)]; g.talkTo(R.boss()); });
       t.ok(await playBattle(page), 'the Boss battle is won');
-      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.3); const st = R.CL.castleState(g); return { star: g.stars.includes('castle'), keys: g.beaten.filter(k => /pw:castle:(shield|lance)/.test(k)).length, crew: g.beaten.filter(k => /pw:castle:crew/.test(k)).length, bridge: live.L.deck.every(c => g.world.get(...c) === R.B.PLANKS), port: live.L.port.every(c => g.world.get(...c) === R.B.AIR), note: R.said('toy knights') }; });
-      t.ok(W1.star && W1.keys === 0 && W1.crew === 2 && W1.bridge && W1.port && W1.note, 'the star and the Wizard\'s note; the six rounds are cleared for a rematch (the helpers stay beaten), the drawbridge and portcullis stay open for a star holder');
+      const W1 = await page.evaluate(() => { const R = window.__R, { g, live } = R; live.step(0.3); const st = R.CL.castleState(g); return { star: g.stars.includes('castle'), keys: g.beaten.filter(k => /pw:castle:(shield|lance)/.test(k)).length, crew: g.beaten.filter(k => /pw:castle:crew/.test(k)).length, bridge: live.L.deck.every(c => g.world.get(...c) === R.B.PLANKS), port: live.L.port.every(c => g.world.get(...c) === R.B.AIR), note: R.said('You won the star') }; });
+      t.ok(W1.star && W1.keys === 0 && W1.crew === 2 && W1.bridge && W1.port && W1.note, 'the star; the six rounds are cleared for a rematch (the helpers stay beaten), the drawbridge and portcullis stay open for a star holder');
       // a reload of a save with every round won (a rematch's rounds won again, the star held): both games still play, just for fun
       await page.evaluate(() => { const R = window.__R; R.live.winUpTo(3, 3); window.pokecraft.save(); });
       await page.reload(); await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });

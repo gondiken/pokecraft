@@ -934,13 +934,6 @@ export default async function ({ browser, base, t }) {
     `], { maxBuffer: 1 << 24 }).toString());
     t.ok(child.need.length === child.all.length && ['house', 'pirate', 'race', 'stadium', 'gravity', 'mirror'].every(id => child.need.includes(id)), `Node, shipped state (owner 2026-10-31: every world open): the bridge needs every star (${child.need.length} of ${child.all.length})`);
     t.ok(child.done && !child.shortDone && child.ally && child.open && child.asleep.length === 0, `bridgeDone / towerOpen / the sleeping stones (${child.asleep})`);
-    // a world switched off (REMOVED) is not needed either
-    const rem = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
-      globalThis.__pcRemoved = ['mirror'];
-      const PW = await import(${JSON.stringify('file://' + path.join(ROOT, 'src', 'pictureworlds.js'))});
-      console.log(JSON.stringify({ need: PW.bridgeNeed().map(w => w.id), all: PW.BRIDGE_WORLDS.map(w => w.id) }));
-    `], { maxBuffer: 1 << 24 }).toString());
-    t.ok(!rem.need.includes('mirror') && rem.need.length === rem.all.length, `a removed Mirror Palace is not needed (${rem.need.length} stars)`);
     t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
     await page.context().close();
   }

@@ -705,7 +705,7 @@ export default async function ({ browser, base, t }) {
       const R = window.__R, { live, g } = R;
       return { note: document.querySelector('#celebrate .big')?.textContent, small: document.querySelector('#celebrate .small')?.textContent, won: live.won, losses: live.losses, cubes: g.cubes };
     });
-    t.ok(/Race Track star/.test(D10.note || '') && /festival race/.test(D10.small || '') && !D10.won && D10.cubes >= 10, `the star and the Wizard's note (${D10.note}: ${D10.small})`);
+    t.ok(/Race Track star/.test(D10.note || '') && /stars for the star bridge/.test(D10.small || '') && !D10.won && D10.cubes >= 10, `the star and the star count (${D10.note}: ${D10.small})`);
     await shot(page, 't40c-star-note.png');
     // with the star, talking to Rio races first, and a won race then asks the rematch question
     const D11 = await page.evaluate(async () => {

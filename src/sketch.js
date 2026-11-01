@@ -7,6 +7,7 @@
 // With the switch off nothing here changes what is drawn (the spec proves it bit for bit).
 import * as THREE from 'three';
 import { sketchLook } from './caves.js';
+import { DOODLE_INK } from './doodleink.js';
 import { drawSketchAtlas, drawSketchMarks, ROTATE_KINDS } from './sketchatlas.js';
 
 let active = false; // a sketch world is loaded (module flag read by sketchModel)
@@ -79,7 +80,7 @@ function patchModelMaterial(m, box) {
 }
 
 // Draws a creature / person model in pencil (a no-op unless a sketch world is loaded). Skips lines, points, sprites, meshes marked
-// `userData.keepColour` (the yellow crayon star) and materials without lighting maths we can patch.
+// `userData.keepColour` and materials without lighting maths we can patch.
 export function sketchModel(group) {
   if (!active || !group) return;
   const boxy = new Map(); // material -> true when a BoxGeometry mesh uses it (outlines from the box's uv)
@@ -138,6 +139,7 @@ export function createSketch(game, { materials, texture, atlas }) {
         }
       }
       sketchLook.uSketchOn.value = active ? 1 : 0;
+      DOODLE_INK.uDoodleInk.value = active ? 0 : 1; // the Doodle creatures' everyday ink steps aside for the full pencil look
       if (active) {
         sketchLook.uPaper.value.setHex(look.paper);
         sketchLook.uInk.value.setHex(look.ink);

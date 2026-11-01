@@ -1,16 +1,13 @@
 // Wave 18: the Mirror Palace (plans/wave18-mirror.md). STAGE 1 parts: swirl (the 13th frame S5, the 13 stones, the pinned island, the Swirl's
-// version 6), removed (the owner's switch: REMOVED = ['mirror'] gives today's Swirl block for block, tests/fixtures/swirl-v5.json; no realm;
-// the HUD says x / 12; the Book hides unseen creatures of the type; an old save with the Mirror's star, keys and wins loads in main and round-trips;
-// un-removed it all comes back), closed (owner 2026-10-31: open for everyone; without ?preview its frame takes you in), land (mirrorcheck.mjs in Node for three seeds and
+// version 6; compared with tests/fixtures/swirl-v5.json, the Swirl as it was before wave 18. Owner 2026-11-01: the "remove it" switch is gone), closed (owner 2026-10-31: open for everyone; without ?preview its frame takes you in), land (mirrorcheck.mjs in Node for three seeds and
 // the real realm in a browser: keeps, parts, the Boss, the crew, the guide), old (a save from before wave 18 loads, its Swirl edits kept).
 // STAGE 3 parts: rules (the three games' pure rules in Node with the model players of tests/mirrorbots.mjs at 60 and 20 steps a second: naive fails, skilled wins, kind help,
 // the rematch, for fun), kids (the real Player + MirrorLive in Node, tests/mirrornode.mjs: a skilled player with real keys wins the three twin rooms, the stances, Jump spam),
 // play (the whole loop in a browser: the funny mirrors, the three games through the live part, keys saved, a reload, the crew, Duke Dazzle, the star, the rematch, for fun),
 // real (real keys through the game's own loop), ipad, pair (two browsers: each plays their own game), shots (screenshots mirror-*.png).
-// MIRROR_ONLY=swirl|removed|closed|land|rules|kids|play|real|ipad|pair|shots|old
+// MIRROR_ONLY=swirl|closed|land|rules|kids|play|real|ipad|pair|shots|old
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { devices } from 'playwright';
 import { ROOT, openGame, openPair, newGame, pause, click, waitFor as waitFor0, seedSave, playBattle, continueGame } from '../helpers.mjs';
@@ -28,16 +25,14 @@ const ONLY = process.env.MIRROR_ONLY || '';
 const want = part => !ONLY || ONLY === part;
 const waitFor = (page, fn, arg, timeout = 90000) => waitFor0(page, fn, arg, timeout);
 const FIXTURE = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'swirl-v5.json'), 'utf8'));
-const removedSetup = ctx => ctx.addInitScript(() => { window.__pcRemoved = ['mirror']; });
 
 // A Champion in the Swirl.
 async function intoSwirl(page) {
   await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.realms.enter('swirl', { back: g.world.portal.stand }); });
   await waitFor(page, () => window.pokecraft.place === 'swirl' && !window.pokecraft.realms.busy, null, 120000);
 }
-// The Swirl's stand-in world in a child Node process with the switch set (module constants are read once, so one process = one state).
-const swirlRecord = (removed, data = false) => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
-  ${removed ? "globalThis.__pcRemoved = ['mirror'];" : ''}
+// The Swirl's stand-in world in a child Node process.
+const swirlRecord = (data = false) => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
   const { snapshot } = await import(${JSON.stringify('file://' + path.join(ROOT, 'tests', 'swirlrecord.mjs'))});
   console.log(JSON.stringify(snapshot(undefined, { data: ${data} })));`], { maxBuffer: 1 << 26 }).toString());
 
@@ -89,18 +84,8 @@ export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
   /* ======================================================= swirl ======================================================= */
   if (want('swirl')) {
-    // Node: the stand-in Swirl with the Mirror Palace in. Only the south deck's west end, the lift and the new frame differ from today's (removed) Swirl.
-    const withM = swirlRecord(false, true), without = swirlRecord(true, true);
-    const A = zlib.gunzipSync(Buffer.from(withM.data, 'base64')), Z = zlib.gunzipSync(Buffer.from(without.data, 'base64')), W = 160, D = 160;
-    let changed = 0, outside = 0, wasSolid = 0, minX = 999, maxX = 0;
-    for (let i = 0; i < A.length; i++) if (A[i] !== Z[i]) {
-      changed++; const x = i % W, z = Math.floor(i / W) % D, y = Math.floor(i / (W * D));
-      if (x < 18 || x > 31 || z < 103 || z > 110 || y < 9 || y > 22) outside++;
-      if (Z[i] !== 0) wasSolid++; minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-    }
-    t.ok(changed > 100 && outside === 0 && wasSolid === 0, `the Mirror Palace changes ${changed} blocks, all of them new blocks (air before) inside x 18..31, z 103..110, y 9..22: the south deck's west end and the frame S5 (${outside} outside, ${wasSolid} replaced something)`);
-    delete withM.data; delete without.data;
-    t.ok(without.sha === FIXTURE.sha && without.ground === FIXTURE.ground, 'the removed Swirl equals the recorded one block for block (data and ground checksums)');
+    // Node: the stand-in Swirl with the Mirror Palace, against the record of the Swirl before wave 18 (tests/fixtures/swirl-v5.json).
+    const withM = swirlRecord();
     t.ok(withM.sha !== FIXTURE.sha && withM.frames.length === 12 && withM.stones.length === 13, `with the Mirror Palace the Swirl has 12 frames and 13 stones (${withM.frames.length} / ${withM.stones.length})`);
     const s5 = withM.frames.find(f => f.world === 'mirror');
     t.ok(s5 && s5.spot.id === 'S5' && s5.spot.x === 24 && s5.spot.z === 109 && s5.spot.y === 16 && s5.spot.stand.join() === '24,15,108', `the 13th star's frame hangs on S5 at x 24, z 109 (${JSON.stringify(s5?.spot)})`);
@@ -112,8 +97,7 @@ export default async function ({ browser, base, t }) {
     const spans = withM.stones.map(s => `${s.x0}-${s.x1}`).join(' ');
     t.ok(spans === '61-64 66-70 72-75 77-81 83-86 88-92 94-97 99-103 105-108 110-114 116-119 121-125 127-131', `13 stones fill the same span, 4 and 5 long in turn (${spans})`);
     t.ok(withM.stones.every((s, i) => i === 0 || s.x0 - withM.stones[i - 1].x1 === 2) && withM.stones.at(-1).x1 === 131 && withM.stones[0].x0 === 61, 'one empty cell between stones, the bridge starts at x 61 and ends at x 131 as before');
-    t.ok(without.stones.map(s => `${s.x0}-${s.x1}`).join() === FIXTURE.stones.map(s => `${s.x0}-${s.x1}`).join() && without.stones.length === 12, 'removed: the 12 stones are today\'s');
-    t.ok(withM.wizard.x === 142 && without.wizard.x === 142 && withM.wizard.x0 === 133 && JSON.stringify(withM.wizard) === JSON.stringify(FIXTURE.wizard), "the Wizard's island stays at x 142 (x 133..151) either way");
+    t.ok(withM.wizard.x === 142 && withM.wizard.x0 === 133 && JSON.stringify(withM.wizard) === JSON.stringify(FIXTURE.wizard), "the Wizard's island stays at x 142 (x 133..151)");
     t.ok(JSON.stringify(withM.keeps.filter(k => k.name === 'bridge' || k.name === 'wizard')) === JSON.stringify(FIXTURE.keeps.filter(k => k.name === 'bridge' || k.name === 'wizard')), "the bridge keep and the Wizard's keep never change");
     // a real world in a browser: the frame, the stones, the island, the walk to S5, the star lighting the 13th stone, the picture, the version
     const page = await openGame(browser, base);
@@ -169,94 +153,6 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(lit.last === 'mirror' && lit.lit && lit.first, 'the Mirror Palace star lights the 13th stone (the last one); the first stays dark');
     t.ok(!page.errors.length, `no page errors (${page.errors.slice(0, 3).join(' | ')})`);
-    await page.context().close();
-  }
-
-  /* ======================================================= removed ======================================================= */
-  if (want('removed')) {
-    const page = await openGame(browser, base, { setup: removedSetup });
-    await newGame(page, 0); await pause(page);
-    const r = await page.evaluate(async fixture => {
-      const g = window.pokecraft, C = await import('/src/comingsoon.js'), PW = await import('/src/pictureworlds.js'), RM = await import('/src/realms.js'), L = await import('/src/swirlland.js');
-      const m = PW.pictureWorld('mirror');
-      const { World } = await import('/src/world.js');
-      const sw = new World(7, null, null, RM.REALMS.swirl.size, RM.REALMS.swirl); sw.generate();
-      const hex = async a => [...new Uint8Array(await crypto.subtle.digest('SHA-256', a))].map(b => b.toString(16).padStart(2, '0')).join('');
-      const boxes = a => a.map(s => s.box);
-      return {
-        removed: C.REMOVED.join(), open: C.worldOpen('mirror'), later: C.LATER.includes('mirror'), flags: [m.removed, m.ready, m.door, m.bridge].join(),
-        frames: PW.FRAME_WORLDS.length, bridge: PW.BRIDGE_WORLDS.length, starWorlds: PW.STAR_WORLDS.length, won: PW.starsWon(['mirror', 'house']).join(), all: PW.PICTURE_WORLDS.length, kept: PW.loadStars(['mirror', 'house']).join(),
-        realm: !!RM.REALMS.mirror, of: RM.realmOf('mirror'), version: RM.REALMS.swirl.version, same: RM.REALMS.swirl.sameCells.join(),
-        keeps: [3, 4, 5, 6].map(v => (RM.cleanRealmEdits({ swirl: [[5, 1]] }, { swirl: v }).swirl || []).length).join(),
-        sha: await hex(sw.data), ground: await hex(sw.ground),
-        frameRec: sw.swirl.frames.map(f => ({ world: f.world, spot: f.spot, box: f.box })), stones: sw.swirl.bridge.map(s => ({ world: s.world, ...s.box })), lifts: sw.lifts, wizard: sw.swirl.wizard.x, spots: L.FRAME_SPOTS.length, deck: L.DECKS.find(d => d.id === 'south').box.join(),
-        fixtureOk: true,
-      };
-    }, FIXTURE);
-    t.ok(r.removed === 'mirror' && !r.open, 'the switch (__pcRemoved) removes the Mirror Palace: worldOpen is false even though it is open for everyone');
-    t.ok(r.flags === 'true,false,false,false' && r.frames === 11 && r.bridge === 12 && r.starWorlds === 12 && r.all === 13, `its entry stays (ids are saved) but has removed: true, ready: false, door: false, bridge: false; 11 frames, 12 stones, 12 stars (${r.flags} / ${r.frames} / ${r.bridge} / ${r.starWorlds})`);
-    t.ok(r.won === 'house' && r.kept === 'house,mirror', `starsWon counts only the stars of the bridge ("${r.won}"), loadStars still keeps the Mirror star ("${r.kept}")`);
-    t.ok(!r.realm && r.of === null && r.version === 5 && r.same === '4,6' && r.keeps === '0,1,1,1', `no realm; the Swirl is version 5 with sameCells [4, 6] (a v4, v5 and v6 save keep their edits) (${r.version} / ${r.same} / ${r.keeps})`);
-    t.ok(r.sha === FIXTURE.sha && r.ground === FIXTURE.ground, "the real Swirl World's blocks equal the recorded ones: the checksum before wave 18 (sha-256 of the whole block array)");
-    t.ok(JSON.stringify(r.frameRec) === JSON.stringify(FIXTURE.frames) && r.stones.map(s => `${s.x0}-${s.x1}`).join() === FIXTURE.stones.map(s => `${s.x0}-${s.x1}`).join() && JSON.stringify(r.lifts) === JSON.stringify(FIXTURE.lifts) && r.wizard === 142 && r.spots === 11 && r.deck === '28,68,103,108', 'the frames, stones, lifts, island and south deck are exactly the recorded ones');
-    // the Node side: the stand-in Swirl and the removed state
-    const node = swirlRecord(true);
-    t.ok(JSON.stringify(node) === JSON.stringify(FIXTURE), 'in Node too: the removed stand-in Swirl equals tests/fixtures/swirl-v5.json');
-    // the HUD: x / 12; the Mirror star stays in the save, unseen
-    const hud = await page.evaluate(async () => {
-      const g = window.pokecraft; g.stars = ['mirror', 'house']; g.ui.renderHud?.(); const a = g.ui.starsShown;
-      g.stars = ['mirror']; g.ui.renderHud?.(); const b = g.ui.starsShown;
-      g.stars = ['mirror', 'house']; g.bossWins = { mirror: 2, house: 1 };
-      const { starBonus } = await import('/src/pictureboss.js');
-      return { a, b, row: document.querySelectorAll('#stars .star, .star').length, bonus: starBonus(['mirror', 'house', 'pirate'], 'pirate') };
-    });
-    t.ok(hud.a === '1/12' && hud.b === null && hud.bonus === 2, `the HUD says 1/12 with the Mirror star held (nothing at all with only that star); a held Mirror star adds no Boss levels (${hud.a} / ${hud.b} / bonus ${hud.bonus})`);
-    // the Book hides unseen creatures of the removed type (a stand-in species of type mirror), keeps the seen ones, has no habitat row
-    const book = await page.evaluate(async () => {
-      const g = window.pokecraft, S = await import('/src/species.js'), BK = await import('/src/book.js');
-      const base = Object.values(S.SPECIES).find(s => !s.legendary);
-      S.SPECIES.__mirrorfake = { ...base, name: 'Fake', type: 'mirror' };
-      try {
-        const before = g.book.counts().total, hidden = g.book.hidden('__mirrorfake'), listed = g.book.visibleIds().includes('__mirrorfake');
-        g.book.seen.add('__mirrorfake');
-        const shown = !g.book.hidden('__mirrorfake') && g.book.visibleIds().includes('__mirrorfake'), after = g.book.counts().total;
-        g.book.seen.delete('__mirrorfake');
-        return { hidden, listed, shown, drop: after - before, rows: BK.spawnInfo('__mirrorfake').length };
-      } finally { delete S.SPECIES.__mirrorfake; }
-    });
-    t.ok(book.hidden && !book.listed && book.shown && book.drop === 1 && book.rows === 0, `the Book skips an unseen creature of a removed type, lists it once seen, and counts it only then (${JSON.stringify(book)})`);
-    // an old save made with the Mirror: star, keys, wins; place 'mirror'; it loads in main and round-trips
-    const save = await page.evaluate(() => {
-      const g = window.pokecraft; g.stars = ['house', 'mirror']; g.beaten = [...g.beaten, 'pw:mirror:court1', 'pw:mirror:twin2']; g.bossWins = { mirror: 2 }; g.save(true);
-      const s = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
-      return { ...s, place: 'mirror', realmPos: [80.5, 11, 150.5, 0, 0, 0], realmEdits: { mirror: [[7, 3]], swirl: [[9, 3]] }, realmVersions: { ...s.realmVersions, mirror: 1, swirl: 6 }, realmUp: { id: 'swirl', ret: null, via: 'mirror' } };
-    });
-    await pause(page);
-    const old = await openGame(browser, base, { setup: ctx => { removedSetup(ctx); return seedSave(save)(ctx); } });
-    await click(old, '#title-buttons button:has-text("Continue")');
-    await waitFor(old, () => window.pokecraft.started, null, 240000);
-    const o = await old.evaluate(async () => {
-      const g = window.pokecraft; g.save(true);
-      const s = JSON.parse(localStorage.getItem('pokecraft-save-v2'));
-      return { place: g.place, stars: s.stars, beaten: s.beaten.filter(k => k.startsWith('pw:mirror')), wins: s.bossWins, party: g.party.length, errors: 0 };
-    });
-    t.ok(o.place === 'main' && o.stars.includes('mirror') && o.stars.includes('house') && o.beaten.join() === 'pw:mirror:court1,pw:mirror:twin2' && o.wins?.mirror === 2, `a save made inside the Mirror Palace loads in the main world, and the star, the keys and the wins round-trip untouched (${JSON.stringify(o)})`);
-    t.ok(!old.errors.length, `no page errors (removed, old save) ${old.errors.slice(0, 3).join(' | ')}`);
-    await old.context().close();
-    // un-removed: the frame, the stone and the HUD come back (a normal page with the same save)
-    const back = await openGame(browser, base, { setup: seedSave(save) });
-    await click(back, '#title-buttons button:has-text("Continue")');
-    await waitFor(back, () => window.pokecraft.started, null, 240000);
-    await waitFor(back, () => window.pokecraft.place === 'mirror' && !window.pokecraft.realms.busy, null, 120000);
-    const u = await back.evaluate(async () => {
-      const g = window.pokecraft, PW = await import('/src/pictureworlds.js');
-      g.ui.renderHud?.();
-      return { place: g.place, hud: g.ui.starsShown, frames: PW.FRAME_WORLDS.length, mirror: PW.pictureWorld('mirror').removed ?? false };
-    });
-    t.ok(u.place === 'mirror' && u.hud === '2/13' && u.frames === 12 && !u.mirror, `un-removed (same save): it loads inside the Mirror Palace again, the HUD says 2/13, the frame is back (${JSON.stringify(u)})`);
-    t.ok(!back.errors.length, `no page errors (un-removed) ${back.errors.slice(0, 3).join(' | ')}`);
-    await back.context().close();
-    t.ok(!page.errors.length, `no page errors (removed) ${page.errors.slice(0, 3).join(' | ')}`);
     await page.context().close();
   }
 

@@ -1,7 +1,7 @@
-// T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge) and a short
-// note from the Wizard. Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
+// T40: the Bosses of the Picture Worlds. Every Picture World ends with a Boss who gives the world's star (not a badge).
+// Once you hold the star the Boss offers rematches that grow like the gym rematches (T28). A Boss may have a
 // crew: trainers before the Boss where its `gate` says so (the Ball Stadium, the Race Track, the Pirate Seas), bonus battles elsewhere. The defs are data (`addBoss`, one per PICTURE_WORLDS id); the tasks add their own.
-import { PICTURE_WORLDS, pictureWorld, loadStars, starsWon, STAR_WORLDS } from './pictureworlds.js'; // wave 18: starsWon (a removed world's star is not counted)
+import { PICTURE_WORLDS, pictureWorld, loadStars, starsWon, STAR_WORLDS } from './pictureworlds.js';
 import { rematchTeam, rematchCubes } from './rematch.js';
 import { REMATCH_CAP } from './gyms.js';
 import { sound } from './sound.js';
@@ -17,7 +17,7 @@ import { bubbleState, SHIELDS as BUBBLE_SHIELDS } from './bubbleland.js'; // the
 import { gravityState } from './cubeland.js'; // Cube Planets
 import { mirrorState } from './mirrorland.js'; // wave 18, the Mirror Palace
 
-export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, noteMs: 10000, maxWins: 999,
+export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, askTime: 20, askRange: 8, starMs: 7000, maxWins: 999,
   perStar: 2, starCap: 95 }; // owner 2026-10-28: every star you already hold makes the next Boss (and crew) 2 levels stronger, up to 95 (creatures now grow to 100)
 
 // A Boss def (one per Picture World, keyed by its PICTURE_WORLDS id):
@@ -25,7 +25,6 @@ export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, a
 //   model?: { species, scale },                                                       // a big creature (buildModel), e.g. a parrot captain
 //   team: [[species, level, moves?], ...],          // the signature creature last; Step 0 top levels 62 / 63 / 64 / 65
 //   intro: [lines], lose: 'said when you win', win: 'said when you lose', rematchIntro?: [lines],
-//   note: "The Wizard's note: one or two short sentences",
 //   gate?: game => null | 'what the Boss says instead of battling' (alias: ready),
 //   crew?: [{ name, colors, look?, team, intro?, line }] }   // helpers, 2-4 levels below the Boss; optional unless `gate` asks for them (the Ball Stadium does)
 export const BOSSES = {};
@@ -58,7 +57,7 @@ const topLevel = team => Math.max(...team.map(t => t[1]));
 
 // Owner 2026-10-28: "the Bosses should get slightly stronger from one to the next". The worlds can be done in any order, so the step
 // comes from the stars you hold from OTHER worlds (a rematch of this world's Boss does not count its own star twice). Pure.
-export const starBonus = (stars, id) => BOSS.perStar * starsWon(stars).filter(s => s !== id).length; // (a removed world's star stays in the save but counts for nothing: wave 18)
+export const starBonus = (stars, id) => BOSS.perStar * starsWon(stars).filter(s => s !== id).length;
 export function starTeam(team, stars, id) {
   const up = starBonus(stars, id);
   if (!up) return team;
@@ -74,8 +73,7 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   intro: ['Squeak! You are as small as me now!', 'The Wizard gave me his star to look after.', 'Win it in a battle!'],
   lose: 'Squeak-tastic! You did it. The star is yours!',
   win: 'Good try! Have a crumb, rest a bit, and come back!',
-  rematchIntro: ['Back again? My tiny team grew a little!'],
-  note: 'Thank you for visiting my little mouse! Everything looks big when you are small, but small ones can do big things.' });
+  rematchIntro: ['Back again? My tiny team grew a little!'] });
 // T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (Dot, Lou and First Mate Fin).
 // Owner 2026-10-26: sink his 12 rowboats (four waves of three) with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
 // Owner 2026-10-27: and beat his three crew (once, kept forever).
@@ -93,7 +91,6 @@ addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species
   lose: 'Squawk... you win, matey! My chest is yours. The star was in it all along!',
   win: 'Squawk! Good battle, matey. Have a rest and try again!',
   rematchIntro: ['You sank my new rowboats too? My crew trained all day. Squawk!'],
-  note: 'Captain Squawk was my parrot. I painted him a whole sea to sail! When I left, he got a bit bossy. Thank you for the star!',
   crew: [
     { name: 'Deckhand Dot', look: 'pirate', colors: { shirt: 0xf6efe0, pants: 0x3a5aa8, hair: 0x7a3a1a, skin: 0xf2d0b0 },
       team: [['pinchook', 59], ['parroteer', 60]], intro: ['Ahoy! Nobody lands on Parrot Perch without a battle!'], line: 'The ropes take you to Lookout Isle. Swing!' },
@@ -111,7 +108,6 @@ addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in raceliv
   lose: 'You beat me on the track AND in a battle! Hear that? Playland is waking up!',
   win: 'My racers are quick! Heal up and talk to me. No need to race again.',
   rematchIntro: ['Back for more? My team got even faster!'],
-  note: 'I built this track for the festival race, but nobody ever raced on it. Thank you for racing!',
   crew: [
     { name: 'Pit Crew Pia', look: 'helmet', colors: { shirt: 0xffffff, pants: 0xff8a2a, hair: 0x2a1a10, skin: 0xd8a070 },
       team: [['vroomlet', 60], ['wheelie', 61]], intro: ['Beat me before you battle Rio!'], line: 'Go go go! Rio is fast, but you can do it!' },
@@ -135,7 +131,6 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 5 goals and 
   rematchIntro: ['Goals and baskets again! Ready for the second half?'],
   lose: 'What a match! The stadium is cheering again. Here is the star the Wizard hid in our trophy!',
   win: 'Good game! Score again and we play another match.',
-  note: "This stadium was built for the festival's big match. Thank you for playing it!",
   crew: [
     { name: 'Winger Wes', colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'sport',
       team: [['fuzzchick', 61], ['sealbop', 61], ['smashbird', 62]], intro: ["I'm the fastest winger in Playland!", 'Beat me before you battle the Captain!'],
@@ -156,7 +151,6 @@ addBoss({ // Queen Coralia in the palace of the Sunken City (in the Pirate Seas)
   lose: 'Wonderful! The Sunken City shines again, and the star is yours!',
   win: 'My guardians are very old and very strong. Rest a little and try again!',
   rematchIntro: ['The glowfish got away again? You caught them all! Now, my guardians have been training!'],
-  note: 'I painted the Sunken City from a dream about the sea. The glowfish were its lights, and I could never keep them. Thank you for catching them!',
   crew: [
     { name: 'Guard Pelos', colors: { shirt: 0xc4683f, pants: 0x6a3420, hair: 0x2a1a10, skin: 0xd8a070 }, hat: 0xd8b84a,
       team: [['jarling', 59], ['statuecub', 60]], intro: ['Halt! Nobody walks through the Jar Market without a battle!'], line: 'Bump a jar and be quick: a shy glowfish pops out!' },
@@ -176,7 +170,6 @@ addBoss({ // Merry Mae, the Fairkeeper, on the Sky Stage (Playland's Funfair). W
   lose: 'What a ride! Listen... the music is playing again! Here is the star.',
   win: 'Good try! Have some candy floss and try again.',
   rematchIntro: ['Back at the fair? The games got a bit harder!'],
-  note: 'I built this fair for the festival, and nobody ever rode the carousel. Thank you for riding everything!',
   crew: [
     { name: 'Bumper Bea', colors: { shirt: 0xffd23a, pants: 0x3a4a8a, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'fair',
       team: [['twistpup', 59], ['merrycolt', 60]], intro: ['Bump bump! Want a practice battle?'], line: 'Get behind a car and bump its balloon!' },
@@ -197,7 +190,6 @@ addBoss({
   lose: 'Ho ho! What a surprise: you win! The star is yours.',
   win: 'Ho ho! Have some cake, rest a bit and try again!',
   rematchIntro: ['Boing! A new party, new tricks. Ready?'],
-  note: 'Jax was my favourite toy. I wrapped up gifts for every creature in the Swirl, but never got to give them out. Thank you for opening them!',
   crew: [
     { name: 'Ribbon Rosa', look: 'party', colors: { shirt: 0xe8384a, pants: 0xfff0d0, hair: 0x5a2a1a, skin: 0xf2c79a },
       team: [['giftle', 59], ['popjack', 60]], intro: ['Surprise! A party crasher! Battle!'], line: 'Spin the Party Spinner. Press Stop! when your game is under the arrow!' },
@@ -218,7 +210,6 @@ addBoss({
   lose: 'What a picture! The star is yours.',
   win: 'Good try! A drawing needs a few goes. Try again!',
   rematchIntro: ['Back again? I drew my team a bit bigger!'],
-  note: 'My first sketchbook! I drew every creature here before I made them for real. Thank you for finishing the lines for me.',
   crew: [
     { name: 'Tracey', colors: { shirt: 0xf6d8e0, pants: 0x4a4a56, hair: 0x2a2a30, skin: 0xe8c09a },
       team: [['nibling', 59], ['sketchkit', 60], ['rubbit', 60]], intro: ['I trace everything!', 'Battle me!'], line: 'Follow the dots, and keep your eyes on the tip!' },
@@ -240,7 +231,6 @@ addBoss({
   lose: 'A true knight! The star is yours. Ta-ta-taa!',
   win: 'Bravely done! Rest a moment and try again.',
   rematchIntro: ['Back for another tournament? My knights trained harder!'],
-  note: 'I built this castle for my toy knights. They trained every day for a tournament, and nobody ever came to watch. Thank you for being their challenger!',
   crew: [
     { name: 'Squire Pip', look: 'squire', colors: { shirt: 0x3a5ad8, pants: 0x6a4a2a, hair: 0xe0b04a, skin: 0xf2d0b0 },
       team: [['clipclop', 59], ['pricklet', 60]], intro: ['I look after the horses!', 'Battle me first!'], line: 'Point your lance at the gold star!' },
@@ -266,7 +256,6 @@ addBoss({
   lose: 'Splish splash, you win! The star was in my bubble bath all along.',
   win: 'A good try, little bubble! Rest a bit and try again.',
   rematchIntro: ['Back up my well? My bubbles got bigger!'],
-  note: 'I filled this well with fizz so my bath-time friends could float all the way up to the sky. Thank you for getting the bubbles rising again!',
   crew: [
     { name: 'Wanda Wand', look: 'bubble', colors: { shirt: 0x8ad8ff, pants: 0xf6efe0, hair: 0xe0a040, skin: 0xf2d0b0 },
       team: [['squeaklet', 59], ['suddly', 60]], intro: ['You climbed the Fizz Ledges! Pop!', 'Battle me!'], line: 'Hop off before your bubble pops!' },
@@ -292,7 +281,6 @@ addBoss({
   lose: 'Marvellous! The star is yours. It was in orbit round my hat all along!',
   win: 'A fine try! Rest a moment, then come back for another go.',
   rematchIntro: ['Back again? My planets spin a little faster now!'],
-  note: 'I made these little planets so my star creatures would have somewhere to play. Thank you for walking round every one of them!',
   crew: [
     { name: 'Stargazer Stella', look: 'orbit', colors: { shirt: 0x2a4a8a, pants: 0xf0d080, hair: 0x2a1a10, skin: 0xc68a5a },
       team: [['orbikit', 59], ['hootiter', 60]], intro: ['My Orbikits run round and round their planets!', 'When one sees you it goes "!" and runs. Round a corner it runs right into you! Battle!'], line: 'Round a corner it cannot see you!' },
@@ -316,7 +304,6 @@ addBoss({
   lose: 'Simply dazzling! The star was in my best mirror all along.',
   win: 'A lovely try! Fix your hair, rest a bit, and come back.',
   rematchIntro: ['Back again? I polished my team!'],
-  note: 'I built this palace so my creatures could pull funny faces at themselves. Thank you for making the mirrors shine again!',
   crew: [
     { name: 'Copycat Cleo', look: 'mirror', colors: { shirt: 0xff9ad8, pants: 0x4a4a6a, hair: 0x2a1a10, skin: 0xc68a5a },
       team: [['copykit', 59], ['lookit', 60]], intro: ['You beat me at Bounce-Back! Copy that!', 'Battle!'], line: "Don't hit it where you are!" },
@@ -337,7 +324,6 @@ addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open 
   lose: 'Wonderful! Take the star. It will make the bridge a little longer.',
   win: 'A good try! Rest a bit, then come back through the swirls.',
   rematchIntro: ['Back again? My swirls trained too!'],
-  note: 'The Portal creatures were my very first helpers. They built the door that let you in. Thank you for the star!',
   crew: [
     { name: 'Keeper Kit', look: 'swirl', colors: { shirt: 0x7a4ad8, pants: 0xf6efe0, hair: 0x2a1a4a, skin: 0xf2d0b0 },
       team: [['doorbit', 59], ['hatbun', 60]], intro: ['Hello! I keep the Hall of Swirls.', 'Want a practice battle?'], line: 'Your swirl and the orange swirl are joined: in one, out the other!' },
@@ -434,15 +420,14 @@ export function createBosses(game, { startBattle, save }) {
         toast(`${npc.name}: Nice battle! +${BOSS.crewCubes} Capture Cubes`);
         return;
       }
-      if (!hasStar(id)) { // the first win: the star, the Wizard's note
+      if (!hasStar(id)) { // the first win: the star
         game.stars = loadStars([...game.stars, id]);
         const c = def.cubes ?? BOSS.cubes;
         game.cubes += c;
         sound.play('champion');
         toast(`${npc.name}: ${def.lose}`);
         toast(`⭐ You won the star of the ${pw.name}! (${starsWon(game.stars).length}/${STAR_WORLDS.length}) +${c} Capture Cubes`);
-        game.ui.celebrate(`⭐ The ${pw.name} star!`, `🧙 "${def.note}"`, BOSS.noteMs);
-        toast(`🧙 ${def.note}`);
+        game.ui.celebrate(`⭐ The ${pw.name} star!`, `${starsWon(game.stars).length} / ${STAR_WORLDS.length} stars for the star bridge`, BOSS.starMs);
         toast(game.place === 'swirl' ? 'Your star lights a stone of the star bridge, back on the hub!' : 'Go back to the Swirl: your star lights a stone of the star bridge!'); // T42: the Portal House is in the Swirl itself
         return;
       }
