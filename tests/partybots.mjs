@@ -27,7 +27,7 @@ export function pinataMind(kind) {
     if (kind === 'masher') { const top = topAt(run, t); return { to: { x: top.x, z: top.z + 1.6 }, face: dirTo, press: true }; }
     const late = kind === 'kid' ? 0.45 : 0.3, top = topAt(run, Math.max(0, t - late) + 0.3);
     const to = { x: top.x - ax * 1.8, z: top.z - az * 1.8 };   // behind the swing: it comes back at you
-    if (kind === 'pro') return { to, face: dirTo, press: inReach(p, eye, dirTo) && towards(p, eye) >= PINATA.bigV + 0.3 && p.y <= PINATA.low + PINATA.bigLow };
+    if (kind === 'pro') return { to, face: dirTo, press: inReach(p, eye, dirTo) && towards(p, eye) >= PINATA.bigV + 0.3 };
     const j = ((hashStr(`j${run.hits}|${run.whiffs}|${run.plan.attempt}`) % 1000) / 1000 - 0.5) * 0.4, q = pinataAt(run, Math.max(0, t + j));
     return { to, face: dirTo, press: inReach(q, eye, dirTo) && towards(q, eye) > 0.5 };
   };

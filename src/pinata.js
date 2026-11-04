@@ -2,7 +2,7 @@
 //
 // A piñata hangs on a rope from a bunch of balloons that drift round the ring in the middle of the hall. It swings like a pendulum
 // (low = in reach, at the ends of a swing it is up out of reach). You whack it with a party stick: one press, the stick swings the way
-// you look. A whack that meets the piñata while it swings AT you is a big hit (CRACK! 2), any other hit is a small one (Bonk! 1), and
+// you look. A whack that meets the piñata while it swings AT you is a big hit (CRACK!, the only kind that cracks it), any other hit is a Bonk, and
 // every hit knocks it away the way you hit it, so it swings back at you half a swing later: a rhythm, like a tetherball, while the
 // balloons drift (you follow them) and from the second piñata on it sometimes dodges sideways. Out of hits = it bursts: candy and a bow.
 //
@@ -20,12 +20,14 @@ export const PINATA = {
   reach: 2.1,                          // the stick reaches this far (sideways, from your eyes)
   close: 0.9,                          // this close it is a hit whatever way you look
   cone: 50,                            // degrees either side of where you look
-  band: [-1.45, 0.95],                 // the piñata's height against your eyes for a hit (below, above)
+  band: [-1.45, 1.3],                  // the piñata's height against your eyes for a hit (below, above; owner 2026-11-04: up to where the
+                                       // drawn stick reaches over your head, it was 0.95 and a piñata you could see the stick touch was a whiff)
   window: [-0.04, 0.16], sample: 0.02, // the stick is in the air for a moment: a press counts for this bit before / after
-  bigV: 1.5,                           // blocks a second towards you (or more) = a big hit ...
-  bigLow: 0.4,                         // ... near the bottom of its swing (where it is fastest)
+  bigV: 1.1,                           // blocks a second towards you (or more) = a big hit. Owner 2026-11-04 ("the visual is illogical"):
+                                       // that is the ONE rule now; a hidden "low down" rule (bigLow 0.4) and bigV 1.5 made about 4 in 10
+                                       // whacks that plainly met a piñata coming at you a Bonk
   dmg: { big: 1, small: 0 },          // only a CRACK cracks it; a Bonk just knocks it away
-  cool: { hit: 0.45, miss: 2.0 },      // the stick swings back; a whiff spins you round (so whacking all the time does not work)
+  cool: { hit: 0.45, miss: 2.0 },      // the stick swings back; a whiff spins you round (so whacking all the time does not work; drawn: the stick twirls)
   minKick: 0.8,                        // a hit always sends it out at least this far
   dodgeTurn: 70,                       // degrees a dodge turns the knock
   zipTime: 0.6,                        // after a hit the balloons zip on along their path (the round's `zip` blocks) in this many seconds
@@ -141,13 +143,17 @@ export function towards(p, eye) {
 export function whack(run, t, eye, dir) {
   if (run.done || t < run.ready - 1e-9) return { swung: false };
   const P = PINATA;
-  let tau = null, p = null;
+  // the stick meets it at the first moment of the window it is in reach; if it is in reach coming at you at any moment of the window,
+  // from the press on, it meets it then (owner 2026-11-04: a whack that you SEE meet a piñata swinging at you is a CRACK, never a Bonk for 0.04 s)
+  let tau = null, p = null, big = false;
   for (let k = P.window[0]; k <= P.window[1] + 1e-9; k += P.sample) {
-    const q = pinataAt(run, Math.max(0, t + k));
-    if (inReach(q, eye, dir)) { tau = Math.max(0, t + k); p = q; break; }
+    const tt = Math.max(0, t + k), q = pinataAt(run, tt);
+    if (!inReach(q, eye, dir)) continue;
+    if (k > -1e-9 && towards(q, eye) >= P.bigV) { tau = tt; p = q; big = true; break; }
+    if (tau == null) { tau = tt; p = q; }
   }
   if (tau == null) { run.whiffs++; run.ready = t + P.cool.miss; run.log.push({ t, hit: false }); return { swung: true, hit: false }; }
-  const big = towards(p, eye) >= P.bigV && p.y <= P.low + P.bigLow, dmg = big ? P.dmg.big : P.dmg.small;
+  const dmg = big ? P.dmg.big : P.dmg.small;
   run.hits++; if (big) run.big++;
   run.hp = Math.max(0, run.hp - dmg);
   run.ready = t + P.cool.hit;
@@ -165,6 +171,6 @@ export function whack(run, t, eye, dir) {
   const burst = run.hp <= 0;
   if (burst) { run.done = true; run.burstAt = tau; }
   run.log.push({ t, tau, hit: true, big, dmg, dodge: !!dodge });
-  return { swung: true, hit: true, big, dmg, dodge: !!dodge, burst, tau };
+  return { swung: true, hit: true, big, dmg, dodge: !!dodge, burst, tau, at: { x: p.x, y: p.y, z: p.z } };
 }
 export const timeUp = (run, t) => !run.done && t >= run.plan.time;

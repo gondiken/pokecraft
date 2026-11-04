@@ -458,6 +458,30 @@ async function gamesPart(t) {
     const r1 = P.newRun(plan), w1 = P.whack(r1, tl, front, toQ(front)), r2 = P.newRun(plan), w2 = P.whack(r2, tl, back, toQ(back));
     const r3 = P.newRun(plan), miss = P.whack(r3, tl, back, away(back)), again = P.whack(r3, tl + 1.0, front, toQ(front));
     t.ok(w1.big && r1.hp === plan.hp - 1 && w2.hit && !w2.big && miss.swung && !miss.hit && !again.swung, 'the stick: whacked as it swings at you = CRACK; from behind = Bonk; a whiff spins you round for 2 s');
+    // owner 2026-11-04 ("the visual is illogical"): coming at you is the ONE rule (no hidden "low down"), and what the drawn stick
+    // reaches over your head counts: of every whack that meets a piñata coming at you faster than bigV, none is a Bonk
+    let coming = 0, high = 0, bonk;
+    for (let k = 0; k < 6; k++) for (let round = 1; round <= 3; round++) {
+      const rr = P.newRun(P.pinataPlan(40 + k, round, k));
+      for (let tt = 0; tt < 10; tt += 0.07) {
+        const p = P.pinataAt(rr, tt);
+        for (const [ox, oz] of [[1, 0], [0, 1.5], [-1.8, 0], [1.2, 1.2]]) {
+          const eye = { x: p.top.x + ox, y: 11 + Bt.EYE, z: p.top.z + oz }, dir = { x: p.x - eye.x, y: 0, z: p.z - eye.z };
+          if (!P.inReach(p, eye, dir) || P.towards(p, eye) < PINATA.bigV) continue;
+          coming++; if (p.y > PINATA.low + 0.4) high++;
+        }
+      }
+    }
+    // whack a real run whenever it comes at you (you stand 1.2 beside it): every hit is a CRACK
+    const judged = { n: 0, b0: 0 }, rj = P.newRun(P.pinataPlan(41, 1, 0));
+    for (let tt = 0.5; tt < 30 && !rj.done; tt += 0.01) {
+      const p = P.pinataAt(rj, tt), eye = { x: p.x + 1.2, y: 11 + Bt.EYE, z: p.z };
+      if (tt < rj.ready || P.towards(p, eye) < PINATA.bigV + 0.05) continue;
+      const w = P.whack(rj, tt, eye, { x: -1, y: 0, z: 0 });
+      if (w.hit) { judged.n++; if (!w.big) judged.b0++; }
+    }
+    bonk = judged.b0;
+    t.ok(coming > 50 && high > 0 && judged.n >= 3 && bonk === 0 && PINATA.band[1] >= 1.3 && PINATA.bigLow === undefined, `a whack that meets a piñata coming at you is always a CRACK, also high up (${judged.n} whacks, ${bonk} Bonks; ${high} of ${coming} such moments are over the old "low down" line)`);
   }
   // the rounds with model players, at 60 and 20 steps a second
   const win = (kind, round, opts = {}, n = 8, dt = 1 / 60) => { let w = 0; for (let k = 0; k < n; k++) if (Bt.playPinata(kind, PR.pinataRound(1000 + k, round, k, opts), dt).won) w++; return w; };
@@ -868,7 +892,7 @@ async function livePart({ browser, base, t, page }) {
     const q = window.__pinAt(run, L.gm.run.t), v = Math.hypot(q.vx, q.vz);
     window.__at(q.x + (q.vx / v) * 2.6, 11, q.z + (q.vz / v) * 2.6, 0, 0.05);
     g.player.lookAt({ x: q.x, y: q.y + 0.2, z: q.z });
-    L.gm.run.swingT = 0.09; L.draw();
+    L.gm.run.swingT = 0.14; L.gm.run.hitRun = 0; L.draw(); // the stick meets it: its tip rests on the piñata
   });
   await shot(page, 'pinata', null, 800);
   // Jack Catch: jacks in the air with their shadows, a pie and its pink ring

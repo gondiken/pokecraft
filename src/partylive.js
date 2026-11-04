@@ -31,6 +31,9 @@ export const PARTY = {
   landed: 0.9,         // the Spinner shows where it stopped this long before the game comes
   rest: { won: 1.8, missed: 1.6, pinataWon: 2.6, pinataNap: 2.0 },
   stickSwing: 0.28, splat: 1.6,
+  // the Piñata Party's stick (owner 2026-11-04: "my stick seems to go through it"): drawn in the world from your hand as long as it
+  // really reaches (PINATA.reach from your eyes), it swings out to where you look and stops ON the piñata when it meets it
+  pinStick: { len: 1.9, hand: [0.34, -0.38, 0.32], rest: [0.5, 0.75, 0.42], thick: 0.8, out: 0.4, hold: 0.62 },
   clearR: 17,          // while a game runs no wild gift box stays this close to the party floor's middle
   away: 2.5,          // owner 2026-10-28 "I can't ever exit once I started a game": off the party floor and the Spinner this long, a waiting game folds away (its round is kept for the trip)
   dark: 0.3,           // "Lights out!": the light goes down to this
@@ -344,7 +347,7 @@ export class PartyLive {
     const g = this.gm;
     if (!g || g.phase !== 'ready') return false;
     const game = g.game, round = g.round, misses = this.misses[game][round], attempt = this.attempts[game][round]++, hard = this.hard(), twist = g.twist?.id ?? null, set = this.sets[game];
-    if (game === 'pinata') g.run = { runs: pinataRound(this.seed, round, attempt, { help: misses, hard, twist }).map(newRun), t: 0, swingT: 9, popped: new Map(), silly: 0 };
+    if (game === 'pinata') g.run = { runs: pinataRound(this.seed, round, attempt, { help: misses, hard, twist }).map(newRun), t: 0, swingT: 9, hitRun: -1, dizzyT: 0, popped: new Map(), silly: 0 };
     else if (game === 'catch') {
       const plan = catchRound(this.seed, round, attempt, { help: misses, hard, twist, boxes: set.boxes, floor: set.catchFloor, start: set.start });
       g.run = { run: newCatch(plan), t: 0, splatT: 9, open: new Map() };
@@ -437,16 +440,16 @@ export class PartyLive {
     if (g.game === 'whack') return this.whackJack(eye, dir);
     if (g.game !== 'pinata') return false;
     const r = g.run, res = whackRuns(r.runs, r.t, eye, dir);
-    if (!res.swung) return false;
-    r.swingT = 0;
-    if (!res.hit) { sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Too soon. Wait for it to swing close.'); return true; }
+    if (!res.swung) { if (r.dizzyT > r.t) this.once('party-dizzy', 'Dizzy! Wait a moment...'); return false; }
+    r.swingT = 0; r.hitRun = res.hit ? res.run : -1;
+    if (!res.hit) { r.dizzyT = r.t + PINATA.cool.miss; sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Missed. Wait for it to swing close.'); return true; }
     if (res.big) {
       sound.play('pinatawhack');
       const left = r.runs[res.run].hp;
       if (!res.burst) this.toast(left === 1 ? 'CRACK! 1 more!' : `CRACK! ${left} more!`);
       const p = pinataAt(r.runs[res.run], res.tau);
       this.doBurst([p.x, p.y, p.z], 0.25);
-    } else { sound.play('boop'); this.once('party-bonk', 'Bonk! Whack it when it swings AT you, low down.'); }
+    } else { sound.play('boop'); this.once('party-bonk', 'Bonk! It was going away. Whack it when it swings AT you!'); }
     if (res.dodge) this.toast('It dodged!');
     return true;
   }
@@ -753,11 +756,40 @@ export class PartyLive {
     const on = g?.phase === 'run' && (g.game === 'pinata' || g.game === 'whack') && this.onSquare() && cam;
     this.stick.visible = !!on;
     if (!on) return;
+    if (g.game === 'pinata') return this.drawPinStick(cam, g.run);
     const k = Math.min(1, g.run.swingT / PARTY.stickSwing), arc = k < 1 ? Math.sin(k * Math.PI) : 0, o = this.tmp;
     o.position.copy(cam.position); o.quaternion.copy(cam.quaternion);
     o.translateX(0.3 - arc * 0.4); o.translateY(-0.26 + arc * 0.08); o.translateZ(-0.6);
     o.rotateY(0.45 + arc * 1.0); o.rotateX(0.85 - arc * 0.7);
     this.stick.position.copy(o.position); this.stick.quaternion.copy(o.quaternion); this.stick.scale.setScalar(0.32);
+  }
+  // The piñata stick in the world: from your hand, PARTY.pinStick.len long (so the tip is about PINATA.reach from your eyes). At rest
+  // it is held up over your right shoulder; a whack swings it out the way you look; one that meets a piñata stops with the tip on it
+  // (it follows the piñata while it touches), a whiff swings through the air and then the stick twirls while you are dizzy.
+  drawPinStick(cam, r) {
+    const S = PARTY.pinStick, V = THREE.Vector3, fwd = new V(0, 0, -1).applyQuaternion(cam.quaternion), right = new V(1, 0, 0).applyQuaternion(cam.quaternion), up = new V(0, 1, 0).applyQuaternion(cam.quaternion);
+    const hand = cam.position.clone().addScaledVector(right, S.hand[0]).addScaledVector(up, S.hand[1]).addScaledVector(fwd, S.hand[2]);
+    const rest = new V().addScaledVector(right, S.rest[0]).addScaledVector(up, S.rest[1]).addScaledVector(fwd, S.rest[2]).normalize();
+    let dir = rest, len = S.len;
+    const k = Math.min(1, r.swingT / PARTY.stickSwing);
+    if (k < 1) {
+      let target = new V().copy(fwd).addScaledVector(up, -0.12).addScaledVector(right, -0.1).normalize();
+      const run = r.hitRun >= 0 ? r.runs[r.hitRun] : null;
+      if (run && !r.popped.has(r.hitRun)) {
+        const p = pinataAt(run, r.t), to = new V(p.x - hand.x, p.y - hand.y, p.z - hand.z), d = to.length();
+        if (d > 1e-3) { target = to.divideScalar(d); len = Math.max(0.5, Math.min(S.len, d - 0.3)); } // the tip on the piñata's side
+      }
+      // out (eased), a moment ON it, back to rest
+      const a = k < S.out ? 1 - (1 - k / S.out) ** 2 : k < S.hold ? 1 : 1 - (k - S.hold) / (1 - S.hold);
+      dir = new V().copy(rest).lerp(target, a).normalize();
+      len = S.len + (len - S.len) * a;
+    } else if (r.dizzyT > r.t) { // dizzy after a whiff: the stick droops and twirls round
+      const w = r.t * 9;
+      dir = new V().addScaledVector(right, 0.35 + Math.sin(w) * 0.35).addScaledVector(up, 0.35 + Math.cos(w) * 0.35).addScaledVector(fwd, 0.5).normalize();
+    }
+    this.stick.position.copy(hand);
+    this.stick.quaternion.setFromUnitVectors(this.minusZ || (this.minusZ = new V(0, 0, -1)), dir);
+    this.stick.scale.set(S.thick, S.thick, len / 1.45); // (stickBoxes is 1.45 long along -z)
   }
   drawCatch(shadow, ring) {
     const g = this.gm, o = this.tmp;

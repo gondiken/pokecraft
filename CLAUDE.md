@@ -590,7 +590,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   number (`partyBows`, mark `pw:doors:party`); its keys `pw:doors:gift1..4` stay unread. Crashers Ribbon Rosa (after bow 1) and
   Confetti Kit (after bow 3) keep `pw:doors:crew1/2`. With four bows Jolly Jax bursts out of the cake. "Lights out!" uses
   `game.lightsDim`. Owner 2026-10-28: Play! puffs you onto the game's gold pad (`toStart`), a waiting game folds away when you are
-  away 2.5 s, a big banner says each game's how-to once. No new block ids (236-243 reused). `tests/partybots.mjs` plays all four games.
+  away 2.5 s, a big banner says each game's how-to once. Owner 2026-11-04 ("my stick seems to go through it"): the piñata's stick is drawn in the world from your hand as long as it really reaches (`PARTY.pinStick`), swings out the way you look and stops ON the piñata it meets, twirls while you are dizzy after a whiff; the CRACK rule is only "coming at you" (`bigV` 1.1, from the press on; the hidden "low down" `bigLow` is gone) and the reach goes up to 1.3 over your eyes. No new block ids (236-243 reused). `tests/partybots.mjs` plays all four games.
 - **Sketchbook look (T45, spec `doodle`):** the Sketchbook (`REALMS.doodle` version 1, `PICTURE_WORLDS` `doodle` = the old
   `secret1` place) is a pencil drawing. **Everything is behind switches that are off everywhere else** (the spec proves bit for bit
   that the main world, the Dream and the Swirl render the same, also after a trip there). `look.sketch` makes `World.sketch` true:
