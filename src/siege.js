@@ -1,8 +1,8 @@
 // T49: Shield Up! (the Castle, plans/T49-castle.md section 3), pure: no game imports (only kindhelp.js's kindHelp, itself pure), so it
 // runs in Node. You stand on a Shield Stone; the castle's practice catapults lob squishy pumpkins and its archers shoot suction-cup
 // arrows at you from twelve spots all round. Push the stick toward the danger (the shield points where the stick points; with no stick
-// it points where you look), hold Jump to lift it over your head for a pumpkin falling from the sky. A throw is judged at the moment it
-// arrives (a closed-form time) with the shield as it is in that frame: so the same presses give the same result at any frame rate.
+// it points where you look), hold Jump to lift it over your head for a pumpkin falling from the sky. A throw is judged round the moment it
+// arrives (a closed-form time): the best shield of a short `grace` window, each sub-step with that frame's shield: so the same presses give the same result at any frame rate.
 // Never a fail: a pumpkin that gets through is only a soft "Splat! Yuck, sticky!", and a round that ends short of its number starts
 // again (after two short rounds the shared kind help slows it down a tiny bit).
 import { kindHelp } from './kindhelp.js';
@@ -18,6 +18,9 @@ export const SIEGE = {
   tell: { pumpkin: [1.0, 0.8, 0.6], arrow: [1.2, 1.0, 0.8], sky: [0.8, 0.8, 0.8], big: [1.0, 0.9, 0.8] }, // by round
   flight: { pumpkin: [1.5, 1.3, 1.05], arrow: 0.6, sky: 1.6 },
   lead: 2.5, end: 1.2,                           // the first arrival at least this long after the round starts; the result this long after the last
+  start: 1.3,                                    // owner 2026-11-05: no tell before this (the round's words fade first; it was 0.3)
+  grace: { before: 0.12, after: 0.1 },          // owner 2026-11-05 ("I turn my shield to it and it still splats"): a throw counts the best
+                                                 // shield of a short window round its arrival, so a turn a moment late (or early) still blocks
   rounds: [
     { n: 10, need: 8, front: true, kinds: { pumpkin: 10 }, pairs: 0, gap: 1.8, pairGap: 0 },
     { n: 12, need: 9, kinds: { pumpkin: 8, arrow: 4 }, pairs: 2, gap: 1.25, pairGap: 0.7, behind: 4 },
@@ -100,10 +103,11 @@ export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } =
   }
   // a tell may not start before the round does: push everything later if needed
   const early = Math.min(...throws.map(t => t.at - t.flight - t.tell));
-  if (early < 0.3) for (const t of throws) t.at += 0.3 - early;
+  if (early < SIEGE.start) for (const t of throws) t.at += SIEGE.start - early;
   return { throws, need, n, end: throws[n - 1].at + SIEGE.end, round, help, hard, cover: SIEGE.cover * kh.more };
 }
 
+const RANK = { splat: 0, block: 1, perfect: 2 };
 // The result of one throw arriving at a stand point with the shield at angle `ang` (atan2(x, z)) and `up` (held over the head).
 // -> 'perfect' | 'block' | 'splat'.
 export function judge(t, stand, ang, up, cover = SIEGE.cover) {
@@ -137,7 +141,7 @@ export class SiegeRound {
     this.round = round; this.stone = stone; this.stand = SIEGE.stones[stone];
     this.time = 0; this.blocks = 0; this.perfects = 0; this.row = 0; this.splats = 0;
     this.results = []; this.done = false; this.won = false;
-    this.told = new Set(); this.launched = new Set();
+    this.told = new Set(); this.launched = new Set(); this.best = new Map();
   }
   get need() { return this.plan.need; }
   get left() { return this.plan.n - this.results.length; }
@@ -152,8 +156,13 @@ export class SiegeRound {
         const launch = t.at - t.flight, tellAt = launch - t.tell;
         if (!this.told.has(t.i) && tellAt <= t1) { this.told.add(t.i); ev.push({ type: 'tell', t }); }
         if (!this.launched.has(t.i) && launch <= t1) { this.launched.add(t.i); ev.push({ type: 'launch', t }); }
-        if (t.at > t0 && t.at <= t1 && this.results[t.i] === undefined) {
-          const r = judge(t, this.stand, input.ang, !!input.up, this.plan.cover);
+        // the grace window: the best shield from `before` until `after` round the arrival counts, judged when the window closes
+        if (this.results[t.i] === undefined && t1 > t.at - SIEGE.grace.before) {
+          const now = judge(t, this.stand, input.ang, !!input.up, this.plan.cover), was = this.best.get(t.i);
+          if (was === undefined || RANK[now] > RANK[was]) this.best.set(t.i, now);
+        }
+        if (this.results[t.i] === undefined && t.at + SIEGE.grace.after <= t1) {
+          const r = this.best.get(t.i) ?? 'splat';
           this.results[t.i] = r;
           if (r === 'splat') { this.splats++; this.row = 0; } else { this.blocks++; if (r === 'perfect') { this.perfects++; this.row++; } else this.row = 0; }
           ev.push({ type: 'hit', t, result: r, row: this.row });

@@ -33,10 +33,9 @@ export const JOUST_VIEW = { lead: 5, shieldUp: 2.3, shieldIn: 0.9, shieldOn: 0.5
 export const MAZE_FUN = { reach: 1.3, peekR: 6, peekUp: 2.4, peekRest: 7, rise: 0.25, spray: 1.1, drops: 24 };
 const WORDS = {
   stone: 'Push the stick to move your blue shield onto the arrows!',
-  rounds: ['Round 1: pumpkins from the castle! Turn your shield to them.', 'Round 2: from all sides! An arrow at the bottom is behind you: pull the stick back.', 'Round 3: a purple circle = a sky pumpkin: hold Jump! Big pumpkins need a perfect block.'],
-  splat: 'Splat! Yuck, sticky! Put the blue shield on the arrow!',
-  sky: 'Look up! Shield up! (Jump)',
-  hero: 'Hero! Three perfect blocks!',
+  rounds: ['Round 1: shield the pumpkins!', 'Round 2: from all sides!', 'Round 3: purple circle = hold Jump!'],
+  splat: 'Splat! Put the blue shield on the arrow!',
+  sky: 'Sky pumpkin! Hold Jump!',
   joust: 'Steer your lance tip onto the gold spot!',
   passes: ['Round 1: the gold spot stands still. Aim and hold steady!', 'Round 2: the gold spot slides round the shield. Follow it!', 'Round 3: the gold spot slides fast, and it hops! Watch it wiggle.'],
   bullseye: 'Bullseye! Sir Splinter fell off!',
@@ -107,6 +106,7 @@ export class CastleLive {
     this.giveBack();
     this.game.ui?.setScore?.(null);
     this.game.ui?.setPointers?.(null);
+    this.game.ui?.toastSmall?.(false);
     this.goo?.remove(); this.goo = null;
     this.callEl?.remove(); this.callEl = null;
     if (this.shieldRig) this.scene?.remove(this.shieldRig);
@@ -136,7 +136,10 @@ export class CastleLive {
       where: () => { const s = stand(); return { x: s[0], y: s[1], z: s[2] }; },
       steer(wx, wz, analog, space) {
         const p = me.game.player;
-        me.shieldIn.ang = analog > 0.4 ? Math.atan2(wx, wz) : Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw));
+        // owner 2026-11-05 ("I turn my shield to it and it still splats"): a light push counts (it was > 0.4: a soft push snapped the
+        // shield to the front), and letting go of the stick keeps the shield where it points until you turn your view
+        if (analog > 0.2) { me.shieldIn.ang = Math.atan2(wx, wz); me.stickYaw = p.yaw; }
+        else if (me.stickYaw == null || Math.abs(wrap(p.yaw - me.stickYaw)) > 0.08) { me.stickYaw = null; me.shieldIn.ang = Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)); }
         me.shieldIn.up = !!space && me.running();
       },
       wantsLeave(space) { const fresh = !!space && !me.spaceWas; me.spaceWas = !!space; return fresh && !me.running(); },
@@ -208,7 +211,7 @@ export class CastleLive {
   leaveStance() {
     const p = this.game.player, at = this.stanceObj.safe();
     if (p.carry === this.stanceObj) { p.carry = null; p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0); }
-    this.stance = -1; this.sg = null;
+    this.stance = -1; this.sg = null; this.stickYaw = null;
     this.game.ui?.setPointers?.(null);
   }
   startRound() {
@@ -216,19 +219,20 @@ export class CastleLive {
     this.sg = new SiegeRound(this.seed, r, this.sTries[r]++, Math.max(0, this.stance), { help: this.sMiss[r], hard: this.hard });
     this.perfectRow = 0;
     sound.play('trumpet');
-    this.toast(`🛡️${this.sFun.tag(st.shield)} ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!${kindHelp(this.sMiss[r]).on ? ' (A bit slower now.)' : ''}`);
+    this.toast(`🛡️${this.sFun.tag(st.shield)} ${WORDS.rounds[r]} Block ${this.sg.need} of ${this.sg.plan.n}!`); // (short: it sits over the field)
   }
   stepSiege(dt) {
     const sg = this.sg;
     if (!sg || sg.done) return;
     const ev = sg.update(dt, this.shieldIn);
     for (const e of ev) {
-      if (e.type === 'tell') { if (e.t.kind === 'sky') this.say('sky', WORDS.sky, 6); else if (e.t.kind !== 'arrow') sound.play('catapultcreak'); }
+      if (e.type === 'tell') { if (e.t.kind === 'sky') this.once('sky', WORDS.sky); else if (e.t.kind !== 'arrow') sound.play('catapultcreak'); }
       else if (e.type === 'launch') sound.play(e.t.kind === 'arrow' ? 'bowtwang' : 'catapultthunk');
       else if (e.type === 'hit') {
         this.lastResult = e.result;
-        if (e.result === 'splat') { sound.play('pumpkinsplat'); this.splatOn(e.t); this.say('splat', WORDS.splat); }
-        else { sound.play('shieldclang'); if (e.row >= 3 && e.row % 3 === 0) this.toast(WORDS.hero); }
+        // owner 2026-11-05 ("these splat texts block the view"): the words come once, after that the goo and the chip say it
+        if (e.result === 'splat') { sound.play('pumpkinsplat'); this.splatOn(e.t); this.once('splat', WORDS.splat); }
+        else sound.play('shieldclang');
       } else if (e.type === 'done') this.roundDone(e);
     }
   }
@@ -559,10 +563,13 @@ export class CastleLive {
     if (this.stance >= 0 && list.length) {
       const next = list.slice().sort((a, b) => a.t.at - b.t.at).slice(0, 3);
       // your shield on the same ring (owner 2026-10-31: front and back were confusing): put the blue arc on the arrows
-      const cover = this.sg.plan.cover;
+      // a big pumpkin needs a perfect block: while it is the next to come, the blue arc shows that narrow part only (owner 2026-11-05)
+      const cover = next[0]?.t.kind === 'big' ? SIEGE.perfect : this.sg.plan.cover;
       this.game.ui?.setPointers?.(next.map(a => ({ angle: a.t.kind === 'sky' ? 0 : this.relAngle(dirTo(stand, a.t.k), p), sky: a.t.kind === 'sky', colour: CSS(KIND_COLOUR[a.t.kind] ?? 0xff8a1a), size: a.phase === 'fly' ? 1 : 0.4 })),
         { angle: this.relAngle(this.shieldIn.ang, p), up: !!this.shieldIn.up, cover });
     } else this.game.ui?.setPointers?.(null);
+    // owner 2026-11-05 ("the texts block the view, especially on tablet"): on a Shield Stone the words are small and at the top edge
+    this.game.ui?.toastSmall?.(this.stance >= 0);
     // the shield you hold (in front of the camera, turned toward where it points; overhead while Jump is held)
     const cam = this.game.camera, on = this.stance >= 0 && !!cam;
     this.held.visible = on;

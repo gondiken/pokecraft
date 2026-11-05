@@ -440,9 +440,9 @@ export class PartyLive {
     if (g.game === 'whack') return this.whackJack(eye, dir);
     if (g.game !== 'pinata') return false;
     const r = g.run, res = whackRuns(r.runs, r.t, eye, dir);
-    if (!res.swung) { if (r.dizzyT > r.t) this.once('party-dizzy', 'Dizzy! Wait a moment...'); return false; }
+    if (!res.swung) { if (r.dizzyT > r.t) this.once('party-dizzy', 'Wait for your stick to come back up!'); return false; }
     r.swingT = 0; r.hitRun = res.hit ? res.run : -1;
-    if (!res.hit) { r.dizzyT = r.t + PINATA.cool.miss; sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Missed. Wait for it to swing close.'); return true; }
+    if (!res.hit) { r.dizzyT = r.t + (res.pause ?? PINATA.cool.miss); r.dizzyLen = res.pause ?? PINATA.cool.miss; sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Missed. Wait for it to swing close.'); return true; }
     if (res.big) {
       sound.play('pinatawhack');
       const left = r.runs[res.run].hp;
@@ -765,7 +765,7 @@ export class PartyLive {
   }
   // The piñata stick in the world: from your hand, PARTY.pinStick.len long (so the tip is about PINATA.reach from your eyes). At rest
   // it is held up over your right shoulder; a whack swings it out the way you look; one that meets a piñata stops with the tip on it
-  // (it follows the piñata while it touches), a whiff swings through the air and then the stick twirls while you are dizzy.
+  // (it follows the piñata while it touches), a whiff swings through the air, then the stick hangs down and comes back up over the pause.
   drawPinStick(cam, r) {
     const S = PARTY.pinStick, V = THREE.Vector3, fwd = new V(0, 0, -1).applyQuaternion(cam.quaternion), right = new V(1, 0, 0).applyQuaternion(cam.quaternion), up = new V(0, 1, 0).applyQuaternion(cam.quaternion);
     const hand = cam.position.clone().addScaledVector(right, S.hand[0]).addScaledVector(up, S.hand[1]).addScaledVector(fwd, S.hand[2]);
@@ -783,9 +783,10 @@ export class PartyLive {
       const a = k < S.out ? 1 - (1 - k / S.out) ** 2 : k < S.hold ? 1 : 1 - (k - S.hold) / (1 - S.hold);
       dir = new V().copy(rest).lerp(target, a).normalize();
       len = S.len + (len - S.len) * a;
-    } else if (r.dizzyT > r.t) { // dizzy after a whiff: the stick droops and twirls round
-      const w = r.t * 9;
-      dir = new V().addScaledVector(right, 0.35 + Math.sin(w) * 0.35).addScaledVector(up, 0.35 + Math.cos(w) * 0.35).addScaledVector(fwd, 0.5).normalize();
+    } else if (r.dizzyT > r.t) { // after a whiff the stick hangs down and comes back up over the pause (owner 2026-11-05: no twirling round
+      // and round: it looked like you had no control); a whack works again the moment it is back over your shoulder
+      const u = 1 - (r.dizzyT - r.t) / Math.max(0.1, r.dizzyLen || PINATA.cool.miss), down = new V().addScaledVector(right, 0.45).addScaledVector(up, -0.7).addScaledVector(fwd, 0.55).normalize();
+      dir = new V().copy(down).lerp(rest, u * u).normalize();
     }
     this.stick.position.copy(hand);
     this.stick.quaternion.setFromUnitVectors(this.minusZ || (this.minusZ = new V(0, 0, -1)), dir);

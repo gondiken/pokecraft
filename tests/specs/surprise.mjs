@@ -448,7 +448,7 @@ async function gamesPart(t) {
   const a = JSON.stringify(P.pinataPlan(11, 2, 3)), b = JSON.stringify(P.pinataPlan(11, 2, 3)), c = JSON.stringify(P.pinataPlan(11, 2, 4));
   t.ok(a === b && a !== c && PINATA.rounds.map(r => r.id).join() === 'llama,star,rocket' && PINATA.rounds.map(r => r.hp).join() === '5,7,9' && PINATA.ring.x === 56.5 && PINATA.ring.z === 53.5, 'pinata.js is unchanged: a try is a pure function of seed / piñata / try; llama, star, rocket with 5 / 7 / 9 CRACKs; the rug in the middle of the party floor');
   t.ok(JSON.stringify(PR.pinataRound(5, 2, 1)) === JSON.stringify([P.pinataPlan(5, 2, 1)]) && JSON.stringify(PR.pinataRound(5, 3, 0, { help: 1 })) === JSON.stringify([P.pinataPlan(5, 3, 0, { help: 1 })]), 'a round without a surprise is exactly pinata.js\'s plan (round 1 the llama, 2 the star, 3 the rocket)');
-  // the stick: a CRACK only when it swings at you, a Bonk from behind, a whiff costs 2 s (the old rules, unchanged)
+  // the stick: a CRACK only when it swings at you, a Bonk from behind, a whiff pauses it
   {
     const plan = P.pinataPlan(5, 1, 0), run = P.newRun(plan);
     let tl = 0; for (let tt = 0; tt < 6; tt += 0.01) { const q = P.pinataAt(run, tt); if (q.y < PINATA.low + 0.05) { tl = tt; break; } }
@@ -456,8 +456,9 @@ async function gamesPart(t) {
     const front = { x: q.x + ux * 1.5, y: 11 + Bt.EYE, z: q.z + uz * 1.5 }, back = { x: q.x - ux * 1.5, y: 11 + Bt.EYE, z: q.z - uz * 1.5 };
     const toQ = e => ({ x: q.x - e.x, z: q.z - e.z }), away = e => ({ x: e.x - q.x, z: e.z - q.z });
     const r1 = P.newRun(plan), w1 = P.whack(r1, tl, front, toQ(front)), r2 = P.newRun(plan), w2 = P.whack(r2, tl, back, toQ(back));
-    const r3 = P.newRun(plan), miss = P.whack(r3, tl, back, away(back)), again = P.whack(r3, tl + 1.0, front, toQ(front));
-    t.ok(w1.big && r1.hp === plan.hp - 1 && w2.hit && !w2.big && miss.swung && !miss.hit && !again.swung, 'the stick: whacked as it swings at you = CRACK; from behind = Bonk; a whiff spins you round for 2 s');
+    // owner 2026-11-05 ("it goes round and round with no control"): one whiff pauses the stick 0.6 s, a second whiff soon after 2 s
+    const r3 = P.newRun(plan), miss = P.whack(r3, tl, back, away(back)), early = P.whack(r3, tl + 0.3, back, away(back)), miss2 = P.whack(r3, tl + 0.7, back, away(back)), again = P.whack(r3, tl + 1.7, front, toQ(front));
+    t.ok(w1.big && r1.hp === plan.hp - 1 && w2.hit && !w2.big && miss.swung && !miss.hit && miss.pause === PINATA.cool.first && !early.swung && miss2.swung && miss2.pause === PINATA.cool.miss && !again.swung, 'the stick: whacked as it swings at you = CRACK; from behind = Bonk; a whiff pauses the stick 0.6 s, another whiff soon after 2 s');
     // owner 2026-11-04 ("the visual is illogical"): coming at you is the ONE rule (no hidden "low down"), and what the drawn stick
     // reaches over your head counts: of every whack that meets a piñata coming at you faster than bigV, none is a Bonk
     let coming = 0, high = 0, bonk;
@@ -562,6 +563,11 @@ async function gamesPart(t) {
     const st3 = PW.newWhack(plans[0]), r3 = PW.whackAt(st3, gold.t0 + 0.3, wb, eye, dirTo(gold));
     const st4 = PW.newWhack(plans[0]), r4 = PW.whackAt(st4, j.t0 - 0.6, wb, eye, dirTo(j)), r5 = PW.whackAt(st4, j.t0 - 0.6 + 0.5, wb, eye, dirTo(j));
     t.ok(r1.hit && st.score === 1 && r2.pie && st2.score === 2 && st2.splats === 1 && r3.gold && st3.score === 2 && !r4.hit && r4.swung && !r5.swung, `whack a jack +1, a gold one +2, a pie jack is a splat -1, a whack at nothing makes the stick rest ${PW.WHACK.cool.miss} s`);
+    { // owner 2026-11-05 ("even next to them, we couldn't hit"): the whole jack counts, not only a point at its head; beside it, at its belly
+      const a = wb[j.box].at, me = { x: a[0] + 1.2, y: a[1] - 1 + Bt.EYE, z: a[2] }, st6 = PW.newWhack(plans[0]);
+      const belly = PW.whackAt(st6, j.t0 + 0.3, wb, me, { x: -1.2, y: a[1] + 0.4 - me.y, z: 0 }), st7 = PW.newWhack(plans[0]), wide = PW.whackAt(st7, j.t0 + 0.3, wb, me, { x: -1.2, y: a[1] + 0.4 - me.y, z: 1.2 });
+      t.ok(belly.hit && !wide.hit, `Pop-Up Whack: a whack at a jack's body from right beside it hits; one well to the side does not`);
+    }
     const mir = PW.whackPlan(3, 2, 0, { twist: 'mirror' }), speedy = PW.whackPlan(3, 2, 0, { twist: 'speedy' });
     t.ok(mir.pops.some(q => q.shook === 8 - q.box && q.box !== 4) && plans[1].pops.every(q => q.shook === q.box) && speedy.up < plans[1].up && speedy.pops.length > plans[1].pops.length, `the surprises: Mirror (${mir.pops.filter(q => q.shook !== q.box).length} jacks come out of the box opposite the one that shook), Speedy (${speedy.pops.length} shorter pops instead of ${plans[1].pops.length}), Lights out (looks only)`);
     const helped = PW.whackPlan(3, 2, 0, { help: FG.kindHelp(2) });

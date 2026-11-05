@@ -122,7 +122,8 @@ export default async function ({ browser, base, t }) {
       const slow = [sum('slow', { round: 2, fps }), sum('slow', { round: 2, fps, help: 3 }), sum('slow', { round: 0, fps }), sum('slow', { round: 2, fps, help: 6 })];
       t.ok(sk.every(n => n === 20) && skH.every(n => n === 20), `Shield Up! @${fps}: a skilled player (0.35 s to react) wins all three rounds, also the rematch's (${sk} / ${skH})`);
       t.ok(never.every(n => n === 0), `Shield Up! @${fps}: standing still, spinning the stick or holding Jump never wins, not even with the help (${never})`);
-      t.ok(slow[0] <= 14 && slow[1] <= 14 && slow[2] === 20 && slow[3] >= slow[0], `Shield Up! @${fps}: a slow child (1.5 s) wins round 1, often misses round 3 (${slow[0]} / 20), still does after 3 short rounds (the kind help is small: ${slow[1]} / 20) and does better with patience (6 short rounds: ${slow[3]} / 20)`);
+      // owner 2026-11-05: the shield counts round its arrival (SIEGE.grace), so after 3 short rounds the small kind help gets a slow child through
+      t.ok(slow[0] <= 14 && slow[1] >= slow[0] && slow[2] === 20 && slow[3] >= slow[1], `Shield Up! @${fps}: a slow child (1.5 s) wins round 1, often misses round 3 at first (${slow[0]} / 20), gets there with patience (3 short rounds: ${slow[1]} / 20, 6: ${slow[3]} / 20)`);
     }
     // replays: the same inputs (decided on a 20 Hz grid) give the same result at 60 and 20 frames a second
     const grid = (bot) => { let last = -1, held = null; return g => { const k = Math.floor(g.time * 20 + 1e-9); if (k !== last) { last = k; held = bot(g); } return held; }; };

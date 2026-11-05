@@ -23,6 +23,8 @@ export const WHACK = {
   head: 1.1,                   // the jack's head is this far over the box's top when up
   reach: 10,                   // the stick reaches this far (it is a party game: you can whack any box from the pad)
   cone: 7, close: 0.45,        // degrees off the jack's head (or within `close` blocks of the ray) still hit it
+  body: 0.5,                   // owner 2026-11-05 ("even next to them we couldn't hit"): anywhere on the jack counts, from the box's lid up to
+                               // its head (the ray passes within `body` of that upright line), not only a point at its head
   cool: { hit: 0.15, miss: 1.1 },
   pieCost: 1,
   mirror: 0.45,                // "Mirror!": this share of pops come out of the opposite box
@@ -87,6 +89,15 @@ export function upAt(st, t) { const out = []; for (const p of st.plan.pops) { co
 // The head of an up jack: boxes[i].at = the middle of the box's top, [x, y, z].
 export const headOf = (boxes, p, rise = 1) => { const a = boxes[p.box].at; return { x: a[0], y: a[1] + WHACK.head * rise, z: a[2] }; };
 
+// How close a ray (eye + s u, s >= 0, u a unit vector) comes to the upright line x, z from y0 to y1 (the jack's body). The distance from a
+// point of the line to the ray is convex in its height, so a short ternary search finds the closest one.
+function rayToUpright(eye, ux, uy, uz, x, z, y0, y1) {
+  const dist = y => { const dx = x - eye.x, dy = y - eye.y, dz = z - eye.z, s = Math.max(0, dx * ux + dy * uy + dz * uz); return Math.hypot(eye.x + ux * s - x, eye.y + uy * s - y, eye.z + uz * s - z); };
+  let lo = y0, hi = y1;
+  for (let k = 0; k < 40; k++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (dist(m1) <= dist(m2)) hi = m2; else lo = m1; }
+  return dist((lo + hi) / 2);
+}
+
 // Which up jack a stick swung from `eye` along `dir` would meet (the one nearest the ray), or null.
 export function aimed(st, t, boxes, eye, dir) {
   const dl = Math.hypot(dir.x, dir.y, dir.z) || 1, ux = dir.x / dl, uy = dir.y / dl, uz = dir.z / dl;
@@ -96,8 +107,9 @@ export function aimed(st, t, boxes, eye, dir) {
     if (d > WHACK.reach) continue;
     const along = dx * ux + dy * uy + dz * uz;
     if (along <= 0) continue;
-    const off = Math.sqrt(Math.max(0, d * d - along * along)), ang = (Math.atan2(off, along) * 180) / Math.PI;
-    if (ang > WHACK.cone && off > WHACK.close) continue;
+    const head = Math.sqrt(Math.max(0, d * d - along * along)), ang = (Math.atan2(head, along) * 180) / Math.PI;
+    const a = boxes[p.box].at, off = Math.min(head, rayToUpright(eye, ux, uy, uz, a[0], a[2], a[1], h.y));
+    if (ang > WHACK.cone && off > WHACK.close && off > WHACK.body) continue;
     if (!best || off < best.off) best = { p, off };
   }
   return best?.p ?? null;

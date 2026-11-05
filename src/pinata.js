@@ -27,7 +27,9 @@ export const PINATA = {
                                        // that is the ONE rule now; a hidden "low down" rule (bigLow 0.4) and bigV 1.5 made about 4 in 10
                                        // whacks that plainly met a piñata coming at you a Bonk
   dmg: { big: 1, small: 0 },          // only a CRACK cracks it; a Bonk just knocks it away
-  cool: { hit: 0.45, miss: 2.0 },      // the stick swings back; a whiff spins you round (so whacking all the time does not work; drawn: the stick twirls)
+  cool: { hit: 0.45, miss: 2.0, first: 0.6, again: 3 }, // the stick swings back after a hit. Owner 2026-11-05 ("you whack and it goes round and
+                                       // round with no control"): one whiff only pauses `first`; a second within `again` s of the last whiff
+                                       // pauses `miss` (so whacking all the time still does not work)
   minKick: 0.8,                        // a hit always sends it out at least this far
   dodgeTurn: 70,                       // degrees a dodge turns the knock
   zipTime: 0.6,                        // after a hit the balloons zip on along their path (the round's `zip` blocks) in this many seconds
@@ -152,7 +154,11 @@ export function whack(run, t, eye, dir) {
     if (k > -1e-9 && towards(q, eye) >= P.bigV) { tau = tt; p = q; big = true; break; }
     if (tau == null) { tau = tt; p = q; }
   }
-  if (tau == null) { run.whiffs++; run.ready = t + P.cool.miss; run.log.push({ t, hit: false }); return { swung: true, hit: false }; }
+  if (tau == null) {
+    const again = run.lastWhiff != null && t - run.lastWhiff < P.cool.again, pause = again ? P.cool.miss : P.cool.first;
+    run.whiffs++; run.lastWhiff = t; run.ready = t + pause; run.log.push({ t, hit: false });
+    return { swung: true, hit: false, pause };
+  }
   const dmg = big ? P.dmg.big : P.dmg.small;
   run.hits++; if (big) run.big++;
   run.hp = Math.max(0, run.hp - dmg);

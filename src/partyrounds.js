@@ -40,7 +40,7 @@ export function whackRuns(runs, t, eye, dir) {
   if (!live.length) return { swung: false };
   const target = live.find(r => reaches(r, t, eye, dir)) ?? live[0];
   const res = whack(target, t, eye, dir);
-  if (res.swung) for (const r of runs) if (r !== target) r.ready = Math.max(r.ready, target.ready);
+  if (res.swung) for (const r of runs) if (r !== target) { r.ready = Math.max(r.ready, target.ready); if (!res.hit) r.lastWhiff = target.lastWhiff; }
   return { ...res, run: runs.indexOf(target), all: runs.every(r => r.done) };
 }
 

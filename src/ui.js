@@ -346,6 +346,12 @@ export class UI {
     if (this.clock.textContent !== text) this.clock.textContent = text;
   }
 
+  // Small words at the top edge instead of the middle (the Castle's Shield Stone: the pumpkins come over the middle of the screen).
+  toastSmall(on) {
+    if (!this.toastBox || this.toastSmallOn === !!on) return;
+    this.toastSmallOn = !!on;
+    this.toastBox.classList.toggle('small', !!on);
+  }
   toast(msg) {
     const d = el('div', {}, msg);
     this.toastBox.append(d);
