@@ -146,6 +146,18 @@ export default async function ({ browser, base, t }) {
     let jsame = 0;
     for (let seed = 1; seed <= 10; seed++) { const a = playJoust(jgrid(JOUST_BOTS.tracker()), { seed, round: 1, fps: 60 }), b = playJoust(jgrid(JOUST_BOTS.tracker()), { seed, round: 1, fps: 20 }); if (a.results === b.results) jsame++; }
     t.ok(jsame >= 9, `the Joust: the same stick on a 20 Hz grid gives the same meetings at 60 and 20 frames a second (${jsame} / 10)`);
+    // owner 2026-11-07: the sliding spot never jumps: it carries on round its path through each pass, between passes, into the next try,
+    // and round 3's turn-back is continuous (only its direction flips)
+    { let jump = 0, turned = 0;
+      for (const round of [1, 2]) for (let seed = 1; seed <= 6; seed++) {
+        let jr = new J.JoustRound(seed, round, 0), last = null;
+        const see = () => { const a = jr.starNow().at; if (last) jump = Math.max(jump, Math.hypot(a[0] - last[0], a[1] - last[1])); last = a; };
+        for (let tryN = 0; tryN < 2; tryN++) {
+          while (!jr.done) { if (!jr.riding) { for (let i = 0; i < 40; i++) { jr.drift(1 / 60); see(); } jr.charge(); } jr.update(1 / 60, {}); see(); if (jr.riding && J.starAt(jr.plan, jr.pass, jr.tau).dir !== jr.plan.passes[jr.pass].dir) turned++; }
+          const start = jr.starState(); jr = new J.JoustRound(seed, round, tryN + 1, { start }); see();
+        }
+      }
+      t.ok(jump < 0.06 && turned > 0, `the Joust: the sliding gold spot never jumps (largest step in a 60th of a second ${jump.toFixed(3)} blocks), between passes and tries too; in round 3 it turns back`); }
     const m0 = J.meetResult(q1, 0, J.starAt(q1, 0, q1.meet).at.map((v, i) => v - J.bobAt(q1, 0, q1.meet)[i]));
     t.ok(m0.kind === 'bullseye' && m0.points === 2 && J.meetResult(q1, 0, [5, 5]).kind === 'whoosh' && J.meetResult(q1, 0, [0, 0]).points <= 1, 'a tip on the star (with the bob) is a Bullseye (2), far off a Whoosh (0)');
     // the shared gates (castlegate.js) with a stand-in channel: a guest's lowered drawbridge reaches the host and from there everybody

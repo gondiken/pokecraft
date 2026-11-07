@@ -30,16 +30,22 @@ export function playSiege(bot, { seed = 7, round = 0, attempt = 0, fps = 60, hel
 
 // Joust players: (round) -> { su, sv } per frame.
 export const JOUST_BOTS = {
-  // steers the tip toward where the star will be at the meeting, as seen `delay` s ago, correcting for the bob it sees
+  // steers the tip toward where the star will be at the meeting, correcting for the bob it sees; in round 3 it knows the rule (the star
+  // turns back hop s before the meeting), so it leads the star to the turned-back place
   skilled: (delay = 0.25) => (g) => {
-    const seenTau = Math.max(0, g.tau - delay), plan = g.plan, p = g.pass;
-    const star = starAt(plan, p, Math.min(plan.meet, seenTau + (plan.meet - g.tau))).at; // where the star will be (if it does not hop after seenTau)
-    const target = seenTau >= plan.meet - plan.hop - 0.05 || plan.round < 2 ? starAt(plan, p, plan.meet).at : star;
+    const plan = g.plan, p = g.pass;
+    const target = starAt(plan, p, plan.meet).at;
     const bob = bobAt(plan, p, plan.meet);
     const want = [target[0] - bob[0], target[1] - bob[1]];
     const step = JOUST.tipSpeed / 60;
     const du = want[0] - g.tip[0], dv = want[1] - g.tip[1];
     return { su: Math.max(-1, Math.min(1, du / step / 4)), sv: Math.max(-1, Math.min(1, dv / step / 4)) };
+  },
+  // leads the star like the skilled rider but does not expect the turn until it sees it (`delay` s late)
+  surprised: (delay = 0.25) => (g) => {
+    const plan = g.plan, p = g.pass, seen = Math.max(0, g.tau - delay) >= plan.meet - plan.hop;
+    const target = starAt(plan, p, plan.meet, { turn: seen }).at, bob = bobAt(plan, p, plan.meet), step = JOUST.tipSpeed / 60;
+    return { su: Math.max(-1, Math.min(1, (target[0] - bob[0] - g.tip[0]) / step / 4)), sv: Math.max(-1, Math.min(1, (target[1] - bob[1] - g.tip[1]) / step / 4)) };
   },
   // aims at where the star IS (not where it will be), seen `delay` s late, and does not mind the bob
   sloppy: (delay = 0.4) => (g) => {

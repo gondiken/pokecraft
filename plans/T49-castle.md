@@ -320,6 +320,8 @@ section 5). It is drawn per player from that rule every 0.25 s, like the Vault d
   - R2: slides round an ellipse `(0.5 cos(ωτ + φ), 0.35 sin(ωτ + φ))`, ω = 2π / 2.4.
   - R3: the R2 ellipse at ω = 2π / 1.9, and **one hop** at `τ = T - 0.9` (help: `T - 1.2`): φ += π (it jumps to the
     other side). A tell: the shield wiggles and goes "boing" 0.25 s before.
+    **Owner 2026-11-07:** no hop any more: it turns back the way it came (same tell), and the sliding spot never restarts at a
+    random place: it carries on round its path between passes and tries.
   - Star radius `r` = 0.32 / 0.28 / 0.26 (help + 0.06 per help step, hard - 0.03).
 - **The meeting** at `τ = T`: `d = |(tip + bob)(T) - star(T)|`. `d <= r` **Bullseye!** (2 points: `lanceclang` +
   `trumpet`, Sir Splinter spins off his trolley in a comic tumble and pops back on at the end of the lane);

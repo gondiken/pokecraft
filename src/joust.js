@@ -1,7 +1,10 @@
 // T49: the Joust (the Castle, plans/T49-castle.md section 4), pure: only kindhelp.js's kindHelp (itself pure), so it runs in Node.
 // You ride the castle's horse down your lane; a wooden practice knight on a trolley comes the other way and you meet at a fixed time
 // (`meet`). The stick moves your lance tip (u = sideways, v = up, in blocks, in the plane of his shield); the gallop bobs it (a closed
-// form); a gold spot sits on his shield (a gold star until 2026-10-30; the code still calls it the star) (still, sliding, or sliding and hopping once late). At the meeting the tip's distance to the
+// form); a gold spot sits on his shield (a gold star until 2026-10-30; the code still calls it the star) (still, sliding, or sliding and turning back once late).
+// Owner 2026-11-07 ("it should just continue its path"): a sliding spot never jumps. It keeps going round its ellipse between passes and
+// from one pass to the next (and into the next try, `opts.start`); round 3's late twist turns it back the way it came (it used to hop
+// to the other side), with the same wiggle as the tell. At the meeting the tip's distance to the
 // star decides: Bullseye! (2 points), Clang! on the shield (1), or Whoosh! (0, a bonk on your helmet, nothing more). Never a fail: a round
 // is four passes; short of its number it simply starts again, and after two short rounds the shared kind help gives a tiny bit more time and a bigger star.
 // The tip moves in fixed 1/120 s sub-steps with the frame's input held, so the same presses give the same result at any frame rate.
@@ -18,7 +21,7 @@ export const JOUST = {
   amp: [[0.05, 0.08], [0.08, 0.13], [0.10, 0.16]], // the gallop bob (u, v)
   spots: [[0.5, 0], [-0.5, 0], [0, 0.45], [0, -0.45]], // round 1: the star stands still at one of these (never the middle)
   ellipse: [0.55, 0.42], omega: [0, 2 * Math.PI / 3.2, 2 * Math.PI / 2.6],
-  hop: 0.9, hopTell: 0.25,                                 // round 3: the star hops to the other side this long before the meeting
+  hop: 0.9, hopTell: 0.25,                                 // round 3: the star turns back this long before the meeting (it wiggles hopTell s before)
   r: [0.32, 0.28, 0.26], shield: 0.8,
   need: [6, 6, 7],
   hard: { meet: 0.9, need: 1, r: -0.03, gallop: 1 },
@@ -47,14 +50,19 @@ export function bobAt(plan, pass, tau) {
   const [au, av] = JOUST.amp[plan.round], p = plan.passes[pass];
   return [au * Math.sin(2 * Math.PI * 1.3 * tau + p.phiU), av * (Math.abs(Math.sin(2.4 * Math.PI * tau + p.phiV)) - 0.64)];
 }
-// Where the star is on his shield at tau: [u, v], and whether it is wiggling (the hop's tell).
-export function starAt(plan, pass, tau) {
+// The sliding star's angular speed (rad/s) and its place on the ellipse at angle phi.
+export function starSpeed(plan) { return JOUST.omega[plan.round] * (plan.slow ?? 1); }
+export function ellipseAt(phi) { const [a, b] = JOUST.ellipse; return [a * Math.cos(phi), b * Math.sin(phi)]; }
+// Where the star is on his shield at tau of a pass: [u, v], whether it is wiggling (the turn's tell), and its angle and direction
+// (the pass starts at passes[pass].phi going passes[pass].dir; JoustRound.charge sets both from where the star has got to).
+// `turn: false` = where it would be if it did not turn back (for model players who have not seen the turn yet).
+export function starAt(plan, pass, tau, { turn = true } = {}) {
   const p = plan.passes[pass];
-  if (plan.round === 0) return { at: p.spot.slice(), wiggle: false };
-  const [a, b] = JOUST.ellipse, w = JOUST.omega[plan.round] * (plan.slow ?? 1);
-  let phi = p.phi + w * tau, wiggle = false;
-  if (plan.round >= 2) { const hopAt = plan.meet - plan.hop; if (tau >= hopAt) phi += Math.PI; else if (tau >= hopAt - JOUST.hopTell) wiggle = true; }
-  return { at: [a * Math.cos(phi), b * Math.sin(phi)], wiggle };
+  if (plan.round === 0) return { at: p.spot.slice(), wiggle: false, phi: 0, dir: 1 };
+  const w = starSpeed(plan), d = p.dir ?? 1, turnAt = plan.round >= 2 && turn ? plan.meet - plan.hop : Infinity;
+  if (tau >= turnAt) { const phi = p.phi + d * w * turnAt - d * w * (tau - turnAt); return { at: ellipseAt(phi), wiggle: false, phi, dir: -d }; }
+  const phi = p.phi + d * w * tau;
+  return { at: ellipseAt(phi), wiggle: turnAt - tau <= JOUST.hopTell, phi, dir: d };
 }
 // The result of a meeting: tip (without the bob) at the meeting time.
 export function meetResult(plan, pass, tip) {
@@ -70,11 +78,18 @@ export class JoustRound {
     this.plan = joustPlan(seed, round, attempt, opts);
     this.round = round; this.pass = -1; this.tau = 0; this.riding = false; this.tip = [0, 0];
     this.points = 0; this.results = []; this.done = false; this.won = false; this.met = false;
+    // where the sliding star is between passes (it never jumps: owner 2026-11-07); opts.start = the last try's star, to carry on from
+    this.phi = opts.start?.phi ?? this.plan.passes[0].phi; this.dir = opts.start?.dir ?? 1;
   }
+  // the star's place to hand to the next try: { phi, dir }
+  starState() { return { phi: this.phi, dir: this.dir }; }
+  // between passes (the horse slows, turns and waits for Charge!) the sliding star keeps going round
+  drift(dt) { if (!this.riding && this.round > 0 && dt > 0) this.phi += this.dir * starSpeed(this.plan) * dt; }
   get need() { return this.plan.need; }
   charge() {
     if (this.riding || this.done || this.pass + 1 >= JOUST.passes) return false;
     this.pass++; this.tau = 0; this.riding = true; this.met = false; this.tip = [0, 0];
+    const p = this.plan.passes[this.pass]; p.phi = this.phi; p.dir = this.dir; // the pass starts where the star is now
     return true;
   }
   update(dt, input = {}) {
@@ -103,6 +118,7 @@ export class JoustRound {
       this.tau = t1;
       if (this.met && this.tau >= this.plan.meet + JOUST.after) {
         this.riding = false;
+        const s = starAt(this.plan, this.pass, this.tau); this.phi = s.phi; this.dir = s.dir; // and carries on from there
         ev.push({ type: 'passDone', pass: this.pass });
         if (this.pass + 1 >= JOUST.passes) { this.done = true; this.won = this.points >= this.plan.need; ev.push({ type: 'done', won: this.won, points: this.points, need: this.plan.need }); }
       }
@@ -111,5 +127,13 @@ export class JoustRound {
   }
   // the tip with the bob, now (for the aim dot)
   tipNow() { const b = bobAt(this.plan, Math.max(0, this.pass), Math.min(this.tau, this.plan.meet)); return [this.tip[0] + b[0], this.tip[1] + b[1]]; }
-  starNow() { return starAt(this.plan, Math.max(0, this.pass), Math.min(this.tau, this.plan.meet)); }
+  // the star now: in a pass it keeps sliding after the meeting too; between passes a sliding star drifts on, a still one shows the
+  // next pass's spot
+  starNow() {
+    if (this.riding) return starAt(this.plan, this.pass, this.tau);
+    if (this.round === 0) return { at: this.plan.passes[Math.min(JOUST.passes - 1, this.pass + 1)].spot.slice(), wiggle: false };
+    return { at: ellipseAt(this.phi), wiggle: false };
+  }
+  // where the star was at this pass's meeting (what the hit is measured against)
+  starMeet() { return starAt(this.plan, Math.max(0, this.pass), this.plan.meet); }
 }

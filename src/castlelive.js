@@ -37,7 +37,7 @@ const WORDS = {
   splat: 'Splat! Put the blue shield on the arrow!',
   sky: 'Sky pumpkin! Hold Jump!',
   joust: 'Steer your lance tip onto the gold spot!',
-  passes: ['Round 1: the gold spot stands still. Aim and hold steady!', 'Round 2: the gold spot slides round the shield. Follow it!', 'Round 3: the gold spot slides fast, and it hops! Watch it wiggle.'],
+  passes: ['Round 1: the gold spot stands still. Aim and hold steady!', 'Round 2: the gold spot slides round the shield. Follow it!', 'Round 3: the gold spot slides fast, and it turns back! Watch it wiggle.'],
   bullseye: 'Bullseye! Sir Splinter fell off!',
   clang: 'Clang! On the shield.',
   whoosh: 'Whoosh! Point your lance at the gold spot!',
@@ -310,7 +310,8 @@ export class CastleLive {
     if (!this.mounted || this.ride?.phase !== 'idle') return;
     if (!this.jr || this.jr.done) {
       const r = this.jFun.round(st.lance);
-      this.jr = new JoustRound(this.seed, r, this.jTries[r]++, { help: this.jMiss[r], hard: this.hard });
+      const start = this.jr && this.jr.round > 0 && r > 0 ? this.jr.starState() : undefined; // the sliding spot carries on (owner 2026-11-07)
+      this.jr = new JoustRound(this.seed, r, this.jTries[r]++, { help: this.jMiss[r], hard: this.hard, start });
       this.toast(`🐴${this.jFun.tag(st.lance)} ${WORDS.passes[r]} Get ${this.jr.need} points in 4 passes.${kindHelp(this.jMiss[r]).on ? ' (A bit easier now.)' : ''}`);
     }
     this.jr.charge();
@@ -323,6 +324,7 @@ export class CastleLive {
   laneX(s) { return Math.max(TILT.x0, Math.min(TILT.x1, this.ride.x0 + this.horse.dir * s)); }
   stepJoust(dt) {
     const ride = this.ride, jr = this.jr;
+    if (jr && !jr.riding) jr.drift(dt); // between passes the sliding gold spot keeps going round (owner 2026-11-07: it never jumps)
     if (!this.mounted || !ride || ride.phase === 'idle') return;
     const v = jr?.plan.gallop ?? JOUST.gallop[0];
     if (ride.phase === 'pass') {
@@ -369,7 +371,7 @@ export class CastleLive {
   // Where the last meeting hit, in words a child can use: { word: 'A bit too high', far: 'too high', fix: 'lower' }. On screen the
   // shield's u runs right to left (the tip moves the other way to the stick's left and right: the "reverse thinking" the owner liked).
   hitWhere(jr, kind) {
-    const hit = jr.tipNow(), star = jr.starNow().at, sx = -(hit[0] - star[0]), sy = hit[1] - star[1];
+    const hit = jr.tipNow(), star = jr.starMeet().at, sx = -(hit[0] - star[0]), sy = hit[1] - star[1];
     this.hits.push({ u: hit[0], v: hit[1], kind });
     const side = Math.abs(sx) >= Math.abs(sy), dirW = side ? (sx > 0 ? 'right' : 'left') : (sy > 0 ? 'high' : 'low');
     const fix = { right: 'more to the left', left: 'more to the right', high: 'lower', low: 'higher' }[dirW];
@@ -608,7 +610,7 @@ export class CastleLive {
     const wob = this.tumbleT < 1 ? Math.sin(this.tumbleT * 18) * 0.25 * (1 - this.tumbleT) : 0;
     S.rotation.set(0, Math.atan2(-(eye.z - sp.z), eye.x - sp.x), wob); // local +x (its face) toward you
     // the gold spot (parts.star) and your aim dot (u + = the shield's local +z = the left of your screen, as before the view turned; v + = up)
-    const star = pass ? jr.starNow() : { at: [0, 0], wiggle: false }, tip = pass ? jr.tipNow() : [0, 0];
+    const star = jr ? jr.starNow() : { at: [0, 0], wiggle: false }, tip = pass ? jr.tipNow() : [0, 0]; // the spot never jumps to the middle between passes
     K.star.position.set(0.05, star.at[1], star.at[0]);
     K.star.rotation.x = star.wiggle ? Math.sin(this.clock * 40) * 0.4 : 0;
     K.ring.scale.setScalar(jr?.plan.r ?? JOUST.r[0]); // the bullseye ring: exactly the round's radius
