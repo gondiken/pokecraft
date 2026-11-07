@@ -62,7 +62,7 @@ const SILLY = [
 ];
 const PRESENT_COLOURS = [0xe8384a, 0x3a8ce8, 0x6ae86a, 0xffd23a, 0xb05ae8, 0xff8ab0, 0x3ac8e8, 0xff8a1a];
 const SHADOW_DARK = new THREE.Color(0.08, 0.05, 0.12), RING_PINK = new THREE.Color(1, 0.35, 0.6), RING_GOLD = new THREE.Color(1, 0.82, 0.2);
-const JACK_PLAIN = new THREE.Color(1, 1, 1), JACK_GOLD = new THREE.Color(1.5, 1.2, 0.35);
+const JACK_PLAIN = new THREE.Color(1, 1, 1), JACK_GOLD = new THREE.Color(1.5, 1.2, 0.35), JACK_PIE = new THREE.Color(1.2, 0.58, 0.98); // a pie jack is soft pink
 const ease = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 const candleCells = () => CAKE.candles.map(([dx, dz]) => [CAKE.x + dx, CAKE.candleY + 1, CAKE.z + dz]);
 
@@ -186,7 +186,7 @@ export class PartyLive {
     // Pop-Up Whack (owner 2026-11-07: "the jack should crumble"): a whacked jack falls apart into its own pieces
     const cbm = new THREE.MeshLambertMaterial({ color: 0xffffff }); this.mats.push(cbm);
     this.crumbs = inst(new THREE.BoxGeometry(1, 1, 1), cbm, CRUMBS.max);
-    this.crumbs.setColorAt(0, JACK_PLAIN);
+    this.crumbs.setColorAt(0, JACK_PLAIN); this.tmpC = new THREE.Color();
     const lg = new THREE.BoxGeometry(0.98, 0.14, 0.98), lm = new THREE.MeshLambertMaterial({ color: 0xe8384a }); this.mats.push(lm);
     this.lids = inst(lg, lm, 9);
     // the cream on the screen after a splat
@@ -870,13 +870,18 @@ export class PartyLive {
       const st = g.run.st, t = g.run.t, boxes = this.sets.whack.boxes;
       for (const { p, rise } of upAt(st, t)) {
         if (n >= 9) break;
-        const h = headOf(boxes, p, rise), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z);
-        o.position.set(h.x, h.y - 0.33, h.z); o.rotation.set(0, face, Math.sin(t * 9 + p.n) * 0.08); o.scale.setScalar(p.kind === 'gold' ? 1.1 : 1); o.updateMatrix();
-        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, p.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
-        if (p.kind === 'pie' && np < 9) { // the pie it holds out in front
-          o.position.set(h.x + Math.sin(face) * 0.55, h.y - 0.25, h.z + Math.cos(face) * 0.55); o.rotation.set(0.3, face, 0); o.scale.setScalar(0.8); o.updateMatrix();
+        const h = headOf(boxes, p, rise), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z), pie = p.kind === 'pie';
+        // owner 2026-11-07 ("pie jacks?? I didn't even know about them"): a pie jack is soft pink, sways slowly and happily (the others
+        // jitter) and holds its big pie up high over its head, so it shows over the front boxes from the pad
+        const sway = pie ? Math.sin(t * 3.2 + p.n) * 0.22 : Math.sin(t * 9 + p.n) * 0.08;
+        o.position.set(h.x, h.y - 0.33, h.z); o.rotation.set(0, face, sway); o.scale.setScalar(p.kind === 'gold' ? 1.1 : 1); o.updateMatrix();
+        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, p.kind === 'gold' ? JACK_GOLD : pie ? JACK_PIE : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
+        if (pie && np < 9) { // the pie, held up over its head like a tray
+          const lift = 0.85 * rise + 0.06 * Math.sin(t * 6 + p.n);
+          o.position.set(h.x - Math.cos(face) * Math.sin(sway) * 0.9, h.y + 0.35 + lift, h.z + Math.sin(face) * Math.sin(sway) * 0.9); o.rotation.order = 'YXZ'; o.rotation.set(0.6, face, sway * 0.5); o.scale.setScalar(1.35); o.updateMatrix(); o.rotation.order = 'XYZ'; // its cream tipped toward you
           this.pies.setMatrixAt(np++, o.matrix);
         }
+        if (pie && rise >= 1) this.once('party-piejack', '🥧 That jack brings you a pie. Leave it be!');
       }
       for (const b of g.run.bonks || []) { // a whacked jack crumbles: its own pieces (head, cap, nose, springs) fly apart and drop
         const k = (t - b.t) / WHACK_BONK;
@@ -894,7 +899,7 @@ export class PartyLive {
           const shrink = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
           o.scale.set(w * shrink, hh * shrink, d * shrink); o.updateMatrix();
           this.crumbs.setMatrixAt(nc, o.matrix);
-          this.crumbs.setColorAt(nc, gold && colour !== CRUMB_INK ? CRUMB_GOLD : CRUMB_COLOURS[i]); nc++;
+          this.crumbs.setColorAt(nc, gold && colour !== CRUMB_INK ? CRUMB_GOLD : p.kind === 'pie' ? this.tmpC.copy(CRUMB_COLOURS[i]).multiply(JACK_PIE) : CRUMB_COLOURS[i]); nc++;
         });
       }
       for (const b of shaking(st, t)) { // the lid of a box about to pop jiggles
