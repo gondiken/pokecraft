@@ -100,6 +100,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/gyms.js` | The gyms in difficulty order (teams, people, dialogue; `trainersOf(def)` / `trainerKey(def, i)`) and `TOWER` |
 | `src/book.js` | Creature Book (C, `game.book`): seen/caught, pages, wiki links (T19.5: `go`/`back`, `open({ species, move, type, from })`, `typeLink`) |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
+| `src/battleexit.js` | How you leave a battle early: `BattleExit`, `RunAway` (the speed rule `RUN`), `GiveUp` (player battles), `exitFor(opts)` |
 | `src/creatures.js` | Wild spawning (biome tables + conditions), wandering, `GAITS` (hopaway, blink, peek, dash, pop, gift, sentry), Camo disguises (`spawnAt`, `Wild.reveal`) |
 | `src/spawnrules.js` | Spawn conditions as data: `CONDITIONS`, `goldenHour`, `condOf`, `condOk`, `HOME_SPAWN`, `afterOk` |
 | `src/coopboss.js` | T29 co-op giants: `BOSSES`, `makeBoss(id, a, b, grow)`, `GROW` |
@@ -393,7 +394,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 - **Duel safety:** both browsers work out each turn from a shared seed (`battle.rng`). Draw order in `useMove`: hit, number of hits,
   crit, damage roll, risky coin (7), curse roll (8), effect chance, sleep length; **nothing may branch on `side` before a draw.**
   `duel.js` `VERSION` must be bumped when battle rules change; it is **13** (8 T24/T25, 9 coop ask, 10 Squad, 11 grown giants, 12 creatures up to Lv 100, 13 the Custom type and a creature's `paint`).
-- **Run (owner 2026-11-07):** Run works in wild battles and in Boss battles (`boss: true`: Picture World Bosses, the Wizard, the Champion's Tower Champion), with the same speed rule (`0.6 + speed difference / 60`, 35 %..95 %); other trainers (gym trainers and leaders, crews, Tower guards) still can't be run from. A run ends as `'ran'`: nothing won or lost.
+- **Leaving a battle (owner 2026-11-07, `src/battleexit.js`, "object orientation pls"):** every battle gets ONE exit object at `start` (`exitFor(opts)`); `chooseAction` shows `this.exit.button()` and `turn` calls `this.exit.use(this)`, nothing else in battle.js decides who you can run from. `RunAway` = every battle against the game (wild, gym trainers and leaders, Bosses and their helpers, the Tower), the speed rule `RUN` (0.6 + 1/60 per speed point, 35 %..95 %, `battle.runSpeeds()`); `GiveUp` = duels and co-op giants (the duel turn sends the message). A run ends as `'ran'`: nothing won or lost, the trainer still waits. A new way out = a subclass + one line in `exitFor`.
 - **Pointer lock:** with a mouse the browser only lets the game capture the mouse after a click. That's why battles end with a
   "Continue exploring" button and the pause screen exists.
 

@@ -11,6 +11,7 @@ import { sound } from './sound.js';
 import { sketchModel } from './sketch.js'; // T45
 import { cleanPaint } from './custom.js'; // the Custom guardians' paint
 import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
+import { exitFor } from './battleexit.js'; // owner 2026-11-07: Run or Give up, one object per battle
 
 const PARTY_MAX = 6;
 const WAKE_HIT = 3; // the 3rd hit of a multi-hit move wakes a sleeper
@@ -282,16 +283,12 @@ export class Battle {
       }
       const canSwitch = this.allies.some((c, i) => i !== this.allyIdx && c.hp > 0);
       const trainer = !!this.trainer;
-      const duel = !!this.duel;
-      // Owner 2026-11-07: you can try to run from a Boss (Picture World Bosses, the Wizard, the Champion) by the same speed rule as a wild
-      // creature; other trainers still can't be run from. A co-op giant is a duel (Give up).
-      const noRun = trainer && !this.boss;
       const choice = await this.choose([
         ...moves,
         { row: [
           { label: trainer ? 'Cube' : `Cube x${g.cubes}`, value: { kind: 'catch' }, disabled: trainer || g.cubes <= 0, cls: 'primary' },
           { label: 'Switch', value: { kind: 'switch' }, disabled: !canSwitch },
-          duel ? { label: 'Give up', value: { kind: 'giveup' } } : { label: 'Run', value: { kind: 'run' }, disabled: noRun },
+          this.exit.button(), // Run (any battle against the game) or Give up (another player): battleexit.js
         ] },
       ]);
       if (choice.kind !== 'switch') return choice;
@@ -299,6 +296,9 @@ export class Battle {
       if (idx !== null) return { kind: 'switch', idx };
     }
   }
+
+  // Your creature's and the foe's speed (the exit's run rule reads them).
+  runSpeeds() { return [statsFor(this.ally).spd, statsFor(this.foe).spd]; }
 
   async pickPartyMember(allowBack) {
     this.log.textContent = 'Choose a creature.';
@@ -470,6 +470,7 @@ export class Battle {
     // In a battle between players both sides use the same random numbers, so they agree on every turn.
     this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
     this.boss = !!opts.boss;
+    this.exit = exitFor(opts); // how you may leave this battle early (battleexit.js)
     this.poweredUp = false;
     this.modMap = new Map();
     this.resetSides();
@@ -606,13 +607,7 @@ export class Battle {
     const action = await this.chooseAction();
     const g = this.game;
 
-    if (action.kind === 'run') {
-      const diff = statsFor(this.ally).spd - statsFor(this.foe).spd;
-      const chance = Math.max(0.35, Math.min(0.95, 0.6 + diff / 60));
-      if (Math.random() < chance) { await this.say('Got away safely!'); return 'ran'; }
-      await this.say("Couldn't get away!");
-      return this.foeTurn();
-    }
+    if (action.kind === this.exit.action) return (await this.exit.use(this)) ?? this.foeTurn();
 
     if (action.kind === 'catch') {
       g.cubes--;
