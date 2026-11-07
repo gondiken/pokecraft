@@ -346,15 +346,15 @@ export default async function ({ browser, base, t }) {
     // Node: the floors as data, the checker, the bots, the terrain on a stand-in, the walk graph, the cast (tests/wizardcheck.mjs); the same code in the page's module graph
     const r = analyze(1), b = await bridgeRules();
     t.ok(!r.problems.length && !b.problems.length, `canvas / checker / bots / terrain / walk graph / cast in Node (${JSON.stringify(r.info)}) ${[...r.problems, ...b.problems].join('; ')}`);
-    t.ok(r.info.squares === '12,26,14,24,34', `the squares to paint: ${r.info.squares}`);
-    t.ok(r.info.naive === '0,0,0,0,0', `the naive bot (600 random taps, 200 seeds) never finishes a floor: ${r.info.naive}`);
+    t.ok(r.info.squares === '12,26,14,18,21,28,21,26,36,36,32,34', `the squares to paint (twelve pictures): ${r.info.squares}`);
+    t.ok(r.info.naive === '0,0,0,0,0,0,0,0,0,0,0,0', `the naive bot (600 random taps, 200 seeds) never finishes a picture: ${r.info.naive}`);
     const page = await openGame(browser, base);
     const p = await page.evaluate(async () => {
       const W = await import('/tests/wizardcheck.mjs');
       const a = W.analyze(2), b = await W.bridgeRules();
       return { problems: [...a.problems, ...b.problems], info: a.info };
     });
-    t.ok(!p.problems.length && p.info.squares === '12,26,14,24,34', `the same checks pass in the browser's module graph ${p.problems.join('; ')}`);
+    t.ok(!p.problems.length && p.info.squares === '12,26,14,18,21,28,21,26,36,36,32,34', `the same checks pass in the browser's module graph ${p.problems.join('; ')}`);
     t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
     await page.context().close();
   }
@@ -519,7 +519,7 @@ export default async function ({ browser, base, t }) {
       const prompt = () => page.evaluate(() => document.getElementById('prompt').textContent);
       const potAim = i => [18 + (i < 0 ? 12 : i) + 0.5, 2.7, 17.0];
       const sqAim = (c, i) => [c.x0 + (i % c.w) + 0.5, c.y0 + (c.h - 1 - Math.floor(i / c.w)) + 0.5, c.z + 1];
-      const C = await page.evaluate(() => window.pokecraft.world.studio.canvases[0]);
+      const C = await page.evaluate(async () => { const WL = await import('/src/wizardland.js'), WT = await import('/src/wizardtower.js'); return WL.pageRect(window.pokecraft.world.studio.floors[0], WT.FLOORS[0].pages[0]); }); // the flower: 4 x 4 in the middle of the 6 x 6 canvas
       // no paint yet: a tap on a square says what to do
       await lookAt(...sqAim(C, 1));
       await waitFor(page, () => /paint/i.test(document.getElementById('prompt').textContent), null, 60000);
@@ -540,49 +540,61 @@ export default async function ({ browser, base, t }) {
           await waitFor(page, ([i, p]) => window.pokecraft.gymLive.of('part:studio').info().cells[0][i] === Number(p), [i, paint], 30000);
         }
       }
-      await waitFor(page, () => window.pokecraft.beaten.includes('wizard:floor1'), null, 30000);
+      await waitFor(page, () => window.pokecraft.beaten.includes('wizard:floor1:1'), null, 30000);
       const f1 = await live();
-      t.ok(f1.done.join() === '1' && f1.doorOpen[0] === true && f1.doorOpen.slice(1).every(o => !o), `floor 1 done with real keys and clicks: its key is saved and its stairs door is open, the others shut (${JSON.stringify(f1.doorOpen)})`);
-      const draw = await page.evaluate(async () => {
-        const g = window.pokecraft, BK = await import('/src/blocks.js'), C = g.world.studio.canvases[0];
+      t.ok(!f1.done.length && f1.doorOpen.every(o => !o) && f1.pages[0] === 1, `the flower done with real keys and clicks: its picture key is saved, the floor's door stays shut (a second picture comes) (${JSON.stringify(f1.doorOpen)})`);
+      const draw = await page.evaluate(async C => {
+        const g = window.pokecraft, BK = await import('/src/blocks.js');
         const cell = (i) => g.world.get(C.x0 + (i % C.w), C.y0 + (C.h - 1 - Math.floor(i / C.w)), C.z);
-        return { red: cell(5) === BK.WOOL.parkour, yellow: cell(1) === BK.WOOL.electric, green: cell(13) === BK.WOOL.grass, blank: cell(0) === BK.WOOL.custom, edits: [...g.world.edits].length, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).beaten.includes('wizard:floor1') };
-      });
-      t.ok(draw.red && draw.yellow && draw.green && draw.blank && draw.edits === 0, `the squares are live blocks (never edits): ${JSON.stringify(draw)}`);
-      t.ok(draw.saved, 'the key is in the save at once');
-      // the remaining floors through the live part's own hooks (tap with exact rays from the mat), a skilled kid; floor 2-5 each time
+        return { red: cell(5) === BK.WOOL.parkour, yellow: cell(1) === BK.WOOL.electric, green: cell(13) === BK.WOOL.grass, blank: cell(0) === BK.WOOL.custom, frame: g.world.get(C.x0 - 1, C.y0, C.z) === BK.B.PICTURE_FRAME, edits: [...g.world.edits].length, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).beaten.includes('wizard:floor1:1') };
+      }, C);
+      t.ok(draw.red && draw.yellow && draw.green && draw.blank && draw.frame && draw.edits === 0, `the squares are live blocks (never edits), the rest of the bigger canvas is frame: ${JSON.stringify(draw)}`);
+      t.ok(draw.saved, 'the picture key is in the save at once');
+      // the next picture comes by itself (play time): the house, on the whole canvas
+      await waitFor(page, () => window.pokecraft.gymLive.of('part:studio').info().pages[0] === 2, null, 60000);
+      t.ok(true, 'after a moment the next picture (the house) comes');
+      // every remaining picture through the live part's own hooks (taps with exact rays from the mat), a skilled kid (wizardcheck planOf); the
+      // Mixing floor mixes, the big brush paints where on the picture the ray lands
       const play = await page.evaluate(async () => {
         const g = window.pokecraft, live = g.gymLive.of('part:studio'), WT = await import('/src/wizardtower.js'), WL = await import('/src/wizardland.js'), W2 = await import('/tests/wizardcheck.mjs');
         live.manual = true; live.playing = () => true;
         const out = { floors: [], problems: [] };
         const rayTo = (o, p) => { const d = { x: p.x - o.x, y: p.y - o.y, z: p.z - o.z }, l = Math.hypot(d.x, d.y, d.z); return { x: d.x / l, y: d.y / l, z: d.z / l }; };
-        for (let n = 2; n <= 5; n++) {
-          const L = g.world.studio.floors[n - 1], f = WT.FLOORS[n - 1], c = L.canvas;
+        for (let n = 1; n <= 5; n++) {
+          const L = g.world.studio.floors[n - 1], fl = WT.FLOORS[n - 1];
           g.player.pos.set(24.5, L.slab + 1, 19.5); g.player.vel.set(0, 0, 0);
           const o = { x: 24.5, y: L.slab + 1 + 1.62, z: 19.5 };
-          const sk = W2.skilled(f, 5);
-          const T = WT.targetOf(f);
-          // the same kid as the bot: dip each paint once, paint its squares (the bot's final cells say which paint each square wants)
-          const byPaint = new Map();
-          sk.cells.forEach((p, i) => { if (p >= 0 && T[i].kind !== 'given') (byPaint.get(p) ?? byPaint.set(p, []).get(p)).push(i); });
-          let taps = 0;
-          for (const [paint, list] of byPaint) {
-            const pot = L.pots.find(q => q.i === paint);
-            live.tap(o, rayTo(o, { x: pot.x + 0.5, y: pot.y + 0.75, z: pot.z + 1 })); taps++;
-            for (const i of list) { live.tap(o, rayTo(o, { x: c.x0 + (i % c.w) + 0.5, y: c.y0 + (c.h - 1 - Math.floor(i / c.w)) + 0.5, z: c.z + 1 })); taps++; }
+          const row = { n, pages: [] };
+          for (let k = live.info().pages[n - 1]; k <= fl.pages.length; k++) {
+            const page = fl.pages[k - 1], c = WL.pageRect(L, page), plan = W2.planOf(fl, page, 5);
+            if (live.info().pages[n - 1] !== k) out.problems.push(`floor ${n}: picture ${live.info().pages[n - 1]}, not ${k}`);
+            if (fl.brush === 2 && k === 1) { g.player.lookAt({ x: c.x0 + 3, y: c.y0 + 3, z: c.z + 1 }); live.step(0.01); row.aim = live.info().aim; }
+            let taps = 0;
+            for (const a of plan) {
+              if (a.pot !== undefined) { const pot = L.pots.find(q => q.i === a.pot); live.tap(o, rayTo(o, { x: pot.x + 0.5, y: pot.y + 0.75, z: pot.z + 1 })); }
+              else live.tap(o, rayTo(o, { x: c.x0 + a.u, y: c.y0 + a.v, z: c.z + 1 }));
+              taps++;
+            }
+            const right = WT.checkCanvas(page, live.info().cells[n - 1]).done;
+            row.pages.push({ k, right, taps, key: g.beaten.includes(k === fl.pages.length && fl.pages.length === 1 ? WT.floorKey(n) : WT.pageKey(n, k)) });
+            live.step(2); // the finished picture stays a moment, then the next one comes
           }
           const info = live.info();
-          out.floors.push({ n, done: info.done.includes(n), taps, want: sk.taps, door: n < 5 ? info.doorOpen[n - 1] : null });
+          row.done = info.done.includes(n); row.door = n < 5 ? info.doorOpen[n - 1] : null;
+          out.floors.push(row);
         }
         out.paint = live.info().paint;
         return out;
       });
-      t.ok(play.floors.every(f => f.done && f.taps === f.want && (f.door === null || f.door === true)), `floors 2-5 by taps from the mat: done in exactly squares + paints taps each, the door opens (${JSON.stringify(play.floors)})`);
+      const pics = play.floors.flatMap(f => f.pages);
+      t.ok(!play.problems.length && pics.every(p => p.right && p.key) && play.floors.every(f => f.done && (f.door === null || f.door === true)), `every picture by taps from the mat (${pics.length} after the flower): right, its key saved, each floor's door opens after its last picture (${JSON.stringify(play.floors.map(f => [f.n, f.pages.map(p => p.taps).join('+'), f.door]))}) ${play.problems.join('; ')}`);
+      t.ok(pics.length === 11, `eleven more pictures (12 in all): ${pics.length}`);
+      t.ok(/^4:/.test(play.floors[3].aim || ''), `the big brush shows a gold outline of the four squares it would paint (${play.floors[3].aim})`);
       t.ok(Array.isArray(play.paint) && play.paint.length === 3, `floor 5's palette is its three groups (${JSON.stringify(play.paint)})`);
       // the hint clock: a wrong square blinks after 40 s of stepped play time, at 60 and at 20 steps a second the same
       const blink = await page.evaluate(async () => {
         const g = window.pokecraft, live = g.gymLive.of('part:studio'), WT = await import('/src/wizardtower.js');
-        g.beaten = g.beaten.filter(k => k !== WT.floorKey(1)); // a fresh floor 1 (floors 2-5 stay done)
+        g.beaten = g.beaten.filter(k => !k.startsWith(WT.floorKey(1))); // a fresh floor 1 (floors 2-5 stay done)
         const res = {};
         for (const [name, dt] of [['60', 1 / 60], ['20', 1 / 20]]) {
           // a fresh live part each time so the clock starts at zero
@@ -805,7 +817,7 @@ export default async function ({ browser, base, t }) {
       await toasts();
       const re = await page.evaluate(async () => {
         const g = window.pokecraft, WT = await import('/src/wizardtower.js'), live = g.gymLive.of('part:studio'), c = g.party.find(q => q.species === 'brushtail');
-        return { info: g.studio.info(), paint: c?.paint, place: g.place, cells: live.info().cells[4], want: WT.finishedCells(WT.FLOORS[4], g.studio.paint), locked: live.locked(5) };
+        return { info: g.studio.info(), paint: c?.paint, place: g.place, cells: live.info().cells[4], want: WT.finishedCells(WT.FLOORS[4].pages[0], g.studio.paint), locked: live.locked(5) };
       });
       t.ok(re.info.ally && re.info.design === 'brushtail' && re.info.paint.join() === painted.join() && re.paint.join() === painted.join(), `a reload keeps the ally, the design and the painted palette (${JSON.stringify(re.info)})`);
       t.ok(re.cells.join() === re.want.join() && re.locked, 'the finished floor 5 shows YOUR painted colours after the reload, and is locked now');
@@ -1121,7 +1133,7 @@ export default async function ({ browser, base, t }) {
     const own = await A.evaluate(() => { const l = window.pokecraft.gymLive.of('part:studio'), p = window.pokecraft.player; p.pos.set(24.5, 2, 19.5); l.dip(2); l.paintSquare(1, 1); l.paintSquare(1, 2); return l.info().cells[0].filter(c => c >= 0).length; });
     await A.waitForTimeout(1500);
     const kid = await Bp.evaluate(async () => {
-      const g = window.pokecraft, l = g.gymLive.of('part:studio'), BK = await import('/src/blocks.js'), C = g.world.studio.canvases[0];
+      const g = window.pokecraft, l = g.gymLive.of('part:studio'), BK = await import('/src/blocks.js'), WL = await import('/src/wizardland.js'), WT = await import('/src/wizardtower.js'), C = WL.pageRect(g.world.studio.floors[0], WT.FLOORS[0].pages[0]);
       const cell = i => g.world.get(C.x0 + (i % C.w), C.y0 + (C.h - 1 - Math.floor(i / C.w)), C.z);
       return { cells: l.info().cells[0].filter(c => c >= 0).length, block: cell(1) === BK.WOOL.custom, edits: [...g.world.edits].length };
     });

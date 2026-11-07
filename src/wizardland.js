@@ -7,7 +7,7 @@
 // pillaring or jumping never gets you up (tests/wizardcheck.mjs proves it with a walk graph).
 import { B, WOOL } from './blocks.js';
 import { kit, buildWayBack } from './picturelands.js';
-import { FLOORS, floorKey, targetOf } from './wizardtower.js';
+import { FLOORS, floorKey, targetOf, floorSize, pageOffset } from './wizardtower.js';
 import { PAINTS } from './custom.js';
 
 export const SIZE = 48;
@@ -25,9 +25,12 @@ const box = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 // Floor n's things (all derived from TOWER and FLOORS): the canvas (x0 = left cell, y0 = bottom row, z = the wall's cell), pots, mat, easel,
 // the stairs up (floors 1-4: odd on the east, even on the west) with their glass wall, door and the rail on the floor above.
 export function layoutOf(n) {
-  const F = slabOf(n), f = FLOORS[n - 1];
-  const canvas = { x0: MID - f.w / 2, y0: F + 2, z: TOWER.z0, w: f.w, h: f.h };
-  const pots = PAINTS.map((p, i) => ({ i, x: POTS.x0 + i, y: F + 1, z: POTS.z })).concat([{ i: -1, x: POTS.wash, y: F + 1, z: POTS.z }]); // -1 = the wash jar
+  const F = slabOf(n), f = FLOORS[n - 1], S = floorSize(f);
+  const canvas = { x0: MID - S.w / 2, y0: F + 2, z: TOWER.z0, w: S.w, h: S.h };
+  // every paint, or only the floor's own (the Mixing floor: red, yellow, blue), spread round the middle two apart; the wash jar always
+  const own = f.pots ? [...f.pots].map(c => PAINTS.findIndex(p => p.code === c)) : null;
+  const pots = (own ? own.map((i, j) => ({ i, x: MID - own.length + 2 * j, y: F + 1, z: POTS.z })) : PAINTS.map((p, i) => ({ i, x: POTS.x0 + i, y: F + 1, z: POTS.z })))
+    .concat([{ i: -1, x: POTS.wash, y: F + 1, z: POTS.z }]); // -1 = the wash jar
   const out = { n, slab: F, canvas, pots, mat: { ...MAT, y: F }, easel: { x: EASEL.x, y: F + 1, z: EASEL.z, cell: EASEL.cell }, flight: null };
   if (n <= 4) {
     const east = n % 2 === 1, m = x => (east ? x : 47 - x);                  // west flights mirror the east ones
@@ -44,6 +47,12 @@ export function layoutOf(n) {
     };
   }
   return out;
+}
+
+// Where picture `page` of floor `n` sits on the floor's canvas (a smaller picture in the middle): { x0, y0, z, w, h } like `canvas`.
+export function pageRect(L, page) {
+  const { dx, dy } = pageOffset(FLOORS[L.n - 1], page), c = L.canvas;
+  return { x0: c.x0 + dx, y0: c.y0 + dy, z: c.z, w: page.w, h: page.h };
 }
 
 export function wizardLand(world) {
@@ -65,13 +74,14 @@ export function wizardLand(world) {
   // 4. each floor: the canvas with its frame, the pots, the mat, the easel's prop, the stairs, lamps, windows
   const studio = { floors: [], doors: [], canvases: [], pots: [], mats: [], easels: [] };
   for (let n = 1; n <= 5; n++) {
-    const L = layoutOf(n), F = L.slab, f = FLOORS[n - 1], c = L.canvas;
-    // the picture frame round the canvas, then the canvas itself: cream Canvas Wool (given squares already painted: they never change)
+    const L = layoutOf(n), F = L.slab, c = L.canvas, page = FLOORS[n - 1].pages[0], pr = pageRect(L, page);
+    // the picture frame round the canvas, then the first picture's canvas: cream Canvas Wool (given squares already painted); the rest of a
+    // bigger canvas is frame too (studiolive.js redraws the canvas with setLive for the later pictures)
     fill(c.x0 - 1, c.x0 + c.w, c.y0 - 1, c.y0 + c.h, c.z, c.z, B.PICTURE_FRAME);
-    const T = targetOf(f);
-    for (let r = 0; r < c.h; r++) for (let q = 0; q < c.w; q++) {
-      const t = T[r * c.w + q];
-      put(c.x0 + q, c.y0 + c.h - 1 - r, c.z, t.kind === 'given' ? WOOL[PAINTS[t.paint].wool] : WOOL.custom);
+    const T = targetOf(page);
+    for (let r = 0; r < pr.h; r++) for (let q = 0; q < pr.w; q++) {
+      const t = T[r * pr.w + q];
+      put(pr.x0 + q, pr.y0 + pr.h - 1 - r, c.z, t.kind === 'given' ? WOOL[PAINTS[t.paint].wool] : WOOL.custom);
     }
     for (const p of L.pots) put(p.x, p.y, p.z, p.i < 0 ? B.GLASS : WOOL[PAINTS[p.i].wool]);
     // (the painter's mat is a rug mesh drawn by studiolive.js: a wool block here would show as a pink patch on the ceiling of the floor below)
@@ -143,16 +153,15 @@ export function wizardAim(world, p, game) {
   return { x: w.x, z: w.z, text: (a, m) => `🧙 The Wizard ${a} ${m}m` };
 }
 
-// A painter's cast from `o` along `d` ({ x, y, z } each): what you point at on this floor (`L` = layoutOf(n)): a canvas square (its index, row by row
+// A painter's cast from `o` along `d` ({ x, y, z } each): what you point at on this floor (`L` = layoutOf(n)): a square of the picture `c` (its index, row by row
 // from the top) or a paint pot (`i` = the paint, -1 = the wash jar), the nearer first, within `reach`. Pure (no Three.js), so Node proves it.
-export function cast(L, o, d, reach = REACH) {
+export function cast(L, o, d, reach = REACH, c = L.canvas) { // c: the picture's own rect (pageRect), else the whole canvas
   let best = null;
-  const c = L.canvas;
   if (d.z < -1e-9) { // the canvas: the plane in front of the wall's cells, facing +z
     const t = (c.z + 1 - o.z) / d.z;
     if (t > 0 && t <= reach) {
       const x = o.x + d.x * t, y = o.y + d.y * t;
-      if (x >= c.x0 && x < c.x0 + c.w && y >= c.y0 && y < c.y0 + c.h) best = { kind: 'square', i: (c.h - 1 - Math.floor(y - c.y0)) * c.w + Math.floor(x - c.x0), t };
+      if (x >= c.x0 && x < c.x0 + c.w && y >= c.y0 && y < c.y0 + c.h) best = { kind: 'square', i: (c.h - 1 - Math.floor(y - c.y0)) * c.w + Math.floor(x - c.x0), t, u: x - c.x0, v: y - c.y0 }; // u, v: squares from the left / bottom (the big brush)
     }
   }
   for (const p of L.pots) { // a pot is the block [x, x + 1] x [y, y + 1] x [z, z + 1]: the slab method

@@ -43,7 +43,9 @@ export function buildEasel(f) {
   const box = (w, h, d, m, x, y, z, rx = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.x = rx; g.add(o); return o; };
   box(0.08, 1.7, 0.08, wood, -0.5, 0.85, 0.12, -0.1); box(0.08, 1.7, 0.08, wood, 0.5, 0.85, 0.12, -0.1); box(0.08, 1.6, 0.08, wood, 0, 0.8, -0.28, 0.2);
   box(1.3, 0.1, 0.22, dark, 0, 0.6, 0.2);
-  const tex = new THREE.CanvasTexture(pictureCanvas(f, 128));
+  const cv = pictureCanvas(f, 128), tex = new THREE.CanvasTexture(cv);
+  g.userData.setPicture = page => { if (page === g.userData.page) return; g.userData.page = page; drawPicture(cv.getContext('2d'), page, 128); tex.needsUpdate = true; };
+  g.userData.page = f;
   const pic = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.0), new THREE.MeshBasicMaterial({ map: tex }));
   pic.position.set(0, 1.18, 0.2); pic.rotation.x = -0.1; g.add(pic);
   box(1.12, 1.12, 0.05, dark, 0, 1.18, 0.16, -0.1);

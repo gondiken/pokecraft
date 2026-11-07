@@ -8,20 +8,86 @@ import { bridgeNeed, bridgeDone } from './pictureworlds.js';
 
 // Codes: '.' blank (leave the canvas), a-l a paint you must match (custom.js PAINTS `code`), A-L the same paint already painted (given,
 // locked), '1'-'3' a free group: any paint, but every square of one group the same. Row 0 is the TOP row.
+// Owner 2026-11-07 ("some of the floors should be more novel & interesting ... more floors, or more interesting painting ideas ... wayy too
+// easy (though still fun)"): every floor is ONE idea with a few pictures (`pages`) that get harder, 12 pictures in all (was 5). The floor's
+// stairs door opens when its last picture is right. Floor ideas: 1 copy, 2 mirrors (left-right, a lake = up-down, a snowflake = both),
+// 3 mixing (only red, yellow and blue pots: paint over a colour to mix, like real paint), 4 the big brush (every dab paints 2 x 2 squares,
+// centred where you point: the back things first), 5 your guardian. `mirror`: 'x' left-right, 'y' up-down, 'xy' both (wizardcheck proves it).
 export const FLOORS = [
-  { n: 1, name: 'Flower', w: 4, h: 4, sign: 'Tap a paint pot, then tap the canvas. Copy the picture!',
-    rows: ['.yy.', 'yrry', 'yrry', '.gg.'] },
-  { n: 2, name: 'House', w: 6, h: 6, sign: 'A bigger picture!',
-    rows: ['..rr..', '.rrrr.', 'rrrrrr', '.iono.', '.oono.', 'gggggg'] },
-  { n: 3, name: 'Butterfly', w: 6, h: 6, mirror: true, sign: 'Paint the other half, like a mirror!',
-    rows: ['.X..x.', 'PPXxpp', 'PKXxkp', '.PXxp.', 'KPXxpk', 'KK..kk'] },
-  { n: 4, name: 'Balloon', w: 6, h: 6, sign: 'The ? parts can be any colour you like!',
-    rows: ['.1111.', '112211', '112211', '.1111.', '..nn..', '..nn..'] },
-  { n: 5, name: 'Guardian', w: 8, h: 7, mirror: true, palette: true, sign: "Paint my guardian! Its colours will be YOUR creature's colours.",
-    rows: ['.X....x.', 'X2X..x2x', 'X111111x', 'X1X11x1x', 'X113311x', 'X133331x', '.XX..xx.'] },
+  { n: 1, name: 'Copy', pages: [
+    { name: 'Flower', w: 4, h: 4, sign: 'Tap a paint pot, then tap the canvas. Copy the picture!',
+      rows: ['.yy.', 'yrry', 'yrry', '.gg.'] },
+    { name: 'House', w: 6, h: 6, sign: 'A bigger picture!',
+      rows: ['..rr..', '.rrrr.', 'rrrrrr', '.iono.', '.oono.', 'gggggg'] },
+  ] },
+  { n: 2, name: 'Mirror', pages: [
+    { name: 'Butterfly', w: 6, h: 6, mirror: 'x', sign: 'Paint the other half, like a mirror!',
+      rows: ['.X..x.', 'PPXxpp', 'PKXxkp', '.PXxp.', 'KPXxpk', 'KK..kk'] },
+    { name: 'Lake', w: 6, h: 6, mirror: 'y', sign: 'A lake! Paint the picture upside down in the water.',
+      rows: ['IYYIGG', 'IYYIGG', 'IIIINI', 'iiiini', 'iyyigg', 'iyyigg'] },
+    { name: 'Snowflake', w: 6, h: 6, mirror: 'xy', sign: 'Mirror it twice: across AND down!',
+      rows: ['I.Bb.i', '.IBbi.', 'BBPpbb', 'bbppbb', '.ibbi.', 'i.bb.i'] },
+  ] },
+  { n: 3, name: 'Mixing', mix: true, pots: 'ryb', pages: [
+    { name: 'Pumpkin', w: 6, h: 6, sign: 'Only red, yellow and blue! Paint over a colour to mix.',
+      rows: ['..gg..', '.oooo.', 'oooooo', 'oyooyo', 'oooooo', '.oooo.'] },
+    { name: 'Grapes', w: 6, h: 6, sign: 'Mix all three for brown!',
+      rows: ['..nngg', '.ppgg.', 'pppp..', 'ppppp.', '.ppp..', '..p...'] },
+    { name: 'Rainbow', w: 6, h: 6, sign: 'A rainbow! Every colour from three pots.',
+      rows: ['.rrrr.', 'roooor', 'oy..yo', 'yg..gy', 'gb..bg', 'bp..pb'] },
+  ] },
+  { n: 4, name: 'Big Brush', brush: 2, pages: [
+    { name: 'Window', w: 6, h: 6, sign: 'The BIG brush paints 4 squares at once!',
+      rows: ['bbbbbb', 'bbbbbb', 'bbyybb', 'bbyybb', 'bbbbbb', 'bbbbbb'] },
+    { name: 'Present', w: 6, h: 6, sign: 'A present! Which colour goes first?',
+      rows: ['rryrrr', 'rryrrr', 'yyyyyy', 'rryrrr', 'rryrrr', 'rryrrr'] },
+    { name: 'Robot', w: 6, h: 6, sign: 'A robot! Plan it well.',
+      rows: ['..yy..', 'mmmmmm', 'mbmmbm', 'mmmmmm', 'mmrrmm', 'mmmmmm'] },
+  ] },
+  { n: 5, name: 'Guardian', pages: [
+    { name: 'Guardian', w: 8, h: 7, mirror: 'x', palette: true, groups: [6, 8, 2], sign: "Paint my guardian! Its colours will be YOUR creature's colours.",
+      rows: ['.X....x.', 'X2X..x2x', 'X111111x', 'X1X11x1x', 'X113311x', 'X133331x', '.XX..xx.'] },
+  ] },
 ];
 export const floorOf = n => FLOORS[n - 1] ?? null;
-export const floorKey = n => `wizard:floor${n}`; // saved in `beaten` (strings, kept as they are, like the Picture World keys)
+export const pageOf = (n, k) => FLOORS[n - 1]?.pages[k - 1] ?? null;              // k is 1-based
+export const pageKey = (n, k) => `wizard:floor${n}:${k}`;                         // one picture done (saved in `beaten`)
+export const PICTURES = FLOORS.reduce((t, f) => t + f.pages.length, 0);
+// The floor's canvas holds its biggest picture; a smaller one sits in its middle (the rest of the canvas is drawn as the gold frame).
+export const floorSize = f => ({ w: Math.max(...f.pages.map(p => p.w)), h: Math.max(...f.pages.map(p => p.h)) });
+export const pageOffset = (f, page) => { const S = floorSize(f); return { dx: Math.floor((S.w - page.w) / 2), dy: Math.floor((S.h - page.h) / 2) }; }; // dy from the bottom
+// The first picture of floor n not done yet (1-based), or the last one when all are done. `has(key)` = is this key held.
+export function pageNow(n, has) { const f = FLOORS[n - 1]; for (let k = 1; k <= f.pages.length; k++) if (!has(pageKey(n, k))) return k; return f.pages.length; }
+
+/* ---- the Mixing floor: paint over a colour and they mix, like real paint ---- */
+const P = code => PAINTS.findIndex(p => p.code === code);
+const PRIMARY = { r: 1, y: 2, b: 4 };                                            // bits: red, yellow, blue
+const BITS = { ...PRIMARY, o: 3, g: 6, p: 5, n: 7 };                             // red+yellow orange, yellow+blue green, red+blue purple, all three brown
+const MIXED = Object.fromEntries(Object.entries(BITS).map(([c, b]) => [b, c]));
+const bitsOf = i => BITS[PAINTS[i]?.code] ?? 0;
+// What a square becomes when `brush` (a paint, or WASH -1) goes over `old` (-1 blank): the wash clears; on blank the paint goes on as it is;
+// a primary over a mixable colour adds itself (orange + blue = brown, red + red = red, orange + red = orange: it already has red in it).
+export function mixPaint(old, brush) {
+  if (brush < 0) return -1;
+  if (old < 0) return brush;
+  const a = bitsOf(old), b = bitsOf(brush);
+  if (!a || !b) return brush;
+  return P(MIXED[a | b]);
+}
+// The fewest primaries for a paint on a blank square (in a fixed order: red, yellow, blue), or null when it cannot be mixed.
+export function recipeOf(i) { const bits = bitsOf(i); return bits ? ['r', 'y', 'b'].filter(c => bits & PRIMARY[c]).map(P) : null; }
+
+/* ---- the Big Brush floor: one dab paints the 2 x 2 squares round the grid corner nearest where you point ---- */
+// u, v: where the cast hit the picture, in squares from its left edge and from its BOTTOM edge. -> the four square indices (row by row from
+// the top), always inside the picture.
+export function stampCells(page, u, v) {
+  const cx = Math.min(page.w - 1, Math.max(1, Math.round(u))), cy = Math.min(page.h - 1, Math.max(1, Math.round(v)));
+  const out = [];
+  for (const ry of [cy, cy - 1]) for (const qx of [cx - 1, cx]) out.push((page.h - 1 - ry) * page.w + qx);
+  return out;
+}
+
+export const floorKey = n => `wizard:floor${n}`; // the whole floor done (its stairs door opens); saved in `beaten` (strings, kept as they are, like the Picture World keys)
 export const HINT = { after: 40, again: 25, blink: 3 }; // seconds of play time: 40 s without a new right square, then every 25 s, the wrong squares blink for 3 s
 
 const CODE = Object.fromEntries(PAINTS.map((p, i) => [p.code, i]));
@@ -86,10 +152,11 @@ export function palette(floor, cells) {
 }
 // The colours a finished floor shows when nobody remembers what was painted (a reload: only the keys are saved, section 6): a pleasant
 // default for each free group.
-export const DEFAULT_GROUPS = { 4: [0, 2], 5: [6, 8, 2] };
-// The squares of a finished floor: the target picture, free groups in `groups` (else the defaults).
+// Floor 5's pleasant default colours (studio.js: a guardian with no saved paint).
+export const DEFAULT_GROUPS = { 5: FLOORS[4].pages[0].groups };
+// The squares of a finished picture: the target, free groups in `groups` (else the page's own defaults, `page.groups`).
 export function finishedCells(floor, groups) {
-  const g = groups ?? DEFAULT_GROUPS[floor.n] ?? [];
+  const g = groups ?? floor.groups ?? [];
   return targetOf(floor).map(t => (t.kind === 'blank' ? -1 : t.kind === 'group' ? (g[t.group] ?? 0) : t.paint));
 }
 
@@ -142,6 +209,7 @@ export const WORDS = {
   closer: 'Come a little closer!',
   given: 'This half is done. Paint the other side!',
   done: 'Lovely! The stairs are open.',
+  next: 'Lovely! Here comes the next picture...',
   finished: 'Finished! Up the stairs!',
   repaint: 'New colours! I like them.',
   locked: 'This picture is finished!',

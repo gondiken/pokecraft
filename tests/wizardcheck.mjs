@@ -1,11 +1,11 @@
-// Wave 19 stage B: the Wizard's Tower checks that need no browser: the floors as data, the painting rules with bots (a naive kid must fail, a skilled
+// Wave 19 stage B: the Wizard's Tower checks that need no browser: the floors as data (owner 2026-11-07: twelve pictures, mixing, the big brush), the painting rules with bots (a naive kid must fail, a skilled
 // one must win), the terrain on a stand-in world (walk graph: no way up with the stairs doors closed, exactly floors 1..k + 1 with doors 1..k open),
 // the painter's cast from the mat, and the bridge's star rules. Used by tests/specs/wizard.mjs (in Node and in the page through /tests/wizardcheck.mjs)
 // and run by hand with `node tests/wizardcheck.mjs`.
 import { B, BLOCKS, WOOL, isSolid } from '../src/blocks.js';
 import { PAINTS } from '../src/custom.js';
-import { FLOORS, targetOf, checkCanvas, startCells, squaresToPaint, groupCount, palette, finishedCells, floorKey, wizardTeam, WIZARD_TEAM, HINT, towerOpen, towerStand, towerAim } from '../src/wizardtower.js';
-import { wizardLand, wizardAim, layoutOf, cast, slabOf, floorAt, TOWER, SIZE, REACH, MAT, POTS } from '../src/wizardland.js';
+import { FLOORS, PICTURES, targetOf, checkCanvas, startCells, squaresToPaint, groupCount, palette, finishedCells, floorKey, wizardTeam, WIZARD_TEAM, HINT, towerOpen, towerStand, towerAim, mixPaint, recipeOf, stampCells } from '../src/wizardtower.js';
+import { wizardLand, wizardAim, layoutOf, cast, slabOf, floorAt, pageRect, TOWER, SIZE, REACH, MAT, POTS } from '../src/wizardland.js';
 import { walkGraph, bfs } from './housecheck.mjs';
 
 export const WORLD_H = 48;
@@ -24,41 +24,102 @@ export function makeTower(seed = 1) { const w = standIn(seed); wizardLand(w, { i
 /* ---- the painting rules with bots ---- */
 // A seeded random (mulberry32): the bots never use Math.random.
 export function rng(seed) { let a = seed | 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-// One tap on a pot (-1 = wash jar .. 11) or a square: the game's own rules (studiolive.js does the same on the live canvas).
+// Every picture with its floor: [{ fl, page, k }] (k 1-based), in play order.
+export const ALL = FLOORS.flatMap(fl => fl.pages.map((page, i) => ({ fl, page, k: i + 1 })));
+const potsOf = fl => (fl.pots ? [...fl.pots].map(c => PAINTS.findIndex(p => p.code === c)) : PAINTS.map((_, i) => i)).concat([-1]);
+// One tap on a pot (-1 = wash jar .. 11) or a square: the game's own rules (studiolive.js does the same on the live canvas). The big brush
+// reads where on the picture you tapped (u from the left, v from the bottom, in squares), the Mixing floor mixes.
 export function tapPot(st, i) { st.brush = i; }
-export function tapSquare(st, floor, i) {
+export function tapSquare(st, fl, page, i, u = null, v = null) {
   if (st.brush === null || st.brush === undefined) return false;
-  if (targetOf(floor)[i].kind === 'given') return false;
-  st.cells[i] = st.brush; // the wash jar's -1 puts the square back to blank canvas
+  const T = targetOf(page);
+  const list = fl.brush === 2 ? stampCells(page, u ?? (i % page.w) + 0.5, v ?? (page.h - Math.floor(i / page.w) - 0.5)) : [i];
+  if (list.length === 1 && T[i].kind === 'given') return false;
+  for (const j of list) if (T[j].kind !== 'given') st.cells[j] = fl.mix ? mixPaint(st.cells[j], st.brush) : st.brush; // the wash jar's -1 = blank canvas
   return true;
 }
-export const newState = floor => ({ cells: startCells(floor), brush: null, taps: 0 });
-// The naive kid: taps anything, at random.
-export function naive(floor, seed, taps = 600) {
-  const r = rng(seed), st = newState(floor);
+export const newState = page => ({ cells: startCells(page), brush: null, taps: 0 });
+// The naive kid: taps anything it can reach (the floor's pots, anywhere on the picture), at random.
+export function naive(fl, page, seed, taps = 600) {
+  const r = rng(seed), st = newState(page), pots = potsOf(fl);
   for (let k = 0; k < taps; k++) {
     st.taps++;
-    if (r() < 0.5) tapPot(st, Math.floor(r() * (PAINTS.length + 1)) - 1); else tapSquare(st, floor, Math.floor(r() * st.cells.length));
-    if (checkCanvas(floor, st.cells).done) return { done: true, taps: st.taps };
+    if (r() < 0.5) tapPot(st, pots[Math.floor(r() * pots.length)]);
+    else { const u = r() * page.w, v = r() * page.h; tapSquare(st, fl, page, (page.h - 1 - Math.floor(v)) * page.w + Math.floor(u), u, v); }
+    if (checkCanvas(page, st.cells).done) return { done: true, taps: st.taps };
   }
   return { done: false, taps: st.taps };
 }
 // Paints every square one colour (the "obvious shortcut").
-export function oneColour(floor, paint, taps = 600) {
-  const st = newState(floor);
+export function oneColour(fl, page, paint, taps = 600) {
+  const st = newState(page);
   tapPot(st, paint);
-  for (let k = 0; k < taps; k++) { tapSquare(st, floor, k % st.cells.length); if (checkCanvas(floor, st.cells).done) return { done: true }; }
+  for (let k = 0; k < taps; k++) { tapSquare(st, fl, page, k % st.cells.length); if (checkCanvas(page, st.cells).done) return { done: true }; }
   return { done: false };
 }
-// The skilled kid: reads the picture, dips each paint once, paints its squares. Free groups get random paints (seeded). -> taps used.
-export function skilled(floor, seed = 1) {
-  const r = rng(seed), T = targetOf(floor), st = newState(floor), pick = [];
-  for (let g = 0; g < groupCount(floor); g++) pick[g] = Math.floor(r() * PAINTS.length);
+// The big brush kid who copies square by square (aims at each square's middle, its colour, in reading order): the obvious way, which must
+// fail where the picture needs layers.
+export function squareBySquare(fl, page) {
+  const T = targetOf(page), st = newState(page);
+  T.forEach((t, i) => { if (t.kind !== 'paint') return; tapPot(st, t.paint); tapSquare(st, fl, page, i); });
+  return { done: checkCanvas(page, st.cells).done };
+}
+// The big brush's plan, worked out backwards: the last dab is a 2 x 2 of one colour; peel it off (its squares can be anything before) and
+// repeat, the biggest first. -> forward list of { r, c, paint } (r, c = the window's top-left square) or null if it cannot be painted.
+export function stampPlan(page) {
+  const T = targetOf(page), want = T.map(t => (t.kind === 'paint' || t.kind === 'given' ? t.paint : -1));
+  const peeled = want.map(() => false), seq = [];
+  for (;;) {
+    let best = null, bn = 0;
+    for (let r = 0; r < page.h - 1; r++) for (let c = 0; c < page.w - 1; c++) {
+      const cs = [r * page.w + c, r * page.w + c + 1, (r + 1) * page.w + c, (r + 1) * page.w + c + 1].filter(j => !peeled[j]);
+      if (cs.length > bn && cs.every(j => want[j] === want[cs[0]])) { bn = cs.length; best = { r, c, paint: want[cs[0]], cs }; }
+    }
+    if (!best) break;
+    for (const j of best.cs) peeled[j] = true;
+    seq.push(best);
+  }
+  if (want.some((p, j) => p >= 0 && !peeled[j])) return null;
+  const fwd = seq.reverse();
+  while (fwd.length && fwd[0].paint < 0) fwd.shift(); // a wash on a blank canvas does nothing
+  return fwd;
+}
+// The skilled kid: reads the picture and paints it the floor's way. Copy / mirror: dips each paint once and paints its squares (free groups
+// get random paints, seeded). Mixing: for each primary, dips once and paints every square that needs it. Big brush: the plan above. -> taps used.
+// The skilled kid's taps as a list a browser test can replay: { pot } or { square, u, v } (u, v = where on the picture, from its left / bottom).
+export function planOf(fl, page, seed = 1) {
+  const r = rng(seed), T = targetOf(page), out = [], at = i => ({ square: i, u: (i % page.w) + 0.5, v: page.h - Math.floor(i / page.w) - 0.5 });
+  if (fl.brush === 2) {
+    let brush = null;
+    for (const s of stampPlan(page) ?? []) { if (brush !== s.paint) out.push({ pot: (brush = s.paint) }); out.push({ square: s.r * page.w + s.c, u: s.c + 1, v: page.h - 1 - s.r }); }
+    return out;
+  }
+  const pick = [];
+  for (let g = 0; g < groupCount(page); g++) pick[g] = Math.floor(r() * PAINTS.length);
   const want = T.map(t => (t.kind === 'paint' ? t.paint : t.kind === 'group' ? pick[t.group] : -2));
-  const byPaint = new Map();
-  want.forEach((p, i) => { if (p >= 0 && T[i].kind !== 'given') (byPaint.get(p) ?? byPaint.set(p, []).get(p)).push(i); });
-  for (const [p, list] of byPaint) { tapPot(st, p); st.taps++; for (const i of list) { tapSquare(st, floor, i); st.taps++; } }
-  return { done: checkCanvas(floor, st.cells).done, taps: st.taps, paints: byPaint.size, squares: squaresToPaint(floor), cells: st.cells };
+  const byPaint = new Map(), add = (p, i) => (byPaint.get(p) ?? byPaint.set(p, []).get(p)).push(i);
+  want.forEach((p, i) => { if (p >= 0 && T[i].kind !== 'given') for (const q of fl.mix ? recipeOf(p) : [p]) add(q, i); });
+  for (const [p, list] of byPaint) { out.push({ pot: p }); for (const i of list) out.push(at(i)); }
+  return out;
+}
+export function skilled(fl, page, seed = 1) {
+  const r = rng(seed), T = targetOf(page), st = newState(page), pick = [];
+  const tap = (fn, ...a) => { st.taps++; return fn(st, ...a); };
+  if (fl.brush === 2) {
+    const plan = planOf(fl, page, seed);
+    for (const a of plan) if (a.pot !== undefined) tap(tapPot, a.pot); else tap(tapSquare, fl, page, a.square, a.u, a.v);
+    return { done: checkCanvas(page, st.cells).done, taps: st.taps, stamps: plan.filter(a => a.pot === undefined).length, squares: squaresToPaint(page), cells: st.cells };
+  }
+  for (let g = 0; g < groupCount(page); g++) pick[g] = Math.floor(r() * PAINTS.length);
+  const want = T.map(t => (t.kind === 'paint' ? t.paint : t.kind === 'group' ? pick[t.group] : -2));
+  const byPaint = new Map(), add = (p, i) => (byPaint.get(p) ?? byPaint.set(p, []).get(p)).push(i);
+  let coats = 0;
+  want.forEach((p, i) => {
+    if (p < 0 || T[i].kind === 'given') return;
+    if (fl.mix) { for (const q of recipeOf(p)) { add(q, i); coats++; } } else { add(p, i); coats++; }
+  });
+  for (const [p, list] of byPaint) { tap(tapPot, p); for (const i of list) tap(tapSquare, fl, page, i); }
+  return { done: checkCanvas(page, st.cells).done, taps: st.taps, paints: byPaint.size, coats, squares: squaresToPaint(page), cells: st.cells };
 }
 
 /* ---- the walk graph with the stairs doors in a given state ---- */
@@ -103,57 +164,71 @@ const norm = (a, b) => { const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z },
 export function analyze(seed = 1) {
   const out = { problems: [], info: {} };
   const bad = m => out.problems.push(m);
-  // 1. the floors as data
-  const expect = [12, 26, 14, 24, 34];
-  FLOORS.forEach((f, k) => {
-    if (f.n !== k + 1 || f.rows.length !== f.h || f.rows.some(r => r.length !== f.w)) bad(`floor ${f.n}: size`);
+  // 1. the floors as data: twelve pictures, each the right size, mirrors exact, the Mixing floor's pictures mixable, the big brush's paintable
+  const expect = [12, 26, 14, 18, 21, 28, 21, 26, 36, 36, 32, 34];
+  if (ALL.length !== PICTURES || PICTURES !== 12) bad(`${ALL.length} pictures`);
+  FLOORS.forEach((fl, k) => { if (fl.n !== k + 1) bad(`floor ${fl.n}: number`); });
+  ALL.forEach(({ fl, page: f, k }, q) => {
+    const id = `floor ${fl.n} picture ${k}`;
+    if (f.rows.length !== f.h || f.rows.some(r => r.length !== f.w)) bad(`${id}: size`);
     const T = targetOf(f);
-    if (T.some(t => t.kind === 'bad')) bad(`floor ${f.n}: an unknown code`);
+    if (T.some(t => t.kind === 'bad')) bad(`${id}: an unknown code`);
     if (f.mirror) { // an exact mirror: a given (capital) on one side = the same paint (small) on the other; blanks and free groups mirror too
-      f.rows.forEach((row, r) => { for (let c = 0; c < f.w; c++) {
-        const a = row[c], b = row[f.w - 1 - c];
-        const okc = a === '.' || (a >= '1' && a <= '9') ? a === b : a >= 'A' && a <= 'Z' ? b === a.toLowerCase() : b === a.toUpperCase();
-        if (!okc) bad(`floor ${f.n}: row ${r} col ${c} is not a mirror (${a} / ${b})`);
-      } });
+      const twin = (a, b) => (a === '.' || (a >= '1' && a <= '9') ? a === b : a >= 'A' && a <= 'Z' ? b === a.toLowerCase() : b === a.toUpperCase() || (f.mirror === 'xy' && b === a));
+      for (let r = 0; r < f.h; r++) for (let c = 0; c < f.w; c++) {
+        const a = f.rows[r][c];
+        if (/x/.test(f.mirror) && !twin(a, f.rows[r][f.w - 1 - c]) && !(f.mirror === 'xy' && a.toLowerCase() === f.rows[r][f.w - 1 - c].toLowerCase())) bad(`${id}: row ${r} col ${c} is not a left-right mirror`);
+        if (/y/.test(f.mirror) && !twin(a, f.rows[f.h - 1 - r][c]) && !(f.mirror === 'xy' && a.toLowerCase() === f.rows[f.h - 1 - r][c].toLowerCase())) bad(`${id}: row ${r} col ${c} is not an up-down mirror`);
+      }
+      const given = T.filter(t => t.kind === 'given').length, paint = T.filter(t => t.kind === 'paint').length;
+      if (!given || given * (f.mirror === 'xy' ? 3 : 1) !== paint) bad(`${id}: the given part is not exactly one ${f.mirror === 'xy' ? 'quarter' : 'half'} (${given} given, ${paint} to paint)`);
     }
-    if (squaresToPaint(f) !== expect[k]) bad(`floor ${f.n}: ${squaresToPaint(f)} squares to paint, not ${expect[k]}`);
-    if (!checkCanvas(f, finishedCells(f)).done) bad(`floor ${f.n}: its finished picture is not done`);
-    if (checkCanvas(f, startCells(f)).done) bad(`floor ${f.n}: a blank canvas is done`);
-    if (f.palette && (groupCount(f) !== 3 || !palette(f, finishedCells(f, [1, 2, 3])))) bad(`floor ${f.n}: palette`);
-    if (!f.palette && palette(f, finishedCells(f))) bad(`floor ${f.n}: a palette without the flag`);
+    if (fl.mix) for (const t of T) if (t.kind === 'paint' && !recipeOf(t.paint)) bad(`${id}: ${PAINTS[t.paint].name} cannot be mixed`);
+    if (fl.mix && !T.some(t => t.kind === 'paint' && recipeOf(t.paint).length > 1)) bad(`${id}: nothing to mix`);
+    if (fl.brush === 2 && !stampPlan(f)) bad(`${id}: the big brush cannot paint it`);
+    if (squaresToPaint(f) !== expect[q]) bad(`${id}: ${squaresToPaint(f)} squares to paint, not ${expect[q]}`);
+    if (!checkCanvas(f, finishedCells(f)).done) bad(`${id}: its finished picture is not done`);
+    if (checkCanvas(f, startCells(f)).done) bad(`${id}: a blank canvas is done`);
+    if (f.palette && (groupCount(f) !== 3 || !palette(f, finishedCells(f, [1, 2, 3])))) bad(`${id}: palette`);
+    if (!f.palette && palette(f, finishedCells(f))) bad(`${id}: a palette without the flag`);
   });
-  out.info.squares = FLOORS.map(squaresToPaint).join();
-  // 2. the checker on one floor: the target is done, one square changed is not done and is wrong, free groups with two paints are not done
-  for (const f of FLOORS) {
+  out.info.squares = ALL.map(a => squaresToPaint(a.page)).join();
+  // the mixing rules: like real paint
+  const P = c => PAINTS.findIndex(p => p.code === c), mix = (a, b) => PAINTS[mixPaint(a === '.' ? -1 : P(a), P(b))]?.code ?? '.';
+  for (const [a, b, c] of [['.', 'r', 'r'], ['r', 'y', 'o'], ['y', 'r', 'o'], ['y', 'b', 'g'], ['r', 'b', 'p'], ['o', 'b', 'n'], ['g', 'r', 'n'], ['p', 'y', 'n'], ['o', 'r', 'o'], ['n', 'r', 'n'], ['r', 'r', 'r']]) if (mix(a, b) !== c) bad(`mixing ${a} + ${b} gives ${mix(a, b)}, not ${c}`);
+  if (mixPaint(P('o'), -1) !== -1) bad('the wash jar does not clear a mixed square');
+  // 2. the checker on every picture: the target is done, one square changed is not done and is wrong, free groups with two paints are not done
+  for (const { fl, page: f, k } of ALL) {
     const T = targetOf(f), fin = finishedCells(f, [3, 4, 5]);
     const one = T.findIndex(t => t.kind === 'paint');
-    if (one >= 0) { const c = [...fin]; c[one] = (c[one] + 1) % PAINTS.length; const r = checkCanvas(f, c); if (r.done || !r.wrong.includes(one)) bad(`floor ${f.n}: a changed square is not wrong`); }
+    if (one >= 0) { const c = [...fin]; c[one] = (c[one] + 1) % PAINTS.length; const r = checkCanvas(f, c); if (r.done || !r.wrong.includes(one)) bad(`floor ${fl.n} picture ${k}: a changed square is not wrong`); }
     const blank = T.findIndex(t => t.kind === 'blank');
-    if (blank >= 0) { const c = [...fin]; c[blank] = 0; const r = checkCanvas(f, c); if (r.done || !r.wrong.includes(blank)) bad(`floor ${f.n}: a painted blank square is not wrong`); }
+    if (blank >= 0) { const c = [...fin]; c[blank] = 0; const r = checkCanvas(f, c); if (r.done || !r.wrong.includes(blank)) bad(`floor ${fl.n} picture ${k}: a painted blank square is not wrong`); }
     const members = T.map((t, i) => (t.kind === 'group' && t.group === 0 ? i : -1)).filter(i => i >= 0);
     if (members.length > 2) {
       const c = [...fin]; c[members[0]] = 9; const r = checkCanvas(f, c);
-      if (r.done || r.wrong.join() !== String(members[0]) || r.groups[0] !== null) bad(`floor ${f.n}: the minority of a group is not the one listed (${r.wrong})`);
-      const c2 = [...fin]; for (const i of members) c2[i] = 7; if (!checkCanvas(f, c2).done) bad(`floor ${f.n}: any one paint should do for a group`);
-      const c3 = [...startCells(f)]; c3[members[0]] = 5; const r3 = checkCanvas(f, c3); if (r3.wrong.length) bad(`floor ${f.n}: a group still being painted is wrong`);
+      if (r.done || r.wrong.join() !== String(members[0]) || r.groups[0] !== null) bad(`floor ${fl.n}: the minority of a group is not the one listed (${r.wrong})`);
+      const c2 = [...fin]; for (const i of members) c2[i] = 7; if (!checkCanvas(f, c2).done) bad(`floor ${fl.n}: any one paint should do for a group`);
+      const c3 = [...startCells(f)]; c3[members[0]] = 5; const r3 = checkCanvas(f, c3); if (r3.wrong.length) bad(`floor ${fl.n}: a group still being painted is wrong`);
     }
-    const empty = checkCanvas(f, startCells(f)); if (empty.wrong.length) bad(`floor ${f.n}: empty squares are never wrong`);
+    const empty = checkCanvas(f, startCells(f)); if (empty.wrong.length) bad(`floor ${fl.n} picture ${k}: empty squares are never wrong`);
   }
-  // 3. bots: the naive kid never finishes floors 2-5 (floor 1 in under 1 % of 200 seeds), one colour never, the skilled kid always
-  let finished1 = 0;
-  const naiveDone = [0, 0, 0, 0, 0];
-  for (let s = 1; s <= 200; s++) FLOORS.forEach((f, k) => { if (naive(f, s * 7919 + k).done) naiveDone[k]++; });
-  finished1 = naiveDone[0];
+  // 3. bots: the naive kid never finishes a picture (the first, tiny one in under 1 % of 200 seeds), one colour never, the big brush kid who copies
+  // square by square fails pictures 2 and 3 of the big brush floor, the skilled kid always wins, with the fewest taps of its plan
+  const naiveDone = ALL.map(() => 0);
+  for (let s = 1; s <= 200; s++) ALL.forEach(({ fl, page }, q) => { if (naive(fl, page, s * 7919 + q).done) naiveDone[q]++; });
   out.info.naive = naiveDone.join();
-  if (finished1 > 2 || naiveDone.slice(1).some(n => n > 0)) bad(`the naive bot finished floors: ${naiveDone.join()}`);
-  for (const f of FLOORS) for (let p = 0; p < PAINTS.length; p++) if (oneColour(f, p).done) bad(`one colour finishes floor ${f.n}`);
+  if (naiveDone[0] > 2 || naiveDone.slice(1).some(n => n > 0)) bad(`the naive bot finished pictures: ${naiveDone.join()}`);
+  for (const { fl, page } of ALL) for (const p of potsOf(fl)) if (p >= 0 && oneColour(fl, page, p).done) bad(`one colour finishes ${page.name}`);
+  for (const { fl, page, k } of ALL) if (fl.brush === 2 && k > 1 && squareBySquare(fl, page).done) bad(`square by square paints ${page.name} with the big brush`);
   const taps = [];
-  for (const f of FLOORS) {
+  for (const { fl, page: f, k } of ALL) {
     for (let s = 1; s <= 30; s++) {
-      const r = skilled(f, s);
-      if (!r.done) bad(`the skilled bot fails floor ${f.n} (seed ${s})`);
-      else if (r.taps !== r.squares + r.paints) bad(`floor ${f.n}: ${r.taps} taps, not ${r.squares + r.paints}`);
+      const r = skilled(fl, f, s);
+      if (!r.done) bad(`the skilled bot fails floor ${fl.n} picture ${k} (seed ${s})`);
+      else if (!fl.brush && r.taps !== r.coats + r.paints) bad(`floor ${fl.n} picture ${k}: ${r.taps} taps, not ${r.coats + r.paints}`);
       if (s === 1) taps.push(r.taps);
+      if (s === 1) { const st = newState(f); for (const a of planOf(fl, f, s)) if (a.pot !== undefined) tapPot(st, a.pot); else tapSquare(st, fl, f, a.square, a.u, a.v); if (!checkCanvas(f, st.cells).done) bad(`floor ${fl.n} picture ${k}: planOf does not paint it`); }
     }
   }
   out.info.skilledTaps = taps.join();
@@ -171,17 +246,20 @@ export function analyze(seed = 1) {
   if (w.data.some((v, i) => v && Math.floor(i / (SIZE * SIZE)) > 47)) bad('block above y 47');
   const S = w.studio;
   if (S.floors.length !== 5 || S.doors.length !== 4 || S.canvases.length !== 5) bad('studio data');
-  // the canvas squares: Canvas Wool, the given squares already painted; pots are the paints' own wool; doors shut
-  FLOORS.forEach((f, k) => {
-    const c = S.canvases[k], T = targetOf(f);
-    for (let r = 0; r < c.h; r++) for (let q = 0; q < c.w; q++) {
-      const t = T[r * c.w + q], id = w.get(c.x0 + q, c.y0 + c.h - 1 - r, c.z);
-      const want = t.kind === 'given' ? WOOL[PAINTS[t.paint].wool] : WOOL.custom;
-      if (id !== want) bad(`floor ${f.n}: square ${r * c.w + q} is ${id}, not ${want}`);
+  // the canvas squares: the first picture's Canvas Wool (given squares already painted), the rest of a bigger canvas gold frame; pots are the
+  // floor's own paints' wool; doors shut
+  FLOORS.forEach((fl, k) => {
+    const c = S.canvases[k], page = fl.pages[0], pr = pageRect(S.floors[k], page), T = targetOf(page);
+    for (let y = c.y0; y < c.y0 + c.h; y++) for (let x = c.x0; x < c.x0 + c.w; x++) {
+      const q = x - pr.x0, r = pr.y0 + pr.h - 1 - y, inside = q >= 0 && q < pr.w && r >= 0 && r < pr.h, t = inside && T[r * pr.w + q];
+      const want = !inside ? B.PICTURE_FRAME : t.kind === 'given' ? WOOL[PAINTS[t.paint].wool] : WOOL.custom, id = w.get(x, y, c.z);
+      if (id !== want) bad(`floor ${fl.n}: canvas cell ${x},${y} is ${id}, not ${want}`);
     }
-    for (const p of S.pots.filter(p => p.floor === f.n)) if (w.get(p.x, p.y, p.z) !== (p.i < 0 ? B.GLASS : WOOL[PAINTS[p.i].wool])) bad(`floor ${f.n}: pot ${p.i}`);
-    for (const d of S.doors.filter(d => d.n === f.n)) for (const [x, y, z] of d.cells) if (w.get(x, y, z) !== B.WIZARD_STONE) bad(`floor ${f.n}: its door is not shut`);
-    if (c.x0 + c.w - 1 > 27 || c.x0 < 20) bad(`floor ${f.n}: the canvas is off the middle`);
+    const mine = S.pots.filter(p => p.floor === fl.n);
+    if (mine.length !== potsOf(fl).length) bad(`floor ${fl.n}: ${mine.length} pots`);
+    for (const p of mine) if (w.get(p.x, p.y, p.z) !== (p.i < 0 ? B.GLASS : WOOL[PAINTS[p.i].wool])) bad(`floor ${fl.n}: pot ${p.i}`);
+    for (const d of S.doors.filter(d => d.n === fl.n)) for (const [x, y, z] of d.cells) if (w.get(x, y, z) !== B.WIZARD_STONE) bad(`floor ${fl.n}: its door is not shut`);
+    if (c.x0 + c.w - 1 > 27 || c.x0 < 20) bad(`floor ${fl.n}: the canvas is off the middle`);
   });
   // standable places: arrival, the Wizard, every rest, the spawn, each floor's mat and the cells in front of every pot
   const g0 = graphOf(w, 0);
@@ -212,19 +290,19 @@ export function analyze(seed = 1) {
   if (!all.has(keyOf(...top))) bad('the studio way back is not reachable');
   if (!all.has(keyOf(...at([S.wizard.x, S.wizard.y, S.wizard.z + 2])))) bad('the Wizard is not reachable');
   // 7. the painter's cast: from every mat cell, every square's centre and every pot is hit, with a clear line and inside the reach
-  for (const L of S.floors) {
-    const c = L.canvas;
+  for (const L of S.floors) for (const page of FLOORS[L.n - 1].pages) {
+    const c = pageRect(L, page);
     for (const mx of [MAT.x0 + 0.5, MAT.x1 + 0.5]) for (const mz of [MAT.z0 + 0.5, MAT.z1 + 0.5]) {
       const o = { x: mx, y: L.slab + 1 + EYE, z: mz };
       for (let i = 0; i < c.w * c.h; i++) {
         const p = { x: c.x0 + (i % c.w) + 0.5, y: c.y0 + (c.h - 1 - Math.floor(i / c.w)) + 0.5, z: c.z + 1 };
-        const h = cast(L, o, norm(o, p));
-        if (!h || h.kind !== 'square' || h.i !== i) bad(`floor ${L.n}: from the mat (${mx}, ${mz}) square ${i} gives ${JSON.stringify(h)}`);
+        const h = cast(L, o, norm(o, p), REACH, c);
+        if (!h || h.kind !== 'square' || h.i !== i) bad(`floor ${L.n} ${page.name}: from the mat (${mx}, ${mz}) square ${i} gives ${JSON.stringify(h)}`);
         else if (!clearLine(w, o, p, null)) bad(`floor ${L.n}: the line to square ${i} is blocked`);
       }
       for (const pot of L.pots) {
         const p = { x: pot.x + 0.5, y: pot.y + 0.75, z: pot.z + 1 };
-        const h = cast(L, o, norm(o, p));
+        const h = cast(L, o, norm(o, p), REACH, c);
         if (!h || h.kind !== 'pot' || h.i !== pot.i) bad(`floor ${L.n}: from the mat (${mx}, ${mz}) pot ${pot.i} gives ${JSON.stringify(h)}`);
         else if (!clearLine(w, o, p, [pot.x, pot.y, pot.z])) bad(`floor ${L.n}: the line to pot ${pot.i} is blocked`);
       }
