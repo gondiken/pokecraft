@@ -110,10 +110,11 @@ export function aimed(st, t, boxes, eye, dir) {
     if (d > WHACK.reach) continue;
     const along = dx * ux + dy * uy + dz * uz;
     if (along <= 0) continue;
-    const head = Math.sqrt(Math.max(0, d * d - along * along)), ang = (Math.atan2(head, along) * 180) / Math.PI;
+    const head = Math.sqrt(Math.max(0, d * d - along * along));
     const a = boxes[p.box].at, off = Math.min(head, rayToUpright(eye, ux, uy, uz, a[0], a[2], a[1], h.y + WHACK.top * Math.max(0.5, rise)));
+    const ang = (Math.atan2(off, Math.max(0.3, along)) * 180) / Math.PI; // how far off your look its nearest part is, in degrees
     if (ang > WHACK.cone && off > WHACK.close && off > WHACK.body) continue;
-    if (!best || off < best.off) best = { p, off };
+    if (!best || ang < best.ang) best = { p, ang };
   }
   return best?.p ?? null;
 }
