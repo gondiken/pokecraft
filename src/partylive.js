@@ -48,7 +48,11 @@ const HOW = {
   stack: 'Press Drop! when the present is right over the stack!',
   whack: 'Whack the jacks when they pop up. Not the ones with a pie!',
 };
-const WHACK_BONK = 0.6; // s a whacked jack takes to squash flat and sink back into its box (looks only)
+const WHACK_BONK = 0.9; // s a whacked jack's pieces fly and lie before they fade (looks only)
+// the pieces a whacked jack crumbles into: its own parts (partyprops.js jackBoxes), each flies off on its own
+const CRUMB_PARTS = PP.jackBoxes(), CRUMB_INK = CRUMB_PARTS.find(b => b[0] <= 0.1)?.[3];
+const CRUMB_COLOURS = CRUMB_PARTS.map(b => new THREE.Color(b[3])), CRUMB_GOLD = new THREE.Color(0xffd23a);
+const CRUMBS = { max: 40, out: 2.2, up: 3.2, g: 14 };
 const ICON = { pinata: '🪅', catch: '🤡', stack: '🎁', whack: '🔨' };
 const SILLY = [
   { id: 'duck', say: 'Quack! A rubber duck fell out too!', sound: 'sillyhonk' },
@@ -59,7 +63,6 @@ const SILLY = [
 const PRESENT_COLOURS = [0xe8384a, 0x3a8ce8, 0x6ae86a, 0xffd23a, 0xb05ae8, 0xff8ab0, 0x3ac8e8, 0xff8a1a];
 const SHADOW_DARK = new THREE.Color(0.08, 0.05, 0.12), RING_PINK = new THREE.Color(1, 0.35, 0.6), RING_GOLD = new THREE.Color(1, 0.82, 0.2);
 const JACK_PLAIN = new THREE.Color(1, 1, 1), JACK_GOLD = new THREE.Color(1.5, 1.2, 0.35);
-const JACK_FLASH = new THREE.Color(2.6, 2.4, 2.0); // a whacked jack flashes bright for a moment (owner 2026-11-07: a hit must show)
 const ease = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 const candleCells = () => CAKE.candles.map(([dx, dz]) => [CAKE.x + dx, CAKE.candleY + 1, CAKE.z + dz]);
 
@@ -180,6 +183,10 @@ export class PartyLive {
     this.noses = inst(ng, noseMat, 9);
     this.pies = inst(pg, lam(), 9);
     for (let i = 0; i < 9; i++) { this.jacks.setColorAt(i, JACK_PLAIN); this.wjacks.setColorAt(i, JACK_PLAIN); }
+    // Pop-Up Whack (owner 2026-11-07: "the jack should crumble"): a whacked jack falls apart into its own pieces
+    const cbm = new THREE.MeshLambertMaterial({ color: 0xffffff }); this.mats.push(cbm);
+    this.crumbs = inst(new THREE.BoxGeometry(1, 1, 1), cbm, CRUMBS.max);
+    this.crumbs.setColorAt(0, JACK_PLAIN);
     const lg = new THREE.BoxGeometry(0.98, 0.14, 0.98), lm = new THREE.MeshLambertMaterial({ color: 0xe8384a }); this.mats.push(lm);
     this.lids = inst(lg, lm, 9);
     // the cream on the screen after a splat
@@ -534,13 +541,12 @@ export class PartyLive {
     if (!res.hit) { r.restT = r.st.ready; r.restLen = res.pause ?? WHACK.cool.first; }
     if (!res.hit) { sound.play('doorwhoosh'); this.once('party-whiff', 'Whoosh! Wait for a jack to pop up, then whack it.'); }
     else if (res.pie) { sound.play('piesplat'); r.splatT = 0; this.toast('Splat! That jack had a pie! -1'); }
-    else { sound.play(res.gold ? 'jackcatch' : 'pinatawhack'); if (res.gold) this.toast('Gold jack! +2'); }
+    else sound.play(res.gold ? 'jackcatch' : 'pinatawhack'); // (owner 2026-11-07: no words for a hit, it shows: the jack crumbles)
     if (res.hit) { // owner 2026-11-07 ("is there supposed to be an animation when I hit it?"): BONK! it squashes back into its box with a puff
       const p = r.st.plan.pops.find(q => q.n === res.n), h = headOf(this.sets.whack.boxes, p, 1);
       (r.bonks ||= []).push({ p, t: r.t });
       r.hitAt = { x: h.x, y: h.y, z: h.z }; // the stick stretches out to its head and stops on it
-      this.game.creatures?.puff?.({ x: h.x, y: h.y + 0.3, z: h.z }, { color: res.pie ? 0xfff6e0 : res.gold ? 0xffd23a : 0xffffff, sound: null });
-      if (!res.pie && !res.gold) this.toast('Bonk! +1');
+      this.game.creatures?.puff?.({ x: h.x, y: h.y, z: h.z }, { color: res.pie ? 0xfff6e0 : res.gold ? 0xffd23a : 0xffffff, sound: null });
     }
     return true;
   }
@@ -563,7 +569,7 @@ export class PartyLive {
       const set = this.sets[id], open = new Set();
       if (g.phase === 'run' && g.run) {
         if (id === 'catch') for (const [box, at] of g.run.open) { if (g.run.t - at < 0.4) open.add(box); }
-        else { for (const { p } of upAt(g.run.st, g.run.t)) open.add(p.box); for (const b of g.run.bonks || []) if (g.run.t - b.t < WHACK_BONK) open.add(b.p.box); }
+        else { for (const { p } of upAt(g.run.st, g.run.t)) open.add(p.box); for (const b of g.run.bonks || []) if (g.run.t - b.t < 0.35) open.add(b.p.box); }
       }
       for (const b of set.boxes) this.cells.want(...b.cell, open.has(b.i) ? B.POP_BOX_OPEN : B.POP_BOX);
     }
@@ -859,7 +865,7 @@ export class PartyLive {
   }
   drawWhack() {
     const g = this.gm, o = this.tmp;
-    let n = 0, nl = 0, np = this.piesN || 0;
+    let n = 0, nl = 0, np = this.piesN || 0, nc = 0;
     if (g?.game === 'whack' && g.phase === 'run' && g.run) {
       const st = g.run.st, t = g.run.t, boxes = this.sets.whack.boxes;
       for (const { p, rise } of upAt(st, t)) {
@@ -872,18 +878,24 @@ export class PartyLive {
           this.pies.setMatrixAt(np++, o.matrix);
         }
       }
-      for (const b of g.run.bonks || []) { // a whacked jack: squashed flat and pushed back down into its box
+      for (const b of g.run.bonks || []) { // a whacked jack crumbles: its own pieces (head, cap, nose, springs) fly apart and drop
         const k = (t - b.t) / WHACK_BONK;
-        if (k < 0 || k >= 1 || n >= 9) continue;
-        // BONK: squashed for a blink (it flashes), then it boings up spinning (seen over the front boxes from the pad) and drops into its box
-        const p = b.p, h = headOf(boxes, p, 1), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z), sq = 0.15;
-        const u = k < sq ? 0 : (k - sq) / (1 - sq), flat = k < sq ? Math.sin(Math.PI * k / sq) : 0;
-        const lift = 1.5 * Math.sin(Math.PI * Math.min(1, u * 1.4)) * (u < 1 / 1.4 ? 1 : 0) - (u > 1 / 1.4 ? 2.2 * ((u - 1 / 1.4) * 3.5) ** 2 : 0);
-        const sy = 1 - 0.6 * flat, sxz = 1 + 0.5 * flat;
-        o.position.set(h.x, boxes[p.box].at[1] + 0.61 * sy + lift, h.z); o.rotation.set(Math.sin(u * 9) * 0.3 * (1 - u), face + u * Math.PI * 4, 0); o.scale.set(sxz, sy, sxz);
-        if (p.kind === 'gold') o.scale.multiplyScalar(1.1);
-        o.updateMatrix();
-        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, k < 0.3 ? JACK_FLASH : p.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
+        if (k < 0 || k >= 1) continue;
+        const p = b.p, h = headOf(boxes, p, 1), face = b.face ?? (b.face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z));
+        const cf = Math.cos(face), sf = Math.sin(face), age = t - b.t, gold = p.kind === 'gold', floorY = FLOOR + 1.05;
+        CRUMB_PARTS.forEach(([w, hh, d, colour, px, py, pz], i) => {
+          if (nc >= CRUMBS.max) return;
+          // each piece flies out from where it sat (away from the jack's middle, a little to the side by a hash), up, then falls
+          const a = face + Math.atan2(px, pz + 0.001) + ((p.n * 7 + i * 13) % 11 - 5) * 0.12, out = CRUMBS.out * (0.7 + ((p.n + i * 5) % 7) / 10);
+          const x0 = h.x + px * cf + pz * sf, z0 = h.z - px * sf + pz * cf, y0 = h.y - 0.33 + py;
+          const y = Math.max(floorY + hh / 2, y0 + (CRUMBS.up + py * 1.5) * age - CRUMBS.g * age * age / 2);
+          o.position.set(x0 + Math.sin(a) * out * age, y, z0 + Math.cos(a) * out * age);
+          o.rotation.set(age * (5 + i), age * (3 + i % 4) + face, age * 4);
+          const shrink = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+          o.scale.set(w * shrink, hh * shrink, d * shrink); o.updateMatrix();
+          this.crumbs.setMatrixAt(nc, o.matrix);
+          this.crumbs.setColorAt(nc, gold && colour !== CRUMB_INK ? CRUMB_GOLD : CRUMB_COLOURS[i]); nc++;
+        });
       }
       for (const b of shaking(st, t)) { // the lid of a box about to pop jiggles
         if (nl >= 9) break;
@@ -892,8 +904,9 @@ export class PartyLive {
         this.lids.setMatrixAt(nl++, o.matrix);
       }
     }
-    this.wjacks.count = n; this.noses.count = n; this.lids.count = nl; this.pies.count = np;
-    for (const m of [this.wjacks, this.noses, this.lids, this.pies]) m.instanceMatrix.needsUpdate = true;
+    this.wjacks.count = n; this.noses.count = n; this.lids.count = nl; this.pies.count = np; this.crumbs.count = nc;
+    for (const m of [this.wjacks, this.noses, this.lids, this.pies, this.crumbs]) m.instanceMatrix.needsUpdate = true;
+    if (this.crumbs.instanceColor) this.crumbs.instanceColor.needsUpdate = true;
     if (this.wjacks.instanceColor) this.wjacks.instanceColor.needsUpdate = true;
   }
   drawStack() {
