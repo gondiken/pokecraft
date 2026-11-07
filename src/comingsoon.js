@@ -15,5 +15,5 @@ export const worldOpen = id => wave15Open || OPEN_NOW.includes(id); // (owner 20
 // frame looks exactly like the old secret one (pictureworlds.js), so the cloth spoils nothing.
 export const LATER = ['castle'];
 /* ==== Wizard ==== */
-LATER.push('wizard'); // wave 19, the Wizard's Tower: ships closed (behind ?preview) until the owner has played it (`OPEN_NOW.push('wizard')` opens it for everyone)
+OPEN_NOW.push('wizard'); // wave 19, the Wizard's Tower: open for everyone since 2026-11-07 (owner: "ok open it for everyone"; it shipped in LATER, behind ?preview)
 /* ==== end of Wizard ==== */

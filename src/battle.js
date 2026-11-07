@@ -283,12 +283,15 @@ export class Battle {
       const canSwitch = this.allies.some((c, i) => i !== this.allyIdx && c.hp > 0);
       const trainer = !!this.trainer;
       const duel = !!this.duel;
+      // Owner 2026-11-07: you can try to run from a Boss (Picture World Bosses, the Wizard, the Champion) by the same speed rule as a wild
+      // creature; other trainers still can't be run from. A co-op giant is a duel (Give up).
+      const noRun = trainer && !this.boss;
       const choice = await this.choose([
         ...moves,
         { row: [
           { label: trainer ? 'Cube' : `Cube x${g.cubes}`, value: { kind: 'catch' }, disabled: trainer || g.cubes <= 0, cls: 'primary' },
           { label: 'Switch', value: { kind: 'switch' }, disabled: !canSwitch },
-          duel ? { label: 'Give up', value: { kind: 'giveup' } } : { label: 'Run', value: { kind: 'run' }, disabled: trainer },
+          duel ? { label: 'Give up', value: { kind: 'giveup' } } : { label: 'Run', value: { kind: 'run' }, disabled: noRun },
         ] },
       ]);
       if (choice.kind !== 'switch') return choice;

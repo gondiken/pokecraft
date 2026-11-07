@@ -1,4 +1,4 @@
-// Wave 19 (plans/wave19-wizard-tower.md). Stage A: the Custom type and the `paint` field. Stage B: the Wizard's Tower (behind ?preview).
+// Wave 19 (plans/wave19-wizard-tower.md). Stage A: the Custom type and the `paint` field. Stage B: the Wizard's Tower (open for everyone since 2026-11-07).
 // Parts (WIZARD_ONLY=data|chart|paint|travel|old|canvas|land|bridge|painting|tower|ipad|closed|pair|battle|design|ally|shots, comma-separated):
 //   data    the type, six designs (own shapes, one merged swirl badge, models animate with and without paint), moves + the signature + the
 //           three big moves, fx recipes, the sounds, wool 137 "Canvas Wool", the twelve paints against the atlas
@@ -1026,8 +1026,17 @@ export default async function ({ browser, base, t }) {
   }
 
   if (want('closed')) {
-    // shipped state: no ?preview, wave 15 closed, 'wizard' not in OPEN_NOW
-    const page = await retry(() => openGame(browser, base, { wave15: false }));
+    // owner 2026-11-07: the tower is open for everyone (shipped: 'wizard' in OPEN_NOW). The closed path stays tested by taking it out again
+    // (the "close it" switch: out of OPEN_NOW, into LATER).
+    const shipped = await retry(() => openGame(browser, base, { wave15: false }));
+    const s0 = await shipped.evaluate(async () => { const CS = await import('/src/comingsoon.js'), R = await import('/src/realms.js'); return { open: CS.worldOpen('wizard'), later: CS.LATER.includes('wizard'), realm: !!R.REALMS.wizard }; });
+    t.ok(s0.open && !s0.later && s0.realm, `shipped: the Wizard's Tower is open for everyone without ?preview (${JSON.stringify(s0)})`);
+    await shipped.context().close();
+    const closedSetup = ctx => ctx.route('**/src/comingsoon.js', async route => {
+      const res = await route.fetch();
+      await route.fulfill({ response: res, body: (await res.text()).replace("OPEN_NOW.push('wizard');", "LATER.push('wizard');") });
+    });
+    const page = await retry(() => openGame(browser, base, { wave15: false, setup: closedSetup }));
     await newGame(page, 0);
     await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.weather?.set?.('clear'); g.time = 0.25; });
     const r0 = await page.evaluate(async () => {
@@ -1058,7 +1067,7 @@ export default async function ({ browser, base, t }) {
     const save = await page.evaluate(() => { const v = JSON.parse(localStorage.getItem('pokecraft-save-v2')); v.place = 'wizard'; v.realmPos = [24.5, 2, 28.5, 0, 0]; v.realmUp = { id: 'swirl', ret: [136.5, 21, 80, -1.57, 0], via: null }; v.realmVersions = { ...(v.realmVersions || {}), wizard: 1 }; return v; });
     const s = save.place;
     await page.context().close();
-    const old = await retry(() => openGame(browser, base, { wave15: false, setup: seedSave(save) }));
+    const old = await retry(() => openGame(browser, base, { wave15: false, setup: async ctx => { await closedSetup(ctx); await seedSave(save)(ctx); } }));
     await continueGame(old);
     const re = await old.evaluate(() => ({ place: window.pokecraft.place, realm: window.pokecraft.world.realm?.id ?? null }));
     t.ok(s === 'wizard' && re.place === 'main' && !re.realm, `closed: a save made inside the tower loads in the main world (${re.place})`);

@@ -65,6 +65,34 @@ export default async function ({ browser, base, t }) {
   const afterKey = await state();
   t.ok(afterKey.locked && !afterKey.pause, 'pressing Enter continues, straight back in the game');
 
+  // Owner 2026-11-07: Run works in a Boss battle (same speed rule as a wild one); a plain trainer still can't be run from.
+  const runOf = boss => page.evaluate(async boss => {
+    const g = window.pokecraft, THREE = await import('three');
+    g.party[0].hp = 999; g.party[0].level = 100; // much faster than the foe: running nearly always works (at least 95 %)
+    g.inBattle = true; document.body.classList.add('in-battle'); document.exitPointerLock();
+    const npc = { name: boss ? 'Test Boss' : 'Test Trainer', kind: 'trainer', index: 0, gym: { def: { id: 'test', leader: { name: 'Tess' } } }, pos: g.player.pos.clone().add(new THREE.Vector3(3, 0, 0)) };
+    window.__ended = null; const end = g.onBattleEnd; g.onBattleEnd = (r, o) => { window.__ended = r; g.onBattleEnd = end; end(r, o); };
+    g.battle.start({ trainer: npc, team: [['fluffin', 2]], boss });
+  }, boss);
+  const runState = () => page.evaluate(() => { const b = [...document.querySelectorAll('#b-actions button')].find(x => x.textContent.trim().startsWith('Run')); return b ? (b.disabled ? 'off' : 'on') : null; });
+  await runOf(false);
+  let rs = null; for (let i = 0; i < 60 && !rs; i++) { await page.waitForTimeout(500); rs = await runState(); }
+  t.ok(rs === 'off', `a plain trainer battle: Run is greyed out (${rs})`);
+  for (let i = 0; i < 200 && (await page.evaluate(() => window.pokecraft.inBattle)); i++) { await page.evaluate(() => { for (const c of window.pokecraft.battle.foes || []) c.hp = 0; [...document.querySelectorAll('#b-actions button:not([disabled])')][0]?.click(); }); await page.waitForTimeout(400); }
+  await runOf(true);
+  rs = null; for (let i = 0; i < 60 && !rs; i++) { await page.waitForTimeout(500); rs = await runState(); }
+  t.ok(rs === 'on', `a Boss battle: Run can be pressed (${rs})`);
+  let ended = null;
+  for (let i = 0; i < 200 && !ended; i++) {
+    ended = await page.evaluate(() => window.__ended);
+    if (ended) break;
+    await page.evaluate(() => { const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')]; (bs.find(b => b.textContent.trim().startsWith('Run')) || bs.find(b => b.textContent.startsWith('Continue')) || bs.find(b => b.textContent.startsWith("Don't learn")))?.click(); });
+    await page.waitForTimeout(400);
+  }
+  t.ok(ended === 'ran', `running from a Boss ends the battle as "ran" (${ended})`);
+  await page.waitForFunction(() => !window.pokecraft.inBattle, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(800);
+
   // Pause -> Main menu -> New Game -> Continue.
   await pause(page);
   t.ok((await state()).pause, 'Esc shows the pause screen');
