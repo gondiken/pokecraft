@@ -33,6 +33,7 @@ export const PARTY = {
   stickSwing: 0.28, splat: 1.6,
   // the Piñata Party's stick (owner 2026-11-04: "my stick seems to go through it"): drawn in the world from your hand as long as it
   // really reaches (PINATA.reach from your eyes), it swings out to where you look and stops ON the piñata when it meets it
+  whackSwing: 0.32, whackMiss: 4,   // Pop-Up Whack: the stretching stick's time out and back (s) and how far a whiff shoots out
   pinStick: { len: 1.9, hand: [0.34, -0.38, 0.32], rest: [0.5, 0.75, 0.42], thick: 0.8, out: 0.4, hold: 0.62 },
   clearR: 17,          // while a game runs no wild gift box stays this close to the party floor's middle
   away: 2.5,          // owner 2026-10-28 "I can't ever exit once I started a game": off the party floor and the Spinner this long, a waiting game folds away (its round is kept for the trip)
@@ -47,7 +48,7 @@ const HOW = {
   stack: 'Press Drop! when the present is right over the stack!',
   whack: 'Whack the jacks when they pop up. Not the ones with a pie!',
 };
-const WHACK_BONK = 0.35; // s a whacked jack takes to squash back into its box (looks only)
+const WHACK_BONK = 0.6; // s a whacked jack takes to squash flat and sink back into its box (looks only)
 const ICON = { pinata: '🪅', catch: '🤡', stack: '🎁', whack: '🔨' };
 const SILLY = [
   { id: 'duck', say: 'Quack! A rubber duck fell out too!', sound: 'sillyhonk' },
@@ -58,6 +59,7 @@ const SILLY = [
 const PRESENT_COLOURS = [0xe8384a, 0x3a8ce8, 0x6ae86a, 0xffd23a, 0xb05ae8, 0xff8ab0, 0x3ac8e8, 0xff8a1a];
 const SHADOW_DARK = new THREE.Color(0.08, 0.05, 0.12), RING_PINK = new THREE.Color(1, 0.35, 0.6), RING_GOLD = new THREE.Color(1, 0.82, 0.2);
 const JACK_PLAIN = new THREE.Color(1, 1, 1), JACK_GOLD = new THREE.Color(1.5, 1.2, 0.35);
+const JACK_FLASH = new THREE.Color(2.6, 2.4, 2.0); // a whacked jack flashes bright for a moment (owner 2026-11-07: a hit must show)
 const ease = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 const candleCells = () => CAKE.candles.map(([dx, dz]) => [CAKE.x + dx, CAKE.candleY + 1, CAKE.z + dz]);
 
@@ -523,15 +525,22 @@ export class PartyLive {
   /* ---------------------------------- Pop-Up Whack ---------------------------------- */
   whackJack(eye, dir) {
     const r = this.gm.run, res = whackAt(r.st, r.t, this.sets.whack.boxes, eye, dir);
-    if (!res.swung) return false;
-    r.swingT = 0;
+    if (!res.swung) { // owner 2026-11-07 ("times when I hit it and it doesn't count"): a whack while the stick rests after a whiff did
+      // nothing at all, not even a sound; now the stick is seen hanging down and you are told once
+      if (r.restT > r.t) this.once('party-rest', 'Wait for your stick to come back up!');
+      return false;
+    }
+    r.swingT = 0; r.hitAt = null;
+    if (!res.hit) { r.restT = r.st.ready; r.restLen = res.pause ?? WHACK.cool.first; }
     if (!res.hit) { sound.play('doorwhoosh'); this.once('party-whiff', 'Whoosh! Wait for a jack to pop up, then whack it.'); }
     else if (res.pie) { sound.play('piesplat'); r.splatT = 0; this.toast('Splat! That jack had a pie! -1'); }
     else { sound.play(res.gold ? 'jackcatch' : 'pinatawhack'); if (res.gold) this.toast('Gold jack! +2'); }
     if (res.hit) { // owner 2026-11-07 ("is there supposed to be an animation when I hit it?"): BONK! it squashes back into its box with a puff
       const p = r.st.plan.pops.find(q => q.n === res.n), h = headOf(this.sets.whack.boxes, p, 1);
       (r.bonks ||= []).push({ p, t: r.t });
-      this.game.creatures?.puff?.({ x: h.x, y: h.y - 0.2, z: h.z }, { color: res.pie ? 0xfff6e0 : res.gold ? 0xffd23a : 0xffd0f0, sound: null });
+      r.hitAt = { x: h.x, y: h.y, z: h.z }; // the stick stretches out to its head and stops on it
+      this.game.creatures?.puff?.({ x: h.x, y: h.y + 0.3, z: h.z }, { color: res.pie ? 0xfff6e0 : res.gold ? 0xffd23a : 0xffffff, sound: null });
+      if (!res.pie && !res.gold) this.toast('Bonk! +1');
     }
     return true;
   }
@@ -763,6 +772,7 @@ export class PartyLive {
     this.stick.visible = !!on;
     if (!on) return;
     if (g.game === 'pinata') return this.drawPinStick(cam, g.run);
+    return this.drawWhackStick(cam, g.run);
     const k = Math.min(1, g.run.swingT / PARTY.stickSwing), arc = k < 1 ? Math.sin(k * Math.PI) : 0, o = this.tmp;
     o.position.copy(cam.position); o.quaternion.copy(cam.quaternion);
     o.translateX(0.3 - arc * 0.4); o.translateY(-0.26 + arc * 0.08); o.translateZ(-0.6);
@@ -797,6 +807,29 @@ export class PartyLive {
     this.stick.position.copy(hand);
     this.stick.quaternion.setFromUnitVectors(this.minusZ || (this.minusZ = new V(0, 0, -1)), dir);
     this.stick.scale.set(S.thick, S.thick, len / 1.45); // (stickBoxes is 1.45 long along -z)
+  }
+  // Pop-Up Whack's stick (owner 2026-11-07: "my whacks are simply going through the popups"): the jacks can be 7 blocks away, so the
+  // party stick STRETCHES from your hand out to the jack you hit, its tip stopping on its head, and springs back; a whiff shoots it out
+  // the way you look and back; while it rests after a whiff it hangs down and comes back up (no whack until it is up again).
+  drawWhackStick(cam, r) {
+    const S = PARTY.pinStick, V = THREE.Vector3, fwd = new V(0, 0, -1).applyQuaternion(cam.quaternion), right = new V(1, 0, 0).applyQuaternion(cam.quaternion), up = new V(0, 1, 0).applyQuaternion(cam.quaternion);
+    const hand = cam.position.clone().addScaledVector(right, S.hand[0]).addScaledVector(up, S.hand[1]).addScaledVector(fwd, S.hand[2]);
+    const rest = new V().addScaledVector(right, S.rest[0]).addScaledVector(up, S.rest[1]).addScaledVector(fwd, S.rest[2]).normalize();
+    let dir = rest, len = S.len;
+    const k = Math.min(1, r.swingT / PARTY.whackSwing);
+    if (k < 1) {
+      let target = new V().copy(fwd), far = PARTY.whackMiss;
+      if (r.hitAt) { const to = new V(r.hitAt.x - hand.x, r.hitAt.y - hand.y, r.hitAt.z - hand.z), d = to.length(); if (d > 1e-3) { target = to.divideScalar(d); far = Math.max(0.5, d - 0.2); } }
+      const a = k < S.out ? 1 - (1 - k / S.out) ** 2 : k < S.hold ? 1 : 1 - (k - S.hold) / (1 - S.hold);
+      dir = new V().copy(rest).lerp(target, Math.min(1, a * 1.6)).normalize();
+      len = S.len + (far - S.len) * a;
+    } else if (r.restT > r.t) {
+      const u = 1 - (r.restT - r.t) / Math.max(0.1, r.restLen || WHACK.cool.first), down = new V().addScaledVector(right, 0.12).addScaledVector(up, -0.55).addScaledVector(fwd, 0.85).normalize(); // drooping in view
+      dir = new V().copy(down).lerp(rest, u * u).normalize();
+    }
+    this.stick.position.copy(hand);
+    this.stick.quaternion.setFromUnitVectors(this.minusZ || (this.minusZ = new V(0, 0, -1)), dir);
+    this.stick.scale.set(S.thick, S.thick, len / 1.45);
   }
   drawCatch(shadow, ring) {
     const g = this.gm, o = this.tmp;
@@ -842,11 +875,15 @@ export class PartyLive {
       for (const b of g.run.bonks || []) { // a whacked jack: squashed flat and pushed back down into its box
         const k = (t - b.t) / WHACK_BONK;
         if (k < 0 || k >= 1 || n >= 9) continue;
-        const p = b.p, h = headOf(boxes, p, 1 - k * k), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z);
-        o.position.set(h.x, h.y - 0.33, h.z); o.rotation.set(0, face, 0); o.scale.set(1 + 0.4 * Math.sin(Math.PI * Math.min(1, k * 2)), Math.max(0.15, 1 - 0.75 * Math.min(1, k * 3)), 1 + 0.4 * Math.sin(Math.PI * Math.min(1, k * 2)));
+        // BONK: squashed for a blink (it flashes), then it boings up spinning (seen over the front boxes from the pad) and drops into its box
+        const p = b.p, h = headOf(boxes, p, 1), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z), sq = 0.15;
+        const u = k < sq ? 0 : (k - sq) / (1 - sq), flat = k < sq ? Math.sin(Math.PI * k / sq) : 0;
+        const lift = 1.5 * Math.sin(Math.PI * Math.min(1, u * 1.4)) * (u < 1 / 1.4 ? 1 : 0) - (u > 1 / 1.4 ? 2.2 * ((u - 1 / 1.4) * 3.5) ** 2 : 0);
+        const sy = 1 - 0.6 * flat, sxz = 1 + 0.5 * flat;
+        o.position.set(h.x, boxes[p.box].at[1] + 0.61 * sy + lift, h.z); o.rotation.set(Math.sin(u * 9) * 0.3 * (1 - u), face + u * Math.PI * 4, 0); o.scale.set(sxz, sy, sxz);
         if (p.kind === 'gold') o.scale.multiplyScalar(1.1);
         o.updateMatrix();
-        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, p.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
+        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, k < 0.3 ? JACK_FLASH : p.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
       }
       for (const b of shaking(st, t)) { // the lid of a box about to pop jiggles
         if (nl >= 9) break;
