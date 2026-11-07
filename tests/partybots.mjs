@@ -120,7 +120,10 @@ export function whackMind(kind) {
     const list = upAt(st, t).filter(({ p }) => t - p.t0 >= react && (p.kind !== 'pie' || (hashStr(`oops${p.n}|${st.plan.attempt}`) % 1000) / 1000 < oops)).sort((a, b) => a.p.t0 - b.p.t0);
     if (!list.length) return null;
     const h = headOf(boxes, list[0].p, 1);
-    return { x: h.x - eye.x, y: h.y - eye.y, z: h.z - eye.z };
+    // owner 2026-11-07: a child aims at what it sees: the kid at the jack's forehead and striped cap (every third jack the cap's top),
+    // which was air to the old rule; the skilled player at the middle of its face
+    const up = kind === 'kid' ? (list[0].p.n % 3 === 0 ? 0.68 : 0.42) : 0;
+    return { x: h.x - eye.x, y: h.y + up - eye.y, z: h.z - eye.z };
   };
 }
 export function playWhack(kind, plan, dt, boxes, eye) {

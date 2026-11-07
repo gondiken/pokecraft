@@ -47,6 +47,7 @@ const HOW = {
   stack: 'Press Drop! when the present is right over the stack!',
   whack: 'Whack the jacks when they pop up. Not the ones with a pie!',
 };
+const WHACK_BONK = 0.35; // s a whacked jack takes to squash back into its box (looks only)
 const ICON = { pinata: '🪅', catch: '🤡', stack: '🎁', whack: '🔨' };
 const SILLY = [
   { id: 'duck', say: 'Quack! A rubber duck fell out too!', sound: 'sillyhonk' },
@@ -527,6 +528,11 @@ export class PartyLive {
     if (!res.hit) { sound.play('doorwhoosh'); this.once('party-whiff', 'Whoosh! Wait for a jack to pop up, then whack it.'); }
     else if (res.pie) { sound.play('piesplat'); r.splatT = 0; this.toast('Splat! That jack had a pie! -1'); }
     else { sound.play(res.gold ? 'jackcatch' : 'pinatawhack'); if (res.gold) this.toast('Gold jack! +2'); }
+    if (res.hit) { // owner 2026-11-07 ("is there supposed to be an animation when I hit it?"): BONK! it squashes back into its box with a puff
+      const p = r.st.plan.pops.find(q => q.n === res.n), h = headOf(this.sets.whack.boxes, p, 1);
+      (r.bonks ||= []).push({ p, t: r.t });
+      this.game.creatures?.puff?.({ x: h.x, y: h.y - 0.2, z: h.z }, { color: res.pie ? 0xfff6e0 : res.gold ? 0xffd23a : 0xffd0f0, sound: null });
+    }
     return true;
   }
   step_whack(dt) {
@@ -548,7 +554,7 @@ export class PartyLive {
       const set = this.sets[id], open = new Set();
       if (g.phase === 'run' && g.run) {
         if (id === 'catch') for (const [box, at] of g.run.open) { if (g.run.t - at < 0.4) open.add(box); }
-        else for (const { p } of upAt(g.run.st, g.run.t)) open.add(p.box);
+        else { for (const { p } of upAt(g.run.st, g.run.t)) open.add(p.box); for (const b of g.run.bonks || []) if (g.run.t - b.t < WHACK_BONK) open.add(b.p.box); }
       }
       for (const b of set.boxes) this.cells.want(...b.cell, open.has(b.i) ? B.POP_BOX_OPEN : B.POP_BOX);
     }
@@ -832,6 +838,15 @@ export class PartyLive {
           o.position.set(h.x + Math.sin(face) * 0.55, h.y - 0.25, h.z + Math.cos(face) * 0.55); o.rotation.set(0.3, face, 0); o.scale.setScalar(0.8); o.updateMatrix();
           this.pies.setMatrixAt(np++, o.matrix);
         }
+      }
+      for (const b of g.run.bonks || []) { // a whacked jack: squashed flat and pushed back down into its box
+        const k = (t - b.t) / WHACK_BONK;
+        if (k < 0 || k >= 1 || n >= 9) continue;
+        const p = b.p, h = headOf(boxes, p, 1 - k * k), face = Math.atan2(this.pos().x - h.x, this.pos().z - h.z);
+        o.position.set(h.x, h.y - 0.33, h.z); o.rotation.set(0, face, 0); o.scale.set(1 + 0.4 * Math.sin(Math.PI * Math.min(1, k * 2)), Math.max(0.15, 1 - 0.75 * Math.min(1, k * 3)), 1 + 0.4 * Math.sin(Math.PI * Math.min(1, k * 2)));
+        if (p.kind === 'gold') o.scale.multiplyScalar(1.1);
+        o.updateMatrix();
+        this.wjacks.setMatrixAt(n, o.matrix); this.wjacks.setColorAt(n, p.kind === 'gold' ? JACK_GOLD : JACK_PLAIN); this.noses.setMatrixAt(n, o.matrix); n++;
       }
       for (const b of shaking(st, t)) { // the lid of a box about to pop jiggles
         if (nl >= 9) break;

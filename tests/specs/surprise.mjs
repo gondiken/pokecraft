@@ -561,12 +561,27 @@ async function gamesPart(t) {
     const r1 = PW.whackAt(st, j.t0 + 0.3, wb, eye, dirTo(j));
     const st2 = PW.newWhack(plans[0]); st2.score = 3; const r2 = PW.whackAt(st2, pie.t0 + 0.3, wb, eye, dirTo(pie));
     const st3 = PW.newWhack(plans[0]), r3 = PW.whackAt(st3, gold.t0 + 0.3, wb, eye, dirTo(gold));
-    const st4 = PW.newWhack(plans[0]), r4 = PW.whackAt(st4, j.t0 - 0.6, wb, eye, dirTo(j)), r5 = PW.whackAt(st4, j.t0 - 0.6 + 0.5, wb, eye, dirTo(j));
-    t.ok(r1.hit && st.score === 1 && r2.pie && st2.score === 2 && st2.splats === 1 && r3.gold && st3.score === 2 && !r4.hit && r4.swung && !r5.swung, `whack a jack +1, a gold one +2, a pie jack is a splat -1, a whack at nothing makes the stick rest ${PW.WHACK.cool.miss} s`);
+    const C = PW.WHACK.cool, w0 = 0.2, st4 = PW.newWhack(plans[0]), r4 = PW.whackAt(st4, w0, wb, eye, dirTo(j)), r5 = PW.whackAt(st4, w0 + C.first - 0.1, wb, eye, dirTo(j));
+    const r5b = PW.whackAt(st4, w0 + C.first, wb, eye, dirTo(j)), r5c = PW.whackAt(st4, w0 + C.first + C.miss - 0.1, wb, eye, dirTo(j));
+    t.ok(r1.hit && st.score === 1 && r2.pie && st2.score === 2 && st2.splats === 1 && r3.gold && st3.score === 2 && !r4.hit && r4.swung && r4.pause === C.first && !r5.swung && r5b.swung && !r5b.hit && r5b.pause === C.miss && !r5c.swung && C.first < C.miss && C.miss <= 1.1,
+      `whack a jack +1, a gold one +2, a pie jack is a splat -1; a whack at nothing rests the stick ${C.first} s, a second whiff soon after ${C.miss} s (owner 2026-11-07: shorter than the old 1.1 s after every whiff)`);
     { // owner 2026-11-05 ("even next to them, we couldn't hit"): the whole jack counts, not only a point at its head; beside it, at its belly
       const a = wb[j.box].at, me = { x: a[0] + 1.2, y: a[1] - 1 + Bt.EYE, z: a[2] }, st6 = PW.newWhack(plans[0]);
       const belly = PW.whackAt(st6, j.t0 + 0.3, wb, me, { x: -1.2, y: a[1] + 0.4 - me.y, z: 0 }), st7 = PW.newWhack(plans[0]), wide = PW.whackAt(st7, j.t0 + 0.3, wb, me, { x: -1.2, y: a[1] + 0.4 - me.y, z: 1.2 });
       t.ok(belly.hit && !wide.hit, `Pop-Up Whack: a whack at a jack's body from right beside it hits; one well to the side does not`);
+    }
+    { // owner 2026-11-07 ("my whacks are simply going through the popups"): every part of the jack you see counts, also its forehead and
+      // its striped cap (the hit line went only up to the middle of its face); from the pad and from right in front of each box
+      const JB = [[0.5, 0.12, 0.5, -0.55], [0.5, 0.12, 0.5, -0.35], [0.5, 0.12, 0.5, -0.15], [0.7, 0.62, 0.7, 0.33], [0.76, 0.12, 0.76, 0.69], [0.46, 0.22, 0.46, 0.85], [0.12, 0.12, 0.12, 1.01]]; // partyprops.js jackBoxes (w, h, d, y)
+      let n = 0, ok = 0; const miss = [];
+      for (const b of wb) for (const me of [eye, { x: b.at[0] + 0.3, y: 11 + Bt.EYE, z: b.at[2] + 1.4 }, { x: b.at[0] - 1.6, y: 11 + Bt.EYE, z: b.at[2] + 0.9 }]) {
+        const p = { n: 0, box: b.i, t0: 0, up: 9, kind: 'jack' }, h = PW.headOf(wb, p, 1), y0 = h.y - 0.33;
+        for (const [w, hh, d, oy] of JB) for (const fx of [-0.5, 0, 0.5]) for (const fy of [-0.5, 0, 0.5]) for (const fz of [-0.5, 0, 0.5]) {
+          const q = { x: h.x + fx * w * 0.9, y: y0 + oy + fy * hh, z: h.z + fz * d * 0.9 }, stq = PW.newWhack({ pops: [p], need: 9, time: 30 });
+          n++; if (PW.whackAt(stq, 1, wb, me, { x: q.x - me.x, y: q.y - me.y, z: q.z - me.z }).hit) ok++; else if (miss.length < 3) miss.push(`box ${b.i} y +${(q.y - y0).toFixed(2)}`);
+        }
+      }
+      t.ok(ok === n, `Pop-Up Whack: a whack at any part of a jack you see hits it, its forehead and striped cap too, from the pad and from right in front of it (${ok} / ${n}) ${miss.join('; ')}`);
     }
     const mir = PW.whackPlan(3, 2, 0, { twist: 'mirror' }), speedy = PW.whackPlan(3, 2, 0, { twist: 'speedy' });
     t.ok(mir.pops.some(q => q.shook === 8 - q.box && q.box !== 4) && plans[1].pops.every(q => q.shook === q.box) && speedy.up < plans[1].up && speedy.pops.length > plans[1].pops.length, `the surprises: Mirror (${mir.pops.filter(q => q.shook !== q.box).length} jacks come out of the box opposite the one that shook), Speedy (${speedy.pops.length} shorter pops instead of ${plans[1].pops.length}), Lights out (looks only)`);

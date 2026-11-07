@@ -2,8 +2,8 @@
 //
 // Nine pop-up boxes in a 3 x 3 on the party floor. A box shakes, then a jack pops up out of it for a short moment, one or two at a time.
 // Whack! (the party stick: E, a click, the big button, or a tap on the jack) a jack before it hides: 1 point, a gold jack 2. A pie jack
-// holds a cream pie: do NOT whack it (a splat: cream on the screen, a point off). A whack at nothing spins the stick round for a moment,
-// so whacking all the time does not work. Rounds need 8 / 11 / 14 points in 30 s, and the jacks stay up shorter each round. A missed
+// holds a cream pie: do NOT whack it (a splat: cream on the screen, a point off). A whack at nothing rests the stick a moment (a
+// longer one after a second whiff in a row), so whacking all the time does not work. Rounds need 8 / 11 / 14 points in 30 s, and the jacks stay up shorter each round. A missed
 // round simply starts again; after two misses the jacks stay up a tiny bit longer and there is a bit more time (kindhelp.js, passed in as `help`).
 //
 // Reflexes with a "do not hit that one" rule. The pops are a plan from a hash of seed | round | attempt (no Math.random) and every jack
@@ -23,9 +23,12 @@ export const WHACK = {
   head: 1.1,                   // the jack's head is this far over the box's top when up
   reach: 10,                   // the stick reaches this far (it is a party game: you can whack any box from the pad)
   cone: 7, close: 0.45,        // degrees off the jack's head (or within `close` blocks of the ray) still hit it
-  body: 0.5,                   // owner 2026-11-05 ("even next to them we couldn't hit"): anywhere on the jack counts, from the box's lid up to
-                               // its head (the ray passes within `body` of that upright line), not only a point at its head
-  cool: { hit: 0.15, miss: 1.1 },
+  body: 0.55,                  // owner 2026-11-05 ("even next to them we couldn't hit"): anywhere on the jack counts, from the box's lid up to
+                               // the top of its cap (the ray passes within `body` of that upright line), not only a point at its head
+  top: 0.75,                   // owner 2026-11-07 ("my whacks are simply going through"): the line went only up to the middle of its face,
+                               // so the forehead and the striped cap (what a child aims at) were air; the drawn cap's top is this far over the head point
+  cool: { hit: 0.15, first: 0.5, miss: 1.1, again: 3 }, // owner 2026-11-07 ("reduce it a little"): one whiff pauses the stick only `first`; another
+                               // within `again` s of the last whiff pauses `miss` (it was `miss` after every whiff), so mashing still does not work
   pieCost: 1,
   mirror: 0.45,                // "Mirror!": this share of pops come out of the opposite box
   speedy: { up: 0.8, gap: 0.72 },
@@ -108,7 +111,7 @@ export function aimed(st, t, boxes, eye, dir) {
     const along = dx * ux + dy * uy + dz * uz;
     if (along <= 0) continue;
     const head = Math.sqrt(Math.max(0, d * d - along * along)), ang = (Math.atan2(head, along) * 180) / Math.PI;
-    const a = boxes[p.box].at, off = Math.min(head, rayToUpright(eye, ux, uy, uz, a[0], a[2], a[1], h.y));
+    const a = boxes[p.box].at, off = Math.min(head, rayToUpright(eye, ux, uy, uz, a[0], a[2], a[1], h.y + WHACK.top * Math.max(0.5, rise)));
     if (ang > WHACK.cone && off > WHACK.close && off > WHACK.body) continue;
     if (!best || off < best.off) best = { p, off };
   }
@@ -119,7 +122,11 @@ export function aimed(st, t, boxes, eye, dir) {
 export function whackAt(st, t, boxes, eye, dir) {
   if (st.over || t < st.ready - 1e-9) return { swung: false };
   const p = aimed(st, t, boxes, eye, dir);
-  if (!p) { st.whiffs++; st.ready = t + WHACK.cool.miss; st.log.push({ t, hit: false }); return { swung: true, hit: false }; }
+  if (!p) {
+    const again = st.lastWhiff != null && t - st.lastWhiff < WHACK.cool.again, pause = again ? WHACK.cool.miss : WHACK.cool.first;
+    st.whiffs++; st.lastWhiff = t; st.ready = t + pause; st.log.push({ t, hit: false });
+    return { swung: true, hit: false, pause };
+  }
   st.hits.add(p.n);
   st.ready = t + WHACK.cool.hit;
   if (p.kind === 'pie') { st.splats++; st.score = Math.max(0, st.score - WHACK.pieCost); st.log.push({ t, n: p.n, pie: true }); return { swung: true, hit: true, pie: true, points: -WHACK.pieCost, n: p.n }; }
