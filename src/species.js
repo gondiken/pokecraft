@@ -46,13 +46,13 @@ export const TYPE_COLORS = {
 TYPE_COLORS.atlantis = 'linear-gradient(135deg,#7fe8dc 0 55%,#f2d27a 55%)'; // T41
 TYPE_COLORS.knight = 'linear-gradient(135deg,#c8d2e2 0 55%,#e8c45a 55% 100%)'; // T49: steel and gold, light enough for the dark chip text
 TYPE_COLORS.bubble = 'radial-gradient(circle at 35% 35%,#ffffff 0 14%,#c8f0ff 15% 45%,#ffd6ef 46% 70%,#fff4b8 71%)'; // the Bubble Well: soap-film pastels, light enough for the dark chip text
-/* ==== Custom ==== */
-TYPE_COLORS.custom = 'radial-gradient(circle at 30% 35%,#e13c3c 0 10%,transparent 11%),radial-gradient(circle at 58% 30%,#f0c828 0 10%,transparent 11%),radial-gradient(circle at 72% 60%,#3c6edc 0 10%,transparent 11%),#f2ead8'; // cream with three paint dots, light enough for the dark chip text
-/* ==== end of Custom ==== */
 TYPE_COLORS.gravity = 'radial-gradient(ellipse at 50% 50%,#fff6cc 0 14%,#c4b4f4 15% 38%,#f2d27a 39% 46%,#c4b4f4 47%)'; // Cube Planets: a lilac planet with a gold ring, light enough for the dark chip text
 /* ==== Mirror colour ==== */
 TYPE_COLORS.mirror = 'linear-gradient(135deg,#f4f4ff,#c8c8e8 40%,#ffffff 50%,#c8c8e8 60%,#e8e0ff)'; // the Mirror Palace: a silver sheen, light enough for the dark chip text
 /* ==== end of Mirror colour ==== */
+/* ==== Custom ==== */
+TYPE_COLORS.custom = 'radial-gradient(circle at 30% 35%,#e13c3c 0 10%,transparent 11%),radial-gradient(circle at 58% 30%,#f0c828 0 10%,transparent 11%),radial-gradient(circle at 72% 60%,#3c6edc 0 10%,transparent 11%),#f2ead8'; // cream with three paint dots, light enough for the dark chip text (last in every type list)
+/* ==== end of Custom ==== */
 
 // attacker type -> defender type -> multiplier (missing = 1)
 const EFFECTIVENESS = {
