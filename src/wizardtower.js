@@ -66,12 +66,13 @@ const BITS = { ...PRIMARY, o: 3, g: 6, p: 5, n: 7 };                            
 const MIXED = Object.fromEntries(Object.entries(BITS).map(([c, b]) => [b, c]));
 const bitsOf = i => BITS[PAINTS[i]?.code] ?? 0;
 // What a square becomes when `brush` (a paint, or WASH -1) goes over `old` (-1 blank): the wash clears; on blank the paint goes on as it is;
-// a primary over a mixable colour adds itself (orange + blue = brown, red + red = red, orange + red = orange: it already has red in it).
+// a primary over a mixable colour adds itself (orange + blue = brown); a primary the square already has replaces it (owner 2026-11-08:
+// orange + red = red, brown + yellow = yellow, red + red = red), so a wrong mix is fixed by painting again.
 export function mixPaint(old, brush) {
   if (brush < 0) return -1;
   if (old < 0) return brush;
   const a = bitsOf(old), b = bitsOf(brush);
-  if (!a || !b) return brush;
+  if (!a || !b || (a & b)) return brush;
   return P(MIXED[a | b]);
 }
 // The fewest primaries for a paint on a blank square (in a fixed order: red, yellow, blue), or null when it cannot be mixed.

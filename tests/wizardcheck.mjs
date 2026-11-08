@@ -195,7 +195,7 @@ export function analyze(seed = 1) {
   out.info.squares = ALL.map(a => squaresToPaint(a.page)).join();
   // the mixing rules: like real paint
   const P = c => PAINTS.findIndex(p => p.code === c), mix = (a, b) => PAINTS[mixPaint(a === '.' ? -1 : P(a), P(b))]?.code ?? '.';
-  for (const [a, b, c] of [['.', 'r', 'r'], ['r', 'y', 'o'], ['y', 'r', 'o'], ['y', 'b', 'g'], ['r', 'b', 'p'], ['o', 'b', 'n'], ['g', 'r', 'n'], ['p', 'y', 'n'], ['o', 'r', 'o'], ['n', 'r', 'n'], ['r', 'r', 'r']]) if (mix(a, b) !== c) bad(`mixing ${a} + ${b} gives ${mix(a, b)}, not ${c}`);
+  for (const [a, b, c] of [['.', 'r', 'r'], ['r', 'y', 'o'], ['y', 'r', 'o'], ['y', 'b', 'g'], ['r', 'b', 'p'], ['o', 'b', 'n'], ['g', 'r', 'n'], ['p', 'y', 'n'], ['o', 'r', 'r'], ['n', 'r', 'r'], ['n', 'y', 'y'], ['g', 'b', 'b'], ['r', 'r', 'r']]) if (mix(a, b) !== c) bad(`mixing ${a} + ${b} gives ${mix(a, b)}, not ${c}`);
   if (mixPaint(P('o'), -1) !== -1) bad('the wash jar does not clear a mixed square');
   // 2. the checker on every picture: the target is done, one square changed is not done and is wrong, free groups with two paints are not done
   for (const { fl, page: f, k } of ALL) {

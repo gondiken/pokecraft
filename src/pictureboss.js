@@ -71,7 +71,7 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   colors: { shirt: 0xf2a6c0, pants: 0x8a8a96, hair: 0x9a9aa6, skin: 0xb8b8c4 }, // a pink apron, grey fur
   team: [['pipsqueak', 59], ['spoolmouse', 60], ['fluffnado', 61, ['swoop', 'bodyslam', 'cuphide', 'fluffstorm']], ['antlas', 62, ['buzzdive', 'bodyslam', 'antarmy', 'sugarlift']]], // the move lists are what movesWith(species, level, ...) gives (the tiny spec checks)
   intro: ['Squeak! You are as small as me now!', 'The Wizard gave me his star to look after.', 'Win it in a battle!'],
-  lose: 'Squeak-tastic! You did it. The star is yours!',
+  lose: 'Squeak-tastic! The star is yours!',
   win: 'Good try! Have a crumb, rest a bit, and come back!',
   rematchIntro: ['Back again? My tiny team grew a little!'] });
 // T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (Dot, Lou and First Mate Fin).
@@ -88,7 +88,7 @@ addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species
     ['lookapus', 62, ['spyglass', 'soakshot', 'cannonball', 'walktheplank']],
     ['featherbeard', 63, ['broadside', 'swoop', 'jollyroger', 'cannonball']]], // top level 63, the easy side, four creatures
   intro: ['Squawk! You sank ALL my rowboats!', 'The star is in my treasure chest, and it stays there! Battle stations!'],
-  lose: 'Squawk... you win, matey! My chest is yours. The star was in it all along!',
+  lose: 'Squawk! The star is yours, matey!',
   win: 'Squawk! Good battle, matey. Have a rest and try again!',
   rematchIntro: ['You sank my new rowboats too? My crew trained all day. Squawk!'],
   crew: [
@@ -105,7 +105,7 @@ addBoss({ // T40c: Racer Rio, the Race Track Boss (the race itself is in raceliv
   colors: { shirt: 0xff8a2a, pants: 0x2a2a34, hair: 0x3a2418, skin: 0xf0c8a0 }, look: 'helmet',
   team: [['wheelie', 61], ['karthog', 62, ['pitcrew']], ['blastskate', 63], ['vroomster', 64, ['photofinish', 'fullthrottle']]],
   intro: ['Vroom! You beat me on the track...', "Now let's see if your team is fast too!"],
-  lose: 'You beat me on the track AND in a battle! Hear that? Playland is waking up!',
+  lose: 'You beat me twice! The star is yours!',
   win: 'My racers are quick! Heal up and talk to me. No need to race again.',
   rematchIntro: ['Back for more? My team got even faster!'],
   crew: [
@@ -129,7 +129,7 @@ addBoss({ // the Ball Stadium (Playland). Beat Wes and Hazel, score 5 goals and 
   team: [['smashbird', 62], ['beachboomer', 63], ['strikehorn', 63], ['goalhound', 65, ['goldengoal', 'cannonroll', 'quickpass', 'teamhuddle']]],
   intro: ['Five goals and five baskets! You can really play.', "Now let's see how your team plays!"],
   rematchIntro: ['Goals and baskets again! Ready for the second half?'],
-  lose: 'What a match! The stadium is cheering again. Here is the star the Wizard hid in our trophy!',
+  lose: 'What a match! The star is yours!',
   win: 'Good game! Score again and we play another match.',
   crew: [
     { name: 'Winger Wes', colors: { shirt: 0x3a8cff, pants: 0xffffff, hair: 0x2a1a10, skin: 0xc68a5a }, look: 'sport',
@@ -148,7 +148,7 @@ addBoss({ // Queen Coralia in the palace of the Sunken City (in the Pirate Seas)
   gate: game => { const st = lightState(game); return st.done ? null : `The city is still dark! Light the three lanterns first. (💡 ${st.total} / ${LIGHTS})`; },
   team: [['grandurnling', 60], ['mosaicoil', 62], ['runestone', 62], ['guardlion', 64, ['sunkenbell', 'tiletoss', 'citywakes', 'ancientecho']]],
   intro: ['The lights are back! The whole city is awake!', 'My guardians want to meet the one who caught the glowfish.'],
-  lose: 'Wonderful! The Sunken City shines again, and the star is yours!',
+  lose: 'Wonderful! The star is yours!',
   win: 'My guardians are very old and very strong. Rest a little and try again!',
   rematchIntro: ['The glowfish got away again? You caught them all! Now, my guardians have been training!'],
   crew: [
@@ -167,7 +167,7 @@ addBoss({ // Merry Mae, the Fairkeeper, on the Sky Stage (Playland's Funfair). W
   gate: game => { const { n, done } = ticketState(game); return done ? null : `Win 3 golden tickets at the games! Then ride the coaster up to me. (🎟️ ${n} / 3)`; },
   team: [['candyram', 61], ['balloodle', 62], ['tixit', 63], ['galloprance', 64, ['colorsplash', 'bumperbash', 'funforall', 'grandgallop']]], // top level 64, the easy side; the move list is what movesWith(..., 'grandgallop', 'funforall', 'bumperbash') gives (the funfair spec checks)
   intro: ['Three golden tickets! You played every game!', 'Now for the best ride of all: a battle!'],
-  lose: 'What a ride! Listen... the music is playing again! Here is the star.',
+  lose: 'What a ride! The star is yours!',
   win: 'Good try! Have some candy floss and try again.',
   rematchIntro: ['Back at the fair? The games got a bit harder!'],
   crew: [
@@ -187,7 +187,7 @@ addBoss({
   gate: game => { const { n, need, done } = bowState(game); return done ? null : `Ho ho! Win ${need - n} more golden ${need - n === 1 ? 'bow' : 'bows'} at my party games first! (🎀 ${n} / ${need})`; },
   team: [['bowtower', 61], ['fiestallama', 62, ['sprinkles', 'surpriseparty', 'springpunch', 'candyburst']], ['partypop', 62], ['jestergrin', 63, ['shriek', 'surpriseparty', 'springpunch', 'tadaa']]], // top level 63, the easy side (the move lists are what movesWith(species, level, ...) gives: the surprise spec checks)
   intro: ['SURPRISE! Ho ho! This party is for YOU!', 'The Wizard hid his star in my cake. Win it!'],
-  lose: 'Ho ho! What a surprise: you win! The star is yours.',
+  lose: 'Ho ho! Surprise! The star is yours!',
   win: 'Ho ho! Have some cake, rest a bit and try again!',
   rematchIntro: ['Boing! A new party, new tricks. Ready?'],
   crew: [
@@ -207,7 +207,7 @@ addBoss({
   gate: game => { const st = lineState(game); return st.done ? null : `Hello! Draw all the lines to reach me first! (✏️ ${st.count} / ${LINE_COUNT})`; },
   team: [['notquite', 60], ['rubbadub', 61], ['graphitan', 62, ['leadlance']], ['outlynx', 63, ['squigglestrike', 'masterpiece']]],
   intro: ['Oh! You found my sketchbook!', 'Everything here is drawn, but not finished yet.', "Let's see how my drawings battle!"],
-  lose: 'What a picture! The star is yours.',
+  lose: 'What a picture! The star is yours!',
   win: 'Good try! A drawing needs a few goes. Try again!',
   rematchIntro: ['Back again? I drew my team a bit bigger!'],
   crew: [
@@ -228,7 +228,7 @@ addBoss({
   gate: game => { const st = castleState(game); return st.done ? null : `Halt! Block the pumpkins and win the joust first! (🛡️ ${st.shield} / 3 · 🐴 ${st.lance} / 3)`; },
   team: [['ramparsnail', 61], ['bristleguard', 62, ['seedvolley', 'bodyslam', 'holdthegate', 'quillvolley']], ['turrock', 63], ['gallantrot', 64, ['zoomdash', 'lancecharge', 'roundtable', 'grandjoust']]], // (the move lists are what movesWith gives: the spec checks)
   intro: ['Halt! Who goes there?', 'A challenger! At last! I have trained for this every day!'],
-  lose: 'A true knight! The star is yours. Ta-ta-taa!',
+  lose: 'A true knight! The star is yours!',
   win: 'Bravely done! Rest a moment and try again.',
   rematchIntro: ['Back for another tournament? My knights trained harder!'],
   crew: [
@@ -253,7 +253,7 @@ addBoss({
   },
   team: [['fizzbomb', 61], ['quackmiral', 62, ['soakshot', 'bodyslam', 'fizzup', 'duckfleet']], ['bathemoth', 62, ['seedvolley', 'bodyslam', 'fizzup', 'bathtubwave']], ['lathotter', 63, ['foamcrash', 'soakshot', 'fizzfest', 'soapjuggle']]], // top level 63, the easy side (the move lists are what movesWith gives: the spec checks)
   intro: ['Ahoy-hoy! You climbed my whole well and popped my shields!', 'Now, a bubbly battle!'],
-  lose: 'Splish splash, you win! The star was in my bubble bath all along.',
+  lose: 'Splish splash! The star is yours!',
   win: 'A good try, little bubble! Rest a bit and try again.',
   rematchIntro: ['Back up my well? My bubbles got bigger!'],
   crew: [
@@ -278,7 +278,7 @@ addBoss({
   gate: game => { const st = gravityState(game); return st.done ? null : `Oh dear! My Orbikits got loose and my telescope fell to pieces! (🐱 ${st.tags} / ${st.tagNeed} · 🌸 ${st.hop ? 1 : 0} / 1 · 🔭 ${st.lenses} / 3)`; },
   team: [['wallibex', 61], ['turvysloth', 62], ['orbitah', 62], ['saturnowl', 63]], // top level 63, the easy side
   intro: ['My Orbikits are back and my telescope is whole again!', 'Now, a battle!'],
-  lose: 'Marvellous! The star is yours. It was in orbit round my hat all along!',
+  lose: 'Marvellous! The star is yours!',
   win: 'A fine try! Rest a moment, then come back for another go.',
   rematchIntro: ['Back again? My planets spin a little faster now!'],
   crew: [
@@ -301,7 +301,7 @@ addBoss({
   gate: game => { const st = mirrorState(game); return st.done ? null : `Oh, my poor smudgy palace! I can't come out like THIS. (🏓 ${st.court} / 3 · 👯 ${st.twin} / 3 · 🔦 ${st.beam} / 3)`; },
   team: [['periscoot', 61], ['bendabout', 62], ['lynxlook', 62], ['grandlooker', 63]], // top level 63, the easy side
   intro: ['Look at my palace! It SHINES again!', 'Now, a dazzling battle!'],
-  lose: 'Simply dazzling! The star was in my best mirror all along.',
+  lose: 'Simply dazzling! The star is yours!',
   win: 'A lovely try! Fix your hair, rest a bit, and come back.',
   rematchIntro: ['Back again? I polished my team!'],
   crew: [
@@ -321,7 +321,7 @@ addBoss({ // the Portal House (in the Swirl itself): the eight swirl rooms open 
   gate: game => { const { n, need, ready } = roomState(game); return ready ? null : `Finish all the swirl rooms first! (🌀 ${n} / ${need})`; },
   team: [['peekhole', 60], ['topperoo', 61, ['hattrick', 'popthrough', 'shortcut', 'dizzyswirl']], ['loopwyrm', 62], ['gatestrider', 63, ['doorslam', 'popthrough', 'portalparty', 'shortcut']]], // top level 63, the easy side
   intro: ['Hello, little traveller. I am Grandpa Arch, the oldest Portal creature.', 'I have watched the crack in the Swirl for a long, long time. Show me your team!'],
-  lose: 'Wonderful! Take the star. It will make the bridge a little longer.',
+  lose: 'Wonderful! The star is yours!',
   win: 'A good try! Rest a bit, then come back through the swirls.',
   rematchIntro: ['Back again? My swirls trained too!'],
   crew: [
@@ -426,9 +426,8 @@ export function createBosses(game, { startBattle, save }) {
         game.cubes += c;
         sound.play('champion');
         toast(`${npc.name}: ${def.lose}`);
-        toast(`⭐ You won the star of the ${pw.name}! (${starsWon(game.stars).length}/${STAR_WORLDS.length}) +${c} Capture Cubes`);
+        toast(`⭐ You won the star of the ${pw.name}! +${c} Capture Cubes`); // owner 2026-11-08: short; the count is on the celebration, no "go back" line
         game.ui.celebrate(`⭐ The ${pw.name} star!`, `${starsWon(game.stars).length} / ${STAR_WORLDS.length} stars for the star bridge`, BOSS.starMs);
-        toast(game.place === 'swirl' ? 'Your star lights a stone of the star bridge, back on the hub!' : 'Go back to the Swirl: your star lights a stone of the star bridge!'); // T42: the Portal House is in the Swirl itself
         return;
       }
       const n = Math.min(BOSS.maxWins, winsOf(id) + 1); // a rematch
