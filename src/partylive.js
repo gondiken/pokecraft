@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
-import { PINATA, newRun, pinataAt, timeUp, hashStr } from './pinata.js';
+import { PINATA, newRun, pinataAt, timeUp, hashStr, crackNow } from './pinata.js';
 import { CATCH, newCatch, stepCatch, inAir, slowed, jacksLeft } from './jackcatch.js';
 import { pinataRound, catchRound, whackRuns } from './partyrounds.js';
 import { STACK, stackPlan, newStack, craneAt, drop, loaded } from './giftstack.js';
@@ -42,9 +42,13 @@ export const PARTY = {
   candle: 0.2,         // the finale: a candle lights every 0.2 s, then SURPRISE!
   surprise: 1.9, rise: 0.8,
   confetti: 160,
+  // owner 2026-11-08: a CRACK and a Bonk must look different, and the piñata shows when a whack counts
+  ready: { colour: 0xffc23a, glow: 0.75, pulse: 0.07, halo: 1.16, haloColour: 0xffffff }, // the gold glow while a whack would CRACK it (and a gentle pulse)
+  crack: { confetti: 0.6, flash: 0.15, squash: 0.35 }, // a CRACK: a big confetti burst, a white flash, a squash
+  bonk: { spin: 14, time: 0.5 },                         // a Bonk: it just spins away (no confetti, a boing)
 };
 const HOW = {
-  pinata: 'Whack the piñata when it swings AT you!',
+  pinata: 'Whack the piñata when it glows: it is swinging AT you!',
   catch: 'Run under the jacks to catch them. Dodge the pies!',
   stack: 'Press Drop! when the present is right over the stack!',
   whack: 'Whack the jacks when they pop up. Not the ones with a pie!',
@@ -154,12 +158,20 @@ export class PartyLive {
     this.pinataGeos = Object.fromEntries(Object.entries(PP.PINATAS).map(([id, b]) => [id, PP.merged(b)]));
     for (const g of Object.values(this.pinataGeos)) this.geos.push(g);
     this.pinataLit = lam(); this.pinataGlow = new THREE.MeshBasicMaterial({ vertexColors: true }); this.mats.push(this.pinataGlow);
+    // owner 2026-11-08 ("not understanding when a hit counts"): the piñata glows gold exactly while a whack would CRACK it (pinata.js crackNow)
+    this.pinataReady = lam(); this.pinataReady.emissive = new THREE.Color(PARTY.ready.colour); this.pinataReady.emissiveIntensity = PARTY.ready.glow;
     const rg = new THREE.BoxGeometry(0.05, 1, 0.05); rg.translate(0, 0.5, 0); this.geos.push(rg);
     const rm = new THREE.MeshLambertMaterial({ color: 0xfff0d0 }); this.mats.push(rm);
     const blg = PP.merged(PP.balloonBoxes()); this.geos.push(blg);
     const blm = lam();
-    this.pin = [0, 1].map(() => ({ body: add(new THREE.Mesh(this.pinataGeos.llama, this.pinataLit)), rope: add(new THREE.Mesh(rg, rm)), balloons: add(new THREE.Mesh(blg, blm)) }));
-    for (const q of this.pin) q.body.visible = q.rope.visible = q.balloons.visible = false;
+    // owner 2026-11-08: the "now!" halo: each piñata's shape a bit bigger round its own middle, drawn from behind in bright white (an outline)
+    this.haloGeos = Object.fromEntries(Object.entries(this.pinataGeos).map(([id, g]) => {
+      const h = g.clone(); h.computeBoundingBox(); const c = h.boundingBox.getCenter(new THREE.Vector3());
+      h.translate(-c.x, -c.y, -c.z); h.scale(PARTY.ready.halo, PARTY.ready.halo, PARTY.ready.halo); h.translate(c.x, c.y, c.z); this.geos.push(h); return [id, h];
+    }));
+    this.haloMat = new THREE.MeshBasicMaterial({ color: PARTY.ready.haloColour, side: THREE.BackSide, transparent: true, opacity: 0.9, depthWrite: false }); this.mats.push(this.haloMat);
+    this.pin = [0, 1].map(() => ({ body: add(new THREE.Mesh(this.pinataGeos.llama, this.pinataLit)), rope: add(new THREE.Mesh(rg, rm)), balloons: add(new THREE.Mesh(blg, blm)), halo: add(new THREE.Mesh(this.haloGeos.llama, this.haloMat)) }));
+    for (const q of this.pin) q.body.visible = q.rope.visible = q.balloons.visible = q.halo.visible = false;
     const sg0 = PP.merged(PP.stickBoxes());
     this.stick = add(new THREE.Mesh(sg0, lam()), sg0); this.stick.visible = false;
     const bg = PP.merged(PP.bowBoxes(1));
@@ -234,6 +246,12 @@ export class PartyLive {
     if (g.game === 'pinata' || g.game === 'whack') { this.whackNow({ x: origin.x, y: origin.y, z: origin.z }, { x: dir.x, y: dir.y, z: dir.z }); return true; }
     if (g.game === 'stack') { this.dropNow(); return true; }
     return false;
+  }
+  // Owner 2026-11-08 ("hits not counting" on the iPad): while a whack game runs a tap whacks the moment the finger touches (it was on the
+  // finger's lift, so a press-and-hold whacked late, and a finger that slid 12 px turned the view instead of whacking).
+  tapsOnDown() {
+    const g = this.gm;
+    return !this.paused() && !!g && g.phase === 'run' && (g.game === 'pinata' || g.game === 'whack') && this.onSquare();
   }
   // The word on the big button (null = nothing here).
   near(p) {
@@ -453,14 +471,15 @@ export class PartyLive {
     const r = g.run, res = whackRuns(r.runs, r.t, eye, dir);
     if (!res.swung) { if (r.dizzyT > r.t) this.once('party-dizzy', 'Wait for your stick to come back up!'); return false; }
     r.swingT = 0; r.hitRun = res.hit ? res.run : -1;
-    if (!res.hit) { r.dizzyT = r.t + (res.pause ?? PINATA.cool.miss); r.dizzyLen = res.pause ?? PINATA.cool.miss; sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Missed. Wait for it to swing close.'); return true; }
+    if (!res.hit) { r.dizzyT = r.t + (res.pause ?? PINATA.cool.miss); r.dizzyLen = res.pause ?? PINATA.cool.miss; sound.play('doorwhoosh'); this.once('party-whoosh', 'Whoosh! Missed. Wait for it to glow.'); return true; }
     if (res.big) {
       sound.play('pinatawhack');
       const left = r.runs[res.run].hp;
       if (!res.burst) this.toast(left === 1 ? 'CRACK! 1 more!' : `CRACK! ${left} more!`);
       const p = pinataAt(r.runs[res.run], res.tau);
-      this.doBurst([p.x, p.y, p.z], 0.25);
-    } else { sound.play('boop'); this.once('party-bonk', 'Bonk! It was going away. Whack it when it swings AT you!'); }
+      this.doBurst([p.x, p.y, p.z], PARTY.crack.confetti);
+      r.crackAt = { run: res.run, t: r.t };
+    } else { sound.play('boing'); r.bonkAt = { run: res.run, t: r.t }; this.once('party-bonk', 'Bonk! It was swinging away. Whack it when it glows!'); }
     if (res.dodge) this.toast('It dodged!');
     return true;
   }
@@ -730,7 +749,7 @@ export class PartyLive {
       if (on && g.run.runs[i]) {
         run = g.run.runs[i];
         const popped = g.run.popped.get(i);
-        if (popped && g.run.t >= popped.t) { q.body.visible = q.rope.visible = q.balloons.visible = false; if (g.phase === 'won' && i === 0) this.drawBurst(popped.at, g.t); return; }
+        if (popped && g.run.t >= popped.t) { q.body.visible = q.rope.visible = q.balloons.visible = q.halo.visible = false; if (g.phase === 'won' && i === 0) this.drawBurst(popped.at, g.t); return; }
         const t = g.phase === 'run' ? g.run.t : Math.min(g.run.t, run.plan.time), qq = pinataAt(run, t), up = g.phase === 'missed' ? ease(g.t / PARTY.rest.pinataNap) * 7 : 0;
         pos = { x: qq.x, y: qq.y + up, z: qq.z }; top = { x: qq.top.x, y: PINATA.low + PINATA.rope + up, z: qq.top.z };
         q.body.geometry = this.pinataGeos[run.plan.id];
@@ -741,16 +760,27 @@ export class PartyLive {
         q.body.geometry = this.pinataGeos[PINATA.rounds[g.round - 1].id];
       }
       q.body.visible = q.rope.visible = q.balloons.visible = !!pos;
+      q.halo.visible = false;
       if (!pos) return;
-      q.body.material = this.dim < 0.8 ? this.pinataGlow : this.pinataLit; // "Lights out!": the piñata glows
+      // owner 2026-11-08: gold while a whack now would CRACK it; a white flash right after a CRACK; "Lights out!": the piñata glows
+      const live = run && g.phase === 'run', ready = live && this.onSquare() && this.crackCue(run, g.run.t, pos);
+      const cr = live && g.run.crackAt?.run === i ? g.run.t - g.run.crackAt.t : 9, bk = live && g.run.bonkAt?.run === i ? g.run.t - g.run.bonkAt.t : 9;
+      q.body.material = cr < PARTY.crack.flash ? this.pinataGlow : ready ? this.pinataReady : this.dim < 0.8 ? this.pinataGlow : this.pinataLit;
       const dx = pos.x - top.x, dy = pos.y + 0.7 - top.y, dz = pos.z - top.z;
       q.balloons.position.set(top.x, top.y, top.z); q.balloons.rotation.y = Math.sin(this.clock * 0.7 + i) * 0.3;
       const lastHit = run?.log?.length ? run.log[run.log.length - 1] : null, since = lastHit?.hit && g.phase === 'run' ? g.run.t - lastHit.tau : 9;
       const wob = since >= 0 && since < 0.4 ? Math.sin(since * 40) * 0.25 * (1 - since / 0.4) : 0;
       q.body.position.set(pos.x, pos.y, pos.z);
-      q.body.rotation.set(Math.atan2(dz, -dy) * 0.6 + wob, this.clock * 0.6, -Math.atan2(dx, -dy) * 0.6);
-      const dmg = run ? 1 - run.hp / run.plan.hp : 0;
-      q.body.scale.set(1 + dmg * 0.12, 1 - dmg * 0.18, 1 + dmg * 0.12);
+      const spin = bk < PARTY.bonk.time ? PARTY.bonk.spin * bk * (1 - bk / PARTY.bonk.time / 2) : 0; // a Bonk: it spins away harmlessly
+      q.body.rotation.set(Math.atan2(dz, -dy) * 0.6 + wob, this.clock * 0.6 + spin, -Math.atan2(dx, -dy) * 0.6);
+      const dmg = run ? 1 - run.hp / run.plan.hp : 0, sq = cr < 0.3 ? PARTY.crack.squash * Math.sin((cr / 0.3) * Math.PI) : 0;
+      const pulse = ready ? 1 + PARTY.ready.pulse * Math.sin(this.clock * 14) : 1;
+      q.body.scale.set((1 + dmg * 0.12 + sq) * pulse, (1 - dmg * 0.18 - sq * 0.6) * pulse, (1 + dmg * 0.12 + sq) * pulse);
+      if (ready) { // the white outline, pulsing with the body
+        q.halo.visible = true; q.halo.geometry = this.haloGeos[run.plan.id];
+        q.halo.position.copy(q.body.position); q.halo.rotation.copy(q.body.rotation); q.halo.scale.copy(q.body.scale);
+        this.haloMat.opacity = 0.65 + 0.3 * Math.sin(this.clock * 14);
+      }
       q.body.updateMatrix(); this.tmpV.set(0, 0.6, 0).applyMatrix4(q.body.matrix);
       const kx = this.tmpV.x - top.x, ky = this.tmpV.y - top.y, kz = this.tmpV.z - top.z, len = Math.hypot(kx, ky, kz) || 1;
       q.rope.position.set(top.x, top.y, top.z);
@@ -758,6 +788,13 @@ export class PartyLive {
       q.rope.scale.set(1, len, 1);
       shadow(pos.x, pos.z, 1.3 - Math.min(0.8, (pos.y - PINATA.low) * 0.3));
     });
+  }
+  // Would a whack now CRACK this piñata (pinata.js crackNow)? A tap aims at the piñata itself, so the cue uses the way to it while it is in
+  // view (within the stick's cone of where you look), else where you look.
+  crackCue(run, t, pos) {
+    const eye = this.eye(), look = this.look(), dx = pos.x - eye.x, dz = pos.z - eye.z, d = Math.hypot(dx, dz) || 1, l = Math.hypot(look.x, look.z) || 1;
+    const inView = (dx * look.x + dz * look.z) / (d * l) >= Math.cos((PINATA.cone * Math.PI) / 180);
+    return crackNow(run, t, eye, inView ? { x: dx, y: 0, z: dz } : look);
   }
   // The bow drops out of the candy and flies to you; the silly surprise falls to the floor.
   drawBurst(b, k) {

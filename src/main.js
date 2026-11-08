@@ -795,6 +795,12 @@ function placeBlock(hit = target.block) {
 
 // Tapping the screen: battle or talk to whatever creature or person is under the finger.
 const tapRay = new THREE.Raycaster();
+// Owner 2026-11-08: a finger touching down: only a live part that wants it (a whack game: gymLive.tapsOnDown) acts now; true = done.
+function tapDown(x, y) {
+  if (!playing() || game.ui.asking || !game.gymLive.tapsOnDown()) return false;
+  tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
+  return game.gymLive.tap(tapRay.ray.origin, tapRay.ray.direction);
+}
 function tapAt(x, y) {
   if (!playing() || game.ui.asking) return; // T39b: a tap on the world never answers a question
   tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
@@ -838,6 +844,7 @@ game.touch = new TouchControls(game, canvas, {
   book: toggleBook,
   pause,
   tapAt,
+  tapDown,
 });
 
 /* -------------------------------- battles -------------------------------- */

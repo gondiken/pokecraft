@@ -7,7 +7,7 @@
 // Room of Doors save, Jolly Jax, a rematch party, a reload). E: iPad (one big button: Spin! / Stop! / Play! / Whack! / Drop!, a tap on a
 // jack). F: two browsers. G: the screenshots.
 // SURPRISE_ONLY=data|land|games|live|ipad|pair|shots runs one part; SURPRISE_SKIP_BOSS=1 leaves out the long Boss battles.
-// Screenshots (tests/screenshots): t48-party.png, t48-spinner.png, t48-pinata.png, t48-catch.png, t48-stack.png, t48-whack.png, t48-finale.png,
+// Screenshots (tests/screenshots): t48-party.png, t48-spinner.png, t48-pinata.png, t48-pinata-glow.png, t48-catch.png, t48-stack.png, t48-whack.png, t48-finale.png,
 // t48-giftbox.png, t48-family.png, t48-ipad.png.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -484,6 +484,18 @@ async function gamesPart(t) {
     bonk = judged.b0;
     t.ok(coming > 50 && high > 0 && judged.n >= 3 && bonk === 0 && PINATA.band[1] >= 1.3 && PINATA.bigLow === undefined, `a whack that meets a piñata coming at you is always a CRACK, also high up (${judged.n} whacks, ${bonk} Bonks; ${high} of ${coming} such moments are over the old "low down" line)`);
   }
+  { // owner 2026-11-08 ("not understanding when a hit counts"): the piñata glows exactly while a whack would CRACK it (crackNow = whack's rule)
+    let same = 0, n = 0, glow = 0;
+    for (const round of [1, 2, 3]) for (let k = 0; k < 3; k++) {
+      const plan = P.pinataPlan(60 + k, round, k);
+      for (let tt = 0.3; tt < 12; tt += 0.09) for (const [ox, oz] of [[1, 0], [0, 1.5], [-1.8, 0.4], [2.6, 0]]) {
+        const a = P.newRun(plan), b = P.newRun(plan), p = P.pinataAt(a, tt), eye = { x: p.top.x + ox, y: 11 + Bt.EYE, z: p.top.z + oz }, dir = { x: p.x - eye.x, y: 0, z: p.z - eye.z };
+        const cue = P.crackNow(a, tt, eye, dir), w = P.whack(b, tt, eye, dir);
+        n++; if (cue) glow++; if (cue === !!(w.hit && w.big)) same++;
+      }
+    }
+    t.ok(same === n && glow > 20, `the piñata's glow matches the CRACK rule every time (${same} / ${n} moments, ${glow} glowing)`);
+  }
   // the rounds with model players, at 60 and 20 steps a second
   const win = (kind, round, opts = {}, n = 8, dt = 1 / 60) => { let w = 0; for (let k = 0; k < n; k++) if (Bt.playPinata(kind, PR.pinataRound(1000 + k, round, k, opts), dt).won) w++; return w; };
   const pin = both(dt => [1, 2, 3].map(r => win('kid', r, {}, 8, dt)));
@@ -916,6 +928,19 @@ async function livePart({ browser, base, t, page }) {
     L.gm.run.swingT = 0.14; L.gm.run.hitRun = 0; L.draw(); // the stick meets it: its tip rests on the piñata
   });
   await shot(page, 'pinata', null, 800);
+  // owner 2026-11-08: the gold glow while a whack would CRACK it
+  const glowing = await page.evaluate(() => {
+    const L = window.__live(), g = window.pokecraft, run = L.gm.run.runs[0];
+    let ok = false;
+    for (let k = 0; k < 400 && !ok; k++) {
+      L.step(0.02); const q = window.__pinAt(run, L.gm.run.t), v = Math.hypot(q.vx, q.vz) || 1;
+      window.__at(q.x + (q.vx / v) * 1.6, 11, q.z + (q.vz / v) * 1.6, 0, 0.05); g.player.lookAt({ x: q.x, y: q.y + 0.2, z: q.z });
+      L.gm.run.swingT = 9; run.ready = 0; L.draw(); ok = L.pin[0].body.material === L.pinataReady;
+    }
+    return ok;
+  });
+  t.ok(glowing, 'the piñata glows gold while it swings at you in reach');
+  await shot(page, 'pinata-glow', null, 800);
   // Jack Catch: jacks in the air with their shadows, a pie and its pink ring
   await page.evaluate(() => {
     const L = window.__live(), g = window.pokecraft;
@@ -1020,6 +1045,23 @@ async function ipadPart({ browser, base, t }) {
   let hit = false;
   for (let k = 0; k < 3 && !hit; k++) { await ip.touchscreen.tap(scr.x, scr.y); await ip.waitForTimeout(600); hit = await ip.evaluate(() => window.__live().gm.run.st.hits.size > window.__hits0); }
   t.ok(hit, `a tap on a jack on the screen whacks it (${at.kind})`);
+  { // owner 2026-11-08 ("hits not counting"): the whack comes the moment the finger touches; a finger that then slides (a look-drag) and
+    // lifts does not whack again
+    const ok = await ip.evaluate(async () => {
+      const g = window.pokecraft, L = window.__live(), st = L.gm.run.st, p = st.plan.pops.find(q => q.kind !== 'pie' && q.t0 > L.gm.run.t + 0.5);
+      while (L.gm.run.t < p.t0 + 0.3) L.step(0.02);
+      st.ready = 0; g.camera.updateMatrixWorld();
+      const h = window.__headOf(L.sets.whack.boxes, p), v = new (g.camera.position.constructor)(h.x, h.y - 0.1, h.z).project(g.camera);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth, y = (-v.y * 0.5 + 0.5) * window.innerHeight, c = document.querySelector('canvas');
+      const ev = (type, dx) => c.dispatchEvent(new PointerEvent(type, { pointerId: 77, pointerType: 'touch', clientX: x + dx, clientY: y, bubbles: true }));
+      const h0 = st.hits.size;
+      ev('pointerdown', 0);
+      const onDown = st.hits.size > h0, swings = st.log.length;
+      ev('pointermove', 30); ev('pointerup', 30);
+      return { onDown, again: st.log.length > swings };
+    });
+    t.ok(ok.onDown && !ok.again, `the finger touching a jack whacks it at once (${ok.onDown}); sliding and lifting it does not whack again (${!ok.again})`);
+  }
   await ip.screenshot({ path: path.join(SHOTS, 't48-ipad.png'), timeout: 180000 });
   console.log('  screenshot t48-ipad.png');
   await ip.evaluate(() => window.__reset());

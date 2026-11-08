@@ -9,7 +9,7 @@ function capture(el, id) {
 }
 
 export class TouchControls {
-  // actions: { canPlay(), jump(down), breakBlock(), place(), interact(), team(), blocks(), book(), pause(), tapAt(x, y) }
+  // actions: { canPlay(), jump(down), breakBlock(), place(), interact(), team(), blocks(), book(), pause(), tapAt(x, y), tapDown(x, y) }
   constructor(game, canvas, actions) {
     this.game = game;
     this.actions = actions;
@@ -138,12 +138,14 @@ export class TouchControls {
   }
 
   setupLook(canvas) {
-    let lastX = 0, lastY = 0, startX = 0, startY = 0, moved = 0;
+    let lastX = 0, lastY = 0, startX = 0, startY = 0, moved = 0, done = false;
     canvas.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' || this.lookId !== null || !this.actions.canPlay()) return;
       this.lookId = e.pointerId;
       capture(canvas, e.pointerId);
       lastX = startX = e.clientX; lastY = startY = e.clientY; moved = 0;
+      // owner 2026-11-08: some taps act the moment the finger touches (a whack game, main.js tapDown); the finger still turns the view after
+      done = !!this.actions.tapDown?.(e.clientX, e.clientY);
     });
     canvas.addEventListener('pointermove', e => {
       if (e.pointerId !== this.lookId) return;
@@ -155,7 +157,7 @@ export class TouchControls {
       if (e.pointerId !== this.lookId) return;
       this.lookId = null;
       // A touch that barely moved is a tap (kids often press and hold), anything else was a look-drag.
-      if (e.type === 'pointerup' && moved < TAP_MOVE) this.actions.tapAt(e.clientX, e.clientY);
+      if (e.type === 'pointerup' && moved < TAP_MOVE && !done) this.actions.tapAt(e.clientX, e.clientY);
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);

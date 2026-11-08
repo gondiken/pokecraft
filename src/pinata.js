@@ -142,6 +142,19 @@ export function towards(p, eye) {
   return (p.vx * dx + p.vz * dz) / d;
 }
 
+// Owner 2026-11-08 ("not understanding when a hit counts"): would a press at `t` from `eye` along `dir` be a CRACK? The same test as
+// whack() (the stick is ready, the piñata in reach coming at you at some moment of the window from the press on), changing nothing.
+// partylive.js makes the piñata glow while this is true, so a child sees WHEN to whack (mashing gains nothing: it never waits for it).
+export function crackNow(run, t, eye, dir) {
+  if (run.done || t < run.ready - 1e-9) return false;
+  const P = PINATA;
+  for (let k = 0; k <= P.window[1] + 1e-9; k += P.sample) {
+    const q = pinataAt(run, t + k);
+    if (inReach(q, eye, dir) && towards(q, eye) >= P.bigV) return true;
+  }
+  return false;
+}
+
 // A press at `t`. Returns { swung: false } while the stick swings back, else { swung: true, hit, big, dmg, dodge, burst, tau } and changes the run.
 export function whack(run, t, eye, dir) {
   if (run.done || t < run.ready - 1e-9) return { swung: false };

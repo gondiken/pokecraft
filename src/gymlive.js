@@ -97,6 +97,8 @@ export function createGymLive(game) {
     release(p) { return !!each(o => o.release?.(p)); },
     // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (T44: a whack at the piñata)
     tap(origin, dir) { return !!each(o => o.tap?.(origin, dir)); },
+    // owner 2026-11-08: a live part whose tap acts the moment the finger touches (touch.js asks on pointerdown; a whack game)
+    tapsOnDown() { return !!each(o => o.tapsOnDown?.()); },
     aim(p) { return each(o => o.aim?.(p)); },
     broke(block) { for (const o of objects.values()) o.broke?.(block); },
     battleEnded(result, opts) { for (const o of objects.values()) o.battleEnded?.(result, opts); },
