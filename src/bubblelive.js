@@ -29,9 +29,10 @@ import { B } from './blocks.js';
 import { sound } from './sound.js';
 import { buildModel, animateModel, disposeModel } from './species.js';
 import { FUN } from './forfun.js';
-import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHIELD_RULES, gustAt, glideOf, dripAt, gapOf, barsOf, landsOn, shieldAt, stomp, clearOf, shieldSize, shieldSway } from './bubbles.js';
+import { BUBBLE, BubbleField, Duckling, DUCK, Ride, RIDE, SHIELD_RULES, gustAt, glideOf, dripAt, gapOf, barsOf, landsOn, shieldAt, stomp, clearOf, shieldSize, shieldSway, bubbleHelp } from './bubbles.js';
 import { bubbleState, bubbleAim, ledgeAt, inClimb, stairsKey, duckKey, chimneyKey, shieldKey, BUBBLE_KEYS, CHIMNEY, GARDEN_RULES, ISLANDS, NEST, SHIELDS, DOME, LIFTS, DRIPS, WINDS, SOAP_POTS, MESA, RIM, THORNS, CURRENTS, GUSTS, inChimney } from './bubbleland.js';
 import { buildBubbles, buildGhost, buildWand, buildDrips, buildStreams, drawStreams, buildThorns, buildNest, buildChimney, buildBigBubble, buildRideBubble, buildSign, buildShields, buildDome, buildArrow, buildPots, buildPuff, hideAll } from './bubbleprops.js';
+const RIM_HELP = bubbleHelp(0, { plain: true }); // (Normal's numbers: a random hopper at the rim gets lucky on another level)
 
 // dtMax: the longest frame step; dip: how near a soap pot (and how near its floor) the wand dips; fall: how far below your ledge a fall
 // from a bubble puts you back; restOut: seconds resting at the chimney's bottom before you hop out; rideR: how near the chimney's big
@@ -564,7 +565,7 @@ export class BubbleLive {
     if (!this.paused()) {
       this.clock += step; this.gardenT += step; this.courtT += step; this.puffT += step; this.shook += step;
       const l = this.ledge ? ledgeAt(this.ledge.x, this.ledge.y, this.ledge.z) : null;
-      this.field.help = l != null && inClimb(p.pos.x, p.pos.y, p.pos.z) ? this.stairMiss[l] : 0; this.field.hard = this.hard;
+      this.field.help = l != null && inClimb(p.pos.x, p.pos.y, p.pos.z) ? this.stairMiss[l] : RIM_HELP; this.field.hard = this.hard; // (RIM_HELP: the rim is the same on every level, difficulty.js)
       this.stepWand(p);
       for (const e of this.field.step(step, { solid: (x, y, z) => this.world.isSolid(x, y, z), winds: CLIMB_WINDS, drips: DRIPS })) {
         if (e.type === 'pop') { sound.play('soappop'); if (e.b === this.stood) this.dropOff(); }

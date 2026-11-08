@@ -44,6 +44,7 @@ import { createPortal } from './portal.js'; // T38a
 import { createSwirlSky } from './swirlsky.js'; // T38d
 import { loadStars, PICTURE_WORLDS } from './pictureworlds.js'; // T38a
 import { runWorldResets, createWorldReset } from './worldreset.js'; // owner 2026-10-29: one-time resets of a redesigned preview world; ?preview "Start this world over"
+import { DIFFICULTY, setDifficulty, difficultyOf, nextDifficulty } from './difficulty.js'; // owner 2026-11-08: Easy / Normal / Hard
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -206,6 +207,7 @@ function snapshot() {
     keys: game.keys,
     swaps: game.swaps?.toSave(), // wave 17: gifts and trades on the way (swapcore.js)
     wizard: game.studio?.toSave(), // wave 19: the Wizard's battle won, your guardian's design and painted colours, rematch wins (studio.js loadStudio cleans it)
+    difficulty: DIFFICULTY.current.id, // owner 2026-11-08: Easy / Normal / Hard (difficulty.js; old saves have none = Normal)
     records: game.records, // owner 2026-10-30: time trials (houserun.js; cleaned by its loadRecords when a world uses them)
     toldCaveGym: true,
     ...game.book.toSave(),
@@ -357,6 +359,7 @@ function continueGame(saved) {
   game.swaps?.load(saved.swaps); // wave 17: old saves have none
   game.records = saved.records ?? {}; // owner 2026-10-30: time trials (houserun.js loadRecords cleans them; old saves have none)
   game.studio.load(saved.wizard); // wave 19: old saves have none
+  setDifficulty(difficultyOf(saved.difficulty)); showLevel(); // owner 2026-11-08: old saves have none = Normal
   game.playerId = saved.playerId || game.playerId || randomId(); // T22: the same on every device with this save
   game.homes.load(saved.homes, game.playerId); // old saves have none
   // Saves from before the Blocks panel have no hotbar; unknown blocks fall back to the default.
@@ -594,6 +597,18 @@ const fxBtn = document.getElementById('fx-btn');
 const showFx = () => { fxBtn.textContent = game.fx.on ? '✨ Effects on' : '✨ Effects off'; };
 fxBtn.addEventListener('click', e => { e.stopPropagation(); game.fx.setOn(!game.fx.on); showFx(); });
 showFx();
+// Owner 2026-11-08: Easy / Normal / Hard, one tap cycles it; it is saved with the game and counts from the next battle or try.
+const levelBtn = document.getElementById('level-btn');
+function showLevel() { levelBtn.textContent = DIFFICULTY.current.label; levelBtn.title = DIFFICULTY.current.line; }
+levelBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const d = setDifficulty(nextDifficulty(DIFFICULTY.current));
+  showLevel();
+  game.ui.toast(d.line);
+  if (game.started) save(true);
+});
+showLevel();
+Object.defineProperty(game, 'difficulty', { get: () => DIFFICULTY.current, set: d => { setDifficulty(d); showLevel(); }, configurable: true }); // (tests: game.difficulty = 'easy')
 document.getElementById('menu').addEventListener('click', e => { e.stopPropagation(); goToMenu(); });
 for (const [id, fn] of [['pb-team', toggleTeam], ['pb-blocks', toggleBlocks], ['pb-book', toggleBook],
   ['pb-missions', () => game.openMissions('view')], ['pb-where', () => game.openNav()], ['pb-home', () => game.openHome()]]) {

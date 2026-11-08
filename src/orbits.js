@@ -23,7 +23,7 @@
 //    ellipse (ferryAt: a real orbit, slow at its far end, fast near the little sun), never stopping. Hop on as it passes, ride, jump off:
 //    you keep the moon's speed, so you must let go BEFORE you are next to the rock (like a sling). Too late and you sail past.
 // Never a fail (a miss just tries again), the kind help only through kindhelp.js (gravityHelp), a harder rematch (HARD).
-import { kindHelp } from './kindhelp.js';
+import { kindHelp, capped, KIND_HELP } from './kindhelp.js';
 
 export const STEP = 1 / 120; // the fixed sub-step of every clock here (60 and 20 frames a second give the same sub-steps)
 export const HARD = { pup: 1.15, moon: 1.15, pad: -0.5 }; // a rematch (you hold the star): the Orbikits and the moon x1.15, pebbles and lens rocks catch a bit less
@@ -37,7 +37,7 @@ export const HARD = { pup: 1.15, moon: 1.15, pad: -0.5 }; // a rematch (you hold
 export const PAD_SCALE = 8;
 export function gravityHelp(misses) {
   const k = kindHelp(misses);
-  return { ...k, tag: k.more, sprint: k.slow, pad: k.ease * PAD_SCALE, moon: k.slow, lens: k.ease * PAD_SCALE };
+  return { ...k, tag: k.more, sprint: Math.max(k.slow, 1 - KIND_HELP.max) /* it always outruns you */, pad: capped(k.ease) * PAD_SCALE, moon: Math.max(k.slow, 1 - KIND_HELP.max) /* a slower moon lets a jump at the closest point land */, lens: capped(k.ease) * PAD_SCALE };
 }
 
 /* ================================================================ the Orbikit Chase */

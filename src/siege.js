@@ -5,7 +5,7 @@
 // arrives (a closed-form time): the best shield of a short `grace` window, each sub-step with that frame's shield: so the same presses give the same result at any frame rate.
 // Never a fail: a pumpkin that gets through is only a soft "Splat! Yuck, sticky!", and a round that ends short of its number starts
 // again (after two short rounds the shared kind help slows it down a tiny bit).
-import { kindHelp } from './kindhelp.js';
+import { missHelp } from './kindhelp.js';
 
 const D = Math.PI / 180;
 export const SIEGE = {
@@ -57,7 +57,7 @@ export function stoneAt(pos) {
 // this round in a row (kindHelp: every throw's timing / (1 - ease), the cover x (1 + ease)), `hard` = a rematch (you hold the star). Pure: a seed and the same numbers give the same list.
 export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } = {}) {
   const R = SIEGE.rounds[round], rnd = seeded(hashStr(`siege|${seed}|${round}|${attempt}`));
-  const kh = kindHelp(help), slow = kh.slow, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
+  const kh = missHelp(help), /* (the same on every level: any other speed lets a spinning stick get lucky now and then, difficulty.js) */ slow = kh.slow, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
   const n = R.n + (hard ? SIEGE.hard.extra : 0), need = R.need + (hard ? SIEGE.hard.need : 0);
   // the kinds, in a shuffled order
   const kinds = [];

@@ -10,7 +10,7 @@
 // (`segs`), so a replay with the same presses gives the same piñata at 60 and at 20 steps a second. The randomness (the path, its
 // turn, the first swing, the dodges) comes from a hash of seed | round | attempt (| hit number): no Math.random.
 
-import { kindHelp } from './kindhelp.js';
+import { missHelp } from './kindhelp.js';
 
 export const PINATA = {
   ring: { x: 56.5, z: 53.5, r: 9 },     // the party rug in the middle of the party floor (partyland.js builds the room round it)
@@ -59,7 +59,7 @@ export function seeded(key) {
 // One try at piñata `round` (1..3): its numbers and the random parts of its path and first swing. `help` = misses in a row (kind help),
 // `lazy` = "Two piñatas!"'s slower second llama.
 export function pinataPlan(seed, round, attempt, { help = 0, hard = false, lazy = false } = {}) {
-  const K = kindHelp(help), L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
+  const K = missHelp(help), /* (the same on every level: a slower or quicker piñata lets mashing under it win, difficulty.js) */ L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
   const H = { period: L.period * K.more, speed: L.speed * K.slow, hp: L.hp, zip: L.zip * K.slow };
   const R = PINATA.rounds[round - 1], X = hard ? PINATA.hard : { hp: 0, period: 1, speed: 1, zip: 1 };
   const rnd = seeded(`pinata|${seed}|${round}|${attempt}`);

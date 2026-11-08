@@ -3,7 +3,7 @@
 // Every moving thing is a closed form of a clock or a fixed 1/120 s sub-step simulation, so 60 fps and 1-2 fps give the same results
 // (like ballphysics.js). No Math.random: everything is a hash of an index. Coordinates are world coordinates of Playland
 // (ground top y 10, you stand at y 11). The layout (blocks) is in funfair.js; this file owns the numbers both of them use.
-import { kindHelp } from './kindhelp.js';
+import { kindHelp, missHelp } from './kindhelp.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -236,7 +236,7 @@ export class BotFleet {
 export class BumperGame {
   constructor(hard = false) { this.hard = hard; this.fleet = new BotFleet(); this.car = new BumperCar(); this.acc = 0; this.misses = 0; this.wins = 0; this.start(0); }
   start(round) {
-    const R = BUMPER_ROUNDS[round], help = kindHelp(this.misses);
+    const R = BUMPER_ROUNDS[round], help = missHelp(this.misses); // (the same on every level: ramming is right at the edge, difficulty.js)
     this.round = round; this.help = help;
     this.fleet.setRound(round, this.hard, help.slow);
     this.popped = BOTS.map(() => false);
@@ -360,7 +360,7 @@ export class BounceGame {
   start(round) {
     const R = BOUNCE_ROUNDS[round], help = kindHelp(this.misses);
     this.round = round; this.help = help;
-    this.speed = help.slow * (this.hard ? 1 / HARD.balloonPeriod : 1);
+    this.speed = Math.min(1, help.slow) * (this.hard ? 1 / HARD.balloonPeriod : 1); // (the level never speeds the balloons up: quicker ones come to a careless bouncer)
     this.popped = R.balloons.map(() => false); this.back = R.balloons.map(() => 0); this.boopAt = R.balloons.map(() => -9);
     this.time = (R.time - (this.hard ? HARD.time : 0)) * help.more; this.left = this.time;
     this.pops = 0; this.score = 0; this.chain = 0; this.empty = 0; this.airPops = 0; this.best = 0;

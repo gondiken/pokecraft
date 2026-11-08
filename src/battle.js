@@ -12,6 +12,7 @@ import { sketchModel } from './sketch.js'; // T45
 import { cleanPaint } from './custom.js'; // the Custom guardians' paint
 import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
 import { exitFor } from './battleexit.js'; // owner 2026-11-07: Run or Give up, one object per battle
+import { battleLevel } from './difficulty.js'; // owner 2026-11-08: Easy / Normal / Hard (duels and co-op always Normal)
 
 const PARTY_MAX = 6;
 const WAKE_HIT = 3; // the 3rd hit of a multi-hit move wakes a sleeper
@@ -179,7 +180,8 @@ export class Battle {
     const hpFactor = 1 - (2 / 3) * (this.foe.hp / st.maxHp);
     const levelFactor = Math.max(0.5, 1 - (this.foe.level - 5) * 0.02);
     const sleepy = this.mods(this.foe).sleep ? 1.5 : 1; // a sleeping creature is easier to catch
-    return Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2 * sleepy));
+    const p = Math.max(0.05, Math.min(0.95, SPECIES[this.foe.species].catchRate * hpFactor * levelFactor * 2.2 * sleepy));
+    return this.level ? this.level.catchChance(p) : p; // owner 2026-11-08: Easy x1.3, Hard x0.85 (difficulty.js)
   }
 
   speedOf(c) { return Math.floor(statsFor(c).spd * stage(this.mods(c).spd)); }
@@ -471,6 +473,7 @@ export class Battle {
     this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
     this.boss = !!opts.boss;
     this.exit = exitFor(opts); // how you may leave this battle early (battleexit.js)
+    this.level = battleLevel(opts); // owner 2026-11-08: the game's level, fixed for this battle (difficulty.js)
     this.poweredUp = false;
     this.modMap = new Map();
     this.resetSides();
@@ -528,7 +531,7 @@ export class Battle {
       await this.sendOutFoe();
     } else {
       const npc = this.trainer;
-      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves]) => makeCreature(species, level, moves));
+      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves]) => makeCreature(species, this.level.foeLevel(level, MAX_LEVEL), moves));
       this.stepBack(npc.pos, 5.5);
       g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2, npc.pos.z));
       this.foePos = npc.pos;
@@ -899,7 +902,7 @@ export class Battle {
     };
     const usable = foe.moves.filter(id => !this.cantUse('foe', id));
     const scored = (usable.length ? usable : foe.moves).map(id => [id, score(id)]);
-    if (Math.random() < 0.5) {
+    if (Math.random() < (this.level?.battle.smart ?? 0.5)) { // owner 2026-11-08: how often it picks its best move (Normal 0.5)
       const best = Math.max(...scored.map(s => s[1]));
       const top = scored.filter(s => s[1] === best);
       return top[Math.floor(Math.random() * top.length)][0];

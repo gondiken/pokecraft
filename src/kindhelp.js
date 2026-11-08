@@ -45,14 +45,30 @@
 //   (all three through mirrorHelp(misses) in bounceback.js, which is kindHelp(misses) mapped onto those levers)
 export const KIND_HELP = { after: 2, step: 0.02, max: 0.10 };
 
+// Owner 2026-11-08: the game's level (difficulty.js) moves every game at once through `level`: { base, extra }. base is ease that
+// is there from the first try (Easy +, Hard -), extra raises the cap (Easy can reach max + extra). Normal = { base: 0, extra: 0 } =
+// exactly the numbers above. `on` (the "a bit slower now" words) still only means misses helped. A game whose lever has a hard limit
+// (a bubble never lifts 6, an Orbikit always outruns you) caps it itself with `capped(e)`: never past KIND_HELP.max, never below 0.
+export const NORMAL_LEVEL = Object.freeze({ base: 0, extra: 0 });
+
 export class KindHelp {
-  constructor(p = KIND_HELP) { this.p = p; } // (reads the numbers live, so a change of KIND_HELP is seen by every game)
-  ease(misses) {
+  constructor(p = KIND_HELP) { this.p = p; this.level = NORMAL_LEVEL; } // (reads the numbers live, so a change of KIND_HELP is seen by every game)
+  use(level) { this.level = level && Number.isFinite(level.base) ? level : NORMAL_LEVEL; }
+  missEase(misses) {
     const m = Math.max(0, Math.floor(Number(misses) || 0)), { after, step, max } = this.p;
     return m < after ? 0 : Math.min(max, step * (m - after + 1));
   }
-  on(misses) { return this.ease(misses) > 0; }
-  of(misses) { const e = this.ease(misses); return { misses: Math.max(0, Math.floor(Number(misses) || 0)), ease: e, on: e > 0, slow: 1 - e, more: 1 + e }; }
+  ease(misses, level = this.level) {
+    const { base = 0, extra = 0 } = level, e = this.missEase(misses);
+    return base === 0 && extra === 0 ? e : Math.max(-0.5, Math.min(this.p.max + extra, e + base));
+  }
+  on(misses) { return this.missEase(misses) > 0; }
+  of(misses, level = this.level) { const e = this.ease(misses, level); return { misses: Math.max(0, Math.floor(Number(misses) || 0)), ease: e, on: this.on(misses), slow: 1 - e, more: 1 + e }; }
 }
 export const KIND = new KindHelp();
 export const kindHelp = misses => KIND.of(misses);
+// The kind help of misses alone, the same on every level: for a game whose obvious shortcut sits right at the edge (Bumper Cars:
+// ramming; the Piñata Party: mashing under it), where any slower or faster setting lets the shortcut win.
+export const missHelp = misses => KIND.of(misses, NORMAL_LEVEL);
+// A lever with a hard limit: the ease it may take (0 .. KIND_HELP.max), whatever the level.
+export const capped = e => Math.max(0, Math.min(KIND_HELP.max, e));

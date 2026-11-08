@@ -17,7 +17,7 @@
 //    stomp); from the side, from below or onto its shoulder it only boings you away (owner 2026-10-30: "from the side = boing, from above
 //    = pop" is learnt by doing it, on the low first shield).
 // The kind help after misses comes only from kindhelp.js (bubbleHelp maps it onto each game's levers); a rematch's `hard` is separate.
-import { kindHelp } from './kindhelp.js';
+import { kindHelp, missHelp, capped } from './kindhelp.js';
 
 export const STEP = 1 / 120;
 // r radius; ahead how far in front of your feet (flat, the way you face) a new bubble appears (closer when something is in the way: near
@@ -58,9 +58,9 @@ export const HARD = { life: 0.9, drip: 1.25, current: 1.2, friction: 0.85, duckL
 //                                                bubble lasts x more
 //   chimney (the ride's bubble popped)           the sink x slow, the gaps x more wider, the bar x slow
 //   shields (a ride from the rim with no stomp)  the shields x more bigger, their sway x slow
-export function bubbleHelp(misses) {
-  const k = kindHelp(misses);
-  return { ...k, life: k.more, drip: k.slow, wind: k.slow, current: k.slow, gust: k.slow, friction: k.more, nest: k.more, duckLife: k.more, sink: k.slow, gap: k.more, bar: k.slow, shield: k.more, sway: k.slow };
+export function bubbleHelp(misses, { plain = false } = {}) { // plain: misses only, the same on every level (the rim's shields, difficulty.js)
+  const m = missHelp(misses), k = plain ? m : kindHelp(misses); // (the shields: m, misses only: a random hopper gets lucky on another level)
+  return { ...k, life: 1 + capped(k.ease) /* never lifts 6: rideUp(1 + max) < 6, whatever the level */, drip: k.slow, wind: k.slow, current: k.slow, gust: k.slow, friction: k.more, nest: k.more, duckLife: k.more, sink: k.slow, gap: k.more, bar: k.slow, shield: m.more, sway: m.slow };
 }
 const H = (help, key) => (typeof help === 'object' && help ? help[key] ?? 1 : bubbleHelp(help || 0)[key]);
 

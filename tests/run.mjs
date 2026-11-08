@@ -7,8 +7,11 @@
 // slow specs get more), so one hung spec can't stall the whole run.
 import fs from 'node:fs';
 import { serve, launch, Checks } from './helpers.mjs';
+import { setDifficulty } from '../src/difficulty.js';
+// PC_DIFFICULTY=easy|hard: the Node-side rules and bots run at that level (the bots' naive-fails / skilled-wins checks per level).
+if (process.env.PC_DIFFICULTY) console.log(`level: ${setDifficulty(process.env.PC_DIFFICULTY).label}`);
 
-const FAST = ['roster', 'seventh', 'four-types', 'bone-alien', 'icon', 'blocks', 'map', 'kindhelp', 'jump'];
+const FAST = ['roster', 'seventh', 'four-types', 'bone-alien', 'icon', 'blocks', 'map', 'kindhelp', 'difficulty', 'jump'];
 const LIMIT_MIN = { 'treasure-vault': 20, 'clock-tower': 20, 'hidden-hill': 15, 'firewall-maze': 20, 'big-map': 20, champion: 30, caves: 25, 'old-saves': 25, 'new-gyms': 25, fx: 25, moves: 25, gym: 25, squad: 20, pirate: 45 };
 
 const args = process.argv.slice(2);

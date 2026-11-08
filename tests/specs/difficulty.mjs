@@ -1,0 +1,119 @@
+// Owner 2026-11-08: Easy / Normal / Hard (src/difficulty.js). Node: the three Difficulty objects, Normal is bit for bit the old kind
+// help, Easy / Hard move every skill game through kindhelp.js at once, the hard limits hold on every level (a bubble never lifts 6,
+// an Orbikit always outruns a sprint, the pebbles' pull), a rematch's `hard` stacks, duels are always Normal, battle numbers.
+// Browser: the pause button cycles the level, it is saved and comes back after a reload, a trainer battle's levels and the catch chance
+// follow it, a duel's do not. DIFFICULTY_ONLY=node|browser
+import { DIFFICULTIES, NORMAL, Difficulty, difficultyOf, nextDifficulty, setDifficulty, battleLevel, DIFFICULTY } from '../../src/difficulty.js';
+import { KIND, KIND_HELP, kindHelp } from '../../src/kindhelp.js';
+import { rideUp, bubbleHelp, BubbleField } from '../../src/bubbles.js';
+import { gravityHelp, PAD_SCALE, PupRun } from '../../src/orbits.js';
+import { PUPS, BOXES } from '../../src/cubeland.js';
+import { bossSpeed, makeTrack } from '../../src/racetrack.js';
+import { joustPlan } from '../../src/joust.js';
+import { siegePlan } from '../../src/siege.js';
+import { pinataPlan } from '../../src/pinata.js';
+import { BumperGame } from '../../src/fairgames.js';
+import { openGame, newGame, pause, click, continueGame } from '../helpers.mjs';
+
+const SPRINT = 6.2; // player.js: a sprint on foot
+
+export default async function ({ browser, base, t }) {
+  const only = process.env.DIFFICULTY_ONLY;
+  const was = DIFFICULTY.current;
+  try {
+    if (!only || only === 'node') node(t);
+  } finally { setDifficulty(was); }
+  if (!only || only === 'browser') await inBrowser(browser, base, t);
+}
+
+function node(t) {
+  const [easy, normal, hard] = DIFFICULTIES;
+  t.ok(DIFFICULTIES.every(d => d instanceof Difficulty) && DIFFICULTIES.map(d => d.id).join() === 'easy,normal,hard' && NORMAL === normal, 'three Difficulty objects: Easy, Normal, Hard');
+  t.ok(difficultyOf('x') === normal && difficultyOf(undefined) === normal && difficultyOf('hard') === hard, 'junk or no level (old saves) = Normal');
+  t.ok(nextDifficulty(easy) === normal && nextDifficulty(normal) === hard && nextDifficulty(hard) === easy, 'the button cycles Easy -> Normal -> Hard -> Easy');
+  t.ok(DIFFICULTIES.every(d => d.label && d.line && d.line.length < 50), `short words for a child (${DIFFICULTIES.map(d => d.line).join(' / ')})`);
+
+  // Normal = the old kind help exactly
+  const M = Array.from({ length: 25 }, (_, m) => m);
+  const old = m => (m < KIND_HELP.after ? 0 : Math.min(KIND_HELP.max, KIND_HELP.step * (m - KIND_HELP.after + 1)));
+  setDifficulty('normal');
+  t.ok(M.every(m => kindHelp(m).ease === old(m)) && KIND.level.base === 0, 'Normal: the kind help is exactly as before');
+  const track = makeTrack(), rio = () => bossSpeed(50, 0, 0, track), shield = () => joustPlan(4, 2, 0).meet;
+  const n = { rio: rio(), shield: shield(), life: new BubbleField().life };
+
+  setDifficulty('easy');
+  t.ok(kindHelp(0).ease > 0 && !kindHelp(0).on && kindHelp(20).ease <= KIND_HELP.max + easy.skill.extra + 1e-12, `Easy: easier from the first try (${kindHelp(0).ease}), up to ${kindHelp(20).ease} after misses, and the "a bit slower now" words still only after misses`);
+  t.ok(rio() < n.rio && shield() > n.shield, `Easy: every game at once (Rio ${(rio() / n.rio).toFixed(2)} x, the Joust's meeting time ${(shield() / n.shield).toFixed(2)} x)`);
+  const e = { rio: rio(), shield: shield() };
+  setDifficulty('hard');
+  t.ok(kindHelp(0).ease < 0 && rio() > n.rio && shield() < n.shield, `Hard: every game a bit faster (Rio ${(rio() / n.rio).toFixed(2)} x)`);
+  t.ok(kindHelp(20).ease > kindHelp(0).ease && kindHelp(20).on, 'Hard: misses still help a little');
+  t.ok(e.rio < n.rio && n.rio < rio(), 'Easy < Normal < Hard');
+
+  // games whose obvious shortcut sits right at the edge keep Normal's numbers on every level (missHelp): Shield Up! (a spinning stick),
+  // the Piñata Party (mashing under it), Bumper Cars (ramming), the Bubble Well's rim (a random hopper)
+  const bump = () => { const g = new BumperGame(false); g.start(1); return [g.fleet.bots[3].speed, g.time]; };
+  const same = () => JSON.stringify([siegePlan(4, 2, 0), pinataPlan(4, 2, 0), bump(), bubbleHelp(0, { plain: true })]);
+  setDifficulty('normal'); const s0 = same(); setDifficulty('easy'); const s1 = same(); setDifficulty('hard'); const s2 = same();
+  t.ok(s0 === s1 && s0 === s2, 'Shield Up!, the Piñata Party, Bumper Cars and the Bubble Well rim are the same on every level');
+  // the hard limits, on every level and after any number of misses
+  for (const d of DIFFICULTIES) {
+    setDifficulty(d);
+    const lift = Math.max(...M.map(m => rideUp(bubbleHelp(m).life)));
+    const pup = Math.min(...PUPS.map(q => q.boost)) * Math.min(...M.map(m => gravityHelp(m).sprint));
+    const pad = Math.max(...M.map(m => Math.max(gravityHelp(m).pad, gravityHelp(m).lens)));
+    t.ok(lift < 6 && pup > SPRINT && pad <= KIND_HELP.max * PAD_SCALE + 1e-9 && pad >= 0,
+      `${d.name}: a bubble lifts at most ${lift.toFixed(2)} (< 6), an Orbikit runs ${pup.toFixed(2)} (> your sprint ${SPRINT}), pebbles pull at most ${pad.toFixed(2)} further`);
+    const q = PUPS[0], a = new PupRun(q.loop, BOXES[q.planet], { help: 0, hard: true }), b = new PupRun(q.loop, BOXES[q.planet], { help: 0 });
+    t.ok(a.boost > b.boost, `${d.name}: a rematch (you hold the star) is still harder on top`);
+  }
+
+  // battles
+  t.ok(battleLevel({ duel: { seed: 1 } }) === NORMAL && battleLevel({ duel: { coop: {} } }) === NORMAL, 'duels and co-op giants are always Normal');
+  setDifficulty('easy'); t.ok(battleLevel({ wild: {} }) === easy && battleLevel({ team: [] }) === easy, 'battles against the game use the level');
+  t.ok(normal.foeLevel(30) === 30 && normal.wildLevel(7) === 7 && normal.catchChance(0.4) === 0.4 && normal.battle.smart === 0.5, 'Normal battles: levels, catching and move picking as before');
+  t.ok(easy.foeLevel(30) < 30 && easy.wildLevel(7) < 7 && easy.catchChance(0.4) > 0.4 && easy.battle.smart < 0.5, `Easy battles: trainers ${easy.foeLevel(30)} for 30, catching ${easy.catchChance(0.4).toFixed(2)} for 0.40, best move ${easy.battle.smart * 100} % of turns`);
+  t.ok(hard.foeLevel(30) > 30 && hard.wildLevel(7) > 7 && hard.catchChance(0.4) < 0.4 && hard.battle.smart > 0.5, `Hard battles: trainers ${hard.foeLevel(30)} for 30, catching ${hard.catchChance(0.4).toFixed(2)}, best move ${hard.battle.smart * 100} %`);
+  t.ok(easy.foeLevel(2) >= 1 && hard.foeLevel(99, 100) <= 100 && easy.catchChance(0.05) >= 0.05 && hard.catchChance(0.95) <= 0.95, 'levels stay 1..100, catching 5..95 %');
+}
+
+async function inBrowser(browser, base, t) {
+  const page = await openGame(browser, base);
+  await newGame(page);
+  await pause(page);
+  const label = () => page.locator('#level-btn').textContent();
+  t.ok((await label()).includes('Normal') && await page.evaluate(() => window.pokecraft.difficulty.id) === 'normal', `a new game starts on Normal (${await label()})`);
+  await click(page, '#level-btn');
+  t.ok((await label()).includes('Hard'), `one tap: ${await label()}`);
+  await click(page, '#level-btn');
+  t.ok((await label()).includes('Easy'), `another tap: ${await label()}`);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokecraft-save-v2')).difficulty);
+  t.ok(saved === 'easy', `it is saved at once (${saved})`);
+
+  // a trainer battle and the catch chance follow the level
+  const battle = async () => page.evaluate(async () => {
+    const g = window.pokecraft, S = await import('/src/species.js');
+    g.party = [S.makeCreature('fluffin', 40)];
+    g.inBattle = true; document.body.classList.add('in-battle');
+    document.getElementById('pause').classList.add('hidden');
+    g.battle.start({ trainer: { name: 'Test', pos: g.player.pos.clone().setX(g.player.pos.x + 3) }, team: [['fluffin', 20]] });
+    await new Promise(r => setTimeout(r, 300));
+    const foe = g.battle.foes[0], lvl = foe.level, id = g.battle.level.id;
+    const catchP = g.battle.catchChance();
+    return { lvl, id, catchP };
+  });
+  const easy = await battle();
+  t.ok(easy.id === 'easy' && easy.lvl === 17, `Easy: a Lv 20 trainer creature comes out at Lv ${easy.lvl}`);
+  await page.reload();
+  await page.waitForFunction(() => window.pokecraft?.world);
+  await continueGame(page);
+  t.ok(await page.evaluate(() => window.pokecraft.difficulty.id) === 'easy', 'after a reload the save is still on Easy');
+  await pause(page);
+  t.ok((await label()).includes('Easy'), `and the button says so (${await label()})`);
+  await click(page, '#level-btn');
+  await click(page, '#level-btn');
+  const hard = await battle();
+  t.ok(hard.id === 'hard' && hard.lvl === 23 && hard.catchP < easy.catchP, `Hard: Lv ${hard.lvl}, catching ${hard.catchP.toFixed(2)} (Easy ${easy.catchP.toFixed(2)})`);
+  t.ok(!page.errors.length, `no page errors ${page.errors.slice(0, 2).join(' | ')}`);
+  await page.context().close();
+}
