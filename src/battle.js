@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {
   SPECIES, MOVES, TYPE_COLORS, effectiveness, statsFor, nameOf, gainXp, MAX_LEVEL,
-  xpForLevel, buildModel, tintModel, disposeModel, makeCreature, moveInfo, multiHits,
+  xpForLevel, buildModel, tintModel, rainbowAura, disposeModel, makeCreature, moveInfo, multiHits,
   hpPower, crewHit, setModelHealth, // T34
 } from './species.js';
 import { B, isSolid, mulberry32 } from './blocks.js';
@@ -204,7 +204,7 @@ export class Battle {
     const xpFrac = (c.xp - xpForLevel(c.level)) / (xpForLevel(c.level + 1) - xpForLevel(c.level));
     target.replaceChildren(...[
       el('div', { class: 'top' },
-        el('span', { class: 'nm' }, sp.name),
+        el('span', { class: 'nm' }, nameOf(c)), // your guardian shows the name you gave it
         el('span', {}, el('span', { class: 'type', style: `background:${TYPE_COLORS[sp.type]}` }, sp.type), ` Lv${c.level}`)),
       el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })),
       showNumbers && el('div', { class: 'hpnum' }, `${c.hp} / ${st.maxHp}`),
@@ -1145,11 +1145,11 @@ export class Battle {
     c.boost = 1.25;
     sound.play('powerup');
     this.game.fx?.status('power', this.spot('foe'));
-    for (let i = 0; i < 4; i++) {
-      tintModel(this.foeModel, 0xffd84a); await wait(90);
-      tintModel(this.foeModel, null); await wait(90);
+    for (const flash of [0xff4a4a, 0xffd84a, 0x4adc6a, 0x4aa8ff, 0xb46aff]) { // a quick rainbow of flashes
+      tintModel(this.foeModel, flash); await wait(80);
+      tintModel(this.foeModel, null); await wait(50);
     }
-    tintModel(this.foeModel, 0x806000);
+    rainbowAura(this.foeModel); // owner 2026-11-08: a real rainbow shimmer with sparkles (it was a plain yellow tint)
     await this.say(`${nameOf(c)} is glowing with rainbow light!`, 1600);
     await this.say('It powered up! Its attacks are stronger now!', 1600);
   }

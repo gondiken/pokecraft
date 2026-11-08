@@ -12,7 +12,9 @@ Long ago a **Wizard** made this world: the hills and forests, the deserts and sn
 underground. Then he made the **creatures**, hundreds of them, each one different. He never made the same creature
 twice.
 
-His first creature was the strongest of all: **Zenithar**, the rainbow guardian.
+The strongest creature of all, **Zenithar** the rainbow guardian, was not his, though. Long ago a young trainer called
+**Solenne** climbed his tower and beat him. He handed her his drawing board, and she drew Zenithar: one of a kind, its
+parts and colours all her own. That is why the Wizard trusted the two of them to guard the world.
 
 ## Why creatures battle
 
@@ -184,10 +186,13 @@ You design your own creature, unlike any other. It becomes the Swirl's guardian,
 can finally come out. That is your win, like becoming Champion was in chapter 1: you are now the **Wizard's ally**.
 That ends chapter 2.
 
-*How it plays (wave 19):* the Wizard's battle is the hardest in the game; when you win, the six designs on his drawing board are
-already in the colours **you** painted on the top floor. The one you pick hops off the board and joins your team, closes the crack,
+*How it plays (wave 19, owner 2026-11-08):* the Wizard's battle is the hardest in the game; when you win, his drawing board is a
+**part kit**, the same one Solenne used for Zenithar: pick a body, a head, eyes, legs, a tail, something on its back and an extra,
+each in its own colour (or Rainbow), and give it a name. It starts as a bare skeleton in the colours **you** painted on the top floor.
+Your guardian hops off the board and joins your team, closes the crack,
 and circles his tower for good. The Wizard walks out of his tower onto his island ("I'm out! The air is lovely."), you are his ally,
 and he says, a little worried: *"Something scribbly is still out there... I will need your help again."* That is chapter 3.
+Every time you beat him again in a rematch, he lets you give your guardian a new look.
 
 # Chapter 3: The Scribble
 

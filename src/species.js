@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { B } from './blocks.js';
 import { doodleInk } from './doodleink.js'; // owner 2026-11-01: Doodle creatures are inked everywhere (imports only three)
 import { paintColours, paintModel } from './custom.js'; // the Custom type (the Wizard's Tower): pure, no imports
+import { buildKit, kitModel, isKitDesign, cleanDesign } from './guardiankit.js'; // owner 2026-11-08: your guardian is built from the Wizard's part kit
 import { TRAITS, drawTraits, gainTraits } from './traits.js';
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
 
@@ -2809,34 +2810,41 @@ export const SPECIES = {
   // with its own body shape and a gold swirl badge (gear 'swirlbadge'). Never wild, never traded, never let go (`designed`). Their model colours
   // come from three paints (custom.js; `defaultPaint` until you paint your own: buildModel(species, paint)).
   brushtail: {
-    name: 'Brushtail', type: 'custom', legendary: true, designed: true, desc: 'A little fox whose big fluffy tail is a paintbrush. Its tip is always dipped in a fresh colour.',
+    name: 'Brushtail', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A little fox whose big fluffy tail is a paintbrush. Its tip is always dipped in a fresh colour.',
     base: { hp: 90, atk: 105, def: 85, spd: 120 }, baseXp: 200, catchRate: 0, defaultPaint: [1, 6, 2], learn: L('custom', 'pixie', [[40, 'swirlseal']]),
     model: designModel('brushfox', 0.95, [1, 6, 2]),
   },
   palettoad: {
-    name: 'Palettoad', type: 'custom', legendary: true, designed: true, desc: 'A round toad with a painter\'s palette on its back. Every spot on it is a drop of paint.',
+    name: 'Palettoad', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A round toad with a painter\'s palette on its back. Every spot on it is a drop of paint.',
     base: { hp: 120, atk: 90, def: 110, spd: 80 }, baseXp: 200, catchRate: 0, defaultPaint: [3, 0, 2], learn: L('custom', 'water', [[40, 'swirlseal']]),
     model: designModel('palettefrog', 0.95, [3, 0, 2]),
   },
   inkwing: {
-    name: 'Inkwing', type: 'custom', legendary: true, designed: true, desc: 'A bird whose feathers are quills dipped in ink. It writes in the sky when it flies.',
+    name: 'Inkwing', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A bird whose feathers are quills dipped in ink. It writes in the sky when it flies.',
     base: { hp: 85, atk: 110, def: 80, spd: 125 }, baseXp: 200, catchRate: 0, defaultPaint: [6, 7, 5], learn: L('custom', 'sky', [[40, 'swirlseal']]),
     model: designModel('quillbird', 0.95, [6, 7, 5]),
   },
   crayonix: {
-    name: 'Crayonix', type: 'custom', legendary: true, designed: true, desc: 'A little dragon whose back spikes are crayon tips. It can draw with its tail.',
+    name: 'Crayonix', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A little dragon whose back spikes are crayon tips. It can draw with its tail.',
     base: { hp: 95, atk: 120, def: 95, spd: 90 }, baseXp: 200, catchRate: 0, defaultPaint: [0, 2, 1], learn: L('custom', 'drake', [[40, 'swirlseal']]),
     model: designModel('crayondrake', 1, [0, 2, 1]),
   },
   framesaur: {
-    name: 'Framesaur', type: 'custom', legendary: true, designed: true, desc: 'A gentle dino with a picture frame on its back like a sail. The picture changes with its mood.',
+    name: 'Framesaur', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A gentle dino with a picture frame on its back like a sail. The picture changes with its mood.',
     base: { hp: 115, atk: 95, def: 125, spd: 65 }, baseXp: 200, catchRate: 0, defaultPaint: [4, 1, 2], learn: L('custom', 'rock', [[40, 'swirlseal']]),
     model: designModel('framesaur', 1, [4, 1, 2]),
   },
   blotbun: {
-    name: 'Blotbun', type: 'custom', legendary: true, designed: true, desc: 'A bunny made of one big blot of paint. Its drippy ears leave little puddles behind.',
+    name: 'Blotbun', type: 'custom', legendary: true, designed: true, retired: true, desc: 'A bunny made of one big blot of paint. Its drippy ears leave little puddles behind.',
     base: { hp: 105, atk: 100, def: 90, spd: 105 }, baseXp: 200, catchRate: 0, defaultPaint: [7, 8, 5], learn: L('custom', 'slime', [[40, 'swirlseal']]),
     model: designModel('blotbun', 0.95, [7, 8, 5]),
+  },
+  // Owner 2026-11-08: the six above are RETIRED (kept only so a save that already chose one still loads; never on the board or in the Book
+  // unless you own one). Your guardian is ONE species built from the Wizard's part kit (guardiankit.js): its look and name are in `c.paint`.
+  guardian: {
+    name: 'Guardian', type: 'custom', legendary: true, designed: true, kit: true, cleanLook: cleanDesign, desc: 'A one-of-a-kind guardian you drew yourself on the Wizard\'s drawing board.',
+    base: { hp: 100, atk: 100, def: 100, spd: 100 }, baseXp: 200, catchRate: 0, learn: L('custom', null, [[40, 'swirlseal']]),
+    model: { shape: 'kit', scale: 1.15, body: 0xaab4be, accent: 0xf0c828, belly: 0xe0e4ea, dark: 0x5c6268, extras: [] },
   },
   /* ==== end of Custom ==== */
 };
@@ -3120,7 +3128,7 @@ export function hpPower(c) {
 }
 export const crewHit = (c, mv) => (SPECIES[c.species]?.weakensWithHp && mv.fx?.kind === 'multi' ? CREW.multi : 1);
 
-export const nameOf = c => SPECIES[c.species].name;
+export const nameOf = c => (SPECIES[c.species].kit && typeof c.paint?.n === 'string' && c.paint.n ? c.paint.n : SPECIES[c.species].name); // your guardian has the name you gave it
 
 // The moves a wild or trainer creature gets by level: the last 4 learned, big moves left out, a damaging move first.
 export function autoMoves(species, level) {
@@ -3161,7 +3169,8 @@ export function makeCreature(species, level, knownMoves) {
   c.learned = keep.length ? [...c.moves] : [...new Set(moves)]; // moves already offered (see gainXp)
   c.hp = statsFor(c).maxHp;
   c.traits = drawTraits(c); // T26: drawn once from the uid, then saved
-  if (sp.designed) c.paint = [...sp.defaultPaint]; // the Custom guardians: three paints (custom.js); the Wizard's drawing board sets yours
+  if (sp.kit) c.paint = cleanDesign(null); // owner 2026-11-08: the part kit's bare start; the drawing board sets yours
+  else if (sp.designed) c.paint = [...sp.defaultPaint]; // the Custom guardians: three paints (custom.js); the Wizard's drawing board sets yours
   return c;
 }
 
@@ -3627,12 +3636,12 @@ function buildBug(root, m, parts) {
 // `paint` (optional, [body, accent, belly]) only means something to a `designed` species (the Custom guardians): its colours replace the model's.
 export function buildModel(species, paint) {
   const sp = SPECIES[species];
-  const m = sp.designed ? paintModel(sp.model, paint) : sp.model;
+  const m = sp.kit ? kitModel(isKitDesign(paint) ? paint : null) : sp.designed ? paintModel(sp.model, paint) : sp.model;
   const group = new THREE.Group();
   const root = new THREE.Group();
   group.add(root);
   const parts = { root };
-  ({ quad: buildQuad, blob: buildBlob, biped: buildBiped, bird: buildBird, serpent: buildSerpent, bug: buildBug, ...SHAPES })[m.shape](root, m, parts);
+  ({ quad: buildQuad, blob: buildBlob, biped: buildBiped, bird: buildBird, serpent: buildSerpent, bug: buildBug, kit: buildKit, ...SHAPES })[m.shape](root, m, parts);
   if (m.extras.includes('rainbow')) {
     // Each block gets its own colour from the rainbow; animateModel makes the colours flow.
     parts.rainbow = [];
@@ -3761,10 +3770,57 @@ export function animateModel(group, t, moving) {
   for (const b of p.bend || []) b.g.position.x = Math.sin(t * b.speed - b.i * 0.9) * b.amp * (b.i / 4);
   /* ==== end of Mirror ==== */
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
+  if (p.aura) animateAura(group, p.aura, t);
+}
+
+// Owner 2026-11-08: a powered-up boss creature (the Champion's, a Boss's, the Wizard's last one) shimmers with rainbow light: a rainbow
+// wave runs over its body (its emissive glow, so its own colours still show) and twinkling rainbow sparkles spiral up round it.
+// Drawing only (no battle numbers); animateModel moves it; a hit flash (tintModel) shows over it.
+const AURA = { sparks: 16, rise: 0.55, spin: 1.7, wave: 0.55, glow: 0.24, pulse: 0.1, size: 0.16 };
+export function rainbowAura(group) {
+  const p = group?.userData?.parts;
+  if (!p?.root || p.aura) return false;
+  const root = p.root;
+  group.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(root).applyMatrix4(root.matrixWorld.clone().invert());
+  const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
+  const mats = [];
+  root.traverse(o => {
+    if (!o.isMesh || !o.material?.emissive || o.userData.eye) return;
+    const y = new THREE.Vector3(); o.getWorldPosition(y); root.worldToLocal(y);
+    mats.push({ mat: o.material, offset: (y.y - bb.min.y) / Math.max(0.2, size.y) * 0.8 + (y.x - c.x) * 0.3 });
+  });
+  const sparks = [];
+  for (let k = 0; k < AURA.sparks; k++) {
+    const m = new THREE.Mesh(sparkleGeometry(AURA.size * (k % 3 ? 1 : 1.5)), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, depthWrite: false }));
+    m.userData.aura = true;
+    root.add(m);
+    sparks.push({ m, phase: (k * 0.618) % 1, a0: k * 2.4, speed: AURA.rise * (0.8 + (k % 4) * 0.12) });
+  }
+  p.aura = { mats, sparks, c, size, r: Math.max(size.x, size.z) / 2 + 0.2, y0: bb.min.y, h: size.y + 0.4 };
+  return true;
+}
+function animateAura(group, a, t) {
+  const tinted = group.userData.tinted;
+  for (const q of a.mats) {
+    if (tinted) continue;
+    const h = (((q.offset - t * AURA.wave) % 1) + 1) % 1;
+    q.mat.emissive.setHSL(h, 1, AURA.glow + AURA.pulse * Math.sin(t * 5 + q.offset * 6));
+  }
+  for (const s of a.sparks) {
+    const u = (t * s.speed + s.phase) % 1, ang = s.a0 + t * AURA.spin + u * 2.5, r = a.r * (1.05 - 0.35 * u);
+    s.m.position.set(a.c.x + Math.cos(ang) * r, a.y0 + u * a.h, a.c.z + Math.sin(ang) * r);
+    const k = Math.sin(u * Math.PI);
+    s.m.scale.setScalar(0.3 + k * (0.85 + 0.35 * Math.sin(t * 9 + s.a0)));
+    s.m.rotation.set(t * 2 + s.a0, t * 3, 0);
+    s.m.material.color.setHSL((s.phase + t * 0.4) % 1, 1, 0.68);
+    s.m.material.opacity = 0.35 + 0.65 * k;
+  }
 }
 
 // Tint a model for hit flashes (pass null to restore).
 export function tintModel(group, color) {
+  group.userData.tinted = color != null; // a powered-up creature's rainbow shimmer waits while a flash shows
   group.traverse(o => {
     if (!o.isMesh || !o.material.emissive) return; // unlit parts (the Treasure sparkle glints) have no emissive: leave them as they are
     if (o.userData.baseEmissive === undefined) o.userData.baseEmissive = o.material.emissive.getHex();

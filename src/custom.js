@@ -31,10 +31,11 @@ export function paintColours(paint) {
 // `model` with the paint's four colours (a new object; the species' own model is never changed).
 export const paintModel = (model, paint) => (paint ? { ...model, ...paintColours(paint) } : model);
 
-// The cleaned triple for a designed species (any bad entry -> that design's default); undefined for every other species.
+// The cleaned triple for a designed species (or, for the part-kit guardian, its clean design object) (any bad entry -> that design's default); undefined for every other species.
 export function cleanPaint(list, species, SPECIES) {
   const sp = SPECIES?.[species];
   if (!sp?.designed) return undefined;
+  if (sp.cleanLook) return sp.cleanLook(list); // owner 2026-11-08: your guardian's part-kit design (guardiankit.js cleanDesign)
   const base = sp.defaultPaint;
   return Array.from({ length: PAINT_SLOTS }, (_, i) => (Array.isArray(list) && isIndex(list[i]) ? list[i] : base[i]));
 }

@@ -677,11 +677,36 @@ body.touch #easel.big { width: min(60vh, 320px); height: min(60vh, 320px); top: 
 /* Wave 19 stage C: the Wizard's drawing board (#drawboard, studio.js) and the title line in the pause screen */
 #rank-line { margin: -6px 0 8px; font-size: 20px; color: #ffd27a; text-align: center; }
 #rank-line.hidden { display: none; }
-#drawboard .db-sub { font-size: 22px; margin: 0 0 10px; }
-#drawboard .db-grid { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; }
-#drawboard .db-card { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 200px; padding: 8px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); color: inherit; cursor: pointer; text-align: center; font-size: 18px; }
-#drawboard .db-card:hover, #drawboard .db-card:focus-visible { border-color: #ffd23a; background: rgba(255,210,58,.12); }
-#drawboard .db-card img { max-width: 100%; height: auto; }
-#drawboard .db-card small { font-size: 14px; color: var(--muted); }
-#drawboard .db-types { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-@media (max-width: 760px) { #drawboard .db-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+#drawboard .panel { max-width: 980px; }
+#drawboard .db-sub { font-size: 20px; margin: 0 0 10px; }
+/* Owner 2026-11-08: the part kit: a turning picture + name on the left, part tabs, choices and colours on the right */
+#drawboard .db-kit { display: flex; gap: 14px; align-items: flex-start; }
+#drawboard .db-left { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+#db-preview { width: 260px; height: 260px; background: radial-gradient(circle at 50% 60%, rgba(255,240,200,.22), rgba(255,255,255,.04) 70%); border: 3px solid rgba(255,255,255,.2); border-radius: 12px; }
+#db-preview canvas { width: 100% !important; height: 100% !important; display: block; }
+#drawboard .db-namerow { display: flex; align-items: center; gap: 6px; font-size: 18px; }
+#db-name { width: 150px; font: inherit; font-size: 20px; padding: 6px 8px; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; }
+#db-dice { font-size: 22px; min-width: 44px; min-height: 44px; }
+#drawboard .db-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+#db-tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+#drawboard .db-tab { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; min-height: 64px; font-size: 15px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.18); color: inherit; border-radius: 10px; cursor: pointer; }
+#drawboard .db-tab .db-ico { font-size: 22px; }
+#drawboard .db-tab small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#drawboard .db-tab.on { border-color: #ffd23a; background: rgba(255,210,58,.18); }
+#db-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+#drawboard .db-part { min-height: 46px; min-width: 96px; padding: 6px 10px; font-size: 17px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.2); color: inherit; border-radius: 10px; cursor: pointer; }
+#drawboard .db-part.on { border-color: #ffd23a; background: rgba(255,210,58,.2); }
+#db-colours { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#drawboard .db-clabel { width: 100%; font-size: 16px; color: var(--muted); }
+#drawboard .db-swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); cursor: pointer; padding: 0; }
+#drawboard .db-swatch.rainbow { background: conic-gradient(#e13c3c, #f0c828, #50aa46, #3cc8b4, #3c6edc, #8c46b4, #e13c3c); }
+#drawboard .db-swatch.on { border-color: #fff; box-shadow: 0 0 0 3px #ffd23a; }
+#drawboard .db-swatch:disabled { opacity: .3; cursor: default; }
+#drawboard .db-foot { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+#db-done { font-size: 22px; padding: 10px 26px; }
+#db-rematch { font-size: 18px; }
+@media (max-width: 760px) {
+  #drawboard .db-kit { flex-direction: column; align-items: stretch; }
+  #db-preview { width: 200px; height: 200px; }
+  #db-tabs { grid-template-columns: repeat(4, 1fr); }
+}

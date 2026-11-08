@@ -19,7 +19,7 @@ const portraitCache = new Map();
 
 // Renders a creature model to a small image (cached per species).
 export function portrait(species, w = 140, h = 120, silhouette = false, paint = null) {
-  const key = `${species}:${w}x${h}${silhouette ? ':s' : ''}${paint ? `:p${paint.join('.')}` : ''}`; // a designed guardian's paint is part of its picture
+  const key = `${species}:${w}x${h}${silhouette ? ':s' : ''}${paint ? `:p${Array.isArray(paint) ? paint.join('.') : JSON.stringify(paint)}` : ''}`; // a designed guardian's paint (or part-kit design) is part of its picture
   if (portraitCache.has(key)) return portraitCache.get(key);
   if (!portraitRenderer) {
     portraitRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -393,7 +393,7 @@ export class UI {
         el('button', { class: 'wlink pic', 'data-species': c.species, title: `${sp.name} in the Creature Book`, onclick: () => this.openBook({ species: c.species }) },
           el('img', { src: portrait(c.species, 70, 60, false, c.paint), width: 70, height: 60, alt: sp.name })),
         el('div', { style: 'flex:1;margin-left:8px' },
-          el('button', { class: 'wlink nm', 'data-species': c.species, onclick: () => this.openBook({ species: c.species }) }, sp.name),
+          el('button', { class: 'wlink nm', 'data-species': c.species, onclick: () => this.openBook({ species: c.species }) }, nameOf(c)),
           el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`),
           (c.traits || []).length > 0 && el('div', { class: 'traits' }, ...c.traits.filter(id => TRAITS[id]).map(id =>
             el('span', { class: 'trait', 'data-trait': id }, TRAITS[id].text))))),
@@ -460,7 +460,7 @@ export class UI {
 
   // "Let go" on a box card: ask first, in big friendly words. The Creature Book keeps it as caught.
   askLetGo(c) {
-    const name = SPECIES[c.species].name;
+    const name = nameOf(c);
     document.getElementById('box-confirm-text').replaceChildren(
       el('img', { src: portrait(c.species, 100, 86, false, c.paint), width: 100, height: 86, alt: '' }),
       `Say goodbye to ${name} (Lv ${c.level})? It goes back to the wild.`);

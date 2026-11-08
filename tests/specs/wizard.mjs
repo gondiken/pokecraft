@@ -17,8 +17,11 @@
 //   closed  without ?preview: today's door and words, no realm, a save made inside loads in the main world
 //   pair    two browsers: the guest follows into the tower, paints its own canvas, the Wizard's star words for a guest without stars
 //   battle  (stage C) the gate words, his team (82-88) in a boss battle, a LOST battle is fine, a real win through the game's loop
-//   design  (stage C) the drawing board after the win: six cards in YOUR painted colours, Not now, a choice -> the guardian joins the team, celebrate, title
-//   ally    (stage C) reload keeps it all (painted floor 5 too), a missing guardian is drawn again, a rematch is +5 levels, the Wizard and the guardian on the
+//   kit     (owner 2026-11-08) the part kit: every part and colour builds and stands on the ground, wings fly, rainbow flows, Zenithar's own parts,
+//           cleanDesign, names; the rainbow shimmer of a powered-up boss creature
+//   design  (stage C, owner 2026-11-08) the part-kit drawing board after the win: Body tab first, the bare skeleton, taps set parts / colours, a typed
+//           name, Done asks, Not now keeps the drawing, a choice -> your named guardian (just Custom) joins the team, celebrate, title
+//   ally    (stage C) reload keeps it all (painted floor 5 too), a missing guardian is drawn again, a rematch is +5 levels and earns ONE new look, the Wizard and the guardian on the
 //           Swirl island, old / junk saves
 //   shots   screenshots (tests/screenshots/w19-*.png; stage C adds battle, board, celebrate and island)
 import path from 'node:path';
@@ -41,6 +44,74 @@ async function intoSwirl(page) {
 }
 
 export default async function ({ browser, base, t }) {
+  if (want('kit')) {
+    const page = await openGame(browser, base);
+    const k = await page.evaluate(async () => {
+      const K = await import('/src/guardiankit.js'), S = await import('/src/species.js'), THREE = await import('three');
+      const out = { problems: [], built: 0, sizes: [] };
+      const bad = m => out.problems.push(m);
+      const check = (d, what) => {
+        const g = S.buildModel('guardian', d);
+        const p = g.userData.parts;
+        g.updateMatrixWorld(true);
+        const bb = new THREE.Box3().setFromObject(g), size = bb.getSize(new THREE.Vector3());
+        if (Math.abs(bb.min.y) > 0.02) bad(`${what}: stands at ${bb.min.y.toFixed(3)}`);
+        if (size.y < 0.4 || size.y > 2.6 || size.x > 2.6 || size.z > 2.6) bad(`${what}: size ${size.toArray().map(v => v.toFixed(2))}`);
+        for (let i = 0; i < 40; i++) S.animateModel(g, i * 0.13, i % 2 === 0);
+        out.built++;
+        S.disposeModel(g);
+        return p;
+      };
+      K.SLOTS.forEach((slot, si) => K.KIT[slot].forEach((part, i) => {
+        for (const ci of [0, 6, K.RAINBOW]) {
+          const d = { n: 'Test', p: [...K.BARE.p], c: [...K.BARE.c] }; d.p[si] = i; d.c[si] = ci;
+          const p = check(d, `${slot} ${part.name} colour ${ci}`);
+          if (slot === 'back' && part.fly && !(p.hover && p.wings?.length)) bad(`${part.name}: should fly and flap`);
+          if (slot === 'legs' && part.len && !part.flat && !part.under && !(p.legs?.length >= 2)) bad(`${part.name}: legs should walk`);
+          if (ci === K.RAINBOW && part.build && !(p.rainbow?.length)) bad(`${slot} ${part.name}: rainbow does not flow`);
+          if (slot === 'tail' && part.build && !p.tail) bad(`${part.name}: no wagging tail`);
+        }
+      }));
+      // every body with every legs, head and back (the attach points)
+      for (let b = 0; b < K.KIT.body.length; b++) for (let l = 0; l < K.KIT.legs.length; l++) for (const [h, k2] of [[0, 0], [7, 6], [4, 3]]) check({ n: 'x', p: [b, h, 0, l, 3, k2, 6], c: [1, 2, 3, 4, 5, 6, 7] }, `body ${b} legs ${l} head ${h} back ${k2}`);
+      // different parts look different (no two options of a slot build the same model)
+      const sig = d => { const g = S.buildModel('guardian', d); g.updateMatrixWorld(true); let n = 0, sum = 0; g.traverse(o => { if (o.isMesh) { n++; for (const v of o.matrixWorld.elements) sum += v; } }); S.disposeModel(g); return `${n}:${sum.toFixed(4)}`; };
+      K.SLOTS.forEach((slot, si) => { const seen = new Set(K.KIT[slot].map((_, i) => { const d = { n: 'x', p: [...K.BARE.p], c: [...K.BARE.c] }; d.p[si] = i; return sig(d); })); if (seen.size !== K.KIT[slot].length) bad(`${slot}: two options look the same`); });
+      out.counts = K.SLOTS.map(s => K.KIT[s].length);
+      // Zenithar's own parts: the Grand body, Crowned head, Grand wings, Star tail and a Halo
+      const z = K.cleanDesign(K.ZENITHAR), zp = check(z, 'Zenithar');
+      out.zen = { names: K.SLOTS.map((s, i) => K.partName(s, z.p[i])), fly: K.flies(z), halo: !!zp.spin?.length, tip: !!zp.tip, wings: zp.wings?.length };
+      // clean / names
+      const c1 = K.cleanDesign({ n: '  Hi <there>!! ', p: [1, 99, -1, 'x', 2], c: [12, 13] });
+      out.clean = c1;
+      out.auto = K.cleanDesign({ p: [0, 1, 0, 1, 0, 1, 0], c: [] }).n;
+      out.rnd = [0, 1, 2, 3, 4].map(K.randomName);
+      out.nameOf = S.nameOf({ species: 'guardian', paint: { n: 'Zippy' } }) + '/' + S.nameOf({ species: 'guardian' });
+      const sp = S.SPECIES.guardian;
+      out.sp = { type: sp.type, total: sp.base.hp + sp.base.atk + sp.base.def + sp.base.spd, legendary: sp.legendary, catch: sp.catchRate, moves: sp.learn.map(m => m[1]).join(), retired: Object.keys(S.SPECIES).filter(id => S.SPECIES[id].retired).length };
+      const mk = S.makeCreature('guardian', 50); out.made = mk.paint;
+      // the rainbow shimmer (owner 2026-11-08): a powered-up creature
+      const g = S.buildModel('zenithar'); g.updateMatrixWorld(true);
+      out.aura = S.rainbowAura(g); out.aura2 = S.rainbowAura(g);
+      const hues = new Set(); let sparks = 0, mat = null;
+      g.traverse(o => { if (o.userData.aura) sparks++; else if (o.isMesh && o.material.emissive && !mat && !o.userData.eye) mat = o; });
+      for (let i = 0; i < 12; i++) { S.animateModel(g, i * 0.4, false); hues.add(mat.material.emissive.getHex()); }
+      S.tintModel(g, 0xff2222); S.animateModel(g, 9, false); out.flash = mat.material.emissive.getHex() === 0xff2222; S.tintModel(g, null);
+      out.sparks = sparks; out.hues = hues.size;
+      return out;
+    });
+    t.ok(!k.problems.length, `every part with every colour builds, stands on y 0, animates; wings fly; rainbow flows (${k.built} models) ${k.problems.slice(0, 6).join('; ')}`);
+    t.ok(k.counts.length === 7 && k.counts.every(n => n >= 5 && n <= 8), `seven slots with 5-8 options each (${k.counts})`);
+    t.ok(k.zen.names.join() === 'Grand,Crowned,Big,Paws,Star,Grand wings,Halo' && k.zen.fly && k.zen.halo && k.zen.tip && k.zen.wings === 4, `Zenithar can be drawn from the kit (${k.zen.names})`);
+    t.ok(k.clean.n === 'Hi there' && k.clean.p.join() === '1,0,0,1,2,0,0' && k.clean.c.join() === '12,10,11,10,10,10,2', `junk is cleaned (${JSON.stringify(k.clean)})`);
+    t.ok(k.auto === 'Foxwing' && k.rnd.every(n => n.length >= 3 && n.length <= 12) && new Set(k.rnd).size >= 4, `a name from the parts (${k.auto}) and silly ones (${k.rnd})`);
+    t.ok(k.nameOf === 'Zippy/Guardian', `nameOf uses your guardian's name (${k.nameOf})`);
+    t.ok(k.sp.type === 'custom' && k.sp.total === 400 && k.sp.legendary && k.sp.catch === 0 && k.sp.moves.includes('swirlseal') && k.sp.retired === 6, `the guardian species: Custom only, 400 total, the signature move; the six old designs retired (${JSON.stringify(k.sp)})`);
+    t.ok(k.made && Array.isArray(k.made.p) && k.made.p.length === 7, 'a new guardian creature starts from the bare skeleton');
+    t.ok(k.aura && !k.aura2 && k.sparks === 16 && k.hues >= 8 && k.flash, `the rainbow shimmer: 16 sparkles, the body's glow runs through ${k.hues} colours, a hit flash still shows`);
+    t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
+    await page.context().close();
+  }
   if (want('data') || want('chart') || want('paint')) {
     const page = await openGame(browser, base);
     if (want('data')) {
@@ -130,7 +201,7 @@ export default async function ({ browser, base, t }) {
         if (C.PAINTS.length !== 12 || new Set(C.PAINTS.map(p => p.hex)).size !== 12 || new Set(C.PAINTS.map(p => p.wool)).size !== 12 || C.WASH !== -1) bad('paints list');
         return out;
       }, DESIGNS);
-      t.ok(a.mine === [...DESIGNS].sort().join(), `six Custom creatures (${a.mine})`);
+      t.ok(a.mine === [...DESIGNS, 'guardian'].sort().join(), `the six retired designs and the part-kit guardian (${a.mine})`);
       t.ok(a.shapes === 6, `six own body shapes (${a.shapes})`);
       t.ok(!a.problems.length, `type, designs, moves, fx, sounds, wool 137 and the paints are all in place ${a.problems.join('; ')}`);
       t.ok(a.big === 'bigmural,true,true,custom;paintshield,true,true,custom;finaltouch,true,true,custom', `the three big moves (${a.big})`);
@@ -323,7 +394,7 @@ export default async function ({ browser, base, t }) {
     await continueGame(page);
     const again = await page.evaluate(() => [...window.pokecraft.party, ...window.pokecraft.box].map(c => [c.species, c.paint]));
     t.ok(JSON.stringify(again) === JSON.stringify(r.all), 'reloading changes nothing');
-    // duels: VERSION 13; a game of version 12 is refused kindly; a team's paint is cleaned
+    // duels: VERSION 14 (owner 2026-11-08: a guardian's part-kit design); a game of version 12 is refused kindly; a team's paint is cleaned
     const d = await page.evaluate(async () => {
       const g = window.pokecraft, D = await import('/src/duel.js'), sent = [];
       g.mp.sendDuel = (to, m) => sent.push(m);
@@ -334,7 +405,7 @@ export default async function ({ browser, base, t }) {
       const team = g.duels.incoming?.team.map(c => c.paint);
       return { version: D.VERSION, refused, team };
     });
-    t.ok(d.version === 13, `duel VERSION is ${d.version}`);
+    t.ok(d.version === 14, `duel VERSION is ${d.version}`);
     t.ok(d.refused, 'a duel ask from VERSION 12 is refused kindly (no, old)');
     t.ok(JSON.stringify(d.team) === JSON.stringify([[1, 2, 3], undefined, undefined]), `a team's paint arrives as at most three numbers (${JSON.stringify(d.team)})`);
     t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
@@ -762,49 +833,61 @@ export default async function ({ browser, base, t }) {
     t.ok(won.won && !won.ally && won.saved?.won === true && won.saved.ally === false, `the first win is kept in the save: ${JSON.stringify(won.saved)} ${won.party} ${won.toasts.slice(-4)}`);
     t.ok(won.toasts.some(m => /strong enough/.test(m)), 'he says "What a team! You are strong enough."');
 
-    /* ---- design: the board ---- */
+    /* ---- design: the part kit (owner 2026-11-08) ---- */
     if (want('design') || want('ally')) {
       await waitFor(page, () => window.pokecraft.ui.boardOpen, null, 60000);
-      const board = await page.evaluate(async painted => {
-        const UI = await import('/src/ui.js'), S = await import('/src/species.js');
-        const cards = [...document.querySelectorAll('#drawboard .db-card')];
-        const out = { n: cards.length, ids: cards.map(c => c.dataset.design), same: [], differs: [], chips: cards.map(c => c.querySelectorAll('.type').length), panel: window.pokecraft.ui.panelOpen };
-        for (const c of cards) {
-          const id = c.dataset.design, src = c.querySelector('img').src;
-          out.same.push(src === UI.portrait(id, 150, 128, false, painted));
-          out.differs.push(src !== UI.portrait(id, 150, 128, false, S.SPECIES[id].defaultPaint));
-        }
-        out.hud = !document.getElementById('drawboard').classList.contains('hidden');
-        return out;
-      }, painted);
-      t.ok(board.hud && board.panel && board.n === 6 && board.ids.join() === DESIGNS.join(), `after the battle the drawing board opens with the six designs (${board.ids})`);
-      t.ok(board.same.every(Boolean) && board.differs.every(Boolean), 'every card shows the design in YOUR painted colours (not its default ones)');
-      t.ok(board.chips.every(n => n === 2), 'two type chips on every card');
-      if (want('design')) { await page.waitForTimeout(800); await shot(page, 'w19-board.png'); }
-      // a card asks first; "Not now" leaves the board open
-      await page.evaluate(() => document.querySelector('#drawboard .db-card[data-design="brushtail"]').click());
+      const board = await page.evaluate(async () => {
+        const K = await import('/src/guardiankit.js'), g = window.pokecraft;
+        return { tabs: [...document.querySelectorAll('#db-tabs .db-tab')].map(b => b.dataset.slot), on: document.querySelector('#db-tabs .db-tab.on')?.dataset.slot,
+          parts: document.querySelectorAll('#db-parts .db-part').length, want: K.KIT.body.length, swatches: document.querySelectorAll('#db-colours .db-swatch').length,
+          canvas: !!document.querySelector('#db-preview canvas'), draft: g.studio.draft, bare: K.BARE, cards: document.querySelectorAll('#drawboard .db-card').length, panel: g.ui.panelOpen, name: !!document.getElementById('db-name') };
+      });
+      t.ok(board.panel && board.tabs.join() === 'body,head,eyes,legs,tail,back,extra' && board.on === 'body', `after the battle the drawing board opens on the Body tab (${board.tabs})`);
+      t.ok(board.parts === board.want && board.swatches === 13 && board.canvas && board.name && board.cards === 0, `the body's ${board.parts} choices, 13 colours, a turning picture and a name box; no old design cards`);
+      t.ok(JSON.stringify(board.draft.p) === JSON.stringify(board.bare.p) && board.draft.c.join() === '4,4,9,10,9,9,9', `it starts from the bare skeleton in the colours painted on floor 5 (${board.draft.c})`);
+      if (want('design')) { await page.waitForTimeout(1200); await shot(page, 'w19-board.png'); }
+      // a child picks parts and colours by tapping, and types a name
+      const tap = sel => page.evaluate(sel => document.querySelector(sel).click(), sel);
+      const pick = async (slot, part, colour) => { await tap(`#db-tabs .db-tab[data-slot="${slot}"]`); if (part != null) await tap(`#db-parts .db-part[data-part="${part}"]`); if (colour != null) await tap(`#db-colours .db-swatch[data-colour="${colour}"]`); };
+      const plan = { body: [6, 4], head: [1, 1], eyes: [2, 6], legs: [3, 4], tail: [6, 12], back: [2, 7], extra: [3, 2] };
+      for (const [slot, [part, colour]] of Object.entries(plan)) await pick(slot, part, colour);
+      await page.fill('#db-name', 'Sparky');
+      const drew = await page.evaluate(() => ({ d: window.pokecraft.studio.draft, on: document.querySelector('#db-tabs .db-tab.on')?.dataset.slot, small: document.querySelector('#db-tabs .db-tab[data-slot="body"] small').textContent }));
+      t.ok(drew.d.p.join() === '6,1,2,3,6,2,3' && drew.d.c.join() === '4,1,6,4,12,7,2' && drew.d.n === 'Sparky' && drew.small === 'Grand', `taps set each part and its own colour, the name box the name (${JSON.stringify(drew.d)})`);
+      if (want('design')) { await page.waitForTimeout(1200); await shot(page, 'w19-board-drawn.png'); }
+      // Done asks first; "Not now" leaves the board open with the drawing kept
+      await tap('#db-done');
       const ask1 = await page.evaluate(() => ({ asking: window.pokecraft.ui.asking, text: document.getElementById('ask-text').textContent }));
-      t.ok(ask1.asking && /Make Brushtail your guardian\?/.test(ask1.text), `a tap on a card asks: "${ask1.text}"`);
+      t.ok(ask1.asking && /Make Sparky your guardian\?/.test(ask1.text), `Done asks: "${ask1.text}"`);
       await page.evaluate(() => window.pokecraft.ui.askNo());
       const stay = await page.evaluate(() => ({ ally: window.pokecraft.studio.ally, board: window.pokecraft.ui.boardOpen }));
       t.ok(!stay.ally && stay.board, 'Not now: still no guardian, the board stays open');
-      await page.evaluate(() => { window.__toasts.length = 0; window.__cubes = window.pokecraft.cubes; document.querySelector('#drawboard .db-card[data-design="brushtail"]').click(); });
+      // closing the board keeps the drawing; talking to him opens it again
+      await page.evaluate(() => window.pokecraft.closeBoard());
+      await stand();
+      await talk();
+      const again = await page.evaluate(() => ({ board: window.pokecraft.ui.boardOpen, d: window.pokecraft.studio.draft }));
+      t.ok(again.board && again.d.n === 'Sparky' && again.d.p.join() === '6,1,2,3,6,2,3', 'closed with Not now: talking to him opens the board again, the drawing kept');
+      await page.evaluate(() => { window.__toasts.length = 0; window.__cubes = window.pokecraft.cubes; document.getElementById('db-done').click(); });
       await page.waitForTimeout(500);
       await page.evaluate(() => document.getElementById('ask-yes').click());
       await waitFor(page, () => window.pokecraft.studio.ally, null, 30000);
       const done = await page.evaluate(async () => {
-        const g = window.pokecraft, C = await import('/src/custom.js'), c = g.party.find(q => q.species === 'brushtail');
-        return { ally: g.studio.ally, design: g.studio.design, c: c && { level: c.level, paint: c.paint, hp: c.hp > 0 }, expect: C.guardianLevel(g.party.filter(q => q !== c)), caught: g.book.caught.has('brushtail'), cubes: g.cubes - window.__cubes,
-          celebrate: document.getElementById('celebrate')?.textContent ?? '', boardOpen: g.ui.boardOpen, toasts: window.__toasts.slice(), saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')) };
+        const g = window.pokecraft, C = await import('/src/custom.js'), S = await import('/src/species.js'), c = g.party.find(q => q.species === 'guardian');
+        return { ally: g.studio.ally, design: g.studio.design, look: g.studio.look, c: c && { level: c.level, paint: c.paint, hp: c.hp > 0, name: S.nameOf(c) }, expect: C.guardianLevel(g.party.filter(q => q !== c)), caught: g.book.caught.has('guardian'), cubes: g.cubes - window.__cubes,
+          celebrate: document.getElementById('celebrate')?.textContent ?? '', boardOpen: g.ui.boardOpen, toasts: window.__toasts.slice(), saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')), type: S.SPECIES.guardian.type };
       });
-      t.ok(done.ally && done.design === 'brushtail' && done.c && done.c.paint.join() === painted.join() && done.c.level === done.expect && done.c.hp, `the guardian joined the team in the painted colours at level ${done.c?.level} (best - 5, at least 50)`);
+      t.ok(done.ally && done.design === 'guardian' && done.c && done.c.name === 'Sparky' && done.c.paint.p.join() === '6,1,2,3,6,2,3' && done.c.paint.c.join() === '4,1,6,4,12,7,2' && done.c.level === done.expect && done.c.hp, `your guardian joined the team as you drew it, named ${done.c?.name}, level ${done.c?.level}`);
+      t.ok(done.type === 'custom', 'it is just Custom (no second type)');
       t.ok(done.caught && done.cubes === 20 && !done.boardOpen, `Book page filled, +20 Capture Cubes once, the board is closed (+${done.cubes})`);
-      t.ok(/You are the Wizard's Ally!/.test(done.celebrate) && /Brushtail guards the Swirl now/.test(done.celebrate), `the celebrate screen: "${done.celebrate.slice(0, 80)}"`);
+      t.ok(/You are the Wizard's Ally!/.test(done.celebrate) && /Sparky guards the Swirl now/.test(done.celebrate), `the celebrate screen: "${done.celebrate.slice(0, 80)}"`);
       t.ok(['crack in the Swirl is closing', 'finally come out', 'Something scribbly', 'Rematch me any time'].every(w => done.toasts.some(m => m.includes(w))), 'the toasts end chapter 2 and hint at the Scribble');
-      t.ok(done.saved.wizard?.ally === true && done.saved.wizard.design === 'brushtail' && done.saved.wizard.paint.join() === painted.join(), `saved at once: ${JSON.stringify(done.saved.wizard)}`);
+      t.ok(done.saved.wizard?.ally === true && done.saved.wizard.design === 'guardian' && done.saved.wizard.look?.n === 'Sparky' && !done.saved.wizard.redesign, `saved at once: ${JSON.stringify(done.saved.wizard)}`);
       await page.waitForTimeout(1500); await shot(page, 'w19-celebrate.png');
       const title = await page.evaluate(() => { const g = window.pokecraft; return { rank: g.studio.rankText(), prompt: g.studio.talkPrompt(g.npcs.list.find(q => q.def?.wizard)) }; });
       t.ok(/Wizard's Ally/.test(title.rank) && title.prompt.action === 'Rematch!', `the title "${title.rank}", the Wizard's button says ${title.prompt.action}`);
+      const card = await page.evaluate(() => { document.exitPointerLock?.(); window.pokecraft.ui.openPanel?.('team'); const n = [...document.querySelectorAll('#party .mon .nm')].map(b => b.textContent); window.pokecraft.ui.closePanels?.(); return n; });
+      t.ok(card.includes('Sparky'), `the team screen calls it Sparky (${card})`);
     }
 
     /* ---- ally: reload, the guardian is never lost, rematches, the island ---- */
@@ -816,20 +899,20 @@ export default async function ({ browser, base, t }) {
       await page.waitForFunction(() => window.pokecraft.gymLive.of('part:studio'), null, { timeout: 60000 });
       await toasts();
       const re = await page.evaluate(async () => {
-        const g = window.pokecraft, WT = await import('/src/wizardtower.js'), live = g.gymLive.of('part:studio'), c = g.party.find(q => q.species === 'brushtail');
+        const g = window.pokecraft, WT = await import('/src/wizardtower.js'), live = g.gymLive.of('part:studio'), c = g.party.find(q => q.species === 'guardian');
         return { info: g.studio.info(), paint: c?.paint, place: g.place, cells: live.info().cells[4], want: WT.finishedCells(WT.FLOORS[4].pages[0], g.studio.paint), locked: live.locked(5) };
       });
-      t.ok(re.info.ally && re.info.design === 'brushtail' && re.info.paint.join() === painted.join() && re.paint.join() === painted.join(), `a reload keeps the ally, the design and the painted palette (${JSON.stringify(re.info)})`);
+      t.ok(re.info.ally && re.info.design === 'guardian' && re.info.paint.join() === painted.join() && re.paint?.n === 'Sparky' && re.info.look.p.join() === '6,1,2,3,6,2,3', `a reload keeps the ally, your design and the painted palette (${JSON.stringify(re.info)})`);
       t.ok(re.cells.join() === re.want.join() && re.locked, 'the finished floor 5 shows YOUR painted colours after the reload, and is locked now');
       await stand();
       // the guardian is never lost: remove it, talk to him, he draws it again
       const redraw = await page.evaluate(() => {
-        const g = window.pokecraft; g.party = g.party.filter(c => c.species !== 'brushtail'); g.box = g.box.filter(c => c.species !== 'brushtail');
+        const g = window.pokecraft; g.party = g.party.filter(c => c.species !== 'guardian'); g.box = g.box.filter(c => c.species !== 'guardian');
         window.__toasts.length = 0; g.talkTo(g.npcs.list.find(q => q.def?.wizard));
-        const c = [...g.party, ...g.box].filter(q => q.species === 'brushtail');
+        const c = [...g.party, ...g.box].filter(q => q.species === 'guardian');
         return { n: c.length, paint: c[0]?.paint, asking: g.ui.asking, text: document.getElementById('ask-text').textContent, toasts: window.__toasts.slice() };
       });
-      t.ok(redraw.n === 1 && redraw.paint.join() === painted.join() && redraw.toasts.some(m => /drew it again/.test(m)), 'a missing guardian is drawn again in the same colours');
+      t.ok(redraw.n === 1 && redraw.paint?.n === 'Sparky' && redraw.paint.c.join() === '4,1,6,4,12,7,2' && redraw.toasts.some(m => /drew it again/.test(m)), 'a missing guardian is drawn again just as you designed it');
       t.ok(redraw.asking && /A rematch\? My team is up to level 88 now!/.test(redraw.text), `then he offers a rematch: "${redraw.text}"`);
       await page.evaluate(() => window.pokecraft.ui.askNo());
       // a rematch: the same team (no wins yet); a win makes the next one +5 levels
@@ -847,6 +930,23 @@ export default async function ({ browser, base, t }) {
       }, r0.cubes);
       t.ok(r1.wins === 1 && r1.saved === 1 && r1.cubes >= r1.want, `a rematch win counts (wins ${r1.wins}, saved ${r1.saved}, +${r1.cubes} cubes)`);
       t.ok(r1.next.join() === '87,88,89,90,91,93' && r1.next3.join() === '97,98,99,100,100,100' && r1.cap.every(l => l === 100), `every win is +5 levels, never above 100 (${r1.next} / ${r1.next3})`);
+      // owner 2026-11-08: a rematch win earns ONE new look: talking to him opens the board on your guardian as it is
+      await stand();
+      const rd = await page.evaluate(() => {
+        const g = window.pokecraft, n = g.npcs.list.find(q => q.def?.wizard), c = g.party.find(q => q.species === 'guardian');
+        window.__uid = c.uid; window.__toasts.length = 0;
+        const prompt = g.studio.talkPrompt(n)?.action; g.talkTo(n);
+        return { redesign: g.studio.redesign, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).wizard.redesign, prompt, board: g.ui.boardOpen, rematchBtn: !!document.getElementById('db-rematch'), d: g.studio.draft };
+      });
+      t.ok(rd.redesign && rd.saved === true && rd.prompt === 'Draw!' && rd.board && rd.rematchBtn && rd.d.n === 'Sparky' && rd.d.p.join() === '6,1,2,3,6,2,3', `after a rematch win he offers a new look; the board starts from your guardian (${JSON.stringify(rd)})`);
+      await page.evaluate(() => { document.querySelector('#db-tabs .db-tab[data-slot="head"]').click(); document.querySelector('#db-parts .db-part[data-part="7"]').click(); document.getElementById('db-done').click(); });
+      const ask2 = await page.evaluate(() => document.getElementById('ask-text').textContent);
+      t.ok(/Give Sparky this new look\?/.test(ask2), `Done asks: "${ask2}"`);
+      await page.evaluate(() => window.pokecraft.ui.askYes('button'));
+      const nl = await page.evaluate(() => { const g = window.pokecraft, cs = [...g.party, ...g.box].filter(q => q.species === 'guardian'); return { n: cs.length, uid: cs[0]?.uid === window.__uid, head: cs[0]?.paint.p[1], redesign: g.studio.redesign, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).wizard, board: g.ui.boardOpen, toasts: window.__toasts.slice() }; });
+      t.ok(nl.n === 1 && nl.uid && nl.head === 7 && !nl.redesign && !nl.saved.redesign && nl.saved.look.p[1] === 7 && !nl.board && nl.toasts.some(m => /Sparky has a new look/.test(m)), `the same guardian got its new look; the next one needs another rematch win (${JSON.stringify(nl.saved)})`);
+      const after = await page.evaluate(() => { const g = window.pokecraft; return g.studio.talkPrompt(g.npcs.list.find(q => q.def?.wizard))?.action; });
+      t.ok(after === 'Rematch!', `then his button says ${after} again`);
       // the Swirl afterwards: the Wizard stands on his island, your guardian circles his tower
       await page.evaluate(() => { const g = window.pokecraft, d = g.world.doors[0], c = d.surface[0]; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); });
       await placeIs(page, 'swirl');
@@ -867,9 +967,11 @@ export default async function ({ browser, base, t }) {
       // old saves: no `wizard` field, junk
       const clean = await page.evaluate(async () => {
         const SU = await import('/src/studio.js'), c = SU.loadStudio;
-        return [c(undefined), c(null), c('x'), c({ ally: true }), c({ ally: true, design: 'nope' }), c({ ally: true, design: 'blotbun', paint: [99, 1, 2], wins: 'x' }), c({ won: 'yes', wins: 5 }), c({ ally: true, design: 'palettoad', paint: [1, 2, 3, 4], wins: 12 }), c({ ally: true, design: 'inkwing', wins: -3 })];
+        return [c(undefined), c(null), c('x'), c({ ally: true }), c({ ally: true, design: 'nope' }), c({ ally: true, design: 'blotbun', paint: [99, 1, 2], wins: 'x' }), c({ won: 'yes', wins: 5 }), c({ ally: true, design: 'palettoad', paint: [1, 2, 3, 4], wins: 12 }), c({ ally: true, design: 'inkwing', wins: -3 }),
+          c({ ally: true, design: 'guardian', look: { n: '<b>Zap!!</b> Very long name', p: [99, 1, 2], c: [3, 'x'] }, redesign: true }), c({ won: true, redesign: true })];
       });
       t.ok(clean[0].won === false && clean[1].ally === false && clean[2].design === null && clean[3].ally === false && clean[4].ally === false, 'missing or junk fields are all empty');
+      t.ok(clean[9].ally && clean[9].redesign && clean[9].look.n === 'bZapb Very l' && clean[9].look.p.join() === '0,1,2,1,0,0,0' && clean[9].look.c.join() === '3,10,11,10,10,10,2' && !clean[10].redesign, `a junk look is cleaned, a redesign needs an ally (${JSON.stringify(clean.slice(9))})`);
       t.ok(clean[5].ally && clean[5].paint === null && clean[5].wins === 0 && !clean[6].won && clean[6].wins === 0 && clean[7].paint.join() === '1,2,3' && clean[7].wins === 12 && clean[8].wins === 0, `cleaned on load: ${JSON.stringify(clean.slice(5))}`);
       await page.reload({ waitUntil: 'commit' }); // (leaving the page saves, so the field is removed AFTER the reload, at the title screen)
       await page.waitForFunction(() => window.pokecraft && window.pokecraft.world, null, { timeout: 120000 });
@@ -1023,16 +1125,21 @@ export default async function ({ browser, base, t }) {
     t.ok(true, 'iPad: with the Wizard\'s battle won, the big button says Draw!');
     await ip.tap('#btn-act');
     await waitFor(ip, () => window.pokecraft.ui.boardOpen, null, 30000);
-    const bd = await ip.evaluate(() => { const cs = [...document.querySelectorAll('#drawboard .db-card')].map(c => c.getBoundingClientRect()); return { n: cs.length, minW: Math.min(...cs.map(c => c.width)), minH: Math.min(...cs.map(c => c.height)), vw: window.innerWidth }; });
-    t.ok(bd.n === 6 && bd.minW >= 120 && bd.minH >= 120, `iPad: the board opens with six cards of at least 120 px (${Math.round(bd.minW)} x ${Math.round(bd.minH)})`);
+    const bd = await ip.evaluate(() => { const r = s => [...document.querySelectorAll(s)].map(c => c.getBoundingClientRect()), all = [...r('#db-tabs .db-tab'), ...r('#db-parts .db-part'), ...r('#db-colours .db-swatch')], panel = document.querySelector('#drawboard .panel').getBoundingClientRect();
+      return { n: all.length, minW: Math.min(...all.map(c => c.width)), minH: Math.min(...all.map(c => c.height)), fits: panel.right <= window.innerWidth + 1 && panel.left >= -1 }; });
+    t.ok(bd.n >= 27 && bd.minW >= 38 && bd.minH >= 38 && bd.fits, `iPad: tabs, parts and colours are all at least 38 px to tap, the board fits (${Math.round(bd.minW)} x ${Math.round(bd.minH)})`);
+    await ip.waitForTimeout(800);
     await shot(ip, 'w19-ipad-board.png');
-    await ip.tap('#drawboard .db-card[data-design="framesaur"]');
+    await ip.tap('#db-tabs .db-tab[data-slot="back"]');
+    await ip.tap('#db-parts .db-part[data-part="3"]');
+    await ip.tap('#db-colours .db-swatch[data-colour="12"]');
+    await ip.tap('#db-done');
     await waitFor(ip, () => window.pokecraft.ui.asking, null, 30000);
     await ip.waitForTimeout(500);
     await ip.tap('#ask-yes');
     await waitFor(ip, () => window.pokecraft.studio.ally, null, 30000);
-    const iall = await ip.evaluate(() => { const g = window.pokecraft, c = [...g.party, ...g.box].find(q => q.species === 'framesaur'); return { design: g.studio.design, paint: c?.paint, board: g.ui.boardOpen }; });
-    t.ok(iall.design === 'framesaur' && iall.paint.join() === '6,8,2' && !iall.board, `iPad: a tap on a card and on Yes makes the guardian (${iall.design}, ${iall.paint})`);
+    const iall = await ip.evaluate(() => { const g = window.pokecraft, c = [...g.party, ...g.box].find(q => q.species === 'guardian'); return { design: g.studio.design, paint: c?.paint, board: g.ui.boardOpen }; });
+    t.ok(iall.design === 'guardian' && iall.paint.p[5] === 3 && iall.paint.c[5] === 12 && iall.paint.c[0] === 6 && !iall.board, `iPad: taps on a tab, a part, a colour, Done and Yes make the guardian (${JSON.stringify(iall.paint)})`);
     t.ok(!ip.errors.length, `no page errors (iPad) ${ip.errors.join('; ')}`);
     await ip.context().close();
   }

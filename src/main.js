@@ -1298,7 +1298,7 @@ function frame(now) {
     game.swaps?.update(dt); // wave 17
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
     if (game.battle.friendModel) animateModel(game.battle.friendModel, now / 1000 + 2, false); // T29: the co-op friend's creature
-    if (game.battle.trainer && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
+    if ((game.battle.trainer || game.battle.foeModel?.userData.parts?.aura) && game.battle.foeModel) animateModel(game.battle.foeModel, now / 1000 + 1, false);
 
     camera.position.copy(p.eyePos);
     camera.rotation.set(p.pitch, p.yaw, 0);

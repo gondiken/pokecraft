@@ -20,7 +20,7 @@ const short = name => name.replace(/ (Badge|Gym)$/, '');
 
 // One-of-a-kind legendaries (never wild, never caught) go last and are not part of the totals.
 const bookOrder = () => {
-  const ids = Object.keys(SPECIES);
+  const ids = Object.keys(SPECIES).filter(id => !SPECIES[id].retired); // owner 2026-11-08: the six old Wizard designs are retired (a save that has one still opens its page)
   return [...ids.filter(id => !SPECIES[id].legendary), ...ids.filter(id => SPECIES[id].legendary)];
 };
 export const TYPES = () => Object.keys(TYPE_COLORS);
@@ -30,7 +30,7 @@ const BIOME_NAMES = {
 };
 const biomeName = b => BIOME_NAMES[b] || (b.charAt(0).toUpperCase() + b.slice(1));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const num = id => '#' + String(bookOrder().indexOf(id) + 1).padStart(3, '0');
+const num = id => { const i = bookOrder().indexOf(id); return i < 0 ? '#—' : '#' + String(i + 1).padStart(3, '0'); };
 
 // Where a creature lives in the wild: one entry per biome and time of day.
 export function spawnInfo(id) {
@@ -368,6 +368,12 @@ export class Book {
     return [...(this.game.party || []), ...(this.game.box || [])].find(c => c.species === id)?.paint || null;
   }
 
+  // A species' name in the Book: your guardian goes by the name you gave it.
+  nameFor(id) {
+    const p = SPECIES[id]?.kit ? this.paintOf(id) : null;
+    return typeof p?.n === 'string' && p.n ? p.n : SPECIES[id].name;
+  }
+
   picture(id, w, h, queue, alt = '') {
     const img = el('img', { width: w, height: h, alt });
     queue.push({ img, id, w, h, silhouette: !this.seen.has(id) });
@@ -410,7 +416,7 @@ export class Book {
       return el('button', { class: `book-card ${state}`, 'data-species': id, onclick: () => this.showDetail(id) },
         this.picture(id, 96, 82, queue),
         el('span', { class: 'book-num' }, num(id)),
-        el('span', { class: 'book-name' }, state === 'unseen' ? '???' : sp.name),
+        el('span', { class: 'book-name' }, state === 'unseen' ? '???' : this.nameFor(id)),
         el('span', { class: 'book-bar', style: state === 'unseen' ? '' : `background:${TYPE_COLORS[sp.type]}` }));
     })));
     this.body.replaceChildren(...parts);
@@ -431,8 +437,8 @@ export class Book {
       el('button', { id: 'book-next', onclick: () => step(1) }, '›'),
       el('span', { class: 'book-num' }, num(id)));
 
-    const left = el('div', { class: 'book-pic' }, this.picture(id, 220, 188, queue, seen ? sp.name : ''),
-      el('h3', { class: 'book-title' }, seen ? sp.name : '???'));
+    const left = el('div', { class: 'book-pic' }, this.picture(id, 220, 188, queue, seen ? this.nameFor(id) : ''),
+      el('h3', { class: 'book-title' }, seen ? this.nameFor(id) : '???'));
     if (seen) left.append(this.typeLink(sp.type));
     const info = el('div', { class: 'book-info' });
     if (!seen) {
