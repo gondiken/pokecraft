@@ -302,7 +302,7 @@ body.in-battle #touch { display: none; }
   background: rgba(20,22,30,.62); border: 3px solid rgba(255,255,255,.7); color: #fff;
   font-size: 15px; padding: 0; box-shadow: none; text-shadow: 0 1px 2px #000; line-height: 1.05;
 }
-#touch-buttons button { position: absolute; border-radius: 50%; width: 68px; height: 68px; }
+#touch-buttons button { line-height: 1.1; white-space: normal; overflow-wrap: normal; text-align: center; overflow: hidden; position: absolute; border-radius: 50%; width: 68px; height: 68px; }
 #touch-buttons button:active, #touch-buttons button.down { background: rgba(255,255,255,.35); }
 #touch-buttons button.dim { background: rgba(10,12,18,.82) !important; border-color: rgba(255,255,255,.7); color: rgba(255,255,255,.55); text-shadow: none; }
 #btn-jump { width: 84px !important; height: 84px !important; right: calc(20px + env(safe-area-inset-right)); bottom: 90px; font-size: 17px !important; }

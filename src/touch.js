@@ -4,6 +4,38 @@ const JOY_RADIUS = 55;
 const LOOK_SPEED = 2.4; // multiplier on Player.look's mouse sensitivity
 const TAP_MOVE = 12;
 
+// Owner 2026-11-08: a round button's word must fit inside its circle ("Missions!", "Camera", an ask's yes word).
+// Each label gets the biggest font size (up to the button's own) whose lines, wrapped at spaces, fit in the circle.
+const FIT = { max: { 'btn-act': 19, 'btn-jump': 17 }, base: 15, min: 7, line: 1.1 };
+let measureCtx = null;
+function textWidth(text, px) {
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  measureCtx.font = `${px}px 'Press Start 2P', ui-monospace, monospace`;
+  return measureCtx.measureText(text).width;
+}
+function wrapLines(words, px, w) {
+  const lines = [];
+  for (const word of words) {
+    const last = lines.length && `${lines[lines.length - 1]} ${word}`;
+    if (last && textWidth(last, px) <= w) lines[lines.length - 1] = last; else lines.push(word);
+  }
+  return lines;
+}
+// -> { px, w }: the font size and the text box width that make `text` fit a circle of diameter d.
+export function fitLabel(text, d, maxPx) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length || !(d > 0)) return { px: maxPx, w: d * 0.86 };
+  for (let px = maxPx; px >= FIT.min; px -= 0.5) {
+    for (const w of [d * 0.86, d * 0.7]) { // one line may use the circle's wide middle; more lines stay in its inner square
+      const lines = wrapLines(words, px, w);
+      if (lines.length > 1 && w > d * 0.7) continue;
+      const h = lines.length * px * FIT.line;
+      if (h <= d * 0.7 && lines.every(l => textWidth(l, px) <= w)) return { px, w };
+    }
+  }
+  return { px: FIT.min, w: d * 0.7 };
+}
+
 function capture(el, id) {
   try { el.setPointerCapture(id); } catch { /* pointer already gone */ }
 }
@@ -32,6 +64,20 @@ export class TouchControls {
     this.actBtn = document.getElementById('btn-act');
     this.state = { act: '', actDim: true, placeDim: true, placeWhy: '', have: false, rideDim: false, rideWhy: '', on: false, sky: false, swim: false, jump: null };
     this.rideView = { hidden: true, text: 'Ride', dim: false };
+    for (const id of ['btn-act', 'btn-place', 'btn-ride', 'btn-down', 'btn-jump']) this.fit(document.getElementById(id));
+    const refit = () => ['btn-act', 'btn-place', 'btn-ride', 'btn-down', 'btn-jump'].forEach(id => this.fit(document.getElementById(id), true));
+    document.fonts?.ready?.then(refit); // the pixel font is wider than the fallback: measure again once it is in
+    document.fonts?.addEventListener?.('loadingdone', refit);
+  }
+
+  // Shrinks a round button's word until it fits inside the circle (only when the word changes).
+  fit(el, again = false) {
+    if (!el || (!again && el.dataset.fitted === el.textContent)) return;
+    el.dataset.fitted = el.textContent;
+    const d = parseFloat(getComputedStyle(el).width) - 6; // inside the 3 px border
+    const { px, w } = fitLabel(el.textContent, d, FIT.max[el.id] ?? FIT.base);
+    el.style.setProperty('font-size', `${px}px`, 'important');
+    el.style.setProperty('padding', `0 ${Math.max(0, (d - w) / 2).toFixed(1)}px`, 'important');
   }
 
   // T39c: every button has one fixed place; they dim (never hide) when they can't act. DOM written only on change.
@@ -43,16 +89,16 @@ export class TouchControls {
       have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, rideLabel: s.ride?.label || '', sky: !!s.sky, swim: !!s.swim, jump: s.jump || null, // T49: a ride may name the Jump button ('Shield', 'Off'); Cube Planets: a world may give the Ride slot another word ('Camera')
     };
     const $ = id => document.getElementById(id);
-    if (n.act !== o.act) this.actBtn.textContent = n.act;
+    if (n.act !== o.act) { this.actBtn.textContent = n.act; this.fit(this.actBtn); }
     if (n.actDim !== o.actDim) this.actBtn.classList.toggle('dim', n.actDim);
     if (n.placeDim !== o.placeDim) $('btn-place').classList.toggle('dim', n.placeDim);
     const rv = { hidden: !n.have, text: n.rideLabel || (n.on ? (n.sky ? 'Land' : 'Get off') : 'Ride'), dim: n.rideDim }, ov = this.rideView, rb = $('btn-ride');
     if (rv.hidden !== ov.hidden) rb.classList.toggle('hidden', rv.hidden);
-    if (rv.text !== ov.text) rb.textContent = rv.text;
+    if (rv.text !== ov.text) { rb.textContent = rv.text; this.fit(rb); }
     if (rv.dim !== ov.dim) rb.classList.toggle('dim', rv.dim);
     this.rideView = rv;
     if (n.sky !== o.sky) $('touch').classList.toggle('sky', n.sky);
-    if (n.sky !== o.sky || n.swim !== o.swim || n.jump !== o.jump) $('btn-jump').textContent = n.sky ? 'Up' : n.jump || (n.swim ? 'Swim' : 'Jump'); // T41: Swim in the Sunken City; T49: a ride's word
+    if (n.sky !== o.sky || n.swim !== o.swim || n.jump !== o.jump) { $('btn-jump').textContent = n.sky ? 'Up' : n.jump || (n.swim ? 'Swim' : 'Jump'); this.fit($('btn-jump')); } // T41: Swim in the Sunken City; T49: a ride's word
     this.state = n;
   }
 
