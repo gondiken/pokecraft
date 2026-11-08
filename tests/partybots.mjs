@@ -16,6 +16,9 @@ import { WHACK, whackPlan, newWhack, upAt, headOf, whackAt, whackTimeUp } from '
 
 export const EYE = 1.62;   // the player's eyes over the feet
 export const WALK = 4.3;   // a walk (blocks a second)
+// owner 2026-11-08 ("genuinely difficult for my son on the tablet"): a child on a tablet: sees late, a finger lands off the jack, walks
+// with the stick slowly and only now and then picks a new spot
+export const TABLET = { aim: 1.2, walk: 0.55, every: 1.5 };
 
 /* ---------------------------------------- the Piñata Party ---------------------------------------- */
 // -> { to: { x, z } | null (walk there), face: { x, z } | null (look along), press: bool }
@@ -25,10 +28,12 @@ export function pinataMind(kind) {
     if (kind === 'still') return { to: null, face: { x: 0, z: -1 }, press: true };
     const seg = run.segs[run.segs.length - 1], l = Math.hypot(seg.v[0], seg.v[1]) || 1, ax = seg.v[0] / l, az = seg.v[1] / l;
     if (kind === 'masher') { const top = topAt(run, t); return { to: { x: top.x, z: top.z + 1.6 }, face: dirTo, press: true }; }
-    const late = kind === 'kid' ? 0.45 : 0.3, top = topAt(run, Math.max(0, t - late) + 0.3);
-    const to = { x: top.x - ax * 1.8, z: top.z - az * 1.8 };   // behind the swing: it comes back at you
+    // 'tablet' (owner 2026-11-08: "genuinely difficult for my son on the tablet"): sees it late (0.8 s) and taps further off the moment
+    const late = kind === 'tablet' ? 0.8 : kind === 'kid' ? 0.45 : 0.3, top = topAt(run, Math.max(0, t - late) + 0.3);
+    let to = { x: top.x - ax * 1.8, z: top.z - az * 1.8 };   // behind the swing: it comes back at you
+    if (kind === 'tablet') { const m = run._tab ??= { at: -9, to }; if (t - m.at >= TABLET.every) { m.at = t; m.to = to; } to = m.to; }
     if (kind === 'pro') return { to, face: dirTo, press: inReach(p, eye, dirTo) && towards(p, eye) >= PINATA.bigV + 0.3 };
-    const j = ((hashStr(`j${run.hits}|${run.whiffs}|${run.plan.attempt}`) % 1000) / 1000 - 0.5) * 0.4, q = pinataAt(run, Math.max(0, t + j));
+    const j = ((hashStr(`j${run.hits}|${run.whiffs}|${run.plan.attempt}`) % 1000) / 1000 - 0.5) * (kind === 'tablet' ? 0.7 : 0.4), q = pinataAt(run, Math.max(0, t + j));
     return { to, face: dirTo, press: inReach(q, eye, dirTo) && towards(q, eye) > 0.5 };
   };
 }
@@ -45,7 +50,7 @@ export function playPinata(kind, plans, dt, start = { x: PINATA.ring.x, y: 11, z
   while (!runs.every(r => r.done) && !timeUp(runs[0], t) && t < runs[0].plan.time + 1) {
     t += dt;
     const run = runs.find(r => !r.done), m = mind(run, t, pos);
-    walkTo(pos, m.to, WALK * dt);
+    walkTo(pos, m.to, WALK * (kind === 'tablet' ? TABLET.walk : 1) * dt);
     if (m.press) {
       const eye = { x: pos.x, y: pos.y + EYE, z: pos.z }, dir = { x: m.face.x, y: 0, z: m.face.z };
       const r = whackRuns(runs, t, eye, dir);
@@ -116,13 +121,18 @@ export function whackMind(kind) {
   return (st, t, boxes, eye) => {
     if (kind === 'still') return null;
     if (kind === 'masher') { const b = boxes[hashStr(`m${Math.floor(t / 0.3)}`) % 9].at; return { x: b[0] - eye.x, y: b[1] + WHACK.head - eye.y, z: b[2] - eye.z }; }
-    const react = kind === 'kid' ? 0.4 : 0.25, oops = kind === 'kid' ? 0.08 : 0;
+    // 'tablet' (owner 2026-11-08): a child on a tablet needs 0.8 s to see a jack, move a finger and tap; whacks a pie one now and then
+    const react = kind === 'tablet' ? 0.8 : kind === 'kid' ? 0.4 : 0.25, oops = kind === 'tablet' ? 0.12 : kind === 'kid' ? 0.08 : 0;
     const list = upAt(st, t).filter(({ p }) => t - p.t0 >= react && (p.kind !== 'pie' || (hashStr(`oops${p.n}|${st.plan.attempt}`) % 1000) / 1000 < oops)).sort((a, b) => a.p.t0 - b.p.t0);
     if (!list.length) return null;
     const h = headOf(boxes, list[0].p, 1);
     // owner 2026-11-07: a child aims at what it sees: the kid at the jack's forehead and striped cap (every third jack the cap's top),
     // which was air to the old rule; the skilled player at the middle of its face
-    const up = kind === 'kid' ? (list[0].p.n % 3 === 0 ? 0.68 : 0.42) : 0;
+    const up = kind !== 'pro' ? (list[0].p.n % 3 === 0 ? 0.68 : 0.42) : 0;
+    if (kind === 'tablet') { // a finger is not a crosshair: the tap lands up to `TABLET.aim` blocks off (a new spot for each try)
+      const k = hashStr(`aim${list[0].p.n}|${st.whiffs}|${st.plan.attempt}`), a = (k % 1000) / 1000 * Math.PI * 2, r = TABLET.aim * Math.sqrt(((k >>> 10) % 1000) / 1000);
+      return { x: h.x + Math.cos(a) * r - eye.x, y: h.y + up + Math.sin(a) * r - eye.y, z: h.z - eye.z };
+    }
     return { x: h.x - eye.x, y: h.y + up - eye.y, z: h.z - eye.z };
   };
 }

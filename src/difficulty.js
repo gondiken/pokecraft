@@ -4,6 +4,14 @@
 //           levers moves at once. base = ease from the first try, extra = how far past KIND_HELP.max the misses may take it.
 //           Levers with a hard limit (a bubble never lifts 6, an Orbikit always outruns you, the pebbles' pull) cap themselves
 //           (`capped` in kindhelp.js), so no level ever opens a shortcut. A rematch's `hard` (you hold the star) stacks on top.
+//   react   (owner 2026-11-08: "genuinely difficult for my son on the tablet") how much more time the reaction games give: a jack stays
+//           up, a throw's warning and flight, the rowboats' rowing, all x react (Easy 1.4; Normal and Hard 1). Only levers
+//           that give a child time to see and tap: never the shield's width, the points needed or anything a masher or spinner gains from
+//           (the bots check it over many seeds). Read with `reactNow()` by siege.js (every warning, flight and gap), popupwhack.js (how long
+//           a jack stays up) and pirateland.js boatAt (the rowboats row slower). `rest`: Pop-Up Whack's stick rests x rest after a second
+//           whiff soon after another (Easy 2), so the longer jacks do not help mashing. The Piñata Party is the same on every level: a slower
+//           swing, a longer stick or more time all let mashing under it win (measured). Hard keeps react 1 (a quicker Shield Up! let a
+//           spinning stick get lucky).
 //   battle  battles against the game (wild, trainers, leaders, Bosses, the Tower, the Wizard): `smart` = how often the foe picks its
 //           best move (Normal 0.5 = as before), `foeLevels` / `wildLevels` = levels added to trainer teams / new wild creatures,
 //           `catch` = x the catch chance. Duels and co-op giants always play Normal (both browsers must agree: `battleLevel`).
@@ -11,8 +19,8 @@
 import { KIND } from './kindhelp.js';
 
 export class Difficulty {
-  constructor({ id, name, icon, line, skill, battle }) {
-    Object.assign(this, { id, name, icon, line });
+  constructor({ id, name, icon, line, skill, battle, react = 1, rest = 1 }) {
+    Object.assign(this, { id, name, icon, line, react, rest });
     this.skill = Object.freeze({ base: 0, extra: 0, ...skill });
     this.battle = Object.freeze({ smart: 0.5, foeLevels: 0, wildLevels: 0, catch: 1, ...battle });
   }
@@ -27,7 +35,7 @@ export class Difficulty {
 export class Easy extends Difficulty {
   constructor() {
     super({ id: 'easy', name: 'Easy', icon: '🐣', line: 'Easy: slower games, gentler battles.',
-      skill: { base: 0.06, extra: 0.06 }, battle: { smart: 0.25, foeLevels: -3, wildLevels: -2, catch: 1.3 } });
+      skill: { base: 0.06, extra: 0.06 }, react: 1.4, rest: 2, battle: { smart: 0.25, foeLevels: -3, wildLevels: -2, catch: 1.3 } });
   }
 }
 export class Normal extends Difficulty {
@@ -53,5 +61,7 @@ export function setDifficulty(d) {
   KIND.use(lvl.skill);
   return lvl;
 }
+// How much more time the reaction games give right now (1 on Normal).
+export const reactNow = () => DIFFICULTY.current.react;
 // The level a battle plays at: duels and co-op giants are always Normal (both players work the turn out the same way).
 export const battleLevel = opts => (opts?.duel ? NORMAL : DIFFICULTY.current);

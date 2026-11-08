@@ -48,10 +48,12 @@ function seeded(key) {
 
 // One try of round `round` (1..3). help = kindHelp(misses) ({ slow, more }); twist = null | 'dark' | 'mirror' | 'speedy'.
 // -> { pops: [{ n, box, shook, t0, up, kind: 'jack' | 'gold' | 'pie' }], time, need, ... }
-export function whackPlan(seed, round, attempt, { twist = null, hard = false, help = { slow: 1, more: 1 } } = {}) {
+// react / rest (difficulty.js, passed in by partylive.js; 1 = Normal): a jack stays up x react, and a second whiff soon after another
+// rests the stick x rest (Easy 1.4 and 2: a slow tap gets there, mashing wins less than on Normal; the bots check both).
+export function whackPlan(seed, round, attempt, { twist = null, hard = false, help = { slow: 1, more: 1 }, react = 1, rest = 1 } = {}) {
   const r = Math.min(3, Math.max(1, round | 0)) - 1, rnd = seeded(`whack|${seed}|${round}|${attempt}`);
   const H = hard ? WHACK.hard : { up: 1, need: 0 }, S = twist === 'speedy' ? WHACK.speedy : { up: 1, gap: 1 };
-  const up = (WHACK.up[r] * H.up * S.up) / Math.max(0.3, help.slow ?? 1), gap = WHACK.gap[r] * S.gap;
+  const up = (WHACK.up[r] * H.up * S.up * react) / Math.max(0.3, help.slow ?? 1), gap = WHACK.gap[r] * S.gap;
   const time = WHACK.time * (help.more ?? 1), pops = [];
   let t = 1.0, n = 0, jacks = 0, last = -1, nextGold = WHACK.goldEvery[0] + Math.floor(rnd() * (WHACK.goldEvery[1] - WHACK.goldEvery[0] + 1));
   const busyAt = (box, t0) => pops.some(p => p.box === box && t0 < p.t0 + p.up + 0.3 && t0 + up + 0.3 > p.t0);
@@ -72,7 +74,7 @@ export function whackPlan(seed, round, attempt, { twist = null, hard = false, he
     t += gap * (two ? 1.35 : 1) * (0.85 + rnd() * 0.3);
   }
   const need = WHACK.need[r] + H.need;
-  return { seed, round: r + 1, attempt, twist, hard: !!hard, pops, time, need, up, most: pops.reduce((s, p) => s + (p.kind === 'gold' ? 2 : p.kind === 'jack' ? 1 : 0), 0) };
+  return { seed, round: r + 1, attempt, twist, hard: !!hard, react, rest, pops, time, need, up, most: pops.reduce((s, p) => s + (p.kind === 'gold' ? 2 : p.kind === 'jack' ? 1 : 0), 0) };
 }
 
 export function newWhack(plan) { return { plan, score: 0, hits: new Set(), splats: 0, whiffs: 0, ready: 0, log: [], over: null }; }
@@ -124,7 +126,7 @@ export function whackAt(st, t, boxes, eye, dir) {
   if (st.over || t < st.ready - 1e-9) return { swung: false };
   const p = aimed(st, t, boxes, eye, dir);
   if (!p) {
-    const again = st.lastWhiff != null && t - st.lastWhiff < WHACK.cool.again, pause = again ? WHACK.cool.miss : WHACK.cool.first;
+    const again = st.lastWhiff != null && t - st.lastWhiff < WHACK.cool.again, pause = again ? WHACK.cool.miss * (st.plan.rest ?? 1) : WHACK.cool.first; // (rest: Easy rests it longer, so mashing gains nothing from the longer jacks)
     st.whiffs++; st.lastWhiff = t; st.ready = t + pause; st.log.push({ t, hit: false });
     return { swung: true, hit: false, pause };
   }

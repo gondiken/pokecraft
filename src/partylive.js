@@ -24,6 +24,7 @@ import { FUN } from './forfun.js';
 import { kindHelp } from './kindhelp.js';
 import { bowKey, bowOf, bowState, migrateBows, CAKE, CRASHERS, GUESTS, SQUARE, SPINNER, TABLE, ROOM, FLOOR, C } from './partyland.js';
 import * as PP from './partyprops.js';
+import { reactNow, DIFFICULTY } from './difficulty.js'; // owner 2026-11-08: Easy gives the reaction games more time
 
 export const PARTY = {
   build: 2.0,          // seconds for a game's set to whoosh up out of the party floor (and `clear` to go back)
@@ -363,7 +364,7 @@ export class PartyLive {
       g.run = { run: newCatch(plan), t: 0, splatT: 9, open: new Map() };
       if (plan.cap) this.game.player.speedCap = plan.cap;
     } else if (game === 'stack') g.run = { st: newStack(stackPlan(this.seed, round, attempt, { twist, hard, slow: kindHelp(misses).slow })), t: 0, falls: [], endAt: null };
-    else g.run = { st: newWhack(whackPlan(this.seed, round, attempt, { twist, hard, help: kindHelp(misses) })), t: 0, swingT: 9, splatT: 9 };
+    else g.run = { st: newWhack(whackPlan(this.seed, round, attempt, { twist, hard, help: kindHelp(misses), react: reactNow(), rest: DIFFICULTY.current.rest })), t: 0, swingT: 9, splatT: 9 };
     g.phase = 'run'; g.t = 0;
     sound.play('doorwhoosh');
     if (game === 'pinata') this.toast(`${PINATA.rounds[round - 1].name}! ⏱ ${g.run.runs[0].plan.time} s`);

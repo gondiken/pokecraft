@@ -8,6 +8,7 @@
 import { B, mulberry32 } from './blocks.js';
 import { makePath } from './mover.js';
 import { kit, buildWayBack, placeCrew, pictureAim } from './picturelands.js';
+import { reactNow } from './difficulty.js'; // owner 2026-11-08: the rowboats row slower on Easy
 import { SHIP, buildShip, buildDock, deckTop } from './pirateship.js';
 import { atlantisLand, atlantisAim, OLD_W, CITY, craterR } from './atlantisland.js'; // T41: the Sunken City in the east strip
 
@@ -196,8 +197,9 @@ export function boatState(game) {
 // is boat i (0..2) of the current wave sunk?
 export const boatSunk = (game, i, wave = boatState(game).wave) => !!game?.beaten?.includes(boatKey(wave * ROWBOATS.boats.length + i));
 // a boat at boat clock t (a figure eight) in wave `wave` (faster each wave): { x, z, yaw } (yaw: the way it rows, as a mesh rotation.y)
+// (owner 2026-11-08: the boats row at the level's pace, difficulty.js reactNow: slower on Easy)
 export function boatAt(i, t, wave = 0) {
-  const b = ROWBOATS.boats[i], u = 2 * Math.PI * (t * ROWBOATS.speed[wave] / b.per + ROWBOATS.phase[i]);
+  const b = ROWBOATS.boats[i], u = 2 * Math.PI * (t * ROWBOATS.speed[wave] / reactNow() / b.per + ROWBOATS.phase[i]);
   const x = b.c[0] + b.a[0] * Math.sin(u), z = b.c[1] + b.a[1] * Math.sin(2 * u);
   const vx = b.a[0] * Math.cos(u), vz = 2 * b.a[1] * Math.cos(2 * u); // (the yaw does not need the speed: same direction)
   return { x: x + 0.5, z: z + 0.5, yaw: Math.atan2(vx, vz) };

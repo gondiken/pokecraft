@@ -59,7 +59,8 @@ export function seeded(key) {
 // One try at piñata `round` (1..3): its numbers and the random parts of its path and first swing. `help` = misses in a row (kind help),
 // `lazy` = "Two piñatas!"'s slower second llama.
 export function pinataPlan(seed, round, attempt, { help = 0, hard = false, lazy = false } = {}) {
-  const K = missHelp(help), /* (the same on every level: a slower or quicker piñata lets mashing under it win, difficulty.js) */ L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
+  // (the same on every level: a slower swing, a longer stick or more time all let mashing under it win, difficulty.js)
+  const K = missHelp(help), L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
   const H = { period: L.period * K.more, speed: L.speed * K.slow, hp: L.hp, zip: L.zip * K.slow };
   const R = PINATA.rounds[round - 1], X = hard ? PINATA.hard : { hp: 0, period: 1, speed: 1, zip: 1 };
   const rnd = seeded(`pinata|${seed}|${round}|${attempt}`);

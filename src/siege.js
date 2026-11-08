@@ -6,6 +6,7 @@
 // Never a fail: a pumpkin that gets through is only a soft "Splat! Yuck, sticky!", and a round that ends short of its number starts
 // again (after two short rounds the shared kind help slows it down a tiny bit).
 import { missHelp } from './kindhelp.js';
+import { reactNow } from './difficulty.js';
 
 const D = Math.PI / 180;
 export const SIEGE = {
@@ -55,9 +56,10 @@ export function stoneAt(pos) {
 
 // The throws of round r (0-based) for one try: { throws: [{ i, at, k, kind, tell, flight }], need, n, end }. `help` = how many short tries of
 // this round in a row (kindHelp: every throw's timing / (1 - ease), the cover x (1 + ease)), `hard` = a rematch (you hold the star). Pure: a seed and the same numbers give the same list.
-export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } = {}) {
+export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false, react = reactNow() } = {}) {
   const R = SIEGE.rounds[round], rnd = seeded(hashStr(`siege|${seed}|${round}|${attempt}`));
-  const kh = missHelp(help), /* (the same on every level: any other speed lets a spinning stick get lucky now and then, difficulty.js) */ slow = kh.slow, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
+  // the level only gives more time (react: every warning, flight and gap), never a wider shield or fewer to block (difficulty.js)
+  const kh = missHelp(help), slow = kh.slow / react, tellK = (hard ? SIEGE.hard.tell : 1) / slow;
   const n = R.n + (hard ? SIEGE.hard.extra : 0), need = R.need + (hard ? SIEGE.hard.need : 0);
   // the kinds, in a shuffled order
   const kinds = [];
@@ -104,7 +106,7 @@ export function siegePlan(seed, round, attempt = 0, { help = 0, hard = false } =
   // a tell may not start before the round does: push everything later if needed
   const early = Math.min(...throws.map(t => t.at - t.flight - t.tell));
   if (early < SIEGE.start) for (const t of throws) t.at += SIEGE.start - early;
-  return { throws, need, n, end: throws[n - 1].at + SIEGE.end, round, help, hard, cover: SIEGE.cover * kh.more };
+  return { throws, need, n, end: throws[n - 1].at + SIEGE.end, round, help, hard, react, cover: SIEGE.cover * kh.more };
 }
 
 const RANK = { splat: 0, block: 1, perfect: 2 };

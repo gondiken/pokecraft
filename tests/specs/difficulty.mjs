@@ -13,6 +13,11 @@ import { joustPlan } from '../../src/joust.js';
 import { siegePlan } from '../../src/siege.js';
 import { pinataPlan } from '../../src/pinata.js';
 import { BumperGame } from '../../src/fairgames.js';
+import { whackPlan } from '../../src/popupwhack.js';
+import { setsOf } from '../../src/partyland.js';
+import { boatAt } from '../../src/pirateland.js';
+import * as Bt from '../partybots.mjs';
+import * as CB from '../castlebots.mjs';
 import { openGame, newGame, pause, click, continueGame } from '../helpers.mjs';
 
 const SPRINT = 6.2; // player.js: a sprint on foot
@@ -50,12 +55,27 @@ function node(t) {
   t.ok(kindHelp(20).ease > kindHelp(0).ease && kindHelp(20).on, 'Hard: misses still help a little');
   t.ok(e.rio < n.rio && n.rio < rio(), 'Easy < Normal < Hard');
 
-  // games whose obvious shortcut sits right at the edge keep Normal's numbers on every level (missHelp): Shield Up! (a spinning stick),
-  // the Piñata Party (mashing under it), Bumper Cars (ramming), the Bubble Well's rim (a random hopper)
+  // games whose obvious shortcut sits right at the edge keep Normal's numbers on every level (missHelp): the Piñata Party (mashing under
+  // it), Bumper Cars (ramming), the Bubble Well's rim (a random hopper); Shield Up! too on Hard (a quicker one let a spinning stick win)
   const bump = () => { const g = new BumperGame(false); g.start(1); return [g.fleet.bots[3].speed, g.time]; };
-  const same = () => JSON.stringify([siegePlan(4, 2, 0), pinataPlan(4, 2, 0), bump(), bubbleHelp(0, { plain: true })]);
-  setDifficulty('normal'); const s0 = same(); setDifficulty('easy'); const s1 = same(); setDifficulty('hard'); const s2 = same();
-  t.ok(s0 === s1 && s0 === s2, 'Shield Up!, the Piñata Party, Bumper Cars and the Bubble Well rim are the same on every level');
+  const same = () => JSON.stringify([pinataPlan(4, 2, 0), bump(), bubbleHelp(0, { plain: true })]);
+  setDifficulty('normal'); const s0 = same(), sg0 = JSON.stringify(siegePlan(4, 2, 0)); setDifficulty('easy'); const s1 = same(); setDifficulty('hard'); const s2 = same(), sg2 = JSON.stringify(siegePlan(4, 2, 0));
+  t.ok(s0 === s1 && s0 === s2 && sg0 === sg2, 'the Piñata Party, Bumper Cars and the Bubble Well rim are the same on every level, Shield Up! on Normal and Hard');
+
+  // owner 2026-11-08 ("genuinely difficult for my son on the tablet"): Easy gives the reaction games more time (react), and the naive
+  // ways still do not win: rates over many seeds, a child on a tablet (late, a finger off the jack) against mashing / spinning
+  const N = 40, rate = (f, n = N) => { let w = 0; for (let s = 0; s < n; s++) if (f(s)) w++; return Math.round(100 * w / n); };
+  const sets = setsOf(), wb = sets.whack.boxes, eye = { x: sets.whack.standAt[0], y: 11 + Bt.EYE, z: sets.whack.standAt[1] };
+  const whack = (kind, lvl) => [1, 2, 3].map(r => rate(s => Bt.playWhack(kind, whackPlan(100 + s, r, 0, { react: lvl.react, rest: lvl.rest }), 1 / 60, wb, eye).won));
+  const siege = (kind, fps = 60) => [0, 1, 2].map(r => rate(s => CB.playSiege(CB.SIEGE_BOTS[kind](), { seed: s + 1, round: r, fps }).won));
+  setDifficulty('normal'); const wN = { tab: whack('tablet', normal), mash: whack('masher', normal) }, sN = { slow: siege('slow'), spin: siege('spinner') };
+  setDifficulty('easy'); const wE = { tab: whack('tablet', easy), mash: whack('masher', easy) }, sE = ['slow', 'spinner', 'still', 'jumpy'].map(k => [60, 20].map(f => siege(k, f)));
+  t.ok(sE[0].every(l => l.every(x => x >= 95)) && sN.slow[2] < 50, `Shield Up! on Easy: a child who turns late (1.5 s) wins every round (${sE[0].map(l => l.join('/')).join(' at 60, ')} at 20 fps %; Normal ${sN.slow.join('/')} %)`);
+  t.ok(sE[1].every(l => l.every(x => x <= 5)) && sE.slice(2).every(k => k.every(l => l.every(x => x === 0))), `Shield Up! on Easy: spinning the stick wins only by Normal's rare luck (at most 5 %), standing still or holding Jump never (${sE.slice(1).map(k => k.map(l => l.join('/')).join(' ')).join(', ')} %; Normal spinning ${sN.spin.join('/')} %)`);
+  t.ok(wE.tab.every(x => x >= 95) && wN.tab[2] < 85, `Pop-Up Whack on Easy: a child on a tablet wins every round (${wE.tab.join('/')} %; Normal ${wN.tab.join('/')} %)`);
+  t.ok(wE.mash.every((x, i) => x <= wN.mash[i]), `Pop-Up Whack on Easy: mashing wins no more than on Normal (${wE.mash.join('/')} %; Normal ${wN.mash.join('/')} %)`);
+  setDifficulty('normal'); const bN = boatAt(0, 7); setDifficulty('easy'); const bE = boatAt(0, 7 * easy.react);
+  t.ok(Math.abs(bN.x - bE.x) < 1e-9 && Math.abs(bN.z - bE.z) < 1e-9, 'the Pirate Seas rowboats row 1.4 x slower on Easy (the same figure eight)');
   // the hard limits, on every level and after any number of misses
   for (const d of DIFFICULTIES) {
     setDifficulty(d);
