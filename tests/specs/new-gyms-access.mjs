@@ -242,7 +242,7 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(4500);
   await page.screenshot({ path: SHOTS + 'gym-sky-ground.png', timeout: 120000 });
 
-  // 5. The badge HUD with all the diamonds, on desktop.
+  // 5. The badge HUD (owner 2026-11-08: one small chip; the full list is the Book's Badges tab), on desktop.
   await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     g.badges = GYMS.slice(1).map(x => x.id); // all but one: the fullest grid (with every badge it goes away)
@@ -251,16 +251,16 @@ export default async function ({ browser, base, t }) {
   await page.waitForTimeout(1500);
   const desk = await page.evaluate(() => {
     const r = document.getElementById('badges').getBoundingClientRect();
-    return { n: document.querySelectorAll('#badges > *').length, got: document.querySelectorAll('#badges > .got').length, h: r.height, w: r.width, right: r.right, vw: innerWidth };
+    return { text: document.getElementById('badges').textContent, h: r.height, w: r.width, right: r.right, vw: innerWidth };
   });
-  t.ok(desk.n === N && desk.got === N - 1 && desk.h <= 90 && desk.right <= desk.vw, `desktop: ${N} badge slots in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
+  t.ok(desk.text === `🏅 ${N - 1}/${N}` && desk.h <= 50 && desk.right <= desk.vw, `desktop: the badge chip says ${desk.text} in a box ${Math.round(desk.w)}x${Math.round(desk.h)}`);
   await page.screenshot({ path: SHOTS + 'badges-25-desktop.png' });
   const allGone = await page.evaluate(async () => {
     const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
     g.badges = GYMS.map(x => x.id); g.ui.renderHud();
     return { hidden: document.getElementById('badges').getBoundingClientRect().height === 0 };
   });
-  t.ok(allGone.hidden, 'with every badge won the badge grid goes away (the team screen lists them)');
+  t.ok(allGone.hidden, 'with every badge won the badge chip goes away (the Book lists them)');
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 
@@ -282,9 +282,9 @@ export default async function ({ browser, base, t }) {
       const others = [...document.querySelectorAll('#btn-act, #btn-place, #btn-jump, #btn-ride, #btn-book, #btn-pause, #joystick')]
         .filter(e => e.offsetParent).map(e => e.getBoundingClientRect());
       const hit = others.some(o => !(o.right < hud.left || o.left > hud.right || o.bottom < hud.top || o.top > hud.bottom));
-      return { n: document.querySelectorAll('#badges > *').length, h: r.height, right: r.right, vw: innerWidth, hit };
+      return { text: document.getElementById('badges').textContent, h: r.height, right: r.right, vw: innerWidth, hit };
     });
-    t.ok(m.n === N && m.h <= 90 && m.right <= m.vw && !m.hit, `iPad ${name}: ${N} badges fit (${Math.round(m.h)}px high) and the touch buttons are clear`);
+    t.ok(m.text === `🏅 ${N - 1}/${N}` && m.h <= 60 && m.right <= m.vw && !m.hit, `iPad ${name}: the badge chip fits (${Math.round(m.h)}px high) and the touch buttons are clear`);
     await pad.screenshot({ path: SHOTS + `badges-25-ipad-${name}.png` });
     t.ok(!pad.errors.length, `iPad ${name}: no page errors ${pad.errors.join('; ')}`);
     await pad.context().close();

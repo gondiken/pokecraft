@@ -1,4 +1,6 @@
 // The Creature Book: every creature you have seen (picture, name, type) and caught (full page).
+// Owner 2026-11-08: the Book is the collection book: tabs Creatures, Badges and Stars (the trophies left the team screen and the
+// HUD's 8 x 4 grid; the HUD keeps two small chips that open these tabs). A badge or a star tells where it is won and can set the arrow.
 import { REALMS } from './realms.js'; // T31
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, CREW, effectiveness, moveInfo } from './species.js';
 import { TRAITS } from './traits.js';
@@ -6,6 +8,15 @@ import { BLOCKS } from './blocks.js';
 import { condOf, condText, AFTER_TEXT } from './spawnrules.js';
 import { portrait } from './ui.js';
 import { el } from './util.js';
+import { GYMS } from './gyms.js';
+import { STAR_WORLDS, starsWon, fullName } from './pictureworlds.js';
+import { bossOf } from './pictureboss.js';
+import { RUN, MEDAL_ICON, fmtTime } from './houserun.js';
+
+// The Book's tabs: view kind, label. A tab view shows the tab bar; species and move pages are inside Creatures.
+export const BOOK_TABS = [['list', '📖 Creatures'], ['badges', '🏅 Badges'], ['stars', '⭐ Stars']];
+const TAB_TITLES = { list: 'Creature Book', badges: 'Badges', stars: 'Stars' };
+const short = name => name.replace(/ (Badge|Gym)$/, '');
 
 // One-of-a-kind legendaries (never wild, never caught) go last and are not part of the totals.
 const bookOrder = () => {
@@ -122,15 +133,17 @@ export class Book {
     this.caught = new Set();
     this.filter = 'all';
     this.page = null; // the species page shown, or null
-    this.view = { kind: 'list' }; // what is shown: { kind: 'list' } | { kind: 'species', id } | { kind: 'move', id }
+    this.view = { kind: 'list' }; // what is shown: { kind: 'list' | 'badges' | 'stars' } | { kind: 'species', id } | { kind: 'move', id }
+    this.pick = { badges: null, stars: null }; // the badge (gym id) or star (world id) whose card is shown
     this.trail = []; // pages Back returns to (newest last); { kind: 'team' } means "back to the team screen"
     this.panel = document.getElementById('book');
     this.countEl = document.getElementById('book-count');
+    this.titleEl = document.getElementById('book-title');
     this.body = document.getElementById('book-body');
     this.renderId = 0;
   }
 
-  reset() { this.seen.clear(); this.caught.clear(); this.page = null; this.view = { kind: 'list' }; this.trail = []; this.filter = 'all'; }
+  reset() { this.seen.clear(); this.caught.clear(); this.page = null; this.view = { kind: 'list' }; this.trail = []; this.filter = 'all'; this.pick = { badges: null, stars: null }; }
 
   load(saved) {
     this.reset();
@@ -175,14 +188,16 @@ export class Book {
   get isOpen() { return !this.panel.classList.contains('hidden'); }
 
   // open() shows the last page; open({ species | move | type, from: 'team' }) jumps to a page, and
-  // with from: 'team' the Back button returns to the team screen.
+  // with from: 'team' the Back button returns to the team screen. open({ tab: 'badges' | 'stars' | 'creatures', pick }) opens a tab.
   open(at = null) {
     this.syncTeam();
     this.trail = this.trail.filter(p => p.kind !== 'team');
     if (at) {
       this.trail = at.from === 'team' ? [{ kind: 'team' }] : [];
       if (at.type) this.filter = at.type;
-      this.view = at.species && SPECIES[at.species] ? { kind: 'species', id: at.species }
+      const tab = at.tab === 'creatures' ? 'list' : at.tab;
+      if (at.pick !== undefined && (tab === 'badges' || tab === 'stars')) this.pick[tab] = at.pick;
+      this.view = tab === 'badges' || tab === 'stars' || tab === 'list' ? { kind: tab } : at.species && SPECIES[at.species] ? { kind: 'species', id: at.species }
         : at.move && MOVES[at.move] ? { kind: 'move', id: at.move } : { kind: 'list' };
     }
     this.panel.classList.remove('hidden');
@@ -220,8 +235,11 @@ export class Book {
     this.page = view.kind === 'species' ? view.id : null;
     this.renderId++;
     this.updateCount();
+    if (this.titleEl) this.titleEl.textContent = TAB_TITLES[view.kind] || TAB_TITLES.list;
     if (view.kind === 'species' && SPECIES[view.id]) this.renderSpecies(view.id);
     else if (view.kind === 'move' && MOVES[view.id]) this.renderMove(view.id);
+    else if (view.kind === 'badges') this.renderBadges();
+    else if (view.kind === 'stars') this.renderStars();
     else { this.view = { kind: 'list' }; this.page = null; this.renderList(); }
     this.scroller.scrollTop = scroll ?? keep;
   }
@@ -240,8 +258,88 @@ export class Book {
   toTeam() { this.close(); this.trail = []; this.game.ui?.backToTeam(); }
 
   updateCount() {
+    const k = this.view.kind, g = this.game;
+    if (k === 'badges') { this.countEl.textContent = `${GYMS.filter(x => g.badges?.includes(x.id)).length} / ${GYMS.length} badges`; return; }
+    if (k === 'stars') { this.countEl.textContent = `${starsWon(g.stars || []).length} / ${STAR_WORLDS.length} stars`; return; }
     const c = this.counts();
     this.countEl.textContent = `Seen ${c.seen} / ${c.total} · Caught ${c.caught} / ${c.total}`;
+  }
+
+  // The tab bar (only on the three tab views).
+  tabs() {
+    return el('div', { id: 'book-tabs' }, ...BOOK_TABS.map(([kind, label]) => el('button', {
+      class: 'book-tab' + (this.view.kind === kind ? ' sel' : ''), 'data-tab': kind,
+      onclick: () => { if (this.view.kind !== kind) { this.trail = this.trail.filter(p => p.kind === 'team'); this.render({ kind }, 0); } },
+    }, label)));
+  }
+
+  // "Show me the way": the arrow follows that place (a Where-to-go destination), or a line says why not.
+  showWay(destId, otherwise) {
+    const g = this.game, row = g.nav?.rows().find(r => r.dest.id === destId);
+    const note = this.body.querySelector('.book-way-note');
+    const say = text => { if (note) note.textContent = text; };
+    if (!row) return say(otherwise);
+    if (row.reason) return say(row.reason);
+    g.nav.choose(row.dest);
+    g.updateGuide?.();
+    if (g.closeBook) g.closeBook(); else this.close();
+    g.ui?.toast(`The arrow shows the way to ${row.dest.label}!`);
+  }
+
+  wayButton(destId, otherwise) {
+    return el('button', { class: 'book-way primary', onclick: () => this.showWay(destId, otherwise) }, '🧭 Show me the way');
+  }
+
+  // Badges: the 32 gyms in order; a tap shows where the badge is won.
+  renderBadges() {
+    const g = this.game, has = id => !!g.badges?.includes(id);
+    if (!GYMS.some(x => x.id === this.pick.badges)) this.pick.badges = GYMS.find(x => !has(x.id))?.id ?? GYMS[0].id;
+    const gym = GYMS.find(x => x.id === this.pick.badges), got = has(gym.id), leader = gym.leader?.name || 'the Leader';
+    const icon = (x, big) => el('span', { class: `badge${has(x.id) ? ' got' : ''}${big ? ' big' : ''}`, style: has(x.id) ? `background:${TYPE_COLORS[x.type]}` : '' });
+    const info = el('div', { id: 'book-pick', class: got ? 'got' : '' },
+      icon(gym, true),
+      el('div', { class: 'book-pick-text' },
+        el('div', { class: 'book-title' }, gym.badge),
+        el('p', {}, gym.name, ' · ', this.typeLink(gym.type)),
+        el('p', { class: 'book-note' }, got ? `You won it! Talk to ${leader} for a rematch.` : `Beat ${leader} to win it.`),
+        this.wayButton(`gym:${gym.id}`, 'Go back to our world first. Then the arrow can show you.'),
+        el('p', { class: 'book-note book-way-note' }, '')));
+    const parts = [this.tabs()];
+    if (g.champion) parts.push(el('p', { class: 'book-note book-trophy' }, "🏆 Champion: you beat the Champion's Tower!"));
+    parts.push(info, el('div', { id: 'book-badges' }, ...GYMS.map(x => el('button', {
+      class: `book-badge${has(x.id) ? ' got' : ''}${x.id === gym.id ? ' sel' : ''}`, 'data-gym': x.id, title: x.badge,
+      onclick: () => { this.pick.badges = x.id; this.render({ kind: 'badges' }, null); },
+    }, icon(x), el('span', {}, short(x.badge))))));
+    this.body.replaceChildren(...parts);
+  }
+
+  // Stars: one per Picture World (the star bridge's worlds); a tap tells where it is won.
+  renderStars() {
+    const g = this.game, won = new Set(starsWon(g.stars || [])), has = id => won.has(id);
+    if (!STAR_WORLDS.some(w => w.id === this.pick.stars)) this.pick.stars = STAR_WORLDS.find(w => !has(w.id))?.id ?? STAR_WORLDS[0]?.id;
+    const w = STAR_WORLDS.find(x => x.id === this.pick.stars);
+    const parts = [this.tabs()];
+    const run = g.records?.[RUN.key];
+    const trophies = [g.studio?.ally ? g.studio.rankText() : null, run?.best != null ? `🌀 House Run best ${fmtTime(run.best)}${run.medal ? ' ' + MEDAL_ICON[run.medal] : ''}` : null].filter(Boolean);
+    if (trophies.length) parts.push(el('p', { id: 'book-rank', class: 'book-note book-trophy' }, trophies.join(' · ')));
+    if (w) {
+      const got = has(w.id), boss = bossOf(w.id);
+      const where = w.id === 'portal' ? 'Ride the Hub Swirl in the Swirl to the Portal House.' : 'Find its picture in the Swirl and step in.';
+      const away = g.champion ? 'Go to the Swirl first. Its door is in the Champion\'s Tower.' : 'The way there opens for the Champion. Win every badge first!';
+      parts.push(el('div', { id: 'book-pick', class: got ? 'got' : '' },
+        el('span', { class: 'book-star-big' }, w.emoji),
+        el('div', { class: 'book-pick-text' },
+          el('div', { class: 'book-title' }, `${got ? '★' : '☆'} ${fullName(w)}`),
+          boss ? el('p', {}, boss.title) : '',
+          el('p', { class: 'book-note' }, got ? 'You won its star! Talk to the Boss for a rematch.' : where),
+          this.wayButton(w.id === 'portal' ? 'portalhouse' : `frame:${w.id}`, away),
+          el('p', { class: 'book-note book-way-note' }, ''))));
+    }
+    parts.push(el('div', { id: 'book-stars' }, ...STAR_WORLDS.map(x => el('button', {
+      class: `book-star${has(x.id) ? ' got' : ''}${x.id === w?.id ? ' sel' : ''}`, 'data-world': x.id, title: x.name,
+      onclick: () => { this.pick.stars = x.id; this.render({ kind: 'stars' }, null); },
+    }, el('span', { class: 'bs-emoji' }, x.emoji), el('span', { class: 'bs-star' }, has(x.id) ? '★' : '☆'), el('span', { class: 'bs-name' }, x.name)))));
+    this.body.replaceChildren(...parts);
   }
 
   get scroller() { return this.body.closest('.panel') || this.panel; }
@@ -297,7 +395,7 @@ export class Book {
     const ids = this.visibleIds();
     const parts = [];
     if (this.trail.length) parts.push(this.topBar());
-    parts.push(filters);
+    parts.push(this.tabs(), filters);
     if (this.game.studio?.ally) parts.push(el('p', { id: 'book-rank', class: 'book-note' }, this.game.studio.rankText())); // wave 19: Champion / Wizard's Ally
     if (this.filter !== 'all') {
       const mine = bookOrder().filter(id => SPECIES[id].type === this.filter);

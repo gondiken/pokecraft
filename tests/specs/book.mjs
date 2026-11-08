@@ -247,6 +247,30 @@ export default async function ({ browser, base, t }) {
   await p3.tap('#book-close');
   await p3.waitForTimeout(400);
   t.ok(await p3.evaluate(() => !window.pokecraft.book.isOpen && document.getElementById('pause').classList.contains('hidden')), 'Close closes the book without the pause screen');
+
+  // 15 (owner 2026-11-08): the Book's Badges and Stars tabs; the HUD chips open them; "Show me the way" sets the arrow.
+  await p3.evaluate(async () => {
+    const g = window.pokecraft, { GYMS } = await import('/src/gyms.js');
+    g.badges = GYMS.slice(0, 3).map(x => x.id); g.stars = ['house']; g.ui.renderHud();
+  });
+  t.ok(await p3.evaluate(() => document.getElementById('badges').textContent === '🏅 3/32' && document.getElementById('stars').textContent === '⭐ 1/13'), 'the HUD shows two small chips: 🏅 3/32 and ⭐ 1/13');
+  await p3.tap('#badges');
+  await p3.waitForTimeout(500);
+  const bt = await p3.evaluate(() => ({ open: window.pokecraft.book.isOpen, view: window.pokecraft.book.view.kind, n: document.querySelectorAll('.book-badge').length, got: document.querySelectorAll('.book-badge.got').length,
+    title: document.getElementById('book-title').textContent, pick: document.querySelector('#book-pick .book-title')?.textContent, team: !!document.getElementById('badge-list') }));
+  t.ok(bt.open && bt.view === 'badges' && bt.n === 32 && bt.got === 3 && bt.title === 'Badges' && bt.pick === 'Tide Badge' && !bt.team, `a tap on the badge chip opens the Badges tab: 32 badges, 3 won, the next one picked (${bt.pick}); the team screen lists none`);
+  await p3.tap('.book-way');
+  await p3.waitForTimeout(500);
+  t.ok(await p3.evaluate(() => !window.pokecraft.book.isOpen && window.pokecraft.nav.choice?.id === 'gym:water'), '"Show me the way" closes the Book and the arrow follows that gym');
+  await p3.tap('#stars');
+  await p3.waitForTimeout(500);
+  const st = await p3.evaluate(() => ({ view: window.pokecraft.book.view.kind, n: document.querySelectorAll('.book-star').length, got: document.querySelectorAll('.book-star.got').length }));
+  t.ok(st.view === 'stars' && st.n === 13 && st.got === 1, `a tap on the star chip opens the Stars tab (${st.got}/${st.n})`);
+  await p3.tap('.book-tab[data-tab="list"]');
+  await p3.waitForTimeout(400);
+  t.ok(await p3.evaluate(() => !!document.getElementById('book-grid') && document.getElementById('book-title').textContent === 'Creature Book'), 'the Creatures tab shows the creatures again');
+  await p3.tap('#book-close');
+  await p3.waitForTimeout(400);
   t.ok(!p3.errors.length, `no page errors ${p3.errors.join('; ')}`);
   await p3.context().close();
 }

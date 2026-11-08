@@ -55,10 +55,11 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => window.pokecraft.badges.includes('sound')), 'Echo Badge awarded');
   const hud = await page.evaluate(async () => {
     const { GYMS } = await import('/src/gyms.js');
-    return { want: GYMS.length, shown: [...document.querySelectorAll('#badges > *')].length, h: document.getElementById('badges').getBoundingClientRect().height };
+    const g = window.pokecraft;
+    return { want: GYMS.length, text: document.getElementById('badges').textContent, n: g.badges.length, h: document.getElementById('badges').getBoundingClientRect().height };
   });
-  t.ok(hud.want === ALL_GYMS.length && hud.shown === hud.want, `HUD shows ${hud.want} badge slots (${hud.shown})`);
-  t.ok(hud.h <= 90, `the badge box is at most 90px high (${Math.round(hud.h)})`);
+  t.ok(hud.want === ALL_GYMS.length && hud.text === `🏅 ${hud.n}/${hud.want}`, `the HUD's badge chip counts ${hud.want} badges (${hud.text})`);
+  t.ok(hud.h <= 50, `the badge chip is small (${Math.round(hud.h)}px high)`);
   t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
   await page.context().close();
 }

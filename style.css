@@ -132,22 +132,17 @@ button.primary { background: #3b6fd8; }
 .food.far { opacity: .35; filter: grayscale(.6); }
 .food.near { display: inline-block; animation: key-glint var(--glint, 3s) ease-in-out infinite; }
 #food-compass .food.got::after { content: '✓'; position: absolute; right: -5px; bottom: -2px; font-size: 13px; color: #6fe08a; font-weight: bold; }
-/* Wave 12: 32 badges in an 8 x 4 grid (every gym of our world) */
-#badges { display: grid; grid-template-columns: repeat(8, auto); justify-content: end; gap: 3px; background: rgba(0,0,0,.45); padding: 4px 6px; }
-#badges.hidden { display: none; } /* every badge won: the team screen lists them */
-/* T38a: stars of the Picture Worlds, one small star each, under the badges */
-#stars { display: flex; justify-content: flex-end; gap: 2px; background: rgba(0,0,0,.45); padding: 2px 6px; font-size: 17px; line-height: 20px; }
-#stars.hidden { display: none; }
-#stars .star { color: rgba(255,255,255,.35); }
-#stars .star.got { color: #ffd23a; text-shadow: 0 0 6px rgba(255,210,58,.8); }
+/* Owner 2026-11-08: badges and stars are two small chips; a tap opens the Book's tab (the full lists live there) */
+#badges, #stars { background: rgba(0,0,0,.45); padding: 2px 10px; font-size: 20px; pointer-events: auto; cursor: pointer; }
+#badges.hidden, #stars.hidden { display: none; }
+body.touch #badges, body.touch #stars { min-height: 40px; display: flex; align-items: center; }
+#badges.pulse, #stars.pulse { animation: chip-pulse 0.8s ease-in-out 3; }
+@keyframes chip-pulse { 0%, 100% { transform: scale(1); background: rgba(0,0,0,.45); } 50% { transform: scale(1.25); background: rgba(255,210,58,.75); } }
 .badge {
   width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
   transform: rotate(45deg); margin: 3px;
 }
 .badge.got { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,.6); }
-#badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.badge-card { display: flex; align-items: center; gap: 8px; background: #2a2e3d; padding: 4px 10px 4px 6px; font-size: 18px; }
-.badge-card.missing { opacity: .45; }
 
 #hotbar {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -424,6 +419,29 @@ button.link { background: none; border: none; box-shadow: none; color: var(--mut
 }
 /* ---------- creature book ---------- */
 #book-count { font-size: 12px; text-align: center; margin: 4px 0 14px; color: var(--accent); }
+/* Owner 2026-11-08: the Book's tabs (Creatures, Badges, Stars) */
+#book-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+#book-tabs .book-tab { flex: 1; min-height: 44px; font-family: 'VT323', monospace; font-size: 22px; background: #2a2e3d; color: var(--text); box-shadow: none; }
+#book-tabs .book-tab.sel { background: var(--accent); color: #14161e; }
+#book-pick { display: flex; gap: 16px; align-items: center; background: #2a2e3d; padding: 12px 16px; margin-bottom: 12px; border: 3px solid transparent; }
+#book-pick.got { border-color: var(--accent); }
+#book-pick .book-title { margin: 0 0 6px; }
+#book-pick p { font-size: 20px; margin: 0 0 6px; }
+#book-pick .book-note { font-size: 18px; color: var(--muted); }
+#book-pick .book-way { margin-top: 4px; min-height: 44px; }
+.book-trophy { font-size: 20px; color: var(--accent) !important; margin: 0 0 10px; }
+.badge.big { width: 34px; height: 34px; margin: 14px; flex: none; border-width: 3px; }
+.book-star-big { font-size: 48px; flex: none; }
+#book-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.book-badge { display: flex; align-items: center; gap: 6px; background: #2a2e3d; color: var(--text); box-shadow: none; font-family: 'VT323', monospace; font-size: 19px; min-height: 44px; padding: 4px 8px; text-align: left; }
+.book-badge:not(.got) { opacity: .5; }
+.book-badge.sel, .book-star.sel { border-color: var(--accent); opacity: 1; }
+#book-stars { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.book-star { display: flex; flex-direction: column; align-items: center; gap: 2px; background: #2a2e3d; color: var(--text); box-shadow: none; font-family: 'VT323', monospace; font-size: 18px; min-height: 44px; padding: 8px 4px; }
+.book-star:not(.got) { opacity: .55; }
+.book-star .bs-emoji { font-size: 30px; }
+.book-star .bs-star { font-size: 22px; color: rgba(255,255,255,.4); }
+.book-star.got .bs-star { color: #ffd23a; text-shadow: 0 0 6px rgba(255,210,58,.8); }
 #book-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 #book-filters button { font-size: 9px; text-transform: uppercase; color: #14161e; padding: 7px 8px; background: #c8ccd8; }
 #book-filters button.sel { border-color: var(--accent); }
@@ -626,7 +644,7 @@ body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 #friend .fm-text { display: flex; flex-direction: column; }
 #friend .fm-text small { font-size: 18px; color: var(--muted); }
 #friend .fm-note { min-height: 1em; color: #ffd27a; font-size: 20px; margin: 8px 0 0; }
-#party.trading #badge-list, #party.trading .panel > h2 { display: none; }
+#party.trading .panel > h2 { display: none; }
 #trade-bar { position: sticky; top: -24px; z-index: 2; } /* stays in view while you scroll down to your Box */
 #trade-bar .tb { background: rgb(30, 34, 46); border: 3px solid #ffd23a; padding: 8px 12px; margin-bottom: 10px; box-shadow: 0 6px 12px rgba(0,0,0,.5); }
 #trade-bar h2 { margin: 0 0 6px; }

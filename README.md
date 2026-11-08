@@ -45,7 +45,7 @@ On iPad, use Share → **Add to Home Screen** for a full-screen, app-like experi
 | P / Tab | Team & storage screen |
 | R | Ride / get off (a creature with the "Can be ridden" badge; tablets: the Ride button) |
 | V | Cube Planets only: the steady camera behind you, or back to your own eyes (tablets: the Ride button says Camera there) |
-| C | Creature Book: every creature you've seen and caught |
+| C | The Book: creatures you've seen and caught, your badges and your stars (three tabs) |
 | G | Where to go: pick a gym or place and the arrow follows it (on a tablet, tap the arrow line at the top right) |
 | M | Champion missions (after you are the Champion) |
 | E / Enter / Y | Say **yes** to a question (sleep, rematch, a friend's invite). Press it fresh; a held key does not count |
@@ -64,7 +64,7 @@ On a tablet:
 | Jump button | Jump or swim up (says **Up** while flying, with a **Down** button right under it, and **Swim** in the Sunken City: it kicks you forward) |
 | Tap the hotbar | Pick a block (tap the picked one again to change it) |
 | Tap the creature card (top left) | Your team |
-| Book button | Creature Book |
+| Book button | The Book (Creatures, Badges, Stars) |
 | Menu button (&#9776;) | Pause screen with big buttons: Team, Blocks, Book, Missions (Champions), Where to go, My home (on a Doormat), Sound, Effects, Level (🐣 Easy / 🙂 Normal / 🔥 Hard), Play together, Main menu |
 
 Buttons never move or disappear: they stay in the same place and turn grey when they can't do anything.
@@ -122,8 +122,8 @@ Buttons never move or disappear: they stay in the same place and turn grey when 
 - **Turn-based battles** that play out in the world. They include a type-effectiveness chart, same-type bonus, critical hits, priority moves, move effects (see **Moves** below), switching and running away. Your whole team shares the XP.
 - **Moves**: 134 moves, at least 4 for every type, and every creature also learns moves from a second type. The buttons say what each move does. When a creature with 4 moves wants to learn a new one, you pick which move to forget (or say "Don't learn"). Older creatures get the new moves one at a time as they level up.
 - **Catching**: throw Capture Cubes at wild creatures. Your odds are better when the target has low HP. You start with 10 cubes and find more by winning battles or breaking leaves.
-- **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box, where you can sort them (newest, level, name, type), show one type at a time, or let a creature go back to the wild (the Creature Book still remembers it).
-- **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against. It works like a little wiki: tap a creature's name or picture on the team screen to open its page, tap a move to see what it does and who learns it, and tap a type to see all creatures of that type and what it beats. **‹ Back** goes back one page (or back to your team).
+- **Progression**: XP, level-ups, learning new moves and evolution. Your team holds up to 6 creatures; extra catches go to a storage box, where you can sort them (newest, level, name, type; tap the same sort again to turn the order round), show one type at a time, or let a creature go back to the wild (the Creature Book still remembers it).
+- **Creature Book**: press **C** (or the Book button). Every creature you meet in a battle shows its picture, name and type; the ones you haven't met are black shapes. Catch one to fill in its whole page: where it lives, how it evolves, its moves and what it is strong or weak against. It works like a little wiki: tap a creature's name or picture on the team screen to open its page, tap a move to see what it does and who learns it, and tap a type to see all creatures of that type and what it beats. **‹ Back** goes back one page (or back to your team). Two more tabs at the top: **🏅 Badges** shows all 32 badges (tap one to see its gym and leader, and **Show me the way** sets the arrow to that gym) and **⭐ Stars** shows the star of every Picture World with its Boss and how to get there. Your titles (Champion, Wizard's Ally) and your best House Run time are there too.
 - **Attack animations**: every type has its own little animation (fire embers, water bubbles, sparks, music notes, rattling bones...), the sixteen signature moves have special ones, and moves that heal, boost, lower or put to sleep show it too. Turn them off with **Effects** on the pause screen if your device feels slow.
 - **Easy / Normal / Hard**: the level button on the pause screen. Easy makes the Picture World games a bit slower and battles gentler (lower levels, easier catching, foes that pick their best move less often); Hard does the opposite. Change it any time; stars and badges count the same on every level. Battles with friends are always Normal.
 - **Sound effects**: soft, short sounds for building, battles, catching and badges. Sound-type creatures have their own tunes (Dinglet rings, Gongolin goes BONG, Drumbo drums), their moves sound special, and in the wild they sing every few seconds when you are near, with music notes floating up so you can spot them. Turn them off with the **Sound** button on the pause screen.
@@ -260,11 +260,11 @@ Inside each gym is one apprentice trainer (two in the newer gyms) you must beat 
 
 The **Cozy Gym** has no building: it moves into *your* home! Build a finished **Cozy home** (see **Homes**) and catch 3 different cozy creatures (blanket bunnies, mitten kittens and friends). Then someone knocks on your door: Leader Maple and her two friends move in. Talk to them to battle (the two friends first, then the leader). Keep your home cozy! If it stops being cozy (the bed is gone, or gems replaced too much wood) they say "Brr, it's chilly in here! Can you fix it?" and won't battle until you fix it. If you move your Doormat they come with you, and if you break it they go away and come back when you have a cozy home again. Only the home of the world's owner counts, but friends who play together can come in and battle there too.
 
-The top-right corner shows your badges and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
+The top-right corner counts your badges (🏅 27/32; tap it, or press C, to see them all in the Book) and points you to the next gym. Catch creatures that have a type advantage before each one. **Healer Hana**, standing next to your starting point, fully heals your team.
 
 ## Champion's Tower
 
-After you collect all 32 badges (the top-right corner shows them in 4 rows of 8), the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
+After you collect all 32 badges (the top-right corner counts them; the Book's Badges tab shows them all), the **Champion's Tower** opens. It is a tall stone tower with a rainbow roof and a glowing crystal on top, near the middle of the map (the arrow in the top-right corner shows the way). Inside:
 
 - **Nurse Poppy** heals your team. **Coach Dex** trains you with 3 creatures at your best level and gives **double XP** (and 1 Capture Cube) every time.
 - **Guard Bram** (Lv 57–59) and **Guard Opal** (Lv 58–60) must be beaten first, one after the other.

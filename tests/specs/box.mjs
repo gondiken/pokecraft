@@ -41,6 +41,16 @@ export default async function ({ browser, base, t }) {
   t.ok(await page.evaluate(() => localStorage.getItem('pokecraft-box-sort')) === 'level', 'the sort is remembered on this device');
   await press(page, '#box-tools button[data-sort="name"]');
   t.ok((await cards(page)).join() === 'Blazehound,Emberpup,Fluffin,Sproutle,Zapple', `sort by Name (${await cards(page)})`);
+  // Owner 2026-11-08: tapping the chosen sort again turns the order round (and back).
+  await press(page, '#box-tools button[data-sort="name"]');
+  t.ok((await cards(page)).join() === 'Zapple,Sproutle,Fluffin,Emberpup,Blazehound', `a second tap on Name turns it round (${await cards(page)})`);
+  t.ok(await page.evaluate(() => localStorage.getItem('pokecraft-box-sort')) === 'name:rev' && /▲/.test(await page.textContent('#box-tools button[data-sort="name"]')), 'the turned-round sort is remembered and shown');
+  await press(page, '#box-tools button[data-sort="level"]');
+  t.ok((await cards(page)).join() === 'Blazehound,Emberpup,Zapple,Fluffin,Sproutle', `another sort starts the normal way round (${await cards(page)})`);
+  await press(page, '#box-tools button[data-sort="level"]');
+  t.ok((await cards(page)).join() === 'Sproutle,Fluffin,Zapple,Emberpup,Blazehound', `a second tap on Level: lowest first (${await cards(page)})`);
+  await press(page, '#box-tools button[data-sort="level"]');
+  t.ok((await cards(page)).join() === 'Blazehound,Emberpup,Zapple,Fluffin,Sproutle', `a third tap: highest first again (${await cards(page)})`);
   await press(page, '#box-tools button[data-sort="type"]');
   t.ok((await cards(page)).join() === 'Fluffin,Blazehound,Emberpup,Sproutle,Zapple', `sort by Type (${await cards(page)})`);
   t.ok(await boxIds(page) === 'fluffin,emberpup,sproutle,blazehound,zapple', 'sorting does not change the box order (or the save)');

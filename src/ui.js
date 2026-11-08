@@ -61,6 +61,12 @@ export class UI {
     this.scoreChip = document.getElementById('score-chip');
     this.badgeRow = document.getElementById('badges');
     this.starsRow = document.getElementById('stars'); // T38a
+    this.badgesShown = undefined; this.starsShown = undefined; // owner 2026-11-08: '3/32', '1/13' or null (chip hidden)
+    for (const [chip, tab] of [[this.badgeRow, 'badges'], [this.starsRow, 'stars']]) {
+      chip.title = tab === 'badges' ? 'Your badges (in the Book)' : 'Your stars (in the Book)';
+      chip.addEventListener('pointerdown', e => e.stopPropagation()); // a tap here is not a look-drag
+      chip.addEventListener('click', e => { e.stopPropagation(); this.game.openBook?.(tab); });
+    }
     this.partyPanel = document.getElementById('party');
     this.blocksPanel = document.getElementById('blocks');
     this.bookPanel = document.getElementById('book');
@@ -70,8 +76,12 @@ export class UI {
     this.slots = [];
     // Storage box view: the sort is remembered on this device, the type filter is not.
     // Both are only for showing: game.box keeps its order, so saves don't change.
-    this.boxSort = 'newest';
-    try { const v = localStorage.getItem(BOX_SORT_KEY); if (BOX_SORTS.some(([k]) => k === v)) this.boxSort = v; } catch { /* ignore */ }
+    // Owner 2026-11-08: a second tap on the chosen sort button turns the order round (saved as e.g. 'level' or 'level:rev').
+    this.boxSort = 'newest'; this.boxRev = false;
+    try {
+      const [v, rev] = (localStorage.getItem(BOX_SORT_KEY) || '').split(':');
+      if (BOX_SORTS.some(([k]) => k === v)) { this.boxSort = v; this.boxRev = rev === 'rev'; }
+    } catch { /* ignore */ }
     this.boxType = 'all';
     this.confirmBox = document.getElementById('box-confirm');
     document.getElementById('box-confirm-no').addEventListener('click', e => { e.stopPropagation(); this.closeConfirm(); });
@@ -118,20 +128,23 @@ export class UI {
       s.classList.toggle('empty', !n);
     });
     this.cubes.textContent = `Capture Cubes: ${g.cubes}`;
-    const key = g.badges.join();
-    if (this.badgeKey !== key) {
-      this.badgeKey = key;
-      this.badgeRow.replaceChildren(...GYMS.map(gym => this.badgeIcon(gym, g.badges.includes(gym.id))));
-      // Every badge won: the grid goes away (owner 2026-10-25: a calm HUD); the team screen still lists them all.
-      this.badgeRow.classList.toggle('hidden', GYMS.every(gym => g.badges.includes(gym.id)));
+    // Owner 2026-11-08: badges and stars are two small chips (the full lists are the Book's Badges and Stars tabs; a tap opens them).
+    // Each pulses when its count goes up. The badge chip goes away with every badge won (a calm HUD); the star chip shows in the
+    // Swirl or once you have a star.
+    const nb = GYMS.filter(gym => g.badges.includes(gym.id)).length;
+    const badgesShown = nb === GYMS.length ? null : `${nb}/${GYMS.length}`;
+    if (this.badgesShown !== badgesShown) {
+      if (this.badgesShown !== undefined && badgesShown && nb > this.badgeCount) this.pulse(this.badgeRow);
+      this.badgesShown = badgesShown; this.badgeCount = nb;
+      this.badgeRow.classList.toggle('hidden', badgesShown === null);
+      this.badgeRow.textContent = badgesShown === null ? '' : `🏅 ${badgesShown}`;
     }
-    // T38a: the Picture World stars: only in the Swirl or once you have one (owner 2026-10-25: a calm HUD; no Champion label)
-    const won = starsWon(g.stars), starKey = g.world?.realm?.showStars || won.length ? won.join() : null;
-    if (this.starKey !== starKey) {
-      this.starKey = starKey;
-      this.starsShown = starKey === null ? null : `${won.length}/${STAR_WORLDS.length}`;
-      this.starsRow.classList.toggle('hidden', starKey === null);
-      this.starsRow.replaceChildren(...(starKey === null ? [] : STAR_WORLDS.map(w => el('span', { class: `star${g.stars.includes(w.id) ? ' got' : ''}`, title: w.name }, g.stars.includes(w.id) ? '★' : '☆'))));
+    const won = starsWon(g.stars), starsShown = g.world?.realm?.showStars || won.length ? `${won.length}/${STAR_WORLDS.length}` : null;
+    if (this.starsShown !== starsShown) {
+      if (this.starsShown !== undefined && starsShown && won.length > (this.starCount ?? 0)) this.pulse(this.starsRow);
+      this.starsShown = starsShown; this.starCount = won.length;
+      this.starsRow.classList.toggle('hidden', starsShown === null);
+      this.starsRow.textContent = starsShown === null ? '' : `⭐ ${starsShown}`;
     }
     this.partyMini.replaceChildren(...g.party.map((c, i) => {
       const st = statsFor(c);
@@ -146,12 +159,11 @@ export class UI {
     if (this.promptEl.textContent !== text) this.promptEl.textContent = text;
   }
 
-  badgeIcon(gym, got) {
-    return el('div', {
-      class: `badge${got ? ' got' : ''}`, title: got ? gym.badge : `${gym.badge} (not earned yet)`,
-      style: got ? `background:${TYPE_COLORS[gym.type]}` : '',
-    });
+  pulse(chip) {
+    chip.classList.remove('pulse'); void chip.offsetWidth; chip.classList.add('pulse');
+    clearTimeout(chip.pulseTimer); chip.pulseTimer = setTimeout(() => chip.classList.remove('pulse'), 2600);
   }
+
 
   // Confetti and a big message when the player becomes Champion.
   celebrate(big = 'You are the Champion!', small = 'Your team is the best in the world!', ms = 7000) { // T40: words and time as arguments (a star's note)
@@ -394,13 +406,8 @@ export class UI {
 
   refreshPanel() {
     const g = this.game;
-    this.partyPanel.classList.toggle('trading', !!this.tradeView); // wave 17: the trade bar on top, the badges hidden
+    this.partyPanel.classList.toggle('trading', !!this.tradeView); // wave 17: the trade bar on top, the title hidden
     document.getElementById('trade-bar')?.replaceChildren(...(this.tradeView ? [this.tradeView.bar()] : []));
-    document.getElementById('badge-list').replaceChildren(...GYMS.map(gym => {
-      const got = g.badges.includes(gym.id);
-      return el('div', { class: `badge-card${got ? '' : ' missing'}` }, this.badgeIcon(gym, got),
-        got ? gym.badge : `${gym.name} (${gym.type})`);
-    }));
     document.getElementById('party-list').replaceChildren(...g.party.map((c, i) => this.monCard(c, i, true)));
     this.renderBox();
     this.renderHud();
@@ -416,13 +423,15 @@ export class UI {
     const tools = document.getElementById('box-tools');
     if (g.box.length > 1) {
       const sortBtn = ([key, label]) => el('button', {
-        class: key === this.boxSort ? 'sel' : '', 'data-sort': key,
+        class: key === this.boxSort ? 'sel' : '', 'data-sort': key, 'data-rev': key === this.boxSort && this.boxRev ? '1' : '',
+        title: key === this.boxSort ? 'Tap again to turn the order round' : '',
         onclick: () => {
+          this.boxRev = key === this.boxSort ? !this.boxRev : false;
           this.boxSort = key;
-          try { localStorage.setItem(BOX_SORT_KEY, key); } catch { /* ignore */ }
+          try { localStorage.setItem(BOX_SORT_KEY, this.boxRev ? `${key}:rev` : key); } catch { /* ignore */ }
           this.renderBox();
         },
-      }, label);
+      }, key === this.boxSort ? `${label} ${this.boxRev ? '▲' : '▼'}` : label);
       const chip = (type, label, color) => el('button', {
         class: `chip${type === this.boxType ? ' sel' : ''}`, 'data-type': type, style: `background:${color}`,
         onclick: () => { this.boxType = type; this.renderBox(); },
@@ -442,7 +451,8 @@ export class UI {
       name: (a, b) => byName(a, b) || b.c.level - a.c.level,
       type: (a, b) => TYPE_ORDER.indexOf(a.sp.type) - TYPE_ORDER.indexOf(b.sp.type) || b.c.level - a.c.level || byName(a, b),
     };
-    list.sort(sorts[this.boxSort] || sorts.newest);
+    const sort = sorts[this.boxSort] || sorts.newest;
+    list.sort(this.boxRev ? (a, b) => sort(b, a) : sort);
     document.getElementById('box-list').replaceChildren(...(list.length
       ? list.map(e => this.monCard(e.c, e.i, false))
       : [el('div', { class: 'empty' }, 'Empty. Catch more than 6 creatures and the extras land here.')]));

@@ -37,7 +37,7 @@
       <!-- T35: the moon that sets while you dream; morning comes when it is gone -->
       <div id="moon" class="hidden" title="The moon is setting. Morning comes when it is gone."><span class="moon-icon">&#9790;</span></div>
       <div id="badges"></div>
-      <!-- T38a: one star per Picture World (Champions, and in the Swirl) -->
+      <!-- owner 2026-11-08: badges and stars as two small chips; a tap opens the Book's Badges / Stars tab -->
       <div id="stars" class="hidden"></div>
       <div id="guide"></div>
       <div id="key-compass" class="hidden" title="A golden key is hidden nearby">
@@ -118,13 +118,13 @@
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint · <b>Mouse</b> look<br>
         <b>Left click</b> break block / battle creature · <b>Right click</b> place block<br>
-        <b>1–9</b> or <b>wheel</b> pick block · <b>B</b> choose blocks · <b>E</b> battle creature / talk to people · <b>P</b> team · <b>C</b> creature book · <b>G</b> where to go (or tap the arrow line) · <b>M</b> Champion missions · <b>R</b> ride / get off (look for "Can be ridden")<br>
+        <b>1–9</b> or <b>wheel</b> pick block · <b>B</b> choose blocks · <b>E</b> battle creature / talk to people · <b>P</b> team · <b>C</b> book (creatures, badges, stars) · <b>G</b> where to go (or tap the arrow line) · <b>M</b> Champion missions · <b>R</b> ride / get off (look for "Can be ridden")<br>
         Beat every Gym Leader to collect every badge!
       </div>
       <div class="controls touch-only">
         <b>Left stick</b> walk (push all the way to run) · <b>Drag</b> right side to look<br>
         <b>Tap</b> a creature to battle it, or a person to talk · the big round button does what you look at (battle, talk, open, break...) · <b>Ride</b> gets on your rideable creature<br>
-        <b>Place</b> builds at the crosshair · tap the bar to pick a block (tap it again to change it) · tap your creature card for your team · <b>&#9776;</b> has Team, Blocks, Book and Where to go<br>
+        <b>Place</b> builds at the crosshair · tap the bar to pick a block (tap it again to change it) · tap your creature card for your team · <b>Book</b> has your creatures, badges and stars · <b>&#9776;</b> has Team, Blocks, Book and Where to go<br>
         Beat every Gym Leader to collect every badge!
       </div>
     </div>
@@ -146,7 +146,7 @@
       <div class="controls desktop-only">
         <b>WASD</b> move · <b>Space</b> jump/swim · <b>Shift</b> sprint<br>
         <b>Left click</b> break / battle · <b>Right click</b> place<br>
-        <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> use / talk / battle · <b>P</b> team · <b>C</b> creature book<br>
+        <b>1–9</b> / <b>wheel</b> pick block · <b>B</b> blocks · <b>E</b> use / talk / battle · <b>P</b> team · <b>C</b> book (creatures, badges, stars)<br>
         <b>G</b> where to go · <b>M</b> missions · <b>H</b> home (on a Doormat) · <b>R</b> ride / get off · <b>Esc</b> cancel / pause
       </div>
     </div>
@@ -157,7 +157,6 @@
     <div class="panel wide">
       <div id="trade-bar"></div><!-- wave 17: trading (swapui.js) -->
       <h2>Your Team</h2>
-      <div id="badge-list"></div>
       <div id="party-list" class="mon-list"></div>
       <h3 id="box-title">Storage Box</h3>
       <div id="box-tools"></div>
@@ -223,7 +222,7 @@
   <!-- Creature Book -->
   <div id="book" class="overlay hidden">
     <div class="panel wide">
-      <h2>Creature Book</h2>
+      <h2 id="book-title">Creature Book</h2>
       <div id="book-count"></div>
       <div id="book-body"></div>
       <p class="hint"><button id="book-close" class="primary">Close</button><span class="desktop-only"> or press <b>C</b> / <b>Esc</b></span></p>

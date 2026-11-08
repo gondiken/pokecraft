@@ -134,13 +134,12 @@ export default async function ({ browser, base, t }) {
   const champ = await page.evaluate(() => {
     const g = window.pokecraft;
     return {
-      badges: g.badges.length, champion: g.champion, icons: document.querySelectorAll('#badges > *').length,
-      lit: document.querySelectorAll('#badges > .got').length, title: !document.querySelector('#champion-title'),
+      badges: g.badges.length, champion: g.champion, chip: document.getElementById('badges').textContent, title: !document.querySelector('#champion-title'),
       guide: document.getElementById('guide').textContent, toasts: window.__toasts.join(' | '), bonus: g.creatures.levelBonus,
     };
   });
   t.ok(champ.badges === 16 && champ.champion, 'the old Champion keeps 16 badges and the title');
-  t.ok(champ.icons === NGYMS && champ.lit === 16 && champ.title, `badge HUD has ${champ.icons} icons with ${champ.lit} lit, and no Champion label (a calm HUD)`);
+  t.ok(champ.chip === `🏅 16/${NGYMS}` && champ.title, `the badge chip says ${champ.chip}, and no Champion label (a calm HUD)`);
   t.ok(champ.guide.includes('Fossil Gym'), `the arrow leads to the Fossil Gym (${champ.guide})`);
   t.ok(/new gyms have appeared/i.test(champ.toasts), 'a toast tells the player about the new gyms');
   t.ok(champ.toasts.includes('The Fossil Gym moved into a big cave'), 'a toast says the Fossil Gym moved into a cave');

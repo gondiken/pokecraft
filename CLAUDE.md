@@ -98,7 +98,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/shapes.js` | Model-building helpers (`box`, `eyes`, `addWings`, `drift`, `crewStack`, `sparkleGeometry`, `buildGiftWrap`...) and the body shapes of the newer types (`SHAPES`, `SHAPES_SKY/SLIME/LIGHT/PAPER`, ...) |
 | `src/custom.js` | Wave 19 stage A, pure (no imports): the Custom type's `PAINTS` (12, append-only; index = what a creature saves, `hex` = its plain wool), `WASH`, `DESIGNS` (6, board order), `paintColours` / `paintModel`, `cleanPaint(list, species, SPECIES)` (a `designed` species only; junk -> `defaultPaint`), `fixPaint`, `guardianLevel`. A designed creature (`legendary` + `designed`: Brushtail, Palettoad, Inkwing, Crayonix, Framesaur, Blotbun) carries `c.paint = [body, accent, belly]`; `buildModel(species, paint)`, `portrait(.., paint)`, duels (`VERSION` 13, `teamOf` / `teamIn`, `Battle` `copy`), play together `leadPaint`; never traded (`cleanCreature` refuses `legendary`; the card says "Stays with you") and never let go |
 | `src/gyms.js` | The gyms in difficulty order (teams, people, dialogue; `trainersOf(def)` / `trainerKey(def, i)`) and `TOWER` |
-| `src/book.js` | Creature Book (C, `game.book`): seen/caught, pages, wiki links (T19.5: `go`/`back`, `open({ species, move, type, from })`, `typeLink`) |
+| `src/book.js` | The Book (C, `game.book`): seen/caught, pages, wiki links (T19.5: `go`/`back`, `open({ species, move, type, from })`, `typeLink`); owner 2026-11-08: tabs `BOOK_TABS` Creatures / Badges / Stars (`open({ tab: 'badges' \| 'stars' \| 'creatures', pick })`, views `badges` / `stars`, `showWay(destId)` = "Show me the way" through `game.nav`) |
 | `src/battle.js` | Turn-based battles (wild and trainer), catching, XP share, evolution |
 | `src/difficulty.js` | Owner 2026-11-08, pure: `Difficulty` + `Easy` / `Normal` / `Hard` (`skill` = kindhelp.js `KIND.use`, `battle` = `smart` / `foeLevels` / `wildLevels` / `catch`), `DIFFICULTIES`, `DIFFICULTY.current`, `setDifficulty`, `battleLevel(opts)` (duels and co-op = Normal) |
 | `src/battleexit.js` | How you leave a battle early: `BattleExit`, `RunAway` (the speed rule `RUN`), `GiveUp` (player battles), `exitFor(opts)` |
@@ -271,7 +271,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 ### Gyms
 
 - **`GYMS` is appended to, never reordered.** 32 gyms; the Champion's Tower needs all of them (`GYMS.length`, 32 since wave 12; it
-  never grows again). The HUD shows badges in an 8 x 4 grid (`#badges`).
+  never grows again). Owner 2026-11-08: the HUD shows only two chips, `#badges` (`🏅 n/32`, `ui.badgesShown`, gone with every badge) and `#stars` (`⭐ n/13`, `ui.starsShown`); a tap opens the Book's tab (`game.openBook(tab)` / `closeBook`); the full lists are the Book's Badges and Stars tabs (the team screen no longer lists badges).
 - **Gyms 17+ (Fossil = Bone, Saucer = Alien):** the first 16 come from `gymSpots(ORIGINAL_GYMS)`, 17-18 from `extraGymSpots()`
   (`EXTRA_GYMS_END = 18`). **Never change either or call `gymSpots` with another count.** Caves are filled within 18 of the extra gyms
   (`fillCavesNear`); `generate()` places the 16 gyms, the tower, then the extras so nothing old moves.

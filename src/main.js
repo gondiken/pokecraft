@@ -522,6 +522,13 @@ function togglePanel(which = 'team') {
 const toggleTeam = () => togglePanel('team');
 const toggleBlocks = () => togglePanel('blocks');
 const toggleBook = () => togglePanel('book');
+// Owner 2026-11-08: the HUD's badge / star chips open the Book at that tab; the Book's "Show me the way" closes it.
+game.openBook = tab => {
+  if (!game.started || game.inBattle || game.ui.asking) return;
+  if (!game.ui.panelOpen) togglePanel('book');
+  if (game.book.isOpen) game.book.open({ tab });
+};
+game.closeBook = () => { if (game.book.isOpen) togglePanel(); };
 // T22: the home panel. game.openHome('types' | 'home' | 'preview') opens it (or switches view when it is open).
 game.openHome = view => {
   game.homeUi.want = view ?? 'home'; // T30.5

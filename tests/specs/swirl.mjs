@@ -210,11 +210,15 @@ export default async function ({ browser, base, t }) {
     const { REALMS: REALMS_ } = await import('/src/realms.js');
     const g = window.pokecraft;
     g.save();
-    return { got: document.querySelectorAll('#stars .star.got').length, all: document.querySelectorAll('#stars .star').length, titles: [...document.querySelectorAll('#stars .star')].map(s => s.title).join(),
+    g.book.open({ tab: 'stars' }); // owner 2026-11-08: the HUD shows a chip; the Book's Stars tab names every star
+    const cards = [...document.querySelectorAll('#book-stars .book-star')];
+    const out = { chip: document.getElementById('stars').textContent, got: cards.filter(s => s.classList.contains('got')).length, all: cards.length, titles: cards.map(s => s.title).join(),
       saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).stars, clean: JSON.stringify(loadStars(['x', 'house', 'house', 3])), none: JSON.stringify(loadStars()), order: JSON.stringify(loadStars(['doors', 'house'])),
       ids: PICTURE_WORLDS.map(w => w.id).join(), ready: PICTURE_WORLDS.every(w => !w.ready || w.door === false || (w.realm && REALMS_[w.realm]?.parent === 'swirl')) };
+    g.book.close();
+    return out;
   });
-  t.ok(hud.got === 1 && hud.all === 13 && hud.titles.startsWith('Giant House,Pirate Seas'), `one gold star of thirteen, each named (${hud.got}/${hud.all}: ${hud.titles})`);
+  t.ok(hud.chip === '⭐ 1/13' && hud.got === 1 && hud.all === 13 && hud.titles.startsWith('Giant House,Pirate Seas'), `the HUD chip says ${hud.chip}; the Book has one gold star of thirteen, each named (${hud.got}/${hud.all}: ${hud.titles})`);
   t.ok(JSON.stringify(hud.saved) === '["house"]' && hud.clean === '["house"]' && hud.none === '[]' && hud.order === '["house","doors"]', `stars are saved; loadStars drops junk and repeats, and keeps the list order (${hud.clean} ${hud.order})`);
   t.ok(hud.ids.startsWith('house,pirate,race,stadium,portal,fair,doors,') && hud.ids.split(',').length === 13 && hud.ready, 'thirteen stars (Picture Worlds), every ready one has a realm below the Swirl');
   await page.evaluate(() => { document.getElementById('toast').replaceChildren(); });
