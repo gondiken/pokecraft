@@ -52,6 +52,26 @@ const BODIES = [
       C.box(g, 0.22, 0.22, 0.22, 'd', 0, 0.4, 0.3);                                                    // the neck and its mane
       for (let i = 0; i < 3; i++) C.box(g, 0.16 - i * 0.02, 0.14, 0.12, i % 2 ? 'l' : 'd', 0, 0.54 - i * 0.08, 0.24 - i * 0.12);
     } },
+  // owner 2026-11-08: "3 more options to each ... a bit weirder"
+  { name: 'Jelly', w: 0.5, legs: [[-0.14, 0.13], [0.14, 0.13], [-0.14, -0.13], [0.14, -0.13]], neck: [0.36, 0.16], tail: [0.15, -0.25], back: [0.4, -0.02],
+    build(g, C, P) {
+      const j = pivot(g, 0, 0, 0);                                                                     // it wobbles like jelly
+      C.box(j, 0.5, 0.36, 0.5, 'c', 0, 0.18, 0); C.box(j, 0.42, 0.06, 0.42, 'c', 0, 0.39, 0); C.box(j, 0.3, 0.2, 0.04, 'l', 0, 0.17, 0.25);
+      for (const [x, z, h] of [[-0.25, 0.1, 0.1], [0.25, -0.05, 0.14], [-0.1, -0.25, 0.08], [0.12, 0.25, 0.09]]) C.box(j, 0.06, h, 0.06, 'l', x, 0.08 - h / 2 + 0.06, z); // drips
+      (P.squash ||= []).push({ g: j, amp: 0.07, speed: 3.2, phase: 0 });
+    } },
+  { name: 'Stack', w: 0.36, upright: true, arms: 0.2, legs: [[-0.1, 0], [0.1, 0]], neck: [0.48, 0], tail: [0.08, -0.15], back: [0.32, -0.13],
+    build(g, C) {
+      C.box(g, 0.36, 0.18, 0.3, 'c', 0, 0.09, 0);
+      C.box(g, 0.3, 0.16, 0.26, 'l', 0, 0.26, 0).rotation.y = 0.35;
+      C.box(g, 0.26, 0.14, 0.24, 'd', 0, 0.41, 0).rotation.y = -0.25;
+    } },
+  { name: 'Robot', w: 0.4, upright: true, arms: 0.23, legs: [[-0.11, 0], [0.11, 0]], neck: [0.42, 0], tail: [0.1, -0.16], back: [0.32, -0.16],
+    build(g, C, P) {
+      C.box(g, 0.4, 0.42, 0.32, 'c', 0, 0.21, 0); C.box(g, 0.26, 0.2, 0.03, 'd', 0, 0.23, 0.16);   // the belly screen
+      P.tip = glow(C.box(g, 0.08, 0.05, 0.02, 'l', -0.05, 0.27, 0.18), C.hex('l')); glow(C.box(g, 0.12, 0.03, 0.02, 'l', 0.03, 0.19, 0.18), C.hex('l'));
+      for (const [x, y] of [[-0.17, 0.38], [0.17, 0.38], [-0.17, 0.04], [0.17, 0.04]]) C.fix(g, 0.04, 0.04, 0.02, METAL, x, y, 0.165); // rivets
+    } },
 ];
 
 // A head is built with its bottom at y 0 and its middle at z 0; face: where the eyes go; top: where an extra sits.
@@ -92,6 +112,21 @@ const HEADS = [
     for (let i = 0; i < 5; i++) { const hh = i === 2 ? 0.2 : i % 2 ? 0.12 : 0.16; glow(C.box(h, 0.045, hh, 0.045, 'l', (i - 2) * 0.055, 0.3 + hh / 2, -0.01), C.hex('l')); }
     for (const s of [-1, 1]) C.box(h, 0.05, 0.12, 0.05, 'd', s * 0.13, 0.33, -0.08).rotation.z = -s * 0.3;
   } },
+  { name: 'Mushroom', face: { z: 0.12, y: 0.12, s: 0.07 }, top: 0.42, build(h, C) {
+    C.box(h, 0.24, 0.22, 0.24, 'l', 0, 0.11, 0); C.box(h, 0.46, 0.12, 0.46, 'c', 0, 0.28, 0); C.box(h, 0.32, 0.08, 0.32, 'c', 0, 0.38, 0);
+    for (const [x, z] of [[-0.12, 0.1], [0.1, -0.12], [0.14, 0.12], [-0.1, -0.1], [0, 0]]) C.fix(h, 0.07, 0.02, 0.07, WHITE, x, z === 0 && x === 0 ? 0.425 : 0.345, z);
+    for (const s of [-1, 1]) C.fix(h, 0.07, 0.02, 0.02, WHITE, s * 0.15, 0.27, 0.235);
+  } },
+  { name: 'Robot', face: { z: 0.15, y: 0.18, s: 0.08 }, top: 0.3, build(h, C) {
+    C.box(h, 0.32, 0.3, 0.3, 'c', 0, 0.15, 0); C.box(h, 0.18, 0.06, 0.02, 'd', 0, 0.06, 0.155);
+    for (const x of [-0.06, -0.02, 0.02, 0.06]) C.fix(h, 0.015, 0.05, 0.025, METAL, x, 0.06, 0.16);      // the grille mouth
+    for (const s of [-1, 1]) { C.fix(h, 0.04, 0.08, 0.08, METAL, s * 0.18, 0.15, 0); C.box(h, 0.03, 0.05, 0.05, 'l', s * 0.205, 0.15, 0); }
+  } },
+  { name: 'Shark', face: { z: 0.12, y: 0.18, s: 0.1 }, top: 0.27, build(h, C) {
+    C.box(h, 0.28, 0.26, 0.3, 'c', 0, 0.13, 0); C.box(h, 0.2, 0.14, 0.14, 'c', 0, 0.13, 0.2); C.box(h, 0.22, 0.06, 0.16, 'l', 0, 0.03, 0.17);
+    for (const x of [-0.07, -0.025, 0.025, 0.07]) { const t = C.fix(h, 0.03, 0.04, 0.02, WHITE, x, 0.075, 0.265); t.rotation.z = Math.PI / 4; }
+    C.box(h, 0.03, 0.14, 0.12, 'd', 0, 0.31, -0.05).rotation.x = -0.4;                                 // the fin on top
+  } },
 ];
 
 // Eyes at the head's face (z, y, s = half the gap); `C` is the eyes' colour.
@@ -109,6 +144,17 @@ const EYES = [
     C.eye(h, 0.12, 0.12, 0.03, WHITE, s * f.s, f.y, f.z); C.eye(h, 0.13, 0.025, 0.035, 'c', s * f.s, f.y + 0.07, f.z);
     const g = pivot(h, s * f.s, f.y, f.z + 0.025); C.eye(g, 0.05, 0.05, 0.02, BLACK, 0.025, -0.02, 0);
     (P.wobble ||= []).push({ g, axis: 'z', speed: 5 + i * 1.7, phase: i * 2, amp: 1.2 }); }); } },
+  { name: 'Stalks', build(h, C, f, P) { [-1, 1].forEach((s, i) => {
+    const g = pivot(h, s * f.s, f.y + 0.02, f.z - 0.05);
+    C.eye(g, 0.025, 0.18, 0.025, 'd', 0, 0.09, 0); C.eye(g, 0.09, 0.09, 0.09, WHITE, 0, 0.2, 0); C.eye(g, 0.05, 0.05, 0.02, 'c', 0, 0.2, 0.046); C.eye(g, 0.025, 0.025, 0.02, BLACK, 0, 0.2, 0.054);
+    (P.wobble ||= []).push({ g, axis: 'z', speed: 3 + i, phase: i * 1.3, amp: 0.25 }); }); } },
+  { name: 'Hearts', build(h, C, f) { for (const s of [-1, 1]) { const x = s * f.s;
+    for (const dx of [-0.022, 0.022]) glow(C.eye(h, 0.05, 0.05, 0.03, 'c', x + dx, f.y + 0.015, f.z), C.hex('d'));
+    const b = glow(C.eye(h, 0.06, 0.06, 0.029, 'c', x, f.y - 0.012, f.z), C.hex('d')); b.rotation.z = Math.PI / 4; } } },
+  { name: 'Hypno', build(h, C, f, P) { [-1, 1].forEach(s => {
+    C.eye(h, 0.11, 0.11, 0.03, WHITE, s * f.s, f.y, f.z); const g = pivot(h, s * f.s, f.y, f.z + 0.02);
+    C.eye(g, 0.09, 0.02, 0.01, 'c', 0, 0, 0); C.eye(g, 0.02, 0.09, 0.01, 'c', 0, 0, 0); C.eye(g, 0.06, 0.06, 0.008, 'd', 0, 0, 0).rotation.z = Math.PI / 4; C.eye(g, 0.025, 0.025, 0.01, BLACK, 0, 0, 0.006);
+    (P.spin ||= []).push({ g, axis: 'z', speed: 4 * s }); }); } },
 ];
 
 // Legs: `len` lifts the body; each builder makes one leg hanging down from its hip pivot. `flat` = no walk swing.
@@ -123,6 +169,17 @@ const LEGS = [
     C.box(g, 0.09, 0.16, 0.09, 'c', 0, -0.08, 0); const t = pivot(g, 0, -0.16, 0); C.box(t, 0.07, 0.1, 0.07, 'l', 0, -0.04, 0.02);
     (P.wobble ||= []).push({ g, axis: i % 2 ? 'x' : 'z', speed: 3, phase: i, amp: 0.25 }); } },
   { name: 'Cloud', len: 0.1, hover: true, under: true, build(g, C) { for (const [x, z, s] of [[0, 0, 0.3], [-0.14, 0.08, 0.2], [0.15, -0.06, 0.22], [0.02, -0.15, 0.18]]) C.box(g, s, 0.1, s, 'l', x, -0.05, z); } },
+  { name: 'Frog', len: 0.16, build(g, C) { C.box(g, 0.1, 0.12, 0.1, 'c', 0, -0.06, 0); C.box(g, 0.18, 0.04, 0.22, 'l', 0, -0.14, 0.05); for (const x of [-0.06, 0, 0.06]) C.box(g, 0.04, 0.045, 0.04, 'd', x, -0.135, 0.17); } },
+  { name: 'Spider', len: 0.2, ring: 8, flat: true, build(g, C, P, i) {               // eight bendy legs reaching out
+    g.rotation.y = -((i / 8) * Math.PI * 2 + 0.3);
+    const up = C.box(g, 0.3, 0.03, 0.03, 'c', 0.14, 0.07, 0); up.rotation.z = 0.4;
+    C.box(g, 0.03, 0.33, 0.03, 'd', 0.27, -0.035, 0);
+    (P.wobble ||= []).push({ g, axis: 'z', speed: 6, phase: i * 0.8, amp: 0.08 }); } },
+  { name: 'Pogo', len: 0.32, under: true, build(g, C, P) {                          // one bouncy spring
+    const sp = pivot(g, 0, 0, 0);
+    for (let k = 0; k < 4; k++) C.fix(sp, 0.13 - (k % 2) * 0.03, 0.03, 0.13 - (k % 2) * 0.03, METAL, 0, -0.04 - k * 0.06, 0);
+    C.fix(sp, 0.03, 0.26, 0.03, METAL, 0, -0.14, 0); C.box(sp, 0.2, 0.05, 0.2, 'c', 0, -0.295, 0);
+    (P.squash ||= []).push({ g: sp, amp: 0.12, speed: 7, phase: 0 }); } },
 ];
 
 // Tails point backwards (-z) from their pivot; parts.tail wags.
@@ -138,6 +195,17 @@ const TAILS = [
     P.tip = glow(C.box(t, 0.15, 0.15, 0.15, 'l', 0, 0.2, -0.6), C.hex('l')); } },
   { name: 'Feather fan', build(t, C) { const a = pivot(t, 0, 0.04, 0); a.rotation.x = -0.5;
     for (let i = -2; i <= 2; i++) { const f = pivot(a, 0, 0, 0); f.rotation.z = i * 0.32; C.box(f, 0.05, 0.4, 0.02, 'c', 0, 0.22, -0.02); C.box(f, 0.07, 0.07, 0.03, 'l', 0, 0.38, -0.02); C.box(f, 0.035, 0.035, 0.035, 'd', 0, 0.38, -0.01); } } },
+  { name: 'Lightning', build(t, C, P) {
+    [[0.04, -0.08, 0.7], [0.12, -0.17, -0.7], [0.2, -0.26, 0.7]].forEach(([y, z, r]) => { C.box(t, 0.05, 0.05, 0.16, 'c', 0, y, z).rotation.x = r; });
+    P.tip = glow(C.box(t, 0.08, 0.08, 0.08, 'l', 0, 0.28, -0.34), C.hex('l')); } },
+  { name: 'Rocket', build(t, C, P) {
+    C.box(t, 0.1, 0.1, 0.22, 'c', 0, 0, -0.11); C.box(t, 0.12, 0.12, 0.04, 'l', 0, 0, -0.04);
+    for (const s of [-1, 1]) C.box(t, 0.08, 0.02, 0.08, 'd', s * 0.08, 0, -0.18);          // the fins
+    C.box(t, 0.02, 0.08, 0.08, 'd', 0, 0.08, -0.18);
+    P.tip = glow(C.fix(t, 0.08, 0.08, 0.1, 0xffb030, 0, 0, -0.27), 0xff7020); glow(C.fix(t, 0.05, 0.05, 0.08, 0xfff080, 0, 0, -0.34), 0xffd040); } },
+  { name: 'Mermaid', build(t, C) {
+    C.box(t, 0.12, 0.09, 0.16, 'c', 0, 0, -0.08); C.box(t, 0.08, 0.07, 0.14, 'c', 0, 0.02, -0.21); C.box(t, 0.1, 0.02, 0.12, 'l', 0, 0.045, -0.12);
+    for (const s of [-1, 1]) { const f = C.box(t, 0.2, 0.03, 0.12, 'l', s * 0.08, 0.04, -0.32); f.rotation.y = s * 0.5; } } },
 ];
 
 // The back: wings (fly = the guardian floats and flaps), spikes, a shell, a sail.
@@ -153,6 +221,19 @@ const BACKS = [
     addWings(P, g, null, b.w * 0.3, -0.04, -0.14, 0.38, 0.22, C.hex('d'), C.hex('l'), { lift: 0.15 }); C.tag(g); } },
   { name: 'Sail', build(g, C) { const s = pivot(g, 0, 0, 0);
     C.box(s, 0.04, 0.3, 0.04, 'd', 0, 0.15, 0.14); C.box(s, 0.04, 0.3, 0.04, 'd', 0, 0.15, -0.14); C.box(s, 0.04, 0.04, 0.32, 'd', 0, 0.3, 0); C.box(s, 0.025, 0.24, 0.24, 'c', 0, 0.15, 0); C.box(s, 0.03, 0.08, 0.08, 'l', 0, 0.18, 0.03); } },
+  { name: 'Jetpack', fly: true, build(g, C, P) {
+    for (const s of [-1, 1]) {
+      C.box(g, 0.09, 0.09, 0.26, 'c', s * 0.07, 0.05, -0.06); C.box(g, 0.1, 0.1, 0.03, 'l', s * 0.07, 0.05, 0.07); C.fix(g, 0.07, 0.07, 0.04, METAL, s * 0.07, 0.05, -0.21);
+      const f = pivot(g, s * 0.07, 0.05, -0.25); glow(C.fix(f, 0.06, 0.06, 0.08, 0xffb030, 0, 0, -0.04), 0xff7020); glow(C.fix(f, 0.035, 0.035, 0.06, 0xfff080, 0, 0, -0.1), 0xffd040);
+      (P.squash ||= []).push({ g: f, amp: 0.25, speed: 18, phase: s }); } } },
+  { name: 'Propeller', fly: true, build(g, C, P) {
+    C.box(g, 0.03, 0.2, 0.03, 'd', 0, 0.1, 0); C.fix(g, 0.06, 0.04, 0.06, METAL, 0, 0.21, 0);
+    const r = pivot(g, 0, 0.23, 0); C.box(r, 0.56, 0.02, 0.07, 'c', 0, 0, 0); C.box(r, 0.07, 0.02, 0.56, 'l', 0, 0, 0);
+    (P.spin ||= []).push({ g: r, axis: 'y', speed: 16 }); } },
+  { name: 'Mushrooms', build(g, C) {                                                    // little mushrooms growing on its back
+    for (const [x, z, h, w] of [[-0.09, 0.05, 0.08, 0.12], [0.08, -0.04, 0.12, 0.14], [0, -0.14, 0.05, 0.09], [0.11, 0.11, 0.04, 0.07]]) {
+      C.fix(g, 0.04, h, 0.04, 0xf2eadc, x, h / 2, z); C.box(g, w, 0.05, w, 'c', x, h + 0.02, z); C.fix(g, w * 0.3, 0.015, w * 0.3, WHITE, x + w * 0.15, h + 0.05, z);
+    } } },
 ];
 
 // Extras sit on the head's top (at: 'head') or around the body (at: 'body').
@@ -165,6 +246,18 @@ const EXTRAS = [
   { name: 'Bow', build(h, C, top) { const g = pivot(h, 0.08, top, 0.02); C.box(g, 0.05, 0.05, 0.05, 'd', 0, 0.02, 0); for (const s of [-1, 1]) { const b = C.box(g, 0.1, 0.08, 0.04, 'c', s * 0.07, 0.03, 0); b.rotation.z = s * 0.3; } } },
   { name: 'Sparkles', body: true, build(r, C, mid, P) { const g = pivot(r, 0, mid.y, mid.z); for (let k = 0; k < 7; k++) { const a = k * 0.9, y = ((k * 37) % 5) * 0.08 - 0.12; glow(C.box(g, 0.05, 0.05, 0.05, 'c', Math.cos(a) * mid.r, y, Math.sin(a) * mid.r), C.hex('c')).rotation.set(0.6, 0.6, 0); } (P.spin ||= []).push({ g, axis: 'y', speed: 0.8 }); } },
   { name: 'Flower', build(h, C, top) { const g = pivot(h, -0.08, top, 0.02); C.fix(g, 0.02, 0.08, 0.02, 0x3c8a3c, 0, 0.04, 0); for (const [x, y] of [[0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04]]) C.box(g, 0.045, 0.045, 0.02, 'c', x, 0.1 + y, 0); C.fix(g, 0.035, 0.035, 0.025, 0xf0c828, 0, 0.1, 0.005); } },
+  { name: 'Unicorn horn', build(h, C, top) { const g = pivot(h, 0, top - 0.04, 0.08); g.rotation.x = 0.35;
+    for (let k = 0; k < 4; k++) { const b = C.box(g, 0.07 - k * 0.014, 0.07, 0.07 - k * 0.014, k % 2 ? 'l' : 'c', 0, 0.035 + k * 0.065, 0); b.rotation.y = k * 0.4; }
+    glow(C.box(g, 0.02, 0.05, 0.02, 'l', 0, 0.3, 0), C.hex('l')); } },
+  { name: 'Crown', build(h, C, top) {
+    C.box(h, 0.26, 0.06, 0.26, 'c', 0, top + 0.03, 0);
+    for (const [x, z] of [[-0.11, -0.11], [0.11, -0.11], [-0.11, 0.11], [0.11, 0.11], [0, 0.11], [0, -0.11]]) C.box(h, 0.045, 0.07, 0.045, 'c', x, top + 0.09, z);
+    glow(C.fix(h, 0.05, 0.04, 0.02, 0xe13c3c, 0, top + 0.03, 0.135), 0x801010); } },
+  { name: 'Rain cloud', build(h, C, top, P) {                                            // its own little cloud, raining
+    const g = pivot(h, 0, top + 0.22, -0.02);
+    for (const [x, y, w] of [[0, 0.02, 0.24], [-0.1, 0, 0.14], [0.11, -0.005, 0.15]]) C.box(g, w, 0.09, 0.14, 'l', x, y, 0);
+    for (const [x, d] of [[-0.08, 0.1], [-0.02, 0.15], [0.05, 0.08], [0.1, 0.13]]) C.box(g, 0.018, 0.05, 0.018, 'c', x, -0.05 - d / 2, (x * 7) % 0.05);
+    (P.wobble ||= []).push({ g, axis: 'z', speed: 1.6, phase: 0, amp: 0.08 }); } },
 ];
 
 export const KIT = { body: BODIES, head: HEADS, eyes: EYES, legs: LEGS, tail: TAILS, back: BACKS, extra: EXTRAS };
@@ -176,10 +269,10 @@ export const BARE = Object.freeze({ n: '', p: [0, 0, 0, 1, 0, 0, 0], c: [10, 10,
 export const ZENITHAR = Object.freeze({ n: 'Zenithar', p: [6, 7, 0, 3, 6, 6, 3], c: [10, 2, 7, 2, 10, 10, 2] });
 
 // ---- names ----
-const HEAD_START = ['Bloc', 'Fox', 'Bun', 'Kit', 'Peep', 'Drak', 'Bear', 'Crown'];
-const BACK_END = ['', 'wing', 'flap', 'flutter', 'spike', 'shell', 'glory', 'sail'];
-const TAIL_END = ['', 'tail', 'brush', 'spike', 'curl', 'fin', 'twinkle', 'fan'];
-const BODY_END = ['ball', 'paw', 'top', 'tank', 'bean', 'noodle', 'mane'];
+const HEAD_START = ['Bloc', 'Fox', 'Bun', 'Kit', 'Peep', 'Drak', 'Bear', 'Crown', 'Shroom', 'Robo', 'Chomp'];
+const BACK_END = ['', 'wing', 'flap', 'flutter', 'spike', 'shell', 'glory', 'sail', 'jet', 'copter', 'sprout'];
+const TAIL_END = ['', 'tail', 'brush', 'spike', 'curl', 'fin', 'twinkle', 'fan', 'zap', 'rocket', 'splash'];
+const BODY_END = ['ball', 'paw', 'top', 'tank', 'bean', 'noodle', 'mane', 'wobble', 'tower', 'bot'];
 // A name from the parts ("Foxwing", "Bunflutter"); the child can type their own.
 export function kitName(d) {
   const [b, h, , , t, k] = d.p;

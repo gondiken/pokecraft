@@ -66,7 +66,7 @@ export default async function ({ browser, base, t }) {
         for (const ci of [0, 6, K.RAINBOW]) {
           const d = { n: 'Test', p: [...K.BARE.p], c: [...K.BARE.c] }; d.p[si] = i; d.c[si] = ci;
           const p = check(d, `${slot} ${part.name} colour ${ci}`);
-          if (slot === 'back' && part.fly && !(p.hover && p.wings?.length)) bad(`${part.name}: should fly and flap`);
+          if (slot === 'back' && part.fly && !(p.hover && (p.wings?.length || p.spin?.length || p.squash?.length))) bad(`${part.name}: should fly (and flap, spin or puff)`);
           if (slot === 'legs' && part.len && !part.flat && !part.under && !(p.legs?.length >= 2)) bad(`${part.name}: legs should walk`);
           if (ci === K.RAINBOW && part.build && !(p.rainbow?.length)) bad(`${slot} ${part.name}: rainbow does not flow`);
           if (slot === 'tail' && part.build && !p.tail) bad(`${part.name}: no wagging tail`);
@@ -101,7 +101,7 @@ export default async function ({ browser, base, t }) {
       return out;
     });
     t.ok(!k.problems.length, `every part with every colour builds, stands on y 0, animates; wings fly; rainbow flows (${k.built} models) ${k.problems.slice(0, 6).join('; ')}`);
-    t.ok(k.counts.length === 7 && k.counts.every(n => n >= 5 && n <= 8), `seven slots with 5-8 options each (${k.counts})`);
+    t.ok(k.counts.join() === '10,11,10,11,11,11,11', `seven slots with 10-11 options each (owner 2026-11-08: three more each) (${k.counts})`);
     t.ok(k.zen.names.join() === 'Grand,Crowned,Big,Paws,Star,Grand wings,Halo' && k.zen.fly && k.zen.halo && k.zen.tip && k.zen.wings === 4, `Zenithar can be drawn from the kit (${k.zen.names})`);
     t.ok(k.clean.n === 'Hi there' && k.clean.p.join() === '1,0,0,1,2,0,0' && k.clean.c.join() === '12,10,11,10,10,10,2', `junk is cleaned (${JSON.stringify(k.clean)})`);
     t.ok(k.auto === 'Foxwing' && k.rnd.every(n => n.length >= 3 && n.length <= 12) && new Set(k.rnd).size >= 4, `a name from the parts (${k.auto}) and silly ones (${k.rnd})`);
