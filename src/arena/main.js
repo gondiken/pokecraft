@@ -17,7 +17,6 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ff);
-scene.fog = new THREE.Fog(0x9fd4ff, 30, 60);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
 buildArena(scene);
 const fx = new Fx(scene);
@@ -248,6 +247,8 @@ const perf = { fps: 60, calls: 0, frames: 0, t: 0 };
 let last = performance.now(), acc = 0;
 const camPos = new THREE.Vector3(), camAt = new THREE.Vector3();
 function resize() {
+  $('hint').style.top = `${$('top').getBoundingClientRect().bottom + 4}px`; // under the top bar, however it wraps
+  $('timer').style.top = `${$('top').getBoundingClientRect().bottom + 40}px`;
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
