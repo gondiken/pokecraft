@@ -669,9 +669,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
           m.model.position.set(hx + (f.x - hx) * k, hy + (f.y - hy) * k + Math.sin(k * Math.PI) * 2, hz + (f.z - hz) * k);
         }
         animateModel(m.model, m.t, f.moving);
-        let vis = f.alive || f.flash > 0;
-        if (f.flash > 0) vis = f.alive ? Math.floor(f.flash * 20) % 2 === 0 : true;
-        if (!f.alive) m.model.scale.setScalar(Math.max(0.01, m.model.userData.base * (f.flash / 0.6)));
+        const fl = S.phase === 'exit' && !f.alive ? Math.min(f.flash, Math.max(0, 0.6 - phaseT)) : f.flash; // (the fight stops stepping at the end: a fainted one still shrinks away)
+        let vis = f.alive || fl > 0;
+        if (fl > 0) vis = f.alive ? Math.floor(fl * 20) % 2 === 0 : true;
+        if (!f.alive) m.model.scale.setScalar(Math.max(0.01, m.model.userData.base * (fl / 0.6)));
         m.model.visible = vis && S.phase !== 'cleared';
       } else { // idle: they shuffle about their spot and turn to watch you
         const p = game.player?.pos;

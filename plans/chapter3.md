@@ -143,10 +143,14 @@ patch is 14-23 blocks from the start (a grey pencil knot with three monsters dra
 - **Controls:** the five fixed tablet slots become Dodge (Jump) and your four moves (the action button, Place, Ride, Down); keys Space
   and Q E R F, 1 2 3 or a tap on a card swaps, a tap on a monster picks it. Behind the creature the stick / WASD move the creature and a
   drag / the mouse turns the camera.
-- **Tuning:** scribble monsters have 8x HP and power 60 (the arena's 6x / 50). Found while testing: the arena's bots never got the
-  Power Up bonus (it is set in the arena's draw loop, which the bots skip), so mashing was weaker there than in real play. Here buffs
-  work, and with the arena's numbers a mashing bot won about half its fights. Bots on three worlds (seeds 1, 22, 122): naive loses
-  (1 win in 54), skilled wins every fight, behind and in first person, at 60 and 20 fps.
+- **Tuning:** scribble monsters have 8x HP, power 60 and strike 30 % more often (`FIGHT.attack` 0.7, the same lever as the arena's Ice
+  Lake) than the arena's Live (6x, 50). Found while testing: the arena's bots never got the Power Up bonus (it is set in the arena's
+  draw loop, which the bots skip), so mashing was weaker there than in real play. Here buffs work, and with the arena's numbers a mashing
+  bot won about half its fights. The monsters leap out of the knot round your creature (one in front, two to the sides); an arc only in
+  front let mashing win more. Bots on three worlds (seeds 1, 22, 122), 8 games each: naive loses (1 win in 72), skilled wins all 144,
+  behind and in first person, at 60 and 20 fps. Mashing with a lead whose types beat all three monsters (Phantomaw) won about half its
+  fights before the faster rhythm and 2 in 24 after: the type chart working, reported by the bots, not failed.
 - **Not proven yet:** the real iPad's frame rate (the scene adds about 20-40 draw calls: the tangle is one instanced mesh); whether a child
-  reads the red warnings on bumpy ground as easily as on the arena's flat floor.
+  reads the red warnings on bumpy ground as easily as on the arena's flat floor; whether 0.7 is too fast for the son on a tablet
+  (the arena's 1.0 was fine for him on flat ground).
 - **Questions for the owner after playing:** does it feel like the same game? which camera? is the ring the right size on real ground?

@@ -24,7 +24,8 @@ export const FIGHT = {
   water: 0.6,         // speed while swimming
   stompDy: 1.6,       // a stomp reaches only what stands within this height of the monster
   cone: 0.6,          // first person: a monster within this angle (rad) of your look is the target
-  arc: 1.2,           // the monsters leap out to an arc this far apart (rad) in front of your creature
+  attack: 0.7,        // the monsters' rhythm: x the arena's time between attacks (they strike more often: mashing must never win)
+  arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
 const WATER = 5;
 // First person (Test B): your creature runs beside you (a little ahead, to the right) and your moves go the way you look.
@@ -108,11 +109,11 @@ export class ScribbleFight {
     this.clock = 0; this.acc = 0; this.over = false; this.won = null; this.swapCool = 0; this.pendingSwap = null; this.nextId = 1;
     this.stats = { dealt: 0, taken: 0, dodged: 0, swaps: 0 };
   }
-  // where monster i jumps to when the ring snaps: an arc in front of your creature (they rush all at once), on ground it can stand on
+  // where monster i jumps to when the ring snaps: round your creature (they rush all at once), on ground it can stand on
   spotAround(i, n) {
     const s = this.you, base = Math.atan2(this.C.x - s.x, this.C.z - s.z);
     for (let k = 0; k < 40; k++) {
-      const a = base + (i - (n - 1) / 2) * FIGHT.arc + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.15; // an arc in front of it: you see them all
+      const a = base + (i - (n - 1) / 2) * FIGHT.arc + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.15; // round it: they rush from every side
       for (const d of [6, 5.2, 6.8, 4.5]) {
         const x = s.x + Math.sin(a) * d, z = s.z + Math.cos(a) * d;
         if (!this.inRing(x, z, 1.5)) continue;
@@ -405,7 +406,7 @@ export class ScribbleFight {
       const t = this.makeTell(f);
       t.left = F.tell;
       f.tell = t;
-      f.timer = F.every[0] + this.rand() * (F.every[1] - F.every[0]);
+      f.timer = (F.every[0] + this.rand() * (F.every[1] - F.every[0])) * FIGHT.attack; // (the arena's Ice Lake has the same lever)
       this.emit({ kind: 'tell', f, t });
     }
   }

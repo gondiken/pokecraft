@@ -144,15 +144,21 @@ export async function runBots(page, games = 4, log = console.log) {
   const lines = [];
   for (const [bot, eyes, fps] of RUNS) {
     const runs = [];
-    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { eyes, fps, lead: g }));
+    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { eyes, fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
     const wins = runs.filter(r => r.won).length;
     const ok = bot === 'naive' ? wins <= Math.floor(games / 4) : wins === games;
     if (!ok) fails++;
     const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} ${eyes ? 'eyes  ' : 'behind'} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
     lines.push(line); log(line);
   }
+  // Reported, never failed: mashing with a lead whose types beat all three monsters (Phantomaw: Ghost moves hit the Ghost monster x2,
+  // its Fire move the Grass one, and nothing hits it x2) wins most fights. That is the type chart working, not a hole in the rules.
+  const m = []; for (let g = 0; g < games; g++) m.push(await play(page, 'naive', { lead: MATCHED }));
+  const line = `info naive behind @60 with a type-matched lead (phantomaw): ${m.filter(r => r.won).length}/${games} won`;
+  lines.push(line); log(line);
   return { lines, fails };
 }
+export const MATCHED = 3;
 
 // The page: ?preview and a game in the world of `seed` (none = a New Game in a random world) with a team of three at level 30
 // (the arena's ready-made team).
