@@ -54,7 +54,7 @@ export class StudioLive {
   rect(n) { return pageRect(this.S.floors[n - 1], this.pageOf(n)); }
   floorNow() { const p = this.game.player; return p ? floorAt(p.pos) : 0; }
   // Floor 5's saved palette (stage C keeps it in game.studio.paint), else what was painted this visit.
-  groupsOf(n) { return n === 5 ? this.game.studio?.paint ?? this.paint : null; }
+  groupsOf(n) { return FLOORS[n - 1].pages.some(pg => pg.palette) ? this.game.studio?.paint ?? this.paint : null; }
   say(text) { this.game.ui.toast(text); }
   once(key, text) { if (this.told.has(key)) return; this.told.add(key); this.say(text); }
 
@@ -119,7 +119,7 @@ export class StudioLive {
     const h = this.pick({ x: origin.x, y: origin.y, z: origin.z }, { x: dir.x, y: dir.y, z: dir.z });
     return h ? this.act(h) : false;
   }
-  locked(n) { return this.allPages(n) && (n < FLOORS.length || !!this.game.studio?.ally) || this.state[n - 1].turnAt >= 0; } // floors 1-4 are finished for good once every picture is; floor 5 stays paintable until you chose your guardian (then its colours are final); a finished picture waits for the next
+  locked(n) { return this.allPages(n) && (!FLOORS[n - 1].pages.some(pg => pg.palette) || !!this.game.studio?.ally) || this.state[n - 1].turnAt >= 0; } // a floor is finished for good once every picture is (a palette page, none now, stayed paintable until you chose your guardian); a finished picture waits for the next
 
   act(h) {
     if (h.far) { this.say(WORDS.closer); return true; }
@@ -186,7 +186,7 @@ export class StudioLive {
     }
     if (first || changed) this.game.save?.(true);
     if (f.palette && !first && changed) this.say(WORDS.repaint);
-    if (first) this.say(n === FLOORS.length ? 'Lovely colours! Come and talk to me.' : WORDS.done);
+    if (first) this.say(n === FLOORS.length ? 'What a portrait! Come and talk to me.' : WORDS.done);
     else if (gotPage) { sound.play('paintdone'); this.game.save?.(true); this.say(WORDS.finished); } // an old save's open floor: its new pictures are done too
   }
 

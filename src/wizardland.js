@@ -118,7 +118,7 @@ export function wizardLand(world) {
   }
   // 5. the Wizard (a guest person) in the studio, facing the canvas; the way back on the ground floor (south wall) and in the studio (east wall)
   world.people ??= [];
-  world.people.push({ name: 'The Wizard', title: 'The Wizard · Tower', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard', line: 'Paint my guardian! Almost ready for you!',
+  world.people.push({ name: 'The Wizard', title: 'The Wizard · Tower', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard', line: 'Paint my portrait! Almost ready for you!',
     pos: [WIZARD_AT.x, TOWER.studio + 1, WIZARD_AT.z], heading: Math.PI, wizard: true });
   buildWayBack(world, 'wizard', { x: MID, y: TOWER.floors[0], z: 31, facing: [0, -1] });
   buildWayBack(world, 'wizard-top', { x: 31, y: TOWER.studio, z: 26, facing: [-1, 0] });
