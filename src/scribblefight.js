@@ -24,6 +24,12 @@ export const FIGHT = {
   water: 0.6,         // speed while swimming
   stompDy: 1.6,       // a stomp reaches only what stands within this height of the monster
   cone: 0.6,          // first person: a monster within this angle (rad) of your look is the target
+  // owner 2026-11-09: creatures with shots won easily, rushers fainted fast (a rush stopped right next to the monster, inside its stomp).
+  // Measured with bots (plans/chapter3.md section 7): shorter cool-downs or a rush that always went through let MASHING win, so a rush is a
+  // timing skill: hit a monster in the last half of its warning (when the red pulses fastest) and you cancel its attack, knock it back
+  // and carry on through to the far side, out of its stomp. Any other rush stops at the monster as in the arena (cool-downs: the arena's).
+  cool: {},
+  rush: { speed: 17, min: 4.8, past: 2.4, max: 8, safe: 0.3, interrupt: true, window: 0.5, throughOnlyInWindow: true, stun: 1.2, knock: 1.6 },
   attack: 0.7,        // the monsters' rhythm: x the arena's time between attacks (they strike more often: mashing must never win)
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
@@ -107,7 +113,7 @@ export class ScribbleFight {
     this.shots = []; this.clouds = []; this.events = [];
     this.dash = null; this.dir = { x: 0, z: 1 }; this.target = null;
     this.clock = 0; this.acc = 0; this.over = false; this.won = null; this.swapCool = 0; this.pendingSwap = null; this.nextId = 1;
-    this.stats = { dealt: 0, taken: 0, dodged: 0, swaps: 0 };
+    this.stats = { dealt: 0, taken: 0, dodged: 0, swaps: 0, byKind: {}, snaps: 0, blocked: 0, hitBy: {} };
   }
   // where monster i jumps to when the ring snaps: round your creature (they rush all at once), on ground it can stand on
   spotAround(i, n) {
@@ -200,13 +206,14 @@ export class ScribbleFight {
     return len2(x - px, z - pz) <= t.w / 2 + r * 0.5;
   }
   // ---------------------------------------------------------------- damage
-  hit(src, dst, power, type, mult = 1) {
+  hit(src, dst, power, type, mult = 1, kind = null) {
     if (this.over || !dst.alive) return 0;
     if (dst.safeT > 0) { this.emit({ kind: 'dodged', f: dst }); if (dst.side === 'you') this.stats.dodged++; return 0; }
     const { amount, eff } = damage(src.c, dst.c, power, type, mult);
     dst.hp = Math.max(0, dst.hp - amount);
     dst.flash = 0.25;
     this.stats[dst.side === 'you' ? 'taken' : 'dealt'] += amount;
+    if (kind) { const k = dst.side === 'you' ? 'hitBy' : 'byKind'; this.stats[k][kind] = (this.stats[k][kind] || 0) + amount; }
     this.emit({ kind: 'hit', f: dst, amount, eff });
     if (!dst.alive) {
       dst.flash = 0.6;
@@ -281,7 +288,7 @@ export class ScribbleFight {
   }
   use(slot, charge) {
     const you = this.you, s = this.moves[slot - 1], t = this.aimAt();
-    const cool = LIVE.cool[s.kind];
+    const cool = FIGHT.cool[s.kind] ?? LIVE.cool[s.kind];
     this.cd[slot] = cool; this.cdMax[slot] = cool;
     let dx = Math.sin(you.heading), dz = Math.cos(you.heading), dy = 0;
     if (t) { const d = len2(t.x - you.x, t.z - you.z) || 1; dx = (t.x - you.x) / d; dz = (t.z - you.z) / d; dy = (t.y - you.y) / d; }
@@ -292,10 +299,14 @@ export class ScribbleFight {
     else if (s.kind === 'burst') {
       const r = 2.2 + 1.6 * charge;
       this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r });
-      for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) this.hit(you, f, s.power, s.type, 0.55 + 0.6 * charge);
+      for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) this.hit(you, f, s.power, s.type, 0.55 + 0.6 * charge, 'burst');
     } else if (s.kind === 'dash') {
-      this.dash = { x: dx, z: dz, t: 0.28, speed: 17, hits: new Set(), s };
-      you.safeT = 0.3;
+      // owner 2026-11-09 (rushers fainted fast, shooters won): a rush goes THROUGH the monster it aims at and ends behind it (out of
+      // its stomp), as far as it needs (FIGHT.rush); a hit on a monster that is winding up cancels its attack and knocks it back
+      const R0 = FIGHT.rush, inWindow = t?.tell && t.tell.left <= LIVE.foe.tell * (R0.window ?? 1);
+      const reach = t && (inWindow || !R0.throughOnlyInWindow) ? Math.max(R0.min, Math.min(R0.max, len2(t.x - you.x, t.z - you.z) + R0.past)) : R0.min;
+      this.dash = { x: dx, z: dz, t: reach / R0.speed, speed: R0.speed, hits: new Set(), s };
+      you.safeT = R0.safe ?? reach / R0.speed + 0.05;
       if (s.recoil) { const n = Math.max(1, Math.round(you.maxHp * 0.06)); you.hp = Math.max(1, you.hp - n); this.emit({ kind: 'hit', f: you, amount: n, eff: 1 }); }
     } else if (s.kind === 'heal') this.heal(you, 0.35);
     else if (s.kind === 'buff') { if (s.stat === 'def') you.guardT = 8; else you.buffT = 8; this.emit({ kind: 'buff', def: s.stat === 'def' }); }
@@ -335,14 +346,28 @@ export class ScribbleFight {
       const d = this.dash;
       const stopped = this.move(you, d.x * d.speed * dt, d.z * d.speed * dt);
       d.t -= dt;
-      if (d.hits) for (const f of this.foes) if (f.alive && !d.hits.has(f) && len2(f.x - you.x, f.z - you.z) < f.r + you.r + 0.2 && Math.abs(f.y - you.y) < 1.6) { d.hits.add(f); this.hit(you, f, d.s.power, d.s.type); }
+      if (d.hits) for (const f of this.foes) if (f.alive && !d.hits.has(f) && len2(f.x - you.x, f.z - you.z) < f.r + you.r + 0.2 && Math.abs(f.y - you.y) < 1.6) {
+        d.hits.add(f);
+        const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * (FIGHT.rush.window ?? 1); // (window: only the last part of the warning, when it pulses fastest)
+        this.hit(you, f, d.s.power, d.s.type, 1, 'dash');
+        if (winding && f.alive && FIGHT.rush.interrupt) { // cancel its attack and knock it back
+          f.tell = null; f.timer = Math.max(f.timer, FIGHT.rush.stun);
+          this.move(f, d.x * FIGHT.rush.knock, d.z * FIGHT.rush.knock);
+          this.emit({ kind: 'interrupt', f });
+        }
+      }
       if (stopped || d.t <= 0) { this.dash = null; you.vel.x = you.vel.z = 0; }
       you.moving = true;
     } else {
       const { mx, mz } = this.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
       const sp = LIVE.speed * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? FIGHT.water : 1);
-      if (you.moving) { const k = Math.hypot(mx, mz); this.move(you, mx / k * sp * dt, mz / k * sp * dt); this.dir = { x: mx, z: mz }; }
+      if (you.moving) {
+        const k = Math.hypot(mx, mz), y0 = you.y;
+        if (this.move(you, mx / k * sp * dt, mz / k * sp * dt)) this.stats.blocked += dt;
+        if (you.y !== y0) this.stats.snaps++;
+        this.dir = { x: mx, z: mz };
+      }
     }
     const t = this.aimAt();
     if (this.aimDir) you.heading = Math.atan2(this.aimDir.x, this.aimDir.z);
@@ -355,7 +380,7 @@ export class ScribbleFight {
       sh.x += sh.dx * st; sh.y += sh.dy * st; sh.z += sh.dz * st; sh.left -= st; sh.live = true;
       if (this.g.solid(sh.x, sh.y, sh.z)) { sh.dead = true; this.emit({ kind: 'blocked', x: sh.x, y: sh.y, z: sh.z, type: sh.s.type }); }
       else if (sh.left <= 0 || !this.inRing(sh.x, sh.z, -1)) sh.dead = true;
-      for (const f of this.foes) if (!sh.dead && f.alive && len2(f.x - sh.x, f.z - sh.z) < f.r + 0.2 && Math.abs(f.y + FIGHT.chest - sh.y) < 1.3) { sh.dead = true; this.hit(you, f, sh.s.power, sh.s.type, sh.mult); }
+      for (const f of this.foes) if (!sh.dead && f.alive && len2(f.x - sh.x, f.z - sh.z) < f.r + 0.2 && Math.abs(f.y + FIGHT.chest - sh.y) < 1.3) { sh.dead = true; this.hit(you, f, sh.s.power, sh.s.type, sh.mult, sh.s.kind); }
     }
     this.shots = this.shots.filter(s => !s.dead);
     // clouds slow monsters or send them to sleep
@@ -378,7 +403,7 @@ export class ScribbleFight {
       const c = f.charging, st = Math.min(c.left, F.dash * dt);
       const stopped = this.move(f, c.dx * st, c.dz * st);
       c.left -= st;
-      if (!c.hit && you.safeT <= 0 && len2(you.x - f.x, you.z - f.z) < you.r + f.r && Math.abs(you.y - f.y) < 1.6) { c.hit = true; this.hit(f, you, FIGHT.foePower, f.type, slow); }
+      if (!c.hit && you.safeT <= 0 && len2(you.x - f.x, you.z - f.z) < you.r + f.r && Math.abs(you.y - f.y) < 1.6) { c.hit = true; this.hit(f, you, FIGHT.foePower, f.type, slow, 'rush'); }
       if (stopped || c.left <= 0) f.charging = null;
       f.moving = true;
       return;
@@ -415,7 +440,7 @@ export class ScribbleFight {
     f.tell = null;
     if (t.kind === 'line') { f.charging = { dx: t.dx, dz: t.dz, left: t.len, hit: false }; this.emit({ kind: 'rush', f }); return; }
     this.emit({ kind: 'thud', f, t });
-    if (you.safeT <= 0 && this.inTell(t, you.x, you.y, you.z, you.r)) this.hit(f, you, FIGHT.foePower, f.type, slow);
+    if (you.safeT <= 0 && this.inTell(t, you.x, you.y, you.z, you.r)) this.hit(f, you, FIGHT.foePower, f.type, slow, t.kind === 'ring' ? 'stomp' : 'lob');
   }
   // what the HUD and the pad show
   pad() {

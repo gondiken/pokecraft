@@ -24,6 +24,7 @@ export const SCRIBBLE = {
   cam: { dist: 8.5, elev: 0.78, look: 1.6, yawRate: 7, follow: 7, pitchK: 0.35 },
   enter: { throw: 0.45, grow: 0.35, camFrom: 0.3, cam: 1.6, go: 1.95 }, // seconds: the cube's flight, the creature growing, the camera's move
   exit: { wait: 1.3, cam: 1.6, fade: 1.1 },
+  stepEase: 14,           // how fast a creature's drawn height follows a step up or down (1 / s)
   back: 20,               // a cleared patch scribbles itself back after this long, once you are away from it
 };
 const smooth = k => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
@@ -542,6 +543,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       else if (e.kind === 'heal') floatText(e.f.x, e.f.y + h * 0.7, e.f.z, e.amount ? `+${e.amount}` : 'Full!', 'heal');
       else if (e.kind === 'faint') sound.play('faint');
       else if (e.kind === 'dodge') sound.play('whoosh');
+      else if (e.kind === 'interrupt') { floatText(e.f.x, e.f.y + h + 0.6, e.f.z, 'Stopped!', 'super'); sound.play('boing'); }
       else if (e.kind === 'move') sound.play(`fx:${e.s.type}`);
       else if (e.kind === 'burst') burst(e.type, e.x, e.y, e.z, e.r, 0.5, 0.7);
       else if (e.kind === 'thud') { burst(e.f.type, e.t.x, e.t.y, e.t.z, e.t.r, 0.35, 0.6); sound.play('hit'); }
@@ -590,6 +592,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   }
   function endFight(won) {
     S.result = won; S.exitFrom = null;
+    S.youY = null;
     S.phase = 'exit'; phaseT = 0; firstFight = false;
     say(won ? 'Scribble cleared!' : 'Oops! Your team is tired.', 1.6);
     sound.play(won ? 'badge' : 'lose');
@@ -660,7 +663,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const p = game.player, f = S.fight.you, c = SCRIBBLE.cam;
     camYaw = snap ? p.yaw : camYaw + wrap(p.yaw - camYaw) * (1 - Math.exp(-dt * c.yawRate));
     const k = snap ? 1 : 1 - Math.exp(-dt * c.follow);
-    camFocus.lerp(tmp.a.set(f.x, f.y + 1.0, f.z), k);
+    camFocus.lerp(tmp.a.set(f.x, (S.youY ?? f.y) + 1.0, f.z), k);
     const tall = Math.max(1, 1.15 / Math.max(0.3, game.camera.aspect)) ** 0.6;
     const dist = c.dist * tall, elev = Math.max(0.35, Math.min(1.1, c.elev - p.pitch * c.pitchK));
     const back = tmp.b.set(Math.sin(camYaw), 0, Math.cos(camYaw));
@@ -719,7 +722,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       m.t += dt;
       const f = F?.foes[i];
       if (f) {
-        m.model.position.set(f.x, f.y, f.z); m.model.rotation.y = f.heading;
+        m.vy = m.vy == null || Math.abs(m.vy - f.y) > 3 ? f.y : m.vy + (f.y - m.vy) * Math.min(1, dt * SCRIBBLE.stepEase); // steps up / down ease (they popped a block at a time)
+        m.model.position.set(f.x, m.vy, f.z); m.model.rotation.y = f.heading;
         if (S.phase === 'enter') { // they leap out of the knot to their places round your creature
           const k = smooth(Math.min(1, phaseT / 0.8)), [hx, hy, hz] = m.home;
           m.model.position.set(hx + (f.x - hx) * k, hy + (f.y - hy) * k + Math.sin(k * Math.PI) * 2, hz + (f.z - hz) * k);
@@ -744,7 +748,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         if (p) m.model.rotation.y = Math.atan2(p.x - hx, p.z - hz);
         animateModel(m.model, m.t, true);
         m.model.visible = S.phase === 'idle';
-        m.freeT = null; greyOut(m, 1);
+        m.freeT = null; m.vy = null; greyOut(m, 1);
         if (m.model.visible) drawWrap(m.wrap, m.model.position.x, m.model.position.y, m.model.position.z, 0, boil); else m.wrap.mesh.visible = false;
       }
       m.model.userData.h = m.h;
@@ -774,7 +778,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       if (f.flash > 0 && f.alive) vis = Math.floor(f.flash * 20) % 2 === 0;
       you.visible = vis; you.scale.setScalar(you.userData.base);
     }
-    you.position.set(f.x, f.y + lift, f.z);
+    S.youY = S.youY == null || Math.abs(S.youY - f.y) > 3 ? f.y : S.youY + (f.y - S.youY) * Math.min(1, dt * SCRIBBLE.stepEase);
+    you.position.set(f.x, S.youY + lift, f.z);
     animateModel(you, t, f.moving);
     // you, standing at the ring's edge, when the camera is behind your creature (cubecam's blocky avatar)
     if (!avatar) { avatar = buildPerson({ shirt: 0x3b6fd8, pants: 0x2a2a3a, hair: 0x3a2a1a, skin: 0xe8b98a }); avatar.userData.keepColour = true; group.add(avatar); }

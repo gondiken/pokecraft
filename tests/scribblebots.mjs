@@ -13,15 +13,16 @@ import { pathToFileURL } from 'node:url';
 
 export const BOTS = String.raw`
 const { ScribbleFight, groundOf, squadOf, follow, FIGHT } = await import('/src/scribblefight.js');
+const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell;
 const S = await import('/src/species.js');
 const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
 const len2 = Math.hypot;
 const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / L)) : 0; return len2(px - ax - dx * t, pz - az - dz * t); };
 const TEAM = [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30], ['phantomaw', 30]];
 // a fight as the game starts it: you at the patch's edge on the side of the start, your creature 3.5 blocks ahead
-function newFight(lead) {
+function newFight(lead, solo = null) {
   const team = TEAM.map(([s, l]) => S.makeCreature(s, l));
-  const order = [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
+  const order = solo ? [S.makeCreature(solo[0], solo[1])] : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
   const a = Math.atan2(g.spawnPoint.x - C.x, g.spawnPoint.z - C.z), dx = Math.sin(a), dz = Math.cos(a);
   const px = C.x + dx * (FIGHT.patch - 0.3), pz = C.z + dz * (FIGHT.patch - 0.3);
   const sx = px - dx * 3.5, sz = pz - dz * 3.5;
@@ -82,6 +83,13 @@ function skilledMoves(F) {
     const t = F.aimAt();
     if (t && !F.clearShot(F.you, t)) { const o = F.foes.find(f => f.alive && F.clearShot(F.you, f)); if (o) F.pick(o); }
   }
+  // a rush at a monster in the last part of its warning cancels its attack (FIGHT.rush): aim one there when a rush is ready
+  const win = LIVE_TELL * (FIGHT.rush.window ?? 1);
+  const dashSlot = F.moves.findIndex((s, i) => s?.kind === 'dash' && F.cd[i + 1] === 0) + 1;
+  if (dashSlot && !F.aimDir) {
+    const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
+    if (w) { F.pick(w); F.press(dashSlot); F.release(dashSlot); }
+  }
   const t = F.aimAt();
   for (let i = 1; i <= 4; i++) {
     const s = F.moves[i - 1];
@@ -94,7 +102,30 @@ function skilledMoves(F) {
     F.press(i); F.release(i);
   }
 }
+// kid: like a child who gets it but is not quick: sees a red warning 0.35 s late and walks out of it (no dodge), keeps a few blocks
+// away, presses every move that is ready (no line-of-sight thinking), never swaps by itself
+function kidStep(F, dt, eyes) {
+  const you = F.you;
+  F.kid ??= { seen: new Map(), goal: null };
+  const now = F.clock;
+  for (const f of F.foes) if (f.alive && f.tell && !F.kid.seen.has(f.tell)) F.kid.seen.set(f.tell, now);
+  const late = F.foes.some(f => f.alive && f.tell && now - F.kid.seen.get(f.tell) > 0.35 && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  let g = { gx: 0, gz: 0 };
+  if (late) { const s = skilledGoal(F); g = { gx: s.gx, gz: s.gz }; }
+  else { const s = skilledGoal(F); if (!s.flee) g = s; }
+  if (!eyes) { F.input.mx = g.gx; F.input.mz = g.gz; }
+  else {
+    const me = F.me, L = len2(g.gx, g.gz);
+    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + g.gx / L * st, nz = me.z + g.gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
+    const t = F.foes.filter(f => f.alive).sort((p, q) => len2(p.x - me.x, p.z - me.z) - len2(q.x - me.x, q.z - me.z))[0];
+    if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
+    follow(F, me.x, me.z, me.yaw);
+  }
+  for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind === 'burst') F.step(0.3); F.release(i); }
+  F.step(dt);
+}
 const BOT = {
+  kid: kidStep,
   naive(F, dt, eyes) {
     for (let i = 1; i <= 4; i++) { F.press(i); F.release(i); }
     if (eyes) follow(F, F.me.x, F.me.z, F.me.yaw); else { F.input.mx = F.input.mz = 0; }
@@ -123,14 +154,16 @@ const BOT = {
 window.__scribbleBots = { newFight, BOT };
 `;
 
-export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150 } = {}) {
-  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit }) => {
+export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
     const { newFight, BOT } = window.__scribbleBots;
-    const F = newFight(lead), dt = 1 / fps;
+    const F = newFight(lead, solo), dt = 1 / fps;
     for (let t = 0; t < limit && !F.over; t += dt) BOT[bot](F, dt, eyes);
-    return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged };
-  }, { BOTS, bot, eyes, fps, lead, limit });
+    return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
+      hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
+      byKind: F.stats.byKind, hitBy: F.stats.hitBy, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2) };
+  }, { BOTS, bot, eyes, fps, lead, limit, solo });
 }
 
 export const RUNS = [
