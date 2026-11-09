@@ -1,6 +1,6 @@
 # Chapter 3: where we are (owner and Claude, 2026-11-07 to 2026-11-09)
 
-Nothing of chapter 3 is built in the game yet. This file collects every idea, decision and piece of owner feedback from the
+Only Test A / B (section 6) is in the game, behind `?preview`; the rest of chapter 3 is not built. This file collects every idea, decision and piece of owner feedback from the
 first planning session, so a new session can continue without re-asking. The story outline is in `STORY.md` ("Chapter 3: The
 Scribble"), the older pieces in `ROADMAP.md` ("Chapter 3 · The Scribble"). The house rules in `CLAUDE.md` still hold, above all
 **"easy to understand, hard to master"** and the naive-kid / skilled bots.
@@ -123,3 +123,30 @@ behind, the Wizard's big spell when you herd monsters into his circle, catching 
 4. Then decide the camera, and only then plan the land, the flags and the rest.
 5. Every test: real keys / touches through the game's own loop, naive vs skilled bots, iPad (stick + five fixed buttons, no new
    buttons), the frame rate shown on a real iPad.
+
+## 7. Test A and Test B (built 2026-11-09, `?preview` only)
+
+`src/scribble.js` (the patch, the camera, the HUD, the buttons) and `src/scribblefight.js` (the Live rules on the real ground, pure);
+spec `scribble`, bots `tests/scribblebots.mjs`. Open **https://gondiken.github.io/pokecraft/?preview** and start or continue a game: the
+patch is 14-23 blocks from the start (a grey pencil knot with three monsters drawn in pencil). Without `?preview` nothing changes.
+
+- **Test A:** walk in. The knot snaps into a scribbly ring fence (radius 10) on the real ground, a Capture Cube flies from your hand, your
+  lead creature hops out, the monsters leap out of the knot into an arc in front of it, and the camera rises from your eyes to behind and
+  above your creature in one 1.6 s move. You fight with the arena's Live rules, unchanged (`shapeOf`, `damage`, the red warnings, the
+  `LIVE` numbers come straight from `src/arena/`), with three creatures to swap. When it is over the camera glides back down into your
+  eyes and you walk on (a won patch scribbles itself back 20 s later once you are away; after a loss walk out and in again).
+- **What the real ground does:** a creature steps up one block, never two (a step of two is a wall); shots fly straight and stop in the
+  first solid block (hills, trees and houses are cover); a monster's rush stops at a wall, so its red line ends there; a stomp only
+  reaches what stands at about its own height (stand on a bump); water is swum slowly. The red warnings lie on the blocks.
+- **Test B:** V (or the pause screen's "🎥 Fight" button) switches to first person, also in the middle of a fight (the camera glides).
+  You walk yourself, your creature runs beside you, your moves go to the monster you look at, and warnings behind you show as arrows.
+- **Controls:** the five fixed tablet slots become Dodge (Jump) and your four moves (the action button, Place, Ride, Down); keys Space
+  and Q E R F, 1 2 3 or a tap on a card swaps, a tap on a monster picks it. Behind the creature the stick / WASD move the creature and a
+  drag / the mouse turns the camera.
+- **Tuning:** scribble monsters have 8x HP and power 60 (the arena's 6x / 50). Found while testing: the arena's bots never got the
+  Power Up bonus (it is set in the arena's draw loop, which the bots skip), so mashing was weaker there than in real play. Here buffs
+  work, and with the arena's numbers a mashing bot won about half its fights. Bots on three worlds (seeds 1, 22, 122): naive loses
+  (1 win in 54), skilled wins every fight, behind and in first person, at 60 and 20 fps.
+- **Not proven yet:** the real iPad's frame rate (the scene adds about 20-40 draw calls: the tangle is one instanced mesh); whether a child
+  reads the red warnings on bumpy ground as easily as on the arena's flat floor.
+- **Questions for the owner after playing:** does it feel like the same game? which camera? is the ring the right size on real ground?

@@ -15,6 +15,7 @@ import { createRematch, loadWins } from './rematch.js';
 import { createBosses, loadBossWins } from './pictureboss.js'; // T40
 import { createStudio } from './studio.js'; // wave 19: the Wizard's battle, the drawing board, the ending (game.studio)
 import { createCubeCam } from './cubecam.js'; // Cube Planets: the third-person steady camera
+import { createScribble } from './scribble.js'; // chapter 3 Test A / B: one scribbled patch near the start, ?preview only
 import { createMissions, loadMissions } from './missions.js'; // T29
 import { createMissionUi } from './missionui.js'; // T29
 import { createNavUi } from './navui.js'; // T39a
@@ -810,6 +811,7 @@ function tapDown(x, y) {
 }
 function tapAt(x, y) {
   if (!playing() || game.ui.asking) return; // T39b: a tap on the world never answers a question
+  if (game.scribble.tap(x, y)) return; // chapter 3: in a scribble fight a tap picks a monster
   tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
   const { origin, direction } = tapRay.ray;
   const reach = REACH + 4;
@@ -1162,6 +1164,7 @@ game.worldReset = createWorldReset(game, { save: () => save(true) }); // owner 2
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
 game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sky, puffs and oddities
 game.cubeCam = createCubeCam(game); // Cube Planets: V / the pause screen / the Ride slot there switch the third-person steady camera
+game.scribble = createScribble(game); // chapter 3 Test A / B (?preview only): the scribbled patch and its Live fight on the real ground
 game.sketch = createSketch(game, { materials, texture, atlas }); // T45: the Sketchbook's pencil look
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
@@ -1270,7 +1273,7 @@ function frame(now) {
   } else {
     p.joy = game.touch.joy;
     const before = p.pos.clone(); // T30
-    if (playing()) p.update(dt);
+    if (playing() && !game.scribble.holdsPlayer()) p.update(dt); // chapter 3: behind your creature in a scribble fight you stand still
     if (p.bounced) { p.bounced = false; sound.play('boing'); game.realms.onBounce(); } // T35: launched by a Bounce Block
     if (p.trampolined) { p.trampolined = false; sound.play('boing'); } // T43: a trampoline of the Funfair (no Dream hint)
     game.hideSeek.fence(p.pos, before, p.vel); // T30
@@ -1304,7 +1307,9 @@ function frame(now) {
     camera.rotation.set(p.pitch, p.yaw, 0);
     const viewQ = p.viewQuat?.(); if (viewQ) camera.quaternion.premultiply(viewQ); // Cube Planets: the camera's up eases to the face you stand on (null everywhere else)
     game.cubeCam.update(camera, dt); // Cube Planets: the third-person steady camera, when chosen (does nothing anywhere else)
-    if (!game.inBattle) updateTarget();
+    game.scribble.update(dt, camera); // chapter 3 (?preview): the patch, the fight and its camera (does nothing without ?preview)
+    if (game.scribble.fighting) highlight.visible = false;
+    else if (!game.inBattle) updateTarget();
     game.weather.update(dt, now);
     updateSky(dt);
     game.swirlSky.update(dt, now); // T38d
