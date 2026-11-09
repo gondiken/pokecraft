@@ -1,4 +1,4 @@
-// Wave 19 stage B: the Wizard's Tower checks that need no browser: the floors as data (owner 2026-11-07: twelve pictures, mixing, the big brush), the painting rules with bots (a naive kid must fail, a skilled
+// Wave 19 stage B: the Wizard's Tower checks that need no browser: the floors as data (owner 2026-11-07: thirteen pictures since 2026-11-09, mixing, the big brush), the painting rules with bots (a naive kid must fail, a skilled
 // one must win), the terrain on a stand-in world (walk graph: no way up with the stairs doors closed, exactly floors 1..k + 1 with doors 1..k open),
 // the painter's cast from the mat, and the bridge's star rules. Used by tests/specs/wizard.mjs (in Node and in the page through /tests/wizardcheck.mjs)
 // and run by hand with `node tests/wizardcheck.mjs`.
@@ -164,9 +164,9 @@ const norm = (a, b) => { const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z },
 export function analyze(seed = 1) {
   const out = { problems: [], info: {} };
   const bad = m => out.problems.push(m);
-  // 1. the floors as data: twelve pictures, each the right size, mirrors exact, the Mixing floor's pictures mixable, the big brush's paintable
-  const expect = [12, 26, 14, 18, 21, 28, 21, 26, 36, 36, 32, 34];
-  if (ALL.length !== PICTURES || PICTURES !== 12) bad(`${ALL.length} pictures`);
+  // 1. the floors as data: thirteen pictures, each the right size, mirrors exact, the Mixing floor's pictures mixable, the big brush's paintable
+  const expect = [12, 26, 14, 18, 21, 28, 21, 26, 36, 36, 32, 14, 19]; // owner 2026-11-09: floor 5 = the Wizard's portrait (mirror + mix)
+  if (ALL.length !== PICTURES || PICTURES !== 13) bad(`${ALL.length} pictures`);
   FLOORS.forEach((fl, k) => { if (fl.n !== k + 1) bad(`floor ${fl.n}: number`); });
   ALL.forEach(({ fl, page: f, k }, q) => {
     const id = `floor ${fl.n} picture ${k}`;

@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { box, pivot, glow, addWings } from './shapes.js';
 import { PAINTS } from './custom.js';
+import { STYLES, SPARKLES, cleanStyles, cleanSparkle } from './attackstyles.js';
 
 export const SLOTS = ['body', 'head', 'eyes', 'legs', 'tail', 'back', 'extra'];
 export const SLOT_LABELS = { body: 'Body', head: 'Head', eyes: 'Eyes', legs: 'Legs', tail: 'Tail', back: 'Back', extra: 'Extra' };
@@ -301,7 +302,21 @@ export function cleanDesign(d) {
   const c = SLOTS.map((s, i) => (Array.isArray(src.c) && okIndex(src.c[i], KIT_COLOURS.length) ? src.c[i] : BARE.c[i]));
   const out = { n: '', p, c };
   out.n = cleanName(src.n, out);
+  const a = cleanStyles(src.a), sp = cleanSparkle(src.s); // owner 2026-11-09: the Attack Studio (attackstyles.js); only there when chosen
+  if (a) out.a = a;
+  if (sp) out.s = sp;
   return out;
+}
+// How one of the guardian's attacks looks: { style, tex, colours } for fx.attack, or null (the Custom type's paint look).
+// Its colours are the guardian's own: body, extra, head (Rainbow = a rainbow).
+const RAINBOW_FX = [0xff6a6a, 0xffd36b, 0x8fe388, 0x7ab8ff, 0xc99bff];
+export function lookOf(design, moveId) {
+  if (!isKitDesign(design)) return null;
+  const st = design.a?.[moveId];
+  if (!Number.isInteger(st) || !STYLES[st] || st === 0) return null;
+  const cs = [0, 6, 1].flatMap(k => (KIT_COLOURS[design.c?.[k]]?.rainbow ? RAINBOW_FX : [KIT_COLOURS[design.c?.[k]]?.hex ?? 0xffffff]));
+  const colours = [...new Set(cs)].slice(0, 5);
+  return { style: STYLES[st].id, tex: (SPARKLES[design.s] ?? SPARKLES[0]).tex, colours: colours.length > 1 ? colours : [colours[0], 0xffffff] };
 }
 export const designKey = d => `${d.p.join('')}.${d.c.join('-')}.${d.n}`;
 export const flies = d => !!BACKS[d.p[5]]?.fly || !!LEGS[d.p[3]]?.hover;

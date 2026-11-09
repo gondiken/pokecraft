@@ -128,19 +128,20 @@ export class Player {
     this.vel.set(0, 0, 0);
   }
 
-  // T27: sky riding. No gravity; Space up, Shift down; capped 6 blocks above the floor; gliding down to get off.
+  // T27: sky riding. Capped 6 blocks above the floor; gliding down to get off. Owner 2026-11-09: no Down button any more:
+  // hold Jump (Space / Up) to climb, let go and it drifts slowly down (`r.drift`) until it rests on the floor or on the water.
   fly(dt, wx, wz, len, analog) {
     const r = this.ride, k = this.keys;
     this.capped = false; this.landed = false;
     const fl = this.floorBelow();
     const cap = fl.y + r.cap;
-    const up = k.Space ? 1 : 0, down = (k.ShiftLeft || k.ShiftRight) ? 1 : 0;
+    const up = k.Space ? 1 : 0;
     if (r.landing) {
       this.vel.set(0, -r.glide, 0);
     } else {
       this.vel.x = wx * r.speed * analog;
       this.vel.z = wz * r.speed * analog;
-      let vy = (up - down) * r.climb;
+      let vy = up ? r.climb : -(r.drift ?? 0);
       if (this.pos.y >= cap) {
         if (up) this.capped = true;
         vy = Math.min(vy, this.pos.y > cap + 0.05 ? -r.sink : 0);

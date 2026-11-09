@@ -241,8 +241,8 @@ export default async function ({ browser, base, t }) {
     window.__step(240, { Space: true }, 1 / 60, () => { max = Math.max(max, p.pos.y); });
     out.cap = max - fl;
     out.capToast = window.__toasts().includes("can't fly any higher");
-    out.noGravity = (() => { const y = p.pos.y; window.__step(30); return Math.abs(p.pos.y - y) < 0.05; })();
-    window.__step(240, { ShiftLeft: true });
+    out.drift = (() => { const y = p.pos.y; window.__step(30); return y - p.pos.y; })(); // owner 2026-11-09: let go = float slowly down
+    window.__step(400);
     out.down = p.pos.y - fl;
     // beyond the slab: the ground is far below, so the cap drops and the rider sinks (no horizontal movement)
     window.__step(60, { Space: true });
@@ -256,8 +256,8 @@ export default async function ({ browser, base, t }) {
     return out;
   });
   t.ok(sky.skyKind === 'sky' && Math.abs(sky.cap - 6) < 0.15 && sky.capToast, `Space climbs to floor + ${sky.cap.toFixed(2)} and says so (${sky.capToast})`);
-  t.ok(sky.noGravity, 'no gravity: it hovers');
-  t.ok(sky.down < 0.1 || sky.down > -0.01, `Shift flies down to the floor (${sky.down.toFixed(2)})`);
+  t.ok(sky.drift > 0.4 && sky.drift < 0.8, `letting go of Space floats slowly down (${sky.drift.toFixed(2)} in half a second)`);
+  t.ok(sky.down < 0.1 && sky.down > -0.01, `it floats all the way down to the floor (${sky.down.toFixed(2)})`);
   t.ok(sky.sinkRate <= 4.6, `leaving the slab never sinks faster than 4.5/s (${sky.sinkRate.toFixed(1)})`);
   t.ok(sky.afterEdge <= 6.05, `above the ground you cap at floor + 6 (${sky.afterEdge.toFixed(2)})`);
 
@@ -268,7 +268,7 @@ export default async function ({ browser, base, t }) {
     for (let x = 0; x < 12; x++) for (let z = 0; z < 12; z++) { w.set(x0 + x, 41, z0 + z, B.WATER); w.set(x0 + x, 42, z0 + z, B.WATER); }
     p.pos.set(x0 + 6, 46, z0 + 6); p.vel.set(0, 0, 0);
     let min = 1e9;
-    window.__step(120, { ShiftLeft: true }, 1 / 60, () => { min = Math.min(min, p.pos.y); });
+    window.__step(240, {}, 1 / 60, () => { min = Math.min(min, p.pos.y); });
     const wt = p.waterTop();
     return { min, wt, in: p.inWater };
   });
@@ -456,7 +456,7 @@ export default async function ({ browser, base, t }) {
     down: getComputedStyle(document.getElementById('btn-down')).display,
     place: getComputedStyle(document.getElementById('btn-place')).display,
   }));
-  t.ok(ui.ride === 'Land' && ui.jump === 'Up' && ui.down !== 'none' && ui.place !== 'none', `touch: buttons while flying ${JSON.stringify(ui)}`);
+  t.ok(ui.ride === 'Land' && ui.jump === 'Up' && ui.down === 'none' && ui.place !== 'none', `touch: buttons while flying ${JSON.stringify(ui)}`);
   const cdp = await tp.context().newCDPSession(tp);
   const center = sel => tp.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
   // Check the key wiring (hold sets the key, release clears it), then fly with the physics.
@@ -467,24 +467,18 @@ export default async function ({ browser, base, t }) {
     const upDown = await tp.evaluate(() => !!window.pokecraft.player.keys.Space);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await tp.waitForTimeout(150);
-    const [dx, dy] = await center('#btn-down');
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: dx, y: dy, id: 3 }] });
-    await tp.waitForTimeout(150);
-    const downDown = await tp.evaluate(() => !!window.pokecraft.player.keys.ShiftLeft);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await tp.waitForTimeout(150);
-    const released = await tp.evaluate(() => !window.pokecraft.player.keys.ShiftLeft && !window.pokecraft.player.keys.Space);
-    return { upDown, downDown, released };
+    const released = await tp.evaluate(() => !window.pokecraft.player.keys.Space);
+    return { upDown, released };
   })();
-  t.ok(wiring.upDown && wiring.downDown && wiring.released, `touch: Up and Down hold and release (${JSON.stringify(wiring)})`);
+  t.ok(wiring.upDown && wiring.released, `touch: Up holds and releases (${JSON.stringify(wiring)})`);
   const fly = await tp.evaluate(() => {
     const p = window.pokecraft.player, y = p.pos.y;
     window.__step(60, { Space: true });
     const up = p.pos.y - y;
-    window.__step(60, { ShiftLeft: true });
+    window.__step(60);
     return { up, back: p.pos.y - y };
   });
-  t.ok(fly.up > 3 && fly.back < fly.up, `touch: flying up and down (${JSON.stringify(fly)})`);
+  t.ok(fly.up > 3 && fly.back < fly.up - 0.8, `touch: hold Up to climb, let go to float down (${JSON.stringify(fly)})`);
   await tp.evaluate(() => window.__step(60, { Space: true }));
   await tp.waitForTimeout(400);
   await tp.screenshot({ path: path.join(SHOTS, 't27-touch-sky.png'), timeout: 120000 });
