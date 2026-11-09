@@ -167,3 +167,30 @@ patch appears 14-23 blocks ahead of wherever you are when the game starts, never
   going far enough ends the fight (the scribble knots up again). The fight is then bounded by the monsters, not by a fence.
 - "This is still just testing, right? Chapter 3 would happen in a new world, with reasons to come back to the old world (flags, other
   creature types to catch)": yes. Test A / B only asks the camera question; the patch near you is a test spot, not where chapter 3 lives.
+
+### Owner feedback 2026-11-09 (second try) and what was measured
+
+- **Ring:** removing it could make winning too easy unless monsters heal when you come back, and leaving by accident would be
+  frustrating. Kept for now; still open.
+- **Shots beat rushes** ("Graphitan Lv 56 with Rivet Shot won (5+ min), Kitegale Lv 91 and Blazehound Lv 89 fainted fast"). Measured with
+  each creature alone (`kid` bot: sees red 0.35 s late, presses every ready move; `skilled` bot), seed 1, before any change: Graphitan kid
+  5/6, Kitegale kid 0/6, Blazehound kid 3/6. Two causes: the arena's cool-downs give a shot about 1.5 x its power in damage a second,
+  a rush 0.5 x, a big blast 0.2-0.35 x; and a rush stopped right next to the monster, inside its stomp (rushers were hurt mostly by
+  stomps). Shorter cool-downs, or a rush that always went through, let the mashing bot win 9-17 of 18. **Built:** a rush that hits a
+  monster in the last half of its red warning (when it pulses fastest) cancels its attack ("Stopped!"), knocks it back and carries you
+  through to the far side; any other rush stops at the monster as before; the arena's cool-downs stay. Three worlds, alone: skilled
+  Kitegale 9/9, Blazehound 9/9, Graphitan 9/9; mashing (team of three) 3/18; the full bot run: naive 3 / 90, skilled 108 / 108.
+  So rushers ask for timing (easy to understand, hard to master), shooters do not. A kid who mashes still does better with shots.
+- **The big circle** seen round a monster is the stomp warning (radius 3.4, the arena's own); nothing about blasts was changed.
+- **Why the arena felt smoother** (compared, not yet changed):
+
+  | | Arena | In the game |
+  | --- | --- | --- |
+  | Camera | fov 50, 15 blocks away, 62 degrees down, never turns (north is always up, stick up = screen up) | fov 75 (the game's own), 8.5 away, 45 degrees down, turns with your look (forward = away from the camera) |
+  | Ground | flat, radius 11 (380 sq blocks), 3 pillars, plain colours | real blocks, radius 10 (314 sq blocks, 17 % less), hills up to 5 high, trees, houses, textures, fog |
+  | Steps | none | your creature went up or down a block 60-90 times a minute, each a 1-block pop (now eased) |
+  | Warnings | flat red on flat green | red laid on bumpy, textured ground, cut by hills |
+  | Draw calls | about 60 | about 330 (the whole world) |
+
+  Ideas to try next, one at a time: the fight camera at the arena's fov 50 and higher; the camera not turning during a fight; a calmer
+  patch spot (flatter, fewer trees); a slightly bigger ring.
