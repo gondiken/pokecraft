@@ -63,6 +63,15 @@
     @media (hover: none) { .slot kbd { display: none; } }
     #stick { position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: #ffffff22; border: 3px solid #ffffff88; pointer-events: none; }
     #knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: #ffffffcc; transform: translate(-50%, -50%); }
+    #squad { position: fixed; left: calc(10px + env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 6px; }
+    .mate { --col: #fff; font: inherit; font-size: 18px; color: #fff; text-align: left; width: 150px; padding: 4px 8px 8px; border-radius: 10px;
+      border: 3px solid var(--col); background: #1d2438cc; position: relative; touch-action: none; }
+    .mate b { font-weight: normal; display: block; }
+    .mate i { position: absolute; left: 6px; bottom: 4px; height: 5px; background: #5fe05f; border-radius: 3px; max-width: calc(100% - 12px); }
+    .mate.lead { box-shadow: 0 0 0 3px #fff; }
+    .mate.out { opacity: .35; }
+    #meter { position: fixed; left: calc(16px + env(safe-area-inset-left)); bottom: calc(40px + env(safe-area-inset-bottom)); width: min(460px, calc(100vw - 300px)); display: none; pointer-events: none; }
+    #meter.on { display: block; }
     .hidden { display: none !important; }
     #end { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0006; }
     #end > div { background: #263150; border: 3px solid #fff; border-radius: 16px; padding: 18px 26px; text-align: center; max-width: 90vw; }
@@ -78,10 +87,11 @@
     <b>Test Arena</b>
     <div id="tabs">
       <button data-mode="live">⚡ Live</button>
-      <button data-mode="draw">✏️ Draw</button>
-      <button data-mode="flick">🎯 Flick</button>
+      <button data-mode="aim">🎯 Aim</button>
+      <button data-mode="timing">⏱️ Timing</button>
     </div>
     <select id="pick" title="Play as"></select>
+    <button id="place" title="Where you fight (Live)">🌿 Meadow</button>
     <button id="lots" title="A test for the frame rate">3 monsters</button>
     <button id="again">↻ Again</button>
   </div>
@@ -91,6 +101,8 @@
   <div id="fps"></div>
   <div id="own" class="shadow"></div>
   <div id="pad"></div>
+  <div id="squad" class="hidden"></div>
+  <canvas id="meter" width="460" height="90"></canvas>
   <div id="stick" class="hidden"><div id="knob"></div></div>
   <div id="end" class="hidden"><div><h2 id="end-title"></h2><p id="end-text"></p><button id="end-again">Play again</button></div></div>
   <script type="module" src="src/arena/main.js"></script>

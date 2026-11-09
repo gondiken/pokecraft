@@ -28,8 +28,16 @@ export class LiveMode {
     this.dodge = 0; this.dir = { x: 0, z: 1 }; this.dash = null;
     this.target = null;
     this.clouds = [];
-    a.foes.forEach((f, i) => { f.timer = 1.6 + i * 0.9; f.tell = null; f.charging = null; });
+    this.vel = { x: 0, z: 0 };
+    a.foes.forEach((f, i) => { f.timer = 1.6 + i * 0.9; f.tell = null; f.charging = null; f.vel = { x: 0, z: 0 }; });
   }
+  // ice: speed eases toward what you want (slowly); anywhere else it is what you want
+  slide(v, tx, tz, dt) {
+    if (!this.a.place.slide) { v.x = tx; v.z = tz; return; }
+    const k = Math.min(1, dt * this.a.place.slide);
+    v.x += (tx - v.x) * k; v.z += (tz - v.z) * k;
+  }
+  onSwap() { this.dash = null; this.charge = { slot: -1, t: 0 }; this.held = [false, false, false, false, false]; this.moves = this.a.you.c.moves.map(shapeOf); this.cd = this.cd.map((c, i) => (i ? 0 : c)); }
   // ---- input
   press(slot) {
     if (this.a.over) return;
@@ -111,17 +119,18 @@ export class LiveMode {
       const d = this.dash;
       you.x += d.x * d.speed * dt; you.z += d.z * d.speed * dt; d.t -= dt;
       if (d.hits) for (const f of a.foes) if (f.alive && !d.hits.has(f) && len2(f.x - you.x, f.z - you.z) < f.r + you.r + 0.2) { d.hits.add(f); a.hit(you, f, d.s.power, d.s.type); }
-      if (pushOut(you) || d.t <= 0) this.dash = null;
+      if (pushOut(you) || d.t <= 0) { this.dash = null; if (this.a.place.slide) { this.vel.x = d.x * 7; this.vel.z = d.z * 7; } else this.vel.x = this.vel.z = 0; }
       you.moving = true;
     } else {
       const { mx, mz } = a.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
-      if (you.moving) {
-        const sp = LIVE.speed * m * (this.charge.slot > 0 ? 0.55 : 1);
-        you.x += mx / Math.hypot(mx, mz) * sp * dt; you.z += mz / Math.hypot(mx, mz) * sp * dt;
-        this.dir = { x: mx, z: mz };
-      }
-      pushOut(you);
+      const sp = LIVE.speed * m * (this.charge.slot > 0 ? 0.55 : 1);
+      const tx = you.moving ? mx / Math.hypot(mx, mz) * sp : 0, tz = you.moving ? mz / Math.hypot(mx, mz) * sp : 0;
+      this.slide(this.vel, tx, tz, dt); // on the ice lake you keep sliding; elsewhere you stop at once
+      you.x += this.vel.x * dt; you.z += this.vel.z * dt;
+      if (you.moving) this.dir = { x: mx, z: mz };
+      const wall = pushOut(you);
+      if (wall) { const dot = this.vel.x * wall.nx + this.vel.z * wall.nz; if (dot < 0) { this.vel.x -= dot * wall.nx; this.vel.z -= dot * wall.nz; } }
     }
     const t = this.aimAt();
     if (t) you.heading = Math.atan2(t.x - you.x, t.z - you.z);
@@ -175,7 +184,8 @@ export class LiveMode {
     const side = (f.side2 ??= Math.random() < 0.5 ? 1 : -1) * 0.5;
     const vx = dx / d * go - dz / d * side, vz = dz / d * go + dx / d * side;
     const v = Math.hypot(vx, vz) || 1;
-    f.x += vx / v * F.speed * slow * dt; f.z += vz / v * F.speed * slow * dt;
+    this.slide(f.vel, vx / v * F.speed * slow, vz / v * F.speed * slow, dt);
+    f.x += f.vel.x * dt; f.z += f.vel.z * dt;
     for (const o of a.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) { f.x += ox / od * (1.4 - od) * 0.5; f.z += oz / od * (1.4 - od) * 0.5; } }
     pushOut(f);
     f.moving = true;
@@ -183,13 +193,13 @@ export class LiveMode {
     if (f.timer <= 0) {
       const t = intentFor(f, you);
       f.tell = a.fx.tell(t); f.tell.left = F.tell;
-      f.timer = F.every[0] + Math.random() * (F.every[1] - F.every[0]);
+      f.timer = (F.every[0] + Math.random() * (F.every[1] - F.every[0])) * (a.place.attack || 1); // on ice they slide about, so they strike more often
     }
   }
   strike(f, slow) {
     const a = this.a, you = a.you, t = f.tell.t;
     a.fx.untell(f.tell); f.tell = null;
-    if (t.kind === 'line') { f.charging = { dx: t.dx, dz: t.dz, left: t.len, hit: false }; return; }
+    if (t.kind === 'line') { f.charging = { dx: t.dx, dz: t.dz, left: t.len + (a.place.slide ? 3 : 0), hit: false }; return; }
     a.fx.burst(f.type, t.x, t.z, t.r, 0.35, 0.6);
     a.sound('thud');
     if (you.safeT <= 0 && inIntent(t, you.x, you.z, you.r)) a.hit(f, you, a.foePower, f.type, slow);

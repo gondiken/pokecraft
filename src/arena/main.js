@@ -1,34 +1,43 @@
 // Chapter 3 test arena: the page glue (renderer, camera, controls, the five fixed buttons, the HUD) for the three
 // battle prototypes. Nothing is saved; your team is only read from this browser's save.
+//   ⚡ Live: real time, in three places (Meadow, Dark Cave, Ice Lake), with up to three of your creatures to swap between.
+//   🎯 Aim and ⏱️ Timing: turn-based (turns.js).
 import * as THREE from 'three';
 import { SPECIES } from '../species.js';
 import { sound } from '../sound.js';
-import { R, STEP, FOES, START_SPOTS, Fighter, Fx, buildArena, damage, loadTeam, typeHex, typeCss, typeName, floatText, KIND_WORD } from './core.js';
+import { R, STEP, FOES, START_SPOTS, PLACES, SEE, Fighter, Fx, buildArena, damage, loadTeam, typeHex, typeCss, typeName, floatText, KIND_WORD, len2, maxHpOf } from './core.js';
 import { LiveMode } from './live.js';
-import { DrawMode, FlickMode } from './turns.js';
+import { AimMode, TimingMode } from './turns.js';
 
-const MODES = { live: LiveMode, draw: DrawMode, flick: FlickMode };
-// foeHp: monsters' HP x (live battles need longer fights than one shot a second allows)
-const TUNE = { live: { foePower: 32, youMult: 1, foeHp: 4 }, draw: { foePower: 32, youMult: 1.5, foeHp: 1 }, flick: { foePower: 45, youMult: 1, foeHp: 1.4 } };
+const MODES = { live: LiveMode, aim: AimMode, timing: TimingMode };
+// foeHp: monsters' HP x (live battles need longer fights than one shot a second allows, and you have three creatures there)
+const TUNE = { live: { foePower: 50, youMult: 1, foeHp: 6 }, aim: { foePower: 24, youMult: 1.25, foeHp: 1.2 }, timing: { foePower: 28, youMult: 1.5, foeHp: 1.4 } };
+const TEAM_MAX = 3; // creatures you can swap between in Live
 const $ = id => document.getElementById(id);
 
 const canvas = $('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9fd4ff);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
-buildArena(scene);
+const arena = buildArena(scene);
 const fx = new Fx(scene);
+const lantern = new THREE.PointLight(0xffd9a0, 0, 10, 1.4); // your own light in the Dark Cave
+scene.add(lantern);
 
 const team = loadTeam();
 const params = new URLSearchParams(location.search);
+const oldBurst = fx.burst.bind(fx);
+fx.burst = (type, x, z, r, ...rest) => { oldBurst(type, x, z, r, ...rest); a.flashes.push({ x, z, r: r + 2, t: 0.7 }); }; // a blast lights the cave for a moment
 
 // ---------------------------------------------------------------- the arena object the modes talk to
 
 const a = {
-  scene, camera, fx, you: null, foes: [], over: false, input: { mx: 0, mz: 0 },
-  foePower: 40, youMult: 1, clock: 0, teamIndex: 0, count: 3, modeName: params.get('mode') in MODES ? params.get('mode') : 'live',
+  scene, camera, fx, you: null, foes: [], over: false, input: { mx: 0, mz: 0 }, flashes: [],
+  foePower: 40, youMult: 1, clock: 0, teamIndex: 0, count: 3,
+  modeName: params.get('mode') in MODES ? params.get('mode') : 'live',
+  placeName: params.get('place') in PLACES ? params.get('place') : 'meadow',
+  get place() { return a.modeName === 'live' ? PLACES[a.placeName] : PLACES.meadow; },
   typeHex,
   nameOf: f => SPECIES[f.c.species].name,
   sound: n => sound.play(n),
@@ -42,6 +51,7 @@ const a = {
     el.classList.toggle('on', k != null);
     if (k != null) { el.firstChild.style.width = `${Math.max(0, k) * 100}%`; el.classList.toggle('late', k < 0.35); }
   },
+  bullseye(x, z) { floatText(camera, x, 2.6, z, 'Bullseye!', 'super'); sound.play('badge'); a.stats.bulls++; },
   hit(src, dst, power, type, mult = 1) {
     if (a.over || !dst.alive) return 0;
     if (dst.safeT > 0) { floatText(camera, dst.x, dst.h + 0.6, dst.z, 'Dodged!', 'miss'); return 0; }
@@ -57,8 +67,12 @@ const a = {
       dst.flash = 0.6;
       sound.play('faint');
       if (dst.tell) { fx.untell(dst.tell); dst.tell = null; }
-      if (dst === a.you) a.finish(false);
-      else if (a.foes.every(f => !f.alive)) a.finish(true);
+      if (dst === a.you) {
+        a.squad[a.lead].hp = 0;
+        const next = a.squad.findIndex(m => m.hp > 0);
+        if (next >= 0) a.pendingSwap = next; // the next creature jumps in
+        else a.finish(false);
+      } else if (a.foes.every(f => !f.alive)) a.finish(true);
     }
     return amount;
   },
@@ -68,20 +82,36 @@ const a = {
     floatText(camera, f.x, f.h + 0.3, f.z, n ? `+${n}` : 'Full!', 'heal');
   },
   hurtSelf(frac) { const n = Math.max(1, Math.round(a.you.maxHp * frac)); a.you.hp = Math.max(1, a.you.hp - n); floatText(camera, a.you.x, a.you.h + 0.3, a.you.z, `-${n}`, 'ouch'); },
+  // Live: swap the creature in play for another of your squad (it keeps its own HP)
+  swap(i, auto = false) {
+    const m = a.squad[i];
+    if (!m || i === a.lead || m.hp <= 0 || a.over || (!auto && a.swapCool > 0)) return false;
+    const old = a.you;
+    if (old.alive) a.squad[a.lead].hp = old.hp;
+    const f = new Fighter(scene, m.c, 'you', old.x, old.z);
+    f.hp = m.hp; f.heading = old.heading; f.safeT = 0.6;
+    old.dispose(scene);
+    a.you = f; a.lead = i; a.swapCool = 0.8;
+    a.mode.onSwap?.();
+    a.say(`Go, ${SPECIES[m.c.species].name}!`);
+    sound.play('dodge');
+    drawSquad();
+    return true;
+  },
   finish(won) {
     if (a.over) return;
     a.over = true; a.won = won;
     a.timer(null);
     const turns = a.mode.turn, secs = Math.round(a.clock);
-    $('end-title').textContent = won ? 'You won!' : 'Oops! Your creature is tired.';
+    $('end-title').textContent = won ? 'You won!' : 'Oops! Your team is tired.';
     $('end-text').textContent = won
-      ? (turns ? `All three beaten in ${turns} turns.` : `All monsters beaten in ${secs} seconds.`) + ` HP left: ${a.you.hp} / ${a.you.maxHp}`
+      ? (turns ? `All three beaten in ${turns} turns.` : `All monsters beaten in ${secs} seconds.`) + (a.stats.bulls ? ` Bullseyes: ${a.stats.bulls}.` : '')
       : 'Try again!';
     setTimeout(() => $('end').classList.remove('hidden'), 700);
     sound.play(won ? 'badge' : 'miss');
   },
 };
-window.arena = { a, team, step, press: s => a.mode.press(s), release: s => a.mode.release(s), restart, info };
+window.arena = { a, team, step, press: s => a.mode.press(s), release: s => a.mode.release(s), restart, info, swap: i => a.swap(i) };
 
 function restart(modeName = a.modeName, opts = {}) {
   a.mode?.dispose?.();
@@ -90,11 +120,17 @@ function restart(modeName = a.modeName, opts = {}) {
   a.modeName = modeName;
   if (opts.count) a.count = opts.count;
   if (opts.team != null) a.teamIndex = opts.team;
+  if (opts.place) a.placeName = opts.place;
   Object.assign(a, TUNE[modeName]);
-  a.over = false; a.won = null; a.clock = 0; a.stats = { dealt: 0, taken: 0 };
-  const c = team[a.teamIndex] || team[0];
-  a.you = new Fighter(scene, c, 'you', 0, -1);
-  const lvl = c.level;
+  a.over = false; a.won = null; a.clock = 0; a.stats = { dealt: 0, taken: 0, bulls: 0 }; a.flashes = []; a.pendingSwap = null; a.swapCool = 0;
+  const first = team[a.teamIndex] || team[0];
+  // the squad: your picked creature first, then the next ones of your team (Live only; the turn modes play one)
+  const order = [first, ...team.filter(c => c !== first)].slice(0, modeName === 'live' ? TEAM_MAX : 1);
+  a.squad = order.map(c => ({ c, hp: null }));
+  a.lead = 0;
+  a.you = new Fighter(scene, first, 'you', 0, -1);
+  a.squad.forEach(m => { m.hp = maxHpOf(m.c); });
+  const lvl = first.level;
   const n = modeName === 'live' ? a.count : 3;
   a.foes = FOES.slice(0, n).map((d, i) => {
     const f = new Fighter(scene, { species: d.species, level: lvl, moves: [], pattern: d.pattern }, 'foe', START_SPOTS[i][0], START_SPOTS[i][1]);
@@ -103,31 +139,91 @@ function restart(modeName = a.modeName, opts = {}) {
     return f;
   });
   a.you.heading = Math.PI;
+  arena.paint(modeName === 'live' ? a.placeName : 'meadow');
   a.mode = new MODES[modeName](a);
   a.mode.start();
-  $('hint').textContent = a.mode.hint;
+  $('hint').textContent = a.place.hint || a.mode.hint;
   $('end').classList.add('hidden');
   $('stick').classList.add('hidden');
   a.input.mx = a.input.mz = 0;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === modeName));
-  $('lots').classList.toggle('hidden', modeName !== 'live');
+  for (const id of ['lots', 'place']) $(id).classList.toggle('hidden', modeName !== 'live');
   $('lots').textContent = a.count > 3 ? '8 monsters' : '3 monsters';
+  $('place').textContent = `${a.place.icon} ${a.place.name}`;
   padCache.length = 0;
+  drawSquad();
   a.camSnap = true; // the camera jumps to its place: a finger never lands on a gliding view
+  if (a.place.hint) setTimeout(() => { if (a.mode && $('hint').textContent === a.place.hint) $('hint').textContent = a.mode.hint; }, 6000);
 }
 
 // Runs the game's fixed steps (the frame loop calls it; tests call it to play fast).
 function step(sec) {
   let n = Math.round(sec / STEP);
-  while (n-- > 0) {
-    if (!a.over) { a.mode.step(STEP); a.clock += STEP; }
-  }
+  while (n-- > 0) oneStep();
+}
+function oneStep() {
+  if (a.over) return;
+  if (a.pendingSwap != null) { const i = a.pendingSwap; a.pendingSwap = null; a.swap(i, true); }
+  a.swapCool = Math.max(0, a.swapCool - STEP);
+  for (const f of a.flashes) f.t -= STEP;
+  a.flashes = a.flashes.filter(f => f.t > 0);
+  a.mode.step(STEP); a.clock += STEP;
 }
 function info() {
-  return { mode: a.modeName, over: a.over, won: a.won, clock: a.clock, turn: a.mode.turn, phase: a.mode.phase, step2: a.mode.step2,
+  return { mode: a.modeName, place: a.placeName, over: a.over, won: a.won, clock: a.clock, turn: a.mode.turn, phase: a.mode.phase,
     you: { x: a.you.x, z: a.you.z, hp: a.you.hp, maxHp: a.you.maxHp, species: a.you.c.species, moves: a.mode.moves.map(s => s && s.kind) },
-    foes: a.foes.map(f => ({ x: f.x, z: f.z, hp: f.hp, alive: f.alive, tell: f.tell ? f.tell.t : null, sleep: f.sleepTurns || f.sleepT || 0 })),
+    squad: a.squad.map(m => ({ species: m.c.species, hp: m === a.squad[a.lead] ? a.you.hp : m.hp })), lead: a.lead,
+    foes: a.foes.map(f => ({ x: f.x, z: f.z, hp: f.hp, alive: f.alive, seen: f.seen !== false, tell: f.tell ? f.tell.t : null, sleep: f.sleepTurns || f.sleepT || 0 })),
     stats: a.stats, fps: perf.fps, calls: perf.calls };
+}
+
+// ---------------------------------------------------------------- your squad (Live): tap one to swap, or Q
+
+function drawSquad() {
+  const el = $('squad');
+  el.classList.toggle('hidden', a.squad.length < 2);
+  el.innerHTML = '';
+  a.squad.forEach((m, i) => {
+    const b = document.createElement('button');
+    const hp = i === a.lead ? a.you.hp : m.hp, max = maxHpOf(m.c);
+    b.className = `mate${i === a.lead ? ' lead' : ''}${hp <= 0 ? ' out' : ''}`;
+    b.style.setProperty('--col', typeCss(SPECIES[m.c.species].type));
+    b.innerHTML = `<b>${SPECIES[m.c.species].name}</b><i style="width:${Math.max(0, hp / max) * 100}%"></i>`;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); a.swap(i); });
+    el.append(b);
+  });
+}
+let squadKey = '';
+function updateSquad() {
+  const k = `${a.lead}:${a.squad.map((m, i) => (i === a.lead ? a.you.hp : m.hp)).join(',')}`;
+  if (k !== squadKey) { squadKey = k; drawSquad(); }
+}
+
+// ---------------------------------------------------------------- the Dark Cave: only what is near you (or in a blast's flash)
+
+const eyeGeo = new THREE.BoxGeometry(0.13, 0.13, 0.05), eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff27a });
+function seeRange() { return SEE.bright.includes(a.you.type) ? SEE.far : SEE.near; }
+function darkness() {
+  const dark = !!a.place.dark;
+  lantern.intensity = dark ? 30 : 0;
+  lantern.distance = dark ? seeRange() + 2.5 : 10;
+  lantern.position.set(a.you.x, 2.4, a.you.z);
+  const range = seeRange();
+  for (const f of a.foes) {
+    const lit = !dark || len2(f.x - a.you.x, f.z - a.you.z) < range + 0.6 || a.flashes.some(l => len2(f.x - l.x, f.z - l.z) < l.r);
+    f.seen = lit;
+    if (!lit && f.alive) { f.model.visible = false; f.shadow.visible = false; f.bar.style.display = 'none'; }
+    if (!f.eyes) { // two glowing eyes: all you see of a monster in the dark
+      f.eyes = new THREE.Group();
+      for (const s of [-1, 1]) { const e = new THREE.Mesh(eyeGeo, eyeMat); e.position.set(s * 0.17, 0, 0); f.eyes.add(e); }
+      scene.add(f.eyes);
+      const old = f.dispose.bind(f);
+      f.dispose = sc => { sc.remove(f.eyes); old(sc); };
+    }
+    f.eyes.visible = dark && !lit && f.alive && Math.sin(a.clock * 2.3 + f.x) > -0.85; // they blink now and then
+    f.eyes.position.set(f.x + Math.sin(f.heading) * 0.5, f.h * 0.7, f.z + Math.cos(f.heading) * 0.5);
+    f.eyes.rotation.y = f.heading;
+  }
 }
 
 // ---------------------------------------------------------------- the five fixed buttons (Dodge + four moves)
@@ -178,6 +274,7 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT') return;
   const k = e.key.toLowerCase();
   if (k in KEYS) { e.preventDefault(); if (!e.repeat) a.mode.press(KEYS[k]); return; }
+  if (k === 'q' && !e.repeat) { for (let s = 1; s < a.squad.length; s++) if (a.swap((a.lead + s) % a.squad.length)) break; return; }
   keys.add(k);
 });
 addEventListener('keyup', e => {
@@ -232,6 +329,7 @@ $('tabs').addEventListener('click', e => { const m = e.target.closest('button')?
 $('again').addEventListener('click', () => restart());
 $('end-again').addEventListener('click', () => restart());
 $('lots').addEventListener('click', () => restart('live', { count: a.count > 3 ? 3 : 8 }));
+$('place').addEventListener('click', () => { const ids = Object.keys(PLACES); restart('live', { place: ids[(ids.indexOf(a.placeName) + 1) % ids.length] }); });
 const pick = $('pick');
 team.forEach((c, i) => {
   const o = document.createElement('option');
@@ -247,8 +345,11 @@ const perf = { fps: 60, calls: 0, frames: 0, t: 0 };
 let last = performance.now(), acc = 0;
 const camPos = new THREE.Vector3(), camAt = new THREE.Vector3();
 function resize() {
-  $('hint').style.top = `${$('top').getBoundingClientRect().bottom + 4}px`; // under the top bar, however it wraps
-  $('timer').style.top = `${$('top').getBoundingClientRect().bottom + 40}px`;
+  const top = $('top').getBoundingClientRect().bottom;
+  $('hint').style.top = `${top + 4}px`; // under the top bar, however it wraps
+  $('timer').style.top = `${top + 40}px`;
+  $('squad').style.top = `${top + 40}px`;
+  $('toast').style.top = `${top + 96}px`;
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -276,11 +377,14 @@ function frame(now) {
   const kx = keyInput();
   a.input.mx = stick.id != null ? stick.mx : kx.x;
   a.input.mz = stick.id != null ? stick.mz : kx.z;
-  if (!a.hold) { acc += dt; let n = 0; while (acc >= STEP && n++ < 14) { if (!a.over) { a.mode.step(STEP); a.clock += STEP; } acc -= STEP; } if (acc > STEP) acc = 0; }
+  if (!a.hold) { acc += dt; let n = 0; while (acc >= STEP && n++ < 14) { oneStep(); acc -= STEP; } if (acc > STEP) acc = 0; }
   fx.update(dt);
   placeCamera(dt);
   for (const f of [a.you, ...a.foes]) f.draw(dt, camera, innerWidth, innerHeight);
+  darkness();
+  a.mode.frame?.(dt);
   drawPad();
+  updateSquad();
   renderer.render(scene, camera);
   perf.frames++; perf.t += dt;
   if (perf.t >= 0.5) {
@@ -291,6 +395,5 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 restart(a.modeName, { count: +params.get('n') || 3 });
-a.camSnap = true;
 requestAnimationFrame(frame);
 void R;

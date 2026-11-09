@@ -119,27 +119,47 @@ export function inIntent(t, x, z, r = 0) {
 
 // ---------------------------------------------------------------- the scene
 
+// The arena's places (the Live twists, owner 2026-11-09): the same floor and pillars, other colours and rules.
+//   slide: how fast speed eases on ice (none = you stop at once); dark: you only see inside your own light.
+export const PLACES = {
+  meadow: { name: 'Meadow', icon: '🌿', floor: [0x7fc35a, 0x74b852], wall: [0x9a9a9a, 0x858585], sky: 0x9fd4ff, light: 1 },
+  cave: { name: 'Dark Cave', icon: '🕯️', floor: [0x55505e, 0x4b4754], wall: [0x5d5866, 0x4f4a58], sky: 0x07070c, light: 0.025, dark: true,
+    hint: 'A dark cave! You only see near you. Fire, Light, Electric and Cosmic creatures see further.' },
+  ice: { name: 'Ice Lake', icon: '🧊', floor: [0xc9ecf8, 0xb3e0f2], wall: [0xe9f6fb, 0xd2ebf4], sky: 0xbfe3f7, light: 1.05, slide: 1.6, attack: 0.6,
+    hint: 'Ice! You slide, and so do the monsters. Stop early!' },
+};
+export const SEE = { near: 4.6, far: 7.5, bright: ['fire', 'light', 'electric', 'cosmic'] }; // how far you see in the dark
+
 export function buildArena(scene) {
   const g = new THREE.Group();
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const cells = [];
   for (let x = -R - 2; x <= R + 2; x++) for (let z = -R - 2; z <= R + 2; z++) {
     const d = Math.hypot(x, z);
-    if (d <= R + 0.3) cells.push([x, -0.5, z, (x + z) & 1 ? 0x7fc35a : 0x74b852]);
-    else if (d <= R + 1.6) { cells.push([x, -0.5, z, 0x8f8f8f]); cells.push([x, 0.5, z, (x * 7 + z * 3) % 3 ? 0x9a9a9a : 0x858585]); }
+    if (d <= R + 0.3) cells.push([x, -0.5, z, 'floor', (x + z) & 1]);
+    else if (d <= R + 1.6) { cells.push([x, -0.5, z, 'wall', 0]); cells.push([x, 0.5, z, 'wall', (x * 7 + z * 3) % 3 ? 0 : 1]); }
   }
-  for (const p of PILLARS) for (let y = 0; y < 2; y++) for (const [ox, oz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) cells.push([p.x + ox, y + 0.5, p.z + oz, y === 1 ? 0x9da3a8 : 0x8a9096]);
+  for (const p of PILLARS) for (let y = 0; y < 2; y++) for (const [ox, oz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) cells.push([p.x + ox, y + 0.5, p.z + oz, 'pillar', y]);
   const mat = new THREE.MeshLambertMaterial();
   const inst = new THREE.InstancedMesh(geo, mat, cells.length);
   const m = new THREE.Matrix4(), c = new THREE.Color();
-  cells.forEach(([x, y, z, col], i) => { m.makeTranslation(x, y, z); inst.setMatrixAt(i, m); inst.setColorAt(i, c.setHex(col)); });
+  cells.forEach(([x, y, z], i) => { m.makeTranslation(x, y, z); inst.setMatrixAt(i, m); });
   g.add(inst);
   scene.add(g);
-  scene.add(new THREE.HemisphereLight(0xdff2ff, 0x5d6b4a, 1.1));
+  const hemi = new THREE.HemisphereLight(0xdff2ff, 0x5d6b4a, 1.1);
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(6, 14, 8);
-  scene.add(sun);
-  return g;
+  scene.add(hemi, sun);
+  return {
+    hemi, sun,
+    paint(place) { // the place's colours and light
+      const P = PLACES[place];
+      cells.forEach(([, , , kind, k], i) => inst.setColorAt(i, c.setHex(kind === 'floor' ? P.floor[k] : kind === 'wall' ? P.wall[k] : (k ? 0x9da3a8 : 0x8a9096))));
+      inst.instanceColor.needsUpdate = true;
+      scene.background = new THREE.Color(P.sky);
+      hemi.intensity = 1.1 * P.light; sun.intensity = 1.2 * P.light;
+    },
+  };
 }
 
 const shadowGeo = new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
@@ -280,3 +300,4 @@ export function floatText(camera, x, y, z, text, cls = '') {
   document.getElementById('bars').append(el);
   setTimeout(() => el.remove(), 900);
 }
+export const maxHpOf = c => statsFor(c).maxHp;
