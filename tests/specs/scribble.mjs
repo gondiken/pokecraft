@@ -69,6 +69,11 @@ export default async function ({ browser, base, t }) {
     await until(page, () => window.pokecraft.scribble.info().phase === 'fight');
     let i1 = await info(page);
     t.ok(i1.camK === 1 && i1.fight.foes.length === 3 && i1.fight.squad.length === 3, 'the fight: behind your creature, three monsters, your squad of three');
+    const view = await page.evaluate(() => { const c = window.pokecraft.camera, F = window.pokecraft.scribble.fightOf(); return { fov: c.fov, down: Math.atan2(c.position.y - F.you.y, Math.hypot(c.position.x - F.you.x, c.position.z - F.you.z)) * 180 / Math.PI }; });
+    t.ok(Math.abs(view.fov - 50) < 0.5 && view.down > 55 && view.down < 70, `the steep fight camera like the arena's: fov ${view.fov.toFixed(1)}, ${view.down.toFixed(0)} degrees down`);
+    const yaw0 = await page.evaluate(() => window.pokecraft.player.yaw);
+    await page.mouse.move(500, 380); await page.mouse.move(700, 380); await frames(page, 3);
+    t.ok(Math.abs(await page.evaluate(() => window.pokecraft.player.yaw) - yaw0) < 1e-6, 'behind your creature the camera does not turn with the mouse');
     const p0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
     // real keys: Q = move 1, Space = Dodge, D moves your creature (not you)
     const c0 = await fight(page, F => ({ x: F.you.x, z: F.you.z }));
@@ -85,7 +90,7 @@ export default async function ({ browser, base, t }) {
     t.ok(await fight(page, F => F.cd[0] > 0), 'Space dodges (and does not jump)');
     await page.screenshot({ path: `${SHOTS}scribble-8-fight.png` });
     const perf = await page.evaluate(() => window.pokecraft.renderer.info.render.calls);
-    t.ok(perf < 400, `draw calls in the fight: ${perf}`);
+    t.ok(perf < 200, `draw calls in the fight: ${perf} (the steep camera sees less of the world; it was about 335)`);
     // Test B: V glides into first person in the middle of the fight; W then walks YOU, your creature follows
     await page.keyboard.press('KeyV');
     await until(page, () => window.pokecraft.scribble.info().camK === 0);
@@ -124,6 +129,7 @@ export default async function ({ browser, base, t }) {
     await page.screenshot({ path: `${SHOTS}scribble-15-walk-on.png` });
     const ui = await page.evaluate(() => ({ fight: document.body.classList.contains('scribbling'), hud: !document.getElementById('sc-ui').classList.contains('hidden'), party: window.pokecraft.party.map(c => c.hp) }));
     t.ok(!ui.fight && !ui.hud, 'cleared: the scribble is gone, the HUD is the game\'s again, and W walks you on');
+    t.ok(await page.evaluate(() => window.pokecraft.camera.fov) === 75, 'the field of view is the game\'s own again (75)');
     // a loss: the knot comes back, walk out and in again to retry
     await page.evaluate(() => { const s = window.pokecraft.scribble; s.phase = 'idle'; s.warp(); s.armed = true; /* as if you walked out and came back */ });
     await page.keyboard.down('KeyW');

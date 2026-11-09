@@ -16,12 +16,11 @@ import { buildPerson } from './npc.js';
 import { mulberry32 } from './blocks.js';
 import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
-import { ScribbleFight, FIGHT, groundOf, squadOf, follow } from './scribblefight.js';
+import { ScribbleFight, FIGHT, groundOf, squadOf, follow, FightCam } from './scribblefight.js';
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
   key: 'pokecraft-fight-cam',
-  cam: { dist: 8.5, elev: 0.78, look: 1.6, yawRate: 7, follow: 7, pitchK: 0.35 },
   enter: { throw: 0.45, grow: 0.35, camFrom: 0.3, cam: 1.6, go: 1.95 }, // seconds: the cube's flight, the creature growing, the camera's move
   exit: { wait: 1.3, cam: 1.6, fade: 1.1 },
   stepEase: 14,           // how fast a creature's drawn height follows a step up or down (1 / s)
@@ -170,7 +169,7 @@ export function createScribble(game) {
   const group = new THREE.Group(); group.name = 'scribble';
   scene?.add(group);
   let parts = null; // everything drawn for one patch
-  let t = 0, phaseT = 0, boilT = 0, boil = 0, backT = 0, camYaw = 0, camPos = v3(), camFocus = v3(), camPull = 1, firstFight = true;
+  let t = 0, phaseT = 0, boilT = 0, boil = 0, backT = 0, firstFight = true;
   const yourModels = new Map(); // squad index -> model (built on first use)
   let you = null, avatar = null, cube = null, ui = null;
   const pressed = new Set();
@@ -579,7 +578,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     S.fight.you.heading = Math.atan2(C.x - sx, C.z - sz);
     S.entry = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     S.phase = 'enter'; phaseT = 0;
-    camYaw = p.yaw; camFocus.set(sx, sy + 1, sz); camPull = 1;
+    cam.start(p.yaw, sx, sy, sz); frozen = { yaw: p.yaw, pitch: p.pitch };
     p.vel?.set(0, 0, 0);
     for (const w of [...(game.creatures?.list || [])]) if (Math.hypot(w.pos.x - C.x, w.pos.z - C.z) < FIGHT.R + 2) game.creatures.remove(w); // no wild creature inside the ring
     you = yourModel(0); you.scale.setScalar(0.01); you.visible = false; group.add(you);
@@ -659,33 +658,27 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
 
   // ---- the camera: one blend between your eyes and the spot behind your creature
   const eyeQ = new THREE.Quaternion(), tpQ = new THREE.Quaternion(), tpPos = v3();
+  const cam = new FightCam(); // (scribblefight.js: the arena-like steep camera, pure)
+  let baseFov = null, frozen = null;
   function thirdPerson(dt, snap) {
-    const p = game.player, f = S.fight.you, c = SCRIBBLE.cam;
-    camYaw = snap ? p.yaw : camYaw + wrap(p.yaw - camYaw) * (1 - Math.exp(-dt * c.yawRate));
-    const k = snap ? 1 : 1 - Math.exp(-dt * c.follow);
-    camFocus.lerp(tmp.a.set(f.x, (S.youY ?? f.y) + 1.0, f.z), k);
-    const tall = Math.max(1, 1.15 / Math.max(0.3, game.camera.aspect)) ** 0.6;
-    const dist = c.dist * tall, elev = Math.max(0.35, Math.min(1.1, c.elev - p.pitch * c.pitchK));
-    const back = tmp.b.set(Math.sin(camYaw), 0, Math.cos(camYaw));
-    const want = tpPos.copy(camFocus).addScaledVector(back, Math.cos(elev) * dist).add(tmp.a.set(0, Math.sin(elev) * dist, 0));
-    // never inside a hill: pull in toward the creature while the way is blocked (eased, so it never jumps)
-    const d = tmp.a.subVectors(want, camFocus), L = d.length();
-    let pull = 1;
-    for (let s = L; s > 1.5; s -= 0.25) { const q = camFocus.clone().addScaledVector(d, s / L); if (!S.ground.solid(q.x, q.y, q.z) && !S.ground.solid(q.x, q.y - 0.4, q.z)) break; pull = (s - 0.25) / L; }
-    camPull += (pull - camPull) * (pull < camPull ? 1 : 1 - Math.exp(-dt * 3));
-    tpPos.copy(camFocus).addScaledVector(d, camPull);
-    tmp.m.lookAt(tpPos, tmp.a.copy(camFocus).addScaledVector(back, -c.look).setY(camFocus.y - 0.3), THREE.Object3D.DEFAULT_UP);
+    const p = game.player, f = S.fight.you;
+    const pose = cam.update(dt, { x: f.x, y: S.youY ?? f.y, z: f.z }, p.yaw, game.camera.aspect || 1, S.ground, snap);
+    tpPos.set(pose.x, pose.y, pose.z);
+    tmp.m.lookAt(tpPos, tmp.a.set(pose.at.x, pose.at.y, pose.at.z), THREE.Object3D.DEFAULT_UP);
     tpQ.setFromRotationMatrix(tmp.m);
   }
   function placeCamera(camera, dt, snap = false) {
     const p = game.player;
     if (S.fight) thirdPerson(dt, snap);
     const k = smooth(S.camK);
-    if (k <= 0) return;
+    if (k <= 0) { if (baseFov != null && camera.fov !== baseFov) { camera.fov = baseFov; camera.updateProjectionMatrix(); } return; }
+    baseFov ??= camera.fov;
     eyeQ.setFromEuler(tmp.e.set(p.pitch, p.yaw, 0, 'YXZ'));
     camera.position.copy(p.eyePos).lerp(tpPos, k);
     camera.position.y += Math.sin(k * Math.PI) * 0.8; // a little lift on the way: up and over, never through
     camera.quaternion.copy(eyeQ).slerp(tpQ, k);
+    const fov = baseFov + (cam.c.fov - baseFov) * k; // 75 in your eyes -> the arena's 50 behind your creature, with the rise
+    if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
   }
 
   // ---- first person: your creature runs beside you; warnings you cannot see show as arrows round the middle
@@ -694,7 +687,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const p = game.player, F = S.fight, k = p.keys || {}, j = game.touch?.joy || { x: 0, y: 0 };
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
     if (Math.hypot(j.x, j.y) > 0.15) { f = -j.y; s = j.x; }
-    const y = camYaw;
+    const y = cam.yaw;
     F.input.mx = -Math.sin(y) * f + Math.cos(y) * s;
     F.input.mz = -Math.cos(y) * f - Math.sin(y) * s;
     F.aimDir = null;
@@ -847,6 +840,11 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       }
       if (S.camK <= 0 && phaseT > E.wait + 0.5 && S.pinT == null) { S.exitFrom = null; finishExit(); }
     }
+    // behind your creature the camera does not turn (FightCam): your look waits where it was, so the glide back ends where you looked
+    if (S.fight && frozen) {
+      if (S.mode === 'eyes' && S.phase === 'fight') { frozen.yaw = p.yaw; frozen.pitch = p.pitch; }
+      else if (!cam.c.turn) { p.yaw = frozen.yaw; p.pitch = frozen.pitch; }
+    }
     if (!S.fight) { placeCamera(camera, dt); return; }
     events();
     drawModels(dt);
@@ -860,6 +858,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   S.can = () => !!parts && S.phase !== 'off';
   S.toggleCam = (say2 = true) => {
     S.mode = S.mode === 'behind' ? 'eyes' : 'behind';
+    if (S.mode === 'behind' && S.fight) cam.yaw = game.player.yaw; // back up behind: the camera faces the way you looked
     try { localStorage.setItem(SCRIBBLE.key, S.mode); } catch { /* private window */ }
     if (say2 && game.ui) game.ui.toast(S.mode === 'behind' ? '🎥 Fight camera: behind your creature' : '🎥 Fight camera: in your eyes');
     S.refresh();

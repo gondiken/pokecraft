@@ -1,0 +1,31 @@
+// Night run 2026-11-10 (plans/chapter3.md section 9): measurements behind the numbers in the plan, on seeds 1, 22, 122.
+//   node tests/scribblemeasure.mjs cam      what a child sees: the first try's camera vs the steep one, iPad landscape and portrait
+//   SCRIBBLE_GAMES=n, SCRIBBLE_SEED=s, SCRIBBLE_TUNE='{"R":11}' (FIGHT), SCRIBBLE_BOTS=kid,skilled
+import { serve, launch } from './helpers.mjs';
+import { scribblePage, play, SEEDS } from './scribblebots.mjs';
+
+const what = process.argv[2] || 'cam';
+const games = +process.env.SCRIBBLE_GAMES || 4;
+const { server, base } = await serve();
+const browser = await launch();
+const sum = {};
+const add = (k, r) => { (sum[k] ??= []).push(r); };
+for (const seed of process.env.SCRIBBLE_SEED ? [+process.env.SCRIBBLE_SEED] : SEEDS) {
+  const page = await scribblePage(browser, base, { seed });
+  if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => Object.assign((await import('/src/scribblefight.js')).FIGHT, JSON.parse(t)), process.env.SCRIBBLE_TUNE);
+  if (what === 'cam') {
+    const cams = [['old', 4 / 3], ['new', 4 / 3], ['old', 3 / 4], ['new', 3 / 4]];
+    for (const bot of (process.env.SCRIBBLE_BOTS || 'kid,skilled').split(',')) for (let g = 0; g < games; g++) {
+      const r = await play(page, bot, { lead: g, cams });
+      add(`${bot}`, r);
+      for (const c of r.cams) add(`cam ${c.cam} ${c.aspect}`, c);
+    }
+  }
+  await page.context().close();
+}
+const avg = (list, k) => Math.round(list.reduce((a, r) => a + (r[k] ?? 0), 0) / list.length * 10) / 10;
+for (const [k, list] of Object.entries(sum)) {
+  if (k.startsWith('cam')) console.log(`${k}: monsters on screen ${avg(list, 'foe')} %, whole red warning ${avg(list, 'tell')} %, your creature ${avg(list, 'you')} %, jumps ${avg(list, 'jumps')}, a block in the way ${avg(list, 'hidden')} %  (${list.length} fights)`);
+  else console.log(`${k}: won ${list.filter(r => r.won).length}/${list.length}, ${avg(list, 'time')} s, snaps/min ${avg(list, 'snapsPerMin')}`);
+}
+await browser.close(); server.close();

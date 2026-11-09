@@ -236,3 +236,40 @@ patch appears 14-23 blocks ahead of wherever you are when the game starts, never
 Do not start the new world, flags, eggs or the Wizard beside you yet: the camera and the fight must be right first.
 Useful commands: `cd tests && npm install`; `PC_CHROMIUM=/opt/pw-browsers/chromium node run.mjs scribble`
 (`SCRIBBLE_ONLY=bots|real|ipad|closed`); `node scribblebots.mjs` (`SCRIBBLE_GAMES`, `SCRIBBLE_SEED`, `SCRIBBLE_TUNE='{"foeHp":7}'`).
+
+## 9. The night run (2026-11-09 night): what changed, with the numbers
+
+Every number here comes from `tests/scribblebots.mjs` (the bots) and `tests/scribblemeasure.mjs` (new: the measurements) on the seeds 1,
+22 and 122, all behind `?preview`. The arena (`arena.html`, `src/arena/`) is unchanged.
+
+### Step 1: the steeper fight camera (done)
+
+`FightCam` in `src/scribblefight.js` (pure, so the bots measure exactly what is drawn): **fov 50, 13.5 up and 7 back (about 62 degrees
+down) like the arena, further back on a portrait screen** (x `1.2 / aspect`), looking just ahead of your creature. The rise from your eyes
+is the same one move (the owner's "actually perfect"); the field of view now glides from the game's 75 to 50 along with it and back to 75
+on the way down. Pictures: `plans/chapter3/cam-before-*.jpg` and `cam-after-*.jpg` (`4-rise` and `6-rise` are the same pinned moments of
+the rise, `8-fight` the fight, `ipad` the iPad).
+
+What a child sees (`scribblemeasure.mjs cam`: every moment of 24 kid and skilled fights, a point counts when it is inside 95 % of the screen):
+
+| | Monsters on screen | Whole red warning on screen | Your creature | Camera jumps / fight | A block between camera and creature |
+| --- | --- | --- | --- | --- | --- |
+| First try (fov 75, 8.5 away, 45 degrees), iPad landscape | 84.5 % | 76.7 % | 99.9 % | 0.8 | 1.9 % |
+| Steep camera, iPad landscape | **92.3 %** | **87.3 %** | 100 % | 0.1 | 0.1 % |
+| First try, iPad portrait | 91.9 % | 87.4 % | 99.9 % | 1.9 | 1.5 % |
+| Steep camera, iPad portrait | **96.5 %** | **96.1 %** | 100 % | 0.2 | 0 % |
+
+- **Draw calls in a fight: about 335 -> 113** (a steeper, narrower view sees far less of the world: step 5 for free).
+- **The camera does not turn with your look in a fight** (like the arena: stick up = away from the camera, always). Measured as far as a bot
+  can: the bots never turn the camera, so a turning one only differs when a person turns it, and a fixed one already shows 92-97 % of the
+  monsters. It also means one thumb fewer on the iPad (no drag to turn). Your look waits where it was, so the glide back down ends looking
+  the way you came in; V to first person and back re-aims the camera the way you then look.
+- **A hill in the way:** the camera tips up toward straight overhead (eased, about 0.3 s), it never pulls in any more. The first version
+  pulled in like before and swung up to 1.5 blocks a frame (measured on seed 22, under trees); tipping alone: 0-0.2 jumps a fight (a jump =
+  more than 0.6 blocks in 1/60 s), a block in the way 0-0.1 % of the time (a creature right under leaves).
+- **Ring radius 11 (the arena's) tried and dropped:** mashing won 2/12 instead of 1/12, monsters on screen fell 96 -> 93 % (landscape),
+  the skilled and kid bots were the same. Radius 10 stays.
+- **A flatter patch spot: not tried this night** (the steep view already makes the ground look much calmer; see the pictures). Still a
+  question for the owner after playing.
+- The skilled bot learnt one thing: cornered by hills with a stomp coming (seed 22, about 1 fight in 20), it now dodges through instead of
+  standing still (a person would). The fight rules were not changed in this step.

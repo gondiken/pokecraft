@@ -12,7 +12,7 @@ import { serve, launch, openGame, newGame, click } from './helpers.mjs';
 import { pathToFileURL } from 'node:url';
 
 export const BOTS = String.raw`
-const { ScribbleFight, groundOf, squadOf, follow, FIGHT } = await import('/src/scribblefight.js');
+const { ScribbleFight, groundOf, squadOf, follow, FIGHT, FightCam, onScreen } = await import('/src/scribblefight.js');
 const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell;
 const S = await import('/src/species.js');
 const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
@@ -52,15 +52,15 @@ function skilledGoal(F) {
   const you = F.you;
   if (danger(F, you.x, you.z, you.y)) {
     let best = null, bd = Infinity;
-    for (let k = 0; k < 24; k++) for (const s of [1.2, 2.2, 3.4]) {
+    for (let k = 0; k < 24; k++) for (const s of [1.2, 2.2, 3.4, 4.6]) {
       const x = you.x + Math.cos(k * Math.PI / 12) * s, z = you.z + Math.sin(k * Math.PI / 12) * s;
       if (!walkable(F, you.x, you.z, you.y, x, z)) continue;
       const y = G.stand(x, z, you.y, 3);
       if (y == null || danger(F, x, z, y)) continue;
       if (s < bd) { bd = s; best = { x, z }; }
     }
-    if (!best) return { gx: 0, gz: 0, flee: true };
     const soon = F.foes.some(f => f.alive && ((f.tell && f.tell.left < 0.22) || f.charging));
+    if (!best) return { gx: 0, gz: 0, flee: true, dodge: soon }; // cornered: a well-timed dodge (its moment of safety) is the way out
     return { gx: best.x - you.x, gz: best.z - you.z, flee: true, dodge: soon };
   }
   const alive = F.foes.filter(f => f.alive).sort((p, q) => len2(p.x - you.x, p.z - you.z) - len2(q.x - you.x, q.z - you.z));
@@ -151,19 +151,46 @@ const BOT = {
     F.step(dt);
   },
 };
-window.__scribbleBots = { newFight, BOT };
+// what a child sees behind its creature (FightCam): the share of moments a monster / a red warning / your creature is on screen,
+// and the camera's jumps (a move of more than 0.6 blocks in 1/60 s) and moments with a block between camera and creature
+const CAMS = {
+  old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6 }, // the first try (turned with your look; the bots never turn it)
+  new: {},
+};
+function camWatch(F, which, aspect) {
+  const cam = new FightCam(CAMS[which]), you = F.you;
+  cam.start(F.me.yaw, you.x, you.y, you.z);
+  const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, last: null, aspect };
+  w.tick = dt => {
+    const p = cam.update(dt, F.you, F.me.yaw, aspect, G), inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
+    if (w.last && Math.hypot(p.x - w.last[0], p.y - w.last[1], p.z - w.last[2]) > 0.6 * Math.max(1, dt * 60)) w.jumps++;
+    w.last = [p.x, p.y, p.z]; w.n++;
+    if (inS(onScreen(p, aspect, F.you.x, F.you.y + 0.6, F.you.z))) w.you++;
+    const fx = F.you.x - p.x, fy = F.you.y + 0.8 - p.y, fz = F.you.z - p.z;
+    for (let k = 0.15; k < 0.9; k += 0.05) if (G.solid(p.x + fx * k, p.y + fy * k, p.z + fz * k)) { w.hidden++; break; }
+    for (const f of F.foes) if (f.alive) {
+      w.foeN++; if (inS(onScreen(p, aspect, f.x, f.y + 0.6, f.z))) w.foe++;
+      if (f.tell) { w.tellN++; const t = f.tell, pts = t.kind === 'line' ? [[t.x, t.z], [t.x + t.dx * t.len, t.z + t.dz * t.len]] : [[t.x - t.r, t.z], [t.x + t.r, t.z], [t.x, t.z - t.r], [t.x, t.z + t.r]];
+        if (pts.every(([x, z]) => inS(onScreen(p, aspect, x, t.y, z)))) w.tell++; }
+    }
+  };
+  w.out = () => ({ cam: which, aspect: +aspect.toFixed(2), foe: Math.round(100 * w.foe / Math.max(1, w.foeN)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)), you: Math.round(100 * w.you / Math.max(1, w.n)), jumps: w.jumps, hidden: Math.round(100 * w.hidden / Math.max(1, w.n)) });
+  return w;
+}
+window.__scribbleBots = { newFight, BOT, camWatch };
 `;
 
-export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null } = {}) {
-  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo }) => {
+export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo, cams }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
-    const { newFight, BOT } = window.__scribbleBots;
+    const { newFight, BOT, camWatch } = window.__scribbleBots;
     const F = newFight(lead, solo), dt = 1 / fps;
-    for (let t = 0; t < limit && !F.over; t += dt) BOT[bot](F, dt, eyes);
+    const W = (cams || []).map(([c, a]) => camWatch(F, c, a));
+    for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt, eyes); for (const w of W) w.tick(dt); }
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
-      byKind: F.stats.byKind, hitBy: F.stats.hitBy, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2) };
-  }, { BOTS, bot, eyes, fps, lead, limit, solo });
+      byKind: F.stats.byKind, hitBy: F.stats.hitBy, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
+  }, { BOTS, bot, eyes, fps, lead, limit, solo, cams });
 }
 
 export const RUNS = [

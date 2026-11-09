@@ -461,3 +461,54 @@ export class ScribbleFight {
       foes: this.foes.map(f => ({ species: f.c.species, x: f.x, y: f.y, z: f.z, hp: f.hp, alive: f.alive, tell: f.tell ? f.tell.kind : null })), stats: this.stats };
   }
 }
+
+// ---------------------------------------------------------------- the fight camera (behind your creature), pure
+// Night run 2026-11-10 (owner: "steeper camera: yes", plans/chapter3.md section 9): like the test arena's: fov 50, high and steep
+// (13.5 up, 7 back: about 62 degrees down), further back on a portrait screen, and it does NOT turn with your look during a fight
+// (north stays up, stick up = away from the camera; measured: the turning camera only ever showed less). A hill between the camera
+// and your creature tips the camera up toward straight overhead, eased: it never jumps. scribble.js draws with it; tests/scribblebots.mjs measures what a child sees with it.
+export const CAM = { up: 13.5, back: 7, fov: 50, ahead: 0.4, follow: 7, turn: false, yawRate: 7, tip: 3, tall: 1.2 };
+const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
+export class FightCam {
+  constructor(o = {}) { this.c = { ...CAM, ...o }; this.yaw = 0; this.focus = null; this.tilt = 0; this.pose = null; }
+  start(yaw, x, y, z) { this.yaw = yaw; this.focus = { x, y, z }; this.tilt = 0; this.pose = null; }
+  // the line from the focus toward the camera at tilt t (0 = the set view, 1 = straight overhead), length scale s: is it clear?
+  dirAt(t, tall) {
+    const c = this.c, el0 = Math.atan2(c.up, c.back), el = el0 + (Math.PI / 2 - 0.02 - el0) * t, L = Math.hypot(c.up, c.back) * tall;
+    return { x: Math.sin(this.yaw) * Math.cos(el) * L, y: Math.sin(el) * L, z: Math.cos(this.yaw) * Math.cos(el) * L };
+  }
+  clearTo(ground, d, s) {
+    const F = this.focus, n = Math.ceil(Math.hypot(d.x, d.y, d.z) * s / 0.25);
+    for (let k = 2; k <= n; k++) { const q = k / n * s; if (ground.solid(F.x + d.x * q, F.y + 1 + d.y * q, F.z + d.z * q)) return false; }
+    return true;
+  }
+  // f: where your creature stands (x, y = its ground, z); look: your look's yaw (only with turn); aspect = width / height
+  update(dt, f, look, aspect, ground, snap = false) {
+    const c = this.c;
+    if (!this.focus) this.start(look, f.x, f.y, f.z);
+    if (c.turn) this.yaw = snap ? look : this.yaw + wrapA(look - this.yaw) * (1 - Math.exp(-dt * c.yawRate));
+    const k = snap ? 1 : 1 - Math.exp(-dt * c.follow), F = this.focus;
+    F.x += (f.x - F.x) * k; F.y += (f.y - F.y) * k; F.z += (f.z - F.z) * k;
+    const tall = Math.max(1, c.tall / Math.max(0.3, aspect));
+    // tip up until the way is clear (eased: it never jumps). Blocked even from overhead (under a tree) = it stays where it is: pulling
+    // in made the camera swing 1.5 blocks a frame (measured), and a creature under leaves is rare and brief.
+    let wantTilt = this.tilt;
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) if (this.clearTo(ground, this.dirAt(t, tall), 1)) { wantTilt = t; break; }
+    if (snap) this.tilt = wantTilt;
+    else this.tilt += (wantTilt - this.tilt) * (1 - Math.exp(-dt * (wantTilt > this.tilt ? c.tip : c.tip * 0.5)));
+    const d = this.dirAt(this.tilt, tall);
+    const at = { x: F.x - Math.sin(this.yaw) * c.ahead, y: F.y + 0.5, z: F.z - Math.cos(this.yaw) * c.ahead };
+    return (this.pose = { x: F.x + d.x, y: F.y + 1 + d.y, z: F.z + d.z, at, fov: c.fov });
+  }
+}
+// where a point lands on screen with a pose (-1..1 both ways inside; null = behind the camera)
+export function onScreen(pose, aspect, x, y, z) {
+  const fx = pose.at.x - pose.x, fy = pose.at.y - pose.y, fz = pose.at.z - pose.z, fl = Math.hypot(fx, fy, fz);
+  const f = [fx / fl, fy / fl, fz / fl];
+  let r = [f[2], 0, -f[0]]; const rl = Math.hypot(r[0], r[2]) || 1; r = [-r[0] / rl, 0, -r[2] / rl]; // right = forward x up
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  const v = [x - pose.x, y - pose.y, z - pose.z], depth = v[0] * f[0] + v[1] * f[1] + v[2] * f[2];
+  if (depth <= 0.1) return null;
+  const th = Math.tan(pose.fov * Math.PI / 360);
+  return { x: (v[0] * r[0] + v[1] * r[1] + v[2] * r[2]) / depth / (th * aspect), y: (v[0] * u[0] + v[1] * u[1] + v[2] * u[2]) / depth / th, depth };
+}
