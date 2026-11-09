@@ -194,3 +194,45 @@ patch appears 14-23 blocks ahead of wherever you are when the game starts, never
 
   Ideas to try next, one at a time: the fight camera at the arena's fov 50 and higher; the camera not turning during a fight; a calmer
   patch spot (flatter, fewer trees); a slightly bigger ring.
+
+## 8. Where we left off (end of session 2026-11-09) and the night run
+
+### Done in this session (all behind `?preview`, live on `main`)
+- Test A (behind the creature) and Test B (first person, V / the pause screen's "🎥 Fight" button) in the real game: `src/scribble.js`,
+  `src/scribblefight.js`, spec `scribble`, bots `tests/scribblebots.mjs` (naive / kid / skilled; `solo`, per-move-kind damage, snaps,
+  blocked time). The arena (`arena.html`, `src/arena/`) is untouched and must stay so.
+- Owner verdicts: **the camera rising from the eyes is "actually perfect"**; the timed rush is "great work"; monsters must look like the
+  real creatures gone grey, never like doodles (done); the patch appears ahead of you (done).
+- Balance found and fixed: shots beat rushes (cool-downs and where a rush ends); the timed rush (section 7). Steps now ease.
+
+### Owner decisions for the next session
+- **Steeper fight camera: yes** (like the arena: fov about 50, about 62 degrees down, further back). The owner also hopes the ground's
+  ruggedness calms a little as the camera steps back (a steeper, further view does that by itself; fog / detail may help).
+- The ring: keep it for now (removing it risks easy wins or a frustrating accidental exit). Still open, not urgent.
+- Chapter 3 itself will be a **new world** with reasons to return to the old one (flags, catching other types); the patch near you is only a test.
+- "I hope other moves that I haven't tried have similar implementation quality": every move kind must get the same treatment the rush got.
+
+### The night run: what to do, in this order (each step: bots naive / kid / skilled on seeds 1, 22, 122 at 60 and 20 fps, the
+### `scribble` spec green, screenshots, then commit and push to the session branch, `main` and `claude/clever-ritchie-etj0nq`)
+1. **Steeper camera.** Behind-the-creature camera: fov blends from the game's 75 to about 50 with the rise; height / distance like the arena
+   (about 13 up, 7 back, scaled for a portrait iPad); keep the one continuous rise from the eyes (pinned screenshots of the move again).
+   Try, as separate measured steps, whether the camera should stop turning with your look during a fight (arena: north always up, stick
+   up = screen up) and whether a slightly bigger ring (radius 11, the arena's) or a flatter patch spot reads better. Keep what is better,
+   write down what was tried. Check walls between camera and creature (the pull-in) still never snap.
+2. **Audit every move kind like the rush** (`shapeOf` kinds: bolt, volley, burst, dash (done), heal, buff, cloud, sleep). For each: what it
+   does on the real ground, how it reads to a child (one look), damage per second vs its risk, and a creature whose moves are mostly that
+   kind played alone by the kid and skilled bots (`play(page, bot, { solo: [species, level] })`). Fix weak or broken kinds with a rule
+   that asks for skill (timing, position, aim), never a plain number bump that a masher also gets; the mashing bot must stay below a
+   quarter of wins. Known suspects: big blast (held to charge; cool-down 3.2 s, about 0.2-0.35 x power a second), the clouds (slow / sleep:
+   do they matter?), heal and buff (mashed, they are free), volley (four small shots: strong at range). Report a table per kind.
+3. **Fight length.** The owner's Graphitan fight took 5+ minutes; bots win in 20-50 s. Make a "real kid" bot closer to a person (late,
+   imprecise, sometimes wrong target) and aim for about 1-2 minutes for a person; lower the monsters' HP if needed while mashing still
+   loses.
+4. **Test B (first person) polish**, same checks: aiming with the look, arrows for warnings behind you, the creature beside you.
+5. **iPad**: the frame rate cannot be measured here; keep draw calls low (now about 330 in a fight, the arena 60) and say so.
+6. Keep `plans/chapter3.md` up to date (a section per step with the numbers), CLAUDE.md's code map rows for scribble.js /
+   scribblefight.js, and end with a short list of questions for the owner.
+
+Do not start the new world, flags, eggs or the Wizard beside you yet: the camera and the fight must be right first.
+Useful commands: `cd tests && npm install`; `PC_CHROMIUM=/opt/pw-browsers/chromium node run.mjs scribble`
+(`SCRIBBLE_ONLY=bots|real|ipad|closed`); `node scribblebots.mjs` (`SCRIBBLE_GAMES`, `SCRIBBLE_SEED`, `SCRIBBLE_TUNE='{"foeHp":7}'`).
