@@ -15,7 +15,7 @@ export class LiveMode {
   constructor(a) {
     this.a = a;
     this.name = 'live';
-    this.hint = 'Move with the stick (WASD), tap a move (1-4). Get out of the red!';
+    this.hint = 'Move with the stick (WASD), tap a move (Q E R F). Get out of the red!';
     this.cam = 'follow';
   }
   start() {
@@ -32,8 +32,8 @@ export class LiveMode {
     a.foes.forEach((f, i) => { f.timer = 1.6 + i * 0.9; f.tell = null; f.charging = null; f.vel = { x: 0, z: 0 }; });
   }
   // ice: speed eases toward what you want (slowly); anywhere else it is what you want
-  slide(v, tx, tz, dt) {
-    if (!this.a.place.slide) { v.x = tx; v.z = tz; return; }
+  slide(v, tx, tz, dt, f) {
+    if (!this.a.place.slide || f?.type === 'ice') { v.x = tx; v.z = tz; return; } // Ice creatures keep their grip
     const k = Math.min(1, dt * this.a.place.slide);
     v.x += (tx - v.x) * k; v.z += (tz - v.z) * k;
   }
@@ -119,14 +119,14 @@ export class LiveMode {
       const d = this.dash;
       you.x += d.x * d.speed * dt; you.z += d.z * d.speed * dt; d.t -= dt;
       if (d.hits) for (const f of a.foes) if (f.alive && !d.hits.has(f) && len2(f.x - you.x, f.z - you.z) < f.r + you.r + 0.2) { d.hits.add(f); a.hit(you, f, d.s.power, d.s.type); }
-      if (pushOut(you) || d.t <= 0) { this.dash = null; if (this.a.place.slide) { this.vel.x = d.x * 7; this.vel.z = d.z * 7; } else this.vel.x = this.vel.z = 0; }
+      if (pushOut(you) || d.t <= 0) { this.dash = null; if (this.a.place.slide && this.a.you.type !== 'ice') { this.vel.x = d.x * 7; this.vel.z = d.z * 7; } else this.vel.x = this.vel.z = 0; }
       you.moving = true;
     } else {
       const { mx, mz } = a.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
       const sp = LIVE.speed * m * (this.charge.slot > 0 ? 0.55 : 1);
       const tx = you.moving ? mx / Math.hypot(mx, mz) * sp : 0, tz = you.moving ? mz / Math.hypot(mx, mz) * sp : 0;
-      this.slide(this.vel, tx, tz, dt); // on the ice lake you keep sliding; elsewhere you stop at once
+      this.slide(this.vel, tx, tz, dt, you); // on the ice lake you keep sliding; elsewhere you stop at once
       you.x += this.vel.x * dt; you.z += this.vel.z * dt;
       if (you.moving) this.dir = { x: mx, z: mz };
       const wall = pushOut(you);
@@ -184,7 +184,7 @@ export class LiveMode {
     const side = (f.side2 ??= Math.random() < 0.5 ? 1 : -1) * 0.5;
     const vx = dx / d * go - dz / d * side, vz = dz / d * go + dx / d * side;
     const v = Math.hypot(vx, vz) || 1;
-    this.slide(f.vel, vx / v * F.speed * slow, vz / v * F.speed * slow, dt);
+    this.slide(f.vel, vx / v * F.speed * slow, vz / v * F.speed * slow, dt, f);
     f.x += f.vel.x * dt; f.z += f.vel.z * dt;
     for (const o of a.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) { f.x += ox / od * (1.4 - od) * 0.5; f.z += oz / od * (1.4 - od) * 0.5; } }
     pushOut(f);

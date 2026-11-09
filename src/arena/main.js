@@ -1,17 +1,17 @@
 // Chapter 3 test arena: the page glue (renderer, camera, controls, the five fixed buttons, the HUD) for the three
 // battle prototypes. Nothing is saved; your team is only read from this browser's save.
 //   ⚡ Live: real time, in three places (Meadow, Dark Cave, Ice Lake), with up to three of your creatures to swap between.
-//   🎯 Aim and ⏱️ Timing: turn-based (turns.js).
+//   ⏱️ Timing: turn-based (turns.js).
 import * as THREE from 'three';
 import { SPECIES } from '../species.js';
 import { sound } from '../sound.js';
 import { R, STEP, FOES, START_SPOTS, PLACES, SEE, Fighter, Fx, buildArena, damage, loadTeam, typeHex, typeCss, typeName, floatText, KIND_WORD, len2, maxHpOf } from './core.js';
 import { LiveMode } from './live.js';
-import { AimMode, TimingMode } from './turns.js';
+import { TimingMode } from './turns.js';
 
-const MODES = { live: LiveMode, aim: AimMode, timing: TimingMode };
+const MODES = { live: LiveMode, timing: TimingMode };
 // foeHp: monsters' HP x (live battles need longer fights than one shot a second allows, and you have three creatures there)
-const TUNE = { live: { foePower: 50, youMult: 1, foeHp: 6 }, aim: { foePower: 24, youMult: 1.25, foeHp: 1.2 }, timing: { foePower: 28, youMult: 1.5, foeHp: 1.4 } };
+const TUNE = { live: { foePower: 50, youMult: 1, foeHp: 6 }, timing: { foePower: 28, youMult: 1.5, foeHp: 1.4 } };
 const TEAM_MAX = 3; // creatures you can swap between in Live
 const $ = id => document.getElementById(id);
 
@@ -51,7 +51,6 @@ const a = {
     el.classList.toggle('on', k != null);
     if (k != null) { el.firstChild.style.width = `${Math.max(0, k) * 100}%`; el.classList.toggle('late', k < 0.35); }
   },
-  bullseye(x, z) { floatText(camera, x, 2.6, z, 'Bullseye!', 'super'); sound.play('badge'); a.stats.bulls++; },
   hit(src, dst, power, type, mult = 1) {
     if (a.over || !dst.alive) return 0;
     if (dst.safeT > 0) { floatText(camera, dst.x, dst.h + 0.6, dst.z, 'Dodged!', 'miss'); return 0; }
@@ -105,7 +104,7 @@ const a = {
     const turns = a.mode.turn, secs = Math.round(a.clock);
     $('end-title').textContent = won ? 'You won!' : 'Oops! Your team is tired.';
     $('end-text').textContent = won
-      ? (turns ? `All three beaten in ${turns} turns.` : `All monsters beaten in ${secs} seconds.`) + (a.stats.bulls ? ` Bullseyes: ${a.stats.bulls}.` : '')
+      ? (turns ? `All three beaten in ${turns} turns.` : `All monsters beaten in ${secs} seconds.`)
       : 'Try again!';
     setTimeout(() => $('end').classList.remove('hidden'), 700);
     sound.play(won ? 'badge' : 'miss');
@@ -122,7 +121,7 @@ function restart(modeName = a.modeName, opts = {}) {
   if (opts.team != null) a.teamIndex = opts.team;
   if (opts.place) a.placeName = opts.place;
   Object.assign(a, TUNE[modeName]);
-  a.over = false; a.won = null; a.clock = 0; a.stats = { dealt: 0, taken: 0, bulls: 0 }; a.flashes = []; a.pendingSwap = null; a.swapCool = 0;
+  a.over = false; a.won = null; a.clock = 0; a.stats = { dealt: 0, taken: 0 }; a.flashes = []; a.pendingSwap = null; a.swapCool = 0;
   const first = team[a.teamIndex] || team[0];
   // the squad: your picked creature first, then the next ones of your team (Live only; the turn modes play one)
   const order = [first, ...team.filter(c => c !== first)].slice(0, modeName === 'live' ? TEAM_MAX : 1);
@@ -188,7 +187,7 @@ function drawSquad() {
     const hp = i === a.lead ? a.you.hp : m.hp, max = maxHpOf(m.c);
     b.className = `mate${i === a.lead ? ' lead' : ''}${hp <= 0 ? ' out' : ''}`;
     b.style.setProperty('--col', typeCss(SPECIES[m.c.species].type));
-    b.innerHTML = `<b>${SPECIES[m.c.species].name}</b><i style="width:${Math.max(0, hp / max) * 100}%"></i>`;
+    b.innerHTML = `<b>${i + 1} ${SPECIES[m.c.species].name}</b><i style="width:${Math.max(0, hp / max) * 100}%"></i>`;
     b.addEventListener('pointerdown', e => { e.preventDefault(); a.swap(i); });
     el.append(b);
   });
@@ -258,7 +257,7 @@ function drawPad() {
     b.querySelector('.nm').textContent = nm;
     b.querySelector('.nm').style.fontSize = nm.length > 11 ? '13px' : nm.length > 9 ? '14px' : '';
     b.querySelector('.sub').textContent = p.move ? (p.turns ? `in ${p.turns}` : KIND_WORD[p.move.kind]) : '';
-    b.querySelector('kbd').textContent = p.key || '';
+    b.querySelector('kbd').textContent = KEY_NAMES[i];
     const k = p.charge || p.cd || 0;
     b.querySelector('.cd').style.background = p.charge
       ? `conic-gradient(rgba(255,255,255,.75) ${k * 360}deg, transparent 0)`
@@ -269,12 +268,14 @@ function drawPad() {
 // ---------------------------------------------------------------- input: keys, the stick, taps and drags
 
 const keys = new Set();
-const KEYS = { ' ': 0, '1': 1, '2': 2, '3': 3, '4': 4 };
+// Keys next to WASD (owner 2026-11-09: 1-4 are too far): Q E R F = your four moves, Space = Dodge, 1 2 3 = swap to that creature.
+const KEYS = { ' ': 0, q: 1, e: 2, r: 3, f: 4 };
+const KEY_NAMES = ['Space', 'Q', 'E', 'R', 'F'];
 addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT') return;
   const k = e.key.toLowerCase();
   if (k in KEYS) { e.preventDefault(); if (!e.repeat) a.mode.press(KEYS[k]); return; }
-  if (k === 'q' && !e.repeat) { for (let s = 1; s < a.squad.length; s++) if (a.swap((a.lead + s) % a.squad.length)) break; return; }
+  if (['1', '2', '3'].includes(k) && !e.repeat) { a.swap(+k - 1); return; }
   keys.add(k);
 });
 addEventListener('keyup', e => {

@@ -125,8 +125,8 @@ export const PLACES = {
   meadow: { name: 'Meadow', icon: '🌿', floor: [0x7fc35a, 0x74b852], wall: [0x9a9a9a, 0x858585], sky: 0x9fd4ff, light: 1 },
   cave: { name: 'Dark Cave', icon: '🕯️', floor: [0x55505e, 0x4b4754], wall: [0x5d5866, 0x4f4a58], sky: 0x07070c, light: 0.025, dark: true,
     hint: 'A dark cave! You only see near you. Fire, Light, Electric and Cosmic creatures see further.' },
-  ice: { name: 'Ice Lake', icon: '🧊', floor: [0xc9ecf8, 0xb3e0f2], wall: [0xe9f6fb, 0xd2ebf4], sky: 0xbfe3f7, light: 1.05, slide: 1.6, attack: 0.6,
-    hint: 'Ice! You slide, and so do the monsters. Stop early!' },
+  ice: { name: 'Ice Lake', icon: '🧊', floor: [0xc9ecf8, 0xb3e0f2], wall: [0xe9f6fb, 0xd2ebf4], sky: 0xbfe3f7, light: 1.05, slide: 0.75, attack: 0.6,
+    hint: 'Ice! Everyone slides, so stop early! Ice creatures never slip.' },
 };
 export const SEE = { near: 4.6, far: 7.5, bright: ['fire', 'light', 'electric', 'cosmic'] }; // how far you see in the dark
 
