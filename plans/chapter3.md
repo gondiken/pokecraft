@@ -273,3 +273,30 @@ What a child sees (`scribblemeasure.mjs cam`: every moment of 24 kid and skilled
   question for the owner after playing.
 - The skilled bot learnt one thing: cornered by hills with a stomp coming (seed 22, about 1 fight in 20), it now dodges through instead of
   standing still (a person would). The fight rules were not changed in this step.
+
+### Step 2: every move kind audited like the rush (done)
+
+**How it was measured** (`node tests/scribblemeasure.mjs kinds`): a squad of three Owlucid (Lv 30, whose moves are neutral against all three
+monsters, so the type chart stays out of it), each with **one plain shot (Slime Slam, 75) plus the kind's move**. The yardstick is "two shots"
+(plus Bass Blast, 75): *is a slot of this kind worth as much as a second shot?* 8 games x 3 seeds, half at 60 and half at 20 fps, three bots:
+naive (mashes), kid (sees red 0.35 s late, walks out, presses what is ready), skilled. Skilled: time to win (lower is better); kid: the
+monsters' HP left when its squad falls (lower is better); "hurt": the squad's HP lost a minute. The noise between runs is about +-5 points.
+
+| Kind (example) | On the real ground, in one look | Skilled: time to win, before -> after | Kid: monsters' HP left, before -> after | Masher | What changed |
+| --- | --- | --- | --- | --- | --- |
+| Two shots (yardstick) | a ball flies straight, a hill stops it | 36.7 s -> 36.2 s | 49 % -> 51 % | loses (best kit for mashing, still 0 wins) | nothing |
+| Many shots (Broadside) | four small balls in a fan | 44 s -> 44 s | 55 % -> 64 % (noise) | loses | nothing: worth almost a second shot |
+| **Big blast** (Statue Slam) | **was invisible while held**; now a ring grows on the ground round your creature, white when full | **67 s -> 45 s** | **79 % -> 59 %** | its blast does **0** damage (was 5 a second) | the ring; it grows from 2 to 5 blocks; only a full one hits hard (x0.35 -> x2.0 by charge squared); a blast that catches a monster in the last half of its warning **stops** it like the timed rush; the charge counts toward the cool-down |
+| Rush (Swashbuckle) | the timed rush of section 7 | 57 s -> 56 s | 47 % -> 37 % | loses | nothing (done last session) |
+| Rush with recoil (Lead Lance) | the same, hurts you a little | 48 s -> 48 s | 40 % -> 37 % | loses | nothing |
+| **Heal** (Snack Time) | was instant and free; now your creature sits down in a green ring for 0.8 s | 70 s -> 71 s | 69 % -> 77 % | heals into hits: spoilt | **sits for 0.8 s (cannot move), a hit spoils it ("Oops! No heal")**, heals 45 % (was 35 %): heal between attacks |
+| **Power up** (Team Cheer) | was 8 s of x1.5 for anyone; now an orange ring that a hit takes away | 49 s -> 51 s | 66 % -> 68 % | +40 % shot damage only until its first hit | **lasts while you are not hit** ("Power up lost") |
+| **Tough** (Lie Low) | was 8 s of x1.6 defence; now a white brace ring for 0.7 s | 70 s -> 71 s; hurt 23 -> **10 %/min** | 70 % -> 69 % | a random brace now and then | **a hit within 0.7 s bounces off ("Blocked!") and stops the monster that threw it**; afterwards x1.3 defence for 8 s |
+| Slow cloud (Twig Trip) | a coloured puddle where the target stands | 71 s -> 70 s | 52 % -> 55 %; the kid is hurt about half as much (309 vs 565-630 %/min) | loses | nothing: it already pays (slowed monsters wind up slower) |
+| Sleepy cloud (Lullaby) | a short puddle: monsters touching it sleep and drop their attack | 69 s -> 69 s | 51 % -> 46 %; hurt 258 %/min | loses | nothing: the best support for the kid |
+
+- With the real squad (Blazehound, Tidalord, Thunderwolf, three seeds, 60 and 20 fps, behind and first person): **mashing 0 / 96** (it was
+  3 / 90 before: a mashed big blast no longer hurts anything), **skilled 144 / 144**.
+- Heal and Tough never make a skilled player win sooner (support moves never can); they make a skilled player take less (Tough halves it)
+  and they need timing. For the kid they help little, because the kid bot loses its squad in 15-20 s whatever it has (see step 3).
+- Picture: `plans/chapter3/kind-burst-charge.jpg` (F held: the ring at about 4 blocks, round Blazehound).

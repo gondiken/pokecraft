@@ -89,6 +89,15 @@ export default async function ({ browser, base, t }) {
     await until(page, () => window.pokecraft.scribble.fightOf().cd[0] > 0, null, 20000).catch(() => {});
     t.ok(await fight(page, F => F.cd[0] > 0), 'Space dodges (and does not jump)');
     await page.screenshot({ path: `${SHOTS}scribble-8-fight.png` });
+    // step 2: a big blast held with a real key: its ring grows on the ground; let go = the blast
+    await fight(page, async F => { const { shapeOf } = await import('/src/arena/core.js'); F.moves[3] = shapeOf('statueslam'); F.cd[4] = 0; });
+    await page.keyboard.down('KeyF');
+    await until(page, () => window.pokecraft.scribble.fightOf().charge.t > 0.7, null, 20000).catch(() => {});
+    const ring = await page.evaluate(() => { const g = window.pokecraft, a = g.scene.getObjectByName('scribble').children.find(o => o.geometry?.type === 'RingGeometry'); return { shown: !!a?.visible, r: a?.scale.x, charge: g.scribble.fightOf().charge.t }; });
+    await page.screenshot({ path: `${SHOTS}scribble-8b-charge.png` });
+    await page.keyboard.up('KeyF');
+    await until(page, () => window.pokecraft.scribble.fightOf().cd[4] > 0, null, 20000).catch(() => {});
+    t.ok(ring.shown && ring.r > 3 && await fight(page, F => F.cd[4] > 0 && F.charge.slot < 0), `F held: the big blast's ring grows on the ground (radius ${ring.r?.toFixed(1)} after ${ring.charge?.toFixed(1)} s), let go = the blast`);
     const perf = await page.evaluate(() => window.pokecraft.renderer.info.render.calls);
     t.ok(perf < 200, `draw calls in the fight: ${perf} (the steep camera sees less of the world; it was about 335)`);
     // Test B: V glides into first person in the middle of the fight; W then walks YOU, your creature follows

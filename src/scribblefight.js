@@ -30,6 +30,19 @@ export const FIGHT = {
   // and carry on through to the far side, out of its stomp. Any other rush stops at the monster as in the arena (cool-downs: the arena's).
   cool: {},
   rush: { speed: 17, min: 4.8, past: 2.4, max: 8, safe: 0.3, interrupt: true, window: 0.5, throughOnlyInWindow: true, stun: 1.2, knock: 1.6 },
+  // Night run 2026-11-09 (plans/chapter3.md section 9, step 2): every move kind measured alone like the rush, and the weak or free ones
+  // given a rule that asks for skill (never a plain number a masher also gets):
+  //   big blast: the ring on the ground grows while you hold (r0 -> r1); only a full one hits hard (m0 -> m1, by charge^pow), and a
+  //              blast that catches a monster in the last half of its warning stops it like the timed rush; the charge counts toward
+  //              the cool-down (it starts when you press). Mashing (press and let go) = a small, weak puff.
+  //   heal:      your creature sits down to heal for `time` s (it cannot move); a hit in that time spoils it. Heal between attacks.
+  //   power up:  lasts while you are not hit: a hit (not a dodged one) takes it away. Keep out of the red to keep it.
+  //   tough:     a brace: a hit within `brace` s after you use it bounces off ("Blocked!") and stops the monster that threw it; after that
+  //              only a little tougher.
+  burst: { r0: 2.0, r1: 5.0, m0: 0.35, m1: 2.0, pow: 2, stopWindow: 0.5, fromPress: true },
+  heal: { time: 0.8, amount: 0.45 },
+  powerUp: { atk: 1.5, time: 8, lostOnHit: true },
+  tough: { brace: 0.7, def: 1.3, time: 8 },
   attack: 0.7,        // the monsters' rhythm: x the arena's time between attacks (they strike more often: mashing must never win)
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
@@ -73,7 +86,7 @@ export function groundOf(world) {
 // The fighters: your squad's lead (side 'you') and the scribble monsters (side 'foe').
 function fighter(c, side, x, y, z) {
   const f = { c: { species: c.species, level: c.level, moves: c.moves || [] }, side, x, y, z, heading: 0, r: 0.75, pattern: c.pattern,
-    hp: 0, maxHp: 0, safeT: 0, buffT: 0, guardT: 0, slowT: 0, sleepT: 0, flash: 0, moving: false, vel: { x: 0, z: 0 } };
+    hp: 0, maxHp: 0, safeT: 0, buffT: 0, guardT: 0, braceT: 0, slowT: 0, sleepT: 0, flash: 0, moving: false, vel: { x: 0, z: 0 } };
   f.maxHp = f.hp = statsFor(f.c).maxHp;
   Object.defineProperty(f, 'alive', { get() { return this.hp > 0; } });
   Object.defineProperty(f, 'type', { get() { return SPECIES[this.c.species].type; } });
@@ -111,7 +124,7 @@ export class ScribbleFight {
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
     this.charge = { slot: -1, t: 0 };
     this.shots = []; this.clouds = []; this.events = [];
-    this.dash = null; this.dir = { x: 0, z: 1 }; this.target = null;
+    this.dash = null; this.healing = null; this.dir = { x: 0, z: 1 }; this.target = null;
     this.clock = 0; this.acc = 0; this.over = false; this.won = null; this.swapCool = 0; this.pendingSwap = null; this.nextId = 1;
     this.stats = { dealt: 0, taken: 0, dodged: 0, swaps: 0, byKind: {}, snaps: 0, blocked: 0, hitBy: {} };
   }
@@ -209,6 +222,15 @@ export class ScribbleFight {
   hit(src, dst, power, type, mult = 1, kind = null) {
     if (this.over || !dst.alive) return 0;
     if (dst.safeT > 0) { this.emit({ kind: 'dodged', f: dst }); if (dst.side === 'you') this.stats.dodged++; return 0; }
+    if (dst.braceT > 0) { // braced: the hit bounces off and the monster that threw it is stopped for a moment
+      this.emit({ kind: 'braced', f: dst }); this.stats.braced = (this.stats.braced || 0) + 1;
+      if (src.side === 'foe' && src.alive) { src.tell = null; src.charging = null; src.timer = Math.max(src.timer, FIGHT.rush.stun); this.emit({ kind: 'interrupt', f: src }); }
+      return 0;
+    }
+    if (dst.side === 'you') {
+      if (this.healing) { this.healing = null; this.emit({ kind: 'healSpoilt', f: dst }); this.stats.spoilt = (this.stats.spoilt || 0) + 1; }
+      if (dst.buffT > 0 && FIGHT.powerUp.lostOnHit) { dst.buffT = 0; dst.c.atkUp = 1; this.emit({ kind: 'buffLost', f: dst }); this.stats.buffLost = (this.stats.buffLost || 0) + 1; }
+    }
     const { amount, eff } = damage(src.c, dst.c, power, type, mult);
     dst.hp = Math.max(0, dst.hp - amount);
     dst.flash = 0.25;
@@ -238,7 +260,7 @@ export class ScribbleFight {
     const f = fighter(m.c, 'you', old.x, old.y, old.z);
     f.hp = m.hp; f.heading = old.heading; f.safeT = 0.6;
     this.you = f; this.lead = i; this.swapCool = 0.8; this.stats.swaps++;
-    this.dash = null; this.charge = { slot: -1, t: 0 };
+    this.dash = null; this.charge = { slot: -1, t: 0 }; this.healing = null;
     this.moves = f.c.moves.map(shapeOf);
     this.cd = this.cd.map((c, k) => (k ? 0 : c));
     this.emit({ kind: 'swap', f, old, auto });
@@ -249,16 +271,17 @@ export class ScribbleFight {
     if (this.over) return;
     if (slot === 0) return this.tryDodge();
     const s = this.moves[slot - 1];
-    if (!s || this.cd[slot] > 0 || this.dash) return;
+    if (!s || this.cd[slot] > 0 || this.dash || this.healing) return;
     if (s.kind === 'burst') { this.charge = { slot, t: 0 }; return; }
     this.use(slot, 0);
   }
   release(slot) {
-    if (this.charge.slot === slot) { const k = Math.min(1, this.charge.t / LIVE.charge); this.charge = { slot: -1, t: 0 }; this.use(slot, k); }
+    if (this.charge.slot === slot) { const held = this.charge.t, k = Math.min(1, held / LIVE.charge); this.charge = { slot: -1, t: 0 }; this.use(slot, k, held); }
   }
   pick(f) { if (f?.alive) this.target = f; }
   tryDodge() {
     if (this.cd[0] > 0 || this.dash) return;
+    if (this.healing) { this.healing = null; this.emit({ kind: 'healSpoilt', f: this.you }); }
     let { mx: dx, mz: dz } = this.input;
     if (!dx && !dz) { dx = -Math.sin(this.you.heading); dz = -Math.cos(this.you.heading); } // no stick: hop back
     const d = Math.hypot(dx, dz);
@@ -286,10 +309,12 @@ export class ScribbleFight {
     }
     return this.target;
   }
-  use(slot, charge) {
+  // the big blast's ring for a charge k (0..1)
+  blastR(k) { const B = FIGHT.burst; return B.r0 + (B.r1 - B.r0) * k; }
+  use(slot, charge, held = 0) {
     const you = this.you, s = this.moves[slot - 1], t = this.aimAt();
     const cool = FIGHT.cool[s.kind] ?? LIVE.cool[s.kind];
-    this.cd[slot] = cool; this.cdMax[slot] = cool;
+    this.cd[slot] = s.kind === 'burst' && FIGHT.burst.fromPress ? Math.max(0.2, cool - held) : cool; this.cdMax[slot] = cool;
     let dx = Math.sin(you.heading), dz = Math.cos(you.heading), dy = 0;
     if (t) { const d = len2(t.x - you.x, t.z - you.z) || 1; dx = (t.x - you.x) / d; dz = (t.z - you.z) / d; dy = (t.y - you.y) / d; }
     else if (this.aimDir) { dx = this.aimDir.x; dz = this.aimDir.z; }
@@ -297,9 +322,18 @@ export class ScribbleFight {
     if (s.kind === 'bolt') this.fire(s, dx, dy, dz, 1);
     else if (s.kind === 'volley') { for (let i = 0; i < 4; i++) this.fire(s, dx, dy, dz, 1, i * 0.09, (i - 1.5) * 0.09); }
     else if (s.kind === 'burst') {
-      const r = 2.2 + 1.6 * charge;
-      this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r });
-      for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) this.hit(you, f, s.power, s.type, 0.55 + 0.6 * charge, 'burst');
+      const B = FIGHT.burst, r = this.blastR(charge), mult = B.m0 + (B.m1 - B.m0) * charge ** B.pow;
+      this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r, full: charge >= 1 });
+      for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) {
+        const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * B.stopWindow;
+        this.hit(you, f, s.power, s.type, mult, 'burst');
+        if (winding && f.alive) { // caught winding up: its attack is stopped and it is pushed away from you
+          const d = len2(f.x - you.x, f.z - you.z) || 1;
+          f.tell = null; f.timer = Math.max(f.timer, FIGHT.rush.stun);
+          this.move(f, (f.x - you.x) / d * FIGHT.rush.knock, (f.z - you.z) / d * FIGHT.rush.knock);
+          this.emit({ kind: 'interrupt', f });
+        }
+      }
     } else if (s.kind === 'dash') {
       // owner 2026-11-09 (rushers fainted fast, shooters won): a rush goes THROUGH the monster it aims at and ends behind it (out of
       // its stomp), as far as it needs (FIGHT.rush); a hit on a monster that is winding up cancels its attack and knocks it back
@@ -308,8 +342,11 @@ export class ScribbleFight {
       this.dash = { x: dx, z: dz, t: reach / R0.speed, speed: R0.speed, hits: new Set(), s };
       you.safeT = R0.safe ?? reach / R0.speed + 0.05;
       if (s.recoil) { const n = Math.max(1, Math.round(you.maxHp * 0.06)); you.hp = Math.max(1, you.hp - n); this.emit({ kind: 'hit', f: you, amount: n, eff: 1 }); }
-    } else if (s.kind === 'heal') this.heal(you, 0.35);
-    else if (s.kind === 'buff') { if (s.stat === 'def') you.guardT = 8; else you.buffT = 8; this.emit({ kind: 'buff', def: s.stat === 'def' }); }
+    } else if (s.kind === 'heal') { this.healing = { t: FIGHT.heal.time, of: you }; this.emit({ kind: 'resting' }); }
+    else if (s.kind === 'buff') {
+      if (s.stat === 'def') { you.guardT = FIGHT.tough.time; you.braceT = FIGHT.tough.brace; } else you.buffT = FIGHT.powerUp.time;
+      this.emit({ kind: 'buff', def: s.stat === 'def' });
+    }
     else if (s.kind === 'cloud' || s.kind === 'sleep') {
       const x = t ? t.x : you.x + dx * 5, z = t ? t.z : you.z + dz * 5;
       const c = { id: this.nextId++, type: s.type, x, z, y: t ? t.y : you.y, r: 2.3, t: 0, time: s.kind === 'sleep' ? 2.2 : 5, sleep: s.kind === 'sleep', done: new Set() };
@@ -337,12 +374,17 @@ export class ScribbleFight {
     for (let i = 0; i < 5; i++) this.cd[i] = Math.max(0, this.cd[i] - dt);
     for (const f of [you, ...this.foes]) {
       f.safeT = Math.max(0, f.safeT - dt); f.buffT = Math.max(0, f.buffT - dt); f.guardT = Math.max(0, f.guardT - dt);
-      f.slowT = Math.max(0, f.slowT - dt); f.sleepT = Math.max(0, f.sleepT - dt); f.flash = Math.max(0, f.flash - dt);
-      f.c.atkUp = f.buffT > 0 ? 1.5 : 1; f.c.defUp = f.guardT > 0 ? 1.6 : 1;
+      f.slowT = Math.max(0, f.slowT - dt); f.sleepT = Math.max(0, f.sleepT - dt); f.flash = Math.max(0, f.flash - dt); f.braceT = Math.max(0, f.braceT - dt);
+      f.c.atkUp = f.buffT > 0 ? FIGHT.powerUp.atk : 1; f.c.defUp = f.guardT > 0 ? FIGHT.tough.def : 1;
     }
     if (this.charge.slot > 0) { this.charge.t += dt; if (this.charge.t >= LIVE.charge) this.release(this.charge.slot); }
     // you
-    if (this.dash) {
+    if (this.healing) { // sitting down to heal: it cannot move; done = healed
+      if (this.healing.of !== you) this.healing = null;
+      else if ((this.healing.t -= dt) <= 0) { this.healing = null; this.heal(you, FIGHT.heal.amount); }
+    }
+    if (this.healing && !this.dash) { you.moving = false; }
+    else if (this.dash) {
       const d = this.dash;
       const stopped = this.move(you, d.x * d.speed * dt, d.z * d.speed * dt);
       d.t -= dt;

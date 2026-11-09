@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 export const BOTS = String.raw`
 const { ScribbleFight, groundOf, squadOf, follow, FIGHT, FightCam, onScreen } = await import('/src/scribblefight.js');
-const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell;
+const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell, LIVE_FULL = (await import('/src/arena/live.js')).LIVE.charge;
 const S = await import('/src/species.js');
 const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
 const len2 = Math.hypot;
@@ -22,7 +22,7 @@ const TEAM = [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30], ['phant
 // a fight as the game starts it: you at the patch's edge on the side of the start, your creature 3.5 blocks ahead
 function newFight(lead, solo = null) {
   const team = TEAM.map(([s, l]) => S.makeCreature(s, l));
-  const order = solo ? [S.makeCreature(solo[0], solo[1])] : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
+  const order = solo ? Array.from({ length: solo[3] || 1 }, () => Object.assign(S.makeCreature(solo[0], solo[1]), solo[2] ? { moves: solo[2] } : {})) : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
   const a = Math.atan2(g.spawnPoint.x - C.x, g.spawnPoint.z - C.z), dx = Math.sin(a), dz = Math.cos(a);
   const px = C.x + dx * (FIGHT.patch - 0.3), pz = C.z + dz * (FIGHT.patch - 0.3);
   const sx = px - dx * 3.5, sz = pz - dz * 3.5;
@@ -91,14 +91,24 @@ function skilledMoves(F) {
     if (w) { F.pick(w); F.press(dashSlot); F.release(dashSlot); }
   }
   const t = F.aimAt();
+  // a big blast in hand: let go when a monster inside the ring is in the last part of its warning (it is stopped), else at full
+  if (F.charge.slot > 0) {
+    const k = Math.min(1, F.charge.t / LIVE_FULL), r = F.blastR(k);
+    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.release(F.charge.slot);
+    return;
+  }
+  const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
   for (let i = 1; i <= 4; i++) {
     const s = F.moves[i - 1];
     if (!s || F.cd[i] > 0 || !t) continue;
     const d = len2(t.x - you.x, t.z - you.z);
-    if (s.kind === 'heal' && you.hp > you.maxHp * 0.55) continue;
+    if (s.kind === 'heal' && (you.hp > you.maxHp * 0.55 || F.foes.some(f => f.alive && (f.tell || f.charging)))) continue; // heal between attacks
+    if (s.kind === 'buff' && s.stat === 'def') { // brace just before a hit you cannot step out of
+      if (!F.foes.some(f => f.alive && ((f.tell && f.tell.left < 0.45 && F.inTell(f.tell, you.x, you.y, you.z, you.r)) || (f.charging && len2(f.x - you.x, f.z - you.z) < 4)))) continue;
+    }
     if ((s.kind === 'bolt' || s.kind === 'volley') && !F.clearShot(you, t)) continue;
     if (s.kind === 'dash' && (d > 5 || danger(F, t.x, t.z, t.y) || danger(F, you.x, you.z, you.y) || !walkable(F, you.x, you.z, you.y, t.x, t.z, 0.5))) continue;
-    if (s.kind === 'burst') { if (F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < 3.4)) { F.press(i); F.step(0.4); F.release(i); } continue; }
+    if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.press(i); continue; }
     F.press(i); F.release(i);
   }
 }
@@ -121,7 +131,8 @@ function kidStep(F, dt, eyes) {
     if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
     follow(F, me.x, me.z, me.yaw);
   }
-  for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind === 'burst') F.step(0.3); F.release(i); }
+  // (a big blast: it holds the button until the ring is full, then it goes by itself)
+  if (F.charge.slot <= 0) for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind !== 'burst') F.release(i); }
   F.step(dt);
 }
 const BOT = {
@@ -183,13 +194,13 @@ window.__scribbleBots = { newFight, BOT, camWatch };
 export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
   return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo, cams }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
-    const { newFight, BOT, camWatch } = window.__scribbleBots;
+    const { newFight, BOT, camWatch } = window.__scribbleBots, S = await import('/src/species.js');
     const F = newFight(lead, solo), dt = 1 / fps;
     const W = (cams || []).map(([c, a]) => camWatch(F, c, a));
     for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt, eyes); for (const w of W) w.tick(dt); }
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
-      byKind: F.stats.byKind, hitBy: F.stats.hitBy, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
+      byKind: F.stats.byKind, hitBy: F.stats.hitBy, takenPerMin: Math.round(F.stats.taken / Math.max(1, F.clock) * 60 / F.squad.reduce((a, m) => a + S.statsFor(m.c).maxHp, 0) * 100), extra: { braced: F.stats.braced || 0, spoilt: F.stats.spoilt || 0, buffLost: F.stats.buffLost || 0 }, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
   }, { BOTS, bot, eyes, fps, lead, limit, solo, cams });
 }
 

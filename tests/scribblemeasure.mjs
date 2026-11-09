@@ -5,6 +5,14 @@ import { serve, launch } from './helpers.mjs';
 import { scribblePage, play, SEEDS } from './scribblebots.mjs';
 
 const what = process.argv[2] || 'cam';
+// step 2: a squad of three of one creature (neutral against all three monsters), one plain shot + the kind's move; 'two shots' is the yardstick
+const KIT_SPECIES = process.env.KIT_SPECIES || 'owlucid', KIT_LEVEL = +process.env.KIT_LEVEL || 30;
+const BOT_KIT = 'slimeslam';
+const KITS = Object.fromEntries(Object.entries({
+  'two shots': ['bassblast'], 'volley': ['broadside'], 'burst': ['statueslam'], 'dash': ['swashbuckle'], 'dash recoil': ['leadlance'],
+  'heal': ['snacktime'], 'buff atk': ['teamcheer'], 'buff def': ['lielow'], 'cloud': ['twigtrip'], 'sleep': ['lullaby'],
+}).filter(([k]) => !process.env.KITS || process.env.KITS.split(',').includes(k)).map(([k, m]) => [k, [BOT_KIT, ...m]]));
+const BOTS_K = (process.env.SCRIBBLE_BOTS || 'naive,kid,skilled').split(',');
 const games = +process.env.SCRIBBLE_GAMES || 4;
 const { server, base } = await serve();
 const browser = await launch();
@@ -21,11 +29,20 @@ for (const seed of process.env.SCRIBBLE_SEED ? [+process.env.SCRIBBLE_SEED] : SE
       for (const c of r.cams) add(`cam ${c.cam} ${c.aspect}`, c);
     }
   }
+  if (what === 'kinds') {
+    for (const [name, moves] of Object.entries(KITS)) for (const bot of BOTS_K) for (let g = 0; g < games; g++) {
+      const r = await play(page, bot, { solo: [KIT_SPECIES, KIT_LEVEL, moves, 3], lead: g, fps: g % 2 ? 20 : 60 });
+      const kind = name.replace(/ .*/, '');
+      r.kindDps = (r.byKind[kind] || 0) / Math.max(1, r.time);
+      add(`${name} ${bot}`, r);
+    }
+  }
   await page.context().close();
 }
 const avg = (list, k) => Math.round(list.reduce((a, r) => a + (r[k] ?? 0), 0) / list.length * 10) / 10;
 for (const [k, list] of Object.entries(sum)) {
   if (k.startsWith('cam')) console.log(`${k}: monsters on screen ${avg(list, 'foe')} %, whole red warning ${avg(list, 'tell')} %, your creature ${avg(list, 'you')} %, jumps ${avg(list, 'jumps')}, a block in the way ${avg(list, 'hidden')} %  (${list.length} fights)`);
+  else if (what === 'kinds') console.log(`${k.padEnd(22)} won ${String(list.filter(r => r.won).length).padStart(2)}/${list.length}  ${String(avg(list, 'time')).padStart(5)} s  monsters' HP left ${String(avg(list, 'foeHp')).padStart(4)} %  this kind's damage/s ${avg(list, 'kindDps')}  shot ${Math.round(list.reduce((a, r) => a + (r.byKind.bolt || 0), 0) / list.reduce((a, r) => a + r.time, 0))}/s  hurt ${avg(list, 'takenPerMin')} % of squad HP/min  ${JSON.stringify(Object.fromEntries(['braced', 'spoilt', 'buffLost'].map(k => [k, avg(list.map(r => r.extra), k)])))}`);
   else console.log(`${k}: won ${list.filter(r => r.won).length}/${list.length}, ${avg(list, 'time')} s, snaps/min ${avg(list, 'snapsPerMin')}`);
 }
 await browser.close(); server.close();

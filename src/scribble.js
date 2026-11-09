@@ -16,6 +16,8 @@ import { buildPerson } from './npc.js';
 import { mulberry32 } from './blocks.js';
 import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
+import { LIVE } from './arena/live.js';
+const LIVE_CHARGE = LIVE.charge;
 import { ScribbleFight, FIGHT, groundOf, squadOf, follow, FightCam } from './scribblefight.js';
 
 export const SCRIBBLE = {
@@ -467,13 +469,15 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     for (const m of shotMeshes.values()) { group.remove(m); m.material.dispose(); }
     shotMeshes.clear();
     if (target) target.visible = false;
+    if (aura) aura.visible = false;
   }
 
   // ---- effects: shots, blasts, clouds, red warnings on the ground, the target mark
   const fxs = { shots: [], bursts: [], tells: [], clouds: [] };
   const shotGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4), discGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
   const shotMeshes = new Map();
-  let target = null;
+  let target = null, aura = null;
+  const ringGeo = new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2);
   function shotMesh(sh) {
     let m = shotMeshes.get(sh.id);
     if (!m) { m = new THREE.Mesh(shotGeo, new THREE.MeshBasicMaterial({ color: typeHex(sh.s.type) })); m.userData.keepColour = true; group.add(m); shotMeshes.set(sh.id, m); }
@@ -519,6 +523,17 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       if (!e) { const m = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: typeHex(c.type), transparent: true, opacity: 0.35, depthWrite: false })); m.position.set(c.x, c.y + 0.15, c.z); m.scale.setScalar(c.r); m.userData.keepColour = true; group.add(m); e = { c, mesh: m }; fxs.clouds.push(e); }
       e.mesh.material.opacity = 0.35 * Math.min(1, (c.time - c.t) * 2);
     }
+    // one ring on the ground round your creature (step 2): the big blast's reach growing while you hold (white when full), the heal
+    // (green, sitting down), the brace (white, short), the power up (orange: it lasts while you are not hit)
+    if (!aura) { aura = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, depthTest: false })); aura.userData.keepColour = true; aura.renderOrder = 2; group.add(aura); }
+    const yf = F.you, ch = F.charge.slot > 0 ? F.moves[F.charge.slot - 1] : null;
+    let r = 0, col = 0xffffff, op = 0;
+    if (ch) { const k = Math.min(1, F.charge.t / LIVE_CHARGE); r = F.blastR(k); col = k >= 1 ? 0xffffff : typeHex(ch.type); op = 0.55 + 0.35 * Math.sin(t * (6 + 14 * k)); }
+    else if (F.healing) { r = 1.1 + 0.15 * Math.sin(t * 10); col = 0x5be36b; op = 0.8; }
+    else if (yf.braceT > 0) { r = 1.25; col = 0xffffff; op = 0.9; }
+    else if (yf.buffT > 0) { r = 0.95 + 0.06 * Math.sin(t * 5); col = 0xff9a2e; op = 0.7; }
+    aura.visible = op > 0 && S.phase === 'fight';
+    if (aura.visible) { aura.position.set(yf.x, (S.youY ?? yf.y) + 0.08, yf.z); aura.scale.setScalar(r); aura.material.color.setHex(col); aura.material.opacity = Math.max(0.2, op); }
     // the target: a gold ring spinning over the monster your moves go to
     if (!target) {
       target = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.07, 6, 20), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
@@ -547,7 +562,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       else if (e.kind === 'burst') burst(e.type, e.x, e.y, e.z, e.r, 0.5, 0.7);
       else if (e.kind === 'thud') { burst(e.f.type, e.t.x, e.t.y, e.t.z, e.t.r, 0.35, 0.6); sound.play('hit'); }
       else if (e.kind === 'blocked') burst(e.type, e.x, e.y - 0.5, e.z, 0.6, 0.25, 0.8);
-      else if (e.kind === 'buff') say(e.def ? 'Tough for 8 s!' : 'Power up for 8 s!', 1);
+      else if (e.kind === 'buff') say(e.def ? 'Tough!' : 'Power up! Don\'t get hit!', 1);
+      else if (e.kind === 'braced') { floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Blocked!', 'super'); sound.play('boing'); }
+      else if (e.kind === 'healSpoilt') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Oops! No heal', 'miss');
+      else if (e.kind === 'buffLost') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Power up lost', 'miss');
       else if (e.kind === 'swap') {
         say(`Go, ${SPECIES[e.f.c.species].name}!`, 1);
         sound.play('whoosh');
