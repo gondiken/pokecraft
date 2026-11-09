@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>PokeCraft · Test Arena</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #9fd4ff; font-family: 'VT323', monospace; color: #fff;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    #game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+    .shadow { text-shadow: 0 2px 0 #0008; }
+    #top { position: fixed; top: 0; left: 0; right: 0; padding: calc(8px + env(safe-area-inset-top)) 12px 6px; display: flex; gap: 8px;
+      flex-wrap: wrap; align-items: center; background: linear-gradient(#0008, #0000); pointer-events: none; }
+    #top > * { pointer-events: auto; }
+    #top b { font-size: 22px; margin-right: 4px; }
+    #tabs { display: flex; gap: 4px; }
+    #top button, #top select { font: inherit; font-size: 20px; color: #fff; background: #2a3550cc; border: 2px solid #ffffff55; border-radius: 10px;
+      padding: 4px 10px; min-height: 40px; }
+    #tabs button.on { background: #ffcc33; color: #2a1d00; border-color: #fff; }
+    #hint { position: fixed; top: calc(62px + env(safe-area-inset-top)); left: 12px; right: 12px; font-size: 21px; text-align: center; pointer-events: none; }
+    #own { position: fixed; bottom: 8px; left: 12px; font-size: 16px; opacity: .8; pointer-events: none; }
+    #fps { position: fixed; bottom: calc(26px + env(safe-area-inset-bottom)); left: 12px; font-size: 17px; background: #0006; padding: 1px 6px; border-radius: 6px; pointer-events: none; }
+    #toast { position: fixed; top: calc(132px + env(safe-area-inset-top)); left: 50%; transform: translate(-50%, -50%) scale(.9); font-size: 30px; background: #000a; padding: 6px 16px;
+      border-radius: 12px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
+    #toast.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #timer { position: fixed; top: calc(98px + env(safe-area-inset-top)); left: 50%; width: min(60vw, 420px); height: 16px; transform: translateX(-50%);
+      background: #0007; border: 2px solid #fff; border-radius: 9px; overflow: hidden; display: none; pointer-events: none; }
+    #timer.on { display: block; }
+    #timer i { display: block; height: 100%; background: #6fe06f; }
+    #timer.late i { background: #ff6a4a; }
+    #bars { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .hpbar { position: absolute; left: 0; top: 0; width: 64px; height: 9px; background: #000a; border: 2px solid #fff; border-radius: 5px; }
+    .hpbar i { display: block; height: 100%; background: #5fe05f; border-radius: 2px; }
+    .hpbar.you { width: 80px; height: 12px; border-color: #ffd23a; }
+    .hpbar.low i { background: #ff5a3c; }
+    .hpbar b { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-weight: normal; font-size: 17px; white-space: nowrap; text-shadow: 0 2px 0 #000a; }
+    .hpbar.zzz::after { content: 'zzz'; position: absolute; right: -26px; top: -10px; font-size: 20px; color: #cfe3ff; }
+    .hpbar.slow::after { content: 'slow'; position: absolute; right: -32px; top: -8px; font-size: 16px; color: #ffd9a8; }
+    .float { position: absolute; transform: translate(-50%, -50%); font-size: 30px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000;
+      animation: up .9s ease-out forwards; white-space: nowrap; }
+    .float.ouch { color: #ff7b6b; } .float.super { color: #ffe14a; font-size: 26px; } .float.miss { color: #cfe3ff; font-size: 24px; } .float.heal { color: #7dff8a; }
+    @keyframes up { to { transform: translate(-50%, -150%); opacity: 0; } }
+    /* the five fixed buttons: Dodge in the corner, the four moves round it. They never move or vanish, they only dim. */
+    #pad { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 250px; height: 250px; pointer-events: none; }
+    .slot { --col: #e8eef7; position: absolute; width: 84px; height: 84px; border-radius: 50%; border: 4px solid var(--col); background: #1d2438d9;
+      color: #fff; font: inherit; padding: 0; pointer-events: auto; touch-action: none; overflow: hidden; box-shadow: 0 3px 0 #0006; }
+    .slot .cd { position: absolute; inset: 0; border-radius: 50%; }
+    .slot .nm { position: relative; display: block; font-size: 16px; line-height: 15px; padding: 0 4px; }
+    .slot .sub { position: relative; display: block; font-size: 14px; opacity: .8; margin-top: 2px; }
+    .slot kbd { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); font: inherit; font-size: 13px; opacity: .55; }
+    .slot.dim { opacity: .45; }
+    .slot.on { background: color-mix(in srgb, var(--col) 55%, #1d2438); box-shadow: 0 0 0 4px #fff, 0 3px 0 #0006; }
+    .slot.none { opacity: .15; }
+    .s0 { right: 0; bottom: 0; width: 98px; height: 98px; }
+    .s1 { right: 112px; bottom: 4px; } .s2 { right: 96px; bottom: 96px; } .s3 { right: 6px; bottom: 112px; } .s4 { right: 110px; bottom: 186px; }
+    @media (hover: none) { .slot kbd { display: none; } }
+    #stick { position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: #ffffff22; border: 3px solid #ffffff88; pointer-events: none; }
+    #knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: #ffffffcc; transform: translate(-50%, -50%); }
+    .hidden { display: none !important; }
+    #end { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0006; }
+    #end > div { background: #263150; border: 3px solid #fff; border-radius: 16px; padding: 18px 26px; text-align: center; max-width: 90vw; }
+    #end h2 { margin: 0 0 6px; font-size: 40px; font-weight: normal; }
+    #end p { font-size: 22px; margin: 0 0 14px; }
+    #end button { font: inherit; font-size: 26px; padding: 6px 22px; border-radius: 12px; border: 3px solid #fff; background: #ffcc33; color: #2a1d00; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="bars"></div>
+  <div id="top" class="shadow">
+    <b>Test Arena</b>
+    <div id="tabs">
+      <button data-mode="live">⚡ Live</button>
+      <button data-mode="draw">✏️ Draw</button>
+      <button data-mode="flick">🎯 Flick</button>
+    </div>
+    <select id="pick" title="Play as"></select>
+    <button id="lots" title="A test for the frame rate">3 monsters</button>
+    <button id="again">↻ Again</button>
+  </div>
+  <div id="hint" class="shadow"></div>
+  <div id="timer"><i></i></div>
+  <div id="toast"></div>
+  <div id="fps"></div>
+  <div id="own" class="shadow"></div>
+  <div id="pad"></div>
+  <div id="stick" class="hidden"><div id="knob"></div></div>
+  <div id="end" class="hidden"><div><h2 id="end-title"></h2><p id="end-text"></p><button id="end-again">Play again</button></div></div>
+  <script type="module" src="src/arena/main.js"></script>
+</body>
+</html>
