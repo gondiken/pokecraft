@@ -1427,6 +1427,8 @@ wool ids instead of a palette number):
 
 # Chapter 3 · The Scribble (owner, 2026-10-24: direction agreed, to be fleshed out over time)
 
+**Start here: `plans/chapter3.md`** (owner 2026-11-09): the type flags, the ideas tried and dropped, the test arena (`arena.html`, Live won), the owner's open questions and the next two tests (the scribble ring + rising camera in the real game, and a first-person version).
+
 Story in `STORY.md`: a creature the Wizard once scribbled out and threw away escaped through the crack and scribbles
 over the worlds; you are the **Wizard's ally**. Pieces so far:
 - **Battling beside the Wizard:** two against one, using the co-op giant battle's `'friend'` side (T29) with the

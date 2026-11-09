@@ -886,6 +886,7 @@ Other test tools: `tests/perf.mjs` (load, memory, draw calls, fps; `--swirl`, `-
 
 ## Open items
 
+- **Chapter 3 planning: read `plans/chapter3.md` first** (flags, decisions, the test arena, open questions, next steps; nothing of chapter 3 is in the game yet).
 - **Next work is planned in `ROADMAP.md`** (waves, how to run them with subagents; read it before starting new features). Done:
   waves 1-12 (T1–T37: types, gyms, caves, homes, missions, realms, the 288 x 368 map, 32 gyms and the Tower), wave 13 (T38a-d: the
   Portal Door and the Swirl, realms together, missions that never end, the pastel Swirl), 13.5 (T39a-c), 14 (T40-T40d: Picture
