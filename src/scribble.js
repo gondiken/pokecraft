@@ -13,7 +13,6 @@ import * as THREE from 'three';
 import { PREVIEW } from './comingsoon.js';
 import { SPECIES, TYPE_COLORS, buildModel, animateModel, disposeModel, statsFor } from './species.js';
 import { buildPerson } from './npc.js';
-import { doodleInk } from './doodleink.js';
 import { mulberry32 } from './blocks.js';
 import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
@@ -39,15 +38,19 @@ const KEY_NAMES = ['Space', 'Q', 'E', 'R', 'F'];
 
 // ---------------------------------------------------------------- where the patch goes (pure: the spec checks it on its own)
 
-// The best spot 14-23 blocks from the start: mostly dry land, no gym or tower box, not too steep, a few trees or bumps to hide behind.
-export function scribbleSpot(world, sx, sz) {
+// The best spot 14-23 blocks from (sx, sz), ahead of `yaw` if given (owner 2026-11-09: it was pinned to the world's start, and a player who
+// starts near their home never saw it): mostly dry land, no gym or tower box, nothing anybody built within the ring, not too steep.
+export function scribbleSpot(world, sx, sz, yaw = null) {
   const g = groundOf(world), R = FIGHT.R;
+  const built = new Set();
+  for (const i of world.edits?.keys?.() || []) { const x = i % world.W, z = Math.floor(i / world.W) % world.D; built.add(x + z * world.W); }
+  const nearBuild = (cx, cz) => { for (let x = -R - 2; x <= R + 2; x++) for (let z = -R - 2; z <= R + 2; z++) if (built.has(Math.floor(cx + x) + Math.floor(cz + z) * world.W)) return true; return false; };
   let best = null;
   for (const d of [14, 17, 20, 23]) for (let k = 0; k < 24; k++) {
     const a = k / 24 * Math.PI * 2, cx = Math.floor(sx + Math.cos(a) * d) + 0.5, cz = Math.floor(sz + Math.sin(a) * d) + 0.5;
     if (cx < R + 3 || cz < R + 3 || cx > world.W - R - 3 || cz > world.D - R - 3) continue;
     const cy = g.floor(cx, cz, world.ground[Math.floor(cx) + Math.floor(cz) * world.W] + 2.5);
-    if (cy == null || g.wet(cx, cz, cy)) continue;
+    if (cy == null || g.wet(cx, cz, cy) || (built.size && nearBuild(cx, cz))) continue;
     let land = 0, water = 0, walls = 0, n = 0, lo = cy, hi = cy, bad = false;
     for (let x = -R; x <= R && !bad; x++) for (let z = -R; z <= R; z++) {
       if (x * x + z * z > R * R) continue;
@@ -62,7 +65,7 @@ export function scribbleSpot(world, sx, sz) {
     }
     if (bad || land / n < 0.75) continue;
     const range = hi - lo;
-    const score = land / n - 2 * water / n - (range > 5 ? 1 : 0) + 0.04 * Math.min(walls, 8) + 0.03 * Math.min(range, 4) + 0.08 * -Math.sin(a) - d * 0.004;
+    const score = land / n - 2 * water / n - (range > 5 ? 1 : 0) + 0.04 * Math.min(walls, 8) + 0.03 * Math.min(range, 4) + (yaw == null ? 0.08 * -Math.sin(a) : 0.35 * (Math.cos(a) * -Math.sin(yaw) + Math.sin(a) * -Math.cos(yaw))) - d * 0.004;
     if (!best || score > best.score) best = { x: cx, z: cz, y: cy, score, walls, water, range, d };
   }
   return best;
@@ -213,6 +216,53 @@ export function createScribble(game) {
     tg.mesh.instanceMatrix.needsUpdate = true;
   }
 
+  // grey and grumpy: every lit part's colour pulled toward its own grey (k 1), or back to its real colour (k 0)
+  function greyOut(m, k) {
+    if (m.grey === k) return;
+    m.grey = k;
+    m.model.traverse(o => {
+      if (!o.isMesh) return;
+      for (const mat of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (!mat?.color) continue;
+        const orig = mat.userData.scOrig ??= mat.color.clone();
+        const l = orig.r * 0.3 + orig.g * 0.59 + orig.b * 0.11;
+        mat.color.setRGB(orig.r + (l * 0.8 - orig.r) * 0.8 * k, orig.g + (l * 0.8 - orig.g) * 0.8 * k, orig.b + (l * 0.82 - orig.b) * 0.8 * k);
+      }
+    });
+  }
+  // the scribble wound round one creature: loops of pencil strokes on an egg round its body, boiling like a drawing
+  const WRAP_N = 44;
+  function buildWrap(seed, rx, ry) {
+    const rand = mulberry32(100 + seed), pts = [], jit = [[], [], []];
+    let th = rand() * 6.3, ph = 1.2;
+    for (let i = 0; i < WRAP_N; i++) {
+      th += 0.55 + rand() * 0.5; ph += (rand() - 0.5) * 0.9; ph = Math.max(0.35, Math.min(2.8, ph));
+      pts.push([Math.cos(th) * Math.sin(ph) * rx, Math.cos(ph) * ry, Math.sin(th) * Math.sin(ph) * rx]);
+      for (const j of jit) j.push([(rand() - 0.5) * 0.1, (rand() - 0.5) * 0.1, (rand() - 0.5) * 0.1]);
+    }
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: INK, transparent: true }), WRAP_N - 1);
+    mesh.frustumCulled = false; mesh.userData.keepColour = true;
+    return { mesh, pts, jit, ry };
+  }
+  // burst 0 = wound tight; 1 = flung off and gone
+  function drawWrap(w, x, y, z, burst, j) {
+    w.mesh.visible = burst < 1;
+    if (!w.mesh.visible) return;
+    const grow = 1 + burst * 2.2, thick = 0.06 * (1 - burst) + 0.005;
+    w.mesh.material.opacity = 1 - burst;
+    for (let i = 0; i < WRAP_N - 1; i++) {
+      const a = w.pts[i], b = w.pts[i + 1], ja = w.jit[j][i], jb = w.jit[j][i + 1];
+      const ax = x + a[0] * grow + ja[0], ay = y + w.ry + a[1] * grow + ja[1], az = z + a[2] * grow + ja[2];
+      const bx = x + b[0] * grow + jb[0], by = y + w.ry + b[1] * grow + jb[1], bz = z + b[2] * grow + jb[2];
+      tmp.a.set(bx - ax, by - ay, bz - az);
+      const L = tmp.a.length() || 0.01;
+      tmp.q.setFromUnitVectors(Z, tmp.a.divideScalar(L));
+      tmp.m.compose(tmp.b.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), tmp.q, tmp.a.set(thick, thick, L + thick));
+      w.mesh.setMatrixAt(i, tmp.m);
+    }
+    w.mesh.instanceMatrix.needsUpdate = true;
+  }
+
   function decalMesh(geo, tex, color = 0xffffff, opacity = 1) {
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, color, vertexColors: true, transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
     m.renderOrder = 2; m.userData.keepColour = true;
@@ -225,9 +275,10 @@ export function createScribble(game) {
     S.world = world;
     S.phase = 'off';
     if (!world || world.realm || game.place !== 'main') return;
-    const sp = game.spawnPoint;
-    S.spot = world.scribbleSpot ??= scribbleSpot(world, sp.x, sp.z);
+    const p0 = game.player, here = game.started && p0;
+    S.spot = world.scribbleSpot ??= (here ? scribbleSpot(world, p0.pos.x, p0.pos.z, p0.yaw) : null) ?? scribbleSpot(world, game.spawnPoint.x, game.spawnPoint.z);
     if (!S.spot) return;
+    if (game.started) game.ui?.toast('✏️ Something got scribbled nearby! Look for a grey tangle.');
     S.ground = groundOf(world);
     const C = S.spot, G = S.ground;
     parts = { tangle: buildTangle(C, G), monsters: [], spots: [] };
@@ -235,13 +286,18 @@ export function createScribble(game) {
     parts.patch = decalMesh(decalGeometry(G, C.x, C.z, FIGHT.patch + 0.5, C.y, (x, z) => Math.hypot(x - C.x, z - C.z) < FIGHT.patch + 0.5 ? 1 : 0), scribbleTexture('patch'));
     parts.ring = decalMesh(decalGeometry(G, C.x, C.z, FIGHT.R + 0.3, C.y, (x, z) => { const d = Math.hypot(x - C.x, z - C.z); return d < FIGHT.R + 0.3 && d > FIGHT.R - 2 ? 1 : 0; }), scribbleTexture('ring'), 0xffffff, 0);
     group.add(parts.patch, parts.ring);
-    // the monsters, drawn in pencil: they are scribbles
+    // the monsters: real creatures caught in the Scribble (STORY.md: "the creatures caught in it go grey and grumpy"), with pencil
+    // scribble wound round them; beaten, the scribble bursts off and their colours come back (owner 2026-11-09: never drawn as doodles)
     const probe = new ScribbleFight({ ground: G, centre: C, squad: [{ species: 'fluffin', level: 5, moves: [] }], start: { x: C.x, y: C.y, z: C.z } });
     probe.foes.forEach((f, i) => {
-      const model = doodleInk(buildModel(f.c.species));
+      const model = buildModel(f.c.species);
       const h = sized(model, 1.7);
+      const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3());
       group.add(model);
-      parts.monsters.push({ model, h, species: f.c.species, home: [f.x, f.y, f.z], t: i * 3.1 });
+      const m = { model, h, species: f.c.species, home: [f.x, f.y, f.z], t: i * 3.1, wrap: buildWrap(i, Math.max(size.x, size.z) / 2 + 0.2, h / 2 + 0.15) };
+      greyOut(m, 1);
+      group.add(m.wrap.mesh);
+      parts.monsters.push(m);
       parts.spots.push([f.x, f.z]);
     });
     drawTangle(parts.tangle, 0, 0.07, 0);
@@ -253,7 +309,7 @@ export function createScribble(game) {
     endFightModels();
     if (parts) {
       for (const m of [parts.tangle.mesh, parts.patch, parts.ring]) { group.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
-      for (const m of parts.monsters) { group.remove(m.model); disposeModel(m.model); }
+      for (const m of parts.monsters) { group.remove(m.model, m.wrap.mesh); disposeModel(m.model); m.wrap.mesh.geometry.dispose(); m.wrap.mesh.material.dispose(); }
     }
     parts = null; S.fight = null;
   }
@@ -669,11 +725,17 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
           m.model.position.set(hx + (f.x - hx) * k, hy + (f.y - hy) * k + Math.sin(k * Math.PI) * 2, hz + (f.z - hz) * k);
         }
         animateModel(m.model, m.t, f.moving);
-        const fl = S.phase === 'exit' && !f.alive ? Math.min(f.flash, Math.max(0, 0.6 - phaseT)) : f.flash; // (the fight stops stepping at the end: a fainted one still shrinks away)
-        let vis = f.alive || fl > 0;
-        if (fl > 0) vis = f.alive ? Math.floor(fl * 20) % 2 === 0 : true;
-        if (!f.alive) m.model.scale.setScalar(Math.max(0.01, m.model.userData.base * (fl / 0.6)));
+        // beaten: the scribble bursts off, its colours come back, a happy hop, and off it goes (fades)
+        m.freeT = f.alive ? null : Math.min(1.4, (m.freeT ?? 0) + dt);
+        const fr = m.freeT ?? 0;
+        let vis = f.alive || fr < 1.4;
+        if (f.alive && f.flash > 0) vis = Math.floor(f.flash * 20) % 2 === 0;
+        greyOut(m, f.alive ? 1 : 0);
+        m.model.scale.setScalar(m.model.userData.base * (fr > 0.9 ? Math.max(0.01, (1.4 - fr) / 0.5) : 1));
+        if (!f.alive) m.model.position.y += Math.sin(Math.min(1, fr / 0.6) * Math.PI) * 1.2;
+        drawWrap(m.wrap, m.model.position.x, m.model.position.y, m.model.position.z, f.alive ? 0 : Math.min(1, fr / 0.5), boil);
         m.model.visible = vis && S.phase !== 'cleared';
+        if (!m.model.visible) m.wrap.mesh.visible = false;
       } else { // idle: they shuffle about their spot and turn to watch you
         const p = game.player?.pos;
         const [hx, hy, hz] = m.home;
@@ -682,6 +744,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         if (p) m.model.rotation.y = Math.atan2(p.x - hx, p.z - hz);
         animateModel(m.model, m.t, true);
         m.model.visible = S.phase === 'idle';
+        m.freeT = null; greyOut(m, 1);
+        if (m.model.visible) drawWrap(m.wrap, m.model.position.x, m.model.position.y, m.model.position.z, 0, boil); else m.wrap.mesh.visible = false;
       }
       m.model.userData.h = m.h;
     });
@@ -729,7 +793,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   // ---- every frame (main.js, right after the first-person camera is placed)
   S.update = (dt, camera) => {
     t += dt;
-    if (game.world !== S.world) build(game.world);
+    if (game.world !== S.world && game.started) build(game.world);
     if (S.phase === 'off' || !parts) { if (avatar) avatar.visible = false; return; }
     const p = game.player, C = S.spot, playing = game.playing?.();
     // the tangle boils like a pencil drawing
@@ -830,14 +894,14 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   S.info = () => ({ on: true, phase: S.phase, mode: S.mode, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
     fight: S.fight?.info() ?? null, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
   S.fightOf = () => S.fight;
-  S.warp = () => { // tests: stand just outside the patch, facing it, with a clear walk in (the side of the start first)
+  S.warp = () => { // tests: stand just outside the patch (half a block), facing it, on flat ground (the side of the start first)
     const p = game.player, C = S.spot, G = S.ground, a0 = Math.atan2(game.spawnPoint.x - C.x, game.spawnPoint.z - C.z);
     const clear = (x, z) => { let y = G.floor(x, z, C.y + 4); for (let s = 0; s <= 1; s += 0.05) { const ny = G.stand(x + (C.x - x) * s * 0.6, z + (C.z - z) * s * 0.6, y, 0.5, 1); if (ny == null || ny !== y) return false; } return true; };
-    let x = 0, z = 0;
-    for (let k = 0; k < 24; k++) {
+    let x = 0, z = 0, ok = false;
+    for (const d of [0.6, 1.2]) for (let k = 0; k < 24 && !ok; k++) { // a flat walk in (the player does not step up by itself)
       const a = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.26;
-      x = C.x + Math.sin(a) * (FIGHT.patch + 3); z = C.z + Math.cos(a) * (FIGHT.patch + 3);
-      if (clear(x, z)) break;
+      x = C.x + Math.sin(a) * (FIGHT.patch + d); z = C.z + Math.cos(a) * (FIGHT.patch + d);
+      ok = clear(x, z);
     }
     p.pos.set(x, G.floor(x, z, C.y + 4), z); p.vel.set(0, 0, 0);
     p.yaw = Math.atan2(-(C.x - x), -(C.z - z)); p.pitch = -0.1;

@@ -128,7 +128,7 @@ behind, the Wizard's big spell when you herd monsters into his circle, catching 
 
 `src/scribble.js` (the patch, the camera, the HUD, the buttons) and `src/scribblefight.js` (the Live rules on the real ground, pure);
 spec `scribble`, bots `tests/scribblebots.mjs`. Open **https://gondiken.github.io/pokecraft/?preview** and start or continue a game: the
-patch is 14-23 blocks from the start (a grey pencil knot with three monsters drawn in pencil). Without `?preview` nothing changes.
+patch appears 14-23 blocks ahead of wherever you are when the game starts, never over anything built (a toast says so). Without `?preview` nothing changes.
 
 - **Test A:** walk in. The knot snaps into a scribbly ring fence (radius 10) on the real ground, a Capture Cube flies from your hand, your
   lead creature hops out, the monsters leap out of the knot into an arc in front of it, and the camera rises from your eyes to behind and
@@ -154,3 +154,16 @@ patch is 14-23 blocks from the start (a grey pencil knot with three monsters dra
   reads the red warnings on bumpy ground as easily as on the arena's flat floor; whether 0.7 is too fast for the son on a tablet
   (the arena's 1.0 was fine for him on flat ground).
 - **Questions for the owner after playing:** does it feel like the same game? which camera? is the ring the right size on real ground?
+
+### Owner feedback 2026-11-09 (after the first try) and what changed
+
+- "I don't see any pencils / knots anywhere": the patch was placed near the world's start; the owner started near their home. Now it
+  appears ahead of you when the game starts, with a toast.
+- "Will scribble monsters always look like doodles? I don't like that idea ... adjust lore to the game": no lore change was needed.
+  STORY.md already says creatures caught in the Scribble "go grey and grumpy": they are now their real models, greyed, with pencil scribble
+  wound round them; beaten, the scribble bursts off, their colours come back and they hop away (a natural lead-in to eggs / catching).
+- "Are the rings basically artificial limits?" Yes: the ring is an invisible wall drawn as a scribbly fence (radius 10). Open question for
+  the owner; the proposal is to drop the wall: the monsters stay tied to their patch (they never chase you far), you may walk away, and
+  going far enough ends the fight (the scribble knots up again). The fight is then bounded by the monsters, not by a fence.
+- "This is still just testing, right? Chapter 3 would happen in a new world, with reasons to come back to the old world (flags, other
+  creature types to catch)": yes. Test A / B only asks the camera question; the patch near you is a test spot, not where chapter 3 lives.

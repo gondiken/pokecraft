@@ -125,7 +125,7 @@ export default async function ({ browser, base, t }) {
     const ui = await page.evaluate(() => ({ fight: document.body.classList.contains('scribbling'), hud: !document.getElementById('sc-ui').classList.contains('hidden'), party: window.pokecraft.party.map(c => c.hp) }));
     t.ok(!ui.fight && !ui.hud, 'cleared: the scribble is gone, the HUD is the game\'s again, and W walks you on');
     // a loss: the knot comes back, walk out and in again to retry
-    await page.evaluate(() => { const s = window.pokecraft.scribble; s.phase = 'idle'; s.armed = false; s.warp(); });
+    await page.evaluate(() => { const s = window.pokecraft.scribble; s.phase = 'idle'; s.warp(); s.armed = true; /* as if you walked out and came back */ });
     await page.keyboard.down('KeyW');
     await until(page, () => window.pokecraft.scribble.info().phase === 'fight');
     await page.keyboard.up('KeyW');
