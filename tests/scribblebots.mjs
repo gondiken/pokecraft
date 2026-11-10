@@ -84,21 +84,23 @@ function skilledMoves(F) {
   }
   // a rush at a monster in the last part of its warning cancels its attack (FIGHT.rush): aim one there when a rush is ready
   const win = LIVE_TELL * (FIGHT.rush.window ?? 1);
-  const dashSlot = F.moves.findIndex((s, i) => s?.kind === 'dash' && F.cd[i + 1] === 0) + 1;
-  if (dashSlot) {
+  // (owner 2026-11-10: only two buttons; Attack and Special each use their group's next move, shown by its icon)
+  if (F.charge.slot <= 0 && F.held[1]) F.lift(1); // a big blast that went by itself: let go of the button
+  const na = F.nextMove('attack');
+  if (na && F.moves[na - 1].kind === 'dash' && F.cd[na] === 0) {
     const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
-    if (w) { F.pick(w); F.press(dashSlot); F.release(dashSlot); }
+    if (w) { F.pick(w); F.push(1); F.lift(1); }
   }
   const t = F.aimAt();
   // a big blast in hand: let go when a monster inside the ring is in the last part of its warning (it is stopped), else at full
   if (F.charge.slot > 0) {
     const k = Math.min(1, F.charge.t / LIVE_FULL), r = F.blastR(k);
-    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.release(F.charge.slot);
+    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.lift(1);
     return;
   }
   const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
-  for (let i = 1; i <= 4; i++) {
-    const s = F.moves[i - 1];
+  for (const b of [1, 2]) {
+    const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null;
     if (!s || F.cd[i] > 0 || !t) continue;
     const d = len2(t.x - you.x, t.z - you.z);
     if (s.kind === 'heal' && (you.hp > you.maxHp * 0.55 || F.foes.some(f => f.alive && (f.tell || f.charging)))) continue; // heal between attacks
@@ -107,8 +109,8 @@ function skilledMoves(F) {
     }
     if ((s.kind === 'bolt' || s.kind === 'volley') && !F.clearShot(you, t)) continue;
     if (s.kind === 'dash' && (d > 5 || danger(F, t.x, t.z, t.y) || danger(F, you.x, you.z, you.y) || !walkable(F, you.x, you.z, you.y, t.x, t.z, 0.5))) continue;
-    if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.press(i); continue; }
-    F.press(i); F.release(i);
+    if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.push(b); continue; }
+    F.push(b); F.lift(b);
   }
 }
 // kid: like a child who gets it but is not quick: sees a red warning 0.35 s late and walks out of it (no dodge), keeps a few blocks
@@ -124,7 +126,8 @@ function kidStep(F, dt) {
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
   F.input.mx = g.gx; F.input.mz = g.gz;
   // (a big blast: it holds the button until the ring is full, then it goes by itself)
-  if (F.charge.slot <= 0) for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind !== 'burst') F.release(i); }
+  if (F.charge.slot <= 0 && F.held[1]) F.lift(1);
+  if (F.charge.slot <= 0) for (const b of [1, 2]) { const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.push(b); if (s.kind !== 'burst') F.lift(b); }
   F.step(dt);
 }
 // person (step 3, night run): closer to a real child on a tablet than the kid: sees a warning 0.3-0.6 s late, walks out of it with a
@@ -141,15 +144,17 @@ function personStep(F, dt) {
   const s = skilledGoal(F);
   let gx = 0, gz = 0;
   if (lateNow || !s.flee) { const c = Math.cos(P.wob), sn = Math.sin(P.wob); gx = s.gx * c - s.gz * sn; gz = s.gz * c + s.gx * sn; }
-  if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.press(0);
+  if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.push(0);
   F.input.mx = gx; F.input.mz = gz;
-  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.release(F.charge.slot); F.step(dt); return; }
+  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.lift(1); F.step(dt); return; }
+  if (F.held[1]) F.lift(1);
   if (you.hp < you.maxHp * 0.25 && P.r() < dt * 0.6) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > 0); if (i >= 0) F.swap(i); }
   if ((P.next -= dt) <= 0) {
     P.next = 0.4 + P.r() * 0.7;
     if (P.r() < 0.15) { const o = F.foes.filter(f => f.alive); F.pick(o[Math.floor(P.r() * o.length)]); }
-    const ready = [1, 2, 3, 4].filter(i => F.moves[i - 1] && F.cd[i] === 0 && !(F.moves[i - 1].kind === 'heal' && you.hp > you.maxHp * 0.4));
-    if (ready.length) { const i = ready[Math.floor(P.r() * ready.length)]; F.press(i); if (F.moves[i - 1].kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.release(i); }
+    const next = b => { const i = F.nextMove(b === 1 ? 'attack' : 'special'); return i && F.cd[i] === 0 ? F.moves[i - 1] : null; };
+    const ready = [1, 2].filter(b => next(b) && !(next(b).kind === 'heal' && you.hp > you.maxHp * 0.4));
+    if (ready.length) { const b = ready[Math.floor(P.r() * ready.length)], s = next(b); F.push(b); if (s.kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.lift(b); }
   }
   F.step(dt);
 }
@@ -157,14 +162,14 @@ const BOT = {
   kid: kidStep,
   person: personStep,
   naive(F, dt) {
-    for (let i = 1; i <= 4; i++) { F.press(i); F.release(i); }
+    for (const b of [1, 2]) { F.push(b); F.lift(b); }
     F.input.mx = F.input.mz = 0;
     F.step(dt);
   },
   skilled(F, dt) {
     const goal = skilledGoal(F);
     F.input.mx = goal.gx; F.input.mz = goal.gz;
-    if (goal.dodge && F.cd[0] === 0) F.press(0);
+    if (goal.dodge && F.cd[0] === 0) F.push(0);
     skilledMoves(F);
     F.step(dt);
   },
@@ -220,15 +225,22 @@ export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 
 export async function runBots(page, games = 4, log = console.log) {
   let fails = 0;
   const lines = [];
+  // mashing is judged over many fights (owner 2026-11-10: with two buttons it wins about 1 fight in 10, more often at 20 fps; four fights
+  // were too few to tell that from a quarter): NAIVE_GAMES at each frame rate, all together under a quarter
+  const naive = [];
   for (const [bot, fps] of RUNS) {
-    const runs = [];
-    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
+    const runs = [], n = bot === 'naive' ? Math.max(games, NAIVE_GAMES) : games;
+    for (let g = 0; g < n; g++) runs.push(await play(page, bot, { fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
     const wins = runs.filter(r => r.won).length;
-    const ok = bot === 'naive' ? wins <= Math.floor(games / 4) : wins === games;
+    if (bot === 'naive') { naive.push(...runs); const line = `info naive @${fps}: ${wins}/${n} won`; lines.push(line); log(line); continue; }
+    const ok = wins === games;
     if (!ok) fails++;
     const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
     lines.push(line); log(line);
   }
+  { const w = naive.filter(r => r.won).length, ok = w <= Math.floor(naive.length / 4);
+    if (!ok) fails++;
+    const line = `${ok ? 'ok  ' : 'FAIL'} naive (mashing) at 60 and 20 fps: ${w}/${naive.length} won (under a quarter)`; lines.push(line); log(line); }
   // Reported, never failed: mashing with a lead whose types beat all three monsters (Phantomaw: Ghost moves hit the Ghost monster x2,
   // its Fire move the Grass one, and nothing hits it x2) wins most fights. That is the type chart working, not a hole in the rules.
   const m = []; for (let g = 0; g < games; g++) m.push(await play(page, 'naive', { lead: MATCHED }));
@@ -248,6 +260,7 @@ export async function runBots(page, games = 4, log = console.log) {
   return { lines, fails };
 }
 export const MATCHED = 3;
+export const NAIVE_GAMES = 12;
 export const OWNER_TEAM = [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]];
 
 // The page: ?preview and a game in the world of `seed` (none = a New Game in a random world) with a team of three at level 30

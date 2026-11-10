@@ -430,3 +430,21 @@ with Dodge that is five buttons and a stick. The options (none built yet):
    variety comes from swapping creatures (1 2 3, a tap on a card). Three buttons, simplest, but two of four moves sit out each fight.
 
 Either way every kind gets a fixed icon and colour on its button and on the ground ring, so "this is a heal" reads in one look.
+
+### Built 2026-11-10: Attack + Special (the owner chose option 1)
+
+- **Three buttons with a fixed meaning:** Dodge (Jump / Space), **Attack** (the round action button / Q / a click) and **Special** (Place /
+  E). Ride and Down are hidden in a fight. Attack uses the creature's attack moves (shot, many shots, big blast, rush), Special its help
+  moves (heal, power up, Tough, slow cloud, sleepy cloud). Each button uses the ready move of its group used longest ago (so they take
+  turns and none gets stuck), else waits for the one ready soonest, and shows that move's icon big with the word small:
+  ● shot, ●●● many shots, ◎ big blast (hold), ➜ rush, ✚ heal, ▲ power up, 🛡 Tough, ☁ slow cloud, ☾ sleepy cloud. On a computer the cards
+  show the button, the icon, the move's name and the key. Pictures: `plans/chapter3/buttons-ipad.jpg`, `buttons-desktop.jpg`.
+- **The bots play through the same two buttons** (before, the skilled bot picked any move; now it can only wait for the right icon, e.g.
+  ➜ while a monster winds up). Per kind (`scribblemeasure.mjs kinds`, 18 fights a row) nothing moved beyond the noise: the big blast,
+  rushes and clouds keep their value through the shared button.
+- **Mashing:** two buttons are easier to hammer than five. Over 24 fights per world: 2 / 24, 3 / 24, 7 / 24 at first (seed 122 at 20 fps
+  reached 6 / 24, a quarter); in later runs about 1 fight in 10 overall (10 / 96), more at 20 fps (7 / 48). Tried and dropped: a "too
+  soon" rest for tapping a dim button (no change: with two or three attack moves taking turns one is almost always ready) and monsters
+  hitting harder (power 70: mashing 6 / 48 instead of 7 / 48, but the person and skilled bots lost now and then). The spec now judges
+  mashing over 12 fights at each frame rate per world, all together under a quarter (4 fights were too few to tell 10 % from 25 %).
+- Person bot: 34-80 s a fight, skilled 23-28 s, all won.

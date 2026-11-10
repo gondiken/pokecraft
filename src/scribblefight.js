@@ -46,6 +46,13 @@ export const FIGHT = {
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
 const WATER = 5;
+// Owner 2026-11-10 ("one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT", chose "Attack + Special"):
+// three buttons with a fixed meaning. Attack always hurts a monster, Special always helps; each uses the creature's moves of its group in
+// turn: the ready one used longest ago (so none gets stuck), shown on the button by its kind's icon. Hold Attack on ◎ to charge a big blast.
+export const GROUP = { bolt: 'attack', volley: 'attack', burst: 'attack', dash: 'attack', heal: 'special', buff: 'special', cloud: 'special', sleep: 'special' };
+export const BUTTONS = ['dodge', 'attack', 'special'];
+export const ICON = { bolt: '●', volley: '●●●', burst: '◎', dash: '➜', heal: '✚', buff: '▲', tough: '🛡', cloud: '☁', sleep: '☾' };
+export const iconOf = s => (s ? (s.kind === 'buff' && s.stat === 'def' ? ICON.tough : ICON[s.kind]) : '');
 const len2 = (x, z) => Math.hypot(x, z);
 
 // The real ground as the fight sees it, from a world with get(x, y, z) (and W / D for its edges).
@@ -114,6 +121,7 @@ export class ScribbleFight {
     this.moves = this.you.c.moves.map(shapeOf);
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
     this.charge = { slot: -1, t: 0 };
+    this.usedAt = [0, -1e9, -1e9, -1e9, -1e9]; this.held = [0, 0, 0];
     this.shots = []; this.clouds = []; this.events = [];
     this.dash = null; this.healing = null; this.dir = { x: 0, z: 1 }; this.target = null;
     this.clock = 0; this.acc = 0; this.over = false; this.won = null; this.swapCool = 0; this.pendingSwap = null; this.nextId = 1;
@@ -251,7 +259,7 @@ export class ScribbleFight {
     const f = fighter(m.c, 'you', old.x, old.y, old.z);
     f.hp = m.hp; f.heading = old.heading; f.safeT = 0.6;
     this.you = f; this.lead = i; this.swapCool = 0.8; this.stats.swaps++;
-    this.dash = null; this.charge = { slot: -1, t: 0 }; this.healing = null;
+    this.dash = null; this.charge = { slot: -1, t: 0 }; this.healing = null; this.held = [0, 0, 0]; this.usedAt = [0, -1e9, -1e9, -1e9, -1e9];
     this.moves = f.c.moves.map(shapeOf);
     this.cd = this.cd.map((c, k) => (k ? 0 : c));
     this.emit({ kind: 'swap', f, old, auto });
@@ -266,6 +274,27 @@ export class ScribbleFight {
     if (s.kind === 'burst') { this.charge = { slot, t: 0 }; return; }
     this.use(slot, 0);
   }
+  // the move a button uses next (a move slot 1-4, 0 = none): the ready one of its group used longest ago, else the one ready soonest
+  nextMove(group) {
+    let best = 0;
+    for (let i = 1; i <= 4; i++) {
+      const s = this.moves[i - 1];
+      if (!s || GROUP[s.kind] !== group) continue;
+      if (!best) { best = i; continue; }
+      const r = this.cd[i] <= 0, rb = this.cd[best] <= 0;
+      if (r && !rb) best = i;
+      else if (r === rb && (r ? this.usedAt[i] < this.usedAt[best] : this.cd[i] < this.cd[best])) best = i;
+    }
+    return best;
+  }
+  // the buttons (0 Dodge, 1 Attack, 2 Special): down / up
+  push(b) {
+    if (b === 0) return this.press(0);
+    const i = this.nextMove(BUTTONS[b]);
+    if (!i || this.cd[i] > 0) return;
+    this.held[b] = i; this.press(i);
+  }
+  lift(b) { const i = this.held[b]; this.held[b] = 0; if (i) this.release(i); }
   release(slot) {
     if (this.charge.slot === slot) { const held = this.charge.t, k = Math.min(1, held / LIVE.charge); this.charge = { slot: -1, t: 0 }; this.use(slot, k, held); }
   }
@@ -296,6 +325,7 @@ export class ScribbleFight {
   use(slot, charge, held = 0) {
     const you = this.you, s = this.moves[slot - 1], t = this.aimAt();
     const cool = FIGHT.cool[s.kind] ?? LIVE.cool[s.kind];
+    this.usedAt[slot] = this.clock;
     this.cd[slot] = s.kind === 'burst' && FIGHT.burst.fromPress ? Math.max(0.2, cool - held) : cool; this.cdMax[slot] = cool;
     let dx = Math.sin(you.heading), dz = Math.cos(you.heading), dy = 0;
     if (t) { const d = len2(t.x - you.x, t.z - you.z) || 1; dx = (t.x - you.x) / d; dz = (t.z - you.z) / d; dy = (t.y - you.y) / d; }
@@ -467,15 +497,16 @@ export class ScribbleFight {
   // what the HUD and the pad show
   pad() {
     return [
-      { label: 'Dodge', cd: this.cd[0] / LIVE.dodge.cool, dim: this.cd[0] > 0 },
-      ...[0, 1, 2, 3].map(i => {
-        const s = this.moves[i];
-        if (!s) return null;
-        const c = this.cd[i + 1];
-        return { move: s, cd: c / (this.cdMax[i + 1] || 1), dim: c > 0, on: this.charge.slot === i + 1, charge: this.charge.slot === i + 1 ? Math.min(1, this.charge.t / LIVE.charge) : 0 };
+      { label: 'Dodge', icon: '', cd: this.cd[0] / LIVE.dodge.cool, dim: this.cd[0] > 0 },
+      ...['attack', 'special'].map((g, k) => {
+        const i = this.held[k + 1] || this.nextMove(g), s = i ? this.moves[i - 1] : null;
+        if (!s) return { label: g === 'attack' ? 'Attack' : 'Special', group: g, none: true, dim: true, cd: 0 };
+        const c = this.cd[i], on = this.charge.slot === i;
+        return { label: g === 'attack' ? 'Attack' : 'Special', group: g, move: s, icon: iconOf(s), cd: c / (this.cdMax[i] || 1), dim: c > 0 && !on, on, charge: on ? Math.min(1, this.charge.t / LIVE.charge) : 0 };
       }),
     ];
   }
+
   info() {
     return { over: this.over, won: this.won, clock: +this.clock.toFixed(2), lead: this.lead,
       you: { x: this.you.x, y: this.you.y, z: this.you.z, hp: this.you.hp, maxHp: this.you.maxHp, species: this.you.c.species, moves: this.moves.map(s => s && s.kind) },

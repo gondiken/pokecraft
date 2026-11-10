@@ -4,8 +4,8 @@
 //           cube, and the camera rises from your eyes to just behind and above your creature in one continuous move. You fight with the
 //           arena's Live rules (scribblefight.js) on the real terrain; when it is over the camera glides back down into your eyes.
 //   Test B (first person) was tried and removed (owner 2026-11-10: "this type of game is better with the pan out version").
-// Controls (the five fixed tablet slots, no new buttons; owner 2026-11-09 keys): Jump = Dodge (Space), the round action button = move 1
-// (Q, or a click), Place = move 2 (E), Ride = move 3 (R), Down = move 4 (F); 1 2 3 or a tap on a card swaps your creature.
+// Controls (owner 2026-11-10: three buttons with a fixed meaning): Jump = Dodge (Space), the round action button = Attack (Q, or a click),
+// Place = Special (E); Ride and Down hide in a fight. 1 2 3 or a tap on a card swaps your creature.
 // The stick / WASD move your creature (forward = away from the camera); the camera turns by itself, slowly, to keep the fight in view.
 import * as THREE from 'three';
 import { PREVIEW } from './comingsoon.js';
@@ -31,9 +31,9 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const typeHex = t => parseInt((TYPE_COLORS[t] || '#cccccc').match(/#([0-9a-f]{6})/i)?.[1] ?? 'cccccc', 16);
 const typeCss = t => `#${typeHex(t).toString(16).padStart(6, '0')}`;
 const INK = 0x3b3944, INK2 = 0x6e6b78;
-const SLOT_IDS = ['btn-jump', 'btn-act', 'btn-place', 'btn-ride', 'btn-down'];
-const KEYS = { Space: 0, KeyQ: 1, KeyE: 2, KeyR: 3, KeyF: 4 };
-const KEY_NAMES = ['Space', 'Q', 'E', 'R', 'F'];
+const SLOT_IDS = ['btn-jump', 'btn-act', 'btn-place']; // owner 2026-11-10: Dodge, Attack, Special (Ride and Down hide in a fight)
+const KEYS = { Space: 0, KeyQ: 1, KeyE: 2 };
+const KEY_NAMES = ['Space', 'Q', 'E'];
 
 // ---------------------------------------------------------------- where the patch goes (pure: the spec checks it on its own)
 
@@ -341,7 +341,11 @@ body.touch #sc-ui .moves { display: none; }
 #sc-ui .mv .cd { position: absolute; left: 0; bottom: 0; height: 100%; background: #000a; }
 #sc-ui .mv.on { background: color-mix(in srgb, var(--col) 55%, #1d2438); }
 body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, body.scribbling #crosshair.sc-behind, body.scribbling #prompt { display: none !important; }
-#touch.fight #btn-down { display: block !important; }
+#touch.fight #btn-down, #touch.fight #btn-ride { display: none !important; }
+#sc-ui .mv b { display: block; font-size: 18px; line-height: 1.1; }
+#touch.fight #touch-buttons button .sc-ic { display: block; font-size: 30px; line-height: 1; }
+#touch.fight #touch-buttons button .sc-w { display: block; font-size: 11px; line-height: 1.2; opacity: .85; }
+#touch.fight #touch-buttons #btn-place .sc-ic { font-size: 22px; }
 #touch.fight #touch-buttons button { border-color: var(--sc-col, #fff) !important; }
 #touch.fight #touch-buttons button.sc-on { background: rgba(255,255,255,.45) !important; }
 `;
@@ -404,26 +408,30 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   // the moves: the five fixed tablet slots get the fight's words; a computer gets a bar with the keys
   function drawPad() {
     const pad = S.fight.pad();
-    const key = JSON.stringify(pad.map(p => p && [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
+    const key = JSON.stringify(pad.map(p => [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
     if (ui.cache.pad === key) return;
     ui.cache.pad = key;
     ui.moves.replaceChildren(...pad.map((p, i) => {
       const d = document.createElement('div');
-      if (!p) { d.className = 'mv'; d.style.opacity = '.25'; d.innerHTML = `—<kbd>${KEY_NAMES[i]}</kbd>`; return d; }
       d.className = `mv${p.on ? ' on' : ''}`;
+      d.style.opacity = p.none ? '.35' : '';
       d.style.setProperty('--col', p.move ? typeCss(p.move.type) : '#e8eef7');
-      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span><span style="position:relative">${p.move ? p.move.name : p.label}</span><small style="position:relative">${p.move ? KIND_WORD[p.move.kind] : 'hop away'}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
+      const sub = p.move ? p.move.name : i ? 'none' : 'hop away';
+      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span><span style="position:relative">${p.label}</span>${p.icon ? `<b style="position:relative">${p.icon}</b>` : ''}<small style="position:relative">${sub}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
       return d;
     }));
     if (!game.isTouch?.() || typeof document === 'undefined') return;
     pad.forEach((p, i) => {
       const el = document.getElementById(SLOT_IDS[i]);
       if (!el) return;
-      const word = p ? (p.move ? p.move.name : p.label) : '—';
-      if (el.textContent !== word) { el.textContent = word; game.touch?.fit?.(el, true); }
-      el.classList.toggle('dim', !p || !!p.dim);
-      el.classList.toggle('sc-on', !!p?.on);
-      el.style.setProperty('--sc-col', p?.move ? typeCss(p.move.type) : '#ffffff');
+      const word = p.icon ? `${p.icon}${p.label}` : p.label; // (the icon big, the word small under it)
+      if (el.textContent !== word) {
+        if (p.icon) el.innerHTML = `<span class="sc-ic">${p.icon}</span><span class="sc-w">${p.label}</span>`;
+        else { el.textContent = word; game.touch?.fit?.(el, true); }
+      }
+      el.classList.toggle('dim', !!p.dim);
+      el.classList.toggle('sc-on', !!p.on);
+      el.style.setProperty('--sc-col', p.move ? typeCss(p.move.type) : '#ffffff');
     });
   }
   function touchFight(on) {
@@ -601,7 +609,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     touchFight(true);
     game.ui?.setPrompt?.('');
     sound.play('whoosh');
-    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · the round buttons are your moves · Jump = Dodge' : 'WASD moves · Q E R F your moves · Space dodges') : '');
+    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · Attack hurts · Special helps · Jump = Dodge' : 'WASD moves · Q Attack · E Special · Space dodges') : '');
   }
   function endFight(won) {
     S.result = won; S.exitFrom = null;
@@ -636,18 +644,18 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         e.preventDefault(); e.stopImmediatePropagation();
         if (e.repeat || !active()) return;
         if (e.code.startsWith('Digit')) S.fight.swap(+e.code.slice(5) - 1);
-        else { pressed.add(e.code); S.fight.press(KEYS[e.code]); }
+        else { pressed.add(e.code); S.fight.push(KEYS[e.code]); }
       }
     }, true);
     document.addEventListener('keyup', e => {
-      if (e.code in KEYS && pressed.has(e.code)) { pressed.delete(e.code); S.fight?.release(KEYS[e.code]); e.stopImmediatePropagation(); }
+      if (e.code in KEYS && pressed.has(e.code)) { pressed.delete(e.code); S.fight?.lift(KEYS[e.code]); e.stopImmediatePropagation(); }
     }, true);
     document.addEventListener('mousedown', e => {
       if (!S.fighting || document.pointerLockElement == null || game.ui?.asking) return;
       e.stopImmediatePropagation();
-      if (e.button === 0 && active()) { pressed.add('mouse'); S.fight.press(1); }
+      if (e.button === 0 && active()) { pressed.add('mouse'); S.fight.push(1); }
     }, true);
-    document.addEventListener('mouseup', e => { if (e.button === 0 && pressed.has('mouse')) { pressed.delete('mouse'); S.fight?.release(1); e.stopImmediatePropagation(); } }, true);
+    document.addEventListener('mouseup', e => { if (e.button === 0 && pressed.has('mouse')) { pressed.delete('mouse'); S.fight?.lift(1); e.stopImmediatePropagation(); } }, true);
     // the five fixed slots: while a fight runs they are Dodge and your four moves (held: a big blast charges while the finger stays down)
     const hook = () => SLOT_IDS.forEach((id, slot) => {
       const el = document.getElementById(id);
@@ -660,9 +668,9 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         try { el.setPointerCapture(e.pointerId); } catch { /* gone */ }
         lastAt = performance.now();
         if (!active()) return;
-        mine = e.pointerId; el.classList.add('down'); S.fight.press(slot);
+        mine = e.pointerId; el.classList.add('down'); S.fight.push(slot);
       }, true);
-      const up = e => { if (mine == null || e.pointerId !== mine) return; mine = null; el.classList.remove('down'); S.fight?.release(slot); e.stopImmediatePropagation(); };
+      const up = e => { if (mine == null || e.pointerId !== mine) return; mine = null; el.classList.remove('down'); S.fight?.lift(slot); e.stopImmediatePropagation(); };
       el.addEventListener('pointerup', up, true); el.addEventListener('pointercancel', up, true);
       el.addEventListener('click', e => { if (S.fighting || performance.now() - lastAt < 600) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
     });
