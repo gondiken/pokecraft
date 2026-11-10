@@ -358,3 +358,31 @@ is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, 
 
 The iPad's frame rate cannot be measured here. If it is low in a fight, the next step is merging each model's parts into one mesh per
 material (the parts animate, so it needs care), or hiding your avatar while you fight behind your creature.
+
+### The night run in short, and questions for the owner
+
+**What changed (all behind `?preview`, live on `main`):**
+1. The fight camera is the arena's: steep (about 62 degrees), fov 50, further back on a portrait iPad, and it stays still during a fight.
+   The rise from your eyes is the same one move. More of the fight is on screen (monsters 85 -> 92 %, whole warnings 77 -> 87 % on an iPad
+   in landscape) and draw calls fell from about 335 to 113-157.
+2. Every move kind was measured. Four were fixed so they ask for skill and give nothing to a masher: the **big blast** (a ring grows on the
+   ground while you hold; a full one hits hard and stops a monster about to strike), **heal** (your creature sits for a moment, and a hit
+   spoils it), **power up** (it lasts until you are hit) and **Tough** (a brace: a hit just after it bounces off and stops the monster).
+   The rest were already fair.
+3. A fight now takes a person-like bot about 1-1.5 minutes. A hole was found and closed: with a weak creature in front of strong ones
+   (like your Graphitan 56 before Kitegale 91) mashing won every fight. Now the monsters match your strongest creature.
+4. First person: your creature sits more in view, is drawn smaller there and has a blue arrow when it is out of view.
+5. The house rule holds everywhere: mashing loses (0 / 96 with the ready-made team, 0 / 24 with your own), the skilled bot wins
+   (144 / 144), on seeds 1, 22 and 122, at 60 and 20 fps, behind and in first person, plus real keys and the iPad (`scribble` spec green).
+
+**Not done:** a flatter patch spot (the steep view already calms the ground); merging the models' parts to save more draw calls (only if
+the iPad struggles).
+
+**Questions for you after playing (on the iPad if you can):**
+1. Does the steep camera feel as good as the arena's? Is it too far away on the iPad (the creatures are smaller now)?
+2. The camera no longer turns during a fight (stick up = away from the camera, like the arena). Do you miss turning it?
+3. The big blast: does your son see the ring grow and understand "hold, then let go"? Is 1.1 s of holding too long for him?
+4. Heal now makes your creature sit still for a moment. Fair, or too harsh for a child?
+5. Does a fight last about right now (1-1.5 minutes)? Your Graphitan fight took 5+ minutes before; how long does it take now?
+6. First person: is your creature in view often enough, and is the blue arrow clear?
+7. Ready for the next step (the new world), or more fight tuning first?
