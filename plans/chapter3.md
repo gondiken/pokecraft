@@ -327,3 +327,124 @@ is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, 
   camera, the stronger big blast and this level fix; the likely causes were shots blocked by hills one cannot see from 45 degrees and a Lv 56
   lead facing Lv 56 monsters with a weak volley. Worth trying again on the iPad.
 - The spec now reports a person's times on every seed (34-83 s in the last run).
+
+### Step 4: first-person polish (done)
+
+`node tests/scribblemeasure.mjs eyes` (your eyes at fov 75, looking a little down, iPad landscape; 10 games x 3 seeds per row):
+
+| | Your creature on screen | A monster in your aim | Warnings' middle on screen | Person bot wins |
+| --- | --- | --- | --- | --- |
+| Before: your creature 1.6 to the right, 1.1 ahead (55 degrees off your look) | 37 % | 87 % | 61 % | 55 / 60 (two runs) |
+| Tried: 1.0 right, 2.4 ahead | 83 % | 86 % | 74 % | 23 / 30 (in front it is hit more) |
+| Tried: 1.3 right, 1.8 ahead | 72 % | 88 % | 71 % | 20 / 30 |
+| **Kept: 1.6 right, 1.6 ahead** | **56 %** | 86 % | 70 % | 52 / 60 (within the noise) |
+
+- Further in front, your creature is seen almost always but stands nearer the monsters and gets hit more, so the middle spot was kept.
+- **A small blue arrow** on the ring of arrows round the crosshair shows where your creature is when it is out of view (the monsters
+  already have red / white arrows there).
+- **Your creature is drawn at 60 % in first person** (eased with the camera's glide; only the drawing, never the rules): a big creature
+  (Tidalord) right beside you covered a third of the screen (`plans/chapter3/cam-after-9-eyes.jpg` is after the change).
+- Aiming with your look (the monster within 0.6 rad of your look, else the shot flies the way you look) was measured as fine: a monster is
+  in your aim 86-88 % of the time for the person bot. Not changed.
+
+### Step 5: draw calls for the iPad (measured; nothing more changed)
+
+| | Draw calls |
+| --- | --- |
+| Before (behind your creature, fov 75, 45 degrees) | about 335 |
+| **Now behind your creature** (steep camera) | **113-157** |
+| First person | 377 (the game's own view, as when walking) |
+| Of these, the fight's own things | about 80: 73 are the parts of the five models (three monsters, your creature, your avatar); the scribble fence is 1, each monster's scribble 1, warnings and clouds 1 each |
+
+The iPad's frame rate cannot be measured here. If it is low in a fight, the next step is merging each model's parts into one mesh per
+material (the parts animate, so it needs care), or hiding your avatar while you fight behind your creature.
+
+### The night run in short, and questions for the owner
+
+**What changed (all behind `?preview`, live on `main`):**
+1. The fight camera is the arena's: steep (about 62 degrees), fov 50, further back on a portrait iPad, and it stays still during a fight.
+   The rise from your eyes is the same one move. More of the fight is on screen (monsters 85 -> 92 %, whole warnings 77 -> 87 % on an iPad
+   in landscape) and draw calls fell from about 335 to 113-157.
+2. Every move kind was measured. Four were fixed so they ask for skill and give nothing to a masher: the **big blast** (a ring grows on the
+   ground while you hold; a full one hits hard and stops a monster about to strike), **heal** (your creature sits for a moment, and a hit
+   spoils it), **power up** (it lasts until you are hit) and **Tough** (a brace: a hit just after it bounces off and stops the monster).
+   The rest were already fair.
+3. A fight now takes a person-like bot about 1-1.5 minutes. A hole was found and closed: with a weak creature in front of strong ones
+   (like your Graphitan 56 before Kitegale 91) mashing won every fight. Now the monsters match your strongest creature.
+4. First person: your creature sits more in view, is drawn smaller there and has a blue arrow when it is out of view.
+5. The house rule holds everywhere: mashing loses (0 / 96 with the ready-made team, 0 / 24 with your own), the skilled bot wins
+   (144 / 144), on seeds 1, 22 and 122, at 60 and 20 fps, behind and in first person, plus real keys and the iPad (`scribble` spec green).
+
+**Not done:** a flatter patch spot (the steep view already calms the ground); merging the models' parts to save more draw calls (only if
+the iPad struggles).
+
+**Questions for you after playing (on the iPad if you can):**
+1. Does the steep camera feel as good as the arena's? Is it too far away on the iPad (the creatures are smaller now)?
+2. The camera no longer turns during a fight (stick up = away from the camera, like the arena). Do you miss turning it?
+3. The big blast: does your son see the ring grow and understand "hold, then let go"? Is 1.1 s of holding too long for him?
+4. Heal now makes your creature sit still for a moment. Fair, or too harsh for a child?
+5. Does a fight last about right now (1-1.5 minutes)? Your Graphitan fight took 5+ minutes before; how long does it take now?
+6. First person: is your creature in view often enough, and is the blue arrow clear?
+7. Ready for the next step (the new world), or more fight tuning first?
+
+## 10. Owner feedback 2026-11-10 and what changed
+
+Owner: "I didn't notice the camera turn during a fight before. A slight turn to cover for the scene is ok." "It might be a bit too steep
+now ... closer to what we have now, but still less" (on the owner's scale: before 45, now "80", wanted about "70"). "Moves are great. Fight
+length is fine." "First person view is horrible lol ... this type of game is better with the pan out version." "Controls are a bit of a
+mess: one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT. At the same time I don't want to remove
+powers."
+
+**Changed (behind `?preview`):**
+- **Angle:** 62 -> about 57 degrees down (12.6 up, 8.2 back, fov 50; about 15 blocks away as before). Picture: `plans/chapter3/cam-flat-8-fight.jpg`, `cam-flat-ipad.jpg`.
+- **A slight turn:** the camera still never follows your look, but it turns by itself while a monster is near the edge of the screen,
+  only the way that brings it back in, easing in and out, at most 0.25 rad/s (14 degrees a second). Turning toward the monsters' middle
+  was tried first and turned all the time (11 degrees a second on average: they circle you), so it was dropped.
+- **First person removed** (the V key, the pause screen's "🎥 Fight" button, the follow rules, the blue arrow); the bots and the spec play
+  only the pan-out view. The night's first-person numbers (section 9, step 4) stay as a record.
+
+What a child sees now (`scribblemeasure.mjs cam`, 24 person / skilled fights per row):
+
+| Camera | Monsters on screen (iPad landscape / portrait) | Whole warnings on screen | Turning, on average |
+| --- | --- | --- | --- |
+| First try (45 degrees, fov 75) | 88 / 93 % | 80 / 90 % | (follows your look) |
+| Night run (62 degrees, fixed) | 94.5 / 96.5 % | 93 / 96 % | none |
+| 57 degrees, fixed | 92.5-94.5 / 96-97 % | 90-93 / 96-97 % | none |
+| **Now: 57 degrees, turns at the edges** | **94 / 97.4 %** | **90 / 97.4 %** | **1.4-2.2 degrees a second** |
+
+Mashing still loses (0 / 24 per seed), skilled wins all, the `scribble` spec is green.
+
+### The open question: too many buttons, and they mean something different for every creature
+
+Today each creature's four moves land on four slots in their own order, so the same slot is a blast for one and a heal for another;
+with Dodge that is five buttons and a stick. The options (none built yet):
+
+1. **Three buttons with a fixed meaning (recommended):** Dodge (Jump), **Attack** (the big round button) and **Special** (one smaller
+   button). Attack is always "hurt a monster": it uses the creature's attack moves (shot, many shots, rush, big blast) and shows the icon
+   of the one it will use next, with a fixed icon per kind (● shot, ●●● many shots, ➜ rush, ◎ big blast; hold for a big blast). Special is
+   always "help": heal, power up, Tough, slow cloud, sleepy cloud. Every power stays; the child learns two buttons and reads one icon.
+   Cost: you no longer pick between two attacks yourself; the button offers them in turn as they are ready.
+2. **Five buttons, fixed places by kind:** the slots never change meaning (e.g. Shot, Rush, Blast, Help + Dodge); a creature without a
+   kind has that slot dimmed. Every creature's buttons are in the same place, but it is still five buttons.
+3. **Two moves per creature in a fight:** each creature brings one attack and one help move (its best, or chosen in the team screen);
+   variety comes from swapping creatures (1 2 3, a tap on a card). Three buttons, simplest, but two of four moves sit out each fight.
+
+Either way every kind gets a fixed icon and colour on its button and on the ground ring, so "this is a heal" reads in one look.
+
+### Built 2026-11-10: Attack + Special (the owner chose option 1)
+
+- **Three buttons with a fixed meaning:** Dodge (Jump / Space), **Attack** (the round action button / Q / a click) and **Special** (Place /
+  E). Ride and Down are hidden in a fight. Attack uses the creature's attack moves (shot, many shots, big blast, rush), Special its help
+  moves (heal, power up, Tough, slow cloud, sleepy cloud). Each button uses the ready move of its group used longest ago (so they take
+  turns and none gets stuck), else waits for the one ready soonest, and shows that move's icon big with the word small:
+  ● shot, ●●● many shots, ◎ big blast (hold), ➜ rush, ✚ heal, ▲ power up, 🛡 Tough, ☁ slow cloud, ☾ sleepy cloud. On a computer the cards
+  show the button, the icon, the move's name and the key. Pictures: `plans/chapter3/buttons-ipad.jpg`, `buttons-desktop.jpg`.
+- **The bots play through the same two buttons** (before, the skilled bot picked any move; now it can only wait for the right icon, e.g.
+  ➜ while a monster winds up). Per kind (`scribblemeasure.mjs kinds`, 18 fights a row) nothing moved beyond the noise: the big blast,
+  rushes and clouds keep their value through the shared button.
+- **Mashing:** two buttons are easier to hammer than five. Over 24 fights per world: 2 / 24, 3 / 24, 7 / 24 at first (seed 122 at 20 fps
+  reached 6 / 24, a quarter); in later runs about 1 fight in 10 overall (10 / 96), more at 20 fps (7 / 48). Tried and dropped: a "too
+  soon" rest for tapping a dim button (no change: with two or three attack moves taking turns one is almost always ready) and monsters
+  hitting harder (power 70: mashing 6 / 48 instead of 7 / 48, but the person and skilled bots lost now and then). The spec now judges
+  mashing over 12 fights at each frame rate per world, all together under a quarter (4 fights were too few to tell 10 % from 25 %).
+- Person bot: 34-80 s a fight, skilled 23-28 s, all won.

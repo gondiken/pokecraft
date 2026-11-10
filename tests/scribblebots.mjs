@@ -3,8 +3,7 @@
 // creature (Test A) and in first person (Test B), at 60 and 20 decisions a second (fixed 1/120 s steps either way).
 //   naive:   mashes every move, never moves (first person: stands where it came in, looking at the middle)
 //   skilled: steps out of the red (only to ground it can walk to), dodges just before a hit, keeps its distance, shoots only along a
-//            clear line (hills and trees block shots), swaps a tired creature out. First person: it walks YOU, your creature follows
-//            (scribblefight.js follow), and it looks at its target.
+//            clear line (hills and trees block shots), swaps a tired creature out. (First person was removed 2026-11-10.)
 //   node tests/scribblebots.mjs                 every bot, 4 games each
 //   SCRIBBLE_GAMES=8 node tests/scribblebots.mjs
 // tests/specs/scribble.mjs runs these (part `bots`) and the real keys / iPad / screenshots parts.
@@ -12,7 +11,7 @@ import { serve, launch, openGame, newGame, click } from './helpers.mjs';
 import { pathToFileURL } from 'node:url';
 
 export const BOTS = String.raw`
-const { ScribbleFight, groundOf, squadOf, follow, FIGHT, FightCam, onScreen } = await import('/src/scribblefight.js');
+const { ScribbleFight, groundOf, squadOf, FIGHT, FightCam, onScreen, foesMiddle } = await import('/src/scribblefight.js');
 const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell, LIVE_FULL = (await import('/src/arena/live.js')).LIVE.charge;
 const S = await import('/src/species.js');
 const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
@@ -79,27 +78,29 @@ function skilledGoal(F) {
 function skilledMoves(F) {
   const you = F.you;
   if (you.hp < you.maxHp * 0.3) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > q.c.level * 1.5); if (i >= 0) F.swap(i); }
-  if (!F.aimDir) { // behind: pick a monster it can hit
+  { // pick a monster it can hit
     const t = F.aimAt();
     if (t && !F.clearShot(F.you, t)) { const o = F.foes.find(f => f.alive && F.clearShot(F.you, f)); if (o) F.pick(o); }
   }
   // a rush at a monster in the last part of its warning cancels its attack (FIGHT.rush): aim one there when a rush is ready
   const win = LIVE_TELL * (FIGHT.rush.window ?? 1);
-  const dashSlot = F.moves.findIndex((s, i) => s?.kind === 'dash' && F.cd[i + 1] === 0) + 1;
-  if (dashSlot && !F.aimDir) {
+  // (owner 2026-11-10: only two buttons; Attack and Special each use their group's next move, shown by its icon)
+  if (F.charge.slot <= 0 && F.held[1]) F.lift(1); // a big blast that went by itself: let go of the button
+  const na = F.nextMove('attack');
+  if (na && F.moves[na - 1].kind === 'dash' && F.cd[na] === 0) {
     const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
-    if (w) { F.pick(w); F.press(dashSlot); F.release(dashSlot); }
+    if (w) { F.pick(w); F.push(1); F.lift(1); }
   }
   const t = F.aimAt();
   // a big blast in hand: let go when a monster inside the ring is in the last part of its warning (it is stopped), else at full
   if (F.charge.slot > 0) {
     const k = Math.min(1, F.charge.t / LIVE_FULL), r = F.blastR(k);
-    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.release(F.charge.slot);
+    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.lift(1);
     return;
   }
   const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
-  for (let i = 1; i <= 4; i++) {
-    const s = F.moves[i - 1];
+  for (const b of [1, 2]) {
+    const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null;
     if (!s || F.cd[i] > 0 || !t) continue;
     const d = len2(t.x - you.x, t.z - you.z);
     if (s.kind === 'heal' && (you.hp > you.maxHp * 0.55 || F.foes.some(f => f.alive && (f.tell || f.charging)))) continue; // heal between attacks
@@ -108,13 +109,13 @@ function skilledMoves(F) {
     }
     if ((s.kind === 'bolt' || s.kind === 'volley') && !F.clearShot(you, t)) continue;
     if (s.kind === 'dash' && (d > 5 || danger(F, t.x, t.z, t.y) || danger(F, you.x, you.z, you.y) || !walkable(F, you.x, you.z, you.y, t.x, t.z, 0.5))) continue;
-    if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.press(i); continue; }
-    F.press(i); F.release(i);
+    if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.push(b); continue; }
+    F.push(b); F.lift(b);
   }
 }
 // kid: like a child who gets it but is not quick: sees a red warning 0.35 s late and walks out of it (no dodge), keeps a few blocks
 // away, presses every move that is ready (no line-of-sight thinking), never swaps by itself
-function kidStep(F, dt, eyes) {
+function kidStep(F, dt) {
   const you = F.you;
   F.kid ??= { seen: new Map(), goal: null };
   const now = F.clock;
@@ -123,23 +124,17 @@ function kidStep(F, dt, eyes) {
   let g = { gx: 0, gz: 0 };
   if (late) { const s = skilledGoal(F); g = { gx: s.gx, gz: s.gz }; }
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
-  if (!eyes) { F.input.mx = g.gx; F.input.mz = g.gz; }
-  else {
-    const me = F.me, L = len2(g.gx, g.gz);
-    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + g.gx / L * st, nz = me.z + g.gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
-    const t = F.foes.filter(f => f.alive).sort((p, q) => len2(p.x - me.x, p.z - me.z) - len2(q.x - me.x, q.z - me.z))[0];
-    if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
-    follow(F, me.x, me.z, me.yaw);
-  }
+  F.input.mx = g.gx; F.input.mz = g.gz;
   // (a big blast: it holds the button until the ring is full, then it goes by itself)
-  if (F.charge.slot <= 0) for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind !== 'burst') F.release(i); }
+  if (F.charge.slot <= 0 && F.held[1]) F.lift(1);
+  if (F.charge.slot <= 0) for (const b of [1, 2]) { const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.push(b); if (s.kind !== 'burst') F.lift(b); }
   F.step(dt);
 }
 // person (step 3, night run): closer to a real child on a tablet than the kid: sees a warning 0.3-0.6 s late, walks out of it with a
 // wobbly thumb (up to 35 degrees off), dodges only half the time when it is late, taps a move about every 0.4-1.1 s (one at a time, a
 // shot whether or not a hill is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, heals under 40 %, swaps a
 // tired creature only sometimes. Its numbers: seeded per fight, so a run is the same at 60 and 20 fps.
-function personStep(F, dt, eyes) {
+function personStep(F, dt) {
   const you = F.you;
   if (!F.ps) { let seed = 1234 + (F.foes[0].x * 1000 | 0); const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); F.ps = { r, seen: new Map(), next: 0.6, wob: 0, wobT: 0, hold: 0, dodgeLate: r() < 0.5 }; }
   const P = F.ps, now = F.clock;
@@ -149,49 +144,32 @@ function personStep(F, dt, eyes) {
   const s = skilledGoal(F);
   let gx = 0, gz = 0;
   if (lateNow || !s.flee) { const c = Math.cos(P.wob), sn = Math.sin(P.wob); gx = s.gx * c - s.gz * sn; gz = s.gz * c + s.gx * sn; }
-  if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.press(0);
-  if (!eyes) { F.input.mx = gx; F.input.mz = gz; }
-  else {
-    const me = F.me, L = len2(gx, gz);
-    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + gx / L * st, nz = me.z + gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
-    const t = F.target?.alive ? F.target : F.foes.find(f => f.alive);
-    if (t) me.yaw += Math.atan2(Math.sin(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw), Math.cos(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw)) * Math.min(1, dt * 4);
-    follow(F, me.x, me.z, me.yaw);
-  }
-  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.release(F.charge.slot); F.step(dt); return; }
+  if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.push(0);
+  F.input.mx = gx; F.input.mz = gz;
+  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.lift(1); F.step(dt); return; }
+  if (F.held[1]) F.lift(1);
   if (you.hp < you.maxHp * 0.25 && P.r() < dt * 0.6) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > 0); if (i >= 0) F.swap(i); }
   if ((P.next -= dt) <= 0) {
     P.next = 0.4 + P.r() * 0.7;
     if (P.r() < 0.15) { const o = F.foes.filter(f => f.alive); F.pick(o[Math.floor(P.r() * o.length)]); }
-    const ready = [1, 2, 3, 4].filter(i => F.moves[i - 1] && F.cd[i] === 0 && !(F.moves[i - 1].kind === 'heal' && you.hp > you.maxHp * 0.4));
-    if (ready.length) { const i = ready[Math.floor(P.r() * ready.length)]; F.press(i); if (F.moves[i - 1].kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.release(i); }
+    const next = b => { const i = F.nextMove(b === 1 ? 'attack' : 'special'); return i && F.cd[i] === 0 ? F.moves[i - 1] : null; };
+    const ready = [1, 2].filter(b => next(b) && !(next(b).kind === 'heal' && you.hp > you.maxHp * 0.4));
+    if (ready.length) { const b = ready[Math.floor(P.r() * ready.length)], s = next(b); F.push(b); if (s.kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.lift(b); }
   }
   F.step(dt);
 }
 const BOT = {
   kid: kidStep,
   person: personStep,
-  naive(F, dt, eyes) {
-    for (let i = 1; i <= 4; i++) { F.press(i); F.release(i); }
-    if (eyes) follow(F, F.me.x, F.me.z, F.me.yaw); else { F.input.mx = F.input.mz = 0; }
+  naive(F, dt) {
+    for (const b of [1, 2]) { F.push(b); F.lift(b); }
+    F.input.mx = F.input.mz = 0;
     F.step(dt);
   },
-  skilled(F, dt, eyes) {
+  skilled(F, dt) {
     const goal = skilledGoal(F);
-    if (!eyes) {
-      F.input.mx = goal.gx; F.input.mz = goal.gz;
-    } else { // you walk (4.3 a second, like the game's walk), your creature follows; you look at the target
-      const me = F.me, L = len2(goal.gx, goal.gz);
-      if (L > 0.05) {
-        const st = Math.min(L, 4.3 * dt), nx = me.x + goal.gx / L * st, nz = me.z + goal.gz / L * st;
-        if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; }
-      }
-      const t = F.foes.filter(f => f.alive).sort((p, q) => (F.clearShot(F.you, q) - F.clearShot(F.you, p)) || len2(p.x - me.x, p.z - me.z) - len2(q.x - me.x, q.z - me.z))[0];
-      if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
-      follow(F, me.x, me.z, me.yaw);
-      if (goal.flee && L > 0.05) { F.input.mx = goal.gx; F.input.mz = goal.gz; } // a warning: your creature runs out of it with you
-    }
-    if (goal.dodge && F.cd[0] === 0) F.press(0);
+    F.input.mx = goal.gx; F.input.mz = goal.gz;
+    if (goal.dodge && F.cd[0] === 0) F.push(0);
     skilledMoves(F);
     F.step(dt);
   },
@@ -199,15 +177,18 @@ const BOT = {
 // what a child sees behind its creature (FightCam): the share of moments a monster / a red warning / your creature is on screen,
 // and the camera's jumps (a move of more than 0.6 blocks in 1/60 s) and moments with a block between camera and creature
 const CAMS = {
-  old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6 }, // the first try (turned with your look; the bots never turn it)
-  new: {},
+  old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6, turn: false }, // the first try (turned with your look; the bots never turn it)
+  steep: { up: 13.5, back: 7, turn: false }, // the night run's: 62 degrees, never turning
+  flat: { turn: false },                     // today's angle (about 57 degrees), never turning
+  new: {},                                   // today's: about 57 degrees, a slow turn toward the monsters
 };
 function camWatch(F, which, aspect) {
   const cam = new FightCam(CAMS[which]), you = F.you;
   cam.start(F.me.yaw, you.x, you.y, you.z);
-  const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, last: null, aspect };
+  const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, turn: 0, t: 0, last: null, aspect };
   w.tick = dt => {
-    const p = cam.update(dt, F.you, F.me.yaw, aspect, G), inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
+    w.t += dt; const y0 = cam.yaw, p = cam.update(dt, F.you, F.me.yaw, aspect, G, false, foesMiddle(F)); w.turn += Math.abs(Math.atan2(Math.sin(cam.yaw - y0), Math.cos(cam.yaw - y0)));
+    const inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
     if (w.last && Math.hypot(p.x - w.last[0], p.y - w.last[1], p.z - w.last[2]) > 0.6 * Math.max(1, dt * 60)) w.jumps++;
     w.last = [p.x, p.y, p.z]; w.n++;
     if (inS(onScreen(p, aspect, F.you.x, F.you.y + 0.6, F.you.z))) w.you++;
@@ -219,43 +200,47 @@ function camWatch(F, which, aspect) {
         if (pts.every(([x, z]) => inS(onScreen(p, aspect, x, t.y, z)))) w.tell++; }
     }
   };
-  w.out = () => ({ cam: which, aspect: +aspect.toFixed(2), foe: Math.round(100 * w.foe / Math.max(1, w.foeN)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)), you: Math.round(100 * w.you / Math.max(1, w.n)), jumps: w.jumps, hidden: Math.round(100 * w.hidden / Math.max(1, w.n)) });
+  w.out = () => ({ cam: which, aspect: +aspect.toFixed(2), foe: Math.round(100 * w.foe / Math.max(1, w.foeN)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)), you: Math.round(100 * w.you / Math.max(1, w.n)), jumps: w.jumps, turnPerMin: Math.round(w.turn * 180 / Math.PI / Math.max(1, w.t) * 60), hidden: Math.round(100 * w.hidden / Math.max(1, w.n)) });
   return w;
 }
 window.__scribbleBots = { newFight, BOT, camWatch };
 `;
 
-export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
-  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo, cams }) => {
+export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
     const { newFight, BOT, camWatch } = window.__scribbleBots, S = await import('/src/species.js');
     const F = newFight(lead, solo), dt = 1 / fps;
     const W = (cams || []).map(([c, a]) => camWatch(F, c, a));
-    for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt, eyes); for (const w of W) w.tick(dt); }
+    for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt); for (const w of W) w.tick(dt); }
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
       byKind: F.stats.byKind, hitBy: F.stats.hitBy, takenPerMin: Math.round(F.stats.taken / Math.max(1, F.clock) * 60 / F.squad.reduce((a, m) => a + S.statsFor(m.c).maxHp, 0) * 100), extra: { braced: F.stats.braced || 0, spoilt: F.stats.spoilt || 0, buffLost: F.stats.buffLost || 0 }, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
-  }, { BOTS, bot, eyes, fps, lead, limit, solo, cams });
+  }, { BOTS, bot, fps, lead, limit, solo, cams });
 }
 
-export const RUNS = [
-  ['naive', false, 60], ['skilled', false, 60], ['skilled', false, 20],
-  ['naive', true, 60], ['naive', true, 20], ['skilled', true, 60], ['skilled', true, 20],
-];
+export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 20]];
 
 // -> { lines, fails }
 export async function runBots(page, games = 4, log = console.log) {
   let fails = 0;
   const lines = [];
-  for (const [bot, eyes, fps] of RUNS) {
-    const runs = [];
-    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { eyes, fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
+  // mashing is judged over many fights (owner 2026-11-10: with two buttons it wins about 1 fight in 10, more often at 20 fps; four fights
+  // were too few to tell that from a quarter): NAIVE_GAMES at each frame rate, all together under a quarter
+  const naive = [];
+  for (const [bot, fps] of RUNS) {
+    const runs = [], n = bot === 'naive' ? Math.max(games, NAIVE_GAMES) : games;
+    for (let g = 0; g < n; g++) runs.push(await play(page, bot, { fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
     const wins = runs.filter(r => r.won).length;
-    const ok = bot === 'naive' ? wins <= Math.floor(games / 4) : wins === games;
+    if (bot === 'naive') { naive.push(...runs); const line = `info naive @${fps}: ${wins}/${n} won`; lines.push(line); log(line); continue; }
+    const ok = wins === games;
     if (!ok) fails++;
-    const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} ${eyes ? 'eyes  ' : 'behind'} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
+    const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
     lines.push(line); log(line);
   }
+  { const w = naive.filter(r => r.won).length, ok = w <= Math.floor(naive.length / 4);
+    if (!ok) fails++;
+    const line = `${ok ? 'ok  ' : 'FAIL'} naive (mashing) at 60 and 20 fps: ${w}/${naive.length} won (under a quarter)`; lines.push(line); log(line); }
   // Reported, never failed: mashing with a lead whose types beat all three monsters (Phantomaw: Ghost moves hit the Ghost monster x2,
   // its Fire move the Grass one, and nothing hits it x2) wins most fights. That is the type chart working, not a hole in the rules.
   const m = []; for (let g = 0; g < games; g++) m.push(await play(page, 'naive', { lead: MATCHED }));
@@ -275,6 +260,7 @@ export async function runBots(page, games = 4, log = console.log) {
   return { lines, fails };
 }
 export const MATCHED = 3;
+export const NAIVE_GAMES = 12;
 export const OWNER_TEAM = [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]];
 
 // The page: ?preview and a game in the world of `seed` (none = a New Game in a random world) with a team of three at level 30

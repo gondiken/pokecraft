@@ -3,12 +3,10 @@
 //   Test A: walk up in first person, step in: the scribble snaps into a ring on the real ground, your lead creature jumps out of its
 //           cube, and the camera rises from your eyes to just behind and above your creature in one continuous move. You fight with the
 //           arena's Live rules (scribblefight.js) on the real terrain; when it is over the camera glides back down into your eyes.
-//   Test B: the same fight in first person, a toggle like Cube Planets' camera (V, the pause screen's button). You stay in your own
-//           eyes and walk, your creature runs beside you, your moves go where you look, warnings behind you show as arrows round the
-//           middle of the screen (ui.setPointers). The toggle also works in the middle of a fight: the camera glides between the two.
-// Controls (the five fixed tablet slots, no new buttons; owner 2026-11-09 keys): Jump = Dodge (Space), the round action button = move 1
-// (Q, or a click), Place = move 2 (E), Ride = move 3 (R), Down = move 4 (F); 1 2 3 or a tap on a card swaps your creature.
-// Behind the creature the stick / WASD move your creature (forward = away from the camera) and a look-drag / the mouse turns the camera.
+//   Test B (first person) was tried and removed (owner 2026-11-10: "this type of game is better with the pan out version").
+// Controls (owner 2026-11-10: three buttons with a fixed meaning): Jump = Dodge (Space), the round action button = Attack (Q, or a click),
+// Place = Special (E); Ride and Down hide in a fight. 1 2 3 or a tap on a card swaps your creature.
+// The stick / WASD move your creature (forward = away from the camera); the camera turns by itself, slowly, to keep the fight in view.
 import * as THREE from 'three';
 import { PREVIEW } from './comingsoon.js';
 import { SPECIES, TYPE_COLORS, buildModel, animateModel, disposeModel, statsFor } from './species.js';
@@ -18,11 +16,10 @@ import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 const LIVE_CHARGE = LIVE.charge;
-import { ScribbleFight, FIGHT, groundOf, squadOf, follow, FightCam } from './scribblefight.js';
+import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle } from './scribblefight.js';
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
-  key: 'pokecraft-fight-cam',
   enter: { throw: 0.45, grow: 0.35, camFrom: 0.3, cam: 1.6, go: 1.95 }, // seconds: the cube's flight, the creature growing, the camera's move
   exit: { wait: 1.3, cam: 1.6, fade: 1.1 },
   stepEase: 14,           // how fast a creature's drawn height follows a step up or down (1 / s)
@@ -34,9 +31,9 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const typeHex = t => parseInt((TYPE_COLORS[t] || '#cccccc').match(/#([0-9a-f]{6})/i)?.[1] ?? 'cccccc', 16);
 const typeCss = t => `#${typeHex(t).toString(16).padStart(6, '0')}`;
 const INK = 0x3b3944, INK2 = 0x6e6b78;
-const SLOT_IDS = ['btn-jump', 'btn-act', 'btn-place', 'btn-ride', 'btn-down'];
-const KEYS = { Space: 0, KeyQ: 1, KeyE: 2, KeyR: 3, KeyF: 4 };
-const KEY_NAMES = ['Space', 'Q', 'E', 'R', 'F'];
+const SLOT_IDS = ['btn-jump', 'btn-act', 'btn-place']; // owner 2026-11-10: Dodge, Attack, Special (Ride and Down hide in a fight)
+const KEYS = { Space: 0, KeyQ: 1, KeyE: 2 };
+const KEY_NAMES = ['Space', 'Q', 'E'];
 
 // ---------------------------------------------------------------- where the patch goes (pure: the spec checks it on its own)
 
@@ -156,12 +153,11 @@ export function createScribble(game) {
   const S = {
     phase: 'off', // off | idle | enter | fight | exit | cleared
     world: null, spot: null, fight: null, ground: null,
-    mode: 'behind', camK: 0, armed: false,
+    camK: 0, armed: false,
     get on() { return SCRIBBLE.on; },
     get fighting() { return S.phase === 'enter' || S.phase === 'fight' || S.phase === 'exit'; },
-    holdsPlayer: () => S.fighting && (S.phase !== 'fight' || S.mode === 'behind' || S.camK > 0.5),
+    holdsPlayer: () => S.fighting,
   };
-  try { S.mode = localStorage.getItem(SCRIBBLE.key) === 'eyes' ? 'eyes' : 'behind'; } catch { /* private window */ }
   if (!SCRIBBLE.on) { // without ?preview: nothing at all
     Object.assign(S, { update() {}, tap: () => false, can: () => false, info: () => ({ on: false }) });
     return S;
@@ -345,7 +341,11 @@ body.touch #sc-ui .moves { display: none; }
 #sc-ui .mv .cd { position: absolute; left: 0; bottom: 0; height: 100%; background: #000a; }
 #sc-ui .mv.on { background: color-mix(in srgb, var(--col) 55%, #1d2438); }
 body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, body.scribbling #crosshair.sc-behind, body.scribbling #prompt { display: none !important; }
-#touch.fight #btn-down { display: block !important; }
+#touch.fight #btn-down, #touch.fight #btn-ride { display: none !important; }
+#sc-ui .mv b { display: block; font-size: 18px; line-height: 1.1; }
+#touch.fight #touch-buttons button .sc-ic { display: block; font-size: 30px; line-height: 1; }
+#touch.fight #touch-buttons button .sc-w { display: block; font-size: 11px; line-height: 1.2; opacity: .85; }
+#touch.fight #touch-buttons #btn-place .sc-ic { font-size: 22px; }
 #touch.fight #touch-buttons button { border-color: var(--sc-col, #fff) !important; }
 #touch.fight #touch-buttons button.sc-on { background: rgba(255,255,255,.45) !important; }
 `;
@@ -408,26 +408,30 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   // the moves: the five fixed tablet slots get the fight's words; a computer gets a bar with the keys
   function drawPad() {
     const pad = S.fight.pad();
-    const key = JSON.stringify(pad.map(p => p && [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
+    const key = JSON.stringify(pad.map(p => [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
     if (ui.cache.pad === key) return;
     ui.cache.pad = key;
     ui.moves.replaceChildren(...pad.map((p, i) => {
       const d = document.createElement('div');
-      if (!p) { d.className = 'mv'; d.style.opacity = '.25'; d.innerHTML = `—<kbd>${KEY_NAMES[i]}</kbd>`; return d; }
       d.className = `mv${p.on ? ' on' : ''}`;
+      d.style.opacity = p.none ? '.35' : '';
       d.style.setProperty('--col', p.move ? typeCss(p.move.type) : '#e8eef7');
-      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span><span style="position:relative">${p.move ? p.move.name : p.label}</span><small style="position:relative">${p.move ? KIND_WORD[p.move.kind] : 'hop away'}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
+      const sub = p.move ? p.move.name : i ? 'none' : 'hop away';
+      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span><span style="position:relative">${p.label}</span>${p.icon ? `<b style="position:relative">${p.icon}</b>` : ''}<small style="position:relative">${sub}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
       return d;
     }));
     if (!game.isTouch?.() || typeof document === 'undefined') return;
     pad.forEach((p, i) => {
       const el = document.getElementById(SLOT_IDS[i]);
       if (!el) return;
-      const word = p ? (p.move ? p.move.name : p.label) : '—';
-      if (el.textContent !== word) { el.textContent = word; game.touch?.fit?.(el, true); }
-      el.classList.toggle('dim', !p || !!p.dim);
-      el.classList.toggle('sc-on', !!p?.on);
-      el.style.setProperty('--sc-col', p?.move ? typeCss(p.move.type) : '#ffffff');
+      const word = p.icon ? `${p.icon}${p.label}` : p.label; // (the icon big, the word small under it)
+      if (el.textContent !== word) {
+        if (p.icon) el.innerHTML = `<span class="sc-ic">${p.icon}</span><span class="sc-w">${p.label}</span>`;
+        else { el.textContent = word; game.touch?.fit?.(el, true); }
+      }
+      el.classList.toggle('dim', !!p.dim);
+      el.classList.toggle('sc-on', !!p.on);
+      el.style.setProperty('--sc-col', p.move ? typeCss(p.move.type) : '#ffffff');
     });
   }
   function touchFight(on) {
@@ -435,7 +439,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const t = document.getElementById('touch');
     t?.classList.toggle('fight', on);
     document.body.classList.toggle('scribbling', on);
-    document.getElementById('crosshair')?.classList.toggle('sc-behind', on && S.mode === 'behind');
+    document.getElementById('crosshair')?.classList.toggle('sc-behind', on);
     const ride = document.getElementById('btn-ride');
     if (on) { ride?.classList.remove('hidden'); t?.classList.remove('sky'); }
     else {
@@ -605,7 +609,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     touchFight(true);
     game.ui?.setPrompt?.('');
     sound.play('whoosh');
-    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · the round buttons are your moves · Jump = Dodge' : 'WASD moves · Q E R F your moves · Space dodges · V camera') : '');
+    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · Attack hurts · Special helps · Jump = Dodge' : 'WASD moves · Q Attack · E Special · Space dodges') : '');
   }
   function endFight(won) {
     S.result = won; S.exitFrom = null;
@@ -635,24 +639,23 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const active = () => S.phase === 'fight' && game.playing?.() && !game.ui?.asking;
     document.addEventListener('keydown', e => {
       if (!game.started || e.target instanceof HTMLInputElement) return;
-      if (e.code === 'KeyV' && !e.repeat && !game.cubeCam?.can?.() && S.can() && !game.ui?.asking && (S.fighting || game.playing?.())) { e.stopImmediatePropagation(); S.toggleCam(); return; }
       if (!S.fighting || game.ui?.asking || !game.playing?.()) return;
       if (e.code in KEYS || /^Digit[123]$/.test(e.code)) {
         e.preventDefault(); e.stopImmediatePropagation();
         if (e.repeat || !active()) return;
         if (e.code.startsWith('Digit')) S.fight.swap(+e.code.slice(5) - 1);
-        else { pressed.add(e.code); S.fight.press(KEYS[e.code]); }
+        else { pressed.add(e.code); S.fight.push(KEYS[e.code]); }
       }
     }, true);
     document.addEventListener('keyup', e => {
-      if (e.code in KEYS && pressed.has(e.code)) { pressed.delete(e.code); S.fight?.release(KEYS[e.code]); e.stopImmediatePropagation(); }
+      if (e.code in KEYS && pressed.has(e.code)) { pressed.delete(e.code); S.fight?.lift(KEYS[e.code]); e.stopImmediatePropagation(); }
     }, true);
     document.addEventListener('mousedown', e => {
       if (!S.fighting || document.pointerLockElement == null || game.ui?.asking) return;
       e.stopImmediatePropagation();
-      if (e.button === 0 && active()) { pressed.add('mouse'); S.fight.press(1); }
+      if (e.button === 0 && active()) { pressed.add('mouse'); S.fight.push(1); }
     }, true);
-    document.addEventListener('mouseup', e => { if (e.button === 0 && pressed.has('mouse')) { pressed.delete('mouse'); S.fight?.release(1); e.stopImmediatePropagation(); } }, true);
+    document.addEventListener('mouseup', e => { if (e.button === 0 && pressed.has('mouse')) { pressed.delete('mouse'); S.fight?.lift(1); e.stopImmediatePropagation(); } }, true);
     // the five fixed slots: while a fight runs they are Dodge and your four moves (held: a big blast charges while the finger stays down)
     const hook = () => SLOT_IDS.forEach((id, slot) => {
       const el = document.getElementById(id);
@@ -665,9 +668,9 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         try { el.setPointerCapture(e.pointerId); } catch { /* gone */ }
         lastAt = performance.now();
         if (!active()) return;
-        mine = e.pointerId; el.classList.add('down'); S.fight.press(slot);
+        mine = e.pointerId; el.classList.add('down'); S.fight.push(slot);
       }, true);
-      const up = e => { if (mine == null || e.pointerId !== mine) return; mine = null; el.classList.remove('down'); S.fight?.release(slot); e.stopImmediatePropagation(); };
+      const up = e => { if (mine == null || e.pointerId !== mine) return; mine = null; el.classList.remove('down'); S.fight?.lift(slot); e.stopImmediatePropagation(); };
       el.addEventListener('pointerup', up, true); el.addEventListener('pointercancel', up, true);
       el.addEventListener('click', e => { if (S.fighting || performance.now() - lastAt < 600) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
     });
@@ -680,7 +683,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   let baseFov = null, frozen = null;
   function thirdPerson(dt, snap) {
     const p = game.player, f = S.fight.you;
-    const pose = cam.update(dt, { x: f.x, y: S.youY ?? f.y, z: f.z }, p.yaw, game.camera.aspect || 1, S.ground, snap);
+    const pose = cam.update(dt, { x: f.x, y: S.youY ?? f.y, z: f.z }, p.yaw, game.camera.aspect || 1, S.ground, snap, S.phase === 'fight' ? foesMiddle(S.fight) : null);
     tpPos.set(pose.x, pose.y, pose.z);
     tmp.m.lookAt(tpPos, tmp.a.set(pose.at.x, pose.at.y, pose.at.z), THREE.Object3D.DEFAULT_UP);
     tpQ.setFromRotationMatrix(tmp.m);
@@ -699,8 +702,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
   }
 
-  // ---- first person: your creature runs beside you; warnings you cannot see show as arrows round the middle
-  function followInput() { const p = game.player; follow(S.fight, p.pos.x, p.pos.z, p.yaw); }
+  // ---- the stick moves your creature, relative to the camera
   function behindInput() {
     const p = game.player, F = S.fight, k = p.keys || {}, j = game.touch?.joy || { x: 0, y: 0 };
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
@@ -710,22 +712,6 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     F.input.mz = -Math.cos(y) * f - Math.sin(y) * s;
     F.aimDir = null;
   }
-  function pointers() {
-    if (!game.ui?.setPointers) return;
-    if (S.mode !== 'eyes' || S.phase !== 'fight') { game.ui.setPointers(null); return; }
-    const p = game.player, list = [];
-    for (const f of S.fight.foes) if (f.alive && (f.tell || f.charging || Math.hypot(f.x - p.pos.x, f.z - p.pos.z) < 6)) {
-      const a = wrap(Math.atan2(f.x - p.pos.x, f.z - p.pos.z) - Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)));
-      if (Math.abs(a) < 0.75) continue; // in view: no arrow
-      list.push({ angle: -a, colour: f.tell || f.charging ? '#ff4a3c' : '#ffffffcc', size: f.tell || f.charging ? 1 : 0.3 });
-    }
-    game.ui.setPointers(list);
-  }
-  function keepInRing() {
-    const p = game.player, C = S.spot, d = Math.hypot(p.pos.x - C.x, p.pos.z - C.z), lim = FIGHT.R - 0.6;
-    if (d > lim) { p.pos.x = C.x + (p.pos.x - C.x) * lim / d; p.pos.z = C.z + (p.pos.z - C.z) * lim / d; }
-  }
-
   // ---- drawing the creatures each frame
   function drawModels(dt) {
     const F = S.fight;
@@ -835,13 +821,12 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       const T = SCRIBBLE.enter, k = easeBack(Math.min(1, phaseT / 0.7));
       tg.mesh.visible = true; drawTangle(tg, k, 0.07 + 0.03 * Math.min(1, phaseT / 0.7), boil);
       parts.patch.material.opacity = 1 - Math.min(1, phaseT / 0.7); parts.ring.material.opacity = Math.min(1, phaseT / 0.7);
-      S.camK = S.mode === 'behind' ? Math.max(0, Math.min(1, (phaseT - T.camFrom) / T.cam)) : 0;
+      S.camK = Math.max(0, Math.min(1, (phaseT - T.camFrom) / T.cam));
       if (phaseT >= T.go && S.pinT == null) { S.phase = 'fight'; phaseT = 0; say('Go!', 0.7); }
     } else if (S.phase === 'fight') {
       drawTangle(tg, 1, 0.1, boil);
-      const want = S.mode === 'behind' ? 1 : 0;
-      if (playing) S.camK = want > S.camK ? Math.min(want, S.camK + dt / SCRIBBLE.enter.cam) : Math.max(want, S.camK - dt / SCRIBBLE.enter.cam);
-      if (S.mode === 'eyes' && S.camK < 0.5) { keepInRing(); followInput(); } else behindInput();
+      S.camK = 1;
+      behindInput();
       if (playing && !S.manual) F.step(dt);
       if (game.creatures) game.creatures.spawnTimer = Math.max(game.creatures.spawnTimer || 0, 1); // no new wild creature while you fight
       if (F.over === false && playing && ((S.dropT = (S.dropT || 0) + dt) > 0.5)) { S.dropT = 0; for (const w of [...(game.creatures?.list || [])]) if (Math.hypot(w.pos.x - C.x, w.pos.z - C.z) < FIGHT.R + 2) game.creatures.remove(w); }
@@ -858,31 +843,19 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       }
       if (S.camK <= 0 && phaseT > E.wait + 0.5 && S.pinT == null) { S.exitFrom = null; finishExit(); }
     }
-    // behind your creature the camera does not turn (FightCam): your look waits where it was, so the glide back ends where you looked
-    if (S.fight && frozen) {
-      if (S.mode === 'eyes' && S.phase === 'fight') { frozen.yaw = p.yaw; frozen.pitch = p.pitch; }
-      else if (!cam.c.turn) { p.yaw = frozen.yaw; p.pitch = frozen.pitch; }
-    }
+    // your look waits while the camera is behind your creature; the glide back ends looking the way the fight camera looked
+    if (S.fight && frozen) { p.yaw = frozen.yaw = S.phase === 'exit' ? frozen.yaw : cam.yaw; p.pitch = frozen.pitch; }
     if (!S.fight) { placeCamera(camera, dt); return; }
     events();
     drawModels(dt);
     drawFx(dt);
     placeCamera(camera, dt);
-    drawBars(); drawSquad(); drawPad(); pointers();
+    drawBars(); drawSquad(); drawPad();
     if (typeof document !== 'undefined') document.getElementById('crosshair')?.classList.toggle('sc-behind', S.camK > 0.5);
   };
 
   // ---- the rest of the game asks
   S.can = () => !!parts && S.phase !== 'off';
-  S.toggleCam = (say2 = true) => {
-    S.mode = S.mode === 'behind' ? 'eyes' : 'behind';
-    if (S.mode === 'behind' && S.fight) cam.yaw = game.player.yaw; // back up behind: the camera faces the way you looked
-    try { localStorage.setItem(SCRIBBLE.key, S.mode); } catch { /* private window */ }
-    if (say2 && game.ui) game.ui.toast(S.mode === 'behind' ? '🎥 Fight camera: behind your creature' : '🎥 Fight camera: in your eyes');
-    S.refresh();
-    return S.mode;
-  };
-  S.setMode = m => { if (m !== S.mode) S.toggleCam(false); return S.mode; };
   // a tap during a fight picks the monster under the finger (true = the tap was the fight's)
   S.tap = (x, y) => {
     if (!S.fighting) return false;
@@ -897,23 +870,9 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (best) S.fight.pick(best);
     return true;
   };
-  // the pause screen's camera button (made once, shown only while the patch is here; Cube Planets' own button sits beside it)
-  let btn = null;
-  S.refresh = () => {
-    if (typeof document === 'undefined') return;
-    if (!btn) {
-      const sound2 = document.getElementById('sound-btn');
-      if (!sound2) return;
-      btn = document.createElement('button'); btn.id = 'fightcam-btn';
-      btn.addEventListener('click', e => { e.stopPropagation(); S.toggleCam(false); });
-      sound2.after(btn); sound2.after(document.createTextNode(' '));
-    }
-    const s = S.can() ? (S.mode === 'behind' ? '🎥 Fight: behind' : '🎥 Fight: eyes') : '';
-    btn.textContent = s; btn.classList.toggle('hidden', !s);
-  };
-  setInterval(() => S.refresh(), 1000);
+  S.refresh = () => {}; // (the pause screen's first-person button is gone)
   // tests and the console
-  S.info = () => ({ on: true, phase: S.phase, mode: S.mode, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
+  S.info = () => ({ on: true, phase: S.phase, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
     fight: S.fight?.info() ?? null, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
   S.fightOf = () => S.fight;
   S.warp = () => { // tests: stand just outside the patch (half a block), facing it, on flat ground (the side of the start first)

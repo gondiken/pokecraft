@@ -1,5 +1,5 @@
 // Night run 2026-11-10 (plans/chapter3.md section 9): measurements behind the numbers in the plan, on seeds 1, 22, 122.
-//   node tests/scribblemeasure.mjs cam      what a child sees: the first try's camera vs the steep one, iPad landscape and portrait
+//   node tests/scribblemeasure.mjs cam|kinds|length      what a child sees: the first try's camera vs the steep one, iPad landscape and portrait
 //   SCRIBBLE_GAMES=n, SCRIBBLE_SEED=s, SCRIBBLE_TUNE='{"R":11}' (FIGHT), SCRIBBLE_BOTS=kid,skilled
 import { serve, launch } from './helpers.mjs';
 import { scribblePage, play, SEEDS } from './scribblebots.mjs';
@@ -22,8 +22,9 @@ const add = (k, r) => { (sum[k] ??= []).push(r); };
 for (const seed of process.env.SCRIBBLE_SEED ? [+process.env.SCRIBBLE_SEED] : SEEDS) {
   const page = await scribblePage(browser, base, { seed });
   if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => Object.assign((await import('/src/scribblefight.js')).FIGHT, JSON.parse(t)), process.env.SCRIBBLE_TUNE);
+  if (process.env.SCRIBBLE_CAM) await page.evaluate(async t => Object.assign((await import('/src/scribblefight.js')).CAM, JSON.parse(t)), process.env.SCRIBBLE_CAM);
   if (what === 'cam') {
-    const cams = [['old', 4 / 3], ['new', 4 / 3], ['old', 3 / 4], ['new', 3 / 4]];
+    const cams = (process.env.SCRIBBLE_CAMS || 'old,steep,flat,new').split(',').flatMap(c => [[c, 4 / 3], [c, 3 / 4]]);
     for (const bot of (process.env.SCRIBBLE_BOTS || 'kid,skilled').split(',')) for (let g = 0; g < games; g++) {
       const r = await play(page, bot, { lead: g, cams });
       add(`${bot}`, r);
@@ -39,16 +40,16 @@ for (const seed of process.env.SCRIBBLE_SEED ? [+process.env.SCRIBBLE_SEED] : SE
     }
   }
   if (what === 'length') {
-    for (const bot of (process.env.SCRIBBLE_BOTS || 'naive,kid,person,skilled').split(',')) for (let g = 0; g < games; g++) for (const eyes of [false, true]) {
-      const r = await play(page, bot, { lead: g, eyes, fps: g % 2 ? 20 : 60, limit: 400, solo: TEAM });
-      add(`${bot} ${eyes ? 'eyes' : 'behind'}`, r);
+    for (const bot of (process.env.SCRIBBLE_BOTS || 'naive,kid,person,skilled').split(',')) for (let g = 0; g < games; g++) {
+      const r = await play(page, bot, { lead: g, fps: g % 2 ? 20 : 60, limit: 400, solo: TEAM });
+      add(bot, r);
     }
   }
   await page.context().close();
 }
 const avg = (list, k) => Math.round(list.reduce((a, r) => a + (r[k] ?? 0), 0) / list.length * 10) / 10;
 for (const [k, list] of Object.entries(sum)) {
-  if (k.startsWith('cam')) console.log(`${k}: monsters on screen ${avg(list, 'foe')} %, whole red warning ${avg(list, 'tell')} %, your creature ${avg(list, 'you')} %, jumps ${avg(list, 'jumps')}, a block in the way ${avg(list, 'hidden')} %  (${list.length} fights)`);
+  if (k.startsWith('cam')) console.log(`${k}: monsters on screen ${avg(list, 'foe')} %, whole red warning ${avg(list, 'tell')} %, your creature ${avg(list, 'you')} %, jumps ${avg(list, 'jumps')}, turns ${avg(list, 'turnPerMin')} deg/min, a block in the way ${avg(list, 'hidden')} %  (${list.length} fights)`);
   else if (what === 'kinds') console.log(`${k.padEnd(22)} won ${String(list.filter(r => r.won).length).padStart(2)}/${list.length}  ${String(avg(list, 'time')).padStart(5)} s  monsters' HP left ${String(avg(list, 'foeHp')).padStart(4)} %  this kind's damage/s ${avg(list, 'kindDps')}  shot ${Math.round(list.reduce((a, r) => a + (r.byKind.bolt || 0), 0) / list.reduce((a, r) => a + r.time, 0))}/s  hurt ${avg(list, 'takenPerMin')} % of squad HP/min  ${JSON.stringify(Object.fromEntries(['braced', 'spoilt', 'buffLost'].map(k => [k, avg(list.map(r => r.extra), k)])))}`);
   else if (what === 'length') { const w = list.filter(r => r.won).map(r => r.time).sort((a, b) => a - b), med = w.length ? w[w.length >> 1] : '-';
     console.log(`${k.padEnd(16)} won ${String(w.length).padStart(2)}/${list.length}  median win ${med} s  (wins ${w[0] ?? '-'}..${w.at(-1) ?? '-'} s)  all fights ${avg(list, 'time')} s  monsters' HP left ${avg(list, 'foeHp')} %`); }

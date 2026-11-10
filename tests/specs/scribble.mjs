@@ -1,8 +1,8 @@
 // Chapter 3 Test A / B (owner 2026-11-09, plans/chapter3.md section 6): one scribbled patch near the start, ?preview only.
-//   bots:   tests/scribblebots.mjs on three worlds: naive (mashes, never moves) loses, skilled wins, behind and in first person, 60 / 20 fps
+//   bots:   tests/scribblebots.mjs on three worlds: naive (mashes, never moves) loses, skilled wins, 60 / 20 fps
 //   real:   real keys through the game's own loop: W walks you in, the ring snaps, the cube, the camera rises (screenshots of the move),
-//           Q / Space / D act, V glides to first person and back, a win: the camera glides back down and W walks on; a loss: try again
-//   ipad:   an emulated iPad: the joystick walks you in, the five fixed slots are Dodge + your moves, a tap picks a monster, all restored after
+//           Q / Space / D act, the camera turns by itself to bring a monster back in, a win: the camera glides back down and W walks on; a loss: try again
+//   ipad:   an emulated iPad: the joystick walks you in, three buttons: Dodge, Attack, Special (Ride and Down hidden), a tap picks a monster, all restored after
 //   closed: without ?preview there is no patch at all
 //   SCRIBBLE_ONLY=bots|real|ipad|closed      screenshots: tests/screenshots/scribble-*.png
 import { devices } from 'playwright';
@@ -70,10 +70,10 @@ export default async function ({ browser, base, t }) {
     let i1 = await info(page);
     t.ok(i1.camK === 1 && i1.fight.foes.length === 3 && i1.fight.squad.length === 3, 'the fight: behind your creature, three monsters, your squad of three');
     const view = await page.evaluate(() => { const c = window.pokecraft.camera, F = window.pokecraft.scribble.fightOf(); return { fov: c.fov, down: Math.atan2(c.position.y - F.you.y, Math.hypot(c.position.x - F.you.x, c.position.z - F.you.z)) * 180 / Math.PI }; });
-    t.ok(Math.abs(view.fov - 50) < 0.5 && view.down > 55 && view.down < 70, `the steep fight camera like the arena's: fov ${view.fov.toFixed(1)}, ${view.down.toFixed(0)} degrees down`);
+    t.ok(Math.abs(view.fov - 50) < 0.5 && view.down > 52 && view.down < 61, `the fight camera (owner 2026-11-10: a little flatter than the arena's): fov ${view.fov.toFixed(1)}, ${view.down.toFixed(0)} degrees down`);
     const yaw0 = await page.evaluate(() => window.pokecraft.player.yaw);
     await page.mouse.move(500, 380); await page.mouse.move(700, 380); await frames(page, 3);
-    t.ok(Math.abs(await page.evaluate(() => window.pokecraft.player.yaw) - yaw0) < 1e-6, 'behind your creature the camera does not turn with the mouse');
+    t.ok(Math.abs(await page.evaluate(() => window.pokecraft.player.yaw) - yaw0) < 0.05, 'the camera does not follow the mouse in a fight');
     const p0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
     // real keys: Q = move 1, Space = Dodge, D moves your creature (not you)
     const c0 = await fight(page, F => ({ x: F.you.x, z: F.you.z }));
@@ -84,39 +84,43 @@ export default async function ({ browser, base, t }) {
     t.ok(Math.hypot(p1.x - p0.x, p1.z - p0.z) < 0.01, 'D moves your creature; you stand still at the edge');
     await page.keyboard.press('KeyQ');
     await until(page, () => window.pokecraft.scribble.fightOf().cd[1] > 0, null, 20000).catch(() => {});
-    t.ok(await fight(page, F => F.cd[1] > 0), 'Q uses your first move');
+    t.ok(await fight(page, F => F.cd[1] > 0), 'Q = Attack: it uses the first attack move');
+    await page.keyboard.press('KeyE');
+    await until(page, () => { const F = window.pokecraft.scribble.fightOf(); return F.cd[2] > 0; }, null, 20000).catch(() => {});
+    t.ok(await fight(page, F => F.cd[2] > 0 && F.moves[1].kind === 'buff'), 'E = Special: it uses the help move (Pump Up)');
     await page.keyboard.down('Space'); await frames(page, 2); await page.keyboard.up('Space');
     await until(page, () => window.pokecraft.scribble.fightOf().cd[0] > 0, null, 20000).catch(() => {});
     t.ok(await fight(page, F => F.cd[0] > 0), 'Space dodges (and does not jump)');
     await page.screenshot({ path: `${SHOTS}scribble-8-fight.png` });
     // step 2: a big blast held with a real key: its ring grows on the ground; let go = the blast
-    await fight(page, async F => { const { shapeOf } = await import('/src/arena/core.js'); F.moves[3] = shapeOf('statueslam'); F.cd[4] = 0; });
-    await page.keyboard.down('KeyF');
+    await fight(page, async F => { const { shapeOf } = await import('/src/arena/core.js'); F.moves[3] = shapeOf('statueslam'); F.cd[4] = 0; F.usedAt[1] = F.usedAt[3] = F.clock; });
+    const shows = await fight(page, F => F.pad()[1].icon);
+    t.ok(shows === '◎', `the Attack button shows the move it uses next: ${shows} (a big blast)`);
+    await page.keyboard.down('KeyQ');
     await until(page, () => window.pokecraft.scribble.fightOf().charge.t > 0.7, null, 20000).catch(() => {});
     const ring = await page.evaluate(() => { const g = window.pokecraft, a = g.scene.getObjectByName('scribble').children.find(o => o.geometry?.type === 'RingGeometry'); return { shown: !!a?.visible, r: a?.scale.x, charge: g.scribble.fightOf().charge.t }; });
     await page.screenshot({ path: `${SHOTS}scribble-8b-charge.png` });
-    await page.keyboard.up('KeyF');
+    await page.keyboard.up('KeyQ');
     await until(page, () => window.pokecraft.scribble.fightOf().cd[4] > 0, null, 20000).catch(() => {});
-    t.ok(ring.shown && ring.r > 3 && await fight(page, F => F.cd[4] > 0 && F.charge.slot < 0), `F held: the big blast's ring grows on the ground (radius ${ring.r?.toFixed(1)} after ${ring.charge?.toFixed(1)} s), let go = the blast`);
+    t.ok(ring.shown && ring.r > 3 && await fight(page, F => F.cd[4] > 0 && F.charge.slot < 0), `Q held on ◎: the big blast's ring grows on the ground (radius ${ring.r?.toFixed(1)} after ${ring.charge?.toFixed(1)} s), let go = the blast`);
     const perf = await page.evaluate(() => window.pokecraft.renderer.info.render.calls);
     t.ok(perf < 200, `draw calls in the fight: ${perf} (the steep camera sees less of the world; it was about 335)`);
-    // Test B: V glides into first person in the middle of the fight; W then walks YOU, your creature follows
-    await page.keyboard.press('KeyV');
-    await until(page, () => window.pokecraft.scribble.info().camK === 0);
-    t.ok((await info(page)).mode === 'eyes', 'V: the camera glides down into your eyes (Test B)');
-    await page.evaluate(() => { const g = window.pokecraft, F = g.scribble.fightOf(), p = g.player; p.yaw = Math.atan2(-(F.foes[0].x - p.pos.x), -(F.foes[0].z - p.pos.z)); p.pitch = -0.15; });
-    await frames(page, 3);
-    await page.screenshot({ path: `${SHOTS}scribble-9-eyes.png` });
-    const e0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
-    await page.keyboard.down('KeyS');
-    await until(page, e0 => Math.hypot(window.pokecraft.player.pos.x - e0.x, window.pokecraft.player.pos.z - e0.z) > 0.8, e0);
-    await page.keyboard.up('KeyS');
-    await page.waitForTimeout(1500);
-    const near = await page.evaluate(() => { const g = window.pokecraft, F = g.scribble.fightOf(); return Math.hypot(F.you.x - g.player.pos.x, F.you.z - g.player.pos.z); });
-    t.ok(near < 4, `first person: W/S walk you, your creature runs beside you (${near.toFixed(1)} blocks away)`);
-    await page.keyboard.press('KeyV');
-    await until(page, () => window.pokecraft.scribble.info().camK === 1);
-    t.ok((await info(page)).mode === 'behind', 'V again: back up behind your creature');
+    // owner 2026-11-10 ("a slight turn to cover for the scene is ok"): a monster at the edge of the screen = the camera turns, slowly
+    const turned = await page.evaluate(async () => {
+      const { FightCam, groundOf, onScreen } = await import('/src/scribblefight.js');
+      const g = window.pokecraft, F = g.scribble.fightOf(), G = groundOf(g.world), cam = new FightCam(), aspect = 4 / 3;
+      cam.start(0, F.you.x, F.you.y, F.you.z);
+      const right = { x: 9.5, z: 0 }; // the screen's right at yaw 0, near its edge
+      const foe = { x: F.you.x + right.x, y: F.you.y, z: F.you.z + right.z };
+      let p = cam.update(1 / 60, F.you, 0, aspect, G, true, [foe]);
+      const x0 = onScreen(p, aspect, foe.x, foe.y + 0.6, foe.z)?.x;
+      for (let k = 0; k < 180; k++) p = cam.update(1 / 60, F.you, 0, aspect, G, false, [foe]);
+      const x1 = onScreen(p, aspect, foe.x, foe.y + 0.6, foe.z)?.x;
+      for (let k = 0; k < 180; k++) cam.update(1 / 60, F.you, 0, aspect, G, false, [{ ...foe, x: F.you.x - 1, z: F.you.z - 3 }]);
+      const y2 = cam.yaw; for (let k = 0; k < 120; k++) cam.update(1 / 60, F.you, 0, aspect, G, false, [{ ...foe, x: F.you.x - 1, z: F.you.z - 3 }]);
+      return { x0, x1, dy: Math.abs(cam.yaw), still: Math.abs(cam.yaw - y2) };
+    });
+    t.ok(turned.x0 > 0.85 && turned.x1 < 0.86 && turned.dy < 1 && turned.still < 1e-3, `a monster at the screen's edge: the camera turns slowly until it is back in (x ${turned.x0.toFixed(2)} -> ${turned.x1.toFixed(2)} in 3 s, ${(turned.dy * 180 / Math.PI).toFixed(0)} degrees), then stays still`);
     // a win (the monsters' HP is taken away here; the bots play the real thing): the camera glides back down, then you walk on
     await fight(page, F => { for (const f of F.foes) F.hit(F.you, f, 9999, F.you.type, 100); });
     await until(page, () => window.pokecraft.scribble.info().phase === 'exit');
@@ -168,11 +172,10 @@ export default async function ({ browser, base, t }) {
     await until(page, () => window.pokecraft.scribble.info().phase === 'fight');
     t.ok(true, 'the joystick walks you into the patch');
     const slots = await page.evaluate(() => ['btn-jump', 'btn-act', 'btn-place', 'btn-ride', 'btn-down'].map(id => { const e = document.getElementById(id); return { id, text: e.textContent, shown: e.offsetParent !== null }; }));
-    const moves = await fight(page, F => F.moves.map(s => s?.name));
-    t.ok(slots[0].text === 'Dodge' && slots.slice(1).every((s, i) => s.text === (moves[i] ?? '—')) && slots.every(s => s.shown), `the five fixed slots: ${slots.map(s => s.text).join(' / ')}`);
+    t.ok(slots[0].text === 'Dodge' && slots[1].text.endsWith('Attack') && slots[2].text.endsWith('Special') && slots.slice(0, 3).every(s => s.shown) && slots.slice(3).every(s => !s.shown), `three buttons with a fixed meaning: ${slots.slice(0, 3).map(s => s.text).join(' / ')}; Ride and Down hidden`);
     await tap(await center('#btn-act'), 5);
     await until(page, () => window.pokecraft.scribble.fightOf().cd[1] > 0, null, 20000).catch(() => {});
-    t.ok(await fight(page, F => F.cd[1] > 0), 'the round action button uses move 1');
+    t.ok(await fight(page, F => F.cd[1] > 0), 'the round action button is Attack');
     await tap(await center('#btn-jump'), 6);
     await until(page, () => window.pokecraft.scribble.fightOf().cd[0] > 0, null, 20000).catch(() => {});
     t.ok(await fight(page, F => F.cd[0] > 0), 'Jump dodges');
