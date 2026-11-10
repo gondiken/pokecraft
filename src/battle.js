@@ -11,6 +11,8 @@ import { sound } from './sound.js';
 import { sketchModel } from './sketch.js'; // T45
 import { cleanPaint } from './custom.js'; // the Custom guardians' paint
 import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
+import { lookOf } from './guardiankit.js'; // owner 2026-11-09: a guardian's attack styles (a look only: no draws)
+import { RUSH } from './attackstyles.js';
 import { exitFor } from './battleexit.js'; // owner 2026-11-07: Run or Give up, one object per battle
 import { battleLevel } from './difficulty.js'; // owner 2026-11-08: Easy / Normal / Hard (duels and co-op always Normal)
 
@@ -440,11 +442,14 @@ export class Battle {
     await tween(500, t => model.scale.setScalar(Math.max(0.01, easeOut(t) * BOSS_SCALE)));
   }
 
-  async lunge(side) {
+  // far (owner 2026-11-09: a guardian's Rush): it dashes almost all the way to the other creature and back
+  async lunge(side, far = false) {
     const a = this.modelOf(side), b = this.modelOf(this.other(side));
     const start = a.position.clone();
-    const toward = b.position.clone().sub(start).setY(0).normalize().multiplyScalar(0.8);
-    await tween(320, t => {
+    const gap = b.position.clone().sub(start).setY(0), len = gap.length();
+    const reach = far ? Math.max(0.8, (len - (this.spot(side)?.r ?? 0.5) - (this.spot(this.other(side))?.r ?? 0.5)) * RUSH.reach) : 0.8;
+    const toward = gap.normalize().multiplyScalar(reach);
+    await tween(far ? RUSH.ms : 320, t => {
       const k = Math.sin(t * Math.PI);
       a.position.set(start.x + toward.x * k, start.y + k * 0.25, start.z + toward.z * k);
     });
@@ -954,7 +959,8 @@ export class Battle {
     ma.justWoke = false; // it is awake and gets to act: its free turn is used up
     this.say(`${who} used ${mv.name}!`, 700);
     sound.play(sound.has(moveId) ? moveId : `fx:${mv.type}`); // sound-type moves have their own sound
-    await this.lunge(side);
+    const look = mv.power && SPECIES[atk.species]?.kit ? lookOf(atk.paint, moveId) : null; // a guardian's own attack style (Attack Studio)
+    await this.lunge(side, look?.style === 'rush');
     await wait(150);
     const hit = this.rng(); // draw 1: always, even for moves that never miss
     if (!mv.sure && hit > mv.acc) { sound.play('miss'); fx?.status('miss', this.spot(defSide), { from: this.spot(side) }); await this.say('But it missed!', 1000); return; }
@@ -981,7 +987,7 @@ export class Battle {
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side !== 'foe' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
     let done = 0;
-    await fx?.attack(moveId, this.spot(side), this.spot(defSide));
+    await fx?.attack(moveId, this.spot(side), this.spot(defSide), look);
     for (let i = 0; i < hits && def.hp > 0; i++) {
       const hpBefore = def.hp;
       def.hp = Math.max(0, def.hp - dmgNow());

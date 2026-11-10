@@ -5,12 +5,14 @@
 // your guardian on his island in the Swirl (`update`). The battle is the ordinary boss battle (the last creature hangs on once, like Zenithar).
 // Nothing here is a block; nothing is sent in play together (every friend has their own ending).
 import * as THREE from 'three';
-import { SPECIES, makeCreature, buildModel, animateModel, disposeModel, movesWith, MAX_LEVEL } from './species.js';
+import { SPECIES, MOVES, nameOf, makeCreature, buildModel, animateModel, disposeModel, movesWith, MAX_LEVEL } from './species.js';
+import { Fx } from './fx.js'; // owner 2026-11-09: the Attack Studio plays an attack in the turning picture
+import { STYLES, SPARKLES, RUSH } from './attackstyles.js';
 import { rematchMoves, rematchCubes } from './rematch.js';
 import { sound } from './sound.js';
 import { el } from './util.js';
 import { PAINTS, DESIGNS, PAINT_SLOTS, guardianLevel } from './custom.js';
-import { SLOTS, SLOT_LABELS, SLOT_ICONS, KIT, KIT_COLOURS, BARE, NAME_MAX, cleanDesign, kitName, randomName, flies } from './guardiankit.js';
+import { SLOTS, SLOT_LABELS, SLOT_ICONS, KIT, KIT_COLOURS, BARE, NAME_MAX, cleanDesign, kitName, randomName, flies, lookOf } from './guardiankit.js';
 import { floorKey, WORDS, wizardTeam, DEFAULT_GROUPS, starCount, towerStand } from './wizardtower.js';
 import { bridgeDone } from './pictureworlds.js';
 
@@ -72,6 +74,7 @@ export function createStudio(game, { startBattle, save }) {
   let island = null;           // the Swirl's Wizard and guardian of the world they were made for
   let clock = 0;
   let draft = null, tab = 'body', preview = null; // the drawing board: the design being drawn, the open part tab, the turning picture
+  let attacks = null; // owner 2026-11-09 (?preview): the guardian whose attacks the board is styling (null = the part kit)
 
   const dist = npc => (npc?.pos && game.player ? Math.hypot(game.player.pos.x - npc.pos.x, game.player.pos.z - npc.pos.z) : 0);
   const floor5 = () => game.beaten.includes(floorKey(5));
@@ -184,7 +187,7 @@ export function createStudio(game, { startBattle, save }) {
     // The draft stays while the board is closed ("Not now"), so nothing a child drew is lost; it is saved only once chosen.
     startDraft() {
       if (draft) return draft;
-      // the bare skeleton (owner 2026-11-08: no ready-made designs, body first) in the colours you painted on floor 5 (its sign promises them)
+      // the bare skeleton (owner 2026-11-08: no ready-made designs, body first) in the colours an old save painted on the old floor 5, else Blue / Pink / Yellow
       const [b, ac, be] = palette();
       draft = S.redesign && S.look ? cleanDesign(S.look) : { n: '', p: [...BARE.p], c: [b, b, ac, be, ac, ac, ac] };
       tab = 'body';
@@ -201,6 +204,9 @@ export function createStudio(game, { startBattle, save }) {
     renderBoard() {
       const body = document.getElementById('drawboard-body');
       if (!body) return;
+      const close = document.getElementById('drawboard-close');
+      if (close) close.textContent = attacks ? 'Close' : 'Not now';
+      if (attacks) { this.renderAttacks(body); return; }
       this.startDraft();
       const redo = S.ally && S.redesign;
       const nameIn = el('input', { id: 'db-name', type: 'text', maxlength: String(NAME_MAX), placeholder: kitName(draft), value: draft.n, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Name' });
@@ -227,6 +233,7 @@ export function createStudio(game, { startBattle, save }) {
     },
     // Redraws the tabs, the part buttons and the colour swatches (the picture and the name box stay).
     refreshBoard() {
+      if (attacks) { this.refreshAttacks(); return; }
       const tabs = document.getElementById('db-tabs');
       if (!tabs || !draft) { this.updatePreview(); return; }
       const k = SLOTS.indexOf(tab), list = KIT[tab];
@@ -263,21 +270,24 @@ export function createStudio(game, { startBattle, save }) {
       const loop = now => {
         if (!this.boardOpen || !preview) { this.stopPreview(); return; }
         const dt = Math.min(0.1, (now - preview.last) / 1000); preview.last = now; preview.t += dt;
-        if (preview.model) { preview.model.rotation.y = 0.5 + preview.t * 0.7; animateModel(preview.model, preview.t, false); }
+        if (preview.model && !attacks) { preview.model.rotation.y = 0.5 + preview.t * 0.7; animateModel(preview.model, preview.t, false); }
+        if (attacks) this.stepDemo(now);
         preview.renderer.render(preview.scene, preview.cam);
         preview.raf = requestAnimationFrame(loop);
       };
       preview.raf = requestAnimationFrame(loop);
     },
     updatePreview() {
-      if (!preview || !draft) return;
-      const d = cleanDesign(draft), key = JSON.stringify([d.p, d.c]);
+      if (!preview || !(draft || attacks)) return;
+      const d = cleanDesign(attacks ? attacks.paint : draft), key = JSON.stringify([d.p, d.c, !!attacks]);
       if (key === preview.key) return;
       preview.key = key;
       if (preview.model) { preview.scene.remove(preview.model); disposeModel(preview.model); }
       const m = buildModel(KIT_SPECIES, d);
       preview.scene.add(m);
       preview.model = m;
+      if (preview.dummy) preview.dummy.visible = !!attacks;
+      if (attacks) { this.stageDemo(m); return; }
       const bb = new THREE.Box3().setFromObject(m), c = bb.getCenter(new THREE.Vector3());
       const size = Math.max(1.1, bb.getSize(new THREE.Vector3()).length() + (flies(d) ? 0.3 : 0));
       preview.cam.position.set(c.x + size * 0.4, c.y + size * 0.35, c.z + size * 1.75);
@@ -287,8 +297,122 @@ export function createStudio(game, { startBattle, save }) {
     stopPreview() {
       if (!preview) return;
       cancelAnimationFrame(preview.raf);
+      preview.fx?.clear(); preview.demo = null;
+      if (!this.boardOpen) attacks = null;
       if (preview.model) { preview.scene.remove(preview.model); disposeModel(preview.model); preview.model = null; }
       preview.key = '';
+    },
+    // ---- the Attack Studio (owner 2026-11-09: "design custom creature's attack animation", ?preview: the team card's 🎬 button) ----
+    // Each attacking move picks a style (attackstyles.js STYLES: Paint, Rush, Shot, Blast, Rain, Spin) and all of them one sparkle shape;
+    // the colours are the guardian's own. Saved at once in the creature's design (`a`, `s`) and in the save field `wizard.look`.
+    get attacks() { return attacks; }, set attacks(c) { attacks = c && SPECIES[c.species]?.kit ? c : null; },
+    attackMoves(c = attacks) { return (c?.moves || []).filter(id => MOVES[id]?.power > 0); },
+    styleOf(id) { return attacks ? STYLES.findIndex(st => st.id === (lookOf(attacks.paint, id)?.style ?? 'paint')) : 0; },
+    sparkleOf() { return attacks ? cleanDesign(attacks.paint).s ?? 0 : 0; },
+    restyleAttacks(change) {
+      if (!attacks) return false;
+      const d = cleanDesign(attacks.paint), a = { ...(d.a || {}) };
+      change(a, d);
+      d.a = a;
+      attacks.paint = cleanDesign(d);
+      if (S.look && attacks === myGuardian()) S.look = cleanDesign(attacks.paint);
+      this.refreshAttacks();
+      save(true);
+      return true;
+    },
+    setStyle(id, st) {
+      if (!attacks || !this.attackMoves().includes(id) || !STYLES[st]) return false;
+      this.restyleAttacks(a => { if (st > 0) a[id] = st; else delete a[id]; });
+      this.playAttack(id);
+      return true;
+    },
+    setSparkle(i) {
+      if (!attacks || !SPARKLES[i]) return false;
+      this.restyleAttacks((a, d) => { if (i > 0) d.s = i; else delete d.s; });
+      const id = this.attackMoves().find(m => this.styleOf(m) > 0) ?? this.attackMoves()[0];
+      if (id) this.playAttack(id);
+      return true;
+    },
+    renderAttacks(body) {
+      const c = attacks;
+      body.replaceChildren(
+        el('h2', {}, `🎬 ${nameOf(c)}'s attacks`),
+        el('p', { class: 'db-sub' }, 'Pick a look for each attack. Tap it to watch!'),
+        el('div', { class: 'db-kit' },
+          el('div', { class: 'db-left' }, el('div', { id: 'db-preview' })),
+          el('div', { class: 'db-right' },
+            el('div', { id: 'db-attacks' }),
+            el('div', { id: 'db-sparkles' }))),
+        el('div', { class: 'db-foot' }, el('button', { id: 'db-done', class: 'primary', onclick: () => game.closeBoard?.() }, '✅ Done!')));
+      this.refreshAttacks();
+      this.startPreview();
+    },
+    refreshAttacks() {
+      const list = document.getElementById('db-attacks'), sp = document.getElementById('db-sparkles');
+      if (!list || !attacks) return;
+      const moves = this.attackMoves();
+      list.replaceChildren(...(moves.length ? moves.map(id => el('div', { class: 'db-atk', 'data-move': id },
+        el('div', { class: 'db-atkname' }, el('span', {}, MOVES[id].name), el('button', { class: 'db-play', title: 'Watch it', onclick: () => this.playAttack(id) }, '▶')),
+        el('div', { class: 'db-styles' }, ...STYLES.map((st, i) => el('button', { class: `db-part db-style${this.styleOf(id) === i ? ' on' : ''}`, 'data-style': String(i), onclick: () => this.setStyle(id, i) },
+          el('span', { class: 'db-ico' }, st.icon), ` ${st.name}`))))) : [el('p', {}, 'No attacks yet!')]));
+      const on = this.sparkleOf();
+      sp.replaceChildren(el('span', { class: 'db-clabel' }, 'Sparkles:'),
+        ...SPARKLES.map((k, i) => el('button', { class: `db-part db-sparkle${on === i ? ' on' : ''}`, 'data-sparkle': String(i), title: k.name, onclick: () => this.setSparkle(i) }, k.icon)));
+    },
+    // The demo stage: the guardian on the left facing a practice target on the right, seen from the side.
+    stageDemo(m) {
+      if (!preview.dummy) {
+        const g = new THREE.Group(), mat = hex => new THREE.MeshLambertMaterial({ color: hex });
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), mat(0x8a5a2b)); post.position.y = 0.35; g.add(post);
+        [[0.5, 0xe13c3c], [0.36, 0xffffff], [0.22, 0xe13c3c], [0.09, 0xffffff]].forEach(([r, hex], i) => {
+          const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.08 + i * 0.012, 20), mat(hex));
+          disc.rotation.z = Math.PI / 2; disc.position.set(0, 0.95, 0); g.add(disc);
+        });
+        preview.scene.add(g); preview.dummy = g;
+      }
+      preview.dummy.visible = true;
+      const bb = new THREE.Box3().setFromObject(m), size = bb.getSize(new THREE.Vector3());
+      const left = -0.7 - size.z / 2;
+      m.position.set(left, 0, 0); m.rotation.y = Math.PI / 2; // faces +x, the target
+      preview.home = left;
+      preview.dummy.position.set(1.5, 0, 0); preview.dummy.rotation.set(0, -0.7, 0); preview.demoYaw = -0.7; // turned half to the camera
+      const x0 = left - size.z / 2 - 0.45, x1 = 1.5 + 0.6, midX = (x0 + x1) / 2, h = Math.max(1.3, size.y);
+      const dist = Math.max((x1 - x0) / 2, h * 0.7) / Math.tan(preview.cam.fov * Math.PI / 360) * 0.95; // both in view
+      preview.cam.position.set(midX, h * 0.5 + dist * 0.25, dist);
+      preview.cam.lookAt(midX, h * 0.5, 0);
+      preview.renderer.render(preview.scene, preview.cam);
+    },
+    spotOf(o) { const b = new THREE.Box3().setFromObject(o), pos = b.getCenter(new THREE.Vector3()); return { pos, top: b.max.y, r: Math.max(0.3, (b.max.x - b.min.x) / 2) }; },
+    // Plays one attack in the preview: a Rush dashes over (like battle.js lunge), the rest hop forward a little; then the effect, then the target wobbles.
+    playAttack(id) {
+      if (!preview || !attacks || !preview.model || !preview.dummy || !MOVES[id]) return false;
+      preview.fx ??= new Fx(preview.scene);
+      preview.fx.on = true;
+      preview.fx.clear();
+      const look = lookOf(attacks.paint, id), rush = look?.style === 'rush', now = performance.now();
+      const gap = preview.dummy.position.x - preview.home;
+      preview.model.position.x = preview.home;
+      preview.demo = { id, look, t0: now, dash: rush ? RUSH.ms : 320, reach: rush ? Math.max(0.6, (gap - 0.9) * RUSH.reach) : 0.35, fired: false, hit: -1 };
+      sound.play('fx:custom');
+      return true;
+    },
+    stepDemo(now) {
+      if (!preview?.model) return;
+      animateModel(preview.model, preview.t, false);
+      preview.fx?.update(now);
+      const d = preview.demo;
+      if (!d) return;
+      const t = (now - d.t0) / d.dash;
+      preview.model.position.x = preview.home + (t < 1 ? Math.sin(Math.PI * t) * d.reach : 0);
+      if (t >= 1 && !d.fired) {
+        d.fired = true;
+        const from = this.spotOf(preview.model), to = this.spotOf(preview.dummy);
+        preview.fx.attack(d.id, from, to, d.look).then(() => { if (preview?.demo === d) { d.hit = performance.now(); preview.fx.impact('custom', to); sound.play('hit'); } });
+      }
+      const w = d.hit > 0 ? (now - d.hit) / 450 : -1;
+      preview.dummy.rotation.z = w >= 0 && w < 1 ? Math.sin(w * 18) * 0.25 * (1 - w) : 0;
+      preview.dummy.rotation.y = preview.demoYaw ?? 0;
+      if (w >= 1) preview.demo = null;
     },
     done() {
       if (!draft || game.ui.asking) return false;

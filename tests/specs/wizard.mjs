@@ -1,5 +1,5 @@
 // Wave 19 (plans/wave19-wizard-tower.md). Stage A: the Custom type and the `paint` field. Stage B: the Wizard's Tower (open for everyone since 2026-11-07).
-// Parts (WIZARD_ONLY=data|chart|paint|travel|old|canvas|land|bridge|painting|tower|ipad|closed|pair|battle|design|ally|shots, comma-separated):
+// Parts (WIZARD_ONLY=data|chart|paint|travel|old|canvas|land|bridge|painting|tower|ipad|closed|pair|battle|design|ally|attacks|shots, comma-separated):
 //   data    the type, six designs (own shapes, one merged swirl badge, models animate with and without paint), moves + the signature + the
 //           three big moves, fx recipes, the sounds, wool 137 "Canvas Wool", the twelve paints against the atlas
 //   chart   the custom row and the five separate cells, no old cell changed (tests/fixtures/chart-before-wizard.json), weak counts
@@ -23,6 +23,7 @@
 //           name, Done asks, Not now keeps the drawing, a choice -> your named guardian (just Custom) joins the team, celebrate, title
 //   ally    (stage C) reload keeps it all (painted floor 5 too), a missing guardian is drawn again, a rematch is +5 levels and earns ONE new look, the Wizard and the guardian on the
 //           Swirl island, old / junk saves
+//   attacks (owner 2026-11-09, ?preview) the guardian's Attack Studio: styles per attack and a sparkle in the design, the team card's 🎬 button, the demo, a Rush in a battle
 //   shots   screenshots (tests/screenshots/w19-*.png; stage C adds battle, board, celebrate and island)
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -417,15 +418,15 @@ export default async function ({ browser, base, t }) {
     // Node: the floors as data, the checker, the bots, the terrain on a stand-in, the walk graph, the cast (tests/wizardcheck.mjs); the same code in the page's module graph
     const r = analyze(1), b = await bridgeRules();
     t.ok(!r.problems.length && !b.problems.length, `canvas / checker / bots / terrain / walk graph / cast in Node (${JSON.stringify(r.info)}) ${[...r.problems, ...b.problems].join('; ')}`);
-    t.ok(r.info.squares === '12,26,14,18,21,28,21,26,36,36,32,34', `the squares to paint (twelve pictures): ${r.info.squares}`);
-    t.ok(r.info.naive === '0,0,0,0,0,0,0,0,0,0,0,0', `the naive bot (600 random taps, 200 seeds) never finishes a picture: ${r.info.naive}`);
+    t.ok(r.info.squares === '12,26,14,18,21,28,21,26,36,36,32,14,19', `the squares to paint (thirteen pictures): ${r.info.squares}`);
+    t.ok(r.info.naive === '0,0,0,0,0,0,0,0,0,0,0,0,0', `the naive bot (600 random taps, 200 seeds) never finishes a picture: ${r.info.naive}`);
     const page = await openGame(browser, base);
     const p = await page.evaluate(async () => {
       const W = await import('/tests/wizardcheck.mjs');
       const a = W.analyze(2), b = await W.bridgeRules();
       return { problems: [...a.problems, ...b.problems], info: a.info };
     });
-    t.ok(!p.problems.length && p.info.squares === '12,26,14,18,21,28,21,26,36,36,32,34', `the same checks pass in the browser's module graph ${p.problems.join('; ')}`);
+    t.ok(!p.problems.length && p.info.squares === '12,26,14,18,21,28,21,26,36,36,32,14,19', `the same checks pass in the browser's module graph ${p.problems.join('; ')}`);
     t.ok(!page.errors.length, `no page errors ${page.errors.join('; ')}`);
     await page.context().close();
   }
@@ -659,9 +660,9 @@ export default async function ({ browser, base, t }) {
       });
       const pics = play.floors.flatMap(f => f.pages);
       t.ok(!play.problems.length && pics.every(p => p.right && p.key) && play.floors.every(f => f.done && (f.door === null || f.door === true)), `every picture by taps from the mat (${pics.length} after the flower): right, its key saved, each floor's door opens after its last picture (${JSON.stringify(play.floors.map(f => [f.n, f.pages.map(p => p.taps).join('+'), f.door]))}) ${play.problems.join('; ')}`);
-      t.ok(pics.length === 11, `eleven more pictures (12 in all): ${pics.length}`);
+      t.ok(pics.length === 12, `twelve more pictures (13 in all): ${pics.length}`);
       t.ok(/^4:/.test(play.floors[3].aim || ''), `the big brush shows a gold outline of the four squares it would paint (${play.floors[3].aim})`);
-      t.ok(Array.isArray(play.paint) && play.paint.length === 3, `floor 5's palette is its three groups (${JSON.stringify(play.paint)})`);
+      t.ok(play.paint === null, `floor 5 is the Wizard's portrait now: no colours to choose there (${JSON.stringify(play.paint)})`);
       // the hint clock: a wrong square blinks after 40 s of stepped play time, at 60 and at 20 steps a second the same
       const blink = await page.evaluate(async () => {
         const g = window.pokecraft, live = g.gymLive.of('part:studio'), WT = await import('/src/wizardtower.js');
@@ -772,7 +773,7 @@ export default async function ({ browser, base, t }) {
 
     // the gate: no floor 5 yet, then (floor 5 done) no stars
     const g1 = await talk();
-    t.ok(g1.some(m => /Paint my guardian first/.test(m)), `without floor 5 he says the gate words: ${g1.at(-1)}`);
+    t.ok(g1.some(m => /Paint my portrait first/.test(m)), `without floor 5 he says the gate words: ${g1.at(-1)}`);
     const painted = [4, 9, 10]; // Teal body, Brown ears, Grey belly: the painted palette of the test
     await page.evaluate(async painted => {
       const g = window.pokecraft; g.beaten.push('wizard:floor5'); g.studio.paint = painted;
@@ -900,10 +901,10 @@ export default async function ({ browser, base, t }) {
       await toasts();
       const re = await page.evaluate(async () => {
         const g = window.pokecraft, WT = await import('/src/wizardtower.js'), live = g.gymLive.of('part:studio'), c = g.party.find(q => q.species === 'guardian');
-        return { info: g.studio.info(), paint: c?.paint, place: g.place, cells: live.info().cells[4], want: WT.finishedCells(WT.FLOORS[4].pages[0], g.studio.paint), locked: live.locked(5) };
+        return { info: g.studio.info(), paint: c?.paint, place: g.place, cells: live.info().cells[4], fresh: WT.startCells(WT.FLOORS[4].pages[0]), locked: live.locked(5) };
       });
       t.ok(re.info.ally && re.info.design === 'guardian' && re.info.paint.join() === painted.join() && re.paint?.n === 'Sparky' && re.info.look.p.join() === '6,1,2,3,6,2,3', `a reload keeps the ally, your design and the painted palette (${JSON.stringify(re.info)})`);
-      t.ok(re.cells.join() === re.want.join() && re.locked, 'the finished floor 5 shows YOUR painted colours after the reload, and is locked now');
+      t.ok(re.cells.join() === re.fresh.join() && !re.locked, 'an old floor 5 key keeps the gate open while the new portrait waits on the canvas');
       await stand();
       // the guardian is never lost: remove it, talk to him, he draws it again
       const redraw = await page.evaluate(() => {
@@ -1261,5 +1262,103 @@ export default async function ({ browser, base, t }) {
     t.ok(true, 'Dad goes back to the Swirl and the Kid comes too');
     t.ok(!A.errors.length && !Bp.errors.length, `no page errors ${A.errors.concat(Bp.errors).join('; ')}`);
     await A.context().close(); await Bp.context().close();
+  }
+
+  /* ---- attacks (owner 2026-11-09, ?preview): the guardian's Attack Studio ---- */
+  if (want('attacks')) {
+    const page = await openGame(browser, base, { query: '?preview' });
+    await newGame(page, 0);
+    // 1. the rules: cleanDesign keeps a style per move and a sparkle, drops junk; lookOf gives the guardian's own colours; every style's effect
+    //    runs at every moment without errors
+    const r = await page.evaluate(async () => {
+      const K = await import('/src/guardiankit.js'), A = await import('/src/attackstyles.js'), g = window.pokecraft, THREE = await import('three');
+      const out = { problems: [] }, bad = m => out.problems.push(m);
+      const d = K.cleanDesign({ n: 'Zap', p: [1, 1, 1, 1, 1, 1, 1], c: [0, 1, 2, 3, 4, 5, 6], a: { tackle: 1, brushdab: 3, BAD: 2, quickstroke: 99, x: 0 }, s: 2 });
+      if (JSON.stringify(d.a) !== '{"tackle":1,"brushdab":3}' || d.s !== 2) bad(`cleanDesign: ${JSON.stringify(d)}`);
+      if ('a' in K.cleanDesign({ p: [0, 0, 0, 0, 0, 0, 0], c: [0, 0, 0, 0, 0, 0, 0] }) || 's' in K.cleanDesign({ s: 0 })) bad('a design without styles has no a / s');
+      const l = K.lookOf(d, 'brushdab');
+      if (l?.style !== 'blast' || l.tex !== 'note' || !l.colours.includes(0xe13c3c)) bad(`lookOf: ${JSON.stringify(l)}`);
+      if (K.lookOf(d, 'freshcoat') !== null || K.lookOf([1, 2, 3], 'tackle') !== null) bad('lookOf: no style = null');
+      const rb = K.lookOf({ ...d, c: [12, 12, 12, 12, 12, 12, 12] }, 'tackle');
+      if (!rb || rb.colours.length < 3) bad(`rainbow colours ${JSON.stringify(rb)}`);
+      const from = { pos: new THREE.Vector3(0, 41, 0), top: 42, r: 0.5 }, to = { pos: new THREE.Vector3(4, 41, 1), top: 42, r: 0.6 };
+      g.fx.on = true;
+      for (const st of A.STYLES.slice(1)) for (const sp of A.SPARKLES) {
+        g.fx.clear();
+        const before = g.fx.errors.length;
+        g.fx.attack('tackle', from, to, { style: st.id, tex: sp.tex, colours: [0xff0000, 0x00ff00] });
+        for (const e of g.fx.active) for (let p = 0; p <= 1.0001; p += 0.05) e.step(p);
+        if (g.fx.errors.length > before) bad(`${st.id} ${sp.tex}: ${g.fx.errors.slice(before)}`);
+        if (g.fx.stats.points > 120) bad(`${st.id}: ${g.fx.stats.points} points`);
+      }
+      g.fx.clear();
+      out.styles = A.STYLES.map(s => s.id).join();
+      return out;
+    });
+    t.ok(!r.problems.length, `attack styles: cleanDesign, lookOf and every style x sparkle runs (${r.styles}) ${r.problems.join('; ')}`);
+    // 2. the studio: the guardian's team card has 🎬 Attacks (?preview), the board lists its attacks, a tap picks a style, plays it, saves it
+    await page.evaluate(async () => {
+      const S = await import('/src/species.js'), g = window.pokecraft;
+      const c = S.makeCreature('guardian', 50, ['tackle', 'brushdab', 'quickstroke', 'freshcoat']);
+      c.paint = { n: 'Zippy', p: [2, 1, 1, 1, 1, 1, 1], c: [6, 0, 2, 6, 6, 6, 2] };
+      g.party.unshift(c); g.studio.design = 'guardian'; g.studio.ally = true;
+    });
+    await pause(page);
+    await page.evaluate(() => { if (!window.pokecraft.ui.panelOpen) window.pokecraft.ui.openPanel('team'); });
+    await waitFor(page, () => !!document.querySelector('.mon button.attacks'), null, 20000);
+    await page.evaluate(() => document.querySelector('.mon button.attacks').click());
+    await waitFor(page, () => document.querySelectorAll('#db-attacks .db-atk').length > 0, null, 20000);
+    const ui = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#db-attacks .db-atk')].map(r => r.dataset.move), styles: document.querySelectorAll('#db-attacks .db-atk:first-child .db-style').length,
+      sparkles: document.querySelectorAll('#db-sparkles .db-sparkle').length, canvas: !!document.querySelector('#db-preview canvas'), close: document.getElementById('drawboard-close').textContent }));
+    t.ok(ui.rows.join() === 'tackle,brushdab,quickstroke' && ui.styles === 6 && ui.sparkles === 8 && ui.canvas && ui.close === 'Close', `the Attack Studio: one row per attack (not the status move), six styles, eight sparkles, the picture (${JSON.stringify(ui)})`);
+    await page.evaluate(() => { document.querySelector('.db-atk[data-move="brushdab"] .db-style[data-style="3"]').click(); document.querySelector('.db-sparkle[data-sparkle="1"]').click(); document.querySelector('.db-atk[data-move="tackle"] .db-style[data-style="1"]').click(); });
+    await page.waitForTimeout(300);
+    const saved = await page.evaluate(() => { const g = window.pokecraft, c = g.party[0]; return { a: c.paint.a, s: c.paint.s, look: g.studio.look?.a, demo: !!g.studio.attacks, on: [...document.querySelectorAll('.db-atk[data-move="brushdab"] .db-style.on')].map(b => b.dataset.style).join(), save: JSON.parse(localStorage.getItem('pokecraft-save-v2')).party[0].paint }; });
+    t.ok(saved.a?.brushdab === 3 && saved.a?.tackle === 1 && saved.s === 1 && saved.on === '3' && saved.save?.a?.brushdab === 3 && saved.save?.s === 1, `a tap picks a style and a sparkle, saved at once (${JSON.stringify(saved)})`);
+    // the demo plays: the Rush dashes the guardian over to the target, then the effect runs
+    const demo = await page.evaluate(async () => {
+      const g = window.pokecraft, st = g.studio; st.playAttack('tackle');
+      let far = 0, fx = 0; const t0 = performance.now();
+      while (performance.now() - t0 < 2500) { await new Promise(r => requestAnimationFrame(r)); fx = Math.max(fx, document.querySelector('#db-preview canvas') ? 1 : 0); }
+      return { far, fx };
+    });
+    t.ok(demo.fx === 1, 'the demo plays in the picture');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => window.pokecraft.studio.playAttack('brushdab'));
+    await page.waitForTimeout(900);
+    await shot(page, 'w19-attacks.png');
+    await page.evaluate(() => window.pokecraft.closeBoard());
+    // 3. a battle: the Rush dashes far, the effect has no errors, Paint (no style) is the old look
+    const b = await page.evaluate(async () => {
+      const g = window.pokecraft, S = await import('/src/species.js'), { Wild } = await import('/src/creatures.js');
+      const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
+      g.creatures.list.push(wild); g.scene.add(wild.model); wild.model.position.copy(wild.pos);
+      g.inBattle = true; document.body.classList.add('in-battle'); document.getElementById('pause').classList.add('hidden');
+      g.battle.start({ wild });
+      for (let i = 0; i < 100 && !g.battle.allyModel?.parent; i++) await new Promise(r => setTimeout(r, 100));
+      const m = g.battle.allyModel, x0 = m.position.clone(); let far = 0;
+      const run = g.battle.lunge('ally', true), t0 = performance.now();
+      while (performance.now() - t0 < 600) { far = Math.max(far, m.position.distanceTo(x0)); await new Promise(r => requestAnimationFrame(r)); }
+      await run;
+      const gap = g.battle.foeModel.position.clone().setY(0).distanceTo(x0.clone().setY(0));
+      const before = g.fx.errors.length;
+      const K = await import('/src/guardiankit.js');
+      await g.fx.attack('brushdab', g.battle.spot('ally'), g.battle.spot('foe'), K.lookOf(g.party[0].paint, 'brushdab'));
+      return { far, gap, errs: g.fx.errors.slice(before) };
+    });
+    t.ok(b.far > Math.min(1.5, b.gap * 0.4) && !b.errs.length, `in a battle the Rush dashes ${b.far.toFixed(2)} of ${b.gap.toFixed(2)} and a Blast plays without errors ${b.errs.join('; ')}`);
+    t.ok(page.errors.length === 0, `attacks: no page errors ${page.errors.join('; ')}`);
+    await page.context().close();
+    // 4. without ?preview the team card has no 🎬 button
+    const p2 = await openGame(browser, base);
+    await newGame(p2, 0);
+    await p2.evaluate(async () => {
+      const S = await import('/src/species.js'), g = window.pokecraft;
+      const c = S.makeCreature('guardian', 50); g.party.unshift(c);
+      document.exitPointerLock?.(); g.ui.openPanel('team');
+    });
+    await p2.waitForTimeout(500);
+    t.ok(await p2.evaluate(() => !!document.querySelector('.mon') && !document.querySelector('.mon button.attacks')), 'without ?preview the guardian has no 🎬 Attacks button');
+    await p2.context().close();
   }
 }

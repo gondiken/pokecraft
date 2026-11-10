@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { MOVES } from './species.js';
 import { TRAVEL, IMPACT, SIG, FX_COLORS } from './fxrecipes.js';
+import { STYLE_FX } from './attackstyles.js';
 
 const KEY = 'pokecraft-fx';
 const MAX_LIVE = 6;
@@ -137,9 +138,11 @@ export class Fx {
     }
   }
 
-  attack(moveId, from, to) {
+  // look (owner 2026-11-09, the guardian's Attack Studio): { style, tex, colours } from guardiankit.js lookOf, or none = the move's own look
+  attack(moveId, from, to, look = null) {
     const mv = MOVES[moveId];
     if (!this.on || !mv || !goodSpot(from) || !goodSpot(to)) return RESOLVED;
+    if (look && STYLE_FX[look.style]) return this.run(`attack:${moveId}:${look.style}`, STYLE_FX[look.style], from, to, { type: mv.type, big: false, look });
     const rec = (mv.sig && SIG[moveId]) || TRAVEL[mv.type] || TRAVEL.normal;
     return this.run(`attack:${moveId}`, rec, from, to, { type: mv.type, big: false });
   }

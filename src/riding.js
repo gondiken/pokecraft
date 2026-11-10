@@ -9,7 +9,7 @@ import { sketchModel } from './sketch.js'; // T45
 export const RIDE = {
   land: { kind: 'land', speed: 7.0, sprint: 9.5, jump: 11.2 },
   water: { kind: 'water', speed: 4.3, sprint: 6.2, jump: 8.6, landSlow: 0.5 },
-  sky: { kind: 'sky', speed: 7.5, climb: 5, sink: 4, cap: 6, glide: 6 },
+  sky: { kind: 'sky', speed: 7.5, climb: 5, sink: 4, cap: 6, glide: 6, drift: 1.2 },
 };
 
 export const rideKind = c => (hasTrait(c, 'rideable') && TRAITS.rideable.species[c.species]) || null;
@@ -75,7 +75,7 @@ export function createRiding(game, { scene, closePanel }) {
       const off = touch ? 'Tap Get off to get off.' : 'Press R to get off.';
       ui.toast(kind === 'land' ? `You're riding ${name}! It runs fast and jumps high. ${off}`
         : kind === 'water' ? `You're riding ${name}! It swims fast on water, but it is slow on land. ${off}`
-        : `You're riding ${name}! ${touch ? 'Up and Down fly.' : 'Space flies up, Shift flies down.'} ${off}`);
+        : `You're riding ${name}! ${touch ? 'Hold Up to fly up, let go to float down.' : 'Hold Space to fly up, let go to float down.'} ${off}`);
       game.mp?.sendState();
       this.sync();
       ui.renderHud();

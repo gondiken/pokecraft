@@ -78,7 +78,7 @@ export default async function ({ browser, base, t }) {
   await page.evaluate(() => { const g = window.pokecraft; g.party.pop(); });
   await page.evaluate(async () => { const g = window.pokecraft; g.touch.setButtons({ ...g.touch.cur(), sky: true }); });
   const u4 = await st();
-  t.ok(!u4.down.hidden && u4.jump.text === 'Up' && u4.down.y >= u4.jump.y + u4.jump.h - 2 && Math.abs((u4.down.x + u4.down.w / 2) - (u4.jump.x + u4.jump.w / 2)) < 20 && u4.jump.x === u1.jump.x && u4.jump.y === u1.jump.y, 'flying: Jump says Up in the same place, Down sits right under it');
+  t.ok(u4.down.hidden && u4.jump.text === 'Up' && u4.jump.x === u1.jump.x && u4.jump.y === u1.jump.y, 'flying: Jump says Up in the same place; no Down button (owner 2026-11-09: let go of Up to float down)');
   await page.screenshot({ path: new URL('../screenshots/t39-after-ipad-fly-buttons.png', import.meta.url).pathname });
   await page.evaluate(() => { const g = window.pokecraft; g.touch.setButtons({ ...g.touch.cur(), sky: false }); });
   await page.tap('#party-mini');

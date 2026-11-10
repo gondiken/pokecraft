@@ -188,7 +188,7 @@ That ends chapter 2.
 
 *How it plays (wave 19, owner 2026-11-08):* the Wizard's battle is the hardest in the game; when you win, his drawing board is a
 **part kit**, the same one Solenne used for Zenithar: pick a body, a head, eyes, legs, a tail, something on its back and an extra,
-each in its own colour (or Rainbow), and give it a name. It starts as a bare skeleton in the colours **you** painted on the top floor.
+each in its own colour (or Rainbow), and give it a name. It starts as a bare skeleton; the top floor of his studio is his own portrait, the last test before you may battle him.
 Your guardian hops off the board and joins your team, closes the crack,
 and circles his tower for good. The Wizard walks out of his tower onto his island ("I'm out! The air is lovely."), you are his ally,
 and he says, a little worried: *"Something scribbly is still out there... I will need your help again."* That is chapter 3.

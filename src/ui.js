@@ -9,6 +9,7 @@ import { GYMS } from './gyms.js';
 import { STAR_WORLDS, starsWon } from './pictureworlds.js'; // T38a; wave 18: the row and the count are the worlds of the bridge (a removed world's star stays in the save, unseen)
 import { typeLink } from './book.js';
 import { Glint } from './glint.js';
+import { PREVIEW } from './comingsoon.js'; // owner 2026-11-09: the guardian's Attack Studio is ?preview only
 
 const BOX_SORT_KEY = 'pokecraft-box-sort';
 const BOX_SORTS = [['newest', 'Newest'], ['level', 'Level'], ['name', 'Name'], ['type', 'Type']];
@@ -380,6 +381,7 @@ export class UI {
     if (this.tradeView) btns.push(...this.tradeView.buttons(c, inParty)); // wave 17: trading, the card's one button is Offer / Take back
     else if (inParty) {
       if (i > 0) btns.push(el('button', { onclick: () => { g.party.unshift(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'Make lead'));
+      if (PREVIEW && sp.kit && g.openAttacks) btns.push(el('button', { class: 'attacks', onclick: () => g.openAttacks(c) }, '🎬 Attacks')); // owner 2026-11-09: the Attack Studio (?preview)
       if (rideKind(c)) btns.push(el('button', { class: 'ride', 'data-ride': c.uid, onclick: () => g.riding.toggle(c) }, g.riding?.creature === c ? 'Get off' : 'Ride'));
       if (g.party.length > 1) btns.push(el('button', { onclick: () => { g.box.push(...g.party.splice(i, 1)); this.refreshPanel(); } }, 'To box'));
     } else {

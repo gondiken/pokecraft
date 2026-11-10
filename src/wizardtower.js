@@ -9,10 +9,10 @@ import { bridgeNeed, bridgeDone } from './pictureworlds.js';
 // Codes: '.' blank (leave the canvas), a-l a paint you must match (custom.js PAINTS `code`), A-L the same paint already painted (given,
 // locked), '1'-'3' a free group: any paint, but every square of one group the same. Row 0 is the TOP row.
 // Owner 2026-11-07 ("some of the floors should be more novel & interesting ... more floors, or more interesting painting ideas ... wayy too
-// easy (though still fun)"): every floor is ONE idea with a few pictures (`pages`) that get harder, 12 pictures in all (was 5). The floor's
+// easy (though still fun)"): every floor is ONE idea with a few pictures (`pages`) that get harder, 13 pictures in all (was 5). The floor's
 // stairs door opens when its last picture is right. Floor ideas: 1 copy, 2 mirrors (left-right, a lake = up-down, a snowflake = both),
 // 3 mixing (only red, yellow and blue pots: paint over a colour to mix, like real paint), 4 the big brush (every dab paints 2 x 2 squares,
-// centred where you point: the back things first), 5 your guardian. `mirror`: 'x' left-right, 'y' up-down, 'xy' both (wizardcheck proves it).
+// centred where you point: the back things first), 5 the Wizard's portrait (mirror + mix). `mirror`: 'x' left-right, 'y' up-down, 'xy' both (wizardcheck proves it).
 export const FLOORS = [
   { n: 1, name: 'Copy', pages: [
     { name: 'Flower', w: 4, h: 4, sign: 'Tap a paint pot, then tap the canvas. Copy the picture!',
@@ -44,9 +44,13 @@ export const FLOORS = [
     { name: 'Robot', w: 6, h: 6, sign: 'A robot! Plan it well.',
       rows: ['..yy..', 'mmmmmm', 'mbmmbm', 'mmmmmm', 'mmrrmm', 'mmmmmm'] },
   ] },
-  { n: 5, name: 'Guardian', pages: [
-    { name: 'Guardian', w: 8, h: 7, mirror: 'x', palette: true, groups: [6, 8, 2], sign: "Paint my guardian! Its colours will be YOUR creature's colours.",
-      rows: ['.X....x.', 'X2X..x2x', 'X111111x', 'X1X11x1x', 'X113311x', 'X133331x', '.XX..xx.'] },
+  // Owner 2026-11-09: floor 5 was "paint my guardian" (its three free colours became your creature's); the part kit has its own colours now,
+  // so it is the last test instead: the Wizard's portrait, mirrors AND mixing together (only red, yellow and blue pots).
+  { n: 5, name: 'Portrait', mix: true, pots: 'ryb', pages: [
+    { name: 'Wizard Hat', w: 6, h: 6, mirror: 'x', sign: 'Last floor! Mirror it AND mix it.',
+      rows: ['..Pp..', '.PYyp.', '.PPpp.', 'PYPpyp', 'PPPppp', 'NNNnnn'] },
+    { name: 'The Wizard', w: 8, h: 7, mirror: 'x', sign: 'Now paint ME! Mirror and mix.',
+      rows: ['...Pp...', '..PYyp..', '.PPPppp.', 'PPPPpppp', '.OBOobo.', '.OORroo.', '.PPPppp.'] },
   ] },
 ];
 export const floorOf = n => FLOORS[n - 1] ?? null;
@@ -146,7 +150,7 @@ export function checkCanvas(floor, cells) {
   const groups = members.map((m, g) => (m && m.every(i => cells[i] === common[g]) && common[g] !== null ? common[g] : null));
   return { done, right, total, wrong, groups };
 }
-// Floor 5's free groups are your creature's colours once done: [body, accent, belly] paint indices, else null.
+// A page with `palette` (none now: the old floor 5) gives its free groups as your creature's colours once done: [body, accent, belly] paint indices, else null.
 export function palette(floor, cells) {
   const r = checkCanvas(floor, cells);
   return r.done && floor.palette && r.groups.length >= 3 && r.groups.slice(0, 3).every(p => p !== null) ? r.groups.slice(0, 3) : null;
@@ -154,7 +158,7 @@ export function palette(floor, cells) {
 // The colours a finished floor shows when nobody remembers what was painted (a reload: only the keys are saved, section 6): a pleasant
 // default for each free group.
 // Floor 5's pleasant default colours (studio.js: a guardian with no saved paint).
-export const DEFAULT_GROUPS = { 5: FLOORS[4].pages[0].groups };
+export const DEFAULT_GROUPS = { 5: [6, 8, 2] }; // Blue, Pink, Yellow (an old save may hold the palette it painted on the old floor 5)
 // The squares of a finished picture: the target, free groups in `groups` (else the page's own defaults, `page.groups`).
 export function finishedCells(floor, groups) {
   const g = groups ?? floor.groups ?? [];
@@ -218,6 +222,6 @@ export const WORDS = {
   copy: '🎨 Copy the picture!',
   wizard: '🧙 The Wizard',
   almost: 'Almost ready for you!', // stage B's placeholder for his battle (stage C replaces it)
-  wizardGate5: 'Paint my guardian first! Then we battle.',
+  wizardGate5: 'Paint my portrait first! Then we battle.',
   wizardGateStars: n => `Bring me every star first! (⭐ ${n.have} / ${n.need})`,
 };
