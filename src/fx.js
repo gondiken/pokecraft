@@ -115,7 +115,8 @@ const goodSpot = s => !!s && ok(s.pos) && Number.isFinite(s.top) && Number.isFin
 /* ------------------------------ the engine ------------------------------ */
 
 export class Fx {
-  constructor(scene) {
+  constructor(scene, camera = null) {
+    this.camera = camera; // optional: k.camDist(x, y, z) (owner 2026-11-10: your own attacks are seen in first person)
     this.root = new THREE.Group();
     this.root.name = 'fx';
     scene.add(this.root);
@@ -237,6 +238,7 @@ export class Fx {
     });
     return {
       dir, side, dist,
+      camDist(x, y, z) { const c = fx.camera?.position; return c ? Math.hypot(x - c.x, y - c.y, z - c.z) : Infinity; },
       ease: easeOut, wave,
       seeds(n, m) { const s = new Float32Array(n * m); for (let i = 0; i < s.length; i++) s[i] = Math.random(); return s; },
       // A point on the path at t (0 to 1), with an arc of height `lift`.

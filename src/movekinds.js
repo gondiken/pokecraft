@@ -41,6 +41,8 @@ const SLOT = {
   rtrail: { id: 'trail', label: 'Trail', icon: '☄️', options: TRAILS_RUSH },
   hit: { id: 'hit', label: 'Hit', icon: '💥', options: HITS },
 };
+export const NEAR_CAM = 2.2; // bits of an effect closer than this to the camera are hidden (k.camDist, fx.js)
+export const BLAST_AHEAD = 0.55; // your own big blast starts this share of the way to the foe (seenFrom)
 export const RUSH = { reach: 0.92, ms: 460 }; // battle.js: a designed Rush dashes this share of the way (minus both sizes), there and back
 export const COLOURS = 2; // a look has two colours (the board's colour numbers; the caller turns them into hex lists)
 export const LOOK_MAX = 16; // at most this many moves keep a look
@@ -121,6 +123,9 @@ export class MoveKind {
   // how the attacker moves before the effect (battle.js lunge): null = the usual little lunge
   lunge() { return null; }
   recipe() { return null; }
+  // Where the effect starts when the camera sits right behind the attacker (owner 2026-11-10: your own attacks in a battle are seen in
+  // first person, and "the demo view" was side-on). from / to are fx spots; mine = the attacker is the viewer's own creature.
+  seenFrom(from, to, mine) { return from; }
 }
 
 class Shot extends MoveKind {
@@ -191,6 +196,13 @@ class Volley extends MoveKind {
 
 class Burst extends MoveKind {
   get slots() { return [SLOT.ring, SLOT.bits, SLOT.flash]; }
+  // round your own creature, right under the camera, the ring and its middle would be out of view or huge: in front of it instead
+  seenFrom(from, to, mine) {
+    if (!mine) return from;
+    const f = BLAST_AHEAD, pos = from.pos.clone ? from.pos.clone() : { ...from.pos };
+    pos.x += (to.pos.x - from.pos.x) * f; pos.z += (to.pos.z - from.pos.z) * f;
+    return { pos, top: from.top, r: from.r };
+  }
   recipe(k, from, to, look) {
     const N = 30, ring = look.ch('ring'), fl = look.ch('flash');
     const pts = k.points({ n: N, tex: look.tex('bits'), size: 0.72, glow: true, colors: look.c1.length > 1 ? look.c1 : [look.c1[0], look.c2[0]] });
@@ -202,7 +214,7 @@ class Burst extends MoveKind {
     return {
       dur: 950,
       step(p) {
-        const g = ease(clamp01(p / grow)), R = 0.3 + g * reach, spin = p * 1.6;
+        const g = ease(clamp01(p / grow)), R = 0.3 + g * reach, spin = p * 1.6, near = Math.min(1, (k.camDist?.(from.pos.x, from.pos.y, from.pos.z) ?? 9) / 6);
         for (let i = 0; i < N; i++) {
           let th = (i / N) * 6.283 + spin, r = R, up = 0;
           if (ring === 1) r = i % 2 ? R : R * 0.62;
@@ -210,11 +222,12 @@ class Burst extends MoveKind {
           else if (ring === 3) r = R * (0.55 + 0.45 * Math.abs(Math.sin(3 * (i / N) * 6.283)));
           else if (ring === 4) { const arm = i % 3, j = Math.floor(i / 3) / (N / 3 - 1); r = R * j; th = arm * 2.094 + j * 3 + spin * 2; }
           else if (ring === 5) up = (i % 2) * 1.1 * Math.sin(Math.PI * clamp01(p / grow));
-          pts.set(i, from.pos.x + Math.cos(th) * r, y0 + up, from.pos.z + Math.sin(th) * r);
+          const x = from.pos.x + Math.cos(th) * r, z = from.pos.z + Math.sin(th) * r;
+          if (k.camDist?.(x, y0 + up, z) < NEAR_CAM) pts.hide(i); else pts.set(i, x, y0 + up, z); // a bit in your face is only a blob: hidden
         }
         pts.fade(fadeOut(p, 0.6));
         if (mid) {
-          if (fl === 1) { mid.set(0, from.pos.x, from.pos.y, from.pos.z); mid.material.size = 0.4 + 1.6 * Math.sin(Math.PI * clamp01(p / 0.5)); }
+          if (fl === 1) { mid.set(0, from.pos.x, from.pos.y, from.pos.z); mid.material.size = (0.4 + 1.6 * Math.sin(Math.PI * clamp01(p / 0.5))) * near; }
           else for (let i = 0; i < 10; i++) {
             if (fl === 2) mid.set(i, from.pos.x, from.pos.y + ((i / 10 + p * 2) % 1) * 3.5, from.pos.z); // a beam of light up out of it
             else { const a = s[i * 2] * 6.283, d = s[i * 2 + 1] * R; mid.set(i, from.pos.x + Math.cos(a) * d, y0 + 3 - ((p * 2 + s[i * 2]) % 1) * 3, from.pos.z + Math.sin(a) * d); }

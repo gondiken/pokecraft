@@ -992,7 +992,8 @@ export class Battle {
     // The champion's last creature hangs on once and powers up at half HP.
     const bossLast = this.boss && side !== 'foe' && this.foeIdx === this.foes.length - 1 && !this.poweredUp;
     let done = 0;
-    await fx?.attack(moveId, this.spot(side), this.spot(defSide), look);
+    const seen = look ? look.kind.seenFrom(this.spot(side), this.spot(defSide), side === 'ally') : this.spot(side); // your own attack, seen from behind it
+    await fx?.attack(moveId, seen, this.spot(defSide), look);
     for (let i = 0; i < hits && def.hp > 0; i++) {
       const hpBefore = def.hp;
       def.hp = Math.max(0, def.hp - dmgNow());

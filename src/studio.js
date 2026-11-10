@@ -199,7 +199,7 @@ export function createStudio(game, { startBattle, save }) {
     // Picks a part (slot, number) or a colour (slot, colour number) for the draft; the tests call these too.
     setPart(slot, i) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT[slot][i]) return false; draft.p[k] = i; tab = slot; this.refreshBoard(); return true; },
     setColour(slot, ci) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT_COLOURS[ci]) return false; draft.c[k] = ci; this.refreshBoard(); return true; },
-    setTab(slot) { if (!SLOTS.includes(slot) && !(slot === ATTACKS && PREVIEW)) return false; tab = slot; this.refreshBoard(); if (slot === ATTACKS) this.playAttack(); return true; },
+    setTab(slot) { if (!SLOTS.includes(slot) && !(slot === ATTACKS && PREVIEW)) return false; tab = slot; this.refreshBoard(); document.querySelector('#drawboard .db-scroll')?.scrollTo?.(0, 0); if (slot === ATTACKS) this.playAttack(); return true; },
     setName(n) { if (!draft) return false; draft.n = String(n ?? '').slice(0, NAME_MAX); return true; },
     shownName() { return draft ? (draft.n.trim() ? cleanDesign(draft).n : kitName(draft)) : ''; },
     // Fills #drawboard-body (ui.openPanel('drawboard')).
@@ -213,17 +213,19 @@ export function createStudio(game, { startBattle, save }) {
       nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') nameIn.blur(); });
       let rolls = (Date.now() / 1000) | 0;
       const dice = el('button', { id: 'db-dice', title: 'A silly name', onclick: () => { nameIn.value = randomName(rolls++); this.setName(nameIn.value); } }, '🎲');
+      // owner 2026-11-10 ("hard to navigate, with scrolls, size"): the board fits the screen; only the choices scroll (.db-scroll),
+      // the tabs and the Done button always stay in view
       body.replaceChildren(
-        el('h2', {}, redo ? '🖌️ A new look!' : '🖌️ You design it!'),
-        el('p', { class: 'db-sub' }, 'Pick each part and its colour. Start with the body!'),
+        el('div', { class: 'db-head' }, el('h2', {}, redo ? '🖌️ A new look!' : '🖌️ You design it!'), el('p', { class: 'db-sub' }, 'Pick each part and its colour. Start with the body!')),
         el('div', { class: 'db-kit' },
           el('div', { class: 'db-left' },
             el('div', { id: 'db-preview' }),
             el('label', { class: 'db-namerow' }, el('span', {}, 'Name:'), nameIn, dice)),
           el('div', { class: 'db-right' },
             el('div', { id: 'db-tabs' }),
-            el('div', { id: 'db-parts' }),
-            el('div', { id: 'db-colours' }))),
+            el('div', { class: 'db-scroll' },
+              el('div', { id: 'db-parts' }),
+              el('div', { id: 'db-colours' })))),
         el('div', { class: 'db-foot' },
           el('button', { id: 'db-done', class: 'primary', onclick: () => this.done() }, redo ? '✅ New look!' : '✅ Done!'),
           redo && el('button', { id: 'db-rematch', onclick: () => this.rematchInstead() }, '⚔️ Rematch instead')));
@@ -352,7 +354,7 @@ export function createStudio(game, { startBattle, save }) {
           el('span', { class: 'db-clabel' }, `${sl.icon} ${sl.label}:`),
           ...sl.options.map((o, i) => el('button', { class: `db-part db-opt${raw.p[si] === i ? ' on' : ''}${sl.options.length > 8 ? ' db-icon' : ''}`, 'data-opt': `${si}:${i}`, title: o.name, 'aria-label': o.name, onclick: () => this.setChoice(si, i) },
             el('span', { class: 'db-ico' }, o.icon), sl.options.length > 8 ? '' : ` ${o.name}`)))));
-      cols.replaceChildren(el('span', { class: 'db-clabel' }, 'Colour 1:'), ...swatches(0), el('span', { class: 'db-clabel' }, 'Colour 2:'), ...swatches(1));
+      cols.replaceChildren(el('div', { class: 'db-colrow' }, el('span', { class: 'db-clabel' }, '🎨 Colour 1:'), ...swatches(0)), el('div', { class: 'db-colrow' }, el('span', { class: 'db-clabel' }, '🎨 Colour 2:'), ...swatches(1)));
     },
     // The demo stage: the guardian on the left facing a practice target on the right, seen from the side.
     stageDemo(m) {
@@ -382,7 +384,7 @@ export function createStudio(game, { startBattle, save }) {
     playAttack(id = this.atkMove) {
       if (!preview || !draft || tab !== ATTACKS || !preview.model || !preview.dummy || !MOVES[id]) return false;
       this.lookRaw(id);
-      preview.fx ??= new Fx(preview.scene);
+      preview.fx ??= new Fx(preview.scene, preview.cam);
       preview.fx.on = true;
       preview.fx.clear();
       const look = lookOf(cleanDesign(draft), id, MOVES[id]), lunge = look?.kind.lunge(look), rush = !!lunge?.far, now = performance.now();
