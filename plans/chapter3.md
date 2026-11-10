@@ -386,3 +386,47 @@ the iPad struggles).
 5. Does a fight last about right now (1-1.5 minutes)? Your Graphitan fight took 5+ minutes before; how long does it take now?
 6. First person: is your creature in view often enough, and is the blue arrow clear?
 7. Ready for the next step (the new world), or more fight tuning first?
+
+## 10. Owner feedback 2026-11-10 and what changed
+
+Owner: "I didn't notice the camera turn during a fight before. A slight turn to cover for the scene is ok." "It might be a bit too steep
+now ... closer to what we have now, but still less" (on the owner's scale: before 45, now "80", wanted about "70"). "Moves are great. Fight
+length is fine." "First person view is horrible lol ... this type of game is better with the pan out version." "Controls are a bit of a
+mess: one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT. At the same time I don't want to remove
+powers."
+
+**Changed (behind `?preview`):**
+- **Angle:** 62 -> about 57 degrees down (12.6 up, 8.2 back, fov 50; about 15 blocks away as before). Picture: `plans/chapter3/cam-flat-8-fight.jpg`, `cam-flat-ipad.jpg`.
+- **A slight turn:** the camera still never follows your look, but it turns by itself while a monster is near the edge of the screen,
+  only the way that brings it back in, easing in and out, at most 0.25 rad/s (14 degrees a second). Turning toward the monsters' middle
+  was tried first and turned all the time (11 degrees a second on average: they circle you), so it was dropped.
+- **First person removed** (the V key, the pause screen's "🎥 Fight" button, the follow rules, the blue arrow); the bots and the spec play
+  only the pan-out view. The night's first-person numbers (section 9, step 4) stay as a record.
+
+What a child sees now (`scribblemeasure.mjs cam`, 24 person / skilled fights per row):
+
+| Camera | Monsters on screen (iPad landscape / portrait) | Whole warnings on screen | Turning, on average |
+| --- | --- | --- | --- |
+| First try (45 degrees, fov 75) | 88 / 93 % | 80 / 90 % | (follows your look) |
+| Night run (62 degrees, fixed) | 94.5 / 96.5 % | 93 / 96 % | none |
+| 57 degrees, fixed | 92.5-94.5 / 96-97 % | 90-93 / 96-97 % | none |
+| **Now: 57 degrees, turns at the edges** | **94 / 97.4 %** | **90 / 97.4 %** | **1.4-2.2 degrees a second** |
+
+Mashing still loses (0 / 24 per seed), skilled wins all, the `scribble` spec is green.
+
+### The open question: too many buttons, and they mean something different for every creature
+
+Today each creature's four moves land on four slots in their own order, so the same slot is a blast for one and a heal for another;
+with Dodge that is five buttons and a stick. The options (none built yet):
+
+1. **Three buttons with a fixed meaning (recommended):** Dodge (Jump), **Attack** (the big round button) and **Special** (one smaller
+   button). Attack is always "hurt a monster": it uses the creature's attack moves (shot, many shots, rush, big blast) and shows the icon
+   of the one it will use next, with a fixed icon per kind (● shot, ●●● many shots, ➜ rush, ◎ big blast; hold for a big blast). Special is
+   always "help": heal, power up, Tough, slow cloud, sleepy cloud. Every power stays; the child learns two buttons and reads one icon.
+   Cost: you no longer pick between two attacks yourself; the button offers them in turn as they are ready.
+2. **Five buttons, fixed places by kind:** the slots never change meaning (e.g. Shot, Rush, Blast, Help + Dodge); a creature without a
+   kind has that slot dimmed. Every creature's buttons are in the same place, but it is still five buttons.
+3. **Two moves per creature in a fight:** each creature brings one attack and one help move (its best, or chosen in the team screen);
+   variety comes from swapping creatures (1 2 3, a tap on a card). Three buttons, simplest, but two of four moves sit out each fight.
+
+Either way every kind gets a fixed icon and colour on its button and on the ground ring, so "this is a heal" reads in one look.

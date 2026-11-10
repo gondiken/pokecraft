@@ -3,12 +3,10 @@
 //   Test A: walk up in first person, step in: the scribble snaps into a ring on the real ground, your lead creature jumps out of its
 //           cube, and the camera rises from your eyes to just behind and above your creature in one continuous move. You fight with the
 //           arena's Live rules (scribblefight.js) on the real terrain; when it is over the camera glides back down into your eyes.
-//   Test B: the same fight in first person, a toggle like Cube Planets' camera (V, the pause screen's button). You stay in your own
-//           eyes and walk, your creature runs beside you, your moves go where you look, warnings behind you show as arrows round the
-//           middle of the screen (ui.setPointers). The toggle also works in the middle of a fight: the camera glides between the two.
+//   Test B (first person) was tried and removed (owner 2026-11-10: "this type of game is better with the pan out version").
 // Controls (the five fixed tablet slots, no new buttons; owner 2026-11-09 keys): Jump = Dodge (Space), the round action button = move 1
 // (Q, or a click), Place = move 2 (E), Ride = move 3 (R), Down = move 4 (F); 1 2 3 or a tap on a card swaps your creature.
-// Behind the creature the stick / WASD move your creature (forward = away from the camera) and a look-drag / the mouse turns the camera.
+// The stick / WASD move your creature (forward = away from the camera); the camera turns by itself, slowly, to keep the fight in view.
 import * as THREE from 'three';
 import { PREVIEW } from './comingsoon.js';
 import { SPECIES, TYPE_COLORS, buildModel, animateModel, disposeModel, statsFor } from './species.js';
@@ -18,11 +16,10 @@ import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 const LIVE_CHARGE = LIVE.charge;
-import { ScribbleFight, FIGHT, groundOf, squadOf, follow, FightCam } from './scribblefight.js';
+import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle } from './scribblefight.js';
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
-  key: 'pokecraft-fight-cam',
   enter: { throw: 0.45, grow: 0.35, camFrom: 0.3, cam: 1.6, go: 1.95 }, // seconds: the cube's flight, the creature growing, the camera's move
   exit: { wait: 1.3, cam: 1.6, fade: 1.1 },
   stepEase: 14,           // how fast a creature's drawn height follows a step up or down (1 / s)
@@ -156,12 +153,11 @@ export function createScribble(game) {
   const S = {
     phase: 'off', // off | idle | enter | fight | exit | cleared
     world: null, spot: null, fight: null, ground: null,
-    mode: 'behind', camK: 0, armed: false,
+    camK: 0, armed: false,
     get on() { return SCRIBBLE.on; },
     get fighting() { return S.phase === 'enter' || S.phase === 'fight' || S.phase === 'exit'; },
-    holdsPlayer: () => S.fighting && (S.phase !== 'fight' || S.mode === 'behind' || S.camK > 0.5),
+    holdsPlayer: () => S.fighting,
   };
-  try { S.mode = localStorage.getItem(SCRIBBLE.key) === 'eyes' ? 'eyes' : 'behind'; } catch { /* private window */ }
   if (!SCRIBBLE.on) { // without ?preview: nothing at all
     Object.assign(S, { update() {}, tap: () => false, can: () => false, info: () => ({ on: false }) });
     return S;
@@ -435,7 +431,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const t = document.getElementById('touch');
     t?.classList.toggle('fight', on);
     document.body.classList.toggle('scribbling', on);
-    document.getElementById('crosshair')?.classList.toggle('sc-behind', on && S.mode === 'behind');
+    document.getElementById('crosshair')?.classList.toggle('sc-behind', on);
     const ride = document.getElementById('btn-ride');
     if (on) { ride?.classList.remove('hidden'); t?.classList.remove('sky'); }
     else {
@@ -605,7 +601,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     touchFight(true);
     game.ui?.setPrompt?.('');
     sound.play('whoosh');
-    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · the round buttons are your moves · Jump = Dodge' : 'WASD moves · Q E R F your moves · Space dodges · V camera') : '');
+    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · the round buttons are your moves · Jump = Dodge' : 'WASD moves · Q E R F your moves · Space dodges') : '');
   }
   function endFight(won) {
     S.result = won; S.exitFrom = null;
@@ -635,7 +631,6 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const active = () => S.phase === 'fight' && game.playing?.() && !game.ui?.asking;
     document.addEventListener('keydown', e => {
       if (!game.started || e.target instanceof HTMLInputElement) return;
-      if (e.code === 'KeyV' && !e.repeat && !game.cubeCam?.can?.() && S.can() && !game.ui?.asking && (S.fighting || game.playing?.())) { e.stopImmediatePropagation(); S.toggleCam(); return; }
       if (!S.fighting || game.ui?.asking || !game.playing?.()) return;
       if (e.code in KEYS || /^Digit[123]$/.test(e.code)) {
         e.preventDefault(); e.stopImmediatePropagation();
@@ -680,7 +675,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   let baseFov = null, frozen = null;
   function thirdPerson(dt, snap) {
     const p = game.player, f = S.fight.you;
-    const pose = cam.update(dt, { x: f.x, y: S.youY ?? f.y, z: f.z }, p.yaw, game.camera.aspect || 1, S.ground, snap);
+    const pose = cam.update(dt, { x: f.x, y: S.youY ?? f.y, z: f.z }, p.yaw, game.camera.aspect || 1, S.ground, snap, S.phase === 'fight' ? foesMiddle(S.fight) : null);
     tpPos.set(pose.x, pose.y, pose.z);
     tmp.m.lookAt(tpPos, tmp.a.set(pose.at.x, pose.at.y, pose.at.z), THREE.Object3D.DEFAULT_UP);
     tpQ.setFromRotationMatrix(tmp.m);
@@ -699,8 +694,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
   }
 
-  // ---- first person: your creature runs beside you; warnings you cannot see show as arrows round the middle
-  function followInput() { const p = game.player; follow(S.fight, p.pos.x, p.pos.z, p.yaw); }
+  // ---- the stick moves your creature, relative to the camera
   function behindInput() {
     const p = game.player, F = S.fight, k = p.keys || {}, j = game.touch?.joy || { x: 0, y: 0 };
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
@@ -710,26 +704,6 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     F.input.mz = -Math.cos(y) * f - Math.sin(y) * s;
     F.aimDir = null;
   }
-  function pointers() {
-    if (!game.ui?.setPointers) return;
-    if (S.mode !== 'eyes' || S.phase !== 'fight') { game.ui.setPointers(null); return; }
-    const p = game.player, list = [];
-    for (const f of S.fight.foes) if (f.alive && (f.tell || f.charging || Math.hypot(f.x - p.pos.x, f.z - p.pos.z) < 6)) {
-      const a = wrap(Math.atan2(f.x - p.pos.x, f.z - p.pos.z) - Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)));
-      if (Math.abs(a) < 0.75) continue; // in view: no arrow
-      list.push({ angle: -a, colour: f.tell || f.charging ? '#ff4a3c' : '#ffffffcc', size: f.tell || f.charging ? 1 : 0.3 });
-    }
-    { // your own creature, when it is out of view: a small blue arrow (night run: it is beside you, often just off the screen)
-      const f = S.fight.you, a = wrap(Math.atan2(f.x - p.pos.x, f.z - p.pos.z) - Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)));
-      if (Math.abs(a) >= 0.75) list.push({ angle: -a, colour: '#4aa8ff', size: 0.45 });
-    }
-    game.ui.setPointers(list);
-  }
-  function keepInRing() {
-    const p = game.player, C = S.spot, d = Math.hypot(p.pos.x - C.x, p.pos.z - C.z), lim = FIGHT.R - 0.6;
-    if (d > lim) { p.pos.x = C.x + (p.pos.x - C.x) * lim / d; p.pos.z = C.z + (p.pos.z - C.z) * lim / d; }
-  }
-
   // ---- drawing the creatures each frame
   function drawModels(dt) {
     const F = S.fight;
@@ -791,8 +765,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     } else {
       let vis = f.alive || f.flash > 0;
       if (f.flash > 0 && f.alive) vis = Math.floor(f.flash * 20) % 2 === 0;
-      // first person: drawn at 60 % (night run: a big creature right beside you covered a third of the view); only the drawing
-      you.visible = vis; you.scale.setScalar(you.userData.base * (1 - 0.4 * (1 - smooth(S.camK))));
+      you.visible = vis; you.scale.setScalar(you.userData.base);
     }
     S.youY = S.youY == null || Math.abs(S.youY - f.y) > 3 ? f.y : S.youY + (f.y - S.youY) * Math.min(1, dt * SCRIBBLE.stepEase);
     you.position.set(f.x, S.youY + lift, f.z);
@@ -840,13 +813,12 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       const T = SCRIBBLE.enter, k = easeBack(Math.min(1, phaseT / 0.7));
       tg.mesh.visible = true; drawTangle(tg, k, 0.07 + 0.03 * Math.min(1, phaseT / 0.7), boil);
       parts.patch.material.opacity = 1 - Math.min(1, phaseT / 0.7); parts.ring.material.opacity = Math.min(1, phaseT / 0.7);
-      S.camK = S.mode === 'behind' ? Math.max(0, Math.min(1, (phaseT - T.camFrom) / T.cam)) : 0;
+      S.camK = Math.max(0, Math.min(1, (phaseT - T.camFrom) / T.cam));
       if (phaseT >= T.go && S.pinT == null) { S.phase = 'fight'; phaseT = 0; say('Go!', 0.7); }
     } else if (S.phase === 'fight') {
       drawTangle(tg, 1, 0.1, boil);
-      const want = S.mode === 'behind' ? 1 : 0;
-      if (playing) S.camK = want > S.camK ? Math.min(want, S.camK + dt / SCRIBBLE.enter.cam) : Math.max(want, S.camK - dt / SCRIBBLE.enter.cam);
-      if (S.mode === 'eyes' && S.camK < 0.5) { keepInRing(); followInput(); } else behindInput();
+      S.camK = 1;
+      behindInput();
       if (playing && !S.manual) F.step(dt);
       if (game.creatures) game.creatures.spawnTimer = Math.max(game.creatures.spawnTimer || 0, 1); // no new wild creature while you fight
       if (F.over === false && playing && ((S.dropT = (S.dropT || 0) + dt) > 0.5)) { S.dropT = 0; for (const w of [...(game.creatures?.list || [])]) if (Math.hypot(w.pos.x - C.x, w.pos.z - C.z) < FIGHT.R + 2) game.creatures.remove(w); }
@@ -863,31 +835,19 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       }
       if (S.camK <= 0 && phaseT > E.wait + 0.5 && S.pinT == null) { S.exitFrom = null; finishExit(); }
     }
-    // behind your creature the camera does not turn (FightCam): your look waits where it was, so the glide back ends where you looked
-    if (S.fight && frozen) {
-      if (S.mode === 'eyes' && S.phase === 'fight') { frozen.yaw = p.yaw; frozen.pitch = p.pitch; }
-      else if (!cam.c.turn) { p.yaw = frozen.yaw; p.pitch = frozen.pitch; }
-    }
+    // your look waits while the camera is behind your creature; the glide back ends looking the way the fight camera looked
+    if (S.fight && frozen) { p.yaw = frozen.yaw = S.phase === 'exit' ? frozen.yaw : cam.yaw; p.pitch = frozen.pitch; }
     if (!S.fight) { placeCamera(camera, dt); return; }
     events();
     drawModels(dt);
     drawFx(dt);
     placeCamera(camera, dt);
-    drawBars(); drawSquad(); drawPad(); pointers();
+    drawBars(); drawSquad(); drawPad();
     if (typeof document !== 'undefined') document.getElementById('crosshair')?.classList.toggle('sc-behind', S.camK > 0.5);
   };
 
   // ---- the rest of the game asks
   S.can = () => !!parts && S.phase !== 'off';
-  S.toggleCam = (say2 = true) => {
-    S.mode = S.mode === 'behind' ? 'eyes' : 'behind';
-    if (S.mode === 'behind' && S.fight) cam.yaw = game.player.yaw; // back up behind: the camera faces the way you looked
-    try { localStorage.setItem(SCRIBBLE.key, S.mode); } catch { /* private window */ }
-    if (say2 && game.ui) game.ui.toast(S.mode === 'behind' ? '🎥 Fight camera: behind your creature' : '🎥 Fight camera: in your eyes');
-    S.refresh();
-    return S.mode;
-  };
-  S.setMode = m => { if (m !== S.mode) S.toggleCam(false); return S.mode; };
   // a tap during a fight picks the monster under the finger (true = the tap was the fight's)
   S.tap = (x, y) => {
     if (!S.fighting) return false;
@@ -902,23 +862,9 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (best) S.fight.pick(best);
     return true;
   };
-  // the pause screen's camera button (made once, shown only while the patch is here; Cube Planets' own button sits beside it)
-  let btn = null;
-  S.refresh = () => {
-    if (typeof document === 'undefined') return;
-    if (!btn) {
-      const sound2 = document.getElementById('sound-btn');
-      if (!sound2) return;
-      btn = document.createElement('button'); btn.id = 'fightcam-btn';
-      btn.addEventListener('click', e => { e.stopPropagation(); S.toggleCam(false); });
-      sound2.after(btn); sound2.after(document.createTextNode(' '));
-    }
-    const s = S.can() ? (S.mode === 'behind' ? '🎥 Fight: behind' : '🎥 Fight: eyes') : '';
-    btn.textContent = s; btn.classList.toggle('hidden', !s);
-  };
-  setInterval(() => S.refresh(), 1000);
+  S.refresh = () => {}; // (the pause screen's first-person button is gone)
   // tests and the console
-  S.info = () => ({ on: true, phase: S.phase, mode: S.mode, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
+  S.info = () => ({ on: true, phase: S.phase, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
     fight: S.fight?.info() ?? null, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
   S.fightOf = () => S.fight;
   S.warp = () => { // tests: stand just outside the patch (half a block), facing it, on flat ground (the side of the start first)

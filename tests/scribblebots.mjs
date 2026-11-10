@@ -3,8 +3,7 @@
 // creature (Test A) and in first person (Test B), at 60 and 20 decisions a second (fixed 1/120 s steps either way).
 //   naive:   mashes every move, never moves (first person: stands where it came in, looking at the middle)
 //   skilled: steps out of the red (only to ground it can walk to), dodges just before a hit, keeps its distance, shoots only along a
-//            clear line (hills and trees block shots), swaps a tired creature out. First person: it walks YOU, your creature follows
-//            (scribblefight.js follow), and it looks at its target.
+//            clear line (hills and trees block shots), swaps a tired creature out. (First person was removed 2026-11-10.)
 //   node tests/scribblebots.mjs                 every bot, 4 games each
 //   SCRIBBLE_GAMES=8 node tests/scribblebots.mjs
 // tests/specs/scribble.mjs runs these (part `bots`) and the real keys / iPad / screenshots parts.
@@ -12,7 +11,7 @@ import { serve, launch, openGame, newGame, click } from './helpers.mjs';
 import { pathToFileURL } from 'node:url';
 
 export const BOTS = String.raw`
-const { ScribbleFight, groundOf, squadOf, follow, FIGHT, FightCam, onScreen } = await import('/src/scribblefight.js');
+const { ScribbleFight, groundOf, squadOf, FIGHT, FightCam, onScreen, foesMiddle } = await import('/src/scribblefight.js');
 const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell, LIVE_FULL = (await import('/src/arena/live.js')).LIVE.charge;
 const S = await import('/src/species.js');
 const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
@@ -79,14 +78,14 @@ function skilledGoal(F) {
 function skilledMoves(F) {
   const you = F.you;
   if (you.hp < you.maxHp * 0.3) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > q.c.level * 1.5); if (i >= 0) F.swap(i); }
-  if (!F.aimDir) { // behind: pick a monster it can hit
+  { // pick a monster it can hit
     const t = F.aimAt();
     if (t && !F.clearShot(F.you, t)) { const o = F.foes.find(f => f.alive && F.clearShot(F.you, f)); if (o) F.pick(o); }
   }
   // a rush at a monster in the last part of its warning cancels its attack (FIGHT.rush): aim one there when a rush is ready
   const win = LIVE_TELL * (FIGHT.rush.window ?? 1);
   const dashSlot = F.moves.findIndex((s, i) => s?.kind === 'dash' && F.cd[i + 1] === 0) + 1;
-  if (dashSlot && !F.aimDir) {
+  if (dashSlot) {
     const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
     if (w) { F.pick(w); F.press(dashSlot); F.release(dashSlot); }
   }
@@ -114,7 +113,7 @@ function skilledMoves(F) {
 }
 // kid: like a child who gets it but is not quick: sees a red warning 0.35 s late and walks out of it (no dodge), keeps a few blocks
 // away, presses every move that is ready (no line-of-sight thinking), never swaps by itself
-function kidStep(F, dt, eyes) {
+function kidStep(F, dt) {
   const you = F.you;
   F.kid ??= { seen: new Map(), goal: null };
   const now = F.clock;
@@ -123,14 +122,7 @@ function kidStep(F, dt, eyes) {
   let g = { gx: 0, gz: 0 };
   if (late) { const s = skilledGoal(F); g = { gx: s.gx, gz: s.gz }; }
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
-  if (!eyes) { F.input.mx = g.gx; F.input.mz = g.gz; }
-  else {
-    const me = F.me, L = len2(g.gx, g.gz);
-    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + g.gx / L * st, nz = me.z + g.gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
-    const t = F.foes.filter(f => f.alive).sort((p, q) => len2(p.x - me.x, p.z - me.z) - len2(q.x - me.x, q.z - me.z))[0];
-    if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
-    follow(F, me.x, me.z, me.yaw);
-  }
+  F.input.mx = g.gx; F.input.mz = g.gz;
   // (a big blast: it holds the button until the ring is full, then it goes by itself)
   if (F.charge.slot <= 0) for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind !== 'burst') F.release(i); }
   F.step(dt);
@@ -139,7 +131,7 @@ function kidStep(F, dt, eyes) {
 // wobbly thumb (up to 35 degrees off), dodges only half the time when it is late, taps a move about every 0.4-1.1 s (one at a time, a
 // shot whether or not a hill is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, heals under 40 %, swaps a
 // tired creature only sometimes. Its numbers: seeded per fight, so a run is the same at 60 and 20 fps.
-function personStep(F, dt, eyes) {
+function personStep(F, dt) {
   const you = F.you;
   if (!F.ps) { let seed = 1234 + (F.foes[0].x * 1000 | 0); const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); F.ps = { r, seen: new Map(), next: 0.6, wob: 0, wobT: 0, hold: 0, dodgeLate: r() < 0.5 }; }
   const P = F.ps, now = F.clock;
@@ -150,14 +142,7 @@ function personStep(F, dt, eyes) {
   let gx = 0, gz = 0;
   if (lateNow || !s.flee) { const c = Math.cos(P.wob), sn = Math.sin(P.wob); gx = s.gx * c - s.gz * sn; gz = s.gz * c + s.gx * sn; }
   if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.press(0);
-  if (!eyes) { F.input.mx = gx; F.input.mz = gz; }
-  else {
-    const me = F.me, L = len2(gx, gz);
-    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + gx / L * st, nz = me.z + gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
-    const t = F.target?.alive ? F.target : F.foes.find(f => f.alive);
-    if (t) me.yaw += Math.atan2(Math.sin(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw), Math.cos(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw)) * Math.min(1, dt * 4);
-    follow(F, me.x, me.z, me.yaw);
-  }
+  F.input.mx = gx; F.input.mz = gz;
   if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.release(F.charge.slot); F.step(dt); return; }
   if (you.hp < you.maxHp * 0.25 && P.r() < dt * 0.6) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > 0); if (i >= 0) F.swap(i); }
   if ((P.next -= dt) <= 0) {
@@ -171,26 +156,14 @@ function personStep(F, dt, eyes) {
 const BOT = {
   kid: kidStep,
   person: personStep,
-  naive(F, dt, eyes) {
+  naive(F, dt) {
     for (let i = 1; i <= 4; i++) { F.press(i); F.release(i); }
-    if (eyes) follow(F, F.me.x, F.me.z, F.me.yaw); else { F.input.mx = F.input.mz = 0; }
+    F.input.mx = F.input.mz = 0;
     F.step(dt);
   },
-  skilled(F, dt, eyes) {
+  skilled(F, dt) {
     const goal = skilledGoal(F);
-    if (!eyes) {
-      F.input.mx = goal.gx; F.input.mz = goal.gz;
-    } else { // you walk (4.3 a second, like the game's walk), your creature follows; you look at the target
-      const me = F.me, L = len2(goal.gx, goal.gz);
-      if (L > 0.05) {
-        const st = Math.min(L, 4.3 * dt), nx = me.x + goal.gx / L * st, nz = me.z + goal.gz / L * st;
-        if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; }
-      }
-      const t = F.foes.filter(f => f.alive).sort((p, q) => (F.clearShot(F.you, q) - F.clearShot(F.you, p)) || len2(p.x - me.x, p.z - me.z) - len2(q.x - me.x, q.z - me.z))[0];
-      if (t) me.yaw = Math.atan2(-(t.x - me.x), -(t.z - me.z));
-      follow(F, me.x, me.z, me.yaw);
-      if (goal.flee && L > 0.05) { F.input.mx = goal.gx; F.input.mz = goal.gz; } // a warning: your creature runs out of it with you
-    }
+    F.input.mx = goal.gx; F.input.mz = goal.gz;
     if (goal.dodge && F.cd[0] === 0) F.press(0);
     skilledMoves(F);
     F.step(dt);
@@ -199,30 +172,18 @@ const BOT = {
 // what a child sees behind its creature (FightCam): the share of moments a monster / a red warning / your creature is on screen,
 // and the camera's jumps (a move of more than 0.6 blocks in 1/60 s) and moments with a block between camera and creature
 const CAMS = {
-  old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6 }, // the first try (turned with your look; the bots never turn it)
-  new: {},
+  old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6, turn: false }, // the first try (turned with your look; the bots never turn it)
+  steep: { up: 13.5, back: 7, turn: false }, // the night run's: 62 degrees, never turning
+  flat: { turn: false },                     // today's angle (about 57 degrees), never turning
+  new: {},                                   // today's: about 57 degrees, a slow turn toward the monsters
 };
-function eyeWatch(F, aspect) { // first person: your eyes (1.6 up, looking a little down, fov 75)
-  const w = { n: 0, you: 0, aim: 0, tell: 0, tellN: 0 };
-  w.tick = () => {
-    const me = F.me, fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), y = me.y + 1.6;
-    const p = { x: me.x, y, z: me.z, at: { x: me.x + fx * Math.cos(0.15), y: y - Math.sin(0.15), z: me.z + fz * Math.cos(0.15) }, fov: 75 };
-    const inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
-    w.n++;
-    if (inS(onScreen(p, aspect, F.you.x, F.you.y + 0.5, F.you.z))) w.you++;
-    if (F.foes.some(f => f.alive) && F.aimAt()) w.aim++;
-    for (const f of F.foes) if (f.alive && f.tell) { w.tellN++; if (inS(onScreen(p, aspect, f.tell.x, f.tell.y, f.tell.z))) w.tell++; }
-  };
-  w.out = () => ({ cam: 'eyes', aspect: +aspect.toFixed(2), you: Math.round(100 * w.you / Math.max(1, w.n)), aim: Math.round(100 * w.aim / Math.max(1, w.n)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)) });
-  return w;
-}
 function camWatch(F, which, aspect) {
-  if (which === 'eyes') return eyeWatch(F, aspect);
   const cam = new FightCam(CAMS[which]), you = F.you;
   cam.start(F.me.yaw, you.x, you.y, you.z);
-  const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, last: null, aspect };
+  const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, turn: 0, t: 0, last: null, aspect };
   w.tick = dt => {
-    const p = cam.update(dt, F.you, F.me.yaw, aspect, G), inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
+    w.t += dt; const y0 = cam.yaw, p = cam.update(dt, F.you, F.me.yaw, aspect, G, false, foesMiddle(F)); w.turn += Math.abs(Math.atan2(Math.sin(cam.yaw - y0), Math.cos(cam.yaw - y0)));
+    const inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
     if (w.last && Math.hypot(p.x - w.last[0], p.y - w.last[1], p.z - w.last[2]) > 0.6 * Math.max(1, dt * 60)) w.jumps++;
     w.last = [p.x, p.y, p.z]; w.n++;
     if (inS(onScreen(p, aspect, F.you.x, F.you.y + 0.6, F.you.z))) w.you++;
@@ -234,41 +195,38 @@ function camWatch(F, which, aspect) {
         if (pts.every(([x, z]) => inS(onScreen(p, aspect, x, t.y, z)))) w.tell++; }
     }
   };
-  w.out = () => ({ cam: which, aspect: +aspect.toFixed(2), foe: Math.round(100 * w.foe / Math.max(1, w.foeN)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)), you: Math.round(100 * w.you / Math.max(1, w.n)), jumps: w.jumps, hidden: Math.round(100 * w.hidden / Math.max(1, w.n)) });
+  w.out = () => ({ cam: which, aspect: +aspect.toFixed(2), foe: Math.round(100 * w.foe / Math.max(1, w.foeN)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)), you: Math.round(100 * w.you / Math.max(1, w.n)), jumps: w.jumps, turnPerMin: Math.round(w.turn * 180 / Math.PI / Math.max(1, w.t) * 60), hidden: Math.round(100 * w.hidden / Math.max(1, w.n)) });
   return w;
 }
 window.__scribbleBots = { newFight, BOT, camWatch };
 `;
 
-export async function play(page, bot, { eyes = false, fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
-  return page.evaluate(async ({ BOTS, bot, eyes, fps, lead, limit, solo, cams }) => {
+export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
     const { newFight, BOT, camWatch } = window.__scribbleBots, S = await import('/src/species.js');
     const F = newFight(lead, solo), dt = 1 / fps;
     const W = (cams || []).map(([c, a]) => camWatch(F, c, a));
-    for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt, eyes); for (const w of W) w.tick(dt); }
+    for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt); for (const w of W) w.tick(dt); }
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
       byKind: F.stats.byKind, hitBy: F.stats.hitBy, takenPerMin: Math.round(F.stats.taken / Math.max(1, F.clock) * 60 / F.squad.reduce((a, m) => a + S.statsFor(m.c).maxHp, 0) * 100), extra: { braced: F.stats.braced || 0, spoilt: F.stats.spoilt || 0, buffLost: F.stats.buffLost || 0 }, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
-  }, { BOTS, bot, eyes, fps, lead, limit, solo, cams });
+  }, { BOTS, bot, fps, lead, limit, solo, cams });
 }
 
-export const RUNS = [
-  ['naive', false, 60], ['skilled', false, 60], ['skilled', false, 20],
-  ['naive', true, 60], ['naive', true, 20], ['skilled', true, 60], ['skilled', true, 20],
-];
+export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 20]];
 
 // -> { lines, fails }
 export async function runBots(page, games = 4, log = console.log) {
   let fails = 0;
   const lines = [];
-  for (const [bot, eyes, fps] of RUNS) {
+  for (const [bot, fps] of RUNS) {
     const runs = [];
-    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { eyes, fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
+    for (let g = 0; g < games; g++) runs.push(await play(page, bot, { fps, lead: bot === 'naive' ? g % 3 : g })); // (naive: see MATCHED)
     const wins = runs.filter(r => r.won).length;
     const ok = bot === 'naive' ? wins <= Math.floor(games / 4) : wins === games;
     if (!ok) fails++;
-    const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} ${eyes ? 'eyes  ' : 'behind'} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
+    const line = `${ok ? 'ok  ' : 'FAIL'} ${bot} @${fps}: ${wins}/${games} won  ${runs.map(r => JSON.stringify(r)).join(' ')}`;
     lines.push(line); log(line);
   }
   // Reported, never failed: mashing with a lead whose types beat all three monsters (Phantomaw: Ghost moves hit the Ghost monster x2,

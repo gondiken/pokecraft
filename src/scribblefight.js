@@ -23,7 +23,6 @@ export const FIGHT = {
   chest: 0.9,         // where shots fly (over the ground a creature stands on)
   water: 0.6,         // speed while swimming
   stompDy: 1.6,       // a stomp reaches only what stands within this height of the monster
-  cone: 0.6,          // first person: a monster within this angle (rad) of your look is the target
   // owner 2026-11-09: creatures with shots won easily, rushers fainted fast (a rush stopped right next to the monster, inside its stomp).
   // Measured with bots (plans/chapter3.md section 7): shorter cool-downs or a rush that always went through let MASHING win, so a rush is a
   // timing skill: hit a monster in the last half of its warning (when the red pulses fastest) and you cancel its attack, knock it back
@@ -47,15 +46,6 @@ export const FIGHT = {
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
 const WATER = 5;
-// First person (Test B): your creature runs beside you (a little ahead, to the right) and your moves go the way you look.
-export const FOLLOW = { side: 1.6, ahead: 1.6 }; // night run: it was 1.6 / 1.1 (55 degrees off your look: on screen 37 % of the time); 1.6 ahead: 56 %, wins the same within noise; further in front: hit more
-export function follow(F, px, pz, yaw) {
-  const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)];
-  const tx = px + rt[0] * FOLLOW.side + fw[0] * FOLLOW.ahead, tz = pz + rt[1] * FOLLOW.side + fw[1] * FOLLOW.ahead;
-  const dx = tx - F.you.x, dz = tz - F.you.z, d = Math.hypot(dx, dz), k = d > 0.25 ? Math.min(1, d / 0.8) / d : 0;
-  F.input.mx = dx * k; F.input.mz = dz * k;
-  F.aimDir = { x: fw[0], z: fw[1] };
-}
 const len2 = (x, z) => Math.hypot(x, z);
 
 // The real ground as the fight sees it, from a world with get(x, y, z) (and W / D for its edges).
@@ -121,7 +111,6 @@ export class ScribbleFight {
       return f;
     });
     this.input = { mx: 0, mz: 0 };
-    this.aimDir = null; // first person: the way you look (x, z); null = your creature faces the nearest monster by itself
     this.moves = this.you.c.moves.map(shapeOf);
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
     this.charge = { slot: -1, t: 0 };
@@ -292,18 +281,9 @@ export class ScribbleFight {
     this.cd[0] = LIVE.dodge.cool;
     this.emit({ kind: 'dodge' });
   }
-  // the monster your moves go to: the one you look at (first person), the one you tapped, else the nearest you can see
+  // the monster your moves go to: the one you tapped, else the nearest
   aimAt() {
     const you = this.you;
-    if (this.aimDir) {
-      let best = null, ba = FIGHT.cone;
-      for (const f of this.foes) if (f.alive) {
-        const dx = f.x - you.x, dz = f.z - you.z, d = len2(dx, dz) || 1;
-        const a = Math.acos(Math.max(-1, Math.min(1, (dx * this.aimDir.x + dz * this.aimDir.z) / d)));
-        if (a < ba) { ba = a; best = f; }
-      }
-      return (this.target = best);
-    }
     if (!this.target?.alive) {
       this.target = null;
       let bd = Infinity;
@@ -319,7 +299,6 @@ export class ScribbleFight {
     this.cd[slot] = s.kind === 'burst' && FIGHT.burst.fromPress ? Math.max(0.2, cool - held) : cool; this.cdMax[slot] = cool;
     let dx = Math.sin(you.heading), dz = Math.cos(you.heading), dy = 0;
     if (t) { const d = len2(t.x - you.x, t.z - you.z) || 1; dx = (t.x - you.x) / d; dz = (t.z - you.z) / d; dy = (t.y - you.y) / d; }
-    else if (this.aimDir) { dx = this.aimDir.x; dz = this.aimDir.z; }
     this.emit({ kind: 'move', s, slot });
     if (s.kind === 'bolt') this.fire(s, dx, dy, dz, 1);
     else if (s.kind === 'volley') { for (let i = 0; i < 4; i++) this.fire(s, dx, dy, dz, 1, i * 0.09, (i - 1.5) * 0.09); }
@@ -414,8 +393,7 @@ export class ScribbleFight {
       }
     }
     const t = this.aimAt();
-    if (this.aimDir) you.heading = Math.atan2(this.aimDir.x, this.aimDir.z);
-    else if (t) you.heading = Math.atan2(t.x - you.x, t.z - you.z);
+    if (t) you.heading = Math.atan2(t.x - you.x, t.z - you.z);
     else if (you.moving) you.heading = Math.atan2(this.dir.x, this.dir.z);
     // shots fly straight (3D) and stop in the first solid block
     for (const sh of this.shots) {
@@ -507,12 +485,16 @@ export class ScribbleFight {
 }
 
 // ---------------------------------------------------------------- the fight camera (behind your creature), pure
-// Night run 2026-11-10 (owner: "steeper camera: yes", plans/chapter3.md section 9): like the test arena's: fov 50, high and steep
-// (13.5 up, 7 back: about 62 degrees down), further back on a portrait screen, and it does NOT turn with your look during a fight
-// (north stays up, stick up = away from the camera; measured: the turning camera only ever showed less). A hill between the camera
+// Night run 2026-11-09 (owner: "steeper camera: yes", plans/chapter3.md section 9): like the test arena's: fov 50, high, further back
+// on a portrait screen. Owner 2026-11-10: "a bit too steep, flatten it slightly" (62 -> about 57 degrees down: 12.6 up, 8.2 back) and
+// "a slight turn to cover for the scene is ok": the camera never follows your look; it turns by itself, slowly (at most `turnRate`
+// rad/s, easing in and out), only while a monster is near the edge of the screen (`edge`) and only the way that brings it back in, so
+// the stick's "up" changes slowly and seldom. (Turning toward the monsters' middle kept it turning all the time: they circle you.) A hill between the camera
 // and your creature tips the camera up toward straight overhead, eased: it never jumps. scribble.js draws with it; tests/scribblebots.mjs measures what a child sees with it.
-export const CAM = { up: 13.5, back: 7, fov: 50, ahead: 0.4, follow: 7, turn: false, yawRate: 7, tip: 3, tall: 1.2 };
+export const CAM = { up: 12.6, back: 8.2, fov: 50, ahead: 0.4, follow: 7, turn: 'frame', edge: 0.85, turnRate: 0.25, tip: 3, tall: 1.2 };
 const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
+// the living monsters (what the camera keeps in view)
+export const foesMiddle = F => F.foes.filter(f => f.alive);
 export class FightCam {
   constructor(o = {}) { this.c = { ...CAM, ...o }; this.yaw = 0; this.focus = null; this.tilt = 0; this.pose = null; }
   start(yaw, x, y, z) { this.yaw = yaw; this.focus = { x, y, z }; this.tilt = 0; this.pose = null; }
@@ -526,11 +508,23 @@ export class FightCam {
     for (let k = 2; k <= n; k++) { const q = k / n * s; if (ground.solid(F.x + d.x * q, F.y + 1 + d.y * q, F.z + d.z * q)) return false; }
     return true;
   }
-  // f: where your creature stands (x, y = its ground, z); look: your look's yaw (only with turn); aspect = width / height
-  update(dt, f, look, aspect, ground, snap = false) {
+  // the pose at the current focus and tilt, for a yaw
+  poseAt(yaw, tall) {
+    const c = this.c, F = this.focus, y0 = this.yaw;
+    this.yaw = yaw; const d = this.dirAt(this.tilt, tall); this.yaw = y0;
+    return { x: F.x + d.x, y: F.y + 1 + d.y, z: F.z + d.z, at: { x: F.x - Math.sin(yaw) * c.ahead, y: F.y + 0.5, z: F.z - Math.cos(yaw) * c.ahead }, fov: c.fov };
+  }
+  // how far the monsters stick out of the frame (0 = all well inside `edge`)
+  outOf(pose, aspect, foes) {
+    let s = 0;
+    for (const f of foes) { const q = onScreen(pose, aspect, f.x, f.y + 0.6, f.z); s += q ? Math.max(0, Math.abs(q.x) - this.c.edge) + Math.max(0, Math.abs(q.y) - this.c.edge) : 2; }
+    return s;
+  }
+  // f: where your creature stands (x, y = its ground, z); look: the yaw to start from; aspect = width / height; foes: the living
+  // monsters (turn 'frame': while one is near the edge of the screen the camera turns slowly the way that brings it back in)
+  update(dt, f, look, aspect, ground, snap = false, foes = null) {
     const c = this.c;
     if (!this.focus) this.start(look, f.x, f.y, f.z);
-    if (c.turn) this.yaw = snap ? look : this.yaw + wrapA(look - this.yaw) * (1 - Math.exp(-dt * c.yawRate));
     const k = snap ? 1 : 1 - Math.exp(-dt * c.follow), F = this.focus;
     F.x += (f.x - F.x) * k; F.y += (f.y - F.y) * k; F.z += (f.z - F.z) * k;
     const tall = Math.max(1, c.tall / Math.max(0.3, aspect));
@@ -540,9 +534,16 @@ export class FightCam {
     for (const t of [0, 0.25, 0.5, 0.75, 1]) if (this.clearTo(ground, this.dirAt(t, tall), 1)) { wantTilt = t; break; }
     if (snap) this.tilt = wantTilt;
     else this.tilt += (wantTilt - this.tilt) * (1 - Math.exp(-dt * (wantTilt > this.tilt ? c.tip : c.tip * 0.5)));
-    const d = this.dirAt(this.tilt, tall);
-    const at = { x: F.x - Math.sin(this.yaw) * c.ahead, y: F.y + 0.5, z: F.z - Math.cos(this.yaw) * c.ahead };
-    return (this.pose = { x: F.x + d.x, y: F.y + 1 + d.y, z: F.z + d.z, at, fov: c.fov });
+    if (c.turn === 'frame' && foes?.length && !snap) {
+      const out = this.outOf(this.poseAt(this.yaw, tall), aspect, foes);
+      if (out > 0) {
+        const h = 0.05, l = this.outOf(this.poseAt(this.yaw - h, tall), aspect, foes), r = this.outOf(this.poseAt(this.yaw + h, tall), aspect, foes);
+        const dir = l < out && l <= r ? -1 : r < out ? 1 : 0; // only a way that makes it better (monsters on both sides: it stays)
+        this.speed = (this.speed || 0) + (dir * c.turnRate - (this.speed || 0)) * Math.min(1, dt * 3);
+      } else this.speed = (this.speed || 0) * Math.max(0, 1 - dt * 3);
+      this.yaw = wrapA(this.yaw + this.speed * dt);
+    }
+    return (this.pose = this.poseAt(this.yaw, tall));
   }
 }
 // where a point lands on screen with a pose (-1..1 both ways inside; null = behind the camera)
