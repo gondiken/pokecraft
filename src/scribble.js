@@ -345,13 +345,12 @@ body.touch #sc-ui .moves { display: none; }
 #sc-ui .mv.on { background: color-mix(in srgb, var(--col) 55%, #1d2438); }
 body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, body.scribbling #crosshair.sc-behind, body.scribbling #prompt { display: none !important; }
 #touch.fight #btn-down, #touch.fight #btn-ride { display: none !important; }
-#sc-ui .mv b { display: block; font-size: 30px; line-height: 1.15; }
+#sc-ui .mv b { display: block; line-height: 0; margin: 2px 0 3px; }
 #touch.fight #btn-act { width: 124px !important; height: 124px !important; right: calc(126px + env(safe-area-inset-right)); bottom: 70px; }
 #touch.fight #btn-jump { width: 96px !important; height: 96px !important; font-size: 19px !important; }
 #touch.fight #btn-place { width: 92px !important; height: 92px !important; right: calc(22px + env(safe-area-inset-right)); bottom: 200px; }
-#touch.fight #touch-buttons button .sc-ic { display: block; font-size: 50px; line-height: 1; }
-#touch.fight #touch-buttons button .sc-w { display: block; font-size: 14px; line-height: 1.2; opacity: .9; }
-#touch.fight #touch-buttons #btn-place .sc-ic { font-size: 38px; }
+#touch.fight #touch-buttons button .sc-ic { display: block; line-height: 0; }
+#touch.fight #touch-buttons button .sc-w { display: block; font-size: 13px; line-height: 1.15; font-weight: bold; margin-top: 2px; }
 #touch.fight #touch-buttons button { border-color: var(--sc-col, #fff) !important; }
 #touch.fight #touch-buttons button.sc-on { background: rgba(255,255,255,.45) !important; }
 `;
@@ -412,12 +411,27 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     ui.squad.classList.toggle('hidden', F.squad.length < 2);
   }
   // the moves: the five fixed tablet slots get the fight's words; a computer gets a bar with the keys
-  // owner 2026-11-10 ("buttons should be bigger, especially the emojis"): the fight's buttons show real emojis (the move kinds' own
-  // icons are plain symbols that draw tiny in the game's font); never a star
-  const BIG_ICON = { bolt: '🔵', volley: '🎊', burst: '💥', dash: '💨', heal: '💚', buff: '💪', tough: '🛡️', cloud: '🐌', sleep: '💤' };
-  const bigIcon = p => (p.move ? BIG_ICON[p.move.kind === 'buff' && p.move.stat === 'def' ? 'tough' : p.move.kind] ?? p.icon : p.icon);
+  // owner 2026-11-10 ("WTH does attack mean ... can't they be sth drawn by you? simple is fine"): every button shows WHAT it does: a
+  // simple drawn icon per move kind (white lines, 48 x 48) and the kind's word, never "Attack" / "Special"; a computer's card adds the
+  // move's own name. A big blast says "hold".
+  const L = 'fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"';
+  const KIND_SVG = {
+    bolt: `<circle cx="31" cy="24" r="9" fill="#fff"/><path ${L} d="M5 17h13M3 24h14M5 31h13"/>`,
+    volley: `<circle cx="34" cy="11" r="5.5" fill="#fff"/><circle cx="38" cy="24" r="5.5" fill="#fff"/><circle cx="34" cy="37" r="5.5" fill="#fff"/><path ${L} stroke-width="3" d="M6 24L25 13M6 24h24M6 24l19 11"/>`,
+    burst: `<circle cx="24" cy="24" r="5" fill="#fff"/><circle cx="24" cy="24" r="12" ${L}/><circle cx="24" cy="24" r="20" ${L} stroke-dasharray="5 5"/>`,
+    dash: `<path ${L} stroke-width="5" d="M9 10l14 14L9 38M25 10l14 14-14 14"/>`,
+    heal: `<path ${L} stroke-width="8" d="M24 8v32M8 24h32"/>`,
+    buff: `<path ${L} stroke-width="6" d="M10 24L24 9l14 15M24 10v30"/>`,
+    tough: `<path ${L} d="M24 5l15 6v12c0 10-7 17-15 20C16 40 9 33 9 23V11z"/><path ${L} d="M24 13v22"/>`,
+    cloud: `<path ${L} d="M13 32h22a7 7 0 0 0 0-14 10 10 0 0 0-19-3 8 8 0 0 0-3 17z"/><path ${L} stroke-width="3" d="M12 40c3-3 5 3 8 0s5 3 8 0 5 3 8 0"/>`,
+    sleep: `<path ${L} d="M11 34h22a7 7 0 0 0 0-14 10 10 0 0 0-19-3 8 8 0 0 0-3 17z"/><path ${L} stroke-width="3" d="M33 4h8l-8 9h8"/>`,
+  };
+  const KIND_WORD2 = { bolt: 'Shot', volley: 'Many shots', burst: 'Blast', dash: 'Rush', heal: 'Heal', buff: 'Power up', tough: 'Tough', cloud: 'Slow cloud', sleep: 'Sleepy cloud' };
+  const kindKey = m => (m.kind === 'buff' && m.stat === 'def' ? 'tough' : m.kind);
+  const svgOf = (k, px) => `<svg viewBox="0 0 48 48" width="${px}" height="${px}" style="display:block;margin:0 auto">${KIND_SVG[k] || ''}</svg>`;
+  const faceOf = p => (p.move ? { k: kindKey(p.move), word: KIND_WORD2[kindKey(p.move)] || p.label, hold: p.move.kind === 'burst' } : { k: null, word: p.label, hold: false });
   function drawPad() {
-    const pad = S.fight.pad().map(p => ({ ...p, icon: bigIcon(p) }));
+    const pad = S.fight.pad().map(p => ({ ...p, face: faceOf(p) }));
     const key = JSON.stringify(pad.map(p => [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
     if (ui.cache.pad === key) return;
     ui.cache.pad = key;
@@ -426,18 +440,19 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       d.className = `mv${p.on ? ' on' : ''}`;
       d.style.opacity = p.none ? '.35' : '';
       d.style.setProperty('--col', p.move ? typeCss(p.move.type) : '#e8eef7');
-      const sub = p.move ? p.move.name : i ? 'none' : 'hop away';
-      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span><span style="position:relative">${p.label}</span>${p.icon ? `<b style="position:relative">${p.icon}</b>` : ''}<small style="position:relative">${sub}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
+      const f = p.face, sub = p.move ? p.move.name : i ? '—' : 'hop away';
+      d.innerHTML = `<span class="cd" style="width:${Math.round((p.charge ? 0 : p.cd || 0) * 100)}%"></span>${f.k ? `<b style="position:relative">${svgOf(f.k, 40)}</b>` : ''}<span style="position:relative;font-weight:bold">${f.word}${f.hold ? ' · hold' : ''}</span><small style="position:relative">${sub}</small><kbd style="position:relative">${KEY_NAMES[i]}</kbd>`;
       return d;
     }));
     if (!game.isTouch?.() || typeof document === 'undefined') return;
     pad.forEach((p, i) => {
       const el = document.getElementById(SLOT_IDS[i]);
       if (!el) return;
-      const word = p.icon ? `${p.icon}${p.label}` : p.label; // (the icon big, the word small under it)
-      if (el.textContent !== word) {
-        if (p.icon) el.innerHTML = `<span class="sc-ic">${p.icon}</span><span class="sc-w">${p.label}</span>`;
-        else { el.textContent = word; game.touch?.fit?.(el, true); }
+      const f = p.face, key2 = `${f.k}|${f.word}`; // (the drawn icon big, the kind's word under it)
+      if (el.dataset.scFace !== key2) {
+        el.dataset.scFace = key2;
+        if (f.k) el.innerHTML = `<span class="sc-ic">${svgOf(f.k, i === 1 ? 58 : 44)}</span><span class="sc-w">${f.word}${f.hold ? '<br>hold' : ''}</span>`;
+        else { el.textContent = f.word; game.touch?.fit?.(el, true); }
       }
       el.classList.toggle('dim', !!p.dim);
       el.classList.toggle('sc-on', !!p.on);
@@ -453,7 +468,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const ride = document.getElementById('btn-ride');
     if (on) { ride?.classList.remove('hidden'); t?.classList.remove('sky'); }
     else {
-      for (const id of SLOT_IDS) { const el = document.getElementById(id); el?.classList.remove('sc-on', 'dim'); el?.style.removeProperty('--sc-col'); }
+      for (const id of SLOT_IDS) { const el = document.getElementById(id); el?.classList.remove('sc-on', 'dim'); el?.style.removeProperty('--sc-col'); if (el) delete el.dataset.scFace; }
       if (game.touch) { game.touch.state = {}; game.touch.rideView = {}; } // the next setButtons writes every slot again (touch.js)
     }
   }
@@ -619,7 +634,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     touchFight(true);
     game.ui?.setPrompt?.('');
     sound.play('whoosh');
-    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · Attack hurts · Special helps · Jump = Dodge' : 'WASD moves · Q Attack · E Special · Space dodges') : '');
+    hint(firstFight ? (game.isTouch?.() ? 'Stick moves · the round buttons show what your creature does · Jump = Dodge' : 'WASD moves · Q and E: your moves · Space dodges') : '');
   }
   function endFight(won) {
     S.result = won; S.exitFrom = null;

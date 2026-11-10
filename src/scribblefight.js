@@ -275,12 +275,28 @@ export class ScribbleFight {
     if (s.kind === 'burst') { this.charge = { slot, t: 0 }; return; }
     this.use(slot, 0);
   }
-  // the move a button uses next (a move slot 1-4, 0 = none): the ready one of its group used longest ago, else the one ready soonest
+  // which moves each button holds (owner 2026-11-10: "a creature has 4 types of attacks and zero special. what to do there?"):
+  // button 1 = attacks, button 2 = help moves; a creature with no help move puts its close-up attacks (rush, big blast) on button 2,
+  // and if all its moves are of one side, the second half of them. No button sits empty while the creature has two moves.
+  buttonsOf() {
+    const ms = this.moves, sig = ms.map(m => m?.kind).join();
+    if (this.layoutFor === sig) return this.layout;
+    const att = [], sp = [];
+    ms.forEach((s, k) => { if (s) (GROUP[s.kind] === 'special' ? sp : att).push(k + 1); });
+    let a = att, b = sp;
+    const split = list => { const near = list.filter(i => ['dash', 'burst'].includes(ms[i - 1].kind)), far = list.filter(i => !near.includes(i)); if (near.length && far.length) return [far, near]; const h = Math.ceil(list.length / 2); return [list.slice(0, h), list.slice(h)]; };
+    if (!sp.length && att.length > 1) [a, b] = split(att);
+    else if (!att.length && sp.length > 1) [a, b] = split(sp);
+    this.layoutFor = sig; this.layout = [[], a, b];
+    return this.layout;
+  }
+  // the move a button uses next (a move slot 1-4, 0 = none): the ready one of its moves used longest ago, else the one ready soonest
   nextMove(group) {
     let best = 0;
+    const mine = this.buttonsOf()[typeof group === 'number' ? group : BUTTONS.indexOf(group)] || [];
     for (let i = 1; i <= 4; i++) {
       const s = this.moves[i - 1];
-      if (!s || GROUP[s.kind] !== group) continue;
+      if (!s || !mine.includes(i)) continue;
       if (!best) { best = i; continue; }
       const r = this.cd[i] <= 0, rb = this.cd[best] <= 0;
       if (r && !rb) best = i;
@@ -291,7 +307,7 @@ export class ScribbleFight {
   // the buttons (0 Dodge, 1 Attack, 2 Special): down / up
   push(b) {
     if (b === 0) return this.press(0);
-    const i = this.nextMove(BUTTONS[b]);
+    const i = this.nextMove(b);
     if (!i || this.cd[i] > 0) return;
     this.held[b] = i; this.press(i);
   }
@@ -500,7 +516,7 @@ export class ScribbleFight {
     return [
       { label: 'Dodge', icon: '', cd: this.cd[0] / LIVE.dodge.cool, dim: this.cd[0] > 0 },
       ...['attack', 'special'].map((g, k) => {
-        const i = this.held[k + 1] || this.nextMove(g), s = i ? this.moves[i - 1] : null;
+        const i = this.held[k + 1] || this.nextMove(k + 1), s = i ? this.moves[i - 1] : null;
         if (!s) return { label: g === 'attack' ? 'Attack' : 'Special', group: g, none: true, dim: true, cd: 0 };
         const c = this.cd[i], on = this.charge.slot === i;
         return { label: g === 'attack' ? 'Attack' : 'Special', group: g, move: s, icon: iconOf(s), cd: c / (this.cdMax[i] || 1), dim: c > 0 && !on, on, charge: on ? Math.min(1, this.charge.t / LIVE.charge) : 0 };

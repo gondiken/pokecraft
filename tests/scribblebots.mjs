@@ -85,22 +85,23 @@ function skilledMoves(F) {
   // a rush at a monster in the last part of its warning cancels its attack (FIGHT.rush): aim one there when a rush is ready
   const win = LIVE_TELL * (FIGHT.rush.window ?? 1);
   // (owner 2026-11-10: only two buttons; Attack and Special each use their group's next move, shown by its icon)
-  if (F.charge.slot <= 0 && F.held[1]) F.lift(1); // a big blast that went by itself: let go of the button
-  const na = F.nextMove('attack');
-  if (na && F.moves[na - 1].kind === 'dash' && F.cd[na] === 0) {
+  if (F.charge.slot <= 0) { if (F.held[1]) F.lift(1); if (F.held[2]) F.lift(2); } // a big blast that went by itself: let go of the button
+  for (const b of [1, 2]) { // a rush on either button
+    const na = F.nextMove(b);
+    if (!(na && F.moves[na - 1].kind === 'dash' && F.cd[na] === 0)) continue;
     const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
-    if (w) { F.pick(w); F.push(1); F.lift(1); }
+    if (w) { F.pick(w); F.push(b); F.lift(b); }
   }
   const t = F.aimAt();
   // a big blast in hand: let go when a monster inside the ring is in the last part of its warning (it is stopped), else at full
   if (F.charge.slot > 0) {
     const k = Math.min(1, F.charge.t / LIVE_FULL), r = F.blastR(k);
-    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) F.lift(1);
+    if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) { F.lift(1); F.lift(2); }
     return;
   }
   const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
   for (const b of [1, 2]) {
-    const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null;
+    const i = F.nextMove(b), s = i ? F.moves[i - 1] : null;
     if (!s || F.cd[i] > 0 || !t) continue;
     const d = len2(t.x - you.x, t.z - you.z);
     if (s.kind === 'heal' && (you.hp > you.maxHp * 0.55 || F.foes.some(f => f.alive && (f.tell || f.charging)))) continue; // heal between attacks
@@ -126,8 +127,8 @@ function kidStep(F, dt) {
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
   F.input.mx = g.gx; F.input.mz = g.gz;
   // (a big blast: it holds the button until the ring is full, then it goes by itself)
-  if (F.charge.slot <= 0 && F.held[1]) F.lift(1);
-  if (F.charge.slot <= 0) for (const b of [1, 2]) { const i = F.nextMove(b === 1 ? 'attack' : 'special'), s = i ? F.moves[i - 1] : null; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.push(b); if (s.kind !== 'burst') F.lift(b); }
+  if (F.charge.slot <= 0) { if (F.held[1]) F.lift(1); if (F.held[2]) F.lift(2); }
+  if (F.charge.slot <= 0) for (const b of [1, 2]) { const i = F.nextMove(b), s = i ? F.moves[i - 1] : null; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.push(b); if (s.kind !== 'burst') F.lift(b); }
   F.step(dt);
 }
 // person (step 3, night run): closer to a real child on a tablet than the kid: sees a warning 0.3-0.6 s late, walks out of it with a
@@ -146,13 +147,14 @@ function personStep(F, dt) {
   if (lateNow || !s.flee) { const c = Math.cos(P.wob), sn = Math.sin(P.wob); gx = s.gx * c - s.gz * sn; gz = s.gz * c + s.gx * sn; }
   if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.push(0);
   F.input.mx = gx; F.input.mz = gz;
-  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.lift(1); F.step(dt); return; }
+  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) { F.lift(1); F.lift(2); } F.step(dt); return; }
   if (F.held[1]) F.lift(1);
+  if (F.held[2]) F.lift(2);
   if (you.hp < you.maxHp * 0.25 && P.r() < dt * 0.6) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > 0); if (i >= 0) F.swap(i); }
   if ((P.next -= dt) <= 0) {
     P.next = 0.4 + P.r() * 0.7;
     if (P.r() < 0.15) { const o = F.foes.filter(f => f.alive); F.pick(o[Math.floor(P.r() * o.length)]); }
-    const next = b => { const i = F.nextMove(b === 1 ? 'attack' : 'special'); return i && F.cd[i] === 0 ? F.moves[i - 1] : null; };
+    const next = b => { const i = F.nextMove(b); return i && F.cd[i] === 0 ? F.moves[i - 1] : null; };
     const ready = [1, 2].filter(b => next(b) && !(next(b).kind === 'heal' && you.hp > you.maxHp * 0.4));
     if (ready.length) { const b = ready[Math.floor(P.r() * ready.length)], s = next(b); F.push(b); if (s.kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.lift(b); }
   }

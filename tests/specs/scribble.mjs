@@ -8,6 +8,7 @@
 import { devices } from 'playwright';
 import { openGame, newGame } from '../helpers.mjs';
 import { scribblePage, runBots, SEEDS } from '../scribblebots.mjs';
+const KIND_WORDS = /^(Shot|Many shots|Blast|Rush|Heal|Power up|Tough|Slow cloud|Sleepy cloud)/;
 
 const ONLY = process.env.SCRIBBLE_ONLY;
 const part = n => !ONLY || ONLY.split(',').includes(n);
@@ -93,16 +94,24 @@ export default async function ({ browser, base, t }) {
     t.ok(await fight(page, F => F.cd[0] > 0), 'Space dodges (and does not jump)');
     await page.screenshot({ path: `${SHOTS}scribble-8-fight.png` });
     // step 2: a big blast held with a real key: its ring grows on the ground; let go = the blast
+    // owner 2026-11-10 ("a creature has 4 types of attacks and zero special. what to do there?"): no button sits empty
+    const lay = await fight(page, F => {
+      const old = F.moves, mk = kinds => kinds.map(k => ({ kind: k }));
+      const out = [['bolt', 'buff', 'dash', 'dash'], ['bolt', 'volley', 'dash', 'burst'], ['bolt', 'bolt', 'bolt', 'bolt'], ['heal', 'cloud', 'sleep', 'buff']].map(ks => { F.moves = mk(ks); const L = F.buttonsOf(); return [L[1].map(i => ks[i - 1]).join('+'), L[2].map(i => ks[i - 1]).join('+')].join(' | '); });
+      F.moves = old; return out;
+    });
+    t.ok(lay[0] === 'bolt+dash+dash | buff' && lay[1] === 'bolt+volley | dash+burst' && lay[2] === 'bolt+bolt | bolt+bolt' && lay[3] === 'heal+cloud | sleep+buff', `moves spread over the two buttons: ${lay.join(' ; ')}`);
     await fight(page, async F => { const { shapeOf } = await import('/src/arena/core.js'); F.moves[3] = shapeOf('statueslam'); F.cd[4] = 0; F.usedAt[1] = F.usedAt[3] = F.clock; });
-    const shows = await fight(page, F => F.pad()[1].icon);
-    t.ok(shows === '◎', `the Attack button shows the move it uses next: ${shows} (a big blast)`);
+    await frames(page, 3);
+    const shows = await page.evaluate(() => document.querySelectorAll('#sc-ui .mv')[1]?.textContent || '');
+    t.ok(/Blast · hold/.test(shows) && /Statue Slam/.test(shows), `the Q card says what it does next: ${shows.replace(/\s+/g, ' ')}`);
     await page.keyboard.down('KeyQ');
     await until(page, () => window.pokecraft.scribble.fightOf().charge.t > 0.7, null, 20000).catch(() => {});
     const ring = await page.evaluate(() => { const g = window.pokecraft, a = g.scene.getObjectByName('scribble').children.find(o => o.geometry?.type === 'RingGeometry'); return { shown: !!a?.visible, r: a?.scale.x, charge: g.scribble.fightOf().charge.t }; });
     await page.screenshot({ path: `${SHOTS}scribble-8b-charge.png` });
     await page.keyboard.up('KeyQ');
     await until(page, () => window.pokecraft.scribble.fightOf().cd[4] > 0, null, 20000).catch(() => {});
-    t.ok(ring.shown && ring.r > 3 && await fight(page, F => F.cd[4] > 0 && F.charge.slot < 0), `Q held on ◎: the big blast's ring grows on the ground (radius ${ring.r?.toFixed(1)} after ${ring.charge?.toFixed(1)} s), let go = the blast`);
+    t.ok(ring.shown && ring.r > 3 && await fight(page, F => F.cd[4] > 0 && F.charge.slot < 0), `Q held on a Blast: the big blast's ring grows on the ground (radius ${ring.r?.toFixed(1)} after ${ring.charge?.toFixed(1)} s), let go = the blast`);
     const perf = await page.evaluate(() => window.pokecraft.renderer.info.render.calls);
     t.ok(perf < 200, `draw calls in the fight: ${perf} (the steep camera sees less of the world; it was about 335)`);
     // owner 2026-11-10 ("a slight turn to cover for the scene is ok"): a monster at the edge of the screen = the camera turns, slowly
@@ -171,8 +180,8 @@ export default async function ({ browser, base, t }) {
     await touch('touchEnd', []);
     await until(page, () => window.pokecraft.scribble.info().phase === 'fight');
     t.ok(true, 'the joystick walks you into the patch');
-    const slots = await page.evaluate(() => ['btn-jump', 'btn-act', 'btn-place', 'btn-ride', 'btn-down'].map(id => { const e = document.getElementById(id); return { id, text: e.textContent, shown: e.offsetParent !== null }; }));
-    t.ok(slots[0].text === 'Dodge' && slots[1].text.endsWith('Attack') && slots[2].text.endsWith('Special') && slots.slice(0, 3).every(s => s.shown) && slots.slice(3).every(s => !s.shown), `three buttons with a fixed meaning: ${slots.slice(0, 3).map(s => s.text).join(' / ')}; Ride and Down hidden`);
+    const slots = await page.evaluate(() => ['btn-jump', 'btn-act', 'btn-place', 'btn-ride', 'btn-down'].map(id => { const e = document.getElementById(id); return { id, text: e.textContent, svg: !!e.querySelector('svg'), shown: e.offsetParent !== null }; }));
+    t.ok(slots[0].text === 'Dodge' && KIND_WORDS.test(slots[1].text) && KIND_WORDS.test(slots[2].text) && slots[1].svg && slots[2].svg && slots.slice(0, 3).every(s => s.shown) && slots.slice(3).every(s => !s.shown), `three buttons, each with a drawn icon and its move's kind: ${slots.slice(0, 3).map(s => s.text).join(' / ')}; Ride and Down hidden`);
     await tap(await center('#btn-act'), 5);
     await until(page, () => window.pokecraft.scribble.fightOf().cd[1] > 0, null, 20000).catch(() => {});
     t.ok(await fight(page, F => F.cd[1] > 0), 'the round action button is Attack');

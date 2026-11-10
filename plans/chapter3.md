@@ -459,3 +459,15 @@ Either way every kind gets a fixed icon and colour on its button and on the grou
 - **Bigger buttons in a fight:** Attack 100 -> 124 px, Dodge 84 -> 96, Special 68 -> 92; the icons are real emojis drawn 50 px / 38 px:
   🔵 shot, 🎊 many shots, 💥 big blast, 💨 rush, 💚 heal, 💪 power up, 🛡️ Tough, 🐌 slow cloud, 💤 sleepy cloud (the move kinds' own
   plain symbols, now in `movekinds.js`, drew tiny in the game's font; only the fight's buttons map them). Desktop cards bigger too.
+
+### Owner 2026-11-10: "WTH does attack mean?" Drawn icons, the move's kind on every button, no empty button
+
+- **Every button says what it does:** a simple drawn icon per move kind (`KIND_SVG` in `src/scribble.js`, white lines; picture:
+  `plans/chapter3/kind-icons.png`) and the kind's word, never "Attack" / "Special": Shot, Many shots, Blast · hold, Rush, Heal, Power up,
+  Tough, Slow cloud, Sleepy cloud. On a computer the card also shows the move's own name and its key. The emojis are gone.
+- **Two buttons, no empty one** (`buttonsOf()` in `scribblefight.js`): button 1 (Q / the round button) = attacks, button 2 (E / Place) =
+  help moves. A creature with no help move puts its close-up attacks (rush, big blast) on button 2 and keeps the far ones (shot, many
+  shots) on button 1; if all its moves are on one side they are split in half. Each button still takes its moves in turn and shows the
+  next one. The spec checks four layouts (`bolt+dash+dash | buff`, `bolt+volley | dash+burst`, `bolt+bolt | bolt+bolt`, `heal+cloud | sleep+buff`).
+- Mashing over 48 fights per frame rate: 3 / 48 at 60 fps, 11 / 48 at 20 fps (it was 7 / 48 at 20 fps before; this team's layout did
+  not change, so that is the runs' luck). Mashing at 20 fps is the closest to the quarter limit; worth watching.
