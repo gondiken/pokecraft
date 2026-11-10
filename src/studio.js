@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import { SPECIES, MOVES, nameOf, makeCreature, buildModel, animateModel, disposeModel, movesWith, MAX_LEVEL } from './species.js';
 import { Fx } from './fx.js'; // owner 2026-11-09: the Attack Studio plays an attack in the turning picture
-import { STYLES, SPARKLES, RUSH } from './attackstyles.js';
+import { KIND_NAME, kindOfMove, RUSH } from './movekinds.js'; // owner 2026-11-10: each attack designed inside its kind
+import { PREVIEW } from './comingsoon.js';
 import { rematchMoves, rematchCubes } from './rematch.js';
 import { sound } from './sound.js';
 import { el } from './util.js';
@@ -74,7 +75,8 @@ export function createStudio(game, { startBattle, save }) {
   let island = null;           // the Swirl's Wizard and guardian of the world they were made for
   let clock = 0;
   let draft = null, tab = 'body', preview = null; // the drawing board: the design being drawn, the open part tab, the turning picture
-  let attacks = null; // owner 2026-11-09 (?preview): the guardian whose attacks the board is styling (null = the part kit)
+  let atkMove = null; // owner 2026-11-10 (?preview): the attack picked on the board's Attacks tab
+  const ATTACKS = 'attacks'; // the board's 8th tab (?preview)
 
   const dist = npc => (npc?.pos && game.player ? Math.hypot(game.player.pos.x - npc.pos.x, game.player.pos.z - npc.pos.z) : 0);
   const floor5 = () => game.beaten.includes(floorKey(5));
@@ -197,16 +199,13 @@ export function createStudio(game, { startBattle, save }) {
     // Picks a part (slot, number) or a colour (slot, colour number) for the draft; the tests call these too.
     setPart(slot, i) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT[slot][i]) return false; draft.p[k] = i; tab = slot; this.refreshBoard(); return true; },
     setColour(slot, ci) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT_COLOURS[ci]) return false; draft.c[k] = ci; this.refreshBoard(); return true; },
-    setTab(slot) { if (!SLOTS.includes(slot)) return false; tab = slot; this.refreshBoard(); return true; },
+    setTab(slot) { if (!SLOTS.includes(slot) && !(slot === ATTACKS && PREVIEW)) return false; tab = slot; this.refreshBoard(); if (slot === ATTACKS) this.playAttack(); return true; },
     setName(n) { if (!draft) return false; draft.n = String(n ?? '').slice(0, NAME_MAX); return true; },
     shownName() { return draft ? (draft.n.trim() ? cleanDesign(draft).n : kitName(draft)) : ''; },
     // Fills #drawboard-body (ui.openPanel('drawboard')).
     renderBoard() {
       const body = document.getElementById('drawboard-body');
       if (!body) return;
-      const close = document.getElementById('drawboard-close');
-      if (close) close.textContent = attacks ? 'Close' : 'Not now';
-      if (attacks) { this.renderAttacks(body); return; }
       this.startDraft();
       const redo = S.ally && S.redesign;
       const nameIn = el('input', { id: 'db-name', type: 'text', maxlength: String(NAME_MAX), placeholder: kitName(draft), value: draft.n, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Name' });
@@ -233,12 +232,17 @@ export function createStudio(game, { startBattle, save }) {
     },
     // Redraws the tabs, the part buttons and the colour swatches (the picture and the name box stay).
     refreshBoard() {
-      if (attacks) { this.refreshAttacks(); return; }
       const tabs = document.getElementById('db-tabs');
       if (!tabs || !draft) { this.updatePreview(); return; }
-      const k = SLOTS.indexOf(tab), list = KIT[tab];
+      tabs.classList.toggle('eight', PREVIEW);
       tabs.replaceChildren(...SLOTS.map((s, i) => el('button', { class: `db-tab${s === tab ? ' on' : ''}`, 'data-slot': s, onclick: () => this.setTab(s) },
-        el('span', { class: 'db-ico' }, SLOT_ICONS[s]), el('span', {}, SLOT_LABELS[s]), el('small', {}, KIT[s][draft.p[i]].name))));
+        el('span', { class: 'db-ico' }, SLOT_ICONS[s]), el('span', {}, SLOT_LABELS[s]), el('small', {}, KIT[s][draft.p[i]].name))),
+        PREVIEW && el('button', { class: `db-tab${tab === ATTACKS ? ' on' : ''}`, 'data-slot': ATTACKS, onclick: () => this.setTab(ATTACKS) },
+          el('span', { class: 'db-ico' }, '🎬'), el('span', {}, 'Attacks'), el('small', {}, `${this.attackMoves().length} moves`)));
+      const sub = document.querySelector('#drawboard .db-sub');
+      if (sub) sub.textContent = tab === ATTACKS ? 'Each attack is a kind. Design how it looks!' : 'Pick each part and its colour. Start with the body!';
+      if (tab === ATTACKS) { this.refreshAttacks(); this.updatePreview(); return; }
+      const k = SLOTS.indexOf(tab), list = KIT[tab];
       document.getElementById('db-parts').replaceChildren(...list.map((part, i) => el('button', { class: `db-part${draft.p[k] === i ? ' on' : ''}`, 'data-part': String(i), onclick: () => this.setPart(tab, i) }, part.name)));
       const none = list[draft.p[k]].name === 'None';
       document.getElementById('db-colours').replaceChildren(
@@ -270,24 +274,24 @@ export function createStudio(game, { startBattle, save }) {
       const loop = now => {
         if (!this.boardOpen || !preview) { this.stopPreview(); return; }
         const dt = Math.min(0.1, (now - preview.last) / 1000); preview.last = now; preview.t += dt;
-        if (preview.model && !attacks) { preview.model.rotation.y = 0.5 + preview.t * 0.7; animateModel(preview.model, preview.t, false); }
-        if (attacks) this.stepDemo(now);
+        if (preview.model && tab !== ATTACKS) { preview.model.rotation.y = 0.5 + preview.t * 0.7; animateModel(preview.model, preview.t, false); }
+        if (tab === ATTACKS) this.stepDemo(now);
         preview.renderer.render(preview.scene, preview.cam);
         preview.raf = requestAnimationFrame(loop);
       };
       preview.raf = requestAnimationFrame(loop);
     },
     updatePreview() {
-      if (!preview || !(draft || attacks)) return;
-      const d = cleanDesign(attacks ? attacks.paint : draft), key = JSON.stringify([d.p, d.c, !!attacks]);
+      if (!preview || !draft) return;
+      const demo = tab === ATTACKS, d = cleanDesign(draft), key = JSON.stringify([d.p, d.c, demo]);
       if (key === preview.key) return;
       preview.key = key;
       if (preview.model) { preview.scene.remove(preview.model); disposeModel(preview.model); }
       const m = buildModel(KIT_SPECIES, d);
       preview.scene.add(m);
       preview.model = m;
-      if (preview.dummy) preview.dummy.visible = !!attacks;
-      if (attacks) { this.stageDemo(m); return; }
+      if (preview.dummy) preview.dummy.visible = demo;
+      if (demo) { this.stageDemo(m); return; }
       const bb = new THREE.Box3().setFromObject(m), c = bb.getCenter(new THREE.Vector3());
       const size = Math.max(1.1, bb.getSize(new THREE.Vector3()).length() + (flies(d) ? 0.3 : 0));
       preview.cam.position.set(c.x + size * 0.4, c.y + size * 0.35, c.z + size * 1.75);
@@ -298,66 +302,57 @@ export function createStudio(game, { startBattle, save }) {
       if (!preview) return;
       cancelAnimationFrame(preview.raf);
       preview.fx?.clear(); preview.demo = null;
-      if (!this.boardOpen) attacks = null;
       if (preview.model) { preview.scene.remove(preview.model); disposeModel(preview.model); preview.model = null; }
       preview.key = '';
     },
-    // ---- the Attack Studio (owner 2026-11-09: "design custom creature's attack animation", ?preview: the team card's 🎬 button) ----
-    // Each attacking move picks a style (attackstyles.js STYLES: Paint, Rush, Shot, Blast, Rain, Spin) and all of them one sparkle shape;
-    // the colours are the guardian's own. Saved at once in the creature's design (`a`, `s`) and in the save field `wizard.look`.
-    get attacks() { return attacks; }, set attacks(c) { attacks = c && SPECIES[c.species]?.kit ? c : null; },
-    attackMoves(c = attacks) { return (c?.moves || []).filter(id => MOVES[id]?.power > 0); },
-    styleOf(id) { return attacks ? STYLES.findIndex(st => st.id === (lookOf(attacks.paint, id)?.style ?? 'paint')) : 0; },
-    sparkleOf() { return attacks ? cleanDesign(attacks.paint).s ?? 0 : 0; },
-    restyleAttacks(change) {
-      if (!attacks) return false;
-      const d = cleanDesign(attacks.paint), a = { ...(d.a || {}) };
-      change(a, d);
-      d.a = a;
-      attacks.paint = cleanDesign(d);
-      if (S.look && attacks === myGuardian()) S.look = cleanDesign(attacks.paint);
-      this.refreshAttacks();
-      save(true);
-      return true;
+    // ---- the Attacks tab (owner 2026-11-10: "the attack designer should be part of the custom design with wizard"; the kinds are
+    //      chapter 3's: "Rush, shot, blast ... are the types of attacks"). Each attack of your guardian is a kind (movekinds.js, from the
+    //      move's data); you design its animation inside that kind (shape, path, trail, size / pattern / ring, middle / move, hit, bits) and
+    //      two colours. Kept in the draft (`a`: { moveId: { p, c } }) and saved with the design; a battle draws it (fx.attack, lookOf).
+    attackMoves() {
+      const c = S.redesign ? myGuardian() : null;
+      const moves = c?.moves ?? makeCreature(KIT_SPECIES, guardianLevel(game.party, MAX_LEVEL)).moves;
+      return moves.filter(id => kindOfMove(MOVES[id])?.designable);
     },
-    setStyle(id, st) {
-      if (!attacks || !this.attackMoves().includes(id) || !STYLES[st]) return false;
-      this.restyleAttacks(a => { if (st > 0) a[id] = st; else delete a[id]; });
-      this.playAttack(id);
-      return true;
+    get atkMove() { const list = this.attackMoves(); if (!list.includes(atkMove)) atkMove = list[0] ?? null; return atkMove; },
+    // the draft's look of one attack (made the first time it is opened: the kind's first choices in the guardian's body and extra colours)
+    lookRaw(id) {
+      if (!draft || !id || !MOVES[id]) return null;
+      const kind = kindOfMove(MOVES[id]);
+      draft.a ??= {};
+      draft.a[id] = kind.cleanLook(draft.a[id] ?? kind.defaultLook([draft.c[0], draft.c[6]]));
+      if (draft.a[id].c.length < 2) draft.a[id].c = [draft.c[0], draft.c[6]];
+      return draft.a[id];
     },
-    setSparkle(i) {
-      if (!attacks || !SPARKLES[i]) return false;
-      this.restyleAttacks((a, d) => { if (i > 0) d.s = i; else delete d.s; });
-      const id = this.attackMoves().find(m => this.styleOf(m) > 0) ?? this.attackMoves()[0];
-      if (id) this.playAttack(id);
-      return true;
+    pickAttack(id) { if (!this.attackMoves().includes(id)) return false; atkMove = id; this.refreshBoard(); this.playAttack(); return true; },
+    // a choice (slot index, choice number) or a colour (0 or 1, colour number) for the attack on the tab
+    setChoice(si, i) {
+      const id = this.atkMove, kind = id && kindOfMove(MOVES[id]), raw = this.lookRaw(id);
+      if (!raw || !kind.slots[si]?.options[i]) return false;
+      raw.p[si] = i; this.refreshBoard(); this.playAttack(); return true;
     },
-    renderAttacks(body) {
-      const c = attacks;
-      body.replaceChildren(
-        el('h2', {}, `🎬 ${nameOf(c)}'s attacks`),
-        el('p', { class: 'db-sub' }, 'Pick a look for each attack. Tap it to watch!'),
-        el('div', { class: 'db-kit' },
-          el('div', { class: 'db-left' }, el('div', { id: 'db-preview' })),
-          el('div', { class: 'db-right' },
-            el('div', { id: 'db-attacks' }),
-            el('div', { id: 'db-sparkles' }))),
-        el('div', { class: 'db-foot' }, el('button', { id: 'db-done', class: 'primary', onclick: () => game.closeBoard?.() }, '✅ Done!')));
-      this.refreshAttacks();
-      this.startPreview();
+    setAtkColour(n, ci) {
+      const raw = this.lookRaw(this.atkMove);
+      if (!raw || (n !== 0 && n !== 1) || !KIT_COLOURS[ci]) return false;
+      raw.c[n] = ci; this.refreshBoard(); this.playAttack(); return true;
     },
     refreshAttacks() {
-      const list = document.getElementById('db-attacks'), sp = document.getElementById('db-sparkles');
-      if (!list || !attacks) return;
-      const moves = this.attackMoves();
-      list.replaceChildren(...(moves.length ? moves.map(id => el('div', { class: 'db-atk', 'data-move': id },
-        el('div', { class: 'db-atkname' }, el('span', {}, MOVES[id].name), el('button', { class: 'db-play', title: 'Watch it', onclick: () => this.playAttack(id) }, '▶')),
-        el('div', { class: 'db-styles' }, ...STYLES.map((st, i) => el('button', { class: `db-part db-style${this.styleOf(id) === i ? ' on' : ''}`, 'data-style': String(i), onclick: () => this.setStyle(id, i) },
-          el('span', { class: 'db-ico' }, st.icon), ` ${st.name}`))))) : [el('p', {}, 'No attacks yet!')]));
-      const on = this.sparkleOf();
-      sp.replaceChildren(el('span', { class: 'db-clabel' }, 'Sparkles:'),
-        ...SPARKLES.map((k, i) => el('button', { class: `db-part db-sparkle${on === i ? ' on' : ''}`, 'data-sparkle': String(i), title: k.name, onclick: () => this.setSparkle(i) }, k.icon)));
+      const parts = document.getElementById('db-parts'), cols = document.getElementById('db-colours');
+      if (!parts || !cols) return;
+      const moves = this.attackMoves(), id = this.atkMove;
+      if (!id) { parts.replaceChildren(el('p', { class: 'db-clabel' }, 'No attacks to design yet!')); cols.replaceChildren(); return; }
+      const kind = kindOfMove(MOVES[id]), raw = this.lookRaw(id);
+      const swatches = n => KIT_COLOURS.map((c, i) => el('button', { class: `db-swatch${raw.c[n] === i ? ' on' : ''}${c.rainbow ? ' rainbow' : ''}`, 'data-acolour': `${n}:${i}`, title: c.name,
+        style: c.rainbow ? '' : `background:#${c.hex.toString(16).padStart(6, '0')}`, onclick: () => this.setAtkColour(n, i) }));
+      parts.replaceChildren(
+        el('div', { class: 'db-moves' }, ...moves.map(m => { const k = kindOfMove(MOVES[m]); return el('button', { class: `db-part db-move${m === id ? ' on' : ''}`, 'data-move': m, onclick: () => this.pickAttack(m) },
+          el('b', {}, MOVES[m].name), el('small', {}, `${k.icon} ${KIND_NAME[k.id]}`)); })),
+        el('div', { class: 'db-kindline' }, `${MOVES[id].name} is a `, el('b', {}, `${kind.icon} ${KIND_NAME[kind.id]}`), ' ', el('button', { class: 'db-play', title: 'Watch it', onclick: () => this.playAttack() }, '▶ Watch')),
+        ...kind.slots.map((sl, si) => el('div', { class: 'db-slotrow', 'data-aslot': sl.id },
+          el('span', { class: 'db-clabel' }, `${sl.icon} ${sl.label}:`),
+          ...sl.options.map((o, i) => el('button', { class: `db-part db-opt${raw.p[si] === i ? ' on' : ''}${sl.options.length > 8 ? ' db-icon' : ''}`, 'data-opt': `${si}:${i}`, title: o.name, 'aria-label': o.name, onclick: () => this.setChoice(si, i) },
+            el('span', { class: 'db-ico' }, o.icon), sl.options.length > 8 ? '' : ` ${o.name}`)))));
+      cols.replaceChildren(el('span', { class: 'db-clabel' }, 'Colour 1:'), ...swatches(0), el('span', { class: 'db-clabel' }, 'Colour 2:'), ...swatches(1));
     },
     // The demo stage: the guardian on the left facing a practice target on the right, seen from the side.
     stageDemo(m) {
@@ -378,21 +373,22 @@ export function createStudio(game, { startBattle, save }) {
       preview.dummy.position.set(1.5, 0, 0); preview.dummy.rotation.set(0, -0.7, 0); preview.demoYaw = -0.7; // turned half to the camera
       const x0 = left - size.z / 2 - 0.45, x1 = 1.5 + 0.6, midX = (x0 + x1) / 2, h = Math.max(1.3, size.y);
       const dist = Math.max((x1 - x0) / 2, h * 0.7) / Math.tan(preview.cam.fov * Math.PI / 360) * 0.95; // both in view
-      preview.cam.position.set(midX, h * 0.5 + dist * 0.25, dist);
+      preview.cam.position.set(midX, h * 0.5 + dist * 0.45, dist); // a little from above: a big blast's ring on the ground shows
       preview.cam.lookAt(midX, h * 0.5, 0);
       preview.renderer.render(preview.scene, preview.cam);
     },
     spotOf(o) { const b = new THREE.Box3().setFromObject(o), pos = b.getCenter(new THREE.Vector3()); return { pos, top: b.max.y, r: Math.max(0.3, (b.max.x - b.min.x) / 2) }; },
     // Plays one attack in the preview: a Rush dashes over (like battle.js lunge), the rest hop forward a little; then the effect, then the target wobbles.
-    playAttack(id) {
-      if (!preview || !attacks || !preview.model || !preview.dummy || !MOVES[id]) return false;
+    playAttack(id = this.atkMove) {
+      if (!preview || !draft || tab !== ATTACKS || !preview.model || !preview.dummy || !MOVES[id]) return false;
+      this.lookRaw(id);
       preview.fx ??= new Fx(preview.scene);
       preview.fx.on = true;
       preview.fx.clear();
-      const look = lookOf(attacks.paint, id), rush = look?.style === 'rush', now = performance.now();
+      const look = lookOf(cleanDesign(draft), id, MOVES[id]), lunge = look?.kind.lunge(look), rush = !!lunge?.far, now = performance.now();
       const gap = preview.dummy.position.x - preview.home;
       preview.model.position.x = preview.home;
-      preview.demo = { id, look, t0: now, dash: rush ? RUSH.ms : 320, reach: rush ? Math.max(0.6, (gap - 0.9) * RUSH.reach) : 0.35, fired: false, hit: -1 };
+      preview.demo = { id, look, t0: now, dash: rush ? RUSH.ms : 320, reach: rush ? Math.max(0.6, (gap - 0.9) * RUSH.reach) : 0.35, lunge, fired: false, hit: -1 };
       sound.play('fx:custom');
       return true;
     },
@@ -402,12 +398,13 @@ export function createStudio(game, { startBattle, save }) {
       preview.fx?.update(now);
       const d = preview.demo;
       if (!d) return;
-      const t = (now - d.t0) / d.dash;
-      preview.model.position.x = preview.home + (t < 1 ? Math.sin(Math.PI * t) * d.reach : 0);
+      const t = (now - d.t0) / d.dash, k = t < 1 ? Math.sin(Math.PI * t) : 0, L = d.lunge; // the same moves as battle.js lunge
+      preview.model.position.set(preview.home + k * d.reach, k * (L?.hop ? 1.4 : 0.25), L?.zig && t < 1 ? Math.sin(t * 3 * Math.PI) * 0.6 : 0);
+      preview.model.rotation.y = Math.PI / 2 + (L?.spin && t < 1 ? t * Math.PI * 4 : 0);
       if (t >= 1 && !d.fired) {
         d.fired = true;
         const from = this.spotOf(preview.model), to = this.spotOf(preview.dummy);
-        preview.fx.attack(d.id, from, to, d.look).then(() => { if (preview?.demo === d) { d.hit = performance.now(); preview.fx.impact('custom', to); sound.play('hit'); } });
+        preview.fx.attack(d.id, from, to, d.look).then(() => { if (preview?.demo === d) { d.hit = performance.now(); if (!d.look) preview.fx.impact('custom', to); sound.play('hit'); } });
       }
       const w = d.hit > 0 ? (now - d.hit) / 450 : -1;
       preview.dummy.rotation.z = w >= 0 && w < 1 ? Math.sin(w * 18) * 0.25 * (1 - w) : 0;

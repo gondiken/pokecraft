@@ -12,7 +12,7 @@ import { sketchModel } from './sketch.js'; // T45
 import { cleanPaint } from './custom.js'; // the Custom guardians' paint
 import { BOSSES, BOSS_SCALE, makeBoss, bossName } from './coopboss.js'; // T29
 import { lookOf } from './guardiankit.js'; // owner 2026-11-09: a guardian's attack styles (a look only: no draws)
-import { RUSH } from './attackstyles.js';
+import { RUSH } from './movekinds.js';
 import { exitFor } from './battleexit.js'; // owner 2026-11-07: Run or Give up, one object per battle
 import { battleLevel } from './difficulty.js'; // owner 2026-11-08: Easy / Normal / Hard (duels and co-op always Normal)
 
@@ -442,18 +442,23 @@ export class Battle {
     await tween(500, t => model.scale.setScalar(Math.max(0.01, easeOut(t) * BOSS_SCALE)));
   }
 
-  // far (owner 2026-11-09: a guardian's Rush): it dashes almost all the way to the other creature and back
-  async lunge(side, far = false) {
+  // style (owner 2026-11-10: a guardian's designed Rush, movekinds.js Dash.lunge): { far, hop, spin, zig }: it dashes almost all the way
+  // to the other creature and back, hopping, spinning or zigzagging
+  async lunge(side, style = null) {
+    const far = !!style?.far;
     const a = this.modelOf(side), b = this.modelOf(this.other(side));
     const start = a.position.clone();
     const gap = b.position.clone().sub(start).setY(0), len = gap.length();
     const reach = far ? Math.max(0.8, (len - (this.spot(side)?.r ?? 0.5) - (this.spot(this.other(side))?.r ?? 0.5)) * RUSH.reach) : 0.8;
-    const toward = gap.normalize().multiplyScalar(reach);
+    const toward = gap.normalize().multiplyScalar(reach), rot0 = a.rotation.y;
     await tween(far ? RUSH.ms : 320, t => {
       const k = Math.sin(t * Math.PI);
-      a.position.set(start.x + toward.x * k, start.y + k * 0.25, start.z + toward.z * k);
+      const zig = style?.zig ? Math.sin(t * 3 * Math.PI) * 0.6 : 0;
+      a.position.set(start.x + toward.x * k - toward.z / (reach || 1) * zig, start.y + k * (style?.hop ? 1.4 : 0.25), start.z + toward.z * k + toward.x / (reach || 1) * zig);
+      if (style?.spin) a.rotation.y = rot0 + t * Math.PI * 4;
     });
     a.position.copy(start);
+    a.rotation.y = rot0;
   }
 
   async flash(side) {
@@ -959,8 +964,8 @@ export class Battle {
     ma.justWoke = false; // it is awake and gets to act: its free turn is used up
     this.say(`${who} used ${mv.name}!`, 700);
     sound.play(sound.has(moveId) ? moveId : `fx:${mv.type}`); // sound-type moves have their own sound
-    const look = mv.power && SPECIES[atk.species]?.kit ? lookOf(atk.paint, moveId) : null; // a guardian's own attack style (Attack Studio)
-    await this.lunge(side, look?.style === 'rush');
+    const look = mv.power && SPECIES[atk.species]?.kit ? lookOf(atk.paint, moveId, mv) : null; // a guardian's own designed attack (a look only)
+    await this.lunge(side, look ? look.kind.lunge(look) : null);
     await wait(150);
     const hit = this.rng(); // draw 1: always, even for moves that never miss
     if (!mv.sure && hit > mv.acc) { sound.play('miss'); fx?.status('miss', this.spot(defSide), { from: this.spot(side) }); await this.say('But it missed!', 1000); return; }

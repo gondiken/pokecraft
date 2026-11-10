@@ -23,7 +23,7 @@
 //           name, Done asks, Not now keeps the drawing, a choice -> your named guardian (just Custom) joins the team, celebrate, title
 //   ally    (stage C) reload keeps it all (painted floor 5 too), a missing guardian is drawn again, a rematch is +5 levels and earns ONE new look, the Wizard and the guardian on the
 //           Swirl island, old / junk saves
-//   attacks (owner 2026-11-09, ?preview) the guardian's Attack Studio: styles per attack and a sparkle in the design, the team card's 🎬 button, the demo, a Rush in a battle
+//   attacks (owner 2026-11-10, ?preview) the drawing board's Attacks tab: the move kinds (movekinds.js = the arena's), every choice draws, taps design each attack, saved, a Rush in a battle
 //   shots   screenshots (tests/screenshots/w19-*.png; stage C adds battle, board, celebrate and island)
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -1264,101 +1264,117 @@ export default async function ({ browser, base, t }) {
     await A.context().close(); await Bp.context().close();
   }
 
-  /* ---- attacks (owner 2026-11-09, ?preview): the guardian's Attack Studio ---- */
+  /* ---- attacks (owner 2026-11-10, ?preview): the board's Attacks tab: each attack designed inside its kind (movekinds.js) ---- */
   if (want('attacks')) {
     const page = await openGame(browser, base, { query: '?preview' });
     await newGame(page, 0);
-    // 1. the rules: cleanDesign keeps a style per move and a sparkle, drops junk; lookOf gives the guardian's own colours; every style's effect
-    //    runs at every moment without errors
+    // 1. the rules: one kind rule (the arena's shapeOf agrees for every move), every choice of every kind draws without errors
     const r = await page.evaluate(async () => {
-      const K = await import('/src/guardiankit.js'), A = await import('/src/attackstyles.js'), g = window.pokecraft, THREE = await import('three');
-      const out = { problems: [] }, bad = m => out.problems.push(m);
-      const d = K.cleanDesign({ n: 'Zap', p: [1, 1, 1, 1, 1, 1, 1], c: [0, 1, 2, 3, 4, 5, 6], a: { tackle: 1, brushdab: 3, BAD: 2, quickstroke: 99, x: 0 }, s: 2 });
-      if (JSON.stringify(d.a) !== '{"tackle":1,"brushdab":3}' || d.s !== 2) bad(`cleanDesign: ${JSON.stringify(d)}`);
-      if ('a' in K.cleanDesign({ p: [0, 0, 0, 0, 0, 0, 0], c: [0, 0, 0, 0, 0, 0, 0] }) || 's' in K.cleanDesign({ s: 0 })) bad('a design without styles has no a / s');
-      const l = K.lookOf(d, 'brushdab');
-      if (l?.style !== 'blast' || l.tex !== 'note' || !l.colours.includes(0xe13c3c)) bad(`lookOf: ${JSON.stringify(l)}`);
-      if (K.lookOf(d, 'freshcoat') !== null || K.lookOf([1, 2, 3], 'tackle') !== null) bad('lookOf: no style = null');
-      const rb = K.lookOf({ ...d, c: [12, 12, 12, 12, 12, 12, 12] }, 'tackle');
-      if (!rb || rb.colours.length < 3) bad(`rainbow colours ${JSON.stringify(rb)}`);
+      const K = await import('/src/guardiankit.js'), MK = await import('/src/movekinds.js'), S = await import('/src/species.js'), AC = await import('/src/arena/core.js');
+      const g = window.pokecraft, THREE = await import('three');
+      const out = { problems: [], runs: 0, kinds: {} }, bad = m => out.problems.push(m);
+      for (const id of Object.keys(S.MOVES)) {
+        const k = MK.kindOfMove(S.MOVES[id]);
+        if (AC.shapeOf(id).kind !== k.id) bad(`${id}: the arena says ${AC.shapeOf(id).kind}, the kind ${k.id}`);
+        out.kinds[k.id] = (out.kinds[k.id] || 0) + 1;
+      }
+      const d = K.cleanDesign({ n: 'Zap', p: [1, 1, 1, 1, 1, 1, 1], c: [0, 1, 2, 3, 4, 5, 6], a: { tackle: { p: [2, 3, 1, 2], c: [3, 12] }, BAD: { p: [1] }, junk: 5, quick: { p: [99, 'x'], c: [99, 2] } } });
+      if (JSON.stringify(d.a) !== '{"tackle":{"p":[2,3,1,2],"c":[3,12]},"quick":{"p":[0,0],"c":[2]}}') bad(`cleanDesign: ${JSON.stringify(d.a)}`);
+      if ('a' in K.cleanDesign({ p: [0, 0, 0, 0, 0, 0, 0], c: [0, 0, 0, 0, 0, 0, 0] })) bad('a design without looks has no a');
       const from = { pos: new THREE.Vector3(0, 41, 0), top: 42, r: 0.5 }, to = { pos: new THREE.Vector3(4, 41, 1), top: 42, r: 0.6 };
       g.fx.on = true;
-      for (const st of A.STYLES.slice(1)) for (const sp of A.SPARKLES) {
-        g.fx.clear();
-        const before = g.fx.errors.length;
-        g.fx.attack('tackle', from, to, { style: st.id, tex: sp.tex, colours: [0xff0000, 0x00ff00] });
-        for (const e of g.fx.active) for (let p = 0; p <= 1.0001; p += 0.05) e.step(p);
-        if (g.fx.errors.length > before) bad(`${st.id} ${sp.tex}: ${g.fx.errors.slice(before)}`);
-        if (g.fx.stats.points > 120) bad(`${st.id}: ${g.fx.stats.points} points`);
+      for (const kind of Object.values(MK.KINDS).filter(k => k.designable)) {
+        out[kind.id] = kind.slots.map(s => `${s.label} ${s.options.length}`).join(', ');
+        kind.slots.forEach((sl, si) => sl.options.forEach((o, oi) => {
+          for (const c of [[3, 6], [12, 12]]) {
+            const p = kind.slots.map((s, j) => (j === si ? oi : (j * 3 + oi) % s.options.length));
+            const look = MK.makeLook(kind, { p, c }, K.hexOfColour);
+            g.fx.clear();
+            const before = g.fx.errors.length;
+            g.fx.attack('tackle', from, to, look);
+            for (const e of g.fx.active) for (let q = 0; q <= 1.0001; q += 0.04) e.step(q);
+            out.runs++;
+            if (g.fx.errors.length > before) bad(`${kind.id} ${sl.id} ${o.name}: ${g.fx.errors.slice(before)}`);
+            if (g.fx.stats.points > 150) bad(`${kind.id} ${sl.id} ${o.name}: ${g.fx.stats.points} points`);
+          }
+        }));
       }
       g.fx.clear();
-      out.styles = A.STYLES.map(s => s.id).join();
       return out;
     });
-    t.ok(!r.problems.length, `attack styles: cleanDesign, lookOf and every style x sparkle runs (${r.styles}) ${r.problems.join('; ')}`);
-    // 2. the studio: the guardian's team card has 🎬 Attacks (?preview), the board lists its attacks, a tap picks a style, plays it, saves it
+    t.ok(!r.problems.length, `move kinds: the arena's kinds = movekinds for every move (${JSON.stringify(r.kinds)}); ${r.runs} looks of every choice draw without errors (shot: ${r.bolt}; many shots: ${r.volley}; big blast: ${r.burst}; rush: ${r.dash}) ${r.problems.slice(0, 5).join('; ')}`);
+    // 2. the board: an Attacks tab (?preview); each attack shows its kind and that kind's choices and two colours; a tap designs it and plays it
     await page.evaluate(async () => {
       const S = await import('/src/species.js'), g = window.pokecraft;
-      const c = S.makeCreature('guardian', 50, ['tackle', 'brushdab', 'quickstroke', 'freshcoat']);
-      c.paint = { n: 'Zippy', p: [2, 1, 1, 1, 1, 1, 1], c: [6, 0, 2, 6, 6, 6, 2] };
-      g.party.unshift(c); g.studio.design = 'guardian'; g.studio.ally = true;
+      g.party.unshift(S.makeCreature('fluffin', 60)); g.studio.won = true; document.exitPointerLock?.();
     });
-    await pause(page);
-    await page.evaluate(() => { if (!window.pokecraft.ui.panelOpen) window.pokecraft.ui.openPanel('team'); });
-    await waitFor(page, () => !!document.querySelector('.mon button.attacks'), null, 20000);
-    await page.evaluate(() => document.querySelector('.mon button.attacks').click());
-    await waitFor(page, () => document.querySelectorAll('#db-attacks .db-atk').length > 0, null, 20000);
-    const ui = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#db-attacks .db-atk')].map(r => r.dataset.move), styles: document.querySelectorAll('#db-attacks .db-atk:first-child .db-style').length,
-      sparkles: document.querySelectorAll('#db-sparkles .db-sparkle').length, canvas: !!document.querySelector('#db-preview canvas'), close: document.getElementById('drawboard-close').textContent }));
-    t.ok(ui.rows.join() === 'tackle,brushdab,quickstroke' && ui.styles === 6 && ui.sparkles === 8 && ui.canvas && ui.close === 'Close', `the Attack Studio: one row per attack (not the status move), six styles, eight sparkles, the picture (${JSON.stringify(ui)})`);
-    await page.evaluate(() => { document.querySelector('.db-atk[data-move="brushdab"] .db-style[data-style="3"]').click(); document.querySelector('.db-sparkle[data-sparkle="1"]').click(); document.querySelector('.db-atk[data-move="tackle"] .db-style[data-style="1"]').click(); });
     await page.waitForTimeout(300);
-    const saved = await page.evaluate(() => { const g = window.pokecraft, c = g.party[0]; return { a: c.paint.a, s: c.paint.s, look: g.studio.look?.a, demo: !!g.studio.attacks, on: [...document.querySelectorAll('.db-atk[data-move="brushdab"] .db-style.on')].map(b => b.dataset.style).join(), save: JSON.parse(localStorage.getItem('pokecraft-save-v2')).party[0].paint }; });
-    t.ok(saved.a?.brushdab === 3 && saved.a?.tackle === 1 && saved.s === 1 && saved.on === '3' && saved.save?.a?.brushdab === 3 && saved.save?.s === 1, `a tap picks a style and a sparkle, saved at once (${JSON.stringify(saved)})`);
-    // the demo plays: the Rush dashes the guardian over to the target, then the effect runs
-    const demo = await page.evaluate(async () => {
-      const g = window.pokecraft, st = g.studio; st.playAttack('tackle');
-      let far = 0, fx = 0; const t0 = performance.now();
-      while (performance.now() - t0 < 2500) { await new Promise(r => requestAnimationFrame(r)); fx = Math.max(fx, document.querySelector('#db-preview canvas') ? 1 : 0); }
-      return { far, fx };
+    await page.evaluate(() => window.pokecraft.openBoard());
+    await waitFor(page, () => !!document.querySelector('#db-tabs .db-tab[data-slot="attacks"]'), null, 20000);
+    await page.evaluate(() => document.querySelector('#db-tabs .db-tab[data-slot="attacks"]').click());
+    await waitFor(page, () => document.querySelectorAll('#db-parts .db-move').length > 0, null, 20000);
+    const ui = await page.evaluate(() => ({ moves: [...document.querySelectorAll('#db-parts .db-move')].map(b => `${b.dataset.move}:${b.querySelector('small').textContent}`),
+      rows: [...document.querySelectorAll('#db-parts .db-slotrow')].map(r => `${r.dataset.aslot}:${r.querySelectorAll('.db-opt').length}`), swatches: document.querySelectorAll('#db-colours .db-swatch').length,
+      line: document.querySelector('.db-kindline')?.textContent }));
+    t.ok(ui.moves.length >= 2 && ui.rows.length >= 3 && ui.swatches === 26, `the Attacks tab: the guardian's attacks with their kinds, the kind's choices, two colour rows (${JSON.stringify(ui)})`);
+    const picked = await page.evaluate(async () => {
+      const g = window.pokecraft, st = g.studio, MK = await import('/src/movekinds.js'), S = await import('/src/species.js');
+      const out = {};
+      for (const id of st.attackMoves()) {
+        document.querySelector(`#db-parts .db-move[data-move="${id}"]`).click();
+        const kind = MK.kindOfMove(S.MOVES[id]);
+        document.querySelector('#db-parts .db-opt[data-opt="0:2"]').click();
+        document.querySelector('#db-colours .db-swatch[data-acolour="1:12"]').click();
+        out[id] = { kind: kind.id, look: JSON.parse(JSON.stringify(st.draft.a[id])) };
+      }
+      return out;
     });
-    t.ok(demo.fx === 1, 'the demo plays in the picture');
-    await page.waitForTimeout(400);
-    await page.evaluate(() => window.pokecraft.studio.playAttack('brushdab'));
-    await page.waitForTimeout(900);
-    await shot(page, 'w19-attacks.png');
-    await page.evaluate(() => window.pokecraft.closeBoard());
-    // 3. a battle: the Rush dashes far, the effect has no errors, Paint (no style) is the old look
+    const looks = Object.values(picked);
+    t.ok(looks.length >= 2 && looks.every(l => l.look.c[1] === 12 && l.look.p.length >= 3 && l.look.p[0] === 2), `taps design each attack (${JSON.stringify(picked)})`);
+    await page.waitForTimeout(500);
+    for (const kind of ['burst', 'bolt', 'dash', 'volley']) {
+      const id = Object.keys(picked).find(m => picked[m].kind === kind);
+      if (!id) continue;
+      await page.evaluate(id => window.pokecraft.studio.pickAttack(id), id);
+      await page.waitForTimeout(kind === 'dash' ? 900 : 650);
+      await shot(page, `w19-attacks-${kind}.png`);
+    }
+    // Done -> Yes: the guardian joins with its designed attacks
+    await page.evaluate(() => { document.getElementById('db-done').click(); });
+    await page.waitForTimeout(500);
+    await page.evaluate(() => window.pokecraft.ui.askYes());
+    await waitFor(page, () => window.pokecraft.party.some(c => c.species === 'guardian'), null, 20000);
+    const made = await page.evaluate(() => { const g = window.pokecraft, c = g.party.find(q => q.species === 'guardian'); g.save(true); return { a: c.paint.a, saved: JSON.parse(localStorage.getItem('pokecraft-save-v2')).wizard.look?.a, moves: c.moves }; });
+    t.ok(made.a && Object.keys(made.a).length >= 2 && JSON.stringify(made.saved) === JSON.stringify(made.a), `your guardian keeps its designed attacks, saved (${JSON.stringify(made.a)})`);
+    await page.evaluate(() => document.getElementById('celebrate')?.remove());
+    // 3. a battle: the designed Rush dashes, every designed attack draws without errors
     const b = await page.evaluate(async () => {
-      const g = window.pokecraft, S = await import('/src/species.js'), { Wild } = await import('/src/creatures.js');
+      const g = window.pokecraft, S = await import('/src/species.js'), K = await import('/src/guardiankit.js'), { Wild } = await import('/src/creatures.js');
+      const c = g.party.find(q => q.species === 'guardian'); g.party = [c, ...g.party.filter(q => q !== c)];
       const wild = new Wild(S.makeCreature('fluffin', 2), S.buildModel('fluffin'), g.player.pos.clone().setX(g.player.pos.x + 3));
       g.creatures.list.push(wild); g.scene.add(wild.model); wild.model.position.copy(wild.pos);
       g.inBattle = true; document.body.classList.add('in-battle'); document.getElementById('pause').classList.add('hidden');
       g.battle.start({ wild });
       for (let i = 0; i < 100 && !g.battle.allyModel?.parent; i++) await new Promise(r => setTimeout(r, 100));
       const m = g.battle.allyModel, x0 = m.position.clone(); let far = 0;
-      const run = g.battle.lunge('ally', true), t0 = performance.now();
-      while (performance.now() - t0 < 600) { far = Math.max(far, m.position.distanceTo(x0)); await new Promise(r => requestAnimationFrame(r)); }
+      const run = g.battle.lunge('ally', { far: true, hop: true }), t0 = performance.now();
+      while (performance.now() - t0 < 700) { far = Math.max(far, m.position.distanceTo(x0)); await new Promise(r => requestAnimationFrame(r)); }
       await run;
-      const gap = g.battle.foeModel.position.clone().setY(0).distanceTo(x0.clone().setY(0));
-      const before = g.fx.errors.length;
-      const K = await import('/src/guardiankit.js');
-      await g.fx.attack('brushdab', g.battle.spot('ally'), g.battle.spot('foe'), K.lookOf(g.party[0].paint, 'brushdab'));
-      return { far, gap, errs: g.fx.errors.slice(before) };
+      const before = g.fx.errors.length, drawn = [];
+      for (const id of Object.keys(c.paint.a)) { const look = K.lookOf(c.paint, id, S.MOVES[id]); if (look) { drawn.push(look.kind.id); await g.fx.attack(id, g.battle.spot('ally'), g.battle.spot('foe'), look); } }
+      return { far, back: m.position.distanceTo(x0), errs: g.fx.errors.slice(before), drawn, paint: K.lookOf(c.paint, 'nosuchmove', S.MOVES.tackle) };
     });
-    t.ok(b.far > Math.min(1.5, b.gap * 0.4) && !b.errs.length, `in a battle the Rush dashes ${b.far.toFixed(2)} of ${b.gap.toFixed(2)} and a Blast plays without errors ${b.errs.join('; ')}`);
+    t.ok(b.far > 1.2 && b.back < 0.01 && !b.errs.length && b.drawn.length >= 2 && b.paint === null, `in a battle a Rush dashes (${b.far.toFixed(2)}) and comes back; designed attacks draw (${b.drawn}); a move never designed keeps the paint look ${b.errs.join('; ')}`);
     t.ok(page.errors.length === 0, `attacks: no page errors ${page.errors.join('; ')}`);
     await page.context().close();
-    // 4. without ?preview the team card has no 🎬 button
+    // 4. without ?preview the board has its seven tabs only
     const p2 = await openGame(browser, base);
     await newGame(p2, 0);
-    await p2.evaluate(async () => {
-      const S = await import('/src/species.js'), g = window.pokecraft;
-      const c = S.makeCreature('guardian', 50); g.party.unshift(c);
-      document.exitPointerLock?.(); g.ui.openPanel('team');
-    });
-    await p2.waitForTimeout(500);
-    t.ok(await p2.evaluate(() => !!document.querySelector('.mon') && !document.querySelector('.mon button.attacks')), 'without ?preview the guardian has no 🎬 Attacks button');
+    await p2.evaluate(() => { const g = window.pokecraft; g.studio.won = true; document.exitPointerLock?.(); });
+    await p2.waitForTimeout(300);
+    await p2.evaluate(() => window.pokecraft.openBoard());
+    await waitFor(p2, () => document.querySelectorAll('#db-tabs .db-tab').length > 0, null, 20000);
+    t.ok(await p2.evaluate(() => document.querySelectorAll('#db-tabs .db-tab').length === 7 && !document.querySelector('[data-slot="attacks"]')), 'without ?preview the board has no Attacks tab');
     await p2.context().close();
   }
 }

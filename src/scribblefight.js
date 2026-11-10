@@ -11,6 +11,7 @@
 // The ring (radius R round the patch's centre) is the only fence. Fixed 1/120 s steps: the same at 60 and 20 fps.
 import { shapeOf, damage, intentFor, FOES } from './arena/core.js';
 import { LIVE } from './arena/live.js';
+import { KINDS } from './movekinds.js'; // owner 2026-11-10: the kinds as objects (word, icon, button group)
 import { statsFor, SPECIES, MOVES } from './species.js';
 
 export const STEP = 1 / 120;
@@ -49,9 +50,9 @@ const WATER = 5;
 // Owner 2026-11-10 ("one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT", chose "Attack + Special"):
 // three buttons with a fixed meaning. Attack always hurts a monster, Special always helps; each uses the creature's moves of its group in
 // turn: the ready one used longest ago (so none gets stuck), shown on the button by its kind's icon. Hold Attack on ◎ to charge a big blast.
-export const GROUP = { bolt: 'attack', volley: 'attack', burst: 'attack', dash: 'attack', heal: 'special', buff: 'special', cloud: 'special', sleep: 'special' };
+export const GROUP = Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.group])); // movekinds.js: each kind knows its button
 export const BUTTONS = ['dodge', 'attack', 'special'];
-export const ICON = { bolt: '●', volley: '●●●', burst: '◎', dash: '➜', heal: '✚', buff: '▲', tough: '🛡', cloud: '☁', sleep: '☾' };
+export const ICON = { ...Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.icon])), tough: '🛡' };
 export const iconOf = s => (s ? (s.kind === 'buff' && s.stat === 'def' ? ICON.tough : ICON[s.kind]) : '');
 const len2 = (x, z) => Math.hypot(x, z);
 

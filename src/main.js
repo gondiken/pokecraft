@@ -561,14 +561,7 @@ game.openFriend = avatar => {
 game.closeFriend = () => { if (game.swapUi.isOpen) togglePanel(); };
 /* ==== Wizard ==== */
 // wave 19: the Wizard's drawing board (studio.js fills #drawboard-body): six designs in your colours
-game.openBoard = () => { if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking) { game.studio.attacks = null; togglePanel('drawboard'); } };
-// owner 2026-11-09 (?preview): the Attack Studio for your guardian (the team card's 🎬 button), drawn in the same overlay
-game.openAttacks = c => {
-  if (!game.started || game.inBattle || game.ui.asking || !c) return;
-  if (game.ui.panelOpen) game.ui.closePanel();
-  game.studio.attacks = c;
-  togglePanel('drawboard');
-};
+game.openBoard = () => { if (game.started && !game.inBattle && !game.ui.panelOpen && !game.ui.asking) togglePanel('drawboard'); };
 game.closeBoard = () => { if (game.ui.boardOpen) togglePanel(); };
 document.getElementById('drawboard-close').addEventListener('click', () => { if (game.ui.boardOpen) togglePanel(); });
 /* ==== end of Wizard ==== */

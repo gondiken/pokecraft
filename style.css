@@ -705,18 +705,20 @@ body.touch #easel.big { width: min(60vh, 320px); height: min(60vh, 320px); top: 
 #drawboard .db-foot { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
 #db-done { font-size: 22px; padding: 10px 26px; }
 #db-rematch { font-size: 18px; }
-/* Owner 2026-11-09 (?preview): the Attack Studio in the same overlay: a style row per attack, one sparkle row */
-#db-attacks { display: flex; flex-direction: column; gap: 10px; }
-#drawboard .db-atk { background: rgba(255,255,255,.05); border-radius: 12px; padding: 8px; }
-#drawboard .db-atkname { display: flex; align-items: center; gap: 8px; font-size: 19px; margin-bottom: 6px; }
-#drawboard .db-play { min-width: 44px; min-height: 40px; font-size: 18px; }
-#drawboard .db-styles { display: flex; flex-wrap: wrap; gap: 6px; }
-#drawboard .db-style { min-width: 0; font-size: 16px; }
-#db-sparkles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-#drawboard .db-sparkle { min-width: 52px; font-size: 22px; }
-.mon button.attacks { background: #c8b6ff; color: #2a1a5a; }
+/* Owner 2026-11-10 (?preview): the board's 8th tab, Attacks: the guardian's attacks, each designed inside its kind */
+#db-tabs.eight { grid-template-columns: repeat(8, 1fr); }
+#drawboard .db-moves { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+#drawboard .db-move { display: flex; flex-direction: column; align-items: flex-start; }
+#drawboard .db-move small { font-size: 13px; color: var(--muted); }
+#drawboard .db-kindline { width: 100%; font-size: 18px; display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+#drawboard .db-play { min-height: 40px; font-size: 16px; padding: 4px 12px; }
+#drawboard .db-slotrow { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; width: 100%; }
+#drawboard .db-slotrow .db-clabel { width: auto; min-width: 84px; }
+#drawboard .db-opt { min-width: 0; min-height: 40px; font-size: 15px; padding: 4px 8px; }
+#drawboard .db-opt.db-icon { min-width: 44px; font-size: 20px; padding: 2px 4px; }
 @media (max-width: 760px) {
   #drawboard .db-kit { flex-direction: column; align-items: stretch; }
   #db-preview { width: 200px; height: 200px; }
   #db-tabs { grid-template-columns: repeat(4, 1fr); }
+  #db-tabs.eight { grid-template-columns: repeat(4, 1fr); }
 }

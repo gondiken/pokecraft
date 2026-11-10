@@ -3,6 +3,7 @@
 // Units are blocks; the arena is a round floor of radius R with three stone pillars.
 import * as THREE from 'three';
 import { SPECIES, MOVES, TYPE_COLORS, statsFor, effectiveness, makeCreature, buildModel, animateModel } from '../species.js';
+import { KINDS, kindOfMove } from '../movekinds.js';
 
 export const R = 11; // the arena floor's radius
 export const PILLARS = [{ x: -4.5, z: 1.5, r: 1.0 }, { x: 4.5, z: 1.5, r: 1.0 }, { x: 0, z: -4.5, r: 1.0 }];
@@ -16,25 +17,16 @@ export const typeName = t => t[0].toUpperCase() + t.slice(1);
 
 // What a battle move becomes out in the arena, from its own data (never by hand per move):
 // bolt (a shot), volley (many small shots), burst (a big blast, held to charge), dash (a rush), heal, buff, cloud (slows), sleep.
+// Owner 2026-11-10: the rule lives in one object per kind (src/movekinds.js kindOfMove / KINDS), shared with the Wizard's drawing board.
 export function shapeOf(id) {
   const m = MOVES[id];
   if (!m) return null;
   const k = m.fx?.kind;
-  let kind;
-  if (!m.power) {
-    if (k === 'heal') kind = 'heal';
-    else if (k === 'sleep') kind = 'sleep';
-    else if (k === 'lower' || k === 'curse') kind = 'cloud';
-    else kind = 'buff'; // raise, rally, shield, field, anything else
-  } else if (k === 'multi') kind = 'volley';
-  else if (m.priority || k === 'recoil') kind = 'dash';
-  else if (m.power >= 80 || k === 'risky' || k === 'sacrifice' || k === 'lastword') kind = 'burst';
-  else if (k === 'sleep') kind = 'sleep';
-  else kind = 'bolt';
+  const kind = kindOfMove(m).id;
   const power = m.power || 0;
   return { id, kind, power, type: m.type, name: m.name, recoil: k === 'recoil', stat: m.fx?.stat };
 }
-export const KIND_WORD = { bolt: 'shot', volley: 'many shots', burst: 'big blast', dash: 'rush', heal: 'heal', buff: 'power up', cloud: 'slow cloud', sleep: 'sleepy cloud' };
+export const KIND_WORD = Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.word])); // shot, many shots, big blast, rush, heal, power up, slow cloud, sleepy cloud
 
 // The damage sum of battle.js (no crit, no roll): level, attack / defence, same-type bonus, the type chart.
 export function damage(atk, def, power, type, mult = 1) {

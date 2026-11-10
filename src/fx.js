@@ -10,7 +10,6 @@
 import * as THREE from 'three';
 import { MOVES } from './species.js';
 import { TRAVEL, IMPACT, SIG, FX_COLORS } from './fxrecipes.js';
-import { STYLE_FX } from './attackstyles.js';
 
 const KEY = 'pokecraft-fx';
 const MAX_LIVE = 6;
@@ -56,6 +55,14 @@ const BITMAPS = {
   anchor: ['...##...', '..####..', '...##...', '.######.', '...##...', '#..##..#', '##.##.##', '.######.'], // T40b
   coin: ['..####..', '.######.', '##....##', '##.##.##', '##.##.##', '##....##', '.######.', '..####..'],
   gem: ['........', '.######.', '########', '.######.', '..####..', '...##...', '........', '........'],
+  // owner 2026-11-10: the guardian's attack shapes (movekinds.js SHAPES)
+  arrow: ['....#...', '....##..', '########', '########', '....##..', '....#...', '........', '........'],
+  moon: ['..####..', '.###....', '###.....', '###.....', '###.....', '###.....', '.###....', '..####..'],
+  zap: ['....###.', '...###..', '..###...', '.######.', '...###..', '..###...', '.##.....', '#.......'],
+  flame: ['...#....', '...##...', '..###.#.', '.######.', '.######.', '########', '.######.', '..####..'],
+  swirl: ['.#####..', '#.....#.', '#..##..#', '#.#..#.#', '#.#.##.#', '#..#...#', '.#.....#', '..#####.'],
+  flower: ['..#..#..', '.##..##.', '###..###', '...##...', '...##...', '###..###', '.##..##.', '..#..#..'],
+  paw: ['.#....#.', '###..###', '.#.##.#.', '...##...', '..####..', '.######.', '.######.', '..#..#..'],
 };
 
 const TEXTURES = {};
@@ -138,11 +145,11 @@ export class Fx {
     }
   }
 
-  // look (owner 2026-11-09, the guardian's Attack Studio): { style, tex, colours } from guardiankit.js lookOf, or none = the move's own look
+  // look (owner 2026-11-10): a designed look from guardiankit.js lookOf (its kind draws it, movekinds.js), or none = the move's own look
   attack(moveId, from, to, look = null) {
     const mv = MOVES[moveId];
     if (!this.on || !mv || !goodSpot(from) || !goodSpot(to)) return RESOLVED;
-    if (look && STYLE_FX[look.style]) return this.run(`attack:${moveId}:${look.style}`, STYLE_FX[look.style], from, to, { type: mv.type, big: false, look });
+    if (look?.kind?.designable) return this.run(`attack:${moveId}:${look.kind.id}`, (k, f, t) => look.kind.recipe(k, f, t, look), from, to, { type: mv.type, big: false });
     const rec = (mv.sig && SIG[moveId]) || TRAVEL[mv.type] || TRAVEL.normal;
     return this.run(`attack:${moveId}`, rec, from, to, { type: mv.type, big: false });
   }
