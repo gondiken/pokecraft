@@ -37,15 +37,18 @@ const KEY_NAMES = ['Space', 'Q', 'E'];
 
 // ---------------------------------------------------------------- where the patch goes (pure: the spec checks it on its own)
 
-// The best spot 14-23 blocks from (sx, sz), ahead of `yaw` if given (owner 2026-11-09: it was pinned to the world's start, and a player who
+// The best spot 14-23 blocks from (sx, sz) (else 27-40, else 48-64), ahead of `yaw` if given (owner 2026-11-09: it was pinned to the world's start, and a player who
 // starts near their home never saw it): mostly dry land, no gym or tower box, nothing anybody built within the ring, not too steep.
 export function scribbleSpot(world, sx, sz, yaw = null) {
   const g = groundOf(world), R = FIGHT.R;
+  // owner 2026-11-10 ("my son doesn't see it"): only PLACED blocks count as built (a dug-out block is air: the old rule counted every
+  // change, so one dug block every 16 round a child's play area left no spot at all), only inside the ring, and the search goes further
+  // out when nothing near fits
   const built = new Set();
-  for (const i of world.edits?.keys?.() || []) { const x = i % world.W, z = Math.floor(i / world.W) % world.D; built.add(x + z * world.W); }
-  const nearBuild = (cx, cz) => { for (let x = -R - 2; x <= R + 2; x++) for (let z = -R - 2; z <= R + 2; z++) if (built.has(Math.floor(cx + x) + Math.floor(cz + z) * world.W)) return true; return false; };
+  for (const [i, id] of world.edits?.entries?.() || []) { if (!id) continue; const x = i % world.W, z = Math.floor(i / world.W) % world.D; built.add(x + z * world.W); }
+  const nearBuild = (cx, cz) => { for (let x = -R - 1; x <= R + 1; x++) for (let z = -R - 1; z <= R + 1; z++) if (x * x + z * z <= (R + 1) * (R + 1) && built.has(Math.floor(cx + x) + Math.floor(cz + z) * world.W)) return true; return false; };
   let best = null;
-  for (const d of [14, 17, 20, 23]) for (let k = 0; k < 24; k++) {
+  for (const ring of [[14, 17, 20, 23], [27, 31, 35, 40], [48, 56, 64]]) { if (best) break; for (const d of ring) for (let k = 0; k < 24; k++) {
     const a = k / 24 * Math.PI * 2, cx = Math.floor(sx + Math.cos(a) * d) + 0.5, cz = Math.floor(sz + Math.sin(a) * d) + 0.5;
     if (cx < R + 3 || cz < R + 3 || cx > world.W - R - 3 || cz > world.D - R - 3) continue;
     const cy = g.floor(cx, cz, world.ground[Math.floor(cx) + Math.floor(cz) * world.W] + 2.5);
@@ -66,7 +69,7 @@ export function scribbleSpot(world, sx, sz, yaw = null) {
     const range = hi - lo;
     const score = land / n - 2 * water / n - (range > 5 ? 1 : 0) + 0.04 * Math.min(walls, 8) + 0.03 * Math.min(range, 4) + (yaw == null ? 0.08 * -Math.sin(a) : 0.35 * (Math.cos(a) * -Math.sin(yaw) + Math.sin(a) * -Math.cos(yaw))) - d * 0.004;
     if (!best || score > best.score) best = { x: cx, z: cz, y: cy, score, walls, water, range, d };
-  }
+  } }
   return best;
 }
 
@@ -335,17 +338,20 @@ export function createScribble(game) {
 #sc-ui .mate.lead { box-shadow: 0 0 0 3px #fff; } #sc-ui .mate.out { opacity: .35; }
 #sc-ui .moves { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 8px; }
 body.touch #sc-ui .moves { display: none; }
-#sc-ui .mv { --col: #e8eef7; position: relative; min-width: 92px; padding: 6px 8px 4px; border-radius: 10px; border: 3px solid var(--col); background: #1d2438d9; color: #fff; font-size: 11px; text-align: center; overflow: hidden; }
-#sc-ui .mv small { display: block; opacity: .75; font-size: 9px; margin-top: 3px; }
+#sc-ui .mv { --col: #e8eef7; position: relative; min-width: 120px; padding: 8px 10px 5px; border-radius: 12px; border: 3px solid var(--col); background: #1d2438d9; color: #fff; font-size: 14px; text-align: center; overflow: hidden; }
+#sc-ui .mv small { display: block; opacity: .75; font-size: 11px; margin-top: 3px; }
 #sc-ui .mv kbd { display: block; font: inherit; font-size: 9px; opacity: .6; margin-top: 3px; }
 #sc-ui .mv .cd { position: absolute; left: 0; bottom: 0; height: 100%; background: #000a; }
 #sc-ui .mv.on { background: color-mix(in srgb, var(--col) 55%, #1d2438); }
 body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, body.scribbling #crosshair.sc-behind, body.scribbling #prompt { display: none !important; }
 #touch.fight #btn-down, #touch.fight #btn-ride { display: none !important; }
-#sc-ui .mv b { display: block; font-size: 18px; line-height: 1.1; }
-#touch.fight #touch-buttons button .sc-ic { display: block; font-size: 30px; line-height: 1; }
-#touch.fight #touch-buttons button .sc-w { display: block; font-size: 11px; line-height: 1.2; opacity: .85; }
-#touch.fight #touch-buttons #btn-place .sc-ic { font-size: 22px; }
+#sc-ui .mv b { display: block; font-size: 30px; line-height: 1.15; }
+#touch.fight #btn-act { width: 124px !important; height: 124px !important; right: calc(126px + env(safe-area-inset-right)); bottom: 70px; }
+#touch.fight #btn-jump { width: 96px !important; height: 96px !important; font-size: 19px !important; }
+#touch.fight #btn-place { width: 92px !important; height: 92px !important; right: calc(22px + env(safe-area-inset-right)); bottom: 200px; }
+#touch.fight #touch-buttons button .sc-ic { display: block; font-size: 50px; line-height: 1; }
+#touch.fight #touch-buttons button .sc-w { display: block; font-size: 14px; line-height: 1.2; opacity: .9; }
+#touch.fight #touch-buttons #btn-place .sc-ic { font-size: 38px; }
 #touch.fight #touch-buttons button { border-color: var(--sc-col, #fff) !important; }
 #touch.fight #touch-buttons button.sc-on { background: rgba(255,255,255,.45) !important; }
 `;
@@ -406,8 +412,12 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     ui.squad.classList.toggle('hidden', F.squad.length < 2);
   }
   // the moves: the five fixed tablet slots get the fight's words; a computer gets a bar with the keys
+  // owner 2026-11-10 ("buttons should be bigger, especially the emojis"): the fight's buttons show real emojis (the move kinds' own
+  // icons are plain symbols that draw tiny in the game's font); never a star
+  const BIG_ICON = { bolt: '🔵', volley: '🎊', burst: '💥', dash: '💨', heal: '💚', buff: '💪', tough: '🛡️', cloud: '🐌', sleep: '💤' };
+  const bigIcon = p => (p.move ? BIG_ICON[p.move.kind === 'buff' && p.move.stat === 'def' ? 'tough' : p.move.kind] ?? p.icon : p.icon);
   function drawPad() {
-    const pad = S.fight.pad();
+    const pad = S.fight.pad().map(p => ({ ...p, icon: bigIcon(p) }));
     const key = JSON.stringify(pad.map(p => [p.move?.id, p.dim, p.on, Math.round((p.cd || 0) * 20)]));
     if (ui.cache.pad === key) return;
     ui.cache.pad = key;

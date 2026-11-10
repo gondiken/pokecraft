@@ -448,3 +448,14 @@ Either way every kind gets a fixed icon and colour on its button and on the grou
   hitting harder (power 70: mashing 6 / 48 instead of 7 / 48, but the person and skilled bots lost now and then). The spec now judges
   mashing over 12 fights at each frame rate per world, all together under a quarter (4 fights were too few to tell 10 % from 25 %).
 - Person bot: 34-80 s a fight, skilled 23-28 s, all won.
+
+### Owner 2026-11-10: bigger buttons, and "my son doesn't see the scribble on his account / tablet"
+
+- **Why the patch was missing on a busy world:** the rule that keeps it off your builds counted EVERY changed block (a dug-out block too)
+  and checked a 12-block square round every candidate. Measured: with one dug block every 16 blocks round where you start, no spot was
+  found at all (the owner's world, with fewer changes near the Champion's Tower, had one). Now only placed blocks inside the ring count,
+  dug ones never; if nothing 14-23 blocks away fits, it looks 27-40 and then 48-64 blocks away. A world with a placed block every 2-6
+  blocks over 80 x 80 now gets a patch 56 blocks away. (The other possible reason: `?preview` must be in the address on the tablet too.)
+- **Bigger buttons in a fight:** Attack 100 -> 124 px, Dodge 84 -> 96, Special 68 -> 92; the icons are real emojis drawn 50 px / 38 px:
+  🔵 shot, 🎊 many shots, 💥 big blast, 💨 rush, 💚 heal, 💪 power up, 🛡️ Tough, 🐌 slow cloud, 💤 sleepy cloud (the move kinds' own
+  plain symbols, now in `movekinds.js`, drew tiny in the game's font; only the fight's buttons map them). Desktop cards bigger too.
