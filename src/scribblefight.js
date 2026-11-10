@@ -43,6 +43,11 @@ export const FIGHT = {
   heal: { time: 0.8, amount: 0.45 },
   powerUp: { atk: 1.5, time: 8, lostOnHit: true },
   tough: { brace: 0.7, def: 1.3, time: 8 },
+  // 2026-11-10: the monsters' first attacks were at fixed times (1.6, 2.5, 3.4 s) and every cool-down is fixed, so a masher's rushes
+  // came at the same moments of a warning every fight, just before the timed rush's window (0.4 s into it, the window opens at 0.475).
+  // At 20 fps a press waits for the next frame (up to 50 ms), which tipped them into the window: mashing won 3x as often at 20 fps as
+  // at 60. A random start (0..firstJitter s more) breaks that lock; both frame rates now win about the same, about 1 fight in 10.
+  firstJitter: 0.8,
   attack: 0.7,        // the monsters' rhythm: x the arena's time between attacks (they strike more often: mashing must never win)
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
@@ -115,7 +120,7 @@ export class ScribbleFight {
       const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
       f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp);
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);
-      f.timer = 1.6 + i * 0.9; f.tell = null; f.charging = null;
+      f.timer = 1.6 + i * 0.9 + this.rand() * FIGHT.firstJitter; f.tell = null; f.charging = null;
       return f;
     });
     this.input = { mx: 0, mz: 0 };

@@ -227,8 +227,9 @@ export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 
 export async function runBots(page, games = 4, log = console.log) {
   let fails = 0;
   const lines = [];
-  // mashing is judged over many fights (owner 2026-11-10: with two buttons it wins about 1 fight in 10, more often at 20 fps; four fights
-  // were too few to tell that from a quarter): NAIVE_GAMES at each frame rate, all together under a quarter
+  // mashing is judged over many fights (owner 2026-11-10: with two buttons it wins about 1 fight in 10; four fights were too few to tell
+  // that from a quarter): NAIVE_GAMES at each frame rate, all together under a quarter. (It used to win 3x as often at 20 fps: the
+  // monsters' first attacks were at fixed times, see FIGHT.firstJitter; now both frame rates win about the same.)
   const naive = [];
   for (const [bot, fps] of RUNS) {
     const runs = [], n = bot === 'naive' ? Math.max(games, NAIVE_GAMES) : games;

@@ -3,8 +3,9 @@
 //   real:   real keys through the game's own loop: W walks you in, the ring snaps, the cube, the camera rises (screenshots of the move),
 //           Q / Space / D act, the camera turns by itself to bring a monster back in, a win: the camera glides back down and W walks on; a loss: try again
 //   ipad:   an emulated iPad: the joystick walks you in, three buttons: Dodge, Attack, Special (Ride and Down hidden), a tap picks a monster, all restored after
-//   closed: without ?preview there is no patch at all
-//   SCRIBBLE_ONLY=bots|real|ipad|closed      screenshots: tests/screenshots/scribble-*.png
+//   closed: without ?preview there is no patch at all (and no "Where to go" row)
+//   nav:    the guide arrow leads to the patch until you cleared it once; "Where to go" (G) has a row for it, dim while it is gone
+//   SCRIBBLE_ONLY=bots|real|ipad|closed|nav      screenshots: tests/screenshots/scribble-*.png
 import { devices } from 'playwright';
 import { openGame, newGame } from '../helpers.mjs';
 import { scribblePage, runBots, SEEDS } from '../scribblebots.mjs';
@@ -25,6 +26,26 @@ export default async function ({ browser, base, t }) {
     await page.waitForTimeout(1500);
     const r = await page.evaluate(() => ({ on: window.pokecraft.scribble.on, info: window.pokecraft.scribble.info(), group: window.pokecraft.scene.getObjectByName('scribble') }));
     t.ok(!r.on && !r.info.on && !r.group, 'without ?preview there is no scribbled patch at all (no scene object, nothing to fight)');
+    t.ok(await page.evaluate(() => !window.pokecraft.nav.rows().some(r => r.dest.id === 'scribble')), 'without ?preview "Where to go" has no scribble row');
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (part('nav')) {
+    const page = await scribblePage(browser, base, { seed: 22 });
+    const guide = () => page.evaluate(() => document.querySelector('#guide')?.textContent || '');
+    await until(page, () => /Scribble/.test(document.querySelector('#guide')?.textContent || ''), null, 20000).catch(() => {});
+    t.ok(/^✏️ Scribble [↑↖←↙↓↘→↗] \d+m$/.test(await guide()), `the guide arrow leads to the patch (${await guide()})`);
+    const row = await page.evaluate(() => { const r = window.pokecraft.nav.rows().find(r => r.dest.id === 'scribble'); return r && { group: r.dest.group, reason: r.reason, label: r.dest.label }; });
+    t.ok(row && !row.reason && row.label === 'The scribble', `"Where to go" has a row for it (${JSON.stringify(row)})`);
+    // cleared once: the arrow goes back to the gyms; the row stays, dim while the patch is gone, and leads there once it is back
+    await page.evaluate(() => { const g = window.pokecraft; g.scribble.beaten = true; g.scribble.phase = 'cleared'; });
+    await until(page, () => !/Scribble/.test(document.querySelector('#guide')?.textContent || ''), null, 20000).catch(() => {});
+    t.ok(!/Scribble/.test(await guide()), `cleared once, the arrow goes back to the next gym (${await guide()})`);
+    t.ok(await page.evaluate(() => !!window.pokecraft.nav.rows().find(r => r.dest.id === 'scribble')?.reason), 'while it is gone the row is dim');
+    await page.evaluate(() => { const g = window.pokecraft; g.scribble.phase = 'idle'; g.nav.choose(g.nav.rows().find(r => r.dest.id === 'scribble').dest); });
+    await until(page, () => /The scribble/.test(document.querySelector('#guide')?.textContent || ''), null, 20000).catch(() => {});
+    t.ok(/^📍 The scribble [↑↖←↙↓↘→↗] \d+m$/.test(await guide()), `picked in "Where to go", the arrow leads there (${await guide()})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }

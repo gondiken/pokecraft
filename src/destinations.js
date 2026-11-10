@@ -264,3 +264,17 @@ addDestination({
   },
 });
 /* ==== end of T42 portal ==== */
+
+/* ==== chapter 3 scribble ==== */
+// The scribbled patch (?preview only: without it game.scribble.where() is always null, so there is no row).
+addDestination({
+  id: 'scribble',
+  rows: game => {
+    if (game.world.realm || !game.scribble?.spot || !game.scribble.on) return [];
+    return [new SpotDestination({ id: 'scribble', group: 'now', icon: '✏️', label: 'The scribble', radius: 6,
+      where: g => g.scribble?.spot && !g.world.realm ? [g.scribble.spot.x, g.scribble.spot.z] : null,
+      gate: g => (g.scribble.where() ? null : 'Gone for now. It scribbles itself back later.'),
+      madeText: 'The scribble! Step in to fight it.' })];
+  },
+});
+/* ==== end of chapter 3 scribble ==== */

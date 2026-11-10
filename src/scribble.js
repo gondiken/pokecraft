@@ -162,7 +162,7 @@ export function createScribble(game) {
     holdsPlayer: () => S.fighting,
   };
   if (!SCRIBBLE.on) { // without ?preview: nothing at all
-    Object.assign(S, { update() {}, tap: () => false, can: () => false, info: () => ({ on: false }) });
+    Object.assign(S, { update() {}, tap: () => false, can: () => false, where: () => null, aim: () => null, info: () => ({ on: false }) });
     return S;
   }
   const scene = game.scene, v3 = () => new THREE.Vector3();
@@ -653,7 +653,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     game.ui?.setPointers?.(null);
     const won = S.result;
     S.fight = null; S.armed = false;
-    if (won) { S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
+    if (won) { S.beaten = true; S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
     else { S.phase = 'idle'; if (game.ui) game.ui.toast('Walk out and back in to try again!'); }
     const p = game.player;
     if (p && p.pitch > 0.3) p.pitch = 0.3;
@@ -817,6 +817,14 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     for (const a of parts2?.arms || []) a.g.rotation.x = S.result && S.phase === 'exit' ? -2.8 : cheer * (a.phase ? 0.2 : 1) * 0.3;
   }
 
+  // "Where to go" (destinations.js) and the guide arrow (guide.js): where the patch is while it is there to fight ([x, z], else null).
+  // The arrow follows it by itself until you cleared it once; after that it is only a row in "Where to go".
+  S.where = () => (S.spot && (S.phase === 'idle' || S.fighting) && game.world === S.world ? [S.spot.x, S.spot.z] : null);
+  S.aim = () => {
+    const at = !S.beaten && S.phase === 'idle' ? S.where() : null;
+    if (!at) return null;
+    return { x: at[0], z: at[1], text: (arrow, d) => (d <= FIGHT.patch ? '✏️ Step into the scribble!' : `✏️ Scribble ${arrow} ${d}m`) };
+  };
   // ---- every frame (main.js, right after the first-person camera is placed)
   S.update = (dt, camera) => {
     t += dt;

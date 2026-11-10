@@ -18,7 +18,9 @@ export function createGuide(game) {
       return;
     }
     const unbeaten = game.world.gyms.filter(g => !game.badges.includes(g.def.id));
+    const scribble = !nav && game.scribble?.aim?.(p); // chapter 3 (?preview): the scribbled patch, until you cleared it once
     if (nav) updateNavArrow(p, nav);
+    else if (scribble) updateNavArrow(p, { target: { aim: () => scribble } }, '');
     else guideNext(p, unbeaten);
     tipsAndWelcome(p, unbeaten);
   }
@@ -59,7 +61,7 @@ export function createGuide(game) {
   }
 
   // T39a: the chosen place; its target is an access object or anything with aim(p) and status().
-  function updateNavArrow(p, nav) {
+  function updateNavArrow(p, nav, pin = '📍 ') {
     const aim = nav.target.aim(p);
     let arrow = '', dist = 0;
     if (aim.x === undefined) game.guideTarget = null;
@@ -69,7 +71,7 @@ export function createGuide(game) {
       dist = Math.round(Math.hypot(dx, dz));
       arrow = arrowFor(dx, dz);
     }
-    game.ui.setGuide(`📍 ${aim.text(arrow, dist).replace(/^Next: /, '')}${nav.target.status?.() || ''}`);
+    game.ui.setGuide(`${pin}${aim.text(arrow, dist).replace(/^Next: /, '')}${nav.target.status?.() || ''}`);
   }
 
   function arrowFor(dx, dz) {
