@@ -719,6 +719,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       if (Math.abs(a) < 0.75) continue; // in view: no arrow
       list.push({ angle: -a, colour: f.tell || f.charging ? '#ff4a3c' : '#ffffffcc', size: f.tell || f.charging ? 1 : 0.3 });
     }
+    { // your own creature, when it is out of view: a small blue arrow (night run: it is beside you, often just off the screen)
+      const f = S.fight.you, a = wrap(Math.atan2(f.x - p.pos.x, f.z - p.pos.z) - Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)));
+      if (Math.abs(a) >= 0.75) list.push({ angle: -a, colour: '#4aa8ff', size: 0.45 });
+    }
     game.ui.setPointers(list);
   }
   function keepInRing() {
@@ -787,7 +791,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     } else {
       let vis = f.alive || f.flash > 0;
       if (f.flash > 0 && f.alive) vis = Math.floor(f.flash * 20) % 2 === 0;
-      you.visible = vis; you.scale.setScalar(you.userData.base);
+      // first person: drawn at 60 % (night run: a big creature right beside you covered a third of the view); only the drawing
+      you.visible = vis; you.scale.setScalar(you.userData.base * (1 - 0.4 * (1 - smooth(S.camK))));
     }
     S.youY = S.youY == null || Math.abs(S.youY - f.y) > 3 ? f.y : S.youY + (f.y - S.youY) * Math.min(1, dt * SCRIBBLE.stepEase);
     you.position.set(f.x, S.youY + lift, f.z);

@@ -327,3 +327,34 @@ is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, 
   camera, the stronger big blast and this level fix; the likely causes were shots blocked by hills one cannot see from 45 degrees and a Lv 56
   lead facing Lv 56 monsters with a weak volley. Worth trying again on the iPad.
 - The spec now reports a person's times on every seed (34-83 s in the last run).
+
+### Step 4: first-person polish (done)
+
+`node tests/scribblemeasure.mjs eyes` (your eyes at fov 75, looking a little down, iPad landscape; 10 games x 3 seeds per row):
+
+| | Your creature on screen | A monster in your aim | Warnings' middle on screen | Person bot wins |
+| --- | --- | --- | --- | --- |
+| Before: your creature 1.6 to the right, 1.1 ahead (55 degrees off your look) | 37 % | 87 % | 61 % | 55 / 60 (two runs) |
+| Tried: 1.0 right, 2.4 ahead | 83 % | 86 % | 74 % | 23 / 30 (in front it is hit more) |
+| Tried: 1.3 right, 1.8 ahead | 72 % | 88 % | 71 % | 20 / 30 |
+| **Kept: 1.6 right, 1.6 ahead** | **56 %** | 86 % | 70 % | 52 / 60 (within the noise) |
+
+- Further in front, your creature is seen almost always but stands nearer the monsters and gets hit more, so the middle spot was kept.
+- **A small blue arrow** on the ring of arrows round the crosshair shows where your creature is when it is out of view (the monsters
+  already have red / white arrows there).
+- **Your creature is drawn at 60 % in first person** (eased with the camera's glide; only the drawing, never the rules): a big creature
+  (Tidalord) right beside you covered a third of the screen (`plans/chapter3/cam-after-9-eyes.jpg` is after the change).
+- Aiming with your look (the monster within 0.6 rad of your look, else the shot flies the way you look) was measured as fine: a monster is
+  in your aim 86-88 % of the time for the person bot. Not changed.
+
+### Step 5: draw calls for the iPad (measured; nothing more changed)
+
+| | Draw calls |
+| --- | --- |
+| Before (behind your creature, fov 75, 45 degrees) | about 335 |
+| **Now behind your creature** (steep camera) | **113-157** |
+| First person | 377 (the game's own view, as when walking) |
+| Of these, the fight's own things | about 80: 73 are the parts of the five models (three monsters, your creature, your avatar); the scribble fence is 1, each monster's scribble 1, warnings and clouds 1 each |
+
+The iPad's frame rate cannot be measured here. If it is low in a fight, the next step is merging each model's parts into one mesh per
+material (the parts animate, so it needs care), or hiding your avatar while you fight behind your creature.

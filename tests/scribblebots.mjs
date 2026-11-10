@@ -202,7 +202,22 @@ const CAMS = {
   old: { up: 8.5 * Math.sin(0.78), back: 8.5 * Math.cos(0.78), fov: 75, ahead: 1.6 }, // the first try (turned with your look; the bots never turn it)
   new: {},
 };
+function eyeWatch(F, aspect) { // first person: your eyes (1.6 up, looking a little down, fov 75)
+  const w = { n: 0, you: 0, aim: 0, tell: 0, tellN: 0 };
+  w.tick = () => {
+    const me = F.me, fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), y = me.y + 1.6;
+    const p = { x: me.x, y, z: me.z, at: { x: me.x + fx * Math.cos(0.15), y: y - Math.sin(0.15), z: me.z + fz * Math.cos(0.15) }, fov: 75 };
+    const inS = q => q && Math.abs(q.x) < 0.95 && Math.abs(q.y) < 0.95;
+    w.n++;
+    if (inS(onScreen(p, aspect, F.you.x, F.you.y + 0.5, F.you.z))) w.you++;
+    if (F.foes.some(f => f.alive) && F.aimAt()) w.aim++;
+    for (const f of F.foes) if (f.alive && f.tell) { w.tellN++; if (inS(onScreen(p, aspect, f.tell.x, f.tell.y, f.tell.z))) w.tell++; }
+  };
+  w.out = () => ({ cam: 'eyes', aspect: +aspect.toFixed(2), you: Math.round(100 * w.you / Math.max(1, w.n)), aim: Math.round(100 * w.aim / Math.max(1, w.n)), tell: Math.round(100 * w.tell / Math.max(1, w.tellN)) });
+  return w;
+}
 function camWatch(F, which, aspect) {
+  if (which === 'eyes') return eyeWatch(F, aspect);
   const cam = new FightCam(CAMS[which]), you = F.you;
   cam.start(F.me.yaw, you.x, you.y, you.z);
   const w = { n: 0, foe: 0, foeN: 0, tell: 0, tellN: 0, you: 0, jumps: 0, hidden: 0, last: null, aspect };

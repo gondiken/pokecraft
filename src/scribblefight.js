@@ -48,7 +48,7 @@ export const FIGHT = {
 };
 const WATER = 5;
 // First person (Test B): your creature runs beside you (a little ahead, to the right) and your moves go the way you look.
-export const FOLLOW = { side: 1.6, ahead: 1.1 };
+export const FOLLOW = { side: 1.6, ahead: 1.6 }; // night run: it was 1.6 / 1.1 (55 degrees off your look: on screen 37 % of the time); 1.6 ahead: 56 %, wins the same within noise; further in front: hit more
 export function follow(F, px, pz, yaw) {
   const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)];
   const tx = px + rt[0] * FOLLOW.side + fw[0] * FOLLOW.ahead, tz = pz + rt[1] * FOLLOW.side + fw[1] * FOLLOW.ahead;

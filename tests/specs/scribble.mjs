@@ -107,6 +107,8 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(() => { const g = window.pokecraft, F = g.scribble.fightOf(), p = g.player; p.yaw = Math.atan2(-(F.foes[0].x - p.pos.x), -(F.foes[0].z - p.pos.z)); p.pitch = -0.15; });
     await frames(page, 3);
     await page.screenshot({ path: `${SHOTS}scribble-9-eyes.png` });
+    const eyeCalls = await page.evaluate(() => window.pokecraft.renderer.info.render.calls);
+    t.ok(eyeCalls < 450, `draw calls in first person: ${eyeCalls} (the game's own view distance; behind your creature is far fewer)`);
     const e0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
     await page.keyboard.down('KeyS');
     await until(page, e0 => Math.hypot(window.pokecraft.player.pos.x - e0.x, window.pokecraft.player.pos.z - e0.z) > 0.8, e0);
