@@ -35,7 +35,7 @@ export default async function ({ browser, base, t }) {
       t.ok(spot && d >= 13 && d <= 24, `seed ${seed}: the patch is ${d?.toFixed(1)} blocks from the start (${JSON.stringify(spot)})`);
       const { lines, fails } = await runBots(page, 4, () => {});
       for (const l of lines.filter(l => !l.startsWith('info'))) t.ok(l.startsWith('ok'), `seed ${seed}: ${l.replace(/^(ok {2}|FAIL) /, '').replace(/ {2}\{.*/, '')}`);
-      console.log(`  ${lines.find(l => l.startsWith('info'))}`);
+      for (const l of lines.filter(l => l.startsWith('info'))) console.log(`  ${l}`);
       t.ok(!page.errors.length, `seed ${seed}: no page errors`);
       await page.context().close();
     }

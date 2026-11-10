@@ -300,3 +300,30 @@ monsters' HP left when its squad falls (lower is better); "hurt": the squad's HP
 - Heal and Tough never make a skilled player win sooner (support moves never can); they make a skilled player take less (Tough halves it)
   and they need timing. For the kid they help little, because the kid bot loses its squad in 15-20 s whatever it has (see step 3).
 - Picture: `plans/chapter3/kind-burst-charge.jpg` (F held: the ring at about 4 blocks, round Blazehound).
+
+### Step 3: fight length (done)
+
+A new **person** bot (`tests/scribblebots.mjs`, closer to a child on a tablet than the kid): sees a warning 0.3-0.6 s late, walks out with
+a wobbly thumb (up to 35 degrees off), dodges only half the time when late, taps one move about every 0.4-1.1 s (shots whether or not a hill
+is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, heals under 40 %, swaps only sometimes. Seeded per fight.
+`node tests/scribblemeasure.mjs length` (4 games x 3 seeds, behind and first person, 60 and 20 fps):
+
+| Team | Bot | Behind your creature: won, median win (range) | First person: won, median win (range) |
+| --- | --- | --- | --- |
+| Blazehound, Tidalord, Thunderwolf (Lv 30) | naive (mashing) | 1 / 12 | 0 / 12 |
+| | kid | 11 / 12, 20 s | 7 / 12, 24 s |
+| | **person** | **12 / 12, 52 s (43-71)** | **11 / 12, 92 s (53-167)** |
+| | skilled | 12 / 12, 23 s | 12 / 12, 32 s |
+| The owner's team: Graphitan 56, Kitegale 91, Blazehound 89 (before the fix below) | naive | **12 / 12 (a hole)** | 12 / 12 |
+| | person | 12 / 12, 48 s | 12 / 12, 47 s |
+| The owner's team, after the fix | naive | **0 / 12** | **0 / 12** |
+| | **person** | **12 / 12, 82 s (70-87)** | **9 / 12, 89 s (67-114)** |
+| | skilled | 12 / 12, 42 s | 12 / 12, 65 s |
+
+- **Found and fixed:** the monsters took your *lead's* level, so a weaker creature in front of two strong ones (the owner's Graphitan 56
+  before Kitegale 91) made Lv 56 monsters that the Lv 91 creature then crushed: mashing won every fight. **The monsters now match your
+  strongest creature.** The spec checks this team too (mashing must lose).
+- **No HP change was needed:** a person takes about 1-1.5 minutes; the skilled bot 20-65 s. The owner's 5+ minutes came before the steep
+  camera, the stronger big blast and this level fix; the likely causes were shots blocked by hills one cannot see from 45 degrees and a Lv 56
+  lead facing Lv 56 monsters with a weak volley. Worth trying again on the iPad.
+- The spec now reports a person's times on every seed (34-83 s in the last run).

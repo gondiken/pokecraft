@@ -22,7 +22,7 @@ const TEAM = [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30], ['phant
 // a fight as the game starts it: you at the patch's edge on the side of the start, your creature 3.5 blocks ahead
 function newFight(lead, solo = null) {
   const team = TEAM.map(([s, l]) => S.makeCreature(s, l));
-  const order = solo ? Array.from({ length: solo[3] || 1 }, () => Object.assign(S.makeCreature(solo[0], solo[1]), solo[2] ? { moves: solo[2] } : {})) : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
+  const order = Array.isArray(solo?.[0]) ? solo.map(([sp, l]) => S.makeCreature(sp, l)) : solo ? Array.from({ length: solo[3] || 1 }, () => Object.assign(S.makeCreature(solo[0], solo[1]), solo[2] ? { moves: solo[2] } : {})) : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
   const a = Math.atan2(g.spawnPoint.x - C.x, g.spawnPoint.z - C.z), dx = Math.sin(a), dz = Math.cos(a);
   const px = C.x + dx * (FIGHT.patch - 0.3), pz = C.z + dz * (FIGHT.patch - 0.3);
   const sx = px - dx * 3.5, sz = pz - dz * 3.5;
@@ -135,8 +135,42 @@ function kidStep(F, dt, eyes) {
   if (F.charge.slot <= 0) for (let i = 1; i <= 4; i++) { const s = F.moves[i - 1]; if (!s || F.cd[i] > 0) continue; if (s.kind === 'heal' && you.hp > you.maxHp * 0.5) continue; F.press(i); if (s.kind !== 'burst') F.release(i); }
   F.step(dt);
 }
+// person (step 3, night run): closer to a real child on a tablet than the kid: sees a warning 0.3-0.6 s late, walks out of it with a
+// wobbly thumb (up to 35 degrees off), dodges only half the time when it is late, taps a move about every 0.4-1.1 s (one at a time, a
+// shot whether or not a hill is in the way), holds a big blast 0.5-1.1 s, now and then taps another monster, heals under 40 %, swaps a
+// tired creature only sometimes. Its numbers: seeded per fight, so a run is the same at 60 and 20 fps.
+function personStep(F, dt, eyes) {
+  const you = F.you;
+  if (!F.ps) { let seed = 1234 + (F.foes[0].x * 1000 | 0); const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); F.ps = { r, seen: new Map(), next: 0.6, wob: 0, wobT: 0, hold: 0, dodgeLate: r() < 0.5 }; }
+  const P = F.ps, now = F.clock;
+  for (const f of F.foes) if (f.alive && f.tell && !P.seen.has(f.tell)) P.seen.set(f.tell, now + 0.3 + P.r() * 0.3);
+  const lateNow = F.foes.some(f => f.alive && f.tell && now > P.seen.get(f.tell) && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  if ((P.wobT -= dt) <= 0) { P.wobT = 0.4 + P.r() * 0.6; P.wob = (P.r() - 0.5) * 1.2; }
+  const s = skilledGoal(F);
+  let gx = 0, gz = 0;
+  if (lateNow || !s.flee) { const c = Math.cos(P.wob), sn = Math.sin(P.wob); gx = s.gx * c - s.gz * sn; gz = s.gz * c + s.gx * sn; }
+  if (lateNow && F.cd[0] === 0 && F.foes.some(f => f.alive && f.tell && f.tell.left < 0.25) && P.r() < dt * 30 * 0.5) F.press(0);
+  if (!eyes) { F.input.mx = gx; F.input.mz = gz; }
+  else {
+    const me = F.me, L = len2(gx, gz);
+    if (L > 0.05) { const st = Math.min(L, 4.3 * dt), nx = me.x + gx / L * st, nz = me.z + gz / L * st; if (walkable(F, me.x, me.z, me.y, nx, nz, 0.6)) { me.x = nx; me.z = nz; me.y = G.stand(nx, nz, me.y) ?? me.y; } }
+    const t = F.target?.alive ? F.target : F.foes.find(f => f.alive);
+    if (t) me.yaw += Math.atan2(Math.sin(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw), Math.cos(Math.atan2(-(t.x - me.x), -(t.z - me.z)) - me.yaw)) * Math.min(1, dt * 4);
+    follow(F, me.x, me.z, me.yaw);
+  }
+  if (F.charge.slot > 0) { if ((P.hold -= dt) <= 0) F.release(F.charge.slot); F.step(dt); return; }
+  if (you.hp < you.maxHp * 0.25 && P.r() < dt * 0.6) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > 0); if (i >= 0) F.swap(i); }
+  if ((P.next -= dt) <= 0) {
+    P.next = 0.4 + P.r() * 0.7;
+    if (P.r() < 0.15) { const o = F.foes.filter(f => f.alive); F.pick(o[Math.floor(P.r() * o.length)]); }
+    const ready = [1, 2, 3, 4].filter(i => F.moves[i - 1] && F.cd[i] === 0 && !(F.moves[i - 1].kind === 'heal' && you.hp > you.maxHp * 0.4));
+    if (ready.length) { const i = ready[Math.floor(P.r() * ready.length)]; F.press(i); if (F.moves[i - 1].kind === 'burst') P.hold = 0.5 + P.r() * 0.6; else F.release(i); }
+  }
+  F.step(dt);
+}
 const BOT = {
   kid: kidStep,
+  person: personStep,
   naive(F, dt, eyes) {
     for (let i = 1; i <= 4; i++) { F.press(i); F.release(i); }
     if (eyes) follow(F, F.me.x, F.me.z, F.me.yaw); else { F.input.mx = F.input.mz = 0; }
@@ -227,9 +261,21 @@ export async function runBots(page, games = 4, log = console.log) {
   const m = []; for (let g = 0; g < games; g++) m.push(await play(page, 'naive', { lead: MATCHED }));
   const line = `info naive behind @60 with a type-matched lead (phantomaw): ${m.filter(r => r.won).length}/${games} won`;
   lines.push(line); log(line);
+  // step 3 (night run): how long a person takes (reported; plans/chapter3.md: about 1-2 minutes)
+  const pr = []; for (let g = 0; g < games; g++) pr.push(await play(page, 'person', { lead: g, fps: g % 2 ? 20 : 60, limit: 400 }));
+  const pt = pr.filter(r => r.won).map(r => r.time).sort((a, b) => a - b);
+  const line2 = `info person behind: ${pt.length}/${games} won in ${pt.join(', ')} s`;
+  lines.push(line2); log(line2);
+  // the owner's own team (a weaker lead in front of two strong ones): mashing must lose with it too
+  const ow = []; for (let g = 0; g < games; g++) ow.push(await play(page, 'naive', { solo: OWNER_TEAM, fps: g % 2 ? 20 : 60 }));
+  const okO = ow.filter(r => r.won).length <= Math.floor(games / 4);
+  if (!okO) fails++;
+  const line3 = `${okO ? 'ok  ' : 'FAIL'} naive with a mixed-level team (Graphitan 56, Kitegale 91, Blazehound 89): ${ow.filter(r => r.won).length}/${games} won`;
+  lines.push(line3); log(line3);
   return { lines, fails };
 }
 export const MATCHED = 3;
+export const OWNER_TEAM = [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]];
 
 // The page: ?preview and a game in the world of `seed` (none = a New Game in a random world) with a team of three at level 30
 // (the arena's ready-made team).

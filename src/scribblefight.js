@@ -108,7 +108,9 @@ export class ScribbleFight {
     this.lead = 0;
     const s = opts.start;
     this.you = fighter(this.squad[0].c, 'you', s.x, s.y, s.z);
-    const lvl = this.squad[0].c.level;
+    // the monsters match your strongest creature (night run: with a lead weaker than the rest, the monsters took the lead's level and
+    // mashing won every fight once the strong ones came out)
+    const lvl = Math.max(...this.squad.map(m => m.c.level));
     const list = opts.foes || FOES.slice(0, 3);
     this.foes = list.map((d, i) => {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
