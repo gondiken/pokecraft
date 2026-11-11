@@ -469,6 +469,30 @@ Example: the Camp's green and the flooded patches look coloured in by a child; t
 flooded). The main world's byte-for-byte check stays green (it failed once in about six runs in this session, before and after the shader
 changes alike: its "before" picture itself changes from run to run; a flake of the check, worth a look).
 
+### What is not done / known limits (this session)
+
+- Not built: the river running uphill, fold creases, the torn page edge, slides, the zip-line (C4 / C5); "smudges in a row" and freed
+  creatures that stay near their patch (A2); paint drops for the workshop.
+- The iPad's real frame rate cannot be measured here. What the new looks cost: the sky 4 draw calls, the bugs 2, the pots one group of
+  a few meshes; the wobble and the crayon are a few shader lines (draw calls at the Camp 257, were 252).
+- The `riding` spec fails now and then the same way on the commit before this session (timing in software rendering), not from this work.
+
+## Questions for the owner (from this session)
+
+1. **Riding into a patch** hops you off and starts the fight (no fence round the patches). Good, or would you rather bump into a fence
+   and get off yourself?
+2. **Paint-pot hops by looking:** stand in a pot, look where you want to go, a beam shows the pot. Is that easy for your son, or should a
+   tap open a little list of pots instead?
+3. **Scribble bugs** give only a splash of colour now. Should popping them count for something (a paint drop for the workshop, a few
+   Capture Cubes for all four round a patch)?
+4. **The wobbly edges** (0.12) and the **crayon** (0.4): too strong, too weak, or right on the iPad?
+5. **The floating hills** have a chest each (+3 cubes, once). More of them, and with something better on top?
+6. The arrow now shows **smudges first** (1, 2, then the nearest tangles, the knot last), because the packed tangles are as near as the
+   smudges. OK?
+7. Which of the rest next: the river running uphill, slides down the hills, a zip-line between two trees, or the torn page edge with the
+   Wizard's desk below?
+
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

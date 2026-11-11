@@ -896,6 +896,7 @@ Other test tools: `tests/scribblemeasure.mjs` (the scribble fight's measurements
 
 ## Open items
 
+- **Chapter 3's world, the owner's first play (2026-11-11):** built in the afternoon session (`plans/chapter3-world.md`, "Built from the owner's first play"): riding and flying in Wobbleland, a packed Puddle Meadow with the next regions behind its walls, paint-pot hops, scribble bugs, wobbly edges, crayon, a child's sky, floating hills with springs; the owner's questions at its end.
 - **Chapter 3's world: `plans/chapter3-world.md`** ("Decided overnight" at the top: the night run of 2026-11-11 built steps 1-7: move kinds by nature, per-kind numbers and speed, Wobbleland behind the Paper Door with its look, six patches and the knot's Grumble; all ?preview; the owner's questions at the end of that section).
 - **Chapter 3 planning: read `plans/chapter3.md` first** (flags, decisions, the test arena, open questions, next steps). In the game so far only Test A / B (one scribbled patch behind ?preview, `src/scribble.js`); the night run of 2026-11-09 (section 9) made the camera steep, audited every move kind and measured fight length; section 10 (owner 2026-11-10): a little flatter camera that turns to keep monsters in view, first person removed, and three buttons with a fixed meaning (Dodge, Attack, Special).
 - **Next work is planned in `ROADMAP.md`** (waves, how to run them with subagents; read it before starting new features). Done:
