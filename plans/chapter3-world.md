@@ -17,12 +17,12 @@ exists (realms, the Picture World kit, the guide, the fight); everything behind 
 | Who gets in | **Only the Wizard's Ally** (under `?preview` too: the owner tests with an Ally save; see step 2) |
 | The look | **More different from our world: almost distorted, but cheerful, never gloomy or dystopian. Different from the Swirl too** (section 2) |
 | Freed creatures | **Catchable** |
-| Flags | **Count in every battle, scribble and regular, with the same impact in both**, which means first making both battles read the same numbers (section 7) |
-| Battles | The turn-based mechanics are good today. Open: how level, move power and the help moves carry over between the two, and whether a flag would count the same in both (answered in section 7) |
+| Flags | **+10 % attack for the flown type's creatures, in every battle** (scribble, regular, duels); defence / speed maybe later |
+| Battles | Turn-based stays as it is. The live fight's move numbers get fixed so a bigger number always hits harder and speed counts (section 7); heal stays 45 %. Measure with bots, then fix, **before** the world |
 | First slice | **5 patches + a big knot** |
-| Names | Claude names them (below) |
+| Names | Claude's names below, for now |
 | The ring | **Radius 10 stays** |
-| Places and types | The arena's twists (dark cave, slippery ice) and the type advantages (Fire sees further in the dark, Ice never slips) **belong in the plan** (section 6) |
+| Places and types | The arena's twists and type advantages **belong in the plan** (section 6); the owner is open to more ideas, since ground alone can't cover 47 types |
 
 ### Names
 
@@ -184,52 +184,70 @@ the snow is slippery, one in a cave is dark).
 | Dark | Shadywood, cave leaks | you see only near your light (arena `SEE`: near 4.6, far 7.5); blasts light it up | **Fire, Light, Electric, Cosmic** see further (their glow is bigger) |
 | Tall grass (later) | Puddle Meadow's edges | shots lose sight of a creature standing in it | **Grass** and **Camo** creatures hide in it (half-faded) |
 
+**Beyond the ground (owner: "you'll probably run out of ground ideas because we have so many creature types"):** the ground gives an
+edge to about ten types. Two more sources, for later and only if the first slice is fun:
+- **Time and weather in Wobbleland** (the main world already has both): at night Ghost, Ninja and Dream creatures are harder to see; in
+  rain Water moves splash wider. Each a one-look rule.
+- **A small fight trait per type** (one each, shown in the Book): e.g. Fire leaves a short burning patch where its shot lands, Electric
+  shots jump to a second monster close by, Ghost shots fly through one block, Metal takes less from stomps, Bubble creatures float over
+  water. 47 small traits is a lot of tuning, so only a few at a time, each measured with the bots.
+Meanwhile every type already has its edge in the type chart, in both battles.
+
 The monsters follow the same rules (an Ice monster on ice doesn't slide; a Water monster swims fast), so the patch's types and the place
 together decide which team does best. Bots measure every twist: the naive bot still loses, the skilled bot still wins with any team, and
 the fitting type helps visibly (a per-twist table like `plans/chapter3.md` section 9).
 
-## 7. One set of numbers for both battles (decided: flags count everywhere, the same in both)
+## 7. Move numbers in the live fight (owner 2026-11-11: "I don't understand the move power counting AT ALL")
 
-### What is true today (read in the code, 2026-11-11)
+### In plain words: what happens today, and why it feels wrong
 
-| | Turn-based (`battle.js`) | Scribble fight (`scribblefight.js` + `arena/`) |
-| --- | --- | --- |
-| Damage sum | level, attack / defence, power, same-type x1.5, type chart; plus a critical hit and a random roll | **the same sum** (`arena/core.js` `damage`), no critical hit or roll |
-| HP | from level and the species' stats | the same for your creatures; monsters x8 |
-| Move power | every move costs one turn, so a 100 move does 1.67 x a 60 move each turn | within one kind it is the same 1.67 x. **But each kind has its own wait** (`LIVE.cool`: shot 0.65 s, many shots 1.6, rush 2.0, big blast 3.2), whatever its power. So a 60 shot does about 92 power a second and a 100 rush about 50: **across kinds, power doesn't decide which is better** |
-| Accuracy | a move can miss | no misses; you aim and the monster can dodge out of the way |
-| Speed stat | who goes first, the run chance | **not used** (everyone walks 4.6 blocks a second) |
-| Heal | the move's own amount (e.g. half your HP) | **always 45 %**, whatever the move says (and you sit 0.8 s) |
-| Sleep | 2-3 turns, a sleeper takes x1.25 | **always 2.6 s**, whatever the move says |
-| Power up / Tough | stat steps that stack | x1.5 attack until hit / a brace, then x1.3 defence for 8 s |
-| Level and help moves | a heal or power up doesn't grow with level (it is a share of HP or a stat step) | the same: no help move grows with level |
+A turn-based battle and a scribble fight use **the same sum for one hit**: the attacker's level and attack, the target's defence, the
+move's power, the same-type bonus and the type chart. What differs is **how many hits a fight has** and **how often each move can hit**.
 
-So the answers to the owner's questions: **level counts the same in both** (damage and HP). **A move's power counts the same only between
-moves of the same kind.** **Help moves ignore level in both, and in the scribble fight they also ignore the move's own numbers.** And a
-flag of "+1 attack" would not count the same: added to the attack stat it is a share of the damage sum in both, but a scribble fight has
-far more hits, so the same share decides a lot more there.
+- **Why a live fight takes 1+ minute instead of 2-3 hits:** scribble monsters have 8 x the HP of a normal creature (so mashing can't win),
+  and each hit is the same size as one turn-based hit. A fight is about 20-40 hits instead of 2-3. Level counts the same *per hit*.
+- **Why a 60 shot beats a 100 move:** in a turn-based battle every move costs one turn, so power decides. In the live fight a move's kind
+  decides how long it waits before it can be used again, **and the kind comes from the move's numbers** (`movekinds.js` `kindOfMove`):
+  power 80 or more = a big blast (waits 3.2 s), priority or recoil = a rush (waits 2 s), the rest = a shot (waits 0.65 s). So:
 
-### The options
+  | Move | Becomes | Waits | Damage a second (power / wait) |
+  | --- | --- | --- | --- |
+  | a 60 move | shot | 0.65 s | **92** |
+  | a 100 priority move | rush | 2.0 s | **50**, and it is riskier (you run in) |
+  | a 100 move | big blast | 3.2 s | **31** (62 if held to full, but holding takes 1.1 s) |
 
-| | Option | For | Against |
-| --- | --- | --- | --- |
-| A | Flags as a plain share (+10 % damage for the flown type) in both sums, nothing else changed | small | "the same impact" only on paper: a fight of 40 hits feels +10 % very differently from a battle of 4 turns, and the two battles stay two sets of rules |
-| B | **One "creature numbers" module both battles read** (`src/battlemath.js`, pure): the damage sum, HP, a help move's own amount, sleep and stat steps, the flag. Turn-based stays bit for bit as it is (only the flag is new). The scribble fight moves toward the move's own meaning: **a shot's wait grows a little with power** (a 100 shot waits longer than a 60 shot but does more a second); **heal heals the move's own amount**; **sleep lasts its turns x a fixed "turn" of about 1 s**; **speed sets walking speed in a narrow band** (0.9-1.1 x). A flag is **+10 % to one stat of the flown type's creatures**, applied in `battlemath`, so both battles read it from the same place | one source of truth; "a better move is better in both" becomes true; a flag means the same thing everywhere; the bots measure it | the biggest piece of chapter 3 before the world; every Live change must re-pass the mashing check; duels change (see below) |
-| C | Flags only in scribble fights first, battles unified later | the world isn't held up | not what the owner asked for |
+  That is upside down: the strongest moves are the weakest in a live fight, and the risky ones pay the least. It also explains the owner's
+  earlier fights (Graphitan's shot won; the rush and blast creatures fainted).
+- **Speed:** creatures have a speed stat and 14 moves raise or lower speed. The live fight ignores the stat (everyone walks 4.6 blocks a
+  second, a shortcut from the test arena), and a move that **raises** speed quietly turns into an **attack** Power up there. (Moves that
+  lower speed become the slow cloud, which fits.)
+- **Heal:** always 45 % of the creature's HP. HP grows with level, so it grows with level. Owner: fine as it is.
 
-**Rec. B**, done in two steps so the world isn't held up:
-1. **Measure first, change nothing:** `tests/battlenumbers.mjs` (Node) puts every creature's moves through both battles: damage per turn
-   vs damage per second, by kind and power; heal and sleep values; how much level and a +10 % stat change each. One table for the owner
-   (like section 9 of `chapter3.md`), with the cases where "the better move" differs between the two.
-2. **Then unify the scribble fight's side** (`scribblefight.js` reads `battlemath.js`), each change measured with the bots, mashing
-   still below a quarter. Turn-based battles are not touched except for flags.
+### The fix (decided in principle; numbers to be set by measuring)
 
-**Flags then count in every battle:** a flag gives your creatures of its type +10 % to one stat (attack proposed; the son might like
-choosing). Gym trainers and wild creatures never fly flags, so gyms get a little easier (the owner wants gyms easy). **Duels:** both
-players' flown flags travel with the team; that is a battle-rule change, so the duel `VERSION` goes 14 -> 15 (an older friend's game
-says it needs an update, as for every bump).
+1. **A bigger number always hits harder, in both battles.** In the live fight, damage a second follows the move's power: every kind's wait
+   is set so the same power gives the same damage a second, whatever the kind. The kind only decides *how* it lands (one big hit, many
+   small ones, a charge, a run-in).
+2. **Risk pays a little extra.** A rush that lands in the timed window and a fully charged blast do a bit more than a shot of the same
+   power (about +20-30 %, set with the bots), because they ask for timing. A masher never gets that extra.
+3. **Speed counts.** The speed stat sets walking and dodging speed in a narrow band (about 0.9-1.1 x, so no creature is hopeless); a move
+   that raises speed becomes **Speed up** (a new Special: walk and dodge faster until hit, with its own icon), no longer an attack boost.
+4. **Heal stays 45 %**; sleep, slow cloud, Tough and Power up stay as they are now.
+5. **Turn-based battles do not change** (they are good today; gyms, Bosses and duels stay exactly as they are).
 
-## 8. What the fight needs changed (only inside `scribblefight.js` / `scribble.js`, plus `battlemath.js`)
+**Measuring** means a test script, nothing in the game: it plays every move through the live fight with the bots and writes a table
+(each move: kind, power, damage a second, how often it lands, how long a fight takes with it). Then the waits are set from the table and
+it runs again to prove points 1-2, with the mashing bot still losing.
+
+### Flags (decided: +10 % attack, every battle)
+
+A flag gives your creatures of its type **+10 % attack**: every hit they make does about 10 % more, in turn-based battles, duels and
+scribble fights alike. In a long live fight that shows up smoothly (a fight about 10 % shorter); in a short turn-based battle it shows only
+when it tips a creature over one hit sooner. (My earlier line that a flag "would count more" in live fights was misleading: it is the same
+10 % per hit; the live fight just has more hits for it to add up over.) Gym trainers and wild creatures never fly flags. In duels both
+players' flags count, so the duel `VERSION` goes 14 -> 15. Defence or speed flags can come later.
+
+## 8. What the fight needs changed (only inside `scribblefight.js` / `scribble.js`)
 
 1. **Many patches from data:** `createScribble` takes a list (`world.patches` in Wobbleland; the main world keeps its single test patch
    until the owner drops it). Only patches within about 60 blocks are drawn (draw calls on the iPad).
@@ -243,7 +261,7 @@ says it needs an update, as for every bump).
 7. **Patch spots placed by hand in the terrain** (flat enough, no water inside the ring unless it is a water twist) and checked in Node,
    instead of `scribbleSpot`'s search.
 8. **Hooks out:** `onWin(patch)` / `onLose(patch)` for the colour flood, the chip, the freed creatures and keys.
-9. **The numbers from `battlemath.js`** (section 7, step 2).
+9. **The move numbers** (section 7): waits by power, the risk extra, speed (done first, step 1b).
 
 The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched.
 
@@ -258,9 +276,11 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 - **Friends:** a friend follows you in (realms together, T38b) and fights in the same ring (both browsers must agree on the fight; later).
 - **The ending:** at the Big Knot you help the Wizard **finish drawing the Scribble** (his drawing board again), and it becomes a friend.
 
-## 10. Build order (each step behind `?preview`; each with naive / skilled bots, real keys through the game's loop and an iPad run; the `scribble` spec grows parts, e.g. `SCRIBBLE_ONLY=numbers|land|door|patches|look|loop|knot`)
+## 10. Build order (each step behind `?preview`; each with naive / skilled bots, real keys through the game's loop and an iPad run; the `scribble` spec grows parts, e.g. `SCRIBBLE_ONLY=numbers|land|door|patches|look|loop|knot`; steps 1 and 1b come before the world)
 
-1. **Battle numbers, measured only** (section 7 step 1): `tests/battlenumbers.mjs` and the table for the owner. Nothing changes in the game.
+1. **Move numbers, measured** (section 7): a test script plays every move through the live fight and writes the table. Nothing changes in the game.
+1b. **Move numbers, fixed** (section 7, owner 2026-11-11: right after measuring): the waits by power, the risk extra, speed (stat + Speed up),
+   all inside `scribblefight.js`; the table again; mashing under a quarter, skilled wins all, the person bot about 1-1.5 minutes.
 2. **Wobbleland as data** (`wobbleland.js`, Node-runnable): Inkpot Camp, Puddle Meadow with its wonky shapes, the wall, the six patch
    spots, the way back. Node checks: every patch reachable on foot from the Camp, every ring 75 %+ walkable, no patch inside another, the
    wall really closes Bumpy Hills. No fight yet.
@@ -274,22 +294,16 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
    lines. A naive kid bot that only follows the arrow must reach every patch.
 7. **The knot and its Grumble:** the weak-spot pattern (mashing it from the front must fail), the region flooding with colour, the wall
    melting, the Wizard's words. **End of the first slice: the owner and son play it.**
-8. **After their verdict:** the scribble fight reads `battlemath.js` (section 7 step 2), then flags (the Flag Book, +10 % in every battle,
-   duel `VERSION` 15), leaks near gyms, then Bumpy Hills with the Wizard beside you, Slippy Lake and Shadywood with their twists.
+8. **After their verdict:** flags (the Flag Book, +10 % attack in every battle, duel `VERSION` 15), leaks near gyms, then Bumpy Hills with the Wizard beside you, Slippy Lake and Shadywood with their twists.
 
 ---
 
 ## Questions for the owner
 
-1. **The look:** wonky shapes + a page that curls up in the distance + bright "beginner's" colours. Does that match "almost distorted, but
-   not dystopian"? Is the curl OK, or does it sound dizzying?
-2. **Battle numbers:** measure first (step 1), then make the scribble fight follow each move's own numbers (a stronger shot waits a bit
-   longer, a heal heals its own amount, sleep lasts its turns, speed changes walking speed a little) while turn-based battles stay as they
-   are. Agreed?
-3. **Flags:** +10 % to one stat (attack?) of the flown type's creatures, in every battle including duels with friends. Fixed to attack,
-   or should the child choose attack / defence / HP per flag? (You said earlier that versions of each flag aren't needed.)
-4. **Type advantages per ground:** Water swims fast, Sky / Drake hop two blocks, Ice grips, Fire / Light / Electric / Cosmic see in the
-   dark, Grass / Camo hide in tall grass. Any to change or add?
-5. **Names:** Wobbleland, the Paper Door, Inkpot Camp, Puddle Meadow, Bumpy Hills, Slippy Lake, Shadywood, the Big Knot, smudge / tangle /
-   knot, a Grumble. Happy, or ask your son?
-6. **Order:** first slice first (steps 2-7) and the battle unification after, as planned, or the battle numbers straight after step 1?
+Answered 2026-11-11: flags +10 % attack (above), names kept for now, move numbers fixed right after measuring, heal stays 45 %.
+
+Still open:
+1. **The look** (section 2) is only words so far. Would concept pictures help before the build (a few screenshots of a quick mock-up,
+   made outside the game), or should the build session make the look first (step 4) and show it before going on?
+2. **The risk extra** (section 7, point 2): a well-timed rush or full blast doing about a quarter more than a shot of the same power. OK?
+3. **Speed up** replacing the hidden attack boost for the 14 speed moves: OK?
