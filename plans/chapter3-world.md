@@ -545,8 +545,8 @@ monsters on the lake also keep their grip, so a fire team has it hard there), fr
 bots per patch with three teams (one that fits the place, one neutral, the owner's), and a table of how much the fitting type helps. The
 iPad matters most for the dark (it must stay readable on a small screen).
 
-**One question before Slippy Lake:** should the ice also slide YOU when you walk on the lake (outside fights), or only in fights? I would
-make it slide everywhere on the lake (it is a fun way to move with no button, and it makes the ground's rule obvious before the first fight).
+**Decided (owner 2026-11-11):** Slippy Lake first, and **the ice slides you when you walk on the lake too**, not only in fights (a fun
+way to move with no button, and the ground's rule is obvious before the first fight).
 
 ## 0. The owner's decisions (2026-11-11)
 
