@@ -16,7 +16,8 @@ import { sound } from './sound.js';
 import { KIND_WORD } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 const LIVE_CHARGE = LIVE.charge;
-import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle } from './scribblefight.js';
+import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle, patchFight } from './scribblefight.js';
+import { PATCHES, patchKey } from './wobbleland.js'; // chapter 3 step 5: Wobbleland's patches from data
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
@@ -152,6 +153,8 @@ function sized(model, want) {
 
 // ---------------------------------------------------------------- the patch, the fight and the camera
 
+export const WOBBLE_CUBES = 3; // a Wobbleland patch's first clear (plans/chapter3-world.md section 3)
+let rePickT = 0;
 export function createScribble(game) {
   const S = {
     phase: 'off', // off | idle | enter | fight | exit | cleared
@@ -274,12 +277,22 @@ export function createScribble(game) {
   function build(world) {
     clear();
     S.world = world;
-    S.phase = 'off';
-    if (!world || world.realm || game.place !== 'main') return;
+    S.phase = 'off'; S.patch = null;
+    if (!world) return;
     const p0 = game.player, here = game.started && p0;
-    S.spot = world.scribbleSpot ??= (here ? scribbleSpot(world, p0.pos.x, p0.pos.z, p0.yaw) : null) ?? scribbleSpot(world, game.spawnPoint.x, game.spawnPoint.z);
-    if (!S.spot) return;
-    if (game.started) game.ui?.toast('✏️ Something got scribbled nearby! Look for a grey tangle.');
+    if (world.wobble) { // chapter 3 step 5: Wobbleland: the nearest patch you have not cleared (the others wait, grey on the land)
+      const keys = new Set(game.beaten || []), at = here ? p0.pos : game.spawnPoint;
+      const left = world.wobble.patches.filter(q => !keys.has(patchKey(q.id)));
+      S.patch = left.sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
+      if (!S.patch) return;
+      S.patchFight = patchFight(S.patch, S.patch.y);
+      S.spot = S.patchFight.centre;
+    } else {
+      if (world.realm || game.place !== 'main') return;
+      S.spot = world.scribbleSpot ??= (here ? scribbleSpot(world, p0.pos.x, p0.pos.z, p0.yaw) : null) ?? scribbleSpot(world, game.spawnPoint.x, game.spawnPoint.z);
+      if (!S.spot) return;
+      if (game.started) game.ui?.toast('✏️ Something got scribbled nearby! Look for a grey tangle.');
+    }
     S.ground = groundOf(world);
     const C = S.spot, G = S.ground;
     parts = { tangle: buildTangle(C, G), monsters: [], spots: [] };
@@ -289,7 +302,7 @@ export function createScribble(game) {
     group.add(parts.patch, parts.ring);
     // the monsters: real creatures caught in the Scribble (STORY.md: "the creatures caught in it go grey and grumpy"), with pencil
     // scribble wound round them; beaten, the scribble bursts off and their colours come back (owner 2026-11-09: never drawn as doodles)
-    const probe = new ScribbleFight({ ground: G, centre: C, squad: [{ species: 'fluffin', level: 5, moves: [] }], start: { x: C.x, y: C.y, z: C.z } });
+    const probe = new ScribbleFight({ ground: G, centre: C, squad: [{ species: 'fluffin', level: 5, moves: [] }], start: { x: C.x, y: C.y, z: C.z }, foes: S.patchFight?.foes });
     probe.foes.forEach((f, i) => {
       const model = buildModel(f.c.species);
       const h = sized(model, 1.7);
@@ -624,7 +637,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     let sx = p.pos.x + fx * 3.5, sz = p.pos.z + fz * 3.5;
     if (Math.hypot(sx - C.x, sz - C.z) > FIGHT.R - 1.5) { sx = p.pos.x + (C.x - p.pos.x) * 0.3; sz = p.pos.z + (C.z - p.pos.z) * 0.3; }
     const sy = G.stand(sx, sz, p.pos.y, 2) ?? p.pos.y;
-    S.fight = new ScribbleFight({ ground: G, centre: C, squad: squadOf(game.party), start: { x: sx, y: sy, z: sz } }); // the monsters jump out of the knot round your creature
+    S.fight = new ScribbleFight({ ground: G, centre: C, squad: squadOf(game.party), start: { x: sx, y: sy, z: sz }, foes: S.patchFight?.foes, levelStep: S.patchFight?.levelStep, hp: S.patchFight?.hp, attack: S.patchFight?.attack }); // the monsters jump out of the knot round your creature
     S.fight.you.heading = Math.atan2(C.x - sx, C.z - sz);
     S.entry = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     S.phase = 'enter'; phaseT = 0;
@@ -656,7 +669,14 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     game.ui?.setPointers?.(null);
     const won = S.result;
     S.fight = null; S.armed = false;
-    if (won) { S.beaten = true; S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
+    if (won && S.patch) { // Wobbleland: the patch stays cleared (saved), its colour floods back, +3 Capture Cubes the first time
+      const key = patchKey(S.patch.id), first = !game.beaten.includes(key);
+      if (first) { game.beaten.push(key); game.cubes = (game.cubes || 0) + WOBBLE_CUBES; game.save?.(true); }
+      game.wobbleLook?.flood(S.patch.id);
+      game.onPatchCleared?.(S.patch, first);
+      if (game.ui) game.ui.toast(first ? `The colour is back! +${WOBBLE_CUBES} Capture Cubes` : 'The colour is back!');
+      S.beaten = true; S.phase = 'cleared'; S.next = true;
+    } else if (won) { S.beaten = true; S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
     else { S.phase = 'idle'; if (game.ui) game.ui.toast('Walk out and back in to try again!'); }
     const p = game.player;
     if (p && p.pitch > 0.3) p.pitch = 0.3;
@@ -838,6 +858,12 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     boilT += dt; if (boilT > 0.12) { boilT = 0; boil = (boil + 1) % 3; }
     const tg = parts.tangle;
     if (S.phase === 'idle' || S.phase === 'cleared') {
+      if (S.phase === 'cleared' && S.next) { S.next = false; build(S.world); return; } // Wobbleland: on to the next patch
+      if (S.phase === 'idle' && S.patch && playing && (rePickT += dt) > 1) { // Wobbleland: the patch you are nearest to is the live one
+        rePickT = 0;
+        const keys = new Set(game.beaten || []), q = S.world.wobble.patches.filter(r => !keys.has(patchKey(r.id))).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0];
+        if (q && q.id !== S.patch.id && Math.hypot(q.x - p.pos.x, q.z - p.pos.z) + 8 < Math.hypot(S.patch.x - p.pos.x, S.patch.z - p.pos.z)) { build(S.world); return; }
+      }
       if (S.phase === 'cleared') {
         backT -= playing ? dt : 0;
         const away = Math.hypot(p.pos.x - C.x, p.pos.z - C.z) > FIGHT.R + 6;
@@ -908,7 +934,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   };
   S.refresh = () => {}; // (the pause screen's first-person button is gone)
   // tests and the console
-  S.info = () => ({ on: true, phase: S.phase, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
+  S.info = () => ({ on: true, patch: S.patch?.id ?? null, phase: S.phase, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
     fight: S.fight?.info() ?? null, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
   S.fightOf = () => S.fight;
   S.warp = () => { // tests: stand just outside the patch (half a block), facing it, on flat ground (the side of the start first)

@@ -23,11 +23,11 @@ export const REGIONS = {
 };
 export const KNOT = { x: 112, z: 62 };                          // the Big Knot (the end of the chapter) in the middle of the closed page
 export const RING = 10;                                         // the fight's ring (scribblefight.js FIGHT.R): patches are checked with it
-// The patches (append-only ids: a cleared patch saves `pw:wobble:patch<id>`). size: smudge 2 monsters, tangle 3-4, knot 4 + a Grumble.
+// The patches (append-only ids: a cleared patch saves `pw:wobble:patch<id>`). size: smudge 3 monsters (2 were always mashable, tests/wobblebots.mjs), tangle 3-4, knot 4 + a Grumble.
 // `wet`: a puddle inside the ring (the water twist: everyone swims slowly, Water creatures at full speed).
 export const PATCHES = [
-  { id: 1, x: 112, z: 178, size: 'smudge', region: 'meadow', species: ['sproutle', 'hopsy'] },
-  { id: 2, x: 72, z: 168, size: 'smudge', region: 'meadow', species: ['beetlet', 'chirpit'] },
+  { id: 1, x: 112, z: 178, size: 'smudge', region: 'meadow', species: ['sproutle', 'hopsy', 'chirpit'] },
+  { id: 2, x: 72, z: 168, size: 'smudge', region: 'meadow', species: ['beetlet', 'fluffin', 'flutterby'] },
   { id: 3, x: 154, z: 162, size: 'tangle', region: 'meadow', species: ['flutterby', 'ripplet', 'kiteling'] },
   { id: 4, x: 46, z: 142, size: 'tangle', region: 'meadow', species: ['bubbuck', 'jellume', 'budling'], wet: true },
   { id: 5, x: 180, z: 140, size: 'tangle', region: 'meadow', species: ['hornbeetle', 'woolumph', 'balloony', 'mossloth'] },

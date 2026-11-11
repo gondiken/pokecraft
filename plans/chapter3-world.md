@@ -201,6 +201,43 @@ Pictures: `plans/chapter3/wobble-door.png` (the door, close up).
 - Pictures: `plans/chapter3/wobble-look-curl.png` (the curl, from the Camp), `wobble-look-flat.png` (switch off), `wobble-look-flood.png`
   (patch 1 cleared: its colour flooded out round it).
 
+### Step 5: patches from data in the fight
+
+**What:** in Wobbleland the scribble fight takes its patch from `PATCHES`: the live patch is the nearest one you have not cleared (a
+patch 8+ blocks nearer takes over as you walk), its monsters are its own species, and **its size sets the fight** in one table,
+`PATCH_SIZES` (`src/scribblefight.js` line 107):
+
+| Size | Monsters | Level (your strongest creature +) | Their HP | Time between their attacks | Their patterns |
+| --- | --- | --- | --- | --- | --- |
+| smudge | 3 | +1 | x2.0 | x0.44 (often) | charge only |
+| tangle | 3-4 | +0 | x1.3 | x0.6 | charge and lob |
+| knot | 4 (+ the Grumble, step 7) | +2 | x1.15 | x0.65 | charge, lob and stomp |
+
+(x = on top of the test patch's numbers: HP x10, power 60, rhythm x0.7.) Each monster's **pattern comes from its nature**
+(`patternOf`, line 117): heavy Rock / Metal / Bone bodies stomp, creatures whose attacks are mostly rushes charge, the rest lob; a size
+that does not allow it falls back. **The water twist:** in water everyone swims slowly, **Water creatures at full speed** (`swimOf`), on
+patch 4 (a puddle in its ring) and anywhere else with water. A first win: the key `pw:wobble:patch<id>` (saved at once), **+3 Capture
+Cubes** (`WOBBLE_CUBES` in `src/scribble.js`), the colour floods out, the next patch goes live. A lost fight: walk out and back in.
+
+**Why "smudge = 3 monsters" (the plan said 2):** with two monsters mashing won 17-24 of 24 fights whatever their level, HP or pattern
+(once one falls, one attacker cannot punish standing still); with three it is 2-4 of 24.
+
+**Bot numbers** (`node tests/wobblebots.mjs`, spec `wobble` part `patches`; per patch: mashing 12 fights at each of 60 and 20 fps,
+skilled and person 2 each):
+
+| Patch | Mashing, a type-neutral team (Owlucid x3, Lv 30) | Mashing, the ready-made Fire / Water / Electric team | Mashing, the owner's team | Skilled | Person: wins in |
+| --- | --- | --- | --- | --- | --- |
+| 1 smudge | 2-3 / 24 | 2 / 8 | 7-8 / 8 | all | 41-55 s |
+| 2 smudge | 0 / 24 | 8 / 8 | 8 / 8 | all | 23-54 s |
+| 3 tangle | 3-4 / 24 | 7-8 / 8 | 8 / 8 | all | 24-116 s |
+| 4 tangle, water | 0-4 / 24 | 3-5 / 8 | 5-7 / 8 | all | 32-149 s |
+| 5 tangle | 0 / 24 | 0 / 8 | 0-1 / 8 | all | 37-138 s |
+| 6 knot | 0 / 24 | 0 / 8 | 0-1 / 8 | all | 29-107 s |
+
+**Mashing is judged with a type-neutral team**, because Puddle Meadow's monsters are Grass, Bug, Normal, Water and Sky, and a Fire or Sky
+team hitting them twice as hard is the type chart doing what the plan wants ("a team that beats them has an easier time"). The catch:
+**your own team (Kitegale and Blazehound) can mash the first four patches** (question 4 below).
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

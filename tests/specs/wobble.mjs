@@ -4,7 +4,9 @@
 //           arrives at the Camp, reloads inside, walks back up through the way back with real keys, and a following guest is let in
 //   look:   the curl (one switch), the first-draft colours, grey where the Scribble is and the colour flood; the main world draws the same
 //           frame byte for byte before and after a trip (the WOBBLE define only exists in Wobbleland); draw calls and frame time
-//   WOBBLE_ONLY=land|door|look      screenshots: tests/screenshots/wobble-*.png
+//   patches: the fight on every patch from data (tests/wobblebots.mjs: mashing with a type-neutral team under a quarter, skilled all, person
+//           times), W walks you into the nearest patch, a win saves its key, +3 cubes, floods its colour, the next patch comes, a reload keeps it
+//   WOBBLE_ONLY=land|door|look|patches      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
 
@@ -33,6 +35,38 @@ export default async function ({ browser, base, t }) {
     const { checkWobble } = await import('../wobblecheck.mjs');
     const r = await checkWobble();
     t.ok(!r.problems.length, `Wobbleland: every patch reachable from the Camp, rings walkable (${r.out.rings.map(q => `${q.id}: ${q.walk} %${q.wet ? ` ${q.wet} wet` : ''}`).join(', ')}), no overlap, the wall closes Bumpy Hills (${r.out.hills} cells behind it) ${r.problems.slice(0, 4).join('; ')}`);
+  }
+
+  if (want('patches')) {
+    const { wobblePage, runPatches } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    const r = await runPatches(page, { games: 2, log: () => {} });
+    for (const l of r.lines) t.ok(l.startsWith('ok'), l.replace(/^(ok {2}|FAIL) /, ''));
+    // the real loop: W from the Camp side walks you into patch 1 (the nearest), the fight starts
+    const p1 = await page.evaluate(() => { const g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 1); g.player.pos.set(q.x + 0.5, q.y, q.z + 10.5); g.player.yaw = 0; g.player.pitch = 0; return { info: g.scribble.info(), cubes: g.cubes }; });
+    await frames(page, 4);
+    t.ok(p1.info.patch === 1 && p1.info.phase === 'idle', `in Wobbleland the live patch is the nearest one you have not cleared (${JSON.stringify({ patch: p1.info.patch, phase: p1.info.phase })})`);
+    await page.keyboard.down('w');
+    await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 60000).catch(() => {});
+    await page.keyboard.up('w');
+    const f = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); return F && { foes: F.foes.map(x => x.c.species), level: F.foes[0].c.level, you: F.squad.map(m => m.c.level) }; });
+    t.ok(f && f.foes.join() === 'sproutle,hopsy,chirpit', `walking in starts the fight with the patch's own monsters (${JSON.stringify(f)})`);
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
+    await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 9999, 'normal'); });
+    await waitFor(page, () => window.pokecraft.scribble.info().patch !== 1 && window.pokecraft.scribble.info().phase === 'idle', null, 90000).catch(() => {});
+    await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
+    const won = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { key: g.beaten.includes(L.patchKey(1)), cubes: g.cubes, next: g.scribble.info().patch, colour: g.wobbleLook.colourAt(L.patchOf(1).x, L.patchOf(1).z) }; });
+    t.ok(won.key && won.cubes === p1.cubes + 3 && won.next && won.next !== 1 && won.colour > 0.5, `a win keeps patch 1 cleared (saved), +3 cubes, its colour floods back and the next patch is live (${JSON.stringify(won)})`);
+    await page.evaluate(() => window.pokecraft.save?.(true));
+    await page.reload();
+    await page.waitForFunction(() => window.pokecraft?.world, null, { timeout: 120000 });
+    await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
+    await placeIs(page, 'wobble');
+    await frames(page, 6);
+    const after = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { key: g.beaten.includes(L.patchKey(1)), patch: g.scribble.info().patch, colour: g.wobbleLook.colourAt(L.patchOf(1).x, L.patchOf(1).z) }; });
+    t.ok(after.key && after.patch !== 1 && after.colour === 1, `after a reload patch 1 stays cleared and coloured (${JSON.stringify(after)})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
   }
 
   if (want('look')) {

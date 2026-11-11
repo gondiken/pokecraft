@@ -14,18 +14,21 @@ export const BOTS = String.raw`
 const { ScribbleFight, groundOf, squadOf, FIGHT, FightCam, onScreen, foesMiddle } = await import('/src/scribblefight.js');
 const LIVE_TELL = (await import('/src/arena/live.js')).LIVE.foe.tell, LIVE_FULL = (await import('/src/arena/live.js')).LIVE.charge;
 const S = await import('/src/species.js');
-const g = window.pokecraft, C = g.scribble.spot, G = groundOf(g.world);
+const g = window.pokecraft, G = groundOf(g.world);
+let C = g.scribble.spot;
 const len2 = Math.hypot;
 const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / L)) : 0; return len2(px - ax - dx * t, pz - az - dz * t); };
 const TEAM = [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30], ['phantomaw', 30]];
 // a fight as the game starts it: you at the patch's edge on the side of the start, your creature 3.5 blocks ahead
 function newFight(lead, solo = null) {
+  C = window.__botPatch?.centre ?? g.scribble.spot;
   const team = TEAM.map(([s, l]) => S.makeCreature(s, l));
   const order = Array.isArray(solo?.[0]) ? solo.map(([sp, l]) => S.makeCreature(sp, l)) : solo ? Array.from({ length: solo[3] || 1 }, () => Object.assign(S.makeCreature(solo[0], solo[1]), solo[2] ? { moves: solo[2] } : {})) : [team[lead % team.length], ...team.filter((_, i) => i !== lead % team.length)];
   const a = Math.atan2(g.spawnPoint.x - C.x, g.spawnPoint.z - C.z), dx = Math.sin(a), dz = Math.cos(a);
   const px = C.x + dx * (FIGHT.patch - 0.3), pz = C.z + dz * (FIGHT.patch - 0.3);
   const sx = px - dx * 3.5, sz = pz - dz * 3.5;
-  const probe = new ScribbleFight({ ground: G, centre: C, squad: squadOf(order), start: { x: sx, y: G.floor(sx, sz, C.y + 4), z: sz } });
+  const P = window.__botPatch; // chapter 3 step 5: a Wobbleland patch (its centre, monsters and level step from data)
+  const probe = new ScribbleFight({ ground: G, centre: C, squad: squadOf(order), start: { x: sx, y: G.floor(sx, sz, C.y + 4), z: sz }, foes: P?.foes, levelStep: P?.levelStep, hp: P?.hp, attack: P?.attack });
   probe.me = { x: px, z: pz, y: G.floor(px, pz, C.y + 4), yaw: Math.atan2(-(C.x - px), -(C.z - pz)) };
   return probe;
 }
@@ -208,8 +211,9 @@ function camWatch(F, which, aspect) {
 window.__scribbleBots = { newFight, BOT, camWatch };
 `;
 
-export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null, power = null } = {}) {
-  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams, power }) => {
+export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null, power = null, patch = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams, power, patch }) => {
+    if (patch != null) { const SF = await import('/src/scribblefight.js'), q = window.pokecraft.world.wobble.patches.find(r => r.id === patch); window.__botPatch = SF.patchFight(q, q.y); } else window.__botPatch = null;
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
     const { newFight, BOT, camWatch } = window.__scribbleBots, S = await import('/src/species.js');
     const F = newFight(lead, solo), dt = 1 / fps;
@@ -220,7 +224,7 @@ export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = 
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
       byKind: F.stats.byKind, hitBy: F.stats.hitBy, takenPerMin: Math.round(F.stats.taken / Math.max(1, F.clock) * 60 / F.squad.reduce((a, m) => a + S.statsFor(m.c).maxHp, 0) * 100), extra: { braced: F.stats.braced || 0, spoilt: F.stats.spoilt || 0, buffLost: F.stats.buffLost || 0 }, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
-  }, { BOTS, bot, fps, lead, limit, solo, cams, power });
+  }, { BOTS, bot, fps, lead, limit, solo, cams, power, patch });
 }
 
 export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 20]];

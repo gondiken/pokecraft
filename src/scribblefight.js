@@ -100,6 +100,37 @@ export function liveShape(id) {
   if (m.fx?.kind === 'multi' && s.power) s.power = Math.round(s.power * MULTI_HITS);
   return s;
 }
+// ---- Patches from data (chapter 3 step 5, plans/chapter3-world.md section 3): a patch names its species; its size says how hard.
+// `level`: the monsters take your strongest creature's level plus this step. `patterns`: which fight patterns a size may use (smudges
+// only charge; tangles charge and lob; knots add stomps). PATCH_SIZES is the one place for these numbers.
+// `hp` x the monsters' HP and `attack` x their time between attacks (FIGHT.attack is the test patch's): fewer monsters each fight harder,
+// or mashing wins a small patch (measured, tests/wobblebots.mjs).
+export const PATCH_SIZES = {
+  smudge: { level: 1, hp: 2.0, attack: 0.44, patterns: ['charge'] },
+  tangle: { level: 0, hp: 1.3, attack: 0.6, patterns: ['charge', 'lob'] },
+  knot: { level: 2, hp: 1.15, attack: 0.65, patterns: ['charge', 'lob', 'stomp'] },
+};
+FIGHT.sizes = PATCH_SIZES; // (tests tune it as FIGHT.sizes)
+const HEAVY = new Set(['rock', 'metal', 'bone']);
+// A species' fight pattern from its nature: heavy Rock / Metal / Bone bodies stomp, creatures whose attacks are mostly rushes charge,
+// the rest lob (pure). `allowed` = the size's patterns (a pattern it may not use falls back to the next one in the list).
+export function patternOf(species, allowed = ['charge', 'lob', 'stomp']) {
+  const sp = SPECIES[species];
+  if (!sp) return allowed[0];
+  const ids = (sp.learn || []).map(([, id]) => id).filter(id => MOVES[id]?.power > 0);
+  const rush = ids.filter(id => kindOf(id)?.id === 'dash').length;
+  const want = HEAVY.has(sp.type) ? 'stomp' : rush * 2 > ids.length ? 'charge' : 'lob';
+  if (allowed.includes(want)) return want;
+  return want === 'stomp' ? (allowed.includes('charge') ? 'charge' : allowed[0]) : allowed[0];
+}
+// A patch record (wobbleland.js PATCHES) -> what ScribbleFight takes: { centre, foes, levelStep }.
+export function patchFight(patch, y) {
+  const S = PATCH_SIZES[patch.size] ?? PATCH_SIZES.tangle;
+  return { centre: { x: patch.x + 0.5, y, z: patch.z + 0.5 }, levelStep: S.level, hp: S.hp, attack: S.attack, foes: patch.species.map(species => ({ species, pattern: patternOf(species, S.patterns) })) };
+}
+// The water twist: everyone swims slowly, Water creatures at full speed (FIGHT.water; the arena's own rule for its places).
+const swimOf = f => (f.type === 'water' ? 1 : FIGHT.water);
+
 const waitOf = kind => KIND_NUMBERS[kind]?.wait ?? LIVE.cool[kind] ?? 1;
 const WATER = 5;
 // Owner 2026-11-10 ("one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT", chose "Attack + Special"):
@@ -164,16 +195,17 @@ export class ScribbleFight {
     this.you = fighter(this.squad[0].c, 'you', s.x, s.y, s.z);
     // the monsters match your strongest creature (night run: with a lead weaker than the rest, the monsters took the lead's level and
     // mashing won every fight once the strong ones came out)
-    const lvl = Math.max(...this.squad.map(m => m.c.level));
+    const lvl = Math.max(5, Math.min(100, Math.max(...this.squad.map(m => m.c.level)) + (opts.levelStep || 0))); // (a patch's size: PATCH_SIZES)
     const list = opts.foes || FOES.slice(0, 3);
     this.foes = list.map((d, i) => {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
       const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
-      f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp);
+      f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp * (opts.hp ?? 1)); // (a patch's size: PATCH_SIZES)
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);
       f.timer = 1.6 + i * 0.9 + this.rand() * FIGHT.firstJitter; f.tell = null; f.charging = null;
       return f;
     });
+    this.rhythm = opts.attack ?? FIGHT.attack; // the monsters' time between attacks (a patch's size, else the test patch's)
     this.input = { mx: 0, mz: 0 };
     this.moves = this.you.c.moves.map(liveShape);
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
@@ -491,7 +523,7 @@ export class ScribbleFight {
     } else {
       const { mx, mz } = this.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
-      const sp = LIVE.speed * this.paceNow(you) * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? FIGHT.water : 1);
+      const sp = LIVE.speed * this.paceNow(you) * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? swimOf(you) : 1);
       if (you.moving) {
         const k = Math.hypot(mx, mz), y0 = you.y;
         if (this.move(you, mx / k * sp * dt, mz / k * sp * dt)) this.stats.blocked += dt;
@@ -551,7 +583,7 @@ export class ScribbleFight {
     f.side2 ??= this.rand() < 0.5 ? 1 : -1;
     const side = f.side2 * 0.5;
     const vx = dx / d * go - dz / d * side, vz = dz / d * go + dx / d * side, v = Math.hypot(vx, vz) || 1;
-    const sp = F.speed * this.paceNow(f) * slow * (this.g.wet(f.x, f.z, f.y) ? FIGHT.water : 1);
+    const sp = F.speed * this.paceNow(f) * slow * (this.g.wet(f.x, f.z, f.y) ? swimOf(f) : 1);
     if (this.move(f, vx / v * sp * dt, vz / v * sp * dt)) { f.stuck = (f.stuck || 0) + dt; if (f.stuck > 0.6) { f.side2 = -f.side2; f.stuck = 0; } }
     for (const o of this.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) this.move(f, ox / od * (1.4 - od) * 0.5, oz / od * (1.4 - od) * 0.5); }
     f.moving = true;
@@ -560,7 +592,7 @@ export class ScribbleFight {
       const t = this.makeTell(f);
       t.left = F.tell;
       f.tell = t;
-      f.timer = (F.every[0] + this.rand() * (F.every[1] - F.every[0])) * FIGHT.attack; // (the arena's Ice Lake has the same lever)
+      f.timer = (F.every[0] + this.rand() * (F.every[1] - F.every[0])) * this.rhythm; // (the arena's Ice Lake has the same lever)
       this.emit({ kind: 'tell', f, t });
     }
   }
