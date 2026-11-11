@@ -245,8 +245,10 @@ Heal stays 45 % (owner: fine, it grows with HP). Turn-based battles do not chang
    rules (the rush's window, the blast's charge and area, the volley's spread). Set with the bots: each kind alone with the same creature and
    power must be worth about the same to a skilled player in its own situation; the masher must still lose; a person about 1-1.5 minutes.
    The table (in plain words, with an example) goes to the owner before it is kept.
-4. **Speed** (not decided): today the live fight ignores the speed stat and turns speed-raising moves into an attack boost. Shown to the
-   owner with the table as a question.
+4. **Speed counts (owner 2026-11-11: "absolutely")**: today the live fight ignores the speed stat and turns speed-raising moves into an
+   attack boost. Now the speed stat sets how fast a creature walks and dodges (a narrow band, set with the bots, so no creature is
+   hopeless), and the 14 speed-raising moves become their own Special, **Speed up** (its own icon and word on the button; faster for a
+   while), no longer an attack boost. Monsters follow the same speed rule.
 
 ### Flags (decided: +10 % attack, every battle)
 
@@ -315,5 +317,5 @@ advantages and disadvantages per kind (section 7).
 
 Still open (answered during the build, at its stops):
 1. The kind list by type (step 1): any moves to move to another kind, and does any type need a new move to have all four kinds?
-2. The numbers per kind (step 1b), and whether speed should count in the live fight.
+2. The numbers per kind (step 1b) and how much speed changes.
 3. The look, when step 4 shows it (and whether the curling horizon stays).
