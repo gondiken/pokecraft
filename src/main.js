@@ -38,6 +38,7 @@ import { createAccounts } from './accounts.js';
 import { goldenHour, condToast, condOf } from './spawnrules.js';
 import { caveLight, patchMaterial, patchSketch } from './caves.js';
 import { createSketch } from './sketch.js'; // T45
+import { createWobbleLook } from './wobblelook.js'; // chapter 3, Wobbleland's look
 import { HomeManager } from './homes.js';
 import { createHomeUi } from './homeui.js';
 import { createRealms, MAIN, nightProgress } from './realms.js'; // T31
@@ -242,6 +243,7 @@ function createWorld(seed, edits, size, opts = {}) {
   if (edits) world.applyEdits(realm ? edits : convertEdits(edits, size));
   world.buildAll();
   game.world = world;
+  game.wobbleLook?.reset(world); // chapter 3: Wobbleland's look (the WOBBLE define only there)
   game.sketch?.reset(world); // T45: the pencil look, only in a sketch world (before the people and creatures are made: they are drawn in pencil too)
   game.player = new Player(world);
   game.creatures.setWorld(world);
@@ -1166,6 +1168,7 @@ game.swirlSky = createSwirlSky(game, { scene, camera }); // T38d: the Swirl's sk
 game.cubeCam = createCubeCam(game); // Cube Planets: V / the pause screen / the Ride slot there switch the third-person steady camera
 game.scribble = createScribble(game); // chapter 3 Test A / B (?preview only): the scribbled patch and its Live fight on the real ground
 game.sketch = createSketch(game, { materials, texture, atlas }); // T45: the Sketchbook's pencil look
+game.wobbleLook = createWobbleLook(game, { materials, scene, camera }); // chapter 3 (?preview): Wobbleland's curl, first-draft colours and grey
 game.gymLive = createGymLive(game); // doors and lasers that change while you play (T19)
 const { updateGuide } = createGuide(game);
 game.nav = createNav(game); // T39a: the place the guide follows (no choice = the next gym)
@@ -1314,6 +1317,7 @@ function frame(now) {
     updateSky(dt);
     game.swirlSky.update(dt, now); // T38d
     game.sketch.update(dt, now); // T45
+    game.wobbleLook?.update(dt); // chapter 3
 
     regenTimer += dt;
     if (regenTimer > 2 && !game.inBattle) {
@@ -1364,7 +1368,9 @@ function frame(now) {
   game.homeUi.update(now);
   game.fx.update(now);
   game.world?.cull(camera.position, scene.fog.far);
+  game.wobbleLook?.beforeRender(); // chapter 3: far models bend up with Wobbleland's page
   renderer.render(scene, camera);
+  game.wobbleLook?.afterRender();
   requestAnimationFrame(frame);
 }
 

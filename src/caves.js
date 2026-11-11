@@ -625,6 +625,45 @@ export const swirlTint = {
   uSea: { value: Array.from({ length: 5 }, () => new THREE.Color(1, 1, 1)) },
 };
 
+// Chapter 3 (plans/chapter3-world.md section 2, step 4): Wobbleland's look, compiled in only with the WOBBLE define (wobblelook.js sets it
+// in Wobbleland and removes it everywhere else, like SKETCH): the page curls up with distance (uCurl, 0 = off), the first-draft colours
+// (more saturated, a lemony tint, chunky outlines on the block edges), and grey with scribble strokes where the Scribble still is
+// (uWobColour: one texel per 4 x 4 blocks, 1 = coloured; the colour flood writes it).
+export const wobbleLook = {
+  uCurl: { value: 0 }, uCurlFrom: { value: 24 },
+  uWobColour: { value: null }, uWobSize: { value: new THREE.Vector2(224, 224) },
+  uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 },
+};
+const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\n#endif';
+// (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
+const WOBBLE_VERT = `#ifdef WOBBLE
+if (uCurl > 0.0) {
+  float wobD = max(0.0, distance(vCavePos.xz, cameraPosition.xz) - uCurlFrom);
+  gl_Position = projectionMatrix * viewMatrix * vec4(vCavePos + vec3(0.0, uCurl * wobD * wobD, 0.0), 1.0);
+}
+#endif`;
+const WOBBLE_FRAG_PARS = `#ifdef WOBBLE
+uniform sampler2D uWobColour;
+uniform vec2 uWobSize;
+uniform vec3 uDraft;
+uniform float uWobSat;
+uniform float uWobLine;
+#endif`;
+const WOBBLE_FRAG = `#ifdef WOBBLE
+{
+  vec3 c = diffuseColor.rgb;
+  float lum = dot(c, vec3(0.3, 0.59, 0.11));
+  vec3 draft = clamp(mix(vec3(lum), c, uWobSat) * uDraft, 0.0, 1.0);          // a beginner's colours: louder, a bit lemony
+  vec3 f = fract(vCavePos + 0.0005), e3 = min(f, 1.0 - f);
+  float e = max(min(e3.x, e3.y), max(min(e3.y, e3.z), min(e3.x, e3.z)));      // the face's own edge distance (the smallest is the face plane)
+  draft *= 1.0 - uWobLine * (1.0 - smoothstep(0.025, 0.06, e));                // chunky outlines
+  float col = texture2D(uWobColour, vCavePos.xz / uWobSize).r;               // 1 = coloured back in, 0 = the Scribble's grey
+  float hatch = step(0.82, fract((vCavePos.x * 0.9 + vCavePos.z * 0.6 + vCavePos.y * 0.5) * 2.2));
+  vec3 grey = vec3(lum * 0.9 + 0.05) * (1.0 - 0.28 * hatch);                  // grey, with scribble strokes on it
+  diffuseColor.rgb = mix(grey, draft, col);
+}
+#endif`;
+
 // T45: the Sketchbook's pencil look. uSketchOn is 0 everywhere but the Sketchbook, where the output is exactly what it was before.
 // sketch.js fills the uniforms (paper and ink colours as linear colours, the boil step, the unfinished edge of the drawing).
 export const sketchLook = {
@@ -766,6 +805,7 @@ export function patchMaterial(mat, { sketch = true } = {}) {
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, caveLight, swirlTint);
     if (sketch) Object.assign(shader.uniforms, sketchLook);
+    Object.assign(shader.uniforms, wobbleLook); // chapter 3 (only read under the WOBBLE define)
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
 varying vec3 vCavePos;
@@ -779,9 +819,11 @@ uniform float uHaze;
 uniform vec4 uZone[4];
 uniform vec3 uLo[5];
 uniform vec3 uHi[5];
-uniform vec3 uSea[5];`)
+uniform vec3 uSea[5];
+${WOBBLE_VERT_PARS}`)
       .replace('#include <project_vertex>', `#include <project_vertex>
 vCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+${WOBBLE_VERT}
 ${sketch ? SKETCH_VERT : ''}
 vTint = vec3(1.0);
 float tileN = floor(uv.x * uAtlas.x) + floor((1.0 - uv.y) * uAtlas.y) * uAtlas.x;
@@ -801,11 +843,12 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
   vTint *= min(inversesqrt(max(color.r, 0.25)), 1.9); // pastel: take back some of the face and overhang shading
 }`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;\n${sketch ? SKETCH_FRAG_PARS : ''}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;\n${WOBBLE_FRAG_PARS}\n${sketch ? SKETCH_FRAG_PARS : ''}`)
       .replace('#include <color_fragment>', `
         float lan = uLantern * clamp(1.0 - distance(vCavePos, uPlayer) / 8.0, 0.0, 1.0);
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
-        diffuseColor.rgb *= vTint;${sketch ? sketchFrag('max(vColor.r * uLit, max(vColor.g, vColor.b * lan))') : ''}`);
+        diffuseColor.rgb *= vTint;
+${WOBBLE_FRAG}${sketch ? sketchFrag('max(vColor.r * uLit, max(vColor.g, vColor.b * lan))') : ''}`);
   };
   mat.customProgramCacheKey = () => (sketch ? 'cave-light-5' : 'cave-light-3');
   mat.needsUpdate = true;
@@ -815,10 +858,10 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
 // Without the SKETCH define (every world but the Sketchbook) its output is what it was before.
 export function patchSketch(mat) {
   mat.onBeforeCompile = shader => {
-    Object.assign(shader.uniforms, sketchLook);
+    Object.assign(shader.uniforms, sketchLook, wobbleLook);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_VERT_PARS}`)
-      .replace('#include <project_vertex>', `#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n${SKETCH_VERT}`);
+      .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_VERT_PARS}\n${WOBBLE_VERT_PARS}`)
+      .replace('#include <project_vertex>', `#include <project_vertex>\nvCavePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n${SKETCH_VERT}\n${WOBBLE_VERT}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\n${SKETCH_FRAG_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>${sketchFrag('1.0')}`);

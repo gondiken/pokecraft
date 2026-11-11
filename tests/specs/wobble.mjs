@@ -2,7 +2,9 @@
 //   land:   the terrain in Node (tests/wobblecheck.mjs): every patch reachable from Inkpot Camp, rings walkable, the wall closes the rest
 //   door:   the Paper Door on the Wizard's island: none without being his Ally, none without ?preview; the Ally steps in (the game's own use),
 //           arrives at the Camp, reloads inside, walks back up through the way back with real keys, and a following guest is let in
-//   WOBBLE_ONLY=land|door      screenshots: tests/screenshots/wobble-*.png
+//   look:   the curl (one switch), the first-draft colours, grey where the Scribble is and the colour flood; the main world draws the same
+//           frame byte for byte before and after a trip (the WOBBLE define only exists in Wobbleland); draw calls and frame time
+//   WOBBLE_ONLY=land|door|look      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
 
@@ -31,6 +33,62 @@ export default async function ({ browser, base, t }) {
     const { checkWobble } = await import('../wobblecheck.mjs');
     const r = await checkWobble();
     t.ok(!r.problems.length, `Wobbleland: every patch reachable from the Camp, rings walkable (${r.out.rings.map(q => `${q.id}: ${q.walk} %${q.wet ? ` ${q.wet} wet` : ''}`).join(', ')}), no overlap, the wall closes Bumpy Hills (${r.out.hills} cells behind it) ${r.problems.slice(0, 4).join('; ')}`);
+  }
+
+  if (want('look')) {
+    const page = await openGame(browser, base, { query: '?preview' });
+    await newGame(page, 0);
+    // one fixed view of the main world, drawn straight to a buffer
+    await page.evaluate(() => {
+      const g = window.pokecraft;
+      window.__grab = async () => { // only the world's blocks, in a fixed light (creatures, people, the sky and the clock move between the two pictures)
+        const C = await import('/src/caves.js'), THREE = await import('three');
+        window.__view(); const r = g.renderer, gl = r.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight; g.world.cull(g.camera.position, g.scene.fog.far);
+        const own = new Set(Object.values(g.world.materials)), hidden = [];
+        for (const o of g.scene.children) if (o.visible && !(o.isMesh && own.has(o.material)) && !o.isLight) { o.visible = false; hidden.push(o); }
+        const keep = [C.caveLight.uLit.value, C.caveLight.uLantern.value, g.scene.background, g.scene.fog.color.getHex()];
+        C.caveLight.uLit.value = 1; C.caveLight.uLantern.value = 0; g.scene.background = new THREE.Color(0x8899aa); g.scene.fog.color.setHex(0x8899aa);
+        r.render(g.scene, g.camera);
+        for (const o of hidden) o.visible = true;
+        [C.caveLight.uLit.value, C.caveLight.uLantern.value, g.scene.background] = keep; g.scene.fog.color.setHex(keep[3]); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); let h = 0; for (let i = 0; i < b.length; i += 7) h = (h * 31 + b[i]) >>> 0; return { h, defines: Object.values(g.world.materials).filter(m => m.defines?.WOBBLE).length }; };
+      window.__view = () => { const g = window.pokecraft, s = g.spawnPoint; g.player.pos.copy(s); g.player.yaw = 0.7; g.player.pitch = -0.1; g.camera.position.set(s.x, s.y + 1.6, s.z); g.camera.rotation.set(-0.1, 0.7, 0); g.camera.updateMatrixWorld(); };
+    });
+    await page.evaluate(() => { window.pokecraft.paused = true; window.__view(); });
+    const A = await page.evaluate(() => window.__grab());
+    await page.evaluate(() => { window.pokecraft.paused = false; });
+    await intoWobble(page);
+    await frames(page, 8);
+    const on = await page.evaluate(() => { const g = window.pokecraft; g.player.pitch = -0.02; return g.wobbleLook.info(); });
+    t.ok(on.on && on.curl && on.defines.every(Boolean), `in Wobbleland the look is on: the WOBBLE define on the block materials, the page curls (${JSON.stringify(on)})`);
+    const perf = await page.evaluate(() => { const g = window.pokecraft, r = g.renderer; let ms = 0; for (let i = 0; i < 3; i++) { const t0 = performance.now(); g.wobbleLook.beforeRender(); r.render(g.scene, g.camera); g.wobbleLook.afterRender(); ms += performance.now() - t0; } return { calls: r.info.render.calls, ms: Math.round(ms / 3) }; });
+    await shot(page, 'wobble-look-curl.png');
+    await page.evaluate(() => window.pokecraft.wobbleLook.toggleCurl());
+    await frames(page, 4);
+    const perf0 = await page.evaluate(() => { const g = window.pokecraft, r = g.renderer; let ms = 0; for (let i = 0; i < 3; i++) { const t0 = performance.now(); r.render(g.scene, g.camera); ms += performance.now() - t0; } return { calls: r.info.render.calls, ms: Math.round(ms / 3) }; });
+    await shot(page, 'wobble-look-flat.png');
+    console.log(`  draw calls / software frame time: curl on ${perf.calls} / ${perf.ms} ms, off ${perf0.calls} / ${perf0.ms} ms`);
+    t.ok(perf.calls < 400, `draw calls in Wobbleland: ${perf.calls} (curl on), ${perf0.calls} (off)`);
+    await page.evaluate(() => window.pokecraft.wobbleLook.toggleCurl());
+    // the Scribble's grey and the flood: patch 1 cleared, its colour floods out
+    const grey = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), p = L.patchOf(1); return { patch: g.wobbleLook.colourAt(p.x, p.z), camp: g.wobbleLook.colourAt(L.CAMP.x, L.CAMP.z) }; });
+    t.ok(grey.patch === 0 && grey.camp === 1, `the Camp is in colour, the patches are grey (${JSON.stringify(grey)})`);
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), p = L.patchOf(1); g.beaten.push(L.patchKey(1)); g.wobbleLook.flood(1); g.player.pos.set(p.x + 0.5, 11, p.z + 22); g.player.yaw = 0; g.player.pitch = -0.2; });
+    await frames(page, 3);
+    const mid = await page.evaluate(async () => { const L = await import('/src/wobbleland.js'), p = L.patchOf(1); return window.pokecraft.wobbleLook.colourAt(p.x + 12, p.z); });
+    await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
+    const after = await page.evaluate(async () => { const L = await import('/src/wobbleland.js'), p = L.patchOf(1); return { mid: window.pokecraft.wobbleLook.colourAt(p.x, p.z), edge: window.pokecraft.wobbleLook.colourAt(p.x + 12, p.z), far: window.pokecraft.wobbleLook.colourAt(p.x + 30, p.z) }; });
+    await frames(page, 3);
+    await shot(page, 'wobble-look-flood.png');
+    t.ok(mid < 1 && after.mid === 1 && after.edge === 1 && after.far === 0, `a cleared patch floods its colour out over about 2 s (12 blocks out: ${mid.toFixed(2)} at first, then ${JSON.stringify(after)})`);
+    // home again: the main world draws the very same frame as before the trip
+    await page.evaluate(() => window.pokecraft.realms.leave('stone', { home: true }));
+    await placeIs(page, 'main');
+    await frames(page, 4);
+    await page.evaluate(() => { window.pokecraft.paused = true; window.__view(); });
+    const B = await page.evaluate(() => window.__grab());
+    t.ok(A.h === B.h && !A.defines && !B.defines, `the main world draws the same frame byte for byte before and after a trip to Wobbleland, no WOBBLE define on its materials (${A.h} / ${B.h})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
   }
 
   if (want('door')) {

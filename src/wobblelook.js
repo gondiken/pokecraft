@@ -1,0 +1,119 @@
+// Chapter 3 (plans/chapter3-world.md section 2, step 4): Wobbleland's look. Everything is behind the WOBBLE material define, which this
+// file sets only while Wobbleland is loaded (like the Sketchbook's SKETCH), so every other world renders exactly as before.
+//   the curl:   the page bends up with distance, like a sheet of paper curling at its edges (the opposite of a planet). Near you the
+//               ground is flat (nothing before `curlFrom` blocks moves), so walking, aiming and the fight are unchanged. ONE switch:
+//               WOBBLE_LOOK.curl (false = a flat page; the pause screen's 📄 button flips it for this session, ?preview only).
+//   first-draft colours: louder, a bit lemony, chunky outlines on block edges (WOBBLE_LOOK.draft / sat / line).
+//   the Scribble's grey: grey with scribble strokes wherever it still is; a cleared patch floods its colours back out in a circle that
+//               grows over `flood` s; the Camp is always in colour; the whole region once its knot is cleared.
+// Models (creatures, people, the patches' tangles) are lifted by the same curl just before each frame is drawn (beforeRender /
+// afterRender in main.js), so nothing far away sinks into the curled ground.
+import * as THREE from 'three';
+import { wobbleLook as U } from './caves.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE } from './wobbleland.js';
+
+export const WOBBLE_LOOK = {
+  curl: true,          // the curling horizon: the one on/off switch
+  curlFrom: 28,        // blocks from you where the page starts to bend up
+  curlK: 0.0025,       // lift = curlK x (distance - curlFrom)^2: at 60 blocks 2.6 up, at 100 about 13, at 150 about 37
+  draft: [1.07, 1.05, 0.86], sat: 1.45, line: 0.35, // the first-draft colours: tint, saturation, outline darkness
+  cell: 4,             // the colour map: one texel per cell x cell blocks
+  cleared: 17,         // a cleared patch colours a circle this big round its middle
+  camp: CAMP.r + 6,    // the Camp is always in colour
+  flood: 2,            // seconds the colour takes to flood out
+};
+export const curlLift = d => (WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK * Math.max(0, d - WOBBLE_LOOK.curlFrom) ** 2 : 0);
+
+export function createWobbleLook(game, { materials, scene, camera }) {
+  const N = SIZE / WOBBLE_LOOK.cell, data = new Uint8Array(N * N * 4);
+  const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+  U.uWobColour.value = tex;
+  let active = false, world = null, floods = [], sig = '', lifted = [];
+  let btn = null, shown = null;
+  const mats = ['solid', 'water', 'glow'];
+  // how coloured a texel's middle is (0..1): the Camp, cleared patches (a flood grows from 0 to its radius), cleared regions
+  function paint() {
+    const keys = new Set(game.beaten || []);
+    const knotDone = PATCHES.filter(p => p.last).some(p => keys.has(patchKey(p.id)));
+    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp]];
+    for (const p of PATCHES) if (keys.has(patchKey(p.id))) {
+      const f = floods.find(q => q.id === p.id);
+      circles.push([p.x, p.z, WOBBLE_LOOK.cleared * (f ? Math.min(1, f.t / WOBBLE_LOOK.flood) : 1)]);
+    }
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = (i + 0.5) * WOBBLE_LOOK.cell, z = (j + 0.5) * WOBBLE_LOOK.cell;
+      let v = knotDone && z >= REGIONS.meadow.z0 ? 1 : 0;
+      for (const [cx, cz, r] of circles) if (r > 0) v = Math.max(v, Math.min(1, Math.max(0, (r - Math.hypot(x - cx, z - cz)) / 3)));
+      const k = (i + j * N) * 4;
+      data[k] = data[k + 1] = data[k + 2] = Math.round(v * 255); data[k + 3] = 255;
+    }
+    tex.needsUpdate = true;
+  }
+  function setDefine(on) {
+    for (const k of mats) {
+      const m = materials[k];
+      if (!m || on === !!m.defines?.WOBBLE) continue;
+      if (on) m.defines = { ...(m.defines || {}), WOBBLE: 1 };
+      else { const { WOBBLE, ...rest } = m.defines; m.defines = rest; }
+      m.needsUpdate = true;
+    }
+  }
+  function uniforms() {
+    U.uCurl.value = active && WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK : 0;
+    U.uCurlFrom.value = WOBBLE_LOOK.curlFrom;
+    U.uDraft.value.set(...WOBBLE_LOOK.draft); U.uWobSat.value = WOBBLE_LOOK.sat; U.uWobLine.value = WOBBLE_LOOK.line;
+    U.uWobSize.value.set(SIZE, SIZE);
+  }
+  const api = {
+    get on() { return active; },
+    // with every new world (createWorld): on in Wobbleland, off everywhere else
+    reset(w) {
+      world = w; active = !!w?.realm?.look?.wobble;
+      setDefine(active); floods = []; sig = '';
+      uniforms();
+      if (active) paint();
+    },
+    // a patch was just cleared: its colour floods out (the key is already in game.beaten)
+    flood(id) { if (!active) return; floods = floods.filter(f => f.id !== id); floods.push({ id, t: 0 }); },
+    // the pause screen's switch (made once, shown only in Wobbleland): 📄 Page: curls / flat
+    refresh() {
+      if (typeof document === 'undefined') return;
+      if (!btn) {
+        const sound = document.getElementById('sound-btn');
+        if (!sound) return;
+        btn = document.createElement('button'); btn.id = 'curl-btn';
+        btn.addEventListener('click', e => { e.stopPropagation(); api.toggleCurl(); api.refresh(); });
+        sound.after(btn); sound.after(document.createTextNode(' '));
+      }
+      const s = active ? (WOBBLE_LOOK.curl ? '📄 Page: curls' : '📄 Page: flat') : '';
+      if (s !== shown) { shown = s; btn.textContent = s; btn.classList.toggle('hidden', !s); }
+    },
+    update(dt) {
+      api.refresh();
+      if (!active) return;
+      uniforms();
+      const s = (game.beaten || []).filter(k => k.startsWith('pw:wobble:')).join();
+      if (floods.length) { for (const f of floods) f.t += dt; paint(); floods = floods.filter(f => f.t < WOBBLE_LOOK.flood); }
+      else if (s !== sig) paint();
+      sig = s;
+    },
+    // models far away bend up with the page: lifted for one frame's drawing, put back right after it
+    beforeRender() {
+      lifted = [];
+      if (!active || !WOBBLE_LOOK.curl) return;
+      const cx = camera.position.x, cz = camera.position.z, own = new Set(mats.map(k => materials[k]));
+      for (const o of scene.children) {
+        if (o.isCamera || o.isLight || o.userData?.noCurl || (o.isMesh && own.has(o.material))) continue;
+        const l = curlLift(Math.hypot(o.position.x - cx, o.position.z - cz));
+        if (l > 0.001) { o.position.y += l; lifted.push([o, l]); }
+      }
+    },
+    afterRender() { for (const [o, l] of lifted) o.position.y -= l; lifted = []; },
+    // ?preview: the pause screen's switch
+    toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },
+    colourAt(x, z) { const i = Math.floor(x / WOBBLE_LOOK.cell), j = Math.floor(z / WOBBLE_LOOK.cell); return i < 0 || j < 0 || i >= N || j >= N ? 0 : data[(i + j * N) * 4] / 255; },
+    info() { return { on: active, curl: WOBBLE_LOOK.curl && active, floods: floods.length, defines: mats.map(k => !!materials[k]?.defines?.WOBBLE) }; },
+  };
+  return api;
+}

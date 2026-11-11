@@ -150,6 +150,57 @@ plan said 14 speed-raising moves; the moves list has only these three (12 more *
 mild help for now: the bots do not use the extra speed well (skilled 88 s with it, the same as Tough or a slow cloud). The arena still
 reads these three as power up (its files are untouched; the fight's `liveShape` says Speed up).
 
+### Step 2: Wobbleland as data
+
+**What:** `src/wobbleland.js` (Node-runnable, 224 x 224, the same for every seed): Inkpot Camp at the south edge (a round clearing with a
+ring of coloured wool, planks in the middle, Healer Stella, the way back on three steps), Puddle Meadow with its wonky things (14
+leaning and corkscrew trees, soft bulgy hills, six puddles, a river drawn with a slipping ruler, a flower taller than a house, a cloud stuck
+on a hill, a house too small for its huge door, stairs to nowhere, a mushroom hill), **six patches** and the Scribble's wall across the
+whole page at z 120-121 (12+ blocks high, a keep). Behind it the land is already there (Bumpy Hills' taller bumps, the Big Knot's spot).
+The whole page is a keep (nothing can be built, so there are never realm edits). Choices: a hand-made land (every patch spot checked) instead
+of a seeded one; the Camp south and the wall straight across, so "the next region is behind the wall" is one look.
+
+| Patch | Where | Size | Monsters (meadow types) |
+| --- | --- | --- | --- |
+| 1 | right in front of the Camp | smudge | Sproutle, Hopsy |
+| 2 | west | smudge | Beetlet, Chirpit |
+| 3 | east | tangle | Flutterby, Ripplet, Kiteling |
+| 4 | far west, **a puddle in its ring** (the water twist) | tangle | Bubbuck, Jellume, Budling |
+| 5 | far east | tangle | Hornbeetle, Woolumph, Balloony, Mossloth |
+| 6 | the middle, by the wall | **knot** | Thornox, Gullop, Monarchwing, Bounceroo + the Grumble Grovebeast |
+
+**Where to change:** `PATCHES` (`src/wobbleland.js` line 28: spot, size, species; ids are saved, so only add), `CAMP` (15), `WALL` (19),
+`BULGES` (40), `TREES` (51) and the things after it. **Checked** (`node tests/wobblecheck.mjs`, spec `wobble` part `land`): every patch can
+be reached on foot from the Camp (22 813 cells walkable), every ring is 100 % walkable, only patch 4 has water in its ring (58 cells), no
+rings overlap, and nothing north of the wall can be reached (26 880 cells there, for later).
+
+### Step 3: the Paper Door
+
+**What:** a 3 x 3 crumpled-paper door in the **south wall of the Wizard's tower** on his island (`paperDoor` in `src/wobbleland.js`, drawn
+by `src/portal.js`: cloth cells under a cream-and-grey swirl), **only for the Wizard's Ally and only with `?preview`**. Tap / E = down to
+Inkpot Camp (realm `wobble`, `src/realms.js`, registered only with `?preview`); the way back is the frame at the top of the Camp's steps
+(jump up them), which brings you out in front of the Paper Door. Saved like any Picture World (a reload inside keeps you there); a friend
+can follow the host (`entrance: 'paper'`, the generic follow code; not tried with two browsers tonight).
+Pictures: `plans/chapter3/wobble-door.png` (the door, close up).
+
+### Step 4: the look
+
+**What I chose:** all three options together (A wonky shapes, B the curl, C first-draft colours), plus the Scribble's grey.
+- **The curl** (B): the page bends up with distance like a sheet curling at its edges: flat for the first 28 blocks, then lifted
+  0.0025 x (distance - 28)^2 (2.6 blocks up at 60 away, 13 at 100). Models far away (creatures, people, tangles) are lifted the same way
+  for each frame, so nothing sinks into the curl. **The on/off switch:** `WOBBLE_LOOK.curl` in `src/wobblelook.js` line 16 (`false` = a flat
+  page), and in the game the pause screen's **📄 Page: curls / flat** button (only in Wobbleland). How strong: `curlFrom` / `curlK` (17-18).
+- **First-draft colours** (C): louder (saturation x1.45), a bit lemony, chunky dark outlines on block edges (`draft`, `sat`, `line`, line 19).
+- **The Scribble's grey:** wherever the Scribble is, the blocks are grey with diagonal scribble strokes. The Camp is always in colour; a
+  cleared patch floods its colour out in a circle of 17 blocks over 2 s (`cleared`, `flood`, lines 21-23); a cleared knot colours the
+  whole meadow. One small colour map (one texel per 4 x 4 blocks) tells the shader where.
+- Everything sits behind a material define (`WOBBLE`) that exists only while you are in Wobbleland. **Checked:** the main world draws the
+  very same picture byte for byte as the build from before tonight (seeds 1 and 22), and before and after a trip there (spec `wobble`
+  part `look`). Draw calls at the Camp: 160 with and without the curl (the curl costs no draw calls; it is one line in the vertex shader).
+  The iPad's frame rate cannot be measured here; the shader adds a few lines per pixel, about what the Sketchbook adds.
+- Pictures: `plans/chapter3/wobble-look-curl.png` (the curl, from the Camp), `wobble-look-flat.png` (switch off), `wobble-look-flood.png`
+  (patch 1 cleared: its colour flooded out round it).
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)
