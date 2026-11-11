@@ -126,8 +126,17 @@ export function patternOf(species, allowed = ['charge', 'lob', 'stomp']) {
 // A patch record (wobbleland.js PATCHES) -> what ScribbleFight takes: { centre, foes, levelStep }.
 export function patchFight(patch, y) {
   const S = PATCH_SIZES[patch.size] ?? PATCH_SIZES.tangle;
-  return { centre: { x: patch.x + 0.5, y, z: patch.z + 0.5 }, levelStep: S.level, hp: S.hp, attack: S.attack, foes: patch.species.map(species => ({ species, pattern: patternOf(species, S.patterns) })) };
+  const foes = patch.species.map(species => ({ species, pattern: patternOf(species, S.patterns) }));
+  if (patch.grumble) foes.push({ species: patch.grumble, pattern: GRUMBLE.pattern, grumble: true });
+  return { centre: { x: patch.x + 0.5, y, z: patch.z + 0.5 }, levelStep: S.level, hp: S.hp, attack: S.attack, foes };
 }
+// The Grumble (step 7, a knot's big one, plans/chapter3-world.md section 3 lever 6): bigger, tougher, turns slowly toward you (`turn`
+// rad/s), and a hit counts fully only on its back (from more than `back` rad off its front) or in the `open` s right after its own
+// attack (its back glows then: scribble.js); any other hit does x `front`. Mashing from the front loses; circling round it or
+// hitting right after it struck wins.
+export const GRUMBLE = { hp: 1.8, r: 1.25, turn: 1.1, back: 1.75, open: 1.3, front: 0.25, pattern: 'stomp' };
+FIGHT.grumble = GRUMBLE;
+const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 // The water twist: everyone swims slowly, Water creatures at full speed (FIGHT.water; the arena's own rule for its places).
 const swimOf = f => (f.type === 'water' ? 1 : FIGHT.water);
 
@@ -201,6 +210,7 @@ export class ScribbleFight {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
       const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
       f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp * (opts.hp ?? 1)); // (a patch's size: PATCH_SIZES)
+      if (d.grumble) { f.grumble = true; f.r = GRUMBLE.r; f.maxHp = f.hp = Math.round(f.maxHp * GRUMBLE.hp); f.openT = 0; }
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);
       f.timer = 1.6 + i * 0.9 + this.rand() * FIGHT.firstJitter; f.tell = null; f.charging = null;
       return f;
@@ -318,6 +328,12 @@ export class ScribbleFight {
     if (dst.side === 'you') {
       if (this.healing) { this.healing = null; this.emit({ kind: 'healSpoilt', f: dst }); this.stats.spoilt = (this.stats.spoilt || 0) + 1; }
       if (dst.buffT > 0 && FIGHT.powerUp.lostOnHit) { dst.buffT = 0; dst.c.atkUp = 1; this.emit({ kind: 'buffLost', f: dst }); this.stats.buffLost = (this.stats.buffLost || 0) + 1; }
+    }
+    if (dst.grumble && src.side === 'you') { // the Grumble: full only on its back or just after its own attack
+      const off = Math.abs(wrapAngle(Math.atan2(src.x - dst.x, src.z - dst.z) - dst.heading));
+      const weak = off > GRUMBLE.back || dst.openT > 0;
+      if (!weak) mult *= GRUMBLE.front;
+      this.emit({ kind: weak ? 'weakSpot' : 'grumbleBonk', f: dst });
     }
     const { amount, eff } = damage(src.c, dst.c, power, type, mult);
     dst.hp = Math.max(0, dst.hp - amount);
@@ -495,6 +511,7 @@ export class ScribbleFight {
       f.safeT = Math.max(0, f.safeT - dt); f.buffT = Math.max(0, f.buffT - dt); f.guardT = Math.max(0, f.guardT - dt);
       f.slowT = Math.max(0, f.slowT - dt); f.sleepT = Math.max(0, f.sleepT - dt); f.flash = Math.max(0, f.flash - dt); f.braceT = Math.max(0, f.braceT - dt);
       f.speedT = Math.max(0, f.speedT - dt);
+      if (f.grumble) f.openT = Math.max(0, f.openT - dt);
       f.c.atkUp = f.buffT > 0 ? FIGHT.powerUp.atk : 1; f.c.defUp = f.guardT > 0 ? FIGHT.tough.def : 1;
     }
     if (this.charge.slot > 0) { this.charge.t += dt; if (this.charge.t >= LIVE.charge) this.release(this.charge.slot); }
@@ -569,7 +586,8 @@ export class ScribbleFight {
       f.moving = true;
       return;
     }
-    f.heading = Math.atan2(you.x - f.x, you.z - f.z);
+    if (f.grumble) { const want = Math.atan2(you.x - f.x, you.z - f.z), d = wrapAngle(want - f.heading), m = GRUMBLE.turn * dt; f.heading = wrapAngle(f.heading + Math.max(-m, Math.min(m, d))); } // it turns slowly: you can get round it
+    else f.heading = Math.atan2(you.x - f.x, you.z - f.z);
     if (f.tell) { // stands still while its warning shows
       f.tell.left -= dt * slow;
       f.moving = false;
@@ -598,6 +616,7 @@ export class ScribbleFight {
   }
   strike(f, slow) {
     const you = this.you, t = f.tell;
+    if (f.grumble) f.openT = GRUMBLE.open; // right after its own attack its back is open
     f.tell = null;
     if (t.kind === 'line') { f.charging = { dx: t.dx, dz: t.dz, left: t.len, hit: false }; this.emit({ kind: 'rush', f }); return; }
     this.emit({ kind: 'thud', f, t });

@@ -28,7 +28,7 @@ export async function runPatches(page, { games = 2, naive = NAIVE_GAMES, patches
       // monsters is the type chart doing its job (plans/chapter3-world.md section 3, lever 4), reported as `matched`
       for (let k = 0; k < naive; k++) { const x = await play(page, 'naive', { fps, solo: TEAMS.neutral, patch: id }); r.naiveN++; if (x.won) r.naive++; }
       for (let k = 0; k < Math.ceil(naive / 3); k++) { const x = await play(page, 'naive', { fps, lead: k % 3, patch: id }); r.matchedN = (r.matchedN || 0) + 1; if (x.won) r.matched = (r.matched || 0) + 1; }
-      for (let k = 0; k < games; k++) { const x = await play(page, 'skilled', { fps, lead: k, patch: id }); r.skilledN++; if (x.won) r.skilled++; }
+      for (let k = 0; k < games; k++) { const x = await play(page, 'skilled', { fps, lead: k, patch: id, limit: 300 }); r.skilledN++; if (x.won) r.skilled++; }
       for (let k = 0; k < games; k++) { const x = await play(page, 'person', { fps, lead: k, patch: id, limit: 400 }); r.personN++; if (x.won) r.person.push(x.time); }
       for (let k = 0; k < Math.ceil(naive / 3); k++) { const x = await play(page, 'naive', { fps, solo: TEAMS.owner, patch: id }); r.ownerN++; if (x.won) r.owner++; }
     }

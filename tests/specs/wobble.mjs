@@ -9,7 +9,9 @@
 //   loop:   the meter chip, a "Where to go" row per open patch (the knot only once the others are clear), the arrow, the Wizard and the
 //           healer at the Camp, freed creatures in the spawn table once their patch is cleared, the Wizard's words on a win
 //   ipad:   an emulated iPad in Wobbleland: the look, the meter, the touch buttons, walking with the joystick into patch 1
-//   WOBBLE_ONLY=land|door|look|patches|loop|ipad      screenshots: tests/screenshots/wobble-*.png
+//   knot:   the Grumble (bigger, tougher, turns slowly; a hit counts fully only on its back or right after it struck; mashing from the
+//           front loses: part `patches` patch 6), the knot's win floods the whole meadow, the wall melts, a reload keeps it
+//   WOBBLE_ONLY=land|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -123,6 +125,50 @@ export default async function ({ browser, base, t }) {
     await page.context().close();
   }
 
+  if (want('knot')) {
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    // the Grumble's rule, in the fight's own sums
+    const g1 = await page.evaluate(async () => {
+      const SF = await import('/src/scribblefight.js'), g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 6), pf = SF.patchFight(q, q.y);
+      const F = new SF.ScribbleFight({ ground: SF.groundOf(g.world), centre: pf.centre, squad: SF.squadOf(g.party), start: { x: pf.centre.x, y: pf.centre.y, z: pf.centre.z + 5 }, foes: pf.foes, levelStep: pf.levelStep, hp: pf.hp, attack: pf.attack });
+      const G = F.foes.find(f => f.grumble), other = F.foes.find(f => !f.grumble), you = F.you;
+      const at = (a) => { you.x = G.x + Math.sin(G.heading + a) * 3; you.z = G.z + Math.cos(G.heading + a) * 3; const h0 = G.hp; F.hit(you, G, 75, 'normal'); const d = h0 - G.hp; G.hp = h0; return d; };
+      const front = at(0), back = at(Math.PI); G.openT = 1; const open = at(0);
+      return { n: F.foes.length, big: G.r > other.r && G.maxHp > other.maxHp * 1.5, front, back, open, species: G.c.species };
+    });
+    t.ok(g1.n === 5 && g1.big && g1.front * 3 < g1.back && Math.abs(g1.open - g1.back) <= 1, `the knot: four monsters and a Grumble (${g1.species}, bigger and tougher); a hit on its front does ${g1.front}, on its back ${g1.back}, right after it struck ${g1.open}`);
+    // the knot opens only after the other five; clear them, walk to it, and win
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [1, 2, 3, 4, 5]) g.beaten.push(L.patchKey(id)); const q = L.patchOf(6); g.player.pos.set(q.x + 0.5, 11, q.z + 13.5); g.player.yaw = 0; g.player.pitch = -0.1; });
+    await waitFor(page, () => window.pokecraft.scribble.info().patch === 6, null, 30000).catch(() => {});
+    await page.keyboard.down('w');
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 90000).catch(() => {});
+    await page.keyboard.up('w');
+    await frames(page, 6);
+    await shot(page, 'wobble-knot.png');
+    const inFight = await page.evaluate(() => window.pokecraft.scribble.fightOf()?.foes.map(f => f.c.species + (f.grumble ? '*' : '')));
+    t.ok(inFight?.length === 5 && inFight.some(x => x.endsWith('*')), `walking into the knot starts its fight with the Grumble (${inFight})`);
+    await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) { x.openT = 1; F.hit(F.you, x, 99999, 'normal'); } });
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'off' || (!window.pokecraft.scribble.fighting && window.pokecraft.scribble.info().phase !== 'exit'), null, 90000).catch(() => {});
+    await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
+    await frames(page, 6);
+    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { key: g.beaten.includes(L.patchKey(6)), chip: document.getElementById('score-chip')?.textContent, far: g.wobbleLook.colourAt(20, 140), wall: w.get(60, L.heightAt(60, 120) + 3, 120), keep: w.keeps.some(k => k.name === 'scribble-wall'), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length }; });
+    t.ok(done.key && /6 \/ 6/.test(done.chip) && done.far === 1 && done.wall === 0 && !done.keep && !done.rows, `the knot cleared: the whole meadow is in colour, the wall to Bumpy Hills melted, nothing left to fight (${JSON.stringify(done)})`);
+    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(112.5, 18, 160.5); g.player.yaw = 0; g.player.pitch = -0.15; });
+    await frames(page, 8);
+    await shot(page, 'wobble-meadow-bright.png');
+    await page.evaluate(() => window.pokecraft.save?.(true));
+    await page.reload();
+    await page.waitForFunction(() => window.pokecraft?.world, null, { timeout: 120000 });
+    await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
+    await placeIs(page, 'wobble');
+    await frames(page, 8);
+    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { wall: g.world.get(60, L.heightAt(60, 120) + 3, 120), far: g.wobbleLook.colourAt(20, 140) }; });
+    t.ok(re.wall === 0 && re.far === 1, `after a reload the meadow stays bright and the wall stays melted (${JSON.stringify(re)})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
   if (want('look')) {
     const page = await openGame(browser, base, { query: '?preview' });
     await newGame(page, 0);
@@ -139,8 +185,10 @@ export default async function ({ browser, base, t }) {
         r.render(g.scene, g.camera);
         for (const o of hidden) o.visible = true;
         [C.caveLight.uLit.value, C.caveLight.uLantern.value, g.scene.background] = keep; g.scene.fog.color.setHex(keep[3]); const b = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, b); let h = 0; for (let i = 0; i < b.length; i += 7) h = (h * 31 + b[i]) >>> 0; return { h, defines: Object.values(g.world.materials).filter(m => m.defines?.WOBBLE).length }; };
-      window.__view = () => { const g = window.pokecraft, s = g.spawnPoint; g.player.pos.copy(s); g.player.yaw = 0.7; g.player.pitch = -0.1; g.camera.position.set(s.x, s.y + 1.6, s.z); g.camera.rotation.set(-0.1, 0.7, 0); g.camera.updateMatrixWorld(); };
+      window.__view = () => { const g = window.pokecraft, s = g.spawnPoint; g.player.pos.copy(s); g.player.yaw = 0.7; g.player.pitch = -0.9; g.camera.position.set(s.x, s.y + 1.6, s.z); g.camera.rotation.set(-0.9, 0.7, 0); /* looking down: the Portal Door's spiral tile turns with the clock */ g.camera.updateMatrixWorld(); };
     });
+    await page.evaluate(() => { const g = window.pokecraft; g.champion = true; g.studio.won = true; g.studio.ally = true; }); // (as the trip will: a Champion's Portal Door is drawn)
+    await frames(page, 8);
     await page.evaluate(() => { window.pokecraft.paused = true; window.__view(); });
     const A = await page.evaluate(() => window.__grab());
     await page.evaluate(() => { window.pokecraft.paused = false; });

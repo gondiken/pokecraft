@@ -255,6 +255,44 @@ team hitting them twice as hard is the type chart doing what the plan wants ("a 
 - Spec `wobble` parts `loop` and `ipad` (the iPad: touch controls, the meter, the joystick walks you into patch 1 and the fight starts).
   Picture: `plans/chapter3/wobble-ipad-fight.png` (the monsters are grey in a grey patch: question 5).
 
+### Step 7: the knot and its Grumble (the end of the first slice)
+
+- **The Grumble** (Grovebeast, `GRUMBLE` in `src/scribblefight.js` line 137): 2.9 blocks tall (others 1.7), x1.8 HP on top of the knot's,
+  a stomper, and it **turns slowly** (1.1 rad/s) so you can get round it. **A hit counts fully only on its back** (more than 100 degrees
+  off its front) **or in the 1.3 s right after its own attack**; any other hit does x0.25 and says "Bonk!". The weak spot is shown, not
+  told: a yellow glowing ball on its back that swells and pulses while its back is open. Example: a power-75 shot does 5 on its front,
+  22 on its back or right after it stomped.
+- **Bot numbers** (patch 6, `tests/wobblebots.mjs`): mashing 0 / 24 (it stands in front of the Grumble), the type-matched and the
+  owner's team mashing 0 / 8 each; skilled 4 / 4 (it clears the small ones first, then gets behind it and hits when its back is open);
+  person 94-141 s (the knot is the region's longest fight; with x2.4 HP and x0.2 on the front it was 96-203 s).
+- **The win:** the whole meadow floods with colour, the Scribble's wall melts (drawn live, so a reload melts it again from the saved
+  knot key; `meltWall` in `src/wobblelook.js`), the Wizard says *"Puddle Meadow is bright again! Next: Bumpy Hills."*, and walking past
+  the wall says *"Bumpy Hills is still being drawn. Coming soon!"*. Pictures: `plans/chapter3/wobble-knot.png` (the knot's fight),
+  `wobble-meadow-bright.png` (after the knot: the meadow in colour, the hills behind still grey).
+- **Not built yet:** the region's flags flying over the Camp (flags are step 8, after your verdict), any patch in Bumpy Hills.
+
+### What is not done / known limits
+
+- Two browsers (a friend following you down the Paper Door) use the generic follow code but were not tried tonight.
+- Only the live patch (the nearest open one) has its tangle and monsters drawn; the others show only as grey land with the arrow and
+  "Where to go" rows pointing at them.
+- The fight's numbers for the old main-world test patch changed with step 1b too (HP x10, the kinds' numbers); its spec is green.
+
+## Questions for the owner (from the night run)
+
+1. **Moves:** are the kinds by type right (the list above)? The stretches I am least sure of: *Zenith Ray*, *Big Bong* and *Flash Bulb*
+   as rushes, *Lights Out*, *Flip Kick* and *Shield Bash* as shots. Bug, Mind and Pixie can only get their fourth kind with a new move:
+   should they get one?
+2. **Speed up:** only three moves raise speed (*Dribble*, *Rev Up*, *Fizz Up*), not 14. Should more moves (e.g. the "Quick ..." moves,
+   or *Rush Hour* / *Race Day*) become Speed up?
+3. **The look:** do you like the curling page on the iPad, or should the switch go off (pause screen: 📄 Page)? Is the grey with
+   scribble strokes readable, and are the first-draft colours too loud?
+4. **Your team can mash the first patches:** Puddle Meadow's monsters are weak to Fire and Sky, and your Kitegale and Blazehound win
+   the first four patches by mashing. Fine (types should matter), or should the meadow hold types your team is not strong against?
+5. **Grey monsters in a grey patch** are hard to see (`wobble-ipad-fight.png`): give them a coloured outline or keep them grey?
+6. **The knot** takes a person-like bot about 1.5-2.5 minutes. Too long for your son, or right for a region's end?
+7. Is the order **smudge, smudge, tangles, knot** with the knot opening last the right pace? (Smudges have 3 monsters now, not 2.)
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)
@@ -560,7 +598,7 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 
 ---
 
-## Questions for the owner
+## Questions for the owner (before the night run)
 
 Answered 2026-11-11: the look as described, flags +10 % attack, names kept for now, heal stays 45 %, moves get their kind by nature with
 advantages and disadvantages per kind (section 7).

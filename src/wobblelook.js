@@ -10,7 +10,8 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState, WALL } from './wobbleland.js';
+import { B } from './blocks.js';
 
 export const WOBBLE_LOOK = {
   curl: true,          // the curling horizon: the one on/off switch
@@ -95,6 +96,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       if (!active) return;
       uniforms();
       const m = meadowState(game.beaten); // the region's meter (step 6)
+      if (m.n >= m.of && !world.wobbleMelted) api.meltWall(); // step 7: the knot cleared: the Scribble's wall melts away (live cells only)
+      if (world.wobbleMelted && game.player?.pos.z < WALL.z0 - 2 && !game.toldOnce?.has('wobble-hills')) { game.toldOnce?.add('wobble-hills'); game.ui?.toast('🧙 Bumpy Hills is still being drawn. Coming soon!'); }
       if (!game.inBattle && !game.scribble?.fighting) game.ui?.setScore?.({ text: `🎨 Puddle Meadow ${m.n} / ${m.of}`, done: m.n >= m.of });
       const s = (game.beaten || []).filter(k => k.startsWith('pw:wobble:')).join();
       if (floods.length) { for (const f of floods) f.t += dt; paint(); floods = floods.filter(f => f.t < WOBBLE_LOOK.flood); }
@@ -116,6 +119,17 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       for (const o of scene.children) lift(o, 0);
     },
     afterRender() { for (const [o, l] of lifted) o.position.y -= l; lifted = []; },
+    // step 7: the wall to Bumpy Hills melts (drawn with setLive: never an edit, so a reload melts it again from the saved knot key)
+    meltWall() {
+      const w = world, box = w?.wobble?.wall;
+      if (!box || w.wobbleMelted) return;
+      w.wobbleMelted = true;
+      w.keeps = (w.keeps || []).filter(k => k.name !== 'scribble-wall');
+      for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = 1; y < 47; y++) {
+        const b = w.get(x, y, z);
+        if (b !== B.AIR && y > (w.ground?.[x + z * w.W] ?? 0)) w.setLive(x, y, z, B.AIR);
+      }
+    },
     // ?preview: the pause screen's switch
     toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },
     colourAt(x, z) { const i = Math.floor(x / WOBBLE_LOOK.cell), j = Math.floor(z / WOBBLE_LOOK.cell); return i < 0 || j < 0 || i >= N || j >= N ? 0 : data[(i + j * N) * 4] / 255; },

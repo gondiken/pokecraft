@@ -305,12 +305,16 @@ export function createScribble(game) {
     const probe = new ScribbleFight({ ground: G, centre: C, squad: [{ species: 'fluffin', level: 5, moves: [] }], start: { x: C.x, y: C.y, z: C.z }, foes: S.patchFight?.foes });
     probe.foes.forEach((f, i) => {
       const model = buildModel(f.c.species);
-      const h = sized(model, 1.7);
+      const h = sized(model, f.grumble ? 2.9 : 1.7); // (the Grumble is big)
       const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3());
       group.add(model);
       const m = { model, h, species: f.c.species, home: [f.x, f.y, f.z], t: i * 3.1, wrap: buildWrap(i, Math.max(size.x, size.z) / 2 + 0.2, h / 2 + 0.15) };
       greyOut(m, 1);
       group.add(m.wrap.mesh);
+      if (f.grumble) { // its weak spot: a glowing patch on its back (bright while a hit there or now counts fully)
+        m.spot = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.7, depthWrite: false }));
+        m.spot.userData.keepColour = true; group.add(m.spot);
+      }
       parts.monsters.push(m);
       parts.spots.push([f.x, f.z]);
     });
@@ -324,6 +328,7 @@ export function createScribble(game) {
     if (parts) {
       for (const m of [parts.tangle.mesh, parts.patch, parts.ring]) { group.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
       for (const m of parts.monsters) { group.remove(m.model, m.wrap.mesh); disposeModel(m.model); m.wrap.mesh.geometry.dispose(); m.wrap.mesh.material.dispose(); }
+      for (const m of parts.monsters) if (m.spot) { group.remove(m.spot); m.spot.geometry.dispose(); m.spot.material.dispose(); }
     }
     parts = null; S.fight = null;
   }
@@ -607,6 +612,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       else if (e.kind === 'thud') { burst(e.f.type, e.t.x, e.t.y, e.t.z, e.t.r, 0.35, 0.6); sound.play('hit'); }
       else if (e.kind === 'blocked') burst(e.type, e.x, e.y - 0.5, e.z, 0.6, 0.25, 0.8);
       else if (e.kind === 'buff') say(e.def ? 'Tough!' : 'Power up! Don\'t get hit!', 1);
+      else if (e.kind === 'grumbleBonk') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Bonk!', 'miss');
       else if (e.kind === 'speedUp') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Speed up!', 'heal');
       else if (e.kind === 'braced') { floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Blocked!', 'super'); sound.play('boing'); }
       else if (e.kind === 'healSpoilt') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Oops! No heal', 'miss');
@@ -785,6 +791,14 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         drawWrap(m.wrap, m.model.position.x, m.model.position.y, m.model.position.z, f.alive ? 0 : Math.min(1, fr / 0.5), boil);
         m.model.visible = vis && S.phase !== 'cleared';
         if (!m.model.visible) m.wrap.mesh.visible = false;
+        if (m.spot) { // on its back, a little above the middle; it pulses while its back is open after an attack
+          const back = 0.55 * m.h;
+          m.spot.position.set(m.model.position.x - Math.sin(f.heading) * back, m.model.position.y + m.h * 0.7, m.model.position.z - Math.cos(f.heading) * back);
+          m.spot.visible = m.model.visible && f.alive;
+          const open = f.openT > 0;
+          m.spot.scale.setScalar(open ? 1.5 + 0.3 * Math.sin(performance.now() / 70) : 1);
+          m.spot.material.opacity = open ? 0.95 : 0.6;
+        }
       } else { // idle: they shuffle about their spot and turn to watch you
         const p = game.player?.pos;
         const [hx, hy, hz] = m.home;

@@ -68,6 +68,10 @@ function skilledGoal(F) {
   const alive = F.foes.filter(f => f.alive).sort((p, q) => len2(p.x - you.x, p.z - you.z) - len2(q.x - you.x, q.z - you.z));
   const f = alive[0];
   if (!f) return { gx: 0, gz: 0 };
+  if (f.grumble && alive.length === 1) { // chapter 3 step 7: alone with the Grumble: get round to its back (it turns slowly)
+    const bx = f.x - Math.sin(f.heading) * 4.2, bz = f.z - Math.cos(f.heading) * 4.2;
+    if (walkable(F, you.x, you.z, you.y, you.x + (bx - you.x) * 0.3, you.z + (bz - you.z) * 0.3, 1.2)) return { gx: bx - you.x, gz: bz - you.z };
+  }
   const dx = you.x - f.x, dz = you.z - f.z, d = len2(dx, dz) || 1;
   const want = 4.6, push = d < want ? 1 : d > want + 2 ? -0.7 : 0;
   let gx = dx / d * push - dz / d * 0.45, gz = dz / d * push + dx / d * 0.45;
@@ -81,6 +85,10 @@ function skilledGoal(F) {
 function skilledMoves(F) {
   const you = F.you;
   if (you.hp < you.maxHp * 0.3) { const i = F.squad.findIndex((q, k) => k !== F.lead && q.hp > q.c.level * 1.5); if (i >= 0) F.swap(i); }
+  { // the small ones first (the Grumble only takes full hits on its back or right after it struck)
+    const small = F.foes.filter(f => f.alive && !f.grumble);
+    if (F.target?.grumble && small.length) F.pick(small.sort((p, q) => len2(p.x - you.x, p.z - you.z) - len2(q.x - you.x, q.z - you.z))[0]);
+  }
   { // pick a monster it can hit
     const t = F.aimAt();
     if (t && !F.clearShot(F.you, t)) { const o = F.foes.find(f => f.alive && F.clearShot(F.you, f)); if (o) F.pick(o); }
@@ -112,6 +120,7 @@ function skilledMoves(F) {
       if (!F.foes.some(f => f.alive && ((f.tell && f.tell.left < 0.45 && F.inTell(f.tell, you.x, you.y, you.z, you.r)) || (f.charging && len2(f.x - you.x, f.z - you.z) < 4)))) continue;
     }
     if ((s.kind === 'bolt' || s.kind === 'volley') && !F.clearShot(you, t)) continue;
+    if (t.grumble && s.group !== 'special' && !['heal', 'buff', 'speed', 'cloud', 'sleep'].includes(s.kind) && !(t.openT > 0 || Math.abs(Math.atan2(Math.sin(Math.atan2(you.x - t.x, you.z - t.z) - t.heading), Math.cos(Math.atan2(you.x - t.x, you.z - t.z) - t.heading))) > 1.85)) continue; // only on its weak side
     if (s.kind === 'dash' && (d > 5 || danger(F, t.x, t.z, t.y) || danger(F, you.x, you.z, you.y) || !walkable(F, you.x, you.z, you.y, t.x, t.z, 0.5))) continue;
     if (s.kind === 'burst') { if (!foeSoon && F.foes.some(f => f.alive && len2(f.x - you.x, f.z - you.z) < F.blastR(1) + 1.5)) F.push(b); continue; }
     F.push(b); F.lift(b);
