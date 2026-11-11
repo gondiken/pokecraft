@@ -24,6 +24,8 @@ import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; //
 import { mirrorLand, mirrorAim, SIZE as MIRROR_SIZE, ARRIVAL as MIRROR_ARRIVAL } from './mirrorland.js'; // wave 18, the Mirror Palace
 import { BUBBLE_SPAWNS } from './species.js'; // the Bubble Well
 import { wizardLand, wizardAim } from './wizardland.js'; // wave 19, the Wizard's Tower
+import { wobbleLand, wobbleAim, SIZE as WOBBLE_SIZE, CAMP as WOBBLE_CAMP } from './wobbleland.js'; // chapter 3, Wobbleland
+import { PREVIEW } from './comingsoon.js';
 
 export const MAIN = 'main';
 export const REALMS = {
@@ -219,6 +221,21 @@ if (worldOpen('wizard')) REALMS.wizard = pictureRealm({ id: 'wizard', name: "Wiz
   askFollow: n => `${n} went into the Wizard's tower. Go too?`, joined: n => `You followed ${n} into the Wizard's tower!`,
   guestNote: n => `Follow ${n} when they go into the tower!` });
 /* ==== end of Wizard ==== */
+/* ==== Wobbleland ==== */
+// Chapter 3 (plans/chapter3-world.md, ?preview only): the Wizard's very first drawing, under his tower. Its Paper Door (portal.js) is drawn only
+// for the Wizard's Ally. Not registered at all without ?preview (a save made inside it then loads in the main world). The whole page is a
+// keep (nothing can be built: no realm edits). A lost fight rests you at Inkpot Camp (`lose: 'stay'`, world.rests).
+if (PREVIEW) REALMS.wobble = pictureRealm({ id: 'wobble', name: 'Wobbleland', seedSalt: 0x30bb1e, size: [WOBBLE_SIZE, WOBBLE_SIZE], terrain: 'wobbleLand',
+  arrive: [WOBBLE_CAMP.x, WOBBLE_CAMP.z + 2], arriveYaw: 0, biome: 'wobble', entrance: 'paper', spawns: { wobble: [], wobbleHills: [], cave: [] }, wild: { max: 3, every: 3 },
+  walk: [B.GRASS], noRide: "No riding in the Wizard's drawing!", crewAim: false, zoneNames: { wobble: 'Wobbleland · Puddle Meadow', wobbleHills: 'Wobbleland · Bumpy Hills' },
+  look: { sky: 0xfff3c4, fog: [60, 190], time: null, weather: false, light: 1, still: true, stars: false, wobble: true },
+  clock: '🖍️ Wobbleland', travelText: 'Down the paper stairs...', travelIcon: '🖍️', enterText: "Welcome to Wobbleland, the Wizard's very first drawing!",
+  arriveHint: 'Grey means the Scribble. Win, and the colour comes back!', doorName: 'Way back', doorVerb: 'go back up to the Wizard', doorAction: 'Up!',
+  backText: "You climbed back up to the Wizard's island.", lostText: 'Your team had a rest at Inkpot Camp. Try again!',
+  noHomeText: "No homes in the Wizard's drawing!", followText: 'Go down too',
+  askFollow: n => `${n} went down the Paper Door. Go too?`, joined: n => `You followed ${n} into Wobbleland!`,
+  guestNote: n => `Follow ${n} when they go down the Paper Door!` });
+/* ==== end of Wobbleland ==== */
 
 export function realmSeed(mainSeed, salt) { return Math.imul((mainSeed ^ salt) | 0, 2654435761) >>> 0; }
 // Night by the clock (the same moment main.js's game.night turns on: light < 0.3); read straight from game.time,
@@ -250,6 +267,7 @@ TERRAIN_AIMS.bubbleLand = bubbleAim; // the Bubble Well
 TERRAINS.mirrorLand = mirrorLand; // wave 18, the Mirror Palace
 TERRAIN_AIMS.mirrorLand = mirrorAim; // wave 18
 TERRAINS.wizardLand = wizardLand; TERRAIN_AIMS.wizardLand = wizardAim; // wave 19, the Wizard's Tower
+TERRAINS.wobbleLand = wobbleLand; TERRAIN_AIMS.wobbleLand = wobbleAim; // chapter 3, Wobbleland
 
 // Realm gym builders, by GYMS def.build: (world, def, isles) => gym object (with `protect`, like every gym).
 export const REALM_BUILDERS = { dreamHouse: buildDreamHouse };

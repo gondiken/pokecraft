@@ -9,7 +9,8 @@ import { PICTURE_WORLDS, FRAME_WORLDS, STAR_WORLDS, fullName } from './picturewo
 /* ==== Wizard ==== */
 import { bridgeDone, stoneAsleep } from './pictureworlds.js'; // wave 19: the bridge needs only the stars of the open worlds
 import { towerOpen, towerStand, WORDS as WIZ, starCount } from './wizardtower.js';
-import { worldOpen } from './comingsoon.js';
+import { worldOpen, PREVIEW } from './comingsoon.js';
+import { paperDoor, PAPER_WORDS } from './wobbleland.js'; // chapter 3: the Paper Door to Wobbleland (?preview, the Wizard's Ally only)
 import { sound } from './sound.js';
 /* ==== end of Wizard ==== */
 
@@ -226,7 +227,7 @@ export function createPortal(game) {
     // For tests and the HUD: what the Swirl is showing right now.
     info() {
       const st = SWIRL.get(game);
-      return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told }, towerGlow: !!st.towerGlow, cloud: st.cloud.size } : null; // wave 19: the tower door's glow and the cloud stones
+      return st && game.place !== 'main' ? { lifts: st.lifts.length, outline: !!st.outline, outlineBoxes: st.outline ? st.outline.geometry.attributes.position.count / 24 : 0, lit: st.lit, told: { ...st.told }, towerGlow: !!st.towerGlow, paper: !!st.paperGlow, cloud: st.cloud.size } : null; // wave 19: the tower door's glow and the cloud stones
     },
     // The board the HUD shows: one entry per Picture World.
     stars() { return STAR_WORLDS.map(w => ({ id: w.id, name: w.name, won: game.stars.includes(w.id) })); },
@@ -336,6 +337,7 @@ function swirlReset(game, world) {
     dropOutline(game, old);
     dropPictures(game, old);
     old.towerGlow?.dispose(); // wave 19
+    old.paperGlow?.dispose(); // chapter 3
     old.tex?.dispose();
     SWIRL.delete(game);
   }
@@ -364,6 +366,7 @@ function swirlUpdate(game, dt) {
   const w = game.world;
   st.t += dt;
   st.towerGlow?.update(dt, 1); // wave 19
+  st.paperGlow?.update(dt, 1); // chapter 3
   st.lifts.forEach((m, i) => { m.material.map.offset.y = -(st.t * 0.8) % 1; m.material.color.setHSL((st.t * 0.04 + i / 6) % 1, 0.9, 0.5); }); // T38d: each stream slowly changes pastel colour
   st.acc += dt;
   if (st.acc < 0.25 && st.lit !== null) return;
@@ -398,6 +401,16 @@ function swirlUpdate(game, dt) {
     if (open && !st.towerGlow) { const s = towerStand(w); st.towerGlow = new DoorGlow(game.scene, wz.door, s); st.towerGlow.group.userData.swirlSky = true; }
     if (!tower && w.get(...c0) === B.PORTAL) for (const [x, y, z] of wz.door) w.setLive(x, y, z, B.WIZARD_STONE);
   }
+  /* ==== Wobbleland ==== */
+  // chapter 3 (?preview): the Paper Door in the tower's south wall, drawn only for the Wizard's Ally: paper-coloured cells under a grey-and-cream swirl
+  const pd = paperOpen(game) && paperDoor(w);
+  if (pd && !st.paperGlow && game.scene) {
+    for (const [x, y, z] of pd.cells) w.setLive(x, y, z, B.CLOTH);
+    st.paperGlow = new DoorGlow(game.scene, pd.cells, pd.stand, null);
+    st.paperGlow.u.colA.value.set(0.93, 0.9, 0.82); st.paperGlow.u.colB.value.set(0.55, 0.55, 0.6); st.paperGlow.u.tint.value = 1;
+    st.paperGlow.group.userData.swirlSky = true;
+  }
+  /* ==== end of Wobbleland ==== */
   if (tower && !game.studio?.ally && worldOpen('wizard') && game.started && !game.inBattle && !game.toldOnce.has('bridge-whole')) {
     game.toldOnce.add('bridge-whole'); game.ui.toast(WIZ.bridgeWhole); sound.play('champion');
   }
@@ -433,6 +446,11 @@ function swirlUse(game, block) {
     game.ui.toast(`${pw.emoji} ${pw.name}: this world isn't open yet. Come back soon!`);
     return true;
   }
+  if (isPaperDoor(game, block)) { // chapter 3: down into Wobbleland (the Wizard's Ally, ?preview)
+    if (game.mp?.role === 'guest' && game.realms.guestEntrance('paper')) return true;
+    game.realms.enter('wobble', { back: paperDoor(game.world).stand, arrive: 'wobble' });
+    return true;
+  }
   /* ==== Wizard ==== */
   const st = stateOf(game);
   if (st?.cloud.has(keyOf(block)) && block.id === B.CLOUD) { game.ui.toast(WIZ.stone); return true; } // a cloud stone: its world still sleeps
@@ -453,7 +471,15 @@ function towerDoor(game, b) {
   const wz = game.world?.swirl?.wizard;
   return !!wz && !!b && wz.door.some(c => c[0] === b.x && c[1] === b.y && c[2] === b.z) && worldOpen('wizard');
 }
+// chapter 3: the Paper Door shows only with ?preview and only for the Wizard's Ally (and only where Wobbleland is registered)
+function paperOpen(game) { return PREVIEW && !!game.studio?.ally; }
+function isPaperDoor(game, b) {
+  if (!b || game.place === 'main' || !paperOpen(game)) return false;
+  const pd = paperDoor(game.world);
+  return !!pd && pd.cells.some(c => c[0] === b.x && c[1] === b.y && c[2] === b.z);
+}
 function swirlPrompt(game, block, how) {
+  if (isPaperDoor(game, block)) return PAPER_WORDS.prompt(how); // chapter 3
   const f = frameOf(game, block);
   if (f) { const pw = PICTURE_WORLDS.find(p => p.id === f.world); return `${pw.ready ? `${pw.emoji} ${fullName(pw)}` : pw.secret ? 'A secret world' : pw.name} · ${pw.ready ? `${how} to go in${game.stars.includes(pw.id) ? ' · ★' : ''}` : 'covered'}`; }
   if (game.place !== 'main' && game.world?.swirl && towerDoor(game, block)) return towerOpen(game) ? `The Wizard's tower · ${how} to go in` : "The Wizard's tower · sealed"; // wave 19
@@ -462,6 +488,7 @@ function swirlPrompt(game, block, how) {
   return '';
 }
 function swirlAction(game, block) {
+  if (isPaperDoor(game, block)) return PAPER_WORDS.action; // chapter 3
   if (game.world?.swirl && towerDoor(game, block) && towerOpen(game)) return WIZ.doorAction; // wave 19
   const f = frameOf(game, block);
   return f && PICTURE_WORLDS.find(p => p.id === f.world)?.ready ? 'Step in!' : '';

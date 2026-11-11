@@ -109,7 +109,7 @@ export function wobbleLand(world) {
   buildWayBack(world, 'wobble', { x: STAIR.x, y: STAIR.top, z: STAIR.z, facing: [0, -1] });
   world.arrivals.wobble = [CAMP.x + 0.5, BASE + 1, CAMP.z + 2.5, 0]; // you arrive in the Camp, looking north at Puddle Meadow (yaw 0)
   world.rests.length = 0; world.rests.push(world.arrivals.wobble);      // a lost fight rests you at the Camp (realms.lost: the nearest rest)
-  world.healer = { x: HEALER.x, y: BASE + 1, z: HEALER.z, heading: Math.PI };
+  world.healer = [HEALER.x, BASE + 1, HEALER.z, 0]; // (npc.js: Healer Stella, as in the Dream and the Portal House)
   // the Scribble's wall across the whole page: dark scribble wool from the ground to h above the highest ground near it
   for (let x = 0; x < W; x++) for (let z = WALL.z0; z <= WALL.z1; z++) {
     const g = heightAt(x, z);
@@ -169,3 +169,17 @@ export function wobbleAim(world, p, game) {
   const d = world.doors?.[0]?.stand;
   return d ? { x: d[0], z: d[2], text: (a, m) => `🖼️ Way back ${a} ${m}m` } : null;
 }
+
+// The Paper Door (step 3): a crumpled-paper door in the south wall of the Wizard's tower on his island in the Swirl (world.swirl.wizard),
+// drawn only for his Ally (portal.js). Its three-by-three cells and where you stand when you come back up (in front of it, looking south).
+export function paperDoor(world) {
+  const wz = world?.swirl?.wizard;
+  if (!wz?.box) return null;
+  const y0 = wz.box.y0, z = wz.box.z1, cells = [];
+  for (let dx = -1; dx <= 1; dx++) for (let k = 0; k < 3; k++) cells.push([wz.x + dx, y0 + k, z]);
+  return { cells, stand: [wz.x + 0.5, y0, z + 2.5, Math.PI] };
+}
+export const PAPER_WORDS = {
+  prompt: how => `The Paper Door · ${how} to go down`, action: 'Down!',
+  first: "The Scribble is in my very first drawing. Let's colour it back in!",
+};
