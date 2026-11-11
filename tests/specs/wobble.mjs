@@ -11,7 +11,8 @@
 //   ipad:   an emulated iPad in Wobbleland: the look, the meter, the touch buttons, walking with the joystick into patch 1
 //   knot:   the Grumble (bigger, tougher, turns slowly; a hit counts fully only on its back or right after it struck; mashing from the
 //           front loses: part `patches` patch 6), the knot's win floods the whole meadow, the wall melts, a reload keeps it
-//   WOBBLE_ONLY=land|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
+//   ride:   B (owner 2026-11-11): R and riding / flying in Wobbleland, hopping off into a patch's fight, the wall fences riders
+//   WOBBLE_ONLY=land|ride|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -41,6 +42,51 @@ export default async function ({ browser, base, t }) {
     const { checkWobble } = await import('../wobblecheck.mjs');
     const r = await checkWobble();
     t.ok(!r.problems.length, `Wobbleland: every patch reachable from the Camp, rings walkable (${r.out.rings.map(q => `${q.id}: ${q.walk} %${q.wet ? ` ${q.wet} wet` : ''}`).join(', ')}), no overlap, the wall closes Bumpy Hills (${r.out.hills} cells behind it) ${r.problems.slice(0, 4).join('; ')}`);
+  }
+
+  if (want('ride')) {
+    // B (owner 2026-11-11: "why can't I ride or fly my creature here?"): riding and flying everywhere in Wobbleland, real keys
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'), mk = id => { const c = S.makeCreature(id, 30); c.traits = ['rideable']; return c; }; g.party = [mk('blazehound'), mk('kitegale'), mk('tidalord')]; g.player.pos.set(112.5, 11, 200.5); g.player.yaw = 0; g.player.pitch = 0; });
+    await frames(page, 4);
+    await page.keyboard.press('r');
+    await frames(page, 3);
+    const on = await page.evaluate(() => ({ on: window.pokecraft.riding.on, kind: window.pokecraft.riding.kind, why: window.pokecraft.touchWhy.ride }));
+    t.ok(on.on && on.kind === 'land' && !on.why, `R gets you on your creature in Wobbleland (${JSON.stringify(on)})`);
+    // ride north (W) into patch 1: you hop off and the fight starts
+    await page.keyboard.down('w');
+    await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 60000).catch(() => {});
+    await page.keyboard.up('w');
+    const f = await page.evaluate(() => ({ phase: window.pokecraft.scribble.info().phase, riding: window.pokecraft.riding.on }));
+    t.ok(['enter', 'fight'].includes(f.phase) && !f.riding, `riding into a patch: you hop off and the fight starts on foot (${JSON.stringify(f)})`);
+    await page.keyboard.press('r');
+    await frames(page, 2);
+    t.ok(!(await page.evaluate(() => window.pokecraft.riding.on)), 'R does nothing in a scribble fight');
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
+    await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 9999, 'normal'); });
+    await waitFor(page, () => !window.pokecraft.scribble.fighting, null, 90000).catch(() => {});
+    // fly: Kitegale, Space up, W west into the Scribble's wall: the wall fences riders out
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.player.pos.set(80.5, L.heightAt(80, 192) + 1, 192.5); g.player.yaw = Math.PI / 2; g.player.pitch = 0; g.riding.start(g.party[1]); });
+    await page.keyboard.down('Space'); await page.waitForTimeout(1500); // (hold Space to stay up)
+    await page.keyboard.down('w');
+    await waitFor(page, () => window.pokecraft.player.pos.x < 64.2, null, 60000).catch(() => {});
+    await page.waitForTimeout(1500);
+    const sky = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { kind: g.riding.kind, x: g.player.pos.x, up: g.player.pos.y - (L.heightAt(Math.floor(g.player.pos.x), Math.floor(g.player.pos.z)) + 1) }; });
+    await page.keyboard.up('w'); await page.keyboard.up('Space');
+    t.ok(sky.kind === 'sky' && sky.up > 2 && sky.x > 62, `flying: up over the meadow, and the Scribble's wall keeps riders in (${JSON.stringify(sky)})`);
+    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(76.5, g.player.pos.y + 4, 214.5); g.player.yaw = -Math.PI / 4; g.player.pitch = -0.05; });
+    await frames(page, 6);
+    await shot(page, 'wobble-fly.png');
+    // fly low over patch 2: you land in it and the fight starts
+    await page.evaluate(() => { const g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 2); g.player.pos.set(q.x + 0.5, q.y + 4, q.z + 11.5); g.player.yaw = 0; g.player.pitch = 0; });
+    await page.keyboard.down('w');
+    await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 60000).catch(() => {});
+    await page.keyboard.up('w');
+    const f2 = await page.evaluate(() => ({ phase: window.pokecraft.scribble.info().phase, patch: window.pokecraft.scribble.info().patch, riding: window.pokecraft.riding.on, y: window.pokecraft.player.pos.y }));
+    t.ok(['enter', 'fight'].includes(f2.phase) && f2.patch === 2 && !f2.riding, `flying over a patch lands you in its fight (${JSON.stringify(f2)})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
   }
 
   if (want('patches')) {
@@ -79,6 +125,7 @@ export default async function ({ browser, base, t }) {
     const { wobblePage } = await import('../wobblebots.mjs');
     const page = await wobblePage(browser, base);
     await frames(page, 6);
+    await waitFor(page, () => /Smudge|Tangle/.test(document.querySelector('#guide')?.textContent || ''), null, 30000).catch(() => {}); // (the guide catches up a moment after you arrive)
     const r = await page.evaluate(async () => {
       const g = window.pokecraft, L = await import('/src/wobbleland.js');
       const ctx = () => g.creatures.context?.() ?? { after: id => false };
@@ -156,8 +203,8 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.scribble.info().phase === 'off' || (!window.pokecraft.scribble.fighting && window.pokecraft.scribble.info().phase !== 'exit'), null, 90000).catch(() => {});
     await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
     await frames(page, 6);
-    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { key: g.beaten.includes(L.patchKey(6)), chip: document.getElementById('score-chip')?.textContent, far: g.wobbleLook.colourAt(20, 140), wall: w.get(60, L.heightAt(60, 120) + 3, 120), keep: w.keeps.some(k => k.name === 'scribble-wall'), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length }; });
-    t.ok(done.key && /6 \/ 6/.test(done.chip) && done.far === 1 && done.wall === 0 && !done.keep && !done.rows, `the knot cleared: the whole meadow is in colour, the wall to Bumpy Hills melted, nothing left to fight (${JSON.stringify(done)})`);
+    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { key: g.beaten.includes(L.patchKey(6)), chip: document.getElementById('score-chip')?.textContent, far: g.wobbleLook.colourAt(156, 216), lake: g.wobbleLook.colourAt(20, 160), wall: w.get(112, L.heightAt(112, 132) + 3, 132), keep: w.keeps.some(k => k.name === 'scribble-wall'), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length }; });
+    t.ok(done.key && /6 \/ 6/.test(done.chip) && done.far === 1 && done.lake === 0 && done.wall === 0 && !done.keep && !done.rows, `the knot cleared: the whole meadow is in colour, the wall to Bumpy Hills melted, nothing left to fight (${JSON.stringify(done)})`);
     await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(112.5, 18, 160.5); g.player.yaw = 0; g.player.pitch = -0.15; });
     await frames(page, 8);
     await shot(page, 'wobble-meadow-bright.png');
@@ -167,7 +214,7 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
     await placeIs(page, 'wobble');
     await frames(page, 8);
-    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { wall: g.world.get(60, L.heightAt(60, 120) + 3, 120), far: g.wobbleLook.colourAt(20, 140) }; });
+    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { wall: g.world.get(112, L.heightAt(112, 132) + 3, 132), far: g.wobbleLook.colourAt(156, 216) }; });
     t.ok(re.wall === 0 && re.far === 1, `after a reload the meadow stays bright and the wall stays melted (${JSON.stringify(re)})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();

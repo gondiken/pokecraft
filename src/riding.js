@@ -46,7 +46,7 @@ export function createRiding(game, { scene, closePanel }) {
 
     start(c = this.first()) {
       const ui = game.ui, p = game.player;
-      if (!game.started || game.inBattle) return false;
+      if (!game.started || game.inBattle || game.scribble?.fighting) return false; // (chapter 3: never in a scribble fight)
       if (game.world.realm?.noRide) { ui.toast(game.world.realm.noRide); return false; } // owner 2026-10-29: a realm with no riding at all (Cube Planets)
       if (!c) { ui.toast('None of your team can be ridden yet. Look for the "Can be ridden" badge!'); return false; }
       if (!rideKind(c)) { ui.toast('Only creatures with the "Can be ridden" badge can be ridden.'); return false; }

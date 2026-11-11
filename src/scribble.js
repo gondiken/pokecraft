@@ -631,12 +631,13 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   function canStart() {
     const p = game.player;
     if (S.phase !== 'idle' || !S.armed || !game.playing?.() || game.ui?.asking || game.hideSeek?.active || game.realms?.busy) return false;
-    if (Math.hypot(p.pos.x - S.spot.x, p.pos.z - S.spot.z) > FIGHT.patch || Math.abs(p.pos.y - S.spot.y) > 4) return false;
+    const up = game.riding?.on && game.riding.kind === 'sky' ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
+    if (Math.hypot(p.pos.x - S.spot.x, p.pos.z - S.spot.z) > FIGHT.patch || p.pos.y - S.spot.y > up || S.spot.y - p.pos.y > 4) return false;
     return squadOf(game.party).length > 0;
   }
   function start() {
     const p = game.player, C = S.spot, G = S.ground;
-    game.riding?.stop?.('quiet');
+    if (game.riding?.on) { game.riding.stop('quiet'); game.ui?.toast('You hop off. The Scribble is here!'); } // (a sky ride drops you to the ground first)
     makeUi();
     // your creature lands two steps in front of you, inside the ring, on the ground
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
@@ -876,7 +877,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       if (S.phase === 'idle' && S.patch && playing && (rePickT += dt) > 1) { // Wobbleland: the patch you are nearest to is the live one
         rePickT = 0;
         const q = openPatches(game.beaten, S.world.wobble.patches).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0];
-        if (q && q.id !== S.patch.id && Math.hypot(q.x - p.pos.x, q.z - p.pos.z) + 8 < Math.hypot(S.patch.x - p.pos.x, S.patch.z - p.pos.z)) { build(S.world); return; }
+        const still = q && openPatches(game.beaten, [S.patch]).length; // (the live patch may have been cleared by another way: a reload, a test)
+        if (q && q.id !== S.patch.id && (!still || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) + 8 < Math.hypot(S.patch.x - p.pos.x, S.patch.z - p.pos.z))) { build(S.world); return; }
       }
       if (S.phase === 'cleared') {
         backT -= playing ? dt : 0;

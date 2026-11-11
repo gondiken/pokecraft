@@ -350,6 +350,49 @@ byte for byte the same; no block ids are free, so it is all looks):
 **Suggested order:** B (small, the owner asked first), then A1 + A3 (less walking), then C1 + C3 (the biggest "different" for the
 least work), then A2, C2, C4, C5. Each with the usual naive / skilled bots, real keys and an iPad run; the curl switch stays.
 
+
+## Built from the owner's first play (session 2026-11-11, afternoon)
+
+Everything is behind `?preview`, the arena is untouched, the scribble fight's rules did not change. Each item: what, why with an example,
+where to change it, the bot numbers.
+
+### B. Riding and flying
+
+**What:** Wobbleland has no `noRide` any more (`src/realms.js`, `REALMS.wobble`), and the page's keep has `rideIn: true`
+(`src/wobbleland.js`, the `world.keeps.push({ name: 'wobble', rideIn: true ... })` line): ride and fly anywhere, building still not allowed.
+**Choice: no keep round the patches.** The plan said "keep riders out of a ring"; I chose instead that **riding into a patch hops you off
+and starts its fight** (`start()` in `src/scribble.js`: "You hop off. The Scribble is here!"), and a creature flying low (up to 8 above the
+patch; `canStart`) lands you in it too. Why: a fence makes a child bump, read a toast and press R; hopping off is one look. Example: ride
+Blazehound north from the Camp: at patch 1 you are on foot and the camera rises into the fight. R does nothing during a fight
+(`src/riding.js` `start`). **The Scribble's wall fences riders** (its keep has no `rideIn`; when it melts, `meltWall` drops world.js's
+cached fences too). Flying is capped at 6 over the ground as everywhere, so the curl from the sky looks as from a hill (no smaller
+`curlK` needed). Spec `wobble` part `ride` (real keys R / W / Space, land and sky); picture `plans/chapter3/wobble-fly.png`.
+
+### A1. A packed Puddle Meadow
+
+**What:** the meadow is now a box x 62..162, z 134..223 round the Camp (`MEADOW`, `src/wobbleland.js` line 21) and the Scribble's wall
+goes round it on three sides (`WALLS`, line 24). Right behind it are the next regions as real, grey land for later (`REGIONS`,
+`regionAt`): **Bumpy Hills** north (the old bumps), **Slippy Lake** west (a wide lake with two islands, `LAKE`), **Shadywood** east (a
+thick wood, `WOOD`). The six patches are 26-28 apart (`PATCHES`, line 42):
+
+| Patch | Was at | Now at | Nearest other patch |
+| --- | --- | --- | --- |
+| 1 smudge | 112, 178 | 112, 178 | 26 |
+| 2 smudge | 72, 168 | 86, 184 | 27 |
+| 3 tangle | 154, 162 | 138, 184 | 27 |
+| 4 tangle (wet) | 46, 142 | 84, 156 | 28 |
+| 5 tangle | 180, 140 | 140, 156 | 28 |
+| 6 knot | 112, 140 | 112, 152 | 26 |
+
+The arrow now shows smudges first, then tangles, then the knot (`SIZE_RANK` in `wobbleAim`), because the packed tangles are as near as the
+smudges. **Numbers** (`node tests/wobblecheck.mjs`): the arrow-following kid walks 1, 2, 4, 5, 3, 6 in 578 steps of 0.3 (174 blocks; it was
+965 steps, 290 blocks), the farthest patch is 52 from the Camp, 0 stuck. New checks: the nearest other patch is never more than 32 away,
+nothing built stands in a ring or the Camp, nothing outside the meadow can be reached. Patch 4's puddle now has 35 wet cells (was 58).
+Bots (`tests/wobblebots.mjs`, 60 and 20 fps): mashing with the type-neutral team 1 / 24, 0, 4, 0, 0, 0; skilled all; person 22-156 s.
+The knot's wall-melt now melts all three walls; walking into a region still being drawn says so by its name.
+Found on the way: a live patch that had been cleared another way (a test pushing keys) stayed live; it now moves on (`S.update` in
+`src/scribble.js`).
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

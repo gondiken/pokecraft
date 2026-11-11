@@ -49,10 +49,27 @@ export async function checkWobble() {
     if (share < 0.75) problems.push(`patch ${p.id}: only ${Math.round(share * 100)} % of its ring is walkable`);
     if (!p.wet && wet) problems.push(`patch ${p.id}: ${wet} cells of water in a dry ring`);
     if (p.wet && wet < 8) problems.push(`patch ${p.id}: a water twist with only ${wet} wet cells`);
-    if (p.z - L.RING <= L.WALL.z1 + 1) problems.push(`patch ${p.id} touches the wall`);
+    if (p.x - L.RING < L.MEADOW.x0 + 1 || p.x + L.RING > L.MEADOW.x1 - 1 || p.z - L.RING < L.MEADOW.z0 + 1) problems.push(`patch ${p.id} touches the wall`);
     for (const q of L.PATCHES) if (q.id < p.id && Math.hypot(q.x - p.x, q.z - p.z) < 2 * L.RING + 2) problems.push(`patches ${q.id} and ${p.id} overlap`);
   }
-  for (const k of from.keys()) { const z = +k.split(',')[1]; if (z <= L.WALL.z1) { problems.push(`the wall leaks: (${k}) can be reached`); break; } }
+  for (const k of from.keys()) { const [x, z] = k.split(',').map(Number); if (!L.inMeadow(x, z)) { problems.push(`the wall leaks: (${k}) can be reached`); break; } }
+  // A1 (owner 2026-11-11): a packed meadow: from one patch to the nearest other is a short walk (centres 22-32 apart), and the walk
+  // from the Camp to the farthest patch along the ground is short too
+  for (const p of L.PATCHES) {
+    const near = Math.min(...L.PATCHES.filter(q => q !== p).map(q => Math.hypot(q.x - p.x, q.z - p.z)));
+    if (near > 32) problems.push(`patch ${p.id}: the nearest other patch is ${Math.round(near)} away`);
+  }
+  out.span = Math.round(Math.max(...L.PATCHES.map(p => Math.hypot(p.x - L.CAMP.x, p.z - L.CAMP.z))));
+  if (out.span > 60) problems.push(`the farthest patch is ${out.span} from the Camp`);
+  // nothing built (trees, the flower, the house...) stands in a ring or in the Camp: every block above the ground there is air
+  for (const p of [...L.PATCHES.map(q => ({ x: q.x, z: q.z, r: L.RING })), { x: L.CAMP.x, z: L.CAMP.z, r: L.CAMP.r - 1, camp: true }]) {
+    let n = 0;
+    for (let x = p.x - p.r; x <= p.x + p.r; x++) for (let z = p.z - p.r; z <= p.z + p.r; z++) {
+      if (Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) > p.r || (p.camp && Math.abs(x - L.STAIR.x) <= 3 && z >= L.STAIR.z - 6)) continue;
+      for (let y = w.ground[x + z * W] + 1; y < H; y++) if (w.get(x, y, z) !== B.AIR) n++;
+    }
+    if (n) problems.push(`${p.camp ? 'the Camp' : `the ring at ${p.x}, ${p.z}`} has ${n} blocks standing in it`);
+  }
   // the other side is real land (Bumpy Hills): reachable from the knot's spot once the wall goes (step 7 melts it)
   out.hills = walk(L.KNOT.x, L.KNOT.z, L.heightAt(L.KNOT.x, L.KNOT.z) + 1).size;
   if (out.hills < 5000) problems.push(`behind the wall only ${out.hills} cells can be walked`);
