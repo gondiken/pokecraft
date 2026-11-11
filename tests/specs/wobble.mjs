@@ -566,7 +566,7 @@ export default async function ({ browser, base, t }) {
       return { before, after };
     });
     t.ok(/Puddle Meadow 0 \/ 6/.test(r.before.chip) && /Puddle Meadow 5 \/ 6/.test(r.after.chip), `the meter chip counts the region's patches (${r.before.chip} -> ${r.after.chip})`);
-    t.ok(r.before.rows.length === 11 && !r.before.rows.includes('wobble:6') && !r.before.rows.includes('wobble:11') && r.after.rows[0] === 'wobble:6' && r.after.rows.length === 7, `"Where to go" has a row per open patch of every region, a knot only once its region's others are clear (${r.before.rows.join()} -> ${r.after.rows.join()})`);
+    t.ok(r.before.rows.length === 17 && !r.before.rows.includes('wobble:6') && !r.before.rows.includes('wobble:11') && !r.before.rows.includes('wobble:20') && r.after.rows[0] === 'wobble:6' && r.after.rows.length === 13, `"Where to go" has a row per open patch of every region, a knot only once its region's others are clear (${r.before.rows.join()} -> ${r.after.rows.join()})`);
     t.ok(/Smudge|Tangle/.test(r.before.guide), `the guide arrow leads to the nearest patch (${r.before.guide})`);
     t.ok(r.before.people.some(n => /Wizard/.test(n)) && r.before.people.length >= 2, `the Wizard and a healer are at Inkpot Camp (${r.before.people.join(', ')})`);
     t.ok(!r.before.freed.length && ['sproutle', 'hopsy', 'beetlet', 'hornbeetle'].every(sp => r.after.freed.includes(sp)) && !r.after.freed.includes('thornox'), `freed creatures live in the meadow once their patch is cleared (none before; after five: ${r.after.freed.join(', ')})`);
