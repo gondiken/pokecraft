@@ -293,7 +293,8 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 1. **Move kinds by nature** (section 7): the `MOVE_KIND` table and the spread count, listed by type in "Decided overnight"; no stop
    (the owner checks it in the morning).
 1b. **Wait and hit strength per kind** (section 7): set with the bots, inside `scribblefight.js` / `movekinds.js`; mashing under a quarter,
-   skilled wins all, the person bot about 1-1.5 minutes; the table to the owner (with the speed question).
+   skilled wins all, the person bot about 1-1.5 minutes; speed counts (section 7 point 4: the stat in a
+   narrow band, the Speed up Special); the table and the speed band go in "Decided overnight".
 2. **Wobbleland as data** (`wobbleland.js`, Node-runnable): Inkpot Camp, Puddle Meadow with its wonky shapes, the wall, the six patch
    spots, the way back. Node checks: every patch reachable on foot from the Camp, every ring 75 %+ walkable, no patch inside another, the
    wall really closes Bumpy Hills. No fight yet.
