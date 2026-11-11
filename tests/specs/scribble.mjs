@@ -5,7 +5,8 @@
 //   ipad:   an emulated iPad: the joystick walks you in, three buttons: Dodge, Attack, Special (Ride and Down hidden), a tap picks a monster, all restored after
 //   closed: without ?preview there is no patch at all (and no "Where to go" row)
 //   nav:    the guide arrow leads to the patch until you cleared it once; "Where to go" (G) has a row for it, dim while it is gone
-//   SCRIBBLE_ONLY=bots|real|ipad|closed|nav      screenshots: tests/screenshots/scribble-*.png
+//   kinds:  every attacking move has its live kind by its nature (src/movekinds.js MOVE_KIND, tests/movekinds.mjs in Node), help moves unchanged
+//   SCRIBBLE_ONLY=kinds|bots|real|ipad|closed|nav      screenshots: tests/screenshots/scribble-*.png
 import { devices } from 'playwright';
 import { openGame, newGame } from '../helpers.mjs';
 import { scribblePage, runBots, SEEDS } from '../scribblebots.mjs';
@@ -20,6 +21,14 @@ const until = (page, fn, arg, timeout = 90000) => page.waitForFunction(fn, arg, 
 const fight = (page, fn, arg) => page.evaluate(([fn, arg]) => eval(fn)(window.pokecraft.scribble.fightOf(), arg), [fn.toString(), arg]);
 
 export default async function ({ browser, base, t }) {
+  if (part('kinds')) {
+    const { checkKinds } = await import('../movekinds.mjs');
+    const r = await checkKinds();
+    t.ok(!r.problems.length, `every attacking move has a MOVE_KIND line, every help move keeps its kind (${r.problems.slice(0, 5).join('; ')})`);
+    const gaps = r.byType.filter(x => x.missing.length);
+    t.ok(gaps.length <= 3 && gaps.every(x => x.ids.length <= 3), `every type with four or more attack moves has all four kinds (gaps: ${gaps.map(x => `${x.type} ${x.missing}`).join(', ')})`);
+    t.ok(!r.few.length && (r.per[3] || 0) + (r.per[4] || 0) === r.n, `every creature can learn at least three kinds (${JSON.stringify(r.per)})`);
+  }
   if (part('closed')) {
     const page = await openGame(browser, base);
     await newGame(page, 0);

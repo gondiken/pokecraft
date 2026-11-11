@@ -1,6 +1,7 @@
 // Owner 2026-11-10: "rush, shot, blast ... are the types of attacks" (the kinds chapter 3's fights already use), "object orientated".
-// One object per KIND of move, decided from the move's own data (never by hand per move): Shot, Many shots, Big blast, Rush, and the
-// helping kinds Heal, Power up, Slow cloud, Sleepy cloud. Each kind knows its word, icon and button group (chapter 3's fight reads them)
+// One object per KIND of move. Owner 2026-11-11: an attack's kind is its NATURE, one line per move in MOVE_KIND (a slam runs in, a wave
+// is a blast, a spit is a shot, a flurry is many shots); a help move's kind comes from its effect. The kinds: Shot, Many shots, Big blast, Rush, and the
+// helping kinds Heal, Power up, Slow cloud, Sleepy cloud (and, only in chapter 3's fight, Speed up). Each kind knows its word, icon and button group (chapter 3's fight reads them)
 // and, for the attacking kinds, how its animation can be DESIGNED on the Wizard's drawing board (`slots`: shape, path, trail, size,
 // pattern, ring, flash, move, hit... each a list of choices) and how a designed look is drawn in a battle (`recipe`, an fx.js recipe:
 // (k, from, to, opts) => { dur, step(p) }, closed form, Math.random only through k.seeds).
@@ -289,12 +290,137 @@ export const KINDS = {
   buff: new MoveKind({ id: 'buff', word: 'power up', icon: '▲', group: 'special' }),
   cloud: new MoveKind({ id: 'cloud', word: 'slow cloud', icon: '☁', group: 'special' }),
   sleep: new MoveKind({ id: 'sleep', word: 'sleepy cloud', icon: '☾', group: 'special' }),
+  // owner 2026-11-11: the speed-raising moves are their own help move in chapter 3's fight (kindOfMove still says Power up for them)
+  speed: new MoveKind({ id: 'speed', word: 'speed up', icon: '»', group: 'special' }),
 };
 // Names for the board (a child reads them): "Big blast", "Rush".
-export const KIND_NAME = { bolt: 'Shot', volley: 'Many shots', burst: 'Big blast', dash: 'Rush', heal: 'Heal', buff: 'Power up', cloud: 'Slow cloud', sleep: 'Sleepy cloud' };
+export const KIND_NAME = { bolt: 'Shot', volley: 'Many shots', burst: 'Big blast', dash: 'Rush', heal: 'Heal', buff: 'Power up', cloud: 'Slow cloud', sleep: 'Sleepy cloud', speed: 'Speed up' };
 
-// A battle move's kind from its data (the one rule; chapter 3's arena `shapeOf` asks it too).
-export function kindOfMove(m) {
+// ---- MOVE_KIND: every attacking move's live kind BY ITS NATURE (owner 2026-11-11, plans/chapter3-world.md section 7 and "Decided
+// overnight"). One line per move, grouped by type; to move a move to another kind, change its word here (and nothing else):
+//   bolt = Shot (one thing flies at one monster), volley = Many shots (a fan of small ones), dash = Rush (the creature runs in),
+//   burst = Big blast (a ring round the creature, hold to grow it).
+// Help moves (power 0) are NOT listed: their kind comes from their effect (heal, sleep, power up / Tough / Speed up, cloud).
+// tests/movekinds.mjs fails on an attacking move missing here, and counts the spread per type and per creature.
+export const MOVE_KIND = {
+  // normal: a bump and a belly bash run in, quick jabs are a flurry, a hyper strike is thrown, never giving up is a blast
+  tackle: 'dash', quickjab: 'volley', bodyslam: 'dash', hyperstrike: 'bolt', nevergiveup: 'burst',
+  // fire
+  ember: 'bolt', flarekick: 'dash', flameburst: 'burst', infernodash: 'dash', blazedash: 'dash', wildblaze: 'volley', lastember: 'burst',
+  // water: bubbles come in many, a crash runs in, waves are blasts
+  bubble: 'volley', soakshot: 'bolt', tidecrash: 'dash', bigwave: 'burst', royaltide: 'burst',
+  // grass: a vine lash whips up close, roots burst up all round
+  leafcut: 'bolt', seedvolley: 'volley', vinelash: 'dash', rootslam: 'burst',
+  // electric: little static snaps crackle, a live wire charges in
+  spark: 'bolt', staticsnap: 'volley', thunderjolt: 'bolt', stormcall: 'burst', livewire: 'dash',
+  // rock: a rumble of rocks tumbles, a rock slam runs in, a boulder drops with a crash all round
+  pebbleshot: 'bolt', rumblerock: 'volley', rockslam: 'dash', boulderdrop: 'burst', cliffcrash: 'burst',
+  // ice: a cold wind blows all round, a snow storm is many flakes
+  icebreath: 'bolt', chillwind: 'burst', blizzard: 'volley', glacierslam: 'dash',
+  // bug (three moves: no Shot)
+  bugbite: 'dash', buzzdive: 'burst', stingbarrage: 'volley',
+  // ghost: a flock of little boos, a gloom wave all round
+  shadowsneak: 'dash', boo: 'volley', phantomstrike: 'bolt', gloomwave: 'burst',
+  // mind (three moves: no Rush): tricks are many little illusions, a brain wave all round
+  mindpulse: 'bolt', mindtrick: 'volley', brainwave: 'burst',
+  // metal: a wrecking ball shakes everything round it
+  clank: 'bolt', rivetshot: 'volley', ironbash: 'dash', wreckingball: 'burst',
+  // toxic: blobs of goop, a cloud all round, a stink bomb is thrown, a fizzy potion sends it zooming in
+  sludgespit: 'bolt', goopshot: 'volley', toxiccloud: 'burst', stinkbomb: 'bolt', fizzypotion: 'dash',
+  // pixie (three moves: no Rush): dust is many specks, a puff all round
+  pixiedust: 'volley', glitterpuff: 'burst', moonbeam: 'bolt',
+  // drake: a flicked scale, claws rake up close, a roar all round, a storm of scales
+  scaleswipe: 'bolt', clawrake: 'dash', drakeroar: 'burst', drakecharge: 'dash', scalestorm: 'volley',
+  // rainbow: splashes of colour; the Zenith Ray rides its own ray into the monster (a stretch: the only way to a Rush)
+  prismray: 'bolt', colorsplash: 'volley', rainbowburst: 'burst', zenithray: 'dash',
+  // cosmic
+  starshard: 'bolt', meteorshower: 'volley', cometcrash: 'dash', supernova: 'burst', luckystar: 'bolt', bigbang: 'burst',
+  // sound: an echo pings again and again, a shriek all round; the Big Bong swings in like a bell's clapper (a stretch: the only Rush)
+  echoping: 'volley', shriek: 'burst', bassblast: 'bolt', bigbong: 'dash',
+  // bone: a bonk up close, a fossil chunk flung, a stomp shakes all round, a rattling dance runs in
+  bonebonk: 'dash', bonetoss: 'volley', fossilcrush: 'bolt', dinostomp: 'burst', rattledance: 'dash', dinocomeback: 'burst',
+  // alien: the tractor beam pulls it in fast, the mothership sends many little ships
+  beepbeam: 'bolt', tractorbeam: 'dash', ufoblast: 'bolt', gravityflip: 'burst', mothership: 'volley', mysterybutton: 'burst',
+  // sky: a cloud bursts into many drops
+  breezepuff: 'bolt', swoop: 'dash', cloudburst: 'volley', tornadospin: 'burst', jetstream: 'dash',
+  // slime: gobs of sticky goo
+  slimeshot: 'bolt', stickygoo: 'volley', slimeslam: 'dash', megasplat: 'burst',
+  // light: little glints; a flash bulb is there in a blink (a stretch: the only Rush), a sun burst all round
+  glint: 'volley', flashbulb: 'dash', sunbeam: 'bolt', sunburst: 'burst', beaconbeam: 'bolt',
+  // paper: a thousand cranes fly out all round
+  paperflick: 'bolt', confetti: 'volley', foldslam: 'dash', thousandcranes: 'burst',
+  // time: tick-tick-tick, the clock strikes, an alarm rings all round
+  secondhand: 'volley', fastforward: 'dash', hourstrike: 'bolt', wakeupcall: 'burst', lastsecond: 'burst',
+  // camo: peek, peek, boo (three pops), the surprise jumps out with a shot, a sneaky leap runs in
+  peekaboo: 'volley', surprise: 'bolt', blendbash: 'dash', statueslam: 'burst', sneakyleap: 'dash',
+  // cyber: pixels pop out all round, a mega byte is a big bite up close
+  pixelpop: 'burst', rapidclick: 'volley', glitchbeam: 'bolt', megabyte: 'dash',
+  // cozy: a snuggle up close, a warm hug glows all round, Lights Out sends a puff of night at one monster (a stretch: the only Shot)
+  snuggle: 'dash', pillowfight: 'volley', warmhug: 'burst', lightsout: 'bolt',
+  // treasure: a gold rush runs in, a jackpot spills coins everywhere
+  coinflip: 'bolt', gemtoss: 'volley', goldrush: 'dash', crownjewel: 'burst', jackpot: 'burst',
+  // squad: a one-two runs in, everyone piles on all round, a toppling tower lands on one
+  onetwo: 'dash', highfives: 'volley', pileon: 'burst', towertopple: 'bolt', countoff: 'volley',
+  // dream: tumbling head over heels into it
+  oddpoke: 'bolt', wobblewave: 'burst', floatybits: 'volley', headoverheels: 'dash', crayonstorm: 'volley', wilddream: 'burst',
+  // food: a thrown pie, a nom up close, a mega munch shakes the ground
+  nomnom: 'dash', foodfight: 'bolt', sprinkles: 'volley', megamunch: 'burst',
+  // parkour: hops off a wall and lands with a thud all round, three flips are three hits, a flip kick sends a whoosh of air flying (a
+  // stretch: parkour is all body, this is its only Shot)
+  wallhop: 'burst', flipkick: 'bolt', quickvault: 'dash', rooftoprun: 'dash', tripleflip: 'volley', finalsprint: 'dash',
+  // funfair: a prize wheel spins all round
+  tickettoss: 'bolt', bumperbash: 'dash', ziprider: 'dash', grandgallop: 'dash', balloonburst: 'volley', prizewheel: 'burst',
+  // ball: pass-pass-pass, a smash comes down hard all round
+  bouncebop: 'bolt', cannonroll: 'dash', quickpass: 'dash', goldengoal: 'bolt', acesmash: 'burst', trickshot: 'volley',
+  // surprise: the punch flies out on its spring
+  ribbonwhip: 'dash', springpunch: 'bolt', peekapop: 'dash', tadaa: 'burst', candyburst: 'volley', mysterybox: 'burst',
+  // ninja: a fan of throwing leaves, a strike from the shadows flies, a whirlwind all round
+  leafstar: 'volley', sneakstep: 'dash', shadowstrike: 'bolt', leafwhirl: 'burst',
+  // racer: a wheel spins off at it, a ramp jump lands hard, the exhaust bangs again and again
+  wheelspin: 'bolt', rampjump: 'burst', zoomdash: 'dash', photofinish: 'dash', nitroblast: 'volley', fullthrottle: 'dash',
+  // tiny: many tiny kicks, a sugar cube dropped, a fluff storm all round
+  teenytap: 'bolt', mightymite: 'dash', tinysteps: 'volley', sugarlift: 'burst', fluffstorm: 'burst',
+  // pirate
+  hookswipe: 'dash', cannonball: 'bolt', swashbuckle: 'dash', broadside: 'volley', anchordrop: 'burst', powderkeg: 'burst',
+  // portal
+  swirlbop: 'bolt', popthrough: 'dash', shortcut: 'dash', hattrick: 'volley', doorslam: 'burst',
+  // atlantis: a jar bonk up close, a sunken bell rings all round, a storm of tiles
+  jarbonk: 'dash', tiletoss: 'bolt', runeglow: 'bolt', sunkenbell: 'burst', mosaicstorm: 'volley', lastlight: 'burst',
+  // doodle: a quick draw is a quick shot, a sketchy swipe sweeps all round
+  pencilpoke: 'dash', sketchswipe: 'burst', quickdraw: 'bolt', leadlance: 'dash', squigglestrike: 'volley', finishingtouch: 'burst',
+  // knight: the shield is thrown like a disc (its only Shot), a parry pushes all round, quills fly, the rest charge
+  shieldbash: 'bolt', lancecharge: 'dash', quickparry: 'burst', grandjoust: 'dash', quillvolley: 'volley', lastcharge: 'dash',
+  // bubble
+  soapbop: 'bolt', foamcrash: 'dash', quickfizz: 'dash', duckfleet: 'volley', bathtubwave: 'burst', soapjuggle: 'volley', lastbubble: 'burst',
+  // gravity: a ring thrown, an orbit spins all round
+  pullin: 'bolt', orbitspin: 'burst', cometdash: 'dash', cometail: 'volley', ringtoss: 'bolt', upsidehug: 'dash', lastorbit: 'burst',
+  // mirror: a flash all round, copies hit many times, a shot round the corner
+  glintshot: 'bolt', flashback: 'burst', quickcopy: 'dash', mirrormirror: 'volley', copycatcombo: 'volley', funhousesquish: 'dash', roundthecorner: 'bolt', lastlook: 'burst',
+  // custom: a swirl of paint dabs
+  brushdab: 'bolt', paletteblast: 'burst', quickstroke: 'dash', swirlseal: 'volley', finaltouch: 'burst',
+};
+
+// The moves' ids by object (species.js hands its MOVES over once; kindOfMove gets the move object, as the arena's shapeOf calls it).
+let MOVES_REF = null, IDS = new WeakMap();
+export function registerMoves(moves) { MOVES_REF = moves; IDS = new WeakMap(); }
+function idOf(m) {
+  let id = IDS.get(m);
+  if (id == null && MOVES_REF) { for (const [k, v] of Object.entries(MOVES_REF)) IDS.set(v, k); id = IDS.get(m); }
+  return id;
+}
+// The old rule from the numbers (before 2026-11-11), only for an attacking move missing from MOVE_KIND (the Node check fails on one).
+function guessKind(m) {
+  const k = m.fx?.kind;
+  if (k === 'multi') return 'volley';
+  if (m.priority || k === 'recoil') return 'dash';
+  if (m.power >= 80 || k === 'risky' || k === 'lastword') return 'burst';
+  return 'bolt';
+}
+
+// A battle move's kind (the one rule; chapter 3's fight, the arena's `shapeOf` and the Wizard's board ask it). Attacks: MOVE_KIND.
+// Help moves: by their effect. A move that raises speed is Power up here (the arena reads it so); chapter 3's fight shows it as its
+// own Speed up (KINDS.speed, scribblefight.js liveShape).
+export function kindOfMove(m, id = null) {
   if (!m) return null;
   const k = m.fx?.kind;
   if (!m.power) {
@@ -303,11 +429,7 @@ export function kindOfMove(m) {
     if (k === 'lower' || k === 'curse') return KINDS.cloud;
     return KINDS.buff; // raise, rally, shield, field, anything else
   }
-  if (k === 'multi') return KINDS.volley;
-  if (m.priority || k === 'recoil') return KINDS.dash;
-  if (m.power >= 80 || k === 'risky' || k === 'sacrifice' || k === 'lastword') return KINDS.burst;
-  if (k === 'sleep') return KINDS.sleep;
-  return KINDS.bolt;
+  return KINDS[MOVE_KIND[id ?? idOf(m)] ?? guessKind(m)];
 }
 
 // A design's saved looks: { moveId: { p: [choice numbers], c: [colour numbers] } }, cleaned without knowing the moves (the kind cleans

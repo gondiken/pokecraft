@@ -5,6 +5,7 @@ import { doodleInk } from './doodleink.js'; // owner 2026-11-01: Doodle creature
 import { paintColours, paintModel } from './custom.js'; // the Custom type (the Wizard's Tower): pure, no imports
 import { buildKit, kitModel, isKitDesign, cleanDesign } from './guardiankit.js'; // owner 2026-11-08: your guardian is built from the Wizard's part kit
 import { TRAITS, drawTraits, gainTraits } from './traits.js';
+import { registerMoves } from './movekinds.js'; // owner 2026-11-11: each attack's live kind by its id (MOVE_KIND)
 import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
 
 export const TYPE_COLORS = {
@@ -3852,3 +3853,5 @@ export function disposeModel(group) {
     if (o.isMesh || o.isLine) { o.geometry.dispose(); o.material.dispose(); } // T45: the Doodle shapes have line segments too
   });
 }
+
+registerMoves(MOVES); // movekinds.js finds a move's id (its MOVE_KIND line) from the object
