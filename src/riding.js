@@ -55,7 +55,7 @@ export function createRiding(game, { scene, closePanel }) {
       if (c.hp <= 0) { ui.toast(`${name} is too tired to ride. Let it rest, or visit Healer Hana.`); return false; }
       if (this.creature) this.stop('quiet');
       const kind = rideKind(c);
-      p.ride = { ...RIDE[kind] };
+      p.ride = { ...RIDE[kind], type: SPECIES[c.species].type }; // (type: chapter 3's ground rules, an Ice ride keeps its grip)
       p.fenceHit = false;
       if (p.collides(p.pos)) {
         const owner = p.fenceHit || game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)); // a block may be hit before the fence

@@ -9,6 +9,7 @@
 // The look (the curling page, the first-draft colours, grey where the Scribble is) is drawn by wobblelook.js; nothing here is a look.
 import { B, WOOL } from './blocks.js';
 import { kit, buildWayBack } from './picturelands.js';
+import { GROUND } from './groundrules.js'; // Slippy Lake: the ice's rule (the player and the fight both ask world.groundAt)
 
 export const SIZE = 224;
 export const BASE = 10;                                       // the plain ground's top block
@@ -20,18 +21,21 @@ export const WIZARD_SPOT = { x: 119.5, z: 199.5 };             // the Wizard at 
 // 26-28 apart, a 6-8 s walk) and the next regions sit right behind its walls: Bumpy Hills north, Slippy Lake west, Shadywood east.
 export const MEADOW = { x0: 62, x1: 162, z0: 134, z1: SIZE - 1 };
 export const WALL = { h: 12, t: 2 };                            // the Scribble's wall round the meadow: 2 thick, ground .. BASE + h + 6
-// its three straight pieces (inclusive boxes in x / z): north, west, east
+// its straight pieces (inclusive boxes in x / z): north, west, east, and the lake's north side. `to` = the region behind it: a wall melts
+// when that region opens (Slippy Lake: the meadow's knot; Shadywood: the lake's knot; Bumpy Hills: later), one region at a time.
 export const WALLS = [
-  { x0: MEADOW.x0 - 2, x1: MEADOW.x1 + 2, z0: MEADOW.z0 - 2, z1: MEADOW.z0 - 1 },
-  { x0: MEADOW.x0 - 2, x1: MEADOW.x0 - 1, z0: MEADOW.z0 - 2, z1: SIZE - 1 },
-  { x0: MEADOW.x1 + 1, x1: MEADOW.x1 + 2, z0: MEADOW.z0 - 2, z1: SIZE - 1 },
+  { x0: MEADOW.x0 - 2, x1: MEADOW.x1 + 2, z0: MEADOW.z0 - 2, z1: MEADOW.z0 - 1, to: 'hills' },
+  { x0: MEADOW.x0 - 2, x1: MEADOW.x0 - 1, z0: MEADOW.z0, z1: SIZE - 1, to: 'lake' }, // (from z0: the corner stays the north wall's)
+  { x0: MEADOW.x1 + 1, x1: MEADOW.x1 + 2, z0: MEADOW.z0, z1: SIZE - 1, to: 'wood' },
+  { x0: 0, x1: MEADOW.x0 - 3, z0: MEADOW.z0 - 2, z1: MEADOW.z0 - 1, to: 'hills' },
 ];
 export const inMeadow = (x, z) => x >= MEADOW.x0 && x <= MEADOW.x1 + 1 && z >= MEADOW.z0 && z <= MEADOW.z1 + 1;
+// The regions in the order they open: `after` = the region whose knot opens this one (its wall melts); `soon` = still being drawn.
 export const REGIONS = {
   meadow: { name: 'Puddle Meadow', biome: 'wobble' },
-  hills: { name: 'Bumpy Hills', biome: 'wobbleHills', soon: true },
-  lake: { name: 'Slippy Lake', biome: 'wobbleLake', soon: true },
-  wood: { name: 'Shadywood', biome: 'wobbleWood', soon: true },
+  lake: { name: 'Slippy Lake', biome: 'wobbleLake', after: 'meadow' },
+  wood: { name: 'Shadywood', biome: 'wobbleWood', after: 'lake', soon: true },
+  hills: { name: 'Bumpy Hills', biome: 'wobbleHills', after: 'wood', soon: true },
 };
 export const regionAt = (x, z) => (inMeadow(x, z) ? 'meadow' : z < MEADOW.z0 - 2 ? 'hills' : x < MEADOW.x0 ? 'lake' : 'wood');
 export const KNOT = { x: 112, z: 62 };                          // the Big Knot (the end of the chapter) in the middle of the closed page
@@ -40,28 +44,51 @@ export const RING = 10;                                         // the fight's r
 // `wet`: a puddle inside the ring (the water twist: everyone swims slowly, Water creatures at full speed). `pot`: the paint pot's colour
 // a cleared patch leaves (A3: paint-pot hops, wobblelive.js).
 export const PATCHES = [
+  // Puddle Meadow
   { id: 1, x: 112, z: 178, size: 'smudge', region: 'meadow', species: ['sproutle', 'hopsy', 'chirpit'], pot: 0xe8402a },
   { id: 2, x: 86, z: 184, size: 'smudge', region: 'meadow', species: ['beetlet', 'fluffin', 'flutterby'], pot: 0xf2c418 },
   { id: 3, x: 138, z: 184, size: 'tangle', region: 'meadow', species: ['flutterby', 'ripplet', 'kiteling'], pot: 0x2f9be8 },
   { id: 4, x: 84, z: 156, size: 'tangle', region: 'meadow', species: ['bubbuck', 'jellume', 'budling'], wet: true, pot: 0x3fc04a },
   { id: 5, x: 140, z: 156, size: 'tangle', region: 'meadow', species: ['hornbeetle', 'woolumph', 'balloony', 'mossloth'], pot: 0xf07ab8 },
   { id: 6, x: 112, z: 152, size: 'knot', region: 'meadow', species: ['thornox', 'gullop', 'monarchwing', 'bounceroo'], grumble: 'grovebeast', last: true, pot: 0x8a4ee0 },
+  // Slippy Lake (owner 2026-11-11: the ground decides the fight): every ring is on the ice, so everyone slides but Ice creatures. One Ice
+  // monster in each (it keeps its grip), the rest the lake's Bubble ducks and Sky birds and a Water one where there is open water (Ice
+  // moves do half to Water and Ice: a lake of Water monsters would hide the grip behind the type chart, measured: plans/chapter3-world.md).
+  // `holes`: open water in the ice inside the ring ([dx, dz, r]: the water twist there too, a Water creature swims at full speed). The
+  // knot's big one is Blizzbear (an Ice Grumble: it keeps its grip). No smudges: the second region starts with tangles, and `step`: its
+  // monsters are 2 levels over a meadow patch of the same size (scribblefight.js patchFight).
+  { id: 7, x: 41, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['frostling', 'squeaklet', 'skyfin'], pot: 0x46d0e0 },
+  { id: 8, x: 41, z: 152, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'suddly', 'pinwhirl'], pot: 0x9be36a },
+  { id: 9, x: 17, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['flurrydome', 'hippip', 'shellby'], wet: true, holes: [[3, 3, 1.8], [-4, -3, 1.6]], pot: 0x1a9e8f },
+  { id: 10, x: 17, z: 152, size: 'tangle', region: 'lake', step: 2, species: ['snowpaw', 'balloony', 'fizzbomb'], pot: 0x2a3fae },
+  { id: 11, x: 30, z: 178, size: 'knot', region: 'lake', species: ['frostling', 'suddly', 'skyfin'], grumble: 'blizzbear', last: true, wet: true, holes: [[-5, 3, 1.6], [4, -4, 1.5], [6, 5, 1.3]], pot: 0xd6f4ff },
 ];
 export const CAMP_POT = { x: 120, z: 207, colour: 0xff8a1c };    // A3: the Camp's own paint pot (a hop back home)
 export const patchKey = id => `pw:wobble:patch${id}`;
 // Freed creatures (step 6): each patch's monsters live in the meadow as wild creatures once it is cleared (the 4th element: wildafter.js).
 // Owner 2026-11-11: they stay near their own patch ('near:patch<id>'), and some live up on the floating hills ('near:float').
-export const FREED_SPAWNS = PATCHES.flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].flatMap(sp => [
+// One table per region (realms.js spawns by the region's biome): the lake's creatures also live on its islands ('near:isle').
+export const freedSpawns = region => PATCHES.filter(p => p.region === region).flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].flatMap(sp => [
   [sp, p.grumble === sp ? 0.25 : 1, `near:patch${p.id}`, `wobble:${p.id}`],
-  [sp, p.grumble === sp ? 0.15 : 0.5, 'near:float', `wobble:${p.id}`],
+  [sp, p.grumble === sp ? 0.15 : 0.5, region === 'lake' ? 'near:isle' : 'near:float', `wobble:${p.id}`],
 ]));
-// The patches you can fight now: every one not cleared, but a region's knot only once its other patches are clear (step 6: the knot is
-// the region's end). The one rule the arrow, "Where to go" and the fight all read.
+export const FREED_SPAWNS = freedSpawns('meadow');
+// Is a region open (its wall melted)? Puddle Meadow always; any other once the knot of the region before it is cleared.
+export function regionOpen(id, beaten) {
+  const r = REGIONS[id];
+  if (!r?.after) return !!r;
+  const keys = new Set(beaten || []), knot = PATCHES.find(p => p.region === r.after && p.last);
+  return !!knot && keys.has(patchKey(knot.id));
+}
+// The patches you can fight now: every one not cleared in an open region, but a region's knot only once its other patches are clear
+// (step 6: the knot is the region's end). The one rule the arrow, "Where to go" and the fight all read.
 export function openPatches(beaten, list = PATCHES) {
-  const keys = new Set(beaten || []), left = list.filter(p => !keys.has(patchKey(p.id)));
+  const keys = new Set(beaten || []), left = list.filter(p => !keys.has(patchKey(p.id)) && regionOpen(p.region ?? 'meadow', beaten));
   return left.filter(p => !p.last || !left.some(q => q !== p && q.region === p.region));
 }
-export const meadowState = beaten => { const keys = new Set(beaten || []), mine = PATCHES.filter(p => p.region === 'meadow'); return { n: mine.filter(p => keys.has(patchKey(p.id))).length, of: mine.length }; };
+// a region's meter: patches cleared of how many (the chip `🎨 <region> n / of`)
+export const regionState = (beaten, region = 'meadow') => { const keys = new Set(beaten || []), mine = PATCHES.filter(p => p.region === region); return { n: mine.filter(p => keys.has(patchKey(p.id))).length, of: mine.length, name: REGIONS[region]?.name ?? region }; };
+export const meadowState = beaten => regionState(beaten, 'meadow');
 export const patchOf = id => PATCHES.find(p => p.id === id) ?? null;
 
 // Soft bulgy hills: round bumps (x, z, height, width). Hand-placed, away from the patch rings (each ring is flattened anyway).
@@ -73,8 +100,39 @@ const BULGES = [
 ];
 // Big puddles (x, z, radius): water at the ground's height, one block deep.
 export const PUDDLES = [[100, 192, 2.5], [124, 190, 2.5], [123, 164, 2.4], [70, 184, 3], [154, 184, 3]];
-// Slippy Lake (behind the west wall, for later): a wide lake with two islands (x, z, rx, rz)
-export const LAKE = { x: 30, z: 178, rx: 24, rz: 38, isles: [[24, 160, 4], [38, 196, 5]] };
+// Slippy Lake (owner 2026-11-11, plans/chapter3-world.md "Slippy Lake"), behind the meadow's west wall (x 0..59, z 134..223): a frozen
+// lake, its ice a rounded square (|dx/rx|^4 + |dz/rz|^4 <= 1, so the patches' rings in its corners are on the ice), its top block ICE at
+// y LAKE.y (you stand one higher), water under it, a snowy shore rising to the meadow's height. `isles`: snowy islands one block up.
+// `hills`: stepped snow hills in the shore's corners (a cone, one block up every `slope`), each with an ice chute down its side.
+export const LAKE = { x: 30, z: 178, rx: 26, rz: 39, y: BASE - 2, box: { x0: 0, x1: MEADOW.x0 - 3, z0: MEADOW.z0, z1: SIZE - 1 },
+  isles: [{ x: 53, z: 178, r: 4.5 }, { x: 8, z: 178, r: 3 }], hills: [{ x: 55, z: 137, top: BASE + 7 }, { x: 55, z: 219, top: BASE + 7 }], slope: 1.25 };
+export const inLakeBox = (x, z) => x >= LAKE.box.x0 && x <= LAKE.box.x1 && z >= LAKE.box.z0 && z <= LAKE.box.z1;
+export const lakeShape = (x, z) => ((x + 0.5 - LAKE.x) / LAKE.rx) ** 4 + ((z + 0.5 - LAKE.z) / LAKE.rz) ** 4; // <= 1: the ice
+// Ways to move with no button: CHUTES (ice down a hill's side, a push `speed` along it: you shoot out onto the lake and glide on) and
+// LEADS (open water in the ice with a current `speed` that carries you to the east island and lifts you out onto it). Straight runs
+// along z: x0..x1 two wide, from z0 to z1 (dir = +1 south, -1 north). A chute's floor steps down from `from` to `to`.
+export const CHUTES = [
+  { x0: 54, x1: 55, z0: 137, z1: 152, dir: 1, from: BASE + 7, to: BASE - 1, speed: 8 },
+  { x0: 54, x1: 55, z0: 219, z1: 206, dir: -1, from: BASE + 7, to: BASE - 1, speed: 8 },
+];
+export const LEADS = [
+  { x0: 54, x1: 55, z0: 153, z1: 175, dir: 1, speed: 3.6 },
+  { x0: 54, x1: 55, z0: 205, z1: 182, dir: -1, speed: 3.6 },
+];
+const along = (c, z) => (z - c.z0) * c.dir;                     // how far down a chute / lead (0 at its start)
+const runLen = c => Math.abs(c.z1 - c.z0);
+const inRun = (c, x, z) => x >= c.x0 && x <= c.x1 && along(c, z) >= 0 && along(c, z) <= runLen(c);
+export const chuteFloor = (c, z) => c.from - Math.round(along(c, z) * (c.from - c.to) / runLen(c)); // the chute's ice block at z
+const holeAt = (x, z) => PATCHES.some(p => p.holes?.some(([dx, dz, r]) => Math.hypot(x + 0.5 - (p.x + 0.5 + dx), z + 0.5 - (p.z + 0.5 + dz)) <= r));
+const isleAt = (x, z) => LAKE.isles.find(i => Math.hypot(x + 0.5 - i.x - 0.5, z + 0.5 - i.z - 0.5) <= i.r) ?? null;
+// the lake's ground height (the top block) at (x, z) inside its box (pure)
+function lakeHeight(x, z) {
+  const s = lakeShape(x, z);
+  if (s <= 1) return isleAt(x, z) ? LAKE.y + 1 : LAKE.y;
+  let y = s <= 1.25 ? LAKE.y + 1 : BASE;
+  for (const h of LAKE.hills) y = Math.max(y, h.top - Math.floor(Math.hypot(x + 0.5 - h.x - 0.5, z + 0.5 - h.z - 0.5) / LAKE.slope));
+  return y;
+}
 // A river drawn with a ruler that kept slipping: right-angle zigzags, two blocks wide, the east wall -> the puddle at (154, 184).
 export const RIVER = [[162, 174], [153, 174], [153, 184]];
 // Wonky things (the Wizard's beginner drawing): x, z and their own numbers
@@ -99,6 +157,7 @@ export const MUSHROOM = { x: 157, z: 160, stalk: 4, cap: 4 };       // a mushroo
 export const FLOATERS = [
   { x: 69, z: 148, y: 21, r: 3.6, spring: [69, 156] }, { x: 155, z: 146, y: 22, r: 3.6, spring: [155, 154] },
   { x: 66, z: 160, y: 22, r: 3.8 }, { x: 124, z: 215, y: 21, r: 3.6, spring: [124, 208] }, { x: 98, z: 167, y: 23, r: 3.6, spring: [100, 173] },
+  { x: 8, z: 178, y: 20, r: 3.2, spring: [8, 186] }, // Slippy Lake: over the west island, its spring on the ice (glide up to it and jump)
 ];
 // The floating river (owner 2026-11-11: "floating river", nothing to press): water on a paper strip that starts on the ground by the
 // Camp and runs uphill to a floating hill; step in and it carries you up (world.flowAt, read by Player in water).
@@ -112,6 +171,7 @@ export const CRAYONS = [{ x: 71, z: 203, h: 13, c: 'fire' }, { x: 158, z: 191, h
 const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
 // The ground's height at (x, z) (pure: the checks and the look use it too). Patch rings are flat (a gentle edge outside them), the Camp is flat.
 export function heightAt(x, z) {
+  if (inLakeBox(x, z)) return lakeHeight(x, z);
   let h = 0;
   for (const [bx, bz, a, w] of BULGES) { const d2 = ((x - bx) ** 2 + (z - bz) ** 2) / (w * w); if (d2 < 9) h += a * Math.exp(-d2); }
   let flat = 1 - smooth(CAMP.r, CAMP.r + 8, Math.hypot(x - CAMP.x, z - CAMP.z));
@@ -158,11 +218,7 @@ export function wobbleLand(world) {
   world.arrivals.wobble = [CAMP.x + 0.5, BASE + 1, CAMP.z + 2.5, 0]; // you arrive in the Camp, looking north at Puddle Meadow (yaw 0)
   world.rests.length = 0; world.rests.push(world.arrivals.wobble);      // a lost fight rests you at the Camp (realms.lost: the nearest rest)
   world.healer = [HEALER.x, BASE + 1, HEALER.z, 0]; // (npc.js: Healer Stella, as in the Dream and the Portal House)
-  // Slippy Lake behind the west wall (for later): a wide lake one block deep with two islands
-  for (let x = 0; x < MEADOW.x0 - 2; x++) for (let z = MEADOW.z0; z < D; z++) {
-    if (Math.hypot((x + 0.5 - LAKE.x) / LAKE.rx, (z + 0.5 - LAKE.z) / LAKE.rz) > 1 || LAKE.isles.some(([ix, iz, r]) => Math.hypot(x + 0.5 - ix, z + 0.5 - iz) < r)) continue;
-    const y = world.ground[x + z * W]; put(x, y, z, B.WATER); put(x, y - 1, z, B.SAND);
-  }
+  slippyLake(world, put);
   // Shadywood behind the east wall (for later): tall straight trees close together
   for (let x = WOOD.x0; x <= WOOD.x1; x += WOOD.step) for (let z = WOOD.z0; z <= WOOD.z1; z += WOOD.step) {
     const tx = x + ((x * 13 + z * 7) % 3) - 1, tz = z + ((x * 5 + z * 11) % 3) - 1, g = heightAt(tx, tz), h = 9 + ((tx + tz) % 4);
@@ -249,16 +305,70 @@ export function wobbleLand(world) {
   // B (owner 2026-11-11: "why can't I ride or fly my creature here?"): the page keeps out building, never riders (`rideIn`); the
   // Scribble's wall fences riders out too (its keep has no rideIn). A rider who reaches a patch hops off as the fight starts (scribble.js).
   world.keeps.push({ name: 'wobble', rideIn: true, protect: [{ x0: 0, x1: W - 1, y0: 0, y1: 47, z0: 0, z1: D - 1 }], wallText: "This is the Wizard's drawing. No building here!" });
-  world.keeps.push({ name: 'scribble-wall', protect: walls, wallText: 'The Scribble walled this off. Clear Puddle Meadow first!', rideText: 'The Scribble walled this off. Clear Puddle Meadow first!' });
+  world.keeps.push({ name: 'scribble-wall', protect: walls, wallText: 'The Scribble walled this off. Clear the big knot first!', rideText: 'The Scribble walled this off. Clear the big knot first!' });
   world.people ??= []; // the Wizard at the Camp (step 6): his words follow your progress (WIZARD_LINES; scribble.js says them on a win)
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
-  world.flowAt = riverFlow; // the floating river's current (player.js, in water only)
+  world.flowAt = p => riverFlow(p) ?? lakeFlow(p); // the floating river's current, the lake's chutes and leads (player.js)
+  world.groundAt = p => iceUnder(world, p); // Slippy Lake: on ice you slide (groundrules.js; the player and the fight ask it)
   world.spawnSpot = (arg, near) => wobbleSpot(world, arg, near); // creatures.js: where 'near:<arg>' creatures appear
   world.parts.push({ id: 'wobble', live: 'wobble' }); // wobblelive.js: the paint-pot hops (A3)
   world.realmBiome = (x, z) => REGIONS[regionAt(x, z)].biome;
   world.spawnAt = world.arrivals.wobble;
   return world;
+}
+
+// Slippy Lake's blocks (the heights are heightAt's): ice over water inside the lake, snow on the shore, the islands and the hills, holes of
+// open water in two rings, the chutes (an ice floor on snow, a snow kerb each side) and the leads (open water with sand under it).
+function slippyLake(world, put) {
+  const { x0, x1, z0, z1 } = LAKE.box;
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    const y = lakeHeight(x, z), ice = lakeShape(x, z) <= 1 && !isleAt(x, z);
+    if (ice) { put(x, y, z, holeAt(x, z) ? B.WATER : B.ICE); put(x, y - 1, z, B.WATER); put(x, y - 2, z, B.SAND); }
+    else { put(x, y, z, B.SNOW); put(x, y - 1, z, B.DIRT); }
+  }
+  for (const c of CHUTES) for (let k = 0; k <= runLen(c); k++) {
+    const z = c.z0 + k * c.dir, f = chuteFloor(c, z);
+    for (let x = c.x0 - 1; x <= c.x1 + 1; x++) {
+      const kerb = x < c.x0 || x > c.x1, top = kerb ? f + 1 : f;
+      for (let y = world.ground[x + z * world.W] + 1; y <= top; y++) put(x, y, z, B.SNOW);
+      for (let y = top + 1; y <= top + 8; y++) put(x, y, z, B.AIR); // (carved through the hill)
+      if (!kerb) put(x, f, z, B.ICE);
+      world.ground[x + z * world.W] = top;
+    }
+  }
+  for (const l of LEADS) for (let k = 0; k <= runLen(l); k++) {
+    const z = l.z0 + k * l.dir;
+    for (let x = l.x0; x <= l.x1; x++) { for (let y = LAKE.y + 1; y <= LAKE.y + 3; y++) put(x, y, z, B.AIR); put(x, LAKE.y, z, B.WATER); put(x, LAKE.y - 1, z, B.WATER); put(x, LAKE.y - 2, z, B.SAND); world.ground[x + z * world.W] = LAKE.y; }
+  }
+  // a little pine on the east island (where the leads come in), a snowy one on the west
+  for (const [i, h] of [[LAKE.isles[0], 5], [LAKE.isles[1], 3]]) {
+    const g = LAKE.y + 1;
+    for (let k = 1; k <= h; k++) put(i.x, g + k, i.z, B.PINE_LOG);
+    for (let dy = 2; dy <= h + 1; dy++) { const r = dy > h ? 0 : dy < h - 1 ? 1 : 0; for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if ((dx || dz || dy > h) && world.get(i.x + dx, g + dy, i.z + dz) === B.AIR) put(i.x + dx, g + dy, i.z + dz, B.PINE_LEAVES); }
+  }
+}
+// The ground's rule where p stands (groundrules.js): ice under your feet (or under you in a jump, up to 3 blocks down) = slide.
+// (Over an edge, held up by the ice behind you, the corners of your feet count: you glide off the edge, never stop on it.)
+export function iceUnder(world, p) {
+  if (!inLakeBox(Math.floor(p.x), Math.floor(p.z))) return null;
+  const under = (x, z) => { for (let y = Math.floor(p.y - 0.05); y >= Math.floor(p.y) - 3; y--) { const b = world.get(x, y, z); if (b !== B.AIR) return b; } return B.AIR; };
+  const b = under(Math.floor(p.x), Math.floor(p.z));
+  if (b === B.ICE) return GROUND.ice;
+  if (b !== B.AIR && b !== B.WATER) return null;
+  for (const [dx, dz] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) if (under(Math.floor(p.x + dx), Math.floor(p.z + dz)) === B.ICE) return GROUND.ice;
+  return null;
+}
+// The lake's pushes (blocks a second): down a chute, along a lead (in its water; the last bit lifts you out onto the island), or null.
+export function lakeFlow(p) {
+  const x = Math.floor(p.x), z = Math.floor(p.z);
+  for (const c of CHUTES) if (inRun(c, x, z) && p.y >= chuteFloor(c, z) + 0.5 && p.y < chuteFloor(c, z) + 3) return { x: ((c.x0 + c.x1 + 1) / 2 - p.x) * 2, z: c.dir * c.speed, y: 0 };
+  for (const l of LEADS) if (p.x >= l.x0 - 0.3 && p.x <= l.x1 + 1.3 && along(l, z) >= 0 && along(l, z) <= runLen(l) + 1) {
+    const end = runLen(l) - along(l, z);
+    if (p.y > LAKE.y + (end < 2.5 ? 2.2 : 0.95)) continue; // (only a swimmer in it; the ice beside it stays still)
+    return { x: ((l.x0 + l.x1 + 1) / 2 - p.x) * 2, z: l.dir * l.speed, y: end < 2.5 ? 10.5 : 0 }; // (10.5: a push that climbs one block out of the water)
+  }
+  return null;
 }
 
 // The guide in Wobbleland (step 6 fills in the patches through scribble.js; until then: the nearest uncleared patch, else the way back).
@@ -280,9 +390,15 @@ export function wobbleSpot(world, arg, near) {
     const a = rnd() * Math.PI * 2, r = 1 + rnd() * 1.6, x = Math.floor(f.x + Math.cos(a) * r), z = Math.floor(f.z + Math.sin(a) * r);
     return world.get(x, f.y + 1, z) === B.AIR && world.get(x, f.y, z) === B.GRASS ? { x, y: f.y + 1, z } : null; // (on the hill's grass)
   }
+  if (arg === 'isle') { // Slippy Lake: on an island's snow
+    const i = LAKE.isles[Math.floor(rnd() * LAKE.isles.length)];
+    if (!ok(i.x, i.z)) return null;
+    const a = rnd() * Math.PI * 2, r = 1.2 + rnd() * (i.r - 1.4), x = Math.floor(i.x + 0.5 + Math.cos(a) * r), z = Math.floor(i.z + 0.5 + Math.sin(a) * r);
+    return world.get(x, LAKE.y + 2, z) === B.AIR && world.get(x, LAKE.y + 1, z) === B.SNOW ? { x, y: LAKE.y + 2, z } : null;
+  }
   const p = PATCHES.find(q => `patch${q.id}` === arg);
   if (!p || !ok(p.x, p.z)) return null;
-  const a = rnd() * Math.PI * 2, r = 3 + rnd() * 9, x = Math.floor(p.x + Math.cos(a) * r), z = Math.floor(p.z + Math.sin(a) * r);
+  const a = rnd() * Math.PI * 2, r = 3 + rnd() * 8.4, x = Math.floor(p.x + Math.cos(a) * r), z = Math.floor(p.z + Math.sin(a) * r);
   return { x, y: heightAt(x, z) + 1, z };
 }
 const SIZE_RANK = { smudge: 0, tangle: 1, knot: 2 };
@@ -305,10 +421,13 @@ export function paperDoor(world) {
   return { cells, stand: [wz.x + 0.5, y0, z + 2.5, Math.PI] };
 }
 // The Wizard's words after a patch is cleared (n = patches cleared in the region, of = how many it has).
-export function wizardLine(n, of) {
-  if (n >= of) return '🧙 Puddle Meadow is bright again! Next: Bumpy Hills.';
-  if (n === 1) return '🧙 You did it! Look, the colour is coming back!';
-  if (n === of - 1) return '🧙 Only the big knot is left. Be careful: something grumbles in there!';
+const NEXT_WORDS = { meadow: 'Next: Slippy Lake, through the west wall!', lake: 'Next: Shadywood, through the east wall of the meadow.' };
+const KNOT_WORDS = { meadow: 'Be careful: something grumbles in there!', lake: 'Be careful: something big skates in there!' };
+export function wizardLine(n, of, region = 'meadow') {
+  const name = REGIONS[region]?.name ?? 'Puddle Meadow';
+  if (n >= of) return `🧙 ${name} is bright again! ${NEXT_WORDS[region] ?? ''}`.trim();
+  if (n === 1) return region === 'lake' ? '🧙 You did it! Ice is slippy, but you kept your feet!' : '🧙 You did it! Look, the colour is coming back!';
+  if (n === of - 1) return `🧙 Only the big knot is left. ${KNOT_WORDS[region] ?? KNOT_WORDS.meadow}`;
   return `🧙 Wonderful! ${of - n} more to go.`;
 }
 export const PAPER_WORDS = {

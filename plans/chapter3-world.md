@@ -548,6 +548,156 @@ iPad matters most for the dark (it must stay readable on a small screen).
 **Decided (owner 2026-11-11):** Slippy Lake first, and **the ice slides you when you walk on the lake too**, not only in fights (a fun
 way to move with no button, and the ground's rule is obvious before the first fight).
 
+## Slippy Lake (built 2026-11-11, evening)
+
+Behind `?preview` like the rest of Wobbleland; the arena (`arena.html`, `src/arena/`) is untouched, turn-based battles do not change, and
+in Puddle Meadow (and in the main world's test patch) the fight and walking are exactly as before (no ground rule there: `world.groundAt` is
+undefined everywhere but Wobbleland, and in Wobbleland it answers only on ice). Each item: what, why with an example, where to change it,
+the bot numbers. Pictures: `plans/chapter3/wobble-lake*.png`.
+
+### 1. The ground rule: one object the player and the fight both ask
+
+**What:** `src/groundrules.js` (pure, no imports): `GroundRule` (plain ground: you go where the stick says at once) and `Ice`. A world says
+which rule holds where with `world.groundAt(pos)` (Wobbleland: `iceUnder` in `src/wobbleland.js`: ice under your feet, or under you in a jump),
+like `world.flowAt` for currents. `player.js` (`walkStep`) and `scribblefight.js` (`groundOf(world).rule`, `walk`) both move by the rule's
+`move`. **Shadywood and Bumpy Hills follow the same pattern:** one more subclass (the dark: `sight(type)`; the high ground: `climb(type)`)
+and one line in `GROUND`; nothing else needs to know which ground it is.
+
+**The ice, in numbers** (`Ice` in `src/groundrules.js` line 27):
+- **Letting go:** the speed eases to nothing at `k` 2.15 a second, so from a walk (4.3) you glide **1.9 blocks** (a sprint 2.7), the same at
+  60 and 20 fps (`tests/wobblenode.mjs`, the real Player). Example: walk west onto the lake, let go of W: you keep going about two blocks
+  and leave two dark skid lines.
+- **Getting going and turning is slower than stopping** (`go` 1.0): on ice it is hard to start and to turn. **Why:** with `go` = `k` the slide
+  made no measurable difference to any bot (a creature at a walk gets 2.5 blocks out of a red warning in its 0.95 s either way); with `go`
+  1.0 a creature that slips and sees a warning late gets out of it later, which is where keeping your feet shows (below). The glide after
+  letting go stays the decided "about 2 blocks".
+- **Ice creatures keep their grip:** they start, turn and stop at once and leave no skid marks; so do **Ice monsters**. Riding an Ice creature
+  on the lake keeps its grip too (`riding.js` puts the ride's type on `player.ride`); a Fire ride glides 2.3.
+- **In a fight:** your creature and every slipping monster glide; a rush or a dodge skids on after it ends (`rush` 4, `dodge` 3 a second of
+  speed left: about 2 and 1.4 blocks); **a slipping monster's charge overshoots** (`past` 1.5: its red line is drawn that much longer, so
+  you see it) and skids on; and **slipping monsters skate at you** (`pattern`: on ice they charge, whatever their nature; Ice monsters keep
+  their own way of fighting). **Why the last one:** every Ice, Water, Bubble and Sky creature lobs by its nature (`patternOf`), so without it
+  nobody on the lake would ever charge and "monsters overshoot their charges" would never be seen.
+- **Skid marks** (`src/skidmarks.js`, one instanced mesh): under you while you slide (`wobblelive.js` `Skids`) and under every fighter
+  that slides (`scribble.js`). Picture `wobble-lake-skid.png`, `wobble-lake-fight.png` (your creature's tracks behind it).
+- **Tried and dropped:** a monster still skidding after its charge could not start an attack (a window to hit it). It helped mashers more
+  than anyone (a neutral team's mashing on one patch went to 8 / 24), so it is gone.
+
+### 2. The lake as terrain (`src/wobbleland.js`, `LAKE` line 107)
+
+**What:** behind the meadow's west wall (x 0..59, z 134..223): the ice is a rounded square (`lakeShape`: |dx/26|^4 + |dz/39|^4 <= 1, so the
+rings in its corners are on the ice), ICE over water at y 8 (you stand one lower than in the meadow), a snowy shore rising to the meadow's
+height, two snowy islands (`LAKE.isles`), two stepped snow hills in the east corners (`LAKE.hills`). **Five patches, all on the ice**
+(`tests/wobblecheck.mjs`: every ring 100 % ice or open water, 100 % walkable):
+
+| Patch | Where | Size | Monsters (the Ice one keeps its grip) |
+| --- | --- | --- | --- |
+| 7 | south-east, nearest the way in | tangle | Frostling, Squeaklet, Skyfin |
+| 8 | north-east | tangle | Waddlice, Suddly, Pinwhirl |
+| 9 | south-west, **two holes of open water** in its ring | tangle | Flurrydome, Hippip, Shellby (a Water one: it swims fast in the holes) |
+| 10 | north-west | tangle | Snowpaw, Balloony, Fizzbomb |
+| 11 | the middle, three holes | **knot** | Frostling, Suddly, Skyfin + **Blizzbear**, an Ice Grumble (it keeps its grip; its back is its weak spot as in the meadow) |
+
+**Choices and why:**
+- **One Ice monster per patch, the rest Bubble ducks and Sky birds** (not "Ice and Water mostly"): Ice moves do half to Water and Ice. With
+  mostly Ice and Water monsters, an Ice team hit everything at half and won slower than a type-neutral team (person bot, first try: the Ice
+  team 0 / 4 on the knot), so the grip could never show. Example: an Ice team's Snow Storm does x2 to Skyfin, x1 to Squeaklet, x0.5 to Frostling.
+- **No smudges; tangles from the start, 2 levels up** (`step: 2` on each lake patch, read by `patchFight` in `src/scribblefight.js` line
+  131): the second region is a step harder. As smudges (3 monsters, x2 HP, charging often) the first two lake patches were mashed by the
+  neutral team 7-8 / 24.
+- **The knot has three monsters and its Grumble, no extra levels:** with four and +2 levels no person or kid bot won it on the ice (0 / 6),
+  even with the Ice team.
+- **The way in:** the meadow's knot now melts **only the west wall** (`WALLS` `to: 'lake'`; a wall melts when the region behind it opens,
+  `REGIONS` `after`: lake after meadow, Shadywood after the lake, Bumpy Hills after Shadywood). Before, all three walls melted into empty
+  "coming soon" land. A new wall closes the lake from Bumpy Hills (north). The lake's knot melts the meadow's east wall: "Shadywood is still
+  being drawn. Coming soon!".
+- **The loop is the meadow's:** the meter chip shows the region you stand in (`🎨 Slippy Lake n / 5`), the arrow and "Where to go" list the
+  open patches (`openPatches`: a region's patches only once it is open, its knot last), the Wizard's words per region (`wizardLine(n, of,
+  region)`: "Ice is slippy, but you kept your feet!", "Something big skates in there!"), +3 Capture Cubes and the colour flood per patch,
+  the whole lake in colour after its knot. Freed creatures stay near their patch and live on the islands (`near:isle`, the lake's own
+  spawn table `freedSpawns('lake')`). Scribble bugs and paint pots come with the lake once it opens.
+
+### 3. Ways to move with no button
+
+- **Ice chutes** (`CHUTES`): a stepped snow hill in each east corner (one block up every 1.25: walk and jump up it), an ice chute down its
+  side with a snow kerb each side; standing in it pushes you down (`lakeFlow`, 8 a second) and, because the push is part of your glide on
+  ice, you shoot out at the bottom at about 8 a second (`player.js`: on ice a push under you is part of what the glide eases toward).
+- **Leads** (`LEADS`): open water in the ice running from each chute's foot to the east island, with a current (3.6 a second); at the
+  island a last push climbs you out (a push of 10.5 up: one block out of the water). **Checked** (`tests/wobblenode.mjs`, the real Player,
+  no keys at all): from either chute's top you land on the east island in 9.5 s, at 60 and 20 fps; in a browser with real time the same
+  (spec part `lake`). Picture `wobble-lake-chute.png`.
+- **A floating hill over the west island**, its drawn spring on the ice beside it (`FLOATERS`, the sixth): Space on the spring and steer:
+  you land on top (a chest, +3 cubes once); a plain jump from the island reaches 11.4 of the 21 needed.
+- **Not built:** the springs on the shore to climb the hills (the hills are low steps), a current between the two islands.
+
+### 4. The look (behind the WOBBLE define: the main world is byte for byte the same)
+
+- **Ice that is clearly ice**, coloured in or under the Scribble's grey: on the lake's top faces the shader draws one smooth pale-blue sheet
+  (no block grid, the tile's pixels only a faint tone) with long shiny streaks slanting across it in world space (`wobIce` in `WOBBLE_FRAG`,
+  `src/caves.js`; which cells are ice is the green channel of the colour map, `iceMap` in `src/wobblelook.js`). Under the Scribble it is a
+  greyer blue, coloured in a bright ice blue. Open water stays water. The chutes and the leads are always in colour (like the floating
+  river: a child must see the water and the slide to step in).
+- **Skid lines** (above), **the crayon and the wobbly edges** as in the meadow (the same shader), snow on the shore, the islands and hills.
+- Pictures: `wobble-lake.png` (from the east shore, grey), `wobble-lake-skid.png`, `wobble-lake-chute.png`, `wobble-lake-fight.png`,
+  `wobble-lake-knot.png`, `wobble-lake-bright.png` (the lake after its knot), `wobble-lake-ipad-fight.png` (the iPad, a fight on the ice).
+
+### 5. Bot numbers (`node tests/wobblebots.mjs` `runLake`, spec `wobble` part `lakebots`; every lake patch, 60 and 20 fps)
+
+Three teams at Lv 30: **Ice** (Snowpaw, Flurrydome, Waddlice: base stats close to the neutral team's), **neutral** (Owlucid x3, Mind),
+**the owner's** (Graphitan 56, Kitegale 91, Blazehound 89). Mashing 12 fights a frame rate (the owner's 4), skilled and person 2 each.
+"Loses" = % of the squad's HP lost a minute.
+
+| Patch | Mashing won: Ice / neutral / owner | Skilled (all won): Ice / neutral / owner, time and loses | Person won: Ice / neutral / owner, time and loses | Neutral person, ice off |
+| --- | --- | --- | --- | --- |
+| 7 tangle | **24 / 24** / 2 / 24 / 7 / 8 | 25-30 s, 20 % / 32-37 s, 11 % / 22-43 s, 36 % | 4 / 4 48-75 s 40 % / 4 / 4 57-79 s 62 % / 4 / 4 37-52 s 37 % | 4 / 4, 4 % |
+| 8 tangle | **24 / 24** / 3 / 24 / 7 / 8 | 25-47 s, 19 % / 25-41 s, 46 % / 26-49 s, 22 % | 4 / 4 50-81 s 37 % / 4 / 4 59-88 s 59 % / 4 / 4 37-69 s 46 % | 4 / 4, 4 % |
+| 9 tangle, holes | **20 / 24** / 1 / 24 / 4 / 8 | 47-55 s, 6 % / 35-54 s, 30 % / 27-49 s, 29 % | 3 / 4 113-145 s 41 % / 3 / 4 92-102 s 52 % / 4 / 4 51-77 s 56 % | 4 / 4, 0 % |
+| 10 tangle | **24 / 24** / 0 / 24 / 6 / 8 | 27-36 s, 11 % / 28-50 s, 39 % / 24-53 s, 10 % | 4 / 4 49-72 s 46 % / 4 / 4 56-76 s 55 % / 4 / 4 49-68 s 56 % | 4 / 4, 46 % |
+| 11 knot | 0 / 24 / 0 / 24 / 0 / 8 | 57-101 s, 4 % / 62-81 s, 20 % / 55-68 s, 8 % | 3 / 4 154-183 s 36 % / 3 / 4 110-157 s 81 % / 3 / 4 71-96 s 87 % | 4 / 4, 18 % |
+
+**What the numbers say:**
+- **Skilled wins every fight with all three teams; mashing with the neutral team stays under a quarter** (at most 3 / 24).
+- **Mashing with the Ice team wins the four tangles** (20-24 / 24). That is not the ice: the same Ice team mashes Puddle Meadow's patch 1
+  8 / 8 too, and with the ice turned off it mashes lake patch 7 8 / 8. Its kit is many shots and rushes (mashing a big blast only makes a weak
+  puff, which is what stops the neutral team), and the lake's birds take its Ice moves x2. The owner's team mashes them too (it did in the
+  meadow). Judged as in the meadow: with a type-neutral team (question 1 below).
+- **How much the Ice type helps:** a skilled Ice team loses a third to a half of the HP a neutral one does on four of the five patches
+  (e.g. patch 8: 19 % vs 46 % a minute, the knot 4 % vs 20 %), and the person bot with the Ice team loses less everywhere (the knot: 36 % vs
+  81 % a minute; while tuning, 6 fights each: Ice 6 / 6 won, neutral 4 / 6). Part of that is the type chart (an Ice monster's attacks do half
+  to Ice creatures); the grip alone is small (next point).
+- **The knot is the region's longest fight** (a person 1.5-3 minutes); the kid bot (sees a warning 0.35 s late, no dodge) never wins it.
+- **The grip alone** (the Ice team's kid bot with its grip, and the same bot with the grip taken away for the measurement only): with its grip it loses 70, 68, 56, 52 and 110 % of its HP a minute on patches 7-11, slipping 62, 104, 53, 62 and 101 %
+  (8 fights each; it wins every tangle either way and never the knot).
+  Small and noisy: at 2 blocks of glide the slide costs little. The arena's Ice Lake (`slide` 0.75) was about four times as slippery.
+- **What the ice costs a team that slips:** the neutral person bot loses 52-62 % a minute on the lake's tangles and 0-4 % with the ice
+  turned off on three of them (46 % on patch 10, whose Fizzbomb charges anyway), but most of that is the monsters skating at you (on plain
+  ground they lob).
+
+### 6. Checks
+
+- `node tests/wobblecheck.mjs`: the meadow as before; the lake's patches cannot be reached before the west wall melts, all can after it,
+  nothing in Bumpy Hills or Shadywood can; lake rings 100 % ice, 100 % walkable; the chutes step down one block at a time; the leads are water
+  and end at an island; the arrow-following kid reaches all eleven patches (1, 2, 4, 5, 3, 6, then 8, 10, 9, 7, 11).
+- `node tests/wobblenode.mjs` (spec part `ice`): the glide (1.9 at 60 and 20 fps, sprint 2.7), an Ice ride 0, a Fire ride 2.3, the meadow 0,
+  the chutes to the island with no keys, the lake's floating hill only by its spring, in a fight a Fire creature glides 1.8 and an Ice one 0,
+  in the meadow 0, a slipping monster's red line 10.5 vs 9.
+- Spec part `lake` (real keys) and `lakeipad` (the joystick): walls, chip, arrow, rows, a glide with skid marks, a chute ride, walking into
+  patch 7 starts its fight on the ice (Frostling keeps its grip, the other two slip), a win (key, +3 cubes), freed creatures, a reload, the
+  knot with Blizzbear, the lake in colour and the east wall gone. The specs `jump` and `water` (the player) and `scribble` part `bots` (the main
+  world's test patch) are green: nothing changed off the lake.
+
+### 7. Questions for the owner (Slippy Lake)
+
+1. **An Ice team can win the lake's tangles by mashing** (as your own team can in Puddle Meadow). Is that fine (the right team for the place
+   should have it easy), or should mashing lose with every team? That would be a change to the fight everywhere, not only on the lake.
+2. **How slippery?** The glide is the decided "about 2 blocks", and the grip only helps a little at that. Should the lake be more slippery
+   (the arena's ice was about four times as slippery, and there an Ice creature had a big advantage)?
+3. **Slipping monsters skate at you** (they all charge on the ice). Good, or should they keep their own way of fighting?
+4. The lake's monsters are **one Ice monster per patch plus ducks and birds**, not mostly Water (so an Ice team is not slowed down by the type
+   chart). OK?
+5. The meadow's knot now opens **only the lake**, not all three walls; Shadywood opens after the lake. OK?
+6. Next: **Shadywood** (the dark) with the same kind of ground rule?
+
 ## 0. The owner's decisions (2026-11-11)
 
 | Question | Decision |

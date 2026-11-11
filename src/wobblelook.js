@@ -10,7 +10,7 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState, inMeadow, regionAt, RIVER_UP } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, regionState, regionOpen, regionAt, RIVER_UP, CHUTES, LEADS } from './wobbleland.js';
 import { B } from './blocks.js';
 import { createWobbleSky } from './wobblesky.js'; // C3: a child's sky
 
@@ -35,15 +35,25 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
   U.uWobColour.value = tex;
-  let active = false, world = null, floods = [], sig = '', lifted = [];
+  let active = false, world = null, floods = [], sig = '', lifted = [], ice = new Uint8Array(N * N);
+  // Slippy Lake: which cells have ice on top (the shader draws it as ice even under the Scribble's grey)
+  function iceMap() {
+    ice.fill(0);
+    if (!world?.get) return;
+    for (let x = 0; x < SIZE; x++) for (let z = 0; z < SIZE; z++) {
+      const y = world.ground?.[x + z * world.W];
+      if (y != null && world.get(x, y, z) === B.ICE) ice[Math.floor(x / WOBBLE_LOOK.cell) + Math.floor(z / WOBBLE_LOOK.cell) * N] = 255;
+    }
+  }
   let btn = null, shown = null, sky = null, splats = [];
   const mats = ['solid', 'water', 'glow'];
   // how coloured a texel's middle is (0..1): the Camp, cleared patches (a flood grows from 0 to its radius), cleared regions
   function paint() {
     const keys = new Set(game.beaten || []);
-    const knotDone = PATCHES.filter(p => p.last).some(p => keys.has(patchKey(p.id)));
+    const bright = new Set(PATCHES.filter(p => p.last && keys.has(patchKey(p.id))).map(p => p.region)); // a region whose knot is cleared is all in colour
     const river = []; // the floating river is always in colour (a child must see it is water to step in)
     for (let z = RIVER_UP.z1; z <= RIVER_UP.z0; z += 4) river.push([(RIVER_UP.x0 + RIVER_UP.x1 + 1) / 2, z, 4]);
+    for (const c of [...CHUTES, ...LEADS]) for (let z = Math.min(c.z0, c.z1); z <= Math.max(c.z0, c.z1); z += 4) river.push([(c.x0 + c.x1 + 1) / 2, z, 3.5]); // (Slippy Lake's chutes and leads too)
     const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...river, ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat])];
     for (const p of PATCHES) if (keys.has(patchKey(p.id))) {
       const f = floods.find(q => q.id === p.id);
@@ -51,10 +61,10 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     }
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const x = (i + 0.5) * WOBBLE_LOOK.cell, z = (j + 0.5) * WOBBLE_LOOK.cell;
-      let v = knotDone && inMeadow(x, z) ? 1 : 0;
+      let v = bright.has(regionAt(x, z)) ? 1 : 0;
       for (const [cx, cz, r] of circles) if (r > 0) v = Math.max(v, Math.min(1, Math.max(0, (r - Math.hypot(x - cx, z - cz)) / 3)));
       const k = (i + j * N) * 4;
-      data[k] = data[k + 1] = data[k + 2] = Math.round(v * 255); data[k + 3] = 255;
+      data[k] = data[k + 2] = Math.round(v * 255); data[k + 1] = ice[i + j * N]; data[k + 3] = 255; // (g: Slippy Lake's ice, for its look)
     }
     tex.needsUpdate = true;
   }
@@ -84,7 +94,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       sky?.dispose(); sky = null;
       if (active && WOBBLE_LOOK.sky) sky = createWobbleSky(scene);
       uniforms();
-      if (active) paint();
+      if (active) { iceMap(); paint(); }
     },
     // a patch was just cleared: its colour floods out (the key is already in game.beaten)
     flood(id) { if (!active) return; floods = floods.filter(f => f.id !== id); floods.push({ id, t: 0 }); },
@@ -108,11 +118,11 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       if (!active) return;
       uniforms();
       sky?.update(dt, camera);
-      const m = meadowState(game.beaten); // the region's meter (step 6)
-      if (m.n >= m.of && !world.wobbleMelted) api.meltWall(); // step 7: the knot cleared: the Scribble's wall melts away (live cells only)
-      const reg = world.wobbleMelted && game.player ? regionAt(game.player.pos.x, game.player.pos.z) : 'meadow';
-      if (reg !== 'meadow' && !game.toldOnce?.has(`wobble-${reg}`)) { game.toldOnce?.add(`wobble-${reg}`); game.ui?.toast(`🧙 ${REGIONS[reg].name} is still being drawn. Coming soon!`); }
-      if (!game.inBattle && !game.scribble?.fighting) game.ui?.setScore?.({ text: `🎨 Puddle Meadow ${m.n} / ${m.of}`, done: m.n >= m.of });
+      api.meltWall(); // step 7: a knot cleared: the Scribble's wall to the next region melts away (live cells only)
+      const here = game.player ? regionAt(game.player.pos.x, game.player.pos.z) : 'meadow';
+      if (REGIONS[here]?.soon && regionOpen(here, game.beaten) && !game.toldOnce?.has(`wobble-${here}`)) { game.toldOnce?.add(`wobble-${here}`); game.ui?.toast(`🧙 ${REGIONS[here].name} is still being drawn. Coming soon!`); }
+      const reg = REGIONS[here]?.soon || !regionOpen(here, game.beaten) ? 'meadow' : here, m = regionState(game.beaten, reg); // the region's meter (step 6): the one you are in
+      if (!game.inBattle && !game.scribble?.fighting) game.ui?.setScore?.({ text: `🎨 ${m.name} ${m.n} / ${m.of}`, done: m.n >= m.of });
       const s = (game.beaten || []).filter(k => k.startsWith('pw:wobble:')).join();
       if (floods.length) { for (const f of floods) f.t += dt; paint(); floods = floods.filter(f => f.t < WOBBLE_LOOK.flood); }
       else if (s !== sig) paint();
@@ -137,17 +147,24 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       for (const o of scene.children) lift(o, 0);
     },
     afterRender() { for (const [o, l] of lifted) o.position.y -= l; lifted = []; },
-    // step 7: the wall to Bumpy Hills melts (drawn with setLive: never an edit, so a reload melts it again from the saved knot key)
+    // step 7: a region's knot cleared: the walls to the region it opens melt (wobbleland.js WALLS `to`, REGIONS `after`; drawn with
+    // setLive: never an edit, so a reload melts them again from the saved knot keys). The walls still standing stay a keep.
     meltWall() {
       const w = world, boxes = w?.wobble?.walls;
-      if (!boxes || w.wobbleMelted) return;
-      w.wobbleMelted = true;
-      w.keeps = (w.keeps || []).filter(k => k.name !== 'scribble-wall');
-      w.fenceBoxes = null; // (world.js caches the riders' fences: the wall's goes with it)
-      for (const box of boxes) for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = 1; y < 47; y++) {
-        const b = w.get(x, y, z);
-        if (b !== B.AIR && y > (w.ground?.[x + z * w.W] ?? 0)) w.setLive(x, y, z, B.AIR);
+      if (!boxes) return;
+      w.wobbleMelted ??= new Set();
+      const go = boxes.filter(b => !w.wobbleMelted.has(b) && regionOpen(b.to, game.beaten));
+      if (!go.length) return;
+      for (const box of go) {
+        w.wobbleMelted.add(box);
+        for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = 1; y < 47; y++) {
+          const b = w.get(x, y, z);
+          if (b !== B.AIR && y > (w.ground?.[x + z * w.W] ?? 0)) w.setLive(x, y, z, B.AIR);
+        }
       }
+      const keep = (w.keeps || []).find(k => k.name === 'scribble-wall'), left = boxes.filter(b => !w.wobbleMelted.has(b));
+      if (keep) { if (left.length) keep.protect = left; else w.keeps = w.keeps.filter(k => k !== keep); }
+      w.fenceBoxes = null; // (world.js caches the riders' fences: the melted walls' go with it)
     },
     // ?preview: the pause screen's switch
     toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },

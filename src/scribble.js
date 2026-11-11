@@ -17,7 +17,8 @@ import { KIND_WORD } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 const LIVE_CHARGE = LIVE.charge;
 import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle, patchFight } from './scribblefight.js';
-import { PATCHES, patchKey, meadowState, wizardLine, openPatches } from './wobbleland.js'; // chapter 3 step 5: Wobbleland's patches from data
+import { SkidMarks } from './skidmarks.js'; // Slippy Lake
+import { PATCHES, patchKey, regionState, wizardLine, openPatches } from './wobbleland.js'; // chapter 3 step 5: Wobbleland's patches from data
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
@@ -173,6 +174,7 @@ export function createScribble(game) {
   const group = new THREE.Group(); group.name = 'scribble';
   scene?.add(group);
   let parts = null; // everything drawn for one patch
+  let skids = null; // Slippy Lake's skid marks (skidmarks.js), made at the first slide
   let t = 0, phaseT = 0, boilT = 0, boil = 0, backT = 0, firstFight = true;
   const yourModels = new Map(); // squad index -> model (built on first use)
   let you = null, avatar = null, cube = null, ui = null;
@@ -680,7 +682,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       const key = patchKey(S.patch.id), first = !game.beaten.includes(key);
       if (first) { game.beaten.push(key); game.cubes = (game.cubes || 0) + WOBBLE_CUBES; game.save?.(true); }
       game.wobbleLook?.flood(S.patch.id);
-      if (first && game.ui) { const m = meadowState(game.beaten); game.ui.toast(wizardLine(m.n, m.of)); }
+      if (first && game.ui) { const m = regionState(game.beaten, S.patch.region); game.ui.toast(wizardLine(m.n, m.of, S.patch.region)); }
       if (game.ui) game.ui.toast(first ? `The colour is back! +${WOBBLE_CUBES} Capture Cubes` : 'The colour is back!');
       S.beaten = true; S.phase = 'cleared'; S.next = true;
     } else if (won) { S.beaten = true; S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
@@ -770,6 +772,11 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   // ---- drawing the creatures each frame
   function drawModels(dt) {
     const F = S.fight;
+    if (F && S.phase === 'fight') { // Slippy Lake: every fighter that slides on the ice leaves skid marks (an Ice creature keeps its grip: none)
+      skids ??= new SkidMarks(group);
+      for (const f of [F.you, ...F.foes]) if (f.alive && f.skid) skids.track(f, f.x, f.y, f.z, f.vel.x, f.vel.z, dt);
+    }
+    skids?.update(dt);
     if (parts) parts.monsters.forEach((m, i) => {
       m.t += dt;
       const f = F?.foes[i];

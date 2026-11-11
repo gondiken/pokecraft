@@ -81,6 +81,14 @@ function skilledGoal(F) {
   }
   return { gx, gz };
 }
+// chapter 3, Slippy Lake: a skilled player on ice who slides (groundrules.js) steers so that where it would glide to if it let go now is
+// the safe spot: it lets go early and counter-steers (an Ice creature keeps its grip: nothing to do)
+function iceSteer(F, g) {
+  const you = F.you, rule = G.rule?.(you.x, you.z, you.y);
+  if (!rule || rule.grips(you.type) || !g.flee || F.dash) return g;
+  const k = rule.k, gx = g.gx - you.vel.x / k, gz = g.gz - you.vel.z / k, L = Math.hypot(gx, gz);
+  return { ...g, gx: L < 0.3 ? 0 : gx, gz: L < 0.3 ? 0 : gz };
+}
 // its moves (skilled): a clear line for shots, blasts when they are close, a heal when low, a rush only when it is safe
 function skilledMoves(F) {
   const you = F.you;
@@ -181,7 +189,7 @@ const BOT = {
     F.step(dt);
   },
   skilled(F, dt) {
-    const goal = skilledGoal(F);
+    const goal = iceSteer(F, skilledGoal(F));
     F.input.mx = goal.gx; F.input.mz = goal.gz;
     if (goal.dodge && F.cd[0] === 0) F.push(0);
     skilledMoves(F);

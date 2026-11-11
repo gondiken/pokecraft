@@ -128,7 +128,7 @@ export function patchFight(patch, y) {
   const S = PATCH_SIZES[patch.size] ?? PATCH_SIZES.tangle;
   const foes = patch.species.map(species => ({ species, pattern: patternOf(species, S.patterns) }));
   if (patch.grumble) foes.push({ species: patch.grumble, pattern: GRUMBLE.pattern, grumble: true });
-  return { centre: { x: patch.x + 0.5, y, z: patch.z + 0.5 }, levelStep: S.level, hp: S.hp, attack: S.attack, foes };
+  return { centre: { x: patch.x + 0.5, y, z: patch.z + 0.5 }, levelStep: S.level + (patch.step ?? 0), hp: S.hp, attack: S.attack, foes }; // (step: a later region's patches are a few levels up)
 }
 // The Grumble (step 7, a knot's big one, plans/chapter3-world.md section 3 lever 6): bigger, tougher, turns slowly toward you (`turn`
 // rad/s), and a hit counts fully only on its back (from more than `back` rad off its front) or in the `open` s right after its own
@@ -171,6 +171,8 @@ export function groundOf(world) {
       return null;
     },
     wet(x, z, y) { return get(Math.floor(x), Math.floor(y) - 1, Math.floor(z)) === WATER; },
+    // chapter 3 (Slippy Lake): the ground's own rule where something stands (groundrules.js, world.groundAt; null = plain ground)
+    rule(x, z, y) { return FIGHT.ground === false ? null : world.groundAt?.({ x, y, z }) ?? null; }, // (FIGHT.ground = false: tests measure a lake fight without the ice)
     // the ground for drawing (a decal, the ring): the first floor from `from` down
     floor(x, z, from) { return this.stand(x, z, from, 0.5, 30) ?? from; },
   };
@@ -208,7 +210,8 @@ export class ScribbleFight {
     const list = opts.foes || FOES.slice(0, 3);
     this.foes = list.map((d, i) => {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
-      const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
+      const rule = this.g.rule?.(this.C.x, this.C.z, this.C.y), on = rule?.pattern(SPECIES[d.species]?.type); // (the ground may change how it fights: on ice the slippers skate at you)
+      const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: on && !d.grumble ? on : d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
       f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp * (opts.hp ?? 1)); // (a patch's size: PATCH_SIZES)
       if (d.grumble) { f.grumble = true; f.r = GRUMBLE.r; f.maxHp = f.hp = Math.round(f.maxHp * GRUMBLE.hp); f.openT = 0; }
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);
@@ -280,6 +283,17 @@ export class ScribbleFight {
     f.x = nx; f.z = nz;
     return { nx: -ox / d, nz: -oz / d };
   }
+  // chapter 3 (Slippy Lake): f walks toward the velocity (tx, tz) by the ground's rule (groundrules.js: on ice it eases, so it glides on
+  // after letting go; an Ice creature keeps its grip); everywhere else at once, exactly as before. f.skid = it is sliding (skid marks).
+  walk(f, tx, tz, dt) {
+    const rule = this.g.rule?.(f.x, f.z, f.y), grip = !rule || rule.grips(f.type) || this.g.wet(f.x, f.z, f.y);
+    if (grip) { f.vel.x = tx; f.vel.z = tz; f.skid = false; } else { rule.move(f.vel, tx, tz, dt, false); f.skid = Math.hypot(f.vel.x - tx, f.vel.z - tz) > 1.2; }
+    if (!f.vel.x && !f.vel.z) return false;
+    const stopped = this.move(f, f.vel.x * dt, f.vel.z * dt);
+    if (stopped && !grip) { f.vel.x *= 0.3; f.vel.z *= 0.3; } // (a slide that hits a wall or the ring stops there)
+    return stopped;
+  }
+  carryOf(f, kind) { return this.g.rule?.(f.x, f.z, f.y)?.carry(kind, f.type) ?? 0; }
   inRing(x, z, pad = 0) { return len2(x - this.C.x, z - this.C.z) < this.R - 0.2 - pad; }
   // a straight flight from a to b (3D) stops at the first solid block: the share of the way it gets
   reach(ax, ay, az, bx, by, bz) {
@@ -303,7 +317,7 @@ export class ScribbleFight {
   // ---------------------------------------------------------------- the monsters' warnings
   makeTell(f) {
     const t = intentFor(f, this.you);
-    if (t.kind === 'line') { t.len = this.rushLen(f, t.dx, t.dz, t.len); t.y = f.y; }
+    if (t.kind === 'line') { t.len = this.rushLen(f, t.dx, t.dz, t.len + (this.g.rule?.(f.x, f.z, f.y)?.overshoot(f.type) ?? 0)); t.y = f.y; } // (on ice a slipping monster overshoots: its red line is longer)
     else t.y = t.kind === 'ring' ? f.y : this.you.y;
     t.id = this.nextId++;
     return t;
@@ -535,18 +549,16 @@ export class ScribbleFight {
           this.emit({ kind: 'interrupt', f });
         }
       }
-      if (stopped || d.t <= 0) { this.dash = null; you.vel.x = you.vel.z = 0; }
+      if (stopped || d.t <= 0) { this.dash = null; const c = stopped ? 0 : this.carryOf(you, d.hits ? 'rush' : 'dodge'); you.vel.x = d.x * c; you.vel.z = d.z * c; } // (on ice it skids on)
       you.moving = true;
     } else {
       const { mx, mz } = this.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
       const sp = LIVE.speed * this.paceNow(you) * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? swimOf(you) : 1);
-      if (you.moving) {
-        const k = Math.hypot(mx, mz), y0 = you.y;
-        if (this.move(you, mx / k * sp * dt, mz / k * sp * dt)) this.stats.blocked += dt;
-        if (you.y !== y0) this.stats.snaps++;
-        this.dir = { x: mx, z: mz };
-      }
+      const k = Math.hypot(mx, mz) || 1, y0 = you.y;
+      if (this.walk(you, you.moving ? mx / k * sp : 0, you.moving ? mz / k * sp : 0, dt) && you.moving) this.stats.blocked += dt;
+      if (you.y !== y0) this.stats.snaps++;
+      if (you.moving) this.dir = { x: mx, z: mz };
     }
     const t = this.aimAt();
     if (t) you.heading = Math.atan2(t.x - you.x, t.z - you.z);
@@ -582,7 +594,7 @@ export class ScribbleFight {
       const stopped = this.move(f, c.dx * st, c.dz * st);
       c.left -= st;
       if (!c.hit && you.safeT <= 0 && len2(you.x - f.x, you.z - f.z) < you.r + f.r && Math.abs(you.y - f.y) < 1.6) { c.hit = true; this.hit(f, you, FIGHT.foePower, f.type, slow, 'rush'); }
-      if (stopped || c.left <= 0) f.charging = null;
+      if (stopped || c.left <= 0) { f.charging = null; const k = stopped ? 0 : this.carryOf(f, 'rush'); f.vel.x = c.dx * k; f.vel.z = c.dz * k; } // (on ice it skids on)
       f.moving = true;
       return;
     }
@@ -602,7 +614,7 @@ export class ScribbleFight {
     const side = f.side2 * 0.5;
     const vx = dx / d * go - dz / d * side, vz = dz / d * go + dx / d * side, v = Math.hypot(vx, vz) || 1;
     const sp = F.speed * this.paceNow(f) * slow * (this.g.wet(f.x, f.z, f.y) ? swimOf(f) : 1);
-    if (this.move(f, vx / v * sp * dt, vz / v * sp * dt)) { f.stuck = (f.stuck || 0) + dt; if (f.stuck > 0.6) { f.side2 = -f.side2; f.stuck = 0; } }
+    if (this.walk(f, vx / v * sp, vz / v * sp, dt)) { f.stuck = (f.stuck || 0) + dt; if (f.stuck > 0.6) { f.side2 = -f.side2; f.stuck = 0; } }
     for (const o of this.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) this.move(f, ox / od * (1.4 - od) * 0.5, oz / od * (1.4 - od) * 0.5); }
     f.moving = true;
     f.timer -= dt * slow;

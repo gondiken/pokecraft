@@ -7,9 +7,10 @@
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, regionOpen } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
+import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 
 export const POT = {
   r: 1.3,          // stand within this of a pot's middle to hop from it
@@ -17,7 +18,7 @@ export const POT = {
   beam: 28,        // the beam over the pot you would hop to: its height
   puff: 0.7,       // seconds a puff of colour lasts
 };
-const NAMES = { 0xe8402a: 'red', 0xf2c418: 'yellow', 0x2f9be8: 'blue', 0x3fc04a: 'green', 0xf07ab8: 'pink', 0x8a4ee0: 'purple' };
+const NAMES = { 0xe8402a: 'red', 0xf2c418: 'yellow', 0x2f9be8: 'blue', 0x3fc04a: 'green', 0xf07ab8: 'pink', 0x8a4ee0: 'purple', 0x46d0e0: 'ice blue', 0x9be36a: 'lime', 0x1a9e8f: 'teal', 0x2a3fae: 'navy', 0xd6f4ff: 'snow white' };
 // The pots there are now: the Camp's, then one per cleared patch (pure: tests read it). { id, x, z, y, colour, name }
 export function potsOf(beaten) {
   const keys = new Set(beaten || []);
@@ -118,15 +119,15 @@ class PaintPots extends Piece {
 class Bugs extends Piece {
   constructor(scene) {
     super(scene); this.field = new BugField([]); this.last = null; this.popped = 0; this.started = false;
-    const NB = PATCHES.length * 4;
+    const NB = PATCHES.length * 4; // (room for every patch's bugs)
     this.bodies = new THREE.InstancedMesh(new THREE.TorusKnotGeometry(0.2, 0.05, 40, 5, 2, 3), new THREE.MeshLambertMaterial({ color: 0x3a3a44 }), NB);
     this.eyes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), NB * 2);
     for (const m of [this.bodies, this.eyes]) { m.count = 0; m.frustumCulled = false; this.group.add(m); }
   }
-  keysChanged() { // a cleared patch's bugs go
-    const keys = new Set(this.game.beaten || []);
-    this.field.bugs = !this.started ? PATCHES.filter(p => !keys.has(patchKey(p.id))).flatMap(p => bugsFor(p)) : this.field.bugs.filter(b => !keys.has(patchKey(b.patch)));
-    this.started = true;
+  keysChanged() { // a cleared patch's bugs go; a region that opens brings its patches' bugs (Slippy Lake once the meadow is clear)
+    const keys = new Set(this.game.beaten || []), have = new Set(this.field.bugs.map(b => b.patch));
+    const live = p => !keys.has(patchKey(p.id)) && regionOpen(p.region, this.game.beaten);
+    this.field.bugs = [...this.field.bugs.filter(b => live(PATCHES.find(p => p.id === b.patch))), ...PATCHES.filter(p => live(p) && !have.has(p.id)).flatMap(p => bugsFor(p))];
   }
   update(dt, p) {
     if (p && this.s.playing() && dt > 0) {
@@ -210,7 +211,17 @@ class HillStrings extends Piece {
   }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings];
+// Slippy Lake: skid marks where you slide on the ice (player.js sets player.skid; riding an Ice creature never skids)
+class Skids extends Piece {
+  constructor(scene) { super(scene); this.marks = new SkidMarks(this.group); }
+  update(dt, p) {
+    if (p?.skid && p.onGround && this.s.playing()) this.marks.track(p, p.pos.x, p.pos.y, p.pos.z, p.vel.x, p.vel.z, dt);
+    this.marks.update(dt);
+  }
+  info() { return { skids: this.marks.info().marks }; }
+}
+
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids];
 
 export class WobbleLive {
   constructor(game, part) {

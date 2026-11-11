@@ -300,8 +300,21 @@ export class Player {
     if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
+    // chapter 3 (Slippy Lake): the ground's own rule (groundrules.js; world.groundAt is undefined in every other world): on ice you
+    // glide on after letting go; an Ice creature you ride keeps its grip. `glide` is the walking velocity kept from step to step.
+    // A push under you (an ice chute) is part of what the glide eases toward, so you shoot out of the chute and glide on.
     const flow = this.world.flowAt?.(this.pos); // chapter 3: a river's current carries you along (Wobbleland's floating river), also over a step
-    if (flow) { this.vel.x += flow.x; this.vel.z += flow.z; }
+    const rule = !water && r?.kind !== 'water' ? this.world.groundAt?.(this.pos) : null;
+    if (rule) {
+      const gl = this.glide ??= { x: this.vel.x, z: this.vel.z }, grip = rule.grips(r?.type ?? null);
+      const tx = this.vel.x + (flow?.x ?? 0), tz = this.vel.z + (flow?.z ?? 0);
+      rule.move(gl, tx, tz, dt, grip);
+      this.vel.x = gl.x; this.vel.z = gl.z;
+      this.skid = !grip && Math.hypot(gl.x - tx, gl.z - tz) > 1.2; // (skid marks: wobblelive.js)
+    } else {
+      this.glide = null; this.skid = false;
+      if (flow) { this.vel.x += flow.x; this.vel.z += flow.z; }
+    }
 
     if (surf !== null) {
       const target = surf - 0.25;
@@ -348,6 +361,7 @@ export class Player {
     this.hitWall = false;
     this.moveAxis('x', this.vel.x * dt);
     this.moveAxis('z', this.vel.z * dt);
+    if (this.glide) { if (!this.vel.x) this.glide.x = 0; if (!this.vel.z) this.glide.z = 0; } // (a glide stops at a wall)
     this.moveAxis('y', dy);
   }
 

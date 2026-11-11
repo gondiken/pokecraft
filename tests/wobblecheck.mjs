@@ -3,6 +3,8 @@
 //   - every patch's ring (radius RING) is at least 75 % walkable from its middle, dry unless it is a water-twist patch (`wet`)
 //   - no patch is inside another (rings never touch), none crosses the wall
 //   - the Scribble's wall really closes the rest of the page: nothing north of it can be reached from the Camp
+//   - Slippy Lake (behind the west wall): with that wall gone (the meadow's knot melts it) its patches are reachable, nothing else is;
+//     its rings are on the ice; the chutes and leads are where they say; the islands are islands
 //   node tests/wobblecheck.mjs      (exit 1 on a problem); tests/specs/scribble.mjs part `land` runs it
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -38,8 +40,12 @@ export async function checkWobble() {
   }
   const a = w.arrivals.wobble, from = walk(Math.floor(a[0]), Math.floor(a[2]), a[1]);
   out.reach = from.size;
+  // a wall melts the way wobblelook.js does it (every block above the ground in its boxes goes)
+  const melt = to => { for (const b of L.WALLS.filter(q => q.to === to)) for (let x = b.x0; x <= b.x1; x++) for (let z = b.z0; z <= b.z1; z++) for (let y = w.ground[x + z * W] + 1; y < H; y++) w.data[w.index(x, y, z)] = B.AIR; };
+  const lakeBox = L.LAKE.box;
   for (const p of L.PATCHES) {
-    if (!from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} cannot be reached on foot from the Camp`);
+    if (p.region === 'meadow' && !from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} cannot be reached on foot from the Camp`);
+    if (p.region !== 'meadow' && from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} (${p.region}) can be reached before its wall melts`);
     const y = G.stand(p.x + 0.5, p.z + 0.5, L.BASE + 8);
     const inRing = (x, z) => Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) < L.RING - 0.2;
     let n = 0, wet = 0;
@@ -49,17 +55,43 @@ export async function checkWobble() {
     if (share < 0.75) problems.push(`patch ${p.id}: only ${Math.round(share * 100)} % of its ring is walkable`);
     if (!p.wet && wet) problems.push(`patch ${p.id}: ${wet} cells of water in a dry ring`);
     if (p.wet && wet < 8) problems.push(`patch ${p.id}: a water twist with only ${wet} wet cells`);
-    if (p.x - L.RING < L.MEADOW.x0 + 1 || p.x + L.RING > L.MEADOW.x1 - 1 || p.z - L.RING < L.MEADOW.z0 + 1) problems.push(`patch ${p.id} touches the wall`);
+    if (p.region === 'meadow' && (p.x - L.RING < L.MEADOW.x0 + 1 || p.x + L.RING > L.MEADOW.x1 - 1 || p.z - L.RING < L.MEADOW.z0 + 1)) problems.push(`patch ${p.id} touches the wall`);
+    if (p.region === 'lake') {
+      if (p.x - L.RING < lakeBox.x0 || p.x + L.RING > lakeBox.x1 - 1 || p.z - L.RING < lakeBox.z0 + 1 || p.z + L.RING > lakeBox.z1) problems.push(`patch ${p.id} leaves the lake`);
+      let ice = 0, all = 0; // the ground decides: a lake ring is on the ice (its holes count as the lake)
+      for (let x = p.x - L.RING; x <= p.x + L.RING; x++) for (let z = p.z - L.RING; z <= p.z + L.RING; z++) if (inRing(x, z)) { all++; const b = w.get(x, w.ground[x + z * W], z); if (b === B.ICE || b === B.WATER) ice++; }
+      out.rings[out.rings.length - 1].ice = Math.round(100 * ice / all);
+      if (ice < all * 0.9) problems.push(`patch ${p.id}: only ${Math.round(100 * ice / all)} % of its ring is ice`);
+    }
     for (const q of L.PATCHES) if (q.id < p.id && Math.hypot(q.x - p.x, q.z - p.z) < 2 * L.RING + 2) problems.push(`patches ${q.id} and ${p.id} overlap`);
   }
   for (const k of from.keys()) { const [x, z] = k.split(',').map(Number); if (!L.inMeadow(x, z)) { problems.push(`the wall leaks: (${k}) can be reached`); break; } }
+  // Slippy Lake opens: melt its wall; now its patches are reachable, and nothing outside the meadow and the lake
+  melt('lake');
+  const from2 = walk(Math.floor(a[0]), Math.floor(a[2]), a[1]);
+  out.lakeReach = [...from2.keys()].filter(k => { const [x, z] = k.split(',').map(Number); return L.regionAt(x, z) === 'lake'; }).length;
+  for (const p of L.PATCHES.filter(q => q.region === 'lake')) if (!from2.has(`${p.x},${p.z}`)) problems.push(`lake patch ${p.id} cannot be reached once the west wall melts`);
+  for (const k of from2.keys()) { const [x, z] = k.split(',').map(Number); const r = L.regionAt(x, z); if (r !== 'meadow' && r !== 'lake') { problems.push(`with the lake open, (${k}) in ${r} can be reached`); break; } }
+  // the chutes: an ice floor going down, stepping at most one block at a time, its top on a hill and its foot at a lead
+  for (const c of L.CHUTES) {
+    let last = null, bad = 0;
+    for (let k = 0; k <= Math.abs(c.z1 - c.z0); k++) { const z = c.z0 + k * c.dir, f = L.chuteFloor(c, z); for (let x = c.x0; x <= c.x1; x++) if (w.get(x, f, z) !== B.ICE || w.get(x, f + 1, z) !== B.AIR) bad++; if (last != null && (last - f > 1 || f > last)) bad++; last = f; }
+    if (bad) problems.push(`the chute from ${c.x0}, ${c.z0} has ${bad} bad cells`);
+    if (c.from - c.to < 5) problems.push(`the chute from ${c.x0}, ${c.z0} drops only ${c.from - c.to}`);
+  }
+  for (const l of L.LEADS) {
+    let bad = 0;
+    for (let k = 0; k <= Math.abs(l.z1 - l.z0); k++) for (let x = l.x0; x <= l.x1; x++) if (w.get(x, L.LAKE.y, l.z0 + k * l.dir) !== B.WATER) bad++;
+    const end = l.z1 + l.dir, isle = L.LAKE.isles.find(i => Math.hypot(l.x0 + 1 - i.x - 0.5, end + 0.5 - i.z - 0.5) <= i.r + 0.8);
+    if (bad || !isle) problems.push(`the lead from ${l.x0}, ${l.z0}: ${bad} dry cells${isle ? '' : ', and it does not end at an island'}`);
+  }
   // A1 (owner 2026-11-11): a packed meadow: from one patch to the nearest other is a short walk (centres 22-32 apart), and the walk
-  // from the Camp to the farthest patch along the ground is short too
+  // from the Camp to the farthest patch along the ground is short too (the lake: the same within the lake)
   for (const p of L.PATCHES) {
-    const near = Math.min(...L.PATCHES.filter(q => q !== p).map(q => Math.hypot(q.x - p.x, q.z - p.z)));
+    const near = Math.min(...L.PATCHES.filter(q => q !== p && q.region === p.region).map(q => Math.hypot(q.x - p.x, q.z - p.z)));
     if (near > 32) problems.push(`patch ${p.id}: the nearest other patch is ${Math.round(near)} away`);
   }
-  out.span = Math.round(Math.max(...L.PATCHES.map(p => Math.hypot(p.x - L.CAMP.x, p.z - L.CAMP.z))));
+  out.span = Math.round(Math.max(...L.PATCHES.filter(p => p.region === 'meadow').map(p => Math.hypot(p.x - L.CAMP.x, p.z - L.CAMP.z))));
   if (out.span > 60) problems.push(`the farthest patch is ${out.span} from the Camp`);
   // nothing built (trees, the flower, the house...) stands in a ring or in the Camp: every block above the ground there is air
   for (const p of [...L.PATCHES.map(q => ({ x: q.x, z: q.z, r: L.RING })), { x: L.CAMP.x, z: L.CAMP.z, r: L.CAMP.r - 1, camp: true }]) {
@@ -70,7 +102,7 @@ export async function checkWobble() {
     }
     if (n) problems.push(`${p.camp ? 'the Camp' : `the ring at ${p.x}, ${p.z}`} has ${n} blocks standing in it`);
   }
-  // the other side is real land (Bumpy Hills): reachable from the knot's spot once the wall goes (step 7 melts it)
+  // the other side is real land (Bumpy Hills): walkable (its wall melts later)
   out.hills = walk(L.KNOT.x, L.KNOT.z, L.heightAt(L.KNOT.x, L.KNOT.z) + 1).size;
   if (out.hills < 5000) problems.push(`behind the wall only ${out.hills} cells can be walked`);
   // step 6: a naive kid who only follows the guide arrow (wobbleAim: the nearest patch not cleared yet), walking straight the way it
@@ -79,8 +111,9 @@ export async function checkWobble() {
     const game = { beaten: [] };
     let x = a[0], z = a[2], y = a[1], steps = 0, stuck = 0;
     const order = [];
-    while (order.length < L.PATCHES.length && steps < 20000) {
-      const aim = L.wobbleAim(w, { x, z }, game), q = L.PATCHES.find(r => Math.hypot(r.x + 0.5 - x, r.z + 0.5 - z) < 5 && !game.beaten.includes(L.patchKey(r.id)));
+    // (the lake's wall is melted already above: the kid follows the arrow, which shows lake patches only once the meadow's knot is clear)
+    while (order.length < L.PATCHES.length && steps < 30000) {
+      const aim = L.wobbleAim(w, { x, z }, game), q = L.openPatches(game.beaten).find(r => Math.hypot(r.x + 0.5 - x, r.z + 0.5 - z) < 5);
       if (q) { game.beaten.push(L.patchKey(q.id)); order.push(q.id); continue; }
       const dx = aim.x - x, dz = aim.z - z, d = Math.hypot(dx, dz) || 1;
       let moved = false;
@@ -101,8 +134,8 @@ export async function checkWobble() {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const r = await checkWobble();
   console.log(`the arrow-following kid: patches in the order ${r.out.kid.order.join(', ')} in ${r.out.kid.steps} steps of 0.3 (${r.out.kid.stuck} stuck)`);
-  console.log(`reachable from the Camp: ${r.out.reach} cells; Bumpy Hills (behind the wall): ${r.out.hills} cells`);
-  for (const q of r.out.rings) console.log(`patch ${q.id}: ring ${q.walk} % walkable, ${q.wet} wet cells`);
+  console.log(`reachable from the Camp: ${r.out.reach} cells (Slippy Lake, once its wall melts: ${r.out.lakeReach} more); Bumpy Hills (behind the wall): ${r.out.hills} cells`);
+  for (const q of r.out.rings) console.log(`patch ${q.id}: ring ${q.walk} % walkable, ${q.wet} wet cells${q.ice != null ? `, ${q.ice} % ice` : ''}`);
   for (const p of r.problems) console.log('PROBLEM', p);
   process.exit(r.problems.length ? 1 : 0);
 }

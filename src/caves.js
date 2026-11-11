@@ -667,10 +667,22 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
   vec3 draft = clamp(mix(vec3(lum), c, uWobSat) * uDraft, 0.0, 1.0);          // a beginner's colours: louder, a bit lemony
   vec3 f = fract(vCavePos + 0.0005), e3 = min(f, 1.0 - f);
   float e = max(min(e3.x, e3.y), max(min(e3.y, e3.z), min(e3.x, e3.z)));      // the face's own edge distance (the smallest is the face plane)
-  draft *= 1.0 - uWobLine * (1.0 - smoothstep(0.025, 0.06, e));                // chunky outlines
-  float col = texture2D(uWobColour, vCavePos.xz / uWobSize).r;               // 1 = coloured back in, 0 = the Scribble's grey
+  vec4 wobMap = texture2D(uWobColour, vCavePos.xz / uWobSize);
+  float col = wobMap.r;                                                         // 1 = coloured back in, 0 = the Scribble's grey
+  // Slippy Lake: the lake's ice (g = a cell with ice on top, and the ice tile's own pale blue) is drawn as ice in colour AND under the
+  // Scribble: no block grid on its top, pale blue, long shiny streaks across it in world space (one sheet of ice, never tiles)
+  float wobIce = step(0.5, wobMap.g) * step(0.04, c.b - c.r) * step(0.45, lum) * step(e3.y, 0.002);
+  draft *= 1.0 - uWobLine * (1.0 - 0.8 * wobIce) * (1.0 - smoothstep(0.025, 0.06, e));  // chunky outlines (hardly any on the ice)
   float hatch = step(0.82, fract((vCavePos.x * 0.9 + vCavePos.z * 0.6 + vCavePos.y * 0.5) * 2.2));
   vec3 grey = vec3(lum * 0.9 + 0.05) * (1.0 - 0.28 * hatch);                  // grey, with scribble strokes on it
+  if (wobIce > 0.5) {
+    float band = fract((vCavePos.x * 0.32 + vCavePos.z * 0.78) * 0.45);
+    float run = step(0.45, fract(sin(floor((vCavePos.x * 0.32 + vCavePos.z * 0.78) * 0.45) * 91.7 + floor((vCavePos.z * 0.32 - vCavePos.x * 0.78) * 0.12) * 37.3) * 4375.85));
+    float shine = run * (smoothstep(0.0, 0.02, band) - smoothstep(0.05, 0.09, band)) + 0.6 * run * (smoothstep(0.13, 0.14, band) - smoothstep(0.15, 0.17, band));
+    float wobTone = 0.94 + 0.06 * lum;                                          // (the tile's own pixels only as a faint tone: one smooth sheet)
+    draft = vec3(0.56, 0.83, 0.99) * wobTone + vec3(shine * 0.55);
+    grey = vec3(0.64, 0.78, 0.9) * wobTone + vec3(shine * 0.4);
+  }
   // C2: wax crayon on what is coloured in: short slanted streaks in world space, and gaps where the paper shows between them
   if (uWobCrayon > 0.0) {
     vec3 cp = vCavePos * 7.0;
