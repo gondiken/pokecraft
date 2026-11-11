@@ -630,16 +630,26 @@ export const swirlTint = {
 // (more saturated, a lemony tint, chunky outlines on the block edges), and grey with scribble strokes where the Scribble still is
 // (uWobColour: one texel per 4 x 4 blocks, 1 = coloured; the colour flood writes it).
 export const wobbleLook = {
-  uCurl: { value: 0 }, uCurlFrom: { value: 24 },
+  uCurl: { value: 0 }, uCurlFrom: { value: 24 }, uWobJig: { value: 0 },
   uWobColour: { value: null }, uWobSize: { value: new THREE.Vector2(224, 224) },
   uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 },
 };
-const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\n#endif';
+const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\nuniform float uWobJig;\n#endif';
 // (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
+// C1 (owner 2026-11-11, "more different"): every block corner moves a fixed little bit (a hash of its own place: up to uWobJig sideways,
+// half that up or down; never over time, so nothing shakes). A corner shared by two blocks has the same place and moves the same, so there
+// are no cracks; the fragment shader keeps vCavePos (the real place), so outlines and colours stay on the faces. Only the look: walking and
+// the fight keep the real cubes.
 const WOBBLE_VERT = `#ifdef WOBBLE
-if (uCurl > 0.0) {
+if (uCurl > 0.0 || uWobJig > 0.0) {
+  vec3 wobP = vCavePos;
+  if (uWobJig > 0.0) {
+    vec3 wobQ = floor(vCavePos + 0.5);
+    vec3 wobH = fract(sin(vec3(dot(wobQ, vec3(127.1, 311.7, 74.7)), dot(wobQ, vec3(269.5, 183.3, 246.1)), dot(wobQ, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
+    wobP += (wobH - 0.5) * 2.0 * vec3(uWobJig, uWobJig * 0.5, uWobJig);
+  }
   float wobD = max(0.0, distance(vCavePos.xz, cameraPosition.xz) - uCurlFrom);
-  gl_Position = projectionMatrix * viewMatrix * vec4(vCavePos + vec3(0.0, uCurl * wobD * wobD, 0.0), 1.0);
+  gl_Position = projectionMatrix * viewMatrix * vec4(wobP + vec3(0.0, uCurl * wobD * wobD, 0.0), 1.0);
 }
 #endif`;
 const WOBBLE_FRAG_PARS = `#ifdef WOBBLE

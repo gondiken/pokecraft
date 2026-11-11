@@ -12,11 +12,14 @@ import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
 import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState, inMeadow, regionAt } from './wobbleland.js';
 import { B } from './blocks.js';
+import { createWobbleSky } from './wobblesky.js'; // C3: a child's sky
 
 export const WOBBLE_LOOK = {
   curl: true,          // the curling horizon: the one on/off switch
   curlFrom: 28,        // blocks from you where the page starts to bend up
-  curlK: 0.0025,       // lift = curlK x (distance - curlFrom)^2: at 60 blocks 2.6 up, at 100 about 13, at 150 about 37
+  curlK: 0.0025,
+  sky: true,           // C3: the child's sky (wobblesky.js): crayon dome, smiling sun, clouds on strings
+  jig: 0.12,           // C1: every block corner moves up to this far sideways (half that up or down): hand-drawn edges (0 = straight)       // lift = curlK x (distance - curlFrom)^2: at 60 blocks 2.6 up, at 100 about 13, at 150 about 37
   draft: [1.07, 1.05, 0.86], sat: 1.45, line: 0.35, // the first-draft colours: tint, saturation, outline darkness
   cell: 4,             // the colour map: one texel per cell x cell blocks
   cleared: 17,         // a cleared patch colours a circle this big round its middle
@@ -31,7 +34,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
   U.uWobColour.value = tex;
   let active = false, world = null, floods = [], sig = '', lifted = [];
-  let btn = null, shown = null;
+  let btn = null, shown = null, sky = null;
   const mats = ['solid', 'water', 'glow'];
   // how coloured a texel's middle is (0..1): the Camp, cleared patches (a flood grows from 0 to its radius), cleared regions
   function paint() {
@@ -63,6 +66,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   function uniforms() {
     U.uCurl.value = active && WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK : 0;
     U.uCurlFrom.value = WOBBLE_LOOK.curlFrom;
+    U.uWobJig.value = active ? WOBBLE_LOOK.jig : 0;
     U.uDraft.value.set(...WOBBLE_LOOK.draft); U.uWobSat.value = WOBBLE_LOOK.sat; U.uWobLine.value = WOBBLE_LOOK.line;
     U.uWobSize.value.set(SIZE, SIZE);
   }
@@ -73,6 +77,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       if (active && !w?.realm?.look?.wobble) game.ui?.setScore?.(null); // leaving: the meter goes
       world = w; active = !!w?.realm?.look?.wobble;
       setDefine(active); floods = []; sig = '';
+      sky?.dispose(); sky = null;
+      if (active && WOBBLE_LOOK.sky) sky = createWobbleSky(scene);
       uniforms();
       if (active) paint();
     },
@@ -95,6 +101,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       api.refresh();
       if (!active) return;
       uniforms();
+      sky?.update(dt, camera);
       const m = meadowState(game.beaten); // the region's meter (step 6)
       if (m.n >= m.of && !world.wobbleMelted) api.meltWall(); // step 7: the knot cleared: the Scribble's wall melts away (live cells only)
       const reg = world.wobbleMelted && game.player ? regionAt(game.player.pos.x, game.player.pos.z) : 'meadow';
@@ -139,7 +146,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     // ?preview: the pause screen's switch
     toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },
     colourAt(x, z) { const i = Math.floor(x / WOBBLE_LOOK.cell), j = Math.floor(z / WOBBLE_LOOK.cell); return i < 0 || j < 0 || i >= N || j >= N ? 0 : data[(i + j * N) * 4] / 255; },
-    info() { return { on: active, curl: WOBBLE_LOOK.curl && active, floods: floods.length, defines: mats.map(k => !!materials[k]?.defines?.WOBBLE) }; },
+    info() { return { on: active, curl: WOBBLE_LOOK.curl && active, jig: active ? WOBBLE_LOOK.jig : 0, sky: !!sky, floods: floods.length, defines: mats.map(k => !!materials[k]?.defines?.WOBBLE) }; },
   };
   return api;
 }

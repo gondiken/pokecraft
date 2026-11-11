@@ -406,6 +406,26 @@ and the blue one rises over patch 3. **Earned:** only cleared patches have pots,
 **Checked:** spec `wobble` part `hops` (real E: Camp -> patch 3 -> Camp; turning picks another pot; iPad: the button says it, a tap hops).
 Nothing saved: the pots are drawn from the patches' keys. Picture `plans/chapter3/wobble-pots.png`.
 
+### C1. Wobbly hand-drawn blocks
+
+**What:** in Wobbleland every block corner is moved a fixed little bit: up to **0.12 sideways and 0.06 up or down**, by a hash of the
+corner's own place (`WOBBLE_VERT` in `src/caves.js`, uniform `uWobJig`; the number is `WOBBLE_LOOK.jig` in `src/wobblelook.js`, 0 = straight).
+Never over time, so nothing shakes. **No cracks:** two blocks sharing a corner share its place, so it moves the same for both (the chunk
+mesher draws one quad per face, never merged ones, so there are no T-joints). The fragment shader still reads the real place, so the chunky
+outlines and the grey / colour map stay on their faces and follow the wobble. Only the look: walking, aiming and the fight use the real
+cubes. **Why half up and down:** a ground corner 0.12 lower would let a creature's feet sink visibly in the fight's top view; at 0.06 they
+do not (`plans/chapter3/wobble-ipad-fight.png`). Behind the WOBBLE define: the main world's byte-for-byte check stays green; draw calls
+unchanged (the wobble is three lines in the vertex shader).
+
+### C3. A child's sky
+
+**What:** `src/wobblesky.js`: one dome that follows the camera, coloured in with slanted crayon strokes that thin out toward the page's
+cream horizon (the same cream as the fog), a **big sun with crayon rays, a smile and pink cheeks** that nods a little, and **seven flat
+cotton clouds hanging on strings** from the top of the page, swaying slowly. **Choice:** the sun hangs to the north-west, 27 degrees up, so
+it is in view the moment you arrive (you arrive looking north). 4 draw calls (dome, sun, clouds as one mesh, strings as one line set),
+none lifted by the curl (`noCurl`). **Where to change:** `SKY` at the top of `src/wobblesky.js` (sun place and size, clouds, the blues);
+`WOBBLE_LOOK.sky = false` turns it off. Picture `plans/chapter3/wobble-sky-edges.png` (the sky, the wobbly plank floor of the Camp).
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)
