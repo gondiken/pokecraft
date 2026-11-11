@@ -495,6 +495,59 @@ changes alike: its "before" picture itself changes from run to run; a flake of t
 
 ---
 
+
+## The owner's answers (2026-11-11 evening) and what was built from them
+
+**Answers:** riding into a patch is fine; paint-pot hops are "a bit unnecessary" (kept, small, one class `PaintPots`: delete it from
+`PIECES` in `src/wobblelive.js` to drop them); bugs: just the paint pop, no reward; floating hills: more, with more creatures; arrow ok;
+next: my choice, but **nothing that needs E / the action button** (springs, floating river: yes; zip-line: no). Sun and clouds looked "too
+obviously SVG". "Object-oriented, no code bloat."
+
+**Built:**
+- **`src/wobblelive.js` in pieces:** `WobbleLive` only composes small classes, each one thing: `Puffs`, `PaintPots`, `Bugs`, `Springs`,
+  `RiverMarks`, `HillStrings` (`PIECES`). A piece may have `update(dt, p)`, `keysChanged(fresh)`, `near` / `use`, `info`, `dispose`.
+  A new thing in Wobbleland = one class + one entry.
+- **The floating river** (`RIVER_UP`, `riverY`, `riverFlow` in `src/wobbleland.js`): water on a paper strip that starts on the ground by
+  the Camp's west side and runs uphill in steps (one every 4 blocks, 11 steps) to a floating hill with a chest; **step in and it carries you
+  up, no button**. It is always drawn in colour so a child sees water; white current marks run up it. Physics: one generic hook,
+  `world.flowAt(pos)` (`src/player.js`, `walkStep`: the current is added to your walk, and in water it lifts you over the next step);
+  undefined in every other world, so nothing else moves (`jump` and `water` specs green). Checked: spec `wobble` part `river` (no keys:
+  carried from the bottom onto the hill, 52 blocks along and 11 up). Picture `plans/chapter3/wobble-river-up.png`.
+- **Five floating hills** (`FLOATERS`, was two), each with a chest; four have a spring, one is the river's. Their strings are thin drawn
+  lines now (`HillStrings`), not block columns.
+- **Freed creatures stay near their patch, and live on the floating hills:** a generic spawn condition `near:<arg>` (`src/spawnrules.js`)
+  asks the world where (`world.spawnSpot(arg, playerPos)`, in `creatures.context` as `spot`); Wobbleland answers `patch<id>` = 3-12 from
+  that patch's middle, `float` = on a floating hill's grass, only within 45 of you (`wobbleSpot`). `FREED_SPAWNS`: each freed species
+  twice, near its patch (weight 1) and on the hills (0.5). More of them: Wobbleland's `wild` is 8 at a time, one every 1.5 s (was 4 / 2.5).
+  The Book says "near the patch it was freed from" / "up on the floating hills". Checked (part `river`): 40 / 40 spots round the patch,
+  every hill spot on a hill's grass; standing by cleared patch 3, its creatures appear 4-10 away.
+- **A hand-drawn sun and clouds** (`src/wobblesky.js`): every outline is a wobbly loop (`wobblyLoop`), lines are crayon strokes drawn twice a
+  bit apart (`crayonLine`), the sun's rays are uneven and bent, the colour goes over the line, the eyes are not the same and the smile is
+  lopsided; two different lumpy clouds with blue scribble shading. Picture `plans/chapter3/wobble-sky.png`.
+
+## What next: the regions, and places where types matter (my recommendation)
+
+You are right that the first slice showed none of chapter 3's main idea yet (section 6 above: **the real ground decides, and one type has
+an advantage a child can see**). Puddle Meadow has only the small water twist. So the next regions should each be built around one ground,
+and the fight rules in the meadow stay exactly as they are; a twist only acts on its own ground.
+
+**Order I recommend:** 1. **Slippy Lake** (ice), 2. **Shadywood** (dark), 3. **Bumpy Hills** (high ground), then the Big Knot.
+Slippy Lake first because ice is the clearest to see and to feel (the arena already proved it), and it already sits behind the west wall.
+
+| Region | The ground (in the fight AND when you walk) | The type a child sees winning | Ways to move with no button |
+| --- | --- | --- | --- |
+| **Slippy Lake** | frozen lake: you, your creature and the monsters slide about 2 blocks after letting go; monsters overshoot their charges | **Ice** creatures keep their grip (no skid marks, they stop dead) and so does a Water creature in the lake's open holes | slide down drawn ice chutes from the shore; open water holes with a current that carries you to the islands |
+| **Shadywood** | dark under the trees: you see only near your creature's light; a big blast lights it up for a moment | **Fire, Light, Electric, Cosmic** creatures glow: their circle of light is twice as big (you see the monsters' red warnings sooner) | glowing mushrooms you bounce on (springs again), a dark river that carries you between clearings |
+| **Bumpy Hills** | steep bumps: a step of two blocks is a wall, a stomp reaches only its own height (already true) | **Sky** and **Drake** creatures hop a two-block step (they flap), so they get up high and above stomps | long drawn slides down the big hills, springs up them, hills on strings |
+
+Each region: its own wall that melts when the meadow's knot is cleared (already built), 4-6 patches whose monsters fit the place (Ice
+monsters on the lake also keep their grip, so a fire team has it hard there), freed creatures near their patches, the same naive / skilled
+bots per patch with three teams (one that fits the place, one neutral, the owner's), and a table of how much the fitting type helps. The
+iPad matters most for the dark (it must stay readable on a small screen).
+
+**One question before Slippy Lake:** should the ice also slide YOU when you walk on the lake (outside fights), or only in fights? I would
+make it slide everywhere on the lake (it is a fun way to move with no button, and it makes the ground's rule obvious before the first fight).
+
 ## 0. The owner's decisions (2026-11-11)
 
 | Question | Decision |

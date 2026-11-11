@@ -300,6 +300,8 @@ export class Player {
     if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
+    const flow = this.world.flowAt?.(this.pos); // chapter 3: a river's current carries you along (Wobbleland's floating river), also over a step
+    if (flow) { this.vel.x += flow.x; this.vel.z += flow.z; }
 
     if (surf !== null) {
       const target = surf - 0.25;
@@ -311,6 +313,7 @@ export class Player {
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
       // 1 block above the water (not 2), like Minecraft.
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
+      if (flow?.y) this.vel.y = Math.max(this.vel.y, flow.y); // (and lifts a swimmer up the next step)
       if (this.world.liftAt?.(this.pos)) this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T40b: a rope ladder's lift column also holds a swimmer (the Swirl's streams are never over water)
     } else if (this.world.liftAt?.(this.pos)) {
       this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T38a: an upward river in the Swirl lifts you

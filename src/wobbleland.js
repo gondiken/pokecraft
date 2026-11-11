@@ -50,7 +50,11 @@ export const PATCHES = [
 export const CAMP_POT = { x: 120, z: 207, colour: 0xff8a1c };    // A3: the Camp's own paint pot (a hop back home)
 export const patchKey = id => `pw:wobble:patch${id}`;
 // Freed creatures (step 6): each patch's monsters live in the meadow as wild creatures once it is cleared (the 4th element: wildafter.js).
-export const FREED_SPAWNS = PATCHES.flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].map(sp => [sp, p.grumble === sp ? 0.25 : 1, null, `wobble:${p.id}`]));
+// Owner 2026-11-11: they stay near their own patch ('near:patch<id>'), and some live up on the floating hills ('near:float').
+export const FREED_SPAWNS = PATCHES.flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].flatMap(sp => [
+  [sp, p.grumble === sp ? 0.25 : 1, `near:patch${p.id}`, `wobble:${p.id}`],
+  [sp, p.grumble === sp ? 0.15 : 0.5, 'near:float', `wobble:${p.id}`],
+]));
 // The patches you can fight now: every one not cleared, but a region's knot only once its other patches are clear (step 6: the knot is
 // the region's end). The one rule the arrow, "Where to go" and the fight all read.
 export function openPatches(beaten, list = PATCHES) {
@@ -77,9 +81,9 @@ export const RIVER = [[162, 174], [153, 174], [153, 184]];
 export const TREES = [ // lean: blocks sideways per block up (dx, dz); twist: a corkscrew trunk
   { x: 70, z: 196, h: 7, lean: [0.45, 0] }, { x: 154, z: 196, h: 6, lean: [-0.4, 0.2] }, { x: 96, z: 198, h: 8, twist: true },
   { x: 126, z: 196, h: 7, lean: [0, -0.5] }, { x: 68, z: 162, h: 6, lean: [0.5, 0.5] }, { x: 150, z: 170, h: 8, twist: true },
-  { x: 98, z: 168, h: 7, lean: [-0.5, 0] }, { x: 126, z: 170, h: 6, lean: [0.35, -0.35] }, { x: 98, z: 140, h: 9, twist: true },
+  { x: 126, z: 170, h: 6, lean: [0.35, -0.35] }, { x: 98, z: 140, h: 9, twist: true },
   { x: 126, z: 140, h: 7, lean: [0.5, 0] }, { x: 70, z: 140, h: 6, twist: true }, { x: 154, z: 141, h: 7, lean: [-0.45, 0.2] },
-  { x: 66, z: 214, h: 8, twist: true }, { x: 158, z: 214, h: 7, lean: [-0.5, -0.3] },
+  { x: 73, z: 217, h: 8, twist: true }, { x: 158, z: 214, h: 7, lean: [-0.5, -0.3] },
 ];
 // Shadywood (behind the east wall, for later): a thick wood of tall straight trees
 export const WOOD = { x0: 168, x1: 218, z0: 140, z1: 218, step: 7 };
@@ -90,9 +94,20 @@ export const STAIRS_NOWHERE = { x: 146, z: 216, n: 8 };             // stone ste
 export const MUSHROOM = { x: 157, z: 160, stalk: 4, cap: 4 };       // a mushroom-shaped hill
 // C4 / C5 (owner 2026-11-11, "more different than our regular world"): shapes our world can never have, and a drawing's way to move.
 // Hills that float on strings (a chest on top), each with a drawn spring beside it (the Bounce Block: jump on it, steer onto the hill)
-export const FLOATERS = [{ x: 69, z: 148, y: 21, r: 3.6, spring: [69, 156] }, { x: 155, z: 146, y: 22, r: 3.6, spring: [155, 154] }];
+// (owner 2026-11-11: "more floating hills, with more creatures": wild creatures live on them too, `spawnSpot('float')`). No `spring` = the
+// floating river (RIVER_UP) is its way up.
+export const FLOATERS = [
+  { x: 69, z: 148, y: 21, r: 3.6, spring: [69, 156] }, { x: 155, z: 146, y: 22, r: 3.6, spring: [155, 154] },
+  { x: 66, z: 160, y: 22, r: 3.8 }, { x: 124, z: 215, y: 21, r: 3.6, spring: [124, 208] }, { x: 98, z: 167, y: 23, r: 3.6, spring: [100, 173] },
+];
+// The floating river (owner 2026-11-11: "floating river", nothing to press): water on a paper strip that starts on the ground by the
+// Camp and runs uphill to a floating hill; step in and it carries you up (world.flowAt, read by Player in water).
+export const RIVER_UP = { x0: 64, x1: 65, z0: 216, z1: 164, from: 11, rise: 4, top: 22, speed: 3.6 };
+export const riverLevel = z => Math.min(RIVER_UP.top, RIVER_UP.from + Math.floor((RIVER_UP.z0 - z) / RIVER_UP.rise));
+// the water's own height there (over a bump of ground it runs on the ground)
+export const riverY = z => Math.max(riverLevel(z), heightAt(RIVER_UP.x0, z), heightAt(RIVER_UP.x1, z));
 export const UPSIDE_TREES = [{ x: 88, z: 214, h: 7 }, { x: 132, z: 215, h: 6 }]; // leaves on the ground, roots in the air
-export const CRAYONS = [{ x: 66, z: 190, h: 13, c: 'fire' }, { x: 158, z: 191, h: 11, c: 'water' }, { x: 98, z: 152, h: 12, c: 'grass' }]; // giant crayons stuck in the ground
+export const CRAYONS = [{ x: 71, z: 203, h: 13, c: 'fire' }, { x: 158, z: 191, h: 11, c: 'water' }, { x: 98, z: 152, h: 12, c: 'grass' }]; // giant crayons stuck in the ground
 
 const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
 // The ground's height at (x, z) (pure: the checks and the look use it too). Patch rings are flat (a gentle edge outside them), the Camp is flat.
@@ -202,9 +217,15 @@ export function wobbleLand(world) {
       const depth = Math.round((f.r - d) * 0.9); // a round lump: thickest in the middle, hanging down
       for (let k = 0; k <= depth; k++) put(f.x + dx, f.y - k, f.z + dz, k === 0 ? B.GRASS : B.DIRT);
     }
-    for (let y = f.y + 1; y < 47; y++) if (y > f.y + 1) put(f.x + 2, y, f.z, WOOL.ghost); // its string, up to the top of the page
+    // (its string is a drawn line up to the top of the page: wobblelive.js HillStrings)
     put(f.x, f.y + 1, f.z, B.CHEST);
-    const [sx, sz] = f.spring; put(sx, heightAt(sx, sz), sz, B.BOUNCE);
+    if (f.spring) { const [sx, sz] = f.spring; put(sx, heightAt(sx, sz), sz, B.BOUNCE); }
+  }
+  // the floating river: water on a paper strip, a step up every RIVER_UP.rise blocks, into the last floating hill
+  for (let z = RIVER_UP.z1; z <= RIVER_UP.z0; z++) for (let x = RIVER_UP.x0; x <= RIVER_UP.x1; x++) {
+    const g = heightAt(x, z), y = riverY(z);
+    if (world.get(x, y, z) !== B.AIR && y > g) continue; // (into the hill: stop)
+    put(x, y, z, B.WATER); if (y > g) put(x, y - 1, z, WOOL.paper);
   }
   for (const t of UPSIDE_TREES) {
     const g = heightAt(t.x, t.z);
@@ -232,6 +253,8 @@ export function wobbleLand(world) {
   world.people ??= []; // the Wizard at the Camp (step 6): his words follow your progress (WIZARD_LINES; scribble.js says them on a win)
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
+  world.flowAt = riverFlow; // the floating river's current (player.js, in water only)
+  world.spawnSpot = (arg, near) => wobbleSpot(world, arg, near); // creatures.js: where 'near:<arg>' creatures appear
   world.parts.push({ id: 'wobble', live: 'wobble' }); // wobblelive.js: the paint-pot hops (A3)
   world.realmBiome = (x, z) => REGIONS[regionAt(x, z)].biome;
   world.spawnAt = world.arrivals.wobble;
@@ -239,6 +262,29 @@ export function wobbleLand(world) {
 }
 
 // The guide in Wobbleland (step 6 fills in the patches through scribble.js; until then: the nearest uncleared patch, else the way back).
+// The floating river's current at a place (blocks a second; y = a lift over the next step), or null off it.
+export function riverFlow(p) {
+  const R = RIVER_UP;
+  if (p.x < R.x0 - 0.3 || p.x > R.x1 + 1.3 || p.z < R.z1 - 2 || p.z > R.z0 + 1) return null; // (2 more onto the hill: off the edge)
+  const lvl = riverY(Math.floor(p.z)), next = riverY(Math.floor(p.z - 1.2)), mid = (R.x0 + R.x1 + 1) / 2;
+  if (p.y < lvl - 1 || p.y > lvl + 1.6) return null;
+  return { x: (mid - p.x) * 2, z: -R.speed, y: next > lvl || p.z < R.z1 + 2.5 ? 7 : 0 }; // downstream is north (-z); a step up ahead lifts you
+}
+// Where a 'near:<arg>' creature appears (owner 2026-11-11: freed creatures stay near their patch; floating hills have their own):
+// 'patch<id>' = round its cleared ring, 'float' = on top of a floating hill. Only within 45 of the player, else none this time.
+export function wobbleSpot(world, arg, near) {
+  const rnd = Math.random, ok = (x, z) => !near || Math.hypot(x - near.x, z - near.z) < 45;
+  if (arg === 'float') {
+    const f = FLOATERS.filter(q => ok(q.x, q.z))[Math.floor(rnd() * FLOATERS.length)];
+    if (!f) return null;
+    const a = rnd() * Math.PI * 2, r = 1 + rnd() * 1.6, x = Math.floor(f.x + Math.cos(a) * r), z = Math.floor(f.z + Math.sin(a) * r);
+    return world.get(x, f.y + 1, z) === B.AIR && world.get(x, f.y, z) === B.GRASS ? { x, y: f.y + 1, z } : null; // (on the hill's grass)
+  }
+  const p = PATCHES.find(q => `patch${q.id}` === arg);
+  if (!p || !ok(p.x, p.z)) return null;
+  const a = rnd() * Math.PI * 2, r = 3 + rnd() * 9, x = Math.floor(p.x + Math.cos(a) * r), z = Math.floor(p.z + Math.sin(a) * r);
+  return { x, y: heightAt(x, z) + 1, z };
+}
 const SIZE_RANK = { smudge: 0, tangle: 1, knot: 2 };
 export function wobbleAim(world, p, game) {
   const open = openPatches(game?.beaten, world.wobble?.patches || []);

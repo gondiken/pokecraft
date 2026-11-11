@@ -15,7 +15,8 @@
 //   hops:   A3 paint-pot hops (the Camp's pot, a pot per cleared patch, look and E, the iPad's button)
 //   bugs:   A2 scribble bugs (tests/wobblebugbots.mjs at 60 / 20 fps; real keys and the iPad's joystick corner one; a cleared patch's go)
 //   springs: C4 / C5 a floating hill with a chest: walking and jumping never get you up, the spring beside it does (real keys)
-//   WOBBLE_ONLY=land|ride|hops|bugs|springs|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
+//   river:  the floating river carries you up to its hill with no keys; freed creatures near their patch and on floating hills
+//   WOBBLE_ONLY=land|ride|hops|bugs|springs|river|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -215,6 +216,37 @@ export default async function ({ browser, base, t }) {
     await frames(page, 4);
     await shot(page, 'wobble-floating-hill.png');
     t.ok(cubes1 === cubes0 + 3, `the chest on top gives 3 Capture Cubes (${cubes0} -> ${cubes1})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (want('river')) {
+    // owner 2026-11-11 ("floating river", nothing to press): step into the floating river by the Camp and it carries you uphill to a
+    // floating hill, no keys pressed; freed creatures live near their own patch and up on the floating hills
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    const R = await page.evaluate(async () => { const L = await import('/src/wobbleland.js'); return { r: L.RIVER_UP, g: L.heightAt(L.RIVER_UP.x0, L.RIVER_UP.z0 - 1), hill: L.FLOATERS.find(f => !f.spring) }; });
+    await page.evaluate(([x, y, z]) => { const g = window.pokecraft; g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; }, [R.r.x0 + 1, R.g + 1.2, R.r.z0 - 0.5]);
+    await frames(page, 3);
+    await shot(page, 'wobble-river.png');
+    await waitFor(page, ([y]) => window.pokecraft.player.pos.y >= y && window.pokecraft.player.onGround, [R.hill.y + 1], 90000).catch(() => {});
+    const up = await page.evaluate(() => { const p = window.pokecraft.player; return { x: +p.pos.x.toFixed(1), y: +p.pos.y.toFixed(1), z: +p.pos.z.toFixed(1), ground: p.onGround }; });
+    t.ok(up.y >= R.hill.y + 1 - 0.01 && Math.hypot(up.x - R.hill.x - 0.5, up.z - R.hill.z - 0.5) < R.hill.r + 1.5, `no keys pressed: the floating river carries you uphill onto its floating hill (${JSON.stringify(up)}, the hill's top ${R.hill.y + 1})`);
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.player.pos.set(80.5, L.heightAt(80, 196) + 1, 196.5); g.player.yaw = 1.0; g.player.pitch = 0.12; });
+    await frames(page, 4);
+    await shot(page, 'wobble-river-up.png');
+    // freed creatures: near their patch, and on the floating hills
+    const sp = await page.evaluate(async () => {
+      const g = window.pokecraft, L = await import('/src/wobbleland.js'), q = L.patchOf(3), out = { patch: [], float: [] };
+      g.beaten.push(L.patchKey(3));
+      for (let i = 0; i < 40; i++) { const a = L.wobbleSpot(g.world, 'patch3', { x: q.x, z: q.z }); if (a) out.patch.push(Math.round(Math.hypot(a.x - q.x, a.z - q.z))); const f = L.wobbleSpot(g.world, 'float', { x: 100, z: 180 }); if (f) out.float.push(L.FLOATERS.some(h => Math.hypot(f.x - h.x, f.z - h.z) < h.r && f.y === h.y + 1)); }
+      g.player.pos.set(q.x + 0.5, q.y, q.z + 0.5);
+      const ctx = g.creatures.context(g.player.pos, false); for (let i = 0; i < 300 && g.creatures.list.length < 6; i++) g.creatures.trySpawn(g.player.pos, g.spawnPoint ?? g.player.pos, ctx);
+      out.wild = g.creatures.list.map(w => ({ sp: w.speciesId ?? w.data?.species, d: Math.round(Math.hypot(w.pos.x - q.x, w.pos.z - q.z)), when: w.when }));
+      return out;
+    });
+    t.ok(sp.patch.length > 30 && sp.patch.every(d => d >= 3 && d <= 12) && sp.float.length > 5 && sp.float.every(Boolean), `freed creatures' spots: round their own patch (3-12 away) and on top of the floating hills (${sp.patch.length} / ${sp.float.length})`);
+    t.ok(sp.wild.length > 0 && sp.wild.every(w => /^near:/.test(w.when)), `standing by cleared patch 3, its freed creatures appear (${JSON.stringify(sp.wild)})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }

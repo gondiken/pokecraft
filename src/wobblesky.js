@@ -38,37 +38,67 @@ function domeTexture() {
   return t;
 }
 
+// A wobbly closed loop round (cx, cy): the radius drifts by up to `amp` (a child's hand), never a perfect circle.
+function wobblyLoop(x, cx, cy, r, r2, amp, rnd, turns = 1.06) {
+  const n = 40, ph = [rnd() * 6, rnd() * 6, rnd() * 6];
+  x.beginPath();
+  for (let i = 0; i <= n * turns; i++) {
+    const a = i / n * Math.PI * 2, k = 1 + amp * (Math.sin(a * 2 + ph[0]) * 0.5 + Math.sin(a * 3 + ph[1]) * 0.3 + Math.sin(a * 5 + ph[2]) * 0.2);
+    const px = cx + Math.cos(a) * r * k, py = cy + Math.sin(a) * r2 * k;
+    if (i) x.lineTo(px, py); else x.moveTo(px, py);
+  }
+}
+// A crayon line: drawn twice, a little apart, thinner at the ends (a stroke a child goes over again)
+function crayonLine(x, pts, width, colour, rnd) {
+  x.strokeStyle = colour; x.lineCap = 'round'; x.lineJoin = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    x.lineWidth = width * (pass ? 0.6 : 1); x.globalAlpha = pass ? 0.7 : 0.95;
+    x.beginPath();
+    pts.forEach(([px, py], i) => { const jx = (rnd() - 0.5) * width * 0.5, jy = (rnd() - 0.5) * width * 0.5; if (i) x.lineTo(px + jx, py + jy); else x.moveTo(px + jx, py + jy); });
+    x.stroke();
+  }
+  x.globalAlpha = 1;
+}
+
 function sunTexture() {
   const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
   const x = c.getContext('2d'), m = S / 2, r = rng(3);
-  x.lineCap = 'round'; x.lineJoin = 'round';
-  // rays: wobbly crayon lines, some long, some short
-  for (let i = 0; i < 14; i++) {
-    const a = i / 14 * Math.PI * 2 + (r() - 0.5) * 0.12, r0 = 62, r1 = 92 + (i % 2) * 22 + r() * 8;
-    x.strokeStyle = i % 2 ? '#ffb020' : '#ffd23a'; x.lineWidth = 9;
-    x.beginPath(); x.moveTo(m + Math.cos(a) * r0, m + Math.sin(a) * r0);
-    x.quadraticCurveTo(m + Math.cos(a + 0.08) * (r0 + r1) / 2, m + Math.sin(a + 0.08) * (r0 + r1) / 2, m + Math.cos(a) * r1, m + Math.sin(a) * r1); x.stroke();
+  // rays: wobbly crayon strokes of uneven length, not evenly spaced, some bent
+  for (let i = 0; i < 13; i++) {
+    const a = (i + (r() - 0.5) * 0.45) / 13 * Math.PI * 2, r0 = 60 + r() * 6, r1 = 88 + r() * 34, bend = (r() - 0.5) * 0.25;
+    const pts = [0, 0.33, 0.66, 1].map(t => { const rr = r0 + (r1 - r0) * t, aa = a + bend * Math.sin(t * Math.PI); return [m + Math.cos(aa) * rr, m + Math.sin(aa) * rr]; });
+    crayonLine(x, pts, 8 + r() * 4, i % 3 ? '#ffc12a' : '#ff9d1c', r);
   }
-  // the face: a round coloured in yellow (strokes over the line), a smile and two dots
-  x.fillStyle = '#ffd84a'; x.beginPath(); x.arc(m, m, 58, 0, Math.PI * 2); x.fill();
-  x.strokeStyle = '#ffc21a'; x.lineWidth = 6;
-  for (let i = 0; i < 16; i++) { const y = m - 52 + i * 7; x.beginPath(); x.moveTo(m - 52 + r() * 8, y); x.lineTo(m + 52 - r() * 8, y + 4); x.stroke(); }
-  x.strokeStyle = '#e8901a'; x.lineWidth = 5; x.beginPath(); x.arc(m, m, 58, 0, Math.PI * 2); x.stroke();
-  x.fillStyle = '#4a3020'; x.beginPath(); x.arc(m - 20, m - 12, 6, 0, Math.PI * 2); x.arc(m + 20, m - 12, 6, 0, Math.PI * 2); x.fill();
-  x.strokeStyle = '#4a3020'; x.lineWidth = 6; x.beginPath(); x.arc(m, m + 2, 26, 0.2 * Math.PI, 0.8 * Math.PI); x.stroke();
-  x.fillStyle = 'rgba(255,120,120,0.55)'; x.beginPath(); x.arc(m - 34, m + 12, 9, 0, Math.PI * 2); x.arc(m + 34, m + 12, 9, 0, Math.PI * 2); x.fill();
+  // the face: coloured in with crayon strokes that go over the line, then the outline drawn round once and a bit more
+  x.save(); wobblyLoop(x, m, m, 58, 56, 0.06, r); x.clip();
+  x.fillStyle = '#ffe26a'; x.fillRect(0, 0, S, S);
+  x.restore();
+  for (let i = 0; i < 18; i++) { const y = m - 60 + i * 7 + r() * 3; crayonLine(x, [[m - 60 + r() * 14, y], [m + 60 - r() * 10, y + 6 + r() * 4]], 5, 'rgba(255,196,30,0.75)', r); }
+  wobblyLoop(x, m, m, 58, 56, 0.06, r, 1.12); x.strokeStyle = '#e8881a'; x.lineWidth = 5; x.stroke();
+  // eyes (not the same size), a lopsided smile, cheeks
+  x.fillStyle = '#4a3020';
+  x.beginPath(); x.ellipse(m - 21, m - 13, 5.5, 7, 0.1, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.ellipse(m + 19, m - 11, 6.5, 6, -0.2, 0, Math.PI * 2); x.fill();
+  crayonLine(x, [[m - 26, m + 6], [m - 14, m + 20], [m + 2, m + 25], [m + 16, m + 19], [m + 27, m + 4]], 5, '#4a3020', r);
+  x.fillStyle = 'rgba(255,120,120,0.5)'; x.beginPath(); x.ellipse(m - 35, m + 11, 10, 7, 0.3, 0, Math.PI * 2); x.ellipse(m + 34, m + 14, 9, 8, -0.2, 0, Math.PI * 2); x.fill();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
+// Clouds: lumpy, every one a bit different (seeded), the outline goes round the outside in a wobbly crayon line
 function cloudTexture() {
-  const W = 256, H = 128, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d'), puffs = [[70, 78, 40], [118, 58, 48], [170, 74, 40], [205, 88, 26], [44, 92, 24], [128, 92, 36]];
-  x.fillStyle = '#ffffff';
-  for (const [px, py, pr] of puffs) { x.beginPath(); x.arc(px, py, pr, 0, Math.PI * 2); x.fill(); }
-  x.strokeStyle = '#8aa6c8'; x.lineWidth = 4; // the outline of every puff, drawn round the outside only
-  x.save(); x.globalCompositeOperation = 'destination-over';
-  for (const [px, py, pr] of puffs) { x.beginPath(); x.arc(px, py, pr + 3, 0, Math.PI * 2); x.fillStyle = '#8aa6c8'; x.fill(); }
-  x.restore();
+  const W = 512, H = 128, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), r = rng(11);
+  for (let k = 0; k < 2; k++) { // two different clouds side by side in the texture (the quads pick one)
+    const ox = k * 256, puffs = [];
+    for (let i = 0; i < 6; i++) puffs.push([ox + 40 + i * 32 + (r() - 0.5) * 14, 70 + (r() - 0.5) * 26 - Math.sin(i / 5 * Math.PI) * 14, 22 + r() * 22]);
+    x.fillStyle = '#7f9cc4'; // outline: every puff a little bigger, underneath
+    for (const [px, py, pr] of puffs) { wobblyLoop(x, px, py, pr + 4, pr * 0.85 + 4, 0.12, r); x.fill(); }
+    x.fillStyle = '#ffffff';
+    for (const [px, py, pr] of puffs) { wobblyLoop(x, px, py, pr, pr * 0.85, 0.12, r); x.fill(); }
+    x.globalAlpha = 0.35; // a few scribbles of blue shading under it
+    for (let i = 0; i < 6; i++) crayonLine(x, [[ox + 50 + i * 28, 92 + r() * 6], [ox + 70 + i * 28, 86 + r() * 6]], 4, '#a8c4e8', r);
+    x.globalAlpha = 1;
+  }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
@@ -93,7 +123,8 @@ export function createWobbleSky(scene) {
   quads.forEach((q, i) => {
     const a = q.p.clone().sub(q.right).sub(q.upV), b = q.p.clone().add(q.right).sub(q.upV), c = q.p.clone().add(q.right).add(q.upV), d = q.p.clone().sub(q.right).add(q.upV);
     [a, b, c, a, c, d].forEach((v, k) => pos.set([v.x, v.y, v.z], i * 18 + k * 3));
-    uv.set([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1], i * 12);
+    const u0 = (i % 2) * 0.5, u1 = u0 + 0.5; // (two different clouds in the texture)
+    uv.set([u0, 0, u1, 0, u1, 1, u0, 0, u1, 1, u0, 1], i * 12);
   });
   const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); cg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   const clouds = mk(cg, new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, fog: false, depthWrite: false, side: THREE.DoubleSide }), -8);

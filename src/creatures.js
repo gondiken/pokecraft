@@ -227,6 +227,7 @@ export class CreatureManager {
       // T36: a function (the search only runs when the 'high' condition is rolled); none underground, in a realm or without env
       perch: under || !env || this.world?.realm ? null : () => this.perchNear(playerPos),
       nook: this.world?.nooks?.length ? () => this.nookNear(playerPos) : null, // T40a
+      spot: this.world?.spawnSpot ? arg => this.world.spawnSpot(arg, playerPos) : null, // chapter 3: a world's own named spots ('near:<arg>')
       allCrumbs: !!this.world?.allCrumbs, // T40a.5 (set by the Giant House's live part)
       after: this.env?.after ?? null, // owner 2026-10-27: a Picture World's rare creatures wait for your progress there (wildafter.js)
     };

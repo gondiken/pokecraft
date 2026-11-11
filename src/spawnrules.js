@@ -76,6 +76,9 @@ export const CONDITIONS = {
   orbiting: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'circling on top of a little planet' },
   // the Mirror Palace: wild Mirror creatures stand in front of the funny mirrors and by the garden hedges (world.nooks) and copy you: their own Book line
   preening: { ok: c => !!c.nook, place: c => c.nook(), outdoor: true, text: 'preening in front of the mirrors in the Mirror Palace' },
+  // A world says where (world.spawnSpot(arg, playerPos)): Wobbleland's freed creatures near their own patch ('near:patch3') and on
+  // its floating hills ('near:float'). `ok` only needs the world to have such places; no spot this time = no spawn.
+  near: { ok: c => !!c.spot, place: (c, arg) => c.spot(arg), outdoor: true, text: arg => (arg === 'float' ? 'up on the floating hills' : 'near the patch it was freed from') },
   home: {
     ok: (c, type) => !!homeOf(c, type),
     share: homeShare,

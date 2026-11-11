@@ -10,7 +10,7 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState, inMeadow, regionAt } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState, inMeadow, regionAt, RIVER_UP } from './wobbleland.js';
 import { B } from './blocks.js';
 import { createWobbleSky } from './wobblesky.js'; // C3: a child's sky
 
@@ -42,7 +42,9 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   function paint() {
     const keys = new Set(game.beaten || []);
     const knotDone = PATCHES.filter(p => p.last).some(p => keys.has(patchKey(p.id)));
-    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat])];
+    const river = []; // the floating river is always in colour (a child must see it is water to step in)
+    for (let z = RIVER_UP.z1; z <= RIVER_UP.z0; z += 4) river.push([(RIVER_UP.x0 + RIVER_UP.x1 + 1) / 2, z, 4]);
+    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...river, ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat])];
     for (const p of PATCHES) if (keys.has(patchKey(p.id))) {
       const f = floods.find(q => q.id === p.id);
       circles.push([p.x, p.z, WOBBLE_LOOK.cleared * (f ? Math.min(1, f.t / WOBBLE_LOOK.flood) : 1)]);
