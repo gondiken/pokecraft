@@ -293,6 +293,63 @@ team hitting them twice as hard is the type chart doing what the plan wants ("a 
 6. **The knot** takes a person-like bot about 1.5-2.5 minutes. Too long for your son, or right for a region's end?
 7. Is the order **smudge, smudge, tangles, knot** with the knot opening last the right pace? (Smudges have 3 monsters now, not 2.)
 
+## Owner's first play (2026-11-11) and the plan for the next session
+
+**Fixed the same day:** *"Why was the red warning removed in the scribble world? Why can't I see the fight's boundaries?"* Both were
+the curling page (step 4): to bend far things up with the page, every frame lifts each model by its distance from you. The fight's red
+warnings, its ring fence and the patch on the ground are meshes whose position is the map's corner (their shape is already in world
+places), so they were lifted some 100 blocks into the sky. A mesh like that is never lifted now (`beforeRender` in
+`src/wobblelook.js`), and the spec checks that nothing of a fight moves (`wobble` part `ipad`). Picture: `tests/screenshots/wobble-warning.png`.
+Nothing about the fight's rules changed (the owner: "battle mechanics are fine, moves are all great").
+
+The rest is a plan only (to build in a new session):
+
+### A. Too much empty space ("we could use all this space")
+
+Today the six patches sit 30-65 blocks apart on a 224-wide page, with nothing between them. Plan, in this order:
+1. **Pack the meadow.** Puddle Meadow becomes a compact area about 110 x 70 round the Camp (patch centres about 25-30 apart, rings
+   still 20 across and never touching); the other regions move in right behind it (Bumpy Hills, Slippy Lake and Shadywood each a
+   neighbour of the meadow, the Big Knot in the middle), so the walk from one patch to the next is 10-15 s, not 30-60 s.
+   `PATCHES` / `BULGES` / `WALL` in `src/wobbleland.js`; `tests/wobblecheck.mjs` keeps checking reach, rings and walls.
+2. **More to do on the way** (each one look, no text):
+   - **Scribble bugs**: little scribbles that scuttle over the grey ground; walk into one and it pops into a puff of colour (+ a paint
+     drop for the workshop later). A chase, not a fight: they run from you a bit faster than you walk, and stop at walls (a corner
+     trap, like the Mirror Palace's Gloomies). 3-5 near each patch, gone once it is cleared.
+   - **Freed creatures** already roam once a patch is cleared; give each cleared patch 1-2 that stay near it so the meadow fills up.
+   - **Smudges in a row**: between two tangles, a path of 2-3 one-monster "blots" (a 10-second fight each) that open the way.
+3. **Paint-pot hops (fast travel):** every cleared patch leaves a paint pot; stand in one and tap = hop to any other cleared pot or the
+   Camp. It is earned (clear first) and fits the drawing.
+
+### B. Riding and flying ("why can't I ride or fly my creature here?")
+
+There is no good reason: the night run copied the Bubble Well's "the whole map is a keep, no riding" rule. Plan:
+- Remove `noRide` from `REALMS.wobble` (`src/realms.js`) and give the whole-page keep `rideIn: true` (`src/wobbleland.js`): riding and
+  sky riding everywhere, building still not allowed.
+- Keep riders out of a patch's ring (a small keep per patch without `rideIn`), so you hop off at the ring and the fight starts on foot
+  as now (`scribble.js start()` already stops riding).
+- Check the curl from the sky (higher up you see more of the bent page; maybe a smaller `curlK` while flying) and the iPad frame rate
+  when flying over the whole page.
+
+### C. "More different than our regular world"
+
+Today it is our blocks, recoloured, on a bending page. The next steps, all behind the `WOBBLE` define like the curl (the main world stays
+byte for byte the same; no block ids are free, so it is all looks):
+1. **Wobbly hand-drawn blocks:** in the vertex shader, every block corner moves a fixed little bit (a hash of its place, up to 0.12;
+   never over time, so nothing shakes), so no edge is straight: the whole land looks drawn by hand. Only the look: walking and the
+   fight keep the real cubes. Check that feet never sink into the ground visibly and that there are no cracks.
+2. **A crayon atlas:** a second texture drawn like the Sketchbook's pencil atlas, but in wax crayon (thick strokes, gaps where the paper
+   shows, colours going over the lines), swapped in only here (`sketch.js` shows how).
+3. **A child's sky:** a big drawn sun with rays and a smile, flat cotton clouds hanging on strings, a sky coloured in with streaky
+   crayon (one sky dome, like the Swirl's `swirlsky.js`).
+4. **Shapes our world can never have:** hills that float on strings, trees upside down, giant crayons stuck in the ground as pillars,
+   a river that runs uphill (animated), fold creases across the page as ridges, and at the page's edge torn paper and the Wizard's desk
+   far below instead of an invisible wall.
+5. **Ways to move that only a drawing has:** drawn springs (bounce high, like Cube Planets' spring flowers), slides drawn down the
+   hills, a zip-line drawn between two trees. They also help with A (less walking).
+
+**Suggested order:** B (small, the owner asked first), then A1 + A3 (less walking), then C1 + C3 (the biggest "different" for the
+least work), then A2, C2, C4, C5. Each with the usual naive / skilled bots, real keys and an iPad run; the curl switch stays.
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

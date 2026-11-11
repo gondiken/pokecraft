@@ -113,6 +113,10 @@ export function createWobbleLook(game, { materials, scene, camera }) {
         if (o.isCamera || o.isLight || o.userData?.noCurl || (o.isMesh && own.has(o.material))) return;
         // a container group left at the origin (the scribble fight, effects...): its children are where things are
         if (depth < 2 && o.children.length && !o.isMesh && Math.abs(o.position.x) + Math.abs(o.position.z) < 1e-6) { for (const c of o.children) lift(c, depth + 1); return; }
+        // where the thing really is: a mesh left at the origin with its shape in world places (the fight's red warnings, the ring, the
+        // patch decal) is where its geometry is, not at the map's corner (owner 2026-11-11: the warnings and the ring had vanished)
+        // (many are rebuilt every frame, so their stored centre is stale): such a mesh is never lifted
+        if (o.geometry && Math.abs(o.position.x) + Math.abs(o.position.z) < 1e-6) return;
         const l = curlLift(Math.hypot(o.position.x - cx, o.position.z - cz));
         if (l > 0.001) { o.position.y += l; lifted.push([o, l]); }
       };

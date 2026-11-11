@@ -121,6 +121,10 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
     await frames(page, 4);
     await shot(page, 'wobble-ipad-fight.png');
+    // owner 2026-11-11: the red warnings and the ring had vanished (the curl lifted them: they sit at the map's corner with their shape
+    // in world places). Near you nothing of the fight may be lifted.
+    const kept = await page.evaluate(() => { const g = window.pokecraft, grp = g.scene.getObjectByName('scribble'), ys = new Map(); grp?.traverse(o => { if (o.geometry && o.visible && o.parent?.visible !== false) ys.set(o, o.position.y); }); g.wobbleLook.beforeRender(); let moved = 0; for (const [o, y] of ys) if (Math.abs(o.position.y - y) > 1e-6) moved++; g.wobbleLook.afterRender(); return { n: ys.size, moved }; });
+    t.ok(kept.n > 0 && kept.moved === 0, `in a fight the curl leaves the ring, the patch and the red warnings on the ground (${JSON.stringify(kept)})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }
