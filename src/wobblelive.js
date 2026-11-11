@@ -7,7 +7,7 @@
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, regionOpen } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
@@ -124,9 +124,9 @@ class Bugs extends Piece {
     this.eyes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), NB * 2);
     for (const m of [this.bodies, this.eyes]) { m.count = 0; m.frustumCulled = false; this.group.add(m); }
   }
-  keysChanged() { // a cleared patch's bugs go; a region that opens brings its patches' bugs (Slippy Lake once the meadow is clear)
+  keysChanged() { // a cleared patch's bugs go
     const keys = new Set(this.game.beaten || []), have = new Set(this.field.bugs.map(b => b.patch));
-    const live = p => !keys.has(patchKey(p.id)) && regionOpen(p.region, this.game.beaten);
+    const live = p => !keys.has(patchKey(p.id));
     this.field.bugs = [...this.field.bugs.filter(b => live(PATCHES.find(p => p.id === b.patch))), ...PATCHES.filter(p => live(p) && !have.has(p.id)).flatMap(p => bugsFor(p))];
   }
   update(dt, p) {

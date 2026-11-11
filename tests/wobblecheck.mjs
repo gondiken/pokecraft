@@ -1,10 +1,9 @@
 // Chapter 3 step 2 (plans/chapter3-world.md section 10): Wobbleland as terrain, checked in Node on a stand-in world (src/wobbleland.js).
 //   - every patch is reachable on foot from Inkpot Camp (steps of one block up, the fight's own ground rule: scribblefight.js groundOf)
 //   - every patch's ring (radius RING) is at least 75 % walkable from its middle, dry unless it is a water-twist patch (`wet`)
-//   - no patch is inside another (rings never touch), none crosses the wall
-//   - the Scribble's wall really closes the rest of the page: nothing north of it can be reached from the Camp
-//   - Slippy Lake (behind the west wall): with that wall gone (the meadow's knot melts it) its patches are reachable, nothing else is;
-//     its rings are on the ice; the chutes and leads are where they say; the islands are islands
+//   - no patch is inside another (rings never touch), none leaves its region
+//   - every region is open (owner 2026-11-11 evening): the whole page is walkable from the Camp, no walls
+//   - Slippy Lake: its rings are mostly ice (snow drifts are allowed), no rock or log in a ring; the chutes and leads are where they say
 //   node tests/wobblecheck.mjs      (exit 1 on a problem); tests/specs/scribble.mjs part `land` runs it
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -40,12 +39,9 @@ export async function checkWobble() {
   }
   const a = w.arrivals.wobble, from = walk(Math.floor(a[0]), Math.floor(a[2]), a[1]);
   out.reach = from.size;
-  // a wall melts the way wobblelook.js does it (every block above the ground in its boxes goes)
-  const melt = to => { for (const b of L.WALLS.filter(q => q.to === to)) for (let x = b.x0; x <= b.x1; x++) for (let z = b.z0; z <= b.z1; z++) for (let y = w.ground[x + z * W] + 1; y < H; y++) w.data[w.index(x, y, z)] = B.AIR; };
   const lakeBox = L.LAKE.box;
   for (const p of L.PATCHES) {
-    if (p.region === 'meadow' && !from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} cannot be reached on foot from the Camp`);
-    if (p.region !== 'meadow' && from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} (${p.region}) can be reached before its wall melts`);
+    if (!from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} cannot be reached on foot from the Camp`);
     const y = G.stand(p.x + 0.5, p.z + 0.5, L.BASE + 8);
     const inRing = (x, z) => Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) < L.RING - 0.2;
     let n = 0, wet = 0;
@@ -61,17 +57,17 @@ export async function checkWobble() {
       let ice = 0, all = 0; // the ground decides: a lake ring is on the ice (its holes count as the lake)
       for (let x = p.x - L.RING; x <= p.x + L.RING; x++) for (let z = p.z - L.RING; z <= p.z + L.RING; z++) if (inRing(x, z)) { all++; const b = w.get(x, w.ground[x + z * W], z); if (b === B.ICE || b === B.WATER) ice++; }
       out.rings[out.rings.length - 1].ice = Math.round(100 * ice / all);
-      if (ice < all * 0.9) problems.push(`patch ${p.id}: only ${Math.round(100 * ice / all)} % of its ring is ice`);
+      if (ice < all * 0.75) problems.push(`patch ${p.id}: only ${Math.round(100 * ice / all)} % of its ring is ice`);
+      for (const [rx, rz, r] of L.ROCKS) if (Math.hypot(rx - p.x, rz - p.z) < L.RING + r + 0.5) problems.push(`patch ${p.id}: a rock at ${rx}, ${rz} in its ring`);
+      for (const [lx, lz, n, ax] of L.LOGS) for (let k = 0; k < n; k++) if (Math.hypot((ax ? lx + k : lx) - p.x, (ax ? lz : lz + k) - p.z) < L.RING + 0.5) problems.push(`patch ${p.id}: a log at ${lx}, ${lz} in its ring`);
     }
     for (const q of L.PATCHES) if (q.id < p.id && Math.hypot(q.x - p.x, q.z - p.z) < 2 * L.RING + 2) problems.push(`patches ${q.id} and ${p.id} overlap`);
   }
-  for (const k of from.keys()) { const [x, z] = k.split(',').map(Number); if (!L.inMeadow(x, z)) { problems.push(`the wall leaks: (${k}) can be reached`); break; } }
-  // Slippy Lake opens: melt its wall; now its patches are reachable, and nothing outside the meadow and the lake
-  melt('lake');
-  const from2 = walk(Math.floor(a[0]), Math.floor(a[2]), a[1]);
-  out.lakeReach = [...from2.keys()].filter(k => { const [x, z] = k.split(',').map(Number); return L.regionAt(x, z) === 'lake'; }).length;
-  for (const p of L.PATCHES.filter(q => q.region === 'lake')) if (!from2.has(`${p.x},${p.z}`)) problems.push(`lake patch ${p.id} cannot be reached once the west wall melts`);
-  for (const k of from2.keys()) { const [x, z] = k.split(',').map(Number); const r = L.regionAt(x, z); if (r !== 'meadow' && r !== 'lake') { problems.push(`with the lake open, (${k}) in ${r} can be reached`); break; } }
+  // every region can be walked into from the Camp (no walls), and the lake is about as big as the meadow
+  out.regions = {};
+  for (const k of from.keys()) { const [x, z] = k.split(',').map(Number), r = L.regionAt(x, z); out.regions[r] = (out.regions[r] || 0) + 1; }
+  for (const r of Object.keys(L.REGIONS)) if (!(out.regions[r] > 1000)) problems.push(`region ${r}: only ${out.regions[r] || 0} cells can be walked from the Camp`);
+  if (out.regions.lake < out.regions.meadow * 0.8) problems.push(`Slippy Lake (${out.regions.lake} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
   // the chutes: an ice floor going down, stepping at most one block at a time, its top on a hill and its foot at a lead
   for (const c of L.CHUTES) {
     let last = null, bad = 0;
@@ -102,16 +98,12 @@ export async function checkWobble() {
     }
     if (n) problems.push(`${p.camp ? 'the Camp' : `the ring at ${p.x}, ${p.z}`} has ${n} blocks standing in it`);
   }
-  // the other side is real land (Bumpy Hills): walkable (its wall melts later)
-  out.hills = walk(L.KNOT.x, L.KNOT.z, L.heightAt(L.KNOT.x, L.KNOT.z) + 1).size;
-  if (out.hills < 5000) problems.push(`behind the wall only ${out.hills} cells can be walked`);
   // step 6: a naive kid who only follows the guide arrow (wobbleAim: the nearest patch not cleared yet), walking straight the way it
   // points, jumping up one block when it bumps into a step, sliding along what it cannot climb, reaches every patch from the Camp
   {
     const game = { beaten: [] };
     let x = a[0], z = a[2], y = a[1], steps = 0, stuck = 0;
     const order = [];
-    // (the lake's wall is melted already above: the kid follows the arrow, which shows lake patches only once the meadow's knot is clear)
     while (order.length < L.PATCHES.length && steps < 30000) {
       const aim = L.wobbleAim(w, { x, z }, game), q = L.openPatches(game.beaten).find(r => Math.hypot(r.x + 0.5 - x, r.z + 0.5 - z) < 5);
       if (q) { game.beaten.push(L.patchKey(q.id)); order.push(q.id); continue; }
@@ -134,7 +126,7 @@ export async function checkWobble() {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const r = await checkWobble();
   console.log(`the arrow-following kid: patches in the order ${r.out.kid.order.join(', ')} in ${r.out.kid.steps} steps of 0.3 (${r.out.kid.stuck} stuck)`);
-  console.log(`reachable from the Camp: ${r.out.reach} cells (Slippy Lake, once its wall melts: ${r.out.lakeReach} more); Bumpy Hills (behind the wall): ${r.out.hills} cells`);
+  console.log(`reachable from the Camp: ${r.out.reach} cells (${Object.entries(r.out.regions).map(([k, v]) => `${k} ${v}`).join(', ')})`);
   for (const q of r.out.rings) console.log(`patch ${q.id}: ring ${q.walk} % walkable, ${q.wet} wet cells${q.ice != null ? `, ${q.ice} % ice` : ''}`);
   for (const p of r.problems) console.log('PROBLEM', p);
   process.exit(r.problems.length ? 1 : 0);

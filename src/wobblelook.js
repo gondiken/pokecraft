@@ -10,7 +10,7 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE, regionState, regionOpen, regionAt, RIVER_UP, CHUTES, LEADS } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, regionState, regionAt, RIVER_UP, CHUTES, LEADS } from './wobbleland.js';
 import { B } from './blocks.js';
 import { createWobbleSky } from './wobblesky.js'; // C3: a child's sky
 
@@ -118,10 +118,9 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       if (!active) return;
       uniforms();
       sky?.update(dt, camera);
-      api.meltWall(); // step 7: a knot cleared: the Scribble's wall to the next region melts away (live cells only)
       const here = game.player ? regionAt(game.player.pos.x, game.player.pos.z) : 'meadow';
-      if (REGIONS[here]?.soon && regionOpen(here, game.beaten) && !game.toldOnce?.has(`wobble-${here}`)) { game.toldOnce?.add(`wobble-${here}`); game.ui?.toast(`🧙 ${REGIONS[here].name} is still being drawn. Coming soon!`); }
-      const reg = REGIONS[here]?.soon || !regionOpen(here, game.beaten) ? 'meadow' : here, m = regionState(game.beaten, reg); // the region's meter (step 6): the one you are in
+      if (REGIONS[here]?.soon && !game.toldOnce?.has(`wobble-${here}`)) { game.toldOnce?.add(`wobble-${here}`); game.ui?.toast(`🧙 ${REGIONS[here].name} is still being drawn. Coming soon!`); }
+      const reg = REGIONS[here]?.soon ? 'meadow' : here, m = regionState(game.beaten, reg); // the region's meter (step 6): the one you are in
       if (!game.inBattle && !game.scribble?.fighting) game.ui?.setScore?.({ text: `🎨 ${m.name} ${m.n} / ${m.of}`, done: m.n >= m.of });
       const s = (game.beaten || []).filter(k => k.startsWith('pw:wobble:')).join();
       if (floods.length) { for (const f of floods) f.t += dt; paint(); floods = floods.filter(f => f.t < WOBBLE_LOOK.flood); }
@@ -147,25 +146,6 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       for (const o of scene.children) lift(o, 0);
     },
     afterRender() { for (const [o, l] of lifted) o.position.y -= l; lifted = []; },
-    // step 7: a region's knot cleared: the walls to the region it opens melt (wobbleland.js WALLS `to`, REGIONS `after`; drawn with
-    // setLive: never an edit, so a reload melts them again from the saved knot keys). The walls still standing stay a keep.
-    meltWall() {
-      const w = world, boxes = w?.wobble?.walls;
-      if (!boxes) return;
-      w.wobbleMelted ??= new Set();
-      const go = boxes.filter(b => !w.wobbleMelted.has(b) && regionOpen(b.to, game.beaten));
-      if (!go.length) return;
-      for (const box of go) {
-        w.wobbleMelted.add(box);
-        for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) for (let y = 1; y < 47; y++) {
-          const b = w.get(x, y, z);
-          if (b !== B.AIR && y > (w.ground?.[x + z * w.W] ?? 0)) w.setLive(x, y, z, B.AIR);
-        }
-      }
-      const keep = (w.keeps || []).find(k => k.name === 'scribble-wall'), left = boxes.filter(b => !w.wobbleMelted.has(b));
-      if (keep) { if (left.length) keep.protect = left; else w.keeps = w.keeps.filter(k => k !== keep); }
-      w.fenceBoxes = null; // (world.js caches the riders' fences: the melted walls' go with it)
-    },
     // ?preview: the pause screen's switch
     toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },
     colourAt(x, z) { const i = Math.floor(x / WOBBLE_LOOK.cell), j = Math.floor(z / WOBBLE_LOOK.cell); return i < 0 || j < 0 || i >= N || j >= N ? 0 : data[(i + j * N) * 4] / 255; },

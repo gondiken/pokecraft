@@ -29,35 +29,48 @@ export async function wobbleEnv() {
 }
 
 // walk north (yaw 0 = forward is -z) for `walk` s, let go, measure how far you go after letting go
-function glide(E, { x, z, fps, ride = null, walk = 3 }) { // (3 s: up to full speed, ice is slow to get going)
+function glide(E, { x, z, fps, ride = null, walk = 4 }) { // (4 s: near full speed, ice is slow to get going)
   const y = E.L.heightAt(x, z) + 1;
   E.put(x + 0.5, y, z + 0.5, 0);
   if (ride) E.player.ride = ride;
   E.run(walk, fps, { KeyW: true });
   const z0 = E.player.pos.z;
-  E.run(3, fps, {});
+  E.run(5, fps, {});
   return +(z0 - E.player.pos.z).toFixed(2);
+}
+// a straight lane of open ice going north (no drift, log, rock, hole or island for `n` cells, three wide): where the glide is measured
+function iceLane(E, n = 44) {
+  const { L, w, B } = E, ice = (x, z) => w.get(x, L.LAKE.y, z) === B.ICE && w.get(x, L.LAKE.y + 1, z) === B.AIR;
+  for (let z = 215; z > 80 + n; z--) for (let x = 6; x < 54; x++) {
+    let ok = true;
+    for (let k = 0; k < n && ok; k++) for (const dx of [-1, 0, 1]) if (!ice(x + dx, z - k)) { ok = false; break; }
+    if (ok) return { x, z };
+  }
+  return null;
 }
 
 export async function checkIce() {
   const E = await wobbleEnv(), { L, B, w, player } = E, problems = [], out = {};
   const RIDE = { land: { kind: 'land', speed: 6.5, sprint: 8.5, jump: 9 } }; // (riding.js's numbers do not matter here: only the type)
-  // 1. the slide on the lake (well away from the holes and the rings' middles), at 60 and 20 fps
-  out.glide60 = glide(E, { x: 30, z: 196, fps: 60 });
-  out.glide20 = glide(E, { x: 30, z: 196, fps: 20 });
-  if (Math.abs(out.glide60 - 2) > 0.35) problems.push(`on the ice a walk glides ${out.glide60} after letting go (want about 2)`);
+  // 1. the slide on the lake (a lane of open ice), at 60 and 20 fps
+  const lane = iceLane(E);
+  if (!lane) return { problems: ['no lane of open ice 44 long on the lake'], out };
+  out.lane = lane;
+  out.glide60 = glide(E, { ...lane, fps: 60 });
+  out.glide20 = glide(E, { ...lane, fps: 20 });
+  if (Math.abs(out.glide60 - 3.9) > 0.6) problems.push(`on the ice a walk glides ${out.glide60} after letting go (want about 4)`);
   if (Math.abs(out.glide60 - out.glide20) > 0.15) problems.push(`the glide differs at 60 and 20 fps (${out.glide60} / ${out.glide20})`);
-  out.sprint = (() => { const y = L.heightAt(30, 196) + 1; E.put(30.5, y, 190.5, 0); E.run(3, 60, { KeyW: true, ShiftLeft: true }); const z0 = player.pos.z; E.run(3, 60, {}); return +(z0 - player.pos.z).toFixed(2); })();
+  out.sprint = (() => { E.put(lane.x + 0.5, L.LAKE.y + 1, lane.z + 0.5, 0); E.run(4, 60, { KeyW: true, ShiftLeft: true }); const z0 = player.pos.z; E.run(6, 60, {}); return +(z0 - player.pos.z).toFixed(2); })();
   // 2. riding an Ice creature: it keeps its grip; a Fire one slides
-  out.iceRide = glide(E, { x: 30, z: 196, fps: 60, ride: { ...RIDE.land, type: 'ice' } });
-  out.fireRide = glide(E, { x: 30, z: 196, fps: 60, ride: { ...RIDE.land, type: 'fire' } });
+  out.iceRide = glide(E, { ...lane, fps: 60, walk: 2, ride: { ...RIDE.land, type: 'ice' } });
+  out.fireRide = glide(E, { ...lane, fps: 60, walk: 2, ride: { ...RIDE.land, type: 'fire' } });
   if (out.iceRide > 0.15) problems.push(`riding an Ice creature still glides ${out.iceRide}`);
   if (out.fireRide < 1.5) problems.push(`riding a Fire creature glides only ${out.fireRide}`);
   // 3. the meadow's grass: you stop at once (no rule there), and the island's snow too
   out.meadow = glide(E, { x: 112, z: 196, fps: 60 });
   if (out.meadow > 0.1) problems.push(`on the meadow's grass a walk glides ${out.meadow}`);
-  out.rule = { meadow: !!w.groundAt({ x: 112.5, y: L.heightAt(112, 196) + 1, z: 196.5 }), ice: w.groundAt({ x: 30.5, y: L.LAKE.y + 1, z: 196.5 })?.id, isle: !!w.groundAt({ x: 52.5, y: L.LAKE.y + 2, z: 178.5 }) };
-  if (out.rule.meadow || out.rule.ice !== 'ice' || out.rule.isle) problems.push(`groundAt: ${JSON.stringify(out.rule)}`);
+  out.rule = { meadow: !!w.groundAt({ x: 112.5, y: L.heightAt(112, 196) + 1, z: 196.5 }), ice: w.groundAt({ x: lane.x + 0.5, y: L.LAKE.y + 1, z: lane.z + 0.5 })?.id, drift: !!w.groundAt({ ...(() => { for (let x = 4; x < 56; x++) for (let z = 80; z < 220; z++) if (L.lakeShape(x, z) <= 1 && L.driftAt(x, z) && w.get(x, L.LAKE.y, z) === B.SNOW) return { x: x + 0.5, z: z + 0.5 }; })(), y: L.LAKE.y + 1 }), isle: !!w.groundAt({ x: 52.5, y: L.LAKE.y + 2, z: 178.5 }) };
+  if (out.rule.meadow || out.rule.ice !== 'ice' || out.rule.isle || out.rule.drift) problems.push(`groundAt: ${JSON.stringify(out.rule)}`);
   // 4. the chutes: step onto the top, press nothing: down the chute, into the lead, carried to the east island
   out.chutes = [];
   for (const c of L.CHUTES) for (const fps of [60, 20]) {
@@ -85,10 +98,10 @@ export async function checkIce() {
   }
   // 5. the fight: on the ice a Fire creature glides, an Ice creature stops dead; a slipping monster's red line is longer; the meadow is as before
   const SF = await import('../src/scribblefight.js'), S = await import('../src/species.js');
-  const G = SF.groundOf(w), q = L.patchOf(7), pf = SF.patchFight(q, L.heightAt(q.x, q.z) + 1);
+  const G = SF.groundOf(w), q = { ...L.patchOf(7), x: lane.x, z: lane.z - 22 }, pf = SF.patchFight(q, L.LAKE.y + 1); // (a ring on the lane of open ice)
   const fightGlide = (species, patch = pf) => {
-    const F = new SF.ScribbleFight({ ground: G, centre: patch.centre, squad: [S.makeCreature(species, 30)], start: { x: patch.centre.x, y: patch.centre.y, z: patch.centre.z + 4 }, foes: patch.foes, rand: () => 0.5 });
-    for (const f of F.foes) { f.timer = 99; f.sleepT = 99; } // (the monsters wait)
+    const F = new SF.ScribbleFight({ ground: G, centre: patch.centre, squad: [S.makeCreature(species, 30)], start: { x: patch.centre.x, y: patch.centre.y, z: patch.centre.z + 7 }, foes: patch.foes, rand: () => 0.5 });
+    for (const f of F.foes) { f.timer = 99; f.sleepT = 99; f.x = patch.centre.x + 6; } // (the monsters wait, out of the way)
     F.input = { mx: 0, mz: -1 }; for (let i = 0; i < 100; i++) F.step(1 / 60);
     const z0 = F.you.z; F.input = { mx: 0, mz: 0 }; for (let i = 0; i < 180; i++) F.step(1 / 60);
     return +(z0 - F.you.z).toFixed(2);
@@ -96,7 +109,7 @@ export async function checkIce() {
   out.fight = { fire: fightGlide('blazehound'), ice: fightGlide('glacieron') };
   const mq = L.patchOf(1), mpf = SF.patchFight(mq, L.heightAt(mq.x, mq.z) + 1);
   out.fight.meadow = fightGlide('blazehound', mpf);
-  if (out.fight.fire < 1.5 || out.fight.ice > 0.05 || out.fight.meadow > 0.05) problems.push(`the fight's glide: ${JSON.stringify(out.fight)}`);
+  if (out.fight.fire < 2 || out.fight.ice > 0.05 || out.fight.meadow > 0.05) problems.push(`the fight's glide: ${JSON.stringify(out.fight)}`);
   {
     const F = new SF.ScribbleFight({ ground: G, centre: pf.centre, squad: [S.makeCreature('blazehound', 30)], start: { x: pf.centre.x, y: pf.centre.y, z: pf.centre.z + 4 }, foes: [{ species: 'shellby', pattern: 'charge' }, { species: 'frostling', pattern: 'charge' }], rand: () => 0.5 });
     const [water, ice] = F.foes; water.x = ice.x = pf.centre.x; water.z = pf.centre.z - 3; ice.z = pf.centre.z - 3; water.y = ice.y = pf.centre.y;

@@ -275,9 +275,37 @@ export function createScribble(game) {
     return m;
   }
 
+  // Wobbleland: every other open patch is drawn too, from afar (owner 2026-11-11: "why do scribbles not appear at all until I get
+  // close?"): its pencil tangle (boiling) and the scribble on the ground; its monsters come when it becomes the live patch. Each sits in
+  // a group at the patch's middle, so the curling page lifts it like any model far away.
+  const far = new Map(); let farTex = null, farSig = '';
+  function syncFar() {
+    const w = S.world, open = w?.wobble ? openPatches(game.beaten, w.wobble.patches).filter(p => p.id !== S.patch?.id) : [];
+    const sig = open.map(p => p.id).join();
+    if (sig === farSig) return;
+    farSig = sig;
+    const want = new Set(open.map(p => p.id));
+    for (const [id, f] of far) if (!want.has(id)) dropFar(id, f);
+    if (!open.length) return;
+    const G = groundOf(w);
+    farTex ??= scribbleTexture('patch');
+    for (const p of open) if (!far.has(p.id)) {
+      const C = { x: p.x + 0.5, y: p.y, z: p.z + 0.5 }, tg = buildTangle(C, G), g = new THREE.Group();
+      const dec = decalMesh(decalGeometry(G, C.x, C.z, FIGHT.patch + 0.5, C.y, (x, z) => (Math.hypot(x - C.x, z - C.z) < FIGHT.patch + 0.5 ? 1 : 0)), farTex);
+      g.position.set(C.x, 0, C.z); tg.mesh.position.set(-C.x, 0, -C.z); dec.position.set(-C.x, 0, -C.z);
+      g.add(tg.mesh, dec); group.add(g);
+      drawTangle(tg, 0, 0.07, 0);
+      far.set(p.id, { g, tg, dec });
+    }
+  }
+  function dropFar(id, f) { group.remove(f.g); f.tg.mesh.geometry.dispose(); f.tg.mesh.material.dispose(); f.dec.geometry.dispose(); f.dec.material.dispose(); far.delete(id); }
+  function clearFar() { for (const [id, f] of far) dropFar(id, f); farSig = ''; }
+  function drawFar(newBoil) { if (newBoil) for (const f of far.values()) drawTangle(f.tg, 0, 0.07, boil); }
+  S.farInfo = () => [...far.keys()]; // (tests)
+
   // Builds the patch for this world (its spot is worked out once).
   function build(world) {
-    clear();
+    clear(); clearFar();
     S.world = world;
     S.phase = 'off'; S.patch = null;
     if (!world) return;
@@ -321,6 +349,7 @@ export function createScribble(game) {
       parts.spots.push([f.x, f.z]);
     });
     drawTangle(parts.tangle, 0, 0.07, 0);
+    syncFar();
     const p = game.player?.pos;
     S.armed = !p || Math.hypot(p.x - C.x, p.z - C.z) > FIGHT.patch + 1;
     S.phase = 'idle';
@@ -874,14 +903,16 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   S.update = (dt, camera) => {
     t += dt;
     if (game.world !== S.world && game.started) build(game.world);
+    syncFar(); // (a won patch leaves the far ones; a cleared region's knot joins them)
+    boilT += dt; const newBoil = boilT > 0.12; if (newBoil) { boilT = 0; boil = (boil + 1) % 3; } // the tangles boil like a pencil drawing
+    drawFar(newBoil);
     if (S.phase === 'off' || !parts) { if (avatar) avatar.visible = false; return; }
     const p = game.player, C = S.spot, playing = game.playing?.();
-    // the tangle boils like a pencil drawing
-    boilT += dt; if (boilT > 0.12) { boilT = 0; boil = (boil + 1) % 3; }
     const tg = parts.tangle;
     if (S.phase === 'idle' || S.phase === 'cleared') {
       if (S.phase === 'cleared' && S.next) { S.next = false; build(S.world); return; } // Wobbleland: on to the next patch
-      if (S.phase === 'idle' && S.patch && playing && (rePickT += dt) > 1) { // Wobbleland: the patch you are nearest to is the live one
+      const intoFar = S.phase === 'idle' && S.patch && [...far.keys()].some(id => { const q = S.world.wobble.patches.find(r => r.id === id); return q && Math.hypot(q.x + 0.5 - p.pos.x, q.z + 0.5 - p.pos.z) < FIGHT.R; });
+      if (S.phase === 'idle' && S.patch && playing && ((rePickT += dt) > 1 || intoFar)) { // Wobbleland: the patch you are nearest to is the live one (at once when you walk into a far one's ring)
         rePickT = 0;
         const q = openPatches(game.beaten, S.world.wobble.patches).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0];
         const still = q && openPatches(game.beaten, [S.patch]).length; // (the live patch may have been cleared by another way: a reload, a test)

@@ -681,7 +681,7 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
     float shine = run * (smoothstep(0.0, 0.02, band) - smoothstep(0.05, 0.09, band)) + 0.6 * run * (smoothstep(0.13, 0.14, band) - smoothstep(0.15, 0.17, band));
     float wobTone = 0.94 + 0.06 * lum;                                          // (the tile's own pixels only as a faint tone: one smooth sheet)
     draft = vec3(0.56, 0.83, 0.99) * wobTone + vec3(shine * 0.55);
-    grey = vec3(0.64, 0.78, 0.9) * wobTone + vec3(shine * 0.4);
+    grey = mix(grey * 0.92, vec3(0.58, 0.63, 0.69), 0.45) + vec3(shine * 0.16); // (owner: "not greyed enough": a scribbled grey, only a cool hint and faint shine)
   }
   // C2: wax crayon on what is coloured in: short slanted streaks in world space, and gaps where the paper shows between them
   if (uWobCrayon > 0.0) {

@@ -698,6 +698,96 @@ Three teams at Lv 30: **Ice** (Snowpaw, Flurrydome, Waddlice: base stats close t
 5. The meadow's knot now opens **only the lake**, not all three walls; Shadywood opens after the lake. OK?
 6. Next: **Shadywood** (the dark) with the same kind of ground rule?
 
+### 8. The owner's look at Slippy Lake (2026-11-11, late) and what changed
+
+**The owner:** the ice was not greyed enough; it was "just pure ice" ("a bit more integrated with other types of blocks, naturally, though
+ice still dominant"); it "felt much smaller than the meadow"; "why do scribbles not appear at all until I get close"; question 1 and 3 were not
+clear; question 2: **"yes more slippery. more fun"**; question 4: either is fine; questions 5 / 6: **"all regions should be visible / walkable,
+one region shouldn't be the dependency for another region to unlock"**, build them one by one, Shadywood next in another session.
+
+**Changed (all ?preview; sections 1-6 above are the first build, these replace them where they differ):**
+- **No walls, every region open** (`src/wobbleland.js`: `WALLS`, `regionOpen`, `meltWall` and the Scribble's wall are gone). Every patch of
+  every region can be fought from the start; a region's knot still comes only after its own other patches (`openPatches`). A region still
+  being drawn (Shadywood, Bumpy Hills) is walkable grey land and says "still being drawn" once when you walk in. Example: from the Camp walk
+  west and you are on the lake; the arrow shows the meadow's two smudges first, then the nearest tangle of any region.
+- **The lake is as big as the meadow:** it now reaches north to z 72 (`LAKE_Z0`; two lobes, `LAKE.lobes`), 9 238 walkable cells against the
+  meadow's 9 059 (`tests/wobblecheck.mjs`); it was 60 % of the meadow. **Seven patches:** six tangles (two new, 12 and 13, in the north lobe,
+  13 with a hole of open water) and the knot, moved to the far north end (29, 99) so you meet the tangles on the way. Patch 12 is Snowpaw,
+  Gullop, Zeppeluff (with Kiteling the neutral team mashed it 9 / 24).
+- **Not only ice** (`LAKE.drift`, `LOGS`, `ROCKS`, `PINES`): snow drifts on the ice (about one cell in six; you keep your grip on them, so a
+  drift in a fight ring is a place where you can stop), logs frozen into the ice, rocks poking up through it with a snow cap (never in a
+  ring: they would block shots and steps), a rock island in the middle, snowy pines and gravel on the shore. Rings stay 80-96 % ice
+  (`wobblecheck.mjs` asks at least 75 %); the drift threshold is `LAKE.drift` 0.72 (0.62 made a third of the rings snow).
+- **Greyer ice under the Scribble** (`WOBBLE_FRAG` in `src/caves.js`, `wobIce`): the Scribble's grey with only a cool hint and a faint shine
+  (it was a pale blue). Coloured in, it is still the bright ice blue.
+- **More slippery** (`Ice` in `src/groundrules.js` line 27): letting go eases at `k` 1.1 (was 2.15): from a walk you glide **3.6-3.8 blocks**
+  (a sprint 5.2, a Fire ride 4.4; 60 = 20 fps, `tests/wobblenode.mjs`); getting going and turning eases at `go` 0.7 (was 1.0); a slipping
+  monster's charge goes 2 past its aim (was 1.5).
+- **Every patch is drawn from afar** (`syncFar` in `src/scribble.js`): until now only the live patch (the nearest one you had not cleared,
+  and it changed only when another was 8 blocks nearer) had its tangle and grey ground; the rest of the lake looked empty. Now every open
+  patch shows its boiling pencil tangle and the scribble on the ground; its monsters come out when it becomes the live one. Each is a group
+  at the patch's middle, so the curling page lifts it like any far model. Cost: 2 draw calls a patch.
+
+**What the questions meant, in plain words, and what I decided:**
+- *Question 1 ("mashing"):* "mashing" is a child pressing the attack buttons over and over without moving out of the red warnings. The house
+  rule says that must not win. It does lose with a type-neutral team on every lake patch (at most 3 / 24 fights), but **an Ice team wins the
+  lake's tangles that way** (21-24 / 24), and so does your own team (3-7 / 8) and the Ice team in Puddle Meadow too. The reason is not the ice:
+  teams whose moves are many shots and rushes simply hit hard enough; the neutral team relies on big blasts, and a mashed big blast is a weak
+  puff. **Decided for now:** judged as in the meadow (with the neutral team); fixing it means changing the fight everywhere (e.g. monsters that
+  punish standing still), which is question 1 below.
+- *Question 3 ("skate at you"):* on the ice, every monster that is not an Ice monster runs straight at you instead of throwing things from a
+  distance, slides past you and skids on (its red line is longer). **Decided: kept**: it is the one thing that makes the monsters' slide visible
+  (without it every lake monster threw things from afar and the ice changed nothing about them).
+
+**Bot numbers after the change** (`node tests/wobblebots.mjs`, every lake patch, 60 and 20 fps; "loses" = % of the squad's HP a minute;
+mashing 12 fights a frame rate, the owner's 4; skilled and person 2 each):
+
+| Patch | Mashing won: neutral / Ice / owner | Skilled (all won): Ice / neutral / owner | Person won: Ice / neutral / owner | Neutral person, ice off |
+| --- | --- | --- | --- | --- |
+| 7 tangle | 3 / 24, 24 / 24, 6 / 8 | 21-66 s 16 % / 28-37 s 58 % / 31-43 s 11 % | 4 / 4 (48-77 s, 40 %) / 4 / 4 (81-115 s, 48 %) / 4 / 4 (42-57 s, 53 %) | 4 / 4, 3 % |
+| 8 tangle | 1 / 24, 24 / 24, 4 / 8 | 25-51 s 16 % / 31-53 s 58 % / 23-43 s 30 % | 4 / 4 (63-77 s, 52 %) / 4 / 4 (65-94 s, 57 %) / 4 / 4 (49-73 s, 42 %) | 4 / 4, 4 % |
+| 9 tangle, holes | 0 / 24, 21 / 24, 5 / 8 | 46-55 s 4 % / 46-51 s 35 % / 32-51 s 27 % | 4 / 4 (116-139 s, 37 %) / 2 / 4 (88-101 s, 79 %) / 3 / 4 (47-85 s, 77 %) | 4 / 4, 0 % |
+| 10 tangle | 0 / 24, 24 / 24, 3 / 8 | 26-37 s 0 % / 31-38 s 38 % / 32-43 s 14 % | 4 / 4 (51-70 s, 43 %) / 4 / 4 (58-79 s, 62 %) / 4 / 4 (45-60 s, 48 %) | 3 / 4, 63 % |
+| 12 tangle (new) | 0 / 24, 23 / 24, 5 / 8 | 30-48 s 22 % / 37-50 s 75 % / 26-40 s 47 % | 4 / 4 (64-88 s, 43 %) / 2 / 4 (94-110 s, 91 %) / 4 / 4 (44-70 s, 58 %) | 4 / 4, 0 % |
+| 13 tangle (new), hole | 0 / 24, 24 / 24, 6 / 8 | 32-39 s 10 % / 38-45 s 25 % / 19-40 s 33 % | 4 / 4 (72-105 s, 35 %) / 3 / 4 (59-92 s, 85 %) / 4 / 4 (40-64 s, 67 %) | 4 / 4, 3 % |
+| 11 knot | 0 / 24, 2 / 24, 0 / 8 | 50-62 s 7 % / 66-77 s 39 % / 40-53 s 26 % | 4 / 4 (158-188 s, 21 %) / 3 / 4 (121-154 s, 62 %) / 2 / 4 (64-99 s, 79 %) | 4 / 4, 5 % |
+
+**The fitting type now shows:** the person bot with the Ice team won **28 / 28** lake fights, with the neutral team 21 / 28 and with your
+team 25 / 28; a skilled Ice team loses a third or less of what a neutral one does on every patch. With the ice off, the same neutral person
+loses almost nothing, so on the lake it is the ice (and the monsters skating at you) that hurts a team that slips. **The grip alone** (the
+Ice team's kid bot, with its grip and with the grip taken away for the measurement) is still noisy: it loses 47 / 91 / 43 / 58 / 70 / 45 / 47
+% a minute with its grip and 52 / 76 / 64 / 55 / 59 / 53 / 35 % slipping (patches 7, 8, 9, 10, 12, 13, 11).
+
+**Questions for the owner (after this change)**
+1. **Mashing with a strong team:** a child who only presses the buttons and never moves wins the lake's tangles with an Ice team (and with
+   your team), the same as on Puddle Meadow's first patches. Should mashing lose with every team? That is a change to the fight everywhere.
+2. **Is it slippery enough now** (about 4 blocks of glide from a walk, 5 from a sprint)?
+3. The drifts, logs, rocks and pines: enough "other blocks", or more (e.g. a frozen reed bed, a half-sunk boat)?
+
+## Shadywood: the plan (the next session builds it)
+
+The same pattern as Slippy Lake: one ground rule, one type a child sees winning, ways to move with no button, patches whose monsters fit
+the place. Everything behind ?preview; no walls (every region open, owner 2026-11-11).
+
+- **Where:** east of the meadow (`regionAt` 'wood': x 163..223, z 134..223, `WOOD` today: rows of plain trees), grown north into the hills'
+  strip like the lake (about the meadow's size, ~9 000 walkable cells), so Bumpy Hills keeps the whole north.
+- **The ground rule:** a `Dark` subclass of `GroundRule` (`src/groundrules.js`) with `sight(type)`: under the trees you see only near your
+  creature's light (the arena's `SEE`: near 4.6, far 7.5); `world.groundAt` answers it where the canopy is closed (a top-block test like
+  `iceUnder`: leaves over you). **Fire, Light, Electric and Cosmic creatures glow: their circle of light is twice as big** (you see the red
+  warnings sooner); a big blast lights the whole ring for a moment. In the fight: `ScribbleFight` asks `rule.sight` for what the camera and
+  the warnings show (warnings outside your light are drawn only as a faint glow), never for the sums. On foot: the WOBBLE shader darkens by
+  distance from you (a lantern circle), so the dark is the same look in and out of fights.
+- **The look:** tall crayon trees with a closed canopy, shafts of light in clearings (lit, no rule there), glowing mushrooms, fireflies,
+  eyes in the dark that are only scribble bugs; under the Scribble greyer and darker.
+- **Ways to move with no button:** glowing mushroom caps you bounce on (Bounce Blocks with a drawn cap, like the springs), a dark river with a
+  current between clearings (`flowAt`, as the lake's leads), hollow logs you slide through.
+- **Patches:** 6 tangles + a knot (Ghost, Ninja, Grass, Bug monsters; one glowing monster per patch so the light rule shows on their side
+  too), the knot's big one a Ghost Grumble; freed creatures near their patch and in the clearings.
+- **Bots:** the same `runLake`-style table with three teams (a glowing team: Fire / Light / Electric / Cosmic, the neutral one, the owner's),
+  mashing judged with the neutral team, skilled must win with all, the person bot's wins and HP loss as the "how much the type helps" number;
+  the iPad matters most here (the dark must stay readable on a small screen).
+- **Open question to settle first:** how dark is fun for a child and still readable on the iPad (try two levels in screenshots).
+
 ## 0. The owner's decisions (2026-11-11)
 
 | Question | Decision |

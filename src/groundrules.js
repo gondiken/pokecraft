@@ -20,12 +20,12 @@ export class GroundRule {
 }
 
 // Ice (Slippy Lake): you, your creature and the monsters slide; the speed eases toward what the stick wants (1 - e^-k dt per step: the
-// same at every step length). Letting go (slowing down) eases at `k`, so from a walk (4.3 a second) you glide 4.3 / k = 2 blocks;
+// same at every step length). Letting go (slowing down) eases at `k`, so from a walk (4.3 a second) you glide 4.3 / k = 4 blocks;
 // getting going and turning (the stick wants at least the speed you have) eases at `go`, slower: on ice it is hard to start and to turn,
 // so a creature that slips gets out of a red warning late (measured: with `go` = `k` the grip made no difference to any bot). Ice
 // creatures (and Ice monsters) keep their grip: they start, turn and stop at once (no skid marks).
 export class Ice extends GroundRule {
-  constructor(o = {}) { super({ id: 'ice', k: 2.15, go: 1.0, rush: 4, dodge: 3, past: 1.5, ...o }); }
+  constructor(o = {}) { super({ id: 'ice', k: 1.1, go: 0.7, rush: 4, dodge: 3, past: 2, ...o }); } // (owner 2026-11-11 evening: "more slippery, more fun": was k 2.15, go 1.0)
   grips(type) { return type === 'ice'; }
   move(v, tx, tz, dt, grip = false) {
     if (grip) { v.x = tx; v.z = tz; return; }

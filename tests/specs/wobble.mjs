@@ -19,10 +19,10 @@
 //   ice:    Slippy Lake in Node (tests/wobblenode.mjs, the real Player and ScribbleFight): a walk glides about 2 blocks on the ice (60 = 20
 //           fps), an Ice ride keeps its grip, the meadow stops at once; the chutes and leads carry you to the island with no keys; in a
 //           fight a creature that slides glides on and an Ice one stops dead; a slipping monster's red line is longer
-//   lake:   Slippy Lake in a browser, real keys: the meadow's knot melts the west wall (only that one), the meter / arrow / rows for the lake,
+//   lake:   Slippy Lake in a browser, real keys: open from the start (no walls), the meter / arrow / rows for the lake, its far patches drawn,
 //           W on the ice and let go = a glide with skid marks, a chute ride with no keys, walking into a lake patch starts its fight on the
 //           ice, a win (key, cubes, the Wizard's words), a reload, freed creatures by their patch and on the islands, the lake's knot
-//           (Blizzbear, an Ice Grumble), the whole lake in colour and the east wall to Shadywood melts; screenshots
+//           (Blizzbear, an Ice Grumble), the whole lake in colour; screenshots
 //   lakeipad: the same lake on an emulated iPad: the joystick on the ice glides, the chip, the touch buttons
 //   lakebots: tests/wobblebots.mjs runLake: every lake patch with the Ice, the neutral and the owner's team (mashing under a quarter with
 //           the Ice and neutral teams, skilled wins with all three; how much the Ice type helps is reported)
@@ -71,34 +71,37 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('blazehound', 30), S.makeCreature('tidalord', 30), S.makeCreature('thunderwolf', 30)]; });
     await intoWobble(page);
     const tag = dev ? 'iPad: ' : '';
-    // the meadow cleared: its knot melts only the west wall (Slippy Lake); the north and east walls stand
+    // every region is open from the start (owner 2026-11-11): the lake's tangles are in "Where to go" before any meadow patch is won,
+    // and nothing stands between the meadow and the lake
+    const open0 = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); let wall = 0; for (let y = L.BASE + 2; y < 30; y++) for (const x of [60, 61]) if (g.world.get(x, y, 180) !== 0) wall++; return { rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id), wall }; });
+    t.ok(open0.rows.includes('wobble:7') && open0.rows.includes('wobble:1') && !open0.rows.includes('wobble:11') && !open0.wall, `${tag}Slippy Lake is open from the start: its patches are listed with the meadow's, no wall between them (${JSON.stringify(open0)})`);
     await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [1, 2, 3, 4, 5, 6]) g.beaten.push(L.patchKey(id)); });
-    await waitFor(page, () => window.pokecraft.world.get(61, 13, 180) === 0, null, 30000).catch(() => {});
-    const walls = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { west: g.world.get(61, L.heightAt(61, 180) + 3, 180), north: g.world.get(112, L.heightAt(112, 132) + 3, 132), east: g.world.get(163, L.heightAt(163, 180) + 3, 180), lakeNorth: g.world.get(30, L.heightAt(30, 132) + 3, 132) }; });
-    t.ok(walls.west === 0 && walls.north && walls.east && walls.lakeNorth, `${tag}the meadow's knot melts the west wall to Slippy Lake; the walls to Bumpy Hills and Shadywood stand (${JSON.stringify(walls)})`);
-    // on the lake's shore: the meter is the lake's, the arrow and the rows lead to its patches
-    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 190.5); g.player.vel.set(0, 0, 0); g.player.yaw = Math.PI / 2; g.player.pitch = -0.12; });
+    // on the lake's shore: the meter is the lake's, the arrow and the rows lead to its patches, the far ones are drawn
+    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 100.5); g.player.vel.set(0, 0, 0); g.player.yaw = Math.PI / 2; g.player.pitch = -0.12; });
     await frames(page, 6);
     await waitFor(page, () => /Slippy Lake/.test(document.getElementById('score-chip')?.textContent || '') && /Tangle/.test(document.querySelector('#guide')?.textContent || ''), null, 30000).catch(() => {});
-    const loop = await page.evaluate(() => ({ chip: document.getElementById('score-chip')?.textContent, guide: document.querySelector('#guide')?.textContent, rows: window.pokecraft.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join() }));
-    t.ok(/Slippy Lake 0 \/ 5/.test(loop.chip) && /Tangle/.test(loop.guide) && loop.rows === 'wobble:7,wobble:8,wobble:9,wobble:10', `${tag}on the shore: the chip is the lake's, the arrow points at a lake patch, "Where to go" lists its four tangles (the knot last) (${JSON.stringify(loop)})`);
+    await waitFor(page, () => window.pokecraft.scribble.farInfo().length === 5 && window.pokecraft.scribble.info().patch >= 7, null, 60000).catch(() => {});
+    const loop = await page.evaluate(() => ({ chip: document.getElementById('score-chip')?.textContent, guide: document.querySelector('#guide')?.textContent, rows: window.pokecraft.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join(), live: window.pokecraft.scribble.info().patch, far: window.pokecraft.scribble.farInfo().join() }));
+    t.ok(/Slippy Lake 0 \/ 7/.test(loop.chip) && /Tangle/.test(loop.guide) && loop.rows === 'wobble:7,wobble:8,wobble:9,wobble:10,wobble:12,wobble:13' && loop.far.split(',').length === 5, `${tag}on the shore: the chip is the lake's, the arrow points at a lake patch, "Where to go" lists its six tangles (the knot last), the five not live are drawn from afar (${JSON.stringify(loop)})`);
     if (!dev) await shot(page, 'wobble-lake.png');
     // walk onto the ice and let go: you glide on, leaving skid marks
     const glide = async () => {
-      if (!dev) { await page.keyboard.down('w'); await waitFor(page, () => window.pokecraft.player.pos.x < 50, null, 30000).catch(() => {}); await page.keyboard.up('w'); }
+      if (!dev) { await page.keyboard.down('w'); await waitFor(page, () => window.pokecraft.player.pos.x < 44, null, 30000).catch(() => {}); await page.keyboard.up('w'); }
       else {
         const vp = page.viewportSize(), cdp = await page.context().newCDPSession(page), x0 = 140, y0 = vp.height - 160;
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0, id: 1 }] });
         for (let k = 1; k <= 6; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0, y: y0 - k * 12, id: 1 }] });
-        await waitFor(page, () => window.pokecraft.player.pos.x < 50, null, 60000).catch(() => {});
+        await waitFor(page, () => window.pokecraft.player.pos.x < 44, null, 60000).catch(() => {});
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       }
-      const x0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, skid: window.pokecraft.gymLive.of('part:wobble').info().skids }));
+      const x0 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, ice: window.pokecraft.world.groundAt(window.pokecraft.player.pos)?.id ?? null }));
+      await waitFor(page, () => window.pokecraft.gymLive.of('part:wobble').info().skids > 0, null, 15000).catch(() => {});
+      x0.skid = await page.evaluate(() => window.pokecraft.gymLive.of('part:wobble').info().skids);
       await waitFor(page, () => Math.hypot(window.pokecraft.player.vel.x, window.pokecraft.player.vel.z) < 0.05, null, 30000).catch(() => {});
-      return page.evaluate(x0 => { const p = window.pokecraft.player; return { glide: +(x0.x - p.pos.x).toFixed(2), skids: Math.max(x0.skid, window.pokecraft.gymLive.of('part:wobble').info().skids), ice: p.world.groundAt(p.pos)?.id ?? null }; }, x0);
+      return page.evaluate(x0 => { const p = window.pokecraft.player; return { glide: +(x0.x - p.pos.x).toFixed(2), skids: Math.max(x0.skid, window.pokecraft.gymLive.of('part:wobble').info().skids), ice: x0.ice }; }, x0); // (on ice when you let go; you may glide onto a snow drift)
     };
     const g1 = await glide();
-    t.ok(g1.ice === 'ice' && g1.glide > 1 && g1.glide < 3.5 && g1.skids > 0, `${tag}${dev ? 'the joystick' : 'W'} on the ice, then let go: you glide on ${g1.glide} blocks and leave skid marks (${JSON.stringify(g1)})`);
+    t.ok(g1.ice === 'ice' && g1.glide > 2 && g1.glide < 7 && g1.skids > 0, `${tag}${dev ? 'the joystick' : 'W'} on the ice, then let go: you glide on ${g1.glide} blocks and leave skid marks (${JSON.stringify(g1)})`);
     if (!dev) { await page.evaluate(() => { window.pokecraft.player.yaw = -Math.PI / 2; window.pokecraft.player.pitch = -0.75; }); await frames(page, 2); await shot(page, 'wobble-lake-skid.png'); } // (looking back down at the marks)
     if (!dev) { // a chute with no keys: down the hill, into the lead, carried to the island
       const top = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), c = L.CHUTES[1]; g.player.pos.set(c.x0 + 1, L.chuteFloor(c, c.z0) + 1, c.z0 + 0.5 + c.dir * 0.6); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.3; return { i: L.LAKE.isles[0], y: L.LAKE.y }; });
@@ -119,7 +122,8 @@ export default async function ({ browser, base, t }) {
     // the creature slides about: walk it a moment and let go (the fight's own input), so the shot shows skid marks
     if (!dev) { await page.keyboard.down('d'); await frames(page, 6); await page.keyboard.up('d'); await frames(page, 2); }
     await shot(page, dev ? 'wobble-lake-ipad-fight.png' : 'wobble-lake-fight.png');
-    const fi = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(), G = F.g; return { foes: F.foes.map(f => f.c.species), ice: G.rule(F.you.x, F.you.z, F.you.y)?.id, grips: F.foes.map(f => G.rule(f.x, f.z, f.y)?.grips(f.type) ?? null) }; });
+    await page.evaluate(async () => { window.__GR = await import('/src/groundrules.js'); });
+    const fi = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(), G = F.g; return { foes: F.foes.map(f => f.c.species), ice: G.rule(F.you.x, F.you.z, F.you.y)?.id, grips: F.foes.map(f => window.__GR.GROUND.ice.grips(f.type)) }; }); // (by type: a monster on a snow drift grips anyway)
     t.ok(fi.foes.join() === 'frostling,squeaklet,skyfin' && fi.ice === 'ice' && fi.grips.join() === 'true,false,false', `${tag}walking into lake patch 7 starts its fight on the ice: Frostling keeps its grip, Squeaklet and Skyfin slide (${JSON.stringify(fi)})`);
     const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
     await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 99999, 'normal'); });
@@ -136,31 +140,32 @@ export default async function ({ browser, base, t }) {
       return out;
     });
     t.ok(sp.patch.length > 30 && sp.patch.every(d => d >= 3 && d <= 12) && sp.isle.length > 5 && sp.isle.every(Boolean) && ['frostling', 'squeaklet', 'skyfin'].every(x => sp.table.includes(x)) && !sp.table.includes('waddlice'), `freed lake creatures: round their own patch and on the islands, only patch 7's so far (${sp.patch.length} / ${sp.isle.length}; ${[...new Set(sp.table)].join(', ')})`);
-    // a reload: the wall stays melted, patch 7 stays clear
+    // a reload: patch 7 stays clear
     await page.evaluate(() => window.pokecraft.save?.(true));
     await page.reload();
     await page.waitForFunction(() => window.pokecraft?.world, null, { timeout: 120000 });
     await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
     await placeIs(page, 'wobble');
     await frames(page, 8);
-    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { west: g.world.get(61, L.heightAt(61, 180) + 3, 180), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join() }; });
-    t.ok(re.west === 0 && re.rows === 'wobble:8,wobble:9,wobble:10', `after a reload the west wall stays melted and lake patch 7 stays clear (${JSON.stringify(re)})`);
-    // the lake's knot: Blizzbear, an Ice Grumble; clearing it colours the whole lake and melts the meadow's east wall (Shadywood: coming soon)
-    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [8, 9, 10]) g.beaten.push(L.patchKey(id)); const q = L.patchOf(11); g.player.pos.set(q.x + 0.5, L.LAKE.y + 1, q.z + 9.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; });
+    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join() }; });
+    t.ok(re.rows === 'wobble:8,wobble:9,wobble:10,wobble:12,wobble:13', `after a reload lake patch 7 stays clear (${JSON.stringify(re)})`);
+    // the lake's knot: Blizzbear, an Ice Grumble; clearing it colours the whole lake
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [8, 9, 10, 12, 13]) g.beaten.push(L.patchKey(id)); const q = L.patchOf(11); g.player.pos.set(q.x + 0.5, L.LAKE.y + 1, q.z + 9.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; });
     await waitFor(page, () => window.pokecraft.scribble.info().patch === 11, null, 30000).catch(() => {});
     await page.keyboard.down('w');
     await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 90000).catch(() => {});
     await page.keyboard.up('w');
     await frames(page, 6);
     await shot(page, 'wobble-lake-knot.png');
-    const kn = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); return F && { foes: F.foes.map(f => f.c.species + (f.grumble ? '*' : '')), grips: F.foes.filter(f => f.grumble).map(f => F.g.rule(f.x, f.z, f.y)?.grips(f.type)) }; });
+    await page.evaluate(async () => { window.__GR = await import('/src/groundrules.js'); });
+    const kn = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); return F && { foes: F.foes.map(f => f.c.species + (f.grumble ? '*' : '')), grips: F.foes.filter(f => f.grumble).map(f => window.__GR.GROUND.ice.grips(f.type)) }; });
     t.ok(kn?.foes.includes('blizzbear*') && kn.foes.length === 4 && kn.grips[0] === true, `the lake's knot: three monsters and Blizzbear, an Ice Grumble that keeps its grip (${JSON.stringify(kn)})`);
     await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) { x.openT = 1; F.hit(F.you, x, 99999, 'normal'); } });
     await waitFor(page, () => window.pokecraft.beaten.includes('pw:wobble:patch11') && !window.pokecraft.scribble.fighting, null, 90000).catch(() => {});
     await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
-    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { lake: g.wobbleLook.colourAt(20, 160), east: w.get(163, L.heightAt(163, 180) + 3, 180), north: w.get(112, L.heightAt(112, 132) + 3, 132), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length, chip: document.getElementById('score-chip')?.textContent }; });
-    t.ok(done.lake === 1 && done.east === 0 && done.north !== 0 && !done.rows && /Slippy Lake 5 \/ 5/.test(done.chip), `the lake's knot cleared: the whole lake in colour, the east wall to Shadywood melted, Bumpy Hills still walled, nothing left to fight (${JSON.stringify(done)})`);
-    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(30.5, 26, 214.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.4; g.player.flyHold = true; });
+    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { lake: g.wobbleLook.colourAt(20, 160), north: g.wobbleLook.colourAt(20, 90), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length, chip: document.getElementById('score-chip')?.textContent }; });
+    t.ok(done.lake === 1 && done.north === 1 && !done.rows && /Slippy Lake 7 \/ 7/.test(done.chip), `the lake's knot cleared: the whole lake in colour, nothing left to fight (${JSON.stringify(done)})`);
+    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(30.5, 26, 222.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.35; g.player.flyHold = true; });
     await frames(page, 3);
     await shot(page, 'wobble-lake-bright.png');
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
@@ -198,15 +203,14 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
     await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 9999, 'normal'); });
     await waitFor(page, () => !window.pokecraft.scribble.fighting, null, 90000).catch(() => {});
-    // fly: Kitegale, Space up, W west into the Scribble's wall: the wall fences riders out
+    // fly: Kitegale, Space up, W west: no wall any more (owner 2026-11-11: every region walkable), you fly on over Slippy Lake
     await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.player.pos.set(80.5, L.heightAt(80, 192) + 1, 192.5); g.player.yaw = Math.PI / 2; g.player.pitch = 0; g.riding.start(g.party[1]); });
     await page.keyboard.down('Space'); await page.waitForTimeout(1500); // (hold Space to stay up)
     await page.keyboard.down('w');
-    await waitFor(page, () => window.pokecraft.player.pos.x < 64.2, null, 60000).catch(() => {});
-    await page.waitForTimeout(1500);
+    await waitFor(page, () => window.pokecraft.player.pos.x < 58, null, 90000).catch(() => {});
     const sky = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { kind: g.riding.kind, x: g.player.pos.x, up: g.player.pos.y - (L.heightAt(Math.floor(g.player.pos.x), Math.floor(g.player.pos.z)) + 1) }; });
     await page.keyboard.up('w'); await page.keyboard.up('Space');
-    t.ok(sky.kind === 'sky' && sky.up > 2 && sky.x > 62, `flying: up over the meadow, and the Scribble's wall keeps riders in (${JSON.stringify(sky)})`);
+    t.ok(sky.kind === 'sky' && sky.up > 2 && sky.x < 58, `flying: up over the meadow and on west over Slippy Lake, nothing walls it off (${JSON.stringify(sky)})`);
     await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(76.5, g.player.pos.y + 4, 214.5); g.player.yaw = -Math.PI / 4; g.player.pitch = -0.05; });
     await frames(page, 6);
     await shot(page, 'wobble-fly.png');
@@ -302,7 +306,7 @@ export default async function ({ browser, base, t }) {
       }
       await frames(page, 3);
       const got = await page.evaluate(id => { const g = window.pokecraft, lv = g.gymLive.of('part:wobble'), b = lv.field.bugs.find(q => q.id === id); return { popped: b.popped, left: lv.info().bugs, colour: g.wobbleLook.colourAt(b.x, b.z), bug: [b.x, b.z].map(Math.round), you: [g.player.pos.x, g.player.pos.z].map(Math.round) }; }, set.id);
-      t.ok(set.n === 24 && got.popped && got.left === 23 && got.colour > 0.5, `${dev ? 'iPad, the joystick' : 'real keys, W'}: 24 bugs round the six patches; one cornered at its yard's edge is walked into, pops and leaves a splash of colour (${JSON.stringify({ ...set, ...got })})`);
+      t.ok(set.n === 52 && got.popped && got.left === 51 && got.colour > 0.5, `${dev ? 'iPad, the joystick' : 'real keys, W'}: four bugs round each of the 13 patches (every region is open); one cornered at its yard's edge is walked into, pops and leaves a splash of colour (${JSON.stringify({ ...set, ...got })})`);
       // a cleared patch's bugs go
       const gone = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.beaten.push(L.patchKey(2)); for (let i = 0; i < 50 && g.gymLive.of('part:wobble').field.bugs.some(b => b.patch === 2); i++) await new Promise(r => setTimeout(r, 100)); return g.gymLive.of('part:wobble').field.bugs.filter(b => b.patch === 2).length; }); // (waits for a frame: the iPad page is slow)
       t.ok(gone === 0, `clearing a patch takes its bugs away (${gone} left)`);
@@ -428,7 +432,7 @@ export default async function ({ browser, base, t }) {
       return { before, after };
     });
     t.ok(/Puddle Meadow 0 \/ 6/.test(r.before.chip) && /Puddle Meadow 5 \/ 6/.test(r.after.chip), `the meter chip counts the region's patches (${r.before.chip} -> ${r.after.chip})`);
-    t.ok(r.before.rows.length === 5 && !r.before.rows.includes('wobble:6') && r.after.rows.join() === 'wobble:6', `"Where to go" has a row per open patch, the knot only once the other five are clear (${r.before.rows.join()} -> ${r.after.rows.join()})`);
+    t.ok(r.before.rows.length === 11 && !r.before.rows.includes('wobble:6') && !r.before.rows.includes('wobble:11') && r.after.rows[0] === 'wobble:6' && r.after.rows.length === 7, `"Where to go" has a row per open patch of every region, a knot only once its region's others are clear (${r.before.rows.join()} -> ${r.after.rows.join()})`);
     t.ok(/Smudge|Tangle/.test(r.before.guide), `the guide arrow leads to the nearest patch (${r.before.guide})`);
     t.ok(r.before.people.some(n => /Wizard/.test(n)) && r.before.people.length >= 2, `the Wizard and a healer are at Inkpot Camp (${r.before.people.join(', ')})`);
     t.ok(!r.before.freed.length && ['sproutle', 'hopsy', 'beetlet', 'hornbeetle'].every(sp => r.after.freed.includes(sp)) && !r.after.freed.includes('thornox'), `freed creatures live in the meadow once their patch is cleared (none before; after five: ${r.after.freed.join(', ')})`);
@@ -493,8 +497,8 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.scribble.info().phase === 'off' || (!window.pokecraft.scribble.fighting && window.pokecraft.scribble.info().phase !== 'exit'), null, 90000).catch(() => {});
     await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
     await frames(page, 6);
-    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { key: g.beaten.includes(L.patchKey(6)), chip: document.getElementById('score-chip')?.textContent, far: g.wobbleLook.colourAt(156, 216), lake: g.wobbleLook.colourAt(20, 160), wall: w.get(61, L.heightAt(61, 180) + 3, 180), north: w.get(112, L.heightAt(112, 132) + 3, 132), keep: w.keeps.find(k => k.name === 'scribble-wall')?.protect.map(b => b.to).join(), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join() }; });
-    t.ok(done.key && /6 \/ 6/.test(done.chip) && done.far === 1 && done.lake === 0 && done.wall === 0 && done.north !== 0 && done.keep === 'hills,wood,hills' && done.rows === 'wobble:7,wobble:8,wobble:9,wobble:10', `the knot cleared: the whole meadow is in colour, the west wall to Slippy Lake melted (the others stand), the lake's patches are next (its knot last) (${JSON.stringify(done)})`);
+    const done = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), w = g.world; return { key: g.beaten.includes(L.patchKey(6)), chip: document.getElementById('score-chip')?.textContent, far: g.wobbleLook.colourAt(156, 216), lake: g.wobbleLook.colourAt(20, 160), rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join() }; });
+    t.ok(done.key && /6 \/ 6/.test(done.chip) && done.far === 1 && done.lake === 0 && !/wobble:[1-6]\b/.test(done.rows), `the knot cleared: the whole meadow is in colour, the lake still grey, only the lake's patches are left (${JSON.stringify(done)})`);
     await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(112.5, 18, 160.5); g.player.yaw = 0; g.player.pitch = -0.15; });
     await frames(page, 8);
     await shot(page, 'wobble-meadow-bright.png');
@@ -504,8 +508,8 @@ export default async function ({ browser, base, t }) {
     await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
     await placeIs(page, 'wobble');
     await frames(page, 8);
-    const re = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { wall: g.world.get(61, L.heightAt(61, 180) + 3, 180), far: g.wobbleLook.colourAt(156, 216) }; });
-    t.ok(re.wall === 0 && re.far === 1, `after a reload the meadow stays bright and the wall stays melted (${JSON.stringify(re)})`);
+    const re = await page.evaluate(() => ({ far: window.pokecraft.wobbleLook.colourAt(156, 216) }));
+    t.ok(re.far === 1, `after a reload the meadow stays bright (${JSON.stringify(re)})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }

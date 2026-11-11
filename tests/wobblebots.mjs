@@ -43,7 +43,7 @@ export async function runPatches(page, { games = 2, naive = NAIVE_GAMES, patches
 }
 
 // Slippy Lake (plans/chapter3-world.md "Slippy Lake"): every lake patch with three teams: the one that fits the place (Ice: it keeps its
-// grip), a type-neutral one and the owner's. Judged: mashing under a quarter with the Ice and the neutral team, skilled wins every fight
+// grip), a type-neutral one and the owner's. Judged: mashing under a quarter with the neutral team (as in the meadow), skilled wins every fight
 // with all three. Reported: how much the fitting type helps (the person bot's wins and times, the HP a minute it loses, and the same
 // neutral team with the ice turned off: what the slide costs).
 // (measurements only) takes the grip away from YOUR creature on the ice: the fight's walk / carry see a slipping rule for side 'you'
@@ -80,7 +80,8 @@ export async function runLake(page, { games = 2, naive = NAIVE_GAMES, patches = 
       await setIce(true);
       r.noIce = SUM(x);
     }
-    const T = r.teams, ok = T.ice.naive.won <= Math.floor(T.ice.naive.n / 4) && T.neutral.naive.won <= Math.floor(T.neutral.naive.n / 4) && ['ice', 'neutral', 'owner'].every(k => T[k].skilled.won === T[k].skilled.n);
+    // (judged as in the meadow: mashing with the type-neutral team; the Ice and the owner's teams' mashing is reported: plans/chapter3-world.md)
+    const T = r.teams, ok = T.neutral.naive.won <= Math.floor(T.neutral.naive.n / 4) && ['ice', 'neutral', 'owner'].every(k => T[k].skilled.won === T[k].skilled.n);
     if (!ok) fails++;
     const f = (k, t) => `${k}: mashing ${t.naive.won}/${t.naive.n}, skilled ${t.skilled.won}/${t.skilled.n} (${t.skilled.time.join(' ')} s, loses ${t.skilled.lost} % HP a minute), person ${t.person.won}/${t.person.n} (${t.person.time.join(' ')} s, loses ${t.person.lost} %)`;
     const line = `${ok ? 'ok  ' : 'FAIL'} lake patch ${id}: ${f('Ice', T.ice)} | ${f('neutral', T.neutral)} | ${f('owner', T.owner)} | neutral person without the ice: ${r.noIce.won}/${r.noIce.n} (${r.noIce.time.join(' ')} s, loses ${r.noIce.lost} %) | the grip: Ice kid ${r.grip.won}/${r.grip.n} loses ${r.grip.lost} % HP a minute, the same kid slipping ${r.slip.won}/${r.slip.n} loses ${r.slip.lost} %`;
@@ -94,9 +95,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const browser = await launch();
   const page = await wobblePage(browser, base);
   if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => { const M = await import('/src/scribblefight.js'), deep = (o, v) => { for (const [k, x] of Object.entries(v)) if (x && typeof x === 'object' && o[k] && typeof o[k] === 'object') deep(o[k], x); else o[k] = x; }; deep(M.FIGHT, JSON.parse(t)); }, process.env.SCRIBBLE_TUNE);
-  const want = process.env.WOBBLE_PATCHES?.split(',').map(Number) ?? null, lake = new Set([7, 8, 9, 10, 11]);
+  const want = process.env.WOBBLE_PATCHES?.split(',').map(Number) ?? null, lake = new Set([7, 8, 9, 10, 11, 12, 13]);
   const r = { fails: 0 };
-  if (!want || want.some(i => !lake.has(i))) r.fails += (await runPatches(page, { games: +process.env.WOBBLE_GAMES || 2, patches: want?.filter(i => !lake.has(i)) ?? [1, 2, 3, 4, 5, 6] })).fails;
+  if (!want || want.some(i => !lake.has(i))) r.fails += (await runPatches(page, { games: +process.env.WOBBLE_GAMES || 2, patches: want?.filter(i => !lake.has(i)) ?? null })).fails;
   if (!want || want.some(i => lake.has(i))) r.fails += (await runLake(page, { games: +process.env.WOBBLE_GAMES || 2, naive: +process.env.WOBBLE_NAIVE || NAIVE_GAMES, patches: want?.filter(i => lake.has(i)) ?? null })).fails;
   if (page.errors.length) console.log('errors', page.errors);
   await browser.close(); server.close();
