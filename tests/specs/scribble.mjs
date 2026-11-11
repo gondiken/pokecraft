@@ -6,7 +6,8 @@
 //   closed: without ?preview there is no patch at all (and no "Where to go" row)
 //   nav:    the guide arrow leads to the patch until you cleared it once; "Where to go" (G) has a row for it, dim while it is gone
 //   kinds:  every attacking move has its live kind by its nature (src/movekinds.js MOVE_KIND, tests/movekinds.mjs in Node), help moves unchanged
-//   SCRIBBLE_ONLY=kinds|bots|real|ipad|closed|nav      screenshots: tests/screenshots/scribble-*.png
+//   land:   Wobbleland as terrain in Node (tests/wobblecheck.mjs): every patch reachable from Inkpot Camp, rings 75 %+ walkable, no overlap, the wall closes the rest
+//   SCRIBBLE_ONLY=kinds|land|bots|real|ipad|closed|nav      screenshots: tests/screenshots/scribble-*.png
 import { devices } from 'playwright';
 import { openGame, newGame } from '../helpers.mjs';
 import { scribblePage, runBots, SEEDS } from '../scribblebots.mjs';
@@ -21,6 +22,11 @@ const until = (page, fn, arg, timeout = 90000) => page.waitForFunction(fn, arg, 
 const fight = (page, fn, arg) => page.evaluate(([fn, arg]) => eval(fn)(window.pokecraft.scribble.fightOf(), arg), [fn.toString(), arg]);
 
 export default async function ({ browser, base, t }) {
+  if (part('land')) {
+    const { checkWobble } = await import('../wobblecheck.mjs');
+    const r = await checkWobble();
+    t.ok(!r.problems.length, `Wobbleland: every patch reachable from the Camp, rings walkable (${r.out.rings.map(q => `${q.id}: ${q.walk} %${q.wet ? ` ${q.wet} wet` : ''}`).join(', ')}), no overlap, the wall closes Bumpy Hills (${r.out.hills} cells behind it) ${r.problems.slice(0, 4).join('; ')}`);
+  }
   if (part('kinds')) {
     const { checkKinds } = await import('../movekinds.mjs');
     const r = await checkKinds();
