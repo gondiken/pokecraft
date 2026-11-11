@@ -426,6 +426,21 @@ it is in view the moment you arrive (you arrive looking north). 4 draw calls (do
 none lifted by the curl (`noCurl`). **Where to change:** `SKY` at the top of `src/wobblesky.js` (sun place and size, clouds, the blues);
 `WOBBLE_LOOK.sky = false` turns it off. Picture `plans/chapter3/wobble-sky-edges.png` (the sky, the wobbly plank floor of the Camp).
 
+### A2. Scribble bugs
+
+**What:** four little scribbles (a dark knot with two white eyes) scuttle round every patch you have not cleared, 24 at first; walk into
+one and it pops into a puff of colour and leaves a splash of colour on the grey (this visit only; nothing saved). A cleared patch's bugs go.
+**The rule (one look: "it runs from me"):** a bug notices you within 5.5 and runs straight away from you, **always a bit faster than you
+are moving** (x1.08, at least 5.6: a walk is 4.3, a sprint 6.2), so chasing from behind never works, on foot, sprinting or riding. It lives
+in a yard round its patch (9 to 18 from the middle: never in the fight's ring, never far off), and **at the yard's edge it can only slide
+along it**: come at it from the patch's side when it is at the outer edge and it has nowhere to go. The Mirror Palace's Gloomies' trick
+(corner them), kept apart from the fight. **Where to change:** `BUG` in `src/scribblebugs.js` (pure, 1/120 s sub-steps), drawn by
+`src/wobblelive.js` (`updateBugs`, `pop`), the splash size `WOBBLE_LOOK.splat` (4.5). **Bots** (`node tests/wobblebugbots.mjs`, 6 runs of 60 s
+at each of 60 and 20 fps): **naive** (sprints at the nearest bug) **2 / 24** at both; **skilled** (keeps on the bug's line from the patch,
+on the side away from the nearer edge, a little ahead of where it slides, walks the last bit) **24 / 24**, all four in 15-27 s. Real keys
+and the iPad's joystick (the kid keeps turning toward it) pop one each (spec `wobble` part `bugs`). Picture `plans/chapter3/wobble-bugs.png`.
+**Not built:** the paint drops for the workshop (the plan's "later").
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

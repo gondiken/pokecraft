@@ -24,6 +24,7 @@ export const WOBBLE_LOOK = {
   cell: 4,             // the colour map: one texel per cell x cell blocks
   cleared: 17,         // a cleared patch colours a circle this big round its middle
   camp: CAMP.r + 6,    // the Camp is always in colour
+  splat: 4.5,          // A2: a popped scribble bug colours a circle this big (this visit only)
   flood: 2,            // seconds the colour takes to flood out
 };
 export const curlLift = d => (WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK * Math.max(0, d - WOBBLE_LOOK.curlFrom) ** 2 : 0);
@@ -34,13 +35,13 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
   U.uWobColour.value = tex;
   let active = false, world = null, floods = [], sig = '', lifted = [];
-  let btn = null, shown = null, sky = null;
+  let btn = null, shown = null, sky = null, splats = [];
   const mats = ['solid', 'water', 'glow'];
   // how coloured a texel's middle is (0..1): the Camp, cleared patches (a flood grows from 0 to its radius), cleared regions
   function paint() {
     const keys = new Set(game.beaten || []);
     const knotDone = PATCHES.filter(p => p.last).some(p => keys.has(patchKey(p.id)));
-    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp]];
+    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat])];
     for (const p of PATCHES) if (keys.has(patchKey(p.id))) {
       const f = floods.find(q => q.id === p.id);
       circles.push([p.x, p.z, WOBBLE_LOOK.cleared * (f ? Math.min(1, f.t / WOBBLE_LOOK.flood) : 1)]);
@@ -76,7 +77,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     reset(w) {
       if (active && !w?.realm?.look?.wobble) game.ui?.setScore?.(null); // leaving: the meter goes
       world = w; active = !!w?.realm?.look?.wobble;
-      setDefine(active); floods = []; sig = '';
+      setDefine(active); floods = []; sig = ''; splats = [];
       sky?.dispose(); sky = null;
       if (active && WOBBLE_LOOK.sky) sky = createWobbleSky(scene);
       uniforms();
@@ -84,6 +85,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     },
     // a patch was just cleared: its colour floods out (the key is already in game.beaten)
     flood(id) { if (!active) return; floods = floods.filter(f => f.id !== id); floods.push({ id, t: 0 }); },
+    // A2: a popped scribble bug leaves a little splash of colour on the grey (this visit only)
+    splat(x, z) { if (!active) return; splats.push([x, z]); paint(); },
     // the pause screen's switch (made once, shown only in Wobbleland): 📄 Page: curls / flat
     refresh() {
       if (typeof document === 'undefined') return;

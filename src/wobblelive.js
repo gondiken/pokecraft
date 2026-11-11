@@ -2,10 +2,13 @@
 // wobbleland.js), ?preview only like the realm. Nothing here is saved or sent; it draws from game.beaten (the patches' keys).
 //   A3 paint-pot hops: every cleared patch leaves a paint pot of its own colour in its middle, the Camp has one from the start. Stand in a
 //      pot and look the way you want to go: a beam of colour stands over the pot you would hop to, the big button says "Hop to blue!".
-//      One look, no list: the pot nearest to where you look is the one (`POT.pick`).
+//      One look, no list: the pot nearest to where you look is the one (`hopOf`).
+//   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
 import { PATCHES, CAMP_POT, patchKey, heightAt } from './wobbleland.js';
+import { BugField, bugsFor } from './scribblebugs.js';
+import { curlLift } from './wobblelook.js';
 
 export const POT = {
   r: 1.3,          // stand within this of a pot's middle to hop from it
@@ -58,12 +61,20 @@ export class WobbleLive {
     this.beam.visible = false; this.group.add(this.beam);
     this.puffs = [];
     this.hop = { here: null, to: null };
+    // A2: the bugs: one instanced scribble (a little torus knot) and two eyes each
+    this.field = new BugField([]); this.bugSig = null; this.last = null; this.popped = 0;
+    const NB = PATCHES.length * 4;
+    this.bodies = new THREE.InstancedMesh(new THREE.TorusKnotGeometry(0.2, 0.05, 40, 5, 2, 3), new THREE.MeshLambertMaterial({ color: 0x3a3a44 }), NB);
+    this.eyes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), NB * 2);
+    for (const m of [this.bodies, this.eyes]) { m.count = 0; m.frustumCulled = false; this.group.add(m); }
     this.sync();
   }
   // the pots follow the patches' keys (a win adds one, a reload draws them all)
   sync() {
     const sig = (this.game.beaten || []).filter(k => k.startsWith('pw:wobble:patch')).sort().join();
     if (sig === this.sig) return;
+    { const keys = new Set(this.game.beaten || []), kept = this.field.bugs.filter(b => !keys.has(patchKey(b.patch))); // a cleared patch's bugs go
+      this.field.bugs = this.sig === null ? PATCHES.filter(p => !keys.has(patchKey(p.id))).flatMap(p => bugsFor(p)) : kept; }
     const fresh = this.sig !== null;
     this.sig = sig;
     this.pots = potsOf(this.game.beaten);
@@ -88,6 +99,34 @@ export class WobbleLive {
       f.g.children.forEach((c, i) => { const a = i / f.g.children.length * Math.PI * 2; c.position.set(Math.cos(a) * k * 1.6, 0.4 + Math.sin(k * Math.PI) * 1.2, Math.sin(a) * k * 1.6); c.scale.setScalar(Math.max(0.01, 1 - k)); });
     }
     this.puffs = this.puffs.filter(f => { if (f.t < POT.puff) return true; this.group.remove(f.g); return false; });
+    this.updateBugs(dt);
+  }
+  updateBugs(dt) {
+    const p = this.game.player, bugs = this.field.bugs;
+    if (p && this.playing() && dt > 0) {
+      const speed = this.last ? Math.hypot(p.pos.x - this.last[0], p.pos.z - this.last[1]) / dt : 0;
+      for (const e of this.field.step(dt, { x: p.pos.x, z: p.pos.z, speed: Math.min(speed, 12) })) if (e.kind === 'pop') this.pop(e.bug);
+      this.last = [p.pos.x, p.pos.z];
+    } else this.last = null;
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), E = new THREE.Euler();
+    const cam = this.game.camera?.position ?? p?.pos;
+    let n = 0, e = 0;
+    for (const b of bugs) {
+      if (b.popped) continue;
+      const y = heightAt(Math.floor(b.x), Math.floor(b.z)) + 1.25 + Math.abs(Math.sin(b.t * (b.run ? 18 : 4))) * 0.12 + (cam ? curlLift(Math.hypot(b.x - cam.x, b.z - cam.z)) : 0);
+      const face = b.run ? Math.atan2(b.vx, b.vz) : b.t * 0.3;
+      E.set(b.t * 3, face, 0); Q.setFromEuler(E);
+      M.compose(new THREE.Vector3(b.x, y, b.z), Q, S); this.bodies.setMatrixAt(n++, M);
+      for (const side of [-1, 1]) { M.makeTranslation(b.x + Math.sin(face) * 0.2 + Math.cos(face) * side * 0.09, y + 0.1, b.z + Math.cos(face) * 0.2 - Math.sin(face) * side * 0.09); this.eyes.setMatrixAt(e++, M); }
+    }
+    this.bodies.count = n; this.eyes.count = e;
+    this.bodies.instanceMatrix.needsUpdate = true; this.eyes.instanceMatrix.needsUpdate = true;
+  }
+  pop(b) {
+    const colours = PATCHES.map(q => q.pot), colour = colours[(b.patch * 3 + this.popped++) % colours.length];
+    this.puff({ x: b.x, y: heightAt(Math.floor(b.x), Math.floor(b.z)) + 1, z: b.z, colour }, 1);
+    this.game.wobbleLook?.splat(b.x, b.z);
+    try { sound.play('soappop'); } catch { /* sound is optional */ }
   }
   puff(q, big = 0) {
     const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: q.colour }), geo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
@@ -111,7 +150,7 @@ export class WobbleLive {
     this.game.mp?.sendState?.();
     return true;
   }
-  info() { return { pots: this.pots.map(q => q.id), here: this.hop.here?.id ?? null, to: this.hop.to?.id ?? null, beam: this.beam.visible }; }
+  info() { return { pots: this.pots.map(q => q.id), here: this.hop.here?.id ?? null, to: this.hop.to?.id ?? null, beam: this.beam.visible, bugs: this.field.bugs.filter(b => !b.popped).length, popped: this.popped }; }
   dispose() {
     this.scene?.remove(this.group);
     this.group.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); });

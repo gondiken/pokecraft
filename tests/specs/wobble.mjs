@@ -13,7 +13,8 @@
 //           front loses: part `patches` patch 6), the knot's win floods the whole meadow, the wall melts, a reload keeps it
 //   ride:   B (owner 2026-11-11): R and riding / flying in Wobbleland, hopping off into a patch's fight, the wall fences riders
 //   hops:   A3 paint-pot hops (the Camp's pot, a pot per cleared patch, look and E, the iPad's button)
-//   WOBBLE_ONLY=land|ride|hops|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
+//   bugs:   A2 scribble bugs (tests/wobblebugbots.mjs at 60 / 20 fps; real keys and the iPad's joystick corner one; a cleared patch's go)
+//   WOBBLE_ONLY=land|ride|hops|bugs|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -138,6 +139,46 @@ export default async function ({ browser, base, t }) {
     t.ok(/Hop/.test(word) && Math.hypot(there.x - p1.x, there.z - p1.z) < 2.5, `on the iPad the round button says "${word}" and a tap hops you (${JSON.stringify(there)})`);
     t.ok(!pad.errors.length, `no page errors on the iPad (${pad.errors.join(' | ')})`);
     await pad.context().close();
+  }
+
+  if (want('bugs')) {
+    // A2: scribble bugs. The rules with model players in Node at 60 / 20 fps, then real keys: corner one and walk into it
+    const { runBugBots } = await import('../wobblebugbots.mjs');
+    const r = runBugBots({ log: () => {} });
+    for (const l of r.lines) t.ok(l.startsWith('ok'), l.replace(/^(ok {2}|FAIL) /, ''));
+    for (const dev of [null, 'iPad (gen 7) landscape']) {
+      const page = await openGame(browser, base, { query: '?preview', ...(dev ? { contextOptions: devices[dev] } : {}) });
+      await newGame(page, 0);
+      await intoWobble(page);
+      await frames(page, 4);
+      // a bug of patch 1 pinned at its yard's outer edge (north, on the grey), you 2.5 blocks inside it, looking at it (north: yaw 0)
+      const set = await page.evaluate(async () => {
+        const g = window.pokecraft, lv = g.gymLive.of('part:wobble'), L = await import('/src/wobbleland.js'), B = await import('/src/scribblebugs.js');
+        const b = lv.field.bugs.find(q => q.patch === 1); b.x = b.cx; b.z = b.cz - B.BUG.outer; b.run = 1;
+        g.player.pos.set(b.x, L.heightAt(Math.floor(b.x), Math.floor(b.z + 2.5)) + 1, b.z + 2.5); g.player.yaw = 0; g.player.pitch = -0.2;
+        return { n: lv.info().bugs, id: b.id };
+      });
+      await frames(page, 3);
+      if (!dev) await shot(page, 'wobble-bugs.png');
+      // the kid keeps turning toward the bug while walking (as with the mouse or a look-drag: a bug slides off a straight walk)
+      const steer = async () => { for (let k = 0; k < 200; k++) { const done = await page.evaluate(id => { const g = window.pokecraft, b = g.gymLive.of('part:wobble').field.bugs.find(q => q.id === id); if (b.popped) return true; g.player.yaw = Math.atan2(-(b.x - g.player.pos.x), -(b.z - g.player.pos.z)); return false; }, set.id); if (done) return; await page.waitForTimeout(100); } };
+      if (!dev) { await page.keyboard.down('w'); await steer(); await page.keyboard.up('w'); }
+      else {
+        const jb = await page.locator('#joystick').boundingBox(), cdp = await page.context().newCDPSession(page), x0 = jb.x + jb.width / 2, y0 = jb.y + jb.height / 2; // (straight up from the stick's middle)
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0, id: 1 }] });
+        for (let k = 1; k <= 6; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0, y: y0 - k * 10, id: 1 }] });
+        await steer();
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      }
+      await frames(page, 3);
+      const got = await page.evaluate(id => { const g = window.pokecraft, lv = g.gymLive.of('part:wobble'), b = lv.field.bugs.find(q => q.id === id); return { popped: b.popped, left: lv.info().bugs, colour: g.wobbleLook.colourAt(b.x, b.z), bug: [b.x, b.z].map(Math.round), you: [g.player.pos.x, g.player.pos.z].map(Math.round) }; }, set.id);
+      t.ok(set.n === 24 && got.popped && got.left === 23 && got.colour > 0.5, `${dev ? 'iPad, the joystick' : 'real keys, W'}: 24 bugs round the six patches; one cornered at its yard's edge is walked into, pops and leaves a splash of colour (${JSON.stringify({ ...set, ...got })})`);
+      // a cleared patch's bugs go
+      const gone = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.beaten.push(L.patchKey(2)); await new Promise(r => setTimeout(r, 600)); return g.gymLive.of('part:wobble').field.bugs.filter(b => b.patch === 2).length; });
+      t.ok(gone === 0, `clearing a patch takes its bugs away (${gone} left)`);
+      t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+      await page.context().close();
+    }
   }
 
   if (want('patches')) {
