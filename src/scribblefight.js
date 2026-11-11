@@ -351,7 +351,7 @@ export class ScribbleFight {
     const { amount, eff } = damage(src.c, dst.c, power, type, mult);
     dst.hp = Math.max(0, dst.hp - amount);
     dst.flash = 0.25;
-    if (dst.side === 'foe') dst.litT = this.dark()?.hitLit ?? 0; // Shadywood: a monster you hit lights up for a moment
+    if (dst.side === 'foe') dst.litT = this.dark()?.hitLit ?? 0; // Glowcap Caves: a monster you hit lights up for a moment
     this.stats[dst.side === 'you' ? 'taken' : 'dealt'] += amount;
     if (kind) { const k = dst.side === 'you' ? 'hitBy' : 'byKind'; this.stats[k][kind] = (this.stats[k][kind] || 0) + amount; }
     this.emit({ kind: 'hit', f: dst, amount, eff });
@@ -473,7 +473,7 @@ export class ScribbleFight {
     else if (s.kind === 'burst') {
       const B = FIGHT.burst, r = this.blastR(charge), mult = B.m0 + (B.hit - B.m0) * charge ** B.pow;
       this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r, full: charge >= 1 });
-      if (charge >= 1 && this.dark()) this.flashLit = { x: you.x, z: you.z, r: this.R * 2, t: this.dark().flash }; // Shadywood: a full big blast lights up the whole ring
+      if (charge >= 1 && this.dark()) this.flashLit = { x: you.x, z: you.z, r: this.R * 2, t: this.dark().flash }; // Glowcap Caves: a full big blast lights up the whole ring
       for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) {
         const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * B.stopWindow;
         this.hit(you, f, s.power, s.type, mult, 'burst');
@@ -649,7 +649,7 @@ export class ScribbleFight {
     ];
   }
 
-  // ---------------------------------------------------------------- Shadywood: what you can SEE (groundrules.js Dark). Only the look
+  // ---------------------------------------------------------------- Glowcap Caves: what you can SEE (groundrules.js Dark). Only the look
   // and the bots read it (scribble.js hides what is not seen, the bots react only to what is seen); the sums never do.
   dark() { const r = this.g.rule?.(this.you.x, this.you.z, this.you.y); return r && r.sight(this.you.type) < Infinity ? r : null; }
   sight() { const r = this.dark(); return r ? r.sight(this.you.type) : Infinity; }

@@ -633,9 +633,9 @@ export const wobbleLook = {
   uCurl: { value: 0 }, uCurlFrom: { value: 24 }, uWobJig: { value: 0 },
   uWobColour: { value: null }, uWobSize: { value: new THREE.Vector2(224, 224) },
   uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 }, uWobCrayon: { value: 0 },
-  // Shadywood: the colour map's blue = under the canopy (dark); uWobLight = the light's x, z, radius and how dark the rest is (0 = off),
-  // uWobFlash = a big blast's flash (x, z, radius, strength); uWobCanopy = the canopy's height (its top is lit by the sky)
-  uWobLight: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobFlash: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobCanopy: { value: 0 },
+  // Glowcap Caves: the colour map's blue = inside the cave (no daylight there: world.skyDim); uWobLight = your creature's light (x, z,
+  // radius, strength; 0 = off), uWobFlash = a big blast's flash (x, z, radius, strength), uWobWarm = the light's colour (its type's)
+  uWobLight: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobFlash: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobWarm: { value: new THREE.Color(1, 1, 1) },
 };
 const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\nuniform float uWobJig;\n#endif';
 // (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
@@ -664,7 +664,15 @@ uniform float uWobLine;
 uniform float uWobCrayon;
 uniform vec4 uWobLight;
 uniform vec4 uWobFlash;
-uniform float uWobCanopy;
+uniform vec3 uWobWarm;
+// Glowcap Caves: how much of your creature's light (and a blast's flash) reaches this place inside the cave (0 outside it)
+float wobLan() {
+  float m = texture2D(uWobColour, vCavePos.xz / uWobSize).b;
+  if (m <= 0.0 || uWobLight.w <= 0.0) return 0.0;
+  float l = 1.0 - smoothstep(uWobLight.z * 0.55, uWobLight.z + 0.6, distance(vCavePos.xz, uWobLight.xy));
+  l = max(l, uWobFlash.w * (1.0 - smoothstep(uWobFlash.z - 3.0, uWobFlash.z, distance(vCavePos.xz, uWobFlash.xy))));
+  return m * l * uWobLight.w;
+}
 #endif`;
 const WOBBLE_FRAG = `#ifdef WOBBLE
 {
@@ -680,7 +688,7 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
   float wobIce = step(0.5, wobMap.g) * step(0.04, c.b - c.r) * step(0.45, lum) * step(e3.y, 0.002);
   draft *= 1.0 - uWobLine * (1.0 - 0.8 * wobIce) * (1.0 - smoothstep(0.025, 0.06, e));  // chunky outlines (hardly any on the ice)
   float hatch = step(0.82, fract((vCavePos.x * 0.9 + vCavePos.z * 0.6 + vCavePos.y * 0.5) * 2.2));
-  vec3 grey = vec3(lum * 0.9 + 0.05) * (1.0 - 0.28 * hatch);                  // grey, with scribble strokes on it
+  vec3 grey = vec3(lum * 0.9 + 0.05 * smoothstep(0.0, 0.15, lum)) * (1.0 - 0.28 * hatch); // grey, with scribble strokes on it (black stays black: Glowcap Caves)
   if (wobIce > 0.5) {
     float band = fract((vCavePos.x * 0.32 + vCavePos.z * 0.78) * 0.45);
     float run = step(0.45, fract(sin(floor((vCavePos.x * 0.32 + vCavePos.z * 0.78) * 0.45) * 91.7 + floor((vCavePos.z * 0.32 - vCavePos.x * 0.78) * 0.12) * 37.3) * 4375.85));
@@ -697,16 +705,11 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
     float n = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
     float gap = step(0.76, n) * (0.5 + 0.5 * fract(n * 7.1));
     float wax = 0.92 + 0.08 * fract(n * 13.7);
-    draft = mix(draft * wax, vec3(1.0, 0.97, 0.86), gap * uWobCrayon);
+    draft = mix(draft * wax, vec3(1.0, 0.97, 0.86), gap * uWobCrayon * smoothstep(0.0, 0.2, lum)); // (no paper shining through in the dark)
   }
   diffuseColor.rgb = mix(grey, draft, col);
-  // Shadywood: under the canopy everything outside your light is dark (a cool night blue); a big blast's flash lights its ring
-  float wobDk = wobMap.b * (1.0 - step(uWobCanopy + 1.5, vCavePos.y)) * uWobLight.w;
-  if (wobDk > 0.0) {
-    float lit = 1.0 - smoothstep(uWobLight.z * 0.75, uWobLight.z + 1.0, distance(vCavePos.xz, uWobLight.xy));
-    lit = max(lit, uWobFlash.w * (1.0 - smoothstep(uWobFlash.z - 3.0, uWobFlash.z, distance(vCavePos.xz, uWobFlash.xy))));
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.13, 0.13, 0.24) + vec3(0.01, 0.01, 0.03), wobDk * (1.0 - lit));
-  }
+  // Glowcap Caves: your creature's light has its type's colour (only where no daylight reaches)
+  if (wobL > 0.0) diffuseColor.rgb *= mix(vec3(1.0), uWobWarm, wobL * (1.0 - clamp(vColor.r * uLit * 2.0, 0.0, 1.0)));
 }
 #endif`;
 
@@ -892,6 +895,9 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
       .replace('#include <common>', `#include <common>\nvarying vec3 vCavePos;\nvarying vec3 vTint;\nuniform float uLit;\nuniform float uLantern;\nuniform vec3 uPlayer;\n${WOBBLE_FRAG_PARS}\n${sketch ? SKETCH_FRAG_PARS : ''}`)
       .replace('#include <color_fragment>', `
         float lan = uLantern * clamp(1.0 - distance(vCavePos, uPlayer) / 8.0, 0.0, 1.0);
+        #ifdef WOBBLE
+        float wobL = wobLan(); lan = max(lan, wobL); // (Glowcap Caves: your creature's light)
+        #endif
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
         diffuseColor.rgb *= vTint;
 ${WOBBLE_FRAG}${sketch ? sketchFrag('max(vColor.r * uLit, max(vColor.g, vColor.b * lan))') : ''}`);

@@ -3,7 +3,7 @@
 //   - every patch's ring (radius RING) is at least 75 % walkable from its middle, dry unless it is a water-twist patch (`wet`)
 //   - no patch is inside another (rings never touch), none leaves its region
 //   - every region is open (owner 2026-11-11 evening): the whole page is walkable from the Camp, no walls
-//   - Shadywood: its rings are wholly under the canopy (the dark), high enough for the fight's camera; clearings lit; the river is water
+//   - Glowcap Caves: its rings are wholly inside the cave (the dark), high enough for the fight's camera; skylights lit; the river is water
 //   - Slippy Lake: its rings are mostly ice (snow drifts are allowed), no rock or log in a ring; the chutes and leads are where they say
 //   node tests/wobblecheck.mjs      (exit 1 on a problem); tests/specs/scribble.mjs part `land` runs it
 import { register } from 'node:module';
@@ -43,7 +43,7 @@ export async function checkWobble() {
   const lakeBox = L.LAKE.box;
   for (const p of L.PATCHES) {
     if (!from.has(`${p.x},${p.z}`)) problems.push(`patch ${p.id} cannot be reached on foot from the Camp`);
-    const y = G.stand(p.x + 0.5, p.z + 0.5, L.BASE + 8);
+    const y = G.stand(p.x + 0.5, p.z + 0.5, L.heightAt(p.x, p.z) + 3);
     const inRing = (x, z) => Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) < L.RING - 0.2;
     let n = 0, wet = 0;
     for (let x = p.x - L.RING; x <= p.x + L.RING; x++) for (let z = p.z - L.RING; z <= p.z + L.RING; z++) if (inRing(x, z)) { n++; if (w.get(x, w.ground[x + z * W], z) === B.WATER) wet++; }
@@ -62,18 +62,18 @@ export async function checkWobble() {
       for (const [rx, rz, r] of L.ROCKS) if (Math.hypot(rx - p.x, rz - p.z) < L.RING + r + 0.5) problems.push(`patch ${p.id}: a rock at ${rx}, ${rz} in its ring`);
       for (const [lx, lz, n, ax] of L.LOGS) for (let k = 0; k < n; k++) if (Math.hypot((ax ? lx + k : lx) - p.x, (ax ? lz : lz + k) - p.z) < L.RING + 0.5) problems.push(`patch ${p.id}: a log at ${lx}, ${lz} in its ring`);
     }
-    if (p.region === 'wood') {
-      const box = L.WOOD;
-      if (p.x - L.RING < box.x0 + 1 || p.x + L.RING > box.x1 || p.z - L.RING < box.z0 || p.z + L.RING > box.z1) problems.push(`patch ${p.id} leaves Shadywood`);
+    if (p.region === 'cave') {
+      const box = L.CAVE;
+      if (p.x - L.RING < box.x0 + 1 || p.x + L.RING > box.x1 || p.z - L.RING < box.z0 || p.z + L.RING > box.z1) problems.push(`patch ${p.id} leaves Glowcap Caves`);
       let dark = 0, all = 0, low = 0;
       for (let x = p.x - L.RING; x <= p.x + L.RING; x++) for (let z = p.z - L.RING; z <= p.z + L.RING; z++) if (inRing(x, z)) {
         all++; const g = w.ground[x + z * W] + 1;
-        if (L.darkOver({ x: x + 0.5, y: g, z: z + 0.5 })) dark++;
-        if (box.canopy - g < 16) low++; // the fight's camera rises about 13.6 over the creature (scribblefight.js CAM) and tips higher over a hill
+        if (L.darkIn({ x: x + 0.5, y: g, z: z + 0.5 })) dark++;
+        if (box.roof - g < 16) low++; // the fight's camera rises about 13.6 over the creature (scribblefight.js CAM) and tips higher over a hill
       }
       out.rings[out.rings.length - 1].dark = Math.round(100 * dark / all);
-      if (dark < all) problems.push(`patch ${p.id}: only ${Math.round(100 * dark / all)} % of its ring is under the canopy`);
-      if (low) problems.push(`patch ${p.id}: ${low} cells where the canopy is too low for the fight's camera`);
+      if (dark < all) problems.push(`patch ${p.id}: only ${Math.round(100 * dark / all)} % of its ring is inside the cave`);
+      if (low) problems.push(`patch ${p.id}: ${low} cells where the roof is too low for the fight's camera`);
     }
     for (const q of L.PATCHES) if (q.id < p.id && Math.hypot(q.x - p.x, q.z - p.z) < 2 * L.RING + 2) problems.push(`patches ${q.id} and ${p.id} overlap`);
   }
@@ -82,13 +82,13 @@ export async function checkWobble() {
   for (const k of from.keys()) { const [x, z] = k.split(',').map(Number), r = L.regionAt(x, z); out.regions[r] = (out.regions[r] || 0) + 1; }
   for (const r of Object.keys(L.REGIONS)) if (!(out.regions[r] > 1000)) problems.push(`region ${r}: only ${out.regions[r] || 0} cells can be walked from the Camp`);
   if (out.regions.lake < out.regions.meadow * 0.8) problems.push(`Slippy Lake (${out.regions.lake} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
-  if (out.regions.wood < out.regions.meadow * 0.8) problems.push(`Shadywood (${out.regions.wood} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
-  // Shadywood: the clearings are lit (no canopy), the dark river is water all the way, its banks walkable, the big mushrooms' chests
+  if (out.regions.cave < out.regions.meadow * 0.8) problems.push(`Glowcap Caves (${out.regions.cave} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
+  // Glowcap Caves: the skylights are lit (no roof), the dark river is water all the way, its banks walkable, the big mushrooms' chests
   // out of a plain jump's reach (only their Bounce Block gets you up)
-  for (const c of L.CLEARINGS) if (L.darkOver({ x: c.x + 0.5, y: L.BASE + 1, z: c.z + 0.5 })) problems.push(`the clearing at ${c.x}, ${c.z} is dark`);
-  { const R = L.DARK_RIVER; let bad = 0; for (let z = R.z1; z <= R.z0; z++) for (let x = R.x0; x <= R.x1; x++) if (w.get(x, w.ground[x + z * W], z) !== B.WATER || w.get(x, w.ground[x + z * W] + 1, z) !== B.AIR) bad++; if (bad) problems.push(`the dark river has ${bad} cells that are not open water`); }
+  for (const c of L.SKYLIGHTS) if (L.darkIn({ x: c.x + 0.5, y: L.BASE + 1, z: c.z + 0.5 })) problems.push(`the skylight at ${c.x}, ${c.z} is dark`);
+  { const R = L.CAVE_RIVER; let bad = 0; for (let z = R.z1; z <= R.z0; z++) for (let x = R.x0; x <= R.x1; x++) if (w.get(x, w.ground[x + z * W], z) !== B.WATER || w.get(x, w.ground[x + z * W] + 1, z) !== B.AIR) bad++; if (bad) problems.push(`the dark river has ${bad} cells that are not open water`); }
   for (const m of L.BIG_SHROOMS) { const g = L.heightAt(m.x, m.z); if (m.stalk < 4) problems.push(`the big mushroom at ${m.x}, ${m.z} can be jumped onto`); if (w.get(m.x, g + m.stalk + 2, m.z) !== B.CHEST) problems.push(`the big mushroom at ${m.x}, ${m.z} has no chest`); }
-  out.trunks = L.WOOD_TRUNKS.length;
+  out.trunks = L.CAVE_PILLARS.length;
   // the chutes: an ice floor going down, stepping at most one block at a time, its top on a hill and its foot at a lead
   for (const c of L.CHUTES) {
     let last = null, bad = 0;
@@ -115,7 +115,7 @@ export async function checkWobble() {
     let n = 0;
     for (let x = p.x - p.r; x <= p.x + p.r; x++) for (let z = p.z - p.r; z <= p.z + p.r; z++) {
       if (Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) > p.r || (p.camp && Math.abs(x - L.STAIR.x) <= 3 && z >= L.STAIR.z - 6)) continue;
-      for (let y = w.ground[x + z * W] + 1; y < (L.underCanopy(x, z) ? L.WOOD.canopy - 1 : H); y++) if (w.get(x, y, z) !== B.AIR) n++; // (Shadywood: the canopy is the ring's roof)
+      for (let y = w.ground[x + z * W] + 1; y < (L.inCave(x, z) ? L.CAVE.roof - 1 : H); y++) if (w.get(x, y, z) !== B.AIR) n++; // (Glowcap Caves: the canopy is the ring's roof)
     }
     if (n) problems.push(`${p.camp ? 'the Camp' : `the ring at ${p.x}, ${p.z}`} has ${n} blocks standing in it`);
   }
@@ -126,7 +126,7 @@ export async function checkWobble() {
     let x = a[0], z = a[2], y = a[1], steps = 0, stuck = 0;
     const order = [];
     while (order.length < L.PATCHES.length && steps < 30000) {
-      const aim = L.wobbleAim(w, { x, z }, game), q = L.openPatches(game.beaten).find(r => Math.hypot(r.x + 0.5 - x, r.z + 0.5 - z) < 5);
+      const aim = L.wobbleAim(w, { x, y, z }, game), q = L.openPatches(game.beaten).find(r => Math.hypot(r.x + 0.5 - x, r.z + 0.5 - z) < 5);
       if (q) { game.beaten.push(L.patchKey(q.id)); order.push(q.id); continue; }
       const dx = aim.x - x, dz = aim.z - z, d = Math.hypot(dx, dz) || 1;
       let moved = false;

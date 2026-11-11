@@ -7,7 +7,7 @@
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, underCanopy } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, inCave } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
@@ -221,7 +221,7 @@ class Skids extends Piece {
   info() { return { skids: this.marks.info().marks }; }
 }
 
-// Shadywood: a wild creature out in the dark beyond your light shows only its two glowing eyes (as a scribble monster does in a fight)
+// Glowcap Caves: a wild creature out in the dark beyond your light shows only its two glowing eyes (as a scribble monster does in a fight)
 class NightEyes extends Piece {
   constructor(scene) {
     super(scene);
@@ -235,7 +235,7 @@ class NightEyes extends Piece {
     for (const w of list) {
       const m = w.model, q = w.pos ?? m?.position;
       if (!m || !q || !p || this.game.scribble?.fighting) continue;
-      if (!underCanopy(Math.floor(q.x), Math.floor(q.z)) || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) < r + 0.5) continue;
+      if (!inCave(Math.floor(q.x), Math.floor(q.z)) || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) < r + 0.5) continue;
       hide.add(m); m.visible = false;
       if (n < 62 && Math.sin(this.t * 2.1 + q.x) > -0.8) {
         const yaw = m.rotation.y, h = (m.userData.h ?? 1) * 0.7 + 0.4;
@@ -250,7 +250,7 @@ class NightEyes extends Piece {
   dispose() { for (const m of this.hidden) m.visible = true; super.dispose(); }
 }
 
-// Shadywood: fireflies drifting under the canopy round you (little glowing specks; they make the dark feel alive, not scary)
+// Glowcap Caves: glow-worms drifting in the dark round you (little glowing specks; they make the dark feel alive, not scary)
 class Fireflies extends Piece {
   constructor(scene) {
     super(scene);
@@ -267,7 +267,7 @@ class Fireflies extends Piece {
       // each one wanders round a home that is fixed on a grid of 2R, so they stay put as you walk among them
       const gx = Math.floor((p.pos.x + (a - 0.5) * 2 * R) / (2 * R)) * 2 * R + a * 2 * R, gz = Math.floor((p.pos.z + (b - 0.5) * 2 * R) / (2 * R)) * 2 * R + b * 2 * R;
       const x = gx + Math.sin(this.t * (0.3 + c * 0.3) + a * 9) * 2.5, z = gz + Math.cos(this.t * (0.25 + a * 0.3) + b * 7) * 2.5;
-      if (!underCanopy(Math.floor(x), Math.floor(z)) || Math.hypot(x - p.pos.x, z - p.pos.z) > R) continue;
+      if (!inCave(Math.floor(x), Math.floor(z)) || Math.hypot(x - p.pos.x, z - p.pos.z) > R) continue;
       const blink = Math.sin(this.t * (1.5 + c * 2) + b * 11);
       if (blink < -0.3) continue;
       M.makeTranslation(x, heightAt(Math.floor(x), Math.floor(z)) + 1.2 + c * 3 + Math.sin(this.t * 1.3 + c * 5) * 0.4, z);

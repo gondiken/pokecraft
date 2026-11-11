@@ -796,52 +796,61 @@ bot loses less with its grip than without it on six of seven patches (e.g. patch
 28 / 28 losing about half of what the neutral one loses. Patch 7 first had Squeaklet (the neutral team mashed it 12 / 24); with Shellby 2 / 24.
 The mashing question (1 in section 8) stays open: the Ice team still mashes the tangles.
 
-## Shadywood (built 2026-11-11, night)
+## Glowcap Caves (built 2026-11-11, night; first built as "Shadywood")
 
-Behind `?preview` like the rest of Wobbleland, the same pattern as Slippy Lake: one ground rule, one type a child sees winning, ways to move
-with no button, patches whose monsters fit the place. No walls: open from the start. Nothing outside Wobbleland changes (the dark only exists
-where `world.groundAt` answers it, and the shader part is behind the WOBBLE define and the colour map's blue channel, which is 0 everywhere
-but under the canopy). Pictures: `plans/chapter3/wobble-wood*.png` (spec part `wood` / `woodipad` makes them in `tests/screenshots/`).
+**The owner's look at the first build:** Shadywood (a wood under a closed canopy) showed "still being drawn" on the live site (GitHub
+Pages' deploy of that push failed to start, so the site kept the old build), and the screenshots were "all just dark grey, boring";
+"pls check the cave in arena test. that was a good build ... properly dark and the fire creature type had a genuine advantage (maybe we
+can add more, like light)", and "I really was hoping we can use the world's vertical side a bit to avoid always expanding horizontally.
+that's why I suggested cave." Chosen (the owner's pick of three): **a hill over the cave**: the east land is one big hill; the cave is
+down inside it; the hill's top stays free for a later region.
+
+Behind `?preview` like the rest of Wobbleland. Nothing outside Wobbleland changes (the dark only exists where `world.groundAt` and
+`world.skyDim` answer it; the shader parts are behind the WOBBLE define). Pictures: `plans/chapter3/wobble-cave*.png`.
 
 ### 1. The rule: `Dark` (`src/groundrules.js`)
 
-**What:** a `GroundRule` subclass with `sight(type)`: under the closed canopy you see only inside your creature's light, **5 blocks**
-(`near`); **Fire, Light, Electric and Cosmic creatures glow: 10** (`far`, twice as far). Walking and fighting move exactly as on plain
-ground (everyone keeps their grip): only what you SEE changes, and the sums never read it.
-- **In a fight** (`ScribbleFight.sees(f)` / `seesTell(f)` in `src/scribblefight.js`): a monster outside your light shows only two blinking
-  eyes, and its red warning shows only for its **last 0.6 s** (`late`) instead of the whole 0.95 s. **Example:** with an Owlucid a Wispurr
-  winding up 7 blocks away is two eyes; you see its red circle under you only 0.6 s before it lands. With a Glitterbop the same Wispurr is in
-  your light the whole time.
-- **What lights a monster up:** a glowing monster always shows (it lights itself: one in every patch, Sparkitten, Wattwink, Moonhop,
-  Dawnchick, Flarehawk, Voltwing); a monster you hit glows **0.8 s** (`hitLit`); a **full** big blast lights the whole ring for **1.4 s**
-  (`flash`; a mashed puff does not).
-- **On foot:** the same light (your ride's type, else your first creature's): the shader darkens everything under the canopy outside it to a
-  night blue (`WOBBLE_FRAG` in `src/caves.js`, uniforms `uWobLight` / `uWobFlash` / `uWobCanopy`; which cells are under the canopy is the colour
-  map's blue channel, `shadeMap` in `src/wobblelook.js`); the fog closes in and turns night blue and the sunny sky hides while you stand
-  under the canopy (`WOBBLE_LOOK.dark` / `fog`). Wild creatures out in the dark show only their eyes too (`NightEyes` in `src/wobblelive.js`).
-- **Tried:** `late` 0.4 s and a light of 4.5 / 9: the neutral person bot lost 0 / 2 on the first patch (it never saw a warning in time, 299 %
-  of its HP a minute). At 0.6 s a child who looks a moment late still gets out of about half of them.
+`sight(type)`: in the cave you see only inside your creature's light, **5 blocks** (`near`); **Fire, Light, Electric and Cosmic creatures
+glow: 10** (`far`). Walking and fighting move exactly as on plain ground; only what you SEE changes, the sums never read it.
+- **In a fight** (`ScribbleFight.sees(f)` / `seesTell(f)`): a monster outside your light shows only two blinking eyes, and its red warning
+  shows only for its **last 0.6 s** (`late`) instead of the whole 0.95 s. A glowing monster always shows (one in every patch), a monster
+  you hit glows 0.8 s (`hitLit`), a **full** big blast lights the whole ring for 1.4 s (`flash`; a mashed puff does not).
+- **Tried:** `late` 0.4 s and a light of 4.5 / 9: the neutral person bot lost both fights on the first patch. 0.6 s lets a child who
+  looks a moment late get out of about half of them.
 
-### 2. The wood as terrain (`src/wobbleland.js`, `WOOD` / `CLEARINGS` / `DARK_RIVER` / `BIG_SHROOMS`)
+### 2. The look: properly dark, like the arena's cave
 
-- **Where:** east of the meadow, x 164..223, z 72..223 (the lake's mirror image: `regionAt` 'wood'), 8 918 walkable cells (the meadow 9 059).
-- **The canopy:** one closed roof of leaves 18 blocks up (`WOOD.canopy` = y 28; lumps on top, bits hanging under), held by tall 2 x 2
-  trunks every 8 blocks (`WOOD_TRUNKS`): high enough that the fight's camera (about 13.6 over your creature) stays under it
-  (`tests/wobblecheck.mjs` checks every ring cell). **Never a trunk** in a ring, a clearing, by the river, or on the paths between the
-  patches and in from the meadow (`WOOD_PATHS`: the arrow-following kid got stuck on a trunk without them).
-- **Four clearings** open to the sky (lit, no dark): one by the south edge where the river starts, two in the middle with a **big glowing
-  mushroom** each (a Glowcap cap 9 up with a chest on it, a Bounce Block beside it: the only way up), one by the knot.
-- **Little glowing mushrooms** (Glowcaps) set into the forest floor under the canopy: spots of light, nothing to trip over (as one-block
-  bumps they stopped a walk in from the meadow).
-- **The dark river** (`DARK_RIVER`, `woodFlow` = part of `world.flowAt`): open water two wide from the south clearing north through the two
-  middle clearings to the knot's; step in and press nothing: its current (3.6 a second) carries you the whole way and a last push lifts you
-  out (spec part `wood`: from the south end to the north clearing with no keys).
+- **Why Shadywood was grey:** leaves do not block the sky in the game's baked light, so the wood was lit like outdoors and only tinted;
+  and the Scribble's grey adds a little light to every pixel (+0.05, which the screen turns into a mid grey).
+- **Now:** no daylight reaches inside the cave (`world.skyDim` in `src/wobbleland.js`: the same hook the Sunken City uses for its dark
+  districts), so the blocks are black; the Scribble's grey no longer lifts black (`WOBBLE_FRAG` in `src/caves.js`). **Your creature's
+  light** is the only light: a pool round your creature (`wobLan` in `src/caves.js`, `uWobLight`; round you on foot), in **its type's
+  colour** (`WOBBLE_LOOK.colours` in `src/wobblelook.js`: Fire orange, Light gold, Electric blue-white, Cosmic violet, any other a pale
+  warm light of half the size). The fog closes in black and the sunny sky hides while you are inside. Gems (Sapphire, Ruby, Sunstone)
+  glow in the rock but light nothing; Glowcaps set into the floor make little pools of light; the game's own line "It's dark down here!
+  Blazehound glows to light the way." comes up as you go in.
+- **Skylights** are holes in the hill: a shaft of sun on a patch of grass, two with a big glowing mushroom (a chest on its cap, a Bounce
+  Block beside it). From the hill's top you can see down into the cave through them.
+- Wild creatures out in the dark beyond your light show only their eyes (`NightEyes`); glow-worms drift round you (`Fireflies`).
 
-### 3. The patches (ids 14-20, `region: 'wood'`)
+### 3. The hill and the cave (`src/wobbleland.js`: `CAVE`, `SKYLIGHTS`, `CAVE_RIVER`, `BIG_SHROOMS`, `CAVE_PILLARS`)
+
+- **Where:** x 164..223, z 72..223 (the lake's mirror image). From the meadow and from Bumpy Hills the land rises one block per block
+  (`caveHeight`) to the hill's flat top at y 20; the cave inside (x 175..222, z 82..222) has its floor at y 2 and its roof at y 19: 16
+  blocks of headroom, so the fight's camera stays under the roof (`tests/wobblecheck.mjs` checks every ring cell). WORLD_H is 48, and
+  Wobbleland's ground is only 10 above the bottom, which is why the cave is inside a hill and not under the flat meadow.
+- **Three stair tunnels** go down into it (`CAVE.tunnels`: two from the meadow, one from Bumpy Hills), four high, one step a block.
+  **The guide arrow** leads to the top of the nearest tunnel, down its stairs, then to the patch ("🕳️ Tangle down in the cave"), and
+  back up the same way ("🕳️ Way up"); the arrow-following kid in `wobblecheck.mjs` reaches all 20 patches with no stuck step.
+- Stone pillars (2 x 2, gems in them) every 8 blocks, never in a ring, a skylight, by the river or on the paths between the patches;
+  stalactites, never over a ring. The **cave river** runs north along the floor from the south skylight through the others to the knot's:
+  step in and its current carries you (spec part `cave`: from its start to the knot's skylight with no keys).
+
+### 4. The patches (ids 14-20, `region: 'cave'`)
 
 | Patch | Where | Size | Monsters (the glowing one is always seen) |
 | --- | --- | --- | --- |
-| 14 | south-west, nearest the way in | tangle | Wispurr, Hushcoon, **Sparkitten** |
+| 14 | south-west | tangle | Wispurr, Hushcoon, **Sparkitten** |
 | 15 | south-east | tangle | Shadeling, Budling, **Wattwink** |
 | 16 | middle west | tangle | Peekaw, Beetlet, **Moonhop** |
 | 17 | middle east | tangle | Snoozle, Flickit, **Dawnchick** |
@@ -849,58 +858,50 @@ ground (everyone keeps their grip): only what you SEE changes, and the sums neve
 | 19 | north-east | tangle | Shadeling, Peekaw, **Voltwing** |
 | 20 | the north end | **knot** | Phantomaw, Shadecoon, **Sparkitten** + **Duskmare**, a Ghost Grumble |
 
-Ghost, Ninja, Grass and Bug monsters that keep to the dark, tangles 2 levels up (`step: 2`) like the lake's. Freed creatures stay near
-their patch and live in the clearings' light (`near:clearing`, `freedSpawns('wood')`). The Wizard: "Even in the dark, you found the way!",
-"Something big hides in the dark there!". Paint pots of the wood's own colours (night, firefly, forest, amber, mint, plum, midnight).
-Fireflies drift under the canopy round you (`Fireflies`).
+Tangles 2 levels up (`step: 2`) like the lake's. Freed creatures stay near their patch and live in the skylights' sun (`near:skylight`).
 
-### 4. Bot numbers (`node tests/wobblebots.mjs` `runWood`, spec part `woodbots`; every wood patch, 60 and 20 fps)
+### 5. Bot numbers (`node tests/wobblebots.mjs` `runCave`, spec part `cavebots`; every cave patch, 60 and 20 fps)
 
-Three teams at Lv 30: **glowing** (Glitterbop Light, Joltail Electric, Voidle Cosmic: base stats as Owlucid's, and no Fire, which would hit
-the wood's Grass and Bug x2), **neutral** (Owlucid x3), **the owner's**. Mashing 12 fights a frame rate (the owner's 4), skilled and person
-2 each. "Loses" = % of the squad's HP a minute. The last two columns: the same neutral person with a glowing creature's light (the light
-alone: same body, same moves) and with the dark turned off.
+Three teams at Lv 30: **glowing** (Glitterbop Light, Joltail Electric, Voidle Cosmic: base stats as Owlucid's; no Fire, which would hit the
+cave's Grass and Bug x2), **neutral** (Owlucid x3), **the owner's**. Mashing 12 fights a frame rate (the owner's 4), skilled and person 2
+each. "Loses" = % of the squad's HP a minute. The last column: the same neutral person with a glowing creature's light (the light alone)
+and with the dark turned off.
 
-| Patch | Mashing won: neutral / glowing / owner | Skilled (all won): glowing / neutral / owner | Person: glowing / neutral / owner | Neutral person, glowing light / no dark |
+| Patch | Mashing won: neutral / glowing / owner | Skilled (all won), loses: glowing / neutral / owner | Person won, loses: glowing / neutral / owner | Neutral person: glowing light / no dark |
 | --- | --- | --- | --- | --- |
-| 14 | 0 / 24, 3 / 24, 8 / 8 | 17-23 s 4 % / 24-34 s 0 % / 31-37 s 0 % | 4 / 4 13 % / 4 / 4 56 % / 4 / 4 13 % | 4 / 4 19 % / 4 / 4 25 % |
-| 15 | 1 / 24, 17 / 24, 7 / 8 | 20-24 s 0 % / 27-33 s 5 % / 35-45 s 0 % | 4 / 4 6 % / 4 / 4 23 % / 4 / 4 11 % | 4 / 4 4 % / 4 / 4 6 % |
-| 16 | 0 / 24, 23 / 24, 8 / 8 | 17-24 s 0 % / 22-29 s 0 % / 28-45 s 8 % | 4 / 4 5 % / 4 / 4 113 % / 4 / 4 34 % | 4 / 4 53 % / 4 / 4 110 % |
-| 17 | 0 / 24, 0 / 24, 8 / 8 | 25-29 s 0 % / 37-47 s 0 % / 36-46 s 0 % | 4 / 4 5 % / 4 / 4 47 % / 4 / 4 16 % | 4 / 4 7 % / 4 / 4 6 % |
-| 18 | 0 / 24, 0 / 24, 7 / 8 | 34-41 s 0 % / 35-45 s 0 % / 46-51 s 0 % | 4 / 4 3 % / 4 / 4 30 % / 4 / 4 1 % | 4 / 4 0 % / 4 / 4 8 % |
-| 19 | 1 / 24, 24 / 24, 8 / 8 | 14-18 s 0 % / 17-24 s 0 % / 31-38 s 14 % | 4 / 4 2 % / 4 / 4 73 % / 4 / 4 18 % | 4 / 4 69 % / 4 / 4 49 % |
-| 20 knot | 0 / 24, 0 / 24, 0 / 8 | 28-34 s 0 % / 50-80 s 10 % / 51-62 s 0 % | 4 / 4 10 % / **2 / 4** 146 % / 4 / 4 34 % | 4 / 4 36 % / 4 / 4 24 % |
+| 14 | 0 / 24, 15 / 24, 8 / 8 | 0 / 0 / 0 % | 4 / 4 0 % / 4 / 4 31 % / 4 / 4 15 % | 4 / 4 20 % / 4 / 4 0 % |
+| 15 | 0 / 24, 23 / 24, 8 / 8 | 0 / 0 / 0 % | 4 / 4 0 % / 4 / 4 27 % / 4 / 4 8 % | 4 / 4 4 % / 4 / 4 13 % |
+| 16 | 0 / 24, 24 / 24, 8 / 8 | 0 / 16 / 0 % | 4 / 4 31 % / 4 / 4 103 % / 4 / 4 19 % | 3 / 4 83 % / 4 / 4 128 % |
+| 17 | 0 / 24, 2 / 24, 4 / 8 | 0 / 0 / 0 % | 4 / 4 5 % / 4 / 4 36 % / 4 / 4 4 % | 4 / 4 0 % / 4 / 4 14 % |
+| 18 | 0 / 24, 0 / 24, 7 / 8 | 0 / 0 / 0 % | 4 / 4 3 % / 4 / 4 34 % / 4 / 4 11 % | 4 / 4 3 % / 4 / 4 11 % |
+| 19 | 0 / 24, 21 / 24, 8 / 8 | 0 / 33 / 4 % | 4 / 4 17 % / 4 / 4 65 % / 4 / 4 27 % | 4 / 4 38 % / 4 / 4 36 % |
+| 20 knot | 0 / 24, 0 / 24, 0 / 8 | 0 / 0 / 0 % | 4 / 4 20 % / **1 / 4** 191 % / 4 / 4 26 % | 4 / 4 32 % / 3 / 4 41 % |
 
-**What the numbers say:**
-- **Skilled wins every fight with all three teams; mashing with the neutral team at most 1 / 24.** (The skilled bot sees a warning the moment
-  it shows, so 0.6 s is enough for it even in the dark.)
-- **The glowing team shows clearly:** its person bot loses 2-13 % of its HP a minute on every patch, the neutral one 23-146 % (and wins the
-  knot only 2 of 4). **The light alone does most of it:** the same neutral person with a glowing creature's light loses 36 % on the knot
-  instead of 146 %, 7 % instead of 47 % on patch 17, 19 % instead of 56 % on patch 14. On patches 16 and 19 the monsters hurt the neutral
-  team with or without the dark (Moonhop and Voltwing are fast).
-- **Mashing with the glowing team wins patches 15, 16 and 19** (17-24 / 24) and the owner's team mashes every tangle: the same thing as the
-  Ice team on the lake and the owner's team in the meadow (a team of many shots and rushes that the monsters are weak to). Judged as in the
-  meadow and on the lake: with the neutral team. Question 1 below.
+- **Skilled wins every fight with all three teams; mashing with the neutral team 0 / 24 everywhere.**
+- **The glowing type shows:** its person bot loses 0-31 % of its HP a minute, the neutral one 27-191 % (and wins the knot only 1 of 4).
+  The light alone does most of it on the knot (191 % -> 32 %) and on patches 14, 17, 18.
+- **Mashing with the glowing team wins patches 14, 15, 16 and 19** and the owner's team mashes every tangle: the same as the Ice team on
+  the lake and the owner's team in the meadow (judged with the neutral team, as there).
 
-### 5. Checks
+### 6. Checks
 
-- `node tests/wobblecheck.mjs`: every wood ring 100 % under the canopy and walkable, the canopy high enough for the fight's camera over every
-  ring cell, nothing built in a ring under the canopy, the clearings lit, the river open water, the big mushrooms' chests, the wood about the
-  meadow's size, the arrow-following kid reaches every patch (wood: 16, 17, 15, 14, 18, 19, 20).
-- Spec `wobble` part `wood` (real keys): open from the start, W into the wood = dark round you (5; a Light creature first: 10), the chip, the
-  river with no keys, W into patch 14 = its fight in the dark (Wispurr unseen, its warning only late; Hushcoon close by seen; Sparkitten
-  glowing), the eyes, a hit and a flash light them, a win (key, 3 cubes), freed creatures in the clearings, a reload, the knot with Duskmare,
-  the wood in colour after it. Part `woodipad`: the joystick into the dark and a fight on the iPad (`wobble-wood-ipad-fight.png`).
-  Part `woodbots`: the table above.
+- `node tests/wobblecheck.mjs`: every cave ring 100 % inside the cave and walkable, 16 blocks of headroom over every ring cell, nothing
+  built in a ring, the skylights lit, the river open water, the big mushrooms' chests, the cave about the meadow's size, the arrow-following
+  kid reaches all 20 patches through the tunnels.
+- Spec `wobble` part `cave` (real keys): open from the start, W down a tunnel = dark round you (5; a Light creature first: 10), the chip,
+  the river with no keys, W into patch 14 = its fight in the dark (eyes, late warnings, the glowing monster seen, a hit and a flash light
+  them), a win, freed creatures in the skylights, a reload, the knot with Duskmare, the cave in colour after it; screenshots of the hill,
+  the cave, a skylight, the fight. Part `caveipad`: the joystick into the dark, a fight on the iPad. Part `cavebots`: the table above.
 
-### 6. Questions for the owner (Shadywood)
+### 7. Questions for the owner (Glowcap Caves)
 
-1. **How dark?** Outside your light the ground is a night blue you can still make out (`WOBBLE_LOOK.dark` 1; 0.7 is lighter). Is it fun
-   and readable on the iPad (`wobble-wood-ipad-fight.png`), or lighter / darker?
-2. **A glowing team mashes three of the tangles** (as the Ice team mashes the lake's). Fine for the right team, or should mashing lose with
-   every team (a change to the fight everywhere)?
-3. **The warning in the dark comes 0.6 s before the hit** (the whole warning is 0.95 s). Kinder (0.7) or harder (0.5)?
-4. Next: **Bumpy Hills** (Sky and Drake creatures hop two blocks) with the same kind of rule?
+1. **Dark enough now?** `wobble-cave-fight.png` (an Owlucid: a small pale light), `wobble-cave-fire-fight.png` (Blazehound: a big orange
+   light), `wobble-cave-ipad-fight.png` (the iPad).
+2. **Coloured light by type** (Fire orange, Light gold, Electric blue-white, Cosmic violet): fun, or should every light look the same?
+3. **More types with a cave advantage?** Today Fire, Light, Electric and Cosmic see further. Ideas: Ghost or Ninja see warnings sooner
+   (they live in the dark), Rock / Bone dig in (a Tough that lasts longer in a cave).
+4. **The hill's top** is flat land waiting for a region (Bumpy Hills could move up there, or a new one). What should live up there?
+5. A glowing team mashes four tangles (as the Ice team mashes the lake's). Fine for the right team, or should mashing lose with every team?
 
 ## 0. The owner's decisions (2026-11-11)
 
