@@ -1,6 +1,7 @@
 # Chapter 3: where we are (owner and Claude, 2026-11-07 to 2026-11-09)
 
-Only Test A / B (section 6) is in the game, behind `?preview`; the rest of chapter 3 is not built. This file collects every idea, decision and piece of owner feedback from the
+Only Test A / B (section 6) is in the game, behind `?preview`; the rest of chapter 3 is not built. **Next: `plans/chapter3-world.md`** (2026-11-11: the new world Wobbleland, moves by kind, flags; the build
+starts there in a new session). This file collects every idea, decision and piece of owner feedback from the
 first planning session, so a new session can continue without re-asking. The story outline is in `STORY.md` ("Chapter 3: The
 Scribble"), the older pieces in `ROADMAP.md` ("Chapter 3 · The Scribble"). The house rules in `CLAUDE.md` still hold, above all
 **"easy to understand, hard to master"** and the naive-kid / skilled bots.

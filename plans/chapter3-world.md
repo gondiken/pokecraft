@@ -18,7 +18,7 @@ exists (realms, the Picture World kit, the guide, the fight); everything behind 
 | The look | **More different from our world: almost distorted, but cheerful, never gloomy or dystopian. Different from the Swirl too** (section 2) |
 | Freed creatures | **Catchable** |
 | Flags | **+10 % attack for the flown type's creatures, in every battle** (scribble, regular, duels); defence / speed maybe later |
-| Battles | Turn-based stays as it is; heal stays 45 %. **The live fight's move numbers are NOT decided** (owner 2026-11-11: "I didn't tell you to fix anything ... I DON'T KNOW"): measure them, show the owner the table in plain words, and change nothing unless the owner picks a change (section 7) |
+| Battles | Turn-based stays as it is; heal stays 45 %. **Every move gets its live kind by its nature (data), not from its power**; each kind has its own advantages and disadvantages (wait, hit strength, risk); level and power count; kinds well spread over the creatures (section 7). The kind list and the numbers are shown to the owner before they are used |
 | First slice | **5 patches + a big knot** |
 | Names | Claude's names below, for now |
 | The ring | **Radius 10 stays** |
@@ -197,50 +197,56 @@ The monsters follow the same rules (an Ice monster on ice doesn't slide; a Water
 together decide which team does best. Bots measure every twist: the naive bot still loses, the skilled bot still wins with any team, and
 the fitting type helps visibly (a per-twist table like `plans/chapter3.md` section 9).
 
-## 7. Move numbers in the live fight (owner 2026-11-11: "I don't understand the move power counting AT ALL")
+## 7. Moves in the live fight (owner 2026-11-11)
 
-### In plain words: what happens today, and why it feels wrong
+### What is wrong today
 
-A turn-based battle and a scribble fight use **the same sum for one hit**: the attacker's level and attack, the target's defence, the
-move's power, the same-type bonus and the type chart. What differs is **how many hits a fight has** and **how often each move can hit**.
+A move's live kind is **worked out from its numbers** (`movekinds.js` `kindOfMove`): power 80 or more = big blast, priority or recoil =
+rush, `multi` = many shots, the rest = shot. So a move's kind is not what the move *is*: any strong move becomes a big blast, and a
+guardian or later move built up past 80 would change kind. Owner: "pretty silly". Counted on 2026-11-11 (all 367 moves): 239 attack
+moves = **95 shots, 86 big blasts, 29 rushes, 29 many shots**; **36 of the 47 types have no move of at least one attack kind** (e.g.
+Water, Electric, Rock, Ice: no many shots and no rush; Mind and Pixie: only shots).
 
-- **Why a live fight takes 1+ minute instead of 2-3 hits:** scribble monsters have 8 x the HP of a normal creature (so mashing can't win),
-  and each hit is the same size as one turn-based hit. A fight is about 20-40 hits instead of 2-3. Level counts the same *per hit*.
-- **Why a 60 shot beats a 100 move:** in a turn-based battle every move costs one turn, so power decides. In the live fight a move's kind
-  decides how long it waits before it can be used again, **and the kind comes from the move's numbers** (`movekinds.js` `kindOfMove`):
-  power 80 or more = a big blast (waits 3.2 s), priority or recoil = a rush (waits 2 s), the rest = a shot (waits 0.65 s). So:
+### The owner's rules (decided)
 
-  | Move | Becomes | Waits | Damage a second (power / wait) |
-  | --- | --- | --- | --- |
-  | a 60 move | shot | 0.65 s | **92** |
-  | a 100 priority move | rush | 2.0 s | **50**, and it is riskier (you run in) |
-  | a 100 move | big blast | 3.2 s | **31** (62 if held to full, but holding takes 1.1 s) |
+1. **Every move has its kind by its nature, as data**, the same move in turn-based and live battles: e.g. a slam or charge is a rush, a
+   wave or quake a big blast, a spit or bolt a shot, a flurry or swarm many shots. Turn-based battles keep their own rules (the kind is
+   only for the live fight and the move's look); the live fight has its own mechanics on top.
+2. **The kind gives each attack its own advantages and disadvantages:**
 
-  That is upside down: the strongest moves are the weakest in a live fight, and the risky ones pay the least. It also explains the owner's
-  earlier fights (Graphitan's shot won; the rush and blast creatures fainted).
-- **Speed:** creatures have a speed stat and 14 moves raise or lower speed. The live fight ignores the stat (everyone walks 4.6 blocks a
-  second, a shortcut from the test arena), and a move that **raises** speed quietly turns into an **attack** Power up there. (Moves that
-  lower speed become the slow cloud, which fits.)
-- **Heal:** always 45 % of the creature's HP. HP grows with level, so it grows with level. Owner: fine as it is.
+   | Kind | Advantage | Disadvantage |
+   | --- | --- | --- |
+   | **Shot** | safe: from a distance | one target, a hill or tree stops it |
+   | **Many shots** | safe, and easy to land some | hard to land them all |
+   | **Rush** | (a big hit up close; the timed rush stops a monster's attack, built) | the riskiest: you run in |
+   | **Big blast** | covers the most ground (hits several) | risky and needs skill (hold to charge, stand close) |
 
-### Possible changes (NOT decided: only for the owner to look at after the measuring)
+   The kind sets the wait between uses and how hard each hit lands, so that no kind is simply best.
+3. **The creature's level counts** (it already does: the damage sum, the same as turn-based).
+4. **The move's power counts** (it already does per hit; with kinds by nature, a strong shot and a weak shot are both shots, so a higher
+   number is simply a harder hit of the same kind).
+5. **Attack kinds well spread over the creatures**, so fights use all sorts of attacks.
 
-Strongest moves waiting longest makes sense to the owner. The open question is only **how much harder** a long-waiting move should hit.
-Ideas the measuring can show side by side (any, none, or something else):
+Heal stays 45 % (owner: fine, it grows with HP). Turn-based battles do not change at all.
 
-1. **A bigger number always hits harder, in both battles.** In the live fight, damage a second follows the move's power: every kind's wait
-   is set so the same power gives the same damage a second, whatever the kind. The kind only decides *how* it lands (one big hit, many
-   small ones, a charge, a run-in).
-2. **Risk pays a little extra.** A rush that lands in the timed window and a fully charged blast do a bit more than a shot of the same
-   power (about +20-30 %, set with the bots), because they ask for timing. A masher never gets that extra.
-3. **Speed counts.** The speed stat sets walking and dodging speed in a narrow band (about 0.9-1.1 x, so no creature is hopeless); a move
-   that raises speed becomes **Speed up** (a new Special: walk and dodge faster until hit, with its own icon), no longer an attack boost.
-Fixed either way: **heal stays 45 %** (owner: fine, it grows with HP); **turn-based battles do not change** (they are good today; gyms, Bosses
-and duels stay exactly as they are).
+### How the build session does it
 
-**Measuring** means a test script, nothing in the game: it plays every move through the live fight with the bots and writes a table
-(each move: kind, power, damage a second, how often it lands, how long a fight takes with it). The table goes to the owner in plain words with a
-small example or two; nothing in the game changes until the owner picks something.
+1. **A kind for every attack move, by its nature:** a data table in `movekinds.js` (`MOVE_KIND = { moveId: 'bolt' | 'volley' | 'burst' |
+   'dash' }`, every damaging move listed; `kindOfMove` reads it; a Node check fails on a damaging move without one). Help moves keep their
+   kinds from their effect (heal, sleep, power up / Tough, cloud), which are already by nature. Chosen from each move's name and idea,
+   **then shown to the owner as a list by type before anything else uses it** (the owner may change any). Nothing saved changes: the
+   Wizard's Attacks tab (designed looks, keyed by move id) reads the same `kindOfMove`, so a move whose kind changes shows that kind's look
+   choices.
+2. **The spread:** the same script counts, per type and per creature (its learnable attack moves), which kinds it has. Goal: every type has
+   all four kinds among its moves, and most creatures can learn at least two kinds. First by choosing kinds well (a move's nature often
+   allows two readings); where a type still lacks a kind, the list names it and the owner decides whether it gets a new move (a new move
+   needs data, `fxrecipes.js` effects and a sound; turn-based battles get it too).
+3. **Wait and hit strength per kind:** one number pair per kind (wait, hit factor) on top of the same damage sum, plus the kind's own
+   rules (the rush's window, the blast's charge and area, the volley's spread). Set with the bots: each kind alone with the same creature and
+   power must be worth about the same to a skilled player in its own situation; the masher must still lose; a person about 1-1.5 minutes.
+   The table (in plain words, with an example) goes to the owner before it is kept.
+4. **Speed** (not decided): today the live fight ignores the speed stat and turns speed-raising moves into an attack boost. Shown to the
+   owner with the table as a question.
 
 ### Flags (decided: +10 % attack, every battle)
 
@@ -264,7 +270,7 @@ players' flags count, so the duel `VERSION` goes 14 -> 15. Defence or speed flag
 7. **Patch spots placed by hand in the terrain** (flat enough, no water inside the ring unless it is a water twist) and checked in Node,
    instead of `scribbleSpot`'s search.
 8. **Hooks out:** `onWin(patch)` / `onLose(patch)` for the colour flood, the chip, the freed creatures and keys.
-9. **The move numbers** (section 7): only what the owner picks after the measuring (step 1b), if anything.
+9. **Moves** (section 7): kinds by nature, wait and hit strength per kind (steps 1 and 1b).
 
 The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched.
 
@@ -281,9 +287,10 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 
 ## 10. Build order (each step behind `?preview`; each with naive / skilled bots, real keys through the game's loop and an iPad run; the `scribble` spec grows parts, e.g. `SCRIBBLE_ONLY=numbers|land|door|patches|look|loop|knot`; steps 1 and 1b come before the world)
 
-1. **Move numbers, measured** (section 7): a test script plays every move through the live fight and writes the table. Nothing changes in the game.
-1b. **Only if the owner picks a change from the table:** make it inside `scribblefight.js`, run the table again; mashing under a quarter,
-   skilled wins all, the person bot about 1-1.5 minutes. Otherwise skip to step 2.
+1. **Move kinds by nature** (section 7): the `MOVE_KIND` table and the spread count, shown to the owner as a list by type. **Stop for the
+   owner's OK** (and any new moves they want) before step 1b.
+1b. **Wait and hit strength per kind** (section 7): set with the bots, inside `scribblefight.js` / `movekinds.js`; mashing under a quarter,
+   skilled wins all, the person bot about 1-1.5 minutes; the table to the owner (with the speed question).
 2. **Wobbleland as data** (`wobbleland.js`, Node-runnable): Inkpot Camp, Puddle Meadow with its wonky shapes, the wall, the six patch
    spots, the way back. Node checks: every patch reachable on foot from the Camp, every ring 75 %+ walkable, no patch inside another, the
    wall really closes Bumpy Hills. No fight yet.
@@ -303,10 +310,10 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 
 ## Questions for the owner
 
-Answered 2026-11-11: flags +10 % attack (above), names kept for now, heal stays 45 %, the move numbers are measured first and shown;
-nothing about them is decided.
+Answered 2026-11-11: the look as described, flags +10 % attack, names kept for now, heal stays 45 %, moves get their kind by nature with
+advantages and disadvantages per kind (section 7).
 
-Still open:
-1. **The look** (section 2) is only words so far. Would concept pictures help before the build (a few screenshots of a quick mock-up,
-   made outside the game), or should the build session make the look first (step 4) and show it before going on?
-2. After the measuring: does any change to the live fight's move numbers feel right (section 7's ideas, or none)?
+Still open (answered during the build, at its stops):
+1. The kind list by type (step 1): any moves to move to another kind, and does any type need a new move to have all four kinds?
+2. The numbers per kind (step 1b), and whether speed should count in the live fight.
+3. The look, when step 4 shows it (and whether the curling horizon stays).
