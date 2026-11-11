@@ -10,7 +10,7 @@
 import { devices } from 'playwright';
 import { openGame, newGame } from '../helpers.mjs';
 import { scribblePage, runBots, SEEDS } from '../scribblebots.mjs';
-const KIND_WORDS = /^(Shot|Many shots|Blast|Rush|Heal|Power up|Tough|Slow cloud|Sleepy cloud)/;
+const KIND_WORDS = /^(Shot|Many shots|Blast|Rush|Heal|Power up|Tough|Speed up|Slow cloud|Sleepy cloud)/;
 
 const ONLY = process.env.SCRIBBLE_ONLY;
 const part = n => !ONLY || ONLY.split(',').includes(n);

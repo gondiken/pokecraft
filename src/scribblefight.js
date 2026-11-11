@@ -11,14 +11,14 @@
 // The ring (radius R round the patch's centre) is the only fence. Fixed 1/120 s steps: the same at 60 and 20 fps.
 import { shapeOf, damage, intentFor, FOES } from './arena/core.js';
 import { LIVE } from './arena/live.js';
-import { KINDS } from './movekinds.js'; // owner 2026-11-10: the kinds as objects (word, icon, button group)
+import { KINDS, kindOf } from './movekinds.js'; // owner 2026-11-10: the kinds as objects (word, icon, button group)
 import { statsFor, SPECIES, MOVES } from './species.js';
 
 export const STEP = 1 / 120;
 export const FIGHT = {
   R: 10,              // the ring's radius (about 20 blocks across, plans/chapter3.md section 5)
   patch: 6.5,         // the scribbled patch before it snaps: step inside it to start
-  foePower: 60, foeHp: 8, // tougher than the arena's Live (50, x6): buffs really work here, and mashing must never win (tests/scribblebots.mjs)
+  foePower: 60, foeHp: 10, // (2026-11-11: 8 -> 10 with the kinds by nature, tests/scribblemeasure.mjs length) tougher than the arena's Live (50, x6): buffs really work here, and mashing must never win (tests/scribblebots.mjs)
   squad: 3,           // creatures you can swap between
   climb: 1.05,        // the highest step a creature walks up
   chest: 0.9,         // where shots fly (over the ground a creature stands on)
@@ -28,8 +28,7 @@ export const FIGHT = {
   // Measured with bots (plans/chapter3.md section 7): shorter cool-downs or a rush that always went through let MASHING win, so a rush is a
   // timing skill: hit a monster in the last half of its warning (when the red pulses fastest) and you cancel its attack, knock it back
   // and carry on through to the far side, out of its stomp. Any other rush stops at the monster as in the arena (cool-downs: the arena's).
-  cool: {},
-  rush: { speed: 17, min: 4.8, past: 2.4, max: 8, safe: 0.3, interrupt: true, window: 0.5, throughOnlyInWindow: true, stun: 1.2, knock: 1.6 },
+  // (2026-11-11: a kind's wait and hit strength moved into KIND_NUMBERS below, with the rest of that kind's numbers)
   // Night run 2026-11-09 (plans/chapter3.md section 9, step 2): every move kind measured alone like the rush, and the weak or free ones
   // given a rule that asks for skill (never a plain number a masher also gets):
   //   big blast: the ring on the ground grows while you hold (r0 -> r1); only a full one hits hard (m0 -> m1, by charge^pow), and a
@@ -39,10 +38,7 @@ export const FIGHT = {
   //   power up:  lasts while you are not hit: a hit (not a dodged one) takes it away. Keep out of the red to keep it.
   //   tough:     a brace: a hit within `brace` s after you use it bounces off ("Blocked!") and stops the monster that threw it; after that
   //              only a little tougher.
-  burst: { r0: 2.0, r1: 5.0, m0: 0.35, m1: 2.0, pow: 2, stopWindow: 0.5, fromPress: true },
-  heal: { time: 0.8, amount: 0.45 },
-  powerUp: { atk: 1.5, time: 8, lostOnHit: true },
-  tough: { brace: 0.7, def: 1.3, time: 8 },
+
   // 2026-11-10: the monsters' first attacks were at fixed times (1.6, 2.5, 3.4 s) and every cool-down is fixed, so a masher's rushes
   // came at the same moments of a warning every fight, just before the timed rush's window (0.4 s into it, the window opens at 0.475).
   // At 20 fps a press waits for the next frame (up to 50 ms), which tipped them into the window: mashing won 3x as often at 20 fps as
@@ -51,13 +47,67 @@ export const FIGHT = {
   attack: 0.7,        // the monsters' rhythm: x the arena's time between attacks (they strike more often: mashing must never win)
   arc: 2.09,          // the monsters leap out this far apart (rad) round your creature: one in front, two to the sides behind (a tighter arc in front let mashing win)
 };
+
+// ---- Every move kind's numbers, ONE place per kind (owner 2026-11-11, plans/chapter3-world.md section 7 and "Decided overnight").
+// `wait` = seconds before the move can be used again (it was the arena's LIVE.cool); `hit` = x the damage sum (the same sum as a
+// turn-based battle: level, attack / defence, the move's power, same type, the type chart). The rest are the kind's own rules.
+// Set with tests/scribblemeasure.mjs kinds (each kind alone at the same power, naive / kid / person / skilled bots) and length.
+export const KIND_NUMBERS = {
+  // Shot: one ball flies straight at the monster you aim at; a hill or a tree in the way stops it. Safe: from a distance.
+  bolt: { wait: 0.65, hit: 1 },
+  // Many shots: `bits` small balls in a fan (`spread` rad apart), each `hit` x the sum: easy to land some, hard to land them all.
+  volley: { wait: 1.6, hit: 0.68, bits: 4, spread: 0.12 },
+  // Rush: your creature runs at the monster. Riskiest (you go in close). Timed in the last half of a monster's warning (`window`) it
+  // is a big hit (`hit`), stops its attack, knocks it back `knock` and carries you through to the far side, out of its stomp; any other
+  // rush is a plain hit (`plain`) and stops at the monster as in the arena (so mashing rushes gains nothing).
+  dash: { wait: 1.8, hit: 2.4, plain: 1, speed: 17, min: 4.8, past: 2.4, max: 8, safe: 0.3, interrupt: true, window: 0.5, throughOnlyInWindow: true, stun: 1.2, knock: 1.6 },
+  // Big blast: hold to grow a ring round your creature (r0 -> r1 over LIVE.charge s); everything inside is hit. Only a full one hits
+  // hard: x (m0 -> hit) by charge^pow. One that catches a monster in the last half of its warning stops it. The wait counts from the press.
+  burst: { wait: 2.8, hit: 2.8, r0: 2.0, r1: 5.0, m0: 0.35, pow: 2, stopWindow: 0.5, fromPress: true },
+  // Heal: your creature sits `time` s (it cannot move), then heals `amount` of its HP; a hit in that time spoils it.
+  heal: { wait: 9, time: 0.8, amount: 0.45 },
+  // Power up: x `atk` until you are hit (or `time` s). Tough (a power-up move that raises defence): a brace: a hit within `brace` s
+  // bounces off and stops its thrower, then x `def` for `time` s.
+  buff: { wait: 9, atk: 1.5, time: 8, lostOnHit: true },
+  tough: { brace: 0.7, def: 1.3, time: 8 },
+  // Slow cloud / Sleepy cloud: a puddle where the monster stands.
+  cloud: { wait: 6 }, sleep: { wait: 7 },
+  // Speed up (owner 2026-11-11: the speed-raising moves are their own help move): x `mult` walking and dodging for `time` s.
+  speed: { wait: 9, mult: 1.3, time: 8 },
+};
+FIGHT.kinds = KIND_NUMBERS;
+FIGHT.rush = KIND_NUMBERS.dash; FIGHT.burst = KIND_NUMBERS.burst; FIGHT.heal = KIND_NUMBERS.heal; FIGHT.powerUp = KIND_NUMBERS.buff; FIGHT.tough = KIND_NUMBERS.tough; // (older names)
+// A move that hits 1-5 times in a turn-based battle (fx multi) fights with power x its average number of hits there (2.9): its live
+// power is its turn-based strength.
+export const MULTI_HITS = 2.9;
+
+// ---- Speed counts (owner 2026-11-11): a creature's speed (its species' base speed) sets how fast it walks and dodges, in a narrow
+// band so no creature is hopeless: base speed `from` or less = x lo, `to` or more = x hi, in between in a straight line. Monsters too.
+export const SPEED = { lo: 0.85, hi: 1.15, from: 40, to: 110 };
+FIGHT.pace = SPEED; // (tests tune it as FIGHT.pace)
+export function paceOf(species) {
+  const b = SPECIES[species]?.base?.spd ?? 70, k = Math.min(1, Math.max(0, (b - SPEED.from) / (SPEED.to - SPEED.from)));
+  return SPEED.lo + (SPEED.hi - SPEED.lo) * k;
+}
+// A move as the fight uses it: the arena's shape with the game's kind (movekinds.js kindOf: by its nature), but a speed-raising move is Speed up, and a multi-hit
+// move's power is its turn-based average.
+export function liveShape(id) {
+  const s = shapeOf(id);
+  if (!s) return s;
+  const m = MOVES[id];
+  s.kind = kindOf(id).id; // the game's kind by nature (the arena's shapeOf keeps its own old rule)
+  if (s.kind === 'buff' && s.stat === 'spd') s.kind = 'speed';
+  if (m.fx?.kind === 'multi' && s.power) s.power = Math.round(s.power * MULTI_HITS);
+  return s;
+}
+const waitOf = kind => KIND_NUMBERS[kind]?.wait ?? LIVE.cool[kind] ?? 1;
 const WATER = 5;
 // Owner 2026-11-10 ("one creature's blast button is another creature's heal ... 5 buttons + directions is A LOT", chose "Attack + Special"):
 // three buttons with a fixed meaning. Attack always hurts a monster, Special always helps; each uses the creature's moves of its group in
 // turn: the ready one used longest ago (so none gets stuck), shown on the button by its kind's icon. Hold Attack on ◎ to charge a big blast.
 export const GROUP = Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.group])); // movekinds.js: each kind knows its button
 export const BUTTONS = ['dodge', 'attack', 'special'];
-export const ICON = { ...Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.icon])), tough: '🛡' };
+export const ICON = { ...Object.fromEntries(Object.values(KINDS).map(k => [k.id, k.icon])), tough: '🛡' }; // (speed: » from movekinds.js)
 export const iconOf = s => (s ? (s.kind === 'buff' && s.stat === 'def' ? ICON.tough : ICON[s.kind]) : '');
 const len2 = (x, z) => Math.hypot(x, z);
 
@@ -89,7 +139,8 @@ export function groundOf(world) {
 // The fighters: your squad's lead (side 'you') and the scribble monsters (side 'foe').
 function fighter(c, side, x, y, z) {
   const f = { c: { species: c.species, level: c.level, moves: c.moves || [] }, side, x, y, z, heading: 0, r: 0.75, pattern: c.pattern,
-    hp: 0, maxHp: 0, safeT: 0, buffT: 0, guardT: 0, braceT: 0, slowT: 0, sleepT: 0, flash: 0, moving: false, vel: { x: 0, z: 0 } };
+    hp: 0, maxHp: 0, safeT: 0, buffT: 0, guardT: 0, braceT: 0, slowT: 0, sleepT: 0, speedT: 0, flash: 0, moving: false, vel: { x: 0, z: 0 } };
+  f.pace = paceOf(c.species); // its speed in the band (SPEED)
   f.maxHp = f.hp = statsFor(f.c).maxHp;
   Object.defineProperty(f, 'alive', { get() { return this.hp > 0; } });
   Object.defineProperty(f, 'type', { get() { return SPECIES[this.c.species].type; } });
@@ -124,7 +175,7 @@ export class ScribbleFight {
       return f;
     });
     this.input = { mx: 0, mz: 0 };
-    this.moves = this.you.c.moves.map(shapeOf);
+    this.moves = this.you.c.moves.map(liveShape);
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
     this.charge = { slot: -1, t: 0 };
     this.usedAt = [0, -1e9, -1e9, -1e9, -1e9]; this.held = [0, 0, 0];
@@ -266,7 +317,8 @@ export class ScribbleFight {
     f.hp = m.hp; f.heading = old.heading; f.safeT = 0.6;
     this.you = f; this.lead = i; this.swapCool = 0.8; this.stats.swaps++;
     this.dash = null; this.charge = { slot: -1, t: 0 }; this.healing = null; this.held = [0, 0, 0]; this.usedAt = [0, -1e9, -1e9, -1e9, -1e9];
-    this.moves = f.c.moves.map(shapeOf);
+    this.moves = f.c.moves.map(liveShape);
+    if (m.c.livePower) this.moves.forEach(x => { if (x?.power) x.power = m.c.livePower; }); // (measurements only: tests/scribblemeasure.mjs)
     this.cd = this.cd.map((c, k) => (k ? 0 : c));
     this.emit({ kind: 'swap', f, old, auto });
     return true;
@@ -327,7 +379,7 @@ export class ScribbleFight {
     let { mx: dx, mz: dz } = this.input;
     if (!dx && !dz) { dx = -Math.sin(this.you.heading); dz = -Math.cos(this.you.heading); } // no stick: hop back
     const d = Math.hypot(dx, dz);
-    this.dash = { x: dx / d, z: dz / d, t: LIVE.dodge.time, speed: LIVE.dodge.speed, hits: null };
+    this.dash = { x: dx / d, z: dz / d, t: LIVE.dodge.time, speed: LIVE.dodge.speed * this.paceNow(this.you), hits: null };
     this.you.safeT = LIVE.dodge.safe;
     this.cd[0] = LIVE.dodge.cool;
     this.emit({ kind: 'dodge' });
@@ -342,20 +394,22 @@ export class ScribbleFight {
     }
     return this.target;
   }
+  // how fast f walks and dodges now: its speed in the band, x Speed up while it lasts
+  paceNow(f) { return f.pace * (f.speedT > 0 ? KIND_NUMBERS.speed.mult : 1); }
   // the big blast's ring for a charge k (0..1)
   blastR(k) { const B = FIGHT.burst; return B.r0 + (B.r1 - B.r0) * k; }
   use(slot, charge, held = 0) {
     const you = this.you, s = this.moves[slot - 1], t = this.aimAt();
-    const cool = FIGHT.cool[s.kind] ?? LIVE.cool[s.kind];
+    const cool = waitOf(s.kind), K = KIND_NUMBERS[s.kind] || {};
     this.usedAt[slot] = this.clock;
     this.cd[slot] = s.kind === 'burst' && FIGHT.burst.fromPress ? Math.max(0.2, cool - held) : cool; this.cdMax[slot] = cool;
     let dx = Math.sin(you.heading), dz = Math.cos(you.heading), dy = 0;
     if (t) { const d = len2(t.x - you.x, t.z - you.z) || 1; dx = (t.x - you.x) / d; dz = (t.z - you.z) / d; dy = (t.y - you.y) / d; }
     this.emit({ kind: 'move', s, slot });
-    if (s.kind === 'bolt') this.fire(s, dx, dy, dz, 1);
-    else if (s.kind === 'volley') { for (let i = 0; i < 4; i++) this.fire(s, dx, dy, dz, 1, i * 0.09, (i - 1.5) * 0.09); }
+    if (s.kind === 'bolt') this.fire(s, dx, dy, dz, K.hit);
+    else if (s.kind === 'volley') { for (let i = 0; i < K.bits; i++) this.fire(s, dx, dy, dz, K.hit, i * 0.09, (i - (K.bits - 1) / 2) * K.spread); }
     else if (s.kind === 'burst') {
-      const B = FIGHT.burst, r = this.blastR(charge), mult = B.m0 + (B.m1 - B.m0) * charge ** B.pow;
+      const B = FIGHT.burst, r = this.blastR(charge), mult = B.m0 + (B.hit - B.m0) * charge ** B.pow;
       this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r, full: charge >= 1 });
       for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) {
         const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * B.stopWindow;
@@ -379,7 +433,7 @@ export class ScribbleFight {
     else if (s.kind === 'buff') {
       if (s.stat === 'def') { you.guardT = FIGHT.tough.time; you.braceT = FIGHT.tough.brace; } else you.buffT = FIGHT.powerUp.time;
       this.emit({ kind: 'buff', def: s.stat === 'def' });
-    }
+    } else if (s.kind === 'speed') { you.speedT = KIND_NUMBERS.speed.time; this.emit({ kind: 'speedUp', f: you }); }
     else if (s.kind === 'cloud' || s.kind === 'sleep') {
       const x = t ? t.x : you.x + dx * 5, z = t ? t.z : you.z + dz * 5;
       const c = { id: this.nextId++, type: s.type, x, z, y: t ? t.y : you.y, r: 2.3, t: 0, time: s.kind === 'sleep' ? 2.2 : 5, sleep: s.kind === 'sleep', done: new Set() };
@@ -408,6 +462,7 @@ export class ScribbleFight {
     for (const f of [you, ...this.foes]) {
       f.safeT = Math.max(0, f.safeT - dt); f.buffT = Math.max(0, f.buffT - dt); f.guardT = Math.max(0, f.guardT - dt);
       f.slowT = Math.max(0, f.slowT - dt); f.sleepT = Math.max(0, f.sleepT - dt); f.flash = Math.max(0, f.flash - dt); f.braceT = Math.max(0, f.braceT - dt);
+      f.speedT = Math.max(0, f.speedT - dt);
       f.c.atkUp = f.buffT > 0 ? FIGHT.powerUp.atk : 1; f.c.defUp = f.guardT > 0 ? FIGHT.tough.def : 1;
     }
     if (this.charge.slot > 0) { this.charge.t += dt; if (this.charge.t >= LIVE.charge) this.release(this.charge.slot); }
@@ -424,7 +479,7 @@ export class ScribbleFight {
       if (d.hits) for (const f of this.foes) if (f.alive && !d.hits.has(f) && len2(f.x - you.x, f.z - you.z) < f.r + you.r + 0.2 && Math.abs(f.y - you.y) < 1.6) {
         d.hits.add(f);
         const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * (FIGHT.rush.window ?? 1); // (window: only the last part of the warning, when it pulses fastest)
-        this.hit(you, f, d.s.power, d.s.type, 1, 'dash');
+        this.hit(you, f, d.s.power, d.s.type, winding ? FIGHT.rush.hit : FIGHT.rush.plain, 'dash');
         if (winding && f.alive && FIGHT.rush.interrupt) { // cancel its attack and knock it back
           f.tell = null; f.timer = Math.max(f.timer, FIGHT.rush.stun);
           this.move(f, d.x * FIGHT.rush.knock, d.z * FIGHT.rush.knock);
@@ -436,7 +491,7 @@ export class ScribbleFight {
     } else {
       const { mx, mz } = this.input, m = Math.min(1, Math.hypot(mx, mz));
       you.moving = m > 0.05;
-      const sp = LIVE.speed * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? FIGHT.water : 1);
+      const sp = LIVE.speed * this.paceNow(you) * m * (this.charge.slot > 0 ? 0.55 : 1) * (this.g.wet(you.x, you.z, you.y) ? FIGHT.water : 1);
       if (you.moving) {
         const k = Math.hypot(mx, mz), y0 = you.y;
         if (this.move(you, mx / k * sp * dt, mz / k * sp * dt)) this.stats.blocked += dt;
@@ -496,7 +551,7 @@ export class ScribbleFight {
     f.side2 ??= this.rand() < 0.5 ? 1 : -1;
     const side = f.side2 * 0.5;
     const vx = dx / d * go - dz / d * side, vz = dz / d * go + dx / d * side, v = Math.hypot(vx, vz) || 1;
-    const sp = F.speed * slow * (this.g.wet(f.x, f.z, f.y) ? FIGHT.water : 1);
+    const sp = F.speed * this.paceNow(f) * slow * (this.g.wet(f.x, f.z, f.y) ? FIGHT.water : 1);
     if (this.move(f, vx / v * sp * dt, vz / v * sp * dt)) { f.stuck = (f.stuck || 0) + dt; if (f.stuck > 0.6) { f.side2 = -f.side2; f.stuck = 0; } }
     for (const o of this.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) this.move(f, ox / od * (1.4 - od) * 0.5, oz / od * (1.4 - od) * 0.5); }
     f.moving = true;

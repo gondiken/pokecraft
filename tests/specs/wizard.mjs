@@ -1274,8 +1274,9 @@ export default async function ({ browser, base, t }) {
       const g = window.pokecraft, THREE = await import('three');
       const out = { problems: [], runs: 0, kinds: {} }, bad = m => out.problems.push(m);
       for (const id of Object.keys(S.MOVES)) {
-        const k = MK.kindOfMove(S.MOVES[id]);
-        if (AC.shapeOf(id).kind !== k.id) bad(`${id}: the arena says ${AC.shapeOf(id).kind}, the kind ${k.id}`);
+        const k = MK.kindOf(id); // the game's kind (by nature, MOVE_KIND); the arena keeps its own old rule (kindOfMove)
+        if (AC.shapeOf(id).kind !== MK.kindOfMove(S.MOVES[id]).id) bad(`${id}: the arena says ${AC.shapeOf(id).kind}, its rule ${MK.kindOfMove(S.MOVES[id]).id}`);
+        if (!k) bad(`${id}: no kind`);
         out.kinds[k.id] = (out.kinds[k.id] || 0) + 1;
       }
       const d = K.cleanDesign({ n: 'Zap', p: [1, 1, 1, 1, 1, 1, 1], c: [0, 1, 2, 3, 4, 5, 6], a: { tackle: { p: [2, 3, 1, 2], c: [3, 12] }, BAD: { p: [1] }, junk: 5, quick: { p: [99, 'x'], c: [99, 2] } } });
@@ -1302,7 +1303,7 @@ export default async function ({ browser, base, t }) {
       g.fx.clear();
       return out;
     });
-    t.ok(!r.problems.length, `move kinds: the arena's kinds = movekinds for every move (${JSON.stringify(r.kinds)}); ${r.runs} looks of every choice draw without errors (shot: ${r.bolt}; many shots: ${r.volley}; big blast: ${r.burst}; rush: ${r.dash}) ${r.problems.slice(0, 5).join('; ')}`);
+    t.ok(!r.problems.length, `move kinds: every move has a kind, the arena keeps its own rule (${JSON.stringify(r.kinds)}); ${r.runs} looks of every choice draw without errors (shot: ${r.bolt}; many shots: ${r.volley}; big blast: ${r.burst}; rush: ${r.dash}) ${r.problems.slice(0, 5).join('; ')}`);
     // 2. the board: an Attacks tab (?preview); each attack shows its kind and that kind's choices and two colours; a tap designs it and plays it
     await page.evaluate(async () => {
       const S = await import('/src/species.js'), g = window.pokecraft;
@@ -1322,7 +1323,7 @@ export default async function ({ browser, base, t }) {
       const out = {};
       for (const id of st.attackMoves()) {
         document.querySelector(`#db-parts .db-move[data-move="${id}"]`).click();
-        const kind = MK.kindOfMove(S.MOVES[id]);
+        const kind = MK.kindOf(id);
         document.querySelector('#db-parts .db-opt[data-opt="0:2"]').click();
         document.querySelector('#db-colours .db-swatch[data-acolour="1:12"]').click();
         out[id] = { kind: kind.id, look: JSON.parse(JSON.stringify(st.draft.a[id])) };

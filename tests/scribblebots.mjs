@@ -208,17 +208,19 @@ function camWatch(F, which, aspect) {
 window.__scribbleBots = { newFight, BOT, camWatch };
 `;
 
-export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null } = {}) {
-  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams }) => {
+export async function play(page, bot, { fps = 60, lead = 0, limit = 150, solo = null, cams = null, power = null } = {}) {
+  return page.evaluate(async ({ BOTS, bot, fps, lead, limit, solo, cams, power }) => {
     if (!window.__scribbleBots) await eval(`(async () => { ${BOTS} })()`);
     const { newFight, BOT, camWatch } = window.__scribbleBots, S = await import('/src/species.js');
     const F = newFight(lead, solo), dt = 1 / fps;
+    if (power) for (const m of F.squad) m.c.livePower = power; // (measurements: every attack at the same power, see liveShape)
+    if (power) F.moves.forEach(m => { if (m?.power) m.power = power; });
     const W = (cams || []).map(([c, a]) => camWatch(F, c, a));
     for (let t = 0; t < limit && !F.over; t += dt) { BOT[bot](F, dt); for (const w of W) w.tick(dt); }
     return { won: F.won, time: Math.round(F.clock), left: F.foes.filter(f => f.alive).length, team: F.squad.filter((m, i) => (i === F.lead ? F.you.hp : m.hp) > 0).length, dodged: F.stats.dodged,
       hp: Math.round(100 * F.you.hp / F.you.maxHp), foeHp: Math.round(100 * F.foes.reduce((a, f) => a + Math.max(0, f.hp), 0) / F.foes.reduce((a, f) => a + f.maxHp, 0)),
       byKind: F.stats.byKind, hitBy: F.stats.hitBy, takenPerMin: Math.round(F.stats.taken / Math.max(1, F.clock) * 60 / F.squad.reduce((a, m) => a + S.statsFor(m.c).maxHp, 0) * 100), extra: { braced: F.stats.braced || 0, spoilt: F.stats.spoilt || 0, buffLost: F.stats.buffLost || 0 }, snapsPerMin: Math.round(F.stats.snaps / Math.max(1, F.clock) * 60), blocked: +(F.stats.blocked / Math.max(1, F.clock)).toFixed(2), ...(W.length ? { cams: W.map(w => w.out()) } : {}) };
-  }, { BOTS, bot, fps, lead, limit, solo, cams });
+  }, { BOTS, bot, fps, lead, limit, solo, cams, power });
 }
 
 export const RUNS = [['naive', 60], ['naive', 20], ['skilled', 60], ['skilled', 20]];
@@ -297,7 +299,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   let fails = 0;
   for (const seed of process.env.SCRIBBLE_SEED ? [+process.env.SCRIBBLE_SEED] : SEEDS) {
     const page = await scribblePage(browser, base, { seed });
-    if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => Object.assign((await import('/src/scribblefight.js')).FIGHT, JSON.parse(t)), process.env.SCRIBBLE_TUNE);
+    if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => { const M = await import('/src/scribblefight.js'), deep = (o, v) => { for (const [k, x] of Object.entries(v)) if (x && typeof x === 'object' && o[k] && typeof o[k] === 'object') deep(o[k], x); else o[k] = x; }; deep(M.FIGHT, JSON.parse(t)); }, process.env.SCRIBBLE_TUNE); // (deep: '{"kinds":{"dash":{"hit":2}}}')
     const spot = await page.evaluate(() => window.pokecraft.scribble.info().spot);
     console.log(`seed ${seed}: patch`, JSON.stringify(spot));
     fails += (await runBots(page, +process.env.SCRIBBLE_GAMES || 4)).fails;

@@ -1,4 +1,4 @@
-# Chapter 3's new world: a plan (2026-11-10 / 11, planning only, nothing built)
+# Chapter 3's new world: a plan (2026-11-10 / 11) and what the night run built
 
 Built around the scribble fight that already works (`src/scribble.js`, `src/scribblefight.js`, `plans/chapter3.md` sections 7-10:
 the camera rising from your eyes, the ring on the real ground, Dodge + two buttons with drawn kind icons, mashing loses, a person
@@ -8,6 +8,149 @@ wins in about 1-1.5 minutes). **The build goes in a new session**; this file is 
 House rules that shape every choice: **easy to understand, hard to master** (a child gets it in one look + at most one short line; the
 obvious shortcut never wins; naive bot fails, skilled bot wins, real keys, iPad); no Pokémon names; short, friendly text; reuse what
 exists (realms, the Picture World kit, the guide, the fight); everything behind `?preview` until the owner opens it.
+
+## Decided overnight (night run 2026-11-11)
+
+Everything below is behind `?preview`, made by the night run on its own (the owner was asleep) and easy to change. Each item: what,
+why with an example, where to change it, and the bot numbers. The arena (`arena.html`, `src/arena/`) files are untouched and
+turn-based battles do not change.
+
+### Step 1: every attacking move's live kind by its nature
+
+**What:** `MOVE_KIND` in `src/movekinds.js` (from line 305) lists all 239 attacking moves, one word each, grouped by type, with a
+comment saying why: e.g. *Big Wave* is a **big blast** (a wave goes all round), *Bubble Pop* **many shots** (bubbles come in many),
+*Tide Crash* a **rush** (it crashes in), *Soak Shot* a **shot**. The old rule (power 80+ = big blast) is gone from the game (`kindOf(id)`
+in `movekinds.js`); power now only says how hard a move hits within its kind. **The test arena keeps the old rule** (`kindOfMove(m)`,
+which its untouched `shapeOf` calls), so arena.html plays exactly as before (its bots: the same results as before tonight). Help moves keep their kinds from their effect (heal, sleep, power up / Tough, cloud): none removed.
+
+**Where to change:** one line per move in `MOVE_KIND`, e.g. `bigwave: 'burst'` -> `bigwave: 'volley'` (the words: `bolt` shot,
+`volley` many shots, `dash` rush, `burst` big blast). `node tests/movekinds.mjs` (and the `scribble` spec, part `kinds`) fails on a
+damaging move without a line and prints the spread.
+
+**The spread:** 55 shots, 51 many shots, 68 rushes, 65 big blasts (before: 95 / 29 / 29 / 86). **44 of 47 types have all four kinds**
+(before: 11). Every creature can learn at least three kinds (273 of 330 all four). Two things worth knowing:
+- *Bump* (everyone's first move) is now a **rush** and *Quick Jab* **many shots** (a flurry of jabs), so every creature starts with both.
+- The three gaps are types with only three attack moves: **Bug has no shot, Mind and Pixie have no rush.** Filling them needs a new
+  move (question 1 below).
+
+**Stretches** (the only reading that gave the type its missing kind; easy to undo): Rainbow *Zenith Ray* rush (rides its own ray in),
+Sound *Big Bong* rush (swings in like a bell's clapper), Light *Flash Bulb* rush (there in a blink), Cozy *Lights Out* shot (a puff of
+night at one monster), Parkour *Flip Kick* shot (a whoosh of air), Knight *Shield Bash* shot (the shield thrown like a disc), Camo
+*Surprise!* shot and *Peekaboo* many shots, Squad *Tower Topple* shot, Cyber *Pixel Pop* big blast, Food *Mega Munch* big blast.
+
+**Nothing saved changes.** The Wizard's Attacks tab reads the same rule: a guardian move whose kind changed (Custom *Swirl Seal*:
+big blast -> many shots) shows the new kind's choices (spec `wizard` part `attacks` green).
+
+The list by type (as it stands; "many shots" = volley, "rush" = dash, "big blast" = burst):
+
+- **normal**: Bump rush, Quick Jab many shots, Belly Bash rush, Hyper Strike shot, Never Give Up big blast
+- **fire**: Cinder shot, Flare Kick rush, Blaze Burst big blast, Inferno Dash rush, Blaze Dash rush, Wild Blaze many shots, Last Ember big blast
+- **water**: Bubble Pop many shots, Soak Shot shot, Tide Crash rush, Big Wave big blast, Royal Tide big blast
+- **grass**: Leaf Cut shot, Seed Volley many shots, Vine Lash rush, Root Slam big blast
+- **electric**: Zap shot, Static Snap many shots, Thunder Jolt shot, Storm Call big blast, Live Wire rush
+- **rock**: Pebble Shot shot, Rumble Rock many shots, Rock Slam rush, Boulder Drop big blast, Cliff Crash big blast
+- **ice**: Ice Breath shot, Chill Wind big blast, Snow Storm many shots, Glacier Slam rush
+- **bug**: Nibble rush, Buzz Dive big blast, Sting Barrage many shots
+- **ghost**: Shadow Dash rush, Boo! many shots, Phantom Strike shot, Gloom Wave big blast
+- **mind**: Mind Pulse shot, Mind Trick many shots, Brain Wave big blast
+- **metal**: Clank shot, Rivet Shot many shots, Iron Bash rush, Wrecking Ball big blast
+- **toxic**: Sludge Spit shot, Goop Shot many shots, Toxic Cloud big blast, Stink Bomb shot, Fizzy Potion rush
+- **pixie**: Pixie Dust many shots, Glitter Puff big blast, Moonbeam shot
+- **drake**: Scale Swipe shot, Claw Rake rush, Drake Roar big blast, Drake Charge rush, Scale Storm many shots
+- **rainbow**: Prism Ray shot, Color Splash many shots, Rainbow Burst big blast, Zenith Ray rush
+- **cosmic**: Star Shard shot, Meteor Shower many shots, Comet Crash rush, Supernova big blast, Lucky Star shot, Big Bang big blast
+- **sound**: Echo Ping many shots, Shriek big blast, Bass Blast shot, Big Bong rush
+- **bone**: Bone Bonk rush, Bone Toss many shots, Fossil Crush shot, Dino Stomp big blast, Rattle Dance rush, Dino Comeback big blast
+- **alien**: Beep Beam shot, Tractor Beam rush, UFO Blast shot, Gravity Flip big blast, Mothership many shots, Mystery Button big blast
+- **sky**: Breeze Puff shot, Swoop rush, Cloud Burst many shots, Tornado Spin big blast, Jet Stream rush
+- **slime**: Slime Shot shot, Sticky Goo many shots, Slime Slam rush, Mega Splat big blast
+- **light**: Glint many shots, Flash Bulb rush, Sunbeam shot, Sun Burst big blast, Beacon Beam shot
+- **paper**: Paper Flick shot, Confetti many shots, Fold Slam rush, Thousand Cranes big blast
+- **time**: Second Hand many shots, Fast Forward rush, Hour Strike shot, Wake-Up Call big blast, Last Second big blast
+- **camo**: Peekaboo many shots, Surprise! shot, Blend Bash rush, Statue Slam big blast, Sneaky Leap rush
+- **cyber**: Pixel Pop big blast, Rapid Click many shots, Glitch Beam shot, Mega Byte rush
+- **cozy**: Snuggle rush, Pillow Fight many shots, Warm Hug big blast, Lights Out shot
+- **treasure**: Coin Flip shot, Gem Toss many shots, Gold Rush rush, Crown Jewel big blast, Jackpot big blast
+- **squad**: One-Two rush, High Fives many shots, Pile On big blast, Tower Topple shot, Count Off! many shots
+- **dream**: Odd Poke shot, Wobble Wave big blast, Floaty Bits many shots, Head Over Heels rush, Crayon Storm many shots, Wild Dream big blast
+- **food**: Nom Nom rush, Food Fight shot, Sprinkles many shots, Mega Munch big blast
+- **parkour**: Wall Hop big blast, Flip Kick shot, Quick Vault rush, Rooftop Run rush, Triple Flip many shots, Final Sprint rush
+- **funfair**: Ticket Toss shot, Bumper Bash rush, Zip Ride rush, Grand Gallop rush, Balloon Burst many shots, Prize Wheel big blast
+- **ball**: Bounce Bop shot, Cannon Roll rush, Quick Pass rush, Golden Goal shot, Ace Smash big blast, Trick Shot many shots
+- **surprise**: Ribbon Whip rush, Spring Punch shot, Peek-a-Pop rush, Ta-Daa! big blast, Candy Burst many shots, Mystery Box big blast
+- **ninja**: Leaf Star many shots, Sneak Step rush, Shadow Strike shot, Leaf Whirlwind big blast
+- **racer**: Wheel Spin shot, Ramp Jump big blast, Zoom Dash rush, Photo Finish rush, Nitro Blast many shots, Full Throttle rush
+- **tiny**: Teeny Tap shot, Mighty Mite rush, Tiny Steps many shots, Sugar Lift big blast, Fluff Storm big blast
+- **pirate**: Hook Swipe rush, Cannonball shot, Swashbuckle rush, Broadside many shots, Anchor Drop big blast, Powder Keg big blast
+- **portal**: Swirl Bop shot, Pop Through rush, Shortcut rush, Hat Trick many shots, Door Slam big blast
+- **atlantis**: Jar Bonk rush, Tile Toss shot, Rune Glow shot, Sunken Bell big blast, Mosaic Storm many shots, Last Light big blast
+- **doodle**: Pencil Poke rush, Sketch Swipe big blast, Quick Draw shot, Lead Lance rush, Squiggle Strike many shots, Finishing Touch big blast
+- **knight**: Shield Bash shot, Lance Charge rush, Quick Parry big blast, Grand Joust rush, Quill Volley many shots, Last Charge rush
+- **bubble**: Soap Bop shot, Foam Crash rush, Quick Fizz rush, Duck Fleet many shots, Bathtub Wave big blast, Soap Juggle many shots, Last Bubble big blast
+- **gravity**: Pull In shot, Orbit Spin big blast, Comet Dash rush, Comet Tail many shots, Ring Toss shot, Upside Hug rush, Last Orbit big blast
+- **mirror**: Glint Shot shot, Flash Back big blast, Quick Copy rush, Mirror Mirror many shots, Copycat Combo many shots, Funhouse Squish rush, Round the Corner shot, Last Look big blast
+- **custom**: Brush Dab shot, Palette Blast big blast, Quick Stroke rush, Swirl Seal many shots, Final Touch big blast
+
+### Step 1b: wait and hit strength per kind, speed counts
+
+**One place per kind:** `KIND_NUMBERS` in `src/scribblefight.js` (line 55). `wait` = seconds before the move can be used again,
+`hit` = x the damage sum (the same sum as a turn-based battle: level, attack / defence, the move's power, same type, the type chart).
+
+| Kind | Wait | Hit | Its own rule | In plain words (power 75, the same creature) |
+| --- | --- | --- | --- | --- |
+| Shot (`bolt`, line 57) | 0.65 s | x1 | flies straight, a hill stops it | the steady one: one ball every 0.65 s |
+| Many shots (`volley`, line 59) | 1.6 s (was 1.6) | **x0.68 a ball** (was x1), 4 balls | the fan is a bit wider: **0.12** rad apart (was 0.09) | close up all four land (x2.7), at 5 blocks the outer two often miss (x1.4): easy to land some, hard to land all |
+| Rush (`dash`, line 63) | **1.8 s** (was 2.0) | **x2.4 when timed** in the last half of a warning, **x1 otherwise** (`plain`; was x1 always) | timed: stops the attack and carries you through (built 2026-11-09) | a timed rush is the biggest single hit; a mashed one is a plain bump right next to the monster |
+| Big blast (`burst`, line 66) | **2.8 s** (was 3.2), counted from the press | **x2.8 full** (was x2.0), x0.35 when let go at once | the ring grows 2 -> 5 blocks in 1.1 s; hits everything inside | hold, wait for the ring to turn white, let go: x2.8 on every monster inside |
+
+Help moves keep their waits (heal 9 s, power up 9 s, slow cloud 6 s, sleepy cloud 7 s; lines 68-76).
+
+**Why these:** at the same power each kind alone should be worth about the same to a skilled player, each in its own way, and none may
+help a masher. Measured with `node tests/scribblemeasure.mjs kinds` (Owlucid x3, Lv 30, every attack at power 75, Sound moves which are
+neutral to all three monsters; 6 fights x 3 seeds, 60 and 20 fps):
+
+| Kit | Skilled: time to win | Person: won | Kid: monsters' HP left | Masher: won |
+| --- | --- | --- | --- | --- |
+| Shot + shot (yardstick) | 45 s | 6 / 18 | 47 % | 0 / 18 |
+| Shot + many shots | 48 s | 14 / 18 | 56 % | 0 / 18 |
+| Shot + big blast | 51 s | 11 / 18 | 58 % | 0 / 18 |
+| Shot + rush | 53 s | 11 / 18 | 62 % | 0 / 18 |
+| Shot alone | 90 s | 3 / 18 | 76 % | 0 / 18 |
+| Many shots alone | 102 s | 10 / 18 | 82 % | 0 / 18 |
+| Big blast alone | 92 s | 8 / 18 | 73 % | 0 / 18 |
+| Rush alone | 112 s | 4 / 18 | 78 % | 0 / 18 |
+
+Before the change (the same kits): many shots alone 52 s (far too strong at power 75: four full balls), big blast alone 120 s, rush alone
+167 s. Each kind now has its own character: **many shots** are the easiest for a person (most wins), the **big blast** hits hardest when
+held, the **rush** pays only when timed (alone it is the slowest, because a skilled player only rushes at a warning), the **shot** is safe.
+
+**Multi-hit moves** (Seed Volley, Rivet Shot...: power 20-30 hitting 1-5 times in a turn-based battle) fight with power x 2.9 (their
+average number of hits there), so their live strength is their turn-based strength (`MULTI_HITS`, line 82).
+
+**The monsters got tougher: HP x10 (was x8)** (`foeHp`, line 21). With the kinds by nature the ready-made team (Blazehound, Tidalord,
+Thunderwolf at Lv 30) learnt more rushes and blasts, and mashing won 15 of 72 fights at first (seed 122: 7 / 24, over the quarter);
+the untimed rush (x1) and x10 HP brought it back down. `node tests/scribblebots.mjs` and `scribblemeasure.mjs length` (6 x 3 seeds):
+
+| Team | Masher | Kid | Person: median win (range) | Skilled |
+| --- | --- | --- | --- | --- |
+| Ready-made (Lv 30) | 3 / 72 won (4 %) in the final `scribble` spec run (0-2 per 24 a seed); 2 / 18 in `length` | 17 / 18 | **46 s (33-70)** | all, 24 s |
+| The owner's team (Graphitan 56, Kitegale 91, Blazehound 89) | 1 / 18 | 6 / 18 | **73 s (55-94)** | all, 46 s |
+
+The ready-made team is quicker than the 1-1.5 minutes (it is rush- and blast-heavy now); the owner's team is right in it.
+
+**Speed counts** (owner, decided): `SPEED` in `src/scribblefight.js` (line 86): **base speed 40 or less = x0.85 walking and dodging,
+110 or more = x1.15, a straight line in between** (median creature, base 70: x0.99). Monsters follow the same rule. Example:
+Thunderwolf (base 100) walks 4.6 x 1.11 = 5.1 blocks a second, a slow creature (base 40 or less) 3.9. Measured: the band hardly
+changes the ready-made team (person 46 s with or without it), but walking out of the red is where speed shows: with everyone at x0.85 a
+skilled player is hit about twice as often (19 % vs 9 % of the squad's HP a minute) and still always wins, so no creature is hopeless.
+
+**Speed up** (its own help move, icon » with speed lines, word "Speed up"): the three speed-raising moves (*Dribble*, *Rev Up*,
+*Fizz Up*) now make your creature walk and dodge x1.3 for 8 s (`speed`, line 76), instead of the attack boost they gave before. The
+plan said 14 speed-raising moves; the moves list has only these three (12 more *lower* a monster's speed: they stay slow clouds). It is a
+mild help for now: the bots do not use the extra speed well (skilled 88 s with it, the same as Tough or a slow cloud). The arena still
+reads these three as power up (its files are untouched; the fight's `liveShape` says Speed up).
+
+---
 
 ## 0. The owner's decisions (2026-11-11)
 

@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { box, pivot, glow, addWings } from './shapes.js';
 import { PAINTS } from './custom.js';
-import { cleanLooks, makeLook, kindOfMove } from './movekinds.js'; // owner 2026-11-10: each attack's own look, designed per its kind
+import { cleanLooks, makeLook, kindOf } from './movekinds.js'; // owner 2026-11-10: each attack's own look, designed per its kind
 
 export const SLOTS = ['body', 'head', 'eyes', 'legs', 'tail', 'back', 'extra'];
 export const SLOT_LABELS = { body: 'Body', head: 'Head', eyes: 'Eyes', legs: 'Legs', tail: 'Tail', back: 'Back', extra: 'Extra' };
@@ -311,7 +311,7 @@ export function cleanDesign(d) {
 export const hexOfColour = n => (KIT_COLOURS[n]?.rainbow ? null : KIT_COLOURS[n]?.hex ?? 0xffffff);
 export function lookOf(design, moveId, move) {
   if (!isKitDesign(design) || !design.a?.[moveId] || !move) return null;
-  return makeLook(kindOfMove(move), design.a[moveId], hexOfColour);
+  return makeLook(kindOf(moveId), design.a[moveId], hexOfColour);
 }
 export const designKey = d => `${d.p.join('')}.${d.c.join('-')}.${d.n}`;
 export const flies = d => !!BACKS[d.p[5]]?.fly || !!LEGS[d.p[3]]?.hover;

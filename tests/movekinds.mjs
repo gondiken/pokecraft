@@ -18,12 +18,12 @@ const WORD = { bolt: 'Shot', volley: 'Many shots', dash: 'Rush', burst: 'Big bla
 
 export async function checkKinds() {
   const { MOVES, SPECIES } = await import('../src/species.js');
-  const { MOVE_KIND, kindOfMove } = await import('../src/movekinds.js');
+  const { MOVE_KIND, kindOf } = await import('../src/movekinds.js');
   const problems = [];
   for (const [id, m] of Object.entries(MOVES)) {
     if (m.power > 0 && !MOVE_KIND[id]) problems.push(`${id} (${m.name}) has no MOVE_KIND line`);
-    const k = kindOfMove(m)?.id;
-    if (m.power > 0 && k !== MOVE_KIND[id]) problems.push(`${id}: kindOfMove says ${k}, MOVE_KIND ${MOVE_KIND[id]}`);
+    const k = kindOf(id)?.id;
+    if (m.power > 0 && k !== MOVE_KIND[id]) problems.push(`${id}: kindOf says ${k}, MOVE_KIND ${MOVE_KIND[id]}`);
     if (!m.power) { // help moves keep their kinds from their effect (the old rule, unchanged)
       const fx = m.fx?.kind, want = fx === 'heal' ? 'heal' : fx === 'sleep' ? 'sleep' : fx === 'lower' || fx === 'curse' ? 'cloud' : 'buff';
       if (k !== want) problems.push(`help move ${id} is ${k}, not ${want}`);

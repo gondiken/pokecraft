@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { SPECIES, MOVES, nameOf, makeCreature, buildModel, animateModel, disposeModel, movesWith, MAX_LEVEL } from './species.js';
 import { Fx } from './fx.js'; // owner 2026-11-09: the Attack Studio plays an attack in the turning picture
-import { KIND_NAME, kindOfMove, RUSH } from './movekinds.js'; // owner 2026-11-10: each attack designed inside its kind
+import { KIND_NAME, kindOf, RUSH } from './movekinds.js'; // owner 2026-11-10: each attack designed inside its kind
 import { PREVIEW } from './comingsoon.js';
 import { rematchMoves, rematchCubes } from './rematch.js';
 import { sound } from './sound.js';
@@ -314,13 +314,13 @@ export function createStudio(game, { startBattle, save }) {
     attackMoves() {
       const c = S.redesign ? myGuardian() : null;
       const moves = c?.moves ?? makeCreature(KIT_SPECIES, guardianLevel(game.party, MAX_LEVEL)).moves;
-      return moves.filter(id => kindOfMove(MOVES[id])?.designable);
+      return moves.filter(id => kindOf(id)?.designable);
     },
     get atkMove() { const list = this.attackMoves(); if (!list.includes(atkMove)) atkMove = list[0] ?? null; return atkMove; },
     // the draft's look of one attack (made the first time it is opened: the kind's first choices in the guardian's body and extra colours)
     lookRaw(id) {
       if (!draft || !id || !MOVES[id]) return null;
-      const kind = kindOfMove(MOVES[id]);
+      const kind = kindOf(id);
       draft.a ??= {};
       draft.a[id] = kind.cleanLook(draft.a[id] ?? kind.defaultLook([draft.c[0], draft.c[6]]));
       if (draft.a[id].c.length < 2) draft.a[id].c = [draft.c[0], draft.c[6]];
@@ -329,7 +329,7 @@ export function createStudio(game, { startBattle, save }) {
     pickAttack(id) { if (!this.attackMoves().includes(id)) return false; atkMove = id; this.refreshBoard(); this.playAttack(); return true; },
     // a choice (slot index, choice number) or a colour (0 or 1, colour number) for the attack on the tab
     setChoice(si, i) {
-      const id = this.atkMove, kind = id && kindOfMove(MOVES[id]), raw = this.lookRaw(id);
+      const id = this.atkMove, kind = id && kindOf(id), raw = this.lookRaw(id);
       if (!raw || !kind.slots[si]?.options[i]) return false;
       raw.p[si] = i; this.refreshBoard(); this.playAttack(); return true;
     },
@@ -343,11 +343,11 @@ export function createStudio(game, { startBattle, save }) {
       if (!parts || !cols) return;
       const moves = this.attackMoves(), id = this.atkMove;
       if (!id) { parts.replaceChildren(el('p', { class: 'db-clabel' }, 'No attacks to design yet!')); cols.replaceChildren(); return; }
-      const kind = kindOfMove(MOVES[id]), raw = this.lookRaw(id);
+      const kind = kindOf(id), raw = this.lookRaw(id);
       const swatches = n => KIT_COLOURS.map((c, i) => el('button', { class: `db-swatch${raw.c[n] === i ? ' on' : ''}${c.rainbow ? ' rainbow' : ''}`, 'data-acolour': `${n}:${i}`, title: c.name,
         style: c.rainbow ? '' : `background:#${c.hex.toString(16).padStart(6, '0')}`, onclick: () => this.setAtkColour(n, i) }));
       parts.replaceChildren(
-        el('div', { class: 'db-moves' }, ...moves.map(m => { const k = kindOfMove(MOVES[m]); return el('button', { class: `db-part db-move${m === id ? ' on' : ''}`, 'data-move': m, onclick: () => this.pickAttack(m) },
+        el('div', { class: 'db-moves' }, ...moves.map(m => { const k = kindOf(m); return el('button', { class: `db-part db-move${m === id ? ' on' : ''}`, 'data-move': m, onclick: () => this.pickAttack(m) },
           el('b', {}, MOVES[m].name), el('small', {}, `${k.icon} ${KIND_NAME[k.id]}`)); })),
         el('div', { class: 'db-kindline' }, `${MOVES[id].name} is a `, el('b', {}, `${kind.icon} ${KIND_NAME[kind.id]}`), ' ', el('button', { class: 'db-play', title: 'Watch it', onclick: () => this.playAttack() }, '▶ Watch')),
         ...kind.slots.map((sl, si) => el('div', { class: 'db-slotrow', 'data-aslot': sl.id },

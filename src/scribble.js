@@ -425,8 +425,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     tough: `<path ${L} d="M24 5l15 6v12c0 10-7 17-15 20C16 40 9 33 9 23V11z"/><path ${L} d="M24 13v22"/>`,
     cloud: `<path ${L} d="M13 32h22a7 7 0 0 0 0-14 10 10 0 0 0-19-3 8 8 0 0 0-3 17z"/><path ${L} stroke-width="3" d="M12 40c3-3 5 3 8 0s5 3 8 0 5 3 8 0"/>`,
     sleep: `<path ${L} d="M11 34h22a7 7 0 0 0 0-14 10 10 0 0 0-19-3 8 8 0 0 0-3 17z"/><path ${L} stroke-width="3" d="M33 4h8l-8 9h8"/>`,
+    // owner 2026-11-11: Speed up, its own help move: a running shoe's wing (three speed lines and a chevron)
+    speed: `<path ${L} stroke-width="5" d="M24 10l14 14-14 14"/><path ${L} stroke-width="3.5" d="M4 14h14M8 24h14M4 34h14"/>`,
   };
-  const KIND_WORD2 = { bolt: 'Shot', volley: 'Many shots', burst: 'Blast', dash: 'Rush', heal: 'Heal', buff: 'Power up', tough: 'Tough', cloud: 'Slow cloud', sleep: 'Sleepy cloud' };
+  const KIND_WORD2 = { bolt: 'Shot', volley: 'Many shots', burst: 'Blast', dash: 'Rush', heal: 'Heal', buff: 'Power up', tough: 'Tough', cloud: 'Slow cloud', sleep: 'Sleepy cloud', speed: 'Speed up' };
   const kindKey = m => (m.kind === 'buff' && m.stat === 'def' ? 'tough' : m.kind);
   const svgOf = (k, px) => `<svg viewBox="0 0 48 48" width="${px}" height="${px}" style="display:block;margin:0 auto">${KIND_SVG[k] || ''}</svg>`;
   const faceOf = p => (p.move ? { k: kindKey(p.move), word: KIND_WORD2[kindKey(p.move)] || p.label, hold: p.move.kind === 'burst' } : { k: null, word: p.label, hold: false });
@@ -592,6 +594,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       else if (e.kind === 'thud') { burst(e.f.type, e.t.x, e.t.y, e.t.z, e.t.r, 0.35, 0.6); sound.play('hit'); }
       else if (e.kind === 'blocked') burst(e.type, e.x, e.y - 0.5, e.z, 0.6, 0.25, 0.8);
       else if (e.kind === 'buff') say(e.def ? 'Tough!' : 'Power up! Don\'t get hit!', 1);
+      else if (e.kind === 'speedUp') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Speed up!', 'heal');
       else if (e.kind === 'braced') { floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Blocked!', 'super'); sound.play('boing'); }
       else if (e.kind === 'healSpoilt') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Oops! No heal', 'miss');
       else if (e.kind === 'buffLost') floatText(e.f.x, e.f.y + h + 0.3, e.f.z, 'Power up lost', 'miss');

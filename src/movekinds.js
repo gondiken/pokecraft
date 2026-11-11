@@ -400,15 +400,10 @@ export const MOVE_KIND = {
   brushdab: 'bolt', paletteblast: 'burst', quickstroke: 'dash', swirlseal: 'volley', finaltouch: 'burst',
 };
 
-// The moves' ids by object (species.js hands its MOVES over once; kindOfMove gets the move object, as the arena's shapeOf calls it).
-let MOVES_REF = null, IDS = new WeakMap();
-export function registerMoves(moves) { MOVES_REF = moves; IDS = new WeakMap(); }
-function idOf(m) {
-  let id = IDS.get(m);
-  if (id == null && MOVES_REF) { for (const [k, v] of Object.entries(MOVES_REF)) IDS.set(v, k); id = IDS.get(m); }
-  return id;
-}
-// The old rule from the numbers (before 2026-11-11), only for an attacking move missing from MOVE_KIND (the Node check fails on one).
+// species.js hands its MOVES over once (no import the other way round).
+let MOVES_REF = null;
+export function registerMoves(moves) { MOVES_REF = moves; }
+// The old rule from the numbers (before 2026-11-11): the arena's, and for an attacking move missing from MOVE_KIND (the Node check fails on one).
 function guessKind(m) {
   const k = m.fx?.kind;
   if (k === 'multi') return 'volley';
@@ -417,19 +412,25 @@ function guessKind(m) {
   return 'bolt';
 }
 
-// A battle move's kind (the one rule; chapter 3's fight, the arena's `shapeOf` and the Wizard's board ask it). Attacks: MOVE_KIND.
-// Help moves: by their effect. A move that raises speed is Power up here (the arena reads it so); chapter 3's fight shows it as its
-// own Speed up (KINDS.speed, scribblefight.js liveShape).
-export function kindOfMove(m, id = null) {
+// A move's kind for the GAME (the one rule: chapter 3's fight and the Wizard's board ask it): attacks by MOVE_KIND, help moves by
+// their effect. A move that raises speed is Power up here; chapter 3's fight shows it as its own Speed up (scribblefight.js liveShape).
+export function kindOf(id) {
+  const m = MOVES_REF?.[id];
   if (!m) return null;
+  return m.power ? KINDS[MOVE_KIND[id] ?? guessKind(m)] : helpKind(m);
+}
+function helpKind(m) {
   const k = m.fx?.kind;
-  if (!m.power) {
-    if (k === 'heal') return KINDS.heal;
-    if (k === 'sleep') return KINDS.sleep;
-    if (k === 'lower' || k === 'curse') return KINDS.cloud;
-    return KINDS.buff; // raise, rally, shield, field, anything else
-  }
-  return KINDS[MOVE_KIND[id ?? idOf(m)] ?? guessKind(m)];
+  if (k === 'heal') return KINDS.heal;
+  if (k === 'sleep') return KINDS.sleep;
+  if (k === 'lower' || k === 'curse') return KINDS.cloud;
+  return KINDS.buff; // raise, rally, shield, field, anything else
+}
+// The test arena's rule (arena.html, src/arena/core.js shapeOf), from the numbers as before 2026-11-11: the owner asked that the arena
+// stay as it was, so it keeps this; the game uses kindOf(id).
+export function kindOfMove(m) {
+  if (!m) return null;
+  return m.power ? KINDS[guessKind(m)] : helpKind(m);
 }
 
 // A design's saved looks: { moveId: { p: [choice numbers], c: [colour numbers] } }, cleaned without knowing the moves (the kind cleans
