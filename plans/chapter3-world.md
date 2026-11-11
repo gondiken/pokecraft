@@ -141,7 +141,8 @@ meadow types (Grass, Bug, Water, Normal, Sky), so a Fire or Electric creature ha
 means the Scribble. Win, and the colour comes back!"*
 
 **The loop:**
-1. The guide arrow points to the nearest patch (realm `aim`, and patches as rows in "Where to go").
+1. The guide arrow points to the nearest patch (realm `aim`, and patches as rows in "Where to go": the test patch already has one,
+   `destinations.js`, 2026-11-10; it grows into one row per uncleared patch).
 2. You see its size. Walk in when ready.
 3. Fight (the fight as it is now).
 4. Win: colour floods out, the freed creatures hop away, the meter ticks.
@@ -237,8 +238,8 @@ says it needs an update, as for every bump).
 4. **The ground's twists and type advantages** (section 6) as properties of `groundOf(world)` (`slick(x, z)`, `dark`, `wet`, `grass`),
    ported from the arena's `PLACES` / `SEE` (the arena itself stays untouched).
 5. **The Grumble:** a pattern with a weak spot shown on the creature (a glowing back), not in words.
-6. **Up to 6 monsters at once:** spawn spots (`spotAround`), warnings never stacking unreadably, the mashing check again (mashing at
-   20 fps was closest to the quarter limit last time, 11 / 48).
+6. **Up to 6 monsters at once:** spawn spots (`spotAround`), warnings never stacking unreadably, the mashing check again (since
+   2026-11-10's `FIGHT.firstJitter` mashing wins about 1 fight in 10 at both 60 and 20 fps; more monsters must keep it under a quarter).
 7. **Patch spots placed by hand in the terrain** (flat enough, no water inside the ring unless it is a water twist) and checked in Node,
    instead of `scribbleSpot`'s search.
 8. **Hooks out:** `onWin(patch)` / `onLose(patch)` for the colour flood, the chip, the freed creatures and keys.
