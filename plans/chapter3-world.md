@@ -18,7 +18,7 @@ exists (realms, the Picture World kit, the guide, the fight); everything behind 
 | The look | **More different from our world: almost distorted, but cheerful, never gloomy or dystopian. Different from the Swirl too** (section 2) |
 | Freed creatures | **Catchable** |
 | Flags | **+10 % attack for the flown type's creatures, in every battle** (scribble, regular, duels); defence / speed maybe later |
-| Battles | Turn-based stays as it is. The live fight's move numbers get fixed so a bigger number always hits harder and speed counts (section 7); heal stays 45 %. Measure with bots, then fix, **before** the world |
+| Battles | Turn-based stays as it is; heal stays 45 %. **The live fight's move numbers are NOT decided** (owner 2026-11-11: "I didn't tell you to fix anything ... I DON'T KNOW"): measure them, show the owner the table in plain words, and change nothing unless the owner picks a change (section 7) |
 | First slice | **5 patches + a big knot** |
 | Names | Claude's names below, for now |
 | The ring | **Radius 10 stays** |
@@ -223,7 +223,10 @@ move's power, the same-type bonus and the type chart. What differs is **how many
   lower speed become the slow cloud, which fits.)
 - **Heal:** always 45 % of the creature's HP. HP grows with level, so it grows with level. Owner: fine as it is.
 
-### The fix (decided in principle; numbers to be set by measuring)
+### Possible changes (NOT decided: only for the owner to look at after the measuring)
+
+Strongest moves waiting longest makes sense to the owner. The open question is only **how much harder** a long-waiting move should hit.
+Ideas the measuring can show side by side (any, none, or something else):
 
 1. **A bigger number always hits harder, in both battles.** In the live fight, damage a second follows the move's power: every kind's wait
    is set so the same power gives the same damage a second, whatever the kind. The kind only decides *how* it lands (one big hit, many
@@ -232,12 +235,12 @@ move's power, the same-type bonus and the type chart. What differs is **how many
    power (about +20-30 %, set with the bots), because they ask for timing. A masher never gets that extra.
 3. **Speed counts.** The speed stat sets walking and dodging speed in a narrow band (about 0.9-1.1 x, so no creature is hopeless); a move
    that raises speed becomes **Speed up** (a new Special: walk and dodge faster until hit, with its own icon), no longer an attack boost.
-4. **Heal stays 45 %**; sleep, slow cloud, Tough and Power up stay as they are now.
-5. **Turn-based battles do not change** (they are good today; gyms, Bosses and duels stay exactly as they are).
+Fixed either way: **heal stays 45 %** (owner: fine, it grows with HP); **turn-based battles do not change** (they are good today; gyms, Bosses
+and duels stay exactly as they are).
 
 **Measuring** means a test script, nothing in the game: it plays every move through the live fight with the bots and writes a table
-(each move: kind, power, damage a second, how often it lands, how long a fight takes with it). Then the waits are set from the table and
-it runs again to prove points 1-2, with the mashing bot still losing.
+(each move: kind, power, damage a second, how often it lands, how long a fight takes with it). The table goes to the owner in plain words with a
+small example or two; nothing in the game changes until the owner picks something.
 
 ### Flags (decided: +10 % attack, every battle)
 
@@ -261,7 +264,7 @@ players' flags count, so the duel `VERSION` goes 14 -> 15. Defence or speed flag
 7. **Patch spots placed by hand in the terrain** (flat enough, no water inside the ring unless it is a water twist) and checked in Node,
    instead of `scribbleSpot`'s search.
 8. **Hooks out:** `onWin(patch)` / `onLose(patch)` for the colour flood, the chip, the freed creatures and keys.
-9. **The move numbers** (section 7): waits by power, the risk extra, speed (done first, step 1b).
+9. **The move numbers** (section 7): only what the owner picks after the measuring (step 1b), if anything.
 
 The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched.
 
@@ -279,8 +282,8 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 ## 10. Build order (each step behind `?preview`; each with naive / skilled bots, real keys through the game's loop and an iPad run; the `scribble` spec grows parts, e.g. `SCRIBBLE_ONLY=numbers|land|door|patches|look|loop|knot`; steps 1 and 1b come before the world)
 
 1. **Move numbers, measured** (section 7): a test script plays every move through the live fight and writes the table. Nothing changes in the game.
-1b. **Move numbers, fixed** (section 7, owner 2026-11-11: right after measuring): the waits by power, the risk extra, speed (stat + Speed up),
-   all inside `scribblefight.js`; the table again; mashing under a quarter, skilled wins all, the person bot about 1-1.5 minutes.
+1b. **Only if the owner picks a change from the table:** make it inside `scribblefight.js`, run the table again; mashing under a quarter,
+   skilled wins all, the person bot about 1-1.5 minutes. Otherwise skip to step 2.
 2. **Wobbleland as data** (`wobbleland.js`, Node-runnable): Inkpot Camp, Puddle Meadow with its wonky shapes, the wall, the six patch
    spots, the way back. Node checks: every patch reachable on foot from the Camp, every ring 75 %+ walkable, no patch inside another, the
    wall really closes Bumpy Hills. No fight yet.
@@ -300,10 +303,10 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 
 ## Questions for the owner
 
-Answered 2026-11-11: flags +10 % attack (above), names kept for now, move numbers fixed right after measuring, heal stays 45 %.
+Answered 2026-11-11: flags +10 % attack (above), names kept for now, heal stays 45 %, the move numbers are measured first and shown;
+nothing about them is decided.
 
 Still open:
 1. **The look** (section 2) is only words so far. Would concept pictures help before the build (a few screenshots of a quick mock-up,
    made outside the game), or should the build session make the look first (step 4) and show it before going on?
-2. **The risk extra** (section 7, point 2): a well-timed rush or full blast doing about a quarter more than a shot of the same power. OK?
-3. **Speed up** replacing the hidden attack boost for the 14 speed moves: OK?
+2. After the measuring: does any change to the live fight's move numbers feel right (section 7's ideas, or none)?
