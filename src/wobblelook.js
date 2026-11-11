@@ -20,7 +20,8 @@ export const WOBBLE_LOOK = {
   curlK: 0.0025,
   sky: true,           // C3: the child's sky (wobblesky.js): crayon dome, smiling sun, clouds on strings
   jig: 0.12,           // C1: every block corner moves up to this far sideways (half that up or down): hand-drawn edges (0 = straight)       // lift = curlK x (distance - curlFrom)^2: at 60 blocks 2.6 up, at 100 about 13, at 150 about 37
-  draft: [1.07, 1.05, 0.86], sat: 1.45, line: 0.35, // the first-draft colours: tint, saturation, outline darkness
+  draft: [1.07, 1.05, 0.86], sat: 1.45, line: 0.35,
+  crayon: 0.4,         // C2: how much paper shows through the crayon on coloured-in land (0 = flat colour) // the first-draft colours: tint, saturation, outline darkness
   cell: 4,             // the colour map: one texel per cell x cell blocks
   cleared: 17,         // a cleared patch colours a circle this big round its middle
   camp: CAMP.r + 6,    // the Camp is always in colour
@@ -68,7 +69,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     U.uCurl.value = active && WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK : 0;
     U.uCurlFrom.value = WOBBLE_LOOK.curlFrom;
     U.uWobJig.value = active ? WOBBLE_LOOK.jig : 0;
-    U.uDraft.value.set(...WOBBLE_LOOK.draft); U.uWobSat.value = WOBBLE_LOOK.sat; U.uWobLine.value = WOBBLE_LOOK.line;
+    U.uDraft.value.set(...WOBBLE_LOOK.draft); U.uWobSat.value = WOBBLE_LOOK.sat; U.uWobLine.value = WOBBLE_LOOK.line; U.uWobCrayon.value = WOBBLE_LOOK.crayon;
     U.uWobSize.value.set(SIZE, SIZE);
   }
   const api = {

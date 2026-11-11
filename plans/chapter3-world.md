@@ -456,6 +456,19 @@ the Camp (a floater first hung over patch 5's ring and was moved; the fight came
 **Not built (C4/C5):** the river running uphill, fold creases, the torn page edge with the desk below (the map has no room below the page:
 falling off would need a way back), slides and the zip-line.
 
+### C2. Crayon (in the shader, not a second atlas)
+
+**What I chose:** instead of drawing a second crayon atlas and swapping it in (as `sketch.js` does for the pencil), the crayon is a few
+lines in the WOBBLE fragment shader (`src/caves.js`, after the Scribble's grey): on land that is coloured in, short slanted wax streaks in
+world space with gaps where the cream paper shows through, and a slight unevenness of the wax. **Why:** one switch and one number, it works
+on every block (also the wool and planks the atlas would have needed tile by tile), it costs no texture memory or upload, and the grey
+(the Scribble) stays the scribbled pencil grey, so "coloured in with crayon" and "scribbled over" read as two different things.
+Example: the Camp's green and the flooded patches look coloured in by a child; the grey meadow does not. **Where to change:**
+`WOBBLE_LOOK.crayon` in `src/wobblelook.js` (0.4; 0 = flat colour), the streak length and gap share in `WOBBLE_FRAG` (`along * 0.6`,
+`step(0.76, n)`). The first try (longer streaks, 0.55) looked like white scratches. Picture `plans/chapter3/wobble-crayon.png` (patch 1
+flooded). The main world's byte-for-byte check stays green (it failed once in about six runs in this session, before and after the shader
+changes alike: its "before" picture itself changes from run to run; a flake of the check, worth a look).
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

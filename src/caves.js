@@ -632,7 +632,7 @@ export const swirlTint = {
 export const wobbleLook = {
   uCurl: { value: 0 }, uCurlFrom: { value: 24 }, uWobJig: { value: 0 },
   uWobColour: { value: null }, uWobSize: { value: new THREE.Vector2(224, 224) },
-  uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 },
+  uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 }, uWobCrayon: { value: 0 },
 };
 const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\nuniform float uWobJig;\n#endif';
 // (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
@@ -658,6 +658,7 @@ uniform vec2 uWobSize;
 uniform vec3 uDraft;
 uniform float uWobSat;
 uniform float uWobLine;
+uniform float uWobCrayon;
 #endif`;
 const WOBBLE_FRAG = `#ifdef WOBBLE
 {
@@ -670,6 +671,16 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
   float col = texture2D(uWobColour, vCavePos.xz / uWobSize).r;               // 1 = coloured back in, 0 = the Scribble's grey
   float hatch = step(0.82, fract((vCavePos.x * 0.9 + vCavePos.z * 0.6 + vCavePos.y * 0.5) * 2.2));
   vec3 grey = vec3(lum * 0.9 + 0.05) * (1.0 - 0.28 * hatch);                  // grey, with scribble strokes on it
+  // C2: wax crayon on what is coloured in: short slanted streaks in world space, and gaps where the paper shows between them
+  if (uWobCrayon > 0.0) {
+    vec3 cp = vCavePos * 7.0;
+    float along = dot(cp, vec3(0.55, 0.3, -0.45)), across = dot(cp, vec3(-0.35, 0.85, 0.6)) * 3.2;
+    vec2 cell = floor(vec2(along * 0.6, across));
+    float n = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+    float gap = step(0.76, n) * (0.5 + 0.5 * fract(n * 7.1));
+    float wax = 0.92 + 0.08 * fract(n * 13.7);
+    draft = mix(draft * wax, vec3(1.0, 0.97, 0.86), gap * uWobCrayon);
+  }
   diffuseColor.rgb = mix(grey, draft, col);
 }
 #endif`;
