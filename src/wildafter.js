@@ -13,6 +13,7 @@ import { roomState } from './portalplay.js';
 import { castleState } from './castleland.js'; // T49
 import { bubbleState } from './bubbleland.js'; // the Bubble Well
 import { gravityState } from './cubeland.js'; // Cube Planets
+import { PATCHES, patchKey } from './wobbleland.js'; // chapter 3: freed creatures live in Wobbleland once their patch is cleared
 
 const star = (g, id) => !!g.stars?.includes(id);
 export const AFTER_CHECKS = {
@@ -35,4 +36,5 @@ export const AFTER_CHECKS = {
 const MIRROR_KEYS = ['court', 'twin', 'beam'].flatMap(k => [1, 2, 3].map(n => `pw:mirror:${k}${n}`));
 AFTER_CHECKS.mirror = g => star(g, 'mirror') || MIRROR_KEYS.filter(k => g.beaten?.includes(k)).length >= 3;
 /* ==== end of Mirror ==== */
+for (const q of PATCHES) AFTER_CHECKS[`wobble:${q.id}`] = g => !!g.beaten?.includes(patchKey(q.id)); // chapter 3 step 6
 export const wildAfter = (game, id) => { try { return !!AFTER_CHECKS[id]?.(game); } catch { return false; } };

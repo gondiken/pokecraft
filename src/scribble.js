@@ -17,7 +17,7 @@ import { KIND_WORD } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 const LIVE_CHARGE = LIVE.charge;
 import { ScribbleFight, FIGHT, groundOf, squadOf, FightCam, foesMiddle, patchFight } from './scribblefight.js';
-import { PATCHES, patchKey } from './wobbleland.js'; // chapter 3 step 5: Wobbleland's patches from data
+import { PATCHES, patchKey, meadowState, wizardLine, openPatches } from './wobbleland.js'; // chapter 3 step 5: Wobbleland's patches from data
 
 export const SCRIBBLE = {
   on: PREVIEW,            // ?preview only
@@ -281,8 +281,8 @@ export function createScribble(game) {
     if (!world) return;
     const p0 = game.player, here = game.started && p0;
     if (world.wobble) { // chapter 3 step 5: Wobbleland: the nearest patch you have not cleared (the others wait, grey on the land)
-      const keys = new Set(game.beaten || []), at = here ? p0.pos : game.spawnPoint;
-      const left = world.wobble.patches.filter(q => !keys.has(patchKey(q.id)));
+      const at = here ? p0.pos : game.spawnPoint;
+      const left = openPatches(game.beaten, world.wobble.patches);
       S.patch = left.sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
       if (!S.patch) return;
       S.patchFight = patchFight(S.patch, S.patch.y);
@@ -673,7 +673,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       const key = patchKey(S.patch.id), first = !game.beaten.includes(key);
       if (first) { game.beaten.push(key); game.cubes = (game.cubes || 0) + WOBBLE_CUBES; game.save?.(true); }
       game.wobbleLook?.flood(S.patch.id);
-      game.onPatchCleared?.(S.patch, first);
+      if (first && game.ui) { const m = meadowState(game.beaten); game.ui.toast(wizardLine(m.n, m.of)); }
       if (game.ui) game.ui.toast(first ? `The colour is back! +${WOBBLE_CUBES} Capture Cubes` : 'The colour is back!');
       S.beaten = true; S.phase = 'cleared'; S.next = true;
     } else if (won) { S.beaten = true; S.phase = 'cleared'; backT = SCRIBBLE.back; if (game.ui) game.ui.toast('The scribble is gone! It may scribble itself back later.'); }
@@ -861,7 +861,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       if (S.phase === 'cleared' && S.next) { S.next = false; build(S.world); return; } // Wobbleland: on to the next patch
       if (S.phase === 'idle' && S.patch && playing && (rePickT += dt) > 1) { // Wobbleland: the patch you are nearest to is the live one
         rePickT = 0;
-        const keys = new Set(game.beaten || []), q = S.world.wobble.patches.filter(r => !keys.has(patchKey(r.id))).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0];
+        const q = openPatches(game.beaten, S.world.wobble.patches).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0];
         if (q && q.id !== S.patch.id && Math.hypot(q.x - p.pos.x, q.z - p.pos.z) + 8 < Math.hypot(S.patch.x - p.pos.x, S.patch.z - p.pos.z)) { build(S.world); return; }
       }
       if (S.phase === 'cleared') {

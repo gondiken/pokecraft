@@ -205,7 +205,7 @@ Pictures: `plans/chapter3/wobble-door.png` (the door, close up).
 
 **What:** in Wobbleland the scribble fight takes its patch from `PATCHES`: the live patch is the nearest one you have not cleared (a
 patch 8+ blocks nearer takes over as you walk), its monsters are its own species, and **its size sets the fight** in one table,
-`PATCH_SIZES` (`src/scribblefight.js` line 107):
+`PATCH_SIZES` (`src/scribblefight.js` line 108):
 
 | Size | Monsters | Level (your strongest creature +) | Their HP | Time between their attacks | Their patterns |
 | --- | --- | --- | --- | --- | --- |
@@ -237,6 +237,23 @@ skilled and person 2 each):
 **Mashing is judged with a type-neutral team**, because Puddle Meadow's monsters are Grass, Bug, Normal, Water and Sky, and a Fire or Sky
 team hitting them twice as hard is the type chart doing what the plan wants ("a team that beats them has an easier time"). The catch:
 **your own team (Kitegale and Blazehound) can mash the first four patches** (question 4 below).
+
+### Step 6: the loop
+
+- **The arrow** leads to the nearest patch you can fight (`wobbleAim`); **"Where to go"** has a row per open patch (`src/destinations.js`).
+  **The knot comes last:** it opens only once the other five are clear (`openPatches` in `src/wobbleland.js`: the one rule the arrow,
+  the rows and the fight read). Checked: a naive kid that only walks the way the arrow points (jumping one block when it bumps into a
+  step) reaches all six from the Camp, in the order 1, 2, 4, 3, 5, 6, never stuck (`tests/wobblecheck.mjs`).
+- **The meter chip** `🎨 Puddle Meadow n / 6` (`meadowState`).
+- **Freed creatures are catchable:** each patch's monsters (and the Grumble, rarer) live in the meadow as ordinary wild creatures once
+  their patch is cleared (`FREED_SPAWNS`, the `wobble:<id>` checks in `src/wildafter.js`; normal turn-based battles and catching).
+- **The Camp:** Healer Stella and the Wizard (his first line: *"The Scribble is in my very first drawing. Let's colour it back in!
+  Grey means the Scribble."*); after each first win he says how far you are (`wizardLine`: "You did it! Look, the colour is coming
+  back!", "Wonderful! 3 more to go.", "Only the big knot is left. Be careful: something grumbles in there!").
+- Found and fixed on the way: the curl lifted the whole fight (its container sits at the map's corner), so on the iPad the creatures
+  vanished; containers are now lifted child by child.
+- Spec `wobble` parts `loop` and `ipad` (the iPad: touch controls, the meter, the joystick walks you into patch 1 and the fight starts).
+  Picture: `plans/chapter3/wobble-ipad-fight.png` (the monsters are grey in a grey patch: question 5).
 
 ---
 

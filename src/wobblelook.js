@@ -10,7 +10,7 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, meadowState } from './wobbleland.js';
 
 export const WOBBLE_LOOK = {
   curl: true,          // the curling horizon: the one on/off switch
@@ -69,6 +69,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     get on() { return active; },
     // with every new world (createWorld): on in Wobbleland, off everywhere else
     reset(w) {
+      if (active && !w?.realm?.look?.wobble) game.ui?.setScore?.(null); // leaving: the meter goes
       world = w; active = !!w?.realm?.look?.wobble;
       setDefine(active); floods = []; sig = '';
       uniforms();
@@ -93,6 +94,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       api.refresh();
       if (!active) return;
       uniforms();
+      const m = meadowState(game.beaten); // the region's meter (step 6)
+      if (!game.inBattle && !game.scribble?.fighting) game.ui?.setScore?.({ text: `🎨 Puddle Meadow ${m.n} / ${m.of}`, done: m.n >= m.of });
       const s = (game.beaten || []).filter(k => k.startsWith('pw:wobble:')).join();
       if (floods.length) { for (const f of floods) f.t += dt; paint(); floods = floods.filter(f => f.t < WOBBLE_LOOK.flood); }
       else if (s !== sig) paint();
@@ -103,11 +106,14 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       lifted = [];
       if (!active || !WOBBLE_LOOK.curl) return;
       const cx = camera.position.x, cz = camera.position.z, own = new Set(mats.map(k => materials[k]));
-      for (const o of scene.children) {
-        if (o.isCamera || o.isLight || o.userData?.noCurl || (o.isMesh && own.has(o.material))) continue;
+      const lift = (o, depth) => {
+        if (o.isCamera || o.isLight || o.userData?.noCurl || (o.isMesh && own.has(o.material))) return;
+        // a container group left at the origin (the scribble fight, effects...): its children are where things are
+        if (depth < 2 && o.children.length && !o.isMesh && Math.abs(o.position.x) + Math.abs(o.position.z) < 1e-6) { for (const c of o.children) lift(c, depth + 1); return; }
         const l = curlLift(Math.hypot(o.position.x - cx, o.position.z - cz));
         if (l > 0.001) { o.position.y += l; lifted.push([o, l]); }
-      }
+      };
+      for (const o of scene.children) lift(o, 0);
     },
     afterRender() { for (const [o, l] of lifted) o.position.y -= l; lifted = []; },
     // ?preview: the pause screen's switch

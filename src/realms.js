@@ -24,7 +24,7 @@ import { bubbleLand, bubbleAim, SIZE as BUBBLE_SIZE } from './bubbleland.js'; //
 import { mirrorLand, mirrorAim, SIZE as MIRROR_SIZE, ARRIVAL as MIRROR_ARRIVAL } from './mirrorland.js'; // wave 18, the Mirror Palace
 import { BUBBLE_SPAWNS } from './species.js'; // the Bubble Well
 import { wizardLand, wizardAim } from './wizardland.js'; // wave 19, the Wizard's Tower
-import { wobbleLand, wobbleAim, SIZE as WOBBLE_SIZE, CAMP as WOBBLE_CAMP } from './wobbleland.js'; // chapter 3, Wobbleland
+import { wobbleLand, wobbleAim, SIZE as WOBBLE_SIZE, CAMP as WOBBLE_CAMP, FREED_SPAWNS } from './wobbleland.js'; // chapter 3, Wobbleland
 import { PREVIEW } from './comingsoon.js';
 
 export const MAIN = 'main';
@@ -226,7 +226,7 @@ if (worldOpen('wizard')) REALMS.wizard = pictureRealm({ id: 'wizard', name: "Wiz
 // for the Wizard's Ally. Not registered at all without ?preview (a save made inside it then loads in the main world). The whole page is a
 // keep (nothing can be built: no realm edits). A lost fight rests you at Inkpot Camp (`lose: 'stay'`, world.rests).
 if (PREVIEW) REALMS.wobble = pictureRealm({ id: 'wobble', name: 'Wobbleland', seedSalt: 0x30bb1e, size: [WOBBLE_SIZE, WOBBLE_SIZE], terrain: 'wobbleLand',
-  arrive: [WOBBLE_CAMP.x, WOBBLE_CAMP.z + 2], arriveYaw: 0, biome: 'wobble', entrance: 'paper', spawns: { wobble: [], wobbleHills: [], cave: [] }, wild: { max: 3, every: 3 },
+  arrive: [WOBBLE_CAMP.x, WOBBLE_CAMP.z + 2], arriveYaw: 0, biome: 'wobble', entrance: 'paper', spawns: { wobble: FREED_SPAWNS, wobbleHills: [], cave: [] }, wild: { max: 4, every: 2.5 },
   walk: [B.GRASS], noRide: "No riding in the Wizard's drawing!", crewAim: false, zoneNames: { wobble: 'Wobbleland · Puddle Meadow', wobbleHills: 'Wobbleland · Bumpy Hills' },
   look: { sky: 0xfff3c4, fog: [60, 190], time: null, weather: false, light: 1, still: true, stars: false, wobble: true },
   clock: '🖍️ Wobbleland', travelText: 'Down the paper stairs...', travelIcon: '🖍️', enterText: "Welcome to Wobbleland, the Wizard's very first drawing!",

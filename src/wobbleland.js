@@ -34,6 +34,15 @@ export const PATCHES = [
   { id: 6, x: 112, z: 140, size: 'knot', region: 'meadow', species: ['thornox', 'gullop', 'monarchwing', 'bounceroo'], grumble: 'grovebeast', last: true },
 ];
 export const patchKey = id => `pw:wobble:patch${id}`;
+// Freed creatures (step 6): each patch's monsters live in the meadow as wild creatures once it is cleared (the 4th element: wildafter.js).
+export const FREED_SPAWNS = PATCHES.flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].map(sp => [sp, p.grumble === sp ? 0.25 : 1, null, `wobble:${p.id}`]));
+// The patches you can fight now: every one not cleared, but a region's knot only once its other patches are clear (step 6: the knot is
+// the region's end). The one rule the arrow, "Where to go" and the fight all read.
+export function openPatches(beaten, list = PATCHES) {
+  const keys = new Set(beaten || []), left = list.filter(p => !keys.has(patchKey(p.id)));
+  return left.filter(p => !p.last || !left.some(q => q !== p && q.region === p.region));
+}
+export const meadowState = beaten => { const keys = new Set(beaten || []), mine = PATCHES.filter(p => p.region === 'meadow'); return { n: mine.filter(p => keys.has(patchKey(p.id))).length, of: mine.length }; };
 export const patchOf = id => PATCHES.find(p => p.id === id) ?? null;
 
 // Soft bulgy hills: round bumps (x, z, height, width). Hand-placed, away from the patch rings (each ring is flattened anyway).
@@ -155,6 +164,9 @@ export function wobbleLand(world) {
   world.wobble = { patches: PATCHES.map(p => ({ ...p, y: heightAt(p.x, p.z) + 1 })), wall: wallBox, camp: { ...CAMP, y: BASE + 1 }, regions: REGIONS, knot: KNOT };
   world.keeps.push({ name: 'wobble', protect: [{ x0: 0, x1: W - 1, y0: 0, y1: 47, z0: 0, z1: D - 1 }], wallText: "This is the Wizard's drawing. No building here!", rideText: "No riding in the Wizard's drawing!" });
   world.keeps.push({ name: 'scribble-wall', protect: [wallBox], wallText: 'The Scribble walled this off. Clear Puddle Meadow first!' });
+  world.people ??= []; // the Wizard at the Camp (step 6): his words follow your progress (WIZARD_LINES; scribble.js says them on a win)
+  world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
+    line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
   world.realmBiome = (x, z) => (z > WALL.z1 ? 'wobble' : 'wobbleHills');
   world.spawnAt = world.arrivals.wobble;
   return world;
@@ -162,8 +174,7 @@ export function wobbleLand(world) {
 
 // The guide in Wobbleland (step 6 fills in the patches through scribble.js; until then: the nearest uncleared patch, else the way back).
 export function wobbleAim(world, p, game) {
-  const keys = game?.beaten || [];
-  const open = (world.wobble?.patches || []).filter(q => !keys.includes(patchKey(q.id)));
+  const open = openPatches(game?.beaten, world.wobble?.patches || []);
   const q = open.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
   if (q) return { x: q.x + 0.5, z: q.z + 0.5, text: (a, m) => `✏️ ${q.size === 'knot' ? 'Knot' : q.size === 'tangle' ? 'Tangle' : 'Smudge'} ${a} ${m}m` };
   const d = world.doors?.[0]?.stand;
@@ -178,6 +189,13 @@ export function paperDoor(world) {
   const y0 = wz.box.y0, z = wz.box.z1, cells = [];
   for (let dx = -1; dx <= 1; dx++) for (let k = 0; k < 3; k++) cells.push([wz.x + dx, y0 + k, z]);
   return { cells, stand: [wz.x + 0.5, y0, z + 2.5, Math.PI] };
+}
+// The Wizard's words after a patch is cleared (n = patches cleared in the region, of = how many it has).
+export function wizardLine(n, of) {
+  if (n >= of) return '🧙 Puddle Meadow is bright again! Next: Bumpy Hills.';
+  if (n === 1) return '🧙 You did it! Look, the colour is coming back!';
+  if (n === of - 1) return '🧙 Only the big knot is left. Be careful: something grumbles in there!';
+  return `🧙 Wonderful! ${of - n} more to go.`;
 }
 export const PAPER_WORDS = {
   prompt: how => `The Paper Door · ${how} to go down`, action: 'Down!',

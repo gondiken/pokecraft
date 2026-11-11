@@ -13,6 +13,7 @@
 import { MID_X, MID_Z } from './world.js';
 import { GYMS } from './gyms.js';
 import { pictureWorld, fullName } from './pictureworlds.js'; // T40
+import { openPatches } from './wobbleland.js'; // chapter 3: Wobbleland's patches
 
 const dist2 = (p, x, z) => Math.hypot(x - p.x, z - p.z);
 
@@ -275,6 +276,18 @@ addDestination({
       where: g => g.scribble?.spot && !g.world.realm ? [g.scribble.spot.x, g.scribble.spot.z] : null,
       gate: g => (g.scribble.where() ? null : 'Gone for now. It scribbles itself back later.'),
       madeText: 'The scribble! Step in to fight it.' })];
+  },
+});
+// Chapter 3 step 6: in Wobbleland, one row per patch you can fight now (wobbleland.js openPatches: the knot comes last); a cleared one leaves the list.
+const SIZE_WORD = { smudge: 'Smudge', tangle: 'Tangle', knot: 'The knot' };
+addDestination({
+  id: 'wobble',
+  rows: game => {
+    const w = game.world?.wobble;
+    if (!w) return [];
+    return openPatches(game.beaten, w.patches).map(q => new SpotDestination({ id: `wobble:${q.id}`, group: 'now', icon: '✏️',
+      label: `${SIZE_WORD[q.size] ?? 'Patch'} ${q.id}`, radius: 6, where: () => [q.x + 0.5, q.z + 0.5],
+      madeText: 'A scribbled patch! Step in to colour it back in.' }));
   },
 });
 /* ==== end of chapter 3 scribble ==== */

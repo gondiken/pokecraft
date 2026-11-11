@@ -6,8 +6,12 @@
 //           frame byte for byte before and after a trip (the WOBBLE define only exists in Wobbleland); draw calls and frame time
 //   patches: the fight on every patch from data (tests/wobblebots.mjs: mashing with a type-neutral team under a quarter, skilled all, person
 //           times), W walks you into the nearest patch, a win saves its key, +3 cubes, floods its colour, the next patch comes, a reload keeps it
-//   WOBBLE_ONLY=land|door|look|patches      screenshots: tests/screenshots/wobble-*.png
+//   loop:   the meter chip, a "Where to go" row per open patch (the knot only once the others are clear), the arrow, the Wizard and the
+//           healer at the Camp, freed creatures in the spawn table once their patch is cleared, the Wizard's words on a win
+//   ipad:   an emulated iPad in Wobbleland: the look, the meter, the touch buttons, walking with the joystick into patch 1
+//   WOBBLE_ONLY=land|door|look|patches|loop|ipad      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
+import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
 
 const only = process.env.WOBBLE_ONLY;
@@ -65,6 +69,56 @@ export default async function ({ browser, base, t }) {
     await frames(page, 6);
     const after = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); return { key: g.beaten.includes(L.patchKey(1)), patch: g.scribble.info().patch, colour: g.wobbleLook.colourAt(L.patchOf(1).x, L.patchOf(1).z) }; });
     t.ok(after.key && after.patch !== 1 && after.colour === 1, `after a reload patch 1 stays cleared and coloured (${JSON.stringify(after)})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (want('loop')) {
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    await frames(page, 6);
+    const r = await page.evaluate(async () => {
+      const g = window.pokecraft, L = await import('/src/wobbleland.js');
+      const ctx = () => g.creatures.context?.() ?? { after: id => false };
+      const names = () => g.creatures.table('wobble').filter(e => !e[3] || ctx().after?.(e[3])).map(e => e[0]);
+      const before = { chip: document.getElementById('score-chip')?.textContent, rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id), guide: document.querySelector('#guide')?.textContent || '',
+        people: g.npcs.list.filter(n => n.kind === 'healer' || /Wizard/.test(n.name)).map(n => n.name), freed: names() };
+      for (const id of [1, 2, 3, 4, 5]) g.beaten.push(L.patchKey(id));
+      await new Promise(res => setTimeout(res, 1500));
+      const after = { chip: document.getElementById('score-chip')?.textContent, rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id), freed: names(), line: L.wizardLine(1, 6) };
+      return { before, after };
+    });
+    t.ok(/Puddle Meadow 0 \/ 6/.test(r.before.chip) && /Puddle Meadow 5 \/ 6/.test(r.after.chip), `the meter chip counts the region's patches (${r.before.chip} -> ${r.after.chip})`);
+    t.ok(r.before.rows.length === 5 && !r.before.rows.includes('wobble:6') && r.after.rows.join() === 'wobble:6', `"Where to go" has a row per open patch, the knot only once the other five are clear (${r.before.rows.join()} -> ${r.after.rows.join()})`);
+    t.ok(/Smudge|Tangle/.test(r.before.guide), `the guide arrow leads to the nearest patch (${r.before.guide})`);
+    t.ok(r.before.people.some(n => /Wizard/.test(n)) && r.before.people.length >= 2, `the Wizard and a healer are at Inkpot Camp (${r.before.people.join(', ')})`);
+    t.ok(!r.before.freed.length && ['sproutle', 'hopsy', 'beetlet', 'hornbeetle'].every(sp => r.after.freed.includes(sp)) && !r.after.freed.includes('thornox'), `freed creatures live in the meadow once their patch is cleared (none before; after five: ${r.after.freed.join(', ')})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (want('ipad')) {
+    const page = await openGame(browser, base, { query: '?preview', contextOptions: devices['iPad (gen 7) landscape'] });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('blazehound', 30), S.makeCreature('tidalord', 30), S.makeCreature('thunderwolf', 30)]; });
+    await intoWobble(page);
+    await page.evaluate(() => { const g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 1); g.player.pos.set(q.x + 0.5, q.y, q.z + 10.5); g.player.yaw = 0; g.player.pitch = -0.1; });
+    await frames(page, 6);
+    const ui = await page.evaluate(() => ({ chip: document.getElementById('score-chip')?.textContent, touch: !document.getElementById('touch')?.classList.contains('hidden'), look: window.pokecraft.wobbleLook.info() }));
+    await shot(page, 'wobble-ipad.png');
+    t.ok(ui.touch && /Puddle Meadow/.test(ui.chip) && ui.look.on, `on the iPad: the touch controls, the meter chip and the look (${JSON.stringify({ chip: ui.chip, touch: ui.touch })})`);
+    // the joystick (a finger dragged up on its left half) walks you into patch 1
+    const vp = page.viewportSize(), cdp = await page.context().newCDPSession(page);
+    const x0 = 140, y0 = vp.height - 160;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0, id: 1 }] });
+    for (let k = 1; k <= 6; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0, y: y0 - k * 12, id: 1 }] });
+    await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 90000).catch(() => {});
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    const ph = await page.evaluate(() => ({ phase: window.pokecraft.scribble.info().phase, fight: document.getElementById('touch')?.classList.contains('fight') }));
+    t.ok(['enter', 'fight'].includes(ph.phase), `the joystick walks you into patch 1 and the fight starts (${JSON.stringify(ph)})`);
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
+    await frames(page, 4);
+    await shot(page, 'wobble-ipad-fight.png');
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }
