@@ -796,29 +796,111 @@ bot loses less with its grip than without it on six of seven patches (e.g. patch
 28 / 28 losing about half of what the neutral one loses. Patch 7 first had Squeaklet (the neutral team mashed it 12 / 24); with Shellby 2 / 24.
 The mashing question (1 in section 8) stays open: the Ice team still mashes the tangles.
 
-## Shadywood: the plan (the next session builds it)
+## Shadywood (built 2026-11-11, night)
 
-The same pattern as Slippy Lake: one ground rule, one type a child sees winning, ways to move with no button, patches whose monsters fit
-the place. Everything behind ?preview; no walls (every region open, owner 2026-11-11).
+Behind `?preview` like the rest of Wobbleland, the same pattern as Slippy Lake: one ground rule, one type a child sees winning, ways to move
+with no button, patches whose monsters fit the place. No walls: open from the start. Nothing outside Wobbleland changes (the dark only exists
+where `world.groundAt` answers it, and the shader part is behind the WOBBLE define and the colour map's blue channel, which is 0 everywhere
+but under the canopy). Pictures: `plans/chapter3/wobble-wood*.png` (spec part `wood` / `woodipad` makes them in `tests/screenshots/`).
 
-- **Where:** east of the meadow (`regionAt` 'wood': x 163..223, z 134..223, `WOOD` today: rows of plain trees), grown north into the hills'
-  strip like the lake (about the meadow's size, ~9 000 walkable cells), so Bumpy Hills keeps the whole north.
-- **The ground rule:** a `Dark` subclass of `GroundRule` (`src/groundrules.js`) with `sight(type)`: under the trees you see only near your
-  creature's light (the arena's `SEE`: near 4.6, far 7.5); `world.groundAt` answers it where the canopy is closed (a top-block test like
-  `iceUnder`: leaves over you). **Fire, Light, Electric and Cosmic creatures glow: their circle of light is twice as big** (you see the red
-  warnings sooner); a big blast lights the whole ring for a moment. In the fight: `ScribbleFight` asks `rule.sight` for what the camera and
-  the warnings show (warnings outside your light are drawn only as a faint glow), never for the sums. On foot: the WOBBLE shader darkens by
-  distance from you (a lantern circle), so the dark is the same look in and out of fights.
-- **The look:** tall crayon trees with a closed canopy, shafts of light in clearings (lit, no rule there), glowing mushrooms, fireflies,
-  eyes in the dark that are only scribble bugs; under the Scribble greyer and darker.
-- **Ways to move with no button:** glowing mushroom caps you bounce on (Bounce Blocks with a drawn cap, like the springs), a dark river with a
-  current between clearings (`flowAt`, as the lake's leads), hollow logs you slide through.
-- **Patches:** 6 tangles + a knot (Ghost, Ninja, Grass, Bug monsters; one glowing monster per patch so the light rule shows on their side
-  too), the knot's big one a Ghost Grumble; freed creatures near their patch and in the clearings.
-- **Bots:** the same `runLake`-style table with three teams (a glowing team: Fire / Light / Electric / Cosmic, the neutral one, the owner's),
-  mashing judged with the neutral team, skilled must win with all, the person bot's wins and HP loss as the "how much the type helps" number;
-  the iPad matters most here (the dark must stay readable on a small screen).
-- **Open question to settle first:** how dark is fun for a child and still readable on the iPad (try two levels in screenshots).
+### 1. The rule: `Dark` (`src/groundrules.js`)
+
+**What:** a `GroundRule` subclass with `sight(type)`: under the closed canopy you see only inside your creature's light, **5 blocks**
+(`near`); **Fire, Light, Electric and Cosmic creatures glow: 10** (`far`, twice as far). Walking and fighting move exactly as on plain
+ground (everyone keeps their grip): only what you SEE changes, and the sums never read it.
+- **In a fight** (`ScribbleFight.sees(f)` / `seesTell(f)` in `src/scribblefight.js`): a monster outside your light shows only two blinking
+  eyes, and its red warning shows only for its **last 0.6 s** (`late`) instead of the whole 0.95 s. **Example:** with an Owlucid a Wispurr
+  winding up 7 blocks away is two eyes; you see its red circle under you only 0.6 s before it lands. With a Glitterbop the same Wispurr is in
+  your light the whole time.
+- **What lights a monster up:** a glowing monster always shows (it lights itself: one in every patch, Sparkitten, Wattwink, Moonhop,
+  Dawnchick, Flarehawk, Voltwing); a monster you hit glows **0.8 s** (`hitLit`); a **full** big blast lights the whole ring for **1.4 s**
+  (`flash`; a mashed puff does not).
+- **On foot:** the same light (your ride's type, else your first creature's): the shader darkens everything under the canopy outside it to a
+  night blue (`WOBBLE_FRAG` in `src/caves.js`, uniforms `uWobLight` / `uWobFlash` / `uWobCanopy`; which cells are under the canopy is the colour
+  map's blue channel, `shadeMap` in `src/wobblelook.js`); the fog closes in and turns night blue and the sunny sky hides while you stand
+  under the canopy (`WOBBLE_LOOK.dark` / `fog`). Wild creatures out in the dark show only their eyes too (`NightEyes` in `src/wobblelive.js`).
+- **Tried:** `late` 0.4 s and a light of 4.5 / 9: the neutral person bot lost 0 / 2 on the first patch (it never saw a warning in time, 299 %
+  of its HP a minute). At 0.6 s a child who looks a moment late still gets out of about half of them.
+
+### 2. The wood as terrain (`src/wobbleland.js`, `WOOD` / `CLEARINGS` / `DARK_RIVER` / `BIG_SHROOMS`)
+
+- **Where:** east of the meadow, x 164..223, z 72..223 (the lake's mirror image: `regionAt` 'wood'), 8 918 walkable cells (the meadow 9 059).
+- **The canopy:** one closed roof of leaves 18 blocks up (`WOOD.canopy` = y 28; lumps on top, bits hanging under), held by tall 2 x 2
+  trunks every 8 blocks (`WOOD_TRUNKS`): high enough that the fight's camera (about 13.6 over your creature) stays under it
+  (`tests/wobblecheck.mjs` checks every ring cell). **Never a trunk** in a ring, a clearing, by the river, or on the paths between the
+  patches and in from the meadow (`WOOD_PATHS`: the arrow-following kid got stuck on a trunk without them).
+- **Four clearings** open to the sky (lit, no dark): one by the south edge where the river starts, two in the middle with a **big glowing
+  mushroom** each (a Glowcap cap 9 up with a chest on it, a Bounce Block beside it: the only way up), one by the knot.
+- **Little glowing mushrooms** (Glowcaps) set into the forest floor under the canopy: spots of light, nothing to trip over (as one-block
+  bumps they stopped a walk in from the meadow).
+- **The dark river** (`DARK_RIVER`, `woodFlow` = part of `world.flowAt`): open water two wide from the south clearing north through the two
+  middle clearings to the knot's; step in and press nothing: its current (3.6 a second) carries you the whole way and a last push lifts you
+  out (spec part `wood`: from the south end to the north clearing with no keys).
+
+### 3. The patches (ids 14-20, `region: 'wood'`)
+
+| Patch | Where | Size | Monsters (the glowing one is always seen) |
+| --- | --- | --- | --- |
+| 14 | south-west, nearest the way in | tangle | Wispurr, Hushcoon, **Sparkitten** |
+| 15 | south-east | tangle | Shadeling, Budling, **Wattwink** |
+| 16 | middle west | tangle | Peekaw, Beetlet, **Moonhop** |
+| 17 | middle east | tangle | Snoozle, Flickit, **Dawnchick** |
+| 18 | north-west | tangle | Glowbug, Mossloth, **Flarehawk** |
+| 19 | north-east | tangle | Shadeling, Peekaw, **Voltwing** |
+| 20 | the north end | **knot** | Phantomaw, Shadecoon, **Sparkitten** + **Duskmare**, a Ghost Grumble |
+
+Ghost, Ninja, Grass and Bug monsters that keep to the dark, tangles 2 levels up (`step: 2`) like the lake's. Freed creatures stay near
+their patch and live in the clearings' light (`near:clearing`, `freedSpawns('wood')`). The Wizard: "Even in the dark, you found the way!",
+"Something big hides in the dark there!". Paint pots of the wood's own colours (night, firefly, forest, amber, mint, plum, midnight).
+Fireflies drift under the canopy round you (`Fireflies`).
+
+### 4. Bot numbers (`node tests/wobblebots.mjs` `runWood`, spec part `woodbots`; every wood patch, 60 and 20 fps)
+
+Three teams at Lv 30: **glowing** (Glitterbop Light, Joltail Electric, Voidle Cosmic: base stats as Owlucid's, and no Fire, which would hit
+the wood's Grass and Bug x2), **neutral** (Owlucid x3), **the owner's**. Mashing 12 fights a frame rate (the owner's 4), skilled and person
+2 each. "Loses" = % of the squad's HP a minute. The last two columns: the same neutral person with a glowing creature's light (the light
+alone: same body, same moves) and with the dark turned off.
+
+| Patch | Mashing won: neutral / glowing / owner | Skilled (all won): glowing / neutral / owner | Person: glowing / neutral / owner | Neutral person, glowing light / no dark |
+| --- | --- | --- | --- | --- |
+| 14 | 0 / 24, 3 / 24, 8 / 8 | 17-23 s 4 % / 24-34 s 0 % / 31-37 s 0 % | 4 / 4 13 % / 4 / 4 56 % / 4 / 4 13 % | 4 / 4 19 % / 4 / 4 25 % |
+| 15 | 1 / 24, 17 / 24, 7 / 8 | 20-24 s 0 % / 27-33 s 5 % / 35-45 s 0 % | 4 / 4 6 % / 4 / 4 23 % / 4 / 4 11 % | 4 / 4 4 % / 4 / 4 6 % |
+| 16 | 0 / 24, 23 / 24, 8 / 8 | 17-24 s 0 % / 22-29 s 0 % / 28-45 s 8 % | 4 / 4 5 % / 4 / 4 113 % / 4 / 4 34 % | 4 / 4 53 % / 4 / 4 110 % |
+| 17 | 0 / 24, 0 / 24, 8 / 8 | 25-29 s 0 % / 37-47 s 0 % / 36-46 s 0 % | 4 / 4 5 % / 4 / 4 47 % / 4 / 4 16 % | 4 / 4 7 % / 4 / 4 6 % |
+| 18 | 0 / 24, 0 / 24, 7 / 8 | 34-41 s 0 % / 35-45 s 0 % / 46-51 s 0 % | 4 / 4 3 % / 4 / 4 30 % / 4 / 4 1 % | 4 / 4 0 % / 4 / 4 8 % |
+| 19 | 1 / 24, 24 / 24, 8 / 8 | 14-18 s 0 % / 17-24 s 0 % / 31-38 s 14 % | 4 / 4 2 % / 4 / 4 73 % / 4 / 4 18 % | 4 / 4 69 % / 4 / 4 49 % |
+| 20 knot | 0 / 24, 0 / 24, 0 / 8 | 28-34 s 0 % / 50-80 s 10 % / 51-62 s 0 % | 4 / 4 10 % / **2 / 4** 146 % / 4 / 4 34 % | 4 / 4 36 % / 4 / 4 24 % |
+
+**What the numbers say:**
+- **Skilled wins every fight with all three teams; mashing with the neutral team at most 1 / 24.** (The skilled bot sees a warning the moment
+  it shows, so 0.6 s is enough for it even in the dark.)
+- **The glowing team shows clearly:** its person bot loses 2-13 % of its HP a minute on every patch, the neutral one 23-146 % (and wins the
+  knot only 2 of 4). **The light alone does most of it:** the same neutral person with a glowing creature's light loses 36 % on the knot
+  instead of 146 %, 7 % instead of 47 % on patch 17, 19 % instead of 56 % on patch 14. On patches 16 and 19 the monsters hurt the neutral
+  team with or without the dark (Moonhop and Voltwing are fast).
+- **Mashing with the glowing team wins patches 15, 16 and 19** (17-24 / 24) and the owner's team mashes every tangle: the same thing as the
+  Ice team on the lake and the owner's team in the meadow (a team of many shots and rushes that the monsters are weak to). Judged as in the
+  meadow and on the lake: with the neutral team. Question 1 below.
+
+### 5. Checks
+
+- `node tests/wobblecheck.mjs`: every wood ring 100 % under the canopy and walkable, the canopy high enough for the fight's camera over every
+  ring cell, nothing built in a ring under the canopy, the clearings lit, the river open water, the big mushrooms' chests, the wood about the
+  meadow's size, the arrow-following kid reaches every patch (wood: 16, 17, 15, 14, 18, 19, 20).
+- Spec `wobble` part `wood` (real keys): open from the start, W into the wood = dark round you (5; a Light creature first: 10), the chip, the
+  river with no keys, W into patch 14 = its fight in the dark (Wispurr unseen, its warning only late; Hushcoon close by seen; Sparkitten
+  glowing), the eyes, a hit and a flash light them, a win (key, 3 cubes), freed creatures in the clearings, a reload, the knot with Duskmare,
+  the wood in colour after it. Part `woodipad`: the joystick into the dark and a fight on the iPad (`wobble-wood-ipad-fight.png`).
+  Part `woodbots`: the table above.
+
+### 6. Questions for the owner (Shadywood)
+
+1. **How dark?** Outside your light the ground is a night blue you can still make out (`WOBBLE_LOOK.dark` 1; 0.7 is lighter). Is it fun
+   and readable on the iPad (`wobble-wood-ipad-fight.png`), or lighter / darker?
+2. **A glowing team mashes three of the tangles** (as the Ice team mashes the lake's). Fine for the right team, or should mashing lose with
+   every team (a change to the fight everywhere)?
+3. **The warning in the dark comes 0.6 s before the hit** (the whole warning is 0.95 s). Kinder (0.7) or harder (0.5)?
+4. Next: **Bumpy Hills** (Sky and Drake creatures hop two blocks) with the same kind of rule?
 
 ## 0. The owner's decisions (2026-11-11)
 

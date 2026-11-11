@@ -9,7 +9,8 @@ import { play, NAIVE_GAMES } from './scribblebots.mjs';
 import { intoWobble } from './specs/wobble.mjs';
 
 export const TEAMS = { neutral: [['owlucid', 30], ['owlucid', 30], ['owlucid', 30]], ready: [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30]], owner: [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]],
-  ice: [['snowpaw', 30], ['flurrydome', 30], ['waddlice', 30]] }; // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
+  ice: [['snowpaw', 30], ['flurrydome', 30], ['waddlice', 30]], // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
+  glow: [['glitterbop', 30], ['joltail', 30], ['voidle', 30]] }; // Shadywood's fitting team: Light, Electric and Cosmic creatures glow (their light is twice as big); base stats close to Owlucid's (no Fire: it hits the wood's Grass and Bug x2) // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
 export async function wobblePage(browser, base) {
   const page = await openGame(browser, base, { query: '?preview' });
   await newGame(page, 0);
@@ -90,14 +91,49 @@ export async function runLake(page, { games = 2, naive = NAIVE_GAMES, patches = 
   return { lines, fails, rows };
 }
 
+// Shadywood (plans/chapter3-world.md "Shadywood"): every wood patch with three teams: the glowing one (its light is twice as big: it sees
+// the red warnings in time), the type-neutral one and the owner's. Judged as on the lake: mashing under a quarter with the neutral team,
+// skilled wins every fight with all three. Reported: the person bot's wins, times and HP lost a minute; the same neutral person with the
+// dark turned off (what the dark costs) and with a glowing creature's light (the light alone, same body and moves).
+const SIGHT = String.raw`async how => { const GR = await import('/src/groundrules.js'), D = GR.GROUND.dark; delete D.sight; if (how === 'far') D.sight = () => D.far; }`;
+export async function runWood(page, { games = 2, naive = NAIVE_GAMES, patches = null, log = console.log } = {}) {
+  const lines = [], rows = [];
+  let fails = 0;
+  const ids = patches ?? await page.evaluate(() => window.pokecraft.world.wobble.patches.filter(p => p.region === 'wood').map(p => p.id));
+  const setDark = on => page.evaluate(async on => { (await import('/src/scribblefight.js')).FIGHT.ground = on ? undefined : false; }, on);
+  const person = async (team, id) => { const x = []; for (const fps of [60, 20]) for (let k = 0; k < games; k++) x.push(await play(page, 'person', { fps, solo: team, patch: id, limit: 400 })); return SUM(x); };
+  for (const id of ids) {
+    const r = { id, teams: {} };
+    for (const [name, team] of [['glow', TEAMS.glow], ['neutral', TEAMS.neutral], ['owner', TEAMS.owner]]) {
+      const x = { naive: [], skilled: [], person: [] };
+      for (const fps of [60, 20]) {
+        for (let k = 0; k < (name === 'owner' ? Math.ceil(naive / 3) : naive); k++) x.naive.push(await play(page, 'naive', { fps, solo: team, patch: id }));
+        for (let k = 0; k < games; k++) x.skilled.push(await play(page, 'skilled', { fps, solo: team, patch: id, limit: 300 }));
+        for (let k = 0; k < games; k++) x.person.push(await play(page, 'person', { fps, solo: team, patch: id, limit: 400 }));
+      }
+      r.teams[name] = { naive: SUM(x.naive), skilled: SUM(x.skilled), person: SUM(x.person) };
+    }
+    await page.evaluate(`(${SIGHT})('far')`); r.lit = await person(TEAMS.neutral, id); await page.evaluate(`(${SIGHT})('')`); // the light alone
+    await setDark(false); r.noDark = await person(TEAMS.neutral, id); await setDark(true);                                  // the dark's cost
+    const T = r.teams, ok = T.neutral.naive.won <= Math.floor(T.neutral.naive.n / 4) && ['glow', 'neutral', 'owner'].every(k => T[k].skilled.won === T[k].skilled.n);
+    if (!ok) fails++;
+    const f = (k, t) => `${k}: mashing ${t.naive.won}/${t.naive.n}, skilled ${t.skilled.won}/${t.skilled.n} (${t.skilled.time.join(' ')} s, loses ${t.skilled.lost} % HP a minute), person ${t.person.won}/${t.person.n} (${t.person.time.join(' ')} s, loses ${t.person.lost} %)`;
+    const g = (k, t) => `${k}: ${t.won}/${t.n} (${t.time.join(' ')} s, loses ${t.lost} %)`;
+    const line = `${ok ? 'ok  ' : 'FAIL'} wood patch ${id}: ${f('glow', T.glow)} | ${f('neutral', T.neutral)} | ${f('owner', T.owner)} | neutral person ${g('with a glowing light', r.lit)}, ${g('without the dark', r.noDark)}`;
+    lines.push(line); log(line); rows.push(r);
+  }
+  return { lines, fails, rows };
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { server, base } = await serve();
   const browser = await launch();
   const page = await wobblePage(browser, base);
   if (process.env.SCRIBBLE_TUNE) await page.evaluate(async t => { const M = await import('/src/scribblefight.js'), deep = (o, v) => { for (const [k, x] of Object.entries(v)) if (x && typeof x === 'object' && o[k] && typeof o[k] === 'object') deep(o[k], x); else o[k] = x; }; deep(M.FIGHT, JSON.parse(t)); }, process.env.SCRIBBLE_TUNE);
-  const want = process.env.WOBBLE_PATCHES?.split(',').map(Number) ?? null, lake = new Set([7, 8, 9, 10, 11, 12, 13]);
+  const want = process.env.WOBBLE_PATCHES?.split(',').map(Number) ?? null, lake = new Set([7, 8, 9, 10, 11, 12, 13]), wood = new Set([14, 15, 16, 17, 18, 19, 20]);
   const r = { fails: 0 };
-  if (!want || want.some(i => !lake.has(i))) r.fails += (await runPatches(page, { games: +process.env.WOBBLE_GAMES || 2, patches: want?.filter(i => !lake.has(i)) ?? null })).fails;
+  if (!want || want.some(i => !lake.has(i) && !wood.has(i))) r.fails += (await runPatches(page, { games: +process.env.WOBBLE_GAMES || 2, patches: want?.filter(i => !lake.has(i) && !wood.has(i)) ?? null })).fails;
+  if (!want || want.some(i => wood.has(i))) r.fails += (await runWood(page, { games: +process.env.WOBBLE_GAMES || 2, naive: +process.env.WOBBLE_NAIVE || NAIVE_GAMES, patches: want?.filter(i => wood.has(i)) ?? null })).fails;
   if (!want || want.some(i => lake.has(i))) r.fails += (await runLake(page, { games: +process.env.WOBBLE_GAMES || 2, naive: +process.env.WOBBLE_NAIVE || NAIVE_GAMES, patches: want?.filter(i => lake.has(i)) ?? null })).fails;
   if (page.errors.length) console.log('errors', page.errors);
   await browser.close(); server.close();

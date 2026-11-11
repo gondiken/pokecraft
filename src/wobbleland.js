@@ -27,11 +27,12 @@ export const inMeadow = (x, z) => x >= MEADOW.x0 && x <= MEADOW.x1 + 1 && z >= M
 export const REGIONS = {
   meadow: { name: 'Puddle Meadow', biome: 'wobble' },
   lake: { name: 'Slippy Lake', biome: 'wobbleLake' },
-  wood: { name: 'Shadywood', biome: 'wobbleWood', soon: true },
+  wood: { name: 'Shadywood', biome: 'wobbleWood' },
   hills: { name: 'Bumpy Hills', biome: 'wobbleHills', soon: true },
 };
 export const LAKE_Z0 = 72; // Slippy Lake: x 0..61 from z 72 to the page's south edge (as big as the meadow); Bumpy Hills north of it
-export const regionAt = (x, z) => (inMeadow(x, z) ? 'meadow' : x < MEADOW.x0 && z >= LAKE_Z0 ? 'lake' : z < MEADOW.z0 ? 'hills' : 'wood');
+export const WOOD_Z0 = 72; // Shadywood: x 164..223 from z 72 to the page's south edge (the lake's mirror image); Bumpy Hills north of both
+export const regionAt = (x, z) => (inMeadow(x, z) ? 'meadow' : x < MEADOW.x0 && z >= LAKE_Z0 ? 'lake' : x > MEADOW.x1 + 1 && z >= WOOD_Z0 ? 'wood' : 'hills');
 export const KNOT = { x: 112, z: 62 };                          // the Big Knot (the end of the chapter) in the middle of the closed page
 export const RING = 10;                                         // the fight's ring (scribblefight.js FIGHT.R): patches are checked with it
 // The patches (append-only ids: a cleared patch saves `pw:wobble:patch<id>`). size: smudge 3 monsters (2 were always mashable, tests/wobblebots.mjs), tangle 3-4, knot 4 + a Grumble.
@@ -59,6 +60,17 @@ export const PATCHES = [
   { id: 12, x: 17, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['snowpaw', 'gullop', 'blastskate'], pot: 0x7a5cff },
   { id: 13, x: 41, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'bubbuck', 'zipskate'], wet: true, holes: [[-3, 3, 1.7]], pot: 0xff6a3c },
   { id: 11, x: 29, z: 99, size: 'knot', region: 'lake', species: ['frostling', 'suddly', 'blastskate'], grumble: 'blizzbear', last: true, wet: true, holes: [[-5, 3, 1.6], [4, -4, 1.5], [6, 5, 1.3]], pot: 0xd6f4ff },
+  // Shadywood (plans/chapter3-world.md "Shadywood"): every ring under the closed canopy (groundrules.js Dark: you see only inside your
+  // creature's light). Ghost, Ninja, Grass and Bug monsters that keep to the dark, and ONE glowing monster in each (Fire / Light /
+  // Electric / Cosmic: it lights itself, so you always see it): the light rule shows on their side too. Tangles 2 levels up like the
+  // lake's; the knot's big one is Duskmare, a Ghost Grumble.
+  { id: 14, x: 181, z: 204, size: 'tangle', region: 'wood', step: 2, species: ['wispurr', 'hushcoon', 'sparkitten'], pot: 0x3a2a6e },
+  { id: 15, x: 208, z: 204, size: 'tangle', region: 'wood', step: 2, species: ['shadeling', 'budling', 'wattwink'], pot: 0xffe14a },
+  { id: 16, x: 181, z: 166, size: 'tangle', region: 'wood', step: 2, species: ['peekaw', 'beetlet', 'moonhop'], pot: 0x2e8b3a },
+  { id: 17, x: 208, z: 166, size: 'tangle', region: 'wood', step: 2, species: ['snoozle', 'flickit', 'dawnchick'], pot: 0xff9d2e },
+  { id: 18, x: 181, z: 128, size: 'tangle', region: 'wood', step: 2, species: ['glowbug', 'mossloth', 'flarehawk'], pot: 0x7fe0a0 },
+  { id: 19, x: 208, z: 128, size: 'tangle', region: 'wood', step: 2, species: ['shadeling', 'peekaw', 'voltwing'], pot: 0xb04ad8 },
+  { id: 20, x: 194, z: 100, size: 'knot', region: 'wood', species: ['phantomaw', 'shadecoon', 'sparkitten'], grumble: 'duskmare', last: true, pot: 0x1b1340 },
 ];
 export const CAMP_POT = { x: 120, z: 207, colour: 0xff8a1c };    // A3: the Camp's own paint pot (a hop back home)
 export const patchKey = id => `pw:wobble:patch${id}`;
@@ -66,9 +78,10 @@ export const patchKey = id => `pw:wobble:patch${id}`;
 // Owner 2026-11-11: they stay near their own patch ('near:patch<id>'), and some live up on the floating hills ('near:float').
 // (Patch 11, the lake's knot, sits at the lake's far north end: you meet the tangles on the way.)
 // One table per region (realms.js spawns by the region's biome): the lake's creatures also live on its islands ('near:isle').
+const HOMES = { lake: 'isle', wood: 'clearing' }; // where a region's freed creatures also live (wobbleSpot)
 export const freedSpawns = region => PATCHES.filter(p => p.region === region).flatMap(p => [...p.species, ...(p.grumble ? [p.grumble] : [])].flatMap(sp => [
   [sp, p.grumble === sp ? 0.25 : 1, `near:patch${p.id}`, `wobble:${p.id}`],
-  [sp, p.grumble === sp ? 0.15 : 0.5, region === 'lake' ? 'near:isle' : 'near:float', `wobble:${p.id}`],
+  [sp, p.grumble === sp ? 0.15 : 0.5, `near:${HOMES[region] ?? 'float'}`, `wobble:${p.id}`],
 ]));
 export const FREED_SPAWNS = freedSpawns('meadow');
 // The patches you can fight now: every one not cleared, but a region's knot only once its other patches are clear (step 6: the knot is
@@ -147,8 +160,41 @@ export const TREES = [ // lean: blocks sideways per block up (dx, dz); twist: a 
   { x: 126, z: 140, h: 7, lean: [0.5, 0] }, { x: 70, z: 140, h: 6, twist: true }, { x: 154, z: 141, h: 7, lean: [-0.45, 0.2] },
   { x: 73, z: 217, h: 8, twist: true }, { x: 158, z: 214, h: 7, lean: [-0.5, -0.3] },
 ];
-// Shadywood (behind the east wall, for later): a thick wood of tall straight trees
-export const WOOD = { x0: 168, x1: 218, z0: 140, z1: 218, step: 7 };
+// Shadywood (plans/chapter3-world.md "Shadywood"), east of the meadow (x 164..223, z 72..223, the lake's size): tall crayon trees
+// (2 x 2 trunks every `step` blocks, never in a ring, a clearing or the river) hold ONE closed canopy of leaves `canopy` blocks up (high
+// enough that the fight's camera stays under it). Under it is the dark (groundrules.js Dark, world.groundAt); the CLEARINGS are open to
+// the sky and lit. Glowing mushrooms (Glowcaps) light little spots; a big glowing mushroom in two clearings with a chest on its cap and a
+// Bounce Block beside it (a mushroom you bounce up). The DARK_RIVER runs north from a clearing by the south edge through the clearings to
+// the one by the knot: step in and its current carries you (world.flowAt), always drawn in colour (it glows).
+export const WOOD = { x0: MEADOW.x1 + 2, x1: SIZE - 1, z0: WOOD_Z0, z1: SIZE - 1, step: 8, canopy: BASE + 18 };
+export const inWoodBox = (x, z) => x >= WOOD.x0 && x <= WOOD.x1 && z >= WOOD.z0 && z <= WOOD.z1;
+export const CLEARINGS = [{ x: 194, z: 214, r: 5 }, { x: 194, z: 185, r: 7 }, { x: 194, z: 147, r: 7 }, { x: 194, z: 117, r: 4 }];
+export const BIG_SHROOMS = [{ x: 189, z: 185, stalk: 8, cap: 3, spring: [189, 190] }, { x: 189, z: 147, stalk: 8, cap: 3, spring: [189, 152] }];
+export const DARK_RIVER = { x0: 194, x1: 195, z0: 218, z1: 119, dir: -1, speed: 3.6 };
+const inDarkRiver = (x, z) => x >= DARK_RIVER.x0 && x <= DARK_RIVER.x1 && z <= DARK_RIVER.z0 && z >= DARK_RIVER.z1;
+const clearingAt = (x, z, pad = 0) => CLEARINGS.find(c => Math.hypot(x + 0.5 - c.x - 0.5, z + 0.5 - c.z - 0.5) <= c.r + pad) ?? null;
+const woodRingAt = (x, z, pad = 0) => PATCHES.some(p => p.region === 'wood' && Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) <= RING + pad);
+// forest paths with no trunk on them: straight from every patch to every other one near it, and in from the meadow
+const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / L)) : 0; return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
+const WOOD_PATHS = (() => {
+  const ps = PATCHES.filter(p => p.region === 'wood'), out = [[MEADOW.x1, 184, 181, 184], [MEADOW.x1, 150, 181, 150]];
+  for (const p of ps) for (const q of ps) if (p.id < q.id && Math.hypot(p.x - q.x, p.z - q.z) < 90) out.push([p.x + 0.5, p.z + 0.5, q.x + 0.5, q.z + 0.5]);
+  return out;
+})();
+// the trunks (x, z of their north-west block), on a jittered grid, never in a ring, a clearing, by the river or on the box's edge (pure)
+export const WOOD_TRUNKS = (() => {
+  const out = [];
+  for (let x = WOOD.x0 + 3; x <= WOOD.x1 - 3; x += WOOD.step) for (let z = WOOD.z0 + 3; z <= WOOD.z1 - 3; z += WOOD.step) {
+    const tx = x + ((x * 13 + z * 7) % 3) - 1, tz = z + ((x * 5 + z * 11) % 3) - 1;
+    if (woodRingAt(tx, tz, 2) || woodRingAt(tx + 1, tz + 1, 2) || clearingAt(tx, tz, 2) || clearingAt(tx + 1, tz + 1, 2)) continue;
+    if (tx + 1 >= DARK_RIVER.x0 - 2 && tx <= DARK_RIVER.x1 + 2 && tz <= DARK_RIVER.z0 + 2 && tz >= DARK_RIVER.z1 - 2) continue;
+    if (WOOD_PATHS.some(([ax, az, bx, bz]) => segDist(tx + 1, tz + 1, ax, az, bx, bz) < 5.5)) continue; // (paths between the patches stay free: a wide path)
+    out.push([tx, tz]);
+  }
+  return out;
+})();
+// under the closed canopy (the dark): every column of the box but the clearings (and the box's first column, the wood's edge)
+export const underCanopy = (x, z) => inWoodBox(x, z) && x > WOOD.x0 && !clearingAt(x, z);
 export const FLOWER = { x: 140, z: 206, stem: 13, petal: 4 };       // a flower taller than a house
 export const CLOUD_HILL = { x: 68, z: 172 };                        // a cloud stuck on a hilltop (on the bulge there)
 export const SMALL_HOUSE = { x: 78, z: 204, w: 4, d: 4, h: 3 };     // a house drawn too small, with a door far too big for it
@@ -180,6 +226,10 @@ export function heightAt(x, z) {
   for (const [bx, bz, a, w] of BULGES) { const d2 = ((x - bx) ** 2 + (z - bz) ** 2) / (w * w); if (d2 < 9) h += a * Math.exp(-d2); }
   let flat = 1 - smooth(CAMP.r, CAMP.r + 8, Math.hypot(x - CAMP.x, z - CAMP.z));
   for (const p of PATCHES) flat = Math.max(flat, 1 - smooth(RING + 1, RING + 7, Math.hypot(x - p.x, z - p.z)));
+  if (inWoodBox(x, z)) { // Shadywood: its clearings and the dark river's banks are flat too
+    for (const c of CLEARINGS) flat = Math.max(flat, 1 - smooth(c.r + 1, c.r + 6, Math.hypot(x - c.x, z - c.z)));
+    if (z <= DARK_RIVER.z0 + 3 && z >= DARK_RIVER.z1 - 3) flat = Math.max(flat, 1 - smooth(3, 8, Math.abs(x + 0.5 - (DARK_RIVER.x0 + DARK_RIVER.x1 + 1) / 2)));
+  }
   return BASE + Math.round(h * (1 - flat));
 }
 const inPuddle = (x, z) => PUDDLES.some(([px, pz, r]) => Math.hypot(x + 0.5 - px, z + 0.5 - pz) <= r);
@@ -223,12 +273,7 @@ export function wobbleLand(world) {
   world.rests.length = 0; world.rests.push(world.arrivals.wobble);      // a lost fight rests you at the Camp (realms.lost: the nearest rest)
   world.healer = [HEALER.x, BASE + 1, HEALER.z, 0]; // (npc.js: Healer Stella, as in the Dream and the Portal House)
   slippyLake(world, put);
-  // Shadywood behind the east wall (for later): tall straight trees close together
-  for (let x = WOOD.x0; x <= WOOD.x1; x += WOOD.step) for (let z = WOOD.z0; z <= WOOD.z1; z += WOOD.step) {
-    const tx = x + ((x * 13 + z * 7) % 3) - 1, tz = z + ((x * 5 + z * 11) % 3) - 1, g = heightAt(tx, tz), h = 9 + ((tx + tz) % 4);
-    for (let k = 1; k <= h; k++) put(tx, g + k, tz, B.LOG);
-    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) for (let dy = -2; dy <= 1; dy++) if (dx * dx + dz * dz + dy * dy < 7 && world.get(tx + dx, g + h + dy, tz + dz) === B.AIR) put(tx + dx, g + h + dy, tz + dz, B.LEAVES);
-  }
+  shadywood(world, put);
   // wonky things
   for (const t of TREES) {
     const g = heightAt(t.x, t.z);
@@ -305,8 +350,8 @@ export function wobbleLand(world) {
   world.people ??= []; // the Wizard at the Camp (step 6): his words follow your progress (WIZARD_LINES; scribble.js says them on a win)
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
-  world.flowAt = p => riverFlow(p) ?? lakeFlow(p); // the floating river's current, the lake's chutes and leads (player.js)
-  world.groundAt = p => iceUnder(world, p); // Slippy Lake: on ice you slide (groundrules.js; the player and the fight ask it)
+  world.flowAt = p => riverFlow(p) ?? lakeFlow(p) ?? woodFlow(p); // the floating river's current, the lake's chutes and leads (player.js)
+  world.groundAt = p => iceUnder(world, p) ?? darkOver(p); // Slippy Lake: on ice you slide; Shadywood: under the canopy it is dark (groundrules.js; the player and the fight ask it)
   world.spawnSpot = (arg, near) => wobbleSpot(world, arg, near); // creatures.js: where 'near:<arg>' creatures appear
   world.parts.push({ id: 'wobble', live: 'wobble' }); // wobblelive.js: the paint-pot hops (A3)
   world.realmBiome = (x, z) => REGIONS[regionAt(x, z)].biome;
@@ -350,6 +395,60 @@ function slippyLake(world, put) {
     for (let k = 1; k <= h; k++) put(i.x, g + k, i.z, B.PINE_LOG);
     for (let dy = 2; dy <= h + 1; dy++) { const r = dy > h ? 0 : dy < h - 1 ? 1 : 0; for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if ((dx || dz || dy > h) && world.get(i.x + dx, g + dy, i.z + dz) === B.AIR) put(i.x + dx, g + dy, i.z + dz, B.PINE_LEAVES); }
   }
+}
+// Shadywood's blocks: gentle forest floor (the heights are heightAt's), dark grass under the canopy, tall 2 x 2 trunks up to the canopy,
+// the canopy (two blocks of leaves with lumps on top and hanging bits under), glowing mushrooms, the big mushrooms, the dark river.
+function shadywood(world, put) {
+  const { x0, x1, z0, z1 } = WOOD, top = WOOD.canopy;
+  const noise = (x, z) => Math.sin(x * 0.37 + z * 0.21) * Math.cos(z * 0.29 - x * 0.13) + 0.5 * Math.sin((x + 2 * z) * 0.17);
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    if (!underCanopy(x, z)) continue;
+    const n = noise(x, z);
+    put(x, top, z, B.LEAVES); put(x, top + 1, z, B.LEAVES);
+    if (n > 0.55) put(x, top + 2, z, B.LEAVES);   // lumps on top
+    if (n < -0.75) put(x, top - 1, z, B.LEAVES);  // bits hanging under
+  }
+  for (const [tx, tz] of WOOD_TRUNKS) {
+    const g = Math.min(heightAt(tx, tz), heightAt(tx + 1, tz), heightAt(tx, tz + 1), heightAt(tx + 1, tz + 1));
+    for (let y = g + 1; y < top; y++) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) put(tx + dx, y, tz + dz, B.LOG);
+  }
+  // little glowing mushrooms under the canopy, set into the forest floor (nothing to trip over): never in a ring, a clearing or the river
+  for (let x = x0 + 2; x <= x1 - 1; x += 6) for (let z = z0 + 2; z <= z1 - 1; z += 6) {
+    const mx = x + ((x * 7 + z * 3) % 4) - 1, mz = z + ((x * 3 + z * 5) % 4) - 1;
+    if (!underCanopy(mx, mz) || woodRingAt(mx, mz, 1.5) || Math.abs(mx - DARK_RIVER.x0) < 4) continue;
+    const g = heightAt(mx, mz);
+    if (world.get(mx, g + 1, mz) !== B.AIR || world.get(mx, g, mz) !== B.GRASS) continue;
+    put(mx, g, mz, B.GLOWCAP); if ((mx + mz) % 3 === 0 && world.get(mx + 1, g, mz) === B.GRASS) put(mx + 1, g, mz, B.GLOWCAP); // (one or two caps)
+  }
+  // the big glowing mushrooms in two clearings: a stalk, a round cap of Glowcap, a chest on top, a Bounce Block beside it
+  for (const m of BIG_SHROOMS) {
+    const g = heightAt(m.x, m.z);
+    for (let k = 1; k <= m.stalk; k++) put(m.x, g + k, m.z, B.SANDSTONE);
+    for (let dx = -m.cap; dx <= m.cap; dx++) for (let dz = -m.cap; dz <= m.cap; dz++) {
+      const d = Math.hypot(dx, dz);
+      if (d <= m.cap + 0.3) put(m.x + dx, g + m.stalk + 1, m.z + dz, B.GLOWCAP);
+      if (d > m.cap - 0.9 && d <= m.cap + 0.3) put(m.x + dx, g + m.stalk, m.z + dz, B.GLOWCAP); // the cap's rim hangs down
+    }
+    put(m.x, g + m.stalk + 2, m.z, B.CHEST);
+    const [sx, sz] = m.spring; put(sx, heightAt(sx, sz), sz, B.BOUNCE);
+  }
+  // the dark river: open water two deep, flush with the floor, sand under it
+  for (let z = DARK_RIVER.z1; z <= DARK_RIVER.z0; z++) for (let x = DARK_RIVER.x0; x <= DARK_RIVER.x1; x++) {
+    const g = heightAt(x, z);
+    for (let y = g + 1; y <= g + 3; y++) if (world.get(x, y, z) !== B.LEAVES) put(x, y, z, B.AIR);
+    put(x, g, z, B.WATER); put(x, g - 1, z, B.WATER); put(x, g - 2, z, B.SAND);
+  }
+  world.wood = { canopy: top, clearings: CLEARINGS, river: DARK_RIVER };
+}
+// The dark: under the canopy (and below it) the ground's rule is groundrules.js Dark (you see only inside your light)
+export function darkOver(p) { return p && underCanopy(Math.floor(p.x), Math.floor(p.z)) && p.y < WOOD.canopy ? GROUND.dark : null; }
+// The dark river's current (blocks a second; in its water only; the last bit lifts you out into the clearing by the knot), or null
+export function woodFlow(p) {
+  const R = DARK_RIVER, z = Math.floor(p.z);
+  if (p.x < R.x0 - 0.3 || p.x > R.x1 + 1.3 || z > R.z0 || z < R.z1 - 1) return null;
+  const g = heightAt(R.x0, z), end = z - R.z1;
+  if (p.y > g + (end < 2.5 ? 2.2 : 0.95)) return null; // (only a swimmer in it)
+  return { x: ((R.x0 + R.x1 + 1) / 2 - p.x) * 2, z: R.dir * R.speed, y: end < 2.5 ? 10.5 : 0 };
 }
 // The ground's rule where p stands (groundrules.js): ice under your feet (or under you in a jump, up to 3 blocks down) = slide.
 // (Over an edge, held up by the ice behind you, the corners of your feet count: you glide off the edge, never stop on it.)
@@ -399,6 +498,12 @@ export function wobbleSpot(world, arg, near) {
     const a = rnd() * Math.PI * 2, r = 1.2 + rnd() * (i.r - 1.4), x = Math.floor(i.x + 0.5 + Math.cos(a) * r), z = Math.floor(i.z + 0.5 + Math.sin(a) * r);
     return world.get(x, LAKE.y + 2, z) === B.AIR && world.get(x, LAKE.y + 1, z) === B.SNOW ? { x, y: LAKE.y + 2, z } : null;
   }
+  if (arg === 'clearing') { // Shadywood: in a clearing's light
+    const c = CLEARINGS[Math.floor(rnd() * CLEARINGS.length)];
+    if (!ok(c.x, c.z)) return null;
+    const a = rnd() * Math.PI * 2, r = 1 + rnd() * (c.r - 1.5), x = Math.floor(c.x + 0.5 + Math.cos(a) * r), z = Math.floor(c.z + 0.5 + Math.sin(a) * r), y = heightAt(x, z) + 1;
+    return world.get(x, y, z) === B.AIR && world.get(x, y - 1, z) === B.GRASS ? { x, y, z } : null;
+  }
   const p = PATCHES.find(q => `patch${q.id}` === arg);
   if (!p || !ok(p.x, p.z)) return null;
   const a = rnd() * Math.PI * 2, r = 3 + rnd() * 8.4, x = Math.floor(p.x + Math.cos(a) * r), z = Math.floor(p.z + Math.sin(a) * r);
@@ -424,12 +529,13 @@ export function paperDoor(world) {
   return { cells, stand: [wz.x + 0.5, y0, z + 2.5, Math.PI] };
 }
 // The Wizard's words after a patch is cleared (n = patches cleared in the region, of = how many it has).
-const NEXT_WORDS = { meadow: 'Next: Slippy Lake, through the west wall!', lake: 'Next: Shadywood, through the east wall of the meadow.' };
-const KNOT_WORDS = { meadow: 'Be careful: something grumbles in there!', lake: 'Be careful: something big and icy waits in there!' };
+const NEXT_WORDS = { meadow: 'Next: Slippy Lake, through the west wall!', lake: 'Next: Shadywood, through the east wall of the meadow.', wood: 'Next: Bumpy Hills, up north!' };
+const KNOT_WORDS = { meadow: 'Be careful: something grumbles in there!', lake: 'Be careful: something big and icy waits in there!', wood: 'Be careful: something big hides in the dark there!' };
+const FIRST_WORDS = { lake: '🧙 You did it! Ice is slippy, but you kept your feet!', wood: '🧙 You did it! Even in the dark, you found the way!' };
 export function wizardLine(n, of, region = 'meadow') {
   const name = REGIONS[region]?.name ?? 'Puddle Meadow';
   if (n >= of) return `🧙 ${name} is bright again! ${NEXT_WORDS[region] ?? ''}`.trim();
-  if (n === 1) return region === 'lake' ? '🧙 You did it! Ice is slippy, but you kept your feet!' : '🧙 You did it! Look, the colour is coming back!';
+  if (n === 1) return FIRST_WORDS[region] ?? '🧙 You did it! Look, the colour is coming back!';
   if (n === of - 1) return `🧙 Only the big knot is left. ${KNOT_WORDS[region] ?? KNOT_WORDS.meadow}`;
   return `🧙 Wonderful! ${of - n} more to go.`;
 }

@@ -26,7 +26,14 @@
 //   lakeipad: the same lake on an emulated iPad: the joystick on the ice glides, the chip, the touch buttons
 //   lakebots: tests/wobblebots.mjs runLake: every lake patch with the Ice, the neutral and the owner's team (mashing under a quarter with
 //           the Ice and neutral teams, skilled wins with all three; how much the Ice type helps is reported)
-//   WOBBLE_ONLY=land|ride|hops|bugs|springs|river|door|look|patches|loop|ipad|knot|ice|lake|lakeipad|lakebots      screenshots: tests/screenshots/wobble-*.png
+//   wood:   Shadywood in a browser, real keys: open from the start, walking in under the canopy it gets dark round you (your light 5,
+//           a glowing creature's 10), the dark river carries you through the wood with no keys, walking into patch 14 starts its fight in
+//           the dark (a monster outside your light shows only its eyes and its warning late, a glowing one is always seen, a hit or a full
+//           blast's flash lights them), a win, freed creatures in the clearings, a reload, the knot (Duskmare, a Ghost Grumble); screenshots
+//   woodipad: the same on an emulated iPad: the joystick into the dark, a fight in the dark (readable on a small screen: a screenshot)
+//   woodbots: tests/wobblebots.mjs runWood: every wood patch with the glowing, the neutral and the owner's team (mashing under a quarter with
+//           the neutral team, skilled wins with all three; the person bot's numbers, the light alone, the dark's cost reported)
+//   WOBBLE_ONLY=land|ride|hops|bugs|springs|river|door|look|patches|loop|ipad|knot|ice|lake|lakeipad|lakebots|wood|woodipad|woodbots      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -75,7 +82,7 @@ export default async function ({ browser, base, t }) {
     // and nothing stands between the meadow and the lake
     const open0 = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); let wall = 0; for (let y = L.BASE + 2; y < 30; y++) for (const x of [60, 61]) if (g.world.get(x, y, 180) !== 0) wall++; return { rows: g.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id), wall }; });
     t.ok(open0.rows.includes('wobble:7') && open0.rows.includes('wobble:1') && !open0.rows.includes('wobble:11') && !open0.wall, `${tag}Slippy Lake is open from the start: its patches are listed with the meadow's, no wall between them (${JSON.stringify(open0)})`);
-    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [1, 2, 3, 4, 5, 6]) g.beaten.push(L.patchKey(id)); });
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [1, 2, 3, 4, 5, 6, 14, 15, 16, 17, 18, 19, 20]) g.beaten.push(L.patchKey(id)); }); // (the meadow's and Shadywood's: only the lake is left)
     // on the lake's shore: the meter is the lake's, the arrow and the rows lead to its patches, the far ones are drawn
     await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(58.5, 11, 100.5); g.player.vel.set(0, 0, 0); g.player.yaw = Math.PI / 2; g.player.pitch = -0.12; });
     await frames(page, 6);
@@ -177,6 +184,133 @@ export default async function ({ browser, base, t }) {
     const page = await wobblePage(browser, base);
     const r = await runLake(page, { games: 2, log: () => {} });
     for (const l of r.lines) t.ok(l.startsWith('ok'), l.replace(/^(ok {2}|FAIL) /, ''));
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (want('woodbots')) {
+    const { wobblePage, runWood } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    const r = await runWood(page, { games: 2, log: () => {} });
+    for (const l of r.lines) t.ok(l.startsWith('ok'), l.replace(/^(ok {2}|FAIL) /, ''));
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+  }
+
+  if (want('wood') || want('woodipad')) for (const dev of [want('wood') && null, want('woodipad') && 'iPad (gen 7) landscape'].filter(x => x !== false)) {
+    const page = await openGame(browser, base, { query: '?preview', ...(dev ? { contextOptions: devices[dev] } : {}) });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('owlucid', 30), S.makeCreature('tidalord', 30), S.makeCreature('blazehound', 30)]; });
+    await intoWobble(page);
+    const tag = dev ? 'iPad: ' : '';
+    const rows0 = await page.evaluate(() => window.pokecraft.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id));
+    t.ok(rows0.includes('wobble:14') && rows0.includes('wobble:19') && !rows0.includes('wobble:20'), `${tag}Shadywood is open from the start: its tangles are in "Where to go", its knot not yet (${rows0.join()})`);
+    // walk east from the meadow into the wood (real keys / the joystick): under the canopy it gets dark round you
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) g.beaten.push(L.patchKey(id)); g.player.pos.set(158.5, 11, 190.5); g.player.vel.set(0, 0, 0); g.player.yaw = -Math.PI / 2; g.player.pitch = -0.05; });
+    if (!dev) { await page.keyboard.down('w'); await waitFor(page, () => window.pokecraft.player.pos.x > 172, null, 60000).catch(() => {}); await page.keyboard.up('w'); }
+    else {
+      const vp = page.viewportSize(), cdp = await page.context().newCDPSession(page), x0 = 140, y0 = vp.height - 160;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0, id: 1 }] });
+      for (let k = 1; k <= 6; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0, y: y0 - k * 12, id: 1 }] });
+      await waitFor(page, () => window.pokecraft.player.pos.x > 172, null, 90000).catch(() => {});
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    }
+    await waitFor(page, () => window.pokecraft.wobbleLook.info().under > 0.9, null, 60000).catch(() => {});
+    const dk = await page.evaluate(() => { const g = window.pokecraft, i = g.wobbleLook.info(); return { x: +g.player.pos.x.toFixed(1), rule: g.world.groundAt(g.player.pos)?.id ?? null, under: i.under, light: i.light, chip: document.getElementById('score-chip')?.textContent, fog: [g.scene.fog.near, g.scene.fog.far].map(Math.round) }; });
+    t.ok(dk.rule === 'dark' && dk.under > 0.9 && dk.light[2] === 5 && /Shadywood 0 \/ 7/.test(dk.chip), `${tag}${dev ? 'the joystick' : 'W'} walks you in under the canopy: it is dark round you (your Owlucid's light reaches 5), the chip is Shadywood's (${JSON.stringify(dk)})`);
+    if (!dev) await shot(page, 'wobble-wood.png');
+    // a glowing creature first in your team: its light is twice as big
+    const glow = await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party.unshift(S.makeCreature('glitterbop', 30)); await new Promise(r => setTimeout(r, 400)); const r = g.wobbleLook.sight(); g.party.shift(); return r; });
+    t.ok(glow === 10, `${tag}with a Light creature first in your team your light reaches ${glow} (twice as far)`);
+    if (dev) { // the fight on the iPad: readable in the dark
+      await page.evaluate(() => { const g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 14); g.player.pos.set(q.x + 0.5, q.y, q.z + 9.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; });
+      await waitFor(page, () => window.pokecraft.scribble.info().patch === 14, null, 30000).catch(() => {});
+      const vp = page.viewportSize(), cdp = await page.context().newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 140, y: vp.height - 160, id: 1 }] });
+      for (let k = 1; k <= 6; k++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 140, y: vp.height - 160 - k * 10, id: 1 }] });
+      await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 90000).catch(() => {});
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
+      await frames(page, 6);
+      await shot(page, 'wobble-wood-ipad-fight.png');
+      const fi = await page.evaluate(() => window.pokecraft.scribble.fightOf()?.info().dark);
+      t.ok(fi?.sight === 5, `${tag}walking into patch 14 with the joystick starts its fight in the dark (${JSON.stringify(fi)})`);
+      t.ok(!page.errors.length, `no page errors on the iPad (${page.errors.join(' | ')})`);
+      await page.context().close(); continue;
+    }
+    // the dark river: step in by the south clearing and press nothing: it carries you north through the clearings to the knot's
+    const rv = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), R = L.DARK_RIVER; g.player.pos.set(R.x0 + 1, L.heightAt(R.x0, R.z0 - 1) + 0.6, R.z0 - 1.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.2; return { z1: R.z1 }; });
+    await waitFor(page, () => window.pokecraft.player.pos.z < 200, null, 60000).catch(() => {});
+    await shot(page, 'wobble-wood-river.png');
+    await waitFor(page, z1 => { const p = window.pokecraft.player; return p.pos.z < z1 + 1 && p.onGround && !p.inWater; }, rv.z1, 240000).catch(() => {});
+    const out = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), p = g.player.pos, c = L.CLEARINGS[3]; return { at: [p.x, p.y, p.z].map(v => +v.toFixed(1)), inClearing: Math.hypot(p.x - c.x - 0.5, p.z - c.z - 0.5) < c.r + 1.5 }; });
+    t.ok(out.inClearing, `no keys: the dark river carries you north through the wood and lifts you out in the clearing by the knot (${JSON.stringify(out)})`);
+    // walk into patch 14 (W): its fight is in the dark
+    await page.evaluate(() => { const g = window.pokecraft, q = g.world.wobble.patches.find(r => r.id === 14); g.player.pos.set(q.x + 0.5, q.y, q.z + 9.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; });
+    await waitFor(page, () => window.pokecraft.scribble.info().patch === 14, null, 30000).catch(() => {});
+    await page.keyboard.down('w');
+    await waitFor(page, () => ['enter', 'fight'].includes(window.pokecraft.scribble.info().phase), null, 90000).catch(() => {});
+    await page.keyboard.up('w');
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 60000).catch(() => {});
+    // put the monsters where the test can tell: one far in the dark, one close in your light
+    const fi = await page.evaluate(() => {
+      const F = window.pokecraft.scribble.fightOf(), [a, b, c] = F.foes, y = F.you;
+      a.x = y.x + 7; a.z = y.z; b.x = y.x + 2.5; b.z = y.z; c.x = y.x - 7; c.z = y.z;
+      a.tell = { kind: 'circle', x: y.x, z: y.z, r: 1.5, y: y.y, left: 0.9, id: 991 };
+      const r = { foes: F.foes.map(f => f.c.species), sight: F.sight(), seen: F.foes.map(f => F.sees(f)), tellEarly: F.seesTell(a) };
+      a.tell.left = 0.5; r.tellLate = F.seesTell(a); a.tell.left = 0.9;
+      return r;
+    });
+    await frames(page, 3);
+    const drawn = await page.evaluate(() => { const g = window.pokecraft, F = g.scribble.fightOf(); return { eyes: g.scribble.info().eyes, unseen: F.foes.filter(f => f.alive && !F.sees(f)).length, light: g.wobbleLook.info().light }; });
+    t.ok(fi.foes.join() === 'wispurr,hushcoon,sparkitten' && fi.sight === 5 && fi.seen.join() === 'false,true,true' && !fi.tellEarly && fi.tellLate, `in patch 14's fight you see only inside your light: Wispurr out in the dark is not seen (its warning only shows in its last 0.6 s), Hushcoon close by is, and Sparkitten (Fire) glows so it is always seen (${JSON.stringify(fi)})`);
+    t.ok(drawn.eyes === drawn.unseen && drawn.unseen >= 1 && drawn.light[2] === 5, `the monster in the dark shows only its two eyes; the light is round your creature (${JSON.stringify(drawn)})`);
+    await shot(page, 'wobble-wood-fight.png');
+    // a hit lights a monster up; a full big blast lights up the whole ring
+    const lit = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(), a = F.foes[0]; F.hit(F.you, a, 1, 'normal'); const hit = F.sees(a); a.litT = 0; F.flashLit = { x: F.you.x, z: F.you.z, r: F.R * 2, t: F.dark().flash }; const flash = F.foes.every(f => F.sees(f)); return { hit, flash }; });
+    await frames(page, 2);
+    await shot(page, 'wobble-wood-flash.png');
+    t.ok(lit.hit && lit.flash, `a monster you hit lights up for a moment, and a big blast's flash lights the whole ring (${JSON.stringify(lit)})`);
+    const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
+    await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 99999, 'fire'); });
+    await waitFor(page, () => window.pokecraft.beaten.includes('pw:wobble:patch14') && !window.pokecraft.scribble.fighting, null, 90000).catch(() => {});
+    const won = await page.evaluate(() => ({ key: window.pokecraft.beaten.includes('pw:wobble:patch14'), cubes: window.pokecraft.cubes }));
+    t.ok(won.key && won.cubes === cubes0 + 3, `a win clears patch 14 (saved) and gives 3 Capture Cubes (${JSON.stringify(won)})`);
+    // freed creatures by their patch and in the clearings
+    const sp = await page.evaluate(async () => {
+      const g = window.pokecraft, L = await import('/src/wobbleland.js'), out = { clearing: [] };
+      for (let i = 0; i < 40; i++) { const a = L.wobbleSpot(g.world, 'clearing', { x: 194, z: 185 }); if (a) out.clearing.push(L.CLEARINGS.some(c => Math.hypot(a.x - c.x, a.z - c.z) < c.r + 1) && !L.darkOver({ x: a.x + 0.5, y: a.y, z: a.z + 0.5 })); }
+      out.table = g.creatures.table('wobbleWood').filter(e => g.creatures.context?.().after?.(e[3]) ?? true).map(e => e[0]);
+      return out;
+    });
+    t.ok(sp.clearing.length > 5 && sp.clearing.every(Boolean) && ['wispurr', 'hushcoon', 'sparkitten'].every(x => sp.table.includes(x)) && !sp.table.includes('wattwink'), `freed Shadywood creatures: in the clearings' light, only patch 14's so far (${sp.clearing.length}; ${[...new Set(sp.table)].join(', ')})`);
+    // a reload keeps it
+    await page.evaluate(() => window.pokecraft.save?.(true));
+    await page.reload();
+    await page.waitForFunction(() => window.pokecraft?.world, null, { timeout: 120000 });
+    await page.evaluate(() => [...document.querySelectorAll('#title-buttons button')].find(b => /Continue/.test(b.textContent))?.click());
+    await placeIs(page, 'wobble');
+    await frames(page, 8);
+    const re = await page.evaluate(() => window.pokecraft.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).map(x => x.dest.id).join());
+    t.ok(re === 'wobble:15,wobble:16,wobble:17,wobble:18,wobble:19', `after a reload patch 14 stays clear (${re})`);
+    // the knot: Duskmare, a Ghost Grumble in the dark; clearing it colours the whole wood
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); for (const id of [15, 16, 17, 18, 19]) g.beaten.push(L.patchKey(id)); const q = L.patchOf(20); g.player.pos.set(q.x + 0.5, L.heightAt(q.x, q.z + 9) + 1, q.z + 9.5); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = -0.1; });
+    await waitFor(page, () => window.pokecraft.scribble.info().patch === 20, null, 30000).catch(() => {});
+    await page.keyboard.down('w');
+    await waitFor(page, () => window.pokecraft.scribble.info().phase === 'fight', null, 90000).catch(() => {});
+    await page.keyboard.up('w');
+    await frames(page, 6);
+    await shot(page, 'wobble-wood-knot.png');
+    const kn = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); return F && { foes: F.foes.map(f => f.c.species + (f.grumble ? '*' : '')), sight: F.sight() }; });
+    t.ok(kn?.foes.includes('duskmare*') && kn.foes.length === 4 && kn.sight === 5, `Shadywood's knot: three monsters and Duskmare, a Ghost Grumble, in the dark (${JSON.stringify(kn)})`);
+    await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) { x.openT = 1; F.hit(F.you, x, 99999, 'fire'); } });
+    await waitFor(page, () => window.pokecraft.beaten.includes('pw:wobble:patch20') && !window.pokecraft.scribble.fighting, null, 90000).catch(() => {});
+    await waitFor(page, () => !window.pokecraft.wobbleLook.info().floods, null, 30000).catch(() => {});
+    const done = await page.evaluate(() => ({ wood: window.pokecraft.wobbleLook.colourAt(200, 150), rows: window.pokecraft.nav.rows().filter(x => x.dest.id.startsWith('wobble:')).length, chip: document.getElementById('score-chip')?.textContent }));
+    t.ok(done.wood === 1 && !done.rows && /Shadywood 7 \/ 7/.test(done.chip), `Shadywood's knot cleared: the whole wood in colour (still dark under the canopy), nothing left to fight (${JSON.stringify(done)})`);
+    await page.evaluate(() => { const g = window.pokecraft; g.player.pos.set(176.5, 11, 150.5); g.player.vel.set(0, 0, 0); g.player.yaw = -Math.PI / 2; g.player.pitch = -0.1; });
+    await frames(page, 6);
+    await shot(page, 'wobble-wood-bright.png');
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
   }

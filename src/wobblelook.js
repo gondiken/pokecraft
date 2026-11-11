@@ -10,7 +10,9 @@
 // afterRender in main.js), so nothing far away sinks into the curled ground.
 import * as THREE from 'three';
 import { wobbleLook as U } from './caves.js';
-import { PATCHES, CAMP, patchKey, REGIONS, SIZE, regionState, regionAt, RIVER_UP, CHUTES, LEADS } from './wobbleland.js';
+import { PATCHES, CAMP, patchKey, REGIONS, SIZE, regionState, regionAt, RIVER_UP, CHUTES, LEADS, underCanopy, darkOver, WOOD } from './wobbleland.js';
+import { GROUND } from './groundrules.js'; // Shadywood: how far your light reaches (Dark.sight)
+import { SPECIES } from './species.js';
 import { B } from './blocks.js';
 import { createWobbleSky } from './wobblesky.js'; // C3: a child's sky
 
@@ -27,6 +29,9 @@ export const WOBBLE_LOOK = {
   camp: CAMP.r + 6,    // the Camp is always in colour
   splat: 4.5,          // A2: a popped scribble bug colours a circle this big (this visit only)
   flood: 2,            // seconds the colour takes to flood out
+  // Shadywood: how dark it is under the canopy outside your light (1 = the night blue of caves.js, 0 = no dark at all); the fog closes
+  // in and turns night blue while you stand under the canopy (`fog`: colour, near, far), eased over `fogEase` s
+  dark: 1, fog: [0x1c1a34, 14, 70], fogEase: 0.8,
 };
 export const curlLift = d => (WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK * Math.max(0, d - WOBBLE_LOOK.curlFrom) ** 2 : 0);
 
@@ -35,7 +40,13 @@ export function createWobbleLook(game, { materials, scene, camera }) {
   const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
   U.uWobColour.value = tex;
-  let active = false, world = null, floods = [], sig = '', lifted = [], ice = new Uint8Array(N * N);
+  let active = false, world = null, floods = [], sig = '', lifted = [], ice = new Uint8Array(N * N), shade = new Uint8Array(N * N), under = 0;
+  const FOG = new THREE.Color();
+  // Shadywood: the share of each cell's columns under the canopy (the shader darkens there)
+  function shadeMap() {
+    shade.fill(0);
+    for (let x = WOOD.x0; x <= WOOD.x1; x++) for (let z = WOOD.z0; z <= WOOD.z1; z++) if (underCanopy(x, z)) shade[Math.floor(x / WOBBLE_LOOK.cell) + Math.floor(z / WOBBLE_LOOK.cell) * N] += 255 / (WOBBLE_LOOK.cell * WOBBLE_LOOK.cell);
+  }
   // Slippy Lake: which cells have ice on top (the shader draws it as ice even under the Scribble's grey)
   function iceMap() {
     ice.fill(0);
@@ -64,7 +75,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       let v = bright.has(regionAt(x, z)) ? 1 : 0;
       for (const [cx, cz, r] of circles) if (r > 0) v = Math.max(v, Math.min(1, Math.max(0, (r - Math.hypot(x - cx, z - cz)) / 3)));
       const k = (i + j * N) * 4;
-      data[k] = data[k + 2] = Math.round(v * 255); data[k + 1] = ice[i + j * N]; data[k + 3] = 255; // (g: Slippy Lake's ice, for its look)
+      data[k] = Math.round(v * 255); data[k + 1] = ice[i + j * N]; data[k + 2] = shade[i + j * N]; data[k + 3] = 255; // (g: Slippy Lake's ice, b: Shadywood's canopy, for their looks)
     }
     tex.needsUpdate = true;
   }
@@ -83,6 +94,12 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     U.uWobJig.value = active ? WOBBLE_LOOK.jig : 0;
     U.uDraft.value.set(...WOBBLE_LOOK.draft); U.uWobSat.value = WOBBLE_LOOK.sat; U.uWobLine.value = WOBBLE_LOOK.line; U.uWobCrayon.value = WOBBLE_LOOK.crayon;
     U.uWobSize.value.set(SIZE, SIZE);
+    U.uWobCanopy.value = WOOD.canopy;
+    if (!active) { U.uWobLight.value.w = 0; U.uWobFlash.value.w = 0; return; }
+    // the light: round your creature in a fight in the dark (scribble.js), else round you; its radius = your creature's sight
+    const L = game.scribble?.light?.(), p = game.player?.pos;
+    if (L) { U.uWobLight.value.set(L.x, L.z, L.r, WOBBLE_LOOK.dark); U.uWobFlash.value.set(L.flash?.x ?? 0, L.flash?.z ?? 0, L.flash?.r ?? 0, L.flash ? L.flash.k : 0); }
+    else { U.uWobLight.value.set(p?.x ?? 0, p?.z ?? 0, api.sight(), WOBBLE_LOOK.dark); U.uWobFlash.value.w = 0; }
   }
   const api = {
     get on() { return active; },
@@ -94,7 +111,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       sky?.dispose(); sky = null;
       if (active && WOBBLE_LOOK.sky) sky = createWobbleSky(scene);
       uniforms();
-      if (active) { iceMap(); paint(); }
+      if (active) { iceMap(); shadeMap(); paint(); }
+      under = 0;
     },
     // a patch was just cleared: its colour floods out (the key is already in game.beaten)
     flood(id) { if (!active) return; floods = floods.filter(f => f.id !== id); floods.push({ id, t: 0 }); },
@@ -113,10 +131,17 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       const s = active ? (WOBBLE_LOOK.curl ? '📄 Page: curls' : '📄 Page: flat') : '';
       if (s !== shown) { shown = s; btn.textContent = s; btn.classList.toggle('hidden', !s); }
     },
+    // Shadywood: how far your light reaches on foot: your ride's type, else your first creature's (Fire, Light, Electric, Cosmic glow: twice)
+    sight() {
+      const type = game.player?.ride?.type ?? SPECIES[game.party?.find(c => c && c.hp > 0)?.species ?? game.party?.[0]?.species]?.type ?? null;
+      return GROUND.dark.sight(type);
+    },
     update(dt) {
       api.refresh();
       if (!active) return;
       uniforms();
+      const p = game.scribble?.fighting && game.scribble.light?.() ? game.scribble.light() : game.player?.pos;
+      under += ((p && darkOver(p) ? 1 : 0) - under) * Math.min(1, dt / WOBBLE_LOOK.fogEase);
       sky?.update(dt, camera);
       const here = game.player ? regionAt(game.player.pos.x, game.player.pos.z) : 'meadow';
       if (REGIONS[here]?.soon && !game.toldOnce?.has(`wobble-${here}`)) { game.toldOnce?.add(`wobble-${here}`); game.ui?.toast(`🧙 ${REGIONS[here].name} is still being drawn. Coming soon!`); }
@@ -130,6 +155,12 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     // models far away bend up with the page: lifted for one frame's drawing, put back right after it
     beforeRender() {
       lifted = [];
+      if (active && under > 0.01 && scene.fog && WOBBLE_LOOK.dark > 0) { // Shadywood: under the canopy the fog closes in, night blue (main.js sets it again every frame)
+        const [c, n, f] = WOBBLE_LOOK.fog, k = under * WOBBLE_LOOK.dark;
+        scene.fog.color.lerp(FOG.setHex(c), k); scene.fog.near += (n - scene.fog.near) * k; scene.fog.far += (f - scene.fog.far) * k;
+        if (scene.background?.isColor) scene.background.lerp(FOG, k);
+      }
+      if (sky?.group) sky.group.visible = !(active && under > 0.6 && WOBBLE_LOOK.dark > 0); // (under the canopy: no sunny sky, the night-blue fog)
       if (!active || !WOBBLE_LOOK.curl) return;
       const cx = camera.position.x, cz = camera.position.z, own = new Set(mats.map(k => materials[k]));
       const lift = (o, depth) => {
@@ -149,7 +180,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     // ?preview: the pause screen's switch
     toggleCurl() { WOBBLE_LOOK.curl = !WOBBLE_LOOK.curl; uniforms(); return WOBBLE_LOOK.curl; },
     colourAt(x, z) { const i = Math.floor(x / WOBBLE_LOOK.cell), j = Math.floor(z / WOBBLE_LOOK.cell); return i < 0 || j < 0 || i >= N || j >= N ? 0 : data[(i + j * N) * 4] / 255; },
-    info() { return { on: active, curl: WOBBLE_LOOK.curl && active, jig: active ? WOBBLE_LOOK.jig : 0, sky: !!sky, floods: floods.length, defines: mats.map(k => !!materials[k]?.defines?.WOBBLE) }; },
+    info() { return { on: active, under: +under.toFixed(2), light: active ? U.uWobLight.value.toArray().map(v => +v.toFixed(2)) : null, curl: WOBBLE_LOOK.curl && active, jig: active ? WOBBLE_LOOK.jig : 0, sky: !!sky, floods: floods.length, defines: mats.map(k => !!materials[k]?.defines?.WOBBLE) }; },
   };
   return api;
 }

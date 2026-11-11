@@ -360,6 +360,7 @@ export function createScribble(game) {
       for (const m of [parts.tangle.mesh, parts.patch, parts.ring]) { group.remove(m); m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
       for (const m of parts.monsters) { group.remove(m.model, m.wrap.mesh); disposeModel(m.model); m.wrap.mesh.geometry.dispose(); m.wrap.mesh.material.dispose(); }
       for (const m of parts.monsters) if (m.spot) { group.remove(m.spot); m.spot.geometry.dispose(); m.spot.material.dispose(); }
+      for (const m of parts.monsters) if (m.eyes) group.remove(m.eyes); // (Shadywood's eyes: shared geometry and material)
     }
     parts = null; S.fight = null;
   }
@@ -540,6 +541,23 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     }
     return m;
   }
+  // Shadywood: two glowing eyes, all you see of a monster in the dark (they blink now and then)
+  const eyeGeo = new THREE.BoxGeometry(0.16, 0.16, 0.05), eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff27a });
+  function drawEyes(m, f, on) {
+    if (!on && !m.eyes) return;
+    if (!m.eyes) { m.eyes = new THREE.Group(); for (const k of [-1, 1]) { const e = new THREE.Mesh(eyeGeo, eyeMat); e.position.x = k * 0.2; m.eyes.add(e); } m.eyes.userData.keepColour = true; group.add(m.eyes); }
+    m.eyesOn = on;
+    m.eyes.visible = on && Math.sin(t * 2.3 + f.x) > -0.85;
+    if (!m.eyes.visible) return;
+    m.eyes.position.set(f.x + Math.sin(f.heading) * 0.55, (m.vy ?? f.y) + (m.h ?? 1.2) * 0.7, f.z + Math.cos(f.heading) * 0.55);
+    m.eyes.rotation.y = f.heading;
+  }
+  // where the light is (wobblelook.js darkens what is outside it): in a fight in the dark, round your creature, with a big blast's flash
+  S.light = () => {
+    const F = S.fight;
+    if (!F || S.phase !== 'fight' || !F.dark()) return null;
+    return { x: F.you.x, y: F.you.y, z: F.you.z, r: F.sight(), flash: F.flashLit ? { ...F.flashLit, k: Math.min(1, F.flashLit.t / 0.5) } : null };
+  };
   function endFightModels() {
     for (const m of yourModels.values()) { group.remove(m); disposeModel(m); }
     yourModels.clear(); you = null;
@@ -593,7 +611,8 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     for (const w of fxs.tells) if (!tells.has(w.t)) { group.remove(w.mesh); w.mesh.geometry.dispose(); w.mesh.material.dispose(); w.dead = true; }
     fxs.tells = fxs.tells.filter(w => !w.dead);
     for (const tl of tells) if (!fxs.tells.some(w => w.t === tl)) fxs.tells.push({ t: tl, mesh: tellMesh(tl), age: 0 });
-    for (const w of fxs.tells) { w.age += dt; w.mesh.material.opacity = 0.65 + 0.35 * Math.sin(w.age * (8 + w.age * 10)); }
+    const tellOf = new Map(F.foes.filter(f => f.alive && f.tell).map(f => [f.tell, f]));
+    for (const w of fxs.tells) { w.age += dt; w.mesh.material.opacity = 0.65 + 0.35 * Math.sin(w.age * (8 + w.age * 10)); w.mesh.visible = F.seesTell(tellOf.get(w.t)); } // (Shadywood: a monster in the dark shows its warning late)
     // clouds
     const cl = new Set(F.clouds);
     for (const c of fxs.clouds) if (!cl.has(c.c)) { group.remove(c.mesh); c.mesh.material.dispose(); c.dead = true; }
@@ -620,7 +639,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
       target.rotation.x = Math.PI / 2; target.userData.keepColour = true; group.add(target);
     }
     const tg = F.target?.alive ? F.target : null, tm = tg && modelOf(tg);
-    target.visible = !!tm && S.phase === 'fight';
+    target.visible = !!tm && S.phase === 'fight' && F.sees(tg); // (Shadywood: no gold ring over a monster you cannot see)
     if (target.visible) { target.position.set(tg.x, tg.y + tm.userData.h + 0.15 + Math.sin(t * 4) * 0.06, tg.z); target.rotation.z += dt * 3; }
   }
   // what happened this step: sounds, numbers, blasts
@@ -826,8 +845,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
         m.model.scale.setScalar(m.model.userData.base * (fr > 0.9 ? Math.max(0.01, (1.4 - fr) / 0.5) : 1));
         if (!f.alive) m.model.position.y += Math.sin(Math.min(1, fr / 0.6) * Math.PI) * 1.2;
         drawWrap(m.wrap, m.model.position.x, m.model.position.y, m.model.position.z, f.alive ? 0 : Math.min(1, fr / 0.5), boil);
-        m.model.visible = vis && S.phase !== 'cleared';
+        const hid = S.phase === 'fight' && f.alive && !F.sees(f); // Shadywood: out of your light only its eyes show
+        m.model.visible = vis && S.phase !== 'cleared' && !hid;
         if (!m.model.visible) m.wrap.mesh.visible = false;
+        drawEyes(m, f, hid);
         if (m.spot) { // on its back, a little above the middle; it pulses while its back is open after an attack
           const back = 0.55 * m.h;
           m.spot.position.set(m.model.position.x - Math.sin(f.heading) * back, m.model.position.y + m.h * 0.7, m.model.position.z - Math.cos(f.heading) * back);
@@ -989,7 +1010,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   S.refresh = () => {}; // (the pause screen's first-person button is gone)
   // tests and the console
   S.info = () => ({ on: true, patch: S.patch?.id ?? null, phase: S.phase, camK: +S.camK.toFixed(3), armed: S.armed, spot: S.spot && { x: S.spot.x, y: S.spot.y, z: S.spot.z, walls: S.spot.walls, range: S.spot.range },
-    fight: S.fight?.info() ?? null, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
+    fight: S.fight?.info() ?? null, eyes: parts?.monsters.filter(m => m.eyesOn).length ?? 0, avatar: !!avatar?.visible, you: !!you?.visible, cube: !!cube?.visible });
   S.fightOf = () => S.fight;
   S.warp = () => { // tests: stand just outside the patch (half a block), facing it, on flat ground (the side of the start first)
     const p = game.player, C = S.spot, G = S.ground, a0 = Math.atan2(game.spawnPoint.x - C.x, game.spawnPoint.z - C.z);

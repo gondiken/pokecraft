@@ -7,7 +7,7 @@
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, underCanopy } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
@@ -18,7 +18,7 @@ export const POT = {
   beam: 28,        // the beam over the pot you would hop to: its height
   puff: 0.7,       // seconds a puff of colour lasts
 };
-const NAMES = { 0xe8402a: 'red', 0xf2c418: 'yellow', 0x2f9be8: 'blue', 0x3fc04a: 'green', 0xf07ab8: 'pink', 0x8a4ee0: 'purple', 0x46d0e0: 'ice blue', 0x9be36a: 'lime', 0x1a9e8f: 'teal', 0x2a3fae: 'navy', 0xd6f4ff: 'snow white' };
+const NAMES = { 0xe8402a: 'red', 0xf2c418: 'yellow', 0x2f9be8: 'blue', 0x3fc04a: 'green', 0xf07ab8: 'pink', 0x8a4ee0: 'purple', 0x46d0e0: 'ice blue', 0x9be36a: 'lime', 0x1a9e8f: 'teal', 0x2a3fae: 'navy', 0xd6f4ff: 'snow white', 0x3a2a6e: 'night', 0xffe14a: 'firefly', 0x2e8b3a: 'forest', 0xff9d2e: 'amber', 0x7fe0a0: 'mint', 0xb04ad8: 'plum', 0x1b1340: 'midnight' };
 // The pots there are now: the Camp's, then one per cleared patch (pure: tests read it). { id, x, z, y, colour, name }
 export function potsOf(beaten) {
   const keys = new Set(beaten || []);
@@ -221,7 +221,64 @@ class Skids extends Piece {
   info() { return { skids: this.marks.info().marks }; }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids];
+// Shadywood: a wild creature out in the dark beyond your light shows only its two glowing eyes (as a scribble monster does in a fight)
+class NightEyes extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.eyes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), new THREE.MeshBasicMaterial({ color: 0xfff27a }), 64);
+    this.eyes.count = 0; this.eyes.frustumCulled = false; this.group.add(this.eyes); this.t = 0; this.hidden = new Set(); this.shown = 0;
+  }
+  update(dt, p) {
+    this.t += dt;
+    const list = this.game.creatures?.list ?? [], r = this.game.wobbleLook?.sight?.() ?? Infinity, M = new THREE.Matrix4(), hide = new Set();
+    let n = 0;
+    for (const w of list) {
+      const m = w.model, q = w.pos ?? m?.position;
+      if (!m || !q || !p || this.game.scribble?.fighting) continue;
+      if (!underCanopy(Math.floor(q.x), Math.floor(q.z)) || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) < r + 0.5) continue;
+      hide.add(m); m.visible = false;
+      if (n < 62 && Math.sin(this.t * 2.1 + q.x) > -0.8) {
+        const yaw = m.rotation.y, h = (m.userData.h ?? 1) * 0.7 + 0.4;
+        for (const side of [-1, 1]) { M.makeRotationY(yaw); M.setPosition(q.x + Math.sin(yaw) * 0.45 + Math.cos(yaw) * side * 0.17, q.y + h, q.z + Math.cos(yaw) * 0.45 - Math.sin(yaw) * side * 0.17); this.eyes.setMatrixAt(n++, M); }
+      }
+    }
+    for (const m of this.hidden) if (!hide.has(m)) m.visible = true; // (back in your light: seen again)
+    this.hidden = hide; this.shown = n / 2;
+    this.eyes.count = n; this.eyes.instanceMatrix.needsUpdate = true;
+  }
+  info() { return { eyes: this.shown, hiddenWild: this.hidden.size }; }
+  dispose() { for (const m of this.hidden) m.visible = true; super.dispose(); }
+}
+
+// Shadywood: fireflies drifting under the canopy round you (little glowing specks; they make the dark feel alive, not scary)
+class Fireflies extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.n = 48; this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), new THREE.MeshBasicMaterial({ color: 0xd8ff6a }), this.n);
+    this.mesh.frustumCulled = false; this.mesh.count = 0; this.group.add(this.mesh); this.t = 0;
+    this.seed = Array.from({ length: this.n }, (_, i) => [Math.sin(i * 12.9) * 0.5 + 0.5, Math.sin(i * 78.2) * 0.5 + 0.5, Math.sin(i * 39.4) * 0.5 + 0.5]);
+  }
+  update(dt, p) {
+    this.t += dt;
+    if (!p) return;
+    const M = new THREE.Matrix4(), R = 22;
+    let n = 0;
+    for (const [a, b, c] of this.seed) {
+      // each one wanders round a home that is fixed on a grid of 2R, so they stay put as you walk among them
+      const gx = Math.floor((p.pos.x + (a - 0.5) * 2 * R) / (2 * R)) * 2 * R + a * 2 * R, gz = Math.floor((p.pos.z + (b - 0.5) * 2 * R) / (2 * R)) * 2 * R + b * 2 * R;
+      const x = gx + Math.sin(this.t * (0.3 + c * 0.3) + a * 9) * 2.5, z = gz + Math.cos(this.t * (0.25 + a * 0.3) + b * 7) * 2.5;
+      if (!underCanopy(Math.floor(x), Math.floor(z)) || Math.hypot(x - p.pos.x, z - p.pos.z) > R) continue;
+      const blink = Math.sin(this.t * (1.5 + c * 2) + b * 11);
+      if (blink < -0.3) continue;
+      M.makeTranslation(x, heightAt(Math.floor(x), Math.floor(z)) + 1.2 + c * 3 + Math.sin(this.t * 1.3 + c * 5) * 0.4, z);
+      this.mesh.setMatrixAt(n++, M);
+    }
+    this.mesh.count = n; this.mesh.instanceMatrix.needsUpdate = true;
+  }
+  info() { return { fireflies: this.mesh.count }; }
+}
+
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies];
 
 export class WobbleLive {
   constructor(game, part) {

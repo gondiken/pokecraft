@@ -3,6 +3,7 @@
 //   - every patch's ring (radius RING) is at least 75 % walkable from its middle, dry unless it is a water-twist patch (`wet`)
 //   - no patch is inside another (rings never touch), none leaves its region
 //   - every region is open (owner 2026-11-11 evening): the whole page is walkable from the Camp, no walls
+//   - Shadywood: its rings are wholly under the canopy (the dark), high enough for the fight's camera; clearings lit; the river is water
 //   - Slippy Lake: its rings are mostly ice (snow drifts are allowed), no rock or log in a ring; the chutes and leads are where they say
 //   node tests/wobblecheck.mjs      (exit 1 on a problem); tests/specs/scribble.mjs part `land` runs it
 import { register } from 'node:module';
@@ -61,6 +62,19 @@ export async function checkWobble() {
       for (const [rx, rz, r] of L.ROCKS) if (Math.hypot(rx - p.x, rz - p.z) < L.RING + r + 0.5) problems.push(`patch ${p.id}: a rock at ${rx}, ${rz} in its ring`);
       for (const [lx, lz, n, ax] of L.LOGS) for (let k = 0; k < n; k++) if (Math.hypot((ax ? lx + k : lx) - p.x, (ax ? lz : lz + k) - p.z) < L.RING + 0.5) problems.push(`patch ${p.id}: a log at ${lx}, ${lz} in its ring`);
     }
+    if (p.region === 'wood') {
+      const box = L.WOOD;
+      if (p.x - L.RING < box.x0 + 1 || p.x + L.RING > box.x1 || p.z - L.RING < box.z0 || p.z + L.RING > box.z1) problems.push(`patch ${p.id} leaves Shadywood`);
+      let dark = 0, all = 0, low = 0;
+      for (let x = p.x - L.RING; x <= p.x + L.RING; x++) for (let z = p.z - L.RING; z <= p.z + L.RING; z++) if (inRing(x, z)) {
+        all++; const g = w.ground[x + z * W] + 1;
+        if (L.darkOver({ x: x + 0.5, y: g, z: z + 0.5 })) dark++;
+        if (box.canopy - g < 16) low++; // the fight's camera rises about 13.6 over the creature (scribblefight.js CAM) and tips higher over a hill
+      }
+      out.rings[out.rings.length - 1].dark = Math.round(100 * dark / all);
+      if (dark < all) problems.push(`patch ${p.id}: only ${Math.round(100 * dark / all)} % of its ring is under the canopy`);
+      if (low) problems.push(`patch ${p.id}: ${low} cells where the canopy is too low for the fight's camera`);
+    }
     for (const q of L.PATCHES) if (q.id < p.id && Math.hypot(q.x - p.x, q.z - p.z) < 2 * L.RING + 2) problems.push(`patches ${q.id} and ${p.id} overlap`);
   }
   // every region can be walked into from the Camp (no walls), and the lake is about as big as the meadow
@@ -68,6 +82,13 @@ export async function checkWobble() {
   for (const k of from.keys()) { const [x, z] = k.split(',').map(Number), r = L.regionAt(x, z); out.regions[r] = (out.regions[r] || 0) + 1; }
   for (const r of Object.keys(L.REGIONS)) if (!(out.regions[r] > 1000)) problems.push(`region ${r}: only ${out.regions[r] || 0} cells can be walked from the Camp`);
   if (out.regions.lake < out.regions.meadow * 0.8) problems.push(`Slippy Lake (${out.regions.lake} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
+  if (out.regions.wood < out.regions.meadow * 0.8) problems.push(`Shadywood (${out.regions.wood} cells) is much smaller than Puddle Meadow (${out.regions.meadow})`);
+  // Shadywood: the clearings are lit (no canopy), the dark river is water all the way, its banks walkable, the big mushrooms' chests
+  // out of a plain jump's reach (only their Bounce Block gets you up)
+  for (const c of L.CLEARINGS) if (L.darkOver({ x: c.x + 0.5, y: L.BASE + 1, z: c.z + 0.5 })) problems.push(`the clearing at ${c.x}, ${c.z} is dark`);
+  { const R = L.DARK_RIVER; let bad = 0; for (let z = R.z1; z <= R.z0; z++) for (let x = R.x0; x <= R.x1; x++) if (w.get(x, w.ground[x + z * W], z) !== B.WATER || w.get(x, w.ground[x + z * W] + 1, z) !== B.AIR) bad++; if (bad) problems.push(`the dark river has ${bad} cells that are not open water`); }
+  for (const m of L.BIG_SHROOMS) { const g = L.heightAt(m.x, m.z); if (m.stalk < 4) problems.push(`the big mushroom at ${m.x}, ${m.z} can be jumped onto`); if (w.get(m.x, g + m.stalk + 2, m.z) !== B.CHEST) problems.push(`the big mushroom at ${m.x}, ${m.z} has no chest`); }
+  out.trunks = L.WOOD_TRUNKS.length;
   // the chutes: an ice floor going down, stepping at most one block at a time, its top on a hill and its foot at a lead
   for (const c of L.CHUTES) {
     let last = null, bad = 0;
@@ -94,7 +115,7 @@ export async function checkWobble() {
     let n = 0;
     for (let x = p.x - p.r; x <= p.x + p.r; x++) for (let z = p.z - p.r; z <= p.z + p.r; z++) {
       if (Math.hypot(x + 0.5 - p.x - 0.5, z + 0.5 - p.z - 0.5) > p.r || (p.camp && Math.abs(x - L.STAIR.x) <= 3 && z >= L.STAIR.z - 6)) continue;
-      for (let y = w.ground[x + z * W] + 1; y < H; y++) if (w.get(x, y, z) !== B.AIR) n++;
+      for (let y = w.ground[x + z * W] + 1; y < (L.underCanopy(x, z) ? L.WOOD.canopy - 1 : H); y++) if (w.get(x, y, z) !== B.AIR) n++; // (Shadywood: the canopy is the ring's roof)
     }
     if (n) problems.push(`${p.camp ? 'the Camp' : `the ring at ${p.x}, ${p.z}`} has ${n} blocks standing in it`);
   }
@@ -117,7 +138,7 @@ export async function checkWobble() {
       if (!moved) stuck++;
       steps++;
     }
-    out.kid = { order, steps, stuck };
+    out.kid = { order, steps, stuck, at: [x, z, y].map(v => +v.toFixed(1)) };
     if (order.length < L.PATCHES.length) problems.push(`the arrow-following kid reached only patches ${order.join(', ')} (${stuck} stuck steps)`);
   }
   return { problems, out, w };
@@ -125,9 +146,9 @@ export async function checkWobble() {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const r = await checkWobble();
-  console.log(`the arrow-following kid: patches in the order ${r.out.kid.order.join(', ')} in ${r.out.kid.steps} steps of 0.3 (${r.out.kid.stuck} stuck)`);
+  console.log(`the arrow-following kid: patches in the order ${r.out.kid.order.join(', ')} in ${r.out.kid.steps} steps of 0.3 (${r.out.kid.stuck} stuck, ends at ${r.out.kid.at})`);
   console.log(`reachable from the Camp: ${r.out.reach} cells (${Object.entries(r.out.regions).map(([k, v]) => `${k} ${v}`).join(', ')})`);
-  for (const q of r.out.rings) console.log(`patch ${q.id}: ring ${q.walk} % walkable, ${q.wet} wet cells${q.ice != null ? `, ${q.ice} % ice` : ''}`);
+  for (const q of r.out.rings) console.log(`patch ${q.id}: ring ${q.walk} % walkable, ${q.wet} wet cells${q.ice != null ? `, ${q.ice} % ice` : ''}${q.dark != null ? `, ${q.dark} % dark` : ''}`);
   for (const p of r.problems) console.log('PROBLEM', p);
   process.exit(r.problems.length ? 1 : 0);
 }

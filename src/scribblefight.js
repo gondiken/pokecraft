@@ -351,6 +351,7 @@ export class ScribbleFight {
     const { amount, eff } = damage(src.c, dst.c, power, type, mult);
     dst.hp = Math.max(0, dst.hp - amount);
     dst.flash = 0.25;
+    if (dst.side === 'foe') dst.litT = this.dark()?.hitLit ?? 0; // Shadywood: a monster you hit lights up for a moment
     this.stats[dst.side === 'you' ? 'taken' : 'dealt'] += amount;
     if (kind) { const k = dst.side === 'you' ? 'hitBy' : 'byKind'; this.stats[k][kind] = (this.stats[k][kind] || 0) + amount; }
     this.emit({ kind: 'hit', f: dst, amount, eff });
@@ -472,6 +473,7 @@ export class ScribbleFight {
     else if (s.kind === 'burst') {
       const B = FIGHT.burst, r = this.blastR(charge), mult = B.m0 + (B.hit - B.m0) * charge ** B.pow;
       this.emit({ kind: 'burst', type: s.type, x: you.x, y: you.y, z: you.z, r, full: charge >= 1 });
+      if (charge >= 1 && this.dark()) this.flashLit = { x: you.x, z: you.z, r: this.R * 2, t: this.dark().flash }; // Shadywood: a full big blast lights up the whole ring
       for (const f of this.foes) if (f.alive && len2(f.x - you.x, f.z - you.z) < r + f.r * 0.5 && Math.abs(f.y - you.y) < 2.5) {
         const winding = !!f.tell && f.tell.left <= LIVE.foe.tell * B.stopWindow;
         this.hit(you, f, s.power, s.type, mult, 'burst');
@@ -517,13 +519,14 @@ export class ScribbleFight {
     if (this.over) return;
     if (this.pendingSwap != null) { const i = this.pendingSwap; this.pendingSwap = null; this.swap(i, true); }
     this.clock += dt;
+    if (this.flashLit) { this.flashLit.t -= dt; if (this.flashLit.t <= 0) this.flashLit = null; }
     this.swapCool = Math.max(0, this.swapCool - dt);
     const you = this.you;
     for (let i = 0; i < 5; i++) this.cd[i] = Math.max(0, this.cd[i] - dt);
     for (const f of [you, ...this.foes]) {
       f.safeT = Math.max(0, f.safeT - dt); f.buffT = Math.max(0, f.buffT - dt); f.guardT = Math.max(0, f.guardT - dt);
       f.slowT = Math.max(0, f.slowT - dt); f.sleepT = Math.max(0, f.sleepT - dt); f.flash = Math.max(0, f.flash - dt); f.braceT = Math.max(0, f.braceT - dt);
-      f.speedT = Math.max(0, f.speedT - dt);
+      f.speedT = Math.max(0, f.speedT - dt); f.litT = Math.max(0, (f.litT || 0) - dt);
       if (f.grumble) f.openT = Math.max(0, f.openT - dt);
       f.c.atkUp = f.buffT > 0 ? FIGHT.powerUp.atk : 1; f.c.defUp = f.guardT > 0 ? FIGHT.tough.def : 1;
     }
@@ -646,8 +649,23 @@ export class ScribbleFight {
     ];
   }
 
+  // ---------------------------------------------------------------- Shadywood: what you can SEE (groundrules.js Dark). Only the look
+  // and the bots read it (scribble.js hides what is not seen, the bots react only to what is seen); the sums never do.
+  dark() { const r = this.g.rule?.(this.you.x, this.you.z, this.you.y); return r && r.sight(this.you.type) < Infinity ? r : null; }
+  sight() { const r = this.dark(); return r ? r.sight(this.you.type) : Infinity; }
+  // is monster f in sight: in your creature's light, glowing itself, just hit, or in a big blast's flash (no dark = always)
+  sees(f) {
+    const r = this.dark();
+    if (!r || f.side !== 'foe') return true;
+    if (f.litT > 0 || r.glows(f.type)) return true;
+    if (this.flashLit && len2(f.x - this.flashLit.x, f.z - this.flashLit.z) < this.flashLit.r) return true;
+    return len2(f.x - this.you.x, f.z - this.you.z) < r.sight(this.you.type) + f.r * 0.5;
+  }
+  // is f's red warning shown: a monster in sight shows all of it, one in the dark only its last `late` seconds
+  seesTell(f) { if (!f.tell) return false; const r = this.dark(); return !r || this.sees(f) || f.tell.left <= r.late; }
+
   info() {
-    return { over: this.over, won: this.won, clock: +this.clock.toFixed(2), lead: this.lead,
+    return { dark: this.dark() ? { sight: this.sight(), seen: this.foes.map(f => this.sees(f)) } : null, over: this.over, won: this.won, clock: +this.clock.toFixed(2), lead: this.lead,
       you: { x: this.you.x, y: this.you.y, z: this.you.z, hp: this.you.hp, maxHp: this.you.maxHp, species: this.you.c.species, moves: this.moves.map(s => s && s.kind) },
       squad: this.squad.map((m, i) => ({ species: m.c.species, hp: i === this.lead ? this.you.hp : m.hp })),
       foes: this.foes.map(f => ({ species: f.c.species, x: f.x, y: f.y, z: f.z, hp: f.hp, alive: f.alive, tell: f.tell ? f.tell.kind : null })), stats: this.stats };

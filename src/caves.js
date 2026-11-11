@@ -633,6 +633,9 @@ export const wobbleLook = {
   uCurl: { value: 0 }, uCurlFrom: { value: 24 }, uWobJig: { value: 0 },
   uWobColour: { value: null }, uWobSize: { value: new THREE.Vector2(224, 224) },
   uDraft: { value: new THREE.Vector3(1, 1, 1) }, uWobSat: { value: 1 }, uWobLine: { value: 0 }, uWobCrayon: { value: 0 },
+  // Shadywood: the colour map's blue = under the canopy (dark); uWobLight = the light's x, z, radius and how dark the rest is (0 = off),
+  // uWobFlash = a big blast's flash (x, z, radius, strength); uWobCanopy = the canopy's height (its top is lit by the sky)
+  uWobLight: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobFlash: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobCanopy: { value: 0 },
 };
 const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\nuniform float uWobJig;\n#endif';
 // (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
@@ -659,6 +662,9 @@ uniform vec3 uDraft;
 uniform float uWobSat;
 uniform float uWobLine;
 uniform float uWobCrayon;
+uniform vec4 uWobLight;
+uniform vec4 uWobFlash;
+uniform float uWobCanopy;
 #endif`;
 const WOBBLE_FRAG = `#ifdef WOBBLE
 {
@@ -694,6 +700,13 @@ const WOBBLE_FRAG = `#ifdef WOBBLE
     draft = mix(draft * wax, vec3(1.0, 0.97, 0.86), gap * uWobCrayon);
   }
   diffuseColor.rgb = mix(grey, draft, col);
+  // Shadywood: under the canopy everything outside your light is dark (a cool night blue); a big blast's flash lights its ring
+  float wobDk = wobMap.b * (1.0 - step(uWobCanopy + 1.5, vCavePos.y)) * uWobLight.w;
+  if (wobDk > 0.0) {
+    float lit = 1.0 - smoothstep(uWobLight.z * 0.75, uWobLight.z + 1.0, distance(vCavePos.xz, uWobLight.xy));
+    lit = max(lit, uWobFlash.w * (1.0 - smoothstep(uWobFlash.z - 3.0, uWobFlash.z, distance(vCavePos.xz, uWobFlash.xy))));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.13, 0.13, 0.24) + vec3(0.01, 0.01, 0.03), wobDk * (1.0 - lit));
+  }
 }
 #endif`;
 

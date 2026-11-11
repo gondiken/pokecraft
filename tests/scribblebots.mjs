@@ -43,7 +43,7 @@ function danger(F, x, z, y) {
   const you = F.you;
   for (const f of F.foes) {
     if (!f.alive) continue;
-    if (f.tell && F.inTell(f.tell, x, y, z, you.r + 0.5)) return true;
+    if (f.tell && F.seesTell(f) && F.inTell(f.tell, x, y, z, you.r + 0.5)) return true; // (Shadywood: only the warnings it can see)
     const c = f.charging;
     if (c && segDist(x, z, f.x, f.z, f.x + c.dx * c.left, f.z + c.dz * c.left) < f.r + you.r + 0.4) return true;
   }
@@ -108,7 +108,7 @@ function skilledMoves(F) {
   for (const b of [1, 2]) { // a rush on either button
     const na = F.nextMove(b);
     if (!(na && F.moves[na - 1].kind === 'dash' && F.cd[na] === 0)) continue;
-    const w = F.foes.filter(f => f.alive && f.tell && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
+    const w = F.foes.filter(f => f.alive && f.tell && F.seesTell(f) && f.tell.left <= win && f.tell.left > 0.05 && len2(f.x - you.x, f.z - you.z) < 7 && walkable(F, you.x, you.z, you.y, f.x, f.z, 0.5))[0];
     if (w) { F.pick(w); F.push(b); F.lift(b); }
   }
   const t = F.aimAt();
@@ -140,8 +140,8 @@ function kidStep(F, dt) {
   const you = F.you;
   F.kid ??= { seen: new Map(), goal: null };
   const now = F.clock;
-  for (const f of F.foes) if (f.alive && f.tell && !F.kid.seen.has(f.tell)) F.kid.seen.set(f.tell, now);
-  const late = F.foes.some(f => f.alive && f.tell && now - F.kid.seen.get(f.tell) > 0.35 && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  for (const f of F.foes) if (f.alive && f.tell && F.seesTell(f) && !F.kid.seen.has(f.tell)) F.kid.seen.set(f.tell, now); // (Shadywood: from when it can see it)
+  const late = F.foes.some(f => f.alive && f.tell && F.kid.seen.has(f.tell) && now - F.kid.seen.get(f.tell) > 0.35 && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
   let g = { gx: 0, gz: 0 };
   if (late) { const s = skilledGoal(F); g = { gx: s.gx, gz: s.gz }; }
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
@@ -159,8 +159,8 @@ function personStep(F, dt) {
   const you = F.you;
   if (!F.ps) { let seed = 1234 + (F.foes[0].x * 1000 | 0); const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); F.ps = { r, seen: new Map(), next: 0.6, wob: 0, wobT: 0, hold: 0, dodgeLate: r() < 0.5 }; }
   const P = F.ps, now = F.clock;
-  for (const f of F.foes) if (f.alive && f.tell && !P.seen.has(f.tell)) P.seen.set(f.tell, now + 0.3 + P.r() * 0.3);
-  const lateNow = F.foes.some(f => f.alive && f.tell && now > P.seen.get(f.tell) && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  for (const f of F.foes) if (f.alive && f.tell && F.seesTell(f) && !P.seen.has(f.tell)) P.seen.set(f.tell, now + 0.3 + P.r() * 0.3); // (Shadywood: from when it can see it)
+  const lateNow = F.foes.some(f => f.alive && f.tell && P.seen.has(f.tell) && now > P.seen.get(f.tell) && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
   if ((P.wobT -= dt) <= 0) { P.wobT = 0.4 + P.r() * 0.6; P.wob = (P.r() - 0.5) * 1.2; }
   const s = skilledGoal(F);
   let gx = 0, gz = 0;
