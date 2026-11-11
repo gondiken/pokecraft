@@ -18,7 +18,7 @@ exists (realms, the Picture World kit, the guide, the fight); everything behind 
 | The look | **More different from our world: almost distorted, but cheerful, never gloomy or dystopian. Different from the Swirl too** (section 2) |
 | Freed creatures | **Catchable** |
 | Flags | **+10 % attack for the flown type's creatures, in every battle** (scribble, regular, duels); defence / speed maybe later |
-| Battles | Turn-based stays as it is; heal stays 45 %. **Every move gets its live kind by its nature (data), not from its power**; each kind has its own advantages and disadvantages (wait, hit strength, risk); level and power count; kinds well spread over the creatures (section 7). The kind list and the numbers are shown to the owner before they are used |
+| Battles | Turn-based stays as it is; heal stays 45 %. **Every move gets its live kind by its nature (data), not from its power**; each kind has its own advantages and disadvantages (wait, hit strength, risk); level and power count; kinds well spread over the creatures (section 7). The night run (2026-11-11) decides the kind list and the numbers itself and writes them in "Decided overnight"; the owner may change them in the morning |
 | First slice | **5 patches + a big knot** |
 | Names | Claude's names below, for now |
 | The ring | **Radius 10 stays** |
@@ -234,17 +234,18 @@ Heal stays 45 % (owner: fine, it grows with HP). Turn-based battles do not chang
 1. **A kind for every attack move, by its nature:** a data table in `movekinds.js` (`MOVE_KIND = { moveId: 'bolt' | 'volley' | 'burst' |
    'dash' }`, every damaging move listed; `kindOfMove` reads it; a Node check fails on a damaging move without one). Help moves keep their
    kinds from their effect (heal, sleep, power up / Tough, cloud), which are already by nature. Chosen from each move's name and idea,
-   **then shown to the owner as a list by type before anything else uses it** (the owner may change any). Nothing saved changes: the
+   **listed by type in "Decided overnight"** (the owner may change any in the morning: one line each in `MOVE_KIND`). Nothing saved changes: the
    Wizard's Attacks tab (designed looks, keyed by move id) reads the same `kindOfMove`, so a move whose kind changes shows that kind's look
    choices.
 2. **The spread:** the same script counts, per type and per creature (its learnable attack moves), which kinds it has. Goal: every type has
    all four kinds among its moves, and most creatures can learn at least two kinds. First by choosing kinds well (a move's nature often
    allows two readings); where a type still lacks a kind, the list names it and the owner decides whether it gets a new move (a new move
-   needs data, `fxrecipes.js` effects and a sound; turn-based battles get it too).
+   needs data, `fxrecipes.js` effects and a sound; turn-based battles get it too). The night run adds no new moves: it picks the best reading
+   of an existing move and lists any gap.
 3. **Wait and hit strength per kind:** one number pair per kind (wait, hit factor) on top of the same damage sum, plus the kind's own
    rules (the rush's window, the blast's charge and area, the volley's spread). Set with the bots: each kind alone with the same creature and
    power must be worth about the same to a skilled player in its own situation; the masher must still lose; a person about 1-1.5 minutes.
-   The table (in plain words, with an example) goes to the owner before it is kept.
+   The table (in plain words, with an example) goes in "Decided overnight"; the numbers sit in one place per kind, easy to change.
 4. **Speed counts (owner 2026-11-11: "absolutely")**: today the live fight ignores the speed stat and turns speed-raising moves into an
    attack boost. Now the speed stat sets how fast a creature walks and dodges (a narrow band, set with the bots, so no creature is
    hopeless), and the 14 speed-raising moves become their own Special, **Speed up** (its own icon and word on the button; faster for a
@@ -289,8 +290,8 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 
 ## 10. Build order (each step behind `?preview`; each with naive / skilled bots, real keys through the game's loop and an iPad run; the `scribble` spec grows parts, e.g. `SCRIBBLE_ONLY=numbers|land|door|patches|look|loop|knot`; steps 1 and 1b come before the world)
 
-1. **Move kinds by nature** (section 7): the `MOVE_KIND` table and the spread count, shown to the owner as a list by type. **Stop for the
-   owner's OK** (and any new moves they want) before step 1b.
+1. **Move kinds by nature** (section 7): the `MOVE_KIND` table and the spread count, listed by type in "Decided overnight"; no stop
+   (the owner checks it in the morning).
 1b. **Wait and hit strength per kind** (section 7): set with the bots, inside `scribblefight.js` / `movekinds.js`; mashing under a quarter,
    skilled wins all, the person bot about 1-1.5 minutes; the table to the owner (with the speed question).
 2. **Wobbleland as data** (`wobbleland.js`, Node-runnable): Inkpot Camp, Puddle Meadow with its wonky shapes, the wall, the six patch
@@ -298,7 +299,7 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
    wall really closes Bumpy Hills. No fight yet.
 3. **The Paper Door:** drawn for the Ally only, `REALMS.wobble`, arrive at the Camp, the way back, save / reload in the realm,
    follow-the-host. Spec: a save without `ally` sees no door; a test save with `wizard.ally` walks in and out with real keys.
-4. **The look:** the first-draft palette, the curl (tried on an iPad first), grey regions and the colour flood; the spec proves every
+4. **The look:** the first-draft palette, the curl (behind one on/off switch; the iPad's frame rate checked as far as possible here), grey regions and the colour flood; the spec proves every
    other world bit for bit; screenshots; draw calls and frame time.
 5. **Patches from data in the fight:** `patternOf`, sizes, levels; the water twist with its Water advantage; bots on every patch at 60 and
    20 fps (mashing under a quarter over 12 fights a patch, skilled wins all, the person bot about 1-1.5 minutes); keys saved and reloaded.
@@ -315,7 +316,7 @@ The ring stays radius 10. The arena (`arena.html`, `src/arena/`) stays untouched
 Answered 2026-11-11: the look as described, flags +10 % attack, names kept for now, heal stays 45 %, moves get their kind by nature with
 advantages and disadvantages per kind (section 7).
 
-Still open (answered during the build, at its stops):
+Still open (the night run decides each and writes it in "Decided overnight"; the owner may change it in the morning):
 1. The kind list by type (step 1): any moves to move to another kind, and does any type need a new move to have all four kinds?
 2. The numbers per kind (step 1b) and how much speed changes.
 3. The look, when step 4 shows it (and whether the curling horizon stays).
