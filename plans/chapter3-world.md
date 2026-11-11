@@ -736,7 +736,7 @@ one region shouldn't be the dependency for another region to unlock"**, build th
   puff. **Decided for now:** judged as in the meadow (with the neutral team); fixing it means changing the fight everywhere (e.g. monsters that
   punish standing still), which is question 1 below.
 - *Question 3 ("skate at you"):* on the ice, every monster that is not an Ice monster runs straight at you instead of throwing things from a
-  distance, slides past you and skids on (its red line is longer). **Decided: kept**: it is the one thing that makes the monsters' slide visible
+  distance, slides past you and skids on (its red line is longer). **Decided: kept** (**changed by the owner in section 9: only rushes skate**): it is the one thing that makes the monsters' slide visible
   (without it every lake monster threw things from afar and the ice changed nothing about them).
 
 **Bot numbers after the change** (`node tests/wobblebots.mjs`, every lake patch, 60 and 20 fps; "loses" = % of the squad's HP a minute;
@@ -763,6 +763,38 @@ Ice team's kid bot, with its grip and with the grip taken away for the measureme
    your team), the same as on Puddle Meadow's first patches. Should mashing lose with every team? That is a change to the fight everywhere.
 2. **Is it slippery enough now** (about 4 blocks of glide from a walk, 5 from a sprint)?
 3. The drifts, logs, rocks and pines: enough "other blocks", or more (e.g. a frozen reed bed, a half-sunk boat)?
+
+### 9. Only rushes skate (owner 2026-11-11, late)
+
+**The owner:** "I don't like that every monster that isn't Ice type runs at me (is that rush attack type?) ... rush type attacks can skate,
+but others should be as they are regular." Yes: they all used the charge pattern (the monsters' rush). **Changed:** the ice no longer
+changes how a monster fights (`pattern` is gone from `groundrules.js` and `scribblefight.js`); each keeps its own way from its nature
+(`patternOf`: mostly lobs for the lake's creatures). Only a monster that charges by its nature skates: its red line is longer (`past` 2) and it
+skids on after the charge. Your own rushes and dodges still skid on (`rush` / `dodge`).
+
+**So the skid still shows**, each lake patch now has one creature that charges by its nature, and the lake's are skaters where possible:
+patch 7 Frostling, Shellby, **Zipskate**; 8 Waddlice, Suddly, **Parroteer**; 9 Flurrydome, **Bottlet**, Shellby; 10 Snowpaw, Balloony,
+**Fizzbomb**; 12 Snowpaw, Gullop, **Blastskate**; 13 Waddlice, Bubbuck, **Zipskate**; knot 11 Frostling, Suddly, **Blastskate** + Blizzbear
+(`PATCHES` in `src/wobbleland.js`). Checked in Node (`tests/wobblenode.mjs`): on the ice Frostling and Shellby still lob, Zipskate charges.
+
+**Bot numbers** (`node tests/wobblebots.mjs`, 60 and 20 fps; mashing 12 a frame rate, the owner's 4, skilled and person 2 each; "loses" = % of
+the squad's HP a minute):
+
+| Patch | Mashing won: neutral / Ice / owner | Skilled loses: Ice / neutral / owner | Person won (loses): Ice / neutral / owner | The grip: the Ice kid with / without it |
+| --- | --- | --- | --- | --- |
+| 7 | 2 / 24, 24 / 24, 6 / 8 | 0 / 0 / 10 % | 4 / 4 (12 %) / 4 / 4 (13 %) / 4 / 4 (17 %) | 55 / 44 % |
+| 8 | 4 / 24, 24 / 24, 7 / 8 | 0 / 45 / 12 % | 4 / 4 (12 %) / 4 / 4 (49 %) / 4 / 4 (30 %) | 40 / 74 % |
+| 9 | 0 / 24, 21 / 24, 2 / 8 | 0 / 15 / 12 % | 4 / 4 (9 %) / 4 / 4 (29 %) / 4 / 4 (11 %) | 39 / 50 % |
+| 10 | 1 / 24, 24 / 24, 6 / 8 | 11 / 16 / 29 % | 4 / 4 (30 %) / 3 / 4 (65 %) / 4 / 4 (26 %) | 59 / 64 % |
+| 12 | 3 / 24, 23 / 24, 7 / 8 | 7 / 19 / 21 % | 4 / 4 (54 %) / 4 / 4 (21 %) / 4 / 4 (62 %) | 75 / 96 % |
+| 13 | 2 / 24, 24 / 24, 4 / 8 | 0 / 13 / 14 % | 4 / 4 (11 %) / 4 / 4 (30 %) / 4 / 4 (25 %) | 9 / 49 % |
+| 11 knot | 0 / 24, 3 / 24, 0 / 8 | 0 / 24 / 0 % | 4 / 4 (11 %) / 4 / 4 (27 %) / 3 / 4 (81 %) | 46 / 66 % |
+
+Skilled wins every fight with all three teams; mashing with the neutral team at most 4 / 24. Fights got a little shorter (person 35-150 s)
+and **the grip now shows more clearly**: with lobs back, a creature that slides cannot step out of a lob's circle in time, so the Ice team's kid
+bot loses less with its grip than without it on six of seven patches (e.g. patch 13: 9 % vs 49 % a minute), and the Ice team's person bot won
+28 / 28 losing about half of what the neutral one loses. Patch 7 first had Squeaklet (the neutral team mashed it 12 / 24); with Shellby 2 / 24.
+The mashing question (1 in section 8) stays open: the Ice team still mashes the tangles.
 
 ## Shadywood: the plan (the next session builds it)
 

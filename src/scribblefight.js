@@ -210,8 +210,7 @@ export class ScribbleFight {
     const list = opts.foes || FOES.slice(0, 3);
     this.foes = list.map((d, i) => {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
-      const rule = this.g.rule?.(this.C.x, this.C.z, this.C.y), on = rule?.pattern(SPECIES[d.species]?.type); // (the ground may change how it fights: on ice the slippers skate at you)
-      const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: on && !d.grumble ? on : d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
+      const f = fighter({ species: d.species, level: d.level ?? lvl, pattern: d.pattern }, 'foe', x, this.g.floor(x, z, this.C.y + 6), z);
       f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp * (opts.hp ?? 1)); // (a patch's size: PATCH_SIZES)
       if (d.grumble) { f.grumble = true; f.r = GRUMBLE.r; f.maxHp = f.hp = Math.round(f.maxHp * GRUMBLE.hp); f.openT = 0; }
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);

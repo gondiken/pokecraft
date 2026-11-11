@@ -46,18 +46,19 @@ export const PATCHES = [
   { id: 5, x: 140, z: 156, size: 'tangle', region: 'meadow', species: ['hornbeetle', 'woolumph', 'balloony', 'mossloth'], pot: 0xf07ab8 },
   { id: 6, x: 112, z: 152, size: 'knot', region: 'meadow', species: ['thornox', 'gullop', 'monarchwing', 'bounceroo'], grumble: 'grovebeast', last: true, pot: 0x8a4ee0 },
   // Slippy Lake (owner 2026-11-11: the ground decides the fight): every ring is on the ice, so everyone slides but Ice creatures. One Ice
-  // monster in each (it keeps its grip), the rest the lake's Bubble ducks and Sky birds and a Water one where there is open water (Ice
+  // monster in each (it keeps its grip), one creature that charges by its nature (a Racer skater, Fizzbomb, a Pirate) so the ice's skid shows, the rest the lake's Bubble ducks, birds
+  // and a Water one where there is open water (Ice
   // moves do half to Water and Ice: a lake of Water monsters would hide the grip behind the type chart, measured: plans/chapter3-world.md).
   // `holes`: open water in the ice inside the ring ([dx, dz, r]: the water twist there too, a Water creature swims at full speed). The
   // knot's big one is Blizzbear (an Ice Grumble: it keeps its grip). No smudges: the second region starts with tangles, and `step`: its
   // monsters are 2 levels over a meadow patch of the same size (scribblefight.js patchFight).
-  { id: 7, x: 41, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['frostling', 'squeaklet', 'skyfin'], pot: 0x46d0e0 },
-  { id: 8, x: 41, z: 152, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'suddly', 'pinwhirl'], pot: 0x9be36a },
-  { id: 9, x: 17, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['flurrydome', 'hippip', 'shellby'], wet: true, holes: [[3, 3, 1.8], [-4, -3, 1.6]], pot: 0x1a9e8f },
+  { id: 7, x: 41, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['frostling', 'shellby', 'zipskate'], pot: 0x46d0e0 },
+  { id: 8, x: 41, z: 152, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'suddly', 'parroteer'], pot: 0x9be36a },
+  { id: 9, x: 17, z: 204, size: 'tangle', region: 'lake', step: 2, species: ['flurrydome', 'bottlet', 'shellby'], wet: true, holes: [[3, 3, 1.8], [-4, -3, 1.6]], pot: 0x1a9e8f },
   { id: 10, x: 17, z: 152, size: 'tangle', region: 'lake', step: 2, species: ['snowpaw', 'balloony', 'fizzbomb'], pot: 0x2a3fae },
-  { id: 12, x: 17, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['snowpaw', 'gullop', 'zeppeluff'], pot: 0x7a5cff },
-  { id: 13, x: 41, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'bubbuck', 'pinwhirl'], wet: true, holes: [[-3, 3, 1.7]], pot: 0xff6a3c },
-  { id: 11, x: 29, z: 99, size: 'knot', region: 'lake', species: ['frostling', 'suddly', 'skyfin'], grumble: 'blizzbear', last: true, wet: true, holes: [[-5, 3, 1.6], [4, -4, 1.5], [6, 5, 1.3]], pot: 0xd6f4ff },
+  { id: 12, x: 17, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['snowpaw', 'gullop', 'blastskate'], pot: 0x7a5cff },
+  { id: 13, x: 41, z: 126, size: 'tangle', region: 'lake', step: 2, species: ['waddlice', 'bubbuck', 'zipskate'], wet: true, holes: [[-3, 3, 1.7]], pot: 0xff6a3c },
+  { id: 11, x: 29, z: 99, size: 'knot', region: 'lake', species: ['frostling', 'suddly', 'blastskate'], grumble: 'blizzbear', last: true, wet: true, holes: [[-5, 3, 1.6], [4, -4, 1.5], [6, 5, 1.3]], pot: 0xd6f4ff },
 ];
 export const CAMP_POT = { x: 120, z: 207, colour: 0xff8a1c };    // A3: the Camp's own paint pot (a hop back home)
 export const patchKey = id => `pw:wobble:patch${id}`;
@@ -424,7 +425,7 @@ export function paperDoor(world) {
 }
 // The Wizard's words after a patch is cleared (n = patches cleared in the region, of = how many it has).
 const NEXT_WORDS = { meadow: 'Next: Slippy Lake, through the west wall!', lake: 'Next: Shadywood, through the east wall of the meadow.' };
-const KNOT_WORDS = { meadow: 'Be careful: something grumbles in there!', lake: 'Be careful: something big skates in there!' };
+const KNOT_WORDS = { meadow: 'Be careful: something grumbles in there!', lake: 'Be careful: something big and icy waits in there!' };
 export function wizardLine(n, of, region = 'meadow') {
   const name = REGIONS[region]?.name ?? 'Puddle Meadow';
   if (n >= of) return `🧙 ${name} is bright again! ${NEXT_WORDS[region] ?? ''}`.trim();

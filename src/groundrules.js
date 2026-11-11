@@ -7,14 +7,12 @@
 //   move(v, tx, tz, dt, grip): the walking velocity v eases toward the wanted (tx, tz) for one step of dt
 //   carry:        what is left of a rush / dodge's speed when it ends (a slider skids on)
 //   overshoot:    how far a slipping monster's charge goes past its aim (its red line is drawn that much longer)
-//   pattern(type): how a monster of this type fights here (null = its own nature): on ice the ones that slip skate at you (charge)
 export class GroundRule {
   constructor(o = {}) { this.id = 'plain'; Object.assign(this, o); }
   grips() { return true; }
   move(v, tx, tz) { v.x = tx; v.z = tz; }
   carry() { return 0; }
   overshoot() { return 0; }
-  pattern() { return null; }
   // how far something moving at speed `s` goes before it stops if it lets go now (the bots and the skid marks read it)
   stopDist() { return 0; }
 }
@@ -34,7 +32,6 @@ export class Ice extends GroundRule {
   }
   carry(kind, type) { return this.grips(type) ? 0 : kind === 'dodge' ? this.dodge : this.rush; }
   overshoot(type) { return this.grips(type) ? 0 : this.past; }
-  pattern(type) { return this.grips(type) ? null : 'charge'; }
   stopDist(s, type) { return this.grips(type) ? 0 : s / this.k; }
 }
 

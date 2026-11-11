@@ -114,6 +114,10 @@ export async function checkIce() {
     const F = new SF.ScribbleFight({ ground: G, centre: pf.centre, squad: [S.makeCreature('blazehound', 30)], start: { x: pf.centre.x, y: pf.centre.y, z: pf.centre.z + 4 }, foes: [{ species: 'shellby', pattern: 'charge' }, { species: 'frostling', pattern: 'charge' }], rand: () => 0.5 });
     const [water, ice] = F.foes; water.x = ice.x = pf.centre.x; water.z = pf.centre.z - 3; ice.z = pf.centre.z - 3; water.y = ice.y = pf.centre.y;
     out.lines = { slips: F.makeTell(water).len, grips: F.makeTell(ice).len };
+    // (owner 2026-11-11: only monsters that charge by their nature skate at you; the others keep their own way of fighting on the ice)
+    const lp = L.patchOf(7), lpf = SF.patchFight(lp, L.LAKE.y + 1), LF = new SF.ScribbleFight({ ground: G, centre: lpf.centre, squad: [S.makeCreature('blazehound', 30)], start: { x: lpf.centre.x, y: lpf.centre.y, z: lpf.centre.z + 4 }, foes: lpf.foes, rand: () => 0.5 });
+    out.patterns = LF.foes.map(f => `${f.c.species}:${f.pattern}`);
+    if (LF.foes.some((f, i) => f.pattern !== lpf.foes[i].pattern) || !LF.foes.some(f => f.pattern === "lob")) problems.push(`on the ice a monster changed its way of fighting: ${out.patterns.join(', ')}`);
     if (!(out.lines.slips > out.lines.grips + 1)) problems.push(`a slipping monster's red line (${out.lines.slips}) is not longer than an Ice one's (${out.lines.grips})`);
   }
   return { problems, out };

@@ -124,7 +124,7 @@ export default async function ({ browser, base, t }) {
     await shot(page, dev ? 'wobble-lake-ipad-fight.png' : 'wobble-lake-fight.png');
     await page.evaluate(async () => { window.__GR = await import('/src/groundrules.js'); });
     const fi = await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(), G = F.g; return { foes: F.foes.map(f => f.c.species), ice: G.rule(F.you.x, F.you.z, F.you.y)?.id, grips: F.foes.map(f => window.__GR.GROUND.ice.grips(f.type)) }; }); // (by type: a monster on a snow drift grips anyway)
-    t.ok(fi.foes.join() === 'frostling,squeaklet,skyfin' && fi.ice === 'ice' && fi.grips.join() === 'true,false,false', `${tag}walking into lake patch 7 starts its fight on the ice: Frostling keeps its grip, Squeaklet and Skyfin slide (${JSON.stringify(fi)})`);
+    t.ok(fi.foes.join() === 'frostling,shellby,zipskate' && fi.ice === 'ice' && fi.grips.join() === 'true,false,false', `${tag}walking into lake patch 7 starts its fight on the ice: Frostling keeps its grip, Shellby and Zipskate slide (only Zipskate charges, so only it skates at you) (${JSON.stringify(fi)})`);
     const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
     await page.evaluate(() => { const F = window.pokecraft.scribble.fightOf(); for (const x of F.foes) F.hit(F.you, x, 99999, 'normal'); });
     await waitFor(page, () => window.pokecraft.beaten.includes('pw:wobble:patch7'), null, 60000).catch(() => {});
@@ -139,7 +139,7 @@ export default async function ({ browser, base, t }) {
       out.table = g.creatures.table('wobbleLake').filter(e => g.creatures.context?.().after?.(e[3]) ?? true).map(e => e[0]);
       return out;
     });
-    t.ok(sp.patch.length > 30 && sp.patch.every(d => d >= 3 && d <= 12) && sp.isle.length > 5 && sp.isle.every(Boolean) && ['frostling', 'squeaklet', 'skyfin'].every(x => sp.table.includes(x)) && !sp.table.includes('waddlice'), `freed lake creatures: round their own patch and on the islands, only patch 7's so far (${sp.patch.length} / ${sp.isle.length}; ${[...new Set(sp.table)].join(', ')})`);
+    t.ok(sp.patch.length > 30 && sp.patch.every(d => d >= 3 && d <= 12) && sp.isle.length > 5 && sp.isle.every(Boolean) && ['frostling', 'shellby', 'zipskate'].every(x => sp.table.includes(x)) && !sp.table.includes('waddlice'), `freed lake creatures: round their own patch and on the islands, only patch 7's so far (${sp.patch.length} / ${sp.isle.length}; ${[...new Set(sp.table)].join(', ')})`);
     // a reload: patch 7 stays clear
     await page.evaluate(() => window.pokecraft.save?.(true));
     await page.reload();
