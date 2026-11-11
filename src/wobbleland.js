@@ -88,6 +88,11 @@ export const CLOUD_HILL = { x: 68, z: 172 };                        // a cloud s
 export const SMALL_HOUSE = { x: 78, z: 204, w: 4, d: 4, h: 3 };     // a house drawn too small, with a door far too big for it
 export const STAIRS_NOWHERE = { x: 146, z: 216, n: 8 };             // stone steps climbing into the air
 export const MUSHROOM = { x: 157, z: 160, stalk: 4, cap: 4 };       // a mushroom-shaped hill
+// C4 / C5 (owner 2026-11-11, "more different than our regular world"): shapes our world can never have, and a drawing's way to move.
+// Hills that float on strings (a chest on top), each with a drawn spring beside it (the Bounce Block: jump on it, steer onto the hill)
+export const FLOATERS = [{ x: 69, z: 148, y: 21, r: 3.6, spring: [69, 156] }, { x: 155, z: 146, y: 22, r: 3.6, spring: [155, 154] }];
+export const UPSIDE_TREES = [{ x: 88, z: 214, h: 7 }, { x: 132, z: 215, h: 6 }]; // leaves on the ground, roots in the air
+export const CRAYONS = [{ x: 66, z: 190, h: 13, c: 'fire' }, { x: 158, z: 191, h: 11, c: 'water' }, { x: 98, z: 152, h: 12, c: 'grass' }]; // giant crayons stuck in the ground
 
 const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
 // The ground's height at (x, z) (pure: the checks and the look use it too). Patch rings are flat (a gentle edge outside them), the Camp is flat.
@@ -189,6 +194,34 @@ export function wobbleLand(world) {
   { const m = MUSHROOM, g = heightAt(m.x, m.z);
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let k = 1; k <= m.stalk; k++) put(m.x + dx, g + k, m.z + dz, B.SANDSTONE);
     for (let dx = -m.cap; dx <= m.cap; dx++) for (let dz = -m.cap; dz <= m.cap; dz++) if (Math.hypot(dx, dz) <= m.cap + 0.3) put(m.x + dx, g + m.stalk + 1, m.z + dz, WOOL.fire); }
+  // C4 / C5: floating hills on strings with a chest on top, a spring beside each
+  for (const f of FLOATERS) {
+    for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) {
+      const d = Math.hypot(dx, dz);
+      if (d > f.r) continue;
+      const depth = Math.round((f.r - d) * 0.9); // a round lump: thickest in the middle, hanging down
+      for (let k = 0; k <= depth; k++) put(f.x + dx, f.y - k, f.z + dz, k === 0 ? B.GRASS : B.DIRT);
+    }
+    for (let y = f.y + 1; y < 47; y++) if (y > f.y + 1) put(f.x + 2, y, f.z, WOOL.ghost); // its string, up to the top of the page
+    put(f.x, f.y + 1, f.z, B.CHEST);
+    const [sx, sz] = f.spring; put(sx, heightAt(sx, sz), sz, B.BOUNCE);
+  }
+  for (const t of UPSIDE_TREES) {
+    const g = heightAt(t.x, t.z);
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) for (let dy = 1; dy <= 3; dy++) if (dx * dx + dz * dz + (dy - 2) * (dy - 2) * 2 <= 6) put(t.x + dx, g + dy, t.z + dz, B.LEAVES);
+    for (let k = 4; k <= t.h + 3; k++) put(t.x, g + k, t.z, B.LOG);
+    const top = g + t.h + 3; // the roots, spreading out in the air
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { put(t.x + dx, top + 1, t.z + dz, B.LOG); put(t.x + dx * 2, top + 2, t.z + dz * 2, B.LOG); }
+    put(t.x, top + 1, t.z, B.DIRT);
+  }
+  for (const c of CRAYONS) {
+    const g = heightAt(c.x, c.z);
+    for (let k = 1; k <= c.h; k++) for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      if (k === 1 && (dx || dz)) continue; // the tip goes into the ground
+      const band = k >= c.h * 0.35 && k <= c.h * 0.7; // the paper wrapper
+      put(c.x + dx, g + k, c.z + dz, band ? (dx === 0 || dz === 0 ? WOOL.paper : WOOL[c.c]) : WOOL[c.c]);
+    }
+  }
   // where the Scribble is: the patches (scribble.js draws them; their keys say which are cleared), the regions, the wall
   const walls = WALLS.map(b => ({ ...b, y0: 0, y1: 47 }));
   world.wobble = { patches: PATCHES.map(p => ({ ...p, y: heightAt(p.x, p.z) + 1 })), walls, wall: walls[0], camp: { ...CAMP, y: BASE + 1 }, regions: REGIONS, knot: KNOT };

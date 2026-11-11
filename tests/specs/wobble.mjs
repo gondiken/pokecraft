@@ -14,7 +14,8 @@
 //   ride:   B (owner 2026-11-11): R and riding / flying in Wobbleland, hopping off into a patch's fight, the wall fences riders
 //   hops:   A3 paint-pot hops (the Camp's pot, a pot per cleared patch, look and E, the iPad's button)
 //   bugs:   A2 scribble bugs (tests/wobblebugbots.mjs at 60 / 20 fps; real keys and the iPad's joystick corner one; a cleared patch's go)
-//   WOBBLE_ONLY=land|ride|hops|bugs|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
+//   springs: C4 / C5 a floating hill with a chest: walking and jumping never get you up, the spring beside it does (real keys)
+//   WOBBLE_ONLY=land|ride|hops|bugs|springs|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -179,6 +180,43 @@ export default async function ({ browser, base, t }) {
       t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
       await page.context().close();
     }
+  }
+
+  if (want('springs')) {
+    // C4 / C5: a hill floating on a string with a chest on top; walking or jumping never gets you up; the spring beside it (jump on it,
+    // steer) does, with real keys; flying is capped below it (6 over the ground)
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    const L0 = await page.evaluate(async () => { const L = await import('/src/wobbleland.js'); return { f: L.FLOATERS[0], g: L.heightAt(L.FLOATERS[0].spring[0], L.FLOATERS[0].spring[1]) }; });
+    const f = L0.f, [sx, sz] = f.spring;
+    // naive: walk to the hill and jump under it
+    await page.evaluate(([x, y, z]) => { const g = window.pokecraft; g.player.pos.set(x, y, z); g.player.yaw = 0; }, [f.x + 0.5, L0.g + 1, f.z + 6.5]);
+    await page.keyboard.down('w'); await page.keyboard.down('Space'); await page.waitForTimeout(4000); await page.keyboard.up('w'); await page.keyboard.up('Space');
+    const naive = await page.evaluate(() => window.pokecraft.player.pos.y);
+    t.ok(naive < f.y, `walking and jumping under the floating hill never gets you up (highest now ${naive.toFixed(1)}, its top ${f.y + 1})`);
+    // skilled: stand on the spring, jump (Space), steer north (W) onto the hill
+    await page.evaluate(([x, y, z]) => { const g = window.pokecraft; g.player.pos.set(x, y, z); g.player.vel.set(0, 0, 0); g.player.yaw = 0; g.player.pitch = 0.2; }, [sx + 0.5, L0.g + 1, sz + 0.5]);
+    await frames(page, 2);
+    await page.keyboard.down('Space'); await page.waitForTimeout(250); await page.keyboard.up('Space');
+    await page.keyboard.down('w');
+    await waitFor(page, ([x, z]) => { const p = window.pokecraft.player.pos; return p.z < z + 1.5 && p.y > 20; }, [f.x, f.z], 20000).catch(() => {});
+    await page.keyboard.up('w');
+    await page.waitForTimeout(1500);
+    const up = await page.evaluate(() => { const p = window.pokecraft.player; return { y: p.pos.y, ground: p.onGround, x: p.pos.x, z: p.pos.z }; });
+    t.ok(up.y >= f.y + 1 - 0.01 && up.y < f.y + 3, `jump on the spring and steer: you land on the floating hill (${JSON.stringify(up)})`);
+    // the chest on top: look at it and press E
+    await page.evaluate(([x, y, z]) => { const g = window.pokecraft; g.player.pos.set(x, y, z); g.player.yaw = 0; g.player.pitch = -0.6; }, [f.x + 0.5, f.y + 1, f.z + 2.3]);
+    await frames(page, 4);
+    const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
+    await page.keyboard.press('e');
+    await frames(page, 3);
+    const cubes1 = await page.evaluate(() => window.pokecraft.cubes);
+    await page.evaluate(([x, y, z]) => { const g = window.pokecraft; g.player.pos.set(x, y, z); g.player.yaw = -0.25; g.player.pitch = 0.22; }, [f.x - 2.5, L0.g + 1, f.z + 15.5]); // (from the meadow: the spring, the hill on its string)
+    await frames(page, 4);
+    await shot(page, 'wobble-floating-hill.png');
+    t.ok(cubes1 === cubes0 + 3, `the chest on top gives 3 Capture Cubes (${cubes0} -> ${cubes1})`);
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
   }
 
   if (want('patches')) {

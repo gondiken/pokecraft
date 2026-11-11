@@ -441,6 +441,21 @@ on the side away from the nearer edge, a little ahead of where it slides, walks 
 and the iPad's joystick (the kid keeps turning toward it) pop one each (spec `wobble` part `bugs`). Picture `plans/chapter3/wobble-bugs.png`.
 **Not built:** the paint drops for the workshop (the plan's "later").
 
+### C4 + C5. Shapes our world can never have, and springs
+
+**What** (all in `src/wobbleland.js`, after `MUSHROOM`): **two hills floating on strings** over the meadow's west and east edges (`FLOATERS`:
+a round lump hanging down, a dark string up to the top of the page, **a chest on top: +3 Capture Cubes**, once, saved like any chest);
+beside each a **drawn spring** (the Bounce Block underneath, a red crayon coil with a yellow cap drawn over it by `src/wobblelive.js`, squashing
+while you stand on it): jump on it and steer onto the hill. **Two upside-down trees** at the Camp's sides (leaves on the ground, roots in the
+air, `UPSIDE_TREES`) and **three giant crayons** stuck tip-first in the ground with their paper wrapper (`CRAYONS`).
+**Why a chest up there:** a small reward gives the spring a reason; it is a skill (time the jump, steer 8 blocks in the air), and the
+obvious shortcuts never work: no building (the page is a keep), a plain jump reaches 1.4, a flying creature is capped 6 over the ground
+(the hill's top is 11 up). **Checked** (spec `wobble` part `springs`, real keys): walking at it and holding Space under it: highest 12.3
+(the top is 22); on the spring, Space then W: you land on the hill; E on the chest: +3. `wobblecheck.mjs`: nothing stands in a ring or
+the Camp (a floater first hung over patch 5's ring and was moved; the fight camera is 12 up). Picture `plans/chapter3/wobble-floating-hill.png`.
+**Not built (C4/C5):** the river running uphill, fold creases, the torn page edge with the desk below (the map has no room below the page:
+falling off would need a way back), slides and the zip-line.
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

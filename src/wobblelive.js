@@ -3,10 +3,11 @@
 //   A3 paint-pot hops: every cleared patch leaves a paint pot of its own colour in its middle, the Camp has one from the start. Stand in a
 //      pot and look the way you want to go: a beam of colour stands over the pot you would hop to, the big button says "Hop to blue!".
 //      One look, no list: the pot nearest to where you look is the one (`hopOf`).
+//   C5 drawn springs: a crayon coil over each Bounce Block beside a floating hill (wobbleland.js FLOATERS); it squashes while you stand on it.
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 
@@ -67,6 +68,15 @@ export class WobbleLive {
     this.bodies = new THREE.InstancedMesh(new THREE.TorusKnotGeometry(0.2, 0.05, 40, 5, 2, 3), new THREE.MeshLambertMaterial({ color: 0x3a3a44 }), NB);
     this.eyes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), NB * 2);
     for (const m of [this.bodies, this.eyes]) { m.count = 0; m.frustumCulled = false; this.group.add(m); }
+    // C5: the springs' coils
+    this.coils = FLOATERS.map(f => {
+      const [sx, sz] = f.spring, pts = [];
+      for (let i = 0; i <= 120; i++) { const a = i / 120 * Math.PI * 2 * 5; pts.push(new THREE.Vector3(Math.cos(a) * 0.42, i / 120, Math.sin(a) * 0.42)); }
+      const coil = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 0.06, 5), new THREE.MeshLambertMaterial({ color: 0xe0402a }));
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 12), new THREE.MeshLambertMaterial({ color: 0xffd23a })); cap.position.y = 1;
+      const g = new THREE.Group(); g.add(coil, cap); g.position.set(sx + 0.5, heightAt(sx, sz) + 1, sz + 0.5); g.userData.cap = cap; g.userData.coil = coil;
+      this.group.add(g); return g;
+    });
     this.sync();
   }
   // the pots follow the patches' keys (a win adds one, a reload draws them all)
@@ -100,6 +110,11 @@ export class WobbleLive {
     }
     this.puffs = this.puffs.filter(f => { if (f.t < POT.puff) return true; this.group.remove(f.g); return false; });
     this.updateBugs(dt);
+    for (const g of this.coils) { // squashed while you stand on it, a boing up when you launch
+      const on = p && Math.abs(p.pos.x - g.position.x) < 0.8 && Math.abs(p.pos.z - g.position.z) < 0.8 && Math.abs(p.pos.y - g.position.y) < 0.3;
+      g.userData.k = on ? 0.45 : Math.min(1, (g.userData.k ?? 1) + dt * 4);
+      g.userData.coil.scale.y = 0.35 + 0.65 * g.userData.k; g.userData.cap.position.y = 0.35 + 0.65 * g.userData.k;
+    }
   }
   updateBugs(dt) {
     const p = this.game.player, bugs = this.field.bugs;
