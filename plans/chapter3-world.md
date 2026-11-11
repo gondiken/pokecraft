@@ -393,6 +393,19 @@ The knot's wall-melt now melts all three walls; walking into a region still bein
 Found on the way: a live patch that had been cleared another way (a test pushing keys) stayed live; it now moves on (`S.update` in
 `src/scribble.js`).
 
+### A3. Paint-pot hops
+
+**What:** every cleared patch leaves a paint pot of its own colour in its middle (red, yellow, blue, green, pink, purple: `pot` in
+`PATCHES`), and the Camp has an orange one from the start (`CAMP_POT`). **Stand in a pot and look the way you want to go**: a beam of the
+target's colour stands over the pot you would hop to, the prompt says "Press E to hop to blue" and the round button "Hop to blue!". E / a tap
+puffs you there (you land 1.7 south of it, facing north). New file `src/wobblelive.js` (`WobbleLive` = `LIVE.wobble`, a live part).
+**Choice: you pick by looking, not from a list.** Why: one look, no panel and no reading; with up to seven pots the one nearest to where you
+look is the one (`hopOf`). Example: two patches cleared, in the Camp's pot: look north-west and the red beam rises over patch 1; turn right
+and the blue one rises over patch 3. **Earned:** only cleared patches have pots, so the Camp's pot hops nowhere at first (it says nothing).
+**Where to change:** `POT` in `src/wobblelive.js` (stand radius `r` 1.3, `land` 1.7, `beam` height), the colours in `PATCHES`.
+**Checked:** spec `wobble` part `hops` (real E: Camp -> patch 3 -> Camp; turning picks another pot; iPad: the button says it, a tap hops).
+Nothing saved: the pots are drawn from the patches' keys. Picture `plans/chapter3/wobble-pots.png`.
+
 ---
 
 ## 0. The owner's decisions (2026-11-11)

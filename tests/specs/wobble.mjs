@@ -12,7 +12,8 @@
 //   knot:   the Grumble (bigger, tougher, turns slowly; a hit counts fully only on its back or right after it struck; mashing from the
 //           front loses: part `patches` patch 6), the knot's win floods the whole meadow, the wall melts, a reload keeps it
 //   ride:   B (owner 2026-11-11): R and riding / flying in Wobbleland, hopping off into a patch's fight, the wall fences riders
-//   WOBBLE_ONLY=land|ride|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
+//   hops:   A3 paint-pot hops (the Camp's pot, a pot per cleared patch, look and E, the iPad's button)
+//   WOBBLE_ONLY=land|ride|hops|door|look|patches|loop|ipad|knot      screenshots: tests/screenshots/wobble-*.png
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -87,6 +88,56 @@ export default async function ({ browser, base, t }) {
     t.ok(['enter', 'fight'].includes(f2.phase) && f2.patch === 2 && !f2.riding, `flying over a patch lands you in its fight (${JSON.stringify(f2)})`);
     t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
     await page.context().close();
+  }
+
+  if (want('hops')) {
+    // A3: paint-pot hops: the Camp's pot, a pot per cleared patch; look the way you want to go, E (or the big button) hops you there
+    const { wobblePage } = await import('../wobblebots.mjs');
+    const page = await wobblePage(browser, base);
+    const yawTo = (a, b) => Math.atan2(-(b.x - a.x), -(b.z - a.z));
+    const none = await page.evaluate(async () => { const g = window.pokecraft, M = await import('/src/wobblelive.js'), lv = g.gymLive.of('part:wobble'), q = M.potsOf(g.beaten)[0]; g.player.pos.set(q.x, q.y, q.z); await new Promise(r => setTimeout(r, 400)); return { info: lv.info(), near: lv.near(g.player) }; });
+    t.ok(none.info.pots.join() === 'camp' && !none.near, `at first only the Camp has a paint pot, and it hops nowhere (${JSON.stringify(none)})`);
+    await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.beaten.push(L.patchKey(1), L.patchKey(3)); });
+    await frames(page, 3);
+    const P = await page.evaluate(async () => (await import('/src/wobblelive.js')).potsOf(window.pokecraft.beaten));
+    const [camp, p1, p3] = P;
+    await page.evaluate(([q, yaw]) => { const g = window.pokecraft; g.player.pos.set(q.x, q.y, q.z); g.player.yaw = yaw; g.player.pitch = -0.05; }, [camp, yawTo(camp, p1)]);
+    await frames(page, 4);
+    const look1 = await page.evaluate(() => ({ prompt: document.getElementById('prompt')?.textContent, act: document.getElementById('btn-act')?.textContent, info: window.pokecraft.gymLive.of('part:wobble').info() }));
+    t.ok(look1.info.pots.length === 3 && look1.info.to === 1 && look1.info.beam && /hop to red/i.test(look1.prompt), `two cleared patches: three pots; in the Camp's pot, looking toward patch 1, the beam stands over its red pot and the prompt says where (${JSON.stringify(look1)})`);
+    await shot(page, 'wobble-pots.png');
+    await page.evaluate(([yaw]) => { window.pokecraft.player.yaw = yaw; }, [yawTo(camp, p3)]);
+    await frames(page, 3);
+    const look3 = await page.evaluate(() => window.pokecraft.gymLive.of('part:wobble').info().to);
+    t.ok(look3 === 3, `turning toward patch 3 picks its pot (${look3})`);
+    await page.keyboard.press('e');
+    await frames(page, 3);
+    const at3 = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
+    t.ok(Math.hypot(at3.x - p3.x, at3.z - p3.z) < 2.5, `E hops you to patch 3's pot (${JSON.stringify(at3)})`);
+    // back: step into it, look south toward the Camp, E
+    await page.evaluate(([q, yaw]) => { const g = window.pokecraft; g.player.pos.set(q.x, q.y, q.z); g.player.yaw = yaw; }, [p3, yawTo(p3, camp)]);
+    await frames(page, 3);
+    await page.keyboard.press('e');
+    await frames(page, 3);
+    const home = await page.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
+    t.ok(Math.hypot(home.x - camp.x, home.z - camp.z) < 2.5, `and back to the Camp the same way (${JSON.stringify(home)})`);
+    // a fight never hops, and nothing in a fight offers a hop
+    t.ok(!page.errors.length, `no page errors (${page.errors.join(' | ')})`);
+    await page.context().close();
+    // iPad: the big button says it and a tap hops
+    const pad = await openGame(browser, base, { query: '?preview', contextOptions: devices['iPad (gen 7) landscape'] });
+    await newGame(pad, 0);
+    await intoWobble(pad);
+    await pad.evaluate(async ([yaw]) => { const g = window.pokecraft, L = await import('/src/wobbleland.js'), M = await import('/src/wobblelive.js'); g.beaten.push(L.patchKey(1)); const q = M.potsOf(g.beaten)[0]; g.player.pos.set(q.x, q.y, q.z); g.player.yaw = yaw; }, [yawTo(camp, p1)]);
+    await frames(pad, 5);
+    const word = await pad.evaluate(() => document.getElementById('btn-act')?.textContent);
+    const box = await pad.locator('#btn-act').boundingBox();
+    await pad.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await frames(pad, 4);
+    const there = await pad.evaluate(() => ({ x: window.pokecraft.player.pos.x, z: window.pokecraft.player.pos.z }));
+    t.ok(/Hop/.test(word) && Math.hypot(there.x - p1.x, there.z - p1.z) < 2.5, `on the iPad the round button says "${word}" and a tap hops you (${JSON.stringify(there)})`);
+    t.ok(!pad.errors.length, `no page errors on the iPad (${pad.errors.join(' | ')})`);
+    await pad.context().close();
   }
 
   if (want('patches')) {
