@@ -150,7 +150,7 @@ export class UI {
       const st = statsFor(c);
       const frac = c.hp / st.maxHp;
       return el('div', { class: `mini${i === 0 ? ' lead' : ''}` },
-        el('div', { class: 'row' }, el('span', {}, nameOf(c)), el('span', {}, `Lv${c.level}`)),
+        el('div', { class: 'row' }, el('span', {}, (g.being?.on && g.being.creature === c ? '🐾 ' : '') + nameOf(c)), el('span', {}, `Lv${c.level}`)), // (chapter 3: the creature you are)
         el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })));
     }));
   }

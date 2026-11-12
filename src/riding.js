@@ -54,7 +54,7 @@ export function createRiding(game, { scene, closePanel }) {
       if (!game.party.includes(c)) { ui.toast(`Put ${name} in your team first, then ride it.`); return false; }
       if (c.hp <= 0) { ui.toast(`${name} is too tired to ride. Let it rest, or visit Healer Hana.`); return false; }
       if (this.creature) this.stop('quiet');
-      if (game.being?.on && !game.being.back(false)) { ui.toast('Land first!'); return false; } // chapter 3: you are your creature: be you again first
+      if (game.being?.can?.()) { const i = game.being.squad().indexOf(c); if (i < 0) { ui.toast(`Put ${name} in your first three to be it here!`); return false; } return game.being.become(i); } // chapter 3's lands: riding there is creature mode (being.js)
       const kind = rideKind(c);
       p.ride = { ...RIDE[kind], type: SPECIES[c.species].type }; // (type: chapter 3's ground rules, an Ice ride keeps its grip)
       p.fenceHit = false;

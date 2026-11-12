@@ -85,13 +85,14 @@ export class TouchControls {
   setButtons(s) {
     const o = this.state, n = {
       act: s.act?.label ?? o.act, actDim: !!s.act?.dim,
-      placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '',
+      placeDim: !!s.place?.dim, placeWhy: s.place?.why ?? '', placeLabel: s.place?.label || '', // (chapter 3's lands: 'Swap')
       have: !!s.ride?.have, rideDim: !!s.ride?.dim, rideWhy: s.ride?.why ?? '', on: !!s.ride?.on, rideLabel: s.ride?.label || '', sky: !!s.sky, swim: !!s.swim, jump: s.jump || null, // T49: a ride may name the Jump button ('Shield', 'Off'); Cube Planets: a world may give the Ride slot another word ('Camera')
     };
     const $ = id => document.getElementById(id);
     if (n.act !== o.act) { this.actBtn.textContent = n.act; this.fit(this.actBtn); }
     if (n.actDim !== o.actDim) this.actBtn.classList.toggle('dim', n.actDim);
     if (n.placeDim !== o.placeDim) $('btn-place').classList.toggle('dim', n.placeDim);
+    if (n.placeLabel !== (o.placeLabel ?? '')) { $('btn-place').textContent = n.placeLabel || 'Place'; this.fit($('btn-place')); }
     const rv = { hidden: !n.have, text: n.rideLabel || (n.on ? (n.sky ? 'Land' : 'Get off') : 'Ride'), dim: n.rideDim }, ov = this.rideView, rb = $('btn-ride');
     if (rv.hidden !== ov.hidden) rb.classList.toggle('hidden', rv.hidden);
     if (rv.text !== ov.text) { rb.textContent = rv.text; this.fit(rb); }
@@ -107,7 +108,7 @@ export class TouchControls {
   setRide(s) { const o = this.state; this.setButtons({ ...this.cur(), ride: o.rideLabel ? this.cur().ride : { have: s.show, on: s.on, dim: o.rideDim, why: o.rideWhy }, sky: s.sky }); }
   cur() {
     const o = this.state;
-    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on, label: o.rideLabel }, sky: o.sky, swim: o.swim, jump: o.jump };
+    return { act: { label: o.act, dim: o.actDim }, place: { dim: o.placeDim, why: o.placeWhy, label: o.placeLabel }, ride: { have: o.have, dim: o.rideDim, why: o.rideWhy, on: o.on, label: o.rideLabel }, sky: o.sky, swim: o.swim, jump: o.jump };
   }
 
   // Fires on touch-down for snappy buttons; stops the touch turning into a look-drag or a click.

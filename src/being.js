@@ -1,12 +1,13 @@
-// Chapter 3 (plans/chapter3-ways.md, ?preview only): BEING your creature outside a fight, only in chapter 3's lands (a realm def with
-// `be: true`: Wobbleland). Everywhere else you are always yourself (it would break chapter 1 and 2's challenges), and without ?preview
-// this file does nothing.
-//   Your squad = your first three creatures (the scribble fight's three, scribblefight.js squadOf). The squad bar (top middle) has you and
-//   them: tap one to become it, tap yourself to be you again. Keys: 1 2 3 become one, X goes back and forth, V switches the camera.
-//   Switching happens only on the ground (mid-air you could chain ways and beat a place the wrong way).
-//   The body is creatureways.js: wings fly where they have room (the sky riding physics), a Cling creature climbs walls (player.js).
-//   The camera: behind your creature (default) or in its eyes (V, the bar's 🎥; remembered on this device); in a tight place (a shaft, a
-//   doorway) it goes into its eyes by itself and comes back out after.
+// Chapter 3 (plans/chapter3-ways.md, ?preview only): CREATURE MODE, being your creature outside a fight, only in chapter 3's lands (a realm
+// def with `be: true`: Wobbleland). Everywhere else you are always yourself (it would break chapter 1 and 2's challenges), and without
+// ?preview this file does nothing.
+//   Owner 2026-11-12 ("there should be creature mode and me mode ... not a whole yet another bar"; then "kids will never want to switch
+//   to me anyway ... keep the me option in the menu, and swap can stay as a button"): in chapter 3's lands you ARE your creature by
+//   itself; "🧍 Be me" / "🐾 Be my creature" is a button in the pause screen (R on a keyboard). Swap (F, or the Place button: nothing is
+//   built in Wobbleland) goes round your first three creatures (the scribble fight's three); 1 2 3 pick one on a keyboard. In chapter 3's lands creature mode IS riding: it moves exactly like riding that creature (creatureways.js bodyStep with
+//   riding.js RIDE), so riding there turns into creature mode. Swap any time, also in the air: each place judges the body you are now.
+//   The camera: behind your creature (default) or in its eyes (V, or the pause screen's camera button; remembered on this device); in a
+//   tight place (a shaft, a doorway) it goes into its eyes by itself and comes back out after.
 //   A scribble fight you walk into as your creature starts with it (no Capture Cube throw, scribble.js); you are it again afterwards.
 // Nothing here is saved or sent (play together still shows your person: plans/chapter3-ways.md).
 import * as THREE from 'three';
@@ -15,28 +16,19 @@ import { RIDE, fitRide } from './riding.js';
 import { sketchModel } from './sketch.js';
 import { sound } from './sound.js';
 import { PREVIEW } from './comingsoon.js';
-import { BODY, WAY, bodyOf, bodyStep, wingRoom } from './creatureways.js';
+import { BODY, bodyOf, bodyStep, wingRoom } from './creatureways.js';
 import { squadOf } from './scribblefight.js';
 import { TRAITS } from './traits.js';
-const bodyFor = c => bodyOf(c.species, SPECIES[c.species], TRAITS.rideable.species[c.species] === 'sky');
+const bodyFor = c => bodyOf(c.species, SPECIES[c.species], TRAITS.rideable.species[c.species] ?? null);
 
 export const BE_CAM = { dist: 4.6, rise: 0.42, head: 1.2, pitchK: 0.45, ease: 10, near: 1.3, key: 'pokecraft-be-cam' };
 const store = { get() { try { return localStorage.getItem(BE_CAM.key); } catch { return null; } }, set(v) { try { localStorage.setItem(BE_CAM.key, v); } catch { /* private window */ } } };
-const CSS = `
-#squad { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 30; pointer-events: auto; font-family: inherit; }
-#squad.hidden { display: none; }
-body.touch #squad { top: 96px; } /* (under the pause and Book buttons) */
-#squad button { min-width: 48px; height: 48px; padding: 0 10px; border-radius: 24px; border: 2px solid rgba(255,255,255,.55); background: rgba(20,24,40,.62); color: #fff; font: inherit; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-#squad button.on { border-color: #ffd84a; background: rgba(60,50,10,.78); box-shadow: 0 0 0 3px rgba(255,216,74,.35); }
-#squad button .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.4); flex: none; }
-#squad button .way { font-size: 15px; }
-body.scribbling #squad { display: none !important; }
-#crosshair.be-behind { opacity: 0; }
-`;
+const CSS = '#crosshair.be-behind { opacity: 0; }';
 
 export function createBeing(game, { scene }) {
   let view = store.get() === 'eyes' ? 'eyes' : 'behind';
-  let idx = null, body = null, model = null, fit = null, t = 0, bar = null, shown = '', last = 0, tight = false;
+  let idx = null, body = null, model = null, fit = null, t = 0, last = 0, tight = false, btn = null, shownBtn = null, styled = false, meBtn = null, shownMe = null;
+  let me = false; // you chose to be yourself (the pause screen's button / R); otherwise chapter 3's lands put you in creature mode by themselves
   const cam = { pos: new THREE.Vector3(), ok: false };
   const tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
   const squad = () => (game.party || []).filter(c => c && SPECIES[c.species]).filter(c => squadOf([c]).length).slice(0, BODY.squad); // (the fight's three)
@@ -60,45 +52,59 @@ export function createBeing(game, { scene }) {
       const c = squad()[i];
       if (!c) { if (say) toast('You need a creature in that place of your team!'); return false; }
       if (idx === i) return false;
-      if (!grounded(p)) { if (say) toast('Land first, then swap!'); return false; }
       if (game.riding?.on) game.riding.stop('quiet');
       drop();
       idx = i; body = bodyFor(c);
       p.be = { ...body, slip: false };
       p.ride = null;
-      bodyStep(p, game.world, body, RIDE.sky);
+      bodyStep(p, game.world, body, RIDE);
       try { model = buildModel(c.species, c.paint); sketchModel(model); fit = fitRide(model); scene.add(model); } catch { model = null; }
       try { sound.cry(c.species, body.type); } catch { /* optional */ }
       if (say) {
-        const way = WAY[body.way];
-        toast(`You are ${nameOf(c)}!${body.wings ? ' Hold Jump to fly.' : ''}${way ? ` ${way.icon} ${way.name}` : ''}`);
+        toast(`You are ${nameOf(c)}!${body.wings ? ' Hold Jump to fly.' : ''}`);
       }
-      being.render(true);
+      game.ui?.renderHud?.();
       return true;
     },
     back(say = true) {
       if (idx == null) return false;
-      const p = game.player;
-      if (!grounded(p) && here()) { if (say) toast('Land first!'); return false; }
+      if (game.inBattle || game.scribble?.fighting) return false; // (not in a fight: you are it until the fight is over)
       drop(); idx = null; body = null;
       if (say) toast('You are you again!');
-      being.render(true);
+      game.ui?.renderHud?.();
       return true;
     },
-    // X: back and forth (to the last creature you were, the first at the start)
-    toggle() { return idx == null ? being.become(last ?? 0) : being.back(); },
-    setView(v, say = true) { view = v === 'eyes' ? 'eyes' : 'behind'; store.set(view); if (say) toast(view === 'eyes' ? '🎥 In its eyes' : '🎥 Behind it'); being.render(true); },
+    // the pause screen's button / R: me mode on or off (owner 2026-11-12: kids will hardly ever want to be themselves there, so no touch button)
+    toggle() {
+      if (idx == null) { me = false; return being.become(Math.min(last ?? 0, Math.max(0, squad().length - 1))); }
+      const ok = being.back(); if (ok) me = true; return ok;
+    },
+    get me() { return me; },
+    setMe(v) { me = !!v; if (me) being.back(false); being.refresh(); }, // (tests: walk on foot as before)
+    // Swap (F / the Place button): the next of your three
+    next() {
+      const n = squad().length;
+      if (idx == null) return being.toggle();
+      if (n < 2) { toast('Only one creature in your team!'); return false; }
+      return being.become((idx + 1) % n);
+    },
+    setView(v, say = true) { view = v === 'eyes' ? 'eyes' : 'behind'; store.set(view); if (say) toast(view === 'eyes' ? '🎥 In its eyes' : '🎥 Behind it'); being.refresh(); },
     toggleView() { being.setView(view === 'eyes' ? 'behind' : 'eyes'); },
     // after Player.update and the live parts (main.js): the body's rules
     step(dt) {
       t += dt;
-      if (idx != null && !here()) { drop(); idx = null; body = null; being.render(true); return; } // left chapter 3's land: yourself again
-      if (idx == null) { being.render(); return; }
+      being.refresh();
+      if (!here()) { if (idx != null) { drop(); idx = null; body = null; } me = false; return; } // left chapter 3's land: yourself again
+      if (idx == null) { // creature mode by itself in chapter 3's lands, unless you chose to be you
+        if (!me && !game.inBattle && !game.scribble?.fighting && game.playing?.() && squad().length) being.become(Math.min(last ?? 0, squad().length - 1), !game.toldOnce?.has('be:first'));
+        game.toldOnce?.add('be:first');
+        if (idx == null) return;
+      }
       const c = being.creature, p = game.player;
       if (!c || c.species !== body.species) { being.back(false); return; } // (the team changed under you)
-      if (bodyStep(p, game.world, body, RIDE.sky) === 'folded' && !game.toldOnce?.has('be:fold')) { game.toldOnce?.add('be:fold'); toast('No room to spread its wings here!'); }
+      if (game.scribble?.fighting) return; // (the fight has its own bodies; you come back as it afterwards)
+      if (bodyStep(p, game.world, body, RIDE) === 'folded' && !game.toldOnce?.has('be:fold')) { game.toldOnce?.add('be:fold'); toast('No room to spread its wings here!'); }
       if (p.ride?.be && p.ride.landing) p.ride.landing = false;
-      being.render();
     },
     // after main.js placed the eye camera (and before scribble.js): the camera behind your creature, the creature itself
     camera(camera, dt) {
@@ -111,7 +117,7 @@ export function createBeing(game, { scene }) {
         model.visible = behind && !fighting; // (in a fight scribble.js draws it)
         model.position.set(p.pos.x, p.pos.y + (fit?.lift ?? 0), p.pos.z);
         model.rotation.y = p.yaw + Math.PI;
-        animateModel(model, t, Math.hypot(p.vel.x, p.vel.z) > 0.5 || !!p.ride || p.climbing);
+        animateModel(model, t, Math.hypot(p.vel.x, p.vel.z) > 0.5 || p.ride?.kind === 'sky' || p.climbing);
       }
       crosshair(behind && !fighting);
       if (!behind) { cam.ok = false; camera.userData.beFrom = null; return false; }
@@ -125,7 +131,8 @@ export function createBeing(game, { scene }) {
       }
       const want = new THREE.Vector3().copy(head).addScaledVector(back, d);
       if (!cam.ok) cam.pos.copy(want); else cam.pos.lerp(want, 1 - Math.exp(-dt * BE_CAM.ease));
-      if (cam.pos.distanceTo(head) > d + 0.01) cam.pos.copy(head).addScaledVector(tmp.b.subVectors(cam.pos, head).normalize(), d); // (no lag through a wall)
+      const off = new THREE.Vector3().subVectors(cam.pos, head); // (owner 2026-11-12: walking away from the camera made it flash: this line
+      if (off.length() > d + 0.01) cam.pos.copy(head).addScaledVector(off.normalize(), d); // copied the head BEFORE reading the way back, so the camera landed on your head; never lag through a wall)
       cam.ok = true;
       const at = new THREE.Vector3(head.x - Math.sin(p.yaw) * 1.5, head.y + Math.sin(p.pitch) * 1.5, head.z - Math.cos(p.yaw) * 1.5);
       tmp.m.lookAt(cam.pos, at, THREE.Object3D.DEFAULT_UP); tmp.q.setFromRotationMatrix(tmp.m);
@@ -135,35 +142,31 @@ export function createBeing(game, { scene }) {
       camera.quaternion.copy(tmp.q);
       return true;
     },
-    // the squad bar (top middle), made once, redrawn when what it shows changes
-    render(force = false) {
+    // the pause screen's camera button (made once; only in chapter 3's lands), the crosshair's style
+    refresh() {
       if (typeof document === 'undefined') return;
-      if (!bar) {
-        if (!here()) return;
-        const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-        bar = document.createElement('div'); bar.id = 'squad'; document.body.appendChild(bar);
-        bar.addEventListener('pointerdown', e => e.stopPropagation());
-        bar.addEventListener('click', e => {
-          e.stopPropagation(); e.preventDefault();
-          const b = e.target.closest('button'); if (!b) return;
-          if (b.dataset.i === 'me') being.back(); else if (b.dataset.i === 'cam') being.toggleView(); else being.become(+b.dataset.i);
-        });
+      if (!styled && here()) { styled = true; const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st); }
+      if (!btn) {
+        const sound = document.getElementById('sound-btn');
+        if (!sound) return;
+        btn = document.createElement('button'); btn.id = 'becam-btn';
+        btn.addEventListener('click', e => { e.stopPropagation(); being.toggleView(); });
+        sound.after(btn); sound.after(document.createTextNode(' '));
       }
-      const list = here() ? squad() : [];
-      const key = here() ? `${idx}|${view}|${list.map(c => c.uid ?? c.species).join()}` : '';
-      if (!force && key === shown) return;
-      shown = key;
-      bar.classList.toggle('hidden', !here());
-      if (!here()) return;
-      const btn = (i, label, on, colour, way) => `<button data-i="${i}" class="${on ? 'on' : ''}">${colour ? `<span class="dot" style="background:${colour}"></span>` : ''}${label}${way ? ` <span class="way">${way}</span>` : ''}</button>`;
-      const col = c => { const tc = SPECIES[c.species]?.type; return ({ fire: '#f2914a', water: '#7aa4f5', grass: '#8fd166', electric: '#f7d84a', ice: '#9fe0f0' })[tc] || '#c8c8d8'; };
-      bar.innerHTML = btn('me', '🧍 Me', idx == null) + list.map((c, i) => btn(i, `${i + 1} ${nameOf(c)}`, idx === i, col(c), WAY[bodyFor(c).way]?.icon)).join('')
-        + (idx != null ? btn('cam', view === 'eyes' ? '🎥 Eyes' : '🎥 Behind', false) : '');
+      const s = here() ? (view === 'eyes' ? '🎥 Creature camera: eyes' : '🎥 Creature camera: behind') : '';
+      if (s !== shownBtn) { shownBtn = s; btn.textContent = s; btn.classList.toggle('hidden', !s); }
+      if (!meBtn) {
+        meBtn = document.createElement('button'); meBtn.id = 'beme-btn';
+        meBtn.addEventListener('click', e => { e.stopPropagation(); being.toggle(); being.refresh(); });
+        btn.after(meBtn); btn.after(document.createTextNode(' '));
+      }
+      const m = here() ? (idx == null ? '🐾 Be my creature' : '🧍 Be me') : '';
+      if (m !== shownMe) { shownMe = m; meBtn.textContent = m; meBtn.classList.toggle('hidden', !m); }
     },
     // tests
     info() {
       const p = game.player;
-      return { can: here(), on: idx != null, index: idx, species: body?.species ?? null, way: body?.way ?? null, wings: !!body?.wings, flying: !!p?.ride?.be, climbing: !!p?.climbing, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
+      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, way: body?.way ?? null, wings: !!body?.wings, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
     },
   };
   function drop() {
@@ -173,8 +176,6 @@ export function createBeing(game, { scene }) {
     if (model) { scene.remove(model); disposeModel(model); model = null; fit = null; }
     cam.ok = false;
   }
-  // swaps only with your feet on something (or swimming): mid-air you could chain two ways
-  function grounded(p) { return !!p && (p.onGround || p.inWater || (p.ride?.be && p.floorBelow().y >= p.pos.y - 0.15)); }
   function roomBehind(p) { // climbing a wall in the open: the camera can still stand behind you
     const x = p.pos.x + Math.sin(p.yaw) * 2, z = p.pos.z + Math.cos(p.yaw) * 2;
     return !game.world.isSolid(Math.floor(x), Math.floor(p.pos.y + 1.2), Math.floor(z));

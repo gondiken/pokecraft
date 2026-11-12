@@ -8,6 +8,24 @@ for two reasons:
 
 This plan solves both. **The first test is built (?preview, Wobbleland only): see "Built" at the end.**
 
+## 0. After the owner's first play (2026-11-12, later the same day)
+
+- **You are your creature; one Swap button.** The squad bar is gone. In chapter 3's lands you are your creature by itself (owner: "kids
+  will never want to switch to me anyway"); "🧍 Be me" / "🐾 Be my creature" is a button in the pause screen (R on a keyboard), so no
+  extra touch button. Swap (F, or the Place button: nothing is built in Wobbleland) goes round your first three; 1 2 3 on a keyboard. 🐾
+  marks the creature you are in the team list. The camera choice is V and the pause screen.
+- **The camera flashed** when walking W / A / D (not S): the "never lag through a wall" line copied your head before reading the way
+  back, so every time you walked away from the camera it landed on your head and slid out again. Fixed; the spec now walks W / D / A / S
+  and checks the distance never drops.
+- **Speed made sense:** in chapter 3's lands creature mode IS riding: a creature moves exactly like riding it (riding.js `RIDE`: a land
+  body 7 / 9.5 and its jump, a swimmer like the water ride, wings like the sky ride). R there no longer rides.
+- **No swap rule.** It was extra code for nothing: each place judges the body you are every frame (a Fly creature that swaps to a
+  walker over the ink falls in), so swapping is allowed any time, also in the air.
+- **"Too windy for Boomwing but not for bubbles?"** The owner is right: any rule "only these TYPES can do this BODY thing" will clash
+  with some creature's looks, because types and bodies do not line up (Boomwing is Sound with huge wings; a Bubble floats). So the
+  storm is now the same for every creature with wings (Boomwing with skill wins too: bots). **Storm Island is a wings place, not a
+  type's.** The Fly Way needs a new idea: see section 9.
+
 ## 1. Decisions (owner 2026-11-12)
 
 - **What a creature does in the world reflects its TYPE**, with the types grouped into **Ways** (at most 15). Not battle move kinds.
@@ -58,7 +76,7 @@ board. The types in each group are a first draft: your son could decide some of 
 
 | Way | The challenge it beats (its own shape) | The skill (naive fails, skilled wins) | Types |
 | --- | --- | --- | --- |
-| 🪽 Fly | a wide open gap in a storm | **built**: rings of downdraft come and go; hover, go when the next one is calm | Sky, Drake, Alien, Bubble |
+| 🪽 Fly (to redo as Wind, section 9) | a wide open gap in a storm: **now a wings place for everyone** | built: rings of downdraft; hover, go when the next one is calm | Sky, Drake, Alien, Bubble |
 | 🧗 Cling | a narrow shaft, walls, (later) ceilings | **built**: drips fall down the shaft; wait in a nook, climb between drips | Grass, Bug, Slime, Parkour, Gravity |
 | 🌊 Dive | deep water and its currents | breath runs out: air bubbles along the way, ride the currents, not against them | Water, Pirate, Atlantis |
 | ❄️ Freeze | rushing water too wild to swim | freeze a stepping-stone path ahead of you while it melts behind (aim, timing) | Ice |
@@ -133,6 +151,21 @@ boulder vs a machine).
 | a Drake rider / the tower's ice from outside | 0 / 12 | 0 / 12 |
 
 - Spec `ways` (`WAYS_ONLY=data|bots|real|fight|ipad|closed`): screenshots `tests/screenshots/ways-*.png`.
+
+## 9. The lesson, and what it means for the Ways (proposal, waiting for the owner)
+
+**Body = moving. Type = a power from what the creature is MADE OF, used on the world, never a better way of moving.** A type can never
+mean "flies better", "swims deeper" or "climbs" if some creatures of other types have the body for it. Checking the table with that rule:
+
+- **Fly** breaks it (wings belong to many types). Proposal: **Wind** (Sky, Drake: "its wings stir up storms", Scalewing's own words):
+  call a gust where you look (a button), push a sail boat over the ink lake, spin a windmill that raises a bridge, blow fog away. A
+  winged Boomwing flies, but it cannot make the wind blow.
+- **Bubble** moves to **Dive**: it carries its own air (a bubble round its head), so it stays under water longest. **Alien** to **Power**
+  or **Push** (a tractor beam that pulls things to you).
+- **Dive** has the same trap (every swimmer swims): its power is the breath, not the swimming: only Dive types breathe under water;
+  everyone else bobs up.
+- **Cling** is fine: no other body climbs a wall; flying up one is stopped by the narrow shape (wings need room for every flier).
+- The rest are already powers, not moves (dig, squeeze, slip through, glow, burn, power, dash, push, sneak, sense, charm, freeze).
 
 ## 8. Questions for you and your son
 

@@ -4,9 +4,10 @@
 //
 //   Storm Island (Fly): a chest on a little island in the middle of a lake of the Scribble's ink. Touch the ink = a puff back to where you
 //     came from. Three rings of ink-wind stand round the island and blow straight DOWN while they are on (2 s on, 1 s off; a flicker just
-//     before they come on). Any creature with wings may fly, but only the Fly types are at home in this storm: everyone else is blown
-//     back at its edge ("Too windy for Boomwing!"). Skill: hover between the rings and go when one turns off. The rings' times are set so
-//     flying straight in at full speed always meets one that is on (`ringOffsets`), so the naive way never works.
+//     before they come on). Owner 2026-11-12 ("too windy for Boomwing but not for bubbles? make it make sense"): the storm is the same
+//     for EVERY creature with wings, Boomwing, a Drake or a bubble: it is a wings place, not a type's. Skill: hover between the rings and
+//     go when one turns off. The rings' times are set so flying straight in at full speed always meets one that is on (`ringOffsets`),
+//     so the naive way never works.
 //   The Drip Tower (Cling): a chest on the roof of a tower of ice (nobody can grip ice), reached only up the narrow shaft inside it
 //     (one block wide: no wings open there). Ink drips fall down the shaft; one knocks you off and you fall to the bottom. Three nooks in
 //     the shaft's side: climb into one and the drips fall past. Skill: wait in a nook, climb when a drip has gone by.
@@ -90,19 +91,15 @@ export function waysLand(world, put) {
 }
 
 // The places' rules, one step after the player moved (the live part each frame, the bots in Node). Its clock is summed dt (it stands
-// still while the game is paused). -> events: [{ kind: 'puff' | 'windy' | 'knocked' | 'downdraft', ... }]
+// still while the game is paused). -> events: [{ kind: 'puff' | 'knocked' | 'downdraft', ... }]
 export class Trials {
   constructor() { this.t = 0; this.dry = null; this.knock = -1; }
   step(p, dt) {
     this.t += dt;
-    const ev = [], pos = p.pos, be = p.be, flying = !!p.ride;
+    const ev = [], pos = p.pos, be = p.be, flying = p.ride?.kind === 'sky';
     const ink = overInk(pos.x, pos.z), d = distS(pos.x, pos.z);
-    // the storm: everyone but a Fly creature is blown back at its edge (a rider too: be your creature to fly it)
-    if (flying && d <= STORM.r + 0.5 && pos.y > STORM.ink + 0.6 && !(be?.storm && p.ride.be)) {
-      const out = (STORM.r + 1.2) / Math.max(d, 0.01);
-      pos.x = STORM.x + (pos.x - STORM.x) * out; pos.z = STORM.z + (pos.z - STORM.z) * out; p.vel.set(0, 0, 0);
-      ev.push({ kind: 'windy', rider: !p.ride.be });
-    } else if (flying && be?.storm) {
+    // the storm: a ring that is on blows every flier down (wings are wings)
+    if (flying) {
       const i = ringAt(pos.x, pos.z);
       if (i >= 0 && ringState(i, this.t) === 'on') { p.moveAxis('y', -STORM.down * dt); ev.push({ kind: 'downdraft', ring: i }); }
     }

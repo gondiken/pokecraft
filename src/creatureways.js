@@ -32,20 +32,22 @@ export const WAY_OF = Object.fromEntries(WAYS.flatMap(w => w.types.map(t => [t, 
 // The Wizard's guardian (Custom) has no way of its own yet: plans/chapter3-ways.md (chosen on the drawing board, later).
 export const wayOf = type => WAY_OF[type] ?? null;
 
-// The body's numbers (the flying ones are riding.js RIDE.sky, handed in by the caller so this file imports nothing).
+// The body's numbers (how it walks, swims and flies is riding.js RIDE, handed in by the caller so this file imports nothing).
 export const BODY = {
-  squad: 3,     // the three you can be: your first three creatures (the scribble fight's squad, scribblefight.js squadOf)
+  squad: 3,     // the three you can be: your first three creatures (the scribble fight's squad, scribblefight.js squadOf); Swap goes round them
   climb: 3,     // Cling: blocks a second up a wall while you push into it
   side: 0.7,    // Cling: sideways along a wall, x your walking speed
   probe: 0.06,  // a wall closer than this to your box is "beside you"
 };
 // (Walls nobody can grip: ice is too slippery. player.js clingStep.)
 
-// A creature's body: { species, type, way, wings, cling, storm }. `sp` = SPECIES[id] (or a stand-in { type, flies }); `skyRide`: it is
-// ridden through the sky (traits.js), so it flies when you are it too. Every Fly-type creature flies (a kite, a saucer, a bubble).
-export function bodyOf(species, sp, skyRide = false) {
-  const way = wayOf(sp?.type);
-  return { species, type: sp?.type ?? null, way, wings: !!sp?.flies || skyRide || way === 'fly', cling: way === 'cling', storm: way === 'fly' };
+// A creature's body: { species, type, way, wings, move, cling }. `sp` = SPECIES[id] (or a stand-in { type, flies }); `rideKind` = how it
+// is ridden (traits.js: 'land' | 'water' | 'sky'). Owner 2026-11-12 ("make it make sense"): being a creature moves EXACTLY like riding it
+// (riding.js RIDE: a land body runs at the land ride's speed and jumps its jump, a swimmer swims like the water ride, wings fly like the
+// sky ride). Anything with wings flies (`flies`, a sky ride, every Fly-type creature); a body is never better or worse because of its type.
+export function bodyOf(species, sp, rideKind = null) {
+  const way = wayOf(sp?.type), wings = !!sp?.flies || rideKind === 'sky' || way === 'fly';
+  return { species, type: sp?.type ?? null, way, wings, move: rideKind === 'water' ? 'water' : 'land', cling: way === 'cling' };
 }
 
 // Room to spread wings round the body's middle: no wings open with a wall on both sides of you (a shaft, a doorway, a tunnel).
@@ -55,12 +57,14 @@ export function wingRoom(world, pos) {
   return !((s(x - 1, y, z) && s(x + 1, y, z)) || (s(x, y, z - 1) && s(x, y, z + 1)));
 }
 
-// Before each Player.update: a winged body flies (the sky riding physics, p.ride with `be: true`) wherever it has room, and walks with
-// folded wings where it has none. -> 'folded' the moment it had to fold them (the toast), else null.
-export function bodyStep(p, world, body, sky) {
-  if (!body?.wings) { if (p.ride?.be) p.ride = null; return null; }
-  const room = wingRoom(world, p.pos);
-  if (room && !p.ride) { p.ride = { ...sky, type: body.type, be: true }; return null; }
-  if (!room && p.ride?.be) { p.ride = null; return 'folded'; }
-  return null;
+// After each Player.update: the body's riding physics (p.ride with `be: true`; `RIDE` = riding.js's numbers, handed in): wings fly wherever
+// they have room and fold where they have none (then it walks or swims like its body), everything else walks / swims like its ride.
+// -> 'folded' the moment it had to fold its wings (the toast), else null.
+export function bodyStep(p, world, body, RIDE) {
+  if (!body) { if (p.ride?.be) p.ride = null; return null; }
+  const fly = body.wings && wingRoom(world, p.pos), kind = fly ? 'sky' : body.move;
+  if (p.ride?.be && p.ride.kind === kind) return null;
+  const folded = !!(p.ride?.be && p.ride.kind === 'sky' && !fly);
+  p.ride = { ...RIDE[kind], type: body.type, be: true };
+  return folded ? 'folded' : null;
 }

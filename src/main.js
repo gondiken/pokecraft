@@ -679,13 +679,13 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Space') e.preventDefault();
   game.player.keys[e.code] = true;
   if (e.code === 'Space' && !e.repeat) game.player.keys.jumpTap = true; // a tap shorter than one frame still jumps (player.js)
-  if (game.being.can() && !e.repeat && /^Digit[1-3]$/.test(e.code)) { game.being.become(Number(e.code.slice(5)) - 1); return; } // chapter 3: 1 2 3 = be that creature
-  if (e.code === 'KeyX' && !e.repeat && game.being.can()) { game.being.toggle(); return; } // chapter 3: you <-> your creature
+  if (game.being.on && !e.repeat && /^Digit[1-3]$/.test(e.code)) { game.being.become(Number(e.code.slice(5)) - 1); return; } // chapter 3: in creature mode 1 2 3 = that creature
+  if (e.code === 'KeyF' && !e.repeat && game.being.can()) { game.being.next(); return; } // chapter 3: Swap = the next of your three
   if (e.code.startsWith('Digit')) {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
-  if (e.code === 'KeyR' && !e.repeat && (!game.being.on || game.being.back())) game.riding.toggle(); // T27 (chapter 3: being your creature, R makes you you again first)
+  if (e.code === 'KeyR' && !e.repeat) { if (game.being.can()) game.being.toggle(); else game.riding.toggle(); } // T27 (chapter 3's lands: R = me mode / creature mode, as the pause screen's button)
   if (e.code === 'KeyV' && !e.repeat && game.cubeCam.can()) game.cubeCam.toggle(); // Cube Planets: the steady camera
   else if (e.code === 'KeyV' && !e.repeat && game.being.on) game.being.toggleView(); // chapter 3: behind your creature / in its eyes
   if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
@@ -841,9 +841,9 @@ game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { const k = game.player.keys; k.Space = down && playing(); if (k.Space) k.jumpTap = true; }, // a tap shorter than one frame still jumps (player.js)
-  ride: () => { if (!playing()) return; if (game.cubeCam.can()) { game.cubeCam.toggle(); return; } if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else if (!game.being.on || game.being.back()) game.riding.toggle(); }, // (Cube Planets: that slot is the camera)
+  ride: () => { if (!playing()) return; if (game.being.can()) { game.being.toggle(); return; } if (game.cubeCam.can()) { game.cubeCam.toggle(); return; } if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); }, // (Cube Planets: that slot is the camera)
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
-  place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
+  place: () => { if (!playing() || game.ui.asking) return; if (game.being.can()) { game.being.next(); return; } if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
   // T39c: one button = "do the thing I look at": answer a question, else use the target, else break the block, else My home
   interact: () => {
     if (game.ui.asking) { game.ui.askYes('tap'); return; } // T39b
@@ -1256,11 +1256,13 @@ function updateTarget() {
     : !riding.first() ? 'Your rideable friends are too tired. Visit Healer Hana!'
     : game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)) ? 'No riding right here. Walk a little further first!' : '';
   game.touchWhy.ride = rideWhy;
+  const be = game.being.can(), beMany = be && game.being.squad().length > 1; // chapter 3's lands: you are your creature, Place = Swap (nothing is built there)
   game.touch.setButtons({
     act: { label: act, dim },
-    place: { dim: !!placeWhy, why: placeWhy },
-    ride: game.cubeCam.can() ? { have: true, dim: false, why: '', on: false, label: 'Camera' } : { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on }, // Cube Planets: the Ride slot is the camera there
-    sky: (riding.on && riding.kind === 'sky') || !!p.ride?.be, // (chapter 3: a winged creature you are)
+    place: be ? { dim: !beMany, why: beMany ? '' : 'Only one creature in your team!', label: 'Swap' } : { dim: !!placeWhy, why: placeWhy },
+    ride: be ? { have: false } // (chapter 3's lands: no Ride button; "Be me" is in the pause screen)
+      : game.cubeCam.can() ? { have: true, dim: false, why: '', on: false, label: 'Camera' } : { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on }, // Cube Planets: the Ride slot is the camera there
+    sky: (riding.on && riding.kind === 'sky') || (!!p.ride?.be && p.ride.kind === 'sky'), // (chapter 3: a winged creature you are)
     swim: !!p.diving, // T41: Jump says Swim in the Sunken City
     jump: p.carry?.jumpWord?.() ?? null, // T49: a ride may name the Jump button (the Castle: Shield, Off)
   });

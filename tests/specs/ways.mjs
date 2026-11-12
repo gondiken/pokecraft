@@ -1,12 +1,13 @@
 // Chapter 3: being your creature and the first two WAY places (plans/chapter3-ways.md, ?preview only, Wobbleland only):
 //   data:   the 15 ways cover every type once (Custom: none yet), bodyOf (wings from `flies`, a sky ride or the Fly way)
 //   bots:   tests/waysbots.mjs with the real Player on the real terrain at 60 / 20 fps: Storm Island (flying straight in never works,
-//           the skilled flier always; Boomwing, a walker, a Cling creature and a rider never) and the Drip Tower (just climbing never
+//           the skilled flier always; a walker and a Cling creature never; Boomwing with skill too: wings are wings) and the Drip Tower (just climbing never
 //           works, waiting in the nooks always; a flier, Boomwing, a walker and the ice outside never)
-//   real:   real keys in a browser: the squad bar, 1 2 3 / X / V, Boomwing blown back by the storm ("Too windy"), a Drake flies into it,
-//           a Cling creature walks into the tower and climbs (its camera goes into its eyes in the shaft), screenshots ways-*.png
+//   real:   real keys in a browser (owner 2026-11-12): you are your creature by itself, no bar, the pause screen's Be me (R), F = Swap, 1 2 3, V; the camera stays behind
+//           while walking W / A / D / S (it flashed); Boomwing flies into the storm like every creature with wings; a land body runs at the
+//           land ride's speed; a Cling creature walks into the tower and climbs (its camera goes into its eyes in the shaft); ways-*.png
 //   fight:  walking into a scribble patch AS your creature: it leads (no Capture Cube), you are it again afterwards, where it stood
-//   ipad:   an emulated iPad: the bar is tapped, the Jump button says Up while you are a flier
+//   ipad:   an emulated iPad: no Creature / Me button (Be me is in the pause screen), the Place button Swap, the Jump button Up while you fly
 //   closed: without ?preview and in the main world there is no bar and 1 2 3 still pick blocks
 //   WAYS_ONLY=data|bots|real|fight|ipad|closed
 import path from 'node:path';
@@ -32,15 +33,15 @@ export default async function ({ browser, base, t }) {
       'surprise', 'doodle', 'atlantis', 'knight', 'bubble', 'gravity', 'mirror'];
     const all = C.WAYS.flatMap(w => w.types), twice = all.filter((x, i) => all.indexOf(x) !== i), missing = types.filter(x => !all.includes(x));
     t.ok(C.WAYS.length <= 15 && !twice.length && !missing.length && all.length === types.length, `the ${C.WAYS.length} ways hold every one of the ${types.length} types once (Custom has none yet) (twice: ${twice}, missing: ${missing})`);
-    const b = C.bodyOf('boomwing', { type: 'sound', flies: true }), d = C.bodyOf('scalewing', { type: 'drake' }), k = C.bodyOf('kiteling', { type: 'sky' }), s = C.bodyOf('sproutle', { type: 'grass' });
-    t.ok(b.wings && !b.storm && d.wings && d.storm && k.wings && s.cling && !s.wings, `bodies: Boomwing has wings but no storm, every Fly creature flies, Sproutle clings (${JSON.stringify({ b, d, s })})`);
+    const b = C.bodyOf('boomwing', { type: 'sound', flies: true }, 'sky'), d = C.bodyOf('scalewing', { type: 'drake' }), k = C.bodyOf('kiteling', { type: 'sky' }), s = C.bodyOf('sproutle', { type: 'grass' }), w = C.bodyOf('tidalord', { type: 'water' }, 'water');
+    t.ok(b.wings && d.wings && k.wings && s.cling && !s.wings && s.move === 'land' && w.move === 'water', `bodies: every creature with wings flies (Boomwing too), Sproutle clings and walks, Tidalord swims like its ride (${JSON.stringify({ b, s, w })})`);
   }
 
   if (want('bots')) {
     const { runStorm, runShaft } = await import('../waysbots.mjs');
     const a = await runStorm(), b = await runShaft();
     const f = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
-    t.ok(!a.problems.length, `Storm Island, the real Player at 60 · 20 fps: straight in ${f(a.out, 'naiveFly')}, skilled ${f(a.out, 'skilledFly')} (${a.out['skilledFly@60'].median} s), Boomwing ${f(a.out, 'boomwing')} / ${f(a.out, 'boomwingSkilled')}, walker ${f(a.out, 'walker')}, Cling ${f(a.out, 'cling')}, Drake rider ${f(a.out, 'rider')} ${a.problems.join('; ')}`);
+    t.ok(!a.problems.length, `Storm Island, the real Player at 60 · 20 fps: straight in ${f(a.out, 'naiveFly')}, skilled ${f(a.out, 'skilledFly')} (${a.out['skilledFly@60'].median} s), Boomwing straight in ${f(a.out, 'boomwing')}, skilled ${f(a.out, 'boomwingSkilled')}, walker ${f(a.out, 'walker')}, Cling ${f(a.out, 'cling')} ${a.problems.join('; ')}`);
     t.ok(!b.problems.length, `the Drip Tower: just climbing ${f(b.out, 'naiveClimb')}, skilled ${f(b.out, 'skilledClimb')} (${b.out['skilledClimb@60'].median} s), flier ${f(b.out, 'flier')}, Boomwing ${f(b.out, 'boomwing')}, walker ${f(b.out, 'walker')}, the ice outside ${f(b.out, 'iceWall')} ${b.problems.join('; ')}`);
   }
 
@@ -48,58 +49,67 @@ export default async function ({ browser, base, t }) {
     const page = await openGame(browser, base, { query: '?preview' });
     await newGame(page, 0);
     await team(page);
-    await intoWobble(page);
+    await intoWobble(page, { creature: true });
     await put(page, 100.5, 11, 137.5);
-    await frames(page, 3);
+    await frames(page, 4);
     if (want('real')) {
-      const bar = await page.evaluate(() => [...document.querySelectorAll('#squad button')].map(b => b.textContent.trim()));
-      t.ok(bar.length === 4 && /Me/.test(bar[0]) && /Scalewing/.test(bar[1]) && /Boomwing/.test(bar[3]), `the squad bar: you and your three (${bar.join(' / ')})`);
-      await page.keyboard.press('Digit3'); await frames(page, 4);
-      const b3 = await be(page);
-      t.ok(b3.on && b3.species === 'boomwing' && b3.wings && b3.flying && b3.behind && b3.model, `3: you are Boomwing, it flies, the camera is behind it (${JSON.stringify(b3)})`);
-      await shot(page, 'ways-boomwing.png');
-      await page.keyboard.down('Space'); await page.keyboard.down('w');
-      await waitFor(page, () => /Too windy for Boomwing/.test([...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join()), null, 180000).catch(() => {});
-      const windy = await toasts(page), z1 = await page.evaluate(() => window.pokecraft.player.pos.z);
-      await page.keyboard.up('w'); await page.keyboard.up('Space');
-      t.ok(/Too windy for Boomwing/.test(windy) && z1 > 107 + 23, `Boomwing has wings but is blown back at the storm's edge (z ${z1.toFixed(1)}): "${windy}"`);
-      await page.waitForTimeout(800); // (it floats down to the ground before a swap)
-      await waitFor(page, () => { const p = window.pokecraft.player; return p.onGround; }, null, 120000).catch(() => {});
-      await page.keyboard.press('Digit1'); await frames(page, 4);
       const b1 = await be(page);
-      t.ok(b1.species === 'scalewing' && b1.way === 'fly', `1: you are Scalewing, a Fly creature (${b1.species}, ${b1.way})`);
+      t.ok(!(await page.evaluate(() => !!document.getElementById('squad'))) && b1.on && !b1.me && b1.species === 'scalewing' && b1.flying && b1.behind && b1.model, `in Wobbleland you are your first creature by itself (owner 2026-11-12), Scalewing, flying, the camera behind it; no extra bar (${JSON.stringify(b1)})`);
+      // the camera stays put while you walk forward and sideways (owner 2026-11-12: it flashed in and out on W, A, D)
+      const camSteady = await page.evaluate(async () => {
+        const g = window.pokecraft, p = g.player, out = [];
+        for (const k of ['KeyW', 'KeyD', 'KeyA', 'KeyS']) {
+          p.keys[k] = true;
+          for (let i = 0; i < 10; i++) { await new Promise(r => requestAnimationFrame(r)); const c = g.camera.position; out.push(Math.hypot(c.x - p.pos.x, c.y - p.pos.y - 1.2, c.z - p.pos.z)); }
+          p.keys[k] = false;
+        }
+        return { min: Math.min(...out), max: Math.max(...out) };
+      });
+      t.ok(camSteady.min > 3.5, `walking W, D, A, S the camera stays behind your creature (distance ${camSteady.min.toFixed(2)}..${camSteady.max.toFixed(2)}, never on its head)`);
+      await shot(page, 'ways-scalewing.png');
+      await page.keyboard.press('KeyF'); await page.keyboard.press('KeyF'); await frames(page, 4);
+      const b3 = await be(page);
+      t.ok(b3.species === 'boomwing' && b3.flying, `F twice: Swap goes round your three to Boomwing (${b3.species}); swapping works in the air too`);
+      // Boomwing flies into the storm like any creature with wings (owner 2026-11-12: "too windy for Boomwing but not for bubbles?")
+      await put(page, 100.5, 15, 136.5);
       await page.keyboard.down('Space'); await page.keyboard.down('w');
       await waitFor(page, () => Math.hypot(window.pokecraft.player.pos.x - 100, window.pokecraft.player.pos.z - 107) < 21, null, 240000).catch(() => {});
-      const inStorm = await page.evaluate(() => ({ d: Math.hypot(window.pokecraft.player.pos.x - 100, window.pokecraft.player.pos.z - 107), y: window.pokecraft.player.pos.y }));
+      const inStorm = await page.evaluate(() => ({ d: Math.hypot(window.pokecraft.player.pos.x - 100, window.pokecraft.player.pos.z - 107), toasts: [...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join(' | ') }));
       await shot(page, 'ways-storm.png');
       await page.keyboard.up('w'); await page.keyboard.up('Space');
-      t.ok(inStorm.d < 21, `a Drake flies on into the storm (${inStorm.d.toFixed(1)} from the island's middle, y ${inStorm.y.toFixed(1)})`);
-      // V switches the camera; X makes you you again
+      t.ok(inStorm.d < 21 && !/windy/i.test(inStorm.toasts), `Boomwing flies into the storm like any creature with wings, no "too windy" (${inStorm.d.toFixed(1)} from the island's middle)`);
+      // V switches the camera
       await page.keyboard.press('KeyV'); await frames(page, 3);
       const eyes = await be(page);
       await page.keyboard.press('KeyV'); await frames(page, 2);
       t.ok(eyes.view === 'eyes' && !eyes.model, `V: the camera goes into its eyes (${eyes.view}), V again behind`);
-      // the Drip Tower with Sproutle: walk in (real W), its camera goes into its eyes in the shaft, it climbs
+      // Blazehound-like speed: a land creature moves like riding it (owner 2026-11-12)
       await put(page, 140.5, 11, 116.5, 0, 0.6);
-      await frames(page, 3);
       await page.keyboard.press('Digit2'); await frames(page, 3);
+      const sp = await be(page);
+      t.ok(sp.species === 'sproutle' && sp.move === 'land' && sp.speed === 7, `2: Sproutle, a land body: it runs at the land ride's speed (${sp.speed})`);
       await shot(page, 'ways-tower.png');
       await page.keyboard.down('w');
       await waitFor(page, () => window.pokecraft.player.pos.y > 12.5, null, 240000).catch(() => {});
-      const climb = await page.evaluate(() => ({ y: window.pokecraft.player.pos.y, z: window.pokecraft.player.pos.z, ...window.pokecraft.being.info() }));
+      const climb = await page.evaluate(() => ({ y: window.pokecraft.player.pos.y, ...window.pokecraft.being.info() }));
       await shot(page, 'ways-shaft.png');
       await page.keyboard.up('w');
-      t.ok(climb.species === 'sproutle' && climb.y > 12.5 && climb.tight && !climb.behind, `2: Sproutle walks into the tower and climbs the shaft (y ${climb.y.toFixed(1)}); in the shaft the camera is in its eyes (tight ${climb.tight})`);
-      // X: you again (it drops you down first: wait for the ground)
-      await waitFor(page, () => window.pokecraft.player.onGround, null, 120000).catch(() => {});
-      await page.keyboard.press('KeyX'); await frames(page, 2);
-      const me = await be(page);
-      t.ok(!me.on && !(await page.evaluate(() => window.pokecraft.player.be)), `X: you are you again (${JSON.stringify({ on: me.on })})`);
+      t.ok(climb.y > 12.5 && climb.tight && !climb.behind, `Sproutle walks into the tower and climbs the shaft (y ${climb.y.toFixed(1)}); in the shaft the camera is in its eyes`);
+      // the pause screen's button: Be me, and back
+      await page.evaluate(() => document.exitPointerLock()); await page.waitForTimeout(400);
+      const btn1 = await page.evaluate(() => document.getElementById('beme-btn')?.textContent);
+      await page.evaluate(() => document.getElementById('beme-btn').click()); await frames(page, 4);
+      const me = await be(page), btn2 = await page.evaluate(() => document.getElementById('beme-btn')?.textContent);
+      t.ok(btn1 === '🧍 Be me' && !me.on && me.me && btn2 === '🐾 Be my creature' && !(await page.evaluate(() => window.pokecraft.player.be)), `the pause screen: "${btn1}" makes you you and stays so (${btn2})`);
+      await page.evaluate(() => document.getElementById('beme-btn').click()); await frames(page, 3);
+      t.ok((await be(page)).on, 'and "Be my creature" makes you your creature again');
+      await page.evaluate(() => document.getElementById('resume').click()); await frames(page, 3); // (back to playing)
+      await page.evaluate(() => window.pokecraft.being.setMe(true)); await frames(page, 2);
     }
     if (want('fight')) {
       await put(page, 112.5, 11, 194.5);
       await frames(page, 3);
-      await page.keyboard.press('Digit2'); await frames(page, 3);
+      await page.evaluate(() => window.pokecraft.being.setMe(false)); await frames(page, 3); await page.keyboard.press('Digit2'); await frames(page, 3); // (creature mode again, 2 = Sproutle)
       await page.keyboard.down('w');
       await waitFor(page, () => window.pokecraft.scribble.fighting, null, 240000).catch(() => {});
       await page.keyboard.up('w');
@@ -120,17 +130,18 @@ export default async function ({ browser, base, t }) {
     const page = await openGame(browser, base, { query: '?preview', contextOptions: devices['iPad (gen 7) landscape'] });
     await newGame(page, 0);
     await team(page);
-    await intoWobble(page);
+    await intoWobble(page, { creature: true });
     await put(page, 100.5, 11, 137.5);
-    await frames(page, 3);
-    await page.tap('#squad button[data-i="0"]');
     await frames(page, 4);
-    const a = await be(page), up = await page.evaluate(() => document.getElementById('btn-jump')?.textContent || '');
-    t.ok(a.species === 'scalewing' && a.flying, `iPad: a tap on Scalewing in the bar makes you it (${a.species}); the Jump button: "${up.trim()}"`);
+    const label = () => page.evaluate(() => ({ ride: document.getElementById('btn-ride')?.textContent.trim(), place: document.getElementById('btn-place')?.textContent.trim(), jump: document.getElementById('btn-jump')?.textContent.trim() }));
+    const a = await be(page), l1 = await label(), rideShown = await page.evaluate(() => !document.getElementById('btn-ride')?.classList.contains('hidden'));
+    t.ok(a.species === 'scalewing' && a.flying && !rideShown && l1.place === 'Swap' && l1.jump === 'Up', `iPad: you are Scalewing by itself; no Creature / Me button (Ride hidden: ${!rideShown}), the Place button says ${l1.place}, Jump says ${l1.jump}`);
     await shot(page, 'ways-ipad.png');
-    await page.tap('#squad button[data-i="me"]');
-    await frames(page, 3);
-    t.ok(!(await be(page)).on, 'iPad: a tap on Me makes you you again');
+    await page.tap('#btn-place'); await frames(page, 3);
+    t.ok((await be(page)).species === 'sproutle', 'iPad: Swap goes to the next creature');
+    await page.tap('#btn-pause'); await page.waitForTimeout(500);
+    await page.tap('#beme-btn'); await frames(page, 3);
+    t.ok(!(await be(page)).on, 'iPad: the pause screen\'s "Be me" = me mode');
     t.ok(!page.errors.length, `iPad: no page errors (${page.errors.join('; ')})`);
     await page.context().close();
   }
@@ -143,8 +154,9 @@ export default async function ({ browser, base, t }) {
       await frames(page, 3);
       await page.evaluate(() => document.querySelector('#title') && null);
       await page.keyboard.press('Digit3'); await frames(page, 2);
-      const r = await page.evaluate(() => ({ can: window.pokecraft.being.can(), on: window.pokecraft.being.on, bar: !!document.querySelector('#squad:not(.hidden)'), sel: window.pokecraft.selected }));
-      t.ok(!r.can && !r.on && !r.bar && r.sel === 2, `${q || 'without ?preview'}, in the main world: no being your creature, no bar, 3 picks the third block (${JSON.stringify(r)})`);
+      await page.keyboard.press('KeyF'); await frames(page, 2);
+      const r = await page.evaluate(() => ({ can: window.pokecraft.being.can(), on: window.pokecraft.being.on, place: document.getElementById('btn-place')?.textContent.trim(), sel: window.pokecraft.selected }));
+      t.ok(!r.can && !r.on && r.place === 'Place' && r.sel === 2, `${q || 'without ?preview'}, in the main world: no creature mode (R and F do nothing new), 3 picks the third block (${JSON.stringify(r)})`);
       await page.context().close();
     }
   }

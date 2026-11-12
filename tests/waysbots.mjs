@@ -1,20 +1,25 @@
 // Chapter 3 (plans/chapter3-ways.md): the first two WAY places with the REAL Player in Node (wobbleEnv: the real Wobbleland terrain),
 // the real body rules (creatureways.js bodyStep, player.js clingStep) and the real place rules (wayland.js Trials), in the game's own
 // order each frame: Player.update, Trials.step, bodyStep. At 60 and 20 fps, from 12 different moments of the rings' / drips' clock.
-//   storm (Storm Island, Fly): a Fly creature flying straight in never makes it; a skilled one (hovers between the rings and goes when
-//          the next one is off) always does; Boomwing (wings, but a Sound type) is blown back; a walker and a Cling creature end in the
-//          ink; a rider on a Drake is blown back too (be your creature to fly it)
+//   storm (Storm Island, a wings place: owner 2026-11-12, the same for every creature with wings): flying straight in never makes it
+//          (a Drake or Boomwing); a skilled flier (hovers between the rings and goes when the next one is off) always does, whatever its
+//          type; a walker and a Cling creature end in the ink
 //   shaft (the Drip Tower, Cling): a Cling creature that just climbs is knocked down every time; a skilled one (waits in the nooks)
 //          always reaches the roof; a flier folds its wings and stays at the bottom; nobody grips the tower's ice from outside
 //   node tests/waysbots.mjs     (exit 1 on a problem)
 import { wobbleEnv } from './wobblenode.mjs';
 
 const SKY = { kind: 'sky', speed: 7.5, climb: 5, sink: 4, cap: 6, glide: 6, drift: 1.2 }; // riding.js RIDE.sky
-const BODIES = { // (creatureways.js bodyOf of a stand-in species)
-  fly: { species: 'scalewing', type: 'drake', way: 'fly', wings: true, cling: false, storm: true },
-  boomwing: { species: 'boomwing', type: 'sound', way: 'sense', wings: true, cling: false, storm: false },
-  walker: { species: 'emberpup', type: 'fire', way: 'burn', wings: false, cling: false, storm: false },
-  cling: { species: 'sproutle', type: 'grass', way: 'cling', wings: false, cling: true, storm: false },
+const BODIES = { // (creatureways.js bodyOf of a stand-in species: every body moves like riding it, RIDE below)
+  fly: { species: 'scalewing', type: 'drake', way: 'fly', wings: true, move: 'land', cling: false },
+  boomwing: { species: 'boomwing', type: 'sound', way: 'sense', wings: true, move: 'land', cling: false },
+  walker: { species: 'blazehound', type: 'fire', way: 'burn', wings: false, move: 'land', cling: false },
+  cling: { species: 'sproutle', type: 'grass', way: 'cling', wings: false, move: 'land', cling: true },
+};
+const RIDE = { // riding.js RIDE
+  land: { kind: 'land', speed: 7.0, sprint: 9.5, jump: 11.2 },
+  water: { kind: 'water', speed: 4.3, sprint: 6.2, jump: 8.6, landSlow: 0.5 },
+  sky: SKY,
 };
 
 async function setup() {
@@ -29,14 +34,14 @@ function play(E, { body, ride = null, start, yaw, phase, fps, secs, brain, won }
   p.pos.set(...start); p.vel.set(0, 0, 0); p.yaw = yaw; p.pitch = 0;
   if (ride) p.ride = { ...SKY, type: ride };
   const tr = new W.Trials(); tr.t = phase;
-  if (body) C.bodyStep(p, w, body, SKY);
+  if (body) C.bodyStep(p, w, body, RIDE);
   const out = { won: false, t: 0, puffs: 0, windy: 0, knocks: 0, maxY: p.pos.y };
   const dt = 1 / fps;
   for (let t = 0; t < secs; t += dt) {
     p.keys = brain(E, tr, t) || {};
     p.update(dt);
     for (const e of tr.step(p, dt)) { if (e.kind === 'puff') out.puffs++; if (e.kind === 'windy') out.windy++; if (e.kind === 'knocked') out.knocks++; }
-    if (body) C.bodyStep(p, w, body, SKY);
+    if (body) C.bodyStep(p, w, body, RIDE);
     out.maxY = Math.max(out.maxY, p.pos.y);
     if (won(E)) { out.won = true; out.t = +t.toFixed(2); break; }
   }
@@ -72,7 +77,7 @@ function skilledClimb(E, tr) {
   if ((inNook || atDoor) && !st.going) {
     const target = T.nooks.find(n => n > y + 0.05) ?? T.roof + 1, lag = atDoor ? 0.7 : 0.3; // (from the door: the walk in first)
     const need = (target - y) / 3 + lag + 0.3; // the climb, plus stepping out and in
-    for (let s = 0.2; s <= need; s += 0.05) {
+    for (let s = 0; s <= need; s += 0.05) {
       const me = y + 3 * Math.max(0, s - lag);
       if (W.dripsAt(tr.t + s).some(d => d < me + p.height + 0.15 && d + 2 * T.r > me - 0.15)) return {}; // a drip would meet you: wait
     }
@@ -94,10 +99,9 @@ export async function runStorm({ tries = 12, fps = [60, 20] } = {}) {
     naiveFly: { body: BODIES.fly, brain: naiveFly, want: 'never' },
     skilledFly: { body: BODIES.fly, brain: skilledFly, want: 'always' },
     boomwing: { body: BODIES.boomwing, brain: naiveFly, want: 'never' },
-    boomwingSkilled: { body: BODIES.boomwing, brain: skilledFly, want: 'never' },
+    boomwingSkilled: { body: BODIES.boomwing, brain: skilledFly, want: 'always' },
     walker: { body: BODIES.walker, brain: naiveFly, want: 'never' },
     cling: { body: BODIES.cling, brain: naiveFly, want: 'never' },
-    rider: { body: null, ride: 'drake', brain: skilledFly, want: 'never' },
   };
   for (const [name, r] of Object.entries(rows)) for (const f of fps) {
     let wins = 0, times = [];

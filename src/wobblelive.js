@@ -13,8 +13,6 @@ import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
 import { STORM, SHAFT, ringState, dripsAt } from './wayland.js'; // chapter 3: the way places (plans/chapter3-ways.md)
-import { WAY } from './creatureways.js';
-import { nameOf } from './species.js';
 
 export const POT = {
   r: 1.3,          // stand within this of a pot's middle to hop from it
@@ -333,16 +331,11 @@ class WayPlaces extends Piece {
     this.drips.forEach((m, k) => { m.visible = k < ys.length; if (m.visible) m.position.set(SHAFT.x + 0.5, ys[k] + SHAFT.r, SHAFT.z + 0.5); });
   }
   event(e, p) {
-    const g = this.game, now = this.t;
     if (e.kind === 'puff') {
       this.s.puff({ x: p.pos.x, y: p.pos.y, z: p.pos.z, colour: 0x3a2a6e });
       try { sound.play('whoosh'); } catch { /* optional */ }
       p.yaw = e.yaw ?? p.yaw;
       this.once('puff', 'Splash! The Scribble\'s ink puffs you back.');
-    } else if (e.kind === 'windy' && now - this.toastAt > 2.5) {
-      this.toastAt = now;
-      const c = g.being?.creature ?? g.riding?.creature, name = c ? nameOf(c) : 'you';
-      g.ui?.toast(e.rider ? `Too windy to ride here! Be ${name} to try the storm.` : `Too windy for ${name}! Only ${WAY.fly.icon} Sky, Drake, Alien and Bubble creatures fly this storm.`);
     } else if (e.kind === 'knocked') {
       try { sound.play('pumpkinsplat'); } catch { /* optional */ }
       this.once('knocked', 'Splat! A drip knocked you off.');

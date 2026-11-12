@@ -683,7 +683,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   function canStart() {
     const p = game.player;
     if (S.phase !== 'idle' || !S.armed || !game.playing?.() || game.ui?.asking || game.hideSeek?.active || game.realms?.busy) return false;
-    const up = (game.riding?.on && game.riding.kind === 'sky') || game.player?.ride?.be ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
+    const up = (game.riding?.on && game.riding.kind === 'sky') || (game.player?.ride?.be && game.player.ride.kind === 'sky') ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
     if (Math.hypot(p.pos.x - S.spot.x, p.pos.z - S.spot.z) > FIGHT.patch || p.pos.y - S.spot.y > up || S.spot.y - p.pos.y > 4) return false;
     return squadOf(game.party).length > 0;
   }
@@ -692,7 +692,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (game.riding?.on) { game.riding.stop('quiet'); game.ui?.toast('You hop off. The Scribble is here!'); } // (a sky ride drops you to the ground first)
     // chapter 3 (plans/chapter3-ways.md): walking in AS your creature, it is already out: it fights first, where it stands (no Capture Cube)
     const be = game.being?.on ? game.being.index : null;
-    if (be != null && p.ride?.be) { p.dropToFloor(); p.ride = null; }
+    if (be != null && p.ride?.be) { if (p.ride.kind === 'sky') p.dropToFloor(); p.ride = null; } // (being.js puts the body back after the fight)
     S.asBe = be != null;
     makeUi();
     // your creature lands two steps in front of you, inside the ring, on the ground
