@@ -138,7 +138,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     },
     // Glowcap Caves: whose light you carry on foot: your ride's type, else your first creature's; how far it reaches (Fire, Light,
     // Electric and Cosmic glow: twice as far)
-    lightType() { return game.player?.ride?.type ?? SPECIES[game.party?.find(c => c && c.hp > 0)?.species ?? game.party?.[0]?.species]?.type ?? null; },
+    lightType() { return game.player?.be?.type ?? game.player?.ride?.type ?? SPECIES[game.party?.find(c => c && c.hp > 0)?.species ?? game.party?.[0]?.species]?.type ?? null; },
     sight() { return GROUND.dark.sight(api.lightType()); },
     update(dt) {
       api.refresh();

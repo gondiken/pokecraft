@@ -22,6 +22,7 @@ import { createNavUi } from './navui.js'; // T39a
 import { createNav } from './destinations.js'; // T39a
 import { TouchControls } from './touch.js';
 import { createRiding, rideKind } from './riding.js';
+import { createBeing } from './being.js'; // chapter 3 (?preview): be your creature in chapter 3's lands
 import { createHideSeek } from './hideseek.js'; // T30
 import { createPlayTogether } from './playtogether.js';
 import { createSwaps } from './swaps.js'; // wave 17: gifts and trades
@@ -678,12 +679,15 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Space') e.preventDefault();
   game.player.keys[e.code] = true;
   if (e.code === 'Space' && !e.repeat) game.player.keys.jumpTap = true; // a tap shorter than one frame still jumps (player.js)
+  if (game.being.can() && !e.repeat && /^Digit[1-3]$/.test(e.code)) { game.being.become(Number(e.code.slice(5)) - 1); return; } // chapter 3: 1 2 3 = be that creature
+  if (e.code === 'KeyX' && !e.repeat && game.being.can()) { game.being.toggle(); return; } // chapter 3: you <-> your creature
   if (e.code.startsWith('Digit')) {
     const n = Number(e.code.slice(5)) - 1;
     if (n >= 0 && n < game.hotbar.length) { game.selected = n; game.ui.renderHud(); }
   }
-  if (e.code === 'KeyR' && !e.repeat) game.riding.toggle(); // T27
+  if (e.code === 'KeyR' && !e.repeat && (!game.being.on || game.being.back())) game.riding.toggle(); // T27 (chapter 3: being your creature, R makes you you again first)
   if (e.code === 'KeyV' && !e.repeat && game.cubeCam.can()) game.cubeCam.toggle(); // Cube Planets: the steady camera
+  else if (e.code === 'KeyV' && !e.repeat && game.being.on) game.being.toggleView(); // chapter 3: behind your creature / in its eyes
   if (e.code === 'KeyE' && !interact(true) && game.homes.matPos) game.openHome(); // T22: E with nothing targeted, on a Doormat
 });
 
@@ -837,7 +841,7 @@ game.touchWhy = { place: '', ride: '' };
 game.touch = new TouchControls(game, canvas, {
   canPlay: playing,
   jump: down => { const k = game.player.keys; k.Space = down && playing(); if (k.Space) k.jumpTap = true; }, // a tap shorter than one frame still jumps (player.js)
-  ride: () => { if (!playing()) return; if (game.cubeCam.can()) { game.cubeCam.toggle(); return; } if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else game.riding.toggle(); }, // (Cube Planets: that slot is the camera)
+  ride: () => { if (!playing()) return; if (game.cubeCam.can()) { game.cubeCam.toggle(); return; } if (game.touchWhy.ride && !game.riding.on) game.ui.toast(game.touchWhy.ride); else if (!game.being.on || game.being.back()) game.riding.toggle(); }, // (Cube Planets: that slot is the camera)
   down: d => { game.player.keys.ShiftLeft = d && playing(); },
   place: () => { if (!playing() || game.ui.asking) return; if (game.touchWhy.place) game.ui.toast(game.touchWhy.place); else placeBlock(); },
   // T39c: one button = "do the thing I look at": answer a question, else use the target, else break the block, else My home
@@ -1160,6 +1164,7 @@ createStudio(game, { startBattle, save }); // wave 19 -> game.studio
 game.missions = createMissions(game, { save }); // T29
 game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?? game.world.seed; // T38c: the maker's seed is your own main world's, never a visited world's or a realm's
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
+game.being = createBeing(game, { scene }); // chapter 3 (?preview): be your creature (does nothing without ?preview or outside chapter 3's lands)
 game.hideSeek = createHideSeek(game); // T30
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
 game.worldReset = createWorldReset(game, { save: () => save(true) }); // owner 2026-10-29: ?preview only, the pause screen's "Start this world over"
@@ -1255,7 +1260,7 @@ function updateTarget() {
     act: { label: act, dim },
     place: { dim: !!placeWhy, why: placeWhy },
     ride: game.cubeCam.can() ? { have: true, dim: false, why: '', on: false, label: 'Camera' } : { have: have || riding.on, dim: !!rideWhy, why: rideWhy, on: riding.on }, // Cube Planets: the Ride slot is the camera there
-    sky: riding.on && riding.kind === 'sky',
+    sky: (riding.on && riding.kind === 'sky') || !!p.ride?.be, // (chapter 3: a winged creature you are)
     swim: !!p.diving, // T41: Jump says Swim in the Sunken City
     jump: p.carry?.jumpWord?.() ?? null, // T49: a ride may name the Jump button (the Castle: Shield, Off)
   });
@@ -1282,6 +1287,7 @@ function frame(now) {
     game.hideSeek.fence(p.pos, before, p.vel); // T30
     game.riding.update(dt, now);
     game.gymLive.update(dt);
+    game.being.step(dt); // chapter 3: your creature's body (after the live parts: wayland.js Trials ran)
     game.rematch.update();
     game.bosses.update(); // T40
     game.missions.update(dt); // T29
@@ -1310,6 +1316,7 @@ function frame(now) {
     camera.rotation.set(p.pitch, p.yaw, 0);
     const viewQ = p.viewQuat?.(); if (viewQ) camera.quaternion.premultiply(viewQ); // Cube Planets: the camera's up eases to the face you stand on (null everywhere else)
     game.cubeCam.update(camera, dt); // Cube Planets: the third-person steady camera, when chosen (does nothing anywhere else)
+    game.being.camera(camera, dt); // chapter 3: behind your creature, when you are one (does nothing anywhere else)
     game.scribble.update(dt, camera); // chapter 3 (?preview): the patch, the fight and its camera (does nothing without ?preview)
     if (game.scribble.fighting) highlight.visible = false;
     else if (!game.inBattle) updateTarget();

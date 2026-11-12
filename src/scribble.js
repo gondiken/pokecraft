@@ -170,7 +170,7 @@ export function createScribble(game) {
     return S;
   }
   const scene = game.scene, v3 = () => new THREE.Vector3();
-  const tmp = { a: v3(), b: v3(), q: new THREE.Quaternion(), q2: new THREE.Quaternion(), e: new THREE.Euler(0, 0, 0, 'YXZ'), m: new THREE.Matrix4() };
+  const tmp = { a: v3(), b: v3(), c: v3(), q: new THREE.Quaternion(), q2: new THREE.Quaternion(), e: new THREE.Euler(0, 0, 0, 'YXZ'), m: new THREE.Matrix4() };
   const group = new THREE.Group(); group.name = 'scribble';
   scene?.add(group);
   let parts = null; // everything drawn for one patch
@@ -683,28 +683,34 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   function canStart() {
     const p = game.player;
     if (S.phase !== 'idle' || !S.armed || !game.playing?.() || game.ui?.asking || game.hideSeek?.active || game.realms?.busy) return false;
-    const up = game.riding?.on && game.riding.kind === 'sky' ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
+    const up = (game.riding?.on && game.riding.kind === 'sky') || game.player?.ride?.be ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
     if (Math.hypot(p.pos.x - S.spot.x, p.pos.z - S.spot.z) > FIGHT.patch || p.pos.y - S.spot.y > up || S.spot.y - p.pos.y > 4) return false;
     return squadOf(game.party).length > 0;
   }
   function start() {
     const p = game.player, C = S.spot, G = S.ground;
     if (game.riding?.on) { game.riding.stop('quiet'); game.ui?.toast('You hop off. The Scribble is here!'); } // (a sky ride drops you to the ground first)
+    // chapter 3 (plans/chapter3-ways.md): walking in AS your creature, it is already out: it fights first, where it stands (no Capture Cube)
+    const be = game.being?.on ? game.being.index : null;
+    if (be != null && p.ride?.be) { p.dropToFloor(); p.ride = null; }
+    S.asBe = be != null;
     makeUi();
     // your creature lands two steps in front of you, inside the ring, on the ground
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
     let sx = p.pos.x + fx * 3.5, sz = p.pos.z + fz * 3.5;
+    if (S.asBe) { sx = p.pos.x; sz = p.pos.z; }
     if (Math.hypot(sx - C.x, sz - C.z) > FIGHT.R - 1.5) { sx = p.pos.x + (C.x - p.pos.x) * 0.3; sz = p.pos.z + (C.z - p.pos.z) * 0.3; }
     const sy = G.stand(sx, sz, p.pos.y, 2) ?? p.pos.y;
     S.fight = new ScribbleFight({ ground: G, centre: C, squad: squadOf(game.party), start: { x: sx, y: sy, z: sz }, foes: S.patchFight?.foes, levelStep: S.patchFight?.levelStep, hp: S.patchFight?.hp, attack: S.patchFight?.attack }); // the monsters jump out of the knot round your creature
+    if (S.asBe && be > 0) S.fight.swap(be, true); // the creature you are leads (its place in the squad stays: 1 2 3 swap as ever)
     S.fight.you.heading = Math.atan2(C.x - sx, C.z - sz);
     S.entry = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     S.phase = 'enter'; phaseT = 0;
     cam.start(p.yaw, sx, sy, sz); frozen = { yaw: p.yaw, pitch: p.pitch };
     p.vel?.set(0, 0, 0);
     for (const w of [...(game.creatures?.list || [])]) if (Math.hypot(w.pos.x - C.x, w.pos.z - C.z) < FIGHT.R + 2) game.creatures.remove(w); // no wild creature inside the ring
-    you = yourModel(0); you.scale.setScalar(0.01); you.visible = false; group.add(you);
-    cube = cubeMesh(); group.add(cube);
+    you = yourModel(S.fight.lead); you.scale.setScalar(S.asBe ? you.userData.base : 0.01); you.visible = S.asBe; group.add(you);
+    cube = cubeMesh(); group.add(cube); cube.visible = !S.asBe;
     ui.root.classList.remove('hidden'); ui.cache = {};
     touchFight(true);
     game.ui?.setPrompt?.('');
@@ -727,6 +733,11 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     ui?.barOf.clear();
     game.ui?.setPointers?.(null);
     const won = S.result;
+    if (S.asBe && S.fight) { // you are your creature again, where it finished (on the ground it stood on)
+      const f = S.fight.you, p = game.player;
+      if (p) { p.pos.set(f.x, f.y, f.z); p.vel?.set(0, 0, 0); }
+    }
+    S.asBe = false;
     S.fight = null; S.armed = false;
     if (won && S.patch) { // Wobbleland: the patch stays cleared (saved), its colour floods back, +3 Capture Cubes the first time
       const key = patchKey(S.patch.id), first = !game.beaten.includes(key);
@@ -802,7 +813,9 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     if (k <= 0) { if (baseFov != null && camera.fov !== baseFov) { camera.fov = baseFov; camera.updateProjectionMatrix(); } return; }
     baseFov ??= camera.fov;
     eyeQ.setFromEuler(tmp.e.set(p.pitch, p.yaw, 0, 'YXZ'));
-    camera.position.copy(p.eyePos).lerp(tpPos, k);
+    const from = tmp.c.copy(p.eyePos);
+    if (game.being?.on && camera.userData.beFrom) { from.copy(camera.userData.beFrom.pos); eyeQ.copy(camera.userData.beFrom.q); } // chapter 3: from the camera behind your creature
+    camera.position.copy(from).lerp(tpPos, k);
     camera.position.y += Math.sin(k * Math.PI) * 0.8; // a little lift on the way: up and over, never through
     camera.quaternion.copy(eyeQ).slerp(tpQ, k);
     const fov = baseFov + (cam.c.fov - baseFov) * k; // 75 in your eyes -> the arena's 50 behind your creature, with the rise
@@ -876,7 +889,10 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const f = F.you;
     you.rotation.y = f.heading;
     let lift = 0;
-    if (S.phase === 'enter') { // the cube flies from your hand, pops, and your creature hops out growing
+    if (S.phase === 'enter' && S.asBe) { // chapter 3: you are your creature: it is already out (a little hop as the ring snaps)
+      lift = Math.sin(Math.min(1, phaseT / 0.5) * Math.PI) * 0.5; cube.visible = false; you.visible = true; you.scale.setScalar(you.userData.base);
+    } else if (S.phase === 'exit' && S.asBe) { you.visible = true; you.scale.setScalar(you.userData.base); cube.visible = false;
+    } else if (S.phase === 'enter') { // the cube flies from your hand, pops, and your creature hops out growing
       const p = game.player, T = SCRIBBLE.enter, k = Math.min(1, phaseT / T.throw);
       const from = tmp.a.copy(p.eyePos).add(tmp.b.set(-Math.sin(p.yaw) * 0.6 + Math.cos(p.yaw) * 0.3, -0.35, -Math.cos(p.yaw) * 0.6 - Math.sin(p.yaw) * 0.3));
       cube.visible = k < 1;
@@ -907,7 +923,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     const cx = game.camera.position.x, cz = game.camera.position.z, sx = f.x - cx, sz = f.z - cz, L = sx * sx + sz * sz || 1;
     const k2 = Math.max(0, Math.min(1, ((p.pos.x - cx) * sx + (p.pos.z - cz) * sz) / L));
     const inWay = Math.hypot(p.pos.x - cx - sx * k2, p.pos.z - cz - sz * k2) < 1.3 && k2 < 0.95;
-    avatar.visible = S.camK > 0.35 && !inWay;
+    avatar.visible = S.camK > 0.35 && !inWay && !S.asBe; // (as your creature there is no person standing by)
     avatar.position.copy(p.pos);
     avatar.rotation.y = Math.atan2(f.x - p.pos.x, f.z - p.pos.z);
     const parts2 = avatar.userData.parts, cheer = S.phase === 'fight' ? Math.sin(t * 6) * 0.5 - 2.4 : 0;
@@ -984,6 +1000,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     }
     // your look waits while the camera is behind your creature; the glide back ends looking the way the fight camera looked
     if (S.fight && frozen) { p.yaw = frozen.yaw = S.phase === 'exit' ? frozen.yaw : cam.yaw; p.pitch = frozen.pitch; }
+    if (S.fight && S.asBe) { const f = S.fight.you; p.pos.set(f.x, S.youY ?? f.y, f.z); } // chapter 3: you ARE the creature that fights (the camera glides back to behind it)
     if (!S.fight) { placeCamera(camera, dt); return; }
     events();
     drawModels(dt);
