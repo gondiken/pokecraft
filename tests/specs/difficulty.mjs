@@ -102,7 +102,7 @@ function node(t) {
   const sc = normal.scribble;
   t.ok(sc.levels === 0 && sc.tell === 1 && sc.rhythm === 1 && !Object.keys(normal.bugs).length, 'Normal scribble fights and bugs: exactly as before');
   t.ok(easy.scribble.tell > 1 && easy.scribble.levels === 0 && easy.scribble.rhythm === 1, `Easy scribble fights: warnings show ${easy.scribble.tell} x as long (earlier, the monsters move as on Normal), nothing a masher gains from`);
-  t.ok(hard.scribble.levels > 0 && hard.scribble.tell < 1 && hard.scribble.rhythm < 1, `Hard scribble fights: monsters +${hard.scribble.levels} levels, warnings x${hard.scribble.tell}, attacks x${hard.scribble.rhythm} apart`);
+  t.ok(hard.scribble.levels > 0 && hard.scribble.tell === 1 && hard.scribble.rhythm < 1, `Hard scribble fights: monsters +${hard.scribble.levels} levels, attacks x${hard.scribble.rhythm} apart, warnings as long as on Normal (a child's reaction time)`);
   t.ok(DIFFICULTIES.every(d => (d.bugs.faster ?? BUG.faster) >= BUG.faster), 'a bug always runs at least Normal\'s 1.08 x faster than you on every level (chasing from behind never catches one)');
   const bugRun = level => JSON.stringify([0, 1, 2].map(seed => playBugs('kid', { seed, level })));
   t.ok(bugRun(normal) === bugRun({ bugs: null }), 'Normal bugs run bit for bit as before');

@@ -43,7 +43,7 @@ function danger(F, x, z, y) {
   const you = F.you;
   for (const f of F.foes) {
     if (!f.alive) continue;
-    if (f.tell && F.seesTell(f) && F.inTell(f.tell, x, y, z, you.r + 0.5)) return true; // (Glowcap Caves: only the warnings it can see)
+    if (f.tell && f.tell.left <= LIVE_TELL && F.seesTell(f) && F.inTell(f.tell, x, y, z, you.r + 0.5)) return true; // (Glowcap Caves: only the warnings it can see; Easy: a faint early warning still follows, so nobody runs from it yet)
     const c = f.charging;
     if (c && segDist(x, z, f.x, f.z, f.x + c.dx * c.left, f.z + c.dz * c.left) < f.r + you.r + 0.4) return true;
   }
@@ -118,7 +118,7 @@ function skilledMoves(F) {
     if (k > 0.75 && F.foes.some(f => f.alive && f.tell && f.tell.left <= win && len2(f.x - you.x, f.z - you.z) < r)) { F.lift(1); F.lift(2); }
     return;
   }
-  const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
+  const foeSoon = F.foes.some(f => f.alive && (f.charging || (f.tell && f.tell.left <= LIVE_TELL && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3))));
   for (const b of [1, 2]) {
     const i = F.nextMove(b), s = i ? F.moves[i - 1] : null;
     if (!s || F.cd[i] > 0 || !t) continue;
@@ -141,7 +141,7 @@ function kidStep(F, dt) {
   F.kid ??= { seen: new Map(), goal: null };
   const now = F.clock;
   for (const f of F.foes) if (f.alive && f.tell && F.seesTell(f) && !F.kid.seen.has(f.tell)) F.kid.seen.set(f.tell, now); // (Glowcap Caves: from when it can see it)
-  const late = F.foes.some(f => f.alive && f.tell && F.kid.seen.has(f.tell) && now - F.kid.seen.get(f.tell) > 0.35 && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  const late = F.foes.some(f => f.alive && f.tell && F.kid.seen.has(f.tell) && now - F.kid.seen.get(f.tell) > 0.35 && f.tell.left <= LIVE_TELL && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
   let g = { gx: 0, gz: 0 };
   if (late) { const s = skilledGoal(F); g = { gx: s.gx, gz: s.gz }; }
   else { const s = skilledGoal(F); if (!s.flee) g = s; }
@@ -160,7 +160,7 @@ function personStep(F, dt) {
   if (!F.ps) { let seed = 1234 + (F.foes[0].x * 1000 | 0); const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); F.ps = { r, seen: new Map(), next: 0.6, wob: 0, wobT: 0, hold: 0, dodgeLate: r() < 0.5 }; }
   const P = F.ps, now = F.clock;
   for (const f of F.foes) if (f.alive && f.tell && F.seesTell(f) && !P.seen.has(f.tell)) P.seen.set(f.tell, now + 0.3 + P.r() * 0.3); // (Glowcap Caves: from when it can see it)
-  const lateNow = F.foes.some(f => f.alive && f.tell && P.seen.has(f.tell) && now > P.seen.get(f.tell) && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
+  const lateNow = F.foes.some(f => f.alive && f.tell && P.seen.has(f.tell) && now > P.seen.get(f.tell) && f.tell.left <= LIVE_TELL && F.inTell(f.tell, you.x, you.y, you.z, you.r + 0.3));
   if ((P.wobT -= dt) <= 0) { P.wobT = 0.4 + P.r() * 0.6; P.wob = (P.r() - 0.5) * 1.2; }
   const s = skilledGoal(F);
   let gx = 0, gz = 0;

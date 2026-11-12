@@ -20,7 +20,8 @@
 //           `tell` = x how long a monster's red warning shows (Easy = react: time to see and move). Easy's longer warning shows EARLIER:
 //           the monster walks on under its early part as on Normal and strikes at Normal's moment (a longer stand-still, -2 levels or a
 //           slower rhythm all let mashing win most meadow fights: measured); the timed rush's / blast's window stays the last 0.475 s;
-//           in the dark the late warning is x tell too. `rhythm` = x the time between a monster's attacks. Hard: +2, x0.9, x0.9.
+//           in the dark the late warning is x tell too. `rhythm` = x the time between a monster's attacks. Hard: +2 levels, x0.9 rhythm, full warnings
+//           (x0.9 warnings cost a skilled player a lake fight: they are a child's reaction time).
 //           tests/wobblebots.mjs with PC_DIFFICULTY proves mashing still loses and skilled still wins on every patch.
 //   bugs    the scribble bugs (scribblebugs.js): overrides of BUG: `catchR` how close pops one (Easy 1.0, Hard 0.75; Normal 0.85),
 //           `faster` how much faster than you it runs (Hard 1.12). Never below Normal's 1.08: at 1.06 a kid sprinting straight at a bug
@@ -58,7 +59,7 @@ export class Hard extends Difficulty {
   constructor() {
     super({ id: 'hard', name: 'Hard', icon: '🔥', line: 'Hard: faster games, tougher battles!',
       skill: { base: -0.05, extra: 0 }, battle: { smart: 0.8, foeLevels: 3, wildLevels: 2, catch: 0.85 },
-      scribble: { levels: 2, tell: 0.9, rhythm: 0.9 }, bugs: { catchR: 0.75, faster: 1.12 } });
+      scribble: { levels: 2, rhythm: 0.9 }, bugs: { catchR: 0.75, faster: 1.12 } });
   }
 }
 
