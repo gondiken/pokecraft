@@ -429,7 +429,7 @@ export default async function ({ browser, base, t }) {
         const g = window.pokecraft, lv = g.gymLive.of('part:wobble'), L = await import('/src/wobbleland.js'), B = await import('/src/scribblebugs.js');
         const b = lv.field.bugs.find(q => q.patch === 1); b.x = b.cx; b.z = b.cz - B.BUG.outer; b.run = 1;
         g.player.pos.set(b.x, L.heightAt(Math.floor(b.x), Math.floor(b.z + 2.5)) + 1, b.z + 2.5); g.player.yaw = 0; g.player.pitch = -0.2;
-        return { n: lv.info().bugs, id: b.id };
+        return { n: lv.info().bugs, id: b.id, want: L.PATCHES.length * B.BUG.n };
       });
       await frames(page, 3);
       if (!dev) await shot(page, 'wobble-bugs.png');
@@ -445,7 +445,7 @@ export default async function ({ browser, base, t }) {
       }
       await frames(page, 3);
       const got = await page.evaluate(id => { const g = window.pokecraft, lv = g.gymLive.of('part:wobble'), b = lv.field.bugs.find(q => q.id === id); return { popped: b.popped, left: lv.info().bugs, colour: g.wobbleLook.colourAt(b.x, b.z), bug: [b.x, b.z].map(Math.round), you: [g.player.pos.x, g.player.pos.z].map(Math.round) }; }, set.id);
-      t.ok(set.n === 52 && got.popped && got.left === 51 && got.colour > 0.5, `${dev ? 'iPad, the joystick' : 'real keys, W'}: four bugs round each of the 13 patches (every region is open); one cornered at its yard's edge is walked into, pops and leaves a splash of colour (${JSON.stringify({ ...set, ...got })})`);
+      t.ok(set.n === set.want && got.popped && got.left === set.n - 1 && got.colour > 0.5, `${dev ? 'iPad, the joystick' : 'real keys, W'}: four bugs round each of the ${set.want / 4} patches (every region is open); one cornered at its yard's edge is walked into, pops and leaves a splash of colour (${JSON.stringify({ ...set, ...got })})`);
       // a cleared patch's bugs go
       const gone = await page.evaluate(async () => { const g = window.pokecraft, L = await import('/src/wobbleland.js'); g.beaten.push(L.patchKey(2)); for (let i = 0; i < 50 && g.gymLive.of('part:wobble').field.bugs.some(b => b.patch === 2); i++) await new Promise(r => setTimeout(r, 100)); return g.gymLive.of('part:wobble').field.bugs.filter(b => b.patch === 2).length; }); // (waits for a frame: the iPad page is slow)
       t.ok(gone === 0, `clearing a patch takes its bugs away (${gone} left)`);
