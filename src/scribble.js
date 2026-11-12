@@ -614,7 +614,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
     for (const w of fxs.tells) if ((w.t.v || 0) !== w.v) { group.remove(w.mesh); w.mesh.geometry.dispose(); w.mesh.material.dispose(); w.mesh = tellMesh(w.t); w.v = w.t.v || 0; } // (Easy: an early warning follows its monster until it locks)
     const tellOf = new Map(F.foes.filter(f => f.alive && f.tell).map(f => [f.tell, f]));
     for (const w of fxs.tells) { if (w.t.left <= LIVE.foe.tell) w.age += dt; // (the pulse quickens only from Normal's start: the same beat before the hit on every level)
-       w.mesh.material.opacity = w.t.left > LIVE.foe.tell ? 0.22 : 0.65 + 0.35 * Math.sin(w.age * (8 + w.age * 10)); // (Easy: faint while it still follows, bright once it locks) w.mesh.visible = F.seesTell(tellOf.get(w.t)); } // (Glowcap Caves: a monster in the dark shows its warning late)
+       w.mesh.material.opacity = w.t.left > LIVE.foe.tell ? 0.22 : 0.65 + 0.35 * Math.sin(w.age * (8 + w.age * 10)); /* (Easy: faint while it still follows, bright once it locks) */ w.mesh.visible = F.seesTell(tellOf.get(w.t)); } // (Glowcap Caves: a monster in the dark shows its warning late)
     // clouds
     const cl = new Set(F.clouds);
     for (const c of fxs.clouds) if (!cl.has(c.c)) { group.remove(c.mesh); c.mesh.material.dispose(); c.dead = true; }
