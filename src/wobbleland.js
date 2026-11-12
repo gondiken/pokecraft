@@ -419,17 +419,18 @@ function caveLand(world, put) {
   const { x0, x1, z0, z1, floor, roof } = CAVE, top = roof + 1;
   const noise = (x, z) => Math.sin(x * 0.37 + z * 0.21) * Math.cos(z * 0.29 - x * 0.13) + 0.5 * Math.sin((x + 2 * z) * 0.17);
   const hash = (x, y, z) => { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
-  // gems glow in the rock but light nothing (noLight): the cave stays dark, only the Glowcaps make pools of light
+  // gems glow in the rock but light nothing (noLight): the cave stays dark, only the Glowcaps make pools of light (owner 2026-11-12: a few, not
+  // too many: 0.6 % of the rock)
   const GEMS = [B.SAPPHIRE, B.RUBY, B.SUNSTONE], gem = (x, y, z) => GEMS[Math.floor(hash(z, x, y) * 3)];
-  const rock = (x, y, z) => (hash(x, y, z) < 0.03 ? gem(x, y, z) : (x + y + z) % 4 ? B.STONE : B.COBBLE);
+  const rock = (x, y, z) => (hash(x, y, z) < 0.006 ? gem(x, y, z) : (x + y + z) % 4 ? B.STONE : B.COBBLE);
   for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
     const g = world.ground[x + z * world.W], n = noise(x, z);
     if (!interior(x, z)) { for (let y = 1; y < g; y++) put(x, y, z, y >= g - 2 ? B.DIRT : rock(x, y, z)); continue; } // the hill round the cave (its inner face: rock with crystals)
     if (skylightAt(x, z)) continue; // a shaft of sun from the sky down to the grass on the floor
     if (world.get(x, g, z) === B.GRASS) put(x, g, z, n > 0.6 ? B.GRAVEL : B.STONE); // the cave's floor
-    put(x, roof, z, hash(x, roof, z) < 0.02 ? gem(x, roof, z) : B.STONE); put(x, top, z, B.GRASS);   // the roof, the hill's top
+    put(x, roof, z, hash(x, roof, z) < 0.005 ? gem(x, roof, z) : B.STONE); put(x, top, z, B.GRASS);   // the roof, the hill's top
     if (n > 0.55) { put(x, top, z, B.DIRT); put(x, top + 1, z, B.GRASS); }                         // lumps on the top
-    if (n < -0.8 && !caveRingAt(x, z, 2)) put(x, roof - 1, z, hash(x, 1, z) < 0.3 ? gem(x, roof - 1, z) : B.STONE); // stalactites (never over a ring)
+    if (n < -0.8 && !caveRingAt(x, z, 2)) put(x, roof - 1, z, hash(x, 1, z) < 0.08 ? gem(x, roof - 1, z) : B.STONE); // stalactites (never over a ring)
   }
   // the tunnels: stairs down into the cave, four high, cut into the hill
   for (const t of CAVE.tunnels) {

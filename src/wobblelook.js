@@ -34,6 +34,7 @@ export const WOBBLE_LOOK = {
   // (`colours`; `plain` for a creature that does not glow); the fog closes in black while you are inside (`fog`: colour, near, far)
   light: 1.1, plain: 0xffe2b8, colours: { fire: 0xffa860, light: 0xfff0b0, electric: 0xbfe0ff, cosmic: 0xd4b0ff },
   fog: [0x06060a, 10, 46], fogEase: 0.8,
+  caveLit: 0.55,       // a cleared part of the cave has this much light of its own (owner 2026-11-12: "like how the regular caves were")
 };
 export const curlLift = d => (WOBBLE_LOOK.curl ? WOBBLE_LOOK.curlK * Math.max(0, d - WOBBLE_LOOK.curlFrom) ** 2 : 0);
 
@@ -102,6 +103,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     const L = game.scribble?.light?.(), p = game.player?.pos;
     if (L) { U.uWobLight.value.set(L.x, L.z, L.r, WOBBLE_LOOK.light); U.uWobFlash.value.set(L.flash?.x ?? 0, L.flash?.z ?? 0, L.flash?.r ?? 0, L.flash ? L.flash.k : 0); }
     else { U.uWobLight.value.set(p?.x ?? 0, p?.z ?? 0, api.sight(), WOBBLE_LOOK.light); U.uWobFlash.value.w = 0; }
+    U.uWobCleared.value = WOBBLE_LOOK.caveLit;
     U.uWobWarm.value.setHex(WOBBLE_LOOK.colours[L ? L.type : api.lightType()] ?? WOBBLE_LOOK.plain);
   }
   const api = {
@@ -159,7 +161,8 @@ export function createWobbleLook(game, { materials, scene, camera }) {
       lifted = [];
       if (active) caveLight.uLantern.value = 0; // (in Wobbleland the light is your creature's: wobLan in caves.js, not main.js' lantern)
       if (active && under > 0.01 && scene.fog) { // Glowcap Caves: inside, the fog closes in, black (main.js sets it again every frame)
-        const [c, n, f] = WOBBLE_LOOK.fog, k = Math.min(1, under * 1.25);
+        const pp = game.player?.pos, lit = pp ? api.colourAt(pp.x, pp.z) : 0; // (in a cleared part the fog is lighter and further: you see across it)
+        const [c, n, f] = WOBBLE_LOOK.fog, k = Math.min(1, under * 1.25) * (1 - 0.6 * lit);
         scene.fog.color.lerp(FOG.setHex(c), k); scene.fog.near += (n - scene.fog.near) * k; scene.fog.far += (f - scene.fog.far) * k;
         if (scene.background?.isColor) scene.background.lerp(FOG, k);
       }

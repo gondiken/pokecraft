@@ -661,8 +661,8 @@ export class ScribbleFight {
     if (this.flashLit && len2(f.x - this.flashLit.x, f.z - this.flashLit.z) < this.flashLit.r) return true;
     return len2(f.x - this.you.x, f.z - this.you.z) < r.sight(this.you.type) + f.r * 0.5;
   }
-  // is f's red warning shown: a monster in sight shows all of it, one in the dark only its last `late` seconds
-  seesTell(f) { if (!f.tell) return false; const r = this.dark(); return !r || this.sees(f) || f.tell.left <= r.late; }
+  // is f's red warning shown: a monster in sight shows all of it, one in the dark only its last `late` seconds (Ghost and Ninja: all of it)
+  seesTell(f) { if (!f.tell) return false; const r = this.dark(); return !r || this.sees(f) || f.tell.left <= r.late || r.senses(this.you.type); } // (Ghost and Ninja sense every warning)
 
   info() {
     return { dark: this.dark() ? { sight: this.sight(), seen: this.foes.map(f => this.sees(f)) } : null, over: this.over, won: this.won, clock: +this.clock.toFixed(2), lead: this.lead,

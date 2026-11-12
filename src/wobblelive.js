@@ -235,7 +235,7 @@ class NightEyes extends Piece {
     for (const w of list) {
       const m = w.model, q = w.pos ?? m?.position;
       if (!m || !q || !p || this.game.scribble?.fighting) continue;
-      if (!inCave(Math.floor(q.x), Math.floor(q.z)) || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) < r + 0.5) continue;
+      if (!inCave(Math.floor(q.x), Math.floor(q.z)) || Math.hypot(q.x - p.pos.x, q.z - p.pos.z) < r + 0.5 || (this.game.wobbleLook?.colourAt?.(q.x, q.z) ?? 0) > 0.5) continue; // (a cleared part of the cave has its own light)
       hide.add(m); m.visible = false;
       if (n < 62 && Math.sin(this.t * 2.1 + q.x) > -0.8) {
         const yaw = m.rotation.y, h = (m.userData.h ?? 1) * 0.7 + 0.4;

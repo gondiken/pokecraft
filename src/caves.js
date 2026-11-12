@@ -636,6 +636,7 @@ export const wobbleLook = {
   // Glowcap Caves: the colour map's blue = inside the cave (no daylight there: world.skyDim); uWobLight = your creature's light (x, z,
   // radius, strength; 0 = off), uWobFlash = a big blast's flash (x, z, radius, strength), uWobWarm = the light's colour (its type's)
   uWobLight: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobFlash: { value: new THREE.Vector4(0, 0, 0, 0) }, uWobWarm: { value: new THREE.Color(1, 1, 1) },
+  uWobCleared: { value: 0 }, // Glowcap Caves: how bright a cleared (coloured-in) part of the cave is (like a lit cave in the main world)
 };
 const WOBBLE_VERT_PARS = '#ifdef WOBBLE\nuniform float uCurl;\nuniform float uCurlFrom;\nuniform float uWobJig;\n#endif';
 // (after project_vertex; vCavePos is the world position) the curl: lifted by uCurl x (distance past uCurlFrom)^2, the same in every shader
@@ -665,6 +666,9 @@ uniform float uWobCrayon;
 uniform vec4 uWobLight;
 uniform vec4 uWobFlash;
 uniform vec3 uWobWarm;
+uniform float uWobCleared;
+// Glowcap Caves: a cleared part of the cave (coloured back in) has a soft light of its own, like the main world's lit caves
+float wobClear() { vec4 m = texture2D(uWobColour, vCavePos.xz / uWobSize); return m.b * m.r * uWobCleared; }
 // Glowcap Caves: how much of your creature's light (and a blast's flash) reaches this place inside the cave (0 outside it)
 float wobLan() {
   float m = texture2D(uWobColour, vCavePos.xz / uWobSize).b;
@@ -896,7 +900,7 @@ if (uTintOn > 0.5 && ((tileN >= uTintU.x && tileN < uTintU.y) || (tileN >= uTint
       .replace('#include <color_fragment>', `
         float lan = uLantern * clamp(1.0 - distance(vCavePos, uPlayer) / 8.0, 0.0, 1.0);
         #ifdef WOBBLE
-        float wobL = wobLan(); lan = max(lan, wobL); // (Glowcap Caves: your creature's light)
+        float wobL = wobLan(); lan = max(lan, max(wobL, wobClear())); // (Glowcap Caves: your creature's light, and a cleared part's own light)
         #endif
         diffuseColor.rgb *= max(vColor.r * uLit, max(vColor.g, vColor.b * lan));
         diffuseColor.rgb *= vTint;

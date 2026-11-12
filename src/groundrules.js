@@ -44,10 +44,14 @@ export class Ice extends GroundRule {
 // a circle `far` round them (twice `near`): you see the warnings in time. A glowing MONSTER is always seen (it lights itself), and so is
 // one you just hit (`hitLit` s) or one in a big blast's flash (`flash` s over the blast's ring). (plans/chapter3-world.md "Glowcap Caves")
 export const BRIGHT = ['fire', 'light', 'electric', 'cosmic'];
+// Owner 2026-11-12 ("more types with a cave advantage, like ghost and ninja"): creatures of the dark do not glow, they SENSE: every red
+// warning shows in full even out in the dark (the monster itself is still only two eyes). A different gift from the glowing types'.
+export const KEEN = ['ghost', 'ninja'];
 export class Dark extends GroundRule {
   constructor(o = {}) { super({ id: 'dark', near: 5, far: 10, late: 0.6, hitLit: 0.8, flash: 1.4, ...o }); }
   glows(type) { return BRIGHT.includes(type); }
   sight(type) { return this.glows(type) ? this.far : this.near; }
+  senses(type) { return KEEN.includes(type); }
 }
 
 export const GROUND = { ice: new Ice(), dark: new Dark() };

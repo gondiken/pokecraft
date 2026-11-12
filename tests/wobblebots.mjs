@@ -10,7 +10,8 @@ import { intoWobble } from './specs/wobble.mjs';
 
 export const TEAMS = { neutral: [['owlucid', 30], ['owlucid', 30], ['owlucid', 30]], ready: [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30]], owner: [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]],
   ice: [['snowpaw', 30], ['flurrydome', 30], ['waddlice', 30]], // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
-  glow: [['glitterbop', 30], ['joltail', 30], ['voidle', 30]] }; // Glowcap Caves's fitting team: Light, Electric and Cosmic creatures glow (their light is twice as big); base stats close to Owlucid's (no Fire: it hits the wood's Grass and Bug x2) // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
+  glow: [['glitterbop', 30], ['joltail', 30], ['voidle', 30]],
+  keen: [['lanterboo', 30], ['flickit', 30], ['wispurr', 30]] }; // Glowcap Caves' other fitting team (owner 2026-11-12): Ghost and Ninja creatures sense every warning in the dark (base stats a little under Owlucid's) // Glowcap Caves's fitting team: Light, Electric and Cosmic creatures glow (their light is twice as big); base stats close to Owlucid's (no Fire: it hits the wood's Grass and Bug x2) // Slippy Lake's fitting team: Ice creatures keep their grip on the ice (base stats close to Owlucid's: the grip and the chart, not stronger bodies)
 export async function wobblePage(browser, base) {
   const page = await openGame(browser, base, { query: '?preview' });
   await newGame(page, 0);
@@ -104,10 +105,10 @@ export async function runCave(page, { games = 2, naive = NAIVE_GAMES, patches = 
   const person = async (team, id) => { const x = []; for (const fps of [60, 20]) for (let k = 0; k < games; k++) x.push(await play(page, 'person', { fps, solo: team, patch: id, limit: 400 })); return SUM(x); };
   for (const id of ids) {
     const r = { id, teams: {} };
-    for (const [name, team] of [['glow', TEAMS.glow], ['neutral', TEAMS.neutral], ['owner', TEAMS.owner]]) {
+    for (const [name, team] of [['glow', TEAMS.glow], ['keen', TEAMS.keen], ['neutral', TEAMS.neutral], ['owner', TEAMS.owner]]) {
       const x = { naive: [], skilled: [], person: [] };
       for (const fps of [60, 20]) {
-        for (let k = 0; k < (name === 'owner' ? Math.ceil(naive / 3) : naive); k++) x.naive.push(await play(page, 'naive', { fps, solo: team, patch: id }));
+        for (let k = 0; k < (name === 'owner' || name === 'keen' ? Math.ceil(naive / 3) : naive); k++) x.naive.push(await play(page, 'naive', { fps, solo: team, patch: id }));
         for (let k = 0; k < games; k++) x.skilled.push(await play(page, 'skilled', { fps, solo: team, patch: id, limit: 300 }));
         for (let k = 0; k < games; k++) x.person.push(await play(page, 'person', { fps, solo: team, patch: id, limit: 400 }));
       }
@@ -115,11 +116,11 @@ export async function runCave(page, { games = 2, naive = NAIVE_GAMES, patches = 
     }
     await page.evaluate(`(${SIGHT})('far')`); r.lit = await person(TEAMS.neutral, id); await page.evaluate(`(${SIGHT})('')`); // the light alone
     await setDark(false); r.noDark = await person(TEAMS.neutral, id); await setDark(true);                                  // the dark's cost
-    const T = r.teams, ok = T.neutral.naive.won <= Math.floor(T.neutral.naive.n / 4) && ['glow', 'neutral', 'owner'].every(k => T[k].skilled.won === T[k].skilled.n);
+    const T = r.teams, ok = T.neutral.naive.won <= Math.floor(T.neutral.naive.n / 4) && ['glow', 'keen', 'neutral', 'owner'].every(k => T[k].skilled.won === T[k].skilled.n);
     if (!ok) fails++;
     const f = (k, t) => `${k}: mashing ${t.naive.won}/${t.naive.n}, skilled ${t.skilled.won}/${t.skilled.n} (${t.skilled.time.join(' ')} s, loses ${t.skilled.lost} % HP a minute), person ${t.person.won}/${t.person.n} (${t.person.time.join(' ')} s, loses ${t.person.lost} %)`;
     const g = (k, t) => `${k}: ${t.won}/${t.n} (${t.time.join(' ')} s, loses ${t.lost} %)`;
-    const line = `${ok ? 'ok  ' : 'FAIL'} cave patch ${id}: ${f('glow', T.glow)} | ${f('neutral', T.neutral)} | ${f('owner', T.owner)} | neutral person ${g('with a glowing light', r.lit)}, ${g('without the dark', r.noDark)}`;
+    const line = `${ok ? 'ok  ' : 'FAIL'} cave patch ${id}: ${f('glow', T.glow)} | ${f('Ghost / Ninja', T.keen)} | ${f('neutral', T.neutral)} | ${f('owner', T.owner)} | neutral person ${g('with a glowing light', r.lit)}, ${g('without the dark', r.noDark)}`;
     lines.push(line); log(line); rows.push(r);
   }
   return { lines, fails, rows };

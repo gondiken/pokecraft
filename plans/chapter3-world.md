@@ -903,6 +903,22 @@ and with the dark turned off.
 4. **The hill's top** is flat land waiting for a region (Bumpy Hills could move up there, or a new one). What should live up there?
 5. A glowing team mashes four tangles (as the Ice team mashes the lake's). Fine for the right team, or should mashing lose with every team?
 
+### 8. The owner's answers (2026-11-12) and what changed
+
+**The owner:** "yeah it's dark enough. too many special treasure blocks though. there can be some, but this is too many. I like the coloured
+light per type. I also like the idea of more types with a cave advantage, like ghost and ninja. one thing -- cleared scribble areas could be
+a bit brighter like how the regular caves were."
+
+- **Fewer gems:** 0.6 % of the rock (was 3 %), 0.5 % of the roof, 8 % of the stalactites (`rock` / `gem` in `caveLand`).
+- **Ghost and Ninja sense the dark** (`KEEN` / `Dark.senses(type)` in `src/groundrules.js`, `seesTell` in `src/scribblefight.js`): they do
+  not glow, but every red warning shows in full even out in the dark (the monster itself is still only its eyes). A different gift from the
+  glowing types' bigger light. Bots (`runCave` team `keen`: Lanterboo, Flickit, Wispurr, base stats a little under Owlucid's): the person bot
+  loses 0-38 % of its HP a minute (neutral 24-189 %) and wins the knot 4 / 4 (neutral 0 / 4); skilled wins every fight; their mashing wins most
+  tangles (8 / 8, 6 / 8, 3 / 8 ...), like the glowing team's and yours (the cave's Ghost monsters take Ghost moves x2).
+- **Cleared parts of the cave have their own light** (`wobClear` in `src/caves.js`, `WOBBLE_LOOK.caveLit` 0.55: a cleared patch's colour
+  circle, and the whole cave after its knot, is lit like the main world's lit caves; the fog there is lighter so you see across it; wild
+  creatures there are seen, not just eyes). The fight's rule is unchanged (the patches still to fight are dark). Picture `wobble-cave-bright.png`.
+
 ## 0. The owner's decisions (2026-11-11)
 
 | Question | Decision |
