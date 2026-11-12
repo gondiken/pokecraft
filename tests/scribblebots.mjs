@@ -310,9 +310,14 @@ export async function scribblePage(browser, base, { seed = null, ...opts } = {})
     g.party = [S.makeCreature('blazehound', 30), S.makeCreature('tidalord', 30), S.makeCreature('thunderwolf', 30)];
   });
   await page.waitForFunction(() => window.pokecraft.scribble.info().phase === 'idle', null, { timeout: 60000 });
+  await pageLevel(page);
   return page;
 }
 export const SEEDS = [1, 22, 122];
+// PC_DIFFICULTY=easy|hard (run.mjs sets it for Node): the page's fights play at that level too (difficulty.js `scribble`)
+export async function pageLevel(page, id = process.env.PC_DIFFICULTY) {
+  if (id) await page.evaluate(async id => (await import('/src/difficulty.js')).setDifficulty(id), id);
+}
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { server, base } = await serve();

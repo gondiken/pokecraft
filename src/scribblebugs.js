@@ -41,7 +41,8 @@ export function yardStep(b, dx, dz) {
 }
 
 export class BugField {
-  constructor(bugs) { this.bugs = bugs; this.acc = 0; this.events = []; }
+  // level: overrides of BUG for Easy / Hard (difficulty.js `bugs`; wobblelive.js hands in the current one every frame), {} = Normal
+  constructor(bugs, level = null) { this.bugs = bugs; this.acc = 0; this.events = []; this.level = level; }
   // you: { x, z, speed } (speed = how fast you move now, blocks a second)
   step(dt, you) {
     this.acc += Math.min(dt, 0.25);
@@ -49,14 +50,15 @@ export class BugField {
     const e = this.events; this.events = []; return e;
   }
   tick(h, you) {
+    const B = this.level && Object.keys(this.level).length ? { ...BUG, ...this.level } : BUG;
     for (const b of this.bugs) {
       if (b.popped) continue;
       b.t += h;
       const dx = b.x - you.x, dz = b.z - you.z, d = Math.hypot(dx, dz);
-      if (d < BUG.catchR) { b.popped = true; this.events.push({ kind: 'pop', bug: b }); continue; }
-      if (d < BUG.scare) b.run = 1; else if (d > BUG.calm) b.run = 0;
+      if (d < B.catchR) { b.popped = true; this.events.push({ kind: 'pop', bug: b }); continue; }
+      if (d < B.scare) b.run = 1; else if (d > B.calm) b.run = 0;
       if (!b.run) { b.vx = b.vz = 0; continue; }
-      const v = Math.max(BUG.speed, (you.speed || 0) * BUG.faster), w = Math.sin(b.t * 9) * BUG.wiggle;
+      const v = Math.max(B.speed, (you.speed || 0) * B.faster), w = Math.sin(b.t * 9) * B.wiggle;
       const ax = dx / (d || 1), az = dz / (d || 1), c = Math.cos(w), s = Math.sin(w);
       const mx = (ax * c - az * s) * v * h, mz = (az * c + ax * s) * v * h;
       const [nx, nz] = yardStep(b, mx, mz);

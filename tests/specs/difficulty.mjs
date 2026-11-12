@@ -18,6 +18,8 @@ import { setsOf } from '../../src/partyland.js';
 import { boatAt } from '../../src/pirateland.js';
 import * as Bt from '../partybots.mjs';
 import * as CB from '../castlebots.mjs';
+import { BUG } from '../../src/scribblebugs.js';
+import { playBugs } from '../wobblebugbots.mjs';
 import { openGame, newGame, pause, click, continueGame } from '../helpers.mjs';
 
 const SPRINT = 6.2; // player.js: a sprint on foot
@@ -95,6 +97,15 @@ function node(t) {
   t.ok(easy.foeLevel(30) < 30 && easy.wildLevel(7) < 7 && easy.catchChance(0.4) > 0.4 && easy.battle.smart < 0.5, `Easy battles: trainers ${easy.foeLevel(30)} for 30, catching ${easy.catchChance(0.4).toFixed(2)} for 0.40, best move ${easy.battle.smart * 100} % of turns`);
   t.ok(hard.foeLevel(30) > 30 && hard.wildLevel(7) > 7 && hard.catchChance(0.4) < 0.4 && hard.battle.smart > 0.5, `Hard battles: trainers ${hard.foeLevel(30)} for 30, catching ${hard.catchChance(0.4).toFixed(2)}, best move ${hard.battle.smart * 100} %`);
   t.ok(easy.foeLevel(2) >= 1 && hard.foeLevel(99, 100) <= 100 && easy.catchChance(0.05) >= 0.05 && hard.catchChance(0.95) <= 0.95, 'levels stay 1..100, catching 5..95 %');
+
+  // chapter 3 (owner 2026-11-12): the scribble fights and bugs follow the level (the fights' bots: tests/wobblebots.mjs with PC_DIFFICULTY)
+  const sc = normal.scribble;
+  t.ok(sc.levels === 0 && sc.tell === 1 && sc.rhythm === 1 && !Object.keys(normal.bugs).length, 'Normal scribble fights and bugs: exactly as before');
+  t.ok(easy.scribble.tell > 1 && easy.scribble.levels === 0 && easy.scribble.rhythm === 1, `Easy scribble fights: warnings show ${easy.scribble.tell} x as long (earlier, the monsters move as on Normal), nothing a masher gains from`);
+  t.ok(hard.scribble.levels > 0 && hard.scribble.tell < 1 && hard.scribble.rhythm < 1, `Hard scribble fights: monsters +${hard.scribble.levels} levels, warnings x${hard.scribble.tell}, attacks x${hard.scribble.rhythm} apart`);
+  t.ok(DIFFICULTIES.every(d => (d.bugs.faster ?? BUG.faster) >= BUG.faster), 'a bug always runs at least Normal\'s 1.08 x faster than you on every level (chasing from behind never catches one)');
+  const bugRun = level => JSON.stringify([0, 1, 2].map(seed => playBugs('kid', { seed, level })));
+  t.ok(bugRun(normal) === bugRun({ bugs: null }), 'Normal bugs run bit for bit as before');
 }
 
 async function inBrowser(browser, base, t) {

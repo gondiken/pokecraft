@@ -15,12 +15,24 @@
 //   battle  battles against the game (wild, trainers, leaders, Bosses, the Tower, the Wizard): `smart` = how often the foe picks its
 //           best move (Normal 0.5 = as before), `foeLevels` / `wildLevels` = levels added to trainer teams / new wild creatures,
 //           `catch` = x the catch chance. Duels and co-op giants always play Normal (both browsers must agree: `battleLevel`).
+//   scribble (owner 2026-11-12: "all scribble fights and bugs should work with easy / normal / hard too") chapter 3's scribble fights
+//           (scribblefight.js, read when a fight starts): `levels` = added to the monsters' level (they match your strongest creature),
+//           `tell` = x how long a monster's red warning shows (Easy = react: time to see and move). Easy's longer warning shows EARLIER:
+//           the monster walks on under its early part as on Normal and strikes at Normal's moment (a longer stand-still, -2 levels or a
+//           slower rhythm all let mashing win most meadow fights: measured); the timed rush's / blast's window stays the last 0.475 s;
+//           in the dark the late warning is x tell too. `rhythm` = x the time between a monster's attacks. Hard: +2, x0.9, x0.9.
+//           tests/wobblebots.mjs with PC_DIFFICULTY proves mashing still loses and skilled still wins on every patch.
+//   bugs    the scribble bugs (scribblebugs.js): overrides of BUG: `catchR` how close pops one (Easy 1.0, Hard 0.75; Normal 0.85),
+//           `faster` how much faster than you it runs (Hard 1.12). Never below Normal's 1.08: at 1.06 a kid sprinting straight at a bug
+//           caught most of them (measured, tests/wobblebugbots.mjs; its `kid` bot, 0.25 s late, pops about 70 % / 35 % / 25 %).
 // Stars, badges and keys won on any level count the same. Normal is bit for bit the game as it was. Pure, Node-runnable.
 import { KIND } from './kindhelp.js';
 
 export class Difficulty {
-  constructor({ id, name, icon, line, skill, battle, react = 1, rest = 1 }) {
+  constructor({ id, name, icon, line, skill, battle, react = 1, rest = 1, scribble, bugs }) {
     Object.assign(this, { id, name, icon, line, react, rest });
+    this.scribble = Object.freeze({ levels: 0, tell: react, rhythm: 1, ...scribble });
+    this.bugs = Object.freeze({ ...bugs });
     this.skill = Object.freeze({ base: 0, extra: 0, ...skill });
     this.battle = Object.freeze({ smart: 0.5, foeLevels: 0, wildLevels: 0, catch: 1, ...battle });
   }
@@ -35,7 +47,8 @@ export class Difficulty {
 export class Easy extends Difficulty {
   constructor() {
     super({ id: 'easy', name: 'Easy', icon: '🐣', line: 'Easy: slower games, gentler battles.',
-      skill: { base: 0.06, extra: 0.06 }, react: 1.4, rest: 2, battle: { smart: 0.25, foeLevels: -3, wildLevels: -2, catch: 1.3 } });
+      skill: { base: 0.06, extra: 0.06 }, react: 1.4, rest: 2, battle: { smart: 0.25, foeLevels: -3, wildLevels: -2, catch: 1.3 },
+      scribble: {}, bugs: { catchR: 1.0 } });
   }
 }
 export class Normal extends Difficulty {
@@ -44,7 +57,8 @@ export class Normal extends Difficulty {
 export class Hard extends Difficulty {
   constructor() {
     super({ id: 'hard', name: 'Hard', icon: '🔥', line: 'Hard: faster games, tougher battles!',
-      skill: { base: -0.05, extra: 0 }, battle: { smart: 0.8, foeLevels: 3, wildLevels: 2, catch: 0.85 } });
+      skill: { base: -0.05, extra: 0 }, battle: { smart: 0.8, foeLevels: 3, wildLevels: 2, catch: 0.85 },
+      scribble: { levels: 2, tell: 0.9, rhythm: 0.9 }, bugs: { catchR: 0.75, faster: 1.12 } });
   }
 }
 

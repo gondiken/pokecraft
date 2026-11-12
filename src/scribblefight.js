@@ -13,6 +13,7 @@ import { shapeOf, damage, intentFor, FOES } from './arena/core.js';
 import { LIVE } from './arena/live.js';
 import { KINDS, kindOf } from './movekinds.js'; // owner 2026-11-10: the kinds as objects (word, icon, button group)
 import { statsFor, SPECIES, MOVES } from './species.js';
+import { DIFFICULTY } from './difficulty.js'; // Easy / Normal / Hard: the monsters' level, warnings and rhythm (difficulty.js `scribble`)
 
 export const STEP = 1 / 120;
 export const FIGHT = {
@@ -198,6 +199,7 @@ export function squadOf(party) {
 export class ScribbleFight {
   // opts: { ground, centre: { x, z, y }, squad: [creature], foes?: [{ species, pattern }], start: { x, z, y }, spots?: [[x, z]], rand? }
   constructor(opts) {
+    this.level = opts.level ?? DIFFICULTY.current.scribble; // (opts.level: tests) read once, when the fight starts
     this.g = opts.ground; this.C = opts.centre; this.R = opts.R ?? FIGHT.R;
     this.rand = opts.rand || Math.random;
     this.squad = opts.squad.map(c => ({ c, hp: statsFor(c).maxHp }));
@@ -206,7 +208,10 @@ export class ScribbleFight {
     this.you = fighter(this.squad[0].c, 'you', s.x, s.y, s.z);
     // the monsters match your strongest creature (night run: with a lead weaker than the rest, the monsters took the lead's level and
     // mashing won every fight once the strong ones came out)
-    const lvl = Math.max(5, Math.min(100, Math.max(...this.squad.map(m => m.c.level)) + (opts.levelStep || 0))); // (a patch's size: PATCH_SIZES)
+    const lvl = Math.max(5, Math.min(100, Math.max(...this.squad.map(m => m.c.level)) + (opts.levelStep || 0) + this.level.levels)); // (a patch's size: PATCH_SIZES; the game's level: Hard +2)
+    // Easy's longer warning starts earlier, never later: the extra time comes off the wait before it, so a monster strikes exactly when it
+    // would on Normal (foeStep: it walks on under the early part of the warning)
+    this.earlier = LIVE.foe.tell * (this.level.tell - 1);
     const list = opts.foes || FOES.slice(0, 3);
     this.foes = list.map((d, i) => {
       const [x, z] = opts.spots?.[i] ?? this.spotAround(i, list.length);
@@ -214,10 +219,10 @@ export class ScribbleFight {
       f.maxHp = f.hp = Math.round(f.maxHp * FIGHT.foeHp * (opts.hp ?? 1)); // (a patch's size: PATCH_SIZES)
       if (d.grumble) { f.grumble = true; f.r = GRUMBLE.r; f.maxHp = f.hp = Math.round(f.maxHp * GRUMBLE.hp); f.openT = 0; }
       f.heading = Math.atan2(this.you.x - x, this.you.z - z);
-      f.timer = 1.6 + i * 0.9 + this.rand() * FIGHT.firstJitter; f.tell = null; f.charging = null;
+      f.timer = 1.6 + i * 0.9 + this.rand() * FIGHT.firstJitter - this.earlier; f.tell = null; f.charging = null;
       return f;
     });
-    this.rhythm = opts.attack ?? FIGHT.attack; // the monsters' time between attacks (a patch's size, else the test patch's)
+    this.rhythm = (opts.attack ?? FIGHT.attack) * this.level.rhythm; // the monsters' time between attacks (a patch's size, else the test patch's)
     this.input = { mx: 0, mz: 0 };
     this.moves = this.you.c.moves.map(liveShape);
     this.cd = [0, 0, 0, 0, 0]; this.cdMax = [LIVE.dodge.cool, 1, 1, 1, 1];
@@ -314,10 +319,11 @@ export class ScribbleFight {
     return len;
   }
   // ---------------------------------------------------------------- the monsters' warnings
-  makeTell(f) {
+  makeTell(f, keep = null) {
     const t = intentFor(f, this.you);
     if (t.kind === 'line') { t.len = this.rushLen(f, t.dx, t.dz, t.len + (this.g.rule?.(f.x, f.z, f.y)?.overshoot(f.type) ?? 0)); t.y = f.y; } // (on ice a slipping monster overshoots: its red line is longer)
     else t.y = t.kind === 'ring' ? f.y : this.you.y;
+    if (keep) { t.id = keep.id; t.left = keep.left; t.v = (keep.v || 0) + 1; return Object.assign(keep, t); } // (Easy: the early warning follows)
     t.id = this.nextId++;
     return t;
   }
@@ -602,11 +608,17 @@ export class ScribbleFight {
     }
     if (f.grumble) { const want = Math.atan2(you.x - f.x, you.z - f.z), d = wrapAngle(want - f.heading), m = GRUMBLE.turn * dt; f.heading = wrapAngle(f.heading + Math.max(-m, Math.min(m, d))); } // it turns slowly: you can get round it
     else f.heading = Math.atan2(you.x - f.x, you.z - f.z);
-    if (f.tell) { // stands still while its warning shows
+    if (f.tell) {
       f.tell.left -= dt * slow;
-      f.moving = false;
-      if (f.tell.left <= 0) this.strike(f, slow);
-      return;
+      // Easy (difficulty.js scribble.tell): the warning shows `earlier` before Normal's; until then the monster walks on as on Normal and
+      // its warning follows it and you, then locks where Normal's would start. It moves exactly as on Normal (mashing gains nothing:
+      // a longer stand-still let mashing win, measured), a child just sees it coming sooner.
+      if (f.tell.left > F.tell) this.makeTell(f, f.tell);
+      else { // stands still while its warning shows
+        f.moving = false;
+        if (f.tell.left <= 0) this.strike(f, slow);
+        return;
+      }
     }
     // walk to its own distance from you, then circle a little; round a wall it tries the other way
     const dx = you.x - f.x, dz = you.z - f.z, d = len2(dx, dz) || 1;
@@ -619,12 +631,13 @@ export class ScribbleFight {
     if (this.walk(f, vx / v * sp, vz / v * sp, dt)) { f.stuck = (f.stuck || 0) + dt; if (f.stuck > 0.6) { f.side2 = -f.side2; f.stuck = 0; } }
     for (const o of this.foes) if (o !== f && o.alive) { const ox = f.x - o.x, oz = f.z - o.z, od = len2(ox, oz); if (od < 1.4 && od > 0.01) this.move(f, ox / od * (1.4 - od) * 0.5, oz / od * (1.4 - od) * 0.5); }
     f.moving = true;
+    if (f.tell) return; // (Easy: walking under an early warning)
     f.timer -= dt * slow;
     if (f.timer <= 0) {
       const t = this.makeTell(f);
-      t.left = F.tell;
+      t.left = F.tell * this.level.tell; // (Easy: longer warnings, time to see and move)
       f.tell = t;
-      f.timer = (F.every[0] + this.rand() * (F.every[1] - F.every[0])) * this.rhythm; // (the arena's Ice Lake has the same lever)
+      f.timer = (F.every[0] + this.rand() * (F.every[1] - F.every[0])) * this.rhythm - this.earlier; // (the arena's Ice Lake has the same lever; Easy: its warning starts earlier)
       this.emit({ kind: 'tell', f, t });
     }
   }
@@ -662,7 +675,7 @@ export class ScribbleFight {
     return len2(f.x - this.you.x, f.z - this.you.z) < r.sight(this.you.type) + f.r * 0.5;
   }
   // is f's red warning shown: a monster in sight shows all of it, one in the dark only its last `late` seconds (Ghost and Ninja: all of it)
-  seesTell(f) { if (!f.tell) return false; const r = this.dark(); return !r || this.sees(f) || f.tell.left <= r.late || r.senses(this.you.type); } // (Ghost and Ninja sense every warning)
+  seesTell(f) { if (!f.tell) return false; const r = this.dark(); return !r || this.sees(f) || f.tell.left <= r.late * this.level.tell || r.senses(this.you.type); } // (Ghost and Ninja sense every warning)
 
   info() {
     return { dark: this.dark() ? { sight: this.sight(), seen: this.foes.map(f => this.sees(f)) } : null, over: this.over, won: this.won, clock: +this.clock.toFixed(2), lead: this.lead,

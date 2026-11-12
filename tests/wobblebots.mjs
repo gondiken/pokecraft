@@ -5,7 +5,7 @@
 // tests/specs/wobble.mjs part `patches` runs it.
 import { pathToFileURL } from 'node:url';
 import { serve, launch, openGame, newGame } from './helpers.mjs';
-import { play, NAIVE_GAMES } from './scribblebots.mjs';
+import { play, NAIVE_GAMES, pageLevel } from './scribblebots.mjs';
 import { intoWobble } from './specs/wobble.mjs';
 
 export const TEAMS = { neutral: [['owlucid', 30], ['owlucid', 30], ['owlucid', 30]], ready: [['blazehound', 30], ['tidalord', 30], ['thunderwolf', 30]], owner: [['graphitan', 56], ['kitegale', 91], ['blazehound', 89]],
@@ -17,6 +17,7 @@ export async function wobblePage(browser, base) {
   await newGame(page, 0);
   await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('blazehound', 30), S.makeCreature('tidalord', 30), S.makeCreature('thunderwolf', 30)]; });
   await intoWobble(page);
+  await pageLevel(page);
   return page;
 }
 // -> { lines, fails, rows }

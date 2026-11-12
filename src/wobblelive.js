@@ -11,6 +11,7 @@ import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, inCa
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
+import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
 
 export const POT = {
   r: 1.3,          // stand within this of a pot's middle to hop from it
@@ -131,6 +132,7 @@ class Bugs extends Piece {
   }
   update(dt, p) {
     if (p && this.s.playing() && dt > 0) {
+      this.field.level = DIFFICULTY.current.bugs; // (the pause screen may change it any time)
       const speed = this.last ? Math.hypot(p.pos.x - this.last[0], p.pos.z - this.last[1]) / dt : 0;
       for (const e of this.field.step(dt, { x: p.pos.x, z: p.pos.z, speed: Math.min(speed, 12) })) if (e.kind === 'pop') this.pop(e.bug);
       this.last = [p.pos.x, p.pos.z];
