@@ -383,6 +383,11 @@ type x ability grid. `?` = a weak fit.
 - Bounce (much higher than a jump): Cozy?, Ball, Funfair, Surprise · Lift (move things from afar): Mind, Pixie, Alien
 - Weak spots: Freeze has one type; Normal could have none ("the plain type"); Time might want "slow time" instead of Dash.
 
+- **Update (owner 2026-11-13): Charm and Sense are back** (they were dropped only for "can't be drawn", a rule the owner rejected;
+  Power was renamed Zap). Charm (win over someone grumpy: a treat when it looks at you): Pixie, Cozy, Food, Funfair. Sense (an echo
+  shows a hidden path, remember it): Mind, Sound. Cozy and Food lose their weak Bounce / Squeeze, Pixie gives Lift to Charm (Lift:
+  Mind, Alien). Now 17 abilities; trimming back to 15 would drop Freeze (one type) and fold Lift in somewhere.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
