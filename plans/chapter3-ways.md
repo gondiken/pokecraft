@@ -8,7 +8,7 @@ for two reasons:
 
 This plan tried to solve both. **The first test is built (?preview, Wobbleland only): see "Built" (section 7).**
 
-> **STATUS 2026-11-13: UNRESOLVED. The owner is not happy with where the design is. Read section 10 first** (the whole design
+> **STATUS 2026-11-13 (later): SETTLED. The build plan is `plans/chapter3-abilities-build.md`.** Earlier status: UNRESOLVED. The owner is not happy with where the design is. Read section 10 first** (the whole design
 > talk, every idea tried and why it was rejected, the open question and what to do next). Sections 2-4 and 9 are earlier thinking
 > that the owner has since pushed back on; they are kept as history, not as decisions.
 
