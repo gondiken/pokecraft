@@ -359,6 +359,16 @@ Atlantis, Knight, Bubble, Gravity, Mirror (21). Early creatures keep name and bo
   moves on the page fix). Other abilities need no drawing.
 - Variety comes from places, not only from the number of abilities: places that need two abilities, several skill games per ability.
 
+### Nobody changes type (owner 2026-11-13, the map's current state)
+- Redesigned to stay in their type (ideas, to choose): twirlshell (stays Bug: a snail with little dragonfly wings), gullop (stays
+  Water: a walrus pup), flarehawk (an emu with a flame plume), voltwing (a lightning-crested roadrunner), wattwink (a glow-worm),
+  joltail (a land eel), shimmerfin / spectrafin (rainbow pangolins, never swimmers; spectrafin's ride water -> land).
+- **Sound walks and flies** (owner: sound travels through the air): every Sound creature rides its own sound waves (rings of notes
+  under it in the air). Boomwing (the son's favourite flier) and Echobat stay as they are; Drumbo, Bongorilla, Gongolin, Clawdio get
+  the type look; Dinglet floats as before.
+- Result: 22 redesigned, 29 with a type look in 8 types (Alien, Cosmic, Gravity, Mind, Paper, Pixie, Rainbow, Sound), 5 animations
+  only, 0 moves, every type stays at 7. Plan A (moves) is dropped from the page.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
