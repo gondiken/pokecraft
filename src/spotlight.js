@@ -4,6 +4,7 @@
 // smudge) crawl over the wall: one in the spot shivers and squeaks, and held in the light long enough it poofs into sparkles. From round 2 a lit Gloomy runs
 // away from the light and zigzags (lead it!); in round 3 two of them keep to the shadows behind the pillars, where only a beam banked off a side pane reaches.
 import { mirrorHelp } from './bounceback.js';
+import { gameEase } from './difficulty.js';
 
 export const SPOT_RULES = {
   step: 1 / 120, scare: 0.7, edge: 0.15, edgePad: 0.35, spotR: 1.2, gloomyR: 0.6, roundTime: 45, stick: 1.4, bounces: 2, maxLen: 160,
@@ -74,7 +75,8 @@ export class SpotRound {
   constructor(seed, round, attempt = 0, { help = 0, hard = false, world = null } = {}) {
     const R = SPOT_RULES, p = R.rounds[round], H = hard ? HARD.beam : { flee: 1, hold: 0 };
     this.round = round; this.plan = p; this.world = world; this.k = mirrorHelp(help);
-    this.flee = p.flee * H.flee * this.k.gloomy; this.wander = p.wander * this.k.gloomy; this.hold = (p.hold + H.hold) * this.k.hold; this.spotR = R.spotR * this.k.spot;
+    const E = gameEase('beam'); // (Easy only, owner 2026-11-13: a bigger spot, held a bit shorter, a lit Gloomy a bit slower; {} on Normal / Hard)
+    this.flee = p.flee * H.flee * this.k.gloomy * (E.flee ?? 1); this.wander = p.wander * this.k.gloomy; this.hold = (p.hold + H.hold) * this.k.hold * (E.hold ?? 1); this.spotR = R.spotR * this.k.spot * (E.spot ?? 1);
     const rnd = mulberry((seed * 2654435761 + round * 40503 + attempt * 9973 + 5) >>> 0), W = R.wall;
     this.gloomies = [];
     for (let i = 0; i < p.n; i++) {

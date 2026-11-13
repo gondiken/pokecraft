@@ -11,6 +11,7 @@
 // turn, the first swing, the dodges) comes from a hash of seed | round | attempt (| hit number): no Math.random.
 
 import { missHelp } from './kindhelp.js';
+import { gameEase } from './difficulty.js';
 
 export const PINATA = {
   ring: { x: 56.5, z: 53.5, r: 9 },     // the party rug in the middle of the party floor (partyland.js builds the room round it)
@@ -59,8 +60,9 @@ export function seeded(key) {
 // One try at piñata `round` (1..3): its numbers and the random parts of its path and first swing. `help` = misses in a row (kind help),
 // `lazy` = "Two piñatas!"'s slower second llama.
 export function pinataPlan(seed, round, attempt, { help = 0, hard = false, lazy = false } = {}) {
-  // (the same on every level: a slower swing, a longer stick or more time all let mashing under it win, difficulty.js)
-  const K = missHelp(help), L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
+  // (the swing is the same on every level: a slower swing or a longer stick let mashing under it win, difficulty.js. Owner 2026-11-13:
+  // Easy only asks one CRACK fewer and gives a little more time, `E`; the bots check mashing still loses rounds 2 and 3)
+  const E = gameEase('pinata'), K = missHelp(help), L = lazy ? PINATA.lazy : { period: 1, speed: 1, hp: 0, zip: 1 };
   const H = { period: L.period * K.more, speed: L.speed * K.slow, hp: L.hp, zip: L.zip * K.slow };
   const R = PINATA.rounds[round - 1], X = hard ? PINATA.hard : { hp: 0, period: 1, speed: 1, zip: 1 };
   const rnd = seeded(`pinata|${seed}|${round}|${attempt}`);
@@ -73,7 +75,7 @@ export function pinataPlan(seed, round, attempt, { help = 0, hard = false, lazy 
   const swingDir = rnd() * Math.PI * 2;
   return {
     seed, round, attempt, help: helpOf(help), hard: !!hard, id: R.id, name: R.name,
-    hp: Math.max(3, R.hp + H.hp + X.hp), zip: R.zip.map(b => b * H.zip * X.zip), period, omega: (2 * Math.PI) / period, speed, time: R.time, dodge: R.dodge, zipBack: R.zipBack, hitAmp: R.hitAmp,
+    hp: Math.max(3, R.hp + H.hp + X.hp + (E.hp ?? 0)), zip: R.zip.map(b => b * H.zip * X.zip), period, omega: (2 * Math.PI) / period, speed, time: R.time + (E.time ?? 0), dodge: R.dodge, zipBack: R.zipBack, hitAmp: R.hitAmp,
     path: { kind: R.path, A, B: Bz, w, turn, sign, ph },
     first: { dir: swingDir, amp: R.amp, wide: R.wide * (rnd() < 0.5 ? -1 : 1) },
   };

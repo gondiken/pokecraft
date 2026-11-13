@@ -10,6 +10,7 @@
 // The tip moves in fixed 1/120 s sub-steps with the frame's input held, so the same presses give the same result at any frame rate.
 import { kindHelp } from './kindhelp.js';
 import { seeded, hashStr } from './siege.js';
+import { gameEase } from './difficulty.js';
 
 export const JOUST = {
   passes: 4,
@@ -32,15 +33,17 @@ export const JOUST_ROUNDS = JOUST.need.length;
 // The plan of one try of round r: per pass the star's spot (round 1) or phase, and the bob phases. Pure.
 export function joustPlan(seed, round, attempt = 0, { help = 0, hard = false } = {}) {
   const rnd = seeded(hashStr(`joust|${seed}|${round}|${attempt}`)), kind = kindHelp(help); // the kind help: meeting time, star and hop warning x more, the slide x slow
+  const E = gameEase('joust'); // (Easy only, owner 2026-11-13: a bigger spot, round 3's turn sooner and its wiggle longer; {} on Normal / Hard)
   const passes = Array.from({ length: JOUST.passes }, () => ({ spot: JOUST.spots[Math.floor(rnd() * JOUST.spots.length)], phi: rnd() * Math.PI * 2, phiU: rnd() * Math.PI * 2, phiV: rnd() * 0.5 }));
   return {
     round, help, hard, passes,
     meet: JOUST.meet[round] * (hard ? JOUST.hard.meet : 1) * kind.more,
-    r: (JOUST.r[round] + (hard ? JOUST.hard.r : 0)) * kind.more,
+    r: (JOUST.r[round] + (hard ? JOUST.hard.r : 0)) * kind.more * (E.r ?? 1),
     need: JOUST.need[round] + (hard ? JOUST.hard.need : 0),
     gallop: JOUST.gallop[round] + (hard ? JOUST.hard.gallop : 0),
-    hop: JOUST.hop * kind.more,
+    hop: JOUST.hop * kind.more * (E.hop ?? 1),
     slow: kind.slow,                         // the help slows the star's slide too
+    ...(E.hopTell ? { hopTell: JOUST.hopTell * E.hopTell } : {}),
   };
 }
 // How far your horse has gone at pass time tau (blocks): accelerates for `accel` s, then gallops on.
@@ -62,7 +65,7 @@ export function starAt(plan, pass, tau, { turn = true } = {}) {
   const w = starSpeed(plan), d = p.dir ?? 1, turnAt = plan.round >= 2 && turn ? plan.meet - plan.hop : Infinity;
   if (tau >= turnAt) { const phi = p.phi + d * w * turnAt - d * w * (tau - turnAt); return { at: ellipseAt(phi), wiggle: false, phi, dir: -d }; }
   const phi = p.phi + d * w * tau;
-  return { at: ellipseAt(phi), wiggle: turnAt - tau <= JOUST.hopTell, phi, dir: d };
+  return { at: ellipseAt(phi), wiggle: turnAt - tau <= (plan.hopTell ?? JOUST.hopTell), phi, dir: d };
 }
 // The result of a meeting: tip (without the bob) at the meeting time.
 export function meetResult(plan, pass, tip) {

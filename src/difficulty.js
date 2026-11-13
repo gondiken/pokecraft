@@ -9,9 +9,11 @@
 //           that give a child time to see and tap: never the shield's width, the points needed or anything a masher or spinner gains from
 //           (the bots check it over many seeds). Read with `reactNow()` by siege.js (every warning, flight and gap), popupwhack.js (how long
 //           a jack stays up) and pirateland.js boatAt (the rowboats row slower). `rest`: Pop-Up Whack's stick rests x rest after a second
-//           whiff soon after another (Easy 2), so the longer jacks do not help mashing. The Piñata Party is the same on every level: a slower
-//           swing, a longer stick or more time all let mashing under it win (measured). Hard keeps react 1 (a quicker Shield Up! let a
-//           spinning stick get lucky).
+//           whiff soon after another (Easy 2), so the longer jacks do not help mashing. The Piñata Party's swing is the same on every level: a slower
+//           swing, a longer stick or more time all let mashing under it win (measured); Easy only asks one CRACK fewer (`games`). Hard
+//           keeps react 1 (a quicker Shield Up! let a spinning stick get lucky).
+//   games   (owner 2026-11-13) per-game extras on Easy only, `EASY_GAMES` read with `gameEase(id)`: the Joust, the Moonlit Gallery, the
+//           Piñata Party (Normal and Hard: none).
 //   battle  battles against the game (wild, trainers, leaders, Bosses, the Tower, the Wizard): `smart` = how often the foe picks its
 //           best move (Normal 0.5 = as before), `foeLevels` / `wildLevels` = levels added to trainer teams / new wild creatures,
 //           `catch` = x the catch chance. Duels and co-op giants always play Normal (both browsers must agree: `battleLevel`).
@@ -30,8 +32,9 @@
 import { KIND } from './kindhelp.js';
 
 export class Difficulty {
-  constructor({ id, name, icon, line, skill, battle, react = 1, rest = 1, scribble, bugs }) {
+  constructor({ id, name, icon, line, skill, battle, react = 1, rest = 1, scribble, bugs, games }) {
     Object.assign(this, { id, name, icon, line, react, rest });
+    this.games = Object.freeze({ ...games });
     this.scribble = Object.freeze({ levels: 0, tell: react, rhythm: 1, ...scribble });
     this.bugs = Object.freeze({ ...bugs });
     this.skill = Object.freeze({ base: 0, extra: 0, ...skill });
@@ -45,11 +48,19 @@ export class Difficulty {
   catchChance(p) { return Math.max(0.05, Math.min(0.95, p * this.battle.catch)); }
 }
 
+// Owner 2026-11-13 ("still struggling ... Jousting, reflection hitting gloomies, Piñata"): a little more on Easy only, per game, on top
+// of the shared kind help (Normal and Hard have none: bit for bit as before). Each game reads its own entry with `gameEase(id)`;
+// the bots (tests/specs/difficulty.mjs) check a struggling child wins more and the naive ways still do not.
+export const EASY_GAMES = Object.freeze({
+  joust: Object.freeze({ r: 1.15, hop: 1.3, hopTell: 1.6 }),     // the gold spot x r bigger; round 3 turns back x hop sooner, its wiggle x hopTell longer
+  beam: Object.freeze({ spot: 1.06, hold: 0.92, flee: 0.95 }),  // the spot of light x bigger, held x shorter, a lit Gloomy runs x slower
+  pinata: Object.freeze({ hp: -1 }),                            // one CRACK fewer per piñata (the swing stays: a slower one lets mashing win)
+});
 export class Easy extends Difficulty {
   constructor() {
     super({ id: 'easy', name: 'Easy', icon: '🐣', line: 'Easy: slower games, gentler battles.',
       skill: { base: 0.06, extra: 0.06 }, react: 1.4, rest: 2, battle: { smart: 0.25, foeLevels: -3, wildLevels: -2, catch: 1.3 },
-      scribble: {}, bugs: { catchR: 1.0 } });
+      scribble: {}, bugs: { catchR: 1.0 }, games: EASY_GAMES });
   }
 }
 export class Normal extends Difficulty {
@@ -76,6 +87,8 @@ export function setDifficulty(d) {
   KIND.use(lvl.skill);
   return lvl;
 }
+// This level's extra for one game (an empty object on Normal and Hard).
+export const gameEase = id => DIFFICULTY.current.games[id] ?? {};
 // How much more time the reaction games give right now (1 on Normal).
 export const reactNow = () => DIFFICULTY.current.react;
 // The level a battle plays at: duels and co-op giants are always Normal (both players work the turn out the same way).

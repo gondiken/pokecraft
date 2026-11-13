@@ -3,7 +3,7 @@
 // an Orbikit always outruns a sprint, the pebbles' pull), a rematch's `hard` stacks, duels are always Normal, battle numbers.
 // Browser: the pause button cycles the level, it is saved and comes back after a reload, a trainer battle's levels and the catch chance
 // follow it, a duel's do not. DIFFICULTY_ONLY=node|browser
-import { DIFFICULTIES, NORMAL, Difficulty, difficultyOf, nextDifficulty, setDifficulty, battleLevel, DIFFICULTY } from '../../src/difficulty.js';
+import { DIFFICULTIES, NORMAL, Difficulty, difficultyOf, nextDifficulty, setDifficulty, battleLevel, DIFFICULTY, EASY_GAMES } from '../../src/difficulty.js';
 import { KIND, KIND_HELP, kindHelp } from '../../src/kindhelp.js';
 import { rideUp, bubbleHelp, BubbleField } from '../../src/bubbles.js';
 import { gravityHelp, PAD_SCALE, PupRun } from '../../src/orbits.js';
@@ -18,6 +18,8 @@ import { setsOf } from '../../src/partyland.js';
 import { boatAt } from '../../src/pirateland.js';
 import * as Bt from '../partybots.mjs';
 import * as CB from '../castlebots.mjs';
+import * as MB from '../mirrorbots.mjs';
+import { pinataRound } from '../../src/partyrounds.js';
 import { BUG } from '../../src/scribblebugs.js';
 import { playBugs } from '../wobblebugbots.mjs';
 import { openGame, newGame, pause, click, continueGame } from '../helpers.mjs';
@@ -60,9 +62,34 @@ function node(t) {
   // games whose obvious shortcut sits right at the edge keep Normal's numbers on every level (missHelp): the Piñata Party (mashing under
   // it), Bumper Cars (ramming), the Bubble Well's rim (a random hopper); Shield Up! too on Hard (a quicker one let a spinning stick win)
   const bump = () => { const g = new BumperGame(false); g.start(1); return [g.fleet.bots[3].speed, g.time]; };
-  const same = () => JSON.stringify([pinataPlan(4, 2, 0), bump(), bubbleHelp(0, { plain: true })]);
-  setDifficulty('normal'); const s0 = same(), sg0 = JSON.stringify(siegePlan(4, 2, 0)); setDifficulty('easy'); const s1 = same(); setDifficulty('hard'); const s2 = same(), sg2 = JSON.stringify(siegePlan(4, 2, 0));
-  t.ok(s0 === s1 && s0 === s2 && sg0 === sg2, 'the Piñata Party, Bumper Cars and the Bubble Well rim are the same on every level, Shield Up! on Normal and Hard');
+  // (owner 2026-11-13: the piñata's swing stays, Easy only asks one CRACK fewer, so its hp is left out here and checked below)
+  const same = () => JSON.stringify([{ ...pinataPlan(4, 2, 0), hp: 0 }, bump(), bubbleHelp(0, { plain: true })]);
+  setDifficulty('normal'); const s0 = same(), sg0 = JSON.stringify(siegePlan(4, 2, 0)), pn = JSON.stringify(pinataPlan(4, 2, 0)); setDifficulty('easy'); const s1 = same(); setDifficulty('hard'); const s2 = same(), sg2 = JSON.stringify(siegePlan(4, 2, 0)), ph = JSON.stringify(pinataPlan(4, 2, 0));
+  t.ok(s0 === s1 && s0 === s2 && sg0 === sg2 && pn === ph, 'the Piñata Party\'s swing, Bumper Cars and the Bubble Well rim are the same on every level, Shield Up! and the whole piñata on Normal and Hard');
+  t.ok(!Object.keys(normal.games).length && !Object.keys(hard.games).length && JSON.stringify(easy.games) === JSON.stringify(EASY_GAMES), 'Easy\'s per-game extras (the Joust, the Moonlit Gallery, the Piñata Party) are Easy only');
+
+  // owner 2026-11-13 ("still struggling ... Jousting, reflection hitting gloomies, Piñata"): Easy a bit easier for a struggling child
+  // in those three, while the naive ways still lose. Rates over 20 seeds at 60 and 20 fps, Normal first.
+  {
+    const w20 = f => { let w = 0; for (let s = 1; s <= 20; s++) if (f(s)) w++; return w; };
+    const joust = (bot, fps) => [0, 1, 2].map(r => w20(s => CB.playJoust(CB.JOUST_BOTS[bot](s), { seed: s, round: r, fps }).won));
+    const world = MB.standInBeam(1), spot = (mk, fps) => [0, 1, 2].map(r => w20(s => MB.playSpot(mk(), { seed: s, round: r, fps, world }).won));
+    const slowHerd = () => MB.SPOT_BOTS.person('herd', 0.7, 0.3);
+    const pin = (kind, fps) => [1, 2, 3].map(r => w20(s => Bt.playPinata(kind, pinataRound(1000 + s, r, s, {}), 1 / fps).won));
+    const all = () => [60, 20].map(fps => ({ sloppy: joust('sloppy', fps), surprised: joust('surprised', fps), jStill: joust('still', fps), jRand: joust('random', fps), jSkill: joust('skilled', fps),
+      distracted: spot(MB.SPOT_BOTS.distracted, fps), slowHerd: spot(slowHerd, fps), sweep: spot(MB.SPOT_BOTS.sweeper, fps), sStill: spot(MB.SPOT_BOTS.still, fps), sSkill: spot(MB.SPOT_BOTS.skilled, fps),
+      tablet: pin('tablet', fps), masher: pin('masher', fps), pStill: pin('still', fps), kid: pin('kid', fps) }));
+    setDifficulty('normal'); const N = all(); setDifficulty('easy'); const E = all();
+    const sum = (o, k) => o.reduce((a, x) => a + x[k].reduce((b, y) => b + y, 0), 0), show = (o, k) => o.map(x => x[k].join('/')).join(' at 60, ') + ' at 20';
+    t.ok(E.every(x => x.sloppy[2] + x.surprised[2] >= 12) && N.every(x => x.sloppy[2] + x.surprised[2] <= 2) && E.every(x => x.jSkill.every(n => n === 20)),
+      `the Joust on Easy: a child who does not lead the gold spot wins round 3 now and then (sloppy ${show(E, 'sloppy')}, late to see the turn ${show(E, 'surprised')} of 20; Normal ${show(N, 'sloppy')} / ${show(N, 'surprised')})`);
+    t.ok(E.every(x => x.jStill.every(n => n === 0) && x.jRand[1] <= 3 && x.jRand[2] === 0), `the Joust on Easy: holding still never wins (${show(E, 'jStill')}), a random stick almost never (${show(E, 'jRand')})`);
+    t.ok(sum(E, 'distracted') > sum(N, 'distracted') + 10 && sum(E, 'slowHerd') > sum(N, 'slowHerd') + 20 && E.every(x => x.sSkill.every(n => n === 20)),
+      `the Moonlit Gallery on Easy: a distracted kid wins round 2 more often (${show(E, 'distracted')}; Normal ${show(N, 'distracted')}), a slow herder rounds 2 and 3 (${show(E, 'slowHerd')}; Normal ${show(N, 'slowHerd')})`);
+    t.ok(E.every(x => x.sweep.every(n => n === 0) && x.sStill.every(n => n === 0) && x.distracted[2] === 0), `the Moonlit Gallery on Easy: sweeping or standing still never wins (${show(E, 'sweep')}, ${show(E, 'sStill')}), round 3 still needs a banked beam`);
+    t.ok(sum(E, 'tablet') > sum(N, 'tablet') && E.every(x => x.kid.every(n => n === 20)) && E.every(x => x.pStill.every(n => n === 0) && x.masher[1] <= 3 && x.masher[2] <= 3),
+      `the Piñata Party on Easy: a child on a tablet wins more (${show(E, 'tablet')}; Normal ${show(N, 'tablet')}); mashing under it still nearly never wins rounds 2 and 3 (${show(E, 'masher')}; Normal ${show(N, 'masher')}), standing still never`);
+  }
 
   // owner 2026-11-08 ("genuinely difficult for my son on the tablet"): Easy gives the reaction games more time (react), and the naive
   // ways still do not win: rates over many seeds, a child on a tablet (late, a finger off the jack) against mashing / spinning
