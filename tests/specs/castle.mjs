@@ -398,16 +398,17 @@ export default async function ({ browser, base, t }) {
           for (let i = 0; i < 9; i++) live.step(1 / 30, { lance: { su: 0, sv: 1 } });
           o.dy = dotAt().y - d1.y;
           let n = 0; while (!live.lastMeet || live.jr.pass !== pass || live.jr.results.length <= pass) { live.step(1 / 30, { lance: { su: 0, sv: 0 } }); if (n++ > 400) break; }
-          o.meet = live.lastCall?.big; o.small = live.lastCall?.small; o.marks = K.marks.filter(m => m.visible).length;
+          o.meet = live.lastCall?.big; o.small = live.lastCall?.small; o.marks = K.marks.filter(m => m.visible).length; o.cross = document.getElementById('crosshair')?.classList.contains('joust-off');
           n = 0; while (live.ride?.phase !== 'idle' && n++ < 600) live.step(1 / 30, { lance: { su: 0, sv: 0 } });
           o.fovBack = cam.fov;
         }
         out.ring = K.ring.scale.x; out.r = live.jr.plan.r;
-        live.giveBack(); live.jr = null; live.horse.dir = 1; live.horse.x = CL.TILT.x0; out.fovOff = cam.fov;
+        live.giveBack(); live.jr = null; live.horse.dir = 1; live.horse.x = CL.TILT.x0; out.fovOff = cam.fov; live.step(1 / 30); out.crossBack = !document.getElementById('crosshair')?.classList.contains('joust-off');
         return out;
       });
       const V5ok = V5.passes.every(o => o.centre < 0.25 && o.fov < 70 && o.du > 0 && o.dx < -0.01 && o.dy > 0.01 && /Bullseye|Clang|Whoosh/.test(o.meet) && o.fovBack > 74) && V5.passes[0].dir !== V5.passes[1].dir && V5.passes[0].call === 'Charge!' && Math.abs(V5.ring - V5.r) < 1e-9 && V5.fovOff === 75;
       t.ok(V5ok, `the Joust's view: Charge! frames his shield in the middle (${V5.passes.map(o => o.centre.toFixed(2)).join(' / ')} from the centre, zoomed to ${V5.passes.map(o => o.fov.toFixed(0)).join(' / ')} degrees) both ways down the lane; stick right moves the tip left on screen as before (${V5.passes.map(o => o.dx.toFixed(3)).join(' / ')}), forward moves it up; the meeting says "${V5.passes.map(o => `${o.meet} ${o.small}`).join('" / "')}"; the bullseye ring is the round's radius ${V5.r}`);
+      t.ok(V5.passes.every(o => o.marks === 0 && o.cross) && V5.crossBack, `the Joust shows only the gold spot and your aim dot (owner 2026-11-13): no old hits on the shield (${V5.passes.map(o => o.marks).join(' / ')}), no + while you charge, the + back when you get off`);
       // the Joust
       const D5 = await page.evaluate(() => {
         const R = window.__R, { g, live, p, CL } = R, out = {};

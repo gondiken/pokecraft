@@ -102,7 +102,9 @@ export class CastleLive {
     this.placeCatapults();
     this.drawKnight(); this.drawSteed();
   }
+  crosshair(off) { if (typeof document !== 'undefined') document.getElementById('crosshair')?.classList.toggle('joust-off', !!off); }
   dispose() {
+    this.crosshair(false);
     this.giveBack();
     this.game.ui?.setScore?.(null);
     this.game.ui?.setPointers?.(null);
@@ -620,7 +622,7 @@ export class CastleLive {
     if (this.hitsOf !== jr) { this.hitsOf = jr; this.hits = []; }
     K.marks.forEach((m, i) => {
       const h = this.hits[i];
-      m.visible = !!h && h.kind !== 'whoosh' && this.mounted;
+      m.visible = false; // owner 2026-11-13 (his son: "so many targets"): the old hits on the shield are no longer drawn
       if (h) { m.position.set(0.04, h.v, h.u); m.material.color.setHex(h.kind === 'bullseye' ? 0xffe680 : 0x4a4a58); m.scale.setScalar(h.kind === 'bullseye' ? 1.5 : 1); }
     });
     // the zoom: while you charge, the shield is about JOUST_VIEW.fill of the screen's height (never wider than the normal view)
@@ -629,6 +631,8 @@ export class CastleLive {
       const want = this.framing() ? Math.max(JOUST_VIEW.fovMin, Math.min(JOUST_VIEW.fov, (2 * Math.atan(R / d) * 180 / Math.PI) / JOUST_VIEW.fill)) : JOUST_VIEW.fov;
       this.setFov(cam.fov + (want - cam.fov) * Math.min(1, dt * 4));
     }
+    // owner 2026-11-13: on the horse the game's + crosshair is hidden: only the gold spot and your aim dot are on the shield
+    this.crosshair(this.mounted && p?.carry === this.steedObj);
     // your lance: from your right hand on his side toward the white ring; in the last moment before the meeting it thrusts onto it
     const on = this.mounted && !!cam;
     this.lance.visible = on;

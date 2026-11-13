@@ -94,6 +94,7 @@ button.primary { background: #3b6fd8; }
   position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%);
   pointer-events: none;
 }
+#crosshair.joust-off { display: none; } /* the Joust: no + while you charge (castlelive.js) */
 #crosshair::before, #crosshair::after {
   content: ''; position: absolute; background: rgba(255,255,255,.85); mix-blend-mode: difference;
 }
