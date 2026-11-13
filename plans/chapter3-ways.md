@@ -280,8 +280,11 @@ Dream, Funfair, Ghost, Grass, Ice, Knight, Mirror, Parkour, Racer, Rock, Slime, 
 brings it to about 50.
 
 What moving them would cost:
-- **7 per type breaks.** The 36 fliers would land in Sky / Drake / Ghost / Pixie (Sky alone would grow from 7 to 30+), and 28 types
-  would be short. Keeping 7 each means drawing about 58 new creatures to fill the holes: about 116 creatures touched.
+- **7 per type breaks, but less than first written.** Any number of types may fly or swim (owner: "Bubble, Drake and several others
+  can have fly"), so the count of 58 does not change (it is per type), but the moves partly fill each other's holes: the 7 flying
+  types (Sky, Drake, Ghost, Pixie, Mind, Cosmic, Bug) give away 14 walkers and take 36 fliers, net about +22 (about 10 each); the
+  walking types end about 22-25 short. Keeping 7 each means about 25 new walking creatures (or about 3 more types made flying ones).
+  First written as "Sky would grow to 30+ and 58 new creatures": wrong, it assumed Sky was the only home for fliers.
 - **It breaks the jokes the types are made of.** A paper plane is Paper, a parrot is Pirate, a Wi-Fi butterfly is Cyber, a bat that
   hears its squeaks is Sound, a wise owl is Mind. The themed types (most of ours) cross bodies on purpose; that is not a mistake to
   tidy up. Of the 58, very few would look *more* at home in Sky.
@@ -289,8 +292,16 @@ What moving them would cost:
   (`VERSION`), and the `roster` spec.
 
 **Conclusion of the count:** "the type decides how you move" can't be made to fit our creatures by moving a handful. It needs about
-58 moves plus about 58 new creatures, and it would still clash with every future themed type. Movement has to come from each
+58 moves plus about 25 new creatures, and it would still clash with every future themed type. Movement has to come from each
 creature's own body (per species), and the types matter in the world some other way.
+
+### A way to lower the count (idea, 2026-11-13, not decided)
+A type's movement does not have to come from anatomy: it can come from a **prop the whole type visibly shares**. The Bubble type
+already does this: wild Bubble creatures float inside their own bubble (`gait: 'float'`), so a duck or a hippo flying in a bubble makes
+sense to a child. If a flying or swimming type has such a look (Bubble: its bubble; Ghost: fading; Sky: a string / balloon; Paper:
+folds into a glider), its walkers stop being misfits, and the count drops type by type. It only works where the prop is drawn on every
+creature of the type and reads at a glance; it can never explain a winged creature that is NOT allowed to fly (Boomwing in Sound),
+so the 36 fliers in walking types stay the hard part.
 
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
