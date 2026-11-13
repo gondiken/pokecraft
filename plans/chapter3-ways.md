@@ -303,6 +303,24 @@ folds into a glider), its walkers stop being misfits, and the count drops type b
 creature of the type and reads at a glance; it can never explain a winged creature that is NOT allowed to fly (Boomwing in Sound),
 so the 36 fliers in walking types stay the hard part.
 
+### The owner's theory mapped out (2026-11-13, draft for discussion)
+Each type gives a set of movements, any number of types can give the same one, and every creature of a type can do all of its
+type's movements. The fewest changes that make all 322 creatures look right, using three tools before any move: a **type look**
+(one thing drawn on the whole type that shows how it moves, like Bubble's own bubble), a **touch-up** of one model, and a **move**:
+- Walks: 31 types. Walks + swims: Atlantis, Pirate, Water. Walks + flies: Alien, Bug, Cosmic, Drake, Gravity, Mind, Paper, Pixie,
+  Rainbow. Flies: Ghost, Sky. Walks + swims + flies: Bubble.
+- New type looks (25 creatures in 7 types): Alien a hover glow, Cosmic a stardust trail, Gravity orbiting little moons, Mind a
+  lifting glow, Paper folds into a glider / pages flap, Pixie small fairy wings, Rainbow runs up its own rainbow. Atlantis' runes and
+  Bubble's bubble already exist.
+- Touch-ups (9): beetlet, hornbeetle (wing cases open), scalekin (small wings), glitterbop, dinglet (hop), twilorb, ringlet (roll),
+  lustrelle (candle legs), pinwhirl (spins up like a propeller). Flightless birds, smashbird, wyvlet, sushisail, peekhole, dustbun fit
+  by their own story.
+- Moves (22): 11 to Sky (voltwing, flarehawk, peekaw, ravenshade, chirpit, loudbeak, parroteer, featherbeard, echobat, boomwing,
+  gullop), 4 to Bug (wifly, wifly2, wattwink, rivetron), 2 to Ghost (finnibone, error404), 3 to Water (joltail, shimmerfin,
+  spectrafin), loopwyrm to Drake, twirlshell to Slime.
+- 7 per type: Sky 18, Bug 10, Ghost 9, Water 9, Drake 8, Slime 8; 11 types short by 20 in all (about 20 new walkers, or drop the rule).
+- The page with the full map, the diagram and every creature: https://claude.ai/artifact/EdtF4Naq98N1fUHBLhstny (private to the owner).
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
