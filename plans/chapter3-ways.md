@@ -6,7 +6,11 @@ for two reasons:
 1. **Overlap:** one creature's ability solves another's place (a climbing place is solved by any flier).
 2. **Riding already gave bodies their movement** (fly, swim, run), so "why can't Boomwing fly when it has wings?"
 
-This plan solves both. **The first test is built (?preview, Wobbleland only): see "Built" at the end.**
+This plan tried to solve both. **The first test is built (?preview, Wobbleland only): see "Built" (section 7).**
+
+> **STATUS 2026-11-13: UNRESOLVED. The owner is not happy with where the design is. Read section 10 first** (the whole design
+> talk, every idea tried and why it was rejected, the open question and what to do next). Sections 2-4 and 9 are earlier thinking
+> that the owner has since pushed back on; they are kept as history, not as decisions.
 
 ## 0. After the owner's first play (2026-11-12, later the same day)
 
@@ -174,3 +178,88 @@ mean "flies better", "swims deeper" or "climbs" if some creatures of other types
 3. The groups: anything he would move (Toxic in Burn away? Mind in Sense? Bug in Cling or Fly)?
 4. Which Way next? (Dive and Dig would show the most different places.)
 5. Should the creature you are be able to do anything to wild creatures (play, follow, help), or only move?
+
+
+## 10. The design talk, 2026-11-12 / 13 (read this first; written for the next session)
+
+The owner and Claude went back and forth over two days. Nothing below is decided except where it says **decided**. The owner ended
+with: "I don't like this situation." The next session should pick it up from "The open question" at the end.
+
+### What the son asked for
+"Play as creatures even outside the battles. Like riding." In game terms: walk, fly, swim, climb AS your creature in the world.
+
+### The two old problems (why it was dropped once, `plans/chapter3.md` section 2)
+1. **Overlap**: abilities solve each other's places (a climbing challenge is also passed by any flier).
+2. **Riding already gives bodies their movement** (fly / swim / run), so type-based abilities clash with what riding does.
+
+### Attempt 1: the Ways (15 groups of types, each owning a kind of place). REJECTED in parts
+- Each of the 46 wild types put in exactly one of 15 groups (Fly, Cling, Dive, Freeze, Dig, Squeeze, Slip through, Glow, Burn away,
+  Power, Dash, Push, Sneak, Sense, Charm; table in section 4). Each group owns one "shape" of place (open stormy gap = Fly, narrow shaft
+  = Cling, soft earth = Dig, crack = Squeeze, bars = Slip through...), places checked by a reach checker so no other group or MIX of
+  groups gets in. Squad of three, both cameras, chapter 3 only.
+- Claude's first version used **battle move kinds** (shot, rush, blast...) on world things. **Owner rejected**: "world movement or what
+  happens with the creature in the world should reflect the type"; grouping types is fine.
+- **Built as a test** (still in the game, ?preview, Bumpy Hills): Storm Island (Fly) and the Drip Tower (Cling). See section 7.
+
+### The owner's first play of the test (2026-11-12): what broke
+- The squad bar (Me + three creatures) was confusing, too much on a tablet. **Decided**: creature mode by itself in chapter 3's lands;
+  "Be me" only in the pause screen; one **Swap** button (the Place slot; F on a keyboard). Built.
+- Third-person camera flashed when walking W / A / D: a bug (the wall clamp read the head after copying it). Fixed and tested.
+- Blazehound was slower as itself than when ridden. **Decided**: a creature moves exactly like riding it (riding.js RIDE numbers);
+  riding in Wobbleland = creature mode. Built.
+- The "swap only on the ground" rule: owner asked why; it was needless code. **Decided**: swap any time. Built.
+- **"Too windy for Boomwing but not for bubbles? Make it make sense."** Only the Fly TYPES could fly the storm; Boomwing (Sound, huge
+  wings) was blown back while a Bubble type was not. Changed: the storm is now the same for every creature with wings.
+
+### Attempt 2: "body moves, type is a power". REJECTED
+- Rule proposed: the BODY (wings / fins / legs) decides how a creature moves, the same for everyone; a TYPE gives a power from what
+  it is made of (Wind gust, burn thorns, freeze rapids, power a lift, echo shows a path...), never a better way of moving. Fly would
+  become Wind (Sky, Drake), Bubble would move to Dive (carries its own air), Alien gets a tractor beam.
+- **Owner**: "can result in a pretty weak game". Claude agreed: "use a power on an object" is a key with a timer bolted on.
+- **Owner on the storm**: "why do flyers enter that ink storm but not the riders? The criterion has nothing to do with flight, it's
+  just timing." Agreed: Storm Island is a timing gate; wings are only the ticket. A real flying challenge must test FLYING itself.
+- **Owner**: "most of the logic is breaking here with the riding, swimming and flying".
+
+### The root cause (agreed)
+Three different things decide what a creature can do, and they disagree:
+- its **type** (Boomwing = Sound),
+- its **looks** (37 species have `flies`, spread over 18 types: only 6 are Sky / Drake; 24 `floats` over 12 types; about 330 species
+  in about 200 body shapes, including teacups, burgers, jukeboxes),
+- **riding** (a random 1-in-4 `rideable` trait, plus a per-species land / water / sky ride list in traits.js).
+Every rule built on one of them contradicts the other two.
+
+### Attempt 3: a body tag per species (8 bodies). OWNER DOUBTED IT
+- Proposal: one source of truth, a BODY per species chosen from its looks, used everywhere (creature mode AND riding): Flier, Swimmer,
+  Climber, Hopper, Digger, Runner, Floater, Tiny; the body's movement IS the skill (flapping tires you, ride warm air; charge-and-aim
+  hops; dig by rumble...). Types stay for battles (+ region effects like Ice grip, glowing light).
+- Owner: "Wouldn't it be easier if Boomwing was part of Sky and not Sound?" Claude: not as a rule: moving every flier into Sky breaks
+  7-per-type, gyms, the chart, saves, and themed types (Food, Time, Cozy) still need a body.
+- **Owner**: "you aren't just proposing fly, swim, run. You're proposing 15 types (to match the location challenges). It won't be as
+  easy for a child as you claim." **Claude agreed**: only fly / swim / walk (maybe climb) can be read from a creature's picture; a teacup
+  or a raccoon can't tell a child if it is a hopper, digger or floater, so 8 bodies would need labels = a second category.
+
+### Attempt 4 (the last proposal, NOT accepted yet)
+- Only the bodies a child can SEE: walk/run, fly, swim (maybe climb with very visible sticky feet / vines). No labels.
+- Variety from many different CHALLENGES per body (several flying skill games, several swimming, several on foot), each testing the
+  movement itself, not a gate. The place says who it is for (deep water = swimmer, a sky spire = flier).
+- Small per-creature flavour (speed, jump height, how long a flier lasts) that a kid notices but no place requires.
+- Cost: less "only this creature can do this" magic.
+- **Owner's reply: "I don't like this situation."** (Then asked to store everything.)
+
+### Also floated and set aside
+- Redesign all creatures (the owner's "big bet"): not discussed further. Claude's view: no redraws, but if a body list is used, a few
+  models whose looks fight their body could get small touch-ups.
+- Showing a body icon on cards / the Book: possible, but it is exactly the "second category" the owner fears.
+- A review page with every creature's picture and a proposed body, for the owner and son to correct: offered, not made.
+- Custom (the Wizard's guardian) choosing its way on the drawing board: an idea only.
+
+### What is in the game now (all ?preview, Wobbleland only)
+Creature mode (`src/being.js`, `src/creatureways.js`, `player.js` `clingStep`), Swap, both cameras, a creature moves like its ride,
+fights entered as your creature, Storm Island (now a wings timing place, the owner calls it "just timing") and the Drip Tower (Cling).
+Specs `ways` and `wobble` pass. Nothing of this is outside ?preview, so it can be changed or removed freely.
+
+### The open question for the next session
+How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
+creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
+strong, varied game, not "only three bodies"? Start by asking the owner what felt wrong about attempt 4, and what the son actually
+enjoyed when playing as Scalewing / Sproutle / Boomwing. Don't build more Way places until this is settled.
