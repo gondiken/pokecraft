@@ -369,6 +369,20 @@ Atlantis, Knight, Bubble, Gravity, Mirror (21). Early creatures keep name and bo
 - Result: 22 redesigned, 29 with a type look in 8 types (Alien, Cosmic, Gravity, Mind, Paper, Pixie, Rainbow, Sound), 5 animations
   only, 0 moves, every type stays at 7. Plan A (moves) is dropped from the page.
 
+### The 15 abilities, first draft (2026-11-13, for the owner and son to change)
+Walking is everyone's, no tag. A type gives ALL its creatures its abilities (0-2 each in this draft). On the page as a clickable
+type x ability grid. `?` = a weak fit.
+- Fly: Bug, Ghost, Mind, Pixie, Drake, Rainbow, Cosmic, Sound, Alien, Sky, Paper, Bubble, Gravity (13)
+- Swim (dive, hold breath): Water, Pirate, Atlantis, Bubble · Climb: Grass?, Bug, Slime, Parkour, Ninja, Gravity
+- Dig: Bone, Treasure, Pirate, Rock · Squeeze (cracks): Slime, Paper, Food?, Tiny, Doodle · Pass through (bars, glass): Ghost, Dream,
+  Portal, Mirror
+- Glow: Fire, Electric, Rainbow, Cosmic, Light, Atlantis (Glowcap Caves' BRIGHT today: Fire, Light, Electric, Cosmic)
+- Burn (thorns, tangles, ice walls): Fire, Toxic, Drake · Freeze (a path over wild water): Ice only · Zap (machines): Electric, Metal,
+  Cyber
+- Dash: Time?, Parkour, Racer · Push (boulders, cracked walls): Normal?, Metal, Squad, Knight, Rock · Hide: Camo, Ninja, Tiny
+- Bounce (much higher than a jump): Cozy?, Ball, Funfair, Surprise · Lift (move things from afar): Mind, Pixie, Alien
+- Weak spots: Freeze has one type; Normal could have none ("the plain type"); Time might want "slow time" instead of Dash.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
