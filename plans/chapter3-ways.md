@@ -258,6 +258,40 @@ Creature mode (`src/being.js`, `src/creatureways.js`, `player.js` `clingStep`), 
 fights entered as your creature, Storm Island (now a wings timing place, the owner calls it "just timing") and the Drip Tower (Cling).
 Specs `ways` and `wobble` pass. Nothing of this is outside ?preview, so it can be changed or removed freely.
 
+### Counted 2026-11-13: how many creatures would have to change type?
+The owner asked: if types decided movement, and a type could give more than one (Drake = walk + fly), how many creatures would
+have to move to another type so that it makes sense, in logic and in looks? Counted from all 322 wild species (their pictures,
+descriptions, `flies` / `floats` and ride kind), sorted into the three bodies a child can see: **walks** (seals, otters, ducks,
+turtles, penguins and crabs count as walkers: everyone paddles in this game), **air** (wings or floating) and **water only** (fish,
+eels, jellyfish, sea serpents, boats).
+
+The rule only means something if **every creature of a type gets all of its type's ways of moving**. (If a type only *allows* a
+movement and the body decides, the type adds nothing: that is attempt 4.) So every creature has to look like its type's set. Giving
+each type the set most of its creatures already have, the misfits are:
+
+| Has to leave | Creatures |
+| --- | --- |
+| **Fliers / floaters in a walking type (36)** | saucerling, ufomax (Alien); runestone (Atlantis); smashbird (Ball); finnibone (Bone); wifly, wifly2, error404 (Cyber); voltwing, wattwink (Electric); flarehawk (Fire); hootiter, saturnowl (Gravity); glitterbop (Light); rivetron (Metal); peekaw, ravenshade (Ninja); chirpit, loudbeak (Normal); origrane, darto, jetfold (Paper); parroteer, featherbeard (Pirate); loopwyrm, peekhole (Portal); rainwing, auroraptor (Rainbow); echobat, **boomwing**, dinglet (Sound); twilorb (Time); dustbun (Tiny); ringlet, lustrelle (Treasure); gullop (Water) |
+| **Walkers in a mostly-flying type (14)** | beetlet, hornbeetle, twirlshell (Bug); moonhop, lunaroo (Cosmic); scalekin, wyvlet (Drake; the babies); thinkit, visionelk, puzzlet (Mind); starbelle, pompet, pomperina (Pixie); pinwhirl (Sky) |
+| **Water-only bodies in a land type, or walkers in Water (8)** | joltail (Electric); shimmerfin, spectrafin (Rainbow); bottlet, shipshape (Pirate); sushisail (Food); bubbuck, shellby (Water) |
+
+**About 58 creatures (18 %), from 28 of the 46 types.** Only 18 types are already all one body: Bubble, Camo, Cozy, Doodle,
+Dream, Funfair, Ghost, Grass, Ice, Knight, Mirror, Parkour, Racer, Rock, Slime, Squad, Surprise, Toxic. Being kind to borderline cases (babies "can't fly yet", dust bunnies, a sushi boat) only
+brings it to about 50.
+
+What moving them would cost:
+- **7 per type breaks.** The 36 fliers would land in Sky / Drake / Ghost / Pixie (Sky alone would grow from 7 to 30+), and 28 types
+  would be short. Keeping 7 each means drawing about 58 new creatures to fill the holes: about 116 creatures touched.
+- **It breaks the jokes the types are made of.** A paper plane is Paper, a parrot is Pirate, a Wi-Fi butterfly is Cyber, a bat that
+  hears its squeaks is Sound, a wise owl is Mind. The themed types (most of ours) cross bodies on purpose; that is not a mistake to
+  tidy up. Of the 58, very few would look *more* at home in Sky.
+- Changing a caught creature's type changes its battles (the chart), gym and leader teams, the Book, the README tables, duels
+  (`VERSION`), and the `roster` spec.
+
+**Conclusion of the count:** "the type decides how you move" can't be made to fit our creatures by moving a handful. It needs about
+58 moves plus about 58 new creatures, and it would still clash with every future themed type. Movement has to come from each
+creature's own body (per species), and the types matter in the world some other way.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
