@@ -347,6 +347,18 @@ Atlantis, Knight, Bubble, Gravity, Mirror (21). Early creatures keep name and bo
   the creature's body decides and the type says nothing (attempt 4). Walking is everyone's base, so in practice a type means
   "walks" or "walks + one extra" (Ghost and Sky only fly, Bubble walks, swims and flies).
 
+### Decided 2026-11-13: how a child knows what a creature can do
+- **A type may give two or more abilities; every creature of that type has all of them** (the all-of rule). Rejected: "one ability
+  per type" and "every ability must be drawn on the body" (owner: "sticky pads? glow before entering a cave? come on"; and 8-10
+  abilities = only 8-10 kinds of challenge).
+- **The card says it:** tap a creature and its card shows its abilities as chips ([Climb] [Glow]). The same chips everywhere a
+  creature is shown (team, Book, Swap). They come from the type, so learning one creature teaches its whole type.
+- **The world says what it needs:** at a place, the button word appears if your creature can ("Climb!"); if not, the place shows the
+  ability it needs and which of your creatures have it.
+- **Looks only must not contradict:** no wings in a type without Fly, no fish in a type without Swim (that is what the redesigns and
+  moves on the page fix). Other abilities need no drawing.
+- Variety comes from places, not only from the number of abilities: places that need two abilities, several skill games per ability.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
