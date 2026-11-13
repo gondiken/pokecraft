@@ -321,6 +321,19 @@ type's movements. The fewest changes that make all 322 creatures look right, usi
 - 7 per type: Sky 18, Bug 10, Ghost 9, Water 9, Drake 8, Slime 8; 11 types short by 20 in all (about 20 new walkers, or drop the rule).
 - The page with the full map, the diagram and every creature: https://claude.ai/artifact/EdtF4Naq98N1fUHBLhstny (private to the owner).
 
+### Plan B: redo the later creatures (owner 2026-11-13, draft)
+Owner: the early creatures matter to them and their son, the later types (Cyber onward) less, so a later creature that does not fit
+can simply become a new creature (new name and body, same saved id) instead of moving. Early = Normal ... Camo plus Rock (25 types),
+later = Cyber, Cozy, Treasure, Food, Squad, Dream, Parkour, Ninja, Tiny, Pirate, Racer, Ball, Portal, Funfair, Surprise, Doodle,
+Atlantis, Knight, Bubble, Gravity, Mirror (21). Early creatures keep name and body.
+- 10 later creatures redone (ideas only): wifly / wifly2 (a walking Wi-Fi router, "Wiflow"), error404 (a glitchy pixel cat),
+  peekaw / ravenshade (masked geckos), parroteer / featherbeard (pirate monkeys that repeat you), loopwyrm (a hoop snake),
+  ringlet (rolls on its edge), lustrelle (walks on candle legs). Gravity keeps its owls (Saturnowl is the Boss) with its type look.
+- Early creatures: 25 type looks (as before), 6 move a bit differently (animation only: beetlet, hornbeetle, glitterbop, pinwhirl,
+  dinglet, twilorb), Scalekin already has small wings, 14 still change type (Sky +7, Water +3 -1, Bug +2 -1, Ghost +1, Slime +1).
+- 7 per type: 5 types over, 7 short by 12 (Bone, Electric, Fire, Metal, Normal, Rainbow, Sound): 12 new creatures or drop the rule.
+- Plan A (moves only) is now 22 moves (Scalekin fits). Both plans are on the same page with a switch.
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
