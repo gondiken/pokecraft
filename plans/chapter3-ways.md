@@ -334,6 +334,19 @@ Atlantis, Knight, Bubble, Gravity, Mirror (21). Early creatures keep name and bo
 - 7 per type: 5 types over, 7 short by 12 (Bone, Electric, Fire, Metal, Normal, Rainbow, Sound): 12 new creatures or drop the rule.
 - Plan A (moves only) is now 22 moves (Scalekin fits). Both plans are on the same page with a switch.
 
+### Plan B, revised: redesign vs move, not early vs late (owner 2026-11-13)
+- Owner: sort by "redesign" vs "move". Chirpit and loudbeak become flightless birds and stay Normal (ideas: a turkey chick, a
+  peacock); finnibone stays Bone with a walking body (a mudskipper-like bony fish); rivetron stays Metal (a tin beetle on treads).
+- Now 14 redesigned (those four + wifly, wifly2, error404, peekaw, ravenshade, parroteer, featherbeard, loopwyrm, ringlet,
+  lustrelle) and 10 moves left: twirlshell (Slime), voltwing, flarehawk, echobat, boomwing, gullop (Sky), wattwink (Bug), joltail,
+  shimmerfin, spectrafin (Water). 7 per type: Sky +5, Water +2, Slime +1; Electric -3, Rainbow -2, Sound -2, Fire -1 (8 short).
+- **The rule, made explicit** (the owner asked whether many-to-many is possible, given Rainbow's fish, birds and walkers): a type's
+  set is "all of", never "one of". "Walks + flies" = every creature of that type does both; Rainbow flies only because every Rainbow
+  creature gets the "runs up its own rainbow" look and the fish leave. Types to movements stay many to many (Drake walks and flies;
+  flying is shared by Sky, Drake, Pixie...); what is impossible is a type whose creatures differ ("some swim, some fly"), because then
+  the creature's body decides and the type says nothing (attempt 4). Walking is everyone's base, so in practice a type means
+  "walks" or "walks + one extra" (Ghost and Sky only fly, Bubble walks, swims and flies).
+
 ### The open question for the next session
 How do creatures move and matter in the world so that (a) a child understands it at a glance, (b) it never contradicts what a
 creature looks like or how riding works, (c) the challenges test the movement itself (not a timing gate or a key), and (d) it is a
