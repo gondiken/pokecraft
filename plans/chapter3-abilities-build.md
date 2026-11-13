@@ -36,38 +36,45 @@ the page is the picture of it.
 | freeze | ❄️ Freeze | a path over wild water | ice |
 | zap | ⚡ Zap | power a lift, a bridge, a door | electric, metal, cyber |
 | dash | 💨 Dash | closing doors, crumbling floors | time (weak), parkour, racer |
-| push | 💪 Push | boulders, cracked walls | normal (weak), metal, squad, knight, rock |
+| push | 💪 Push | boulders, cracked walls | normal, metal, squad, knight, rock |
 | hide | 🥷 Hide | sneak past someone watching | camo, ninja, tiny |
 | bounce | 🦘 Bounce | ledges far higher than a jump | ball, funfair, surprise |
 | lift | ✨ Lift | move things from afar | mind, alien |
 | charm | 💖 Charm | win over someone grumpy (a treat when it looks at you) | pixie, cozy, food, funfair |
 | sense | 🔊 Sense | an echo shows a hidden path; remember it | mind, sound |
 
-Custom (the Wizard's guardian) has none yet: open question (section 6).
+Custom (the Wizard's guardian) is the only Custom creature you can have, so it may differ per player: **decided** in section 6.
 
 ## 2. The 22 redesigns (id, stats, moves, evolution, catch rate kept; name, desc, model, flags, spawns may change)
 
-Bodies are ideas: **names and final looks are chosen with the owner and their son first** (step A1).
+**Names are decided** (2026-11-13). Rule: keep a name when it still fits the new body, so players lose as little as possible.
 
-| Creature (type) | New body (idea) |
-| --- | --- |
-| finnibone (bone) | a bony fish that walks on its fins like a mudskipper, clacking along the cave floor |
-| twirlshell (bug) | a swirly-shelled snail with little dragonfly wings, buzzing from leaf to leaf |
-| wifly → wifly2 (cyber) | "Wiflow": a little Wi-Fi router toddling on stubby legs; its bigger form a tower router on four legs |
-| error404 (cyber) | a glitchy pixel cat that flickers and skips frames as it walks |
-| voltwing (electric) | a roadrunner with a lightning-bolt crest |
-| wattwink (electric) | a glow-worm whose tail is a light bulb |
-| joltail (electric) | a land eel that slithers through wet grass, lighting it up |
-| flarehawk (fire) | an emu with a flaming tail plume |
-| nutlet → rivetron (metal) | rivetron: a big tin beetle on rolling treads; its engine wings only buzz |
-| peekaw → ravenshade (ninja) | tiptoeing geckos: one hides behind its own tail; the big one is masked and creeps along walls |
-| chirpit → loudbeak (normal) | a fluffy turkey chick; a peacock that fans its tail with a call that wakes the village |
-| parroteer → featherbeard (pirate) | pirate monkeys: a little one in a bandana that repeats you; a captain with a hat and red coat |
-| loopwyrm (portal) | a long snake that rolls like a hoop, a swirl in each loop |
-| shimmerfin → spectrafin (rainbow) | rainbow pangolins whose scales sparkle (never swimmers); spectrafin is ridden on LAND now |
-| ringlet (treasure) | a gold ring that rolls along on its edge, gem eye on top |
-| lustrelle (treasure) | a gem candelabra that walks on its candle legs |
-| gullop (water) | a noisy walrus pup that steals snacks from beach picnics |
+| id (type) | Name (old -> new) | New body |
+| --- | --- | --- |
+| finnibone (bone) | Finnibone (kept) | a bony fish that walks on its fins like a mudskipper, clacking along the cave floor |
+| twirlshell (bug) | Twirlshell (kept) | a swirly-shelled snail with little dragonfly wings, buzzing from leaf to leaf |
+| wifly (cyber) | Wifly -> **Wiflow** | a little Wi-Fi router toddling on stubby legs, signal bars on its back |
+| wifly2 (cyber) | Wifly 2.0 -> **Wiflow 2.0** | a tower router striding on four legs, full signal bars |
+| error404 (cyber) | Error404 (kept) | a glitchy pixel cat that flickers and skips frames as it walks |
+| voltwing (electric) | Voltwing -> **Voltrunner** | a roadrunner with a lightning-bolt crest that zaps across fields |
+| wattwink (electric) | Wattwink (kept) | a glow-worm whose tail is a light bulb; it blinks hello on warm nights |
+| joltail (electric) | Joltail (kept) | a land eel that slithers through wet grass, lighting it up with little zaps |
+| flarehawk (fire) | Flarehawk -> **Flaremu** | an emu with a flaming tail plume that sprints across the plains |
+| rivetron (metal) | Rivetron (kept) | a big tin beetle on rolling treads; its engine wings only buzz (nutlet, its first form, already walks) |
+| peekaw (ninja) | Peekaw -> **Peekko** | a tiptoeing gecko that hides behind its own tail and peeks |
+| ravenshade (ninja) | Ravenshade -> **Ninjecko** | a big masked gecko that creeps along walls without a sound |
+| chirpit (normal) | Chirpit (kept) | a fluffy turkey chick that chirps and struts about at sunrise |
+| loudbeak (normal) | Loudbeak (kept) | a peacock that fans its tail with a call that wakes the whole village |
+| parroteer (pirate) | Parroteer -> **Monkeer** | a little monkey in a striped bandana that repeats everything you say |
+| featherbeard (pirate) | Featherbeard -> **Bananabeard** | a monkey captain with a big hat, a long red coat and a banana-yellow beard |
+| loopwyrm (portal) | Loopwyrm (kept) | a long snake that rolls like a hoop, a swirl in each loop |
+| shimmerfin (rainbow) | Shimmerfin -> **Shimmerscale** | a little pangolin whose scales sparkle in every colour (never a swimmer) |
+| spectrafin (rainbow) | Spectrafin -> **Spectrascale** | a big rainbow pangolin, good luck to see; ridden on LAND now (`traits.js` water -> land) |
+| ringlet (treasure) | Ringlet (kept) | a gold ring that rolls along on its edge, gem eye on top |
+| lustrelle (treasure) | Lustrelle (kept) | a gem candelabra that walks on its candle legs |
+| gullop (water) | Gullop -> **Wallop** | a noisy walrus pup that waddles up to beach picnics and steals the snacks |
+
+The bodies are the brief; the building session may refine details, then shows the owner screenshots before finishing.
 
 **Type looks** (one thing drawn on the creatures listed; the rest of the type already fits):
 alien = a hover glow under its feet (zorbit, blipling, blipstar, podlet, tallipod); cosmic = a stardust trail (moonhop, lunaroo);
@@ -79,27 +86,32 @@ waves, rings of notes under it in the air (drumbo, bongorilla, gongolin, clawdio
 **Animations only** (same body): beetlet, hornbeetle (wing cases open in flight), glitterbop (bops on the ground), pinwhirl (spins up
 like a propeller), twilorb (rolls). Scalekin already has small wings.
 
-## 3. Steps (one session can do A; B-D are one session each; E is ongoing)
+## 3. Steps (each one session; the first is only the redesigns)
 
-**A. Redesigns + abilities data (no gameplay change outside ?preview)**
-1. **Ask first:** show the owner the 22 ideas and ask for names and any changes (AskUserQuestion, a few at a time). Don't invent final
-   names without them.
-2. `src/abilities.js` (pure, no imports): `ABILITIES` (the 17, append-only ids, icon, name, short line), `TYPE_ABILITIES`,
-   `abilitiesOf(species)` (from its type; Custom = `[]` for now), `hasAbility(species, id)`.
-3. For each redesign in `species.js`: same id, new `name` / `desc` / `model` (a new builder in `shapes.js` where it is a new family:
-   the owner wants unique looks), `flies` / `floats` set to match the body; move its `SPAWNS` entries to fitting biomes (fish and
-   sea birds that now walk leave water tables); `traits.js` spectrafin `water` -> `land`.
-4. The type looks and animations (shapes.js / `animateModel`); keep draw calls low (look at `tests/perf.mjs`).
-5. Fix every text that names a changed creature or describes the old body: gym teams keep ids (no change), but dialogue, `README.md`
-   tables, `STORY.md`, Picture World words, wobbleland patch species are fine by id. `grep` the old names.
-6. **No duel `VERSION` bump** as long as stats, moves and types stay the same (only looks and names change). No `WORLD_VERSION` bump.
-7. New spec `abilities` (Node + browser): every wild type in `TYPE_ABILITIES`; **consistency**: no `flies` species in a type without
-   Fly, every sky-ride species in a Fly type, every water-ride species in a Swim type, no fish shape in a type without Swim; the 22
-   ids still exist with their stats / learn sets unchanged; an old save holding Flarehawk and Spectrafin loads with the new name and
-   model, its team / Book / ride (spectrafin on land) work. Re-run `roster`, `blocks`, `seventh`, `fx`, `book`, `riding`, `traits`,
-   `swap`, `pvp`. Model screenshots for the owner (a `*-preview.mjs` like `tests/houseprops-preview.mjs`).
+**A. The creature redesigns only** (no abilities yet; nothing changes in how anyone moves)
+1. For each of the 22 in section 2, in `species.js`: same id; the new `name` where it changes, a new `desc`, a new `model` (a new body
+   builder in `shapes.js` for a new family: the owner wants unique looks, evolutions may share one), `flies` / `floats` removed where the
+   new body walks (twirlshell keeps flying). Move `SPAWNS` entries to biomes that fit (fish and sea birds that now walk leave water
+   tables; check `blocks` / `roster` coverage specs).
+2. `traits.js`: spectrafin's ride `water` -> `land`.
+3. The eight type looks and five animations of section 2 (shapes.js / `animateModel`); a type look may show only while flying (that
+   is chapter 3, so it can wait for step C if it needs creature mode). Keep draw calls low (`tests/perf.mjs`).
+4. Texts: `grep` every old name (Voltwing, Flarehawk, Peekaw, Ravenshade, Parroteer, Featherbeard, Shimmerfin, Spectrafin, Gullop,
+   Wifly) and every line that describes an old body (wings, fins, feathers) in `src/`, `README.md`, `STORY.md`, gym dialogue.
+   Gym teams, Wobbleland patches and Bosses keep the ids: only check that their battles look right.
+5. **No duel `VERSION` or `WORLD_VERSION` bump**: stats, moves, types and ids stay the same; only names and looks change.
+6. Spec `redesign`: the 22 ids exist with stats, learn sets, evolutions, types and catch rates unchanged (compare with a fixture
+   recorded before the change); no redesigned walker has `flies` / `floats`; an old save holding Flarehawk, Spectrafin and Wifly 2.0
+   loads with the new names and models in the team, the box and the Book, and Spectrascale is ridden on land. Re-run `roster`,
+   `blocks`, `seventh`, `four-types`, `three-types`, `ninja`, `pirate`, `fx`, `book`, `riding`, `traits`, `swap`, `pvp`, `gym`.
+   A model photographer (like `tests/houseprops-preview.mjs`) for the owner: every redesign beside its old look.
 
-**B. Ability chips on cards**
+**B. Abilities data + chips on cards**
+`src/abilities.js` (pure, no imports): `ABILITIES` (the 17, append-only ids, icon, name, short line), `TYPE_ABILITIES`,
+`abilitiesOf(species, creature)` (from its type; the guardian from its design, section 6), `hasAbility`. Spec `abilities`: every wild
+type mapped; consistency (no `flies` species in a type without Fly, every sky-ride species in a Fly type, every water-ride species in
+a Swim type, no fish shape in a type without Swim). Then the chips:
+
 Team screen card, the Book's creature page (and a type's abilities on its type page), the Swap list, the trade cards, the creature you
 are (chapter 3). One chip style, icons from `ABILITIES`. Readable on the iPad. Spec: chips present and equal for two creatures of one
 type.
@@ -130,12 +142,13 @@ go" for ability places.
 
 ## 5. Weak spots to keep an eye on
 
-Freeze has one type; Normal's Push, Grass's Climb, Time's Dash are weak fits; Sense and Charm need real skill games. Trimming to 15 would
+Freeze has one type; Grass's Climb and Time's Dash are weak fits; Sense and Charm need real skill games. Trimming to 15 would
 drop Freeze and fold Lift into Mind's Sense.
 
-## 6. Open questions for the owner
+## 6. Decided (2026-11-13)
 
-1. Names for the 22 (and whether all of them really change).
-2. Custom (your guardian): pick its abilities on the drawing board, or none? Its kit has wings, so if it may not fly, the wings part
-   needs a rule.
-3. Should a type with no fitting ability stay plain (Normal)?
+1. **Names:** section 2.
+2. **Normal keeps Push.**
+3. **The guardian (Custom):** it is the only Custom creature a player can have, so its abilities may come from its own design: it
+   has **Fly when its parts fly** (wings or the cloud: guardiankit `flies`), plus **one ability you choose** on the drawing board (a
+   new row of ability chips; saved in the design, `cleanDesign` keeps it; the rematch redesign may change it). Built in step B.
