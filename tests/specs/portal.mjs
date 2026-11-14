@@ -97,13 +97,13 @@ export default async function ({ browser, base, t }) {
     });
     t.ok(A.ids.join() === 'doorbit,gatestrider,hatbun,topperoo,hooplet,loopwyrm,peekhole', `seven Portal creatures (${A.ids})`);
     t.ok(A.evo === 'doorbit:30>gatestrider,gatestrider:-,hatbun:28>topperoo,topperoo:-,hooplet:32>loopwyrm,loopwyrm:-,peekhole:-', `three families of two and a single-stage 7th (${A.evo})`);
-    t.ok(A.shapes.join() === 'hatbunny,loopworm,peephole,walkdoor' && A.ownShapes && A.registered, `four own shapes used by no other type (${A.shapes})`);
+    t.ok(A.shapes.join() === 'hatbunny,hoopsnake,loopworm,peephole,walkdoor' && A.ownShapes && A.registered, `five own shapes (chapter 3: Loopwyrm is a hoop snake) used by no other type (${A.shapes})`);
     t.ok(A.gear.every(([, k]) => k === 'swirl'), `every model wears the swirl badge (${A.gear.map(g => g.join('=')).join(' ')})`);
     t.ok(!A.moveBad.length && A.t1.every(Boolean) && A.sw[0] === 1 && A.sw[1]?.kind === 'lower' && A.sw[1]?.stat === 'atk' && A.sw[2]?.kind === 'multi' && A.sw[2].min === 2 && A.sw[2].max === 4 && A.sw[3] && A.sw[4]?.kind === 'flinch' && A.sw[5] && A.sw[6]?.kind === 'flinch',
       `the six moves are as planned (${A.moveBad}; ${JSON.stringify(A.sw)})`);
     t.ok(A.big.every(Boolean) && A.sig.every(Boolean) && A.sigFx && A.bigLevels.every(x => x.split('|').length === 3 || x.split('|').length >= 1), `Back Door (sacrifice), Portal Party (field), Lost in the Swirl (curse); Hat Trick at 30 and Door Slam at 32 with effects (${A.bigLevels})`);
     t.ok(A.fx.every(Boolean) && A.sounds.every(Boolean) && !A.clash.length, `own attack effects, colours and sounds (fx:portal, swirlzip, swirlwarp), no move named like a sound (${A.fx}; ${A.sounds}; ${A.clash})`);
-    t.ok(A.ride === 'land' && A.loopFlies && A.gaits === 7 && A.popGait && A.wool === 215, `Gatestrider can be ridden on land, Loopwyrm flies, all seven have the pop gait, wool 215`);
+    t.ok(A.ride === 'land' && !A.loopFlies && A.gaits === 7 && A.popGait && A.wool === 215, `Gatestrider can be ridden on land, Loopwyrm rolls (chapter 3: it no longer flies), all seven have the pop gait, wool 215`);
     t.ok(A.spawns === 0 && A.inRealm && A.rows.some(r => r.startsWith('Portal House|')) && /Portal House/.test(A.cond), `in no SPAWNS table, every one in the Swirl's portal table (housefloor); Book rows ${A.rows.join(' ; ')}`);
     t.ok(A.blocks.every(b => b.fixed && !b.placeable && b.name) && A.tiles >= 10 && A.glow === 0, `blocks 216-223 (223 = the peach pad) are named, fixed, not placeable, none glows (${A.tiles} tiles)`);
     t.ok(A.types >= 38 && /conic-gradient/.test(A.color), `${A.types} types, the Portal colour is a light swirl`);

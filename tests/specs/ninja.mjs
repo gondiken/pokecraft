@@ -149,7 +149,7 @@ export default async function ({ browser, base, t }) {
   t.ok(JSON.stringify(A.mine) === JSON.stringify([...IDS].sort()), `seven Ninja species (${A.mine})`);
   t.ok(A.families === 4 && A.singles.length === 1 && A.singles[0] === 'bambooze', `three two-stage families and a single-stage Bambooze (${A.families} bases, singles ${A.singles})`);
   t.ok(A.evolve.join() === 'hushcoon>shadecoon@22,peekaw>ravenshade@22,flickit>whirlwhisk@24', `evolution levels kept (${A.evolve})`);
-  t.ok(A.shapes.join() === 'bamboo,crow,raccoon,squirrel' && A.shapesRegistered && A.ownShapes, `four own Ninja shapes (${A.shapes}), registered in SHAPES`);
+  t.ok(A.shapes.join() === 'bamboo,gecko,raccoon,squirrel' && A.shapesRegistered && A.ownShapes, `four own Ninja shapes (${A.shapes}), registered in SHAPES`);
   t.ok(A.bambooShapeUse === 1, 'Bambooze has its own shape');
   t.ok(A.gait, "the 'blink' gait exists and notices you touching it");
   t.ok(!A.problems.length, `all seven pass the data and model checks (mask, headband, size, animation) ${A.problems.join('; ')}`);

@@ -6,7 +6,7 @@ import { paintColours, paintModel } from './custom.js'; // the Custom type (the 
 import { buildKit, kitModel, isKitDesign, cleanDesign } from './guardiankit.js'; // owner 2026-11-08: your guardian is built from the Wizard's part kit
 import { TRAITS, drawTraits, gainTraits } from './traits.js';
 import { registerMoves } from './movekinds.js'; // owner 2026-11-11: each attack's live kind by its id (MOVE_KIND)
-import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry } from './shapes.js';
+import { SHAPES, box, pivot, eyes, glow, zigzag, addWings, gem, mushroomCap, sparkleGeometry, addTypeLook, animateLooks, animateRedo } from './shapes.js';
 
 export const TYPE_COLORS = {
   normal: '#c6c59a', fire: '#f2914a', water: '#7aa4f5', grass: '#8fd166', electric: '#f7d84a', rock: '#c9b45a',
@@ -634,7 +634,7 @@ BIG_MOVES.tiny = [
 ];
 /* ==== end of T40a tiny ==== */
 /* ==== T40b pirate ==== */
-// Pirates swing hooks, fire cannons and shout ahoy. (Friendly: no skulls, only parrots, parrots and more parrots.)
+// Pirates swing hooks, fire cannons and shout ahoy. (Friendly: no skulls, only monkeys, crabs and bottles.)
 Object.assign(MOVES, {
   hookswipe: mv('Hook Swipe', 'pirate', 40, 1),
   cannonball: mv('Cannonball', 'pirate', 80, 0.85),
@@ -986,10 +986,10 @@ export const SPECIES = {
     model: { shape: 'quad', scale: 1.15, body: 0x6b8e3a, accent: 0xd8d0a0, dark: 0x3e4f1f, belly: 0x9fbf6a, extras: ['horns'] },
   },
   flarehawk: {
-    name: 'Flarehawk', type: 'fire', desc: 'Circles mountain peaks riding hot air currents.',
-    base: { hp: 50, atk: 70, def: 45, spd: 95 }, baseXp: 125, catchRate: 0.25, flies: true,
+    name: 'Flaremu', type: 'fire', desc: 'An emu with a flaming tail plume. It sprints across the plains faster than a grass fire.',
+    base: { hp: 50, atk: 70, def: 45, spd: 95 }, baseXp: 125, catchRate: 0.25,
     learn: L('fire', 'drake'),
-    model: { shape: 'bird', scale: 0.9, body: 0xd9482b, accent: 0xffc23d, dark: 0x5a1e10, belly: 0xffe2a8, extras: [] },
+    model: { shape: 'emu', scale: 0.9, body: 0xd9482b, accent: 0xffc23d, dark: 0x5a1e10, belly: 0xffe2a8, extras: [] },
   },
 
   /* ----------------------------- fire ----------------------------- */
@@ -1028,9 +1028,9 @@ export const SPECIES = {
     model: { shape: 'quad', scale: 0.8, body: 0x6ab07a, accent: 0x3a70c0, dark: 0x2a5a3a, belly: 0xd8e8b0, extras: ['shell', 'frog'] },
   },
   gullop: {
-    name: 'Gullop', type: 'water', desc: 'A noisy seabird that steals snacks from beach picnics.',
-    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 70, catchRate: 0.4, learn: L('water', 'sound'), flies: true,
-    model: { shape: 'bird', scale: 0.8, body: 0xf0f0f0, accent: 0xffb030, dark: 0x6080a0, belly: 0xffffff, extras: [] },
+    name: 'Wallop', type: 'water', desc: 'A noisy walrus pup that waddles up to beach picnics and steals the snacks.',
+    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 70, catchRate: 0.4, learn: L('water', 'sound'),
+    model: { shape: 'walrus', scale: 0.8, body: 0x9a7a66, accent: 0xfff6e8, dark: 0x5a4436, belly: 0xd8bca4, extras: [] },
   },
 
   /* ----------------------------- grass ---------------------------- */
@@ -1053,14 +1053,14 @@ export const SPECIES = {
 
   /* --------------------------- electric --------------------------- */
   voltwing: {
-    name: 'Voltwing', type: 'electric', desc: 'Flies into thunderstorms to recharge its feathers.',
-    base: { hp: 45, atk: 65, def: 40, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'cosmic'), flies: true,
-    model: { shape: 'bird', scale: 0.8, body: 0xf5d63d, accent: 0x2a2a2a, dark: 0xc09a10, belly: 0xfff4b0, extras: ['bolt'] },
+    name: 'Voltrunner', type: 'electric', desc: 'A roadrunner with a lightning-bolt crest. It zaps across the fields in a flash.',
+    base: { hp: 45, atk: 65, def: 40, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'cosmic'),
+    model: { shape: 'roadrunner', scale: 0.8, body: 0xf5d63d, accent: 0x2a2a2a, dark: 0xc09a10, belly: 0xfff4b0, extras: [] },
   },
   joltail: {
-    name: 'Joltail', type: 'electric', desc: 'An eel that lights up lakes at night with little zaps.',
-    base: { hp: 55, atk: 70, def: 50, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('electric', 'water'), swims: true,
-    model: { shape: 'serpent', scale: 0.95, body: 0x3a4a8a, accent: 0xf5e040, dark: 0x1a2050, belly: 0x8090c0, extras: ['bolt', 'whiskers'] },
+    name: 'Joltail', type: 'electric', desc: 'A land eel that slithers through wet grass, lighting it up with little zaps.',
+    base: { hp: 55, atk: 70, def: 50, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('electric', 'water'),
+    model: { shape: 'landeel', scale: 0.95, body: 0x3a4a8a, accent: 0xf5e040, dark: 0x1a2050, belly: 0x8090c0, extras: [] },
   },
   ampup: {
     name: 'Ampup', type: 'electric', desc: 'A puppy that wags its lightning-bolt tail when excited.',
@@ -1104,10 +1104,10 @@ export const SPECIES = {
     model: { shape: 'biped', scale: 1.0, body: 0xc89a6a, accent: 0xe04040, dark: 0x6a4a2a, belly: 0xf0e0c0, extras: ['longEars', 'tail', 'gloves'] },
   },
   chirpit: {
-    name: 'Chirpit', type: 'normal', desc: 'A tiny bird that sings at sunrise to wake everyone up.',
-    base: { hp: 40, atk: 45, def: 40, spd: 70 }, baseXp: 50, catchRate: 0.55, learn: L('normal', 'sound'), flies: true,
+    name: 'Chirpit', type: 'normal', desc: 'A fluffy turkey chick. It chirps and struts about at sunrise to wake everyone up.',
+    base: { hp: 40, atk: 45, def: 40, spd: 70 }, baseXp: 50, catchRate: 0.55, learn: L('normal', 'sound'),
     evolve: { level: 16, into: 'loudbeak' },
-    model: { shape: 'bird', scale: 0.6, body: 0xa07a50, accent: 0xffa040, dark: 0x5a4030, belly: 0xf0e0c0, extras: [] },
+    model: { shape: 'turkeychick', scale: 0.65, body: 0xa07a50, accent: 0xffa040, dark: 0x5a4030, belly: 0xf0e0c0, extras: [] },
   },
 
   /* ------------------------------ ice ----------------------------- */
@@ -1140,12 +1140,12 @@ export const SPECIES = {
     name: 'Beetlet', type: 'bug', desc: 'A small beetle that dreams of growing a big horn.',
     base: { hp: 40, atk: 50, def: 55, spd: 40 }, baseXp: 55, catchRate: 0.5, learn: L('bug', 'rock'),
     evolve: { level: 16, into: 'hornbeetle' },
-    model: { shape: 'bug', scale: 0.7, body: 0x6a8a20, accent: 0xd0e060, dark: 0x2a3a10, belly: 0xa0b860, extras: [] },
+    model: { shape: 'bug', scale: 0.7, body: 0x6a8a20, accent: 0xd0e060, dark: 0x2a3a10, belly: 0xa0b860, extras: ['cases'] },
   },
   hornbeetle: {
     name: 'Hornbeetle', type: 'bug', desc: 'Strong enough to lift a whole tree with its horn.',
     base: { hp: 70, atk: 95, def: 90, spd: 55 }, baseXp: 150, catchRate: 0.15, learn: L('bug', 'rock'),
-    model: { shape: 'bug', scale: 1.2, body: 0x2a4a8a, accent: 0xc0c0d0, dark: 0x101a30, belly: 0x5a7ab0, extras: ['horn'] },
+    model: { shape: 'bug', scale: 1.2, body: 0x2a4a8a, accent: 0xc0c0d0, dark: 0x101a30, belly: 0x5a7ab0, extras: ['horn', 'cases'] },
   },
   flutterby: {
     name: 'Flutterby', type: 'bug', desc: 'Its wings sparkle with every colour of the rainbow.',
@@ -1353,9 +1353,9 @@ export const SPECIES = {
     model: { shape: 'quad', scale: 1.3, body: 0xf4f1ea, accent: 0xffb6c8, dark: 0x3b3430, belly: 0xffffff, extras: ['wool', 'ears', 'horns'] },
   },
   loudbeak: {
-    name: 'Loudbeak', type: 'normal', desc: 'Its morning call can wake up a whole village.',
-    base: { hp: 65, atk: 80, def: 60, spd: 95 }, baseXp: 140, catchRate: 0.2, learn: L('normal', 'sound'), flies: true,
-    model: { shape: 'bird', scale: 1.15, body: 0xc8a070, accent: 0xffb030, dark: 0x6b4a2b, belly: 0xf0e0c0, extras: [] },
+    name: 'Loudbeak', type: 'normal', desc: 'A peacock that fans its great tail. Its morning call can wake up a whole village.',
+    base: { hp: 65, atk: 80, def: 60, spd: 95 }, baseXp: 140, catchRate: 0.2, learn: L('normal', 'sound'),
+    model: { shape: 'peacock', scale: 1.05, body: 0x2a7ac8, accent: 0x3ab878, dark: 0x1a3a6a, belly: 0xf0c850, extras: [] },
   },
   blizzbear: {
     name: 'Blizzbear', type: 'ice', desc: 'A huge polar bear that loves sliding down snowy hills.',
@@ -1421,9 +1421,9 @@ export const SPECIES = {
     model: { shape: 'nut', scale: 0.8, body: 0x9aa6b2, accent: 0xffc040, dark: 0x4a525a, belly: 0xc0c8d0, extras: ['horn'] },
   },
   rivetron: {
-    name: 'Rivetron', type: 'metal', desc: 'A flying metal beetle. Its wings sound like tiny engines.',
-    base: { hp: 70, atk: 90, def: 110, spd: 70 }, baseXp: 165, catchRate: 0.12, learn: L('metal', 'grass'), flies: true,
-    model: { shape: 'drone', scale: 1.1, body: 0x7a8692, accent: 0xffc040, dark: 0x3a424a, belly: 0xb0b8c0, extras: ['horn'] },
+    name: 'Rivetron', type: 'metal', desc: 'A big tin beetle on rolling treads. Its little engine wings only buzz.',
+    base: { hp: 70, atk: 90, def: 110, spd: 70 }, baseXp: 165, catchRate: 0.12, learn: L('metal', 'grass'),
+    model: { shape: 'tinbeetle', scale: 1.0, body: 0x7a8692, accent: 0xffc040, dark: 0x3a424a, belly: 0xb0b8c0, extras: ['horn'] },
   },
   venomamba: {
     name: 'Venomamba', type: 'toxic', desc: 'A long, fast snake. Its scales shine purple and green.',
@@ -1480,15 +1480,15 @@ export const SPECIES = {
     model: { shape: 'bird', scale: 1.3, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['rainbow'] },
   },
   shimmerfin: {
-    name: 'Shimmerfin', type: 'rainbow', desc: 'A rare fish whose scales sparkle in every colour.',
-    base: { hp: 50, atk: 60, def: 55, spd: 80 }, baseXp: 90, catchRate: 0.25, learn: L('rainbow', 'water'), swims: true, waterOnly: true,
+    name: 'Shimmerscale', type: 'rainbow', desc: 'A little pangolin whose scales sparkle in every colour. It curls up when shy.',
+    base: { hp: 50, atk: 60, def: 55, spd: 80 }, baseXp: 90, catchRate: 0.25, learn: L('rainbow', 'water'),
     evolve: { level: 26, into: 'spectrafin' },
-    model: { shape: 'fish', scale: 0.8, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['rainbow'] },
+    model: { shape: 'pangolin', scale: 0.8, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['rainbow'] },
   },
   spectrafin: {
-    name: 'Spectrafin', type: 'rainbow', desc: 'Sailors say seeing one means good luck for a whole year.',
-    base: { hp: 90, atk: 95, def: 85, spd: 95 }, baseXp: 190, catchRate: 0.06, learn: L('rainbow', 'water'), swims: true, waterOnly: true,
-    model: { shape: 'fish', scale: 1.3, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['longFins', 'rainbow'] },
+    name: 'Spectrascale', type: 'rainbow', desc: 'A big rainbow pangolin. People say seeing one means good luck for a whole year.',
+    base: { hp: 90, atk: 95, def: 85, spd: 95 }, baseXp: 190, catchRate: 0.06, learn: L('rainbow', 'water'),
+    model: { shape: 'pangolin', scale: 1.3, body: 0xffffff, accent: 0xffffff, dark: 0xdddddd, belly: 0xffffff, extras: ['big', 'rainbow'] },
   },
   lunaroo: {
     name: 'Lunaroo', type: 'cosmic', desc: 'It hops from mountain top to mountain top on moonlit nights.',
@@ -1545,9 +1545,9 @@ export const SPECIES = {
     model: { shape: 'bonsai', scale: 0.9, body: 0x8ab86a, accent: 0xff9ac0, dark: 0x5a3a20, belly: 0xc8683a, extras: [] },
   },
   wattwink: {
-    name: 'Wattwink', type: 'electric', desc: 'A firefly whose tail is a light bulb. It blinks to say hello on warm nights.',
-    base: { hp: 45, atk: 60, def: 45, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'bug'), flies: true,
-    model: { shape: 'bulbfly', scale: 0.75, body: 0x3a3a5a, accent: 0xfff27a, dark: 0x8a8a98, belly: 0xfff8d0, extras: [] },
+    name: 'Wattwink', type: 'electric', desc: 'A glow-worm whose tail is a light bulb. It blinks to say hello on warm nights.',
+    base: { hp: 45, atk: 60, def: 45, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'bug'),
+    model: { shape: 'glowworm', scale: 0.75, body: 0x3a3a5a, accent: 0xfff27a, dark: 0x8a8a98, belly: 0xfff8d0, extras: [] },
   },
   amethump: {
     name: 'Amethump', type: 'rock', desc: 'It looks like a plain round rock, until it opens up to show the purple crystals inside.',
@@ -1563,9 +1563,9 @@ export const SPECIES = {
 
   /* ==== T4b group B (bug ghost mind metal toxic pixie): builder B only ==== */
   twirlshell: {
-    name: 'Twirlshell', type: 'bug', desc: 'A snail with a swirly shell. It is never in a hurry and leaves a shiny trail.',
-    base: { hp: 55, atk: 55, def: 95, spd: 25 }, baseXp: 85, catchRate: 0.4, learn: L('bug', 'toxic', [[15, 'hunker']]),
-    model: { shape: 'snail', scale: 0.85, body: 0xb8d86a, accent: 0xffa040, dark: 0x6a4a2a, belly: 0xe0f0a0, extras: [] },
+    name: 'Twirlshell', type: 'bug', desc: 'A swirly-shelled snail with little dragonfly wings. It buzzes from leaf to leaf.',
+    base: { hp: 55, atk: 55, def: 95, spd: 25 }, baseXp: 85, catchRate: 0.4, learn: L('bug', 'toxic', [[15, 'hunker']]), flies: true,
+    model: { shape: 'wingsnail', scale: 0.85, body: 0xb8d86a, accent: 0xffa040, dark: 0x6a4a2a, belly: 0xe0f0a0, extras: [] },
   },
   lanterboo: {
     name: 'Lanterboo', type: 'ghost', desc: 'A friendly paper lantern with a little ghost inside. It lights the way for lost travellers.',
@@ -1616,9 +1616,9 @@ export const SPECIES = {
     model: { shape: 'jukebox', scale: 0.85, body: 0xd0603a, accent: 0x4ae0d0, dark: 0x5a2a1a, belly: 0xffd890, extras: ['notes'] },
   },
   finnibone: {
-    name: 'Finnibone', type: 'bone', desc: 'A fish skeleton that swims through dark cave lakes as if it were still alive. It loves a splashy race.',
-    base: { hp: 50, atk: 70, def: 55, spd: 75 }, baseXp: 95, catchRate: 0.35, learn: L('bone', 'water'), floats: true,
-    model: { shape: 'fishbone', scale: 0.85, body: 0xf2ead6, accent: 0x7fe0ff, dark: 0x3a3040, belly: 0xe0d6bc, extras: [] },
+    name: 'Finnibone', type: 'bone', desc: 'A bony fish that walks on its fins like a mudskipper, clacking along the cave floor.',
+    base: { hp: 50, atk: 70, def: 55, spd: 75 }, baseXp: 95, catchRate: 0.35, learn: L('bone', 'water'),
+    model: { shape: 'mudskipper', scale: 0.85, body: 0xf2ead6, accent: 0x7fe0ff, dark: 0x3a3040, belly: 0xe0d6bc, extras: [] },
   },
   zorbit: {
     name: 'Zorbit', type: 'alien', desc: 'A space hamster rolling around in a glass ball. It came to Earth to find the best snacks.',
@@ -1823,7 +1823,7 @@ export const SPECIES = {
   },
   glitterbop: {
     name: 'Glitterbop', type: 'light', desc: 'A dancing mirror ball. It throws little spots of light everywhere it bops.',
-    base: { hp: 55, atk: 65, def: 60, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('light', 'rainbow'), floats: true,
+    base: { hp: 55, atk: 65, def: 60, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('light', 'rainbow'),
     model: { shape: 'mirrorball', scale: 0.85, body: 0xd8e0e8, accent: 0xff8ad8, dark: 0x4a5060, belly: 0x7ad8ff, extras: [] },
   },
   /* ==== end of T9 light ==== */
@@ -1903,8 +1903,8 @@ export const SPECIES = {
     model: { shape: 'alarmclock', scale: 1.3, body: 0x4a7ae0, accent: 0xffd84a, dark: 0x1a2a5a, belly: 0xffffff, extras: ['hammers'] },
   },
   twilorb: {
-    name: 'Twilorb', type: 'time', desc: "A slowly spinning ball, half sun and half moon. It only wakes up when day and night meet.",
-    base: { hp: 65, atk: 65, def: 60, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('time', 'cosmic', SNZ), floats: true,
+    name: 'Twilorb', type: 'time', desc: "A ball, half sun and half moon, that rolls along. It only wakes up when day and night meet.",
+    base: { hp: 65, atk: 65, def: 60, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('time', 'cosmic', SNZ),
     model: { shape: 'sunmoon', scale: 0.85, body: 0xffc23d, accent: 0x3a4a8a, dark: 0x1a1a3a, belly: 0xfff6c0, extras: [] },
   },
   /* ==== end of T18 time ==== */
@@ -1979,20 +1979,20 @@ export const SPECIES = {
     model: { shape: 'cursor', scale: 1.25, body: 0xd8f0ff, accent: 0x2a7aff, dark: 0x0a1a3a, belly: 0xffffff, extras: ['v2'] },
   },
   wifly: {
-    name: 'Wifly', type: 'cyber', desc: "A butterfly with Wi-Fi wings. The closer friends play, the brighter its signal bars glow.",
-    base: { hp: 45, atk: 50, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'sky'), flies: true,
+    name: 'Wiflow', type: 'cyber', desc: "A little Wi-Fi router on stubby legs. The closer friends play, the brighter its signal bars glow.",
+    base: { hp: 45, atk: 50, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'sky'),
     evolve: { level: 24, into: 'wifly2' },
-    model: { shape: 'wifiwing', scale: 0.75, body: 0x4a4a6a, accent: 0x5af0a0, dark: 0x1a1a2a, belly: 0xa0ffd0, extras: [] },
+    model: { shape: 'router', scale: 0.75, body: 0x4a4a6a, accent: 0x5af0a0, dark: 0x1a1a2a, belly: 0xa0ffd0, extras: [] },
   },
   wifly2: {
-    name: 'Wifly 2.0', type: 'cyber', desc: "Its wings shine with full signal bars. It carries messages between friends playing together.",
-    base: { hp: 75, atk: 85, def: 65, spd: 115 }, baseXp: 170, catchRate: 0.1, learn: L('cyber', 'sky'), flies: true,
-    model: { shape: 'wifiwing', scale: 1.2, body: 0x2a2a4a, accent: 0x5af0ff, dark: 0x0a0a1a, belly: 0xd0fff8, extras: ['v2'] },
+    name: 'Wiflow 2.0', type: 'cyber', desc: "A tower router striding on four legs, full signal bars. It carries messages between friends.",
+    base: { hp: 75, atk: 85, def: 65, spd: 115 }, baseXp: 170, catchRate: 0.1, learn: L('cyber', 'sky'),
+    model: { shape: 'router', scale: 1.2, body: 0x2a2a4a, accent: 0x5af0ff, dark: 0x0a0a1a, belly: 0xd0fff8, extras: ['v2'] },
   },
   error404: {
-    name: 'Error 404', type: 'cyber', desc: "A small glitchy ghost that can never be found... except when two friends play close together.",
-    base: { hp: 60, atk: 75, def: 55, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('cyber', 'ghost'), floats: true,
-    model: { shape: 'glitchghost', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
+    name: 'Error 404', type: 'cyber', desc: "A glitchy pixel cat that flickers as it walks. It is only found when two friends play close together.",
+    base: { hp: 60, atk: 75, def: 55, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('cyber', 'ghost'),
+    model: { shape: 'glitchcat', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
   },
   /* ==== end of T18 cyber ==== */
   /* ==== T21 cozy ==== */
@@ -2059,10 +2059,10 @@ export const SPECIES = {
     model: { shape: 'crystalfox', scale: 1.25, body: 0xd8c8ff, accent: 0xffffff, dark: 0x3a2a6a, belly: 0xf4f0ff, extras: ['prism'] },
   },
   ringlet: {
-    name: 'Ringlet', type: 'treasure', desc: "A floating gold ring with a gem for an eye. It spins slowly while it watches you.",
-    base: { hp: 50, atk: 50, def: 55, spd: 60 }, baseXp: 64, catchRate: 0.45, floats: true, learn: L('treasure', 'metal'),
+    name: 'Ringlet', type: 'treasure', desc: "A gold ring that rolls along on its edge, its gem eye on top watching you.",
+    base: { hp: 50, atk: 50, def: 55, spd: 60 }, baseXp: 64, catchRate: 0.45, learn: L('treasure', 'metal'),
     evolve: { level: 24, into: 'crownguard' },
-    model: { shape: 'gemring', scale: 0.75, body: 0xffd23a, accent: 0x3ac8ff, dark: 0x7a5a10, belly: 0xffffff, extras: [] },
+    model: { shape: 'rollring', scale: 0.75, body: 0xffd23a, accent: 0x3ac8ff, dark: 0x7a5a10, belly: 0xffffff, extras: [] },
   },
   crownguard: {
     name: 'Crownguard', type: 'treasure', desc: "A walking crown in shiny gem armour. It guards treasure and shares it with friends.",
@@ -2070,9 +2070,9 @@ export const SPECIES = {
     model: { shape: 'gemring', scale: 1.35, body: 0xffc83a, accent: 0xe0304a, dark: 0x6a4a08, belly: 0x4a8aff, extras: ['crown'] },
   },
   lustrelle: {
-    name: 'Lustrelle', type: 'treasure', desc: "A floating chandelier covered in glittering gems. Its little candles never go out.",
-    base: { hp: 60, atk: 70, def: 55, spd: 75 }, baseXp: 100, catchRate: 0.3, floats: true, learn: L('treasure', 'fire'),
-    model: { shape: 'chandelier', scale: 0.9, body: 0xffd23a, accent: 0xffb030, dark: 0x6a4a10, belly: 0xfff4e0, extras: [] },
+    name: 'Lustrelle', type: 'treasure', desc: "A gem candelabra that walks on its candle legs. Its little candles never go out.",
+    base: { hp: 60, atk: 70, def: 55, spd: 75 }, baseXp: 100, catchRate: 0.3, learn: L('treasure', 'fire'),
+    model: { shape: 'candelabra', scale: 0.9, body: 0xffd23a, accent: 0xffb030, dark: 0x6a4a10, belly: 0xfff4e0, extras: [] },
   },
   /* ==== end of T21 treasure ==== */
   /* ==== T33 food ==== */
@@ -2370,15 +2370,15 @@ export const SPECIES = {
     model: { shape: 'raccoon', scale: 1.2, body: 0x6a6480, accent: 0xd83a4a, dark: 0x22202e, belly: 0xd8d2e2, extras: ['scarf'] },
   },
   peekaw: {
-    name: 'Peekaw', type: 'ninja', desc: "A little crow that hides behind its own wing and peeks. Peek-a-boo... caw!", gait: 'blink',
+    name: 'Peekko', type: 'ninja', desc: "A tiptoeing gecko that hides behind its own tail and peeks. Peek-a-boo!", gait: 'blink',
     base: { hp: 40, atk: 60, def: 35, spd: 85 }, baseXp: 64, catchRate: 0.45, learn: L('ninja', 'sky'),
     evolve: { level: 22, into: 'ravenshade' },
-    model: { shape: 'crow', scale: 0.8, body: 0x50507a, accent: 0xd83a4a, dark: 0x22223a, belly: 0x9a9ac0, extras: [] },
+    model: { shape: 'gecko', scale: 0.85, body: 0x5a8a6a, accent: 0xd83a4a, dark: 0x2a4a3a, belly: 0xc8e0b0, extras: [] },
   },
   ravenshade: {
-    name: 'Ravenshade', type: 'ninja', desc: "A big crow of the night. It swoops down from the treetops without a sound.", gait: 'blink',
+    name: 'Ninjecko', type: 'ninja', desc: "A big masked gecko of the night. It creeps along walls without a sound.", gait: 'blink',
     base: { hp: 65, atk: 105, def: 55, spd: 115 }, baseXp: 165, catchRate: 0.12, learn: L('ninja', 'sky'),
-    model: { shape: 'crow', scale: 1.2, body: 0x3e3e62, accent: 0xd83a4a, dark: 0x1a1a2c, belly: 0x7a7aa4, extras: ['crest'] },
+    model: { shape: 'gecko', scale: 1.25, body: 0x3e4e62, accent: 0xd83a4a, dark: 0x1a1a2c, belly: 0x9aa4c0, extras: ['big'] },
   },
   flickit: {
     name: 'Flickit', type: 'ninja', desc: "A squirrel that flicks leaves like little throwing stars. It never misses an acorn.", gait: 'blink',
@@ -2479,15 +2479,15 @@ export const SPECIES = {
   /* ==== end of T40a tiny ==== */
   /* ==== T40b pirate ==== */
   parroteer: {
-    name: 'Parroteer', type: 'pirate', desc: 'A little parrot in a striped bandana. It repeats everything you say. Ahoy! Ahoy!',
-    base: { hp: 45, atk: 60, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('pirate', 'sky'), flies: true,
+    name: 'Monkeer', type: 'pirate', desc: 'A little monkey in a striped bandana. It repeats everything you say. Ahoy! Ahoy!',
+    base: { hp: 45, atk: 60, def: 40, spd: 75 }, baseXp: 64, catchRate: 0.45, learn: L('pirate', 'sky'),
     evolve: { level: 26, into: 'featherbeard' },
-    model: { shape: 'parrot', scale: 0.8, body: 0x3ac26a, accent: 0xffd23c, dark: 0x1a6a3a, belly: 0xffe08a, extras: [] },
+    model: { shape: 'monkey', scale: 0.8, body: 0x8a5a32, accent: 0xffd23c, dark: 0x4a2a14, belly: 0xf0d0a0, extras: [] },
   },
   featherbeard: {
-    name: 'Featherbeard', type: 'pirate', desc: 'A parrot captain with a big hat and a long red coat. It shouts orders at the waves.',
-    base: { hp: 75, atk: 100, def: 65, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('pirate', 'sky', [[30, 'broadside']]), flies: true,
-    model: { shape: 'parrot', scale: 1.25, body: 0xe03a3a, accent: 0xffd23c, dark: 0x2a2a6a, belly: 0x3a8aff, extras: ['tricorn', 'coat', 'hook'] },
+    name: 'Bananabeard', type: 'pirate', desc: 'A monkey captain with a big hat, a long red coat and a banana-yellow beard. It shouts orders at the waves.',
+    base: { hp: 75, atk: 100, def: 65, spd: 105 }, baseXp: 168, catchRate: 0.12, learn: L('pirate', 'sky', [[30, 'broadside']]),
+    model: { shape: 'monkey', scale: 1.2, body: 0x7a4a28, accent: 0xffe14a, dark: 0x2a2a6a, belly: 0xf0d0a0, extras: ['captain'] },
   },
   pinchook: {
     name: 'Pinchook', type: 'pirate', desc: 'A beach crab with a golden hook for one claw. It walks sideways to hide its treasure.',
@@ -2547,9 +2547,9 @@ export const SPECIES = {
     model: { shape: 'loopworm', scale: 0.8, body: 0x5ae8e0, accent: 0xff9a3a, dark: 0x2a8a8a, belly: 0xe0fffb, extras: [] },
   },
   loopwyrm: {
-    name: 'Loopwyrm', type: 'portal', gait: 'pop', desc: 'A long winged wyrm that flies in a figure eight, with a swirl in each loop. Nobody has ever found its end.',
-    base: { hp: 80, atk: 100, def: 75, spd: 95 }, baseXp: 170, catchRate: 0.12, learn: L('portal', 'cosmic'), flies: true,
-    model: { shape: 'loopworm', scale: 1.3, body: 0x7a5aff, accent: 0xff9a3a, dark: 0x3a2a8a, belly: 0xe0d8ff, extras: ['wings'] },
+    name: 'Loopwyrm', type: 'portal', gait: 'pop', desc: 'A long snake that holds its tail in its mouth and rolls like a hoop, a swirl in each loop.',
+    base: { hp: 80, atk: 100, def: 75, spd: 95 }, baseXp: 170, catchRate: 0.12, learn: L('portal', 'cosmic'),
+    model: { shape: 'hoopsnake', scale: 1.15, body: 0x7a5aff, accent: 0xff9a3a, dark: 0x3a2a8a, belly: 0xe0d8ff, extras: [] },
   },
   peekhole: {
     name: 'Peekhole', type: 'portal', gait: 'pop', desc: 'A round hole in the air with two big eyes and little hands holding its edge. Often you only see the eyes.',
@@ -2868,20 +2868,19 @@ export const SPAWNS = {
     ['blossprite', 0.3, 'day'], ['pomperina', 0.2, 'day'], ['starbelle', 0.2, 'night'], ['monarchwing', 0.3, 'day'],
     ['glowbug', 2, 'night'], ['lumimoth', 0.3, 'night'], ['moonhop', 2, 'night'], ['dreamlet', 2, 'night'],
     ['woolumph', 0.2], ['prismkit', 0.3, 'day'], ['rainwing', 0.3, 'day'], ['auroraptor', 0.05, 'day'],
-    ['blipling', 1.5, 'night'], ['blipstar', 0.2, 'night']],
+    ['blipling', 1.5, 'night'], ['blipstar', 0.2, 'night'], ['joltail', 0.6], ['shimmerfin', 0.3, 'day'], ['spectrafin', 0.05, 'day']],
   forest: [['sproutle', 4], ['thornox', 2], ['budling', 2], ['mossloth', 2], ['beetlet', 3], ['flutterby', 2, 'day'],
     ['hornbeetle', 0.4], ['chirpit', 1, 'day'], ['sludgy', 2], ['sporelet', 3], ['hissyfang', 1], ['fungrump', 0.3],
     ['twinklet', 1, 'day'], ['petalfae', 1, 'day'], ['wispurr', 3, 'night'], ['phantomaw', 0.4, 'night'],
     ['shadeling', 2, 'night'], ['duskmare', 0.2, 'night'], ['owlucid', 3, 'night'], ['sageowl', 0.2, 'night'],
-    ['echobat', 2, 'night'], ['glowbug', 2, 'night'], ['drumbo', 1], ['bongorilla', 0.2]],
+    ['echobat', 2, 'night'], ['glowbug', 2, 'night'], ['drumbo', 1], ['bongorilla', 0.2], ['shimmerfin', 0.2, 'day'], ['spectrafin', 0.03, 'day']],
   swamp: [['sludgy', 4], ['gloopor', 0.4], ['hissyfang', 3], ['venomamba', 0.2], ['sporelet', 2], ['fungrump', 0.3],
-    ['bubbuck', 2], ['shellby', 2], ['ripplet', 1], ['joltail', 1], ['beetlet', 2], ['mossloth', 1],
+    ['bubbuck', 2], ['shellby', 2], ['ripplet', 1], ['joltail', 2], ['beetlet', 2], ['mossloth', 1],
     ['glowbug', 2, 'night'], ['lumimoth', 0.3, 'night'], ['wispurr', 2, 'night'], ['snoozle', 1, 'night'],
     ['slumbergeist', 0.2, 'night'], ['echobat', 1, 'night']],
   beach: [['bubbuck', 4], ['shellby', 4], ['gullop', 3], ['emberpup', 2], ['sparkitten', 2], ['zapple', 1],
     ['clanklet', 1], ['dinglet', 1], ['gongolin', 0.3], ['rainwing', 0.3, 'day']],
-  water: [['bubbuck', 2], ['ripplet', 3], ['joltail', 2], ['shellby', 1], ['gullop', 1], ['torrentide', 0.3],
-    ['shimmerfin', 0.5], ['spectrafin', 0.08]],
+  water: [['bubbuck', 2], ['ripplet', 3], ['shellby', 1], ['torrentide', 0.3]], // Joltail, Wallop, Shimmerscale, Spectrascale walk now (chapter 3 redesigns)
   desert: [['magmole', 3], ['sparkitten', 3], ['emberpup', 2], ['cragling', 3], ['pebblor', 2], ['zapple', 2],
     ['ampup', 2], ['nutlet', 2], ['clanklet', 1], ['hissyfang', 1], ['flarehawk', 1], ['voltwing', 1],
     ['pyrolynx', 0.3], ['cragtusk', 0.5], ['thundapple', 0.2], ['venomamba', 0.2],
@@ -2894,7 +2893,7 @@ export const SPAWNS = {
     ['echobat', 2], ['boomwing', 0.2], ['snoozle', 1, 'night'],
     ['starmite', 2, 'night'], ['meteorb', 2, 'night'], ['galaxor', 0.2, 'night'],
     ['saucerling', 1, 'night'], ['podlet', 1, 'night'], ['tallipod', 0.15, 'night']],
-  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['blizzbear', 0.4], ['emperice', 0.4], ['glacieron', 0.5],
+  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['gullop', 0.6], ['blizzbear', 0.4], ['emperice', 0.4], ['glacieron', 0.5],
     ['geodrake', 1], ['ironhorn', 1], ['scalekin', 1], ['quartzle', 1], ['skywyrm', 0.2], ['prismkit', 0.2, 'day'],
     ['wispurr', 1, 'night'], ['moonhop', 1.5, 'night'], ['starmite', 2, 'night'], ['meteorb', 1.5, 'night'],
     ['blipling', 1, 'night']],
@@ -3012,7 +3011,9 @@ const SPAWN_CAMO = {
 // Cyber creatures: anywhere, but only with a friend close by (the 'together' condition).
 const CYBER = [['pixbit', 1, 'together'], ['clickit', 1, 'together'], ['wifly', 1, 'together'], ['error404', 0.6, 'together'],
   ['pixbit2', 0.12, 'together'], ['clickit2', 0.12, 'together'], ['wifly2', 0.1, 'together']];
-const SPAWN_CYBER = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, CYBER]));
+const WALKERS = new Set(['wifly', 'wifly2', 'error404']); // chapter 3 redesigns: they walk now, so never on the water's table (home spawns appear at the home)
+const dry = (b, list) => b === 'water' ? list.filter(e => !WALKERS.has(e[0])) : list;
+const SPAWN_CYBER = Object.fromEntries(Object.keys(SPAWNS).map(b => [b, dry(b, CYBER)]));
 
 // T21: Cozy and Treasure creatures only come to a finished home of their type (the 'home:<type>' condition; T22).
 const HOME = [['snugbun', 1, 'home:cozy'], ['purrmit', 1, 'home:cozy'], ['pillowlamb', 1, 'home:cozy'], ['snoozebear', 0.6, 'home:cozy'],
@@ -3613,6 +3614,18 @@ function buildBug(root, m, parts) {
     box(head, 0.18, 0.08, 0.08, m.accent, 0, 0.45, 0.3);
   }
   if (has('glow')) parts.tip = glow(box(root, 0.4, 0.3, 0.12, m.accent, 0, 0.42, -0.7), 0x88aa00);
+  if (has('cases')) { // chapter 3: the wing cases lift now and then and the thin wings under them buzz (they open wide in flight)
+    parts.cases = [];
+    for (const s of [-1, 1]) {
+      const g = pivot(root, s * 0.02, 0.66, -0.05);
+      box(g, 0.28, 0.07, 0.62, m.body, s * 0.14, 0.0, -0.3);
+      box(g, 0.04, 0.075, 0.6, m.dark, s * 0.02, 0.005, -0.3);
+      const wing = pivot(root, s * 0.05, 0.64, -0.1);
+      const film = box(wing, 0.5, 0.02, 0.3, 0xe0f0ff, s * 0.25, 0, -0.12);
+      film.material.transparent = true; film.material.opacity = 0.55;
+      parts.cases.push({ g, s, wing });
+    }
+  }
   if (has('wings')) {
     parts.wings = [];
     for (const s of [-1, 1]) {
@@ -3680,6 +3693,7 @@ export function buildModel(species, paint) {
   }
   // Treasure creatures sparkle all the time: SPARKLES glints twinkle in turn at spots around the body. They are unlit
   // (MeshBasic), so they shine just as bright at night and in dark caves.
+  addTypeLook(species, root, m, parts); // chapter 3 redesigns: the type looks (shapes.js), after the float pass so they keep their own see-through
   if (sp.type === 'treasure') {
     const bb = new THREE.Box3().setFromObject(root);
     const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
@@ -3735,6 +3749,13 @@ export function animateModel(group, t, moving) {
   }
   for (const s of p.segments || []) s.g.position.x = Math.sin(t * (moving ? 8 : 3) - s.i * 0.9) * (moving ? 0.14 : 0.05) * s.i * 0.5;
   for (const f of p.flap || []) f.g.rotation.z = -f.s * (0.5 + Math.abs(Math.sin(t * (moving ? 9 : 3))) * 0.9);
+  for (const c of p.cases || []) { // beetles: lift the wing cases every few seconds (always in flight), buzz the wings under them
+    const u = (t % 5) / 5, k = p.flying ? 1 : u < 0.12 ? u / 0.12 : u < 0.32 ? 1 : u < 0.44 ? 1 - (u - 0.32) / 0.12 : 0;
+    c.g.rotation.z = c.s * k * 0.9;
+    c.g.rotation.x = -k * 0.25;
+    c.wing.visible = k > 0.05;
+    c.wing.rotation.z = c.s * (k * 0.3 + Math.sin(t * 40) * 0.3 * k);
+  }
   for (const w of p.wings || []) w.g.rotation.z = w.s * ((w.lift || 0) + Math.sin(t * (moving ? 14 : 4)) * (moving ? 0.7 : 0.25));
   if (p.tip) p.tip.material.emissive.setScalar(0.4 + 0.4 * Math.abs(Math.sin(t * 5)));
   for (const r of p.rainbow || []) r.mat.color.setHSL((r.offset + t * 0.15) % 1, 0.75, 0.62);
@@ -3770,6 +3791,8 @@ export function animateModel(group, t, moving) {
   for (const q of p.squash || []) { const sy = 1 + q.amp * Math.sin(t * q.speed + q.phase), sx = 1 / Math.sqrt(sy); q.g.scale.set(sx, sy, sx); }
   for (const b of p.bend || []) b.g.position.x = Math.sin(t * b.speed - b.i * 0.9) * b.amp * (b.i / 4);
   /* ==== end of Mirror ==== */
+  if (p.redo) animateRedo(p, t, moving); // chapter 3 redesigns
+  if (p.looks) animateLooks(p, t);
   if (p.root && !p.bounce) p.root.position.y = moving ? Math.abs(Math.sin(t * 10)) * 0.03 : 0;
   if (p.aura) animateAura(group, p.aura, t);
 }

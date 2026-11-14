@@ -1,4 +1,4 @@
-// T40b: Captain Squawk's ship in the Pirate Seas, as data (SHIP) and one builder (buildShip). Bow west, stern east, anchored.
+// T40b: Captain Bananabeard's ship in the Pirate Seas, as data (SHIP) and one builder (buildShip). Bow west, stern east, anchored.
 // It only needs a world with W / D / data / index / inBounds / get (the spec runs it on a stand-in in Node, like dreamland.js)
 // and imports only blocks.js and picturelands.js.
 import { B, WOOL } from './blocks.js';
@@ -127,7 +127,7 @@ export function buildShip(world, S = SHIP) {
     put(world, x, g.tops[i], z, B.DECK);
   }
   keeps.push({ name: 'ship', protect: [{ x0: S.x0, x1: S.x1, y0: 0, y1: 47, z0: S.z0 - 2, z1: S.z1 + 2 }, { x0: g.x0, x1: g.x1, y0: 0, y1: 47, z0: g.z0, z1: g.z1 }],
-    wallText: "Captain Squawk's ship is too strong to change!", rideText: 'Get off your creature to climb aboard!' });
+    wallText: "Captain Bananabeard's ship is too strong to change!", rideText: 'Get off your creature to climb aboard!' });
   // the Boss on the quarterdeck, looking west down the ship; First Mate Fin on the main deck
   const boss = placeBoss(world, 'pirate', { x: S.boss[0], y: S.boss[1], z: S.boss[2], facing: [-1, 0] });
   placeCrew(world, 'pirate', 2, { x: S.crew[0], y: S.crew[1], z: S.crew[2], facing: [0, 1] });

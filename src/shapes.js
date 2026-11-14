@@ -490,25 +490,6 @@ function wyvern(root, m, parts) {
   box(tail, 0.2, 0.12, 0.14, m.accent, 0, -0.3, -0.74);
 }
 
-// A fish with a swishing tail and fins.
-function fish(root, m, parts) {
-  const body = pivot(root, 0, 0.35, 0);
-  parts.bounce = body;
-  const big = has(m, 'longFins');
-  box(body, 0.36, 0.52, 0.62, m.body, 0, 0, 0.05);
-  box(body, 0.28, 0.38, 0.3, m.body, 0, 0, -0.38);
-  box(body, 0.3, 0.3, 0.06, m.belly, 0, -0.06, 0.37);
-  eyes(body, 0.08, 0.38, 0.1, 0.1);
-  box(body, 0.12, 0.06, 0.03, 0x2a2a2a, 0, -0.1, 0.39);
-  box(body, 0.06, big ? 0.5 : 0.26, big ? 0.6 : 0.36, m.accent, 0, big ? 0.48 : 0.36, -0.05).rotation.x = -0.3;
-  for (const s of [-1, 1]) {
-    const fin = box(body, 0.04, 0.16, big ? 0.42 : 0.24, m.accent, s * 0.2, -0.12, 0.05);
-    fin.rotation.y = s * 0.5;
-  }
-  const tail = pivot(body, 0, 0, -0.52);
-  parts.tail = tail;
-  for (const s of [-1, 1]) box(tail, 0.05, big ? 0.6 : 0.36, big ? 0.6 : 0.36, m.accent, 0, s * (big ? 0.22 : 0.14), -0.16).rotation.x = s * 0.6;
-}
 
 // A walking hex nut that peeks out through its hole.
 function nut(root, m, parts) {
@@ -532,27 +513,6 @@ function nut(root, m, parts) {
   }
 }
 
-// A flying robot drone with four spinning propellers.
-function drone(root, m, parts) {
-  const body = pivot(root, 0, 0.3, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  box(body, 0.6, 0.34, 0.56, m.body, 0, 0.4, 0);
-  box(body, 0.44, 0.2, 0.04, 0x1a2a3a, 0, 0.42, 0.29);
-  for (const s of [-1, 1]) glow(box(body, 0.1, 0.08, 0.02, m.accent, s * 0.1, 0.43, 0.315), m.accent).userData.eye = true;
-  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
-    const arm = box(body, 0.42, 0.06, 0.08, m.dark, sx * 0.4, 0.55, sz * 0.36);
-    arm.rotation.y = sx * sz * -0.6;
-    const hub = pivot(body, sx * 0.55, 0.62, sz * 0.48);
-    box(hub, 0.08, 0.1, 0.08, m.dark);
-    const prop = pivot(hub, 0, 0.07, 0);
-    box(prop, 0.5, 0.02, 0.07, m.accent);
-    box(prop, 0.07, 0.02, 0.5, m.accent);
-    spin(parts, prop, 'y', 18 + sx * 2);
-  }
-  for (const s of [-1, 1]) box(body, 0.05, 0.05, 0.5, m.dark, s * 0.2, 0.18, 0);
-  if (has(m, 'horn')) box(body, 0.1, 0.22, 0.1, m.accent, 0, 0.66, 0.1).rotation.x = 0.4;
-}
 
 // A flickering little flame of shadow.
 function wisp(root, m, parts) {
@@ -1227,43 +1187,6 @@ function bonsai(root, m, parts) {
   swing(parts, tree, 'z', 0.06, 1.2);
 }
 
-// A firefly with a light bulb for a tail.
-function bulbfly(root, m, parts) {
-  const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  const head = pivot(body, 0, 0.45, 0.4);
-  parts.head = head;
-  ball(head, 0.17, m.body);
-  eyes(head, 0.02, 0.18, 0.09, 0.13);
-  box(head, 0.09, 0.035, 0.02, m.accent, 0, -0.09, 0.18);
-  for (const s of [-1, 1]) {
-    const an = pivot(head, s * 0.07, 0.14, 0.05);
-    an.rotation.z = -s * 0.35;
-    box(an, 0.025, 0.24, 0.025, m.dark, 0, 0.12, 0);
-    glow(box(an, 0.07, 0.07, 0.07, m.accent, 0, 0.26, 0), m.accent);
-  }
-  // thorax with a yellow stripe
-  box(body, 0.28, 0.26, 0.36, m.body, 0, 0.45, 0.06);
-  box(body, 0.3, 0.06, 0.12, m.accent, 0, 0.45, 0.06);
-  // metal screw base
-  [0.32, 0.28, 0.32].forEach((w, i) => box(body, w, w, 0.06, i === 1 ? 0x606070 : 0xd0d0e0, 0, 0.45, -0.2 - i * 0.065));
-  // glass bulb with a glowing filament and blinking core
-  const bulb = pivot(body, 0, 0.45, -0.66);
-  glassBallA(bulb, 0.3, 0xd8ecff, 0.3, 0, 0, 0).children.forEach(c => c.material.emissive.setHex(0x303818));
-  const fil = pivot(bulb, 0, -0.2, 0.08);
-  zigzag(fil, m.accent, 0, 0, 0, 1.6);
-  fil.children.forEach(c => glow(c, m.accent));
-  parts.tip = glow(box(bulb, 0.16, 0.16, 0.16, 0xfff8a0, 0, 0.1, -0.02), 0xfff8a0);
-  // two pairs of pale wings
-  addWings(parts, body, m, 0.14, 0.6, 0.16, 0.5, 0.26, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
-  addWings(parts, body, m, 0.12, 0.6, -0.02, 0.4, 0.22, 0xc8d4ea, 0xe8f0ff, { lift: 0.3 });
-  // six tiny legs
-  for (const s of [-1, 1]) for (const z of [0.18, 0.06, -0.06]) {
-    const lg = box(body, 0.03, 0.2, 0.03, m.body, s * 0.13, 0.3, z);
-    lg.rotation.z = s * 0.4;
-  }
-}
 
 // A rock that opens like a clam to show glowing purple crystals.
 function geode(root, m, parts) {
@@ -1340,7 +1263,7 @@ function globe(root, m, parts) {
   spin(parts, snow, 'y', 1.2);
 }
 
-const SHAPES_A = { plushie, candle, jelly, bonsai, bulbfly, geode, globe };
+const SHAPES_A = { plushie, candle, jelly, bonsai, geode, globe };
 /* ==== end of T4b group A shapes ==== */
 
 /* ==== T4b group B shapes ==== */
@@ -1757,39 +1680,6 @@ function jukebox(root, m, parts) {
   }
 }
 
-// A friendly fish skeleton with a skull face, ribs and a V tail.
-function fishbone(root, m, parts) {
-  const b = pivot(root, 0, 0, 0);
-  parts.bounce = b;
-  parts.hover = true;
-  const head = pivot(b, 0, 0.5, 0.62);
-  parts.head = head;
-  box(head, 0.34, 0.3, 0.32, m.body);
-  box(head, 0.24, 0.14, 0.2, m.body, 0, -0.07, 0.24);
-  sockets(head, m, 0.04, 0.165, 0.1, 0.12, 0.13);
-  box(head, 0.22, 0.03, 0.04, m.dark, 0, -0.12, 0.35);
-  for (const x of [-0.08, 0, 0.08]) box(head, 0.05, 0.06, 0.04, 0xffffff, x, -0.09, 0.355);
-  box(head, 0.2, 0.08, 0.2, m.belly, 0, -0.17, 0.2);
-  parts.segments = [];
-  for (let i = 1; i <= 5; i++) {
-    const v = pivot(b, 0, 0.5, 0.34 - i * 0.24);
-    box(v, 0.1, 0.1, 0.14, m.body);
-    const f = 1 - i * 0.13;
-    for (const s of [-1, 1]) {
-      box(v, 0.05, 0.16 * f, 0.05, m.body, s * 0.09 * f, -0.08 * f, 0).rotation.z = s * 0.5;
-      box(v, 0.05, 0.16 * f, 0.05, m.belly, s * 0.17 * f, -0.22 * f, 0).rotation.z = -s * 0.3;
-    }
-    if (i <= 4) box(v, 0.03, 0.18, 0.05, m.belly, 0, 0.14, 0).rotation.x = -0.3;
-    parts.segments.push({ g: v, i, x0: 0 });
-  }
-  const tail = pivot(b, 0, 0.5, -0.95);
-  parts.tail = tail;
-  box(tail, 0.05, 0.05, 0.3, m.body, 0, 0, -0.05);
-  for (const s of [-1, 1]) {
-    box(tail, 0.05, 0.42, 0.05, m.body, 0, s * 0.2, -0.12).rotation.x = s * 0.55;
-    box(tail, 0.04, 0.3, 0.04, m.belly, 0, s * 0.1, -0.06).rotation.x = s * 1.0;
-  }
-}
 
 // A glass ball with crossing bands that rolls, and a one-eyed alien hamster inside.
 function zorb(root, m, parts) {
@@ -1829,7 +1719,7 @@ function zorb(root, m, parts) {
   shell.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0.13; c.material.depthWrite = false; });
 }
 
-const SHAPES_C = { nimbus, chameleon, blackhole, jukebox, fishbone, zorb };
+const SHAPES_C = { nimbus, chameleon, blackhole, jukebox, zorb };
 /* ==== end of T4b group C shapes ==== */
 
 /* ==== T9 sky shapes ==== */
@@ -2057,6 +1947,7 @@ function pinwheel(root, m, parts) {
     });
   }
   spin(parts, blades, 'z', 2.4);
+  redo(parts, { kind: 'propel', blades, body: sway, period: 6, w: 1.6, top: 20, lift: 0.3 }); // chapter 3: now and then it spins up like a propeller
   const hub = pivot(wheel, 0, 0, 0.04);
   ball(hub, 0.2, 0xfffbe8);
   box(hub, 0.44, 0.44, 0.03, m.dark, 0, 0, -0.1);
@@ -2455,8 +2346,7 @@ function roosterLight(root, m, parts) {
 // A disco mirror ball: spinning tiles, a face that stays put, a dancing little body.
 function mirrorballLight(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
+  parts.bounce = body; // chapter 3: it no longer hovers, it bops on the ground
   const ballG = pivot(body, 0, 0.55, 0);
   box(body, 0.05, 0.14, 0.05, m.dark, 0, 1.03, 0);
   box(body, 0.16, 0.04, 0.04, m.dark, 0, 1.1, 0);
@@ -2847,11 +2737,9 @@ function alarmclock(root, m, parts) {
 // A ball that is half sunny day and half starry night, turning slowly, with a sleepy face that does not.
 function sunmoon(root, m, parts) {
   const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  const cy = 0.55;
+  const cy = 0.52; // chapter 3: on the ground, it rolls along (it no longer floats)
   const ballG = pivot(body, 0, cy, 0);
-  spin(parts, ballG, 'y', 0.5);
+  redo(parts, { kind: 'roll', list: [ballG], axis: 'x', speed: 5, idle: 0.25 });
   for (const s of [-1, 1]) {
     const c = s < 0 ? m.body : m.accent;
     box(ballG, 0.4, 0.62, 0.62, c, s * 0.2, 0, 0);
@@ -2860,9 +2748,9 @@ function sunmoon(root, m, parts) {
     box(ballG, 0.14, 0.5, 0.5, c, s * 0.42, 0, 0);
   }
   // rays on the sun side
-  for (let k = 0; k < 7; k++) {
+  for (let k = 1; k < 6; k++) {
     const a = Math.PI / 2 + (k / 6) * Math.PI;
-    const ray = box(ballG, 0.26, 0.08, 0.08, 0xfff0a0, Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0);
+    const ray = box(ballG, 0.26, 0.08, 0.08, 0xfff0a0, Math.cos(a) * 0.5, Math.sin(a) * 0.5, 0);
     ray.rotation.z = a;
     glow(ray, 0xffc23d);
   }
@@ -3199,83 +3087,8 @@ function cursor(root, m, parts) {
   parts.arms.push({ g: arm2, phase: Math.PI });
 }
 
-// A little round bug whose wings are Wi-Fi symbols: nested arcs of glowing bars.
-function wifiwing(root, m, parts) {
-  const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  const v2 = has(m, 'v2');
-  const cy = 0.55;
-  ball(body, 0.3, m.body, 0, cy, 0);
-  box(body, 0.34, 0.22, 0.03, m.belly, 0, cy - 0.08, 0.3);
-  eyes(body, cy + 0.08, 0.31, 0.1, 0.12);
-  box(body, 0.1, 0.035, 0.03, m.dark, 0, cy - 0.12, 0.33);
-  for (const s of [-1, 1]) {
-    const an = pivot(body, s * 0.1, cy + 0.3, 0.05);
-    an.rotation.z = -s * 0.4;
-    box(an, 0.035, 0.34, 0.035, m.dark, 0, 0.17, 0);
-    glow(box(an, 0.09, 0.09, 0.09, m.accent, 0, 0.36, 0), m.accent);
-    swing(parts, an, 'x', 0.2, 2.5, s);
-    box(body, 0.1, 0.18, 0.1, m.dark, s * 0.15, 0.09, 0.05);
-  }
-  const wingColor = v2 ? 0x5af0ff : 0x5af0a0;
-  const arcWing = (s, z, y, radii, rot, ph0) => {
-    parts.wings = parts.wings || [];
-    const g = pivot(body, s * 0.3, y, z);
-    for (const [k, r] of radii.entries()) {
-      const arc = pivot(g, 0, 0, 0);
-      const n = 3 + k * 2, span = 0.5 + k * 0.1;
-      for (let i = 0; i < n; i++) {
-        const a = rot + (i / (n - 1) - 0.5) * span * Math.PI;
-        const piece = box(arc, 0.07, (r * span * Math.PI) / (n - 1) * 1.1, 0.05, wingColor, s * Math.cos(a) * r, Math.sin(a) * r, 0);
-        piece.rotation.z = s > 0 ? a : Math.PI - a;
-        glow(piece, wingColor);
-      }
-      swing(parts, arc, 'x', 0.3, 3.5, ph0 + k * 1.1);
-    }
-    glow(box(g, 0.1, 0.1, 0.06, wingColor, 0, 0, 0), wingColor);
-    parts.wings.push({ g, s, lift: 0.25 });
-  };
-  if (!v2) {
-    for (const s of [-1, 1]) arcWing(s, -0.05, cy + 0.05, [0.24, 0.44, 0.64], 0.35, s);
-  } else {
-    for (const s of [-1, 1]) {
-      arcWing(s, -0.08, cy + 0.14, [0.22, 0.4, 0.58], 0.6, s);
-      arcWing(s, 0.0, cy - 0.12, [0.2, 0.34], -0.4, s + 2);
-    }
-    for (const [i, h] of [0.14, 0.24, 0.34].entries()) glow(box(body, 0.07, h, 0.07, m.accent, -0.12 + i * 0.12, cy + 0.3 + h / 2, -0.12), m.accent);
-  }
-}
 
-// A glitchy little ghost made of jittering slices, with a magenta and a cyan copy peeking out.
-function glitchghost(root, m, parts) {
-  const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  const slabs = [];
-  for (let k = 0; k < 4; k++) {
-    const s = pivot(body, 0, 0.32 + k * 0.22, 0);
-    box(s, 0.72 - (k === 3 ? 0.1 : 0), 0.22, 0.5, m.body, 0, 0, 0);
-    swing(parts, s, 'y', 0.1, 6 + k * 2.3, k * 1.9);
-    slabs.push(s);
-  }
-  // wavy bottom
-  for (const [i, x] of [-0.27, -0.09, 0.09, 0.27].entries()) box(body, 0.16, 0.12 + (i % 2) * 0.06, 0.46, m.body, x, 0.2 - (i % 2) * 0.03, 0);
-  // glitch copies
-  glow(box(slabs[1], 0.14, 0.22, 0.46, m.accent, -0.43, 0, 0.02), m.accent);
-  glow(box(slabs[2], 0.14, 0.22, 0.46, m.belly, 0.43, 0, -0.02), m.belly);
-  glow(box(slabs[0], 0.12, 0.2, 0.44, m.belly, 0.42, 0, 0.0), m.belly);
-  glow(box(slabs[3], 0.1, 0.2, 0.44, m.accent, -0.38, 0, 0.0), m.accent);
-  // two black square eyes and an "o" mouth
-  for (const s of [-1, 1]) {
-    box(slabs[3], 0.15, 0.15, 0.04, 0x111111, s * 0.16, 0.0, 0.26).userData.eye = true;
-    box(slabs[3], 0.05, 0.05, 0.03, 0xffffff, s * 0.16 + 0.03, 0.03, 0.29).userData.eye = true;
-  }
-  for (const [x, y, w, h] of [[0, 0.06, 0.12, 0.04], [0, -0.06, 0.12, 0.04], [-0.06, 0, 0.04, 0.1], [0.06, 0, 0.04, 0.1]]) box(slabs[2], w, h, 0.03, m.dark, x, y, 0.26);
-  // a tiny belly label: four dots
-  for (const x of [-0.12, -0.04, 0.04, 0.12]) glow(box(slabs[1], 0.05, 0.05, 0.03, m.belly, x, -0.02, 0.26), m.belly);
-}
-const SHAPES_CYBER = { pixelblob, cursor, wifiwing, glitchghost };
+const SHAPES_CYBER = { pixelblob, cursor };
 /* ==== end of T18 cyber shapes ==== */
 
 /* ==== T21 cozy shapes ==== */
@@ -3738,40 +3551,7 @@ function gemring(root, m, parts) {
   for (const s of [-1, 1]) box(ring, 0.07, 0.07, 0.03, 0xffffff, s * 0.16, -R + 0.0, 0.1); // smiling dots on the bottom of the ring
 }
 
-// Lustrelle: a floating gold chandelier with a spinning ring of flickering candles and a smiling medallion.
-function chandelier(root, m, parts) {
-  const body = pivot(root, 0, 0, 0);
-  parts.bounce = body;
-  parts.hover = true;
-  box(body, 0.1, 0.95, 0.1, m.body, 0, 0.65, 0); // stem
-  ball(body, 0.09, m.body, 0, 1.17, 0);
-  box(body, 0.04, 0.12, 0.04, m.body, 0, 1.3, 0);
-  weakGlowTreasure(box(body, 0.12, 0.26, 0.12, 0xbfefff, 0, 0.1, 0), 0xbfefff, 0.5).rotation.y = Math.PI / 4;
-  const ring = pivot(body, 0, 0.98, 0);
-  spin(parts, ring, 'y', 0.4);
-  for (let k = 0; k < 6; k++) {
-    const arm = pivot(ring, 0, 0, 0);
-    arm.rotation.y = (k / 6) * Math.PI * 2;
-    box(arm, 0.4, 0.06, 0.06, m.body, 0.2, 0, 0);
-    box(arm, 0.16, 0.08, 0.16, m.body, 0.4, 0.03, 0);
-    box(arm, 0.09, 0.2, 0.09, m.belly, 0.4, 0.17, 0);
-    const flame = pivot(arm, 0.4, 0.27, 0);
-    glow(box(flame, 0.07, 0.13, 0.07, m.accent, 0, 0.06, 0), m.accent);
-    swing(parts, flame, 'z', 0.15, 9, k);
-    const drop = pivot(ring, 0, 0, 0);
-    drop.rotation.y = ((k + 0.5) / 6) * Math.PI * 2;
-    weakGlowTreasure(box(drop, 0.08, 0.2, 0.08, 0xbfefff, 0.3, -0.14, 0), 0xbfefff, 0.6).rotation.y = Math.PI / 4;
-    box(drop, 0.02, 0.1, 0.02, m.body, 0.3, -0.02, 0);
-  }
-  // the face on a round gold medallion in front of the stem
-  const med = pivot(body, 0, 0.55, 0.17);
-  ball(med, 0.22, m.body, 0, 0, 0);
-  box(med, 0.34, 0.3, 0.04, m.belly, 0, 0, 0.215);
-  eyes(med, 0.05, 0.225, 0.09, 0.1);
-  mouth(med, -0.09, 0.225, 0.11);
-  swing(parts, med, 'z', 0.05, 1.4);
-}
-const SHAPES_TREASURE = { coin, crystalfox, gemring, chandelier };
+const SHAPES_TREASURE = { coin, crystalfox, gemring };
 /* ==== end of T21 treasure shapes ==== */
 
 /* ==== T33 food shapes ==== */
@@ -4312,7 +4092,7 @@ const SHAPES_DREAM = { headstander, toddler, balloonhead, upbrella };
 
 export const SHAPES = {
   skull, bonedog, dino, ufo, visitor, tripod,
-  guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, fish, nut, drone, wisp, puff, crystal,
+  guardian, butterfly, moth, star, robe, hopper, planet, comet, cloud, tall, squid, bat, drum, ape, bell, armadillo, wyvern, nut, wisp, puff, crystal,
   ...SHAPES_A, ...SHAPES_B, ...SHAPES_C,
   ...SHAPES_SKY, ...SHAPES_SLIME, ...SHAPES_LIGHT, ...SHAPES_PAPER,
   ...SHAPES_TIME, ...SHAPES_CAMO, ...SHAPES_CYBER,
@@ -4637,55 +4417,6 @@ function raccoon(root, m, parts) {
   }
 }
 
-// Peekaw / Ravenshade: a round little crow on tiptoe, one wing pulled across the front like a cloak so only the masked
-// eyes and the beak peek over it. Ravenshade (`crest`) is bigger, with three crest feathers and a half-open wing.
-function crow(root, m, parts) {
-  const big = has(m, 'crest');
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  for (const s of [-1, 1]) { // thin legs on tiptoe
-    box(lift, 0.04, 0.25, 0.04, 0xf0a040, s * 0.09, 0.15, -0.02);
-    box(lift, 0.05, 0.03, 0.1, 0xf0a040, s * 0.09, 0.02, 0.03);
-  }
-  const body = pivot(lift, 0, 0.5, 0);
-  body.rotation.x = 0.12;
-  box(body, 0.48, 0.44, 0.44, m.body, 0, 0, 0);
-  box(body, 0.42, 0.5, 0.38, m.body, 0, 0, 0); // rounder
-  box(body, 0.3, 0.28, 0.04, m.belly, 0, -0.06, 0.22);
-  const head = pivot(body, 0, 0.38, 0.04);
-  head.rotation.x = -0.12;
-  parts.head = head;
-  box(head, 0.4, 0.34, 0.36, m.body, 0, 0, 0);
-  njMask(head, 0.03, 0.4, 0.19, { h: 0.15, spread: 0.095, eye: 0.115, color: m.dark });
-  njHeadband(head, parts, 0.12, 0.4, 0.36, 0.34);
-  box(head, 0.13, 0.08, 0.14, 0xf0a040, 0, -0.08, 0.24); // the beak
-  box(head, 0.08, 0.05, 0.07, 0xd08020, 0, -0.1, 0.33);
-  if (big) for (const [x, h, r] of [[-0.08, 0.16, 0.35], [0, 0.22, 0], [0.08, 0.16, -0.35]]) { // the crest
-    const f = box(head, 0.06, h, 0.06, m.dark, x, 0.17 + h / 2, -0.06);
-    f.rotation.set(-0.35, 0, r);
-  }
-  // the cloak: the right wing sweeps across the front, up to just under the beak
-  const cloak = pivot(body, 0.24, 0.08, 0.24);
-  swing(parts, cloak, 'y', 0.05, 2.2);
-  const w1 = pivot(cloak, 0, 0, 0);
-  w1.rotation.set(0.05, -0.25, 0.1);
-  box(w1, 0.08, 0.34, 0.3, m.dark, 0, 0, -0.12); // the wing's shoulder on the side
-  box(w1, 0.4, 0.3, 0.06, m.dark, -0.18, 0.02, 0.03); // the wing across the chest
-  for (let i = 0; i < 3; i++) box(w1, 0.12, 0.07, 0.065, m.belly, -0.32 + i * 0.12, -0.12, 0.04); // feather tips
-  // the left wing: folded (Peekaw) or half open (Ravenshade)
-  const other = pivot(body, -0.25, 0.16, -0.02);
-  if (big) parts.flap = [{ g: other, s: 1 }];
-  else swing(parts, other, 'z', 0.08, 2.2, 1);
-  const wl = big ? 0.46 : 0.34;
-  box(other, 0.06, wl, 0.36, m.dark, -0.03, -wl / 2, 0);
-  box(other, 0.05, wl * 0.4, 0.22, m.belly, -0.035, -wl * 0.8, -0.06);
-  // tail feathers
-  const tail = pivot(body, 0, -0.12, -0.22);
-  swing(parts, tail, 'y', 0.15, 2.5);
-  const t = pivot(tail, 0, 0, 0);
-  t.rotation.x = -0.5;
-  for (const x of [-0.08, 0, 0.08]) box(t, 0.07, 0.04, big ? 0.34 : 0.24, m.dark, x, 0, -(big ? 0.17 : 0.12));
-}
 
 // Flickit / Whirlwhisk: a squirrel standing up on its toes, one paw raised high to flick a spinning leaf, a huge bushy
 // tail curling up behind. Whirlwhisk (`leafring`) has a bigger tail with three leaves whirling round it.
@@ -4788,7 +4519,7 @@ function bamboo(root, m, parts) {
   box(top, 0.05, 0.14, 0.05, m.body, 0, 0.07, 0);
   for (const [a, r] of [[0.5, 0.7], [2.6, 0.8], [4.7, 0.6]]) njLeaf(top, 0x8ad46a, 0, 0.12, 0, 0.26).rotation.set(-r, a, 0);
 }
-const SHAPES_NINJA = { raccoon, crow, squirrel, bamboo };
+const SHAPES_NINJA = { raccoon, squirrel, bamboo };
 Object.assign(SHAPES, SHAPES_NINJA);
 /* ==== end of T37 ninja ==== */
 
@@ -5610,76 +5341,6 @@ function prHook(parent, x, y, z, s = 1) {
   return g;
 }
 
-// Parroteer / Featherbeard: an upright pear-shaped parrot on two short legs, a big hooked beak, a crest and a long tail.
-// Featherbeard (`tricorn`, `coat`, `hook`) is a parrot captain: a three-cornered hat over the bandana, red coat tails and a gold hook.
-function parrot(root, m, parts) {
-  const big = has(m, 'tricorn');
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  for (const s of [-1, 1]) { // short legs with gripping toes
-    box(lift, 0.05, 0.16, 0.05, 0xf0a040, s * 0.1, 0.1, 0);
-    for (const t of [-1, 0, 1]) box(lift, 0.025, 0.025, 0.1, 0xf0a040, s * 0.1 + t * 0.03, 0.02, 0.05);
-  }
-  const body = pivot(lift, 0, 0.46, -0.02);
-  body.rotation.x = 0.14; // leaning a little forward
-  box(body, 0.44, 0.3, 0.4, m.body, 0, -0.08, 0);
-  box(body, 0.36, 0.34, 0.34, m.body, 0, 0.18, -0.01);
-  box(body, 0.28, 0.4, 0.04, big ? m.accent : m.belly, 0, 0.02, 0.2); // the chest
-  const head = pivot(body, 0, 0.5, 0.03);
-  head.rotation.x = -0.14;
-  parts.head = head;
-  box(head, 0.38, 0.34, 0.34, m.body, 0, 0, 0);
-  for (const s of [-1, 1]) { // side eyes
-    box(head, 0.04, 0.12, 0.12, 0xffffff, s * 0.19, 0.04, 0.07).userData.eye = true;
-    box(head, 0.03, 0.07, 0.07, 0x111111, s * 0.205, 0.035, 0.09).userData.eye = true;
-  }
-  box(head, 0.15, 0.13, 0.2, m.accent, 0, -0.05, 0.25); // the big beak: upper, hooked tip, lower
-  box(head, 0.1, 0.09, 0.07, m.accent, 0, -0.1, 0.36);
-  box(head, 0.11, 0.05, 0.14, m.dark, 0, -0.14, 0.24);
-  for (const [x, h, r] of [[-0.09, 0.14, 0.4], [0, 0.2, 0], [0.09, 0.14, -0.4]]) { // a three-feather crest
-    const f = box(head, 0.05, h, 0.05, x === 0 ? m.accent : m.dark, x, 0.17 + h / 2, -0.07);
-    f.rotation.set(-0.4, 0, r);
-  }
-  prBandana(head, parts, 0.1, 0.38, 0.34);
-  gear(box(head, 0.03, 0.03, 0.03, PR_GOLD, 0.2, -0.06, -0.04), 'gold'); // a gold earring hanging from the cheek
-  for (const y of [-0.1, -0.14]) gear(box(head, 0.02, 0.04, 0.04, PR_GOLD, 0.205, y, -0.04), 'gold');
-  if (big) { // the tricorn: a flat black brim with three turned-up corners, gold trim and a feather
-    const hat = pivot(head, 0, 0.19, 0);
-    box(hat, 0.52, 0.04, 0.46, 0x1a1a22, 0, 0, 0);
-    box(hat, 0.3, 0.1, 0.28, 0x1a1a22, 0, 0.07, 0);
-    for (const [x, z, r, q] of [[0, 0.25, 0.5, 0], [-0.27, -0.05, 0, 0.5], [0.27, -0.05, 0, -0.5]]) {
-      const c = box(hat, q ? 0.06 : 0.46, 0.1, q ? 0.4 : 0.06, 0x1a1a22, x, 0.05, z);
-      c.rotation.set(r, 0, q);
-    }
-    gear(box(hat, 0.52, 0.015, 0.03, PR_GOLD, 0, 0.025, 0.24), 'gold');
-    box(hat, 0.03, 0.18, 0.03, m.accent, 0.12, 0.14, -0.02).rotation.z = -0.4;
-  }
-  // folded wings that flap a little
-  for (const [s, ph] of [[-1, 0], [1, Math.PI]]) {
-    const w = pivot(body, s * 0.23, 0.3, -0.02);
-    swing(parts, w, 'z', 0.12, 3, ph);
-    const inner = pivot(w, 0, 0, 0);
-    inner.rotation.z = s * 0.12;
-    box(inner, 0.06, 0.4, 0.3, big ? m.belly : m.dark, s * 0.02, -0.2, -0.02);
-    box(inner, 0.06, 0.14, 0.24, m.accent, s * 0.03, -0.44, -0.02);
-    if (big && s === 1) prHook(inner, 0.06, -0.5, 0.05, 0.9); // a gold hook at one wing tip
-  }
-  // a long tail of three thin feathers, angled back and down
-  const tail = pivot(body, 0, -0.14, -0.2);
-  swing(parts, tail, 'y', 0.12, 2.4);
-  const t = pivot(tail, 0, 0, 0);
-  t.rotation.x = -0.75;
-  const tl = big ? 0.5 : 0.4;
-  for (const [x, c, k] of [[-0.08, m.body, 1], [0, m.accent, 1.15], [0.08, m.dark, 1]]) box(t, 0.065, 0.04, tl * k, c, x, 0, -(tl * k) / 2);
-  if (big) { // coat tails over the tail base
-    const coat = pivot(body, 0, 0.1, -0.2);
-    swing(parts, coat, 'x', 0.06, 2.4, 0.5);
-    box(coat, 0.42, 0.36, 0.05, 0xa82828, 0, -0.1, -0.02);
-    box(coat, 0.16, 0.34, 0.05, 0x7a1a1a, -0.15, -0.14, -0.05).rotation.z = 0.1;
-    box(coat, 0.16, 0.34, 0.05, 0x7a1a1a, 0.15, -0.14, -0.05).rotation.z = -0.1;
-    for (const y of [0.05, -0.05]) gear(box(coat, 0.04, 0.04, 0.03, PR_GOLD, 0, y, 0.01), 'gold');
-  }
-}
 
 // Pinchook / Anchorclaw: a wide flat shell crab with six stepping legs, two eye stalks, one pincer and one arm that ends in a
 // gold hook, a bandana knotted on the shell. It sways sideways. Anchorclaw (`anchor`, `barnacles`) swaps the hook for a ship's anchor.
@@ -5829,7 +5490,7 @@ function barrelpus(root, m, parts) {
   gear(box(scope, 0.115, 0.115, 0.05, 0xc89a20, 0, 0, 0.19), 'gold');
   box(scope, 0.08, 0.08, 0.02, 0x9ad8f0, 0, 0, 0.22);
 }
-const SHAPES_PIRATE = { parrot, hookcrab, shipbottle, barrelpus };
+const SHAPES_PIRATE = { hookcrab, shipbottle, barrelpus };
 Object.assign(SHAPES, SHAPES_PIRATE);
 /* ==== end of T40b pirate ==== */
 
@@ -7710,3 +7371,792 @@ function blotbun(root, m, parts) {
 const SHAPES_CUSTOM = { brushfox, palettefrog, quillbird, crayondrake, blotbun, framesaur };
 Object.assign(SHAPES, SHAPES_CUSTOM);
 /* ==== end of Custom shapes ==== */
+
+/* ==== Chapter 3 redesigns (owner 2026-11-13, plans/chapter3-abilities-build.md section 2) ==== */
+// A creature's body must never contradict its type (no wings in a type that cannot fly, no fish in a type that cannot swim), so
+// these 22 got new bodies; ids, stats and moves stay. Their own little animations go through `parts.redo` (animateRedo below,
+// called by animateModel): every entry is closed form in t, except `roll`, which adds up its turn so starting to move never snaps.
+const redo = (parts, entry) => (parts.redo ||= []).push(entry);
+const hashK = (k, salt) => { let h = (k * 374761393 + salt * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+// Finnibone: a bony fish that walks on its front fins like a mudskipper, eyes on top of its skull, its jaw clacking.
+function mudskipper(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.34, 0);
+  body.rotation.x = -0.18; // head up, tail down
+  box(body, 0.08, 0.08, 0.86, m.body, 0, 0.02, -0.12); // the spine
+  for (let i = 0; i < 5; i++) { // ribs: an upside-down U each, smaller toward the tail
+    const z = 0.18 - i * 0.14, r = 0.17 - i * 0.022, h = 0.26 - i * 0.035;
+    for (const s of [-1, 1]) box(body, 0.04, h, 0.045, m.body, s * r, 0.02 - h / 2, z);
+    box(body, r * 2 + 0.04, 0.04, 0.045, m.body, 0, 0.02 - h, z);
+  }
+  for (let i = 0; i < 4; i++) box(body, 0.03, 0.12 - i * 0.02, 0.03, m.body, 0, 0.1, 0.12 - i * 0.16); // little back spines
+  const head = pivot(body, 0, 0.0, 0.42);
+  parts.head = head;
+  box(head, 0.32, 0.22, 0.3, m.body, 0, 0.02, 0.02);
+  box(head, 0.2, 0.06, 0.06, m.dark, 0, -0.04, 0.16); // the dark mouth
+  for (const s of [-1, 1]) { // mudskipper eyes bulging on top
+    box(head, 0.13, 0.13, 0.13, m.body, s * 0.08, 0.17, -0.01);
+    box(head, 0.09, 0.09, 0.04, m.dark, s * 0.08, 0.18, 0.05).userData.eye = true;
+    glow(box(head, 0.05, 0.05, 0.02, m.accent, s * 0.08, 0.18, 0.075), m.accent).userData.eye = true;
+  }
+  const jaw = pivot(head, 0, -0.08, -0.08);
+  swing(parts, jaw, 'x', 0.16, 7); // clack clack
+  box(jaw, 0.28, 0.05, 0.3, m.body, 0, -0.02, 0.12);
+  for (const s of [-1, 0, 1]) box(jaw, 0.035, 0.04, 0.03, 0xffffff, s * 0.08, 0.02, 0.25);
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) { // the front fins it walks on
+    const g = pivot(body, s * 0.17, -0.02, 0.26);
+    const inner = pivot(g, 0, 0, 0);
+    inner.rotation.set(0.18, 0, s * 0.35);
+    box(inner, 0.05, 0.3, 0.05, m.body, 0, -0.15, 0);
+    for (const k of [-1, 0, 1]) box(inner, 0.035, 0.035, 0.22, m.body, k * 0.06, -0.3, 0.08); // fin rays as toes
+    seeB(box(inner, 0.2, 0.02, 0.2, m.accent, 0, -0.3, 0.08), 0.55); // the fin's see-through skin
+    parts.legs.push({ g, phase });
+  }
+  const tail = pivot(body, 0, 0.02, -0.56);
+  parts.tail = tail;
+  for (const s of [-1, 1]) { const f = box(tail, 0.03, 0.26, 0.05, m.body, 0, s * 0.1, -0.1); f.rotation.x = s * 0.6; }
+  box(tail, 0.02, 0.28, 0.12, m.belly, 0, 0, -0.14);
+}
+
+// Twirlshell: the swirly-shelled snail with four little dragonfly wings on its shell, buzzing from leaf to leaf.
+function wingsnail(root, m, parts) {
+  snail(root, m, parts);
+  const wings = pivot(root, 0, 0.86, -0.12);
+  for (const [s, z, len, ph] of [[-1, 0.06, 0.62, 0], [1, 0.06, 0.62, 0.7], [-1, -0.12, 0.52, 1.5], [1, -0.12, 0.52, 2.2]]) {
+    const g = pivot(wings, s * 0.04, 0, z);
+    const w = seeB(box(g, len, 0.025, 0.24, 0xc8ecff, s * len / 2, 0, 0), 0.8);
+    w.rotation.y = s * (z > 0 ? -0.2 : 0.25);
+    box(g, len * 0.9, 0.025, 0.02, m.dark, s * len * 0.45, 0.005, 0); // the vein
+    redo(parts, { kind: 'buzz', g, s, ph });
+  }
+}
+
+// Wiflow / Wiflow 2.0: a Wi-Fi router toddling on stubby legs, signal bars on its back that light up in turn, wiggly aerials.
+// 2.0 (`v2`) is a tall tower router striding on four legs, five full bars and four aerials.
+function router(root, m, parts) {
+  const v2 = has(m, 'v2');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const legH = v2 ? 0.26 : 0.13, w = v2 ? 0.44 : 0.62, h = v2 ? 0.78 : 0.32, d = v2 ? 0.38 : 0.44;
+  const body = pivot(lift, 0, legH, 0);
+  if (!v2) swing(parts, body, 'z', 0.08, 5); // the toddle
+  box(body, w, h, d, m.body, 0, h / 2, 0);
+  box(body, w - 0.06, 0.04, d - 0.06, m.dark, 0, h + 0.01, 0);
+  const face = pivot(body, 0, h * (v2 ? 0.72 : 0.62), d / 2);
+  parts.head = face;
+  eyes(face, 0.02, 0.02, v2 ? 0.1 : 0.13, 0.11);
+  box(face, 0.12, 0.03, 0.03, 0x111111, 0, -0.08, 0.02);
+  const leds = [];
+  for (let i = 0; i < (v2 ? 5 : 4); i++) leds.push(glow(box(body, 0.05, 0.04, 0.03, m.accent, (i - (v2 ? 2 : 1.5)) * 0.09, v2 ? 0.14 : 0.05, d / 2 + 0.01), m.accent));
+  const bars = [];
+  const n = v2 ? 5 : 3;
+  for (let i = 0; i < n; i++) { // signal bars on its back, short to tall
+    const bh = 0.07 + i * (v2 ? 0.05 : 0.06), x = (i - (n - 1) / 2) * 0.1;
+    bars.push(glow(box(body, 0.07, bh, 0.07, m.accent, x, h + bh / 2 + 0.02, -d / 2 + 0.1), m.accent));
+  }
+  redo(parts, { kind: 'bars', list: bars, leds, full: v2, period: v2 ? 1.6 : 2.2 });
+  const ant = v2 ? [[-0.16, 0.12], [0.16, 0.12], [-0.16, -0.12], [0.16, -0.12]] : [[-0.25, -0.15], [0.25, -0.15]];
+  ant.forEach(([x, z], i) => {
+    const g = pivot(body, x, h, z);
+    swing(parts, g, i % 2 ? 'z' : 'x', 0.18, 3 + i * 0.4, i);
+    box(g, 0.035, 0.36, 0.035, m.dark, 0, 0.18, 0);
+    glow(box(g, 0.07, 0.07, 0.07, m.belly, 0, 0.38, 0), m.accent);
+  });
+  parts.legs = [];
+  const feet = v2 ? [[-0.15, 0.12, 0], [0.15, 0.12, Math.PI], [-0.15, -0.12, Math.PI], [0.15, -0.12, 0]] : [[-0.16, 0.02, 0], [0.16, 0.02, Math.PI]];
+  for (const [x, z, phase] of feet) {
+    const g = pivot(lift, x, legH, z);
+    box(g, 0.1, legH, 0.1, m.dark, 0, -legH / 2, 0);
+    box(g, 0.15, 0.05, 0.18, m.dark, 0, -legH + 0.025, 0.03);
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Error 404: a glitchy pixel cat made of chunky pixels. Now and then it flickers sideways, pixels drop out and its legs skip frames.
+function glitchcat(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const g = pivot(lift, 0, 0, 0); // the part that jumps when it glitches
+  const body = pivot(g, 0, 0.36, -0.05);
+  box(body, 0.42, 0.26, 0.62, m.body, 0, 0, 0);
+  for (const [x, z] of [[-0.12, 0.18], [0.1, -0.08], [-0.06, -0.24]]) box(body, 0.12, 0.02, 0.12, m.belly, x, 0.135, z); // cyan spots
+  const head = pivot(g, 0, 0.62, 0.3);
+  parts.head = head;
+  box(head, 0.4, 0.32, 0.32, m.body, 0, 0, 0);
+  for (const s of [-1, 1]) { box(head, 0.12, 0.12, 0.08, m.body, s * 0.13, 0.21, -0.04); box(head, 0.06, 0.06, 0.03, m.accent, s * 0.13, 0.2, 0.005); }
+  for (const s of [-1, 1]) { // square pixel eyes, one a little off
+    box(head, 0.1, 0.1, 0.03, 0x111111, s * 0.1, 0.04 + (s > 0 ? 0.03 : 0), 0.165).userData.eye = true;
+    box(head, 0.04, 0.04, 0.02, 0xffffff, s * 0.1 - 0.02, 0.06 + (s > 0 ? 0.03 : 0), 0.18).userData.eye = true;
+  }
+  box(head, 0.06, 0.05, 0.03, m.accent, 0, -0.04, 0.17); // pink nose
+  for (const s of [-1, 1]) box(head, 0.14, 0.02, 0.02, 0x111111, s * 0.2, -0.06, 0.15); // whiskers
+  const tail = pivot(g, 0, 0.42, -0.36);
+  parts.tail = tail;
+  for (let i = 0; i < 4; i++) box(tail, 0.09, 0.09, 0.09, i % 2 ? m.accent : m.body, 0, i * 0.09, -i * 0.04); // a pixel staircase tail
+  const legs = [];
+  for (const [x, z, ph] of [[-0.13, 0.2, 0], [0.13, 0.2, Math.PI], [-0.13, -0.28, Math.PI], [0.13, -0.28, 0]]) {
+    const l = pivot(g, x, 0.25, z);
+    box(l, 0.1, 0.25, 0.1, m.body, 0, -0.125, 0);
+    box(l, 0.11, 0.05, 0.13, m.belly, 0, -0.23, 0.02);
+    legs.push({ g: l, ph });
+  }
+  // loose glitch pixels (pink and cyan) beside it and an RGB-split ghost slab behind its head
+  const bits = [[0.28, 0.5, 0.12], [-0.3, 0.32, -0.2], [0.24, 0.2, -0.34], [-0.26, 0.7, 0.3], [0.05, 0.86, 0.22]].map(([x, y, z], i) => glow(box(g, 0.07, 0.07, 0.07, i % 2 ? m.belly : m.accent, x, y, z), i % 2 ? m.belly : m.accent));
+  const split = [seeB(box(head, 0.4, 0.32, 0.02, m.accent, 0.05, 0, -0.17), 0.6), seeB(box(head, 0.4, 0.32, 0.02, m.belly, -0.05, 0, -0.17), 0.6)];
+  redo(parts, { kind: 'glitch', g, legs, bits, split });
+}
+
+// Voltrunner: a roadrunner with a glowing lightning-bolt crest, a long tail up behind it and long legs that zap across fields.
+function roadrunner(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.66, 0);
+  body.rotation.x = 0.2; // leaning forward, ready to run
+  box(body, 0.32, 0.3, 0.56, m.body, 0, 0, 0);
+  box(body, 0.24, 0.2, 0.04, m.belly, 0, -0.04, 0.28);
+  for (const s of [-1, 1]) box(body, 0.04, 0.22, 0.38, m.dark, s * 0.17, 0.02, -0.04); // folded wings, tight to the sides
+  const head = pivot(body, 0, 0.28, 0.28);
+  head.rotation.x = -0.2;
+  parts.head = head;
+  box(head, 0.12, 0.2, 0.12, m.body, 0, -0.06, -0.02); // the neck
+  box(head, 0.24, 0.2, 0.26, m.body, 0, 0.08, 0.04);
+  box(head, 0.07, 0.06, 0.3, m.accent, 0, 0.05, 0.3); // the long beak
+  for (const s of [-1, 1]) {
+    box(head, 0.03, 0.09, 0.09, 0xffffff, s * 0.125, 0.11, 0.08).userData.eye = true;
+    box(head, 0.02, 0.05, 0.05, 0x111111, s * 0.135, 0.11, 0.1).userData.eye = true;
+    box(head, 0.02, 0.03, 0.1, m.accent, s * 0.13, 0.17, 0.08); // a dark brow stripe
+  }
+  const crest = pivot(head, 0, 0.18, -0.02);
+  swing(parts, crest, 'x', 0.12, 3);
+  parts.tip = glow(box(crest, 0.05, 0.14, 0.06, m.belly, 0, 0.07, 0.02), 0xfff060);
+  glow(box(crest, 0.05, 0.06, 0.16, m.belly, 0, 0.15, -0.04), 0xfff060);
+  glow(box(crest, 0.05, 0.16, 0.06, m.belly, 0, 0.24, -0.1), 0xfff060);
+  const tail = pivot(body, 0, 0.06, -0.26);
+  parts.tail = tail;
+  const t = pivot(tail, 0, 0, 0);
+  t.rotation.x = 0.7; // up and back
+  box(t, 0.12, 0.05, 0.6, m.dark, 0, 0, -0.3);
+  box(t, 0.09, 0.055, 0.22, m.belly, 0, 0, -0.52);
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const g = pivot(lift, s * 0.09, 0.56, 0.02);
+    box(g, 0.08, 0.22, 0.09, m.body, 0, -0.08, 0);
+    box(g, 0.045, 0.36, 0.045, m.accent, 0, -0.36, 0.02);
+    for (const k of [-1, 1]) box(g, 0.035, 0.03, 0.14, m.accent, k * 0.035, -0.54, 0.06); // two toes front
+    box(g, 0.035, 0.03, 0.1, m.accent, 0, -0.54, -0.06); // and two back (here one)
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Wattwink: a glow-worm on the ground whose tail is a light bulb; it blinks twice to say hello.
+function glowworm(root, m, parts) {
+  parts.segments = [];
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const g = pivot(root, 0, 0, 0.32 - i * 0.17);
+    const r = 0.26 - i * 0.015;
+    box(g, r, r * 0.9, 0.19, i % 2 ? m.dark : m.body, 0, r * 0.45 + 0.02, 0);
+    box(g, r * 0.8, 0.03, 0.12, m.belly, 0, 0.02, 0);
+    for (const s of [-1, 1]) box(g, 0.04, 0.05, 0.05, m.dark, s * r * 0.38, 0.02, 0); // little feet
+    parts.segments.push({ g, i });
+  }
+  const head = pivot(root, 0, 0.18, 0.46);
+  parts.head = head;
+  box(head, 0.3, 0.28, 0.24, m.body, 0, 0.04, 0);
+  eyes(head, 0.08, 0.125, 0.07, 0.1);
+  box(head, 0.1, 0.03, 0.02, 0x2a2a2a, 0, -0.04, 0.125);
+  for (const s of [-1, 1]) {
+    const a = pivot(head, s * 0.07, 0.17, 0);
+    swing(parts, a, 'z', 0.2, 2.4, s);
+    box(a, 0.025, 0.18, 0.025, m.dark, 0, 0.09, 0);
+    glow(box(a, 0.05, 0.05, 0.05, m.accent, 0, 0.19, 0), m.accent);
+  }
+  const tail = pivot(root, 0, 0.12, -0.5);
+  parts.tail = tail;
+  box(tail, 0.13, 0.12, 0.1, m.dark, 0, 0.04, 0); // the screw base
+  for (const y of [0.0, 0.06]) box(tail, 0.15, 0.02, 0.12, 0xb0b0b8, 0, y, 0);
+  const bulb = glow(box(tail, 0.24, 0.24, 0.24, m.accent, 0, 0.12, -0.16), m.accent);
+  box(tail, 0.17, 0.3, 0.17, m.accent, 0, 0.12, -0.16).material = bulb.material;
+  redo(parts, { kind: 'blink', mesh: bulb, period: 3.2, lo: 0.15, hi: 1 });
+}
+
+// Joltail: a land eel that slithers low through wet grass, a fin along its back and a run of little zaps along its sides.
+function landeel(root, m, parts) {
+  parts.segments = [];
+  const n = 8, sparks = [];
+  for (let i = 0; i < n; i++) {
+    const g = pivot(root, 0, 0, 0.5 - i * 0.16);
+    const r = 0.22 - Math.max(0, i - 4) * 0.03;
+    box(g, r, r * 0.8, 0.17, m.body, 0, r * 0.4, 0);
+    box(g, r * 0.8, 0.03, 0.15, m.belly, 0, 0.015, 0);
+    box(g, 0.04, 0.09, 0.16, m.accent, 0, r * 0.8 + 0.04, 0); // the back fin
+    if (i > 0 && i < n - 1) for (const s of [-1, 1]) sparks.push({ mesh: glow(box(g, 0.02, 0.05, 0.05, m.accent, s * r / 2, r * 0.45, 0), m.accent), i });
+    parts.segments.push({ g, i });
+  }
+  const head = pivot(root, 0, 0.14, 0.66);
+  parts.head = head;
+  box(head, 0.28, 0.2, 0.26, m.body, 0, 0.04, 0);
+  box(head, 0.22, 0.04, 0.04, m.dark, 0, -0.03, 0.13);
+  eyes(head, 0.1, 0.13, 0.07, 0.09);
+  for (const s of [-1, 1]) { const w = box(head, 0.03, 0.03, 0.22, m.accent, s * 0.12, 0.0, 0.18); w.rotation.y = s * 0.5; }
+  zigzag(head, m.accent, 0, 0.14, 0.0, 0.6);
+  redo(parts, { kind: 'zaps', list: sparks, n });
+}
+
+// Flaremu: an emu with a flaming tail plume, a round fluffy body on long legs, sprinting across the plains.
+function emu(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.92, 0);
+  box(body, 0.48, 0.42, 0.62, m.body, 0, 0, 0);
+  box(body, 0.42, 0.5, 0.5, m.body, 0, 0.02, -0.04);
+  for (const [x, y, z] of [[-0.24, 0.1, 0.1], [0.24, -0.04, -0.12], [-0.24, -0.12, -0.18], [0.24, 0.14, 0.14]]) box(body, 0.04, 0.16, 0.12, m.belly, x, y, z); // shaggy feather tufts
+  const neck = pivot(body, 0, 0.14, 0.26);
+  neck.rotation.x = 0.15;
+  box(neck, 0.11, 0.48, 0.11, m.belly, 0, 0.24, 0);
+  const head = pivot(neck, 0, 0.52, 0.04);
+  parts.head = head;
+  box(head, 0.18, 0.16, 0.22, m.body, 0, 0, 0);
+  box(head, 0.08, 0.06, 0.14, m.dark, 0, -0.02, 0.17);
+  for (const s of [-1, 1]) {
+    box(head, 0.03, 0.08, 0.08, 0xffffff, s * 0.095, 0.03, 0.05).userData.eye = true;
+    box(head, 0.02, 0.045, 0.045, 0x111111, s * 0.105, 0.03, 0.06).userData.eye = true;
+  }
+  const plume = pivot(body, 0, 0.12, -0.32); // the flaming tail plume
+  const flames = [];
+  for (const [x, h, c, z, r] of [[-0.16, 0.42, 0xff5a1a, 0, 0.3], [0.16, 0.42, 0xff5a1a, 0, -0.3], [0, 0.62, m.accent, -0.04, 0], [-0.07, 0.34, 0xfff0a0, 0.05, 0.12], [0.08, 0.38, 0xfff0a0, 0.05, -0.12]]) {
+    const f = pivot(plume, x, 0, z);
+    f.rotation.set(-0.5, 0, r);
+    glow(box(f, 0.14, h, 0.14, c, 0, h / 2, 0), c);
+    flames.push(f);
+  }
+  redo(parts, { kind: 'flame', list: flames });
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const g = pivot(lift, s * 0.12, 0.76, 0);
+    box(g, 0.12, 0.26, 0.14, m.dark, 0, -0.1, 0);
+    box(g, 0.06, 0.52, 0.06, 0x8a8a8a, 0, -0.48, 0.02);
+    for (const k of [-1, 0, 1]) { const toe = box(g, 0.035, 0.03, 0.14, 0x8a8a8a, k * 0.04, -0.74, 0.06); toe.rotation.y = k * 0.35; }
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Rivetron: a big tin beetle on two rolling treads, rivets on its shell, a horn, and engine wings that only buzz (it never flies).
+function tinbeetle(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  const shell = pivot(lift, 0, 0.5, -0.02);
+  swing(parts, shell, 'z', 0.03, 9); // the engine hum
+  box(shell, 0.76, 0.34, 0.9, m.body, 0, 0, 0);
+  box(shell, 0.62, 0.16, 0.78, m.body, 0, 0.22, -0.02);
+  box(shell, 0.03, 0.4, 0.86, m.dark, 0, 0.12, 0); // the seam
+  for (const [x, z] of [[-0.3, 0.3], [0.3, 0.3], [-0.3, -0.05], [0.3, -0.05], [-0.3, -0.36], [0.3, -0.36], [-0.12, 0.38], [0.12, 0.38]]) box(shell, 0.06, 0.06, 0.06, m.belly, x, 0.16, z);
+  const head = pivot(lift, 0, 0.5, 0.5);
+  parts.head = head;
+  box(head, 0.44, 0.3, 0.24, m.dark, 0, 0, 0);
+  eyes(head, 0.02, 0.125, 0.11, 0.11);
+  glow(box(head, 0.3, 0.04, 0.02, m.accent, 0, -0.09, 0.125), m.accent); // a grille that glows
+  const horn = box(head, 0.1, 0.4, 0.1, m.accent, 0, 0.3, 0.1);
+  horn.rotation.x = 0.5;
+  box(head, 0.18, 0.08, 0.08, m.accent, 0, 0.47, 0.26);
+  const roll = [];
+  for (const s of [-1, 1]) { // the two treads, each with three wheels that roll
+    box(lift, 0.2, 0.06, 0.96, m.dark, s * 0.36, 0.32, 0);
+    box(lift, 0.2, 0.06, 0.96, m.dark, s * 0.36, 0.02, 0);
+    for (const z of [-0.4, 0, 0.4]) {
+      const w = pivot(lift, s * 0.36, 0.17, z);
+      box(w, 0.16, 0.24, 0.24, 0x5a626a, 0, 0, 0);
+      box(w, 0.17, 0.08, 0.08, m.accent, 0, 0, 0);
+      box(w, 0.165, 0.28, 0.05, 0x3a3a3a, 0, 0, 0);
+      roll.push(w);
+    }
+  }
+  redo(parts, { kind: 'roll', list: roll, axis: 'x', speed: 6, idle: 0 });
+  for (const s of [-1, 1]) { // the engine wings: short and stiff, they only buzz
+    const g = pivot(shell, s * 0.2, 0.3, -0.1);
+    seeB(box(g, 0.42, 0.02, 0.24, 0xd0e0f0, s * 0.21, 0, -0.06), 0.6).rotation.y = s * -0.35;
+    redo(parts, { kind: 'buzz', g, s, ph: s, amp: 0.08, lift: 0.15 });
+  }
+}
+
+// Peekko / Ninjecko: a tiptoeing gecko wearing the ninja mask and headband; it hides behind its own curled tail and peeks out.
+// Ninjecko (`big`) is a big masked gecko with sticky toe pads, a spiky ridge and a longer tail, creeping without a sound.
+function gecko(root, m, parts) {
+  const big = has(m, 'big');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.24, 0);
+  box(body, 0.34, 0.18, 0.62, m.body, 0, 0, 0);
+  box(body, 0.26, 0.04, 0.5, m.belly, 0, -0.08, 0.02);
+  for (const [x, z] of [[-0.08, 0.12], [0.09, -0.06], [-0.06, -0.2], [0.07, 0.24]]) box(body, 0.08, 0.02, 0.08, m.dark, x, 0.1, z); // spots
+  if (big) for (let i = 0; i < 5; i++) box(body, 0.04, 0.08, 0.06, m.accent, 0, 0.12, 0.22 - i * 0.12); // the ridge
+  const head = pivot(body, 0, 0.06, 0.38);
+  parts.head = head;
+  box(head, 0.36, 0.22, 0.3, m.body, 0, 0.04, 0.02);
+  box(head, 0.26, 0.08, 0.12, m.body, 0, -0.02, 0.2);
+  box(head, 0.2, 0.025, 0.03, 0x14101e, 0, -0.04, 0.255); // the wide gecko smile
+  njMask(head, 0.08, 0.34, 0.17, { h: 0.12, spread: 0.095, eye: 0.1, color: big ? m.dark : undefined });
+  njHeadband(head, parts, 0.16, 0.36, 0.3, big ? 0.36 : 0.28);
+  parts.legs = [];
+  for (const [x, z, phase] of [[-1, 0.2, 0], [1, 0.2, Math.PI], [-1, -0.22, Math.PI], [1, -0.22, 0]]) { // splayed legs, sticky toes
+    const g = pivot(body, x * 0.17, -0.02, z);
+    const inner = pivot(g, 0, 0, 0);
+    inner.rotation.z = x * 0.9;
+    box(inner, 0.07, 0.24, 0.07, m.body, 0, -0.12, 0);
+    for (const k of [-1, 0, 1]) box(inner, 0.035, 0.03, 0.08, m.belly, k * 0.04, -0.25, 0.03);
+    if (big) box(inner, 0.12, 0.025, 0.1, m.accent, 0, -0.27, 0.03);
+    parts.legs.push({ g, phase });
+  }
+  // the tail: out behind, then up over its back and curled round in front of its eyes (the peekaboo part lifts it)
+  const tailG = pivot(body, 0, 0.04, -0.34); // its base; the arc's points are measured from here
+  const rz = big ? 0.6 : 0.55, ry = big ? 0.62 : 0.55, n = 18, end = 0.94 * Math.PI;
+  for (let i = 0; i < n; i++) {
+    const a = (i / (n - 1)) * end, s = 0.13 - (i / n) * 0.05;
+    box(tailG, s, s, s * 1.3, i % 3 === 2 ? m.dark : m.body, 0, Math.sin(a) * ry, rz - Math.cos(a) * rz);
+  }
+  const tipY = Math.sin(end) * ry, tipZ = rz - Math.cos(end) * rz;
+  box(tailG, 0.3, 0.2, 0.05, m.body, 0, tipY - 0.02, tipZ + 0.04); // the flat curled tip held in front of its eyes
+  box(tailG, 0.18, 0.1, 0.055, m.dark, 0, tipY - 0.02, tipZ + 0.045);
+  redo(parts, { kind: 'peek', g: tailG, period: 4.2 });
+}
+
+// Chirpit: a fluffy turkey chick with a tiny red wattle and a three-feather tail; it struts with a bobbing head at sunrise.
+function turkeychick(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.42, 0);
+  ball(body, 0.24, m.body, 0, 0, 0);
+  box(body, 0.3, 0.26, 0.04, m.belly, 0, -0.04, 0.24);
+  for (const s of [-1, 1]) box(body, 0.05, 0.14, 0.2, m.body, s * 0.26, 0.02, -0.04); // stubby fluffy wings
+  const tail = pivot(body, 0, 0.08, -0.24);
+  parts.tail = tail;
+  for (const [r, c] of [[-0.9, m.dark], [-0.45, m.accent], [0, m.dark], [0.45, m.accent], [0.9, m.dark]]) { const f = pivot(tail, 0, 0, 0); f.rotation.z = r; box(f, 0.09, 0.28, 0.04, c, 0, 0.14, 0); }
+  const strut = pivot(body, 0, 0.26, 0.08);
+  swing(parts, strut, 'x', 0.18, 5); // head bobbing forward and back
+  const head = pivot(strut, 0, 0, 0);
+  parts.head = head;
+  box(head, 0.28, 0.26, 0.26, m.body, 0, 0.06, 0);
+  eyes(head, 0.1, 0.135, 0.07, 0.09);
+  box(head, 0.09, 0.07, 0.12, m.accent, 0, 0.03, 0.17); // the beak
+  box(head, 0.05, 0.1, 0.04, 0xd83a3a, 0.02, -0.05, 0.16); // the little wattle
+  for (const [x, h] of [[-0.04, 0.08], [0.03, 0.11]]) box(head, 0.04, h, 0.04, m.body, x, 0.2 + h / 2, -0.02); // fluff on top
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const g = pivot(lift, s * 0.09, 0.22, 0);
+    box(g, 0.04, 0.22, 0.04, m.accent, 0, -0.11, 0);
+    for (const k of [-1, 0, 1]) { const t = box(g, 0.03, 0.025, 0.09, m.accent, k * 0.03, -0.21, 0.04); t.rotation.y = k * 0.4; }
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Loudbeak: a peacock with a crown of feathers that fans its great tail open and shut; its call wakes the whole village.
+function peacock(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0.62, 0);
+  box(body, 0.38, 0.36, 0.56, m.body, 0, 0, 0);
+  box(body, 0.3, 0.3, 0.04, m.belly, 0, -0.02, 0.28);
+  for (const s of [-1, 1]) box(body, 0.05, 0.26, 0.42, m.dark, s * 0.2, 0.0, -0.04);
+  const neck = pivot(body, 0, 0.16, 0.22);
+  box(neck, 0.13, 0.4, 0.13, m.body, 0, 0.2, 0);
+  const head = pivot(neck, 0, 0.44, 0.04);
+  parts.head = head;
+  box(head, 0.2, 0.18, 0.22, m.body, 0, 0, 0);
+  box(head, 0.07, 0.06, 0.13, 0xd0b070, 0, -0.02, 0.16);
+  for (const s of [-1, 1]) {
+    box(head, 0.03, 0.08, 0.08, 0xffffff, s * 0.105, 0.03, 0.05).userData.eye = true;
+    box(head, 0.02, 0.045, 0.045, 0x111111, s * 0.115, 0.03, 0.06).userData.eye = true;
+  }
+  for (const r of [-0.35, 0, 0.35]) { // the crown: three thin feathers with a dot each
+    const c = pivot(head, 0, 0.09, -0.02);
+    c.rotation.z = r;
+    box(c, 0.02, 0.2, 0.02, m.dark, 0, 0.1, 0);
+    glow(box(c, 0.06, 0.06, 0.03, m.accent, 0, 0.22, 0), m.accent);
+  }
+  const fanG = pivot(body, 0, 0.0, -0.3); // the tail: nine feathers, each with an eye spot, that fan open
+  const list = [];
+  for (let i = 0; i < 9; i++) {
+    const a = (i - 4) / 4; // -1..1
+    const f = pivot(fanG, 0, 0, 0);
+    const len = 0.95 - Math.abs(a) * 0.15;
+    box(f, 0.13, len, 0.03, i % 2 ? m.accent : m.dark, 0, len / 2, 0);
+    box(f, 0.13, 0.13, 0.035, m.belly, 0, len - 0.12, 0.005);
+    box(f, 0.07, 0.07, 0.04, 0x1a2a6a, 0, len - 0.12, 0.012);
+    list.push({ g: f, a });
+  }
+  fanG.rotation.x = -0.35;
+  redo(parts, { kind: 'fan', list, period: 5 });
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const g = pivot(lift, s * 0.1, 0.45, 0.02);
+    box(g, 0.05, 0.45, 0.05, 0x8a7a6a, 0, -0.22, 0);
+    for (const k of [-1, 0, 1]) { const t = box(g, 0.03, 0.03, 0.12, 0x8a7a6a, k * 0.035, -0.44, 0.05); t.rotation.y = k * 0.4; }
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Monkeer / Bananabeard: a little monkey in the pirate bandana who repeats everything you say (its jaw chatters), a long curly
+// tail. Bananabeard (`captain`) is the monkey captain: a three-cornered hat, a long red coat, a banana-yellow beard and a gold hook.
+function monkey(root, m, parts) {
+  const big = has(m, 'captain');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const hip = big ? 0.36 : 0.3;
+  const body = pivot(lift, 0, hip, 0);
+  box(body, 0.42, 0.42, 0.34, big ? 0xa82828 : m.body, 0, 0.2, 0);
+  box(body, 0.3, 0.3, 0.04, big ? m.belly : m.belly, 0, 0.18, 0.17);
+  if (big) { // the coat: tails at the back, gold buttons, cuffs
+    const coat = pivot(body, 0, 0.06, -0.17);
+    swing(parts, coat, 'x', 0.06, 2.4, 0.5);
+    box(coat, 0.44, 0.34, 0.05, 0xa82828, 0, -0.1, -0.02);
+    for (const y of [0.3, 0.2, 0.1]) gear(box(body, 0.04, 0.04, 0.03, PR_GOLD, 0.1, y, 0.19), 'gold');
+  }
+  const head = pivot(body, 0, 0.56, 0.02);
+  parts.head = head;
+  box(head, 0.42, 0.36, 0.36, m.body, 0, 0, 0);
+  box(head, 0.32, 0.22, 0.04, m.belly, 0, 0.0, 0.18); // the face
+  box(head, 0.2, 0.12, 0.08, m.belly, 0, -0.09, 0.21); // the muzzle
+  box(head, 0.06, 0.03, 0.02, m.dark, 0, -0.05, 0.255); // the nose
+  eyes(head, 0.05, 0.2, 0.08, 0.1);
+  const jaw = pivot(head, 0, -0.13, 0.2);
+  swing(parts, jaw, 'x', 0.18, 9); // "Ahoy! Ahoy!"
+  box(jaw, 0.16, 0.05, 0.06, m.dark, 0, 0, 0.02);
+  for (const s of [-1, 1]) { box(head, 0.06, 0.16, 0.16, m.body, s * 0.24, 0.02, -0.02); box(head, 0.03, 0.1, 0.1, m.belly, s * 0.265, 0.02, -0.01); } // big round ears
+  prBandana(head, parts, 0.12, 0.42, 0.36);
+  gear(box(head, 0.03, 0.03, 0.03, PR_GOLD, 0.28, -0.08, -0.02), 'gold'); // a gold earring
+  if (big) {
+    const beard = pivot(head, 0, -0.16, 0.16); // the banana-yellow beard
+    swing(parts, beard, 'x', 0.06, 2);
+    box(beard, 0.3, 0.16, 0.08, m.accent, 0, -0.06, 0);
+    box(beard, 0.2, 0.14, 0.07, m.accent, 0, -0.18, 0.0);
+    box(beard, 0.1, 0.1, 0.06, m.accent, 0, -0.28, -0.01);
+    const hat = pivot(head, 0, 0.21, 0); // the tricorn
+    box(hat, 0.56, 0.04, 0.5, 0x1a1a22, 0, 0, 0);
+    box(hat, 0.32, 0.1, 0.3, 0x1a1a22, 0, 0.07, 0);
+    for (const [x, z, r, q] of [[0, 0.27, 0.5, 0], [-0.29, -0.05, 0, 0.5], [0.29, -0.05, 0, -0.5]]) { const c = box(hat, q ? 0.06 : 0.5, 0.1, q ? 0.42 : 0.06, 0x1a1a22, x, 0.05, z); c.rotation.set(r, 0, q); }
+    gear(box(hat, 0.56, 0.015, 0.03, PR_GOLD, 0, 0.025, 0.26), 'gold');
+  }
+  parts.arms = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) { // long monkey arms
+    const a = pivot(body, s * 0.25, 0.36, 0);
+    box(a, 0.1, 0.42, 0.1, big ? 0xa82828 : m.body, 0, -0.2, 0);
+    box(a, 0.11, 0.09, 0.11, m.belly, 0, -0.44, 0.01);
+    if (big && s === 1) prHook(a, 0, -0.5, 0.05, 0.9);
+    parts.arms.push({ g: a, phase });
+  }
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
+    const g = pivot(lift, s * 0.11, hip, 0);
+    box(g, 0.12, hip, 0.12, m.body, 0, -hip / 2, 0);
+    box(g, 0.14, 0.05, 0.18, m.belly, 0, -hip + 0.025, 0.03);
+    parts.legs.push({ g, phase });
+  }
+  const tail = pivot(body, 0, 0.06, -0.17); // a long tail curling up into a loop
+  swing(parts, tail, 'z', 0.15, 2);
+  for (let i = 0; i < 18; i++) { // out behind and up, ending in a curl
+    const a = i / 17, curl = Math.max(0, a - 0.55) / 0.45 * Math.PI * 1.5;
+    const y = a < 0.55 ? a * 0.6 : 0.33 + Math.sin(curl) * 0.1, z = a < 0.55 ? -a * 0.35 : -0.19 - (1 - Math.cos(curl)) * 0.05 - Math.sin(curl) * 0.04;
+    box(tail, 0.075, 0.075, 0.075, m.body, 0, y, z);
+  }
+}
+
+// Loopwyrm: a long snake holding its tail in its mouth, coiled twice round into a double hoop with a swirl in each loop. It rolls along like a hoop.
+function hoopsnake(root, m, parts) {
+  const R = 0.46, cy = R + 0.15;
+  const hoop = pivot(root, 0, cy, 0);
+  const N = 16;
+  for (const x of [-0.12, 0.12]) {
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * 6.283, k = 0.17 - (x > 0 ? i / N * 0.05 : 0);
+      const seg = box(hoop, k, k, k * 1.3, (i + (x > 0 ? 1 : 0)) % 4 === 0 ? m.accent : m.body, x, Math.sin(a) * R, Math.cos(a) * R);
+      seg.rotation.x = -a;
+    }
+    const sw = pivot(hoop, x * 1.5, 0, 0); // a swirl in each loop, facing out to the side
+    sw.rotation.y = x > 0 ? Math.PI / 2 : -Math.PI / 2;
+    poSwirl(sw, parts, 0, 0, 0, 2.4, x > 0 ? 1.2 : -1.2);
+  }
+  const head = pivot(hoop, -0.02, 0, R + 0.02); // the head at the front, its mouth round the tail
+  parts.head = head;
+  box(head, 0.32, 0.26, 0.24, m.body, 0, 0.04, 0.06);
+  box(head, 0.26, 0.06, 0.05, m.dark, 0, -0.07, 0.16);
+  eyes(head, 0.08, 0.185, 0.08, 0.1);
+  for (const s of [-1, 1]) box(head, 0.05, 0.14, 0.05, m.accent, s * 0.09, 0.22, 0.02).rotation.z = s * 0.3;
+  box(head, 0.12, 0.12, 0.12, m.belly, 0.12, -0.1, 0.08); // the tail tip in its mouth
+  redo(parts, { kind: 'roll', list: [hoop], axis: 'x', speed: 3.4, idle: 0.35 });
+}
+
+// Shimmerscale / Spectrascale: a pangolin whose overlapping scales sparkle in every colour (the `rainbow` extra flows the colours).
+// Spectrascale (`big`) is a big one with a frill of tall scales down its back and a long curled tail, a rare sight that brings luck.
+function pangolin(root, m, parts) {
+  const big = has(m, 'big');
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const rows = big ? 7 : 6;
+  for (let i = 0; i < rows; i++) { // the arched back of overlapping scales
+    const u = i / (rows - 1), z = 0.34 - u * 0.72, y = 0.3 + Math.sin(u * Math.PI) * 0.16;
+    const sc = box(lift, 0.52 - Math.abs(u - 0.5) * 0.2, 0.12, 0.2, i % 2 ? m.accent : m.body, 0, y + 0.06, z);
+    sc.rotation.x = -0.35;
+    for (const s of [-1, 1]) { const side = box(lift, 0.1, 0.18, 0.18, i % 2 ? m.body : m.accent, s * (0.25 - Math.abs(u - 0.5) * 0.1), y - 0.04, z); side.rotation.x = -0.35; }
+    if (big && i > 0 && i < rows - 1) box(lift, 0.06, 0.16, 0.12, m.dark, 0, y + 0.19, z); // the frill
+  }
+  box(lift, 0.4, 0.2, 0.66, m.belly, 0, 0.24, -0.02); // the soft belly
+  const head = pivot(lift, 0, 0.3, 0.44);
+  parts.head = head;
+  box(head, 0.24, 0.2, 0.22, m.body, 0, 0, 0);
+  box(head, 0.12, 0.1, 0.2, m.belly, 0, -0.04, 0.17); // the long snout
+  box(head, 0.05, 0.04, 0.02, 0x2a2a2a, 0, -0.03, 0.27);
+  eyes(head, 0.04, 0.11, 0.075, 0.09);
+  for (const s of [-1, 1]) box(head, 0.06, 0.08, 0.04, m.dark, s * 0.11, 0.1, -0.06); // little ears
+  parts.legs = [];
+  for (const [x, z, phase] of [[-1, 0.24, 0], [1, 0.24, Math.PI], [-1, -0.24, Math.PI], [1, -0.24, 0]]) {
+    const g = pivot(lift, x * 0.16, 0.18, z);
+    box(g, 0.1, 0.18, 0.1, m.body, 0, -0.09, 0);
+    for (const k of [-1, 0, 1]) box(g, 0.025, 0.03, 0.08, 0xf4f0e0, k * 0.03, -0.17, 0.06); // claws
+    parts.legs.push({ g, phase });
+  }
+  const tail = pivot(lift, 0, 0.3, -0.42);
+  parts.tail = tail;
+  const n = big ? 6 : 4;
+  for (let i = 0; i < n; i++) { const a = i / n; box(tail, 0.3 - a * 0.16, 0.14 - a * 0.04, 0.16, i % 2 ? m.accent : m.body, 0, -a * 0.24 + (big ? Math.max(0, a - 0.6) * 0.5 : 0), -0.08 - i * 0.12); }
+}
+
+// Ringlet: a gold ring that rolls along on its edge, its gem eye riding on top and looking round.
+function rollring(root, m, parts) {
+  const R = 0.32, cy = R + 0.08;
+  const ring = pivot(root, 0, cy, 0);
+  const N = 14;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * 6.283;
+    const seg = box(ring, 0.14, 0.12, 0.16, i % 2 ? m.body : m.dark, 0, Math.sin(a) * R, Math.cos(a) * R);
+    seg.rotation.x = -a;
+  }
+  redo(parts, { kind: 'roll', list: [ring], axis: 'x', speed: 4, idle: 0.3 });
+  const gemG = pivot(root, 0, cy + R + 0.12, 0); // the gem eye stays on top while the ring rolls under it
+  parts.head = gemG;
+  swing(parts, gemG, 'y', 0.4, 1.2);
+  box(gemG, 0.1, 0.06, 0.1, m.body, 0, -0.08, 0);
+  glow(box(gemG, 0.26, 0.22, 0.18, m.accent, 0, 0.04, 0), m.accent);
+  box(gemG, 0.16, 0.12, 0.24, m.accent, 0, 0.04, 0);
+  box(gemG, 0.13, 0.13, 0.03, 0xffffff, 0, 0.05, 0.12).userData.eye = true;
+  box(gemG, 0.07, 0.08, 0.02, 0x111111, 0, 0.04, 0.14).userData.eye = true;
+}
+
+// Lustrelle: a gem candelabra walking on three candle legs; three candles burn on its arms and gems hang from its middle.
+function candelabra(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const top = 0.32;
+  box(lift, 0.4, 0.06, 0.4, m.body, 0, top, 0); // the base plate it stands from
+  box(lift, 0.12, 0.42, 0.12, m.body, 0, top + 0.24, 0); // the stem
+  const face = pivot(lift, 0, top + 0.3, 0.08);
+  parts.head = face;
+  box(face, 0.24, 0.2, 0.06, m.belly, 0, 0, 0);
+  eyes(face, 0.03, 0.035, 0.06, 0.08);
+  box(face, 0.08, 0.025, 0.02, 0x3a2a10, 0, -0.05, 0.04);
+  const flames = [];
+  for (const [x, z, y] of [[-0.3, 0, 0.62], [0.3, 0, 0.62], [0, 0, 0.78]]) { // arms with candles and flames
+    if (x) box(lift, 0.3, 0.05, 0.05, m.body, x / 2, top + 0.42, z);
+    if (x) box(lift, 0.05, 0.16, 0.05, m.body, x, top + 0.48, z);
+    box(lift, 0.14, 0.04, 0.14, m.body, x, top + (x ? 0.57 : 0.47), z);
+    box(lift, 0.08, 0.16, 0.08, 0xfff4e0, x, top + y - 0.08, z);
+    const f = pivot(lift, x, top + y + 0.0, z);
+    glow(box(f, 0.06, 0.12, 0.06, m.accent, 0, 0.06, 0), 0xffa020);
+    glow(box(f, 0.03, 0.06, 0.03, 0xfff8c0, 0, 0.05, 0.02), 0xfff060);
+    flames.push(f);
+  }
+  redo(parts, { kind: 'flame', list: flames });
+  for (const [x, z, c] of [[-0.14, 0.12, 0xe0304a], [0.14, 0.12, 0x3a8aff], [0, -0.16, 0x3ad87a], [-0.17, -0.1, 0xc060ff], [0.17, -0.1, 0xffffff]]) { // hanging gem drops
+    const g = pivot(lift, x, top - 0.02, z);
+    swing(parts, g, 'x', 0.15, 2.2, x * 9);
+    box(g, 0.02, 0.06, 0.02, m.dark, 0, -0.03, 0);
+    glow(box(g, 0.06, 0.08, 0.06, c, 0, -0.09, 0), c);
+  }
+  parts.legs = [];
+  for (const [x, z, phase] of [[-0.13, 0.1, 0], [0.13, 0.1, Math.PI], [0, -0.14, Math.PI / 2]]) { // three candle legs
+    const g = pivot(lift, x, top, z);
+    box(g, 0.09, top - 0.04, 0.09, 0xfff4e0, 0, -top / 2, 0);
+    box(g, 0.12, 0.04, 0.12, m.body, 0, -0.03, 0); // the drip cup
+    box(g, 0.04, 0.06, 0.03, 0xfff4e0, 0.03, -0.1, 0.05); // a wax drip
+    box(g, 0.12, 0.04, 0.14, m.dark, 0, -top + 0.02, 0.01);
+    parts.legs.push({ g, phase });
+  }
+}
+
+// Wallop: a noisy walrus pup that waddles on its flippers, whiskers, two little tusks and a big round tummy.
+function walrus(root, m, parts) {
+  const lift = pivot(root, 0, 0, 0);
+  parts.bounce = lift;
+  const body = pivot(lift, 0, 0, 0);
+  swing(parts, body, 'z', 0.07, 5); // the waddle
+  box(body, 0.64, 0.5, 0.74, m.body, 0, 0.32, 0);
+  box(body, 0.56, 0.6, 0.6, m.body, 0, 0.34, 0.02);
+  box(body, 0.46, 0.4, 0.04, m.belly, 0, 0.3, 0.33);
+  const head = pivot(body, 0, 0.64, 0.24);
+  parts.head = head;
+  box(head, 0.46, 0.36, 0.38, m.body, 0, 0.04, 0);
+  box(head, 0.34, 0.18, 0.12, m.belly, 0, -0.06, 0.22); // the whisker muzzle
+  for (const [x, y] of [[-0.12, -0.03], [-0.06, -0.08], [0.06, -0.08], [0.12, -0.03], [-0.1, -0.11], [0.1, -0.11]]) box(head, 0.025, 0.025, 0.02, m.dark, x, y, 0.285);
+  box(head, 0.1, 0.06, 0.04, m.dark, 0, 0.02, 0.29); // the nose
+  for (const s of [-1, 1]) box(head, 0.05, 0.16, 0.05, m.accent, s * 0.08, -0.2, 0.24); // two little tusks
+  eyes(head, 0.12, 0.195, 0.12, 0.09);
+  const jaw = pivot(head, 0, -0.16, 0.16);
+  swing(parts, jaw, 'x', 0.1, 4); // honk honk
+  box(jaw, 0.16, 0.04, 0.08, 0x8a3a3a, 0, 0, 0.04);
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) { // front flippers
+    const g = pivot(body, s * 0.3, 0.22, 0.22);
+    const inner = pivot(g, 0, 0, 0);
+    inner.rotation.z = s * 0.5;
+    box(inner, 0.1, 0.26, 0.16, m.dark, 0, -0.12, 0);
+    box(inner, 0.12, 0.04, 0.22, m.dark, s * 0.02, -0.24, 0.05);
+    parts.legs.push({ g, phase });
+  }
+  const tail = pivot(body, 0, 0.08, -0.38); // back flippers
+  parts.tail = tail;
+  for (const s of [-1, 1]) { const f = box(tail, 0.22, 0.05, 0.22, m.dark, s * 0.12, -0.04, -0.06); f.rotation.y = s * 0.4; }
+}
+
+const SHAPES_REDO = { mudskipper, wingsnail, router, glitchcat, roadrunner, glowworm, landeel, emu, tinbeetle, gecko, turkeychick, peacock, monkey, hoopsnake, pangolin, rollring, candelabra, walrus };
+Object.assign(SHAPES, SHAPES_REDO);
+
+// The redesigns' own little animations (see `redo` above). `moving` as in animateModel.
+export function animateRedo(p, t, moving) {
+  for (const r of p.redo || []) {
+    if (r.kind === 'buzz') r.g.rotation.z = r.s * ((r.lift ?? 0.25) + Math.sin(t * 38 + r.ph) * (r.amp ?? 0.35));
+    else if (r.kind === 'roll') {
+      const last = r.last ?? t, dt = Math.min(0.1, Math.max(0, t - last));
+      r.last = t;
+      r.turn = (r.turn || 0) + dt * (moving ? r.speed : 0);
+      const rock = moving ? 0 : Math.sin(t * 1.6) * r.idle; // standing still it rocks a little back and forth
+      for (const g of r.list) g.rotation[r.axis] = r.turn + rock;
+    } else if (r.kind === 'bars') { // the signal bars light up one by one, then all (2.0: always full, a wave runs through them)
+      const n = r.list.length, u = ((t / r.period) % 1) * (n + 1.5);
+      r.list.forEach((b, i) => b.material.emissive.copy(b.material.color).multiplyScalar(r.full ? 0.5 + 0.5 * Math.max(0, Math.sin(t * 4 - i)) : (u > i ? 0.9 : 0.08)));
+      r.leds.forEach((b, i) => b.material.emissive.copy(b.material.color).multiplyScalar(hashK(Math.floor(t * 6), i) > 0.4 ? 0.9 : 0.1));
+    } else if (r.kind === 'glitch') { // every tick: a jump sideways now and then, pixels drop out; walking, its legs move only on ticks (skipped frames)
+      const tick = moving ? 0.1 : 0.16, k = Math.floor(t / tick), h = hashK(k, 7);
+      r.g.position.x = h > 0.82 ? (hashK(k, 3) > 0.5 ? 0.06 : -0.06) : 0;
+      r.g.position.z = h > 0.93 ? 0.05 : 0;
+      r.bits.forEach((b, i) => { b.visible = hashK(k, 11 + i) > 0.35; });
+      r.split.forEach(s => { s.visible = h > 0.7; });
+      const tq = moving ? Math.floor(t / 0.12) * 0.12 : t;
+      for (const l of r.legs) l.g.rotation.x = moving ? Math.sin(tq * 10 + l.ph) * 0.6 : 0;
+    } else if (r.kind === 'blink') { // two quick blinks, then a rest
+      const u = (t % r.period) / r.period, on = (u < 0.08) || (u > 0.16 && u < 0.24);
+      r.mesh.material.emissive.copy(r.mesh.material.color).multiplyScalar(on ? r.hi : r.lo + 0.15 * Math.sin(t * 2) ** 2);
+    } else if (r.kind === 'zaps') { // a little zap runs along its sides from head to tail
+      const head = ((t * 6) % (r.n + 3));
+      for (const z of r.list) z.mesh.material.emissive.copy(z.mesh.material.color).multiplyScalar(Math.abs(head - z.i) < 0.8 ? 1.2 : 0.12);
+    } else if (r.kind === 'flame') r.list.forEach((f, i) => { const k = 1 + 0.18 * Math.sin(t * 13 + i * 2.1) + 0.08 * Math.sin(t * 29 + i); f.scale.set(1 / Math.sqrt(k), k, 1 / Math.sqrt(k)); });
+    else if (r.kind === 'propel') { // closed form: the extra turn is the integral of a sine-shaped burst of speed
+      const n = Math.floor(t / r.period), u = Math.min(r.w, t - n * r.period), A = r.top * r.w / Math.PI, k = Math.sin(Math.PI * u / r.w);
+      r.blades.rotation.z += n * 2 * A + A * (1 - Math.cos(Math.PI * u / r.w));
+      r.body.position.y = u < r.w ? r.lift * k * k : 0;
+    } else if (r.kind === 'peek') { // hiding behind the tail, then lifting it to peek out (and back)
+      const u = (t % r.period) / r.period, open = u < 0.45 ? 0 : u < 0.55 ? (u - 0.45) / 0.1 : u < 0.85 ? 1 : 1 - (u - 0.85) / 0.15;
+      r.g.rotation.x = -open * 0.55;
+    } else if (r.kind === 'fan') { // the tail fans wide open, holds, then folds half shut
+      const u = (t % r.period) / r.period, open = 0.35 + 0.65 * (u < 0.25 ? u / 0.25 : u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3);
+      for (const f of r.list) f.g.rotation.z = -f.a * 1.25 * open;
+    }
+  }
+}
+
+/* ---- Type looks: one thing drawn on the creatures of a type whose bodies lacked it (section 2) ---- */
+const LOOK_IDS = {
+  alien: ['zorbit', 'blipling', 'blipstar', 'podlet', 'tallipod'], // a hover glow under its feet
+  cosmic: ['moonhop', 'lunaroo'], // a stardust trail
+  gravity: ['orbikit', 'orbitah', 'danglet', 'turvysloth', 'wallibex'], // little orbiting moons
+  mind: ['thinkit', 'visionelk', 'puzzlet'], // a soft lifting glow
+  paper: ['hopfold', 'frogami', 'pagelet', 'grandtome'], // folds into a glider / a book flaps its pages
+  pixie: ['starbelle', 'pompet', 'pomperina'], // small fairy wings
+  rainbow: ['prismkit', 'spectrion', 'chromacurl'], // runs up its own rainbow
+  sound: ['drumbo', 'bongorilla', 'gongolin', 'clawdio'], // rings of sound waves (and notes) under it
+};
+export const TYPE_LOOK_OF = Object.fromEntries(Object.entries(LOOK_IDS).flatMap(([type, ids]) => ids.map(id => [id, type])));
+const soft = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+const lookMesh = (parent, geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.userData.look = true; parent.add(o); return o; };
+const RAINBOW = [0xff4a4a, 0xff9a3a, 0xffe04a, 0x5ad86a, 0x4aa0ff, 0xa06aff];
+
+// Adds the type look to a freshly built model (buildModel calls it after the model is built, before it is scaled).
+export function addTypeLook(species, root, m, parts) {
+  const type = TYPE_LOOK_OF[species];
+  if (!type) return;
+  const bb = new THREE.Box3().setFromObject(root), c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3());
+  const r = Math.max(size.x, size.z) / 2;
+  const L = parts.looks = [];
+  if (type === 'alien') {
+    const disc = lookMesh(root, new THREE.CircleGeometry(r * 0.85, 20), soft(0x7affc8, 0.45), c.x, 0.015, c.z);
+    disc.rotation.x = -Math.PI / 2;
+    const ring = lookMesh(root, new THREE.RingGeometry(r * 0.85, r * 1.0, 24), soft(0xc0fff0, 0.6), c.x, 0.02, c.z);
+    ring.rotation.x = -Math.PI / 2;
+    L.push({ kind: 'pulse', list: [disc, ring], base: [0.45, 0.6], speed: 3 });
+  } else if (type === 'cosmic') {
+    const dust = [];
+    for (let k = 0; k < 7; k++) {
+      const o = lookMesh(root, sparkleGeometry(0.2), soft(k % 2 ? 0xfff6c0 : 0xc0d8ff, 0.95), 0, 0, 0);
+      dust.push({ o, phase: k / 7 });
+    }
+    L.push({ kind: 'dust', list: dust, c, back: bb.min.z, y0: bb.min.y + 0.1, h: size.y * 0.5 });
+  } else if (type === 'gravity') {
+    const orbit = pivot(root, c.x, bb.min.y + size.y * 0.62, c.z);
+    orbit.rotation.x = 0.35;
+    const spinG = pivot(orbit, 0, 0, 0);
+    for (const [a, col, s] of [[0, 0xd8d8e8, 0.11], [2.1, 0xa0c8ff, 0.08], [4.2, 0xffd0a0, 0.07]]) {
+      const o = box(spinG, s, s, s, col, Math.cos(a) * (r * 0.8 + 0.18), 0, Math.sin(a) * (r * 0.8 + 0.18));
+      o.userData.look = true;
+      glow(o, new THREE.Color(col).multiplyScalar(0.3).getHex());
+    }
+    L.push({ kind: 'spin', g: spinG, speed: 1.6 });
+  } else if (type === 'mind') {
+    const disc = lookMesh(root, new THREE.CircleGeometry(r * 0.9, 20), soft(0xd8a0ff, 0.35), c.x, 0.015, c.z);
+    disc.rotation.x = -Math.PI / 2;
+    const rings = [0, 0.5].map(ph => { const o = lookMesh(root, new THREE.TorusGeometry(r * 0.7, 0.025, 4, 24), soft(0xe8c0ff, 0.6), c.x, 0.05, c.z); o.rotation.x = Math.PI / 2; return { o, ph }; });
+    L.push({ kind: 'lift', rings, disc, h: size.y, y0: bb.min.y });
+  } else if (type === 'paper') {
+    const book = m.shape === 'book';
+    const wings = [];
+    for (const s of [-1, 1]) {
+      const g = pivot(root, c.x + s * (book ? size.x / 2 - 0.02 : 0.12), book ? bb.min.y + size.y * 0.62 : bb.max.y - 0.04, book ? c.z : c.z - 0.05);
+      const leaf = box(g, book ? 0.36 : 0.5, 0.02, book ? 0.4 : 0.3, book ? 0xf6f0e0 : m.belly, s * (book ? 0.18 : 0.25), 0, book ? 0 : -0.06);
+      leaf.userData.look = true;
+      if (!book) { const fold = box(g, 0.48, 0.03, 0.02, m.accent, s * 0.24, 0.012, 0.05); fold.userData.look = true; }
+      wings.push({ g, s });
+    }
+    L.push({ kind: 'flapLook', list: wings, base: book ? 0.6 : 0.25, amp: book ? 0.5 : 0.18, speed: book ? 5 : 2.5 });
+  } else if (type === 'pixie') {
+    if (!parts.wings) addWings(parts, root, m, 0.12, c.y - bb.min.y + size.y * 0.15, bb.min.z + 0.05, 0.36, 0.42, 0xfff0ff, m.accent, { upright: true });
+  } else if (type === 'rainbow') {
+    const arc = pivot(root, c.x, 0, bb.min.z - 0.05); // a little rainbow it runs up, starting at its heels
+    RAINBOW.forEach((col, i) => {
+      const o = lookMesh(arc, new THREE.TorusGeometry(0.45 - i * 0.045, 0.024, 4, 18, Math.PI), soft(col, 0.85), 0, 0, -0.45);
+      o.rotation.y = Math.PI / 2; // a half arc standing behind it: its front foot at its heels
+    });
+    L.push({ kind: 'shine', g: arc });
+  } else if (type === 'sound') {
+    const rings = [0, 1 / 3, 2 / 3].map(ph => { const o = lookMesh(root, new THREE.TorusGeometry(r * 0.8, 0.03, 4, 24), soft(m.accent, 0.7), c.x, 0.04, c.z); o.rotation.x = Math.PI / 2; return { o, ph }; });
+    L.push({ kind: 'waves', rings, speed: 0.7 });
+  }
+}
+
+export function animateLooks(p, t) {
+  for (const l of p.looks || []) {
+    if (l.kind === 'pulse') l.list.forEach((o, i) => { o.material.opacity = l.base[i] * (0.7 + 0.3 * Math.sin(t * l.speed + i)); });
+    else if (l.kind === 'dust') for (const d of l.list) { // specks drift back from it, rise a little and fade
+      const u = (t * 0.6 + d.phase) % 1, a = d.phase * 9.4;
+      d.o.position.set(l.c.x + Math.sin(a) * 0.18, l.y0 + Math.abs(Math.sin(a * 1.7)) * l.h + u * 0.25, l.back - u * 0.8);
+      d.o.scale.setScalar(1 - u * 0.7);
+      d.o.material.opacity = 0.9 * (1 - u);
+      d.o.rotation.z = t * 2 + a;
+    } else if (l.kind === 'spin') l.g.rotation.y = t * l.speed;
+    else if (l.kind === 'lift') { // rings of soft light rise up round it and fade
+      l.disc.material.opacity = 0.25 + 0.12 * Math.sin(t * 2.4);
+      for (const q of l.rings) { const u = (t * 0.45 + q.ph) % 1; q.o.position.y = l.y0 + 0.05 + u * l.h * 0.7; q.o.material.opacity = 0.55 * Math.sin(u * Math.PI); }
+    } else if (l.kind === 'flapLook') for (const w of l.list) w.g.rotation.z = w.s * (l.base + Math.sin(t * l.speed) * l.amp);
+    else if (l.kind === 'shine') l.g.traverse(o => { if (o.isMesh) o.material.opacity = 0.65 + 0.25 * Math.sin(t * 3 + o.position.x); });
+    else if (l.kind === 'waves') for (const q of l.rings) { const u = (t * l.speed + q.ph) % 1; q.o.scale.setScalar(0.6 + u * 1.1); q.o.material.opacity = 0.7 * (1 - u); }
+  }
+}
+/* ==== end of Chapter 3 redesigns ==== */

@@ -124,7 +124,7 @@ of his pet mouse. The kitchen is as big as a town:
 
 The Boss waits on a giant cookie on the table.
 
-**The Pirate Seas.** Open ocean and scattered islands, ruled by **Captain Squawk**, a parrot pirate who took over
+**The Pirate Seas.** Open ocean and scattered islands, ruled by **Captain Bananabeard**, a monkey pirate who took over
 this world once the Wizard was gone. Fly from island to island by cannon, swing on ropes, and board the Captain's
 ship. The star is in his treasure chest.
 

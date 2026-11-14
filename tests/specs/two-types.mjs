@@ -125,7 +125,8 @@ export default async function ({ browser, base, t }) {
       if (singles.length !== 1) bad(`${type}: ${singles.length} single-stage creatures (want 1)`);
       const fam = id => (S.SPECIES[id].evolve ? id : [...ids].find(o => S.SPECIES[o].evolve?.into === id) || id);
       const shapes = new Set(ids.map(id => S.SPECIES[id].model.shape));
-      if (shapes.size !== 4) bad(`${type}: ${shapes.size} different shapes (want 4)`);
+      const want = type === 'treasure' ? 5 : 4; // chapter 3: Ringlet rolls on its own body now (Crownguard keeps the gem ring)
+      if (shapes.size !== want) bad(`${type}: ${shapes.size} different shapes (want ${want})`);
       for (const id of ids) {
         const s = S.SPECIES[id];
         const shape = s.model.shape;

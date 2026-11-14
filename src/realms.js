@@ -132,11 +132,11 @@ REALMS.house = pictureRealm({ id: 'house', name: 'Giant House', seedSalt: 0x4a05
 const ATLANTIS_SPAWNS = [['jarling', 1.4], ['statuecub', 1.2], ['tilesnek', 1.2], ['runestone', 0.2, null, 'atlantis'], ['grandurnling', 0.12, null, 'atlantis'], ['guardlion', 0.12, null, 'atlantis'], ['mosaicoil', 0.12, null, 'atlantis']]; // the 4th element: wildafter.js
 REALMS.pirate = pictureRealm({ id: 'pirate', name: 'Deep Blue', seedSalt: 0x91a7, size: worldOpen('atlantis') ? [320, 224] : [224, 224], terrain: 'pirateLand', arrive: [112, 186], biome: 'pirate', // T40b; T41: 320 wide (the strip east of the old 224 holds the Sunken City, nothing old moved)
   version: worldOpen('atlantis') ? 2 : 1, convert: worldOpen('atlantis') ? { 1: [224, 224] } : undefined, // T41: edits of version 1 (the 224 x 224 sea) are converted, not dropped (cleanRealmEdits)
-  spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12, null, 'pirate'], ['featherbeard', 0.12, null, 'pirate']], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6, null, 'pirate'], ['parroteer', 0.4], ['shipshape', 0.1, null, 'pirate']], cave: [] },
+  spawns: { atlantis: ATLANTIS_SPAWNS, pirate: [['pinchook', 1.4], ['parroteer', 1.2], ['anchorclaw', 0.12, null, 'pirate'], ['featherbeard', 0.12, null, 'pirate']], pirateSea: [['bottlet', 1.2], ['lookapus', 0.6, null, 'pirate'], ['shipshape', 0.1, null, 'pirate']], cave: [] },
   zoneNames: { pirate: 'Deep Blue · Pirate Seas', pirateSea: 'Deep Blue · at sea', atlantis: 'Deep Blue · Atlantis' }, walk: [B.SAND, B.SHELL_SAND, B.GRASS, B.AT_MOSAIC, B.AT_BRICK],
   look: { sky: 0x7cc8ff, fog: [35, 110], time: null, weather: false, light: 0.95, still: true, stars: false, underwater: true }, // always a sunny noon; T41: under water in the crater the fog turns blue-green (main.js updateSky)
   clock: '🌊 Deep Blue', travelText: 'Sailing in...', travelIcon: '🌊', enterText: 'Ahoy! Welcome to Deep Blue!', // owner 2026-10-28: the world of the Pirate Seas and Atlantis
-  arriveHint: 'Stand on the cannon and press Fire! Captain Squawk has the star on his ship.',
+  arriveHint: 'Stand on the cannon and press Fire! Captain Bananabeard has the star on his ship.',
   noHomeText: 'No homes at sea! Build your home in your own world.', followText: 'Sail too' });
 REALMS.playland = pictureRealm({ id: 'playland', name: 'Playland', seedSalt: 0x9a1d, size: PLAYLAND.size, terrain: 'playLand',
   arrive: [112, 98], walk: [B.GRASS, B.GRAVEL, B.STONE_BRICKS], clock: '🎠 Playland', spawns: playlandSpawns(), zoneNames: PLAYLAND_ZONE_NAMES });

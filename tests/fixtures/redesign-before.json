@@ -1,0 +1,1350 @@
+{
+ "finnibone": {
+  "name": "Finnibone",
+  "type": "bone",
+  "base": {
+   "hp": 50,
+   "atk": 70,
+   "def": 55,
+   "spd": 75
+  },
+  "baseXp": 95,
+  "catchRate": 0.35,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "bonebonk"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "bonetoss"
+   ],
+   [
+    13,
+    "fossilcrush"
+   ],
+   [
+    19,
+    "soakshot"
+   ],
+   [
+    23,
+    "hunker"
+   ],
+   [
+    28,
+    "dinostomp"
+   ],
+   [
+    32,
+    "falltopieces"
+   ],
+   [
+    34,
+    "dinocomeback"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "twirlshell": {
+  "name": "Twirlshell",
+  "type": "bug",
+  "base": {
+   "hp": 55,
+   "atk": 55,
+   "def": 95,
+   "spd": 25
+  },
+  "baseXp": 85,
+  "catchRate": 0.4,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "bugbite"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "buzzdive"
+   ],
+   [
+    13,
+    "stingbarrage"
+   ],
+   [
+    15,
+    "hunker"
+   ],
+   [
+    19,
+    "goopshot"
+   ],
+   [
+    22,
+    "hivehum"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "cobwebtangle"
+   ],
+   [
+    28,
+    "silkwrap"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "wifly": {
+  "name": "Wifly",
+  "type": "cyber",
+  "base": {
+   "hp": 45,
+   "atk": 50,
+   "def": 40,
+   "spd": 80
+  },
+  "baseXp": 64,
+  "catchRate": 0.45,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "pixelpop"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "rapidclick"
+   ],
+   [
+    13,
+    "glitchbeam"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    22,
+    "levelboost"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "lagspike"
+   ],
+   [
+    26,
+    "wifizone"
+   ],
+   [
+    28,
+    "firewall"
+   ]
+  ],
+  "evolve": {
+   "level": 24,
+   "into": "wifly2"
+  },
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "wifly2": {
+  "name": "Wifly 2.0",
+  "type": "cyber",
+  "base": {
+   "hp": 75,
+   "atk": 85,
+   "def": 65,
+   "spd": 115
+  },
+  "baseXp": 170,
+  "catchRate": 0.1,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "pixelpop"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "rapidclick"
+   ],
+   [
+    13,
+    "glitchbeam"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    22,
+    "levelboost"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "lagspike"
+   ],
+   [
+    26,
+    "wifizone"
+   ],
+   [
+    28,
+    "firewall"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "wifly"
+  ],
+  "gait": null,
+  "ride": null
+ },
+ "error404": {
+  "name": "Error 404",
+  "type": "cyber",
+  "base": {
+   "hp": 60,
+   "atk": 75,
+   "def": 55,
+   "spd": 70
+  },
+  "baseXp": 100,
+  "catchRate": 0.3,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "pixelpop"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "rapidclick"
+   ],
+   [
+    13,
+    "glitchbeam"
+   ],
+   [
+    19,
+    "boo"
+   ],
+   [
+    22,
+    "levelboost"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "lagspike"
+   ],
+   [
+    26,
+    "wifizone"
+   ],
+   [
+    28,
+    "firewall"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "voltwing": {
+  "name": "Voltwing",
+  "type": "electric",
+  "base": {
+   "hp": 45,
+   "atk": 65,
+   "def": 40,
+   "spd": 95
+  },
+  "baseXp": 95,
+  "catchRate": 0.35,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "spark"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "staticsnap"
+   ],
+   [
+    13,
+    "thunderjolt"
+   ],
+   [
+    19,
+    "meteorshower"
+   ],
+   [
+    23,
+    "grumble"
+   ],
+   [
+    24,
+    "staticfuzz"
+   ],
+   [
+    28,
+    "stormcall"
+   ],
+   [
+    29,
+    "livewire"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "wattwink": {
+  "name": "Wattwink",
+  "type": "electric",
+  "base": {
+   "hp": 45,
+   "atk": 60,
+   "def": 45,
+   "spd": 95
+  },
+  "baseXp": 95,
+  "catchRate": 0.35,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "spark"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "staticsnap"
+   ],
+   [
+    13,
+    "thunderjolt"
+   ],
+   [
+    19,
+    "buzzdive"
+   ],
+   [
+    23,
+    "grumble"
+   ],
+   [
+    24,
+    "staticfuzz"
+   ],
+   [
+    28,
+    "stormcall"
+   ],
+   [
+    29,
+    "livewire"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "joltail": {
+  "name": "Joltail",
+  "type": "electric",
+  "base": {
+   "hp": 55,
+   "atk": 70,
+   "def": 50,
+   "spd": 75
+  },
+  "baseXp": 100,
+  "catchRate": 0.3,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "spark"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "staticsnap"
+   ],
+   [
+    13,
+    "thunderjolt"
+   ],
+   [
+    19,
+    "soakshot"
+   ],
+   [
+    23,
+    "grumble"
+   ],
+   [
+    24,
+    "staticfuzz"
+   ],
+   [
+    28,
+    "stormcall"
+   ],
+   [
+    29,
+    "livewire"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "flarehawk": {
+  "name": "Flarehawk",
+  "type": "fire",
+  "base": {
+   "hp": 50,
+   "atk": 70,
+   "def": 45,
+   "spd": 95
+  },
+  "baseXp": 125,
+  "catchRate": 0.25,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "ember"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "flarekick"
+   ],
+   [
+    13,
+    "flameburst"
+   ],
+   [
+    19,
+    "clawrake"
+   ],
+   [
+    23,
+    "pumpup"
+   ],
+   [
+    28,
+    "infernodash"
+   ],
+   [
+    29,
+    "wildblaze"
+   ],
+   [
+    34,
+    "lastember"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "rivetron": {
+  "name": "Rivetron",
+  "type": "metal",
+  "base": {
+   "hp": 70,
+   "atk": 90,
+   "def": 110,
+   "spd": 70
+  },
+  "baseXp": 165,
+  "catchRate": 0.12,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "clank"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "rivetshot"
+   ],
+   [
+    13,
+    "ironbash"
+   ],
+   [
+    19,
+    "seedvolley"
+   ],
+   [
+    21,
+    "metalumbrella"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    28,
+    "ironwall"
+   ],
+   [
+    29,
+    "wreckingball"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "nutlet"
+  ],
+  "gait": null,
+  "ride": null
+ },
+ "peekaw": {
+  "name": "Peekaw",
+  "type": "ninja",
+  "base": {
+   "hp": 40,
+   "atk": 60,
+   "def": 35,
+   "spd": 85
+  },
+  "baseXp": 64,
+  "catchRate": 0.45,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "leafstar"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "sneakstep"
+   ],
+   [
+    13,
+    "shadowstrike"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    21,
+    "smokescreen"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "duskfalls"
+   ],
+   [
+    28,
+    "twigtrip"
+   ],
+   [
+    32,
+    "vanishswap"
+   ]
+  ],
+  "evolve": {
+   "level": 22,
+   "into": "ravenshade"
+  },
+  "from": [],
+  "gait": "blink",
+  "ride": null
+ },
+ "ravenshade": {
+  "name": "Ravenshade",
+  "type": "ninja",
+  "base": {
+   "hp": 65,
+   "atk": 105,
+   "def": 55,
+   "spd": 115
+  },
+  "baseXp": 165,
+  "catchRate": 0.12,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "leafstar"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "sneakstep"
+   ],
+   [
+    13,
+    "shadowstrike"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    21,
+    "smokescreen"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "duskfalls"
+   ],
+   [
+    28,
+    "twigtrip"
+   ],
+   [
+    32,
+    "vanishswap"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "peekaw"
+  ],
+  "gait": "blink",
+  "ride": null
+ },
+ "chirpit": {
+  "name": "Chirpit",
+  "type": "normal",
+  "base": {
+   "hp": 40,
+   "atk": 45,
+   "def": 40,
+   "spd": 70
+  },
+  "baseXp": 50,
+  "catchRate": 0.55,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "quickjab"
+   ],
+   [
+    8,
+    "echoping"
+   ],
+   [
+    12,
+    "bodyslam"
+   ],
+   [
+    19,
+    "shriek"
+   ],
+   [
+    21,
+    "standtogether"
+   ],
+   [
+    22,
+    "goteamgo"
+   ],
+   [
+    23,
+    "restup"
+   ],
+   [
+    28,
+    "hyperstrike"
+   ],
+   [
+    34,
+    "nevergiveup"
+   ]
+  ],
+  "evolve": {
+   "level": 16,
+   "into": "loudbeak"
+  },
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "loudbeak": {
+  "name": "Loudbeak",
+  "type": "normal",
+  "base": {
+   "hp": 65,
+   "atk": 80,
+   "def": 60,
+   "spd": 95
+  },
+  "baseXp": 140,
+  "catchRate": 0.2,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "quickjab"
+   ],
+   [
+    8,
+    "echoping"
+   ],
+   [
+    12,
+    "bodyslam"
+   ],
+   [
+    19,
+    "shriek"
+   ],
+   [
+    21,
+    "standtogether"
+   ],
+   [
+    22,
+    "goteamgo"
+   ],
+   [
+    23,
+    "restup"
+   ],
+   [
+    28,
+    "hyperstrike"
+   ],
+   [
+    34,
+    "nevergiveup"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "chirpit"
+  ],
+  "gait": null,
+  "ride": null
+ },
+ "parroteer": {
+  "name": "Parroteer",
+  "type": "pirate",
+  "base": {
+   "hp": 45,
+   "atk": 60,
+   "def": 40,
+   "spd": 75
+  },
+  "baseXp": 64,
+  "catchRate": 0.45,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "hookswipe"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "swashbuckle"
+   ],
+   [
+    13,
+    "cannonball"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    22,
+    "jollyroger"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "walktheplank"
+   ],
+   [
+    28,
+    "spyglass"
+   ],
+   [
+    29,
+    "powderkeg"
+   ]
+  ],
+  "evolve": {
+   "level": 26,
+   "into": "featherbeard"
+  },
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "featherbeard": {
+  "name": "Featherbeard",
+  "type": "pirate",
+  "base": {
+   "hp": 75,
+   "atk": 100,
+   "def": 65,
+   "spd": 105
+  },
+  "baseXp": 168,
+  "catchRate": 0.12,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "hookswipe"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "swashbuckle"
+   ],
+   [
+    13,
+    "cannonball"
+   ],
+   [
+    19,
+    "swoop"
+   ],
+   [
+    22,
+    "jollyroger"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "walktheplank"
+   ],
+   [
+    28,
+    "spyglass"
+   ],
+   [
+    29,
+    "powderkeg"
+   ],
+   [
+    30,
+    "broadside"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "parroteer"
+  ],
+  "gait": null,
+  "ride": null
+ },
+ "loopwyrm": {
+  "name": "Loopwyrm",
+  "type": "portal",
+  "base": {
+   "hp": 80,
+   "atk": 100,
+   "def": 75,
+   "spd": 95
+  },
+  "baseXp": 170,
+  "catchRate": 0.12,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "swirlbop"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "shortcut"
+   ],
+   [
+    13,
+    "popthrough"
+   ],
+   [
+    19,
+    "meteorshower"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    24,
+    "lostinswirl"
+   ],
+   [
+    26,
+    "portalparty"
+   ],
+   [
+    28,
+    "dizzyswirl"
+   ],
+   [
+    32,
+    "backdoor"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "hooplet"
+  ],
+  "gait": "pop",
+  "ride": null
+ },
+ "shimmerfin": {
+  "name": "Shimmerfin",
+  "type": "rainbow",
+  "base": {
+   "hp": 50,
+   "atk": 60,
+   "def": 55,
+   "spd": 80
+  },
+  "baseXp": 90,
+  "catchRate": 0.25,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "prismray"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "colorsplash"
+   ],
+   [
+    13,
+    "rainbowburst"
+   ],
+   [
+    19,
+    "soakshot"
+   ],
+   [
+    21,
+    "prismdome"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "colorcarnival"
+   ],
+   [
+    28,
+    "shimmer"
+   ]
+  ],
+  "evolve": {
+   "level": 26,
+   "into": "spectrafin"
+  },
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "spectrafin": {
+  "name": "Spectrafin",
+  "type": "rainbow",
+  "base": {
+   "hp": 90,
+   "atk": 95,
+   "def": 85,
+   "spd": 95
+  },
+  "baseXp": 190,
+  "catchRate": 0.06,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "prismray"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "colorsplash"
+   ],
+   [
+    13,
+    "rainbowburst"
+   ],
+   [
+    19,
+    "soakshot"
+   ],
+   [
+    21,
+    "prismdome"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "colorcarnival"
+   ],
+   [
+    28,
+    "shimmer"
+   ]
+  ],
+  "evolve": null,
+  "from": [
+   "shimmerfin"
+  ],
+  "gait": null,
+  "ride": "water"
+ },
+ "ringlet": {
+  "name": "Ringlet",
+  "type": "treasure",
+  "base": {
+   "hp": 50,
+   "atk": 50,
+   "def": 55,
+   "spd": 60
+  },
+  "baseXp": 64,
+  "catchRate": 0.45,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "coinflip"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "gemtoss"
+   ],
+   [
+    13,
+    "goldrush"
+   ],
+   [
+    19,
+    "rivetshot"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "treasurehunt"
+   ],
+   [
+    28,
+    "bling"
+   ],
+   [
+    29,
+    "jackpot"
+   ]
+  ],
+  "evolve": {
+   "level": 24,
+   "into": "crownguard"
+  },
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "lustrelle": {
+  "name": "Lustrelle",
+  "type": "treasure",
+  "base": {
+   "hp": 60,
+   "atk": 70,
+   "def": 55,
+   "spd": 75
+  },
+  "baseXp": 100,
+  "catchRate": 0.3,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "coinflip"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "gemtoss"
+   ],
+   [
+    13,
+    "goldrush"
+   ],
+   [
+    19,
+    "flarekick"
+   ],
+   [
+    23,
+    "bodyslam"
+   ],
+   [
+    26,
+    "treasurehunt"
+   ],
+   [
+    28,
+    "bling"
+   ],
+   [
+    29,
+    "jackpot"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ },
+ "gullop": {
+  "name": "Gullop",
+  "type": "water",
+  "base": {
+   "hp": 45,
+   "atk": 55,
+   "def": 40,
+   "spd": 80
+  },
+  "baseXp": 70,
+  "catchRate": 0.4,
+  "learn": [
+   [
+    1,
+    "tackle"
+   ],
+   [
+    1,
+    "bubble"
+   ],
+   [
+    7,
+    "quickjab"
+   ],
+   [
+    10,
+    "soakshot"
+   ],
+   [
+    13,
+    "tidecrash"
+   ],
+   [
+    19,
+    "shriek"
+   ],
+   [
+    23,
+    "restup"
+   ],
+   [
+    26,
+    "hightide"
+   ],
+   [
+    28,
+    "bigwave"
+   ],
+   [
+    32,
+    "wavegoodbye"
+   ]
+  ],
+  "evolve": null,
+  "from": [],
+  "gait": null,
+  "ride": null
+ }
+}

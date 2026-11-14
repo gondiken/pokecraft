@@ -22,7 +22,7 @@ export const BOSS = { cubes: 10, xpBoost: 1.5, cap: REMATCH_CAP, crewCubes: 2, a
 
 // A Boss def (one per Picture World, keyed by its PICTURE_WORLDS id):
 // { id, name, type, title?, colors: { shirt, pants, hair, skin }, hat?, cape?, look?,   // a person (buildPerson), or
-//   model?: { species, scale },                                                       // a big creature (buildModel), e.g. a parrot captain
+//   model?: { species, scale },                                                       // a big creature (buildModel), e.g. a monkey captain
 //   team: [[species, level, moves?], ...],          // the signature creature last; Step 0 top levels 62 / 63 / 64 / 65
 //   intro: [lines], lose: 'said when you win', win: 'said when you lose', rematchIntro?: [lines],
 //   gate?: game => null | 'what the Boss says instead of battling' (alias: ready),
@@ -74,26 +74,26 @@ addBoss({ id: 'house', name: 'Nibbles', title: "Nibbles · the Wizard's Mouse", 
   lose: 'Squeak-tastic! The star is yours!',
   win: 'Good try! Have a crumb, rest a bit, and come back!',
   rematchIntro: ['Back again? My tiny team grew a little!'] });
-// T40b: Captain Squawk, a giant Featherbeard on his ship, and his crew (Dot, Lou and First Mate Fin).
+// T40b: Captain Bananabeard, a giant Bananabeard on his ship, and his crew (Dot, Lou and First Mate Fin).
 // Owner 2026-10-26: sink his 12 rowboats (four waves of three) with the deck cannons first (pirateparts.js; the sunk boats are saved `beaten` keys).
 // Owner 2026-10-27: and beat his three crew (once, kept forever).
-addBoss({ id: 'pirate', name: 'Captain Squawk', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
+addBoss({ id: 'pirate', name: 'Captain Bananabeard', type: 'pirate', model: { species: 'featherbeard', scale: 2.2 },
   gate: game => {
     const { sunk, need, done } = boatState(game), left = crewLeft(game, 'pirate');
     if (done && !left.length) return null;
-    if (done) return `Squawk! You sank my rowboats, but ${crewNames('pirate', left)} still ${left.length === 1 ? 'wants' : 'want'} a battle! Beat ${left.length === 1 ? 'that one' : 'them'} first!`;
-    return left.length ? `Squawk! Sink my ${need} rowboats and beat my crew first! (🚣 ${sunk} / ${need})` : `Squawk! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`;
+    if (done) return `Ook ook! You sank my rowboats, but ${crewNames('pirate', left)} still ${left.length === 1 ? 'wants' : 'want'} a battle! Beat ${left.length === 1 ? 'that one' : 'them'} first!`;
+    return left.length ? `Ook ook! Sink my ${need} rowboats and beat my crew first! (🚣 ${sunk} / ${need})` : `Ook ook! Sink my ${need} rowboats first! (🚣 ${sunk} / ${need})`;
   },
   team: [['anchorclaw', 61, ['anchordrop', 'rumblerock', 'cannonball', 'hookswipe']], ['shipshape', 61],
     ['lookapus', 62, ['spyglass', 'soakshot', 'cannonball', 'walktheplank']],
     ['featherbeard', 63, ['broadside', 'swoop', 'jollyroger', 'cannonball']]], // top level 63, the easy side, four creatures
-  intro: ['Squawk! You sank ALL my rowboats!', 'The star is in my treasure chest, and it stays there! Battle stations!'],
-  lose: 'Squawk! The star is yours, matey!',
-  win: 'Squawk! Good battle, matey. Have a rest and try again!',
-  rematchIntro: ['You sank my new rowboats too? My crew trained all day. Squawk!'],
+  intro: ['Ook ook! You sank ALL my rowboats!', 'The star is in my treasure chest, and it stays there! Battle stations!'],
+  lose: 'Ook ook! The star is yours, matey!',
+  win: 'Ook ook! Good battle, matey. Have a rest and try again!',
+  rematchIntro: ['You sank my new rowboats too? My crew trained all day. Ook ook!'],
   crew: [
     { name: 'Deckhand Dot', look: 'pirate', colors: { shirt: 0xf6efe0, pants: 0x3a5aa8, hair: 0x7a3a1a, skin: 0xf2d0b0 },
-      team: [['pinchook', 59], ['parroteer', 60]], intro: ['Ahoy! Nobody lands on Parrot Perch without a battle!'], line: 'The ropes take you to Lookout Isle. Swing!' },
+      team: [['pinchook', 59], ['parroteer', 60]], intro: ['Ahoy! Nobody lands on Palm Perch without a battle!'], line: 'The ropes take you to Lookout Isle. Swing!' },
     { name: 'Lookout Lou', look: 'pirate', colors: { shirt: 0xe07a6a, pants: 0x2a2a3a, hair: 0x1a1a1a, skin: 0xc68a5a },
       team: [['bottlet', 60], ['lookapus', 60]], intro: ['I saw you coming with my spyglass! Battle!'], line: 'That cannon shoots you right onto the ship!' },
     { name: 'First Mate Fin', look: 'pirate', colors: { shirt: 0x2a4aa8, pants: 0x3a2a1a, hair: 0xe0c060, skin: 0xf2d0b0 },

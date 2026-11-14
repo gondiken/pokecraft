@@ -4,7 +4,7 @@
 // is `PATHS.swing` (registered here, pure code in pirateland.js). The clock only runs while the game is playing (not paused, not in a
 // battle), so a pause or a battle freezes a flight.
 // Owner 2026-10-26, "some dexterity": the island cannons swing (fire when the dots of the landing preview turn gold), the rope keeps
-// swinging until you press Let go!, and twelve rowboats (four waves of three, each faster) must be sunk with the ship's deck cannons before Captain Squawk battles
+// swinging until you press Let go!, and twelve rowboats (four waves of three, each faster) must be sunk with the ship's deck cannons before Captain Bananabeard battles
 // (the pure rules are in pirateland.js: AIM, cannonShot, LETGO, letGo, ropeDrop, ROWBOATS, deckShot, boatHit). A miss is a splash.
 // Owner, later the same day ("way too easy"): the rope and the swivel cannons are held and let go (gymLive holds / release, like
 // Kick!): hold Swing! to hang on, let go to drop; hold Fire! and the shot goes further (then nearer again), let go to fire. The boats
@@ -230,7 +230,7 @@ export class PirateLive {
   hit(block) {
     const w = this.world, chest = w.starChest;
     if (chest && block.x === chest[0] && block.y === chest[1] && block.z === chest[2]) {
-      this.game.ui.toast(this.game.stars.includes('pirate') ? 'Only gold coins left. Squawk!' : 'Squawk! Beat the Captain first!');
+      this.game.ui.toast(this.game.stars.includes('pirate') ? 'Only gold coins left. Ook ook!' : 'Ook ook! Beat the Captain first!');
       return true;
     }
     if (block.id === B.CANNON_PAD || block.id === B.ROPE_POST || block.id === B.TARGET) return this.use();
@@ -238,7 +238,7 @@ export class PirateLive {
   }
   prompt(block) {
     const chest = this.world.starChest;
-    if (chest && block.x === chest[0] && block.y === chest[1] && block.z === chest[2]) return `Captain Squawk's treasure chest · ${this.chest === 'open' ? 'empty' : 'locked'}`;
+    if (chest && block.x === chest[0] && block.y === chest[1] && block.z === chest[2]) return `Captain Bananabeard's treasure chest · ${this.chest === 'open' ? 'empty' : 'locked'}`;
     return null;
   }
 

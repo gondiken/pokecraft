@@ -89,20 +89,20 @@ export default async function ({ browser, base, t }) {
         sigFx: !!FX.SIG.broadside && !!FX.SIG.anchordrop, fx: [FX.TRAVEL.pirate !== FX.TRAVEL.normal, FX.IMPACT.pirate !== FX.IMPACT.normal, FX.FX_COLORS.pirate !== FX.FX_COLORS.normal],
         sounds: [sound.has('fx:pirate'), sound.has('cannonboom'), sound.has('seasplash')], clash: Object.keys(S.MOVES).filter(m => sound.has(m) && S.MOVES[m].type === 'pirate'),
         ride: TR.TRAITS.rideable.species.shipshape, spawns, inRealm, rows, ready: PW.pictureWorld('pirate').ready, own7: S.SPECIES.lookapus.evolve === undefined && !ids.some(i => S.SPECIES[i].evolve?.into === 'lookapus'),
-        own, onPirate, types: keys.length, swims: ['bottlet', 'shipshape', 'lookapus'].every(i => S.SPECIES[i].swims), flies: ['parroteer', 'featherbeard'].every(i => S.SPECIES[i].flies),
+        own, onPirate, types: keys.length, swims: ['bottlet', 'shipshape', 'lookapus'].every(i => S.SPECIES[i].swims), flies: ['parroteer', 'featherbeard'].every(i => !S.SPECIES[i].flies),
         wool: (await import('/src/blocks.js')).WOOL.pirate,
       };
     });
     t.ok(A.ids.length === 7 && A.ids.join() === 'parroteer,featherbeard,pinchook,anchorclaw,bottlet,shipshape,lookapus', `seven Pirate creatures (${A.ids})`);
     t.ok(A.evo === 'parroteer:26>featherbeard,featherbeard:-,pinchook:26>anchorclaw,anchorclaw:-,bottlet:28>shipshape,shipshape:-,lookapus:-' && A.own7, `three families of two and a single-stage 7th (${A.evo})`);
-    t.ok(A.shapes.join() === 'barrelpus,hookcrab,parrot,shipbottle' && A.ownShapes && A.registered, `four own shapes used by no other type (${A.shapes})`);
+    t.ok(A.shapes.join() === 'barrelpus,hookcrab,monkey,shipbottle' && A.ownShapes && A.registered, `four own shapes used by no other type (${A.shapes})`);
     t.ok(A.gear.every(([, k]) => k.includes('bandana') && k.includes('gold')), `every model wears a bandana and something gold (${A.gear.map(g => g.join('=')).join(' ')})`);
     t.ok(A.glass >= 3, `the bottle's glass is see-through (${A.glass} parts)`);
     t.ok(!A.moveBad.length && A.t1.every(Boolean) && A.sw[0] === 1 && A.sw[1]?.kind === 'lower' && A.sw[1]?.stat === 'def' && A.sw[2]?.kind === 'multi' && A.sw[2].min === 2 && A.sw[2].max === 4 && A.sw[3] && A.sw[4]?.kind === 'flinch' && A.sw[4].chance === 0.2 && A.sw[5],
       `the six moves are as planned (${A.moveBad}; ${JSON.stringify(A.sw)})`);
     t.ok(A.big.every(Boolean) && A.sig.every(Boolean) && A.sigFx, `Raise the Flag (rally), Powder Keg (risky), Walk the Plank (curse); Broadside at 30 and Anchor Drop at 32 with effects (${A.bigLevels})`);
     t.ok(A.fx.every(Boolean) && A.sounds.every(Boolean) && !A.clash.length, `own attack effects, colours and sounds (fx:pirate, cannonboom, seasplash), no move named like a sound (${A.fx}; ${A.sounds}; ${A.clash})`);
-    t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the parrots fly, wool 141`);
+    t.ok(A.ride === 'water' && A.swims && A.flies && A.wool === 141, `Shipshape can be ridden on water, the swimmers swim, the monkeys walk (chapter 3 redesign), wool 141`);
     t.ok(A.spawns === 0 && A.inRealm && A.rows.includes('Deep Blue · Pirate Seas') && A.rows.includes('Deep Blue · at sea'), `in no SPAWNS table, every one in the realm's tables; Book rows ${A.rows}`);
     t.ok(A.ready === true && A.types >= 37, 'the Pirate Seas frame ships ready; at least 37 types');
     t.ok(A.own === 'ball:2,bubble:2,ice:0.5,metal:0.5,pirate:0.5,treasure:2,water:2' && /^electric:2,(knight:2,)?racer:2(,|$)/.test(A.onPirate), `chart: Pirate hits ball, treasure and water (wave 16: bubble); electric and racer hit Pirate (wave 15's Surprise and T49's Knight too) (${A.own} / ${A.onPirate})`);
@@ -271,7 +271,7 @@ export default async function ({ browser, base, t }) {
     t.ok(/Pirate Seas.*to go in/.test(frame.prompt) && frame.action === 'Step in!', `the Pirate Seas frame is ready: "${frame.prompt}" / "${frame.action}"`);
     const arr = await page.evaluate(() => { const g = window.pokecraft, p = g.player; g.updateGuide?.(); return { x: p.pos.x, y: p.pos.y, z: p.pos.z, yaw: p.yaw, via: g.realms.via, guide: g.ui.guideText, glow: g.portal.glow()?.count ?? null, place: g.place }; });
     t.ok(Math.abs(arr.x - 112.5) < 0.1 && Math.abs(arr.z - 186.5) < 0.1 && Math.abs(arr.yaw) < 0.01 && arr.via === 'pirate', `you arrive in front of the way back on Sandy Start, looking north (${arr.x}, ${arr.z}, yaw ${arr.yaw})`);
-    t.ok(/Cannon to Parrot Perch/.test(arr.guide || ''), `the guide says where to go: "${arr.guide}"`);
+    t.ok(/Cannon to Palm Perch/.test(arr.guide || ''), `the guide says where to go: "${arr.guide}"`);
     t.ok(await said(page, /Stand on the cannon and press Fire/), 'the arrival hint tells you to stand on the cannon');
     await shot(page, 'arrival');
     if (want('shots') || !ONLY) {
@@ -422,7 +422,7 @@ export default async function ({ browser, base, t }) {
   }
   if (want('play')) {
     await toasts(page);
-    // C1: the pad, the word, fire, land on Parrot Perch
+    // C1: the pad, the word, fire, land on Palm Perch
     const f1 = await page.evaluate(async () => {
       const g = window.pokecraft, step = window.__step, play = window.__play, p = g.player, c = g.world.pirate.cannons.find(c => c.id === 'c1'), lv = g.gymLive.of('part:seas');
       p.pos.set(c.S[0], c.S[1], c.S[2]); p.vel.set(0, 0, 0); p.carry = null; p.keys = {}; p.pitch = -0.3; step(g, 1 / 20, 4);
@@ -443,7 +443,7 @@ export default async function ({ browser, base, t }) {
       g.bosses.talk(n);
       return { name: n.title, has: !!n };
     });
-    t.ok(dot.has && /Deckhand Dot/.test(dot.name), `Deckhand Dot stands on Parrot Perch (${dot.name})`);
+    t.ok(dot.has && /Deckhand Dot/.test(dot.name), `Deckhand Dot stands on Palm Perch (${dot.name})`);
     await waitFor(page, () => window.pokecraft.inBattle, null, 60000);
     await playBattle(page);
     await waitFor(page, () => window.pokecraft.beaten.includes('pw:pirate:crew1'), null, 60000);
@@ -570,7 +570,7 @@ export default async function ({ browser, base, t }) {
     });
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.trainer, null, 60000);
     const bt = await page.evaluate(() => { const b = window.pokecraft.battle; return { boss: b.boss, name: b.trainer.name, foes: b.foes.map(f => f.level).join(), mon: b.foes.map(f => f.species).join() }; });
-    t.ok(lost && bt.boss && /Captain Squawk/.test(bt.name) && bt.foes === '61,61,62,63', `Captain Squawk battles with four creatures up to level 63 (${bt.foes}: ${bt.mon})`);
+    t.ok(lost && bt.boss && /Captain Bananabeard/.test(bt.name) && bt.foes === '61,61,62,63', `Captain Bananabeard battles with four creatures up to level 63 (${bt.foes}: ${bt.mon})`);
     await shot(page, 'battle');
     await playBattle(page);
     await waitFor(page, () => !window.pokecraft.inBattle, null, 60000);
@@ -764,10 +764,10 @@ async function pairPart({ browser, base, t }) {
       const used = window.__play(g, () => g.gymLive.use(p)); step(g, 1 / 20, 100, () => !lv.busy && p.onGround);
       return { used, d: Math.hypot(p.pos.x - c.E[0], p.pos.z - c.E[2]), ground: p.onGround };
     });
-    t.ok(r.used && r.d < 1.5 && r.ground, `a cannon fired on their own lands on Parrot Perch (${r.d.toFixed(1)})`);
+    t.ok(r.used && r.d < 1.5 && r.ground, `a cannon fired on their own lands on Palm Perch (${r.d.toFixed(1)})`);
   }
   await waitFor(Bp, () => { const a = [...window.pokecraft.mp.others.values()][0]; return !!a && Math.hypot(a.pos.x - 112.5, a.pos.z - 140.5) < 4; }, null, 60000);
-  t.ok(true, "Dad's avatar is seen on Parrot Perch");
+  t.ok(true, "Dad's avatar is seen on Palm Perch");
   await A.evaluate(() => { const g = window.pokecraft, d = g.world.doors[0], m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(A, 'swirl'); await placeIs(Bp, 'swirl');
   t.ok(true, 'Dad goes back to the Swirl and Kid goes too');

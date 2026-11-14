@@ -312,7 +312,7 @@ async function terrainPart(page, t) {
     t.ok(b.keeps === 'atlantis-bell,atlantis-city*,atlantis-palace' && b.sunken[0] === 2 && b.sunken[1] === 'u' && b.sunken[2] === 'u' && b.sunken[3] === null, `${L}: keeps ${b.keeps}; a guardian stands on the city floor (${b.sunken})`);
     t.ok(b.dim[0] < b.dim[1] && b.dim[0] > 0.18 && b.dim[2] === 1 && b.dim[3] > b.dim[0] && b.dim[4] === 1 && b.bio[0] === 'atlantis' && b.bio[1] === 'pirateSea', `${L}: a dark district is dim, not black, and a lit one is bright; the sea outside is not touched; the crater has its own wild creatures (${b.dim.map(v => v.toFixed(2))}; ${b.bio})`);
     t.ok(b.stuckAt.length === 0, `${L}: nobody and no rest spot is inside a wall (${b.stuckAt})`);
-    t.ok(b.people.map(p => p.join(':')).join() === 'pirate:3,atlantis:2', `${L}: Captain Squawk and Queen Coralia, with their crews (${b.people.map(p => p.join(':'))})`);
+    t.ok(b.people.map(p => p.join(':')).join() === 'pirate:3,atlantis:2', `${L}: Captain Bananabeard and Queen Coralia, with their crews (${b.people.map(p => p.join(':'))})`);
   }
 }
 

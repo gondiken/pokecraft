@@ -89,6 +89,7 @@ like a propeller), twilorb (rolls). Scalekin already has small wings.
 ## 3. Steps (each one session; the first is only the redesigns)
 
 **A. The creature redesigns only** (no abilities yet; nothing changes in how anyone moves)
+**Built 2026-11-13** (spec `redesign`, pictures `node tests/redesign-preview.mjs`): as below, plus: Wallop also lives on snowy shores, Joltail in meadows and swamps, Shimmerscale / Spectrascale in meadows and forests by day; Monkeer left the open-sea table; the Pirate Seas' Boss is renamed Captain Bananabeard (his "Squawk!" is "Ook ook!") and Parrot Perch is Palm Perch; Glitterbop and Twilorb no longer float; a type look is drawn always (small), not only in flight.
 1. For each of the 22 in section 2, in `species.js`: same id; the new `name` where it changes, a new `desc`, a new `model` (a new body
    builder in `shapes.js` for a new family: the owner wants unique looks, evolutions may share one), `flies` / `floats` removed where the
    new body walks (twirlshell keeps flying). Move `SPAWNS` entries to biomes that fit (fish and sea birds that now walk leave water

@@ -1,4 +1,4 @@
-// T40b: the terrain of the Pirate Seas (TERRAINS.pirateLand in realms.js): open sea (water to y 12) with seven islands, Captain Squawk's
+// T40b: the terrain of the Pirate Seas (TERRAINS.pirateLand in realms.js): open sea (water to y 12) with seven islands, Captain Bananabeard's
 // ship, cannons that shoot you from island to island, ropes you swing on and rope ladders. Everything is data (ISLES, CANNONS, ROPES,
 // WALKS) and a small loop: seeded noise only makes the sea floor, island edges and plants, so every gadget is always where the table says.
 // It only needs a world with W / D / seed / data / ground / index / inBounds / get (the spec runs it on a stand-in in Node, like
@@ -17,7 +17,7 @@ export const SEA = 12; // the top water block row (WATER_LEVEL): the surface is 
 // on under the water. Stacks: a stone pillar (an exact disc) from the sea floor up, grass on top.
 export const ISLES = [
   { id: 'start', name: 'Sandy Start', x: 112, z: 180, P: 12, top: 15, kind: 'beach' },
-  { id: 'perch', name: 'Parrot Perch', x: 112, z: 136, P: 10, top: 16, kind: 'beach' },
+  { id: 'perch', name: 'Palm Perch', x: 112, z: 136, P: 10, top: 16, kind: 'beach' },
   { id: 'crab', name: 'Crab Rock', x: 98, z: 120, R: 3.5, top: 16, kind: 'stack', ladder: [-1, 0] },
   { id: 'gull', name: 'Gull Rock', x: 108, z: 109, R: 3.5, top: 16, kind: 'stack', ladder: [1, 0] },
   { id: 'lookout', name: 'Lookout Isle', x: 104, z: 86, P: 10, top: 16, kind: 'beach' },
@@ -27,8 +27,8 @@ export const ISLES = [
 // A cannon: you stand on `pad` (a CANNON_PAD block), the barrel is a mesh on a PLANKS carriage on the next cell towards the target; it
 // lands you in the middle of `target` (a 5 x 5 patch with a TARGET 3 x 3 in the middle). `home` cannons go back to Sandy Start.
 export const CANNONS = [
-  { id: 'c1', from: 'start', pad: [112, 173], to: 'perch', target: [112, 140], name: 'Parrot Perch' },
-  { id: 'c2', from: 'lookout', pad: [104, 80], to: 'ship', target: [108, 48], name: "Captain Squawk's ship" },
+  { id: 'c1', from: 'start', pad: [112, 173], to: 'perch', target: [112, 140], name: 'Palm Perch' },
+  { id: 'c2', from: 'lookout', pad: [104, 80], to: 'ship', target: [108, 48], name: "Captain Bananabeard's ship" },
   { id: 'c3', from: 'cove', pad: [146, 72], to: 'start', target: [104, 180], name: 'Sandy Start', home: true },
   { id: 'c4', from: 'start', pad: [120, 180], to: 'palm', target: [165, 151], name: 'Palm Key' },
   { id: 'c5', from: 'palm', pad: [164, 155], to: 'start', target: [104, 180], name: 'Sandy Start', home: true },
@@ -167,7 +167,7 @@ export function ropeDrop(world, r, p) {
   return null;
 }
 
-// 3. Captain Squawk's rowboats row figure-eights north of the ship (each in its own patch of sea, so they never meet), quite fast.
+// 3. Captain Bananabeard's rowboats row figure-eights north of the ship (each in its own patch of sea, so they never meet), quite fast.
 // Owner 2026-10-26: 12 to sink, three at a time: when a wave of three is sunk the next three row out (after `pause` seconds),
 // each wave a bit faster (`speed`). Sink all twelve with the two swivel cannons on the north rail and the Captain battles you (the Boss def's gate). Aim by turning; the
 // distance is how long you hold Fire! (it grows, then shrinks again: `power`). The ball flies a while, so aim where the boat will be;

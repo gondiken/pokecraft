@@ -410,17 +410,17 @@ BLOCKS[B.KICKER] = { name: 'Jump Ramp', top: T.KICKER, side: T.HOT_SIDE, bottom:
   BLOCKS[B.HOUSE_PROP] = { name: 'Giant House thing', ...all(T.CHROME), ...fx, hidden: true, wallText: HOUSE }; // never drawn: a model shows it
 }
 // T40b Pirate Seas blocks (none can be placed). Gadget blocks are `fixed`; palm, coral and shell sand are natural (breakable, no cubes).
-BLOCKS[B.HULL] = { name: 'Ship Planks', ...all(T.HULL), wallText: "Captain Squawk's ship is too strong to break!" };
-BLOCKS[B.DECK] = { name: 'Deck', top: T.DECK, side: T.PLANKS, bottom: T.PLANKS, wallText: "Captain Squawk's ship is too strong to break!" };
+BLOCKS[B.HULL] = { name: 'Ship Planks', ...all(T.HULL), wallText: "Captain Bananabeard's ship is too strong to break!" };
+BLOCKS[B.DECK] = { name: 'Deck', top: T.DECK, side: T.PLANKS, bottom: T.PLANKS, wallText: "Captain Bananabeard's ship is too strong to break!" };
 BLOCKS[B.ROPE_LADDER] = { name: 'Rope Ladder', top: T.HULL, side: T.ROPE_LADDER, bottom: T.HULL, fixed: true, wallText: 'A rope ladder! Swim into it and up you go.' };
 BLOCKS[B.CANNON_PAD] = { name: 'Cannon Pad', top: T.CANNON_PAD, side: T.PLANKS, bottom: T.PLANKS, fixed: true, wallText: 'Stand on the cannon and press Fire!' };
 BLOCKS[B.TARGET] = { name: 'Target', top: T.TARGET, side: T.SAND, bottom: T.SAND, fixed: true, wallText: 'The cannon lands here. Boom!' };
 BLOCKS[B.ROPE_POST] = { name: 'Rope Post', top: T.ROPE_POST_TOP, side: T.ROPE_POST, bottom: T.ROPE_POST_TOP, fixed: true, wallText: 'A rope post. Stand here and press Swing!' };
 BLOCKS[B.PALM_LOG] = { name: 'Palm Log', top: T.PALM_TOP, side: T.PALM, bottom: T.PALM_TOP };
 BLOCKS[B.PALM_LEAVES] = { name: 'Palm Leaves', ...all(T.PALM_LEAVES) };
-BLOCKS[B.PIRATE_FLAG] = { name: 'Pirate Flag', ...all(T.PIRATE_FLAG), fixed: true, wallText: 'A pirate flag with a parrot feather and two spoons. Squawk!' };
-BLOCKS[B.BIG_CHEST] = { name: "Captain's Chest", top: T.BIG_CHEST_TOP, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, fixed: true, wallText: "Captain Squawk's treasure chest! It's locked tight." };
-BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, glow: true, noLight: true, fixed: true, wallText: 'Only gold coins left. Squawk!' };
+BLOCKS[B.PIRATE_FLAG] = { name: 'Pirate Flag', ...all(T.PIRATE_FLAG), fixed: true, wallText: 'A pirate flag with a white feather and two spoons. Ahoy!' };
+BLOCKS[B.BIG_CHEST] = { name: "Captain's Chest", top: T.BIG_CHEST_TOP, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, fixed: true, wallText: "Captain Bananabeard's treasure chest! It's locked tight." };
+BLOCKS[B.BIG_CHEST_OPEN] = { name: "Captain's Chest", top: T.BIG_CHEST_OPEN, side: T.BIG_CHEST, bottom: T.BIG_CHEST_TOP, glow: true, noLight: true, fixed: true, wallText: 'Only gold coins left. Ook ook!' };
 BLOCKS[B.SHIP_WHEEL] = { name: 'Ship Wheel', top: T.PLANKS, side: T.WHEEL, bottom: T.PLANKS, fixed: true, wallText: "The Captain's wheel. Only he steers this ship!" };
 BLOCKS[B.CORAL] = { name: 'Coral', ...all(T.CORAL) };
 BLOCKS[B.SHELL_SAND] = { name: 'Shell Sand', ...all(T.SHELL_SAND) };
@@ -1145,7 +1145,7 @@ export function drawAtlas() {
       // PALM_LEAVES: long fronds in two greens
       const frond = Math.abs(((x + y) % 8) - 4) < 1.3 || Math.abs(((x - y + 16) % 8) - 4) < 1;
       put(T.PALM_LEAVES, x, y, frond ? sh9([108, 190, 70], 0.12) : sh9([52, 140, 60], 0.18));
-      // PIRATE_FLAG: black, a white parrot feather and two crossed spoons (no skulls)
+      // PIRATE_FLAG: black, a white feather and two crossed spoons (no skulls)
       const feather = Math.abs(y - 7.5) < 1.2 && x > 2 && x < 9 || (x === 5 && y > 3 && y < 12) || (Math.abs((x - 5) - (y - 7.5) * 0.5) < 0.9 && x > 2 && x < 9 && Math.abs(y - 7.5) < 4);
       const spoon1 = Math.abs((x - 9) - (y - 3)) < 0.8 && x >= 9 && y >= 3 && y <= 12, spoon2 = Math.abs((x - 9) + (y - 12)) < 0.8 && x >= 9 && y >= 3 && y <= 12;
       put(T.PIRATE_FLAG, x, y, feather ? [250, 246, 240] : spoon1 || spoon2 ? [210, 214, 224] : sh9([24, 24, 32], 0.1));
