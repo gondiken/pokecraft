@@ -1979,20 +1979,20 @@ export const SPECIES = {
     model: { shape: 'cursor', scale: 1.25, body: 0xd8f0ff, accent: 0x2a7aff, dark: 0x0a1a3a, belly: 0xffffff, extras: ['v2'] },
   },
   wifly: {
-    name: 'Wiflow', type: 'cyber', desc: "A little Wi-Fi router on stubby legs. The closer friends play, the brighter its signal bars glow.",
+    name: 'Wiflow', type: 'cyber', desc: "A little round bug that toddles about with Wi-Fi arcs. The closer friends play, the brighter they glow.",
     base: { hp: 45, atk: 50, def: 40, spd: 80 }, baseXp: 64, catchRate: 0.45, learn: L('cyber', 'sky'),
     evolve: { level: 24, into: 'wifly2' },
-    model: { shape: 'router', scale: 0.75, body: 0x4a4a6a, accent: 0x5af0a0, dark: 0x1a1a2a, belly: 0xa0ffd0, extras: [] },
+    model: { shape: 'wifiwing', scale: 0.75, body: 0x4a4a6a, accent: 0x5af0a0, dark: 0x1a1a2a, belly: 0xa0ffd0, extras: [] },
   },
   wifly2: {
-    name: 'Wiflow 2.0', type: 'cyber', desc: "A tower router striding on four legs, full signal bars. It carries messages between friends.",
+    name: 'Wiflow 2.0', type: 'cyber', desc: "Its Wi-Fi arcs shine with full signal bars. It carries messages between friends playing together.",
     base: { hp: 75, atk: 85, def: 65, spd: 115 }, baseXp: 170, catchRate: 0.1, learn: L('cyber', 'sky'),
-    model: { shape: 'router', scale: 1.2, body: 0x2a2a4a, accent: 0x5af0ff, dark: 0x0a0a1a, belly: 0xd0fff8, extras: ['v2'] },
+    model: { shape: 'wifiwing', scale: 1.2, body: 0x2a2a4a, accent: 0x5af0ff, dark: 0x0a0a1a, belly: 0xd0fff8, extras: ['v2'] },
   },
   error404: {
-    name: 'Error 404', type: 'cyber', desc: "A glitchy pixel cat that flickers as it walks. It is only found when two friends play close together.",
+    name: 'Error 404', type: 'cyber', desc: "A small glitchy ghost on little pixel feet. It is only found when two friends play close together.",
     base: { hp: 60, atk: 75, def: 55, spd: 70 }, baseXp: 100, catchRate: 0.3, learn: L('cyber', 'ghost'),
-    model: { shape: 'glitchcat', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
+    model: { shape: 'glitchghost', scale: 0.85, body: 0xf0f0ff, accent: 0xff4ad8, dark: 0x1a1a3a, belly: 0x5af0ff, extras: [] },
   },
   /* ==== end of T18 cyber ==== */
   /* ==== T21 cozy ==== */

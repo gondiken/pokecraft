@@ -3088,7 +3088,93 @@ function cursor(root, m, parts) {
 }
 
 
-const SHAPES_CYBER = { pixelblob, cursor };
+// Wiflow / Wiflow 2.0: a little round bug whose sides wear Wi-Fi symbols (nested arcs of glowing bars). Chapter 3: it no longer
+// hovers; it toddles on two stubby legs (the arcs only wave, they never lift it).
+function wifiwing(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  const v2 = has(m, 'v2');
+  const cy = 0.46;
+  parts.legs = [];
+  ball(body, 0.3, m.body, 0, cy, 0);
+  box(body, 0.34, 0.22, 0.03, m.belly, 0, cy - 0.08, 0.3);
+  eyes(body, cy + 0.08, 0.31, 0.1, 0.12);
+  box(body, 0.1, 0.035, 0.03, m.dark, 0, cy - 0.12, 0.33);
+  for (const s of [-1, 1]) {
+    const an = pivot(body, s * 0.1, cy + 0.3, 0.05);
+    an.rotation.z = -s * 0.4;
+    box(an, 0.035, 0.34, 0.035, m.dark, 0, 0.17, 0);
+    glow(box(an, 0.09, 0.09, 0.09, m.accent, 0, 0.36, 0), m.accent);
+    swing(parts, an, 'x', 0.2, 2.5, s);
+    const leg = pivot(body, s * 0.15, 0.2, 0.05);
+    box(leg, 0.1, 0.2, 0.1, m.dark, 0, -0.1, 0);
+    box(leg, 0.13, 0.05, 0.16, m.dark, 0, -0.18, 0.03);
+    parts.legs.push({ g: leg, phase: s > 0 ? 0 : Math.PI });
+  }
+  const wingColor = v2 ? 0x5af0ff : 0x5af0a0;
+  const arcWing = (s, z, y, radii, rot, ph0) => {
+    parts.wings = parts.wings || [];
+    const g = pivot(body, s * 0.3, y, z);
+    for (const [k, r] of radii.entries()) {
+      const arc = pivot(g, 0, 0, 0);
+      const n = 3 + k * 2, span = 0.5 + k * 0.1;
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / (n - 1) - 0.5) * span * Math.PI;
+        const piece = box(arc, 0.07, (r * span * Math.PI) / (n - 1) * 1.1, 0.05, wingColor, s * Math.cos(a) * r, Math.sin(a) * r, 0);
+        piece.rotation.z = s > 0 ? a : Math.PI - a;
+        glow(piece, wingColor);
+      }
+      swing(parts, arc, 'x', 0.3, 3.5, ph0 + k * 1.1);
+    }
+    glow(box(g, 0.1, 0.1, 0.06, wingColor, 0, 0, 0), wingColor);
+    parts.wings.push({ g, s, lift: 0.25 });
+  };
+  if (!v2) {
+    for (const s of [-1, 1]) arcWing(s, -0.05, cy + 0.05, [0.24, 0.44, 0.64], 0.35, s);
+  } else {
+    for (const s of [-1, 1]) {
+      arcWing(s, -0.08, cy + 0.14, [0.22, 0.4, 0.58], 0.6, s);
+      arcWing(s, 0.0, cy - 0.12, [0.2, 0.34], -0.4, s + 2);
+    }
+    for (const [i, h] of [0.14, 0.24, 0.34].entries()) glow(box(body, 0.07, h, 0.07, m.accent, -0.12 + i * 0.12, cy + 0.3 + h / 2, -0.12), m.accent);
+  }
+}
+// Error 404: a glitchy little ghost made of jittering slices, with a magenta and a cyan copy peeking out. Chapter 3: it no longer
+// floats; it walks on two little pixel feet under its wavy hem.
+function glitchghost(root, m, parts) {
+  const body = pivot(root, 0, 0, 0);
+  parts.bounce = body;
+  parts.legs = [];
+  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) { // pixel feet
+    const leg = pivot(body, s * 0.17, 0.16, 0);
+    box(leg, 0.12, 0.16, 0.12, m.body, 0, -0.08, 0);
+    box(leg, 0.14, 0.05, 0.18, m.dark, 0, -0.14, 0.03);
+    parts.legs.push({ g: leg, phase });
+  }
+  const slabs = [];
+  for (let k = 0; k < 4; k++) {
+    const s = pivot(body, 0, 0.32 + k * 0.22, 0);
+    box(s, 0.72 - (k === 3 ? 0.1 : 0), 0.22, 0.5, m.body, 0, 0, 0);
+    swing(parts, s, 'y', 0.1, 6 + k * 2.3, k * 1.9);
+    slabs.push(s);
+  }
+  // wavy bottom
+  for (const [i, x] of [-0.27, -0.09, 0.09, 0.27].entries()) box(body, 0.16, 0.12 + (i % 2) * 0.06, 0.46, m.body, x, 0.2 - (i % 2) * 0.03, 0);
+  // glitch copies
+  glow(box(slabs[1], 0.14, 0.22, 0.46, m.accent, -0.43, 0, 0.02), m.accent);
+  glow(box(slabs[2], 0.14, 0.22, 0.46, m.belly, 0.43, 0, -0.02), m.belly);
+  glow(box(slabs[0], 0.12, 0.2, 0.44, m.belly, 0.42, 0, 0.0), m.belly);
+  glow(box(slabs[3], 0.1, 0.2, 0.44, m.accent, -0.38, 0, 0.0), m.accent);
+  // two black square eyes and an "o" mouth
+  for (const s of [-1, 1]) {
+    box(slabs[3], 0.15, 0.15, 0.04, 0x111111, s * 0.16, 0.0, 0.26).userData.eye = true;
+    box(slabs[3], 0.05, 0.05, 0.03, 0xffffff, s * 0.16 + 0.03, 0.03, 0.29).userData.eye = true;
+  }
+  for (const [x, y, w, h] of [[0, 0.06, 0.12, 0.04], [0, -0.06, 0.12, 0.04], [-0.06, 0, 0.04, 0.1], [0.06, 0, 0.04, 0.1]]) box(slabs[2], w, h, 0.03, m.dark, x, y, 0.26);
+  // a tiny belly label: four dots
+  for (const x of [-0.12, -0.04, 0.04, 0.12]) glow(box(slabs[1], 0.05, 0.05, 0.03, m.belly, x, -0.02, 0.26), m.belly);
+}
+const SHAPES_CYBER = { pixelblob, cursor, wifiwing, glitchghost };
 /* ==== end of T18 cyber shapes ==== */
 
 /* ==== T21 cozy shapes ==== */
@@ -7377,7 +7463,6 @@ Object.assign(SHAPES, SHAPES_CUSTOM);
 // these 22 got new bodies; ids, stats and moves stay. Their own little animations go through `parts.redo` (animateRedo below,
 // called by animateModel): every entry is closed form in t, except `roll`, which adds up its turn so starting to move never snaps.
 const redo = (parts, entry) => (parts.redo ||= []).push(entry);
-const hashK = (k, salt) => { let h = (k * 374761393 + salt * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 // Finnibone: a bony fish that walks on its front fins like a mudskipper, eyes on top of its skull, its jaw clacking.
 function mudskipper(root, m, parts) {
@@ -7434,80 +7519,7 @@ function wingsnail(root, m, parts) {
   }
 }
 
-// Wiflow / Wiflow 2.0: a Wi-Fi router toddling on stubby legs, signal bars on its back that light up in turn, wiggly aerials.
-// 2.0 (`v2`) is a tall tower router striding on four legs, five full bars and four aerials.
-function router(root, m, parts) {
-  const v2 = has(m, 'v2');
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  const legH = v2 ? 0.26 : 0.13, w = v2 ? 0.44 : 0.62, h = v2 ? 0.78 : 0.32, d = v2 ? 0.38 : 0.44;
-  const body = pivot(lift, 0, legH, 0);
-  if (!v2) swing(parts, body, 'z', 0.08, 5); // the toddle
-  box(body, w, h, d, m.body, 0, h / 2, 0);
-  box(body, w - 0.06, 0.04, d - 0.06, m.dark, 0, h + 0.01, 0);
-  const face = pivot(body, 0, h * (v2 ? 0.72 : 0.62), d / 2);
-  parts.head = face;
-  eyes(face, 0.02, 0.02, v2 ? 0.1 : 0.13, 0.11);
-  box(face, 0.12, 0.03, 0.03, 0x111111, 0, -0.08, 0.02);
-  const leds = [];
-  for (let i = 0; i < (v2 ? 5 : 4); i++) leds.push(glow(box(body, 0.05, 0.04, 0.03, m.accent, (i - (v2 ? 2 : 1.5)) * 0.09, v2 ? 0.14 : 0.05, d / 2 + 0.01), m.accent));
-  const bars = [];
-  const n = v2 ? 5 : 3;
-  for (let i = 0; i < n; i++) { // signal bars on its back, short to tall
-    const bh = 0.07 + i * (v2 ? 0.05 : 0.06), x = (i - (n - 1) / 2) * 0.1;
-    bars.push(glow(box(body, 0.07, bh, 0.07, m.accent, x, h + bh / 2 + 0.02, -d / 2 + 0.1), m.accent));
-  }
-  redo(parts, { kind: 'bars', list: bars, leds, full: v2, period: v2 ? 1.6 : 2.2 });
-  const ant = v2 ? [[-0.16, 0.12], [0.16, 0.12], [-0.16, -0.12], [0.16, -0.12]] : [[-0.25, -0.15], [0.25, -0.15]];
-  ant.forEach(([x, z], i) => {
-    const g = pivot(body, x, h, z);
-    swing(parts, g, i % 2 ? 'z' : 'x', 0.18, 3 + i * 0.4, i);
-    box(g, 0.035, 0.36, 0.035, m.dark, 0, 0.18, 0);
-    glow(box(g, 0.07, 0.07, 0.07, m.belly, 0, 0.38, 0), m.accent);
-  });
-  parts.legs = [];
-  const feet = v2 ? [[-0.15, 0.12, 0], [0.15, 0.12, Math.PI], [-0.15, -0.12, Math.PI], [0.15, -0.12, 0]] : [[-0.16, 0.02, 0], [0.16, 0.02, Math.PI]];
-  for (const [x, z, phase] of feet) {
-    const g = pivot(lift, x, legH, z);
-    box(g, 0.1, legH, 0.1, m.dark, 0, -legH / 2, 0);
-    box(g, 0.15, 0.05, 0.18, m.dark, 0, -legH + 0.025, 0.03);
-    parts.legs.push({ g, phase });
-  }
-}
 
-// Error 404: a glitchy pixel cat made of chunky pixels. Now and then it flickers sideways, pixels drop out and its legs skip frames.
-function glitchcat(root, m, parts) {
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  const g = pivot(lift, 0, 0, 0); // the part that jumps when it glitches
-  const body = pivot(g, 0, 0.36, -0.05);
-  box(body, 0.42, 0.26, 0.62, m.body, 0, 0, 0);
-  for (const [x, z] of [[-0.12, 0.18], [0.1, -0.08], [-0.06, -0.24]]) box(body, 0.12, 0.02, 0.12, m.belly, x, 0.135, z); // cyan spots
-  const head = pivot(g, 0, 0.62, 0.3);
-  parts.head = head;
-  box(head, 0.4, 0.32, 0.32, m.body, 0, 0, 0);
-  for (const s of [-1, 1]) { box(head, 0.12, 0.12, 0.08, m.body, s * 0.13, 0.21, -0.04); box(head, 0.06, 0.06, 0.03, m.accent, s * 0.13, 0.2, 0.005); }
-  for (const s of [-1, 1]) { // square pixel eyes, one a little off
-    box(head, 0.1, 0.1, 0.03, 0x111111, s * 0.1, 0.04 + (s > 0 ? 0.03 : 0), 0.165).userData.eye = true;
-    box(head, 0.04, 0.04, 0.02, 0xffffff, s * 0.1 - 0.02, 0.06 + (s > 0 ? 0.03 : 0), 0.18).userData.eye = true;
-  }
-  box(head, 0.06, 0.05, 0.03, m.accent, 0, -0.04, 0.17); // pink nose
-  for (const s of [-1, 1]) box(head, 0.14, 0.02, 0.02, 0x111111, s * 0.2, -0.06, 0.15); // whiskers
-  const tail = pivot(g, 0, 0.42, -0.36);
-  parts.tail = tail;
-  for (let i = 0; i < 4; i++) box(tail, 0.09, 0.09, 0.09, i % 2 ? m.accent : m.body, 0, i * 0.09, -i * 0.04); // a pixel staircase tail
-  const legs = [];
-  for (const [x, z, ph] of [[-0.13, 0.2, 0], [0.13, 0.2, Math.PI], [-0.13, -0.28, Math.PI], [0.13, -0.28, 0]]) {
-    const l = pivot(g, x, 0.25, z);
-    box(l, 0.1, 0.25, 0.1, m.body, 0, -0.125, 0);
-    box(l, 0.11, 0.05, 0.13, m.belly, 0, -0.23, 0.02);
-    legs.push({ g: l, ph });
-  }
-  // loose glitch pixels (pink and cyan) beside it and an RGB-split ghost slab behind its head
-  const bits = [[0.28, 0.5, 0.12], [-0.3, 0.32, -0.2], [0.24, 0.2, -0.34], [-0.26, 0.7, 0.3], [0.05, 0.86, 0.22]].map(([x, y, z], i) => glow(box(g, 0.07, 0.07, 0.07, i % 2 ? m.belly : m.accent, x, y, z), i % 2 ? m.belly : m.accent));
-  const split = [seeB(box(head, 0.4, 0.32, 0.02, m.accent, 0.05, 0, -0.17), 0.6), seeB(box(head, 0.4, 0.32, 0.02, m.belly, -0.05, 0, -0.17), 0.6)];
-  redo(parts, { kind: 'glitch', g, legs, bits, split });
-}
 
 // Voltrunner: a roadrunner with a glowing lightning-bolt crest, a long tail up behind it and long legs that zap across fields.
 function roadrunner(root, m, parts) {
@@ -8018,7 +8030,7 @@ function walrus(root, m, parts) {
   for (const s of [-1, 1]) { const f = box(tail, 0.22, 0.05, 0.22, m.dark, s * 0.12, -0.04, -0.06); f.rotation.y = s * 0.4; }
 }
 
-const SHAPES_REDO = { mudskipper, wingsnail, router, glitchcat, roadrunner, glowworm, landeel, emu, tinbeetle, gecko, turkeychick, peacock, monkey, hoopsnake, pangolin, rollring, candelabra, walrus };
+const SHAPES_REDO = { mudskipper, wingsnail, roadrunner, glowworm, landeel, emu, tinbeetle, gecko, turkeychick, peacock, monkey, hoopsnake, pangolin, rollring, candelabra, walrus };
 Object.assign(SHAPES, SHAPES_REDO);
 
 // The redesigns' own little animations (see `redo` above). `moving` as in animateModel.
@@ -8031,18 +8043,6 @@ export function animateRedo(p, t, moving) {
       r.turn = (r.turn || 0) + dt * (moving ? r.speed : 0);
       const rock = moving ? 0 : Math.sin(t * 1.6) * r.idle; // standing still it rocks a little back and forth
       for (const g of r.list) g.rotation[r.axis] = r.turn + rock;
-    } else if (r.kind === 'bars') { // the signal bars light up one by one, then all (2.0: always full, a wave runs through them)
-      const n = r.list.length, u = ((t / r.period) % 1) * (n + 1.5);
-      r.list.forEach((b, i) => b.material.emissive.copy(b.material.color).multiplyScalar(r.full ? 0.5 + 0.5 * Math.max(0, Math.sin(t * 4 - i)) : (u > i ? 0.9 : 0.08)));
-      r.leds.forEach((b, i) => b.material.emissive.copy(b.material.color).multiplyScalar(hashK(Math.floor(t * 6), i) > 0.4 ? 0.9 : 0.1));
-    } else if (r.kind === 'glitch') { // every tick: a jump sideways now and then, pixels drop out; walking, its legs move only on ticks (skipped frames)
-      const tick = moving ? 0.1 : 0.16, k = Math.floor(t / tick), h = hashK(k, 7);
-      r.g.position.x = h > 0.82 ? (hashK(k, 3) > 0.5 ? 0.06 : -0.06) : 0;
-      r.g.position.z = h > 0.93 ? 0.05 : 0;
-      r.bits.forEach((b, i) => { b.visible = hashK(k, 11 + i) > 0.35; });
-      r.split.forEach(s => { s.visible = h > 0.7; });
-      const tq = moving ? Math.floor(t / 0.12) * 0.12 : t;
-      for (const l of r.legs) l.g.rotation.x = moving ? Math.sin(tq * 10 + l.ph) * 0.6 : 0;
     } else if (r.kind === 'blink') { // two quick blinks, then a rest
       const u = (t % r.period) / r.period, on = (u < 0.08) || (u > 0.16 && u < 0.24);
       r.mesh.material.emissive.copy(r.mesh.material.color).multiplyScalar(on ? r.hi : r.lo + 0.15 * Math.sin(t * 2) ** 2);
