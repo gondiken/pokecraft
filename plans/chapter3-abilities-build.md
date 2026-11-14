@@ -174,3 +174,8 @@ drop Freeze and fold Lift into Mind's Sense.
   Portal, Dream and Mirror. **Climb vs Fly holds with no exception:** flying rises only `RIDE.sky.cap` 6 over the floor right
   below you (player.js `fly`, `floorBelow`), so a sheer wall taller than 6 in one face needs Climb; a stepped slope can be flown
   ledge by ledge. **Pass Through** only through faded walls (half-erased pencil walls, solid to everyone else). Open: Swim vs Freeze.
+- Swim and Freeze (owner): **Swim = speed in water** (a swim race, catching a fast swimmer, an underwater gate before it shuts; no
+  currents, no waterfalls). **Freeze = moving water stops**: a river's current, a waterfall turned into an ice wall that a climber
+  then goes up (two abilities together). The fly cap is measured from the one block column right under your middle
+  (`floorBelow`), so over a tall building you are 6 over its roof, but you can never get there if its wall rises more than 6 over the
+  ground you fly from: you meet the wall first. The same in chapters 1 and 2.
