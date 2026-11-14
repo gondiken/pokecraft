@@ -7,9 +7,11 @@ import fs from 'node:fs';
 import { openGame, seedSave, continueGame, waitFor, ROOT } from '../helpers.mjs';
 
 const BEFORE = JSON.parse(fs.readFileSync(`${ROOT}/tests/fixtures/redesign-before.json`, 'utf8'));
-const NAMES = { voltwing: 'Voltrunner', flarehawk: 'Flaremu', peekaw: 'Peekko', ravenshade: 'Ninjecko', parroteer: 'Monkeer', featherbeard: 'Bananabeard',
-  shimmerfin: 'Shimmerscale', spectrafin: 'Spectrascale', gullop: 'Wallop', wifly: 'Wiflow', wifly2: 'Wiflow 2.0' };
+const NAMES = { flarehawk: 'Flaremu', peekaw: 'Peekko', ravenshade: 'Ninjecko', parroteer: 'Monkeer', featherbeard: 'Bananabeard',
+  shimmerfin: 'Shimmerscale', spectrafin: 'Spectrascale', wifly: 'Wiflow', wifly2: 'Wiflow 2.0' };
 const FLYING = ['twirlshell']; // a bug with dragonfly wings: still flies
+const SWIMS = ['gullop']; // owner 2026-11-14: a duck, it swims (and spawns on water)
+const OLD_LOOK = ['wifly', 'wifly2', 'error404', 'voltwing', 'gullop']; // owner 2026-11-14: their old bodies stay, now on the ground (Voltwing with small wings)
 const LOOKS = ['zorbit', 'moonhop', 'orbikit', 'thinkit', 'hopfold', 'pagelet', 'pompet', 'prismkit', 'drumbo'];
 
 export default async function ({ browser, base, t }) {
@@ -51,13 +53,14 @@ export default async function ({ browser, base, t }) {
   t.ok(!named.length, `the decided new names: ${Object.entries(NAMES).map(([id, nm]) => `${BEFORE[id].name} -> ${nm}`).join(', ')}${named.length ? ` (wrong: ${named})` : ''}`);
   const kept = Object.keys(BEFORE).filter(id => !NAMES[id] && D.out[id].name !== BEFORE[id].name);
   t.ok(!kept.length, `the other eleven keep their names (${kept})`);
-  const fly = Object.keys(BEFORE).filter(id => !FLYING.includes(id) && (D.out[id].flies || D.out[id].floats || D.out[id].swims || D.out[id].waterOnly));
+  const fly = Object.keys(BEFORE).filter(id => !FLYING.includes(id) && (D.out[id].flies || D.out[id].floats || (D.out[id].swims && !SWIMS.includes(id)) || D.out[id].waterOnly));
   t.ok(!fly.length && D.out.twirlshell.flies, `no redesigned walker flies, floats or swims (${fly}); Twirlshell has dragonfly wings and flies`);
-  const wet = Object.keys(BEFORE).filter(id => D.out[id].water.length);
+  const wet = Object.keys(BEFORE).filter(id => !SWIMS.includes(id) && D.out[id].water.length);
   const nowhere = Object.keys(BEFORE).filter(id => !D.out[id].spawns.length && !Object.keys(BEFORE).some(o => BEFORE[o].evolve?.into === id && D.out[o].spawns.length));
-  t.ok(!wet.length && !nowhere.length, `none of them spawns on water any more (${wet}), every one can still be found (${nowhere})`);
+  t.ok(!wet.length && !nowhere.length, `none of the walkers spawns on water (${wet}), every one can still be found (${nowhere})`);
   const shared = Object.keys(BEFORE).filter(id => {
     const users = D.shapeUsers[D.out[id].shape].filter(u => u !== id);
+    if (OLD_LOOK.includes(id)) return false; // their old builder (`bird` lives in species.js)
     return !D.out[id].builder || users.some(u => !(BEFORE[u] && (BEFORE[u].evolve?.into === id || BEFORE[id].evolve?.into === u)) && u !== 'crownguard' && u !== 'looplet');
   });
   t.ok(!shared.length, `each new family has its own body builder, shared only within the family (${Object.keys(BEFORE).map(id => `${id}=${D.out[id].shape}`).join(' ')}) ${shared}`);

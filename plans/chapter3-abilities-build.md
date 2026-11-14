@@ -56,7 +56,7 @@ Custom (the Wizard's guardian) is the only Custom creature you can have, so it m
 | wifly (cyber) | Wifly -> **Wiflow** | a little Wi-Fi router toddling on stubby legs, signal bars on its back |
 | wifly2 (cyber) | Wifly 2.0 -> **Wiflow 2.0** | a tower router striding on four legs, full signal bars |
 | error404 (cyber) | Error404 (kept) | a glitchy pixel cat that flickers and skips frames as it walks |
-| voltwing (electric) | Voltwing -> **Voltrunner** | a roadrunner with a lightning-bolt crest that zaps across fields |
+| voltwing (electric) | Voltwing (kept, owner 2026-11-14) | the same bird with small wings; it walks instead of flying |
 | wattwink (electric) | Wattwink (kept) | a glow-worm whose tail is a light bulb; it blinks hello on warm nights |
 | joltail (electric) | Joltail (kept) | a land eel that slithers through wet grass, lighting it up with little zaps |
 | flarehawk (fire) | Flarehawk -> **Flaremu** | an emu with a flaming tail plume that sprints across the plains |
@@ -72,7 +72,7 @@ Custom (the Wizard's guardian) is the only Custom creature you can have, so it m
 | spectrafin (rainbow) | Spectrafin -> **Spectrascale** | a big rainbow pangolin, good luck to see; ridden on LAND now (`traits.js` water -> land) |
 | ringlet (treasure) | Ringlet (kept) | a gold ring that rolls along on its edge, gem eye on top |
 | lustrelle (treasure) | Lustrelle (kept) | a gem candelabra that walks on its candle legs |
-| gullop (water) | Gullop -> **Wallop** | a noisy walrus pup that waddles up to beach picnics and steals the snacks |
+| gullop (water) | Gullop (kept, owner 2026-11-14) | a noisy duck (the old bird with a flat bill, small wings, webbed feet) that swims and waddles |
 
 The bodies are the brief; the building session may refine details, then shows the owner screenshots before finishing.
 
@@ -89,7 +89,7 @@ like a propeller), twilorb (rolls). Scalekin already has small wings.
 ## 3. Steps (each one session; the first is only the redesigns)
 
 **A. The creature redesigns only** (no abilities yet; nothing changes in how anyone moves)
-**Built 2026-11-13** (spec `redesign`, pictures `node tests/redesign-preview.mjs`): as below, plus: Wallop also lives on snowy shores, Joltail in meadows and swamps, Shimmerscale / Spectrascale in meadows and forests by day; Monkeer left the open-sea table; the Pirate Seas' Boss is renamed Captain Bananabeard (his "Squawk!" is "Ook ook!") and Parrot Perch is Palm Perch; Glitterbop and Twilorb no longer float; a type look is drawn always (small), not only in flight.
+**Owner 2026-11-14:** Wiflow / Wiflow 2.0 / Error 404 keep their old bodies (walking, not floating), Voltwing keeps its name and bird body with small wings, Gullop is a duck (old bird + flat bill, swims). **Built 2026-11-13** (spec `redesign`, pictures `node tests/redesign-preview.mjs`): as below, plus: Joltail in meadows and swamps, Shimmerscale / Spectrascale in meadows and forests by day; Monkeer left the open-sea table; the Pirate Seas' Boss is renamed Captain Bananabeard (his "Squawk!" is "Ook ook!") and Parrot Perch is Palm Perch; Glitterbop and Twilorb no longer float; a type look is drawn always (small), not only in flight.
 1. For each of the 22 in section 2, in `species.js`: same id; the new `name` where it changes, a new `desc`, a new `model` (a new body
    builder in `shapes.js` for a new family: the owner wants unique looks, evolutions may share one), `flies` / `floats` removed where the
    new body walks (twirlshell keeps flying). Move `SPAWNS` entries to biomes that fit (fish and sea birds that now walk leave water

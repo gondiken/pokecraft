@@ -7521,47 +7521,6 @@ function wingsnail(root, m, parts) {
 
 
 
-// Voltrunner: a roadrunner with a glowing lightning-bolt crest, a long tail up behind it and long legs that zap across fields.
-function roadrunner(root, m, parts) {
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  const body = pivot(lift, 0, 0.66, 0);
-  body.rotation.x = 0.2; // leaning forward, ready to run
-  box(body, 0.32, 0.3, 0.56, m.body, 0, 0, 0);
-  box(body, 0.24, 0.2, 0.04, m.belly, 0, -0.04, 0.28);
-  for (const s of [-1, 1]) box(body, 0.04, 0.22, 0.38, m.dark, s * 0.17, 0.02, -0.04); // folded wings, tight to the sides
-  const head = pivot(body, 0, 0.28, 0.28);
-  head.rotation.x = -0.2;
-  parts.head = head;
-  box(head, 0.12, 0.2, 0.12, m.body, 0, -0.06, -0.02); // the neck
-  box(head, 0.24, 0.2, 0.26, m.body, 0, 0.08, 0.04);
-  box(head, 0.07, 0.06, 0.3, m.accent, 0, 0.05, 0.3); // the long beak
-  for (const s of [-1, 1]) {
-    box(head, 0.03, 0.09, 0.09, 0xffffff, s * 0.125, 0.11, 0.08).userData.eye = true;
-    box(head, 0.02, 0.05, 0.05, 0x111111, s * 0.135, 0.11, 0.1).userData.eye = true;
-    box(head, 0.02, 0.03, 0.1, m.accent, s * 0.13, 0.17, 0.08); // a dark brow stripe
-  }
-  const crest = pivot(head, 0, 0.18, -0.02);
-  swing(parts, crest, 'x', 0.12, 3);
-  parts.tip = glow(box(crest, 0.05, 0.14, 0.06, m.belly, 0, 0.07, 0.02), 0xfff060);
-  glow(box(crest, 0.05, 0.06, 0.16, m.belly, 0, 0.15, -0.04), 0xfff060);
-  glow(box(crest, 0.05, 0.16, 0.06, m.belly, 0, 0.24, -0.1), 0xfff060);
-  const tail = pivot(body, 0, 0.06, -0.26);
-  parts.tail = tail;
-  const t = pivot(tail, 0, 0, 0);
-  t.rotation.x = 0.7; // up and back
-  box(t, 0.12, 0.05, 0.6, m.dark, 0, 0, -0.3);
-  box(t, 0.09, 0.055, 0.22, m.belly, 0, 0, -0.52);
-  parts.legs = [];
-  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) {
-    const g = pivot(lift, s * 0.09, 0.56, 0.02);
-    box(g, 0.08, 0.22, 0.09, m.body, 0, -0.08, 0);
-    box(g, 0.045, 0.36, 0.045, m.accent, 0, -0.36, 0.02);
-    for (const k of [-1, 1]) box(g, 0.035, 0.03, 0.14, m.accent, k * 0.035, -0.54, 0.06); // two toes front
-    box(g, 0.035, 0.03, 0.1, m.accent, 0, -0.54, -0.06); // and two back (here one)
-    parts.legs.push({ g, phase });
-  }
-}
 
 // Wattwink: a glow-worm on the ground whose tail is a light bulb; it blinks twice to say hello.
 function glowworm(root, m, parts) {
@@ -7996,41 +7955,8 @@ function candelabra(root, m, parts) {
   }
 }
 
-// Wallop: a noisy walrus pup that waddles on its flippers, whiskers, two little tusks and a big round tummy.
-function walrus(root, m, parts) {
-  const lift = pivot(root, 0, 0, 0);
-  parts.bounce = lift;
-  const body = pivot(lift, 0, 0, 0);
-  swing(parts, body, 'z', 0.07, 5); // the waddle
-  box(body, 0.64, 0.5, 0.74, m.body, 0, 0.32, 0);
-  box(body, 0.56, 0.6, 0.6, m.body, 0, 0.34, 0.02);
-  box(body, 0.46, 0.4, 0.04, m.belly, 0, 0.3, 0.33);
-  const head = pivot(body, 0, 0.64, 0.24);
-  parts.head = head;
-  box(head, 0.46, 0.36, 0.38, m.body, 0, 0.04, 0);
-  box(head, 0.34, 0.18, 0.12, m.belly, 0, -0.06, 0.22); // the whisker muzzle
-  for (const [x, y] of [[-0.12, -0.03], [-0.06, -0.08], [0.06, -0.08], [0.12, -0.03], [-0.1, -0.11], [0.1, -0.11]]) box(head, 0.025, 0.025, 0.02, m.dark, x, y, 0.285);
-  box(head, 0.1, 0.06, 0.04, m.dark, 0, 0.02, 0.29); // the nose
-  for (const s of [-1, 1]) box(head, 0.05, 0.16, 0.05, m.accent, s * 0.08, -0.2, 0.24); // two little tusks
-  eyes(head, 0.12, 0.195, 0.12, 0.09);
-  const jaw = pivot(head, 0, -0.16, 0.16);
-  swing(parts, jaw, 'x', 0.1, 4); // honk honk
-  box(jaw, 0.16, 0.04, 0.08, 0x8a3a3a, 0, 0, 0.04);
-  parts.legs = [];
-  for (const [s, phase] of [[-1, 0], [1, Math.PI]]) { // front flippers
-    const g = pivot(body, s * 0.3, 0.22, 0.22);
-    const inner = pivot(g, 0, 0, 0);
-    inner.rotation.z = s * 0.5;
-    box(inner, 0.1, 0.26, 0.16, m.dark, 0, -0.12, 0);
-    box(inner, 0.12, 0.04, 0.22, m.dark, s * 0.02, -0.24, 0.05);
-    parts.legs.push({ g, phase });
-  }
-  const tail = pivot(body, 0, 0.08, -0.38); // back flippers
-  parts.tail = tail;
-  for (const s of [-1, 1]) { const f = box(tail, 0.22, 0.05, 0.22, m.dark, s * 0.12, -0.04, -0.06); f.rotation.y = s * 0.4; }
-}
 
-const SHAPES_REDO = { mudskipper, wingsnail, roadrunner, glowworm, landeel, emu, tinbeetle, gecko, turkeychick, peacock, monkey, hoopsnake, pangolin, rollring, candelabra, walrus };
+const SHAPES_REDO = { mudskipper, wingsnail, glowworm, landeel, emu, tinbeetle, gecko, turkeychick, peacock, monkey, hoopsnake, pangolin, rollring, candelabra };
 Object.assign(SHAPES, SHAPES_REDO);
 
 // The redesigns' own little animations (see `redo` above). `moving` as in animateModel.

@@ -1028,9 +1028,9 @@ export const SPECIES = {
     model: { shape: 'quad', scale: 0.8, body: 0x6ab07a, accent: 0x3a70c0, dark: 0x2a5a3a, belly: 0xd8e8b0, extras: ['shell', 'frog'] },
   },
   gullop: {
-    name: 'Wallop', type: 'water', desc: 'A noisy walrus pup that waddles up to beach picnics and steals the snacks.',
-    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 70, catchRate: 0.4, learn: L('water', 'sound'),
-    model: { shape: 'walrus', scale: 0.8, body: 0x9a7a66, accent: 0xfff6e8, dark: 0x5a4436, belly: 0xd8bca4, extras: [] },
+    name: 'Gullop', type: 'water', desc: 'A noisy duck that waddles up to beach picnics and steals the snacks.',
+    base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 70, catchRate: 0.4, learn: L('water', 'sound'), swims: true,
+    model: { shape: 'bird', scale: 0.8, body: 0xf0f0f0, accent: 0xffb030, dark: 0x6080a0, belly: 0xffffff, extras: ['duck', 'smallWings'] },
   },
 
   /* ----------------------------- grass ---------------------------- */
@@ -1053,9 +1053,9 @@ export const SPECIES = {
 
   /* --------------------------- electric --------------------------- */
   voltwing: {
-    name: 'Voltrunner', type: 'electric', desc: 'A roadrunner with a lightning-bolt crest. It zaps across the fields in a flash.',
+    name: 'Voltwing', type: 'electric', desc: 'Its little wings are too small to fly, so it runs into thunderstorms to recharge its feathers.',
     base: { hp: 45, atk: 65, def: 40, spd: 95 }, baseXp: 95, catchRate: 0.35, learn: L('electric', 'cosmic'),
-    model: { shape: 'roadrunner', scale: 0.8, body: 0xf5d63d, accent: 0x2a2a2a, dark: 0xc09a10, belly: 0xfff4b0, extras: [] },
+    model: { shape: 'bird', scale: 0.8, body: 0xf5d63d, accent: 0x2a2a2a, dark: 0xc09a10, belly: 0xfff4b0, extras: ['bolt', 'smallWings'] },
   },
   joltail: {
     name: 'Joltail', type: 'electric', desc: 'A land eel that slithers through wet grass, lighting it up with little zaps.',
@@ -2880,7 +2880,7 @@ export const SPAWNS = {
     ['slumbergeist', 0.2, 'night'], ['echobat', 1, 'night']],
   beach: [['bubbuck', 4], ['shellby', 4], ['gullop', 3], ['emberpup', 2], ['sparkitten', 2], ['zapple', 1],
     ['clanklet', 1], ['dinglet', 1], ['gongolin', 0.3], ['rainwing', 0.3, 'day']],
-  water: [['bubbuck', 2], ['ripplet', 3], ['shellby', 1], ['torrentide', 0.3]], // Joltail, Wallop, Shimmerscale, Spectrascale walk now (chapter 3 redesigns)
+  water: [['bubbuck', 2], ['ripplet', 3], ['shellby', 1], ['gullop', 1], ['torrentide', 0.3]], // Joltail, Shimmerscale, Spectrascale walk now (chapter 3 redesigns); Gullop is a duck that swims
   desert: [['magmole', 3], ['sparkitten', 3], ['emberpup', 2], ['cragling', 3], ['pebblor', 2], ['zapple', 2],
     ['ampup', 2], ['nutlet', 2], ['clanklet', 1], ['hissyfang', 1], ['flarehawk', 1], ['voltwing', 1],
     ['pyrolynx', 0.3], ['cragtusk', 0.5], ['thundapple', 0.2], ['venomamba', 0.2],
@@ -2893,7 +2893,7 @@ export const SPAWNS = {
     ['echobat', 2], ['boomwing', 0.2], ['snoozle', 1, 'night'],
     ['starmite', 2, 'night'], ['meteorb', 2, 'night'], ['galaxor', 0.2, 'night'],
     ['saucerling', 1, 'night'], ['podlet', 1, 'night'], ['tallipod', 0.15, 'night']],
-  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['gullop', 0.6], ['blizzbear', 0.4], ['emperice', 0.4], ['glacieron', 0.5],
+  snow: [['frostling', 4], ['snowpaw', 3], ['waddlice', 3], ['blizzbear', 0.4], ['emperice', 0.4], ['glacieron', 0.5],
     ['geodrake', 1], ['ironhorn', 1], ['scalekin', 1], ['quartzle', 1], ['skywyrm', 0.2], ['prismkit', 0.2, 'day'],
     ['wispurr', 1, 'night'], ['moonhop', 1.5, 'night'], ['starmite', 2, 'night'], ['meteorb', 1.5, 'night'],
     ['blipling', 1, 'night']],
@@ -3529,7 +3529,8 @@ function buildBird(root, m, parts) {
   box(bodyGroup, 0.36, 0.3, 0.04, m.belly, 0, 0.66, 0.31);
   const head = pivot(bodyGroup, 0, 1.0, 0.28);
   box(head, 0.36, 0.34, 0.34, m.body, 0, 0, 0);
-  box(head, 0.12, 0.1, 0.18, m.accent, 0, -0.04, 0.24);
+  if (has('duck')) { box(head, 0.2, 0.06, 0.22, m.accent, 0, -0.06, 0.25); box(head, 0.18, 0.04, 0.2, m.accent, 0, -0.11, 0.23); } // chapter 3: a wide flat duck bill
+  else box(head, 0.12, 0.1, 0.18, m.accent, 0, -0.04, 0.24);
   eyes(head, 0.05, 0.175, 0.1, 0.1);
   if (has('owl')) {
     for (const s of [-1, 1]) box(head, 0.08, 0.16, 0.06, m.dark, s * 0.13, 0.22, 0);
@@ -3540,7 +3541,7 @@ function buildBird(root, m, parts) {
       ear.rotation.z = -s * 0.25;
       box(ear, 0.07, 0.2, 0.02, m.belly, 0, -0.02, 0.035);
     }
-  } else {
+  } else if (!has('duck')) {
     box(head, 0.08, 0.2, 0.22, m.accent, 0, 0.22, -0.08);
   }
   parts.wings = [];
@@ -3549,11 +3550,15 @@ function buildBird(root, m, parts) {
     box(w, 0.55, 0.06, 0.42, m.dark, s * 0.27, 0, 0);
     box(w, 0.25, 0.05, 0.3, m.accent, s * 0.6, 0, -0.05);
     if (has('bolt')) box(w, 0.4, 0.07, 0.06, m.accent, s * 0.3, 0.01, 0.1);
+    if (has('smallWings')) { w.scale.setScalar(0.5); w.position.y -= 0.05; } // chapter 3: Voltwing's wings are too small to fly (it walks)
     parts.wings.push({ g: w, s });
   }
   const tail = box(bodyGroup, 0.32, 0.06, 0.34, m.accent, 0, 0.72, -0.44);
   tail.rotation.x = 0.25;
-  for (const s of [-1, 1]) box(bodyGroup, 0.06, 0.5, 0.06, 0x6b4a2b, s * 0.12, 0.25, 0);
+  for (const s of [-1, 1]) {
+    box(bodyGroup, 0.06, 0.5, 0.06, has('duck') ? m.accent : 0x6b4a2b, s * 0.12, 0.25, 0);
+    if (has('duck')) box(bodyGroup, 0.16, 0.04, 0.2, m.accent, s * 0.12, 0.02, 0.06); // webbed feet
+  }
 }
 
 function buildSerpent(root, m, parts) {
