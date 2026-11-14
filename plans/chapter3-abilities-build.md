@@ -21,29 +21,35 @@ the page is the picture of it.
    are by id too). No save migration.
 7. Sound walks AND flies ("sound travels through the air"): Boomwing and Echobat stay exactly as they are.
 
-## 1. The 17 abilities (ids are saved later: append-only)
+## 1. The 19 abilities (final, owner 2026-11-14; ids are saved: append-only, never renamed)
 
-| id | Ability | What a place asks | Types |
+Section 7 led here: Bounce dropped, Dash -> Sprint, Hide -> Sneak, Rewind / Grow / Heal added. The guardian's chosen ability is the
+first id saved (in its design, `ab`), so from now on an id never changes. Built in step B as `src/abilities.js` (`ABILITIES`, `TYPE_ABILITIES`).
+
+| id | Ability | What a place asks (each solves something no other ability can) | Types |
 | --- | --- | --- | --- |
-| fly | 🪽 Fly | open sky, a gap with no floor | bug, ghost, mind, pixie, drake, rainbow, cosmic, sound, alien, sky, paper, bubble, gravity |
-| swim | 🌊 Swim | dive deep, hold its breath | water, pirate, atlantis, bubble |
-| climb | 🧗 Climb | walls, vines, a ceiling, a shaft | grass (weak), bug, slime, parkour, ninja, gravity |
+| fly | 🪽 Fly | open sky, a gap with no floor; rises only 6 over the ground right below (`RIDE.sky.cap`) | bug, ghost, mind, pixie, drake, rainbow, cosmic, sound, alien, sky, paper, bubble, gravity |
+| swim | 🌊 Swim | speed in water: a swim race, catching a fast swimmer, an underwater gate before it shuts (anyone can dive) | water, pirate, atlantis, bubble |
+| climb | 🧗 Climb | a sheer wall taller than the 6-block fly cap | grass, bug, slime, parkour, ninja, gravity |
 | dig | ⛏️ Dig | soft earth, buried chests | bone, treasure, pirate, rock |
-| squeeze | 📄 Squeeze | cracks, gaps under doors | slime, paper, tiny, doodle |
-| pass | 👻 Pass through | bars, glass, thin walls | ghost, dream, portal, mirror |
+| squeeze | 📄 Squeeze | a crack in real stone | slime, paper, tiny, doodle |
+| pass | 👻 Pass through | faded, half-erased pencil walls only (solid to everyone else) | ghost, dream, portal, mirror |
 | glow | 💡 Glow | the dark | fire, electric, rainbow, cosmic, light, atlantis |
 | burn | 🔥 Burn | thorns, tangles, ice walls | fire, toxic, drake |
-| freeze | ❄️ Freeze | a path over wild water | ice |
-| zap | ⚡ Zap | power a lift, a bridge, a door | electric, metal, cyber |
-| dash | 💨 Dash | closing doors, crumbling floors | time (weak), parkour, racer |
-| push | 💪 Push | boulders, cracked walls | normal, metal, squad, knight, rock |
-| hide | 🥷 Hide | sneak past someone watching | camo, ninja, tiny |
-| bounce | 🦘 Bounce | ledges far higher than a jump | ball, funfair, surprise |
-| lift | ✨ Lift | move things from afar | mind, alien |
-| charm | 💖 Charm | win over someone grumpy (a treat when it looks at you) | pixie, cozy, food, funfair |
+| freeze | ❄️ Freeze | moving water stops: a river's current, a waterfall into an ice wall (a climber then goes up) | ice |
+| zap | ⚡ Zap | a machine: power a lift, a bridge, a door | electric, metal, cyber |
+| sprint | 💨 Sprint (was dash) | closing doors, crumbling floors: fast enough makes it | parkour, racer |
+| rewind | ⏪ Rewind | a place where it is already too late when you walk in (the bridge fell, the door slammed) | time |
+| push | 💪 Push | boulders and balls (no longer breaks cracked walls) | normal, metal, squad, knight, rock, ball |
+| sneak | 🥷 Sneak (was hide) | sneak past someone watching | camo, ninja, tiny |
+| lift | ✨ Lift | something you see but can never reach (a cage, behind glass) | mind, alien |
+| charm | 💖 Charm | win over someone grumpy (a treat when it looks at you) | pixie, cozy, food, funfair, surprise |
 | sense | 🔊 Sense | an echo shows a hidden path; remember it | mind, sound |
+| grow | 🌱 Grow | cracked stone: roots split it | grass |
+| heal | 💚 Heal | grey scribbled things back to colour (a wilted vine bridge, a grumpy grey creature) | pixie, cozy, food |
 
-Custom (the Wizard's guardian) is the only Custom creature you can have, so it may differ per player: **decided** in section 6.
+No Bounce. Custom has none of its own: the guardian has **Fly when its kit parts fly** (wings or the cloud, guardiankit `flies`) plus
+**one ability chosen** on the drawing board (Fly is never chosen; saved in the design as `ab`, `cleanDesign` keeps it).
 
 ## 2. The 22 redesigns (id, stats, moves, evolution, catch rate kept; name, desc, model, flags, spawns may change)
 
@@ -107,8 +113,8 @@ like a propeller), twilorb (rolls). Scalekin already has small wings.
    `blocks`, `seventh`, `four-types`, `three-types`, `ninja`, `pirate`, `fx`, `book`, `riding`, `traits`, `swap`, `pvp`, `gym`.
    A model photographer (like `tests/houseprops-preview.mjs`) for the owner: every redesign beside its old look.
 
-**B. Abilities data + chips on cards**
-`src/abilities.js` (pure, no imports): `ABILITIES` (the 17, append-only ids, icon, name, short line), `TYPE_ABILITIES`,
+**B. Abilities data + chips on cards** (**built 2026-11-14**, spec `abilities`: `src/abilities.js`, `src/abilitychips.js`, the drawing board's Ability tab; chips on the team screen and its trade mode, the trade bar, the Book's creature and type pages, the HUD row of the creature you are)
+`src/abilities.js` (pure, no imports): `ABILITIES` (the 19, append-only ids, icon, name, short line), `TYPE_ABILITIES`,
 `abilitiesOf(species, creature)` (from its type; the guardian from its design, section 6), `hasAbility`. Spec `abilities`: every wild
 type mapped; consistency (no `flies` species in a type without Fly, every sky-ride species in a Fly type, every water-ride species in
 a Swim type, no fish shape in a type without Swim). Then the chips:

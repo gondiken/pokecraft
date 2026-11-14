@@ -14,6 +14,7 @@ import { sound } from './sound.js';
 import { el } from './util.js';
 import { PAINTS, DESIGNS, PAINT_SLOTS, guardianLevel } from './custom.js';
 import { SLOTS, SLOT_LABELS, SLOT_ICONS, KIT, KIT_COLOURS, BARE, NAME_MAX, cleanDesign, kitName, randomName, flies, lookOf } from './guardiankit.js';
+import { ABILITIES, CHOOSABLE, cleanChoice } from './abilities.js'; // chapter 3 step B: the guardian's chosen ability
 import { floorKey, WORDS, wizardTeam, DEFAULT_GROUPS, starCount, towerStand } from './wizardtower.js';
 import { bridgeDone } from './pictureworlds.js';
 
@@ -76,7 +77,8 @@ export function createStudio(game, { startBattle, save }) {
   let clock = 0;
   let draft = null, tab = 'body', preview = null; // the drawing board: the design being drawn, the open part tab, the turning picture
   let atkMove = null; // owner 2026-11-10 (?preview): the attack picked on the board's Attacks tab
-  const ATTACKS = 'attacks'; // the board's 8th tab (?preview)
+  const ATTACKS = 'attacks'; // the board's 9th tab (?preview)
+  const ABILITY = 'ability'; // chapter 3 step B: the board's 8th tab, the one ability you choose (abilities.js; Fly comes from the parts)
 
   const dist = npc => (npc?.pos && game.player ? Math.hypot(game.player.pos.x - npc.pos.x, game.player.pos.z - npc.pos.z) : 0);
   const floor5 = () => game.beaten.includes(floorKey(5));
@@ -199,7 +201,9 @@ export function createStudio(game, { startBattle, save }) {
     // Picks a part (slot, number) or a colour (slot, colour number) for the draft; the tests call these too.
     setPart(slot, i) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT[slot][i]) return false; draft.p[k] = i; tab = slot; this.refreshBoard(); return true; },
     setColour(slot, ci) { const k = SLOTS.indexOf(slot); if (!draft || k < 0 || !KIT_COLOURS[ci]) return false; draft.c[k] = ci; this.refreshBoard(); return true; },
-    setTab(slot) { if (!SLOTS.includes(slot) && !(slot === ATTACKS && PREVIEW)) return false; tab = slot; this.refreshBoard(); document.querySelector('#drawboard .db-scroll')?.scrollTo?.(0, 0); if (slot === ATTACKS) this.playAttack(); return true; },
+    setTab(slot) { if (!SLOTS.includes(slot) && slot !== ABILITY && !(slot === ATTACKS && PREVIEW)) return false; tab = slot; this.refreshBoard(); document.querySelector('#drawboard .db-scroll')?.scrollTo?.(0, 0); if (slot === ATTACKS) this.playAttack(); return true; },
+    // the one ability you choose for your guardian (null = none yet); kept in the draft as `ab`, saved with the design
+    setAbility(id) { if (!draft || (id !== null && !cleanChoice(id))) return false; if (id) draft.ab = id; else delete draft.ab; tab = ABILITY; this.refreshBoard(); return true; },
     setName(n) { if (!draft) return false; draft.n = String(n ?? '').slice(0, NAME_MAX); return true; },
     shownName() { return draft ? (draft.n.trim() ? cleanDesign(draft).n : kitName(draft)) : ''; },
     // Fills #drawboard-body (ui.openPanel('drawboard')).
@@ -236,14 +240,19 @@ export function createStudio(game, { startBattle, save }) {
     refreshBoard() {
       const tabs = document.getElementById('db-tabs');
       if (!tabs || !draft) { this.updatePreview(); return; }
-      tabs.classList.toggle('eight', PREVIEW);
-      tabs.replaceChildren(...SLOTS.map((s, i) => el('button', { class: `db-tab${s === tab ? ' on' : ''}`, 'data-slot': s, onclick: () => this.setTab(s) },
+      const nTabs = SLOTS.length + 1 + (PREVIEW ? 1 : 0);
+      tabs.style.setProperty('--tabs', nTabs); tabs.style.setProperty('--tabs-narrow', Math.ceil(nTabs / 2));
+      const chosen = ABILITIES[cleanChoice(draft.ab)];
+      tabs.replaceChildren(...[...SLOTS.map((s, i) => el('button', { class: `db-tab${s === tab ? ' on' : ''}`, 'data-slot': s, onclick: () => this.setTab(s) },
         el('span', { class: 'db-ico' }, SLOT_ICONS[s]), el('span', {}, SLOT_LABELS[s]), el('small', {}, KIT[s][draft.p[i]].name))),
+        el('button', { class: `db-tab${tab === ABILITY ? ' on' : ''}`, 'data-slot': ABILITY, onclick: () => this.setTab(ABILITY) },
+          el('span', { class: 'db-ico' }, chosen ? chosen.icon : '🌟'), el('span', {}, 'Ability'), el('small', {}, chosen ? chosen.name : 'Pick one')),
         PREVIEW && el('button', { class: `db-tab${tab === ATTACKS ? ' on' : ''}`, 'data-slot': ATTACKS, onclick: () => this.setTab(ATTACKS) },
-          el('span', { class: 'db-ico' }, '🎬'), el('span', {}, 'Attacks'), el('small', {}, `${this.attackMoves().length} moves`)));
+          el('span', { class: 'db-ico' }, '🎬'), el('span', {}, 'Attacks'), el('small', {}, `${this.attackMoves().length} moves`))].filter(Boolean));
       const sub = document.querySelector('#drawboard .db-sub');
-      if (sub) sub.textContent = tab === ATTACKS ? 'Each attack is a kind. Design how it looks!' : 'Pick each part and its colour. Start with the body!';
+      if (sub) sub.textContent = tab === ATTACKS ? 'Each attack is a kind. Design how it looks!' : tab === ABILITY ? 'Pick one thing your guardian can do!' : 'Pick each part and its colour. Start with the body!';
       if (tab === ATTACKS) { this.refreshAttacks(); this.updatePreview(); return; }
+      if (tab === ABILITY) { this.refreshAbility(); this.updatePreview(); return; }
       const k = SLOTS.indexOf(tab), list = KIT[tab];
       document.getElementById('db-parts').replaceChildren(...list.map((part, i) => el('button', { class: `db-part${draft.p[k] === i ? ' on' : ''}`, 'data-part': String(i), onclick: () => this.setPart(tab, i) }, part.name)));
       const none = list[draft.p[k]].name === 'None';
@@ -337,6 +346,17 @@ export function createStudio(game, { startBattle, save }) {
       const raw = this.lookRaw(this.atkMove);
       if (!raw || (n !== 0 && n !== 1) || !KIT_COLOURS[ci]) return false;
       raw.c[n] = ci; this.refreshBoard(); this.playAttack(); return true;
+    },
+    // The Ability tab: one chip per ability you can choose; Fly is never chosen (wings or a cloud give it).
+    refreshAbility() {
+      const parts = document.getElementById('db-parts'), cols = document.getElementById('db-colours');
+      if (!parts || !cols) return;
+      const pick = cleanChoice(draft.ab), fly = flies(draft);
+      parts.replaceChildren(...CHOOSABLE.map(id => { const a = ABILITIES[id]; return el('button', { class: `db-part db-abil${pick === id ? ' on' : ''}`, 'data-ability': id, title: a.line, onclick: () => this.setAbility(id) },
+        el('span', { class: 'db-ico' }, a.icon), ` ${a.name}`); }));
+      cols.replaceChildren(el('div', { class: 'db-abline' },
+        pick ? el('p', {}, el('b', {}, `${ABILITIES[pick].icon} ${ABILITIES[pick].name}: `), ABILITIES[pick].line) : el('p', {}, 'Tap one to choose it.'),
+        el('p', { class: 'db-fly' }, fly ? '🪽 It has wings, so it can fly too!' : '🪽 Give it wings (Back) or a cloud (Legs) and it can fly too.')));
     },
     refreshAttacks() {
       const parts = document.getElementById('db-parts'), cols = document.getElementById('db-colours');

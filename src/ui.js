@@ -8,6 +8,7 @@ import { hpColor, el } from './util.js';
 import { GYMS } from './gyms.js';
 import { STAR_WORLDS, starsWon } from './pictureworlds.js'; // T38a; wave 18: the row and the count are the worlds of the bridge (a removed world's star stays in the save, unseen)
 import { typeLink } from './book.js';
+import { creatureChips } from './abilitychips.js'; // chapter 3 step B: ability chips on every card
 import { Glint } from './glint.js';
 
 const BOX_SORT_KEY = 'pokecraft-box-sort';
@@ -151,6 +152,7 @@ export class UI {
       const frac = c.hp / st.maxHp;
       return el('div', { class: `mini${i === 0 ? ' lead' : ''}` },
         el('div', { class: 'row' }, el('span', {}, (g.being?.on && g.being.creature === c ? '🐾 ' : '') + nameOf(c)), el('span', {}, `Lv${c.level}`)), // (chapter 3: the creature you are)
+        g.being?.on && g.being.creature === c && creatureChips(SPECIES[c.species], c, { icons: true, cls: 'be-abis' }), // chapter 3 step B: what the creature you are can do
         el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })));
     }));
   }
@@ -397,6 +399,7 @@ export class UI {
           el('div', {}, typeLink(sp.type, t => this.openBook({ type: t })), ` Lv${c.level}`),
           (c.traits || []).length > 0 && el('div', { class: 'traits' }, ...c.traits.filter(id => TRAITS[id]).map(id =>
             el('span', { class: 'trait', 'data-trait': id }, TRAITS[id].text))))),
+      creatureChips(sp, c), // chapter 3 step B: what it can do, the card's full width
       el('div', {}, `HP ${c.hp}/${st.maxHp} · ATK ${st.atk} · DEF ${st.def} · SPD ${st.spd}`),
       el('div', { class: 'hpbar' }, el('div', { style: `width:${frac * 100}%;background:${hpColor(frac)}` })),
       el('div', { class: 'xpbar' }, el('div', { style: `width:${Math.max(0, Math.min(1, xpFrac)) * 100}%` })),

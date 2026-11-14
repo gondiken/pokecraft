@@ -4,6 +4,8 @@
 import { REALMS } from './realms.js'; // T31
 import { SPECIES, SPAWNS, MOVES, TYPE_COLORS, CREW, effectiveness, moveInfo } from './species.js';
 import { TRAITS } from './traits.js';
+import { abilityChips, creatureChips } from './abilitychips.js'; // chapter 3 step B: what a creature can do
+import { TYPE_ABILITIES } from './abilities.js';
 import { BLOCKS } from './blocks.js';
 import { condOf, condText, AFTER_TEXT } from './spawnrules.js';
 import { portrait } from './ui.js';
@@ -368,6 +370,9 @@ export class Book {
     return [...(this.game.party || []), ...(this.game.box || [])].find(c => c.species === id)?.paint || null;
   }
 
+  // Your creature of this species (the guardian's abilities come from its design), or null.
+  mineOf(id) { return [...(this.game.party || []), ...(this.game.box || [])].find(c => c.species === id) || null; }
+
   // A species' name in the Book: your guardian goes by the name you gave it.
   nameFor(id) {
     const p = SPECIES[id]?.kit ? this.paintOf(id) : null;
@@ -408,6 +413,7 @@ export class Book {
       const s = mine.filter(id => this.seen.has(id)).length, c = mine.filter(id => this.caught.has(id)).length;
       parts.push(el('p', { id: 'book-typeinfo' }, `${cap(this.filter)}: ${s} seen · ${c} caught (of ${mine.length})`));
       if (mine.length && mine.every(id => SPECIES[id].designed)) parts.push(el('p', { id: 'book-designed-note', class: 'book-note' }, 'No wild ' + cap(this.filter) + ' creatures. Beat the Wizard and design your own!'));
+      parts.push(this.abilitySection(this.filter));
       parts.push(this.matchupSection(this.filter, 'book-typematch'));
     }
     parts.push(el('div', { id: 'book-grid' }, ...ids.map(id => {
@@ -440,6 +446,7 @@ export class Book {
     const left = el('div', { class: 'book-pic' }, this.picture(id, 220, 188, queue, seen ? this.nameFor(id) : ''),
       el('h3', { class: 'book-title' }, seen ? this.nameFor(id) : '???'));
     if (seen) left.append(this.typeLink(sp.type));
+    if (seen) { const chips = creatureChips(sp, sp.kit ? this.mineOf(id) : null, { cls: 'book-abis' }); if (chips) left.append(chips); } // chapter 3 step B
     const info = el('div', { class: 'book-info' });
     if (!seen) {
       info.append(el('p', {}, sp.designed ? "Designed in the Wizard's studio. Beat the Wizard and make it yours!" : "You haven't met this creature yet. Keep exploring!"));
@@ -487,6 +494,14 @@ export class Book {
       el('h3', { class: 'book-title' }, (m.sig ? '★ ' : '') + m.name), this.typeLink(m.type));
     this.body.replaceChildren(this.topBar(), el('div', { id: 'book-detail', class: 'book-move-page', 'data-move': id }, left, info));
     this.fillImages(queue, renderId);
+  }
+
+  // A type's page: what every creature of the type can do (chapter 3 step B; walking has no chip).
+  abilitySection(type) {
+    const ids = TYPE_ABILITIES[type] || [];
+    const words = type === 'custom' ? 'Your guardian can fly if it has wings or a cloud, and does the one thing you choose for it.'
+      : ids.length ? `Every ${cap(type)} creature can do this:` : `${cap(type)} creatures walk.`;
+    return el('div', { id: 'book-typeabis', class: 'book-sec' }, el('p', { class: 'book-note' }, words), abilityChips(ids));
   }
 
   // "Yours": the levels of this creature in your team and box, with a link to the team screen.

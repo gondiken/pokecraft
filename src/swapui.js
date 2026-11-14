@@ -5,6 +5,7 @@
 // Only game.swaps holds the trade's state; this file shows it.
 import { SPECIES } from './species.js';
 import { portrait } from './ui.js';
+import { creatureChips } from './abilitychips.js'; // chapter 3 step B: the trade cards show what a creature can do
 import { el } from './util.js';
 import { PARCELS, canGive, creatureItem } from './swapcore.js';
 
@@ -42,7 +43,7 @@ export function createSwapUi(game) {
   function card(item) {
     const P = PARCELS[item.kind], c = item.c;
     return el('div', { class: 'tb-card' }, pic(P.pic(item), 84, 72), el('b', {}, SPECIES[c.species].name), el('span', {}, `Lv ${c.level}`),
-      ...(c.traits || []).includes('rideable') ? [el('span', { class: 'trait' }, 'Can be ridden')] : []);
+      ...(c.traits || []).includes('rideable') ? [el('span', { class: 'trait' }, 'Can be ridden')] : [], creatureChips(SPECIES[c.species], c));
   }
 
   function bar() {

@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { box, pivot, glow, addWings } from './shapes.js';
 import { PAINTS } from './custom.js';
 import { cleanLooks, makeLook, kindOf } from './movekinds.js'; // owner 2026-11-10: each attack's own look, designed per its kind
+import { registerKitFlies, cleanChoice } from './abilities.js'; // chapter 3 step B: the guardian's abilities come from its design
 
 export const SLOTS = ['body', 'head', 'eyes', 'legs', 'tail', 'back', 'extra'];
 export const SLOT_LABELS = { body: 'Body', head: 'Head', eyes: 'Eyes', legs: 'Legs', tail: 'Tail', back: 'Back', extra: 'Extra' };
@@ -304,6 +305,8 @@ export function cleanDesign(d) {
   out.n = cleanName(src.n, out);
   const a = cleanLooks(src.a, n => okIndex(n, KIT_COLOURS.length)); // owner 2026-11-10: each attack's designed look (only there once designed)
   if (a) out.a = a;
+  const ab = cleanChoice(src.ab); // chapter 3 step B: the one ability chosen on the drawing board (abilities.js; Fly comes from the parts)
+  if (ab) out.ab = ab;
   return out;
 }
 // How one of the guardian's attacks looks (`move` = its MOVES entry): a look its kind draws (movekinds.js makeLook), or null = the Custom
@@ -315,6 +318,7 @@ export function lookOf(design, moveId, move) {
 }
 export const designKey = d => `${d.p.join('')}.${d.c.join('-')}.${d.n}`;
 export const flies = d => !!BACKS[d.p[5]]?.fly || !!LEGS[d.p[3]]?.hover;
+registerKitFlies(d => Array.isArray(d?.p) && flies(d)); // abilities.js: the guardian has Fly when its parts fly
 
 // ---- the model (species.js buildModel: shape 'kit', m.design) ----
 // A colour helper per part: box(parent, w, h, d, shade 'c' | 'l' | 'd' or a fixed hex, x, y, z). Rainbow parts get their own hue in
