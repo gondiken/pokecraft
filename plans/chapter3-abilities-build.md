@@ -153,3 +153,13 @@ drop Freeze and fold Lift into Mind's Sense.
 3. **The guardian (Custom):** it is the only Custom creature a player can have, so its abilities may come from its own design: it
    has **Fly when its parts fly** (wings or the cloud: guardiankit `flies`), plus **one ability you choose** on the drawing board (a
    new row of ability chips; saved in the design, `cleanDesign` keeps it; the rematch redesign may change it). Built in step B.
+
+## 7. Owner 2026-11-14 (after step A)
+
+- Renamed: Dash -> **Sprint** (going fast), Hide -> **Sneak**, Zap -> **Power** (its first name: making a machine work).
+- Time loses Dash and gets **Rewind** (a new ability): a place where it is already too late when you walk in (the bridge falls, the
+  door slams the moment you enter); only turning the last moments back gets you through. Sprint = you can make it if fast enough;
+  Rewind = nobody can, it already happened.
+- Grass keeps Climb; a better Grass ability is welcome, but ask the owner first.
+- **Every ability must solve something no other ability can** (owner: "how could Bounce solve something Fly can't?"). Review in
+  progress: the proposals and the open questions are in the chat of 2026-11-14 and on the map page.
