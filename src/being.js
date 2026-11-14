@@ -4,7 +4,7 @@
 //   Owner 2026-11-12 ("there should be creature mode and me mode ... not a whole yet another bar"; then "kids will never want to switch
 //   to me anyway ... keep the me option in the menu, and swap can stay as a button"): in chapter 3's lands you ARE your creature by
 //   itself; "🧍 Be me" / "🐾 Be my creature" is a button in the pause screen (R on a keyboard). Swap (F, or the Place button: nothing is
-//   built in Wobbleland) goes round your first three creatures (the scribble fight's three); 1 2 3 pick one on a keyboard. In chapter 3's lands creature mode IS riding: it moves exactly like riding that creature (creatureways.js bodyStep with
+//   built in Wobbleland) goes round your first three creatures (the scribble fight's three); 1 2 3 pick one on a keyboard. In chapter 3's lands creature mode IS riding: it moves like riding, by its abilities (step C: Fly, Swim, Climb; creatureways.js bodyStep with
 //   riding.js RIDE), so riding there turns into creature mode. Swap any time, also in the air: each place judges the body you are now.
 //   The camera: behind your creature (default) or in its eyes (V, or the pause screen's camera button; remembered on this device); in a
 //   tight place (a shaft, a doorway) it goes into its eyes by itself and comes back out after.
@@ -16,10 +16,11 @@ import { RIDE, fitRide } from './riding.js';
 import { sketchModel } from './sketch.js';
 import { sound } from './sound.js';
 import { PREVIEW } from './comingsoon.js';
-import { BODY, bodyOf, bodyStep, wingRoom } from './creatureways.js';
+import { BODY, bodyOf, bodyStep, tightAt } from './creatureways.js';
+import { abilitiesOf } from './abilities.js';
+import { placeAt, needOf, swapTo } from './abilityplaces.js'; // step C: a place that needs an ability
 import { squadOf } from './scribblefight.js';
-import { TRAITS } from './traits.js';
-const bodyFor = c => bodyOf(c.species, SPECIES[c.species], TRAITS.rideable.species[c.species] ?? null);
+const bodyFor = c => bodyOf(c.species, SPECIES[c.species], c);
 
 export const BE_CAM = { dist: 4.6, rise: 0.42, head: 1.2, pitchK: 0.45, ease: 10, near: 1.3, key: 'pokecraft-be-cam' };
 const store = { get() { try { return localStorage.getItem(BE_CAM.key); } catch { return null; } }, set(v) { try { localStorage.setItem(BE_CAM.key, v); } catch { /* private window */ } } };
@@ -61,7 +62,7 @@ export function createBeing(game, { scene }) {
       try { model = buildModel(c.species, c.paint); sketchModel(model); fit = fitRide(model); scene.add(model); } catch { model = null; }
       try { sound.cry(c.species, body.type); } catch { /* optional */ }
       if (say) {
-        toast(`You are ${nameOf(c)}!${body.wings ? ' Hold Jump to fly.' : ''}`);
+        toast(`You are ${nameOf(c)}!${body.fly ? ' Hold Jump to fly.' : ''}`);
       }
       game.ui?.renderHud?.();
       return true;
@@ -81,13 +82,25 @@ export function createBeing(game, { scene }) {
     },
     get me() { return me; },
     setMe(v) { me = !!v; if (me) being.back(false); being.refresh(); }, // (tests: walk on foot as before)
-    // Swap (F / the Place button): the next of your three
+    // Swap (F / the Place button): the next of your three. At a place that needs an ability you lack, straight to the next one that has it.
     next() {
-      const n = squad().length;
+      const n = squad().length, need = being.need();
+      const to = swapTo(need, idx, n);
+      if (to != null) { me = false; return being.become(to); }
       if (idx == null) return being.toggle();
       if (n < 2) { toast('Only one creature in your team!'); return false; }
       return being.become((idx + 1) % n);
     },
+    // step C: the place you are in that needs an ability, and what it says to you (abilityplaces.js needOf), or null
+    need() {
+      const p = game.player;
+      if (!here() || !p) return null;
+      const place = placeAt(game.world?.needPlaces, p.pos);
+      if (!place) return null;
+      const you = idx != null && body ? body.abilities : [];
+      return needOf(place, you, squad().map(c => abilitiesOf(SPECIES[c.species], c)));
+    },
+    swapTarget() { return swapTo(being.need(), idx, squad().length); }, // (the card marks it)
     setView(v, say = true) { view = v === 'eyes' ? 'eyes' : 'behind'; store.set(view); if (say) toast(view === 'eyes' ? '🎥 In its eyes' : '🎥 Behind it'); being.refresh(); },
     toggleView() { being.setView(view === 'eyes' ? 'behind' : 'eyes'); },
     // after Player.update and the live parts (main.js): the body's rules
@@ -103,7 +116,7 @@ export function createBeing(game, { scene }) {
       const c = being.creature, p = game.player;
       if (!c || c.species !== body.species) { being.back(false); return; } // (the team changed under you)
       if (game.scribble?.fighting) return; // (the fight has its own bodies; you come back as it afterwards)
-      if (bodyStep(p, game.world, body, RIDE) === 'folded' && !game.toldOnce?.has('be:fold')) { game.toldOnce?.add('be:fold'); toast('No room to spread its wings here!'); }
+      bodyStep(p, game.world, body, RIDE);
       if (p.ride?.be && p.ride.landing) p.ride.landing = false;
     },
     // after main.js placed the eye camera (and before scribble.js): the camera behind your creature, the creature itself
@@ -111,7 +124,7 @@ export function createBeing(game, { scene }) {
       const p = game.player;
       if (idx == null) { if (model) model.visible = false; cam.ok = false; crosshair(false); return false; }
       const fighting = !!game.scribble?.fighting;
-      tight = !wingRoom(game.world, p.pos) || game.player.climbing && !roomBehind(p);
+      tight = tightAt(game.world, p.pos) || game.player.climbing && !roomBehind(p);
       const behind = view === 'behind' && !tight;
       if (model) {
         model.visible = behind && !fighting; // (in a fight scribble.js draws it)
@@ -166,7 +179,7 @@ export function createBeing(game, { scene }) {
     // tests
     info() {
       const p = game.player;
-      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, way: body?.way ?? null, wings: !!body?.wings, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
+      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, abilities: body?.abilities ?? [], fly: !!body?.fly, climb: !!body?.climb, swim: !!body?.swim, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
     },
   };
   function drop() {

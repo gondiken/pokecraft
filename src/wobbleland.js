@@ -8,7 +8,7 @@
 // still being drawn (walkable grey land). The whole map is a keep (nothing can be built: the Wizard's drawing).
 // The look (the curling page, the first-draft colours, grey where the Scribble is) is drawn by wobblelook.js; nothing here is a look.
 import { B, WOOL } from './blocks.js';
-import { areaFlat, waysLand, Trials } from './wayland.js'; // chapter 3: the first way places (Storm Island, the Drip Tower) in Bumpy Hills
+import { areaFlat, waysLand, Trials } from './wayland.js'; // chapter 3: the first way places (the Drip Tower, a Climb place; step C) in Bumpy Hills
 import { kit, buildWayBack } from './picturelands.js';
 import { GROUND } from './groundrules.js'; // Slippy Lake: the ice's rule (the player and the fight both ask world.groundAt)
 
@@ -290,7 +290,7 @@ export function wobbleLand(world) {
   world.healer = [HEALER.x, BASE + 1, HEALER.z, 0]; // (npc.js: Healer Stella, as in the Dream and the Portal House)
   slippyLake(world, put);
   caveLand(world, put);
-  waysLand(world, put); // chapter 3 (plans/chapter3-ways.md): Storm Island and the Drip Tower
+  waysLand(world, put); // chapter 3 (plans/chapter3-abilities-build.md step C): the Drip Tower (Climb) and its place entry
   world.trials = new Trials();
   // wonky things
   for (const t of TREES) {

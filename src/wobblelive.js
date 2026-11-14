@@ -12,7 +12,12 @@ import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
-import { STORM, SHAFT, ringState, dripsAt } from './wayland.js'; // chapter 3: the way places (plans/chapter3-ways.md)
+import { SHAFT, dripsAt } from './wayland.js'; // chapter 3: the Drip Tower (plans/chapter3-ways.md)
+import { ACTS } from './abilityplaces.js'; // step C: a place that needs an ability
+import { ABILITIES } from './abilities.js';
+import { abilitySvg } from './abilityicons.js';
+import { portrait } from './ui.js';
+import { nameOf } from './species.js';
 
 export const POT = {
   r: 1.3,          // stand within this of a pot's middle to hop from it
@@ -282,70 +287,109 @@ class Fireflies extends Piece {
 }
 
 
-// Chapter 3 (plans/chapter3-ways.md): the way places' live side. The rules are wayland.js Trials (stepped here each frame after you moved,
-// its clock standing still while the game is paused); this draws them: Storm Island's dark cloud and its three rings of ink-wind (falling
-// streaks while a ring blows, a flicker just before, nothing while it is calm; a faint ring on the ink always), the Drip Tower's drips.
-const STREAKS = 90; // per ring
+// Chapter 3 (plans/chapter3-ways.md): the Drip Tower's live side. The rules are wayland.js Trials (stepped here each frame after you moved,
+// its clock standing still while the game is paused); this draws the drips.
 class WayPlaces extends Piece {
   constructor(scene) {
     super(scene);
-    const w = this.s.world;
-    this.trials = w.trials ?? null; this.toastAt = -9; this.told = new Set(); this.t = 0;
+    this.trials = this.s.world.trials ?? null; this.told = new Set();
     if (!this.trials) return;
-    const S = STORM, y0 = S.ink + 1;
-    const cloud = new THREE.Mesh(new THREE.CylinderGeometry(S.r + 1, S.r - 2, 2.2, 40, 1, true), new THREE.MeshBasicMaterial({ color: 0x3a3450, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
-    cloud.position.set(S.x, 25, S.z); this.group.add(cloud);
-    const lid = new THREE.Mesh(new THREE.CircleGeometry(S.r + 1, 40), cloud.material); lid.rotation.x = Math.PI / 2; lid.position.set(S.x, 24, S.z); this.group.add(lid);
-    this.rings = S.rings.map((r, i) => {
-      const mat = new THREE.MeshBasicMaterial({ color: 0x241c38, transparent: true, opacity: 0.85, depthWrite: false });
-      const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 1.8, 0.09), mat, STREAKS);
-      const seeds = Array.from({ length: STREAKS }, (_, k) => ({ a: (k / STREAKS) * Math.PI * 2 + Math.sin(k * 7.3) * 0.05, r: r + Math.sin(k * 3.7 + i) * S.width * 0.45, ph: (k * 0.618) % 1 }));
-      const line = new THREE.Mesh(new THREE.RingGeometry(r - S.width / 2, r + S.width / 2, 64), new THREE.MeshBasicMaterial({ color: 0x8a6ad8, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
-      line.rotation.x = -Math.PI / 2; line.position.set(S.x, y0 + 0.03, S.z);
-      this.group.add(mesh, line);
-      return { mesh, seeds, line };
-    });
-    this.dummy = new THREE.Object3D();
     this.drips = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(SHAFT.r, 10, 8), new THREE.MeshBasicMaterial({ color: 0x3a2a6e })); m.scale.y = 1.4; m.visible = false; this.group.add(m); return m; });
   }
   update(dt, p) {
     if (!this.trials) return;
-    const playing = this.s.playing();
-    this.t += dt;
-    if (playing && p) for (const e of this.trials.step(p, dt)) this.event(e, p);
-    const T = this.trials.t, S = STORM, top = 24, y0 = S.ink + 1;
-    this.rings.forEach((R, i) => {
-      const st = ringState(i, T), on = st === 'on', warn = st === 'warn';
-      R.mesh.visible = on || warn;
-      R.line.material.opacity = on ? 0.45 : warn ? 0.3 + 0.2 * Math.sin(this.t * 30) : 0.16;
-      if (!R.mesh.visible) return;
-      R.mesh.material.opacity = on ? 0.85 : 0.35 * (Math.sin(this.t * 30) > 0 ? 1 : 0.2);
-      R.seeds.forEach((q, k) => {
-        const f = ((q.ph + T * (on ? 1.6 : 0.35)) % 1), y = top - f * (top - y0);
-        this.dummy.position.set(S.x + Math.cos(q.a) * q.r, y, S.z + Math.sin(q.a) * q.r); this.dummy.updateMatrix();
-        R.mesh.setMatrixAt(k, this.dummy.matrix);
-      });
-      R.mesh.instanceMatrix.needsUpdate = true;
-    });
-    const ys = dripsAt(T);
+    if (this.s.playing() && p) for (const e of this.trials.step(p, dt)) this.event(e);
+    const ys = dripsAt(this.trials.t);
     this.drips.forEach((m, k) => { m.visible = k < ys.length; if (m.visible) m.position.set(SHAFT.x + 0.5, ys[k] + SHAFT.r, SHAFT.z + 0.5); });
   }
-  event(e, p) {
-    if (e.kind === 'puff') {
-      this.s.puff({ x: p.pos.x, y: p.pos.y, z: p.pos.z, colour: 0x3a2a6e });
-      try { sound.play('whoosh'); } catch { /* optional */ }
-      p.yaw = e.yaw ?? p.yaw;
-      this.once('puff', 'Splash! The Scribble\'s ink puffs you back.');
-    } else if (e.kind === 'knocked') {
+  event(e) {
+    if (e.kind === 'knocked') {
       try { sound.play('pumpkinsplat'); } catch { /* optional */ }
       this.once('knocked', 'Splat! A drip knocked you off.');
     }
   }
   once(id, text) { if (this.told.has(id)) return; this.told.add(id); this.game.ui?.toast(text); }
-  info() { return this.trials ? { trialsT: +this.trials.t.toFixed(2), rings: STORM.rings.map((_, i) => ringState(i, this.trials.t)), drips: dripsAt(this.trials.t).length } : {}; }
+  info() { return this.trials ? { trialsT: +this.trials.t.toFixed(2), drips: dripsAt(this.trials.t).length } : {}; }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces];
+// Step C (plans/chapter3-abilities-build.md): "the world says what it needs". Generic: it reads `world.needPlaces` (data, abilityplaces.js)
+// and knows no ability. Each place's drawn badge floats over it (seen from afar, bobbing). Inside a place:
+//   the creature you are has the ability -> the big button's word is its verb ("Climb!"); ACTS[ability] says what it does (held or a tap);
+//   it doesn't (or you are you) -> a card at the top: the badge, "Needs Climb", and your three, the ones that have it lit and the
+//   one Swap goes to marked (Swap = one tap, being.js next). Nothing else to read.
+const BADGE = { px: 128, size: 2.6, bob: 0.25 };
+class NeedPlaces extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.places = this.s.world.needPlaces ?? [];
+    this.badges = this.places.map(q => {
+      const mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false });
+      const sp = new THREE.Sprite(mat); sp.scale.setScalar(BADGE.size); sp.position.set(...q.badge); sp.renderOrder = 5;
+      this.group.add(sp);
+      badgeTexture(q.needs).then(tex => { if (tex) { mat.map = tex; mat.needsUpdate = true; } });
+      return { q, sp, y: q.badge[1] };
+    });
+    this.t = 0; this.held = null; this.cardKey = null; this.card = null; this.cur = null;
+  }
+  update(dt) {
+    this.t += dt;
+    for (const b of this.badges) b.sp.position.y = b.y + Math.sin(this.t * 2) * BADGE.bob;
+    const need = this.s.playing() ? this.game.being?.need?.() ?? null : null;
+    this.cur = need;
+    if (this.held && (!need?.has || need.needs !== this.held.id)) this.stop();
+    this.showCard(need && !need.has ? need : null);
+  }
+  near() { return this.cur?.has ? this.cur.word : null; }
+  holds() { return !!(this.cur?.has && ACTS[this.cur.needs]?.hold); }
+  heldOnly() { return this.holds(); } // (an ability is held while it works: no "let go" in the prompt)
+  use(p) {
+    const n = this.cur, a = n?.has ? ACTS[n.needs] : null;
+    if (!a) return false;
+    a.start(p);
+    if (a.hold) this.held = { id: n.needs, p };
+    else a.stop?.(p);
+    return true;
+  }
+  release() { if (!this.held) return false; this.stop(); return true; }
+  stop() { const h = this.held; this.held = null; if (h) ACTS[h.id]?.stop?.(h.p); }
+  // the card (DOM, browser only): redrawn only when what it says changes
+  showCard(n) {
+    if (typeof document === 'undefined') return;
+    const squad = this.game.being?.squad?.() ?? [];
+    const swapTo = n ? this.game.being?.swapTarget?.() ?? null : null;
+    const key = n ? `${n.needs}|${n.who.join()}|${swapTo}|${squad.map(c => c.uid ?? c.species).join()}` : '';
+    if (key === this.cardKey) return;
+    this.cardKey = key;
+    if (!this.card) { this.card = document.createElement('div'); this.card.id = 'need'; document.body.appendChild(this.card); }
+    this.card.classList.toggle('hidden', !n);
+    if (!n) { this.card.replaceChildren(); return; }
+    const a = ABILITIES[n.needs], line = n.who.length ? '' : ' none';
+    this.card.innerHTML = `<div class="need-badge">${abilitySvg(n.needs, 56)}</div><div class="need-text">Needs ${a.name}</div><div class="need-who${line}"></div>`;
+    const who = this.card.querySelector('.need-who');
+    squad.forEach((c, i) => {
+      const d = document.createElement('div');
+      d.className = `need-mon${n.who.includes(i) ? ' can' : ''}${i === swapTo ? ' next' : ''}`;
+      d.innerHTML = `<img src="${portrait(c.species, 64, 54, false, c.paint)}" width="48" height="40" alt=""><span>${nameOf(c)}</span>`;
+      if (n.who.includes(i)) d.insertAdjacentHTML('beforeend', `<i>${abilitySvg(n.needs, 18)}</i>`);
+      who.appendChild(d);
+    });
+  }
+  info() { const n = this.cur; return { needAt: n?.place.id ?? null, needs: n?.needs ?? null, needHas: !!n?.has, needWho: n?.who ?? [], needCard: !!this.card && !this.card.classList.contains('hidden'), needBadges: this.badges.length }; }
+  dispose() { this.stop(); this.card?.remove(); this.card = null; for (const b of this.badges) b.sp.material.map?.dispose(); super.dispose(); }
+}
+// an ability's drawn badge as a texture (the same SVG as the chips)
+const badgeCache = {};
+function badgeTexture(id) {
+  if (typeof document === 'undefined' || typeof Image === 'undefined') return Promise.resolve(null);
+  return badgeCache[id] ??= new Promise(res => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = BADGE.px; c.getContext('2d').drawImage(img, 0, 0, BADGE.px, BADGE.px); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; res(t); };
+    img.onerror = () => res(null);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(abilitySvg(id, BADGE.px).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+  });
+}
+
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, NeedPlaces];
 
 export class WobbleLive {
   constructor(game, part) {
@@ -380,6 +424,9 @@ export class WobbleLive {
     return null;
   }
   use(p) { return this.playing() && this.pieces.some(x => x.near?.(p) && x.use(p)); }
+  holds(p) { return this.playing() && p === this.game.player && this.pieces.some(x => x.near?.(p) && x.holds?.(p)); }
+  heldOnly(p) { return this.pieces.some(x => x.near?.(p) && x.heldOnly?.(p)); }
+  release(p) { return this.pieces.some(x => x.release?.(p)); }
   info() { return Object.assign({}, ...this.pieces.map(x => x.info?.() ?? {})); }
   dispose() {
     for (const x of this.pieces) x.dispose();

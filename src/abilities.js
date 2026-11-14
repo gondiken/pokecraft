@@ -5,28 +5,29 @@
 // below), Pass = faded half-erased walls only (Squeeze = a crack in real stone), Lift = something you can never reach, Grow = cracked
 // stone (Push only shoves), Freeze = moving water stops, Swim = speed in water (anyone can dive), Rewind = it is already too late.
 // Pictures: abilityicons.js draws each one as a badge (owner 2026-11-14: no emojis on screen); `icon` stays as a plain-text stand-in.
+// `verb` (step C): the action button's word at a place that needs it (abilityplaces.js).
 // **Ids are saved later (the guardian's chosen one is saved now, in its design `ab`): append-only, never renamed.**
 
 export const ABILITIES = {
-  fly: { icon: '🪽', name: 'Fly', line: 'Up into the open sky, over gaps with no floor.' },
-  swim: { icon: '🌊', name: 'Swim', line: 'Fast in water: win a swim race, beat a gate before it shuts.' },
-  climb: { icon: '🧗', name: 'Climb', line: 'Up a sheer wall too tall to fly up.' },
-  dig: { icon: '⛏️', name: 'Dig', line: 'Through soft earth, to buried chests.' },
-  squeeze: { icon: '📄', name: 'Squeeze', line: 'Flat as paper, through a crack in the stone.' },
-  pass: { icon: '👻', name: 'Pass through', line: 'Through faded, half-erased walls.' },
-  glow: { icon: '💡', name: 'Glow', line: 'Lights up the dark.' },
-  burn: { icon: '🔥', name: 'Burn', line: 'Burns away thorns and tangles, melts ice.' },
-  freeze: { icon: '❄️', name: 'Freeze', line: 'Stops moving water: a river, a waterfall.' },
-  zap: { icon: '⚡', name: 'Zap', line: 'Zaps a machine into working.' },
-  sprint: { icon: '💨', name: 'Sprint', line: 'A burst of speed to get there in time.' },
-  rewind: { icon: '⏪', name: 'Rewind', line: 'Too late already? Turn the last moments back.' },
-  push: { icon: '💪', name: 'Push', line: 'Shoves boulders and kicks balls into place.' },
-  sneak: { icon: '🥷', name: 'Sneak', line: 'Sneaks past someone watching.' },
-  lift: { icon: '✨', name: 'Lift', line: 'Lifts out what you can never reach.' },
-  charm: { icon: '💖', name: 'Charm', line: 'Wins over someone grumpy.' },
-  sense: { icon: '🔊', name: 'Sense', line: 'An echo shows a hidden path for a moment.' },
-  grow: { icon: '🌱', name: 'Grow', line: 'Roots split cracked stone.' },
-  heal: { icon: '💚', name: 'Heal', line: 'Brings grey, scribbled things back to colour.' },
+  fly: { icon: '🪽', name: 'Fly', verb: 'Fly!', line: 'Up into the open sky, over gaps with no floor.' },
+  swim: { icon: '🌊', name: 'Swim', verb: 'Swim!', line: 'Fast in water: win a swim race, beat a gate before it shuts.' },
+  climb: { icon: '🧗', name: 'Climb', verb: 'Climb!', line: 'Up a sheer wall too tall to fly up.' },
+  dig: { icon: '⛏️', name: 'Dig', verb: 'Dig!', line: 'Through soft earth, to buried chests.' },
+  squeeze: { icon: '📄', name: 'Squeeze', verb: 'Squeeze!', line: 'Flat as paper, through a crack in the stone.' },
+  pass: { icon: '👻', name: 'Pass through', verb: 'Pass!', line: 'Through faded, half-erased walls.' },
+  glow: { icon: '💡', name: 'Glow', verb: 'Glow!', line: 'Lights up the dark.' },
+  burn: { icon: '🔥', name: 'Burn', verb: 'Burn!', line: 'Burns away thorns and tangles, melts ice.' },
+  freeze: { icon: '❄️', name: 'Freeze', verb: 'Freeze!', line: 'Stops moving water: a river, a waterfall.' },
+  zap: { icon: '⚡', name: 'Zap', verb: 'Zap!', line: 'Zaps a machine into working.' },
+  sprint: { icon: '💨', name: 'Sprint', verb: 'Sprint!', line: 'A burst of speed to get there in time.' },
+  rewind: { icon: '⏪', name: 'Rewind', verb: 'Rewind!', line: 'Too late already? Turn the last moments back.' },
+  push: { icon: '💪', name: 'Push', verb: 'Push!', line: 'Shoves boulders and kicks balls into place.' },
+  sneak: { icon: '🥷', name: 'Sneak', verb: 'Sneak!', line: 'Sneaks past someone watching.' },
+  lift: { icon: '✨', name: 'Lift', verb: 'Lift!', line: 'Lifts out what you can never reach.' },
+  charm: { icon: '💖', name: 'Charm', verb: 'Charm!', line: 'Wins over someone grumpy.' },
+  sense: { icon: '🔊', name: 'Sense', verb: 'Sense!', line: 'An echo shows a hidden path for a moment.' },
+  grow: { icon: '🌱', name: 'Grow', verb: 'Grow!', line: 'Roots split cracked stone.' },
+  heal: { icon: '💚', name: 'Heal', verb: 'Heal!', line: 'Brings grey, scribbled things back to colour.' },
 };
 for (const [id, a] of Object.entries(ABILITIES)) a.id = id;
 export const ABILITY_IDS = Object.keys(ABILITIES); // the order chips are shown in

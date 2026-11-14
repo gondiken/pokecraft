@@ -1226,7 +1226,7 @@ function updateTarget() {
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild?.wrapped ? `A gift box! 🎁 · ${how} to open` // T44
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
-      : target.near ? `${game.gymLive.holds(game.player) ? (touchMode ? 'Hold and let go' : 'Hold E and let go') : touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40 (Kick! / Shoot! are held)
+      : target.near ? `${game.gymLive.holds(game.player) ? (game.gymLive.heldOnly(game.player) ? (touchMode ? 'Hold' : 'Hold E') : touchMode ? 'Hold and let go' : 'Hold E and let go') : touchMode ? 'Tap' : 'Press E'} to ${target.near.replace(/!$/, '').toLowerCase()}` // T40 (Kick! / Shoot! are held)
       : target.block?.id === B.CHEST ? `Treasure chest · ${how} to open`
       : target.block?.id === B.WAKE_STONE ? `Wake Stone · ${how} to wake up` // T31
       : door ? door // T38a

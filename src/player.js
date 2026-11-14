@@ -18,7 +18,7 @@ export const kickDist = (t0, t1) => {
 // cut into sub-steps of at most 1/60 s (20 and 30 fps then make exactly the 60 fps steps) and a step on land moves along that parabola
 // exactly (any step size lands on the same arc). vel.y keeps its old meaning (the 60 fps per-frame velocity), so code that sets it is unchanged.
 export const STEP = { max: 1 / 60, cal: 1 / 60 };
-const BE_CLIMB = 3, BE_SIDE = 0.7; // chapter 3: a Cling creature's climb (creatureways.js BODY.climb / side)
+const BE_CLIMB = 3, BE_SIDE = 0.7; // chapter 3: a climbing creature's climb (creatureways.js BODY.climb / side)
 
 // Cube Planets: each frame's turn as a quaternion (the camera eases between them).
 const FRAME_Q = FRAMES.map(({ m }) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)));
@@ -54,7 +54,7 @@ export class Player {
     this.stepHook = null;   // wave 18: called after each walk sub-step with the real move (dx, dz, h); only the Looking-Glass Rooms set it
     this.noSwim = false;    // T41: the net is lunging (atlantislive.js moves the player)
     this.held = 0;          // T41: set by the net (atlantislive.js) while Catch! is held: 0..1, slows the swim
-    this.be = null;         // chapter 3 (?preview): the body you are while being your creature (being.js / creatureways.js bodyOf)
+    this.be = null;         // chapter 3 (?preview): the body you are while being your creature (being.js / creatureways.js bodyOf: fly / swim / climb from its abilities; `grab` = Climb! held)
     this.climbing = false;  // chapter 3: a Cling creature is on a wall this step
   }
 
@@ -255,7 +255,7 @@ export class Player {
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let wx = -sin * f + cos * s;
     let wz = -cos * f - sin * s;
-    const len = Math.hypot(wx, wz);
+    let len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
 
     if (this.carry) { // T40: on a Mover (a toy train, a bottle cap, a cannon arc): it moves you, a fresh jump press gets you off
@@ -276,9 +276,10 @@ export class Player {
     // A landing ends the frame on the ground (what stands on a pad, a flag or a home sees, as at 60 fps): no new launch (a held Jump,
     // a Bounce Block, a trampoline) before the next frame.
     let wait = false;
+    if (this.be?.grab && len === 0) { wx = -sin; wz = -cos; len = 1; analog = 1; } // chapter 3 step C: holding Climb! = pushing toward the wall you face (abilityplaces.js ACTS)
     for (let i = 0; i < n; i++) {
       const was = this.onGround, hx = this.pos.x, hz = this.pos.z;
-      if (this.be?.cling && !water0 && this.clingStep(h, wx, wz, len, analog)) continue; // chapter 3 (?preview): a Cling creature on a wall (creatureways.js; null everywhere else)
+      if (this.be?.climb && !water0 && this.clingStep(h, wx, wz, len, analog)) continue; // chapter 3 (?preview): a creature with Climb on a wall (creatureways.js; null everywhere else)
       this.walkStep(h, wx, wz, len, analog, stickSprint, wait);
       if (this.stepHook) this.stepHook(this.pos.x - hx, this.pos.z - hz, h); // wave 18 (Mirror Palace): your silver twin copies every sub-step (null everywhere else)
       if (!was && this.onGround) wait = true;
@@ -360,7 +361,7 @@ export class Player {
     }
     this.moveStep(dt, this.vel.y * dt);
   }
-  // Chapter 3 (plans/chapter3-ways.md, ?preview): being a Cling creature (`this.be`, being.js). Push into a wall and you climb it; let go
+  // Chapter 3 (plans/chapter3-ways.md, ?preview): being a creature with Climb (`this.be`, being.js; step C: the ability, abilities.js). Push into a wall and you climb it; let go
   // of the stick and you hang there; push any other way and you step off (into a nook, over the top); Jump lets go. Ice is too slippery to grip. A drip that knocks you off (`be.slip`) lets you fall
   // until you stand again. -> false when the ordinary step should run instead (no wall, or standing and not pushing into one).
   wallsBeside() {

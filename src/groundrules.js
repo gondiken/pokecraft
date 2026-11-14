@@ -1,13 +1,15 @@
 // Chapter 3 (plans/chapter3-world.md section 6, "Slippy Lake"): what the ground you stand on does to moving, one object per kind of
-// ground. Pure, no imports (Node-runnable). A world says which rule holds where with `world.groundAt(pos)` (like world.flowAt: undefined
+// ground. Pure (Node-runnable). A world says which rule holds where with `world.groundAt(pos)` (like world.flowAt: undefined
 // in every world but Wobbleland, so everywhere else nothing changes); the player's physics (player.js walkStep) and the scribble fight
-// (scribblefight.js, through groundOf) both ask it and both move by the rule's `move`.
+// (scribblefight.js, through groundOf) both ask it and both move by the rule's `move`. Its only import is abilities.js (pure too).
 //   A new ground (Glowcap Caves's dark, Bumpy Hills' high ground) = one more subclass + one line in GROUND; the rest asks the same questions.
 //   grips(type):  does a creature of this type keep its grip here (no type = a person on foot)
 //   move(v, tx, tz, dt, grip): the walking velocity v eases toward the wanted (tx, tz) for one step of dt
 //   carry:        what is left of a rush / dodge's speed when it ends (a slider skids on)
 //   overshoot:    how far a slipping monster's charge goes past its aim (its red line is drawn that much longer)
 //   sight(type):  how far a creature of this type lights the dark round itself (Infinity = no dark: you see everything)
+import { TYPE_ABILITIES } from './abilities.js';
+
 export class GroundRule {
   constructor(o = {}) { this.id = 'plain'; Object.assign(this, o); }
   grips() { return true; }
@@ -43,7 +45,9 @@ export class Ice extends GroundRule {
 // only for its last `late` seconds (you see the attack coming, but late). Glowing types (`bright`: Fire, Light, Electric, Cosmic) light
 // a circle `far` round them (twice `near`): you see the warnings in time. A glowing MONSTER is always seen (it lights itself), and so is
 // one you just hit (`hitLit` s) or one in a big blast's flash (`flash` s over the blast's ring). (plans/chapter3-world.md "Glowcap Caves")
-export const BRIGHT = ['fire', 'light', 'electric', 'cosmic'];
+// Step C (plans/chapter3-abilities-build.md): the glowing types are the types with the Glow ability (abilities.js), no list of their own:
+// Fire, Electric, Rainbow, Cosmic, Light, Atlantis (Rainbow and Atlantis joined; before: Fire, Light, Electric, Cosmic).
+export const BRIGHT = Object.keys(TYPE_ABILITIES).filter(t => TYPE_ABILITIES[t].includes('glow'));
 // Owner 2026-11-12 ("more types with a cave advantage, like ghost and ninja"): creatures of the dark do not glow, they SENSE: every red
 // warning shows in full even out in the dark (the monster itself is still only two eyes). A different gift from the glowing types'.
 export const KEEN = ['ghost', 'ninja'];

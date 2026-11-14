@@ -97,6 +97,8 @@ export function createGymLive(game) {
     // (then use(p) starts the hold); release(p) lets go (E up, mouse up, the finger up). Live parts without them are never held.
     holds(p) { return !!each(o => o.holds?.(p)); },
     release(p) { return !!each(o => o.release?.(p)); },
+    // chapter 3 step C: a hold with nothing to let go FOR (Climb!: you climb while you hold): the prompt says "Hold E to climb", not "... and let go"
+    heldOnly(p) { return !!each(o => o.heldOnly?.(p)); },
     // T44: a tap on the screen (origin + direction of the ray) that a live part may take before touch.js looks for blocks (T44: a whack at the piñata)
     tap(origin, dir) { return !!each(o => o.tap?.(origin, dir)); },
     // owner 2026-11-08: a live part whose tap acts the moment the finger touches (touch.js asks on pointerdown; a whack game)

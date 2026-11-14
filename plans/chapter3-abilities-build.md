@@ -123,7 +123,18 @@ Team screen card, the Book's creature page (and a type's abilities on its type p
 are (chapter 3). One chip style, icons from `ABILITIES`. Readable on the iPad. Spec: chips present and equal for two creatures of one
 type.
 
-**C. The world says what it needs** (chapter 3, ?preview)
+**C. The world says what it needs** (chapter 3, ?preview) (**built 2026-11-14**, specs `ways`, `abilities`; bots `node tests/waysbots.mjs`)
+As built: `src/abilityplaces.js` (pure): a place is data `{ id, needs, box, badge }` in `world.needPlaces` (wayland.js `NEED_PLACES`);
+`placeAt`, `needOf` (-> `has`, `word` = the ability's `verb`, `who` = which of your three have it), `swapTo` (Swap goes straight to the
+next one that has it, also from Be me), `ACTS` (what the button does; only `climb`: held = push toward the wall you face, `be.grab`).
+wobblelive.js `NeedPlaces`: the drawn badge floats over the place (a sprite from `abilitySvg`), the button word ("Climb!", prompt
+"Hold E to climb"), and when you lack it the card `#need` (badge, "Needs Climb", your three: the ones that can lit, the Swap target ringed).
+`creatureways.js`: WAYS / wings gone; `bodyOf(id, sp, c)` = `abilitiesOf` -> `fly` (the sky ride), `swim` (the water ride, only in water;
+everyone else still swims slowly), `climb` (`clingStep`; a flier with Climb, Bug / Gravity, grips a wall it flies into). Removed: the
+wing-folding rule (`wingRoom`: no wings in tight places) and the `flies` / sky-ride wings; `tightAt` stays only for the camera.
+The Drip Tower = Climb (the shaft is 15 sheer blocks, the fly cap 6: fliers top out at 17 of 27; gliding in from the cave hill tops out at
+23). **Storm Island was dropped** (owner 2026-11-14: Fly gets a real place in step D). Glowcap Caves: `Dark.BRIGHT` = the Glow types
+(Rainbow and Atlantis joined); `KEEN` (Ghost, Ninja) kept.
 A generic hook for a place: `needs: '<ability>'` -> the button word if the creature you are has it; if not, the place shows the chip
 and lights up which of your three have it (Swap is one tap). `creatureways.js` WAYS / `bodyOf` are replaced by `abilitiesOf`: in
 creature mode a creature flies iff its type has Fly, dives iff Swim, climbs iff Climb (`clingStep` exists). Convert the two test
