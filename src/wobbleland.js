@@ -8,7 +8,8 @@
 // still being drawn (walkable grey land). The whole map is a keep (nothing can be built: the Wizard's drawing).
 // The look (the curling page, the first-draft colours, grey where the Scribble is) is drawn by wobblelook.js; nothing here is a look.
 import { B, WOOL } from './blocks.js';
-import { areaFlat, waysLand, Trials } from './wayland.js'; // chapter 3: the first way places (the Drip Tower, a Climb place; step C) in Bumpy Hills
+import { areaFlat, waysLand, Trials } from './wayland.js';
+import { sluiceFlow, sluiceDrag } from './sluice.js'; // step D: the Swim place // chapter 3: the first way places (the Drip Tower, a Climb place; step C) in Bumpy Hills
 import { kit, buildWayBack } from './picturelands.js';
 import { GROUND } from './groundrules.js'; // Slippy Lake: the ice's rule (the player and the fight both ask world.groundAt)
 
@@ -291,7 +292,7 @@ export function wobbleLand(world) {
   slippyLake(world, put);
   caveLand(world, put);
   waysLand(world, put); // chapter 3 (plans/chapter3-abilities-build.md step C): the Drip Tower (Climb) and its place entry
-  world.trials = new Trials();
+  world.trials = new Trials(world);
   // wonky things
   for (const t of TREES) {
     const g = heightAt(t.x, t.z);
@@ -368,7 +369,8 @@ export function wobbleLand(world) {
   world.people ??= []; // the Wizard at the Camp (step 6): his words follow your progress (WIZARD_LINES; scribble.js says them on a win)
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
-  world.flowAt = p => riverFlow(p) ?? lakeFlow(p) ?? caveFlow(p);
+  world.flowAt = p => riverFlow(p) ?? lakeFlow(p) ?? caveFlow(p) ?? sluiceFlow(p); // (step D: the Sluice Gate's bubble jets)
+  world.dragAt = p => sluiceDrag(p); // step D: the Sluice Gate's kelp slows a swimmer (player.js; undefined in every other world)
   world.skyDim = (x, y, z) => (y < CAVE.roof && inCave(x, z) ? CAVE.dim : 1); // Glowcap Caves: no daylight inside (world.skyAt: the blocks' baked light; main.js: underground) // the floating river's current, the lake's chutes and leads (player.js)
   world.groundAt = p => iceUnder(world, p) ?? darkIn(p); // Slippy Lake: on ice you slide; Glowcap Caves: inside it is dark (groundrules.js; the player and the fight ask it)
   world.spawnSpot = (arg, near) => wobbleSpot(world, arg, near); // creatures.js: where 'near:<arg>' creatures appear

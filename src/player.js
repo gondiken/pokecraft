@@ -18,7 +18,7 @@ export const kickDist = (t0, t1) => {
 // cut into sub-steps of at most 1/60 s (20 and 30 fps then make exactly the 60 fps steps) and a step on land moves along that parabola
 // exactly (any step size lands on the same arc). vel.y keeps its old meaning (the 60 fps per-frame velocity), so code that sets it is unchanged.
 export const STEP = { max: 1 / 60, cal: 1 / 60 };
-const BE_CLIMB = 3, BE_SIDE = 0.7; // chapter 3: a climbing creature's climb (creatureways.js BODY.climb / side)
+const BE_CLIMB = 3, BE_SIDE = 0.7, BE_SWIM = 1.7; // chapter 3: a climbing creature's climb (creatureways.js BODY.climb / side)
 
 // Cube Planets: each frame's turn as a quaternion (the camera eases between them).
 const FRAME_Q = FRAMES.map(({ m }) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)));
@@ -110,6 +110,9 @@ export class Player {
     return { y: 0, water: false };
   }
 
+  // chapter 3 step D: under water up to the eyes (a Swim creature dives there)
+  submerged() { return this.world.get(Math.floor(this.pos.x), Math.floor(this.pos.y + 1.5), Math.floor(this.pos.z)) === B.WATER; }
+
   // T27: top surface of the water column around the feet, or null.
   waterTop() {
     const x = Math.floor(this.pos.x), z = Math.floor(this.pos.z);
@@ -138,7 +141,7 @@ export class Player {
     this.capped = false; this.landed = false;
     const fl = this.floorBelow();
     const cap = fl.y + r.cap;
-    const up = k.Space ? 1 : 0;
+    const up = k.Space || this.be?.rise ? 1 : 0; // (chapter 3 step D: holding Fly! = holding Jump)
     if (r.landing) {
       this.vel.set(0, -r.glide, 0);
     } else {
@@ -173,18 +176,20 @@ export class Player {
     const len = Math.hypot(dx, dy, dz);
     if (len > 1) { dx /= len; dy /= len; dz /= len; }
     const slow = 1 - (1 - DIVE.coil) * Math.min(1, this.held || 0); // coiled for a lunge: slow
-    const speed = (sprint ? DIVE.sprint : DIVE.speed) * (len > 0 ? analog : 0) * slow;
+    const fast = this.ride?.be ? BE_SWIM : 1, drag = this.world.dragAt?.(this.pos) ?? 1; // chapter 3 step D: a Swim creature swims fast; kelp drags
+    const speed = (sprint ? DIVE.sprint : DIVE.speed) * (len > 0 ? analog : 0) * slow * fast * drag;
     let vx = dx * speed, vy = dy * speed, vz = dz * speed;
     this.kicked = false;
     this.kickCool = Math.max(0, this.kickCool - dt);
-    const space = !!k.Space, press = space && !this.spaceWas;
+    const kick = !!this.be?.kick; if (this.be) this.be.kick = false; // (chapter 3 step D: a tap on Swim! = a kick)
+    const space = !!k.Space, press = (space && !this.spaceWas) || kick;
     this.spaceWas = space;
     if (press && this.kickCool <= 0) { // a kick: a burst along the look that glides out
       this.kick = { x: fx, y: fy, z: fz, t: 0 };
       this.kickCool = DIVE.kickGap; this.kicked = true;
     }
     if (this.kick) {
-      const K = this.kick, d = kickDist(K.t, K.t + dt) / dt;
+      const K = this.kick, d = kickDist(K.t, K.t + dt) / dt * drag;
       vx += K.x * d; vy += K.y * d; vz += K.z * d;
       K.t += dt;
       if (K.t >= DIVE.kickTime) this.kick = null;
@@ -193,6 +198,8 @@ export class Player {
     const w = this.world;
     if (w.liftAt?.(this.pos)) vy = Math.min(6, vy + DIVE.lift); // bubble columns carry you up
     if (w.sinkAt?.(this.pos)) vy -= DIVE.sink; // the whirlpool pulls you down
+    const flow = this.ride?.be ? w.flowAt?.(this.pos) : null; // (chapter 3 step D: the Sluice Gate's bubble jets push a diving creature too)
+    if (flow) { vx += flow.x; vz += flow.z; }
     this.vel.set(vx, vy, vz);
     this.onGround = false;
     this.hitWall = false;
@@ -269,7 +276,7 @@ export class Player {
     if (r && r.kind === 'sky') return this.fly(dt, wx, wz, len, analog);
 
     const water0 = this.inWater;
-    this.diving = !!(water0 && !r && this.world.deepAt?.(this.pos)); // T41
+    this.diving = !!(water0 && ((!r && this.world.deepAt?.(this.pos)) || (r?.be && r.kind === 'water' && this.submerged()))); // T41; chapter 3 step D: a Swim creature under water dives (fast)
     if (this.diving) return this.dive(dt, f, s, analog, stickSprint || k.ShiftLeft || k.ShiftRight);
     this.kick = null; this.spaceWas = !!k.Space;
     const n = Math.max(1, Math.ceil(dt / STEP.max - 0.05)), h = dt / n; // sub-steps of at most 1/60 s (a 60 fps frame a little long stays one)
@@ -295,11 +302,11 @@ export class Player {
     let speed = (sprint ? 6.2 : 4.3) * analog * (this.speedK ?? 1); // speedK: a race's pace on foot (racelive.js)
     let jump = 8.6;
     if (r && r.kind === 'land' && !water) { speed = (sprint ? r.sprint : r.speed) * analog; jump = r.jump; }
-    if (water && !(r && r.kind === 'water')) speed *= 0.55;
+    if (water && !(r && r.kind === 'water')) speed *= 0.55 * (this.world.dragAt?.(this.pos) ?? 1); // (chapter 3 step D: kelp drags a paddler too)
     // T27: a water creature floats on top of the water; on land it is slow.
     const surf = r && r.kind === 'water' ? this.waterTop() : null;
     if (r && r.kind === 'water') {
-      if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog;
+      if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog * (this.world.dragAt?.(this.pos) ?? 1);
       else speed *= r.landSlow;
     }
     if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
@@ -321,7 +328,9 @@ export class Player {
       if (flow) { this.vel.x += flow.x; this.vel.z += flow.z; }
     }
 
-    if (surf !== null) {
+    if (surf !== null && r.be && this.pitch < -0.35 && len > 0) { // chapter 3 step D: a Swim creature looking down dives (then dive() takes over)
+      this.vel.y = -3;
+    } else if (surf !== null) {
       const target = surf - 0.25;
       this.vel.y = Math.max(-4, Math.min(4, (target - this.pos.y) * 8));
       if (k.Space && this.pos.y > target - 0.3) this.vel.y = r.jump;
@@ -366,7 +375,7 @@ export class Player {
   // until you stand again. -> false when the ordinary step should run instead (no wall, or standing and not pushing into one).
   wallsBeside() {
     const hw = this.halfW + 0.06, p = this.pos, w = this.world, y0 = Math.floor(p.y + 0.05), y1 = Math.floor(p.y + this.height - 0.05);
-    const grip = (x, z) => { for (let y = y0; y <= y1; y++) if (w.isSolid(x, y, z) && w.get(x, y, z) !== B.ICE) return true; return false; };
+    const grip = (x, z) => { for (let y = y0; y <= y1; y++) if (w.isSolid(x, y, z) && !BLOCKS[w.get(x, y, z)]?.noGrip) return true; return false; }; // (ice and clouds: noGrip)
     const col = (x, za, zb) => { for (let z = Math.floor(za); z <= Math.floor(zb); z++) if (grip(x, z)) return true; return false; };
     const row = (z, xa, xb) => { for (let x = Math.floor(xa); x <= Math.floor(xb); x++) if (grip(x, z)) return true; return false; };
     const i = this.halfW - 0.01;

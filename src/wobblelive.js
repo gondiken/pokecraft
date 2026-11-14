@@ -13,6 +13,8 @@ import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
 import { SHAFT, dripsAt } from './wayland.js'; // chapter 3: the Drip Tower (plans/chapter3-ways.md)
+import { ISLES } from './skyisles.js'; // step D: the Floating Isles (Fly)
+import { SLUICE, rowsShut } from './sluice.js'; // step D: the Sluice Gate (Swim)
 import { ACTS } from './abilityplaces.js'; // step C: a place that needs an ability
 import { ABILITIES } from './abilities.js';
 import { abilitySvg } from './abilityicons.js';
@@ -287,29 +289,75 @@ class Fireflies extends Piece {
 }
 
 
-// Chapter 3 (plans/chapter3-ways.md): the Drip Tower's live side. The rules are wayland.js Trials (stepped here each frame after you moved,
-// its clock standing still while the game is paused); this draws the drips.
+// Chapter 3: the ability places' live side. The rules are wayland.js Trials (the Drip Tower's drips, skyisles.js IsleRun, sluice.js
+// SluiceRun; stepped here each frame after you moved, its clock standing still while the game is paused: the islands and the gate move
+// their blocks through LiveCells). This draws the rest: the drips; the Floating Isles' ink mist; the Sluice Gate's gold plate with its
+// three gate lights (one per row of the gate: lit = still open; one light also over the gate itself), the kelp and the bubble jets.
 class WayPlaces extends Piece {
   constructor(scene) {
     super(scene);
-    this.trials = this.s.world.trials ?? null; this.told = new Set();
+    this.trials = this.s.world.trials ?? null; this.told = new Set(); this.clock = 0;
     if (!this.trials) return;
     this.drips = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(SHAFT.r, 10, 8), new THREE.MeshBasicMaterial({ color: 0x3a2a6e })); m.scale.y = 1.4; m.visible = false; this.group.add(m); return m; });
+    // the ink mist over the Floating Isles' pit (touch it = a puff back)
+    const P = ISLES.pit, mist = new THREE.Mesh(new THREE.PlaneGeometry(P.x1 - P.x0 + 1, P.z1 - P.z0 + 1), new THREE.MeshBasicMaterial({ color: 0x2a1f4a, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
+    mist.rotation.x = -Math.PI / 2; mist.position.set((P.x0 + P.x1 + 1) / 2, ISLES.mist - 0.4, (P.z0 + P.z1 + 1) / 2); this.mist = mist;
+    const mist2 = mist.clone(); mist2.material = mist.material.clone(); mist2.material.opacity = 0.3; mist2.position.y = ISLES.mist - 2.2; this.group.add(mist, mist2);
+    // the Sluice Gate: the plate, its post of three lights (top row first), a light over the gate
+    const S = SLUICE, gold = new THREE.MeshLambertMaterial({ color: 0xf2c418, emissive: 0x6a4a00 });
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.12, 20), gold); plate.position.set(S.plate.x + 0.5, 11.06, S.plate.z + 0.5); this.plate = plate;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.6, 0.25), new THREE.MeshLambertMaterial({ color: 0x8a6a44 })); post.position.set(S.plate.x + 1.9, 12.3, S.plate.z + 0.5);
+    this.group.add(plate, post);
+    this.lamps = [];
+    const lampAt = (x, y, z) => [0, 1, 2].map(r => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), new THREE.MeshBasicMaterial({ color: 0x46d0e0 })); m.position.set(x, y + (2 - r) * 0.62, z); this.group.add(m); this.lamps.push({ m, r }); return m; });
+    lampAt(S.plate.x + 1.9, 12.4, S.plate.z + 0.5);
+    lampAt((S.gate.x0 + S.gate.x1 + 1) / 2, 11.4, S.gate.z + 0.5); // (over the gate, seen through the glass)
+    // kelp: swaying ribbons in the kelp beds (instanced); bubble jets: streams of little bubbles along each jet
+    this.kelp = []; const kelpMat = new THREE.MeshLambertMaterial({ color: 0x2e8b3a }), kelpGeo = new THREE.BoxGeometry(0.12, 2.6, 0.32);
+    for (const k of S.kelp) for (let x = k.x0; x <= k.x1; x++) for (let z = k.z0; z <= k.z1; z++) if ((x * 7 + z * 3) % 2 === 0) this.kelp.push([x + 0.5 + Math.sin(x * 3.1 + z) * 0.3, z + 0.5 + Math.cos(x + z * 2.3) * 0.3, x * 1.7 + z]);
+    this.kelpMesh = new THREE.InstancedMesh(kelpGeo, kelpMat, this.kelp.length); this.group.add(this.kelpMesh);
+    this.jets = S.jets.map(j => { const n = Math.round(((j.x1 - j.x0 + 1) * (j.z1 - j.z0 + 1)) * 1.6); const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 6, 5), new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.8 }), n); this.group.add(mesh); return { j, mesh, n }; });
+    this.dummy = new THREE.Object3D();
   }
   update(dt, p) {
     if (!this.trials) return;
-    if (this.s.playing() && p) for (const e of this.trials.step(p, dt)) this.event(e);
+    if (this.s.playing() && p) { this.clock += dt; for (const e of this.trials.step(p, dt)) this.event(e, p); }
     const ys = dripsAt(this.trials.t);
     this.drips.forEach((m, k) => { m.visible = k < ys.length; if (m.visible) m.position.set(SHAFT.x + 0.5, ys[k] + SHAFT.r, SHAFT.z + 0.5); });
-  }
-  event(e) {
-    if (e.kind === 'knocked') {
-      try { sound.play('pumpkinsplat'); } catch { /* optional */ }
-      this.once('knocked', 'Splat! A drip knocked you off.');
+    const R = this.trials.sluice, shut = R.since == null ? (R.wasOn ? 0 : 3) : rowsShut(R.since);
+    for (const L of this.lamps) L.m.material.color.setHex(L.r < shut ? 0x3a2a20 : R.wasOn || R.since != null ? 0x7fe0a0 : 0x46d0e0);
+    this.plate.position.y = R.wasOn ? 11.0 : 11.06;
+    const t = this.clock, d = this.dummy, S = SLUICE;
+    this.kelp.forEach(([x, z, ph], i) => { d.position.set(x, S.y0 + 1.3, z); d.rotation.set(Math.sin(t * 1.3 + ph) * 0.25, ph, Math.cos(t * 1.1 + ph) * 0.2); d.updateMatrix(); this.kelpMesh.setMatrixAt(i, d.matrix); });
+    this.kelpMesh.instanceMatrix.needsUpdate = true;
+    for (const { j, mesh, n } of this.jets) {
+      const lx = j.x1 - j.x0 + 1, lz = j.z1 - j.z0 + 1, along = j.v[0] ? lx : lz;
+      for (let i = 0; i < n; i++) {
+        const u = ((i * 0.618 + t * 0.9) % 1) * along, w = ((i * 0.377) % 1), h = S.y0 + ((i * 0.733) % 1) * 2.8;
+        d.position.set(j.v[0] ? j.x0 + u : j.x0 + w * lx, h, j.v[0] ? j.z0 + w * lz : j.z0 + u); d.rotation.set(0, 0, 0); d.scale.setScalar(0.6 + ((i * 0.29) % 1)); d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
+      }
+      d.scale.setScalar(1);
+      mesh.instanceMatrix.needsUpdate = true;
     }
   }
+  event(e, p) {
+    const say = (id, text, small = false) => this.once(id, text, small);
+    if (e.kind === 'knocked') { try { sound.play('pumpkinsplat'); } catch { /* optional */ } say('knocked', 'Splat! A drip knocked you off.'); }
+    else if (e.kind === 'puff') {
+      this.s.puff({ x: p.pos.x, y: p.pos.y, z: p.pos.z, colour: 0x3a2a6e });
+      try { sound.play('whoosh'); } catch { /* optional */ }
+      say('mist', 'The ink mist puffs you back!');
+    } else if (e.kind === 'landed') { try { sound.play(e.isle === ISLES.list.length - 1 ? 'win' : 'boing'); } catch { /* optional */ } }
+    else if (e.kind === 'open') { try { sound.play('doorchime'); } catch { /* optional */ } say('open', 'The gate is open! Swim before it shuts!'); }
+    else if (e.kind === 'shut') { try { sound.play('drawbridge'); } catch { /* optional */ } }
+    else if (e.kind === 'through') { try { sound.play('win'); } catch { /* optional */ } say('through', 'You made it through the gate!'); }
+  }
   once(id, text) { if (this.told.has(id)) return; this.told.add(id); this.game.ui?.toast(text); }
-  info() { return this.trials ? { trialsT: +this.trials.t.toFixed(2), drips: dripsAt(this.trials.t).length } : {}; }
+  info() {
+    if (!this.trials) return {};
+    const I = this.trials.isles, R = this.trials.sluice;
+    return { trialsT: +this.trials.t.toFixed(2), drips: dripsAt(this.trials.t).length, isleBest: I.best, isleLast: I.last, isleOffs: I.offs.map(o => o?.join(',') ?? null), gateShut: R.shown, gateSince: R.since == null ? null : +R.since.toFixed(2), through: R.through };
+  }
 }
 
 // Step C (plans/chapter3-abilities-build.md): "the world says what it needs". Generic: it reads `world.needPlaces` (data, abilityplaces.js)

@@ -142,6 +142,21 @@ places: the Drip Tower = Climb; Storm Island = Fly (owner: it was "just timing":
 Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlantis; re-run `wobble` cave bots).
 
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
+**Built 2026-11-14: Fly + Swim** (owner's pick), specs `ways` (parts `bots`, `places`, `ipad`), bots `node tests/waysbots.mjs`:
+- **The Floating Isles (Fly, `src/skyisles.js`)** where Storm Island was: five cloud islands, each 2 higher, over a pit of ink; over the
+  ink the fly cap drops (6 over the ink), so you sink 4 a second: hover to your highest at the island's edge, then go straight. The
+  fourth drifts toward you and away (gap 6..12, go when it is 2-3 closer), the fifth (the chest) bobs 0..3 up (go when it is all the way
+  down). The ink mist (feet under 12.6 over the pit) puffs you onto the last island you reached. Clouds give no grip (`noGrip`, ice too).
+  Bots, 12 tries at 60 · 20 fps: flying straight on 0 · 0 (not even island 1), hovering with no timing 1 · 2, skilled 12 · 12 (about
+  16 s), Boomwing and a Bug 12 · 12; without Fly (walker, climber, on foot, a Bug climbing a cloud's side, flier -> climber) 0.
+- **The Sluice Gate (Swim, `src/sluice.js`)** north-west of the Drip Tower: a gold plate by a pond opens the gate at the end of a
+  water-filled channel under a glass roof; stepping off, it lowers row by row (three lights on the plate's post and over the gate go out;
+  the bottom row shuts at 5.6 s). Swim creatures dive (look down) and swim fast under water (`BE_SWIM` 1.7, kicks: tap Swim! or Jump);
+  everyone else paddles. Kelp in the middle of each stretch (x 0.35), bubble jets along the outside (+3.2). Bots, 6 tries: skilled 6 · 6
+  (3.4-3.8 s), a Bubble creature (Fly + Swim settles onto water and dives) 6 · 6, straight through the kelp 0 (7.2 s), without Swim
+  (walker, on foot, flier, climber, a flier that sinks as a walker) 0 (8.3 s at best).
+- The hook got `ACTS.fly` (hold Fly! = rise) and `ACTS.swim` (a tap = a kick); the creature you are under water gets the Sunken City's
+  blue-green fog (main.js). Not yet: kind help, Easy / Hard (step E), the guide and "Where to go".
 Each a skill game, never a key: easy to understand, hard to master; bots with the real Player prove a naive kid with the ability fails,
 a skilled one wins, and no creature without it (or a mix through Swap) gets in, at 60 and 20 fps. The obvious shortcut must never
 win (CLAUDE.md). Charm and Sense must be real timing / memory games or be dropped. Places hold extras (chests, secret patches,

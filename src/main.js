@@ -1123,7 +1123,8 @@ function updateSky(dt) {
   }
   // T41: under water in the Sunken City the fog turns blue-green and closes in with depth (the rest of the Pirate Seas swims as before)
   const eyeY = game.player.pos.y + game.player.eye;
-  const uwNow = look?.underwater && game.world.deepAt?.(game.player.pos) && game.world.get(Math.floor(game.player.pos.x), Math.floor(eyeY), Math.floor(game.player.pos.z)) === B.WATER;
+  const eyeWet = game.world.get(Math.floor(game.player.pos.x), Math.floor(eyeY), Math.floor(game.player.pos.z)) === B.WATER;
+  const uwNow = eyeWet && ((look?.underwater && game.world.deepAt?.(game.player.pos)) || !!game.player.be); // (chapter 3 step D: as your creature under water anywhere, e.g. the Sluice Gate)
   uwFade += ((uwNow ? 1 : 0) - uwFade) * Math.min(1, dt * 6);
   const depth = Math.min(1, Math.max(0, (13 - eyeY) / 11));
   if (uwFade > 0.01) {

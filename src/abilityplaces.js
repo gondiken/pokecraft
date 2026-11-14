@@ -39,6 +39,9 @@ export function swapTo(need, from, n) {
 
 // What an ability's button does at its place (p = the Player). hold: pressed = start, let go = stop. No entry = the word only.
 // climb: holding Climb! is pushing toward the wall you face (player.js reads `be.grab`), so one finger climbs on a tablet.
+// fly: holding Fly! rises (`be.rise`); swim: a tap on Swim! kicks under water (`be.kick`).
 export const ACTS = {
   climb: { hold: true, start(p) { if (p.be) p.be.grab = true; }, stop(p) { if (p.be) p.be.grab = false; } },
+  fly: { hold: true, start(p) { if (p.be) p.be.rise = true; }, stop(p) { if (p.be) p.be.rise = false; } }, // (holding Fly! = holding Jump: up)
+  swim: { start(p) { if (p.be) p.be.kick = true; } }, // (a tap = a kick under water)
 };

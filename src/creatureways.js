@@ -4,7 +4,8 @@
 // Step C (owner 2026-11-14): a creature moves by its ABILITIES (abilities.js abilitiesOf, from its type; the guardian from its design).
 // Every creature walks and jumps like riding it on land (riding.js RIDE.land). On top:
 //   Fly   = it flies like the sky ride (hold Jump to rise, at most RIDE.sky.cap 6 over the floor right below you);
-//   Swim  = in water it swims fast like the water ride (anyone else still swims, slowly, and dives where a world has deep water);
+//   Swim  = in water it swims fast like the water ride; looking down it dives and swims fast under water (step D, player.js dive with
+//           BE_SWIM); anyone else still swims, slowly, and can go under;
 //   Climb = push into a wall (or hold Climb!) and it climbs (player.js clingStep; ice is too slippery). A creature that flies AND climbs
 //           (Bug, Gravity) grips a wall it flies into and climbs it.
 // Removed in step C: the 15 WAYS (one per type group) and the wing rules (`flies` / a sky ride / the Fly way = wings, wings fold where
@@ -38,10 +39,13 @@ export function kindOf(p, body) {
     const wall = !!w && (w.px || w.nx || w.pz || w.nz);
     if (p.climbing || (wall && (p.be?.grab || (p.ride?.kind === 'sky' && p.hitWall)))) return 'land';
   }
+  if (body.swim && (p.inWater || ((p.ride?.kind === 'water' || !p.keys?.Space) && onWater(p)))) return 'water'; // (a creature that swims and flies, Bubble, settles onto water and dives; Jump takes it up again)
   if (body.fly) return 'sky';
-  if (body.swim && p.inWater) return 'water';
   return 'land';
 }
+
+// flying right on the water (not rising): a swimmer lands on it
+const onWater = p => { const f = p.floorBelow?.(); return !!f?.water && p.pos.y <= f.y + 0.1; };
 
 // After each Player.update: the body's riding physics (p.ride with `be: true`; `RIDE` = riding.js's numbers, handed in).
 export function bodyStep(p, world, body, RIDE) {

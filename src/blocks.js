@@ -499,6 +499,9 @@ BLOCKS[B.MIRROR_PANE] = { name: 'Mirror', ...all(T.MI_PANE), fixed: true, wallTe
   BLOCKS[B.AT_LAMP_ON] = { name: 'City Lamp', ...all(T.AT_LAMP_ON), glow: true, noLight: true, fixed: true, wallText: CITY };
 }
 export const MISSION_BLOCKS = [B.STAR_BLOCK, B.RAINBOW_BRICK, B.GIANT_TROPHY];
+// chapter 3 (creature abilities): nobody can climb these (player.js wallsBeside): ice is too slippery, a cloud too soft
+BLOCKS[B.ICE].noGrip = true;
+BLOCKS[B.CLOUD].noGrip = true;
 export const TREASURE = [B.SUNSTONE, B.RUBY, B.SAPPHIRE];
 export const isLimited = id => !!BLOCKS[id]?.limited;
 WOOL_TYPES.forEach((t, i) => { BLOCKS[WOOL[t]] = { name: `${t[0].toUpperCase()}${t.slice(1)} Wool`, ...all(T.WOOL0 + i) }; });

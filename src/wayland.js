@@ -7,8 +7,12 @@
 //     Ink drips fall down the shaft; one knocks you off and you fall to the bottom. Three nooks in the shaft's side: climb into one and
 //     the drips fall past. Skill: wait in a nook, climb when a drip has gone by. Hold Climb! (or push into the wall).
 //   Its place entry (`NEED_PLACES`) is all the hint needs (abilityplaces.js): the badge over the roof, the button word, who can.
-//   Storm Island (the Fly test, "just timing") was removed in step C (owner 2026-11-14): Fly gets a real skill place in step D.
+//   Storm Island (the Fly test, "just timing") was removed in step C (owner 2026-11-14). Step D (owner 2026-11-14: Fly + Swim first):
+//   the Floating Isles (Fly, skyisles.js) where Storm Island was, and the Sluice Gate (Swim, sluice.js) north-west of the tower.
 import { B } from './blocks.js';
+import { LiveCells } from './livecells.js';
+import { ISLES, buildIsles, IsleRun } from './skyisles.js'; // step D: the Fly place
+import { SLUICE, buildSluice, SluiceRun } from './sluice.js'; // step D: the Swim place
 
 export const SHAFT = {
   x: 140, z: 112,             // the shaft's cell; the tower is the 5 x 5 round it
@@ -19,6 +23,8 @@ export const SHAFT = {
 };
 // The places that need an ability (abilityplaces.js): where the hint shows (round the tower's foot and up the shaft) and where its badge floats.
 export const NEED_PLACES = [
+  { id: 'isles', needs: 'fly', box: { x0: ISLES.pit.x0 - 4, x1: ISLES.pit.x1 + 2, y0: 4, y1: 32, z0: ISLES.pit.z0 - 2, z1: ISLES.pit.z1 + 6 }, badge: [100.5, 18, 133.5] },
+  { id: 'sluice', needs: 'swim', box: { x0: SLUICE.pond.x0 - 3, x1: SLUICE.grotto.x1 + 1, y0: 4, y1: 16, z0: SLUICE.pond.z0 - 2, z1: SLUICE.grotto.z1 }, badge: [(SLUICE.pond.x0 + SLUICE.pond.x1 + 1) / 2, 14.5, (SLUICE.pond.z0 + SLUICE.pond.z1 + 1) / 2] }, // (over the pond, not over the plate: it would hide the view)
   { id: 'driptower', needs: 'climb', box: { x0: SHAFT.x - 6, x1: SHAFT.x + 6, y0: SHAFT.floor - 2, y1: SHAFT.roof + 1, z0: SHAFT.z - 6, z1: SHAFT.z + 7 }, badge: [SHAFT.x + 0.5, SHAFT.roof + 3.2, SHAFT.z + 0.5] },
 ];
 export const AREA = { x0: 72, x1: 150, z0: 80, z1: 133, edge: 6 }; // flattened to the plain ground (heightAt), the edge eases into the hills
@@ -51,15 +57,23 @@ export function waysLand(world, put) {
   for (const n of T.nooks) for (let y = n; y <= n + 1; y++) put(T.x + 1, y, T.z, 0);
   put(T.x + 1, T.roof + 1, T.z + 1, B.CHEST);
   world.trialsAt = { shaft: T };
+  buildIsles(world, put);
+  buildSluice(world, put);
   world.needPlaces = NEED_PLACES;
 }
 
 // The place's rules, one step after the player moved (the live part each frame, the bots in Node). Its clock is summed dt (it stands
 // still while the game is paused). -> events: [{ kind: 'knocked' }]
 export class Trials {
-  constructor() { this.t = 0; this.knock = -1; }
+  // world: the islands and the gate change blocks through LiveCells (never solid inside you; world.setLive)
+  constructor(world = null) {
+    this.t = 0; this.knock = -1; this.p = null;
+    this.cells = world?.setLive ? new LiveCells(world, () => this.p) : null;
+    const set = (x, y, z, id) => this.cells?.want(x, y, z, id);
+    this.isles = new IsleRun(set); this.sluice = new SluiceRun(set);
+  }
   step(p, dt) {
-    this.t += dt;
+    this.t += dt; this.p = p;
     const ev = [], pos = p.pos, be = p.be;
     // the drips: one that meets you in the shaft (not in a nook) knocks you off
     if (inShaft(pos) && !p.onGround && this.t - this.knock > 0.4) { // (a drip landing beside you at the bottom does nothing)
@@ -72,6 +86,8 @@ export class Trials {
         break;
       }
     }
+    ev.push(...this.isles.step(p, dt), ...this.sluice.step(p, dt));
+    this.cells?.flush();
     return ev;
   }
 }
