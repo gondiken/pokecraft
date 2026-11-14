@@ -163,3 +163,10 @@ drop Freeze and fold Lift into Mind's Sense.
 - Grass keeps Climb; a better Grass ability is welcome, but ask the owner first.
 - **Every ability must solve something no other ability can** (owner: "how could Bounce solve something Fly can't?"). Review in
   progress: the proposals and the open questions are in the chat of 2026-11-14 and on the map page.
+- Later the same day: Zap stays **Zap** ("Power" could be misread). Bounce is dropped (nothing it solves that Fly cannot); Ball gets
+  Push (kicking = pushing), Surprise proposed Charm. **Swim = fast in water** (up a waterfall, against a current; anyone can already
+  dive), Freeze = water you must not touch (freeze a path, walk on top). **Pass Through** stays for Ghost (maybe Portal), to be
+  told apart from Squeeze (proposal: Pass = no opening at all, Squeeze = a crack); Dream and Mirror need their own. Lift = something
+  you see but can never reach (a cage, behind glass). Open: Climb vs Fly (the owner never liked the wing-folding rule; it is no
+  reason). Proposals: Grow for Grass (roots split cracked stone, Push then only shoves), Heal for Pixie / Cozy / Food. Kick, Reflect
+  and Portal as abilities: no (Portal "almost a cheat code").
