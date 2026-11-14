@@ -179,3 +179,4 @@ drop Freeze and fold Lift into Mind's Sense.
   then goes up (two abilities together). The fly cap is measured from the one block column right under your middle
   (`floorBelow`), so over a tall building you are 6 over its roof, but you can never get there if its wall rises more than 6 over the
   ground you fly from: you meet the wall first. The same in chapters 1 and 2.
+- Voltwing keeps its small wings (owner 2026-11-14): a look only; it has no `flies` and never flies.
