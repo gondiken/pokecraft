@@ -843,7 +843,7 @@ export default async function ({ browser, base, t }) {
           parts: document.querySelectorAll('#db-parts .db-part').length, want: K.KIT.body.length, swatches: document.querySelectorAll('#db-colours .db-swatch').length,
           canvas: !!document.querySelector('#db-preview canvas'), draft: g.studio.draft, bare: K.BARE, cards: document.querySelectorAll('#drawboard .db-card').length, panel: g.ui.panelOpen, name: !!document.getElementById('db-name') };
       });
-      t.ok(board.panel && board.tabs.join() === 'body,head,eyes,legs,tail,back,extra' && board.on === 'body', `after the battle the drawing board opens on the Body tab (${board.tabs})`);
+      t.ok(board.panel && board.tabs.join() === 'body,head,eyes,legs,tail,back,extra,ability' && board.on === 'body', `after the battle the drawing board opens on the Body tab (${board.tabs})`);
       t.ok(board.parts === board.want && board.swatches === 13 && board.canvas && board.name && board.cards === 0, `the body's ${board.parts} choices, 13 colours, a turning picture and a name box; no old design cards`);
       t.ok(JSON.stringify(board.draft.p) === JSON.stringify(board.bare.p) && board.draft.c.join() === '4,4,9,10,9,9,9', `it starts from the bare skeleton in the colours painted on floor 5 (${board.draft.c})`);
       if (want('design')) { await page.waitForTimeout(1200); await shot(page, 'w19-board.png'); }
@@ -1375,7 +1375,7 @@ export default async function ({ browser, base, t }) {
     await p2.waitForTimeout(300);
     await p2.evaluate(() => window.pokecraft.openBoard());
     await waitFor(p2, () => document.querySelectorAll('#db-tabs .db-tab').length > 0, null, 20000);
-    t.ok(await p2.evaluate(() => document.querySelectorAll('#db-tabs .db-tab').length === 7 && !document.querySelector('[data-slot="attacks"]')), 'without ?preview the board has no Attacks tab');
+    t.ok(await p2.evaluate(() => document.querySelectorAll('#db-tabs .db-tab').length === 8 && !!document.querySelector('[data-slot="ability"]') && !document.querySelector('[data-slot="attacks"]')), 'without ?preview the board has no Attacks tab (7 parts + Ability)');
     await p2.context().close();
   }
 }
