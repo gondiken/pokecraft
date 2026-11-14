@@ -4,9 +4,9 @@
 // Step C (owner 2026-11-14): a creature moves by its ABILITIES (abilities.js abilitiesOf, from its type; the guardian from its design).
 // Every creature walks and jumps like riding it on land (riding.js RIDE.land). On top:
 //   Fly   = it flies like the sky ride (hold Jump to rise, at most RIDE.sky.cap 6 over the floor right below you);
-//   Swim  = in water it swims fast like the water ride; looking down it dives and swims fast under water (step D, player.js dive with
-//           BE_SWIM); anyone else still swims, slowly, and can go under;
-//   Climb = push into a wall (or hold Climb!) and it climbs (player.js clingStep; ice is too slippery). A creature that flies AND climbs
+//   Swim  = in water it swims fast like the water ride; looking down it dives and swims fast under water, Jump kicks (step D, player.js
+//           dive with BE_SWIM); anyone else still swims, slowly, and can go under;
+//   Climb = walk into any wall (anywhere in Wobbleland, owner 2026-11-14) and it climbs (player.js clingStep; ice is too slippery). A creature that flies AND climbs
 //           (Bug, Gravity) grips a wall it flies into and climbs it.
 // Removed in step C: the 15 WAYS (one per type group) and the wing rules (`flies` / a sky ride / the Fly way = wings, wings fold where
 // there is no room for them: the owner never liked folding). A body is no longer read from the model; the type's abilities decide.
@@ -37,7 +37,7 @@ export function kindOf(p, body) {
   if (body.climb && !p.keys?.Space) {
     const w = p.wallsBeside?.();
     const wall = !!w && (w.px || w.nx || w.pz || w.nz);
-    if (p.climbing || (wall && (p.be?.grab || (p.ride?.kind === 'sky' && p.hitWall)))) return 'land';
+    if (p.climbing || (wall && p.ride?.kind === 'sky' && p.hitWall)) return 'land'; // (a flier that climbs grips a wall it flies into)
   }
   if (body.swim && (p.inWater || ((p.ride?.kind === 'water' || !p.keys?.Space) && onWater(p)))) return 'water'; // (a creature that swims and flies, Bubble, settles onto water and dives; Jump takes it up again)
   if (body.fly) return 'sky';

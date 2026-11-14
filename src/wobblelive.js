@@ -13,9 +13,7 @@ import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
 import { SHAFT, dripsAt } from './wayland.js'; // chapter 3: the Drip Tower (plans/chapter3-ways.md)
-import { ISLES } from './skyisles.js'; // step D: the Floating Isles (Fly)
 import { SLUICE, rowsShut } from './sluice.js'; // step D: the Sluice Gate (Swim)
-import { ACTS } from './abilityplaces.js'; // step C: a place that needs an ability
 import { ABILITIES } from './abilities.js';
 import { abilitySvg } from './abilityicons.js';
 import { portrait } from './ui.js';
@@ -289,9 +287,8 @@ class Fireflies extends Piece {
 }
 
 
-// Chapter 3: the ability places' live side. The rules are wayland.js Trials (the Drip Tower's drips, skyisles.js IsleRun, sluice.js
-// SluiceRun; stepped here each frame after you moved, its clock standing still while the game is paused: the islands and the gate move
-// their blocks through LiveCells). This draws the rest: the drips; the Floating Isles' ink mist; the Sluice Gate's gold plate with its
+// Chapter 3: the ability places' live side. The rules are wayland.js Trials (the Drip Tower's drips, sluice.js SluiceRun; stepped here each frame after you moved, its clock standing still while the game is paused: the islands and the gate move
+// their blocks through LiveCells). This draws the rest: the drips; the Sluice Gate's gold plate with its
 // three gate lights (one per row of the gate: lit = still open; one light also over the gate itself), the kelp and the bubble jets.
 class WayPlaces extends Piece {
   constructor(scene) {
@@ -299,10 +296,6 @@ class WayPlaces extends Piece {
     this.trials = this.s.world.trials ?? null; this.told = new Set(); this.clock = 0;
     if (!this.trials) return;
     this.drips = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(SHAFT.r, 10, 8), new THREE.MeshBasicMaterial({ color: 0x3a2a6e })); m.scale.y = 1.4; m.visible = false; this.group.add(m); return m; });
-    // the ink mist over the Floating Isles' pit (touch it = a puff back)
-    const P = ISLES.pit, mist = new THREE.Mesh(new THREE.PlaneGeometry(P.x1 - P.x0 + 1, P.z1 - P.z0 + 1), new THREE.MeshBasicMaterial({ color: 0x2a1f4a, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
-    mist.rotation.x = -Math.PI / 2; mist.position.set((P.x0 + P.x1 + 1) / 2, ISLES.mist - 0.4, (P.z0 + P.z1 + 1) / 2); this.mist = mist;
-    const mist2 = mist.clone(); mist2.material = mist.material.clone(); mist2.material.opacity = 0.3; mist2.position.y = ISLES.mist - 2.2; this.group.add(mist, mist2);
     // the Sluice Gate: the plate, its post of three lights (top row first), a light over the gate
     const S = SLUICE, gold = new THREE.MeshLambertMaterial({ color: 0xf2c418, emissive: 0x6a4a00 });
     const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.12, 20), gold); plate.position.set(S.plate.x + 0.5, 11.06, S.plate.z + 0.5); this.plate = plate;
@@ -343,11 +336,6 @@ class WayPlaces extends Piece {
   event(e, p) {
     const say = (id, text, small = false) => this.once(id, text, small);
     if (e.kind === 'knocked') { try { sound.play('pumpkinsplat'); } catch { /* optional */ } say('knocked', 'Splat! A drip knocked you off.'); }
-    else if (e.kind === 'puff') {
-      this.s.puff({ x: p.pos.x, y: p.pos.y, z: p.pos.z, colour: 0x3a2a6e });
-      try { sound.play('whoosh'); } catch { /* optional */ }
-      say('mist', 'The ink mist puffs you back!');
-    } else if (e.kind === 'landed') { try { sound.play(e.isle === ISLES.list.length - 1 ? 'win' : 'boing'); } catch { /* optional */ } }
     else if (e.kind === 'open') { try { sound.play('doorchime'); } catch { /* optional */ } say('open', 'The gate is open! Swim before it shuts!'); }
     else if (e.kind === 'shut') { try { sound.play('drawbridge'); } catch { /* optional */ } }
     else if (e.kind === 'through') { try { sound.play('win'); } catch { /* optional */ } say('through', 'You made it through the gate!'); }
@@ -355,51 +343,22 @@ class WayPlaces extends Piece {
   once(id, text) { if (this.told.has(id)) return; this.told.add(id); this.game.ui?.toast(text); }
   info() {
     if (!this.trials) return {};
-    const I = this.trials.isles, R = this.trials.sluice;
-    return { trialsT: +this.trials.t.toFixed(2), drips: dripsAt(this.trials.t).length, isleBest: I.best, isleLast: I.last, isleOffs: I.offs.map(o => o?.join(',') ?? null), gateShut: R.shown, gateSince: R.since == null ? null : +R.since.toFixed(2), through: R.through };
+    const R = this.trials.sluice;
+    return { trialsT: +this.trials.t.toFixed(2), drips: dripsAt(this.trials.t).length, gateShut: R.shown, gateSince: R.since == null ? null : +R.since.toFixed(2), through: R.through };
   }
 }
 
-// Step C (plans/chapter3-abilities-build.md): "the world says what it needs". Generic: it reads `world.needPlaces` (data, abilityplaces.js)
-// and knows no ability. Each place's drawn badge floats over it (seen from afar, bobbing). Inside a place:
-//   the creature you are has the ability -> the big button's word is its verb ("Climb!"); ACTS[ability] says what it does (held or a tap);
-//   it doesn't (or you are you) -> a card at the top: the badge, "Needs Climb", and your three, the ones that have it lit and the
-//   one Swap goes to marked (Swap = one tap, being.js next). Nothing else to read.
-const BADGE = { px: 128, size: 2.6, bob: 0.25 };
+// Step C (plans/chapter3-abilities-build.md): "the world says what it needs", generic: it reads `game.being.need()` (abilityplaces.js:
+// `world.needPlaces` data + the tries) and knows no ability. Owner 2026-11-14: discovery first, so nothing shows at first (no badges,
+// no button word: abilities work with the usual controls). Only after a few tries without what a place needs (being.js `hints`) a card
+// shows at the top: the badge, "Needs Climb", and your three, the ones that can lit, the one Swap goes to ringed.
 class NeedPlaces extends Piece {
-  constructor(scene) {
-    super(scene);
-    this.places = this.s.world.needPlaces ?? [];
-    this.badges = this.places.map(q => {
-      const mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false });
-      const sp = new THREE.Sprite(mat); sp.scale.setScalar(BADGE.size); sp.position.set(...q.badge); sp.renderOrder = 5;
-      this.group.add(sp);
-      badgeTexture(q.needs).then(tex => { if (tex) { mat.map = tex; mat.needsUpdate = true; } });
-      return { q, sp, y: q.badge[1] };
-    });
-    this.t = 0; this.held = null; this.cardKey = null; this.card = null; this.cur = null;
-  }
-  update(dt) {
-    this.t += dt;
-    for (const b of this.badges) b.sp.position.y = b.y + Math.sin(this.t * 2) * BADGE.bob;
+  constructor(scene) { super(scene); this.cardKey = null; this.card = null; this.cur = null; }
+  update() {
     const need = this.s.playing() ? this.game.being?.need?.() ?? null : null;
     this.cur = need;
-    if (this.held && (!need?.has || need.needs !== this.held.id)) this.stop();
-    this.showCard(need && !need.has ? need : null);
+    this.showCard(need && need.shown && !need.has ? need : null);
   }
-  near() { return this.cur?.has ? this.cur.word : null; }
-  holds() { return !!(this.cur?.has && ACTS[this.cur.needs]?.hold); }
-  heldOnly() { return this.holds(); } // (an ability is held while it works: no "let go" in the prompt)
-  use(p) {
-    const n = this.cur, a = n?.has ? ACTS[n.needs] : null;
-    if (!a) return false;
-    a.start(p);
-    if (a.hold) this.held = { id: n.needs, p };
-    else a.stop?.(p);
-    return true;
-  }
-  release() { if (!this.held) return false; this.stop(); return true; }
-  stop() { const h = this.held; this.held = null; if (h) ACTS[h.id]?.stop?.(h.p); }
   // the card (DOM, browser only): redrawn only when what it says changes
   showCard(n) {
     if (typeof document === 'undefined') return;
@@ -422,21 +381,9 @@ class NeedPlaces extends Piece {
       who.appendChild(d);
     });
   }
-  info() { const n = this.cur; return { needAt: n?.place.id ?? null, needs: n?.needs ?? null, needHas: !!n?.has, needWho: n?.who ?? [], needCard: !!this.card && !this.card.classList.contains('hidden'), needBadges: this.badges.length }; }
-  dispose() { this.stop(); this.card?.remove(); this.card = null; for (const b of this.badges) b.sp.material.map?.dispose(); super.dispose(); }
+  info() { const n = this.cur; return { needAt: n?.place.id ?? null, needs: n?.needs ?? null, needHas: !!n?.has, needWho: n?.who ?? [], needShown: !!n?.shown, needTries: n ? this.game.being?.hints?.tries(n.place.id) ?? 0 : 0, needCard: !!this.card && !this.card.classList.contains('hidden') }; }
+  dispose() { this.card?.remove(); this.card = null; super.dispose(); }
 }
-// an ability's drawn badge as a texture (the same SVG as the chips)
-const badgeCache = {};
-function badgeTexture(id) {
-  if (typeof document === 'undefined' || typeof Image === 'undefined') return Promise.resolve(null);
-  return badgeCache[id] ??= new Promise(res => {
-    const img = new Image();
-    img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = BADGE.px; c.getContext('2d').drawImage(img, 0, 0, BADGE.px, BADGE.px); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; res(t); };
-    img.onerror = () => res(null);
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(abilitySvg(id, BADGE.px).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
-  });
-}
-
 const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, NeedPlaces];
 
 export class WobbleLive {
@@ -473,7 +420,6 @@ export class WobbleLive {
   }
   use(p) { return this.playing() && this.pieces.some(x => x.near?.(p) && x.use(p)); }
   holds(p) { return this.playing() && p === this.game.player && this.pieces.some(x => x.near?.(p) && x.holds?.(p)); }
-  heldOnly(p) { return this.pieces.some(x => x.near?.(p) && x.heldOnly?.(p)); }
   release(p) { return this.pieces.some(x => x.release?.(p)); }
   info() { return Object.assign({}, ...this.pieces.map(x => x.info?.() ?? {})); }
   dispose() {

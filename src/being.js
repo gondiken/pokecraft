@@ -18,7 +18,7 @@ import { sound } from './sound.js';
 import { PREVIEW } from './comingsoon.js';
 import { BODY, bodyOf, bodyStep, tightAt } from './creatureways.js';
 import { abilitiesOf } from './abilities.js';
-import { placeAt, needOf, swapTo } from './abilityplaces.js'; // step C: a place that needs an ability
+import { placeAt, needOf, swapTo, NeedHints } from './abilityplaces.js'; // step C: a place that needs an ability
 import { squadOf } from './scribblefight.js';
 const bodyFor = c => bodyOf(c.species, SPECIES[c.species], c);
 
@@ -31,6 +31,7 @@ export function createBeing(game, { scene }) {
   let idx = null, body = null, model = null, fit = null, t = 0, last = 0, tight = false, btn = null, shownBtn = null, styled = false, meBtn = null, shownMe = null;
   let me = false; // you chose to be yourself (the pause screen's button / R); otherwise chapter 3's lands put you in creature mode by themselves
   const cam = { pos: new THREE.Vector3(), ok: false };
+  const hints = new NeedHints(); // (the hint only after trying)
   const tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
   const squad = () => (game.party || []).filter(c => c && SPECIES[c.species]).filter(c => squadOf([c]).length).slice(0, BODY.squad); // (the fight's three)
   const here = () => PREVIEW && !!game.started && !!game.world?.realm?.be;
@@ -85,7 +86,7 @@ export function createBeing(game, { scene }) {
     // Swap (F / the Place button): the next of your three. At a place that needs an ability you lack, straight to the next one that has it.
     next() {
       const n = squad().length, need = being.need();
-      const to = swapTo(need, idx, n);
+      const to = need?.shown ? swapTo(need, idx, n) : null; // (only once the hint shows: before that Swap goes round as always)
       if (to != null) { me = false; return being.become(to); }
       if (idx == null) return being.toggle();
       if (n < 2) { toast('Only one creature in your team!'); return false; }
@@ -98,15 +99,19 @@ export function createBeing(game, { scene }) {
       const place = placeAt(game.world?.needPlaces, p.pos);
       if (!place) return null;
       const you = idx != null && body ? body.abilities : [];
-      return needOf(place, you, squad().map(c => abilitiesOf(SPECIES[c.species], c)));
+      const n = needOf(place, you, squad().map(c => abilitiesOf(SPECIES[c.species], c)));
+      n.shown = hints.shown(place.id);
+      return n;
     },
-    swapTarget() { return swapTo(being.need(), idx, squad().length); }, // (the card marks it)
+    hints,
+    swapTarget() { const n = being.need(); return n?.shown ? swapTo(n, idx, squad().length) : null; }, // (the card marks it)
     setView(v, say = true) { view = v === 'eyes' ? 'eyes' : 'behind'; store.set(view); if (say) toast(view === 'eyes' ? '🎥 In its eyes' : '🎥 Behind it'); being.refresh(); },
     toggleView() { being.setView(view === 'eyes' ? 'behind' : 'eyes'); },
     // after Player.update and the live parts (main.js): the body's rules
     step(dt) {
       t += dt;
       being.refresh();
+      if (here() && game.player && game.playing?.() !== false) { const n = being.need(); hints.step(n?.place ?? null, !!n?.has, dt); } // (tries count as yourself too)
       if (!here()) { if (idx != null) { drop(); idx = null; body = null; } me = false; return; } // left chapter 3's land: yourself again
       if (idx == null) { // creature mode by itself in chapter 3's lands, unless you chose to be you
         if (!me && !game.inBattle && !game.scribble?.fighting && game.playing?.() && squad().length) being.become(Math.min(last ?? 0, squad().length - 1), !game.toldOnce?.has('be:first'));

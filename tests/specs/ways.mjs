@@ -1,19 +1,20 @@
-// Chapter 3: being your creature and the first ABILITY place (plans/chapter3-ways.md, plans/chapter3-abilities-build.md step C; ?preview only,
-// Wobbleland only):
-//   data:   bodyOf from abilities.js (fly / swim / climb by type, the guardian's from its design), the place hook (abilityplaces.js: placeAt,
-//           needOf, swapTo, every ability has a verb), the Drip Tower is a place entry, Glowcap Caves' glowing types = Glow
-//   bots:   tests/waysbots.mjs with the real Player on the real terrain at 60 / 20 fps: the Drip Tower (Climb): just climbing (W or Climb! held)
-//           never, waiting in the nooks always (Sproutle, a Bug that also flies); a flier, Boomwing, a walker, you on foot, mixes by
-//           swapping mid-way, gliding in from the hilltop and the ice outside never
+// Chapter 3: being your creature and its abilities in the world (plans/chapter3-ways.md, plans/chapter3-abilities-build.md steps C-D;
+// ?preview only, Wobbleland only). Owner 2026-11-14: abilities work anywhere in Wobbleland with the usual controls (Jump flies, walking
+// into a wall climbs, looking down dives, Jump kicks under water: no E), and a place only hints at what it needs after a few tries.
+//   data:   bodies from abilities (fly / swim / climb), the place hook (placeAt, needOf, swapTo, NeedHints: the hint after 3 tries), the
+//           places (the Sluice Gate, the Drip Tower, the crags and clouds), Glowcap Caves' glowing types = Glow
+//   bots:   tests/waysbots.mjs with the real Player on the real terrain at 60 / 20 fps: the Drip Tower (Climb: just climbing never, waiting in
+//           the nooks always, nobody without Climb or by swapping), the Sluice Gate (Swim), every crag (only climbers) and cloud (only fliers)
 //   real:   real keys in a browser: you are your creature by itself, no bar, the pause screen's Be me (R), F = Swap, 1 2 3, V; the camera
-//           stays behind while walking W / A / D / S; at the tower as Boomwing the card shows the Climb badge and lights Sproutle, F goes
-//           straight to Sproutle, the button says Climb!, holding E climbs; Be me shows the card too; ways-*.png
+//           stays behind; at the tower as Boomwing nothing shows until the third try, F goes round as always until then, then the card
+//           (Climb, Sproutle lit) and F straight to Sproutle; no button word; W into the shaft's wall climbs; Be me shows the card too
+//   places: the Sluice Gate (the card after tries, F to Tidalord, the plate, a run with real keys and Jump kicks through before it shuts),
+//           a crag (Sproutle walks into it and climbs on top; Scalewing flies at it and stops at the cap), a cloud (Scalewing rises with
+//           Jump and settles on it; Sproutle cannot); ways-sluice-*.png, ways-crag*.png, ways-cloud*.png
 //   fight:  walking into a scribble patch AS your creature: it leads (no Capture Cube), you are it again afterwards, where it stood
-//   ipad:   an emulated iPad: Place = Swap, Jump = Up while you fly; at the tower the card, Swap = one tap to Sproutle, a held Climb! button climbs
+//   ipad:   an emulated iPad: Place = Swap, Jump = Up while you fly; at the tower the card after tries, one tap on Swap, the joystick pushed
+//           into the shaft's wall climbs; at a cloud the card, Swap, the Jump button held rises
 //   closed: without ?preview and in the main world there is no creature mode and 1 2 3 still pick blocks
-//   places: step D with real keys: the Floating Isles (Sproutle: the card lights Scalewing; F; flying straight on = the ink mist's puff;
-//           holding Fly! at the edge, then W = the first island) and the Sluice Gate (Scalewing: Tidalord lit; F; on the plate the gate opens;
-//           W + Shift, looking where to go: dives, rides the jets, through before it shuts); ways-isles-*.png, ways-sluice-*.png
 //   WAYS_ONLY=data|bots|real|places|fight|ipad|closed
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -32,39 +33,45 @@ const need = page => page.evaluate(() => {
   const g = window.pokecraft, i = g.gymLive.of('part:wobble').info(), c = document.getElementById('need'), card = !!c && !c.classList.contains('hidden');
   return { needAt: i.needAt, needs: i.needs, needHas: i.needHas, card, badge: card && !!c.querySelector('.need-badge svg'), text: card ? c.querySelector('.need-text').textContent : '',
     lit: card ? [...c.querySelectorAll('.need-mon.can span')].map(e => e.textContent).join() : '', next: card ? c.querySelector('.need-mon.next span')?.textContent ?? '' : '',
-    act: g.touch?.cur?.().act.label ?? document.getElementById('btn-act')?.textContent.trim(), prompt: document.getElementById('prompt')?.textContent ?? '' };
+    act: g.touch?.cur?.().act.label ?? document.getElementById('btn-act')?.textContent.trim(), tries: i.needTries, prompt: document.getElementById('prompt')?.textContent ?? '' };
 });
+// walk into a place's box `n` times (from far away), so the place counts n tries
+const tries = async (page, at, n) => { for (let i = 0; i < n; i++) { await put(page, 60.5, 11, 60.5); await frames(page, 2); await put(page, ...at); await frames(page, 3); } };
 const toasts = page => page.evaluate(() => [...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join(' | '));
 
 export default async function ({ browser, base, t }) {
   if (want('data')) {
     await import('../wobblenode.mjs'); // (registers 'three' for Node)
-    const C = await import('../../src/creatureways.js'), S = await import('../../src/species.js'), A = await import('../../src/abilities.js'), P = await import('../../src/abilityplaces.js');
+    const C = await import('../../src/creatureways.js'), S = await import('../../src/species.js'), P = await import('../../src/abilityplaces.js');
     const W = await import('../../src/wayland.js'), G = await import('../../src/groundrules.js');
     const b = id => C.bodyOf(id, S.SPECIES[id]);
     const bw = b('boomwing'), sw = b('scalewing'), sp = b('sproutle'), td = b('tidalord'), bt = b('beetlet'), vw = b('voltwing');
     t.ok(bw.fly && sw.fly && !sw.climb && sp.climb && !sp.fly && td.swim && !td.fly && bt.fly && bt.climb && !vw.fly, `bodies come from abilities: Boomwing and Scalewing fly, Sproutle climbs, Tidalord swims, Beetlet flies and climbs, Voltwing (small wings, Electric) walks`);
-    const noVerb = A.ABILITY_IDS.filter(id => !A.ABILITIES[id].verb);
-    t.ok(!noVerb.length, `every ability has a button word (${A.ABILITY_IDS.map(id => A.ABILITIES[id].verb).join(' ')}) ${noVerb}`);
+    t.ok(b('bubbuck').swim && b(Object.keys(S.SPECIES).find(k => S.SPECIES[k].type === 'bubble')).fly, 'Swim: Water and Bubble creatures; Bubble also flies (it settles onto water and dives)');
     const place = W.NEED_PLACES.find(q => q.id === 'driptower'), at = P.placeAt(W.NEED_PLACES, { x: W.SHAFT.x + 0.5, y: W.SHAFT.floor, z: W.SHAFT.z + 3 }), off = P.placeAt(W.NEED_PLACES, { x: 60, y: 11, z: 60 });
     const n1 = P.needOf(at, sw.abilities, [sw.abilities, sp.abilities, bw.abilities]), n2 = P.needOf(at, sp.abilities, []), n3 = P.needOf(at, [], [sw.abilities, bw.abilities]);
-    t.ok(place.needs === 'climb' && at === place && !off && !n1.has && n1.who.join() === '1' && P.swapTo(n1, 2, 3) === 1 && P.swapTo(n1, null, 3) === 1 && n2.has && n2.word === 'Climb!' && !n3.who.length && P.swapTo(n3, 0, 2) === null,
-      `the Drip Tower is one place entry (needs ${place.needs}); Scalewing: not it, Sproutle lit, Swap from Boomwing or from you goes straight to Sproutle; Sproutle: "${n2.word}"; nobody: no shortcut`);
-    const ids = W.NEED_PLACES.map(q => `${q.id}:${q.needs}`).join();
-    t.ok(ids === 'isles:fly,sluice:swim,driptower:climb' && P.placeAt(W.NEED_PLACES, { x: 100.5, y: 11, z: 132 })?.needs === 'fly' && P.placeAt(W.NEED_PLACES, { x: 128.5, y: 11, z: 93.5 })?.needs === 'swim', `three places, each one data entry: ${ids}`);
-    t.ok(b('bubbuck').swim && !b('scalewing').swim && b(Object.keys(S.SPECIES).find(k => S.SPECIES[k].type === 'bubble')).fly, 'Swim: Water and Bubble creatures; Bubble also flies (it settles onto water and dives)');
+    t.ok(place.needs === 'climb' && at === place && !off && !n1.has && n1.who.join() === '1' && P.swapTo(n1, 2, 3) === 1 && P.swapTo(n1, null, 3) === 1 && n2.has && !n3.who.length && P.swapTo(n3, 0, 2) === null,
+      `a place is one data entry (the Drip Tower needs ${place.needs}); Scalewing: not it, Sproutle lit, Swap goes straight to Sproutle; nobody: no shortcut`);
+    const h = new P.NeedHints(), seen = [];
+    for (let i = 0; i < 3; i++) { h.step(null, false, 0.1); h.step(place, false, 0.1); seen.push(h.shown(place.id)); }
+    const h2 = new P.NeedHints(); h2.step(place, false, 0.1); for (let i = 0; i < 100; i++) h2.step(place, false, 0.1);
+    const h3 = new P.NeedHints(); for (let i = 0; i < 3; i++) { h3.step(null, true, 0.1); h3.step(place, true, 0.1); }
+    t.ok(seen.join() === 'false,false,true' && h2.tries(place.id) === 2 && !h3.shown(place.id), `the hint only after trying: walking in 3 times (${seen}), or staying ${P.HINT.every} s counts one more (${h2.tries(place.id)} after 10 s), never while you can (${h3.tries(place.id)})`);
+    const E = await (await import('../wobblenode.mjs')).wobbleEnv(), ids = E.w.needPlaces.map(q => `${q.id}:${q.needs}`).join();
+    const tops = E.w.spots.map(q => `${q.id} ${q.top - (q.ground + 1)}`).join(', ');
+    t.ok(ids === 'sluice:swim,driptower:climb,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && E.w.spots.every(q => q.kind === 'crag' ? q.top - (q.ground + 1) > 6 : q.top - (q.ground + 1) <= 6 && q.top - (q.ground + 1) > 2.3),
+      `places: ${ids}; crags taller than the fly cap, clouds within it and over a jump (${tops})`);
     t.ok(G.BRIGHT.slice().sort().join() === 'atlantis,cosmic,electric,fire,light,rainbow' && G.KEEN.join() === 'ghost,ninja', `Glowcap Caves: the glowing types are the Glow ability's (${G.BRIGHT}); Ghost / Ninja still sense (${G.KEEN})`);
   }
 
   if (want('bots')) {
-    const { runTower, runIsles, runSluice } = await import('../waysbots.mjs');
-    const ii = await runIsles(), ss = await runSluice();
-    const g = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
-    t.ok(!ii.problems.length, `the Floating Isles (Fly), 60 · 20 fps: straight on ${g(ii.out, 'isles.naive')}, hovering with no timing ${g(ii.out, 'isles.hover')}, skilled ${g(ii.out, 'isles.skilled')} (${ii.out['isles.skilled@60'].median} s), Boomwing ${g(ii.out, 'isles.boomwing')}, a Bug ${g(ii.out, 'isles.bug')}; without Fly: walker ${g(ii.out, 'isles.walker')}, climber ${g(ii.out, 'isles.climber')}, on foot ${g(ii.out, 'isles.onFoot')}, a Bug climbing a cloud ${g(ii.out, 'isles.bugClings')}, flier -> climber ${g(ii.out, 'isles.mixWalker')} ${ii.problems.join('; ')}`);
-    t.ok(!ss.problems.length, `the Sluice Gate (Swim), 60 · 20 fps: straight through the kelp ${g(ss.out, 'sluice.naive')}, skilled ${g(ss.out, 'sluice.skilled')} (${ss.out['sluice.skilled@60'].times} s, shut at 5.6), Bubble ${g(ss.out, 'sluice.bubble')}; without Swim: walker ${g(ss.out, 'sluice.walker')}, on foot ${g(ss.out, 'sluice.onFoot')}, flier ${g(ss.out, 'sluice.flier')}, climber ${g(ss.out, 'sluice.climber')}, flier -> walker ${g(ss.out, 'sluice.mixFlierWalker')} ${ss.problems.join('; ')}`);
-    const a = await runTower();
-    const f = k => `${a.out[k + '@60'].wins}/${a.out[k + '@60'].of} · ${a.out[k + '@20'].wins}/${a.out[k + '@20'].of}`;
-    t.ok(!a.problems.length, `the Drip Tower (Climb), the real Player at 60 · 20 fps: just climbing ${f('naiveClimb')}, holding Climb! ${f('naiveGrab')}, skilled ${f('skilledClimb')} (${a.out['skilledClimb@60'].median} s), skilled with Climb! ${f('skilledGrab')}, a Bug (${a.out.bug}) ${f('bugSkilled')}; without Climb: flier ${f('flier')} (top ${a.out['flier@60'].top} < roof ${a.out.roof}), Boomwing ${f('boomwing')}, walker ${f('walker')}, on foot ${f('onFoot')}, flier -> walker ${f('mixFlierWalker')}, walker -> flier ${f('mixWalkerFlier')}, glide from the hill ${f('hillGlider')} (top ${a.out['hillGlider@60'].top}), the ice outside ${f('iceWall')} · ${f('iceGrab')} ${a.problems.join('; ')}`);
+    const { runTower, runSluice, runSpots } = await import('../waysbots.mjs');
+    const a = await runTower(), ss = await runSluice(), sp = await runSpots();
+    const g = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`, f = k => g(a.out, k);
+    t.ok(!a.problems.length, `the Drip Tower (Climb), the real Player at 60 · 20 fps: just climbing ${f('naiveClimb')}, skilled ${f('skilledClimb')} (${a.out['skilledClimb@60'].median} s), a Bug (${a.out.bug}) ${f('bugSkilled')}; without Climb: flier ${f('flier')} (top ${a.out['flier@60'].top} < roof ${a.out.roof}), Boomwing ${f('boomwing')}, walker ${f('walker')}, on foot ${f('onFoot')}, flier -> walker ${f('mixFlierWalker')}, walker -> flier ${f('mixWalkerFlier')}, glide from the hill ${f('hillGlider')} (top ${a.out['hillGlider@60'].top}), the ice outside ${f('iceWall')} ${a.problems.join('; ')}`);
+    t.ok(!ss.problems.length, `the Sluice Gate (Swim), 60 · 20 fps: straight through the kelp ${g(ss.out, 'sluice.naive')}, skilled ${g(ss.out, 'sluice.skilled')} (${ss.out['sluice.skilled@60'].times} s), Bubble ${g(ss.out, 'sluice.bubble')}; without Swim: walker ${g(ss.out, 'sluice.walker')}, on foot ${g(ss.out, 'sluice.onFoot')}, flier ${g(ss.out, 'sluice.flier')}, climber ${g(ss.out, 'sluice.climber')}, flier -> walker ${g(ss.out, 'sluice.mixFlierWalker')} ${ss.problems.join('; ')}`);
+    const won = Object.entries(sp.out).filter(([, v]) => v.won).map(([k]) => k.split('@')[0]);
+    t.ok(!sp.problems.length, `the crags and clouds at 60 · 20 fps: on top: ${[...new Set(won)].join(', ')}; nobody else ${sp.problems.join('; ')}`);
   }
 
   if (want('real') || want('fight')) {
@@ -97,32 +104,31 @@ export default async function ({ browser, base, t }) {
       const eyes = await be(page);
       await page.keyboard.press('KeyV'); await frames(page, 2);
       t.ok(eyes.view === 'eyes' && !eyes.model, `V: the camera goes into its eyes (${eyes.view}), V again behind`);
-      // the Drip Tower asks for Climb (step C): as Boomwing the card shows the badge and lights Sproutle; F goes straight to it
-      await put(page, 140.5, 11, 117.5, 0, 0.32);
-      await frames(page, 4);
+      // the Drip Tower (step C, owner 2026-11-14: discovery first): as Boomwing nothing shows at first, F goes round as always
+      const T = [140.5, 11, 117.5, 0, 0.32];
+      await tries(page, T, 1);
+      const n0 = await need(page);
+      await page.keyboard.press('KeyF'); await frames(page, 3);
+      const r0 = await be(page);
+      t.ok(n0.needAt === 'driptower' && !n0.card && r0.species === 'scalewing', `at the Drip Tower as Boomwing: no card at first (tries ${n0.tries}); F goes round as always (${r0.species})`);
+      await page.keyboard.press('KeyF'); await frames(page, 2); await page.keyboard.press('KeyF'); await frames(page, 2); // (back to Boomwing)
+      await tries(page, T, 2);
       const n1 = await need(page);
-      t.ok(n1.needAt === 'driptower' && n1.needs === 'climb' && !n1.needHas && n1.card && n1.lit === 'Sproutle' && n1.next === 'Sproutle' && n1.badge && n1.act !== 'Climb!', `at the Drip Tower as Boomwing: a card with the drawn Climb badge, "${n1.text}", Sproutle lit and marked for Swap (${JSON.stringify(n1)})`);
+      t.ok((await be(page)).species === 'boomwing' && n1.card && n1.badge && n1.text === 'Needs Climb' && n1.lit === 'Sproutle' && n1.next === 'Sproutle', `after the third try: the card with the drawn Climb badge, "${n1.text}", Sproutle lit and ringed (tries ${n1.tries})`);
       await shot(page, 'ways-need-without.png');
-      await put(page, 140.5, 16, 138.5, 0, 0.12); await frames(page, 6); // (from afar: the badge floats over the tower)
-      await shot(page, 'ways-need-far.png');
-      await put(page, 140.5, 11, 117.5, 0, 0.32); await frames(page, 3);
       await page.keyboard.press('KeyF'); await frames(page, 4);
       const n2 = await need(page), sp = await be(page);
-      t.ok(sp.species === 'sproutle' && sp.climb && n2.needHas && !n2.card && n2.act === 'Climb!' && /climb/i.test(n2.prompt), `F from Boomwing goes straight to Sproutle (not round to Scalewing); the card goes, the button says "${n2.act}" (${n2.prompt})`);
+      t.ok(sp.species === 'sproutle' && sp.climb && n2.needHas && !n2.card && n2.act !== 'Climb!' && !/climb/i.test(n2.prompt), `now F goes straight to Sproutle; the card goes, no button word (action "${n2.act}", prompt "${n2.prompt}")`);
       t.ok(sp.move === 'land' && sp.speed === 7, `Sproutle walks at the land ride's speed (${sp.speed})`);
       await shot(page, 'ways-need-with.png');
-      // walk in, then hold E (Climb!) and it climbs the shaft
+      // just walk in and on into the shaft's wall: it climbs
       await page.keyboard.down('w');
-      await waitFor(page, () => window.pokecraft.player.pos.z < 112.65, null, 120000).catch(() => {});
-      await page.keyboard.up('w');
-      await page.keyboard.down('e');
-      const climb = await page.evaluate(() => new Promise(res => { const t0 = performance.now(); const f = () => { const g = window.pokecraft, p = g.player; if (p.pos.y > 12.5 || performance.now() - t0 > 200000) res({ y: p.pos.y, grab: !!p.be?.grab, ...g.being.info() }); else requestAnimationFrame(f); }; f(); }));
+      const climb = await page.evaluate(() => new Promise(res => { const t0 = performance.now(); const f = () => { const g = window.pokecraft, p = g.player; if (p.pos.y > 12.5 || performance.now() - t0 > 200000) res({ y: p.pos.y, ...g.being.info() }); else requestAnimationFrame(f); }; f(); }));
       await shot(page, 'ways-shaft.png');
-      await page.keyboard.up('e'); await frames(page, 2);
-      const let1 = await page.evaluate(() => !!window.pokecraft.player.be?.grab);
-      t.ok(climb.y > 12.5 && climb.grab && !let1 && climb.tight && !climb.behind, `holding E (Climb!) climbs the shaft (y ${climb.y.toFixed(1)}), letting go lets go; in the shaft the camera is in its eyes (${JSON.stringify({ grab: climb.grab, let1, tight: climb.tight, behind: climb.behind, climbing: climb.climbing })})`);
-      // Be me: you have no Climb, the card shows too
-      await put(page, 140.5, 11, 117.5, 0, 0.32);
+      await page.keyboard.up('w'); await frames(page, 2);
+      t.ok(climb.y > 12.5 && climb.climbing && climb.tight && !climb.behind, `W into the shaft's wall climbs it (y ${climb.y.toFixed(1)}), no button; in the shaft the camera is in its eyes`);
+      // Be me: you have no Climb, the card shows too (the tries are already counted)
+      await put(page, ...T);
       await page.evaluate(() => window.pokecraft.being.setMe(true)); await frames(page, 4);
       const n3 = await need(page);
       t.ok(n3.card && !n3.needHas && n3.lit === 'Sproutle', `as yourself (Be me) the same card: Sproutle lit (${n3.lit})`);
@@ -161,50 +167,56 @@ export default async function ({ browser, base, t }) {
     await page.context().close();
   }
 
-  if (want('places')) { // step D: the Floating Isles (Fly) and the Sluice Gate (Swim) with real keys through the game's loop
+  if (want('places')) { // step D with real keys through the game's loop: the Sluice Gate (Swim), a crag (Climb), a cloud (Fly)
     const page = await openGame(browser, base, { query: '?preview' });
     await newGame(page, 0);
     await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('sproutle', 30), S.makeCreature('scalewing', 30), S.makeCreature('tidalord', 30)]; });
     await intoWobble(page, { creature: true });
     const live = () => page.evaluate(() => window.pokecraft.gymLive.of('part:wobble').info());
     const poll = fn => page.evaluate(src => new Promise(res => { const f = new Function('g', 'return ' + src), t0 = performance.now(); const go = () => { const g = window.pokecraft; let v = null; try { v = f(g); } catch { v = null; } if (v || performance.now() - t0 > 200000) res(v); else requestAnimationFrame(go); }; go(); }), fn);
-    // the Floating Isles, as Sproutle: the card asks for Fly and lights Scalewing
-    await put(page, 100.5, 11, 133.5, 0, 0.25); await frames(page, 6);
-    const n1 = await need(page);
-    t.ok(n1.needAt === 'isles' && n1.needs === 'fly' && n1.card && n1.lit === 'Scalewing' && n1.next === 'Scalewing', `the Floating Isles as Sproutle: "${n1.text}", Scalewing lit (${JSON.stringify(n1)})`);
-    await shot(page, 'ways-isles-without.png');
-    await page.keyboard.press('KeyF'); await frames(page, 4);
-    const n2 = await need(page);
-    t.ok((await be(page)).species === 'scalewing' && n2.needHas && n2.act === 'Fly!', `F: Scalewing, the button says ${n2.act}`);
-    // flying straight on from the shore sinks into the ink mist: a puff back to the shore
-    await put(page, 100.5, 11, 131.5, 0, 0.1); await frames(page, 2);
-    await page.keyboard.down('Space'); await page.keyboard.down('w');
-    const puffed = await poll("g.player.pos.z < 128.9 ? (window.__low = 1) && false : (window.__low && g.player.pos.z > 130.5)");
-    await page.keyboard.up('w'); await page.keyboard.up('Space');
-    const toast1 = await toasts(page);
-    t.ok(puffed && /ink mist/.test(toast1), `flying straight on from the shore sinks into the ink mist and puffs you back (${toast1})`);
-    // hold Fly! (E) at the shore's edge until you are at your highest, then W: you reach the first island
-    await put(page, 100.5, 11, 129.6, 0, 0.1); await frames(page, 2);
-    await page.keyboard.down('e');
-    const high = await poll('g.player.pos.y > 16.9 && g.player.pos.y');
+    const spots = await page.evaluate(() => window.pokecraft.world.spots.map(q => ({ ...q })));
+    // a crag, as Sproutle: walk into it and climb on top (nothing marks it)
+    const crag = spots.find(q => q.id === 'crag1'), cx = crag.x + crag.w / 2, cz = crag.z + crag.d / 2;
+    await put(page, cx, crag.ground + 1, cz + crag.d / 2 + 4, 0, 0.35); await frames(page, 4);
+    const c0 = await need(page);
+    await shot(page, 'ways-crag.png');
     await page.keyboard.down('w');
-    const land = await poll("g.gymLive.of('part:wobble').info().isleBest >= 0");
-    await page.keyboard.up('w'); await page.keyboard.up('e');
-    t.ok(high && land, `holding Fly! (E) at the shore's edge rises to ${high?.toFixed?.(1)} (the cap), then W: the first island (${JSON.stringify(await live())})`);
-    await page.evaluate(() => { window.pokecraft.player.pitch = 0.05; window.pokecraft.player.yaw = 0; }); await frames(page, 4);
-    await shot(page, 'ways-isles-fly.png');
-    // the Sluice Gate, as Scalewing: Needs Swim, Tidalord lit; F goes to Tidalord
-    const S = { x: 128.5, z: 93.5 };
-    await put(page, S.x, 11, S.z + 2.5, 0, -0.2); await frames(page, 6);
+    const onTop = await poll(`g.player.onGround && g.player.pos.y >= ${crag.top - 0.05} && g.player.pos.y`);
+    await page.keyboard.up('w'); await frames(page, 3);
+    t.ok(!c0.card && onTop, `a crag (nothing marks it: no card ${!c0.card}): Sproutle walks into its wall and climbs on top (y ${onTop})`);
+    await page.evaluate(() => { window.pokecraft.player.pitch = -0.5; }); await frames(page, 3);
+    await shot(page, 'ways-crag-top.png');
+    // Scalewing (no Climb) flies at it holding Jump: it stops at the fly cap
+    await put(page, cx, crag.ground + 1, cz + crag.d / 2 + 4, 0, 0.35); await page.keyboard.press('Digit2'); await frames(page, 3);
+    await page.keyboard.down('Space'); await page.keyboard.down('w');
+    await page.waitForTimeout(4000);
+    const flyTop = await page.evaluate(() => window.pokecraft.player.pos.y);
+    await page.keyboard.up('w'); await page.keyboard.up('Space');
+    t.ok(flyTop < crag.top - 0.5, `Scalewing flies at the crag holding Jump: it stops at the cap (${flyTop.toFixed(1)} < ${crag.top})`);
+    // a cloud, as Scalewing: hold Jump (no E), fly over it, let go and settle on it
+    const cl = spots.find(q => q.id === 'cloud1');
+    await put(page, cl.x + 0.5, cl.ground + 1, cl.z + 7.5, 0, 0.4); await frames(page, 3);
+    await page.keyboard.down('Space');
+    await poll(`g.player.pos.y > ${cl.top + 0.6}`);
+    await page.keyboard.down('w');
+    await poll(`Math.hypot(g.player.pos.x - ${cl.x + 0.5}, g.player.pos.z - ${cl.z + 0.5}) < 0.9`);
+    await page.keyboard.up('w'); await page.keyboard.up('Space');
+    const onCloud = await poll(`g.player.onGround && g.player.pos.y >= ${cl.top - 0.05} && g.player.pos.y`);
+    t.ok(onCloud, `a cloud: Scalewing rises with Jump, flies over it, lets go and settles on it (y ${onCloud})`);
+    await page.evaluate(() => { window.pokecraft.player.pitch = -0.3; }); await frames(page, 3);
+    await shot(page, 'ways-cloud.png');
+    // the Sluice Gate, as Scalewing: the card after tries, Tidalord lit; F goes to Tidalord
+    const SP = [128.5, 11, 96, 0, -0.2];
+    await tries(page, SP, 3);
     const n3 = await need(page);
-    t.ok(n3.needAt === 'sluice' && n3.needs === 'swim' && n3.card && n3.lit === 'Tidalord', `the Sluice Gate as Scalewing: "${n3.text}", Tidalord lit (${JSON.stringify(n3)})`);
+    t.ok(n3.needAt === 'sluice' && n3.needs === 'swim' && n3.card && n3.lit === 'Tidalord', `the Sluice Gate as Scalewing, after 3 tries: "${n3.text}", Tidalord lit`);
     await shot(page, 'ways-sluice-without.png');
     await page.keyboard.press('KeyF'); await frames(page, 4);
-    await put(page, S.x, 11, S.z, 0, -0.2); await frames(page, 6);
-    const n4 = await need(page), g1 = await live();
-    t.ok((await be(page)).species === 'tidalord' && n4.act === 'Swim!' && g1.gateShut === 0, `F: Tidalord; on the gold plate the gate is open (${g1.gateShut} rows shut), the button says ${n4.act}`);
+    await put(page, 128.5, 11, 93.5, 0, -0.2); await frames(page, 6);
+    const g1 = await live();
+    t.ok((await be(page)).species === 'tidalord' && g1.gateShut === 0, `F: Tidalord; on the gold plate the gate is open (${g1.gateShut} rows shut)`);
     await shot(page, 'ways-sluice-with.png');
-    // a run with real keys (W + Shift held, kicks with E): the page only turns the head toward each spot, like a child steering
+    // a run with real keys (W + Shift held, Jump kicks under water): the page only turns the head toward each spot, like a child steering
     await page.evaluate(() => {
       const g = window.pokecraft, p = g.player, y = 6.6, pts = [[128.5, 9.5, 90.2], [131.5, y, 88.6], [141.5, y, 88.7], [147.6, y, 88.6], [147.6, y, 99.5], [147.5, y, 102.2]];
       let i = 0; const t0 = performance.now();
@@ -217,15 +229,14 @@ export default async function ({ browser, base, t }) {
       go();
     });
     await page.keyboard.down('Shift'); await page.keyboard.down('w');
-    const kick = setInterval(() => page.keyboard.press('e').catch(() => {}), 400);
+    let kicking = true;
+    const kicks = (async () => { while (kicking) { if (await page.evaluate(() => window.pokecraft.player.diving).catch(() => false)) await page.keyboard.press('Space').catch(() => {}); await page.waitForTimeout(350); } })();
     const thru = await poll("(() => { const i = g.gymLive.of('part:wobble').info(); if (g.player.diving) window.__dived = true; if (window.__dived && !window.__shot && g.player.pos.x > 136) { window.__shot = 1; return 'shot'; } return i.through ? i : null; })()");
     if (thru === 'shot') await shot(page, 'ways-sluice-dive.png');
     const done = thru === 'shot' ? await poll("(() => { const i = g.gymLive.of('part:wobble').info(); return i.through ? i : null; })()") : thru;
-    clearInterval(kick);
+    kicking = false; await kicks;
     await page.keyboard.up('w'); await page.keyboard.up('Shift');
-    const dived = await page.evaluate(() => !!window.__dived);
-    t.ok(done?.through && dived, `Tidalord dives (looking down), rides the bubble jets and gets through the gate before it shuts (${JSON.stringify(done)})`);
-    await shot(page, 'ways-sluice-grotto.png');
+    t.ok(done?.through && await page.evaluate(() => !!window.__dived), `Tidalord dives (looking down), kicks with Jump, rides the bubble jets and gets through the gate before it shuts`);
     t.ok(!page.errors.length, `places: no page errors (${page.errors.join('; ')})`);
     await page.context().close();
   }
@@ -241,40 +252,41 @@ export default async function ({ browser, base, t }) {
     const a = await be(page), l1 = await label(), rideShown = await page.evaluate(() => !document.getElementById('btn-ride')?.classList.contains('hidden'));
     t.ok(a.species === 'scalewing' && a.flying && !rideShown && l1.place === 'Swap' && l1.jump === 'Up', `iPad: you are Scalewing by itself; no Creature / Me button (Ride hidden: ${!rideShown}), the Place button says ${l1.place}, Jump says ${l1.jump}`);
     await shot(page, 'ways-ipad.png');
-    // the Drip Tower on the iPad: the card, one tap on Swap, the Climb! button held climbs
-    await put(page, 140.5, 11, 117.5, 0, 0.32);
-    await frames(page, 4);
+    // the Drip Tower on the iPad: the card after tries, one tap on Swap, the joystick pushed into the shaft's wall climbs
+    await tries(page, [140.5, 11, 117.5, 0, 0.32], 3);
     const n1 = await need(page);
-    t.ok(n1.card && n1.badge && n1.lit === 'Sproutle' && n1.next === 'Sproutle', `iPad: at the Drip Tower as Scalewing the card shows the Climb badge and lights Sproutle (${JSON.stringify(n1)})`);
+    t.ok(n1.card && n1.badge && n1.lit === 'Sproutle' && n1.next === 'Sproutle', `iPad: at the Drip Tower as Scalewing, after 3 tries, the card shows the Climb badge and lights Sproutle`);
     await shot(page, 'ways-ipad-need-without.png');
     await page.tap('#btn-place'); await frames(page, 4);
     const n2 = await need(page), l2 = await label();
-    t.ok((await be(page)).species === 'sproutle' && !n2.card && l2.act === 'Climb!', `iPad: one tap on Swap = Sproutle, the action button says ${l2.act}`);
+    t.ok((await be(page)).species === 'sproutle' && !n2.card && l2.act !== 'Climb!', `iPad: one tap on Swap = Sproutle; no button word (${l2.act})`);
     await shot(page, 'ways-ipad-need-with.png');
     await put(page, 140.5, 11, 112.5, 0, 0);
     await frames(page, 3);
-    const box = await page.evaluate(() => { const r = document.getElementById('btn-act').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
     const cdp = await page.context().newCDPSession(page);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box[0], y: box[1], id: 1 }] });
-    const y1 = await page.evaluate(() => new Promise(res => { const t0 = performance.now(); const f = () => { const p = window.pokecraft.player; if (p.pos.y > 12.5 || performance.now() - t0 > 200000) res({ y: p.pos.y, grab: !!p.be?.grab }); else requestAnimationFrame(f); }; f(); }));
+    const joy = await page.evaluate(() => { const r = document.getElementById('joystick').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: joy[0], y: joy[1], id: 1 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: joy[0], y: joy[1] - 60, id: 1 }] });
+    const y1 = await page.evaluate(() => new Promise(res => { const t0 = performance.now(); const f = () => { const p = window.pokecraft.player; if (p.pos.y > 12.5 || performance.now() - t0 > 200000) res(p.pos.y); else requestAnimationFrame(f); }; f(); }));
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await frames(page, 2);
-    const grab2 = await page.evaluate(() => !!window.pokecraft.player.be?.grab);
-    t.ok(y1.y > 12.5 && y1.grab && !grab2, `iPad: holding the Climb! button climbs the shaft (y ${y1.y.toFixed(1)}); lifting the finger lets go`);
-    // the Floating Isles on the iPad as Sproutle: the card lights Scalewing and Boomwing, one tap on Swap, a held Fly! button rises
-    await put(page, 100.5, 11, 133.5, 0, 0.25); await frames(page, 6);
+    t.ok(y1 > 12.5, `iPad: the joystick pushed into the shaft's wall climbs it (y ${y1.toFixed(1)})`);
+    // a cloud on the iPad as Sproutle: the card after tries lights Scalewing and Boomwing, one tap on Swap, the Jump button held rises
+    const cl = await page.evaluate(() => ({ ...window.pokecraft.world.spots.find(q => q.id === 'cloud1') }));
+    await tries(page, [cl.x + 0.5, cl.ground + 1, cl.z + 4.5, 0, 0.3], 3);
+    if ((await be(page)).species !== 'sproutle') { await page.evaluate(() => window.pokecraft.being.become(1, false)); await frames(page, 3); } // (Sproutle, as on the tower)
     const n3 = await need(page);
-    t.ok(n3.needs === 'fly' && n3.card && n3.lit === 'Scalewing,Boomwing' && n3.next === 'Boomwing', `iPad: at the Floating Isles as Sproutle the card lights Scalewing and Boomwing, Swap goes to Boomwing next (${JSON.stringify(n3)})`);
-    await shot(page, 'ways-ipad-isles-without.png');
+    t.ok(n3.needs === 'fly' && n3.card && n3.lit === 'Scalewing,Boomwing' && n3.next === 'Boomwing', `iPad: at a cloud as Sproutle the card lights Scalewing and Boomwing, Swap goes to Boomwing next (${JSON.stringify(n3)})`);
+    await shot(page, 'ways-ipad-cloud-without.png');
     await page.tap('#btn-place'); await frames(page, 4);
     const l3 = await label();
-    t.ok((await be(page)).species === 'boomwing' && l3.act === 'Fly!', `iPad: one tap on Swap = Boomwing, the action button says ${l3.act}`);
-    const box2 = await page.evaluate(() => { const r = document.getElementById('btn-act').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+    t.ok((await be(page)).species === 'boomwing' && l3.jump === 'Up', `iPad: one tap on Swap = Boomwing; the Jump button says ${l3.jump}`);
+    const box2 = await page.evaluate(() => { const r = document.getElementById('btn-jump').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
     const y0 = await page.evaluate(() => window.pokecraft.player.pos.y);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box2[0], y: box2[1], id: 2 }] });
     const y2 = await page.evaluate(y0 => new Promise(res => { const t0 = performance.now(); const f = () => { const p = window.pokecraft.player; if (p.pos.y > y0 + 3 || performance.now() - t0 > 120000) res(p.pos.y); else requestAnimationFrame(f); }; f(); }), y0);
-    await shot(page, 'ways-ipad-isles-with.png');
+    await shot(page, 'ways-ipad-cloud-with.png');
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await frames(page, 2);
-    t.ok(y2 > y0 + 3 && !(await page.evaluate(() => window.pokecraft.player.be?.rise)), `iPad: holding the Fly! button rises (${y0.toFixed(1)} -> ${y2.toFixed(1)}); lifting the finger stops`);
+    t.ok(y2 > y0 + 3, `iPad: holding the Jump button rises (${y0.toFixed(1)} -> ${y2.toFixed(1)}), no other button`);
     await page.tap('#btn-pause'); await page.waitForTimeout(500);
     await page.tap('#beme-btn'); await frames(page, 3);
     t.ok(!(await be(page)).on, 'iPad: the pause screen\'s "Be me" = me mode');

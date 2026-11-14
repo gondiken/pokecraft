@@ -6,12 +6,14 @@
 //     wide, 15 blocks of sheer wall: more than twice the fly cap, RIDE.sky.cap 6 over the floor right below you, so wings never get up it).
 //     Ink drips fall down the shaft; one knocks you off and you fall to the bottom. Three nooks in the shaft's side: climb into one and
 //     the drips fall past. Skill: wait in a nook, climb when a drip has gone by. Hold Climb! (or push into the wall).
-//   Its place entry (`NEED_PLACES`) is all the hint needs (abilityplaces.js): the badge over the roof, the button word, who can.
-//   Storm Island (the Fly test, "just timing") was removed in step C (owner 2026-11-14). Step D (owner 2026-11-14: Fly + Swim first):
-//   the Floating Isles (Fly, skyisles.js) where Storm Island was, and the Sluice Gate (Swim, sluice.js) north-west of the tower.
+//   The Sluice Gate (Swim, sluice.js) north-west of the tower.
+//   SPOTS (owner 2026-11-14: "these should be applicable ANYWHERE ... being part of the game rather than a spotlighted place"): sheer
+//     rock crags with a chest on top (taller than the fly cap: only a climber gets up, by walking into the wall) and little clouds
+//     floating 5 over the ground with a chest (no wall to climb, too high to jump: only a flier), in Bumpy Hills and beyond. Nothing
+//     marks them: every place entry (`NEED_PLACES`) only gives its hint after a few tries (abilityplaces.js NeedHints).
+//   Storm Island (step C) and the Floating Isles (step D's first Fly place, "pretty lame") were removed (owner 2026-11-14).
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
-import { ISLES, buildIsles, IsleRun } from './skyisles.js'; // step D: the Fly place
 import { SLUICE, buildSluice, SluiceRun } from './sluice.js'; // step D: the Swim place
 
 export const SHAFT = {
@@ -21,11 +23,38 @@ export const SHAFT = {
   every: 3.4, fall: 8,        // a drip every `every` s, falling `fall` blocks a second
   r: 0.35,                    // a drip's half width
 };
-// The places that need an ability (abilityplaces.js): where the hint shows (round the tower's foot and up the shaft) and where its badge floats.
+// The natural spots: crags (Climb) and clouds (Fly). x, z = the north-west corner (a crag: w x d, h tall over the ground there) or the
+// middle (a cloud: radius r, its top `lift` over the ground). Each gets a chest on top. Placed clear of every patch's ring.
+export const SPOTS = [
+  { id: 'crag1', kind: 'crag', needs: 'climb', x: 80, z: 112, w: 6, d: 6, h: 8 },
+  { id: 'crag2', kind: 'crag', needs: 'climb', x: 100, z: 86, w: 5, d: 5, h: 10 },
+  { id: 'crag3', kind: 'crag', needs: 'climb', x: 20, z: 30, w: 5, d: 5, h: 9 },    // (Bumpy Hills' far north-west)
+  { id: 'cloud1', kind: 'cloud', needs: 'fly', x: 104, z: 120, r: 2, lift: 5 },
+  { id: 'cloud2', kind: 'cloud', needs: 'fly', x: 88, z: 94, r: 2, lift: 5 },
+  { id: 'cloud3', kind: 'cloud', needs: 'fly', x: 200, z: 30, r: 2, lift: 5 },     // (Bumpy Hills' far north-east)
+  { id: 'cloud4', kind: 'cloud', needs: 'fly', x: 30, z: 140, r: 2, lift: 5 },     // (over Slippy Lake's ice, between its patches)
+];
+// a spot's cells: [[x, y, z, id]] on ground height `g` (the top block's y), and its top (where you stand on it)
+export function spotCells(q, g) {
+  const out = [];
+  if (q.kind === 'crag') {
+    for (let x = q.x; x < q.x + q.w; x++) for (let z = q.z; z < q.z + q.d; z++) for (let y = g + 1; y <= g + q.h; y++) out.push([x, y, z, y === g + q.h ? B.GRASS : B.STONE]);
+    out.push([q.x + (q.w >> 1), g + q.h + 1, q.z + (q.d >> 1), B.CHEST]);
+    return { cells: out, top: g + q.h + 1 };
+  }
+  const R = Math.ceil(q.r), y = g + q.lift; // (the cloud's top block: you stand on it `lift` over where you stand on the ground; the fly cap is 6)
+  for (let x = q.x - R; x <= q.x + R; x++) for (let z = q.z - R; z <= q.z + R; z++) if (Math.hypot(x - q.x, z - q.z) <= q.r + 0.3) { out.push([x, y - 1, z, B.CLOUD]); out.push([x, y, z, B.CLOUD]); }
+  out.push([q.x + 1, y + 1, q.z, B.CHEST]); // (beside the middle, where you settle)
+  return { cells: out, top: y + 1 };
+}
+const spotBox = (q, g, top) => q.kind === 'crag'
+  ? { x0: q.x - 4, x1: q.x + q.w + 3, y0: g - 1, y1: top + 1, z0: q.z - 4, z1: q.z + q.d + 3 }
+  : { x0: q.x - q.r - 4, x1: q.x + q.r + 4, y0: g - 1, y1: top + 1, z0: q.z - q.r - 4, z1: q.z + q.r + 4 };
+
+// The places that need an ability (abilityplaces.js): where trying counts and the hint shows. The spots are added by waysLand.
 export const NEED_PLACES = [
-  { id: 'isles', needs: 'fly', box: { x0: ISLES.pit.x0 - 4, x1: ISLES.pit.x1 + 2, y0: 4, y1: 32, z0: ISLES.pit.z0 - 2, z1: ISLES.pit.z1 + 6 }, badge: [100.5, 18, 133.5] },
-  { id: 'sluice', needs: 'swim', box: { x0: SLUICE.pond.x0 - 3, x1: SLUICE.grotto.x1 + 1, y0: 4, y1: 16, z0: SLUICE.pond.z0 - 2, z1: SLUICE.grotto.z1 }, badge: [(SLUICE.pond.x0 + SLUICE.pond.x1 + 1) / 2, 14.5, (SLUICE.pond.z0 + SLUICE.pond.z1 + 1) / 2] }, // (over the pond, not over the plate: it would hide the view)
-  { id: 'driptower', needs: 'climb', box: { x0: SHAFT.x - 6, x1: SHAFT.x + 6, y0: SHAFT.floor - 2, y1: SHAFT.roof + 1, z0: SHAFT.z - 6, z1: SHAFT.z + 7 }, badge: [SHAFT.x + 0.5, SHAFT.roof + 3.2, SHAFT.z + 0.5] },
+  { id: 'sluice', needs: 'swim', box: { x0: SLUICE.pond.x0 - 3, x1: SLUICE.grotto.x1 + 1, y0: 4, y1: 16, z0: SLUICE.pond.z0 - 2, z1: SLUICE.grotto.z1 } },
+  { id: 'driptower', needs: 'climb', box: { x0: SHAFT.x - 6, x1: SHAFT.x + 6, y0: SHAFT.floor - 2, y1: SHAFT.roof + 1, z0: SHAFT.z - 6, z1: SHAFT.z + 7 } },
 ];
 export const AREA = { x0: 72, x1: 150, z0: 80, z1: 133, edge: 6 }; // flattened to the plain ground (heightAt), the edge eases into the hills
 
@@ -46,7 +75,7 @@ export const inShaft = pos => Math.abs(pos.x - (SHAFT.x + 0.5)) < 0.5 + 0.3 - 0.
 export const towerBox = { x0: SHAFT.x - 2, x1: SHAFT.x + 2, z0: SHAFT.z - 2, z1: SHAFT.z + 2 };
 
 // The blocks (after the ground: `put` is wobbleland.js's raw setter).
-export function waysLand(world, put) {
+export function waysLand(world, put, heightAt) {
   const T = SHAFT;
   // the Drip Tower: 5 x 5, ice outside, stone inside, the shaft in the middle, a door south, three nooks east, a roof with the chest
   for (let x = T.x - 2; x <= T.x + 2; x++) for (let z = T.z - 2; z <= T.z + 2; z++) for (let y = T.floor; y <= T.roof; y++) {
@@ -57,9 +86,16 @@ export function waysLand(world, put) {
   for (const n of T.nooks) for (let y = n; y <= n + 1; y++) put(T.x + 1, y, T.z, 0);
   put(T.x + 1, T.roof + 1, T.z + 1, B.CHEST);
   world.trialsAt = { shaft: T };
-  buildIsles(world, put);
   buildSluice(world, put);
-  world.needPlaces = NEED_PLACES;
+  world.spots = [];
+  const places = NEED_PLACES.slice();
+  for (const q of SPOTS) {
+    const g = heightAt(q.x + 0.5, q.z + 0.5) ?? 10, { cells, top } = spotCells(q, g);
+    for (const [x, y, z, id] of cells) put(x, y, z, id);
+    world.spots.push({ ...q, ground: g, top });
+    places.push({ id: q.id, needs: q.needs, box: spotBox(q, g, top) });
+  }
+  world.needPlaces = places;
 }
 
 // The place's rules, one step after the player moved (the live part each frame, the bots in Node). Its clock is summed dt (it stands
@@ -70,7 +106,7 @@ export class Trials {
     this.t = 0; this.knock = -1; this.p = null;
     this.cells = world?.setLive ? new LiveCells(world, () => this.p) : null;
     const set = (x, y, z, id) => this.cells?.want(x, y, z, id);
-    this.isles = new IsleRun(set); this.sluice = new SluiceRun(set);
+    this.sluice = new SluiceRun(set);
   }
   step(p, dt) {
     this.t += dt; this.p = p;
@@ -86,7 +122,7 @@ export class Trials {
         break;
       }
     }
-    ev.push(...this.isles.step(p, dt), ...this.sluice.step(p, dt));
+    ev.push(...this.sluice.step(p, dt));
     this.cells?.flush();
     return ev;
   }

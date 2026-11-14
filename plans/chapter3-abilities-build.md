@@ -142,7 +142,19 @@ places: the Drip Tower = Climb; Storm Island = Fly (owner: it was "just timing":
 Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlantis; re-run `wobble` cave bots).
 
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
-**Built 2026-11-14: Fly + Swim** (owner's pick), specs `ways` (parts `bots`, `places`, `ipad`), bots `node tests/waysbots.mjs`:
+**Owner 2026-11-14, after playing (rebuilt the same day):** "A climber, flyer etc shouldn't have to press E ... these attributes should
+be applicable ANYWHERE in the world ... climbers could only climb inside the tower with very obvious directions, which doesn't give any
+chance to the player to think 'oh wait I have a climber'"; "the fly challenge pretty lame"; "climb challenge itself was interesting, it just
+needed that general element of being part of the game rather than a spotlighted place". Decided (owner's picks): abilities work all over
+Wobbleland with the usual controls (Jump flies like riding, walking into any wall climbs, looking down dives, Jump kicks under water; no
+E, no button words, `ACTS` and `verb` removed); **the hint only after trying** (`NeedHints`: walking into a place's box 3 times without
+what it needs, or every 8 s spent in it, then the card; Swap goes straight to a creature that can only once the card shows; no floating
+badges); **the Floating Isles were removed**; the Drip Tower and the Sluice Gate stay as ordinary parts of Bumpy Hills; **natural spots**
+(`wayland.js` `SPOTS`): three sheer crags (8-10 tall, a chest on top: only a climber, a flier stops at the cap) and four clouds floating
+5 over the ground (a chest: only a flier; no wall, too high to jump), in Bumpy Hills, its far north and over Slippy Lake's ice. Bots
+(`runSpots`): every crag only climbers (a Bug flies into it and climbs), every cloud only fliers, at 60 and 20 fps.
+
+**Built 2026-11-14 (first version, partly replaced above): Fly + Swim** (owner's pick), specs `ways` (parts `bots`, `places`, `ipad`), bots `node tests/waysbots.mjs`:
 - **The Floating Isles (Fly, `src/skyisles.js`)** where Storm Island was: five cloud islands, each 2 higher, over a pit of ink; over the
   ink the fly cap drops (6 over the ink), so you sink 4 a second: hover to your highest at the island's edge, then go straight. The
   fourth drifts toward you and away (gap 6..12, go when it is 2-3 closer), the fifth (the chest) bobs 0..3 up (go when it is all the way

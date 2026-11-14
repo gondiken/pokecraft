@@ -291,7 +291,7 @@ export function wobbleLand(world) {
   world.healer = [HEALER.x, BASE + 1, HEALER.z, 0]; // (npc.js: Healer Stella, as in the Dream and the Portal House)
   slippyLake(world, put);
   caveLand(world, put);
-  waysLand(world, put); // chapter 3 (plans/chapter3-abilities-build.md step C): the Drip Tower (Climb) and its place entry
+  waysLand(world, put, (x, z) => heightAt(Math.floor(x), Math.floor(z))); // chapter 3 (plans/chapter3-abilities-build.md step C): the Drip Tower (Climb), the Sluice Gate (Swim), the crags and clouds (SPOTS)
   world.trials = new Trials(world);
   // wonky things
   for (const t of TREES) {

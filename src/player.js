@@ -54,7 +54,7 @@ export class Player {
     this.stepHook = null;   // wave 18: called after each walk sub-step with the real move (dx, dz, h); only the Looking-Glass Rooms set it
     this.noSwim = false;    // T41: the net is lunging (atlantislive.js moves the player)
     this.held = 0;          // T41: set by the net (atlantislive.js) while Catch! is held: 0..1, slows the swim
-    this.be = null;         // chapter 3 (?preview): the body you are while being your creature (being.js / creatureways.js bodyOf: fly / swim / climb from its abilities; `grab` = Climb! held)
+    this.be = null;         // chapter 3 (?preview): the body you are while being your creature (being.js / creatureways.js bodyOf: fly / swim / climb from its abilities; walking into a wall climbs)
     this.climbing = false;  // chapter 3: a Cling creature is on a wall this step
   }
 
@@ -141,7 +141,7 @@ export class Player {
     this.capped = false; this.landed = false;
     const fl = this.floorBelow();
     const cap = fl.y + r.cap;
-    const up = k.Space || this.be?.rise ? 1 : 0; // (chapter 3 step D: holding Fly! = holding Jump)
+    const up = k.Space ? 1 : 0;
     if (r.landing) {
       this.vel.set(0, -r.glide, 0);
     } else {
@@ -181,8 +181,7 @@ export class Player {
     let vx = dx * speed, vy = dy * speed, vz = dz * speed;
     this.kicked = false;
     this.kickCool = Math.max(0, this.kickCool - dt);
-    const kick = !!this.be?.kick; if (this.be) this.be.kick = false; // (chapter 3 step D: a tap on Swim! = a kick)
-    const space = !!k.Space, press = (space && !this.spaceWas) || kick;
+    const space = !!k.Space, press = space && !this.spaceWas;
     this.spaceWas = space;
     if (press && this.kickCool <= 0) { // a kick: a burst along the look that glides out
       this.kick = { x: fx, y: fy, z: fz, t: 0 };
@@ -262,7 +261,7 @@ export class Player {
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let wx = -sin * f + cos * s;
     let wz = -cos * f - sin * s;
-    let len = Math.hypot(wx, wz);
+    const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
 
     if (this.carry) { // T40: on a Mover (a toy train, a bottle cap, a cannon arc): it moves you, a fresh jump press gets you off
@@ -283,7 +282,6 @@ export class Player {
     // A landing ends the frame on the ground (what stands on a pad, a flag or a home sees, as at 60 fps): no new launch (a held Jump,
     // a Bounce Block, a trampoline) before the next frame.
     let wait = false;
-    if (this.be?.grab && len === 0) { wx = -sin; wz = -cos; len = 1; analog = 1; } // chapter 3 step C: holding Climb! = pushing toward the wall you face (abilityplaces.js ACTS)
     for (let i = 0; i < n; i++) {
       const was = this.onGround, hx = this.pos.x, hz = this.pos.z;
       if (this.be?.climb && !water0 && this.clingStep(h, wx, wz, len, analog)) continue; // chapter 3 (?preview): a creature with Climb on a wall (creatureways.js; null everywhere else)
