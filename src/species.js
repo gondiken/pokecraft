@@ -1030,7 +1030,7 @@ export const SPECIES = {
   gullop: {
     name: 'Gullop', type: 'water', desc: 'A noisy duck that waddles up to beach picnics and steals the snacks.',
     base: { hp: 45, atk: 55, def: 40, spd: 80 }, baseXp: 70, catchRate: 0.4, learn: L('water', 'sound'), swims: true,
-    model: { shape: 'bird', scale: 0.8, body: 0xf0f0f0, accent: 0xffb030, dark: 0x6080a0, belly: 0xffffff, extras: ['duck', 'smallWings'] },
+    model: { shape: 'bird', scale: 0.8, body: 0xffffff, accent: 0xffa020, dark: 0xf2f2ee, belly: 0xffffff, extras: ['duck', 'smallWings'] },
   },
 
   /* ----------------------------- grass ---------------------------- */
@@ -3548,12 +3548,12 @@ function buildBird(root, m, parts) {
   for (const s of [-1, 1]) {
     const w = pivot(bodyGroup, s * 0.23, 0.8, 0);
     box(w, 0.55, 0.06, 0.42, m.dark, s * 0.27, 0, 0);
-    box(w, 0.25, 0.05, 0.3, m.accent, s * 0.6, 0, -0.05);
+    box(w, 0.25, 0.05, 0.3, has('duck') ? m.belly : m.accent, s * 0.6, 0, -0.05); // a white duck's wing tips stay white
     if (has('bolt')) box(w, 0.4, 0.07, 0.06, m.accent, s * 0.3, 0.01, 0.1);
     if (has('smallWings')) { w.scale.setScalar(0.5); w.position.y -= 0.05; } // chapter 3: Voltwing's wings are too small to fly (it walks)
     parts.wings.push({ g: w, s });
   }
-  const tail = box(bodyGroup, 0.32, 0.06, 0.34, m.accent, 0, 0.72, -0.44);
+  const tail = box(bodyGroup, 0.32, 0.06, 0.34, has('duck') ? m.belly : m.accent, 0, 0.72, -0.44);
   tail.rotation.x = 0.25;
   for (const s of [-1, 1]) {
     box(bodyGroup, 0.06, 0.5, 0.06, has('duck') ? m.accent : 0x6b4a2b, s * 0.12, 0.25, 0);
