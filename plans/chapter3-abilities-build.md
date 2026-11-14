@@ -170,3 +170,7 @@ drop Freeze and fold Lift into Mind's Sense.
   you see but can never reach (a cage, behind glass). Open: Climb vs Fly (the owner never liked the wing-folding rule; it is no
   reason). Proposals: Grow for Grass (roots split cracked stone, Push then only shoves), Heal for Pixie / Cozy / Food. Kick, Reflect
   and Portal as abilities: no (Portal "almost a cheat code").
+- Confirmed (2026-11-14): Grow for Grass (with Climb), Heal for Pixie / Cozy / Food, Charm for Surprise, Pass Through for Ghost,
+  Portal, Dream and Mirror. **Climb vs Fly holds with no exception:** flying rises only `RIDE.sky.cap` 6 over the floor right
+  below you (player.js `fly`, `floorBelow`), so a sheer wall taller than 6 in one face needs Climb; a stepped slope can be flown
+  ledge by ledge. **Pass Through** only through faded walls (half-erased pencil walls, solid to everyone else). Open: Swim vs Freeze.
