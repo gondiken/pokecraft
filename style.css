@@ -748,11 +748,14 @@ body.touch #easel.big { width: min(60vh, 320px); height: min(60vh, 320px); top: 
 
 /* Chapter 3 step B: ability chips (abilities.js), ONE style on every card: team screen, Book, trade cards, the creature you are */
 .abis { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.abi { display: inline-flex; align-items: center; gap: 4px; font-family: 'VT323', ui-monospace, monospace; font-size: 18px; line-height: 1; padding: 3px 8px 2px; border-radius: 10px;
+.abi { display: inline-flex; align-items: center; gap: 5px; font-family: 'VT323', ui-monospace, monospace; font-size: 18px; line-height: 1; padding: 2px 8px 2px 2px; border-radius: 10px;
   background: #eaf3ff; color: #1b1d26; border: 2px solid #1b1d26; white-space: nowrap; }
-.abi .abi-ico { font-size: 14px; }
-body.touch .abi { font-size: 20px; padding: 4px 9px 3px; }
-.abis.icons .abi { padding: 2px 4px; font-size: 14px; } /* the HUD's creature you are: icons only, the same chip */
+.abi-ico { display: inline-flex; flex: none; } .abi-ico svg { display: block; }
+body.touch .abi { font-size: 20px; padding: 2px 9px 2px 2px; }
+.abis.icons .abi { padding: 1px; background: none; border: none; } /* the HUD's creature you are: badges only (each badge has its own ink edge) */
+#drawboard .db-abil { display: inline-flex; align-items: center; gap: 4px; }
+#drawboard .db-abline .abi-ico { vertical-align: middle; }
+#drawboard .db-tab .abi-ico { margin: -1px 0 1px; }
 .book-abis { margin: 6px 0; }
 .book-abilist { display: grid; gap: 6px; }
 .book-abilist .abrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

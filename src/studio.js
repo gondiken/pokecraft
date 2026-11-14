@@ -15,6 +15,7 @@ import { el } from './util.js';
 import { PAINTS, DESIGNS, PAINT_SLOTS, guardianLevel } from './custom.js';
 import { SLOTS, SLOT_LABELS, SLOT_ICONS, KIT, KIT_COLOURS, BARE, NAME_MAX, cleanDesign, kitName, randomName, flies, lookOf } from './guardiankit.js';
 import { ABILITIES, CHOOSABLE, cleanChoice } from './abilities.js'; // chapter 3 step B: the guardian's chosen ability
+import { abilityIcon } from './abilitychips.js';
 import { floorKey, WORDS, wizardTeam, DEFAULT_GROUPS, starCount, towerStand } from './wizardtower.js';
 import { bridgeDone } from './pictureworlds.js';
 
@@ -246,7 +247,7 @@ export function createStudio(game, { startBattle, save }) {
       tabs.replaceChildren(...[...SLOTS.map((s, i) => el('button', { class: `db-tab${s === tab ? ' on' : ''}`, 'data-slot': s, onclick: () => this.setTab(s) },
         el('span', { class: 'db-ico' }, SLOT_ICONS[s]), el('span', {}, SLOT_LABELS[s]), el('small', {}, KIT[s][draft.p[i]].name))),
         el('button', { class: `db-tab${tab === ABILITY ? ' on' : ''}`, 'data-slot': ABILITY, onclick: () => this.setTab(ABILITY) },
-          el('span', { class: 'db-ico' }, chosen ? chosen.icon : '🌟'), el('span', {}, 'Ability'), el('small', {}, chosen ? chosen.name : 'Pick one')),
+          chosen ? abilityIcon(chosen.id, 26) : el('span', { class: 'db-ico' }, '🌟'), el('span', {}, 'Ability'), el('small', {}, chosen ? chosen.name : 'Pick one')),
         PREVIEW && el('button', { class: `db-tab${tab === ATTACKS ? ' on' : ''}`, 'data-slot': ATTACKS, onclick: () => this.setTab(ATTACKS) },
           el('span', { class: 'db-ico' }, '🎬'), el('span', {}, 'Attacks'), el('small', {}, `${this.attackMoves().length} moves`))].filter(Boolean));
       const sub = document.querySelector('#drawboard .db-sub');
@@ -353,10 +354,10 @@ export function createStudio(game, { startBattle, save }) {
       if (!parts || !cols) return;
       const pick = cleanChoice(draft.ab), fly = flies(draft);
       parts.replaceChildren(...CHOOSABLE.map(id => { const a = ABILITIES[id]; return el('button', { class: `db-part db-abil${pick === id ? ' on' : ''}`, 'data-ability': id, title: a.line, onclick: () => this.setAbility(id) },
-        el('span', { class: 'db-ico' }, a.icon), ` ${a.name}`); }));
+        abilityIcon(id, 30), ` ${a.name}`); }));
       cols.replaceChildren(el('div', { class: 'db-abline' },
-        pick ? el('p', {}, el('b', {}, `${ABILITIES[pick].icon} ${ABILITIES[pick].name}: `), ABILITIES[pick].line) : el('p', {}, 'Tap one to choose it.'),
-        el('p', { class: 'db-fly' }, fly ? '🪽 It has wings, so it can fly too!' : '🪽 Give it wings (Back) or a cloud (Legs) and it can fly too.')));
+        pick ? el('p', {}, abilityIcon(pick, 30), el('b', {}, ` ${ABILITIES[pick].name}: `), ABILITIES[pick].line) : el('p', {}, 'Tap one to choose it.'),
+        el('p', { class: 'db-fly' }, abilityIcon('fly', 30), fly ? ' It has wings, so it can fly too!' : ' Give it wings (Back) or a cloud (Legs) and it can fly too.')));
     },
     refreshAttacks() {
       const parts = document.getElementById('db-parts'), cols = document.getElementById('db-colours');

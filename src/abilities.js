@@ -4,6 +4,7 @@
 // Every ability solves something no other can (owner 2026-11-14): Climb = a sheer wall taller than the fly cap (6 over the ground right
 // below), Pass = faded half-erased walls only (Squeeze = a crack in real stone), Lift = something you can never reach, Grow = cracked
 // stone (Push only shoves), Freeze = moving water stops, Swim = speed in water (anyone can dive), Rewind = it is already too late.
+// Pictures: abilityicons.js draws each one as a badge (owner 2026-11-14: no emojis on screen); `icon` stays as a plain-text stand-in.
 // **Ids are saved later (the guardian's chosen one is saved now, in its design `ab`): append-only, never renamed.**
 
 export const ABILITIES = {
