@@ -142,6 +142,63 @@ places: the Drip Tower = Climb; Storm Island = Fly (owner: it was "just timing":
 Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlantis; re-run `wobble` cave bots).
 
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
+**Overnight 2026-11-15/16** (built while the owner slept; nothing waited for an answer: every choice below is mine and can be changed)
+
+*Morning summary* (kept up to date after each pair; the details are under each pair below):
+- Pair 1, **Dig + Push**: built, committed and pushed (spec `ways` parts `bots`, `dig`, `push`, `earthipad`, `pose`; `node tests/waysbots.mjs`).
+- Pair 2, **Burn + Freeze**: not started yet.
+- Pair 3, **Squeeze + Pass through**: not started yet.
+- Also: the action button says nothing at a wall in Wobbleland (it said "Break"); the climbing pose has four gripping paws.
+
+*Decisions for all pairs (how an ability acts on a thing):*
+- **Aim + the big button for things you work on (Dig, and later Burn, Freeze); walking into it for things you move or go through (Push,
+  and later Squeeze, Pass).** Why: digging is what breaking a block always was (look at it, press), so a child already knows it, and the
+  button's word ("Dig!") is a real word only when the creature you are can; pushing a boulder is just walking into it (no button, like
+  climbing). Never a hold. Alternatives: walking into soft earth digs (no aiming, but then every walk along a mound would dig; and a
+  buried chest needs digging DOWN); a button for pushing (a needless extra step). `src/things.js`: one table `THINGS` (kind -> ability,
+  aim / walk, its "why" line), `aimAt` (a ray that also sees water: Freeze will aim at it), `aimedThing`, `walkedInto`.
+- **The "why" line** lives in `THINGS[kind].why` (said once per session, like a block's `noGrip`), e.g. "Soft earth! Only a digger can
+  dig it." / "Too heavy! Only a strong creature can push it.". The place's card ("Needs Dig") still only comes after 3 tries.
+- **Colour:** Bumpy Hills is still grey ("being drawn"), and grey soft earth looked like stone. Every place of these pairs is in colour
+  (`world.colourSpots`, read by wobblelook.js like the river's colour): a child must see soft earth is earth. Question: fine, or should
+  they stay grey until Bumpy Hills is drawn?
+- **Rewards:** the game's own chests (+3 Capture Cubes, saved as opened like every chest). The skill places put theirs in a glass case
+  that opens when you win (it shuts again when you leave, so it can be played again for fun). No new save keys.
+- **No new block ids** (all 256 are used): soft earth is Mud; boulders and balls are models over the hidden solid `HOUSE_PROP` (moved
+  with `setLive` / `LiveCells`, never saved).
+- **Action button:** in Wobbleland it no longer says "Break" (nothing breaks there); it says nothing at a wall, "Dig!" at soft earth you
+  can dig, "Open" at a chest (main.js `updateTarget`).
+- **Climbing pose** (being.js `CLIMB_POSE`, `grips`): from behind it read as a flat slab (it lay back 1.15 rad). Now it leans in only
+  0.5, sways, and four paws in its own colour grip the wall at its sides, the diagonal pairs reaching up in turn as it climbs.
+  Screenshots from behind, the side and three quarters: `plans/chapter3/dig-push/ways-pose-*.png`.
+
+*Pair 1: Dig + Push* (`src/earthworks.js`, `src/things.js`; built into the land by wayland.js `waysLand`, stepped by its `Trials`
+(`EarthRun`), drawn by wobblelive.js `Earthworks`):
+- **Dig, natural spots:** six **mounds** of soft earth (a 3 x 3 hump with a cross on top) all over Wobbleland (four in Bumpy Hills, two in
+  Puddle Meadow); a chest is buried one under its middle. A digger looks at it and taps: two digs and the chest shows. Dug earth comes
+  back when you are far away. Types with Dig: Bone, Treasure, Pirate, Rock.
+- **Dig, the deeper place: the Warm-or-Cold Dig** (Bumpy Hills, x 132, z 40): a square of 7 x 7 soft earth (two deep) by a glass case.
+  A gold key is buried under one square; each hole glows how close it is (red = next to it, orange = 2 away, yellow = 3, blue = cold),
+  little red flags on the rim fall one per wrong hole, and the 6th wrong hole makes the earth rumble shut and the key move. Skill =
+  reading the colours (directional thinking, a kid's "hot or cold"); it is mind + skill, which the owner allowed where it fits. Every
+  square is in reach from outside the rim (why 7 x 7: at 9 x 9 the middle was out of reach). Bots: a skilled digger (digs the square
+  that splits the possible squares best) always finds it in 2-5 digs (worst case 4 with perfect play); digging at random 1/12 · 0/12;
+  no digger 0. Alternatives I weighed: a dig race against a scribble mole (pure speed: mashing would win), a tide that refills holes
+  (timing, but a naive kid wins by luck), whack-a-mole (the Surprise Party already has one).
+- **Push, natural spots:** three **boulder caves** (rock lumps with a 2 x 2 x 2 boulder in the mouth and a chest inside): walk into the
+  boulder and a pusher pushes it a block per push (a boulder is heavy and does not roll); it rolls home when you are far away. Types with
+  Push: Normal, Metal, Squad, Knight, Rock, Ball.
+- **Push, the deeper place: the Ball Garden** (Bumpy Hills, x 90, z 40): a walled garden (a low wall you hop over; a ball never) with
+  stone posts and two holes; two stone balls ROLL when pushed until they bump something or drop into a hole. Both holes full = the glass
+  case opens; walk out and the balls roll home. Skill = directional tactics: use the posts as stops (the layout came from a search: 5
+  pushes; pushing each ball straight at its nearest hole only sends it to the wall). Bots: the 5 pushes open it (about 9 s), the straight
+  pusher never, nobody without Push. Alternatives: a Sokoban yard (one block per push: a slower puzzle), a boulder on Slippy Lake's ice
+  (the right idea, but you slide too: pushing from the right side on ice was too fiddly for a child and for the bots), bowling (too
+  close to the Ball Stadium).
+- Questions I would have asked: (1) Is the Warm-or-Cold Dig's 6 tries right, or should a wrong round just go on (no rumble)? (2) Should
+  a found key / an opened case give something more than the chest (a star-free prize, a new paint pot)? (3) Mud for soft earth, or a new
+  look (a model of loose clods over it)?
+
 **Owner 2026-11-15, third play:** "I still can't seem to understand the difference between Bottlet and Blazehound in speed within the
 river" and "I can't seem to switch to Tightropa ... while in the river". Two bugs: (1) in shallow water (the meadow's zigzag river,
 puddles) a swimmer stands on the bottom and walked like everyone (2.4); now a Swim creature is fast in any water (player.js walkStep:

@@ -68,7 +68,7 @@ export function createWobbleLook(game, { materials, scene, camera }) {
     const river = []; // the floating river is always in colour (a child must see it is water to step in)
     for (let z = RIVER_UP.z1; z <= RIVER_UP.z0; z += 4) river.push([(RIVER_UP.x0 + RIVER_UP.x1 + 1) / 2, z, 4]);
     for (const c of [...CHUTES, ...LEADS]) for (let z = Math.min(c.z0, c.z1); z <= Math.max(c.z0, c.z1); z += 4) river.push([(c.x0 + c.x1 + 1) / 2, z, 3.5]); // (Slippy Lake's chutes and leads too)
-    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...river, ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat])];
+    const circles = [[CAMP.x, CAMP.z, WOBBLE_LOOK.camp], ...river, ...splats.map(([x, z]) => [x, z, WOBBLE_LOOK.splat]), ...(world?.colourSpots ?? [])]; // (step D: the things an ability acts on are in colour, so a child sees soft earth is earth: wayland.js colourSpots)
     for (const p of PATCHES) if (keys.has(patchKey(p.id))) {
       const f = floods.find(q => q.id === p.id);
       circles.push([p.x, p.z, WOBBLE_LOOK.cleared * (f ? Math.min(1, f.t / WOBBLE_LOOK.flood) : 1)]);

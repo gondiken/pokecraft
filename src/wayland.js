@@ -16,6 +16,7 @@
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { SLUICE, buildSluice, SluiceRun } from './sluice.js'; // step D: the Swim place
+import { FLATS, earthLand, EarthRun } from './earthworks.js'; // step D's second pair: Dig and Push
 
 export const SHAFT = {
   x: 140, z: 112,             // the shaft's cell; the tower is the 5 x 5 round it
@@ -60,11 +61,16 @@ export const NEED_PLACES = [
 export const AREA = { x0: 72, x1: 150, z0: 80, z1: 133, edge: 6 }; // flattened to the plain ground (heightAt), the edge eases into the hills
 
 // How flat the area makes (x, z): 1 inside, easing to 0 over AREA.edge outside it (wobbleland.js heightAt).
+const BOXES = [AREA, ...FLATS]; // (the Dig and Push places' flat ground too, earthworks.js FLATS)
 export function areaFlat(x, z) {
-  const dx = Math.max(AREA.x0 - x, 0, x - AREA.x1), dz = Math.max(AREA.z0 - z, 0, z - AREA.z1), d = Math.hypot(dx, dz);
-  if (d <= 0) return 1;
-  const k = Math.min(1, d / AREA.edge);
-  return 1 - k * k * (3 - 2 * k);
+  let best = 0;
+  for (const A of BOXES) {
+    const dx = Math.max(A.x0 - x, 0, x - A.x1), dz = Math.max(A.z0 - z, 0, z - A.z1), d = Math.hypot(dx, dz);
+    if (d <= 0) return 1;
+    const k = Math.min(1, d / (A.edge ?? AREA.edge));
+    best = Math.max(best, 1 - k * k * (3 - 2 * k));
+  }
+  return best;
 }
 // The drips in the shaft at time t: their heights (bottom of the blob), newest first.
 export function dripsAt(t) {
@@ -90,6 +96,7 @@ export function waysLand(world, put, heightAt) {
   buildSluice(world, put);
   world.spots = [];
   const places = NEED_PLACES.slice();
+  places.push(...earthLand(world, put, heightAt)); // step D: soft earth (Dig), boulders and the Ball Garden (Push)
   for (const q of SPOTS) {
     const g = heightAt(q.x + 0.5, q.z + 0.5) ?? 10, { cells, top } = spotCells(q, g);
     for (const [x, y, z, id] of cells) put(x, y, z, id);
@@ -108,6 +115,7 @@ export class Trials {
     this.cells = world?.setLive ? new LiveCells(world, () => this.p) : null;
     const set = (x, y, z, id) => this.cells?.want(x, y, z, id);
     this.sluice = new SluiceRun(set);
+    this.earth = world?.earth ? new EarthRun(world, (x, y, z, id) => (this.cells ? this.cells.want(x, y, z, id) : world.setLive?.(x, y, z, id))) : null;
   }
   step(p, dt) {
     this.t += dt; this.p = p;
@@ -124,6 +132,7 @@ export class Trials {
       }
     }
     ev.push(...this.sluice.step(p, dt));
+    if (this.earth) ev.push(...this.earth.step(p, dt));
     this.cells?.flush();
     return ev;
   }

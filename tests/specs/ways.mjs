@@ -15,7 +15,16 @@
 //   ipad:   an emulated iPad: Place = Swap, Jump = Up while you fly; at the tower the card after tries, one tap on Swap, the joystick pushed
 //           into the shaft's wall climbs; at a cloud the card, Swap, the Jump button held rises
 //   closed: without ?preview and in the main world there is no creature mode and 1 2 3 still pick blocks
-//   WAYS_ONLY=data|bots|real|places|fight|ipad|closed
+//   step D's second pair (overnight 2026-11-15/16, plans/chapter3-abilities-build.md "Overnight"): Dig and Push (earthworks.js, things.js)
+//   bots:   + runDig (every mound's chest only for diggers; the Warm-or-Cold Dig: skilled always, at random at most a quarter, no digger
+//           never) and runPush (the boulder caves only for pushers; the Ball Garden: the 5 pushes open it, straight at the holes never)
+//   dig:    real keys: at a wall the button says nothing (it said "Break"); a mound as Scalewing: no word, a press says why, the card after
+//           3 tries, Swap to Rattlepup, "Dig!", dig down, open the buried chest; the Warm-or-Cold Dig won with E presses (ways-digpatch*.png)
+//   push:   a boulder cave: Scalewing walking into it is told it is too heavy, Woolumph walks it in; the Ball Garden: a real-key push rolls a
+//           ball to the wall, the rest of the solution opens the glass case (ways-cave-*.png, ways-garden*.png)
+//   earthipad: the same on an emulated iPad (the action button, Swap, the joystick into the boulder)
+//   pose:   the climbing pose from behind, the side and three quarters (ways-pose-*.png): faces the wall, leans in, four paws grip it
+//   WAYS_ONLY=data|bots|real|places|dig|push|earthipad|pose|fight|ipad|closed
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -37,6 +46,7 @@ const need = page => page.evaluate(() => {
 });
 // walk into a place's box `n` times (from far away), so the place counts n tries
 const tries = async (page, at, n) => { for (let i = 0; i < n; i++) { await put(page, 60.5, 11, 60.5); await frames(page, 2); await put(page, ...at); await frames(page, 3); } };
+const poll = (page, fn) => page.evaluate(src => new Promise(res => { const f = new Function('g', 'return ' + src), t0 = performance.now(); const go = () => { const g = window.pokecraft; let v = null; try { v = f(g); } catch { v = null; } if (v || performance.now() - t0 > 200000) res(v); else requestAnimationFrame(go); }; go(); }), fn);
 const toasts = page => page.evaluate(() => [...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join(' | '));
 
 export default async function ({ browser, base, t }) {
@@ -59,13 +69,22 @@ export default async function ({ browser, base, t }) {
     t.ok(seen.join() === 'false,false,true' && h2.tries(place.id) === 2 && !h3.shown(place.id), `the hint only after trying: walking in 3 times (${seen}), or staying ${P.HINT.every} s counts one more (${h2.tries(place.id)} after 10 s), never while you can (${h3.tries(place.id)})`);
     const E = await (await import('../wobblenode.mjs')).wobbleEnv(), ids = E.w.needPlaces.map(q => `${q.id}:${q.needs}`).join();
     const ceil = E.w.flyCeiling, tops = E.w.spots.map(q => `${q.id} ${q.top}`).join(', ');
-    t.ok(ids === 'sluice:swim,driptower:climb,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
+    t.ok(ids === 'sluice:swim,driptower:climb,mound1:dig,mound2:dig,mound3:dig,mound4:dig,mound5:dig,mound6:dig,cave1:push,cave2:push,cave3:push,digpatch:dig,garden:push,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
       `places: ${ids}; one cloud ceiling for wings at ${ceil} (owner 2026-11-14): the crags' tops and the tower's roof (${W.SHAFT.roof + 1}) above it, the clouds under it and over a jump (${tops})`);
+    const TH = await import('../../src/things.js'), K = await import('../../src/earthworks.js'), A = await import('../../src/abilities.js');
+    const kinds = Object.entries(TH.THINGS).map(([k, v]) => `${k}:${v.needs}/${v.how}`).join(' ');
+    const c1 = K.keyCandidates([[3, 3, 4]]).length, c2 = K.keyCandidates([[3, 3, 1]]).length, worst = Math.max(...Array.from({ length: 49 }, (_, i) => K.keyCandidates([[0, 0, K.warmth(0, 0, i % 7, Math.floor(i / 7))]]).length));
+    t.ok(Object.values(TH.THINGS).every(v => A.ABILITIES[v.needs] && v.why && (v.how === 'walk' || v.word)) && c1 === 0 && c2 === 8 && worst === 33,
+      `things an ability acts on (things.js): ${kinds}; every one says why; the Warm-or-Cold Dig: a cold hole in the middle leaves ${c1} squares, a red one ${c2}, a cold corner hole ${worst} (of 49)`);
     t.ok(G.BRIGHT.slice().sort().join() === 'atlantis,cosmic,electric,fire,light,rainbow' && G.KEEN.join() === 'ghost,ninja', `Glowcap Caves: the glowing types are the Glow ability's (${G.BRIGHT}); Ghost / Ninja still sense (${G.KEEN})`);
   }
 
   if (want('bots')) {
-    const { runTower, runSluice, runSpots, runCurrents } = await import('../waysbots.mjs');
+    const { runTower, runSluice, runSpots, runCurrents, runDig, runPush } = await import('../waysbots.mjs');
+    const dg = await runDig({ tries: 12 }), pu = await runPush(), d = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
+    const ok = (o, re) => [...new Set(Object.entries(o).filter(([k, v]) => re.test(k) && v).map(([k]) => k.split('.')[1].split('@')[0]))].join(', ');
+    t.ok(!dg.problems.length, `Dig, 60 · 20 fps: the mounds' chests seen by ${ok(dg.out, /^mound/)} only; the Warm-or-Cold Dig: skilled ${d(dg.out, 'patch.skilled')} (digs ${dg.out['patch.skilled@60'].digs}), at random ${d(dg.out, 'patch.naive')}, without Dig: ${d(dg.out, 'patch.pusher')} / ${d(dg.out, 'patch.flier')} ${dg.problems.join('; ')}`);
+    t.ok(!pu.problems.length, `Push, 60 · 20 fps: into the boulder caves: ${ok(pu.out, /^cave/)} only; the Ball Garden: the 5 pushes ${pu.out['garden.skilled@60']} s · ${pu.out['garden.skilled@20']} s, straight at the holes ${pu.out['garden.naive@60']} · ${pu.out['garden.naive@20']}, without Push ${pu.out['garden.digger@60']} / ${pu.out['garden.flier@60']} / ${pu.out['garden.walker@60']} ${pu.problems.join('; ')}`);
     const a = await runTower(), ss = await runSluice(), sp = await runSpots(), cu = await runCurrents();
     const c = k => cu.out[k + '@60'];
     t.ok(!cu.problems.length, `shallow water, 1.2 s: Bottlet ${c('shallow.bottlet')}, Blazehound ${c('shallow.blazehound')}, Tightropa ${c('shallow.tightropa')}; currents, 3 s upstream at 60 · 20 fps: Bottlet ${c('river.bottlet')} / ${c('lead.bottlet')} / ${c('cave.bottlet')} (river / lake lead / cave river), Tidalord ${c('lead.tidalord')}; no Swim: Tightropa ${c('river.tightropa.sprint')} / ${c('lead.tightropa.sprint')} / ${c('cave.tightropa.sprint')} sprinting, on foot ${c('lead.onFoot')} ${cu.problems.join('; ')}`);
@@ -185,7 +204,7 @@ export default async function ({ browser, base, t }) {
     await page.keyboard.down('w');
     const mid = await poll(`g.player.climbing && g.player.pos.y > ${crag.ground + 5} && g.being.info()`);
     await shot(page, 'ways-crag-climb.png');
-    t.ok(mid && mid.pose > 0.8 && mid.tilt < -0.9 && mid.behind, `climbing, it faces the wall and leans its front up it (pose ${mid?.pose}, tilt ${mid?.tilt}), scrambling, the camera behind it`);
+    t.ok(mid && mid.pose > 0.8 && mid.tilt < -0.3 && mid.paws && mid.behind, `climbing, it faces the wall and leans into it (pose ${mid?.pose}, tilt ${mid?.tilt}), four paws grip the wall (${mid?.paws}), the camera behind it`);
     const onTop = await poll(`g.player.onGround && g.player.pos.y >= ${crag.top - 0.05} && g.player.pos.y`);
     await page.keyboard.up('w'); await frames(page, 3);
     t.ok(!c0.card && onTop, `a crag (nothing marks it: no card ${!c0.card}): Sproutle walks into its wall and climbs on top (y ${onTop})`);
@@ -265,6 +284,157 @@ export default async function ({ browser, base, t }) {
     await page.keyboard.up('w'); await page.keyboard.up('Shift');
     t.ok(done?.through && await page.evaluate(() => !!window.__dived), `Tidalord dives (looking down), kicks with Jump, rides the bubble jets and gets through the gate before it shuts`);
     t.ok(!page.errors.length, `places: no page errors (${page.errors.join('; ')})`);
+    await page.context().close();
+  }
+
+  // step D's second pair: Dig and Push with real keys through the game's own loop (desktop, then iPad)
+  if (want('dig') || want('push') || want('earthipad')) for (const dev of [(want('dig') || want('push')) && null, want('earthipad') && 'iPad (gen 7) landscape'].filter(x => x !== false)) {
+    const ipad = !!dev, tag = ipad ? 'iPad: ' : '';
+    const page = await openGame(browser, base, { query: '?preview', ...(dev ? { contextOptions: devices[dev] } : {}) });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('scalewing', 30), S.makeCreature('rattlepup', 30), S.makeCreature('woolumph', 30)]; });
+    await intoWobble(page, { creature: true });
+    const live = () => page.evaluate(() => window.pokecraft.gymLive.of('part:wobble').info().earth);
+    const act = () => page.evaluate(() => ({ act: window.pokecraft.touch?.cur?.().act.label ?? '', dim: window.pokecraft.touch?.cur?.().act.dim, prompt: document.getElementById('prompt')?.textContent ?? '' }));
+    const press = async () => { if (ipad) await page.tap('#btn-act'); else await page.keyboard.press('KeyE'); await frames(page, 3); };
+    const swap = async () => { if (ipad) await page.tap('#btn-place'); else await page.keyboard.press('KeyF'); await frames(page, 3); };
+    const look = (x, y, z) => page.evaluate(([x, y, z]) => window.pokecraft.player.lookAt({ x, y, z }), [x, y, z]);
+    const E = await page.evaluate(() => { const e = window.pokecraft.world.earth; return { mounds: e.mounds, caves: e.caves.map(c => ({ id: c.id, x: c.x, z: c.z, w: c.w, d: c.d, g: c.g, h: c.h })), patch: { x0: e.patch.x0, z0: e.patch.z0, n: e.patch.n, g: e.patch.g, case: e.patch.case }, garden: { x0: e.garden.x0, z0: e.garden.z0, n: e.garden.n, g: e.garden.g } }; });
+    if (want('dig') || ipad) {
+      // nothing breaks in Wobbleland: at a plain wall the button says nothing (owner 2026-11-15: it said "Break")
+      await put(page, 141.5, 11, 116.6, 0, 0.1); await frames(page, 3);
+      const wall = await act();
+      t.ok(wall.act === '' && wall.dim, `${tag}looking at the Drip Tower's wall the action button says nothing (was "Break"): "${wall.act}", dim ${wall.dim}`);
+      // a mound as Scalewing (no Dig): the button says nothing; a press says why once; after 3 tries the card, Swap goes to Rattlepup
+      const m = E.mounds[0], top = [m.x + 0.5, m.g + 1.98, m.z + 0.5];
+      await tries(page, [m.x + 0.5, m.g + 1, m.z + 2.8, 0, -0.5], 3);
+      await look(...top); await frames(page, 2);
+      const a0 = await act();
+      await press();
+      const why = await toasts(page), n0 = await need(page);
+      t.ok(a0.act === '' && /only a digger/i.test(why) && n0.card && n0.text === 'Needs Dig' && n0.lit === 'Rattlepup', `${tag}a mound of soft earth as Scalewing: no word on the button ("${a0.act}"), a press says why ("${why}"), after 3 tries the card "${n0.text}" with ${n0.lit} lit`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}mound-without.png`);
+      await swap();
+      await look(...top); await frames(page, 2);
+      const a1 = await act(), who = (await be(page)).species;
+      t.ok(who === 'rattlepup' && a1.act === 'Dig!' && !a1.dim, `${tag}Swap goes straight to Rattlepup; looking at the mound the button says "${a1.act}" (prompt "${a1.prompt}")`);
+      await page.evaluate(([x, y, z]) => window.pokecraft.player.lookAt({ x: x + 0.5, y: y + 0.98, z: z + 0.5 }), m.chest);
+      for (let i = 0; i < 4; i++) { const h = await page.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z), m.chest); const a = await act(); if (a.act !== 'Dig!') break; await press(); }
+      const sees = await page.evaluate(() => window.pokecraft.touch?.cur?.().act.label ?? '');
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}mound-dug.png`);
+      const cubes0 = await page.evaluate(() => window.pokecraft.cubes);
+      await press();
+      const opened = await page.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z), m.chest), cubes1 = await page.evaluate(() => window.pokecraft.cubes);
+      t.ok(sees === 'Open' && cubes1 === cubes0 + 3, `${tag}Rattlepup digs down with the action button (it says "${sees}" at the chest) and opens the buried chest (+${cubes1 - cubes0} Capture Cubes, block ${opened})`);
+    }
+    if (want('dig') && !ipad) {
+      // the Warm-or-Cold Dig with real presses: the head turns to each square (like a child looking), E digs; the glows guide the next
+      const P = E.patch;
+      await put(page, P.x0 + 3.5, P.g + 1, P.z0 + P.n + 1.6, 0, -0.6); await frames(page, 3);
+      await shot(page, 'ways-digpatch.png');
+      for (let k = 0; k < 8; k++) {
+        const st = await live();
+        if (st.patchOpen) break;
+        const pick = await page.evaluate(async () => { // the squares the key can still be under: dig the one that splits them best (waysbots.mjs skilledPick)
+          const K = await import('/src/earthworks.js'), R = window.pokecraft.world.trials.earth, P = window.pokecraft.world.earth.patch, c = K.keyCandidates(R.holesDug);
+          let best = null, bw = 1e9;
+          for (let u = 0; u < P.n; u++) for (let v = 0; v < P.n; v++) {
+            if (R.holesDug.some(([a, b]) => a === u && b === v)) continue;
+            const parts = new Map(); for (const [a, b] of c) { const l = Math.min(4, Math.max(Math.abs(a - u), Math.abs(b - v))); parts.set(l, (parts.get(l) ?? 0) + 1); }
+            let w = 0; for (const [l, n] of parts) if (l) w = Math.max(w, n);
+            const sc = w * 2 - (c.some(([a, b]) => a === u && b === v) ? 1 : 0); if (sc < bw) { bw = sc; best = [u, v]; }
+          }
+          return best;
+        });
+        const [u, v] = pick, x = P.x0 + u, z = P.z0 + v;
+        const sides = [[x + 0.5, P.z0 - 1.6, v], [x + 0.5, P.z0 + P.n + 1.6, P.n - 1 - v], [P.x0 - 1.6, z + 0.5, u], [P.x0 + P.n + 1.6, z + 0.5, P.n - 1 - u]].sort((a, b) => a[2] - b[2]);
+        await put(page, sides[0][0], P.g + 1, sides[0][1]); await frames(page, 2);
+        await look(x + 0.5, P.g + 0.98, z + 0.5); await frames(page, 2);
+        await press();
+      }
+      await frames(page, 6);
+      const won = await live();
+      await put(page, P.case.x + 0.5, P.g + 1, P.case.z + 3.2, 0, -0.35); await frames(page, 6);
+      await shot(page, 'ways-digpatch-found.png');
+      t.ok(won.patchOpen && won.holesDug.length <= 4, `the Warm-or-Cold Dig with E presses: holes glow red / orange / yellow / blue (${won.holesDug.join(', ')}), the key found within ${won.holesDug.length + 1} digs, the glass case opens`);
+    }
+    if (want('push') || ipad) {
+      // a boulder cave: as Scalewing walking into the boulder: why once; as Woolumph walking on: it pushes in
+      const c = E.caves[0], mx = c.x + 2, mz = c.z + c.d - 1;
+      if (!ipad) {
+        await page.keyboard.press('Digit1'); await frames(page, 3);
+        await put(page, mx, c.g + 1, mz + 2.5, 0, 0); await frames(page, 2);
+        await page.keyboard.down('w'); await page.waitForTimeout(3500); await page.keyboard.up('w');
+        const heavy = await toasts(page), b0 = (await live()).boulders[0];
+        t.ok(/too heavy/i.test(heavy) && b0 === `${mx - 1},${c.g + 1},${mz - 1}`, `Scalewing walks into the cave's boulder: it does not move (${b0}) and says why ("${heavy}")`);
+        await shot(page, 'ways-cave-without.png');
+        await page.keyboard.press('Digit3'); await frames(page, 3);
+      } else { await swap(); }
+      await put(page, mx, c.g + 1, mz + 2.5, 0, 0); await frames(page, 3);
+      let cdp = null;
+      if (ipad) { // the joystick, with real touches
+        cdp = await page.context().newCDPSession(page);
+        const j = await page.evaluate(() => { const r = document.getElementById('joystick').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: j[0], y: j[1], id: 1 }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: j[0], y: j[1] - 60, id: 1 }] });
+      } else await page.keyboard.down('w');
+      const inside = await page.evaluate(([c]) => new Promise(res => { const t0 = performance.now(); const f = () => { const p = window.pokecraft.player; if (p.pos.z < c.z + c.d - 1.3 || performance.now() - t0 > 200000) res({ z: p.pos.z, b: window.pokecraft.gymLive.of('part:wobble').info().earth.boulders[0], sp: window.pokecraft.being.info().species }); else requestAnimationFrame(f); }; f(); }), [c]);
+      if (ipad) await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); else await page.keyboard.up('w');
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}cave-with.png`);
+      t.ok(inside.sp === 'woolumph' && inside.z < c.z + c.d - 1.3 && inside.b !== `${mx - 1},${c.g + 1},${mz - 1}`, `${tag}as Woolumph (Push) ${ipad ? 'the joystick pushed' : 'W held'} into the boulder pushes it in, block by block, and walks in after it (boulder at ${inside.b})`);
+    }
+    if (want('push') && !ipad) {
+      // the Ball Garden: one push with real keys: the ball rolls on until it bumps the low wall
+      const G = E.garden;
+      await put(page, G.x0 + 8.5, G.g + 1, G.z0 + 4.5, Math.PI / 2, -0.2); await frames(page, 3); // (east of ball 1, facing west)
+      await shot(page, 'ways-garden.png');
+      await page.keyboard.down('w');
+      await poll(page, "g.gymLive.of('part:wobble').info().earth.balls[0] !== '97,11,44'");
+      await page.keyboard.up('w');
+      const rolled = await poll(page, "(() => { const e = g.gymLive.of('part:wobble').info().earth; return e.balls[0] === '91,11,44' && e; })()");
+      await shot(page, 'ways-garden-rolled.png');
+      t.ok(rolled, `the Ball Garden: walking into a stone ball as Woolumph, it rolls on until it bumps the low wall (${rolled?.balls?.[0]})`);
+      // the rest of the solution: the pushes are walked by the page like a bot (tests/waysbots.mjs proves them with the real Player); the case opens
+      const solved = await page.evaluate(async () => {
+        const g = window.pokecraft, R = g.world.trials.earth, steps = [[0, 0, -1], [0, 1, 0], [0, 0, 1], [1, 0, 1]];
+        for (const [i, dx, dz] of steps) {
+          const b = R.balls[i]; g.player.pos.set(b.at[0] - dx + 0.5, b.at[1], b.at[2] - dz + 0.5); g.player.vel.set(0, 0, 0); g.player.yaw = Math.atan2(-dx, -dz);
+          g.player.keys.KeyW = true;
+          const at = b.at.join();
+          await new Promise(res => { const t0 = performance.now(); const f = () => (b.at.join() !== at && !b.roll && !b.from) || performance.now() - t0 > 60000 ? res() : requestAnimationFrame(f); f(); });
+          g.player.keys.KeyW = false;
+          await new Promise(r => setTimeout(r, 300));
+        }
+        return g.gymLive.of('part:wobble').info().earth;
+      });
+      await put(page, 94.5, E.garden.g + 1, 39.2, 0, -0.3); await frames(page, 6);
+      await shot(page, 'ways-garden-open.png');
+      t.ok(solved.gardenOpen && solved.holesFull === 2, `both balls in their holes: the glass case opens (${JSON.stringify({ open: solved.gardenOpen, full: solved.holesFull })})`);
+    }
+    t.ok(!page.errors.length, `${tag}dig / push: no page errors (${page.errors.join('; ')})`);
+    await page.context().close();
+  }
+
+  if (want('pose')) { // the climbing pose (owner 2026-11-15: make it read clearly as climbing): from behind and from the side, screenshots
+    const page = await openGame(browser, base, { query: '?preview' });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('sproutle', 30), S.makeCreature('scalewing', 30), S.makeCreature('woolumph', 30)]; });
+    await intoWobble(page, { creature: true });
+    const crag = await page.evaluate(() => ({ ...window.pokecraft.world.spots.find(q => q.id === 'crag1') }));
+    const cx = crag.x + crag.w / 2, face = crag.z + crag.d;
+    const views = [['behind', 0, 'w', 0.2], ['side', Math.PI / 2, 'd', 0.05], ['three-quarter', Math.PI / 4, 'w', 0.15]];
+    for (const [name, yaw, key, pitch] of views) {
+      await put(page, cx + 0.5, crag.ground + 1, face + 0.4, yaw, pitch); await frames(page, 3);
+      await page.keyboard.down(key);
+      const mid = await poll(page, `g.player.climbing && g.player.pos.y > ${crag.ground + 4} && g.being.info()`);
+      await page.keyboard.up(key); await frames(page, 2);
+      await page.keyboard.down(key); await frames(page, 4); // (mid-scramble: the paws reaching)
+      await shot(page, `ways-pose-${name}.png`);
+      await page.keyboard.up(key);
+      t.ok(mid && mid.climbing && mid.paws && mid.pose > 0.8 && mid.behind, `climbing pose seen from ${name}: facing the wall, leaning in (tilt ${mid?.tilt}), four paws on the wall (${mid?.paws}), the camera behind`);
+      await page.evaluate(() => { const p = window.pokecraft.player; p.keys = {}; }); await frames(page, 2);
+    }
+    t.ok(!page.errors.length, `pose: no page errors (${page.errors.join('; ')})`);
     await page.context().close();
   }
 

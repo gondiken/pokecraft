@@ -24,6 +24,8 @@ import { BLOCKS } from './blocks.js';
 const bodyFor = c => bodyOf(c.species, SPECIES[c.species], c);
 
 export const BE_CAM = { dist: 4.6, rise: 0.42, head: 1.2, pitchK: 0.45, ease: 10, near: 1.3, key: 'pokecraft-be-cam' };
+export const CLIMB_POSE = { lean: 0.5, sway: 0.14, rate: 7, reach: 0.34, wide: 0.58, hand: 1.05, foot: 0.25 }; // (being.js camera: the climbing pose)
+const LIMB = { a: new THREE.Vector3(), b: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) };
 const store = { get() { try { return localStorage.getItem(BE_CAM.key); } catch { return null; } }, set(v) { try { localStorage.setItem(BE_CAM.key, v); } catch { /* private window */ } } };
 const CSS = '#crosshair.be-behind { opacity: 0; }';
 
@@ -143,8 +145,9 @@ export function createBeing(game, { scene }) {
       const behind = view === 'behind' && !tight;
       if (model) {
         model.visible = behind && !fighting; // (in a fight scribble.js draws it)
-        // climbing (owner 2026-11-14: "awkward to see the same character just moving vertically up near the wall"): it turns to face the
-        // wall, leans its front up against it and scrambles: a side-to-side wiggle and a little bob in step with its climb
+        // climbing (owner 2026-11-14: "awkward to see the same character just moving vertically up near the wall"; 2026-11-15 night: from
+        // behind it read as a flat slab): it turns to face the wall and leans into it, and four paws in its own colour grip the wall at
+        // its sides, the two diagonal pairs reaching up in turn (left hand + right foot, then the others) in step with the climb; it sways
         const w = p.climbing ? p.wallsBeside() : null;
         const wall = w ? (w.px ? [1, 0] : w.nx ? [-1, 0] : w.pz ? [0, 1] : w.nz ? [0, -1] : null) : null;
         if (wall) climb.dir = wall;
@@ -154,10 +157,11 @@ export function createBeing(game, { scene }) {
         const faceYaw = Math.atan2(-climb.dir[0], -climb.dir[1]) + Math.PI;
         model.rotation.order = 'YXZ';
         model.rotation.y = k > 0.5 ? faceYaw : p.yaw + Math.PI;
-        model.rotation.x = -1.15 * k;                                   // (its front up the wall)
-        model.rotation.z = k * Math.sin(climb.t * 9) * 0.22;            // (scrambling: left foot, right foot)
-        const up = k * (0.35 + Math.abs(Math.sin(climb.t * 9)) * 0.08);
-        model.position.set(p.pos.x + climb.dir[0] * 0.18 * k, p.pos.y + (fit?.lift ?? 0) + up, p.pos.z + climb.dir[1] * 0.18 * k);
+        model.rotation.x = -CLIMB_POSE.lean * k;                         // (leaning into the wall, head up)
+        model.rotation.z = k * Math.sin(climb.t * CLIMB_POSE.rate) * CLIMB_POSE.sway;
+        const up = k * (0.12 + Math.abs(Math.sin(climb.t * CLIMB_POSE.rate)) * 0.06);
+        model.position.set(p.pos.x + climb.dir[0] * 0.14 * k, p.pos.y + (fit?.lift ?? 0) + up, p.pos.z + climb.dir[1] * 0.14 * k);
+        grips(p, k, behind && !fighting);
         animateModel(model, t + climb.t * 1.5, Math.hypot(p.vel.x, p.vel.z) > 0.5 || p.ride?.kind === 'sky' || moving);
       }
       crosshair(behind && !fighting);
@@ -207,7 +211,7 @@ export function createBeing(game, { scene }) {
     // tests
     info() {
       const p = game.player;
-      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, abilities: body?.abilities ?? [], fly: !!body?.fly, climb: !!body?.climb, swim: !!body?.swim, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, pose: +climb.k.toFixed(2), tilt: model ? +model.rotation.x.toFixed(2) : 0, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
+      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, abilities: body?.abilities ?? [], fly: !!body?.fly, climb: !!body?.climb, swim: !!body?.swim, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, pose: +climb.k.toFixed(2), tilt: model ? +model.rotation.x.toFixed(2) : 0, paws: !!paws?.visible, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
     },
   };
   function drop() {
@@ -215,7 +219,35 @@ export function createBeing(game, { scene }) {
     if (idx != null) last = idx;
     if (p) { if (p.ride?.be) { p.ride = null; } p.be = null; p.climbing = false; }
     if (model) { scene.remove(model); disposeModel(model); model = null; fit = null; }
+    if (paws) { scene.remove(paws); paws.traverse(o => o.geometry?.dispose?.()); paws = null; }
     cam.ok = false;
+  }
+  // the four gripping paws (made once per creature, in its own main colour)
+  let paws = null;
+  function grips(p, k, show) {
+    if (!paws) {
+      let colour = 0x8a6a4a;
+      model?.traverse(o => { if (colour === 0x8a6a4a && o.isMesh && o.material?.color && !o.material.transparent) colour = o.material.color.getHex(); });
+      const mat = new THREE.MeshLambertMaterial({ color: new THREE.Color(colour).multiplyScalar(0.72) }), ink = new THREE.MeshBasicMaterial({ color: 0x2a2018, side: THREE.BackSide }), geo = new THREE.SphereGeometry(0.17, 10, 8);
+      paws = new THREE.Group();
+      const limb = new THREE.CylinderGeometry(0.075, 0.075, 1, 8);
+      for (let i = 0; i < 4; i++) { const g = new THREE.Group(), m = new THREE.Mesh(geo, mat), o = new THREE.Mesh(geo, ink); m.scale.set(1.2, 0.8, 0.7); o.scale.set(1.32, 0.92, 0.82); g.add(m, o); paws.add(g); }
+      for (let i = 0; i < 4; i++) { const a = new THREE.Mesh(limb, mat); a.userData.limb = i; paws.add(a); } // (a limb from its body to each paw)
+      scene.add(paws);
+    }
+    paws.visible = show && k > 0.5;
+    if (!paws.visible) return;
+    const [dx, dz] = climb.dir, sx = -dz, sz = dx, C = CLIMB_POSE, s = fit?.scale ?? 1, ph = climb.t * C.rate;
+    for (let i = 0; i < 4; i++) {
+      const g = paws.children[i], hand = i < 2, side = i % 2 ? 1 : -1, pair = hand ? side : -side; // (diagonal pairs move together)
+      const reach = Math.max(0, Math.sin(ph + (pair > 0 ? 0 : Math.PI))) * C.reach;
+      const h = (hand ? C.hand : C.foot) * Math.max(0.7, s) + reach;
+      g.position.set(p.pos.x + dx * (p.halfW + 0.08) + sx * side * C.wide, p.pos.y + h, p.pos.z + dz * (p.halfW + 0.08) + sz * side * C.wide);
+      g.rotation.y = Math.atan2(dx, dz);
+      const a = paws.children[4 + i], from = LIMB.a.set(p.pos.x + dx * 0.1 + sx * side * 0.2, p.pos.y + (hand ? 0.8 : 0.35) * Math.max(0.7, s), p.pos.z + dz * 0.1 + sz * side * 0.2);
+      const d = LIMB.b.subVectors(g.position, from), len = d.length();
+      a.position.copy(from).addScaledVector(d, 0.5); a.scale.set(1, len, 1); a.quaternion.setFromUnitVectors(LIMB.up, d.normalize());
+    }
   }
   function roomBehind(p) { // climbing a wall in the open: the camera can still stand behind you
     const x = p.pos.x + Math.sin(p.yaw) * 2, z = p.pos.z + Math.cos(p.yaw) * 2;

@@ -14,6 +14,8 @@ import { SkidMarks } from './skidmarks.js'; // Slippy Lake
 import { DIFFICULTY } from './difficulty.js'; // the bugs on Easy / Hard
 import { SHAFT, dripsAt } from './wayland.js'; // chapter 3: the Drip Tower (plans/chapter3-ways.md)
 import { SLUICE, rowsShut } from './sluice.js'; // step D: the Sluice Gate (Swim)
+import { THINGS, aimedThing, thingAt } from './things.js'; // step D: things an ability acts on (Dig, Push...)
+import { DIG_PATCH } from './earthworks.js';
 import { ABILITIES } from './abilities.js';
 import { abilitySvg } from './abilityicons.js';
 import { portrait } from './ui.js';
@@ -363,6 +365,101 @@ class WayPlaces extends Piece {
   }
 }
 
+// Step D's second pair (earthworks.js, things.js): Dig and Push. The rules are wayland.js Trials' EarthRun; this draws the boulders and
+// the stone balls (round rocks with a drawn ink outline: the land is a drawing), the gold key, the warm-or-cold glow in each hole, the
+// little flags of the Warm-or-Cold Dig (one falls with each wrong hole), and is the big button's "Dig!" (things.js aimedThing: only when
+// the creature you are can dig and looks at soft earth). Without the ability a tap on soft earth says why once (THINGS.why).
+const FAR = 56; // (blocks: a place's models further away than this are not drawn)
+const WARM_COLOURS = [0xffd84a, 0xff3a2a, 0xff9a2a, 0xffe14a, 0x4aa8ff]; // 0 the key (gold), 1 red, 2 orange, 3 yellow, 4 cold blue
+function outlined(geo, colour) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: colour, flatShading: true })));
+  const ink = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x2a2018, side: THREE.BackSide })); ink.scale.setScalar(1.07); g.add(ink);
+  return g;
+}
+class Earthworks extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.run = this.s.world.trials?.earth ?? null;
+    if (!this.run) return;
+    this.rocks = new Map();
+    for (const r of this.run.boulders) {
+      const m = outlined(new THREE.IcosahedronGeometry(1.0, 1), 0x8f8a80); m.scale.set(1, 0.95, 1);
+      const moss = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), new THREE.MeshLambertMaterial({ color: 0x6a8a4a })); moss.position.set(0.3, 0.75, 0.2); moss.scale.y = 0.35; m.add(moss);
+      this.group.add(m); this.rocks.set(r, m);
+    }
+    for (const r of this.run.balls) {
+      const m = outlined(new THREE.SphereGeometry(0.48, 16, 12), 0xa8a294);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.485, 0.04, 6, 24), new THREE.MeshBasicMaterial({ color: 0x4a4038 })); m.add(band);
+      const band2 = band.clone(); band2.rotation.y = Math.PI / 2; m.add(band2);
+      this.group.add(m); this.rocks.set(r, m);
+    }
+    // the Warm-or-Cold Dig: a glow in each hole, the flags on its south rim, the gold key
+    const P = this.s.world.earth.patch;
+    this.glows = Array.from({ length: DIG_PATCH.digs + 1 }, () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })); m.visible = false; this.group.add(m); return m; });
+    this.flags = Array.from({ length: DIG_PATCH.digs }, (_, i) => {
+      const g = new THREE.Group(), stick = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.1, 0.08), new THREE.MeshLambertMaterial({ color: 0x9a6a3a }));
+      stick.position.y = 0.55; g.add(stick);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.32), new THREE.MeshBasicMaterial({ color: 0xe8402a, side: THREE.DoubleSide })); flag.position.set(0.27, 0.92, 0); g.add(flag);
+      g.position.set(P.x0 + 0.5 + i * (P.n - 1) / (DIG_PATCH.digs - 1), P.g + 1, P.z0 + P.n + 0.5); this.group.add(g); return g;
+    });
+    this.key = new THREE.Group();
+    const gold = new THREE.MeshLambertMaterial({ color: 0xf2c418, emissive: 0x8a6a00 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.07, 8, 16), gold); ring.position.y = 0.5; this.key.add(ring);
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.6, 0.09), gold); shaft.position.y = 0.05; this.key.add(shaft);
+    const bit = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.09), gold); bit.position.set(0.1, -0.15, 0); this.key.add(bit);
+    this.key.visible = false; this.group.add(this.key); this.keyT = 0;
+    this.clock = 0;
+  }
+  // the big button's word: Dig! when the creature you are can dig the soft earth you look at
+  near(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); return a?.word ?? null; }
+  use(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); if (!a) return false; this.run.dig(a.cell, p.be.abilities); return true; }
+  // a tap on soft earth you cannot dig: why (once)
+  hit(block) {
+    if (!this.run) return false;
+    const th = thingAt(this.s.world, block.x, block.y, block.z), k = th && THINGS[th.kind];
+    if (!k || k.how !== 'aim') return false;
+    const p = this.game.player;
+    if ((p?.be?.abilities ?? []).includes(k.needs)) { this.run.dig(block, p.be.abilities); return true; }
+    this.why(th.kind);
+    return true;
+  }
+  why(kind) { const g = this.game, id = 'thing:' + kind; if (g.toldOnce?.has(id)) return; g.toldOnce?.add(id); g.ui?.toast(THINGS[kind].why); }
+  update(dt) {
+    if (!this.run) return;
+    this.clock += dt;
+    for (const e of this.run.log.splice(0)) this.event(e); // (everything since the last frame; Trials steps first, in WayPlaces)
+    const me = this.game.player?.pos, far = (x, z) => !me || Math.hypot(me.x - x, me.z - z) > FAR; // (draw calls: things far away are not drawn)
+    for (const [r, m] of this.rocks) {
+      m.visible = !far(r.at[0], r.at[2]);
+      const s = r.size / 2, k = r.from ? r.k : 1, a = r.from ?? r.at, b = r.at;
+      m.position.set(a[0] + (b[0] - a[0]) * k + s, a[1] + (b[1] - a[1]) * k + s, a[2] + (b[2] - a[2]) * k + s);
+      if (r.kind === 'ball' && r.from) { m.rotation.x += (b[2] - a[2]) * dt * 14; m.rotation.z -= (b[0] - a[0]) * dt * 14; }
+      else if (r.kind === 'boulder' && r.from) { m.rotation.x += (b[2] - a[2]) * dt * 2.6; m.rotation.z -= (b[0] - a[0]) * dt * 2.6; }
+    }
+    const R = this.run, P = this.s.world.earth.patch, near = !far(P.x0 + 3, P.z0 + 3);
+    for (const f of this.flags) f.visible = near;
+    R.holesDug.forEach(([u, v, l], i) => { const m = this.glows[i]; m.visible = true; m.material.color.setHex(WARM_COLOURS[l]); m.position.set(P.x0 + u + 0.5, P.g - 1 + 0.06, P.z0 + v + 0.5); m.material.opacity = 0.65 + 0.3 * Math.sin(this.clock * 4 + i); });
+    for (let i = R.holesDug.length; i < this.glows.length; i++) this.glows[i].visible = false;
+    this.flags.forEach((f, i) => { const down = i >= R.digsLeft; f.rotation.z += ((down ? -1.45 : 0) - f.rotation.z) * Math.min(1, dt * 8); });
+    if (R.found) { this.keyT += dt; this.key.visible = true; this.key.position.y = P.g - 0.6 + Math.min(1, this.keyT * 1.5) * 2.2; this.key.rotation.y = this.clock * 2.5; }
+    else { this.key.visible = false; this.keyT = 0; }
+  }
+  event(e) {
+    const say = t => this.game.ui?.toast(t), snd = n => { try { sound.play(n); } catch { /* optional */ } };
+    if (e.kind === 'dug') { snd('break'); this.s.puff({ x: e.x + 0.5, y: e.y + 0.5, z: e.z + 0.5, colour: 0x6a4a2a }); }
+    else if (e.kind === 'warm') { snd('break'); this.s.puff({ x: e.x + 0.5, y: e.y + 1, z: e.z + 0.5, colour: WARM_COLOURS[e.level] }, e.level < 4 ? 3 - e.level : 0); }
+    else if (e.kind === 'found') { this.key.position.set(e.x + 0.5, e.y, e.z + 0.5); snd('win'); this.s.puff({ x: e.x + 0.5, y: e.y + 1.5, z: e.z + 0.5, colour: 0xffd84a }, 3); }
+    else if (e.kind === 'case') { snd('doorchime'); say('The glass case is open!'); }
+    else if (e.kind === 'rumble') { snd('drawbridge'); say('Rumble! The earth shuts and the key moves.'); }
+    else if (e.kind === 'heavy') this.why(e.what);
+    else if (e.kind === 'push') snd('break');
+    else if (e.kind === 'roll') snd('boing');
+    else if (e.kind === 'drop') { snd('cube'); }
+  }
+  info() { return this.run ? { earth: this.run.info() } : {}; }
+}
+
 // Step C (plans/chapter3-abilities-build.md): "the world says what it needs", generic: it reads `game.being.need()` (abilityplaces.js:
 // `world.needPlaces` data + the tries) and knows no ability. Owner 2026-11-14: discovery first, so nothing shows at first (no badges,
 // no button word: abilities work with the usual controls). Only after a few tries without what a place needs (being.js `hints`) a card
@@ -438,7 +535,7 @@ class CloudLayer extends Piece {
   info() { return { cloudLayer: this.mesh ? this.mesh.count : 0, cloudsHidden: this.hidden?.size ?? 0 }; }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, NeedPlaces, CloudLayer];
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, Earthworks, NeedPlaces, CloudLayer];
 
 export class WobbleLive {
   constructor(game, part) {
@@ -475,6 +572,7 @@ export class WobbleLive {
   use(p) { return this.playing() && this.pieces.some(x => x.near?.(p) && x.use(p)); }
   holds(p) { return this.playing() && p === this.game.player && this.pieces.some(x => x.near?.(p) && x.holds?.(p)); }
   release(p) { return this.pieces.some(x => x.release?.(p)); }
+  hit(block) { return this.playing() && this.pieces.some(x => x.hit?.(block)); } // (step D: a tap on a thing you cannot act on says why)
   info() { return Object.assign({}, ...this.pieces.map(x => x.info?.() ?? {})); }
   dispose() {
     for (const x of this.pieces) x.dispose();

@@ -263,6 +263,7 @@ export class Player {
     let wz = -cos * f - sin * s;
     const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
+    this.wish = len > 0 ? [wx, wz] : null; // chapter 3 (earthworks.js): the way you walk, so walking into a boulder pushes it that way
 
     if (this.carry) { // T40: on a Mover (a toy train, a bottle cap, a cannon arc): it moves you, a fresh jump press gets you off
       this.carry.steer?.(wx, wz, len > 0 ? analog : 0, k.Space); // T43: a ride may read the stick and the Jump key (the bumper car, the carousel seat)
