@@ -14,6 +14,7 @@ import { kit, buildWayBack } from './picturelands.js';
 import { GROUND } from './groundrules.js'; // Slippy Lake: the ice's rule (the player and the fight both ask world.groundAt)
 
 export const SIZE = 224;
+export const FLY_CEILING = 26; // chapter 3: the cloud layer where wings stop (15 over the meadow, 5 over the cave hill; under the Drip Tower's roof and the crags' tops)
 export const BASE = 10;                                       // the plain ground's top block
 export const CAMP = { x: 112, z: 204, r: 13 };                 // Inkpot Camp: a flat coloured clearing
 export const STAIR = { x: 112, z: 217, top: BASE + 3 };        // the way back: a paper frame on a little hill of steps, facing north
@@ -370,7 +371,8 @@ export function wobbleLand(world) {
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
   world.flowAt = p => riverFlow(p) ?? lakeFlow(p) ?? caveFlow(p) ?? sluiceFlow(p); // (step D: the Sluice Gate's bubble jets)
-  world.dragAt = p => sluiceDrag(p); // step D: the Sluice Gate's kelp slows a swimmer (player.js; undefined in every other world)
+  world.dragAt = p => sluiceDrag(p);
+  world.flyCeiling = FLY_CEILING; // owner 2026-11-14: wings go up to the cloud layer, the same height everywhere (player.js fly; never 6 over whatever is under you here) // step D: the Sluice Gate's kelp slows a swimmer (player.js; undefined in every other world)
   world.skyDim = (x, y, z) => (y < CAVE.roof && inCave(x, z) ? CAVE.dim : 1); // Glowcap Caves: no daylight inside (world.skyAt: the blocks' baked light; main.js: underground) // the floating river's current, the lake's chutes and leads (player.js)
   world.groundAt = p => iceUnder(world, p) ?? darkIn(p); // Slippy Lake: on ice you slide; Glowcap Caves: inside it is dark (groundrules.js; the player and the fight ask it)
   world.spawnSpot = (arg, near) => wobbleSpot(world, arg, near); // creatures.js: where 'near:<arg>' creatures appear

@@ -140,7 +140,7 @@ export class Player {
     const r = this.ride, k = this.keys;
     this.capped = false; this.landed = false;
     const fl = this.floorBelow();
-    const cap = fl.y + r.cap;
+    const cap = this.world.flyCeiling ?? fl.y + r.cap; // (chapter 3: Wobbleland's wings go up to one fixed cloud layer, owner 2026-11-14; elsewhere 6 over what is under you)
     const up = k.Space ? 1 : 0;
     if (r.landing) {
       this.vel.set(0, -r.glide, 0);
@@ -304,7 +304,7 @@ export class Player {
     // T27: a water creature floats on top of the water; on land it is slow.
     const surf = r && r.kind === 'water' ? this.waterTop() : null;
     if (r && r.kind === 'water') {
-      if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog * (this.world.dragAt?.(this.pos) ?? 1);
+      if (surf !== null) speed = (sprint ? r.sprint : r.speed) * analog * (this.world.dragAt?.(this.pos) ?? 1) * (r.be ? BE_SWIM : 1); // (chapter 3: a creature with Swim is fast at the surface too)
       else speed *= r.landSlow;
     }
     if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
@@ -379,13 +379,18 @@ export class Player {
     const i = this.halfW - 0.01;
     return { px: col(Math.floor(p.x + hw), p.z - i, p.z + i), nx: col(Math.floor(p.x - hw), p.z - i, p.z + i), pz: row(Math.floor(p.z + hw), p.x - i, p.x + i), nz: row(Math.floor(p.z - hw), p.x - i, p.x + i) };
   }
+  // the block you walk into, if nobody can grip it (ice, clouds): its id, else 0
+  noGripAhead(wx, wz) {
+    const x = Math.floor(this.pos.x + wx * (this.halfW + 0.1)), z = Math.floor(this.pos.z + wz * (this.halfW + 0.1)), y = Math.floor(this.pos.y + 0.5), id = this.world.get(x, y, z);
+    return BLOCKS[id]?.noGrip ? id : 0;
+  }
   clingStep(dt, wx, wz, len, analog) {
     const be = this.be;
     this.climbing = false;
     if (be.slip) { if (this.onGround) be.slip = false; else return false; }
     if (this.keys.Space) return false; // Jump lets go
     const w = this.wallsBeside();
-    if (!(w.px || w.nx || w.pz || w.nz)) return false;
+    if (!(w.px || w.nx || w.pz || w.nz)) { if (len > 0) this.slipWall = this.noGripAhead(wx, wz); return false; } // (a wall nobody grips: being.js says why, once)
     const into = len > 0 && ((wx > 0.3 && w.px) || (wx < -0.3 && w.nx) || (wz > 0.3 && w.pz) || (wz < -0.3 && w.nz));
     if (!into && (this.onGround || len > 0)) return false; // (standing, or stepping off the wall: the ordinary step; no stick at all: you hang)
     const speed = 4.3 * analog * BE_SIDE;

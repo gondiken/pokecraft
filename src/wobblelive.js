@@ -7,7 +7,7 @@
 //   A2 scribble bugs (scribblebugs.js, pure rules): four round every patch not cleared yet; walk into one and it pops into colour.
 import * as THREE from 'three';
 import { sound } from './sound.js';
-import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, inCave } from './wobbleland.js';
+import { PATCHES, CAMP_POT, patchKey, heightAt, FLOATERS, RIVER_UP, riverY, inCave, FLY_CEILING, SIZE } from './wobbleland.js';
 import { BugField, bugsFor } from './scribblebugs.js';
 import { curlLift } from './wobblelook.js';
 import { SkidMarks } from './skidmarks.js'; // Slippy Lake
@@ -296,6 +296,21 @@ class WayPlaces extends Piece {
     this.trials = this.s.world.trials ?? null; this.told = new Set(); this.clock = 0;
     if (!this.trials) return;
     this.drips = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(SHAFT.r, 10, 8), new THREE.MeshBasicMaterial({ color: 0x3a2a6e })); m.scale.y = 1.4; m.visible = false; this.group.add(m); return m; });
+    // the Drip Tower's ice, made obvious (owner 2026-11-14): a glossy blue skin over its outside, shine streaks and icicles under the roof
+    const T = SHAFT, ih = T.roof - T.floor, ice = new THREE.Mesh(new THREE.BoxGeometry(5.12, ih, 5.12), new THREE.MeshLambertMaterial({ color: 0x9fe4ff, emissive: 0x3a8ab0, emissiveIntensity: 0.35, transparent: true, opacity: 0.55, depthWrite: false }));
+    ice.position.set(T.x + 0.5, T.floor + ih / 2, T.z + 0.5); this.group.add(ice);
+    const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+    for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let k = 0; k < 3; k++) {
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 3 + k * 1.5), shineMat);
+      sh.position.set(T.x + 0.5 + nx * 2.58 + (nz ? (k - 1) * 1.4 : 0), T.floor + 3 + k * 4, T.z + 0.5 + nz * 2.58 + (nx ? (k - 1) * 1.4 : 0));
+      sh.rotation.set(0, Math.atan2(nx, nz), 0.35); this.group.add(sh);
+    }
+    const icicle = new THREE.ConeGeometry(0.16, 0.9, 5), icicleMat = new THREE.MeshLambertMaterial({ color: 0xd6f4ff, emissive: 0x5aa8d0, emissiveIntensity: 0.3 });
+    for (let k = 0; k < 20; k++) {
+      const side = k % 4, u = (Math.floor(k / 4) / 4 - 0.5) * 4.6, nx = [1, -1, 0, 0][side], nz = [0, 0, 1, -1][side];
+      const c = new THREE.Mesh(icicle, icicleMat); c.rotation.x = Math.PI; c.scale.y = 0.7 + ((k * 7) % 5) / 6;
+      c.position.set(T.x + 0.5 + nx * 2.62 + (nz ? u : 0), T.roof - 0.45 * c.scale.y, T.z + 0.5 + nz * 2.62 + (nx ? u : 0)); this.group.add(c);
+    }
     // the Sluice Gate: the plate, its post of three lights (top row first), a light over the gate
     const S = SLUICE, gold = new THREE.MeshLambertMaterial({ color: 0xf2c418, emissive: 0x6a4a00 });
     const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.12, 20), gold); plate.position.set(S.plate.x + 0.5, 11.06, S.plate.z + 0.5); this.plate = plate;
@@ -384,7 +399,46 @@ class NeedPlaces extends Piece {
   info() { const n = this.cur; return { needAt: n?.place.id ?? null, needs: n?.needs ?? null, needHas: !!n?.has, needWho: n?.who ?? [], needShown: !!n?.shown, needTries: n ? this.game.being?.hints?.tries(n.place.id) ?? 0 : 0, needCard: !!this.card && !this.card.classList.contains('hidden') }; }
   dispose() { this.card?.remove(); this.card = null; super.dispose(); }
 }
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, NeedPlaces];
+// Owner 2026-11-14 (a fixed sky ceiling): the cloud layer where wings stop (FLY_CEILING), drawn as flat cotton puffs over all of
+// Wobbleland, so a child sees why a flier goes no higher; the crags and the Drip Tower poke up through it. One instanced mesh.
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+class CloudLayer extends Piece {
+  constructor(scene) {
+    super(scene);
+    if (!this.s.world.flyCeiling) return;
+    this.puffs = []; this.hidden = new Set();
+    const n = 110, per = 4, geo = new THREE.SphereGeometry(1, 12, 8), mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xe8eef6, emissiveIntensity: 0.55 });
+    const mesh = new THREE.InstancedMesh(geo, mat, n * per), d = new THREE.Object3D(), y = this.s.world.flyCeiling + 2.6; // (puffy cotton just over where wings stop)
+    for (let i = 0; i < n; i++) {
+      const h = (a, b) => ((Math.sin(i * a + b) * 43758.5453) % 1 + 1) % 1;
+      const cx = h(12.9, 1) * SIZE, cz = h(78.2, 3) * SIZE, big = 2.2 + h(5.7, 2) * 2.4;
+      for (let k = 0; k < per; k++) {
+        const g = (a) => ((Math.sin(i * 31.7 + k * a) * 9187.13) % 1 + 1) % 1;
+        d.position.set(cx + (g(1.3) - 0.5) * big * 2.4, y + g(2.9) * 0.8, cz + (g(4.1) - 0.5) * big * 1.6);
+        const r = big * (0.6 + g(5.3) * 0.5);
+        d.scale.set(r * 1.3, r * 0.55, r); d.updateMatrix(); mesh.setMatrixAt(i * per + k, d.matrix);
+        this.puffs.push({ x: d.position.x, y: d.position.y, z: d.position.z, r: r * 1.3, m: d.matrix.clone() });
+      }
+    }
+    mesh.renderOrder = 2; this.group.add(mesh); this.mesh = mesh;
+  }
+  // a puff the camera is in or close to is not drawn (the camera behind a flier at the clouds would sit inside one: a grey screen)
+  update() {
+    const cam = this.game.camera?.position;
+    if (!this.mesh || !cam) return;
+    let changed = false;
+    this.puffs.forEach((q, i) => {
+      const near = Math.abs(cam.y - q.y) < q.r + 4 && Math.hypot(cam.x - q.x, cam.z - q.z) < q.r + 6;
+      if (near === this.hidden.has(i)) return;
+      changed = true;
+      if (near) { this.hidden.add(i); this.mesh.setMatrixAt(i, ZERO); } else { this.hidden.delete(i); this.mesh.setMatrixAt(i, q.m); }
+    });
+    if (changed) this.mesh.instanceMatrix.needsUpdate = true;
+  }
+  info() { return { cloudLayer: this.mesh ? this.mesh.count : 0, cloudsHidden: this.hidden?.size ?? 0 }; }
+}
+
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, NeedPlaces, CloudLayer];
 
 export class WobbleLive {
   constructor(game, part) {

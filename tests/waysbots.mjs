@@ -13,6 +13,8 @@
 //   sluice (the Sluice Gate, Swim): a skilled swimmer (dives, rides the bubble jets) always gets through before the gate shuts, a Bubble
 //          creature (Fly + Swim) too; straight through the kelp never; nobody without Swim (walker, on foot, flier, climber, a flier that
 //          sinks as a walker) ever.
+//   currents (the floating river, a lake lead, the cave river): every Swim creature swims up them (5+ blocks in 3 s), nobody else gets
+//          more than 1 upstream (owner 2026-11-14).
 //   node tests/waysbots.mjs     (exit 1 on a problem; WAYS_PLACES=tower,sluice,spots, WAYS_ROWS=...)
 import { wobbleEnv } from './wobblenode.mjs';
 
@@ -29,7 +31,7 @@ export async function setup() {
   const body = id => C.bodyOf(id, S.SPECIES[id]);
   const bug = Object.keys(S.SPECIES).find(k => S.SPECIES[k].type === 'bug' && !S.SPECIES[k].legendary);
   const B = { climber: body('sproutle'), bug: body(bug), flier: body('scalewing'), boomwing: body('boomwing'), walker: body('blazehound'), swimmer: body('tidalord'), bubble: body(Object.keys(S.SPECIES).find(k => S.SPECIES[k].type === 'bubble')) };
-  return { ...E, W, C, S, Q, B, bugId: bug };
+  return { ...E, W, C, S, Q, B, bugId: bug, B_WATER: (await import('../src/blocks.js')).B.WATER };
 }
 
 // one try: `brain(E, tr, t, st)` -> keys each frame (and may swap: st.swap = body). -> { won, t, knocks, maxY }
@@ -173,6 +175,23 @@ export async function runSluice({ tries = 6, fps = [60, 20] } = {}) {
   return { problems, out };
 }
 
+/* ---- currents: a swimmer swims up them, everyone else is held back or carried (owner 2026-11-14: Bottlet and Tightropa were as fast) ---- */
+export async function runCurrents({ fps = [60, 20] } = {}) {
+  const E = await setup(), problems = [], out = {}, w = E.w;
+  const top = (x, z) => { let t = -1; for (let y = 0; y < 40; y++) if (w.get(x, y, z) === E.B_WATER) t = y; return t; };
+  const places = [['river', 64, 196, Math.PI, 1], ['lead', 54, 168, 0, -1], ['cave', 199, 200, Math.PI, 1]]; // (the floating river, a lake lead, the cave river: x, z, yaw upstream, +1 = upstream is +z)
+  const bodies = { bottlet: E.C.bodyOf('bottlet', E.S.SPECIES.bottlet), tidalord: E.B.swimmer, tightropa: E.C.bodyOf('tightropa', E.S.SPECIES.tightropa), walker: E.B.walker, onFoot: null };
+  for (const [where, x, z, yaw, sign] of places) for (const [name, body] of Object.entries(bodies)) for (const f of fps) for (const sprint of [false, true]) {
+    let z1 = z;
+    play(E, { body, start: [x + 1, top(x, z) + 0.5, z + 0.5], yaw, phase: 0, fps: f, secs: 3, brain: () => ({ KeyW: true, ShiftLeft: sprint }), won: (E2) => { z1 = E2.player.pos.z; return false; } });
+    const up = +(sign * (z1 - (z + 0.5))).toFixed(1), swims = !!body?.swim;
+    out[`${where}.${name}${sprint ? '.sprint' : ''}@${f}`] = up;
+    if (swims && up < 5) problems.push(`${where}: ${name} (Swim) swam only ${up} upstream in 3 s at ${f} fps`);
+    if (!swims && up > 1) problems.push(`${where}: ${name} (no Swim) got ${up} upstream in 3 s at ${f} fps`);
+  }
+  return { problems, out };
+}
+
 export async function runTower({ tries = 12, fps = [60, 20] } = {}) {
   const E = await setup(), problems = [], out = {}, T = E.W.SHAFT, B = E.B, L = E.L;
   const ice = [T.x + 3.4, T.floor, T.z + 0.5]; // outside the tower's east wall, facing west into it
@@ -208,8 +227,8 @@ export async function runTower({ tries = 12, fps = [60, 20] } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots').split(',');
-  const runs = { tower: runTower, sluice: runSluice, spots: runSpots }, problems = [];
+  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots,currents').split(',');
+  const runs = { tower: runTower, sluice: runSluice, spots: runSpots, currents: runCurrents }, problems = [];
   for (const w of which) { const a = await runs[w](); for (const [k, v] of Object.entries(a.out)) console.log(k.padEnd(24), JSON.stringify(v)); problems.push(...a.problems); }
   if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
   console.log('ok');

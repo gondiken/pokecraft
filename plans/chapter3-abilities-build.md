@@ -142,6 +142,22 @@ places: the Drip Tower = Climb; Storm Island = Fly (owner: it was "just timing":
 Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlantis; re-run `wobble` cave bots).
 
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
+**Owner 2026-11-14/15, second play:** climbing worked on the crags "but not on the outer wall of the drip tower. that was strange";
+"why flyers can't fly above a certain level ... illogical" (in chapters 1-2 a flier "almost teleported right 6 block above the tall surface
+they were flying over"); "I couldn't figure out swimming at all. I used Bottlet vs Tightropa and both had the same speed in that high current
+water"; "fix the animations for climbing ... awkward to see the same character just moving vertically up near the wall". Built:
+- **A fixed sky ceiling** (owner's pick): in Wobbleland wings go up to one height, `FLY_CEILING` 26 (`world.flyCeiling`, player.js `fly`;
+  15 over the meadow, 5 over the cave hill), drawn as puffy cotton clouds just above it (wobblelive.js `CloudLayer`, one instanced mesh;
+  puffs near the camera are hidden), with one line the first time ("Wings only go up to the clouds!"). The crags now top out at 29 and the
+  Drip Tower's roof is 27, both above it. Chapters 1-2 keep "6 over what is under you".
+- **The Drip Tower's ice made obvious** (owner's pick): a glossy blue skin, shine streaks and icicles; a climber walking into ice (or a
+  cloud) is told once why (`noGrip` is now the text: "Too slippery! Ice can't be climbed.").
+- **Swimming:** a creature with Swim is 1.7x as fast at the surface too (`BE_SWIM`), and only swims where it is not standing on the bottom
+  (in shallow water everyone wades: the old rule made Bottlet swim slowly where Tightropa ran on the riverbed). Bots (`runCurrents`): 3 s
+  upstream in the floating river / a lake lead / the cave river: Bottlet 11-20 blocks, Tidalord the same; Tightropa, a walker and you on
+  foot never more than 1 (carried back).
+- **Climbing pose** (being.js): it turns to face the wall, leans its front up it, wiggles side to side and bobs in step (`pose`, `tilt`).
+
 **Owner 2026-11-14, after playing (rebuilt the same day):** "A climber, flyer etc shouldn't have to press E ... these attributes should
 be applicable ANYWHERE in the world ... climbers could only climb inside the tower with very obvious directions, which doesn't give any
 chance to the player to think 'oh wait I have a climber'"; "the fly challenge pretty lame"; "climb challenge itself was interesting, it just

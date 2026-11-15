@@ -39,13 +39,16 @@ export function kindOf(p, body) {
     const wall = !!w && (w.px || w.nx || w.pz || w.nz);
     if (p.climbing || (wall && p.ride?.kind === 'sky' && p.hitWall)) return 'land'; // (a flier that climbs grips a wall it flies into)
   }
-  if (body.swim && (p.inWater || ((p.ride?.kind === 'water' || !p.keys?.Space) && onWater(p)))) return 'water'; // (a creature that swims and flies, Bubble, settles onto water and dives; Jump takes it up again)
+  if (body.swim && ((p.inWater && !wading(p)) || ((p.ride?.kind === 'water' || !p.keys?.Space) && onWater(p)))) return 'water'; // (a creature that swims and flies, Bubble, settles onto water and dives; Jump takes it up again)
   if (body.fly) return 'sky';
   return 'land';
 }
 
+// wading: standing on the bottom with your head out (shallow water): a swimmer walks there like everyone (owner 2026-11-14: in a shallow
+// river Bottlet swam slowly while a walker ran on the riverbed)
+const wading = p => p.onGround && p.world?.get?.(Math.floor(p.pos.x), Math.floor(p.pos.y + 1.2), Math.floor(p.pos.z)) !== 5;
 // flying right on the water (not rising): a swimmer lands on it
-const onWater = p => { const f = p.floorBelow?.(); return !!f?.water && p.pos.y <= f.y + 0.1; };
+const onWater = p => { const f = p.floorBelow?.(); return !p.onGround && !!f?.water && p.pos.y <= f.y + 0.1; }; // (not standing on a shallow riverbed: there everyone wades)
 
 // After each Player.update: the body's riding physics (p.ride with `be: true`; `RIDE` = riding.js's numbers, handed in).
 export function bodyStep(p, world, body, RIDE) {

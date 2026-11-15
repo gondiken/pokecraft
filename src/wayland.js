@@ -3,12 +3,13 @@
 // saved or sent; opening the chest is the game's own chest (+3 Capture Cubes).
 //
 //   The Drip Tower (Climb): a chest on the roof of a tower of ice (nobody can grip ice). The way up is the shaft inside it (one block
-//     wide, 15 blocks of sheer wall: more than twice the fly cap, RIDE.sky.cap 6 over the floor right below you, so wings never get up it).
+//     wide, 15 blocks of sheer wall up through the cloud layer: wings stop at the clouds, FLY_CEILING 26, under its roof at 27).
+//     Its outside is ice, drawn glossy with icicles, and a climber that tries it is told once why it slips (blocks.js noGrip).
 //     Ink drips fall down the shaft; one knocks you off and you fall to the bottom. Three nooks in the shaft's side: climb into one and
 //     the drips fall past. Skill: wait in a nook, climb when a drip has gone by. Hold Climb! (or push into the wall).
 //   The Sluice Gate (Swim, sluice.js) north-west of the tower.
 //   SPOTS (owner 2026-11-14: "these should be applicable ANYWHERE ... being part of the game rather than a spotlighted place"): sheer
-//     rock crags with a chest on top (taller than the fly cap: only a climber gets up, by walking into the wall) and little clouds
+//     rock crags with a chest on top (poking up through the cloud layer, FLY_CEILING: only a climber gets up, by walking into the wall) and little clouds
 //     floating 5 over the ground with a chest (no wall to climb, too high to jump: only a flier), in Bumpy Hills and beyond. Nothing
 //     marks them: every place entry (`NEED_PLACES`) only gives its hint after a few tries (abilityplaces.js NeedHints).
 //   Storm Island (step C) and the Floating Isles (step D's first Fly place, "pretty lame") were removed (owner 2026-11-14).
@@ -26,9 +27,9 @@ export const SHAFT = {
 // The natural spots: crags (Climb) and clouds (Fly). x, z = the north-west corner (a crag: w x d, h tall over the ground there) or the
 // middle (a cloud: radius r, its top `lift` over the ground). Each gets a chest on top. Placed clear of every patch's ring.
 export const SPOTS = [
-  { id: 'crag1', kind: 'crag', needs: 'climb', x: 80, z: 112, w: 6, d: 6, h: 8 },
-  { id: 'crag2', kind: 'crag', needs: 'climb', x: 100, z: 86, w: 5, d: 5, h: 10 },
-  { id: 'crag3', kind: 'crag', needs: 'climb', x: 20, z: 30, w: 5, d: 5, h: 9 },    // (Bumpy Hills' far north-west)
+  { id: 'crag1', kind: 'crag', needs: 'climb', x: 80, z: 112, w: 6, d: 6, h: 18 },
+  { id: 'crag2', kind: 'crag', needs: 'climb', x: 100, z: 86, w: 5, d: 5, h: 19 },
+  { id: 'crag3', kind: 'crag', needs: 'climb', x: 20, z: 30, w: 5, d: 5, h: 18 },    // (Bumpy Hills' far north-west)
   { id: 'cloud1', kind: 'cloud', needs: 'fly', x: 104, z: 120, r: 2, lift: 5 },
   { id: 'cloud2', kind: 'cloud', needs: 'fly', x: 88, z: 94, r: 2, lift: 5 },
   { id: 'cloud3', kind: 'cloud', needs: 'fly', x: 200, z: 30, r: 2, lift: 5 },     // (Bumpy Hills' far north-east)

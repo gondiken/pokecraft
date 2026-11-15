@@ -457,7 +457,7 @@ export default async function ({ browser, base, t }) {
 
   if (want('springs')) {
     // C4 / C5: a hill floating on a string with a chest on top; walking or jumping never gets you up; the spring beside it (jump on it,
-    // steer) does, with real keys; flying is capped below it (6 over the ground)
+    // steer) does, with real keys (owner 2026-11-14: fliers may fly up to it now: wings go up to the cloud layer, FLY_CEILING)
     const { wobblePage } = await import('../wobblebots.mjs');
     const page = await wobblePage(browser, base);
     const L0 = await page.evaluate(async () => { const L = await import('/src/wobbleland.js'); return { f: L.FLOATERS[0], g: L.heightAt(L.FLOATERS[0].spring[0], L.FLOATERS[0].spring[1]) }; });

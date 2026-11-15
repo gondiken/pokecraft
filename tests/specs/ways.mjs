@@ -58,15 +58,17 @@ export default async function ({ browser, base, t }) {
     const h3 = new P.NeedHints(); for (let i = 0; i < 3; i++) { h3.step(null, true, 0.1); h3.step(place, true, 0.1); }
     t.ok(seen.join() === 'false,false,true' && h2.tries(place.id) === 2 && !h3.shown(place.id), `the hint only after trying: walking in 3 times (${seen}), or staying ${P.HINT.every} s counts one more (${h2.tries(place.id)} after 10 s), never while you can (${h3.tries(place.id)})`);
     const E = await (await import('../wobblenode.mjs')).wobbleEnv(), ids = E.w.needPlaces.map(q => `${q.id}:${q.needs}`).join();
-    const tops = E.w.spots.map(q => `${q.id} ${q.top - (q.ground + 1)}`).join(', ');
-    t.ok(ids === 'sluice:swim,driptower:climb,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && E.w.spots.every(q => q.kind === 'crag' ? q.top - (q.ground + 1) > 6 : q.top - (q.ground + 1) <= 6 && q.top - (q.ground + 1) > 2.3),
-      `places: ${ids}; crags taller than the fly cap, clouds within it and over a jump (${tops})`);
+    const ceil = E.w.flyCeiling, tops = E.w.spots.map(q => `${q.id} ${q.top}`).join(', ');
+    t.ok(ids === 'sluice:swim,driptower:climb,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
+      `places: ${ids}; one cloud ceiling for wings at ${ceil} (owner 2026-11-14): the crags' tops and the tower's roof (${W.SHAFT.roof + 1}) above it, the clouds under it and over a jump (${tops})`);
     t.ok(G.BRIGHT.slice().sort().join() === 'atlantis,cosmic,electric,fire,light,rainbow' && G.KEEN.join() === 'ghost,ninja', `Glowcap Caves: the glowing types are the Glow ability's (${G.BRIGHT}); Ghost / Ninja still sense (${G.KEEN})`);
   }
 
   if (want('bots')) {
-    const { runTower, runSluice, runSpots } = await import('../waysbots.mjs');
-    const a = await runTower(), ss = await runSluice(), sp = await runSpots();
+    const { runTower, runSluice, runSpots, runCurrents } = await import('../waysbots.mjs');
+    const a = await runTower(), ss = await runSluice(), sp = await runSpots(), cu = await runCurrents();
+    const c = k => cu.out[k + '@60'];
+    t.ok(!cu.problems.length, `currents, 3 s upstream at 60 · 20 fps: Bottlet ${c('river.bottlet')} / ${c('lead.bottlet')} / ${c('cave.bottlet')} (river / lake lead / cave river), Tidalord ${c('lead.tidalord')}; no Swim: Tightropa ${c('river.tightropa.sprint')} / ${c('lead.tightropa.sprint')} / ${c('cave.tightropa.sprint')} sprinting, on foot ${c('lead.onFoot')} ${cu.problems.join('; ')}`);
     const g = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`, f = k => g(a.out, k);
     t.ok(!a.problems.length, `the Drip Tower (Climb), the real Player at 60 · 20 fps: just climbing ${f('naiveClimb')}, skilled ${f('skilledClimb')} (${a.out['skilledClimb@60'].median} s), a Bug (${a.out.bug}) ${f('bugSkilled')}; without Climb: flier ${f('flier')} (top ${a.out['flier@60'].top} < roof ${a.out.roof}), Boomwing ${f('boomwing')}, walker ${f('walker')}, on foot ${f('onFoot')}, flier -> walker ${f('mixFlierWalker')}, walker -> flier ${f('mixWalkerFlier')}, glide from the hill ${f('hillGlider')} (top ${a.out['hillGlider@60'].top}), the ice outside ${f('iceWall')} ${a.problems.join('; ')}`);
     t.ok(!ss.problems.length, `the Sluice Gate (Swim), 60 · 20 fps: straight through the kelp ${g(ss.out, 'sluice.naive')}, skilled ${g(ss.out, 'sluice.skilled')} (${ss.out['sluice.skilled@60'].times} s), Bubble ${g(ss.out, 'sluice.bubble')}; without Swim: walker ${g(ss.out, 'sluice.walker')}, on foot ${g(ss.out, 'sluice.onFoot')}, flier ${g(ss.out, 'sluice.flier')}, climber ${g(ss.out, 'sluice.climber')}, flier -> walker ${g(ss.out, 'sluice.mixFlierWalker')} ${ss.problems.join('; ')}`);
@@ -181,6 +183,9 @@ export default async function ({ browser, base, t }) {
     const c0 = await need(page);
     await shot(page, 'ways-crag.png');
     await page.keyboard.down('w');
+    const mid = await poll(`g.player.climbing && g.player.pos.y > ${crag.ground + 5} && g.being.info()`);
+    await shot(page, 'ways-crag-climb.png');
+    t.ok(mid && mid.pose > 0.8 && mid.tilt < -0.9 && mid.behind, `climbing, it faces the wall and leans its front up it (pose ${mid?.pose}, tilt ${mid?.tilt}), scrambling, the camera behind it`);
     const onTop = await poll(`g.player.onGround && g.player.pos.y >= ${crag.top - 0.05} && g.player.pos.y`);
     await page.keyboard.up('w'); await frames(page, 3);
     t.ok(!c0.card && onTop, `a crag (nothing marks it: no card ${!c0.card}): Sproutle walks into its wall and climbs on top (y ${onTop})`);
@@ -190,9 +195,18 @@ export default async function ({ browser, base, t }) {
     await put(page, cx, crag.ground + 1, cz + crag.d / 2 + 4, 0, 0.35); await page.keyboard.press('Digit2'); await frames(page, 3);
     await page.keyboard.down('Space'); await page.keyboard.down('w');
     await page.waitForTimeout(4000);
-    const flyTop = await page.evaluate(() => window.pokecraft.player.pos.y);
+    const flyTop = await page.evaluate(() => window.pokecraft.player.pos.y), tcCrag = await toasts(page);
     await page.keyboard.up('w'); await page.keyboard.up('Space');
-    t.ok(flyTop < crag.top - 0.5, `Scalewing flies at the crag holding Jump: it stops at the cap (${flyTop.toFixed(1)} < ${crag.top})`);
+    t.ok(flyTop < crag.top - 0.5, `Scalewing flies at the crag holding Jump: it cannot get up it (${flyTop.toFixed(1)} < ${crag.top}): the top is above the clouds`);
+    // the cloud layer: holding Jump, Scalewing stops at it and is told once why
+    const ceil = await page.evaluate(() => window.pokecraft.world.flyCeiling);
+    await put(page, 60.5, 11, 160.5, 0, 0.6); await frames(page, 2);
+    await page.keyboard.down('Space');
+    const atCeil = await poll(`g.player.capped && g.player.pos.y`);
+    await page.keyboard.up('Space');
+    const tc = await toasts(page);
+    await shot(page, 'ways-ceiling.png');
+    t.ok(Math.abs(atCeil - ceil) < 0.1 && /up to the clouds/.test(tc + tcCrag), `holding Jump anywhere, Scalewing rises to the cloud layer (${atCeil}, ceiling ${ceil}), the same height everywhere, and is told why once (${tc})`);
     // a cloud, as Scalewing: hold Jump (no E), fly over it, let go and settle on it
     const cl = spots.find(q => q.id === 'cloud1');
     await put(page, cl.x + 0.5, cl.ground + 1, cl.z + 7.5, 0, 0.4); await frames(page, 3);
@@ -205,6 +219,15 @@ export default async function ({ browser, base, t }) {
     t.ok(onCloud, `a cloud: Scalewing rises with Jump, flies over it, lets go and settles on it (y ${onCloud})`);
     await page.evaluate(() => { window.pokecraft.player.pitch = -0.3; }); await frames(page, 3);
     await shot(page, 'ways-cloud.png');
+    // the Drip Tower's ice, as Sproutle: walking into it from outside does not climb, and it says why once
+    await page.keyboard.press('Digit1'); await frames(page, 3);
+    await put(page, 145.0, 11, 112.5, Math.PI / 2, 0.2); await frames(page, 2);
+    await page.keyboard.down('w'); await page.waitForTimeout(2500);
+    const iceY = await page.evaluate(() => window.pokecraft.player.pos.y), ti = await toasts(page);
+    await shot(page, 'ways-ice.png');
+    await page.keyboard.up('w');
+    t.ok(iceY < 12 && /slippery/i.test(ti), `the Drip Tower's outside is glossy ice: Sproutle cannot climb it (y ${iceY.toFixed(1)}) and is told why (${ti})`);
+    await page.keyboard.press('Digit2'); await frames(page, 3);
     // the Sluice Gate, as Scalewing: the card after tries, Tidalord lit; F goes to Tidalord
     const SP = [128.5, 11, 96, 0, -0.2];
     await tries(page, SP, 3);

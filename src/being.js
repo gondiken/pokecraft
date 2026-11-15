@@ -20,6 +20,7 @@ import { BODY, bodyOf, bodyStep, tightAt } from './creatureways.js';
 import { abilitiesOf } from './abilities.js';
 import { placeAt, needOf, swapTo, NeedHints } from './abilityplaces.js'; // step C: a place that needs an ability
 import { squadOf } from './scribblefight.js';
+import { BLOCKS } from './blocks.js';
 const bodyFor = c => bodyOf(c.species, SPECIES[c.species], c);
 
 export const BE_CAM = { dist: 4.6, rise: 0.42, head: 1.2, pitchK: 0.45, ease: 10, near: 1.3, key: 'pokecraft-be-cam' };
@@ -31,6 +32,7 @@ export function createBeing(game, { scene }) {
   let idx = null, body = null, model = null, fit = null, t = 0, last = 0, tight = false, btn = null, shownBtn = null, styled = false, meBtn = null, shownMe = null;
   let me = false; // you chose to be yourself (the pause screen's button / R); otherwise chapter 3's lands put you in creature mode by themselves
   const cam = { pos: new THREE.Vector3(), ok: false };
+  const climb = { k: 0, t: 0, dir: [0, -1] }; // (the climbing pose, eased)
   const hints = new NeedHints(); // (the hint only after trying)
   const tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
   const squad = () => (game.party || []).filter(c => c && SPECIES[c.species]).filter(c => squadOf([c]).length).slice(0, BODY.squad); // (the fight's three)
@@ -123,6 +125,10 @@ export function createBeing(game, { scene }) {
       if (game.scribble?.fighting) return; // (the fight has its own bodies; you come back as it afterwards)
       bodyStep(p, game.world, body, RIDE);
       if (p.ride?.be && p.ride.landing) p.ride.landing = false;
+      // why a wall or the sky stops you, once each (owner 2026-11-14: the ice looked climbable; the cloud ceiling)
+      if (p.slipWall && body.climb) { const why = BLOCKS[p.slipWall]?.noGrip; if (typeof why === 'string' && !game.toldOnce?.has('be:grip:' + p.slipWall)) { game.toldOnce?.add('be:grip:' + p.slipWall); toast(why); } }
+      p.slipWall = 0;
+      if (p.capped && game.world.flyCeiling != null && !game.toldOnce?.has('be:ceiling')) { game.toldOnce?.add('be:ceiling'); toast('Wings only go up to the clouds!'); }
     },
     // after main.js placed the eye camera (and before scribble.js): the camera behind your creature, the creature itself
     camera(camera, dt) {
@@ -133,9 +139,22 @@ export function createBeing(game, { scene }) {
       const behind = view === 'behind' && !tight;
       if (model) {
         model.visible = behind && !fighting; // (in a fight scribble.js draws it)
-        model.position.set(p.pos.x, p.pos.y + (fit?.lift ?? 0), p.pos.z);
-        model.rotation.y = p.yaw + Math.PI;
-        animateModel(model, t, Math.hypot(p.vel.x, p.vel.z) > 0.5 || p.ride?.kind === 'sky' || p.climbing);
+        // climbing (owner 2026-11-14: "awkward to see the same character just moving vertically up near the wall"): it turns to face the
+        // wall, leans its front up against it and scrambles: a side-to-side wiggle and a little bob in step with its climb
+        const w = p.climbing ? p.wallsBeside() : null;
+        const wall = w ? (w.px ? [1, 0] : w.nx ? [-1, 0] : w.pz ? [0, 1] : w.nz ? [0, -1] : null) : null;
+        if (wall) climb.dir = wall;
+        climb.k += ((wall ? 1 : 0) - climb.k) * Math.min(1, dt * 10);
+        const k = climb.k, moving = p.climbing && Math.abs(p.vel.y) > 0.1;
+        if (moving) climb.t += dt;
+        const faceYaw = Math.atan2(-climb.dir[0], -climb.dir[1]) + Math.PI;
+        model.rotation.order = 'YXZ';
+        model.rotation.y = k > 0.5 ? faceYaw : p.yaw + Math.PI;
+        model.rotation.x = -1.15 * k;                                   // (its front up the wall)
+        model.rotation.z = k * Math.sin(climb.t * 9) * 0.22;            // (scrambling: left foot, right foot)
+        const up = k * (0.35 + Math.abs(Math.sin(climb.t * 9)) * 0.08);
+        model.position.set(p.pos.x + climb.dir[0] * 0.18 * k, p.pos.y + (fit?.lift ?? 0) + up, p.pos.z + climb.dir[1] * 0.18 * k);
+        animateModel(model, t + climb.t * 1.5, Math.hypot(p.vel.x, p.vel.z) > 0.5 || p.ride?.kind === 'sky' || moving);
       }
       crosshair(behind && !fighting);
       if (!behind) { cam.ok = false; camera.userData.beFrom = null; return false; }
@@ -184,7 +203,7 @@ export function createBeing(game, { scene }) {
     // tests
     info() {
       const p = game.player;
-      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, abilities: body?.abilities ?? [], fly: !!body?.fly, climb: !!body?.climb, swim: !!body?.swim, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
+      return { can: here(), on: idx != null, me, index: idx, species: body?.species ?? null, abilities: body?.abilities ?? [], fly: !!body?.fly, climb: !!body?.climb, swim: !!body?.swim, flying: p?.ride?.be && p.ride.kind === 'sky', move: p?.ride?.be ? p.ride.kind : null, speed: p?.ride?.be ? p.ride.speed : null, climbing: !!p?.climbing, pose: +climb.k.toFixed(2), tilt: model ? +model.rotation.x.toFixed(2) : 0, view, tight, behind: being.behind, model: !!model?.visible, squad: here() ? squad().map(c => c.species) : [] };
     },
   };
   function drop() {
