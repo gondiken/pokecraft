@@ -16,6 +16,7 @@ import { SHAFT, dripsAt } from './wayland.js'; // chapter 3: the Drip Tower (pla
 import { SLUICE, rowsShut } from './sluice.js'; // step D: the Sluice Gate (Swim)
 import { THINGS, aimedThing, thingAt } from './things.js'; // step D: things an ability acts on (Dig, Push...)
 import { DIG_PATCH } from './earthworks.js';
+import { windAt, RAPID, WIND } from './fireice.js';
 import { ABILITIES } from './abilities.js';
 import { abilitySvg } from './abilityicons.js';
 import { portrait } from './ui.js';
@@ -370,6 +371,9 @@ class WayPlaces extends Piece {
 // little flags of the Warm-or-Cold Dig (one falls with each wrong hole), and is the big button's "Dig!" (things.js aimedThing: only when
 // the creature you are can dig and looks at soft earth). Without the ability a tap on soft earth says why once (THINGS.why).
 const FAR = 56; // (blocks: a place's models further away than this are not drawn)
+// the one line a creature without the ability is told, once a session (things.js THINGS[kind].why)
+function whyOnce(game, kind, text = THINGS[kind]?.why) { const id = 'thing:' + kind; if (!text || game.toldOnce?.has(id)) return; game.toldOnce?.add(id); game.ui?.toast(text); }
+const EARTH_KINDS = new Set(['soft']), FIRE_KINDS = new Set(['thorns', 'icewall', 'water', 'falls']);
 const WARM_COLOURS = [0xffd84a, 0xff3a2a, 0xff9a2a, 0xffe14a, 0x4aa8ff]; // 0 the key (gold), 1 red, 2 orange, 3 yellow, 4 cold blue
 function outlined(geo, colour) {
   const g = new THREE.Group();
@@ -412,19 +416,19 @@ class Earthworks extends Piece {
     this.clock = 0;
   }
   // the big button's word: Dig! when the creature you are can dig the soft earth you look at
-  near(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); return a?.word ?? null; }
-  use(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); if (!a) return false; this.run.dig(a.cell, p.be.abilities); return true; }
+  near(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); return a && EARTH_KINDS.has(a.kind) ? a.word : null; }
+  use(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); if (!a || !EARTH_KINDS.has(a.kind)) return false; this.run.dig(a.cell, p.be.abilities); return true; }
   // a tap on soft earth you cannot dig: why (once)
   hit(block) {
     if (!this.run) return false;
     const th = thingAt(this.s.world, block.x, block.y, block.z), k = th && THINGS[th.kind];
-    if (!k || k.how !== 'aim') return false;
+    if (!k || !EARTH_KINDS.has(th.kind)) return false;
     const p = this.game.player;
     if ((p?.be?.abilities ?? []).includes(k.needs)) { this.run.dig(block, p.be.abilities); return true; }
-    this.why(th.kind);
+    whyOnce(this.game, th.kind);
     return true;
   }
-  why(kind) { const g = this.game, id = 'thing:' + kind; if (g.toldOnce?.has(id)) return; g.toldOnce?.add(id); g.ui?.toast(THINGS[kind].why); }
+  why(kind) { whyOnce(this.game, kind); }
   update(dt) {
     if (!this.run) return;
     this.clock += dt;
@@ -458,6 +462,167 @@ class Earthworks extends Piece {
     else if (e.kind === 'drop') { snd('cube'); }
   }
   info() { return this.run ? { earth: this.run.info() } : {}; }
+}
+
+// Step D's third pair (fireice.js): Burn and Freeze. The rules are wayland.js Trials' FireIceRun; this draws the brambles (a tangle of
+// dark twigs with thorns over each hidden solid cell, instanced), flames (leaning the way the wind blows), the windsock at the Windy
+// Bramble Tunnel's mouth and leaves blowing through it, foam rushing down the rapids, and the Frozen Falls' rough ice column.
+// one bramble's geometry (cell-centred, about 1 block): 7 dark twigs crossing each other, two red thorns on each; vertex colours, merged
+function brambleGeometry() {
+  const pos = [], nor = [], col = [], tw = new THREE.Color(0x3e4a22), th = new THREE.Color(0xa83a2a), m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  const add = (geo, matrix, c) => {
+    const g = geo.toNonIndexed(); g.applyMatrix4(matrix);
+    const P = g.attributes.position.array, N = g.attributes.normal.array;
+    for (let i = 0; i < P.length; i++) { pos.push(P[i]); nor.push(N[i]); }
+    for (let i = 0; i < P.length / 3; i++) col.push(c.r, c.g, c.b);
+  };
+  const twig = new THREE.BoxGeometry(0.09, 1.25, 0.09), thorn = new THREE.ConeGeometry(0.06, 0.2, 4);
+  for (let k = 0; k < 7; k++) {
+    const h = n => ((Math.sin(k * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
+    e.set((h(3) - 0.5) * 2.2, h(4) * 3, (h(5) - 0.5) * 2.2); q.setFromEuler(e);
+    const at = new THREE.Vector3(h(1) * 0.6 - 0.3, 0, h(2) * 0.6 - 0.3);
+    add(twig, m.compose(at, q, new THREE.Vector3(1, 1, 1)), tw);
+    for (let j = 0; j < 2; j++) {
+      const v = new THREE.Vector3(0, j ? 0.3 : -0.25, 0.07).applyEuler(e).add(at), q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(e.x + Math.PI / 2, e.y + j * 2, e.z));
+      add(thorn, m.compose(v, q2, new THREE.Vector3(1, 1, 1)), th);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
+}
+class FireIce extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.run = this.s.world.trials?.fireice ?? null;
+    if (!this.run) return;
+    const w = this.s.world, d = this.dummy = new THREE.Object3D();
+    // brambles: one tangle per thorns cell (instanced: twigs + thorns)
+    this.cells = [];
+    for (const [i, o] of w.things) if (o.kind === 'thorns') { const y = Math.floor(i / (w.W * w.D)), r = i - y * w.W * w.D; this.cells.push([r % w.W, y, Math.floor(r / w.W), i]); }
+    // a bramble = one merged geometry (a tangle of 7 twigs with thorns on each), one instance per cell: one draw call for all of them
+    this.twigs = new THREE.InstancedMesh(brambleGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), this.cells.length);
+    this.shown = this.cells.map(() => false); this.redraw = true;
+    this.group.add(this.twigs);
+    // flames: a few cones per burning spot
+    this.flameMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(0.22, 0.8, 6), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.85 }), 40);
+    this.flameMesh.count = 0; this.group.add(this.flameMesh);
+    this.fires = []; // { x, y, z, t, lean }
+    // the windsock at the tunnel's mouth and leaves in the tunnel
+    const T = w.fireice.tunnel;
+    if (T) {
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.2, 0.12), new THREE.MeshLambertMaterial({ color: 0x8a6a44 })); pole.position.set(T.x0 - 1.5, T.g + 2.6, T.z - 1.2);
+      this.sock = new THREE.Group(); this.sock.position.set(T.x0 - 1.5, T.g + 4.0, T.z - 1.2);
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.12, 1.6, 10, 1, true), new THREE.MeshLambertMaterial({ color: 0xff6a2a, side: THREE.DoubleSide }));
+      cone.rotation.z = Math.PI / 2; cone.position.x = 0.8; this.sock.add(cone);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 0.4, 10, 1, true), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })); band.rotation.z = Math.PI / 2; band.position.x = 0.9; this.sock.add(band);
+      this.group.add(pole, this.sock); this.pole = pole;
+      this.leaves = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.22, 0.14), new THREE.MeshLambertMaterial({ color: 0x7a9a3a, side: THREE.DoubleSide }), 24); this.group.add(this.leaves);
+      this.leafX = Array.from({ length: 24 }, (_, i) => T.x0 - 2 + ((i * 0.618) % 1) * (T.x1 - T.x0 + 4));
+    }
+    // foam on the rapids
+    this.foam = w.fireice.rapids.map(r => { const m = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.06, 0.12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }), 30); this.group.add(m); return { r, m }; });
+    // the frozen falls: rough ice, one block per frozen row
+    const Fa = w.fireice.falls;
+    if (Fa) {
+      this.ice = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshLambertMaterial({ color: 0xf4fbff, emissive: 0x9ad0f0, emissiveIntensity: 0.45, flatShading: true }), Fa.cells.length * 2);
+      this.ice.count = 0; this.group.add(this.ice);
+      // the running falls: white streaks pouring down its column (so a child sees it is a waterfall, not more of the cliff's ice)
+      this.pour = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.9, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), 36);
+      this.group.add(this.pour);
+    }
+    this.group.traverse(o => { if (o.isInstancedMesh) o.frustumCulled = false; }); // (instances move after the bounds were taken)
+    this.clock = 0;
+  }
+  // the big button: "Burn!" at brambles / an ice door, "Freeze!" at water (things.js; only when the creature you are can)
+  near(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); return a && FIRE_KINDS.has(a.kind) && !(a.kind === 'falls' && this.run.fallsT != null) ? a.word : null; }
+  use(p) { const a = this.run && aimedThing(this.s.world, p, p.be?.abilities ?? []); if (!a || !FIRE_KINDS.has(a.kind)) return false; this.run.act(a.cell, p.be.abilities); return true; }
+  hit(block) {
+    if (!this.run) return false;
+    const th = thingAt(this.s.world, block.x, block.y, block.z), k = th && THINGS[th.kind];
+    if (!k || !FIRE_KINDS.has(th.kind)) return false;
+    const p = this.game.player;
+    if ((p?.be?.abilities ?? []).includes(k.needs)) { this.run.act(block, p.be.abilities); return true; }
+    whyOnce(this.game, th.kind);
+    return true;
+  }
+  update(dt) {
+    if (!this.run) return;
+    this.clock += dt;
+    const R = this.run, w = this.s.world, d = this.dummy, me = this.game.player?.pos, far = (x, z) => !me || Math.hypot(me.x - x, me.z - z) > FAR;
+    for (const e of R.log.splice(0)) this.event(e);
+    const T0 = w.fireice.tunnel, Fa0 = w.fireice.falls;
+    if (this.sock) this.sock.visible = this.pole.visible = this.leaves.visible = !far((T0.x0 + T0.x1) / 2, T0.z);
+    for (const f of this.foam) f.m.visible = !far(f.r.x, (f.r.z0 + f.r.z1) / 2);
+    if (this.ice) this.ice.visible = !far(Fa0.fx, Fa0.z);
+    // brambles that are burnt away are not drawn
+    let changed = this.redraw; this.redraw = false;
+    this.cells.forEach(([x, y, z], c) => {
+      const on = w.get(x, y, z) !== 0;
+      if (on === this.shown[c] && !changed) return;
+      this.shown[c] = on; changed = true;
+      if (on) { d.position.set(x + 0.5, y + 0.5, z + 0.5); d.rotation.set(0, c * 1.7, 0); d.scale.setScalar(1); d.updateMatrix(); this.twigs.setMatrixAt(c, d.matrix); } else this.twigs.setMatrixAt(c, ZERO);
+    });
+    if (changed) this.twigs.instanceMatrix.needsUpdate = true;
+    // flames
+    this.fires = this.fires.filter(f => this.clock - f.t < (f.life ?? 1.1));
+    let n = 0;
+    const lean = windAt(R.t).way;
+    for (const f of this.fires) for (let k = 0; k < 5 && n < 40; k++, n++) {
+      if (f.tunnel) f.lean = lean;
+      const a = this.clock - f.t, life = f.life ?? 1.1, s = Math.max(0.05, f.life ? 1 : 1 - a / life) * (0.7 + ((k * 0.37) % 0.6));
+      d.position.set(f.x + Math.sin(k * 2.1) * 0.3 + f.lean * a * 1.6, f.y + a * 0.8 + ((k * 0.29) % 0.4), f.z + Math.cos(k * 1.7) * 0.3);
+      d.rotation.set(0, 0, -f.lean * 0.7); d.scale.set(s, s * (1 + Math.sin(this.clock * 18 + k) * 0.2), s); d.updateMatrix(); this.flameMesh.setMatrixAt(n, d.matrix);
+    }
+    this.flameMesh.count = n; this.flameMesh.visible = n > 0; this.flameMesh.instanceMatrix.needsUpdate = true;
+    // the wind: the windsock and the leaves
+    const T = w.fireice.tunnel;
+    if (T && this.sock) {
+      const wind = windAt(R.t), way = wind.way;
+      this.sockYaw = (this.sockYaw ?? 0) + (((way < 0 ? Math.PI : 0)) - (this.sockYaw ?? 0)) * Math.min(1, dt * 4);
+      this.sock.rotation.set(0, this.sockYaw, way === 0 ? -1.1 : -0.1 + Math.sin(this.clock * 9) * 0.06);
+      this.leafX.forEach((x0, i) => {
+        this.leafX[i] += way * dt * 6;
+        if (this.leafX[i] > T.x1 + 2) this.leafX[i] -= T.x1 - T.x0 + 4; if (this.leafX[i] < T.x0 - 2) this.leafX[i] += T.x1 - T.x0 + 4;
+        d.position.set(this.leafX[i], T.g + 1.2 + ((i * 0.53) % 0.9) + Math.sin(this.clock * 5 + i) * 0.1, T.z + 0.2 + ((i * 0.71) % 0.6));
+        d.rotation.set(this.clock * 3 + i, i, way * 0.5); d.scale.setScalar(way === 0 ? 0 : 1); d.updateMatrix(); this.leaves.setMatrixAt(i, d.matrix);
+      });
+      this.leaves.instanceMatrix.needsUpdate = true;
+    }
+    // foam rushing down the rapids (none where frozen)
+    for (const { r, m } of this.foam) {
+      for (let i = 0; i < 30; i++) {
+        const z = r.z0 + 2 + (((i * 0.618) + this.clock * RAPID.speed / (r.z1 + 4 - r.z0)) % 1) * (r.z1 + 2 - r.z0), x = r.x - 0.8 + ((i * 0.377) % 1) * 2.6;
+        const frozen = R.frozen.has(w.index(Math.floor(x), r.w, Math.floor(z)));
+        d.position.set(x, r.w + 1.02, z); d.rotation.set(0, 0, 0); d.scale.setScalar(frozen ? 0 : 1); d.updateMatrix(); m.setMatrixAt(i, d.matrix);
+      }
+      m.instanceMatrix.needsUpdate = true;
+    }
+    // the frozen falls
+    const Fa = w.fireice.falls;
+    if (Fa && this.ice) {
+      const rows = R.fallsRows();
+      for (let k = 0; k < rows; k++) for (let j = 0; j < 2; j++) { const [x, y, z] = Fa.cells[k]; d.position.set(x + 0.5 + (j ? 0.18 : -0.18), y + 0.5 + j * 0.25, z + 0.55); d.rotation.set(k * 1.3 + j, k * 0.7 + j * 2, 0); d.scale.set(0.85, 0.9, 0.75); d.updateMatrix(); this.ice.setMatrixAt(k * 2 + j, d.matrix); }
+      this.ice.count = rows * 2; this.ice.instanceMatrix.needsUpdate = true;
+      this.pour.visible = this.ice.visible && rows === 0;
+      if (this.pour.visible) {
+        const H = Fa.cells.length;
+        for (let i = 0; i < 36; i++) { const u = ((i * 0.618) + this.clock * 1.4) % 1; d.position.set(Fa.fx + 0.15 + ((i * 0.377) % 1) * 0.7, Fa.g + 1 + (1 - u) * H, Fa.z + Fa.d + 1.02); d.rotation.set(0, 0, 0); d.scale.set(1, 1 + (i % 3) * 0.4, 1); d.updateMatrix(); this.pour.setMatrixAt(i, d.matrix); }
+        this.pour.instanceMatrix.needsUpdate = true;
+      }
+    }
+  }
+  event(e) {
+    const say = t => this.game.ui?.toast(t), snd = n => { try { sound.play(n); } catch { /* optional */ } };
+    if (e.kind === 'burnt' || e.kind === 'melted') { snd('fx:fire'); this.fires.push({ x: e.x + 0.5, y: e.y + 0.3, z: e.z + 0.5, t: this.clock, lean: 0 }); }
+    else if (e.kind === 'backfire') { snd('fx:fire'); this.fires = this.fires.filter(f => !f.tunnel); this.fires.push({ x: e.x + 0.5, y: this.s.world.fireice.tunnel.g + 1.3, z: e.z + 0.5, t: this.clock, lean: -1 }); }
+    else if (e.kind === 'lit') { snd('fx:fire'); this.fires.push({ x: e.x + 0.5, y: e.y + 0.3, z: e.z + 0.5, t: this.clock, lean: 0, life: WIND.burn, tunnel: true }); }
+    else if (e.kind === 'whoosh') { snd('pumpkinsplat'); whyOnce(this.game, 'wind', 'Whoosh! The wind blew the fire back at you.'); }
+    else if (e.kind === 'frozen' || e.kind === 'falls') { snd('fx:ice'); this.s.puff({ x: e.x + 0.5, y: e.y + 1, z: e.z + 0.5, colour: 0xd6f4ff }, 1); }
+    else if (e.kind === 'melting') { snd('drawbridge'); say('Drip, drip... the ice is melting!'); }
+    else if (e.kind === 'heavy') whyOnce(this.game, e.what);
+  }
+  info() { return this.run ? { fireice: this.run.info() } : {}; }
 }
 
 // Step C (plans/chapter3-abilities-build.md): "the world says what it needs", generic: it reads `game.being.need()` (abilityplaces.js:
@@ -535,7 +700,7 @@ class CloudLayer extends Piece {
   info() { return { cloudLayer: this.mesh ? this.mesh.count : 0, cloudsHidden: this.hidden?.size ?? 0 }; }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, Earthworks, NeedPlaces, CloudLayer];
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, Earthworks, FireIce, NeedPlaces, CloudLayer];
 
 export class WobbleLive {
   constructor(game, part) {

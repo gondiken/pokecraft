@@ -20,7 +20,13 @@
 //          key, digging at random rarely (at most a quarter), a non-digger never.
 //   push:  every boulder cave: a pusher (Woolumph, Normal; Pebblor) walks the boulder in and follows it, nobody else gets in; the Ball
 //          Garden: the 5-push solution opens the case, pushing each ball straight at its nearest hole never does, nor anyone without Push.
-//   node tests/waysbots.mjs     (exit 1 on a problem; WAYS_PLACES=tower,sluice,spots,currents,dig,push, WAYS_ROWS=...)
+//   burn (step D's third pair): every thicket and ice hut: a burner (Blazehound, Fire; Scalewing, Drake) burns the door and walks in,
+//          nobody else; the Windy Bramble Tunnel: lighting each plug as the windsock swings in always gets through, lighting it at
+//          once never, nobody without Burn.
+//   freeze: every rapids: a freezer (Frostling) freezes the water ahead and walks up, nobody else (not a swimmer sprinting or diving,
+//          not a flier in the spray, not a climber on the wet walls); the Frozen Falls: freeze it, swap to a climber at once, climb:
+//          always; waiting 4 s first: never; the freezer or the climber alone, a flier, a swimmer: never.
+//   node tests/waysbots.mjs     (exit 1 on a problem; WAYS_PLACES=tower,sluice,spots,currents,dig,push,burn,freeze, WAYS_ROWS=...)
 import { wobbleEnv } from './wobblenode.mjs';
 
 const RIDE = { // riding.js RIDE
@@ -239,8 +245,8 @@ export async function runTower({ tries = 12, fps = [60, 20] } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots,currents,dig,push').split(',');
-  const runs = { tower: runTower, sluice: runSluice, spots: runSpots, currents: runCurrents, dig: runDig, push: runPush }, problems = [];
+  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots,currents,dig,push,burn,freeze').split(',');
+  const runs = { tower: runTower, sluice: runSluice, spots: runSpots, currents: runCurrents, dig: runDig, push: runPush, burn: runBurn, freeze: runFreeze }, problems = [];
   for (const w of which) { const a = await runs[w](); for (const [k, v] of Object.entries(a.out)) console.log(k.padEnd(24), JSON.stringify(v)); problems.push(...a.problems); }
   if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
   console.log('ok');
@@ -469,7 +475,7 @@ function tunnelBrain(skilled) {
     if (p.pos.x < sx - 0.3) { steer(p, sx, T.z + 0.5); return { KeyW: true }; }
     lookAtCell(p, next, T.g + 1, T.z); p.pitch -= 0.2;
     const wind = E.F.windAt(R.t);
-    if (st.n % 6 === 0 && (!skilled || (wind.way > 0 && wind.left > 0.4))) pressFire(E, tr);
+    if (st.n % 6 === 0 && (!skilled || (wind.way > 0 && wind.left > E.F.WIND.burn + 0.2))) pressFire(E, tr); // (skilled: light it as the windsock swings in)
     return {};
   };
 }
@@ -480,8 +486,9 @@ export async function runBurn({ fps = [60, 20], tries = 8 } = {}) {
     ...FI.thickets.map(h => ({ id: h.id, start: [h.x + 2.5, h.g + 1, h.z + 9.5], stand: [h.x + 2.5, h.z + 6.6], door: [h.x + 2, h.g + 2, h.z + 4], inside: [h.x + 2.5, h.z + 2.5], won: E2 => { const q = E2.player.pos; return q.x > h.x + 1 && q.x < h.x + 4 && q.z > h.z + 1 && q.z < h.z + 3.8; } })),
     ...FI.huts.map(h => ({ id: h.id, start: [h.x + 9.5, h.g + 1, h.z + 2.5], stand: [h.x + 6.6, h.z + 2.5], door: [h.x + 4, h.g + 2, h.z + 2], inside: [h.x + 2.5, h.z + 2.5], won: E2 => { const q = E2.player.pos; return q.x > h.x + 1 && q.x < h.x + 3.8 && q.z > h.z + 1 && q.z < h.z + 4; } })),
   ];
+  const standY = (x, z) => { for (let y = 40; y > 0; y--) if (E.w.isSolid(Math.floor(x), y, Math.floor(z))) return y + 1; return 11; };
   for (const d of doors) for (const [name, [body, want]] of Object.entries(bodies)) for (const f of fps) {
-    const res = play(E, { body, start: d.start, yaw: 0, phase: 0, fps: f, secs: 12, brain: doorBrain(d.stand, d.door, d.inside), won: d.won });
+    const res = play(E, { body, start: [d.start[0], standY(d.start[0], d.start[2]), d.start[2]], yaw: 0, phase: 0, fps: f, secs: 12, brain: doorBrain(d.stand, d.door, d.inside), won: d.won });
     out[`${d.id}.${name}@${f}`] = res.won;
     if (want === 'always' && !res.won) problems.push(`${d.id}: ${name} at ${f} fps did not get in`);
     if (want === 'never' && res.won) problems.push(`${d.id}: ${name} at ${f} fps got in`);
@@ -504,26 +511,30 @@ export async function runBurn({ fps = [60, 20], tries = 8 } = {}) {
 }
 
 // the rapids: a freezer looks at the water ahead, taps, walks on the ice, and so on up to the ledge; anyone else swims / flies / walks up
+export { rapidsBrain as __rapidsBrain };
 function rapidsBrain(r, freeze) {
   return (E, tr, t, st) => {
     const p = E.player;
     st.n = (st.n ?? 0) + 1;
     steer(p, r.x + 0.5, r.z0 + 0.5);
-    if (freeze) {
-      const ahead = Math.floor(p.pos.z) - 2;
-      if (st.n % 6 === 0 && E.w.get(r.x, r.w, ahead) === E.B_WATER) { lookAtCell(p, r.x, r.w, ahead); pressFire(E, tr); }
+    if (freeze) { // freeze the water two ahead, walk only onto ice (never into the rushing water)
+      const water = z => E.w.get(r.x, r.w, z) === E.B_WATER, a2 = Math.floor(p.pos.z) - 2, a1 = Math.floor(p.pos.z - 0.9);
       p.pitch = -0.3;
-    } else p.pitch = -0.6; // (a swimmer looking down dives)
-    return { KeyW: true, ShiftLeft: true, Space: !freeze && (st.n % 2 === 0) };
+      if (water(a2) && st.n % 6 === 0) { lookAtCell(p, r.x, r.w, a2); pressFire(E, tr); }
+      return { KeyW: !water(a1) && !water(a2) || (!water(a1) && a2 < r.z0 + 2) };
+    }
+    p.pitch = -0.6; // (a swimmer looking down dives)
+    return { KeyW: true, ShiftLeft: true, Space: st.n % 2 === 0 };
   };
 }
 // the Frozen Falls: the Ice creature freezes the falls from the pool's edge; swap to a climber after `wait` s and climb
+export { fallsBrain as __fallsBrain };
 function fallsBrain(Fa, { wait = 0, climber, freezer, swap = true } = {}) {
   return (E, tr, t, st) => {
     const p = E.player, R = tr.fireice;
     st.n = (st.n ?? 0) + 1;
     if (!st.frozen) {
-      const k = walkTo(p, Fa.fx + 0.5, Fa.z + Fa.d + 2.6, 0.3);
+      const k = walkTo(p, Fa.fx + 0.5, Fa.z + Fa.d + 1.6, 0.3);
       if (k) return k;
       lookAtCell(p, Fa.fx, Fa.g + 2, Fa.z + Fa.d);
       if (st.n % 6 === 0) pressFire(E, tr);
@@ -539,7 +550,7 @@ export async function runFreeze({ fps = [60, 20], tries = 4 } = {}) {
   const E = await fireSetup(), problems = [], out = {}, B = E.B, FI = E.w.fireice;
   const bodies = { freezer: [B.freezer, true, 'always'], swimmer: [B.swimmer, false, 'never'], bubble: [B.bubble, false, 'never'], flier: [B.flier, false, 'never'], burner: [B.burner, false, 'never'], climber: [B.climber, false, 'never'], onFoot: [null, false, 'never'] };
   for (const r of FI.rapids) for (const [name, [body, freeze, want]] of Object.entries(bodies)) for (const f of fps) {
-    const res = play(E, { body, start: [r.x + 0.5, r.w + 1, r.z1 + 4.5], yaw: 0, phase: 0, fps: f, secs: 14, brain: rapidsBrain(r, freeze), won: E2 => E2.player.pos.z < r.z0 + 2 && E2.player.pos.y >= r.w + 0.9 });
+    const res = play(E, { body, start: [r.x + 0.5, r.w + 1, r.z1 + 6.5], yaw: 0, phase: 0, fps: f, secs: 14, brain: rapidsBrain(r, freeze), won: E2 => E2.player.pos.z < r.z0 + 2 && E2.player.pos.y >= r.w + 0.9 && E2.player.pos.y < r.w + 2.5 }); // (inside the tunnel, on the ledge)
     out[`${r.id}.${name}@${f}`] = res.won ? res.t : false;
     if (want === 'always' && !res.won) problems.push(`${r.id}: ${name} at ${f} fps did not get up the rapids`);
     if (want === 'never' && res.won) problems.push(`${r.id}: ${name} at ${f} fps got up the rapids`);
@@ -559,6 +570,107 @@ export async function runFreeze({ fps = [60, 20], tries = 4 } = {}) {
     out[`falls.${name}@${f}`] = { wins, of: tries, times: times.join(' ') };
     if (want === 'always' && wins < tries) problems.push(`the Frozen Falls: ${name} at ${f} fps got up only ${wins}/${tries}`);
     if (want === 'never' && wins) problems.push(`the Frozen Falls: ${name} at ${f} fps got up ${wins}/${tries}`);
+  }
+  return { problems, out };
+}
+
+/* ---- step D's fourth pair: Squeeze (cracked rocks, the Boulder Run) and Pass through (pencil houses, the Sliding Smudge) ---- */
+export async function slipSetup() {
+  const E = await fireSetup(), M = await import('../src/slipthrough.js'), b = id => E.C.bodyOf(id, E.S.SPECIES[id]);
+  E.M = M;
+  Object.assign(E.B, { squeezer: b('antsy'), slime: b('wobblock'), paperFly: b('origrane'), passer: b('flipsy'), ghost: b('wispurr') });
+  return E;
+}
+// walk straight at a crack or a faded wall and on into the room behind
+const intoBrain = (to) => (E) => { steer(E.player, to[0], to[1]); return { KeyW: true }; };
+// the Boulder Run: wait in a crack until a boulder has rolled past and the next is far, then dash to the next crack (or the top)
+function runBrain(skilled) {
+  return (E, tr, t, st) => {
+    const p = E.player, R = E.w.slip.run, z = p.pos.z, bs = E.M.bouldersAt(tr.slip.t);
+    if (!skilled) { steer(p, R.x + 0.5, R.z0 - 2); return { KeyW: true }; }
+    const stops = [...R.nooks].sort((a, b) => b - a), next = stops.find(n => n < z - 0.6) ?? null; // (the next crack north of you)
+    const inNook = p.pos.x < R.x + 0.05;
+    const goal = next == null ? R.z0 - 2 : next + 0.5, need = (z - goal) * 2 + 2.5; // (you and a boulder close in at twice your speed)
+    const clear = !bs.some(b => b < z + 0.8 && b > z - need);
+    if (st.mode === 'out') { // dashing to the next crack; at it, step in
+      if (next == null || z > goal + 0.25) { steer(p, R.x + 0.5, goal); if (next == null) return { KeyW: true }; return { KeyW: true }; }
+      st.mode = 'in';
+    }
+    if (st.mode === 'in' || (inNook && !clear)) { // into the crack (west) and wait there
+      if (!inNook || p.pos.x > R.x - 0.45) { steer(p, R.x - 1, p.pos.z); st.mode = 'in'; if (p.pos.x < R.x - 0.4) st.mode = 'wait'; return { KeyW: true }; }
+      st.mode = 'wait'; return {};
+    }
+    if (st.mode === 'wait' || st.mode == null) {
+      if (!clear) { if (st.mode == null && p.pos.z > R.z1 + 1) return {}; return {}; }
+      if (inNook && p.pos.x < R.x + 0.45) { steer(p, R.x + 1.5, p.pos.z); return { KeyW: true }; } // (out of the crack, east)
+      st.mode = 'out'; st.from = next; return {};
+    }
+    return {};
+  };
+}
+export async function runSqueeze({ fps = [60, 20], tries = 6 } = {}) {
+  const E = await slipSetup(), problems = [], out = {}, B = E.B, S = E.w.slip;
+  const bodies = { squeezer: [B.squeezer, 'always'], slime: [B.slime, 'always'], paper: [B.paperFly, 'always'], ghost: [B.ghost, 'never'], digger: [B.digger, 'never'], pusher: [B.pusher, 'never'], climber: [B.climber, 'never'], flier: [B.flier, 'never'], onFoot: [null, 'never'] };
+  for (const c of S.cracked) for (const [name, [body, want]] of Object.entries(bodies)) for (const f of fps) {
+    const res = play(E, { body, start: [c.x + 2.5, c.g + 1, c.z + 8.5], yaw: 0, phase: 0, fps: f, secs: 10, brain: intoBrain([c.x + 2.5, c.z + 2]), won: E2 => { const q = E2.player.pos; return q.z < c.z + 4.6 && q.z > c.z + 1 && q.x > c.x + 1 && q.x < c.x + 5 && q.y < c.g + 3; } });
+    out[`${c.id}.${name}@${f}`] = res.won;
+    if (want === 'always' && !res.won) problems.push(`${c.id}: ${name} at ${f} fps did not squeeze in`);
+    if (want === 'never' && res.won) problems.push(`${c.id}: ${name} at ${f} fps got in`);
+  }
+  const R = S.run, rows = { skilled: [B.squeezer, true, 'always'], slime: [B.slime, true, 'always'], naive: [B.squeezer, false, 'never'], ghost: [B.ghost, true, 'never'], climber: [B.climber, true, 'never'], flier: [B.flier, true, 'never'] };
+  for (const [name, [body, skilled, want]] of Object.entries(rows)) for (const f of fps) {
+    let wins = 0, times = [], hits = 0;
+    for (let i = 0; i < tries; i++) {
+      const res = play(E, { body, start: [R.x + 0.5, R.g + 1, R.z1 + 2.5], yaw: 0, phase: 0, fps: f, secs: 40, brain: (E2, tr, t, st) => { if (st.t0 == null) st.t0 = tr.slip.t = i * 0.53 + f * 0.01; return runBrain(skilled)(E2, tr, t, st); }, won: (E2, tr) => { hits = Math.max(hits, tr.slip.hits); return E2.player.pos.z < R.z0 - 1; } });
+      if (res.won) { wins++; times.push(res.t); }
+    }
+    out[`run.${name}@${f}`] = { wins, of: tries, times: times.join(' ') };
+    if (want === 'always' && wins < tries) problems.push(`the Boulder Run: ${name} at ${f} fps got up only ${wins}/${tries}`);
+    if (want === 'never' && wins) problems.push(`the Boulder Run: ${name} at ${f} fps got up ${wins}/${tries}`);
+  }
+  return { problems, out };
+}
+// the Sliding Smudge: skilled: in front of each wall, wait for the smudge to come by at the start of its slide, step in at it and drift
+// along with it while crossing; naive: walk straight through when the smudge comes
+function smudgeBrain(skilled) {
+  return (E, tr, t, st) => {
+    const p = E.player, M = E.w.slip.smudge, T = tr.slip.t, z = p.pos.z;
+    const k = M.walls.findIndex(z0 => z < z0 + M.thick + 0.8);
+    if (k < 0) { steer(p, (M.x0 + M.x1) / 2 + 0.5, M.room + 1.5); return { KeyW: true }; }
+    const z0 = M.walls[k], c = E.M.smudgeAt(k, T) + M.w / 2, inWall = z > z0 - 0.35;
+    if (!skilled) { steer(p, p.pos.x, z0 + M.thick + 2); return { KeyW: true }; }
+    const c2 = E.M.smudgeAt(k, T + 0.15) + M.w / 2, v = (c2 - c) / 0.15;
+    if (!inWall) { // wait in front of the wall, beside where the smudge is heading, then step in as its middle reaches you
+      const span = M.x1 - M.x0 + 1 - M.w, edge = v > 0 ? E.M.smudgeAt(k, T) - M.x0 : M.x0 + span - E.M.smudgeAt(k, T); // (how far into its slide it is)
+      const want = Math.abs(c - p.pos.x) < 0.35 && edge < 1.5;
+      steer(p, want ? c : p.pos.x, z0 + 2); p.yaw = Math.atan2(-(c - p.pos.x) * 0.0, 1) ; // (face north)
+      if (want) { steer(p, c + v * 0.4, z0 + 1); return { KeyW: true }; }
+      const wait = Math.max(M.x0 + 1.3, Math.min(M.x1 - 0.3, v > 0 ? M.x0 + 2 : M.x1 - 1)); // (stand near the end it starts its slide from)
+      if (Math.abs(p.pos.x - wait) > 0.3) { steer(p, wait, z0 - 1.2); return { KeyW: true }; }
+      return {};
+    }
+    steer(p, c + v * 0.5, z0 + M.thick + 1); return { KeyW: true }; // (inside: aim along with the smudge's middle as it slides)
+  };
+}
+export async function runPass({ fps = [60, 20], tries = 6 } = {}) {
+  const E = await slipSetup(), problems = [], out = {}, B = E.B, S = E.w.slip;
+  const bodies = { passer: [B.passer, 'always'], ghost: [B.ghost, 'always'], squeezer: [B.squeezer, 'never'], digger: [B.digger, 'never'], pusher: [B.pusher, 'never'], burner: [B.burner, 'never'], climber: [B.climber, 'never'], flier: [B.flier, 'never'], onFoot: [null, 'never'] };
+  for (const c of S.pencil) for (const [name, [body, want]] of Object.entries(bodies)) for (const f of fps) {
+    const res = play(E, { body, start: [c.x + 7.5, c.g + 1, c.z + 2.5], yaw: Math.PI / 2, phase: 0, fps: f, secs: 10, brain: intoBrain([c.x + 1.5, c.z + 2.5]), won: E2 => { const q = E2.player.pos; return q.x > c.x + 1 && q.x < c.x + 3.6 && q.z > c.z + 1 && q.z < c.z + 4; } });
+    out[`${c.id}.${name}@${f}`] = res.won;
+    if (want === 'always' && !res.won) problems.push(`${c.id}: ${name} at ${f} fps did not pass through`);
+    if (want === 'never' && res.won) problems.push(`${c.id}: ${name} at ${f} fps got in`);
+  }
+  const M = S.smudge, rows = { skilled: [B.passer, true, 'always'], ghost: [B.ghost, true, 'always'], naive: [B.passer, false, 'never'], squeezer: [B.squeezer, true, 'never'], flier: [B.flier, true, 'never'] };
+  for (const [name, [body, skilled, want]] of Object.entries(rows)) for (const f of fps) {
+    let wins = 0, times = [];
+    for (let i = 0; i < tries; i++) {
+      const res = play(E, { body, start: [(M.x0 + M.x1) / 2 + 0.5, M.g + 1, M.z0 - 1.5], yaw: 0, phase: 0, fps: f, secs: 60, brain: (E2, tr, t, st) => { if (st.t0 == null) st.t0 = tr.slip.t = i * 1.71 + f * 0.01; return smudgeBrain(skilled)(E2, tr, t, st); }, won: E2 => E2.player.pos.z > M.room + 0.5 });
+      if (res.won) { wins++; times.push(res.t); }
+    }
+    out[`smudge.${name}@${f}`] = { wins, of: tries, times: times.join(' ') };
+    if (want === 'always' && wins < tries) problems.push(`the Sliding Smudge: ${name} at ${f} fps got through only ${wins}/${tries}`);
+    if (want === 'never' && wins) problems.push(`the Sliding Smudge: ${name} at ${f} fps got through ${wins}/${tries}`);
   }
   return { problems, out };
 }

@@ -24,7 +24,24 @@
 //           ball to the wall, the rest of the solution opens the glass case (ways-cave-*.png, ways-garden*.png)
 //   earthipad: the same on an emulated iPad (the action button, Swap, the joystick into the boulder)
 //   pose:   the climbing pose from behind, the side and three quarters (ways-pose-*.png): faces the wall, leans in, four paws grip it
-//   WAYS_ONLY=data|bots|real|places|dig|push|earthipad|pose|fight|ipad|closed
+//   step D's third pair: Burn and Freeze (fireice.js)
+//   bots:   + runBurn (thickets and ice huts only for burners; the Windy Bramble Tunnel: lit as the windsock swings in always, lit at
+//           once never) and runFreeze (the rapids only for freezers; the Frozen Falls: freeze + swap + climb always, slow never, alone never)
+//   burn:   real keys: a thicket's bramble door as Sproutle (why, the card, Swap to Blazehound, "Burn!", it burns); the tunnel: lit while
+//           the wind blows at you = whoosh, back to the mouth; lit as the windsock swings in = gone; all five plugs (ways-thicket-*.png,
+//           ways-tunnel-*.png)
+//   freeze: real keys: the rapids as Frostling ("Freeze!", the water freezes, up on the ice to the ledge); the Frozen Falls: freeze it, F to
+//           Sproutle, W climbs it to the top before it melts (ways-rapids-*.png, ways-falls-*.png)
+//   fireipad: the thicket and the rapids' first freeze with taps on an emulated iPad
+//   step D's fourth pair: Squeeze and Pass through (slipthrough.js)
+//   bots:   + runSqueeze (cracked rocks only for squishy creatures; the Boulder Run: hiding in the cracks always, straight up never) and
+//           runPass (pencil houses only for ghostly creatures; the Sliding Smudge: drifting with the patch always, straight in never)
+//   squeeze: real keys: a cracked rock as Scalewing (why, the card, Swap to Antsy: it squashes flat and crawls in); the Boulder Run:
+//           straight up = bonk, back to the foot; hiding in the cracks = the top (ways-crack-*.png, ways-run-*.png)
+//   pass:   real keys: a pencil house's faded wall as Antsy (why, the card, Swap to Flipsy: it wades through); the Sliding Smudge: straight
+//           in = inked in, back to the start; drifting with the patch = through (ways-faded-*.png, ways-smudge*.png)
+//   slipipad: the crack and the faded wall with the joystick and a tap on Swap
+//   WAYS_ONLY=data|bots|real|places|dig|push|earthipad|burn|freeze|fireipad|squeeze|pass|slipipad|pose|fight|ipad|closed
 import path from 'node:path';
 import { devices } from 'playwright';
 import { ROOT, openGame, newGame, waitFor } from '../helpers.mjs';
@@ -69,18 +86,22 @@ export default async function ({ browser, base, t }) {
     t.ok(seen.join() === 'false,false,true' && h2.tries(place.id) === 2 && !h3.shown(place.id), `the hint only after trying: walking in 3 times (${seen}), or staying ${P.HINT.every} s counts one more (${h2.tries(place.id)} after 10 s), never while you can (${h3.tries(place.id)})`);
     const E = await (await import('../wobblenode.mjs')).wobbleEnv(), ids = E.w.needPlaces.map(q => `${q.id}:${q.needs}`).join();
     const ceil = E.w.flyCeiling, tops = E.w.spots.map(q => `${q.id} ${q.top}`).join(', ');
-    t.ok(ids === 'sluice:swim,driptower:climb,mound1:dig,mound2:dig,mound3:dig,mound4:dig,mound5:dig,mound6:dig,cave1:push,cave2:push,cave3:push,digpatch:dig,garden:push,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
+    t.ok(ids === 'sluice:swim,driptower:climb,mound1:dig,mound2:dig,mound3:dig,mound4:dig,mound5:dig,mound6:dig,cave1:push,cave2:push,cave3:push,digpatch:dig,garden:push,thicket1:burn,thicket2:burn,thicket3:burn,icehut1:burn,icehut2:burn,rapids1:freeze,rapids2:freeze,tunnel:burn,falls:freeze,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
       `places: ${ids}; one cloud ceiling for wings at ${ceil} (owner 2026-11-14): the crags' tops and the tower's roof (${W.SHAFT.roof + 1}) above it, the clouds under it and over a jump (${tops})`);
     const TH = await import('../../src/things.js'), K = await import('../../src/earthworks.js'), A = await import('../../src/abilities.js');
     const kinds = Object.entries(TH.THINGS).map(([k, v]) => `${k}:${v.needs}/${v.how}`).join(' ');
     const c1 = K.keyCandidates([[3, 3, 4]]).length, c2 = K.keyCandidates([[3, 3, 1]]).length, worst = Math.max(...Array.from({ length: 49 }, (_, i) => K.keyCandidates([[0, 0, K.warmth(0, 0, i % 7, Math.floor(i / 7))]]).length));
-    t.ok(Object.values(TH.THINGS).every(v => A.ABILITIES[v.needs] && v.why && (v.how === 'walk' || v.word)) && c1 === 0 && c2 === 8 && worst === 33,
-      `things an ability acts on (things.js): ${kinds}; every one says why; the Warm-or-Cold Dig: a cold hole in the middle leaves ${c1} squares, a red one ${c2}, a cold corner hole ${worst} (of 49)`);
+    t.ok(Object.entries(TH.THINGS).every(([k, v]) => A.ABILITIES[v.needs] && (v.why || k === 'water') && (v.how === 'walk' || v.word)) && c1 === 0 && c2 === 8 && worst === 33,
+      `things an ability acts on (things.js): ${kinds}; every one says why (but plain water); the Warm-or-Cold Dig: a cold hole in the middle leaves ${c1} squares, a red one ${c2}, a cold corner hole ${worst} (of 49)`);
     t.ok(G.BRIGHT.slice().sort().join() === 'atlantis,cosmic,electric,fire,light,rainbow' && G.KEEN.join() === 'ghost,ninja', `Glowcap Caves: the glowing types are the Glow ability's (${G.BRIGHT}); Ghost / Ninja still sense (${G.KEEN})`);
   }
 
   if (want('bots')) {
-    const { runTower, runSluice, runSpots, runCurrents, runDig, runPush } = await import('../waysbots.mjs');
+    const { runTower, runSluice, runSpots, runCurrents, runDig, runPush, runBurn, runFreeze } = await import('../waysbots.mjs');
+    const bu = await runBurn(), fr = await runFreeze(), g2 = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
+    const in2 = (o, re) => [...new Set(Object.entries(o).filter(([k, v]) => re.test(k) && v).map(([k]) => k.split('.')[1].split('@')[0]))].join(', ');
+    t.ok(!bu.problems.length, `Burn, 60 · 20 fps: into the thickets and ice huts: ${in2(bu.out, /^(thicket|icehut)/)} only; the Windy Bramble Tunnel: lit as the windsock swings in ${g2(bu.out, 'tunnel.skilled')} (${bu.out['tunnel.skilled@60'].times} s), lit at once ${g2(bu.out, 'tunnel.naive')}, without Burn ${g2(bu.out, 'tunnel.freezer')} / ${g2(bu.out, 'tunnel.climber')} ${bu.problems.join('; ')}`);
+    t.ok(!fr.problems.length, `Freeze, 60 · 20 fps: up the rapids: ${in2(fr.out, /^rapids/)} only (${fr.out['rapids1.freezer@60']} s); the Frozen Falls: freeze + swap + climb ${g2(fr.out, 'falls.skilled')} (${fr.out['falls.skilled@60'].times} s), a Bug ${g2(fr.out, 'falls.bug')}, waiting 4 s ${g2(fr.out, 'falls.slow')}, only the freezer ${g2(fr.out, 'falls.freezerOnly')}, only the climber ${g2(fr.out, 'falls.climberOnly')}, flier ${g2(fr.out, 'falls.flier')}, swimmer ${g2(fr.out, 'falls.swimmer')} ${fr.problems.join('; ')}`);
     const dg = await runDig({ tries: 12 }), pu = await runPush(), d = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
     const ok = (o, re) => [...new Set(Object.entries(o).filter(([k, v]) => re.test(k) && v).map(([k]) => k.split('.')[1].split('@')[0]))].join(', ');
     t.ok(!dg.problems.length, `Dig, 60 · 20 fps: the mounds' chests seen by ${ok(dg.out, /^mound/)} only; the Warm-or-Cold Dig: skilled ${d(dg.out, 'patch.skilled')} (digs ${dg.out['patch.skilled@60'].digs}), at random ${d(dg.out, 'patch.naive')}, without Dig: ${d(dg.out, 'patch.pusher')} / ${d(dg.out, 'patch.flier')} ${dg.problems.join('; ')}`);
@@ -412,6 +433,250 @@ export default async function ({ browser, base, t }) {
       t.ok(solved.gardenOpen && solved.holesFull === 2, `both balls in their holes: the glass case opens (${JSON.stringify({ open: solved.gardenOpen, full: solved.holesFull })})`);
     }
     t.ok(!page.errors.length, `${tag}dig / push: no page errors (${page.errors.join('; ')})`);
+    await page.context().close();
+  }
+
+  // step D's third pair: Burn and Freeze with real keys through the game's own loop (desktop, then iPad)
+  if (want('burn') || want('freeze') || want('fireipad')) for (const dev of [(want('burn') || want('freeze')) && null, want('fireipad') && 'iPad (gen 7) landscape'].filter(x => x !== false)) {
+    const ipad = !!dev, tag = ipad ? 'iPad: ' : '';
+    const page = await openGame(browser, base, { query: '?preview', ...(dev ? { contextOptions: devices[dev] } : {}) });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('sproutle', 30), S.makeCreature('blazehound', 30), S.makeCreature('frostling', 30)]; });
+    await intoWobble(page, { creature: true });
+    const act = () => page.evaluate(() => ({ act: window.pokecraft.touch?.cur?.().act.label ?? '', dim: window.pokecraft.touch?.cur?.().act.dim }));
+    const press = async () => { if (ipad) await page.tap('#btn-act'); else await page.keyboard.press('KeyE'); await frames(page, 3); };
+    const swap = async () => { if (ipad) await page.tap('#btn-place'); else await page.keyboard.press('KeyF'); await frames(page, 3); };
+    const look = (x, y, z) => page.evaluate(([x, y, z]) => window.pokecraft.player.lookAt({ x, y, z }), [x, y, z]);
+    const fi = () => page.evaluate(() => window.pokecraft.gymLive.of('part:wobble').info().fireice);
+    const F = await page.evaluate(() => { const f = window.pokecraft.world.fireice; return { th: f.thickets[0], tunnel: { x0: f.tunnel.x0, x1: f.tunnel.x1, z: f.tunnel.z, g: f.tunnel.g, plugs: f.tunnel.plugs }, rapids: f.rapids[0], falls: { fx: f.falls.fx, z: f.falls.z, d: f.falls.d, g: f.falls.g, top: f.falls.top } }; });
+    if (want('burn') || ipad) {
+      // a thicket as Sproutle: the bramble door: no word, a press says why; after 3 tries the card, Swap to Blazehound: "Burn!"; it burns; walk in
+      const h = F.th, door = [h.x + 2.5, h.g + 1.5, h.z + 4.5];
+      await tries(page, [h.x + 2.5, h.g + 1, h.z + 6.6, 0, -0.2], 3);
+      await look(...door); await frames(page, 2);
+      const a0 = await act(); await press();
+      const why = await toasts(page), n0 = await need(page);
+      t.ok(a0.act === '' && /only fire/i.test(why) && n0.card && n0.text === 'Needs Burn' && n0.lit === 'Blazehound', `${tag}a thicket's bramble door as Sproutle: no word ("${a0.act}"), a press says why ("${why}"), after 3 tries "${n0.text}" with ${n0.lit} lit`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}thicket-without.png`);
+      await swap(); await look(...door); await frames(page, 2);
+      const a1 = await act(), who = (await be(page)).species;
+      await press(); await frames(page, 4);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}thicket-burnt.png`);
+      const gone = await page.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z), [h.x + 2, h.g + 1, h.z + 4]);
+      t.ok(who === 'blazehound' && a1.act === 'Burn!' && gone === 0, `${tag}Swap goes straight to Blazehound; the button says "${a1.act}"; the brambles burn away (block ${gone})`);
+    }
+    if (want('burn') && !ipad) {
+      // the Windy Bramble Tunnel: light a plug while the wind blows at you: whoosh, back to the mouth; light it as the windsock swings in: gone
+      const T = F.tunnel, plug = T.plugs[0];
+      await put(page, plug - 1.6, T.g + 1, T.z + 0.5, -Math.PI / 2, -0.15); await frames(page, 3);
+      await look(plug + 0.5, T.g + 1.5, T.z + 0.5);
+      await poll(page, "(() => { const R = g.world.trials.fireice; return R && (R.info().wind < 0) && 1; })()"); // (watching the windsock: it points out at you)
+      await shot(page, 'ways-tunnel-wind-out.png');
+      await press();
+      const back = await poll(page, "(() => { const p = g.player.pos; return p.x < " + (T.x0) + " && p.x; })()");
+      const why2 = await toasts(page);
+      t.ok(back && /whoosh/i.test(why2), `the Windy Bramble Tunnel: lit while the wind blows at you, the fire blows back: "${why2}", puffed back to the mouth (x ${back?.toFixed?.(1)})`);
+      await put(page, plug - 1.6, T.g + 1, T.z + 0.5, -Math.PI / 2, -0.15); await frames(page, 3); await look(plug + 0.5, T.g + 1.5, T.z + 0.5);
+      await poll(page, "(() => { const R = g.world.trials.fireice; return R && R.info().wind > 0 && 1; })()"); // (the windsock swings in)
+      await press(); await frames(page, 2);
+      await shot(page, 'ways-tunnel-burning.png');
+      const burnt = await poll(page, `g.world.get(${plug}, ${T.g + 1}, ${T.z}) === 0 && 1`);
+      t.ok(burnt, `lit as the windsock swings in (the wind blows away from you), the plug burns through`);
+      // the other plugs: the same, the page only waits for the wind like a child watching the windsock
+      for (const px of T.plugs.slice(1)) {
+        await put(page, px - 1.6, T.g + 1, T.z + 0.5, -Math.PI / 2, -0.15); await frames(page, 2); await look(px + 0.5, T.g + 1.5, T.z + 0.5);
+        for (let k = 0; k < 4 && await page.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z), [px, T.g + 1, T.z]); k++) {
+          await poll(page, `(() => { const { windAt, WIND } = window.__fi ??= {}; const R = g.world.trials.fireice; return R && R.info().wind > 0 && 1; })()`);
+          await press();
+          await poll(page, `(g.world.get(${px}, ${T.g + 1}, ${T.z}) === 0 || g.world.trials.fireice.backfire != null || !g.world.trials.fireice.burning) && 1`);
+          await frames(page, 3);
+          if (await page.evaluate(() => window.pokecraft.player.pos.x) < T.x0) break;
+        }
+      }
+      const left = (await fi()).plugs;
+      await put(page, T.x1 + 1.5, T.g + 1, T.z + 0.5, -Math.PI / 2, -0.3); await frames(page, 4);
+      await shot(page, 'ways-tunnel-through.png');
+      t.ok(left === 0, `all five plugs burnt by lighting each as the wind blew in (${left} left); the chest room at the end`);
+    }
+    if (want('freeze') || ipad) {
+      // the rapids as Frostling: "Freeze!" at the water; it freezes over; walk up on the ice
+      if ((await be(page)).species !== 'frostling') { if (ipad) { await swap(); if ((await be(page)).species !== 'frostling') await swap(); } else { await page.keyboard.press('Digit3'); await frames(page, 3); } }
+      const r = F.rapids;
+      await put(page, r.x + 0.5, r.w + 1, r.z1 + 6.5, 0, -0.3); await frames(page, 3);
+      await look(r.x + 0.5, r.w + 0.98, r.z1 + 3.5); await frames(page, 2);
+      const a2 = await act();
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}rapids-before.png`);
+      await press(); await frames(page, 3);
+      const f1 = await fi();
+      t.ok(a2.act === 'Freeze!' && f1.frozen > 3, `${tag}at the rapids as Frostling the button says "${a2.act}"; a press freezes the water over (${f1.frozen} blocks)`);
+      if (!ipad) {
+        // up the rapids: freeze ahead, walk on (the page turns the head to the water ahead, like a child)
+        for (let k = 0; k < 80; k++) {
+          const z = await page.evaluate(() => window.pokecraft.player.pos.z);
+          if (z < r.z0 + 2) break;
+          await look(r.x + 0.5, r.w + 0.98, Math.floor(z) - 2 + 0.5); await frames(page, 1);
+          if (await page.evaluate(([x, y, z]) => window.pokecraft.world.get(x, y, z) === 5, [r.x, r.w, Math.floor(z) - 2])) await press();
+          await page.keyboard.down('w'); await frames(page, 2); await page.keyboard.up('w'); await frames(page, 1);
+        }
+        const up = await page.evaluate(() => window.pokecraft.player.pos);
+        await page.evaluate(() => { window.pokecraft.player.pitch = -0.2; }); await frames(page, 3);
+        await shot(page, 'ways-rapids-up.png');
+        t.ok(up.z < r.z0 + 3, `up the rapids on the ice it froze, to the ledge with the chest (z ${up.z.toFixed(1)}, ledge at ${r.z0})`);
+      }
+    }
+    if (want('freeze') && !ipad) {
+      // the Frozen Falls: freeze it as Frostling, Swap (F) to Sproutle at once, climb it before it melts
+      const Fa = F.falls;
+      await put(page, Fa.fx + 0.5, Fa.g + 1, Fa.z + Fa.d + 1.6, 0, 0.3); await frames(page, 3);
+      await look(Fa.fx + 0.5, Fa.g + 2.5, Fa.z + Fa.d + 0.5); await frames(page, 2);
+      const a3 = await act();
+      await press(); await frames(page, 3);
+      await shot(page, 'ways-falls-frozen.png');
+      await page.keyboard.press('KeyF'); await frames(page, 2);
+      const sp = (await be(page)).species;
+      await page.evaluate(() => { window.pokecraft.player.pitch = 0.3; });
+      await page.keyboard.down('w');
+      const mid = await poll(page, `g.player.climbing && g.player.pos.y > ${Fa.g + 6} && g.player.pos.y`);
+      await shot(page, 'ways-falls-climb.png');
+      const top = await poll(page, `(g.player.onGround && g.player.pos.y >= ${Fa.top + 0.9} && g.player.pos.y) || (g.gymLive.of('part:wobble').info().fireice.fallsRows === 0 && -1)`);
+      await page.keyboard.up('w'); await frames(page, 3);
+      await page.evaluate(() => { window.pokecraft.player.pitch = -0.4; }); await frames(page, 2);
+      await shot(page, 'ways-falls-top.png');
+      t.ok(a3.act === 'Freeze!' && sp === 'sproutle' && mid && top > 0, `the Frozen Falls: "${a3.act}" freezes it into rough ice, F to Sproutle, W climbs it (mid ${mid?.toFixed?.(1)}) to the top (y ${top}) before it melts`);
+    }
+    t.ok(!page.errors.length, `${tag}burn / freeze: no page errors (${page.errors.join('; ')})`);
+    await page.context().close();
+  }
+
+  // step D's fourth pair: Squeeze and Pass through with real keys through the game's own loop (desktop, then iPad)
+  if (want('squeeze') || want('pass') || want('slipipad')) for (const dev of [(want('squeeze') || want('pass')) && null, want('slipipad') && 'iPad (gen 7) landscape'].filter(x => x !== false)) {
+    const ipad = !!dev, tag = ipad ? 'iPad: ' : '';
+    const page = await openGame(browser, base, { query: '?preview', ...(dev ? { contextOptions: devices[dev] } : {}) });
+    await newGame(page, 0);
+    await page.evaluate(async () => { const g = window.pokecraft, S = await import('/src/species.js'); g.party = [S.makeCreature('scalewing', 30), S.makeCreature('antsy', 30), S.makeCreature('flipsy', 30)]; });
+    await intoWobble(page, { creature: true });
+    const swap = async () => { if (ipad) await page.tap('#btn-place'); else await page.keyboard.press('KeyF'); await frames(page, 3); };
+    const S = await page.evaluate(() => { const s = window.pokecraft.world.slip; return { c: s.cracked[0], h: s.pencil[0], run: { x: s.run.x, z0: s.run.z0, z1: s.run.z1, g: s.run.g, nooks: s.run.nooks }, m: { x0: s.smudge.x0, x1: s.smudge.x1, z0: s.smudge.z0, walls: s.smudge.walls, thick: s.smudge.thick, room: s.smudge.room, g: s.smudge.g } }; });
+    let cdp = null, joy = null;
+    if (ipad) { cdp = await page.context().newCDPSession(page); joy = await page.evaluate(() => { const r = document.getElementById('joystick').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }); }
+    const hold = async on => { // walk forward: W, or the joystick pushed up on the iPad
+      if (!ipad) { if (on) await page.keyboard.down('w'); else await page.keyboard.up('w'); return; }
+      if (on) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: joy[0], y: joy[1], id: 1 }] }); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: joy[0], y: joy[1] - 60, id: 1 }] }); }
+      else await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    if (want('squeeze') || ipad) {
+      // a cracked rock as Scalewing: walking into the crack it bumps its head and is told why; after 3 tries the card; Swap to Antsy; it squashes flat and crawls in
+      const c = S.c, front = [c.x + 2.5, c.g + 1, c.z + 7.5, 0, -0.1];
+      await tries(page, front, 3);
+      await put(page, ...front); await frames(page, 2);
+      await hold(true); await page.waitForTimeout(ipad ? 2500 : 2000); await hold(false); await frames(page, 2);
+      const why = await toasts(page), n0 = await need(page);
+      t.ok(/too narrow/i.test(why) && n0.card && n0.text === 'Needs Squeeze' && n0.lit === 'Antsy', `${tag}a cracked rock as Scalewing: walking into the crack says why ("${why}"); after 3 tries "${n0.text}" with ${n0.lit} lit`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}crack-without.png`);
+      await swap();
+      const who = (await be(page)).species;
+      await put(page, ...front); await frames(page, 2);
+      await hold(true);
+      const sq = await poll(page, `g.player.squashed && g.player.pos.z < ${c.z + 6.2} && ({ z: g.player.pos.z, h: g.player.height })`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}crack-squash.png`);
+      const inside = await poll(page, `g.player.pos.z < ${c.z + 4.5} && !g.player.squashed && g.player.pos.z`);
+      await hold(false); await frames(page, 3);
+      t.ok(who === 'antsy' && sq && sq.h < 1 && inside, `${tag}Swap: Antsy (Squeeze) walks into the crack, squashes flat (height ${sq?.h}) and crawls through into the rock (z ${inside?.toFixed?.(1)}), standing up again inside`);
+      if (!ipad) { await page.evaluate(() => { window.pokecraft.player.yaw = Math.PI; window.pokecraft.player.pitch = -0.2; }); await frames(page, 3); await shot(page, 'ways-crack-inside.png'); }
+    }
+    if (want('squeeze') && !ipad) {
+      // the Boulder Run as Antsy: walking straight up, a boulder rolls you back; hiding in each crack until one has rolled by gets you up
+      const R = S.run;
+      await put(page, R.x + 0.5, R.g + 1, R.z1 + 2.5, 0, 0); await frames(page, 2);
+      await page.keyboard.down('w');
+      const bonk = await poll(page, "(g.gymLive.of('part:wobble').info().slip.hits > 0) && 1");
+      await page.keyboard.up('w'); await frames(page, 2);
+      const why2 = await toasts(page);
+      t.ok(bonk && /boulder/i.test(why2), `the Boulder Run: walking straight up, a rolling boulder pushes you back to the foot ("${why2}")`);
+      // a skilled run: the page holds the keys like a child watching the boulders (waysbots.mjs runBrain's rule)
+      const done = await page.evaluate(async ([R]) => {
+        const g = window.pokecraft, M = await import('/src/slipthrough.js'), p = g.player, run = g.world.trials.slip;
+        let mode = 'wait', shot = false;
+        return await new Promise(res => {
+          const t0 = performance.now();
+          const go = () => {
+            const z = p.pos.z, bs = M.bouldersAt(run.t), next = [...R.nooks].sort((a, b) => b - a).find(n => n < z - 0.6) ?? null;
+            const goal = next == null ? R.z0 - 2 : next + 0.5, need = (z - goal) * 2 + 2.5, clear = !bs.some(b => b < z + 0.8 && b > z - need), inNook = p.pos.x < R.x + 0.05;
+            const steer = (x, zz) => { p.yaw = Math.atan2(-(x - p.pos.x), -(zz - p.pos.z)); };
+            p.keys = {};
+            if (mode === 'out') { if (next == null || z > goal + 0.25) { steer(R.x + 0.5, goal); p.keys.KeyW = true; } else mode = 'in'; }
+            if (mode === 'in') { if (p.pos.x > R.x - 0.45) { steer(R.x - 1, p.pos.z); p.keys.KeyW = true; } else mode = 'wait'; }
+            else if (mode === 'wait' && clear) { if (inNook && p.pos.x < R.x + 0.45) { steer(R.x + 1.5, p.pos.z); p.keys.KeyW = true; } else mode = 'out'; }
+            if (!shot && mode === 'wait' && inNook && bs.some(b => Math.abs(b - z) < 2.5)) { shot = true; window.__runShot = true; }
+            if (p.pos.z < R.z0 - 1 || performance.now() - t0 > 400000) { p.keys = {}; res({ z: p.pos.z, hits: run.hits }); } else requestAnimationFrame(go);
+          };
+          go();
+        });
+      }, [R]);
+      await page.evaluate(() => { window.pokecraft.player.pitch = -0.3; }); await frames(page, 3);
+      await shot(page, 'ways-run-top.png');
+      t.ok(done.z < R.z0 - 1, `the Boulder Run as Antsy, hiding in the cracks while the boulders roll by: up to the chest room (z ${done.z.toFixed(1)})`);
+    }
+    if (want('pass') || ipad) {
+      // a pencil house as Antsy: its faded wall stops it and says why; after 3 tries the card; Swap to Flipsy (Pass through) walks through
+      if ((await be(page)).species === 'scalewing') { await swap(); }
+      const h = S.h, front = [h.x + 7.5, h.g + 1, h.z + 2.5, Math.PI / 2, -0.1];
+      await tries(page, front, 3);
+      await put(page, ...front); await frames(page, 2);
+      await hold(true); await page.waitForTimeout(ipad ? 2500 : 2000); await hold(false); await frames(page, 2);
+      const why = await toasts(page), n0 = await need(page);
+      t.ok(/faded pencil wall/i.test(why) && n0.card && n0.text === 'Needs Pass through' && n0.lit === 'Flipsy', `${tag}a pencil house's faded wall stops ${(await be(page)).species} and says why ("${why}"); after 3 tries "${n0.text}" with ${n0.lit} lit`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}faded-without.png`);
+      await swap();
+      const who = (await be(page)).species;
+      await put(page, ...front); await frames(page, 2);
+      await hold(true);
+      const mid = await poll(page, `g.player.pos.x < ${h.x + 5} && g.player.inFaded() && g.player.pos.x`);
+      await shot(page, `ways-${ipad ? 'ipad-' : ''}faded-through.png`);
+      const inside = await poll(page, `g.player.pos.x < ${h.x + 3.5} && g.player.pos.x`);
+      await hold(false); await frames(page, 2);
+      t.ok(who === 'flipsy' && mid && inside, `${tag}Swap: Flipsy (Dream: Pass through) walks into the faded wall, slowly through it (x ${mid?.toFixed?.(1)}) and into the house (x ${inside?.toFixed?.(1)})`);
+    }
+    if (want('pass') && !ipad) {
+      // the Sliding Smudge as Flipsy: walking straight in when the patch comes, the ink closes round you: back to the start
+      const M = S.m;
+      await put(page, (M.x0 + M.x1) / 2 + 0.5, M.g + 1, M.walls[0] - 1.2, 0, 0); await frames(page, 2);
+      await shot(page, 'ways-smudge.png');
+      await page.keyboard.down('w');
+      const inked = await poll(page, `(g.player.pos.z < ${M.walls[0] - 2}) && 1`);
+      await page.keyboard.up('w'); await frames(page, 2);
+      const why = await toasts(page);
+      t.ok(inked && /inked in/i.test(why), `the Sliding Smudge: walking straight in, the patch slides away and the ink closes round you ("${why}"): back to the start`);
+      // a skilled crossing, the page steering like a child following the patch (waysbots.mjs smudgeBrain's rule)
+      const done = await page.evaluate(async ([M]) => {
+        const g = window.pokecraft, SL = await import('/src/slipthrough.js'), p = g.player, run = g.world.trials.slip;
+        return await new Promise(res => {
+          const t0 = performance.now();
+          const go = () => {
+            const T = run.t, z = p.pos.z, k = M.walls.findIndex(z0 => z < z0 + M.thick + 0.8);
+            const steer = (x, zz) => { p.yaw = Math.atan2(-(x - p.pos.x), -(zz - p.pos.z)); };
+            p.keys = {};
+            if (k < 0) { steer((M.x0 + M.x1) / 2 + 0.5, M.room + 1.5); p.keys.KeyW = true; }
+            else {
+              const z0 = M.walls[k], w = 4, c = SL.smudgeAt(k, T) + w / 2, v = (SL.smudgeAt(k, T + 0.15) + w / 2 - c) / 0.15, inWall = z > z0 - 0.35;
+              if (inWall) { steer(c + v * 0.5, z0 + M.thick + 1); p.keys.KeyW = true; }
+              else {
+                const span = M.x1 - M.x0 + 1 - w, edge = v > 0 ? SL.smudgeAt(k, T) - M.x0 : M.x0 + span - SL.smudgeAt(k, T);
+                if (Math.abs(c - p.pos.x) < 0.35 && edge < 1.5) { steer(c + v * 0.4, z0 + 1); p.keys.KeyW = true; }
+                else { const wait = Math.max(M.x0 + 1.3, Math.min(M.x1 - 0.3, v > 0 ? M.x0 + 2 : M.x1 - 1)); if (Math.abs(p.pos.x - wait) > 0.3) { steer(wait, z0 - 1.2); p.keys.KeyW = true; } }
+              }
+              if (inWall && !window.__inWallShot) window.__inWallShot = 1;
+            }
+            if (p.pos.z > M.room + 0.5 || performance.now() - t0 > 500000) { p.keys = {}; res({ z: p.pos.z }); } else requestAnimationFrame(go);
+          };
+          go();
+        });
+      }, [M]);
+      await page.evaluate(() => { window.pokecraft.player.yaw = Math.PI; window.pokecraft.player.pitch = -0.2; }); await frames(page, 3);
+      await shot(page, 'ways-smudge-through.png');
+      t.ok(done.z > M.room + 0.5, `the Sliding Smudge as Flipsy, drifting along with each rubbed-out patch: through all three inked walls to the chest (z ${done.z.toFixed(1)})`);
+    }
+    t.ok(!page.errors.length, `${tag}squeeze / pass: no page errors (${page.errors.join('; ')})`);
     await page.context().close();
   }
 

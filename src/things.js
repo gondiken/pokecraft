@@ -8,11 +8,18 @@
 //     walk: walk into it: Push a boulder or a stone ball, Squeeze into a crack, Pass through a faded pencil wall.
 //   A world lists its things in `world.things` (a Map: cell index -> { kind, ... }); the place rules (earthworks.js ...) keep it up to date.
 // A new kind = one entry here + its rules in its place's file.
+import { B } from './blocks.js';
 export const THINGS = {
   soft: { needs: 'dig', how: 'aim', word: 'Dig!', why: 'Soft earth! Only a digger can dig it.' },
   boulder: { needs: 'push', how: 'walk', why: 'Too heavy! Only a strong creature can push it.' },
   ball: { needs: 'push', how: 'walk', why: 'A stone ball! Too heavy to push.' },
+  thorns: { needs: 'burn', how: 'aim', word: 'Burn!', why: 'Thorns! Only fire can burn them away.' },          // fireice.js
+  icewall: { needs: 'burn', how: 'aim', word: 'Burn!', why: 'Thick ice! Only fire can melt it.' },
+  water: { needs: 'freeze', how: 'aim', word: 'Freeze!', why: '' },                                        // (any water: no line, it is just water)
+  falls: { needs: 'freeze', how: 'aim', word: 'Freeze!', why: 'A waterfall! Only ice could stop it.' },
 };
+// things a block is by itself (no entry in world.things): any water can be frozen
+const BLOCK_THINGS = { [B.WATER]: { kind: 'water' } };
 
 // The first cell the eye's ray meets that is not air (water counts: Freeze aims at it), within `reach`. Pure DDA (world.js raycastVoxel
 // skips water). -> { x, y, z, id, t } or null
@@ -31,7 +38,7 @@ export function aimAt(world, eye, dir, reach = 6) {
   }
   return null;
 }
-export const thingAt = (world, x, y, z) => (world.things && world.inBounds(x, y, z) ? world.things.get(world.index(x, y, z)) ?? null : null);
+export const thingAt = (world, x, y, z) => (world.inBounds(x, y, z) ? world.things?.get(world.index(x, y, z)) ?? BLOCK_THINGS[world.get(x, y, z)] ?? null : null);
 
 // What the big button would do now: the aimed thing an `aim` kind of the creature you are can act on. abilities = yours ([] as yourself).
 // -> { cell, thing, kind, word } or null

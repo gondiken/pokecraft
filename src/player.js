@@ -158,6 +158,8 @@ export class Player {
       }
       if (fl.water && this.pos.y + vy * dt < fl.y) vy = Math.max(vy, (fl.y - this.pos.y) / dt);
       this.vel.y = vy;
+      const spray = this.world.pushAt?.(this.pos); // (chapter 3: the rapids' spray pushes a flier back; undefined in every other world)
+      if (spray) { this.vel.x += spray.x; this.vel.z += spray.z; }
     }
     this.onGround = false;
     this.hitWall = false;
@@ -198,7 +200,7 @@ export class Player {
     if (w.liftAt?.(this.pos)) vy = Math.min(6, vy + DIVE.lift); // bubble columns carry you up
     if (w.sinkAt?.(this.pos)) vy -= DIVE.sink; // the whirlpool pulls you down
     const flow = this.ride?.be ? w.flowAt?.(this.pos) : null; // (chapter 3 step D: the Sluice Gate's bubble jets push a diving creature too)
-    if (flow) { vx += flow.x; vz += flow.z; }
+    if (flow) { vx += flow.x; vz += flow.z; if (flow.y < 0) vy = Math.min(vy, flow.y); }
     this.vel.set(vx, vy, vz);
     this.onGround = false;
     this.hitWall = false;
@@ -340,7 +342,8 @@ export class Player {
       // Swimming into a bank with jump held: a push big enough to climb out onto a bank
       // 1 block above the water (not 2), like Minecraft.
       if (k.Space && this.hitWall && len > 0) this.vel.y = Math.max(this.vel.y, 10);
-      if (flow?.y) this.vel.y = Math.max(this.vel.y, flow.y); // (and lifts a swimmer up the next step)
+      if (flow?.y > 0) this.vel.y = Math.max(this.vel.y, flow.y); // (and lifts a swimmer up the next step)
+      else if (flow?.y < 0) this.vel.y = Math.min(this.vel.y, flow.y); // (chapter 3: a waterfall pushes you down: nobody swims up it)
       if (this.world.liftAt?.(this.pos)) this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T40b: a rope ladder's lift column also holds a swimmer (the Swirl's streams are never over water)
     } else if (this.world.liftAt?.(this.pos)) {
       this.vel.y = Math.min(Math.max(this.vel.y, -2) + 30 * dt, 6); // T38a: an upward river in the Swirl lifts you
@@ -391,6 +394,7 @@ export class Player {
     this.climbing = false;
     if (be.slip) { if (this.onGround) be.slip = false; else return false; }
     if (this.keys.Space) return false; // Jump lets go
+    if (this.world.pushAt?.(this.pos)) return false; // (chapter 3: nobody grips the wet walls in the rapids' spray)
     const w = this.wallsBeside();
     if (!(w.px || w.nx || w.pz || w.nz)) { if (len > 0) this.slipWall = this.noGripAhead(wx, wz); return false; } // (a wall nobody grips: being.js says why, once)
     const into = len > 0 && ((wx > 0.3 && w.px) || (wx < -0.3 && w.nx) || (wz > 0.3 && w.pz) || (wz < -0.3 && w.nz));

@@ -146,7 +146,7 @@ Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlan
 
 *Morning summary* (kept up to date after each pair; the details are under each pair below):
 - Pair 1, **Dig + Push**: built, committed and pushed (spec `ways` parts `bots`, `dig`, `push`, `earthipad`, `pose`; `node tests/waysbots.mjs`).
-- Pair 2, **Burn + Freeze**: not started yet.
+- Pair 2, **Burn + Freeze**: built, committed and pushed (spec `ways` parts `bots`, `burn`, `freeze`, `fireipad`; `node tests/waysbots.mjs`).
 - Pair 3, **Squeeze + Pass through**: not started yet.
 - Also: the action button says nothing at a wall in Wobbleland (it said "Break"); the climbing pose has four gripping paws.
 
@@ -198,6 +198,37 @@ Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlan
 - Questions I would have asked: (1) Is the Warm-or-Cold Dig's 6 tries right, or should a wrong round just go on (no rumble)? (2) Should
   a found key / an opened case give something more than the chest (a star-free prize, a new paint pot)? (3) Mud for soft earth, or a new
   look (a model of loose clods over it)?
+
+*Pair 2: Burn + Freeze* (`src/fireice.js`; built by wayland.js `waysLand`, stepped by `Trials` (`FireIceRun`), drawn by wobblelive.js `FireIce`):
+- Both act on a thing you look at with the big button ("Burn!", "Freeze!"), like Dig. Burn: Fire, Toxic, Drake. Freeze: Ice.
+- **Burn, natural spots:** three **thickets** (hedge huts, a door of brambles: a tangle of dark twigs with red thorns, drawn over the hidden
+  solid block) and two **ice huts** on Slippy Lake's shore (snow, a door of thick ice). Burn = the whole door burns away / melts; it
+  grows back when you are far away. Why lines: "Thorns! Only fire can burn them away." / "Thick ice! Only fire can melt it."
+- **Burn, the deeper place: the Windy Bramble Tunnel** (Bumpy Hills, x 140, z 16): a hedge tunnel with five bramble plugs, a chest at
+  the end. The wind takes turns blowing in and out with a short calm between (a windsock at the mouth, leaves blowing through the tunnel;
+  the flames lean with it). A plug takes 1 s to burn through; if the wind blows at you meanwhile the fire blows back: "Whoosh!", puffed
+  back to the mouth and the plugs grow back. Skill = timing + reading the wind (fire follows the wind: natural). Bots: lighting each plug
+  as the windsock swings in 8/8 · 8/8 (about 20 s), lighting at once (mashing) 0/8 · 0/8, nobody without Burn. First version let a masher
+  win (a press in the calm was free, so mashing lit every plug at the very start of a blow); fixed by the burn time and the plain
+  in / out turns.
+- **Freeze:** any water you look at freezes over (its top, about 2 round where you look); frozen water has no current and you walk on it;
+  it thaws after 25 s or when you are far away. A waterfall freezes as a whole into rough ice (bright bumpy chunks: not the cliff's smooth
+  ice) that a climber can grip.
+- **Freeze, natural spots:** two **rapids** (a stream rushing out of a low stone tunnel, the chest on a ledge at its spring). The current
+  (12 a second) beats a sprinting Swim creature (10.5) and a diving one with kicks; its spray pushes a flier back and nobody grips the
+  wet walls (new world hook `world.pushAt`, read by player.js `fly` and `clingStep`; only Wobbleland has it). Frozen: walk up on the ice.
+- **Freeze, the deeper place: the Frozen Falls** (Bumpy Hills, x 40, z 4; the owner's own example, two abilities together): a waterfall
+  down an ice cliff 18 tall (its top above the cloud layer), a chest on top. Freeze it as an Ice creature, Swap to a climber at once and
+  climb before it melts (8 s, then from the top down: "Drip, drip... the ice is melting!"). A waterfall also pushes a swimmer down
+  (player.js: a downward flow). Bots: freeze + swap + climb 4/4 · 4/4 (6.6 s), a Bug 4/4, waiting 4 s first 0, the freezer or the
+  climber alone 0, a flier 0, a swimmer 0.
+- Decisions: the tunnel's chest and the falls' chest are ordinary chests (no case); freezing works on ANY water (natural: a child will
+  try puddles; it harms nothing, it thaws). Alternatives: Freeze only on marked "running water" (felt arbitrary); Burn on every hedge
+  (the Castle's hedges are not brambles; only thorns burn). The ice cliff stays smooth `ICE` (noGrip), the frozen falls are a hidden
+  solid block under a model, so climbing tells them apart without a new block id.
+- Questions I would have asked: (1) Should Burn also melt Slippy Lake's ice (dangerous: the lake would become water)? I said no: only
+  ice walls. (2) The Frozen Falls lasts 8 s: right for a child on the iPad, or longer on Easy (step E)? (3) Should the brambles hurt
+  (a little push back) or just block?
 
 **Owner 2026-11-15, third play:** "I still can't seem to understand the difference between Bottlet and Blazehound in speed within the
 river" and "I can't seem to switch to Tightropa ... while in the river". Two bugs: (1) in shallow water (the meadow's zigzag river,
