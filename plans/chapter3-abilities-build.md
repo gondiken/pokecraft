@@ -142,6 +142,13 @@ places: the Drip Tower = Climb; Storm Island = Fly (owner: it was "just timing":
 Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlantis; re-run `wobble` cave bots).
 
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
+**Owner 2026-11-15, third play:** "I still can't seem to understand the difference between Bottlet and Blazehound in speed within the
+river" and "I can't seem to switch to Tightropa ... while in the river". Two bugs: (1) in shallow water (the meadow's zigzag river,
+puddles) a swimmer stands on the bottom and walked like everyone (2.4); now a Swim creature is fast in any water (player.js walkStep:
+`BE_SWIM`; bots `runCurrents` "shallow": Bottlet 8.2 vs Blazehound / Tightropa 2.8 blocks in 1.2 s). (2) At a place that needs Swim (the
+Sluice Gate's channel, its "high current" jets) with the hint up, Swap always jumped to the swimmer, so it went Bottlet <-> Blazehound
+and never reached Tightropa; now it jumps to a creature that can ONCE per visit, then goes round all three (spec `ways` places).
+
 **Owner 2026-11-14/15, second play:** climbing worked on the crags "but not on the outer wall of the drip tower. that was strange";
 "why flyers can't fly above a certain level ... illogical" (in chapters 1-2 a flier "almost teleported right 6 block above the tall surface
 they were flying over"); "I couldn't figure out swimming at all. I used Bottlet vs Tightropa and both had the same speed in that high current

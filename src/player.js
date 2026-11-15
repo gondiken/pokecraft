@@ -301,6 +301,7 @@ export class Player {
     let jump = 8.6;
     if (r && r.kind === 'land' && !water) { speed = (sprint ? r.sprint : r.speed) * analog; jump = r.jump; }
     if (water && !(r && r.kind === 'water')) speed *= 0.55 * (this.world.dragAt?.(this.pos) ?? 1); // (chapter 3 step D: kelp drags a paddler too)
+    if (water && this.be?.swim && !(r && r.kind === 'water')) speed = (sprint ? 6.2 : 4.3) * analog * BE_SWIM * (this.world.dragAt?.(this.pos) ?? 1); // (owner 2026-11-15: a Swim creature is fast in shallow water too, where it wades)
     // T27: a water creature floats on top of the water; on land it is slow.
     const surf = r && r.kind === 'water' ? this.waterTop() : null;
     if (r && r.kind === 'water') {

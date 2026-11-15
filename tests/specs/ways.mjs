@@ -68,7 +68,7 @@ export default async function ({ browser, base, t }) {
     const { runTower, runSluice, runSpots, runCurrents } = await import('../waysbots.mjs');
     const a = await runTower(), ss = await runSluice(), sp = await runSpots(), cu = await runCurrents();
     const c = k => cu.out[k + '@60'];
-    t.ok(!cu.problems.length, `currents, 3 s upstream at 60 · 20 fps: Bottlet ${c('river.bottlet')} / ${c('lead.bottlet')} / ${c('cave.bottlet')} (river / lake lead / cave river), Tidalord ${c('lead.tidalord')}; no Swim: Tightropa ${c('river.tightropa.sprint')} / ${c('lead.tightropa.sprint')} / ${c('cave.tightropa.sprint')} sprinting, on foot ${c('lead.onFoot')} ${cu.problems.join('; ')}`);
+    t.ok(!cu.problems.length, `shallow water, 1.2 s: Bottlet ${c('shallow.bottlet')}, Blazehound ${c('shallow.blazehound')}, Tightropa ${c('shallow.tightropa')}; currents, 3 s upstream at 60 · 20 fps: Bottlet ${c('river.bottlet')} / ${c('lead.bottlet')} / ${c('cave.bottlet')} (river / lake lead / cave river), Tidalord ${c('lead.tidalord')}; no Swim: Tightropa ${c('river.tightropa.sprint')} / ${c('lead.tightropa.sprint')} / ${c('cave.tightropa.sprint')} sprinting, on foot ${c('lead.onFoot')} ${cu.problems.join('; ')}`);
     const g = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`, f = k => g(a.out, k);
     t.ok(!a.problems.length, `the Drip Tower (Climb), the real Player at 60 · 20 fps: just climbing ${f('naiveClimb')}, skilled ${f('skilledClimb')} (${a.out['skilledClimb@60'].median} s), a Bug (${a.out.bug}) ${f('bugSkilled')}; without Climb: flier ${f('flier')} (top ${a.out['flier@60'].top} < roof ${a.out.roof}), Boomwing ${f('boomwing')}, walker ${f('walker')}, on foot ${f('onFoot')}, flier -> walker ${f('mixFlierWalker')}, walker -> flier ${f('mixWalkerFlier')}, glide from the hill ${f('hillGlider')} (top ${a.out['hillGlider@60'].top}), the ice outside ${f('iceWall')} ${a.problems.join('; ')}`);
     t.ok(!ss.problems.length, `the Sluice Gate (Swim), 60 · 20 fps: straight through the kelp ${g(ss.out, 'sluice.naive')}, skilled ${g(ss.out, 'sluice.skilled')} (${ss.out['sluice.skilled@60'].times} s), Bubble ${g(ss.out, 'sluice.bubble')}; without Swim: walker ${g(ss.out, 'sluice.walker')}, on foot ${g(ss.out, 'sluice.onFoot')}, flier ${g(ss.out, 'sluice.flier')}, climber ${g(ss.out, 'sluice.climber')}, flier -> walker ${g(ss.out, 'sluice.mixFlierWalker')} ${ss.problems.join('; ')}`);
@@ -238,6 +238,10 @@ export default async function ({ browser, base, t }) {
     await put(page, 128.5, 11, 93.5, 0, -0.2); await frames(page, 6);
     const g1 = await live();
     t.ok((await be(page)).species === 'tidalord' && g1.gateShut === 0, `F: Tidalord; on the gold plate the gate is open (${g1.gateShut} rows shut)`);
+    // after that one jump Swap goes round all three as always (owner 2026-11-15: it went back and forth between two and never reached the third)
+    const round = [];
+    for (let i = 0; i < 3; i++) { await page.keyboard.press('KeyF'); await frames(page, 3); round.push((await be(page)).species); }
+    t.ok(round.join() === 'sproutle,scalewing,tidalord', `at the Sluice Gate, after the jump to Tidalord, F goes round all three: ${round.join(' -> ')}`);
     await shot(page, 'ways-sluice-with.png');
     // a run with real keys (W + Shift held, Jump kicks under water): the page only turns the head toward each spot, like a child steering
     await page.evaluate(() => {

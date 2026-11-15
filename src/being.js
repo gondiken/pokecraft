@@ -34,6 +34,7 @@ export function createBeing(game, { scene }) {
   const cam = { pos: new THREE.Vector3(), ok: false };
   const climb = { k: 0, t: 0, dir: [0, -1] }; // (the climbing pose, eased)
   const hints = new NeedHints(); // (the hint only after trying)
+  let jumped = null; // (the place where Swap already jumped to a creature that can)
   const tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
   const squad = () => (game.party || []).filter(c => c && SPECIES[c.species]).filter(c => squadOf([c]).length).slice(0, BODY.squad); // (the fight's three)
   const here = () => PREVIEW && !!game.started && !!game.world?.realm?.be;
@@ -88,7 +89,10 @@ export function createBeing(game, { scene }) {
     // Swap (F / the Place button): the next of your three. At a place that needs an ability you lack, straight to the next one that has it.
     next() {
       const n = squad().length, need = being.need();
-      const to = need?.shown ? swapTo(need, idx, n) : null; // (only once the hint shows: before that Swap goes round as always)
+      // only once the hint shows, and only ONE jump to a creature that can; after it Swap goes round all three as always (owner 2026-11-15:
+      // at the Sluice Gate it went back and forth between Bottlet and Blazehound and never reached Tightropa)
+      const to = need?.shown && jumped !== need.place.id ? swapTo(need, idx, n) : null;
+      if (to != null) jumped = need.place.id;
       if (to != null) { me = false; return being.become(to); }
       if (idx == null) return being.toggle();
       if (n < 2) { toast('Only one creature in your team!'); return false; }
@@ -106,14 +110,14 @@ export function createBeing(game, { scene }) {
       return n;
     },
     hints,
-    swapTarget() { const n = being.need(); return n?.shown ? swapTo(n, idx, squad().length) : null; }, // (the card marks it)
+    swapTarget() { const n = being.need(); return n?.shown && jumped !== n.place.id ? swapTo(n, idx, squad().length) : null; }, // (the card marks it)
     setView(v, say = true) { view = v === 'eyes' ? 'eyes' : 'behind'; store.set(view); if (say) toast(view === 'eyes' ? '🎥 In its eyes' : '🎥 Behind it'); being.refresh(); },
     toggleView() { being.setView(view === 'eyes' ? 'behind' : 'eyes'); },
     // after Player.update and the live parts (main.js): the body's rules
     step(dt) {
       t += dt;
       being.refresh();
-      if (here() && game.player && game.playing?.() !== false) { const n = being.need(); hints.step(n?.place ?? null, !!n?.has, dt); } // (tries count as yourself too)
+      if (here() && game.player && game.playing?.() !== false) { const n = being.need(); hints.step(n?.place ?? null, !!n?.has, dt); if (!n) jumped = null; } // (tries count as yourself too; leaving a place lets Swap jump there again)
       if (!here()) { if (idx != null) { drop(); idx = null; body = null; } me = false; return; } // left chapter 3's land: yourself again
       if (idx == null) { // creature mode by itself in chapter 3's lands, unless you chose to be you
         if (!me && !game.inBattle && !game.scribble?.fighting && game.playing?.() && squad().length) being.become(Math.min(last ?? 0, squad().length - 1), !game.toldOnce?.has('be:first'));

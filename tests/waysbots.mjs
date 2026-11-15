@@ -189,6 +189,13 @@ export async function runCurrents({ fps = [60, 20] } = {}) {
     if (swims && up < 5) problems.push(`${where}: ${name} (Swim) swam only ${up} upstream in 3 s at ${f} fps`);
     if (!swims && up > 1) problems.push(`${where}: ${name} (no Swim) got ${up} upstream in 3 s at ${f} fps`);
   }
+  // shallow water (the meadow's zigzag river, one block deep, no current): a swimmer is fast there too (owner 2026-11-15)
+  for (const [name, body] of [['bottlet', bodies.bottlet], ['blazehound', bodies.walker], ['tightropa', bodies.tightropa]]) for (const f of fps) {
+    let x1 = 161.5;
+    play(E, { body, start: [161.5, top(161, 174) + 0.2, 174.5], yaw: Math.PI / 2, phase: 0, fps: f, secs: 1.2, brain: () => ({ KeyW: true }), won: (E2) => { x1 = E2.player.pos.x; return false; } });
+    out[`shallow.${name}@${f}`] = +(161.5 - x1).toFixed(1);
+  }
+  for (const f of fps) if (!(out[`shallow.bottlet@${f}`] > 1.8 * out[`shallow.blazehound@${f}`])) problems.push(`shallow: Bottlet ${out[`shallow.bottlet@${f}`]} not clearly faster than Blazehound ${out[`shallow.blazehound@${f}`]} at ${f} fps`);
   return { problems, out };
 }
 
