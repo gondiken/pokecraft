@@ -162,6 +162,8 @@ export function createBeing(game, { scene }) {
         const up = k * (0.12 + Math.abs(Math.sin(climb.t * CLIMB_POSE.rate)) * 0.06);
         model.position.set(p.pos.x + climb.dir[0] * 0.14 * k, p.pos.y + (fit?.lift ?? 0) + up, p.pos.z + climb.dir[1] * 0.14 * k);
         grips(p, k, behind && !fighting);
+        const sq = fit?.scale ?? 1; // (chapter 3: squashed flat in a crack, slipthrough.js / player.js)
+        if (p.squashed) model.scale.set(sq * 1.3, sq * 0.42, sq * 1.3); else model.scale.setScalar(sq);
         animateModel(model, t + climb.t * 1.5, Math.hypot(p.vel.x, p.vel.z) > 0.5 || p.ride?.kind === 'sky' || moving);
       }
       crosshair(behind && !fighting);

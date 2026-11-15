@@ -144,11 +144,44 @@ Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlan
 **D. One real place per ability, two at a time** (Bumpy Hills, then the next regions)
 **Overnight 2026-11-15/16** (built while the owner slept; nothing waited for an answer: every choice below is mine and can be changed)
 
-*Morning summary* (kept up to date after each pair; the details are under each pair below):
-- Pair 1, **Dig + Push**: built, committed and pushed (spec `ways` parts `bots`, `dig`, `push`, `earthipad`, `pose`; `node tests/waysbots.mjs`).
-- Pair 2, **Burn + Freeze**: built, committed and pushed (spec `ways` parts `bots`, `burn`, `freeze`, `fireipad`; `node tests/waysbots.mjs`).
-- Pair 3, **Squeeze + Pass through**: not started yet.
-- Also: the action button says nothing at a wall in Wobbleland (it said "Break"); the climbing pose has four gripping paws.
+*Morning summary* (the details, alternatives and questions are under each pair below):
+- **Built, all ?preview, all in Wobbleland, each pair committed and pushed (session branch, main, clever-ritchie):** Dig + Push
+  (`src/earthworks.js`), Burn + Freeze (`src/fireice.js`), Squeeze + Pass through (`src/slipthrough.js`), on one shared layer
+  `src/things.js` (what an ability acts on, how, and the one "why" line). Each ability has natural spots all over Wobbleland (21 in all:
+  6 mounds, 3 boulder caves, 3 thickets, 2 ice huts, 2 rapids, 3 cracked rocks, 3 pencil houses, each with a chest) and one deeper
+  skill place (6): the Warm-or-Cold Dig, the Ball Garden, the Windy Bramble Tunnel, the Frozen Falls (Freeze + Climb), the Boulder Run,
+  the Sliding Smudge. Every place is a NEED_PLACES entry, so the "Needs X" card comes after 3 tries and Swap jumps to a creature that can.
+- **How you act:** aim + the big button for things you work on (Dig! / Burn! / Freeze!, the word only when you can), walking into it
+  for things you move or go through (Push, Squeeze, Pass). Never a hold. Nothing breaks in Wobbleland any more on the button ("Break" is
+  gone there). The climbing pose has four gripping paws on limbs that reach up in turn (screenshots from behind, the side, 3/4).
+- **Bots** (the real Player in Node, 60 · 20 fps; `node tests/waysbots.mjs`, all green):
+
+  | Place | skilled | naive with the ability | without it (every other kind, swap mixes) |
+  | --- | --- | --- | --- |
+  | Mounds (Dig) | every mound | (no skill) | never |
+  | Warm-or-Cold Dig | 8/8 · 8/8 (2-5 digs) | at random 1/12 · 0/12, 0/8 · 0/8 | 0 |
+  | Boulder caves (Push) | every cave (about 1 s) | (no skill) | never |
+  | Ball Garden | the 5 pushes (9 s) | straight at the holes: never | never |
+  | Thickets, ice huts (Burn) | every door | (no skill) | never |
+  | Windy Bramble Tunnel | 8/8 · 8/8 (about 20 s) | lit at once: 0/8 · 0/8 | 0 |
+  | Rapids (Freeze) | both (3-4 s) | (no skill) | never: not a sprinting or diving swimmer, a flier, a climber |
+  | Frozen Falls (Freeze + Climb) | 4/4 · 4/4 (6.6 s), a Bug too | waiting 4 s: 0 | the freezer or climber alone, flier, swimmer: 0 |
+  | Cracked rocks (Squeeze) | every rock (Tiny, Slime, Paper) | (no skill) | never |
+  | Boulder Run | 6/6 · 6/6 (9-15 s) | straight up: 0 | ghost, climber, flier: 0 |
+  | Pencil houses (Pass through) | every house (Dream, Ghost) | (no skill) | never (a climber finds no grip) |
+  | Sliding Smudge | 6/6 · 6/6 (18-28 s) | straight in: 0 | 0 |
+
+- **Spec `ways`:** new parts `dig`, `push`, `earthipad`, `burn`, `freeze`, `fireipad`, `squeeze`, `pass`, `slipipad`, `pose` (real keys,
+  an emulated iPad with real touches, screenshots in `plans/chapter3/dig-push/`, `burn-freeze/`, `squeeze-pass/`), and `bots` runs all
+  ten bot groups. Re-run green: `ways` (all parts), `wobble` (land, ride, look, springs, river, lake, cave, ice), `abilities`, `touch`,
+  `riding` (alone), `jump`, `water`.
+- **What did not work at first** (all fixed): a masher won the Bramble Tunnel (a press in the calm was free); the Warm-or-Cold Dig was
+  9 x 9 and its middle was out of reach (now 7 x 7); the Frozen Falls' pool stood a climber in water (climbing never starts in water);
+  an ice hut sat on the lake's glide-test lane; the frozen falls were invisible (instanced meshes culled by stale bounds); the draw-call
+  budget went to 414 of 400 (models far away are now hidden, the brambles are one merged mesh: 397 after all three pairs).
+- **Questions for the morning** (my picks are in place; each pair's section has more): the colour spots in grey Bumpy Hills; the Warm-or-
+  Cold Dig's 5 wrong holes; Burn not melting the lake; the Frozen Falls' 8 s; squeezing into ANY one-high gap; the Sliding Smudge being
+  the hardest (a slower patch on Easy?). Step E (kind help, Easy / Hard, the guide and "Where to go") is still to do for all six places.
 
 *Decisions for all pairs (how an ability acts on a thing):*
 - **Aim + the big button for things you work on (Dig, and later Burn, Freeze); walking into it for things you move or go through (Push,
@@ -229,6 +262,37 @@ Glowcap Caves: `groundrules.js` `Dark.BRIGHT` reads Glow (adds Rainbow and Atlan
 - Questions I would have asked: (1) Should Burn also melt Slippy Lake's ice (dangerous: the lake would become water)? I said no: only
   ice walls. (2) The Frozen Falls lasts 8 s: right for a child on the iPad, or longer on Easy (step E)? (3) Should the brambles hurt
   (a little push back) or just block?
+
+*Pair 3: Squeeze + Pass through* (`src/slipthrough.js`; built by wayland.js `waysLand`, stepped by `Trials` (`SlipRun`), drawn by
+wobblelive.js `SlipPieces`; the body rules are in player.js):
+- Both are walking into it, no button (like Push). Squeeze: Slime, Paper, Tiny, Doodle. Pass through: Ghost, Dream, Portal, Mirror.
+- **Squeeze = a crack one block high.** A squishy creature walking into a gap its feet fit in but its head does not squashes flat
+  (player.js `trySquash`: height 0.8, eye 0.55, crawling at 0.45 x speed; drawn squashed, being.js) and stands up again where there is
+  room. Anyone else bumps its head ("Too narrow! Only a squishy creature fits in a crack."). A squishy climber (Slime) squeezes into a
+  crack instead of climbing over it (`gapAhead`). Decision: it works on ANY one-high gap in Wobbleland (natural, "anywhere"), not only
+  marked cracks; the cracks are drawn with jagged ink lines round them so they read as cracks in stone.
+- **Squeeze, natural spots:** three **cracked rocks** (6 x 6 rock lumps, a room with a chest, the only way in a crack at the foot).
+- **Squeeze, the deeper place: the Boulder Run** (Bumpy Hills' north-east, x 212, z 4..34): a stone corridor too low to fly over
+  anything, a chest at the top; stone wheels roll down it every 3.2 s; one that meets you rolls you back to the foot ("Bonk!"). Long
+  low cracks in its west wall are the only places to duck into. Skill = timing (wait in a crack, dash to the next when the next wheel is
+  far enough). Bots: hiding in the cracks 4/4 · 4/4 (9-15 s), Wobblock (Slime) too, walking straight up 0, nobody without Squeeze (a
+  ghost, a climber, a flier) gets up.
+- **Pass through = faded pencil walls**, solid to everyone else (`world.fadedAt`, read by player.js `collides`); a ghostly creature wades
+  through them slowly (0.3 x speed, also flying) and nobody can grip one (a climber finds nothing to hold).
+- **Pass, natural spots:** three **pencil houses** (planks; one wall half erased: faint paper with broken pencil lines, a chest inside).
+- **Pass, the deeper place: the Sliding Smudge** (Bumpy Hills, x 108..120, z 98..129, in a roofed hall): three thick inked walls,
+  solid even to ghosts, each with a rubbed-out patch sliding along it (a pink eraser rides on top). Inside a wall you are slow, and if
+  the patch slides off you the ink closes round you: "Inked in!", back to the start. Skill = dexterity (track a moving target while
+  you cross). Bots: drifting with each patch 4/4 · 4/4 (18-28 s; Wispurr flying too), walking straight in when the patch comes 0,
+  nobody without Pass. The first bot only aimed a little sideways and was always left behind: it must move sideways as fast as the
+  patch.
+- Decisions: Squeeze is ANY one-high gap, Pass ONLY faded walls (the owner's rule: "Pass through: only faded, half-erased pencil walls").
+  The Boulder Run's boulders are drawn stone wheels judged by a closed form (no blocks move). Alternatives I dropped: breathing cracks
+  that open and shut (holding W against a shut one is already the right timing: a naive kid wins), a re-inking pencil (the same timing
+  idea as the Boulder Run).
+- Questions I would have asked: (1) Squeezing anywhere: fine, or only marked cracks? (2) The Sliding Smudge is the hardest of the six
+  deeper places for a child (18-28 s for a perfect bot); slower patches on Easy (step E)? (3) Should a ghost be able to pass the pencil
+  house walls from inside out too (it can now)?
 
 **Owner 2026-11-15, third play:** "I still can't seem to understand the difference between Bottlet and Blazehound in speed within the
 river" and "I can't seem to switch to Tightropa ... while in the river". Two bugs: (1) in shallow water (the meadow's zigzag river,

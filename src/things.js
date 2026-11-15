@@ -17,6 +17,8 @@ export const THINGS = {
   icewall: { needs: 'burn', how: 'aim', word: 'Burn!', why: 'Thick ice! Only fire can melt it.' },
   water: { needs: 'freeze', how: 'aim', word: 'Freeze!', why: '' },                                        // (any water: no line, it is just water)
   falls: { needs: 'freeze', how: 'aim', word: 'Freeze!', why: 'A waterfall! Only ice could stop it.' },
+  crack: { needs: 'squeeze', how: 'walk', why: 'Too narrow! Only a squishy creature fits in a crack.' },                  // slipthrough.js
+  faded: { needs: 'pass', how: 'walk', why: 'A faded pencil wall! Only a ghostly creature can pass through it.' },
 };
 // things a block is by itself (no entry in world.things): any water can be frozen
 const BLOCK_THINGS = { [B.WATER]: { kind: 'water' } };

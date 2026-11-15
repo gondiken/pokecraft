@@ -10,7 +10,8 @@
 import { B, WOOL } from './blocks.js';
 import { areaFlat, waysLand, Trials } from './wayland.js';
 import { sluiceFlow, sluiceDrag } from './sluice.js';
-import { rapidsFlow, fallsFlow } from './fireice.js'; // step D: Freeze's rapids and falls // step D: the Swim place // chapter 3: the first way places (the Drip Tower, a Climb place; step C) in Bumpy Hills
+import { rapidsFlow, fallsFlow } from './fireice.js'; // step D: Freeze's rapids and falls
+import { fadedAt } from './slipthrough.js'; // step D: Pass through's faded walls // step D: the Swim place // chapter 3: the first way places (the Drip Tower, a Climb place; step C) in Bumpy Hills
 import { kit, buildWayBack } from './picturelands.js';
 import { GROUND } from './groundrules.js'; // Slippy Lake: the ice's rule (the player and the fight both ask world.groundAt)
 
@@ -372,7 +373,8 @@ export function wobbleLand(world) {
   world.people.push({ name: 'The Wizard', title: 'The Wizard · Inkpot Camp', colors: { skin: 0xf2c9a0, hair: 0xf4f0ea, shirt: 0x6a3ab8, pants: 0x4a2a90 }, look: 'wizard',
     line: "The Scribble is in my very first drawing. Let's colour it back in! Grey means the Scribble.", pos: [WIZARD_SPOT.x, BASE + 1, WIZARD_SPOT.z], heading: Math.PI });
   world.flowAt = p => riverFlow(p) ?? lakeFlow(p) ?? caveFlow(p) ?? sluiceFlow(p) ?? rapidsFlow(world, p) ?? fallsFlow(world, p); // (step D: the Sluice Gate's bubble jets; Freeze's rapids and falls)
-  world.pushAt = p => rapidsFlow(world, p); // (step D: the rapids' spray pushes a flier back too, and nobody grips the wet walls there)
+  world.pushAt = p => rapidsFlow(world, p);
+  world.fadedAt = (x, y, z) => fadedAt(world, x, y, z, world.slipT ?? 0); // (step D: a ghostly creature walks through these solid cells; slipthrough.js SlipRun keeps world.slipT) // (step D: the rapids' spray pushes a flier back too, and nobody grips the wet walls there)
   world.dragAt = p => sluiceDrag(p);
   world.flyCeiling = FLY_CEILING; // owner 2026-11-14: wings go up to the cloud layer, the same height everywhere (player.js fly; never 6 over whatever is under you here) // step D: the Sluice Gate's kelp slows a swimmer (player.js; undefined in every other world)
   world.skyDim = (x, y, z) => (y < CAVE.roof && inCave(x, z) ? CAVE.dim : 1); // Glowcap Caves: no daylight inside (world.skyAt: the blocks' baked light; main.js: underground) // the floating river's current, the lake's chutes and leads (player.js)

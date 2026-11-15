@@ -1,6 +1,7 @@
 // First-person player: movement, gravity, swimming and AABB collision.
 import * as THREE from 'three';
 import { B, BLOCKS } from './blocks.js';
+import { SQUASH, FADE } from './slipthrough.js'; // chapter 3 step D: squashing flat (Squeeze), wading through faded walls (Pass through)
 import { GRAV, FRAMES, toWorld, toLocal, upOf, downOf, turnTo, frameOf, frameWorld, centreOf, pivot } from './gravity.js'; // Cube Planets: the frame branch (only a world with gravityAt)
 
 // T41: dive swimming (only in a world's `deepWater`, the Sunken City's crater): you swim where you look, up and down too; Jump kicks
@@ -94,7 +95,7 @@ export class Player {
     for (let x = x0; x <= x1; x++)
       for (let y = y0; y <= y1; y++)
         for (let z = z0; z <= z1; z++)
-          if (this.world.isSolid(x, y, z)) return true;
+          if (this.world.isSolid(x, y, z) && !(this.be?.pass && this.world.fadedAt?.(x, y, z))) return true; // (chapter 3: a ghostly creature walks through faded pencil walls)
           else if (this.ride && this.world.fenced(x, y, z)) { this.fenceHit = this.world.fenceAt(x, y, z); return true; }
     return false;
   }
@@ -145,8 +146,9 @@ export class Player {
     if (r.landing) {
       this.vel.set(0, -r.glide, 0);
     } else {
-      this.vel.x = wx * r.speed * analog;
-      this.vel.z = wz * r.speed * analog;
+      const wade = this.be?.pass && this.inFaded() ? FADE.wade : 1; // (chapter 3: a ghostly flier wades through a faded wall too)
+      this.vel.x = wx * r.speed * analog * wade;
+      this.vel.z = wz * r.speed * analog * wade;
       let vy = up ? r.climb : -(r.drift ?? 0);
       if (this.pos.y >= cap) {
         if (up) this.capped = true;
@@ -222,6 +224,7 @@ export class Player {
     const next = this.pos.clone();
     next[axis] += delta;
     if (!this.collides(next)) { this.pos.copy(next); return; }
+    if (axis !== 'y' && this.be?.squeeze && !this.squashed && this.trySquash(next)) { this.pos.copy(next); return; } // (chapter 3: a squishy creature squashes flat into a low crack)
     const hw = this.halfW;
     if (axis === 'y') {
       if (delta < 0) { this.pos.y = Math.floor(next.y) + 1; this.onGround = true; }
@@ -236,6 +239,31 @@ export class Player {
     }
   }
 
+  // chapter 3 step D (slipthrough.js): squashing flat to fit a gap one block high, and back up when there is room
+  trySquash(next) {
+    const h = this.height; this.height = SQUASH.h;
+    if (this.collides(next)) { this.height = h; return false; }
+    this.eye0 ??= this.eye; this.squashed = true; this.eye = SQUASH.eye; return true;
+  }
+  unsquash(force = false) {
+    if (!this.squashed) return;
+    this.height = 1.8;
+    if (!force && this.collides(this.pos)) { this.height = SQUASH.h; return; }
+    this.squashed = false; this.eye = this.eye0 ?? this.eye;
+  }
+  // inside a faded wall (a ghostly creature wading through it)
+  inFaded() {
+    const w = this.world, p = this.pos, y = Math.floor(p.y + 0.5);
+    if (!w.fadedAt) return false;
+    for (const dx of [-this.halfW, this.halfW]) for (const dz of [-this.halfW, this.halfW]) { const x = Math.floor(p.x + dx), z = Math.floor(p.z + dz); if (w.isSolid(x, y, z) && w.fadedAt(x, y, z)) return true; }
+    return false;
+  }
+  // a gap ahead your feet fit in but your head does not (a crack): a squishy climber squeezes in instead of climbing
+  gapAhead(wx, wz) {
+    const x = Math.floor(this.pos.x + wx * (this.halfW + 0.1)), z = Math.floor(this.pos.z + wz * (this.halfW + 0.1)), y = Math.floor(this.pos.y + 0.1), w = this.world;
+    return !w.isSolid(x, y, z) && w.isSolid(x, y + 1, z);
+  }
+
   get inWater() {
     return this.world.get(Math.floor(this.pos.x), Math.floor(this.pos.y + 0.5), Math.floor(this.pos.z)) === B.WATER;
   }
@@ -248,6 +276,7 @@ export class Player {
       if (!this.keys.Space) { this.keys.Space = true; try { return this.update(dt); } finally { this.keys.Space = false; } }
     }
     if (this.world.gravityAt) return this.carry ? this.frameCarry(dt) : this.frameUpdate(dt); // Cube Planets: down is wherever your feet are (only a world with gravityAt)
+    if (this.squashed) this.unsquash(); // (chapter 3: back up as soon as there is room)
     const k = this.keys;
     let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
     let s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
@@ -312,6 +341,8 @@ export class Player {
       else speed *= r.landSlow;
     }
     if (this.speedCap != null) speed = Math.min(speed, this.speedCap); // off a race track: a walk at most
+    if (this.squashed) speed *= SQUASH.crawl; // (chapter 3: squashed flat in a crack you crawl)
+    if (this.be?.pass && this.inFaded()) speed *= FADE.wade; // (chapter 3: wading through a faded pencil wall)
     this.vel.x = wx * speed;
     this.vel.z = wz * speed;
     // chapter 3 (Slippy Lake): the ground's own rule (groundrules.js; world.groundAt is undefined in every other world): on ice you
@@ -378,7 +409,7 @@ export class Player {
   // until you stand again. -> false when the ordinary step should run instead (no wall, or standing and not pushing into one).
   wallsBeside() {
     const hw = this.halfW + 0.06, p = this.pos, w = this.world, y0 = Math.floor(p.y + 0.05), y1 = Math.floor(p.y + this.height - 0.05);
-    const grip = (x, z) => { for (let y = y0; y <= y1; y++) if (w.isSolid(x, y, z) && !BLOCKS[w.get(x, y, z)]?.noGrip) return true; return false; }; // (ice and clouds: noGrip)
+    const grip = (x, z) => { for (let y = y0; y <= y1; y++) if (w.isSolid(x, y, z) && !BLOCKS[w.get(x, y, z)]?.noGrip && !w.fadedAt?.(x, y, z)) return true; return false; }; // (ice and clouds: noGrip; chapter 3: nothing to hold on a faded pencil wall)
     const col = (x, za, zb) => { for (let z = Math.floor(za); z <= Math.floor(zb); z++) if (grip(x, z)) return true; return false; };
     const row = (z, xa, xb) => { for (let x = Math.floor(xa); x <= Math.floor(xb); x++) if (grip(x, z)) return true; return false; };
     const i = this.halfW - 0.01;
@@ -395,6 +426,7 @@ export class Player {
     if (be.slip) { if (this.onGround) be.slip = false; else return false; }
     if (this.keys.Space) return false; // Jump lets go
     if (this.world.pushAt?.(this.pos)) return false; // (chapter 3: nobody grips the wet walls in the rapids' spray)
+    if (be.squeeze && len > 0 && this.gapAhead(wx, wz)) return false; // (chapter 3: a squishy climber squeezes into a crack instead of climbing over it)
     const w = this.wallsBeside();
     if (!(w.px || w.nx || w.pz || w.nz)) { if (len > 0) this.slipWall = this.noGripAhead(wx, wz); return false; } // (a wall nobody grips: being.js says why, once)
     const into = len > 0 && ((wx > 0.3 && w.px) || (wx < -0.3 && w.nx) || (wz > 0.3 && w.pz) || (wz < -0.3 && w.nz));

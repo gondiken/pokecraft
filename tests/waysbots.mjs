@@ -26,7 +26,12 @@
 //   freeze: every rapids: a freezer (Frostling) freezes the water ahead and walks up, nobody else (not a swimmer sprinting or diving,
 //          not a flier in the spray, not a climber on the wet walls); the Frozen Falls: freeze it, swap to a climber at once, climb:
 //          always; waiting 4 s first: never; the freezer or the climber alone, a flier, a swimmer: never.
-//   node tests/waysbots.mjs     (exit 1 on a problem; WAYS_PLACES=tower,sluice,spots,currents,dig,push,burn,freeze, WAYS_ROWS=...)
+//   squeeze (step D's fourth pair): every cracked rock: a squishy creature (Antsy, Tiny; Wobblock, Slime: it squeezes instead of climbing;
+//          Origrane, Paper) squashes flat through the crack, nobody else; the Boulder Run: hiding in the cracks as the boulders roll by
+//          always gets up, walking straight up never, nobody without Squeeze.
+//   pass:  every pencil house: a ghostly creature (Flipsy, Dream; Wispurr, Ghost) walks through its faded wall, nobody else (a climber
+//          finds nothing to hold on it); the Sliding Smudge: drifting with each patch always, walking straight in never.
+//   node tests/waysbots.mjs     (exit 1 on a problem; WAYS_PLACES=tower,sluice,spots,currents,dig,push,burn,freeze,squeeze,pass, WAYS_ROWS=...)
 import { wobbleEnv } from './wobblenode.mjs';
 
 const RIDE = { // riding.js RIDE
@@ -244,13 +249,6 @@ export async function runTower({ tries = 12, fps = [60, 20] } = {}) {
   return { problems, out };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots,currents,dig,push,burn,freeze').split(',');
-  const runs = { tower: runTower, sluice: runSluice, spots: runSpots, currents: runCurrents, dig: runDig, push: runPush, burn: runBurn, freeze: runFreeze }, problems = [];
-  for (const w of which) { const a = await runs[w](); for (const [k, v] of Object.entries(a.out)) console.log(k.padEnd(24), JSON.stringify(v)); problems.push(...a.problems); }
-  if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
-  console.log('ok');
-}
 
 /* ---- step D's second pair: Dig (soft earth: the mounds, the Warm-or-Cold Dig) and Push (the boulder caves, the Ball Garden) ---- */
 // what pressing the big button does in the game (wobblelive.js Earthworks.use / hit): the aimed soft earth is dug if you can
@@ -584,29 +582,29 @@ export async function slipSetup() {
 // walk straight at a crack or a faded wall and on into the room behind
 const intoBrain = (to) => (E) => { steer(E.player, to[0], to[1]); return { KeyW: true }; };
 // the Boulder Run: wait in a crack until a boulder has rolled past and the next is far, then dash to the next crack (or the top)
+export { runBrain as __runBrain };
 function runBrain(skilled) {
   return (E, tr, t, st) => {
     const p = E.player, R = E.w.slip.run, z = p.pos.z, bs = E.M.bouldersAt(tr.slip.t);
     if (!skilled) { steer(p, R.x + 0.5, R.z0 - 2); return { KeyW: true }; }
-    const stops = [...R.nooks].sort((a, b) => b - a), next = stops.find(n => n < z - 0.6) ?? null; // (the next crack north of you)
-    const inNook = p.pos.x < R.x + 0.05;
-    const goal = next == null ? R.z0 - 2 : next + 0.5, need = (z - goal) * 2 + 2.5; // (you and a boulder close in at twice your speed)
-    const clear = !bs.some(b => b < z + 0.8 && b > z - need);
-    if (st.mode === 'out') { // dashing to the next crack; at it, step in
-      if (next == null || z > goal + 0.25) { steer(p, R.x + 0.5, goal); if (next == null) return { KeyW: true }; return { KeyW: true }; }
-      st.mode = 'in';
-    }
-    if (st.mode === 'in' || (inNook && !clear)) { // into the crack (west) and wait there
-      if (!inNook || p.pos.x > R.x - 0.45) { steer(p, R.x - 1, p.pos.z); st.mode = 'in'; if (p.pos.x < R.x - 0.4) st.mode = 'wait'; return { KeyW: true }; }
-      st.mode = 'wait'; return {};
-    }
-    if (st.mode === 'wait' || st.mode == null) {
-      if (!clear) { if (st.mode == null && p.pos.z > R.z1 + 1) return {}; return {}; }
-      if (inNook && p.pos.x < R.x + 0.45) { steer(p, R.x + 1.5, p.pos.z); return { KeyW: true }; } // (out of the crack, east)
-      st.mode = 'out'; st.from = next; return {};
-    }
-    return {};
+    return runStep(p, R, bs, st);
   };
+}
+// one step of the skilled Boulder Run (also the spec's page-driven run): wait (at the foot or in a crack) until no boulder can meet you
+// before the next crack, dash there, step into it, wait again; the last dash goes to the top
+export function runStep(p, R, bs, st) {
+  const z = p.pos.z, steerTo = (x, zz) => { p.yaw = Math.atan2(-(x - p.pos.x), -(zz - p.pos.z)); };
+  st.mode ??= 'wait';
+  if (st.mode === 'wait') {
+    const next = [...R.nooks].sort((a, b) => b - a).find(n => n + 1 < z - 0.6), goal = next == null ? R.z0 - 2 : next + 1;
+    const need = (z - goal) * 2 + 3; // (you and a boulder close in at twice your speed)
+    if (bs.some(b => b < z + 1 && b > z - need)) return {};
+    st.goal = goal; st.last = next == null; st.mode = p.pos.x < R.x + 0.1 ? 'exit' : 'out';
+  }
+  if (st.mode === 'exit') { if (p.pos.x < R.x + 0.45) { steerTo(R.x + 1.5, z); return { KeyW: true }; } st.mode = 'out'; }
+  if (st.mode === 'out') { if (st.last || z > st.goal + 0.15) { steerTo(R.x + 0.5, st.goal - (st.last ? 0 : 0)); return { KeyW: true }; } st.mode = 'in'; }
+  if (st.mode === 'in') { if (p.pos.x > R.x - 0.4) { steerTo(R.x - 1, z); return { KeyW: true }; } st.mode = 'wait'; }
+  return {};
 }
 export async function runSqueeze({ fps = [60, 20], tries = 6 } = {}) {
   const E = await slipSetup(), problems = [], out = {}, B = E.B, S = E.w.slip;
@@ -632,6 +630,7 @@ export async function runSqueeze({ fps = [60, 20], tries = 6 } = {}) {
 }
 // the Sliding Smudge: skilled: in front of each wall, wait for the smudge to come by at the start of its slide, step in at it and drift
 // along with it while crossing; naive: walk straight through when the smudge comes
+export { smudgeBrain as __smudgeBrain };
 function smudgeBrain(skilled) {
   return (E, tr, t, st) => {
     const p = E.player, M = E.w.slip.smudge, T = tr.slip.t, z = p.pos.z;
@@ -640,23 +639,22 @@ function smudgeBrain(skilled) {
     const z0 = M.walls[k], c = E.M.smudgeAt(k, T) + M.w / 2, inWall = z > z0 - 0.35;
     if (!skilled) { steer(p, p.pos.x, z0 + M.thick + 2); return { KeyW: true }; }
     const c2 = E.M.smudgeAt(k, T + 0.15) + M.w / 2, v = (c2 - c) / 0.15;
-    if (!inWall) { // wait in front of the wall, beside where the smudge is heading, then step in as its middle reaches you
-      const span = M.x1 - M.x0 + 1 - M.w, edge = v > 0 ? E.M.smudgeAt(k, T) - M.x0 : M.x0 + span - E.M.smudgeAt(k, T); // (how far into its slide it is)
-      const want = Math.abs(c - p.pos.x) < 0.35 && edge < 1.5;
-      steer(p, want ? c : p.pos.x, z0 + 2); p.yaw = Math.atan2(-(c - p.pos.x) * 0.0, 1) ; // (face north)
-      if (want) { steer(p, c + v * 0.4, z0 + 1); return { KeyW: true }; }
-      const wait = Math.max(M.x0 + 1.3, Math.min(M.x1 - 0.3, v > 0 ? M.x0 + 2 : M.x1 - 1)); // (stand near the end it starts its slide from)
-      if (Math.abs(p.pos.x - wait) > 0.3) { steer(p, wait, z0 - 1.2); return { KeyW: true }; }
+    const sp = (p.ride?.speed ?? 4.3) * E.M.FADE.wade, track = () => { const vx = Math.max(-sp * 0.9, Math.min(sp * 0.9, v + (c - p.pos.x) * 2.5)), vz = Math.sqrt(Math.max(0.05, sp * sp - vx * vx)); steer(p, p.pos.x + vx, z + vz); };
+    if (!inWall) { // wait in front of the wall near the end its patch starts its slide from, step in as its middle reaches you
+      const span = M.x1 - M.x0 + 1 - M.w, edge = v > 0 ? E.M.smudgeAt(k, T) - M.x0 : M.x0 + span - E.M.smudgeAt(k, T);
+      if (Math.abs(c - p.pos.x) < 0.4 && edge < 2) { track(); return { KeyW: true }; }
+      const wait = v > 0 ? M.x0 + 2 : M.x1 - 1;
+      if (Math.abs(p.pos.x - wait) > 0.3 || z < z0 - 1.6) { steer(p, wait, z0 - 1.2); return { KeyW: true }; }
       return {};
     }
-    steer(p, c + v * 0.5, z0 + M.thick + 1); return { KeyW: true }; // (inside: aim along with the smudge's middle as it slides)
+    track(); return { KeyW: true }; // (inside: keep in the patch's middle as it slides, go on as fast as that leaves you)
   };
 }
 export async function runPass({ fps = [60, 20], tries = 6 } = {}) {
   const E = await slipSetup(), problems = [], out = {}, B = E.B, S = E.w.slip;
   const bodies = { passer: [B.passer, 'always'], ghost: [B.ghost, 'always'], squeezer: [B.squeezer, 'never'], digger: [B.digger, 'never'], pusher: [B.pusher, 'never'], burner: [B.burner, 'never'], climber: [B.climber, 'never'], flier: [B.flier, 'never'], onFoot: [null, 'never'] };
   for (const c of S.pencil) for (const [name, [body, want]] of Object.entries(bodies)) for (const f of fps) {
-    const res = play(E, { body, start: [c.x + 7.5, c.g + 1, c.z + 2.5], yaw: Math.PI / 2, phase: 0, fps: f, secs: 10, brain: intoBrain([c.x + 1.5, c.z + 2.5]), won: E2 => { const q = E2.player.pos; return q.x > c.x + 1 && q.x < c.x + 3.6 && q.z > c.z + 1 && q.z < c.z + 4; } });
+    const res = play(E, { body, start: [c.x + 7.5, c.g + 1, c.z + 2.5], yaw: Math.PI / 2, phase: 0, fps: f, secs: 10, brain: intoBrain([c.x + 1.5, c.z + 2.5]), won: E2 => { const q = E2.player.pos; return q.x > c.x + 1 && q.x < c.x + 3.6 && q.z > c.z + 1 && q.z < c.z + 4 && q.y < c.g + 2.5; } }); // (inside, not on its roof)
     out[`${c.id}.${name}@${f}`] = res.won;
     if (want === 'always' && !res.won) problems.push(`${c.id}: ${name} at ${f} fps did not pass through`);
     if (want === 'never' && res.won) problems.push(`${c.id}: ${name} at ${f} fps got in`);
@@ -673,4 +671,12 @@ export async function runPass({ fps = [60, 20], tries = 6 } = {}) {
     if (want === 'never' && wins) problems.push(`the Sliding Smudge: ${name} at ${f} fps got through ${wins}/${tries}`);
   }
   return { problems, out };
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const which = (process.env.WAYS_PLACES || 'tower,sluice,spots,currents,dig,push,burn,freeze,squeeze,pass').split(',');
+  const runs = { tower: runTower, sluice: runSluice, spots: runSpots, currents: runCurrents, dig: runDig, push: runPush, burn: runBurn, freeze: runFreeze, squeeze: runSqueeze, pass: runPass }, problems = [];
+  for (const w of which) { const a = await runs[w](); for (const [k, v] of Object.entries(a.out)) console.log(k.padEnd(24), JSON.stringify(v)); problems.push(...a.problems); }
+  if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
+  console.log('ok');
 }

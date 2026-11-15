@@ -18,6 +18,7 @@ import { LiveCells } from './livecells.js';
 import { SLUICE, buildSluice, SluiceRun } from './sluice.js'; // step D: the Swim place
 import { FLATS, earthLand, EarthRun } from './earthworks.js'; // step D's second pair: Dig and Push
 import { FLATS2, fireIceLand, FireIceRun } from './fireice.js'; // step D's third pair: Burn and Freeze
+import { FLATS3, slipLand, SlipRun } from './slipthrough.js'; // step D's fourth pair: Squeeze and Pass through
 
 export const SHAFT = {
   x: 140, z: 112,             // the shaft's cell; the tower is the 5 x 5 round it
@@ -62,7 +63,7 @@ export const NEED_PLACES = [
 export const AREA = { x0: 72, x1: 150, z0: 80, z1: 133, edge: 6 }; // flattened to the plain ground (heightAt), the edge eases into the hills
 
 // How flat the area makes (x, z): 1 inside, easing to 0 over AREA.edge outside it (wobbleland.js heightAt).
-const BOXES = [AREA, ...FLATS, ...FLATS2]; // (the Dig and Push places' flat ground too, earthworks.js FLATS)
+const BOXES = [AREA, ...FLATS, ...FLATS2, ...FLATS3]; // (the Dig and Push places' flat ground too, earthworks.js FLATS)
 export function areaFlat(x, z) {
   let best = 0;
   for (const A of BOXES) {
@@ -99,6 +100,7 @@ export function waysLand(world, put, heightAt) {
   const places = NEED_PLACES.slice();
   places.push(...earthLand(world, put, heightAt)); // step D: soft earth (Dig), boulders and the Ball Garden (Push)
   places.push(...fireIceLand(world, put, heightAt)); // step D: brambles and ice doors (Burn), water and the Frozen Falls (Freeze)
+  places.push(...slipLand(world, put, heightAt)); // step D: cracks and the Boulder Run (Squeeze), faded walls and the Sliding Smudge (Pass through)
   for (const q of SPOTS) {
     const g = heightAt(q.x + 0.5, q.z + 0.5) ?? 10, { cells, top } = spotCells(q, g);
     for (const [x, y, z, id] of cells) put(x, y, z, id);
@@ -120,6 +122,7 @@ export class Trials {
     const live = (x, y, z, id) => (this.cells ? this.cells.want(x, y, z, id) : world.setLive?.(x, y, z, id));
     this.earth = world?.earth ? new EarthRun(world, live) : null;
     this.fireice = world?.fireice ? new FireIceRun(world, live) : null;
+    this.slip = world?.slip ? new SlipRun(world) : null;
   }
   step(p, dt) {
     this.t += dt; this.p = p;
@@ -138,6 +141,7 @@ export class Trials {
     ev.push(...this.sluice.step(p, dt));
     if (this.earth) ev.push(...this.earth.step(p, dt));
     if (this.fireice) ev.push(...this.fireice.step(p, dt));
+    if (this.slip) ev.push(...this.slip.step(p, dt));
     this.cells?.flush();
     return ev;
   }

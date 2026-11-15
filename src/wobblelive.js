@@ -17,6 +17,7 @@ import { SLUICE, rowsShut } from './sluice.js'; // step D: the Sluice Gate (Swim
 import { THINGS, aimedThing, thingAt } from './things.js'; // step D: things an ability acts on (Dig, Push...)
 import { DIG_PATCH } from './earthworks.js';
 import { windAt, RAPID, WIND } from './fireice.js';
+import { bouldersAt, smudgeAt } from './slipthrough.js';
 import { ABILITIES } from './abilities.js';
 import { abilitySvg } from './abilityicons.js';
 import { portrait } from './ui.js';
@@ -625,6 +626,79 @@ class FireIce extends Piece {
   info() { return this.run ? { fireice: this.run.info() } : {}; }
 }
 
+// Step D's fourth pair (slipthrough.js): Squeeze and Pass through. The rules are wayland.js Trials' SlipRun (and player.js: squashing
+// flat, ghostly creatures through faded cells); this draws the cracks (jagged ink lines round each one, one instanced mesh), the Boulder
+// Run's rolling stone wheels, the pencil houses' half-erased walls (faint paper with broken pencil lines) and the Sliding Smudge's inked
+// walls with their rubbed-out patch and the pink eraser on top.
+function pencilTexture(faded) { // a canvas: hatching (dark, inked) or a few broken pencil lines on paper (faded)
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = faded ? 'rgba(248,244,232,0.35)' : '#3a3a44'; g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = faded ? 'rgba(90,90,100,0.55)' : 'rgba(20,20,26,0.9)'; g.lineWidth = faded ? 1.5 : 2;
+  for (let i = -64; i < 64; i += faded ? 14 : 7) { if (faded && (i / 14) % 2) g.setLineDash([6, 7]); else g.setLineDash(faded ? [10, 5] : []); g.beginPath(); g.moveTo(i, 64); g.lineTo(i + 64, 0); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+class SlipPieces extends Piece {
+  constructor(scene) {
+    super(scene);
+    this.run = this.s.world.trials?.slip ?? null;
+    const S = this.s.world.slip;
+    if (!this.run || !S) return;
+    const d = this.dummy = new THREE.Object3D();
+    // cracks: a few jagged ink strokes round each crack's opening (the cracked rocks' and the Boulder Run's)
+    const cracks = [];
+    for (const c of S.cracked) cracks.push({ x: c.x + 2.5, y: c.g + 1, z: c.z + 6.01, nx: 0, nz: 1 });
+    for (const n of S.run?.nooks ?? []) cracks.push({ x: S.run.x + 0.01, y: S.run.g + 1, z: n + 1, nx: 1, nz: 0 });
+    const strokes = [[-0.55, 0.15, 0.6, 0.4], [0.5, 0.2, -0.5, 0.5], [-0.35, 1.05, 0.9, 0.2], [0.3, 1.2, -0.7, 0.35], [-0.05, 1.45, 0.2, 0.3], [0.62, 0.7, 1.2, 0.3]]; // [u, v, angle, length] round the opening
+    this.cracks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.06, 0.03), new THREE.MeshBasicMaterial({ color: 0x1a1a22 }), cracks.length * strokes.length);
+    cracks.forEach((c, i) => strokes.forEach(([u, v, a, l], k) => {
+      d.position.set(c.x + (c.nz ? u : 0), c.y + v, c.z + (c.nx ? u : 0)); d.rotation.set(0, c.nx ? Math.PI / 2 : 0, a); d.scale.set(l, 1, 1); d.updateMatrix(); this.cracks.setMatrixAt(i * strokes.length + k, d.matrix);
+    }));
+    this.group.add(this.cracks);
+    // the Boulder Run: stone wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.92, 0.92, 0.8, 16), wheelMat = new THREE.MeshLambertMaterial({ color: 0x8f8a80, flatShading: true });
+    this.wheels = [0, 1, 2].map(() => { const m = new THREE.Mesh(wheelGeo, wheelMat); m.rotation.z = Math.PI / 2; const g = new THREE.Group(); g.add(m); const ink = new THREE.Mesh(wheelGeo, new THREE.MeshBasicMaterial({ color: 0x2a2018, side: THREE.BackSide })); ink.rotation.z = Math.PI / 2; ink.scale.setScalar(1.06); g.add(ink); g.visible = false; this.group.add(g); return g; });
+    // the pencil houses' faded walls: faint paper with broken pencil lines
+    const fadedMat = new THREE.MeshBasicMaterial({ map: pencilTexture(true), transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff });
+    this.fadedWalls = S.pencil.map(c => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 3), fadedMat); m.position.set(c.x + 4.5, c.g + 2, c.z + 2.5); this.group.add(m); return { m, x: c.x, z: c.z }; });
+    // the Sliding Smudge: each wall drawn as an inked part each side of its rubbed-out patch, and a pink eraser riding along its top
+    const M = S.smudge, inkMat = new THREE.MeshLambertMaterial({ map: pencilTexture(false), color: 0xffffff }), box = new THREE.BoxGeometry(1, 3, M.thick);
+    this.smudge = M.walls.map(z0 => {
+      const a = new THREE.Mesh(box, inkMat), b = new THREE.Mesh(box, inkMat), f = new THREE.Mesh(box, fadedMat);
+      const er = new THREE.Mesh(new THREE.BoxGeometry(M.w * 0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color: 0xf08aa8 }));
+      this.group.add(a, b, f, er); return { z0, a, b, f, er };
+    });
+    this.group.traverse(o => { if (o.isInstancedMesh) o.frustumCulled = false; });
+  }
+  update(dt) {
+    if (!this.run) return;
+    const S = this.s.world.slip, R = this.run, me = this.game.player?.pos, far = (x, z) => !me || Math.hypot(me.x - x, me.z - z) > FAR;
+    for (const e of R.log.splice(0)) this.event(e);
+    const run = S.run, bs = run ? (far(run.x, (run.z0 + run.z1) / 2) ? [] : bouldersAt(R.t)) : [];
+    this.wheels.forEach((g, i) => { g.visible = i < bs.length; if (g.visible) { g.position.set(run.x + 0.5, run.g + 1.95, bs[i]); g.children.forEach(m => { m.rotation.x = bs[i] * 1.1; }); } });
+    for (const w of this.fadedWalls) w.m.visible = !far(w.x, w.z);
+    const M = S.smudge, mv = !far((M.x0 + M.x1) / 2, (M.z0 + M.room) / 2);
+    this.smudge.forEach(({ z0, a, b, f, er }, k) => {
+      for (const o of [a, b, f, er]) o.visible = mv;
+      if (!mv) return;
+      const s0 = smudgeAt(k, R.t), x0 = M.x0, x1 = M.x1 + 1, y = M.g + 2.5, z = z0 + M.thick / 2;
+      const la = Math.max(0.001, s0 - x0), lb = Math.max(0.001, x1 - (s0 + M.w));
+      a.scale.x = la; a.position.set(x0 + la / 2, y, z);
+      b.scale.x = lb; b.position.set(x1 - lb / 2, y, z);
+      f.scale.x = M.w; f.position.set(s0 + M.w / 2, y, z);
+      er.position.set(s0 + M.w / 2, M.g + 4.3, z); er.rotation.z = Math.sin(R.t * 9) * 0.08;
+    });
+  }
+  event(e) {
+    const snd = n => { try { sound.play(n); } catch { /* optional */ } };
+    if (e.kind === 'squished') { snd('pumpkinsplat'); whyOnce(this.game, 'boulder-run', 'Bonk! A rolling boulder pushed you back. Hide in a crack!'); }
+    else if (e.kind === 'inked') { snd('twinplop'); whyOnce(this.game, 'inked', 'Inked in! Stay inside the rubbed-out patch.'); }
+    else if (e.kind === 'heavy') whyOnce(this.game, e.what);
+  }
+  info() { return this.run ? { slip: this.run.info() } : {}; }
+}
+
 // Step C (plans/chapter3-abilities-build.md): "the world says what it needs", generic: it reads `game.being.need()` (abilityplaces.js:
 // `world.needPlaces` data + the tries) and knows no ability. Owner 2026-11-14: discovery first, so nothing shows at first (no badges,
 // no button word: abilities work with the usual controls). Only after a few tries without what a place needs (being.js `hints`) a card
@@ -700,7 +774,7 @@ class CloudLayer extends Piece {
   info() { return { cloudLayer: this.mesh ? this.mesh.count : 0, cloudsHidden: this.hidden?.size ?? 0 }; }
 }
 
-const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, Earthworks, FireIce, NeedPlaces, CloudLayer];
+const PIECES = [Puffs, PaintPots, Bugs, Springs, RiverMarks, HillStrings, Skids, NightEyes, Fireflies, WayPlaces, Earthworks, FireIce, SlipPieces, NeedPlaces, CloudLayer];
 
 export class WobbleLive {
   constructor(game, part) {

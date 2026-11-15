@@ -19,10 +19,10 @@ export const BODY = {
   side: 0.7,    // Climb: sideways along a wall, x your walking speed
 };
 
-// A creature's body: { species, type, abilities, fly, swim, climb }. `sp` = SPECIES[id], `c` = the creature (the guardian needs its design).
+// A creature's body: { species, type, abilities, fly, swim, climb, squeeze, pass }. `sp` = SPECIES[id], `c` = the creature (the guardian needs its design).
 export function bodyOf(species, sp, c = null) {
   const abilities = abilitiesOf(sp, c);
-  return { species, type: sp?.type ?? null, abilities, fly: abilities.includes('fly'), swim: abilities.includes('swim'), climb: abilities.includes('climb') };
+  return { species, type: sp?.type ?? null, abilities, fly: abilities.includes('fly'), swim: abilities.includes('swim'), climb: abilities.includes('climb'), squeeze: abilities.includes('squeeze'), pass: abilities.includes('pass') }; // (step D: squeeze = squash flat into a crack, pass = through faded pencil walls: player.js)
 }
 
 // A wall on both sides of the body's middle (a shaft, a doorway, a tunnel): the camera goes into the creature's eyes there.

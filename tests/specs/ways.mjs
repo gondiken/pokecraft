@@ -64,6 +64,7 @@ const need = page => page.evaluate(() => {
 // walk into a place's box `n` times (from far away), so the place counts n tries
 const tries = async (page, at, n) => { for (let i = 0; i < n; i++) { await put(page, 60.5, 11, 60.5); await frames(page, 2); await put(page, ...at); await frames(page, 3); } };
 const poll = (page, fn) => page.evaluate(src => new Promise(res => { const f = new Function('g', 'return ' + src), t0 = performance.now(); const go = () => { const g = window.pokecraft; let v = null; try { v = f(g); } catch { v = null; } if (v || performance.now() - t0 > 200000) res(v); else requestAnimationFrame(go); }; go(); }), fn);
+const toastLike = (page, re) => page.evaluate(src => new Promise(res => { const r = new RegExp(src, 'i'), t0 = performance.now(), seen = []; const go = () => { const s = [...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join(' | '); if (s && !seen.includes(s)) seen.push(s); if (r.test(s) || performance.now() - t0 > 60000) res(seen.join(' | ')); else requestAnimationFrame(go); }; go(); }), re.source); // (waits for a line: the slow test browser may need a while)
 const toasts = page => page.evaluate(() => [...(window.pokecraft.ui.toastBox?.children || [])].map(e => e.textContent).join(' | '));
 
 export default async function ({ browser, base, t }) {
@@ -86,7 +87,7 @@ export default async function ({ browser, base, t }) {
     t.ok(seen.join() === 'false,false,true' && h2.tries(place.id) === 2 && !h3.shown(place.id), `the hint only after trying: walking in 3 times (${seen}), or staying ${P.HINT.every} s counts one more (${h2.tries(place.id)} after 10 s), never while you can (${h3.tries(place.id)})`);
     const E = await (await import('../wobblenode.mjs')).wobbleEnv(), ids = E.w.needPlaces.map(q => `${q.id}:${q.needs}`).join();
     const ceil = E.w.flyCeiling, tops = E.w.spots.map(q => `${q.id} ${q.top}`).join(', ');
-    t.ok(ids === 'sluice:swim,driptower:climb,mound1:dig,mound2:dig,mound3:dig,mound4:dig,mound5:dig,mound6:dig,cave1:push,cave2:push,cave3:push,digpatch:dig,garden:push,thicket1:burn,thicket2:burn,thicket3:burn,icehut1:burn,icehut2:burn,rapids1:freeze,rapids2:freeze,tunnel:burn,falls:freeze,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
+    t.ok(ids === 'sluice:swim,driptower:climb,mound1:dig,mound2:dig,mound3:dig,mound4:dig,mound5:dig,mound6:dig,cave1:push,cave2:push,cave3:push,digpatch:dig,garden:push,thicket1:burn,thicket2:burn,thicket3:burn,icehut1:burn,icehut2:burn,rapids1:freeze,rapids2:freeze,tunnel:burn,falls:freeze,cracked1:squeeze,cracked2:squeeze,cracked3:squeeze,pencil1:pass,pencil2:pass,pencil3:pass,run:squeeze,smudge:pass,crag1:climb,crag2:climb,crag3:climb,cloud1:fly,cloud2:fly,cloud3:fly,cloud4:fly' && ceil === 26 && W.SHAFT.roof + 1 > ceil && E.w.spots.every(q => q.kind === 'crag' ? q.top > ceil + 1 : q.top <= ceil && q.top - (q.ground + 1) > 2.3),
       `places: ${ids}; one cloud ceiling for wings at ${ceil} (owner 2026-11-14): the crags' tops and the tower's roof (${W.SHAFT.roof + 1}) above it, the clouds under it and over a jump (${tops})`);
     const TH = await import('../../src/things.js'), K = await import('../../src/earthworks.js'), A = await import('../../src/abilities.js');
     const kinds = Object.entries(TH.THINGS).map(([k, v]) => `${k}:${v.needs}/${v.how}`).join(' ');
@@ -97,7 +98,11 @@ export default async function ({ browser, base, t }) {
   }
 
   if (want('bots')) {
-    const { runTower, runSluice, runSpots, runCurrents, runDig, runPush, runBurn, runFreeze } = await import('../waysbots.mjs');
+    const { runTower, runSluice, runSpots, runCurrents, runDig, runPush, runBurn, runFreeze, runSqueeze, runPass } = await import('../waysbots.mjs');
+    const sq = await runSqueeze(), pa = await runPass(), g3 = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
+    const in3 = (o, re) => [...new Set(Object.entries(o).filter(([k, v]) => re.test(k) && v).map(([k]) => k.split('.')[1].split('@')[0]))].join(', ');
+    t.ok(!sq.problems.length, `Squeeze, 60 · 20 fps: into the cracked rocks: ${in3(sq.out, /^cracked/)} only; the Boulder Run: hiding in the cracks ${g3(sq.out, 'run.skilled')} (${sq.out['run.skilled@60'].times} s), Wobblock ${g3(sq.out, 'run.slime')}, straight up ${g3(sq.out, 'run.naive')}, without Squeeze ${g3(sq.out, 'run.ghost')} / ${g3(sq.out, 'run.climber')} / ${g3(sq.out, 'run.flier')} ${sq.problems.join('; ')}`);
+    t.ok(!pa.problems.length, `Pass through, 60 · 20 fps: into the pencil houses: ${in3(pa.out, /^pencil/)} only; the Sliding Smudge: drifting with the patch ${g3(pa.out, 'smudge.skilled')} (${pa.out['smudge.skilled@60'].times} s), Wispurr ${g3(pa.out, 'smudge.ghost')}, straight in ${g3(pa.out, 'smudge.naive')}, without Pass ${g3(pa.out, 'smudge.squeezer')} / ${g3(pa.out, 'smudge.flier')} ${pa.problems.join('; ')}`);
     const bu = await runBurn(), fr = await runFreeze(), g2 = (o, k) => `${o[k + '@60'].wins}/${o[k + '@60'].of} · ${o[k + '@20'].wins}/${o[k + '@20'].of}`;
     const in2 = (o, re) => [...new Set(Object.entries(o).filter(([k, v]) => re.test(k) && v).map(([k]) => k.split('.')[1].split('@')[0]))].join(', ');
     t.ok(!bu.problems.length, `Burn, 60 · 20 fps: into the thickets and ice huts: ${in2(bu.out, /^(thicket|icehut)/)} only; the Windy Bramble Tunnel: lit as the windsock swings in ${g2(bu.out, 'tunnel.skilled')} (${bu.out['tunnel.skilled@60'].times} s), lit at once ${g2(bu.out, 'tunnel.naive')}, without Burn ${g2(bu.out, 'tunnel.freezer')} / ${g2(bu.out, 'tunnel.climber')} ${bu.problems.join('; ')}`);
@@ -569,8 +574,8 @@ export default async function ({ browser, base, t }) {
       const c = S.c, front = [c.x + 2.5, c.g + 1, c.z + 7.5, 0, -0.1];
       await tries(page, front, 3);
       await put(page, ...front); await frames(page, 2);
-      await hold(true); await page.waitForTimeout(ipad ? 2500 : 2000); await hold(false); await frames(page, 2);
-      const why = await toasts(page), n0 = await need(page);
+      await hold(true); const why = await toastLike(page, /too narrow/); await hold(false); await frames(page, 2);
+      const n0 = await need(page);
       t.ok(/too narrow/i.test(why) && n0.card && n0.text === 'Needs Squeeze' && n0.lit === 'Antsy', `${tag}a cracked rock as Scalewing: walking into the crack says why ("${why}"); after 3 tries "${n0.text}" with ${n0.lit} lit`);
       await shot(page, `ways-${ipad ? 'ipad-' : ''}crack-without.png`);
       await swap();
@@ -595,19 +600,20 @@ export default async function ({ browser, base, t }) {
       t.ok(bonk && /boulder/i.test(why2), `the Boulder Run: walking straight up, a rolling boulder pushes you back to the foot ("${why2}")`);
       // a skilled run: the page holds the keys like a child watching the boulders (waysbots.mjs runBrain's rule)
       const done = await page.evaluate(async ([R]) => {
-        const g = window.pokecraft, M = await import('/src/slipthrough.js'), p = g.player, run = g.world.trials.slip;
-        let mode = 'wait', shot = false;
+        const g = window.pokecraft, M = await import('/src/slipthrough.js'), p = g.player, run = g.world.trials.slip, st = {};
+        const step = (bs) => { // (tests/waysbots.mjs runStep, the same rule)
+          const z = p.pos.z, steerTo = (x, zz) => { p.yaw = Math.atan2(-(x - p.pos.x), -(zz - p.pos.z)); };
+          st.mode ??= 'wait';
+          if (st.mode === 'wait') { const next = [...R.nooks].sort((a, b) => b - a).find(n => n + 1 < z - 0.6), goal = next == null ? R.z0 - 2 : next + 1, need = (z - goal) * 2 + 3; if (bs.some(b => b < z + 1 && b > z - need)) return {}; st.goal = goal; st.last = next == null; st.mode = p.pos.x < R.x + 0.1 ? 'exit' : 'out'; }
+          if (st.mode === 'exit') { if (p.pos.x < R.x + 0.45) { steerTo(R.x + 1.5, z); return { KeyW: true }; } st.mode = 'out'; }
+          if (st.mode === 'out') { if (st.last || z > st.goal + 0.15) { steerTo(R.x + 0.5, st.goal); return { KeyW: true }; } st.mode = 'in'; }
+          if (st.mode === 'in') { if (p.pos.x > R.x - 0.4) { steerTo(R.x - 1, z); return { KeyW: true }; } st.mode = 'wait'; }
+          return {};
+        };
         return await new Promise(res => {
           const t0 = performance.now();
           const go = () => {
-            const z = p.pos.z, bs = M.bouldersAt(run.t), next = [...R.nooks].sort((a, b) => b - a).find(n => n < z - 0.6) ?? null;
-            const goal = next == null ? R.z0 - 2 : next + 0.5, need = (z - goal) * 2 + 2.5, clear = !bs.some(b => b < z + 0.8 && b > z - need), inNook = p.pos.x < R.x + 0.05;
-            const steer = (x, zz) => { p.yaw = Math.atan2(-(x - p.pos.x), -(zz - p.pos.z)); };
-            p.keys = {};
-            if (mode === 'out') { if (next == null || z > goal + 0.25) { steer(R.x + 0.5, goal); p.keys.KeyW = true; } else mode = 'in'; }
-            if (mode === 'in') { if (p.pos.x > R.x - 0.45) { steer(R.x - 1, p.pos.z); p.keys.KeyW = true; } else mode = 'wait'; }
-            else if (mode === 'wait' && clear) { if (inNook && p.pos.x < R.x + 0.45) { steer(R.x + 1.5, p.pos.z); p.keys.KeyW = true; } else mode = 'out'; }
-            if (!shot && mode === 'wait' && inNook && bs.some(b => Math.abs(b - z) < 2.5)) { shot = true; window.__runShot = true; }
+            p.keys = step(M.bouldersAt(run.t));
             if (p.pos.z < R.z0 - 1 || performance.now() - t0 > 400000) { p.keys = {}; res({ z: p.pos.z, hits: run.hits }); } else requestAnimationFrame(go);
           };
           go();
@@ -623,8 +629,8 @@ export default async function ({ browser, base, t }) {
       const h = S.h, front = [h.x + 7.5, h.g + 1, h.z + 2.5, Math.PI / 2, -0.1];
       await tries(page, front, 3);
       await put(page, ...front); await frames(page, 2);
-      await hold(true); await page.waitForTimeout(ipad ? 2500 : 2000); await hold(false); await frames(page, 2);
-      const why = await toasts(page), n0 = await need(page);
+      await hold(true); const why = await toastLike(page, /faded pencil wall/); await hold(false); await frames(page, 2);
+      const n0 = await need(page);
       t.ok(/faded pencil wall/i.test(why) && n0.card && n0.text === 'Needs Pass through' && n0.lit === 'Flipsy', `${tag}a pencil house's faded wall stops ${(await be(page)).species} and says why ("${why}"); after 3 tries "${n0.text}" with ${n0.lit} lit`);
       await shot(page, `ways-${ipad ? 'ipad-' : ''}faded-without.png`);
       await swap();
@@ -640,12 +646,12 @@ export default async function ({ browser, base, t }) {
     if (want('pass') && !ipad) {
       // the Sliding Smudge as Flipsy: walking straight in when the patch comes, the ink closes round you: back to the start
       const M = S.m;
-      await put(page, (M.x0 + M.x1) / 2 + 0.5, M.g + 1, M.walls[0] - 1.2, 0, 0); await frames(page, 2);
+      await put(page, (M.x0 + M.x1) / 2 + 0.5, M.g + 1, M.walls[0] - 1.2, Math.PI, 0); await frames(page, 2); // (facing the walls: +z)
       await shot(page, 'ways-smudge.png');
       await page.keyboard.down('w');
-      const inked = await poll(page, `(g.player.pos.z < ${M.walls[0] - 2}) && 1`);
+      const why = await toastLike(page, /inked in/);
+      const inked = await poll(page, `(g.player.pos.z < ${M.walls[0] - 1}) && 1`);
       await page.keyboard.up('w'); await frames(page, 2);
-      const why = await toasts(page);
       t.ok(inked && /inked in/i.test(why), `the Sliding Smudge: walking straight in, the patch slides away and the ink closes round you ("${why}"): back to the start`);
       // a skilled crossing, the page steering like a child following the patch (waysbots.mjs smudgeBrain's rule)
       const done = await page.evaluate(async ([M]) => {
@@ -659,11 +665,12 @@ export default async function ({ browser, base, t }) {
             if (k < 0) { steer((M.x0 + M.x1) / 2 + 0.5, M.room + 1.5); p.keys.KeyW = true; }
             else {
               const z0 = M.walls[k], w = 4, c = SL.smudgeAt(k, T) + w / 2, v = (SL.smudgeAt(k, T + 0.15) + w / 2 - c) / 0.15, inWall = z > z0 - 0.35;
-              if (inWall) { steer(c + v * 0.5, z0 + M.thick + 1); p.keys.KeyW = true; }
+              const sp = (p.ride?.speed ?? 4.3) * SL.FADE.wade, track = () => { const vx = Math.max(-sp * 0.9, Math.min(sp * 0.9, v + (c - p.pos.x) * 2.5)), vz = Math.sqrt(Math.max(0.05, sp * sp - vx * vx)); steer(p.pos.x + vx, z + vz); p.keys.KeyW = true; };
+              if (inWall) track(); // (the same rule as tests/waysbots.mjs smudgeBrain)
               else {
                 const span = M.x1 - M.x0 + 1 - w, edge = v > 0 ? SL.smudgeAt(k, T) - M.x0 : M.x0 + span - SL.smudgeAt(k, T);
-                if (Math.abs(c - p.pos.x) < 0.35 && edge < 1.5) { steer(c + v * 0.4, z0 + 1); p.keys.KeyW = true; }
-                else { const wait = Math.max(M.x0 + 1.3, Math.min(M.x1 - 0.3, v > 0 ? M.x0 + 2 : M.x1 - 1)); if (Math.abs(p.pos.x - wait) > 0.3) { steer(wait, z0 - 1.2); p.keys.KeyW = true; } }
+                if (Math.abs(c - p.pos.x) < 0.4 && edge < 2) track();
+                else { const wait = v > 0 ? M.x0 + 2 : M.x1 - 1; if (Math.abs(p.pos.x - wait) > 0.3 || z < z0 - 1.6) { steer(wait, z0 - 1.2); p.keys.KeyW = true; } }
               }
               if (inWall && !window.__inWallShot) window.__inWallShot = 1;
             }
@@ -672,7 +679,7 @@ export default async function ({ browser, base, t }) {
           go();
         });
       }, [M]);
-      await page.evaluate(() => { window.pokecraft.player.yaw = Math.PI; window.pokecraft.player.pitch = -0.2; }); await frames(page, 3);
+      await page.evaluate(() => { window.pokecraft.player.yaw = 0; window.pokecraft.player.pitch = -0.2; }); await frames(page, 3); // (looking back at the walls it came through)
       await shot(page, 'ways-smudge-through.png');
       t.ok(done.z > M.room + 0.5, `the Sliding Smudge as Flipsy, drifting along with each rubbed-out patch: through all three inked walls to the chest (z ${done.z.toFixed(1)})`);
     }
