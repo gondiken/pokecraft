@@ -42,6 +42,11 @@ export class Battle {
     this.modMap = new Map();
     this.resetSides();
     this.log.addEventListener('click', () => this.skip?.());
+    // Owner 2026-11-23 (the box took half the iPad): the box fits what it shows (a slim strip while words play, taller with buttons);
+    // the cards above it follow its real height through --bbox.
+    const box = document.getElementById('b-box');
+    const fit = () => this.root.style.setProperty('--bbox', `${Math.round(box.offsetHeight)}px`);
+    if (box && typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(box);
     this.allyModel = null;
     this.active = false;
   }

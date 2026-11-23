@@ -24,6 +24,8 @@ export const PAGES = {
   hill2: { name: 'Eraser Hill 2', x0: 29, x1: 51, z0: 109, z1: 131, top: 31 },
   desk: { name: 'The Desk', x0: 27, x1: 53, z0: 31, z1: 49, top: 34 },
 };
+// The giant pencil lying on the Cover (owner 2026-11-23: it flies you along every line you drew, doodlelive.js ride): its cells.
+export const COVER_PENCIL = { x0: 68, x1: 79, z0: 141, z1: 142 };
 // The round tower on the Curly Tower page: STONE_BRICKS up to y 39, a 7 x 7 deck of planks at y 40 (21 rows above the page).
 export const TOWER = { cx: 24, cz: 80, r: 3, deckY: 40, deck: [21, 27, 77, 83] };
 
@@ -157,7 +159,7 @@ const box = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 
 // Where the guide points: the next line's pad (or the Desk once all are drawn); a fallen player is pointed at the pad (the live part's aim runs first).
 export function doodleAim(world, p, game) {
-  const tip = game?.gymLive?.of?.('part:doodle')?.aimTip?.(); // drawing: the arrow is the next star, then the next page
+  const live = game?.gymLive?.of?.('part:doodle'), tip = live?.aimTip?.() ?? live?.rideTip?.(p); // drawing: the arrow is the next star, then the next page; on the Cover: the pencil ride
   if (tip) return tip;
   const st = lineState(game), lines = doodleLines();
   if (st.done) return null; // the base's aim: the Boss, then the way back
@@ -236,7 +238,7 @@ export function doodleLand(world, def) {
     for (let x = deck[0]; x <= deck[1]; x++) for (let z = deck[2]; z <= deck[3]; z++) { put(world, x, deckY, z, B.PLANKS); for (let k = 1; k <= 4; k++) put(world, x, deckY + k, z, B.AIR); }
     keep('tower', box(cx - r - 1, cx + r + 1, y0, deckY + 1, cz - r - 1, cz + r + 1), 'The Curly Tower is part of the drawing.');
   }
-  { // a giant pencil lying on the Cover (yellow wool body, wooden cone, a lead tip), with a gap for the way to the first pad
+  { // a giant pencil lying on the Cover (yellow wool body, wooden cone, a lead tip), with a gap for the way to the first pad (COVER_PENCIL)
     const y = top('cover') + 1;
     for (let x = 68; x <= 76; x++) for (const z of [141, 142]) for (const dy of [0, 1]) put(world, x, y + dy, z, WOOL.light);
     for (const z of [141, 142]) { put(world, 77, y, z, B.PLANKS); put(world, 77, y + 1, z, B.PLANKS); }

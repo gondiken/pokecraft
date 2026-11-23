@@ -48,6 +48,7 @@ import { createSwirlSky } from './swirlsky.js'; // T38d
 import { loadStars, PICTURE_WORLDS } from './pictureworlds.js'; // T38a
 import { runWorldResets, createWorldReset } from './worldreset.js'; // owner 2026-10-29: one-time resets of a redesigned preview world; ?preview "Start this world over"
 import { DIFFICULTY, setDifficulty, difficultyOf, nextDifficulty } from './difficulty.js'; // owner 2026-11-08: Easy / Normal / Hard
+import { Resolution } from './resolution.js'; // owner 2026-11-23: fewer pixels in a heavy look (the Sketchbook lagged on the tablet)
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
 const SAVE_KEY = 'pokecraft-save-v2';
@@ -61,6 +62,9 @@ const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+const resolution = new Resolution(); // owner 2026-11-23: the pixel ratio (lower in the Sketchbook, lower still while it is slow)
+let touchMode = false; // (set by setTouchMode below)
+function applyPixelRatio() { const r = resolution.ratio(window.devicePixelRatio, touchMode); if (renderer.getPixelRatio() !== r) renderer.setPixelRatio(r); }
 
 const scene = new THREE.Scene();
 const DAY_SKY = new THREE.Color(0x8fd3ff);
@@ -246,6 +250,7 @@ function createWorld(seed, edits, size, opts = {}) {
   game.world = world;
   game.wobbleLook?.reset(world); // chapter 3: Wobbleland's look (the WOBBLE define only there)
   game.sketch?.reset(world); // T45: the pencil look, only in a sketch world (before the people and creatures are made: they are drawn in pencil too)
+  resolution.setHeavy(!!game.sketch?.on); applyPixelRatio(); // owner 2026-11-23: the pencil look is drawn per pixel: fewer of them
   game.player = new Player(world);
   game.creatures.setWorld(world);
   game.spawnPoint.copy(findSpawn(world));
@@ -430,15 +435,14 @@ function begin() {
 
 let locked = false;
 // Touch mode: on-screen controls instead of pointer lock. Turns on for touch screens,
-// or the first time someone touches the screen.
-let touchMode = false;
+// or the first time someone touches the screen. (touchMode is declared by the renderer.)
 
 function setTouchMode(on) {
   if (touchMode === on) return;
   touchMode = on;
   document.body.classList.toggle('touch', on);
   document.getElementById('touch').classList.toggle('hidden', !on || !game.started);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, on ? 1.5 : 2));
+  applyPixelRatio();
 }
 
 function goFullscreen() {
@@ -1273,6 +1277,7 @@ function updateTarget() {
 let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
+  if (resolution.tick((now - last) / 1000, window.devicePixelRatio, touchMode)) applyPixelRatio(); // a heavy look steps its pixels down while slow
   last = now;
   const p = game.player;
 
@@ -1401,6 +1406,7 @@ initAccount();
 // Exposed for debugging from the browser console.
 game.playing = playing; // T30 (a function; T40: live parts call game.playing() to freeze their own clocks while paused)
 window.pokecraft = game;
+game.resolution = { info: () => ({ ...resolution.info(window.devicePixelRatio, touchMode), now: renderer.getPixelRatio() }) }; // owner 2026-11-23 (tests)
 game.sound = sound;
 game.updateGuide = updateGuide;
 game.save = save;

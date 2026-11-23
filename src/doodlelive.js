@@ -12,10 +12,15 @@ import { B, isSolid } from './blocks.js';
 import { LiveCells } from './livecells.js';
 import { sound } from './sound.js';
 import { DRAW, newDraw, drawStep, cellInk, pointAt, beeAt } from './tracing.js';
-import { lineKey, lineState, LINE_COUNT, courseOf, COURSES } from './doodleland.js';
+import { lineKey, lineState, LINE_COUNT, courseOf, COURSES, COVER_PENCIL, PAGES } from './doodleland.js';
 import { ForFun, FUN } from './forfun.js';
+import { Mover, PATHS } from './mover.js';
 
 export const DOODLE = { fall: 0.5, scratch: 0.35, nag: 3, waitHint: 2.5, inkBar: 8, away: 12 }; // away: a redraw rests when you walk this far from your line
+// Owner 2026-11-23 (his son: "it takes ages to walk from the bridges he already built"): the giant pencil lying on the Cover flies you
+// along every line you drew, hopping over each page, to the next pencil pad (or the Desk once all are drawn). speed blocks/s, reach =
+// how close to the pencil the button says Ride!, hop = how high it hops over a page, every = blocks between the ride's points on a line.
+export const PENCIL_RIDE = { speed: 24, reach: 2.2, hop: 4, every: 1.5 };
 const WORDS = {
   hint: 'The pencil draws the way you face! Turn to steer it.',
   first: 'Draw the line before this one first!',
@@ -45,6 +50,9 @@ const WORDS = {
   star: '🖋️ An ink pot! Full of ink.',
   nibble: 'Bzz! A bee nibbled your line!',
   rubberGo: 'Here comes Rubber the Eraser! Keep walking!',
+  rideGo: '✏️ Whoosh! The pencil flies you along your lines. Jump to hop off.',
+  rideEnd: 'Here you are! Draw the next line.',
+  rideDesk: 'Here you are! Artist Arlo is waiting on the Desk.',
   low: 'Ink is low! Find an ink pot 🖋️',
   wait: 'The pencil waits for you. Walk on your line!',
   stop: 'The pencil rests. Press Draw! to try again.',
@@ -279,15 +287,17 @@ export class DoodleLive {
   /* ---- hooks of the live-part interface ---- */
   near(p) {
     if (this.cur) return 'Stop';
+    if (this.ride) return null; // (Jump hops off)
     const i = this.padAt(p.pos);
-    if (i < 0) return null;
+    if (i < 0) return this.canRide(p.pos) ? 'Ride!' : null;
     return this.forFun(i) ? 'Draw again!' : 'Draw!';
   }
   forFun(i) { return LINE_FUN.done(this.state().drawn[i] ? 1 : 0); } // its key is saved: a redraw is just for fun
   use(p) {
     if (this.cur) { this.stop(); this.toast(WORDS.stop); return true; }
+    if (this.ride) return false;
     const i = this.padAt(p.pos), st = this.state();
-    if (i < 0) return false;
+    if (i < 0) return this.canRide(p.pos) ? this.startRide(p) : false;
     if (!this.forFun(i) && i > st.next) { this.toast(WORDS.first); return true; }
     this.start(i);
     return true;
@@ -307,6 +317,55 @@ export class DoodleLive {
     for (let n = 6; n <= LINE_COUNT; n++) { const at = g.beaten.indexOf(lineKey(n)); if (at >= 0) g.beaten.splice(at, 1); }
     g.save?.();
     this.refreshChip();
+  }
+
+  /* ---- the pencil ride (owner 2026-11-23) ---- */
+  bridged() { let n = 0; while (n < this.lines.length && this.drawnNow.has(n)) n++; return n; } // lines 1..n have a bridge now
+  byPencil(pos) { // beside the giant pencil on the Cover
+    const P = COVER_PENCIL, dx = Math.max(P.x0 - pos.x, 0, pos.x - (P.x1 + 1)), dz = Math.max(P.z0 - pos.z, 0, pos.z - (P.z1 + 1));
+    return Math.hypot(dx, dz) <= PENCIL_RIDE.reach && Math.abs(pos.y - (PAGES.cover.top + 1)) < 2.5;
+  }
+  rideTip(p) { // the guide on the Cover once a line is drawn: the pencil flies you, so it points there (not at a pad far away)
+    const C = PAGES.cover, pos = p?.pos;
+    if (!pos || this.cur || this.ride || this.bridged() === 0 || pos.x < C.x0 || pos.x > C.x1 + 1 || pos.z < C.z0 || pos.z > C.z1 + 1 || Math.abs(pos.y - (C.top + 1)) > 2.5) return null;
+    const P = COVER_PENCIL;
+    return { x: (P.x0 + P.x1 + 1) / 2, z: P.z1 + 1.5, text: () => '✏️ Hop on the giant pencil: it flies you along your lines!' };
+  }
+  canRide(pos) { return !this.cur && !this.ride && this.bridged() > 0 && this.byPencil(pos); }
+  // The way: up off the Cover, along each drawn line (its neat bridge, feet on it), a hop over each page to the next line, and a last
+  // hop to the next pencil pad (or the Desk). Points as [x, feet y, z].
+  ridePoints(from) {
+    const n = this.bridged(), pts = [[from.x, from.y, from.z], [from.x, from.y + 2.6, from.z]], R = PENCIL_RIDE; // (up over the pencil first)
+    const hop = (b, up = R.hop) => { // a little arc from the last point to b
+      const a = pts[pts.length - 1];
+      for (let k = 1; k <= 6; k++) { const t = k / 6; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + up * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t]); }
+    };
+    for (let i = 0; i < n; i++) {
+      const L = this.lines[i].line, feet = s => { const q = L.at(s); return [q[0], q[1] + 1, q[2]]; };
+      hop(feet(0), i === 0 ? 2 : R.hop);
+      for (let s = R.every; s < L.len; s += R.every) pts.push(feet(s));
+      pts.push(feet(L.len));
+    }
+    const end = n < this.pads.length ? this.pads[n].stand : this.world.bosses?.[0]?.rest;
+    if (end) hop([end[0], end[1], end[2]]);
+    return pts;
+  }
+  startRide(p) {
+    const n = this.bridged(), m = new Mover({
+      path: PATHS.line({ points: this.ridePoints(p.pos), speed: PENCIL_RIDE.speed }), run: 'ride', canLeave: true,
+      onEnd: () => { this.ride = null; this.toast(n < this.lines.length ? WORDS.rideEnd : WORDS.rideDesk); },
+    });
+    this.ride = m;
+    m.board(p);
+    sound.play('doodlescratch');
+    this.toast(WORDS.rideGo);
+    return true;
+  }
+  stepRide(dt) {
+    const m = this.ride;
+    if (!m) return;
+    if (m.rider !== this.game.player) { this.ride = null; return; } // hopped off (a fall onto the paper puffs you to the next pad)
+    m.update(dt);
   }
 
   /* ---- drawing ---- */
@@ -385,6 +444,7 @@ export class DoodleLive {
     if (!paused) {
       this.clock += Math.min(dt, DRAW.dtMax);
       if (this.cur) this.stepDraw(dt, aim ?? this.aimNow());
+      else if (this.ride) this.stepRide(dt);
       else this.stepFall(dt, p);
     }
     this.stepMeshes(p);
@@ -480,9 +540,14 @@ export class DoodleLive {
     const c = this.cur, st = this.state();
     // the pencil: at the tip while drawing (leaning a little away from you); else resting at the start of the next line
     let at = null;
-    if (c) at = [c.st.tip.x, c.st.tip.row, c.st.tip.z];
+    if (this.ride?.rider) { // riding: the pencil flies under you, lying along the way, its nib ahead
+      const m = this.ride, w = m.where(), fx = -Math.sin(w.yaw), fz = -Math.cos(w.yaw);
+      this.pencil.visible = true; this.pencil.scale.setScalar(1);
+      this.pencil.position.set(w.x + fx * 1.7, w.y - 0.45, w.z + fz * 1.7);
+      this.pencil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-fx, 0, -fz));
+    } else if (c) at = [c.st.tip.x, c.st.tip.row, c.st.tip.z];
     else if (!st.done) { const l = this.lines[st.next], s0 = l.line.at(0); if (Math.hypot(s0[0] - p.pos.x, s0[2] - p.pos.z) < 70) at = s0; }
-    if (at) {
+    if (this.ride?.rider) { /* placed above */ } else if (at) {
       this.pencil.visible = true;
       this.pencil.position.set(at[0], at[1] + 1, at[2]);
       const dx = at[0] - p.pos.x, dz = at[2] - p.pos.z, m = Math.hypot(dx, dz) || 1;
@@ -528,6 +593,7 @@ export class DoodleLive {
   }
 
   dispose() {
+    if (this.ride?.rider) this.ride.leave(false);
     this.game.ui?.setScore?.(null);
     this.pencil?.userData.dispose?.();
     this.rubber?.userData.dispose?.();
@@ -543,6 +609,7 @@ export class DoodleLive {
       rubber: s?.rubber ? { s: s.rubber.s, on: s.rubber.on } : null, blocked: s?.blocked ?? null, waiting: !!s?.waiting, playerS: s ? s.playerS : 0,
       taken: s ? [...s.taken] : [], tip: s ? { ...s.tip } : null, aim: s?.aim ?? null, drawn: this.state().drawn, neat: [...this.neatGiven], last: this.lastDone ?? null,
       fellFor: this.fellFor, cells: s ? s.cells.size : 0, fun: !!c?.fun, lifted: c?.lift ? c.lift.keys.length : 0,
+      ride: this.ride ? { clock: this.ride.clock, time: this.ride.path.time, riding: this.ride.rider === this.game.player } : null, bridged: this.bridged(),
     };
   }
 }

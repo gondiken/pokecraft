@@ -2,7 +2,8 @@
 // (main world, Dream, Swirl, and again after a trip to the Sketchbook). D. the look in the game. E. terrain for three seeds (the walk graph
 // from tests/doodlecheck.mjs). F. Draw! (pure, tracing.js, the model players of tests/doodlecheck.mjs). G. play: the frame, Draw!, ink, falling, saving, crew, Arlo, rematch, the ways
 // back. H. iPad. I. two browsers. J. screenshots (tests/screenshots/t45-*.png).
-// DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots runs part of it.
+// DOODLE_ONLY=data|atlas|off|look|land|trace|play|ipad|pair|shots|ride runs part of it. ride (owner 2026-11-23): on an iPad the Sketchbook draws
+// fewer pixels (resolution.js) and back to the old ratio outside; the giant pencil on the Cover flies you along your drawn lines (a real tap).
 import fs from 'node:fs';
 import path from 'node:path';
 import { devices } from 'playwright';
@@ -106,6 +107,7 @@ export default async function ({ browser, base, t }) {
   fs.mkdirSync(SHOTS, { recursive: true });
   if (ONLY === 'pair') return pairPart({ browser, base, t });
   if (ONLY === 'ipad') return ipadPart({ browser, base, t });
+  if (ONLY === 'ride') return ridePart({ browser, base, t });
   if (ONLY === 'shots') return shotsPart({ browser, base, t });
   const page = await openGame(browser, base);
 
@@ -815,6 +817,38 @@ export default async function ({ browser, base, t }) {
 
 
 /* ================================ H. iPad ================================ */
+async function ridePart({ browser, base, t }) {
+  const ip = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
+  await newGame(ip, 0);
+  const outside = await ip.evaluate(() => window.pokecraft.resolution.info());
+  await intoDoodle(ip);
+  const inside = await ip.evaluate(() => window.pokecraft.resolution.info());
+  t.ok(!outside.heavy && outside.now === Math.min(2, 1.5) && inside.heavy && inside.now <= 1, `iPad: the Sketchbook draws fewer pixels (ratio ${outside.now} outside, ${inside.now} inside)`);
+  const slow = await ip.evaluate(async () => { const { Resolution } = await import('/src/resolution.js'); const r = new Resolution(); r.setHeavy(true); const a = r.ratio(2, true); for (let i = 0; i < 120; i++) r.tick(1 / 20, 2, true); const b = r.ratio(2, true); for (let i = 0; i < 2000; i++) r.tick(1 / 60, 2, true); return [a, b, r.ratio(2, true), (() => { const q = new Resolution(); for (let i = 0; i < 300; i++) q.tick(1 / 10, 2, true); return q.ratio(2, true); })()]; });
+  t.ok(slow[1] < slow[0] && slow[1] >= 0.6 && slow[2] === slow[0] && slow[3] === 1.5, `a slow Sketchbook steps its pixels down (${slow[0]} -> ${slow[1]}), back up when fast (${slow[2]}); a light world never changes (${slow[3]})`);
+  await toasts(ip);
+  await ip.evaluate(() => { const L = window.__live(); L.playing = () => window.pokecraft.started && document.getElementById('pause').classList.contains('hidden'); L.drawUpTo(3); });
+  const none = await ip.evaluate(() => { const p = window.pokecraft.player; window.__at(74.5, 15, 144, 0, 0); return window.__live().near(p); });
+  const tip = await ip.evaluate(async () => { const { doodleAim } = await import('/src/doodleland.js'); const g = window.pokecraft; window.__at(80.5, 15, 148, 0, 0); const a = doodleAim(g.world, g.player, g); return a ? a.text('', 1) : null; });
+  t.ok(/giant pencil/.test(tip || ''), `on the Cover the guide points at the pencil ride ("${tip}")`);
+  await ip.evaluate(() => { window.__at(74.5, 15, 144, 0, 0); document.getElementById('pause').classList.add('hidden'); });
+  await waitFor(ip, () => /Ride/.test(document.getElementById('btn-act')?.textContent || ''), null, 120000);
+  const box = await ip.evaluate(() => { const r = document.getElementById('btn-act').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  await ip.touchscreen.tap(box.x, box.y);
+  await waitFor(ip, () => window.__live().info().ride?.riding, null, 30000);
+  const ride = await ip.evaluate(() => window.__live().info().ride);
+  t.ok(none === 'Ride!' && ride.time > 5 && ride.time < 20, `beside the Cover's pencil the button says Ride! and a tap flies you (3 lines in ${ride.time.toFixed(1)} s)`);
+  await ip.evaluate(() => { const L = window.__live(); L.manual = true; for (let i = 0; i < 2000 && L.ride; i++) L.step(1 / 60); });
+  const end = await ip.evaluate(() => { const g = window.pokecraft, p = g.player, s = g.world.doodle.pads[3].stand; return { d: Math.hypot(p.pos.x - s[0], p.pos.z - s[2]), dy: Math.abs(p.pos.y - s[1]), carry: !!p.carry, near: window.__live().near(p) }; });
+  t.ok(end.d < 0.6 && end.dy < 0.3 && !end.carry && /Draw/.test(end.near), `the ride ends on line 4's pencil pad (off by ${end.d.toFixed(2)}), ready to draw ("${end.near}")`);
+  await ip.evaluate(() => { const L = window.__live(); window.__at(74.5, 15, 144, 0, 0); L.use(window.pokecraft.player); L.step(1 / 60); window.pokecraft.player.keys = { Space: true }; window.pokecraft.player.update(1 / 60); window.pokecraft.player.keys = {}; L.step(1 / 60); });
+  const off = await ip.evaluate(() => ({ ride: !!window.__live().ride, carry: !!window.pokecraft.player.carry }));
+  t.ok(!off.ride && !off.carry, 'Jump hops off the pencil');
+  await shot(ip, 'ride');
+  t.ok(!ip.errors.length, `no page errors (ride) ${ip.errors.join('; ')}`);
+  await ip.context().close();
+}
+
 async function ipadPart({ browser, base, t }) {
   const ip = await openGame(browser, base, { contextOptions: devices['iPad (gen 7) landscape'] });
   await newGame(ip, 0);
