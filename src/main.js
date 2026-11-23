@@ -1277,7 +1277,7 @@ function updateTarget() {
 let fireAt = 0, fireK = 0, portalAt = 0, portalK = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
-  if (resolution.tick((now - last) / 1000, window.devicePixelRatio, touchMode)) applyPixelRatio(); // a heavy look steps its pixels down while slow
+  if (!window.__pcFixedPixels && resolution.tick((now - last) / 1000, window.devicePixelRatio, touchMode)) applyPixelRatio(); // a heavy look steps its pixels down while slow (tests: the software renderer is always slow, so helpers.mjs fixes it)
   last = now;
   const p = game.player;
 

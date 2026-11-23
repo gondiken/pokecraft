@@ -29,6 +29,7 @@ export const launch = () => chromium.launch({ executablePath: process.env.PC_CHR
 export async function openGame(browser, base, { query = '', contextOptions = {}, online = false, setup, wave15 = true } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 760 }, ...contextOptions });
   if (wave15) await ctx.addInitScript(() => { window.__pcWave15 = true; });
+  await ctx.addInitScript(() => { window.__pcFixedPixels = true; }); // owner 2026-11-23: no frame-rate pixel steps (resolution.js) at 1-5 fps; the start ratio still applies
   if (setup) await setup(ctx);
   const page = await ctx.newPage();
   page.errors = [];
