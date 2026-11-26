@@ -382,6 +382,7 @@ export function createRealms(game, { createWorld, save, size }) {
     if (busy) return 'Wait a moment...';
     if (game.inBattle || game.duels?.incoming) return 'Finish the battle first!';
     if (game.hideSeek?.active) return 'Not during hide and seek!';
+    if (game.friendGames?.active) return 'Finish your game first!';
     return '';
   }
 
@@ -389,6 +390,7 @@ export function createRealms(game, { createWorld, save, size }) {
   async function goUp(reason, via = null) {
     busy = true;
     if (game.hideSeek?.active) game.hideSeek.stop();
+      if (game.friendGames?.active) game.friendGames.stop();
     const left = realmOf(game.place), P = realmOf(stash.up.id);
     const out = via && via !== stash.up.via ? TERRAIN_RETURNS[P.terrain]?.(via) : null; // through another door of a shared world: out at that door's own frame
     if (out) { stash.up.ret = out; stash.up.via = via; }
@@ -550,6 +552,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (no) { game.ui.toast(no); return false; }
       busy = true;
       if (game.hideSeek?.active) game.hideSeek.stop();
+      if (game.friendGames?.active) game.friendGames.stop();
       const p = game.player, w = game.world;
       if (hop) {
         if (!stash.guest) game.realmEdits[game.place] = [...w.edits];                         // the Swirl's edits are kept
@@ -607,6 +610,7 @@ export function createRealms(game, { createWorld, save, size }) {
       if (stash.up && !home) return goUp(reason, via);
       busy = true;
       if (game.hideSeek?.active) game.hideSeek.stop();
+      if (game.friendGames?.active) game.friendGames.stop();
       const left = game.place;
       if (!stash.guest) game.realmEdits = self.edits(); // T38b: a guest's realm is the host's
       lastGround = null;
@@ -681,7 +685,7 @@ export function createRealms(game, { createWorld, save, size }) {
           if (!(hd?.parent && hd.parent === game.place)) { self.leave('friend', { home: !(up && hp && (hp === up || hd?.parent === up)) }); return; } // up when the host is in my parent or a sibling
         }
         if (!hp && followBox && game.ui.asked === followBox) { game.ui.closeAsk?.(); followBox = null; } // the host is back: the question is old
-        if (a && hp && hp !== game.place && !offered && (game.place === MAIN || realmOf(hp)?.parent === game.place) && !game.hideSeek?.active && !game.ui.asking) self.offerFollow();
+        if (a && hp && hp !== game.place && !offered && (game.place === MAIN || realmOf(hp)?.parent === game.place) && !game.hideSeek?.active && !game.friendGames?.active && !game.ui.asking) self.offerFollow();
       }
       if (game.place === MAIN) return;
       if (game.world.realm?.morning && !isNight(game.time)) { self.leave('morning'); return; }

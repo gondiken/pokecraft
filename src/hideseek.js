@@ -39,7 +39,7 @@ export function createHideSeek(game) {
   const send = (to, data) => game.mp.sendHs(to, data);
 
   const busy = () => !game.started || game.inBattle || !!s || !!asking || !!incoming || !!pending
-    || game.ui.asking || !!game.duels.incoming || !!game.duels.asking || !!game.duels.current || inGym();
+    || game.ui.asking || !!game.duels.incoming || !!game.duels.asking || !!game.duels.current || !!game.friendGames?.busy || inGym();
 
   // The seeker must not see the hider's name tag (it shows through walls) or lead creature.
   function setHiding(a, on) {

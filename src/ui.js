@@ -333,10 +333,11 @@ export class UI {
   setHideSeek(hud) {
     const box = this.hsHud ??= document.getElementById('hs-hud');
     if (!hud) { if (this.hsShown !== null) { box.classList.add('hidden'); this.hsShown = null; } return; }
-    const tag = `${hud.score}|${hud.phase}`;
+    const tag = `${hud.score}|${hud.phase}|${hud.hot ? 1 : 0}`;
     if (tag === this.hsShown) return;
     this.hsShown = tag;
     box.classList.remove('hidden');
+    box.classList.toggle('hot', !!hud.hot); // tag: you are IT
     box.querySelector('.score').textContent = hud.score;
     box.querySelector('.phase').textContent = hud.phase;
   }

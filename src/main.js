@@ -24,6 +24,10 @@ import { TouchControls } from './touch.js';
 import { createRiding, rideKind } from './riding.js';
 import { createBeing } from './being.js'; // chapter 3 (?preview): be your creature in chapter 3's lands
 import { createHideSeek } from './hideseek.js'; // T30
+import { createFriendGames } from './friendgames.js'; // owner 2026-11-26: games for two friends
+import './taggame.js';   // each file adds its game to the friend menu, in this order: tag,
+import './ballmatch.js'; // football and basketball (Playland's Ball Stadium),
+import './kartduel.js';  // a kart race (Playland's Race Track)
 import { createPlayTogether } from './playtogether.js';
 import { createSwaps } from './swaps.js'; // wave 17: gifts and trades
 import { createSwapUi } from './swapui.js'; // wave 17
@@ -285,6 +289,7 @@ const hudEl = document.getElementById('hud');
 
 function showTitle() {
   game.hideSeek?.reset(); // T30
+  game.friendGames?.reset();
   game.realms?.reset(); // T31: the title fly-over is always the main world
   const saved = loadSave();
   createWorld(saved?.seed ?? (Math.random() * 1e9) | 0, saved?.edits, saved?.size);
@@ -457,7 +462,7 @@ function goFullscreen() {
 
 // True while the player is walking around (not paused, in a menu or in a battle).
 function playing() {
-  if (!game.started || game.inBattle || game.ui.panelOpen || game.hideSeek?.frozen) return false; // T30: the seeker waits
+  if (!game.started || game.inBattle || game.ui.panelOpen || game.hideSeek?.frozen || game.friendGames?.frozen) return false; // T30: the seeker waits
   return touchMode ? pauseEl.classList.contains('hidden') : locked;
 }
 
@@ -498,6 +503,7 @@ async function goToMenu() {
   save(true);
   game.mp.close();
   game.hideSeek.reset(); // T30
+  game.friendGames.reset();
   game.fx.clear();
   game.riding.stop('quiet');
   game.started = false;
@@ -723,7 +729,7 @@ document.addEventListener('mouseup', e => { if (e.button === 0 && game.player) g
 // Battle the targeted creature or player, or talk to the targeted person. Returns false if nothing is targeted.
 // use (T31): E / tap / the touch action button, not a mouse click (a click on a Bed breaks it, a use sleeps in it).
 function interact(use = false) {
-  if (target.player) { if (!game.hideSeek.tag(target.player)) game.openFriend(target.player); return true; } // T30; wave 17: the friend menu
+  if (target.player) { if (!game.hideSeek.tag(target.player) && !game.friendGames.tag(target.player)) game.openFriend(target.player); return true; } // T30; wave 17: the friend menu
   if (target.npc) { talkTo(target.npc); return true; }
   if (target.wild) { startBattle({ wild: target.wild }); return true; }
   if (target.near && game.gymLive.use(game.player)) return true; // T40: a live part's own action ("Fire!", "Kick!")
@@ -830,7 +836,7 @@ function tapAt(x, y) {
   const other = game.mp.pick(origin, direction, reach);
   const block = raycastVoxel(game.world, origin, direction, reach);
   const wall = block ? block.t : Infinity;
-  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player)) game.openFriend(other.player); } // T30; wave 17: the friend menu
+  if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player) && !game.friendGames.tag(other.player)) game.openFriend(other.player); } // T30; wave 17: the friend menu
   else if (npc && npc.dist < wall && (!wild || npc.dist < wild.dist)) talkTo(npc.npc);
   else if (wild && wild.dist < wall) startBattle({ wild: wild.wild });
   else if (game.gymLive.tap(origin, direction)) { /* T44: a whack at the piñata */ }
@@ -980,6 +986,7 @@ function towerWon(npc) {
 function startBattle(opts) {
   if (game.inBattle) return;
   if (game.hideSeek?.blocksBattle(opts)) return; // T30
+  if (game.friendGames?.blocksBattle(opts)) return; // a game for two is running
   if (!opts.duel && !game.party.some(c => c.hp > 0)) {
     game.ui.toast('Your team is too tired to battle. Let them rest a moment.');
     return;
@@ -1171,6 +1178,7 @@ game.missionSeed = () => game.homeWorld?.seed ?? game.realms?.mainPart()?.seed ?
 game.riding = createRiding(game, { scene, closePanel: () => { if (game.ui.panelOpen) togglePanel(); } }); // T27
 game.being = createBeing(game, { scene }); // chapter 3 (?preview): be your creature (does nothing without ?preview or outside chapter 3's lands)
 game.hideSeek = createHideSeek(game); // T30
+game.friendGames = createFriendGames(game); // owner 2026-11-26: games for two friends (tag; football, basketball and a kart race in Playland)
 game.realms = createRealms(game, { createWorld, save, size: [WORLD_W, WORLD_D] }); // T31
 game.worldReset = createWorldReset(game, { save: () => save(true) }); // owner 2026-10-29: ?preview only, the pause screen's "Start this world over"
 game.portal = createPortal(game); // T38a: the Portal Door and the Swirl's doors
@@ -1227,7 +1235,7 @@ function updateTarget() {
   const how = touchMode ? 'tap' : 'click or E';
   const talk = target.npc && (game.gymLive.talkPrompt(target.npc) ?? game.bosses.talkPrompt(target.npc) ?? game.studio.talkPrompt(target.npc)); // T33, T40
   const door = target.block && game.portal.prompt(target.block, how); // T38a: a Portal Door, a picture frame...
-  game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? `${target.player.name} · ${how} to play together`) // wave 17: the friend menu
+  game.ui.setPrompt(target.player ? (game.hideSeek.prompt(target.player, how) ?? game.friendGames.prompt(target.player, how) ?? `${target.player.name} · ${how} to play together`) // wave 17: the friend menu
     : target.npc ? `${target.npc.title} · ${how} to ${talk?.verb ?? (target.npc.kind === 'healer' ? 'heal' : isChampDesk(target.npc) ? 'get missions' : isRematch(target.npc) ? 'ask for a rematch' : 'challenge')}`
     : target.wild?.wrapped ? `A gift box! 🎁 · ${how} to open` // T44
     : target.wild ? `${target.wild.species.name} Lv${target.wild.data.level} · ${how} to battle`
@@ -1240,7 +1248,7 @@ function updateTarget() {
   // T39c: the fixed-slot buttons. The action button's word says what it will do; the rest dim, never hide.
   const p = game.player;
   const reach = target.block && target.block.t <= REACH;
-  let act = target.player ? (game.hideSeek.action(target.player) ?? 'Play!') // wave 17: the friend menu
+  let act = target.player ? (game.hideSeek.action(target.player) ?? game.friendGames.action(target.player) ?? 'Play!') // wave 17: the friend menu
     : target.npc ? (talk?.action ?? (target.npc.kind === 'healer' ? 'Heal' : isChampDesk(target.npc) ? 'Missions!' : isRematch(target.npc) ? 'Rematch!' : target.npc.kind === 'guest' || target.npc.kind === 'tower' ? 'Talk' : 'Battle!'))
     : target.wild?.wrapped ? 'Open!' // T44
     : target.wild ? 'Battle!'
@@ -1258,7 +1266,7 @@ function updateTarget() {
   const placeWhy = !target.block ? 'Look at a block to build on it!' : noneLeft ? `No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}` : '';
   game.touchWhy.place = placeWhy;
   const riding = game.riding, have = game.party.some(c => rideKind(c));
-  const rideWhy = riding.on ? '' : game.world.realm?.noRide ? game.world.realm.noRide : game.hideSeek?.active ? 'No riding in hide and seek!'
+  const rideWhy = riding.on ? '' : game.world.realm?.noRide ? game.world.realm.noRide : game.hideSeek?.active ? 'No riding in hide and seek!' : game.friendGames?.noRide ? game.friendGames.noRide
     : !riding.first() ? 'Your rideable friends are too tired. Visit Healer Hana!'
     : game.world.fenceAt(Math.floor(p.pos.x), Math.floor(p.pos.y), Math.floor(p.pos.z)) ? 'No riding right here. Walk a little further first!' : '';
   game.touchWhy.ride = rideWhy;
@@ -1294,6 +1302,7 @@ function frame(now) {
     if (p.bounced) { p.bounced = false; sound.play('boing'); game.realms.onBounce(); } // T35: launched by a Bounce Block
     if (p.trampolined) { p.trampolined = false; sound.play('boing'); } // T43: a trampoline of the Funfair (no Dream hint)
     game.hideSeek.fence(p.pos, before, p.vel); // T30
+    game.friendGames.fence(p.pos, before, p.vel); // tag's play area, a match's pitch
     game.riding.update(dt, now);
     game.gymLive.update(dt);
     game.being.step(dt); // chapter 3: your creature's body (after the live parts: wayland.js Trials ran)
@@ -1316,6 +1325,7 @@ function frame(now) {
     game.npcs.update(dt, p.pos);
     game.mp.update(dt);
     game.hideSeek.update(dt); // T30
+    game.friendGames.update(); // games for two friends (their own real-time clock)
     game.swaps?.update(dt); // wave 17
     if (game.battle.allyModel) animateModel(game.battle.allyModel, now / 1000, false);
     if (game.battle.friendModel) animateModel(game.battle.friendModel, now / 1000 + 2, false); // T29: the co-op friend's creature

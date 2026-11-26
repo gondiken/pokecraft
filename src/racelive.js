@@ -123,6 +123,7 @@ export class RaceLive {
     this.kart = null; this.paradeKarts = null; this.paradeClock = 0; this.parade = false; this.driven = 0;
     this.result = null;
     this.car = null; this.carMesh = null; this.wish = { x: 0, z: 0, m: 0 }; this.rider = null; this.rioBoost = false; this.carT = 0; // your kart (owner 2026-10-27)
+    this.duel = null; this.friendAt = null; // owner 2026-11-26: a race against a friend (kartduel.js) instead of Rio
   }
 
   /* ---- helpers ---- */
@@ -146,6 +147,7 @@ export class RaceLive {
   funRace() { return this.won && crewLeft(this.game, 'race').length > 0; }
   talk(npc) {
     if (!this.isRio(npc)) return false;
+    if (this.duel) return true;                                            // racing a friend: Rio watches
     if (this.state === 'count' || this.state === 'race') return true;      // talking does nothing during the race
     if (this.won && !this.funRace()) return false; // the base's Boss battle (or the rematch question), also right after the finish
     if (this.state === 'done') this.backToStand(); // a lost race: Rio comes back at once for the next one
@@ -153,6 +155,7 @@ export class RaceLive {
   }
   talkPrompt(npc) {
     if (!this.isRio(npc)) return null;
+    if (this.duel && this.state === 'done') return { verb: 'talk', action: 'Talk' };
     if (this.state === 'count') return { verb: 'wait', action: 'Ready...' };
     if (this.state === 'race') return { verb: 'race', action: 'Go go go!' };
     if (this.won && !this.funRace()) return null; // the base's Challenge! / Rematch!
@@ -169,6 +172,7 @@ export class RaceLive {
   aim(p) {
     const racing = this.state === 'count' || this.state === 'race';
     if (!racing && !this.inBox(p)) return null;
+    if (this.duel && !racing) return null;
     const t = this.track;
     if (this.state === 'count') { const g = t.gates[0]; return { x: g.x, z: g.z, text: () => 'Get ready...' }; }
     if (this.state === 'race') {
@@ -205,6 +209,7 @@ export class RaceLive {
   start() {
     const g = this.game, p = g.player;
     if (g.hideSeek?.active) { this.toast('Finish hide and seek first!'); return true; }
+    if (g.friendGames?.active) { this.toast('Finish your game first!'); return true; }
     const grid = this.part.grid;
     g.riding?.stop?.('race'); // off your creature: you drive a kart
     p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
@@ -223,6 +228,44 @@ export class RaceLive {
     const left = this.won ? crewLeft(g, 'race') : [];
     this.say(this.won ? `${FUN.tag} One more race? Vroom!${left.length ? ` Then beat ${crewNames('race', left)} for our battle.` : ''}` : this.hasStar() ? RACE_LINES.again : RACE_LINES.hello);
     return true;
+  }
+
+  // Owner 2026-11-26: a race for two friends on this track (kartduel.js): the same grid, lamps, flags and laps, each in their own
+  // kart, no Rio. duel = { lane: 'player' | 'boss', friend() -> their avatar, progress() -> their distance, onFinish(seconds), onStop() }.
+  startDuel(duel) {
+    const g = this.game, p = g.player, grid = this.part.grid, at = duel.lane === 'boss' ? grid.boss : grid.player;
+    if (this.state !== 'idle' || this.car) this.backToStand();
+    if (this.parade) this.setParade(false);
+    this.duel = duel; this.friendAt = null;
+    g.riding?.stop?.('race');
+    p.carry?.leave?.();
+    p.pos.set(at[0], at[1], at[2]);
+    p.vel.set(0, 0, 0);
+    p.yaw = grid.yaw; p.pitch = 0;
+    this.getIn(at, grid.heading);
+    this.zoom = null;
+    this.state = 'count';
+    this.countT = 0; this.beeped = 0; this.waitToldAt = -1;
+    this.bossS = RACE.grid; this.P = RACE.grid; this.lap = 0; this.next = 0; this.clock = 0;
+    this.missed = false; this.missedFor = -1; this.prev = null; this.driven = 0;
+    this.ensureKart();
+    this.drawFriend(0);
+  }
+  endDuel() {
+    if (!this.duel) return;
+    this.duel = null; this.friendAt = null;
+    this.backToStand();
+  }
+  // The friend's kart under their avatar: it turns the way they drive.
+  drawFriend(dt) {
+    const a = this.duel?.friend();
+    if (!this.kart || !a || a.here === false) { this.hideKart(); return; }
+    const f = (this.friendAt ??= { x: a.pos.x, z: a.pos.z, h: this.part.grid.heading, d: 0 });
+    const dx = a.pos.x - f.x, dz = a.pos.z - f.z, step = Math.hypot(dx, dz);
+    if (step > 0.02) { const want = Math.atan2(dx, dz); f.h += Math.atan2(Math.sin(want - f.h), Math.cos(want - f.h)) * Math.min(1, dt * 8); f.d += step; }
+    f.x = a.pos.x; f.z = a.pos.z;
+    this.kart.visible = true;
+    placeKart(this.kart, { x: a.pos.x, z: a.pos.z, heading: f.h }, a.pos.y + 0.35, f.d);
   }
 
   /* ---- your kart (owner 2026-10-27) ---- */
@@ -317,6 +360,7 @@ export class RaceLive {
   }
 
   finish(youWon) {
+    if (this.duel) { this.state = 'done'; this.doneT = 0; sound.play('lapbell'); this.duel.onFinish(this.clock); return; } // a friend's race: kartduel.js says who won
     this.wonBefore = this.won;
     this.state = 'done';
     this.doneT = 0;
@@ -433,6 +477,7 @@ export class RaceLive {
       this.toast(String(3 - i));
     }
     this.drawLamps(Math.min(3, this.beeped), false);
+    if (this.duel) this.drawFriend(dt);
     // hold: no moving off the grid before GO (in the kart the pedals only work after GO)
     if (!this.car && Math.hypot(p.pos.x - grid.player[0], p.pos.z - grid.player[2]) > RACE.hold) {
       p.pos.set(grid.player[0], grid.player[1], grid.player[2]);
@@ -459,6 +504,12 @@ export class RaceLive {
     if (this.state !== 'race') return;
     this.checkMissed(p.pos);
     this.P = this.progress(p.pos);
+    if (this.duel) { // a friend instead of Rio: their own kart, their own clock
+      this.bossS = this.duel.progress();
+      this.drawFriend(dt);
+      if (!this.inBox(p.pos) || t.project(p.pos.x, p.pos.z).d > RACE.leave) this.duel.onStop();
+      return;
+    }
     // Rio: his track distance grows by his speed (the rubber band looks at the lead)
     const end = RACE.laps * t.L;
     this.bossS += bossSpeed(this.bossS, this.bossS - this.P, this.losses, t) * dt;
@@ -475,6 +526,7 @@ export class RaceLive {
   }
 
   stepDone(dt, paused) {
+    if (this.duel) { if (!paused) this.drawFriend(dt); return; } // kartduel.js ends it
     if (paused) return;
     this.doneT += dt;
     const t = this.track, n = this.rio(), end = RACE.laps * t.L;
@@ -513,6 +565,7 @@ export class RaceLive {
   }
 
   dispose() {
+    if (this.duel) { this.duel = null; this.game.friendGames?.stop(); }
     const cam = this.game.camera; if (cam && cam.fov !== 75) { cam.fov = 75; cam.updateProjectionMatrix(); }
     if (this.game.player) { this.game.player.forceSprint = false; this.game.player.speedK = 1; this.game.player.speedCap = null; }
     this.getOut();
@@ -525,7 +578,7 @@ export class RaceLive {
 
   // For tests.
   info() {
-    return { state: this.state, lap: this.lap, next: this.next, P: this.P, bossS: this.bossS, losses: this.losses, won: this.won, clock: this.clock, countT: this.countT,
+    return { duel: !!this.duel, state: this.state, lap: this.lap, next: this.next, P: this.P, bossS: this.bossS, losses: this.losses, won: this.won, clock: this.clock, countT: this.countT,
       zoom: this.zoom ? { ...this.zoom } : null, parade: this.paradeKarts && this.parade ? this.paradeKarts.map(k => [k.position.x, k.position.z]) : null,
       lamps: this.lamps, padLit: this.padLit, missed: this.missed,
       car: this.car ? { x: this.car.x, y: this.car.y, z: this.car.z, h: this.car.h, v: this.car.v, surface: this.car.surface, air: this.car.air } : null };

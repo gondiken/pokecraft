@@ -39,11 +39,12 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     home: rec => (game.place && game.place !== 'main' ? game.realms.stashHome(rec) : game.homes.apply(rec)), // T31: away in a realm: keep it for later
     duel: p => game.duels.onMessage(p),
     hs: p => game.hideSeek?.onMessage(p), // T30
+    play: p => game.friendGames?.onMessage(p), // games for two friends: tag, football, basketball, a kart race
     swap: p => game.swaps?.onMessage(p), // wave 17: gifts and trades
     castle: p => game.castleGates?.onMessage(p), // T49: the Castle's gates are shared
     joined: () => game.castleGates?.joined(), // T49
     realm: p => game.realms.answer(p), // T38b: a guest asks to follow me into my realm
-    left: id => { game.duels.left(id); game.hideSeek?.left(id); game.swaps?.left(id); }, // T30; wave 17
+    left: id => { game.duels.left(id); game.hideSeek?.left(id); game.friendGames?.left(id); game.swaps?.left(id); }, // T30; wave 17
     ended: reason => {
       if (reason !== 'host-left') return;
       game.hostLeft = true;
@@ -83,11 +84,11 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
 
   // T30: the hide and seek buttons (one per player) and the Stop button. Clicking redraws the box.
   function hideSeekButtons() {
-    return (game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
+    return (game.friendGames?.active ? game.friendGames.menuButtons() : game.hideSeek?.menuButtons() || []).map(b => { b.addEventListener('click', () => setTimeout(renderMp, 0)); return b; });
   }
 
   // Wave 17: how to battle, trade or play hide and seek with a friend (the friend menu).
-  const friendHint = () => (game.mp.others.size ? el('div', { class: 'mp-who' }, game.isTouch?.() ? 'Tap a friend to battle, trade or play hide and seek.' : 'Look at a friend and press E to battle, trade or play hide and seek.') : '');
+  const friendHint = () => (game.mp.others.size ? el('div', { class: 'mp-who' }, game.isTouch?.() ? 'Tap a friend to battle, trade or play a game.' : 'Look at a friend and press E to battle, trade or play a game.') : '');
 
   // T38b, host: one line for every player who is in another place.
   function awayLines() {
@@ -106,13 +107,24 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
     return [el('button', { class: 'small primary', onclick: () => { resume(); game.realms.follow(); } }, `Follow ${name} into the ${r.name}`)];
   }
 
+  // Only rebuild the box when what it shows changed: it is drawn again every second while a friend is near, and a button
+  // swapped for a new one under a finger loses the tap (owner 2026-11-26: "Stop tag" must always answer).
+  let shown = null;
+  function put(...kids) {
+    const tmp = document.createElement('div');
+    tmp.replaceChildren(...kids);
+    if (tmp.innerHTML === shown && mpBox.childNodes.length) return;
+    shown = tmp.innerHTML;
+    mpBox.replaceChildren(...tmp.childNodes);
+  }
+
   function renderMp() {
     const mp = game.mp;
     const msg = mpMessage.text && el('div', { class: `acct-msg${mpMessage.error ? ' error' : ''}` }, mpMessage.text);
     const others = mp.players;
     const who = others.length ? `Playing with: ${others.join(', ')}` : 'Nobody else is here yet.';
     if (mp.role === 'host') {
-      mpBox.replaceChildren(
+      put(
         el('h3', {}, 'Play together'),
         el('div', {}, 'Your world code is'),
         el('div', { class: 'mp-code' }, mp.code),
@@ -126,7 +138,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       return;
     }
     if (mp.role === 'guest') {
-      mpBox.replaceChildren(
+      put(
         el('h3', {}, 'Play together'),
         el('div', {}, `You are visiting ${mp.hostName || 'a friend'}'s world.`),
         el('div', { class: 'mp-who' }, who),
@@ -139,7 +151,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       return;
     }
     if (mp.role === 'joining') {
-      mpBox.replaceChildren(el('h3', {}, 'Play together'), el('div', {}, 'Joining...'));
+      put(el('h3', {}, 'Play together'), el('div', {}, 'Joining...'));
       return;
     }
     const name = el('input', { type: 'text', placeholder: 'Your name', maxlength: 16, value: playerName() });
@@ -169,7 +181,7 @@ export function createPlayTogether(game, { createWorld, save, pushCloud, startBa
       if (res.error) { setMpMessage(res.error, true); return; }
       setMpMessage(`Welcome to ${res.hostName}'s world! Tap or click outside this box to play.`);
     };
-    mpBox.replaceChildren(
+    put(
       el('h3', {}, 'Play together'),
       el('div', { class: 'acct-form' },
         name,

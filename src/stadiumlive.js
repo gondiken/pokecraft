@@ -90,6 +90,7 @@ export class StadiumLive {
     this.overAt = null;
     this.ring = this.chargeRing(); // the power ring round the football (only shown while Kick! is held)
     this.rivals = true; // Dee and Bo play (tests switch them off to check the plain ball rules)
+    this.match = null;  // owner 2026-11-26: a match for two friends (ballmatch.js) borrows the balls; the stadium's own game waits
     this.t = 0;
     this.drawAll();
   }
@@ -109,12 +110,24 @@ export class StadiumLive {
   }
 
   dispose() {
+    if (this.match) { this.match = null; this.game.friendGames?.stop(); }
     this.game.ui?.setScore?.(null);
     for (const o of this.parts) {
       this.scene?.remove(o);
       o.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
     }
     this.parts = [];
+  }
+
+  // A match for two friends starts (m) or ends (null): the keepers, Dee and Bo step aside, both balls go back to their spots.
+  setMatch(m) {
+    this.match = m; this.held = null;
+    for (const o of [...this.keepers, this.dee.mesh, this.bo.mesh]) o.visible = !m;
+    this.foot.reset(); this.hoop.reset(); this.hoopPrevY = this.hoop.pos.y;
+    this.goalAt = null; this.overAt = null; this.outAt = { foot: null, hoop: null }; this.wild = false; this.touched = false; this.clearedAt = null;
+    this.dives = this.part.keepers.map(() => null);
+    if (this.scoreOn) { this.game.ui.setScore?.(null); this.scoreOn = false; }
+    this.drawAll();
   }
 
   /* ---- helpers ---- */
@@ -124,8 +137,8 @@ export class StadiumLive {
   // The shared kind help (owner 2026-10-28: only ever so slightly easier after a few misses in a row): football = Dee and the keepers'
   // dives x slow and the green of the power ring x more round its middle; basketball = the good moment of a shot x more.
   helpOf(key) { return kindHelp(this.misses[key]); }
-  zoneNow() { const [lo, hi] = kickZone(this.goalsIn, this.hard), m = (lo + hi) / 2, h = ((hi - lo) / 2) * this.helpOf('foot').more; return [m - h, m + h]; }
-  windowNow(d) { return shotWindow(this.basketsIn, d, this.hard) * this.helpOf('hoop').more; }
+  zoneNow() { if (this.match) return this.match.zoneNow(); const [lo, hi] = kickZone(this.goalsIn, this.hard), m = (lo + hi) / 2, h = ((hi - lo) / 2) * this.helpOf('foot').more; return [m - h, m + h]; }
+  windowNow(d) { if (this.match) return this.match.windowNow(d); return shotWindow(this.basketsIn, d, this.hard) * this.helpOf('hoop').more; }
   toast(m) { this.game.ui.toast(m); }
   frozen() { const g = this.game; return !!(g.inBattle || g.ui.asking || g.ui.panelOpen || !this.playing()); }
   playerBox(p = this.game.player) {
@@ -136,6 +149,7 @@ export class StadiumLive {
 
   /* ---- every frame ---- */
   update(dt) {
+    if (this.match) { this.match.frame(dt); return; } // a match for two friends plays on this pitch / court
     if (this.frozen()) { this.held = null; this.drawAll(); return; }
     const g = this.game, part = this.part, pl = this.playerBox();
     this.t += dt;
@@ -309,11 +323,12 @@ export class StadiumLive {
     c.sort((a, b) => d(a[0]) - d(b[0]));
     return { key: c[0][0], word: c[0][1], pl };
   }
-  near(p) { return this.frozen() ? null : this.held ? (this.held.key === 'foot' ? 'Kick!' : 'Shoot!') : this.nearest(p)?.word ?? null; }
-  holds(p) { return !this.frozen() && (!!this.held || !!this.nearest(p)); } // the big button presses and lets go here (touch.js)
+  near(p) { if (this.match) return this.match.near(p); return this.frozen() ? null : this.held ? (this.held.key === 'foot' ? 'Kick!' : 'Shoot!') : this.nearest(p)?.word ?? null; }
+  holds(p) { if (this.match) return this.match.holds(p); return !this.frozen() && (!!this.held || !!this.nearest(p)); } // the big button presses and lets go here (touch.js)
   use(p) { return this.press(p); }
   // Kick! / Shoot! pressed: the hold starts (a Shoot! jumps you). Nothing flies until it is let go (release) or held too long.
   press(p) {
+    if (this.match) return this.match.press(p);
     if (this.frozen()) return false;
     if (this.held) return true; // a key repeat
     const n = this.nearest(p);
@@ -332,6 +347,7 @@ export class StadiumLive {
   }
   // Let go: the kick or the shot.
   release(p = this.game.player) {
+    if (this.match) return this.match.release(p);
     const h = this.held;
     if (!h) return false;
     this.held = null;
@@ -399,6 +415,7 @@ export class StadiumLive {
 
   /* ---- the Captain: the generic Boss `gate` keeps the battle shut; only the button word is ours ---- */
   talkPrompt(npc) {
+    if (this.match) return null;
     if (npc.kind === 'boss' && npc.def?.id === 'stadium' && !goalState(this.game).ready) return { verb: 'talk', action: 'Talk' };
     return null;
   }
@@ -411,6 +428,7 @@ export class StadiumLive {
 
   /* ---- the guide ---- */
   aim(p) {
+    if (this.match) return this.match.aim(p);
     const { part } = this, st = goalState(this.game);
     if (!inBox(part.area, { x: p.x, y: 1, z: p.z }) || st.ready) return null;
     if (st.done) { // the goals and baskets are in: now the helpers (owner 2026-10-27)

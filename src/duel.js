@@ -33,6 +33,7 @@ export class Duels {
     const g = this.game;
     if (this.asking) { this.hooks.toast(`Still waiting for ${this.asking.name} to answer.`); return; }
     if (g.hideSeek?.active) { this.hooks.toast('Finish hide and seek first!'); return; } // T30
+    if (g.friendGames?.busy) { this.hooks.toast('Finish your game first!'); return; }
     if (this.incoming || this.current || g.inBattle) return;
     if (!g.party.length) return;
     const id = newId();
@@ -53,7 +54,7 @@ export class Duels {
     const g = this.game;
     if (p.type === 'ask') {
       if (p.v !== VERSION) { this.mp.sendDuel(p.from, { type: 'no', id: p.id, old: true }); return; } // the asker has an older game
-      if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || this.current || this.incoming || this.asking || !g.party.length || this.mp.others.get(p.from)?.here === false) { // T38b: not from another place
+      if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || g.friendGames?.busy || this.current || this.incoming || this.asking || !g.party.length || this.mp.others.get(p.from)?.here === false) { // T38b: not from another place
         this.mp.sendDuel(p.from, { type: 'no', id: p.id, busy: true });
         return;
       }

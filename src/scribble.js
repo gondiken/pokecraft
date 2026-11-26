@@ -682,7 +682,7 @@ body.scribbling #hotbar, body.scribbling #cubes, body.scribbling #party-mini, bo
   // ---- the fight's life
   function canStart() {
     const p = game.player;
-    if (S.phase !== 'idle' || !S.armed || !game.playing?.() || game.ui?.asking || game.hideSeek?.active || game.realms?.busy) return false;
+    if (S.phase !== 'idle' || !S.armed || !game.playing?.() || game.ui?.asking || game.hideSeek?.active || game.friendGames?.active || game.realms?.busy) return false;
     const up = (game.riding?.on && game.riding.kind === 'sky') || (game.player?.ride?.be && game.player.ride.kind === 'sky') ? 8 : 4; // B (owner 2026-11-11): a creature flying low over a patch lands you in it
     if (Math.hypot(p.pos.x - S.spot.x, p.pos.z - S.spot.z) > FIGHT.patch || p.pos.y - S.spot.y > up || S.spot.y - p.pos.y > 4) return false;
     return squadOf(game.party).length > 0;

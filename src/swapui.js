@@ -1,5 +1,6 @@
 // Wave 17 (owner 2026-10-30): two screens, both plain.
 //  1. The friend menu (#friend): look at a friend and press E (or tap them): Battle, Trade or Hide and seek with THAT friend.
+//     Owner 2026-11-26: + the games for two (friendgames.js `rows`): Tag everywhere; Football, Basketball and a Kart race in Playland.
 //  2. Trading happens in your own team screen (P), the same cards, sorting and type chips: ui.js asks `ui.tradeView` for the
 //     bar on top (what you give, what they give, Ready) and each card's button (Offer / Take back). Both friends see it at once.
 // Only game.swaps holds the trade's state; this file shows it.
@@ -21,6 +22,7 @@ export function createSwapUi(game) {
   function renderMenu() {
     if (!isOpen() || !friend) return;
     const a = friend, hs = game.hideSeek;
+    const games = game.friendGames?.rows(a) || [];
     const near = !!hs?.nearby?.().includes(a);
     const tradeWhy = game.swaps.whyNot(a);
     note = el('p', { class: 'fm-note' }, '');
@@ -31,10 +33,11 @@ export function createSwapUi(game) {
     document.getElementById('friend-body').replaceChildren(
       el('h2', {}, `👋 ${a.name}`),
       el('p', { class: 'fm-sub' }, 'What do you want to do?'),
-      el('div', { class: 'fm-list' },
+      el('div', { class: `fm-list${games.length > 1 ? ' many' : ''}` },
         choice('battle', '⚔️', 'Battle', 'Your creatures stay safe.', '', () => game.duels.challenge(a)),
         choice('trade', '🔁', 'Trade', 'Swap creatures, or give a present.', tradeWhy, () => game.swaps.invite(a)),
-        choice('hide', '🙈', 'Hide and seek', near ? '' : `Walk closer to ${a.name} first.`, near ? '' : `Walk closer to ${a.name} first!`, () => hs.invite(a))),
+        choice('hide', '🙈', 'Hide and seek', near ? '' : `Walk closer to ${a.name} first.`, near ? '' : `Walk closer to ${a.name} first!`, () => hs.invite(a)),
+        ...games.map(r => choice(r.id, r.icon, r.name, r.sub, r.why, r.go))),
       note);
   }
 

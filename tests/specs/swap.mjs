@@ -135,7 +135,7 @@ export default async function ({ browser, base, t }) {
       t.ok(await waitFor(A, () => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; g.player.lookAt(k.pos.clone().setY(k.pos.y + 1)); return document.getElementById('prompt').textContent.includes('Kid · click or E to play together'); }, null, 60000).then(() => true, () => false), 'looking at Kid says "click or E to play together"');
       await A.evaluate(() => window.pokecraft.interact());
       await waitFor(A, () => window.pokecraft.swapUi.isOpen, null, 30000);
-      t.ok(await A.evaluate(() => [...document.querySelectorAll('#friend .fm-btn b')].map(b => b.textContent).join('|') === 'Battle|Trade|Hide and seek'), 'E on a friend opens the friend menu: Battle, Trade, Hide and seek');
+      t.ok(await A.evaluate(() => [...document.querySelectorAll('#friend .fm-btn b')].map(b => b.textContent).join('|') === 'Battle|Trade|Hide and seek|Tag'), 'E on a friend opens the friend menu: Battle, Trade, Hide and seek, Tag');
       await A.screenshot({ path: 'screenshots/w17-1-friend-menu.png' });
       await click(A, '#friend [data-friend="trade"]');
       await asked(B, 'wants to trade');

@@ -67,7 +67,7 @@ export function createSwaps(game, { save }) {
   function busyWith() {
     const g = game;
     if (session) return session.name;
-    if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || asking || incoming) return '';
+    if (!g.started || g.inBattle || g.ui.asking || g.hideSeek?.active || g.friendGames?.busy || asking || incoming) return '';
     return null;
   }
 

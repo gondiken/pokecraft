@@ -588,6 +588,7 @@ body.touch #mission-chip { min-height: 44px; display: flex; align-items: center;
 #seek-compass.hot .word { color: #ff7a5a; }
 #seek-compass.wobble svg { animation-timing-function: steps(3); }
 #hs-hud { background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 18px; text-align: right; }
+#hs-hud.hot { background: rgba(200,40,30,.75); } /* tag: you are IT */
 #hs-dark { position: fixed; inset: 0; z-index: 21; background: #05060a; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; }
 #hs-dark .hs-who { font-size: 30px; } #hs-dark .hs-count { font-size: 120px; line-height: 1; } #hs-dark .hs-tip { font-size: 22px; color: var(--muted); }
@@ -631,6 +632,12 @@ body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 #friend .fm-list { display: flex; flex-direction: column; gap: 8px; }
 #friend .fm-btn { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 8px 16px; text-align: left; font-size: 22px; background: rgba(255,255,255,.08); border: 3px solid rgba(255,255,255,.18); color: inherit; cursor: pointer; }
 #friend .fm-btn.dim { opacity: .5; }
+/* owner 2026-11-26: with the Playland games there are seven choices: two columns, so the menu still fits an iPad */
+#friend .panel:has(.fm-list.many) { max-width: 720px; }
+#friend .fm-list.many { display: grid; grid-template-columns: 1fr 1fr; }
+#friend .fm-list.many .fm-btn { min-height: 60px; padding: 6px 12px; gap: 10px; font-size: 20px; }
+#friend .fm-list.many .fm-text small { font-size: 16px; }
+@media (max-width: 560px) { #friend .fm-list.many { grid-template-columns: 1fr; } }
 #friend .fm-icon { font-size: 32px; }
 #friend .fm-text { display: flex; flex-direction: column; }
 #friend .fm-text small { font-size: 18px; color: var(--muted); }
