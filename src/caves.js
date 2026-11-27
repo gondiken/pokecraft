@@ -821,13 +821,19 @@ vec3 skDraw(vec4 data, vec2 uv, float S) {
   if (inked) col = mix(paper, ink, 0.42 + 0.5 * hatch); // the paper shows through a little
   col = mix(col, uPaper, 0.9 * rim);
   // outlines: hand strokes along the drawn edges
-  float lineW = clamp(bpx * 0.03, 1.5, 4.2);
+  float lineW = clamp(bpx * 0.03, 1.5, 4.2); // pixels
   float out_ = 0.0;
-  for (int e = 0; e < 4; e++) {
+  // owner 2026-11-27: only the nearer edge of each pair (left or right, top or bottom): a stroke never reaches past the face's middle
+  // until a block is under about 7 pixels on screen, so the far one drew nothing; half the strokes to work out per pixel.
+  for (int a = 0; a < 2; a++) {
+    int e = a == 0 ? (f.x < 0.5 ? 0 : 1) : (f.y < 0.5 ? 3 : 2);
     if (((em >> e) & 1) == 0) continue;
     bool onU = e < 2;
     float d = e == 0 ? f.x : e == 1 ? 1.0 - f.x : e == 2 ? 1.0 - f.y : f.y;
     float pxA = onU ? w.x : w.y;
+    // owner 2026-11-27 (still lagging on the tablet): a stroke reaches at most off (< 0.07) + its half width (weight < 1.4) + half
+    // a pixel from the edge, so a pixel further in skips this edge's maths (most of a face): the same picture, far less work.
+    if (d > 0.07 + (0.7 * lineW + 0.5) * pxA) continue;
     float along = onU ? pv : pu, across = onU ? pu : pv;
     vec3 lid = vec3(floor(across + 0.5), floor(pn + 0.5) + 0.37 * float(na), float(e) * 1.3);
     float L = 1.7 + 1.3 * skHash(lid), s = along / L + skHash(lid + 3.1), k0 = floor(s), ext = 0.14 / L;

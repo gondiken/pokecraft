@@ -98,6 +98,8 @@ texture.colorSpace = THREE.SRGBColorSpace;
 const materials = {
   // alphaTest: glass has see-through pixels.
   solid: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true, alphaTest: 0.5 }),
+  // owner 2026-11-27: the see-through blocks of a sketch world only (world.js buildChunk); there `solid` drops its alphaTest (sketch.js).
+  cut: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true, alphaTest: 0.5 }),
   // Lamps and star crystals keep their full brightness at night.
   glow: new THREE.MeshBasicMaterial({ map: texture, vertexColors: true }),
   water: new THREE.MeshBasicMaterial({
@@ -107,6 +109,7 @@ const materials = {
 
 // Darkness under cover: vertex colours carry the sky and block light, the shader mixes them (see caves.js).
 patchMaterial(materials.solid);
+patchMaterial(materials.cut);
 patchMaterial(materials.water);
 patchSketch(materials.glow); // T45: only the pencil part (the output is unchanged while the sketch switch is off)
 

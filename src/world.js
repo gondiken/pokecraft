@@ -667,6 +667,10 @@ export class World {
     const solid = newBuffers(sk);
     const water = newBuffers(sk);
     const glow = newBuffers(sk); // blocks that light up at night
+    // owner 2026-11-27 (the Sketchbook still lagged on the tablet): in a sketch world see-through blocks (glass...) get their own
+    // cut-out material, so the solid one has no alphaTest: a shader without discard lets a tablet's GPU skip hidden pixels before
+    // running the heavy pencil drawing. Every other world keeps one solid buffer, exactly as before.
+    const cut = sk && this.materials.cut ? newBuffers(sk) : solid;
     const x0 = cx * CHUNK, z0 = cz * CHUNK;
     this.stampLight(x0, z0);
     for (let y = 0; y < WORLD_H; y++) {
@@ -698,7 +702,7 @@ export class World {
             if (def.glow) this.addFace(glow, x, y, z, f, tile, 1, 1, 1, sk ? this.edgeMask(x, y, z, fi, id) + EDGE_AXES[fi] : 0);
             else {
               const nx = x + f.dir[0], ny = y + f.dir[1], nz = z + f.dir[2];
-              this.addFace(solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0), sk ? this.edgeMask(x, y, z, fi, id) + EDGE_AXES[fi] : 0);
+              this.addFace(cut !== solid && !isOccluder(id) ? cut : solid, x, y, z, f, tile, 1, this.skyAt(nx, ny, nz), this.lightAt(nx, ny, nz, x0, z0), sk ? this.edgeMask(x, y, z, fi, id) + EDGE_AXES[fi] : 0);
             }
           }
         }
@@ -710,7 +714,9 @@ export class World {
       for (const m of old) { this.scene.remove(m); m.geometry.dispose(); }
     }
     const meshes = [];
-    for (const [buf, mat] of [[solid, this.materials.solid], [water, this.materials.water], [glow, this.materials.glow]]) {
+    const groups = [[solid, this.materials.solid], [water, this.materials.water], [glow, this.materials.glow]];
+    if (cut !== solid) groups.push([cut, this.materials.cut]);
+    for (const [buf, mat] of groups) {
       if (!buf.idx.length) continue;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(buf.pos, 3));

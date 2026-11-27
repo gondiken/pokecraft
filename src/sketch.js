@@ -30,7 +30,7 @@ export function sketchModel(group) {
 export function createSketch(game, { materials, texture, atlas }) {
   let sketchTexture = null;
   let hold = false, step = 0;
-  const maps = ['solid', 'water', 'glow'];
+  const maps = ['solid', 'water', 'glow', 'cut'];
   const api = {
     get on() { return active; },
     get hold() { return hold; },
@@ -71,6 +71,10 @@ export function createSketch(game, { materials, texture, atlas }) {
           m.needsUpdate = true;
         }
       }
+      // owner 2026-11-27: holes are cut only by `cut` here (world.js), so solid blocks run a shader without discard (a tablet's GPU
+      // then skips the pencil drawing of every hidden pixel); everywhere else solid keeps its alphaTest 0.5, as before.
+      const at = active ? 0 : 0.5;
+      if (materials.solid.alphaTest !== at) { materials.solid.alphaTest = at; materials.solid.needsUpdate = true; }
       sketchLook.uSketchOn.value = active ? 1 : 0;
       MODEL_LOOK.uSketchOn.value = active ? 1 : 0; MODEL_LOOK.uDim.value = active ? 0 : 1; // models: pencil for everyone here; elsewhere only Doodle creatures, in the world's light
       if (active) {
