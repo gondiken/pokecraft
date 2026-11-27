@@ -1,6 +1,7 @@
 // The rules of Playland's games for two friends (owner 2026-11-26) that need no browser: where everybody stands at a kick-off,
-// which side a goal or basket counts for, the score, and who won a kart race. Pure (imports only stadium.js), Node-runnable.
+// which side a goal or basket counts for, the score, and who won a kart race. Pure (imports only stadium.js and ballphysics.js), Node-runnable.
 import { goalOf, BALL_R } from './stadium.js';
+import { touchKick } from './ballphysics.js';
 
 export const MATCH = { ready: 2, goalPause: 1.8, outPause: 0.8, claimFor: 2, edge: 0.4, highY: 12.5, highFor: 1 };
 
@@ -25,6 +26,25 @@ export const SPORTS = {
     scored: (part, ball, prevY) => part.hoops.findIndex(h => prevY >= h.rimMid && ball.pos.y < h.rimMid && Math.abs(ball.pos.x - h.hole[0]) < 1 && Math.abs(ball.pos.z - h.hole[1]) < 1),
   },
 };
+// A player as the ball's owner sees them: a solid box at their feet position (Ball.update's obstacle shape). The ball bounces off it.
+export const BODY = { half: 0.35, height: 1.8, still: 0.5, own: 0.3 };
+export const bodyBox = (pos, id = 'friend') => ({ x0: pos.x - BODY.half, x1: pos.x + BODY.half, y0: pos.y, y1: pos.y + BODY.height, z0: pos.z - BODY.half, z1: pos.z + BODY.half, v: { x: 0, y: 0, z: 0 }, id });
+// One frame of a match ball in one browser (owner 2026-11-27: "the ball doesn't go through the other player?"). A ball never goes
+// through a player, however hard and close the kick and however slow the frames:
+//   - my own body: running into the ball kicks it (ballphysics touchKick, as in the stadium's own game); standing (slower than
+//     BODY.still) I am a solid box the ball bounces off, checked in the ball's own 1/120 s sub-steps (never skipped over, never
+//     noticed too late); not for BODY.own seconds after my own kick, so a ball beside my feet does not bounce off me;
+//   - `friend` (their feet position, only handed in by the ball's OWNER): a solid box too, so my kick at them bounces off at
+//     once on my screen instead of waiting for their browser to say so.
+// pl = ballphysics' player box. Returns { touch: 'kick' | 'nudge' | 'body' | null (any of them = the ball is mine now), blocked }.
+export function ballFrame(ball, dt, pl, friend = null) {
+  const out = { touch: touchKick(ball, pl), blocked: false }, boxes = [];
+  if (Math.hypot(pl.vx, pl.vz) < BODY.still && ball.time - ball.kickedAt >= BODY.own) boxes.push(bodyBox(pl, 'me'));
+  if (friend) boxes.push(bodyBox(friend));
+  ball.update(dt, boxes.length ? () => boxes : undefined);
+  for (const ev of ball.events) if (ev.kind === 'keeper') { if (ev.obs?.id === 'me') out.touch ||= 'body'; else out.blocked = true; }
+  return out;
+}
 // The side that scores when the ball is in goal / hoop i.
 export const scorerOf = i => (i === 1 ? 0 : 1);
 // Where side `side` stands at a kick-off: [x, y (feet), z, yaw].

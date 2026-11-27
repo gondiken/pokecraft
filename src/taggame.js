@@ -67,6 +67,7 @@ export class TagGame extends FriendGame {
     }
   }
   beat() { return this.round.state(); }
+  farewell() { return this.leader ? { k: 'state', st: this.round.state() } : null; }
   heard(st) {
     const r = this.round;
     if (!r.load(st)) return;

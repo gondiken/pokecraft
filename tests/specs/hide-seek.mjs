@@ -54,9 +54,11 @@ export default async function ({ browser, base, t }) {
 
   // 2. Invite, no, yes
   await click(A, '#mp button:has-text("Hide and seek with Kid")');
-  t.ok(await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')
+  const asked1 = await waitFor(B, () => !document.getElementById('ask').classList.contains('hidden')
     && document.getElementById('ask-text').textContent.includes('hide and seek')
-    && document.getElementById('ask-yes').textContent === "Let's play!"), 'Kid is asked "... hide and seek!" with a "Let\'s play!" button');
+    && document.getElementById('ask-yes').textContent === "Let's play!");
+  if (!asked1) console.log('  (not asked. Dad:', await toasts(A), '| Kid:', await toasts(B), '|', JSON.stringify(await B.evaluate(() => { const g = window.pokecraft, p = g.player.pos; return { ask: document.getElementById('ask').className, text: document.getElementById('ask-text').textContent, others: g.mp.others.size, fence: !!g.world.fenceAt(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)), seed: g.world.seed }; })), ')');
+  t.ok(asked1, 'Kid is asked "... hide and seek!" with a "Let\'s play!" button');
   await B.keyboard.press('n');
   t.ok(await waitFor(A, () => (document.getElementById('toast').textContent || '').includes("doesn't want to play")), 'N tells Dad "doesn\'t want to play"');
   t.ok(!(await st(A)).active && !(await st(B)).active, 'no game after "Not now"');

@@ -61,6 +61,7 @@ export class KartRace extends FriendGame {
     } else if (p.k === 'over' && !this.leader) this.show(p.win === 0 || p.win === 1 ? p.win : null, p.times);
   }
   beat() { return this.result !== undefined ? { win: this.result, times: this.times } : {}; }
+  farewell() { return this.leader && this.result !== undefined ? { k: 'over', win: this.result, times: this.times } : null; }
   heard(d) { if ('win' in d) this.show(d.win, d.times); }
   update(dt) {
     const r = this.race;

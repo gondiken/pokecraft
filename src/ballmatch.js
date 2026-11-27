@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { FriendGame, addFriendGame } from './friendgames.js';
 import { SharedBall } from './sharedball.js';
-import { MATCH, SPORTS, scorerOf, startSpot, MatchScore } from './matchrules.js';
-import { touchKick, canBoot, boot, HOLD, kickZone, kickPower, shotWindow, shotMiss } from './ballphysics.js';
+import { MATCH, SPORTS, scorerOf, startSpot, MatchScore, ballFrame } from './matchrules.js';
+import { canBoot, boot, HOLD, kickZone, kickPower, shotWindow, shotMiss } from './ballphysics.js';
 import { BALL_R } from './stadium.js';
 import { sound } from './sound.js';
 
@@ -37,6 +37,7 @@ export class BallMatch extends FriendGame {
     this.phase = 'wait'; this.kickN = 0; this.has = 1;
     this.readyT = 0; this.goalT = 0; this.claim = null; this.outAt = null; this.wild = false; this.prevY = 0;
     this.signs = [];
+    this.blocks = 0; // times my ball bounced off the friend (tests)
   }
   get live() { return this.game.gymLive.of('part:stadium'); }
   get side() { return this.leader ? 0 : 1; }
@@ -125,6 +126,7 @@ export class BallMatch extends FriendGame {
     }
   }
   beat() { return { n: this.kickN, has: this.has, score: this.sc.score, ph: this.phase }; }
+  farewell() { const win = this.sc.winner; return this.leader && win != null ? { k: 'over', score: this.sc.score, win } : null; }
   heard(d) { // a lost kick-off or goal heals
     if (!this.shared) return;
     this.sc.load(d.score);
@@ -166,10 +168,12 @@ export class BallMatch extends FriendGame {
       else if (sh.held && !sh.mine) this.inTheirHands();                    // or in theirs
       else {
         this.prevY = ball.pos.y;
-        const touch = touchKick(ball, pl);
-        if (touch) { sh.take(); this.wild = false; this.outAt = null; if (touch === 'kick') live.noise(ball, 'ballkick'); }
-        ball.update(dt);
-        for (const ev of ball.events) if (ev.speed > 3) live.noise(ball, 'ballkick');
+        // nobody is ever gone through: my body kicks or stops the ball; while it is my ball the friend is solid on my screen too
+        const a = sh.mine ? this.avatar() : null;
+        const r = ballFrame(ball, dt, pl, a && a.here !== false ? a.pos : null);
+        if (r.touch) { sh.take(); this.wild = false; this.outAt = null; if (r.touch !== 'nudge') live.noise(ball, 'ballkick'); }
+        if (r.blocked) { sh.dirty = true; this.blocks++; live.noise(ball, 'ballkick'); } // (tell them now)
+        for (const ev of ball.events) if (!ev.kind && ev.speed > 3) live.noise(ball, 'ballkick');
         if (sh.mine) this.referee();
       }
       const m = sh.outgoing();
@@ -288,7 +292,7 @@ export class BallMatch extends FriendGame {
   get noRide() { return 'No riding in a match!'; }
   info() {
     const sh = this.shared, b = this.ball;
-    return { sport: this.sport.name, phase: this.phase, score: [...this.sc.score], kickN: this.kickN, has: this.has, side: this.side, wild: this.wild, claim: !!this.claim,
+    return { sport: this.sport.name, phase: this.phase, score: [...this.sc.score], kickN: this.kickN, has: this.has, side: this.side, wild: this.wild, claim: !!this.claim, blocks: this.blocks,
       ball: b ? { x: b.pos.x, y: b.pos.y, z: b.pos.z, vx: b.vel.x, vy: b.vel.y, vz: b.vel.z } : null, q: sh?.q, mine: sh?.mine, held: sh?.held, signs: this.signs.length };
   }
 }
